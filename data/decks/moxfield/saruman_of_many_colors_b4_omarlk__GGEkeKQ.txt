@@ -1,0 +1,96 @@
+COMMANDER: Saruman of Many Colors
+1 Aboleth Spawn
+1 Ancient Tomb
+1 Arcane Sanctum
+1 Arcane Signet
+1 Brainstorm
+1 Castle Locthwain
+1 Chemister's Insight
+1 Command Tower
+1 Consuming Aberration
+1 Counterspell
+1 Covetous Urge
+1 Cyclonic Rift
+1 Damn
+1 Dauthi Voidwalker
+1 Deadly Rollick
+1 Dovin's Veto
+1 Enlightened Tutor
+1 Esper Sentinel
+1 Everybody Lives!
+1 Exotic Orchard
+1 Fabled Passage
+1 Faerie Mastermind
+1 Farewell
+1 Fellwar Stone
+1 Fierce Guardianship
+1 Flooded Strand
+1 Flusterstorm
+1 Gemstone Caverns
+1 Godless Shrine
+1 Grafdigger's Cage
+1 Hall of Heliod's Generosity
+1 Hallowed Fountain
+3 Island
+1 Kozilek, Butcher of Truth
+1 Legions to Ashes
+1 Lord of the Nazgûl
+1 Maddening Cacophony
+1 Mana Drain
+1 Mana Sculpt
+1 Marsh Flats
+1 Memory Plunder
+1 Meticulous Archive
+1 Mind Grind
+1 Mind Stone
+1 Mindbreak Trap
+1 Muddle the Mixture
+1 Mystic Remora
+1 Mystic Sanctuary
+1 Narset Transcendent
+1 Narset, Parter of Veils
+1 Notion Thief
+1 Opposition Agent
+1 Otawara, Soaring City
+1 Palantír of Orthanc
+1 Path of Ancestry
+1 Pip-Boy 3000
+2 Plains
+1 Polluted Delta
+1 Ponder
+1 Praetor's Grasp
+1 Preordain
+1 Primal Amulet // Primal Wellspring
+1 Prismatic Vista
+1 Raffine's Tower
+1 Reanimate
+1 Reflecting Pool
+1 Resculpt
+1 Rhystic Study
+1 Scrubland
+1 Sea Gate Restoration // Sea Gate, Reborn
+1 Sensei's Divining Top
+1 Serum Visions
+1 Shadowy Backstreet
+1 Sol Ring
+1 Storm of Saruman
+1 Supreme Verdict
+2 Swamp
+1 Swan Song
+1 Swords to Plowshares
+1 Tasha's Hideous Laughter
+1 Teferi's Protection
+1 Teferi's Puzzle Box
+1 Teferi, Time Raveler
+1 The One Ring
+1 The Rise of Sozin // Fire Lord Sozin
+1 Tundra
+1 Turbulent Moor
+1 Ulamog, the Ceaseless Hunger
+1 Undercity Sewers
+1 Underground Sea
+1 Urborg, Tomb of Yawgmoth
+1 Urza's Saga
+1 Void Rend
+1 Watery Grave
+1 Zellix, Sanity Flayer

@@ -1,0 +1,17 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "act:sac",
+        "tutor"
+      ],
+      "index": 0,
+      "kind": "activated"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "ramp",
+  "name": "Sakura-Tribe Elder",
+  "parse_error_count": 0
+}

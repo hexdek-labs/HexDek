@@ -1,0 +1,73 @@
+COMMANDER: Yahenni, Undying Partisan
+1 Accursed Marauder
+1 Bitter Triumph
+1 Blade of the Bloodchief
+1 Blood Money
+1 Blood on the Snow
+1 Bloodghast
+1 Bloodsoaked Champion
+1 Braids, Arisen Nightmare
+1 Cabal Coffers
+1 Cabal Stronghold
+1 Caged Sun
+1 Crypt Ghast
+1 Damnation
+1 Dark Ritual
+1 Deadly Rollick
+1 Deadly Tempest
+1 Decree of Pain
+1 Diabolic Intent
+1 Diabolic Tutor
+1 Dictate of Erebos
+1 Dismember
+1 Final Act
+1 Flare of Malice
+1 Gix's Command
+1 Go for the Throat
+1 Grave Pact
+1 Gravecrawler
+1 Gravedigger
+1 Hero's Downfall
+1 In Garruk's Wake
+1 Innocent Blood
+1 Jadar, Ghoulcaller of Nephalia
+1 Jaws of Defeat
+1 Jet Medallion
+1 K'rrik, Son of Yawgmoth
+1 Maha, Its Feathers Night
+1 Mandate of Abaddon
+1 Massacre Girl
+1 Mutilate
+1 Nine-Lives Familiar
+1 No Mercy
+1 Noxious Gearhulk
+1 Ophiomancer
+1 Overkill
+1 Pawn of Ulamog
+1 Pitiless Plunderer
+1 Reanimate
+1 Reassembling Skeleton
+1 Reliquary Tower
+1 Rogue's Passage
+1 Sheoldred's Edict
+1 Shizo, Death's Storehouse
+1 Shoot the Sheriff
+14 Snow-Covered Swamp
+1 Sol Ring
+15 Swamp
+1 Sword of Vengeance
+1 Syr Konrad, the Grim
+1 Tarrian's Soulcleaver
+1 Tevesh Szat, Doom of Fools
+1 The Meathook Massacre
+1 Timeline Culler
+1 Toxic Deluge
+1 Tragic Slip
+1 Victimize
+1 Vincent Valentine // Galian Beast
+1 Virtue of Persistence // Locthwain Scorn
+1 Whip of Erebos
+1 Whispersilk Cloak
+1 Wishclaw Talisman
+1 Yahenni's Expertise
+1 Zenos yae Galvus // Shinryu, Transcendent Rival

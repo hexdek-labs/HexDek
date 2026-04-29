@@ -1,0 +1,24 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:die",
+        "create_token"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "static:delayed_trigger:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "keywords",
+  "name": "Rukh Egg",
+  "parse_error_count": 0
+}

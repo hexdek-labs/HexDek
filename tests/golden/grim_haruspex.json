@@ -1,0 +1,31 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:morph"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "trig:nontoken_ally_event",
+        "draw"
+      ],
+      "index": 1,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "static:face_down_copy_effect:_"
+      ],
+      "index": 2,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 3,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Grim Haruspex",
+  "parse_error_count": 0
+}

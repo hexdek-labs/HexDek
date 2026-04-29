@@ -1,0 +1,84 @@
+COMMANDER: Lavinia, Azorius Renegade
+1 Academy Ruins
+1 Archon of Emeria
+1 Arena of the Ancients
+1 Arid Mesa
+1 Aura of Silence
+1 Authority of the Consuls
+1 Back to Basics
+1 Blind Obedience
+1 Caltrops
+1 Command Tower
+1 Counterbalance
+1 Cursed Totem
+1 Damping Sphere
+1 Deafening Silence
+1 Defense Grid
+1 Dissipation Field
+1 Dovin, Hand of Control
+1 Drannith Magistrate
+1 Dream Tides
+1 Energy Field
+1 Enlightened Tutor
+1 Ensnaring Bridge
+1 Esper Sentinel
+1 Ever-Watching Threshold
+1 Eye of the Storm
+1 Flooded Strand
+1 Ghostly Prison
+1 Glacial Chasm
+1 Glacial Fortress
+1 Grafdigger's Cage
+1 Grand Abolisher
+1 Grand Arbiter Augustin IV
+1 Hall of Heliod's Generosity
+1 Hallowed Fountain
+1 Hengegate Pathway // Mistgate Pathway
+1 Humility
+1 Idyllic Tutor
+9 Island
+1 Island Sanctuary
+1 Juntu Stakes
+1 Knowledge Pool
+1 Lightmine Field
+1 Marsh Flats
+1 Maze of Ith
+1 Meekstone
+1 Meticulous Archive
+1 Misty Rainforest
+1 Mystic Remora
+1 Noetic Scales
+1 Null Rod
+1 Omen Machine
+1 Orb of Dreams
+1 Otawara, Soaring City
+1 Overburden
+1 Pendrell Mists
+9 Plains
+1 Planar Collapse
+1 Polluted Delta
+1 Porphyry Nodes
+1 Prismatic Vista
+1 Propaganda
+1 Rest in Peace
+1 Rhystic Study
+1 Sea of Clouds
+1 Smothering Tithe
+1 Solitary Confinement
+1 Soul Barrier
+1 Soulless Jailer
+1 Sphere of Resistance
+1 Sphere of Safety
+1 Standstill
+1 Stasis
+1 Static Orb
+1 Storage Matrix
+1 Teferi, Time Raveler
+1 Torpor Orb
+1 Trinisphere
+1 Trouble in Pairs
+1 Tundra
+1 Vexing Bauble
+1 Weathered Runestone
+1 Web of Inertia
+1 Windswept Heath

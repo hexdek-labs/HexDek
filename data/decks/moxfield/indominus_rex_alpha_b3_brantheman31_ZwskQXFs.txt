@@ -1,0 +1,87 @@
+COMMANDER: Indominus Rex, Alpha
+1 Animate Dead
+1 Arcane Signet
+1 Assassin's Trophy
+1 Beast Within
+1 Birds of Paradise
+1 Blur
+1 Breaker of Creation
+1 Command Tower
+1 Consecrated Sphinx
+1 Craterhoof Behemoth
+1 Cultivate
+1 Cultivator Colossus
+1 Deadeye Navigator
+1 Deadly Rollick
+1 Death Begets Life
+1 Displace
+1 Dragon Sniper
+1 Dreamroot Cascade
+1 Elder Gargaroth
+1 End-Raze Forerunners
+1 Essence Flux
+1 Exhume
+1 Fabled Passage
+1 Farseek
+1 Flooded Grove
+1 Force of Will
+5 Forest
+1 Frenzied Baloth
+1 Ghalta, Stampede Tyrant
+1 Glissa Sunslayer
+1 Goldvein Hydra
+1 Heroic Intervention
+1 Hidden Hideout
+1 Hide on the Ceiling
+1 Hinterland Harbor
+7 Island
+1 Krang, Utrom Warlord
+1 Life // Death
+1 Living Death
+1 Llanowar Wastes
+1 Metamorphosis Fanatic
+1 Mistrise Village
+1 Morbius the Living Vampire
+1 Mystic Remora
+1 Necromancy
+1 Old One Eye
+1 Persist
+1 Phyrexian Fleshgorger
+1 Planar Incision
+1 Questing Beast
+1 Railway Brawler
+1 Reanimate
+1 Rhonas the Indomitable
+1 Sab-Sunen, Luxa Embodied
+1 Scavenged Brawler
+1 Shifting Woodland
+1 Shipwreck Marsh
+1 Sire of Seven Deaths
+1 Siren's Ruse
+1 Sol Ring
+1 Splash Portal
+1 Stitch Together
+1 Stonehoof Chieftain
+4 Swamp
+1 Swan Song
+1 Sylvan Library
+1 Takenuma, Abandoned Mire
+1 Tear Asunder
+1 Teferi's Time Twist
+1 Thassa, Deep-Dwelling
+1 The Warring Triad
+1 Tower Winder
+1 Twilight Mire
+1 Tyrranax Rex
+1 Underground River
+1 Undergrowth Stadium
+1 Vaultborn Tyrant
+1 Venomthrope
+1 Vernal Fen
+1 Viridescent Bog
+1 Watery Grave
+1 Woodland Cemetery
+1 Worldly Tutor
+1 Wurmcoil Engine
+1 Yarok, the Desecrated
+1 Yavimaya Coast

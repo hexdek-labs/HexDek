@@ -1,0 +1,392 @@
+{
+  "game_id": "cage-v3-game1",
+  "winner": 0,
+  "end_reason": "seat 0 is the last one standing",
+  "total_turns": 20,
+  "total_events": 2525,
+  "commander_format": true,
+  "day_night": "neither",
+  "seats": [
+    {
+      "idx": 0,
+      "life": 13,
+      "lost": false,
+      "loss_reason": "",
+      "library_count": 69,
+      "hand": [
+        "Victimize"
+      ],
+      "graveyard": [
+        "Treasure Vault",
+        "Rampant Growth",
+        "Faithless Looting",
+        "Midnight Tilling",
+        "Eviscerator's Insight",
+        "Ghoulcaller's Bell",
+        "Cunning Lethemancer",
+        "Kulrath Zealot",
+        "Vile Entomber",
+        "Chandra's Ignition",
+        "Grapple with the Past",
+        "Eternal Witness",
+        "Too Greedily, Too Deep",
+        "Orchard Strider"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Coram, the Undertaker"
+      ],
+      "commander_tax": {
+        "Coram, the Undertaker": 2
+      },
+      "commander_damage": {
+        "3": {
+          "Varina, Lich Queen": 8
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": [
+        {
+          "name": "Command Tower",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Path of Ancestry",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Kessig Wolf Run",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "The Black Gate",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Shadowblood Ridge",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Perpetual Timepiece",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Tainted Wood",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mosswort Bridge",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Swamp",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Talisman of Indulgence",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Swamp",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Viridescent Bog",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "The Balrog of Moria",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 8,
+          "toughness": 8,
+          "counters": {},
+          "controller": 0,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Forest",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Sakura-Tribe Elder",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 1,
+          "toughness": 1,
+          "counters": {},
+          "controller": 0,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Coram, the Undertaker",
+          "tapped": false,
+          "summoning_sick": true,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 5,
+          "counters": {},
+          "controller": 0,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        }
+      ]
+    },
+    {
+      "idx": 1,
+      "life": -4,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 74,
+      "hand": [
+        "Akroma, Angel of Fury"
+      ],
+      "graveyard": [
+        "Hidden Dragonslayer",
+        "Ohran Frostfang",
+        "Mirror Entity",
+        "Austere Command",
+        "Salt Road Ambushers",
+        "Master of Pearls",
+        "Ashcloud Phoenix",
+        "Fell the Mighty"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Kaust, Eyes of the Glade"
+      ],
+      "commander_tax": {
+        "Kaust, Eyes of the Glade": 3
+      },
+      "commander_damage": {},
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 2,
+      "life": -3,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 78,
+      "hand": [
+        "Scrap Trawler",
+        "Sami, Wildcat Captain",
+        "Exalted Sunborn",
+        "Circuit Mender",
+        "Weftstalker Ardent",
+        "Voyager Quickwelder"
+      ],
+      "graveyard": [
+        "Swords to Plowshares",
+        "Demand Answers",
+        "Lightning Greaves",
+        "Abrade",
+        "Gold Myr",
+        "Loyal Apprentice"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Ragost, Deft Gastronaut"
+      ],
+      "commander_tax": {
+        "Ragost, Deft Gastronaut": 3
+      },
+      "commander_damage": {
+        "1": {
+          "Kaust, Eyes of the Glade": 10
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 3,
+      "life": -2,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 74,
+      "hand": [
+        "Army of the Damned",
+        "Zombie Apocalypse"
+      ],
+      "graveyard": [
+        "Perplex",
+        "Victimize",
+        "Void Rend",
+        "Anguished Unmaking",
+        "Binding Mummy",
+        "Rotting Rats",
+        "Tormod, the Desecrator",
+        "Wayward Servant"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Varina, Lich Queen"
+      ],
+      "commander_names": [
+        "Varina, Lich Queen"
+      ],
+      "commander_tax": {
+        "Varina, Lich Queen": 2
+      },
+      "commander_damage": {
+        "1": {
+          "Kaust, Eyes of the Glade": 10
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    }
+  ]
+}

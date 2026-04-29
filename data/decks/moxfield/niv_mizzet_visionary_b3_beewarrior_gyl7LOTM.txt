@@ -1,0 +1,88 @@
+COMMANDER: Niv-Mizzet, Visionary
+1 Aetherflux Reservoir
+1 Arcane Bombardment
+1 Arcane Denial
+1 Arcane Signet
+1 Archmage Emeritus
+1 Aria of Flame
+1 Artist's Talent
+1 Ashling, Flame Dancer
+1 Bender's Waterskin
+1 Blasphemous Act
+1 Body of Knowledge
+1 Boltwave
+1 Captain Ripley Vance
+1 Cascade Bluffs
+1 Chaos Warp
+1 Clinquant Skymage
+1 Command Tower
+1 Coruscation Mage
+1 Counterspell
+1 Crackle with Power
+1 Cyclonic Rift
+1 Decanter of Endless Water
+1 Delayed Blast Fireball
+1 Electro, Assaulting Battery
+1 Electrolyze
+1 Electrostatic Infantry
+1 Emergence Zone
+1 End the Festivities
+1 Eris, Roar of the Storm
+1 Exalted Flamer of Tzeentch
+1 Ferrous Lake
+1 Fierce Guardianship
+1 Fiery Annihilation
+1 Firebrand Archer
+1 Flame of Anor
+1 Flashback
+1 Frostboil Snarl
+1 Galvanic Iteration
+1 Galvanize
+1 Geistblast
+1 Ghyrson Starn, Kelermorph
+1 Grapeshot
+1 Hypersonic Dragon
+1 Ionize
+7 Island
+1 Izzet Boilerworks
+1 Jeska's Will
+1 Kitsa, Otterball Elite
+1 Lava Coil
+1 Lightning Bolt
+1 Magda, the Hoardmaster
+1 Mana Drain
+1 Melek, Izzet Paragon
+1 Mizzix's Mastery
+7 Mountain
+1 Mystic Sanctuary
+1 Playful Shove
+1 Pongify
+1 Primal Amulet // Primal Wellspring
+1 Prismari, the Inspiration
+1 Pyromancer's Goggles
+1 Reliquary Tower
+1 Resonating Lute
+1 Rogue's Passage
+1 Ruby Medallion
+1 Sapphire Medallion
+1 Searing Blaze
+1 Seething Song
+1 Shivan Gorge
+1 Shock
+1 Sol Ring
+1 Sorcerer Class
+1 Spinerock Knoll
+1 Stella Lee, Wild Card
+1 Storm-Kiln Artist
+1 Stormcarved Coast
+1 Swiftwater Cliffs
+1 Temple of Epiphany
+1 The Reality Chip
+1 Thunderdrum Soloist
+1 Valakut, the Molten Pinnacle
+1 Vandalblast
+1 Veyran, Voice of Duality
+1 Vivi Ornitier
+1 Vivi's Persistence
+1 Wizard Class
+1 Wizard's Lightning

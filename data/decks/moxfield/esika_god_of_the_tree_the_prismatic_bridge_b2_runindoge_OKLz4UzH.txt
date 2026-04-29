@@ -1,0 +1,100 @@
+COMMANDER: Esika, God of the Tree // The Prismatic Bridge
+1 Altar of the Pantheon
+1 Anikthea, Hand of Erebos
+1 Athreos, God of Passage
+1 Athreos, Shroud-Veiled
+1 Awaken the Honored Dead
+1 Ballad of the Black Flag
+1 Bring to Light
+1 Cacophony Unleashed
+1 Calix, Destiny's Hand
+1 Case of the Shattered Pact
+1 Chromanticore
+1 City of Brass
+1 Command Tower
+1 Commercial District
+1 Eidolon of Blossoms
+1 Elegant Parlor
+1 Ephara, God of the Polis
+1 Erebos, God of the Dead
+1 Evolving Wilds
+1 Exotic Orchard
+1 Extinguish All Hope
+1 Faeburrow Elder
+1 Fear of Impostors
+1 Fertile Ground
+1 Fieldmist Borderpost
+1 Firewild Borderpost
+1 Forest
+1 Hedge Maze
+1 Heliod, God of the Sun
+1 Heliod, Sun-Crowned
+1 Heliod, the Radiant Dawn // Heliod, the Warped Eclipse
+1 Hidden Hideout
+1 Inquisitive Glimmer
+1 Invasion of Theros // Ephara, Ever-Sheltering
+1 Iroas, God of Victory
+1 Island
+1 Jukai Naturalist
+1 Karametra, God of Harvests
+1 Keranos, God of Storms
+1 Klothys, God of Destiny
+1 Kruphix, God of Horizons
+1 Lush Portico
+1 Mana Confluence
+1 Meticulous Archive
+1 Mistvein Borderpost
+1 Mogis, God of Slaughter
+1 Mountain
+1 Nicol Bolas, God-Pharaoh
+1 Niv-Mizzet, Guildpact
+1 Nylea, God of the Hunt
+1 Nylea, Keen-Eyed
+1 Overlord of the Balemurk
+1 Overlord of the Floodpits
+1 Overlord of the Hauntwoods
+1 Path of Ancestry
+1 Pharika, God of Affliction
+1 Phenax, God of Deception
+1 Plains
+1 Purphoros, God of the Forge
+1 Raucous Theater
+1 Resurgent Belief
+1 Sanctum Weaver
+1 Shadowy Backstreet
+1 Silent Hallcreeper
+1 Starfield of Nyx
+1 Stasis Snare
+1 Strength of the Harvest // Haven of the Harvest
+1 Summon: Bahamut
+1 Summon: G.F. Ifrit
+1 Swamp
+1 Sythis, Harvest's Hand
+1 Temple of Abandon
+1 Temple of Deceit
+1 Temple of Enlightenment
+1 Temple of Epiphany
+1 Temple of Malady
+1 Temple of Malice
+1 Temple of Mystery
+1 Temple of Plenty
+1 Temple of Silence
+1 Temple of Triumph
+1 Thassa, Deep-Dwelling
+1 Thassa, God of the Sea
+1 The Last Ronin
+1 Thundering Falls
+1 Trace of Abundance
+1 Undercity Sewers
+1 Underground Mortuary
+1 Veinfire Borderpost
+1 Vivid Crag
+1 Vivid Creek
+1 Vivid Grove
+1 Vivid Marsh
+1 Vivid Meadow
+1 Weaver of Harmony
+1 Wildfield Borderpost
+1 Wrath of God
+1 Xenagos, God of Revels
+1 Zur the Enchanter

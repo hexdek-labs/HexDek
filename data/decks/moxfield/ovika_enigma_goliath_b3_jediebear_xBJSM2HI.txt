@@ -1,0 +1,80 @@
+COMMANDER: Ovika, Enigma Goliath
+1 Abrade
+1 Arcane Signet
+1 Big Score
+1 Blazing Firesinger // Seething Song
+1 Brainstorm
+1 Cast into the Fire
+1 Chaos Warp
+1 Chromatic Lantern
+1 Clout of the Dominus
+1 Command Tower
+1 Commander's Sphere
+1 Compulsive Research
+1 Consider
+1 Counterspell
+1 Cryptic Command
+1 Crystal Vein
+1 Cultivator's Caravan
+1 Dig Through Time
+1 Dissipate
+1 Electro, Assaulting Battery
+1 Electrodominance
+1 Exotic Orchard
+1 Expressive Iteration
+1 Ferrous Lake
+1 Fire Diamond
+1 Frantic Search
+1 Gilded Lotus
+1 Goblin Bombardment
+1 Goblin Electromancer
+1 Grapeshot
+1 Harmonized Crescendo
+1 Haze of Rage
+1 Heraldic Banner
+1 Impact Tremors
+11 Island
+1 Izzet Boilerworks
+1 Izzet Charm
+1 Izzet Signet
+1 Jeska's Will
+1 Krenko, Mob Boss
+1 Lórien Revealed
+1 Mana Geyser
+1 Massive Raid
+1 Mind Stone
+1 Misdirection
+1 Molten Gatekeeper
+11 Mountain
+1 Opt
+1 Patchwork Banner
+1 Petals of Insight
+1 Preordain
+1 Pyretic Ritual
+1 Resculpt
+1 Resonating Lute
+1 Reverberate
+1 Roaming Throne
+1 Sandstone Needle
+1 Saprazzan Skerry
+1 Shivan Reef
+1 Skirk Prospector
+1 Skullclamp
+1 Sky Diamond
+1 Slash, Reptile Rampager
+1 Sol Ring
+1 Sorcerer Class
+1 Sozin's Comet
+1 Spire of Industry
+1 Storm-Kiln Artist
+1 Stormcatch Mentor
+1 Sulfur Falls
+1 Swiftfoot Boots
+1 Talisman of Creativity
+1 Thought Vessel
+1 Transcendent Message
+1 Treasure Cruise
+1 Veyran, Voice of Duality
+1 Weftstalker Ardent
+1 Windfall
+1 Worn Powerstone

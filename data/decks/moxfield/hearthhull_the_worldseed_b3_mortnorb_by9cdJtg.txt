@@ -1,0 +1,94 @@
+COMMANDER: Hearthhull, the Worldseed
+1 Abrupt Decay
+1 Aftermath Analyst
+1 Amulet of Vigor
+1 Arid Mesa
+1 Ashaya, Soul of the Wild
+1 Assassin's Trophy
+1 Ba Sing Se
+1 Badgermole Cub
+1 Badlands
+1 Bayou
+1 Beast Within
+1 Blood Crypt
+1 Bloodstained Mire
+1 Bojuka Bog
+1 Boseiju, Who Endures
+1 Braids, Arisen Nightmare
+1 Buried Ruin
+1 Command Tower
+1 Commercial District
+1 Constant Mists
+1 Crop Rotation
+1 Crucible of Worlds
+1 Cultivate
+1 Entish Restoration
+1 Entomb
+1 Evendo Brushrazer
+1 Exploration
+1 Explore
+1 Fabled Passage
+1 Famished Worldsire
+1 Farseek
+1 Field of the Dead
+3 Forest
+1 Formidable Speaker
+1 Glacial Chasm
+1 Green Sun's Zenith
+1 Harrow
+1 Horizon Explorer
+1 Horn of Greed
+1 Icetill Explorer
+1 Iridescent Vinelasher
+1 Lord Windgrace
+1 Lotus Cobra
+1 Lotus Field
+1 Lumra, Bellow of the Woods
+1 Marsh Flats
+1 Mayhem Devil
+1 Misty Rainforest
+3 Mountain
+1 Nature's Lore
+1 Nature's Rhythm
+1 Nissa, Resurgent Animist
+1 Nissa, Who Shakes the World
+1 Oracle of Mul Daya
+1 Orcish Lumberjack
+1 Overgrown Tomb
+1 Polluted Delta
+1 Prismatic Vista
+1 Quirion Ranger
+1 Ramunap Excavator
+1 Raucous Theater
+1 Retreat to Hagra
+1 Rydia, Summoner of Mist
+1 Sabotender
+1 Sakura-Tribe Elder
+1 Scalding Tarn
+1 Scapeshift
+1 Scute Swarm
+1 Shifting Woodland
+1 Sol Ring
+1 Springheart Nantuko
+1 Squandered Resources
+1 Stomping Ground
+3 Swamp
+1 Sylvan Safekeeper
+1 Taiga
+1 Tannuk, Memorial Ensign
+1 Tear Asunder
+1 Tezzeret, Cruel Captain
+1 The Earth King
+1 Tireless Provisioner
+1 Toph, Hardheaded Teacher
+1 Traveling Chocobo
+1 Underground Mortuary
+1 Urza's Saga
+1 Valakut Exploration
+1 Verdant Catacombs
+1 Walk-In Closet // Forgotten Cellar
+1 Windswept Heath
+1 Wooded Foothills
+1 Yavimaya, Cradle of Growth
+1 Ziatora's Proving Ground
+1 Zuran Orb

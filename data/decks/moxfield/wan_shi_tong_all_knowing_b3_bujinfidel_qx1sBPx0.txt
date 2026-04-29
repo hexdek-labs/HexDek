@@ -1,0 +1,74 @@
+COMMANDER: Wan Shi Tong, All-Knowing
+1 Academy Ruins
+1 Accumulate Wisdom
+1 Aetherspouts
+1 Agna Qel'a
+1 Ashnod's Altar
+1 Baboon Spirit
+1 Banner of Kinship
+1 Blur
+1 Brainstorm
+1 Brainsurge
+1 Bury in Books
+1 Candlekeep Inspiration
+1 Castle Vantress
+1 Cavalier of Gales
+1 Commit // Memory
+1 Counterspell
+1 Deadeye Navigator
+1 Distant Melody
+1 Dutiful Knowledge Seeker
+1 Ember Island Production
+1 Essence Flux
+1 Ghostly Flicker
+1 Gomazoa
+1 Halimar Depths
+1 Harmonized Trio // Brainstorm
+1 High Tide
+1 Hinder
+1 Irenicus's Vile Duplication
+27 Island
+1 Junk Winder
+1 Kira, Great Glass-Spinner
+1 Knowledge Seeker
+1 Mausoleum Wanderer
+1 Memory Lapse
+1 Moonlit Meditation
+1 Myriad Landscape
+1 Mystic Sanctuary
+1 Nanogene Conversion
+1 Nebelgast Herald
+1 Nexus of Fate
+1 Panharmonicon
+1 Patchwork Banner
+1 Patrician Geist
+1 Ponder
+1 Rattlechains
+1 Reliquary Tower
+1 Retraced Image
+1 Sakashima of a Thousand Faces
+1 Sapphire Medallion
+1 Scroll Rack
+1 Secret of Bloodbending
+1 Shacklegeist
+1 Silundi Vision // Silundi Isle
+1 Sol Ring
+1 Spark Double
+1 Spectral Arcanist
+1 Spell Crumple
+1 Spirit Water Revival
+1 Splash Portal
+1 Subtlety
+1 Supreme Phantom
+1 Swat Away
+1 Thassa, Deep-Dwelling
+1 The Legend of Kuruk // Avatar Kuruk
+1 Three Tree City
+1 Tolarian Contempt
+1 Tomb of the Spirit Dragon
+1 Vendilion Clique
+1 Virtue of Knowledge // Vantress Visions
+1 Waterbending Scroll
+1 White Lotus Tile
+1 Y'shtola Rhul
+1 Yue, the Moon Spirit

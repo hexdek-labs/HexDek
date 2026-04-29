@@ -1,0 +1,530 @@
+{
+  "game_id": "cage-v6-game1",
+  "winner": 1,
+  "end_reason": "seat 1 is the last one standing",
+  "total_turns": 18,
+  "total_events": 2448,
+  "commander_format": true,
+  "day_night": "neither",
+  "seats": [
+    {
+      "idx": 0,
+      "life": -2,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 75,
+      "hand": [
+        "Muldrotha, the Gravetide"
+      ],
+      "graveyard": [
+        "Island",
+        "Brighthearth Banneret",
+        "Risen Reef",
+        "Omnath, Locus of the Roil"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Ashling, Rekindled // Ashling, Rimebound"
+      ],
+      "commander_names": [
+        "Ashling, Rekindled // Ashling, Rimebound"
+      ],
+      "commander_tax": {
+        "Ashling, Rekindled // Ashling, Rimebound": 2
+      },
+      "commander_damage": {
+        "3": {
+          "Varina, Lich Queen": 16
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 2,
+      "battlefield": []
+    },
+    {
+      "idx": 1,
+      "life": 40,
+      "lost": false,
+      "loss_reason": "",
+      "library_count": 63,
+      "hand": [],
+      "graveyard": [
+        "Life from the Loam",
+        "Troll of Khazad-d\u00fbm",
+        "Brawn",
+        "Faithless Looting",
+        "Stitcher's Supplier",
+        "Eviscerator's Insight",
+        "Accursed Marauder",
+        "Flare of Malice",
+        "Stunning Reversal",
+        "Chainer, Nightmare Adept"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Coram, the Undertaker"
+      ],
+      "commander_tax": {
+        "Coram, the Undertaker": 1
+      },
+      "commander_damage": {},
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": [
+        {
+          "name": "Demolition Field",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mountain",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Swamp",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Overgrown Tomb",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Swamp",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Ignoble Hierarch",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 1,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Sol Ring",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Coram, the Undertaker",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 5,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Millikin",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 1,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Talisman of Resilience",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Evolving Wilds",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Forest",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Forest",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Viridescent Bog",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "The Balrog of Moria",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 8,
+          "toughness": 8,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mountain",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Smoldering Marsh",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Colossal Grave-Reaver",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 7,
+          "toughness": 6,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mountain",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Swamp",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Swamp",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Lightning Skelemental",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 6,
+          "toughness": 1,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mountain",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Dauthi Voidwalker",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 3,
+          "toughness": 2,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Forest",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Balor",
+          "tapped": false,
+          "summoning_sick": true,
+          "damage_marked": 0,
+          "power": 5,
+          "toughness": 5,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Forest",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        }
+      ]
+    },
+    {
+      "idx": 2,
+      "life": 0,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 79,
+      "hand": [
+        "Felidar Sovereign",
+        "Aetherflux Reservoir",
+        "Beacon of Immortality",
+        "Sphere of Safety"
+      ],
+      "graveyard": [
+        "Swan Song",
+        "Angel's Grace",
+        "Soul Warden",
+        "Soul's Attendant",
+        "Dawn Charm",
+        "Guide of Souls",
+        "Generous Gift",
+        "Impassioned Orator",
+        "Orim, Samite Healer"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Oloro, Ageless Ascetic"
+      ],
+      "commander_names": [
+        "Oloro, Ageless Ascetic"
+      ],
+      "commander_tax": {
+        "Oloro, Ageless Ascetic": 0
+      },
+      "commander_damage": {},
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 3,
+      "life": -7,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 76,
+      "hand": [
+        "Army of the Damned",
+        "Zombie Apocalypse"
+      ],
+      "graveyard": [
+        "Perplex",
+        "Rotting Rats",
+        "Victimize",
+        "Void Rend",
+        "Wayward Servant",
+        "Anguished Unmaking",
+        "Tormod, the Desecrator"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Varina, Lich Queen"
+      ],
+      "commander_tax": {
+        "Varina, Lich Queen": 2
+      },
+      "commander_damage": {},
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    }
+  ]
+}

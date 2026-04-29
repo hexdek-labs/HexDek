@@ -1,0 +1,100 @@
+COMMANDER: Inalla, Archmage Ritualist
+1 Aetherflux Reservoir
+1 Aetherize
+1 Alphinaud Leveilleur
+1 Arcane Signet
+1 Archaeomancer
+1 Archmage Emeritus
+1 Archmage of Echoes
+1 Archmage of Runes
+1 Ashnod's Altar
+1 Azami, Lady of Scrolls
+1 Balmor, Battlemage Captain
+1 Barrin, Tolarian Archmage
+1 Beseech the Mirror
+1 Bloodline Necromancer
+1 Bolas's Citadel
+1 Castle Locthwain
+1 Cavern of Souls
+1 Cephalid Coliseum
+1 Chaos Warp
+1 Command Tower
+1 Conjurer's Closet
+1 Cool but Rude
+1 Coruscation Mage
+1 Cyclone Summoner
+1 Darkslick Shores
+1 Darkwater Catacombs
+1 Demonic Tutor
+1 Diabolic Intent
+1 Diabolic Tutor
+1 Drowned Catacomb
+1 Echocasting Symposium
+1 Exclusion Mage
+1 Exhibition Tidecaller
+1 Exotic Orchard
+1 Fiery Islet
+1 Frostboil Snarl
+1 Gleeful Arsonist
+1 Glen Elendra Archmage
+1 Goblin Electromancer
+1 Grapeshot
+1 Harmonic Prodigy
+1 Impact Tremors
+1 Kefka, Court Mage // Kefka, Ruler of Ruin
+1 Kitsa, Otterball Elite
+1 Learn from the Past
+1 Lim-Dûl's Vault
+1 Mana Geyser
+1 Mana Sculpt
+1 Master of Waves
+1 Merchant Scroll
+1 Molten Echoes
+1 Morphic Pool
+1 Mountain
+1 Mysidian Elder
+1 Naban, Dean of Iteration
+1 Nykthos, Shrine to Nyx
+1 Panharmonicon
+1 Petrified Hamlet
+1 Phyrexian Altar
+1 Phyrexian Tower
+1 Preordain
+1 Puppeteer Clique
+1 Pyretic Ritual
+1 Rakdos Charm
+1 Rakdos Signet
+1 Rapturous Moment
+1 Raucous Theater
+1 Reflections of Littjara
+1 Reiterate
+1 Rite of Replication
+1 Riverglide Pathway // Lavaglide Pathway
+1 Sensei's Divining Top
+1 Serum Visionary
+1 Shipwreck Marsh
+1 Shivan Reef
+1 Smoldering Marsh
+1 Snapcaster Mage
+1 Sol Ring
+1 Spirebluff Canal
+1 Steam Vents
+1 Stormcarved Coast
+1 Stormcatch Mentor
+1 Sulfur Falls
+1 Sunken Hollow
+1 Susur Secundi, Void Altar
+1 Three Tree City
+1 Time Stretch
+1 Training Center
+1 Undercity Sewers
+1 Underground River
+1 Unwind
+1 Urza's Cave
+1 Vampiric Tutor
+1 Vanquisher's Banner
+1 Vela the Night-Clad
+1 Venser, Shaper Savant
+1 Veyran, Voice of Duality
+1 Village Rites
+1 Watery Grave

@@ -1,0 +1,91 @@
+COMMANDER: Inalla, Archmage Ritualist
+1 Aether Channeler
+1 Arcane Signet
+1 Archmage of Echoes
+1 Ardent Electromancer
+1 Azami, Lady of Scrolls
+1 Basalt Ravager
+1 Beyeen Veil // Beyeen Coast
+1 Blasphemous Act
+1 Bloodline Necromancer
+1 Bojuka Bog
+1 Braids's Frightful Return
+1 Burnt Offering
+1 Canyon Slough
+1 Chandra, Fire Artisan
+1 Chaos Warp
+1 Chthonian Nightmare
+1 Circle of Power
+1 Cloudkin Seer
+1 Command Tower
+1 Cornered by Black Mages
+1 Counterspell
+1 Crosis's Charm
+1 Crumbling Necropolis
+1 Cyclone Summoner
+1 Dark Ritual
+1 Demolition Field
+1 Dimir Signet
+1 Dour Port-Mage
+1 Dragonskull Summit
+1 Drowned Catacomb
+1 Ertai Resurrected
+1 Exhibition Magician
+1 Exotic Orchard
+1 Flame of Anor
+1 Frostcliff Siege
+1 Galecaster Colossus
+1 Ghitu Journeymage
+1 Harmonic Prodigy
+1 Impact Tremors
+1 Inspired Skypainter // Maestro's Gift
+4 Island
+1 Izzet Signet
+1 Kaito, Dancing Shadow
+1 Kindred Discovery
+1 Kuja, Genome Sorcerer // Trance Kuja, Fate Defied
+1 Lindblum, Industrial Regency // Mage Siege
+1 Living Death
+1 Mana Sculpt
+1 Midgar, City of Mako // Reactor Raid
+1 Molten Echoes
+4 Mountain
+1 Myriad Landscape
+1 Naban, Dean of Iteration
+1 Naru Meha, Master Wizard
+1 Obeka, Brute Chronologist
+1 Panharmonicon
+1 Path of Ancestry
+1 Patron Wizard
+1 Perplexing Test
+1 Phyrexian Arena
+1 Puppeteer Clique
+1 Rakdos Signet
+1 Reconnaissance Mission
+1 Redoubled Stormsinger
+1 Reliquary Tower
+1 Riptide Laboratory
+1 Secluded Courtyard
+1 Seething Landscape
+1 Serum Visionary
+1 Shadowmage Infiltrator
+1 Shipwreck Marsh
+1 Smoldering Marsh
+1 Sol Ring
+1 Step Through
+1 Stonybrook Banneret
+1 Stormcarved Coast
+1 Sulfur Falls
+1 Summon: Esper Ramuh
+1 Sundering Eruption // Volcanic Fissure
+1 Sunken Hollow
+4 Swamp
+1 Talisman of Creativity
+1 Talisman of Dominance
+1 Talisman of Indulgence
+1 Transpose
+1 Venser, Shaper Savant
+1 Volatile Fjord
+1 Watcher for Tomorrow
+1 Windrider Wizard
+1 Wizard's Retort

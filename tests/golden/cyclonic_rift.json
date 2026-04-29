@@ -1,0 +1,23 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "static:spell_effect:_"
+      ],
+      "index": 0,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "keyword:overload"
+      ],
+      "index": 1,
+      "kind": "keyword"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "cedh",
+  "name": "Cyclonic Rift",
+  "parse_error_count": 0
+}

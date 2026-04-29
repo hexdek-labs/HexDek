@@ -1,0 +1,58 @@
+1 Ancient Tomb
+1 Arcane Signet
+1 Auriok Salvagers
+1 Aven Interrupter
+1 Aven Mindcensor
+1 Basalt Monolith
+1 Caged Sun
+1 Chrome Mox
+1 City of Traitors
+1 Coat of Arms
+1 Demolition Field
+1 Door of Destinies
+1 Eiganjo, Seat of the Empire
+1 Emeria, the Sky Ruin
+1 Enduring Innocence
+1 Enlightened Tutor
+1 Esper Sentinel
+1 Final Showdown
+1 Gauntlet of Power
+1 Gemstone Caverns
+1 Generous Gift
+1 Get Lost
+1 Howling Mine
+1 Illusionist's Bracers
+1 Karoo
+1 Lion's Eye Diamond
+1 Lotus Field
+1 Lotus Petal
+1 Lotus Vale
+1 Mana Vault
+1 Marble Diamond
+1 Mass Calcify
+1 Minas Tirith
+1 Mind Stone
+1 Mox Diamond
+1 Mox Opal
+1 Nykthos, Shrine to Nyx
+1 Path to Exile
+1 Pearl Medallion
+20 Plains
+1 Rings of Brighthearth
+1 Ruins of Trokair
+1 Sephara, Sky's Blade
+1 Smothering Tithe
+1 Sol Ring
+1 Solitude
+1 Stroke of Midnight
+1 Swords to Plowshares
+25 Tempest Hawk
+1 Temple of the False God
+1 The One Ring
+1 Three Tree City
+1 Tocasia's Welcome
+1 Trouble in Pairs
+1 Wrath of God
+1 Zenith Chronicler
+
+COMMANDER: Soraya the Falconer

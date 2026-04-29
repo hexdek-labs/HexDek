@@ -1,0 +1,91 @@
+COMMANDER: The Wise Mothman
+1 Altar of Dementia
+1 Altar of the Brood
+1 An Offer You Can't Refuse
+1 Arcane Signet
+1 Atomize
+1 Basking Broodscale
+1 Birds of Paradise
+1 Bloodchief Ascension
+1 Bojuka Bog
+1 Bramble Familiar // Fetch Quest
+1 Breeding Pool
+1 Cankerbloom
+1 Cold-Eyed Selkie
+1 Command Tower
+1 Consuming Aberration
+1 Cyclonic Rift
+1 Deathcap Glade
+1 Deepmuck Desperado
+1 Didn't Say Please
+1 Dreamroot Cascade
+1 Emperor of Bones
+1 Evolution Sage
+1 Evolution Witness
+1 Exotic Orchard
+1 Fabled Passage
+4 Forest
+1 Glen Elendra Archmage
+1 Gloomlake Verge
+1 Glowing One
+1 Gyre Sage
+1 Hardened Scales
+1 Hedge Shredder
+1 Heroic Intervention
+1 Hollowmurk Siege
+1 Icetill Explorer
+1 Inexorable Tide
+4 Island
+1 Jidoor, Aristocratic Capital // Overture
+1 Kodama of the West Tree
+1 Kozilek, Butcher of Truth
+1 Maddening Cacophony
+1 Malevolent Hermit // Benevolent Geist
+1 Mana Confluence
+1 Memory Erosion
+1 Mesmeric Orb
+1 Mindcrank
+1 Muldrotha, the Gravetide
+1 Mutational Advantage
+1 Mystical Tutor
+1 Nature's Lore
+1 Nuclear Fallout
+1 Overgrown Tomb
+1 Pensive Professor
+1 Pollywog Prodigy
+1 Psychic Corrosion
+1 Putrefy
+1 Reflecting Pool
+1 Rejuvenating Springs
+1 Return to Nature
+1 Ripples of Potential
+1 Ruin Crab
+1 Saw in Half
+1 Shifting Woodland
+1 Shipwreck Marsh
+1 Six
+1 Sol Ring
+1 Soul-Guide Lantern
+1 Spark Double
+1 Spellseeker
+1 Sunken Hollow
+4 Swamp
+1 Swarmyard
+1 Swiftfoot Boots
+1 Syr Konrad, the Grim
+1 Tainted Isle
+1 Tainted Wood
+1 Tekuthal, Inquiry Dominus
+1 The Great Henge
+1 The Water Crystal
+1 Three Visits
+1 Undead Alchemist
+1 Verdant Catacombs
+1 Walking Ballista
+1 Wasteland
+1 Wastewood Verge
+1 Watery Grave
+1 Wave Goodbye
+1 Willowrush Verge
+1 Winding Constrictor
+1 Zellix, Sanity Flayer

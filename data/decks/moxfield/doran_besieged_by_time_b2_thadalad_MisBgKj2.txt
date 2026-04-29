@@ -1,0 +1,83 @@
+COMMANDER: Doran, Besieged by Time
+1 Abzan Beastmaster
+1 Abzan Charm
+1 Ancient Adamantoise
+1 Ancient Lumberknot
+1 Anguished Unmaking
+1 Arbor Adherent
+1 Assault Formation
+1 Baldin, Century Herdmaster
+1 Bedrock Tortoise
+1 Betor, Kin to All
+1 Birds of Paradise
+1 Bosk Banneret
+1 Brave the Sands
+1 Canopy Vista
+1 Caves of Koilos
+1 Colfenor's Urn
+1 Colfenor, the Last Yew
+1 Command Tower
+1 Crashing Drawbridge
+1 Crystal Barricade
+1 Deathcap Glade
+1 Deceptive Landscape
+1 Despark
+1 Doran, the Siege Tower
+1 Eclipsed Realms
+1 Eerie Ultimatum
+1 Eland Umbra
+1 Entropic Battlecruiser
+1 Exotic Orchard
+1 Faeburrow Elder
+1 Fangorn, Tree Shepherd
+1 Farseek
+1 Fecund Greenshell
+1 Fell the Mighty
+1 Felothar the Steadfast
+8 Forest
+1 Formidable Speaker
+1 Get Lost
+1 Godless Shrine
+1 Great Forest Druid
+1 Grim Contest
+1 Ikra Shidiqi, the Usurper
+1 Indomitable Ancients
+1 Isolated Chapel
+1 Jaws of Defeat
+1 Jumbo Cactuar
+1 Llanowar Wastes
+1 Murmuring Bosk
+1 Necroblossom Snarl
+1 Nyx-Fleece Ram
+1 Path to Exile
+7 Plains
+1 Primal Rage
+1 Rampant Growth
+1 Reunion of the House
+1 Sapling of Colfenor
+1 Shineshadow Snarl
+1 Silklash Spider
+1 Sinister Gnarlbark
+1 Slaughter the Strong
+1 Sol Ring
+1 Sovereign Okinec Ahau
+1 Sunpetal Grove
+5 Swamp
+1 Swords to Plowshares
+1 Sylvan Caryatid
+1 Temple of Malady
+1 Temple of Plenty
+1 Temple of Silence
+1 Timber Protector
+1 Tower Defense
+1 Transdimensional Bovine
+1 Tree of Perdition
+1 Tree of Redemption
+1 Treebeard, Gracious Host
+1 Treefolk Harbinger
+1 Trostani, Selesnya's Voice
+1 Utter End
+1 Wall of Blossoms
+1 Wall of Omens
+1 Welcoming Vampire
+1 Woodland Cemetery

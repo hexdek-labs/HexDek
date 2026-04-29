@@ -1,0 +1,96 @@
+COMMANDER: Dr. Eggman
+1 Academy Ruins
+1 Adaptive Automaton
+1 Ancient Tomb
+1 Arcane Adaptation
+1 Arcane Signet
+1 Artificer Class
+1 Banner of Kinship
+1 Big Mother Mouser
+1 Blasphemous Act
+1 Blightstep Pathway // Searstep Pathway
+1 Blood Crypt
+1 Bloodchief Ascension
+1 Chief of the Foundry
+1 Chromatic Lantern
+1 Clearwater Pathway // Murkwater Pathway
+1 Coalstoke Gearhulk
+1 Combustible Gearhulk
+1 Command Tower
+1 Crumbling Necropolis
+1 Crypt of the Eternals
+1 Curie, Emergent Intelligence
+1 Cyberdrive Awakener
+1 Cyclonic Rift
+1 Dark Ritual
+1 Darksteel Forge
+1 Davros, Dalek Creator
+1 Deadly Rollick
+1 Demonic Tutor
+1 Depthshaker Titan
+1 Desynchronization
+1 Dragonskull Summit
+1 Drossforge Bridge
+1 Drowned Catacomb
+1 Exotic Orchard
+1 Fabricate
+1 Fell the Profane // Fell Mire
+1 Foundry Inspector
+1 Geth's Grimoire
+1 Great Furnace
+1 Insight Engine
+1 Inventors' Fair
+3 Island
+1 Jhoira, Weatherlight Captain
+1 Kindred Dominance
+1 Krang, Utrom Warlord
+1 Leyline of Transformation
+1 Lifecraft Engine
+1 Liliana's Caress
+1 Lotus Petal
+1 Maskwood Nexus
+1 Megrim
+1 Mistvault Bridge
+2 Mountain
+1 Mox Opal
+1 Myr Battlesphere
+1 Noxious Gearhulk
+1 Oildeep Gearhulk
+1 Padeem, Consul of Innovation
+1 Patchwork Banner
+1 Phyrexian Metamorph
+1 Propaganda
+1 Reliquary Tower
+1 Rhystic Study
+1 Riverglide Pathway // Lavaglide Pathway
+1 Scrawling Crawler
+1 Seat of the Synod
+1 Seething Landscape
+1 Simulacrum Synthesizer
+1 Slicer, Hired Muscle // Slicer, High-Speed Antagonist
+1 Sol Ring
+1 Starscream, Power Hungry // Starscream, Seeker Leader
+1 Steam Vents
+1 Steel Overseer
+1 Storm the Vault // Vault of Catlacan
+1 Strionic Resonator
+1 Sulfur Falls
+2 Swamp
+1 Temple of Deceit
+1 Temple of Epiphany
+1 Temple of Malice
+1 Tergrid, God of Fright // Tergrid's Lantern
+1 Terminate
+1 Tezzeret, Master of the Bridge
+1 Thopter Spy Network
+1 Thought Monitor
+1 Thought Vessel
+1 Thran Dynamo
+1 Unwinding Clock
+1 Urza's Saga
+1 Vampiric Tutor
+1 Vandalblast
+1 Vault of Whispers
+1 Waste Not
+1 Watery Grave
+1 Xander's Lounge

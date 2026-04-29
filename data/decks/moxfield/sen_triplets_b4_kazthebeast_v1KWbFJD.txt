@@ -1,0 +1,100 @@
+COMMANDER: Sen Triplets
+1 Academy Manufactor
+1 Academy Ruins
+1 Adarkar Wastes
+1 Ancient Tomb
+1 Anointed Peacekeeper
+1 Anrakyr the Traveller
+1 Arcane Signet
+1 Arcanis the Omnipotent
+1 Archaeomancer
+1 Archaeomender
+1 Argivian Archaeologist
+1 Argivian Find
+1 Augury Adept
+1 Auramancer
+1 Banishing Betrayal
+1 Baral's Expertise
+1 Barrin's Spite
+1 Barrin, Tolarian Archmage
+1 Bender's Waterskin
+1 Black Market Connections
+1 Bucknard's Everfull Purse
+1 Caves of Koilos
+1 Chromatic Lantern
+1 City of Brass
+1 Clearwater Pathway // Murkwater Pathway
+1 Command Beacon
+1 Command Tower
+1 Covetous Elegy
+1 Demonic Tutor
+1 Deserted Beach
+1 Discerning Financier
+1 Dromar, the Banisher
+1 Drowned Catacomb
+1 Exhaustion
+1 Exotic Orchard
+1 Flooded Strand
+1 Floodfarm Verge
+1 Force of Will
+1 Frantic Search
+1 Glacial Fortress
+1 Gloomlake Verge
+1 Godless Shrine
+1 Gonti, Night Minister
+1 Grand Arbiter Augustin IV
+1 Grim Hireling
+1 Hallowed Fountain
+1 Irenicus's Vile Duplication
+1 Lightning Greaves
+1 Lotho, Corrupt Shirriff
+1 Lotus Petal
+1 Mana Confluence
+1 Mana Crypt
+1 Mana Drain
+1 Marsh Flats
+1 Master of Ceremonies
+1 Mishra's Workshop
+1 Mithril Coat
+1 Monologue Tax
+1 Mox Amber
+1 Necropotence
+1 Orim's Chant
+1 Polluted Delta
+1 Raffine's Tower
+1 Reflecting Pool
+1 Relic of Legends
+1 Reset
+1 Rev, Tithe Extractor
+1 Roaming Throne
+1 Sakashima of a Thousand Faces
+1 Scrubland
+1 Sea of Clouds
+1 Seer's Vision
+1 Shattered Sanctum
+1 Shipwreck Marsh
+1 Silent Clearing
+1 Smothering Tithe
+1 Snap
+1 Sol Ring
+1 Spark Double
+1 Spellskite
+1 Sunken Ruins
+1 Swiftfoot Boots
+1 Sword of Feast and Famine
+1 Sword of Wealth and Power
+1 Tainted Isle
+1 Telepathy
+1 Tempting Contract
+1 Time Spiral
+1 Tivit, Seller of Secrets
+1 Treasure Dredger
+1 Trouble in Pairs
+1 Tundra
+1 Undercity Scrounger
+1 Underground River
+1 Underground Sea
+1 Urza's Saga
+1 Vampiric Tutor
+1 Vault of Champions
+1 Watery Grave

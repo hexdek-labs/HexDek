@@ -1,0 +1,95 @@
+COMMANDER: Sisay, Weatherlight Captain
+1 Ancient Tomb
+1 Arcane Signet
+1 Assassin's Trophy
+1 Atla Palani, Nest Tender
+1 Bad River
+1 Baleful Strix
+1 Baral, Chief of Compliance
+1 Beast Within
+1 Blasphemous Act
+1 Blood Crypt
+1 Bloom Tender
+1 Boromir, Warden of the Tower
+1 Brion Stoutarm
+1 Canopy Vista
+1 Captain Sisay
+1 Chromatic Lantern
+1 Cinder Glade
+1 City of Brass
+1 Comeuppance
+1 Command Tower
+1 Conqueror's Flail
+1 Cultivate
+1 Cyclonic Rift
+1 Deadly Rollick
+1 Deadpool, Trading Card
+1 Derevi, Empyrial Tactician
+1 Escape Tunnel
+1 Evolving Wilds
+1 Exotic Orchard
+1 Fabled Passage
+1 Faeburrow Elder
+1 Farseek
+1 Fellwar Stone
+1 Fierce Guardianship
+1 Final Showdown
+1 Flawless Maneuver
+1 Flood Plain
+2 Forest
+1 Frontier Bivouac
+1 Fynn, the Fangbearer
+1 Gaddock Teeg
+1 Galadriel's Dismissal
+1 Galadriel, Light of Valinor
+1 Generous Gift
+1 Godless Shrine
+1 Grasslands
+1 Ioreth of the Healing House
+1 Irma, Part-Time Mutant
+2 Island
+1 Jungle Shrine
+1 Kodama's Reach
+1 Kutzil, Malamet Exemplar
+1 Maelstrom Archangel
+1 Marchesa, the Black Rose
+1 Meren of Clan Nel Toth
+1 Minas Morgul, Dark Fortress
+1 Mists of Lórien
+2 Mountain
+1 Mystic Monastery
+1 Najeela, the Blade-Blossom
+1 Nethroi, Apex of Death
+1 Nomad Outpost
+1 Obscuring Haze
+1 Opulent Palace
+1 Overgrown Tomb
+1 Pack Rat
+1 Path of Ancestry
+1 Path to Exile
+2 Plains
+1 Prairie Stream
+1 Raffine's Tower
+1 Ratadrabik of Urborg
+1 Relic of Legends
+1 Rienne, Angel of Rebirth
+1 Sakura-Tribe Elder
+1 Samut, Voice of Dissent
+1 Sandsteppe Citadel
+1 Selvala, Eager Trailblazer
+1 Silence
+1 Sméagol, Helpful Guide
+1 Sol Ring
+1 Steam Vents
+1 Surrak Dragonclaw
+2 Swamp
+1 Swords to Plowshares
+1 Teferi, Time Raveler
+1 Tiller Engine
+1 Timeless Lotus
+1 Two-Headed Hellkite
+1 Tyvar, Jubilant Brawler
+1 Urban Retreat
+1 Vandalblast
+1 Zaxara, the Exemplary
+1 Ziatora's Proving Ground

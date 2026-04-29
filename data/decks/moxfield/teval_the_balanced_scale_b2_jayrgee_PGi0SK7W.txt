@@ -1,0 +1,95 @@
+COMMANDER: Teval, the Balanced Scale
+1 Altar of Bhaal // Bone Offering
+1 Awaken the Honored Dead
+1 Baleful Strix
+1 Beast Within
+1 Bloodchief Ascension
+1 Bonehoard
+1 Boseiju, Who Endures
+1 Castle Vantress
+1 Codex Shredder
+1 Colossal Grave-Reaver
+1 Command Tower
+1 Cursecloth Wrappings
+1 Darkmoss Bridge
+1 Deathrite Shaman
+1 Dimir Aqueduct
+1 Diviner of Mist
+1 Dread Return
+1 Drownyard Temple
+1 Elemental Bond
+1 Essence Anchor
+1 Evolving Wilds
+1 Fang, Fearless l'Cie
+1 Foreboding Landscape
+2 Forest
+1 Gravecrawler
+1 Haunted Mire
+1 Havengul Lich
+1 Hedron Crab
+1 Hinterland Harbor
+1 In Garruk's Wake
+1 Insidious Roots
+3 Island
+1 Jungle Hollow
+1 Kagha, Shadow Archdruid
+1 Kheru Goldkeeper
+1 Kishla Skimmer
+1 Kishla Village
+1 Kotis, Sibsig Champion
+1 Laboratory Drudge
+1 Lose Focus
+1 Lost Monarch of Ifnir
+1 Meren of Clan Nel Toth
+1 Millikin
+1 Mindwrack Harpy
+1 Mirrodin Avenged
+1 Molt Tender
+1 Morbid Opportunist
+1 Mortuary Mire
+1 Nyx Weaver
+1 Ob Nixilis, the Fallen
+1 Obscura Storefront
+1 Old Rutstein
+1 Opal Palace
+1 Opulent Palace
+1 Overflowing Basin
+1 Path of Ancestry
+1 Polluted Cistern // Dim Oubliette
+1 Putrefy
+1 Quandrix Campus
+1 Reassembling Skeleton
+1 River Kelpie
+1 Riveteers Overlook
+1 Sarulf, Realm Eater
+1 Shipwreck Marsh
+1 Shire Terrace
+1 Sidisi, Brood Tyrant
+1 Six
+1 Skull Prophet
+1 Snow-Covered Forest
+1 Sol Ring
+1 Soul Enervation
+1 Sunken Hollow
+3 Swamp
+1 Taigam, Sidisi's Hand
+1 Takenuma, Abandoned Mire
+1 Tear Asunder
+1 Temple of the Dragon Queen
+1 Terramorphic Expanse
+1 Teval's Judgment
+1 The Gitrog Monster
+1 The Scarab God
+1 Thriving Moor
+1 Timeless Witness
+1 Turntimber Sower
+1 Undergrowth Recon
+1 Uro, Titan of Nature's Wrath
+1 Urza's Rebuff
+1 Vanille, Cheerful l'Cie
+1 Vohar, Vodalian Desecrator
+1 Welcome the Dead
+1 Whirlwind Denial
+1 Wonder
+1 Zagoth Triome
+1 Zuran Orb

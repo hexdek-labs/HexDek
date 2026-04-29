@@ -1,0 +1,88 @@
+COMMANDER: Rielle, the Everwise
+1 An Offer You Can't Refuse
+1 Anger
+1 Arcane Denial
+1 Arcane Signet
+1 Blasphemous Act
+1 Brainstorm
+1 Breakthrough
+1 Burning Inquiry
+1 Careful Study
+1 Cascade Bluffs
+1 Castle Vantress
+1 Cephalid Coliseum
+1 Chain of Vapor
+1 Command Tower
+1 Counterspell
+1 Cyclonic Rift
+1 Dack Fayden
+1 Distortion Strike
+1 Dualcaster Mage
+1 Expansion // Explosion
+1 Faithless Looting
+1 Fateful Showdown
+1 Fiery Temper
+1 Firestorm
+1 Fling
+1 Foil
+1 Force of Negation
+1 Force of Will
+1 Forgotten Cave
+1 Frantic Search
+1 Frostboil Snarl
+1 Gamble
+1 Goblin Electromancer
+1 Gush
+1 Harmonic Prodigy
+1 Ideas Unbound
+11 Island
+1 Izzet Boilerworks
+1 Izzet Charm
+1 Izzet Signet
+1 Lightning Bolt
+1 Mana Drain
+1 Mishra's Command
+1 Misty Rainforest
+3 Mountain
+1 Mystic Remora
+1 Mystic Sanctuary
+1 Mystical Tutor
+1 Narset's Reversal
+1 Ox of Agonas
+1 Pact of Negation
+1 Polluted Delta
+1 Ponder
+1 Preordain
+1 Psychosis Crawler
+1 Rapid Hybridization
+1 Reflecting Pool
+1 Reforge the Soul
+1 Reliquary Tower
+1 Rhystic Study
+1 Riverglide Pathway // Lavaglide Pathway
+1 Rupture
+1 Scalding Tarn
+1 Search for Azcanta // Azcanta, the Sunken Ruin
+1 Seasoned Pyromancer
+1 Shattering Spree
+1 Shivan Reef
+1 Slip Through Space
+1 Snapcaster Mage
+1 Sol Ring
+1 Solphim, Mayhem Dominus
+1 Spellseeker
+1 Spirebluff Canal
+1 Steam Vents
+1 Storm-Kiln Artist
+1 Stormcarved Coast
+1 Sulfur Falls
+1 Talisman of Creativity
+1 The Flame of Keld
+1 Thing in the Ice // Awoken Horror
+1 Thought Scour
+1 Thud
+1 Training Center
+1 Veyran, Voice of Duality
+1 Wheel of Misfortune
+1 Windfall
+1 Wonder

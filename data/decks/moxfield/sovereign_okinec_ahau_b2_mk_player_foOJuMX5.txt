@@ -1,0 +1,81 @@
+COMMANDER: Sovereign Okinec Ahau
+1 Abzan Falconer
+1 Arcane Signet
+1 Arwen, Weaver of Hope
+1 Austere Command
+1 Avacyn's Pilgrim
+1 Bastion Protector
+1 Beast Whisperer
+1 Beast Within
+1 Birds of Paradise
+1 Botanical Brawler
+1 Branching Evolution
+1 Canopy Vista
+1 Champion of Lambholt
+1 Cleansing Nova
+1 Collective Resistance
+1 Command Tower
+1 Conclave Mentor
+1 Dauntless Escort
+1 Defiler of Vigor
+1 Duskshell Crawler
+1 Dyadrine, Synthesis Amalgam
+1 Elemental Bond
+1 Envoy of the Ancestors
+1 Evolution Witness
+1 Excise the Imperfect
+1 Farseek
+1 Flowering of the White Tree
+13 Forest
+1 Fortified Village
+1 Garruk's Uprising
+1 Gavony Township
+1 Generous Gift
+1 Greater Good
+1 Guardian Project
+1 Gyre Sage
+1 Hardened Scales
+1 Heroic Intervention
+1 Hopeful Initiate
+1 Hunter's Insight
+1 Incubation Druid
+1 Inspiring Call
+1 Kalonian Hydra
+1 Kami of Whispered Hopes
+1 Karn's Bastion
+1 Kutzil, Malamet Exemplar
+1 Luminarch Aspirant
+1 Managorger Hydra
+1 Mosswort Bridge
+1 Nature's Lore
+1 Nesting Grounds
+1 Ochre Jelly
+1 Ohran Frostfang
+1 Opal Palace
+1 Overwhelming Stampede
+1 Path to Exile
+1 Pelt Collector
+8 Plains
+1 Promise of Loyalty
+1 Rampant Growth
+1 Rancor
+1 Resourceful Defense
+1 Return of the Wildspeaker
+1 Rishkar's Expertise
+1 Rishkar, Peema Renegade
+1 Rogue's Passage
+1 Scattered Groves
+1 Scavenger Grounds
+1 Selesnya Sanctuary
+1 Shalai, Voice of Plenty
+1 Shield of the Oversoul
+1 Skyclave Apparition
+1 Sol Ring
+1 Stonecoil Serpent
+1 Sunpetal Grove
+1 Swiftfoot Boots
+1 Swords to Plowshares
+1 The Ozolith
+1 Toski, Bearer of Secrets
+1 Tyvar's Stand
+1 Windswept Heath

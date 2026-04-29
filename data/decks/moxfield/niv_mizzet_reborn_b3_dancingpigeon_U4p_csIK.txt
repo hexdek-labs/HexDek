@@ -1,0 +1,100 @@
+COMMANDER: Niv-Mizzet Reborn
+1 Abuelo, Ancestral Echo
+1 Arcane Signet
+1 Arid Mesa
+1 Arwen, Mortal Queen
+1 Black Market Tycoon
+1 Blood Crypt
+1 Bloodsoaked Insight // Sanguine Morass
+1 Bloodstained Mire
+1 Bloom Tender
+1 Breeding Pool
+1 Bring to Light
+1 Bruse Tarl, Boorish Herder
+1 Chromatic Lantern
+1 Coalition Relic
+1 Command Tower
+1 Conqueror's Flail
+1 Countersquall
+1 Dack Fayden
+1 Deafening Clarion
+1 Deathrite Shaman
+1 Decanter of Endless Water
+1 Decisive Denial
+1 Dovin's Veto
+1 Drown in the Loch
+1 Exotic Orchard
+1 Fabled Passage
+1 Faeburrow Elder
+1 Fellwar Stone
+1 Fire Covenant
+1 Fires of Yavimaya
+1 Flame of Anor
+1 Flooded Strand
+1 General Ferrous Rokiric
+1 Glasswing Grace // Age-Graced Chapel
+1 Glissa Sunslayer
+1 Godless Shrine
+1 Hallowed Fountain
+1 Hidetsugu Consumes All // Vessel of the All-Consuming
+1 Infinite Guideline Station
+1 Kambal, Consul of Allocation
+1 Kaya's Guile
+1 Kiora's Follower
+1 Kiora, Behemoth Beckoner
+1 Klothys, God of Destiny
+1 Knight of New Alara
+1 Kolaghan's Command
+1 Last One Standing
+1 Lazav, Wearer of Faces
+1 Legion Leadership // Legion Stronghold
+1 Likeness Looter
+1 Lim-Dûl's Vault
+1 Lorehold Charm
+1 Lotho, Corrupt Shirriff
+1 Marsh Flats
+1 Meddling Mage
+1 Mirari's Wake
+1 Misty Rainforest
+1 Molten Collapse
+1 No More Lies
+1 Overgrown Tomb
+1 Pernicious Deed
+1 Pest Control
+1 Pillar of the Paruns
+1 Planar Genesis
+1 Polluted Delta
+1 Prismari Command
+1 Prismatic Geoscope
+1 Qasali Pridemage
+1 Reflecting Pool
+1 Revitalizing Repast // Old-Growth Grove
+1 Rise of the Witch-king
+1 Ruby, Daring Tracker
+1 Sacred Foundry
+1 Saheeli, the Sun's Brilliance
+1 Scalding Tarn
+1 Snow-Covered Forest
+1 Snow-Covered Island
+1 Snow-Covered Mountain
+1 Snow-Covered Plains
+1 Snow-Covered Swamp
+1 Sol Ring
+1 Soulherder
+1 Steam Vents
+1 Stomping Ground
+1 Strength of the Harvest // Haven of the Harvest
+1 Stump Stomp // Burnwillow Clearing
+1 Temple Garden
+1 The Apprentice's Folly
+1 The World Tree
+1 Thrasios, Triton Hero
+1 Tymna the Weaver
+1 Verdant Catacombs
+1 Watery Grave
+1 Wear // Tear
+1 Widespread Thieving
+1 Windswept Heath
+1 Witherbloom Command
+1 Wooded Foothills
+1 Wrenn and Six

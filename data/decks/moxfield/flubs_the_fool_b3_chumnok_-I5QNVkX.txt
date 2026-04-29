@@ -1,0 +1,83 @@
+COMMANDER: Flubs, the Fool
+1 Anger
+1 Azusa, Lost but Seeking
+1 Birds of Paradise
+1 Blasphemous Act
+1 Bloom Tender
+1 Breeding Pool
+1 Case of the Crimson Pulse
+1 Case of the Locked Hothouse
+1 Commercial District
+1 Conspiracy Theorist
+1 Containment Construct
+1 Crucible of Worlds
+1 Currency Converter
+1 Doc Aurlock, Grizzled Genius
+1 Dryad of the Ilysian Grove
+1 Ensnaring Bridge
+1 Eruth, Tormented Prophet
+1 Exotic Orchard
+1 Exploration
+1 Fabled Passage
+1 Faldorn, Dread Wolf Herald
+1 Farseek
+1 Fblthp, Lost on the Range
+1 Field of the Dead
+1 Flaming Tyrannosaurus
+1 Flooded Strand
+7 Forest
+1 Future Sight
+1 Gitaxian Probe
+1 Grapeshot
+1 Hedge Maze
+1 Inti, Seneschal of the Sun
+1 Invasion of Karsus // Refraction Elemental
+7 Island
+1 Kellan, Inquisitive Prodigy // Tail the Suspect
+1 Ketria Triome
+1 Laelia, the Blade Reforged
+1 Lotus Petal
+1 Mishra's Bauble
+1 Misty Rainforest
+6 Mountain
+1 Mox Amber
+1 Nature's Lore
+1 Noxious Revival
+1 Null Brooch
+1 Oboro, Palace in the Clouds
+1 Ominous Seas
+1 Omnath, Locus of Rage
+1 Passionate Archaeologist
+1 Pongify
+1 Rampaging Baloths
+1 Ramunap Excavator
+1 Rapid Hybridization
+1 Reality Shift
+1 Reclaim
+1 Savvy Trader
+1 Scalding Tarn
+1 Scavenger Grounds
+1 Sol Ring
+1 Song of Creation
+1 Steam Vents
+1 Stomping Ground
+1 Stone of Erech
+1 Strike It Rich
+1 Summer Bloom
+1 Sylvan Safekeeper
+1 Telepathy
+1 The Lost and the Damned
+1 The Reality Chip
+1 Three Visits
+1 Thundering Falls
+1 Tormod's Crypt
+1 Trade Routes
+1 Ulamog, the Infinite Gyre
+1 Urza's Bauble
+1 Vandalblast
+1 Verdant Catacombs
+1 Wild Wasteland
+1 Windswept Heath
+1 Wonder
+1 Wooded Foothills
+1 Zuran Orb

@@ -1,0 +1,45 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:flying"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "keyword:trample"
+      ],
+      "index": 1,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "trig:combat_damage_player",
+        "untap"
+      ],
+      "index": 2,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "static:spell_effect:_"
+      ],
+      "index": 3,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "static:parsed_tail:_"
+      ],
+      "index": 4,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 5,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Bloodthirster",
+  "parse_error_count": 0
+}

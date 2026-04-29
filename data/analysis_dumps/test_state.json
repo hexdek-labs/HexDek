@@ -1,0 +1,389 @@
+{
+  "game_id": "test-001",
+  "winner": 1,
+  "end_reason": "seat 1 is the last one standing",
+  "total_turns": 16,
+  "total_events": 2018,
+  "commander_format": true,
+  "day_night": "neither",
+  "seats": [
+    {
+      "idx": 0,
+      "life": -1,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 79,
+      "hand": [
+        "The One Ring",
+        "Wrath of God",
+        "Door of Destinies",
+        "Mind Stone",
+        "Sephara, Sky's Blade",
+        "Tempest Hawk"
+      ],
+      "graveyard": [
+        "Path to Exile",
+        "Get Lost",
+        "Tempest Hawk",
+        "Tempest Hawk"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Soraya the Falconer"
+      ],
+      "commander_tax": {
+        "Soraya the Falconer": 2
+      },
+      "commander_damage": {
+        "3": {
+          "Tergrid, God of Fright // Tergrid's Lantern": 20
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 1,
+      "life": 6,
+      "lost": false,
+      "loss_reason": "",
+      "library_count": 76,
+      "hand": [
+        "Aettir and Priwen",
+        "Skyline Despot",
+        "Star Whale"
+      ],
+      "graveyard": [
+        "Vandalblast",
+        "Fierce Guardianship",
+        "Negate",
+        "Demonic Tutor",
+        "Terminate"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Obeka, Splitter of Seconds"
+      ],
+      "commander_tax": {
+        "Obeka, Splitter of Seconds": 1
+      },
+      "commander_damage": {
+        "0": {
+          "Soraya the Falconer": 8
+        },
+        "3": {
+          "Tergrid, God of Fright // Tergrid's Lantern": 4
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 0,
+      "battlefield": [
+        {
+          "name": "Seat of the Synod",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Abstergo Entertainment",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Braid of Fire",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Minamo, School at Water's Edge",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Aggravated Assault",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Command Tower",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Cathedral of War",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Obeka, Splitter of Seconds",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 2,
+          "toughness": 5,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Arena of Glory",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Shaun, Father of Synths",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 3,
+          "toughness": 4,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Shipwreck Marsh",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Chronozoa",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 3,
+          "toughness": 3,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Jhoira of the Ghitu",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 2,
+          "toughness": 2,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Scrawling Crawler",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 3,
+          "toughness": 2,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Xander's Lounge",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mechanized Production",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        }
+      ]
+    },
+    {
+      "idx": 2,
+      "life": -8,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 78,
+      "hand": [
+        "Embercleave",
+        "Hellkite Tyrant",
+        "Rousing Refrain"
+      ],
+      "graveyard": [
+        "Big Score",
+        "Irencrag Feat",
+        "Anger of the Gods",
+        "Deflecting Swat",
+        "Abrade",
+        "Goblin Engineer",
+        "Vandalblast",
+        "Unexpected Windfall"
+      ],
+      "exile": [
+        "Ragavan, Nimble Pilferer"
+      ],
+      "command_zone": [],
+      "commander_names": [
+        "Moraug, Fury of Akoum"
+      ],
+      "commander_tax": {
+        "Moraug, Fury of Akoum": 1
+      },
+      "commander_damage": {
+        "1": {
+          "Obeka, Splitter of Seconds": 12
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 3,
+      "life": -1,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 77,
+      "hand": [],
+      "graveyard": [
+        "Dark Ritual",
+        "Pox",
+        "Smallpox",
+        "Fleshbag Marauder",
+        "Reign of the Pit",
+        "Living Death",
+        "Peer into the Abyss",
+        "Tempt with Immortality"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Tergrid, God of Fright // Tergrid's Lantern"
+      ],
+      "commander_tax": {
+        "Tergrid, God of Fright // Tergrid's Lantern": 1
+      },
+      "commander_damage": {
+        "1": {
+          "Obeka, Splitter of Seconds": 4
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 0,
+      "battlefield": []
+    }
+  ]
+}

@@ -1,0 +1,381 @@
+{
+  "game_id": "cage-v6-game2",
+  "winner": 1,
+  "end_reason": "seat 1 is the last one standing",
+  "total_turns": 16,
+  "total_events": 2050,
+  "commander_format": true,
+  "day_night": "neither",
+  "seats": [
+    {
+      "idx": 0,
+      "life": -4,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 77,
+      "hand": [
+        "Lamentation"
+      ],
+      "graveyard": [
+        "Flare of Fortitude",
+        "Dark Ritual",
+        "Haunting Voyage"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Ashling, Rekindled // Ashling, Rimebound"
+      ],
+      "commander_names": [
+        "Ashling, Rekindled // Ashling, Rimebound"
+      ],
+      "commander_tax": {
+        "Ashling, Rekindled // Ashling, Rimebound": 3
+      },
+      "commander_damage": {},
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 1,
+      "life": 26,
+      "lost": false,
+      "loss_reason": "",
+      "library_count": 66,
+      "hand": [],
+      "graveyard": [
+        "The Black Gate",
+        "Grisly Salvage",
+        "Life // Death",
+        "Lightning Greaves",
+        "Command Tower",
+        "Faithless Looting",
+        "Stunning Reversal",
+        "Forest",
+        "Talisman of Resilience",
+        "Millikin",
+        "Victimize",
+        "Terminate",
+        "Smoldering Marsh",
+        "Swamp",
+        "Mortivore",
+        "Brawn",
+        "Dauthi Voidwalker",
+        "Kessig Wolf Run"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Coram, the Undertaker"
+      ],
+      "commander_tax": {
+        "Coram, the Undertaker": 1
+      },
+      "commander_damage": {},
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 0,
+      "battlefield": [
+        {
+          "name": "Forest",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Forest",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Forest",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Swamp",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Coram, the Undertaker",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 5,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mountain",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Talisman of Impulse",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Treasure Vault",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Timeless Witness",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 2,
+          "toughness": 1,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Corpse Connoisseur",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 3,
+          "toughness": 3,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Riveteers Overlook",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Purple Worm",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 8,
+          "toughness": 7,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Chainer, Nightmare Adept",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 3,
+          "toughness": 2,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Perpetual Timepiece",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Moldgraf Monstrosity",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 8,
+          "toughness": 8,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Swamp",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        }
+      ]
+    },
+    {
+      "idx": 2,
+      "life": -5,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 82,
+      "hand": [
+        "Angelic Chorus",
+        "Mangara, the Diplomat"
+      ],
+      "graveyard": [
+        "Counterspell",
+        "Soothing Balm",
+        "Kami of False Hope",
+        "Rest for the Weary",
+        "Debt to the Deathless"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Oloro, Ageless Ascetic"
+      ],
+      "commander_names": [
+        "Oloro, Ageless Ascetic"
+      ],
+      "commander_tax": {
+        "Oloro, Ageless Ascetic": 0
+      },
+      "commander_damage": {},
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 3,
+      "life": -13,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 76,
+      "hand": [
+        "Diregraf Captain",
+        "Lich's Mastery",
+        "Living Death",
+        "Diregraf Colossus",
+        "Fatestitcher",
+        "Necromancer's Covenant",
+        "Urza's Incubator"
+      ],
+      "graveyard": [
+        "Reanimate",
+        "Corpse Knight",
+        "Lost Monarch of Ifnir",
+        "Noxious Ghoul",
+        "Swamp",
+        "Shepherd of Rot",
+        "Rotting Rats",
+        "Undead Butler"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Varina, Lich Queen"
+      ],
+      "commander_names": [
+        "Varina, Lich Queen"
+      ],
+      "commander_tax": {
+        "Varina, Lich Queen": 0
+      },
+      "commander_damage": {},
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+COMMANDER: Mica, Reader of Ruins
+1 Abrade
+1 Arcane Signet
+1 Ardent Elementalist
+1 Artist's Talent
+1 Banefire
+1 Big Score
+1 Brass's Bounty
+1 Cathartic Reunion
+1 Chandra's Ignition
+1 Chaos Warp
+1 Comet Storm
+1 Commune with Lava
+1 Coruscation Mage
+1 Darksteel Citadel
+1 Decanter of Endless Water
+1 Desperate Ritual
+1 Devil's Play
+1 Double Vision
+1 Dragon's Approach
+1 Dualcaster Mage
+1 Electric Revelation
+1 Electrodominance
+1 Faithless Looting
+1 Final Fortune
+1 Fireball
+1 Firebrand Archer
+1 Great Furnace
+1 Guttersnipe
+1 Hit the Mother Lode
+1 Ichor Wellspring
+1 Inspired Tinkering
+1 Inspiring Statuary
+1 Insult // Injury
+1 Iron Myr
+1 Leyline of Punishment
+1 Light Up the Stage
+1 Lightning Bolt
+1 Lightning Greaves
+1 Loyal Apprentice
+29 Mountain
+1 Mycosynth Wellspring
+1 Myr Sire
+1 Nimblewright Schematic
+1 Past in Flames
+1 Pirate's Pillage
+1 Reckless Fireweaver
+1 Recoup
+1 Reliquary Tower
+1 Return the Favor
+1 Reverberate
+1 Runaway Steam-Kin
+1 Seething Song
+1 Seize the Spoils
+1 Servo Schematic
+1 Shrapnel Blast
+1 Simian Spirit Guide
+1 Skewer the Critics
+1 Sol Ring
+1 Solemn Simulacrum
+1 Sorceress's Schemes
+1 Spine of Ish Sah
+1 Storm-Kiln Artist
+1 Sudden Demise
+1 Tablet of Discovery
+1 Thrill of Possibility
+1 Toggo, Goblin Weaponsmith
+1 Ugin's Nexus
+1 Unexpected Windfall
+1 Visions of Ruin
+1 Xorn
+1 Zhalfirin Void

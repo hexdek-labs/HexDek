@@ -1,0 +1,100 @@
+COMMANDER: Kilo, Apogee Mind
+1 Adarkar Wastes
+1 Aetheric Amplifier
+1 All Will Be One
+1 Ancient Den
+1 Arcane Signet
+1 Arid Mesa
+1 As Foretold
+1 Astral Cornucopia
+1 Aura of Dominion
+1 Azorius Chancery
+1 Benthic Biomancer
+1 Bloodstained Mire
+1 Boros Garrison
+1 Calciform Pools
+1 Clock of Omens
+1 Command Tower
+1 Coretapper
+1 Crystalline Crawler
+1 Darksteel Reactor
+1 Dawn of a New Age
+1 Enlightened Tutor
+1 Esper Sentinel
+1 Exotic Orchard
+1 Fabricate
+1 Fellwar Stone
+1 Flooded Strand
+1 Freed from the Real
+1 Gemstone Array
+1 Gemstone Mine
+1 Ghostly Prison
+1 Glimmervoid
+1 Great Furnace
+1 Hallowed Fountain
+1 Heliod's Pilgrim
+1 Idyllic Tutor
+1 Ingenious Prodigy
+1 Insight Engine
+1 Inspirit, Flagship Vessel
+1 Island
+1 Izzet Boilerworks
+1 Jeska, Thrice Reborn
+1 Kellan, the Fae-Blooded // Birthright Boon
+1 Long-Range Sensor
+1 Lost Jitte
+1 Magistrate's Scepter
+1 Manifold Key
+1 Marsh Flats
+1 Meticulous Archive
+1 Midnight Clock
+1 Mindless Automaton
+1 Misty Rainforest
+1 Moxite Refinery
+1 Myr Convert
+1 Mystic Remora
+1 Nesting Grounds
+1 Norn's Decree
+1 Open the Armory
+1 Padeem, Consul of Innovation
+1 Paradise Mantle
+1 Pemmin's Aura
+1 Pensive Professor
+1 Pentad Prism
+1 Plague Myr
+1 Polluted Delta
+1 Pollywog Prodigy
+1 Power Depot
+1 Prologue to Phyresis
+1 Propaganda
+1 Razortide Bridge
+1 Relic of Legends
+1 Rhystic Study
+1 Rustvale Bridge
+1 Sacred Foundry
+1 Scalding Tarn
+1 Seat of the Synod
+1 Silverbluff Bridge
+1 Skrelv, Defector Mite
+1 Skycloud Expanse
+1 Sol Ring
+1 Solar Array
+1 Spire of Industry
+1 Springleaf Drum
+1 Steam Vents
+1 Tekuthal, Inquiry Dominus
+1 Tezzeret the Seeker
+1 Tezzeret, Cruel Captain
+1 The Millennium Calendar
+1 The Mycosynth Gardens
+1 The One Ring
+1 Unctus, Grand Metatect
+1 Urza's Saga
+1 Urza, Lord High Artificer
+1 Uthros Research Craft
+1 Uthros, Titanic Godcore
+1 Voltaic Key
+1 Walking Ballista
+1 Whir of Invention
+1 Windswept Heath
+1 Wooded Foothills

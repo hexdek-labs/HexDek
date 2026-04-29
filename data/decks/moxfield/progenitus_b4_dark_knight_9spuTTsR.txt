@@ -1,0 +1,97 @@
+COMMANDER: Progenitus
+1 Ancient Tomb
+1 Apex Devastator
+1 Apocalypse Hydra
+1 Arcane Signet
+1 Atraxa, Praetors' Voice
+1 Avatar Aang // Aang, Master of Elements
+1 Badlands
+1 Basalt Monolith
+1 Bayou
+1 Bloodstained Mire
+1 Bloom Tender
+1 Breeding Pool
+1 Chromatic Orrery
+1 City of Brass
+1 Coalition Victory
+1 Commercial District
+1 Cyclonic Rift
+1 Demonic Consultation
+1 Demonic Tutor
+1 Doubling Season
+1 Eerie Ultimatum
+1 Esika, God of the Tree // The Prismatic Bridge
+1 Exotic Orchard
+1 Exploration
+1 Farewell
+1 Filigree Sages
+1 Finest Hour
+1 Fist of Suns
+1 Flooded Strand
+1 Forbidden Orchard
+3 Forest
+1 Forsaken Monument
+1 Gargos, Vicious Watcher
+1 Garruk's Uprising
+1 Geode Golem
+1 Goldvein Hydra
+1 Grakmaw, Skyclave Ravager
+1 Gyrus, Waker of Corpses
+1 Hullbreaker Horror
+1 Hungering Hydra
+1 Hydra's Growth
+1 Iridian Maelstrom
+2 Island
+1 Jegantha, the Wellspring
+1 Jodah, Archmage Eternal
+1 Kalonian Hydra
+1 Laboratory Maniac
+1 Leyline of Mutation
+1 Leyline of Transformation
+1 Leyline of the Guildpact
+1 Lush Portico
+1 Maelstrom Nexus
+1 Mana Confluence
+1 Mana Vault
+1 Managorger Hydra
+1 Mirari's Wake
+1 Mistcutter Hydra
+1 Misty Rainforest
+1 Morophon, the Boundless
+1 Mossborn Hydra
+1 Mountain
+1 Nyxbloom Ancient
+1 Overgrown Tomb
+1 Plains
+1 Polluted Delta
+1 Polukranos Reborn // Polukranos, Engine of Ruin
+1 Primordial Hydra
+1 Rafiq of the Many
+1 Reflecting Pool
+1 Rhystic Study
+1 Rhythm of the Wild
+1 Ruinous Ultimatum
+1 Sacred Foundry
+1 Savageborn Hydra
+1 Scrubland
+1 Shivan Devastator
+1 Sol Ring
+1 Steelbane Hydra
+1 Swamp
+1 Thassa's Oracle
+1 The Great Henge
+1 The World Tree
+1 Timeless Lotus
+1 Tropical Island
+1 Tundra
+1 Ulvenwald Hydra
+1 Undercity Sewers
+1 Underground Mortuary
+1 Underground Sea
+1 Unnatural Growth
+1 Vampiric Tutor
+1 Volcanic Island
+1 Vorinclex, Monstrous Raider
+1 Watery Grave
+1 Wildwood Scourge
+1 Windswept Heath

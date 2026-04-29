@@ -1,0 +1,95 @@
+COMMANDER: Auntie Ool, Cursewretch
+1 Abrupt Decay
+1 All Will Be One
+1 Ancient Tomb
+1 Arcane Signet
+1 Atomize
+1 Birds of Paradise
+1 Black Sun's Zenith
+1 Blazemire Verge
+1 Blood Crypt
+1 Bloodstained Mire
+1 Blowfly Infestation
+1 Bojuka Bog
+1 Boseiju, Who Endures
+1 Carnifex Demon
+1 Channeler Initiate
+1 City of Brass
+1 Command Tower
+1 Crumbling Ashes
+1 Dark Ritual
+1 Dawnhand Dissident
+1 Demonic Tutor
+1 Devoted Druid
+1 Dread Tiller
+1 Dusk Urchins
+1 Evolution Sage
+1 Exotic Orchard
+1 Farseek
+1 Flourishing Defenses
+3 Forest
+1 Formidable Speaker
+1 Generous Patron
+1 Hapatra, Vizier of Poisons
+1 Harbinger of Night
+1 Heroic Intervention
+1 Hexing Squelcher
+1 Ignoble Hierarch
+1 Karn's Bastion
+1 Kulrath Knight
+1 Luxior, Giada's Gift
+1 Luxury Suite
+1 Maha, Its Feathers Night
+1 Mana Confluence
+1 Mana Vault
+1 Massacre Girl, Known Killer
+1 Mikaeus, the Unhallowed
+2 Mountain
+1 Necroskitter
+1 Nest of Scarabs
+1 Nesting Grounds
+1 Noxious Revival
+1 Obelisk Spider
+1 Oft-Nabbed Goat
+1 Overgrown Tomb
+1 Path of Ancestry
+1 Persistent Constrictor
+1 Prismatic Vista
+1 Quillspike
+1 Rampant Growth
+1 Reanimate
+1 Reliquary Tower
+1 Savage Lands
+1 Scuzzback Scrounger
+1 Sinister Gnarlbark
+1 Sol Ring
+1 Soul Immolation
+1 Soul Snuffers
+1 Spire Garden
+1 Spitting Dilophosaurus
+1 Stomping Ground
+1 Survival of the Fittest
+3 Swamp
+1 Sylvan Library
+1 Taiga
+1 Takenuma, Abandoned Mire
+1 The One Ring
+1 The Ozolith
+1 The Reaper, King No More
+1 The Scorpion God
+1 Thirsting Roots
+1 Three Visits
+1 Toxic Deluge
+1 Undergrowth Stadium
+1 Unnatural Restoration
+1 Urborg, Tomb of Yawgmoth
+1 Urza's Saga
+1 Vampiric Tutor
+1 Verdant Catacombs
+1 Wastewood Verge
+1 Wickerbough Elder
+1 Wooded Foothills
+1 Worldly Tutor
+1 Yavimaya, Cradle of Growth
+1 Yawgmoth, Thran Physician
+1 Ziatora's Proving Ground

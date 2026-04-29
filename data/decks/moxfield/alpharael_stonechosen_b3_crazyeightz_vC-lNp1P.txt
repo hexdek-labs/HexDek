@@ -1,0 +1,80 @@
+COMMANDER: Alpharael, Stonechosen
+1 Arcane Signet
+1 Archenemy's Charm
+1 Archfiend of Despair
+1 Arguel's Blood Fast // Temple of Aclazotz
+1 Ashnod's Altar
+1 Bitterbloom Bearer
+1 Bitterblossom
+1 Blood Artist
+1 Bloodghast
+1 Bloodletter of Aclazotz
+1 Bloodthirsty Conqueror
+1 Bojuka Bog
+1 Bolas's Citadel
+1 Braids, Arisen Nightmare
+1 Cabal Coffers
+1 Cabal Stronghold
+1 Castle Locthwain
+1 Command Beacon
+1 Dark Confidant
+1 Dark Ritual
+1 Darkness
+1 Dauthi Voidwalker
+1 Day of Black Sun
+1 Deadly Dispute
+1 Deadly Rollick
+1 Decode Transmissions
+1 Demolition Field
+1 Diabolic Tutor
+1 Dismember
+1 Emeritus of Woe // Demonic Tutor
+1 Expedition Map
+1 Fatal Push
+1 Fell the Profane // Fell Mire
+1 Fellwar Stone
+1 Grave Pact
+1 Gray Merchant of Asphodel
+1 High Market
+1 Hostile Investigator
+1 Hymn of the Faller
+1 Imp's Mischief
+1 Infernal Grasp
+1 Jet Medallion
+1 Leyline of the Void
+1 Lightning Greaves
+1 Liliana of the Dark Realms
+1 Malakir Rebirth // Malakir Mire
+1 Midgar, City of Mako // Reactor Raid
+1 Morbid Opportunist
+1 Mortuary Mire
+1 Nowhere to Run
+1 Opposition Agent
+1 Oppression
+1 Pox Plague
+1 Reanimate
+1 Reassembling Skeleton
+1 Rogue's Passage
+1 Scrounge for Eternity
+1 Sheoldred, the Apocalypse
+1 Sol Ring
+1 Sothera, the Supervoid
+1 Soul-Guide Lantern
+1 Sudden Spoiling
+1 Susur Secundi, Void Altar
+1 Susurian Voidborn
+21 Swamp
+1 Swiftfoot Boots
+1 Takenuma, Abandoned Mire
+1 Tergrid, God of Fright // Tergrid's Lantern
+1 The Darkness Crystal
+1 The Meathook Massacre
+1 The Soul Stone
+1 Timeline Culler
+1 Toxic Deluge
+1 Unstoppable Slasher
+1 Village Rites
+1 Viscera Seer
+1 Withering Boon
+1 Wound Reflection
+1 Zulaport Cutthroat

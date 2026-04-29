@@ -1,0 +1,79 @@
+COMMANDER: Raffine, Scheming Seer
+1 Anguished Unmaking
+1 Approach of the Second Sun
+1 Arcane Denial
+1 Arcane Sanctum
+1 Arcane Signet
+1 Azorius Signet
+1 Baleful Mastery
+1 Baleful Strix
+1 Banishing Light
+1 Bident of Thassa
+1 Changeling Outcast
+1 Chart a Course
+1 Choked Estuary
+1 Command Tower
+1 Counterspell
+1 Crux of Fate
+1 Damn
+1 Darksteel Mutation
+1 Despark
+1 Dimir Signet
+1 Dismal Backwater
+1 Dovin's Veto
+1 Essence Scatter
+1 Evolving Wilds
+1 Exotic Orchard
+1 Fact or Fiction
+1 Faerie Seer
+1 Feed the Swarm
+1 Fellwar Stone
+1 Generous Gift
+1 Go for the Throat
+1 Hope of Ghirapur
+1 Imprisoned in the Moon
+1 Infernal Grasp
+1 Invisible Stalker
+10 Island
+1 Isolated Chapel
+1 Kasmina's Transmutation
+1 Memory Lapse
+1 Mind Stone
+1 Minimus Containment
+1 Negate
+1 Night's Whisper
+1 Oblivion Ring
+1 Orzhov Signet
+1 Oubliette
+1 Painful Truths
+1 Path of Ancestry
+1 Path to Exile
+1 Phyrexian Arena
+7 Plains
+1 Ponder
+1 Port Town
+1 Preordain
+1 Psychic Corrosion
+1 Reality Shift
+1 Reconnaissance Mission
+1 Scoured Barrens
+1 Sinister Sabotage
+1 Slither Blade
+1 Sol Ring
+1 Spectral Sailor
+1 Spell Pierce
+1 Supreme Verdict
+7 Swamp
+1 Swan Song
+1 Swords to Plowshares
+1 Talisman of Dominance
+1 Talisman of Hierarchy
+1 Talisman of Progress
+1 Terramorphic Expanse
+1 Tranquil Cove
+1 Triton Shorestalker
+1 Utter End
+1 Wash Away
+1 Wayfarer's Bauble
+1 Windfall
+1 Wrath of God

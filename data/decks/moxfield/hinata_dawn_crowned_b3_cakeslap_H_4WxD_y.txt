@@ -1,0 +1,89 @@
+COMMANDER: Hinata, Dawn-Crowned
+1 Arcane Signet
+1 Aurelia's Fury
+1 Azorius Chancery
+1 Azorius Guildgate
+1 Azorius Keyrune
+1 Bandit's Haul
+1 Baral's Expertise
+1 Blitzball
+1 Boros Guildgate
+1 Celestial Colonnade
+1 Change of Plans
+1 Chaotic Transformation
+1 Comet Storm
+1 Command Tower
+1 Counterspell
+1 Crackle with Power
+1 Cyclonic Rift
+1 Day of Judgment
+1 Decanter of Endless Water
+1 Divergent Transformations
+1 Drown in Dreams
+1 Esper Sentinel
+1 Essence Scatter
+1 Evolving Wilds
+1 Fellwar Stone
+1 Flare of Denial
+1 Floodfarm Verge
+1 Glacial Fortress
+1 Gridlock
+1 Heliod's Intervention
+1 Illithid Harvester // Plant Tadpoles
+1 Indomitable Creativity
+4 Island
+1 Izzet Boilerworks
+1 Izzet Guildgate
+1 Izzet Keyrune
+1 Jeskai Revelation
+1 Kykar, Zephyr Awakener
+1 Legion Leadership // Legion Stronghold
+1 Leyline of Anticipation
+1 Lightmine Field
+1 Lorehold Command
+1 March of Swirling Mist
+1 Mass Manipulation
+1 Memorial to Genius
+1 Metamorphic Blast
+1 Modify Memory
+5 Mountain
+1 Mystic Monastery
+1 Needle Spires
+1 Perilous Landscape
+5 Plains
+1 Razorgrass Ambush // Razorgrass Field
+1 Reality Shift
+1 Red Sun's Twilight
+1 Refute
+1 Release the Gremlins
+1 Requisition Raid
+1 Restoration Magic
+1 Return the Favor
+1 Return to Dust
+1 Rewind
+1 Rivendell
+1 Sejiri Shelter // Sejiri Glacier
+1 Shatterskull Smashing // Shatterskull, the Hammer Pass
+1 Shifting Grift
+1 Shinka, the Bloodsoaked Keep
+1 Shivan Reef
+1 Silundi Vision // Silundi Isle
+1 Sol Ring
+1 Soulfire Eruption
+1 Spelltwine
+1 Stroke of Midnight
+1 Sudden Substitution
+1 Sulfur Falls
+1 Suppression Ray // Orderly Plaza
+1 Swiftfoot Boots
+1 Talisman of Creativity
+1 Terramorphic Expanse
+1 Thought Vessel
+1 Three Steps Ahead
+1 Thundering Falls
+1 Time Warp
+1 Trade the Helm
+1 Visions of Duplicity
+1 Wandering Fumarole
+1 Will of the Temur
+1 Wrong Turn

@@ -1,0 +1,108 @@
+COMMANDER: Tazri, Beacon of Unity
+1 Acquisitions Expert
+1 Anowon, the Ruin Thief
+1 Archpriest of Iona
+1 Ardent Electromancer
+1 Beastcaller Savant
+1 Bloodbond Vampire
+1 Butcher of Malakir
+1 Cascade Seer
+1 Cleric of Life's Bond
+1 Cliffhaven Vampire
+1 Dawnglare Invoker
+1 Drana's Emissary
+1 Drana's Silencer
+1 Drana, Liberator of Malakir
+1 Drana, the Last Bloodchief
+1 Emeria Captain
+1 Expedition Skulker
+1 Firemantle Mage
+1 Frogtosser Banneret
+1 Goblin Bushwhacker
+1 Goblin Tunneler
+1 Goma Fada Vanguard
+1 Graypelt Hunter
+1 Grotag Bug-Catcher
+1 Hada Freeblade
+1 Hagra Diabolist
+1 Harabaz Druid
+1 Hero of Goma Fada
+1 Highland Berserker
+1 Invisible Stalker
+1 Joraga Bard
+1 Kabira Outrider
+1 Kalastria Nightwatch
+1 Kargan Dragonlord
+1 Kargan Warleader
+1 Kazandu Blademaster
+1 Kazuul Warlord
+1 Kazuul's Toll Collector
+1 Kazuul, Tyrant of the Cliffs
+1 Kor Bladewhirl
+1 Kor Entanglers
+1 Kor Sanctifiers
+1 Lantern Scout
+1 Lighthouse Chronologist
+1 Linvala, Shield of Sea Gate
+1 Luminarch Aspirant
+1 Makindi Patrol
+1 Makindi Shieldmate
+1 Malakir Blood-Priest
+1 Marang River Prowler
+1 Marauding Blight-Priest
+1 Master Thief
+1 Merfolk Windrobber
+1 Mina and Denn, Wildborn
+1 Munda's Vanguard
+1 Murasa Pyromancer
+1 Nighthawk Scavenger
+1 Nightveil Sprite
+1 Nimana Sell-Sword
+1 Nimble Trapfinder
+1 Nirkana Cutthroat
+1 Notion Thief
+1 Notorious Throng
+1 Null Champion
+1 Ogre Slumlord
+1 Ondu War Cleric
+1 Oona's Blackguard
+1 Oran-Rief Survivalist
+1 Paired Tactician
+1 Pulse Tracker
+1 Resolute Blademaster
+1 Rockslide Sorcerer
+1 Scion of the Swarm
+1 Sea Gate Colossus
+1 Sea Gate Loremaster
+1 Seafloor Stalker
+1 Seascape Aerialist
+1 Serene Steward
+1 Shadow Stinger
+1 Shatterskull Charger
+1 Shatterskull Minotaur
+1 Shepherd of Heroes
+1 Slither Blade
+1 Soaring Thought-Thief
+1 Soul's Attendant
+1 Springmantle Cleric
+1 Squad Commander
+1 Stinkdrinker Bandit
+1 Stone Haven Medic
+1 Sure-Footed Infiltrator
+1 Tajuru Beastmaster
+1 Tajuru Blightblade
+1 Tajuru Warcaller
+1 Talus Paladin
+1 Thieving Skydiver
+1 Thundering Sparkmage
+1 Triton Shorestalker
+1 Tuktuk Scrapper
+1 Turntimber Ranger
+1 Tuskguard Captain
+1 Umara Raptor
+1 Vampire Envoy
+1 Veteran Adventurer
+1 Veteran Warleader
+1 Windrider Patrol
+1 Zagras, Thief of Heartbeats
+1 Zulaport Cutthroat

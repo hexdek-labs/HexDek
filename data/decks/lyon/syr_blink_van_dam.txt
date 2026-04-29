@@ -1,0 +1,87 @@
+# Syr Blink Van Dam
+# Source: https://archidekt.com/decks/20750673/syr_blink_van_dam
+COMMANDER: Syr Vondam, Sunstar Exemplar
+1 Abdel Adrian, Gorion's Ward
+1 Another Round
+1 Anticausal Vestige
+1 Arcane Lighthouse
+1 Arcane Signet
+1 Ardbert, Warrior of Darkness
+1 Beyond the Quiet
+1 Black Market Connections
+1 Bleachbone Verge
+1 Boggart Trawler // Boggart Bog
+1 Bojuka Bog
+1 Charcoal Diamond
+1 Cloudshift
+1 Command Tower
+1 Company Commander
+1 Conjurer's Closet
+1 Dalkovan Encampment
+1 Detection Tower
+1 Dictate of Heliod
+1 Eerie Interlude
+1 Elegy Acolyte
+1 Elesh Norn, Mother of Machines
+1 Enduring Tenacity
+1 Enlightened Tutor
+1 Ephemerate
+1 Everglades
+1 Exemplar of Light
+1 Exquisite Blood
+1 Flicker of Fate
+1 Flickerwisp
+1 Flowering of the White Tree
+1 Galepowder Mage
+1 Getaway Glamer
+1 Ghostly Dancers
+1 Gilraen, Dúnedain Protector
+1 Godless Shrine
+1 Gonti, Lord of Luxury
+1 Grand Abolisher
+1 Gray Merchant of Asphodel
+1 Guardian of Ghirapur
+1 Haliya, Guided by Light
+1 Helpful Hunter
+1 Hero's Blade
+1 Inkshield
+1 Insatiable Avarice
+1 Isolated Chapel
+1 Jet Medallion
+1 Karoo
+1 Ketramose, the New Dawn
+1 Lae'zel's Acrobatics
+1 Malakir Rebirth // Malakir Mire
+1 Marble Diamond
+1 Mighty Mutanimals
+1 Minas Tirith
+1 Monumental Henge
+1 Nine-Lives Familiar
+1 Ninja Teen
+1 Ocelot Pride
+1 Ophiomancer
+1 Orcish Bowmasters
+1 Otherworldly Journey
+1 Panharmonicon
+1 Parting Gust
+1 Pearl Medallion
+1 Phelia, Exuberant Shepherd
+9 Plains
+1 Reliquary Tower
+1 Shattered Sanctum
+1 Sheoldred // The True Scriptures
+1 Shineshadow Snarl
+1 Smothering Tithe
+1 Sol Ring
+1 Sothera, the Supervoid
+8 Swamp
+1 Teleportation Circle
+1 Temple of the False God
+1 The Eternal Wanderer
+1 The One Ring
+1 The Ozolith
+1 The Soul Stone
+1 Vampiric Rites
+1 Vault of the Archangel
+1 Wall of Omens
+1 Westvale Abbey // Ormendahl, Profane Prince

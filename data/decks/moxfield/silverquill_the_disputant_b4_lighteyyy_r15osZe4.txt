@@ -1,0 +1,91 @@
+COMMANDER: Silverquill, the Disputant
+1 Adeline, Resplendent Cathar
+1 Akroma's Will
+1 Anointed Procession
+1 Arcane Signet
+1 Ashnod's Altar
+1 Baleful Mastery
+1 Beseech the Mirror
+1 Bitterbloom Bearer
+1 Bitterblossom
+1 Black Market Connections
+1 Blood Artist
+1 Blot Out the Sky
+1 Body Count
+1 Brightclimb Pathway // Grimclimb Pathway
+1 Cabal Coffers
+1 Call the Coppercoats
+1 Caves of Koilos
+1 Command Tower
+1 Concealed Courtyard
+1 Corrupted Conviction
+1 Cosmogrand Zenith
+1 Damn
+1 Dark Ritual
+1 Dash Hopes
+1 Deadly Dispute
+1 Delney, Streetwise Lookout
+1 Demonic Tutor
+1 Diabolic Intent
+1 Duty Beyond Death
+1 Elspeth, Storm Slayer
+1 Esper Sentinel
+1 Exotic Orchard
+1 Exsanguinate
+1 Fellwar Stone
+1 Fetid Heath
+1 Galadriel's Dismissal
+1 Get Lost
+1 Godless Shrine
+1 Grand Crescendo
+1 Great Arashin City
+1 Inkshield
+1 Insatiable Avarice
+1 Isolated Chapel
+1 Jadar, Ghoulcaller of Nephalia
+1 Kambal, Profiteering Mayor
+1 Launch the Fleet
+1 Lingering Souls
+1 Malakir Rebirth // Malakir Mire
+1 Marsh Flats
+1 Midgar, City of Mako // Reactor Raid
+1 Minas Tirith
+1 Monastery Mentor
+1 Mondrak, Glory Dominus
+1 Morbid Opportunist
+1 Myriad Landscape
+1 Night's Whisper
+1 Ophiomancer
+1 Orcish Bowmasters
+1 Orzhov Basilica
+1 Path to Exile
+1 Phyrexian Altar
+5 Plains
+1 Reliquary Tower
+1 Rogue's Passage
+1 Secure the Wastes
+1 Sedgemoor Witch
+1 Shelter
+1 Shineshadow Snarl
+1 Sign in Blood
+1 Skullclamp
+1 Smothering Tithe
+1 Sol Ring
+6 Swamp
+1 Swords to Plowshares
+1 Tainted Field
+1 Takenuma, Abandoned Mire
+1 Teferi's Protection
+1 Thought Vessel
+1 Urborg, Tomb of Yawgmoth
+1 Vanishing Verse
+1 Vault of the Archangel
+1 Village Rites
+1 Voice of Victory
+1 Wayfarer's Bauble
+1 Welcoming Vampire
+1 Will of the Mardu
+1 Witch's Cottage
+1 Yawgmoth, Thran Physician
+1 Zof Consumption // Zof Bloodbog
+1 Zulaport Cutthroat

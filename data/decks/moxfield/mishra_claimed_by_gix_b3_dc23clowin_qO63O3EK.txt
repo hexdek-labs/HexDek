@@ -1,0 +1,95 @@
+COMMANDER: Mishra, Claimed by Gix
+1 Aetherflux Reservoir
+1 Agadeem's Awakening // Agadeem, the Undercrypt
+1 Anger
+1 Animate Dead
+1 Arcane Signet
+1 Ashnod's Altar
+1 Bitter Reunion
+1 Bitterblossom
+1 Black Market Connections
+1 Blackcleave Cliffs
+1 Blightstep Pathway // Searstep Pathway
+1 Blood Crypt
+1 Bloodghast
+1 Bojuka Bog
+1 Bolas's Citadel
+1 Braids, Arisen Nightmare
+1 Buried Alive
+1 Cabal Ritual
+1 Chainer, Nightmare Adept
+1 Command Beacon
+1 Command Tower
+1 Daretti, Scrap Savant
+1 Dark Ritual
+1 Dauthi Voidwalker
+1 Deadly Rollick
+1 Deflecting Swat
+1 Demonic Tutor
+1 Den of the Bugbear
+1 Dictate of Erebos
+1 Dragonskull Summit
+1 Entomb
+1 Fable of the Mirror-Breaker // Reflection of Kiki-Jiki
+1 Faithless Looting
+1 Feed the Swarm
+1 Fellwar Stone
+1 Foreboding Ruins
+1 Geier Reach Sanitarium
+1 Gemstone Caverns
+1 Gix, Yawgmoth Praetor
+1 Goblin Engineer
+1 Goblin Welder
+1 Grave Pact
+1 Graven Cairns
+1 Great Furnace
+1 Haunted Ridge
+1 Hexing Squelcher
+1 Hive of the Eye Tyrant
+1 Jadar, Ghoulcaller of Nephalia
+1 Jeska's Will
+1 K'rrik, Son of Yawgmoth
+1 Krenko, Tin Street Kingpin
+1 Lightning Greaves
+1 Luxury Suite
+1 Morbid Opportunist
+1 Mount Doom
+4 Mountain
+1 Necromancy
+1 Nether Void
+1 Night's Whisper
+1 Ophiomancer
+1 Phyrexian Altar
+1 Phyrexian Dragon Engine
+1 Phyrexian Reclamation
+1 Phyrexian Tower
+1 Pitiless Plunderer
+1 Professional Face-Breaker
+1 Rakdos Signet
+1 Raucous Theater
+1 Reanimate
+1 Revel in Riches
+1 Sensei's Divining Top
+1 Shadowblood Ridge
+1 Sheoldred, the Apocalypse
+1 Skullclamp
+1 Smoldering Marsh
+1 Sokenzan, Crucible of Defiance
+1 Sol Ring
+1 Sulfurous Springs
+3 Swamp
+1 Swiftfoot Boots
+1 Tainted Peak
+1 Takenuma, Abandoned Mire
+1 Talisman of Indulgence
+1 Terminate
+1 The Soul Stone
+1 Torment of Hailfire
+1 Toxic Deluge
+1 Unmarked Grave
+1 Urabrask's Forge
+1 Urborg, Tomb of Yawgmoth
+1 Vault of Whispers
+1 Victimize
+1 Wurmcoil Engine
+1 Yawgmoth, Thran Physician

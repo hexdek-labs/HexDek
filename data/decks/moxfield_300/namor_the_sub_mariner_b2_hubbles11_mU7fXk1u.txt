@@ -1,0 +1,65 @@
+COMMANDER: Namor the Sub-Mariner
+1 Aqueous Form
+1 Aquitect's Will
+1 Arcane Signet
+1 Attuma, Atlantean Warlord
+1 Bender's Waterskin
+1 Bident of Thassa
+1 Coastal Piracy
+1 Consider
+1 Cosi's Trickster
+1 Curiosity
+1 Cursecatcher
+1 Cyber Conversion
+1 Dawn-Blessed Pennant
+1 Deeproot Pilgrimage
+1 Deeproot Waters
+1 Dispel
+1 Distant Melody
+1 Emperor Mihail II
+1 Fated Infatuation
+1 Forensic Researcher
+1 Herald's Horn
+1 High Tide
+1 Intervene
+1 Invoke the Winds
+36 Island
+1 Kiora, the Rising Tide
+1 Kopala, Warden of Waves
+1 Lightning Greaves
+1 Long River's Pull
+1 Lord of Atlantis
+1 Master of the Pearl Trident
+1 Merfolk Sovereign
+1 Merfolk Trickster
+1 Merrow Harbinger
+1 Merrow Reejerey
+1 Mindspring Merfolk
+1 Mist Dancer
+1 Mistcaller
+1 Moonlit Meditation
+1 Myriad Landscape
+1 Negate
+1 Opt
+1 Preordain
+1 Rapid Hybridization
+1 Reality Shift
+1 Rimefire Torque
+1 Rite of Replication
+1 River Sneak
+1 Rogue's Passage
+1 Seafloor Oracle
+1 Secret of Bloodbending
+1 Silvergill Mentor
+1 Sky Diamond
+1 Sol Ring
+1 Stock Up
+1 Stonybrook Banneret
+1 Stormtide Leviathan
+1 Summon: Leviathan
+1 Svyelun of Sea and Sky
+1 Thassa's Rebuff
+1 Transcendent Message
+1 Twiddle
+1 Unstoppable Plan
+1 Wild Unraveling

@@ -1,0 +1,101 @@
+COMMANDER: Garth One-Eye
+1 Aang, Swift Savior // Aang and La, Ocean's Fury
+1 Abigale, Poet Laureate // Heroic Stanza
+1 Ancestral Vision
+1 Appa, Steadfast Guardian
+1 Arcane Sanctum
+1 Biblioplex Tomekeeper
+1 Blazing Firesinger // Seething Song
+1 Campus Composer // Aqueous Aria
+1 Canopy Vista
+1 Canyon Slough
+1 Cascading Cataracts
+1 Charred Foyer // Warped Space
+1 Cheerful Osteomancer // Raise Dead
+1 Cinder Glade
+1 Command Tower
+1 Contaminated Aquifer
+1 Crumbling Necropolis
+1 Defacing Duskmage // Vandal's Edit
+1 Dirgur Focusmage // Braingeyser
+1 Displacer Kitten
+1 Doc Aurlock, Grizzled Genius
+1 Eccentric Pestfinder // Turn Stones
+1 Elite Interceptor // Rejoinder
+1 Emeritus of Abundance // Regrowth
+1 Emeritus of Conflict // Lightning Bolt
+1 Emeritus of Ideation // Ancestral Recall
+1 Emeritus of Truce // Swords to Plowshares
+1 Emeritus of Woe // Demonic Tutor
+1 Encouraging Aviator // Jump
+1 Ephemerate
+1 Evolving Wilds
+1 Exotic Orchard
+1 Farseek
+1 Festering Thicket
+1 Fetid Pools
+1 Fire Lord Zuko
+1 Forest
+1 Glittering Massif
+1 Goblin Glasswright // Craft with Pride
+1 Grave Researcher // Reanimate
+1 Harmonized Trio // Brainstorm
+1 Inspired Skypainter // Maestro's Gift
+1 Irrigated Farmland
+1 Island
+1 Jadzi, Steward of Fate // Oracle's Gift
+1 Joined Researchers // Secret Rendezvous
+1 Keeper of Secrets
+1 Kellan, the Kid
+1 Kirol, History Buff // Pack a Punch
+1 Krosan Verge
+1 Kykar, Zephyr Awakener
+1 Landscape Painter // Vibrant Idea
+1 Leech Collector // Bloodletting
+1 Lluwen, Exchange Student // Pest Friend
+1 Lorehold Archivist // Restore Relic
+1 Maelstrom Artisan // Rocket Volley
+1 Mountain
+1 Murmuring Bosk
+1 Mystic Monastery
+1 Naktamun Lorespinner // Wheel of Fortune
+1 Nature's Lore
+1 Nomad Outpost
+1 Opulent Palace
+1 Party Thrasher
+1 Pigment Wrangler // Striking Palette
+1 Prairie Stream
+1 Prosper, Tome-Bound
+1 Quill-Blade Laureate // Twofold Intent
+1 Radiant Summit
+1 Rain-Slicked Copse
+1 Sanar, Unfinished Genius // Wild Idea
+1 Scathing Shadelock // Venomous Words
+1 Scattered Groves
+1 Scheming Silvertongue // Sign in Blood
+1 Seaside Citadel
+1 Sedgemoor Witch
+1 Semester's End
+1 Sheltered Thicket
+1 Skycoach Conductor // All Aboard
+1 Skycoach Waypoint
+1 Smoldering Marsh
+1 Sodden Verdure
+1 Stensian Sanguinist // Exsanguinate
+1 Storm-Kiln Artist
+1 Striding Shotcaller // Run the Play
+1 Strife Scholar // Awaken the Ages
+1 Studious First-Year // Rampant Growth
+1 Sunken Hollow
+1 Surge of Brilliance
+1 Swamp
+1 Tam, Observant Sequencer // Deep Sight
+1 Tangled Islet
+1 Terramorphic Expanse
+1 The World Tree
+1 Three Visits
+1 Vastlands Scavenger // Bind to Life
+1 Vega, the Watcher
+1 Vernal Fen
+1 Witherbloom Apprentice
+1 Yavimaya Bloomsage // Channel

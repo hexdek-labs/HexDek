@@ -1,0 +1,86 @@
+COMMANDER: Rith, the Awakener
+1 Akroma's Will
+1 Arcane Signet
+1 Artifact Mutation
+1 Aura Mutation
+1 Aura Shards
+1 Austere Command
+1 Baylen, the Haymaker
+1 Beastmaster Ascension
+1 Blasphemous Act
+1 Boros Charm
+1 Brightcap Badger // Fungus Frolic
+1 Buried in the Garden
+1 Canopy Vista
+1 Champion of Lambholt
+1 Cinder Glade
+1 Clifftop Retreat
+1 Command Tower
+1 Cragcrown Pathway // Timbercrown Pathway
+1 Cryptolith Rite
+1 Decimate
+1 Doubling Season
+1 Eldrazi Monument
+1 Enduring Vitality
+1 Essence Warden
+1 Exotic Orchard
+9 Forest
+1 Forgotten Ancient
+1 Fungal Plots
+1 Garruk's Uprising
+1 Gavony Township
+1 Generous Gift
+1 Glare of Subdual
+1 Growing Rites of Itlimoc // Itlimoc, Cradle of the Sun
+1 Huatli, Radiant Champion
+1 Hushwood Verge
+1 Impact Tremors
+1 Intangible Virtue
+1 Jetmir, Nexus of Revels
+1 Karplusan Forest
+1 Kessig Wolf Run
+1 Life and Limb
+1 Lightning Greaves
+1 Lizard Blades
+1 Molten Gatekeeper
+1 Mondrak, Glory Dominus
+1 Moogles' Valor
+3 Mountain
+1 Mycoloth
+1 Night Soil
+1 Nullmage Shepherd
+1 Overgrown Farmland
+1 Overrun
+1 Painter's Servant
+1 Patchwork Banner
+1 Path to Exile
+5 Plains
+1 Primal Vigor
+1 Reliquary Tower
+1 Return of the Wildspeaker
+1 Rhythm of the Wild
+1 Rising of the Day
+1 Rockfall Vale
+1 Rootbound Crag
+1 Sacred Foundry
+1 Saproling Symbiosis
+1 Second Harvest
+1 Shamanic Revelation
+1 Shroofus Sproutsire
+1 Skullclamp
+1 Sol Ring
+1 Solphim, Mayhem Dominus
+1 Sporemound
+1 Stomping Ground
+1 Sunbillow Verge
+1 Sunpetal Grove
+1 Swords to Plowshares
+1 Temple Garden
+1 Tendershoot Dryad
+1 Thought Vessel
+1 Tireless Provisioner
+1 Ulasht, the Hate Seed
+1 Verdant Force
+1 Vitu-Ghazi, the City-Tree
+1 Whispersilk Cloak
+1 Xenagos, the Reveler

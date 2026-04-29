@@ -1,0 +1,69 @@
+COMMANDER: K'rrik, Son of Yawgmoth
+1 Arcane Signet
+1 Ashnod, Flesh Mechanist
+1 Battlefly Swarm
+1 Blood Celebrant
+1 Bloodchief Ascension
+1 Bone Shards
+1 Bone Splinters
+1 Bubbling Muck
+1 Carrion Feeder
+1 Changeling Outcast
+1 Chrome Mox
+1 Corrupted Conviction
+1 Cryptbreaker
+1 Culling the Weak
+1 Cultist of the Absolute
+1 Dark Ritual
+1 Darkness
+1 Death's Shadow
+1 Deathgreeter
+1 Duress
+1 Eaten Alive
+1 Entomb
+1 Everflowing Chalice
+1 Feign Death
+1 Font of Agonies
+1 Forsaken Miner
+1 Forsworn Paladin
+1 Grave Pact
+1 Gravecrawler
+1 Gray Merchant of Asphodel
+1 Gutterbones
+1 Imperial Seal
+1 Kaya's Ghostform
+1 Knight of the Ebon Legion
+1 Lotus Petal
+1 Mox Amber
+1 Mox Diamond
+1 Mox Opal
+1 Necropotence
+1 Not Dead After All
+1 Paradise Mantle
+1 Pontiff of Blight
+1 Reanimate
+1 Scheming Symmetry
+1 Snarling Gorehound
+1 Sol Ring
+1 Sol Talisman
+1 Stitcher's Supplier
+1 Supernatural Stamina
+32 Swamp
+1 Sword of Feast and Famine
+1 Sword of Fire and Ice
+1 Sword of Forge and Frontier
+1 Sword of Once and Future
+1 Thoughtseize
+1 Thrull Parasite
+1 Tormented Soul
+1 Tragic Slip
+1 Undying Evil
+1 Undying Malice
+1 Unearth
+1 Vampire of the Dire Moon
+1 Vampiric Link
+1 Vampiric Tutor
+1 Vilis, Broker of Blood
+1 Village Rites
+1 Viscera Seer
+1 Vorpal Sword

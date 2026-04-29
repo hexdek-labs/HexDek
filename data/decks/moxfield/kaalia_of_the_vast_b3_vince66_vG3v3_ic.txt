@@ -1,0 +1,83 @@
+COMMANDER: Kaalia of the Vast
+1 Akoum Hellkite
+1 Akroma, Angel of Fury
+1 Angel of Despair
+1 Angel of Jubilation
+1 Angel of Serenity
+1 Angel of the Ruins
+1 Angelic Accord
+1 Anguished Unmaking
+1 Arcane Signet
+1 Archfiend of Depravity
+1 Aurelia, the Law Above
+1 Aurelia, the Warleader
+1 Austere Command
+1 Balor
+1 Bloodfell Caves
+1 Boros Cluestone
+1 Boros Signet
+1 Clifftop Retreat
+1 Command Tower
+1 Cori Mountain Monastery
+1 Crackling Doom
+1 Crucible of the Spirit Dragon
+1 Damn
+1 Dark Ritual
+1 Darksteel Citadel
+1 Darksteel Plate
+1 Demon of Loathing
+1 Demonic Counsel
+1 Demonlord Belzenlok
+1 Descend upon the Sinful
+1 Drakuseth, Maw of Flames
+1 Evil Reawakened
+1 Evolving Wilds
+1 Foreboding Ruins
+1 Giada, Font of Hope
+1 Gisela, Blade of Goldnight
+1 Great Hall of the Citadel
+1 Herald of Eternal Dawn
+1 Isolated Chapel
+1 Isshin, Two Heavens as One
+1 Lathliss, Dragon Queen
+1 Lord of the Void
+1 Lyra Dawnbringer
+1 Malevolent Witchkite
+1 Mardu Banner
+6 Mountain
+1 Ob Nixilis, Unshackled
+1 Ob Nixilis, the Fallen
+1 Offer Immortality
+1 Phyrexian Reclamation
+7 Plains
+1 Power Word Kill
+1 Rakdos Signet
+1 Rakdos, Patron of Chaos
+1 Reya Dawnbringer
+1 Righteous Valkyrie
+1 Rugged Prairie
+1 Ruinous Path
+1 Rune of Mortality
+1 Scoured Barrens
+1 Siege Dragon
+1 Sign in Blood
+1 Smoldering Marsh
+1 Sol Ring
+1 Sorin, Grim Nemesis
+1 Spiteful Blow
+1 Sulfurous Springs
+1 Sunblast Angel
+1 Sunscorched Desert
+7 Swamp
+1 Swiftfoot Boots
+1 Swords to Plowshares
+1 Tariel, Reckoner of Souls
+1 Teeming Dragonstorm
+1 Tomb of the Spirit Dragon
+1 Unholy Annex // Ritual Chamber
+1 Utter End
+1 Vindicate
+1 Warped Landscape
+1 Wear // Tear
+1 Westvale Abbey // Ormendahl, Profane Prince
+1 Whip of Erebos

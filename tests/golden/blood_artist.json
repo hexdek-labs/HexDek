@@ -1,0 +1,19 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:self_and_another",
+        "sequence",
+        "lose_life",
+        "gain_life"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Blood Artist",
+  "parse_error_count": 0
+}

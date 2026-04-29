@@ -1,0 +1,96 @@
+COMMANDER: Excava, the Risen Past
+1 Abandoned Air Temple
+1 Arcane Signet
+1 Arena of Glory
+1 Arid Mesa
+1 Battlefield Forge
+1 Benevolent Bodyguard
+1 Bitter Reunion
+1 Blasphemous Act
+1 Boros Signet
+1 Borrowed Knowledge
+1 Cathar Commando
+1 Ceaseless Conflict
+1 Chivalric Alliance
+1 Clifftop Retreat
+1 Command Tower
+1 Curious Farm Animals
+1 Currency Converter
+1 Darksteel Citadel
+1 Dawn of a New Age
+1 Demand Answers
+1 Dollmaker's Shop // Porcelain Gallery
+1 Eiganjo, Seat of the Empire
+1 Elegant Parlor
+1 Enduring Innocence
+1 Erode
+1 Exotic Orchard
+1 Fable of the Mirror-Breaker // Reflection of Kiki-Jiki
+1 Fabled Passage
+1 Faithless Looting
+1 Fear of Missing Out
+1 Fellwar Stone
+1 Gau, Feral Youth
+1 Grasp of Fate
+1 Hardened Academic
+1 Inti, Seneschal of the Sun
+1 Ivora, Insatiable Heir
+1 Laelia, the Blade Reforged
+1 Liquimetal Torque
+1 Long-Range Sensor
+1 Loran of the Third Path
+1 Melded Moxite
+1 Minas Tirith
+1 Mind Stone
+1 Mishra's Bauble
+1 Mother of Runes
+3 Mountain
+1 Needleverge Pathway // Pillarverge Pathway
+1 Nesting Grounds
+1 Ocelot Pride
+1 Party Thrasher
+1 Phelia, Exuberant Shepherd
+3 Plains
+1 Prismatic Vista
+1 Professional Face-Breaker
+1 Radiant Summit
+1 Razorgrass Ambush // Razorgrass Field
+1 Relic Retriever
+1 Remorseful Cleric
+1 Roaming Throne
+1 Rustvale Bridge
+1 Sacred Foundry
+1 Scholar of New Horizons
+1 Selfless Spirit
+1 Shared Animosity
+1 Skyclave Apparition
+1 Skyhunter Strike Force
+1 Smuggler's Copter
+1 Smuggler's Share
+1 Sokenzan, Crucible of Defiance
+1 Spectator Seating
+1 Spirit of Resilience
+1 Split Up
+1 Static Prison
+1 Sunbillow Verge
+1 Sundering Eruption // Volcanic Fissure
+1 Sundown Pass
+1 Talisman of Conviction
+1 Tersa Lightshatter
+1 The Restoration of Eiganjo // Architect of Restoration
+1 Thrill of Possibility
+1 Thrilling Discovery
+1 Tocasia's Welcome
+1 Touch the Spirit Realm
+1 Turbulent Steppe
+1 Urza's Bauble
+1 Urza's Saga
+1 Valakut Awakening // Valakut Stoneforge
+1 Valgavoth's Lair
+1 Warleader's Call
+1 Wasteland
+1 Wayfarer's Bauble
+1 Welcoming Vampire
+1 Wheel of Misfortune
+1 Windcrag Siege
+1 Witch Enchanter // Witch-Blessed Meadow

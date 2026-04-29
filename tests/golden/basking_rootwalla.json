@@ -1,0 +1,31 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "act:mana2",
+        "buff"
+      ],
+      "index": 0,
+      "kind": "activated"
+    },
+    {
+      "first5": [
+        "static:timing_restriction:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "keyword:madness"
+      ],
+      "index": 2,
+      "kind": "keyword"
+    }
+  ],
+  "ability_count": 3,
+  "fully_parsed": true,
+  "group": "keywords",
+  "name": "Basking Rootwalla",
+  "parse_error_count": 0
+}

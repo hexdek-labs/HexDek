@@ -1,0 +1,38 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:flying"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "trig:etb",
+        "reveal"
+      ],
+      "index": 1,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "static:opp_choice_card_pick:_"
+      ],
+      "index": 2,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "static:spell_effect:_"
+      ],
+      "index": 3,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 4,
+  "fully_parsed": true,
+  "group": "keywords",
+  "name": "Kitesail Freebooter",
+  "parse_error_count": 0
+}

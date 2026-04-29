@@ -1,0 +1,88 @@
+COMMANDER: Muddle, the Ever-Changing
+1 Aether Gale
+1 Arcane Denial
+1 Arcane Signet
+1 Archaeomancer
+1 Astral Dragon
+1 Aven Fogbringer
+1 Blade of Selves
+1 Blasphemous Act
+1 Brainstorm
+1 Brudiclad, Telchor Engineer
+1 Callous Oppressor
+1 Cascade Bluffs
+1 Chain Reaction
+1 Chaos Warp
+1 Cloud of Faeries
+1 Coastal Peak
+1 Combustible Gearhulk
+1 Command Tower
+1 Confound
+1 Consider
+1 Counterspell
+1 Defy Gravity
+1 Desperate Ravings
+1 Emeritus of Ideation // Ancestral Recall
+1 Exotic Orchard
+1 Expressive Iteration
+1 Fabled Passage
+1 Fabricate
+1 Falter
+1 Fellwar Stone
+1 Ferrous Lake
+1 Fling
+1 Frostboil Snarl
+1 Hall of Oracles
+1 Hamletback Goliath
+1 Havoc Eater
+1 Hisoka's Guard
+1 Hoarding Dragon
+1 Inspired Skypainter // Maestro's Gift
+7 Island
+1 Jace's Mindseeker
+1 Leap of Flame
+1 Lightning Greaves
+1 Mistrise Village
+7 Mountain
+1 Mystic Sanctuary
+1 Panharmonicon
+1 Path of Ancestry
+1 Preordain
+1 Prismari Campus
+1 Prismari Charm
+1 Proteus Staff
+1 Rapacious Dragon
+1 Reality Shift
+1 Red Dragon
+1 Redoubled Stormsinger
+1 Reliquary Tower
+1 Replication Technique
+1 Restless Spire
+1 Rite of Replication
+1 Sapphire Charm
+1 Scorched Geyser
+1 Screaming Nemesis
+1 Shivan Reef
+1 Sleight of Hand
+1 Sol Ring
+1 Solemn Simulacrum
+1 Spark Double
+1 Spectacle Summit
+1 Starfield Vocalist
+1 Storm-Kiln Artist
+1 Stormcarved Coast
+1 Study Hall
+1 Subterfuge
+1 Sulfur Falls
+1 Sundial of the Infinite
+1 Swiftwater Cliffs
+1 Talisman of Creativity
+1 Temple of Epiphany
+1 Temple of the False God
+1 Terror of the Peaks
+1 Tribute Mage
+1 Turbulent Springs
+1 Twinflame
+1 Twinflame Tyrant
+1 Updraft
+1 Vesuvan Drifter

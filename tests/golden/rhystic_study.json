@@ -1,0 +1,18 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:opp_cast",
+        "optional",
+        "draw_unless_pay"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "cedh",
+  "name": "Rhystic Study",
+  "parse_error_count": 0
+}

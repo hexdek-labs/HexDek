@@ -1,0 +1,23 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "static:spell_effect:_"
+      ],
+      "index": 0,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "static:chain_controller_creates:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "removal",
+  "name": "Resculpt",
+  "parse_error_count": 0
+}

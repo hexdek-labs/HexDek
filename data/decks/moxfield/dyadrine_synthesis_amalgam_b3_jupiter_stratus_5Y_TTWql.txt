@@ -1,0 +1,87 @@
+COMMANDER: Dyadrine, Synthesis Amalgam
+1 Adagia, Windswept Bastion
+1 Anointed Procession
+1 Astelli Reclaimer
+1 Blighted Woodland
+1 Bountiful Promenade
+1 Brightglass Gearhulk
+1 Bulwark Ox
+1 Buried Ruin
+1 Canopy Vista
+1 Caradora, Heart of Alacria
+1 Champion of Lambholt
+1 Chromatic Lantern
+1 Clever Concealment
+1 Command Tower
+1 Cosmogrand Zenith
+1 Cryptolith Rite
+1 Dauntless Scrapbot
+1 Dispatch
+1 Doubling Season
+1 Drix Fatemaker
+1 Earthcraft
+1 Elspeth, Storm Slayer
+1 Elvish Mystic
+1 Esper Sentinel
+1 Eusocial Engineering
+1 Evendo, Waking Haven
+1 Exalted Sunborn
+1 Exploration Broodship
+1 Fertilid
+7 Forest
+1 Forgotten Ancient
+1 Frenzied Baloth
+1 Fyndhorn Elves
+1 Gavony Township
+1 Glimmervoid
+1 Green Sun's Zenith
+1 Gyre Sage
+1 Haliya, Guided by Light
+1 Hardened Scales
+1 Incubation Druid
+1 Indomitable Archangel
+1 Innkeeper's Talent
+1 Inspiring Call
+1 Kodama of the West Tree
+1 Kutzil, Malamet Exemplar
+1 Lae'zel, Vlaakith's Champion
+1 Leyline Immersion
+1 Loading Zone
+1 Losheel, Clockwork Scholar
+1 Lumen-Class Frigate
+1 Minas Tirith
+1 Naya Panorama
+1 Ouroboroid
+1 Ozolith, the Shattered Spire
+1 Parallel Lives
+1 Patrolling Peacemaker
+8 Plains
+1 Quilled Greatwurm
+1 Reliquary Tower
+1 Reroute Systems
+1 Rite of Harmony
+1 Search for Tomorrow
+1 Seedship Impact
+1 Skullclamp
+1 Sledge-Class Seedship
+1 Sol Ring
+1 Song of Freyalise
+1 Spire of Industry
+1 Steel Overseer
+1 Sunpetal Grove
+1 Sunstar Chaplain
+1 Surge Conductor
+1 Swiftfoot Boots
+1 Sylvan Library
+1 Temple Garden
+1 Temple of Plenty
+1 Tender Wildguide
+1 Terrasymbiosis
+1 The Great Henge
+1 Tireless Provisioner
+1 Tree of Tales
+1 Unnatural Restoration
+1 Verdurous Gearhulk
+1 Wedgelight Rammer
+1 Windswept Heath
+1 Wooded Bastion

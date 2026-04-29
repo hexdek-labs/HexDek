@@ -1,0 +1,80 @@
+COMMANDER: Berta, Wise Extrapolator
+1 Additive Evolution
+1 Applied Geometry
+1 Arcane Signet
+1 Ash Barrens
+1 Banishing Betrayal
+1 Biomathematician
+1 Body of Research
+1 Breeding Pool
+1 Brush Off
+1 Cultivate
+1 Curse of the Swine
+1 Diary of Dreams
+1 Dirgur Focusmage // Braingeyser
+1 Divergent Equation
+1 Dreamroot Cascade
+1 Echocasting Symposium
+1 Embrace the Paradox
+1 Essence Scatter
+1 Evolution Sage
+1 Expansion Algorithm
+1 Exponential Growth
+9 Forest
+1 Fractal Tender
+1 Fractalize
+1 Geometer's Arthropod
+1 Glorious Decay
+1 Growth Curve
+1 Growth Spiral
+1 Hungry Graffalon
+1 Hydro-Channeler
+1 Ichormoon Gauntlet
+1 Inexorable Tide
+1 Infirmary Healer // Stream of Life
+13 Island
+1 Kairi, the Swirling Sky
+1 Kasmina, Enigma Sage
+1 Kura, the Boundless Sky
+1 Mana Sculpt
+1 Mind into Matter
+1 Narset's Reversal
+1 Nissa, Steward of Elements
+1 Noxious Newt
+1 Oracle's Restoration
+1 Owlin Spiralmancer
+1 Paradox Gardens
+1 Paradox Surveyor
+1 Pensive Professor
+1 Planar Engineering
+1 Primal Amulet // Primal Wellspring
+1 Primo, the Unbounded
+1 Quandrix Charm
+1 Quandrix, the Proof
+1 Quick Study
+1 Reliquary Tower
+1 Remote Isle
+1 Run Behind
+1 Sleight of Hand
+1 Sodden Verdure
+1 Sol Ring
+1 Spell Pierce
+1 Studious First-Year // Rampant Growth
+1 Talisman of Curiosity
+1 Tam, Observant Sequencer // Deep Sight
+1 Tangled Islet
+1 Temple of Mystery
+1 Terramorphic Expanse
+1 Textbook Tabulator
+1 Thriving Grove
+1 Thriving Isle
+1 Thunderclap Drake
+1 Time Warp
+1 Turbulent Wilderness
+1 Unbound Flourishing
+1 Vineglimmer Snarl
+1 Vivid Grove
+1 Wild Hypothesis
+1 Wizard Class
+1 Yavimaya Coast
+1 Zimone, Infinite Analyst

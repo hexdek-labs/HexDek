@@ -1,0 +1,96 @@
+COMMANDER: Inalla, Archmage Ritualist
+1 Aether Channeler
+1 Arcane Signet
+1 Archaeomancer
+1 Archmage of Echoes
+1 Azami, Lady of Scrolls
+1 Basalt Ravager
+1 Beguiler of Wills
+1 Blightstep Pathway // Searstep Pathway
+1 Blood Crypt
+1 Bloodline Necromancer
+1 Burnt Offering
+1 Cascade Bluffs
+1 Castle Vantress
+1 Cavern of Souls
+1 Choked Estuary
+1 Command Tower
+1 Counterspell
+1 Culling the Weak
+1 Cyclone Summoner
+1 Darkwater Catacombs
+1 Descendants' Fury
+1 Dimir Signet
+1 Disciple of Bolas
+1 Displacer Kitten
+1 Disruptor of Currents
+1 Distant Melody
+1 Dour Port-Mage
+1 Dualcaster Mage
+1 Fabled Passage
+1 Fatestitcher
+1 Fiery Islet
+1 Flame of Anor
+1 Frostboil Snarl
+1 Galecaster Colossus
+1 Glen Elendra Archmage
+1 Gogo, Master of Mimicry
+1 Harmonic Prodigy
+1 Harmonized Crescendo
+1 Haunted Ridge
+1 Herald's Horn
+1 Information Dealer
+1 Inspired Skypainter // Maestro's Gift
+5 Island
+1 Izzet Signet
+1 Kindred Discovery
+1 Kindred Dominance
+1 Lindblum, Industrial Regency // Mage Siege
+1 Luxury Suite
+1 Malevolent Hermit // Benevolent Geist
+1 Mana Sculpt
+1 Master of Waves
+1 Molten Echoes
+1 Morphic Pool
+1 Mountain
+1 Mysidian Elder
+1 Naban, Dean of Iteration
+1 Omni-Changeling
+1 Path of Ancestry
+1 Patriarch's Bidding
+1 Patron Wizard
+1 Pensive Professor
+1 Persist
+1 Phyrexian Altar
+1 Pol Jamaar, Illusionist
+1 Pollywog Prodigy
+1 Raise the Palisade
+1 Redoubled Stormsinger
+1 Reflections of Littjara
+1 Reliquary Tower
+1 Riverglide Pathway // Lavaglide Pathway
+1 Roaming Throne
+1 Ruthless Technomancer
+1 Shipwreck Marsh
+1 Shivan Reef
+1 Sneak Attack
+1 Sol Ring
+1 Steam Vents
+1 Step Through
+1 Stonybrook Banneret
+1 Stormcarved Coast
+1 Sulfur Falls
+1 Sunken Hollow
+1 Swamp
+1 Talisman of Creativity
+1 Talisman of Dominance
+1 Talisman of Indulgence
+1 The Master, Multiplied
+1 Three Tree City
+1 Training Center
+1 Twenty-Toed Toad
+1 Unclaimed Territory
+1 Urza's Incubator
+1 Venser, Shaper Savant
+1 Watery Grave
+1 Xander's Lounge

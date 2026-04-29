@@ -1,0 +1,91 @@
+COMMANDER: Rakdos, Patron of Chaos
+1 Arcane Signet
+1 Archfiend of Despair
+1 Archfiend of Spite
+1 Ardyn, the Usurper
+1 Badlands
+1 Bedevil
+1 Black Market Connections
+1 Blackcleave Cliffs
+1 Blazemire Verge
+1 Blood Crypt
+1 Bloodcrusher of Khorne
+1 Bloodgift Demon
+1 Bloodletter of Aclazotz
+1 Bloodline Bidding
+1 Bloodstained Mire
+1 Bloodthirster
+1 Bolas's Citadel
+1 Bothersome Quasit
+1 Cavern of Souls
+1 Changeling Wayfinder
+1 Chaos Defiler
+1 City on Fire
+1 Command Tower
+1 Coronation of Chaos
+1 Darkness
+1 Deadly Rollick
+1 Deflecting Swat
+1 Demonic Covenant
+1 Demonic Tutor
+1 Disrupt Decorum
+1 Dolmen Gate
+1 Dragonskull Summit
+1 Dreadbore
+1 Elbrus, the Binding Blade // Withengar Unbound
+1 Feed the Swarm
+1 Foreboding Ruins
+1 Give In to Violence
+1 Graven Cairns
+1 Harvester of Souls
+1 Haunted Ridge
+1 Herald of Slaanesh
+1 Jet Medallion
+1 Kardur, Doomscourge
+1 Kaya's Ghostform
+1 Kindred Dominance
+1 Lightning Greaves
+1 Luxury Suite
+1 Master of Cruelties
+1 Molten Echoes
+1 Mount Doom
+5 Mountain
+1 Myriad Landscape
+1 Nefarox, Overlord of Grixis
+1 Patchwork Banner
+1 Path of Ancestry
+1 Rakdos Carnarium
+1 Rakdos Signet
+1 Rakdos, the Showstopper
+1 Raucous Theater
+1 Razortrap Gorge
+1 Reanimate
+1 Reaper from the Abyss
+1 Redirect Lightning
+1 Reliquary Tower
+1 Rocky Tar Pit
+1 Rogue's Passage
+1 Shadowblood Ridge
+1 Shadowgrange Archfiend
+1 Skullclamp
+1 Sol Ring
+1 Sulfurous Springs
+6 Swamp
+1 Tainted Peak
+1 Talisman of Indulgence
+1 The Balrog of Moria
+1 The One Ring
+1 The Soul Stone
+1 Thran Dynamo
+1 Urza's Incubator
+1 Valgavoth, Terror Eater
+1 Varragoth, Bloodsky Sire
+1 Venomcrawler
+1 Victimize
+1 Vile Mutilator
+1 Vilis, Broker of Blood
+1 Warstorm Surge
+1 Westvale Abbey // Ormendahl, Profane Prince
+1 Whip of Erebos
+1 Withering Torment
+1 You Are Already Dead

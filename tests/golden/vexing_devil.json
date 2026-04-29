@@ -1,0 +1,24 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:etb",
+        "any_player_may_effect"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "static:if_intervening_tail:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "keywords",
+  "name": "Vexing Devil",
+  "parse_error_count": 0
+}

@@ -1,0 +1,96 @@
+COMMANDER: Cecily, Haunted Mage
+COMMANDER: Elmar, Ulvenwald Informant
+1 Abrade
+1 Aetherize
+1 Agent of the Shadow Thieves
+1 Annoyed Altisaur
+1 Arcane Signet
+1 Armored Scrapgorger
+1 Ash Barrens
+1 Baleful Strix
+1 Baral and Kari Zev
+1 Blight Rot
+1 Bojuka Bog
+1 Candlekeep Sage
+1 Chain Reaction
+1 Choked Estuary
+1 Command Bridge
+1 Command Tower
+1 Commander's Sphere
+1 Counterpoint
+1 Crumbling Necropolis
+1 Cultivate
+1 Darkwater Catacombs
+1 Defend the Rider
+1 Dimir Aqueduct
+1 Divination
+1 Dream Harvest
+1 Electrodominance
+1 Ensnared by the Mara
+1 Esior, Wardwing Familiar
+1 Etali, Primal Storm
+1 Evolving Wilds
+1 Exotic Orchard
+1 Farseek
+1 Feed the Swarm
+1 Fellwar Stone
+1 Flamekin Herald
+1 Flotsam // Jetsam
+2 Forest
+1 Frontier Bivouac
+1 Frostboil Snarl
+1 Golgari Rot Farm
+1 Hex
+1 Hunter's Insight
+1 Hurl into History
+1 Imoti, Celebrant of Bounty
+1 In Garruk's Wake
+2 Island
+1 Izzet Boilerworks
+1 Jungle Hollow
+1 Kardur, Doomscourge
+1 Keep Watch
+1 Kess, Dissident Mage
+1 Kraum, Violent Cacophony
+1 Leadership Vacuum
+1 Maestros Theater
+1 Mizzium Mortars
+2 Mountain
+1 Opal Palace
+1 Opt
+1 Opulent Palace
+1 Path of Ancestry
+1 Preordain
+1 Prismatic Undercurrents
+1 Rampant Growth
+1 Reality Shift
+1 Rugged Highlands
+1 Run Away Together
+1 Sakashima's Protege
+1 Savage Lands
+1 Seething Landscape
+1 Simic Growth Chamber
+1 Skull Storm
+1 Sol Ring
+1 Solemn Simulacrum
+1 Spelunking
+1 Stomping Ground
+1 Subjugate the Hobbits
+1 Sulfur Falls
+1 Suspended Sentence
+2 Swamp
+1 Taigam, Master Opportunist
+1 Talisman of Creativity
+1 Talisman of Dominance
+1 Talisman of Impulse
+1 Talisman of Resilience
+1 Tam, Mindful First-Year
+1 Temple of Deceit
+1 Temple of Epiphany
+1 Terramorphic Expanse
+1 Thornwood Falls
+1 Tome of Legends
+1 Vren, the Relentless
+1 Walk with the Ancestors
+1 Will of the Temur
+1 Wood Elves

@@ -1,0 +1,85 @@
+COMMANDER: Doran, Besieged by Time
+1 Abzan Beastmaster
+1 Access Tunnel
+1 Akroma's Will
+1 Ancient Lumberknot
+1 Anguished Unmaking
+1 Arasta of the Endless Web
+1 Arbor Adherent
+1 Arboreal Grazer
+1 Arcane Signet
+1 Assault Formation
+1 Baldin, Century Herdmaster
+1 Bedrock Tortoise
+1 Betor, Ancestor's Voice
+1 Betor, Kin to All
+1 Bojuka Bog
+1 Brave the Sands
+1 Canopy Gargantuan
+1 Canopy Vista
+1 Catapult Fodder // Catapult Captain
+1 Colfenor, the Last Yew
+1 Command Tower
+1 Deceptive Landscape
+1 Despark
+1 Doran, the Siege Tower
+1 Dragonlord Dromoka
+1 Evolving Wilds
+1 Exotic Orchard
+1 Expel the Interlopers
+1 Faeburrow Elder
+1 Fecund Greenshell
+1 Feed the Swarm
+1 Felothar the Steadfast
+7 Forest
+1 Fortified Village
+1 Giant Ox
+1 Gorm the Great
+1 Great Forest Druid
+1 Ikra Shidiqi, the Usurper
+1 Indomitable Ancients
+1 Indulging Patrician
+1 Infernal Grasp
+1 Isolated Chapel
+1 Jaws of Defeat
+1 Nyx-Fleece Ram
+1 Ohran Frostfang
+1 Orzhov Signet
+1 Overgrown Farmland
+1 Path of Ancestry
+6 Plains
+1 Primal Rage
+1 Radiant Grove
+1 Rogue's Passage
+1 Runic Armasaur
+1 Sandsteppe Citadel
+1 Sapling of Colfenor
+1 Seedborn Muse
+1 Selesnya Signet
+1 Shalai, Voice of Plenty
+1 Sinister Gnarlbark
+1 Skinshifter
+1 Slagwurm Armor
+1 Smile at Death
+1 Sol Ring
+1 Stoneskin
+1 Sungrass Prairie
+1 Sunpetal Grove
+5 Swamp
+1 Swiftfoot Boots
+1 Swords to Plowshares
+1 Sylvan Caryatid
+1 Temple of Malady
+1 Temple of Plenty
+1 Temple of Silence
+1 The Walls of Ba Sing Se
+1 Tower Defense
+1 Tree of Perdition
+1 Tree of Redemption
+1 Treefolk Harbinger
+1 Twilight Mire
+1 Unnatural Growth
+1 Welcoming Vampire
+1 Will of the Abzan
+1 Woodland Cemetery
+1 Zetalpa, Primal Dawn

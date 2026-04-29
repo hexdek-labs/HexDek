@@ -1,0 +1,100 @@
+COMMANDER: Ulalek, Fused Atrocity
+1 Adarkar Wastes
+1 All Is Dust
+1 Ancient Stirrings
+1 Ancient Tomb
+1 Anticausal Vestige
+1 Arcane Signet
+1 Artisan of Kozilek
+1 Awakening Zone
+1 Basalt Monolith
+1 Battlefield Forge
+1 Benthic Anomaly
+1 Brushland
+1 Cascading Cataracts
+1 Cavern of Souls
+1 Chimil, the Inner Sun
+1 Chittering Dispatcher
+1 Chromatic Lantern
+1 Chromatic Orrery
+1 Command Tower
+1 Commander's Sphere
+1 Darksteel Monolith
+1 Echoes of Eternity
+1 Eldrazi Temple
+1 Everflowing Chalice
+1 Eye of Ugin
+1 Forsaken Monument
+1 Glaring Fleshraker
+1 Guildless Commons
+1 Hedron Archive
+1 Herald's Horn
+1 Hideous Taskmaster
+1 It That Betrays
+1 It That Heralds the End
+1 Karplusan Forest
+1 Kozilek's Command
+1 Kozilek's Return
+1 Kozilek's Unsealing
+1 Liberator, Urza's Battlethopter
+1 Lightning Greaves
+1 Llanowar Wastes
+1 Mana Drain
+1 Morophon, the Boundless
+1 Muraganda Raceway
+1 Mystic Forge
+1 Null Elemental Blast
+1 Nulldrifter
+1 Oblivion Sower
+1 Path of Ancestry
+1 Path to Exile
+1 Planar Nexus
+1 Reliquary Tower
+1 Rhystic Study
+1 Roaming Throne
+1 Secluded Courtyard
+1 Sensei's Divining Top
+1 Shivan Reef
+1 Shrine of the Forsaken Gods
+1 Sire of Seven Deaths
+1 Sire of Stagnation
+1 Skittering Cicada
+1 Smothering Tithe
+1 Snapping Voidcraw
+1 Snow-Covered Wastes
+1 Sol Ring
+1 Sowing Mycospawn
+1 Spawnbed Protector
+1 Talisman of Conviction
+1 Talisman of Curiosity
+1 Talisman of Dominance
+1 Talisman of Impulse
+1 Talisman of Progress
+1 Talisman of Resilience
+1 Talisman of Unity
+1 Temple of the False God
+1 Tempt with Discovery
+1 The Eternity Elevator
+1 The World Tree
+1 Thought Vessel
+1 Thran Dynamo
+1 Ugin's Binding
+1 Ugin's Labyrinth
+1 Ugin, Eye of the Storms
+1 Ugin, the Ineffable
+1 Ulamog, the Infinite Gyre
+1 Ultima, Origin of Oblivion
+1 Unclaimed Territory
+1 Underground River
+1 Urza's Cave
+1 Urza's Incubator
+1 Urza's Mine
+1 Urza's Power Plant
+1 Urza's Saga
+1 Urza's Tower
+1 Vedalken Orrery
+1 Warping Wail
+1 Wastes
+1 World Breaker
+1 Yavimaya Coast
+1 Zhulodok, Void Gorger

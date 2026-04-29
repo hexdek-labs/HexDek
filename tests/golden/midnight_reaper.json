@@ -1,0 +1,17 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:nontoken_ally_event",
+        "damage_effect"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Midnight Reaper",
+  "parse_error_count": 0
+}

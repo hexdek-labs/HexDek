@@ -1,0 +1,100 @@
+COMMANDER: The Ur-Dragon
+1 Abundant Countryside
+1 All Is Dust
+1 Anticausal Vestige
+1 Arcane Signet
+1 Arena of Glory
+1 Ash Barrens
+1 Atarka, World Render
+1 Bloodstained Mire
+1 Bojuka Bog
+1 Brainstorm
+1 Breaching Dragonstorm
+1 Call the Spirit Dragons
+1 Command Tower
+1 Crib Swap
+1 Crucible of the Spirit Dragon
+1 Dirgur Island Dragon // Skimming Strike
+1 Eldrazi Temple
+1 Emrakul, the Promised End
+1 Exotic Orchard
+1 Feral Deathgorger // Dusk Sight
+1 Firdoch Core
+1 Fist of Suns
+1 Flawless Maneuver
+1 Flooded Strand
+1 Forbidden Orchard
+1 Forest
+1 Gadrak, the Crown-Scourge
+1 Galazeth Prismari
+1 Glasspool Mimic // Glasspool Shore
+1 Guardian Scalelord
+1 Hall of the Bandit Lord
+1 Haven of the Spirit Dragon
+1 Herigast, Erupting Nullkite
+1 Invasion of Tarkir // Defiant Thundermaw
+1 Island
+1 Jeskai Shrinekeeper
+1 Jodah, Archmage Eternal
+1 Jodah, the Unifier
+1 Kozilek, Butcher of Truth
+1 Leyline Axe
+1 Leyline of the Guildpact
+1 Maelstrom of the Spirit Dragon
+1 Magda, Brazen Outlaw
+1 Maskwood Nexus
+1 Mishra, Claimed by Gix
+1 Mistrise Village
+1 Morophon, the Boundless
+1 Mountain
+1 Mox Jasper
+1 Mutable Explorer
+1 Nameless Inversion
+1 Nicol Bolas, the Ravager // Nicol Bolas, the Arisen
+1 Niv-Mizzet, Visionary
+1 Null Elemental Blast
+1 Orvar, the All-Form
+1 Path of Ancestry
+1 Phyrexian Dragon Engine
+1 Plains
+1 Plaza of Heroes
+1 Pyroblast
+1 Quandrix, the Proof
+1 Ramos, Dragon Engine
+1 Realmwalker
+1 Reflecting Pool
+1 Reliquary Tower
+1 Roiling Dragonstorm
+1 Sagu Wildling // Roost Seek
+1 Sanctum of Ugin
+1 Sarkhan's Triumph
+1 Sarkhan, Dragon Ascendant
+1 Sarkhan, Soul Aflame
+1 Scavenger Regent // Exude Toxin
+1 Scion of Draco
+1 Scion of the Ur-Dragon
+1 Scorched Geyser
+1 Shifting Woodland
+1 Silumgar, the Drifting Death
+1 Slayers' Stronghold
+1 Snow-Covered Wastes
+1 Sol Ring
+1 Steam Vents
+1 Steel Hellkite
+1 Stormcarved Coast
+1 Stormshriek Feral // Flush Out
+1 Swamp
+1 The World Tree
+1 Three Tree City
+1 Training Center
+1 Two-Headed Hellkite
+1 Ugin's Binding
+1 Ugin's Labyrinth
+1 Ugin, Eye of the Storms
+1 Ugin, the Ineffable
+1 Ugin, the Spirit Dragon
+1 Ureni of the Unwritten
+1 Valakut Awakening // Valakut Stoneforge
+1 Windbrisk Heights
+1 Wooded Foothills
+1 Zurgo and Ojutai

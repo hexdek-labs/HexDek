@@ -1,0 +1,84 @@
+COMMANDER: Baral and Kari Zev
+1 Arcane Signet
+1 Banishing Betrayal
+1 Big Score
+1 Brainstorm
+1 Brainsurge
+1 Caldera Pyremaw
+1 Cascade Bluffs
+1 Chaos Mutation
+1 Chaos Warp
+1 Chaotic Transformation
+1 Coldsteel Heart
+1 Command Tower
+1 Confounding Riddle
+1 Consult the Star Charts
+1 Counterspell
+1 Deekah, Fractal Theorist
+1 Desolate Lighthouse
+1 Divergent Transformations
+1 Emeritus of Ideation // Ancestral Recall
+1 Eris, Roar of the Storm
+1 Exotic Orchard
+1 Fact or Fiction
+1 Fellwar Stone
+1 Ferrous Lake
+1 Fiery Islet
+1 Fork
+1 Frostboil Snarl
+1 Galvanic Iteration
+1 Hedron Archive
+1 Honor-Worn Shaku
+1 Ice Out
+1 Immolating Gyre
+1 Impulse
+1 Increasing Vengeance
+1 Invert Polarity
+9 Island
+1 Izzet Boilerworks
+1 Izzet Charm
+1 Izzet Signet
+1 Lightning Bolt
+1 Lukka, Coppercoat Outcast
+1 Magmatic Force
+1 Meeting of Minds
+1 Mind Stone
+9 Mountain
+1 Mystic Confluence
+1 Niv-Mizzet, Parun
+1 Opt
+1 Ovika, Enigma Goliath
+1 Polymorph
+1 Pongify
+1 Prismari Charm
+1 Prismari Command
+1 Pull from Tomorrow
+1 Quick Study
+1 Reality Scramble
+1 Relic of Legends
+1 Resonating Lute
+1 Reverberate
+1 Reweave
+1 Sapphire Medallion
+1 Sea Gate Restoration // Sea Gate, Reborn
+1 Shivan Reef
+1 Silundi Vision // Silundi Isle
+1 Sink into Stupor // Soporific Springs
+1 Skullclamp
+1 Sol Ring
+1 Steam Vents
+1 Stormcarved Coast
+1 Sulfur Falls
+1 Talisman of Creativity
+1 Temple of Epiphany
+1 The Locust God
+1 Thought Vessel
+1 Thran Dynamo
+1 Thundering Falls
+1 Transmogrify
+1 Traumatic Critique
+1 Twincast
+1 Unexpected Assistance
+1 Valakut Awakening // Valakut Stoneforge
+1 Volcanic Vision
+1 Wayfarer's Bauble

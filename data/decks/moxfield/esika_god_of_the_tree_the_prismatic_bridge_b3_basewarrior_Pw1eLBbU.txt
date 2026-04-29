@@ -1,0 +1,99 @@
+COMMANDER: Esika, God of the Tree // The Prismatic Bridge
+1 All Will Be One
+1 Aminatou, the Fateshifter
+1 Arcane Denial
+1 Arcane Signet
+1 Arena Rector
+1 Atraxa, Grand Unifier
+1 Atraxa, Praetors' Voice
+1 Aurora Awakener
+1 Avacyn, Angel of Hope
+1 Blasphemous Act
+1 Bloodstained Mire
+1 Bloom Tender
+1 Breeding Pool
+1 Brokers Ascendancy
+1 Carth the Lion
+1 Chromatic Lantern
+1 Command Tower
+1 Commodore Guff
+1 Cruel Tutor
+1 Deflecting Swat
+1 Doubling Season
+1 Dreamtide Whale
+1 Eerie Ultimatum
+1 Exotic Orchard
+1 Farewell
+1 Farseek
+1 Fierce Guardianship
+1 Final Showdown
+1 Flooded Strand
+2 Forest
+1 Godless Shrine
+1 Hallowed Fountain
+1 Ichormoon Gauntlet
+1 Innkeeper's Talent
+1 Island
+1 Jace, the Mind Sculptor
+1 Jetmir's Garden
+1 Ketria Triome
+1 Lae'zel, Vlaakith's Champion
+1 Liliana, Dreadhorde General
+1 Lush Portico
+1 Mana Confluence
+1 Marsh Flats
+1 Mila, Crafty Companion // Lukka, Wayward Bonder
+1 Morphic Pool
+1 Mountain
+1 Multiversal Passage
+1 Narset, Enlightened Master
+1 Narset, Parter of Veils
+1 Nicol Bolas, Dragon-God
+1 Nicol Bolas, God-Pharaoh
+1 Nicol Bolas, Planeswalker
+1 Nissa, Ascended Animist
+1 Oath of Nissa
+1 Oath of Teferi
+1 Oko, Thief of Crowns
+1 Onakke Oathkeeper
+1 Pact of Negation
+1 Path to Exile
+1 Plains
+1 Plaza of Heroes
+1 Polluted Delta
+1 Prismatic Vista
+1 Rampant Growth
+1 Reflecting Pool
+1 Rejuvenating Springs
+1 Rings of Brighthearth
+1 Sacred Foundry
+1 Savai Triome
+1 Scroll Rack
+1 Silent Arbiter
+1 Sol Ring
+1 Spark Double
+1 Spectator Seating
+1 Sphinx of the Second Sun
+1 Steam Vents
+1 Stomping Ground
+1 Swamp
+1 Swords to Plowshares
+1 Tamiyo, Field Researcher
+1 Teferi, Master of Time
+1 Teferi, Time Raveler
+1 Teyo, Geometric Tactician
+1 The Eternal Wanderer
+1 The World Tree
+1 Three Visits
+1 Training Center
+1 Ugin, the Spirit Dragon
+1 Urza Assembles the Titans
+1 Vault of Champions
+1 Vorinclex, Monstrous Raider
+1 Vraska, Betrayal's Sting
+1 Watery Grave
+1 Windswept Heath
+1 Wooded Foothills
+1 Wrath of God
+1 Zagoth Triome
+1 Ziatora's Proving Ground

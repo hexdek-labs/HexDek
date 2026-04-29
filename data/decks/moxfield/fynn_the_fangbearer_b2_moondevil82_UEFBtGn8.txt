@@ -1,0 +1,74 @@
+COMMANDER: Fynn, the Fangbearer
+1 Access Tunnel
+1 Acidic Slime
+1 Ambush Viper
+1 Ankle Biter
+1 Axebane Ferox
+1 Beast Within
+1 Bellowing Tanglewurm
+1 Bloated Contaminator
+1 Blooming Stinger
+1 Cankerbloom
+1 Castle Garenbrig
+1 Champion of Lambholt
+1 Collective Resistance
+1 Contagion Engine
+1 Deadly Recluse
+1 Dragon Sniper
+1 Erinis, Gloom Stalker
+1 Evolution Sage
+1 Expand the Sphere
+1 Fang of Shigeki
+1 Flesh Burrower
+27 Forest
+1 Frog Butler
+1 Glistener Elf
+1 Gnarlwood Dryad
+1 Gran Pulse Ochu
+1 Guardian Project
+1 Harmonize
+1 Heir of the Wilds
+1 Hornet Queen
+1 Ichorspit Basilisk
+1 Infectious Bite
+1 Kappa Tech-Wrecker
+1 Karn's Bastion
+1 Khalni Ambush // Khalni Territory
+1 Lifecrafter's Bestiary
+1 Mirkwood Spider
+1 Moss Viper
+1 Narnam Renegade
+1 Nature's Claim
+1 Nightshade Dryad
+1 Noxious Assault
+1 Noxious Newt
+1 Oakhame Adversary
+1 Ohran Frostfang
+1 Overprotect
+1 Overrun
+1 Phyrexian Swarmlord
+1 Planewide Celebration
+1 Predatory Focus
+1 Questing Beast
+1 Rhonas's Monument
+1 Rogue's Passage
+1 Saryth, the Viper's Fang
+1 Sedge Scorpion
+1 Shapers' Sanctuary
+1 Smell Fear
+1 Sol Ring
+1 Swiftfoot Boots
+1 Tajuru Blightblade
+1 Tamiyo's Safekeeping
+1 Thirsting Roots
+1 Thornweald Archer
+1 Trailblazer's Boots
+1 Tyrranax Rex
+1 Tyvar's Stand
+1 Underdark Basilisk
+1 Unnatural Restoration
+1 Vastwood Fortification // Vastwood Thicket
+1 Venerated Rotpriest
+1 Viridian Corrupter
+1 Virulent Emissary
+1 Wasteland Viper

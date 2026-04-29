@@ -1,0 +1,90 @@
+COMMANDER: Saruman, the White Hand
+1 Alania, Divergent Storm
+1 Angrath, Captain of Chaos
+1 Arcane Signet
+1 Archaeomancer
+1 Archmage Emeritus
+1 Archmage of Runes
+1 Ash Barrens
+1 Barad-dûr
+1 Bitter Triumph
+1 Black Market Connections
+1 Blade of Selves
+1 Blasphemous Edict
+1 Bojuka Bog
+1 Bolas's Citadel
+1 Brainstorm
+1 Cabal Ritual
+1 Chaos Warp
+1 Chromatic Lantern
+1 Command Tower
+1 Compulsive Research
+1 Counterspell
+1 Culling the Weak
+1 Damnation
+1 Dark Deal
+1 Dark Ritual
+1 Demonic Tutor
+1 Diabolic Intent
+1 Dualcaster Mage
+1 Electroduplicate
+1 Emeritus of Woe // Demonic Tutor
+1 Exotic Orchard
+1 Expressive Iteration
+1 Faithless Looting
+1 Fellwar Stone
+1 Flow State
+1 Force of Will
+1 Galvanic Iteration
+1 Gloomlake Verge
+1 Gothmog, Morgul Lieutenant
+1 Grab the Prize
+1 Great Hall of the Biblioplex
+1 Gríma, Saruman's Footman
+1 Ill-Gotten Gains
+1 Imp's Mischief
+1 Inspired Skypainter // Maestro's Gift
+5 Island
+1 Kindred Dominance
+1 Lobelia Sackville-Baggins
+1 Mana Sculpt
+1 Mindbreak Trap
+1 Mirrorform
+4 Mountain
+1 Muddle, the Ever-Changing
+1 Night's Whisper
+1 No Mercy
+1 Path of Ancestry
+1 Pongify
+1 Reanimate
+1 Reforge the Soul
+1 Reliquary Tower
+1 Resonating Lute
+1 Return the Favor
+1 Sacrifice
+1 Seething Landscape
+1 Shadowblood Ridge
+1 Sheoldred's Edict
+1 Shizo, Death's Storehouse
+1 Sleight of Hand
+1 Sol Ring
+1 Soul Immolation
+1 Spell Pierce
+1 Stargaze
+1 Stella Lee, Wild Card
+1 Stock Up
+1 Stormcarved Coast
+1 Sunken Hollow
+4 Swamp
+1 Tainted Peak
+1 Temple of Deceit
+1 Temple of Malice
+1 Terramorphic Expanse
+1 Torment of Hailfire
+1 Turbulent Springs
+1 Undercity Sewers
+1 Underworld Breach
+1 Urborg, Tomb of Yawgmoth
+1 Vesuva
+1 Whispersilk Cloak
+1 Wildfire Eternal

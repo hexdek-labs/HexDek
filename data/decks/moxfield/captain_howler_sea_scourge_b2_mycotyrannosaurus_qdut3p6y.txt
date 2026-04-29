@@ -1,0 +1,82 @@
+COMMANDER: Captain Howler, Sea Scourge
+1 Agna Qel'a
+1 Arcane Signet
+1 Ash Barrens
+1 Ashling, Rekindled // Ashling, Rimebound
+1 Boosted Sloop
+1 Broadside Barrage
+1 Buccaneer's Bravado
+1 Cascade Bluffs
+1 Cathartic Pyre
+1 Cathartic Reunion
+1 Cephalid Coliseum
+1 Channeled Force
+1 Charming Scoundrel
+1 Command Tower
+1 Conspiracy Theorist
+1 Desolate Lighthouse
+1 Ecstatic Electromancer
+1 Faithless Looting
+1 Fateful Showdown
+1 Fellwar Stone
+1 Ferrous Lake
+1 Force Away
+1 Forgotten Cave
+1 Frantic Search
+1 Frostboil Snarl
+1 Ghostfire Slice
+1 Goblin Electromancer
+1 Haughty Djinn
+1 Hazoret's Monument
+1 Heightened Reflexes
+1 Hill Gigas
+5 Island
+1 Izzet Charm
+1 Izzet Signet
+1 Khenra Spellspear // Gitaxian Spellstalker
+1 Lightning Axe
+1 Lonely Sandbar
+1 Magmablood Archaic
+1 Magmakin Artillerist
+1 Mischievous Mystic
+15 Mountain
+1 Muse Seeker
+1 Nibelheim Aflame
+1 Obsidian Obelisk
+1 Ojer Pakpatiq, Deepest Epoch // Temple of Cyclical Time
+1 Pinnacle Monk // Mystic Peak
+1 Prismari Command
+1 Pyretic Charge
+1 Rapturous Moment
+1 Refute
+1 Resonating Lute
+1 Rielle, the Everwise
+1 Rocket-Powered Goblin Glider
+1 Ruin Grinder
+1 Sanar, Unfinished Genius // Wild Idea
+1 Scorched Geyser
+1 Seize the Spoils
+1 Shivan Reef
+1 Smoldering Stagecoach
+1 Sol Ring
+1 Spinerock Knoll
+1 Stormcarved Coast
+1 Stormcatch Mentor
+1 Sulfur Falls
+1 Surge to Victory
+1 Talisman of Creativity
+1 The Royal Scions
+1 The Spear of Leonidas
+1 Thirst for Discovery
+1 Thirst for Identity
+1 Thirst for Knowledge
+1 Thrill of Possibility
+1 Traumatic Critique
+1 Umara Wizard // Umara Skyfalls
+1 Veronica, Dissident Scribe
+1 Volcanic Salvo
+1 Wayfarer's Bauble
+1 Weapon Surge
+1 Will of the Jeskai
+1 Winternight Stories
+1 Zephyr Boots

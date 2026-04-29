@@ -1,0 +1,94 @@
+1 Abrade
+1 Academy Manufactor
+1 Adagia, Windswept Bastion
+1 Ancient Den
+1 Arcane Signet
+1 Arcbound Ravager
+1 Austere Command
+1 Basilisk Collar
+1 Battlefield Forge
+1 Battlemage's Bracers
+1 Big Score
+1 Boros Charm
+1 Boros Garrison
+1 Boros Signet
+1 Buried Ruin
+1 Chaos Warp
+1 Circuit Mender
+1 Command Tower
+1 Crime Novelist
+1 Darksteel Citadel
+1 Demand Answers
+1 Determined Iteration
+1 Dispatch
+1 Evolving Wilds
+1 Exalted Sunborn
+1 Field-Tested Frying Pan
+1 Foundry Inspector
+1 Ghired's Belligerence
+1 Goblin Engineer
+1 Goblin Welder
+1 Gold Myr
+1 Great Furnace
+1 Ichor Wellspring
+1 Illusionist's Bracers
+1 Ingenious Artillerist
+1 Inventors' Fair
+1 Iron Myr
+1 Knife
+1 Krark-Clan Ironworks
+1 Leonin Elder
+1 Lightning Greaves
+1 Lightning Helix
+1 Liquimetal Torque
+1 Loyal Apprentice
+1 Makeshift Munitions
+1 Mishra's Self-Replicator
+5 Mountain
+1 Muster the Departed
+1 Mycosynth Wellspring
+1 Myr Retriever
+1 Myriad Landscape
+1 Needleverge Pathway
+1 Nuka-Cola Vending Machine
+1 Nutrient Block
+1 Osgir, the Reconstructor
+1 Penregon Strongbull
+1 Phyrexia's Core
+4 Plains
+1 Pre-War Formalwear
+1 Radiant Summit
+1 Reckless Fireweaver
+1 Rogue's Passage
+1 Rugged Prairie
+1 Rust Monster
+1 Rustvale Bridge
+1 Sacred Foundry
+1 Sami, Wildcat Captain
+1 Scrap Trawler
+1 Secluded Starforge
+1 Smuggler's Share
+1 Solemn Simulacrum
+1 Spectator Seating
+1 Spire of Industry
+1 Stridehangar Automaton
+1 Sundown Pass
+1 Swiftfoot Boots
+1 Swords to Plowshares
+1 Talisman of Conviction
+1 Terramorphic Expanse
+1 The Reaver Cleaver
+1 Toggo, Goblin Weaponsmith
+1 Trash for Treasure
+1 Treasure Vault
+1 Triplicate Titan
+1 Unexpected Windfall
+1 Vandalblast
+1 Voyager Quickwelder
+1 Wake the Past
+1 Weapons Manufacturing
+1 Weftstalker Ardent
+1 Witch's Clinic
+1 Wrench
+
+COMMANDER: Ragost, Deft Gastronaut

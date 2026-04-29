@@ -1,0 +1,91 @@
+COMMANDER: Sefris of the Hidden Ways
+1 Acererak the Archlich
+1 Angel's Grace
+1 Animate Dead
+1 Arcane Sanctum
+1 Arcane Signet
+1 Archfiend of Ifnir
+1 Baleful Strix
+1 Barrowin of Clan Undurr
+1 Bleachbone Verge
+1 Bone Miser
+1 Braids, Arisen Nightmare
+1 Cathar Commando
+1 Command Tower
+1 Cyclonic Rift
+1 Deadly Rollick
+1 Deserted Beach
+1 Disallow
+1 Displacer Beast
+1 Doom Whisperer
+1 Drowned Catacomb
+1 Dungeon Delver
+1 Echocasting Symposium
+1 Eclipsed Steppe
+1 Ephemerate
+1 Exotic Orchard
+1 Faerie Mastermind
+1 Faith of the Devoted
+1 Feed the Swarm
+1 Floodfarm Verge
+1 Force of Will
+1 Frantic Search
+1 Ghostly Flicker
+1 Ghostly Pilferer
+1 Glacial Fortress
+1 Gloomlake Verge
+1 Godless Shrine
+1 Guardian of New Benalia
+1 Hallowed Fountain
+1 Hama Pashar, Ruin Seeker
+1 Imoen, Mystic Trickster
+4 Island
+1 Isolated Chapel
+1 Karmic Guide
+1 Keen-Eared Sentry
+1 Ledger Shredder
+1 Mana Sculpt
+1 Midnight Pathlighter
+1 Morphic Pool
+1 Mutavault
+1 Nadaar, Selfless Paladin
+4 Plains
+1 Prairie Stream
+1 Propaganda
+1 Psychic Frog
+1 Radiant Solar
+1 Rilsa Rael, Kingpin
+1 Safana, Calimport Cutthroat
+1 Sakashima of a Thousand Faces
+1 Sarevok's Tome
+1 Sea of Clouds
+1 Sevinne's Reclamation
+1 Shipwreck Marsh
+1 Skullclamp
+1 Sol Ring
+1 Solemn Simulacrum
+1 Spark Double
+1 Spymaster's Vault
+1 Starfield Vocalist
+1 Sun Titan
+1 Sunken Hollow
+4 Swamp
+1 Swan Song
+1 Swiftfoot Boots
+1 Sword of Hearth and Home
+1 Takenuma, Abandoned Mire
+1 Teferi, Master of Time
+1 The Book of Exalted Deeds
+1 Tireless Tribe
+1 Tomb of Horrors Adventurer
+1 Tortured Existence
+1 Triumphant Adventurer
+1 Trouble in Pairs
+1 Vault of Champions
+1 Victimize
+1 Viscera Seer
+1 Void Rend
+1 Warren Soultrader
+1 Watery Grave
+1 White Plume Adventurer
+1 Yuan-Ti Malison

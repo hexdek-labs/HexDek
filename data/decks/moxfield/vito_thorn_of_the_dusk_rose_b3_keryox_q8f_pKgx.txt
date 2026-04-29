@@ -1,0 +1,74 @@
+COMMANDER: Vito, Thorn of the Dusk Rose
+1 Agadeem's Awakening // Agadeem, the Undercrypt
+1 Alhammarret's Archive
+1 Black Market
+1 Black Market Connections
+1 Blood Artist
+1 Blood Tribute
+1 Bloodletter of Aclazotz
+1 Bolas's Citadel
+1 Bontu's Monument
+1 Cabal Coffers
+1 Cabal Stronghold
+1 Cling to Dust
+1 Cosmos Elixir
+1 Creeping Bloodsucker
+1 Crypt Ghast
+1 Damnation
+1 Dark Confidant
+1 Dark Ritual
+1 Deadly Rollick
+1 Decode Transmissions
+1 Demonic Tutor
+1 Diabolic Intent
+1 Enduring Tenacity
+1 Exsanguinate
+1 Gilded Lotus
+1 Gray Merchant of Asphodel
+1 Hoarding Broodlord
+1 Imp's Mischief
+1 Jet Medallion
+1 K'rrik, Son of Yawgmoth
+1 Killing Wave
+1 Knight of Dusk's Shadow
+1 Kokusho, the Evening Star
+1 Magus of the Coffers
+1 Maha, Its Feathers Night
+1 Massacre Wurm
+1 Morbid Opportunist
+1 Night's Whisper
+1 Nowhere to Run
+1 Nullpriest of Oblivion
+1 Nykthos, Shrine to Nyx
+1 Phyrexian Arena
+1 Polluted Bonds
+1 Pox Plague
+1 Preacher of the Schism
+1 Professor Onyx
+1 Pull from the Grave
+1 Qarsi Revenant
+1 Read the Bones
+1 Reanimate
+1 Risky Shortcut
+1 Sangromancer
+1 Sanguine Bond
+1 Saw in Half
+1 Sheoldred's Edict
+1 Sheoldred, the Apocalypse
+1 Sol Ring
+1 Sorin Markov
+27 Swamp
+1 Tainted Remedy
+1 The Meathook Massacre
+1 The One Ring
+1 Torment of Hailfire
+1 Toxic Deluge
+1 Twilight Prophet
+1 Unearth
+1 Urborg, Tomb of Yawgmoth
+1 Vampire Nighthawk
+1 Vein Ripper
+1 Whip of Erebos
+1 Witch of the Moors
+1 Withering Torment
+1 Wound Reflection

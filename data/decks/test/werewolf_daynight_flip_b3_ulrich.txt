@@ -1,0 +1,95 @@
+1 Anara, Wolvid Familiar
+1 Arcane Signet
+1 Arid Mesa
+1 Arlinn Kord
+1 Ascendant Packleader
+1 Bala Ged Recovery
+1 Beast Whisperer
+1 Beast Within
+1 Blasphemous Act
+1 Blighted Woodland
+1 Cemetery Prowler
+1 Chaos Warp
+1 Cinder Glade
+1 Command Tower
+1 Copperline Gorge
+1 Cragcrown Pathway
+1 Craterhoof Behemoth
+1 Deflecting Swat
+1 Eldrazi Conscription
+1 Exotic Orchard
+1 Farseek
+1 Fearless Pup
+1 Finale of Devastation
+4 Forest
+1 Forgotten Cave
+1 Gamble
+1 Game Trail
+1 Geier Reach Bandit
+1 Ghost Quarter
+1 Giant Inheritance
+1 Growing Rites of Itlimoc
+1 Guardian Project
+1 Hanweir Battlements
+1 Hermit of the Natterknolls
+1 Heroic Intervention
+1 Highland Forest
+1 Hinterland Logger
+1 Hollowhenge Overlord
+1 Karplusan Forest
+1 Kessig Naturalist
+1 Kessig Wolf Run
+1 Masked Vandal
+1 Mayor of Avabruck
+1 Misty Rainforest
+1 Moonmist
+1 Mossfire Valley
+4 Mountain
+1 Myriad Landscape
+1 Nature's Lore
+1 Oakshade Stalker
+1 Ohran Frostfang
+1 Outland Liberator
+1 Overwhelming Stampede
+1 Packsong Pup
+1 Psychotic Fury
+1 Reckless Stormseeker
+1 Reckless Waif
+1 Regrowth
+1 Rhonas's Monument
+1 Rhythm of the Wild
+1 Rockfall Vale
+1 Rogue's Passage
+1 Rootbound Crag
+1 Sage of Ancient Lore
+1 Scalding Tarn
+1 Scorned Villager
+1 Sheltered Thicket
+1 Skarrg, the Rage Pits
+1 Snarling Wolf
+1 Sol Ring
+1 Stomping Ground
+1 Sylvan Library
+1 The Great Henge
+1 Three Visits
+1 Timber Wolves
+1 Tovolar's Huntmaster
+1 Tovolar, Dire Overlord
+1 Tranquil Thicket
+1 Triumph of the Hordes
+1 Valakut Awakening
+1 Village Messenger
+1 Waxing Moon
+1 Weaver of Blossoms
+1 Werewolf Pack Leader
+1 Wildsize
+1 Wolfbitten Captive
+1 Wolfir Silverheart
+1 Wooded Foothills
+1 Wooded Ridgeline
+1 Worldly Tutor
+1 Xenagos, God of Revels
+1 Xenagos, the Reveler
+1 Young Wolf
+
+COMMANDER: Ulrich of the Krallenhorde

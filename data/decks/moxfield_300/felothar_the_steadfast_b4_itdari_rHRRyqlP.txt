@@ -1,0 +1,96 @@
+COMMANDER: Felothar the Steadfast
+1 Abrupt Decay
+1 Ancient Tomb
+1 Arbor Adherent
+1 Arbor Elf
+1 Arcane Signet
+1 Arid Mesa
+1 Aura Shards
+1 Axebane Guardian
+1 Bayou
+1 Beast Within
+1 Birds of Paradise
+1 Blight Pile
+1 Blind Obedience
+1 Bloodstained Mire
+1 Bloom Tender
+1 Boseiju, Who Endures
+1 Brave the Sands
+1 City of Brass
+1 Command Tower
+1 Crop Rotation
+1 Cultivate
+1 Demonic Tutor
+1 Doran, Besieged by Time
+1 Drannith Magistrate
+1 Exploration
+1 Farseek
+1 Flooded Strand
+2 Forest
+1 Gaea's Cradle
+1 Gatecreeper Vine
+1 Generous Gift
+1 Godless Shrine
+1 Green Sun's Zenith
+1 Hornet Nest
+1 Icetill Explorer
+1 Imperial Seal
+1 Indomitable Ancients
+1 Isolated Chapel
+1 Jaddi Offshoot
+1 Jaws of Defeat
+1 MacCready, Lamplight Mayor
+1 Mana Confluence
+1 Marsh Flats
+1 Misty Rainforest
+1 Mox Diamond
+1 Natural Order
+1 Nature's Claim
+1 Nature's Lore
+1 Nature's Rhythm
+1 Overgrown Battlement
+1 Overgrown Tomb
+1 Path to Exile
+2 Plains
+1 Polluted Delta
+1 Prismatic Vista
+1 Rammas Echor, Ancient Shield
+1 Regrowth
+1 Rolling Stones
+1 Sandsteppe Citadel
+1 Sapling of Colfenor
+1 Savannah
+1 Scrubland
+1 Seedborn Muse
+1 Smothering Tithe
+1 Sol Ring
+3 Swamp
+1 Swords to Plowshares
+1 Sylvan Caryatid
+1 Teferi's Protection
+1 Temple Garden
+1 Thallid Shell-Dweller
+1 The One Ring
+1 The Walls of Ba Sing Se
+1 Tree of Perdition
+1 Tree of Redemption
+1 Tundra Wall
+1 Tyvar, Jubilant Brawler
+1 Urborg, Tomb of Yawgmoth
+1 Urza's Saga
+1 Utopia Sprawl
+1 Veil of Summer
+1 Verdant Catacombs
+1 Vine Trellis
+1 Wall of Blossoms
+1 Wall of Bone
+1 Wall of Glare
+1 Wall of Hope
+1 Wall of Ice
+1 Wall of Light
+1 Wall of Limbs
+1 Wall of Reverence
+1 Weathered Sentinels
+1 Windswept Heath
+1 Worldly Tutor
+1 Yavimaya, Cradle of Growth

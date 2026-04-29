@@ -1,0 +1,78 @@
+COMMANDER: Shorikai, Genesis Engine
+1 Academy Ruins
+1 Adarkar Wastes
+1 Aetherflux Reservoir
+1 An Offer You Can't Refuse
+1 Ancient Den
+1 Arcane Signet
+1 Ashnod's Altar
+1 Authority of the Consuls
+1 Azorius Signet
+1 Blind Obedience
+1 Codex Shredder
+1 Command Tower
+1 Counterspell
+1 Cursed Totem
+1 Dance of the Manse
+1 Darksteel Citadel
+1 Dispatch
+1 Dispel
+1 Disruption Protocol
+1 Dovin's Veto
+1 Dramatic Reversal
+1 Dress Down
+1 Everflowing Chalice
+1 Fabricate
+1 Fellwar Stone
+1 Generous Gift
+1 Hullbreaker Horror
+1 Imposter Mech
+1 Intruder Alarm
+1 Irrigated Farmland
+14 Island
+1 Isochron Scepter
+1 Jin-Gitaxias, Core Augur
+1 Long-Term Plans
+1 Manifold Key
+1 Marble Diamond
+1 Mishra's Bauble
+1 Moonsnare Prototype
+1 Muddle the Mixture
+1 Narset's Reversal
+1 Negate
+1 Out of Time
+1 Path to Exile
+1 Pithing Needle
+10 Plains
+1 Polymorph
+1 Proteus Staff
+1 Razortide Bridge
+1 Rebuff the Wicked
+1 Reshape
+1 Rest in Peace
+1 Scour for Scrap
+1 Seat of the Synod
+1 Sevinne's Reclamation
+1 Silence
+1 Skullclamp
+1 Sky Diamond
+1 Sol Ring
+1 Solve the Equation
+1 Spell Pierce
+1 Spire of Industry
+1 Supreme Verdict
+1 Surge of Salvation
+1 Swords to Plowshares
+1 Teferi's Ageless Insight
+1 Thought Vessel
+1 Tidespout Tyrant
+1 Tormod's Crypt
+1 Torpor Orb
+1 Turn Aside
+1 Unstoppable Plan
+1 Unwinding Clock
+1 Vanquish the Horde
+1 Voltaic Key
+1 Wash Away
+1 Welding Jar
+1 Worn Powerstone

@@ -1,0 +1,76 @@
+COMMANDER: Lonis, Cryptozoologist
+1 Amphin Mutineer
+1 Beast Within
+1 Birthing Pod
+1 Blur
+1 Cathartic Adept
+1 Codex Shredder
+1 Coiling Oracle
+1 Command Tower
+1 Counterspell
+1 Displace
+1 Displacer Kitten
+1 Disruption Protocol
+1 Dream Stalker
+1 Dryad Arbor
+1 Elfhame Sanctuary
+1 Elvish Harbinger
+1 Elvish Visionary
+1 Essence Flux
+1 Eternal Witness
+1 Expedition Map
+1 Fabricate
+1 Familiar's Ruse
+11 Forest
+1 Ghostly Flicker
+1 Ghoulcaller's Bell
+15 Island
+1 Kiora's Follower
+1 Labyrinth of Skophos
+1 Lantern of Insight
+1 Loyal Inventor
+1 Maze of Ith
+1 Memnite
+1 Memory Lapse
+1 Mistbreath Elder
+1 Negate
+1 Neoform
+1 Ornithopter
+1 Phyrexian Revoker
+1 Phyrexian Walker
+1 Planar Incision
+1 Prime Speaker Vannifar
+1 Pyxis of Pandemonium
+1 Quandrix Campus
+1 Quickling
+1 Reality Shift
+1 Reclamation Sage
+1 Resculpt
+1 Reshape
+1 Risen Reef
+1 Sarinth Steelseeker
+1 Screeching Sliver
+1 Seedborn Muse
+1 Shrieking Drake
+1 Silent Arbiter
+1 Simic Guildgate
+1 Siren's Ruse
+1 Skullwinder
+1 Soulless Jailer
+1 Springbloom Druid
+1 Stoic Rebuttal
+1 Tangled Islet
+1 Tanglepool Bridge
+1 Teferi's Time Twist
+1 Temple of Mystery
+1 Temur Sabertooth
+1 Thornwood Falls
+1 Timeless Witness
+1 Trinket Mage
+1 Uro, Titan of Nature's Wrath
+1 Urza's Saga
+1 Vendilion Clique
+1 Venser, Shaper Savant
+1 Wall of Blossoms
+1 Wizened Snitches
+1 Woodland Stream

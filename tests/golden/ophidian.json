@@ -1,0 +1,19 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:attack_unblocked",
+        "optional",
+        "conditional",
+        "no_combat_damage_this_turn"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Ophidian",
+  "parse_error_count": 0
+}

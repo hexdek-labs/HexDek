@@ -1,0 +1,24 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:flying"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "act:T",
+        "add_mana"
+      ],
+      "index": 1,
+      "kind": "activated"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "cedh",
+  "name": "Birds of Paradise",
+  "parse_error_count": 0
+}

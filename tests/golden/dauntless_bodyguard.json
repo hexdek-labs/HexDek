@@ -1,0 +1,25 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:etb_as",
+        "choose_effect"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "act:sac",
+        "untyped_effect"
+      ],
+      "index": 1,
+      "kind": "activated"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "keywords",
+  "name": "Dauntless Bodyguard",
+  "parse_error_count": 0
+}

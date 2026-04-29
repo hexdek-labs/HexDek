@@ -1,0 +1,89 @@
+COMMANDER: Zur the Enchanter
+1 Academy Rector
+1 All That Glitters
+1 An Offer You Can't Refuse
+1 Arid Mesa
+1 Armageddon
+1 Aura of Silence
+1 Azorius Signet
+1 Blind Obedience
+1 Bloodstained Mire
+1 Chains of Mephistopheles
+1 Command Beacon
+1 Crackdown
+1 Cyclonic Rift
+1 Damping Field
+1 Daybreak Coronet
+1 Demonic Tutor
+1 Dimir Signet
+1 Diplomatic Immunity
+1 Disallow
+1 Drannith Magistrate
+1 Enchanted Evening
+1 Enlightened Tutor
+1 Estrid's Invocation
+1 Ethereal Armor
+1 Flooded Strand
+1 Force of Will
+1 Forsaken Wastes
+1 Godless Shrine
+1 Grand Abolisher
+1 Grasp of Fate
+1 Greater Auramancy
+1 Hallowed Fountain
+1 Hanna, Ship's Navigator
+1 Helm of Obedience
+1 Imprisoned in the Moon
+4 Island
+1 Karmic Justice
+1 Kor Haven
+1 Land Tax
+1 Lightning Greaves
+1 Mana Breach
+1 Marsh Flats
+1 Mirrormade
+1 Misty Rainforest
+1 Mystical Tutor
+1 Necromancy
+1 Necropotence
+1 Orzhov Signet
+1 Oubliette
+1 Phyresis
+5 Plains
+1 Polluted Delta
+1 Propaganda
+1 Raffine's Tower
+1 Reliquary Tower
+1 Replenish
+1 Rest in Peace
+1 Rhystic Study
+1 Scroll Rack
+1 Scrubland
+1 Season of the Burrow
+1 Serra's Sanctum
+1 Shielded by Faith
+1 Silence
+1 Slash the Ranks
+1 Sol Ring
+1 Solemnity
+1 Solitary Confinement
+1 Spirit Mantle
+1 Starfield of Nyx
+1 Strionic Resonator
+1 Strip Mine
+1 Suppression Field
+5 Swamp
+1 Swan Song
+1 Swiftfoot Boots
+1 Talisman of Dominance
+1 Talisman of Hierarchy
+1 Talisman of Progress
+1 Teferi's Protection
+1 Teferi, Time Raveler
+1 Tundra
+1 Underground Sea
+1 Vampiric Tutor
+1 Wasteland
+1 Watery Grave
+1 Winds of Rath
+1 Windswept Heath

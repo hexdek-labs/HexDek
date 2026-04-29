@@ -1,0 +1,98 @@
+COMMANDER: Kilo, Apogee Mind
+1 Adarkar Wastes
+1 Aetherflux Reservoir
+1 Agatha's Soul Cauldron
+1 An Offer You Can't Refuse
+1 Ancient Den
+1 Arcane Signet
+1 Arid Mesa
+1 Astral Cornucopia
+1 Aura of Dominion
+1 Battlefield Forge
+1 Benthic Biomancer
+1 Blasphemous Act
+1 City of Brass
+1 Command Tower
+1 Counterspell
+1 Cyclonic Rift
+1 Dawn's Truce
+1 Dovin's Veto
+1 Dramatic Reversal
+1 Dreamtide Whale
+1 Enthusiastic Mechanaut
+1 Esper Sentinel
+1 Etherium Sculptor
+1 Everflowing Chalice
+1 Exotic Orchard
+1 Fabricate
+1 Flooded Strand
+1 Freed from the Real
+1 Gemstone Mine
+1 Gifts Ungiven
+1 Glacial Fortress
+1 Grand Arbiter Augustin IV
+1 Great Furnace
+1 Hallowed Fountain
+1 Holdout Settlement
+1 Insight Engine
+1 Inspirit, Flagship Vessel
+2 Island
+1 Isochron Scepter
+1 Jhoira, Weatherlight Captain
+1 Ledger Shredder
+1 Leonardo, Cutting Edge
+1 Lotus Petal
+1 Lyla, Holographic Assistant
+1 Magistrate's Scepter
+1 Mana Vault
+1 Manifold Key
+1 Mental Misstep
+1 Meticulous Archive
+1 Mm'menon, the Right Hand
+1 Mountain
+1 Mystic Monastery
+1 Mystic Remora
+1 Mystical Tutor
+1 Narset, Parter of Veils
+1 Negate
+1 Otawara, Soaring City
+1 Paradise Mantle
+1 Path to Exile
+1 Pemmin's Aura
+2 Plains
+1 Prologue to Phyresis
+1 Pyroblast
+1 Ragavan, Nimble Pilferer
+1 Raugrin Triome
+1 Reckless Handling
+1 Redirect Lightning
+1 Relic of Legends
+1 Rhystic Study
+1 Sacred Foundry
+1 Sai, Master Thopterist
+1 Scalding Tarn
+1 Seat of the Synod
+1 Sensei's Divining Top
+1 Sevinne's Reclamation
+1 Shivan Reef
+1 Smothering Tithe
+1 Sol Ring
+1 Staff of Compleation
+1 Steam Vents
+1 Sundown Pass
+1 Swan Song
+1 Swords to Plowshares
+1 Talisman of Conviction
+1 Talisman of Creativity
+1 Talisman of Progress
+1 Tezzeret, Cruel Captain
+1 Thassa's Oracle
+1 Training Center
+1 Unctus, Grand Metatect
+1 Unwinding Clock
+1 Urza, Lord High Artificer
+1 Uthros, Titanic Godcore
+1 Voltaic Key
+1 Walking Ballista
+1 Wash Away
+1 Whir of Invention

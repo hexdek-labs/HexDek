@@ -1,0 +1,402 @@
+{
+  "game_id": "cage-match-game2",
+  "winner": 0,
+  "end_reason": "seat 0 is the last one standing",
+  "total_turns": 18,
+  "total_events": 2099,
+  "commander_format": true,
+  "day_night": "neither",
+  "seats": [
+    {
+      "idx": 0,
+      "life": 39,
+      "lost": false,
+      "loss_reason": "",
+      "library_count": 70,
+      "hand": [],
+      "graveyard": [
+        "Eviscerator's Insight",
+        "Terminate",
+        "Fatal Grudge",
+        "Grapple with the Past",
+        "Grisly Salvage",
+        "Kolaghan's Command",
+        "Flare of Malice",
+        "Reanimate",
+        "Living Death",
+        "Demon's Disciple",
+        "Victimize",
+        "Killing Wave"
+      ],
+      "exile": [
+        "Savage Lands"
+      ],
+      "command_zone": [],
+      "commander_names": [
+        "Coram, the Undertaker"
+      ],
+      "commander_tax": {
+        "Coram, the Undertaker": 2
+      },
+      "commander_damage": {},
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 2,
+      "battlefield": [
+        {
+          "name": "Swamp",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Forest",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Blood Crypt",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Talisman of Impulse",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Treasure Vault",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Sol Ring",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Perpetual Timepiece",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Dakmor Salvage",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Kulrath Zealot",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 6,
+          "toughness": 5,
+          "counters": {},
+          "controller": 0,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mosswort Bridge",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Troll of Khazad-d\u00fbm",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 6,
+          "toughness": 5,
+          "counters": {},
+          "controller": 0,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mountain",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Moldgraf Monstrosity",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 8,
+          "toughness": 8,
+          "counters": {},
+          "controller": 0,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Coram, the Undertaker",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 5,
+          "counters": {},
+          "controller": 0,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Purple Worm",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 8,
+          "toughness": 7,
+          "counters": {},
+          "controller": 0,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Lightning Greaves",
+          "tapped": false,
+          "summoning_sick": true,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 0,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "The Balrog of Moria",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 8,
+          "toughness": 8,
+          "counters": {},
+          "controller": 0,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        }
+      ]
+    },
+    {
+      "idx": 1,
+      "life": -2,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 76,
+      "hand": [
+        "Showstopping Surprise",
+        "Austere Command",
+        "Temur War Shaman"
+      ],
+      "graveyard": [
+        "Nature's Lore",
+        "Return of the Wildspeaker",
+        "Hooded Hydra",
+        "Salt Road Ambushers"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Kaust, Eyes of the Glade"
+      ],
+      "commander_names": [
+        "Kaust, Eyes of the Glade"
+      ],
+      "commander_tax": {
+        "Kaust, Eyes of the Glade": 3
+      },
+      "commander_damage": {},
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 2,
+      "life": 0,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 73,
+      "hand": [
+        "Angelic Chorus",
+        "Approach of the Second Sun",
+        "Skullclamp"
+      ],
+      "graveyard": [
+        "Counterspell",
+        "Kami of False Hope",
+        "Soothing Balm",
+        "Rest for the Weary",
+        "Debt to the Deathless",
+        "Soul Warden",
+        "Mangara, the Diplomat"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Oloro, Ageless Ascetic"
+      ],
+      "commander_tax": {
+        "Oloro, Ageless Ascetic": 1
+      },
+      "commander_damage": {
+        "1": {
+          "Kaust, Eyes of the Glade": 10
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 3,
+      "life": -1,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 72,
+      "hand": [
+        "Lich's Mastery",
+        "Living Death",
+        "Necromancer's Covenant",
+        "Raise the Palisade",
+        "Undead Warchief",
+        "Endless Ranks of the Dead",
+        "Vindictive Lich"
+      ],
+      "graveyard": [
+        "Reanimate",
+        "Corpse Knight",
+        "Lost Monarch of Ifnir",
+        "Noxious Ghoul",
+        "Swamp",
+        "Undead Butler",
+        "Shepherd of Rot",
+        "Rotting Rats",
+        "Diregraf Captain",
+        "Diregraf Colossus",
+        "Fatestitcher"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Varina, Lich Queen"
+      ],
+      "commander_names": [
+        "Varina, Lich Queen"
+      ],
+      "commander_tax": {
+        "Varina, Lich Queen": 0
+      },
+      "commander_damage": {},
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 0,
+      "battlefield": []
+    }
+  ]
+}

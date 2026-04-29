@@ -1,0 +1,24 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:trample"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "trig:deals_damage",
+        "untyped_effect"
+      ],
+      "index": 1,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "layer7",
+  "name": "Phyrexian Obliterator",
+  "parse_error_count": 0
+}

@@ -1,0 +1,23 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "static:equip_buff:_"
+      ],
+      "index": 0,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "keyword:equip"
+      ],
+      "index": 1,
+      "kind": "keyword"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "layer7",
+  "name": "Bonesplitter",
+  "parse_error_count": 0
+}

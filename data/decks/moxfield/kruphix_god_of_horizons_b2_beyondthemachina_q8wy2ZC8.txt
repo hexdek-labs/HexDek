@@ -1,0 +1,80 @@
+COMMANDER: Kruphix, God of Horizons
+1 Alchemist's Refuge
+1 Anticipate
+1 Arcane Denial
+1 Arch of Orazca
+1 Artisan of Kozilek
+1 Awakening
+1 Beast Within
+1 Body of Knowledge
+1 Call to Heel
+1 Cold-Eyed Selkie
+1 Commune with the Gods
+1 Condescend
+1 Courser of Kruphix
+1 Coveted Jewel
+1 Dictate of Kruphix
+1 Dimensional Infiltrator
+1 Doppelgang
+1 Drown in Dreams
+1 Empowered Autogenerator
+1 Endbringer
+1 Evolving Wilds
+1 Fact or Fiction
+1 Fog
+1 Folio of Fancies
+11 Forest
+1 Galvanic Alchemist
+1 Gelatinous Genesis
+1 Growth Spiral
+1 Harmonize
+1 Helix Pinnacle
+1 Horizon Chimera
+1 Hydroid Krasis
+1 Ilysian Caryatid
+1 Imaginary Threats
+11 Island
+1 Joint Exploration
+1 Kiora, Behemoth Beckoner
+1 Kozilek's Command
+1 Krosan Restorer
+1 Kydele, Chosen of Kruphix
+1 Ley Weaver
+1 Lore Weaver
+1 Mage-Ring Network
+1 Magnifying Glass
+1 Meteor Golem
+1 Negate
+1 Nephalia Academy
+1 New Horizons
+1 Orochi Hatchery
+1 Overflowing Basin
+1 Planetarium of Wan Shi Tong
+1 Preordain
+1 Prophet of Distortion
+1 Prosperity
+1 Reason // Believe
+1 Reclamation Sage
+1 Reliquary Tower
+1 Repudiate // Replicate
+1 River Hoopoe
+1 Simic Cluestone
+1 Simic Growth Chamber
+1 Simic Signet
+1 Skyshroud Claim
+1 Snapping Voidcraw
+1 Soothsaying
+1 Spawning Grounds
+1 Sphinx of Foresight
+1 Talisman of Curiosity
+1 Temple of Mystery
+1 Temple of the False God
+1 The Crowd Goes Wild
+1 Thornwood Falls
+1 Thrasios, Triton Hero
+1 Thunderous Snapper
+1 Voyaging Satyr
+1 Wild Growth
+1 World Breaker
+1 Yavimaya Coast
+1 Zendikar Resurgent

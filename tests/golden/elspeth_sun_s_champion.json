@@ -1,0 +1,33 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "act:free",
+        "create_token"
+      ],
+      "index": 0,
+      "kind": "activated"
+    },
+    {
+      "first5": [
+        "act:free",
+        "destroy"
+      ],
+      "index": 1,
+      "kind": "activated"
+    },
+    {
+      "first5": [
+        "act:free",
+        "untyped_effect"
+      ],
+      "index": 2,
+      "kind": "activated"
+    }
+  ],
+  "ability_count": 3,
+  "fully_parsed": true,
+  "group": "layer7",
+  "name": "Elspeth, Sun's Champion",
+  "parse_error_count": 0
+}

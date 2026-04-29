@@ -1,0 +1,75 @@
+COMMANDER: Lier, Disciple of the Drowned
+1 Arcane Melee
+1 Call to Mind
+1 Circular Logic
+1 Consider
+1 Curate
+1 Curious Homunculus // Voracious Reader
+1 Curse of the Swine
+1 Cut Your Losses
+1 Cyclonic Rift
+1 Deekah, Fractal Theorist
+1 Docent of Perfection // Final Iteration
+1 Drown in Dreams
+1 Drowned Secrets
+1 Exhibition Tidecaller
+1 Fortune Teller's Talent
+1 Fractured Sanity
+1 Frantic Search
+1 Gifts Ungiven
+1 Grindstone
+1 Haughty Djinn
+1 Hedron Crab
+1 Hullbreaker Horror
+1 Hunted by The Family
+1 Hydroelectric Specimen // Hydroelectric Laboratory
+1 Imprisoned in the Moon
+1 Intrude on the Mind
+1 Invoke the Winds
+26 Island
+1 Jace's Archivist
+1 Jace's Sanctum
+1 Jace, Wielder of Mysteries
+1 Jace, the Perfected Mind
+1 Jin-Gitaxias, Progress Tyrant
+1 Kitsune's Technique
+1 Laboratory Drudge
+1 Laboratory Maniac
+1 Ledger Shredder
+1 Lock and Load
+1 Maddening Cacophony
+1 Memory Erosion
+1 Metallurgic Summonings
+1 Mnemonic Deluge
+1 Murmuring Mystic
+1 Muse Seeker
+1 Mystic Sanctuary
+1 Mystical Tutor
+1 Narset's Reversal
+1 Neerdiv, Devious Diver
+1 Octavia, Living Thesis
+1 Opt
+1 Personal Tutor
+1 Ponder
+1 Preordain
+1 Psychic Corrosion
+1 Rapid Hybridization
+1 Reliquary Tower
+1 River Kelpie
+1 Ruin Crab
+1 Sapphire Medallion
+1 Sea Gate Restoration // Sea Gate, Reborn
+1 Secrets of the Dead
+1 Serum Visions
+1 Shadow Kin
+1 Shark Typhoon
+1 Sink into Stupor // Soporific Springs
+1 Spellseeker
+1 Talent of the Telepath
+1 Tasha's Hideous Laughter
+1 The Mindskinner
+1 The Water Crystal
+1 Thought Scour
+1 Throne of Eldraine
+1 Triskaidekaphile
+1 Zellix, Sanity Flayer

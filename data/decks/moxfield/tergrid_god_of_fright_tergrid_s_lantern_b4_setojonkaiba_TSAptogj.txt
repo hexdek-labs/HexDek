@@ -1,0 +1,74 @@
+COMMANDER: Tergrid, God of Fright // Tergrid's Lantern
+1 Ancient Tomb
+1 Anvil of Bogardan
+1 Arcane Signet
+1 Archfiend of Depravity
+1 Awaken the Erstwhile
+1 Bitterblossom
+1 Bojuka Bog
+1 Bolas's Citadel
+1 Bottomless Pit
+1 Cabal Coffers
+1 Command Beacon
+1 Contamination
+1 Culling the Weak
+1 Damnation
+1 Dark Deal
+1 Dark Ritual
+1 Dauthi Voidwalker
+1 Deadly Rollick
+1 Death Cloud
+1 Delirium Skeins
+1 Demonic Tutor
+1 Descent into Madness
+1 Dictate of Erebos
+1 Feed the Swarm
+1 Fleshbag Marauder
+1 Geth's Grimoire
+1 Grave Pact
+1 Lake of the Dead
+1 Liliana of the Veil
+1 Liliana, Dreadhorde General
+1 Malakir Rebirth // Malakir Mire
+1 Merciless Executioner
+1 Mind Twist
+1 Mindslicer
+1 Necrogen Mists
+1 Necropotence
+1 No Mercy
+1 Nykthos, Shrine to Nyx
+1 Ophiomancer
+1 Oppression
+1 Painful Quandary
+1 Peer into the Abyss
+1 Phyrexian Arena
+1 Phyrexian Tower
+1 Pitiless Plunderer
+1 Plaguecrafter
+1 Pox
+1 Praetor's Grasp
+1 Rankle, Master of Pranks
+1 Reanimate
+1 Sadistic Hypnotist
+1 Sadistic Sacrament
+1 Sheoldred, Whispering One
+1 Skullclamp
+1 Smallpox
+1 Snuff Out
+1 Sol Ring
+1 Static Orb
+1 Sudden Spoiling
+27 Swamp
+1 Tainted Aether
+1 Takenuma, Abandoned Mire
+1 The One Ring
+1 Torment of Hailfire
+1 Toxic Deluge
+1 Trinisphere
+1 Urborg, Tomb of Yawgmoth
+1 Vampiric Tutor
+1 Waste Not
+1 Winter Orb
+1 Wishclaw Talisman
+1 Words of Waste
+1 Yawgmoth, Thran Physician

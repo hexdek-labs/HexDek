@@ -1,0 +1,100 @@
+COMMANDER: Terra, Magical Adept // Esper Terra
+1 Arcane Signet
+1 Arid Mesa
+1 Assassin's Trophy
+1 Badlands
+1 Bayou
+1 Birds of Paradise
+1 Blasphemous Act
+1 Blood Crypt
+1 Bloodstained Mire
+1 Bloom Tender
+1 Breeding Pool
+1 Calix, Guided by Fate
+1 Chromatic Lantern
+1 City of Brass
+1 Clever Concealment
+1 Command Tower
+1 Court of Vantress
+1 Crystal Fragments // Summon: Alexander
+1 Cyclonic Rift
+1 Delighted Halfling
+1 Eerie Ultimatum
+1 Eidolon of Blossoms
+1 Eiganjo Dynastorian // Replenish
+1 Enchantress's Presence
+1 Esper Origins // Summon: Esper Maduin
+1 Fable of the Mirror-Breaker // Reflection of Kiki-Jiki
+1 Farseek
+1 Flooded Strand
+1 Garnet, Princess of Alexandria
+1 Godless Shrine
+1 Grave Pact
+1 Hallowed Fountain
+1 Heroic Intervention
+1 Hex Parasite
+1 Jill, Shiva's Dominant // Shiva, Warden of Ice
+1 Joshua, Phoenix's Dominant // Phoenix, Warden of Fire
+1 Jukai Naturalist
+1 Mana Confluence
+1 Marsh Flats
+1 Mesa Enchantress
+1 Misty Rainforest
+1 Moonmist
+1 Mystic Remora
+1 Narci, Fable Singer
+1 Nature's Lore
+1 O'aka, Traveling Merchant
+1 Overgrown Tomb
+1 Overlord of the Hauntwoods
+1 Path to Exile
+1 Plateau
+1 Polluted Delta
+1 Ragavan, Nimble Pilferer
+1 Resurgent Belief
+1 Rhystic Study
+1 Rydia, Summoner of Mist
+1 Sacred Foundry
+1 Sanctum Weaver
+1 Satsuki, the Living Lore
+1 Savannah
+1 Scalding Tarn
+1 Scrubland
+1 Shadow in the Warp
+1 Smothering Tithe
+1 Sol Ring
+1 Soulherder
+1 Steam Vents
+1 Stomping Ground
+1 Summon: Bahamut
+1 Summon: Esper Valigarmanda
+1 Summon: Good King Mog XII
+1 Summon: Ixion
+1 Summon: Knights of Round
+1 Summon: Leviathan
+1 Summon: Primal Odin
+1 Summon: Shiva
+1 Summon: Titan
+1 Summon: Yojimbo
+1 Swords to Plowshares
+1 Sylvan Library
+1 Sythis, Harvest's Hand
+1 Taiga
+1 Temple Garden
+1 The Master of Keys
+1 Tropical Island
+1 Tundra
+1 Ultima
+1 Underground Sea
+1 Verdant Catacombs
+1 Verduran Enchantress
+1 Void Rend
+1 Volcanic Island
+1 Watery Grave
+1 Weaver of Harmony
+1 Winds of Abandon
+1 Windswept Heath
+1 Wooded Foothills
+1 Y'shtola Rhul
+1 Yuna, Grand Summoner
+1 Yuna, Hope of Spira

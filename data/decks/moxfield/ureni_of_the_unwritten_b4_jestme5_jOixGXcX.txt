@@ -1,0 +1,96 @@
+COMMANDER: Ureni of the Unwritten
+1 Aggravated Assault
+1 Arcane Denial
+1 Arcane Signet
+1 Arena of Glory
+1 Atarka, World Render
+1 Balefire Dragon
+1 Beast Within
+1 Birds of Paradise
+1 Bloodstained Mire
+1 Bloom Tender
+1 Brainstorm
+1 Breeding Pool
+1 Broodcaller Scourge
+1 Chaos Warp
+1 Chrome Mox
+1 City of Brass
+1 Command Tower
+1 Cursed Mirror
+1 Cyclonic Rift
+1 Deceptive Frostkite
+1 Deflecting Swat
+1 Displacer Kitten
+1 Dragonborn Champion
+1 Dragonhawk, Fate's Tempest
+1 Eldritch Evolution
+1 Evendo, Waking Haven
+1 Fanatic of Rhonas
+1 Fierce Guardianship
+1 Fiery Islet
+1 Food Chain
+1 Forbidden Orchard
+5 Forest
+1 Ganax, Astral Hunter
+1 Goldspan Dragon
+1 Grove of the Burnwillows
+1 Gruul Signet
+1 Hellkite Courser
+1 Herd Heirloom
+1 Island
+1 Izzet Signet
+1 Jeska's Will
+1 Karplusan Forest
+1 Ketria Triome
+1 Klauth, Unrivaled Ancient
+1 Lathliss, Dragon Queen
+1 Lotus Petal
+1 Marang River Regent // Coil and Catch
+1 Miirym, Sentinel Wyrm
+1 Misty Rainforest
+1 Mountain
+1 Mox Opal
+1 Multiversal Passage
+1 Mystic Remora
+1 Nature's Lore
+1 Niv-Mizzet, Parun
+1 Niv-Mizzet, Visionary
+1 Old Gnawbone
+1 Orcish Lumberjack
+1 Pact of Negation
+1 Rejuvenating Springs
+1 Rhythm of the Wild
+1 Roaming Throne
+1 Sarkhan, Soul Aflame
+1 Savage Ventmaw
+1 Scalding Tarn
+1 Scourge of Valkas
+1 Shivan Reef
+1 Simic Signet
+1 Skyshroud Claim
+1 Smuggler's Surprise
+1 Sol Ring
+1 Spire Garden
+1 Squee, the Immortal
+1 Steam Vents
+1 Stomping Ground
+1 Summon: Bahamut
+1 Swan Song
+1 Sylvan Tutor
+1 Talisman of Creativity
+1 Talisman of Curiosity
+1 Talisman of Impulse
+1 Temur Ascendancy
+1 Temur Battlecrier
+1 Terror of the Peaks
+1 Three Visits
+1 Twinflame Tyrant
+1 Ureni, the Song Unending
+1 Urza's Incubator
+1 Waterlogged Grove
+1 Willowrush Verge
+1 Windswept Heath
+1 Wooded Foothills
+1 Worldly Tutor
+1 Yavimaya Coast
+1 Yavimaya, Cradle of Growth

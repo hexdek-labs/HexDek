@@ -1,0 +1,83 @@
+COMMANDER: Breena, the Demagogue
+1 Abigale, Eloquent First-Year
+1 Anguished Unmaking
+1 Archivist of Oghma
+1 Archon of Emeria
+1 Aura of Silence
+1 Austere Command
+1 Authority of the Consuls
+1 Aven Interrupter
+1 Aven Mindcensor
+1 Ayara's Oathsworn
+1 Batwing Brume
+1 Bleachbone Verge
+1 Bojuka Bog
+1 Boromir, Warden of the Tower
+1 Bulwark Ox
+1 Cathar Commando
+1 Caves of Koilos
+1 Command Tower
+1 Containment Priest
+1 Court of Ardenvale
+1 Damn
+1 Dark Confidant
+1 Dauthi Voidwalker
+1 Dawn's Truce
+1 Demolition Field
+1 Desolate Mire
+1 Despark
+1 Dog Umbra
+1 Doorkeeper Thrull
+1 Drana and Linvala
+1 Eirdu, Carrier of Dawn // Isilu, Carrier of Twilight
+1 Emeritus of Truce // Swords to Plowshares
+1 Ethersworn Canonist
+1 Exotic Orchard
+1 Fell the Profane // Fell Mire
+1 Fetid Heath
+1 Flare of Fortitude
+1 Giver of Runes
+1 Guardian of Faith
+1 Hopeful Initiate
+1 Hushwing Gryff
+1 Isolated Chapel
+1 Kambal, Consul of Allocation
+1 Kataki, War's Wage
+1 Keen Duelist
+1 Kinscaer Sentry
+1 Lethal Scheme
+1 Lightning Greaves
+1 Lotho, Corrupt Shirriff
+1 Mai, Scornful Striker
+1 Needle Specter
+1 Oona's Blackguard
+1 Parting Gust
+1 Path to Exile
+1 Pearl Medallion
+12 Plains
+1 Reconnaissance
+1 Redemption Choir
+1 Restless Fortress
+1 Restoration Magic
+1 Rogue's Passage
+1 Scavenger Grounds
+1 Selfless Glyphweaver // Deadly Vanity
+1 Shadrix Silverquill
+1 Shineshadow Snarl
+1 Skrelv, Defector Mite
+1 Soul Warden
+1 Soul's Attendant
+1 Spectacular Spider-Man
+1 Split Up
+1 Starfield Shepherd
+1 Stroke of Midnight
+1 Sun Titan
+7 Swamp
+1 Swords to Plowshares
+1 Temple of Silence
+1 Thalia, Guardian of Thraben
+1 The Wandering Rescuer
+1 Thraben Charm
+1 Unbreakable Formation
+1 Vault of the Archangel
+1 Witch Enchanter // Witch-Blessed Meadow

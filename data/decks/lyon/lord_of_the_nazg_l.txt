@@ -1,0 +1,79 @@
+# Lord of the Nazgûl
+# Source: https://archidekt.com/decks/20789179/nazgul
+COMMANDER: Lord of the Nazgûl
+1 Accursed Duneyard
+1 An Offer You Can't Refuse
+1 Arcane Heist
+1 Arcane Lighthouse
+1 Arcane Signet
+1 Archmage Emeritus
+1 Barad-dûr
+1 Blitzball Stadium
+1 Borne Upon a Wind
+1 Call of the Ring
+1 Canoptek Wraith
+1 Changeling Wayfinder
+1 Charcoal Diamond
+1 Choked Estuary
+1 Chromatic Lantern
+1 Command Tower
+1 Commander's Sphere
+1 Consider
+1 Consult the Star Charts
+1 Counterspell
+1 Cyclonic Rift
+1 Deadly Rollick
+1 Detection Tower
+1 Dimir Cluestone
+1 Dimir Locket
+1 Displacer Kitten
+1 Drowned Catacomb
+1 Everglades
+1 Extract from Darkness
+1 Fierce Guardianship
+1 Gandalf, Friend of the Shire
+1 Ghostly Flicker
+1 Glamdring
+1 Gloomlake Verge
+1 Graveshifter
+1 Insatiable Avarice
+9 Island
+1 Jet Medallion
+1 Leyline of Transformation
+1 Lively Dirge
+1 Minas Morgul, Dark Fortress
+1 Mithril Coat
+1 Mystical Tutor
+9 Nazgûl
+1 Notion Thief
+1 Ponder
+1 Preordain
+1 Press the Enemy
+1 Reanimate
+1 Refute
+1 Reliquary Tower
+1 Repulse
+1 Rhystic Study
+1 Rivendell
+1 Sapphire Charm
+1 Sapphire Medallion
+1 Shadowspear
+1 Sheoldred's Edict
+1 Siphon Insight
+1 Sky Diamond
+1 Sol Ring
+1 Sunken Hollow
+8 Swamp
+1 Sword of Fire and Ice
+1 Tainted Isle
+1 Talisman of Dominance
+1 Temple of the False God
+1 The Black Gate
+1 Tribute to Hunger
+1 Underground River
+1 Urza's Incubator
+1 Waterbender's Restoration
+1 Watery Grave
+1 Whispersilk Cloak
+1 Witch-king of Angmar
+1 Witch-king, Bringer of Ruin

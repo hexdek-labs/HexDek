@@ -1,0 +1,88 @@
+COMMANDER: Gonti, Canny Acquisitor
+1 Access Tunnel
+1 Alchemist's Refuge
+1 Arcane Heist
+1 Ashiok, Nightmare Muse
+1 Assassin's Trophy
+1 Baleful Strix
+1 Beast Within
+1 Bloodthirsty Blade
+1 Bojuka Bog
+1 Boseiju, Who Endures
+1 Brainstealer Dragon
+1 Brotherhood Regalia
+1 Changeling Outcast
+1 Chaos Wand
+1 Command Tower
+1 Counterspell
+1 Creeping Tar Pit
+1 Cultivate
+1 Cunning Rhetoric
+1 Cyclonic Rift
+1 Decanter of Endless Water
+1 Dimir Aqueduct
+1 Doc Aurlock, Grizzled Genius
+1 Dream Harvest
+1 Dream-Thief's Bandana
+1 Empowered Autogenerator
+1 Extract Brain
+1 Fallen Shinobi
+1 Felix Five-Boots
+1 Fierce Guardianship
+5 Forest
+1 Golgari Rot Farm
+1 Gonti, Lord of Luxury
+1 Gonti, Night Minister
+1 Green Slime
+1 Heartless Conscription
+1 Helm of the Host
+1 Heroic Intervention
+1 Hostage Taker
+5 Island
+1 Kaito, Cunning Infiltrator
+1 Karn's Bastion
+1 Kodama's Reach
+1 Mana Drain
+1 Mind's Dilation
+1 Mistrise Village
+1 Nashi, Moon Sage's Scion
+1 Negate
+1 Ohran Frostfang
+1 Opposition Agent
+1 Opulent Palace
+1 Orochi Soul-Reaver
+1 Otawara, Soaring City
+1 Predators' Hour
+1 Realm of Koh
+1 Reliquary Tower
+1 Reshape the Earth
+1 Rhystic Study
+1 Rise of the Dark Realms
+1 Rogue's Passage
+1 Savvy Trader
+1 Shadowmage Infiltrator
+1 Silent-Blade Oni
+1 Siphon Insight
+1 Slither Blade
+1 Smirking Spelljacker
+1 Sol Ring
+1 Stolen Goods
+1 Strip Mine
+1 Super State
+5 Swamp
+1 Takenuma, Abandoned Mire
+1 Tasha, the Witch Queen
+1 The Darkness Crystal
+1 The Earth Crystal
+1 The Great Henge
+1 The Water Crystal
+1 Thief of Sanity
+1 Thieving Skydiver
+1 Thieving Varmint
+1 Tower Winder
+1 Triton Shorestalker
+1 Trygon Predator
+1 Urborg, Tomb of Yawgmoth
+1 Villainous Wealth
+1 Yavimaya, Cradle of Growth
+1 Zagoth Triome

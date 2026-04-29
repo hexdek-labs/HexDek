@@ -1,0 +1,23 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:delve"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "static:spell_effect:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "removal",
+  "name": "Murderous Cut",
+  "parse_error_count": 0
+}

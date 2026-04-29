@@ -1,0 +1,99 @@
+COMMANDER: Flubs, the Fool
+1 Abandoned Sarcophagus
+1 Alchemist's Refuge
+1 Arcane Signet
+1 Ash Barrens
+1 Beneath the Sands
+1 Blasted Landscape
+1 Blessed Respite
+1 Blighted Woodland
+1 Bountiful Landscape
+1 Breeding Pool
+1 Capital City
+1 Censor
+1 Coastal Peak
+1 Command Tower
+1 Complicate
+1 Conspiracy Theorist
+1 Containment Construct
+1 Counterbalance
+1 Countervailing Winds
+1 Crystalline Resonance
+1 Curator of Mysteries
+1 Dawnstrider
+1 Deem Worthy
+1 Desert of the Fervent
+1 Desert of the Indomitable
+1 Desert of the Mindful
+1 Edge of Autumn
+1 Exotic Orchard
+1 Fiery Fall
+1 Fluctuator
+1 Forbid
+1 Forest
+1 Forgotten Cave
+1 Fractured Sanity
+1 Frontier Bivouac
+1 Fuel the Flames
+1 Haze of Pollen
+1 Hieroglyphic Illumination
+2 Island
+1 Jace, Wielder of Mysteries
+1 Jidoor, Aristocratic Capital // Overture
+1 Karplusan Forest
+1 Ketria Crystal
+1 Ketria Triome
+1 Kianne, Corrupted Memory
+1 Krosan Tusker
+1 Leyline of Anticipation
+1 Lightning Rift
+1 Lonely Sandbar
+1 Lull
+1 Maddening Cacophony
+1 Mage's Guile
+1 Memory Erosion
+1 Mental Journey
+1 Migration Path
+1 Miscalculation
+1 Mountain
+1 Mox Amber
+1 Mystic Redaction
+1 Mystic Sanctuary
+1 Neutralize
+1 New Perspectives
+1 Night Market
+1 Nimble Obstructionist
+1 Psychic Corrosion
+1 Rain-Slicked Copse
+1 Rampaging War Mammoth
+1 Remote Isle
+1 Rescind
+1 Shark Typhoon
+1 Shefet Monitor
+1 Sheltered Thicket
+1 Shivan Reef
+1 Slice and Dice
+1 Slippery Karst
+1 Smoldering Crater
+1 Sol Ring
+1 Song of Creation
+1 Spell Burst
+1 Spell Snip
+1 Starstorm
+1 Steam Vents
+1 Stomping Ground
+1 Sweet Oblivion
+1 Sweltering Suns
+1 Talisman of Creativity
+1 Talisman of Curiosity
+1 Talisman of Impulse
+1 Teferi's Tutelage
+1 The Water Crystal
+1 Tranquil Thicket
+1 Traumatic Visions
+1 Trip Up
+1 Vernal Equinox
+1 Waxen Shapethief
+1 Wilt
+1 Wrenn and Six
+1 Yavimaya Coast

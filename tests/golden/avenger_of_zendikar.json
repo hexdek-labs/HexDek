@@ -1,0 +1,24 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:etb",
+        "untyped_effect"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "static:ability_word:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Avenger of Zendikar",
+  "parse_error_count": 0
+}

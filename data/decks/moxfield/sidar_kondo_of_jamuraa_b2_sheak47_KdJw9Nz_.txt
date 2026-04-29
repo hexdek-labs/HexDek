@@ -1,0 +1,100 @@
+COMMANDER: Sidar Kondo of Jamuraa
+COMMANDER: Vial Smasher the Fierce
+1 Abdel Adrian, Gorion's Ward
+1 Altar of Bone
+1 Anger
+1 Animate Dead
+1 Arcane Signet
+1 Archon of Cruelty
+1 Artisan of Kozilek
+1 Barrowgoyf
+1 Beast Within
+1 Birds of Paradise
+1 Blasphemous Act
+1 Blood Crypt
+1 Bloodstained Mire
+1 Bojuka Bog
+1 Carrion Feeder
+1 Cauldron of Essence
+1 Chainer, Nightmare Adept
+1 Clifftop Retreat
+1 Combustible Gearhulk
+1 Command Tower
+1 Commercial District
+1 Culling the Weak
+1 Dance of the Dead
+1 Day of Judgment
+1 Deathrite Shaman
+1 Delighted Halfling
+1 Disciple of Bolas
+1 Disciple of Freyalise // Garden of Freyalise
+1 Dragonskull Summit
+1 Dread Return
+1 Elegant Parlor
+1 Elves of Deep Shadow
+1 Emperor of Bones
+1 Exotic Orchard
+1 Faithless Looting
+1 Farseek
+1 Fellwar Stone
+1 Forest
+1 Gemstone Caverns
+1 Godless Shrine
+1 Golgari Grave-Troll
+1 Grave Researcher // Reanimate
+1 Greater Good
+1 Grisly Salvage
+1 Grist, the Hunger Tide
+1 Hardened Academic
+1 Ignoble Hierarch
+1 Isolated Chapel
+1 Jetmir's Garden
+1 Kogla, the Titan Ape
+1 Living Death
+1 Lurrus of the Dream-Den
+1 Lush Portico
+1 Marsh Flats
+1 Massacre Wurm
+1 Mountain
+1 Noxious Revival
+1 Oliphaunt
+1 Overgrown Tomb
+1 Path to Exile
+1 Persist
+1 Plains
+1 Protean Hulk
+1 Raph & Mikey, Troublemakers
+1 Raucous Theater
+1 Reanimate
+1 Rockfall Vale
+1 Rootbound Crag
+1 Savai Triome
+1 Sevinne's Reclamation
+1 Shadowy Backstreet
+1 Sol Ring
+1 Starfield Shepherd
+1 Stitch Together
+1 Stitcher's Supplier
+1 Stomping Ground
+1 Sun Titan
+1 Swamp
+1 Swords to Plowshares
+1 Takenuma, Abandoned Mire
+1 Talisman of Indulgence
+1 Talisman of Resilience
+1 Tear Asunder
+1 Temple Garden
+1 Terastodon
+1 Tersa Lightshatter
+1 Troll of Khazad-dûm
+1 Underground Mortuary
+1 Unearth
+1 Unmarked Grave
+1 Vaultborn Tyrant
+1 Verdant Catacombs
+1 Winding Way
+1 Windswept Heath
+1 Wooded Foothills
+1 Woodland Cemetery
+1 Zealous Conscripts
+1 Ziatora's Proving Ground

@@ -1,0 +1,88 @@
+COMMANDER: Nekusar, the Mindrazer
+1 Aether Gale
+1 Arcane Denial
+1 Arcane Signet
+1 Ash Barrens
+1 Bad River
+1 Blasphemous Act
+1 Blood Artist
+1 Cerebral Vortex
+1 Chaos Warp
+1 Command Tower
+1 Contaminated Aquifer
+1 Counterspell
+1 Crumbling Necropolis
+1 Damnable Pact
+1 Darkwater Catacombs
+1 Deadly Tempest
+1 Decanter of Endless Water
+1 Demon's Horn
+1 Dimir Signet
+1 Dispel
+1 Dragon Mage
+1 Dread Return
+1 Eldritch Pact
+1 Evolving Wilds
+1 Exotic Orchard
+1 Faith of the Devoted
+1 Fascination
+1 Feed the Swarm
+1 Fell Specter
+1 Fevered Visions
+1 Firebrand Archer
+1 Geier Reach Sanitarium
+1 Geothermal Bog
+1 Gixian Puppeteer
+1 Gray Merchant of Asphodel
+1 Imposing Grandeur
+5 Island
+1 Jace, Arcane Strategist
+1 Maestros Theater
+1 Magus of the Wheel
+1 Megrim
+1 Molten Tributary
+5 Mountain
+1 Myriad Landscape
+1 Necromantic Selection
+1 Negate
+1 Ob Nixilis, the Hate-Twisted
+1 Ophiomancer
+1 Padeem, Consul of Innovation
+1 Path of Ancestry
+1 Phyresis
+1 Phyrexian Tyranny
+1 Proft's Eidetic Memory
+1 Propaganda
+1 Psychosis Crawler
+1 Raiders' Wake
+1 Rakdos Charm
+1 Reliquary Tower
+1 Rocky Tar Pit
+1 Ruin Grinder
+1 Shadowblood Ridge
+1 Shivan Reef
+1 Sign in Blood
+1 Smoldering Marsh
+1 Sol Ring
+1 Spellbook
+1 Spiteful Visions
+1 Stormfist Crusader
+1 Sulfurous Springs
+1 Sunken Hollow
+5 Swamp
+1 Swiftfoot Boots
+1 Syr Konrad, the Grim
+1 Tainted Strike
+1 Tales of the Ancestors
+1 Talisman of Creativity
+1 Talisman of Dominance
+1 Temple of Deceit
+1 Temple of Epiphany
+1 Temple of Malice
+1 Terramorphic Expanse
+1 The Darkness Crystal
+1 Underworld Dreams
+1 Vision Skeins
+1 Wayfarer's Bauble
+1 Windfall
+1 Words of Wisdom

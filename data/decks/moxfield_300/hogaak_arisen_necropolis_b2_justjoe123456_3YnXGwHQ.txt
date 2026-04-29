@@ -1,0 +1,78 @@
+COMMANDER: Hogaak, Arisen Necropolis
+1 Aftermath Analyst
+1 Ainok Wayfarer
+1 Altar of the Wretched // Wretched Bonemass
+1 Black Sun's Zenith
+1 Blanchwood Prowler
+1 Bridgeworks Battle // Tanglespan Bridgeworks
+1 Carrion
+1 Circle of the Land Druid
+1 Command Tower
+1 Dakmor Salvage
+1 Deathcap Marionette
+1 Desperate Plea
+1 Disciple of Bolas
+1 Disciple of Freyalise // Garden of Freyalise
+1 Dread Return
+1 Eldritch Evolution
+1 Escape Tunnel
+1 Eternal Witness
+1 Evolving Wilds
+1 Fabled Passage
+1 Feed the Pack
+1 Flare of Cultivation
+12 Forest
+1 Formless Genesis
+1 Game Over
+1 Genesis
+1 Ghoulcaller Gisa
+1 Glowspore Shaman
+1 Gnawing Vermin
+1 Golgari Grave-Troll
+1 Golgari Thug
+1 Grist, the Hunger Tide
+1 Harmonize
+1 Harrow
+1 Honest Rutstein
+1 Infested Thrinax
+1 Insidious Fungus
+1 Jarad, Golgari Lich Lord
+1 Korozda Guildmage
+1 Lich-Knights' Conquest
+1 Llanowar Wastes
+1 Lluwen, Imperfect Naturalist
+1 Metamorphosis
+1 Morbid Curiosity
+1 Necroblossom Snarl
+1 Old Rutstein
+1 Paramecia Coloniex
+1 Perennial Behemoth
+1 Revitalizing Repast // Old-Growth Grove
+1 Rubblebelt Maverick
+1 Sakura-Tribe Elder
+1 Satyr Wayfinder
+1 Seedship Broodtender
+1 Shadowheart, Dark Justiciar
+1 Six
+1 Skull Prophet
+1 Springbloom Druid
+1 Stinkweed Imp
+1 Stitcher's Supplier
+12 Swamp
+1 Tainted Wood
+1 Tear Asunder
+1 Tend the Pests
+1 Terramorphic Expanse
+1 Timeless Witness
+1 Town Greeter
+1 Twilight Mire
+1 Umbral Collar Zealot
+1 Undead Butler
+1 Vibrant Cityscape
+1 Victimize
+1 Villainous Wrath
+1 Viridescent Bog
+1 Will of the Sultai
+1 Woodland Cemetery
+1 Worm Harvest
+1 Zero Point Ballad

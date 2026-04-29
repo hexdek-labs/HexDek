@@ -1,0 +1,418 @@
+{
+  "game_id": "cage-v2-game1",
+  "winner": 2,
+  "end_reason": "seat 2 is the last one standing",
+  "total_turns": 19,
+  "total_events": 2221,
+  "commander_format": true,
+  "day_night": "neither",
+  "seats": [
+    {
+      "idx": 0,
+      "life": -2,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 72,
+      "hand": [
+        "The Balrog of Moria",
+        "Too Greedily, Too Deep"
+      ],
+      "graveyard": [
+        "Treasure Vault",
+        "Rampant Growth",
+        "Faithless Looting",
+        "Midnight Tilling",
+        "Eviscerator's Insight",
+        "Ghoulcaller's Bell",
+        "Sakura-Tribe Elder",
+        "Kulrath Zealot",
+        "Cunning Lethemancer",
+        "Chandra's Ignition",
+        "Vile Entomber",
+        "Eternal Witness"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Coram, the Undertaker"
+      ],
+      "commander_names": [
+        "Coram, the Undertaker"
+      ],
+      "commander_tax": {
+        "Coram, the Undertaker": 2
+      },
+      "commander_damage": {
+        "3": {
+          "Varina, Lich Queen": 4
+        },
+        "2": {
+          "Sin, Spira's Punishment": 14
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 1,
+      "life": -2,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 61,
+      "hand": [
+        "Austere Command",
+        "Ohran Frostfang",
+        "Fell the Mighty",
+        "Krosan Colossus",
+        "Neheb, the Eternal"
+      ],
+      "graveyard": [
+        "Kessig Wolf Run",
+        "Scattered Groves",
+        "Exotic Orchard",
+        "Mountain",
+        "Akroma, Angel of Fury",
+        "Lifecrafter's Bestiary",
+        "Shrine of the Forsaken Gods",
+        "Sakura-Tribe Elder",
+        "Tesak, Judith's Hellhound",
+        "Furycalm Snarl",
+        "Hidden Dragonslayer",
+        "Mirror Entity",
+        "Ugin's Mastery",
+        "Salt Road Ambushers",
+        "Jeska's Will",
+        "Master of Pearls",
+        "Ashcloud Phoenix",
+        "Saryth, the Viper's Fang",
+        "Boltbender"
+      ],
+      "exile": [
+        "Path to Exile",
+        "Temur War Shaman",
+        "Temple of Plenty"
+      ],
+      "command_zone": [
+        "Kaust, Eyes of the Glade"
+      ],
+      "commander_names": [
+        "Kaust, Eyes of the Glade"
+      ],
+      "commander_tax": {
+        "Kaust, Eyes of the Glade": 2
+      },
+      "commander_damage": {
+        "2": {
+          "Sin, Spira's Punishment": 14
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 2,
+      "life": 13,
+      "lost": false,
+      "loss_reason": "",
+      "library_count": 70,
+      "hand": [
+        "Summon: Bahamut"
+      ],
+      "graveyard": [
+        "Extract from Darkness",
+        "Forest",
+        "Culling Ritual",
+        "Hedron Crab",
+        "Glimpse the Unthinkable",
+        "Aesi, Tyrant of Gyre Strait",
+        "Grisly Salvage",
+        "Aftermath Analyst",
+        "Yarok, the Desecrated",
+        "Victimize",
+        "Living Death",
+        "Spark Double",
+        "Singularity Rupture"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Sin, Spira's Punishment"
+      ],
+      "commander_tax": {
+        "Sin, Spira's Punishment": 1
+      },
+      "commander_damage": {
+        "1": {
+          "Kaust, Eyes of the Glade": 2
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": [
+        {
+          "name": "Dreamroot Cascade",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Forest",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Alchemist's Refuge",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Sol Ring",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Swamp",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Forest",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Ancient Greenwarden",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 5,
+          "toughness": 7,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "The Ancient One",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 8,
+          "toughness": 8,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Opulent Palace",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Awaken the Honored Dead",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Evolving Wilds",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Yavimaya Coast",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Sin, Spira's Punishment",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 7,
+          "toughness": 7,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Grappling Kraken",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 5,
+          "toughness": 6,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Port of Karfell",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Colossal Grave-Reaver",
+          "tapped": false,
+          "summoning_sick": true,
+          "damage_marked": 0,
+          "power": 7,
+          "toughness": 6,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        }
+      ]
+    },
+    {
+      "idx": 3,
+      "life": -1,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 80,
+      "hand": [
+        "Noxious Ghoul",
+        "Lich's Mastery",
+        "Army of the Damned"
+      ],
+      "graveyard": [
+        "Perplex",
+        "Victimize",
+        "Void Rend",
+        "Rotting Rats",
+        "Wayward Servant",
+        "Anguished Unmaking"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Varina, Lich Queen"
+      ],
+      "commander_names": [
+        "Varina, Lich Queen"
+      ],
+      "commander_tax": {
+        "Varina, Lich Queen": 2
+      },
+      "commander_damage": {},
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    }
+  ]
+}

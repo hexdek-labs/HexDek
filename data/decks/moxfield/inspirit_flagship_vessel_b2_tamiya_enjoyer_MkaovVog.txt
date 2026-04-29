@@ -1,0 +1,98 @@
+COMMANDER: Inspirit, Flagship Vessel
+1 Absorb
+1 Academy Ruins
+1 Aetheric Amplifier
+1 Aetherize
+1 Ancient Den
+1 Arcane Signet
+1 Arcbound Mouser
+1 Bolt Bend
+1 Boros Charm
+1 Bottle Golems
+1 Buried Ruin
+1 Bygone Colossus
+1 Cloud Key
+1 Command Tower
+1 Coretapper
+1 Counterspell
+1 Court Homunculus
+1 Darksteel Reactor
+1 Dawn's Truce
+1 Deepglow Skate
+1 Deliberate
+1 Dimension X
+1 Disallow
+1 Disenchant
+1 Dispatch
+1 Empowered Autogenerator
+1 Enthusiastic Mechanaut
+1 Etherium Sculptor
+1 Exotic Orchard
+1 Flood of Recollection
+1 Gavel of the Righteous
+1 Glacial Fortress
+1 Gods Willing
+1 Great Furnace
+1 Holdout Settlement
+1 Insight Engine
+1 Irrigated Farmland
+1 Ishgard, the Holy See // Faith & Grief
+3 Island
+1 Junk Diver
+1 Kappa Cannoneer
+1 Karn's Bastion
+1 Kilo, Apogee Mind
+1 Long-Range Sensor
+1 Lumen-Class Frigate
+1 Lux Cannon
+1 Mountain
+1 Moxite Refinery
+1 Muraganda Raceway
+1 Nanoform Sentinel
+1 Negate
+1 Ornithopter of Paradise
+1 Passenger Ferry
+1 Phyrexian Metamorph
+1 Pillage
+1 Plains
+1 Razortide Bridge
+1 Reliquary Tower
+1 Resourceful Defense
+1 Ripples of Potential
+1 Rite of Replication
+1 River's Rebuke
+1 Rustvale Bridge
+1 Scour for Scrap
+1 Seat of the Synod
+1 Silverbluff Bridge
+1 Skycloud Expanse
+1 Sol Ring
+1 Solar Array
+1 Soul-Guide Lantern
+1 Split Up
+1 Stasis Snare
+1 Steel Overseer
+1 Stop Cold
+1 Stream of Thought
+1 Surge Conductor
+1 Swiftfoot Boots
+1 Taurean Mauler
+1 Teach by Example
+1 Tekuthal, Inquiry Dominus
+1 Temple of Enlightenment
+1 Temple of Epiphany
+1 Temple of Triumph
+1 Tezzeret's Gambit
+1 The Mycosynth Gardens
+1 Thought Monitor
+1 Thought Vessel
+1 Time Wipe
+1 Trade the Helm
+1 Tranquil Cove
+1 Twinblade Blessing
+1 Unbounded Potential
+1 Uthros Research Craft
+1 Virulent Silencer
+1 Voyager Quickwelder
+1 Wake the Past
+1 Zookeeper Mechan

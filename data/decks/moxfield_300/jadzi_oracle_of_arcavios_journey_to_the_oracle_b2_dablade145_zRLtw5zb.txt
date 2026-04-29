@@ -1,0 +1,69 @@
+COMMANDER: Jadzi, Oracle of Arcavios // Journey to the Oracle
+1 Abundant Harvest
+1 Arcane Signet
+1 Archmage Emeritus
+1 Auroral Procession
+1 Baral, Chief of Compliance
+1 Beast Within
+1 Boundless Realms
+1 Brain Freeze
+1 Brainstorm
+1 Brainsurge
+1 Case of the Ransacked Lab
+1 Command Tower
+1 Consider
+1 Cultivate
+1 Dig Through Time
+1 Early Harvest
+1 Elvish Mystic
+1 Eternal Witness
+1 Eureka Moment
+1 Explore
+1 Farseek
+16 Forest
+1 Frantic Search
+1 Growth Spiral
+1 Halimar Depths
+1 Harrow
+1 Haughty Djinn
+1 Helm of Awakening
+1 High Tide
+1 Hinterland Harbor
+17 Island
+1 Jace's Sanctum
+1 Jace, Wielder of Mysteries
+1 Kodama's Reach
+1 Lier, Disciple of the Drowned
+1 Llanowar Elves
+1 Mind's Desire
+1 Mnemonic Deluge
+1 Mystic Sanctuary
+1 Narset's Reversal
+1 Nature's Lore
+1 Negate
+1 Opt
+1 Planar Genesis
+1 Ponder
+1 Pongify
+1 Preordain
+1 Quandrix Apprentice
+1 Rampant Growth
+1 Reality Shift
+1 Reclaim
+1 Reliquary Tower
+1 Search for Tomorrow
+1 Serum Visions
+1 Silundi Vision // Silundi Isle
+1 Skyshroud Claim
+1 Sol Ring
+1 Sprouting Vines
+1 Swarm Intelligence
+1 Tatyova, Benthic Druid
+1 Temporal Fissure
+1 Treasure Cruise
+1 Turnabout
+1 Urban Evolution
+1 Weather the Storm
+1 Wilderness Reclamation
+1 Wisdom of Ages
+1 Yavimaya Coast

@@ -1,0 +1,95 @@
+COMMANDER: Azlask, the Swelling Scourge
+1 Abundant Growth
+1 Abundant Maw
+1 All-Fates Scroll
+1 Arcane Signet
+1 Arid Archway
+1 Ash Barrens
+1 Basking Broodscale
+1 Bearer of Silence
+1 Blight Herder
+1 Bountiful Landscape
+1 Breaker of Creation
+1 Cascade Bluffs
+1 Choked Estuary
+1 Clifftop Retreat
+1 Copperline Gorge
+1 Corrupted Shapeshifter
+1 Cryptolith Rite
+1 Deserted Beach
+1 Distended Mindbender
+1 Drowner of Truth // Drowned Jungle
+1 Drownyard Temple
+1 Druid Class
+1 Eldrazi Linebreaker
+1 Eldrazi Monument
+1 Eldrazi Ravager
+1 Eldrazi Repurposer
+1 Emerge from the Cocoon
+1 Emrakul's Messenger
+1 Emrakul, the World Anew
+1 Enter the Enigma
+1 Escape Tunnel
+1 Exotic Orchard
+1 Fanged Flames
+1 Field of Ruin
+2 Forest
+1 Fortified Village
+1 Ghostfire Slice
+1 Glacial Fortress
+1 Glaring Fleshraker
+1 Glimpse the Impossible
+1 Grow from the Ashes
+1 Haunted Ridge
+1 Hedron Archive
+1 Hidden Grotto
+1 Holdout Settlement
+1 Horrific Assault
+1 Idol of Oblivion
+1 Imprisoned in the Moon
+2 Island
+1 Maskwood Nexus
+1 Mind Stone
+1 Monstrous Vortex
+2 Mountain
+1 Nulldrifter
+1 Opt
+1 Oracle of Dust
+1 Patchwork Banner
+1 Path of Ancestry
+1 Petrifying Meddler
+2 Plains
+1 Prairie Stream
+1 Propagator Drone
+1 River's Rebuke
+1 Rugged Prairie
+1 Seething Landscape
+1 Sheltering Landscape
+1 Skittering Precursor
+1 Skycloud Expanse
+1 Smoldering Marsh
+1 Snapping Voidcraw
+1 Sol Ring
+1 Sowing Mycospawn
+1 Spawn-Gang Commander
+1 Starting Column
+1 Sulfur Falls
+2 Swamp
+1 Titans' Vanguard
+1 Tranquil Landscape
+1 Transguild Promenade
+1 Traveler's Amulet
+1 Twisted Landscape
+1 Twisted Riddlekeeper
+1 Ugin's Labyrinth
+1 Ulamog, the Defiler
+1 Unclaimed Territory
+1 Unfathomable Truths
+1 Unknown Shores
+1 Voidpouncer
+1 Warped Tusker
+1 World Breaker
+1 Wretched Gryff
+1 Writhing Chrysalis
+1 Wumpus Aberration
+1 Zhulodok, Void Gorger

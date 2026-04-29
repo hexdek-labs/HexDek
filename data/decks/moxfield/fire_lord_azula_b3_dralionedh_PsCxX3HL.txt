@@ -1,0 +1,92 @@
+COMMANDER: Fire Lord Azula
+1 Ancestral Anger
+1 Arcane Signet
+1 Archmage Emeritus
+1 Ashling, Flame Dancer
+1 Big Score
+1 Bolt Bend
+1 Borne Upon a Wind
+1 Cascade Bluffs
+1 Cathartic Reunion
+1 Command Tower
+1 Crash Through
+1 Crumbling Necropolis
+1 Dark Ritual
+1 Darkwater Catacombs
+1 Dragonskull Summit
+1 Drowned Catacomb
+1 Eel Umbra
+1 Electro, Assaulting Battery
+1 Electrodominance
+1 Emergence Zone
+1 Enter the Enigma
+1 Exotic Orchard
+1 Expansion // Explosion
+1 Expedite
+1 Fellwar Stone
+1 Ferrous Lake
+1 Fire Nation Palace
+1 Firebender Ascension
+1 Firebending Student
+1 Fists of Flame
+1 Frantic Search
+1 Goblin Electromancer
+1 Grapeshot
+1 Guttersnipe
+1 High Fae Trickster
+1 Invoke Calamity
+3 Island
+1 Izzet Charm
+1 Jeska's Will
+1 Keep Safe
+1 Laboratory Maniac
+1 Leyline of Anticipation
+1 Might of the Meek
+1 Monastery Swiftspear
+7 Mountain
+1 Narset's Reversal
+1 Negate
+1 Nightscape Familiar
+1 Oscorp Industries
+1 Past in Flames
+1 Preordain
+1 Prismari Command
+1 Pyretic Ritual
+1 Rakdos Signet
+1 Redirect Lightning
+1 Renegade Tactics
+1 Sazacap's Brew
+1 Seething Landscape
+1 Serum Visions
+1 Shivan Reef
+1 Shore Up
+1 Slip Through Space
+1 Smoldering Marsh
+1 Snap
+1 Sol Ring
+1 Sozin's Comet
+1 Spell Pierce
+1 Storm-Kiln Artist
+1 Sulfur Falls
+1 Sulfurous Springs
+1 Sunken Hollow
+1 Supernatural Stamina
+1 Swamp
+1 Tainted Isle
+1 Tainted Peak
+1 Talisman of Dominance
+1 Talisman of Indulgence
+1 Temur Battle Rage
+1 The Last Agni Kai
+1 Thought Scour
+1 Thrill of Possibility
+1 Twinferno
+1 Underground River
+1 Undying Malice
+1 Unexpected Windfall
+1 Vedalken Orrery
+1 Veyran, Voice of Duality
+1 Watery Grave
+1 Will of the Jeskai
+1 You See a Guard Approach
+1 Zuko, Exiled Prince

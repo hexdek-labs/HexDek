@@ -1,0 +1,23 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:flying"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "keyword:vigilance"
+      ],
+      "index": 1,
+      "kind": "keyword"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "keywords",
+  "name": "Serra Angel",
+  "parse_error_count": 0
+}

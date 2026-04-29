@@ -1,0 +1,85 @@
+COMMANDER: Sauron, the Necromancer
+1 Anger
+1 Animate Dead
+1 Arcane Signet
+1 Baleful Strix
+1 Bastion of Remembrance
+1 Blightstep Pathway // Searstep Pathway
+1 Bojuka Bog
+1 Buried Alive
+1 Careful Study
+1 Carrion Feeder
+1 Chaos Warp
+1 Choked Estuary
+1 Clearwater Pathway // Murkwater Pathway
+1 Command Tower
+1 Crumbling Necropolis
+1 Dance of the Dead
+1 Deadly Dispute
+1 Diluvian Primordial
+1 Dimir Signet
+1 Dragonskull Summit
+1 Dread Return
+1 Drowned Catacomb
+1 Entomb
+1 Evolving Wilds
+1 Exotic Orchard
+1 Faithless Looting
+1 Feed the Swarm
+1 Fellwar Stone
+1 Final Parting
+1 Foreboding Ruins
+1 Frantic Search
+1 Gothmog, Morgul Lieutenant
+1 Gray Merchant of Asphodel
+1 Grishnákh, Brash Instigator
+1 Haunted Ridge
+1 Impact Tremors
+4 Island
+1 Izzet Signet
+1 Living Death
+1 Massacre Wurm
+1 Mauhúr, Uruk-hai Captain
+1 Mind Stone
+5 Mountain
+1 Myriad Landscape
+5 Nazgûl
+1 Orcish Bowmasters
+1 Oriq Loremage
+1 Path of Ancestry
+1 Phyrexian Delver
+1 Plaguecrafter
+1 Rakdos Signet
+1 Reality Shift
+1 Reanimate
+1 Reliquary Tower
+1 Riverglide Pathway // Lavaglide Pathway
+1 Saruman, the White Hand
+1 Sepulchral Primordial
+1 Shipwreck Marsh
+1 Smoldering Marsh
+1 Sol Ring
+1 Solemn Simulacrum
+1 Stitcher's Supplier
+1 Stormcarved Coast
+1 Sulfur Falls
+1 Sunken Hollow
+5 Swamp
+1 Talisman of Creativity
+1 Talisman of Dominance
+1 Talisman of Indulgence
+1 Temple of Deceit
+1 Temple of Epiphany
+1 Temple of Malice
+1 Terminate
+1 Terramorphic Expanse
+1 Uglúk of the White Hand
+1 Unmarked Grave
+1 Victimize
+1 Vile Entomber
+1 Village Rites
+1 Viscera Seer
+1 Wayfarer's Bauble
+1 Witch-king of Angmar
+1 Witch-king, Bringer of Ruin
+1 Wonder

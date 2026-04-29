@@ -1,0 +1,18 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:etb",
+        "conditional",
+        "exile"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "removal",
+  "name": "Grasp of Fate",
+  "parse_error_count": 0
+}

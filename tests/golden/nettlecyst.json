@@ -1,0 +1,30 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:living weapon"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "static:spell_effect:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "keyword:equip"
+      ],
+      "index": 2,
+      "kind": "keyword"
+    }
+  ],
+  "ability_count": 3,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Nettlecyst",
+  "parse_error_count": 0
+}

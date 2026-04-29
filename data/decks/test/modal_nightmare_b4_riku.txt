@@ -1,0 +1,94 @@
+1 Arid Mesa
+1 Bender's Waterskin
+1 Bountiful Landscape
+1 Breeding Pool
+1 Brotherhood's End
+1 Cascade Bluffs
+1 Chaos Mutation
+1 Chaotic Transformation
+1 City of Brass
+1 Collective Resistance
+1 Command Tower
+1 Confounding Riddle
+1 Consecrated Sphinx
+1 Cultivate
+1 Defend the Rider
+1 Disrupt Decorum
+1 Divergent Transformations
+1 Exotic Orchard
+1 Farseek
+1 Fierce Guardianship
+1 Fiery Islet
+1 Flame of Anor
+1 Flatline
+1 Flooded Grove
+2 Forest
+1 Heritage Reclamation
+1 Heroic Intervention
+1 Hinterland Harbor
+1 Illusionist's Gambit
+1 Inkwell Leviathan
+1 Insidious Will
+1 Into the Fire
+6 Island
+1 Jeska's Will
+1 Karplusan Forest
+1 Ketria Triome
+1 Kodama's Reach
+1 Mana Confluence
+1 Mana Drain
+1 Misty Rainforest
+1 Mob Rule
+2 Mountain
+1 Mystic Remora
+1 Mystical Tutor
+1 Nature's Lore
+1 Niv-Mizzet, Parun
+1 Pick Your Poison
+1 Polymorph
+1 Polymorphist's Jest
+1 Prismari Command
+1 Progenitor Mimic
+1 Pull from Tomorrow
+1 Quandrix Command
+1 Reality Scramble
+1 Red Elemental Blast
+1 Reflecting Pool
+1 Rejuvenating Springs
+1 Respite
+1 Return the Favor
+1 Reverse the Polarity
+1 Rhystic Study
+1 Rishkar's Expertise
+1 Rockfall Vale
+1 Scalding Tarn
+1 Season of Weaving
+1 Sink into Stupor
+1 Smuggler's Surprise
+1 Sodden Verdure
+1 Sonic Screwdriver
+1 Steam Vents
+1 Stomping Ground
+1 Stormtide Leviathan
+1 Sulfur Falls
+1 Swan Song
+1 Sylvan Library
+1 Synthetic Destiny
+1 The Celestus
+1 The Locust God
+1 Three Steps Ahead
+1 Training Center
+1 Transmogrify
+1 Twinferno
+1 Unable to Scream
+1 Untimely Malfunction
+1 Valakut Awakening
+1 Verdant Catacombs
+1 Waterlogged Grove
+1 Wilderness Reclamation
+1 Will of the Temur
+1 Worldspine Wurm
+1 Yavimaya Coast
+1 You Find the Villains' Lair
+
+COMMANDER: Riku of Many Paths

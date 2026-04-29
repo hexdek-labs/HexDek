@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>mtgsquad replay viewer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header id="top-bar">
+  <div class="brand">
+    <strong>mtgsquad</strong> <span class="muted">replay</span>
+  </div>
+  <div id="meta">
+    <span id="meta-game">game: —</span>
+    <span id="meta-seed">seed: —</span>
+    <span id="meta-turn">T—</span>
+    <span id="meta-phase">[—]</span>
+    <span id="meta-result" class="muted">—</span>
+  </div>
+  <div class="file-pick">
+    <label class="file-btn">
+      open .jsonl
+      <input type="file" id="file-input" accept=".jsonl,.json,.log,application/json,text/plain">
+    </label>
+    <span id="drop-hint" class="muted">or drag &amp; drop</span>
+  </div>
+</header>
+
+<div id="drop-overlay">drop .jsonl here</div>
+
+<main id="board">
+  <section class="seat seat-0" id="seat-0">
+    <header class="seat-header">
+      <h2>SEAT 0 <span class="seat-tag">BURN</span></h2>
+      <div class="life" id="seat-0-life">20</div>
+    </header>
+    <div class="counters">
+      <div><span class="lbl">hand</span><span id="seat-0-hand">0</span></div>
+      <div><span class="lbl">library</span><span id="seat-0-library">0</span></div>
+      <div><span class="lbl">graveyard</span><span id="seat-0-gy-count">0</span></div>
+      <div><span class="lbl">mana</span><span id="seat-0-mana">0</span></div>
+    </div>
+    <h3>battlefield</h3>
+    <ul class="battlefield" id="seat-0-bf"></ul>
+    <h3>graveyard</h3>
+    <ul class="graveyard" id="seat-0-gy"></ul>
+  </section>
+
+  <section class="center">
+    <div class="controls">
+      <button id="btn-first" title="first event (Home)">⏮</button>
+      <button id="btn-prev" title="prev event (←)">◀</button>
+      <input type="range" id="scrubber" min="0" max="0" value="0">
+      <button id="btn-next" title="next event (→)">▶</button>
+      <button id="btn-last" title="last event (End)">⏭</button>
+    </div>
+    <div id="seq-info">
+      <span id="seq-current">0</span> / <span id="seq-total">0</span>
+    </div>
+    <div class="log-controls">
+      <label><input type="checkbox" id="toggle-auto"> autoplay</label>
+      <label>speed
+        <select id="speed-select">
+          <option value="800">slow</option>
+          <option value="350" selected>normal</option>
+          <option value="120">fast</option>
+          <option value="30">blitz</option>
+        </select>
+      </label>
+    </div>
+    <h3>event log</h3>
+    <ol class="event-log" id="event-log"></ol>
+  </section>
+
+  <section class="seat seat-1" id="seat-1">
+    <header class="seat-header">
+      <h2>SEAT 1 <span class="seat-tag">CONTROL</span></h2>
+      <div class="life" id="seat-1-life">20</div>
+    </header>
+    <div class="counters">
+      <div><span class="lbl">hand</span><span id="seat-1-hand">0</span></div>
+      <div><span class="lbl">library</span><span id="seat-1-library">0</span></div>
+      <div><span class="lbl">graveyard</span><span id="seat-1-gy-count">0</span></div>
+      <div><span class="lbl">mana</span><span id="seat-1-mana">0</span></div>
+    </div>
+    <h3>battlefield</h3>
+    <ul class="battlefield" id="seat-1-bf"></ul>
+    <h3>graveyard</h3>
+    <ul class="graveyard" id="seat-1-gy"></ul>
+  </section>
+</main>
+
+<footer id="bottom-bar" class="muted">
+  keys: ← prev · → next · Home first · End last · Space play/pause · no game logic runs in this viewer
+</footer>
+
+<script src="viewer.js"></script>
+</body>
+</html>

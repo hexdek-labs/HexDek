@@ -1,0 +1,98 @@
+COMMANDER: Saheeli, Radiant Creator
+1 Academy Ruins
+1 Adrix and Nev, Twincasters
+1 Aether Spike
+1 Aetherflux Conduit
+1 Aetherworks Marvel
+1 Aloy, Savior of Meridian
+1 Arcane Signet
+1 Archway of Innovation
+1 Assaultron Dominator
+1 Blightsteel Colossus
+1 Bloodstained Mire
+1 Breeding Pool
+1 Brudiclad, Telchor Engineer
+1 Cascade Bluffs
+1 Chrome Mox
+1 Coastal Peak
+1 Command Tower
+1 Commercial District
+1 Consult the Star Charts
+1 Cybermen Squadron
+1 Cyclonic Rift
+1 Decoction Module
+1 Desynchronization
+1 Electrosiphon
+1 Emry, Lurker of the Loch
+1 Enthusiastic Mechanaut
+1 Esoteric Duplicator
+1 Etherium Sculptor
+1 Expedition Map
+1 Fabricate
+1 Fiery Islet
+1 Flooded Strand
+1 Forest
+1 Galvanic Discharge
+1 Gonti's Aether Heart
+1 Great Furnace
+1 Harnessed Lightning
+1 Hedge Maze
+1 Into the Flood Maw
+1 Invert Polarity
+3 Island
+1 Izzet Generatorium
+1 Izzet Signet
+1 Karn, Scion of Urza
+1 Karplusan Forest
+1 Lightning Greaves
+1 Lightning Runner
+1 Meteor Golem
+1 Misty Rainforest
+1 Mountain
+1 Mox Opal
+1 Mystic Sanctuary
+1 Nissa, Worldsoul Speaker
+1 Peema Trailblazer
+1 Polluted Delta
+1 Ponder
+1 Preordain
+1 Prismatic Vista
+1 Rain-Slicked Copse
+1 Return to Nature
+1 Roil Cartographer
+1 Rush of Inspiration // Crackling Falls
+1 Saheeli, Sublime Artificer
+1 Scalding Tarn
+1 Scorched Geyser
+1 Scour for Scrap
+1 Sculpting Steel
+1 Seat of the Synod
+1 Sheltered Thicket
+1 Shivan Reef
+1 Silverbluff Bridge
+1 Simic Signet
+1 Simulacrum Synthesizer
+1 Sink into Stupor // Soporific Springs
+1 Sol Ring
+1 Solemn Simulacrum
+1 Soul-Guide Lantern
+1 Steam Vents
+1 Stock Up
+1 Stomping Ground
+1 Swiftfoot Boots
+1 Talisman of Creativity
+1 Talisman of Curiosity
+1 Tamiyo, Inquisitive Student // Tamiyo, Seasoned Scholar
+1 Tanglepool Bridge
+1 The One Ring
+1 Thought Monitor
+1 Thundering Falls
+1 Treasure Vault
+1 Tree of Tales
+1 Urza, Lord High Artificer
+1 Uthros Research Craft
+1 Verdurous Gearhulk
+1 Volatile Stormdrake
+1 Whirler Virtuoso
+1 Windswept Heath
+1 Wurmcoil Engine

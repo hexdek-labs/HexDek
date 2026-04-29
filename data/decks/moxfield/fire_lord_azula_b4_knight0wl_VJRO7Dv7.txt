@@ -1,0 +1,74 @@
+COMMANDER: Fire Lord Azula
+1 Arcane Bombardment
+1 Arcane Denial
+1 Arcane Signet
+1 Archmage Emeritus
+1 Ashling, Flame Dancer
+1 Big Score
+1 Blood Crypt
+1 Bloodstained Mire
+1 Bombard
+1 Brain Freeze
+1 Brainstorm
+1 Chaos Warp
+1 Choco-Comet
+1 Command Tower
+1 Counterspell
+1 Cryoshatter
+1 Cunning Nightbonder
+1 Dark Ritual
+1 Deadly Rollick
+1 Deflecting Swat
+1 Demonic Consultation
+1 Demonic Tutor
+1 Dimir Aqueduct
+1 Dualcaster Mage
+1 Enduring Curiosity
+1 Etali, Primal Storm
+1 Fierce Guardianship
+1 Frantic Search
+1 Galvanic Iteration
+1 Gamble
+1 Goblin Electromancer
+12 Island
+1 It'll Quench Ya!
+1 Izzet Boilerworks
+1 Jeska's Will
+1 Leyline of Anticipation
+1 Lightning Bolt
+1 Lightning Strike
+1 Malleable Impostor
+1 Mizzix's Mastery
+1 Mocking Doppelganger
+12 Mountain
+1 Mysterious Stranger
+1 Mystical Tutor
+1 Narset's Reversal
+1 Niv-Mizzet, Parun
+1 Niv-Mizzet, Visionary
+1 Opt
+1 Polluted Delta
+1 Pongify
+1 Preordain
+1 Propaganda
+1 Reliquary Tower
+1 Restless Reef
+1 Rootha, Mercurial Artist
+1 Sapphire Medallion
+1 Snap
+1 Sneak Attack
+1 Sol Ring
+1 Storm-Kiln Artist
+1 Sulfur Falls
+5 Swamp
+1 Temporal Manipulation
+1 Thassa's Oracle
+1 The Fire Crystal
+1 Thunderclap Drake
+1 Twinflame
+1 Vampiric Tutor
+1 Vandalblast
+1 Veyran, Voice of Duality
+1 Vivi Ornitier
+1 Volcanic Island
+1 Watery Grave

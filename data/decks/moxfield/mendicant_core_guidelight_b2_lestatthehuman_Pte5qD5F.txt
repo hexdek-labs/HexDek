@@ -1,0 +1,74 @@
+COMMANDER: Mendicant Core, Guidelight
+1 Argivian Restoration
+1 Auxiliary Boosters
+1 Azorius Chancery
+1 Azorius Guildgate
+1 Barrow-Blade
+1 Battlefield Improvisation
+1 Biorganic Carapace
+1 Bounding Felidar
+1 Brawler's Plate
+1 Broadcast Rambler
+1 C.A.M.P.
+1 Costume Closet
+1 Cryogen Relic
+1 Deduce
+1 Dimensional Exile
+1 Disenchant
+1 Divination
+1 Dockworker Drone
+1 Donatello, Turtle Techie
+1 Emissary Escort
+1 Gearseeker Serpent
+1 Goldvein Pick
+1 Guidelight Optimizer
+1 Henchbots
+1 Iron Giant
+1 Iron Spider, Stark Upgrade
+14 Island
+1 Knights of Dol Amroth
+1 Lumen-Class Frigate
+1 Luxknight Breacher
+1 Make Your Move
+1 Master Skald
+1 Mechan Assembler
+1 Mechan Navigator
+1 Memory Guardian
+1 Metalwork Colossus
+1 Meteor Golem
+1 Meticulous Archive
+1 Mjölnir, Storm Hammer
+1 Nanoform Sentinel
+1 Negate
+1 Nimble Thopterist
+1 Novice Inspector
+1 Opaline Unicorn
+1 Palladium Myr
+1 Perilous Snare
+14 Plains
+1 Practiced Offense
+1 Pristine Talisman
+1 Quick-Draw Katana
+1 Requisition Raid
+1 Reroute Systems
+1 Restoration Seminar
+1 Roadkill Rodney
+1 Rogue's Gloves
+1 Rover Blades
+1 Settlement Blacksmith
+1 Skycloud Expanse
+1 Skyscanner
+1 Spectral Interference
+1 Spider-Bot
+1 Stock Up
+1 Strixhaven Skycoach
+1 Sun-Spider, Nimble Webber
+1 Thopter Fabricator
+1 Thran Power Suit
+1 Thunder Lasso
+1 Towering Viewpoint
+1 Tune Up
+1 Voyage Home
+1 Waxen Shapethief
+1 Weapon Rack
+1 Wreck Remover

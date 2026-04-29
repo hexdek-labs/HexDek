@@ -1,0 +1,32 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:phase",
+        "flip_coin"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "static:if_intervening_tail:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "act:T",
+        "add_mana"
+      ],
+      "index": 2,
+      "kind": "activated"
+    }
+  ],
+  "ability_count": 3,
+  "fully_parsed": true,
+  "group": "cedh",
+  "name": "Mana Crypt",
+  "parse_error_count": 0
+}

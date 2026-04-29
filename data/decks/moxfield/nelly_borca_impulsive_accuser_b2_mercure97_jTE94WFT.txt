@@ -1,0 +1,86 @@
+COMMANDER: Nelly Borca, Impulsive Accuser
+1 Abrade
+1 Access Tunnel
+1 Arcane Signet
+1 Battlefield Forge
+1 Bitter Reunion
+1 Boros Charm
+1 Boros Signet
+1 Brash Taunter
+1 Carrot Cake
+1 Castle Ardenvale
+1 Cathar Commando
+1 Citizen's Crowbar
+1 Clifftop Retreat
+1 Command Tower
+1 Cut a Deal
+1 Darksteel Mutation
+1 Deafening Silence
+1 Demand Answers
+1 Dog Umbra
+1 Eerie Interference
+1 Elegant Parlor
+1 Escape Tunnel
+1 Fellwar Stone
+1 Fire Diamond
+1 Footfall Crater
+1 Furnace Reins
+1 Furycalm Snarl
+1 Giggling Skitterspike
+1 Glittering Massif
+1 Grab the Prize
+1 Haystack
+1 Hidden Courtyard
+1 Hidden Volcano
+1 Insurrection
+1 Kher Keep
+1 Kozilek's Return
+1 Lightning Helix
+1 Loyal Apprentice
+1 Mage's Attendant
+1 Magmaquake
+1 Marble Diamond
+1 Melded Moxite
+1 Mind Stone
+9 Mountain
+1 Ornithopter of Paradise
+1 Parting Gust
+1 Path to Exile
+1 Phyrexian Censor
+7 Plains
+1 Pursue the Past
+1 Razorgrass Ambush // Razorgrass Field
+1 Reroute Systems
+1 Restless Bivouac
+1 Return the Favor
+1 Rogue's Passage
+1 Rugged Prairie
+1 Sacred Foundry
+1 Scavenger Grounds
+1 Seize the Spoils
+1 Sejiri Shelter // Sejiri Glacier
+1 Selfless Savior
+1 Selfless Spirit
+1 Selfless Squire
+1 Skrelv, Defector Mite
+1 Slayers' Stronghold
+1 Snow-Covered Plains
+1 Sol Ring
+1 Solar Transformer
+1 Soul-Guide Lantern
+1 Spirit Link
+1 Stroke of Midnight
+1 Sulfurous Blast
+1 Sunscorched Divide
+1 Swiftfoot Boots
+1 Talisman of Conviction
+1 The Irencrag
+1 Touch the Spirit Realm
+1 Unstable Glyphbridge // Sandswirl Wanderglyph
+1 Untimely Malfunction
+1 Urza's Saga
+1 Valorous Stance
+1 Vengeful Possession
+1 Wear // Tear
+1 Werefox Bodyguard
+1 Windcrag Siege

@@ -1,0 +1,76 @@
+COMMANDER: Kess, Dissident Mage
+1 Abrade
+1 Aether Membrane
+1 Akoum Refuge
+1 Ambassador Laquatus
+1 Apprentice Wizard
+1 Arcane Signet
+1 Arcanis the Omnipotent
+1 Archmage Emeritus
+1 Archmage of Runes
+1 Backlash
+1 Badlands
+1 Black Mage's Rod
+1 Black Waltz No. 3
+1 Bombard
+1 Cabal Coffers
+1 Cascading Cataracts
+1 Cecily, Haunted Mage
+1 Chalice of Life // Chalice of Death
+1 Circle of Power
+1 Command Tower
+1 Cornered by Black Mages
+1 Coruscation Mage
+1 Deflecting Swat
+1 Delayed Blast Fireball
+1 Demonic Tutor
+1 Diabolic Tutor
+1 Divination
+1 Electrodominance
+1 Electrostatic Field
+1 Exsanguinate
+1 Feed the Swarm
+1 Fireball
+1 Galvanic Blast
+9 Island
+1 Jeska's Will
+1 Jet Medallion
+1 Judith, Carnage Connoisseur
+1 Kaervek the Merciless
+1 Kuja, Genome Sorcerer // Trance Kuja, Fate Defied
+1 Lightning Bolt
+1 Lightning Strike
+1 Mogis, God of Slaughter
+9 Mountain
+1 Murder
+1 Mysidian Elder
+1 Night's Whisper
+1 Phyrexian Arena
+1 Pointed Discussion
+1 Prosper, Tome-Bound
+1 Radiating Lightning
+1 Radical Idea
+1 Raise Dead
+1 Redirect Lightning
+1 Reliquary Tower
+1 Return the Favor
+1 Rockslide Sorcerer
+1 Ruby Medallion
+1 Sol Ring
+1 Sorcerer Class
+1 Sovereign's Bite
+1 Stormcarved Coast
+9 Swamp
+1 The Fire Crystal
+1 Thran Dynamo
+1 Thrill of Possibility
+1 Torment of Hailfire
+1 Towering Viewpoint
+1 Transmutation Font
+1 Urborg, Tomb of Yawgmoth
+1 Vampiric Tutor
+1 Vivi Ornitier
+1 Whip of Erebos
+1 Wizard Class
+1 Wizard's Lightning
+1 Xander's Lounge

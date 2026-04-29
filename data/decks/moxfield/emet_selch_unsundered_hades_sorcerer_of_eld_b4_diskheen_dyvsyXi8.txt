@@ -1,0 +1,88 @@
+COMMANDER: Emet-Selch, Unsundered // Hades, Sorcerer of Eld
+1 Aberrant Return
+1 An Offer You Can't Refuse
+1 Animate Dead
+1 Arcane Denial
+1 Arcane Signet
+1 Basalt Monolith
+1 Buried Alive
+1 Cabal Ritual
+1 Capture of Jingzhou
+1 Careful Study
+1 Choked Estuary
+1 City of Traitors
+1 Cloud of Faeries
+1 Command Tower
+1 Contaminated Aquifer
+1 Counterspell
+1 Cyclonic Rift
+1 Dark Ritual
+1 Darksteel Ingot
+1 Darkwater Catacombs
+1 Deadeye Navigator
+1 Demolition Field
+1 Demonic Tutor
+1 Dimir Aqueduct
+1 Dimir Signet
+1 Displacer Kitten
+1 Drowned Catacomb
+1 Duskmantle Guildmage
+1 Emry, Lurker of the Loch
+1 Energy Field
+1 Entomb
+1 Exhibition Tidecaller
+1 Exhume
+1 Exsanguinate
+1 Fabled Passage
+1 Fact or Fiction
+1 Fetid Pools
+1 Force of Will
+1 Frantic Search
+1 Ghostly Flicker
+1 Glimpse the Unthinkable
+1 Gloomlake Verge
+1 Hullbreaker Horror
+1 Incarnation Technique
+1 Intuition
+7 Island
+1 Jidoor, Aristocratic Capital // Overture
+1 Laboratory Maniac
+1 Lake of the Dead
+1 Leechridden Swamp
+1 Lotus Petal
+1 Lotus Vale
+1 Matzalantli, the Great Door // The Core
+1 Mental Note
+1 Mesmeric Orb
+1 Mindcrank
+1 Mornsong Aria
+1 Opposition Agent
+1 Pact of Negation
+1 Path of Ancestry
+1 Patron Wizard
+1 Peregrine Drake
+1 Propaganda
+1 Quistis Trepe
+1 Reanimate
+1 Rhystic Study
+1 Riverchurn Monument
+1 Singularity Rupture
+1 Sol Ring
+1 Stinkweed Imp
+1 Sunken Hollow
+1 Sunken Ruins
+7 Swamp
+1 Syr Konrad, the Grim
+1 Tainted Isle
+1 Talisman of Dominance
+1 Temple of Deceit
+1 Temporal Manipulation
+1 The Mindskinner
+1 The Water Crystal
+1 Thran Dynamo
+1 Time Warp
+1 Toxic Deluge
+1 Traumatize
+1 Undercity Sewers
+1 Underground River
+1 Watery Grave

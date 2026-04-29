@@ -1,0 +1,78 @@
+COMMANDER: Baylen, the Haymaker
+1 Agate Instigator
+1 Anointed Procession
+1 Arachnogenesis
+1 Arasta of the Endless Web
+1 Arcane Signet
+1 Artifact Mutation
+1 Aura Mutation
+1 Avacyn's Pilgrim
+1 Basilisk Collar
+1 Birds of Paradise
+1 Blasphemous Act
+1 Cadira, Caller of the Small
+1 Castle Ardenvale
+1 Chaos Warp
+1 Charismatic Conqueror
+1 Craterhoof Behemoth
+1 Cultivate
+1 Deflecting Swat
+1 Delighted Halfling
+1 Doubling Season
+1 Eladamri's Call
+1 Elspeth, Sun's Champion
+1 Endless Foot Assault
+1 Esper Sentinel
+1 Farewell
+1 Farmer Cotton
+1 Farseek
+1 Finale of Glory
+1 For the Common Good
+9 Forest
+1 Ghostly Prison
+1 Gilded Goose
+1 Grand Abolisher
+1 Grasslands
+1 Halo Fountain
+1 Harvest Season
+1 Impact Tremors
+1 Intangible Virtue
+1 Jacked Rabbit
+1 Khalni Garden
+1 Kher Keep
+1 Lightning Greaves
+1 Llanowar Elves
+1 Lupinflower Village
+1 Maestros Theater
+1 Mondrak, Glory Dominus
+8 Mountain
+1 Nature's Lore
+1 Ninja Pizza
+1 Parallel Lives
+1 Patchwork Banner
+1 Path to Exile
+8 Plains
+1 Prismatic Vista
+1 Purphoros, God of the Forge
+1 Queen Allenal of Ruadach
+1 Rampant Growth
+1 Rhys the Redeemed
+1 Rogue's Passage
+1 Scute Swarm
+1 Slash, Reptile Rampager
+1 Smothering Tithe
+1 Sokenzan, Crucible of Defiance
+1 Sol Ring
+1 Swiftfoot Boots
+1 Swords to Plowshares
+1 Talisman of Conviction
+1 Talisman of Unity
+1 Tendershoot Dryad
+1 The Shire
+1 Thought Vessel
+1 Three Tree City
+1 Throne of the God-Pharaoh
+1 Windswept Heath
+1 Wooded Foothills
+1 Worldly Tutor
+1 Yavimaya, Cradle of Growth

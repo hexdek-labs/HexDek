@@ -1,0 +1,78 @@
+COMMANDER: Baba Lysaga, Night Witch
+1 Animate Dead
+1 Arcane Signet
+1 Beast Within
+1 Blighted Woodland
+1 Blood Artist
+1 Bolas's Citadel
+1 Brood of Cockroaches
+1 Cartographer
+1 Casting of Bones
+1 Cathodion
+1 Command Tower
+1 Darksteel Citadel
+1 Despondency
+1 Diabolic Servitude
+1 Eternal Witness
+1 Evolving Wilds
+1 Exotic Orchard
+1 Feed the Swarm
+1 Fertile Ground
+12 Forest
+1 Fortitude
+1 Grapple with the Past
+1 Harvest Wurm
+1 Ichor Wellspring
+1 Instill Energy
+1 Jolrael, Mwonvuli Recluse
+1 Liquimetal Coating
+1 Liquimetal Torque
+1 Manakin
+1 Marionette Apprentice
+1 Marionette Master
+1 Mishra's Factory
+1 Mishra's Foundry
+1 Mongrel Pack
+1 Morbid Opportunist
+1 Mycosynth Wellspring
+1 Myriad Landscape
+1 Nature's Chosen
+1 Necropotence
+1 Night Soil
+1 Ornithopter of Paradise
+1 Phyrexian Walker
+1 Puppet Strings
+1 Putrefy
+1 Quirion Ranger
+1 Rancor
+1 Reap
+1 Reclamation Sage
+1 Sarcomancy
+1 Savra, Queen of the Golgari
+1 Seeker of Skybreak
+1 Sengir Autocrat
+1 Servo Schematic
+1 Sleeper's Guile
+1 Sol Ring
+1 Solemn Simulacrum
+1 Spawning Pool
+1 Spreading Algae
+1 Stalking Stones
+1 Su-Chi
+12 Swamp
+1 Swiftfoot Boots
+1 Tainted Wood
+1 Terramorphic Expanse
+1 Thran Forge
+1 Tireless Provisioner
+1 Titania, Protector of Argoth
+1 Tragic Slip
+1 Treetop Village
+1 Ulvenwald Mysteries
+1 Vault of Whispers
+1 Weatherseed Treefolk
+1 Wild Growth
+1 Wood Elves
+1 Yavimaya Elder
+1 Yavimaya Granger
+1 Zulaport Cutthroat

@@ -1,0 +1,82 @@
+COMMANDER: Alisaie Leveilleur
+COMMANDER: Alphinaud Leveilleur
+1 Adarkar Wastes
+1 Aetherize
+1 Aligned Heart
+1 Approach of the Second Sun
+1 Arcane Signet
+1 Archmage Emeritus
+1 As Foretold
+1 Authority of the Consuls
+1 Azorius Signet
+1 Borne Upon a Wind
+1 Brainstorm
+1 Brainsurge
+1 City of Brass
+1 Clever Concealment
+1 Command Tower
+1 Commit // Memory
+1 Consider
+1 Counterspell
+1 Cut a Deal
+1 Decanter of Endless Water
+1 Deserted Beach
+1 Displacer Kitten
+1 Dovin's Veto
+1 Echo of Eons
+1 Emeritus of Ideation // Ancestral Recall
+1 Exotic Orchard
+1 Floodfarm Verge
+1 Focus the Mind
+1 Frantic Search
+1 Generous Gift
+1 Ghostly Prison
+1 Glacial Fortress
+1 Grand Arbiter Augustin IV
+1 Hallowed Fountain
+1 Heliod, the Radiant Dawn // Heliod, the Warped Eclipse
+1 Hengegate Pathway // Mistgate Pathway
+1 High Fae Trickster
+10 Island
+1 Joined Researchers // Secret Rendezvous
+1 Laboratory Maniac
+1 Lightning Greaves
+1 Mana Drain
+1 Mana Sculpt
+1 Monk Class
+1 Mother of Runes
+1 Mox Amber
+1 Mystic Gate
+1 Opt
+1 Path to Exile
+1 Pensive Professor
+10 Plains
+1 Ponder
+1 Prairie Stream
+1 Preordain
+1 Propaganda
+1 Quicken
+1 Reliquary Tower
+1 Restoration Magic
+1 Sea Gate Restoration // Sea Gate, Reborn
+1 Sea of Clouds
+1 Secret Rendezvous
+1 Shackle Slinger
+1 Sink into Stupor // Soporific Springs
+1 Skycloud Expanse
+1 Smothering Tithe
+1 Snap
+1 Snapcaster Mage
+1 Sol Ring
+1 Storm of Saruman
+1 Stroke of Midnight
+1 Swiftfoot Boots
+1 Swords to Plowshares
+1 Teferi's Ageless Insight
+1 Thassa's Oracle
+1 The Council of Four
+1 Thought Vessel
+1 Unwind
+1 Wisdom of Ages
+1 Witch Enchanter // Witch-Blessed Meadow
+1 Wizard Class

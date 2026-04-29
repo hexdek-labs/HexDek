@@ -1,0 +1,96 @@
+COMMANDER: Mayael the Anima
+1 Akroma's Will
+1 Akroma, Angel of Wrath
+1 Akroma, Vision of Ixidor
+1 Ancient Bronze Dragon
+1 Apex Altisaur
+1 Arcane Signet
+1 Arid Mesa
+1 Aurora Awakener
+1 Avacyn, Angel of Hope
+1 Bala Ged Recovery // Bala Ged Sanctuary
+1 Beast Within
+1 Blasphemous Act
+1 Boros Garrison
+1 Branchloft Pathway // Boulderloft Pathway
+1 Castle Garenbrig
+1 Cinder Glade
+1 Cleansing Nova
+1 Command Tower
+1 Cragcrown Pathway // Timbercrown Pathway
+1 Cultivate
+1 Drakuseth, Maw of Flames
+1 Elvish Mystic
+1 Emeria's Call // Emeria, Shattered Skyclave
+1 End-Raze Forerunners
+1 Etali, Primal Storm
+1 Evendo, Waking Haven
+1 Exotic Orchard
+1 Explore
+1 Fabled Passage
+1 Faeburrow Elder
+1 Farseek
+1 Fateful Absence
+1 Forbidden Orchard
+3 Forest
+1 Formidable Speaker
+1 Fyndhorn Elves
+1 Garruk's Uprising
+1 Gisela, Blade of Goldnight
+1 Gishath, Sun's Avatar
+1 Gruul Turf
+1 Guardian Project
+1 Harmonize
+1 Heroic Intervention
+1 Ilharg, the Raze-Boar
+1 Jeska's Will
+1 Jetmir's Garden
+1 Jungle Shrine
+1 Kodama of the East Tree
+1 Kodama's Reach
+1 Llanowar Elves
+1 Mayael's Aria
+1 Migration Path
+1 Moldgraf Monstrosity
+2 Mountain
+1 Nature's Lore
+1 Nyxbloom Ancient
+1 Overgrown Farmland
+1 Overwhelming Stampede
+1 Path to Exile
+2 Plains
+1 Purphoros, Bronze-Blooded
+1 Quartzwood Crasher
+1 Quilled Greatwurm
+1 Rampaging Baloths
+1 Rampant Growth
+1 Return of the Wildspeaker
+1 Rhythm of the Wild
+1 Roiling Regrowth
+1 Sacred Foundry
+1 Samut, Voice of Dissent
+1 Search for Tomorrow
+1 Seedborn Muse
+1 Selesnya Sanctuary
+1 Serra's Emissary
+1 Shared Roots
+1 Smothering Tithe
+1 Sol Ring
+1 Soul of the Harvest
+1 Spectator Seating
+1 Stomping Ground
+1 Sunpetal Grove
+1 Swiftfoot Boots
+1 Swords to Plowshares
+1 Teferi's Protection
+1 Temple Garden
+1 Terastodon
+1 Thousand-Year Elixir
+1 Three Visits
+1 Turbulent Steppe
+1 Turntimber Symbiosis // Turntimber, Serpentine Wood
+1 Veil of Summer
+1 Verdant Sun's Avatar
+1 Windswept Heath
+1 Wooded Foothills
+1 Zendikar Resurgent

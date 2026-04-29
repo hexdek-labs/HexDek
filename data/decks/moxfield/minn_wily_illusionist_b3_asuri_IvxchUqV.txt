@@ -1,0 +1,77 @@
+COMMANDER: Minn, Wily Illusionist
+1 Academy Ruins
+1 Aether Channeler
+1 Aetherize
+1 Aetherspouts
+1 Alhammarret's Archive
+1 Altar of Dementia
+1 Altar of the Brood
+1 Arcane Denial
+1 Arcane Signet
+1 Archmage Emeritus
+1 Ashnod's Altar
+1 Blue Sun's Zenith
+1 Brainstorm
+1 Buried Ruin
+1 Consider
+1 Counterspell
+1 Crawlspace
+1 Cyclonic Rift
+1 Distant Melody
+1 Engulf the Shore
+1 Expedition Map
+1 Faerie Mastermind
+1 Faerie Seer
+1 Fierce Guardianship
+1 Frantic Search
+1 Guard Gomazoa
+1 High Tide
+1 Hullbreaker Horror
+1 Inventors' Fair
+24 Island
+1 Kindred Discovery
+1 Ledger Shredder
+1 Lonely Sandbar
+1 Long-Term Plans
+1 March of Swirling Mist
+1 Maskwood Nexus
+1 Meloku the Clouded Mirror
+1 Mental Note
+1 Minamo, School at Water's Edge
+1 Mind Stone
+1 Muddle the Mixture
+1 Mystic Sanctuary
+1 Narset's Reversal
+1 Negate
+1 Nykthos, Shrine to Nyx
+1 Opt
+1 Otawara, Soaring City
+1 Perilous Research
+1 Phantasmal Image
+1 Phyrexian Altar
+1 Ponder
+1 Pongify
+1 Preordain
+1 Propaganda
+1 Rapid Hybridization
+1 Reality Shift
+1 Roaming Throne
+1 Sakashima of a Thousand Faces
+1 Sapphire Medallion
+1 Sea Gate Restoration // Sea Gate, Reborn
+1 Skullclamp
+1 Slip Out the Back
+1 Sol Ring
+1 Spark Double
+1 Spectral Sailor
+1 Step Through
+1 Sunscorched Desert
+1 Swan Song
+1 Thing in the Ice // Awoken Horror
+1 Thirst for Discovery
+1 Thirst for Knowledge
+1 Tolaria West
+1 Trinket Mage
+1 Trophy Mage
+1 Venser, Shaper Savant
+1 Wavebreak Hippocamp

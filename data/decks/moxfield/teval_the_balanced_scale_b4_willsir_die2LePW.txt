@@ -1,0 +1,92 @@
+COMMANDER: Teval, the Balanced Scale
+1 Abrupt Decay
+1 Altar of Dementia
+1 Altar of the Brood
+1 Ancient Tomb
+1 Animate Dead
+1 Arcane Denial
+1 Arcane Signet
+1 Assassin's Trophy
+1 Bastion of Remembrance
+1 Birds of Paradise
+1 Blood Artist
+1 Bloodstained Mire
+1 Breeding Pool
+1 City of Brass
+1 Command Tower
+1 Conduit of Worlds
+1 Counterspell
+1 Craterhoof Behemoth
+1 Crop Rotation
+1 Crucible of Worlds
+1 Cyclonic Rift
+1 Daze
+1 Deadly Rollick
+1 Deathrite Shaman
+1 Delighted Halfling
+1 Dismember
+1 Eternal Witness
+1 Exhume
+1 Exploration
+1 Fabled Passage
+1 Finale of Devastation
+5 Forest
+1 Gaea's Cradle
+1 Glacial Chasm
+1 Glarb, Calamity's Augur
+1 Gravecrawler
+1 Green Sun's Zenith
+1 Harmonized Crescendo
+1 Hedge Shredder
+1 Hermit Druid
+1 Heroic Intervention
+1 Icetill Explorer
+3 Island
+1 Lightning Greaves
+1 Lotus Petal
+1 Mana Confluence
+1 Mental Misstep
+1 Mesmeric Orb
+1 Morphic Pool
+1 Muldrotha, the Gravetide
+1 Mystic Remora
+1 Nature's Lore
+1 Noxious Revival
+1 Oracle of Mul Daya
+1 Orcish Bowmasters
+1 Overgrown Tomb
+1 Phyrexian Altar
+1 Polluted Delta
+1 Ramunap Excavator
+1 Reanimate
+1 Reflecting Pool
+1 Rejuvenating Springs
+1 Rhystic Study
+1 Ripples of Undeath
+1 Scute Swarm
+1 Shifting Woodland
+1 Six
+1 Sol Ring
+1 Spell Pierce
+1 Stitch Together
+1 Strip Mine
+3 Swamp
+1 Sylvan Safekeeper
+1 Talisman of Curiosity
+1 Talisman of Resilience
+1 The Gitrog Monster
+1 The One Ring
+1 Underground River
+1 Undergrowth Stadium
+1 Urza's Saga
+1 Vampiric Tutor
+1 Verdant Catacombs
+1 Victimize
+1 Wan Shi Tong, Librarian
+1 Warren Soultrader
+1 Wasteland
+1 Watery Grave
+1 Windfall
+1 Worldly Tutor
+1 Yavimaya Coast
+1 Zulaport Cutthroat

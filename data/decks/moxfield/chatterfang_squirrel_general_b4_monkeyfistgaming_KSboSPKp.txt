@@ -1,0 +1,97 @@
+COMMANDER: Chatterfang, Squirrel General
+1 Abrupt Decay
+1 Academy Manufactor
+1 Arcane Signet
+1 Arnyn, Deathbloom Botanist
+1 Assassin's Trophy
+1 Bastion of Remembrance
+1 Beast Within
+1 Birds of Paradise
+1 Bitter Ordeal
+1 Bojuka Bog
+1 Boseiju, Who Endures
+1 Cabal Ritual
+1 Cauldron of Essence
+1 Cavern of Souls
+1 Chain of Smog
+1 Command Tower
+1 Costly Plunder
+1 Culling Ritual
+1 Culling the Weak
+1 Dark Ritual
+1 Deadly Dispute
+1 Deathrite Shaman
+1 Demonic Tutor
+1 Devoted Druid
+1 Diabolic Intent
+1 Dina's Guidance
+1 Eldritch Evolution
+1 Elves of Deep Shadow
+1 Elvish Spirit Guide
+1 Emergence Zone
+1 Endurance
+1 Exotic Orchard
+1 Finale of Devastation
+1 Force of Vigor
+2 Forest
+1 Formidable Speaker
+1 Fyndhorn Elves
+1 Gemstone Caverns
+1 Gilded Goose
+1 Grim Backwoods
+1 Growing Rites of Itlimoc // Itlimoc, Cradle of the Sun
+1 Haywire Mite
+1 Hazel of the Rootbloom
+1 Hazel's Brewmaster
+1 Idol of Oblivion
+1 Immoral Bargain
+1 Llanowar Wastes
+1 Malevolent Rumble
+1 Mirkwood Bats
+1 Misty Rainforest
+1 Moldervine Reclamation
+1 Morbid Opportunist
+1 Nadier's Nightblade
+1 Nature's Lore
+1 Nature's Rhythm
+1 Necroblossom Snarl
+1 Noxious Revival
+1 Nurturing Peatland
+1 Ominous Harvest
+1 Overgrown Tomb
+1 Path of Ancestry
+1 Peregrin Took
+1 Phyrexian Tower
+1 Pitiless Plunderer
+1 Polluted Delta
+1 Prosperous Innkeeper
+1 Protean Hulk
+1 Reanimate
+1 Rootcast Apprenticeship
+1 Sephiroth, Fabled SOLDIER // Sephiroth, One-Winged Angel
+1 Shamanic Revelation
+1 Shifting Woodland
+1 Skullclamp
+1 Sol Ring
+3 Swamp
+1 Swarmyard
+1 Swarmyard Massacre
+1 Sylvan Library
+1 Tainted Wood
+1 Talisman of Resilience
+1 Tear Asunder
+1 The Cabbage Merchant
+1 Three Tree City
+1 Tireless Provisioner
+1 Toxic Deluge
+1 Underground Mortuary
+1 Undergrowth Stadium
+1 Vicious Rivalry
+1 Viscera Seer
+1 Warren Soultrader
+1 Wishclaw Talisman
+1 Witherbloom Apprentice
+1 Woodland Cemetery
+1 Worldly Tutor
+1 Yavimaya, Cradle of Growth
+1 Zulaport Cutthroat

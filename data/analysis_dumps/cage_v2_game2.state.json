@@ -1,0 +1,406 @@
+{
+  "game_id": "cage-v2-game2",
+  "winner": 2,
+  "end_reason": "seat 2 is the last one standing",
+  "total_turns": 15,
+  "total_events": 1693,
+  "commander_format": true,
+  "day_night": "neither",
+  "seats": [
+    {
+      "idx": 0,
+      "life": -3,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 75,
+      "hand": [
+        "The Balrog of Moria",
+        "Moldgraf Monstrosity",
+        "Purple Worm",
+        "Troll of Khazad-d\u00fbm"
+      ],
+      "graveyard": [
+        "Eviscerator's Insight",
+        "Terminate",
+        "Fatal Grudge",
+        "Grapple with the Past",
+        "Grisly Salvage",
+        "Kolaghan's Command",
+        "Flare of Malice",
+        "Reanimate",
+        "Living Death",
+        "Demon's Disciple"
+      ],
+      "exile": [
+        "Savage Lands"
+      ],
+      "command_zone": [],
+      "commander_names": [
+        "Coram, the Undertaker"
+      ],
+      "commander_tax": {
+        "Coram, the Undertaker": 1
+      },
+      "commander_damage": {
+        "2": {
+          "Sin, Spira's Punishment": 21
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 1,
+      "life": -2,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 77,
+      "hand": [
+        "Showstopping Surprise",
+        "Austere Command",
+        "Temur War Shaman"
+      ],
+      "graveyard": [
+        "Nature's Lore",
+        "Saryth, the Viper's Fang",
+        "Hooded Hydra",
+        "Return of the Wildspeaker"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Kaust, Eyes of the Glade"
+      ],
+      "commander_names": [
+        "Kaust, Eyes of the Glade"
+      ],
+      "commander_tax": {
+        "Kaust, Eyes of the Glade": 3
+      },
+      "commander_damage": {
+        "2": {
+          "Sin, Spira's Punishment": 14
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 2,
+      "life": 19,
+      "lost": false,
+      "loss_reason": "",
+      "library_count": 77,
+      "hand": [],
+      "graveyard": [
+        "Swallowed by Leviathan",
+        "Kheru Goldkeeper",
+        "Reclaim",
+        "Perplex",
+        "All Suns' Dawn",
+        "Tireless Provisioner"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Sin, Spira's Punishment"
+      ],
+      "commander_tax": {
+        "Sin, Spira's Punishment": 1
+      },
+      "commander_damage": {
+        "1": {
+          "Kaust, Eyes of the Glade": 4
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": [
+        {
+          "name": "Alchemist's Refuge",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Endless Sands",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Foreboding Landscape",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Forest",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Awaken the Honored Dead",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Island",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Island",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Simic Growth Chamber",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Sin, Spira's Punishment",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 7,
+          "toughness": 7,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Icetill Explorer",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 2,
+          "toughness": 4,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Breeding Pool",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Deadeye Navigator",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 5,
+          "toughness": 5,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Command Tower",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Colossal Grave-Reaver",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 7,
+          "toughness": 6,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Island",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Woodland Cemetery",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Horizon Explorer",
+          "tapped": false,
+          "summoning_sick": true,
+          "damage_marked": 0,
+          "power": 2,
+          "toughness": 4,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        }
+      ]
+    },
+    {
+      "idx": 3,
+      "life": 14,
+      "lost": true,
+      "loss_reason": "21+ commander damage from Sin, Spira's Punishment (CR 704.6c)",
+      "library_count": 80,
+      "hand": [
+        "Diregraf Captain",
+        "Lich's Mastery",
+        "Living Death",
+        "Diregraf Colossus",
+        "Fatestitcher",
+        "Necromancer's Covenant"
+      ],
+      "graveyard": [
+        "Graf Harvest",
+        "Reanimate",
+        "Lost Monarch of Ifnir",
+        "Noxious Ghoul",
+        "Swamp",
+        "Undead Butler"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Varina, Lich Queen"
+      ],
+      "commander_names": [
+        "Varina, Lich Queen"
+      ],
+      "commander_tax": {
+        "Varina, Lich Queen": 0
+      },
+      "commander_damage": {
+        "2": {
+          "Sin, Spira's Punishment": 21
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 0,
+      "battlefield": []
+    }
+  ]
+}

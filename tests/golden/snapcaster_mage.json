@@ -1,0 +1,31 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:flash"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "trig:etb",
+        "grant_ability"
+      ],
+      "index": 1,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "static:named_cost_eq_mc:_"
+      ],
+      "index": 2,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 3,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Snapcaster Mage",
+  "parse_error_count": 0
+}

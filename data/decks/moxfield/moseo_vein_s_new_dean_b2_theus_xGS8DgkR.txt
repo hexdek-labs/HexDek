@@ -1,0 +1,73 @@
+COMMANDER: Moseo, Vein's New Dean
+1 Animate Dead
+1 Arcane Signet
+1 Archon of Cruelty
+1 Ayara, First of Locthwain
+1 Bastion of Remembrance
+1 Blood Artist
+1 Blood Tithe
+1 Bojuka Bog
+1 Bontu's Monument
+1 Charcoal Diamond
+1 Commune with Evil
+1 Consuming Corruption
+1 Corrupted Conviction
+1 Creeping Bloodsucker
+1 Crowded Crypt
+1 Crypt Incursion
+1 Crypt of Agadeem
+1 Dark Ritual
+1 Deadly Dispute
+1 Defile
+1 Defiling Daemogoth
+1 Demolition Field
+1 Diabolic Tutor
+1 Diresight
+1 Discerning Taste
+1 Disciple of Bolas
+1 Disciple of Griselbrand
+1 Dread Presence
+1 Erebos's Intervention
+1 Essence Extraction
+1 Exsanguinate
+1 Feed the Swarm
+1 Final Parting
+1 Gollum, Obsessed Stalker
+1 Gray Merchant of Asphodel
+1 Gumdrop Poisoner // Tempt with Treats
+1 Hero's Downfall
+1 Kokusho, the Evening Star
+1 Leech Collector // Bloodletting
+1 Lightning Greaves
+1 Mire Triton
+1 Morbid Opportunist
+1 Mutilate
+1 Myriad Landscape
+1 Noxious Gearhulk
+1 Path of Ancestry
+1 Postmortem Professor
+1 Read the Bones
+1 Reckoner's Bargain
+1 Scheming Silvertongue // Sign in Blood
+1 Severed Strands
+1 Shinra Reinforcements
+1 Sidisi, Undead Vizier
+1 Silversmote Ghoul
+1 Skullclamp
+1 Sol Ring
+1 Solemn Simulacrum
+1 Sovereign's Bite
+1 Staff of the Death Magus
+28 Swamp
+1 Syphon Soul
+1 Temple of the False God
+1 The Darkness Crystal
+1 Trading Post
+1 Twilight Diviner
+1 Twilight Prophet
+1 Victimize
+1 Village Rites
+1 Wander Off
+1 Wayfarer's Bauble
+1 Witch of the Moors
+1 Withering Torment

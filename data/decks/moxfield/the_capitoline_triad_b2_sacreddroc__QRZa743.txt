@@ -1,0 +1,87 @@
+COMMANDER: The Capitoline Triad
+1 All Is Dust
+1 Birthing Boughs
+1 Blinkmoth Nexus
+1 Bottle Golems
+1 Burnished Hart
+1 Captain's Claws
+1 Codex Shredder
+1 Currency Converter
+1 Darksteel Citadel
+1 Darksteel Sentinel
+1 Eldrazi Confluence
+1 Expedition Map
+1 Forsaken Monument
+1 Foundry of the Consuls
+1 Geier Reach Sanitarium
+1 Gingerbrute
+1 Glaring Fleshraker
+1 Grafted Exoskeleton
+1 Guardian Idol
+1 Hangarback Walker
+1 Hedron Archive
+1 Hedron Crawler
+1 Hollow One
+1 Idol of False Gods
+1 Jalum Tome
+1 Karn, Scion of Urza
+1 Kozilek, the Broken Reality
+1 Kozilek, the Great Distortion
+1 Loreseeker's Stone
+1 Manakin
+1 Manifold Key
+1 Maskwood Nexus
+1 Matzalantli, the Great Door // The Core
+1 Metalwork Colossus
+1 Meteor Golem
+1 Mikokoro, Center of the Sea
+1 Millikin
+1 Mind Stone
+1 Mind's Eye
+1 Mirrex
+1 Mishra's Factory
+1 Mishra's Foundry
+1 Mishra's Self-Replicator
+1 Myr Battlesphere
+1 Myr Incubator
+1 Mystic Forge
+1 Network Terminal
+1 Nuisance Engine
+1 Null Elemental Blast
+1 Ornithopter of Paradise
+1 Orochi Hatchery
+1 Palladium Myr
+1 Pentavus
+1 Perpetual Timepiece
+1 Plague Myr
+1 Relic Golem
+1 Rogue's Passage
+1 Sanctum of Ugin
+1 Sarpadian Empires, Vol. VII
+1 Sequestered Stash
+1 Skittering Invasion
+1 Sliversmith
+1 Sojourner's Companion
+1 Sol Ring
+1 Solemn Simulacrum
+1 Spawning Bed
+1 Springjack Pasture
+1 Summoning Station
+1 Thespian's Stage
+1 Thopter Assembly
+1 Threefold Thunderhulk
+1 Throne of Empires
+1 Trading Post
+1 Ugin, the Ineffable
+1 Ugin, the Spirit Dragon
+1 Ulamog, the Ceaseless Hunger
+1 Urza's Cave
+1 Urza's Mine
+1 Urza's Power Plant
+1 Urza's Tome
+1 Urza's Tower
+1 Warping Wail
+14 Wastes
+1 Whirlermaker
+1 Wurmcoil Engine
+1 Zhalfirin Void

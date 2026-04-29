@@ -1,0 +1,81 @@
+COMMANDER: Rosnakht, Heir of Rohgahh
+1 Accelerate
+1 Ancestral Anger
+1 Assault Strobe
+1 Bitter Reunion
+1 Blast-Furnace Hellkite
+1 Blinding Flare
+1 Borrowed Hostility
+1 Brute Force
+1 Bull Rush
+1 Chaos Charm
+1 Coming In Hot
+1 Coordinated Assault
+1 Crimson Kobolds
+1 Crimson Wisps
+1 Crookshank Kobolds
+1 Crowd's Favor
+1 Curse of Opulence
+1 Daring Escape
+1 Dwarven Song
+1 Dynacharge
+1 Emblem of the Warmind
+1 Enrage
+1 Expedite
+1 Felonious Rage
+1 Fervent Strike
+1 Fever Charm
+1 Fists of Flame
+1 Flowstone Infusion
+1 Free from Flesh
+1 Full Bore
+1 Ground Rift
+1 Hearth Charm
+1 Heightened Reflexes
+1 Hell to Pay
+1 Huatli's Spurring
+1 Incite
+1 Infuriate
+1 Into the Fray
+1 Kick in the Door
+1 Kindled Fury
+1 Kindled Heroism
+1 Kobold Taskmaster
+1 Kobolds of Kher Keep
+1 Lunar Frenzy
+1 Mark of Fury
+1 Mass Hysteria
+1 Maximize Velocity
+1 Metallic Mimic
+1 Might of the Meek
+1 Minion of the Mighty
+1 Mishra's Command
+1 Monstrous Rage
+20 Mountain
+1 Otherworldly Outburst
+1 Pedal to the Metal
+1 Precise Strike
+1 Quick Draw
+1 Reckless Charge
+1 Renegade Tactics
+1 Rising of the Day
+1 Roar of Resistance
+1 Rograkh, Son of Rohgahh
+1 Rouse the Mob
+1 Rush of Adrenaline
+1 Rush the Room
+1 Samut's Sprint
+1 Seething Anger
+1 Shared Animosity
+1 Smoke Spirits' Aid
+1 Spark of Creativity
+1 Sticky Fingers
+1 Storm Strike
+1 Stun
+1 Surge of Zeal
+1 Taunting Kobold
+1 Turn Inside Out
+1 Unnatural Speed
+1 Violent Urge
+1 Weapon Surge
+1 Wild Ride

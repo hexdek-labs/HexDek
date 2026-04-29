@@ -1,0 +1,76 @@
+COMMANDER: Azami, Lady of Scrolls
+1 Academy Ruins
+1 All Is Dust
+1 Ancient Tomb
+1 Baral, Chief of Compliance
+1 Bender's Waterskin
+1 Boseiju, Who Shelters All
+1 Bribery
+1 Caged Sun
+1 Capsize
+1 Captain of the Mists
+1 Cavern of Souls
+1 Counterspell
+1 Cryptic Command
+1 Cyclonic Rift
+1 Deadeye Navigator
+1 Dissipate
+1 Docent of Perfection // Final Iteration
+1 Enter the Infinite
+1 Ertai, Wizard Adept
+1 Evacuation
+1 Extraplanar Lens
+1 Faerie Trickery
+1 Gauntlet of Power
+1 Glen Elendra Archmage
+1 Halimar Depths
+1 High Market
+1 Hinder
+1 Inundate
+1 Laboratory Maniac
+1 Lighthouse Chronologist
+1 Lightning Greaves
+1 Long-Term Plans
+1 Mana Sculpt
+1 Memnarch
+1 Merchant Scroll
+1 Mind Over Matter
+1 Muddle the Mixture
+1 Mystical Tutor
+1 Nykthos, Shrine to Nyx
+1 Oblivion Stone
+1 Omniscience
+1 Pact of Negation
+1 Palinchron
+1 Patron Wizard
+1 Phyrexian Metamorph
+1 Pithing Needle
+1 Reliquary Tower
+1 Riptide Laboratory
+1 Seat of the Synod
+1 Sensei's Divining Top
+1 Sigil Tracer
+1 Snapcaster Mage
+25 Snow-Covered Island
+1 Sol Ring
+1 Spell Crumple
+1 Spellbook
+1 Stonybrook Banneret
+1 Surgespanner
+1 Talrand, Sky Summoner
+1 Teferi's Ageless Insight
+1 Teferi, Mage of Zhalfir
+1 Temple Bell
+1 Temple of the False God
+1 Temporal Mastery
+1 Thran Dynamo
+1 Trinket Mage
+1 Tunnel Vision
+1 Turnabout
+1 Unstoppable Plan
+1 Vedalken Aethermage
+1 Vedalken Shackles
+1 Vendilion Clique
+1 Venser's Journal
+1 Venser, Shaper Savant
+1 Voidmage Prodigy

@@ -1,0 +1,100 @@
+COMMANDER: Queza, Augur of Agonies
+1 Academy Manufactor
+1 Adarkar Wastes
+1 Ancient Den
+1 Ancient Tomb
+1 Anointed Procession
+1 Arcane Denial
+1 Arcane Signet
+1 Ashnod's Altar
+1 Authority of the Consuls
+1 Black Market Connections
+1 Cabal Coffers
+1 Cauldron Familiar
+1 Clock of Omens
+1 Command Tower
+1 Counterspell
+1 Culling the Weak
+1 Damn
+1 Dark Ritual
+1 Deadeye Navigator
+1 Deadly Dispute
+1 Demonic Tutor
+1 Despark
+1 Dovin's Veto
+1 Eldrazi Displacer
+1 Eloise, Nephalia Sleuth
+1 Enlightened Tutor
+1 Erdwal Illuminator
+1 Esper Sentinel
+1 Ethereal Investigator
+1 Everflowing Chalice
+1 Exalted Sunborn
+1 Fabricate
+1 Farewell
+1 Fell the Profane // Fell Mire
+1 Flooded Strand
+1 Forbidden Orchard
+1 Gemstone Caverns
+1 Godless Shrine
+1 Grim Monolith
+1 Hallowed Fountain
+1 Havengul Laboratory // Havengul Mystery
+1 Imperial Seal
+1 Inspiring Statuary
+1 Intuition
+1 Island
+1 June, Bounty Hunter
+1 Kambal, Profiteering Mayor
+1 Krark-Clan Ironworks
+1 Laboratory Maniac
+1 Lich-Knights' Conquest
+1 Lion's Eye Diamond
+1 Lotus Petal
+1 Mana Confluence
+1 Mana Drain
+1 Marionette Apprentice
+1 Marionette Master
+1 Marsh Flats
+1 Mirkwood Bats
+1 Mondrak, Glory Dominus
+1 Mox Amber
+1 Mox Diamond
+1 Mox Opal
+1 Multiversal Passage
+1 Nadier's Nightblade
+1 Necropotence
+1 Nick Valentine, Private Eye
+1 Nuka-Cola Vending Machine
+1 Path to Exile
+1 Phantom Train
+1 Plains
+1 Public Thoroughfare
+1 Raffine's Tower
+1 Reliquary Tower
+1 Scrubland
+1 Seat of the Synod
+1 Silent Clearing
+1 Sink into Stupor // Soporific Springs
+1 Sol Ring
+1 Sold Out
+1 Spire of Industry
+1 Stridehangar Automaton
+1 Stroke of Midnight
+1 Swamp
+1 Tainted Pact
+1 Tamiyo's Journal
+1 Teysa, Opulent Oligarch
+1 Thought Vessel
+1 Thoughtcast
+1 Transmutation Font
+1 Tundra
+1 Umbral Collar Zealot
+1 Underground Sea
+1 Urborg, Tomb of Yawgmoth
+1 Urza's Saga
+1 Vampiric Tutor
+1 Vault of Whispers
+1 Vindicate
+1 Watery Grave
+1 Wernog, Rider's Chaplain

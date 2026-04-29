@@ -1,0 +1,99 @@
+COMMANDER: Mayael the Anima
+1 Akroma's Will
+1 Anzrag, the Quake-Mole
+1 Arcane Signet
+1 Arid Mesa
+1 Battlefield Forge
+1 Blasphemous Act
+1 Blazing Archon
+1 Boseiju, Who Endures
+1 Bountiful Promenade
+1 Brion Stoutarm
+1 Brotherhood Regalia
+1 Brushland
+1 Combustible Gearhulk
+1 Command Beacon
+1 Command Tower
+1 Commander's Sphere
+1 Cultivate
+1 Darksteel Colossus
+1 Defiler of Vigor
+1 Elvish Piper
+1 End-Raze Forerunners
+1 Etali, Primal Storm
+1 Ethereal Haze
+1 Exotic Orchard
+1 Fanatic of Rhonas
+2 Forest
+1 Fortified Village
+1 Game Trail
+1 Garruk's Uprising
+1 Garruk, Caller of Beasts
+1 Generous Gift
+1 Ghalta and Mavren
+1 Ghalta, Primal Hunger
+1 Gisela, Blade of Goldnight
+1 Greater Good
+1 Heaped Harvest
+1 Heroic Intervention
+1 Hushwood Verge
+1 Iroas, God of Victory
+1 Jungle Shrine
+1 Karplusan Forest
+1 Kessig Wolf Run
+1 Kodama's Reach
+1 Kona, Rescue Beastie
+1 Lightning Greaves
+1 Loot, Exuberant Explorer
+1 Marisi, Breaker of the Coil
+1 Mossfire Valley
+1 Mountain
+1 Nature's Rhythm
+1 Overlord of the Boilerbilges
+1 Overlord of the Hauntwoods
+1 Oviya, Automech Artisan
+1 Path to Exile
+1 Plains
+1 Plateau
+1 Plated Slagwurm
+1 Privileged Position
+1 Purity
+1 Quicksilver Amulet
+1 Raph & Mikey, Troublemakers
+1 Rogue's Passage
+1 Sacred Foundry
+1 Sakura-Tribe Elder
+1 Savage Beating
+1 Savannah
+1 Selvala, Heart of the Wilds
+1 Shriekwood Devourer
+1 Sol Ring
+1 Spearbreaker Behemoth
+1 Spectator Seating
+1 Spellbreaker Behemoth
+1 Spinerock Knoll
+1 Spire Garden
+1 Split Up
+1 Stomping Ground
+1 Strip Mine
+1 Sungrass Prairie
+1 Sunpetal Grove
+1 Swords to Plowshares
+1 Taiga
+1 Temple Garden
+1 Terastodon
+1 The Great Henge
+1 Tooth and Nail
+1 Tribute to the World Tree
+1 Tyrant of Discord
+1 Tyrranax Rex
+1 Unnatural Growth
+1 Warstorm Surge
+1 Wasteland
+1 Wild Pair
+1 Windbrisk Heights
+1 Windswept Heath
+1 Wooded Foothills
+1 Worldspine Wurm
+1 Yavimaya, Cradle of Growth
+1 Yggdrasil, Rebirth Engine

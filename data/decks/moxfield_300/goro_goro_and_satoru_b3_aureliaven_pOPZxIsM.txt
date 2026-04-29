@@ -1,0 +1,100 @@
+COMMANDER: Goro-Goro and Satoru
+1 Abrade
+1 Aggravated Assault
+1 Alora, Merry Thief
+1 An Offer You Can't Refuse
+1 Arena of Glory
+1 Arid Mesa
+1 Badlands
+1 Bident of Thassa
+1 Blazemire Verge
+1 Blood Crypt
+1 Bloodstained Mire
+1 Changeling Outcast
+1 Chaos Warp
+1 City of Brass
+1 Cloud of Faeries
+1 Cloudstone Curio
+1 Command Tower
+1 Counterspell
+1 Crashing Drawbridge
+1 Curse of Opulence
+1 Deadly Rollick
+1 Deflecting Swat
+1 Demonic Tutor
+1 Dismember
+1 Dokuchi Silencer
+1 Dour Port-Mage
+1 Enduring Curiosity
+1 Exotic Orchard
+1 Faerie Seer
+1 Fell the Profane // Fell Mire
+1 Fierce Guardianship
+1 Flitterwing Nuisance
+1 Flooded Strand
+1 Frostcliff Siege
+1 Gingerbrute
+1 Gloomlake Verge
+1 Grazilaxx, Illithid Scholar
+1 Great Train Heist
+1 Grim Hireling
+1 Ingenious Infiltrator
+1 Island
+1 Kaito, Bane of Nightmares
+1 Kari Zev, Skyship Raider
+1 Karlach, Fury of Avernus
+1 Loyal Apprentice
+1 Luxury Suite
+1 Lórien Revealed
+1 Maestros Diabolist
+1 Mana Confluence
+1 Mana Drain
+1 March of Swirling Mist
+1 Marsh Flats
+1 Mass Hysteria
+1 Mistblade Shinobi
+1 Misty Rainforest
+1 Mockingbird
+1 Moon-Circuit Hacker
+1 Morphic Pool
+1 Mountain
+1 Nashi, Moon Sage's Scion
+1 Nether Traitor
+1 Ninja of the Deep Hours
+1 Ornithopter
+1 Orochi Soul-Reaver
+1 Otawara, Soaring City
+1 Phoenix Chick
+1 Polluted Delta
+1 Professional Face-Breaker
+1 Prosperous Thief
+1 Ragavan, Nimble Pilferer
+1 Raphael, the Nightwatcher
+1 Reflecting Pool
+1 Riverpyre Verge
+1 Sakashima's Student
+1 Scalding Tarn
+1 Shizo, Death's Storehouse
+1 Sink into Stupor // Soporific Springs
+1 Siren Stormtamer
+1 Slither Blade
+1 Snuff Out
+1 Sokenzan, Crucible of Defiance
+1 Starting Town
+1 Steam Vents
+1 Swamp
+1 Swan Song
+1 Takenuma, Abandoned Mire
+1 The Indomitable
+1 Thousand-Faced Shadow
+1 Tin Street Dodger
+1 Training Center
+1 Underground Sea
+1 Vampiric Tutor
+1 Verdant Catacombs
+1 Volcanic Island
+1 Watery Grave
+1 Withering Torment
+1 Wooded Foothills
+1 Yuffie, Materia Hunter
+1 Yuriko, the Tiger's Shadow

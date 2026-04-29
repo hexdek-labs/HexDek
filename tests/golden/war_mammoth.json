@@ -1,0 +1,16 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:trample"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "vanilla",
+  "name": "War Mammoth",
+  "parse_error_count": 0
+}

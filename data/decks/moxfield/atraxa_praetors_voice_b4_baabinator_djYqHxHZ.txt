@@ -1,0 +1,100 @@
+COMMANDER: Atraxa, Praetors' Voice
+1 Abundant Harvest
+1 Adarkar Wastes
+1 Aether Hub
+1 Arcane Signet
+1 Arena Rector
+1 Astral Cornucopia
+1 Avatar's Wrath
+1 Basalt Monolith
+1 Beast Within
+1 Bolas's Citadel
+1 Bountiful Promenade
+1 Brushland
+1 Carth the Lion
+1 Cascading Cataracts
+1 Caves of Koilos
+1 Chromatic Lantern
+1 City of Brass
+1 Command Tower
+1 Counterspell
+1 Crop Rotation
+1 Cyclonic Rift
+1 Damnation
+1 Delighted Halfling
+1 Doubling Season
+1 Dueling Grounds
+1 Enlightened Tutor
+1 Evacuation
+1 Everflowing Chalice
+1 Evolution Sage
+1 Exotic Orchard
+1 Farseek
+1 Fellwar Stone
+1 Forest
+1 Generous Gift
+1 Glacial Chasm
+1 Godless Shrine
+1 Hallowed Fountain
+1 Heroic Intervention
+1 Ichor Rats
+1 Interplanar Beacon
+1 Irrigated Farmland
+1 Island
+1 Jace, Unraveler of Secrets
+1 Karn's Bastion
+1 Kethis, the Hidden Hand
+1 Llanowar Wastes
+1 Meekstone
+1 Misty Rainforest
+1 Mystic Remora
+1 Nature's Lore
+1 Night's Whisper
+1 Norn's Annex
+1 Nurturing Peatland
+1 Nykthos, Shrine to Nyx
+1 Oath of Teferi
+1 Overgrown Tomb
+1 Path to Exile
+1 Plains
+1 Polluted Delta
+1 Primevals' Glorious Rebirth
+1 Regrowth
+1 Rejuvenating Springs
+1 Rhystic Study
+1 Rings of Brighthearth
+1 Sea of Clouds
+1 Silent Arbiter
+1 Silent Clearing
+1 Skyshroud Claim
+1 Sol Ring
+1 Sorin, Grim Nemesis
+1 Sphere of Safety
+1 Supreme Verdict
+1 Swamp
+1 Swords to Plowshares
+1 Sylvan Library
+1 Tamiyo, Field Researcher
+1 Tangle Wire
+1 Teferi's Protection
+1 Teferi, Hero of Dominaria
+1 Teferi, Master of Time
+1 Teferi, Temporal Archmage
+1 Teferi, Time Raveler
+1 Tekuthal, Inquiry Dominus
+1 Temple Garden
+1 Tezzeret, Artifice Master
+1 Tezzeret, Betrayer of Flesh
+1 The Chain Veil
+1 Three Visits
+1 Time Wipe
+1 Toxic Deluge
+1 Undergrowth Stadium
+1 Unnatural Restoration
+1 Vault of Champions
+1 Vorinclex, Monstrous Raider
+1 Waterlogged Grove
+1 Watery Grave
+1 Windswept Heath
+1 Wrath of God
+1 Zagoth Triome

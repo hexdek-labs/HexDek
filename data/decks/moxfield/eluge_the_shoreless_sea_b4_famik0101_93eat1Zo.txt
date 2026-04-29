@@ -1,0 +1,72 @@
+COMMANDER: Eluge, the Shoreless Sea
+1 Aetherize
+1 Aetherspouts
+1 Arcane Signet
+1 Archmage's Charm
+1 Aven Courier
+1 Blue Sun's Zenith
+1 Blur
+1 Brainsurge
+1 Capsize
+1 Castle Vantress
+1 Consecrated Sphinx
+1 Consult the Star Charts
+1 Consuming Tide
+1 Counterspell
+1 Cryptic Command
+1 Cyclonic Rift
+1 Desertion
+1 Elminster's Simulacrum
+1 Engulf the Shore
+1 Evacuation
+1 Flow of Ideas
+1 Flow of Knowledge
+1 Force of Will
+1 Horizon of Progress
+1 Illusionist's Gambit
+1 Irenicus's Vile Duplication
+29 Island
+1 Isolated Watchtower
+1 Leadership Vacuum
+1 Mana Drain
+1 Mystic Sanctuary
+1 Mystical Tutor
+1 Narset's Reversal
+1 Nexus of Fate
+1 Ponder
+1 Propaganda
+1 Pulse of the Grid
+1 Reality Shift
+1 Redirect
+1 Relic of Progenitus
+1 Reliquary Tower
+1 River's Rebuke
+1 Rogue's Passage
+1 Sapphire Medallion
+1 Savor the Moment
+1 Scaretiller
+1 Search for Azcanta // Azcanta, the Sunken Ruin
+1 Shadow of the Second Sun
+1 Silundi Vision // Silundi Isle
+1 Sink into Stupor // Soporific Springs
+1 Spectral Deluge
+1 Spell Contortion
+1 Spelljack
+1 Supplant Form
+1 Swiftfoot Boots
+1 Sword of Hearth and Home
+1 Sword of the Animist
+1 Talon Gates of Madara
+1 Talrand, Sky Summoner
+1 Temporal Manipulation
+1 Terrain Generator
+1 Thassa's Intervention
+1 The Water Crystal
+1 Theoretical Duplication
+1 Thirst for Discovery
+1 Time Warp
+1 Twincast
+1 Walking Atlas
+1 Wavebreak Hippocamp
+1 Whirlwind Denial
+1 Witch's Clinic

@@ -1,0 +1,82 @@
+COMMANDER: Varolz, the Scar-Striped
+1 Abrupt Decay
+1 Agonasaur Rex
+1 Assassin's Trophy
+1 Baloth Prime
+1 Bane of Progress
+1 Bebop & Rocksteady
+1 Birds of Paradise
+1 Blessed Respite
+1 Blooming Marsh
+1 Bojuka Bog
+1 Bristlebane Battler
+1 Command Tower
+1 Cryptolith Rite
+1 Daemogoth Titan
+1 Darkbore Pathway // Slitherbore Pathway
+1 Death's Shadow
+1 Deathrite Shaman
+1 Disciple of Bolas
+1 Disciple of Freyalise // Garden of Freyalise
+1 Eldritch Evolution
+1 Elven Chorus
+1 Exotic Orchard
+1 Farseek
+1 Field of Ruin
+1 Force of Savagery
+12 Forest
+1 Goldvein Hydra
+1 Greater Good
+1 Grim Haruspex
+1 Hangarback Walker
+1 Heroic Intervention
+1 Heronblade Elite
+1 Hunted Bonebrute
+1 Hunted Horror
+1 Hunter's Insight
+1 Incubation Druid
+1 Infested Thrinax
+1 Inkmoth Nexus
+1 Insidious Roots
+1 Jaheira, Friend of the Forest
+1 Jarad's Orders
+1 Jarad, Golgari Lich Lord
+1 Jenova, Ancient Calamity
+1 Kalakscion, Hunger Tyrant
+1 Llanowar Wastes
+1 Lotleth Troll
+1 Marwyn, the Nurturer
+1 Momentous Fall
+1 Moonshadow
+1 Necroblossom Snarl
+1 Nyxathid
+1 One with the Kami
+1 Overgrown Tomb
+1 Phyrexian Soulgorger
+1 Professor Hojo
+1 Pugnacious Hammerskull
+1 Putrefy
+1 Rampant Growth
+1 Relic Golem
+1 Retribution of the Ancients
+1 Revitalizing Repast // Old-Growth Grove
+1 Reyhan, Last of the Abzan
+1 Rotting Regisaur
+1 Shakedown Heavy
+1 Slumbering Trudge
+1 Soul Shatter
+1 Strength of Will
+1 Summon: Titan
+1 Susur Secundi, Void Altar
+8 Swamp
+1 Tend the Pests
+1 Termagant Swarm
+1 Terrasymbiosis
+1 The Gitrog, Ravenous Ride
+1 Toxic Deluge
+1 Twilight Mire
+1 Underground Mortuary
+1 Undergrowth Stadium
+1 Warren Soultrader
+1 Westvale Abbey // Ormendahl, Profane Prince
+1 Woodland Cemetery

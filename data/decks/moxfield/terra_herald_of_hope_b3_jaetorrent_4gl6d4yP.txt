@@ -1,0 +1,87 @@
+COMMANDER: Terra, Herald of Hope
+1 Alesha, Who Laughs at Fate
+1 Altar of the Brood
+1 Amulet of Vigor
+1 Angel's Grace
+1 Animate Dead
+1 Arcane Signet
+1 Archivist of Oghma
+1 Arena of Glory
+1 Arid Mesa
+1 Ashnod's Altar
+1 Aurelia, the Warleader
+1 Beseech the Mirror
+1 Big Score
+1 Blazemire Verge
+1 Bleachbone Verge
+1 Blind Obedience
+1 Blood Artist
+1 Blood Crypt
+1 Bloodstained Mire
+1 Boromir, Warden of the Tower
+1 Bovine Intervention
+1 Brightclimb Pathway // Grimclimb Pathway
+1 Buried Alive
+1 Cavern of Souls
+1 City of Brass
+1 Command Tower
+1 Dauthi Voidwalker
+1 Dawn's Truce
+1 Deafening Silence
+1 Deflecting Swat
+1 Delney, Streetwise Lookout
+1 Diabolic Intent
+1 Dolmen Gate
+1 Drumbellower
+1 Elas il-Kor, Sadistic Pilgrim
+1 Entomb
+1 Esper Sentinel
+1 Fang, Fearless l'Cie
+1 Fear of Missing Out
+1 Felidar Guardian
+1 Foreboding Ruins
+1 Fury
+1 Furycalm Snarl
+1 Galadriel's Dismissal
+1 Goblin Bombardment
+1 Goblin Engineer
+1 Godless Shrine
+1 Grand Abolisher
+1 Helm of the Host
+1 Imperial Recruiter
+1 Karmic Guide
+1 Kiki-Jiki, Mirror Breaker
+1 Lively Dirge
+1 Marsh Flats
+6 Mountain
+1 Orcish Bowmasters
+1 Orim's Chant
+1 Path to Exile
+1 Phyrexian Altar
+1 Pinnacle Monk // Mystic Peak
+5 Plains
+1 Polluted Delta
+1 Professional Face-Breaker
+1 Ragavan, Nimble Pilferer
+1 Ranger-Captain of Eos
+1 Reanimate
+1 Recruiter of the Guard
+1 Restoration Angel
+1 Ripples of Undeath
+1 Sacred Foundry
+1 Savai Triome
+1 Sevinne's Reclamation
+1 Silence
+1 Skyclave Apparition
+1 Sol Ring
+1 Stitcher's Supplier
+5 Swamp
+1 Swords to Plowshares
+1 Talisman of Conviction
+1 Talisman of Indulgence
+1 Underworld Breach
+1 Untimely Malfunction
+1 Warren Soultrader
+1 Whispersilk Cloak
+1 Witch Enchanter // Witch-Blessed Meadow
+1 Zealous Conscripts

@@ -1,0 +1,25 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:etb",
+        "exile"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "trig:type_leaves_battlefield",
+        "reanimate"
+      ],
+      "index": 1,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "removal",
+  "name": "Oblivion Ring",
+  "parse_error_count": 0
+}

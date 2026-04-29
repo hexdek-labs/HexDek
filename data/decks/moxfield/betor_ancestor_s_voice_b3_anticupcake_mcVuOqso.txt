@@ -1,0 +1,91 @@
+COMMANDER: Betor, Ancestor's Voice
+1 Abzan Charm
+1 Aetherflux Reservoir
+1 Akroma's Will
+1 Anguished Unmaking
+1 Arcane Signet
+1 Archangel of Thune
+1 Assassin's Trophy
+1 Beledros Witherbloom
+1 Bitter Triumph
+1 Black Market Connections
+1 Boggart Trawler // Boggart Bog
+1 Bojuka Bog
+1 Bridgeworks Battle // Tanglespan Bridgeworks
+1 Brushland
+1 Castle Locthwain
+1 Caves of Koilos
+1 Children of Korlis
+1 City of Brass
+1 Cleric Class
+1 Command Tower
+1 Dark Confidant
+1 Darkstar Augur
+1 Deceptive Landscape
+1 Decorum Dissertation
+1 Despark
+1 Disciple of Freyalise // Garden of Freyalise
+1 Doom Whisperer
+1 Elas il-Kor, Sadistic Pilgrim
+1 Elenda's Hierophant
+1 Elenda, the Dusk Rose
+1 Elves of Deep Shadow
+1 Essence Warden
+1 Exotic Orchard
+1 Farseek
+1 Fell the Profane // Fell Mire
+4 Forest
+1 Fumigate
+1 Godless Shrine
+1 Grisly Salvage
+1 Horizon Canopy
+1 Imp's Mischief
+1 Indatha Triome
+1 Inscription of Abundance
+1 K'rrik, Son of Yawgmoth
+1 Kami of Whispered Hopes
+1 Karlov of the Ghost Council
+1 Lathiel, the Bounteous Dawn
+1 Life from the Loam
+1 Lightning Greaves
+1 Llanowar Wastes
+1 Lunar Convocation
+1 Lush Portico
+1 Marsh Flats
+1 Mortality Spear
+1 Moseo, Vein's New Dean
+1 Nature's Lore
+1 Nurturing Peatland
+1 Overgrown Tomb
+1 Painful Truths
+4 Plains
+1 Priest of Fell Rites
+1 Professor Dellian Fel
+1 Razorgrass Ambush // Razorgrass Field
+1 Reanimate
+1 Sakura-Tribe Elder
+1 Scheming Silvertongue // Sign in Blood
+1 Shadowy Backstreet
+1 Soul Warden
+1 Soul's Attendant
+1 Stargaze
+1 Stinging Study
+4 Swamp
+1 Swords to Plowshares
+1 Sylvan Library
+1 Talisman of Hierarchy
+1 Talisman of Resilience
+1 Talisman of Unity
+1 Temple Garden
+1 The Great Henge
+1 The One Ring
+1 Toxic Deluge
+1 Twilight Diviner
+1 Underground Mortuary
+1 Vault of the Archangel
+1 Verdant Catacombs
+1 Vicious Rivalry
+1 Vilis, Broker of Blood
+1 Vito, Thorn of the Dusk Rose
+1 Windswept Heath
+1 Witch Enchanter // Witch-Blessed Meadow

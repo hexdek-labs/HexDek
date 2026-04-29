@@ -1,0 +1,69 @@
+COMMANDER: Lorehold, the Historian
+1 Abrade
+1 Ancestor's Chosen
+1 Ark of Hunger
+1 Artist's Talent
+1 Banon, the Returners' Leader
+1 Bender's Waterskin
+1 Bereaved Survivor // Dauntless Avenger
+1 Blasphemous Act
+1 Call a Surprise Witness
+1 Ceaseless Conflict
+1 Choreographed Sparks
+1 Clifftop Retreat
+1 Confessor
+1 Conspiracy Theorist
+1 Cool but Rude
+1 Deflecting Palm
+1 Dig Site Inventory
+1 Duty Beyond Death
+1 Elegant Parlor
+1 Ennis, Debate Moderator
+1 Enraged Flamecaster
+1 Erode
+1 Fateful Tempest
+1 Fields of Strife
+1 Glint-Horn Buccaneer
+1 Graduation Day
+1 Griffnaut Tracker
+1 Hardened Academic
+1 Harsh Annotation
+1 Heated Argument
+1 Helping Hand
+1 Impolite Entrance
+1 Informed Inkwright
+1 Inti, Seneschal of the Sun
+1 Ivora, Insatiable Heir
+1 Library of Leng
+1 Lightning Helix
+1 Lorehold Archivist // Restore Relic
+1 Lorehold Campus
+1 Lorehold Charm
+1 Magmakin Artillerist
+1 Marauding Mako
+1 Mistveil Plains
+1 Molten Note
+1 Monument to Endurance
+17 Mountain
+1 Owlin Historian
+1 Personify
+1 Pigment Wrangler // Striking Palette
+1 Pip-Boy 3000
+16 Plains
+1 Practiced Scrollsmith
+1 Racers' Scoreboard
+1 Rehearsed Debater
+1 Repel Calamity
+1 Restoration Seminar
+1 Resurrection
+1 Return to the Ranks
+1 Seize the Spoils
+1 Skycoach Waypoint
+1 Sol Ring
+1 Spirit Cairn
+1 Sun-Blessed Peak
+1 Sundown Pass
+1 Surly Badgersaur
+1 Tablet of Discovery
+1 Veronica, Dissident Scribe
+1 Zealous Lorecaster

@@ -1,0 +1,100 @@
+COMMANDER: Yidris, Maelstrom Wielder
+1 Abaddon the Despoiler
+1 Abrupt Decay
+1 Apex Devastator
+1 Aqueous Form
+1 Arcane Signet
+1 Aurora Phoenix
+1 Averna, the Chaos Bloom
+1 Badlands
+1 Bayou
+1 Blasphemous Act
+1 Blood Crypt
+1 Bloodstained Mire
+1 Bloom Tender
+1 Boseiju, Who Endures
+1 Breach the Multiverse
+1 Breeding Pool
+1 Brotherhood Regalia
+1 Call Forth the Tempest
+1 Chromatic Orrery
+1 Command Tower
+1 Deadly Rollick
+1 Deflecting Swat
+1 Delighted Halfling
+1 Dryad of the Ilysian Grove
+1 Etali, Primal Conqueror // Etali, Primal Sickness
+1 Etali, Primal Storm
+1 Eternal Witness
+1 Farseek
+1 Felix Five-Boots
+1 Fierce Guardianship
+1 Flaming Tyrannosaurus
+1 Garruk's Uprising
+1 Goblin Anarchomancer
+1 Heroic Intervention
+1 Hullbreaker Horror
+1 Imoti, Celebrant of Bounty
+1 Inevitable Betrayal
+1 Keeper of Secrets
+1 Ketria Triome
+1 Laelia, the Blade Reforged
+1 Lightning Greaves
+1 Maelstrom Wanderer
+1 Mana Drain
+1 Minamo, School at Water's Edge
+1 Misty Rainforest
+1 Mulldrifter
+1 Mystical Tutor
+1 Natural Reclamation
+1 Nicol Bolas, God-Pharaoh
+1 Nulldrifter
+1 Oko, Thief of Crowns
+1 Otawara, Soaring City
+1 Overgrown Tomb
+1 Polluted Delta
+1 Ponder
+1 Preordain
+1 Profane Tutor
+1 Prosper, Tome-Bound
+1 Quandrix, the Proof
+1 Rashmi, Eternities Crafter
+1 Rhystic Study
+1 Rhythm of the Wild
+1 Rogue's Passage
+1 Scalding Tarn
+1 Scroll Rack
+1 Sensei's Divining Top
+1 Shadow in the Warp
+1 Shinka, the Bloodsoaked Keep
+1 Shizo, Death's Storehouse
+1 Skyshroud Claim
+1 Sokenzan, Crucible of Defiance
+1 Sol Ring
+1 Steam Vents
+1 Stomping Ground
+1 Strionic Resonator
+1 Sword of Feast and Famine
+1 Taiga
+1 Takenuma, Abandoned Mire
+1 Temur Battlecrier
+1 The Great Henge
+1 Three Visits
+1 Trailblazer's Boots
+1 Tropical Island
+1 Underground Sea
+1 Urborg, Tomb of Yawgmoth
+1 Vampiric Tutor
+1 Vandalblast
+1 Verdant Catacombs
+1 Volcanic Island
+1 Watery Grave
+1 Whispering Madness
+1 Whispersilk Cloak
+1 Wooded Foothills
+1 Worldly Tutor
+1 Xander's Lounge
+1 Xenagos, God of Revels
+1 Yavimaya, Cradle of Growth
+1 Zagoth Triome
+1 Ziatora's Proving Ground

@@ -1,0 +1,89 @@
+COMMANDER: Hidetsugu and Kairi
+1 Afterlife from the Loam
+1 Altar's Reap
+1 Aminatou's Augury
+1 Arcane Signet
+1 Archaeomancer
+1 Archmage Emeritus
+1 Army of the Damned
+1 Baleful Strix
+1 Bloodstained Mire
+1 Bojuka Bog
+1 Brainstorm
+1 Bribery
+1 Cackling Counterpart
+1 Clearwater Pathway // Murkwater Pathway
+1 Command Tower
+1 Corrupted Conviction
+1 Counterspell
+1 Culling the Weak
+1 Cyclonic Rift
+1 Dark Ritual
+1 Deadly Dispute
+1 Deadly Rollick
+1 Decree of Pain
+1 Dimir Aqueduct
+1 Dream Harvest
+1 Drowned Catacomb
+1 Echocasting Symposium
+1 Fated Infatuation
+1 Feed the Swarm
+1 Fell the Profane // Fell Mire
+1 Fellwar Stone
+1 Flare of Denial
+1 Flare of Malice
+1 Flooded Strand
+1 Glasspool Mimic // Glasspool Shore
+1 Gloomlake Verge
+1 Great Intelligence's Plan
+1 High Market
+1 Hydroelectric Specimen // Hydroelectric Laboratory
+6 Island
+1 Malakir Rebirth // Malakir Mire
+1 Mana Drain
+1 Misty Rainforest
+1 Mnemonic Deluge
+1 Morphic Pool
+1 Mystic Sanctuary
+1 Not Dead After All
+1 Omni-Changeling
+1 Ornithopter of Paradise
+1 Otawara, Soaring City
+1 Overflowing Insight
+1 Phyrexian Altar
+1 Phyrexian Metamorph
+1 Polluted Delta
+1 Pongify
+1 Quasiduplicate
+1 Rapid Hybridization
+1 Reality Shift
+1 Reanimate
+1 Replication Technique
+1 Rise of the Dark Realms
+1 Rite of Replication
+1 Sacrifice
+1 Saw in Half
+1 Scalding Tarn
+1 Singularity Rupture
+1 Sink into Stupor // Soporific Springs
+1 Skull Storm
+1 Sol Ring
+1 Soldevi Adnate
+1 Spelltwine
+1 Sunken Hollow
+1 Supernatural Stamina
+7 Swamp
+1 Tainted Isle
+1 Talisman of Dominance
+1 Terrain Generator
+1 Three Steps Ahead
+1 Treasure Cruise
+1 Umbral Collar Zealot
+1 Undercity Sewers
+1 Underground River
+1 Undying Malice
+1 Village Rites
+1 Watery Grave
+1 Will of the Temur
+1 Wisdom of Ages
+1 Withering Torment

@@ -1,0 +1,97 @@
+COMMANDER: Bria, Riptide Rogue
+1 Arcane Signet
+1 Archmage Emeritus
+1 Arid Mesa
+1 Ashling, Flame Dancer
+1 Balmor, Battlemage Captain
+1 Birgi, God of Storytelling // Harnfel, Horn of Bounty
+1 Blasphemous Act
+1 Bloodstained Mire
+1 Brainstorm
+1 Bulk Up
+1 Cascade Bluffs
+1 Case of the Ransacked Lab
+1 Chaos Warp
+1 Command Tower
+1 Consider
+1 Counterspell
+1 Crash Through
+1 Drake Hatcher
+1 Electro, Assaulting Battery
+1 Exotic Orchard
+1 Expedite
+1 Expressive Iteration
+1 Faithless Looting
+1 Ferrous Lake
+1 Fierce Guardianship
+1 Flame of Anor
+1 Flooded Strand
+1 Frantic Search
+1 Frostboil Snarl
+1 Frostcliff Siege
+1 Gitaxian Probe
+1 Goblin Electromancer
+1 Grapeshot
+1 Guttersnipe
+1 Haze of Rage
+3 Island
+1 Izzet Boilerworks
+1 Kaito, Cunning Infiltrator
+1 Kitsa, Otterball Elite
+1 Mana Drain
+1 Mistrise Village
+1 Misty Rainforest
+1 Molten Tributary
+2 Mountain
+1 Mystic Sanctuary
+1 Mystical Tutor
+1 Narset's Reversal
+1 Negate
+1 Octavia, Living Thesis
+1 Opt
+1 Ovika, Enigma Goliath
+1 Pearl of Wisdom
+1 Polluted Delta
+1 Ponder
+1 Pongify
+1 Preordain
+1 Primal Amulet // Primal Wellspring
+1 Ral, Crackling Wit
+1 Rapid Hybridization
+1 Redirect Lightning
+1 Reliquary Tower
+1 Resonating Lute
+1 Rhystic Study
+1 Ruby Medallion
+1 Run Away Together
+1 Sapphire Medallion
+1 Scalding Tarn
+1 Serum Visions
+1 Shivan Reef
+1 Shore Up
+1 Snap
+1 Sol Ring
+1 Solve the Equation
+1 Spirebluff Canal
+1 Steam Vents
+1 Storm-Kiln Artist
+1 Stormcarved Coast
+1 Stormcatch Mentor
+1 Sulfur Falls
+1 Swiftfoot Boots
+1 Talisman of Creativity
+1 Temporal Manipulation
+1 Temur Battle Rage
+1 Third Path Iconoclast
+1 Thundering Falls
+1 Training Center
+1 Treasure Cruise
+1 Valley Floodcaller
+1 Vandalblast
+1 Veyran, Voice of Duality
+1 Vivi Ornitier
+1 Volatile Fjord
+1 Volcanic Island
+1 Waterbender Ascension
+1 Wooded Foothills
+1 Young Pyromancer

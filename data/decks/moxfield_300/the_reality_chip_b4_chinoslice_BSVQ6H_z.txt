@@ -1,0 +1,75 @@
+COMMANDER: The Reality Chip
+1 Aether Spellbomb
+1 An Offer You Can't Refuse
+1 Arcane Signet
+1 Back to Basics
+1 Brainstorm
+1 Bribery
+1 Cephalid Coliseum
+1 Chrome Mox
+1 Clever Impersonator
+1 Commandeer
+1 Consecrated Sphinx
+1 Counterbalance
+1 Counterspell
+1 Cyclonic Rift
+1 Displacer Kitten
+1 Dramatic Reversal
+1 Dress Down
+1 Emeritus of Ideation // Ancestral Recall
+1 Etherium Sculptor
+1 Fabricate
+1 Flusterstorm
+1 Force of Negation
+1 Force of Will
+1 Foundry Inspector
+1 Gitaxian Probe
+1 Harbinger of the Seas
+1 High Tide
+1 Hullbreaker Horror
+1 Impulse
+1 Into the Flood Maw
+26 Island
+1 Isochron Scepter
+1 Jace, Wielder of Mysteries
+1 Laboratory Maniac
+1 Lotus Petal
+1 Malevolent Hermit // Benevolent Geist
+1 Mana Drain
+1 Mana Vault
+1 Mindbreak Trap
+1 Misdirection
+1 Mistrise Village
+1 Mox Diamond
+1 Mox Opal
+1 Muddle the Mixture
+1 Mystic Forge
+1 Mystic Remora
+1 Mystic Sanctuary
+1 Narset, Parter of Veils
+1 Opt
+1 Otawara, Soaring City
+1 Phantasmal Image
+1 Ponder
+1 Pongify
+1 Rapid Hybridization
+1 Reality Shift
+1 Rhystic Study
+1 Sapphire Medallion
+1 Sensei's Divining Top
+1 Snap
+1 Snapcaster Mage
+1 Sol Ring
+1 Steal Enchantment
+1 Strix Serenade
+1 Swan Song
+1 Tale's End
+1 Teferi's Ageless Insight
+1 The One Ring
+1 The Unagi of Kyoshi Island
+1 Treachery
+1 Trinket Mage
+1 Unwinding Clock
+1 Urza's Saga
+1 Valley Floodcaller
+1 Volatile Stormdrake

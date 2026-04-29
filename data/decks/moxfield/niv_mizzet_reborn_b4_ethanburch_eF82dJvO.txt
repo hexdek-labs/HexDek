@@ -1,0 +1,100 @@
+COMMANDER: Niv-Mizzet Reborn
+1 Abrupt Decay
+1 Ad Nauseam
+1 Arbor Elf
+1 Assassin's Trophy
+1 Avacyn's Pilgrim
+1 Bayou
+1 Birds of Paradise
+1 Bloodstained Mire
+1 Boreal Druid
+1 Brainstorm
+1 Breeding Pool
+1 Carpet of Flowers
+1 Chain of Vapor
+1 Chrome Mox
+1 Circu, Dimir Lobotomist
+1 City of Brass
+1 Command Tower
+1 Corpse Knight
+1 Dark Confidant
+1 Dark Ritual
+1 Deathrite Shaman
+1 Deflecting Swat
+1 Demonic Consultation
+1 Demonic Tutor
+1 Dispel
+1 Dovin's Veto
+1 Drown in the Loch
+1 Elves of Deep Shadow
+1 Elvish Mystic
+1 Enlightened Tutor
+1 Entomb
+1 Eternal Scourge
+1 Exotic Orchard
+1 Extract
+1 Flooded Strand
+1 Flusterstorm
+1 Food Chain
+1 Forbidden Orchard
+1 Force of Will
+1 Foresight
+1 Forest
+1 Fyndhorn Elves
+1 Gemstone Caverns
+1 Gemstone Mine
+1 Gilded Drake
+1 Gitaxian Probe
+1 Hydroid Krasis
+1 Imperial Seal
+1 Jace, Wielder of Mysteries
+1 Lim-Dûl's Vault
+1 Llanowar Elves
+1 Llanowar Wastes
+1 Lotus Petal
+1 Mana Confluence
+1 Mana Drain
+1 Mana Vault
+1 Manipulate Fate
+1 Marsh Flats
+1 Mental Misstep
+1 Mindbreak Trap
+1 Misthollow Griffin
+1 Misty Rainforest
+1 Morphic Pool
+1 Mox Diamond
+1 Mystic Remora
+1 Mystical Tutor
+1 Necropotence
+1 Noble Hierarch
+1 Noxious Revival
+1 Overgrown Tomb
+1 Pact of Negation
+1 Plunge into Darkness
+1 Polluted Delta
+1 Ponder
+1 Preordain
+1 Reap
+1 Savannah
+1 Scalding Tarn
+1 Silence
+1 Sol Ring
+1 Squee, the Immortal
+1 Sterling Grove
+1 Swan Song
+1 Sylvan Library
+1 Tainted Pact
+1 Tarnished Citadel
+1 Thassa's Oracle
+1 Tropical Island
+1 Tundra
+1 Underground Sea
+1 Vampiric Tutor
+1 Verdant Catacombs
+1 Vexing Shusher
+1 Wall of Roots
+1 Watery Grave
+1 Windswept Heath
+1 Wooded Foothills
+1 Yavimaya Coast
+1 Yawgmoth's Will

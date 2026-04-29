@@ -1,0 +1,17 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "act:sac",
+        "scry"
+      ],
+      "index": 0,
+      "kind": "activated"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Viscera Seer",
+  "parse_error_count": 0
+}

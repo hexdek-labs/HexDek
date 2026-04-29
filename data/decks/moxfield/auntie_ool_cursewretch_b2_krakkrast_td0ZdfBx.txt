@@ -1,0 +1,90 @@
+COMMANDER: Auntie Ool, Cursewretch
+1 Aberrant Return
+1 Agent Frank Horrigan
+1 Arcane Signet
+1 Arnyn, Deathbloom Botanist
+1 Atomize
+1 Banewhip Punisher
+1 Black Sun's Zenith
+1 Blight Rot
+1 Blightbeetle
+1 Blood Artist
+1 Blowfly Infestation
+1 Cankerbloom
+1 Carnifex Demon
+1 Chain Reaction
+1 Channeler Initiate
+1 Cinder Glade
+1 Command Tower
+1 Contagion Clasp
+1 Darkness Descends
+1 Dawnhand Dissident
+1 Devoted Druid
+1 Dig Up
+1 Dose of Dawnglow
+1 Dragonskull Summit
+1 Dread Tiller
+1 Eventide's Shadow
+1 Everlasting Torment
+1 Evolution Sage
+1 Exotic Orchard
+1 Farseek
+1 Feign Death
+1 Flourishing Defenses
+5 Forest
+1 Game Trail
+1 Gix's Command
+1 Grave Betrayal
+1 Grim Poppet
+1 Hapatra, Vizier of Poisons
+1 High Perfect Morcant
+1 Ifnir Deadlands
+1 Ignoble Hierarch
+1 Karn's Bastion
+1 Kulrath Knight
+1 Liliana, Death Wielder
+1 Llanowar Wastes
+1 Massacre Girl, Known Killer
+1 Midnight Banshee
+1 Morbid Opportunist
+1 Mortuary Mire
+3 Mountain
+1 Mudbutton Cursetosser
+1 Necroblossom Snarl
+1 Necroskitter
+1 Nest of Scarabs
+1 Nesting Grounds
+1 Obelisk Spider
+1 Persist
+1 Phyresis
+1 Putrefy
+1 Rampant Growth
+1 Reclaim
+1 Renata, Called to the Hunt
+1 Requiting Hex
+1 Riveteers Overlook
+1 Rootbound Crag
+1 Savage Lands
+1 Shadowblood Ridge
+1 Shirei, Shizo's Caretaker
+1 Sinister Gnarlbark
+1 Skithiryx, the Blight Dragon
+1 Smell Fear
+1 Smoldering Marsh
+1 Sol Ring
+1 Soul Snuffers
+1 Stalwart Successor
+5 Swamp
+1 Swiftfoot Boots
+1 The Reaper, King No More
+1 The Scorpion God
+1 Tree of Perdition
+1 Twisted Landscape
+1 Vat Emergence
+1 Vernal Fen
+1 Village Pillagers
+1 Viridescent Bog
+1 Vraska, Betrayal's Sting
+1 Wickerbough Elder
+1 Wickersmith's Tools
+1 Woodland Cemetery

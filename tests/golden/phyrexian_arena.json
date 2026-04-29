@@ -1,0 +1,19 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:phase",
+        "sequence",
+        "draw",
+        "lose_life"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Phyrexian Arena",
+  "parse_error_count": 0
+}

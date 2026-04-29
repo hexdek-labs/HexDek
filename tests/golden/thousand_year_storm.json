@@ -1,0 +1,24 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:cast_filtered",
+        "copy_effect"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "static:copy_retarget:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Thousand-Year Storm",
+  "parse_error_count": 0
+}

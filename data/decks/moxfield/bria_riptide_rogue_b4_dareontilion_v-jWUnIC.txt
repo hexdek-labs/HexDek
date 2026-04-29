@@ -1,0 +1,78 @@
+COMMANDER: Bria, Riptide Rogue
+1 Arcane Denial
+1 Arcane Signet
+1 Artist's Talent
+1 Assault Strobe
+1 Balduvian Rage
+1 Birgi, God of Storytelling // Harnfel, Horn of Bounty
+1 Brainstorm
+1 Brute Force
+1 Bulk Up
+1 Command Tower
+1 Dreadhorde Arcanist
+1 Dreadmaw's Ire
+1 Exotic Orchard
+1 Expressive Iteration
+1 Faithless Looting
+1 Fellwar Stone
+1 Ferrous Lake
+1 Fierce Guardianship
+1 Finale of Promise
+1 Firebending Student
+1 Fists of Flame
+1 Frantic Search
+1 Frostboil Snarl
+1 Full Throttle
+1 Gitaxian Probe
+1 Great Train Heist
+1 Haze of Rage
+10 Island
+1 Isochron Scepter
+1 Jeska's Will
+1 Kitsa, Otterball Elite
+1 Leyline of Resonance
+1 Lightning Greaves
+1 Mana Geyser
+1 Mistrise Village
+1 Monstrous Rage
+14 Mountain
+1 Mystical Tutor
+1 Opt
+1 Past in Flames
+1 Ponder
+1 Preordain
+1 Proft's Eidetic Memory
+1 Prosperous Bandit
+1 Psychotic Fury
+1 Pyretic Ritual
+1 Reckless Charge
+1 Relentless Assault
+1 Rhystic Study
+1 Ruby Medallion
+1 Saheeli, Sublime Artificer
+1 Samut's Sprint
+1 Seething Song
+1 Shivan Reef
+1 Sol Ring
+1 Solve the Equation
+1 Spirebluff Canal
+1 Steam Vents
+1 Storm-Kiln Artist
+1 Stormcatch Mentor
+1 Sulfur Falls
+1 Talisman of Creativity
+1 Third Path Iconoclast
+1 Thunderclap Drake
+1 Titan's Strength
+1 Training Center
+1 Twinferno
+1 Two-Handed Axe // Sweeping Cleave
+1 Underworld Breach
+1 Valakut Awakening // Valakut Stoneforge
+1 Valley Floodcaller
+1 Veyran, Voice of Duality
+1 Vivi Ornitier
+1 Wild Ride
+1 Will of the Jeskai
+1 Windfall
+1 Young Pyromancer

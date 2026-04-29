@@ -1,0 +1,82 @@
+COMMANDER: Silverquill, the Disputant
+1 Afterlife Insurance
+1 Akroma's Will
+1 Angel's Grace
+1 Anointed Procession
+1 Arcane Signet
+1 Archaeomancer's Map
+1 Army of the Damned
+1 Bastion of Remembrance
+1 Black Market
+1 Bleachbone Verge
+1 Blood Artist
+1 Blot Out the Sky
+1 Bojuka Bog
+1 Cabal Coffers
+1 Caretaker's Talent
+1 Command Tower
+1 Corpse Knight
+1 Cruel Celebrant
+1 Damn
+1 Dark Petition
+1 Dark Ritual
+1 Dawn's Truce
+1 Deadly Rollick
+1 Demonic Tutor
+1 Deploy to the Front
+1 Desolate Mire
+1 Despark
+1 Diabolic Intent
+1 Divine Visitation
+1 Elspeth, Storm Slayer
+1 Evolving Wilds
+1 Feed the Swarm
+1 Fetid Heath
+1 Finale of Glory
+1 Fracture
+1 Gruesome Fate
+1 Hop to It
+1 Imp's Mischief
+1 Informed Inkwright
+1 Inkshield
+1 Isolated Chapel
+1 Jet Medallion
+1 Mirkwood Bats
+1 Moment of Reckoning
+1 Mondrak, Glory Dominus
+1 Night's Whisper
+1 Ocelot Pride
+1 Ojer Taq, Deepest Foundation // Temple of Civilization
+1 Orzhov Signet
+1 Pearl Medallion
+10 Plains
+1 Reanimate
+1 Reliquary Tower
+1 Scheming Silvertongue // Sign in Blood
+1 Scrubland
+1 Season of the Burrow
+1 Shadow Summoning
+1 Shadrix Silverquill
+1 Shattered Sanctum
+1 Sign in Blood
+1 Smothering Tithe
+1 Sol Ring
+1 Soul Warden
+1 Sram's Expertise
+1 Storm Herd
+10 Swamp
+1 Swiftfoot Boots
+1 Temple of Silence
+1 Tempt with Bunnies
+1 Terramorphic Expanse
+1 Teysa Karlov
+1 Teysa, Orzhov Scion
+1 Thought Vessel
+1 Twinning Staff
+1 United Front
+1 Urborg, Tomb of Yawgmoth
+1 Vampiric Tutor
+1 Viscera Seer
+1 White Sun's Twilight
+1 White Sun's Zenith
+1 Zulaport Cutthroat

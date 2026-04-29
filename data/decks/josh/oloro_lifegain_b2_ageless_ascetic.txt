@@ -1,0 +1,90 @@
+1 Adarkar Wastes
+1 Aetherflux Reservoir
+1 Ajani's Welcome
+1 Amphibian Downpour
+1 Angel's Grace
+1 Angelic Chorus
+1 Anguished Unmaking
+1 Approach of the Second Sun
+1 Arcane Denial
+1 Arcane Sanctum
+1 Arcane Signet
+1 Arrest
+1 Authority of the Consuls
+1 Axis of Mortality
+1 Azorius Chancery
+1 Barren Moor
+1 Beacon of Immortality
+1 Bojuka Bog
+1 Boon Reflection
+1 Caves of Koilos
+1 Command Tower
+1 Counterspell
+1 Darkness
+1 Darksteel Mutation
+1 Dawn Charm
+1 Dawn of Hope
+1 Deadeye Navigator
+1 Debt to the Deathless
+1 Dimir Aqueduct
+1 Drowned Catacomb
+1 Exotic Orchard
+1 Felidar Sovereign
+1 Frogify
+1 Generous Gift
+1 Ghostly Prison
+1 Glacial Fortress
+1 Godless Shrine
+1 Guide of Souls
+1 Hallowed Fountain
+1 Holy Day
+1 Impassioned Orator
+1 Imprisoned in the Moon
+5 Island
+1 Isolated Chapel
+1 Kami of False Hope
+1 Kasmina's Transmutation
+1 Kor Celebrant
+1 Mangara, the Diplomat
+1 Mentor of the Meek
+1 Negate
+1 Orim, Samite Healer
+1 Orzhov Basilica
+1 Pacifism
+1 Path of Ancestry
+1 Path to Exile
+5 Plains
+1 Propaganda
+1 Reliquary Tower
+1 Remote Isle
+1 Rest for the Weary
+1 Rhox Faithmender
+1 Secluded Steppe
+1 Skullclamp
+1 Sol Ring
+1 Soothing Balm
+1 Soul Warden
+1 Soul's Attendant
+1 Sphere of Safety
+1 Stonehorn Dignitary
+1 Suture Priest
+5 Swamp
+1 Swan Song
+1 Swords to Plowshares
+1 Talisman of Dominance
+1 Talisman of Hierarchy
+1 Talisman of Progress
+1 Temple of Deceit
+1 Temple of Enlightenment
+1 Temple of Silence
+1 Test of Endurance
+1 Underground River
+1 Vault of the Archangel
+1 Watery Grave
+1 Wedding Announcement
+1 Welcoming Vampire
+1 Well of Lost Dreams
+1 Witness Protection
+1 Wrath of God
+
+COMMANDER: Oloro, Ageless Ascetic

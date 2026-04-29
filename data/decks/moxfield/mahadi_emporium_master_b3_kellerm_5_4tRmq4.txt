@@ -1,0 +1,80 @@
+COMMANDER: Mahadi, Emporium Master
+1 Abrade
+1 Academy Manufactor
+1 Accursed Marauder
+1 Agent of the Iron Throne
+1 Alchemist's Talent
+1 Arcane Signet
+1 Ashnod's Altar
+1 Bastion of Remembrance
+1 Bedevil
+1 Black Market
+1 Blackcleave Cliffs
+1 Blasphemous Act
+1 Blightstep Pathway // Searstep Pathway
+1 Blood Artist
+1 Braids, Arisen Nightmare
+1 Canyon Slough
+1 Carrion Feeder
+1 Command Tower
+1 Daretti, Ingenious Iconoclast
+1 Dark Ritual
+1 Dauthi Voidwalker
+1 Deadly Dispute
+1 Diabolic Tutor
+1 Disciple of the Vault
+1 Dragonskull Summit
+1 Eaten Alive
+1 Exotic Orchard
+1 Fountainport
+1 Gadrak, the Crown-Scourge
+1 Goblin Bombardment
+1 Goldspan Dragon
+1 Graven Cairns
+1 Greedy Freebooter
+1 Grim Hireling
+1 Impulsive Pilferer
+1 Ingenious Artillerist
+1 Lagomos, Hand of Hatred
+1 Loyal Apprentice
+1 Marionette Apprentice
+1 Marionette Master
+1 Mayhem Devil
+1 Mirkwood Bats
+11 Mountain
+1 Nadier's Nightblade
+1 Nine-Lives Familiar
+1 No Mercy
+1 Pirate's Pillage
+1 Pitiless Plunderer
+1 Professional Face-Breaker
+1 Ragavan, Nimble Pilferer
+1 Rakdos Carnarium
+1 Reanimate
+1 Reassembling Skeleton
+1 Reckless Blaze
+1 Reckless Fireweaver
+1 Revel in Riches
+1 Riveteers Overlook
+1 Searslicer Goblin
+1 Shadowblood Ridge
+1 Skullclamp
+1 Smoldering Marsh
+1 Sol Ring
+1 Squee, the Immortal
+1 Stormclaw Rager
+1 Sulfurous Springs
+11 Swamp
+1 Tainted Peak
+1 Talisman of Indulgence
+1 Temple of Malice
+1 Terminate
+1 Torment of Hailfire
+1 Unearth
+1 Urabrask's Forge
+1 Vampiric Tutor
+1 Victimize
+1 Village Rites
+1 Viscera Seer
+1 Xorn
+1 Zulaport Cutthroat

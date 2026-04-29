@@ -1,0 +1,83 @@
+COMMANDER: Ikra Shidiqi, the Usurper
+COMMANDER: Keleth, Sunmane Familiar
+1 Abrupt Decay
+1 Abundant Harvest
+1 Abzan Battle Priest
+1 Accomplished Alchemist
+1 Aerith Gainsborough
+1 Aettir and Priwen
+1 Ancient Adamantoise
+1 Ancient Ziggurat
+1 Archivist of Oghma
+1 Arwen, Weaver of Hope
+1 Astarion, the Decadent
+1 Austere Command
+1 Authority of the Consuls
+1 Barrensteppe Siege
+1 Battle Menu
+1 Bedrock Tortoise
+1 Betor, Ancestor's Voice
+1 Betor, Kin to All
+1 Bilbo, Birthday Celebrant
+1 Birds of Paradise
+1 Bogwater Lumaret
+1 Brushland
+1 Bushwhack
+1 Caduceus, Staff of Hermes
+1 Canopy Gargantuan
+1 Caves of Koilos
+1 Champion of Lambholt
+1 Citadel Siege
+1 Cloud's Limit Break
+1 Colossal Dreadmaw
+1 Comforting Counsel
+1 Command Tower
+1 Conduit Pylons
+1 Darksteel Mutation
+1 Decorum Dissertation
+1 Duskshell Crawler
+1 Dust Animus
+1 Eternal Thirst
+1 Exotic Orchard
+1 Fanatic of Rhonas
+1 Farseek
+7 Forest
+1 Generous Pup
+1 Gnarlid Colony
+1 Godless Shrine
+1 Haliya, Guided by Light
+1 Hardened Scales
+1 Herd Heirloom
+1 Hollowmurk Siege
+1 Inkshield
+1 Kami of Whispered Hopes
+1 Llanowar Wastes
+1 Meteor Crater
+1 Moseo, Vein's New Dean
+1 Ojer Kaslem, Deepest Growth // Temple of Cultivation
+1 Overgrown Tomb
+7 Plains
+1 Plaza of Heroes
+1 Rampant Growth
+1 Restoration Magic
+1 Sakura-Tribe Elder
+1 Sandsteppe Citadel
+1 Scheming Silvertongue // Sign in Blood
+1 Skyknight Squire
+1 Split Up
+1 Star Charter
+1 Sunpetal Grove
+6 Swamp
+1 Take Up the Shield
+1 Temple Garden
+1 Terrain Generator
+1 Topiary Lecturer
+1 Toxic Deluge
+1 Trelasarra, Moon Dancer
+1 Valentin, Dean of the Vein // Lisette, Dean of the Root
+1 Vindicate
+1 Wildgrowth Archaic
+1 Windswept Heath
+1 Witherbloom Charm
+1 Woodland Cemetery
+1 Zero Point Ballad

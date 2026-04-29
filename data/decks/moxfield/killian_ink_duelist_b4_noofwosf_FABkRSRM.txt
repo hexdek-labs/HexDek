@@ -1,0 +1,94 @@
+COMMANDER: Killian, Ink Duelist
+1 All That Glitters
+1 Alseid of Life's Bounty
+1 Angelic Gift
+1 Animate Dead
+1 Apostle's Blessing
+1 Battle Mastery
+1 Benevolent Blessing
+1 Black Market Connections
+1 Brightclimb Pathway // Grimclimb Pathway
+1 Brilliant Restoration
+1 Caves of Koilos
+1 Celestial Mantle
+1 Chains of Custody
+1 Chosen by Heliod
+1 City of Brass
+1 Command Tower
+1 Darksteel Mutation
+1 Demonic Embrace
+1 Demonic Tutor
+1 Dog Umbra
+1 Doom Whisperer
+1 Doomwake Giant
+1 Eidolon of Countless Battles
+1 Eiganjo, Seat of the Empire
+1 Eldrazi Conscription
+1 Emergence Zone
+1 Esper Sentinel
+1 Ethereal Armor
+1 Exotic Orchard
+1 Fabled Passage
+1 Feather of Flight
+1 Fell the Profane // Fell Mire
+1 Flagstones of Trokair
+1 Glasswing Grace // Age-Graced Chapel
+1 Godless Shrine
+1 Grim Guardian
+1 Grisly Transformation
+1 Hateful Eidolon
+1 Heliod's Punishment
+1 Helm of the Gods
+1 Horizon of Progress
+1 Isolated Chapel
+1 Kor Spiritdancer
+1 Land Tax
+1 Leonin Relic-Warder
+1 Lithoform Blight
+1 Lord Skitter's Blessing
+1 Malakir Rebirth // Malakir Mire
+1 Mana Confluence
+1 Mantle of the Ancients
+1 Marsh Flats
+1 Mesa Enchantress
+1 Michiko's Reign of Truth // Portrait of Michiko
+1 Minimus Containment
+1 Necropotence
+1 Nighthowler
+1 Open the Vaults
+1 Pearl-Ear, Imperial Advisor
+1 Peer into the Abyss
+1 Pentarch Ward
+4 Plains
+1 Prismatic Vista
+1 Razorgrass Ambush // Razorgrass Field
+1 Redress Fate
+1 Reflecting Pool
+1 Reprobation
+1 Ripples of Undeath
+1 Rune of Mortality
+1 Rune of Sustenance
+1 Sage's Reverie
+1 Scourgemark
+1 Sejiri Shelter // Sejiri Glacier
+1 Sevinne's Reclamation
+1 Shardmage's Rescue
+1 Shattered Sanctum
+1 Sheltered by Ghosts
+1 Shizo, Death's Storehouse
+1 Silent Clearing
+1 Smothering Tithe
+1 Sol Ring
+1 Spirited Companion
+1 Sram, Senior Edificer
+4 Swamp
+1 Takenuma, Abandoned Mire
+1 Tempest Technique
+1 The Meathook Massacre
+1 Transcendent Envoy
+1 Twinblade Blessing
+1 Twisted Embrace
+1 Unquestioned Authority
+1 Urza's Saga
+1 Valgavoth's Lair
+1 Vault of Champions

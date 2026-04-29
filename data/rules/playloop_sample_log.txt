@@ -1,0 +1,746 @@
+
+===== Burn vs Control — GAME 0 =====
+
+T1 P1 [beginning] game start — 2 seats, seat 1 on the play
+T1 P1 [untap] untap
+T1 P1 [draw] draw → hand=8
+T1 P1 [main1] play land Swamp
+T2 P0 [untap] untap
+T2 P0 [draw] draw → hand=8
+T2 P0 [main1] play land Mountain
+T2 P0 [main1] cast Goblin Guide (cmc 1)
+T2 P0 [main1]   push Goblin Guide onto stack (size 1)
+T2 P0 [combat]   attack with: Goblin Guide
+T2 P0 [combat]   trigger: Goblin Guide attacks
+T2 P0 [combat]   Goblin Guide unblocked
+T2 P0 [combat]     Goblin Guide deals 2 to seat 1 (life → 18)
+T2 P1 [untap] untap
+T2 P1 [draw] draw → hand=8
+T2 P1 [main1] play land Island
+T3 P0 [untap] untap
+T3 P0 [draw] draw → hand=7
+T3 P0 [main1] play land Mountain
+T3 P0 [main1] cast Lava Spike (cmc 1)
+T3 P0 [main1]   push Lava Spike onto stack (size 1)
+T3 P0 [main1] seat 1 responds with Counterspell -> counter Lava Spike
+T3 P0 [main1]   push Counterspell onto stack (size 2)
+T3 P0 [main1]   counter Lava Spike (seat 0)
+T3 P0 [main1]   resolve: Lava Spike was countered -> graveyard
+T3 P0 [main1] cast Lightning Bolt (cmc 1)
+T3 P0 [main1]   push Lightning Bolt onto stack (size 1)
+T3 P0 [main1]   deal 3 to seat 1 (life → 15)
+T3 P0 [combat]   attack with: Goblin Guide
+T3 P0 [combat]   trigger: Goblin Guide attacks
+T3 P0 [combat]   Goblin Guide unblocked
+T3 P0 [combat]     Goblin Guide deals 2 to seat 1 (life → 13)
+T3 P1 [untap] untap
+T3 P1 [draw] draw → hand=7
+T3 P1 [main1] play land Swamp
+T3 P1 [main1] cast Doom Blade (cmc 2)
+T3 P1 [main1]   push Doom Blade onto stack (size 1)
+T3 P1 [main1]   Goblin Guide dies → graveyard (destroy_effect)
+T3 P1 [main1] cast Opt (cmc 1)
+T3 P1 [main1]   push Opt onto stack (size 1)
+T3 P1 [main1]   scry 1 (kept)
+T3 P1 [main1]   seat 1 draws 1 (hand=5)
+T4 P0 [untap] untap
+T4 P0 [draw] draw → hand=5
+T4 P0 [main1] play land Mountain
+T4 P0 [main1] cast Shock (cmc 1)
+T4 P0 [main1]   push Shock onto stack (size 1)
+T4 P0 [main1]   deal 2 to seat 1 (life → 11)
+T4 P1 [untap] untap
+T4 P1 [draw] draw → hand=6
+T4 P1 [main1] play land Island
+T4 P1 [main1] cast Grizzly Bears (cmc 2)
+T4 P1 [main1]   push Grizzly Bears onto stack (size 1)
+T4 P1 [main1] cast Grizzly Bears (cmc 2)
+T4 P1 [main1]   push Grizzly Bears onto stack (size 1)
+T5 P0 [untap] untap
+T5 P0 [draw] draw → hand=4
+T5 P0 [main1] play land Mountain
+T5 P0 [main1] cast Lightning Strike (cmc 2)
+T5 P0 [main1]   push Lightning Strike onto stack (size 1)
+T5 P0 [main1]   deal 3 to seat 1 (life → 8)
+T5 P1 [untap] untap
+T5 P1 [draw] draw → hand=4
+T5 P1 [main1] play land Island
+T5 P1 [main1] cast Dark Ritual (cmc 1)
+T5 P1 [main1]   push Dark Ritual onto stack (size 1)
+T5 P1 [main1]   +3 mana (pool=5)
+T5 P1 [main1] cast Preordain (cmc 1)
+T5 P1 [main1]   push Preordain onto stack (size 1)
+T5 P1 [main1]   scry 2 (kept)
+T5 P1 [main1]   seat 1 draws 1 (hand=2)
+T5 P1 [combat]   attack with: Grizzly Bears, Grizzly Bears
+T5 P1 [combat]   Grizzly Bears unblocked
+T5 P1 [combat]   Grizzly Bears unblocked
+T5 P1 [combat]     Grizzly Bears deals 2 to seat 0 (life → 18)
+T5 P1 [combat]     Grizzly Bears deals 2 to seat 0 (life → 16)
+T6 P0 [untap] untap
+T6 P0 [draw] draw → hand=3
+T6 P0 [main1] play land Mountain
+T6 P1 [untap] untap
+T6 P1 [draw] draw → hand=3
+T6 P1 [main1] play land Swamp
+T6 P1 [combat]   attack with: Grizzly Bears, Grizzly Bears
+T6 P1 [combat]   Grizzly Bears unblocked
+T6 P1 [combat]   Grizzly Bears unblocked
+T6 P1 [combat]     Grizzly Bears deals 2 to seat 0 (life → 14)
+T6 P1 [combat]     Grizzly Bears deals 2 to seat 0 (life → 12)
+T7 P0 [untap] untap
+T7 P0 [draw] draw → hand=3
+T7 P0 [main1] play land Mountain
+T7 P0 [main1] cast Lava Spike (cmc 1)
+T7 P0 [main1]   push Lava Spike onto stack (size 1)
+T7 P0 [main1] seat 1 responds with Mana Leak -> counter Lava Spike
+T7 P0 [main1]   push Mana Leak onto stack (size 2)
+T7 P0 [main1]   counter Lava Spike (seat 0)
+T7 P0 [main1]   resolve: Lava Spike was countered -> graveyard
+T7 P1 [untap] untap
+T7 P1 [draw] draw → hand=2
+T7 P1 [main1] play land Island
+T7 P1 [combat]   attack with: Grizzly Bears, Grizzly Bears
+T7 P1 [combat]   Grizzly Bears unblocked
+T7 P1 [combat]   Grizzly Bears unblocked
+T7 P1 [combat]     Grizzly Bears deals 2 to seat 0 (life → 10)
+T7 P1 [combat]     Grizzly Bears deals 2 to seat 0 (life → 8)
+T8 P0 [untap] untap
+T8 P0 [draw] draw → hand=2
+T8 P0 [main1] play land Mountain
+T8 P1 [untap] untap
+T8 P1 [draw] draw → hand=2
+T8 P1 [main1] play land Island
+T8 P1 [combat]   attack with: Grizzly Bears, Grizzly Bears
+T8 P1 [combat]   Grizzly Bears unblocked
+T8 P1 [combat]   Grizzly Bears unblocked
+T8 P1 [combat]     Grizzly Bears deals 2 to seat 0 (life → 6)
+T8 P1 [combat]     Grizzly Bears deals 2 to seat 0 (life → 4)
+T9 P0 [untap] untap
+T9 P0 [draw] draw → hand=2
+T9 P0 [main1] play land Mountain
+T9 P0 [main1] cast Rift Bolt (cmc 3)
+T9 P0 [main1]   push Rift Bolt onto stack (size 1)
+T9 P0 [main1]   deal 3 to seat 1 (life → 5)
+T9 P1 [untap] untap
+T9 P1 [draw] draw → hand=2
+T9 P1 [main1] play land Swamp
+T9 P1 [main1] cast Preordain (cmc 1)
+T9 P1 [main1]   push Preordain onto stack (size 1)
+T9 P1 [main1]   scry 2 (kept)
+T9 P1 [main1]   seat 1 draws 1 (hand=1)
+T9 P1 [combat]   attack with: Grizzly Bears, Grizzly Bears
+T9 P1 [combat]   Grizzly Bears unblocked
+T9 P1 [combat]   Grizzly Bears unblocked
+T9 P1 [combat]     Grizzly Bears deals 2 to seat 0 (life → 2)
+T9 P1 [combat]     Grizzly Bears deals 2 to seat 0 (life → 0)
+T9 P1 [combat] seat 0 leaves the game (combat damage); 8 permanents removed (§800.4a)
+T9 P1 [combat] game over: winner=1, reason=seat 1 is the last one standing, turn=9
+
+===== Burn vs Creatures — GAME 0 =====
+
+T1 P1 [beginning] game start — 2 seats, seat 1 on the play
+T1 P1 [untap] untap
+T1 P1 [draw] draw → hand=8
+T1 P1 [main1] play land Mountain
+T1 P1 [main1] cast Goblin Cohort (cmc 1)
+T1 P1 [main1]   push Goblin Cohort onto stack (size 1)
+T2 P0 [untap] untap
+T2 P0 [draw] draw → hand=8
+T2 P0 [main1] play land Mountain
+T2 P0 [main1] cast Lava Spike (cmc 1)
+T2 P0 [main1]   push Lava Spike onto stack (size 1)
+T2 P0 [main1]   deal 3 to seat 1 (life → 17)
+T2 P1 [untap] untap
+T2 P1 [draw] draw → hand=7
+T2 P1 [main1] play land Mountain
+T2 P1 [main1] cast Goblin Piker (cmc 2)
+T2 P1 [main1]   push Goblin Piker onto stack (size 1)
+T2 P1 [combat]   attack with: Goblin Cohort
+T2 P1 [combat]   Goblin Cohort unblocked
+T2 P1 [combat]     Goblin Cohort deals 2 to seat 0 (life → 18)
+T3 P0 [untap] untap
+T3 P0 [draw] draw → hand=7
+T3 P0 [main1] play land Mountain
+T3 P0 [main1] cast Grizzly Bears (cmc 2)
+T3 P0 [main1]   push Grizzly Bears onto stack (size 1)
+T3 P1 [untap] untap
+T3 P1 [draw] draw → hand=6
+T3 P1 [main1] play land Mountain
+T3 P1 [main1] cast Goblin Raider (cmc 2)
+T3 P1 [main1]   push Goblin Raider onto stack (size 1)
+T3 P1 [main1] cast Goblin Guide (cmc 1)
+T3 P1 [main1]   push Goblin Guide onto stack (size 1)
+T3 P1 [combat]   attack with: Goblin Cohort, Goblin Piker, Goblin Guide
+T3 P1 [combat]   trigger: Goblin Guide attacks
+T3 P1 [combat]   Goblin Cohort unblocked
+T3 P1 [combat]   Goblin Piker unblocked
+T3 P1 [combat]   Goblin Guide unblocked
+T3 P1 [combat]     Goblin Cohort deals 2 to seat 0 (life → 16)
+T3 P1 [combat]     Goblin Piker deals 2 to seat 0 (life → 14)
+T3 P1 [combat]     Goblin Guide deals 2 to seat 0 (life → 12)
+T4 P0 [untap] untap
+T4 P0 [draw] draw → hand=6
+T4 P0 [main1] play land Mountain
+T4 P0 [main1] cast Rift Bolt (cmc 3)
+T4 P0 [main1]   push Rift Bolt onto stack (size 1)
+T4 P0 [main1]   deal 3 to seat 1 (life → 14)
+T4 P0 [combat]   attack with: Grizzly Bears
+T4 P0 [combat]   Grizzly Bears unblocked
+T4 P0 [combat]     Grizzly Bears deals 2 to seat 1 (life → 12)
+T4 P1 [untap] untap
+T4 P1 [draw] draw → hand=4
+T4 P1 [main1] play land Mountain
+T4 P1 [main1] cast Jackal Pup (cmc 1)
+T4 P1 [main1]   push Jackal Pup onto stack (size 1)
+T4 P1 [combat]   attack with: Goblin Cohort, Goblin Piker, Goblin Raider, Goblin Guide
+T4 P1 [combat]   trigger: Goblin Guide attacks
+T4 P1 [combat]   Goblin Cohort unblocked
+T4 P1 [combat]   Goblin Piker unblocked
+T4 P1 [combat]   Goblin Raider unblocked
+T4 P1 [combat]   Goblin Guide unblocked
+T4 P1 [combat]     Goblin Cohort deals 2 to seat 0 (life → 10)
+T4 P1 [combat]     Goblin Piker deals 2 to seat 0 (life → 8)
+T4 P1 [combat]     Goblin Raider deals 2 to seat 0 (life → 6)
+T4 P1 [combat]     Goblin Guide deals 2 to seat 0 (life → 4)
+T5 P0 [untap] untap
+T5 P0 [draw] draw → hand=5
+T5 P0 [main1] play land Mountain
+T5 P0 [main1] cast Rift Bolt (cmc 3)
+T5 P0 [main1]   push Rift Bolt onto stack (size 1)
+T5 P0 [main1]   deal 3 to seat 1 (life → 9)
+T5 P0 [main1] cast Lightning Bolt (cmc 1)
+T5 P0 [main1]   push Lightning Bolt onto stack (size 1)
+T5 P0 [main1]   deal 3 to seat 1 (life → 6)
+T5 P0 [combat]   attack with: Grizzly Bears
+T5 P0 [combat]   Grizzly Bears unblocked
+T5 P0 [combat]     Grizzly Bears deals 2 to seat 1 (life → 4)
+T5 P1 [untap] untap
+T5 P1 [draw] draw → hand=3
+T5 P1 [main1] play land Mountain
+T5 P1 [combat]   attack with: Goblin Cohort, Goblin Piker, Goblin Raider, Goblin Guide, Jackal Pup
+T5 P1 [combat]   trigger: Goblin Guide attacks
+T5 P1 [combat]   Goblin Cohort unblocked
+T5 P1 [combat]   Goblin Piker unblocked
+T5 P1 [combat]   Goblin Raider unblocked
+T5 P1 [combat]   Goblin Guide unblocked
+T5 P1 [combat]   Jackal Pup unblocked
+T5 P1 [combat]     Goblin Cohort deals 2 to seat 0 (life → 2)
+T5 P1 [combat]     Goblin Piker deals 2 to seat 0 (life → 0)
+T5 P1 [combat] seat 0 leaves the game (combat damage); 5 permanents removed (§800.4a)
+T5 P1 [combat] game over: winner=1, reason=seat 1 is the last one standing, turn=5
+
+===== Burn vs Ramp — GAME 0 =====
+
+T1 P1 [beginning] game start — 2 seats, seat 1 on the play
+T1 P1 [untap] untap
+T1 P1 [draw] draw → hand=8
+T1 P1 [main1] play land Forest
+T2 P0 [untap] untap
+T2 P0 [draw] draw → hand=8
+T2 P0 [main1] play land Mountain
+T2 P0 [main1] cast Lava Spike (cmc 1)
+T2 P0 [main1]   push Lava Spike onto stack (size 1)
+T2 P0 [main1]   deal 3 to seat 1 (life → 17)
+T2 P1 [untap] untap
+T2 P1 [draw] draw → hand=8
+T2 P1 [main1] play land Forest
+T2 P1 [main1] cast Farseek (cmc 2)
+T2 P1 [main1]   push Farseek onto stack (size 1)
+T2 P1 [main1]   (unhandled effect kind: parsed_effect_residual)
+T3 P0 [untap] untap
+T3 P0 [draw] draw → hand=7
+T3 P0 [main1] play land Mountain
+T3 P0 [main1] cast Lightning Bolt (cmc 1)
+T3 P0 [main1]   push Lightning Bolt onto stack (size 1)
+T3 P0 [main1]   deal 3 to seat 1 (life → 14)
+T3 P0 [main1] cast Shock (cmc 1)
+T3 P0 [main1]   push Shock onto stack (size 1)
+T3 P0 [main1]   deal 2 to seat 1 (life → 12)
+T3 P1 [untap] untap
+T3 P1 [draw] draw → hand=7
+T3 P1 [main1] play land Forest
+T3 P1 [main1] cast Cultivate (cmc 3)
+T3 P1 [main1]   push Cultivate onto stack (size 1)
+T3 P1 [main1]   tutor → Forest to battlefield_tapped
+T4 P0 [untap] untap
+T4 P0 [draw] draw → hand=5
+T4 P0 [main1] play land Mountain
+T4 P0 [main1] cast Grizzly Bears (cmc 2)
+T4 P0 [main1]   push Grizzly Bears onto stack (size 1)
+T4 P1 [untap] untap
+T4 P1 [draw] draw → hand=6
+T4 P1 [main1] cast Wood Elves (cmc 3)
+T4 P1 [main1]   push Wood Elves onto stack (size 1)
+T4 P1 [main1]   tutor → Forest to battlefield_tapped
+T4 P1 [main1] cast Elvish Mystic (cmc 1)
+T4 P1 [main1]   push Elvish Mystic onto stack (size 1)
+T5 P0 [untap] untap
+T5 P0 [draw] draw → hand=4
+T5 P0 [main1] play land Mountain
+T5 P0 [main1] cast Lightning Bolt (cmc 1)
+T5 P0 [main1]   push Lightning Bolt onto stack (size 1)
+T5 P0 [main1]   deal 3 to seat 1 (life → 9)
+T5 P0 [combat]   attack with: Grizzly Bears
+T5 P0 [combat]   Grizzly Bears unblocked
+T5 P0 [combat]     Grizzly Bears deals 2 to seat 1 (life → 7)
+T5 P1 [untap] untap
+T5 P1 [draw] draw → hand=5
+T5 P1 [main1] play land Forest
+T5 P1 [main1] cast Avenger of Zendikar (cmc 7)
+T5 P1 [main1]   push Avenger of Zendikar onto stack (size 1)
+T5 P1 [main1]   (UnknownEffect: 'create a 0/1 green plant creature token for each land you co')
+T5 P1 [combat]   attack with: Wood Elves
+T5 P1 [combat]   Wood Elves unblocked
+T5 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 19)
+T6 P0 [untap] untap
+T6 P0 [draw] draw → hand=3
+T6 P0 [main1] play land Mountain
+T6 P0 [combat]   attack with: Grizzly Bears
+T6 P0 [combat]   block Grizzly Bears with Avenger of Zendikar
+T6 P0 [combat]     Grizzly Bears deals 2 to Avenger of Zendikar (2/5)
+T6 P0 [combat]     Avenger of Zendikar deals 5 to Grizzly Bears (5/2)
+T6 P0 [combat]   Grizzly Bears dies → graveyard (lethal_damage)
+T6 P1 [untap] untap
+T6 P1 [draw] draw → hand=4
+T6 P1 [main1] play land Forest
+T6 P1 [main1] cast Craterhoof Behemoth (cmc 8)
+T6 P1 [main1]   push Craterhoof Behemoth onto stack (size 1)
+T6 P1 [main1]   (unhandled effect kind: parsed_effect_residual)
+T6 P1 [combat]   attack with: Wood Elves, Avenger of Zendikar, Craterhoof Behemoth
+T6 P1 [combat]   Wood Elves unblocked
+T6 P1 [combat]   Avenger of Zendikar unblocked
+T6 P1 [combat]   Craterhoof Behemoth unblocked
+T6 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 18)
+T6 P1 [combat]     Avenger of Zendikar deals 5 to seat 0 (life → 13)
+T6 P1 [combat]     Craterhoof Behemoth deals 5 to seat 0 (life → 8)
+T7 P0 [untap] untap
+T7 P0 [draw] draw → hand=3
+T7 P0 [main1] play land Mountain
+T7 P1 [untap] untap
+T7 P1 [draw] draw → hand=3
+T7 P1 [main1] cast Primeval Titan (cmc 6)
+T7 P1 [main1]   push Primeval Titan onto stack (size 1)
+T7 P1 [main1] cast Sakura-Tribe Elder (cmc 2)
+T7 P1 [main1]   push Sakura-Tribe Elder onto stack (size 1)
+T7 P1 [combat]   attack with: Wood Elves, Avenger of Zendikar, Craterhoof Behemoth
+T7 P1 [combat]   Wood Elves unblocked
+T7 P1 [combat]   Avenger of Zendikar unblocked
+T7 P1 [combat]   Craterhoof Behemoth unblocked
+T7 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 7)
+T7 P1 [combat]     Avenger of Zendikar deals 5 to seat 0 (life → 2)
+T7 P1 [combat]     Craterhoof Behemoth deals 5 to seat 0 (life → -3)
+T7 P1 [combat] seat 0 leaves the game (combat damage); 6 permanents removed (§800.4a)
+T7 P1 [combat] game over: winner=1, reason=seat 1 is the last one standing, turn=7
+
+===== Control vs Creatures — GAME 0 =====
+
+T1 P0 [beginning] game start — 2 seats, seat 0 on the play
+T1 P0 [untap] untap
+T1 P0 [draw] draw → hand=8
+T1 P0 [main1] play land Swamp
+T1 P1 [untap] untap
+T1 P1 [draw] draw → hand=8
+T1 P1 [main1] play land Mountain
+T1 P1 [main1] cast Goblin Guide (cmc 1)
+T1 P1 [main1]   push Goblin Guide onto stack (size 1)
+T1 P1 [combat]   attack with: Goblin Guide
+T1 P1 [combat]   trigger: Goblin Guide attacks
+T1 P1 [combat]   Goblin Guide unblocked
+T1 P1 [combat]     Goblin Guide deals 2 to seat 0 (life → 18)
+T2 P0 [untap] untap
+T2 P0 [draw] draw → hand=8
+T2 P0 [main1] play land Swamp
+T2 P1 [untap] untap
+T2 P1 [draw] draw → hand=7
+T2 P1 [main1] play land Mountain
+T2 P1 [main1] cast Goblin Raider (cmc 2)
+T2 P1 [main1]   push Goblin Raider onto stack (size 1)
+T2 P1 [main1] seat 0 responds with Counterspell -> counter Goblin Raider
+T2 P1 [main1]   push Counterspell onto stack (size 2)
+T2 P1 [main1]   counter Goblin Raider (seat 1)
+T2 P1 [main1]   resolve: Goblin Raider was countered -> graveyard
+T2 P1 [combat]   attack with: Goblin Guide
+T2 P1 [combat]   trigger: Goblin Guide attacks
+T2 P1 [combat]   Goblin Guide unblocked
+T2 P1 [combat]     Goblin Guide deals 2 to seat 0 (life → 16)
+T3 P0 [untap] untap
+T3 P0 [draw] draw → hand=7
+T3 P0 [main1] play land Swamp
+T3 P0 [main1] cast Dark Ritual (cmc 1)
+T3 P0 [main1]   push Dark Ritual onto stack (size 1)
+T3 P0 [main1]   +3 mana (pool=3)
+T3 P0 [main1] cast Grizzly Bears (cmc 2)
+T3 P0 [main1]   push Grizzly Bears onto stack (size 1)
+T3 P0 [main1] cast Opt (cmc 1)
+T3 P0 [main1]   push Opt onto stack (size 1)
+T3 P0 [main1]   scry 1 (kept)
+T3 P0 [main1]   seat 0 draws 1 (hand=4)
+T3 P1 [untap] untap
+T3 P1 [draw] draw → hand=6
+T3 P1 [main1] play land Mountain
+T3 P1 [main1] cast Goblin Raider (cmc 2)
+T3 P1 [main1]   push Goblin Raider onto stack (size 1)
+T3 P1 [main1] seat 0 responds with Counterspell -> counter Goblin Raider
+T3 P1 [main1]   push Counterspell onto stack (size 2)
+T3 P1 [main1]   counter Goblin Raider (seat 1)
+T3 P1 [main1]   resolve: Goblin Raider was countered -> graveyard
+T3 P1 [main1] cast Goblin Cohort (cmc 1)
+T3 P1 [main1]   push Goblin Cohort onto stack (size 1)
+T3 P1 [combat]   attack with: Goblin Guide
+T3 P1 [combat]   trigger: Goblin Guide attacks
+T3 P1 [combat]   Goblin Guide unblocked
+T3 P1 [combat]     Goblin Guide deals 2 to seat 0 (life → 14)
+T4 P0 [untap] untap
+T4 P0 [draw] draw → hand=4
+T4 P0 [main1] play land Island
+T4 P0 [combat]   attack with: Grizzly Bears
+T4 P0 [combat]   Grizzly Bears unblocked
+T4 P0 [combat]     Grizzly Bears deals 2 to seat 1 (life → 18)
+T4 P1 [untap] untap
+T4 P1 [draw] draw → hand=4
+T4 P1 [main1] play land Mountain
+T4 P1 [main1] cast Mogg Flunkies (cmc 2)
+T4 P1 [main1]   push Mogg Flunkies onto stack (size 1)
+T4 P1 [main1] seat 0 responds with Cancel -> counter Mogg Flunkies
+T4 P1 [main1]   push Cancel onto stack (size 2)
+T4 P1 [main1]   counter Mogg Flunkies (seat 1)
+T4 P1 [main1]   resolve: Mogg Flunkies was countered -> graveyard
+T4 P1 [main1] cast Viashino Pyromancer (cmc 2)
+T4 P1 [main1]   push Viashino Pyromancer onto stack (size 1)
+T4 P1 [main1]   (unhandled effect kind: parsed_effect_residual)
+T4 P1 [combat]   attack with: Goblin Guide, Goblin Cohort
+T4 P1 [combat]   trigger: Goblin Guide attacks
+T4 P1 [combat]   Goblin Guide unblocked
+T4 P1 [combat]   Goblin Cohort unblocked
+T4 P1 [combat]     Goblin Guide deals 2 to seat 0 (life → 12)
+T4 P1 [combat]     Goblin Cohort deals 2 to seat 0 (life → 10)
+T5 P0 [untap] untap
+T5 P0 [draw] draw → hand=3
+T5 P0 [main1] play land Island
+T5 P0 [main1] cast Doom Blade (cmc 2)
+T5 P0 [main1]   push Doom Blade onto stack (size 1)
+T5 P0 [main1]   Viashino Pyromancer dies → graveyard (destroy_effect)
+T5 P0 [combat]   attack with: Grizzly Bears
+T5 P0 [combat]   Grizzly Bears unblocked
+T5 P0 [combat]     Grizzly Bears deals 2 to seat 1 (life → 16)
+T5 P1 [untap] untap
+T5 P1 [draw] draw → hand=2
+T5 P1 [main1] cast Hell's Thunder (cmc 3)
+T5 P1 [main1]   push Hell's Thunder onto stack (size 1)
+T5 P1 [main1] seat 0 responds with Counterspell -> counter Hell's Thunder
+T5 P1 [main1]   push Counterspell onto stack (size 2)
+T5 P1 [main1]   counter Hell's Thunder (seat 1)
+T5 P1 [main1]   resolve: Hell's Thunder was countered -> graveyard
+T5 P1 [main1] cast Jackal Pup (cmc 1)
+T5 P1 [main1]   push Jackal Pup onto stack (size 1)
+T5 P1 [combat]   attack with: Goblin Guide, Goblin Cohort
+T5 P1 [combat]   trigger: Goblin Guide attacks
+T5 P1 [combat]   Goblin Guide unblocked
+T5 P1 [combat]   Goblin Cohort unblocked
+T5 P1 [combat]     Goblin Guide deals 2 to seat 0 (life → 8)
+T5 P1 [combat]     Goblin Cohort deals 2 to seat 0 (life → 6)
+T6 P0 [untap] untap
+T6 P0 [draw] draw → hand=1
+T6 P0 [combat]   attack with: Grizzly Bears
+T6 P0 [combat]   Grizzly Bears unblocked
+T6 P0 [combat]     Grizzly Bears deals 2 to seat 1 (life → 14)
+T6 P1 [untap] untap
+T6 P1 [draw] draw → hand=1
+T6 P1 [main1] play land Mountain
+T6 P1 [combat]   attack with: Goblin Guide, Goblin Cohort, Jackal Pup
+T6 P1 [combat]   trigger: Goblin Guide attacks
+T6 P1 [combat]   Goblin Guide unblocked
+T6 P1 [combat]   Goblin Cohort unblocked
+T6 P1 [combat]   Jackal Pup unblocked
+T6 P1 [combat]     Goblin Guide deals 2 to seat 0 (life → 4)
+T6 P1 [combat]     Goblin Cohort deals 2 to seat 0 (life → 2)
+T6 P1 [combat]     Jackal Pup deals 2 to seat 0 (life → 0)
+T6 P1 [combat] seat 0 leaves the game (combat damage); 6 permanents removed (§800.4a)
+T6 P1 [combat] game over: winner=1, reason=seat 1 is the last one standing, turn=6
+
+===== Control vs Ramp — GAME 0 =====
+
+T1 P1 [beginning] game start — 2 seats, seat 1 on the play
+T1 P1 [untap] untap
+T1 P1 [draw] draw → hand=8
+T1 P1 [main1] play land Forest
+T2 P0 [untap] untap
+T2 P0 [draw] draw → hand=8
+T2 P0 [main1] play land Swamp
+T2 P1 [untap] untap
+T2 P1 [draw] draw → hand=8
+T2 P1 [main1] play land Forest
+T2 P1 [main1] cast Rampant Growth (cmc 2)
+T2 P1 [main1]   push Rampant Growth onto stack (size 1)
+T2 P1 [main1]   tutor → Forest to battlefield_tapped
+T3 P0 [untap] untap
+T3 P0 [draw] draw → hand=8
+T3 P0 [main1] play land Island
+T3 P1 [untap] untap
+T3 P1 [draw] draw → hand=7
+T3 P1 [main1] play land Forest
+T3 P1 [main1] cast Solemn Simulacrum (cmc 4)
+T3 P1 [main1]   push Solemn Simulacrum onto stack (size 1)
+T3 P1 [main1] seat 0 responds with Mana Leak -> counter Solemn Simulacrum
+T3 P1 [main1]   push Mana Leak onto stack (size 2)
+T3 P1 [main1]   counter Solemn Simulacrum (seat 1)
+T3 P1 [main1]   resolve: Solemn Simulacrum was countered -> graveyard
+T4 P0 [untap] untap
+T4 P0 [draw] draw → hand=7
+T4 P0 [main1] play land Swamp
+T4 P1 [untap] untap
+T4 P1 [draw] draw → hand=6
+T4 P1 [main1] cast Solemn Simulacrum (cmc 4)
+T4 P1 [main1]   push Solemn Simulacrum onto stack (size 1)
+T4 P1 [main1] seat 0 responds with Dissolve -> counter Solemn Simulacrum
+T4 P1 [main1]   push Dissolve onto stack (size 2)
+T4 P1 [main1]   counter Solemn Simulacrum (seat 1)
+T4 P1 [main1]   scry 1 (kept)
+T4 P1 [main1]   resolve: Solemn Simulacrum was countered -> graveyard
+T5 P0 [untap] untap
+T5 P0 [draw] draw → hand=6
+T5 P0 [main1] play land Island
+T5 P0 [main1] cast Opt (cmc 1)
+T5 P0 [main1]   push Opt onto stack (size 1)
+T5 P0 [main1]   scry 1 (kept)
+T5 P0 [main1]   seat 0 draws 1 (hand=5)
+T5 P0 [main1] cast Opt (cmc 1)
+T5 P0 [main1]   push Opt onto stack (size 1)
+T5 P0 [main1]   scry 1 (kept)
+T5 P0 [main1]   seat 0 draws 1 (hand=5)
+T5 P1 [untap] untap
+T5 P1 [draw] draw → hand=6
+T5 P1 [main1] cast Cultivate (cmc 3)
+T5 P1 [main1]   push Cultivate onto stack (size 1)
+T5 P1 [main1] seat 0 responds with Mana Leak -> counter Cultivate
+T5 P1 [main1]   push Mana Leak onto stack (size 2)
+T5 P1 [main1]   counter Cultivate (seat 1)
+T5 P1 [main1]   resolve: Cultivate was countered -> graveyard
+T5 P1 [main1] cast Llanowar Elves (cmc 1)
+T5 P1 [main1]   push Llanowar Elves onto stack (size 1)
+T6 P0 [untap] untap
+T6 P0 [draw] draw → hand=5
+T6 P0 [main1] play land Swamp
+T6 P1 [untap] untap
+T6 P1 [draw] draw → hand=5
+T6 P1 [main1] play land Forest
+T6 P1 [main1] cast Wood Elves (cmc 3)
+T6 P1 [main1]   push Wood Elves onto stack (size 1)
+T6 P1 [main1]   tutor → Forest to battlefield_tapped
+T6 P1 [main1] cast Wood Elves (cmc 3)
+T6 P1 [main1]   push Wood Elves onto stack (size 1)
+T6 P1 [main1]   tutor → Forest to battlefield_tapped
+T7 P0 [untap] untap
+T7 P0 [draw] draw → hand=5
+T7 P0 [main1] play land Swamp
+T7 P1 [untap] untap
+T7 P1 [draw] draw → hand=3
+T7 P1 [main1] cast Avenger of Zendikar (cmc 7)
+T7 P1 [main1]   push Avenger of Zendikar onto stack (size 1)
+T7 P1 [main1] seat 0 responds with Counterspell -> counter Avenger of Zendikar
+T7 P1 [main1]   push Counterspell onto stack (size 2)
+T7 P1 [main1]   counter Avenger of Zendikar (seat 1)
+T7 P1 [main1]   resolve: Avenger of Zendikar was countered -> graveyard
+T7 P1 [combat]   attack with: Wood Elves, Wood Elves
+T7 P1 [combat]   Wood Elves unblocked
+T7 P1 [combat]   Wood Elves unblocked
+T7 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 19)
+T7 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 18)
+T8 P0 [untap] untap
+T8 P0 [draw] draw → hand=4
+T8 P0 [main1] play land Island
+T8 P1 [untap] untap
+T8 P1 [draw] draw → hand=3
+T8 P1 [main1] play land Forest
+T8 P1 [main1] cast Rampant Growth (cmc 2)
+T8 P1 [main1]   push Rampant Growth onto stack (size 1)
+T8 P1 [main1] seat 0 responds with Dissolve -> counter Rampant Growth
+T8 P1 [main1]   push Dissolve onto stack (size 2)
+T8 P1 [main1]   counter Rampant Growth (seat 1)
+T8 P1 [main1]   scry 1 (kept)
+T8 P1 [main1]   resolve: Rampant Growth was countered -> graveyard
+T8 P1 [main1] cast Sakura-Tribe Elder (cmc 2)
+T8 P1 [main1]   push Sakura-Tribe Elder onto stack (size 1)
+T8 P1 [combat]   attack with: Wood Elves, Wood Elves
+T8 P1 [combat]   Wood Elves unblocked
+T8 P1 [combat]   Wood Elves unblocked
+T8 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 17)
+T8 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 16)
+T9 P0 [untap] untap
+T9 P0 [draw] draw → hand=3
+T9 P0 [main1] play land Swamp
+T9 P0 [main1] cast Preordain (cmc 1)
+T9 P0 [main1]   push Preordain onto stack (size 1)
+T9 P0 [main1]   scry 2 (kept)
+T9 P0 [main1]   seat 0 draws 1 (hand=2)
+T9 P1 [untap] untap
+T9 P1 [draw] draw → hand=1
+T9 P1 [main1] cast Farseek (cmc 2)
+T9 P1 [main1]   push Farseek onto stack (size 1)
+T9 P1 [main1]   (unhandled effect kind: parsed_effect_residual)
+T9 P1 [combat]   attack with: Wood Elves, Wood Elves, Sakura-Tribe Elder
+T9 P1 [combat]   Wood Elves unblocked
+T9 P1 [combat]   Wood Elves unblocked
+T9 P1 [combat]   Sakura-Tribe Elder unblocked
+T9 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 15)
+T9 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 14)
+T9 P1 [combat]     Sakura-Tribe Elder deals 1 to seat 0 (life → 13)
+T10 P0 [untap] untap
+T10 P0 [draw] draw → hand=3
+T10 P0 [main1] play land Swamp
+T10 P1 [untap] untap
+T10 P1 [draw] draw → hand=1
+T10 P1 [main1] play land Forest
+T10 P1 [combat]   attack with: Wood Elves, Wood Elves, Sakura-Tribe Elder
+T10 P1 [combat]   Wood Elves unblocked
+T10 P1 [combat]   Wood Elves unblocked
+T10 P1 [combat]   Sakura-Tribe Elder unblocked
+T10 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 12)
+T10 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 11)
+T10 P1 [combat]     Sakura-Tribe Elder deals 1 to seat 0 (life → 10)
+T11 P0 [untap] untap
+T11 P0 [draw] draw → hand=3
+T11 P0 [main1] play land Swamp
+T11 P1 [untap] untap
+T11 P1 [draw] draw → hand=1
+T11 P1 [main1] cast Llanowar Elves (cmc 1)
+T11 P1 [main1]   push Llanowar Elves onto stack (size 1)
+T11 P1 [combat]   attack with: Wood Elves, Wood Elves, Sakura-Tribe Elder
+T11 P1 [combat]   Wood Elves unblocked
+T11 P1 [combat]   Wood Elves unblocked
+T11 P1 [combat]   Sakura-Tribe Elder unblocked
+T11 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 9)
+T11 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 8)
+T11 P1 [combat]     Sakura-Tribe Elder deals 1 to seat 0 (life → 7)
+T12 P0 [untap] untap
+T12 P0 [draw] draw → hand=3
+T12 P0 [main1] play land Island
+T12 P1 [untap] untap
+T12 P1 [draw] draw → hand=1
+T12 P1 [main1] cast Sakura-Tribe Elder (cmc 2)
+T12 P1 [main1]   push Sakura-Tribe Elder onto stack (size 1)
+T12 P1 [combat]   attack with: Wood Elves, Wood Elves, Sakura-Tribe Elder
+T12 P1 [combat]   Wood Elves unblocked
+T12 P1 [combat]   Wood Elves unblocked
+T12 P1 [combat]   Sakura-Tribe Elder unblocked
+T12 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 6)
+T12 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 5)
+T12 P1 [combat]     Sakura-Tribe Elder deals 1 to seat 0 (life → 4)
+T13 P0 [untap] untap
+T13 P0 [draw] draw → hand=3
+T13 P0 [main1] play land Swamp
+T13 P1 [untap] untap
+T13 P1 [draw] draw → hand=1
+T13 P1 [main1] cast Kodama's Reach (cmc 3)
+T13 P1 [main1]   push Kodama's Reach onto stack (size 1)
+T13 P1 [main1]   tutor → Forest to battlefield_tapped
+T13 P1 [combat]   attack with: Wood Elves, Wood Elves, Sakura-Tribe Elder, Sakura-Tribe Elder
+T13 P1 [combat]   Wood Elves unblocked
+T13 P1 [combat]   Wood Elves unblocked
+T13 P1 [combat]   Sakura-Tribe Elder unblocked
+T13 P1 [combat]   Sakura-Tribe Elder unblocked
+T13 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 3)
+T13 P1 [combat]     Wood Elves deals 1 to seat 0 (life → 2)
+T13 P1 [combat]     Sakura-Tribe Elder deals 1 to seat 0 (life → 1)
+T13 P1 [combat]     Sakura-Tribe Elder deals 1 to seat 0 (life → 0)
+T13 P1 [combat] seat 0 leaves the game (combat damage); 12 permanents removed (§800.4a)
+T13 P1 [combat] game over: winner=1, reason=seat 1 is the last one standing, turn=13
+
+===== Creatures vs Ramp — GAME 0 =====
+
+T1 P0 [beginning] game start — 2 seats, seat 0 on the play
+T1 P0 [untap] untap
+T1 P0 [draw] draw → hand=8
+T1 P0 [main1] play land Mountain
+T1 P0 [main1] cast Goblin Cohort (cmc 1)
+T1 P0 [main1]   push Goblin Cohort onto stack (size 1)
+T1 P1 [untap] untap
+T1 P1 [draw] draw → hand=8
+T1 P1 [main1] play land Forest
+T1 P1 [main1] cast Elvish Mystic (cmc 1)
+T1 P1 [main1]   push Elvish Mystic onto stack (size 1)
+T2 P0 [untap] untap
+T2 P0 [draw] draw → hand=7
+T2 P0 [main1] play land Mountain
+T2 P0 [main1] cast Boros Swiftblade (cmc 2)
+T2 P0 [main1]   push Boros Swiftblade onto stack (size 1)
+T2 P0 [combat]   attack with: Goblin Cohort
+T2 P0 [combat]   Goblin Cohort unblocked
+T2 P0 [combat]     Goblin Cohort deals 2 to seat 1 (life → 18)
+T2 P1 [untap] untap
+T2 P1 [draw] draw → hand=7
+T2 P1 [main1] play land Forest
+T2 P1 [main1] cast Farseek (cmc 2)
+T2 P1 [main1]   push Farseek onto stack (size 1)
+T2 P1 [main1]   (unhandled effect kind: parsed_effect_residual)
+T2 P1 [main1] cast Llanowar Elves (cmc 1)
+T2 P1 [main1]   push Llanowar Elves onto stack (size 1)
+T3 P0 [untap] untap
+T3 P0 [draw] draw → hand=6
+T3 P0 [main1] play land Mountain
+T3 P0 [main1] cast Fencing Ace (cmc 2)
+T3 P0 [main1]   push Fencing Ace onto stack (size 1)
+T3 P0 [main1] cast Goblin Cohort (cmc 1)
+T3 P0 [main1]   push Goblin Cohort onto stack (size 1)
+T3 P0 [combat]   attack with: Goblin Cohort, Boros Swiftblade
+T3 P0 [combat]   Goblin Cohort unblocked
+T3 P0 [combat]   Boros Swiftblade unblocked
+T3 P0 [combat]     Boros Swiftblade deals 1 to seat 1 (life → 17)
+T3 P0 [combat]     Goblin Cohort deals 2 to seat 1 (life → 15)
+T3 P0 [combat]     Boros Swiftblade deals 1 to seat 1 (life → 14)
+T3 P1 [untap] untap
+T3 P1 [draw] draw → hand=5
+T3 P1 [main1] play land Forest
+T3 P1 [main1] cast Solemn Simulacrum (cmc 4)
+T3 P1 [main1]   push Solemn Simulacrum onto stack (size 1)
+T3 P1 [main1]   tutor → Forest to battlefield_tapped
+T4 P0 [untap] untap
+T4 P0 [draw] draw → hand=4
+T4 P0 [main1] play land Mountain
+T4 P0 [main1] cast Goblin Raider (cmc 2)
+T4 P0 [main1]   push Goblin Raider onto stack (size 1)
+T4 P0 [main1] cast Grizzly Bears (cmc 2)
+T4 P0 [main1]   push Grizzly Bears onto stack (size 1)
+T4 P0 [combat]   attack with: Goblin Cohort, Boros Swiftblade, Fencing Ace, Goblin Cohort
+T4 P0 [combat]   Goblin Cohort unblocked
+T4 P0 [combat]   block Boros Swiftblade with Solemn Simulacrum
+T4 P0 [combat]   Fencing Ace unblocked
+T4 P0 [combat]   Goblin Cohort unblocked
+T4 P0 [combat]     Boros Swiftblade deals 1 to Solemn Simulacrum (1/2)
+T4 P0 [combat]     Fencing Ace deals 1 to seat 1 (life → 13)
+T4 P0 [combat]     Goblin Cohort deals 2 to seat 1 (life → 11)
+T4 P0 [combat]     Boros Swiftblade deals 1 to Solemn Simulacrum (2/2)
+T4 P0 [combat]     Fencing Ace deals 1 to seat 1 (life → 10)
+T4 P0 [combat]     Goblin Cohort deals 2 to seat 1 (life → 8)
+T4 P0 [combat]     Solemn Simulacrum deals 2 to Boros Swiftblade (2/2)
+T4 P0 [combat]   Boros Swiftblade dies → graveyard (lethal_damage)
+T4 P0 [combat]   Solemn Simulacrum dies → graveyard (lethal_damage)
+T4 P1 [untap] untap
+T4 P1 [draw] draw → hand=4
+T4 P1 [main1] play land Forest
+T4 P1 [main1] cast Cultivate (cmc 3)
+T4 P1 [main1]   push Cultivate onto stack (size 1)
+T4 P1 [main1]   tutor → Forest to battlefield_tapped
+T4 P1 [main1] cast Wood Elves (cmc 3)
+T4 P1 [main1]   push Wood Elves onto stack (size 1)
+T4 P1 [main1]   tutor → Forest to battlefield_tapped
+T5 P0 [untap] untap
+T5 P0 [draw] draw → hand=2
+T5 P0 [main1] play land Mountain
+T5 P0 [main1] cast Mogg Flunkies (cmc 2)
+T5 P0 [main1]   push Mogg Flunkies onto stack (size 1)
+T5 P0 [combat]   attack with: Goblin Cohort, Fencing Ace, Goblin Cohort, Goblin Raider, Grizzly Bears
+T5 P0 [combat]   Goblin Cohort unblocked
+T5 P0 [combat]   block Fencing Ace with Wood Elves
+T5 P0 [combat]   Goblin Cohort unblocked
+T5 P0 [combat]   Goblin Raider unblocked
+T5 P0 [combat]   Grizzly Bears unblocked
+T5 P0 [combat]     Fencing Ace deals 1 to Wood Elves (1/1)
+T5 P0 [combat]   Wood Elves dies → graveyard (lethal_damage)
+T5 P0 [combat]     Goblin Cohort deals 2 to seat 1 (life → 6)
+T5 P0 [combat]     Goblin Cohort deals 2 to seat 1 (life → 4)
+T5 P0 [combat]     Goblin Raider deals 2 to seat 1 (life → 2)
+T5 P0 [combat]     Grizzly Bears deals 2 to seat 1 (life → 0)
+T5 P0 [combat] seat 1 leaves the game (combat damage); 9 permanents removed (§800.4a)
+T5 P0 [combat] game over: winner=0, reason=seat 0 is the last one standing, turn=5

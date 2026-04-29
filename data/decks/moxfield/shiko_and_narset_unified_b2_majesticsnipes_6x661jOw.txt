@@ -1,0 +1,85 @@
+COMMANDER: Shiko and Narset, Unified
+1 Adarkar Wastes
+1 Aligned Heart
+1 Arcane Signet
+1 Archmage Emeritus
+1 Balmor, Battlemage Captain
+1 Baral's Expertise
+1 Battlefield Forge
+1 Big Score
+1 Boros Charm
+1 Bria, Riptide Rogue
+1 Caldera Pyremaw
+1 Cascade Bluffs
+1 Clifftop Retreat
+1 Combat Research
+1 Command Tower
+1 Compulsive Research
+1 Cori Mountain Stalwart
+1 Cori-Steel Cutter
+1 Coruscation Mage
+1 Deep Analysis
+1 Disenchant
+1 Electrodominance
+1 Elsha, Threefold Master
+1 Enter the Enigma
+1 Eris, Roar of the Storm
+1 Evolving Wilds
+1 Expansion // Explosion
+1 Expressive Iteration
+1 Feat of Resistance
+1 Fists of Flame
+1 Frantic Search
+1 Frostcliff Siege
+1 Glacial Fortress
+1 Glimmerburst
+1 Goblin Electromancer
+1 Guttersnipe
+1 Halimar Depths
+1 Haughty Djinn
+1 Hinata, Dawn-Crowned
+1 Irencrag Pyromancer
+6 Island
+1 Izzet Signet
+1 Jeskai Ascendancy
+1 Keep Safe
+1 Magnus the Red
+1 Manaform Hellkite
+1 Monastery Mentor
+6 Mountain
+1 Mystic Monastery
+1 Mystic Sanctuary
+1 Narset's Reversal
+1 Narset, Enlightened Exile
+1 Opt
+1 Path of Ancestry
+1 Perilous Landscape
+6 Plains
+1 Ponder
+1 Pongify
+1 Prairie Stream
+1 Prismari Command
+1 Reliquary Tower
+1 Reprieve
+1 Return the Favor
+1 Return to Dust
+1 Rugged Prairie
+1 Shivan Reef
+1 Slickshot Show-Off
+1 Slip Through Space
+1 Sol Ring
+1 Solve the Equation
+1 Storm-Kiln Artist
+1 Sulfur Falls
+1 Swiftwater Cliffs
+1 Swords to Plowshares
+1 Talisman of Conviction
+1 Talisman of Progress
+1 Talrand, Sky Summoner
+1 Third Path Iconoclast
+1 Tranquil Cove
+1 Turn Aside
+1 Unwind
+1 Veyran, Voice of Duality
+1 Wayfarer's Bauble
+1 Whirlwind of Thought

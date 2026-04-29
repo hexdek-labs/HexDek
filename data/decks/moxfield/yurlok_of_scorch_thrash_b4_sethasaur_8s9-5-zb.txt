@@ -1,0 +1,97 @@
+COMMANDER: Yurlok of Scorch Thrash
+1 Ancient Tomb
+1 Animate Dead
+1 Arbor Elf
+1 Arcane Signet
+1 Arid Mesa
+1 Augur of Autumn
+1 Badlands
+1 Bayou
+1 Birds of Paradise
+1 Birthing Pod
+1 Black Market Connections
+1 Blood Crypt
+1 Bloodstained Mire
+1 Bloom Tender
+1 Bolas's Citadel
+1 Boseiju, Who Endures
+1 Cabal Coffers
+1 Chatterfang, Squirrel General
+1 Chrome Mox
+1 Cindervines
+1 Command Tower
+1 Commercial District
+1 Craterhoof Behemoth
+1 Deathrite Shaman
+1 Descent into Avernus
+1 Dosan the Falling Leaf
+1 Dryad of the Ilysian Grove
+1 Elven Chorus
+1 Elvish Mystic
+1 Elvish Reclaimer
+1 Emeritus of Abundance // Regrowth
+1 Emeritus of Woe // Demonic Tutor
+1 Eternal Witness
+1 Exploration
+1 Fauna Shaman
+1 Field of the Dead
+1 Fiend Artisan
+2 Forest
+1 Gaea's Cradle
+1 Hexing Squelcher
+1 Icetill Explorer
+1 Ignoble Hierarch
+1 Llanowar Elves
+1 Luxury Suite
+1 Maralen of the Mornsong
+1 Marsh Flats
+1 Mornsong Aria
+1 Mount Doom
+2 Mountain
+1 Nurturing Peatland
+1 Ob Nixilis, Captive Kingpin
+1 Opposition Agent
+1 Oracle of Mul Daya
+1 Orcish Bowmasters
+1 Overgrown Tomb
+1 Pernicious Deed
+1 Plargg and Nassari
+1 Primal Surge
+1 Raucous Theater
+1 Reclamation Sage
+1 Ripples of Undeath
+1 Shifting Woodland
+1 Sidisi, Undead Vizier
+1 Sol Ring
+1 Spire Garden
+1 Stomping Ground
+1 Survival of the Fittest
+2 Swamp
+1 Sylvan Library
+1 Taiga
+1 Talisman of Impulse
+1 Talisman of Indulgence
+1 Talisman of Resilience
+1 The Creation of Avacyn
+1 The Meathook Massacre
+1 Tireless Provisioner
+1 Underground Mortuary
+1 Undergrowth Stadium
+1 Urabrask the Hidden
+1 Urborg, Tomb of Yawgmoth
+1 Urza's Saga
+1 Valakut, the Molten Pinnacle
+1 Valgavoth, Harrower of Souls
+1 Verdant Catacombs
+1 Vexing Shusher
+1 Virtue of Strength // Garenbrig Growth
+1 Warren Soultrader
+1 Warstorm Surge
+1 Wight of the Reliquary
+1 Windswept Heath
+1 Wishclaw Talisman
+1 Wood Elves
+1 Wooded Foothills
+1 Xenagos, the Reveler
+1 Yavimaya, Cradle of Growth
+1 Ziatora's Proving Ground

@@ -1,0 +1,92 @@
+COMMANDER: Xyris, the Writhing Storm
+1 Agate Instigator
+1 Amonkhet Raceway
+1 An Offer You Can't Refuse
+1 Arcane Denial
+1 Arcane Signet
+1 Beast Within
+1 Beastmaster Ascension
+1 Blasphemous Act
+1 Breeding Pool
+1 Burning Inquiry
+1 Carpet of Flowers
+1 Cinder Glade
+1 City of Brass
+1 Command Tower
+1 Counterspell
+1 Cultivate
+1 Decanter of Endless Water
+1 Defabricate
+1 Dreamroot Cascade
+1 Echo of Eons
+1 Even the Score
+1 Exotic Orchard
+1 Faerie Mastermind
+1 Farseek
+1 Fascination
+1 Fervor
+5 Forest
+1 Frontier Bivouac
+1 Geier Reach Sanitarium
+1 Growth Spiral
+1 Harmonized Crescendo
+1 Harrow
+1 Haste Magic
+1 Heroic Intervention
+1 Hinterland Harbor
+1 Impact Tremors
+3 Island
+1 Jace's Archivist
+1 Junk Winder
+1 Karplusan Forest
+1 Kindred Discovery
+1 Kodama's Reach
+1 Lightning Greaves
+1 Magus of the Wheel
+1 Mana Confluence
+1 Mikokoro, Center of the Sea
+1 Molten Gatekeeper
+1 Molten Psyche
+3 Mountain
+1 Nature's Claim
+1 Negate
+1 Patchwork Banner
+1 Prosperity
+1 Psychosis Crawler
+1 Purphoros, God of the Forge
+1 Rampant Growth
+1 Razorkin Needlehead
+1 Reforge the Soul
+1 Rejuvenating Springs
+1 Reliquary Tower
+1 Rites of Flourishing
+1 Rootbound Crag
+1 Scrawling Crawler
+1 Shared Animosity
+1 Shivan Reef
+1 Sink into Stupor // Soporific Springs
+1 Snakeskin Veil
+1 Sodden Verdure
+1 Sol Ring
+1 Spell Pierce
+1 Spire Garden
+1 Steam Vents
+1 Stomping Ground
+1 Sulfur Falls
+1 Swan Song
+1 Swiftfoot Boots
+1 Talisman of Creativity
+1 Talisman of Curiosity
+1 Talisman of Impulse
+1 Tangled Florahedron // Tangled Vale
+1 Tarnished Citadel
+1 Teferi's Puzzle Box
+1 Tempt with Discovery
+1 Thought Vessel
+1 Time Reversal
+1 Weftstalker Ardent
+1 Whirlpool Warrior
+1 Windfall
+1 Winds of Change
+1 Witty Roastmaster
+1 Yavimaya Coast

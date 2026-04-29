@@ -1,0 +1,72 @@
+COMMANDER: Tifa Lockhart
+1 Adventurer's Inn
+1 Blitzball
+1 Bushwhack
+1 Cache Grab
+1 Champion's Helm
+1 Chocobo Kick
+1 Chocobo Racetrack
+1 Colossification
+1 Commune with Beavers
+1 Demolisher Spawn
+1 Elfsworn Giant
+1 Emerald Medallion
+1 Escape Tunnel
+1 Esper Origins // Summon: Esper Maduin
+1 Eternal Witness
+1 Evolving Wilds
+1 Fabled Passage
+1 Fanatical Strength
+1 Fauna Shaman
+1 Felling Blow
+1 Fight Rigging
+29 Forest
+1 Garruk's Uprising
+1 Genesis Wave
+1 Grow from the Ashes
+1 Heaped Harvest
+1 Heritage Reclamation
+1 Ivy Lane Denizen
+1 Lotus Ring
+1 Lys Alana Informant
+1 Midnight Tilling
+1 Morcant's Eyes
+1 Myriad Landscape
+1 Nessian Hornbeetle
+1 Nesting Grounds
+1 Overprotect
+1 Peerless Recycling
+1 Pick Your Poison
+1 Planar Engineering
+1 Preposterous Proportions
+1 Prishe's Wanderings
+1 Prismatic Undercurrents
+1 Reach the Horizon
+1 Reclamation Sage
+1 Ride the Shoopuf
+1 Rite of Renewal
+1 Roamer's Routine
+1 Rogue's Passage
+1 Rydia's Return
+1 Sarkhan's Resolve
+1 Saryth, the Viper's Fang
+1 Say Its Name
+1 Sazh's Chocobo
+1 Sol Ring
+1 Solemn Simulacrum
+1 Summon: Fenrir
+1 Summon: Titan
+1 Sunshower Druid
+1 Swiftfoot Boots
+1 Terramorphic Expanse
+1 Thoughtweft Charge
+1 Tifa's Limit Break
+1 Traverse the Ulvenwald
+1 Treetop Snarespinner
+1 Tromell, Seymour's Butler
+1 Twitching Doll
+1 Utopia Sprawl
+1 Vinebred Brawler
+1 Virulent Emissary
+1 Wildwood Scourge
+1 World Map

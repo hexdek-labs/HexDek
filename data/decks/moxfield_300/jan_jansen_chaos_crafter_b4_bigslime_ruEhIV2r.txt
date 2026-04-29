@@ -1,0 +1,85 @@
+COMMANDER: Jan Jansen, Chaos Crafter
+1 Academy Manufactor
+1 Ancient Den
+1 Ash Barrens
+1 Ashnod's Altar
+1 Blasphemous Act
+1 Blasting Station
+1 Brainstone
+1 Buried Ruin
+1 Chromatic Sphere
+1 Chromatic Star
+1 Clock of Omens
+1 Command Tower
+1 Conjurer's Bauble
+1 Crawlspace
+1 Darksteel Citadel
+1 Deserted Temple
+1 Dispatch
+1 Dross Skullbomb
+1 Dusk Rose Reliquary
+1 Entomb
+1 Executioner's Capsule
+1 Experimental Synthesizer
+1 Fleshtaker
+1 Foundry Inspector
+1 Fountainport Bell
+1 Glaring Fleshraker
+1 Goblin Engineer
+1 Goblin Welder
+1 Goldmire Bridge
+1 Grinding Station
+1 Havoc Jester
+1 Hedron Detonator
+1 High Market
+1 Ichor Wellspring
+1 Idol of Oblivion
+1 Imotekh the Stormlord
+1 Implement of Combustion
+1 Implement of Improvement
+1 Inkmoth Nexus
+1 Junk Diver
+1 Karn, Silver Golem
+1 Krark-Clan Ironworks
+1 Liquimetal Torque
+1 Lodestone Golem
+1 Magewright's Stone
+1 Mirage Mirror
+1 Mishra's Bauble
+1 Mishra's Factory
+1 Mishra's Research Desk
+5 Mountain
+1 Mox Opal
+1 Myr Retriever
+1 Necrogen Spellbomb
+1 Nihil Spellbomb
+1 Origin Spellbomb
+1 Oswald Fiddlebender
+1 Pitiless Plunderer
+8 Plains
+1 Ravenous Robots
+1 Reckless Fireweaver
+1 Salvaging Station
+1 Scourglass
+1 Scrap Trawler
+1 Shattered Landscape
+1 Shire Terrace
+1 Skullclamp
+1 Sol Ring
+1 Spine of Ish Sah
+1 Static Orb
+1 Stone of Erech
+5 Swamp
+1 Teshar, Ancestor's Apostle
+1 The Mycosynth Gardens
+1 Thornbite Staff
+1 Toxic Deluge
+1 Trading Post
+1 Treasure Vault
+1 Urza's Cave
+1 Vault of Whispers
+1 Vexing Bauble
+1 Wayfarer's Bauble
+1 Workshop Assistant
+1 Wrath of God
+1 Xenic Poltergeist

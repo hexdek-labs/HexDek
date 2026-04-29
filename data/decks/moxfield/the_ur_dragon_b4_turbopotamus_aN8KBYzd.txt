@@ -1,0 +1,100 @@
+COMMANDER: The Ur-Dragon
+1 Ancient Copper Dragon
+1 Ancient Gold Dragon
+1 Ancient Tomb
+1 Arcane Signet
+1 Assassin's Trophy
+1 Atarka, World Render
+1 Battlefield Forge
+1 Betor, Kin to All
+1 Birds of Paradise
+1 Blood Crypt
+1 Bloom Tender
+1 Breeding Pool
+1 Brushland
+1 Call the Spirit Dragons
+1 Cascade Bluffs
+1 Cavern of Souls
+1 City of Brass
+1 Command Tower
+1 Crux of Fate
+1 Cyclonic Rift
+1 Defense of the Heart
+1 Delighted Halfling
+1 Dracogenesis
+1 Dragon Tempest
+1 Dragonhawk, Fate's Tempest
+1 Dragonlord Dromoka
+1 Dragonlord's Servant
+1 Exotic Orchard
+1 Fellwar Stone
+1 Fire-Lit Thicket
+1 Forbidden Orchard
+1 Forest
+1 Garruk's Uprising
+1 Godless Shrine
+1 Goldlust Triad
+1 Goldspan Dragon
+1 Haven of the Spirit Dragon
+1 Hellkite Courser
+1 Heroic Intervention
+1 Ignoble Hierarch
+1 Island
+1 Karplusan Forest
+1 Karrthus, Tyrant of Jund
+1 Ketria Triome
+1 Kindred Dominance
+1 Kiora, Behemoth Beckoner
+1 Lathliss, Dragon Queen
+1 Llanowar Wastes
+1 Maelstrom of the Spirit Dragon
+1 Majestic Genesis
+1 Mana Confluence
+1 Mana Vault
+1 Marang River Regent // Coil and Catch
+1 Miirym, Sentinel Wyrm
+1 Mountain
+1 Nature's Lore
+1 Noble Hierarch
+1 Old Gnawbone
+1 Overgrown Tomb
+1 Plains
+1 Prismatic Vista
+1 Reflecting Pool
+1 Rhystic Study
+1 Rhythm of the Wild
+1 Rith, Liberated Primeval
+1 Rivaz of the Claw
+1 Roaming Throne
+1 Sarkhan, Soul Aflame
+1 Scion of Draco
+1 Scourge of Valkas
+1 Selvala, Heart of the Wilds
+1 Shivan Reef
+1 Silumgar, the Drifting Death
+1 Skyshroud Claim
+1 Smuggler's Surprise
+1 Sol Ring
+1 Spire Garden
+1 Steam Vents
+1 Steely Resolve
+1 Stomping Ground
+1 Sulfurous Springs
+1 Summon: Bahamut
+1 Swords to Plowshares
+1 Sylvia Brightspear
+1 Teferi's Protection
+1 Temple Garden
+1 Temur Ascendancy
+1 Terror of the Peaks
+1 Three Visits
+1 Tiamat
+1 Twinflame Tyrant
+1 Two-Headed Hellkite
+1 Ureni of the Unwritten
+1 Utvara Hellkite
+1 Watery Grave
+1 Wrathful Red Dragon
+1 Yavimaya Coast
+1 Zagoth Triome
+1 Zurgo and Ojutai

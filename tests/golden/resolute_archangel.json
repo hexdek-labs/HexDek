@@ -1,0 +1,24 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:flying"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "trig:etb",
+        "conditional_effect"
+      ],
+      "index": 1,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "keywords",
+  "name": "Resolute Archangel",
+  "parse_error_count": 0
+}

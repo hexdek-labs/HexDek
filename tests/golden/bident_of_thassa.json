@@ -1,0 +1,26 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:combat_damage_player",
+        "optional",
+        "draw"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "act:T+mana2",
+        "untyped_effect"
+      ],
+      "index": 1,
+      "kind": "activated"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Bident of Thassa",
+  "parse_error_count": 0
+}

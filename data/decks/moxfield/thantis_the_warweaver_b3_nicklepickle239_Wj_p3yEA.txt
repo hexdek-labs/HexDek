@@ -1,0 +1,82 @@
+COMMANDER: Thantis, the Warweaver
+1 Agitator Ant
+1 Arachnogenesis
+1 Atalan Jackal
+1 Beastmaster Ascension
+1 Blasphemous Act
+1 Cinder Glade
+1 Circuitous Route
+1 Clackbridge Troll
+1 Command Tower
+1 Court of Bounty
+1 Cultivate
+1 Deadly Rollick
+1 Deathreap Ritual
+1 Defiler of Vigor
+1 Explosive Vegetation
+1 Eye of Nidhogg
+1 Fabled Passage
+1 Farseek
+1 Fecundity
+1 Fog
+1 Forbidden Orchard
+9 Forest
+1 Glissa Sunslayer
+1 Goblin Spymaster
+1 Grismold, the Dreadsower
+1 Hardened Scales
+1 Harvester of Souls
+1 Helbrute
+1 Heroic Intervention
+1 Hunted Bonebrute
+1 Hunted Horror
+1 Infernal Grasp
+1 Karazikar, the Eye Tyrant
+1 Kardur, Doomscourge
+1 Kazuul, Tyrant of the Cliffs
+1 Kessig Wolf Run
+1 Khârn the Betrayer
+1 Kodama's Reach
+1 Llanowar Wastes
+1 Lucius the Eternal
+1 Mass Hysteria
+1 Migration Path
+1 Morbid Opportunist
+6 Mountain
+1 Nature's Claim
+1 Night's Whisper
+1 No Mercy
+1 Nurgle's Rot
+1 Obscuring Haze
+1 Ohran Frostfang
+1 Overwhelming Stampede
+1 Phyrexian Arena
+1 Rampage of the Clans
+1 Rampant Growth
+1 Ripjaw Raptor
+1 Rite of the Raging Storm
+1 Rogue's Passage
+1 Sakura-Tribe Elder
+1 Seedborn Muse
+1 Shadow in the Warp
+1 Sign in Blood
+1 Skyshroud Claim
+1 Slaughter Specialist
+1 Slumbering Dragon
+1 Smoldering Marsh
+1 Snapping Sailback
+1 Sulfurous Springs
+6 Swamp
+1 Swarmyard
+1 Three Visits
+1 Toski, Bearer of Secrets
+1 Trove of Temptation
+1 Tyranid Invasion
+1 Urborg, Tomb of Yawgmoth
+1 Veil of Summer
+1 Vengeful Ancestor
+1 Vraska the Unseen
+1 War Room
+1 Witch's Clinic
+1 Yavimaya, Cradle of Growth
+1 Ziatora's Proving Ground

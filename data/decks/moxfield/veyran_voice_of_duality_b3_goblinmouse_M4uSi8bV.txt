@@ -1,0 +1,87 @@
+COMMANDER: Veyran, Voice of Duality
+1 Arcane Signet
+1 Archmage Emeritus
+1 Archmage of Runes
+1 Ashling, Flame Dancer
+1 Balmor, Battlemage Captain
+1 Brainstorm
+1 Bria, Riptide Rogue
+1 Cascade Bluffs
+1 Command Tower
+1 Consider
+1 Coruscation Mage
+1 Counterspell
+1 Crash Through
+1 Curiosity
+1 Diplomatic Escort
+1 Enter the Enigma
+1 Evolving Wilds
+1 Exotic Orchard
+1 Expedite
+1 Faithless Looting
+1 Fellwar Stone
+1 Ferrous Lake
+1 Fiery Inscription
+1 Fiery Islet
+1 Firebrand Archer
+1 Flame of Anor
+1 Flashback
+1 Flow State
+1 Force of Will
+1 Frantic Search
+1 Frostboil Snarl
+1 Galvanic Iteration
+1 Grapeshot
+1 Guttersnipe
+1 Harmonic Prodigy
+1 Hexing Squelcher
+1 Impolite Entrance
+1 Impulse
+1 Into the Flood Maw
+7 Island
+1 Izzet Boilerworks
+1 Izzet Signet
+1 Lightning Bolt
+1 Lonely Sandbar
+1 Magic Damper
+8 Mountain
+1 Mystical Tutor
+1 Narset's Reversal
+1 Opt
+1 Ponder
+1 Pongify
+1 Preordain
+1 Ral, Crackling Wit
+1 Reliquary Tower
+1 Renegade Tactics
+1 Resonating Lute
+1 Return the Favor
+1 Reverberate
+1 Shivan Reef
+1 Shore Up
+1 Sleight of Hand
+1 Slick Sequence
+1 Smoldering Crater
+1 Snap
+1 Sol Ring
+1 Soul Immolation
+1 Steam Vents
+1 Stella Lee, Wild Card
+1 Step Through
+1 Stock Up
+1 Storm-Kiln Artist
+1 Stormcarved Coast
+1 Strike It Rich
+1 Sulfur Falls
+1 Swiftfoot Boots
+1 Swiftwater Cliffs
+1 Teach by Example
+1 Temple of Epiphany
+1 Thought Vessel
+1 Treasure Cruise
+1 Uncharted Haven
+1 Underworld Breach
+1 Valley Floodcaller
+1 Vivi Ornitier
+1 Words of Wisdom
+1 Young Pyromancer

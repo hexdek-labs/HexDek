@@ -1,0 +1,88 @@
+COMMANDER: Arcades, the Strategist
+1 Abundant Countryside
+1 Akroma's Will
+1 Angelic Chorus
+1 Arcane Signet
+1 Assault Formation
+1 Assemble the Players
+1 Axebane Guardian
+1 Bedrock Tortoise
+1 Blossoming Sands
+1 Brave the Sands
+1 Command Beacon
+1 Command Tower
+1 Commander's Sphere
+1 Corrupted Shapeshifter
+1 Crashing Drawbridge
+1 Crystal Barricade
+1 Cyclonic Rift
+1 Delney, Streetwise Lookout
+1 Disdainful Stroke
+1 Dovin's Veto
+1 Dreamroot Cascade
+1 Dusk // Dawn
+1 Expel the Interlopers
+1 Fell the Mighty
+1 Fellwar Stone
+1 Fireshrieker
+1 Flumph
+5 Forest
+1 Geist of the Archives
+1 Genji Glove
+1 Ghostly Prison
+1 Guard Gomazoa
+1 Hallowed Fountain
+1 High Alert
+1 Hover Barrier
+1 Huatli, the Sun's Heart
+5 Island
+1 Leyline Axe
+1 Lush Portico
+1 Meekstone
+1 Meteor Crater
+1 Meticulous Archive
+1 Mirror Shield
+1 New Generation's Technique
+1 Overgrown Battlement
+1 Path to Exile
+1 Perimeter Captain
+5 Plains
+1 Primal Rage
+1 Primo, the Unbounded
+1 Propaganda
+1 Rain-Slicked Copse
+1 Rammas Echor, Ancient Shield
+1 Rogue's Passage
+1 Sanctuary Wall
+1 Shared Roots
+1 Sidar Kondo of Jamuraa
+1 Sokrates, Athenian Teacher
+1 Sol Ring
+1 Stalwart Shield-Bearers
+1 Stoneskin
+1 Studious First-Year // Rampant Growth
+1 Sunscape Familiar
+1 Suspicious Bookcase
+1 Teferi's Ageless Insight
+1 Temple of Enlightenment
+1 Tetsuko Umezawa, Fugitive
+1 The Battle of Bywater
+1 The Pride of Hull Clade
+1 The Walls of Ba Sing Se
+1 Thriving Grove
+1 Thriving Isle
+1 Tower Defense
+1 Towering Titan
+1 Tranquil Cove
+1 Tree of Redemption
+1 Trouble in Pairs
+1 Urban Retreat
+1 Vibrant Cityscape
+1 Wall of Denial
+1 Wall of Frost
+1 Wall of Glare
+1 Wall of Omens
+1 Wall of Tanglecord
+1 Waterlogged Grove
+1 Weathered Sentinels
+1 Windswept Heath

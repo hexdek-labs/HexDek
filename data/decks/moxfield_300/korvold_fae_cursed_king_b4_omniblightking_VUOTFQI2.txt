@@ -1,0 +1,85 @@
+COMMANDER: Korvold, Fae-Cursed King
+1 Abrade
+1 Academy Manufactor
+1 Aggravated Assault
+1 Animate Dead
+1 Arboreal Grazer
+1 Arcane Signet
+1 Archetype of Aggression
+1 Atarka, World Render
+1 Birds of Paradise
+1 Bladed Battle-Fan
+1 Blightstep Pathway // Searstep Pathway
+1 Bloodbraid Elf
+1 Bloodstained Mire
+1 Carrion Feeder
+1 Chainer, Nightmare Adept
+1 Chaos Warp
+1 Chatterfang, Squirrel General
+1 Command Tower
+1 Crystal Vein
+1 Dark Ritual
+1 Demonic Tutor
+1 Dire Fleet Hoarder
+1 Domri, Anarch of Bolas
+1 Dragonborn Champion
+1 Dragonspeaker Shaman
+1 Dryad of the Ilysian Grove
+1 Elves of Deep Shadow
+1 Elvish Mystic
+1 Elvish Spirit Guide
+1 Emergence Zone
+1 Entomb
+1 Fanatic of Rhonas
+1 Fellwar Stone
+1 Fire Covenant
+1 Flesh-Eater Imp
+6 Forest
+1 Gemstone Mine
+1 Goblin Welder
+1 Golgari Signet
+1 Gruul Signet
+1 Hellkite Courser
+1 Ignoble Hierarch
+1 Impact Tremors
+1 Impulsive Pilferer
+1 Klauth, Unrivaled Ancient
+1 Kogla and Yidaro
+1 Kogla, the Titan Ape
+1 Living Death
+1 Lotleth Troll
+1 Lotus Petal
+1 Mana Vault
+1 Marsh Flats
+1 Mayhem Devil
+1 Mind Stone
+6 Mountain
+1 Necromancy
+1 Oracle of Mul Daya
+1 Overgrown Tomb
+1 Polluted Delta
+1 Professional Face-Breaker
+1 Putrefy
+1 Rakdos Signet
+1 Razaketh, the Foulblooded
+1 Reanimate
+1 Reflecting Pool
+1 Simian Spirit Guide
+1 Skirk Prospector
+1 Sol Ring
+1 Sticky Fingers
+1 Stomping Ground
+6 Swamp
+1 Sylvan Scrying
+1 Talisman of Indulgence
+1 Temur Sabertooth
+1 Thought Vessel
+1 Trailblazing Historian
+1 Undergrowth Stadium
+1 War Room
+1 Well Rested
+1 Wild Cantor
+1 Wishclaw Talisman
+1 Wooded Foothills
+1 Wurmcoil Engine
+1 Zulaport Cutthroat

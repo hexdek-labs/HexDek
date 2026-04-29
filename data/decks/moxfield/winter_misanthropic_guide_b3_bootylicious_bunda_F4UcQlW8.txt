@@ -1,0 +1,88 @@
+COMMANDER: Winter, Misanthropic Guide
+1 Aether Membrane
+1 Anurid Scavenger
+1 Arcane Signet
+1 Asceticism
+1 Ash Barrens
+1 Blackcleave Cliffs
+1 Blasphemous Act
+1 Blazemire Verge
+1 Blood Speaker
+1 Blooming Marsh
+1 Buried Alive
+1 Burning Inquiry
+1 Colfenor's Plans
+1 Command Tower
+1 Dark Petition
+1 Darkbore Pathway // Slitherbore Pathway
+1 Decorum Dissertation
+1 Demonic Counsel
+1 Diabolic Tutor
+1 Diamond Lion
+1 Dina's Guidance
+1 Doomsday Excruciator
+1 Dragon Mage
+1 Dragonskull Summit
+1 Eater of Days
+1 Elfhame Sanctuary
+1 Elixir of Immortality
+1 Endurance
+1 Entomb
+1 Epitaph Golem
+1 Evolving Wilds
+1 Exotic Orchard
+1 Fabled Passage
+1 Fellwar Stone
+1 Final Parting
+5 Forest
+1 Gilded Lotus
+1 Glademuse
+1 Graven Cairns
+1 Horn of Greed
+1 Hoverstone Pilgrim
+1 Imp's Mischief
+1 Infernal Sovereign
+1 Insatiable Avarice
+1 Jund Panorama
+1 Junktroller
+1 Kodama's Reach
+1 Kura, the Boundless Sky
+1 Lich's Mirror
+1 Lifeforce
+1 Lightning Greaves
+1 Llanowar Wastes
+1 Master of the Feast
+5 Mountain
+1 Necroblossom Snarl
+1 Oracle of Mul Daya
+1 Orcish Bowmasters
+1 Pestilent Kathari
+1 Platinum Angel
+1 Platinum Emperion
+1 Prismatic Undercurrents
+1 Rampant Growth
+1 Rankle, Master of Pranks
+1 Redirect Lightning
+1 Reforge the Soul
+1 Reliquary Tower
+1 Riveteers Overlook
+1 Rocky Tar Pit
+1 Savage Lands
+1 Scrawling Crawler
+1 Shocker
+1 Sol Ring
+1 Stonespeaker Crystal
+1 Stromgald Cabal
+1 Sulfurous Springs
+5 Swamp
+1 Swiftfoot Boots
+1 Tainted Peak
+1 Tainted Wood
+1 Temple Bell
+1 Thought Vessel
+1 Tomb Trawler
+1 Turbulent Fen
+1 Twilight Mire
+1 Untimely Malfunction
+1 Venser's Journal
+1 Zurzoth, Chaos Rider

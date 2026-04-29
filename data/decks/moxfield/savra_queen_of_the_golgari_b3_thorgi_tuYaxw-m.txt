@@ -1,0 +1,79 @@
+COMMANDER: Savra, Queen of the Golgari
+1 Abyssal Gatekeeper
+1 Accursed Marauder
+1 Arachnogenesis
+1 Assassin's Trophy
+1 Beledros Witherbloom
+1 Birthing Ritual
+1 Bitterblossom
+1 Blasphemous Edict
+1 Blight Mound
+1 Braids, Arisen Nightmare
+1 Cauldron of Essence
+1 Cavalier of Night
+1 Compy Swarm
+1 Corrupted Conviction
+1 Creakwood Liege
+1 Crypt of Agadeem
+1 Culling the Weak
+1 Daemogoth Titan
+1 Darkbore Pathway // Slitherbore Pathway
+1 Deathcap Glade
+1 Dina, Essence Brewer
+1 Doomgape
+1 Eldritch Evolution
+1 Elves of Deep Shadow
+1 Emeritus of Woe // Demonic Tutor
+1 Essenceknit Scholar
+1 Ezuri's Predation
+1 Feed the Swarm
+1 Fiend Artisan
+1 Flare of Cultivation
+11 Forest
+1 Ghoulcaller Gisa
+1 Gilt-Leaf Palace
+1 Golgari Germination
+1 Golgari Guildgate
+1 Greater Good
+1 Grim Backwoods
+1 High-Society Hunter
+1 Hostile Hostel // Creeping Inn
+1 Immoral Bargain
+1 Infestation Sage
+1 Jarad, Golgari Lich Lord
+1 Liliana, Dreadhorde General
+1 Llanowar Wastes
+1 Lord Skitter, Sewer King
+1 March of the World Ooze
+1 Mazirek, Kraul Death Priest
+1 Meren of Clan Nel Toth
+1 Mind Stone
+1 Moldervine Reclamation
+1 Moseo, Vein's New Dean
+1 Ophiomancer
+1 Path of Ancestry
+1 Pest Infestation
+1 Phyrexian Arena
+1 Priest of Forgotten Gods
+1 Protean Hulk
+1 Putrefy
+1 Sakura-Tribe Elder
+1 Scheming Silvertongue // Sign in Blood
+1 Sedgemoor Witch
+1 Skullclamp
+1 Sothera, the Supervoid
+1 Spinner of Souls
+12 Swamp
+1 Teacher's Pest
+1 Tend the Pests
+1 Tergrid, God of Fright // Tergrid's Lantern
+1 The Gitrog, Ravenous Ride
+1 Thought Vessel
+1 Thrilling Encore
+1 Turbulent Fen
+1 Twilight Mire
+1 Victimize
+1 Viridescent Bog
+1 Vraska, Golgari Queen
+1 Warren Soultrader
+1 Woe Strider

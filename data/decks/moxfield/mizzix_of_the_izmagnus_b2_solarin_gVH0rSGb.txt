@@ -1,0 +1,87 @@
+COMMANDER: Mizzix of the Izmagnus
+1 Aetheric Amplifier
+1 Amphibian Downpour
+1 Arcane Signet
+1 Archmage Emeritus
+1 Archmage of Runes
+1 Atreus, Impulsive Son
+1 Banefire
+1 Baral, Chief of Compliance
+1 Blaze
+1 Brudiclad, Telchor Engineer
+1 Cascade Bluffs
+1 Chandra, Hope's Beacon
+1 Comet Storm
+1 Command Tower
+1 Crackle with Power
+1 Crater's Claws
+1 Curse of the Swine
+1 Cursed Mirror
+1 Deekah, Fractal Theorist
+1 Delete
+1 Dirgur Focusmage // Braingeyser
+1 Electrodominance
+1 Elementalist's Palette
+1 Fiery Islet
+1 Fireball
+1 Flux Channeler
+1 Frostboil Snarl
+1 Fuel for the Cause
+1 Goblin Electromancer
+1 Howl of the Horde
+1 Insidious Will
+8 Island
+1 Karn's Bastion
+1 Katara, Bending Prodigy
+1 Katara, Waterbending Master
+1 Kozilek's Command
+1 Mage-Ring Network
+1 Magnus the Red
+1 Mana Drain
+1 Mana Sculpt
+1 Manaform Hellkite
+1 Mechanized Production
+1 Metallurgic Summonings
+1 Mindswipe
+1 Molten Disaster
+7 Mountain
+1 Murmuring Mystic
+1 Muse Seeker
+1 Mystic Sanctuary
+1 Narset's Reversal
+1 Owlin Spiralmancer
+1 Path of Ancestry
+1 Prismari Pianist
+1 Pyromancer's Goggles
+1 Reiterate
+1 Reject Imperfection
+1 Reliquary Tower
+1 Return the Favor
+1 Riverglide Pathway // Lavaglide Pathway
+1 Rootha, Mastering the Moment
+1 Scorched Geyser
+1 Shark Typhoon
+1 Shivan Reef
+1 Sol Ring
+1 Spirebluff Canal
+1 Steam Vents
+1 Storm-Kiln Artist
+1 Stormcarved Coast
+1 Stormcatch Mentor
+1 Sulfur Falls
+1 Talisman of Creativity
+1 Talrand, Sky Summoner
+1 Tekuthal, Inquiry Dominus
+1 Third Path Iconoclast
+1 Thousand-Year Storm
+1 Thunderclap Drake
+1 Turbulent Springs
+1 Twinning Staff
+1 Urza's Mine
+1 Urza's Power Plant
+1 Urza's Tower
+1 Veyran, Voice of Duality
+1 Wan Shi Tong, Librarian
+1 Young Pyromancer
+1 Zaffai, Thunder Conductor
+1 Zuko, Firebending Master

@@ -1,0 +1,84 @@
+COMMANDER: Magnus the Red
+1 Arcane Denial
+1 Arcane Signet
+1 Archmage Emeritus
+1 Archmage of Runes
+1 Blasphemous Act
+1 Blue Sun's Zenith
+1 Brudiclad, Telchor Engineer
+1 Cascade Bluffs
+1 Chaos Warp
+1 Clone Legion
+1 Coastal Peak
+1 Command Tower
+1 Creative Technique
+1 Cursed Mirror
+1 Cyclonic Rift
+1 Diary of Dreams
+1 Dig Through Time
+1 Dirgur Focusmage // Braingeyser
+1 Electrostatic Field
+1 Empty the Warrens
+1 Essence Flux
+1 Exotic Orchard
+1 Fabled Passage
+1 Fellwar Stone
+1 Ferrous Lake
+1 Frostboil Snarl
+1 Furygale Flocking
+1 Goblin Game
+1 Goblin Rally
+1 Goblinslide
+1 Hall of Oracles
+1 Hit the Mother Lode
+1 Hurkyl's Final Meditation
+1 Hurl into History
+1 Inspiration from Beyond
+1 Irenicus's Vile Duplication
+9 Island
+1 Izzet Signet
+1 Karn's Temporal Sundering
+1 Kylox, Visionary Inventor
+1 Let the Galaxy Burn
+1 Lithoform Engine
+1 Magma Opus
+1 Mana Geyser
+1 Manaform Hellkite
+9 Mountain
+1 Mystic Sanctuary
+1 Past in Flames
+1 Path of Ancestry
+1 Prismari Pianist
+1 Reality Shift
+1 Reiterate
+1 Release the Gremlins
+1 Reliquary Tower
+1 Resculpt
+1 Restless Spire
+1 Reverberate
+1 Rise from the Tides
+1 Rootha, Mastering the Moment
+1 Savage Beating
+1 Scorched Geyser
+1 Shivan Reef
+1 Sol Ring
+1 Sorcerer Class
+1 Spelltwine
+1 Storm-Kiln Artist
+1 Sulfur Falls
+1 Sunbird's Invocation
+1 Surge to Victory
+1 Sword of Wealth and Power
+1 Tablet of Discovery
+1 Talisman of Creativity
+1 Talrand, Sky Summoner
+1 Temple of Epiphany
+1 Thunderclap Drake
+1 Thunderdrum Soloist
+1 Treasure Cruise
+1 Turbulent Springs
+1 Unwind
+1 Veyran, Voice of Duality
+1 Windfall
+1 You Find the Villains' Lair
+1 You See a Guard Approach

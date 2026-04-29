@@ -1,0 +1,86 @@
+COMMANDER: Teval, the Balanced Scale
+1 Aftermath Analyst
+1 Altar of Dementia
+1 Analyze the Pollen
+1 Ash Barrens
+1 Assassin's Trophy
+1 Birds of Paradise
+1 Blessed Respite
+1 Bloodghast
+1 Boggart Trawler // Boggart Bog
+1 Bojuka Bog
+1 Breeding Pool
+1 Chthonian Nightmare
+1 Colossal Grave-Reaver
+1 Command Tower
+1 Counterspell
+1 Craterhoof Behemoth
+1 Crucible of Worlds
+1 Cut Your Losses
+1 Dauthi Voidwalker
+1 Deathrite Shaman
+1 Dig Through Time
+1 Dina's Guidance
+1 Dread Return
+1 Dreamroot Cascade
+1 Drowned Catacomb
+1 Enduring Vitality
+1 Eternal Witness
+1 Farseek
+9 Forest
+1 Ghostly Pilferer
+1 Golgari Grave-Troll
+1 Gravecrawler
+1 Hedge Maze
+1 Hedron Crab
+1 Hinterland Harbor
+1 Icetill Explorer
+1 Insidious Roots
+4 Island
+1 Kheru Goldkeeper
+1 Kishla Skimmer
+1 Life from the Loam
+1 Llanowar Elves
+1 Llanowar Wastes
+1 Lost Monarch of Ifnir
+1 Mesmeric Orb
+1 Muddle the Mixture
+1 Nature's Lore
+1 Noxious Revival
+1 Opulent Palace
+1 Overgrown Tomb
+1 Path of Ancestry
+1 Perplex
+1 Phyrexian Reclamation
+1 Rampant Growth
+1 Ripples of Undeath
+1 Sakura-Tribe Elder
+1 Satyr Wayfinder
+1 Shigeki, Jukai Visionary
+1 Singularity Rupture
+1 Six
+1 Sodden Verdure
+1 Soul-Guide Lantern
+1 Springbloom Druid
+1 Stillness in Motion
+1 Stinkweed Imp
+1 Stitcher's Supplier
+1 Sunken Hollow
+4 Swamp
+1 Swan Song
+1 Tainted Isle
+1 The Gitrog Monster
+1 Three Visits
+1 Tortured Existence
+1 Traumatize
+1 Umbral Collar Zealot
+1 Undercity Sewers
+1 Underground Mortuary
+1 Vernal Fen
+1 Victimize
+1 Watery Grave
+1 Willowrush Verge
+1 Woodland Cemetery
+1 World Shaper
+1 Yavimaya Coast
+1 Zagoth Triome

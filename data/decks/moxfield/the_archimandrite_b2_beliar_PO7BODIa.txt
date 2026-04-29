@@ -1,0 +1,99 @@
+COMMANDER: The Archimandrite
+1 Absorb
+1 Adarkar Wastes
+1 Aetherflux Reservoir
+1 Alhammarret's Archive
+1 Ancient Den
+1 Arcane Signet
+1 Arid Mesa
+1 Azorius Signet
+1 Battlefield Forge
+1 Beacon of Immortality
+1 Blighted Steppe
+1 Boros Charm
+1 Boros Signet
+1 Calamity of Cinders
+1 Clifftop Retreat
+1 Command Tower
+1 Cori Mountain Stalwart
+1 Cori-Steel Cutter
+1 Dauntless Dismantler
+1 Decanter of Endless Water
+1 Dovin's Veto
+1 Dramatic Rescue
+1 Elixir of Immortality
+1 Elusive Spellfist
+1 Enthusiastic Mechanaut
+1 Frostcliff Siege
+1 Gates of Istfell
+1 Gerrard's Hourglass Pendant
+1 Glacial Fortress
+1 Glaring Spotlight
+1 Glóin, Dwarf Emissary
+1 Goblin Engineer
+1 Great Furnace
+1 Hallowed Fountain
+1 Hanna, Ship's Navigator
+1 Hurkyl, Master Wizard
+1 Invoke the Divine
+1 Island
+1 Ivory Tower
+1 Izzet Signet
+1 Jeskai Ascendancy
+1 Jhoira, Weatherlight Captain
+1 Kabira Crossroads
+1 Legion Leadership // Legion Stronghold
+1 Lightning Greaves
+1 Lightning Helix
+1 Lone Missionary
+1 Loran of the Third Path
+1 Loyal Inventor
+1 Lyse Hext
+1 Mantis Rider
+1 Marsh Flats
+1 Misty Rainforest
+1 Monastery Mentor
+1 Mountain
+1 Mystic Monastery
+1 Narset, Enlightened Exile
+1 Ojutai Exemplars
+1 Oswald Fiddlebender
+1 Path to Exile
+1 Pinnacle Monk // Mystic Peak
+2 Plains
+1 Reconnaissance
+1 Reliquary Tower
+1 Reprieve
+1 Reward the Faithful
+1 Rhox Faithmender
+1 Roaming Throne
+1 Rogue's Passage
+1 Sacred Foundry
+1 Saheeli, the Sun's Brilliance
+1 Sami, Wildcat Captain
+1 Seat of the Synod
+1 Second Sunrise
+1 Sejiri Refuge
+1 Sejiri Shelter // Sejiri Glacier
+1 Shivan Reef
+1 Sol Ring
+1 Soul-Guide Lantern
+1 Sphinx's Revelation
+1 Split Up
+1 Steam Vents
+1 Sulfur Falls
+1 Sunforger
+1 Sunstar Lightsmith
+1 Swiftfoot Boots
+1 Swiftwater Cliffs
+1 Swords to Plowshares
+1 To Arms!
+1 Tranquil Cove
+1 Umezawa's Jitte
+1 Union of the Third Path
+1 Well of Lost Dreams
+1 Whirlwind of Thought
+1 Whispersilk Cloak
+1 Wind-Scarred Crag
+1 Words of Worship
+1 Zuran Orb

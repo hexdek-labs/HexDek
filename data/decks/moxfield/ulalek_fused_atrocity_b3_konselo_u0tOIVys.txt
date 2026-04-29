@@ -1,0 +1,95 @@
+COMMANDER: Ulalek, Fused Atrocity
+1 All Is Dust
+1 Ancient Tomb
+1 Arcane Signet
+1 Basalt Monolith
+1 Blood Crypt
+1 Breaker of Creation
+1 Breeding Pool
+1 Calamity of the Titans
+1 City of Brass
+1 Command Tower
+1 Conduit of Ruin
+1 Cultivate
+1 Damn
+1 Damnation
+1 Demolition Field
+1 Deserted Temple
+1 Devourer of Destiny
+1 Echoes of Eternity
+1 Eldrazi Confluence
+1 Eldrazi Temple
+1 Eldritch Immunity
+1 Emrakul, the Promised End
+1 Emrakul, the World Anew
+1 Eye of Ugin
+1 Farseek
+1 Field of Ruin
+1 Flawless Maneuver
+1 Flayer of Loyalties
+4 Forest
+1 Forsaken Monument
+1 From Beyond
+1 Glaring Fleshraker
+1 Godless Shrine
+1 Hedron Archive
+2 Island
+1 It That Heralds the End
+1 Kodama's Reach
+1 Kozilek's Command
+1 Kozilek's Unsealing
+1 Kozilek, Butcher of Truth
+1 Kozilek, the Broken Reality
+1 Kozilek, the Great Distortion
+1 Labyrinth of Skophos
+1 Lightning Greaves
+1 Migration Path
+1 Mind Stone
+1 Mountain
+1 Nature's Lore
+1 Nulldrifter
+1 Overgrown Tomb
+1 Path of Annihilation
+1 Reality Smasher
+1 Reliquary Tower
+1 Rhythm of the Wild
+1 Sacred Foundry
+1 Sanctum of Ugin
+1 Shrine of the Forsaken Gods
+1 Sire of Seven Deaths
+1 Sol Ring
+1 Sowing Mycospawn
+1 Spawnbed Protector
+1 Spreading Plague
+1 Stomping Ground
+1 Sulfurous Springs
+2 Swamp
+1 Sylvan Scrying
+1 Talisman of Curiosity
+1 Talisman of Impulse
+1 Talisman of Resilience
+1 Tectonic Edge
+1 Temple Garden
+1 The Eternity Elevator
+1 The One Ring
+1 Thought Vessel
+1 Thought-Knot Seer
+1 Thran Dynamo
+1 Three Visits
+1 Ugin's Binding
+1 Ugin's Labyrinth
+1 Ugin, Eye of the Storms
+1 Ugin, the Ineffable
+1 Ulamog, the Ceaseless Hunger
+1 Ulamog, the Defiler
+1 Ulamog, the Infinite Gyre
+1 Up the Beanstalk
+1 Urza's Cave
+1 Urza's Incubator
+1 Urza's Mine
+1 Urza's Power Plant
+1 Urza's Tower
+1 Void Winnower
+1 Warping Wail
+1 Watery Grave
+1 Zhulodok, Void Gorger

@@ -1,0 +1,391 @@
+{
+  "game_id": "gauntlet-001",
+  "winner": 2,
+  "end_reason": "seat 2 is the last one standing",
+  "total_turns": 23,
+  "total_events": 2221,
+  "commander_format": true,
+  "day_night": "neither",
+  "seats": [
+    {
+      "idx": 0,
+      "life": 5,
+      "lost": true,
+      "loss_reason": "21+ commander damage from Kinnan, Bonder Prodigy (CR 704.6c)",
+      "library_count": 79,
+      "hand": [
+        "Flusterstorm",
+        "Disallow",
+        "Raff Capashen, Ship's Mage",
+        "Mindbreak Trap"
+      ],
+      "graveyard": [
+        "Cyclonic Rift",
+        "Grapeshot"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Kraum, Ludevic's Opus"
+      ],
+      "commander_names": [
+        "Kraum, Ludevic's Opus"
+      ],
+      "commander_tax": {
+        "Kraum, Ludevic's Opus": 0
+      },
+      "commander_damage": {
+        "3": {
+          "Kinnan, Bonder Prodigy": 22
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 0,
+      "battlefield": []
+    },
+    {
+      "idx": 1,
+      "life": -3,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 72,
+      "hand": [],
+      "graveyard": [
+        "Necrotic Ooze",
+        "Pact of Negation",
+        "Spellseeker",
+        "Animate Dead",
+        "Cabal Ritual",
+        "Demonic Tutor",
+        "Diabolic Intent",
+        "Food Chain",
+        "Grim Monolith",
+        "An Offer You Can't Refuse",
+        "Imperial Seal",
+        "Mental Misstep",
+        "Finale of Devastation",
+        "Reanimate",
+        "Ashaya, Soul of the Wild"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Muldrotha, the Gravetide"
+      ],
+      "commander_names": [
+        "Muldrotha, the Gravetide"
+      ],
+      "commander_tax": {
+        "Muldrotha, the Gravetide": 0
+      },
+      "commander_damage": {
+        "3": {
+          "Kinnan, Bonder Prodigy": 16
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 2,
+      "battlefield": []
+    },
+    {
+      "idx": 2,
+      "life": 30,
+      "lost": false,
+      "loss_reason": "",
+      "library_count": 66,
+      "hand": [
+        "Haze of Rage",
+        "Desperate Ritual",
+        "Fierce Guardianship",
+        "An Offer You Can't Refuse",
+        "Deflecting Swat"
+      ],
+      "graveyard": [
+        "Gamble",
+        "Windfall",
+        "Solve the Equation",
+        "Grapeshot",
+        "Ruby Medallion",
+        "Faithless Looting",
+        "L\u00f3rien Revealed",
+        "Big Score",
+        "Jeska's Will",
+        "Displacer Kitten",
+        "Reiterate",
+        "Brain Freeze",
+        "Pact of Negation",
+        "Demand Answers",
+        "Seize the Spoils"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Ral, Monsoon Mage // Ral, Leyline Prodigy"
+      ],
+      "commander_tax": {
+        "Ral, Monsoon Mage // Ral, Leyline Prodigy": 2
+      },
+      "commander_damage": {
+        "3": {
+          "Kinnan, Bonder Prodigy": 2
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": [
+        {
+          "name": "Scalding Tarn",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mountain",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Polluted Delta",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Chrome Mox",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Ragavan, Nimble Pilferer",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 2,
+          "toughness": 1,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Training Center",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Pinnacle Monk // Mystic Peak",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 2,
+          "toughness": 2,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mox Diamond",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Spirebluff Canal",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Gemstone Caverns",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Simian Spirit Guide",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 2,
+          "toughness": 2,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "treasure artifact token Token (1/1)",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 1,
+          "toughness": 1,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": true
+        },
+        {
+          "name": "City of Brass",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Cephalid Coliseum",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Ral, Monsoon Mage // Ral, Leyline Prodigy",
+          "tapped": false,
+          "summoning_sick": true,
+          "damage_marked": 0,
+          "power": 1,
+          "toughness": 3,
+          "counters": {
+            "loyalty": 2
+          },
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        }
+      ]
+    },
+    {
+      "idx": 3,
+      "life": -1,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 61,
+      "hand": [],
+      "graveyard": [
+        "Consider",
+        "Auroral Procession",
+        "Animist's Awakening",
+        "Phyrexian Metamorph",
+        "Thrasios, Triton Hero",
+        "Insist",
+        "Opt",
+        "Chrome Mox",
+        "Transmute Artifact",
+        "Spellseeker",
+        "Ponder",
+        "Gitaxian Probe",
+        "Starting Town",
+        "Ancient Tomb",
+        "Rhystic Study",
+        "Walking Ballista"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Kinnan, Bonder Prodigy"
+      ],
+      "commander_tax": {
+        "Kinnan, Bonder Prodigy": 1
+      },
+      "commander_damage": {},
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 0,
+      "battlefield": []
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:exalted"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "act:T",
+        "choice:1",
+        "add_mana",
+        "add_mana",
+        "add_mana"
+      ],
+      "index": 1,
+      "kind": "activated"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "cedh",
+  "name": "Noble Hierarch",
+  "parse_error_count": 0
+}

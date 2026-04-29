@@ -1,0 +1,17 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:etb",
+        "untyped_effect"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "cedh",
+  "name": "Dockside Extortionist",
+  "parse_error_count": 0
+}

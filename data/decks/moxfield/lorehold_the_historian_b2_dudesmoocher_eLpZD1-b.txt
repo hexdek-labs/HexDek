@@ -1,0 +1,80 @@
+COMMANDER: Lorehold, the Historian
+1 Apex of Power
+1 Arcane Bombardment
+1 Arcane Signet
+1 Avatar's Wrath
+1 Battlefield Forge
+1 Bender's Waterskin
+1 Big Score
+1 Blasphemous Act
+1 Bolt Bend
+1 Boros Charm
+1 Boros Signet
+1 Brass's Bounty
+1 Caldera Pyremaw
+1 Chandra, Hope's Beacon
+1 Chaos Warp
+1 Clifftop Retreat
+1 Command Tower
+1 Dance with Calamity
+1 Deflecting Palm
+1 Double Vision
+1 Electro, Assaulting Battery
+1 Emeria's Call // Emeria, Shattered Skyclave
+1 Fabled Passage
+1 Faithless Looting
+1 Fated Clash
+1 Galvanoth
+1 Ghostly Prison
+1 Goldspan Dragon
+1 Hexing Squelcher
+1 Hit the Mother Lode
+1 Improvisation Capstone
+1 Insurrection
+1 Lightning Greaves
+1 Longshot, Rebel Bowman
+1 Lorehold Command
+1 Mana Geyser
+11 Mountain
+1 Olórin's Searing Light
+1 Palantír of Orthanc
+1 Path to Exile
+1 Pinnacle Monk // Mystic Peak
+1 Pirate's Pillage
+11 Plains
+1 Promise of Loyalty
+1 Pyromancer's Goggles
+1 Radiant Summit
+1 Reckless Endeavor
+1 Redirect Lightning
+1 Reforge the Soul
+1 Reliquary Tower
+1 Reprieve
+1 Restoration Seminar
+1 Reverberate
+1 Reverse the Sands
+1 Rise of the Eldrazi
+1 Rite of the Dragoncaller
+1 Rugged Prairie
+1 Sacred Foundry
+1 Searing Wind
+1 Seething Song
+1 Sol Ring
+1 Soulfire Eruption
+1 Spinerock Tyrant
+1 Storm Herd
+1 Storm-Kiln Artist
+1 Sunbaked Canyon
+1 Sunbird's Invocation
+1 Sundown Pass
+1 Sunscorched Divide
+1 Surly Badgersaur
+1 Swords to Plowshares
+1 The Dawning Archaic
+1 Thought Vessel
+1 Thrill of Possibility
+1 Unexpected Windfall
+1 Untimely Malfunction
+1 Valakut Awakening // Valakut Stoneforge
+1 Velomachus Lorehold
+1 Volcanic Vision

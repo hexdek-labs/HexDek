@@ -1,0 +1,83 @@
+COMMANDER: Kediss, Emberclaw Familiar
+COMMANDER: Malcolm, Keen-Eyed Navigator
+1 Akal Pakal, First Among Equals
+1 An Offer You Can't Refuse
+1 Arcane Denial
+1 Arcane Signet
+1 Arena of Glory
+1 Cascade Bluffs
+1 Charisma
+1 Chart a Course
+1 Combat Research
+1 Command Tower
+1 Counterspell
+1 Curiosity
+1 Curious Obsession
+1 Delay
+1 Demand Answers
+1 Drift of Phantasms
+1 Expressive Iteration
+1 Faerie Mastermind
+1 Fellwar Stone
+1 Ferrous Lake
+1 Fiery Islet
+1 Fire Whip
+1 Fomori Vault
+1 Freed from the Real
+1 Gamble
+1 Glint-Horn Buccaneer
+1 Hall of the Bandit Lord
+1 Hanweir Battlements
+1 Hermetic Study
+1 Hydroelectric Specimen // Hydroelectric Laboratory
+1 Hypervolt Grasp
+1 Idol of Oblivion
+1 Into the Flood Maw
+12 Island
+1 Izzet Signet
+1 Lightning Prowess
+1 Lightning-Rig Crew
+1 Liquimetal Torque
+1 Long-Term Plans
+1 Lookout's Dispersal
+1 Lórien Revealed
+1 Magda, Brazen Outlaw
+1 Malcolm, Alluring Scoundrel
+1 March of Swirling Mist
+1 Memory Lapse
+1 Mind Stone
+1 Miscast
+7 Mountain
+1 Muddle the Mixture
+1 Ophidian Eye
+1 Pemmin's Aura
+1 Personal Tutor
+1 Ponder
+1 Pongify
+1 Power of Fire
+1 Preordain
+1 Prismatic Lens
+1 Psionic Gift
+1 Quicksilver Dagger
+1 Ragavan, Nimble Pilferer
+1 Rapid Hybridization
+1 Rite of Flame
+1 Riverglide Pathway // Lavaglide Pathway
+1 Scalding Tarn
+1 Sea-Dasher Octopus
+1 Shivan Reef
+1 Sigil of Sleep
+1 Sink into Stupor // Soporific Springs
+1 Siren Stormtamer
+1 Slip Out the Back
+1 Solve the Equation
+1 Spell Pierce
+1 Spellskite
+1 Steam Vents
+1 Sulfur Falls
+1 Swan Song
+1 Talisman of Creativity
+1 Tandem Lookout
+1 Training Center
+1 Viridian Longbow
+1 Witness Protection

@@ -1,0 +1,100 @@
+COMMANDER: Kynaios and Tiro of Meletis
+1 Adarkar Wastes
+1 Agna Qel'a
+1 An Offer You Can't Refuse
+1 Approach of the Second Sun
+1 Arcane Denial
+1 Arcane Signet
+1 Argent Dais
+1 Bala Ged Recovery // Bala Ged Sanctuary
+1 Battlefield Forge
+1 Beast Within
+1 Bloodroot Apothecary
+1 Breeding Pool
+1 Brushland
+1 Chaos Warp
+1 Cheering Crowd
+1 Collective Restraint
+1 Command Tower
+1 Dawn's Truce
+1 Descent into Avernus
+1 Eladamri's Vineyard
+1 Enlightened Tutor
+1 Erode
+1 Evendo, Waking Haven
+1 Everybody Lives!
+1 Exotic Orchard
+1 Fevered Visions
+1 Fire Nation Turret
+1 Forbidden Orchard
+1 Forest
+1 Geier Reach Sanitarium
+1 Generous Gift
+1 Glacial Chasm
+1 Glasspool Mimic // Glasspool Shore
+1 Gluntch, the Bestower
+1 Grove of the Burnwillows
+1 Hallowed Fountain
+1 Heartwood Storyteller
+1 Helix Pinnacle
+1 Horn of Greed
+1 Insurrection
+1 Island
+1 Karplusan Forest
+1 Ketria Triome
+1 Kwain, Itinerant Meddler
+1 Long River's Pull
+1 Master of Ceremonies
+1 Maze of Ith
+1 Mikokoro, Center of the Sea
+1 Mob Rule
+1 Mountain
+1 Ms. Bumbleflower
+1 Overabundance
+1 Pain Distributor
+1 Path to Exile
+1 Peerless Recycling
+1 Perch Protection
+1 Phelddagrif
+1 Plains
+1 Pongify
+1 Rampaging Ferocidon
+1 Rapid Hybridization
+1 Raugrin Triome
+1 Reliquary Tower
+1 Rhystic Study
+1 Rites of Flourishing
+1 Sacred Foundry
+1 Scrawling Crawler
+1 Sea Gate Restoration // Sea Gate, Reborn
+1 Seedborn Muse
+1 Selvala, Explorer Returned
+1 Shivan Reef
+1 Sink into Stupor // Soporific Springs
+1 Smothering Tithe
+1 Smuggler's Share
+1 Sokrates, Athenian Teacher
+1 Sol Ring
+1 Soul Warden
+1 Sphere of Safety
+1 Starfall Invocation
+1 Steam Vents
+1 Stomping Ground
+1 Strix Serenade
+1 Swan Song
+1 Swords to Plowshares
+1 Sylvan Offering
+1 Talisman of Conviction
+1 Talisman of Creativity
+1 Talisman of Curiosity
+1 Talisman of Impulse
+1 Talisman of Progress
+1 Talisman of Unity
+1 Tataru Taru
+1 Temple Garden
+1 Tempt with Discovery
+1 Winds of Abandon
+1 Witch Enchanter // Witch-Blessed Meadow
+1 Xyris, the Writhing Storm
+1 Yavimaya Coast
+1 Zo-Zu the Punisher

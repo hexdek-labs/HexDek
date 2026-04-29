@@ -1,0 +1,94 @@
+COMMANDER: Selvala, Explorer Returned
+1 Aetherflux Reservoir
+1 Ageless Entity
+1 Ajani, Mentor of Heroes
+1 Ajani, Valiant Protector
+1 Alhammarret's Archive
+1 Allosaurus Shepherd
+1 Arcane Signet
+1 Ashaya, Soul of the Wild
+1 Awaken the Woods
+1 Bala Ged Recovery // Bala Ged Sanctuary
+1 Basalt Monolith
+1 Beast Within
+1 Bramblewood Paragon
+1 Branchloft Pathway // Boulderloft Pathway
+1 Canopy Vista
+1 Castle Garenbrig
+1 Circle of Dreams Druid
+1 Clock of Omens
+1 Command Tower
+1 Congregation at Dawn
+1 Cut a Deal
+1 Dawn Charm
+1 Eladamri's Call
+1 Elesh Norn, Grand Cenobite
+1 Emergence Zone
+1 Eternal Witness
+1 Exploration
+1 Ezuri, Renegade Leader
+1 Felidar Sovereign
+4 Forest
+1 Ghalta, Primal Hunger
+1 Grand Abolisher
+1 Green Sun's Zenith
+1 Heroic Intervention
+1 Hierophant Bio-Titan
+1 Instill Energy
+1 Joraga Treespeaker
+1 Kalonian Hydra
+1 Karametra's Acolyte
+1 Leyline of Abundance
+1 Leyline of Hope
+1 Lightning Greaves
+1 Mana Crypt
+1 Mana Reflection
+1 Mind's Eye
+1 Mirror Entity
+1 Mother of Runes
+1 Nyxbloom Ancient
+1 Ozolith, the Shattered Spire
+1 Path to Exile
+4 Plains
+1 Primeval Protector
+1 Prismatic Omen
+1 Psychosis Crawler
+1 Radiant Grove
+1 Razorverge Thicket
+1 Rebuff the Wicked
+1 Reclamation Sage
+1 Reflecting Pool
+1 Reliquary Tower
+1 Savannah
+1 Scattered Groves
+1 Seedborn Muse
+1 Selesnya Signet
+1 Serene Steward
+1 Shared Summons
+1 Silence
+1 Smothering Tithe
+1 Sol Ring
+1 Spidersilk Armor
+1 Spore Frog
+1 Staff of Domination
+1 Sunpetal Grove
+1 Swords to Plowshares
+1 Sylvan Tutor
+1 Temple Garden
+1 Tempt with Discovery
+1 Test of Endurance
+1 The Millennium Calendar
+1 Thought Vessel
+1 Thousand-Year Elixir
+1 Tyrranax Rex
+1 Unnatural Growth
+1 Urza's Saga
+1 Veil of Summer
+1 Venser's Journal
+1 Vorinclex, Monstrous Raider
+1 Wild Wanderer
+1 Windswept Heath
+1 Wirewood Lodge
+1 Wirewood Symbiote
+1 Wolverine Riders
+1 Zopandrel, Hunger Dominus

@@ -1,0 +1,89 @@
+COMMANDER: Narset, Enlightened Master
+1 Ajani Steadfast
+1 Arcane Signet
+1 Armillary Sphere
+1 Ash Barrens
+1 Avacyn's Memorial
+1 Beacon of Immortality
+1 Brainsurge
+1 Brokers Hideout
+1 Buried Ruin
+1 Call the Gatewatch
+1 Chandra, Torch of Defiance
+1 Cleansing Nova
+1 Command Tower
+1 Commander's Sphere
+1 Decanter of Endless Water
+1 Djeru, With Eyes Open
+1 Elixir of Immortality
+1 Elspeth Tirel
+1 Elspeth, Knight-Errant
+1 Elspeth, Storm Slayer
+1 Elspeth, Sun's Champion
+1 Emeria, the Sky Ruin
+1 End Hostilities
+1 Esper Panorama
+1 Evolving Wilds
+1 Expedition Map
+1 Fabled Passage
+1 Fabricate
+1 Final Judgment
+1 Fumigate
+1 Gideon of the Trials
+1 Grixis Panorama
+1 Herald of Eternal Dawn
+1 Ignite the Beacon
+1 Inventors' Fair
+1 Kaldra Compleat
+1 Karn Liberated
+1 Karn's Bastion
+1 Kirtar's Wrath
+1 Maze of Ith
+1 Mistveil Plains
+1 Mithril Coat
+1 Myriad Landscape
+1 Mystic Monastery
+1 Narset Transcendent
+1 New Benalia
+1 Open the Armory
+1 Perilous Landscape
+1 Plea for Power
+1 Ponder
+1 Preordain
+1 Raugrin Triome
+1 Realm-Cloaked Giant // Cast Off
+1 Reliquary Tower
+1 Rogue's Passage
+1 Rout
+1 Sacred Foundry
+1 Sea of Clouds
+1 Search for Glory
+1 Sensei's Divining Top
+1 Skullclamp
+3 Snow-Covered Island
+3 Snow-Covered Mountain
+8 Snow-Covered Plains
+1 Sol Ring
+1 Solve the Equation
+1 Spark Double
+1 Spectacular Pileup
+1 Steam Vents
+1 Sun Titan
+1 Sunfall
+1 Supreme Verdict
+1 Teferi, Time Raveler
+1 Temple of Enlightenment
+1 Temple of Epiphany
+1 Temple of Triumph
+1 Terramorphic Expanse
+1 Teyo, the Shieldmage
+1 Tezzeret, Artifice Master
+1 Thalia's Lancers
+1 The Chain Veil
+1 Thought Vessel
+1 Time Wipe
+1 Ugin, the Spirit Dragon
+1 Urza's Cave
+1 Volatile Fjord
+1 White Sun's Twilight
+1 Wrath of God

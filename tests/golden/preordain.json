@@ -1,0 +1,16 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "static:spell_effect:_"
+      ],
+      "index": 0,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "cedh",
+  "name": "Preordain",
+  "parse_error_count": 0
+}

@@ -1,0 +1,92 @@
+COMMANDER: Szarel, Genesis Shepherd
+1 Aftermath Analyst
+1 Augur of Autumn
+1 Baloth Prime
+1 Barrowgoyf
+1 Beast Within
+1 Blasphemous Act
+1 Blood Crypt
+1 Bojuka Bog
+1 Braids, Arisen Nightmare
+1 Broken Bond
+1 Cabaretti Courtyard
+1 Canyon Slough
+1 Chaos Warp
+1 Cinder Glade
+1 Command Beacon
+1 Command Tower
+1 Crop Rotation
+1 Crucible of Worlds
+1 Dina, Essence Brewer
+1 Disciple of Freyalise // Garden of Freyalise
+1 Eldritch Evolution
+1 Emeritus of Abundance // Regrowth
+1 Entomb
+1 Escape Tunnel
+1 Eumidian Hatchery
+1 Eumidian Wastewaker
+1 Evendo Brushrazer
+1 Evolution Witness
+1 Evolving Wilds
+1 Exploration Broodship
+1 Explore
+1 Fabled Passage
+1 Farseek
+1 Festering Thicket
+5 Forest
+1 Gaze of Granite
+1 Genesis Wave
+1 Harrow
+1 Haunted Ridge
+1 Hearthhull, the Worldseed
+1 Hew the Entwood
+1 Horizon Explorer
+1 Icetill Explorer
+1 Imp's Mischief
+1 Kavaron, Memorial World
+1 Korvold, Fae-Cursed King
+1 Larval Scoutlander
+1 Llanowar Wastes
+1 Maestros Theater
+1 Mazirek, Kraul Death Priest
+2 Mountain
+1 Multani, Yavimaya's Avatar
+1 Myriad Landscape
+1 Nahiri's Lithoforming
+1 Nature's Lore
+1 Omnath, Locus of Rage
+1 Open the Way
+1 Oracle of Mul Daya
+1 Ouroboroid
+1 Overgrown Tomb
+1 Planar Engineering
+1 Planetary Annihilation
+1 Rampaging Baloths
+1 Rampant Growth
+1 Riveteers Overlook
+1 Roiling Regrowth
+1 Scapeshift
+1 Scheming Silvertongue // Sign in Blood
+1 Scouring Swarm
+1 Seedship Agrarian
+1 Smoldering Marsh
+1 Splendid Reclamation
+1 Springbloom Druid
+1 Sprouting Goblin
+1 Stargaze
+1 Stomping Ground
+1 Sulfurous Springs
+4 Swamp
+1 Swarmyard
+1 Tannuk, Memorial Ensign
+1 Terramorphic Expanse
+1 Terrasymbiosis
+1 The Gitrog Monster
+1 Titania, Protector of Argoth
+1 Twilight Mire
+1 Verdant Catacombs
+1 Vernal Fen
+1 Wooded Foothills
+1 Ziatora's Proving Ground
+1 Ziatora, the Incinerator
+1 Zuran Orb

@@ -1,0 +1,83 @@
+COMMANDER: Jacob Frye
+COMMANDER: Evie Frye
+1 Aarakocra Sneak
+1 Animate Dead
+1 Arcane Signet
+1 Archpriest of Shadows
+1 Ardyn, the Usurper
+1 Beacon of Unrest
+1 Bojuka Bog
+1 Brainstealer Dragon
+1 Breach the Multiverse
+1 Choked Estuary
+1 Command Tower
+1 Contaminated Aquifer
+1 Counterspell
+1 Darkwater Catacombs
+1 Desmond Miles
+1 Dimir Aqueduct
+1 Dimir Signet
+1 Dread Return
+1 Drowned Catacomb
+1 Dungeon Delver
+1 Eagle Vision
+1 Etrata, Deadly Fugitive
+1 Evolving Wilds
+1 Exotic Orchard
+1 Feed the Swarm
+1 Fetid Pools
+1 Feywild Caretaker
+1 From the Catacombs
+1 Gyruda, Doom of Depths
+1 Ice Tunnel
+9 Island
+1 Live or Die
+1 Marang River Regent // Coil and Catch
+1 Massacre Wurm
+1 Metamorphosis Fanatic
+1 Millikin
+1 Myriad Landscape
+1 Necromancy
+1 Negate
+1 Passageway Seer
+1 Persist
+1 Phyrexian Arena
+1 Ramses, Assassin Lord
+1 Rapid Hybridization
+1 Ravenloft Adventurer
+1 Reality Shift
+1 Reanimate
+1 Restart Sequence
+1 Rilsa Rael, Kingpin
+1 Rise of the Dark Realms
+1 River of Tears
+1 Sarevok's Tome
+1 Scholar of the Lost Trove
+1 Sepulchral Primordial
+1 Shadow of the Second Sun
+1 Singularity Rupture
+1 Sol Ring
+1 Sphinx of the Second Sun
+1 Starwinder
+1 Stitch Together
+1 Sunken Hollow
+1 Sunken Ruins
+10 Swamp
+1 Sword Coast Sailor
+1 Tainted Isle
+1 Talisman of Dominance
+1 Temple of Deceit
+1 Temple of the False God
+1 Terramorphic Expanse
+1 Tomb of Horrors Adventurer
+1 Toxic Deluge
+1 Trailblazer's Torch
+1 Underdark Explorer
+1 Underground River
+1 Unmarked Grave
+1 Valgavoth, Terror Eater
+1 Vicious Battlerager
+1 Victimize
+1 Vile Entomber
+1 Waterlogged Teachings // Inundated Archive
+1 Zombify

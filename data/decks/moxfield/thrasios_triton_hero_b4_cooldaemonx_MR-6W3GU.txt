@@ -1,0 +1,95 @@
+COMMANDER: Thrasios, Triton Hero
+COMMANDER: Tormod, the Desecrator
+1 Abrupt Decay
+1 Agent Venom
+1 An Offer You Can't Refuse
+1 Animate Dead
+1 Arcane Signet
+1 Ashnod's Altar
+1 Assassin's Trophy
+1 Biomancer's Familiar
+1 Birds of Paradise
+1 Blood Artist
+1 Bloodghast
+1 Bojuka Bog
+1 Bone Shards
+1 Boseiju, Who Endures
+1 Braids, Arisen Nightmare
+1 Brainstorm
+1 Breeding Pool
+1 Butcher Ghoul
+1 Command Tower
+1 Conduit of Worlds
+1 Counterspell
+1 Countersquall
+1 Cultivate
+1 Cyclonic Rift
+1 Damnation
+1 Deadly Dispute
+1 Deathrite Shaman
+1 Diabolic Intent
+1 Dreamroot Cascade
+1 Drowned Catacomb
+1 Elves of Deep Shadow
+1 Elvish Spirit Guide
+1 Entomb
+1 Eternal Witness
+1 Extinction Event
+1 Fact or Fiction
+1 Flooded Grove
+3 Forest
+1 Frantic Search
+1 Genesis Chamber
+1 Gravecrawler
+1 Grist, Voracious Larva // Grist, the Plague Swarm
+1 Heroic Intervention
+3 Island
+1 Life // Death
+1 Life from the Loam
+1 Lightning Greaves
+1 Likeness Looter
+1 Maze of Ith
+1 Mikaeus, the Unhallowed
+1 Misty Rainforest
+1 Mystic Remora
+1 Nature's Lore
+1 Negate
+1 Otawara, Soaring City
+1 Overgrown Tomb
+1 Perplex
+1 Phyrexian Altar
+1 Phyrexian Tower
+1 Pitiless Plunderer
+1 Polluted Delta
+1 Reanimate
+1 Reclaim
+1 Revitalizing Repast // Old-Growth Grove
+1 Riptide Laboratory
+1 Seedborn Muse
+1 Shipwreck Marsh
+1 Simic Growth Chamber
+1 Skullclamp
+1 Skyshroud Claim
+1 Sol Ring
+1 Strangleroot Geist
+1 Strip Mine
+1 Supernatural Stamina
+2 Swamp
+1 Takenuma, Abandoned Mire
+1 Talisman of Curiosity
+1 Talisman of Resilience
+1 Thought Vessel
+1 Toxic Deluge
+1 Training Grounds
+1 Underground River
+1 Unearth
+1 Unmarked Grave
+1 Vampiric Tutor
+1 Verdant Catacombs
+1 Viscera Seer
+1 Watery Grave
+1 Worldly Tutor
+1 Yawgmoth, Thran Physician
+1 Young Wolf
+1 Zagoth Triome
+1 Zulaport Cutthroat

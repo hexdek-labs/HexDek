@@ -1,0 +1,23 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:changeling"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "static:spell_effect:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "keywords",
+  "name": "Nameless Inversion",
+  "parse_error_count": 0
+}

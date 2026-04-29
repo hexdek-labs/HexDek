@@ -1,0 +1,19 @@
+{
+  "name": "scrape-moxfield",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Headed-browser human-cadence collector for Moxfield public deck share links",
+  "main": "scrape.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node scrape.js",
+    "resume": "node scrape.js --resume",
+    "details": "node fetch-deck-details.js",
+    "details:test": "LIMIT=20 node fetch-deck-details.js"
+  },
+  "dependencies": {
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "puppeteer": "^22.15.0"
+  }
+}

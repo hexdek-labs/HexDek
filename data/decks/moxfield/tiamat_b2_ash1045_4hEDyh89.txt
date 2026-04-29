@@ -1,0 +1,79 @@
+COMMANDER: Tiamat
+1 Aminatou's Augury
+1 Arcane Signet
+1 Auroral Procession
+1 Beacon of Unrest
+1 Blood Crypt
+1 Breeding Pool
+1 Bushwhack
+1 Chromatic Lantern
+1 Collective Resistance
+1 Collective Voyage
+1 Command Tower
+1 Commander's Sphere
+1 Crucible of Fire
+1 Crux of Fate
+1 Cultivate
+1 Deceptive Frostkite
+1 Draconic Lore
+1 Draconic Muralists
+1 Draconic Roar
+1 Dragonlord Dromoka
+1 Dragonlord's Servant
+1 Dragonmaster Outcast
+1 Dragonshift
+1 Dragonspeaker Shaman
+1 Dragonstorm
+1 Dragonstorm Globe
+1 Encroaching Dragonstorm
+1 Farseek
+1 Fellwar Stone
+5 Forest
+1 Frog Butler
+1 Godless Shrine
+1 Hallowed Fountain
+1 Harmonized Crescendo
+1 Haven of the Spirit Dragon
+1 Heritage Reclamation
+1 Heroic Intervention
+1 In Garruk's Wake
+5 Island
+1 Lier, Disciple of the Drowned
+1 Lightning Blast
+1 Lorehold Charm
+1 Lorehold, the Historian
+1 Minion of the Mighty
+6 Mountain
+1 Mox Jasper
+1 Narset's Reversal
+1 Niv-Mizzet, Parun
+1 Niv-Mizzet, Visionary
+1 Noxious Newt
+1 Obelisk of Urd
+1 Overgrown Tomb
+5 Plains
+1 Prismari Charm
+1 Prismari, the Inspiration
+1 Progenitor's Icon
+1 Quandrix Charm
+1 Quandrix, the Proof
+1 Rite of the Dragoncaller
+1 Rith, Liberated Primeval
+1 Rivaz of the Claw
+1 Sacred Foundry
+1 Sarkhan, Soul Aflame
+1 Scaled Nurturer
+1 Scarblade's Malice
+1 Silverquill Charm
+1 Silverquill, the Disputant
+1 Sol Ring
+1 Solemn Offering
+1 Steam Vents
+1 Stomping Ground
+5 Swamp
+1 Temple Garden
+1 Thought Vessel
+1 Ultimate Magic: Holy
+1 Watery Grave
+1 Witherbloom Charm
+1 Witherbloom, the Balancer

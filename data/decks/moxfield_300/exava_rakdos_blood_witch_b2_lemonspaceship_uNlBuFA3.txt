@@ -1,0 +1,71 @@
+COMMANDER: Exava, Rakdos Blood Witch
+1 Alesha, Who Laughs at Fate
+1 Arcane Signet
+1 Archpriest of Shadows
+1 Ayara's Oathsworn
+1 Azra Oddsmaker
+1 Blasphemous Act
+1 Bloodsoaked Insight // Sanguine Morass
+1 Bloodtracker
+1 Boggart Trawler // Boggart Bog
+1 Bojuka Bog
+1 Bolt Bend
+1 Bontu's Monument
+1 Burning-Tree Vandal
+1 Castle Locthwain
+1 Command Tower
+1 Cryptborn Horror
+1 Dark Ritual
+1 Death-Greeter's Champion
+1 Deathbringer Thoctar
+1 Dragonskull Summit
+1 Drana, Liberator of Malakir
+1 Emperor of Bones
+1 Exotic Orchard
+1 Faithless Looting
+1 Feast on the Fallen
+1 Fellwar Stone
+1 Fetid Gargantua
+1 Fire Covenant
+1 Gev, Scaled Scorch
+1 Grab the Prize
+1 Graven Cairns
+1 Guildmages' Forum
+1 Hagra Constrictor
+1 Hangar Scrounger
+1 Havoc Festival
+1 Hazoret's Monument
+1 Inti, Seneschal of the Sun
+1 Kazuul's Fury // Kazuul's Cliffs
+1 Lightning Bolt
+1 Mer-Ek Nightblade
+1 Mirror-Style Master
+10 Mountain
+9 Nazgûl
+1 Nesting Grounds
+1 Oona's Blackguard
+1 Pain Magnification
+1 Phyrexian Arena
+1 Power Conduit
+1 Rakdos Charm
+1 Rakdos Joins Up
+1 Rakdos Signet
+1 Retribution of the Ancients
+1 Skyclave Shadowcat
+1 Snuff Out
+1 Sol Ring
+1 Solemn Simulacrum
+1 Sulfurous Springs
+13 Swamp
+1 Tainted Peak
+1 Talisman of Indulgence
+1 Temple of Malice
+1 Terminate
+1 Theater of Horrors
+1 Towashi Guide-Bot
+1 Uncivil Unrest
+1 Unearth
+1 Unforgiving One
+1 Unspeakable Symbol
+1 Untimely Malfunction
+1 Yathan Tombguard

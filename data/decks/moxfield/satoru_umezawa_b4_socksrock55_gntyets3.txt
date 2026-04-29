@@ -1,0 +1,84 @@
+COMMANDER: Satoru Umezawa
+1 An Offer You Can't Refuse
+1 Ancient Silver Dragon
+1 Arcane Signet
+1 Archon of Cruelty
+1 Baleful Strix
+1 Bident of Thassa
+1 Blightsteel Colossus
+1 Brainstorm
+1 Changeling Outcast
+1 Choked Estuary
+1 Clearwater Pathway // Murkwater Pathway
+1 Command Tower
+1 Consecrated Sphinx
+1 Counterspell
+1 Cyclonic Rift
+1 Dark Ritual
+1 Dauthi Voidwalker
+1 Deadly Rollick
+1 Demonic Tutor
+1 Dimir Infiltrator
+1 Dimir Signet
+1 Drowned Catacomb
+1 Exotic Orchard
+1 Faerie Seer
+1 Fallen Shinobi
+1 Feed the Swarm
+1 Fellwar Stone
+1 Fierce Guardianship
+1 Force of Will
+1 Gingerbrute
+1 Gloomlake Verge
+1 Grazilaxx, Illithid Scholar
+1 Gudul Lurker
+1 Hullbreaker Horror
+1 Invisible Stalker
+9 Island
+1 Jin-Gitaxias, Core Augur
+1 Jin-Gitaxias, Progress Tyrant
+1 Kaito Shizuki
+1 Lightning Greaves
+1 Lord of the Void
+1 Mana Drain
+1 Mindleech Mass
+1 Mist-Cloaked Herald
+1 Morphic Pool
+1 Mystic Remora
+1 Negate
+1 Ornithopter
+1 Otawara, Soaring City
+1 Polluted Delta
+1 Ponder
+1 Reanimate
+1 Reconnaissance Mission
+1 Reliquary Tower
+1 Rhystic Study
+1 Rogue's Passage
+1 Rune-Scarred Demon
+1 Satoru, the Infiltrator
+1 Sheoldred, Whispering One
+1 Shipwreck Marsh
+1 Silent-Blade Oni
+1 Silver-Fur Master
+1 Siren Stormtamer
+1 Slither Blade
+1 Sol Ring
+1 Sunken Hollow
+9 Swamp
+1 Swan Song
+1 Swiftfoot Boots
+1 Tainted Isle
+1 Talisman of Dominance
+1 Thought Vessel
+1 Thousand-Faced Shadow
+1 Tormented Soul
+1 Toxic Deluge
+1 Toxrill, the Corrosive
+1 Triton Shorestalker
+1 Underground River
+1 Urborg, Tomb of Yawgmoth
+1 Vampiric Tutor
+1 Void Winnower
+1 Watery Grave
+1 Yuriko, the Tiger's Shadow

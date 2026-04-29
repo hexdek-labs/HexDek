@@ -1,0 +1,94 @@
+COMMANDER: Oloro, Ageless Ascetic
+1 Aetherflux Reservoir
+1 Arcane Denial
+1 Arcane Signet
+1 Authority of the Consuls
+1 Baleful Mastery
+1 Baleful Strix
+1 Beacon of Immortality
+1 Black Market Connections
+1 Bloodthirsty Conqueror
+1 Brainstorm
+1 Call of the Ring
+1 Command Tower
+1 Consecrated Sphinx
+1 Counterspell
+1 Dauthi Voidwalker
+1 Deafening Silence
+1 Dovin's Veto
+1 Drowned Catacomb
+1 Enduring Tenacity
+1 Esper Sentinel
+1 Exquisite Blood
+1 Fabled Passage
+1 Faerie Mastermind
+1 Farewell
+1 Fate Unraveler
+1 Flooded Strand
+1 Fracture
+1 Frantic Search
+1 Fumigate
+1 Glacial Fortress
+1 Godless Shrine
+1 Grand Abolisher
+1 Hallowed Fountain
+3 Island
+1 Isolated Chapel
+1 Jace's Archivist
+1 Land Tax
+1 Ledger Shredder
+1 Lotho, Corrupt Shirriff
+1 Lunar Convocation
+1 Mana Confluence
+1 Mana Drain
+1 Marsh Flats
+1 Morphic Pool
+1 Orcish Bowmasters
+1 Otawara, Soaring City
+1 Path to Exile
+1 Peer into the Abyss
+1 Phyrexian Arena
+1 Phyrexian Metamorph
+3 Plains
+1 Polluted Delta
+1 Pongify
+1 Prismatic Vista
+1 Propaganda
+1 Psychosis Crawler
+1 Queza, Augur of Agonies
+1 Reflecting Pool
+1 Reliquary Tower
+1 Rhystic Study
+1 Rule of Law
+1 Scheming Silvertongue // Sign in Blood
+1 Scrawling Crawler
+1 Scrubland
+1 Sea of Clouds
+1 Sensei's Divining Top
+1 Serra Ascendant
+1 Shattered Sanctum
+1 Sheoldred, the Apocalypse
+1 Silence
+1 Smothering Tithe
+1 Sol Ring
+3 Swamp
+1 Swan Song
+1 Swords to Plowshares
+1 Talisman of Dominance
+1 Talisman of Hierarchy
+1 Teferi's Protection
+1 Teferi's Puzzle Box
+1 The One Ring
+1 Thought Vessel
+1 Thoughtseize
+1 Toxic Deluge
+1 Tundra
+1 Underground Sea
+1 Underworld Dreams
+1 Urborg, Tomb of Yawgmoth
+1 Vault of Champions
+1 Wan Shi Tong, Librarian
+1 Watery Grave
+1 Whispering Madness
+1 Windfall
+1 Withering Curse

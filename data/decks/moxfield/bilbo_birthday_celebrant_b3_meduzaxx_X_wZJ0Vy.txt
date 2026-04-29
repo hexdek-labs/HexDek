@@ -1,0 +1,86 @@
+COMMANDER: Bilbo, Birthday Celebrant
+1 Ajani, Strength of the Pride
+1 Anguished Unmaking
+1 Ascend from Avernus
+1 Assassin's Trophy
+1 Austere Command
+1 Beast Whisperer
+1 Beast Within
+1 Beledros Witherbloom
+1 Brushland
+1 Call of the Ring
+1 Canopy Vista
+1 Case of the Uneaten Feast
+1 Caves of Koilos
+1 Cliffhaven Vampire
+1 Command Tower
+1 Daxos, Blessed by the Sun
+1 Defiling Daemogoth
+1 Dina, Soul Steeper
+1 Elas il-Kor, Sadistic Pilgrim
+1 Elenda's Hierophant
+1 Enduring Innocence
+1 Essence Warden
+1 Exemplar of Light
+1 Exotic Orchard
+1 Farhaven Elf
+1 Festering Thicket
+5 Forest
+1 Fortified Village
+1 Gala Greeters
+1 Gollum, Obsessed Stalker
+1 Greed
+1 Guide of Souls
+1 Haliya, Guided by Light
+1 Harmonize
+1 Heaped Harvest
+1 Heroic Intervention
+1 Hinterland Sanctifier
+1 Hushwood Verge
+1 Isolated Chapel
+1 Kambal, Profiteering Mayor
+1 Leyline of Hope
+1 Lifecreed Duo
+1 Llanowar Wastes
+1 Marauding Blight-Priest
+1 Marsh Flats
+1 Murmuring Bosk
+1 Necroblossom Snarl
+1 Night's Whisper
+1 Origin of Metalbending
+1 Path of Ancestry
+1 Path to Exile
+1 Phyrexian Arena
+6 Plains
+1 Pristine Talisman
+1 Prize Pig
+1 Prosperous Innkeeper
+1 Raise the Past
+1 Rhox Faithmender
+1 Rumor Gatherer
+1 Samwise Gamgee
+1 Sandsteppe Citadel
+1 Sanguine Bond
+1 Saradoc, Master of Buckland
+1 Scattered Groves
+1 Sevinne's Reclamation
+1 Shineshadow Snarl
+1 Soul Warden
+1 Soul's Attendant
+1 Starscape Cleric
+1 Storm of Souls
+1 Sunpetal Grove
+1 Suture Priest
+6 Swamp
+1 Swords to Plowshares
+1 The Gaffer
+1 The One Ring
+1 The Shire
+1 The Wind Crystal
+1 Veinwitch Coven
+1 Vernal Fen
+1 Virulent Emissary
+1 Welcoming Vampire
+1 Witch of the Moors
+1 Wood Elves
+1 Woodland Cemetery

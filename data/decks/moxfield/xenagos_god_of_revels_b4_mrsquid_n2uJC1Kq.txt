@@ -1,0 +1,88 @@
+COMMANDER: Xenagos, God of Revels
+1 Aggravated Assault
+1 Alexios, Deimos of Kosmos
+1 Arena of Glory
+1 Arid Mesa
+1 Bala Ged Recovery // Bala Ged Sanctuary
+1 Beast Whisperer
+1 Beast Within
+1 Birds of Paradise
+1 Bloodstained Mire
+1 Bonehoard Dracosaur
+1 Boseiju, Who Endures
+1 Champion of Lambholt
+1 Chandra's Ignition
+1 Command Tower
+1 Commercial District
+1 Crop Rotation
+1 Cursed Mirror
+1 Delighted Halfling
+1 Disciple of Freyalise // Garden of Freyalise
+1 Dragonhawk, Fate's Tempest
+1 Dryad Arbor
+1 Elvish Mystic
+1 Etali, Primal Conqueror // Etali, Primal Sickness
+1 Eternal Witness
+1 Fanatic of Rhonas
+1 Final Fortune
+1 Finale of Devastation
+1 Fling
+1 Force of Vigor
+9 Forest
+1 Fyndhorn Elves
+1 Gaea's Cradle
+1 Garruk's Uprising
+1 Ghalta, Primal Hunger
+1 Ghalta, Stampede Tyrant
+1 Goreclaw, Terror of Qal Sisma
+1 Greater Good
+1 Growing Rites of Itlimoc // Itlimoc, Cradle of the Sun
+1 Guardian Project
+1 Halana and Alena, Partners
+1 Hauntwoods Shrieker
+1 Hexing Squelcher
+1 Ilharg, the Raze-Boar
+1 Jeska's Will
+1 Karplusan Forest
+1 Kessig Wolf Run
+1 Kodama of the East Tree
+1 Kona, Rescue Beastie
+1 Last March of the Ents
+1 Llanowar Elves
+1 Minsc & Boo, Timeless Heroes
+1 Mosswort Bridge
+5 Mountain
+1 Natural Order
+1 Nature's Rhythm
+1 Nyxbloom Ancient
+1 Ojer Kaslem, Deepest Growth // Temple of Cultivation
+1 Old Gnawbone
+1 Rishkar's Expertise
+1 Rockfall Vale
+1 Scrapshooter
+1 Selvala, Heart of the Wilds
+1 Skarrg, the Rage Pits
+1 Slicer, Hired Muscle // Slicer, High-Speed Antagonist
+1 Sneak Attack
+1 Soul Immolation
+1 Spider Manifestation
+1 Spire Garden
+1 Stomping Ground
+1 Strip Mine
+1 Sundering Eruption // Volcanic Fissure
+1 Surrak and Goreclaw
+1 Survival of the Fittest
+1 Sylvan Library
+1 Terror of the Peaks
+1 The Great Henge
+1 Thornspire Verge
+1 Trumpeting Carnosaur
+1 Turntimber Symbiosis // Turntimber, Serpentine Wood
+1 Valakut Awakening // Valakut Stoneforge
+1 Vaultborn Tyrant
+1 Verdant Catacombs
+1 Vibrance
+1 Vorinclex, Voice of Hunger
+1 Windswept Heath
+1 Wooded Foothills
+1 Zopandrel, Hunger Dominus

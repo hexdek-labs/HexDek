@@ -1,0 +1,96 @@
+COMMANDER: Hakbal of the Surging Soul
+1 Alchemist's Refuge
+1 Arcane Signet
+1 Archdruid's Charm
+1 Barkchannel Pathway // Tidechannel Pathway
+1 Branching Evolution
+1 Breeding Pool
+1 Cavern of Souls
+1 Cold-Eyed Selkie
+1 Command Tower
+1 Counterspell
+1 Court of Garenbrig
+1 Cyclonic Rift
+1 Deeproot Elite
+1 Deeproot Historian
+1 Deeproot Pilgrimage
+1 Deeproot Waters
+1 Doubling Season
+1 Dreamroot Cascade
+1 Emperor Mihail II
+1 Exploration
+1 Fabled Passage
+1 Flooded Grove
+3 Forest
+1 Gaea's Cradle
+1 Growing Rites of Itlimoc // Itlimoc, Cradle of the Sun
+1 Growth Spiral
+1 Hardened Scales
+1 Harmonized Crescendo
+1 Hedge Maze
+1 Herald of Secret Streams
+1 Heroic Intervention
+1 Hinterland Harbor
+1 Inspiring Call
+3 Island
+1 Karn's Bastion
+1 Kindred Discovery
+1 Kiora's Follower
+1 Kiora, the Rising Tide
+1 Kopala, Warden of Waves
+1 Kumena, Tyrant of Orazca
+1 Lord of Atlantis
+1 Master of the Pearl Trident
+1 Merfolk Sovereign
+1 Merrow Commerce
+1 Merrow Reejerey
+1 Metallic Mimic
+1 Minamo, School at Water's Edge
+1 Mist Dancer
+1 Misty Rainforest
+1 Mutational Advantage
+1 Mutavault
+1 Nature's Lore
+1 Nicanzil, Current Conductor
+1 Ozolith, the Shattered Spire
+1 Path of Ancestry
+1 Prime Speaker Zegana
+1 Prismatic Vista
+1 Raise the Palisade
+1 Rapid Hybridization
+1 Reality Shift
+1 Realmwalker
+1 Rejuvenating Springs
+1 Reliquary Tower
+1 Ripples of Potential
+1 Roaming Throne
+1 Seafloor Oracle
+1 Secluded Courtyard
+1 Simic Signet
+1 Singer of Swift Rivers
+1 Sink into Stupor // Soporific Springs
+1 Sol Ring
+1 Sphere Grid
+1 Svyelun of Sea and Sky
+1 Swiftfoot Boots
+1 Talisman of Curiosity
+1 Tatyova, Benthic Druid
+1 Terrasymbiosis
+1 Thada Adel, Acquisitor
+1 The Ozolith
+1 Thieving Skydiver
+1 Thrasios, Triton Hero
+1 Three Tree City
+1 Three Visits
+1 Tishana's Tidebinder
+1 Topography Tracker
+1 Unclaimed Territory
+1 Vodalian Hexcatcher
+1 Wanderwine Prophets
+1 Wasteland
+1 Waterlogged Grove
+1 Wave Goodbye
+1 Willowrush Verge
+1 Worldly Tutor
+1 Yavimaya Coast
+1 Zegana, Utopian Speaker

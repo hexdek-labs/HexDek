@@ -1,0 +1,100 @@
+COMMANDER: Edgar Markov
+1 Akroma's Will
+1 All-Out Assault
+1 Anguished Unmaking
+1 Anointed Procession
+1 Arcane Signet
+1 Arid Mesa
+1 Baron Bertram Graywater
+1 Black Market Connections
+1 Bleachbone Verge
+1 Blood Artist
+1 Blood Crypt
+1 Bloodletter of Aclazotz
+1 Bloodline Keeper // Lord of Lineage
+1 Bloodstained Mire
+1 Bloodthirsty Conqueror
+1 Bolas's Citadel
+1 Brightclimb Pathway // Grimclimb Pathway
+1 Captivating Vampire
+1 Cavern of Souls
+1 Caves of Koilos
+1 Champion of Dusk
+1 Charismatic Conqueror
+1 Clavileño, First of the Blessed
+1 Cliffhaven Vampire
+1 Command Tower
+1 Cordial Vampire
+1 Cruel Celebrant
+1 Damn
+1 Dark Ritual
+1 Demonic Tutor
+1 Dismember
+1 Dragonskull Summit
+1 Drana, Liberator of Malakir
+1 Dreadbore
+1 Edgar, Charmed Groom // Edgar Markov's Coffin
+1 Eiganjo, Seat of the Empire
+1 Elenda, the Dusk Rose
+1 Exquisite Blood
+1 Fell the Profane // Fell Mire
+1 Fetid Heath
+1 Funeral Room // Awakening Hall
+1 Godless Shrine
+1 Grave Pact
+1 Haunted Ridge
+1 Impact Tremors
+1 Indulgent Aristocrat
+1 Inkshield
+1 Isolated Chapel
+1 Jeska's Will
+1 Legion Lieutenant
+1 Malakir Rebirth // Malakir Mire
+1 Marsh Flats
+1 Master of Dark Rites
+1 Mountain
+1 Olivia Voldaren
+1 Olivia's Wrath
+1 Path of Ancestry
+1 Phyrexian Altar
+1 Phyrexian Tower
+1 Plains
+1 Ruinous Ultimatum
+1 Sacred Foundry
+1 Sanctum Seeker
+1 Savai Triome
+1 Secluded Courtyard
+1 Shadowy Backstreet
+1 Shattered Sanctum
+1 Silent Clearing
+1 Skullclamp
+1 Smothering Tithe
+1 Sol Ring
+1 Sorin, Imperious Bloodlord
+1 Stromkirk Captain
+1 Swamp
+1 Swords to Plowshares
+1 Takenuma, Abandoned Mire
+1 Talisman of Conviction
+1 Talisman of Hierarchy
+1 Talisman of Indulgence
+1 Teferi's Protection
+1 Terminate
+1 The Meathook Massacre
+1 The One Ring
+1 Three Tree City
+1 Tithe
+1 Twilight Prophet
+1 Unclaimed Territory
+1 Urborg, Tomb of Yawgmoth
+1 Vampire Socialite
+1 Vault of Champions
+1 Vein Ripper
+1 Vengeful Bloodwitch
+1 Viscera Seer
+1 Vito, Thorn of the Dusk Rose
+1 Voldaren Epicure
+1 Warleader's Call
+1 Welcoming Vampire
+1 Wheel of Fortune
+1 Yahenni, Undying Partisan

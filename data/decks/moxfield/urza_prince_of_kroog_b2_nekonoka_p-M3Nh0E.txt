@@ -1,0 +1,82 @@
+COMMANDER: Urza, Prince of Kroog
+1 Adric, Mathematical Genius
+1 Amulet of Vigor
+1 Arcane Encyclopedia
+1 Arcane Signet
+1 Artificer Class
+1 Azorius Signet
+1 Basalt Monolith
+1 Campfire
+1 Chromatic Orrery
+1 Clock of Omens
+1 Cloud Key
+1 Command Tower
+1 Commander's Sphere
+1 Copy Artifact
+1 Coveted Jewel
+1 Cryptic Spires
+1 Darksteel Forge
+1 Deserted Beach
+1 Dolmen Gate
+1 Doubling Cube
+1 Drafna, Founder of Lat-Nam
+1 Empowered Autogenerator
+1 Encroaching Mycosynth
+1 Everflowing Chalice
+1 Fabricate
+1 Filigree Sages
+1 Folio of Fancies
+1 Font of Mythos
+1 Frantic Search
+1 Galvanic Key
+1 Glacial Fortress
+1 Grinding Station
+1 Guildless Commons
+1 Hallowed Fountain
+1 Heartstone
+1 Hengegate Pathway // Mistgate Pathway
+1 Hithlain Rope
+1 Horn of Greed
+1 Howling Mine
+1 Idyllic Beachfront
+1 Idyllic Tutor
+1 Illustrious Wanderglyph
+10 Island
+1 Kami of the Crescent Moon
+1 Manifold Key
+1 Meandering River
+1 Mirrormind Crown
+1 Mirrorworks
+1 Mishra's Self-Replicator
+1 Moon-Blessed Cleric
+1 Mox Opal
+1 Mystic Forge
+1 Mystic Gate
+1 One with the Multiverse
+1 Otherworld Atlas
+1 Personal Tutor
+10 Plains
+1 Ponder
+1 Powerstone Shard
+1 Prototype Portal
+1 Reliquary Tower
+1 Sculpting Steel
+1 Sea of Clouds
+1 Seachrome Coast
+1 Skycloud Expanse
+1 Skyship Weatherlight
+1 Sol Ring
+1 Solitary Confinement
+1 Temple Bell
+1 The Mycosynth Gardens
+1 Thran Dynamo
+1 Training Grounds
+1 Trophy Mage
+1 Unwinding Clock
+1 Vesuvan Duplimancy
+1 Voltaic Construct
+1 Voltaic Key
+1 Voltaic Servant
+1 Wall of Shards
+1 Wedding Ring
+1 Worldwalker Helm

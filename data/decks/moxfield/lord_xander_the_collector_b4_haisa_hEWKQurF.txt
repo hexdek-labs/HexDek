@@ -1,0 +1,97 @@
+COMMANDER: Lord Xander, the Collector
+1 Abaddon the Despoiler
+1 Ad Nauseam
+1 Akoum Refuge
+1 Altar of the Brood
+1 Ancient Tomb
+1 Animate Dead
+1 Arcane Denial
+1 Archive Trap
+1 Badlands
+1 Blood Crypt
+1 Brainstorm
+1 Bruvac the Grandiloquent
+1 Campfire
+1 Cascade Bluffs
+1 Circular Logic
+1 Command Beacon
+1 Command Tower
+1 Consuming Aberration
+1 Counterspell
+1 Cranial Archive
+1 Cruel Somnophage // Can't Wake Up
+1 Crypt Incursion
+1 Damnation
+1 Darkwater Catacombs
+1 Demonic Consultation
+1 Demonic Tutor
+1 Desolate Lighthouse
+1 Dimir Aqueduct
+1 Dragonskull Summit
+1 Dread Summons
+1 Drown in the Loch
+1 Evil Reawakened
+1 Exotic Orchard
+1 Exquisite Firecraft
+1 Fabricate
+1 Fierce Guardianship
+1 Flitting Guerrilla
+1 Force of Negation
+1 Fractured Sanity
+1 Fraying Sanity
+1 Glacial Grasp
+1 Glimpse the Unthinkable
+1 Gloomlake Verge
+1 Graven Cairns
+1 Grim Monolith
+1 Hama, the Bloodbender
+1 Haunted Ridge
+1 Hedron Crab
+1 Hexing Squelcher
+1 Hoard Hauler
+1 Imperial Seal
+2 Island
+1 Izzet Boilerworks
+1 Jace, the Perfected Mind
+1 Kefka, Court Mage // Kefka, Ruler of Ruin
+1 Krydle of Baldur's Gate
+1 Maddening Cacophony
+1 Magmakin Artillerist
+1 Mechanized Production
+1 Mesmeric Orb
+1 Mindcrank
+1 Molten Collapse
+2 Mountain
+1 Niv-Mizzet, Parun
+1 Norman Osborn // Green Goblin
+1 Obeka, Splitter of Seconds
+1 Oscorp Industries
+1 Ponder
+1 Psychosis Crawler
+1 Rakdos Carnarium
+1 Relic of Sauron
+1 Reliquary Tower
+1 Rhystic Study
+1 Rise of the Dark Realms
+1 Rogue's Passage
+1 Ruin Crab
+1 Sephiroth's Intervention
+1 Shelldock Isle
+1 Singularity Rupture
+1 Sol Ring
+1 Steam Vents
+1 Sulfurous Springs
+1 Summon: Primal Odin
+2 Swamp
+1 Tasha's Hideous Laughter
+1 Temporal Extortion
+1 Thassa's Oracle
+1 The One Ring
+1 Time Sieve
+1 Underground Sea
+1 Underworld Breach
+1 Visions of Beyond
+1 Voltaic Key
+1 Watery Grave
+1 Xande, Dark Mage
+1 Xander's Lounge

@@ -1,0 +1,91 @@
+# Maralen fae ascending
+# Source: https://archidekt.com/decks/20760857/maralen
+COMMANDER: Maralen, Fae Ascendant
+1 Alchemist's Refuge
+1 Alela, Cunning Conqueror
+1 Arcane Signet
+1 Archmage of Echoes
+1 Arwen, Weaver of Hope
+1 Auroral Procession
+1 Beseech the Queen
+1 Bitterbloom Bearer
+1 Bitterblossom
+1 Black Market
+1 Blasphemous Edict
+1 Bloom Tender
+1 Breeding Pool
+1 Champion's Helm
+1 Changeling Wayfinder
+1 Chomping Changeling
+1 Chromatic Lantern
+1 Combat Tutorial
+1 Command Tower
+1 Dionus, Elvish Archdruid
+1 Disciple of Freyalise // Garden of Freyalise
+1 Dreamroot Cascade
+1 Dwynen's Elite
+1 Eladamri, Korvecdal
+1 Elfhame Druid
+1 Elven Chorus
+1 Evolution Sage
+1 Faerie Mastermind
+1 Festering Thicket
+1 Flitterwing Nuisance
+6 Forest
+1 Formidable Speaker
+1 Frenzied Baloth
+1 Fyndhorn Elves
+1 Galadhrim Brigade
+1 Glen Elendra Guardian
+1 Glen Elendra's Answer
+1 Gloomlake Verge
+1 Graveshifter
+1 Growing Rites of Itlimoc // Itlimoc, Cradle of the Sun
+1 Guardian Project
+1 Halo Forager
+1 High Fae Trickster
+1 Imperious Perfect
+5 Island
+1 Keep Safe
+1 Legolas's Quick Reflexes
+1 Leyline of Anticipation
+1 Llanowar Elves
+1 Mistrise Village
+1 Mocking Sprite
+1 Morcant's Loyalist
+1 Mystifying Maze
+1 Obyra, Dreaming Duelist
+1 Oran-Rief, the Vastwood
+1 Overgrown Tomb
+1 Phyrexian Arena
+1 Polluted Delta
+1 Putrefy
+1 Reclamation Sage
+1 Reliquary Tower
+1 Rivendell
+1 Saruman's Trickery
+1 Shadowheart, Dark Justiciar
+1 Shifting Woodland
+1 Sol Ring
+1 Springleaf Parade
+3 Swamp
+1 Swiftfoot Boots
+1 Temple of the False God
+1 Thought Vessel
+1 Three Tree City
+1 Tribute to the World Tree
+1 Unbury
+1 Unravel
+1 Vampiric Rites
+1 Verdant Catacombs
+1 Vernal Fen
+1 Voidslime
+1 Wastewood Verge
+1 Watery Grave
+1 Wilderness Reclamation
+1 Willowrush Verge
+1 Wolverine Riders
+1 Wood Elves
+1 Woodland Cemetery
+1 Worldly Tutor
+1 Yarok, the Desecrated

@@ -1,0 +1,55 @@
+# Compiled binaries
+*.exe
+*.test
+*.out
+/gameengine.test
+/mtgsquad-*
+/hexdek-*
+/bin/
+
+# Cross-compiled binaries
+*-linux
+*-darwin
+*-windows
+
+# Env / secrets
+.env
+.env.local
+*.pem
+*.key
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Node
+node_modules/
+dist/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Temp / outputs
+/tmp/
+/outputs/
+*.log
+*.log.*
+
+# Large data files (regenerable from source)
+/data/scryfall_*.json
+/data/*.csv.gz
+/data/rules/oracle-cards.json
+/data/rules/finetune_pairs.jsonl
+/data/rules/ast_dataset.jsonl
+/data/mtgsquad.db
+/data/mtgsquad.db-shm
+/data/mtgsquad.db-wal
+
+# Deck data (user-specific)
+/data/decks/*/freya/
+/data/cache/art

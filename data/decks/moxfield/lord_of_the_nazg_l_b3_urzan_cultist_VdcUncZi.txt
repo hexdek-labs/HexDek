@@ -1,0 +1,85 @@
+COMMANDER: Lord of the Nazgûl
+1 Accursed Duneyard
+1 An Offer You Can't Refuse
+1 Arcane Denial
+1 Arcane Signet
+1 Archmage of Runes
+1 Archmage's Charm
+1 Baleful Mastery
+1 Baral, Chief of Compliance
+1 Black Market Connections
+1 Bojuka Bog
+1 Brainstorm
+1 Call of the Ring
+1 Canoptek Wraith
+1 Clearwater Pathway // Murkwater Pathway
+1 Command Tower
+1 Confound
+1 Counterspell
+1 Countersquall
+1 Cover of Darkness
+1 Cyclonic Rift
+1 Dark Ritual
+1 Darkwater Catacombs
+1 Demonic Tutor
+1 Dimir Signet
+1 Disallow
+1 Drowned Catacomb
+1 Fabled Passage
+1 Fell the Profane // Fell Mire
+1 Frantic Search
+1 Gloomlake Verge
+1 Imp's Mischief
+1 Inherited Envelope
+1 Insatiable Avarice
+1 Irenicus's Vile Duplication
+6 Island
+1 Kindred Dominance
+1 Levitation
+1 Long River's Pull
+1 Malakir Rebirth // Malakir Mire
+1 Mana Drain
+1 Minas Morgul, Dark Fortress
+1 Morphic Pool
+1 Muddle the Mixture
+1 Mystic Remora
+9 Nazgûl
+1 Negate
+1 Night's Whisper
+1 Ojer Pakpatiq, Deepest Epoch // Temple of Cyclical Time
+1 Otawara, Soaring City
+1 Polluted Delta
+1 Ponder
+1 Pongify
+1 Preordain
+1 Raise the Palisade
+1 Rapid Hybridization
+1 Reliquary Tower
+1 Resculpt
+1 Rhystic Study
+1 Ringwraiths
+1 Rite of Replication
+1 Rivendell
+1 Roaming Throne
+1 Sakashima of a Thousand Faces
+1 Sea Gate Restoration // Sea Gate, Reborn
+1 Secret Tunnel
+1 Shipwreck Marsh
+1 Shire Terrace
+1 Sink into Stupor // Soporific Springs
+1 Sol Ring
+1 Sunken Hollow
+1 Sunken Ruins
+3 Swamp
+1 Swan Song
+1 Tainted Isle
+1 The Black Gate
+1 The Soul Stone
+1 Thought Vessel
+1 Three Steps Ahead
+1 Three Tree City
+1 Underground River
+1 Urza's Cave
+1 Watery Grave
+1 Witch-king of Angmar
+1 Witch-king, Bringer of Ruin

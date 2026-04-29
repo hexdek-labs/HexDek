@@ -1,0 +1,26 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:phase",
+        "sequence",
+        "reveal",
+        "put_card_into_hand"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "static:spell_effect:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Dark Confidant",
+  "parse_error_count": 0
+}

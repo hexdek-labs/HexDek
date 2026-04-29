@@ -1,0 +1,75 @@
+COMMANDER: Arcades, the Strategist
+1 Access Tunnel
+1 Angelic Wall
+1 Animate Wall
+1 Arcane Denial
+1 Arctic Treeline
+1 Assault Formation
+1 Axebane Guardian
+1 Brave the Sands
+1 Carven Caryatid
+1 Command Tower
+1 Counterspell
+1 Crashing Drawbridge
+1 Doorkeeper
+1 Dragon's Eye Sentry
+1 Dreamroot Cascade
+1 Drift of Phantasms
+1 Eerie Interlude
+1 Eternal Witness
+1 Expel the Interlopers
+1 Faithbound Judge // Sinner's Judgment
+9 Forest
+1 Ghostway
+1 Glacial Fortress
+1 Guard Gomazoa
+1 High Alert
+1 Hinterland Harbor
+1 Huatli, the Sun's Heart
+1 Idyllic Beachfront
+9 Island
+1 Living Wall
+1 Make a Stand
+1 Noble Hierarch
+1 Overgrown Battlement
+1 Perimeter Captain
+10 Plains
+1 Quicksilver Wall
+1 Rally the Ranks
+1 Reality Shift
+1 Reliquary Tower
+1 Resolute Watchdog
+1 Rogue's Passage
+1 Rolling Stones
+1 Sevinne's Reclamation
+1 Shield Sphere
+1 Shield-Wall Sentinel
+1 Shimmering Barrier
+1 Slaughter the Strong
+1 Sol Ring
+1 Stroke of Midnight
+1 Sunpetal Grove
+1 Sunscape Familiar
+1 Swiftfoot Boots
+1 Swords to Plowshares
+1 Sylvan Caryatid
+1 Tamiyo's Safekeeping
+1 Temple of Enlightenment
+1 Tetsuko Umezawa, Fugitive
+1 Tower Defense
+1 Tree of Redemption
+1 Unbreakable Formation
+1 Vine Trellis
+1 Wakestone Gargoyle
+1 Walking Bulwark
+1 Wall of Blossoms
+1 Wall of Denial
+1 Wall of Frost
+1 Wall of Mulch
+1 Wall of Omens
+1 Wall of Roots
+1 Wall of Runes
+1 Wall of Stolen Identity
+1 Wargate
+1 Weathered Sentinels
+1 Wingmantle Chaplain

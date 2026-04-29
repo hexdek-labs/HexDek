@@ -1,0 +1,80 @@
+COMMANDER: The Council of Four
+1 Absorb
+1 Aetherize
+1 An Offer You Can't Refuse
+1 Arcane Denial
+1 Arcane Signet
+1 Azorius Signet
+1 Castle Ardenvale
+1 Castle Vantress
+1 Clever Concealment
+1 Command Tower
+1 Council's Judgment
+1 Counterspell
+1 Curiosity Crafter
+1 Decanter of Endless Water
+1 Detection Tower
+1 Dictate of Kruphix
+1 Dion, Bahamut's Dominant // Bahamut, Warden of Light
+1 Distant Melody
+1 Dovin's Veto
+1 Ephara, God of the Polis
+1 Flawless Maneuver
+1 Flumph
+1 Forbid
+1 Force of Negation
+1 Force of Will
+1 Gitaxian Probe
+1 Glacial Fortress
+1 Grasp of Fate
+1 Haytham Kenway
+1 Heliod, the Radiant Dawn // Heliod, the Warped Eclipse
+1 Herald of Hoofbeats
+1 History of Benalia
+1 Howling Mine
+1 Intangible Virtue
+11 Island
+1 Kami of the Crescent Moon
+1 Kefnet the Mindful
+1 Knight Exemplar
+1 Labyrinth of Skophos
+1 Loran of the Third Path
+1 Louisoix's Sacrifice
+1 Marshal of Zhalfir
+1 Oblation
+1 Odric, Master Tactician
+1 Ominous Cemetery
+1 Pact of Negation
+1 Path to Exile
+1 Pearl Medallion
+1 Pippin, Guard of the Citadel
+11 Plains
+1 Port Town
+1 Prairie Stream
+1 Proft's Eidetic Memory
+1 Rebuff the Wicked
+1 Render Silent
+1 Rewind
+1 Rhystic Study
+1 Rivendell
+1 Sapphire Medallion
+1 Skycloud Expanse
+1 Smothering Tithe
+1 Sokrates, Athenian Teacher
+1 Sol Ring
+1 Solitary Confinement
+1 Stroke of Midnight
+1 Supreme Verdict
+1 Swiftfoot Boots
+1 Swords to Plowshares
+1 Syr Elenora, the Discerning
+1 Teferi's Protection
+1 Temple of Enlightenment
+1 The Unagi of Kyoshi Island
+1 Thought Vessel
+1 Thriving Isle
+1 Time Wipe
+1 Unstoppable Plan
+1 Unwind
+1 Vodalian Wave-Knight
+1 Wrath of God

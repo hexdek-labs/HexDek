@@ -1,0 +1,93 @@
+COMMANDER: Eshki Dragonclaw
+1 Abrade
+1 Bala Ged Recovery // Bala Ged Sanctuary
+1 Birds of Paradise
+1 Bloomvine Regent // Claim Territory
+1 Bonecrusher Giant // Stomp
+1 Breeding Pool
+1 Broken Bond
+1 Cemetery Prowler
+1 Cinder Glade
+1 Cleansing Wildfire
+1 Collective Resistance
+1 Command Tower
+1 Commercial District
+1 Consuming Tide
+1 Dragon's Rage Channeler
+1 Echocasting Symposium
+1 Eluge, the Shoreless Sea
+1 Emeritus of Conflict // Lightning Bolt
+1 Emeritus of Ideation // Ancestral Recall
+1 Enduring Vitality
+1 Enter the Unknown
+1 Eternal Witness
+1 Exotic Orchard
+1 Explore
+1 Fabled Passage
+1 Flashback
+5 Forest
+1 Gaea's Blessing
+1 Ghostly Flicker
+1 Glasspool Mimic // Glasspool Shore
+1 Gorilla Shaman
+1 Greenbelt Rampager
+1 Growth Spiral
+1 Gruul Turf
+1 Hedge Maze
+1 Herd Heirloom
+1 Hidden Hideout
+1 Improvisation Capstone
+3 Island
+1 Izzet Boilerworks
+1 Jace Reawakened
+1 Ketria Triome
+1 Khalni Ambush // Khalni Territory
+1 Lizard Blades
+1 Mana Confluence
+1 Marang River Regent // Coil and Catch
+1 Misty Rainforest
+2 Mountain
+1 Myth Unbound
+1 Nature's Lore
+1 Obsidian Charmaw
+1 Octavia, Living Thesis
+1 Planar Genesis
+1 Plaza of Heroes
+1 Prismari Charm
+1 Prismatic Vista
+1 Quandrix Charm
+1 Quandrix, the Proof
+1 Ram Through
+1 Ring of Valkas
+1 Savage Summoning
+1 Scalding Tarn
+1 Scalding Viper // Steam Clean
+1 Search for Tomorrow
+1 Shaman of Forgotten Ways
+1 Simic Growth Chamber
+1 Sink into Stupor // Soporific Springs
+1 Snapcaster Mage
+1 Song of the Dryads
+1 Spinner of Souls
+1 Springleaf Drum
+1 Starting Town
+1 Steam Vents
+1 Stomping Ground
+1 Stormchaser's Talent
+1 Studious First-Year // Rampant Growth
+1 Sundering Eruption // Volcanic Fissure
+1 Sunspine Lynx
+1 Sylvan Caryatid
+1 Tempest Hart // Scan the Clouds
+1 Temur Ascendancy
+1 The Dawning Archaic
+1 The Great Henge
+1 The Ozolith
+1 This Town Ain't Big Enough
+1 Three Steps Ahead
+1 Turntimber Symbiosis // Turntimber, Serpentine Wood
+1 Utopia Sprawl
+1 Valakut Awakening // Valakut Stoneforge
+1 Wan Shi Tong, Librarian
+1 Wooded Foothills
+1 Wrenn and Six

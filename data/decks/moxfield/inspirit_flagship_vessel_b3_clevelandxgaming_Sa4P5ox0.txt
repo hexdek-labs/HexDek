@@ -1,0 +1,94 @@
+COMMANDER: Inspirit, Flagship Vessel
+1 Adagia, Windswept Bastion
+1 Aetheric Amplifier
+1 All Will Be One
+1 Ancient Den
+1 Arcane Signet
+1 Arcbound Ravager
+1 Astral Cornucopia
+1 Big Mother Mouser
+1 Blasphemous Act
+1 Buried Ruin
+1 Command Tower
+1 Contentious Plan
+1 Crystal Skull, Isu Spyglass
+1 Darksteel Reactor
+1 Dispatch
+1 Dune Mover
+1 Emry, Lurker of the Loch
+1 Enlightened Tutor
+1 Enthusiastic Mechanaut
+1 Esper Sentinel
+1 Etherium Sculptor
+1 Exotic Orchard
+1 Experimental Augury
+1 Fabricate
+1 Fumigate
+1 Glacial Fortress
+1 Glistening Sphere
+1 Gold-Forged Thopteryx
+1 Gravestone Strider
+1 Great Furnace
+1 Hangarback Walker
+1 Insight Engine
+1 Invasive Maneuvers
+1 Inventors' Fair
+1 Iron Spider, Stark Upgrade
+3 Island
+1 Jhoira, Ageless Innovator
+1 Karn's Bastion
+1 Kilo, Apogee Mind
+1 Krang, Utrom Warlord
+1 Long-Range Sensor
+1 Lux Artillery
+1 Mithril Coat
+3 Mountain
+1 Moxite Refinery
+1 Myr Convert
+1 Mystic Forge
+1 Mystic Monastery
+1 Nevinyrral's Disk
+1 Norn's Decree
+1 Oswald Fiddlebender
+1 Padeem, Consul of Innovation
+1 Patrolling Peacemaker
+3 Plains
+1 Platinum Emperion
+1 Power Depot
+1 Prologue to Phyresis
+1 Radiant Summit
+1 Ravenous Robots
+1 Razortide Bridge
+1 Resourceful Defense
+1 Rikku, Resourceful Guardian
+1 Rustvale Bridge
+1 Saheeli, Filigree Master
+1 Scour for Scrap
+1 Sea of Clouds
+1 Seat of the Synod
+1 Sensei's Divining Top
+1 Silverbluff Bridge
+1 Simulacrum Synthesizer
+1 Sol Ring
+1 Solar Array
+1 Spectator Seating
+1 Spider-Bot
+1 Spire of Industry
+1 Steel Overseer
+1 Sulfur Falls
+1 Surge Conductor
+1 Swan Song
+1 Swiftfoot Boots
+1 Swords to Plowshares
+1 Temple of Enlightenment
+1 Temple of Epiphany
+1 Temple of Triumph
+1 Tezzeret the Seeker
+1 The Mycosynth Gardens
+1 The One Ring
+1 The Seriema
+1 Threefold Thunderhulk
+1 Titan Forge
+1 Training Center
+1 Uthros, Titanic Godcore
+1 Virulent Silencer

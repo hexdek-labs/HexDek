@@ -1,0 +1,30 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "static:spell_effect:_"
+      ],
+      "index": 0,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "static:no_regen_tail_it:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "static:chain_possessive_controller:_"
+      ],
+      "index": 2,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 3,
+  "fully_parsed": true,
+  "group": "removal",
+  "name": "Rapid Hybridization",
+  "parse_error_count": 0
+}

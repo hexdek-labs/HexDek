@@ -1,0 +1,91 @@
+COMMANDER: Felothar the Steadfast
+1 Akroma's Will
+1 Anguished Unmaking
+1 Arbor Adherent
+1 Arboreal Grazer
+1 Arcane Signet
+1 Assassin's Trophy
+1 Assault Formation
+1 Axebane Guardian
+1 Beast Whisperer
+1 Behind the Scenes
+1 Betor, Kin to All
+1 Black Market Connections
+1 Bleachbone Verge
+1 Bojuka Bog
+1 Boseiju, Who Endures
+1 Bountiful Promenade
+1 Brave the Sands
+1 Command Tower
+1 Crashing Drawbridge
+1 Crystal Barricade
+1 Deathcap Glade
+1 Doran, Besieged by Time
+1 Dragonlord Dromoka
+1 Enduring Innocence
+1 Erode
+1 Exotic Orchard
+1 Faeburrow Elder
+1 Fecund Greenshell
+1 Flumph
+4 Forest
+1 Fracture
+1 Get Lost
+1 Godless Shrine
+1 Great Forest Druid
+1 Hornet Nest
+1 Hushwood Verge
+1 Indatha Triome
+1 Infernal Grasp
+1 Jaws of Defeat
+1 Last March of the Ents
+1 Luminous Broodmoth
+1 MacCready, Lamplight Mayor
+1 Marsh Flats
+1 Morbid Opportunist
+1 Ohran Frostfang
+1 Overgrown Battlement
+1 Overgrown Farmland
+1 Overgrown Tomb
+1 Path to Exile
+1 Phyrexian Arena
+6 Plains
+1 Rampart Architect
+1 Reliquary Tower
+1 Sandsteppe Citadel
+1 Shattered Sanctum
+1 Smile at Death
+1 Sol Ring
+1 Stalwart Shield-Bearers
+1 Stoneskin
+2 Swamp
+1 Swords to Plowshares
+1 Sylvan Caryatid
+1 Takenuma, Abandoned Mire
+1 Tear Asunder
+1 Teferi's Protection
+1 Temple Garden
+1 The Battle of Bywater
+1 The Meathook Massacre
+1 The Soul Stone
+1 The Walls of Ba Sing Se
+1 Thought Vessel
+1 Tower Defense
+1 Towering Titan
+1 Tree of Perdition
+1 Tree of Redemption
+1 Undergrowth Stadium
+1 Vault of Champions
+1 Vault of the Archangel
+1 Verdant Catacombs
+1 Walking Bulwark
+1 Wall of Blossoms
+1 Wall of Omens
+1 Wall of Shards
+1 Wastewood Verge
+1 Wave of Reckoning
+1 Weathered Sentinels
+1 Welcoming Vampire
+1 Will of the Abzan
+1 Windswept Heath
+1 Yavimaya, Cradle of Growth

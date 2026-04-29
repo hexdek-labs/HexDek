@@ -1,0 +1,88 @@
+COMMANDER: Galazeth Prismari
+1 Arcane Signet
+1 Archaeomancer
+1 Archmage Emeritus
+1 Arena of Glory
+1 Ashling's Command
+1 Ashling, Rekindled // Ashling, Rimebound
+1 Big Score
+1 Blazing Firesinger // Seething Song
+1 Blue Sun's Zenith
+1 Brainstorm
+1 Cascade Bluffs
+1 Chrome Host Seedshark
+1 City of Brass
+1 Command Tower
+1 Confirm Suspicions
+1 Cori Mountain Monastery
+1 Decanter of Endless Water
+1 Deduce
+1 Displacer Kitten
+1 Dramatic Reversal
+1 Dualcaster Mage
+1 Echocasting Symposium
+1 Elemental Eruption
+1 Fellwar Stone
+1 Fiery Islet
+1 Flame of Anor
+1 Frantic Search
+1 Gitaxian Probe
+1 Inspired Tinkering
+1 Invert Polarity
+7 Island
+1 Izzet Signet
+1 Jin-Gitaxias // The Great Synthesis
+1 Katara's Reversal
+1 Leadership Vacuum
+1 Lórien Revealed
+1 Mana Confluence
+1 Mana Sculpt
+1 Metallurgic Summonings
+1 Minamo, School at Water's Edge
+1 Mistrise Village
+7 Mountain
+1 Muddle the Mixture
+1 Mystic Sanctuary
+1 Negate
+1 Otawara, Soaring City
+1 Phyrexian Metamorph
+1 Preordain
+1 Primal Amulet // Primal Wellspring
+1 Prismari Charm
+1 Prismari Command
+1 Prismari, the Inspiration
+1 Prismatic Vista
+1 Resonating Lute
+1 Return the Favor
+1 Riverglide Pathway // Lavaglide Pathway
+1 Riverpyre Verge
+1 Sanar, Unfinished Genius // Wild Idea
+1 Scalding Tarn
+1 Scavenger Grounds
+1 Season of Weaving
+1 Seize the Spoils
+1 Seize the Spotlight
+1 Shivan Reef
+1 Sol Ring
+1 Spell Swindle
+1 Spirebluff Canal
+1 Starting Town
+1 Steam Vents
+1 Stock Up
+1 Storm-Kiln Artist
+1 Stormscale Scion
+1 Talisman of Creativity
+1 Terror of the Peaks
+1 The Mechanist, Aerial Artisan
+1 Third Path Iconoclast
+1 Thoughtcast
+1 Thousand-Year Storm
+1 Three Steps Ahead
+1 Thundering Falls
+1 Thundertrap Trainer
+1 Trail of Evidence
+1 Training Center
+1 Traumatic Critique
+1 Twinflame
+1 Urza, Lord High Artificer
+1 Wisdom of Ages

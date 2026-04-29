@@ -1,0 +1,87 @@
+COMMANDER: Vito, Fanatic of Aclazotz
+1 Ancient Tomb
+1 Animate Dead
+1 Arcane Signet
+1 Ashnod's Altar
+1 Attended Healer
+1 Bitterbloom Bearer
+1 Bitterblossom
+1 Black Market Connections
+1 Blood Fountain
+1 Bloodghast
+1 Bloodletter of Aclazotz
+1 Bloodstained Mire
+1 Bloodthirsty Conqueror
+1 Bolas's Citadel
+1 Bringer of the Last Gift
+1 Buried Alive
+1 Carmen, Cruel Skymarcher
+1 Caves of Koilos
+1 Celestine, the Living Saint
+1 Changeling Outcast
+1 Clever Concealment
+1 Command Tower
+1 Concealed Courtyard
+1 Culling the Weak
+1 Dark Ritual
+1 Defiling Daemogoth
+1 Demonic Covenant
+1 Demonic Tutor
+1 Elas il-Kor, Sadistic Pilgrim
+1 Elspeth, Storm Slayer
+1 Enlightened Tutor
+1 Entomb
+1 Fetid Heath
+1 Firdoch Core
+1 Gift of Immortality
+1 Glass-Cast Heart
+1 Godless Shrine
+1 Grave Researcher // Reanimate
+1 Grim Hireling
+1 Isolated Chapel
+1 Krav, the Unredeemed
+1 Liliana's Contract
+1 Lotho, Corrupt Shirriff
+1 Marsh Flats
+1 Master of Dark Rites
+1 Moseo, Vein's New Dean
+1 Necromancy
+1 Nine-Lives Familiar
+1 Obsessive Pursuit
+1 Phyrexian Altar
+1 Phyrexian Tower
+1 Pitiless Plunderer
+5 Plains
+1 Polluted Delta
+1 Razaketh, the Foulblooded
+1 Reanimate
+1 Reassembling Skeleton
+1 Reflecting Pool
+1 Regna, the Redeemer
+1 Shadowy Backstreet
+1 Shattered Sanctum
+1 Shilgengar, Sire of Famine
+1 Silent Clearing
+1 Skullclamp
+1 Smothering Tithe
+1 Sol Ring
+10 Swamp
+1 Teferi's Protection
+1 Teysa, Orzhov Scion
+1 The Meathook Massacre
+1 The One Ring
+1 Toxic Deluge
+1 Turbulent Moor
+1 Umbral Collar Zealot
+1 Unholy Annex // Ritual Chamber
+1 Universal Automaton
+1 Vampiric Tutor
+1 Vault of Champions
+1 Venomcrawler
+1 Verdant Catacombs
+1 Virtue of Persistence // Locthwain Scorn
+1 Vito, Thorn of the Dusk Rose
+1 Voldaren Bloodcaster // Bloodbat Summoner
+1 Warren Soultrader
+1 Westvale Abbey // Ormendahl, Profane Prince
+1 Yawgmoth, Thran Physician

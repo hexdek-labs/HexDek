@@ -1,0 +1,87 @@
+COMMANDER: Toxrill, the Corrosive
+1 An Offer You Can't Refuse
+1 Ancient Tomb
+1 Arcane Denial
+1 Arcane Signet
+1 Baleful Strix
+1 Black Market
+1 Blighted Agent
+1 Blood Artist
+1 Blowfly Infestation
+1 Cabal Coffers
+1 Cabal Ritual
+1 Cavern of Souls
+1 Clearwater Pathway // Murkwater Pathway
+1 Command Tower
+1 Counterspell
+1 Crypt Ghast
+1 Dark Ritual
+1 Darkwater Catacombs
+1 Demonic Tutor
+1 Dimir Signet
+1 Diplomatic Immunity
+1 Drowned Catacomb
+1 Exotic Orchard
+1 Expansion Algorithm
+1 Flux Channeler
+1 Gloomlake Verge
+1 Grim Tutor
+1 Ichor Rats
+1 Inexorable Tide
+1 Infectious Inquiry
+1 Infernal Grasp
+6 Island
+1 Jet Medallion
+1 Karn's Bastion
+1 Kaya's Ghostform
+1 Lightning Greaves
+1 Lim-Dûl's Vault
+1 Maha, Its Feathers Night
+1 Mana Drain
+1 Massacre Girl, Known Killer
+1 Massacre Wurm
+1 Mirkwood Bats
+1 Mithril Coat
+1 Morbid Opportunist
+1 Morphic Pool
+1 Negate
+1 Nest of Scarabs
+1 Night's Whisper
+1 Phyrexian Arena
+1 Phyrexian Reclamation
+1 Phyrexian Tower
+1 Polluted Delta
+1 Ponder
+1 Preordain
+1 Prologue to Phyresis
+1 Reliquary Tower
+1 Revel in Riches
+1 Robe of Mirrors
+1 Shipwreck Marsh
+1 Sign in Blood
+1 Skullclamp
+1 Slip Out the Back
+1 Sludge Monster
+1 Sol Ring
+1 Sunken Hollow
+1 Sunken Ruins
+1 Super Shredder
+9 Swamp
+1 Swan Song
+1 Swiftfoot Boots
+1 Tainted Isle
+1 Talisman of Dominance
+1 Tekuthal, Inquiry Dominus
+1 The Meathook Massacre
+1 The Soul Stone
+1 Thought Vessel
+1 Thran Dynamo
+1 Thrummingbird
+1 Toxic Deluge
+1 Underground River
+1 Urborg, Tomb of Yawgmoth
+1 Vampiric Tutor
+1 Viral Drake
+1 Watery Grave
+1 Withering Torment
+1 Yawgmoth, Thran Physician

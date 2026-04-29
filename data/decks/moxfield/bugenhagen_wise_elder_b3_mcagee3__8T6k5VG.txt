@@ -1,0 +1,81 @@
+COMMANDER: Bugenhagen, Wise Elder
+1 Ancient Adamantoise
+1 Apex Devastator
+1 Archdruid's Charm
+1 Ashaya, Soul of the Wild
+1 Badgermole Cub
+1 Bane of Progress
+1 Beast Within
+1 Birds of Paradise
+1 Blightsteel Colossus
+1 Boseiju, Who Endures
+1 Casal, Lurkwood Pathfinder // Casal, Pathbreaker Owlbear
+1 Chord of Calling
+1 Concordant Crossroads
+1 Dark Depths
+1 Defense of the Heart
+1 Delighted Halfling
+1 Emrakul, the Promised End
+1 Enduring Vitality
+1 Eternal Witness
+1 Fabled Passage
+1 Force of Vigor
+20 Forest
+1 Formidable Speaker
+1 Frenzied Baloth
+1 Germination Practicum
+1 Ghalta, Primal Hunger
+1 Ghalta, Stampede Tyrant
+1 Gilded Goose
+1 Hall of the Bandit Lord
+1 Heroic Intervention
+1 Homeward Path
+1 Jumbo Cactuar
+1 Kamahl, Heart of Krosa
+1 Kodama of the East Tree
+1 Kona, Rescue Beastie
+1 Last March of the Ents
+1 Leyline of Abundance
+1 Lizard, Connors's Curse
+1 Lotus Bloom
+1 Michelangelo's Technique
+1 Michelangelo, Improviser
+1 Mosswort Bridge
+1 Natural Order
+1 Nature's Claim
+1 Nissa, Vastwood Seer // Nissa, Sage Animist
+1 Nissa, Who Shakes the World
+1 Nykthos, Shrine to Nyx
+1 Obscuring Haze
+1 Once Upon a Time
+1 Outcaster Trailblazer
+1 Oviya, Automech Artisan
+1 Path of Ancestry
+1 Portal to Phyrexia
+1 Primal Command
+1 Rogue's Passage
+1 Saryth, the Viper's Fang
+1 Scavenging Ooze
+1 Selvala's Stampede
+1 Selvala, Heart of the Wilds
+1 Shaman of Forgotten Ways
+1 Shifting Ceratops
+1 Shifting Woodland
+1 Smoke Bomb
+1 Sol Ring
+1 Soul of the Harvest
+1 Summon: Bahamut
+1 Summoning Trap
+1 Terastodon
+1 The Great Henge
+1 The Walls of Ba Sing Se
+1 Thespian's Stage
+1 Thorn Mammoth
+1 Tornado Elemental
+1 Twins of Discord
+1 Ulamog, the Defiler
+1 Urza's Cave
+1 Vigor
+1 World Breaker
+1 Yeva, Nature's Herald
+1 Zopandrel, Hunger Dominus

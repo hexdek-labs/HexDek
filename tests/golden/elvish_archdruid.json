@@ -1,0 +1,24 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "static:other_yours_anthem:_"
+      ],
+      "index": 0,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "act:T",
+        "untyped_effect"
+      ],
+      "index": 1,
+      "kind": "activated"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "layer7",
+  "name": "Elvish Archdruid",
+  "parse_error_count": 0
+}

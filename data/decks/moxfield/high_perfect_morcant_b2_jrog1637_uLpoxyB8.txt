@@ -1,0 +1,76 @@
+COMMANDER: High Perfect Morcant
+1 Aid the Fallen
+1 Altar of Bhaal // Bone Offering
+1 Beast-Kin Ranger
+1 Beseech the Mirror
+1 Bestial Bloodline
+1 Blight Rot
+1 Blighted Blackthorn
+1 Blood Beckoning
+1 Bloodchief's Thirst
+1 Blossoming Defense
+1 Celeborn the Wise
+1 Celestial Reunion
+1 Chance-Met Elves
+1 Changeling Wayfinder
+1 Command Tower
+1 Dawn's Light Archer
+1 Dawnhand Eulogist
+1 Deathcap Glade
+1 Eclipsed Elf
+1 Eerie Gravestone
+1 Elven Farsight
+1 Elvish Archdruid
+1 Emil, Vastlands Roamer
+1 Ent's Fury
+1 Evolving Wilds
+1 Firdoch Core
+1 Follow the Lumarets
+15 Forest
+1 Galadhrim Bow
+1 Gathering Stone
+1 Gloom Ripper
+1 Glorfindel, Dauntless Rescuer
+1 Glorious Decay
+1 Gnarlbark Elm
+1 Grapple with Death
+1 Graveblade Marauder
+1 Great Forest Druid
+1 Greta, Sweettooth Scourge
+1 Haunt of the Dead Marshes
+1 Last Gasp
+1 Lathril, Blade of the Elves
+1 Legolas, Master Archer
+1 Llanowar Elves
+1 Lys Alana Informant
+1 Many Partings
+1 Meren of Clan Nel Toth
+1 Midnight Tilling
+1 Moonglove Extractor
+1 Morcant's Eyes
+1 Morcant's Loyalist
+1 Nameless Inversion
+1 Old Man Willow
+1 Old-Growth Educator
+1 Pitiless Fists
+1 Potioner's Trove
+1 Priest of Titania
+1 Reclamation Sage
+1 Redtooth Genealogist
+1 Safewright Cavalry
+1 Scarblade Scout
+1 Scarblade's Malice
+1 Secluded Courtyard
+1 Shared Roots
+1 Slumbering Trudge
+1 Stoic Grove-Guide
+11 Swamp
+1 Tend the Sprigs
+1 Thornfist Striker
+1 Titan's Grave
+1 Trystan, Callous Cultivator // Trystan, Penitent Culler
+1 Unbury
+1 Unclaimed Territory
+1 Unforgiving Aim
+1 Vraska, the Silencer
+1 Wardens of the Cycle

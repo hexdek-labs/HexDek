@@ -1,0 +1,92 @@
+COMMANDER: Fire Lord Zuko
+1 Abrade
+1 Abzan Falconer
+1 Adeline, Resplendent Cathar
+1 Ainok Strike Leader
+1 Akroma's Will
+1 Anim Pakal, Thousandth Moon
+1 Araña, Heart of the Spider
+1 Arcane Signet
+1 Arena of Glory
+1 Arid Mesa
+1 Blazemire Verge
+1 Bleachbone Verge
+1 Blood Crypt
+1 Bloodstained Mire
+1 Boros Charm
+1 Cait Sith, Fortune Teller
+1 Charismatic Conqueror
+1 Comet Storm
+1 Command Tower
+1 Commune with Lava
+1 Cori Mountain Monastery
+1 Damning Verdict
+1 Delayed Blast Fireball
+1 Dolmen Gate
+1 Electro, Assaulting Battery
+1 Elegant Parlor
+1 Esper Sentinel
+1 Exotic Orchard
+1 Fated Firepower
+1 Fell the Profane // Fell Mire
+1 Fellwar Stone
+1 Fire Nation Turret
+1 Firebending Student
+1 Get Lost
+1 Godless Shrine
+1 Goro-Goro, Disciple of Ryusei
+1 Grand Crescendo
+1 Inti, Seneschal of the Sun
+1 Iroh, Dragon of the West
+1 Kami of Celebration
+1 Krenko, Tin Street Kingpin
+1 Laelia, the Blade Reforged
+1 Legion Leadership // Legion Stronghold
+1 Leyline Tyrant
+1 Light Up the Stage
+1 Lightning Greaves
+1 Lord Jyscal Guado
+1 Luxury Suite
+1 Marsh Flats
+1 Midgar, City of Mako // Reactor Raid
+1 Mithril Coat
+7 Mountain
+1 Norin the Wary
+1 Obsessive Pursuit
+1 Opera Love Song
+1 Party Thrasher
+1 Path to Exile
+1 Phelia, Exuberant Shepherd
+1 Pia Nalaar, Consul of Revival
+3 Plains
+1 Professional Face-Breaker
+1 Prosper, Tome-Bound
+1 Raucous Theater
+1 Reconnaissance
+1 Sacred Foundry
+1 Savai Triome
+1 Secure the Wastes
+1 Shinka, the Bloodsoaked Keep
+1 Shizo, Death's Storehouse
+1 Silver Shroud Costume
+1 Sozin's Comet
+1 Spectator Seating
+1 Spikeshot Elder
+1 Sunbillow Verge
+1 Sundering Eruption // Volcanic Fissure
+1 Swamp
+1 Swords to Plowshares
+1 Talisman of Conviction
+1 Talisman of Hierarchy
+1 Talisman of Indulgence
+1 Tavern Brawler
+1 Terminate
+1 The Last Agni Kai
+1 The Legend of Roku // Avatar Roku
+1 Untimely Malfunction
+1 Unwanted Remake
+1 Urborg, Tomb of Yawgmoth
+1 Vault of Champions
+1 Wild Wasteland
+1 Witch Enchanter // Witch-Blessed Meadow
+1 Zuko, Exiled Prince

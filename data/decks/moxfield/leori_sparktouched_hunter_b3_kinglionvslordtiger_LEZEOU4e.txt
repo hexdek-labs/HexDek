@@ -1,0 +1,94 @@
+COMMANDER: Leori, Sparktouched Hunter
+1 Ajani Steadfast
+1 Arcane Signet
+1 Archon of Absolution
+1 Azorius Signet
+1 Baird, Steward of Argive
+1 Battlefield Forge
+1 Blasphemous Act
+1 Boros Signet
+1 Call the Gatewatch
+1 Cascade Bluffs
+1 Chandra, Flame's Fury
+1 Chandra, Hope's Beacon
+1 Chandra, Legacy of Fire
+1 Chandra, Novice Pyromancer
+1 Chandra, Pyromaster
+1 Chandra, Torch of Defiance
+1 Clifftop Retreat
+1 Command Tower
+1 Commodore Guff
+1 Contentious Plan
+1 Counterspell
+1 Djeru, With Eyes Open
+1 Dreamtide Whale
+1 Elspeth, Sun's Champion
+1 Evolving Wilds
+1 Exotic Orchard
+1 Experimental Augury
+1 Fellwar Stone
+1 Flux Channeler
+1 Fog Bank
+1 Frostboil Snarl
+1 Furycalm Snarl
+1 Gatewatch Beacon
+1 Glacial Fortress
+1 Gold-Forged Thopteryx
+1 Grateful Apparition
+1 Great Hall of the Citadel
+1 Interplanar Beacon
+3 Island
+1 Izzet Signet
+1 Jace Beleren
+1 Jaya's Phoenix
+1 Kaito, Cunning Infiltrator
+1 Kasmina, Enigmatic Mentor
+1 Kazuul, Tyrant of the Cliffs
+1 Kykar, Wind's Fury
+1 Lae'zel, Vlaakith's Champion
+1 Mangara, the Diplomat
+1 Mila, Crafty Companion // Lukka, Wayward Bonder
+1 Mobilized District
+3 Mountain
+1 Myriad Landscape
+1 Mystic Gate
+1 Mystic Monastery
+1 Nahiri, the Harbinger
+1 Narset of the Ancient Way
+1 Narset, Enlightened Master
+1 Narset, Parter of Veils
+1 Negate
+1 Nesting Grounds
+1 Oath of Teferi
+1 Onakke Oathkeeper
+1 Perilous Landscape
+3 Plains
+1 Port Town
+1 Prairie Stream
+1 Reliquary Tower
+1 Repeated Reverberation
+1 Rogue's Passage
+1 Rugged Prairie
+1 Saheeli, Sublime Artificer
+1 Sarkhan the Masterless
+1 Search for Glory
+1 Shivan Reef
+1 Skycloud Expanse
+1 Sol Ring
+1 Spark Double
+1 Sparkshaper Visionary
+1 Sulfur Falls
+1 Swords to Plowshares
+1 Teferi, Temporal Archmage
+1 Teyo, Geometric Tactician
+1 Tezzeret's Gambit
+1 The Eternal Wanderer
+1 The Wanderer
+1 Third Path Iconoclast
+1 Thriving Bluff
+1 Thriving Heath
+1 Thriving Isle
+1 Thrummingbird
+1 Time Wipe
+1 Vronos, Masked Inquisitor
+1 Wrath of God

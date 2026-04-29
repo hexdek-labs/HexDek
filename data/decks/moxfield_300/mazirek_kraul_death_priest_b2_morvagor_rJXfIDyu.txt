@@ -1,0 +1,84 @@
+COMMANDER: Mazirek, Kraul Death Priest
+1 Aberrant Return
+1 Accursed Marauder
+1 Archfiend of Depravity
+1 Armorcraft Judge
+1 Beast Whisperer
+1 Blast Zone
+1 Blighted Fen
+1 Bootleggers' Stash
+1 Cankerbloom
+1 Command Tower
+1 Communal Brewing
+1 Corpsejack Menace
+1 Cursed Wombat
+1 Darkmoss Bridge
+1 Deathreap Ritual
+1 Decree of Pain
+1 Demolition Field
+1 Disciple of Bolas
+1 Drix Fatemaker
+1 Duskshell Crawler
+1 Eternal Witness
+1 Evolution Sage
+1 Evolution Witness
+1 Evolving Wilds
+1 Fain, the Broker
+1 Fertilid
+1 Fetid Gargantua
+10 Forest
+1 Gaze of Granite
+1 Golgari Guildgate
+1 Golgari Rot Farm
+1 Hagra Constrictor
+1 Harrow
+1 Haunted Fengraf
+1 Herd Baloth
+1 Host of the Hereafter
+1 Hunter's Insight
+1 Incubation Druid
+1 Inscription of Abundance
+1 Inspiring Call
+1 Jungle Hollow
+1 Llanowar Reborn
+1 Many Partings
+1 Mosswort Bridge
+1 Nested Shambler
+1 Night Soil
+1 Oblivion's Hunger
+1 Old Flitterfang
+1 Overrun
+1 Path of Ancestry
+1 Pick Your Poison
+1 Pitiless Carnage
+1 Prosperous Innkeeper
+1 Rampant Growth
+1 Retribution of the Ancients
+1 Reyhan, Last of the Abzan
+1 Rise of the Witch-king
+1 Rishkar, Peema Renegade
+1 Riveteers Overlook
+1 Rogue's Passage
+1 Sakura-Tribe Elder
+1 Shamanic Revelation
+1 Snakeskin Veil
+1 Soul Shatter
+1 Springbloom Druid
+1 Stalwart Successor
+1 Status // Statue
+8 Swamp
+1 Syphon Flesh
+1 Szat's Will
+1 Terramorphic Expanse
+1 The Eldest Reborn
+1 The Gitrog Monster
+1 Thriving Moor
+1 Tireless Provisioner
+1 Tireless Tracker
+1 Tragic Slip
+1 Tuskguard Captain
+1 Tyrant Guard
+1 Volatile Fault
+1 Voracious Fell Beast
+1 Windgrace's Judgment
+1 Witherbloom Campus

@@ -1,0 +1,75 @@
+COMMANDER: Hermes, Overseer of Elpis
+1 Abjure
+1 Aetherize
+1 Airborne Aid
+1 Alrund's Epiphany
+1 Archmage Emeritus
+1 Baral, Chief of Compliance
+1 Bender's Waterskin
+1 Bident of Thassa
+1 Bonder's Ornament
+1 Candlekeep Inspiration
+1 Castle Vantress
+1 Coastal Piracy
+1 Counterspell
+1 Curiosity Crafter
+1 Cynette, Jelly Drover
+1 Deliberate
+1 Demolition Field
+1 Disdainful Stroke
+1 Dispel
+1 Distant Melody
+1 Divination
+1 Essence Scatter
+1 Favorable Winds
+1 Fellwar Stone
+1 Flood of Tears
+1 Gauntlet of Power
+1 Gitaxian Probe
+1 Grand Architect
+1 Gravitational Shift
+1 Halimar Depths
+1 Hall of Triumph
+1 Haughty Djinn
+1 Heraldic Banner
+1 High Tide
+1 Hydroelectric Specimen // Hydroelectric Laboratory
+1 Invasion of Segovia // Caetus, Sea Tyrant of Segovia
+26 Island
+1 Jace's Sanctum
+1 Jwari Disruption // Jwari Ruins
+1 Keep Watch
+1 Kefnet's Monument
+1 Midnight Clock
+1 Mission Briefing
+1 Moonring Island
+1 Muraganda Raceway
+1 Murmuring Mystic
+1 Mystic Sanctuary
+1 Negate
+1 Octavia, Living Thesis
+1 Patchwork Banner
+1 Perplexing Test
+1 Preordain
+1 Reality Shift
+1 Resculpt
+1 Rivendell
+1 Scavenger Grounds
+1 Scour All Possibilities
+1 Shark Typhoon
+1 Silundi Vision // Silundi Isle
+1 Sleight of Hand
+1 Sol Ring
+1 Stolen Identity
+1 Stolen by the Fae
+1 Talrand, Sky Summoner
+1 Tanufel Rimespeaker
+1 The Magic Mirror
+1 Thought Vessel
+1 Unexpected Assistance
+1 Valley Floodcaller
+1 Volatile Fault
+1 Waterbending Scroll
+1 Wavebreak Hippocamp
+1 Wild Unraveling
+1 Wishing Well

@@ -1,0 +1,25 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:die",
+        "optional_effect"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "act:mana2+sac",
+        "draw"
+      ],
+      "index": 1,
+      "kind": "activated"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "ramp",
+  "name": "Yavimaya Elder",
+  "parse_error_count": 0
+}

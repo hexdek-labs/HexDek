@@ -1,0 +1,25 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:flying"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "trig:opp_draw_card",
+        "optional",
+        "draw"
+      ],
+      "index": 1,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Consecrated Sphinx",
+  "parse_error_count": 0
+}

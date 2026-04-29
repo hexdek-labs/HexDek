@@ -1,0 +1,100 @@
+COMMANDER: Captain America, First Avenger
+1 Academy Ruins
+1 Adaptive Omnitool
+1 Adarkar Wastes
+1 Aettir and Priwen
+1 Akroma's Will
+1 Ancient Tomb
+1 Arcane Signet
+1 Archway of Innovation
+1 Arid Mesa
+1 Battlefield Forge
+1 Blasphemous Act
+1 Bloodforged Battle-Axe
+1 Brass Squire
+1 Bureau Headmaster
+1 Buster Sword
+1 Caduceus, Staff of Hermes
+1 Cascade Bluffs
+1 Clever Concealment
+1 Clifftop Retreat
+1 Cloud, Midgar Mercenary
+1 Cloudsteel Kirin
+1 Codsworth, Handy Helper
+1 Colossus Hammer
+1 Command Tower
+1 Conqueror's Flail
+1 Cyclonic Rift
+1 Dalakos, Crafter of Wonders
+1 Deflecting Swat
+1 Dispatch
+1 Embercleave
+1 Enlightened Tutor
+1 Enthusiastic Mechanaut
+1 Excalibur, Sword of Eden
+1 Exotic Orchard
+1 Fierce Guardianship
+1 Firion, Wild Rose Warrior
+1 Flawless Maneuver
+1 Flooded Strand
+1 Floodfarm Verge
+1 Force of Negation
+1 Force of Will
+1 Forge Anew
+1 Genji Glove
+1 Glacial Fortress
+1 Hallowed Fountain
+1 Hexplate Wallbreaker
+1 In the Trenches
+1 Inventors' Fair
+1 Inventory Management
+1 Island
+1 Jhoira, Weatherlight Captain
+1 Kaldra Compleat
+1 Lightning Greaves
+1 Masterwork of Ingenuity
+1 Meteoric Mace
+1 Mountain
+1 Mystic Monastery
+1 Nahiri's Resolve
+1 Nettlecyst
+1 Otawara, Soaring City
+1 Pariah's Shield
+1 Path of Ancestry
+1 Plains
+1 Puresteel Paladin
+1 Raugrin Triome
+1 Reflecting Pool
+1 Reliquary Tower
+1 Reyav, Master Smith
+1 Rhystic Study
+1 Rogue's Passage
+1 Rugged Prairie
+1 Sacred Foundry
+1 Scalding Tarn
+1 Sea of Clouds
+1 Sephiroth, Fallen Hero
+1 Shadowspear
+1 Sigarda's Aid
+1 Smothering Tithe
+1 Sol Ring
+1 Spectator Seating
+1 Spire of Industry
+1 Sram, Senior Edificer
+1 Steam Vents
+1 Steelshaper's Gift
+1 Stoneforge Mystic
+1 Sulfur Falls
+1 Sunbillow Verge
+1 Swiftfoot Boots
+1 Sword of War and Peace
+1 Swords to Plowshares
+1 Teferi's Protection
+1 The Reality Chip
+1 The Reaver Cleaver
+1 Training Center
+1 Ultima Weapon
+1 Urza, Lord High Artificer
+1 Wake the Past
+1 Whispersilk Cloak
+1 Wrecking Ball Arm

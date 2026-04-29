@@ -1,0 +1,82 @@
+# Kuja kuja wizard guy
+# Source: https://archidekt.com/decks/20752503/kuja
+COMMANDER: Kuja, Genome Sorcerer // Trance Kuja, Fate Defied
+1 Anathemancer
+1 Arcane Signet
+1 Arena of Glory
+1 Bedevil
+1 Black Mage's Rod
+1 Black Market Connections
+1 Black Waltz No. 3
+1 Blood Crypt
+1 Bloodsoaked Insight // Sanguine Morass
+1 Bloodstained Mire
+1 Bojuka Bog
+1 Bolt Bend
+1 Canyon Slough
+1 Charcoal Diamond
+1 Circle of Power
+1 Collective Inferno
+1 Command Tower
+1 Cornered by Black Mages
+1 Coruscation Mage
+1 Cut Propulsion
+1 Dark Ritual
+1 Detection Tower
+1 Display of Power
+1 Dragonskull Summit
+1 Electro, Assaulting Battery
+1 Fandaniel, Telophoroi Ascian
+1 Fated Firepower
+1 Feral Deathgorger // Dusk Sight
+1 Fire Diamond
+1 Fists of Flame
+1 Foreboding Ruins
+1 Forever Young
+1 Grab the Prize
+1 Guttersnipe
+1 Harmonic Prodigy
+1 Hazel's Nocturne
+1 Hexing Squelcher
+1 Idol of Oblivion
+1 Insatiable Avarice
+1 Isengard Unleashed
+1 Jet Medallion
+1 Kolaghan's Command
+1 Lidless Gaze
+1 Lightning Greaves
+1 Lindblum, Industrial Regency // Mage Siege
+1 Longshot, Rebel Bowman
+1 Midgar, City of Mako // Reactor Raid
+1 Mines of Moria
+1 Mizzix's Mastery
+1 Mordor Muster
+12 Mountain
+1 Murder
+1 Nowhere to Run
+1 Pinnacle Monk // Mystic Peak
+1 Pyretic Ritual
+1 Pyroblast
+1 Queen Brahne
+1 Rakdos Charm
+1 Rakdos Cluestone
+1 Rakdos Locket
+1 Red Elemental Blast
+1 Redirect Lightning
+1 Renegade Tactics
+1 Return the Favor
+1 Risky Shortcut
+1 Roaming Throne
+1 Rockslide Sorcerer
+1 Ruby Medallion
+1 Smoldering Marsh
+1 Sol Ring
+1 Solphim, Mayhem Dominus
+1 Sorceress's Schemes
+10 Swamp
+1 Thrill of Possibility
+1 Transpose
+1 Untimely Malfunction
+1 Urabrask // The Great Work
+1 Whispersilk Cloak
+1 Wizard's Lightning

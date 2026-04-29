@@ -1,0 +1,77 @@
+# Golbez, crystal collector…
+# Source: https://archidekt.com/decks/20787408/golbez
+COMMANDER: Golbez, Crystal Collector
+1 Access Denied
+1 Adventurer's Inn
+1 All-Fates Scroll
+1 Alloy Myr
+1 Arcane Signet
+1 Archway of Innovation
+1 Atraxa's Skitterfang
+1 Bygone Colossus
+1 Canoptek Wraith
+1 Cerebral Download
+1 Champion's Helm
+1 Chief of the Foundry
+1 Colossus of Akros
+1 Combat Courier
+1 Command Tower
+1 Cryptothrall
+1 Dauntless Scrapbot
+1 Desculpting Blast
+1 Emissary Escort
+1 Foundry Inspector
+1 Geology Enthusiast
+1 Get Out
+1 Graaz, Unstoppable Juggernaut
+1 Hullcarver
+1 Imotekh the Stormlord
+1 Insight Engine
+14 Island
+1 Kappa Cannoneer
+1 Karn, Legacy Reforged
+1 Krang, Utrom Warlord
+1 Liberator, Urza's Battlethopter
+1 Magic Damper
+1 Matoya, Archon Elder
+1 Mechan Assembler
+1 Metalwork Colossus
+1 Mind Stone
+1 Mirrodin Besieged
+1 Mithril Coat
+1 Moonlit Meditation
+1 Myr Battlesphere
+1 Noxious Gearhulk
+1 Opal Palace
+1 Osseous Sticktwister
+1 Padeem, Consul of Innovation
+1 Phial of Galadriel
+1 Read the Runes
+1 Relm's Sketching
+1 Rook Turret
+1 Royal Warden
+1 Sai, Master Thopterist
+1 Scour for Scrap
+1 Secluded Starforge
+1 Sicarian Infiltrator
+1 Sol Ring
+1 Solar Array
+1 Solemn Simulacrum
+1 Steelswarm Operator
+1 Susur Secundi, Void Altar
+13 Swamp
+1 Swiftfoot Boots
+1 Tezzeret, Cruel Captain
+1 Tezzeret, Master of the Bridge
+1 The Gold Saucer
+1 Threefold Thunderhulk
+1 Twist Reality
+1 Ugin, Eye of the Storms
+1 Unsummon
+1 Urza, Lord High Artificer
+1 Urza, Powerstone Prodigy
+1 Valkyrie Aerial Unit
+1 Virulent Silencer
+1 Virus Beetle
+1 Watery Grave
+1 Worldwalker Helm

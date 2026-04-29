@@ -1,0 +1,23 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:flash"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "static:parsed_tail:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "layer7",
+  "name": "Dictate of Heliod",
+  "parse_error_count": 0
+}

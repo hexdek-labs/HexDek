@@ -1,0 +1,100 @@
+COMMANDER: Treva, the Renewer
+1 Accomplished Alchemist
+1 Aetherflux Reservoir
+1 Allosaurus Shepherd
+1 Arcane Signet
+1 Archmage Ascension
+1 Argothian Enchantress
+1 Beast Within
+1 Blind Seer
+1 Boseiju, Who Endures
+1 Bountiful Promenade
+1 Breeding Pool
+1 Burgeoning
+1 Celestial Purge
+1 Circle of Protection: Green
+1 City of Brass
+1 Command Beacon
+1 Command Tower
+1 Composer of Spring
+1 Compost
+1 Darksteel Mutation
+1 Defense of the Heart
+1 Distorting Lens
+1 Drogskol Reaver
+1 Eladamri's Call
+1 Emerald Medallion
+1 Enchantress's Presence
+1 Enlightened Tutor
+1 Estrid's Invocation
+1 Exotic Orchard
+1 Exploration
+1 Finale of Devastation
+1 Flickering Ward
+1 Flooded Strand
+1 Glamerdye
+1 Grafdigger's Cage
+1 Hall of Heliod's Generosity
+1 Hallowed Fountain
+1 Heroic Intervention
+1 Hope Estheim
+1 Hushwood Verge
+1 Hydroblast
+1 Insight
+1 Island
+1 Jaded Response
+1 Justice
+1 Lazotep Quarry
+1 Lifeforce
+1 Llawan, Cephalid Empress
+1 Mana Confluence
+1 Mana Drain
+1 Mana Maze
+1 Mind Harness
+1 Mistrise Village
+1 Misty Rainforest
+1 Muddle the Mixture
+1 Nature's Claim
+1 Nimbus Maze
+1 Order of the Sacred Torch
+1 Painter's Servant
+1 Parting Gust
+1 Plains
+1 Psychic Allergy
+1 Reap
+1 Reflecting Pool
+1 Rejuvenating Springs
+1 Rhystic Study
+1 Riftsweeper
+1 Sanctum Weaver
+1 Savannah
+1 Scalding Tarn
+1 Scuttlemutt
+1 Sea of Clouds
+1 Seedtime
+1 Serra's Sanctum
+1 Shifting Sky
+1 Shifting Woodland
+1 Sol Ring
+1 Spara's Headquarters
+1 Sphinx's Tutelage
+1 Sterling Grove
+1 Swiftfoot Boots
+1 Swirl the Mists
+1 Swords to Plowshares
+1 Sythis, Harvest's Hand
+1 Tam, Mindful First-Year
+1 Teferi's Moat
+1 Temple Garden
+1 Time Wipe
+1 Tropical Island
+1 Tundra
+1 Urza's Cave
+1 Utopia Sprawl
+1 Verdant Catacombs
+1 Vesuva
+1 Whim of Volrath
+1 Willowrush Verge
+1 Windswept Heath
+1 Withering Gaze
+1 Yavimaya, Cradle of Growth

@@ -1,0 +1,91 @@
+COMMANDER: Arcades, the Strategist
+1 Absolute Virtue
+1 Academy Wall
+1 Akroma's Will
+1 Arcane Lighthouse
+1 Archetype of Imagination
+1 Aura Shards
+1 Aurification
+1 Axebane Guardian
+1 Bonds of Mortality
+1 Brave the Sands
+1 Cloud Cover
+1 Coastal Tower
+1 Coral Colony
+1 Crackdown
+1 Crashing Drawbridge
+1 Crenellated Wall
+1 Crystal Barricade
+1 Decanter of Endless Water
+1 Diplomatic Immunity
+1 Dreamroot Cascade
+1 Dusk // Dawn
+1 Elfhame Palace
+1 Enlightened Tutor
+1 Everflowing Chalice
+1 Farewell
+1 Fierce Guardianship
+1 Fog
+1 Fortified Area
+1 Fortified Village
+1 Gaea's Cradle
+1 Ghostly Prison
+1 Glacial Fortress
+1 Gleaming Barrier
+1 High Alert
+1 Hinterland Harbor
+1 Huatli, the Sun's Heart
+1 Imprisoned in the Moon
+1 Intervention Pact
+1 Kodama's Reach
+1 Last March of the Ents
+1 Lotus Field
+1 Maze of Ith
+1 Meekstone
+1 Mystical Tutor
+1 Nimbus Maze
+1 Overgrown Battlement
+1 Overgrown Farmland
+1 Perimeter Captain
+1 Privileged Position
+1 Propaganda
+1 Rammas Echor, Ancient Shield
+1 Reliquary Tower
+1 Retribution of the Meek
+1 Rhystic Study
+1 Riftstone Portal
+1 Robe of Mirrors
+1 Savannah
+1 Seaside Citadel
+1 Secret Tunnel
+1 Shadowspear
+1 Shield Sphere
+1 Shield-Wall Sentinel
+1 Slaughter the Strong
+4 Snow-Covered Forest
+4 Snow-Covered Island
+4 Snow-Covered Plains
+1 Sol Ring
+1 Spidersilk Armor
+1 Stalwart Shield-Bearers
+1 Sunscape Familiar
+1 Tetsuko Umezawa, Fugitive
+1 The Pride of Hull Clade
+1 The Walls of Ba Sing Se
+1 Thornwood Falls
+1 Tropical Island
+1 Tundra
+1 Unnatural Growth
+1 Urban Retreat
+1 Veilstone Amulet
+1 Venser, the Sojourner
+1 Wall of Blossoms
+1 Wall of Frost
+1 Wall of Glare
+1 Wall of Tanglecord
+1 Wall of Vapor
+1 Wave of Reckoning
+1 Weathered Sentinels
+1 Wooded Bastion
+1 Worldly Tutor
+1 Zephid's Embrace

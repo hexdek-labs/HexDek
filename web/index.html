@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>mtgsquad</title>
+  <link rel="stylesheet" href="styles.css?v=20260415-2">
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">mtgsquad</div>
+    <div class="connection">
+      <span id="status-pill" class="status-pill status-disconnected">disconnected</span>
+      <span id="party-code"></span>
+    </div>
+  </header>
+
+  <!-- =========== SETUP PANEL (visible when not in a game) =========== -->
+  <section id="setup-panel" class="setup-panel">
+    <div class="setup-card">
+      <h2>1. Register a device</h2>
+      <input id="display-name" type="text" placeholder="Display name (e.g., Hex)" value="Hex">
+      <button id="btn-register">Register Device</button>
+      <p id="device-info" class="muted"></p>
+    </div>
+
+    <div class="setup-card deck-card">
+      <h2>2. Choose a deck</h2>
+
+      <div class="deck-tabs">
+        <button type="button" class="deck-tab active" data-tab="premade">Premade</button>
+        <button type="button" class="deck-tab" data-tab="paste">Paste decklist</button>
+        <button type="button" class="deck-tab" data-tab="mine">My decks</button>
+      </div>
+
+      <div class="deck-tab-panel" data-panel="premade">
+        <select id="premade-select"><option value="">Loading…</option></select>
+        <button id="btn-import-premade">Import premade</button>
+      </div>
+
+      <div class="deck-tab-panel hidden" data-panel="paste">
+        <input id="paste-name" type="text" placeholder="Deck name (e.g. Gandhi Oloro)">
+        <input id="paste-url" type="text" placeholder="Moxfield URL (optional, for reference)">
+        <textarea id="paste-decklist" rows="8" placeholder="Paste decklist here. Supports Moxfield / Archidekt / plain text.
+
+// Commander
+1 Yuriko, the Tiger's Shadow
+
+// Mainboard
+1 Preordain
+1 Ponder
+..."></textarea>
+        <button id="btn-import-paste">Parse & import</button>
+        <p class="muted">Every card resolves through our Scryfall cache — fetched once, cached forever.</p>
+      </div>
+
+      <div class="deck-tab-panel hidden" data-panel="mine">
+        <div id="mine-list" class="mine-list"><p class="muted">Register first, then your imported decks will appear here.</p></div>
+        <button id="btn-refresh-mine">Refresh list</button>
+      </div>
+
+      <p id="deck-info" class="muted"></p>
+    </div>
+
+    <div class="setup-card">
+      <h2>3. Create or join a party</h2>
+      <button id="btn-create-party">Create new party</button>
+      <div class="join-row">
+        <input id="join-code" type="text" placeholder="Party code (6 chars)" maxlength="6" style="text-transform:uppercase">
+        <button id="btn-join-party">Join</button>
+      </div>
+      <p id="party-info" class="muted"></p>
+    </div>
+
+    <div class="setup-card">
+      <h2>4. Start the game</h2>
+      <p>Need at least 2 players. Host can add AI opponents to fill seats.</p>
+      <div class="ai-row">
+        <select id="ai-deck-select"><option value="">Hex (AI) — Yuriko default</option></select>
+        <button id="btn-add-ai">Add AI opponent</button>
+      </div>
+      <button id="btn-start-game" disabled>Start Game</button>
+      <p id="party-members" class="muted"></p>
+    </div>
+  </section>
+
+  <!-- =========== GAME PANEL (commander layout — opponents up top, you below) =========== -->
+  <section id="game-panel" class="game-panel hidden">
+
+    <!-- Opponents row — one panel per opponent seat, populated dynamically -->
+    <div id="opp-zone" class="opp-zone"></div>
+
+    <!-- Your zone -->
+    <div class="you-zone">
+      <div class="you-row you-row-bf">
+        <div class="seat-meta seat-meta-you">
+          <div class="seat-name" id="you-name">YOU</div>
+          <div class="seat-life-row">
+            <button class="life-btn" data-delta="-1">−</button>
+            <span class="seat-life" id="your-life">40</span>
+            <button class="life-btn" data-delta="+1">+</button>
+          </div>
+          <div class="seat-counters">
+            <span class="counter-pill"><span class="lbl">lib</span><span id="your-library">0</span></span>
+            <span class="counter-pill"><span class="lbl">hand</span><span id="your-hand-count">0</span></span>
+            <span class="counter-pill"><span class="lbl">gy</span><span id="your-gy">0</span></span>
+          </div>
+          <!-- Available mana: untapped lands by color (auto-derived) -->
+          <div class="avail-mana">
+            <div class="lbl-tiny">available</div>
+            <div class="pip-row" id="your-available-mana"></div>
+          </div>
+          <!-- Floating mana pool (mana already tapped this phase) -->
+          <div class="floating-mana">
+            <div class="lbl-tiny">floating</div>
+            <div class="pool-grid">
+              <span class="pool-cell w" id="mana-w">0</span>
+              <span class="pool-cell u" id="mana-u">0</span>
+              <span class="pool-cell b" id="mana-b">0</span>
+              <span class="pool-cell r" id="mana-r">0</span>
+              <span class="pool-cell g" id="mana-g">0</span>
+              <span class="pool-cell c" id="mana-c">0</span>
+            </div>
+          </div>
+        </div>
+        <div class="zones-col">
+          <div class="zone-row">
+            <div class="zone-label">command</div>
+            <div id="your-command" class="zone-cards small-zone"></div>
+          </div>
+          <div class="zone-row">
+            <div class="zone-label">creatures &amp; perms</div>
+            <div id="your-permanents" class="zone-cards"></div>
+          </div>
+          <div class="zone-row zone-row-lands">
+            <div class="zone-label">lands</div>
+            <div id="your-lands" class="zone-cards"></div>
+          </div>
+          <!-- Backwards-compat hidden container so legacy code paths don't crash -->
+          <div id="your-battlefield" style="display:none"></div>
+        </div>
+      </div>
+      <div class="you-row you-row-hand">
+        <div class="zone-label hand-label">your hand</div>
+        <div id="your-hand" class="zone-cards hand-cards"></div>
+      </div>
+    </div>
+
+    <!-- Side panel: turn/phase + actions + log -->
+    <aside class="side-panel">
+      <div class="turn-info">
+        <div class="row"><span class="lbl">turn</span> <span id="turn-number">-</span></div>
+        <div class="row"><span class="lbl">phase</span> <span id="phase">-</span></div>
+        <div class="row"><span class="lbl">active</span> <span id="active-seat">-</span></div>
+      </div>
+
+      <div class="actions">
+        <button id="btn-advance-phase">Advance Phase →</button>
+        <button id="btn-draw" title="Draws a card. Will be gated to draw step + abilities once rules rails ship.">Draw 1</button>
+        <button id="btn-untap-all" title="Untaps all your permanents. Auto-runs at your untap step too.">Untap All</button>
+        <button id="btn-yuriko-reveal">Yuriko: Reveal &amp; Damage</button>
+        <button id="btn-snapshot">Refresh State</button>
+      </div>
+
+      <details class="event-log-wrapper" open>
+        <summary>Event Log</summary>
+        <ul id="event-log"></ul>
+      </details>
+    </aside>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

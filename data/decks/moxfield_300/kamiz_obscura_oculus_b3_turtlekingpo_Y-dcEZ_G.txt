@@ -1,0 +1,91 @@
+COMMANDER: Kamiz, Obscura Oculus
+1 Anguished Unmaking
+1 Anowon, the Ruin Thief
+1 Arcane Sanctum
+1 Arcane Signet
+1 Astarion, the Decadent
+1 Austere Command
+1 Aven Interrupter
+1 Banner of Kinship
+1 Biorganic Carapace
+1 Bojuka Bog
+1 Cephalid Facetaker
+1 Command Tower
+1 Contaminated Landscape
+1 Counterspell
+1 Currency Converter
+1 Dimir Signet
+1 Dovin's Veto
+1 Drowned Catacomb
+1 Duelist's Heritage
+1 Esper Panorama
+1 Evolving Wilds
+1 Fallen Shinobi
+1 Fetid Heath
+1 Flitterwing Nuisance
+1 Frogtosser Banneret
+1 Genji Glove
+1 Ghostly Pilferer
+1 Glacial Fortress
+1 Glasswing Grace // Age-Graced Chapel
+5 Island
+1 Isolated Chapel
+1 Karai, Future of the Foot
+1 Krydle of Baldur's Gate
+1 Looter il-Kor
+1 Mask of Riddles
+1 Maze of Ith
+1 Morphic Pool
+1 Myriad Landscape
+1 Nashi, Moon Sage's Scion
+1 Negate
+1 Notion Thief
+1 Notorious Throng
+1 Obscura Storefront
+1 Oona's Blackguard
+1 Orochi Soul-Reaver
+1 Orzhov Signet
+1 Path of Ancestry
+1 Path to Exile
+3 Plains
+1 Prairie Stream
+1 Prosperous Thief
+1 Quietus Spike
+1 Reconnaissance Mission
+1 Reliquary Tower
+1 Rogue Class
+1 Rogue's Passage
+1 Secluded Courtyard
+1 Secret Tunnel
+1 Sevinne's Reclamation
+1 Shadowmage Infiltrator
+1 Smile at Death
+1 Smirking Spelljacker
+1 Smuggler's Share
+1 Soaring Thought-Thief
+1 Sol Ring
+1 Stalactite Stalker
+1 Starfall Invocation
+1 Stinkdrinker Bandit
+1 Sunken Hollow
+1 Sure-Footed Infiltrator
+4 Swamp
+1 Swiftfoot Boots
+1 Swords to Plowshares
+1 Sygg, Wanderwine Wisdom // Sygg, Wanderbrine Shield
+1 Teferi's Ageless Insight
+1 Temple of Deceit
+1 Temple of Enlightenment
+1 Temple of Silence
+1 Terramorphic Expanse
+1 Thieves' Guild Enforcer
+1 Thought Vessel
+1 Tinybones, the Pickpocket
+1 Tivit, Seller of Secrets
+1 Varragoth, Bloodsky Sire
+1 Virtue of Persistence // Locthwain Scorn
+1 Void Rend
+1 Vorpal Sword
+1 Wayfarer's Bauble
+1 Writ of Return
+1 Zareth San, the Trickster

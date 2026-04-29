@@ -1,0 +1,89 @@
+1 Ingenious Infiltrator
+1 Mist-Syndicate Naga
+1 Higure, the Still Wind
+1 Satoru Umezawa
+1 Throat Slitter
+1 Sakashima's Student
+1 Skullsnatcher
+1 Mistblade Shinobi
+1 Ink-Eyes, Servant of Oni
+1 Inkfathom Infiltrator
+1 Thousand-Faced Shadow
+1 Nashi, Moon Sage's Scion
+1 Tetsuko Umezawa, Fugitive
+1 Faerie Seer
+1 Slither Blade
+1 Triton Shorestalker
+1 Changeling Outcast
+1 Tormented Soul
+1 Ornithopter
+1 Augury Owl
+1 Sensei's Divining Top
+1 Vampiric Tutor
+1 Mystical Tutor
+1 Brainstorm
+1 Scroll Rack
+1 Insidious Dreams
+1 Lim-Dul's Vault
+1 Soothsaying
+1 Ponder
+1 Preordain
+1 Augur of Bolas
+1 Sage of Epityr
+1 Draco
+1 Emrakul, the Aeons Torn
+1 Blightsteel Colossus
+1 It That Betrays
+1 Pathrazer of Ulamog
+1 Ulamog, the Ceaseless Hunger
+1 Kozilek, Butcher of Truth
+1 Artisan of Kozilek
+1 Strionic Resonator
+1 Lithoform Engine
+1 Bident of Thassa
+1 Reconnaissance Mission
+1 Counterspell
+1 Force of Will
+1 Drown in the Loch
+1 Stifle
+1 Snuff Out
+1 Doom Blade
+1 Cyclonic Rift
+1 Murderous Cut
+1 Toxic Deluge
+1 Damnation
+1 Whispersilk Cloak
+1 Sword of Feast and Famine
+1 Prowler's Helm
+1 Aqueous Form
+1 Cover of Darkness
+1 Hedron Crab
+1 Fierce Guardianship
+1 Ashiok, Dream Render
+1 Doomsday
+7 Island
+7 Swamp
+1 Underground Sea
+1 Watery Grave
+1 Polluted Delta
+1 Drowned Catacomb
+1 Underground River
+1 Sunken Hollow
+1 Choked Estuary
+1 Shipwreck Marsh
+1 Underground Mortuary
+1 River of Tears
+1 Morphic Pool
+1 Dimir Aqueduct
+1 Tainted Isle
+1 Hostile Hostel
+1 Command Tower
+1 Halimar Depths
+1 Shelldock Isle
+1 Bojuka Bog
+1 Otawara, Soaring City
+1 Takenuma, Abandoned Mire
+1 Rogue's Passage
+1 Reliquary Tower
+
+COMMANDER: Yuriko, the Tiger's Shadow

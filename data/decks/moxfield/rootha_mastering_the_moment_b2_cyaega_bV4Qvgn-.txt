@@ -1,0 +1,81 @@
+COMMANDER: Rootha, Mastering the Moment
+1 Abrade
+1 Abstract Performance
+1 Aether Gale
+1 Arcane Denial
+1 Arcane Signet
+1 Archmage Emeritus
+1 Big Score
+1 Blasphemous Act
+1 Brazen Borrower // Petty Theft
+1 Cascade Bluffs
+1 Chain Reaction
+1 Chaos Warp
+1 Command Tower
+1 Consider
+1 Curiosity Crafter
+1 Cursed Mirror
+1 Dance with Calamity
+1 Deep Analysis
+1 Determined Iteration
+1 Dig Through Time
+1 Exotic Orchard
+1 Expressive Iteration
+1 Fabled Passage
+1 Faerie Mastermind
+1 Faithless Looting
+1 Fellwar Stone
+1 Ferrous Lake
+1 Frantic Search
+1 Frostboil Snarl
+1 Furygale Flocking
+1 Goldspan Dragon
+1 Hall of Oracles
+1 Harmonic Prodigy
+1 Inspired Skypainter // Maestro's Gift
+11 Island
+1 Izzet Signet
+1 Leitmotif Composer
+1 Lightning Greaves
+1 Magma Opus
+1 Mana Geyser
+1 Manaform Hellkite
+1 Mind Stone
+1 Molten Tributary
+10 Mountain
+1 Mystic Sanctuary
+1 Opt
+1 Plargg and Nassari
+1 Ponder
+1 Preordain
+1 Prismari Charm
+1 Prismari Command
+1 Prismari Pianist
+1 Reality Shift
+1 Redoubled Stormsinger
+1 Reliquary Tower
+1 Renegade Bull
+1 Resculpt
+1 Rite of Replication
+1 Rootha, Mercurial Artist
+1 Rousing Refrain
+1 Sanar, Unfinished Genius // Wild Idea
+1 Scorched Geyser
+1 Shivan Reef
+1 Sol Ring
+1 Solemn Simulacrum
+1 Storm-Kiln Artist
+1 Stormcatch Mentor
+1 Study Hall
+1 Sulfur Falls
+1 Surge to Victory
+1 Talisman of Creativity
+1 Terramorphic Expanse
+1 Thought Vessel
+1 Throes of Chaos
+1 Thunderclap Drake
+1 Treasure Cruise
+1 Twinflame
+1 Veyran, Voice of Duality
+1 Volcanic Salvo
+1 Volcanic Torrent

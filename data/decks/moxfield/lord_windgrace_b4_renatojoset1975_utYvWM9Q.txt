@@ -1,0 +1,90 @@
+COMMANDER: Lord Windgrace
+1 Abrupt Decay
+1 Assassin's Trophy
+1 Avenger of Zendikar
+1 Bedevil
+1 Blessed Respite
+1 Blood Crypt
+1 Bloodstained Mire
+1 Boil
+1 Bontu's Last Reckoning
+1 Boom // Bust
+1 By Force
+1 Captive Audience
+1 Casualties of War
+1 Centaur Vinecrasher
+1 Chromatic Lantern
+1 Command Tower
+1 Crucible of Worlds
+1 Darigaaz Reincarnated
+1 Darigaaz's Caldera
+1 Darkmoss Bridge
+1 Darksteel Citadel
+1 Decimate
+1 Demolition Field
+1 Destructive Flow
+1 Dreadbore
+1 Drossforge Bridge
+1 Dunes of the Dead
+1 Dust Bowl
+1 Epicenter
+1 Faithless Looting
+1 Farhaven Elf
+1 Farseek
+1 Force of Vigor
+1 Foreboding Ruins
+5 Forest
+1 Hull Breach
+1 Immersturm Predator
+1 Impending Disaster
+1 Jokulhaups
+1 Journey to Eternity // Atzal, Cave of Eternity
+1 Karplusan Forest
+1 Keldon Firebombers
+1 Llanowar Wastes
+4 Mountain
+1 Mountain Valley
+1 Multani, Yavimaya's Avatar
+1 Myr Landshaper
+1 Nature's Lore
+1 Nevinyrral's Disk
+1 Nissa, Vital Force
+1 Obliterate
+1 Omnath, Locus of Rage
+1 Orcish Settlers
+1 Path of Ancestry
+1 Phyrexian Arena
+1 Pillage
+1 Pine Barrens
+1 Pir's Whim
+1 Price of Glory
+1 Putrefy
+1 Rakdos Carnarium
+1 Ramunap Excavator
+1 Regrowth
+1 Rootbound Crag
+1 Sandwurm Convergence
+1 Savage Lands
+1 Sheltered Thicket
+1 Slagwoods Bridge
+1 Slaughter Games
+1 Sol Ring
+1 Soul of Windgrace
+1 Splendid Reclamation
+1 Splinter
+1 Sulfurous Springs
+4 Swamp
+1 Sylvan Scrying
+1 Talisman of Resilience
+1 Tectonic Break
+1 Terminate
+1 The Mending of Dominaria
+1 Titania, Protector of Argoth
+1 Twisted Landscape
+1 Undergrowth Stadium
+1 Vigor
+1 Vraska the Unseen
+1 Vraska, Relic Seeker
+1 Windgrace's Judgment
+1 World Shaper
+1 Worldsoul's Rage

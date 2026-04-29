@@ -1,0 +1,100 @@
+COMMANDER: Atraxa, Praetors' Voice
+1 An Offer You Can't Refuse
+1 Annex Sentry
+1 Arcane Denial
+1 Arcane Signet
+1 Assassin's Trophy
+1 Bilious Skulldweller
+1 Blightbelly Rat
+1 Bloated Contaminator
+1 Bojuka Bog
+1 Boseiju, Who Endures
+1 Breeding Pool
+1 Bring the Ending
+1 Cankerbloom
+1 Chromatic Lantern
+1 City of Brass
+1 Command Beacon
+1 Command Tower
+1 Contaminant Grafter
+1 Crawling Chorus
+1 Deepglow Skate
+1 Distorted Curiosity
+1 Doubling Season
+1 Dovin's Veto
+1 Drown in Ichor
+1 Exotic Orchard
+1 Expand the Sphere
+1 Experimental Augury
+1 Ezuri, Stalker of Spheres
+1 Farseek
+1 Fellwar Stone
+1 Forbidden Orchard
+1 Forest
+1 Ghostly Prison
+1 Glissa's Retriever
+1 Godless Shrine
+1 Hallowed Fountain
+1 Heroic Intervention
+1 Horizon of Progress
+1 Indatha Triome
+1 Inexorable Tide
+1 Infectious Bite
+1 Infectious Inquiry
+1 Island
+1 Ixhel, Scion of Atraxa
+1 Karn's Bastion
+1 Lightning Greaves
+1 Mana Confluence
+1 Mistrise Village
+1 Misty Rainforest
+1 Myr Convert
+1 Nature's Lore
+1 Necrogen Communion
+1 Necrogen Rotpriest
+1 Norn's Choirmaster
+1 Norn's Decree
+1 Overgrown Tomb
+1 Path to Exile
+1 Pestilent Syphoner
+1 Phyrexian Censor
+1 Phyrexian Swarmlord
+1 Plains
+1 Polluted Delta
+1 Prologue to Phyresis
+1 Raffine's Tower
+1 Reanimate
+1 Reliquary Tower
+1 Rhystic Study
+1 Scheming Aspirant
+1 Skithiryx, the Blight Dragon
+1 Skrelv's Hive
+1 Skrelv, Defector Mite
+1 Slaughter Singer
+1 Smothering Tithe
+1 Sol Ring
+1 Spara's Headquarters
+1 Sunfall
+1 Swamp
+1 Swords to Plowshares
+1 Tainted Observer
+1 Tekuthal, Inquiry Dominus
+1 Temple Garden
+1 Temple of the False God
+1 Tempt with Discovery
+1 Tezzeret's Gambit
+1 The Seedcore
+1 Thirsting Roots
+1 Three Visits
+1 Thrummingbird
+1 Tyrranax Rex
+1 Unnatural Restoration
+1 Vat Emergence
+1 Venerated Rotpriest
+1 Vishgraz, the Doomhive
+1 Voidwing Hybrid
+1 Vorinclex, Monstrous Raider
+1 Vraska's Fall
+1 Vraska, Betrayal's Sting
+1 Watery Grave
+1 Zagoth Triome

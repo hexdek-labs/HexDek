@@ -1,0 +1,17 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:cast_filtered",
+        "damage"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Guttersnipe",
+  "parse_error_count": 0
+}

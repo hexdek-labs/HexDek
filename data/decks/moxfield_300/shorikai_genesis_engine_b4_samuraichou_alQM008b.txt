@@ -1,0 +1,97 @@
+COMMANDER: Shorikai, Genesis Engine
+1 Academy Ruins
+1 Adarkar Wastes
+1 Aerial Surveyor
+1 Aeronaut Admiral
+1 An Offer You Can't Refuse
+1 Ancient Den
+1 Ancient Tomb
+1 Arcane Signet
+1 Arid Mesa
+1 Azorius Signet
+1 Chrome Mox
+1 Command Tower
+1 Counterspell
+1 Cyberdrive Awakener
+1 Cyclonic Rift
+1 Dance of the Manse
+1 Darksteel Citadel
+1 Deserted Beach
+1 Dispatch
+1 Dovin's Veto
+1 Dramatic Reversal
+1 Drumbellower
+1 Efficient Construction
+1 Eiganjo, Seat of the Empire
+1 Emry, Lurker of the Loch
+1 Enlightened Tutor
+1 Esper Sentinel
+1 Etherium Sculptor
+1 Exotic Orchard
+1 Fabricate
+1 Farewell
+1 Fellwar Stone
+1 Fierce Guardianship
+1 Flooded Strand
+1 Force of Negation
+1 Force of Will
+1 Foundry Inspector
+1 Generous Gift
+1 Glacial Fortress
+1 Hallowed Fountain
+1 Imposter Mech
+1 Inventors' Fair
+3 Island
+1 Isochron Scepter
+1 Katsumasa, the Animator
+1 Kotori, Pilot Prodigy
+1 Land Tax
+1 Mana Confluence
+1 Mana Drain
+1 Mana Vault
+1 Marsh Flats
+1 Mech Hangar
+1 Mechtitan Core
+1 Minamo, School at Water's Edge
+1 Misty Rainforest
+1 Mobilizer Mech
+1 Mox Diamond
+1 Mox Opal
+1 Mystic Remora
+1 Otawara, Soaring City
+1 Parhelion II
+1 Path to Exile
+2 Plains
+1 Polluted Delta
+1 Prairie Stream
+1 Prismatic Vista
+1 Reckoner Bankbuster
+1 Rhystic Study
+1 Sai, Master Thopterist
+1 Scalding Tarn
+1 Sea of Clouds
+1 Seachrome Coast
+1 Seat of the Synod
+1 Sevinne's Reclamation
+1 Shimmer Myr
+1 Silence
+1 Skullclamp
+1 Skysovereign, Consul Flagship
+1 Smothering Tithe
+1 Smuggler's Copter
+1 Sol Ring
+1 Spire of Industry
+1 Supreme Verdict
+1 Swan Song
+1 Swords to Plowshares
+1 Talisman of Progress
+1 Teferi's Protection
+1 Tezzeret the Seeker
+1 The One Ring
+1 Thopter Spy Network
+1 Tundra
+1 Unwinding Clock
+1 Urza's Saga
+1 Walking Ballista
+1 Whir of Invention
+1 Windswept Heath

@@ -1,0 +1,84 @@
+COMMANDER: Hakbal of the Surging Soul
+1 Aetherize
+1 Alchemist's Refuge
+1 Arcane Denial
+1 Arcane Signet
+1 Branching Evolution
+1 Command Tower
+1 Counterspell
+1 Court of Garenbrig
+1 Curse of the Swine
+1 Deeproot Pilgrimage
+1 Deeproot Waters
+1 Dreamroot Cascade
+1 Emperor Mihail II
+1 Evolution Sage
+7 Forest
+1 Germination Practicum
+1 Growing Rites of Itlimoc // Itlimoc, Cradle of the Sun
+1 Growth Spiral
+1 Hardened Scales
+1 Harmonized Trio // Brainstorm
+1 Herald of Secret Streams
+1 Herald's Horn
+1 Hinterland Harbor
+1 Inspiring Call
+11 Island
+1 Karn's Bastion
+1 Kindred Discovery
+1 Kodama's Reach
+1 Kopala, Warden of Waves
+1 Kumena, Tyrant of Orazca
+1 Llanowar Reborn
+1 Lurking Predators
+1 Master Biomancer
+1 Master of the Pearl Trident
+1 Merfolk Cave-Diver
+1 Merfolk Mistbinder
+1 Merfolk Sovereign
+1 Merrow Commerce
+1 Merrow Reejerey
+1 Mind into Matter
+1 Mist Dancer
+1 Mosswort Bridge
+1 Myriad Landscape
+1 Negate
+1 Nicanzil, Current Conductor
+1 Oracle of Mul Daya
+1 Path of Ancestry
+1 Path of Discovery
+1 Prime Speaker Zegana
+1 Raise the Palisade
+1 Rapid Hybridization
+1 Ravenform
+1 Realmwalker
+1 Reflections of Littjara
+1 Reliquary Tower
+1 Ripples of Potential
+1 Roaming Throne
+1 Rogue's Passage
+1 Sage of Fables
+1 Seafloor Oracle
+1 Secluded Courtyard
+1 Simic Ascendancy
+1 Simic Growth Chamber
+1 Simic Signet
+1 Singer of Swift Rivers
+1 Sol Ring
+1 Stonybrook Banneret
+1 Svyelun of Sea and Sky
+1 Swiftfoot Boots
+1 Tatyova, Benthic Druid
+1 Temple of Mystery
+1 Temple of the False God
+1 Thassa, God of the Sea
+1 Tishana, Voice of Thunder
+1 Titan of Littjara
+1 Topography Tracker
+1 Unclaimed Territory
+1 Vanquisher's Banner
+1 Vineglimmer Snarl
+1 Wanderwine Prophets
+1 Wave Goodbye
+1 Xolatoyac, the Smiling Flood
+1 Zegana, Utopian Speaker

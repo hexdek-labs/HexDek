@@ -1,0 +1,98 @@
+COMMANDER: Valgavoth, Harrower of Souls
+1 Ancient Tomb
+1 Ankh of Mishra
+1 Arcane Signet
+1 Arid Mesa
+1 Badlands
+1 Blood Artist
+1 Blood Crypt
+1 Blood Moon
+1 Blood Seeker
+1 Bloodchief Ascension
+1 Bloodstained Mire
+1 Bloodthirsty Conqueror
+1 Brash Taunter
+1 Cabal Ritual
+1 Chandra, Awakened Inferno
+1 City of Brass
+1 City of Traitors
+1 Command Tower
+1 Dark Ritual
+1 Dauthi Voidwalker
+1 Deadly Rollick
+1 Deadpool, Trading Card
+1 Deflecting Swat
+1 Demonic Tutor
+1 Etali, Primal Storm
+1 Exotic Orchard
+1 Exquisite Blood
+1 Gamble
+1 Gemstone Caverns
+1 Gleeful Arsonist
+1 Gray Merchant of Asphodel
+1 Grievous Wound
+1 Harsh Mentor
+1 Havoc Festival
+1 Heartless Hidetsugu
+1 Imperial Seal
+1 Jeska's Will
+1 Kardur, Doomscourge
+1 Kederekt Parasite
+1 Lion's Eye Diamond
+1 Lotus Petal
+1 Luxury Suite
+1 Mana Confluence
+1 Mana Vault
+1 Manabarbs
+1 Marsh Flats
+1 Mayhem Devil
+1 Mindcrank
+1 Mogis, God of Slaughter
+1 Mount Doom
+2 Mountain
+1 Nightshade Harvester
+1 Ojer Axonil, Deepest Might // Temple of Power
+1 Orcish Bowmasters
+1 Peer into the Abyss
+1 Persistent Constrictor
+1 Phyrexian Tower
+1 Polluted Delta
+1 Pyroblast
+1 Pyrohemia
+1 Rakdos Charm
+1 Rakdos Signet
+1 Rampaging Ferocidon
+1 Razorkin Needlehead
+1 Reanimate
+1 Red Elemental Blast
+1 Rite of Flame
+1 Roiling Vortex
+1 Sadistic Shell Game
+1 Sanguine Bond
+1 Scalding Tarn
+1 Scrawling Crawler
+1 Sheoldred, the Apocalypse
+1 Sign in Blood
+1 Simian Spirit Guide
+1 Snow-Covered Mountain
+1 Snow-Covered Swamp
+1 Sol Ring
+1 Solphim, Mayhem Dominus
+1 Spiteful Visions
+1 Sulfuric Vortex
+1 Sulfurous Springs
+2 Swamp
+1 The Lord of Pain
+1 The One Ring
+1 Underworld Breach
+1 Underworld Dreams
+1 Untimely Malfunction
+1 Urza's Saga
+1 Vampiric Tutor
+1 Vandalblast
+1 Verdant Catacombs
+1 Vial Smasher the Fierce
+1 Wheel of Fortune
+1 Withering Torment
+1 Wooded Foothills
+1 Wound Reflection

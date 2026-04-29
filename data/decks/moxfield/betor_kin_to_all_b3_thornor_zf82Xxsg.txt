@@ -1,0 +1,83 @@
+COMMANDER: Betor, Kin to All
+1 Abandoned Air Temple
+1 Abzan Beastmaster
+1 Abzan Monument
+1 Access Tunnel
+1 Ancient Adamantoise
+1 Ancient Lumberknot
+1 Anguished Unmaking
+1 Arboreal Grazer
+1 Assassin's Trophy
+1 Assault Formation
+1 Axebane Guardian
+1 Baldin, Century Herdmaster
+1 Beast Whisperer
+1 Bedrock Tortoise
+1 Birds of Paradise
+1 Blight Pile
+1 Bojuka Bog
+1 Brushland
+1 Canopy Gargantuan
+1 Carven Caryatid
+1 Catapult Fodder // Catapult Captain
+1 Caves of Koilos
+1 Chromatic Lantern
+1 Colfenor's Urn
+1 Colfenor, the Last Yew
+1 Command Tower
+1 Crystal Barricade
+1 Deceptive Landscape
+1 Doran, Besieged by Time
+1 Dragonlord Dromoka
+1 Evolving Wilds
+1 Exotic Orchard
+1 Farseek
+1 Fecund Greenshell
+1 Felothar the Steadfast
+7 Forest
+1 Godless Shrine
+1 Harmonize
+1 Heritage Reclamation
+1 Huatli, the Sun's Heart
+1 Ikra Shidiqi, the Usurper
+1 Indatha Triome
+1 Indomitable Ancients
+1 Jaws of Defeat
+1 Kodama's Reach
+1 Last March of the Ents
+1 Llanowar Wastes
+1 Nature's Lore
+1 Overgrown Battlement
+1 Overgrown Tomb
+1 Perimeter Captain
+7 Plains
+1 Rammas Echor, Ancient Shield
+1 Rampart Architect
+1 Reunion of the House
+1 Sandsteppe Citadel
+1 Sapling of Colfenor
+1 Slaughter the Strong
+1 Smile at Death
+6 Swamp
+1 Swords to Plowshares
+1 Sylvan Caryatid
+1 Talisman of Hierarchy
+1 Talisman of Resilience
+1 Talisman of Unity
+1 Temple Garden
+1 The Walls of Ba Sing Se
+1 Tower Defense
+1 Towering Titan
+1 Tree of Perdition
+1 Tree of Redemption
+1 Trostani, Selesnya's Voice
+1 Unhallowed Phalanx
+1 Unnatural Growth
+1 Vine Trellis
+1 Wakestone Gargoyle
+1 Walking Bulwark
+1 Wall of Blossoms
+1 Wall of Omens
+1 Wave of Reckoning
+1 Weathered Sentinels
+1 Zopandrel, Hunger Dominus

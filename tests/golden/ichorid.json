@@ -1,0 +1,35 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:haste"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "trig:phase",
+        "sacrifice"
+      ],
+      "index": 1,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "trig:phase",
+        "sequence",
+        "conditional_effect",
+        "conditional",
+        "return_effect"
+      ],
+      "index": 2,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 3,
+  "fully_parsed": true,
+  "group": "keywords",
+  "name": "Ichorid",
+  "parse_error_count": 0
+}

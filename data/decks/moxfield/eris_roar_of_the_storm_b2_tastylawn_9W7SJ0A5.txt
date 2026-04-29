@@ -1,0 +1,86 @@
+COMMANDER: Eris, Roar of the Storm
+1 Adeliz, the Cinder Wind
+1 Arcane Bombardment
+1 Arcane Signet
+1 Arid Archway
+1 Aura Barbs
+1 Baral's Expertise
+1 Battle Hymn
+1 Bellowing Crier
+1 Big Score
+1 Bonder's Ornament
+1 Burst of Speed
+1 Captivating Cave
+1 Careful Study
+1 Case of the Ransacked Lab
+1 Command Tower
+1 Commander's Sphere
+1 Conduit Pylons
+1 Confounding Riddle
+1 Cursed Mirror
+1 Daring Discovery
+1 Elemental Eruption
+1 Epic Experiment
+1 Evolving Wilds
+1 Failed Fording
+1 Foil
+1 Frostboil Snarl
+1 Galvanic Iteration
+1 Highland Lake
+1 Ionize
+8 Island
+1 Izzet Boilerworks
+1 Izzet Charm
+1 Izzet Guildgate
+1 Kozilek's Unsealing
+1 Lilah, Undefeated Slickshot
+1 Long River Lurker
+1 Lórien Revealed
+1 Magnus the Red
+1 Mirage Mesa
+1 Mizzix's Mastery
+8 Mountain
+1 Murmuring Mystic
+1 Niv-Mizzet, Parun
+1 Octavia, Living Thesis
+1 Overpowering Attack
+1 Path of Ancestry
+1 Plan the Heist
+1 Pongify
+1 Prismari Campus
+1 Prismari Command
+1 Psychosis Crawler
+1 Pyretic Charge
+1 Radical Idea
+1 Reliquary Tower
+1 Resculpt
+1 Rousing Refrain
+1 Sandstorm Verge
+1 Seal of the Guildpact
+1 Season of the Bold
+1 Shark Typhoon
+1 Shore Up
+1 Slick Sequence
+1 Spirebluff Canal
+1 Sulfur Falls
+1 Swiftwater Cliffs
+1 Talrand, Sky Summoner
+1 Temple of Epiphany
+1 Temple of the False God
+1 The Spear of Leonidas
+1 Think Twice
+1 Third Path Iconoclast
+1 Thought Vessel
+1 Thousand-Year Storm
+1 Throne of the High City
+1 Unexpected Windfall
+1 Vandalblast
+1 Vanish from Sight
+1 Veyran, Voice of Duality
+1 Volcanic Torrent
+1 Wandering Fumarole
+1 Wheel of Misfortune
+1 Windfall
+1 Wizards of Thay
+1 Worn Powerstone
+1 Young Pyromancer

@@ -1,0 +1,76 @@
+COMMANDER: Yuna, Grand Summoner
+1 Arcane Signet
+1 Auron's Inspiration
+1 Auron, Venerated Guardian
+1 Authority of the Consuls
+1 Bastion Protector
+1 Behemoth Sledge
+1 Birds of Paradise
+1 Blue Mage's Cane
+1 Brilliant Wings
+1 Campsite Cuisine
+1 Canopy Vista
+1 Chocobo Knights
+1 Cloud's Limit Break
+1 Command Tower
+1 Conformer Shuriken
+1 Conqueror's Flail
+1 Damning Verdict
+1 Darksteel Plate
+1 Destroy Evil
+1 Dispatch
+1 Everflowing Chalice
+1 Evolving Wilds
+1 Farseek
+1 Fishing Gear
+1 Flash Photography
+1 Flooded Grove
+9 Forest
+1 Gatta and Luzzu
+1 Generous Patron
+1 Glacial Fortress
+1 Hardened Scales
+1 Hero's Blade
+1 Idyllic Beachfront
+1 Incubation Druid
+1 Inexorable Tide
+9 Island
+1 Judgment of Alexander
+1 Kimahri, Valiant Guardian
+1 Lightning Greaves
+1 Lulu, Stern Guardian
+1 Maester Seymour
+1 Nature's Lore
+1 Nesting Grounds
+1 O'aka, Traveling Merchant
+9 Plains
+1 Prairie Stream
+1 Protection Magic
+1 Radiant Grove
+1 Resourceful Defense
+1 Rikku, Resourceful Guardian
+1 Rite of Replication
+1 SOLDIER Military Program
+1 Sin, Unending Cataclysm
+1 Sol Ring
+1 Sphere Grid
+1 Summon: Bahamut
+1 Summon: Ixion
+1 Summon: Shiva
+1 Summon: Valefor
+1 Summon: Yojimbo
+1 Summoning Materia
+1 Sun Titan
+1 Sunpetal Grove
+1 Tangled Islet
+1 Tataru Taru
+1 Thought Vessel
+1 Three Visits
+1 Tidus, Yuna's Guardian
+1 Trailblazer's Boots
+1 Tromell, Seymour's Butler
+1 Ultimate Magic: Holy
+1 Vanquish the Horde
+1 Vineglimmer Snarl
+1 Wakka, Devoted Guardian
+1 Walking Ballista

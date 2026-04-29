@@ -1,0 +1,84 @@
+COMMANDER: Yarok, the Desecrated
+1 Aboleth Spawn
+1 Acidic Slime
+1 Arcane Signet
+1 Bayou
+1 Bojuka Bog
+1 Breeding Pool
+1 Chomping Changeling
+1 Clearwater Pathway // Murkwater Pathway
+1 Clifftop Lookout
+1 Cloudstone Curio
+1 Coiling Oracle
+1 Command Tower
+1 Confounding Conundrum
+1 Cultivate
+1 Deadeye Navigator
+1 Defense of the Heart
+1 Dimir Signet
+1 Displace
+1 Dream Stalker
+1 Druid of Purification
+1 Duplicant
+1 Ecological Appreciation
+1 Elvish Rejuvenator
+1 Emergent Ultimatum
+1 Ertai Resurrected
+1 Eternal Witness
+1 Farseek
+1 Fierce Empath
+9 Forest
+1 Foundation Breaker
+1 Ghostly Flicker
+1 Gifts Ungiven
+1 Gloomlake Verge
+1 Golgari Signet
+1 Greenwarden of Murasa
+1 Hinterland Harbor
+1 Hunted Troll
+1 Illusionist's Stratagem
+1 Invasion of Ikoria // Zilortha, Apex of Ikoria
+5 Island
+1 Kodama of the East Tree
+1 Kodama's Reach
+1 Lotus Cobra
+1 Man-o'-War
+1 Massacre Wurm
+1 Misty Rainforest
+1 Morphic Pool
+1 Mulldrifter
+1 Nissa of Shadowed Boughs
+1 Noxious Gearhulk
+1 Overgrown Tomb
+1 Palinchron
+1 Panharmonicon
+1 Peregrine Drake
+1 Polluted Delta
+1 Ravenous Chupacabra
+1 Rejuvenating Springs
+1 Risen Reef
+1 Rune-Scarred Demon
+1 Shared Summons
+1 Shrieking Drake
+1 Shriekmaw
+1 Simic Signet
+1 Sol Ring
+1 Solemn Simulacrum
+5 Swamp
+1 Thassa, Deep-Dwelling
+1 Three Visits
+1 Timeless Witness
+1 Tireless Provisioner
+1 Tooth and Nail
+1 Tropical Island
+1 Underground Sea
+1 Uro, Titan of Nature's Wrath
+1 Venser, Shaper Savant
+1 Verdant Catacombs
+1 Watery Grave
+1 Wistfulness
+1 Wood Elves
+1 Woodland Bellower
+1 Woodland Cemetery
+1 Worldly Tutor
+1 Yavimaya, Cradle of Growth

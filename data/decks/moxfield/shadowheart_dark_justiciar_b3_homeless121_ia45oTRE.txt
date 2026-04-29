@@ -1,0 +1,71 @@
+COMMANDER: Shadowheart, Dark Justiciar
+COMMANDER: Haunted One
+1 Al Bhed Salvagers
+1 Alpharael, Stonechosen
+1 Animate Dead
+1 Arcane Signet
+1 Archfiend's Vessel
+1 Ayara, First of Locthwain
+1 Bastion of Remembrance
+1 Beseech the Queen
+1 Black Market
+1 Black Sun's Zenith
+1 Blasphemous Edict
+1 Bolas's Citadel
+1 Bonecaller Cleric
+1 Bontu's Monument
+1 Cabal Stronghold
+1 Changeling Outcast
+1 Come Back Wrong
+1 Costly Plunder
+1 Crawlspace
+1 Culling the Weak
+1 Dark Confidant
+1 Dark Deal
+1 Dark Ritual
+1 Deadly Dispute
+1 Demonic Counsel
+1 Diabolic Intent
+1 Drana, the Last Bloodchief
+1 Expedition Map
+1 Exsanguinate
+1 Fatal Push
+1 Feed the Swarm
+1 Go for the Throat
+1 Grave Venerations
+1 Lightning Greaves
+1 Liliana, Heretical Healer // Liliana, Defiant Necromancer
+1 Marionette Apprentice
+1 Master of Dark Rites
+1 Midgar, City of Mako // Reactor Raid
+1 Mind Stone
+1 Morbid Opportunist
+1 Nasty End
+1 Patriar's Seal
+1 Persist
+1 Phyrexian Arena
+1 Pitiless Plunderer
+1 Plaguecrafter
+1 Priest of Forgotten Gods
+1 Profane Tutor
+1 Read the Bones
+1 Reanimate
+1 Relic of Legends
+1 Sanguinary Priest
+1 Skirsdag High Priest
+1 Sol Ring
+30 Swamp
+1 Swiftfoot Boots
+1 Syr Konrad, the Grim
+1 Taborax, Hope's Demise
+1 Tragic Slip
+1 Twilight Diviner
+1 Umbral Collar Zealot
+1 Unearth
+1 Valgavoth's Faithful
+1 Venerated Stormsinger
+1 Victimize
+1 Vito, Thorn of the Dusk Rose
+1 Westvale Abbey // Ormendahl, Profane Prince
+1 Wishclaw Talisman
+1 Yawgmoth, Thran Physician

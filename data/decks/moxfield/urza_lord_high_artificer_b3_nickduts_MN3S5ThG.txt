@@ -1,0 +1,83 @@
+COMMANDER: Urza, Lord High Artificer
+1 Academy Ruins
+1 Aphetto Alchemist
+1 Aphetto Grifter
+1 Arcane Lighthouse
+1 Arcane Melee
+1 Archetype of Imagination
+1 Archmage Emeritus
+1 Azami, Lady of Scrolls
+1 Barkform Harvester
+1 Basalt Monolith
+1 Basilisk Collar
+1 Beguiler of Wills
+1 Buried Ruin
+1 Castle Vantress
+1 Counterspell
+1 Detection Tower
+1 Distant Melody
+1 Docent of Perfection // Final Iteration
+1 Dramatic Reversal
+1 Elixir of Immortality
+1 Emergence Zone
+1 Etherium Spinner
+1 Finale of Revelation
+1 Helm of Awakening
+1 Intruder Alarm
+18 Island
+1 Isochron Scepter
+1 Laboratory Maniac
+1 Leveler
+1 Leyline of Anticipation
+1 Magic Damper
+1 Memnarch
+1 Memory Lapse
+1 Mirrex
+1 Mirrorpool
+1 Misdirection
+1 Myriad Landscape
+1 Mystic Confluence
+1 Mystic Sanctuary
+1 Narset's Reversal
+1 Omniscience
+1 Paradigm Shift
+1 Path of Ancestry
+1 Patron Wizard
+1 Prodigal Sorcerer
+1 Pull from Tomorrow
+1 Quietus Spike
+1 Reality Shift
+1 Reliquary Tower
+1 Rhystic Study
+1 Riptide Laboratory
+1 Rivendell
+1 Rogue's Passage
+1 Sapphire Medallion
+1 Seat of the Synod
+1 Silver Scrutiny
+1 Sol Ring
+1 Spellseeker
+1 Step Through
+1 Stonybrook Banneret
+1 Suq'Ata Firewalker
+1 Teferi, Mage of Zhalfir
+1 Temporal Mastery
+1 Tempting Contract
+1 Thassa's Oracle
+1 The Mycosynth Gardens
+1 Thopter Spy Network
+1 Thought Vessel
+1 Titan of Littjara
+1 Tribute Mage
+1 Triskaidekaphile
+1 Twenty-Toed Toad
+1 Universal Automaton
+1 Urza's Incubator
+1 Vedalken Aethermage
+1 Vedalken Archmage
+1 Vedalken Orrery
+1 Verity Circle
+1 War Room
+1 Windfall
+1 Wizard Class
+1 Zuran Spellcaster

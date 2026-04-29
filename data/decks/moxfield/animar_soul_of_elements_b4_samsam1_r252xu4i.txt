@@ -1,0 +1,94 @@
+COMMANDER: Animar, Soul of Elements
+1 All Will Be One
+1 Ancient Tomb
+1 Arcane Signet
+1 Beast Whisperer
+1 Beast Within
+1 Birds of Paradise
+1 Bloom Tender
+1 Boseiju, Who Endures
+1 Branching Evolution
+1 Breeding Pool
+1 Cavern of Souls
+1 Cinder Glade
+1 City of Brass
+1 Cloud of Faeries
+1 Cloudstone Curio
+1 Coiling Oracle
+1 Command Tower
+1 Counterspell
+1 Cyclonic Rift
+1 Delighted Halfling
+1 Doubling Season
+1 Dream Stalker
+1 Elvish Archdruid
+1 Elvish Mystic
+1 Eternal Witness
+1 Evolution Sage
+1 Exotic Orchard
+1 Fabled Passage
+1 Finale of Devastation
+5 Forest
+1 Forgotten Ancient
+1 Fyndhorn Elves
+1 Gaea's Cradle
+1 Gargos, Vicious Watcher
+1 Genesis Hydra
+1 Goldvein Hydra
+1 Greater Good
+1 Gyre Sage
+1 Hardened Scales
+1 Hinterland Harbor
+1 Hooded Hydra
+1 Hydra's Growth
+1 Hydroid Krasis
+2 Island
+1 Jeska's Will
+1 Kalonian Hydra
+1 Karn's Bastion
+1 Lair of the Hydra
+1 Llanowar Elves
+1 Lotus Cobra
+1 Lotus Petal
+1 Mana Confluence
+1 Mana Drain
+1 Managorger Hydra
+1 Misty Rainforest
+2 Mountain
+1 Nature's Lore
+1 Ozolith, the Shattered Spire
+1 Primordial Hydra
+1 Prismatic Vista
+1 Reclamation Sage
+1 Reflecting Pool
+1 Rhythm of the Wild
+1 Rishkar, Peema Renegade
+1 Sakura-Tribe Elder
+1 Scalding Tarn
+1 Scorched Geyser
+1 Scute Swarm
+1 Secret Tunnel
+1 Selvala, Heart of the Wilds
+1 Shrieking Drake
+1 Simic Ascendancy
+1 Skyshroud Claim
+1 Sodden Verdure
+1 Sol Ring
+1 Somberwald Sage
+1 Steam Vents
+1 Stomping Ground
+1 Stonecoil Serpent
+1 Taiga
+1 Temur Ascendancy
+1 Temur Sabertooth
+1 The Great Henge
+1 The Ozolith
+1 Three Visits
+1 Tropical Island
+1 Unbound Flourishing
+1 Volcanic Island
+1 Voracious Hydra
+1 Vorinclex, Monstrous Raider
+1 Walking Ballista
+1 Wooded Foothills
+1 Worldly Tutor

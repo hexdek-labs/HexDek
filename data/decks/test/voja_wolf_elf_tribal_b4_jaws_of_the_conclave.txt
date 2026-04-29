@@ -1,0 +1,79 @@
+1 Abrade
+1 Anara, Wolvid Familiar
+1 Arcane Signet
+1 Armorcraft Judge
+1 Arni Slays the Troll
+1 Ascendant Packleader
+1 Assure/Assemble
+1 Baeloth Barrityl, Entertainer
+1 Beast Whisperer
+1 Bloom Tender
+1 Celebrity Fencer
+1 Cultivate
+1 Cultivator of Blades
+1 Damning Verdict
+1 Delina, Wild Mage
+1 Devoted Druid
+1 Dionus, Elvish Archdruid
+1 Doubling Season
+1 Dwynen, Gilt-Leaf Daen
+1 Elfhame Palace
+1 Evolution Sage
+1 Evolving Wilds
+1 Exotic Orchard
+1 Exploration
+1 Farseek
+1 Feed the Pack
+1 Fiery Confluence
+1 Fleetfoot Dancer
+8 Forest
+1 Formidable Speaker
+1 Gala Greeters
+1 Get Lost
+1 Gladehart Cavalry
+1 Incubation Druid
+1 Joiner Adept
+1 Jungle Shrine
+1 Legolas, Master Archer
+1 Lifecrafter's Bestiary
+1 Llanowar Elves
+1 Loading Zone
+1 Marwyn, the Nurturer
+1 Maskwood Nexus
+1 Mossfire Valley
+8 Mountain
+1 Numa, Joraga Chieftain
+1 Opal Palace
+1 Packsong Pup
+1 Paradise Druid
+1 Path to Exile
+9 Plains
+1 Primal Adversary
+1 Rabid Bite
+1 Rampant Growth
+1 Ranger Class
+1 Reclamation Sage
+1 Rhythm of the Wild
+1 Rishkar, Peema Renegade
+1 Rootpath Purifier
+1 Rumor Gatherer
+1 Selvala, Heart of the Wilds
+1 Shalai and Hallar
+1 Sigarda's Summons
+1 Silverfur Partisan
+1 Stomping Ground
+1 Swords to Plowshares
+1 Terrasymbiosis
+1 The Earth Crystal
+1 The Great Henge
+1 The One Ring
+1 Tolsimir Wolfblood
+1 Tolsimir, Friend to Wolves
+1 Tolsimir, Midnight's Light
+1 Vandalblast
+1 Virulent Emissary
+1 Werefox Bodyguard
+1 Wilt-Leaf Liege
+1 Wolfcaller's Howl
+
+COMMANDER: Voja, Jaws of the Conclave

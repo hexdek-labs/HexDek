@@ -1,0 +1,88 @@
+COMMANDER: Y'shtola, Night's Blessed
+1 Aetherize
+1 Arcane Sanctum
+1 Arcane Signet
+1 Archaeomancer's Map
+1 Archmage of Runes
+1 Authority of the Consuls
+1 Avatar's Wrath
+1 Aven Mindcensor
+1 Azorius Chancery
+1 Clearwater Pathway // Murkwater Pathway
+1 Command Tower
+1 Commander's Sphere
+1 Consult the Star Charts
+1 Counterpoint
+1 Counterspell
+1 Curiosity
+1 Detection Tower
+1 Dig Through Time
+1 Disallow
+1 Dovin's Veto
+1 Drowned Catacomb
+1 Emet-Selch of the Third Seat
+1 Everflowing Chalice
+1 Exotic Orchard
+1 Exquisite Blood
+1 Exsanguinate
+1 Extravagant Replication
+1 Eye of Nidhogg
+1 Fetid Heath
+1 Fieldmist Borderpost
+1 Frantic Search
+1 Generous Gift
+1 Glacial Fortress
+1 Greed
+1 Grim Tutor
+1 Hermes, Overseer of Elpis
+1 High Fae Trickster
+1 Hourglass of the Lost
+1 Hullbreaker Horror
+1 Ishgard, the Holy See // Faith & Grief
+6 Island
+1 Isolated Chapel
+1 Keep Watch
+1 Lyse Hext
+1 Monk Class
+1 Moonsilver Key
+1 Narset, Parter of Veils
+1 Necropotence
+1 Nexus of Fate
+1 Norn's Annex
+1 Observed Stasis
+1 Path of Ancestry
+4 Plains
+1 Port Town
+1 Prairie Stream
+1 Promise of Loyalty
+1 Propaganda
+1 Reckless Spite
+1 Reliquary Tower
+1 Sanguine Bond
+1 Scavenger Grounds
+1 Scour for Scrap
+1 Shark Typhoon
+1 Sink into Stupor // Soporific Springs
+1 Skycloud Expanse
+1 Snuff Out
+1 Sol Ring
+1 Soul Shatter
+1 Spellkeeper Weird
+1 Stoic Rebuttal
+1 Sunken Hollow
+1 Sunken Ruins
+5 Swamp
+1 Sygg, River Cutthroat
+1 Talisman of Hierarchy
+1 Talisman of Progress
+1 The Eternal Wanderer
+1 Thought Vessel
+1 Torrential Gearhulk
+1 Toxic Deluge
+1 Underground River
+1 Unwind
+1 Vampiric Tutor
+1 Venser's Journal
+1 Void Rend
+1 Voracious Tome-Skimmer
+1 Waterlogged Teachings // Inundated Archive

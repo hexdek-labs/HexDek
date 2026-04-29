@@ -1,0 +1,77 @@
+COMMANDER: Kuja, Genome Sorcerer // Trance Kuja, Fate Defied
+1 Abrade
+1 Ancestral Anger
+1 Aphotic Wisps
+1 Arcane Signet
+1 Artist's Talent
+1 Birgi, God of Storytelling // Harnfel, Horn of Bounty
+1 Black Mage's Rod
+1 Black Waltz No. 3
+1 Bloodsoaked Insight // Sanguine Morass
+1 Call of the Ring
+1 City on Fire
+1 Command Tower
+1 Cornered by Black Mages
+1 Coruscation Mage
+1 Crash Through
+1 Dark Ritual
+1 Dreadhorde Arcanist
+1 Erebor Flamesmith
+1 Expedite
+1 Exsanguinate
+1 Faithless Looting
+1 Fanning the Flames
+1 Feed the Swarm
+1 Feign Death
+1 Fiery Inscription
+1 Foreboding Ruins
+1 Gleeful Arsonist
+1 Grab the Prize
+1 Harmonic Prodigy
+1 Jeska's Will
+1 Kefka, Dancing Mad
+1 Lethal Scheme
+1 Lightning Greaves
+1 Lindblum, Industrial Regency // Mage Siege
+1 Malakir Rebirth // Malakir Mire
+1 Mana Geyser
+1 Maskwood Nexus
+1 Midgar, City of Mako // Reactor Raid
+1 Might of the Meek
+1 Mithril Coat
+14 Mountain
+1 Myriad Landscape
+1 Neheb, the Eternal
+1 Night's Whisper
+1 Not Dead After All
+1 Ojer Axonil, Deepest Might // Temple of Power
+1 Overclocked Electromancer
+1 Overmaster
+1 Path of Ancestry
+1 Professor Onyx
+1 Rakdos Charm
+1 Rakdos Signet
+1 Reckless Impulse
+1 Roaming Throne
+1 Rogue's Passage
+1 Sign in Blood
+1 Smoldering Marsh
+1 Sol Ring
+1 Solphim, Mayhem Dominus
+1 Spikefield Hazard // Spikefield Cave
+1 Spinerock Knoll
+1 Storm-Kiln Artist
+1 Strike It Rich
+11 Swamp
+1 Terminate
+1 The Destined Black Mage
+1 The Rollercrusher Ride
+1 Thrill of Possibility
+1 Tor Wauki the Younger
+1 Torbran, Thane of Red Fell
+1 Transpose
+1 V.A.T.S.
+1 Valakut Awakening // Valakut Stoneforge
+1 Vandalblast
+1 Virtue of Courage // Embereth Blaze
+1 Warlord's Fury

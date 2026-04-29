@@ -1,0 +1,24 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "act:T+sac",
+        "add_mana"
+      ],
+      "index": 0,
+      "kind": "activated"
+    },
+    {
+      "first5": [
+        "static:mana_restriction:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "cedh",
+  "name": "Jeweled Lotus",
+  "parse_error_count": 0
+}

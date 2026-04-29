@@ -1,0 +1,90 @@
+COMMANDER: Quintorius, History Chaser
+1 Abrade
+1 Advanced Reconstruction
+1 Ancient Tomb
+1 Anger
+1 Antiquities on the Loose
+1 Arcane Signet
+1 Ark of Hunger
+1 Augusta, Order Returned
+1 Bag of Holding
+1 Battlefield Forge
+1 Boros Charm
+1 Boros Signet
+1 Ceaseless Conflict
+1 Clifftop Retreat
+1 Command Tower
+1 Conspiracy Theorist
+1 Containment Construct
+1 Cool but Rude
+1 Cori Mountain Monastery
+1 Crucible of Worlds
+1 Currency Converter
+1 Deflecting Swat
+1 Demolition Field
+1 Drumbellower
+1 Echoing Deeps
+1 Eiganjo, Seat of the Empire
+1 Emeria, the Sky Ruin
+1 Enlightened Tutor
+1 Erode
+1 Esper Sentinel
+1 Excava, the Risen Past
+1 Exotic Orchard
+1 Fabled Passage
+1 Faithless Looting
+1 Fellwar Stone
+1 Flashback
+1 Furycalm Snarl
+1 Gamble
+1 Ghost Vacuum
+1 Glittering Massif
+1 Grinding Station
+1 Guardian Scalelord
+1 Hofri Ghostforge
+1 Inti, Seneschal of the Sun
+1 Jeska's Will
+1 Karmic Guide
+1 Laelia, the Blade Reforged
+1 Lightning Bolt
+1 Lorehold Archivist // Restore Relic
+1 Lorehold Charm
+1 Lorehold Command
+1 Lorehold Excavation
+1 Lotus Field
+1 Lotus Petal
+1 Mistveil Plains
+1 Moonshaker Cavalry
+4 Mountain
+1 Past in Flames
+1 Path to Exile
+1 Phlage, Titan of Fire's Fury
+8 Plains
+1 Practiced Offense
+1 Practiced Scrollsmith
+1 Pursue the Past
+1 Quintorius, Field Historian
+1 Quintorius, Loremaster
+1 Radiant Scrollwielder
+1 Radiant Summit
+1 Ragavan, Nimble Pilferer
+1 Reconstruct History
+1 Redirect Lightning
+1 Relic Retriever
+1 Sacred Foundry
+1 Scalding Tarn
+1 Selfless Spirit
+1 Serra Paragon
+1 Sevinne's Reclamation
+1 Skyclave Apparition
+1 Sol Ring
+1 Spirit of Resilience
+1 Squee, Goblin Nabob
+1 Swords to Plowshares
+1 The One Ring
+1 The Restoration of Eiganjo // Architect of Restoration
+1 Touch the Spirit Realm
+1 Turbulent Steppe
+1 Underworld Breach
+1 Venerable Warsinger
+1 Wheel of Fortune

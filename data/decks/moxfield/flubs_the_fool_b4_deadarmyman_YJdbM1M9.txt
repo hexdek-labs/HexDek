@@ -1,0 +1,100 @@
+COMMANDER: Flubs, the Fool
+1 Aluren
+1 Ancient Tomb
+1 Arid Mesa
+1 Basalt Monolith
+1 Birds of Paradise
+1 Birgi, God of Storytelling // Harnfel, Horn of Bounty
+1 Bloodstained Mire
+1 Boseiju, Who Endures
+1 Brain Freeze
+1 Breeding Pool
+1 Chain of Vapor
+1 Chord of Calling
+1 Chrome Mox
+1 Cloud of Faeries
+1 Cloudstone Curio
+1 Command Tower
+1 Crimson Kobolds
+1 Crookshank Kobolds
+1 Crop Rotation
+1 Delighted Halfling
+1 Dramatic Reversal
+1 Dream Stalker
+1 Drift of Phantasms
+1 Earthcraft
+1 Elvish Spirit Guide
+1 Eruth, Tormented Prophet
+1 Eternal Scourge
+1 Fauna Shaman
+1 Finale of Devastation
+1 Flooded Strand
+1 Food Chain
+1 Force of Vigor
+1 Forest
+1 Gaea's Cradle
+1 Gamble
+1 Gemstone Caverns
+1 Goblin Engineer
+1 Goblin Welder
+1 Hexing Squelcher
+1 Inti, Seneschal of the Sun
+1 Intuition
+1 Island
+1 Isochron Scepter
+1 Kobolds of Kher Keep
+1 Life from the Loam
+1 Lion's Eye Diamond
+1 Lotus Petal
+1 Mana Vault
+1 Manabond
+1 Memnite
+1 Misty Rainforest
+1 Mountain
+1 Mox Diamond
+1 Mox Opal
+1 Muddle the Mixture
+1 Mystical Tutor
+1 Nature's Rhythm
+1 Noxious Revival
+1 Ornithopter
+1 Paradise Mantle
+1 Phyrexian Walker
+1 Polluted Delta
+1 Pyroblast
+1 Red Elemental Blast
+1 Rejuvenating Springs
+1 Rograkh, Son of Rohgahh
+1 Scalding Tarn
+1 Sensei's Divining Top
+1 Shield Sphere
+1 Shrieking Drake
+1 Simian Spirit Guide
+1 Six
+1 Slip Out the Back
+1 Sol Ring
+1 Spire Garden
+1 Springleaf Drum
+1 Squee, the Immortal
+1 Steam Vents
+1 Stomping Ground
+1 Survival of the Fittest
+1 Sylvan Tutor
+1 Taiga
+1 Talisman of Creativity
+1 Talisman of Curiosity
+1 Talisman of Impulse
+1 Tinder Wall
+1 Training Center
+1 Tropical Island
+1 Underworld Breach
+1 Urza's Saga
+1 Utopia Sprawl
+1 Verdant Catacombs
+1 Volcanic Island
+1 Walking Ballista
+1 Wild Cantor
+1 Wild Growth
+1 Windswept Heath
+1 Wooded Foothills
+1 Worldly Tutor

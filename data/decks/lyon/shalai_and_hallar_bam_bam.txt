@@ -1,0 +1,90 @@
+# Shalai and Hallar bam bam (Updated 2026-04-26)
+# Source: https://archidekt.com/decks/21786293/shalai_and_hallar_bam_bam
+# Owner: Mikeytruffles (Lyon)
+COMMANDER: Shalai and Hallar
+1 All Will Be One
+1 Annie Joins Up
+1 Aragorn, Hornburg Hero
+1 Arcane Signet
+1 Arena of Glory
+1 Arwen, Weaver of Hope
+1 Basilisk Collar
+1 Biophagus
+1 Blasphemous Act
+1 Branchloft Pathway // Boulderloft Pathway
+1 Bright-Palm, Soul Awakener
+1 Bristly Bill, Spine Sower
+1 Brushland
+1 Bugenhagen, Wise Elder
+1 Bulwark Ox
+1 Canopy Vista
+1 Champion of Lambholt
+1 Cinder Glade
+1 Clifftop Retreat
+1 Command Tower
+1 Court of Garenbrig
+1 Cragcrown Pathway // Timbercrown Pathway
+1 Cultivate
+1 Dusk Legion Duelist
+1 Evolution Sage
+1 Evolution Witness
+1 Fortified Village
+1 Garruk's Uprising
+1 Gavony Township
+1 Generous Pup
+1 Gyre Sage
+1 Hardened Scales
+1 Heliod, Sun-Crowned
+1 Herd Heirloom
+1 Heroic Intervention
+1 Hideous Taskmaster
+1 High Score
+1 Hushwood Verge
+1 Inspiring Call
+1 Kami of Whispered Hopes
+1 Kodama's Reach
+1 Lotus Cobra
+1 Luminarch Aspirant
+1 Mikey & Leo, Chaos & Order
+1 Mossborn Hydra
+1 Obscuring Haze
+1 Oran-Rief, the Vastwood
+1 Ouroboroid
+1 Overgrown Farmland
+1 Ozolith, the Shattered Spire
+1 Primal Vigor
+1 Railway Brawler
+1 Reclamation Sage
+1 Redirect Lightning
+1 Renata, Called to the Hunt
+1 Restoration Magic
+1 Rhythm of the Wild
+1 Rishkar, Peema Renegade
+1 Rockfall Vale
+1 Rootbound Crag
+1 Sacred Foundry
+1 Seedborn Muse
+1 Shalai, Voice of Plenty
+1 Shifting Woodland
+1 Sol Ring
+1 Sovereign Okinec Ahau
+1 Spire Garden
+1 Stomping Ground
+1 Stump Stomp // Burnwillow Clearing
+1 Sunpetal Grove
+1 Swiftfoot Boots
+1 Temple Garden
+1 Terrasymbiosis
+1 The Earth Crystal
+1 The Earth King
+1 The Great Henge
+1 The Ozolith
+1 The Red Terror
+1 Thornspire Verge
+1 Toski, Bearer of Secrets
+1 Tribute to the World Tree
+1 Virtue of Loyalty // Ardenvale Fealty
+1 War Elemental
+10 Forest
+3 Mountain
+3 Plains

@@ -1,0 +1,83 @@
+COMMANDER: Thassa, Deep-Dwelling
+1 Academy Ruins
+1 Aether Channeler
+1 Alandra, Sky Dreamer
+1 Alhammarret's Archive
+1 Anvil of Bogardan
+1 Arcane Signet
+1 Archaeomancer
+1 Auton Soldier
+1 Buried Ruin
+1 Caged Sun
+1 Citanul Flute
+1 Clear the Mind
+1 Command Tower
+1 Conjurer's Closet
+1 Copy Artifact
+1 Coral Atoll
+1 Counterspell
+1 Decanter of Endless Water
+1 Dictate of Kruphix
+1 Displacer Kitten
+1 Doubling Cube
+1 Everflowing Chalice
+1 Exotic Orchard
+1 Extraplanar Lens
+1 Fabricate
+1 Fated Infatuation
+1 Font of Mythos
+1 Gauntlet of Power
+1 Halimar Depths
+1 Helm of the Host
+1 Howling Mine
+1 Inventors' Fair
+18 Island
+1 Jidoor, Aristocratic Capital // Overture
+1 Kami of the Crescent Moon
+1 Laboratory Maniac
+1 Library of Leng
+1 Mind Stone
+1 Mirror Box
+1 Mnemonic Wall
+1 Muddle the Mixture
+1 Myriad Landscape
+1 Negate
+1 Omniscience
+1 Path of Ancestry
+1 Peregrine Drake
+1 Platinum Angel
+1 Preordain
+1 Propaganda
+1 PuPu UFO
+1 Quantum Misalignment
+1 Quasiduplicate
+1 Quicksilver Fountain
+1 Reliquary Tower
+1 Rite of Replication
+1 Rogue's Passage
+1 Sakashima of a Thousand Faces
+1 Scorched Ruins
+1 Sea Gate Restoration // Sea Gate, Reborn
+1 Seat of the Synod
+1 Silundi Vision // Silundi Isle
+1 Slip Through Space
+1 Sol Ring
+1 Solemn Simulacrum
+1 Spark Double
+1 Teferi's Ageless Insight
+1 Teferi, Master of Time
+1 Temple of the False God
+1 Tezzeret the Seeker
+1 Tezzeret's Gambit
+1 Tezzeret, Artifice Master
+1 Thassa's Devourer
+1 The Walls of Ba Sing Se
+1 The Water Crystal
+1 Thought Vessel
+1 Tolaria West
+1 Tribute Mage
+1 Ultima, Origin of Oblivion
+1 Urza, Lord High Artificer
+1 Venser, Shaper Savant
+1 Walking Atlas
+1 Well of Ideas

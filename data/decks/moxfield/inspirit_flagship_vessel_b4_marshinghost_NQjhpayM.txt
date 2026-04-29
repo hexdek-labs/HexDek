@@ -1,0 +1,81 @@
+COMMANDER: Inspirit, Flagship Vessel
+1 Adagia, Windswept Bastion
+1 Aetherize
+1 Anchor to Reality
+1 Ancient Den
+1 Arcane Signet
+1 Astral Cornucopia
+1 Azorius Signet
+1 Blind Obedience
+1 Boros Signet
+1 Brilliant Restoration
+1 Buried Ruin
+1 Chaos Warp
+1 Cloud Key
+1 Command Tower
+1 Cyber Conversion
+1 Cyberdrive Awakener
+1 Dawnsire, Sunstar Dreadnought
+1 Dispatch
+1 Drill Too Deep
+1 Emry, Lurker of the Loch
+1 Enthusiastic Mechanaut
+1 Etherium Sculptor
+1 Everflowing Chalice
+1 Exotic Orchard
+1 Extinguisher Battleship
+1 Farewell
+1 Flux Channeler
+1 Ghostly Prison
+1 Great Furnace
+1 Hallowed Fountain
+8 Island
+1 Izzet Signet
+1 Jhoira, Ageless Innovator
+1 Jhoira, Weatherlight Captain
+1 Karn's Bastion
+1 Kavaron, Memorial World
+1 Kilo, Apogee Mind
+1 Losheel, Clockwork Scholar
+1 Lux Artillery
+1 Magistrate's Scepter
+1 Mech Hangar
+1 Mechanized Production
+6 Mountain
+1 Mystic Monastery
+1 Negate
+1 Organic Extinction
+1 Patrolling Peacemaker
+8 Plains
+1 Power Conduit
+1 Pramikon, Sky Rampart
+1 Propaganda
+1 Rebbec, Architect of Ascension
+1 Recon Craft Theta
+1 Reliquary Tower
+1 Replicating Ring
+1 Resourceful Defense
+1 Ripples of Potential
+1 Sacred Foundry
+1 Sai, Master Thopterist
+1 Saw It Coming
+1 Seat of the Synod
+1 Sol Ring
+1 Space Beleren
+1 Specimen Freighter
+1 Sphere of Safety
+1 Starlight Spectacular
+1 Station Monitor
+1 Steam Vents
+1 Surge Conductor
+1 Tekuthal, Inquiry Dominus
+1 The Reality Chip
+1 The Seriema
+1 Third Path Iconoclast
+1 Thirst for Knowledge
+1 Thopter Spy Network
+1 Unwinding Clock
+1 Uthros Research Craft
+1 Uthros, Titanic Godcore
+1 Wake the Past
+1 Weapons Manufacturing

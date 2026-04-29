@@ -1,0 +1,80 @@
+COMMANDER: Kalamax, the Stormsire
+1 Abrade
+1 Adventurer's Airship
+1 Arcane Bombardment
+1 Arcane Signet
+1 Archmage of Runes
+1 Ashling's Command
+1 Ashling, Flame Dancer
+1 Big Score
+1 Birds of Paradise
+1 Breeding Pool
+1 Bulk Up
+1 Burst Lightning
+1 Caldera Pyremaw
+1 Case of the Ransacked Lab
+1 Chandra's Ignition
+1 Comet Storm
+1 Command Tower
+1 Cyclonic Rift
+1 Delighted Halfling
+1 Dreamroot Cascade
+1 Dualcaster Mage
+1 Electrodominance
+1 Electrostatic Field
+1 Embrace the Paradox
+1 Emil, Vastlands Roamer
+1 Enduring Vitality
+1 Evolving Wilds
+1 Exotic Orchard
+1 Expansion // Explosion
+1 Farseek
+1 Fiery Inscription
+1 Fire Magic
+1 Flame of Anor
+1 Fling
+8 Forest
+1 Formidable Speaker
+1 Gaea's Gift
+1 Goblin Electromancer
+1 Goliath Daydreamer
+1 Great Hall of the Biblioplex
+1 Increasing Vengeance
+6 Island
+1 Lasting Tarfire
+1 Lightning Bolt
+1 Lightning Strike
+9 Mountain
+1 Nature's Lore
+1 Negate
+1 Overprotect
+1 Paradox Gardens
+1 Path of Ancestry
+1 Prismari Charm
+1 Prismari, the Inspiration
+1 Proctor's Gaze
+1 Quandrix Charm
+1 Ral, Storm Conduit
+1 Return of the Wildspeaker
+1 Return the Favor
+1 Rewind
+1 Rogue's Passage
+1 Savage Beating
+1 Simic Growth Chamber
+1 Sol Ring
+1 Soul's Fire
+1 Spectacle Summit
+1 Spell Pierce
+1 Springleaf Drum
+1 Stomping Ground
+1 Studious First-Year // Rampant Growth
+1 Swiftfoot Boots
+1 Talrand, Sky Summoner
+1 Terramorphic Expanse
+1 Thousand-Year Storm
+1 Thrill of Possibility
+1 Traumatic Critique
+1 Twinferno
+1 Twinflame Travelers
+1 Vivi's Persistence
+1 Waterlogged Grove

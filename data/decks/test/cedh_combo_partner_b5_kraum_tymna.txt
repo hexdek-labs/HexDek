@@ -1,0 +1,101 @@
+1 Ancient Tomb
+1 Badlands
+1 Bazaar of Baghdad
+1 Blood Crypt
+1 Brain Freeze
+1 Braingeyser
+1 Brainstorm
+1 City of Brass
+1 Cloudstone Curio
+1 Command Tower
+1 Cyclonic Rift
+1 Dauthi Voidwalker
+1 Deflecting Swat
+1 Demonic Consultation
+1 Demonic Tutor
+1 Disallow
+1 Displacer Kitten
+1 Doomsday
+1 Drannith Magistrate
+1 Elesh Norn, Mother of Machines
+1 Enlightened Tutor
+1 Esper Sentinel
+1 Exotic Orchard
+1 Fierce Guardianship
+1 Final Fortune
+1 Flawless Maneuver
+1 Flusterstorm
+1 Force of Negation
+1 Frantic Search
+1 Gandalf the White
+1 Gemstone Caverns
+1 Godless Shrine
+1 Grand Abolisher
+1 Grapeshot
+1 Grim Monolith
+1 Hallowed Fountain
+1 Imperial Recruiter
+1 Imperial Seal
+1 Inner Fire
+1 Jace, Wielder of Mysteries
+1 Karn, the Great Creator
+1 Laboratory Maniac
+1 Land Tax
+1 Library of Leng
+1 Lion's Eye Diamond
+1 Lotus Petal
+1 Mana Confluence
+1 Mana Vault
+1 Mind's Desire
+1 Mindbreak Trap
+1 Mishra's Workshop
+1 Morphic Pool
+1 Mox Amber
+1 Mox Diamond
+1 Mox Opal
+1 Mystic Remora
+1 Mystical Tutor
+1 Notion Thief
+1 Opposition Agent
+1 Orcish Bowmasters
+1 Otawara, Soaring City
+1 Personal Tutor
+1 Plateau
+1 Raff Capashen, Ship's Mage
+1 Ragavan, Nimble Pilferer
+1 Reflecting Pool
+1 Reliquary Tower
+1 Rhystic Study
+1 Sacred Foundry
+1 Scrubland
+1 Sea Gate Restoration
+1 Sea of Clouds
+1 Seething Song
+1 Sheoldred, the Apocalypse
+1 Sol Ring
+1 Soul Shatter
+1 Spell Pierce
+1 Steam Vents
+1 Stifle
+1 Tainted Pact
+1 Teferi's Protection
+1 Teferi, Time Raveler
+1 Tendrils of Agony
+1 Thassa's Oracle
+1 Timetwister
+1 Training Center
+1 Tundra
+1 Underground Sea
+1 Underworld Breach
+1 Urza's Saga
+1 Valakut Awakening
+1 Vampiric Tutor
+1 Vedalken Archmage
+1 Volcanic Island
+1 Volrath's Stronghold
+1 Watery Grave
+1 Wheel of Fortune
+1 Winds of Change
+
+COMMANDER: Kraum, Ludevic's Opus
+PARTNER: Tymna the Weaver

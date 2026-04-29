@@ -1,0 +1,78 @@
+COMMANDER: Vivi Ornitier
+1 Abrade
+1 An Offer You Can't Refuse
+1 Arcane Signet
+1 Archmage Emeritus
+1 Artist's Talent
+1 Astrologian's Planisphere
+1 Baral, Chief of Compliance
+1 Birgi, God of Storytelling // Harnfel, Horn of Bounty
+1 Blasphemous Act
+1 Brainstorm
+1 Cascade Bluffs
+1 Chandra, Hope's Beacon
+1 Chaos Warp
+1 Comet Storm
+1 Command Tower
+1 Cori-Steel Cutter
+1 Counterspell
+1 Crackle with Power
+1 Curiosity
+1 Deep Analysis
+1 Dragon's Rage Channeler
+1 Expressive Iteration
+1 Fact or Fiction
+1 Faithless Looting
+1 Fellwar Stone
+1 Frostboil Snarl
+1 Galvanic Iteration
+1 Harmonic Prodigy
+1 Haste Magic
+1 Ill-Timed Explosion
+1 Invert Polarity
+12 Island
+1 Izzet Boilerworks
+1 Izzet Signet
+1 Laughing Mad
+1 Lier, Disciple of the Drowned
+1 Lightning Bolt
+1 Magic Damper
+1 Magma Opus
+1 Mana Geyser
+1 Mana Sculpt
+1 Midnight Clock
+1 Mizzix's Mastery
+1 Monstrous Rage
+12 Mountain
+1 Mystic Remora
+1 Mystic Sanctuary
+1 Negate
+1 Niv-Mizzet, Parun
+1 Niv-Mizzet, Visionary
+1 Opt
+1 Pinnacle Monk // Mystic Peak
+1 Preordain
+1 Prismari Command
+1 Pull from Tomorrow
+1 Resonating Lute
+1 Riverpyre Verge
+1 Scalding Tarn
+1 Shivan Reef
+1 Shore Up
+1 Sleight of Hand
+1 Sol Ring
+1 Solve the Equation
+1 Spirebluff Canal
+1 Steam Vents
+1 Stella Lee, Wild Card
+1 Storm-Kiln Artist
+1 Strike It Rich
+1 Sulfur Falls
+1 Summon: G.F. Cerberus
+1 Talisman of Creativity
+1 Temple of Epiphany
+1 Thundering Falls
+1 Time Warp
+1 Urabrask // The Great Work
+1 Veyran, Voice of Duality
+1 Wild Ride

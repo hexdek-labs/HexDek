@@ -1,0 +1,100 @@
+COMMANDER: Jeleva, Nephalia's Scourge
+1 All Is Dust
+1 Aminatou's Augury
+1 An Offer You Can't Refuse
+1 Anger
+1 Arcane Signet
+1 Arena of Glory
+1 Arid Mesa
+1 Blasphemous Act
+1 Blasphemous Edict
+1 Blatant Thievery
+1 Blood Crypt
+1 Bloodstained Mire
+1 Bolas's Citadel
+1 Bonus Round
+1 Brainstorm
+1 Breach the Multiverse
+1 Call Forth the Tempest
+1 Careful Study
+1 Command Tower
+1 Damnation
+1 Dark Ritual
+1 Dauthi Voidwalker
+1 Deflecting Swat
+1 Dimir Signet
+1 Dragon Tempest
+1 Dream Harvest
+1 Entomb
+1 Etali, Primal Storm
+1 Exotic Orchard
+1 Expropriate
+1 Faithless Looting
+1 Fell the Profane // Fell Mire
+1 Fellwar Stone
+1 Flashback
+1 Flooded Strand
+1 Frantic Search
+1 Hanweir Battlements
+1 Harmonic Prodigy
+1 Hexing Squelcher
+1 High Market
+1 Improvisation Capstone
+1 Into the Flood Maw
+1 Island
+1 Izzet Signet
+1 Jin-Gitaxias, Progress Tyrant
+1 Keeper of Secrets
+1 Lazotep Quarry
+1 Ledger Shredder
+1 Lightning Greaves
+1 Lim-Dûl's Vault
+1 Luxury Suite
+1 Mana Drain
+1 Marsh Flats
+1 Mistrise Village
+1 Misty Rainforest
+1 Mizzix's Mastery
+1 Mnemonic Deluge
+1 Mountain
+1 Mystic Remora
+1 Mystical Tutor
+1 Oblivion Sower
+1 Otawara, Soaring City
+1 Passionate Archaeologist
+1 Personal Tutor
+1 Phyrexian Tower
+1 Polluted Delta
+1 Ponder
+1 Prismatic Vista
+1 Ragavan, Nimble Pilferer
+1 Rakdos Signet
+1 Raucous Theater
+1 Reanimate
+1 Reflecting Pool
+1 Rise of the Eldrazi
+1 Scalding Tarn
+1 Scroll Rack
+1 Sea Gate Restoration // Sea Gate, Reborn
+1 Sensei's Divining Top
+1 Sink into Stupor // Soporific Springs
+1 Spelltwine
+1 Steam Vents
+1 Swamp
+1 Swan Song
+1 Swiftfoot Boots
+1 Talisman of Creativity
+1 Talisman of Dominance
+1 Talisman of Indulgence
+1 Talon Gates of Madara
+1 The Infamous Cruelclaw
+1 Thundering Falls
+1 Toxic Deluge
+1 Turbulent Springs
+1 Undercity Sewers
+1 Urborg, Tomb of Yawgmoth
+1 Vampiric Tutor
+1 Vandalblast
+1 Watery Grave
+1 Windfall
+1 Wooded Foothills

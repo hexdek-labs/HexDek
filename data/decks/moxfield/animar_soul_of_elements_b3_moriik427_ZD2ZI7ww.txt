@@ -1,0 +1,88 @@
+COMMANDER: Animar, Soul of Elements
+1 Ancient Ziggurat
+1 Apex Devastator
+1 Arbor Elf
+1 Arcane Signet
+1 Bard Class
+1 Benevolent Hydra
+1 Biophagus
+1 Birds of Paradise
+1 Bloom Tender
+1 Brainstorm
+1 Casey Jones, Back Alley Brute
+1 Cavern of Souls
+1 Command Tower
+1 Counterspell
+1 Court of Garenbrig
+1 Craterhoof Behemoth
+1 Cyclonic Rift
+1 Decimate
+1 Delighted Halfling
+1 Dryad Arbor
+1 Elvish Mystic
+1 Equilibrium
+1 Evendo, Waking Haven
+1 Fauna Shaman
+1 Fierce Empath
+5 Forest
+1 Forgotten Ancient
+1 Frontier Bivouac
+1 Gaea's Cradle
+1 Gemstone Caverns
+1 Germination Practicum
+1 Hardened Scales
+1 Herald of Secret Streams
+1 Heroic Intervention
+1 Hexing Squelcher
+1 Hidden Hideout
+1 Hull Breach
+1 Hydroelectric Specimen // Hydroelectric Laboratory
+1 Hydroid Krasis
+1 Imperial Recruiter
+1 Invigorating Surge
+5 Island
+1 Ketria Triome
+1 Level Up
+1 Llanowar Elves
+1 Lotus Petal
+1 Maelstrom Wanderer
+1 Mana Drain
+1 Mental Misstep
+1 Michelangelo, Weirdness to 11
+5 Mountain
+1 Ozolith, the Shattered Spire
+1 Phyrexian Metamorph
+1 Pyroblast
+1 Rampant Growth
+1 Rattleclaw Mystic
+1 Reclamation Sage
+1 Red Elemental Blast
+1 Reflecting Pool
+1 Reliquary Tower
+1 Return of the Wildspeaker
+1 Rootbound Crag
+1 Shifting Woodland
+1 Shivan Devastator
+1 Snap
+1 Sol Ring
+1 Solemn Simulacrum
+1 Soul of the Harvest
+1 Spellskite
+1 Spire Garden
+1 Surrak Dragonclaw
+1 Swan Song
+1 Swiftfoot Boots
+1 Taiga
+1 Temur Ascendancy
+1 The Earth Crystal
+1 The Great Henge
+1 Three Visits
+1 Training Center
+1 Trap Essence
+1 Tropical Island
+1 Unbound Flourishing
+1 Volcanic Island
+1 Wan Shi Tong, Librarian
+1 Winged Hive Tyrant
+1 Worldly Tutor
+1 Yavimaya, Cradle of Growth

@@ -1,0 +1,89 @@
+COMMANDER: Glarb, Calamity's Augur
+1 Ad Nauseam
+1 Aetherflux Reservoir
+1 Arbor Elf
+1 Arcane Signet
+1 Assassin's Trophy
+1 Bayou
+1 Birds of Paradise
+1 Black Market Connections
+1 Bloom Tender
+1 Bolas's Citadel
+1 Boseiju, Who Endures
+1 Brainstorm
+1 Breeding Pool
+1 Chrome Mox
+1 Command Tower
+1 Consecrated Sphinx
+1 Cruel Tutor
+1 Culling Ritual
+1 Cyclonic Rift
+1 Dark Ritual
+1 Deadly Rollick
+1 Deathrite Shaman
+1 Delighted Halfling
+1 Demonic Tutor
+1 Displacer Kitten
+1 Dramatic Reversal
+1 Dryad Arbor
+1 Elves of Deep Shadow
+1 Exotic Orchard
+1 Farseek
+1 Fierce Guardianship
+1 Force of Vigor
+1 Force of Will
+4 Forest
+1 Grim Tutor
+1 Gwenom, Remorseless
+1 Helm of Awakening
+1 High Fae Trickster
+1 Imperial Seal
+1 Insidious Dreams
+6 Island
+1 Isochron Scepter
+1 Lightning Greaves
+1 Lim-Dûl's Vault
+1 Mana Confluence
+1 Mindbreak Trap
+1 Misdirection
+1 Misty Rainforest
+1 Morphic Pool
+1 Mox Amber
+1 Mox Diamond
+1 Mystic Remora
+1 Mystical Tutor
+1 Nature's Lore
+1 Necropotence
+1 Notion Thief
+1 Noxious Revival
+1 Opposition Agent
+1 Orcish Bowmasters
+1 Otawara, Soaring City
+1 Overgrown Tomb
+1 Polluted Delta
+1 Pollywog Prodigy
+1 Rejuvenating Springs
+1 Rhystic Study
+1 Scroll Rack
+1 Sensei's Divining Top
+1 Snuff Out
+1 Sol Ring
+1 Submerge
+4 Swamp
+1 Sylvan Library
+1 The One Ring
+1 Thrasios, Triton Hero
+1 Toxic Deluge
+1 Tropical Island
+1 Underground Sea
+1 Undergrowth Stadium
+1 Urborg, Tomb of Yawgmoth
+1 Utopia Sprawl
+1 Vampiric Tutor
+1 Verdant Catacombs
+1 Vhal, Candlekeep Researcher
+1 Waterlogged Grove
+1 Watery Grave
+1 Wishclaw Talisman
+1 Worldly Tutor
+1 Yavimaya, Cradle of Growth

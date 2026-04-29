@@ -1,0 +1,87 @@
+COMMANDER: Vren, the Relentless
+1 Accursed Marauder
+1 Ancient Tomb
+1 Azure Beastbinder
+1 Baleful Strix
+1 Barter in Blood
+1 Big Apple, 3 a.m.
+1 Black Market
+1 Blasphemous Edict
+1 Bojuka Bog
+1 Cabal Coffers
+1 Charcoal Diamond
+1 Command Tower
+1 Consumed by Greed
+1 Corrupted Conviction
+1 Counterspell
+1 Countersquall
+1 Crypt Rats
+1 Dark Ritual
+1 Deadly Dispute
+1 Deadly Rollick
+1 Demon's Disciple
+1 Demonic Tutor
+1 Dimir Aqueduct
+1 Dimir Signet
+1 Dismember
+1 Drowned Catacomb
+1 Extract a Confession
+1 Fell
+1 Fierce Guardianship
+1 Flare of Malice
+1 Fleshbag Marauder
+1 Force of Despair
+1 Gnat Miser
+1 Go for the Throat
+1 Gossip's Talent
+1 Hazel's Nocturne
+1 Infernal Grasp
+1 Ink-Eyes, Servant of Oni
+1 Innocent Blood
+6 Island
+1 Kaya's Ghostform
+1 Lord Skitter, Sewer King
+1 Mana Drain
+1 Marrow-Gnawer
+1 Merciless Executioner
+1 Mindwhisker
+1 Mirkwood Bats
+1 Mudflat Village
+1 Nashi, Searcher in the Dark
+1 Negate
+1 Nightwhorl Hermit
+1 No Mercy
+1 Path of Ancestry
+1 Persistent Marshstalker
+1 Phyrexian Tower
+1 Piper of the Swarm
+1 Polluted Delta
+1 Priest of Forgotten Gods
+1 Rancid Rats
+1 Rat King, Pale Piper
+1 Rat King, Verminister
+1 Revenge of the Rats
+1 Rimefire Torque
+1 Rush of Dread
+1 Season of Loss
+1 Sheoldred's Edict
+1 Shore Up
+1 Shoreline Looter
+1 Shredder's Technique
+1 Sol Ring
+1 Splash Portal
+9 Swamp
+1 Swarmyard
+1 Tangled Colony
+1 Throat Slitter
+1 Tithing Blade // Consuming Sepulcher
+1 Tragic Slip
+1 Typhoid Rats
+1 Uncharted Haven
+1 Undercity Dire Rat
+1 Underground Sea
+1 Urborg, Tomb of Yawgmoth
+1 Victimize
+1 Village Rites
+1 Vona's Hunger
+1 Whip of Erebos

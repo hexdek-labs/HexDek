@@ -1,0 +1,87 @@
+COMMANDER: Alania, Divergent Storm
+1 Anger
+1 Arcane Denial
+1 Arcane Endeavor
+1 Arcane Signet
+1 Archmage Emeritus
+1 Big Score
+1 Bottle-Cap Blast
+1 Brass's Bounty
+1 Cascade Bluffs
+1 Coastal Peak
+1 Command Tower
+1 Delayed Blast Fireball
+1 Elemental Expressionist
+1 Exotic Orchard
+1 Experimental Overload
+1 Explosion of Riches
+1 Fabled Passage
+1 Fellwar Stone
+1 Ferrous Lake
+1 Frostboil Snarl
+1 Furygale Flocking
+1 Galazeth Prismari
+1 Gandalf's Sanction
+1 Goldspan Dragon
+1 Grab the Prize
+1 Guttersnipe
+1 Hall of Oracles
+1 Harmonic Prodigy
+1 Ill-Timed Explosion
+1 Immolating Gyre
+8 Island
+1 Izzet Signet
+1 Laughing Mad
+1 Lightning Greaves
+1 Magma Opus
+1 Mana Geyser
+1 Molten Tributary
+1 Molten-Core Maestro
+7 Mountain
+1 Mystic Sanctuary
+1 Negate
+1 Path of Ancestry
+1 Pirate's Pillage
+1 Practical Research
+1 Prismari Campus
+1 Prismari Charm
+1 Pyretic Ritual
+1 Reckless Endeavor
+1 Redoubled Stormsinger
+1 Reliquary Tower
+1 Replication Technique
+1 Restless Spire
+1 Reverse Engineer
+1 Rise from the Tides
+1 Rite of Replication
+1 Romantic Rendezvous
+1 Saheeli's Artistry
+1 Scorched Geyser
+1 Seething Song
+1 Seize the Spoils
+1 Shark Typhoon
+1 Shimmer Dragon
+1 Shivan Reef
+1 Sol Ring
+1 Spectacle Summit
+1 Storm the Vault // Vault of Catlacan
+1 Storm-Kiln Artist
+1 Stormcatch Mentor
+1 Stormsplitter
+1 Study Hall
+1 Sulfur Falls
+1 Tablet of Discovery
+1 Talisman of Creativity
+1 Talrand, Sky Summoner
+1 Temple of Epiphany
+1 Terramorphic Expanse
+1 Turbulent Springs
+1 Twinflame
+1 Twinning Staff
+1 Unexpected Windfall
+1 Valley Floodcaller
+1 Veyran, Voice of Duality
+1 Volcanic Salvo
+1 Volcanic Vision
+1 Wonder
+1 Zaffai, Thunder Conductor

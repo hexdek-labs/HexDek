@@ -1,0 +1,16 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "static:custom:_"
+      ],
+      "index": 0,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "modal",
+  "name": "Dimir Charm",
+  "parse_error_count": 0
+}

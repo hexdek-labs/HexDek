@@ -1,0 +1,84 @@
+COMMANDER: Balmor, Battlemage Captain
+1 Abrade
+1 Arcane Signet
+1 Archmage Emeritus
+1 Blasphemous Act
+1 Bonecrusher Giant // Stomp
+1 Bulk Up
+1 Burst Lightning
+1 Cascade Bluffs
+1 Coastal Peak
+1 Colorstorm Stallion
+1 Command Tower
+1 Consider
+1 Diary of Dreams
+1 Dragon's Rage Channeler
+1 Emberheart Challenger
+1 Emeritus of Conflict // Lightning Bolt
+1 Empty the Warrens
+1 Enter the Enigma
+1 Escape Tunnel
+1 Exotic Orchard
+1 Expressive Iteration
+1 Faithless Looting
+1 Fellwar Stone
+1 Fervent Strike
+1 Fiery Islet
+1 Firebending Student
+1 Flashback
+1 Flow State
+1 Focus the Mind
+1 Glimpse the Impossible
+1 Gut Shot
+1 Heroes' Hangout
+1 Impulse
+1 Into the Flood Maw
+9 Island
+1 Lightning Bolt
+1 Maelstrom Artisan // Rocket Volley
+1 Magmablood Archaic
+1 Mana Sculpt
+1 Midnight Clock
+1 Molten-Core Maestro
+1 Monstrous Rage
+9 Mountain
+1 Opt
+1 Overmaster
+1 Peculiar Lighthouse
+1 Prismari Charm
+1 Prismari Pianist
+1 Rapid Hybridization
+1 Reckless Charge
+1 Renegade Tactics
+1 Resculpt
+1 Saheeli, Sublime Artificer
+1 Serum Visions
+1 Shire Terrace
+1 Shivan Reef
+1 Shore Up
+1 Sink into Stupor // Soporific Springs
+1 Sleight of Hand
+1 Slickshot Show-Off
+1 Snap
+1 Sol Ring
+1 Spell Pierce
+1 Splatter Technique
+1 Springleaf Drum
+1 Storm-Kiln Artist
+1 Stormcarved Coast
+1 Sulfur Falls
+1 Swiftfoot Boots
+1 Talisman of Creativity
+1 Temple of the False God
+1 The Irencrag
+1 The Locust God
+1 Third Path Iconoclast
+1 Thopter Fabricator
+1 Thundering Falls
+1 Traumatic Critique
+1 Treasure Cruise
+1 Urabrask // The Great Work
+1 Valley Floodcaller
+1 Veyran, Voice of Duality
+1 Winged Words
+1 Young Pyromancer

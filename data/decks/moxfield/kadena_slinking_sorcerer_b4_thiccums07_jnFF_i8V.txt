@@ -1,0 +1,92 @@
+COMMANDER: Kadena, Slinking Sorcerer
+1 Abrupt Decay
+1 Ainok Survivalist
+1 Arcane Signet
+1 Ashnod's Altar
+1 Assassin's Trophy
+1 Badgermole Cub
+1 Bender's Waterskin
+1 Breeding Pool
+1 Brine Elemental
+1 Bring to Light
+1 Cephalid Coliseum
+1 Chromeshell Crab
+1 Cloud of Faeries
+1 Command Tower
+1 Deathmist Raptor
+1 Delighted Halfling
+1 Demonic Counsel
+1 Den Protector
+1 Dimir Signet
+1 Dream Chisel
+1 Echoing Truth
+1 Emergent Ultimatum
+1 Enduring Vitality
+1 Enter the Infinite
+1 Exotic Orchard
+1 Farseek
+1 Foreboding Landscape
+4 Forest
+1 Gift of Doom
+1 Glimpse of Nature
+1 Gloomlake Verge
+1 Golgari Rot Farm
+1 Green Sun's Zenith
+1 Hinterland Harbor
+1 Hullbreaker Horror
+1 Icefeather Aven
+5 Island
+1 Ixidron
+1 Kadena's Silencer
+1 Kheru Spellsnatcher
+1 Laboratory Maniac
+1 Leadership Vacuum
+1 Leyline of Anticipation
+1 Myriad Landscape
+1 Mystic Sanctuary
+1 Mystical Tutor
+1 Mythos of Brokkos
+1 Nantuko Vigilante
+1 Noxious Revival
+1 Oblivious Bookworm
+1 Obscuring Aether
+1 Omniscience
+1 Opulent Palace
+1 Overgrown Zealot
+1 Rampant Growth
+1 Reality Shift
+1 Reliquary Tower
+1 Rhystic Study
+1 Ruthless Ripper
+1 Scroll of Fate
+1 Seedborn Muse
+1 Shared Roots
+1 Show and Tell
+1 Silumgar Assassin
+1 Simic Growth Chamber
+1 Snap
+1 Sol Ring
+1 Stasis
+1 Stratus Dancer
+1 Sudden Substitution
+1 Sunken Hollow
+2 Swamp
+1 Swan Song
+1 Talisman of Curiosity
+1 Temple of the False God
+1 Thelonite Hermit
+1 Thespian's Stage
+1 Tidal Barracuda
+1 Turbulent Fen
+1 Ugin, the Ineffable
+1 Vedalken Orrery
+1 Veil of Summer
+1 Vesuvan Shapeshifter
+1 Watery Grave
+1 Wilderness Reclamation
+1 Willbender
+1 Words of Wind
+1 Yavimaya Coast
+1 Yedora, Grave Gardener
+1 Zagoth Triome
+1 Zoetic Cavern

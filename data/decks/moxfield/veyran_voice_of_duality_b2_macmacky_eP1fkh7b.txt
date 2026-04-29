@@ -1,0 +1,72 @@
+COMMANDER: Veyran, Voice of Duality
+1 Arcane Signet
+1 Archmage Emeritus
+1 Brain Freeze
+1 Brainstorm
+1 Brotherhood's End
+1 Bulk Up
+1 Claim the Firstborn
+1 Compulsive Research
+1 Consider
+1 Coruscation Mage
+1 Counterspell
+1 Curiosity
+1 Electrostatic Field
+1 Enter the Enigma
+1 Erebor Flamesmith
+1 Expedite
+1 Expressive Iteration
+1 Faithless Looting
+1 Fellwar Stone
+1 Fiery Inscription
+1 Firebrand Archer
+1 Flashback
+1 Flood of Recollection
+1 Flow State
+1 Frantic Search
+1 Galvanic Iteration
+1 Goblin Electromancer
+1 Grapeshot
+1 Guttersnipe
+1 Harmonic Prodigy
+1 Impolite Entrance
+1 Increasing Vengeance
+15 Island
+1 Izzet Signet
+1 Kessig Flamebreather
+1 Leap
+1 Lightning Bolt
+1 Mana Sculpt
+1 Mizzix's Mastery
+15 Mountain
+1 Negate
+1 Opt
+1 Overmaster
+1 Peek
+1 Ponder
+1 Pongify
+1 Preordain
+1 Pyretic Ritual
+1 Quicken
+1 Rapid Hybridization
+1 Redirect Lightning
+1 Renegade Tactics
+1 Resonating Lute
+1 Runaway Steam-Kin
+1 Seething Song
+1 Serum Visions
+1 Shadow Rift
+1 Sleight of Hand
+1 Snap
+1 Sol Ring
+1 Spell Pierce
+1 Spell Snare
+1 Stock Up
+1 Storm-Kiln Artist
+1 Stormcatch Mentor
+1 Strategic Planning
+1 Thermo-Alchemist
+1 Thrill of Possibility
+1 Thunderdrum Soloist
+1 Vibrant Outburst
+1 Warlord's Fury

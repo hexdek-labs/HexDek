@@ -1,0 +1,31 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "keyword:flying"
+      ],
+      "index": 0,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "trig:etb",
+        "draw"
+      ],
+      "index": 1,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "keyword:evoke"
+      ],
+      "index": 2,
+      "kind": "keyword"
+    }
+  ],
+  "ability_count": 3,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Mulldrifter",
+  "parse_error_count": 0
+}

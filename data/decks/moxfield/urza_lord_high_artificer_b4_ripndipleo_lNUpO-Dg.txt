@@ -1,0 +1,74 @@
+COMMANDER: Urza, Lord High Artificer
+1 Academy Ruins
+1 Aether Spellbomb
+1 Aetherize
+1 Archway of Innovation
+1 Basalt Monolith
+1 Bident of Thassa
+1 Counterspell
+1 Cryptic Command
+1 Displacer Kitten
+1 Disruptor Flute
+1 Drafna, Founder of Lat-Nam
+1 Efficient Construction
+1 Emry, Lurker of the Loch
+1 Etherium Sculptor
+1 Fabricate
+1 Fomori Vault
+1 Forensic Gadgeteer
+1 Foundry Inspector
+1 Ghostly Flicker
+1 Glaring Spotlight
+1 Hide on the Ceiling
+1 Inventors' Fair
+27 Island
+1 Isochron Scepter
+1 Jeweled Amulet
+1 Kappa Cannoneer
+1 Liberator, Urza's Battlethopter
+1 Liquimetal Torque
+1 Machine Over Matter
+1 Manifold Key
+1 Master Transmuter
+1 Mirrodin Besieged
+1 Mishra's Bauble
+1 Mistrise Village
+1 Moonsilver Key
+1 Moonsnare Prototype
+1 Otawara, Soaring City
+1 Padeem, Consul of Innovation
+1 Paradise Mantle
+1 Phyrexian Metamorph
+1 Prized Statue
+1 Refute
+1 Reliquary Tower
+1 Reshape
+1 Retraction Helix
+1 Rings of Brighthearth
+1 Sai, Master Thopterist
+1 Scour for Scrap
+1 Sculpting Steel
+1 Seat of the Synod
+1 Simulacrum Synthesizer
+1 Sink into Stupor // Soporific Springs
+1 Snapback
+1 Sol Ring
+1 Spellbook
+1 Spellskite
+1 Starfield Vocalist
+1 Static Orb
+1 Tezzeret, Cruel Captain
+1 The Mycosynth Gardens
+1 The Reality Chip
+1 This Town Ain't Big Enough
+1 Transit Mage
+1 Trophy Mage
+1 Unwinding Clock
+1 Uthros Research Craft
+1 Uthros, Titanic Godcore
+1 Vedalken Archmage
+1 Voltaic Key
+1 Welding Jar
+1 Winter Orb
+1 Workshop Assistant
+1 Worldwalker Helm

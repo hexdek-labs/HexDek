@@ -1,0 +1,82 @@
+COMMANDER: Hearthhull, the Worldseed
+1 Aftermath Analyst
+1 Amulet of Vigor
+1 Ancient Tomb
+1 Arcane Signet
+1 Augur of Autumn
+1 Azusa, Lost but Seeking
+1 Badlands
+1 Bayou
+1 Biorhythm
+1 Birds of Paradise
+1 Blood Crypt
+1 Bloodstained Mire
+1 Braids, Arisen Nightmare
+1 Chrome Mox
+1 Command Tower
+1 Crop Rotation
+1 Crucible of Worlds
+1 Dakmor Salvage
+1 Damnation
+1 Dark Ritual
+1 Darkness
+1 Deflecting Swat
+1 Delighted Halfling
+1 Demonic Tutor
+1 Elvish Spirit Guide
+1 Exploration
+1 Fabled Passage
+1 Farseek
+8 Forest
+1 Formidable Speaker
+1 Frenzied Baloth
+1 Gaea's Cradle
+1 Gemstone Caverns
+1 Glacial Chasm
+1 God-Eternal Bontu
+1 Golgari Charm
+1 Hexing Squelcher
+1 Icetill Explorer
+1 Lotus Cobra
+1 Lotus Petal
+1 Lumra, Bellow of the Woods
+1 Mana Vault
+1 Mesmeric Orb
+1 Moraug, Fury of Akoum
+1 Mossborn Hydra
+6 Mountain
+1 Nature's Lore
+1 Ob Nixilis, the Fallen
+1 Oracle of Mul Daya
+1 Orcish Bowmasters
+1 Ouroboroid
+1 Overgrown Tomb
+1 Rakdos Charm
+1 Reanimate
+1 Redirect Lightning
+1 Ripples of Undeath
+1 Scapeshift
+1 Simian Spirit Guide
+1 Six
+1 Sol Ring
+1 Solphim, Mayhem Dominus
+1 Splendid Reclamation
+1 Squandered Resources
+1 Stomping Ground
+1 Strip Mine
+7 Swamp
+1 Sylvan Safekeeper
+1 Taiga
+1 Tainted Pact
+1 Tannuk, Memorial Ensign
+1 Tezzeret, Cruel Captain
+1 The Gitrog Monster
+1 Tibalt's Trickery
+1 Tireless Provisioner
+1 Toxic Deluge
+1 Underworld Breach
+1 Urza's Saga
+1 Vampiric Tutor
+1 Verdant Catacombs
+1 Wooded Foothills
+1 Worldly Tutor

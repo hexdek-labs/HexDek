@@ -1,0 +1,336 @@
+{
+  "game_id": "octo-smoke-001",
+  "winner": 2,
+  "end_reason": "seat 2 is the last one standing",
+  "total_turns": 18,
+  "total_events": 1950,
+  "commander_format": true,
+  "day_night": "neither",
+  "seats": [
+    {
+      "idx": 0,
+      "life": 6,
+      "lost": true,
+      "loss_reason": "21+ commander damage from Fire Lord Azula (CR 704.6c)",
+      "library_count": 75,
+      "hand": [
+        "Bruenor Battlehammer"
+      ],
+      "graveyard": [
+        "Esper Sentinel",
+        "Stoneforge Mystic",
+        "Treasure Nabber"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Ardenn, Intrepid Archaeologist"
+      ],
+      "commander_tax": {
+        "Ardenn, Intrepid Archaeologist": 1
+      },
+      "commander_damage": {
+        "2": {
+          "Fire Lord Azula": 24
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 1,
+      "life": 0,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 74,
+      "hand": [
+        "Fellwar Stone",
+        "Diabolic Intent",
+        "Snapcaster Mage",
+        "Displacer Kitten",
+        "Rhystic Study",
+        "Sylvan Library"
+      ],
+      "graveyard": [
+        "Crop Rotation",
+        "An Offer You Can't Refuse",
+        "Culling the Weak",
+        "Veil of Summer",
+        "Abrupt Decay",
+        "Mental Misstep",
+        "Sacrifice",
+        "Unearth",
+        "Demonic Tutor"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Yarok, the Desecrated"
+      ],
+      "commander_names": [
+        "Yarok, the Desecrated"
+      ],
+      "commander_tax": {
+        "Yarok, the Desecrated": 0
+      },
+      "commander_damage": {
+        "0": {
+          "Ardenn, Intrepid Archaeologist": 16
+        },
+        "2": {
+          "Fire Lord Azula": 4
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 2,
+      "battlefield": []
+    },
+    {
+      "idx": 2,
+      "life": 30,
+      "lost": false,
+      "loss_reason": "",
+      "library_count": 74,
+      "hand": [],
+      "graveyard": [
+        "Flusterstorm",
+        "Pyroblast",
+        "Windfall",
+        "Yawgmoth's Will",
+        "Leyline of Anticipation",
+        "Strix Serenade",
+        "Ad Nauseam",
+        "Force of Negation",
+        "Faerie Mastermind",
+        "Deflecting Swat",
+        "Diabolic Intent",
+        "Dualcaster Mage",
+        "An Offer You Can't Refuse",
+        "Final Fortune"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Fire Lord Azula"
+      ],
+      "commander_tax": {
+        "Fire Lord Azula": 1
+      },
+      "commander_damage": {},
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": [
+        {
+          "name": "Arena of Glory",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mox Opal",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Ancient Tomb",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "City of Traitors",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Gemstone Caverns",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Fire Lord Azula",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 4,
+          "toughness": 4,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mistrise Village",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Thassa's Oracle",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 1,
+          "toughness": 3,
+          "counters": {},
+          "controller": 2,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Urza's Saga",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mox Diamond",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Badlands",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mana Vault",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 2,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        }
+      ]
+    },
+    {
+      "idx": 3,
+      "life": -3,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 81,
+      "hand": [
+        "Mind's Desire",
+        "Soul Shatter",
+        "Laboratory Maniac",
+        "Imperial Recruiter",
+        "Deflecting Swat",
+        "Sheoldred, the Apocalypse",
+        "Rhystic Study"
+      ],
+      "graveyard": [
+        "Cyclonic Rift",
+        "Mystical Tutor"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Kraum, Ludevic's Opus"
+      ],
+      "commander_names": [
+        "Kraum, Ludevic's Opus"
+      ],
+      "commander_tax": {
+        "Kraum, Ludevic's Opus": 0
+      },
+      "commander_damage": {
+        "2": {
+          "Fire Lord Azula": 24
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 0,
+      "battlefield": []
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:ally_targeted_by_opp",
+        "create_token"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "act:mana6",
+        "buff"
+      ],
+      "index": 1,
+      "kind": "activated"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Thorn Lieutenant",
+  "parse_error_count": 0
+}

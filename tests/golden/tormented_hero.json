@@ -1,0 +1,30 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "static:parsed_tail:_"
+      ],
+      "index": 0,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "static:ability_word:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "static:spell_effect:_"
+      ],
+      "index": 2,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 3,
+  "fully_parsed": true,
+  "group": "keywords",
+  "name": "Tormented Hero",
+  "parse_error_count": 0
+}

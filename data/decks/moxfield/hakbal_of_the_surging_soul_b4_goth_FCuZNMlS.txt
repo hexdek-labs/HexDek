@@ -1,0 +1,84 @@
+COMMANDER: Hakbal of the Surging Soul
+1 Arcane Denial
+1 Arcane Signet
+1 Beast Within
+1 Benthic Biomancer
+1 Bident of Thassa
+1 Botanical Sanctum
+1 Breeding Pool
+1 Celestial Reunion
+1 Champions of the Shoal
+1 Chord of Calling
+1 Cold-Eyed Selkie
+1 Command Tower
+1 Counterspell
+1 Deepfathom Echo
+1 Deeproot Historian
+1 Deeproot Pilgrimage
+1 Deeproot Waters
+1 Dreamroot Cascade
+1 Eldritch Evolution
+1 Emperor Mihail II
+1 Farseek
+1 Flare of Denial
+1 Floodpits Drowner
+8 Forest
+1 Glasspool Mimic // Glasspool Shore
+1 Growing Rites of Itlimoc // Itlimoc, Cradle of the Sun
+1 Guardian Project
+1 Harbinger of the Seas
+1 Hardened Scales
+1 Herald of Secret Streams
+1 Hinterland Harbor
+1 Inspiring Call
+1 Intruder Alarm
+1 Invasion of Ikoria // Zilortha, Apex of Ikoria
+10 Island
+1 Kindred Discovery
+1 Kiora's Follower
+1 Kodama's Reach
+1 Kopala, Warden of Waves
+1 Kumena, Tyrant of Orazca
+1 Lord of Atlantis
+1 Lullmage Mentor
+1 Masked Vandal
+1 Master of the Pearl Trident
+1 Merfolk Sovereign
+1 Merrow Commerce
+1 Merrow Reejerey
+1 Mindspring Merfolk
+1 Mist Dancer
+1 Mutavault
+1 Naga Fleshcrafter
+1 Negate
+1 Nicanzil, Current Conductor
+1 Overwhelming Stampede
+1 Path of Ancestry
+1 Pongify
+1 Realmwalker
+1 Reliquary Tower
+1 Return of the Wildspeaker
+1 Ripples of Potential
+1 Seafloor Oracle
+1 Secluded Courtyard
+1 Silvergill Adept
+1 Simic Growth Chamber
+1 Sol Ring
+1 Sphere Grid
+1 Stonybrook Banneret
+1 Svyelun of Sea and Sky
+1 Tatyova, Benthic Druid
+1 Temple of Mystery
+1 Thieving Skydiver
+1 Tishana's Tidebinder
+1 Topography Tracker
+1 Unclaimed Territory
+1 Vineglimmer Snarl
+1 Vodalian Hexcatcher
+1 Wanderwine Prophets
+1 Wave Goodbye
+1 Wildgrowth Walker
+1 Willowrush Verge
+1 Wonder
+1 Wrap in Vigor
+1 Yavimaya Coast

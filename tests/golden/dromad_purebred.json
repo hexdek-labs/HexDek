@@ -1,0 +1,17 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:dealt_damage",
+        "gain_life"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "keywords",
+  "name": "Dromad Purebred",
+  "parse_error_count": 0
+}

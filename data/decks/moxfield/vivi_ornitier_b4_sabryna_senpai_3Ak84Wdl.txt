@@ -1,0 +1,97 @@
+COMMANDER: Vivi Ornitier
+1 Abstract Paintmage
+1 Amphibian Downpour
+1 An Offer You Can't Refuse
+1 Ancient Tomb
+1 Arcane Denial
+1 Archmage Emeritus
+1 Artist's Talent
+1 Ashling, Flame Dancer
+1 Bender's Waterskin
+1 Birgi, God of Storytelling // Harnfel, Horn of Bounty
+1 Blazing Firesinger // Seething Song
+1 Boltwave
+1 Cascade Bluffs
+1 Chrome Mox
+1 City of Brass
+1 Command Tower
+1 Counterspell
+1 Curiosity
+1 Deflecting Swat
+1 Electro, Assaulting Battery
+1 Exotic Orchard
+1 Fated Firepower
+1 Ferrous Lake
+1 Fierce Guardianship
+1 Fiery Inscription
+1 Fiery Islet
+1 Flame of Anor
+1 Flow State
+1 Force of Negation
+1 Force of Will
+1 Frantic Search
+1 Gamble
+1 Gemstone Caverns
+1 Ghyrson Starn, Kelermorph
+1 Gut Shot
+1 Harmonic Prodigy
+1 Hexing Squelcher
+1 Hullbreaker Horror
+1 Improvisation Capstone
+1 Into the Flood Maw
+3 Island
+1 Izzet Charm
+1 Jeska's Will
+1 Jwari Disruption // Jwari Ruins
+1 Lotus Petal
+1 Mana Confluence
+1 Mana Drain
+1 Mana Geyser
+1 Mana Sculpt
+1 Mana Vault
+1 Mental Misstep
+1 Mistrise Village
+2 Mountain
+1 Mox Amber
+1 Mox Diamond
+1 Mox Opal
+1 Muddle the Mixture
+1 Mystic Sanctuary
+1 Negate
+1 Niv-Mizzet, Visionary
+1 Ophidian Eye
+1 Otawara, Soaring City
+1 Pongify
+1 Prismari Charm
+1 Prismari, the Inspiration
+1 Pyretic Ritual
+1 Quicksilver Elemental
+1 Ral, Crackling Wit
+1 Rapid Hybridization
+1 Rapturous Moment
+1 Redirect Lightning
+1 Reliquary Tower
+1 Resonating Lute
+1 Riverglide Pathway // Lavaglide Pathway
+1 Riverpyre Verge
+1 Seething Song
+1 Shivan Reef
+1 Sigil of Sleep
+1 Sink into Stupor // Soporific Springs
+1 Snap
+1 Spell Pierce
+1 Steam Vents
+1 Storm-Kiln Artist
+1 Stormcarved Coast
+1 Sulfur Falls
+1 Sundering Eruption // Volcanic Fissure
+1 Swan Song
+1 Tandem Lookout
+1 Thousand-Year Storm
+1 Time Stretch
+1 Training Center
+1 Turbulent Springs
+1 Urza's Saga
+1 Vandalblast
+1 Veyran, Voice of Duality
+1 Volcanic Island

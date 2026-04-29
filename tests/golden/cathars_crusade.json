@@ -1,0 +1,17 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:tribe_you_control_etb",
+        "counter_mod"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "layer7",
+  "name": "Cathars' Crusade",
+  "parse_error_count": 0
+}

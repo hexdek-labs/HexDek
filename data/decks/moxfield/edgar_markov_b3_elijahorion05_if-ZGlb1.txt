@@ -1,0 +1,92 @@
+COMMANDER: Edgar Markov
+1 Akroma's Will
+1 All-Out Assault
+1 Anguished Unmaking
+1 Arcane Signet
+1 Ashnod's Altar
+1 Astarion, the Decadent
+1 Banner of Kinship
+1 Black Market
+1 Blade of the Bloodchief
+1 Blood Artist
+1 Blood Crypt
+1 Bloodletter of Aclazotz
+1 Bloodline Bidding
+1 Bloodline Keeper // Lord of Lineage
+1 Bloodthirsty Conqueror
+1 Bolas's Citadel
+1 Boros Charm
+1 Captivating Vampire
+1 Cavern of Souls
+1 Charismatic Conqueror
+1 Chronicle of Victory
+1 Clifftop Retreat
+1 Coat of Arms
+1 Collective Inferno
+1 Command Tower
+1 Cordial Vampire
+1 Crossway Troublemakers
+1 Cruel Celebrant
+1 Damn
+1 Dark Ritual
+1 Dawn Charm
+1 Decorum Dissertation
+1 Diabolic Intent
+1 Door of Destinies
+1 Drana and Linvala
+1 Edgar, Charmed Groom // Edgar Markov's Coffin
+1 Elenda, the Dusk Rose
+1 Emeritus of Woe // Demonic Tutor
+1 Enlightened Tutor
+1 Erode
+1 Exotic Orchard
+1 Furycalm Snarl
+1 Godless Shrine
+1 Impact Tremors
+1 Indulgent Aristocrat
+1 Isolated Chapel
+1 Kindred Dominance
+1 Legion Lieutenant
+1 Mana Echoes
+1 March of the Canonized
+1 Master of Dark Rites
+4 Mountain
+1 Nomad Outpost
+1 Pact of the Serpent
+1 Path of Ancestry
+1 Path to Exile
+1 Phyrexian Altar
+1 Phyrexian Arena
+4 Plains
+1 Rakish Heir
+1 Roaming Throne
+1 Rogue's Passage
+1 Rugged Prairie
+1 Sanctum Seeker
+1 Secluded Courtyard
+1 Shared Animosity
+1 Shattered Sanctum
+1 Shineshadow Snarl
+1 Skullclamp
+1 Smoldering Marsh
+1 Sol Ring
+1 Sorin Markov
+1 Sorin, Grim Nemesis
+1 Sorin, Imperious Bloodlord
+1 Sorin, Vampire Lord
+1 Stromkirk Captain
+1 Sulfurous Springs
+1 Sundown Pass
+3 Swamp
+1 Swords to Plowshares
+1 Teferi's Protection
+1 Temple of Malice
+1 Temple of Triumph
+1 Three Tree City
+1 Timothar, Baron of Bats
+1 True Conviction
+1 Urza's Incubator
+1 Virtue of Loyalty // Ardenvale Fealty
+1 Vito, Thorn of the Dusk Rose
+1 Welcoming Vampire
+1 Westvale Abbey // Ormendahl, Profane Prince

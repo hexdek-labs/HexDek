@@ -1,0 +1,27 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:etb",
+        "optional",
+        "tutor"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "trig:die",
+        "optional",
+        "draw"
+      ],
+      "index": 1,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Solemn Simulacrum",
+  "parse_error_count": 0
+}

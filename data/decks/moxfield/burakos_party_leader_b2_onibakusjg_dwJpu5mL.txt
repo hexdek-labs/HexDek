@@ -1,0 +1,96 @@
+COMMANDER: Burakos, Party Leader
+COMMANDER: Folk Hero
+1 Abandoned Air Temple
+1 Access Tunnel
+1 Agadeem's Awakening // Agadeem, the Undercrypt
+1 Anguished Unmaking
+1 Arcane Signet
+1 Archivist of Oghma
+1 Archpriest of Iona
+1 Ardbert, Warrior of Darkness
+1 Aven Interrupter
+1 Aven Mindcensor
+1 Black Market Connections
+1 Bojuka Bog
+1 Brotherhood Regalia
+1 Changeling Outcast
+1 Command Tower
+1 Conjurer's Mantle
+1 Coveted Prize
+1 Dalkovan Encampment
+1 Dauthi Voidwalker
+1 Deadly Alliance
+1 Deadly Rollick
+1 Debt to the Deathless
+1 Deep Gnome Terramancer
+1 Desolate Mire
+1 Despark
+1 Eight-and-a-Half-Tails
+1 Emeria's Call // Emeria, Shattered Skyclave
+1 Everything Comes to Dust
+1 Fell the Profane // Fell Mire
+1 Fellwar Stone
+1 Fetid Heath
+1 Flare of Fortitude
+1 Frontline Medic
+1 Gisa, Glorious Resurrector
+1 Glorious Protector
+1 Godless Shrine
+1 Grand Abolisher
+1 Grim Hireling
+1 Harper Recruiter
+1 Haunted One
+1 Invasion of New Capenna // Holy Frazzle-Cannon
+1 Isolated Chapel
+1 Jazal Goldmane
+1 Joined Researchers // Secret Rendezvous
+1 Mage's Attendant
+1 Malakir Rebirth // Malakir Mire
+1 Mastermind Plum
+1 Minas Morgul, Dark Fortress
+1 Minas Tirith
+1 Mind Stone
+1 Mindblade Render
+1 Mirror Entity
+1 Morbid Opportunist
+1 Mother of Runes
+1 Multiclass Baldric
+1 Mutavault
+1 Myriad Landscape
+1 Nalia de'Arnise
+1 Orzhov Basilica
+1 Orzhov Signet
+1 Path of Ancestry
+1 Reconnaissance
+1 Rev, Tithe Extractor
+1 Roaming Throne
+1 Sandbender Scavengers
+1 Seasoned Dungeoneer
+1 Secret Tunnel
+1 Sejiri Shelter // Sejiri Glacier
+1 Selfless Spirit
+1 Shattered Sanctum
+1 Shay Cormac
+1 Shizo, Death's Storehouse
+1 Silverquill Lecturer
+3 Snow-Covered Plains
+3 Snow-Covered Swamp
+1 Sol Ring
+1 Soulstone Sanctuary
+1 Squad Commander
+1 Starlit Sanctum
+1 Stick Together
+1 Stroke of Midnight
+1 Talisman of Hierarchy
+1 The Black Gate
+1 Thought Vessel
+1 Thwart the Grave
+1 Varragoth, Bloodsky Sire
+1 Vault of Champions
+1 Vault of the Archangel
+1 Venat, Heart of Hydaelyn // Hydaelyn, the Mothercrystal
+1 Vexilus Praetor
+1 War Room
+1 Warrior's Resolve
+1 Weathered Wayfarer
+1 Windbrisk Heights

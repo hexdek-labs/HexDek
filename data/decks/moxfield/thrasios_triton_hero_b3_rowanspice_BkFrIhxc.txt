@@ -1,0 +1,71 @@
+COMMANDER: Thrasios, Triton Hero
+COMMANDER: Vial Smasher the Fierce
+1 Abrupt Decay
+1 Arid Mesa
+1 Assassin's Trophy
+1 Biomancer's Familiar
+1 Blackblade Reforged
+1 Blasphemous Act
+1 Blood Crypt
+1 Bloodstained Mire
+1 Breeding Pool
+1 Canyon Slough
+1 Comet Storm
+1 Commercial District
+1 Constant Mists
+1 Crop Rotation
+1 Cyclonic Rift
+1 Dark Confidant
+1 Dark Depths
+1 Deadly Rollick
+1 Devastation Tide
+1 Dig Through Time
+1 Elvish Reclaimer
+1 Evacuation
+1 Expedition Map
+1 Exploration
+1 Explore
+1 Farseek
+1 Field of the Dead
+1 Flooded Strand
+1 Growth Spiral
+1 Hedge Maze
+1 Ketria Triome
+1 Life from the Loam
+1 Marsh Flats
+1 Misty Rainforest
+30 Mountain
+1 Nature's Lore
+1 Oko, Thief of Crowns
+1 Oracle of Mul Daya
+1 Overgrown Tomb
+1 Planar Genesis
+1 Polluted Delta
+1 Raucous Theater
+1 Scalding Tarn
+1 Sheltered Thicket
+1 Sol Ring
+1 Starstorm
+1 Steam Vents
+1 Stomping Ground
+1 Sylvan Scrying
+1 Temple of the False God
+1 Thespian's Stage
+1 Three Visits
+1 Thundering Falls
+1 Torment of Hailfire
+1 Training Grounds
+1 Ulvenwald Hydra
+1 Undercity Sewers
+1 Underground Mortuary
+1 Uro, Titan of Nature's Wrath
+1 Valakut, the Molten Pinnacle
+1 Verdant Catacombs
+1 Vesuva
+1 Watery Grave
+1 Wilderness Reclamation
+1 Windswept Heath
+1 Wooded Foothills
+1 Xander's Lounge
+1 Zagoth Triome
+1 Ziatora's Proving Ground

@@ -1,0 +1,19 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:another_typed_enters",
+        "optional",
+        "conditional",
+        "create_token"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "layer7",
+  "name": "Mirrorworks",
+  "parse_error_count": 0
+}

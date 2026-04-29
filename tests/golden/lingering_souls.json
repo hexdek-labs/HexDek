@@ -1,0 +1,23 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "static:spell_effect:_"
+      ],
+      "index": 0,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "keyword:flashback"
+      ],
+      "index": 1,
+      "kind": "keyword"
+    }
+  ],
+  "ability_count": 2,
+  "fully_parsed": true,
+  "group": "keywords",
+  "name": "Lingering Souls",
+  "parse_error_count": 0
+}

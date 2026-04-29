@@ -1,0 +1,94 @@
+COMMANDER: Yarok, the Desecrated
+1 Abrupt Decay
+1 Arboreal Grazer
+1 Ash Barrens
+1 Assassin's Trophy
+1 Barkchannel Pathway // Tidechannel Pathway
+1 Bontu's Last Reckoning
+1 Choked Estuary
+1 Cloud of Faeries
+1 Coiling Oracle
+1 Death Begets Life
+1 Deceit
+1 Dimir Aqueduct
+1 Dreamdew Entrancer
+1 Elvish Regrower
+1 Elvish Visionary
+1 Explore
+1 Fabled Passage
+1 Fangkeeper's Familiar
+1 Flare of Cultivation
+1 Fleshbag Marauder
+1 Flooded Grove
+1 Foreboding Landscape
+4 Forest
+1 Forgotten Monument
+1 Golgari Findbroker
+1 Golgari Rot Farm
+1 Gonti, Lord of Luxury
+1 Gray Merchant of Asphodel
+1 Growth Spiral
+1 Hecteyes
+1 Hedge Maze
+1 Hidden Cataract
+1 Hidden Nursery
+1 Hinterland Harbor
+1 Honest Rutstein
+1 Hostage Taker
+2 Island
+1 Kenrith's Transformation
+1 Kinetic Ooze
+1 Kitesail Larcenist
+1 Lotus Cobra
+1 Manglehorn
+1 Massacre Wurm
+1 Merciless Executioner
+1 Mirror Room // Fractured Realm
+1 Mortuary Mire
+1 Mossborn Hydra
+1 Necroblossom Snarl
+1 Ob Nixilis, the Fallen
+1 Omega, Heartless Evolution
+1 Omenpath Journey
+1 Opulent Palace
+1 Oracle of Mul Daya
+1 Panharmonicon
+1 Peregrine Drake
+1 Pillage the Bog
+1 Plaguecrafter
+1 Proctor's Gaze
+1 Ravenous Chupacabra
+1 Reclamation Sage
+1 Retreat to Hagra
+1 Risen Reef
+1 Scute Swarm
+1 Serum Visionary
+1 Simic Growth Chamber
+1 Sink into Stupor // Soporific Springs
+1 Sire of Stagnation
+1 Smirking Spelljacker
+1 Spelunking
+1 Springheart Nantuko
+1 Starfield Vocalist
+1 Sunken Citadel
+3 Swamp
+1 Tainted Isle
+1 Tatyova, Benthic Druid
+1 Temple of Deceit
+1 Temple of Malady
+1 Temple of Mystery
+1 Temple of the False God
+1 Thassa, Deep-Dwelling
+1 Thornwood Falls
+1 Tiller Engine
+1 Tireless Tracker
+1 Undergrowth Stadium
+1 Unscrupulous Contractor
+1 Urza's Cave
+1 Villainous Wealth
+1 Vineglimmer Snarl
+1 Virtue of Knowledge // Vantress Visions
+1 Wasteland Raider
+1 Wood Elves
+1 Woodland Cemetery
+1 Woodland Stream

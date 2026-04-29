@@ -1,0 +1,96 @@
+1 Accursed Marauder (MH3) 80
+1 Anger (M3C) 208
+1 Balor (CLB) 162
+1 Blood Crypt (ECL) 262
+1 Brawn (M3C) 224
+1 Chainer, Nightmare Adept (MH2) 289
+1 Chandra's Ignition (M3C) 209
+1 Cinder Glade (ECC) 146
+1 Colossal Grave-Reaver (TDC) 50
+1 Command Tower (M3C) 331
+1 Coram, the Undertaker (M3C) 7
+1 Corpse Connoisseur (MM3) 61
+1 Cunning Lethemancer (ALA) 69
+1 Daemogoth Titan (STX) 174
+1 Dakmor Salvage (EOC) 156
+1 Dauthi Voidwalker (TDC) 176
+1 Deadbridge Chant (DSC) 215
+1 Decimate (DMR) 188
+1 Defiler of Souls (ARB) 37
+1 Demolition Field (FDN) 687
+1 Demon's Disciple (CMM) 149
+1 Eternal Witness (M3C) 227
+1 Eviscerator's Insight (MH3) 93
+1 Evolving Wilds (TDM) 255
+1 Faithless Looting (TDC) 213
+1 Fatal Grudge (SNC) 187
+1 Final Act (M3C) 104
+1 Flare of Malice (MH3) 95
+1 Forest (UST) 216
+4 Forest (ECL) 283
+1 Gelatinous Cube (AFR) 313
+1 Ghoulcaller's Bell (ISD) 224
+1 Grapple with the Past (TDC) 257
+1 Grisly Salvage (TDC) 290
+1 Ignoble Hierarch (M3C) 234
+1 Kessig Wolf Run (TDC) 375
+1 Killing Wave (AVR) 111
+1 Kolaghan's Command (M3C) 268
+1 Kulrath Zealot (ECL) 148
+1 Life // Death (DDJ) 77
+1 Life from the Loam (TDC) 96
+1 Lightning Greaves (TDC) 102
+1 Lightning Skelemental (MH1) 208
+1 Living Death (LTC) 203
+1 Lord of Extinction (TDC) 295
+1 Merciless Executioner (LTC) 204
+1 Midnight Tilling (ECL) 182
+1 Millikin (TDC) 321
+1 Moldgraf Monstrosity (C18) 156
+1 Mortivore (M3C) 201
+1 Mossfire Valley (TDC) 378
+1 Mosswort Bridge (TDC) 379
+1 Mountain (UST) 215
+2 Mountain (ECL) 282
+1 Mountain (ECL) 277
+1 Orchard Strider (MH2) 169
+1 Overgrown Tomb (ECL) 266
+1 Path of Ancestry (ECC) 158
+1 Perpetual Timepiece (OTC) 263
+1 Prismatic Undercurrents (ECL) 189
+1 Purple Worm (AFR) 332
+1 Rampant Growth (TDC) 265
+1 Reanimate (LTC) 206
+1 Riveteers Charm (M3C) 271
+1 Riveteers Overlook (ECC) 162
+1 Sakura-Tribe Elder (DSC) 194
+1 Savage Lands (ECC) 165
+1 Sepulchral Primordial (ZNC) 54
+1 Shadowblood Ridge (DSC) 296
+1 Shriekwood Devourer (DSC) 35
+1 Smoldering Marsh (ECC) 168
+1 Sol Ring (LTC) 284
+1 Stitcher's Supplier (DSC) 157
+1 Stomping Ground (EOE) 258
+1 Stunning Reversal (BBD) 51
+1 Swamp (PIP) 322
+1 Swamp (PIP) 321
+3 Swamp (ECL) 281
+1 Tainted Wood (DSC) 305
+1 Talisman of Impulse (TDC) 332
+1 Talisman of Indulgence (DSC) 254
+1 Talisman of Resilience (DSC) 255
+1 Terminate (ECC) 134
+1 Terramorphic Expanse (M3C) 394
+1 The Balrog of Moria (LTC) 46
+1 The Black Gate (LTC) 80
+1 Timeless Witness (TDC) 274
+1 Too Greedily, Too Deep (LTC) 72
+1 Treasure Vault (AFR) 358
+1 Troll of Khazad-dûm (LTR) 111
+1 Twisted Landscape (MH3) 232
+1 Victimize (TDC) 198
+1 Vile Entomber (FDN) 616
+1 Viridescent Bog (EOC) 190
+
+COMMANDER: Coram, the Undertaker

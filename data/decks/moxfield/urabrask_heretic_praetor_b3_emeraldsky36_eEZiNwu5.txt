@@ -1,0 +1,67 @@
+COMMANDER: Urabrask, Heretic Praetor
+1 Abrade
+1 Arcane Signet
+1 Aurora Phoenix
+1 Blazing Crescendo
+1 Bomat Courier
+1 Bonecrusher Giant // Stomp
+1 Burnished Hart
+1 Chain Reaction
+1 Chaos Channeler
+1 Chaos Wand
+1 Commune with Lava
+1 Count on Luck
+1 Delayed Blast Fireball
+1 Demon Bolt
+1 Dire Fleet Daredevil
+1 Dragon's Rage Channeler
+1 Dream Pillager
+1 Dual Strike
+1 Efreet Flamepainter
+1 Embereth Shieldbreaker // Battle Display
+1 Enchanter's Bane
+1 Etali, Primal Storm
+1 Expedited Inheritance
+1 Fire Diamond
+1 Furious Rise
+1 Glimpse the Impossible
+1 Goblin Dark-Dwellers
+1 Grotag Night-Runner
+1 Ichor Elixir
+1 Ignite the Future
+1 Iraxxa, Empress of Mars
+1 Izzet Chemister
+1 Jeska's Will
+1 Keeper of Secrets
+1 Koth, Fire of Resistance
+1 Laelia, the Blade Reforged
+1 Light Up the Stage
+1 Lightning Bolt
+1 Magmatic Channeler
+1 Meteoric Mace
+34 Mountain
+1 Nalfeshnee
+1 Outpost Siege
+1 Passionate Archaeologist
+1 Reckless Impulse
+1 Rodeo Pyromancers
+1 Ryan Sinclair
+1 Seize Opportunity
+1 Sol Ring
+1 Stolen Strategy
+1 Sunset Strikemaster
+1 Tavern Brawler
+1 Tectonic Giant
+1 Tesak, Judith's Hellhound
+1 Transmogrify
+1 Triple Triad
+1 Unstable Amulet
+1 Unstable Obelisk
+1 Volcanic Torrent
+1 Vulshok Factory
+1 Wayfarer's Bauble
+1 Wild Magic Surge
+1 Wild-Magic Sorcerer
+1 Wrenn's Resolve
+1 Young Pyromancer
+1 Zookeeper Mechan

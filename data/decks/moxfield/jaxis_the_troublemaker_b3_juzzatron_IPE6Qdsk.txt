@@ -1,0 +1,71 @@
+COMMANDER: Jaxis, the Troublemaker
+1 Ancient Copper Dragon
+1 Arcane Encyclopedia
+1 Arcane Signet
+1 Atsushi, the Blazing Sky
+1 Balor
+1 Cemetery Gatekeeper
+1 Chrome Companion
+1 Circuit Mender
+1 Codex Shredder
+1 Coercive Recruiter
+1 Containment Construct
+1 Deflecting Swat
+1 Dire Fleet Daredevil
+1 Dollhouse of Horrors
+1 Dualcaster Mage
+1 Duplicant
+1 Electro, Assaulting Battery
+1 Etali, Primal Storm
+1 Everflowing Chalice
+1 Fang, Roku's Companion
+1 Feldon of the Third Path
+1 Firbolg Flutist
+1 Fire Diamond
+1 Flameshadow Conjuring
+1 Gamble
+1 Glittering Stockpile
+1 Great Furnace
+1 Hazoret's Monument
+1 Heat Shimmer
+1 Helm of the Host
+1 Hoarding Dragon
+1 Idol of Oblivion
+1 Impact Tremors
+1 Imperial Recruiter
+1 Inventors' Fair
+1 Kiki-Jiki, Mirror Breaker
+1 Kozilek, Butcher of Truth
+1 Leyline Tyrant
+1 Lightning Bolt
+1 Lightning Greaves
+1 Mindclaw Shaman
+1 Mirror March
+1 Molten Primordial
+1 Monument to Endurance
+30 Mountain
+1 Mox Amber
+1 Myr Battlesphere
+1 Nykthos, Shrine to Nyx
+1 Plundering Barbarian
+1 Priest of Urabrask
+1 Pyroblast
+1 Reckless Handling
+1 Ruby Medallion
+1 Shatterskull Smashing // Shatterskull, the Hammer Pass
+1 Skullclamp
+1 Sol Ring
+1 Solemn Simulacrum
+1 Squee, Goblin Nabob
+1 Stolen Strategy
+1 Surly Badgersaur
+1 Sword of Hearth and Home
+1 Terror of the Peaks
+1 Tibalt's Trickery
+1 Twinflame
+1 Valakut Awakening // Valakut Stoneforge
+1 Valakut, the Molten Pinnacle
+1 Vandalblast
+1 War Room
+1 Wasteland
+1 Zealous Conscripts

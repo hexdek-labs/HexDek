@@ -1,0 +1,95 @@
+COMMANDER: Tevesh Szat, Doom of Fools
+COMMANDER: Ishai, Ojutai Dragonspeaker
+1 Arcane Signet
+1 Arid Mesa
+1 Azorius Signet
+1 Bitterblossom
+1 Black Market Connections
+1 Bloodstained Mire
+1 Chamber of Manipulation
+1 Cling to Dust
+1 Command Tower
+1 Damn
+1 Deadly Rollick
+1 Decorum Dissertation
+1 Demonic Tutor
+1 Dimir Signet
+1 Doomskar
+1 Eclipsed Steppe
+1 Erode
+1 Fellwar Stone
+1 Flooded Strand
+1 Flow State
+1 Ghostly Prison
+1 Gilded Drake
+1 Godless Shrine
+1 Hallowed Fountain
+1 Hedron Archive
+1 Humility
+3 Island
+1 Jace, Wielder of Mysteries
+1 Land Tax
+1 Liliana, Dreadhorde General
+1 Lórien Revealed
+1 Marsh Flats
+1 Meticulous Archive
+1 Mind Stone
+1 Misty Rainforest
+1 Morphic Pool
+1 Mystic Reflection
+1 Narset's Reversal
+1 Oath of Teferi
+1 Orzhov Signet
+1 Otawara, Soaring City
+1 Out of Time
+1 Path to Exile
+1 Phyrexian Arena
+3 Plains
+1 Polluted Delta
+1 Ponder
+1 Prairie Stream
+1 Prismatic Vista
+1 Propaganda
+1 Raffine's Tower
+1 Resculpt
+1 Restoration Seminar
+1 Scalding Tarn
+1 Scrubland
+1 Sea of Clouds
+1 Shadowy Backstreet
+1 Silent Arbiter
+1 Skullclamp
+1 Snuff Out
+1 Sol Ring
+1 Spark Double
+1 Sunken Hollow
+1 Supreme Verdict
+2 Swamp
+1 Swan Song
+1 Swords to Plowshares
+1 Talisman of Dominance
+1 Talisman of Hierarchy
+1 Talisman of Progress
+1 Teferi, Master of Time
+1 Teferi, Time Raveler
+1 Tezzeret, Cruel Captain
+1 The Abyss
+1 The Chain Veil
+1 The One Ring
+1 Toxic Deluge
+1 Trouble in Pairs
+1 Tundra
+1 Turbulent Moor
+1 Undercity Sewers
+1 Underground Sea
+1 Urza's Saga
+1 Vanquish the Horde
+1 Vault of Champions
+1 Verdant Catacombs
+1 Volatile Stormdrake
+1 Vraska, Betrayal's Sting
+1 Vronos, Masked Inquisitor
+1 Watery Grave
+1 Will Kenrith
+1 Windswept Heath
+1 Zero Point Ballad

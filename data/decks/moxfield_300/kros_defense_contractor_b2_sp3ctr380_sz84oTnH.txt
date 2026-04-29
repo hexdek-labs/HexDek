@@ -1,0 +1,92 @@
+COMMANDER: Kros, Defense Contractor
+1 Abandoned Air Temple
+1 Aetherize
+1 Arcane Denial
+1 Arcane Signet
+1 Azorius Chancery
+1 Beast Within
+1 Blast Zone
+1 Bountiful Promenade
+1 Breeding Pool
+1 Cankerbloom
+1 Clifftop Lookout
+1 Command Tower
+1 Contagion Engine
+1 Counterspell
+1 Cultivate
+1 Deepglow Skate
+1 Deserted Beach
+1 Drannith Ruins
+1 Dreamroot Cascade
+1 Dreamtide Whale
+1 Earthbender Ascension
+1 Everflowing Chalice
+1 Evolution Witness
+1 Exotic Orchard
+1 Expansion Algorithm
+1 Experimental Augury
+1 Ezuri, Stalker of Spheres
+1 Farseek
+1 Fathom Mage
+1 Filigree Vector
+1 Flooded Strand
+4 Forest
+1 Forgotten Ancient
+1 Fuel for the Cause
+1 Generous Patron
+1 Ghostly Prison
+1 Grateful Apparition
+1 Hallowed Fountain
+1 Hickory Woodlot
+1 Honor
+1 Incubation Druid
+1 Ingenious Prodigy
+1 Inkmoth Nexus
+4 Island
+1 Kami of Whispered Hopes
+1 Karn's Bastion
+1 Krosan Verge
+1 Lost in the Maze
+1 Lush Portico
+1 Mystic Remora
+1 Nils, Discipline Enforcer
+1 Nimble Brigand
+1 Noble Heritage
+1 Norn's Decree
+1 Overgrown Farmland
+1 Phantom Nishoba
+3 Plains
+1 Plaxcaster Frogling
+1 Prologue to Phyresis
+1 Promise of Loyalty
+1 Propaganda
+1 Rampant Growth
+1 Reckoner Bankbuster
+1 Requisition Raid
+1 Seaside Citadel
+1 Selesnya Sanctuary
+1 Sharae of Numbing Depths
+1 Sheltering Ancient
+1 Simic Growth Chamber
+1 Skrelv, Defector Mite
+1 Skyboon Evangelist
+1 Sol Ring
+1 Spara's Headquarters
+1 Swiftfoot Boots
+1 Sword of Truth and Justice
+1 Swords to Plowshares
+1 Temple Garden
+1 Tezzeret's Gambit
+1 The Wandering Emperor
+1 Thrive
+1 Thrummingbird
+1 Together Forever
+1 Tolarian Contempt
+1 Tranquil Landscape
+1 Trap the Trespassers
+1 Triumph of the Hordes
+1 Turbulent Wilderness
+1 Verity Circle
+1 Viral Drake
+1 Wan Shi Tong, Librarian
+1 Windswept Heath

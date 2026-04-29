@@ -1,0 +1,100 @@
+1 Abandon Attachments
+1 Adarkar Wastes
+1 Adeline, Resplendent Cathar
+1 Akroma's Will
+1 Amphibian Downpour
+1 An Offer You Can't Refuse
+1 Arcane Signet
+1 Arid Mesa
+1 Balmor, Battlemage Captain
+1 Bender's Waterskin
+1 Blasphemous Act
+1 Boomerang Basics
+1 Brainstorm
+1 Chaos Warp
+1 Command Tower
+1 Consider
+1 Cool but Rude
+1 Cori-Steel Cutter
+1 Crash Through
+1 Demolition Field
+1 Electro, Assaulting Battery
+1 Elegant Parlor
+1 Elsha, Threefold Master
+1 Emeritus of Conflict
+1 Endless Foot Assault
+1 Esper Sentinel
+1 Exotic Orchard
+1 Expedite
+1 Expressive Iteration
+1 Faithless Looting
+1 Fellwar Stone
+1 Flawless Maneuver
+1 Flooded Strand
+1 Floodfarm Verge
+1 Flow State
+1 Frantic Search
+1 Frostcliff Siege
+1 Gamble
+1 Generous Gift
+1 Gifts Ungiven
+1 Gitaxian Probe
+1 Hallowed Fountain
+1 Impolite Entrance
+1 Irma, Part-Time Mutant
+2 Island
+1 Jeska's Will
+1 Jeskai Ascendancy
+1 Leap
+1 Lindblum, Industrial Regency
+1 Meticulous Archive
+1 Mistrise Village
+1 Monastery Mentor
+1 Mountain
+1 Multiversal Passage
+1 Muse Seeker
+1 Mystic Remora
+1 Opt
+1 Otawara, Soaring City
+1 Path to Exile
+1 Plains
+1 Pongify
+1 Queen Brahne
+1 Ragavan, Nimble Pilferer
+1 Raugrin Triome
+1 Resonating Lute
+1 Riverpyre Verge
+1 Sacred Foundry
+1 Sanar, Unfinished Genius
+1 Scalding Tarn
+1 Sea of Clouds
+1 Search for Azcanta
+1 Shadow Rift
+1 Shadowspear
+1 Shivan Reef
+1 Sink into Stupor
+1 Snap
+1 Snort
+1 Sol Ring
+1 Song of Totentanz
+1 Spectator Seating
+1 Steam Vents
+1 Sunbillow Verge
+1 Swan Song
+1 Swiftfoot Boots
+1 Swords to Plowshares
+1 Teferi's Protection
+1 The Dawning Archaic
+1 The Legend of Kuruk
+1 Third Path Iconoclast
+1 Thundering Falls
+1 Training Center
+1 Urza's Saga
+1 Valakut Awakening
+1 Veyran, Voice of Duality
+1 Vivi Ornitier
+1 Vivi's Persistence
+1 Will of the Jeskai
+1 Windfall
+
+COMMANDER: Narset, Enlightened Exile

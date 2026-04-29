@@ -1,0 +1,100 @@
+COMMANDER: Hashaton, Scarab's Fist
+1 Ancient Tomb
+1 Arcane Signet
+1 Arid Mesa
+1 Astral Dragon
+1 Beseech the Mirror
+1 Bloodstained Mire
+1 Borne Upon a Wind
+1 Cabal Ritual
+1 Chain of Vapor
+1 Chrome Mox
+1 City of Brass
+1 Clever Impersonator
+1 Command Tower
+1 Consecrated Sphinx
+1 Dark Ritual
+1 Deadly Rollick
+1 Demonic Consultation
+1 Demonic Tutor
+1 Diabolic Intent
+1 Enlightened Tutor
+1 Entomb
+1 Esper Sentinel
+1 Exotic Orchard
+1 Fierce Guardianship
+1 Flooded Strand
+1 Flusterstorm
+1 Force of Negation
+1 Force of Will
+1 Gemstone Caverns
+1 Ghostly Pilferer
+1 Godless Shrine
+1 Grand Abolisher
+1 Gwenom, Remorseless
+1 Hallowed Fountain
+1 Hoarding Broodlord
+1 Hullbreaker Horror
+1 Imperial Seal
+1 Lion's Eye Diamond
+1 Lotho, Corrupt Shirriff
+1 Lotus Petal
+1 Mana Confluence
+1 Mana Vault
+1 Marsh Flats
+1 Mental Misstep
+1 Mindbreak Trap
+1 Misdirection
+1 Misty Rainforest
+1 Morphic Pool
+1 Mox Amber
+1 Mox Diamond
+1 Mox Opal
+1 Mystic Remora
+1 Necromancy
+1 Necropotence
+1 Orcish Bowmasters
+1 Otawara, Soaring City
+1 Pact of Negation
+1 Phyrexian Metamorph
+1 Polluted Delta
+1 Psychic Frog
+1 Ranger-Captain of Eos
+1 Razaketh, the Foulblooded
+1 Reanimate
+1 Rhystic Study
+1 Sacrifice
+1 Saw in Half
+1 Scalding Tarn
+1 Scrubland
+1 Silence
+1 Sink into Stupor // Soporific Springs
+1 Smothering Tithe
+1 Snapcaster Mage
+1 Sol Ring
+1 Springleaf Drum
+1 Swan Song
+1 Tainted Pact
+1 Tataru Taru
+1 Teferi, Master of Time
+1 Tezzeret, Cruel Captain
+1 Thassa's Oracle
+1 The One Ring
+1 The Underworld Cookbook
+1 Tireless Tribe
+1 Tundra
+1 Undercity Sewers
+1 Underground Sea
+1 Urza's Saga
+1 Valley Floodcaller
+1 Vampiric Tutor
+1 Vault of Champions
+1 Verdant Catacombs
+1 Vexing Bauble
+1 Voice of Victory
+1 Wan Shi Tong, Librarian
+1 Wandering Archaic // Explore the Vastlands
+1 Watery Grave
+1 Windswept Heath
+1 Wishclaw Talisman
+1 Yawgmoth's Will

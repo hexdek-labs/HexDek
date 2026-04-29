@@ -1,0 +1,86 @@
+COMMANDER: Shorikai, Genesis Engine
+1 Aerial Surveyor
+1 Akroma's Will
+1 Anchor to Reality
+1 Ancient Den
+1 Anointed Procession
+1 Arcane Signet
+1 Azorius Signet
+1 Bronze Guardian
+1 Bronzebeak Foragers
+1 Command Tower
+1 Cosima, God of the Voyage // The Omenkeel
+1 Crush Contraband
+1 Cultivator's Caravan
+1 Cyberdrive Awakener
+1 Dance of the Manse
+1 Darksteel Citadel
+1 Deluxe Dragster
+1 Dispatch
+1 Dovin's Veto
+1 Drumbellower
+1 Eiganjo, Seat of the Empire
+1 Emry, Lurker of the Loch
+1 Esper Sentinel
+1 Etherium Sculptor
+1 Exotic Orchard
+1 Fellwar Stone
+1 Flooded Strand
+1 Foundry Inspector
+1 Generous Gift
+1 Glacial Fortress
+1 Hallowed Fountain
+1 Imposter Mech
+1 Indomitable Archangel
+1 Inventors' Fair
+9 Island
+1 Kappa Cannoneer
+1 Katsumasa, the Animator
+1 Losheel, Clockwork Scholar
+1 Mana Drain
+1 Master of Etherium
+1 Mech Hangar
+1 Mirage Mirror
+1 Mox Opal
+1 Organic Extinction
+1 Otawara, Soaring City
+1 Padeem, Consul of Innovation
+1 Parhelion II
+1 Path to Exile
+1 Peacewalker Colossus
+8 Plains
+1 Prodigy's Prototype
+1 Razortide Bridge
+1 Reality Shift
+1 Reaver Titan
+1 Reckoner Bankbuster
+1 Rise and Shine
+1 Sai, Master Thopterist
+1 Salvation Engine
+1 Seat of the Synod
+1 Sevinne's Reclamation
+1 Shimmer Myr
+1 Skullclamp
+1 Skysovereign, Consul Flagship
+1 Smuggler's Copter
+1 Sol Ring
+1 Solemn Simulacrum
+1 Spire of Industry
+1 Sram, Senior Edificer
+1 Supreme Verdict
+1 Surgehacker Mech
+1 Swift Reconfiguration
+1 Swords to Plowshares
+1 Talisman of Progress
+1 Teferi's Ageless Insight
+1 Tezzeret, Betrayer of Flesh
+1 Thopter Spy Network
+1 Thought Vessel
+1 Thoughtcast
+1 Thunderhawk Gunship
+1 Tundra
+1 Unwinding Clock
+1 Urza's Saga
+1 Urza, Lord High Artificer
+1 Whir of Invention
+1 White Plume Adventurer

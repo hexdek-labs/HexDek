@@ -1,0 +1,37 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "static:spell_effect:_"
+      ],
+      "index": 0,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "keyword:fuse"
+      ],
+      "index": 1,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "static:spell_effect:_"
+      ],
+      "index": 2,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "keyword:fuse"
+      ],
+      "index": 3,
+      "kind": "keyword"
+    }
+  ],
+  "ability_count": 4,
+  "fully_parsed": true,
+  "group": "modal",
+  "name": "Wear // Tear",
+  "parse_error_count": 0
+}

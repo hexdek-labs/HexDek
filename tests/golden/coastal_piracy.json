@@ -1,0 +1,18 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:combat_damage_opponent",
+        "optional",
+        "draw"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "triggers",
+  "name": "Coastal Piracy",
+  "parse_error_count": 0
+}

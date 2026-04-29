@@ -1,0 +1,86 @@
+COMMANDER: Kraum, Violent Cacophony
+1 Abrade
+1 Arcane Signet
+1 Arid Mesa
+1 Bender's Waterskin
+1 Bloodstained Mire
+1 Brainstorm
+1 Brimstone Roundup
+1 Bulk Up
+1 Cascade Bluffs
+1 Command Tower
+1 Consider
+1 Cori-Steel Cutter
+1 Counterspell
+1 Disdainful Stroke
+1 Essence Scatter
+1 Exotic Orchard
+1 Expressive Iteration
+1 Fabled Passage
+1 Faerie Mastermind
+1 Fiery Islet
+1 Flashback
+1 Flow State
+1 Force of Will
+1 Frantic Search
+1 Geralf, the Fleshwright
+1 Goblin Electromancer
+1 Goliath Daydreamer
+1 Guttersnipe
+9 Island
+1 Izzet Charm
+1 Izzet Signet
+1 Jori En, Ruin Diver
+1 Ledger Shredder
+1 Lightning Bolt
+1 Lofty Denial
+1 Malcolm, the Eyes
+1 Misty Rainforest
+1 Mizzix's Mastery
+1 Molten-Core Maestro
+7 Mountain
+1 Mystical Tutor
+1 Narset's Reversal
+1 Negate
+1 Opt
+1 Overwhelming Denial
+1 Pensive Professor
+1 Polluted Delta
+1 Pongify
+1 Preordain
+1 Prismari Charm
+1 Quick Study
+1 Rapid Hybridization
+1 Reset
+1 Resonating Lute
+1 Return the Favor
+1 Riverglide Pathway // Lavaglide Pathway
+1 Riverpyre Verge
+1 Rodeo Pyromancers
+1 Scalding Tarn
+1 Scorched Geyser
+1 Shivan Reef
+1 Sink into Stupor // Soporific Springs
+1 Sleight of Hand
+1 Slick Sequence
+1 Snap
+1 Sol Ring
+1 Spell Pierce
+1 Steam Vents
+1 Stock Up
+1 Storm-Kiln Artist
+1 Stormcarved Coast
+1 Stubborn Denial
+1 Sulfur Falls
+1 Tablet of Discovery
+1 Talisman of Creativity
+1 The Dawning Archaic
+1 Training Center
+1 Traumatic Critique
+1 Turbulent Springs
+1 Turnabout
+1 Twinferno
+1 Unwind
+1 Vibrant Outburst
+1 Wishing Well
+1 Wooded Foothills

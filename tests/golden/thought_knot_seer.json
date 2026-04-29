@@ -1,0 +1,32 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "trig:etb",
+        "reveal"
+      ],
+      "index": 0,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "static:opp_choice_card_pick:_"
+      ],
+      "index": 1,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "trig:type_leaves_battlefield",
+        "draw"
+      ],
+      "index": 2,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 3,
+  "fully_parsed": true,
+  "group": "keywords",
+  "name": "Thought-Knot Seer",
+  "parse_error_count": 0
+}

@@ -1,0 +1,95 @@
+COMMANDER: Umbris, Fear Manifest
+1 Aboleth Spawn
+1 Ancient Cellarspawn
+1 Aqueous Form
+1 Arcane Signet
+1 Ashiok, Dream Render
+1 Ashiok, Nightmare Muse
+1 Ashiok, Nightmare Weaver
+1 Bojuka Bog
+1 Brainstorm
+1 Captain N'ghathrod
+1 Castle Locthwain
+1 Castle Vantress
+1 Clammy Prowler
+1 Clearwater Pathway // Murkwater Pathway
+1 Command Beacon
+1 Command Tower
+1 Counterspell
+1 Creeping Tar Pit
+1 Cruel Somnophage // Can't Wake Up
+1 Crypt Incursion
+1 Curse of the Swine
+1 Dark Ritual
+1 Dimir Keyrune
+1 Distant Melody
+1 Dreadwing Scavenger
+1 Drowned Catacomb
+1 Endless Evil
+1 Enter the Enigma
+1 Fear of Impostors
+1 Final Act
+1 Grazilaxx, Illithid Scholar
+1 Grell Philosopher
+1 Haunt of the Dead Marshes
+1 Horrid Shadowspinner
+1 Hullbreaker Horror
+5 Island
+1 Jidoor, Aristocratic Capital // Overture
+1 Koh, the Face Stealer
+1 Leyline of the Void
+1 Maddening Cacophony
+1 Minas Morgul, Dark Fortress
+1 Mindcrank
+1 Mistrise Village
+1 Morphic Pool
+1 Mystic Sanctuary
+1 Nemesis of Reason
+1 Nephalia Drownyard
+1 Nightmare Shepherd
+1 Nykthos, Shrine to Nyx
+1 Panharmonicon
+1 Path of Ancestry
+1 Phyrexian Rager
+1 Pit of Offerings
+1 Ravenous Chupacabra
+1 Reality Shift
+1 Realm of Koh
+1 Relic of Progenitus
+1 Reliquary Tower
+1 Resculpt
+1 Restless Reef
+1 Roaming Throne
+1 Rogue's Passage
+1 Scavenger Grounds
+1 Secret Tunnel
+1 Shizo, Death's Storehouse
+1 Silent Hallcreeper
+1 Singularity Rupture
+1 Sire of Stagnation
+1 Sludge Monster
+1 Sol Ring
+1 Spellskite
+1 Stone of Erech
+1 Stonespeaker Crystal
+1 Strategic Betrayal
+2 Swamp
+1 Swiftfoot Boots
+1 Tasha's Hideous Laughter
+1 The Black Gate
+1 The Darkness Crystal
+1 The Soul Stone
+1 The Water Crystal
+1 Thing in the Ice // Awoken Horror
+1 Thought Vessel
+1 Three Tree City
+1 Toxrill, the Corrosive
+1 Uchuulon
+1 Urborg, Tomb of Yawgmoth
+1 Virtue of Knowledge // Vantress Visions
+1 Void Shatter
+1 Watery Grave
+1 Wharf Infiltrator
+1 Witch's Clinic
+1 Yarok's Fenlurker
+1 Zellix, Sanity Flayer

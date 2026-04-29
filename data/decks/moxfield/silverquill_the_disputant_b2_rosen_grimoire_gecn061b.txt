@@ -1,0 +1,92 @@
+COMMANDER: Silverquill, the Disputant
+1 Abhorrent Overlord
+1 Adeline, Resplendent Cathar
+1 Aligned Heart
+1 Anointed Procession
+1 Ashnod's Altar
+1 Ayara, First of Locthwain
+1 Bastion of Remembrance
+1 Bitterbloom Bearer
+1 Bitterblossom
+1 Black Mage's Rod
+1 Black Market
+1 Bleachbone Verge
+1 Blood Artist
+1 Body Count
+1 Brightclimb Pathway // Grimclimb Pathway
+1 Castle Ardenvale
+1 Castle Locthwain
+1 Charismatic Conqueror
+1 Command Tower
+1 Concealed Courtyard
+1 Corrupted Conviction
+1 Costly Plunder
+1 Court of Grace
+1 Cruel Celebrant
+1 Debt to the Deathless
+1 Despark
+1 Divine Visitation
+1 Elas il-Kor, Sadistic Pilgrim
+1 Elenda, the Dusk Rose
+1 Enduring Innocence
+1 Exotic Orchard
+1 Fell the Profane // Fell Mire
+1 Force of Virtue
+1 Go for the Throat
+1 Godless Shrine
+1 Grave Pact
+1 Gruesome Fate
+1 Hagra Mauling // Hagra Broodpit
+1 Hall of Oracles
+1 Hanweir Militia Captain // Westvale Cult Leader
+1 Hidden Stockpile
+1 Hour of Reckoning
+1 Inkshield
+1 Intangible Virtue
+1 Isolated Chapel
+1 Kambal, Profiteering Mayor
+1 Makindi Stampede // Makindi Mesas
+1 Malakir Rebirth // Malakir Mire
+1 Martial Coup
+1 Mirkwood Bats
+1 Mondrak, Glory Dominus
+1 Moonshaker Cavalry
+1 Ondu Inversion // Ondu Skyruins
+1 Path to Exile
+1 Phyrexian Tower
+1 Pitiless Plunderer
+4 Plains
+1 Realm of Koh
+1 Reliquary Tower
+1 Sedgemoor Witch
+1 Sejiri Shelter // Sejiri Glacier
+1 Sentinel Tower
+1 Shadowy Backstreet
+1 Shattered Sanctum
+1 Sheoldred's Edict
+1 Shineshadow Snarl
+1 Sign in Blood
+1 Silverquill Campus
+1 Skullclamp
+1 Sol Ring
+1 Solemn Simulacrum
+6 Swamp
+1 Sword of Wealth and Power
+1 Swords to Plowshares
+1 Temple of the False God
+1 Temporal Extortion
+1 Teysa Karlov
+1 Teysa, Orzhov Scion
+1 Thalisse, Reverent Medium
+1 The Destined Black Mage
+1 The Meathook Massacre
+1 Thought Vessel
+1 Torment of Hailfire
+1 Twinning Staff
+1 Urborg, Tomb of Yawgmoth
+1 Vampiric Rites
+1 Vault of Champions
+1 Village Rites
+1 Westvale Abbey // Ormendahl, Profane Prince
+1 Witch Enchanter // Witch-Blessed Meadow
+1 Zulaport Cutthroat

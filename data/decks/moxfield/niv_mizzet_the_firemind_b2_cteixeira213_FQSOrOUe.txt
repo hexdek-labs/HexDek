@@ -1,0 +1,78 @@
+COMMANDER: Niv-Mizzet, the Firemind
+1 Aetherize
+1 Anvil of Bogardan
+1 Arcane Denial
+1 Arcane Signet
+1 Arjun, the Shifting Flame
+1 Boseiju, Who Shelters All
+1 Braingeyser
+1 Brainstorm
+1 Chain Reaction
+1 Chaos Warp
+1 Command Tower
+1 Counterspell
+1 Disdainful Stroke
+1 Dragon Mage
+1 Drake Haven
+1 Essence Scatter
+1 Evolving Wilds
+1 Fade Away
+1 Faithless Looting
+1 Fateful Showdown
+1 Frantic Search
+1 Frostboil Snarl
+1 Galvanic Iteration
+1 Howling Mine
+1 Hypersonic Dragon
+16 Island
+1 Keep Safe
+1 Laboratory Maniac
+1 Library of Leng
+1 Magus of the Wheel
+1 Mana Geyser
+1 Manaform Hellkite
+1 Mindmoil
+1 Mistrise Village
+8 Mountain
+1 Mystic Retrieval
+1 Negate
+1 Nibelheim Aflame
+1 Niv-Mizzet, Dracogenius
+1 Niv-Mizzet, Parun
+1 Path of Ancestry
+1 Peculiar Lighthouse
+1 Pongify
+1 Propaganda
+1 Prosperity
+1 Psychosis Crawler
+1 Reliquary Tower
+1 Seething Song
+1 Shattered Perception
+1 Shivan Reef
+1 Sol Ring
+1 Stroke of Genius
+1 Sulfur Falls
+1 Teferi's Puzzle Box
+1 Temple of Epiphany
+1 Terramorphic Expanse
+1 Theft of Dreams
+1 Thing in the Ice // Awoken Horror
+1 Think Twice
+1 Thran Dynamo
+1 Thundering Djinn
+1 Tolarian Winds
+1 Treasure Cruise
+1 Triskaidekaphile
+1 Vandalblast
+1 Vibrant Cityscape
+1 Well of Knowledge
+1 Wheel of Fate
+1 Wheel of Fortune
+1 Whirlpool Rider
+1 Whirlpool Warrior
+1 Will of the Jeskai
+1 Windfall
+1 Winds of Change
+1 Witness Protection
+1 Words of War
+1 Words of Wind

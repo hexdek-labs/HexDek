@@ -1,0 +1,93 @@
+COMMANDER: Cloud, Ex-SOLDIER
+1 Aerith, Last Ancient
+1 Aggravated Assault
+1 Ancient Tomb
+1 Arcane Signet
+1 Arid Mesa
+1 Aurelia, the Warleader
+1 Barret, Avalanche Leader
+1 Birds of Paradise
+1 Boseiju, Who Endures
+1 Buster Sword
+1 Cait Sith, Fortune Teller
+1 Celestial Armor
+1 Chrome Mox
+1 Cid, Freeflier Pilot
+1 City of Brass
+1 Clever Concealment
+1 Cloud's Limit Break
+1 Cloud, Midgar Mercenary
+1 Colossus Hammer
+1 Command Tower
+1 Commander's Plate
+1 Conqueror's Flail
+1 Deflecting Swat
+1 Dispatch
+1 Embercleave
+1 Esper Sentinel
+1 Excalibur, Sword of Eden
+1 Final Fortune
+1 Flawless Maneuver
+1 Forest
+1 Forge Anew
+1 Full Throttle
+1 Galadriel's Dismissal
+1 Gilgamesh, Master-at-Arms
+1 Halvar, God of Battle // Sword of the Realms
+1 Hammer of Nazahn
+1 Helm of the Host
+1 Heroic Intervention
+1 Hushwood Verge
+1 Karlach, Fury of Avernus
+1 Kellan, the Fae-Blooded // Birthright Boon
+1 Kessig Wolf Run
+1 Lightning Greaves
+1 Lightning, Army of One
+1 Lotus Petal
+1 Loxodon Warhammer
+1 Mana Confluence
+1 Mana Vault
+1 Masterwork of Ingenuity
+2 Mountain
+1 Mox Opal
+1 Nettlecyst
+1 Open the Armory
+1 Path to Exile
+7 Plains
+1 Plateau
+1 Puresteel Paladin
+1 Raphael, Tag Team Tough
+1 Raphael, the Nightwatcher
+1 Raubahn, Bull of Ala Mhigo
+1 Red XIII, Proud Warrior
+1 Redirect Lightning
+1 Sacred Foundry
+1 Savannah
+1 Sigarda's Aid
+1 Sol Ring
+1 Spire of Industry
+1 Sram, Senior Edificer
+1 Starting Town
+1 Steelshaper's Gift
+1 Stomping Ground
+1 Stoneforge Mystic
+1 Stroke of Midnight
+1 Sunbillow Verge
+1 Sunforger
+1 Sword of Feast and Famine
+1 Sword of Fire and Ice
+1 Sword of Forge and Frontier
+1 Swords to Plowshares
+1 Taiga
+1 Teferi's Protection
+1 Temple Garden
+1 The Reaver Cleaver
+1 Thornspire Verge
+1 Tifa Lockhart
+1 Tifa, Martial Artist
+1 Urza's Saga
+1 Vincent, Vengeful Atoner
+1 Windswept Heath
+1 Wooded Foothills
+1 Yavimaya, Cradle of Growth
+1 Yuffie, Materia Hunter

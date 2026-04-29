@@ -1,0 +1,100 @@
+COMMANDER: Scion of the Ur-Dragon
+1 Aberrant Return
+1 Agadeem's Awakening // Agadeem, the Undercrypt
+1 Ancient Brass Dragon
+1 Ancient Copper Dragon
+1 Ancient Gold Dragon
+1 Ancient Silver Dragon
+1 Arbor Elf
+1 Arid Mesa
+1 Avacyn's Pilgrim
+1 Badgermole Cub
+1 Behold the Sinister Six!
+1 Belltoll Dragon
+1 Birds of Paradise
+1 Blood Crypt
+1 Bloodline Bidding
+1 Bloodstained Mire
+1 Bloom Tender
+1 Breeding Pool
+1 Cavern of Souls
+1 Chord of Calling
+1 Chrome Mox
+1 City of Brass
+1 Command Tower
+1 Deceptive Frostkite
+1 Delighted Halfling
+1 Demonic Tutor
+1 Dragon Tempest
+1 Dragonlord Dromoka
+1 Dragonlord Kolaghan
+1 Dragonlord Ojutai
+1 Elves of Deep Shadow
+1 Elvish Mystic
+1 Exotic Orchard
+1 Faeburrow Elder
+1 Finale of Devastation
+1 Flesh Duplicate
+1 Flooded Strand
+1 Forbidden Orchard
+1 Forest
+1 Fyndhorn Elves
+1 Ghalta, Stampede Tyrant
+1 Giver of Runes
+1 Glasspool Mimic // Glasspool Shore
+1 Godless Shrine
+1 Green Sun's Zenith
+1 Hallowed Fountain
+1 Honored Hierarch
+1 Ignoble Hierarch
+1 Ketria Triome
+1 Kindred Summons
+1 Last March of the Ents
+1 Living Death
+1 Llanowar Elves
+1 Mana Confluence
+1 Marsh Flats
+1 Miirym, Sentinel Wyrm
+1 Mirrorform
+1 Misty Rainforest
+1 Mother of Runes
+1 Mountain
+1 Mystical Tutor
+1 Natural Order
+1 Nature's Lore
+1 Nature's Rhythm
+1 Noble Hierarch
+1 Old Gnawbone
+1 Overgrown Tomb
+1 Parapet Thrasher
+1 Patriarch's Bidding
+1 Polluted Delta
+1 Prismari, the Inspiration
+1 Reanimate
+1 Reflecting Pool
+1 Sacred Foundry
+1 Savai Triome
+1 Scalding Tarn
+1 Scourge of Valkas
+1 Sea Gate Restoration // Sea Gate, Reborn
+1 Selvala, Heart of the Wilds
+1 Skrelv, Defector Mite
+1 Spark Double
+1 Steam Vents
+1 Stomping Ground
+1 Swamp
+1 Swan Song
+1 Temple Garden
+1 Terror of the Peaks
+1 The Ur-Dragon
+1 Three Visits
+1 Tooth and Nail
+1 Turntimber Symbiosis // Turntimber, Serpentine Wood
+1 Vampiric Tutor
+1 Verdant Catacombs
+1 Victimize
+1 Watery Grave
+1 Windswept Heath
+1 Witherbloom, the Balancer
+1 Wooded Foothills
+1 Zagoth Triome

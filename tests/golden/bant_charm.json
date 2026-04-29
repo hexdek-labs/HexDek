@@ -1,0 +1,16 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "static:parsed_tail:_"
+      ],
+      "index": 0,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "modal",
+  "name": "Bant Charm",
+  "parse_error_count": 0
+}

@@ -1,0 +1,80 @@
+COMMANDER: Rograkh, Son of Rohgahh
+COMMANDER: Esior, Wardwing Familiar
+1 Academy Ruins
+1 Arcane Signet
+1 Archaeomender
+1 Artificer Class
+1 Basalt Monolith
+1 Chrome Mox
+1 Codex Shredder
+1 Commit // Memory
+1 Confounding Conundrum
+1 Counterbalance
+1 Deflecting Swat
+1 Devious Cover-Up
+1 Emry, Lurker of the Loch
+1 Ensnaring Bridge
+1 Enthusiastic Mechanaut
+1 Etherium Sculptor
+1 Fabricate
+1 Feldon's Cane
+1 Fierce Guardianship
+1 Flusterstorm
+1 Forensic Gadgeteer
+1 Foundry Inspector
+1 Ghirapur Aether Grid
+1 Goblin Engineer
+1 God-Pharaoh's Statue
+1 Grim Monolith
+1 Grindclock
+1 Inspiring Statuary
+1 Inventors' Fair
+11 Island
+1 Izzet Signet
+1 Jhoira's Familiar
+1 Jhoira, Weatherlight Captain
+1 Lantern of Insight
+1 Mana Vault
+1 Mathemagics
+1 Meekstone
+1 Mental Misstep
+11 Mountain
+1 Mox Amber
+1 Mox Diamond
+1 Mystic Remora
+1 Null Brooch
+1 Ornithopter of Paradise
+1 Paradise Mantle
+1 Paradoxical Outcome
+1 Pinnacle Emissary
+1 Prismatic Vista
+1 Rhystic Study
+1 Sai, Master Thopterist
+1 Scalding Tarn
+1 Sensei's Divining Top
+1 Silent Arbiter
+1 Smokestack
+1 Sol Ring
+1 Soul-Guide Lantern
+1 Soulless Jailer
+1 Spell Pierce
+1 Spirebluff Canal
+1 Staff of Domination
+1 Steam Vents
+1 Stone of Erech
+1 Sulfur Falls
+1 Swan Song
+1 Talisman of Creativity
+1 Tezzeret the Seeker
+1 Tezzeret, Cruel Captain
+1 Thought Vessel
+1 Thundering Falls
+1 Training Center
+1 Turbulent Springs
+1 Ugin, Eye of the Storms
+1 Urza's Saga
+1 Urza, Lord High Artificer
+1 Volcanic Island
+1 Wasteland
+1 Winter Moon
+1 Winter Orb

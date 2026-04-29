@@ -1,0 +1,73 @@
+COMMANDER: Witherbloom, the Balancer
+1 Altar of the Brood
+1 Animist's Awakening
+1 Arasta of the Endless Web
+1 Arcane Signet
+1 Army of the Damned
+1 Awaken the Woods
+1 Beledros Witherbloom
+1 Biorhythm
+1 Bitterbloom Bearer
+1 Bitterblossom
+1 Black Market Connections
+1 Chatterfang, Squirrel General
+1 Command Tower
+1 Craterhoof Behemoth
+1 Damnable Pact
+1 Deadly Dispute
+1 District Guide
+1 Elvish Mystic
+1 Enduring Vitality
+1 Eternal Witness
+1 Eviscerator's Insight
+1 Explore
+1 Exponential Growth
+1 Exsanguinate
+1 Farhaven Elf
+1 Floriferous Vinewall
+1 For the Common Good
+19 Forest
+1 Freyalise, Llanowar's Fury
+1 Ghirapur Orrery
+1 Golgari Guildgate
+1 Great Forest Druid
+1 Harmonize
+1 Heritage Reclamation
+1 Immoral Bargain
+1 In Garruk's Wake
+1 Jungle Hollow
+1 Killing Wave
+1 Kodama's Reach
+1 Llanowar Elves
+1 Mirkwood Bats
+1 Nature's Rhythm
+1 Ornithopter of Paradise
+1 Oversold Cemetery
+1 Pact of the Serpent
+1 Pest Infestation
+1 Phyrexian Arena
+1 Profane Command
+1 Rampant Growth
+1 Resentful Revelation
+1 Rise of the Dark Realms
+1 Rites of Flourishing
+1 Sakura-Tribe Elder
+1 Scatter the Seeds
+1 Scute Swarm
+1 Seedborn Muse
+1 Skullmulcher
+1 Sol Ring
+1 Solemn Simulacrum
+1 Spore Frog
+1 Spore Swarm
+1 Sprout Swarm
+10 Swamp
+1 Tender Wildguide
+1 Tendershoot Dryad
+1 Three Tree Rootweaver
+1 Tooth and Nail
+1 Torment of Hailfire
+1 Underrealm Lich
+1 Vampire Gourmand
+1 Viscera Seer
+1 Zulaport Cutthroat

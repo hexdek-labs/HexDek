@@ -1,0 +1,95 @@
+COMMANDER: The Ur-Dragon
+1 Amareth, the Lustrous
+1 Arcane Sanctum
+1 Arcane Signet
+1 Atarka, World Render
+1 Balefire Dragon
+1 Bladewing the Risen
+1 Blood Crypt
+1 Breaching Dragonstorm
+1 Breeding Pool
+1 Bring to Light
+1 Call the Spirit Dragons
+1 Cascading Cataracts
+1 Caustic Exhale
+1 Chromatic Lantern
+1 Command Tower
+1 Crucible of the Spirit Dragon
+1 Crumbling Necropolis
+1 Crux of Fate
+1 Cultivate
+1 Deathbringer Regent
+1 Demonic Tutor
+1 Dispelling Exhale
+1 Dracogenesis
+1 Dragon Tempest
+1 Dragon's Hoard
+1 Dragonlord's Servant
+1 Dragonspeaker Shaman
+1 Dragonstorm Globe
+1 Drakuseth, Maw of Flames
+1 Dromoka, the Eternal
+1 Encroaching Dragonstorm
+1 Exotic Orchard
+1 Farseek
+1 Fist of Suns
+2 Forest
+1 Frontier Bivouac
+1 Godless Shrine
+1 Haven of the Spirit Dragon
+1 Hellkite Charger
+1 Hellkite Tyrant
+1 Herald's Horn
+2 Island
+1 Jungle Shrine
+1 Karrthus, Tyrant of Jund
+1 Kolaghan, the Storm's Fury
+1 Korlessa, Scale Singer
+1 Lathliss, Dragon Queen
+1 Maelstrom of the Spirit Dragon
+1 Miirym, Sentinel Wyrm
+1 Mirari's Wake
+1 Morophon, the Boundless
+2 Mountain
+1 Mystic Monastery
+1 Nicol Bolas, God-Pharaoh
+1 Nicol Bolas, the Ravager // Nicol Bolas, the Arisen
+1 Niv-Mizzet, Dracogenius
+1 Nomad Outpost
+1 O-Kagachi, Vengeful Kami
+1 Ojutai, Soul of Winter
+1 Opulent Palace
+1 Orb of Dragonkind
+1 Osseous Exhale
+1 Overgrown Tomb
+1 Path of Ancestry
+1 Patriarch's Bidding
+1 Piercing Exhale
+2 Plains
+1 Ramos, Dragon Engine
+1 Rivaz of the Claw
+1 Roiling Dragonstorm
+1 Sandsteppe Citadel
+1 Sarkhan's Triumph
+1 Sarkhan, Soul Aflame
+1 Savage Lands
+1 Scalelord Reckoner
+1 Scavenger Regent // Exude Toxin
+1 Scion of Draco
+1 Scion of the Ur-Dragon
+1 Scourge of Valkas
+1 Seaside Citadel
+1 Silumgar, the Drifting Death
+1 Sol Ring
+1 Spit Flame
+1 Steam Vents
+1 Stomping Ground
+2 Swamp
+1 Sylvan Scrying
+1 Temple Garden
+1 Temple of the Dragon Queen
+1 Temur Ascendancy
+1 Tiamat
+1 Unclaimed Territory
+1 Utvara Hellkite
+1 Wasitora, Nekoru Queen

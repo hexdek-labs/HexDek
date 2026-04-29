@@ -1,0 +1,100 @@
+COMMANDER: Teval, the Balanced Scale
+1 Animate Dead
+1 Ashiok, Dream Render
+1 Azusa, Lost but Seeking
+1 Birds of Paradise
+1 Bloodstained Mire
+1 Brainstorm
+1 Breeding Pool
+1 Colossal Grave-Reaver
+1 Command Tower
+1 Counterspell
+1 Crucible of Worlds
+1 Dakmor Salvage
+1 Daze
+1 Deathrite Shaman
+1 Dig Through Time
+1 Dread Return
+1 Dryad of the Ilysian Grove
+1 Echo of Eons
+1 Endurance
+1 Entomb
+1 Eternal Witness
+1 Farseek
+1 Festering Thicket
+1 Fetid Pools
+1 Flooded Strand
+1 Genesis
+1 Glimpse the Unthinkable
+1 Golgari Grave-Troll
+1 Golgari Thug
+1 Gravecrawler
+1 Hedge Maze
+1 Hedron Crab
+1 Hermit Druid
+1 Hogaak, Arisen Necropolis
+1 Ice Tunnel
+1 Into the North
+1 Jace, the Mind Sculptor
+1 Laboratory Maniac
+1 Life from the Loam
+1 Liliana, Death's Majesty
+1 Lotus Cobra
+1 Marsh Flats
+1 Misty Rainforest
+1 Molt Tender
+1 Muldrotha, the Gravetide
+1 Narcomoeba
+1 Nature's Lore
+1 Nurturing Peatland
+1 Nyx Weaver
+1 Oko, Thief of Crowns
+1 Overgrown Tomb
+1 Palantír of Orthanc
+1 Perpetual Timepiece
+1 Phyrexian Altar
+1 Polluted Delta
+1 Prismatic Vista
+1 Psychic Frog
+1 Rain-Slicked Copse
+1 Ramunap Excavator
+1 Reanimate
+1 Resentful Revelation
+1 Rimewood Falls
+1 Ripples of Undeath
+1 Rise of the Dark Realms
+1 Scalding Tarn
+1 Sidisi, Brood Tyrant
+1 Snow-Covered Forest
+1 Snow-Covered Island
+1 Snow-Covered Swamp
+1 Sol Ring
+1 Stinkweed Imp
+1 Stitcher's Supplier
+1 Strip Mine
+1 Sylvan Library
+1 Takenuma, Abandoned Mire
+1 Teval, Arbiter of Virtue
+1 The Ancient One
+1 The One Ring
+1 The Scarab God
+1 Three Visits
+1 Timeless Witness
+1 Toxic Deluge
+1 Treasure Cruise
+1 Undercity Sewers
+1 Underground Mortuary
+1 Urborg, Tomb of Yawgmoth
+1 Uro, Titan of Nature's Wrath
+1 Verdant Catacombs
+1 Wasteland
+1 Waterlogged Grove
+1 Watery Grave
+1 Windfall
+1 Windswept Heath
+1 Wonder
+1 Wooded Foothills
+1 Woodland Chasm
+1 Yavimaya, Cradle of Growth
+1 Zagoth Triome
+1 Zombie Infestation

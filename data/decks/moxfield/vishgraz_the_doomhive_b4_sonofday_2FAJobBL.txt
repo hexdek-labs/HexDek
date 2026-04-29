@@ -1,0 +1,85 @@
+COMMANDER: Vishgraz, the Doomhive
+1 Bilious Skulldweller
+1 Blightbelly Rat
+1 Bloated Contaminator
+1 Canopy Vista
+1 Cathars' Crusade
+1 Caves of Koilos
+1 Champion of Lambholt
+1 Cloudshift
+1 Command Tower
+1 Conjurer's Closet
+1 Contaminant Grafter
+1 Culling Ritual
+1 Deadly Dispute
+1 Desolate Mire
+1 Drix Fatemaker
+1 Emerald Medallion
+1 Entish Restoration
+1 Ephemerate
+1 Evolution Sage
+1 Exotic Orchard
+1 Farewell
+1 Farseek
+1 Fetid Heath
+8 Forest
+1 Garruk's Uprising
+1 Gix, Yawgmoth Praetor
+1 Glistener Elf
+1 Glistening Sphere
+1 Gyre Sage
+1 Haunted One
+1 Herd Heirloom
+1 Hissing Quagmire
+1 Ichor Rats
+1 Infectious Bite
+1 Infectious Inquiry
+1 Isolated Chapel
+1 Ixhel, Scion of Atraxa
+1 Khalni Ambush // Khalni Territory
+1 Kodama's Reach
+1 Leyline Axe
+1 Lightning Greaves
+1 Llanowar Wastes
+1 Lush Portico
+1 Metastatic Evangel
+1 Mondrak, Glory Dominus
+1 Myr Convert
+1 Nature's Lore
+1 Neglected Manor
+1 Night's Whisper
+1 Overgrown Tomb
+1 Panharmonicon
+1 Path of Ancestry
+1 Path to Exile
+1 Pestilent Syphoner
+1 Phyresis Outbreak
+1 Phyrexian Swarmlord
+1 Plague Myr
+1 Plague Stinger
+6 Plains
+1 Power Fist
+1 Risky Shortcut
+1 Sandsteppe Citadel
+1 Skrelv, Defector Mite
+1 Skullclamp
+1 Skyshroud Claim
+1 Sol Ring
+1 Sungrass Prairie
+4 Swamp
+1 Swiftfoot Boots
+1 Tainted Field
+1 Tainted Strike
+1 Tear Asunder
+1 Temple of Malady
+1 The Skullspore Nexus
+1 Three Visits
+1 Tyrranax Rex
+1 Vanquish the Horde
+1 Venerated Rotpriest
+1 Village Rites
+1 Vorinclex, Voice of Hunger
+1 Vraska, Betrayal's Sting
+1 White Sun's Twilight
+1 Woodland Cemetery
+1 Zopandrel, Hunger Dominus

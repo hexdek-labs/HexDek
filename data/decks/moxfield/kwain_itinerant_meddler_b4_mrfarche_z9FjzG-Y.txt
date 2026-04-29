@@ -1,0 +1,89 @@
+COMMANDER: Kwain, Itinerant Meddler
+1 Academy Rector
+1 Aetherize
+1 Angel's Grace
+1 Aphetto Alchemist
+1 Arcane Denial
+1 Aven Mindcensor
+1 Azorius Chancery
+1 Azorius Signet
+1 Blue Sun's Zenith
+1 Chrome Mox
+1 Command Tower
+1 Commit // Memory
+1 Consecrated Sphinx
+1 Disallow
+1 Dovin's Veto
+1 Dramatic Reversal
+1 Eiganjo Castle
+1 Eiganjo, Seat of the Empire
+1 Elixir of Immortality
+1 Enlightened Tutor
+1 Evacuation
+1 Expedition Map
+1 Fellwar Stone
+1 Fierce Guardianship
+1 Foil
+1 Folio of Fancies
+1 Force of Negation
+1 Force of Will
+1 Fractured Identity
+1 Gilded Lotus
+1 Glacial Fortress
+1 Glasses of Urza
+1 Hallowed Fountain
+1 Heliod's Intervention
+1 High Market
+1 Illusionist's Bracers
+1 Irrigated Farmland
+10 Island
+1 Isochron Scepter
+1 Jwari Disruption // Jwari Ruins
+1 Lion Sash
+1 Lotus Petal
+1 March of Otherworldly Light
+1 March of Swirling Mist
+1 Minamo, School at Water's Edge
+1 Mind Over Matter
+1 Mox Amber
+1 Muddle the Mixture
+1 Mystic Sanctuary
+1 Mystical Tutor
+1 Narset's Reversal
+1 Nimble Obstructionist
+1 Nimbus Maze
+1 Noble Benefactor
+1 One with the Multiverse
+1 Orim's Chant
+1 Otawara, Soaring City
+1 Out of Time
+1 Pact of Negation
+1 Path to Exile
+3 Plains
+1 Prairie Stream
+1 Reliquary Tower
+1 Render Silent
+1 Riptide Laboratory
+1 Sejiri Shelter // Sejiri Glacier
+1 Sevinne's Reclamation
+1 Show and Tell
+1 Silence
+1 Slaughter the Strong
+1 Slip Out the Back
+1 Smothering Tithe
+1 Sol Ring
+1 Sphinx's Revelation
+1 Step Through
+1 Swiftfoot Boots
+1 Swords to Plowshares
+1 Talisman of Progress
+1 Teferi's Protection
+1 Teferi, Temporal Pilgrim
+1 The Reality Chip
+1 Thought Vessel
+1 Tolaria West
+1 Tribute Mage
+1 Venser, Shaper Savant
+1 Weathered Wayfarer
+1 Whirlwind Denial
+1 Windfall

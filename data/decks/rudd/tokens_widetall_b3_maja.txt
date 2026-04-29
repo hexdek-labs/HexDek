@@ -1,0 +1,81 @@
+1 Ajani, Caller of the Pride
+1 Ancient Greenwarden
+1 Angel of the Dire Hour
+1 Arcane Signet
+1 Arid Archway
+1 Avacyn's Pilgrim
+1 Blossoming Sands
+1 Boromir, Warden of the Tower
+1 Burrowguard Mentor
+1 Camaraderie
+1 Canopy Vista
+1 Champion of Lambholt
+1 Collective Blessing
+1 Colossification
+1 Command Tower
+1 Commander's Insignia
+1 Commander's Sphere
+1 Conclave Tribunal
+1 Dauntless Escort
+1 Devouring Light
+1 Dictate of Heliod
+1 Doubling Season
+1 Elfhame Palace
+1 Elspeth, Knight-Errant
+1 Eternal Witness
+1 Evolving Wilds
+1 Farewell
+1 Farhaven Elf
+1 Felidar Retreat
+1 Forest
+1 Fortified Village
+1 Garruk's Uprising
+1 Good-Fortune Unicorn
+1 Graypelt Refuge
+1 Great Oak Guardian
+1 Guildless Commons
+1 Harmonize
+1 Hornet Nest
+1 Intangible Virtue
+1 King Darien XLVIII
+1 Kodama of the East Tree
+1 Leafkin Druid
+1 Loot, Exuberant Explorer
+1 Loyal Guardian
+1 Mossborn Hydra
+1 Nissa's Expedition
+1 Nullmage Shepherd
+1 Path to Exile
+1 Plains
+1 Queen Allenal of Ruadach
+1 Railway Brawler
+1 Rampaging Baloths
+1 Reclamation Sage
+1 Reliquary Tower
+1 Restoration Magic
+1 Rootborn Defenses
+1 Scavenging Ooze
+1 Shalai, Voice of Plenty
+1 Sigarda, Font of Blessings
+1 Sol Ring
+1 Sporemound
+1 Starfield Shepherd
+1 Starry-Eyed Skyrider
+1 Sylvan Reclamation
+1 Talisman of Unity
+1 Teferi's Protection
+1 Temple of Plenty
+1 Terramorphic Expanse
+1 The Earth Crystal
+1 Thunderfoot Baloth
+1 Tranquil Expanse
+1 Trostani Discordant
+1 Verdant Force
+1 Verdant Haven
+1 Veteran Beastrider
+1 Vibrant Cityscape
+1 Voice of Many
+1 White Sun's Zenith
+1 Worldly Tutor
+
+COMMANDER: Maja, Bretagard Protector

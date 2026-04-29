@@ -1,0 +1,94 @@
+COMMANDER: Atraxa, Praetors' Voice
+1 Academy Ruins
+1 Alchemist's Refuge
+1 As Foretold
+1 Ashiok, Dream Render
+1 Birds of Paradise
+1 Bleachbone Verge
+1 Blighted Agent
+1 Bow of Nylea
+1 Bruvac the Grandiloquent
+1 Chromatic Lantern
+1 Colossal Grave-Reaver
+1 Command Tower
+1 Corrupted Conscience
+1 Court of Cunning
+1 Cut Your Losses
+1 Dark Ritual
+1 Dismal Backwater
+1 Duskmantle Guildmage
+1 Elesh Norn, Grand Cenobite
+1 Experimental Augury
+1 Fathom Feeder
+1 Fleet Swallower
+1 Floodfarm Verge
+1 Flux Channeler
+3 Forest
+1 Fraying Sanity
+1 Fynn, the Fangbearer
+1 Gloomlake Verge
+1 Grand Architect
+1 Hallowed Fountain
+1 Helm of Obedience
+1 Ichormoon Gauntlet
+1 Intruder Alarm
+4 Island
+1 Isochron Scepter
+1 Jace, Wielder of Mysteries
+1 Jace, the Perfected Mind
+1 Karn's Bastion
+1 Kormus Bell
+1 Leyline Immersion
+1 Leyline of the Void
+1 Llanowar Elves
+1 Lotus Field
+1 Maddening Cacophony
+1 Magosi, the Waterveil
+1 Maha, Its Feathers Night
+1 Market Festival
+1 Mesmerizing Dose
+1 Mindcrank
+1 Mindsplice Apparatus
+1 Muldrotha, the Gravetide
+1 Myr Landshaper
+1 Nature's Will
+1 Nesting Grounds
+1 Norn's Decree
+1 Oriq Loremage
+1 Overgrown Tomb
+1 Path of Ancestry
+1 Phenax, God of Deception
+1 Phyrexian Obliterator
+1 Pili-Pala
+1 Prologue to Phyresis
+1 Restless Reef
+1 Rhystic Study
+1 Serpent's Pass
+1 Sheoldred's Edict
+1 Silence
+1 Smothering Tithe
+1 Sol Ring
+1 Space-Time Anomaly
+1 Splinter
+1 Stasis Field
+1 Steward of the Harvest
+1 Strip Mine
+2 Swamp
+1 Tamiyo, Field Researcher
+1 Tasha's Hideous Laughter
+1 Tekuthal, Inquiry Dominus
+1 Temple Garden
+1 The Mindskinner
+1 The Mycosynth Gardens
+1 The Reality Chip
+1 The Water Crystal
+1 The Wise Mothman
+1 Thriving Isle
+1 Toxrill, the Corrosive
+1 Trawler Drake
+1 Urborg, Tomb of Yawgmoth
+1 Vraska's Fall
+1 Winter Orb
+1 Worldly Tutor
+1 Wrenn and Realmbreaker
+1 Y'shtola Rhul

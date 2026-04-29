@@ -1,0 +1,92 @@
+COMMANDER: Varina, Lich Queen
+1 Accursed Marauder
+1 Adarkar Wastes
+1 Arcane Sanctum
+1 Arcane Signet
+1 Archfiend of Ifnir
+1 Azorius Signet
+1 Binding Mummy
+1 Bojuka Bog
+1 Bolas's Citadel
+1 Bone Miser
+1 Brightclimb Pathway // Grimclimb Pathway
+1 By Invitation Only
+1 Call to the Netherworld
+1 Carrion Feeder
+1 Caves of Koilos
+1 Cemetery Reaper
+1 Command Tower
+1 Command the Dreadhorde
+1 Corpse Knight
+1 Crush Contraband
+1 Cryptbreaker
+1 Damn
+1 Darkwater Catacombs
+1 Death Baron
+1 Despark
+1 Dig Through Time
+1 Diregraf Captain
+1 Diregraf Colossus
+1 Dreadhorde Invasion
+1 Drowned Catacomb
+1 Endless Ranks of the Dead
+1 Exotic Orchard
+1 Fact or Fiction
+1 Fierce Guardianship
+1 Forgotten Creation
+1 Forsake the Worldly
+1 Fracture
+1 Frantic Search
+1 Gisa and Geralf
+1 Glacial Fortress
+1 God-Eternal Bontu
+1 Godless Shrine
+1 Graf Harvest
+1 Gravecrawler
+1 Gray Merchant of Asphodel
+1 Hashaton, Scarab's Fist
+1 Headless Rider
+1 Irrigated Farmland
+2 Island
+1 Isolated Chapel
+1 Liliana, Dreadhorde General
+1 Liquimetal Torque
+1 Lord of the Accursed
+1 Midnight Reaper
+1 Myriad Landscape
+1 Necroduality
+1 Negate
+1 On Wings of Gold
+1 Orzhov Signet
+1 Pact of Negation
+1 Path to Exile
+1 Patriarch's Bidding
+1 Plague Belcher
+2 Plains
+1 Polluted Delta
+1 Prairie Stream
+1 Prismatic Lens
+1 Reflections of Littjara
+1 Rooftop Storm
+1 Rot Hulk
+1 Scrubland
+1 Shepherd of Rot
+1 Sunken Hollow
+7 Swamp
+1 Swords to Plowshares
+1 Syr Konrad, the Grim
+1 Tainted Field
+1 Tainted Isle
+1 Talisman of Hierarchy
+1 Tormod, the Desecrator
+1 Tundra
+1 Undead Augur
+1 Undead Warchief
+1 Underground River
+1 Underground Sea
+1 Vengeful Dead
+1 Watery Grave
+1 Wayfarer's Bauble
+1 Wayward Servant
+1 Wilhelt, the Rotcleaver
+1 Wonder

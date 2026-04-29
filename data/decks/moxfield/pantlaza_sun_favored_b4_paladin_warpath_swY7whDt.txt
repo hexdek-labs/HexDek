@@ -1,0 +1,93 @@
+COMMANDER: Pantlaza, Sun-Favored
+1 Adagia, Windswept Bastion
+1 Akroma's Will
+1 Anointed Procession
+1 Apex Altisaur
+1 Arcane Signet
+1 Ba Sing Se
+1 Blasphemous Act
+1 Bolt Bend
+1 Bonehoard Dracosaur
+1 Bronzebeak Foragers
+1 Castle Garenbrig
+1 Cavern of Souls
+1 Cinder Glade
+1 Command Tower
+1 Conjurer's Closet
+1 Cultivate
+1 Deflecting Swat
+1 Deserted Temple
+1 Dinosaurs on a Spaceship
+1 Earthshaker Dreadmaw
+1 Echoing Deeps
+1 Eerie Interlude
+1 Emiel the Blessed
+1 Enlightened Tutor
+1 Ephemerate
+1 Etali, Primal Conqueror // Etali, Primal Sickness
+1 Evendo, Waking Haven
+1 Expedition Map
+1 Farewell
+1 Farseek
+1 Field of Ruin
+1 Finale of Devastation
+4 Forest
+1 Garruk's Uprising
+1 Ghalta, Stampede Tyrant
+1 Gishath, Sun's Avatar
+1 Growing Rites of Itlimoc // Itlimoc, Cradle of the Sun
+1 Hall of Heliod's Generosity
+1 Heroic Intervention
+1 Idyllic Tutor
+1 Invasion of Ikoria // Zilortha, Apex of Ikoria
+1 Jungle Shrine
+1 Last March of the Ents
+1 Luminous Broodmoth
+1 Minas Tirith
+1 Molten Echoes
+1 Monster Manual // Zoological Study
+3 Mountain
+1 Myriad Landscape
+1 Panharmonicon
+1 Parallel Lives
+1 Path of Ancestry
+1 Path to Exile
+3 Plains
+1 Progenitor's Icon
+1 Quartzwood Crasher
+1 Redirect Lightning
+1 Regal Behemoth
+1 Regisaur Alpha
+1 Rhythm of the Wild
+1 Roaming Throne
+1 Savage Order
+1 Secluded Courtyard
+1 Secret Tunnel
+1 Seedborn Muse
+1 Semester's End
+1 Sheltering Landscape
+1 Sneak Attack
+1 Sol Ring
+1 Sunfrill Imitator
+1 Swooping Pteranodon
+1 Swords to Plowshares
+1 Teferi's Protection
+1 Teleportation Circle
+1 Temple of Triumph
+1 Temur Sabertooth
+1 The Golden Throne
+1 Thrashing Brontodon
+1 Three Tree City
+1 Thriving Bluff
+1 Thriving Heath
+1 Topiary Stomper
+1 Tranquil Frillback
+1 Trumpeting Carnosaur
+1 Unclaimed Territory
+1 Vaultborn Tyrant
+1 Wakening Sun's Avatar
+1 Wilderness Reclamation
+1 Worldly Tutor
+1 Wrathful Raptors
+1 Yavimaya, Cradle of Growth
+1 Zacama, Primal Calamity

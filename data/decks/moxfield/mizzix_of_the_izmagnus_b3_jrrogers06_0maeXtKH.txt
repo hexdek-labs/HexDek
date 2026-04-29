@@ -1,0 +1,77 @@
+COMMANDER: Mizzix of the Izmagnus
+1 Abrade
+1 Abstract Paintmage
+1 Arcane Signet
+1 Bonus Round
+1 Brush Off
+1 Burst Lightning
+1 Cavern of Souls
+1 Chase Inspiration
+1 Choreographed Sparks
+1 Command Tower
+1 Commander's Sphere
+1 Conduit Pylons
+1 Counterspell
+1 Crackle with Power
+1 Cyclonic Rift
+1 Deduce
+1 Elemental Mascot
+1 Essence Scatter
+1 Expansion // Explosion
+1 Expressive Firedancer
+1 Expressive Iteration
+1 Fellwar Stone
+1 Fields of Strife
+1 Flashback
+1 Frantic Search
+1 Goblin Glasswright // Craft with Pride
+1 Harmonized Trio // Brainstorm
+1 Heated Argument
+1 Hydro-Channeler
+1 Improvisation Capstone
+10 Island
+1 Izzet Signet
+1 Kiora, the Rising Tide
+1 Landscape Painter // Vibrant Idea
+1 Maelstrom Artisan // Rocket Volley
+1 Mana Confluence
+1 Mica, Reader of Ruins
+1 Mind Stone
+1 Miscalculation
+1 Mizzix's Mastery
+16 Mountain
+1 Muse Seeker
+1 Muse's Encouragement
+1 Mystical Tutor
+1 Orysa, Tide Choreographer
+1 Past in Flames
+1 Ponder
+1 Preordain
+1 Prismari Charm
+1 Prismari, the Inspiration
+1 Reconnaissance Mission
+1 Seize the Spoils
+1 Skycoach Conductor // All Aboard
+1 Skycoach Waypoint
+1 Sol Ring
+1 Solve the Equation
+1 Spectator Seating
+1 Spellbook Seeker // Careful Study
+1 Spirebluff Canal
+1 Splatter Technique
+1 Steal the Show
+1 Strixhaven Skycoach
+1 Sulfur Falls
+1 Talisman of Creativity
+1 Terramorphic Expanse
+1 Thousand-Year Storm
+1 Thunderdrum Soloist
+1 Traumatic Critique
+1 Unsubtle Mockery
+1 Vandalblast
+1 Visionary's Dance
+1 Wan Shi Tong, Librarian
+1 Windfall
+1 Zaffai and the Tempests
+1 Zaffai, Thunder Conductor
+1 Zealous Lorecaster

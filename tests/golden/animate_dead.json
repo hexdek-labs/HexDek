@@ -1,0 +1,39 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "static:custom:_"
+      ],
+      "index": 0,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "trig:etb",
+        "untyped_effect"
+      ],
+      "index": 1,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "trig:ltb",
+        "untyped_effect"
+      ],
+      "index": 2,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "static:custom:_"
+      ],
+      "index": 3,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 4,
+  "fully_parsed": true,
+  "group": "cedh",
+  "name": "Animate Dead",
+  "parse_error_count": 0
+}

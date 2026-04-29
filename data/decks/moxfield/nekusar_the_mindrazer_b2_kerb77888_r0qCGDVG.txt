@@ -1,0 +1,81 @@
+COMMANDER: Nekusar, the Mindrazer
+1 Aetherize
+1 Arcane Denial
+1 Arcane Signet
+1 Ash Barrens
+1 Baleful Mastery
+1 Bedevil
+1 Bloodfell Caves
+1 Burning Inquiry
+1 Choked Estuary
+1 Chromatic Lantern
+1 Command Tower
+1 Counterflux
+1 Counterspell
+1 Crumbling Necropolis
+1 Curiosity
+1 Damnable Pact
+1 Dark Deal
+1 Dictate of Kruphix
+1 Dimir Aqueduct
+1 Dimir Charm
+1 Dimir Signet
+1 Dismal Backwater
+1 Dragonskull Summit
+1 Dream Fracture
+1 Fascination
+1 Fate Unraveler
+1 Fevered Visions
+1 Foreboding Ruins
+1 Geier Reach Sanitarium
+1 Goblin Electromancer
+1 Harmonic Prodigy
+1 Imprisoned in the Moon
+1 Incendiary Command
+9 Island
+1 Izzet Boilerworks
+1 Izzet Charm
+1 Jace's Archivist
+1 Kami of the Crescent Moon
+1 Krang, the All-Powerful
+1 Laboratory Maniac
+1 Long River's Pull
+1 Maestros Theater
+1 Magus of the Wheel
+7 Mountain
+1 Murder
+1 Nightscape Familiar
+1 Nin, the Pain Artist
+1 Niv-Mizzet, Parun
+1 Niv-Mizzet, the Firemind
+1 Ob Nixilis, the Hate-Twisted
+1 Phyrexian Tyranny
+1 Propaganda
+1 Prosperity
+1 Psychosis Crawler
+1 Rakdos Carnarium
+1 Rakdos Charm
+1 Razorkin Needlehead
+1 Reforge the Soul
+1 Scrawling Crawler
+1 Seizan, Perverter of Truth
+1 Skyscribing
+1 Smoldering Marsh
+1 Sol Ring
+1 Stormfist Crusader
+1 Sulfur Falls
+1 Sunken Hollow
+6 Swamp
+1 Swiftwater Cliffs
+1 Temple of Deceit
+1 Temple of Epiphany
+1 Temple of Malice
+1 Terminate
+1 Thought Vessel
+1 Underworld Dreams
+1 Vision Skeins
+1 Waste Not
+1 Well of Ideas
+1 Whirlpool Warrior
+1 Whispering Madness
+1 Zenith Chronicler

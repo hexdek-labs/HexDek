@@ -1,0 +1,100 @@
+COMMANDER: Be'lakor, the Dark Master
+1 An Offer You Can't Refuse
+1 Ancient Cellarspawn
+1 Ancient Tomb
+1 Arcane Signet
+1 Archfiend of Despair
+1 Black Market Connections
+1 Blazemire Verge
+1 Blightstep Pathway // Searstep Pathway
+1 Blood Crypt
+1 Bloodletter of Aclazotz
+1 Bloodstained Mire
+1 Bloodthirster
+1 Bontu's Monument
+1 Cavern of Souls
+1 Clearwater Pathway // Murkwater Pathway
+1 Command Tower
+1 Conjurer's Closet
+1 Cyclonic Rift
+1 Dark Ritual
+1 Deadly Rollick
+1 Deflecting Swat
+1 Demonic Tutor
+1 Dimir Aqueduct
+1 Displace
+1 Displacer Kitten
+1 Dream Devourer
+1 Enduring Tenacity
+1 Essence Flux
+1 Exalted Flamer of Tzeentch
+1 Exquisite Blood
+1 Feed the Swarm
+1 Fierce Guardianship
+1 Ghostly Flicker
+1 Glasspool Mimic // Glasspool Shore
+1 Gloomlake Verge
+1 Great Unclean One
+1 Heartless Summoning
+1 Hell's Caretaker
+1 Herald of Slaanesh
+1 Izzet Boilerworks
+1 Jet Medallion
+1 Kardur, Doomscourge
+1 Liliana's Contract
+1 Lord of the Void
+1 Luxury Suite
+1 Malakir Rebirth // Malakir Mire
+1 Mana Drain
+1 Midgar, City of Mako // Reactor Raid
+1 Mirror Room // Fractured Realm
+1 Molten Echoes
+1 Morphic Pool
+1 Mortuary Mire
+1 Nightscape Familiar
+1 Nykthos, Shrine to Nyx
+1 Orvar, the All-Form
+1 Panharmonicon
+1 Patchwork Banner
+1 Path of Ancestry
+1 Phyrexian Reclamation
+1 Planar Incision
+1 Polluted Delta
+1 Rakdos Carnarium
+1 Rakdos, Patron of Chaos
+1 Raphael, Fiendish Savior
+1 Reanimate
+1 Reliquary Tower
+1 Rhystic Study
+1 Riverglide Pathway // Lavaglide Pathway
+1 Roaming Throne
+1 Sakashima of a Thousand Faces
+1 Scalding Tarn
+1 Shinka, the Bloodsoaked Keep
+1 Sneak Attack
+1 Snow-Covered Island
+1 Sol Ring
+1 Sower of Discord
+1 Spellskite
+1 Steam Vents
+1 Stubborn Denial
+1 Swamp
+1 Sword of Hearth and Home
+1 Takenuma, Abandoned Mire
+1 The Fire Crystal
+1 The Meathook Massacre
+1 Three Tree City
+1 Torment of Hailfire
+1 Undying Evil
+1 Unholy Annex // Ritual Chamber
+1 Untimely Malfunction
+1 Urborg, Tomb of Yawgmoth
+1 Urza's Incubator
+1 Urza's Saga
+1 Valgavoth, Harrower of Souls
+1 Vampiric Tutor
+1 Varragoth, Bloodsky Sire
+1 Warstorm Surge
+1 Watery Grave
+1 Whip of Erebos
+1 Xander's Lounge

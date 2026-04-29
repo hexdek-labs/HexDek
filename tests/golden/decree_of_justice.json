@@ -1,0 +1,34 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "static:spell_effect:_"
+      ],
+      "index": 0,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "keyword:cycling"
+      ],
+      "index": 1,
+      "kind": "keyword"
+    },
+    {
+      "first5": [
+        "trig:cycle",
+        "sequence",
+        "cast_trigger_tail",
+        "conditional",
+        "create_token"
+      ],
+      "index": 2,
+      "kind": "triggered"
+    }
+  ],
+  "ability_count": 3,
+  "fully_parsed": true,
+  "group": "keywords",
+  "name": "Decree of Justice",
+  "parse_error_count": 0
+}

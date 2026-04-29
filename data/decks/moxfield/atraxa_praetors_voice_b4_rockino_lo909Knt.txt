@@ -1,0 +1,96 @@
+COMMANDER: Atraxa, Praetors' Voice
+1 Arcane Signet
+1 Astral Cornucopia
+1 Atraxa, Grand Unifier
+1 Azorius Signet
+1 Bleachbone Verge
+1 Breeding Pool
+1 Carth the Lion
+1 Chromatic Lantern
+1 Command Tower
+1 Command the Dreadhorde
+1 Cyclonic Rift
+1 Dakkon, Shadow Slayer
+1 Darkslick Shores
+1 Deathcap Glade
+1 Deepglow Skate
+1 Dimir Signet
+1 Doubling Season
+1 Drowned Catacomb
+1 Eerie Ultimatum
+1 Esper Sentinel
+1 Everflowing Chalice
+1 Exotic Orchard
+1 Farewell
+1 Farseek
+2 Forest
+1 Freyalise, Llanowar's Fury
+1 Glacial Fortress
+1 Godless Shrine
+1 Golgari Signet
+1 Hallowed Fountain
+1 Heroic Intervention
+1 Hinterland Harbor
+1 Honor-Worn Shaku
+1 Hushwood Verge
+1 Ichormoon Gauntlet
+1 Interplanar Beacon
+2 Island
+1 Isolated Chapel
+1 Karn's Bastion
+1 Liliana, Dreadhorde General
+1 Lotho, Corrupt Shirriff
+1 Lotus Petal
+1 Lórien Revealed
+1 Meticulous Archive
+1 Mystic Gate
+1 Mystic Remora
+1 Narset, Parter of Veils
+1 Necropotence
+1 Oath of Teferi
+1 Oko, Thief of Crowns
+1 Orzhov Signet
+1 Overflowing Basin
+1 Overgrown Tomb
+2 Plains
+1 Professor Dellian Fel
+1 Ral Zarek, Guest Lecturer
+1 Ravages of War
+1 Reflecting Pool
+1 Rejuvenating Springs
+1 Reki, the History of Kamigawa
+1 Rhystic Study
+1 Sea of Clouds
+1 Sensei's Divining Top
+1 Shadowy Backstreet
+1 Shattered Sanctum
+1 Smothering Tithe
+1 Sol Ring
+1 Sorin Markov
+1 Sorin of House Markov // Sorin, Ravenous Neonate
+1 Spark Double
+1 Staff of Compleation
+1 Stock Up
+1 Supreme Verdict
+2 Swamp
+1 Talisman of Progress
+1 Teferi, Time Raveler
+1 Teferi, Who Slows the Sunset
+1 Temple Garden
+1 Tezzeret the Seeker
+1 Tezzeret, Master of the Bridge
+1 The One Ring
+1 The Wandering Emperor
+1 Ugin, Eye of the Storms
+1 Ugin, the Ineffable
+1 Ugin, the Spirit Dragon
+1 Underground Mortuary
+1 Urza's Saga
+1 Venser, the Sojourner
+1 Vorinclex, Monstrous Raider
+1 Vraska, Betrayal's Sting
+1 Vraska, Relic Seeker
+1 Wasteland
+1 Watery Grave
+1 Winds of Abandon
+1 Wrenn and Realmbreaker

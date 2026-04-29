@@ -1,0 +1,94 @@
+COMMANDER: Tidus, Yuna's Guardian
+1 Akroma's Will
+1 An Offer You Can't Refuse
+1 Arcane Signet
+1 Botanical Brawler
+1 Branching Evolution
+1 Breeding Pool
+1 Brushland
+1 Canopy Vista
+1 Clever Concealment
+1 Collective Resistance
+1 Command Tower
+1 Counterspell
+1 Cultivate
+1 Cyclonic Rift
+1 Enlightened Tutor
+1 Exotic Orchard
+1 Farewell
+1 Farseek
+1 Fathom Mage
+1 Fierce Guardianship
+1 Flawless Maneuver
+1 Flooded Grove
+1 Flooded Strand
+1 Flusterstorm
+1 Force of Negation
+3 Forest
+1 Forge of Heroes
+1 Forgotten Ancient
+1 Fortified Village
+1 Freed from the Real
+1 Gatta and Luzzu
+1 Gifts Ungiven
+1 Glacial Fortress
+1 Hallowed Fountain
+1 Hardened Scales
+1 Hedge Maze
+1 Heliod, Sun-Crowned
+1 Heroic Intervention
+1 Hinterland Harbor
+1 Innkeeper's Talent
+3 Island
+1 Kami of Whispered Hopes
+1 Kutzil, Malamet Exemplar
+1 Lotus Petal
+1 Lush Portico
+1 Maester Seymour
+1 Meticulous Archive
+1 Mindbreak Trap
+1 Misty Rainforest
+1 Mosswort Bridge
+1 Mystical Tutor
+1 Nature's Lore
+1 Open the Way
+1 Ozolith, the Shattered Spire
+1 Path of Ancestry
+1 Path to Exile
+3 Plains
+1 Port Town
+1 Prairie Stream
+1 Rampant Growth
+1 Rhystic Study
+1 Rishkar's Expertise
+1 Sevinne's Reclamation
+1 Sol Ring
+1 Sphere Grid
+1 Strix Serenade
+1 Struggle for Project Purity
+1 Sunpetal Grove
+1 Swords to Plowshares
+1 Talisman of Curiosity
+1 Talisman of Progress
+1 Tangled Islet
+1 Teferi, Temporal Pilgrim
+1 Temple Garden
+1 Temple of Enlightenment
+1 Temple of Mystery
+1 Temple of Plenty
+1 The Earth Crystal
+1 The Great Henge
+1 The One Ring
+1 The Ooze
+1 Three Visits
+1 Vineglimmer Snarl
+1 Walking Ballista
+1 Warden of the Grove
+1 Wargate
+1 Wasteland
+1 Whir of Invention
+1 Whirlwind Denial
+1 Windfall
+1 Yavimaya, Cradle of Growth
+1 Yuna, Grand Summoner
+1 Zanarkand, Ancient Metropolis // Lasting Fayth

@@ -1,0 +1,457 @@
+{
+  "game_id": "cage-match-game1",
+  "winner": 1,
+  "end_reason": "seat 1 is the last one standing",
+  "total_turns": 18,
+  "total_events": 1899,
+  "commander_format": true,
+  "day_night": "neither",
+  "seats": [
+    {
+      "idx": 0,
+      "life": -1,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 72,
+      "hand": [
+        "Kulrath Zealot",
+        "The Balrog of Moria",
+        "Too Greedily, Too Deep",
+        "Final Act",
+        "Moldgraf Monstrosity"
+      ],
+      "graveyard": [
+        "Faithless Looting",
+        "Midnight Tilling",
+        "Eviscerator's Insight",
+        "Rampant Growth",
+        "Accursed Marauder",
+        "Sakura-Tribe Elder",
+        "Cunning Lethemancer",
+        "Ignoble Hierarch",
+        "Stunning Reversal"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Coram, the Undertaker"
+      ],
+      "commander_tax": {
+        "Coram, the Undertaker": 1
+      },
+      "commander_damage": {
+        "3": {
+          "Varina, Lich Queen": 16
+        },
+        "1": {
+          "Kaust, Eyes of the Glade": 4
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 1,
+      "life": 58,
+      "lost": false,
+      "loss_reason": "",
+      "library_count": 75,
+      "hand": [
+        "Akroma, Angel of Fury"
+      ],
+      "graveyard": [
+        "Austere Command",
+        "Mirror Entity",
+        "Hidden Dragonslayer"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Kaust, Eyes of the Glade"
+      ],
+      "commander_tax": {
+        "Kaust, Eyes of the Glade": 2
+      },
+      "commander_damage": {},
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": [
+        {
+          "name": "Jungle Shrine",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Forest",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Plains",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Plains",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Kessig Wolf Run",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Scattered Groves",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Salt Road Ambushers",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 3,
+          "toughness": 3,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Exotic Orchard",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Sidar Kondo of Jamuraa",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 2,
+          "toughness": 5,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Mountain",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Ugin's Mastery",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Ohran Frostfang",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 2,
+          "toughness": 6,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Lifecrafter's Bestiary",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Shrine of the Forsaken Gods",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Kaust, Eyes of the Glade",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 2,
+          "toughness": 2,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Sakura-Tribe Elder",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 1,
+          "toughness": 1,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Tesak, Judith's Hellhound",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 3,
+          "toughness": 3,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Furycalm Snarl",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": true,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Ransom Note",
+          "tapped": false,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 0,
+          "toughness": 0,
+          "counters": {},
+          "controller": 1,
+          "is_creature": false,
+          "is_land": false,
+          "is_artifact": true,
+          "is_token": false
+        },
+        {
+          "name": "Master of Pearls",
+          "tapped": true,
+          "summoning_sick": false,
+          "damage_marked": 0,
+          "power": 2,
+          "toughness": 2,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        },
+        {
+          "name": "Ashcloud Phoenix",
+          "tapped": false,
+          "summoning_sick": true,
+          "damage_marked": 0,
+          "power": 4,
+          "toughness": 1,
+          "counters": {},
+          "controller": 1,
+          "is_creature": true,
+          "is_land": false,
+          "is_artifact": false,
+          "is_token": false
+        }
+      ]
+    },
+    {
+      "idx": 2,
+      "life": -4,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 83,
+      "hand": [
+        "Felidar Sovereign",
+        "Aetherflux Reservoir",
+        "Beacon of Immortality",
+        "Generous Gift"
+      ],
+      "graveyard": [
+        "Swan Song",
+        "Angel's Grace",
+        "Soul Warden",
+        "Soul's Attendant",
+        "Guide of Souls",
+        "Dawn Charm",
+        "Impassioned Orator"
+      ],
+      "exile": [],
+      "command_zone": [
+        "Oloro, Ageless Ascetic"
+      ],
+      "commander_names": [
+        "Oloro, Ageless Ascetic"
+      ],
+      "commander_tax": {
+        "Oloro, Ageless Ascetic": 0
+      },
+      "commander_damage": {
+        "1": {
+          "Kaust, Eyes of the Glade": 8
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    },
+    {
+      "idx": 3,
+      "life": -1,
+      "lost": true,
+      "loss_reason": "combat damage",
+      "library_count": 78,
+      "hand": [
+        "Lich's Mastery",
+        "Army of the Damned",
+        "Zombie Apocalypse"
+      ],
+      "graveyard": [
+        "Perplex",
+        "Victimize",
+        "Void Rend",
+        "Rotting Rats",
+        "Wayward Servant",
+        "Anguished Unmaking"
+      ],
+      "exile": [],
+      "command_zone": [],
+      "commander_names": [
+        "Varina, Lich Queen"
+      ],
+      "commander_tax": {
+        "Varina, Lich Queen": 2
+      },
+      "commander_damage": {
+        "1": {
+          "Kaust, Eyes of the Glade": 4
+        }
+      },
+      "mana_pool_total": 0,
+      "poison_counters": 0,
+      "spells_cast_this_turn": 1,
+      "battlefield": []
+    }
+  ]
+}

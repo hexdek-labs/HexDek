@@ -1,0 +1,76 @@
+COMMANDER: Witherbloom, the Balancer
+1 Arcane Signet
+1 Army of the Damned
+1 Awaken the Woods
+1 Awakening Zone
+1 Bad Deal
+1 Beast Within
+1 Bitterbloom Bearer
+1 Bitterblossom
+1 Black Market Connections
+1 Brightcap Badger // Fungus Frolic
+1 Chatterfang, Squirrel General
+1 Choice of Damnations
+1 Circle of Power
+1 Clifftop Lookout
+1 Command Tower
+1 Cryptolith Rite
+1 Cut of the Profits
+1 Damnable Pact
+1 Dryad Arbor
+1 Elves of Deep Shadow
+1 Elvish Mystic
+1 Enduring Vitality
+1 Exsanguinate
+1 Ezuri's Predation
+1 Farseek
+1 Finale of Devastation
+1 Fists of Ironwood
+13 Forest
+1 Foulmire Knight // Profane Insight
+1 Frog Butler
+1 Fyndhorn Elves
+1 Gala Greeters
+1 Growth Spasm
+1 Heroic Intervention
+1 Lab Rats
+1 Llanowar Elves
+1 Llanowar Wastes
+1 Mirkwood Bats
+1 Mordor Muster
+1 Mosswood Dreadknight // Dread Whispers
+1 Necroblossom Snarl
+1 Night's Whisper
+1 Overrun
+1 Painful Lesson
+1 Path of Annihilation
+1 Pest Infestation
+1 Plague of Vermin
+1 Rampant Growth
+1 Reanimate
+1 Return of the Wildspeaker
+1 Revitalizing Repast // Old-Growth Grove
+1 Rishkar's Expertise
+1 Saproling Migration
+1 Scute Swarm
+1 Shamanic Revelation
+1 Sinkhole Surveyor
+1 Sol Ring
+1 Springheart Nantuko
+1 Springleaf Parade
+1 Stinging Study
+13 Swamp
+1 Sylvan Offering
+1 Syphon Flesh
+1 Tainted Wood
+1 Temple of Malady
+1 Tendershoot Dryad
+1 Torment of Hailfire
+1 Transpose
+1 Twilight Mire
+1 Undergrowth Stadium
+1 Verdant Command
+1 Vernal Fen
+1 Virulent Emissary
+1 Woodland Cemetery
+1 Wrap in Vigor

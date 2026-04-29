@@ -1,0 +1,87 @@
+COMMANDER: Magus Lucea Kane
+1 Aberrant
+1 Aetherize
+1 Animist's Awakening
+1 Arcane Signet
+1 Atalan Jackal
+1 Biophagus
+1 Breeding Pool
+1 Broodlord
+1 Cinder Glade
+1 Clamavus
+1 Command Tower
+1 Cultivate
+1 Curse of the Swine
+1 Dreamroot Cascade
+1 Elementalist's Palette
+1 Evolution Witness
+1 Exocrine
+1 Exotic Orchard
+1 Expansion // Explosion
+1 Explore
+1 Farseek
+8 Forest
+1 Frontier Bivouac
+1 Frostboil Snarl
+1 Frostcliff Siege
+1 Game Trail
+1 Garruk's Uprising
+1 Geometer's Arthropod
+1 Goldvein Hydra
+1 Gruul Turf
+1 Hardened Scales
+1 Harrow
+1 Hinterland Harbor
+1 Hormagaunt Horde
+1 Hull Breach
+1 Hydroid Krasis
+1 Ingenious Prodigy
+1 Inspiring Call
+4 Island
+1 Izzet Boilerworks
+1 Jaya's Immolating Inferno
+1 Ketria Triome
+1 Kiora's Follower
+1 Kiora, Behemoth Beckoner
+1 Malanthrope
+1 Mawloc
+1 Mind into Matter
+1 Misty Rainforest
+4 Mountain
+1 Nev, the Practical Dean
+1 Nexos
+1 Open the Way
+1 Owlin Spiralmancer
+1 Path of Ancestry
+1 Purestrain Genestealer
+1 Rampant Growth
+1 Ravener
+1 Rockfall Vale
+1 Rootbound Crag
+1 Scalding Tarn
+1 Shadow in the Warp
+1 Shivan Devastator
+1 Simic Growth Chamber
+1 Sodden Verdure
+1 Sol Ring
+1 Sporocyst
+1 Starstorm
+1 Steam Vents
+1 Stomping Ground
+1 Stonecoil Serpent
+1 Sulfur Falls
+1 Swiftfoot Boots
+1 Temur Ascendancy
+1 Termagant Swarm
+1 Tervigon
+1 The First Tyrannic War
+1 Thousand-Year Elixir
+1 Troyan, Gutsy Explorer
+1 Tyrant Guard
+1 Unbound Flourishing
+1 Up the Beanstalk
+1 Vineglimmer Snarl
+1 Voracious Hydra
+1 Winged Hive Tyrant
+1 Wooded Foothills
+1 Zoanthrope

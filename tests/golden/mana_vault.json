@@ -1,0 +1,42 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "static:no_untap_conditional:_"
+      ],
+      "index": 0,
+      "kind": "static"
+    },
+    {
+      "first5": [
+        "trig:phase",
+        "optional",
+        "conditional",
+        "untap"
+      ],
+      "index": 1,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "trig:phase",
+        "conditional_effect"
+      ],
+      "index": 2,
+      "kind": "triggered"
+    },
+    {
+      "first5": [
+        "act:T",
+        "add_mana"
+      ],
+      "index": 3,
+      "kind": "activated"
+    }
+  ],
+  "ability_count": 4,
+  "fully_parsed": true,
+  "group": "cedh",
+  "name": "Mana Vault",
+  "parse_error_count": 0
+}

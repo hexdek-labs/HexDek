@@ -1,0 +1,89 @@
+COMMANDER: Animar, Soul of Elements
+1 Acidic Slime
+1 All Will Be One
+1 Ancestral Statue
+1 Anticausal Vestige
+1 Apex Devastator
+1 Beast Whisperer
+1 Beastcaller Savant
+1 Birds of Paradise
+1 Branching Evolution
+1 Cinder Glade
+1 City of Brass
+1 Clement, the Worrywort
+1 Cloud of Faeries
+1 Command Tower
+1 Consecrated Sphinx
+1 Cradle Clearcutter
+1 Cyclonic Rift
+1 Deadeye Navigator
+1 Dream Stalker
+1 Equilibrium
+1 Fanatic of Rhonas
+1 Fauna Shaman
+1 Fierce Empath
+6 Forest
+1 Forge of Heroes
+1 Forgotten Ancient
+1 Frenzied Baloth
+1 Gemrazer
+1 Guardian Project
+1 Gwenna, Eyes of Gaea
+1 Hardened Scales
+1 Hideous Taskmaster
+1 Hinterland Harbor
+1 Hullbreaker Horror
+1 Hydroid Krasis
+1 Imperial Recruiter
+5 Island
+1 Kami of Whispered Hopes
+1 Karplusan Forest
+1 Lilysplash Mentor
+1 Lion Umbra
+1 Maelstrom Wanderer
+1 Mosswort Bridge
+3 Mountain
+1 Mystic Remora
+1 Opal Palace
+1 Ornithopter of Paradise
+1 Ozolith, the Shattered Spire
+1 Paradise Druid
+1 Peregrine Drake
+1 Phyrexian Metamorph
+1 Primordial Sage
+1 Prismatic Vista
+1 Purphoros, God of the Forge
+1 Quantum Riddler
+1 Radagast the Brown
+1 Rattleclaw Mystic
+1 Rhystic Study
+1 Rootbound Crag
+1 Selvala, Heart of the Wilds
+1 Shaman of Forgotten Ways
+1 Shaman of the Great Hunt
+1 Shivan Reef
+1 Shrieking Drake
+1 Slip Out the Back
+1 Somberwald Sage
+1 Soul of the Harvest
+1 Spell Pierce
+1 Spellskite
+1 Spire Garden
+1 Stomping Ground
+1 Sulfur Falls
+1 Summon: Bahamut
+1 Temur Ascendancy
+1 Temur Sabertooth
+1 The Pride of Hull Clade
+1 Thornspire Verge
+1 Ulamog, the Ceaseless Hunger
+1 Verdurous Gearhulk
+1 Vigor
+1 Vizier of the Menagerie
+1 Walking Ballista
+1 Willowrush Verge
+1 Wooded Foothills
+1 Worldly Tutor
+1 Yavimaya Coast
+1 Yavimaya, Cradle of Growth
+1 Zimone, Paradox Sculptor

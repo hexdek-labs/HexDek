@@ -1,0 +1,83 @@
+COMMANDER: Quandrix, the Proof
+1 Aesi, Tyrant of Gyre Strait
+1 Aminatou's Augury
+1 Amulet of Vigor
+1 Archmage of Runes
+1 Avenger of Zendikar
+1 Beast Within
+1 Breeding Pool
+1 Cackling Counterpart
+1 Castle Garenbrig
+1 Command Tower
+1 Croaking Counterpart
+1 Cultivator Colossus
+1 Cycle of Renewal
+1 Dreamroot Cascade
+1 Echo of Eons
+1 Echocasting Symposium
+1 Entish Restoration
+1 Exotic Orchard
+1 Explosive Vegetation
+1 Fabled Passage
+1 Farseek
+1 Flare of Cultivation
+1 Flash Photography
+1 Flooded Grove
+10 Forest
+1 Frantic Search
+1 Greensleeves, Maro-Sorcerer
+1 Harrow
+1 Hinterland Harbor
+1 Inevitable Betrayal
+1 Irenicus's Vile Duplication
+8 Island
+1 Lifestream's Blessing
+1 Lotus Cobra
+1 Lumra, Bellow of the Woods
+1 Migration Path
+1 Mirrorpool
+1 Misty Rainforest
+1 Mosswort Bridge
+1 Myriad Landscape
+1 Mystic Sanctuary
+1 Mystical Tutor
+1 Nature's Lore
+1 Nissa, Resurgent Animist
+1 Planar Engineering
+1 Prismatic Vista
+1 Proctor's Gaze
+1 Quantum Misalignment
+1 Quasiduplicate
+1 Rally the Galadhrim
+1 Rampant Growth
+1 Rejuvenating Springs
+1 Reshape the Earth
+1 Return of the Wildspeaker
+1 Rishkar's Expertise
+1 Rite of Replication
+1 Roiling Regrowth
+1 Scapeshift
+1 Season of Gathering
+1 Season of Weaving
+1 Shifting Woodland
+1 Skyshroud Claim
+1 Snap
+1 Sol Ring
+1 Sol Talisman
+1 Spelunking
+1 Springheart Nantuko
+1 Stock Up
+1 Studious First-Year // Rampant Growth
+1 Sublime Epiphany
+1 Summoner's Pact
+1 Tatyova, Benthic Druid
+1 Terramorphic Expanse
+1 Three Visits
+1 Tiller Engine
+1 Tireless Provisioner
+1 Vesuva
+1 Waterlogged Grove
+1 Will of the Temur
+1 Worldly Tutor
+1 Yavimaya Coast
+1 Zuran Orb

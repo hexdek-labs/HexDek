@@ -1,0 +1,84 @@
+COMMANDER: Quandrix, the Proof
+1 Aesi, Tyrant of Gyre Strait
+1 Alchemist's Refuge
+1 Aminatou's Augury
+1 Ancestral Vision
+1 Apex Devastator
+1 Arcane Signet
+1 Archmage Emeritus
+1 Archmage of Runes
+1 Baral's Expertise
+1 Beast Within
+1 Birds of Paradise
+1 Boseiju, Who Endures
+1 Breeding Pool
+1 Command Beacon
+1 Command Tower
+1 Counterspell
+1 Crashing Footfalls
+1 Cultivate
+1 Cyclonic Rift
+1 Deekah, Fractal Theorist
+1 Delighted Halfling
+1 Draconic Lore
+1 Dreamroot Cascade
+1 Elvish Mystic
+1 Entish Restoration
+1 Eternal Witness
+1 Eureka Moment
+1 Explore
+1 Explosive Vegetation
+1 Farseek
+1 Fierce Guardianship
+1 Finale of Devastation
+9 Forest
+1 Frantic Search
+1 Growth Spiral
+1 Hinterland Harbor
+1 Hullbreaker Horror
+1 Imoti, Celebrant of Bounty
+9 Island
+1 Kodama's Reach
+1 Last March of the Ents
+1 Leyline Invocation
+1 Lightning Greaves
+1 Llanowar Elves
+1 Metallurgic Summonings
+1 Mistrise Village
+1 Misty Rainforest
+1 Mnemonic Deluge
+1 Mystic Confluence
+1 Mystic Sanctuary
+1 Natural Reclamation
+1 Nature's Lore
+1 Nexus of Fate
+1 Omniscience
+1 Open the Way
+1 Otawara, Soaring City
+1 Planar Genesis
+1 Proctor's Gaze
+1 Quandrix Apprentice
+1 Rampant Growth
+1 Rapid Hybridization
+1 Rejuvenating Springs
+1 Reliquary Tower
+1 Rishkar's Expertise
+1 Sakashima of a Thousand Faces
+1 Sakura-Tribe Elder
+1 Sentinel Tower
+1 Shared Roots
+1 Shark Typhoon
+1 Simic Growth Chamber
+1 Skyshroud Claim
+1 Snap
+1 Sodden Verdure
+1 Sol Ring
+1 Swiftfoot Boots
+1 Talrand, Sky Summoner
+1 Three Visits
+1 Traverse the Outlands
+1 Treasure Cruise
+1 Tropical Island
+1 Urban Evolution
+1 Yavimaya Coast
+1 Yavimaya, Cradle of Growth

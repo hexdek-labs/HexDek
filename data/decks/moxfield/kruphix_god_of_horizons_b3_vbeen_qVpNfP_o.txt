@@ -1,0 +1,76 @@
+COMMANDER: Kruphix, God of Horizons
+1 Aesi, Tyrant of Gyre Strait
+1 An Offer You Can't Refuse
+1 Anticausal Vestige
+1 Arcane Denial
+1 Artisan of Kozilek
+1 Augur of Autumn
+1 Awakening Zone
+1 Azusa, Lost but Seeking
+1 Bane of Bala Ged
+1 Blossoming Defense
+1 Breeding Pool
+1 Burgeoning
+1 Coral Atoll
+1 Counterspell
+1 Courser of Kruphix
+1 Cryptolith Rite
+1 Doubling Cube
+1 Dreamroot Cascade
+1 Dryad of the Ilysian Grove
+1 Emrakul, the World Anew
+1 Entish Restoration
+1 Evolving Wilds
+1 Exploration
+1 Explore
+1 Fabled Passage
+1 Farseek
+17 Forest
+1 Fyndhorn Elder
+1 Genesis Hydra
+1 Growth Spiral
+1 Hand of Emrakul
+1 Harrow
+1 Heroic Intervention
+1 Hinterland Harbor
+9 Island
+1 It That Betrays
+1 Jungle Basin
+1 Llanowar Elves
+1 Loot, Exuberant Explorer
+1 Lotus Cobra
+1 Nature's Lore
+1 Oblivion Sower
+1 Omnath, Locus of Mana
+1 Opt
+1 Oracle of Mul Daya
+1 Pathrazer of Ulamog
+1 Rampant Growth
+1 Rejuvenating Springs
+1 Reliquary Tower
+1 Retreat to Kazandu
+1 Royal Treatment
+1 Sakura-Tribe Scout
+1 Seedborn Muse
+1 Selvala, Heart of the Wilds
+1 Simic Growth Chamber
+1 Sire of Seven Deaths
+1 Slip Out the Back
+1 Snakeskin Veil
+1 Snapping Voidcraw
+1 Sol Ring
+1 Tamiyo's Safekeeping
+1 Tatyova, Benthic Druid
+1 Terramorphic Expanse
+1 Tireless Provisioner
+1 Traveling Chocobo
+1 Traverse the Outlands
+1 Turbulent Wilderness
+1 Ulamog, the Ceaseless Hunger
+1 Ulamog, the Defiler
+1 Unstoppable Plan
+1 Vineglimmer Snarl
+1 Void Winnower
+1 Wayward Swordtooth
+1 Wilderness Reclamation
+1 Yavimaya Coast

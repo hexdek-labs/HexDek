@@ -1,0 +1,84 @@
+COMMANDER: Breena, the Demagogue
+1 Aetherflux Reservoir
+1 Akroma's Will
+1 Arcane Signet
+1 Archangel of Thune
+1 Authority of the Consuls
+1 Black Market Connections
+1 Bleachbone Verge
+1 Blind Obedience
+1 Bounty Board
+1 Brightclimb Pathway // Grimclimb Pathway
+1 Cathars' Crusade
+1 Changeling Outcast
+1 Charismatic Conqueror
+1 Command Tower
+1 Crawlspace
+1 Deadly Rollick
+1 Desolate Mire
+1 Drana and Linvala
+1 Dusk Legion Duelist
+1 Emeria's Call // Emeria, Shattered Skyclave
+1 Enduring Innocence
+1 Enduring Tenacity
+1 Esper Sentinel
+1 Exemplar of Light
+1 Fabled Passage
+1 Felidar Sovereign
+1 Felisa, Fang of Silverquill
+1 Fell the Profane // Fell Mire
+1 Flumph
+1 Generous Pup
+1 Ghostly Prison
+1 Giver of Runes
+1 Inkshield
+1 Jacked Rabbit
+1 Kambal, Consul of Allocation
+1 Land Tax
+1 Loran of the Third Path
+1 Loran's Escape
+1 Malakir Rebirth // Malakir Mire
+1 Marsh Flats
+1 Nils, Discipline Enforcer
+1 Noble Heritage
+1 Norn's Annex
+1 Ocelot Pride
+1 Orcish Bowmasters
+1 Orzhov Advokist
+1 Orzhov Basilica
+1 Path to Exile
+1 Pearl Medallion
+10 Plains
+1 Promise of Loyalty
+1 Razorgrass Ambush // Razorgrass Field
+1 Reliquary Tower
+1 Requisition Raid
+1 Resourceful Defense
+1 Retribution of the Ancients
+1 Scrawling Crawler
+1 Sensei's Divining Top
+1 Serra Ascendant
+1 Shadowy Backstreet
+1 Sheoldred, the Apocalypse
+1 Single Combat
+1 Skullclamp
+1 Sol Ring
+1 Soul Warden
+1 Soul's Attendant
+1 Stoneforge Mystic
+1 Storm Herd
+8 Swamp
+1 Swords to Plowshares
+1 Tainted Field
+1 Teferi's Protection
+1 Temple of Silence
+1 Test of Endurance
+1 The Aetherspark
+1 The Ozolith
+1 Thought Vessel
+1 Trouble in Pairs
+1 Urza's Saga
+1 Vault of Champions
+1 Wedding Ring
+1 Windborn Muse
+1 Witch Enchanter // Witch-Blessed Meadow

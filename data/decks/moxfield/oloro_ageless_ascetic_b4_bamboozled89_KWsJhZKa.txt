@@ -1,0 +1,83 @@
+COMMANDER: Oloro, Ageless Ascetic
+1 Academy Ruins
+1 Aetherize
+1 Angelic Arbiter
+1 Arcane Sanctum
+1 Arcane Signet
+1 Aura of Silence
+1 Azor's Elocutors
+1 Blind Obedience
+1 Burnished Hart
+1 Cleansing Meditation
+1 Clever Impersonator
+1 Cloud Cover
+1 Command Tower
+1 Consecrated Sphinx
+1 Copy Artifact
+1 Copy Enchantment
+1 Cyclonic Rift
+1 Darksteel Forge
+1 Detention Sphere
+1 Elixir of Immortality
+1 Embargo
+1 Enchanted Evening
+1 Evolving Wilds
+1 Exsanguinate
+1 Fabled Passage
+1 Fabricate
+1 Flood Plain
+1 Fountain Watch
+1 Future Sight
+1 Glacial Chasm
+1 Glacial Fortress
+1 God-Pharaoh's Statue
+1 Greater Auramancy
+1 Hallowed Fountain
+1 Hinder
+1 Humility
+1 Hurkyl's Recall
+9 Island
+1 Jwar Isle Refuge
+1 Karmic Justice
+1 Leyline of Anticipation
+1 Luminarch Ascension
+1 Magus of the Moat
+1 Magus of the Tabernacle
+1 Meddling Mage
+1 Meekstone
+1 Meishin, the Mind Cage
+1 Mind Unbound
+1 Mycosynth Lattice
+1 Oblivion Ring
+1 Omniscience
+1 Open the Vaults
+1 Path to Exile
+1 Peacekeeper
+1 Phyrexian Arena
+7 Plains
+1 Platinum Angel
+1 Queza, Augur of Agonies
+1 Reliquary Tower
+1 Rhystic Study
+1 Seachrome Coast
+1 Sejiri Refuge
+1 Sinister Hideout
+1 Sol Ring
+1 Solitary Confinement
+1 Spell Crumple
+1 Spellbook
+1 Sphinx's Revelation
+1 Stormtide Leviathan
+1 Supreme Verdict
+4 Swamp
+1 Swords to Plowshares
+1 Temple of Enlightenment
+1 Temple of the False God
+1 Test of Endurance
+1 Tomorrow, Azami's Familiar
+1 Torpor Orb
+1 Utter End
+1 Vedalken Orrery
+1 Venser's Journal
+1 Wash Out
+1 Whelming Wave

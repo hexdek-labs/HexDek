@@ -1,0 +1,81 @@
+COMMANDER: Nekusar, the Mindrazer
+1 Ankh of Mishra
+1 Anvil of Bogardan
+1 Arcane Signet
+1 Blasphemous Act
+1 Blood Crypt
+1 Bog Witch
+1 Burning Inquiry
+1 Cabal Coffers
+1 Canyon Slough
+1 Command Tower
+1 Consecrated Sphinx
+1 Counterspell
+1 Curse of Opulence
+1 Cyclonic Rift
+1 Dakra Mystic
+1 Damnation
+1 Dark Deal
+1 Decanter of Endless Water
+1 Dictate of Kruphix
+1 Faerie Mastermind
+1 Fate Unraveler
+1 Fetid Pools
+1 Folio of Fancies
+1 Font of Mythos
+1 Geothermal Bog
+1 Horn of Greed
+1 Howling Mine
+1 In Garruk's Wake
+6 Island
+1 Izzet Signet
+1 Jace's Archivist
+1 Kami of the Crescent Moon
+1 Kederekt Parasite
+1 Library of Leng
+1 Lore Broker
+1 Magebane Lizard
+1 Magus of the Wheel
+1 Mana Leak
+1 Massacre
+1 Massacre Wurm
+1 Master of the Feast
+1 Miscast
+6 Mountain
+1 Nightscape Familiar
+1 Ob Nixilis, the Hate-Twisted
+1 Orcish Bowmasters
+1 Painful Quandary
+1 Phyrexian Tower
+1 Plague Wind
+1 Proft's Eidetic Memory
+1 Raucous Theater
+1 Razorkin Needlehead
+1 Red Death, Shipwrecker
+1 Reliquary Tower
+1 Scrawling Crawler
+1 Seizan, Perverter of Truth
+1 Sheoldred, the Apocalypse
+1 Skyscribing
+1 Smoldering Marsh
+1 Sol Ring
+1 Sower of Discord
+1 Spell Pierce
+1 Spellshock
+1 Standstill
+1 Steam Vents
+1 Stormfist Crusader
+1 Sulfurous Mire
+1 Sunken Hollow
+10 Swamp
+1 Temple Bell
+1 Thought Vessel
+1 Thundering Falls
+1 Underworld Dreams
+1 Volcanic Island
+1 Watery Grave
+1 Wheel of Fate
+1 Wheel of Fortune
+1 Windfall
+1 Winds of Change
+1 Wizard Class

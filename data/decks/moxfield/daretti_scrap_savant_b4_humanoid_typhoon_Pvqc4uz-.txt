@@ -1,0 +1,78 @@
+COMMANDER: Daretti, Scrap Savant
+1 All Is Dust
+1 Ancient Tomb
+1 Arcane Signet
+1 Audacious Reshapers
+1 Basalt Monolith
+1 Blasphemous Act
+1 Blinkmoth Nexus
+1 Brass's Tunnel-Grinder // Tecutlan, the Searing Rift
+1 Chaos Warp
+1 Clock of Omens
+1 Codex Shredder
+1 Command Beacon
+1 Currency Converter
+1 Daretti, Rocketeer Engineer
+1 Darksteel Citadel
+1 Dauntless Scrapbot
+1 Everflowing Chalice
+1 Faithless Looting
+1 Feldon of the Third Path
+1 Ghost Quarter
+1 Gilded Lotus
+1 Goblin Engineer
+1 Goblin Welder
+1 Great Furnace
+1 Grim Monolith
+1 Hall of Tagsin
+1 Ichor Wellspring
+1 Inkmoth Nexus
+1 Inventors' Fair
+1 Krark-Clan Ironworks
+1 Lightning Greaves
+1 Liquimetal Torque
+1 Mana Vault
+1 Manifold Key
+1 Matzalantli, the Great Door // The Core
+1 Melded Moxite
+1 Memory Jar
+1 Metalwork Colossus
+1 Metalworker
+1 Mind Stone
+1 Mirrex
+1 Mishra, Excavation Prodigy
+23 Mountain
+1 Mox Opal
+1 Myr Battlesphere
+1 Myr Retriever
+1 Mystic Forge
+1 Neheb, Dreadhorde Champion
+1 Phyrexian Triniform
+1 Planar Bridge
+1 Portal to Phyrexia
+1 Prized Statue
+1 Reforge the Soul
+1 Rings of Brighthearth
+1 Saheeli's Lattice // Mastercraft Raptor
+1 Scrap Trawler
+1 Scrap Welder
+1 Sculpting Steel
+1 Servo Schematic
+1 Sol Ring
+1 Solemn Simulacrum
+1 Spine of Ish Sah
+1 Squee, Goblin Nabob
+1 The Mightstone and Weakstone
+1 The Mycosynth Gardens
+1 Thran Dynamo
+1 Treasure Vault
+1 Triplicate Titan
+1 Urza's Saga
+1 Vandalblast
+1 Voltaic Key
+1 War Room
+1 Wasteland
+1 Weapons Manufacturing
+1 Wheel of Fortune
+1 Wheel of Misfortune
+1 Wurmcoil Engine

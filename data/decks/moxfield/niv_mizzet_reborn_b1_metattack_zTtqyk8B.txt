@@ -1,0 +1,86 @@
+COMMANDER: Niv-Mizzet Reborn
+1 Ancient Excavation
+1 Ash Barrens
+1 Assassin's Trophy
+1 Atarka, World Render
+1 Auroral Procession
+1 Beledros Witherbloom
+1 Bladewing, Deathless Tyrant
+1 Bloom Tender
+1 Boros Charm
+1 Bring to Light
+1 Cascading Cataracts
+1 Chromatic Lantern
+1 Chromatic Orrery
+1 Command Tower
+1 Counterpoint
+1 Crystal Quarry
+1 Diregraf Rebirth
+1 Dovin's Veto
+1 Dragon Arch
+1 Dragonlord Dromoka
+1 Drown in the Loch
+1 Eladamri's Call
+1 Evolving Wilds
+1 Explosive Getaway
+1 Extract from Darkness
+1 Fabled Passage
+1 Faeburrow Elder
+1 Fieldmist Borderpost
+1 Firewild Borderpost
+1 Firkraag, Cunning Instigator
+1 Fist of Suns
+4 Forest
+1 Golgari Charm
+1 Grave Upheaval
+1 Hymn of Rebirth
+1 Hypersonic Dragon
+4 Island
+1 Izzet Charm
+1 Klauth, Unrivaled Ancient
+1 Kolaghan's Command
+1 Kolaghan, the Storm's Fury
+1 Korlessa, Scale Singer
+1 Legion Leadership // Legion Stronghold
+1 Leyline of the Guildpact
+1 Lorehold, the Historian
+1 Mirari's Wake
+1 Mistvein Borderpost
+4 Mountain
+1 Obsidian Obelisk
+1 Obzedat's Aid
+1 Ojutai, Soul of Winter
+1 Path of Ancestry
+1 Permission Denied
+1 Perplex
+1 Pillar of the Paruns
+3 Plains
+1 Primevals' Glorious Rebirth
+1 Prismari Command
+1 Prismari, the Inspiration
+1 Prismatic Vista
+1 Quandrix, the Proof
+1 Reborn Hope
+1 Reinterpret
+1 Revitalizing Repast // Old-Growth Grove
+1 Rhythm of the Wild
+1 Rivaz of the Claw
+1 Runescale Stormbrood // Chilling Screech
+1 Sarkhan, Soul Aflame
+1 Shadrix Silverquill
+1 Silumgar's Command
+1 Silumgar, the Drifting Death
+1 Sivitri, Dragon Master
+1 Soulherder
+1 Stump Stomp // Burnwillow Clearing
+4 Swamp
+1 Sylvan Reclamation
+1 Terramorphic Expanse
+1 The World Tree
+1 Timeless Lotus
+1 Treacherous Terrain
+1 Urza's Filter
+1 Veinfire Borderpost
+1 Venser, the Sojourner
+1 Waterlogged Teachings // Inundated Archive
+1 Wildfield Borderpost

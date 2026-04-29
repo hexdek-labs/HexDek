@@ -1,0 +1,16 @@
+{
+  "abilities": [
+    {
+      "first5": [
+        "static:token_anthem:_"
+      ],
+      "index": 0,
+      "kind": "static"
+    }
+  ],
+  "ability_count": 1,
+  "fully_parsed": true,
+  "group": "layer7",
+  "name": "Intangible Virtue",
+  "parse_error_count": 0
+}

@@ -1,0 +1,76 @@
+COMMANDER: Slimefoot, the Stowaway
+1 Arcane Signet
+1 Ashnod's Altar
+1 Assassin's Trophy
+1 Bastion of Remembrance
+1 Beast Within
+1 Beastmaster Ascension
+1 Boggart Trawler // Boggart Bog
+1 Bojuka Bog
+1 Braids, Arisen Nightmare
+1 Brightcap Badger // Fungus Frolic
+1 Cauldron of Essence
+1 Command Tower
+1 Culling Ritual
+1 Deathreap Ritual
+1 Deathspore Thallid
+1 Diabolic Intent
+1 Dina, Soul Steeper
+1 Doubling Season
+1 Drivnod, Carnage Dominus
+1 Emeritus of Abundance // Regrowth
+1 Emeritus of Woe // Demonic Tutor
+1 Essenceknit Scholar
+1 Eternal Witness
+1 Exotic Orchard
+16 Forest
+1 Funeral Room // Awakening Hall
+1 Garruk Wildspeaker
+1 Golgari Charm
+1 Growing Rites of Itlimoc // Itlimoc, Cradle of the Sun
+1 Haywire Mite
+1 Heroic Intervention
+1 High Market
+1 Insidious Roots
+1 Jaheira, Friend of the Forest
+1 Life from the Loam
+1 Lightning Greaves
+1 Liliana, Dreadhorde General
+1 Llanowar Wastes
+1 Marionette Apprentice
+1 Massacre Girl
+1 Moldervine Reclamation
+1 Moseo, Vein's New Dean
+1 Mycoloth
+1 Nature's Lore
+1 Nemata, Grove Guardian
+1 Nurturing Peatland
+1 Parallel Evolution
+1 Parallel Lives
+1 Pernicious Deed
+1 Pitiless Plunderer
+1 Poison-Tip Archer
+1 Primal Vigor
+1 Saproling Symbiosis
+1 Shamanic Revelation
+1 Shroofus Sproutsire
+1 Skullclamp
+1 Sol Ring
+1 Sporecrown Thallid
+1 Sporesower Thallid
+1 Sporoloth Ancient
+10 Swamp
+1 Swiftfoot Boots
+1 Tainted Wood
+1 Tear Asunder
+1 Tendershoot Dryad
+1 The Mycotyrant
+1 Thelon of Havenwood
+1 Three Visits
+1 Toxic Deluge
+1 Undergrowth Stadium
+1 Utopia Mycon
+1 Victimize
+1 Wilderness Reclamation
+1 Yavimaya, Cradle of Growth
+1 Zulaport Cutthroat

@@ -1,0 +1,74 @@
+COMMANDER: Minwu, White Mage
+1 Aerith Gainsborough
+1 Aetherflux Reservoir
+1 Ajani, Wise Counselor
+1 Akroma's Will
+1 Amazing Alliance
+1 Angel of Destiny
+1 Arcane Signet
+1 Augur il-Vec
+1 Auriok Champion
+1 Authority of the Consuls
+1 Battlefield Medic
+1 Battletide Alchemist
+1 Beacon of Destiny
+1 Beloved Chaplain
+1 Blighted Steppe
+1 Children of Korlis
+1 Clergy of the Holy Nimbus
+1 Cleric Class
+1 Codespell Cleric
+1 Custodi Soulcaller
+1 Damning Verdict
+1 Dawnbringer Cleric
+1 Dollmaker's Shop // Porcelain Gallery
+1 Emeria, the Sky Ruin
+1 Envoy of the Ancestors
+1 Essence Channeler
+1 Exemplar of Light
+1 Extraplanar Lens
+1 Flare of Fortitude
+1 Giver of Runes
+1 Grand Abolisher
+1 Guide of Souls
+1 Hanweir Militia Captain // Westvale Cult Leader
+1 Herald's Horn
+1 Hinterland Sanctifier
+1 Impassioned Orator
+1 Land Tax
+1 Lunarch Veteran // Luminous Phantom
+1 Mangara, the Diplomat
+1 Martyr of Sands
+1 Metastatic Evangel
+1 Metropolis Reformer
+1 Mikaeus, the Lunarch
+1 Monk Realist
+1 Mother of Runes
+1 Myriad Landscape
+1 Nykthos, Shrine to Nyx
+1 Oreskos Explorer
+1 Path to Exile
+1 Pearl Medallion
+1 Rebuff the Wicked
+1 Remorseful Cleric
+1 Remote Farm
+1 Resourceful Defense
+1 Righteous Aura
+1 Righteous Valkyrie
+1 Riot Control
+1 Samite Herbalist
+1 Selfless Spirit
+1 Smothering Tithe
+27 Snow-Covered Plains
+1 Sol Ring
+1 Soul Warden
+1 Soul's Attendant
+1 Soulmender
+1 Staff of Compleation
+1 Suture Priest
+1 Swords to Plowshares
+1 Test of Endurance
+1 The Gaffer
+1 The Wind Crystal
+1 Voice of the Blessed
+1 Weathered Wayfarer

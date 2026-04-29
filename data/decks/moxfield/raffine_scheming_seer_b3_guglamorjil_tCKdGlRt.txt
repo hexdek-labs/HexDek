@@ -1,0 +1,93 @@
+COMMANDER: Raffine, Scheming Seer
+1 Adeline, Resplendent Cathar
+1 All-Seeing Arbiter
+1 Animate Dead
+1 Arcane Sanctum
+1 Arcane Signet
+1 Archfiend of Ifnir
+1 Archon of Cruelty
+1 Archpriest of Shadows
+1 Ascend from Avernus
+1 Azorius Chancery
+1 Baleful Strix
+1 Bone Miser
+1 Cabal Ritual
+1 Cephalid Coliseum
+1 Chasm Skulker
+1 Command Tower
+1 Consecrated Sphinx
+1 Contaminated Landscape
+1 Cryptcaller Chariot
+1 Currency Converter
+1 Dance of the Dead
+1 Dark Ritual
+1 Dimir Aqueduct
+1 Doomed Necromancer
+1 Dovin's Veto
+1 Drake Haven
+1 Dreadwing Scavenger
+1 Drowned Catacomb
+1 Duelist of the Mind
+1 Empyrean Eagle
+1 Exotic Orchard
+1 Faerie Mastermind
+1 Fellwar Stone
+1 Flare of Denial
+1 Flare of Fortitude
+1 Flooded Strand
+1 Glen Elendra Guardian
+1 Hushbringer
+5 Island
+1 Jubilant Skybonder
+1 Judge's Familiar
+1 Kangee's Lieutenant
+1 Kangee, Sky Warden
+1 Knowledge Is Power
+1 Land Tax
+1 Likeness Looter
+1 Lotho, Corrupt Shirriff
+1 Lurrus of the Dream-Den
+1 Malcolm, Alluring Scoundrel
+1 Mask of the Schemer
+1 Monument to Endurance
+1 No More Lies
+1 Notion Thief
+1 Ornithopter of Paradise
+1 Orzhov Basilica
+1 Path to Exile
+1 Permission Denied
+1 Persist
+4 Plains
+1 Polluted Delta
+1 Pollywog Prodigy
+1 Psychosis Crawler
+1 Queza, Augur of Agonies
+1 Raffine's Tower
+1 Reliquary Tower
+1 Scrubland
+1 Sejiri Shelter // Sejiri Glacier
+1 Sevinne's Reclamation
+1 Shineshadow Snarl
+1 Sol Ring
+1 Spymaster's Vault
+1 Stitch Together
+1 Strip Mine
+1 Sun Titan
+1 Sunken Hollow
+1 Supreme Verdict
+1 Surgical Suite // Hospital Room
+1 Swamp
+1 Swords to Plowshares
+1 Tainted Isle
+1 Temple of Deceit
+1 Temple of Enlightenment
+1 Temple of Silence
+1 Thought Vessel
+1 Thunderclap Wyvern
+1 Toxrill, the Corrosive
+1 Tundra
+1 Undercity Sewers
+1 Vanquish the Horde
+1 Vault of Champions
+1 Vohar, Vodalian Desecrator
+1 Void Rend

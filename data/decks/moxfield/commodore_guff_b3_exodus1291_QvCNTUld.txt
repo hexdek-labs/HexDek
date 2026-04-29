@@ -1,0 +1,88 @@
+COMMANDER: Commodore Guff
+1 Aetheric Amplifier
+1 Ajani Steadfast
+1 Arcane Signet
+1 Arid Mesa
+1 Astral Cornucopia
+1 Bitterthorn, Nissa's Animus
+1 Blasphemous Act
+1 Blast Zone
+1 Blazing Archon
+1 Chandra, Acolyte of Flame
+1 Chandra, Flameshaper
+1 Chandra, Legacy of Fire
+1 Chandra, Novice Pyromancer
+1 Chandra, Spark Hunter
+1 Chandra, Torch of Defiance
+1 Chimil, the Inner Sun
+1 Command Tower
+1 Counterspell
+1 Darksteel Mutation
+1 Darksteel Reactor
+1 Dovin Baan
+1 Elspeth's Talent
+1 Expansion Algorithm
+1 Fabled Passage
+1 Fellwar Stone
+1 Flooded Strand
+1 Flux Channeler
+1 Gemstone Mine
+1 Ghostly Prison
+1 Gideon Jura
+1 Grateful Apparition
+1 Hallowed Fountain
+1 Ichormoon Gauntlet
+5 Island
+1 Jace Reawakened
+1 Jace, Wielder of Mysteries
+1 Karn's Bastion
+1 Karn, Living Legacy
+1 Kasmina, Enigmatic Mentor
+1 Kazuul, Tyrant of the Cliffs
+1 Koth of the Hammer
+1 Mirrormade
+1 Mondrak, Glory Dominus
+1 Monologue Tax
+5 Mountain
+1 Nahiri, the Harbinger
+1 Nahiri, the Lithomancer
+1 Nahiri, the Unforgiving
+1 Narset of the Ancient Way
+1 Narset, Parter of Veils
+1 Oath of Gideon
+1 Oath of Teferi
+1 Path of Ancestry
+1 Path to Exile
+5 Plains
+1 Prairie Stream
+1 Radiant Summit
+1 Reliquary Tower
+1 Rowan's Talent
+1 Sacred Foundry
+1 Saheeli, Filigree Master
+1 Sarkhan the Masterless
+1 Scalding Tarn
+1 Shatter the Sky
+1 Sol Ring
+1 Sphere of Safety
+1 Staff of Compleation
+1 Steam Vents
+1 Supreme Verdict
+1 Swords to Plowshares
+1 Teferi's Ageless Insight
+1 Teferi, Time Raveler
+1 Tekuthal, Inquiry Dominus
+1 Temple of Enlightenment
+1 Temple of Epiphany
+1 Temple of Triumph
+1 Teyo, Geometric Tactician
+1 The Chain Veil
+1 The Eternal Wanderer
+1 The Wanderer
+1 The Wandering Emperor
+1 Thrummingbird
+1 Time Wipe
+1 Tocasia's Welcome
+1 Ugin, the Ineffable
+1 Vanquish the Horde
+1 Venat, Heart of Hydaelyn // Hydaelyn, the Mothercrystal
