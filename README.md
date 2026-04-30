@@ -2,7 +2,7 @@
 
 An open-source Magic: The Gathering Commander engine. Typed AST compiled from every printed card, political AI that plays multiplayer like a human, and a live tournament forge that runs thousands of games per minute.
 
-**[hexdek.dev](https://hexdek.dev)** · [Donate](https://hexdek.dev/donations) · [Bug Report](https://hexdek.dev/feedback) · MIT License
+**[hexdek.dev](https://hexdek.dev)** · [Discord](https://discord.gg/Mz2ueRFXds) · [Donate](https://hexdek.dev/donations) · [Bug Report](https://hexdek.dev/feedback) · MIT License
 
 ---
 
