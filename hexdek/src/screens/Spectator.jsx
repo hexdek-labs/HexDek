@@ -6,6 +6,24 @@ import { useLiveSocket } from '../hooks/useLiveSocket'
 
 const SPEED_MARKS = [0.2, 0.5, 1, 2, 5, 10, 20, 40, 100, 200]
 
+const EVAL_GRID = [
+  ['board_presence',  'card_advantage',      'mana_advantage'],
+  ['combo_proximity', 'score',               'life_resource'],
+  ['threat_exposure', 'commander_progress',  'graveyard_value'],
+]
+
+const EVAL_LABELS = {
+  board_presence: 'Board',
+  card_advantage: 'Cards',
+  mana_advantage: 'Mana',
+  combo_proximity: 'Combo',
+  score: 'Score',
+  life_resource: 'Life',
+  threat_exposure: 'Threat',
+  commander_progress: 'Cmdr',
+  graveyard_value: 'Grave',
+}
+
 const MAGMA = [
   [0, 0, 4], [27, 6, 68], [72, 13, 106], [114, 28, 100],
   [159, 42, 99], [205, 71, 73], [237, 105, 37], [251, 155, 6],
@@ -128,7 +146,30 @@ export default function Spectator() {
   const logContainerRef = useRef(null)
   const userScrolledRef = useRef(false)
   const heatmapRefs = useRef([])
+  const [heatmapTip, setHeatmapTip] = useState(null)
   const error = status === 'disconnected' ? 'WebSocket disconnected' : null
+
+  const handleHeatmapHover = useCallback((e, seatIdx) => {
+    const canvas = heatmapRefs.current[seatIdx]
+    if (!canvas) return
+    const rect = canvas.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const col = Math.min(2, (x / rect.width * 3) | 0)
+    const row = Math.min(2, (y / rect.height * 3) | 0)
+    const key = EVAL_GRID[row][col]
+    const ev = game?.seats?.[seatIdx]?.eval
+    if (!ev) return
+    const val = ev[key]
+    setHeatmapTip({
+      label: EVAL_LABELS[key],
+      value: val != null ? (val >= 0 ? '+' : '') + val.toFixed(2) : '—',
+      x: e.clientX,
+      y: e.clientY,
+    })
+  }, [game])
+
+  const clearHeatmapTip = useCallback(() => setHeatmapTip(null), [])
 
   const setSpeedMultiplier = async (mult) => {
     try {
@@ -205,6 +246,11 @@ export default function Spectator() {
 
   return (
     <>
+      {heatmapTip && (
+        <div className="heatmap-tooltip" style={{ left: heatmapTip.x + 12, top: heatmapTip.y - 8 }}>
+          {heatmapTip.label}: {heatmapTip.value}
+        </div>
+      )}
       <Tape
         left={`SPECTATOR / / FISHTANK`}
         mid={game.finished ? 'GAME OVER' : 'LIVE TELEMETRY'}
@@ -254,6 +300,8 @@ export default function Spectator() {
                         className="seat-eval-map"
                         width={80}
                         height={80}
+                        onMouseMove={e => handleHeatmapHover(e, i)}
+                        onMouseLeave={clearHeatmapTip}
                       />
                     </div>
                     <div className="seat-perms">
@@ -452,6 +500,23 @@ export default function Spectator() {
                 ) : (
                   <div className="t-xs muted">LOADING...</div>
                 )}
+              </div>
+            </Panel>
+
+            <Panel code="FT.VM" title="EVAL HEATMAP KEY">
+              <div className="volcmap-legend">
+                <div className="volcmap-grid">
+                  {EVAL_GRID.flat().map(key => (
+                    <span key={key} className="volcmap-cell">{EVAL_LABELS[key]}</span>
+                  ))}
+                </div>
+                <div className="volcmap-scale">
+                  <div className="volcmap-bar" />
+                  <div className="volcmap-scale-labels">
+                    <span>LOW</span>
+                    <span>HIGH</span>
+                  </div>
+                </div>
               </div>
             </Panel>
           </div>

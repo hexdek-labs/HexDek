@@ -285,6 +285,37 @@ body {
   width: 80px; height: 80px; display: block;
   border-top: 1px solid var(--rule-2);
   image-rendering: pixelated;
+  cursor: crosshair;
+}
+.heatmap-tooltip {
+  position: fixed; z-index: 999; pointer-events: none;
+  background: rgba(0,0,0,0.92); border: 1px solid var(--rule-2);
+  padding: 3px 7px; font-size: 10px; color: var(--ink);
+  letter-spacing: 0.04em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.volcmap-legend { font-size: 9px; }
+.volcmap-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 1px; text-align: center; margin-bottom: 8px;
+}
+.volcmap-cell {
+  background: var(--bg-2); padding: 3px 2px;
+  color: var(--ink-2); letter-spacing: 0.03em; text-transform: uppercase;
+  font-size: 8px;
+}
+.volcmap-scale { margin-top: 4px; }
+.volcmap-bar {
+  height: 8px; border: 1px solid var(--rule-2);
+  background: linear-gradient(to right,
+    rgb(0,0,4), rgb(27,6,68), rgb(72,13,106), rgb(114,28,100),
+    rgb(159,42,99), rgb(205,71,73), rgb(237,105,37), rgb(251,155,6),
+    rgb(252,209,55), rgb(252,253,191));
+}
+.volcmap-scale-labels {
+  display: flex; justify-content: space-between;
+  font-size: 8px; color: var(--ink-2); text-transform: uppercase;
+  letter-spacing: 0.05em; margin-top: 2px;
 }
 .seat-perms {
   padding: 4px; display: flex; gap: 3px; flex-wrap: wrap; flex: 1; align-content: flex-start;
