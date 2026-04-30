@@ -345,6 +345,8 @@ func BaseCharacteristics(p *Permanent) *Characteristics {
 			c.Keywords = append(c.Keywords, g)
 		}
 	}
+	// §707.2 — mana value is a copiable value.
+	c.CMC = p.Card.CMC
 	return c
 }
 
