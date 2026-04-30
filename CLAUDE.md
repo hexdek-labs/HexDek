@@ -150,6 +150,15 @@ Fetch oracle data: `scripts/fetch-oracle.sh`
 - [x] Interaction quality scoring (avg CMC of interaction, cheap vs expensive breakdown)
 - [x] Recursion depth scoring for value chains (infinite/deep/shallow/none loop-back detection)
 - [x] Protection density analysis (built-in protection tracking for combo/threat pieces)
+- [x] Mana base grading (tapland/fetch/utility scoring, A-F grade, upgrade suggestions)
+- [x] Threat assessment profile (26-entry hoser database, condition-matched vulnerability report)
+- [x] Opening hand simulation (10K Monte Carlo trials, keepable % and avg turn to 4 mana)
+- [x] Synergy clusters (theme-grouped card packages with pairwise synergy scoring)
+- [x] Meta positioning (archetype-vs-archetype matchup predictions with reasoning)
+- [x] Card quality tiers (star/cuttable identification from role overlap, win line presence, CMC efficiency)
+- [x] Color weight optimization (demand vs supply analysis, specific land swap suggestions)
+- [x] Deck personality blurb (archetype-aware 2-3 sentence flavor description)
+- [x] Power percentile within archetype (multi-factor scoring: tutors, mana base, interaction, draw, curve, hands)
 
 ### Backlog
 - [ ] 4-card+ combo detection (currently capped at triples)
