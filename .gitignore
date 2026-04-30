@@ -4,6 +4,7 @@
 *.out
 /gameengine.test
 /hexdek-*
+/mtgsquad-*
 /bin/
 
 # Cross-compiled binaries
