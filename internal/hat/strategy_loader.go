@@ -74,6 +74,32 @@ type strategyFileJSON struct {
 	CardRoles       map[string]string   `json:"card_roles,omitempty"`
 	FinisherCards   []string            `json:"finisher_cards,omitempty"`
 	ColorDemand     map[string]int      `json:"color_demand,omitempty"`
+
+	StarCards         []string            `json:"star_cards,omitempty"`
+	CuttableCards     []string            `json:"cuttable_cards,omitempty"`
+	CommanderThemes   []string            `json:"commander_themes,omitempty"`
+	CommanderSynergy  float64             `json:"commander_synergy,omitempty"`
+	VulnerableTo      []string            `json:"vulnerable_to,omitempty"`
+	InteractionAvgCMC float64             `json:"interaction_avg_cmc,omitempty"`
+	CheapInteraction  int                 `json:"cheap_interaction,omitempty"`
+	ManaBaseGrade     string              `json:"mana_base_grade,omitempty"`
+	KeepableHandPct   float64             `json:"keepable_hand_pct,omitempty"`
+	PowerPercentile   int                 `json:"power_percentile,omitempty"`
+	MetaMatchups      []freyaMetaMatchup      `json:"meta_matchups,omitempty"`
+	EmergentSynergies []freyaEmergentSynergy  `json:"emergent_synergies,omitempty"`
+}
+
+type freyaEmergentSynergy struct {
+	Cards            []string `json:"cards"`
+	EffectPattern    string   `json:"effect_pattern"`
+	Tier             int      `json:"tier"`
+	ObservationCount int      `json:"observation_count"`
+	AvgImpact        float64  `json:"avg_impact"`
+}
+
+type freyaMetaMatchup struct {
+	Archetype string `json:"archetype"`
+	Rating    string `json:"rating"`
 }
 
 type freyaEvalWeights struct {
@@ -126,14 +152,31 @@ func LoadStrategyFromFreya(deckPath string) *StrategyProfile {
 
 func buildFromStrategyJSON(sj *strategyFileJSON) *StrategyProfile {
 	sp := &StrategyProfile{
-		Archetype:       sj.Archetype,
-		Bracket:         sj.Bracket,
-		GameplanSummary: sj.GameplanSummary,
-		TutorTargets:    sj.TutorTargets,
-		ValueEngineKeys: sj.ValueEngineKeys,
-		CardRoles:       sj.CardRoles,
-		FinisherCards:   sj.FinisherCards,
-		ColorDemand:     sj.ColorDemand,
+		Archetype:         sj.Archetype,
+		Bracket:           sj.Bracket,
+		GameplanSummary:   sj.GameplanSummary,
+		TutorTargets:      sj.TutorTargets,
+		ValueEngineKeys:   sj.ValueEngineKeys,
+		CardRoles:         sj.CardRoles,
+		FinisherCards:     sj.FinisherCards,
+		ColorDemand:       sj.ColorDemand,
+		StarCards:         sj.StarCards,
+		CuttableCards:     sj.CuttableCards,
+		CommanderThemes:   sj.CommanderThemes,
+		CommanderSynergy:  sj.CommanderSynergy,
+		VulnerableTo:      sj.VulnerableTo,
+		InteractionAvgCMC: sj.InteractionAvgCMC,
+		CheapInteraction:  sj.CheapInteraction,
+		ManaBaseGrade:     sj.ManaBaseGrade,
+		KeepableHandPct:   sj.KeepableHandPct,
+		PowerPercentile:   sj.PowerPercentile,
+	}
+
+	if len(sj.MetaMatchups) > 0 {
+		sp.MetaMatchups = make(map[string]string, len(sj.MetaMatchups))
+		for _, mm := range sj.MetaMatchups {
+			sp.MetaMatchups[mm.Archetype] = mm.Rating
+		}
 	}
 
 	for _, wl := range sj.WinLines {
@@ -166,7 +209,47 @@ func buildFromStrategyJSON(sj *strategyFileJSON) *StrategyProfile {
 		}
 	}
 
+	// Emergent synergies from Huginn — soft eval weight bumps.
+	for _, es := range sj.EmergentSynergies {
+		sp.EmergentSynergies = append(sp.EmergentSynergies, EmergentSynergy{
+			Cards:         es.Cards,
+			EffectPattern: es.EffectPattern,
+			Tier:          es.Tier,
+			AvgImpact:     es.AvgImpact,
+		})
+	}
+	applyEmergentSynergyBoost(sp)
+
 	return sp
+}
+
+// applyEmergentSynergyBoost applies small ComboProximity weight bumps
+// based on Huginn's emergent synergies. Tier 2 = +0.1, Tier 3 = +0.2.
+// These are soft signals — they nudge the evaluator toward cards that
+// co-trigger well, without overriding hard combo plans.
+func applyEmergentSynergyBoost(sp *StrategyProfile) {
+	if len(sp.EmergentSynergies) == 0 {
+		return
+	}
+	boost := 0.0
+	for _, es := range sp.EmergentSynergies {
+		switch es.Tier {
+		case 2:
+			boost += 0.1
+		case 3:
+			boost += 0.2
+		}
+	}
+	// Cap the total boost at 0.5 to prevent synergy stacking from
+	// dominating the eval.
+	if boost > 0.5 {
+		boost = 0.5
+	}
+	if sp.Weights == nil {
+		sp.Weights = &EvalWeights{}
+		*sp.Weights = DefaultWeightsForArchetype(sp.Archetype)
+	}
+	sp.Weights.ComboProximity += boost
 }
 
 func buildStrategyProfile(fj *freyaJSON) *StrategyProfile {

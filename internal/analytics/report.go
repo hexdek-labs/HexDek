@@ -58,6 +58,9 @@ func (r *AnalyticsReport) WriteMarkdown(path string) error {
 	// Missed Finishers.
 	r.writeMissedFinishers(&b)
 
+	// Co-Trigger Interactions.
+	r.writeCoTriggers(&b)
+
 	// Matchup Details.
 	r.writeMatchupDetails(&b)
 
@@ -512,6 +515,46 @@ func (r *AnalyticsReport) writeMissedFinishers(b *strings.Builder) {
 // WriteMissedFinishersTo writes the missed finishers section to an external builder.
 func (r *AnalyticsReport) WriteMissedFinishersTo(b *strings.Builder) {
 	r.writeMissedFinishers(b)
+}
+
+// writeCoTriggers writes a section listing card pairs that co-triggered
+// within the same turn with verified causal resource links.
+func (r *AnalyticsReport) writeCoTriggers(b *strings.Builder) {
+	// Collect all observations across all analyzed games.
+	var allObs []CoTriggerObservation
+	for _, ga := range r.Analyses {
+		if ga == nil {
+			continue
+		}
+		allObs = append(allObs, ga.CoTriggerObservations...)
+	}
+
+	summaries := AggregateCoTriggers(allObs)
+	if len(summaries) == 0 {
+		return
+	}
+
+	b.WriteString("## Co-Trigger Interactions\n\n")
+	b.WriteString("_Card pairs that triggered in the same turn with a verified causal resource link._\n\n")
+
+	b.WriteString("| Rank | Card A | Card B | Occurrences | Avg Impact | Pattern |\n")
+	b.WriteString("|---:|---|---|---:|---:|---|\n")
+
+	limit := 15
+	if limit > len(summaries) {
+		limit = len(summaries)
+	}
+	for i := 0; i < limit; i++ {
+		s := &summaries[i]
+		fmt.Fprintf(b, "| %d | %s | %s | %d | %.1f | %s |\n",
+			i+1, s.CardA, s.CardB, s.Occurrences, s.AvgImpact, s.TopPattern)
+	}
+	b.WriteString("\n")
+}
+
+// WriteCoTriggersTo writes the co-trigger interactions section to an external builder.
+func (r *AnalyticsReport) WriteCoTriggersTo(b *strings.Builder) {
+	r.writeCoTriggers(b)
 }
 
 // writeMatchupDetails writes deep matchup stats.

@@ -37,6 +37,11 @@ type GameAnalysis struct {
 	// StallIndicators flags games that exhibit board-stall patterns:
 	// hit the turn cap, multiple survivors, no eliminations in late game.
 	StallIndicators *StallReport
+
+	// CoTriggerObservations records pairs of cards that fired in the same
+	// turn with a verified causal resource link (A produces X, B consumes X).
+	// Populated by DetectCoTriggers.
+	CoTriggerObservations []CoTriggerObservation
 }
 
 // StallReport describes a game that stalled — no decisive winner emerged

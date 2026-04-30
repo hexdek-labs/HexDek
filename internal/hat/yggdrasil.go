@@ -87,6 +87,9 @@ type YggdrasilHat struct {
 	valueEngineSet   map[string]bool
 	tutorTargetSet   map[string]bool
 	finisherSet      map[string]bool
+	starCardSet      map[string]bool
+	cuttableSet      map[string]bool
+	vulnerableToSet  map[string]bool
 	isTempoComboVal  bool
 	lookupsBuilt     bool
 
@@ -149,6 +152,21 @@ func BudgetForELO(baseBudget int, gamesPlayed int) int {
 	return baseBudget + baseBudget/2
 }
 
+// BudgetForPower adjusts budget based on Freya's power percentile.
+// High-percentile decks have more complex lines worth searching.
+func BudgetForPower(baseBudget int, powerPercentile int) int {
+	if powerPercentile <= 0 {
+		return baseBudget
+	}
+	if powerPercentile >= 80 {
+		return baseBudget + baseBudget/3
+	}
+	if powerPercentile >= 60 {
+		return baseBudget + baseBudget/6
+	}
+	return baseBudget
+}
+
 func NewYggdrasilHatWithNoise(strategy *StrategyProfile, budget int, noise float64) *YggdrasilHat {
 	h := &YggdrasilHat{
 		Evaluator:     NewEvaluator(strategy),
@@ -168,6 +186,9 @@ func (h *YggdrasilHat) buildLookupSets() {
 	h.valueEngineSet = make(map[string]bool)
 	h.tutorTargetSet = make(map[string]bool)
 	h.finisherSet = make(map[string]bool)
+	h.starCardSet = make(map[string]bool)
+	h.cuttableSet = make(map[string]bool)
+	h.vulnerableToSet = make(map[string]bool)
 	if h.Strategy != nil {
 		for _, cp := range h.Strategy.ComboPieces {
 			for _, piece := range cp.Pieces {
@@ -183,8 +204,38 @@ func (h *YggdrasilHat) buildLookupSets() {
 		for _, fc := range h.Strategy.FinisherCards {
 			h.finisherSet[fc] = true
 		}
+		for _, sc := range h.Strategy.StarCards {
+			h.starCardSet[sc] = true
+		}
+		for _, cc := range h.Strategy.CuttableCards {
+			h.cuttableSet[cc] = true
+		}
+		for _, v := range h.Strategy.VulnerableTo {
+			h.vulnerableToSet[strings.ToLower(v)] = true
+		}
 	}
 	h.lookupsBuilt = true
+}
+
+func (h *YggdrasilHat) isStarCard(c *gameengine.Card) bool {
+	if c == nil {
+		return false
+	}
+	return h.starCardSet[c.DisplayName()]
+}
+
+func (h *YggdrasilHat) isCuttable(c *gameengine.Card) bool {
+	if c == nil {
+		return false
+	}
+	return h.cuttableSet[c.DisplayName()]
+}
+
+func (h *YggdrasilHat) matchupRating(oppArchetype string) string {
+	if h.Strategy == nil || h.Strategy.MetaMatchups == nil {
+		return ""
+	}
+	return h.Strategy.MetaMatchups[oppArchetype]
 }
 
 // freyaRole returns the Freya-assigned role for a card, or "" if not available.
@@ -470,6 +521,20 @@ func (h *YggdrasilHat) bestTarget(gs *gameengine.GameState, seatIdx int, attacke
 			score -= threat.InteractionProb * 0.5
 		}
 
+		// 13. Meta matchup: prioritize opponents we're unfavored against —
+		// eliminate bad matchups early before they stabilize.
+		if h.Strategy != nil && h.Strategy.MetaMatchups != nil {
+			oppArch := h.inferOpponentArchetype(gs, def)
+			if rating := h.matchupRating(oppArch); rating != "" {
+				switch rating {
+				case "unfavored":
+					score += 1.0
+				case "favored":
+					score -= 0.5
+				}
+			}
+		}
+
 		// 12. 3rd Eye: Threat timeline urgency — opponents who can kill
 		// us in 1-2 turns get deprioritized as attack targets (we need
 		// to block them) UNLESS we can kill them first.
@@ -671,15 +736,30 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 		base += finBonus
 	}
 
+	// Star card bonus — Freya's highest-impact cards get priority.
+	if h.isStarCard(c) {
+		base += 0.15
+	}
+
+	// Cuttable card penalty — low-impact filler deprioritized.
+	if h.isCuttable(c) {
+		base -= 0.10
+	}
+
+	// Interaction speed: decks with cheap interaction can afford to hold mana.
+	// Expensive interaction decks should cast proactively instead.
+	if h.Strategy != nil && h.Strategy.InteractionAvgCMC > 3.0 && cat == CatRemoval {
+		base += 0.05
+	}
+
 	// 3rd Eye: Interaction-aware sequencing — if opponents likely have
 	// counters/removal (blue mana open, cards in hand), downweight key
 	// pieces slightly to encourage baiting with lesser spells first.
 	// Only applies to high-value pieces where losing them hurts.
 	if gs != nil {
 		intRisk := h.tableInteractionRisk(gs, seatIdx)
-		isHighValue := h.isComboRelevant(c) || h.isValueEngineKey(c)
+		isHighValue := h.isComboRelevant(c) || h.isValueEngineKey(c) || h.isStarCard(c)
 		if isHighValue && intRisk > 0.4 {
-			// Scale penalty: at 0.5 risk → -0.05, at 0.9 risk → -0.15.
 			base -= (intRisk - 0.3) * 0.25
 		}
 	}
@@ -929,11 +1009,22 @@ func (h *YggdrasilHat) ChooseMulligan(gs *gameengine.GameState, seatIdx int, han
 		return true
 	}
 
-	// Count value engine keys and tutor targets in hand.
+	// Count value engine keys, star cards, and cuttable cards in hand.
 	veCount := 0
+	starCount := 0
+	cuttableCount := 0
 	for _, c := range hand {
-		if c != nil && h.isValueEngineKey(c) {
+		if c == nil {
+			continue
+		}
+		if h.isValueEngineKey(c) {
 			veCount++
+		}
+		if h.isStarCard(c) {
+			starCount++
+		}
+		if h.isCuttable(c) {
+			cuttableCount++
 		}
 	}
 
@@ -1024,15 +1115,28 @@ func (h *YggdrasilHat) ChooseMulligan(gs *gameengine.GameState, seatIdx int, han
 				}
 			}
 		}
-		// Any archetype: a hand with 2+ lands and a VE key is worth keeping.
-		if veCount >= 1 && landCount >= 2 {
+		// Any archetype: a hand with 2+ lands and a VE key or star card is worth keeping.
+		if (veCount >= 1 || starCount >= 1) && landCount >= 2 {
 			return false
+		}
+
+		// Low keepable hand % from Freya Monte Carlo: be pickier with marginal hands.
+		if h.Strategy != nil && h.Strategy.KeepableHandPct > 0 && h.Strategy.KeepableHandPct < 60 {
+			if cuttableCount >= 3 && landCount <= 3 {
+				return true
+			}
 		}
 	}
 
-	// On 6 or fewer, only mulligan truly unplayable hands.
+	// On 6 or fewer: star cards make marginal hands keepable.
 	if len(hand) <= 6 {
-		return landCount == 0
+		if landCount == 0 {
+			return true
+		}
+		if starCount >= 1 && landCount >= 1 {
+			return false
+		}
+		return false
 	}
 	return false
 }
@@ -1094,7 +1198,14 @@ func (h *YggdrasilHat) ChooseLandToPlay(gs *gameengine.GameState, seatIdx int, l
 		}
 
 		// Color-fixing: boost lands that produce colors we need but lack.
+		// Weak mana bases (C/D/F grade) get a larger color-fixing multiplier.
 		if h.Strategy != nil && h.Strategy.ColorDemand != nil {
+			fixMul := 1.5
+			if h.Strategy.ManaBaseGrade == "D" || h.Strategy.ManaBaseGrade == "F" {
+				fixMul = 2.5
+			} else if h.Strategy.ManaBaseGrade == "C" {
+				fixMul = 2.0
+			}
 			landColors := landProducesColors(l)
 			for col, demand := range h.Strategy.ColorDemand {
 				if demand < 3 {
@@ -1105,7 +1216,7 @@ func (h *YggdrasilHat) ChooseLandToPlay(gs *gameengine.GameState, seatIdx int, l
 					need := float64(demand) / 10.0
 					deficit := need - float64(have)*0.3
 					if deficit > 0 {
-						sc += deficit * 1.5
+						sc += deficit * fixMul
 					}
 				}
 			}
@@ -2062,6 +2173,12 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 		if h.isKingmaker(gs, top.Controller) && score >= 2 {
 			mustCounter = true
 		}
+		// Counter cards we're specifically vulnerable to (Freya threat assessment).
+		if len(h.vulnerableToSet) > 0 {
+			if h.vulnerableToSet[strings.ToLower(top.Card.DisplayName())] {
+				mustCounter = true
+			}
+		}
 		// 3rd Eye: Counter cards we've seen wreck the board before.
 		cardName := top.Card.DisplayName()
 		if top.Controller >= 0 && top.Controller < len(h.cardsSeen) {
@@ -2516,6 +2633,12 @@ func (h *YggdrasilHat) ChooseDiscard(gs *gameengine.GameState, seatIdx int, hand
 		if h.isValueEngineKey(c) {
 			v += 0.5
 		}
+		if h.isStarCard(c) {
+			v += 0.75
+		}
+		if h.isCuttable(c) {
+			v -= 0.5
+		}
 		// Reanimator: high-CMC creatures are BETTER in the graveyard.
 		// Lower their keep-value so they get discarded first.
 		if arch == ArchetypeReanimator && typeLineContains(c, "creature") {
@@ -2652,8 +2775,10 @@ func (h *YggdrasilHat) ChooseScry(gs *gameengine.GameState, seatIdx int, cards [
 			continue
 		}
 		val := h.cardHeuristic(gs, seatIdx, c)
-		if h.isComboRelevant(c) || h.isValueEngineKey(c) {
+		if h.isComboRelevant(c) || h.isValueEngineKey(c) || h.isStarCard(c) {
 			top = append(top, c)
+		} else if h.isCuttable(c) {
+			bottom = append(bottom, c)
 		} else if val >= threshold {
 			top = append(top, c)
 		} else {
@@ -2694,7 +2819,11 @@ func (h *YggdrasilHat) ChooseSurveil(gs *gameengine.GameState, seatIdx int, card
 			}
 		}
 
-		if val >= 0.35 {
+		if h.isComboRelevant(c) || h.isValueEngineKey(c) || h.isStarCard(c) {
+			top = append(top, c)
+		} else if h.isCuttable(c) {
+			graveyard = append(graveyard, c)
+		} else if val >= 0.35 {
 			top = append(top, c)
 		} else {
 			graveyard = append(graveyard, c)
@@ -3086,6 +3215,16 @@ func (h *YggdrasilHat) tutorTargetScore(gs *gameengine.GameState, seatIdx int, c
 	// 5. VE key bonus — engine pieces are always strong tutor targets.
 	if h.isValueEngineKey(card) {
 		score += 1.0
+	}
+
+	// 5b. Star card bonus — Freya's highest-impact cards.
+	if h.isStarCard(card) {
+		score += 1.5
+	}
+
+	// 5c. Cuttable card penalty — never tutor for filler.
+	if h.isCuttable(card) {
+		score -= 2.0
 	}
 
 	// 6. Archetype-specific tutor priorities.

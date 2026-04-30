@@ -325,11 +325,36 @@ func (e *GameStateEvaluator) scoreThreat(gs *gameengine.GameState, seatIdx int) 
 		}
 	}
 
+	// Vulnerability-aware threat: if an opponent controls a card we're
+	// vulnerable to (from Freya threat assessment), increase threat.
+	hoserPenalty := 0.0
+	if e.Strategy != nil && len(e.Strategy.VulnerableTo) > 0 {
+		for i, s := range gs.Seats {
+			if i == seatIdx || s.Lost || s.LeftGame {
+				continue
+			}
+			for _, p := range s.Battlefield {
+				if p == nil || p.Card == nil {
+					continue
+				}
+				name := strings.ToLower(p.Card.DisplayName())
+				for _, hoser := range e.Strategy.VulnerableTo {
+					if strings.EqualFold(name, hoser) {
+						hoserPenalty += 0.4
+					}
+				}
+			}
+		}
+		if hoserPenalty > 1.0 {
+			hoserPenalty = 1.0
+		}
+	}
+
 	lethalRatio := maxOppPow / float64(seat.Life)
 	if lethalRatio >= 1.0 {
 		return -1.0
 	}
-	return -lethalRatio*0.8 - dangerousPermanents*0.3
+	return -lethalRatio*0.8 - dangerousPermanents*0.3 - hoserPenalty
 }
 
 // scoreCommander: commander combat damage dealt + commander zone status.
@@ -342,6 +367,10 @@ func (e *GameStateEvaluator) scoreCommander(gs *gameengine.GameState, seatIdx in
 	score := 0.0
 
 	cmdOnField := false
+	synergyBonus := 0.3
+	if e.Strategy != nil && e.Strategy.CommanderSynergy > 0.5 {
+		synergyBonus = 0.3 + e.Strategy.CommanderSynergy*0.3
+	}
 	for _, p := range seat.Battlefield {
 		if p == nil || p.Card == nil {
 			continue
@@ -349,7 +378,7 @@ func (e *GameStateEvaluator) scoreCommander(gs *gameengine.GameState, seatIdx in
 		for _, cn := range seat.CommanderNames {
 			if p.Card.DisplayName() == cn {
 				cmdOnField = true
-				score += 0.3
+				score += synergyBonus
 			}
 		}
 	}
@@ -358,7 +387,11 @@ func (e *GameStateEvaluator) scoreCommander(gs *gameengine.GameState, seatIdx in
 		for _, cn := range seat.CommanderNames {
 			tax += seat.CommanderCastCounts[cn]
 		}
-		score -= float64(tax) * 0.15
+		taxPenalty := 0.15
+		if e.Strategy != nil && e.Strategy.CommanderSynergy > 0.5 {
+			taxPenalty = 0.20
+		}
+		score -= float64(tax) * taxPenalty
 	}
 
 	for i, opp := range gs.Seats {

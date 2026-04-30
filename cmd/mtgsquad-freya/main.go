@@ -25,6 +25,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/hexdek/hexdek/internal/huginn"
 )
 
 // oracleEntry mirrors the subset of Scryfall oracle-cards.json we need.
@@ -622,6 +624,35 @@ type strategyJSON struct {
 	ValueEngineKeys []string          `json:"value_engine_keys,omitempty"`
 	TutorTargets    []string          `json:"tutor_targets,omitempty"`
 	Weights         *jsonEvalWeights  `json:"eval_weights,omitempty"`
+	CardRoles       map[string]string `json:"card_roles,omitempty"`
+	FinisherCards   []string          `json:"finisher_cards,omitempty"`
+	ColorDemand     map[string]int    `json:"color_demand,omitempty"`
+
+	StarCards        []string `json:"star_cards,omitempty"`
+	CuttableCards    []string `json:"cuttable_cards,omitempty"`
+	CommanderThemes  []string `json:"commander_themes,omitempty"`
+	CommanderSynergy float64  `json:"commander_synergy,omitempty"`
+	VulnerableTo     []string `json:"vulnerable_to,omitempty"`
+	InteractionAvgCMC float64 `json:"interaction_avg_cmc,omitempty"`
+	CheapInteraction int      `json:"cheap_interaction,omitempty"`
+	ManaBaseGrade    string   `json:"mana_base_grade,omitempty"`
+	KeepableHandPct  float64  `json:"keepable_hand_pct,omitempty"`
+	PowerPercentile  int      `json:"power_percentile,omitempty"`
+	MetaMatchups       []strategyMatchup       `json:"meta_matchups,omitempty"`
+	EmergentSynergies  []strategyEmergentSynergy `json:"emergent_synergies,omitempty"`
+}
+
+type strategyEmergentSynergy struct {
+	Cards            []string `json:"cards"`
+	EffectPattern    string   `json:"effect_pattern"`
+	Tier             int      `json:"tier"`
+	ObservationCount int      `json:"observation_count"`
+	AvgImpact        float64  `json:"avg_impact"`
+}
+
+type strategyMatchup struct {
+	Archetype string `json:"archetype"`
+	Rating    string `json:"rating"`
 }
 
 type strategyWinLine struct {
@@ -700,6 +731,65 @@ func saveStrategyJSON(path string, report *FreyaReport) {
 		sj.Weights = ComputeEvalWeights(report.Profile, report)
 	}
 
+	// Card roles from role assignments.
+	if report.Roles != nil && len(report.Roles.Assignments) > 0 {
+		sj.CardRoles = make(map[string]string, len(report.Roles.Assignments))
+		for _, a := range report.Roles.Assignments {
+			if len(a.Roles) > 0 {
+				sj.CardRoles[a.Name] = string(a.Roles[0])
+			}
+		}
+	}
+
+	// Finisher cards from combo detection.
+	if len(report.Finishers) > 0 {
+		seen := map[string]bool{}
+		for _, f := range report.Finishers {
+			for _, card := range f.Cards {
+				if !seen[card] {
+					seen[card] = true
+					sj.FinisherCards = append(sj.FinisherCards, card)
+				}
+			}
+		}
+	}
+
+	// Color demand from stats.
+	if report.Stats != nil && len(report.Stats.ColorSources) > 0 {
+		sj.ColorDemand = make(map[string]int)
+		for col, count := range report.Stats.ColorSources {
+			sj.ColorDemand[col] = count
+		}
+	}
+
+	// New Freya intelligence for hat consumption.
+	if report.Profile != nil {
+		dp := report.Profile
+		for _, sc := range dp.StarCards {
+			sj.StarCards = append(sj.StarCards, sc.Name)
+		}
+		for _, cc := range dp.CuttableCards {
+			sj.CuttableCards = append(sj.CuttableCards, cc.Name)
+		}
+		sj.CommanderThemes = dp.CommanderThemes
+		sj.CommanderSynergy = dp.CommanderSynergy
+		sj.VulnerableTo = dp.VulnerableTo
+		sj.InteractionAvgCMC = dp.InteractionQuality
+		sj.CheapInteraction = dp.CheapInteraction
+		sj.ManaBaseGrade = dp.ManaBaseGrade
+		sj.KeepableHandPct = dp.KeepableHandPct
+		sj.PowerPercentile = dp.PowerPercentile
+		for _, mm := range dp.MetaMatchups {
+			sj.MetaMatchups = append(sj.MetaMatchups, strategyMatchup{
+				Archetype: mm.Archetype,
+				Rating:    mm.Rating,
+			})
+		}
+	}
+
+	// Emergent synergies from Huginn learned interactions.
+	sj.EmergentSynergies = findEmergentSynergies(report)
+
 	f, err := os.Create(path)
 	if err != nil {
 		log.Printf("  [freya] failed to save %s: %v", path, err)
@@ -711,6 +801,44 @@ func saveStrategyJSON(path string, report *FreyaReport) {
 	enc.SetIndent("", "  ")
 	enc.Encode(sj)
 	log.Printf("  [freya] saved %s", path)
+}
+
+// findEmergentSynergies loads Huginn's learned interactions and matches
+// tier 2+ patterns against the deck's card profiles. Returns matches where
+// the deck contains example cards from a learned interaction.
+func findEmergentSynergies(report *FreyaReport) []strategyEmergentSynergy {
+	interactions, err := huginn.ReadLearnedInteractions("data/huginn")
+	if err != nil || len(interactions) == 0 {
+		return nil
+	}
+
+	deckCards := make(map[string]bool, len(report.Profiles))
+	for _, p := range report.Profiles {
+		deckCards[p.Name] = true
+	}
+
+	var synergies []strategyEmergentSynergy
+	for _, li := range interactions {
+		if li.Tier < huginn.TierRecurring {
+			continue
+		}
+		for _, example := range li.ExampleCards {
+			parts := strings.SplitN(example, " + ", 2)
+			if len(parts) != 2 {
+				continue
+			}
+			if deckCards[parts[0]] && deckCards[parts[1]] {
+				synergies = append(synergies, strategyEmergentSynergy{
+					Cards:            []string{parts[0], parts[1]},
+					EffectPattern:    li.Pattern,
+					Tier:             li.Tier,
+					ObservationCount: li.ObservationCount,
+					AvgImpact:        li.AvgImpactScore,
+				})
+			}
+		}
+	}
+	return synergies
 }
 
 // ---------------------------------------------------------------------------

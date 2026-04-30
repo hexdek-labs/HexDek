@@ -356,6 +356,11 @@ func AnalyzeGame(
 		ga.WinCondition = "turn_cap"
 	}
 
+	// Co-trigger detection: find causally linked card pairs that fired in
+	// the same turn. gameIdx 0 is used here; callers with multi-game
+	// context (tournament runner) can re-run with the real game index.
+	ga.CoTriggerObservations = DetectCoTriggers(events, nSeats, 0)
+
 	return ga
 }
 

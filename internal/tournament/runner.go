@@ -15,6 +15,8 @@ import (
 	"github.com/hexdek/hexdek/internal/deckparser"
 	"github.com/hexdek/hexdek/internal/gameengine"
 	"github.com/hexdek/hexdek/internal/hat"
+	"github.com/hexdek/hexdek/internal/huginn"
+	"github.com/hexdek/hexdek/internal/muninn"
 )
 
 // startingHand mirrors playloop.STARTING_HAND.
@@ -144,6 +146,10 @@ func Run(cfg TournamentConfig) (*TournamentResult, error) {
 			return result, fmt.Errorf("tournament: write report: %w", err)
 		}
 	}
+
+	// Persist Muninn memory regardless of --report flag.
+	persistMuninn(result)
+
 	return result, nil
 }
 
@@ -765,6 +771,10 @@ func runPool(cfg TournamentConfig, workers, maxTurns int, gameTimeout time.Durat
 	if elapsed.Seconds() > 0 {
 		result.GamesPerSecond = float64(totalGames) / elapsed.Seconds()
 	}
+
+	// Persist Muninn memory for pool mode.
+	persistMuninn(result)
+
 	return result, nil
 }
 
@@ -1003,6 +1013,10 @@ func runLazyPool(cfg TournamentConfig, workers, maxTurns int, gameTimeout time.D
 	if elapsed.Seconds() > 0 {
 		result.GamesPerSecond = float64(totalGames) / elapsed.Seconds()
 	}
+
+	// Persist Muninn memory for lazy-pool mode.
+	persistMuninn(result)
+
 	return result, nil
 }
 
@@ -1022,6 +1036,33 @@ func scanCommanderName(path string) string {
 		}
 	}
 	return "unknown"
+}
+
+// persistMuninn writes parser gaps, crash logs, and dead triggers to
+// the data/muninn directory. Also persists Huginn raw observations.
+// Errors are logged to stderr but do not fail the tournament run.
+func persistMuninn(result *TournamentResult) {
+	const muninnDir = "data/muninn"
+	const huginnDir = "data/huginn"
+
+	if len(result.ParserGapSnippets) > 0 {
+		if err := muninn.PersistParserGaps(muninnDir, result.ParserGapSnippets); err != nil {
+			fmt.Fprintf(os.Stderr, "muninn: persist parser gaps: %v\n", err)
+		}
+	}
+	if len(result.CrashLogs) > 0 {
+		if err := muninn.PersistCrashLogs(muninnDir, result.CrashLogs, result.CommanderNames, result.Games, result.NSeats); err != nil {
+			fmt.Fprintf(os.Stderr, "muninn: persist crash logs: %v\n", err)
+		}
+	}
+	if len(result.Analyses) > 0 {
+		if err := muninn.PersistDeadTriggers(muninnDir, result.Analyses); err != nil {
+			fmt.Fprintf(os.Stderr, "muninn: persist dead triggers: %v\n", err)
+		}
+		if err := huginn.PersistRawObservations(huginnDir, result.Analyses, result.CommanderNames); err != nil {
+			fmt.Fprintf(os.Stderr, "huginn: persist raw observations: %v\n", err)
+		}
+	}
 }
 
 // nextLivingSeat returns the next seat index clockwise that is still in

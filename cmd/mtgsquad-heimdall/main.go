@@ -164,6 +164,7 @@ func runAnalytics(decksPath, astPath, oraclePath string, seed int64, seats, maxT
 		HatFactories:     []tournament.HatFactory{factory},
 		Workers:          workers,
 		CommanderMode:    true,
+		AuditEnabled:     true,
 		AnalyticsEnabled: true,
 		MaxTurnsPerGame:  maxTurns,
 	}
@@ -193,6 +194,9 @@ func runAnalytics(decksPath, astPath, oraclePath string, seed int64, seats, maxT
 
 	// Per-commander summary.
 	printCommanderSummary(result)
+
+	// Co-trigger interactions.
+	printCoTriggers(result)
 
 	// Write report.
 	if reportPath != "" {
@@ -385,6 +389,38 @@ func printCommanderSummary(r *tournament.TournamentResult) {
 		fmt.Printf("  %s:\n", name)
 		fmt.Printf("    Win%%=%.1f%%  AvgDmg=%.1f  AvgTaken=%.1f  AvgSpells=%.1f  AvgRemoval=%.1f  PeakBoard=%.1f\n",
 			100*float64(cs.wins)/g, cs.avgDmg/g, cs.avgTaken/g, cs.avgSpells/g, cs.avgRemoval/g, cs.avgBoard/g)
+	}
+}
+
+func printCoTriggers(r *tournament.TournamentResult) {
+	if len(r.Analyses) == 0 {
+		return
+	}
+
+	// Collect all co-trigger observations across all games.
+	var allObs []analytics.CoTriggerObservation
+	for _, ga := range r.Analyses {
+		if ga == nil {
+			continue
+		}
+		allObs = append(allObs, ga.CoTriggerObservations...)
+	}
+
+	summaries := analytics.AggregateCoTriggers(allObs)
+	if len(summaries) == 0 {
+		return
+	}
+
+	fmt.Println()
+	fmt.Printf("%s%sCO-TRIGGER INTERACTIONS (causal resource links):%s\n", colorBold, colorPurple, colorReset)
+	limit := 15
+	if limit > len(summaries) {
+		limit = len(summaries)
+	}
+	for i := 0; i < limit; i++ {
+		s := &summaries[i]
+		fmt.Printf("  %2d. %-25s + %-25s  x%d  avg-impact=%.1f  %s\n",
+			i+1, s.CardA, s.CardB, s.Occurrences, s.AvgImpact, s.TopPattern)
 	}
 }
 

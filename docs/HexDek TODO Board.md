@@ -17,10 +17,12 @@ kanban-plugin: board
 - [ ] Matchmaking scheduler (replace round-robin with rating-aware pod assembly, information gain) #matchmaking
 - [ ] Web leaderboard page (show deck ratings, confidence intervals, matchup data) #ui
 - [ ] Deck import from Moxfield URL → auto-register, auto-hash, auto-rate #ui
+- [ ] Deck drilldown UI: Freya curve/ratio analysis + Heimdall game analytics (ELO, card performance, matchups) — APIs already wired #ui
 
 
 ## Medium Priority
 
+- [ ] Operator platform page/tab (operator profile, deck management, analytics dashboard — non-engine, UI + platform) #ui #platform
 - [ ] BOINC-style distributed compute (desktop client → contribute games → earn credits) #distributed
 - [ ] Deterministic replay anti-cheat (cryptographic seed, spot-check 2-5%, auto-cauterize bad actors) #anticheat
 - [ ] Statistical anomaly detection (per-contributor distribution tracking, 3σ flagging) #anticheat
@@ -30,7 +32,7 @@ kanban-plugin: board
 
 ## Low Priority
 
-- [ ] Concession detection and scoring (handle early scoops without poisoning ELO) #rating
+- [ ] Concession diagnostics first: track concession rate per commander, board state at scoop, turn of scoop — collect data before designing discount system. Falls under Muninn + Heimdall. #rating #analytics
 - [ ] Multi-format support beyond Commander (future: Modern, Legacy deck ratings) #engine
 - [ ] Mobile-friendly leaderboard #ui
 

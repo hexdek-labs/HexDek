@@ -50,6 +50,53 @@ type StrategyProfile struct {
 	// Key is color (W/U/B/R/G), value is total pip count across the deck.
 	ColorDemand map[string]int
 
+	// StarCards are the deck's highest-impact cards from Freya quality tiers.
+	// These get tutor priority and mulligan keep weight.
+	StarCards []string
+
+	// CuttableCards are low-impact cards Freya identified as potential cuts.
+	// Deprioritized for tutor targets, discard last.
+	CuttableCards []string
+
+	// CommanderThemes are synergy themes extracted from the commander's oracle text.
+	CommanderThemes []string
+
+	// CommanderSynergy is the ratio (0-1) of non-land cards that synergize
+	// with commander themes. High synergy = commander is more critical.
+	CommanderSynergy float64
+
+	// VulnerableTo lists specific hosers the deck fears (e.g., "Rest in Peace",
+	// "Blood Moon"). Informs play-around decisions and threat assessment.
+	VulnerableTo []string
+
+	// InteractionAvgCMC is the average CMC of the deck's interaction suite.
+	// Lower = faster interaction = can afford to hold up mana more often.
+	InteractionAvgCMC float64
+
+	// CheapInteraction is the count of interaction spells at CMC 0-2.
+	CheapInteraction int
+
+	// ManaBaseGrade is the Freya-assigned mana base quality (A/B/C/D/F).
+	// Weak grades = conservative land sequencing.
+	ManaBaseGrade string
+
+	// KeepableHandPct is the Monte Carlo simulated % of keepable opening hands.
+	// Low % = more aggressive mulliganing.
+	KeepableHandPct float64
+
+	// PowerPercentile is this deck's estimated power level within its archetype (0-100).
+	// Scales hat budget: stronger decks warrant deeper search.
+	PowerPercentile int
+
+	// MetaMatchups maps opponent archetype → matchup rating ("favored"/"neutral"/"unfavored").
+	// Used by 3rd Eye to adjust targeting when opponent archetype is inferred.
+	MetaMatchups map[string]string
+
+	// EmergentSynergies are card pairs discovered by Huginn from game
+	// observations. Tier 2+ interactions provide soft eval weight bumps
+	// to combo proximity — NOT treated as hard combo plans.
+	EmergentSynergies []EmergentSynergy
+
 	// Weakness is an optional cross-game weakness profile derived from
 	// Heimdall analytics. When set, the hat adjusts play to compensate.
 	Weakness *WeaknessProfile
@@ -67,6 +114,16 @@ type WeaknessProfile struct {
 	SlowToClose         float64 // 0-1: how often the deck stalls with a winning position
 	ManaScrew           float64 // 0-1: how often losses correlate with low land count
 	OverExtends         float64 // 0-1: how often the deck dumps hand then loses to wipe
+}
+
+// EmergentSynergy is a card pair interaction discovered by Huginn.
+// Softer than ComboPlan — provides a small eval weight bump, not a
+// hard combo sequence.
+type EmergentSynergy struct {
+	Cards         []string
+	EffectPattern string
+	Tier          int
+	AvgImpact     float64
 }
 
 // ComboPlan describes a single win line or combo the deck can assemble.

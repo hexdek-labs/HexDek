@@ -258,6 +258,9 @@ func main() {
 			}
 			prof := profile
 			b := *hatBudget
+			if prof != nil && prof.PowerPercentile > 0 {
+				b = hat.BudgetForPower(b, prof.PowerPercentile)
+			}
 			tb := *hatTurnBudget
 			n := *hatNoise
 			hatFactories[i] = func() gameengine.Hat {
