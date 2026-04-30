@@ -6,7 +6,7 @@ kanban-plugin: board
 
 ## High Priority — Engine
 
-- [ ] Threat-aware hat v2: grudge memory persistence across games, coalition detection, bluff/feint in threat posture #hat
+- [ ] Rivalry tracker: Heimdall tracks per-deck matchup W/L history, surfaces top 10 rival decks to user. Yiggi stays clean (no cross-game grudge bias on ELO). #analytics #ui
 - [ ] Killer-victim elimination tracking in Heimdall (threat graph: who kills whom, kingmaker detection) #analytics
 - [ ] Bayesian prior inheritance for deck versioning (v(n+1) inherits μ from v(n), inflate σ by card delta) #rating
 - [ ] Deck versioning DAG (git-for-decks: version nodes, lineage tracking, HEAD = leaderboard) #schema
