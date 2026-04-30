@@ -8,8 +8,8 @@
 #
 set -euo pipefail
 
-HEXDEK_DIR="${HEXDEK_DIR:-/home/josh/mtgsquad}"
-MUNINN_BIN="${HEXDEK_DIR}/mtgsquad-muninn"
+HEXDEK_DIR="${HEXDEK_DIR:-/home/josh/hexdek}"
+MUNINN_BIN="${HEXDEK_DIR}/hexdek-muninn"
 WEBHOOK_URL="${MUNINN_DISCORD_WEBHOOK:?Set MUNINN_DISCORD_WEBHOOK}"
 
 DATE=$(date +%Y-%m-%d)
