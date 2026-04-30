@@ -45,4 +45,5 @@ export const api = {
   getDeckVersions: (id) => request(`/api/decks/${id}/versions`),
   startGauntlet: (id, games = 10000) => request(`/api/gauntlet/${id}?games=${games}`, { method: 'POST' }),
   getGauntlet: (id) => request(`/api/gauntlet/${id}`),
+  getDonationsSummary: () => request('/api/donations/summary'),
 }

@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react'
 import { Panel, KV, Bar, Btn, Tape, Tag } from '../components/chrome'
+import { api } from '../services/api'
 
 const RECURRING = [
   ['CLAUDE AI', 'Engine development + analysis', 200],
@@ -12,11 +14,18 @@ const SUNK = [
 ]
 
 const MONTHLY_GOAL = RECURRING.reduce((s, r) => s + r[2], 0)
-const CURRENT_DONATIONS = 0
 const TOTAL_INVESTED = SUNK.reduce((s, r) => s + r[2], 0)
 
 export default function Donations() {
-  const pct = Math.min(100, Math.round((CURRENT_DONATIONS / MONTHLY_GOAL) * 100))
+  const [summary, setSummary] = useState({ month_total: 0, all_time_total: 0, month_goal: MONTHLY_GOAL, recent: [] })
+
+  useEffect(() => {
+    api.getDonationsSummary().then(setSummary).catch(() => {})
+  }, [])
+
+  const raised = summary.month_total
+  const goal = summary.month_goal || MONTHLY_GOAL
+  const pct = Math.min(100, Math.round((raised / goal) * 100))
 
   return (
     <div style={{ padding: '20px 30px', maxWidth: 800, margin: '0 auto' }}>
@@ -33,12 +42,12 @@ export default function Donations() {
       <Panel code="DON.1" title="MONTHLY OPERATING COSTS" style={{ marginTop: 16 }}>
         <div style={{ padding: '4px 0 12px' }}>
           <Tape
-            left={`$${CURRENT_DONATIONS} RAISED`}
+            left={`$${raised.toFixed(0)} RAISED`}
             mid={`${pct}%`}
-            right={`$${MONTHLY_GOAL}/MO GOAL`}
+            right={`$${goal}/MO GOAL`}
           />
           <div style={{ marginTop: 12 }}>
-            <Bar value={CURRENT_DONATIONS} max={MONTHLY_GOAL} lg />
+            <Bar value={raised} max={goal} lg />
           </div>
         </div>
         <KV rows={RECURRING.map(([k, v, c]) => [k, `${v} — $${c}/mo`])} />
@@ -50,13 +59,25 @@ export default function Donations() {
         </div>
       </Panel>
 
+      {summary.recent.length > 0 && (
+        <Panel code="DON.R" title="RECENT SUPPORTERS" style={{ marginTop: 16 }}>
+          {summary.recent.map((d, i) => (
+            <div key={i} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: i < summary.recent.length - 1 ? '1px dashed var(--rule-2)' : 'none' }}>
+              <span className="t-md" style={{ fontWeight: 700 }}>{d.from_name}</span>
+              <span className="t-md" style={{ color: 'var(--ok)' }}>${d.amount}</span>
+            </div>
+          ))}
+        </Panel>
+      )}
+
       <Panel code="DON.2" title="ALREADY INVESTED" style={{ marginTop: 16 }}>
         <KV rows={SUNK.map(([k, v, c]) => [k, `${v} — $${c}`])} />
         <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px dashed var(--rule-2)' }}>
-          <KV rows={[['TOTAL TO DATE', `$${TOTAL_INVESTED.toLocaleString()}`]]} />
+          <KV rows={[['TOTAL TO DATE', `$${(TOTAL_INVESTED + summary.all_time_total).toLocaleString()}`]]} />
         </div>
         <div className="t-xs muted" style={{ marginTop: 10 }}>
           DARKSTAR is committed hardware — amortized, not a recurring cost.
+          {summary.all_time_total > 0 && ` Community has contributed $${summary.all_time_total.toFixed(0)} total.`}
         </div>
       </Panel>
 
@@ -73,11 +94,8 @@ export default function Donations() {
                 One-time tips or recurring sponsorships. Goes directly to infrastructure and AI costs.
               </div>
               <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                <a href="https://ko-fi.com/" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
+                <a href="https://ko-fi.com/hexdek" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
                   <Btn solid>KO-FI</Btn>
-                </a>
-                <a href="https://github.com/sponsors" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
-                  <Btn>GITHUB SPONSORS</Btn>
                 </a>
               </div>
             </div>
@@ -104,7 +122,6 @@ export default function Donations() {
           </div>
 
           <div className="t-xs muted-2">
-            Donation links are placeholders — real accounts ship with the next build.
             Research tokens unlock extended deck analysis, priority simulation queue, and custom tournament runs.
           </div>
         </div>

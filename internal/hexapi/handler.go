@@ -44,6 +44,8 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/lineage", h.handleDeckLineage)
 	mux.HandleFunc("POST /api/import/moxfield", h.handleMoxfieldImport)
 	mux.HandleFunc("POST /api/feedback", h.handleFeedback)
+	mux.HandleFunc("POST /api/kofi/webhook", h.handleKofiWebhook)
+	mux.HandleFunc("GET /api/donations/summary", h.handleDonationsSummary)
 }
 
 type DeckSummary struct {
@@ -1251,6 +1253,153 @@ func (h *Handler) handleFeedback(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("feedback received: type=%s page=%s contact=%s", body.Type, body.Page, body.Contact)
 	writeJSON(w, map[string]string{"status": "ok"})
+}
+
+func (h *Handler) handleKofiWebhook(w http.ResponseWriter, r *http.Request) {
+	if err := r.ParseForm(); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	dataStr := r.FormValue("data")
+	if dataStr == "" {
+		http.Error(w, "missing data", http.StatusBadRequest)
+		return
+	}
+
+	var payload struct {
+		VerificationToken        string  `json:"verification_token"`
+		MessageID                string  `json:"message_id"`
+		Timestamp                string  `json:"timestamp"`
+		Type                     string  `json:"type"`
+		IsPublic                 bool    `json:"is_public"`
+		FromName                 string  `json:"from_name"`
+		Message                  string  `json:"message"`
+		Amount                   string  `json:"amount"`
+		URL                      string  `json:"url"`
+		Email                    string  `json:"email"`
+		Currency                 string  `json:"currency"`
+		IsSubscriptionPayment    bool    `json:"is_subscription_payment"`
+		IsFirstSubscriptionPayment bool  `json:"is_first_subscription_payment"`
+		TierName                 *string `json:"tier_name"`
+	}
+	if err := json.Unmarshal([]byte(dataStr), &payload); err != nil {
+		log.Printf("kofi webhook: bad JSON: %v", err)
+		http.Error(w, "bad data", http.StatusBadRequest)
+		return
+	}
+
+	expectedToken := os.Getenv("KOFI_VERIFICATION_TOKEN")
+	if expectedToken != "" && payload.VerificationToken != expectedToken {
+		log.Printf("kofi webhook: token mismatch")
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	donationsDir := filepath.Join(h.DecksDir, "..", "donations")
+	os.MkdirAll(donationsDir, 0755)
+
+	entry := map[string]any{
+		"message_id":    payload.MessageID,
+		"timestamp":     payload.Timestamp,
+		"type":          payload.Type,
+		"is_public":     payload.IsPublic,
+		"from_name":     payload.FromName,
+		"message":       payload.Message,
+		"amount":        payload.Amount,
+		"currency":      payload.Currency,
+		"is_subscription": payload.IsSubscriptionPayment,
+		"tier_name":     payload.TierName,
+		"received_at":   time.Now().UTC().Format(time.RFC3339),
+	}
+
+	data, _ := json.MarshalIndent(entry, "", "  ")
+	fname := fmt.Sprintf("%d-%s.json", time.Now().UnixMilli(), payload.MessageID)
+	if err := os.WriteFile(filepath.Join(donationsDir, fname), data, 0644); err != nil {
+		log.Printf("kofi write error: %v", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("kofi donation: %s %s from %s (type=%s, public=%v)", payload.Amount, payload.Currency, payload.FromName, payload.Type, payload.IsPublic)
+	w.WriteHeader(http.StatusOK)
+}
+
+func (h *Handler) handleDonationsSummary(w http.ResponseWriter, r *http.Request) {
+	donationsDir := filepath.Join(h.DecksDir, "..", "donations")
+	entries, err := os.ReadDir(donationsDir)
+	if err != nil {
+		writeJSON(w, map[string]any{"month_total": 0, "all_time_total": 0, "recent": []any{}})
+		return
+	}
+
+	type donation struct {
+		FromName  string `json:"from_name"`
+		Amount    string `json:"amount"`
+		Message   string `json:"message,omitempty"`
+		Timestamp string `json:"timestamp"`
+		Type      string `json:"type"`
+	}
+
+	now := time.Now().UTC()
+	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	var monthTotal, allTimeTotal float64
+	var recent []donation
+
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".json") {
+			continue
+		}
+		raw, err := os.ReadFile(filepath.Join(donationsDir, e.Name()))
+		if err != nil {
+			continue
+		}
+		var d struct {
+			FromName  string `json:"from_name"`
+			Amount    string `json:"amount"`
+			Message   string `json:"message"`
+			Timestamp string `json:"timestamp"`
+			IsPublic  bool   `json:"is_public"`
+			Type      string `json:"type"`
+		}
+		if json.Unmarshal(raw, &d) != nil {
+			continue
+		}
+
+		var amt float64
+		fmt.Sscanf(d.Amount, "%f", &amt)
+		allTimeTotal += amt
+
+		ts, _ := time.Parse(time.RFC3339, d.Timestamp)
+		if ts.IsZero() {
+			ts, _ = time.Parse("2006-01-02T15:04:05Z", d.Timestamp)
+		}
+		if !ts.Before(monthStart) {
+			monthTotal += amt
+		}
+
+		if d.IsPublic {
+			name := d.FromName
+			recent = append(recent, donation{
+				FromName:  name,
+				Amount:    d.Amount,
+				Message:   d.Message,
+				Timestamp: d.Timestamp,
+				Type:      d.Type,
+			})
+		}
+	}
+
+	sort.Slice(recent, func(i, j int) bool { return recent[i].Timestamp > recent[j].Timestamp })
+	if len(recent) > 10 {
+		recent = recent[:10]
+	}
+
+	writeJSON(w, map[string]any{
+		"month_total":    monthTotal,
+		"all_time_total": allTimeTotal,
+		"month_goal":     202,
+		"recent":         recent,
+	})
 }
 
 func writeJSON(w http.ResponseWriter, v any) {
