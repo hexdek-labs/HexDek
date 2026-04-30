@@ -3,14 +3,14 @@ import { Panel, KV, Bar, Btn, Tape, Tag } from '../components/chrome'
 import { api } from '../services/api'
 
 const RECURRING = [
-  ['CLAUDE AI', 'Engine development + analysis', 200],
-  ['DOMAIN', 'hexdek.dev (annual, amortized)', 2],
+  ['CLAUDE AI', 200],
+  ['DOMAIN', 2],
 ]
 
 const SUNK = [
-  ['DARKSTAR', 'Ryzen 9 9950X engine box', 2000],
-  ['CLAUDE (3 MO)', 'Development to date', 600],
-  ['DOMAIN (PAID)', 'hexdek.dev registration', 20],
+  ['DARKSTAR HARDWARE', 2000],
+  ['CLAUDE (3 MO)', 600],
+  ['DOMAIN REG.', 20],
 ]
 
 const MONTHLY_GOAL = RECURRING.reduce((s, r) => s + r[2], 0)
@@ -50,7 +50,7 @@ export default function Donations() {
             <Bar value={raised} max={goal} lg />
           </div>
         </div>
-        <KV rows={RECURRING.map(([k, v, c]) => [k, `${v} — $${c}/mo`])} />
+        <KV rows={RECURRING.map(([k, c]) => [k, `$${c}/mo`])} />
         <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px dashed var(--rule-2)' }}>
           <KV rows={[['MONTHLY TOTAL', `$${MONTHLY_GOAL}/mo`]]} />
         </div>
@@ -71,7 +71,7 @@ export default function Donations() {
       )}
 
       <Panel code="DON.2" title="ALREADY INVESTED" style={{ marginTop: 16 }}>
-        <KV rows={SUNK.map(([k, v, c]) => [k, `${v} — $${c}`])} />
+        <KV rows={SUNK.map(([k, c]) => [k, `$${c.toLocaleString()}`])} />
         <div style={{ marginTop: 12, paddingTop: 10, borderTop: '1px dashed var(--rule-2)' }}>
           <KV rows={[['TOTAL TO DATE', `$${(TOTAL_INVESTED + summary.all_time_total).toLocaleString()}`]]} />
         </div>
