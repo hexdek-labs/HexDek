@@ -363,12 +363,12 @@ func TestEmry_ActivateCastFromGrave_OncePerTurn(t *testing.T) {
 	moxCard := &gameengine.Card{Name: "Mox Opal", Owner: 0, Types: []string{"artifact"}}
 	gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, moxCard)
 
-	// First activation succeeds.
+	// First activation succeeds — card stays in graveyard with zone-cast grant.
 	gameengine.InvokeActivatedHook(gs, emry, 0, map[string]interface{}{
 		"target_card": moxCard,
 	})
-	if len(gs.Seats[0].Exile) != 1 {
-		t.Errorf("expected Mox Opal in exile after Emry activation, got %d", len(gs.Seats[0].Exile))
+	if perm := gameengine.GetZoneCastGrant(gs, moxCard); perm == nil {
+		t.Errorf("expected ZoneCastGrant for Mox Opal after Emry activation")
 	}
 
 	// Add a second artifact and try to activate again — should fail.

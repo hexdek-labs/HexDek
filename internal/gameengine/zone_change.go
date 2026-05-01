@@ -368,6 +368,8 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 				"controller_seat": perm.Controller,
 				"to_zone":         toZone,
 			})
+			// CR §702.46 — Soulshift: return a Spirit from graveyard to hand.
+			CheckSoulshift(gs, perm)
 		}
 	}
 	if fromZone == "battlefield" {

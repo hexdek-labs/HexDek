@@ -27,9 +27,8 @@ import (
 //     ability (layer system integration — Phase 8). Log partial.
 //   - OnActivated(0, ...): tap an artifact (ctx["target_perm"]) to add
 //     {U}. Adds 1 to the generic pool as an MVP.
-//   - OnActivated(1, ...): exile top of library; place in exile with
-//     a "may_play" flag stamped on gs.Flags for future zone-cast wiring
-//     (mirrors Bolas's Citadel's cast-from-top shape).
+//   - OnActivated(1, ...): exile top of library; register a
+//     ZoneCastPermission (free cast from exile) with end-of-turn cleanup.
 func registerUrzaLordHighArtificer(r *Registry) {
 	r.OnETB("Urza, Lord High Artificer", urzaETB)
 	r.OnActivated("Urza, Lord High Artificer", urzaActivate)
@@ -126,7 +125,8 @@ func urzaActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityId
 			"new_mana_pool": s.ManaPool,
 		})
 	case 1:
-		// {5}: exile top of library; may-play flag.
+		// {5}: exile top of library. "You may play that card this turn."
+		// ManaCost 0 = free cast (the {5} activation cost covers it).
 		const slug = "urza_exile_top_may_play"
 		if len(s.Library) == 0 {
 			emitFail(gs, slug, src.Card.DisplayName(), "library_empty", nil)
@@ -134,10 +134,28 @@ func urzaActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityId
 		}
 		c := s.Library[0]
 		gameengine.MoveCard(gs, c, seat, "library", "exile", "impulse-draw")
-		if gs.Flags == nil {
-			gs.Flags = map[string]int{}
-		}
-		gs.Flags["urza_may_play_until_eot_seat_"+intToStr(seat)] = 1
+
+		// Register zone-cast permission so the exiled card can be played.
+		gameengine.RegisterZoneCastGrant(gs, c, &gameengine.ZoneCastPermission{
+			Zone:              gameengine.ZoneExile,
+			Keyword:           "urza_exile_play",
+			ManaCost:          0, // free — Urza's {5} pays the cost
+			RequireController: seat,
+			SourceName:        "Urza, Lord High Artificer",
+		})
+
+		// Clean up permission at end of turn.
+		cardRef := c
+		gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
+			TriggerAt:      "end_of_turn",
+			ControllerSeat: seat,
+			SourceCardName: "Urza, Lord High Artificer",
+			OneShot:        true,
+			EffectFn: func(gs *gameengine.GameState) {
+				gameengine.RemoveZoneCastGrant(gs, cardRef)
+			},
+		})
+
 		gs.LogEvent(gameengine.Event{
 			Kind:   "exile",
 			Seat:   seat,
@@ -148,11 +166,9 @@ func urzaActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityId
 			},
 		})
 		emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-			"seat":          seat,
-			"exiled_card":   c.DisplayName(),
-			"may_play_eot":  true,
+			"seat":              seat,
+			"exiled_card":       c.DisplayName(),
+			"zone_cast_granted": true,
 		})
-		emitPartial(gs, slug, src.Card.DisplayName(),
-			"may_play_flag_set_but_zone_cast_pipeline_consumes_it_in_downstream_work")
 	}
 }

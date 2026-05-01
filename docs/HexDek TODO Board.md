@@ -12,11 +12,7 @@ kanban-plugin: board
 ## High Priority — Engine
 
 - [ ] **Remaining 276 commander handlers** — coverage at 447/652 files (681 registered names). Most remaining are 1-2 deck count. Template generator (`cmd/gen-handlers/main.go`) handles simple patterns. #engine #per_card
-- [ ] **Exile-cast pattern** — Dauthi Voidwalker, Emry, Urza (×2) exile-cast replacement #engine
-- [ ] **Clone/copy handlers** — Phantasmal Image, Riku stack data for copy targeting #engine
-- [ ] **ELO-bracket correlation re-check** — verify inversion corrects after ~10K games with GC handlers active. ELO reset #2 running (2026-05-01). #engine #rating
-- [ ] Layer 3 text-changing effects — not implemented per CONFIDENCE_MATRIX #engine #layers
-- [ ] Soulshift keyword (CR §702.46) — only remaining STUB keyword, rare #engine #keywords
+- [ ] Layer 3 text-changing effects — STUB per CONFIDENCE_MATRIX, no portfolio deck uses them (Magical Hack, Trait Doctoring). Deferred. #engine #layers
 
 
 ## High Priority — Platform
@@ -72,6 +68,10 @@ kanban-plugin: board
 
 ## Done
 
+- [x] **Exile-cast pattern** — Dauthi Voidwalker (replacement effect via graveyard_enter trigger), Emry (ZoneCastGrant from graveyard + ExileOnResolve), Urza (free cast from exile + EOT cleanup) (2026-05-01) #engine
+- [x] **Clone/copy handlers** — already implemented: Phantasmal Image (DeepCopy + sac-on-target flag), Riku (creature token copy + spell stack copy). Stale TODO removed (2026-05-01) #engine
+- [x] **ELO-bracket correlation re-check** — 485K games, rho=-0.49 (inverted). B1 avg 1649, B5 avg 1315 in standard ELO. HexELO preserves bracket ordering via seeded starts. Drift outliers: 921/1196 decks (2026-05-01) #engine #rating
+- [x] **Soulshift keyword** — CR §702.46 implemented: CheckSoulshift fires on creature death, returns highest-CMC Spirit with mana value ≤ N from graveyard to hand. CONFIDENCE_MATRIX updated to SOLID. 0 STUB keywords remain (2026-05-01) #engine #keywords
 - [x] **Opponent graveyard threat tracking** — 12th evaluator dimension `scoreOpponentGraveyard`: reanimation targets, flashback/escape spells, enablers on battlefield, known GY-abuse commanders. Weighted per archetype (2026-05-01) #engine #evaluator
 - [x] **Color-aware mana sequencing** — ChooseLandToPlay now scans hand spells for color pip demand, boosts lands producing needed colors with deficit-aware weighting. Near-castable spells (CMC ≤ available+1) get 2x priority (2026-05-01) #engine #evaluator
 - [x] **Jeska's Will** — exile-play permission via RegisterZoneCastGrant for each exiled card + end-of-turn DelayedTrigger cleanup. Last GC clause gap closed (2026-05-01) #engine

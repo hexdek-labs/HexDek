@@ -747,18 +747,16 @@ func dauthiVoidwalkerETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
-	if gs.Flags == nil {
-		gs.Flags = map[string]int{}
-	}
-	// Flag that opponent graveyard entries are exiled instead.
-	gs.Flags["dauthi_voidwalker_seat_"+intToStr(perm.Controller)] = perm.Timestamp
+	// Register replacement effects via the replacement engine so
+	// opponents' cards are exiled (with void counters) instead of
+	// going to graveyard. RegisterReplacementsForPermanent dispatches
+	// to RegisterDauthiVoidwalker in replacement.go.
+	gameengine.RegisterReplacementsForPermanent(gs, perm)
 	emit(gs, slug, "Dauthi Voidwalker", map[string]interface{}{
 		"seat":    perm.Controller,
 		"effect":  "opponent_cards_exiled_instead_of_graveyard",
 		"shadow":  true,
 	})
-	emitPartial(gs, slug, "Dauthi Voidwalker",
-		"replacement_effect_callsites_must_consult_dauthi_flag_for_graveyard_redirect")
 }
 
 func dauthiVoidwalkerActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
@@ -771,12 +769,10 @@ func dauthiVoidwalkerActivate(gs *gameengine.GameState, src *gameengine.Permanen
 		return
 	}
 
-	// Sacrifice Voidwalker as cost.
+	// Sacrifice Voidwalker as cost. This also unregisters its
+	// replacement effects via UnregisterReplacementsForPermanent
+	// (called from the sacrifice path on LTB).
 	gameengine.SacrificePermanent(gs, src, "dauthi_voidwalker_cost")
-	// Remove the replacement flag.
-	if gs.Flags != nil {
-		delete(gs.Flags, "dauthi_voidwalker_seat_"+intToStr(seat))
-	}
 
 	// Find an exiled card with a void counter. MVP: pick any opponent's
 	// exiled card (highest CMC creature preferred).

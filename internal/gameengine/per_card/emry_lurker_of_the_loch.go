@@ -22,9 +22,9 @@ import (
 //
 // Batch #2 scope:
 //   - OnETB: mill 4 (top 4 of controller's library → graveyard).
-//   - OnActivated(0, ctx["target_card"]): move a target artifact card
-//     from graveyard to exile and log a "may_cast" event. We don't
-//     execute the cast-from-graveyard (zone-cast plumbing pending).
+//   - OnActivated(0, ctx["target_card"]): register a ZoneCastPermission
+//     on a target artifact card in graveyard (cast from graveyard, exile
+//     on resolve). End-of-turn cleanup removes unused permission.
 //     Set perm.Flags["emry_activated_this_turn"] = 1 to enforce the
 //     "once each turn" clause at the caller level.
 //
@@ -93,26 +93,45 @@ func emryActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityId
 		emitFail(gs, slug, src.Card.DisplayName(), "no_artifact_in_graveyard", nil)
 		return
 	}
-	// Per oracle: "If that spell would be put into a graveyard this
-	// turn, exile it instead." For MVP we go straight to exile to
-	// approximate the end-state.
-	gameengine.MoveCard(gs, target, seat, "graveyard", "exile", "exile-from-graveyard")
+	// Per oracle: "{T}: You may cast target artifact card from your
+	// graveyard." Register a zone-cast permission from graveyard.
+	// ExileOnResolve = true implements the "if that spell would be put
+	// into a graveyard this turn, exile it instead" clause.
+	gameengine.RegisterZoneCastGrant(gs, target, &gameengine.ZoneCastPermission{
+		Zone:              gameengine.ZoneGraveyard,
+		Keyword:           "emry_artifact_cast",
+		ManaCost:          -1, // pay normal mana cost
+		ExileOnResolve:    true,
+		RequireController: seat,
+		SourceName:        "Emry, Lurker of the Loch",
+	})
 	src.Flags["emry_activated_this_turn"] = 1
+
+	// Clean up the zone-cast permission at end of turn if not used.
+	targetRef := target
+	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
+		TriggerAt:      "end_of_turn",
+		ControllerSeat: seat,
+		SourceCardName: "Emry, Lurker of the Loch",
+		OneShot:        true,
+		EffectFn: func(gs *gameengine.GameState) {
+			gameengine.RemoveZoneCastGrant(gs, targetRef)
+		},
+	})
+
 	gs.LogEvent(gameengine.Event{
 		Kind:   "per_card_cast_from_grave",
 		Seat:   seat,
 		Source: src.Card.DisplayName(),
 		Details: map[string]interface{}{
 			"card":   target.DisplayName(),
-			"to":     "exile",
+			"zone":   "graveyard",
 			"reason": "emry_activated",
 		},
 	})
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-		"seat":          seat,
-		"cast_card":     target.DisplayName(),
-		"final_zone":    "exile",
+		"seat":              seat,
+		"cast_card":         target.DisplayName(),
+		"zone_cast_granted": true,
 	})
-	emitPartial(gs, slug, src.Card.DisplayName(),
-		"cast_from_grave_not_truly_cast_zone_cast_plumbing_not_implemented")
 }

@@ -95,7 +95,7 @@
 | **SURGICAL** | Deathtouch, defender, double strike, first strike, flying, reach, haste, hexproof, indestructible, lifelink, menace, trample, vigilance, flash, storm, cascade, phasing, daybound/nightbound, morph/manifest/disguise/cloak, partner, companion |
 | **SOLID** | Protection (color), prowess, ward, ninjutsu, evoke, flashback, escape, split second, annihilator, afflict, bushido, flanking, myriad, melee, battle cry, rampage, skulk, shadow, horsemanship, banding (simplified), wither/infect, exalted, undying, persist, kicker/multikicker, convoke, affinity, delve, dredge, madness, changeling, modular, graft, suspend, improvise, spectacle, surge, entwine, miracle, overload, emerge |
 | **UNCERTAIN** | Equip (generic cost path), bestow, reconfigure, living weapon, absorb |
-| **STUB** | Soulshift |
+| **SOLID** | Soulshift |
 | **MISSING** | Transmute, replicate, forecast, hideaway, champion |
 
 ## Mana System

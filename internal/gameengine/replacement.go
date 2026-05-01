@@ -1053,7 +1053,61 @@ func RegisterReplacementsForPermanent(gs *GameState, p *Permanent) {
 		RegisterPlatinumAngel(gs, p)
 	case "Notion Thief":
 		RegisterNotionThiefReplacement(gs, p)
+	case "Dauthi Voidwalker":
+		RegisterDauthiVoidwalker(gs, p)
 	}
+}
+
+// RegisterDauthiVoidwalker — "If a card would be put into an opponent's
+// graveyard from anywhere, instead exile it with a void counter on it."
+// Like Leyline of the Void, only affects opponents' cards. Additionally
+// marks exiled cards with a void counter so the activated ability can
+// identify them.
+func RegisterDauthiVoidwalker(gs *GameState, p *Permanent) {
+	if p == nil {
+		return
+	}
+	applies := func(gs *GameState, ev *ReplEvent) bool {
+		toZone := ev.String("to_zone")
+		if toZone != "graveyard" {
+			return false
+		}
+		// Only opponents' cards — not the controller's.
+		if ev.TargetPerm != nil {
+			if ev.TargetPerm.Controller == p.Controller {
+				return false
+			}
+			if ev.TargetPerm.IsToken() {
+				return false
+			}
+		} else if ev.TargetSeat == p.Controller {
+			return false
+		}
+		return true
+	}
+	apply := func(gs *GameState, ev *ReplEvent) {
+		ev.Payload["to_zone"] = "exile"
+		ev.Payload["void_counter"] = true
+		gs.LogEvent(Event{
+			Kind: "replacement_applied", Seat: p.Controller,
+			Source: "Dauthi Voidwalker",
+			Details: map[string]interface{}{
+				"rule":   "614",
+				"effect": "opp_gy_to_exile_with_void_counter",
+			},
+		})
+	}
+	gs.RegisterReplacement(&ReplacementEffect{
+		EventType: "would_die", HandlerID: handlerKey("Dauthi Voidwalker", "die", p),
+		SourcePerm: p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
+		Category: CategoryOther, Applies: applies, ApplyFn: apply,
+	})
+	gs.RegisterReplacement(&ReplacementEffect{
+		EventType: "would_be_put_into_graveyard",
+		HandlerID:  handlerKey("Dauthi Voidwalker", "gy", p),
+		SourcePerm: p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
+		Category: CategoryOther, Applies: applies, ApplyFn: apply,
+	})
 }
 
 // -----------------------------------------------------------------------------

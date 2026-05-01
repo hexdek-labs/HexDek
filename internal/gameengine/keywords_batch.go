@@ -1,6 +1,10 @@
 package gameengine
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/hexdek/hexdek/internal/gameast"
+)
 
 func itoaBatch(n int) string {
 	if n == 0 {
@@ -1143,5 +1147,95 @@ func Incubate(gs *GameState, seatIdx, n int) {
 		Amount: n,
 		Details: map[string]interface{}{"rule": "701.53"},
 	})
+}
+
+// CR §702.46 — Soulshift
+// "Soulshift N" means "When this permanent is put into a graveyard from
+// the battlefield, you may return target Spirit card with mana value N or
+// less from your graveyard to your hand."
+func CheckSoulshift(gs *GameState, perm *Permanent) {
+	if gs == nil || perm == nil {
+		return
+	}
+	if !perm.HasKeyword("soulshift") {
+		return
+	}
+	n := soulshiftN(perm)
+	if n <= 0 {
+		return
+	}
+	seatIdx := perm.Controller
+	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return
+	}
+	seat := gs.Seats[seatIdx]
+
+	// Find best Spirit card in graveyard with mana value <= N.
+	bestIdx := -1
+	bestCMC := -1
+	for i, c := range seat.Graveyard {
+		if c == nil {
+			continue
+		}
+		isSpirit := false
+		for _, t := range c.Types {
+			if strings.EqualFold(t, "spirit") {
+				isSpirit = true
+				break
+			}
+		}
+		if !isSpirit {
+			continue
+		}
+		if c.CMC > n {
+			continue
+		}
+		if c.CMC > bestCMC {
+			bestCMC = c.CMC
+			bestIdx = i
+		}
+	}
+	if bestIdx < 0 {
+		return
+	}
+
+	target := seat.Graveyard[bestIdx]
+	seat.Graveyard = append(seat.Graveyard[:bestIdx], seat.Graveyard[bestIdx+1:]...)
+	seat.Hand = append(seat.Hand, target)
+
+	gs.LogEvent(Event{
+		Kind:   "soulshift",
+		Seat:   seatIdx,
+		Source: perm.Card.DisplayName(),
+		Details: map[string]interface{}{
+			"rule":     "702.46",
+			"n":        n,
+			"returned": target.DisplayName(),
+		},
+	})
+}
+
+func soulshiftN(p *Permanent) int {
+	if p == nil || p.Card == nil || p.Card.AST == nil {
+		return 0
+	}
+	for _, ab := range p.Card.AST.Abilities {
+		kw, ok := ab.(*gameast.Keyword)
+		if !ok {
+			continue
+		}
+		if !strings.EqualFold(strings.TrimSpace(kw.Name), "soulshift") {
+			continue
+		}
+		if len(kw.Args) > 0 {
+			switch v := kw.Args[0].(type) {
+			case float64:
+				return int(v)
+			case int:
+				return v
+			}
+		}
+	}
+	return 0
 }
 
