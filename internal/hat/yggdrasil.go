@@ -1670,6 +1670,24 @@ func (h *YggdrasilHat) activationHeuristic(gs *gameengine.GameState, seatIdx int
 		}
 	}
 
+	// Life-payment abilities are better when we can afford the life.
+	// At 30+ life in Commander, paying 2-5 life is essentially free.
+	if c.AST != nil && opt.Ability >= 0 && opt.Ability < len(c.AST.Abilities) {
+		if act, ok := c.AST.Abilities[opt.Ability].(*gameast.Activated); ok && act.Cost.PayLife != nil && *act.Cost.PayLife > 0 {
+			life := gs.Seats[seatIdx].Life
+			cost := *act.Cost.PayLife
+			lifeAfter := life - cost
+			if lifeAfter > 20 {
+				base += 0.20
+			} else if lifeAfter > 10 {
+				base += 0.10
+			}
+			if strings.Contains(ot, "draw") || strings.Contains(ot, "scry") || strings.Contains(ot, "search") {
+				base += 0.15
+			}
+		}
+	}
+
 	if h.tutorTargetSet[c.DisplayName()] {
 		base += 0.10
 	}

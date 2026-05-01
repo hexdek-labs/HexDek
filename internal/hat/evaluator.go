@@ -201,7 +201,9 @@ func (e *GameStateEvaluator) scoreMana(gs *gameengine.GameState, seatIdx int) fl
 }
 
 // scoreLife: life as a resource. In commander, 40 is starting; < 10 is
-// danger. Normalized relative to starting life.
+// danger. Normalized relative to starting life. Life-payment decks
+// (Bolas's Citadel, Necropotence, K'rrik) should not be penalized for
+// spending life when they have payoffs on board.
 func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) float64 {
 	seat := gs.Seats[seatIdx]
 	starting := float64(seat.StartingLife)
@@ -213,10 +215,34 @@ func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) fl
 	if seat.Life <= 0 {
 		return -1
 	}
-	if seat.Life <= 10 {
-		return ratio - 0.5
+
+	// Check for life-payment payoffs on the battlefield. When these are
+	// active, low life is less dangerous because the life was SPENT for value.
+	hasLifePayoff := false
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		ot := gameengine.OracleTextLower(p.Card)
+		if strings.Contains(ot, "pay") && strings.Contains(ot, "life") &&
+			(strings.Contains(ot, "draw") || strings.Contains(ot, "cast") || strings.Contains(ot, "search")) {
+			hasLifePayoff = true
+			break
+		}
 	}
-	return (ratio - 0.5) * 0.5
+
+	if seat.Life <= 10 {
+		base := ratio - 0.5
+		if hasLifePayoff {
+			base *= 0.5
+		}
+		return base
+	}
+	base := (ratio - 0.5) * 0.5
+	if hasLifePayoff && seat.Life > 20 {
+		base += 0.1
+	}
+	return base
 }
 
 // scoreCombo: how close we are to assembling a combo. 1.0 = all pieces
