@@ -756,6 +756,14 @@ func registerDefaults() {
 	// batch17_sweep.go (registered via its own init()).
 	registerChatterfang(Global())
 	registerPitilessPlunderer(Global())
+
+	// Batch #18 — drain commanders (lifegain→drain + ETB→drain).
+	registerDinaSoulSteeper(Global())
+	registerDinaEssenceBrewer(Global())
+	registerVitoThornOfTheDuskRose(Global())
+	registerVitoFanaticOfAclazotz(Global())
+	registerMaraudingBlightPriest(Global())
+	registerCorpseKnight(Global())
 }
 
 func init() {

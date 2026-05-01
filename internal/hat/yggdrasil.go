@@ -2040,6 +2040,15 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 		// Commander damage matters — always worth sending.
 		if p.Card != nil && isCommanderCard(gs, seatIdx, p.Card) {
 			val += 0.10
+			// Attack-trigger tutor commanders (Zur, Narset, etc.)
+			// get a massive bonus — the tutor value far outweighs
+			// combat risk. The whole deck is built around this trigger.
+			ot := gameengine.OracleTextLower(p.Card)
+			if strings.Contains(ot, "attacks") &&
+				(strings.Contains(ot, "search") || strings.Contains(ot, "exile the top") ||
+					strings.Contains(ot, "look at the top")) {
+				val += 0.60
+			}
 		}
 
 		// 3rd Eye: When a wrath is suspected, hold back VE key creatures
@@ -2082,6 +2091,12 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 			}
 			if isCommanderCard(gs, seatIdx, p.Card) {
 				rv += 1.0
+				// Never hold back attack-trigger tutor commanders.
+				ot := gameengine.OracleTextLower(p.Card)
+				if strings.Contains(ot, "attacks") &&
+					(strings.Contains(ot, "search") || strings.Contains(ot, "exile the top")) {
+					rv = -10.0
+				}
 			}
 			if rv > bestReserveVal {
 				bestReserveVal = rv

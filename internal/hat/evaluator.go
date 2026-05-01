@@ -574,12 +574,16 @@ func (e *GameStateEvaluator) scoreDrainEngine(gs *gameengine.GameState, seatIdx 
 		}
 
 		// Sacrifice outlets (free or cheap)
-		if (strings.Contains(ot, "sacrifice a creature") || strings.Contains(ot, "sacrifice another")) &&
+		if (strings.Contains(ot, "sacrifice a creature") || strings.Contains(ot, "sacrifice another") ||
+			strings.Contains(ot, "sacrifice an artifact") || strings.Contains(ot, "sacrifice a permanent")) &&
 			!strings.Contains(ot, "when") {
 			sacOutlets += 1.0
 		}
 
 		// Fodder: tokens and small creatures with death triggers
+		if p.IsToken() && !p.IsCreature() {
+			fodder += 0.3 // Treasure, Food, Clue tokens
+		}
 		if p.IsCreature() {
 			if p.IsToken() {
 				fodder += 0.5
