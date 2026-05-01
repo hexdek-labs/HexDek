@@ -6,7 +6,7 @@ kanban-plugin: board
 
 ## High Priority — Parser (100% Coverage Push)
 
-- [ ] **P1: Reduce UnknownEffect** — remaining 14 cards (0.04%). Long tail: conditional attacks, monstrous triggers, calculated P/T #parser
+*Empty — 100% coverage achieved (0 UnknownEffect across 31,963 cards)*
 
 
 ## High Priority — Engine
@@ -76,6 +76,7 @@ kanban-plugin: board
 
 ## Done
 
+- [x] **P1: 100% parser coverage** — 0 UnknownEffect across 31,963 cards. `final_13_cards.py` extension covers forced-attack, variable P/T, as-enters, monstrous triggers, composite ETB, search-library, card-put-into-zone (2026-05-01) #parser
 - [x] **Graveyard-leave observer hook** — `graveyard_leave` event fires from MoveCard when fromZone=="graveyard". Tormod creates 2/2 Zombie, Imotekh creates 2x 2/2 Necron Warriors on artifact leave (2026-05-01) #engine
 - [x] **Land-tap hook** — `land_tapped_for_mana` event fires from AddManaFromPermanent when source is land. Caged Sun doubles controller's mana, Gauntlet of Power doubles all players' mana (2026-05-01) #engine
 - [x] **Cast observer → Door of Destinies** — `spell_cast` already fires; wired Door of Destinies charge counter increment on controller cast (2026-05-01) #engine
