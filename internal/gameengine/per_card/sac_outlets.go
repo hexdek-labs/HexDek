@@ -1,6 +1,8 @@
 package per_card
 
 import (
+	"strings"
+
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -416,7 +418,8 @@ func woeStriderActivated(gs *gameengine.GameState, src *gameengine.Permanent, ab
 
 // chooseSacVictim picks a creature to sacrifice from seat's battlefield.
 // If ctx["creature_perm"] is set (by test or Hat), use that; otherwise
-// pick the lowest-power creature that isn't the source permanent.
+// use sacVictimScore to pick the best sacrifice candidate based on
+// token status, death triggers, summoning sickness, and strategic value.
 func chooseSacVictim(gs *gameengine.GameState, seat int, src *gameengine.Permanent, ctx map[string]interface{}) *gameengine.Permanent {
 	if ctx != nil {
 		if p, ok := ctx["creature_perm"].(*gameengine.Permanent); ok && p != nil {
@@ -427,12 +430,15 @@ func chooseSacVictim(gs *gameengine.GameState, seat int, src *gameengine.Permane
 		return nil
 	}
 	var best *gameengine.Permanent
+	bestScore := -999.0
 	for _, p := range gs.Seats[seat].Battlefield {
 		if p == nil || !p.IsCreature() {
 			continue
 		}
-		if best == nil || p.Power() < best.Power() {
+		score := sacVictimScore(gs, seat, p, src)
+		if best == nil || score > bestScore {
 			best = p
+			bestScore = score
 		}
 	}
 	return best
@@ -450,15 +456,79 @@ func chooseSacVictimNotSelf(gs *gameengine.GameState, seat int, src *gameengine.
 		return nil
 	}
 	var best *gameengine.Permanent
+	bestScore := -999.0
 	for _, p := range gs.Seats[seat].Battlefield {
 		if p == nil || !p.IsCreature() || p == src {
 			continue
 		}
-		if best == nil || p.Power() < best.Power() {
+		score := sacVictimScore(gs, seat, p, src)
+		if best == nil || score > bestScore {
 			best = p
+			bestScore = score
 		}
 	}
 	return best
+}
+
+// sacVictimScore rates how desirable a creature is as a sacrifice victim.
+// Higher score = better to sacrifice.
+//
+// Priorities:
+//   - Tokens are ideal fodder (+3)
+//   - Creatures with death triggers WANT to die (+2)
+//   - Summoning-sick creatures can't attack/tap yet (+1)
+//   - Low power = low combat value (scaled +0.5 to -0.5)
+//   - Avoid the sac outlet itself (-10)
+//   - Strongly avoid commanders (-5)
+//   - Avoid value engines and ongoing draw/mana sources (-2)
+func sacVictimScore(gs *gameengine.GameState, seat int, p, src *gameengine.Permanent) float64 {
+	score := 0.0
+
+	// Tokens are ideal sacrifice fodder.
+	if p.Card != nil {
+		for _, t := range p.Card.Types {
+			if t == "token" {
+				score += 3.0
+				break
+			}
+		}
+	}
+
+	// Creatures with death triggers WANT to die.
+	if p.Card != nil {
+		ot := gameengine.OracleTextLower(p.Card)
+		if strings.Contains(ot, "when") && (strings.Contains(ot, "dies") || strings.Contains(ot, "leaves the battlefield")) {
+			score += 2.0
+		}
+
+		// Avoid value engines and combo pieces (ongoing draw/mana sources).
+		if strings.Contains(ot, "whenever") && (strings.Contains(ot, "draw") || strings.Contains(ot, "add")) {
+			score -= 2.0
+		}
+	}
+
+	// Summoning-sick creatures can't attack or tap anyway.
+	if p.SummoningSick {
+		score += 1.0
+	}
+
+	// Low power = low combat value = better to sacrifice.
+	// Maps power 0->+0.5, power 5->0.0, power 10->-0.5.
+	score += float64(5-p.Power()) * 0.1
+
+	// Avoid sacrificing the source permanent (the sac outlet itself).
+	if p == src {
+		score -= 10.0
+	}
+
+	// Strongly avoid commanders -- recastable but with increasing tax.
+	if p.Card != nil && gs != nil && seat >= 0 && seat < len(gs.Seats) {
+		if gameengine.IsCommanderCard(gs, seat, p.Card) {
+			score -= 5.0
+		}
+	}
+
+	return score
 }
 
 // pickTargetSeat returns a target seat from context or picks the

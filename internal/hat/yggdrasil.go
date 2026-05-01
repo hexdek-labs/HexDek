@@ -1638,6 +1638,38 @@ func (h *YggdrasilHat) activationHeuristic(gs *gameengine.GameState, seatIdx int
 		}
 	}
 
+	// Sacrifice outlets are much more valuable when we have death-trigger
+	// payoffs (aristocrats) or token fodder on board.
+	if strings.Contains(ot, "sacrifice") {
+		deathPayoffs := 0
+		tokenCount := 0
+		for _, p := range gs.Seats[seatIdx].Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			pot := gameengine.OracleTextLower(p.Card)
+			if strings.Contains(pot, "whenever") && (strings.Contains(pot, "dies") || strings.Contains(pot, "leaves")) {
+				deathPayoffs++
+			}
+			for _, t := range p.Card.Types {
+				if t == "token" {
+					tokenCount++
+					break
+				}
+			}
+		}
+		if deathPayoffs > 0 {
+			base += float64(deathPayoffs) * 0.15
+		}
+		if tokenCount > 0 {
+			base += 0.10
+		}
+		// Mana-producing sacrifices (Ashnod's, Phyrexian Altar) are ramp.
+		if strings.Contains(ot, "add") && (strings.Contains(ot, "mana") || strings.Contains(ot, "{")) {
+			base += 0.15
+		}
+	}
+
 	if h.tutorTargetSet[c.DisplayName()] {
 		base += 0.10
 	}

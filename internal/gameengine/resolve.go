@@ -1463,6 +1463,22 @@ func resolveCreateToken(gs *GameState, src *Permanent, e *gameast.CreateToken) {
 		RegisterReplacementsForPermanent(gs, p)
 		FirePermanentETBTriggers(gs, p)
 	}
+	// Fire token_created trigger for cards like Chatterfang that care about
+	// token creation events. Re-entrancy guard prevents infinite loops when
+	// a token_created handler itself creates tokens.
+	if count > 0 && (gs.Flags == nil || gs.Flags["in_token_trigger"] == 0) {
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["in_token_trigger"] = 1
+		FireCardTrigger(gs, "token_created", map[string]interface{}{
+			"controller_seat": controller,
+			"count":           count,
+			"types":           types,
+			"source":          sourceName(src),
+		})
+		gs.Flags["in_token_trigger"] = 0
+	}
 	gs.LogEvent(Event{
 		Kind:   "create_token",
 		Seat:   controller,
@@ -1545,6 +1561,24 @@ func resolveCreateTokenCopy(gs *GameState, src *Permanent, e *gameast.CreateToke
 		gs.Seats[controller].Battlefield = append(gs.Seats[controller].Battlefield, p)
 		RegisterReplacementsForPermanent(gs, p)
 		FirePermanentETBTriggers(gs, p)
+	}
+	// Fire token_created trigger for token copies too (same re-entrancy guard).
+	if count > 0 && (gs.Flags == nil || gs.Flags["in_token_trigger"] == 0) {
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["in_token_trigger"] = 1
+		copyTypes := []string{"token"}
+		if copySource.Card != nil {
+			copyTypes = copySource.Card.Types
+		}
+		FireCardTrigger(gs, "token_created", map[string]interface{}{
+			"controller_seat": controller,
+			"count":           count,
+			"types":           copyTypes,
+			"source":          sourceName(src),
+		})
+		gs.Flags["in_token_trigger"] = 0
 	}
 	gs.LogEvent(Event{
 		Kind:   "create_token_copy",

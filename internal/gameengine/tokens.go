@@ -103,6 +103,20 @@ func createSimpleArtifactToken(gs *GameState, seatIdx int,
 	seat.Battlefield = append(seat.Battlefield, perm)
 	RegisterReplacementsForPermanent(gs, perm)
 	FirePermanentETBTriggers(gs, perm)
+	// Fire token_created trigger with re-entrancy guard.
+	if gs.Flags == nil || gs.Flags["in_token_trigger"] == 0 {
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["in_token_trigger"] = 1
+		FireCardTrigger(gs, "token_created", map[string]interface{}{
+			"controller_seat": seatIdx,
+			"count":           1,
+			"types":           token.Types,
+			"source":          name,
+		})
+		gs.Flags["in_token_trigger"] = 0
+	}
 	gs.LogEvent(Event{
 		Kind:   "create_token",
 		Seat:   seatIdx,
@@ -144,6 +158,20 @@ func CreateCreatureToken(gs *GameState, seatIdx int, name string, types []string
 	seat.Battlefield = append(seat.Battlefield, perm)
 	RegisterReplacementsForPermanent(gs, perm)
 	FirePermanentETBTriggers(gs, perm)
+	// Fire token_created trigger with re-entrancy guard.
+	if gs.Flags == nil || gs.Flags["in_token_trigger"] == 0 {
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["in_token_trigger"] = 1
+		FireCardTrigger(gs, "token_created", map[string]interface{}{
+			"controller_seat": seatIdx,
+			"count":           1,
+			"types":           allTypes,
+			"source":          name,
+		})
+		gs.Flags["in_token_trigger"] = 0
+	}
 	gs.LogEvent(Event{
 		Kind:   "create_token",
 		Seat:   seatIdx,

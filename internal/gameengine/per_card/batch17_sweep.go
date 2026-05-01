@@ -303,6 +303,7 @@ func virtueOfPersistenceUpkeep(gs *gameengine.GameState, perm *gameengine.Perman
 
 func registerAnointedProcession(r *Registry) {
 	r.OnETB("Anointed Procession", anointedProcessionETB)
+	r.OnTrigger("Anointed Procession", "token_created", anointedProcessionTokenTrigger)
 }
 
 func anointedProcessionETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -317,7 +318,82 @@ func anointedProcessionETB(gs *gameengine.GameState, perm *gameengine.Permanent)
 		"seat":   perm.Controller,
 		"effect": "token_doubling",
 	})
-	emitPartial(gs, "anointed_procession", "Anointed Procession", "token doubling requires CreateToken hook")
+}
+
+// anointedProcessionTokenTrigger doubles tokens created under our control.
+// Fires on "token_created" event. The re-entrancy guard in the engine
+// (gs.Flags["in_token_trigger"]) prevents the doubled tokens from
+// re-triggering this handler.
+func anointedProcessionTokenTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil {
+		return
+	}
+	seat := perm.Controller
+	if seat < 0 || seat >= len(gs.Seats) {
+		return
+	}
+
+	// Only doubles tokens YOU create.
+	controllerSeat, _ := ctx["controller_seat"].(int)
+	if controllerSeat != seat {
+		return
+	}
+
+	count, _ := ctx["count"].(int)
+	if count <= 0 {
+		return
+	}
+
+	// Determine token type from context and create matching extras.
+	types, _ := ctx["types"].([]string)
+	isCreature := false
+	for _, t := range types {
+		if t == "creature" {
+			isCreature = true
+			break
+		}
+	}
+
+	if isCreature {
+		nonTokenTypes := make([]string, 0, len(types))
+		for _, t := range types {
+			if t != "token" {
+				nonTokenTypes = append(nonTokenTypes, t)
+			}
+		}
+		for i := 0; i < count; i++ {
+			gameengine.CreateCreatureToken(gs, seat, "Token", nonTokenTypes, 1, 1)
+		}
+	} else {
+		// Non-creature tokens -- match by known artifact subtypes.
+		for i := 0; i < count; i++ {
+			matched := false
+			for _, t := range types {
+				switch t {
+				case "treasure":
+					gameengine.CreateTreasureToken(gs, seat)
+					matched = true
+				case "food":
+					gameengine.CreateFoodToken(gs, seat)
+					matched = true
+				case "clue":
+					gameengine.CreateClueToken(gs, seat)
+					matched = true
+				case "blood":
+					gameengine.CreateBloodToken(gs, seat)
+					matched = true
+				}
+				if matched {
+					break
+				}
+			}
+		}
+	}
+
+	emit(gs, "anointed_procession_trigger", "Anointed Procession", map[string]interface{}{
+		"seat":    seat,
+		"doubled": count,
+	})
 }
 
 // ---------------------------------------------------------------------------

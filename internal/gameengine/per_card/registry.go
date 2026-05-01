@@ -750,6 +750,12 @@ func registerDefaults() {
 	registerPanopticMirror(Global())
 	registerSerrasSanctum(Global())
 	registerTabernacleAtPendrellVale(Global())
+
+	// Batch #17 — token-creation triggers and aristocrat payoffs.
+	// Anointed Procession's token_created trigger is upgraded in
+	// batch17_sweep.go (registered via its own init()).
+	registerChatterfang(Global())
+	registerPitilessPlunderer(Global())
 }
 
 func init() {
