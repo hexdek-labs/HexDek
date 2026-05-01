@@ -2,6 +2,8 @@ package gameengine
 
 import (
 	"testing"
+
+	"github.com/hexdek/hexdek/internal/gameast"
 )
 
 // -----------------------------------------------------------------------------
@@ -688,5 +690,77 @@ func BenchmarkStateBasedActions(b *testing.B) {
 		gs.Seats[2].Battlefield[6].MarkedDamage = 1
 		b.StartTimer()
 		_ = StateBasedActions(gs)
+	}
+}
+
+// -----------------------------------------------------------------------------
+// §704.5r — counter limit enforcement.
+// -----------------------------------------------------------------------------
+
+func TestSBA_704_5r_CounterLimitTrims(t *testing.T) {
+	gs := newFixtureGame(t)
+	p := addBattlefield(gs, 0, "Rasputin Dreamweaver", 4, 1, "creature")
+	p.Card.AST = &gameast.CardAST{
+		Name: "Rasputin Dreamweaver",
+		Abilities: []gameast.Ability{
+			&gameast.Static{
+				Raw: "Rasputin can't have more than seven dream counters on it",
+			},
+		},
+	}
+	p.Counters["dream"] = 10
+
+	if !StateBasedActions(gs) {
+		t.Fatal("expected SBA to fire for excess dream counters")
+	}
+	if p.Counters["dream"] != 7 {
+		t.Fatalf("expected 7 dream counters, got %d", p.Counters["dream"])
+	}
+	if countEvents(gs, "sba_704_5r") != 1 {
+		t.Fatal("missing sba_704_5r event")
+	}
+}
+
+func TestSBA_704_5r_NoFireWhenUnderLimit(t *testing.T) {
+	gs := newFixtureGame(t)
+	p := addBattlefield(gs, 0, "Rasputin Dreamweaver", 4, 1, "creature")
+	p.Card.AST = &gameast.CardAST{
+		Name: "Rasputin Dreamweaver",
+		Abilities: []gameast.Ability{
+			&gameast.Static{
+				Raw: "Rasputin can't have more than seven dream counters on it",
+			},
+		},
+	}
+	p.Counters["dream"] = 5
+
+	if StateBasedActions(gs) {
+		if countEvents(gs, "sba_704_5r") > 0 {
+			t.Fatal("SBA should not fire when under limit")
+		}
+	}
+	if p.Counters["dream"] != 5 {
+		t.Fatalf("expected 5 dream counters unchanged, got %d", p.Counters["dream"])
+	}
+}
+
+func TestParseCounterLimit(t *testing.T) {
+	tests := []struct {
+		raw      string
+		wantN    int
+		wantKind string
+	}{
+		{"Rasputin can't have more than seven dream counters on it", 7, "dream"},
+		{"This can't have more than 3 charge counters on it", 3, "charge"},
+		{"This can't have more than ten ice counters on it", 10, "ice"},
+		{"Flying", -1, ""},
+		{"", -1, ""},
+	}
+	for _, tt := range tests {
+		n, kind := parseCounterLimit(tt.raw)
+		if n != tt.wantN || kind != tt.wantKind {
+			t.Errorf("parseCounterLimit(%q) = (%d, %q), want (%d, %q)",
+				tt.raw, n, kind, tt.wantN, tt.wantKind)
+		}
 	}
 }

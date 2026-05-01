@@ -1,23 +1,20 @@
-// Package ai runs a dead-simple autopilot for seats marked is_ai=1. It
-// polls turn state and, whenever an AI-owned seat has active priority, it
-// advances the phase. That's enough to let a single human test the full
-// game loop without a second player, and enough to keep the game flowing
-// past AI turns in a mixed party.
-//
-// This is intentionally not "smart" — no card play, no combat decisions.
-// Future work: add a behavior policy that actually plays lands, casts
-// spells, attacks when favorable, etc. For now it just holds the clock.
+// Package ai runs an autopilot for seats marked is_ai=1. It plays lands,
+// taps for mana, casts the most expensive affordable spell, attacks with
+// all available creatures, and advances phases — enough for a human to
+// playtest the full game loop against AI opponents.
 package ai
 
 import (
 	"context"
 	"database/sql"
 	"log"
+	"sort"
 	"sync"
 	"time"
 
 	"github.com/hexdek/hexdek/internal/db"
 	"github.com/hexdek/hexdek/internal/game"
+	"github.com/hexdek/hexdek/internal/mana"
 )
 
 // BroadcastFn is called after each AI-driven advance so the WS layer can
@@ -39,7 +36,6 @@ func Start(parent context.Context, database *sql.DB, gameID string, numPlayers i
 		return
 	}
 
-	// Figure out which seats are AI-controlled.
 	aiSeats, err := aiSeatsForGame(parent, database, gameID)
 	if err != nil {
 		log.Printf("ai: list ai seats for %s: %v", gameID, err)
@@ -67,8 +63,6 @@ func Stop(gameID string) {
 }
 
 func run(ctx context.Context, database *sql.DB, gameID string, aiSeats map[int]bool, numPlayers int, broadcast BroadcastFn) {
-	// Small delay between advances so humans can see the snapshots tick
-	// through the AI's turn.
 	ticker := time.NewTicker(700 * time.Millisecond)
 	defer ticker.Stop()
 
@@ -81,7 +75,6 @@ func run(ctx context.Context, database *sql.DB, gameID string, aiSeats map[int]b
 
 		turn, err := game.GetTurnState(ctx, database, gameID)
 		if err != nil {
-			// Game was deleted or DB went away — exit loop.
 			log.Printf("ai: game %s turn state gone: %v", gameID, err)
 			Stop(gameID)
 			return
@@ -89,6 +82,19 @@ func run(ctx context.Context, database *sql.DB, gameID string, aiSeats map[int]b
 		if !aiSeats[turn.ActiveSeat] {
 			continue
 		}
+
+		seat := turn.ActiveSeat
+
+		switch turn.Phase {
+		case game.PhaseMain1, game.PhaseMain2:
+			playLand(ctx, database, gameID, seat)
+			tapAllLands(ctx, database, gameID, seat)
+			castSpells(ctx, database, gameID, seat)
+		case game.PhaseCombat:
+			declareAttackers(ctx, database, gameID, seat, numPlayers)
+			_, _ = game.ResolveCombat(ctx, database, gameID)
+		}
+
 		if _, err := game.AdvancePhase(ctx, database, gameID, numPlayers); err != nil {
 			log.Printf("ai: advance phase game %s: %v", gameID, err)
 			continue
@@ -99,8 +105,109 @@ func run(ctx context.Context, database *sql.DB, gameID string, aiSeats map[int]b
 	}
 }
 
+func playLand(ctx context.Context, database *sql.DB, gameID string, seat int) {
+	hand, err := game.ListCardsInZone(ctx, database, gameID, seat, game.ZoneHand)
+	if err != nil {
+		return
+	}
+	for _, c := range hand {
+		if c.IsLand() {
+			if _, err := game.PlayLand(ctx, database, gameID, seat, c.InstanceID, false); err == nil {
+				return
+			}
+		}
+	}
+}
+
+func tapAllLands(ctx context.Context, database *sql.DB, gameID string, seat int) {
+	bf, err := game.ListCardsInZone(ctx, database, gameID, seat, game.ZoneBattlefield)
+	if err != nil {
+		return
+	}
+	for _, c := range bf {
+		if c.IsLand() && !c.Tapped {
+			game.TapLandForMana(ctx, database, gameID, seat, c.InstanceID, "")
+		}
+	}
+}
+
+func castSpells(ctx context.Context, database *sql.DB, gameID string, seat int) {
+	for {
+		hand, err := game.ListCardsInZone(ctx, database, gameID, seat, game.ZoneHand)
+		if err != nil || len(hand) == 0 {
+			return
+		}
+
+		player, err := game.GetGamePlayer(ctx, database, gameID, seat)
+		if err != nil {
+			return
+		}
+		pool := mana.Pool{
+			W: player.ManaPoolW, U: player.ManaPoolU, B: player.ManaPoolB,
+			R: player.ManaPoolR, G: player.ManaPoolG, C: player.ManaPoolC,
+		}
+		if pool.Total() == 0 {
+			return
+		}
+
+		sort.Slice(hand, func(i, j int) bool {
+			return hand[i].CMC > hand[j].CMC
+		})
+
+		cast := false
+		for _, c := range hand {
+			if c.IsLand() {
+				continue
+			}
+			cost, err := mana.Parse(c.ManaCost)
+			if err != nil {
+				continue
+			}
+			if pool.CanPay(cost, 0) {
+				if _, err := game.CastSpell(ctx, database, gameID, seat, c.InstanceID, 0, false); err == nil {
+					cast = true
+					break
+				}
+			}
+		}
+		if !cast {
+			return
+		}
+	}
+}
+
+func declareAttackers(ctx context.Context, database *sql.DB, gameID string, seat int, numPlayers int) {
+	bf, err := game.ListCardsInZone(ctx, database, gameID, seat, game.ZoneBattlefield)
+	if err != nil {
+		return
+	}
+
+	target := -1
+	for i := 0; i < numPlayers; i++ {
+		if i != seat {
+			target = i
+			break
+		}
+	}
+	if target < 0 {
+		return
+	}
+
+	var specs []game.AttackerSpec
+	for _, c := range bf {
+		if c.IsCreature() && !c.Tapped {
+			specs = append(specs, game.AttackerSpec{
+				InstanceID: c.InstanceID,
+				TargetSeat: target,
+			})
+		}
+	}
+	if len(specs) > 0 {
+		_ = game.DeclareAttackers(ctx, database, gameID, seat, specs)
+	}
+}
+
 func aiSeatsForGame(ctx context.Context, database *sql.DB, gameID string) (map[int]bool, error) {
-	// Join game_player → party_member to find seats flagged is_ai=1.
 	rows, err := database.QueryContext(ctx, `
 		SELECT gp.seat_position
 		FROM game_player gp
@@ -124,6 +231,4 @@ func aiSeatsForGame(ctx context.Context, database *sql.DB, gameID string) (map[i
 	return out, rows.Err()
 }
 
-// Keep the db package referenced so imports don't get trimmed by goimports
-// during build if this file is the only consumer — harmless var.
 var _ = db.Now

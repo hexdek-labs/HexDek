@@ -1,5 +1,12 @@
 package gameengine
 
+import (
+	"strconv"
+	"strings"
+
+	"github.com/hexdek/hexdek/internal/gameast"
+)
+
 // Phase 6 — State-based actions (CR §704).
 //
 // Per the 2026-02-27 comp-rules file (`data/rules/MagicCompRules-20260227.txt`)
@@ -94,7 +101,9 @@ func StateBasedActions(gs *GameState) bool {
 		if sba704_5q(gs) {
 			changed = true
 		}
-		sba704_5r(gs) // stub — "can't have more than N" not wired.
+		if sba704_5r(gs) {
+			changed = true
+		}
 
 		// Saga / Dungeon / Battle / Role / Speed (§704.5s–§704.5z).
 		if sba704_5s(gs) {
@@ -959,15 +968,84 @@ func sba704_5q(gs *GameState) bool {
 // than N counters of a certain kind on it has more than N counters of that
 // kind on it, all but N of those counters are removed from it."
 // (CR §704.5r, rules file line 5483.)
-//
-// STUB — the Phase-3 parser does not yet surface "can't have more than N"
-// abilities. Mirrors Python stub (_sba_704_5r). Re-enable when the parser
-// exports such clauses on the AST.
 func sba704_5r(gs *GameState) bool {
-	// TODO(phase-7): wire up parser output for "can't have more than N"
-	// clauses, iterate matching permanents, trim excess counters.
-	_ = gs
-	return false
+	changed := false
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, p := range s.Battlefield {
+			if p.Counters == nil || p.Card == nil || p.Card.AST == nil {
+				continue
+			}
+			for _, ab := range p.Card.AST.Abilities {
+				st, ok := ab.(*gameast.Static)
+				if !ok || st.Raw == "" {
+					continue
+				}
+				maxN, counterKind := parseCounterLimit(st.Raw)
+				if maxN < 0 {
+					continue
+				}
+				current := p.Counters[counterKind]
+				if current > maxN {
+					excess := current - maxN
+					p.Counters[counterKind] = maxN
+					if maxN == 0 {
+						delete(p.Counters, counterKind)
+					}
+					changed = true
+					gs.LogEvent(Event{
+						Kind:   "sba_704_5r",
+						Seat:   p.Controller,
+						Target: -1,
+						Source: p.Card.DisplayName(),
+						Amount: excess,
+						Details: map[string]interface{}{
+							"rule":         "704.5r",
+							"card":         p.Card.DisplayName(),
+							"counter_kind": counterKind,
+							"max":          maxN,
+							"removed":      excess,
+						},
+					})
+				}
+			}
+		}
+	}
+	return changed
+}
+
+var counterLimitWords = map[string]int{
+	"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+	"six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+	"eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15,
+}
+
+func parseCounterLimit(raw string) (maxN int, counterKind string) {
+	lower := strings.ToLower(raw)
+	idx := strings.Index(lower, "can't have more than ")
+	if idx < 0 {
+		return -1, ""
+	}
+	rest := lower[idx+len("can't have more than "):]
+	parts := strings.Fields(rest)
+	if len(parts) < 2 {
+		return -1, ""
+	}
+	n, ok := counterLimitWords[parts[0]]
+	if !ok {
+		n64, err := strconv.Atoi(parts[0])
+		if err != nil {
+			return -1, ""
+		}
+		n = n64
+	}
+	kind := parts[1]
+	if strings.HasSuffix(kind, "counters") || strings.HasSuffix(kind, "counter") {
+		return -1, ""
+	}
+	return n, kind
 }
 
 // -----------------------------------------------------------------------------
