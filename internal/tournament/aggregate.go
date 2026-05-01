@@ -51,6 +51,9 @@ func aggregate(outcomes <-chan GameOutcome, nGames, nSeats int, commanderNames [
 		totalTurns += outcome.Turns
 		r.TotalModeChanges += outcome.ModeChanges
 		r.TotalConcessions += outcome.Concessions
+		if len(outcome.ConcessionRecords) > 0 {
+			r.ConcessionRecords = append(r.ConcessionRecords, outcome.ConcessionRecords...)
+		}
 
 		winnerName := ""
 		if outcome.WinnerCommanderIdx >= 0 && outcome.WinnerCommanderIdx < len(commanderNames) {

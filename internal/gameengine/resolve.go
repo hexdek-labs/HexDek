@@ -900,6 +900,13 @@ func resolveLoseLife(gs *GameState, src *Permanent, e *gameast.LoseLife) {
 				"to":   gs.Seats[seat].Life,
 			},
 		})
+		// Fire life_lost trigger so Lich's Mastery and similar observers
+		// can react. Mirrors the life_gained pattern in GainLife (state.go).
+		FireCardTrigger(gs, "life_lost", map[string]interface{}{
+			"seat":   seat,
+			"amount": modified,
+			"source": sourceName(src),
+		})
 	}
 }
 

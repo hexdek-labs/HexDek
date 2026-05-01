@@ -179,6 +179,13 @@ func TransformPermanent(gs *GameState, p *Permanent, reason string) bool {
 			"reason":          reason,
 		},
 	})
+	// Fire transform trigger so per-card handlers (Ulrich, Ajani, etc.)
+	// can react to face changes.
+	FireCardTrigger(gs, "transform", map[string]interface{}{
+		"seat":      p.Controller,
+		"perm_name": toName,
+		"from_name": fromName,
+	})
 	return true
 }
 

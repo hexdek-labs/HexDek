@@ -468,9 +468,36 @@ func runOneGame(gameIdx int, decks []*deckparser.TournamentDeck, hats []HatFacto
 	}
 
 	// Count concessions from seat state (works even with RetainEvents=false).
-	for _, s := range gs.Seats {
+	// Also collect concession records for Muninn diagnostics.
+	for i, s := range gs.Seats {
 		if s != nil && s.LossReason == "concession" {
 			out.Concessions++
+			orig := originalIdxForSeat[i]
+			cmdrName := ""
+			if orig < len(decks) {
+				cmdrName = decks[orig].CommanderName
+			}
+			boardPower := 0
+			for _, p := range s.Battlefield {
+				if p != nil && p.IsCreature() {
+					boardPower += p.Power()
+				}
+			}
+			opponentsAlive := 0
+			for j, other := range gs.Seats {
+				if j != i && other != nil && !other.Lost {
+					opponentsAlive++
+				}
+			}
+			out.ConcessionRecords = append(out.ConcessionRecords, muninn.ConcessionRecord{
+				Commander:  cmdrName,
+				Turn:       gs.Turn,
+				BoardPower: boardPower,
+				Life:       s.Life,
+				HandSize:   len(s.Hand),
+				Opponents:  opponentsAlive,
+				Timestamp:  time.Now().UTC().Format(time.RFC3339),
+			})
 		}
 	}
 
@@ -1117,6 +1144,12 @@ func persistMuninn(result *TournamentResult) {
 		}
 		if err := huginn.PersistRawObservations(huginnDir, result.Analyses, result.CommanderNames); err != nil {
 			fmt.Fprintf(os.Stderr, "huginn: persist raw observations: %v\n", err)
+		}
+	}
+
+	if len(result.ConcessionRecords) > 0 {
+		if err := muninn.PersistConcessions(muninnDir, result.ConcessionRecords); err != nil {
+			fmt.Fprintf(os.Stderr, "muninn: persist concessions: %v\n", err)
 		}
 	}
 

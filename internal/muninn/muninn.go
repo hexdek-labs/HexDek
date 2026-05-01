@@ -51,6 +51,19 @@ type DeadTrigger struct {
 	LastSeen    string `json:"last_seen"` // RFC3339
 }
 
+// ConcessionRecord captures the board state at the moment a player
+// conceded. Used to diagnose whether conviction thresholds are
+// calibrated or if the hat is conceding too early.
+type ConcessionRecord struct {
+	Commander  string `json:"commander"`
+	Turn       int    `json:"turn"`
+	BoardPower int    `json:"board_power"`
+	Life       int    `json:"life"`
+	HandSize   int    `json:"hand_size"`
+	Opponents  int    `json:"opponents_alive"`
+	Timestamp  string `json:"timestamp"`
+}
+
 // --------------------------------------------------------------------
 // File names
 // --------------------------------------------------------------------
@@ -59,6 +72,7 @@ const (
 	parserGapsFile   = "parser_gaps.json"
 	crashesFile      = "crashes.json"
 	deadTriggersFile = "dead_triggers.json"
+	concessionsFile  = "concessions.json"
 )
 
 // --------------------------------------------------------------------
@@ -229,9 +243,40 @@ func PersistDeadTriggers(dir string, analyses []*analytics.GameAnalysis) error {
 	return atomicWriteJSON(filepath.Join(dir, deadTriggersFile), existing)
 }
 
+// PersistConcessions appends new concession records to the persistent
+// concessions.json file. Never overwrites existing entries.
+func PersistConcessions(dir string, records []ConcessionRecord) error {
+	if len(records) == 0 {
+		return nil
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("muninn: mkdir %s: %w", dir, err)
+	}
+
+	existing, err := ReadConcessions(dir)
+	if err != nil {
+		return err
+	}
+
+	existing = append(existing, records...)
+	return atomicWriteJSON(filepath.Join(dir, concessionsFile), existing)
+}
+
 // --------------------------------------------------------------------
 // Read functions
 // --------------------------------------------------------------------
+
+// ReadConcessions reads the persistent concessions.json file.
+func ReadConcessions(dir string) ([]ConcessionRecord, error) {
+	var out []ConcessionRecord
+	if err := readJSON(filepath.Join(dir, concessionsFile), &out); err != nil {
+		return nil, err
+	}
+	if out == nil {
+		out = []ConcessionRecord{}
+	}
+	return out, nil
+}
 
 // ReadParserGaps reads the persistent parser_gaps.json file. Returns an
 // empty slice if the file does not exist.
@@ -343,4 +388,46 @@ func SortedCrashLogs(logs []CrashLog) []CrashLog {
 		return sorted[i].Timestamp > sorted[j].Timestamp
 	})
 	return sorted
+}
+
+// ConcessionSummary aggregates concession counts by commander.
+type ConcessionSummary struct {
+	Commander string `json:"commander"`
+	Count     int    `json:"count"`
+	AvgTurn   float64 `json:"avg_turn"`
+	AvgLife   float64 `json:"avg_life"`
+}
+
+// SortedConcessions aggregates concession records by commander and
+// returns them sorted by count descending.
+func SortedConcessions(records []ConcessionRecord) []ConcessionSummary {
+	type accum struct {
+		count    int
+		turnSum  int
+		lifeSum  int
+	}
+	byCmd := map[string]*accum{}
+	for _, r := range records {
+		a := byCmd[r.Commander]
+		if a == nil {
+			a = &accum{}
+			byCmd[r.Commander] = a
+		}
+		a.count++
+		a.turnSum += r.Turn
+		a.lifeSum += r.Life
+	}
+	out := make([]ConcessionSummary, 0, len(byCmd))
+	for cmd, a := range byCmd {
+		out = append(out, ConcessionSummary{
+			Commander: cmd,
+			Count:     a.count,
+			AvgTurn:   float64(a.turnSum) / float64(a.count),
+			AvgLife:   float64(a.lifeSum) / float64(a.count),
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Count > out[j].Count
+	})
+	return out
 }

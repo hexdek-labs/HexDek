@@ -1111,9 +1111,11 @@ func sba704_5t(gs *GameState) bool {
 	// if a player has completed a dungeon, that dungeon is removed from
 	// the game."
 	//
-	// MVP implementation: check each seat for a "dungeon_completed" flag.
-	// If set, emit a dungeon_completed event and remove the dungeon card
-	// from the command zone.
+	// MVP: check each seat for a "dungeon_completed" flag (set directly or
+	// inferred from dungeon_level reaching the final room). Standard
+	// dungeons: Dungeon of the Mad Mage (7 rooms), Lost Mine of
+	// Phandelver (4 rooms), Tomb of Annihilation (4 rooms). Default to
+	// 4 rooms when no dungeon_name is specified.
 	if gs == nil {
 		return false
 	}
@@ -1122,15 +1124,29 @@ func sba704_5t(gs *GameState) bool {
 		if seat == nil || seat.Flags == nil {
 			continue
 		}
+		// Infer completion from dungeon_level if not explicitly flagged.
+		if seat.Flags["dungeon_completed"] == 0 && seat.Flags["dungeon_level"] > 0 {
+			maxRooms := 4 // default (Lost Mine / Tomb)
+			switch seat.Flags["dungeon_name"] {
+			case 1: // Dungeon of the Mad Mage — encoded as 1
+				maxRooms = 7
+			}
+			if seat.Flags["dungeon_level"] >= maxRooms {
+				seat.Flags["dungeon_completed"] = 1
+			}
+		}
 		if seat.Flags["dungeon_completed"] > 0 {
 			gs.LogEvent(Event{
 				Kind: "dungeon_completed",
 				Seat: seat.Idx,
 				Details: map[string]interface{}{
-					"rule": "704.5t",
+					"rule":          "704.5t",
+					"dungeon_level": seat.Flags["dungeon_level"],
 				},
 			})
 			delete(seat.Flags, "dungeon_completed")
+			delete(seat.Flags, "dungeon_level")
+			delete(seat.Flags, "dungeon_name")
 			changed = true
 		}
 	}
@@ -1201,9 +1217,71 @@ func sba704_5v(gs *GameState) bool {
 // STUB — battle protectors aren't modeled yet. Mirrors Python stub
 // (_sba_704_5w).
 func sba704_5w(gs *GameState) bool {
-	// TODO: model battle protectors.
-	_ = gs
-	return false
+	if gs == nil {
+		return false
+	}
+	changed := false
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, p := range snapshotBattlefield(s) {
+			if !p.IsBattle() {
+				continue
+			}
+			if p.Flags == nil {
+				p.Flags = map[string]int{}
+			}
+			protector := p.Flags["protector_seat"]
+			hasProtector := p.Flags["has_protector"] > 0
+
+			if hasProtector {
+				// Verify the protector is still in the game.
+				protSeat := protector
+				if protSeat >= 0 && protSeat < len(gs.Seats) {
+					ps := gs.Seats[protSeat]
+					if ps != nil && !ps.Lost {
+						continue // protector is alive, nothing to do
+					}
+				}
+				// Protector left the game — reassign.
+				p.Flags["has_protector"] = 0
+			}
+
+			// No protector — assign the first living opponent of the
+			// battle's controller.
+			assigned := false
+			for _, opp := range gs.Opponents(p.Controller) {
+				if opp < 0 || opp >= len(gs.Seats) {
+					continue
+				}
+				oppSeat := gs.Seats[opp]
+				if oppSeat == nil || oppSeat.Lost {
+					continue
+				}
+				p.Flags["protector_seat"] = opp
+				p.Flags["has_protector"] = 1
+				gs.LogEvent(Event{
+					Kind:   "battle_protector_assigned",
+					Seat:   p.Controller,
+					Target: opp,
+					Source: p.Card.DisplayName(),
+					Details: map[string]interface{}{
+						"rule": "704.5w",
+					},
+				})
+				assigned = true
+				changed = true
+				break
+			}
+			if !assigned {
+				// No opponent can be chosen — sacrifice the battle.
+				destroyPermSBA(gs, p, "battle_no_protector", "704.5w")
+				changed = true
+			}
+		}
+	}
+	return changed
 }
 
 // -----------------------------------------------------------------------------
@@ -1218,9 +1296,74 @@ func sba704_5w(gs *GameState) bool {
 // STUB — Siege subtype + protector state not modeled. Mirrors Python stub
 // (_sba_704_5x).
 func sba704_5x(gs *GameState) bool {
-	// TODO: model Siege subtype + protector state.
-	_ = gs
-	return false
+	if gs == nil {
+		return false
+	}
+	changed := false
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, p := range snapshotBattlefield(s) {
+			if !p.IsBattle() || p.Card == nil {
+				continue
+			}
+			// Check if this is a Siege (subtype).
+			isSiege := false
+			for _, t := range p.Card.Types {
+				if t == "siege" || t == "Siege" {
+					isSiege = true
+					break
+				}
+			}
+			if !isSiege {
+				continue
+			}
+			if p.Flags == nil {
+				continue
+			}
+			if p.Flags["has_protector"] == 0 {
+				continue
+			}
+			// §704.5x: if the Siege's controller is also its protector,
+			// reassign protector to an opponent.
+			if p.Flags["protector_seat"] != p.Controller {
+				continue
+			}
+			reassigned := false
+			for _, opp := range gs.Opponents(p.Controller) {
+				if opp < 0 || opp >= len(gs.Seats) {
+					continue
+				}
+				oppSeat := gs.Seats[opp]
+				if oppSeat == nil || oppSeat.Lost {
+					continue
+				}
+				if opp == p.Controller {
+					continue
+				}
+				p.Flags["protector_seat"] = opp
+				gs.LogEvent(Event{
+					Kind:   "siege_protector_reset",
+					Seat:   p.Controller,
+					Target: opp,
+					Source: p.Card.DisplayName(),
+					Details: map[string]interface{}{
+						"rule": "704.5x",
+					},
+				})
+				reassigned = true
+				changed = true
+				break
+			}
+			if !reassigned {
+				// No opponent available — sacrifice the siege.
+				destroyPermSBA(gs, p, "siege_no_valid_protector", "704.5x")
+				changed = true
+			}
+		}
+	}
+	return changed
 }
 
 // -----------------------------------------------------------------------------
@@ -1284,9 +1427,82 @@ func sba704_5y(gs *GameState) bool {
 //
 // STUB — Speed mechanic not modeled. Mirrors Python stub (_sba_704_5z).
 func sba704_5z(gs *GameState) bool {
-	// TODO: implement when Speed / Max Speed cards land.
-	_ = gs
-	return false
+	if gs == nil {
+		return false
+	}
+	// §704.5z: "If a player controls a permanent with start your engines!
+	// and that player has no speed, that player's speed becomes 1."
+	//
+	// MVP: check gs.Flags["start_your_engines"] or scan for any permanent
+	// with the "start your engines" keyword. If found and the controlling
+	// player's seat lacks speed, set speed to 1.
+	changed := false
+	for _, s := range gs.Seats {
+		if s == nil || s.Lost {
+			continue
+		}
+		hasStartEngines := false
+		for _, p := range s.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			for _, t := range p.Card.Types {
+				if t == "start_your_engines" || t == "Start Your Engines" {
+					hasStartEngines = true
+					break
+				}
+			}
+			// Also check permanent-level flags.
+			if p.Flags != nil && p.Flags["start_your_engines"] > 0 {
+				hasStartEngines = true
+			}
+			if hasStartEngines {
+				break
+			}
+		}
+		if !hasStartEngines {
+			continue
+		}
+		if s.Flags == nil {
+			s.Flags = map[string]int{}
+		}
+		if s.Flags["speed"] == 0 {
+			s.Flags["speed"] = 1
+			gs.LogEvent(Event{
+				Kind: "speed_initialized",
+				Seat: s.Idx,
+				Details: map[string]interface{}{
+					"rule":  "704.5z",
+					"speed": 1,
+				},
+			})
+			changed = true
+		}
+	}
+	// Also check game-global flag for start_your_engines.
+	if gs.Flags != nil && gs.Flags["start_your_engines"] > 0 {
+		for _, s := range gs.Seats {
+			if s == nil || s.Lost {
+				continue
+			}
+			if s.Flags == nil {
+				s.Flags = map[string]int{}
+			}
+			if s.Flags["speed"] == 0 {
+				s.Flags["speed"] = 1
+				gs.LogEvent(Event{
+					Kind: "speed_initialized",
+					Seat: s.Idx,
+					Details: map[string]interface{}{
+						"rule":  "704.5z",
+						"speed": 1,
+					},
+				})
+				changed = true
+			}
+		}
+	}
+	return changed
 }
 
 // -----------------------------------------------------------------------------

@@ -28,17 +28,18 @@ import (
 
 func main() {
 	var (
-		showGaps     = flag.Bool("gaps", false, "show parser gaps only")
-		showCrashes  = flag.Bool("crashes", false, "show crash logs only")
-		showTriggers = flag.Bool("triggers", false, "show dead triggers only")
-		showAll      = flag.Bool("all", false, "show all sections (default)")
-		topN         = flag.Int("top", 20, "limit output per section")
-		dir          = flag.String("dir", "data/muninn", "muninn data directory")
+		showGaps        = flag.Bool("gaps", false, "show parser gaps only")
+		showCrashes     = flag.Bool("crashes", false, "show crash logs only")
+		showTriggers    = flag.Bool("triggers", false, "show dead triggers only")
+		showConcessions = flag.Bool("concessions", false, "show concession diagnostics only")
+		showAll         = flag.Bool("all", false, "show all sections (default)")
+		topN            = flag.Int("top", 20, "limit output per section")
+		dir             = flag.String("dir", "data/muninn", "muninn data directory")
 	)
 	flag.Parse()
 
 	// Default to --all if no section flag specified.
-	if !*showGaps && !*showCrashes && !*showTriggers {
+	if !*showGaps && !*showCrashes && !*showTriggers && !*showConcessions {
 		*showAll = true
 	}
 
@@ -73,6 +74,17 @@ func main() {
 		ok, err := printTriggers(*dir, *topN)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error reading dead triggers: %v\n", err)
+			os.Exit(1)
+		}
+		if ok {
+			anyData = true
+		}
+	}
+
+	if *showAll || *showConcessions {
+		ok, err := printConcessions(*dir, *topN)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error reading concessions: %v\n", err)
 			os.Exit(1)
 		}
 		if ok {
@@ -188,6 +200,36 @@ func printTriggers(dir string, topN int) (bool, error) {
 	}
 	if len(sorted) > limit {
 		fmt.Printf("  ... and %d more\n", len(sorted)-limit)
+	}
+	fmt.Println()
+	return true, nil
+}
+
+func printConcessions(dir string, topN int) (bool, error) {
+	records, err := muninn.ReadConcessions(dir)
+	if err != nil {
+		return false, err
+	}
+	if len(records) == 0 {
+		fmt.Println("CONCESSIONS: (none)")
+		fmt.Println()
+		return false, nil
+	}
+
+	sorted := muninn.SortedConcessions(records)
+	limit := topN
+	if limit > len(sorted) {
+		limit = len(sorted)
+	}
+
+	fmt.Printf("CONCESSIONS BY COMMANDER (top %d, %d total records):\n", limit, len(records))
+	for i := 0; i < limit; i++ {
+		cs := sorted[i]
+		fmt.Printf("  %3d. %-40s  count=%d  avg_turn=%.1f  avg_life=%.1f\n",
+			i+1, cs.Commander, cs.Count, cs.AvgTurn, cs.AvgLife)
+	}
+	if len(sorted) > limit {
+		fmt.Printf("  ... and %d more commanders\n", len(sorted)-limit)
 	}
 	fmt.Println()
 	return true, nil

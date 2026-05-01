@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/hexdek/hexdek/internal/analytics"
+	"github.com/hexdek/hexdek/internal/muninn"
 	"github.com/hexdek/hexdek/internal/trueskill"
 )
 
@@ -72,6 +73,10 @@ type GameOutcome struct {
 	// PostGameStats holds per-seat summary statistics emitted after
 	// every game (no event log required). Light enough for bulk runs.
 	PostGameStats []SeatStats
+
+	// ConcessionRecords captures board state at the moment of each
+	// conviction concession in this game.
+	ConcessionRecords []muninn.ConcessionRecord
 }
 
 // SeatStats is a per-seat summary emitted after every game regardless
@@ -193,4 +198,9 @@ type TournamentResult struct {
 	// KillRecords aggregates all kill events across games. Only
 	// populated when AuditEnabled (needs event log for inference).
 	KillRecords []analytics.KillRecord
+
+	// ConcessionRecords tracks board state at the moment of each
+	// conviction concession. Populated regardless of audit/analytics
+	// flags (lightweight — only one record per conceding seat).
+	ConcessionRecords []muninn.ConcessionRecord
 }

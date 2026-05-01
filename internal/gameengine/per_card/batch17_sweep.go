@@ -1050,6 +1050,8 @@ func maralenUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 
 func registerLichsMastery(r *Registry) {
 	r.OnETB("Lich's Mastery", lichsMasteryETB)
+	r.OnTrigger("Lich's Mastery", "life_gained", lichsMasteryLifeGained)
+	r.OnTrigger("Lich's Mastery", "life_lost", lichsMasteryLifeLost)
 }
 
 func lichsMasteryETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -1064,7 +1066,78 @@ func lichsMasteryETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		"seat":   perm.Controller,
 		"effect": "cant_lose_game + draw_on_lifegain + exile_on_lifeloss",
 	})
-	emitPartial(gs, "lichs_mastery", "Lich's Mastery", "gain/loss observers not wired")
+}
+
+// lichsMasteryLifeGained — "Whenever you gain life, draw that many cards."
+func lichsMasteryLifeGained(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil {
+		return
+	}
+	seat := perm.Controller
+	gainSeat, _ := ctx["seat"].(int)
+	if gainSeat != seat {
+		return
+	}
+	amount, _ := ctx["amount"].(int)
+	if amount <= 0 {
+		return
+	}
+	for i := 0; i < amount; i++ {
+		drawOne(gs, seat, "Lich's Mastery")
+	}
+	emit(gs, "lichs_mastery_draw", "Lich's Mastery", map[string]interface{}{
+		"seat":  seat,
+		"drawn": amount,
+	})
+}
+
+// lichsMasteryLifeLost — "Whenever you lose life, for each 1 life you
+// lost, exile a permanent you control or a card from your hand or
+// graveyard."
+func lichsMasteryLifeLost(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil {
+		return
+	}
+	seat := perm.Controller
+	lossSeat, _ := ctx["seat"].(int)
+	if lossSeat != seat {
+		return
+	}
+	amount, _ := ctx["amount"].(int)
+	if amount <= 0 || seat < 0 || seat >= len(gs.Seats) {
+		return
+	}
+	s := gs.Seats[seat]
+	exiled := 0
+	for i := 0; i < amount; i++ {
+		// Priority: battlefield permanents first, then hand, then graveyard.
+		if len(s.Battlefield) > 0 {
+			p := s.Battlefield[len(s.Battlefield)-1]
+			if p != nil && p.Card != nil {
+				gameengine.MoveCard(gs, p.Card, seat, "battlefield", "exile", "lichs_mastery")
+				exiled++
+				continue
+			}
+		}
+		if len(s.Hand) > 0 {
+			c := s.Hand[len(s.Hand)-1]
+			gameengine.MoveCard(gs, c, seat, "hand", "exile", "lichs_mastery")
+			exiled++
+			continue
+		}
+		if len(s.Graveyard) > 0 {
+			c := s.Graveyard[len(s.Graveyard)-1]
+			gameengine.MoveCard(gs, c, seat, "graveyard", "exile", "lichs_mastery")
+			exiled++
+			continue
+		}
+		break // nothing left to exile
+	}
+	emit(gs, "lichs_mastery_exile", "Lich's Mastery", map[string]interface{}{
+		"seat":   seat,
+		"exiled": exiled,
+		"needed": amount,
+	})
 }
 
 // ---------------------------------------------------------------------------
@@ -1151,7 +1224,46 @@ func registerJhoiraOfTheGhitu(r *Registry) {
 			"seat":   perm.Controller,
 			"effect": "suspend_from_hand",
 		})
-		emitPartial(gs, "jhoira", "Jhoira of the Ghitu", "suspend activation requires time-counter system")
+	})
+	r.OnActivated("Jhoira of the Ghitu", jhoiraActivated)
+}
+
+// jhoiraActivated — "{2}: Exile a nonland card from your hand face up
+// with four time counters on it. It gains suspend." (CR §702.62)
+func jhoiraActivated(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
+	if gs == nil || src == nil {
+		return
+	}
+	seat := src.Controller
+	if seat < 0 || seat >= len(gs.Seats) {
+		return
+	}
+	s := gs.Seats[seat]
+	if len(s.Hand) == 0 {
+		return
+	}
+	// Pick the highest-CMC nonland card from hand.
+	bestIdx := -1
+	bestCMC := -1
+	for i, c := range s.Hand {
+		if c == nil || cardHasType(c, "land") {
+			continue
+		}
+		cmc := cardCMC(c)
+		if cmc > bestCMC {
+			bestCMC = cmc
+			bestIdx = i
+		}
+	}
+	if bestIdx < 0 {
+		return
+	}
+	card := s.Hand[bestIdx]
+	gameengine.SuspendCard(gs, seat, card, 4)
+	emit(gs, "jhoira_suspend", "Jhoira of the Ghitu", map[string]interface{}{
+		"seat":      seat,
+		"suspended": card.DisplayName(),
+		"counters":  4,
 	})
 }
 

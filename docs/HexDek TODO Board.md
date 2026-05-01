@@ -26,9 +26,6 @@ kanban-plugin: board
 ## Medium Priority — Engine
 
 - [ ] **Temporal Pincer** — anon UUID cookie → session tracking → on login stitch all anon device UUIDs to authenticated profile. No PII, all UUIDs. Powers P&R via GraphQL. #infra #platform
-- [ ] Dungeon tracking (`sba.go:958`) — SBA 704.5t not implemented, low priority unless Acererak enters meta #engine
-- [ ] Battle/Siege mechanics (`sba.go:1054,1071`) — protector state not modeled #engine
-- [ ] Speed mechanic (`sba.go:1138`) — future mechanic, implement when Speed cards land #engine
 
 
 ## Medium Priority — Platform
@@ -42,10 +39,7 @@ kanban-plugin: board
 
 ## Low Priority
 
-- [ ] **Remaining batch17 infra** — Jhoira (suspend/time-counters), Lich's Mastery (life observers), Ulrich (transform events) #engine
-- [ ] **Tribal observer hooks** — Wayward Servant ETB observer, Coat of Arms layer 7 #engine
 - [ ] **i18n** — internationalize hexdek.dev for global audience #platform
-- [ ] Concession diagnostics — track concession rate per commander, board state at scoop, turn of scoop. Muninn + Heimdall. #rating #analytics
 - [ ] Multi-format support beyond Commander (Modern, Legacy deck ratings) #engine
 - [ ] Mobile-friendly leaderboard #ui
 - [ ] Donations page BOINC/ads buttons — "COMING SOON" placeholders (`Donations.jsx:109,119`) #ui
@@ -54,6 +48,15 @@ kanban-plugin: board
 
 ## Done
 
+- [x] **Jhoira of the Ghitu suspend** — proper `OnActivated` handler, picks highest-CMC nonland from hand, calls `SuspendCard(gs, seat, card, 4)`. Removed stub (2026-05-01) #engine
+- [x] **Lich's Mastery life observers** — `OnTrigger("life_gained")` draws cards, `OnTrigger("life_lost")` exiles permanents/hand/graveyard. Added `FireCardTrigger("life_lost")` to `resolveLoseLife` (2026-05-01) #engine
+- [x] **Ulrich transform events** — `FireCardTrigger("transform")` added to `TransformPermanent()`. Back-face fight trigger on transform to Uncontested Alpha, front-face +4/+4 on transform back (2026-05-01) #engine
+- [x] **Wayward Servant ETB observer** — `OnTrigger("token_created")`+`OnTrigger("permanent_etb")`: Zombie ETB drains opponents 1, gains controller 1 (2026-05-01) #engine
+- [x] **Coat of Arms layer 7** — `RegisterContinuousEffect` layer 7c: each creature +N/+N where N = other creatures sharing a creature type, all battlefields (2026-05-01) #engine
+- [x] **Concession diagnostics** — `ConcessionRecord` in Muninn: commander, turn, board power, life, hand size, opponents alive. `PersistConcessions()`, `SortedConcessions()`, `hexdek-muninn --concessions` flag (2026-05-01) #rating #analytics
+- [x] **Dungeon tracking (704.5t)** — enhanced SBA infers completion from `dungeon_level` vs max rooms (7/4/4 for standard dungeons), cleans up flags (2026-05-01) #engine
+- [x] **Battle/Siege protectors (704.5w/x)** — full SBA: auto-assigns first living opponent as protector, reassigns on protector death, sacrifices if no opponents. Siege controller=protector reset (2026-05-01) #engine
+- [x] **Speed mechanic (704.5z)** — SBA checks permanent types + `start_your_engines` flag, sets `speed=1` on seats without it (2026-05-01) #engine
 - [x] **Layer 3 text-changing effects** — STUB: LayerText=3 slot exists in pipeline (layers.go:429), no effects register. Intentional no-op per CONFIDENCE_MATRIX — no portfolio deck uses Magical Hack / Trait Doctoring. Deferred until meta demand. (2026-05-01) #engine #layers
 - [x] **opponentLikelyHasWrath expansion** — replaced boolean with `wrathProbability()` returning graded float64. Factors: hand size (0.04/card), mana availability, opponent colors (W+0.15, B+0.10, R+0.05), archetype (Control+0.15), cast cadence (nothing cast + full hand + mana = +0.10), prior wrath history from 3rd Eye cardsSeen (+0.20). Cap 0.95 (2026-05-01) #engine #evaluator
 - [x] **Partner-aware mulligan adjustment** — detects partner pair (CommanderNames >= 2), collects hand colors from lands, counts enablers per commander's colors. Mulligans if one commander has 0 enablers and hand lacks star cards / combo pieces (2026-05-01) #engine

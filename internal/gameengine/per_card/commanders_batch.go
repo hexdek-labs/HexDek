@@ -1017,17 +1017,22 @@ func tergridDiscardTrigger(gs *gameengine.GameState, perm *gameengine.Permanent,
 
 func registerUlrich(r *Registry) {
 	r.OnETB("Ulrich of the Krallenhorde", ulrichETB)
+	r.OnTrigger("Ulrich of the Krallenhorde", "transform", ulrichTransformTrigger)
 }
 
 func ulrichETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
+	ulrichFrontBuff(gs, perm)
+}
+
+// ulrichFrontBuff — "target creature gets +4/+4 until end of turn."
+func ulrichFrontBuff(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	seat := perm.Controller
 	if seat < 0 || seat >= len(gs.Seats) {
 		return
 	}
-	// Target creature gets +4/+4 until end of turn. Pick best creature.
 	var best *gameengine.Permanent
 	for _, p := range gs.Seats[seat].Battlefield {
 		if p == nil || p == perm || !p.IsCreature() {
@@ -1045,12 +1050,99 @@ func ulrichETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		Toughness: 4,
 		Duration:  "until_end_of_turn",
 	})
-	emit(gs, "ulrich_etb_buff", perm.Card.DisplayName(), map[string]interface{}{
+	emit(gs, "ulrich_front_buff", perm.Card.DisplayName(), map[string]interface{}{
 		"seat":   seat,
 		"target": best.Card.DisplayName(),
 		"buff":   "+4/+4",
 	})
-	emitPartial(gs, "ulrich", perm.Card.DisplayName(), "back_face_fight_trigger_requires_transform_event")
+}
+
+// ulrichTransformTrigger — fires on any transform event. Check if this
+// is Ulrich transforming, then apply the correct face effect.
+func ulrichTransformTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil {
+		return
+	}
+	seat := perm.Controller
+	transformSeat, _ := ctx["seat"].(int)
+	if transformSeat != seat {
+		return
+	}
+	toName, _ := ctx["perm_name"].(string)
+	fromName, _ := ctx["from_name"].(string)
+	// Only trigger on Ulrich's own transform.
+	if !isUlrichName(toName) && !isUlrichName(fromName) {
+		return
+	}
+	if strings.Contains(strings.ToLower(toName), "uncontested alpha") {
+		// Back face: fight the strongest non-Werewolf opponent creature.
+		ulrichBackFight(gs, perm)
+	} else if strings.Contains(strings.ToLower(toName), "krallenhorde") {
+		// Front face: +4/+4 to target creature.
+		ulrichFrontBuff(gs, perm)
+	}
+}
+
+func isUlrichName(name string) bool {
+	lower := strings.ToLower(name)
+	return strings.Contains(lower, "ulrich")
+}
+
+// ulrichBackFight — "you may have it fight target non-Werewolf creature
+// you don't control." Pick the strongest non-Werewolf opponent creature.
+func ulrichBackFight(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	seat := perm.Controller
+	if seat < 0 || seat >= len(gs.Seats) {
+		return
+	}
+	var target *gameengine.Permanent
+	for _, opp := range gs.Opponents(seat) {
+		if opp < 0 || opp >= len(gs.Seats) {
+			continue
+		}
+		for _, p := range gs.Seats[opp].Battlefield {
+			if p == nil || !p.IsCreature() {
+				continue
+			}
+			// Skip Werewolves.
+			isWerewolf := false
+			if p.Card != nil {
+				for _, t := range p.Card.Types {
+					if strings.EqualFold(t, "werewolf") {
+						isWerewolf = true
+						break
+					}
+				}
+			}
+			if isWerewolf {
+				continue
+			}
+			if target == nil || p.Power() > target.Power() {
+				target = p
+			}
+		}
+	}
+	if target == nil {
+		return
+	}
+	// Fight: Ulrich deals damage equal to its power to target, target
+	// deals damage equal to its power back.
+	ulrichPower := perm.Power()
+	targetPower := target.Power()
+	if target.Counters == nil {
+		target.Counters = map[string]int{}
+	}
+	target.Counters["damage_marked"] += ulrichPower
+	if perm.Counters == nil {
+		perm.Counters = map[string]int{}
+	}
+	perm.Counters["damage_marked"] += targetPower
+	emit(gs, "ulrich_fight", perm.Card.DisplayName(), map[string]interface{}{
+		"seat":         seat,
+		"target":       target.Card.DisplayName(),
+		"ulrich_power": ulrichPower,
+		"target_power": targetPower,
+	})
 }
 
 // ---------------------------------------------------------------------------

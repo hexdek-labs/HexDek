@@ -196,6 +196,8 @@ func diregrafColossusETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 
 func registerWaywardServant(r *Registry) {
 	r.OnETB("Wayward Servant", waywardServantETB)
+	r.OnTrigger("Wayward Servant", "token_created", waywardServantTokenCreated)
+	r.OnTrigger("Wayward Servant", "permanent_etb", waywardServantPermanentETB)
 }
 
 func waywardServantETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -206,7 +208,84 @@ func waywardServantETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		"seat":   perm.Controller,
 		"effect": "zombie_etb_drain",
 	})
-	emitPartial(gs, "wayward_servant", "Wayward Servant", "drain trigger requires ETB observer system")
+}
+
+// waywardServantTokenCreated — "Whenever another Zombie enters the
+// battlefield under your control, each opponent loses 1 life and you
+// gain 1 life." Fires on token_created for Zombie tokens.
+func waywardServantTokenCreated(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil {
+		return
+	}
+	seat := perm.Controller
+	controllerSeat, _ := ctx["controller_seat"].(int)
+	if controllerSeat != seat {
+		return
+	}
+	// Check if the token is a Zombie.
+	types, _ := ctx["types"].([]string)
+	if !typesContain(types, "zombie") {
+		return
+	}
+	waywardServantDrain(gs, seat)
+}
+
+// waywardServantPermanentETB — fires on permanent_etb for non-token
+// Zombie creatures entering under controller.
+func waywardServantPermanentETB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil {
+		return
+	}
+	seat := perm.Controller
+	etbSeat, _ := ctx["controller_seat"].(int)
+	if etbSeat != seat {
+		return
+	}
+	// Check if the entering permanent is a Zombie creature.
+	enteringPerm, _ := ctx["perm"].(*gameengine.Permanent)
+	if enteringPerm == nil || enteringPerm == perm || enteringPerm.Card == nil {
+		return
+	}
+	if !enteringPerm.IsCreature() {
+		return
+	}
+	isZombie := false
+	for _, t := range enteringPerm.Card.Types {
+		if strings.EqualFold(t, "zombie") {
+			isZombie = true
+			break
+		}
+	}
+	if !isZombie {
+		return
+	}
+	waywardServantDrain(gs, seat)
+}
+
+func waywardServantDrain(gs *gameengine.GameState, seat int) {
+	if seat < 0 || seat >= len(gs.Seats) {
+		return
+	}
+	for _, opp := range gs.Opponents(seat) {
+		if opp < 0 || opp >= len(gs.Seats) {
+			continue
+		}
+		gs.Seats[opp].Life--
+	}
+	gameengine.GainLife(gs, seat, 1, "Wayward Servant")
+	emit(gs, "wayward_servant_drain", "Wayward Servant", map[string]interface{}{
+		"seat": seat,
+	})
+}
+
+// typesContain checks if a string slice contains a type (case-insensitive).
+func typesContain(types []string, want string) bool {
+	for _, t := range types {
+		if strings.EqualFold(t, want) {
+			return true
+		}
+	}
+	return false
 }
 
 // ---------------------------------------------------------------------------
@@ -230,10 +309,77 @@ func coatOfArmsETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		gs.Flags = map[string]int{}
 	}
 	gs.Flags["coat_of_arms_active"] = 1
-	emit(gs, "coat_of_arms_etb", "Coat of Arms", map[string]interface{}{
-		"seat": perm.Controller,
+	// Register a layer 7c continuous effect for Coat of Arms.
+	// "Each creature gets +1/+1 for each other creature on the battlefield
+	// that shares at least one creature type with it."
+	gs.RegisterContinuousEffect(&gameengine.ContinuousEffect{
+		Layer:          gameengine.LayerPT,
+		Sublayer:       "c",
+		SourcePerm:     perm,
+		SourceCardName: "Coat of Arms",
+		ControllerSeat: perm.Controller,
+		HandlerID:      "coat_of_arms_" + itoa(perm.Controller),
+		Duration:       gameengine.DurationPermanent,
+		Predicate: func(_ *gameengine.GameState, target *gameengine.Permanent) bool {
+			return target != nil && target.IsCreature()
+		},
+		ApplyFn: func(g *gameengine.GameState, target *gameengine.Permanent, chars *gameengine.Characteristics) {
+			if g == nil || target == nil || target.Card == nil {
+				return
+			}
+			bonus := coatOfArmsBonus(g, target)
+			chars.Power += bonus
+			chars.Toughness += bonus
+		},
 	})
-	emitPartial(gs, "coat_of_arms", "Coat of Arms", "dynamic P/T calculation requires layer 7 integration")
+	gs.InvalidateCharacteristicsCache()
+	emit(gs, "coat_of_arms_etb", "Coat of Arms", map[string]interface{}{
+		"seat":   perm.Controller,
+		"effect": "layer_7c_shared_type_buff",
+	})
+}
+
+// coatOfArmsBonus counts how many other creatures on the battlefield
+// share at least one creature type with the target.
+func coatOfArmsBonus(gs *gameengine.GameState, target *gameengine.Permanent) int {
+	if gs == nil || target == nil || target.Card == nil {
+		return 0
+	}
+	// Collect target's creature subtypes.
+	targetTypes := map[string]bool{}
+	for _, t := range target.Card.Types {
+		lower := strings.ToLower(t)
+		// Skip non-creature types.
+		if lower == "creature" || lower == "artifact" || lower == "enchantment" ||
+			lower == "land" || lower == "planeswalker" || lower == "battle" ||
+			lower == "token" || lower == "legendary" || lower == "snow" ||
+			lower == "basic" || lower == "world" || strings.HasPrefix(lower, "pip:") ||
+			strings.HasPrefix(lower, "cmc:") {
+			continue
+		}
+		targetTypes[lower] = true
+	}
+	if len(targetTypes) == 0 {
+		return 0
+	}
+	count := 0
+	for _, seat := range gs.Seats {
+		if seat == nil {
+			continue
+		}
+		for _, p := range seat.Battlefield {
+			if p == nil || p == target || !p.IsCreature() || p.Card == nil {
+				continue
+			}
+			for _, t := range p.Card.Types {
+				if targetTypes[strings.ToLower(t)] {
+					count++
+					break // each creature counted at most once
+				}
+			}
+		}
+	}
+	return count
 }
 
 // ---------------------------------------------------------------------------
