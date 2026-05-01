@@ -714,7 +714,7 @@ func (h *PokerHat) threatBreakdown(gs *gameengine.GameState, srcIdx int, target 
 	dimCommander := wCommander * (2.0*float64(cmdZone) + 1.0*float64(cmdCast))
 
 	// Dim 5 — ramp / mana density.
-	rocksLands := countManaRocksAndLands(target)
+	rocksLands := CountManaRocksAndLands(target)
 	dimRamp := 0.0
 	if rocksLands > 3 {
 		dimRamp = wRamp * float64(rocksLands-3) * 0.7
@@ -1855,7 +1855,7 @@ func highCMCPermanents(seat *gameengine.Seat) int {
 	return n
 }
 
-func countManaRocksAndLands(seat *gameengine.Seat) int {
+func CountManaRocksAndLands(seat *gameengine.Seat) int {
 	if seat == nil {
 		return 0
 	}

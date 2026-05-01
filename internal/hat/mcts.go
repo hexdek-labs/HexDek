@@ -295,7 +295,7 @@ func (h *MCTSHat) evaluateCandidate(gs *gameengine.GameState, seatIdx int, c *ga
 
 	// CMC efficiency: prefer casting on-curve.
 	seat := gs.Seats[seatIdx]
-	manaSources := countManaRocksAndLands(seat)
+	manaSources := CountManaRocksAndLands(seat)
 	if c.CMC > 0 && manaSources > 0 {
 		efficiency := 1.0 - math.Abs(float64(c.CMC)-float64(manaSources))/float64(manaSources+1)
 		bonus += efficiency * 0.2

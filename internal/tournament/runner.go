@@ -578,6 +578,44 @@ func runOneGame(gameIdx int, decks []*deckparser.TournamentDeck, hats []HatFacto
 		)
 	}
 
+	// Post-game per-seat stats (always emitted, no event log needed).
+	out.PostGameStats = make([]SeatStats, nSeats)
+	for i, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		orig := originalIdxForSeat[i]
+		ss := SeatStats{
+			CommanderIdx: orig,
+			Won:          i == out.Winner,
+			FinalLife:    s.Life,
+			HandSize:     len(s.Hand),
+			GraveyardSize: len(s.Graveyard),
+			Conceded:     s.LossReason == "concession",
+		}
+		if orig < len(decks) {
+			ss.CommanderName = decks[orig].CommanderName
+		}
+		if s.Lost && !s.Won {
+			ss.TurnOfDeath = gs.Turn
+		}
+
+		creatures := 0
+		for _, p := range s.Battlefield {
+			if p == nil {
+				continue
+			}
+			ss.TotalBoardSize++
+			if p.IsCreature() {
+				creatures++
+			}
+		}
+		ss.CreaturesOnBoard = creatures
+		ss.ManaSourceCount = hat.CountManaRocksAndLands(s)
+		ss.SpellsCast = s.SpellsCastThisTurn + s.SpellsCastLastTurn
+		out.PostGameStats[i] = ss
+	}
+
 	return out
 }
 

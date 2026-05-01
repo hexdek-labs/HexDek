@@ -184,7 +184,7 @@ func (e *GameStateEvaluator) scoreCards(gs *gameengine.GameState, seatIdx int) f
 
 // scoreMana: mana source count relative to average, plus color coverage.
 func (e *GameStateEvaluator) scoreMana(gs *gameengine.GameState, seatIdx int) float64 {
-	mySources := float64(countManaRocksAndLands(gs.Seats[seatIdx]))
+	mySources := float64(CountManaRocksAndLands(gs.Seats[seatIdx]))
 
 	var oppSum float64
 	var oppN int
@@ -192,7 +192,7 @@ func (e *GameStateEvaluator) scoreMana(gs *gameengine.GameState, seatIdx int) fl
 		if i == seatIdx || s.Lost || s.LeftGame {
 			continue
 		}
-		oppSum += float64(countManaRocksAndLands(s))
+		oppSum += float64(CountManaRocksAndLands(s))
 		oppN++
 	}
 
@@ -1070,7 +1070,7 @@ func (e *GameStateEvaluator) scoreThreatTrajectory(gs *gameengine.GameState, sea
 
 		bp := float64(boardPower(s))
 		handCards := float64(len(s.Hand))
-		manaSources := float64(countManaRocksAndLands(s))
+		manaSources := float64(CountManaRocksAndLands(s))
 
 		// Deployment potential: each unplayed card with available mana
 		// is ~2 power waiting to deploy. Cap by mana availability.

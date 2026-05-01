@@ -68,6 +68,30 @@ type GameOutcome struct {
 	// KillRecords captures who eliminated whom in this game. Only
 	// populated when AuditEnabled (needs event log for inference).
 	KillRecords []analytics.KillRecord
+
+	// PostGameStats holds per-seat summary statistics emitted after
+	// every game (no event log required). Light enough for bulk runs.
+	PostGameStats []SeatStats
+}
+
+// SeatStats is a per-seat summary emitted after every game regardless
+// of audit/analytics flags. Designed for 7174n1c's stat analysis pipeline.
+type SeatStats struct {
+	CommanderIdx  int
+	CommanderName string
+	Won           bool
+	FinalLife     int
+	TurnOfDeath   int
+	LandsPlayed   int
+	SpellsCast    int
+	CreaturesOnBoard int
+	TotalBoardSize   int
+	HandSize      int
+	GraveyardSize int
+	ManaSourceCount int
+	DamageDealt   int
+	DamageTaken   int
+	Conceded      bool
 }
 
 // TournamentResult is the aggregated result returned from Run.

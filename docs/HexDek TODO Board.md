@@ -12,7 +12,6 @@ kanban-plugin: board
 ## High Priority — Engine
 
 - [ ] **Remaining 276 commander handlers** — coverage at 447/652 files (681 registered names). Most remaining are 1-2 deck count. Template generator (`cmd/gen-handlers/main.go`) handles simple patterns. #engine #per_card
-- [ ] Layer 3 text-changing effects — STUB per CONFIDENCE_MATRIX, no portfolio deck uses them (Magical Hack, Trait Doctoring). Deferred. #engine #layers
 
 
 ## High Priority — Platform
@@ -26,10 +25,6 @@ kanban-plugin: board
 
 ## Medium Priority — Engine
 
-- [ ] **opponentLikelyHasWrath expansion** — factor hand size + cast cadence + prior wrath history #engine #evaluator
-- [ ] **Partner-aware mulligan adjustment** — mulligan logic for partner decks (keep enablers for both halves) #engine
-- [ ] **Transform recognition in cardHeuristic** — score DFC cards for both faces, not just front #engine
-- [ ] **Tournament runner post-game stat emission** — 7174n1c request, per-game stat events for analysis #engine #analytics
 - [ ] **Temporal Pincer** — anon UUID cookie → session tracking → on login stitch all anon device UUIDs to authenticated profile. No PII, all UUIDs. Powers P&R via GraphQL. #infra #platform
 - [ ] Dungeon tracking (`sba.go:958`) — SBA 704.5t not implemented, low priority unless Acererak enters meta #engine
 - [ ] Battle/Siege mechanics (`sba.go:1054,1071`) — protector state not modeled #engine
@@ -59,6 +54,11 @@ kanban-plugin: board
 
 ## Done
 
+- [x] **Layer 3 text-changing effects** — STUB: LayerText=3 slot exists in pipeline (layers.go:429), no effects register. Intentional no-op per CONFIDENCE_MATRIX — no portfolio deck uses Magical Hack / Trait Doctoring. Deferred until meta demand. (2026-05-01) #engine #layers
+- [x] **opponentLikelyHasWrath expansion** — replaced boolean with `wrathProbability()` returning graded float64. Factors: hand size (0.04/card), mana availability, opponent colors (W+0.15, B+0.10, R+0.05), archetype (Control+0.15), cast cadence (nothing cast + full hand + mana = +0.10), prior wrath history from 3rd Eye cardsSeen (+0.20). Cap 0.95 (2026-05-01) #engine #evaluator
+- [x] **Partner-aware mulligan adjustment** — detects partner pair (CommanderNames >= 2), collects hand colors from lands, counts enablers per commander's colors. Mulligans if one commander has 0 enablers and hand lacks star cards / combo pieces (2026-05-01) #engine
+- [x] **Transform recognition in cardHeuristic** — IsMDFC() flexibility bonus +0.10, back-face-is-land +0.10, back-face cheaper and castable +0.08. Scores both faces of DFC cards (2026-05-01) #engine
+- [x] **Tournament runner post-game stat emission** — SeatStats struct (15 fields: life, board, hand, graveyard, mana sources, spells, creatures, conceded, etc). Emitted per-game in PostGameStats without event log. `CountManaRocksAndLands` exported for cross-package use (2026-05-01) #engine #analytics
 - [x] **PartnerSynergy evaluator dimension** — partner pair on-field bonus, 4-color coverage scoring, complementary role detection (draw/attack/tutor/removal), tax penalty for repeated deaths. 13 archetype weight profiles. Tests (2026-05-01) #engine #evaluator
 - [x] **ActivationTempo evaluator dimension** — non-mana activated ability scoring, untapped vs tapped weighting, repeatable (no-tap) engines boosted, high-impact activation bonus, opponent-relative comparison. Tests (2026-05-01) #engine #evaluator
 - [x] **ToolboxBreadth evaluator dimension** — tutors in hand, modal spells, MDFC flexibility, non-mana board activations, tutor-target-aware bonus from Freya profile. Tests (2026-05-01) #engine #evaluator

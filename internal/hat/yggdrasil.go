@@ -317,7 +317,7 @@ func (h *YggdrasilHat) assessAllThreats(gs *gameengine.GameState, seatIdx int) [
 			BoardPower: boardPower(s),
 			Life:       s.Life,
 			HandSize:   len(s.Hand),
-			ManaSources: countManaRocksAndLands(s),
+			ManaSources: CountManaRocksAndLands(s),
 		}
 		st.EvalScore = h.Evaluator.Evaluate(gs, i)
 		if i < len(h.damageReceivedFrom) {
@@ -746,6 +746,25 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 					break
 				}
 			}
+		}
+	}
+
+	// DFC/MDFC recognition: modal double-faced cards offer flexibility.
+	// Score both faces and use the better one. Back-face lands are
+	// especially valuable as they're never dead draws.
+	if c.IsMDFC() {
+		base += 0.10 // inherent flexibility bonus
+		// Back face is a land = never a dead card.
+		for _, t := range c.BackFaceTypes {
+			if t == "land" {
+				base += 0.10
+				break
+			}
+		}
+		// If the back face has a lower CMC and we're mana-constrained,
+		// the flexibility is even more valuable.
+		if avail > 0 && c.BackFaceCMC > 0 && c.BackFaceCMC < cmc && c.BackFaceCMC <= avail {
+			base += 0.08 // can cast back face when front is too expensive
 		}
 	}
 
@@ -1275,6 +1294,103 @@ func (h *YggdrasilHat) ChooseMulligan(gs *gameengine.GameState, seatIdx int, han
 		}
 		if topColor != "" && topDemand >= 5 && !handColors[topColor] {
 			return true
+		}
+	}
+
+	// Partner-aware mulligan: partner decks need enablers for both halves.
+	// A hand with ramp/draw for only one color identity half is weak.
+	if len(hand) >= 7 && gs != nil && len(gs.Seats[seatIdx].CommanderNames) >= 2 && h.Strategy != nil && h.Strategy.ColorDemand != nil {
+		seat := gs.Seats[seatIdx]
+		// Collect colors available from lands in hand.
+		handColors := make(map[string]bool)
+		for _, c := range hand {
+			if c == nil {
+				continue
+			}
+			isLand := false
+			for _, t := range c.Types {
+				if t == "land" {
+					isLand = true
+					break
+				}
+			}
+			if !isLand {
+				continue
+			}
+			ot := gameengine.OracleTextLower(c)
+			for _, col := range []struct{ name, sym string }{
+				{"plains", "W"}, {"island", "U"}, {"swamp", "B"},
+				{"mountain", "R"}, {"forest", "G"},
+			} {
+				tl := strings.ToLower(c.TypeLine)
+				if strings.Contains(tl, col.name) || strings.Contains(ot, "add {"+strings.ToLower(col.sym)+"}") || strings.Contains(ot, "any color") {
+					handColors[col.sym] = true
+				}
+			}
+		}
+
+		// Find each commander's colors and check if the hand supports both.
+		type cmdProfile struct {
+			name   string
+			colors []string
+		}
+		var cmdProfiles []cmdProfile
+		for _, cn := range seat.CommanderNames {
+			var colors []string
+			for _, c := range seat.CommandZone {
+				if c != nil && c.DisplayName() == cn {
+					colors = c.Colors
+					break
+				}
+			}
+			cmdProfiles = append(cmdProfiles, cmdProfile{cn, colors})
+		}
+
+		// Check if hand has enablers that work with both commanders.
+		// Count cards relevant to each commander's color identity.
+		enablersPerCmd := make([]int, len(cmdProfiles))
+		for _, c := range hand {
+			if c == nil {
+				continue
+			}
+			isLand := false
+			for _, t := range c.Types {
+				if t == "land" {
+					isLand = true
+					break
+				}
+			}
+			if isLand {
+				continue
+			}
+			for i, cp := range cmdProfiles {
+				for _, col := range cp.colors {
+					for _, cc := range c.Colors {
+						if cc == col {
+							enablersPerCmd[i]++
+							break
+						}
+					}
+				}
+			}
+		}
+
+		// If hand completely lacks enablers for one commander half, mulligan.
+		if len(cmdProfiles) >= 2 && landCount >= 2 {
+			minEnablers := enablersPerCmd[0]
+			for _, e := range enablersPerCmd[1:] {
+				if e < minEnablers {
+					minEnablers = e
+				}
+			}
+			// A hand with 0 non-land cards matching one commander's colors is
+			// unbalanced for a partner deck.
+			if minEnablers == 0 && len(hand) >= 7 {
+				// But only mulligan if we also lack star cards / combo pieces.
+				if starCount == 0 && comboCount == 0 {
+					return true
+				}
+			}
 		}
 	}
 
@@ -3052,7 +3168,7 @@ func (h *YggdrasilHat) ChooseDiscard(gs *gameengine.GameState, seatIdx int, hand
 	ranked_ := make([]ranked, 0, len(hand))
 	sources := 0
 	if seatIdx >= 0 && seatIdx < len(gs.Seats) {
-		sources = countManaRocksAndLands(gs.Seats[seatIdx])
+		sources = CountManaRocksAndLands(gs.Seats[seatIdx])
 	}
 	arch := ArchetypeMidrange
 	if h.Strategy != nil {
@@ -3799,30 +3915,94 @@ func (h *YggdrasilHat) inferOpponentArchetype(gs *gameengine.GameState, oppSeat 
 	return arch
 }
 
-// opponentLikelyHasWrath returns true if we believe an opponent might be
-// holding a board wipe based on: control archetype + high hand size + blue/white colors.
+// opponentLikelyHasWrath estimates wrath probability for an opponent
+// using hand size, cast cadence, mana availability, color signals, and
+// inferred archetype. Returns a probability [0, 1] rather than bool so
+// callers can make graded decisions.
 func (h *YggdrasilHat) opponentLikelyHasWrath(gs *gameengine.GameState, oppSeat int) bool {
+	return h.wrathProbability(gs, oppSeat) > 0.35
+}
+
+func (h *YggdrasilHat) wrathProbability(gs *gameengine.GameState, oppSeat int) float64 {
 	if gs == nil || oppSeat < 0 || oppSeat >= len(gs.Seats) {
-		return false
+		return 0
 	}
 	s := gs.Seats[oppSeat]
-	if s == nil || s.Lost || len(s.Hand) < 3 {
-		return false
+	if s == nil || s.Lost || s.LeftGame {
+		return 0
 	}
-	arch := h.inferOpponentArchetype(gs, oppSeat)
-	if arch != ArchetypeControl && arch != ArchetypeStax {
-		return false
+
+	prob := 0.0
+
+	// Base: hand size. More cards = more likely to hold a wrath.
+	handSize := len(s.Hand)
+	if handSize == 0 {
+		return 0
 	}
+	prob += float64(handSize) * 0.04 // 7 cards = 0.28 base
+
+	// Mana availability: need 4+ to cast most wraths.
 	avail := gameengine.AvailableManaEstimate(gs, s)
 	if avail < 4 {
-		return false
+		prob *= 0.3 // can't cast it = very unlikely
+	} else if avail >= 5 {
+		prob += 0.08 // comfortably castable
 	}
+
+	// Color signals: white and black have the most wraths.
 	if oppSeat < len(h.opponentColors) {
-		if h.opponentColors[oppSeat]["W"] || h.opponentColors[oppSeat]["B"] {
-			return true
+		if h.opponentColors[oppSeat]["W"] {
+			prob += 0.15 // Wrath of God, Day of Judgment, Farewell
+		}
+		if h.opponentColors[oppSeat]["B"] {
+			prob += 0.10 // Damnation, Toxic Deluge
+		}
+		if h.opponentColors[oppSeat]["R"] {
+			prob += 0.05 // Blasphemous Act, Chain Reaction
 		}
 	}
-	return false
+
+	// Archetype: control and stax decks run more wraths.
+	arch := h.inferOpponentArchetype(gs, oppSeat)
+	switch arch {
+	case ArchetypeControl:
+		prob += 0.15
+	case ArchetypeStax:
+		prob += 0.10
+	case ArchetypeMidrange:
+		prob += 0.05
+	}
+
+	// Cast cadence: opponent holding cards while having mana = saving
+	// something. Low cast rate with full hand is suspicious.
+	if s.SpellsCastThisTurn == 0 && handSize >= 4 && avail >= 4 {
+		prob += 0.10
+	}
+	if s.SpellsCastLastTurn == 0 && s.SpellsCastThisTurn == 0 && handSize >= 3 {
+		prob += 0.05 // two turns of nothing with cards = holding
+	}
+
+	// Prior wrath history: check if we've seen board wipes from this
+	// opponent via the event stream (cardsSeen set).
+	if oppSeat < len(h.cardsSeen) {
+		for name := range h.cardsSeen[oppSeat] {
+			nl := strings.ToLower(name)
+			if strings.Contains(nl, "wrath") || strings.Contains(nl, "damnation") ||
+				strings.Contains(nl, "day of judgment") || strings.Contains(nl, "farewell") ||
+				strings.Contains(nl, "blasphemous act") || strings.Contains(nl, "toxic deluge") ||
+				strings.Contains(nl, "cyclonic rift") || strings.Contains(nl, "supreme verdict") ||
+				strings.Contains(nl, "vanquish the horde") || strings.Contains(nl, "chain reaction") ||
+				strings.Contains(nl, "kindred dominance") || strings.Contains(nl, "merciless eviction") {
+				prob += 0.20 // confirmed wrath deck
+				break
+			}
+		}
+	}
+
+	if prob > 0.95 {
+		prob = 0.95
+	}
+	return prob
 }
 
 // -- Rollout simulation (reuses the same pattern as MCTSHat) --
