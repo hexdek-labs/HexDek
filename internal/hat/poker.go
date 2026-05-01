@@ -96,6 +96,8 @@ const (
 	ArchetypeReanimator   = "reanimator"
 	ArchetypeSpellslinger = "spellslinger"
 	ArchetypeTribal       = "tribal"
+	ArchetypeAristocrats  = "aristocrats"
+	ArchetypeSelfmill     = "selfmill"
 )
 
 // observation is a running tally of an OTHER seat's plays. A PokerHat

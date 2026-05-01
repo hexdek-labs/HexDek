@@ -13,6 +13,7 @@ type EvalWeights struct {
 	ThreatExposure   float64 `json:"threat_exposure"`
 	CommanderProgress float64 `json:"commander_progress"`
 	GraveyardValue   float64 `json:"graveyard_value"`
+	DrainEngine      float64 `json:"drain_engine"`
 }
 
 var archetypeWeights = map[string]EvalWeights{
@@ -25,6 +26,7 @@ var archetypeWeights = map[string]EvalWeights{
 		ThreatExposure:   0.6,
 		CommanderProgress: 0.9,
 		GraveyardValue:   0.2,
+		DrainEngine:      0.2,
 	},
 	ArchetypeCombo: {
 		BoardPresence:    0.4,
@@ -35,6 +37,7 @@ var archetypeWeights = map[string]EvalWeights{
 		ThreatExposure:   0.5,
 		CommanderProgress: 0.6,
 		GraveyardValue:   0.5,
+		DrainEngine:      0.3,
 	},
 	ArchetypeControl: {
 		BoardPresence:    0.5,
@@ -45,6 +48,7 @@ var archetypeWeights = map[string]EvalWeights{
 		ThreatExposure:   1.2,
 		CommanderProgress: 0.5,
 		GraveyardValue:   0.4,
+		DrainEngine:      0.2,
 	},
 	ArchetypeMidrange: {
 		BoardPresence:    1.0,
@@ -55,6 +59,7 @@ var archetypeWeights = map[string]EvalWeights{
 		ThreatExposure:   0.8,
 		CommanderProgress: 0.7,
 		GraveyardValue:   0.5,
+		DrainEngine:      0.3,
 	},
 	ArchetypeRamp: {
 		BoardPresence:    0.6,
@@ -65,6 +70,7 @@ var archetypeWeights = map[string]EvalWeights{
 		ThreatExposure:   0.6,
 		CommanderProgress: 0.8,
 		GraveyardValue:   0.3,
+		DrainEngine:      0.1,
 	},
 	ArchetypeStax: {
 		BoardPresence:    0.7,
@@ -75,6 +81,7 @@ var archetypeWeights = map[string]EvalWeights{
 		ThreatExposure:   1.5,
 		CommanderProgress: 0.8,
 		GraveyardValue:   0.4,
+		DrainEngine:      0.2,
 	},
 	ArchetypeReanimator: {
 		BoardPresence:    0.8,
@@ -85,6 +92,7 @@ var archetypeWeights = map[string]EvalWeights{
 		ThreatExposure:   0.7,
 		CommanderProgress: 0.6,
 		GraveyardValue:   1.8,
+		DrainEngine:      0.4,
 	},
 	ArchetypeSpellslinger: {
 		BoardPresence:    0.4,
@@ -95,6 +103,7 @@ var archetypeWeights = map[string]EvalWeights{
 		ThreatExposure:   0.8,
 		CommanderProgress: 0.5,
 		GraveyardValue:   0.4,
+		DrainEngine:      0.1,
 	},
 	ArchetypeTribal: {
 		BoardPresence:     1.4,
@@ -105,6 +114,29 @@ var archetypeWeights = map[string]EvalWeights{
 		ThreatExposure:    0.6,
 		CommanderProgress: 1.0,
 		GraveyardValue:    0.6,
+		DrainEngine:       0.3,
+	},
+	ArchetypeAristocrats: {
+		BoardPresence:     0.6,
+		CardAdvantage:     0.7,
+		ManaAdvantage:     0.5,
+		LifeResource:      0.5,
+		ComboProximity:    1.0,
+		ThreatExposure:    0.5,
+		CommanderProgress: 0.8,
+		GraveyardValue:    0.8,
+		DrainEngine:       2.0,
+	},
+	ArchetypeSelfmill: {
+		BoardPresence:     0.5,
+		CardAdvantage:     0.6,
+		ManaAdvantage:     0.6,
+		LifeResource:      0.4,
+		ComboProximity:    0.7,
+		ThreatExposure:    0.6,
+		CommanderProgress: 0.7,
+		GraveyardValue:    2.0,
+		DrainEngine:       0.3,
 	},
 }
 

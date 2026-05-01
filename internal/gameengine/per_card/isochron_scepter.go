@@ -1,6 +1,8 @@
 package per_card
 
 import (
+	"sync"
+
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -39,12 +41,7 @@ func registerIsochronScepter(r *Registry) {
 	r.OnActivated("Isochron Scepter", isochronScepterActivate)
 }
 
-// imprintedCards maps an Isochron Scepter Permanent to the imprinted
-// Card. Using a package-level map avoids extending the Permanent struct
-// (which would violate the "don't touch state.go" rule). Keys are
-// cleaned up on LTB via removePermanent in test harnesses; a leaked
-// entry is harmless (Cards are GC'd with the game).
-var imprintedCards = map[*gameengine.Permanent]*gameengine.Card{}
+var imprintedCards sync.Map
 
 func isochronScepterETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	const slug = "isochron_scepter_imprint"
@@ -83,7 +80,7 @@ func isochronScepterETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	}
 	// Move from hand to exile.
 	gameengine.MoveCard(gs, choice, seat, "hand", "exile", "exile-from-hand")
-	imprintedCards[perm] = choice
+	imprintedCards.Store(perm, choice)
 	if perm.Flags == nil {
 		perm.Flags = map[string]int{}
 	}
@@ -103,7 +100,10 @@ func isochronScepterActivate(gs *gameengine.GameState, src *gameengine.Permanent
 		emitFail(gs, slug, src.Card.DisplayName(), "already_tapped", nil)
 		return
 	}
-	imprinted := imprintedCards[src]
+	var imprinted *gameengine.Card
+	if v, ok := imprintedCards.Load(src); ok {
+		imprinted = v.(*gameengine.Card)
+	}
 	if imprinted == nil {
 		emitFail(gs, slug, src.Card.DisplayName(), "no_imprint", nil)
 		return

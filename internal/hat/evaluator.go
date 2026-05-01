@@ -26,6 +26,7 @@ type EvalResult struct {
 	ThreatExposure    float64
 	CommanderProgress float64
 	GraveyardValue    float64
+	DrainEngine       float64
 }
 
 // NewEvaluator constructs an evaluator from a strategy profile. If sp is
@@ -67,6 +68,7 @@ func (e *GameStateEvaluator) EvaluateDetailed(gs *gameengine.GameState, seatIdx 
 	r.ThreatExposure = e.scoreThreat(gs, seatIdx)
 	r.CommanderProgress = e.scoreCommander(gs, seatIdx)
 	r.GraveyardValue = e.scoreGraveyard(gs, seatIdx)
+	r.DrainEngine = e.scoreDrainEngine(gs, seatIdx)
 
 	raw := e.Weights.BoardPresence*r.BoardPresence +
 		e.Weights.CardAdvantage*r.CardAdvantage +
@@ -75,7 +77,8 @@ func (e *GameStateEvaluator) EvaluateDetailed(gs *gameengine.GameState, seatIdx 
 		e.Weights.ComboProximity*r.ComboProximity +
 		e.Weights.ThreatExposure*r.ThreatExposure +
 		e.Weights.CommanderProgress*r.CommanderProgress +
-		e.Weights.GraveyardValue*r.GraveyardValue
+		e.Weights.GraveyardValue*r.GraveyardValue +
+		e.Weights.DrainEngine*r.DrainEngine
 
 	if e.Strategy != nil && e.Strategy.Weakness != nil {
 		w := e.Strategy.Weakness
@@ -438,8 +441,8 @@ func (e *GameStateEvaluator) scoreCommander(gs *gameengine.GameState, seatIdx in
 }
 
 // scoreGraveyard: value of graveyard contents. Creature recursion
-// potential + spell flashback potential. Weighted higher for archetypes
-// that use the graveyard as a resource.
+// potential + spell flashback potential. Enhanced for self-mill
+// strategies where graveyard size itself is the win condition.
 func (e *GameStateEvaluator) scoreGraveyard(gs *gameengine.GameState, seatIdx int) float64 {
 	seat := gs.Seats[seatIdx]
 	if len(seat.Graveyard) == 0 {
@@ -447,21 +450,70 @@ func (e *GameStateEvaluator) scoreGraveyard(gs *gameengine.GameState, seatIdx in
 	}
 
 	value := 0.0
+	landCount := 0
+	creatureCount := 0
 	for _, c := range seat.Graveyard {
 		if c == nil {
 			continue
 		}
 		ot := gameengine.OracleTextLower(c)
+		isCreature := false
 		for _, t := range c.Types {
-			if t == "creature" {
-				value += 0.15
-				break
+			switch t {
+			case "creature":
+				isCreature = true
+				creatureCount++
+			case "land":
+				landCount++
 			}
+		}
+		if isCreature {
+			value += 0.15
 		}
 		if strings.Contains(ot, "flashback") || strings.Contains(ot, "escape") ||
 			strings.Contains(ot, "unearth") || strings.Contains(ot, "retrace") {
 			value += 0.25
 		}
+	}
+
+	// Self-mill bonus: check if commander or battlefield permanents
+	// care about graveyard size (Uurg, Splinterfright, Lhurgoyf,
+	// Jarad, Sidisi, etc.)
+	selfMillPayoff := false
+	for _, cn := range seat.CommanderNames {
+		cnLower := strings.ToLower(cn)
+		if strings.Contains(cnLower, "uurg") ||
+			strings.Contains(cnLower, "sidisi") ||
+			strings.Contains(cnLower, "muldrotha") ||
+			strings.Contains(cnLower, "karador") ||
+			strings.Contains(cnLower, "gitrog") ||
+			strings.Contains(cnLower, "slogurk") {
+			selfMillPayoff = true
+			break
+		}
+	}
+	if !selfMillPayoff {
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			ot := gameengine.OracleTextLower(p.Card)
+			if (strings.Contains(ot, "equal to") || strings.Contains(ot, "for each")) &&
+				(strings.Contains(ot, "graveyard") || strings.Contains(ot, "creature card")) {
+				selfMillPayoff = true
+				break
+			}
+		}
+	}
+	if selfMillPayoff {
+		gySize := float64(len(seat.Graveyard))
+		value += gySize * 0.08
+		value += float64(landCount) * 0.05
+		value += float64(creatureCount) * 0.06
+	}
+
+	if e.Strategy != nil && (e.Strategy.Archetype == ArchetypeSelfmill || e.Strategy.Archetype == ArchetypeReanimator) {
+		value *= 1.3
 	}
 
 	var oppAvg float64
@@ -479,4 +531,104 @@ func (e *GameStateEvaluator) scoreGraveyard(gs *gameengine.GameState, seatIdx in
 	value += (float64(len(seat.Graveyard)) - oppAvg) * 0.05
 
 	return value
+}
+
+// scoreDrainEngine: scores the presence and strength of aristocrats-style
+// drain infrastructure. Detects death-trigger payoffs (Blood Artist,
+// Zulaport Cutthroat, Dina), sacrifice outlets, and available fodder.
+// Returns higher values when more drain pieces are assembled.
+func (e *GameStateEvaluator) scoreDrainEngine(gs *gameengine.GameState, seatIdx int) float64 {
+	seat := gs.Seats[seatIdx]
+
+	drainPayoffs := 0.0
+	sacOutlets := 0.0
+	fodder := 0.0
+	lifeGainPayoffs := 0.0
+
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		ot := gameengine.OracleTextLower(p.Card)
+
+		// Death-trigger drain payoffs: Blood Artist, Zulaport Cutthroat,
+		// Bastion of Remembrance, Vindictive Vampire, Syr Konrad, etc.
+		if strings.Contains(ot, "whenever") &&
+			(strings.Contains(ot, "creature dies") || strings.Contains(ot, "a creature dies")) &&
+			(strings.Contains(ot, "loses") || strings.Contains(ot, "drain") ||
+				strings.Contains(ot, "each opponent") || strings.Contains(ot, "life")) {
+			drainPayoffs += 1.0
+		}
+
+		// Lifegain-trigger drain: Dina, Vito, Marauding Blight-Priest
+		if strings.Contains(ot, "whenever you gain life") &&
+			(strings.Contains(ot, "loses") || strings.Contains(ot, "each opponent")) {
+			lifeGainPayoffs += 1.0
+		}
+
+		// ETB/LTB drain: Wayward Servant, Corpse Knight
+		if strings.Contains(ot, "whenever") &&
+			strings.Contains(ot, "enters") &&
+			(strings.Contains(ot, "loses") || strings.Contains(ot, "each opponent")) {
+			drainPayoffs += 0.7
+		}
+
+		// Sacrifice outlets (free or cheap)
+		if (strings.Contains(ot, "sacrifice a creature") || strings.Contains(ot, "sacrifice another")) &&
+			!strings.Contains(ot, "when") {
+			sacOutlets += 1.0
+		}
+
+		// Fodder: tokens and small creatures with death triggers
+		if p.IsCreature() {
+			if p.IsToken() {
+				fodder += 0.5
+			} else if strings.Contains(ot, "when") && strings.Contains(ot, "dies") {
+				fodder += 0.8
+			}
+		}
+	}
+
+	if drainPayoffs == 0 && lifeGainPayoffs == 0 {
+		return 0
+	}
+
+	// Score based on how many drain engine pieces are assembled.
+	// Having payoff + outlet + fodder is much more valuable than just payoff.
+	score := drainPayoffs * 0.5
+	score += lifeGainPayoffs * 0.4
+
+	if sacOutlets > 0 {
+		score += sacOutlets * 0.4
+		// Payoff + outlet synergy multiplier
+		score *= 1.0 + math.Min(sacOutlets, 2)*0.3
+	}
+
+	if fodder > 0 {
+		score += fodder * 0.2
+		// Full engine assembled: payoff + outlet + fodder
+		if sacOutlets > 0 {
+			score *= 1.0 + math.Min(fodder, 4)*0.15
+		}
+	}
+
+	// Opponent life totals factor: drain is more valuable when opponents
+	// are already low.
+	avgOppLife := 0.0
+	oppN := 0
+	for i, s := range gs.Seats {
+		if i == seatIdx || s.Lost || s.LeftGame {
+			continue
+		}
+		avgOppLife += float64(s.Life)
+		oppN++
+	}
+	if oppN > 0 {
+		avgOppLife /= float64(oppN)
+		if avgOppLife < 20 {
+			score *= 1.0 + (20-avgOppLife)/20*0.5
+		}
+	}
+
+	return score
 }

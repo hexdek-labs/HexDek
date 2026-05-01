@@ -1,6 +1,8 @@
 package per_card
 
 import (
+	"sync"
+
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -57,7 +59,9 @@ func phantasmalImageETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	// The caller may stash the copy target on gs.Flags or on the
 	// Permanent Flags. Check both. For tests we use a package-level
 	// per-Image copy-target map.
-	target = phantasmalImageTargets[perm]
+	if v, ok := phantasmalImageTargets.Load(perm); ok {
+		target = v.(*gameengine.Permanent)
+	}
 	if target == nil {
 		// Fallback: the last ETB'd creature permanent OTHER than Image
 		// itself. This is the "auto-copy best ETB" policy: cEDH tests
@@ -151,10 +155,7 @@ func phantasmalImageETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	fireETBOnCopy(gs, perm)
 }
 
-// phantasmalImageTargets is a test-injectable copy-target map.
-// Tests set phantasmalImageTargets[imagePerm] = someTarget before
-// invoking the ETB handler.
-var phantasmalImageTargets = map[*gameengine.Permanent]*gameengine.Permanent{}
+var phantasmalImageTargets sync.Map
 
 // fireETBOnCopy fires the copied card's per_card ETB handler. We look
 // up the handler via the registry (by the NOW-copied name) and call

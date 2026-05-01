@@ -54,10 +54,6 @@ func necropotenceETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	})
 }
 
-// necroExiled tracks cards exiled face-down by Necropotence awaiting
-// end-of-turn return to hand. Keyed by seat (one entry per activation).
-// Package-level (not on Permanent) to avoid state.go touches.
-var necroExiled = map[int][]*gameengine.Card{}
 
 func necropotenceActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
 	const slug = "necropotence_pay_one_life"
@@ -86,7 +82,6 @@ func necropotenceActivate(gs *gameengine.GameState, src *gameengine.Permanent, a
 	c := s.Library[0]
 	gameengine.MoveCard(gs, c, seat, "library", "exile", "face-down-exile")
 	c.FaceDown = true
-	necroExiled[seat] = append(necroExiled[seat], c)
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"seat":        seat,
 		"exiled_card": c.DisplayName(),

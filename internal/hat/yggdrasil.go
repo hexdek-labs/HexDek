@@ -688,6 +688,20 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 		if typeLineContains(c, "creature") {
 			base += 0.15
 		}
+	case ArchetypeAristocrats:
+		ot := gameengine.OracleTextLower(c)
+		if (strings.Contains(ot, "sacrifice") && !strings.Contains(ot, "when")) ||
+			(strings.Contains(ot, "whenever") && strings.Contains(ot, "dies")) {
+			base += 0.25
+		}
+		if typeLineContains(c, "creature") && cmc <= 2 {
+			base += 0.10
+		}
+	case ArchetypeSelfmill:
+		ot := gameengine.OracleTextLower(c)
+		if strings.Contains(ot, "mill") || strings.Contains(ot, "graveyard") {
+			base += 0.20
+		}
 	}
 
 	// Combo piece bonus — applies to ALL archetypes. Every deck has
@@ -1205,6 +1219,14 @@ func (h *YggdrasilHat) ChooseMulligan(gs *gameengine.GameState, seatIdx int, han
 				if landCount > 4 {
 					return true
 				}
+			case ArchetypeAristocrats:
+				if landCount >= 2 && cheapSpells >= 1 {
+					return false
+				}
+			case ArchetypeSelfmill:
+				if landCount >= 2 {
+					return false
+				}
 			}
 		}
 		// Any archetype: a hand with 2+ lands and a VE key or star card is worth keeping.
@@ -1448,6 +1470,11 @@ func (h *YggdrasilHat) ChooseCastFromHand(gs *gameengine.GameState, seatIdx int,
 		passBoost += 0.05
 	case ArchetypeSpellslinger:
 		passBoost += 0.05
+	case ArchetypeAristocrats:
+		passBoost -= 0.10
+		if poolHasCombo {
+			passBoost -= 0.15
+		}
 	}
 	// Game clock pressure: reduce pass incentive as the game drags past
 	// the archetype's comfort zone. Aggro at turn 20 shouldn't be patient.

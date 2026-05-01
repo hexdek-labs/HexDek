@@ -1,6 +1,8 @@
 package per_card
 
 import (
+	"sync"
+
 	"github.com/hexdek/hexdek/internal/gameengine"
 	"github.com/hexdek/hexdek/internal/gameast"
 )
@@ -39,10 +41,7 @@ func registerNecroticOoze(r *Registry) {
 	r.OnTrigger("Necrotic Ooze", "zone_change", necroticOozeRefresh)
 }
 
-// necroticOozeGrants is a side map from Ooze permanent pointer to the
-// list of granted Activated abilities. Cleared lazily when the Ooze
-// leaves play (engine doesn't have LTB hook yet).
-var necroticOozeGrants = map[*gameengine.Permanent][]*gameast.Activated{}
+var necroticOozeGrants sync.Map
 
 // necroticOozeCollectGrants walks all graveyards and returns every
 // Activated ability from every creature card found. Shared between
@@ -78,7 +77,7 @@ func necroticOozeETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		return
 	}
 	grants := necroticOozeCollectGrants(gs)
-	necroticOozeGrants[perm] = grants
+	necroticOozeGrants.Store(perm, grants)
 	if perm.Flags == nil {
 		perm.Flags = map[string]int{}
 	}
@@ -110,14 +109,16 @@ func necroticOozeRefresh(gs *gameengine.GameState, perm *gameengine.Permanent, c
 		}
 	}
 	if !onField {
-		// Ooze has left play; clean up the grants map.
-		delete(necroticOozeGrants, perm)
+		necroticOozeGrants.Delete(perm)
 		return
 	}
 
-	oldCount := len(necroticOozeGrants[perm])
+	oldCount := 0
+	if v, ok := necroticOozeGrants.Load(perm); ok {
+		oldCount = len(v.([]*gameast.Activated))
+	}
 	grants := necroticOozeCollectGrants(gs)
-	necroticOozeGrants[perm] = grants
+	necroticOozeGrants.Store(perm, grants)
 	if perm.Flags == nil {
 		perm.Flags = map[string]int{}
 	}
@@ -137,7 +138,10 @@ func necroticOozeActivate(gs *gameengine.GameState, src *gameengine.Permanent, a
 	if gs == nil || src == nil {
 		return
 	}
-	grants := necroticOozeGrants[src]
+	var grants []*gameast.Activated
+	if v, ok := necroticOozeGrants.Load(src); ok {
+		grants = v.([]*gameast.Activated)
+	}
 	if abilityIdx < 0 || abilityIdx >= len(grants) {
 		emitFail(gs, slug, src.Card.DisplayName(), "ability_idx_out_of_range", map[string]interface{}{
 			"idx":   abilityIdx,
@@ -160,18 +164,24 @@ func necroticOozeActivate(gs *gameengine.GameState, src *gameengine.Permanent, a
 // GetNecroticOozeGrants exposes the granted-ability list for tests /
 // decision-makers. Returns nil if Ooze isn't in play.
 func GetNecroticOozeGrants(perm *gameengine.Permanent) []*gameast.Activated {
-	return necroticOozeGrants[perm]
+	if v, ok := necroticOozeGrants.Load(perm); ok {
+		return v.([]*gameast.Activated)
+	}
+	return nil
 }
 
 // NecroticOozeGrantCount returns the number of activated abilities
 // currently granted to the Ooze. Useful for AI decision-making.
 func NecroticOozeGrantCount(perm *gameengine.Permanent) int {
-	return len(necroticOozeGrants[perm])
+	if v, ok := necroticOozeGrants.Load(perm); ok {
+		return len(v.([]*gameast.Activated))
+	}
+	return 0
 }
 
 // CleanupNecroticOoze removes the Ooze's grants entry. Called when the
 // Ooze leaves the battlefield. Prevents stale entries from accumulating
 // across long games.
 func CleanupNecroticOoze(perm *gameengine.Permanent) {
-	delete(necroticOozeGrants, perm)
+	necroticOozeGrants.Delete(perm)
 }

@@ -1,6 +1,8 @@
 package per_card
 
 import (
+	"sync"
+
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -515,9 +517,7 @@ func registerAnimateDead(r *Registry) {
 	r.OnETB("Animate Dead", animateDeadETB)
 }
 
-// animateDeadTargets maps the Animate Dead permanent to the creature it
-// reanimated. Used for the LTB sacrifice-the-creature cleanup.
-var animateDeadTargets = map[*gameengine.Permanent]*gameengine.Permanent{}
+var animateDeadTargets sync.Map
 
 func animateDeadETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	const slug = "animate_dead_reanimate"
@@ -558,7 +558,7 @@ func animateDeadETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if creature != nil {
 		// Apply -1/-0 modifier.
 		creature.Card.BasePower -= 1
-		animateDeadTargets[perm] = creature
+		animateDeadTargets.Store(perm, creature)
 	}
 	emit(gs, slug, "Animate Dead", map[string]interface{}{
 		"seat":       seat,
