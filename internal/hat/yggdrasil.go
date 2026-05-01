@@ -1340,6 +1340,47 @@ func (h *YggdrasilHat) ChooseLandToPlay(gs *gameengine.GameState, seatIdx int, l
 		return lands[0]
 	}
 
+	seat := gs.Seats[seatIdx]
+
+	// Forward-looking color demand: scan spells in hand and tally color
+	// pips needed. Spells castable next turn (CMC <= available mana + 1)
+	// get double weight — they represent immediate sequencing pressure.
+	handDemand := map[string]float64{}
+	availMana := gameengine.AvailableManaEstimate(gs, seat) + 1
+	for _, c := range seat.Hand {
+		if c == nil || c.AST == nil {
+			continue
+		}
+		isLand := false
+		for _, t := range c.Types {
+			if t == "land" {
+				isLand = true
+				break
+			}
+		}
+		if isLand {
+			continue
+		}
+		weight := 1.0
+		if c.CMC <= availMana {
+			weight = 2.0
+		}
+		for _, ab := range c.AST.Abilities {
+			act, ok := ab.(*gameast.Activated)
+			if !ok || act.Cost.Mana == nil {
+				continue
+			}
+			for _, sym := range act.Cost.Mana.Symbols {
+				for _, col := range sym.Color {
+					handDemand[col] += weight
+				}
+			}
+		}
+		for _, col := range c.Colors {
+			handDemand[col] += weight * 0.5
+		}
+	}
+
 	type scored struct {
 		card  *gameengine.Card
 		score float64
@@ -1386,7 +1427,23 @@ func (h *YggdrasilHat) ChooseLandToPlay(gs *gameengine.GameState, seatIdx int, l
 			sc += 2.0
 		}
 
-		// Color-fixing: boost lands that produce colors we need but lack.
+		landColors := landProducesColors(l)
+
+		// Hand-aware color sequencing: boost lands that produce colors
+		// matching spells in hand. Stronger boost for near-castable spells.
+		for col, demand := range handDemand {
+			if !landColors[col] {
+				continue
+			}
+			have := float64(fieldColorSources(seat, col))
+			if have < 2 {
+				sc += demand * 0.8
+			} else if have < 4 {
+				sc += demand * 0.3
+			}
+		}
+
+		// Deck-level color-fixing: boost lands that produce colors we need but lack.
 		// Weak mana bases (C/D/F grade) get a larger color-fixing multiplier.
 		if h.Strategy != nil && h.Strategy.ColorDemand != nil {
 			fixMul := 1.5
@@ -1395,13 +1452,12 @@ func (h *YggdrasilHat) ChooseLandToPlay(gs *gameengine.GameState, seatIdx int, l
 			} else if h.Strategy.ManaBaseGrade == "C" {
 				fixMul = 2.0
 			}
-			landColors := landProducesColors(l)
 			for col, demand := range h.Strategy.ColorDemand {
 				if demand < 3 {
 					continue
 				}
 				if landColors[col] {
-					have := fieldColorSources(gs.Seats[seatIdx], col)
+					have := fieldColorSources(seat, col)
 					need := float64(demand) / 10.0
 					deficit := need - float64(have)*0.3
 					if deficit > 0 {

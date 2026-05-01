@@ -2,9 +2,13 @@ package per_card
 
 import (
 	"strings"
+	"sync"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
+
+// panopticImprinted maps a Panoptic Mirror permanent to the card it imprinted.
+var panopticImprinted sync.Map
 
 // ============================================================================
 // Game Changers — the 25 highest-impact WotC Game Changer cards in
@@ -820,22 +824,51 @@ func jeskasWillResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 
 	// Mode 2 (only if commander in play, or always in MVP since both modes
 	// are generally chosen): exile top 3 of library, may play this turn.
+	var exiledCards []*gameengine.Card
 	if hasCommander || bestOpp < 0 {
 		for i := 0; i < 3 && len(s.Library) > 0; i++ {
 			card := s.Library[0]
 			gameengine.MoveCard(gs, card, seat, "library", "exile", "jeskas_will_exile")
+			exiledCards = append(exiledCards, card)
 			exiled++
 		}
 	}
 
+	// Register zone-cast permission so exiled cards can be played this turn.
+	for _, ec := range exiledCards {
+		gameengine.RegisterZoneCastGrant(gs, ec, &gameengine.ZoneCastPermission{
+			Zone:              gameengine.ZoneExile,
+			Keyword:           "jeskas_will_exile_play",
+			ManaCost:          -1, // pay normal mana cost
+			RequireController: seat,
+			SourceName:        "Jeska's Will",
+		})
+	}
+
+	// Clean up permissions at end of turn.
+	if len(exiledCards) > 0 {
+		cleanup := make([]*gameengine.Card, len(exiledCards))
+		copy(cleanup, exiledCards)
+		gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
+			TriggerAt:      "end_of_turn",
+			ControllerSeat: seat,
+			SourceCardName: "Jeska's Will",
+			OneShot:        true,
+			EffectFn: func(gs *gameengine.GameState) {
+				for _, ec := range cleanup {
+					gameengine.RemoveZoneCastGrant(gs, ec)
+				}
+			},
+		})
+	}
+
 	emit(gs, slug, "Jeska's Will", map[string]interface{}{
-		"seat":          seat,
-		"mana_added":    manaAdded,
-		"exiled":        exiled,
-		"has_commander": hasCommander,
+		"seat":               seat,
+		"mana_added":         manaAdded,
+		"exiled":             exiled,
+		"has_commander":      hasCommander,
+		"exile_play_granted": len(exiledCards) > 0,
 	})
-	emitPartial(gs, slug, "Jeska's Will",
-		"exiled_cards_play_permission_not_tracked")
 }
 
 // ---------------------------------------------------------------------------
@@ -1591,19 +1624,17 @@ func panopticMirrorActivate(gs *gameengine.GameState, src *gameengine.Permanent,
 	// Exile the card (imprint).
 	gameengine.MoveCard(gs, best, seat, "hand", "exile", "panoptic_mirror_imprint")
 
-	// Store the imprinted card name on the permanent's flags.
+	// Store the imprinted card on the sync.Map keyed by the permanent.
+	panopticImprinted.Store(src, best)
 	if src.Flags == nil {
 		src.Flags = map[string]int{}
 	}
-	// Use a simple flag to track imprint status.
-	src.Flags["imprinted"] = 1
+	src.Flags["imprint_present"] = 1
 
 	emit(gs, slug, "Panoptic Mirror", map[string]interface{}{
 		"seat":      seat,
 		"imprinted": best.DisplayName(),
 	})
-	emitPartial(gs, slug, "Panoptic Mirror",
-		"imprinted_card_identity_not_tracked_on_permanent")
 }
 
 func panopticMirrorUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -1616,7 +1647,7 @@ func panopticMirrorUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, 
 		return
 	}
 	// Check if anything is imprinted.
-	if perm.Flags == nil || perm.Flags["imprinted"] == 0 {
+	if perm.Flags == nil || perm.Flags["imprint_present"] == 0 {
 		return
 	}
 
@@ -1625,48 +1656,32 @@ func panopticMirrorUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, 
 		return
 	}
 
-	// Find an imprinted card in exile. MVP: pick the most expensive
-	// instant/sorcery in controller's exile.
-	s := gs.Seats[seat]
-	var bestCard *gameengine.Card
-	bestCMC := -1
-	for _, c := range s.Exile {
-		if c == nil {
-			continue
-		}
-		if cardHasType(c, "instant") || cardHasType(c, "sorcery") {
-			cmc := cardCMC(c)
-			if cmc > bestCMC {
-				bestCMC = cmc
-				bestCard = c
-			}
-		}
+	// Look up the actual imprinted card from the sync.Map.
+	var imprinted *gameengine.Card
+	if v, ok := panopticImprinted.Load(perm); ok {
+		imprinted = v.(*gameengine.Card)
 	}
-
-	if bestCard == nil {
+	if imprinted == nil {
 		return
 	}
 
-	// "Cast the copy without paying its mana cost" — resolve the effect
-	// directly for MVP. A full implementation would create a copy on the
-	// stack.
-	gs.LogEvent(gameengine.Event{
-		Kind:   "cast_copy",
-		Seat:   seat,
-		Source: "Panoptic Mirror",
-		Details: map[string]interface{}{
-			"copied_card": bestCard.DisplayName(),
-			"free_cast":   true,
-			"reason":      "panoptic_mirror_upkeep",
-		},
-	})
+	// Cast a copy of the imprinted card without paying its mana cost.
+	item := &gameengine.StackItem{
+		Controller: seat,
+		Card:       imprinted,
+		IsCopy:     true,
+	}
+	fired := gameengine.InvokeResolveHook(gs, item)
 
 	emit(gs, slug, "Panoptic Mirror", map[string]interface{}{
-		"seat":   seat,
-		"copied": bestCard.DisplayName(),
+		"seat":           seat,
+		"copied":         imprinted.DisplayName(),
+		"handlers_fired": fired,
 	})
-	emitPartial(gs, slug, "Panoptic Mirror",
-		"copy_resolution_not_fully_modeled")
+	if fired == 0 {
+		emitPartial(gs, slug, "Panoptic Mirror",
+			"no_resolve_handler_for_imprinted_card_copy_logged_but_no_effect")
+	}
 }
 
 // ---------------------------------------------------------------------------

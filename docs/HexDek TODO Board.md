@@ -12,10 +12,6 @@ kanban-plugin: board
 ## High Priority — Engine
 
 - [ ] **Remaining 276 commander handlers** — coverage at 447/652 files (681 registered names). Most remaining are 1-2 deck count. Template generator (`cmd/gen-handlers/main.go`) handles simple patterns. #engine #per_card
-- [ ] **Opponent graveyard threat tracking** — scoreOpponentGraveyard evaluator for reanimator/flashback awareness #engine #evaluator
-- [ ] **Color-aware mana sequencing** — ChooseLandToPlay forward-looking color demand analysis #engine #evaluator
-- [ ] **Jeska's Will** — exile-play permission tracking (last GC clause gap) #engine
-- [ ] **Panoptic Mirror** — imprint persistence + copy resolution (last GC clause gap) #engine
 - [ ] **Exile-cast pattern** — Dauthi Voidwalker, Emry, Urza (×2) exile-cast replacement #engine
 - [ ] **Clone/copy handlers** — Phantasmal Image, Riku stack data for copy targeting #engine
 - [ ] **ELO-bracket correlation re-check** — verify inversion corrects after ~10K games with GC handlers active. ELO reset #2 running (2026-05-01). #engine #rating
@@ -76,6 +72,10 @@ kanban-plugin: board
 
 ## Done
 
+- [x] **Opponent graveyard threat tracking** — 12th evaluator dimension `scoreOpponentGraveyard`: reanimation targets, flashback/escape spells, enablers on battlefield, known GY-abuse commanders. Weighted per archetype (2026-05-01) #engine #evaluator
+- [x] **Color-aware mana sequencing** — ChooseLandToPlay now scans hand spells for color pip demand, boosts lands producing needed colors with deficit-aware weighting. Near-castable spells (CMC ≤ available+1) get 2x priority (2026-05-01) #engine #evaluator
+- [x] **Jeska's Will** — exile-play permission via RegisterZoneCastGrant for each exiled card + end-of-turn DelayedTrigger cleanup. Last GC clause gap closed (2026-05-01) #engine
+- [x] **Panoptic Mirror** — imprint persistence via sync.Map (Isochron Scepter pattern), upkeep creates StackItem{IsCopy: true} + InvokeResolveHook. Last GC clause gap closed (2026-05-01) #engine
 - [x] **P1: 100% parser coverage** — 0 UnknownEffect across 31,963 cards. `final_13_cards.py` extension covers forced-attack, variable P/T, as-enters, monstrous triggers, composite ETB, search-library, card-put-into-zone (2026-05-01) #parser
 - [x] **Graveyard-leave observer hook** — `graveyard_leave` event fires from MoveCard when fromZone=="graveyard". Tormod creates 2/2 Zombie, Imotekh creates 2x 2/2 Necron Warriors on artifact leave (2026-05-01) #engine
 - [x] **Land-tap hook** — `land_tapped_for_mana` event fires from AddManaFromPermanent when source is land. Caged Sun doubles controller's mana, Gauntlet of Power doubles all players' mana (2026-05-01) #engine

@@ -28,7 +28,8 @@ type EvalResult struct {
 	GraveyardValue     float64
 	DrainEngine        float64
 	ArtifactSynergy    float64
-	EnchantmentSynergy float64
+	EnchantmentSynergy      float64
+	OpponentGraveyardThreat float64
 }
 
 // NewEvaluator constructs an evaluator from a strategy profile. If sp is
@@ -73,6 +74,7 @@ func (e *GameStateEvaluator) EvaluateDetailed(gs *gameengine.GameState, seatIdx 
 	r.DrainEngine = e.scoreDrainEngine(gs, seatIdx)
 	r.ArtifactSynergy = e.scoreArtifactSynergy(gs, seatIdx)
 	r.EnchantmentSynergy = e.scoreEnchantmentSynergy(gs, seatIdx)
+	r.OpponentGraveyardThreat = e.scoreOpponentGraveyard(gs, seatIdx)
 
 	raw := e.Weights.BoardPresence*r.BoardPresence +
 		e.Weights.CardAdvantage*r.CardAdvantage +
@@ -84,7 +86,8 @@ func (e *GameStateEvaluator) EvaluateDetailed(gs *gameengine.GameState, seatIdx 
 		e.Weights.GraveyardValue*r.GraveyardValue +
 		e.Weights.DrainEngine*r.DrainEngine +
 		e.Weights.ArtifactSynergy*r.ArtifactSynergy +
-		e.Weights.EnchantmentSynergy*r.EnchantmentSynergy
+		e.Weights.EnchantmentSynergy*r.EnchantmentSynergy +
+		e.Weights.OpponentGraveyardThreat*r.OpponentGraveyardThreat
 
 	if e.Strategy != nil && e.Strategy.Weakness != nil {
 		w := e.Strategy.Weakness
@@ -733,4 +736,71 @@ func (e *GameStateEvaluator) scoreEnchantmentSynergy(gs *gameengine.GameState, s
 		score *= 1.0 + math.Min(float64(enchantressEngines), 3)*0.2
 	}
 	return score
+}
+
+// scoreOpponentGraveyard: negative signal representing danger from opponents'
+// graveyards. Detects reanimation targets, flashback/escape spells, and
+// high-value creatures that could be cheated back into play.
+func (e *GameStateEvaluator) scoreOpponentGraveyard(gs *gameengine.GameState, seatIdx int) float64 {
+	threat := 0.0
+	for i, s := range gs.Seats {
+		if i == seatIdx || s.Lost || s.LeftGame {
+			continue
+		}
+		for _, c := range s.Graveyard {
+			if c == nil {
+				continue
+			}
+			ot := gameengine.OracleTextLower(c)
+
+			// High-CMC creatures are prime reanimation targets.
+			isCreature := false
+			for _, t := range c.Types {
+				if t == "creature" {
+					isCreature = true
+					break
+				}
+			}
+			if isCreature && c.CMC >= 5 {
+				threat -= 0.20
+			} else if isCreature && c.CMC >= 3 {
+				threat -= 0.08
+			}
+
+			// Spells with flashback/escape/unearth/retrace can be re-cast.
+			if strings.Contains(ot, "flashback") || strings.Contains(ot, "escape") ||
+				strings.Contains(ot, "unearth") || strings.Contains(ot, "retrace") {
+				threat -= 0.15
+			}
+		}
+
+		// Check if opponent has reanimation enablers on battlefield.
+		for _, p := range s.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			ot := gameengine.OracleTextLower(p.Card)
+			if (strings.Contains(ot, "return") || strings.Contains(ot, "put")) &&
+				strings.Contains(ot, "graveyard") &&
+				strings.Contains(ot, "battlefield") {
+				threat -= 0.30
+			}
+		}
+
+		// Commanders known for graveyard abuse amplify the threat.
+		for _, cn := range s.CommanderNames {
+			cnLower := strings.ToLower(cn)
+			if strings.Contains(cnLower, "meren") ||
+				strings.Contains(cnLower, "muldrotha") ||
+				strings.Contains(cnLower, "karador") ||
+				strings.Contains(cnLower, "chainer") ||
+				strings.Contains(cnLower, "araumi") ||
+				strings.Contains(cnLower, "nethroi") ||
+				strings.Contains(cnLower, "sefris") {
+				threat -= 0.40
+				break
+			}
+		}
+	}
+	return threat
 }
