@@ -730,12 +730,25 @@ func runMainPhase(gs *gameengine.GameState, seatIdx int, precombat bool) {
 	}
 
 	// --- Activated ability loop (FIX 1) ---
-	// After casting, offer activated abilities to the Hat. Capped at
-	// maxMainPhaseActivations to prevent infinite loops. Mana abilities
-	// are excluded (they resolve inline via tapAllManaSources).
-	// Per-permanent cap of 2 prevents Soothsaying-style spam.
-	const maxMainPhaseActivations = 5
-	const maxActivationsPerPerm = 2
+	// After casting, offer activated abilities to the Hat. Capped to
+	// prevent infinite loops. Mana abilities are excluded (they resolve
+	// inline via tapAllManaSources). Sacrifice-heavy boards get higher
+	// caps since aristocrat strategies need multiple activations per turn.
+	maxMainPhaseActivations := 5
+	maxActivationsPerPerm := 2
+	creatureCount := 0
+	for _, p := range seat.Battlefield {
+		if p != nil && p.IsCreature() {
+			creatureCount++
+		}
+	}
+	if creatureCount >= 3 {
+		maxMainPhaseActivations = creatureCount + 2
+		if maxMainPhaseActivations > 12 {
+			maxMainPhaseActivations = 12
+		}
+		maxActivationsPerPerm = 3
+	}
 	permActCount := map[*gameengine.Permanent]int{}
 	for actCount := 0; actCount < maxMainPhaseActivations; actCount++ {
 		options := buildActivationOptions(gs, seatIdx, "main")

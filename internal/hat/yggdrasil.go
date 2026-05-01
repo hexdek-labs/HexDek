@@ -793,6 +793,35 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 		}
 	}
 
+	// Synergy amplification: doublers on board boost related strategies.
+	if gs != nil {
+		seat := gs.Seats[seatIdx]
+		ot := gameengine.OracleTextLower(c)
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			pn := strings.ToLower(p.Card.DisplayName())
+			switch {
+			case pn == "doubling season" || pn == "parallel lives" || pn == "anointed procession":
+				if strings.Contains(ot, "create") && strings.Contains(ot, "token") {
+					base += 0.25
+				}
+				if strings.Contains(ot, "counter") {
+					base += 0.15
+				}
+			case pn == "panharmonicon" || pn == "yarok the desecrated":
+				if typeLineContains(c, "creature") || typeLineContains(c, "artifact") {
+					base += 0.15
+				}
+			case pn == "hardened scales" || pn == "branching evolution":
+				if strings.Contains(ot, "+1/+1") || strings.Contains(ot, "counter") {
+					base += 0.20
+				}
+			}
+		}
+	}
+
 	// Reactive penalty — stax/control/combo should be reluctant to cast
 	// cards that aren't part of their strategy (non-engine, non-combo,
 	// non-removal filler). This makes pass competitive against weak casts.
