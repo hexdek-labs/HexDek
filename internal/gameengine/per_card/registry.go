@@ -771,6 +771,378 @@ func registerDefaults() {
 	// Batch #19 — artifact-commander synergy.
 	registerDrafna(Global())
 	registerJolene(Global())
+
+	// Batch #20 — high-drift partner/toolbox commanders.
+	registerThrasios(Global())
+	registerVialSmasher(Global())
+
+	// Batch #21 — Phase 5 drift commanders.
+	registerAbdelAdrian(Global())
+	registerMeria(Global())
+	registerRaffine(Global())
+
+	// Batch #22 — B5 partner commanders.
+	registerTymna(Global())
+	registerMalcolm(Global())
+	registerEtali(Global())
+	registerKrark(Global())
+
+	// Batch #23 — B5 value commanders.
+	registerTivit(Global())
+	registerObNixilisCaptive(Global())
+	registerMeren(Global())
+	registerSelvala(Global())
+
+	// Batch #24 — B5 combo/value commanders.
+	registerElsha(Global())
+	registerEmiel(Global())
+	registerEdgarMarkov(Global())
+	registerAtraxaGrandUnifier(Global())
+	registerTayam(Global())
+	registerArcumDagsson(Global())
+
+	// Batch #25 — B5 commanders.
+	registerAtraxaPraetorsVoice(Global())
+	registerQueza(Global())
+	registerFrancisco(Global())
+	registerSidarKondo(Global())
+	registerBladewing(Global())
+	registerDihada(Global())
+	registerRowanScion(Global())
+	registerTeveshSzat(Global())
+	registerOjerAxonil(Global())
+	registerZurgoOjutai(Global())
+
+	// Batch #26 — high-impact tutor / token / ninjutsu commanders.
+	registerSisayWeatherlightCaptain(Global())
+	registerKrenkoMobBoss(Global())
+	registerSatoruUmezawa(Global())
+	// Batch #26 — Spacecraft station, DFC saga commander, Merfolk tribal.
+	registerHearthhull(Global())
+	registerTerra(Global())
+	registerHakbal(Global())
+
+	// Batch #26 (cont) — newer commanders: death-trigger growth, discard
+	// copy, graveyard recast.
+	registerGorma(Global())
+	registerHashaton(Global())
+	registerShiko(Global())
+
+	// Batch #26 (cont) — full-coverage push: Elder Dragon Cycle (B/G + U/R)
+	// + planeswalker commander.
+	registerWitherbloom(Global())
+	registerPrismari(Global())
+	registerQuintorius(Global())
+
+	// Batch #26 (cont) — Elder Dragon historian, lifegain pest anthem,
+	// -1/-1 counter trigger goblin.
+	registerLorehold(Global())
+	registerBlech(Global())
+	registerAuntieOol(Global())
+
+	// Batch #27 — staple commanders: attack-trigger cheat-in,
+	// counter-scaling cost reduction, global P/T swap.
+	registerKaaliaOfTheVast(Global())
+	registerAnimarSoulOfElements(Global())
+	registerDoranTheSiegeTower(Global())
+
+	// Batch #27 (cont) — Dinosaur ETB discover, attack-life-gradient draw,
+	// opp-creature exile-instead-of-die / end-step Rat tokens.
+	registerPantlaza(Global())
+	registerBreena(Global())
+	registerVren(Global())
+
+	// Batch #27 (cont) — high-impact ETB/activated/trigger commanders:
+	// Sauron (amass + Ring tempt), Kenrith (5-mode activated),
+	// Niv-Mizzet Reborn (guild-pair reveal-10).
+	registerSauronDarkLord(Global())
+	registerKenrithReturnedKing(Global())
+	registerNivMizzetReborn(Global())
+
+	// Batch #27 (cont) — extra-draw / DFC reveal-cheat / Eldrazi copy.
+	registerNekusar(Global())
+	registerEsika(Global())
+	registerUlalek(Global())
+
+	// Batch #27 (cont) — cost-reducer (creature-target), top-of-library
+	// MV>=4 cast + upkeep surveil, X-spell counter scaler.
+	registerKillianInkDuelist(Global())
+	registerGlarbCalamitysAugur(Global())
+	registerZimoneInfiniteAnalyst(Global())
+
+	// Batch #28 — beginning-of-combat creature-count gradient, ETB-draw +
+	// discard drain, graveyard/exile recast treasure engine.
+	registerTeval(Global())
+	registerMorcant(Global())
+	registerGolbez(Global())
+
+	// Batch #28 (cont) — {0}-cost partner stub, library-exile combat
+	// trigger, copy-spell-and-bounce-self activated commander.
+	registerRograkh(Global())
+	registerAshlingTheLimitless(Global())
+	registerRootha(Global())
+
+	// Batch #28 (cont) — prowess team-anthem + cast-trigger unblockable,
+	// Dragon-tribal ETB/attack reveal-cheat, life-delta end-step double
+	// payoff (counter buff + reanimate).
+	registerBriaRiptideRogue(Global())
+	registerUreniOfTheUnwritten(Global())
+	registerBetorAncestorsVoice(Global())
+
+	// Batch #28 (cont) — combat-payoff Tarkir dragon-clan commander,
+	// FF DFC drain/transform/sac-draw, Rat-tribal token swarm.
+	registerEshkiDragonclaw(Global())
+	registerSephiroth(Global())
+	registerMarrowGnawer(Global())
+
+	// Batch #28 (cont) — combat-damage free-cast from graveyard,
+	// lifegain end-step draw + Cleric token activation, second-draw
+	// Rabbit token + token-count draw activation.
+	registerViviOrnitier(Global())
+	registerBertaWiseExtrapolator(Global())
+	registerMsBumbleflower(Global())
+
+	// Batch #29 — spell-copy commanders + DFC discard/transform.
+	// Alania (first instant/sorcery/Otter copy w/ opponent draw),
+	// Mica (sac-artifact instant/sorcery copy),
+	// Kefka DFC (ETB/attack wheel + transform + opp-life-loss draw).
+	registerAlania(Global())
+	registerMica(Global())
+	registerKefka(Global())
+
+	// Batch #29 (cont) — graveyard-recast token-swarm + ward + surveil
+	// (Saruman), multicolored-cast WURG modal payoff (Aragorn),
+	// noncreature-cast Spirit token + sac-for-red ritual (Kykar).
+	registerSarumanTheWhiteHand(Global())
+	registerAragornTheUniter(Global())
+	registerKykarWindsFury(Global())
+
+	// Batch #29 (cont) — token-on-attack + combat-death-draw soldier
+	// commander (Caesar), ETB-draw + legendary-spell scry artificer
+	// (Kilo), combat-damage-toughness lifegain partner snake (Ikra).
+	registerCaesarLegionsEmperor(Global())
+	registerKiloApogeeMind(Global())
+	registerIkraShidiqi(Global())
+
+	// Batch #29 (cont) — Jund blitz cost-reducer, mono-B life-for-mana
+	// snowballer, GW counter-spreader attack trigger.
+	registerHenzieToolboxTorre(Global())
+	registerKrrikSonOfYawgmoth(Global())
+	registerSovereignOkinecAhau(Global())
+
+	// Batch #29 (cont) — creature-spell-cast scaler + power-X mana
+	// (Helga), owner-bounce-on-death w/ pay-3-life (Athreos), first
+	// life-loss-per-opponent-turn growth + draw (Valgavoth).
+	registerHelgaSkittishSeer(Global())
+	registerAthreosGodOfPassage(Global())
+	registerValgavothHarrowerOfSouls(Global())
+
+	// Batch #30 — high-deck-count commanders missing handlers:
+	// Brago combat-blink (any number of nonland permanents you control),
+	// Korvold ETB/attack sac + sacrifice payoff (counter + draw).
+	// Prismari, the Inspiration storm grant is already wired in batch #26.
+	registerBragoKingEternal(Global())
+	registerKorvoldFaeCursedKing(Global())
+	// Batch #30 (cont) — FF Alien combat-counter / Mutant-death draw,
+	// Elder Dragon DFC ETB-discard / activate-transform-to-planeswalker,
+	// Zombie tribal death-token-with-decayed / end-step sac-draw.
+	registerJenovaAncientCalamity(Global())
+	registerNicolBolas(Global())
+	registerWilheltTheRotcleaver(Global())
+	// Batch #30 (cont) — high-deck-count commanders missing handlers:
+	// Jodah legendary-cast cascade-into-legendary-nonland, Umbris
+	// nightmare/horror ETB exile-from-opp-library-until-land, The
+	// Necrobloom landfall token (Plant or Zombie at 7+ distinct lands).
+	registerJodahTheUnifier(Global())
+	registerUmbrisFearManifest(Global())
+	registerTheNecrobloom(Global())
+
+	// Batch #30 (cont) — Fallout dice/treasure activated commander,
+	// FF7 Melee + 7+-power damage untap & extra-combat trigger,
+	// Ashling Rekindled // Rimebound modal DFC alternation loot/ramp.
+	registerMrHousePresidentAndCEO(Global())
+	registerTifaMartialArtist(Global())
+	registerAshlingRekindled(Global())
+
+	// Batch #30 (cont) — oracle-text correctness sweep for high-deck-count
+	// commanders whose original handlers in batches #9 and #26 were built
+	// from inaccurate descriptions. The register* calls themselves remain
+	// in their batch-of-record above; the function bodies were rewritten in
+	// dedicated files (fire_lord_azula.go, yshtola_nights_blessed.go,
+	// witherbloom.go) and stubbed out of commanders_batch.go. Rewrites:
+	//   - Fire Lord Azula: firebending 2 + spell-copy while attacking
+	//     (was: noncreature spell during combat → 1/1 token).
+	//   - Y'shtola, Night's Blessed: vigilance + end-step 4-life-loss
+	//     draw + noncreature MV3+ ping-each-opp/gain-2 (was: ETB draw
+	//     equal to power).
+	//   - Witherbloom, the Balancer: affinity-for-creatures cost
+	//     reduction wired through cost_modifiers.go for both Witherbloom
+	//     herself and the granted instant/sorcery clause.
+
+	// Batch #30 (cont) — Fallout rad-counter Insect Mutant (Mothman ETB +
+	// attack rad-each-player), Final Fantasy equipment-attach + power-7
+	// treasure attack (Cloud), and the classic 5C Dragon eminence
+	// cost-reducer + group-attack draw + permanent-from-hand cheat
+	// (The Ur-Dragon).
+	registerTheWiseMothman(Global())
+	registerCloudExSoldier(Global())
+	registerTheUrDragon(Global())
+
+	// Batch #31 — under-supported commanders surfaced by deck-coverage
+	// audit: Phyrexian sacrifice growth (Szarel), mobilize attack-token
+	// commander with combat LTB drain/draw (Zurgo Stormrender), AC
+	// crossover treasure-on-tapped-tribe + Vehicle exile/play
+	// (Edward Kenway).
+	registerSzarelGenesisShepherd(Global())
+	registerZurgoStormrender(Global())
+	registerEdwardKenway(Global())
+
+	// Batch #31 (cont) — Bloomburrow draw-or-discard frog with extra
+	// land drop, Strixhaven prepare DFC bird bard (creature-cast →
+	// +1/+1 counter via Heroic Stanza copy), Assassin's Creed attack-
+	// trigger graveyard-exile-and-copy swarm.
+	registerFlubsTheFool(Global())
+	registerAbigalePoetLaureate(Global())
+	registerAltairIbnLaAhad(Global())
+
+	// Batch #32 — high-deck-count commanders missing handlers:
+	// Najeela (Warrior tribal token spawn + WUBRG extra-combat untap),
+	// Winota (non-Human attack → top-six Human cheat),
+	// Prosper (ETB/attack impulse exile + end-step drain & treasure).
+	registerNajeelaBladeBlossom(Global())
+	registerWinotaJoinerOfForces(Global())
+	registerProsperTomeBound(Global())
+
+	// Batch #32 (cont) — three more commanders surfaced by the deck-
+	// coverage audit: Scriv, the Obligator (W/B Aetherdrift Inkling — ETB
+	// + attack Contract Aura token attached to opponent creature), Gonti,
+	// Canny Acquisitor (Sultai cost-reduction for unowned spells +
+	// combat-damage exile/play with any-mana clause), Gishath, Sun's
+	// Avatar (Naya Dinosaur tribal — combat-damage reveal-N and put
+	// dinosaur creature cards onto the battlefield).
+	registerScrivTheObligator(Global())
+	registerGontiCannyAcquisitor(Global())
+	registerGishathSunsAvatar(Global())
+
+	// Batch #32 — high-deck-count commander handlers (oracle-text-correct):
+	// Killian, Decisive Mentor (NOT Killian, Ink Duelist) — enchantment ETB
+	// tap+goad + aura-attacker draw; Doran, Besieged by Time (NOT Doran,
+	// the Siege Tower) — toughness>power cost reduction + +X/+X attack
+	// buff where X = T-P; Leonardo, the Balance (TMNT crossover) —
+	// once-per-turn +1/+1 spread on token ETB + WUBRG menace/trample/
+	// lifelink team grant.
+	registerKillianDecisiveMentor(Global())
+	registerDoranBesiegedByTime(Global())
+	registerLeonardoTheBalance(Global())
+
+	// Batch #32 (cont) — three more commanders surfaced by deck-coverage
+	// audit: Urza, Chief Artificer (NOT Urza, Lord High Artificer) —
+	// affinity-for-artifact-creatures cost reducer + artifact-creature
+	// menace grant + end-step Construct token; Lathril, Blade of the Elves
+	// (Elf tribal Combat-damage Elf Warrior tokens + tap-ten-Elves drain
+	// activated); The Gitrog, Ravenous Ride (NOT The Gitrog Monster) —
+	// Mount with Saddle 1, combat-damage sacrifice-saddler / draw X /
+	// fetch X lands tapped.
+	registerUrzaChiefArtificer(Global())
+	registerLathrilBladeOfTheElves(Global())
+	registerGitrogRavenousRide(Global())
+
+	// Batch #32 (cont) — under-supported transforming commanders:
+	// MOM saga DFC praetor with combat-damage punishment trigger and
+	// {2}{W} + sac-three-creatures activated transform (Elesh Norn //
+	// The Argent Etchings); Cat-tribal flip planeswalker — ETB token,
+	// Cat-death may-transform, +2 counter spread / 0 token+damage /
+	// -4 selective opponent sweep (Ajani, Nacatl Pariah // Ajani,
+	// Nacatl Avenger); 4C cascade-on-combat-damage commander — grants
+	// hand-cast cascade until end of turn (Yidris, Maelstrom Wielder).
+	registerEleshNornArgentEtchings(Global())
+	registerAjaniNacatlPariah(Global())
+	registerYidrisMaelstromWielder(Global())
+
+	// Batch #33 — high-deck-count commanders missing handlers:
+	// Syr Gwyn, Hero of Ashvale (Mardu Knight/Equipment commander —
+	// equip-{0} static while you control a Knight + equipped-attacker
+	// draw card / drain each opponent 1), Riku of Two Reflections
+	// (Temur copy commander — pay {2}{G/U} to token-copy a creature
+	// spell or copy an instant/sorcery on the stack). Brago, King
+	// Eternal already wired in Batch #30.
+	registerSyrGwynHeroOfAshvale(Global())
+	registerRikuOfTwoReflections(Global())
+
+	// Batch #33 (cont) — three more commanders surfaced by the deck-
+	// coverage audit: Lord Windgrace (BRG land-recursion planeswalker
+	// commander — discard-for-land/draw, graveyard-land reanimate, and
+	// nonland-wipe + library-land-fetch ultimate), Ghave, Guru of Spores
+	// (Abzan +1/+1-counter & Saproling generator — ETB with five +1/+1
+	// counters, counter-for-Saproling and sac-for-counter activations),
+	// Jhoira, Weatherlight Captain (Esper artifact-historic cantrip
+	// commander — draw on each historic spell cast).
+	registerLordWindgrace(Global())
+	registerGhaveGuruOfSpores(Global())
+	registerJhoiraWeatherlightCaptain(Global())
+
+	// Batch #33 (cont) — three more commanders surfaced by the deck-
+	// coverage audit: Jin Sakai, Ghost of Tsushima (Esper Samurai —
+	// combat-damage draw + lone-attacker modal Standoff/Ghost), Wan Shi
+	// Tong, All-Knowing (mono-U Bird Spirit — ETB tuck nonland to bottom
+	// + library-add Spirit token doubler), Ashnod, Flesh Mechanist
+	// (mono-B Artificer — attack sac → tapped Powerstone + {5}+exile-
+	// creature-card activated 3/3 Zombie artifact creature token).
+	registerJinSakaiGhostOfTsushima(Global())
+	registerWanShiTongAllKnowing(Global())
+	registerAshnodFleshMechanist(Global())
+
+	// Batch #33 (cont) — three more commanders surfaced by deck-coverage
+	// audit: Zask, Skittering Swarmlord (mono-G/G Insect graveyard
+	// recursion — graveyard land/Insect cast permission + another-Insect-
+	// dies bottom-of-library + mill-2 trigger + {1}{B/G} +1/+0 deathtouch
+	// activated), Kibo, Uktabi Prince (R/G Monkey Noble — {T}-create-Banana-
+	// for-each-player + opponent-artifact-dies Ape/Monkey buff + attack-
+	// force-sac-artifact), Frodo, Adventurous Hobbit (W/B Halfling Scout —
+	// partner with Sam, vigilance, gained-3+-life attack-trigger Ring tempt
+	// with Ring-bearer ≥2-tempt draw payoff).
+	registerZaskSkitteringSwarmlord(Global())
+	registerKiboUktabiPrince(Global())
+	registerFrodoAdventurousHobbit(Global())
+
+	// Batch #33 (cont) — Grist, the Hunger Tide (Golgari planeswalker/
+	// insect commander — Insect token + mill-loop +1, sac-creature →
+	// destroy -2, creature-graveyard drain -5), The Infamous Cruelclaw
+	// (Rakdos Weasel Mercenary — combat-damage exile-until-nonland +
+	// alt cost discard-instead-of-mana cast permission), Rivaz of the
+	// Claw (Rakdos Lizard Warlock — typed-mana Dragon-only ramp,
+	// once-per-turn Dragon graveyard cast permission with exile-on-die
+	// rider).
+	registerGristTheHungerTide(Global())
+	registerInfamousCruelclaw(Global())
+	registerRivazOfTheClaw(Global())
+
+	// Batch #33 (cont) — Final Fantasy + March of the Machine commanders
+	// surfaced by the deck-coverage audit: Ardbert, Warrior of Darkness
+	// (FF14 Orzhov Spirit Warrior — color-cast +1/+1 spread on legendaries
+	// + vigilance/menace UEOT), Terra, Herald of Hope (FF6 Mardu Wizard
+	// Warrior — Trance combat-begin self-mill 2 + flying UEOT, combat-
+	// damage may-pay {2} return ≤3-power creature card from graveyard
+	// tapped), Sidar Jabari of Zhalfir (Esper Human Knight — Eminence
+	// attack-with-Knight loot + combat-damage Knight reanimate).
+	registerArdbertWarriorOfDarkness(Global())
+	registerTerraHeraldOfHope(Global())
+	registerSidarJabariOfZhalfir(Global())
+
+	// Batch #33 (cont) — three more high-deck-count commanders surfaced
+	// by deck-coverage scan: Primo, the Unbounded ({X}{G}{G}{U} Fractal
+	// Wolf — ETB with twice-X +1/+1 counters + base-power-0 combat
+	// damage spawns a counter-loaded Fractal token); Karlach, Fury of
+	// Avernus ({4}{R} Tiefling Barbarian — first-combat untap + first-
+	// strike grant + extra combat); Hinata, Dawn-Crowned ({1}{U}{R}{W}
+	// Kirin Spirit — symmetric per-target cost reduction/tax wired into
+	// ScanCostModifiers).
+	registerPrimoTheUnbounded(Global())
+	registerKarlachFuryOfAvernus(Global())
+	registerHinataDawnCrowned(Global())
+
+	// Auto-generated handlers (cmd/gen-handlers).
+	registerGeneratedHandlers(Global())
 }
 
 func init() {

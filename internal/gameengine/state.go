@@ -766,6 +766,13 @@ type Permanent struct {
 	// Zone conservation uses this to account for the orphaned pointer.
 	OriginalCard *Card
 
+	// SaddlersThisTurn — for Mounts (CR §702.171). Records the permanents
+	// that contributed power to saddling this mount this turn. Populated by
+	// ActivateSaddle, cleared at end-of-turn cleanup. Used by triggers like
+	// "The Gitrog, Ravenous Ride" that reference creatures that saddled the
+	// mount this turn.
+	SaddlersThisTurn []*Permanent
+
 	// DFC / transform state (CR §712). Transformed is false while the
 	// FRONT face is active (default at ETB per §712.2), true once
 	// Transform has flipped the permanent to the BACK face. Every

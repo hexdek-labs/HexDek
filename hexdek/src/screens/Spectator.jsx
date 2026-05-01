@@ -196,7 +196,7 @@ export default function Spectator() {
   useEffect(() => {
     const el = logContainerRef.current
     if (!el || userScrolledRef.current) return
-    el.scrollTop = 0
+    requestAnimationFrame(() => { el.scrollTop = 0 })
   }, [game?.log?.length])
 
   useEffect(() => {
@@ -306,13 +306,19 @@ export default function Spectator() {
                   <div className="seat-body" style={{ position: 'relative' }}>
                     {s.lost && !isWinner && (
                       <div style={{
-                        position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                         zIndex: 2, pointerEvents: 'none',
                       }}>
                         <span style={{
                           fontSize: 28, fontWeight: 900, letterSpacing: '0.15em', color: 'var(--danger)',
                           opacity: 0.7, textShadow: '0 0 12px rgba(0,0,0,0.8)',
                         }}>GG</span>
+                        {s.loss_reason && (
+                          <span style={{
+                            fontSize: 9, fontWeight: 600, color: 'var(--danger)',
+                            opacity: 0.6, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em',
+                          }}>{s.loss_reason.replace(/\s*\(CR.*\)/, '')}</span>
+                        )}
                       </div>
                     )}
                     <div className="seat-art-col">
@@ -373,15 +379,19 @@ export default function Spectator() {
           {/* Turn status — single compact line */}
           <div className="turn-bar">
             {game.finished ? (
-              <span>
-                GAME OVER — {game.end_reason?.replace(/_/g, ' ')?.toUpperCase()} — WINNER: {game.winner >= 0 ? seats[game.winner]?.commander?.toUpperCase() : 'DRAW'} — {rt(game.turn)}
-                <span className="blink"> _</span>
-              </span>
+              <>
+                <span className="turn-bar-left">
+                  GAME OVER — {game.end_reason?.replace(/_/g, ' ')?.toUpperCase()} — WINNER: {game.winner >= 0 ? seats[game.winner]?.commander?.toUpperCase() : 'DRAW'}
+                </span>
+                <span className="turn-bar-right">{rt(game.turn)}</span>
+              </>
             ) : (
-              <span>
-                {rt(game.turn)} · {(game.phase || '').toUpperCase()}{game.step ? ` / ${game.step.toUpperCase()}` : ''} · {seats[game.active_seat]?.commander?.toUpperCase()} · {seats.reduce((a, s) => a + (s.battlefield?.length || 0), 0)} PERMS
-                <span className="blink"> █</span>
-              </span>
+              <>
+                <span className="turn-bar-left">
+                  {rt(game.turn)} · {(game.phase || '').toUpperCase()}{game.step ? ` / ${game.step.toUpperCase()}` : ''} · {seats[game.active_seat]?.commander?.toUpperCase()}
+                </span>
+                <span className="turn-bar-right">{seats.reduce((a, s) => a + (s.battlefield?.length || 0), 0)} PERMS</span>
+              </>
             )}
           </div>
         </div>

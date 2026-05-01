@@ -1355,28 +1355,17 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		BecomeMonarch(gs, controllerSeat(src))
 
 	case "connives":
-		seat := controllerSeat(src)
-		if seat >= 0 && seat < len(gs.Seats) {
-			if _, ok := gs.drawOne(seat); ok {
-				if discarded, ok2 := gs.millOne(seat); ok2 && discarded != nil {
-					isLand := false
-					for _, t := range discarded.Types {
-						if t == "land" || t == "Land" {
-							isLand = true
-							break
-						}
-					}
-					if !isLand && src != nil {
-						src.AddCounter("+1/+1", 1)
-					}
-				}
+		n := 1
+		if len(e.Args) > 0 {
+			if v, ok := e.Args[0].(float64); ok {
+				n = int(v)
+			} else if v, ok := e.Args[0].(int); ok {
+				n = v
 			}
 		}
-		gs.LogEvent(Event{
-			Kind:   "connive",
-			Seat:   seat,
-			Source: sourceName(src),
-		})
+		if src != nil {
+			Connive(gs, src, n)
+		}
 
 	case "explores":
 		if src != nil && src.IsCreature() {

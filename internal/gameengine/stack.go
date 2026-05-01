@@ -1463,14 +1463,25 @@ func grandAbolisherBlocksCast(gs *GameState, castingSeat int) bool {
 //   - "creature_spell_cast"       — spell is a creature
 //   - "instant_or_sorcery_cast"   — spell is instant/sorcery
 func fireCastTriggers(gs *GameState, casterSeat int, card *Card) {
+	fireCastTriggersFromZone(gs, casterSeat, card, ZoneHand)
+}
+
+// fireCastTriggersFromZone is the zone-aware variant. The cast_zone is
+// threaded into the trigger ctx so per-card handlers (Golbez, future
+// graveyard/exile-cast payoffs) can gate on the spell's source zone.
+func fireCastTriggersFromZone(gs *GameState, casterSeat int, card *Card, fromZone string) {
 	if gs == nil || card == nil {
 		return
+	}
+	if fromZone == "" {
+		fromZone = ZoneHand
 	}
 	ctx := map[string]interface{}{
 		"caster_seat": casterSeat,
 		"spell_name":  card.DisplayName(),
 		"card":        card,
 		"is_creature": cardHasType(card, "creature"),
+		"cast_zone":   fromZone,
 	}
 	FireCardTrigger(gs, "spell_cast", ctx)
 	// Opponent scoping — fire this event unconditionally; handlers check

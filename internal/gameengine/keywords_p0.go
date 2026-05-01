@@ -537,6 +537,83 @@ func CountArtifacts(gs *GameState, seatIdx int) int {
 	return count
 }
 
+// HasAffinityForCreatures returns true if the card has the "affinity for
+// creatures" keyword. Mirrors HasAffinityForArtifacts; used by Witherbloom,
+// the Balancer (and any future Affinity-for-creatures spells).
+func HasAffinityForCreatures(card *Card) bool {
+	if card == nil || card.AST == nil {
+		return false
+	}
+	for _, ab := range card.AST.Abilities {
+		kw, ok := ab.(*gameast.Keyword)
+		if !ok {
+			continue
+		}
+		name := strings.ToLower(strings.TrimSpace(kw.Name))
+		raw := strings.ToLower(strings.TrimSpace(kw.Raw))
+		if name == "affinity" && strings.Contains(raw, "creature") {
+			return true
+		}
+		if name == "affinity for creatures" {
+			return true
+		}
+	}
+	return false
+}
+
+// CountCreaturesOnBattlefield counts creatures on seatIdx's battlefield.
+// Exported for cost-modifier callers (Witherbloom's affinity-for-creatures
+// reduction). Mirrors the package-private countCreatures in combat.go.
+func CountCreaturesOnBattlefield(gs *GameState, seatIdx int) int {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return 0
+	}
+	n := 0
+	for _, p := range gs.Seats[seatIdx].Battlefield {
+		if p != nil && p.IsCreature() {
+			n++
+		}
+	}
+	return n
+}
+
+// HasAffinityForArtifactCreatures returns true if the card has the
+// "affinity for artifact creatures" keyword (Urza, Chief Artificer).
+func HasAffinityForArtifactCreatures(card *Card) bool {
+	if card == nil || card.AST == nil {
+		return false
+	}
+	for _, ab := range card.AST.Abilities {
+		kw, ok := ab.(*gameast.Keyword)
+		if !ok {
+			continue
+		}
+		name := strings.ToLower(strings.TrimSpace(kw.Name))
+		raw := strings.ToLower(strings.TrimSpace(kw.Raw))
+		if name == "affinity" && strings.Contains(raw, "artifact creature") {
+			return true
+		}
+		if name == "affinity for artifact creatures" {
+			return true
+		}
+	}
+	return false
+}
+
+// CountArtifactCreatures counts artifact creatures on seatIdx's battlefield.
+func CountArtifactCreatures(gs *GameState, seatIdx int) int {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return 0
+	}
+	n := 0
+	for _, p := range gs.Seats[seatIdx].Battlefield {
+		if p != nil && p.IsArtifact() && p.IsCreature() {
+			n++
+		}
+	}
+	return n
+}
+
 // ---------------------------------------------------------------------------
 // 7. Exalted — CR §702.83
 // ---------------------------------------------------------------------------

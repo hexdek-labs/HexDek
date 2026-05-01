@@ -1814,6 +1814,16 @@ func resolveCounterMod(gs *GameState, src *Permanent, e *gameast.CounterMod) {
 				"counter_kind": e.CounterKind,
 			},
 		})
+		if op == "put" && effectiveCount > 0 {
+			FireCardTrigger(gs, "counter_placed", map[string]interface{}{
+				"target_perm":   t.Permanent,
+				"target_seat":   t.Permanent.Controller,
+				"counter_kind":  e.CounterKind,
+				"amount":        effectiveCount,
+				"source_card":   sourceName(src),
+				"source_seat":   controllerSeat(src),
+			})
+		}
 	}
 }
 

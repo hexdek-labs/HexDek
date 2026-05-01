@@ -138,6 +138,13 @@ func AttackerDefender(p *Permanent) (int, bool) {
 	return v - 1, true
 }
 
+// SetAttackerDefender is the exported wrapper around setAttackerDefender,
+// for per_card handlers creating tokens that enter "tapped and attacking"
+// (CR §506.3 token-creation effects).
+func SetAttackerDefender(p *Permanent, seatIdx int) {
+	setAttackerDefender(p, seatIdx)
+}
+
 // setAttackerDefender records the defender for an attacker (§506.1).
 func setAttackerDefender(p *Permanent, seatIdx int) {
 	if p == nil {
@@ -921,6 +928,15 @@ func canBlockGS(gs *GameState, attacker, blocker *Permanent) bool {
 	if !CanBlockCombatKeywords(gs, attacker, blocker) {
 		return false
 	}
+	// Sidar Kondo of Jamuraa — global static: creatures with power 2 or
+	// less can't be blocked by creatures with power 3 or greater. Flag is
+	// set by the per_card ETB handler; we re-verify Sidar Kondo is still
+	// on a battlefield before applying.
+	if gs != nil && gs.Flags != nil && gs.Flags["sidar_kondo_active"] == 1 {
+		if attacker.Power() <= 2 && blocker.Power() >= 3 && sidarKondoOnBattlefield(gs) {
+			return false
+		}
+	}
 	// Unblockable-style effects.
 	if attacker.HasKeyword("unblockable") {
 		return false
@@ -1645,6 +1661,25 @@ func removePermanentFromSlice(slice []*Permanent, p *Permanent) []*Permanent {
 		}
 	}
 	return slice
+}
+
+// sidarKondoOnBattlefield returns true if any Sidar Kondo of Jamuraa is
+// on a battlefield. Reads the flag set by the per_card ETB handler.
+func sidarKondoOnBattlefield(gs *GameState) bool {
+	if gs == nil || gs.Flags == nil || gs.Flags["sidar_kondo_active"] == 0 {
+		return false
+	}
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, p := range s.Battlefield {
+			if p != nil && p.Card != nil && p.Card.DisplayName() == "Sidar Kondo of Jamuraa" {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // silentArbiterOnBattlefield returns true if any Silent Arbiter is on

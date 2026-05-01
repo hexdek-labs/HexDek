@@ -233,6 +233,13 @@ func ScanExpiredDurations(gs *GameState, phase, step string) {
 					})
 				}
 				p.MarkedDamage = 0
+				// §702.171 — saddled wears off at end of turn.
+				if p.Flags != nil && p.Flags["saddled"] != 0 {
+					delete(p.Flags, "saddled")
+				}
+				if len(p.SaddlersThisTurn) > 0 {
+					p.SaddlersThisTurn = nil
+				}
 				if len(p.Modifications) > 0 {
 					mods := p.Modifications[:0]
 					for _, m := range p.Modifications {

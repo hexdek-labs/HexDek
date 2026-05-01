@@ -263,6 +263,16 @@ func tryNinjutsuFromZone(gs *GameState, seatIdx int, zone []*Card, zoneName stri
 			},
 		})
 
+		// Fire per-card trigger for cards that watch ninjutsu activations
+		// (Satoru Umezawa: look at top 3, put one in hand, rest on bottom).
+		FireCardTrigger(gs, "ninjutsu_activated", map[string]interface{}{
+			"caster_seat":   seatIdx,
+			"ninja":         c.DisplayName(),
+			"card":          c,
+			"is_commander":  isCommander,
+			"ninjutsu_cost": ninjutsuCost,
+		})
+
 		// Fire ETB triggers for the ninja.
 		FireZoneChangeTriggers(gs, perm, c, zoneName, "battlefield")
 

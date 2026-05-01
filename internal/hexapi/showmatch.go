@@ -56,6 +56,7 @@ type SeatSnapshot struct {
 	GYSize      int                 `json:"gy_size"`
 	ManaPool    int                 `json:"mana_pool"`
 	Lost        bool                `json:"lost"`
+	LossReason  string              `json:"loss_reason,omitempty"`
 	Battlefield []PermanentSnapshot `json:"battlefield"`
 	Eval        *EvalSnapshot       `json:"eval,omitempty"`
 }
@@ -1193,6 +1194,7 @@ func (sm *Showmatch) captureSnapshot(gs *gameengine.GameState, commanders []stri
 			GYSize:      len(s.Graveyard),
 			ManaPool:    s.ManaPool,
 			Lost:        s.Lost,
+			LossReason:  s.LossReason,
 		}
 		for _, p := range s.Battlefield {
 			if p == nil || p.Card == nil {

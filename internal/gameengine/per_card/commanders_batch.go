@@ -247,50 +247,11 @@ func coramGraveyardCast(gs *gameengine.GameState, coram *gameengine.Permanent, m
 }
 
 // ---------------------------------------------------------------------------
-// 3. Fire Lord Azula
-//
-// "Whenever you cast a noncreature spell during combat, create a 1/1
-// blue and red Elemental creature token."
+// 3. Fire Lord Azula — moved to fire_lord_azula.go (Batch #30 rewrite).
+// Original handler used incorrect oracle text ("noncreature spell during
+// combat → 1/1 token"); real text is firebending 2 + spell-copy while
+// attacking. See fire_lord_azula.go.
 // ---------------------------------------------------------------------------
-
-func registerFireLordAzula(r *Registry) {
-	r.OnTrigger("Fire Lord Azula", "noncreature_spell_cast", azulaTrigger)
-}
-
-func azulaTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
-	if gs == nil || perm == nil {
-		return
-	}
-	casterSeat, _ := ctx["caster_seat"].(int)
-	if casterSeat != perm.Controller {
-		return
-	}
-	// Check if we're in combat phase.
-	if gs.Phase != "combat" {
-		return
-	}
-	seat := perm.Controller
-	token := &gameengine.Card{
-		Name:          "1/1 Elemental Token",
-		Owner:         seat,
-		BasePower:     1,
-		BaseToughness: 1,
-		Types:         []string{"token", "creature", "elemental"},
-	}
-	enterBattlefieldWithETB(gs, seat, token, false)
-	gs.LogEvent(gameengine.Event{
-		Kind:   "create_token",
-		Seat:   seat,
-		Source: perm.Card.DisplayName(),
-		Details: map[string]interface{}{
-			"token":  "1/1 Elemental",
-			"reason": "fire_lord_azula_combat_cast",
-		},
-	})
-	emit(gs, "azula_token", perm.Card.DisplayName(), map[string]interface{}{
-		"seat": seat,
-	})
-}
 
 // ---------------------------------------------------------------------------
 // 4. Kaust, Eyes of the Glade
@@ -1250,36 +1211,11 @@ func vojaTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[s
 }
 
 // ---------------------------------------------------------------------------
-// 21. Y'shtola, Night's Blessed
-//
-// "Ward {2}. When Y'shtola enters the battlefield, draw cards equal to
-// Y'shtola's power."
+// 21. Y'shtola, Night's Blessed — moved to yshtola_nights_blessed.go
+// (Batch #30 rewrite). Original handler used incorrect oracle text
+// ("ETB draw cards = power"); real text is end-step 4-life-loss draw +
+// noncreature MV3+ ping/lifegain. See yshtola_nights_blessed.go.
 // ---------------------------------------------------------------------------
-
-func registerYshtola(r *Registry) {
-	r.OnETB("Y'shtola, Night's Blessed", yshtolaETB)
-}
-
-func yshtolaETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	if gs == nil || perm == nil {
-		return
-	}
-	seat := perm.Controller
-	if seat < 0 || seat >= len(gs.Seats) {
-		return
-	}
-	pow := perm.Power()
-	if pow <= 0 {
-		return
-	}
-	for i := 0; i < pow; i++ {
-		drawOne(gs, seat, perm.Card.DisplayName())
-	}
-	emit(gs, "yshtola_etb_draw", perm.Card.DisplayName(), map[string]interface{}{
-		"seat":  seat,
-		"drawn": pow,
-	})
-}
 
 // ---------------------------------------------------------------------------
 // 22. Yarus, Roar of the Old Gods

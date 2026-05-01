@@ -177,6 +177,28 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 
 	var mods []CostModifier
 
+	// Eminence — The Ur-Dragon: as long as Ur-Dragon is in the command zone
+	// or on the battlefield, OTHER Dragon spells you cast cost {1} less.
+	// CR Eminence (Reflector Mage / Commander 2017): the ability functions
+	// from BOTH zones, so we check command zone in addition to the
+	// battlefield scan below.
+	if seatIdx >= 0 && seatIdx < len(gs.Seats) {
+		seat := gs.Seats[seatIdx]
+		if seat != nil && cardHasSubtype(card, "dragon") &&
+			!strings.EqualFold(card.DisplayName(), "The Ur-Dragon") {
+			for _, c := range seat.CommandZone {
+				if c != nil && strings.EqualFold(c.DisplayName(), "The Ur-Dragon") {
+					mods = append(mods, CostModifier{
+						Kind:   CostModReduction,
+						Amount: 1,
+						Source: "The Ur-Dragon (eminence, command zone)",
+					})
+					break
+				}
+			}
+		}
+	}
+
 	for _, seat := range gs.Seats {
 		if seat == nil {
 			continue
@@ -358,6 +380,19 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 					})
 				}
 
+			case "The Ur-Dragon":
+				// Eminence — other Dragon spells you cast cost {1} less.
+				// Battlefield-side reduction (the command-zone half is
+				// applied in the preamble above so we don't double-apply).
+				if isSelf && cardHasSubtype(card, "dragon") &&
+					!strings.EqualFold(card.DisplayName(), "The Ur-Dragon") {
+					mods = append(mods, CostModifier{
+						Kind:   CostModReduction,
+						Amount: 1,
+						Source: name + " (eminence)",
+					})
+				}
+
 			case "Nightscape Familiar":
 				// Blue and red spells cost {1} less.
 				if isSelf && (CardHasColor(card, "U") || CardHasColor(card, "R")) {
@@ -376,6 +411,159 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 						Amount: 1,
 						Source: name,
 					})
+				}
+
+			case "Witherbloom, the Balancer":
+				// "Instant and sorcery spells you cast have affinity for
+				// creatures." Grant the same {1}-less-per-creature
+				// reduction that the printed keyword applies.
+				if isSelf && isInstantOrSorcery {
+					n := CountCreaturesOnBattlefield(gs, seatIdx)
+					if n > 0 {
+						mods = append(mods, CostModifier{
+							Kind:   CostModReduction,
+							Amount: n,
+							Source: name + " (granted affinity)",
+						})
+					}
+				}
+
+			case "Henzie \"Toolbox\" Torre":
+				// Each creature spell you cast with mana value 4+ has blitz;
+				// blitz cost = mana cost. Blitz costs you pay cost {1} less
+				// for each time you've cast your commander from the command
+				// zone this game.
+				//
+				// Modeling: when Henzie's controller casts a creature spell
+				// with MV >= 4, reduce its cost by the total commander cast
+				// count for that seat. When the count is 0, this is a no-op
+				// and blitz is strictly equivalent to the printed cast.
+				if isSelf && isCreature && manaCostOf(card) >= 4 {
+					casts := 0
+					if seat := gs.Seats[seatIdx]; seat != nil && seat.CommanderCastCounts != nil {
+						for _, n := range seat.CommanderCastCounts {
+							casts += n
+						}
+					}
+					if casts > 0 {
+						mods = append(mods, CostModifier{
+							Kind:   CostModReduction,
+							Amount: casts,
+							Source: name,
+						})
+					}
+				}
+
+			case "Animar, Soul of Elements":
+				// Creature spells you cast cost {1} less to cast for each
+				// +1/+1 counter on Animar.
+				if isSelf && isCreature {
+					n := 0
+					if perm.Counters != nil {
+						n = perm.Counters["+1/+1"]
+					}
+					if n > 0 {
+						mods = append(mods, CostModifier{
+							Kind:   CostModReduction,
+							Amount: n,
+							Source: name,
+						})
+					}
+				}
+
+			case "Gonti, Canny Acquisitor":
+				// "Spells you cast but don't own cost {1} less to cast."
+				// The card's Owner field is the original owner's seat;
+				// when Gonti's controller casts a card whose Owner != caster
+				// (typically a card exiled from an opponent's library by
+				// Gonti's combat-damage trigger), the spell is discounted.
+				if isSelf && card.Owner != seatIdx {
+					mods = append(mods, CostModifier{
+						Kind:   CostModReduction,
+						Amount: 1,
+						Source: name,
+					})
+				}
+
+			case "Doran, Besieged by Time":
+				// Each creature spell you cast with toughness greater than
+				// its power costs {1} less to cast. Source toughness/power
+				// from the printed Base values since we're at cost calc
+				// time before the permanent exists.
+				if isSelf && isCreature && card.BaseToughness > card.BasePower {
+					mods = append(mods, CostModifier{
+						Kind:   CostModReduction,
+						Amount: 1,
+						Source: name,
+					})
+				}
+
+			case "Killian, Ink Duelist":
+				// Spells you cast that target a creature cost {2} less.
+				// Targets aren't bound until cost calculation completes,
+				// so we approximate via oracle-text substring match for
+				// "target ... creature" phrasing — covers removal, buffs,
+				// auras, and equipment whose targets are creatures.
+				if isSelf && spellOracleTargetsCreature(card) {
+					mods = append(mods, CostModifier{
+						Kind:   CostModReduction,
+						Amount: 2,
+						Source: name,
+					})
+				}
+
+			case "Zimone, Infinite Analyst":
+				// The first spell you cast with {X} in its mana cost each
+				// turn costs {1} less to cast for each +1/+1 counter on
+				// Zimone. Gated to first-X-spell-this-turn via the seat
+				// flag set by zimone's OnCast trigger handler.
+				if isSelf && ManaCostContainsX(card) {
+					casterSeat := gs.Seats[seatIdx]
+					alreadyFired := casterSeat != nil && casterSeat.Flags != nil &&
+						casterSeat.Flags["zimone_x_spell_turn"] == gs.Turn
+					if !alreadyFired {
+						counters := 0
+						if perm.Counters != nil {
+							counters = perm.Counters["+1/+1"]
+						}
+						if counters > 0 {
+							mods = append(mods, CostModifier{
+								Kind:   CostModReduction,
+								Amount: counters,
+								Source: name,
+							})
+						}
+					}
+				}
+
+			case "Hinata, Dawn-Crowned":
+				// "Spells you cast cost {1} less to cast for each target."
+				// "Spells your opponents cast cost {1} more to cast for
+				// each target."
+				// CR §601.2c puts target choice before cost calc, so the
+				// target count IS legally available at cost time. The
+				// engine doesn't yet thread chosen targets into
+				// CalculateTotalCost, so we approximate the count by
+				// scanning the spell's oracle text for "target" clauses.
+				// Mono-target slots ("target creature", "target opponent")
+				// count exactly; multi-target spells (e.g. "any number of
+				// target creatures", "two target creatures") under-count
+				// because they share a single "target" token. emitPartial
+				// records the gap at the call site (handler file).
+				if n := CountTargetClauses(card); n > 0 {
+					if isSelf {
+						mods = append(mods, CostModifier{
+							Kind:   CostModReduction,
+							Amount: n,
+							Source: name,
+						})
+					} else if isOpponent {
+						mods = append(mods, CostModifier{
+							Kind:   CostModIncrease,
+							Amount: n,
+							Source: name,
+						})
+					}
 				}
 
 			// --- MINIMUMS ---
@@ -447,6 +635,34 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 		}
 	}
 
+	// Affinity for creatures (Witherbloom, the Balancer): "This spell
+	// costs {1} less to cast for each creature you control." Same
+	// pattern as artifacts — checked on the CARD being cast.
+	if HasAffinityForCreatures(card) {
+		crCount := CountCreaturesOnBattlefield(gs, seatIdx)
+		if crCount > 0 {
+			mods = append(mods, CostModifier{
+				Kind:   CostModReduction,
+				Amount: crCount,
+				Source: "affinity for creatures",
+			})
+		}
+	}
+
+	// Affinity for artifact creatures (Urza, Chief Artificer): "This
+	// spell costs {1} less to cast for each artifact creature you
+	// control." Checked on the CARD being cast.
+	if HasAffinityForArtifactCreatures(card) {
+		acCount := CountArtifactCreatures(gs, seatIdx)
+		if acCount > 0 {
+			mods = append(mods, CostModifier{
+				Kind:   CostModReduction,
+				Amount: acCount,
+				Source: "affinity for artifact creatures",
+			})
+		}
+	}
+
 	// §702.51 — Convoke: "Each creature you tap while casting this spell
 	// pays for {1} or one mana of that creature's color." Modeled as a
 	// cost reduction equal to the number of untapped creatures the caster
@@ -484,6 +700,103 @@ func cardHasType(card *Card, typeName string) bool {
 		return true
 	}
 	return false
+}
+
+// spellOracleTargetsCreature is a coarse heuristic for "this spell, when
+// cast, will target at least one creature." Used by Killian, Ink Duelist's
+// cost reducer where the actual target choice happens after cost
+// calculation. We match common oracle-text phrasings: "target creature",
+// "target a creature", "target attacking creature", "target tapped
+// creature", "target nonland creature", and aura/equipment "enchant
+// creature" / "equipped creature" patterns.
+func spellOracleTargetsCreature(card *Card) bool {
+	if card == nil {
+		return false
+	}
+	text := OracleTextLower(card)
+	if text == "" {
+		return false
+	}
+	needles := []string{
+		"target creature",
+		"target a creature",
+		"target another creature",
+		"target attacking creature",
+		"target blocking creature",
+		"target tapped creature",
+		"target untapped creature",
+		"target nonlegendary creature",
+		"target nonland creature",
+		"target legendary creature",
+		"target nontoken creature",
+		"target token creature",
+		"enchant creature",
+	}
+	for _, n := range needles {
+		if strings.Contains(text, n) {
+			return true
+		}
+	}
+	return false
+}
+
+// CountTargetClauses estimates the number of targets the spell will be
+// cast with by scanning the oracle text for "target <noun>" clauses.
+// Used by Hinata, Dawn-Crowned cost modification ("for each target").
+//
+// Heuristic: count occurrences of "target " followed by a recognized
+// target-noun stem (creature, permanent, player, opponent, planeswalker,
+// spell, ability, land, artifact, enchantment, card). Each occurrence
+// counts as ONE target, which is correct for mono-target slots but
+// under-counts multi-target spells like "two target creatures" or "any
+// number of target creatures" (they share one "target" word but bind
+// multiple targets at cast time). For Hinata's discount/tax this
+// approximation skews toward the cheap/safe direction (less reduction,
+// less tax) rather than wildly over-rewarding.
+func CountTargetClauses(card *Card) int {
+	if card == nil {
+		return 0
+	}
+	text := OracleTextLower(card)
+	if text == "" {
+		return 0
+	}
+	stems := []string{
+		"target creature",
+		"target permanent",
+		"target player",
+		"target opponent",
+		"target planeswalker",
+		"target spell",
+		"target activated",
+		"target triggered",
+		"target ability",
+		"target land",
+		"target artifact",
+		"target enchantment",
+		"target card",
+		"target nonland",
+		"target nontoken",
+		"target legendary",
+		"target tapped",
+		"target untapped",
+		"target attacking",
+		"target blocking",
+		"target battle",
+	}
+	count := 0
+	for _, s := range stems {
+		idx := 0
+		for {
+			at := strings.Index(text[idx:], s)
+			if at < 0 {
+				break
+			}
+			count++
+			idx += at + len(s)
+		}
+	}
+	return count
 }
 
 // cardHasSubtype checks if the Card's Types or TypeLine contains a subtype.

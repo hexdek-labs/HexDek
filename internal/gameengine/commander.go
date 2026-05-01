@@ -443,7 +443,7 @@ func CastCommanderFromCommandZone(gs *GameState, seatIdx int, commanderName stri
 	// CastSpell does in stack.go. Without this, Storm, Rhystic Study,
 	// Mystic Remora, Esper Sentinel etc. miss commander casts entirely.
 	IncrementCastCount(gs, seatIdx)
-	FireCastTriggers(gs, seatIdx, cmdr)
+	fireCastTriggersFromZone(gs, seatIdx, cmdr, ZoneCommandZone)
 	FireCastTriggerObservers(gs, cmdr, seatIdx, false)
 
 	// Push onto stack as a permanent spell. The caller (tests / playloop)

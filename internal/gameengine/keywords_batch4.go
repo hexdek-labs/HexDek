@@ -72,6 +72,7 @@ func ActivateSaddle(gs *GameState, mount *Permanent, saddlePower int) bool {
 		mount.Flags = map[string]int{}
 	}
 	mount.Flags["saddled"] = 1
+	mount.SaddlersThisTurn = append(mount.SaddlersThisTurn, tapped...)
 
 	gs.LogEvent(Event{
 		Kind:   "saddle",

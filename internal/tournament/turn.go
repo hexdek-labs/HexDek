@@ -318,6 +318,14 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 		return
 	}
 	gs.Phase, gs.Step = "main", "postcombat_main"
+	gameengine.FireCardTrigger(gs, "postcombat_main_controller", map[string]interface{}{
+		"active_seat": active,
+	})
+	gameengine.StateBasedActions(gs)
+	drainStack(gs)
+	if gs.CheckEnd() || seat.Lost {
+		return
+	}
 	runMainPhase(gs, active, false)
 	gameengine.StateBasedActions(gs)
 	if gs.CheckEnd() {

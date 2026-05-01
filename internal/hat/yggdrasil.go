@@ -1838,6 +1838,29 @@ func (h *YggdrasilHat) activationHeuristic(gs *gameengine.GameState, seatIdx int
 			base += 0.10
 		}
 	}
+	if strings.Contains(ot, "graveyard") && (strings.Contains(ot, "onto the battlefield") || strings.Contains(ot, "return")) {
+		gyTargets := 0
+		for _, gc := range gs.Seats[seatIdx].Graveyard {
+			if gc != nil && gameengine.ManaCostOf(gc) >= 4 {
+				gyTargets++
+			}
+		}
+		base += 0.25 + float64(gyTargets)*0.10
+		if base > 0.60 {
+			base = 0.60
+		}
+	}
+	if strings.Contains(ot, "haste") {
+		sickCount := 0
+		for _, p := range gs.Seats[seatIdx].Battlefield {
+			if p != nil && p.IsCreature() && p.SummoningSick {
+				sickCount++
+			}
+		}
+		if sickCount > 0 {
+			base += 0.20 + float64(sickCount)*0.05
+		}
+	}
 
 	// Sacrifice outlets: score based on full engine density. Each death-payoff
 	// type (drain, draw, ramp, recursion) stacks, and token fodder availability
@@ -2804,7 +2827,7 @@ func (h *YggdrasilHat) ShouldCastCommander(gs *gameengine.GameState, seatIdx int
 		return false
 	}
 	avail := gameengine.AvailableManaEstimate(gs, gs.Seats[seatIdx])
-	if avail <= 0 {
+	if avail <= 0 && tax > 0 {
 		return false
 	}
 
