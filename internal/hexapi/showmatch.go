@@ -28,6 +28,7 @@ import (
 	"github.com/hexdek/hexdek/internal/hat"
 	"github.com/hexdek/hexdek/internal/matchmaking"
 	"github.com/hexdek/hexdek/internal/tournament"
+	"github.com/hexdek/hexdek/internal/trueskill"
 )
 
 const (
@@ -113,6 +114,8 @@ type ELOEntry struct {
 	Commander string  `json:"commander"`
 	Owner     string  `json:"owner"`
 	Rating    float64 `json:"rating"`
+	Mu        float64 `json:"mu"`
+	Sigma     float64 `json:"sigma"`
 	HexRating float64 `json:"hex_rating"`
 	Games     int     `json:"games"`
 	Wins      int     `json:"wins"`
@@ -202,8 +205,10 @@ type spectatorConn struct {
 }
 
 type eloState struct {
-	rating    float64 // standard ELO (flat K=32, start 1500)
+	rating    float64 // TrueSkill conservative rating (μ - 3σ), bracket-seeded
 	hexRating float64 // HexELO (bracket-seeded, K-modulated, gravity)
+	tsMu      float64 // TrueSkill μ (skill estimate)
+	tsSigma   float64 // TrueSkill σ (uncertainty)
 	games     int
 	delta     float64
 	hexDelta  float64
@@ -768,7 +773,9 @@ func (sm *Showmatch) eloSize() int {
 func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("grinder: game crashed: %v", r)
+			buf := make([]byte, 4096)
+			n := runtime.Stack(buf, false)
+			log.Printf("grinder: game crashed: %v\n%s", r, buf[:n])
 		}
 	}()
 
@@ -883,7 +890,9 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 	defer func() {
 		if r := recover(); r != nil {
-			log.Printf("showmatch: game crashed: %v", r)
+			buf := make([]byte, 4096)
+			n := runtime.Stack(buf, false)
+			log.Printf("showmatch: game crashed: %v\n%s", r, buf[:n])
 		}
 	}()
 
@@ -1276,6 +1285,24 @@ func hexELOStartRating(bracket int) float64 {
 	}
 }
 
+// trueSkillConfig returns the TrueSkill config scaled for our rating range.
+// Default TrueSkill uses μ=25, σ=8.33 for a 0-50 range. We scale to 0-4000.
+// Scale factor ~80: β=333, τ=6.7, σ₀=400.
+var tsConfig = trueskill.Config{
+	Beta:            333.0,
+	Tau:             6.7,
+	DrawProbability: 0.01,
+}
+
+const tsDefaultSigma = 400.0
+
+func trueSkillStartRating(bracket int) trueskill.Rating {
+	return trueskill.Rating{
+		Mu:    hexELOStartRating(bracket),
+		Sigma: tsDefaultSigma,
+	}
+}
+
 // hexELOBandLabel returns the human-readable band for a rating.
 func hexELOBandLabel(rating float64) string {
 	switch {
@@ -1341,9 +1368,12 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 		if _, ok := sm.elo[key]; !ok {
 			owner, _ := deckOwnerFromKey(key)
 			bracket := sm.bracketCache[key]
+			tsStart := trueSkillStartRating(bracket)
 			sm.elo[key] = &eloState{
-				rating:    1500,
+				rating:    tsStart.Conservative(),
 				hexRating: hexELOStartRating(bracket),
+				tsMu:      tsStart.Mu,
+				tsSigma:   tsStart.Sigma,
 				commander: commanders[i],
 				owner:     owner,
 				bracket:   bracket,
@@ -1352,24 +1382,62 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 		sm.elo[key].games++
 	}
 
+	if winner >= 0 && winner < n {
+		sm.elo[deckKeys[winner]].wins++
+	}
+
+	// --- TrueSkill update (primary rating) ---
+	// Pairwise decomposition: winner vs each loser independently.
+	// UpdateMultiplayer's adjacent-pair chain doesn't properly propagate
+	// the winner signal to all losers when ranks are [0,1,1,1].
+	if winner >= 0 && winner < n {
+		winKey := deckKeys[winner]
+		wRating := trueskill.Rating{Mu: sm.elo[winKey].tsMu, Sigma: sm.elo[winKey].tsSigma}
+		for i, key := range deckKeys {
+			if i == winner {
+				continue
+			}
+			lRating := trueskill.Rating{Mu: sm.elo[key].tsMu, Sigma: sm.elo[key].tsSigma}
+			wNew, lNew := trueskill.Update2Player(tsConfig, wRating, lRating)
+			// Accumulate winner's gains across all pairwise comparisons.
+			wRating = wNew
+			oldLR := sm.elo[key].rating
+			sm.elo[key].tsMu = lNew.Mu
+			sm.elo[key].tsSigma = lNew.Sigma
+			sm.elo[key].rating = lNew.Conservative()
+			sm.elo[key].delta = sm.elo[key].rating - oldLR
+		}
+		oldWR := sm.elo[winKey].rating
+		sm.elo[winKey].tsMu = wRating.Mu
+		sm.elo[winKey].tsSigma = wRating.Sigma
+		sm.elo[winKey].rating = wRating.Conservative()
+		sm.elo[winKey].delta = sm.elo[winKey].rating - oldWR
+	} else {
+		// No winner (draw/timeout) — all players draw pairwise.
+		tsRatings := make([]trueskill.Rating, n)
+		ranks := make([]int, n)
+		for i, key := range deckKeys {
+			tsRatings[i] = trueskill.Rating{Mu: sm.elo[key].tsMu, Sigma: sm.elo[key].tsSigma}
+		}
+		updated := trueskill.UpdateMultiplayer(tsConfig, tsRatings, ranks)
+		for i, key := range deckKeys {
+			oldRating := sm.elo[key].rating
+			sm.elo[key].tsMu = updated[i].Mu
+			sm.elo[key].tsSigma = updated[i].Sigma
+			sm.elo[key].rating = updated[i].Conservative()
+			sm.elo[key].delta = sm.elo[key].rating - oldRating
+		}
+	}
+
+	// --- HexELO update (bracket-aware K + gravity) ---
 	winnerKey := ""
 	if winner >= 0 && winner < n {
 		winnerKey = deckKeys[winner]
-		sm.elo[winnerKey].wins++
 	}
-
 	if winnerKey == "" {
 		for i := 0; i < n; i++ {
 			for j := i + 1; j < n; j++ {
 				a, b := deckKeys[i], deckKeys[j]
-				// Standard ELO
-				ea := 1.0 / (1.0 + math.Pow(10, (sm.elo[b].rating-sm.elo[a].rating)/400.0))
-				eb := 1.0 - ea
-				sm.elo[a].delta = kScaled * (0.5 - ea)
-				sm.elo[b].delta = kScaled * (0.5 - eb)
-				sm.elo[a].rating += sm.elo[a].delta
-				sm.elo[b].rating += sm.elo[b].delta
-				// HexELO
 				hexEa := 1.0 / (1.0 + math.Pow(10, (sm.elo[b].hexRating-sm.elo[a].hexRating)/400.0))
 				hexEb := 1.0 - hexEa
 				hk := hexELOKFactor(kScaled, sm.elo[a].bracket, sm.elo[b].bracket)
@@ -1381,21 +1449,10 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 		}
 		return
 	}
-
 	for _, loserKey := range deckKeys {
 		if loserKey == winnerKey {
 			continue
 		}
-		// Standard ELO
-		eW := 1.0 / (1.0 + math.Pow(10, (sm.elo[loserKey].rating-sm.elo[winnerKey].rating)/400.0))
-		eL := 1.0 - eW
-		wDelta := kScaled * (1.0 - eW)
-		lDelta := kScaled * (0.0 - eL)
-		sm.elo[winnerKey].delta = wDelta
-		sm.elo[loserKey].delta = lDelta
-		sm.elo[winnerKey].rating += wDelta
-		sm.elo[loserKey].rating += lDelta
-		// HexELO
 		wBracket := sm.elo[winnerKey].bracket
 		lBracket := sm.elo[loserKey].bracket
 		hk := hexELOKFactor(kScaled, wBracket, lBracket)
@@ -1432,6 +1489,8 @@ func (sm *Showmatch) GetELO() []ELOEntry {
 			Commander: e.commander,
 			Owner:     owner,
 			Rating:    math.Round(e.rating*10) / 10,
+			Mu:        math.Round(e.tsMu*10) / 10,
+			Sigma:     math.Round(e.tsSigma*10) / 10,
 			HexRating: math.Round(e.hexRating*10) / 10,
 			Games:     e.games,
 			Wins:      e.wins,

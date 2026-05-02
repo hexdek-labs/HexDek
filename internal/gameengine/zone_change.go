@@ -372,7 +372,7 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 			CheckSoulshift(gs, perm)
 		}
 	}
-	if fromZone == "battlefield" {
+	if fromZone == "battlefield" && perm != nil {
 		FireCardTrigger(gs, "permanent_ltb", map[string]interface{}{
 			"perm":            perm,
 			"card":            card,

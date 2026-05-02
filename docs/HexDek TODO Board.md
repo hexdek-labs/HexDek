@@ -12,6 +12,12 @@ kanban-plugin: board
 ## High Priority — Engine
 
 - [ ] **Remaining 276 commander handlers** — coverage at 447/652 files (681 registered names). Most remaining are 1-2 deck count. Template generator (`cmd/gen-handlers/main.go`) handles simple patterns. #engine #per_card
+- [ ] **BUG: Ajani Nacatl Pariah 74% WR** — transform loop + cat token cascade + -4 mass sacrifice is unchecked. Likely: hat doesn't prioritize removing planeswalkers building toward ultimates, and the cat-dies-transform loop runs free. Investigate and fix. #engine #bug #hat
+- [ ] **BUG: Rosnakht 2.5% WR** — near-zero winrate outlier. 0-power Kobold commander likely can't deal meaningful damage. Check if handler exists and if hat has any viable line. #engine #bug
+- [ ] **BUG: Tazri 13% WR** — severely underperforming. Party mechanic may not be modeled. Check handler + Freya profile. #engine #bug
+- [ ] **Hat: Poison/infect threat awareness** — Yggdrasil threat scoring ignores poison counters. Fynn/Skithiryx at 8 poison should be priority-1 threat but hat only evaluates board power + life totals. Add poison_counters to 3rd Eye + threat scoring. #engine #hat #evaluator
+- [ ] **Hat: Planeswalker threat scoring** — no logic for "opponent PW building toward ultimate." Ajani ticking +2/turn is invisible to threat trajectory. Add loyalty-based threat weight to evaluator. #engine #hat #evaluator
+- [ ] **Hat: Alternate wincon awareness** — hat optimizes for combat damage / life total. Needs awareness of: poison (10 = lethal), mill (library = 0), commander damage (21), infect. Weight threats by proximity to alt wincon. #engine #hat #evaluator
 
 
 ## High Priority — Platform
