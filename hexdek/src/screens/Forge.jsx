@@ -95,7 +95,7 @@ export default function Forge() {
     <>
       <Tape
         left="VARIANT FORGE / / DOC HX-1101"
-        mid={selectedDeck ? (pls ? `PLS B${pls} (WBS B${wbs})` : `WBS B${wbs}`) : 'SELECT DECK'}
+        mid={selectedDeck ? (pls ? `Plays Like B${pls} (Bracket B${wbs})` : `Bracket B${wbs}`) : 'SELECT DECK'}
         right={selectedDeck ? `${selectedDeck.owner?.toUpperCase()} / / ${deckName}` : ''}
       />
 
@@ -150,8 +150,8 @@ export default function Forge() {
                     ['COMMANDER', deckName],
                     ['OWNER', selectedDeck.owner?.toUpperCase()],
                     ['CARDS', `${cardCount}`],
-                    ['WBS', `B${wbs}${wbsLabel ? ' ' + wbsLabel : ''}`],
-                    ['PLS', pls ? `B${pls}${plsLabel ? ' ' + plsLabel : ''}` : '—'],
+                    ['BRACKET', `B${wbs}${wbsLabel ? ' ' + wbsLabel : ''}`],
+                    ['PLAYS LIKE', pls ? `B${pls}${plsLabel ? ' ' + plsLabel : ''}` : '—'],
                     ['GAME CHANGERS', gameChangers != null ? `${gameChangers}` : '—'],
                     ['ARCHETYPE', archetype],
                   ]} />
@@ -169,7 +169,7 @@ export default function Forge() {
               <>
                 {/* Eval weights */}
                 {Object.keys(evalWeights).length > 0 && (
-                  <Panel code="11.B" title="FREYA / / EVAL WEIGHTS" right={<Tag solid>WBS B{wbs}{pls && pls !== wbs ? ` → PLS B${pls}` : ''}</Tag>}>
+                  <Panel code="11.B" title="FREYA / / EVAL WEIGHTS" right={<Tag solid>Bracket B{wbs}{pls && pls !== wbs ? ` → Plays Like B${pls}` : ''}</Tag>}>
                     {Object.entries(evalWeights).slice(0, 8).map(([k, v], i) => (
                       <div key={i} style={{ display: 'grid', gridTemplateColumns: '140px 1fr 36px', alignItems: 'center', gap: 6, marginTop: 6 }}>
                         <span className="t-xs">{k.replace(/_/g, ' ').toUpperCase()}</span>

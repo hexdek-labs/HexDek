@@ -60,6 +60,7 @@ func registerGeneratedHandlers(r *Registry) {
 	registerGiadaFontOfHope(r) // Giada, Font of Hope [SIMPLE_ACTIVATED]
 	registerGyrudaDoomOfDepths(r) // Gyruda, Doom of Depths [SIMPLE_ETB]
 	registerHamzaGuardianOfArashin(r) // Hamza, Guardian of Arashin [STATIC]
+	registerHenzieToolboxTorre(r) // Henzie "Toolbox" Torre [STATIC]
 	registerHidetsuguAndKairi(r) // Hidetsugu and Kairi [SIMPLE_ETB]
 	registerHogaakArisenNecropolis(r) // Hogaak, Arisen Necropolis [STATIC]
 	registerInallaArchmageRitualist(r) // Inalla, Archmage Ritualist [STATIC]
@@ -160,12 +161,13 @@ func registerGeneratedHandlers(r *Registry) {
 	registerTannukSteadfastSecond(r) // Tannuk, Steadfast Second [STATIC]
 	registerTasigurTheGoldenFang(r) // Tasigur, the Golden Fang [SIMPLE_ACTIVATED]
 	registerTazriBeaconOfUnity(r) // Tazri, Beacon of Unity [SIMPLE_ACTIVATED]
-	registerTeysaKarlov(r) // Teysa Karlov [STATIC]
+	// Teysa Karlov — promoted to hand-written handler in teysa_karlov.go;
+	// registered in registerDefaults().
 	registerTheCapitolineTriad(r) // The Capitoline Triad [STATIC]
 	registerTheDestinedWhiteMage(r) // The Destined White Mage [SIMPLE_TRIGGER]
 	registerTheEarthKing(r) // The Earth King [SIMPLE_ETB]
-	registerTheFirstSliver(r) // The First Sliver [STATIC]
-	registerTheJollyBalloonMan(r) // The Jolly Balloon Man [STATIC]
+	// The First Sliver — graduated to the_first_sliver.go; registered in registerDefaults().
+registerTheJollyBalloonMan(r) // The Jolly Balloon Man [STATIC]
 	registerTheLocustGod(r) // The Locust God [STATIC]
 	registerTheMasterOfKeys(r) // The Master of Keys [SIMPLE_ETB]
 	registerTheMasterMultiplied(r) // The Master, Multiplied [STATIC]

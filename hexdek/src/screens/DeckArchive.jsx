@@ -192,7 +192,7 @@ export default function DeckArchive() {
 
   return (
     <>
-      <Tape left={`DECK ARCHIVE / / ${owner?.toUpperCase()} / / ${deckName}`} mid={pls ? `PLS B${pls} (WBS B${wbs})` : `WBS B${wbs}`} right="EXPORT ↗ ANALYZE ↗" />
+      <Tape left={`DECK ARCHIVE / / ${owner?.toUpperCase()} / / ${deckName}`} mid={pls ? `Plays Like B${pls} (Bracket B${wbs})` : `Bracket B${wbs}`} right="EXPORT ↗ ANALYZE ↗" />
 
       <div className="archive-layout">
         <div className="archive-sidebar">
@@ -216,8 +216,8 @@ export default function DeckArchive() {
             <KV rows={[
               ['OWNER', <Link to={`/decks?q=${owner}`} style={{ color: 'var(--ink)', textDecoration: 'none', borderBottom: '1px dotted var(--ink-3)' }}>{owner?.toUpperCase()}</Link>],
               ['CARDS', `${cardCount}`],
-              ['WBS', `B${wbs}${wbsLabel ? ' ' + wbsLabel : ''}`],
-              ['PLS', pls ? `B${pls}${plsLabel ? ' ' + plsLabel : ''}${pls != wbs ? ' ⬆' : ''}` : '—'],
+              ['BRACKET', `B${wbs}${wbsLabel ? ' ' + wbsLabel : ''}`],
+              ['PLAYS LIKE', pls ? `B${pls}${plsLabel ? ' ' + plsLabel : ''}${pls != wbs ? ' ⬆' : ''}` : '—'],
               ['GAME CHANGERS', gameChangers != null ? `${gameChangers}` : '—'],
               ['ARCHETYPE', archetype],
             ]} />
@@ -348,7 +348,7 @@ export default function DeckArchive() {
           )}
 
           {/* Strategy summary */}
-          <Panel code="04.C" title="FREYA / / ENGINE ANALYSIS" right={<Tag solid>WBS B{wbs}{pls && pls !== wbs ? ` → PLS B${pls}` : ''}</Tag>}>
+          <Panel code="04.C" title="FREYA / / ENGINE ANALYSIS" right={<Tag solid>Bracket B{wbs}{pls && pls !== wbs ? ` → Plays Like B${pls}` : ''}</Tag>}>
             {!analysis ? (
               <div style={{ padding: '20px 0', textAlign: 'center' }}>
                 <div className="t-md muted" style={{ lineHeight: 1.8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>

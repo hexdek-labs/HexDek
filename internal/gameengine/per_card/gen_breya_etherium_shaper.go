@@ -28,7 +28,7 @@ func breyaEtheriumShaperETB(gs *gameengine.GameState, perm *gameengine.Permanent
 	if seat < 0 || seat >= len(gs.Seats) {
 		return
 	}
-	gameengine.GainLife(gs, seat, 1, perm.Card.DisplayName())
+	gameengine.GainLife(gs, seat, 5, perm.Card.DisplayName())
 	token := &gameengine.Card{
 		Name:          "1/1 Thopter Token",
 		Owner:         seat,

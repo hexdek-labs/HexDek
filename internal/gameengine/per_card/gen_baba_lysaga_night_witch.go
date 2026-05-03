@@ -27,7 +27,7 @@ func babaLysagaNightWitchActivate(gs *gameengine.GameState, src *gameengine.Perm
 	for i := 0; i < 3; i++ {
 		drawOne(gs, src.Controller, src.Card.DisplayName())
 	}
-	gameengine.GainLife(gs, src.Controller, 3, src.Card.DisplayName())
+	gameengine.GainLife(gs, src.Controller, 1, src.Card.DisplayName())
 	for _, opp := range gs.Opponents(src.Controller) {
 		if gs.Seats[opp] != nil && !gs.Seats[opp].Lost {
 			gs.Seats[opp].Life -= 3

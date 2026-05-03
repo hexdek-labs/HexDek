@@ -8,12 +8,13 @@ import (
 
 // registerWinotaJoinerOfForces wires Winota, Joiner of Forces.
 //
-// Oracle text (Scryfall):
+// Oracle text (Scryfall, verified 2026-05-02):
 //
 //	Whenever a non-Human creature you control attacks, look at the top
 //	six cards of your library. You may put a Human creature card from
-//	among them onto the battlefield tapped and attacking, then put the
-//	rest on the bottom of your library in a random order.
+//	among them onto the battlefield tapped and attacking. It gains
+//	indestructible until end of turn. Put the rest of the cards on the
+//	bottom of your library in a random order.
 //
 // Implementation:
 //   - "creature_attacks" trigger: filter on attacker controlled by
@@ -22,8 +23,14 @@ import (
 //     own ability.) Pop the top six cards of the controller's library,
 //     scan for the first Human creature, and cheat it onto the
 //     battlefield tapped, attacking the same defender as the trigger
-//     attacker. Remaining cards are returned to the bottom of the
-//     library in shuffled order.
+//     attacker. The cheated Human gains indestructible until end of
+//     turn via the "kw:indestructible" Flags key + a one-shot
+//     DelayedTrigger at "next_end_step" to revoke it. Remaining cards
+//     are returned to the bottom of the library in shuffled order.
+//
+// emitPartial gaps:
+//   - "You may put" — the AI always puts the Human onto the battlefield
+//     (pure upside); the optional clause is not modeled.
 func registerWinotaJoinerOfForces(r *Registry) {
 	r.OnTrigger("Winota, Joiner of Forces", "creature_attacks", winotaAttackTrigger)
 }
@@ -112,13 +119,30 @@ func winotaAttackTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, c
 		newPerm := enterBattlefieldWithETB(gs, perm.Controller, human, true)
 		if newPerm != nil {
 			newPerm.SummoningSick = false
+			if newPerm.Flags == nil {
+				newPerm.Flags = map[string]int{}
+			}
+			// Grant indestructible until end of turn.
+			newPerm.Flags["kw:indestructible"] = 1
 			if defenderSeat >= 0 {
-				if newPerm.Flags == nil {
-					newPerm.Flags = map[string]int{}
-				}
 				newPerm.Flags["attacking"] = 1
 				gameengine.SetAttackerDefender(newPerm, defenderSeat)
 			}
+			// Register a next_end_step delayed trigger to revoke
+			// indestructible, bounding the "until end of turn" window.
+			captured := newPerm
+			gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
+				TriggerAt:      "next_end_step",
+				ControllerSeat: perm.Controller,
+				SourceCardName: perm.Card.DisplayName() + " (indestructible cleanup)",
+				OneShot:        true,
+				EffectFn: func(gs *gameengine.GameState) {
+					if captured == nil || captured.Flags == nil {
+						return
+					}
+					delete(captured.Flags, "kw:indestructible")
+				},
+			})
 		}
 		cheated = human.DisplayName()
 		gs.LogEvent(gameengine.Event{
@@ -126,11 +150,12 @@ func winotaAttackTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, c
 			Seat:   perm.Controller,
 			Source: perm.Card.DisplayName(),
 			Details: map[string]interface{}{
-				"card":          human.DisplayName(),
-				"attacker":      atk.Card.DisplayName(),
-				"defender_seat": defenderSeat,
-				"tapped":        true,
-				"attacking":     true,
+				"card":           human.DisplayName(),
+				"attacker":       atk.Card.DisplayName(),
+				"defender_seat":  defenderSeat,
+				"tapped":         true,
+				"attacking":      true,
+				"indestructible": true,
 			},
 		})
 	}

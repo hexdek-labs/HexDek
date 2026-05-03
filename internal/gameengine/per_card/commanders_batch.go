@@ -517,34 +517,14 @@ func moraugTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 // ---------------------------------------------------------------------------
 // 9. Muldrotha, the Gravetide
 //
-// "During each of your turns, you may play a land from your graveyard
-// and cast a permanent spell of each permanent type from your graveyard."
-//
-// Implementation: set a zone-cast permission flag on ETB. The actual
-// cast-from-graveyard logic is a static permission the AI/Hat reads.
+// Moved to muldrotha_the_gravetide.go — full implementation with ETB +
+// upkeep per-type tracking reset. registerMuldrothaTheGravetide is called
+// directly in registerDefaults(); this stub is kept as a no-op so
+// batch-#9's registerMuldrotha(Global()) compiles without double-registering.
 // ---------------------------------------------------------------------------
 
-func registerMuldrotha(r *Registry) {
-	r.OnETB("Muldrotha, the Gravetide", muldrothaETB)
-}
-
-func muldrothaETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	if gs == nil || perm == nil {
-		return
-	}
-	seat := perm.Controller
-	if seat < 0 || seat >= len(gs.Seats) {
-		return
-	}
-	s := gs.Seats[seat]
-	if s.Flags == nil {
-		s.Flags = map[string]int{}
-	}
-	s.Flags["muldrotha_gy_cast"] = 1
-	emit(gs, "muldrotha_etb", perm.Card.DisplayName(), map[string]interface{}{
-		"seat":   seat,
-		"effect": "graveyard_cast_permission_set",
-	})
+func registerMuldrotha(_ *Registry) {
+	// No-op — see muldrotha_the_gravetide.go.
 }
 
 // ---------------------------------------------------------------------------

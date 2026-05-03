@@ -115,10 +115,12 @@ cd hexdek && VITE_API_URL="" npx vite build
 
 ## Deployment
 
-- **Engine runs on DARKSTAR** (192.168.1.207) — Ubuntu Linux, Ryzen 9
-- **Frontend on MISTY** (192.168.1.200) — behind Caddy at hexdek.bluefroganalytics.com
-- Deploy server: `scp hexdek-server-linux josh@192.168.1.207:~/hexdek/hexdek-server`
-- Deploy frontend: `scp -r hexdek/dist/* josh@192.168.1.200:~/sites/hexdek/`
+- **Engine runs on DARKSTAR** (192.168.1.207:8090) — Ubuntu Linux, Ryzen 9
+- **Frontend on MISTY** (192.168.1.200) — behind Caddy at hexdek.dev
+- **Deploy script:** `./scripts/deploy.sh [backend|frontend|both]`
+- **Manual deploy server:** cross-compile → scp to DARKSTAR → `~/hexdek/start-hexdek.sh` (port 8090)
+- **Manual deploy frontend:** `cd hexdek && npm run build` → `rsync --delete hexdek/dist/ josh@...200:~/sites/hexdek/`
+- **IMPORTANT:** Frontend source is `hexdek/` (Vite React). Do NOT deploy from any other directory.
 - Requires WireGuard VPN when remote: `sudo wg-quick up ~/.config/wireguard/admin-vpn.conf`
 
 ## Data Files

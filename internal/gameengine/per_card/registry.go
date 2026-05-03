@@ -591,6 +591,7 @@ func registerDefaults() {
 	registerVanquishTheHorde(Global())
 	registerFarewell(Global())
 	registerAustereCommand(Global())
+	registerChildOfAlara(Global())
 	// Counterspells:
 	registerNegate(Global())
 	registerSwanSong(Global())
@@ -616,6 +617,9 @@ func registerDefaults() {
 	registerSimicBasilisk(Global())
 	// Fynn, the Fangbearer — deathtouch creatures give 2 poison on combat damage
 	registerFynn(Global())
+	// Skithiryx, the Blight Dragon — infect dragon; {B} haste until EOT,
+	// {B}{B} regeneration shield. Flying + infect via AST keyword pipeline.
+	registerSkithiryxTheBlightDragon(Global())
 	// Davros, Dalek Creator — opponents get 3 rad counters when a player loses
 	registerDavros(Global())
 
@@ -731,6 +735,7 @@ func registerDefaults() {
 	registerGiftsUngiven(Global())
 	registerIntuition(Global())
 	registerNarsetParterOfVeils(Global())
+	registerNarsetEnlightenedMaster(Global())
 	registerBraidsCabalMinion(Global())
 	registerImperialSeal(Global())
 	registerOrcishBowmasters(Global())
@@ -756,6 +761,7 @@ func registerDefaults() {
 	// batch17_sweep.go (registered via its own init()).
 	registerChatterfang(Global())
 	registerPitilessPlunderer(Global())
+	registerSlimefootAndSquee(Global())
 
 	// Batch #18 — drain commanders (lifegain→drain + ETB→drain).
 	registerDinaSoulSteeper(Global())
@@ -767,7 +773,6 @@ func registerDefaults() {
 
 	// Batch #19 — enchantment toolbox commanders (attack-trigger tutors).
 	registerZurTheEnchanter(Global())
-	registerLightPawsEmperorsVoice(Global())
 	// Batch #19 — artifact-commander synergy.
 	registerDrafna(Global())
 	registerJolene(Global())
@@ -791,6 +796,7 @@ func registerDefaults() {
 	registerTivit(Global())
 	registerObNixilisCaptive(Global())
 	registerMeren(Global())
+	registerMizzixOfTheIzmagnus(Global())
 	registerSelvala(Global())
 
 	// Batch #24 — B5 combo/value commanders.
@@ -845,6 +851,8 @@ func registerDefaults() {
 	registerKaaliaOfTheVast(Global())
 	registerAnimarSoulOfElements(Global())
 	registerDoranTheSiegeTower(Global())
+	// Arixmethes — slumber-counter land/creature transformer.
+	registerArixmethesSlumberingIsle(Global())
 
 	// Batch #27 (cont) — Dinosaur ETB discover, attack-life-gradient draw,
 	// opp-creature exile-instead-of-die / end-step Rat tokens.
@@ -1080,6 +1088,7 @@ func registerDefaults() {
 	registerLordWindgrace(Global())
 	registerGhaveGuruOfSpores(Global())
 	registerJhoiraWeatherlightCaptain(Global())
+	registerTheGitrogMonster(Global())
 
 	// Batch #33 (cont) — three more commanders surfaced by the deck-
 	// coverage audit: Jin Sakai, Ghost of Tsushima (Esper Samurai —
@@ -1140,6 +1149,107 @@ func registerDefaults() {
 	registerPrimoTheUnbounded(Global())
 	registerKarlachFuryOfAvernus(Global())
 	registerHinataDawnCrowned(Global())
+
+	// Anje Falkenrath — haste loot ({T}, discard → draw) + madness-discard
+	// untap trigger enabling the Anje madness loop.
+	registerAnjeFalkenrath(Global())
+
+	// Ayara, First of Locthwain — black-creature-ETB drain (each opp -1,
+	// you +1) + {T}, sac-another-creature: draw a card.
+	registerAyaraFirstOfLocthwain(Global())
+
+	// Magus Lucea Kane — upkeep scry 1 + {T}: Add {C}{C} (X-spell copy partial).
+	registerMagusLuceaKane(Global())
+
+	// Ovika, Enigma Goliath — flying + ward {3}/pay-3-life; noncreature-
+	// spell-cast creates X 1/1 red Phyrexian Goblin tokens (X = spell's MV).
+	registerOvikaEnigmaGoliath(Global())
+
+	// Shalai and Hallar — flying/vigilance legend; +1/+1 counter on
+	// any creature you control → deal that much damage to each opponent.
+	registerShalaiAndHallar(Global())
+
+	// Xyris, the Writhing Storm — RUG flying legend; whenever an opponent
+	// draws a card except the first one they draw in each of their draw
+	// steps, create a 1/1 green Snake creature token.
+	registerXyrisTheWrithingStorm(Global())
+
+	// Alela, Cunning Conqueror — first-spell-on-opponent's-turn creates 1/1
+	// black Faerie Rogue with flying; Faerie combat damage triggers tap/untap
+	// of target nonland permanent.
+	registerAlelaCunningConqueror(Global())
+
+	// Anowon, the Ruin Thief — Rogue lord (+1/+1 ETB) + combat-damage
+	// mill-X / draw-if-creature-milled trigger.
+	registerAnowonTheRuinThief(Global())
+
+	// Braids, Arisen Nightmare — end-step sac (artifact/creature/enchantment/
+	// land/planeswalker): each opponent may match-type sac or lose 2 + you draw.
+	registerBraidsArisenNightmare(Global())
+
+	// Bhaal, Lord of Murder — conditional indestructible (life <= half start)
+	// + nontoken-creature-dies: +1/+1 counter + goad opponent creature.
+	registerBhaalLordOfMurder(Global())
+
+	// Sefris of the Hidden Ways — once-per-turn venture on creature card to
+	// graveyard (dies or discard); Create Undead reanimation on dungeon
+	// completion (highest-CMC creature from graveyard to battlefield).
+	registerSefrisOfTheHiddenWays(Global())
+
+	// Brudiclad, Telchor Engineer — UR artifact/token commander: beginning-of-
+	// combat creates 1/1 blue Phyrexian Myr artifact creature token, then may
+	// copy chosen token across all other tokens the controller controls.
+	// Continuous haste-grant to creature tokens handled by layers pipeline
+	// (emitPartial).
+	registerBrudicladTelchorEngineer(Global())
+
+	// Arahbo, Roar of the World — GW Cat eminence commander: beginning-of-
+	// combat +3/+3 to another Cat (eminence; command zone not tracked) +
+	// optional {1}{G}{W} on Cat attack for trample and +X/+X where X = power.
+	registerArahboRoarOfTheWorld(Global())
+
+	// Ezuri, Claw of Progress — GU Elf Warrior: small-creature-ETB grants
+	// one experience counter; beginning-of-combat puts X +1/+1 counters on
+	// another target creature, where X = experience counters on the seat.
+	registerEzuriClawOfProgress(Global())
+
+	// Anafenza, the Foremost — WBG Human Soldier: attack trigger puts a
+	// +1/+1 counter on another tapped creature you control (best target =
+	// highest-power); death-replacement exile clause is emitPartial.
+	registerAnafenzaTheForemost(Global())
+
+	// Heliod, Sun-Crowned — indestructible mono-W enchantment god; lifegain
+	// trigger puts a +1/+1 counter on a target creature or enchantment you
+	// control; {1}{W} lifelink-grant is emitPartial (UEOT layers gap).
+	registerHeliodSunCrowned(Global())
+
+	// Zaxara, the Exemplary — BUG Nightmare Hydra legend; deathtouch +
+	// {T}: add two mana (mana system); X-cost spell cast creates a 0/0
+	// green Hydra token then puts X +1/+1 counters on it.
+	registerZaxaraTheExemplary(Global())
+
+	// Niv-Mizzet, Parun — uncounterable flying Izzet dragon; draw→1 damage
+	// ping + any-player instant/sorcery cast→draw (creates draw-damage chain).
+	registerNivMizzetParun(Global())
+
+	// Muldrotha, the Gravetide — full ETB + upkeep per-type tracking reset.
+	registerMuldrothaTheGravetide(Global())
+
+	// Teysa Karlov — death trigger doubler + token vigilance/lifelink.
+	registerTeysaKarlov(Global())
+
+	// The First Sliver — cascade keyword (AST) + grants cascade to Sliver
+	// spells cast by its controller.
+	registerTheFirstSliver(Global())
+
+	// Myrel, Shield of Argive — opponent silence during your turn + Soldier tokens on attack.
+	registerMyrelShieldOfArgive(Global())
+
+	// Light-Paws, Emperor's Voice — ETB-triggered Aura tutor.
+	registerLightPawsEmperorsVoiceETB(Global())
+
+	// Strefan, Maurer Progenitor — Blood tokens on end step + Vampire cheat on attack.
+	registerStrefanMaurerProgenitor(Global())
 
 	// Auto-generated handlers (cmd/gen-handlers).
 	registerGeneratedHandlers(Global())

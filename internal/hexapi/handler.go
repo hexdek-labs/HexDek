@@ -130,7 +130,7 @@ func (h *Handler) handleListDecks(w http.ResponseWriter, r *http.Request) {
 		if ownerFilter != "" && owner != ownerFilter {
 			continue
 		}
-		if owner == "freya" || owner == "benched" || owner == "test" || owner == "moxfield_300" {
+		if owner == "freya" || owner == "benched" || owner == "test" || owner == "moxfield_300" || owner == ".versions" {
 			continue
 		}
 

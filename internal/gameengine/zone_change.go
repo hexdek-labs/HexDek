@@ -380,6 +380,30 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 			"to_zone":         toZone,
 		})
 	}
+
+	// 4. Fire "land_to_graveyard" for any land card entering a graveyard from
+	//    any zone (CR §702 Gitrog Monster pattern: "whenever one or more land
+	//    cards are put into your graveyard from anywhere").
+	//    owner_seat is available only when perm != nil (permanent leaving
+	//    battlefield) or when called via MoveCard (nil perm, card carries
+	//    Owner). We derive the seat from perm.Controller when perm != nil,
+	//    otherwise fall through — callers using MoveCard pass ownerSeat
+	//    explicitly via FireZoneChangeTriggers' perm==nil path; in that case
+	//    card.Owner holds the seat index.
+	if toZone == "graveyard" && card != nil && cardHasType(card, "land") {
+		ownerSeat := -1
+		if perm != nil {
+			ownerSeat = perm.Controller
+		} else if card.Owner >= 0 {
+			ownerSeat = card.Owner
+		}
+		FireCardTrigger(gs, "land_to_graveyard", map[string]interface{}{
+			"card":       card,
+			"owner_seat": ownerSeat,
+			"from_zone":  fromZone,
+			"to_zone":    toZone,
+		})
+	}
 }
 
 // zoneChangeToTriggerEvents maps a (fromZone, toZone) pair to the set of

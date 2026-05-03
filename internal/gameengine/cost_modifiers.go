@@ -306,6 +306,23 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 					})
 				}
 
+			case "Mizzix of the Izmagnus":
+				// Instant and sorcery spells you cast cost {1} less for each
+				// experience counter you have (CR §601.2f, floor 0).
+				if isSelf && isInstantOrSorcery {
+					casterSeat := gs.Seats[seatIdx]
+					if casterSeat != nil && casterSeat.Flags != nil {
+						xp := casterSeat.Flags["experience_counters"]
+						if xp > 0 {
+							mods = append(mods, CostModifier{
+								Kind:   CostModReduction,
+								Amount: xp,
+								Source: name,
+							})
+						}
+					}
+				}
+
 			case "Sapphire Medallion":
 				if isSelf && CardHasColor(card, "U") {
 					mods = append(mods, CostModifier{

@@ -357,7 +357,9 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 	// so the triggered abilities go onto the stack ABOVE the spell being
 	// cast — matching CR §603.3 ("the next time a player would receive
 	// priority...").
+	gs.Flags["_cast_chosen_x"] = chosenX
 	fireCastTriggers(gs, seatIdx, card)
+	delete(gs.Flags, "_cast_chosen_x")
 
 	// Bridge fire for cast-trigger observer permanents NOT yet wired into
 	// the per_card registry (Storm-Kiln Artist, Young Pyromancer, Birgi,

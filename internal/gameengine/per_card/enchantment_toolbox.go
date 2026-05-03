@@ -74,65 +74,6 @@ func zurAttackTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 }
 
 // ---------------------------------------------------------------------------
-// Light-Paws, Emperor's Voice
-//
-// Oracle text:
-//   Whenever Light-Paws, Emperor's Voice attacks, search your library for
-//   an Aura card with mana value less than or equal to the number of
-//   Auras you control attached to a creature, put it onto the battlefield
-//   attached to a creature you control, then shuffle.
-//
-// Implementation simplification per task spec: search for the highest-CMC
-// Aura in the library and put it onto the battlefield.
+// Light-Paws, Emperor's Voice — moved to light_paws_emperors_voice.go
+// (ETB-triggered Aura tutor, replaces the old attack-trigger stub).
 // ---------------------------------------------------------------------------
-
-func registerLightPawsEmperorsVoice(r *Registry) {
-	r.OnTrigger("Light-Paws, Emperor's Voice", "creature_attacks", lightPawsAttackTrigger)
-}
-
-func lightPawsAttackTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
-	const slug = "light_paws_emperors_voice_attack"
-	if gs == nil || perm == nil || perm.Card == nil || ctx == nil {
-		return
-	}
-	attackerPerm, _ := ctx["attacker_perm"].(*gameengine.Permanent)
-	if attackerPerm != perm {
-		return
-	}
-	if perm.Card.DisplayName() != "Light-Paws, Emperor's Voice" {
-		return
-	}
-	seat := perm.Controller
-	if seat < 0 || seat >= len(gs.Seats) {
-		return
-	}
-	s := gs.Seats[seat]
-
-	bestIdx := -1
-	bestCMC := -1
-	for i, c := range s.Library {
-		if c == nil || !cardHasType(c, "aura") {
-			continue
-		}
-		if c.CMC > bestCMC {
-			bestCMC = c.CMC
-			bestIdx = i
-		}
-	}
-	if bestIdx < 0 {
-		shuffleLibraryPerCard(gs, seat)
-		emitFail(gs, slug, perm.Card.DisplayName(), "no_aura_in_library", nil)
-		return
-	}
-
-	card := s.Library[bestIdx]
-	gameengine.MoveCard(gs, card, seat, "library", "battlefield", "light_paws_emperors_voice")
-	enterBattlefieldWithETB(gs, seat, card, false)
-	shuffleLibraryPerCard(gs, seat)
-
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":  seat,
-		"found": card.DisplayName(),
-		"cmc":   card.CMC,
-	})
-}

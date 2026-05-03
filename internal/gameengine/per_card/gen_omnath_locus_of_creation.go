@@ -26,7 +26,7 @@ func omnathLocusOfCreationETB(gs *gameengine.GameState, perm *gameengine.Permane
 		return
 	}
 	drawOne(gs, seat, perm.Card.DisplayName())
-	gameengine.GainLife(gs, seat, 4, perm.Card.DisplayName())
+	gameengine.GainLife(gs, seat, 1, perm.Card.DisplayName())
 	emitPartial(gs, slug, perm.Card.DisplayName(), "additional non-ETB abilities not implemented")
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": seat,

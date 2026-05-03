@@ -19,9 +19,40 @@ kanban-plugin: board
 
 - [ ] Negative ELO shame badges — "MID" stamp at 0, escalating tiers for deep negative. Leaderboard bottom-10 wall of shame section #ui #fun
 - [ ] Operator platform page/tab (operator profile, deck management, analytics dashboard) #ui #platform
-- [ ] Friends system + player profiles — add friends, view each other's profiles/decks #ui #social
+- [ ] Friends system + player profiles — lightweight "pub" model: see each other's decks/ELO, no feed/notifications. Add via search or deck page #ui #social
 - [ ] Bracket-stratified leaderboard tabs — filter by B1-B5, separate rankings per bracket #ui
 - [ ] Game Changer cards list on deck page — show which specific GC cards the deck runs #ui
+
+### UX Overhaul (Ive/Jobs/Watts Quorum — 2026-05-02)
+
+**Navigation restructure:**
+- [ ] Reduce nav from 8 tabs to 5-6 — PUBLIC: DECKS, RANKINGS, SPECTATE; AUTH adds: MY DECKS + contextual IMPORT #ui #nav
+- [ ] Rename "DASH" → "MY DECKS" — possessive language signals ownership, not admin tooling #ui #nav
+- [ ] Fold PLAY, FORGE, REPORT into contextual access — not top-level nav. Surface where needed (e.g. FORGE inside deck drilldown, REPORT inside game end) #ui #nav
+- [ ] Consolidate ABOUT into footer — not worth a nav slot #ui #nav
+
+**Home / Splash page:**
+- [ ] Embed fishtank on home/splash page — merge splash + spectate into one attention trap. Live game visible immediately on landing #ui #home
+- [ ] "Upload My Deck" CTA prominent on home page and browse/deck pages — primary conversion action #ui #home
+
+**Deck pages — "tangible object" design:**
+- [ ] Commander color-identity page theming — CSS vars `--page-wash`, `--accent` derived from commander color identity (e.g. Grixis = deep blue-black gradient with red accent). Every deck page feels unique #ui #deck #design
+- [ ] Full-bleed commander art on deck pages — hero image, not a thumbnail. The commander IS the page #ui #deck #design
+- [ ] Card grid view as default — art thumbnails grouped by Freya role (ramp, draw, removal, combo pieces, etc). Text list as toggle for data people #ui #deck
+- [ ] Deck personality blurb prominent — Freya's 2-3 sentence archetype/strategy description front and center, not buried in a tab #ui #deck
+- [ ] Commander theming on deck pages — visual design system where each deck page feels like holding a real object, not browsing a database row #ui #deck #design
+
+**Deck library:**
+- [ ] Deck library as visual shelf — card objects (commander art + name + bracket badge), not table rows. Browse = flip through a collection #ui #deck #library
+
+**Search:**
+- [ ] Universal search bar — one search field: decks, commanders, cards, players. Contextual results. Always accessible #ui #search
+
+**Auth flow:**
+- [ ] One-tap auth (Google/Discord) — triggered contextually (first deck upload, first friend add), not gatekept at the door #ui #auth
+
+**Sharing:**
+- [ ] Share = link — no login needed to view a shared deck. Shareable URL on every deck page #ui #social
 
 
 ## High Priority — Learning Loop (Observability)
@@ -53,7 +84,7 @@ kanban-plugin: board
 
 - [x] **Huginn Tier 3 export** — `FreyaInteraction` type, `exportTier3ForFreya()` called at end of `Ingest()`, writes all Tier 3 patterns expanded by card pairs to `data/huginn/tier3_for_freya.json`. `ReadTier3ForFreya()` exported reader (2026-05-02) #engine #huginn
 - [x] **Freya reads Tier 3 file** — `findEmergentSynergies()` in hexdek-freya reads `tier3_for_freya.json` first (highest confidence), then learned interactions. Deduped by sorted card pair keys (2026-05-02) #engine #freya
-- [ ] **Validate loop closure** — end-to-end test: run games → Heimdall observes → Huginn graduates → Freya incorporates → hat uses updated profile. *Depends: grinder run with live data* #engine #integration
+- [x] **Validate loop closure** — deployed to DARKSTAR, grinder running 33K g/min. 44K seeds captured in 2min, 1187/1196 amiibo pools created, evolution triggering (gen 1+). Heimdall→seeds.jsonl + Amiibo persistence confirmed live (2026-05-02) #engine #integration
 
 
 ## High Priority — Hat Intelligence

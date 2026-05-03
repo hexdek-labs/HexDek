@@ -48,9 +48,8 @@ func dinaDrainTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 	})
 }
 
-func registerVitoThornOfTheDuskRose(r *Registry) {
-	r.OnTrigger("Vito, Thorn of the Dusk Rose", "life_gained", vitoDrainTrigger)
-}
+// registerVitoThornOfTheDuskRose has moved to vito_thorn_of_the_dusk_rose.go
+// which adds both the life_gained trigger and the {3}{B}{B} activated ability.
 
 func registerVitoFanaticOfAclazotz(r *Registry) {
 	r.OnTrigger("Vito, Fanatic of Aclazotz", "life_gained", vitoDrainTrigger)
