@@ -210,6 +210,17 @@ func PushTriggeredAbility(gs *GameState, src *Permanent, effect gameast.Effect) 
 		return item
 	}
 
+	// CR §608.2c: if we're inside the resolution of an outer spell or
+	// ability, the trigger goes on the stack AFTER that resolution
+	// completes — defer it to the pending queue. The outer ResolveStackTop's
+	// outermost-frame defer drains the queue. Without this, a trigger
+	// fired by an effect mid-resolution would push+resolve before the
+	// outer effect finished, which §608.2c explicitly forbids.
+	if gs.Flags["_resolve_frame_depth"] > 0 {
+		collectTrigger(gs, item)
+		return item
+	}
+
 	// Stack trace: log triggered ability push for CR audit.
 	trigName := ""
 	if src.Card != nil {
@@ -903,9 +914,25 @@ func ResolveStackTop(gs *GameState) {
 	if gs == nil || len(gs.Stack) == 0 {
 		return
 	}
-	if gs.Flags != nil && gs.Flags["ended"] == 1 {
+	if gs.Flags == nil {
+		gs.Flags = map[string]int{}
+	}
+	if gs.Flags["ended"] == 1 {
 		return
 	}
+	// CR §608.2c: track resolution-frame nesting so triggered abilities that
+	// fire during this resolution wait in gs.pendingTriggers (see
+	// trigger_batch.go) and only go on the stack after the outermost
+	// resolution finishes.
+	gs.Flags["_resolve_frame_depth"]++
+	defer func() {
+		gs.Flags["_resolve_frame_depth"]--
+		// Outermost frame closed: any triggers that accumulated during this
+		// resolution now go on the stack and resolve.
+		if gs.Flags["_resolve_frame_depth"] == 0 && len(gs.pendingTriggers) > 0 && gs.Flags["ended"] != 1 {
+			drainPendingTriggers(gs)
+		}
+	}()
 	item := gs.Stack[len(gs.Stack)-1]
 	gs.Stack = gs.Stack[:len(gs.Stack)-1]
 
