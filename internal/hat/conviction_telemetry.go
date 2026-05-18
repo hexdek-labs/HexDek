@@ -57,6 +57,14 @@ type ConvictionEvent struct {
 	WinLineExtinct bool   `json:"winline_extinct"`
 	WinLineDetail  string `json:"winline_detail,omitempty"`
 	AnyTriggered   bool   `json:"any_triggered"`
+
+	// Archetype is the hat's belief about its own deck archetype at sample
+	// time (Strategy.Archetype, e.g. "combo", "control"). Empty when no
+	// strategy profile was loaded. Lets post-game correlation answer "did
+	// the win-line-extinct trigger fire disproportionately on combo decks?"
+	// without rejoining against the deck index. Optional — older clients
+	// see the field absent rather than a wrong default.
+	Archetype string `json:"archetype,omitempty"`
 }
 
 // convictionRingCapacity is the max number of samples retained in the
