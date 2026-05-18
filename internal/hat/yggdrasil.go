@@ -1610,6 +1610,31 @@ func (h *YggdrasilHat) bestTarget(gs *gameengine.GameState, seatIdx int, attacke
 		tgtScores[i] = c.score
 	}
 	pick := h.selectAmongTop(tgtScores)
+
+	// Persist the candidate pool — top 3 seats with scores — so the
+	// analyzer can see *why* a target was chosen over the alternatives
+	// (kingmaker bias, threat sniffing, evasion hijack all surface in
+	// the score deltas). Keeping it to 3 since 4-player Commander caps
+	// the pool there; if seats < 3 we just log whatever was there.
+	topN := 3
+	if len(candidates) < topN {
+		topN = len(candidates)
+	}
+	topSeats := make([]int, topN)
+	topScores := make([]float64, topN)
+	for i := 0; i < topN; i++ {
+		topSeats[i] = candidates[i].seat
+		topScores[i] = candidates[i].score
+	}
+	h.emitDecisionEvent(gs, seatIdx, "attack_target", map[string]interface{}{
+		"chosen_seat":   candidates[pick].seat,
+		"chosen_score":  candidates[pick].score,
+		"top_seats":     topSeats,
+		"top_scores":    topScores,
+		"candidate_n":   len(candidates),
+	})
+	h.logf("ATTACK_TARGET seat=%d -> def=%d score=%.3f (top: %v scores=%v)",
+		seatIdx, candidates[pick].seat, candidates[pick].score, topSeats, topScores)
 	return candidates[pick].seat
 }
 
@@ -2639,6 +2664,39 @@ func (h *YggdrasilHat) logf(format string, args ...interface{}) {
 	*h.DecisionLog = append(*h.DecisionLog, fmt.Sprintf(format, args...))
 }
 
+// emitDecisionEvent persists a hat decision to the engine event log so the
+// post-game analyzer (heimdall) can reconstruct *why* a choice was made
+// without the in-memory DecisionLog (which is nil in tournament play). The
+// hat's own archetype belief is stamped into every event so each row is
+// self-describing — analysts shouldn't have to rejoin against the deck
+// index just to know which strategy was driving the decision. Kind is the
+// decision category ("mulligan", "block", "attack_target", "mode") and is
+// prefixed with "hat_decision_" on the engine side.
+func (h *YggdrasilHat) emitDecisionEvent(gs *gameengine.GameState, seatIdx int, kind string, details map[string]interface{}) {
+	if gs == nil {
+		return
+	}
+	if details == nil {
+		details = map[string]interface{}{}
+	}
+	if _, ok := details["archetype"]; !ok {
+		if h.Strategy != nil {
+			details["archetype"] = h.Strategy.Archetype
+		} else {
+			details["archetype"] = ""
+		}
+	}
+	details["turn"] = gs.Turn
+	gs.LogEvent(gameengine.Event{
+		Kind:    "hat_decision_" + kind,
+		Seat:    seatIdx,
+		Target:  -1,
+		Source:  "yggdrasil",
+		Amount:  gs.Turn,
+		Details: details,
+	})
+}
+
 // turnPrefix returns a turn-scoped key prefix to prevent stale visit
 // accumulation in multiplayer.
 func turnPrefix(gs *gameengine.GameState) string {
@@ -2666,7 +2724,57 @@ func roundTag(gs *gameengine.GameState, seatIdx int) string {
 
 // -- Interface: ChooseMulligan --
 
-func (h *YggdrasilHat) ChooseMulligan(gs *gameengine.GameState, seatIdx int, hand []*gameengine.Card) bool {
+// handStatsForLog computes a compact hand summary for decision logging.
+// Mirrors the categorization the mulligan heuristic does so post-game
+// analysis can correlate the keep/mull call against hand composition
+// without re-running the categorize loop.
+func (h *YggdrasilHat) handStatsForLog(hand []*gameengine.Card) (lands, combo, valueEngines, stars, cuttables int) {
+	for _, c := range hand {
+		if c == nil {
+			continue
+		}
+		for _, t := range c.Types {
+			if t == "land" {
+				lands++
+				break
+			}
+		}
+		if h.isComboRelevant(c) {
+			combo++
+		}
+		if h.isValueEngineKey(c) {
+			valueEngines++
+		}
+		if h.isStarCard(c) {
+			stars++
+		}
+		if h.isCuttable(c) {
+			cuttables++
+		}
+	}
+	return
+}
+
+func (h *YggdrasilHat) ChooseMulligan(gs *gameengine.GameState, seatIdx int, hand []*gameengine.Card) (mulligan bool) {
+	// Named return + defer so every existing return path participates in
+	// the persisted decision event without threading a reason through ~8
+	// return sites. Hand stats are computed once here; the inner heuristic
+	// recomputes them locally (cheap — bounded hand size).
+	defer func() {
+		lands, combo, veCount, starCount, cuttableCount := h.handStatsForLog(hand)
+		h.emitDecisionEvent(gs, seatIdx, "mulligan", map[string]interface{}{
+			"hand_size":     len(hand),
+			"lands":         lands,
+			"combo":         combo,
+			"value_engines": veCount,
+			"stars":         starCount,
+			"cuttables":     cuttableCount,
+			"mulliganed":    mulligan,
+		})
+		h.logf("MULLIGAN seat=%d size=%d lands=%d ve=%d stars=%d cut=%d -> mull=%v",
+			seatIdx, len(hand), lands, veCount, starCount, cuttableCount, mulligan)
+	}()
+
 	landCount := 0
 	comboCount := 0
 	rampCount := 0
@@ -4861,6 +4969,36 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 		}
 		incoming -= absorbed * swingMul
 	}
+
+	// Persist a single summary row covering the block math: how much was
+	// coming in, how much we tanked, how many blockers we committed across
+	// all attackers, residual life after the swing. Lets heimdall answer
+	// "did the hat trade efficiently?" and "did it chump-block when it
+	// shouldn't have?" without re-simulating the combat step.
+	blockersCommitted := 0
+	attackersBlocked := 0
+	for _, blockers := range out {
+		if len(blockers) > 0 {
+			attackersBlocked++
+			blockersCommitted += len(blockers)
+		}
+	}
+	residualLife := seat.Life - incoming
+	if incoming < 0 {
+		residualLife = seat.Life
+	}
+	h.emitDecisionEvent(gs, seatIdx, "block", map[string]interface{}{
+		"attackers":           len(attackers),
+		"attackers_blocked":   attackersBlocked,
+		"blockers_committed":  blockersCommitted,
+		"residual_incoming":   incoming,
+		"life_before":         seat.Life,
+		"residual_life":       residualLife,
+		"poison_added":        addedPoison,
+		"existential_commander": existentialCommander,
+	})
+	h.logf("BLOCK seat=%d atkrs=%d/%d blockers=%d incoming_left=%d life=%d->%d",
+		seatIdx, attackersBlocked, len(attackers), blockersCommitted, incoming, seat.Life, residualLife)
 	return out
 }
 
@@ -5318,6 +5456,31 @@ func (h *YggdrasilHat) ChooseMode(gs *gameengine.GameState, seatIdx int, modes [
 		modeScores[i] = s.score
 	}
 	pick := h.selectAmongTop(modeScores)
+
+	// Persist mode scoring so the analyzer can answer "why did the hat
+	// pick draw over damage on Cryptic Command?". top_indices / top_scores
+	// are aligned and ordered by score desc; chosen_idx is the original
+	// (mode-list) index of the pick, not the position in the sorted slice.
+	topN := len(scored)
+	if topN > 4 {
+		topN = 4
+	}
+	topIdx := make([]int, topN)
+	topScores := make([]float64, topN)
+	for i := 0; i < topN; i++ {
+		topIdx[i] = scored[i].idx
+		topScores[i] = scored[i].score
+	}
+	h.emitDecisionEvent(gs, seatIdx, "mode", map[string]interface{}{
+		"chosen_idx":    scored[pick].idx,
+		"chosen_score":  scored[pick].score,
+		"top_indices":   topIdx,
+		"top_scores":    topScores,
+		"mode_count":    len(modes),
+		"position":      pos,
+	})
+	h.logf("MODE seat=%d -> idx=%d score=%.3f (top: %v scores=%v)",
+		seatIdx, scored[pick].idx, scored[pick].score, topIdx, topScores)
 	return scored[pick].idx
 }
 

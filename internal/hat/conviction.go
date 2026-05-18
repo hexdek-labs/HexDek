@@ -123,6 +123,11 @@ func (h *YggdrasilHat) recordConvictionSample(gs *gameengine.GameState, seatIdx 
 		d.firstWinLineTriggerTurn = gs.Turn
 	}
 
+	archetype := ""
+	if h.Strategy != nil {
+		archetype = h.Strategy.Archetype
+	}
+
 	gs.LogEvent(gameengine.Event{
 		Kind:   "conviction_diagnostic",
 		Seat:   seatIdx,
@@ -137,6 +142,7 @@ func (h *YggdrasilHat) recordConvictionSample(gs *gameengine.GameState, seatIdx 
 			"winline_extinct":  winLineExtinct,
 			"winline_detail":   winLineDetail,
 			"any_triggered":    anyTriggered,
+			"archetype":        archetype,
 		},
 	})
 
@@ -150,6 +156,7 @@ func (h *YggdrasilHat) recordConvictionSample(gs *gameengine.GameState, seatIdx 
 		WinLineExtinct:   winLineExtinct,
 		WinLineDetail:    winLineDetail,
 		AnyTriggered:     anyTriggered,
+		Archetype:        archetype,
 	})
 }
 
