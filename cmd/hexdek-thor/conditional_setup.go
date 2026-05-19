@@ -1025,7 +1025,12 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 	// an existing scaffold (canonical short-circuit) or a new shape below.
 	case "hellbent":
 		return conditionScaffold{kind: condScaffoldHellbent}
-	case "raid", "attacked_this_turn":
+	case "raid", "attacked_this_turn", "you_attacked_this_turn":
+		// "you_attacked_this_turn" is the AST kind emitted by the parser
+		// for "if you attacked this turn" / "if ~ attacked you this turn"
+		// gates (Trynn, Nightsquad Commando, raid-style EOT triggers).
+		// evalCondition reads it directly via CheckRaid; the scaffold
+		// just needs to flip the same flag CheckRaid consults.
 		return conditionScaffold{kind: condScaffoldAttackedThisTurn}
 	case "spell_mastery":
 		return conditionScaffold{kind: condScaffoldSpellMastery}

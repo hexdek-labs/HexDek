@@ -554,8 +554,20 @@ func setupForEffect(gs *gameengine.GameState, oc *oracleCard, info *effectInfo) 
 		filterBase = strings.TrimPrefix(filterBase, "target ")
 		filterBase = strings.TrimPrefix(filterBase, "a ")
 		filterBase = strings.TrimPrefix(filterBase, "an ")
-		if filterBase == "player" || filterBase == "opponent" || filterBase == "each_player" {
+		if filterBase == "player" || filterBase == "opponent" || filterBase == "each_player" ||
+			filterBase == "that_player" || filterBase == "target_player" || filterBase == "target player" {
 			fillGraveyard(gs, 1, 5)
+		}
+		// "card" without further qualification is the parser shape for
+		// "exile target card from a graveyard" (Soul-Guide Lantern, Bojuka
+		// Bog, Tormod's Crypt-style mass-exile triggers). The Filter
+		// itself loses the "from a graveyard" hint, so we seed each
+		// opponent's graveyard with a card and ensure resolveExile's
+		// graveyard-search fallback (added in this revision) has stock to
+		// exile.
+		if filterBase == "card" {
+			fillGraveyard(gs, 1, 5)
+			fillGraveyard(gs, 0, 5)
 		}
 		// For spell-targeting bounce/exile, push a spell on the stack.
 		if filterBase == "spell" || filterBase == "thing" {
