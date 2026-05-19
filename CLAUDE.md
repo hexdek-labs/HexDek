@@ -177,6 +177,10 @@ Fetch oracle data: `scripts/fetch-oracle.sh`
 | Date | Source | Issue | Severity | Notes |
 |------|--------|-------|----------|-------|
 | 2026-05-08 | Corpus Audit | **4,190 unbucketed condition/trigger nodes** across all 4 eras (33.9% of 12,363 total) | Info | Era 1 biggest gap (3,281), Era 3 highest % (76.2%). 19 new scaffold kinds proposed from Era 4 audit |
+| 2026-05-19 | Loki r41 | **Cheat-into-play leaks Card across zones**: 1,622 CardIdentity+ZoneConservation hits in chaos game 137, single `*Card` pointer for Cerulean Sphinx referenced from two zones simultaneously (library+library OR library+battlefield) | High | Repro: `--games 1 --seed 1370042`. Shuffle-handler fix attempted and reverted (duplicate predates the shuffle). Likely a Bribery / "search opponent's library and put it onto the battlefield" path not removing from source library. See `docs/loki-r41-report.md` |
+| 2026-05-19 | Loki r41 | **AttachmentConsistency (14)** — aura/equipment attached state diverges from controller's battlefield | Low | Likely stale `AttachedTo` after cross-seat control change. See `docs/loki-r41-report.md` |
+| 2026-05-19 | Loki r41 | **TriggerCompleteness (8)** — trigger batch opened but never drained | Low | Likely `BeginTriggerBatch` whose `defer EndTriggerBatch` was bypassed by an early return |
+| 2026-05-19 | Loki r41 | **ZoneCastGrantExpiry (8)** — impulse-play / cast-from-exile grant outlived its declared expiry | Low | Suspect `resolveResidualByText` impulse_play grants (resolve_helpers.go:4691) lacking cleanup hook |
 
 ### Resolved
 
