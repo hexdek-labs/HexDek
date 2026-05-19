@@ -488,6 +488,31 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 					}
 				}
 
+			case "Rakdos, Lord of Riots":
+				// "Creature spells you cast cost {1} less to cast for each
+				// 1 life your opponents have lost this turn." Sum each
+				// opponent's Turn.LifeLost (covers DealDamage, LoseLife,
+				// noncombat damage, and combat damage paths — all bump
+				// Turn.LifeLost).
+				if isSelf && isCreature {
+					n := 0
+					for i, s := range gs.Seats {
+						if s == nil || i == seatIdx {
+							continue
+						}
+						if s.Turn.LifeLost > 0 {
+							n += s.Turn.LifeLost
+						}
+					}
+					if n > 0 {
+						mods = append(mods, CostModifier{
+							Kind:   CostModReduction,
+							Amount: n,
+							Source: name,
+						})
+					}
+				}
+
 			case "Gonti, Canny Acquisitor":
 				// "Spells you cast but don't own cost {1} less to cast."
 				// The card's Owner field is the original owner's seat;
