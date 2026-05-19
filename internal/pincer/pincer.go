@@ -147,8 +147,17 @@ func (t *Tracker) Middleware(next http.Handler) http.Handler {
 			})
 		}
 
-		// Best-effort upsert; never block the request on a tracking error.
-		go t.touchSession(sid, fresh, r.UserAgent(), clientIPHash(r))
+		// For brand-new sessions, write the row synchronously so that any
+		// follow-up request carrying this cookie (e.g. an immediate POST
+		// to /api/pincer/stitch on auth) finds the row to update — going
+		// async here let Stitch's UPDATE silently affect 0 rows when the
+		// goroutine hadn't run yet. Subsequent last_seen_at touches are
+		// non-load-bearing and stay async.
+		if fresh {
+			t.touchSession(sid, true, r.UserAgent(), clientIPHash(r))
+		} else {
+			go t.touchSession(sid, false, r.UserAgent(), clientIPHash(r))
+		}
 
 		// Record a page view for content routes — skip API + static assets
 		// so we don't spam events for every fetch.
