@@ -551,6 +551,24 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 					}
 				}
 
+			case "Alisaie Leveilleur":
+				// "Dualcast — The second spell you cast each turn costs
+				// {2} less to cast." seat.Turn.SpellsCast is the count
+				// of spells already cast this turn; at cost-calc time
+				// the spell being scanned is not yet counted, so
+				// SpellsCast == 1 means this would-be cast is the
+				// second one.
+				if isSelf {
+					own := gs.Seats[seatIdx]
+					if own != nil && own.Turn.SpellsCast == 1 {
+						mods = append(mods, CostModifier{
+							Kind:   CostModReduction,
+							Amount: 2,
+							Source: name,
+						})
+					}
+				}
+
 			case "Gonti, Canny Acquisitor":
 				// "Spells you cast but don't own cost {1} less to cast."
 				// The card's Owner field is the original owner's seat;
