@@ -72,3 +72,42 @@ func TestEtali_ETB_DeadOpponentsSkipped(t *testing.T) {
 		t.Errorf("expected dead seat 2 library untouched, before=%d after=%d", libBefore2, len(gs.Seats[2].Library))
 	}
 }
+
+// TestEtali_ETB_NoDuplicatePermanent locks the r42b fix: each free-cast
+// exiled card produces exactly one Permanent (on Etali's controller's
+// side), not two. Previously a redundant MoveCard(ownerSeat, ...)
+// alongside enterBattlefieldWithETB(controller, ...) wrapped the card
+// in a Permanent twice — once on the owner's battlefield and once on
+// the controller's — leaving the same *Card pointer in two zones and
+// tripping the CardIdentity invariant.
+func TestEtali_ETB_NoDuplicatePermanent(t *testing.T) {
+	gs := newGame(t, 4)
+
+	// Seat 1 library: a single creature on top.
+	creatureCard := &gameengine.Card{
+		Name:  "Free-Cast Creature",
+		Owner: 1,
+		Types: []string{"creature"},
+	}
+	gs.Seats[1].Library = append(gs.Seats[1].Library, creatureCard)
+	// Other seats: empty libraries so only seat 1 contributes.
+	etali := addPerm(gs, 0, "Etali, Primal Conqueror", "creature", "legendary")
+	gameengine.InvokeETBHook(gs, etali)
+
+	// The exiled creature must appear in exactly one zone — Etali's
+	// controller (seat 0) battlefield — never in two zones at once.
+	occurrences := 0
+	for seatIdx, s := range gs.Seats {
+		for _, p := range s.Battlefield {
+			if p != nil && p.Card == creatureCard {
+				occurrences++
+				if seatIdx != 0 {
+					t.Errorf("free-cast Permanent landed on seat %d battlefield, want seat 0 (Etali's controller)", seatIdx)
+				}
+			}
+		}
+	}
+	if occurrences != 1 {
+		t.Errorf("free-cast card appears in %d Permanents across all battlefields, want 1", occurrences)
+	}
+}

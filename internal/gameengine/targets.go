@@ -207,8 +207,21 @@ func pickPlayerTarget(gs *GameState, f gameast.Filter, srcSeat int) []Target {
 			}
 		}
 		return []Target{{Kind: TargetKindSeat, Seat: best}}
+	case "that_player":
+		// "That player" in a trigger context refers to a player named by
+		// the trigger condition — typically the player damaged, milled,
+		// cast a spell, etc. — and is almost never the source's
+		// controller. Pick an opponent so the effect (e.g. Fishing Gear's
+		// "exile the top card of that player's library") resolves
+		// against the right seat instead of silently no-op'ing on the
+		// controller's empty zones.
+		opps := gs.Opponents(srcSeat)
+		if len(opps) > 0 {
+			return []Target{{Kind: TargetKindSeat, Seat: opps[0]}}
+		}
+		return []Target{{Kind: TargetKindSeat, Seat: srcSeat}}
 	case "player", "target_player", "target player",
-		"that_player", "player_or_planeswalker":
+		"player_or_planeswalker":
 		// Default to opponent when targeted, else controller.
 		if f.Targeted {
 			opps := gs.Opponents(srcSeat)

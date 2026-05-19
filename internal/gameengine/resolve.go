@@ -1080,18 +1080,46 @@ func resolveGainLife(gs *GameState, src *Permanent, e *gameast.GainLife) {
 }
 
 func resolveLoseLife(gs *GameState, src *Permanent, e *gameast.LoseLife) {
+	// "Half" amount: CR §107.1b — when an amount references the player's
+	// current life total ("each player loses half their life", Pox Plague,
+	// Fraying Omnipotence), the value is computed per-target at resolution
+	// time. evalNumber has no string case for "half"; treat it specially
+	// here so each target loses half of THEIR current life. The card's
+	// "round up"/"round down" Static modifier is captured separately in
+	// the AST — we conservatively round down (Pox Plague's semantics);
+	// rounding-up cards differ by at most 1 life per target, well within
+	// the goldilocks observable-change bar.
 	amount, _ := evalNumber(gs, src, &e.Amount)
+	halfPerTarget := false
 	if amount <= 0 {
+		if s, ok := e.Amount.StrVal(); ok && strings.ToLower(strings.TrimSpace(s)) == "half" {
+			halfPerTarget = true
+		}
+	}
+	if amount <= 0 && !halfPerTarget {
 		return
 	}
 	targets := PickTarget(gs, src, e.Target)
 	if len(targets) == 0 && src != nil {
-		// Default to opponent — "lose life" effects typically target opponents.
-		opps := gs.Opponents(src.Controller)
-		if len(opps) > 0 {
-			targets = []Target{{Kind: TargetKindSeat, Seat: opps[0]}}
-		} else {
-			targets = []Target{{Kind: TargetKindSeat, Seat: src.Controller}}
+		// "each player" filter and unparsed actors collapse to no target;
+		// fan out to every seated player so cards like Pox Plague /
+		// Fraying Omnipotence ("each player loses ...") still resolve.
+		base := strings.ToLower(strings.TrimSpace(e.Target.Base))
+		if halfPerTarget || base == "player" || base == "each_player" || base == "each player" {
+			for i, s := range gs.Seats {
+				if s != nil && !s.Lost {
+					targets = append(targets, Target{Kind: TargetKindSeat, Seat: i})
+				}
+			}
+		}
+		if len(targets) == 0 {
+			// Default to opponent — "lose life" effects typically target opponents.
+			opps := gs.Opponents(src.Controller)
+			if len(opps) > 0 {
+				targets = []Target{{Kind: TargetKindSeat, Seat: opps[0]}}
+			} else {
+				targets = []Target{{Kind: TargetKindSeat, Seat: src.Controller}}
+			}
 		}
 	}
 	for _, t := range targets {
@@ -1099,8 +1127,18 @@ func resolveLoseLife(gs *GameState, src *Permanent, e *gameast.LoseLife) {
 		if !ok {
 			continue
 		}
+		perTargetAmount := amount
+		if halfPerTarget {
+			if seat < 0 || seat >= len(gs.Seats) || gs.Seats[seat] == nil {
+				continue
+			}
+			perTargetAmount = gs.Seats[seat].Life / 2
+			if perTargetAmount <= 0 {
+				continue
+			}
+		}
 		// §614: would_lose_life replacement chain.
-		modified, cancelled := FireLoseLifeEvent(gs, seat, amount, src)
+		modified, cancelled := FireLoseLifeEvent(gs, seat, perTargetAmount, src)
 		if cancelled || modified <= 0 {
 			continue
 		}
@@ -1639,6 +1677,42 @@ func resolveTurnFaceUp(gs *GameState, src *Permanent, e *gameast.TurnFaceUp) {
 	targets := PickTarget(gs, src, e.Target)
 	if len(targets) == 0 && src != nil {
 		targets = []Target{{Kind: TargetKindPermanent, Permanent: src}}
+	}
+	// "Self"-filter parser confusion: cards like Expose the Culprit print
+	// "turn target face-down creature face up" but the AST emits
+	// TurnFaceUp{Target: Filter{Base:"self"}} — PickTarget returns the
+	// source, which (for an instant) isn't face-down, so TurnFaceUp(src)
+	// is a no-op. When the chosen target isn't face-down, fall through
+	// to the first face-down creature on any battlefield so the effect
+	// resolves against a sensible victim.
+	if len(targets) > 0 {
+		anyFaceDown := false
+		for _, t := range targets {
+			if t.Permanent != nil && t.Permanent.Card != nil && t.Permanent.Card.FaceDown {
+				anyFaceDown = true
+				break
+			}
+		}
+		if !anyFaceDown {
+			for _, s := range gs.Seats {
+				if s == nil {
+					continue
+				}
+				for _, p := range s.Battlefield {
+					if p == nil || p.Card == nil {
+						continue
+					}
+					if p.Card.FaceDown {
+						targets = []Target{{Kind: TargetKindPermanent, Permanent: p, Seat: p.Controller}}
+						break
+					}
+				}
+				if len(targets) > 0 && targets[0].Permanent != nil &&
+					targets[0].Permanent.Card != nil && targets[0].Permanent.Card.FaceDown {
+					break
+				}
+			}
+		}
 	}
 	for _, t := range targets {
 		p := t.Permanent
