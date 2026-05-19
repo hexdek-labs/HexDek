@@ -1220,6 +1220,17 @@ func resolveExile(gs *GameState, src *Permanent, e *gameast.Exile) {
 		}
 	}
 
+	// "Exile target card" with no further type qualification — printed
+	// text like Soul-Guide Lantern's "exile target card from a graveyard".
+	// The parser strips the "from a graveyard" hint, leaving Filter.Base
+	// = "card". Cards aren't permanents, so PickTarget will return
+	// nothing on the battlefield; fall through to a graveyard search.
+	if base == "card" {
+		if exileFromGraveyard(gs, src, e) {
+			return
+		}
+	}
+
 	targets := PickTarget(gs, src, e.Target)
 	maybeFireCrime(gs, src, targets)
 	for _, t := range targets {
@@ -1550,10 +1561,34 @@ func resolveGainControl(gs *GameState, src *Permanent, e *gameast.GainControl) {
 }
 
 func resolveSacrifice(gs *GameState, src *Permanent, e *gameast.Sacrifice) {
+	// Self-reference shortcut: "sacrifice this creature/enchantment/permanent"
+	// — Query.Base reads as "self"/"it"/"this". The generic battlefield
+	// iteration below uses matchesPermanent, which has no special case for
+	// self bases (they aren't a type or color), so it would never match
+	// the source. Sacrifice the source directly here. Covers Pestilence,
+	// Pyrohemia, Withering Wisps, Task Mage Assembly, and any other card
+	// whose printed text says "sacrifice this <type>".
+	switch e.Query.Base {
+	case "self", "it", "this",
+		"that_creature", "that creature",
+		"this_creature", "this creature",
+		"that_thing", "that":
+		if src != nil {
+			SacrificePermanent(gs, src, sourceName(src))
+		}
+		return
+	}
+
 	// Pick actor seat(s).
 	actorSeats := []int{}
 	switch e.Actor {
-	case "controller", "":
+	case "controller", "", "self":
+		// "self" as an Actor (not a Filter.Base) is a parser shape for
+		// "sacrifice a land" / "sacrifice two creatures" where the
+		// implied subject is the controller of the source — see Planar
+		// Engineering's "typed_spell_effect" Sacrifice clause. Without
+		// this alias the actorSeats slice stays empty and the effect
+		// silently no-ops.
 		if src != nil {
 			actorSeats = append(actorSeats, src.Controller)
 		}
