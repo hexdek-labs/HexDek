@@ -280,7 +280,10 @@ func TestDeckCardStats_RespectsMinGames(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 
-	resp, _ := http.Get(srv.URL + "/api/deck-card-stats/josh/breya")
+	resp, err := http.Get(srv.URL + "/api/deck-card-stats/josh/breya")
+	if err != nil {
+		t.Fatalf("GET deck-card-stats: %v", err)
+	}
 	defer resp.Body.Close()
 	var body map[string]any
 	_ = json.NewDecoder(resp.Body).Decode(&body)
