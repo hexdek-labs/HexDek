@@ -94,7 +94,23 @@ func echocastingSymposiumResolve(gs *gameengine.GameState, item *gameengine.Stac
 
 // paradigmExileItem is a shared helper for paradigm spell post-resolution:
 // set exile-on-resolve flag and register for paradigm auto-copy.
+//
+// Skips both for paradigm-cast copies. CR §707.10 — a copy of a non-
+// permanent spell ceases to exist on resolution; it never lands in exile
+// to be paradigm-cast again. The original (placed in ParadigmExile by the
+// FIRST resolution) is what funds future copies. r41 game 181 / Decorum
+// Dissertation tripped the ZoneConservation invariant because every
+// paradigm tick re-registered the (copy's) Card into ParadigmExile —
+// accumulating 11 dangling refs by turn 47 even though the actual exile
+// zone only held the single original.
 func paradigmExileItem(gs *gameengine.GameState, item *gameengine.StackItem, seat int, slug, cardName string) {
+	if item != nil && item.IsCopy {
+		emit(gs, slug, cardName, map[string]interface{}{
+			"seat":          seat,
+			"paradigm_copy": true,
+		})
+		return
+	}
 	if item.CostMeta == nil {
 		item.CostMeta = map[string]interface{}{}
 	}

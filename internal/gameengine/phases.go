@@ -887,6 +887,14 @@ func ResolveParadigmCopies(gs *GameState, active int) {
 		item := &StackItem{
 			Controller: active,
 			Card:       copyCard,
+			// CR §707.10: a paradigm copy is a transient game object. The
+			// StackItem.IsCopy flag is what ResolveStackTop checks to make
+			// the spell cease to exist on resolution instead of routing
+			// the Card to the graveyard. Without it, every paradigm tick
+			// added a "real" Card to the graveyard, inflating the zone-
+			// conservation total by 1 per cast (824 violations in r41
+			// game 181 / Decorum Dissertation / Loki seed 41).
+			IsCopy:     true,
 			Effect:     eff,
 			CostMeta: map[string]interface{}{
 				"paradigm_copy": true,
