@@ -576,18 +576,20 @@ func nevinyrralETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
-	destroyed := 0
+	// Snapshot the target list first — gameengine.DestroyPermanent mutates
+	// the battlefield slice it iterates, which makes in-place iteration
+	// unsafe (skipped or double-visited entries depending on the slice
+	// state).
+	var victims []*gameengine.Permanent
 	for _, s := range gs.Seats {
 		if s == nil {
 			continue
 		}
-		var keep []*gameengine.Permanent
 		for _, p := range s.Battlefield {
-			if p == perm {
-				keep = append(keep, p)
+			if p == nil || p == perm || p.Card == nil {
 				continue
 			}
-			if p == nil || p.Card == nil {
+			if p.IsLand() {
 				continue
 			}
 			isTarget := false
@@ -598,22 +600,27 @@ func nevinyrralETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 					break
 				}
 			}
-			if p.IsCreature() || (!p.IsLand() && isTarget) {
-				gs.LogEvent(gameengine.Event{
-					Kind:   "destroy",
-					Seat:   p.Controller,
-					Source: "Nevinyrral, Urborg Tyrant",
-					Details: map[string]interface{}{
-						"card":   p.Card.DisplayName(),
-						"reason": "nevinyrral_etb",
-					},
-				})
-				destroyed++
+			if !isTarget && !p.IsCreature() {
 				continue
 			}
-			keep = append(keep, p)
+			victims = append(victims, p)
 		}
-		s.Battlefield = keep
+	}
+	// Route every destroy through the canonical battlefield-exit API:
+	// DestroyPermanent runs §614 would-be-destroyed replacements, fires
+	// dies / LTB triggers, applies §903.9b commander redirect, and
+	// MOVES THE CARD TO THE OWNER'S GRAVEYARD. The pre-r45 inline
+	// implementation only rebuilt seat.Battlefield without `keep`,
+	// dropping the *Card pointer entirely — 8 real cards "disappeared"
+	// per fire in the Loki r44 / r45 ZoneConservation cluster (game 333
+	// and 472 alone produced 100+ hits between them). Same anti-pattern
+	// as the abdel_adrian May-11 forensics; this is the second sibling
+	// to be swept.
+	destroyed := 0
+	for _, p := range victims {
+		if gameengine.DestroyPermanent(gs, p, perm) {
+			destroyed++
+		}
 	}
 	emit(gs, "nevinyrral_etb", "Nevinyrral, Urborg Tyrant", map[string]interface{}{
 		"seat":      perm.Controller,
