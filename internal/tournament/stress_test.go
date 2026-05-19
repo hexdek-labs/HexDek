@@ -16,6 +16,20 @@ import (
 	"github.com/hexdek/hexdek/internal/hat"
 )
 
+// requireFullIntegration gates the heavy multi-pod / multi-game stress
+// tests behind HEXDEK_FULL_INTEGRATION=1. These tests each play ~10–50
+// real games with the full YggdrasilHat + Freya strategy stack and sum
+// to ~95s standalone — enough to push the tournament package past its
+// 300s `-timeout` ceiling when other heavy packages (gameengine,
+// astload, muninn) saturate cores under `go test ./...`. Set the env
+// var in CI or for a deliberate `go test ./internal/tournament/` run.
+func requireFullIntegration(t *testing.T) {
+	t.Helper()
+	if os.Getenv("HEXDEK_FULL_INTEGRATION") == "" {
+		t.Skip("stress integration test (set HEXDEK_FULL_INTEGRATION=1 to run)")
+	}
+}
+
 // findAllDecksExtended is like findAllDecks but also includes test/,
 // benched/, cage_match/, and imported/ subdirectories.
 func findAllDecksExtended(t *testing.T, minN int) []string {
@@ -45,6 +59,7 @@ func findAllDecksExtended(t *testing.T, minN int) []string {
 }
 
 func TestStress_MultiPod(t *testing.T) {
+	requireFullIntegration(t)
 	corpus, meta := loadCorpus(t)
 	allPaths := findAllDecks(t, 4)
 	if len(allPaths) < 8 {
@@ -246,6 +261,7 @@ func TestStress_MultiPod(t *testing.T) {
 }
 
 func TestStress_ArchetypeDiversity(t *testing.T) {
+	requireFullIntegration(t)
 	corpus, meta := loadCorpus(t)
 
 	// Hand-picked decks: one per archetype.
@@ -411,6 +427,7 @@ func TestStress_ArchetypeDiversity(t *testing.T) {
 }
 
 func TestStress_TergridRotation(t *testing.T) {
+	requireFullIntegration(t)
 	corpus, meta := loadCorpus(t)
 	allPaths := findAllDecks(t, 4)
 
@@ -507,6 +524,7 @@ func TestStress_TergridRotation(t *testing.T) {
 // Each pod runs 20 games with full analytics so we can evaluate whether
 // the hat is executing each deck's intended strategy.
 func TestStress_SteelManDiversity(t *testing.T) {
+	requireFullIntegration(t)
 	corpus, meta := loadCorpus(t)
 	allPaths := findAllDecksExtended(t, 4)
 
@@ -736,6 +754,7 @@ func TestStress_SteelManDiversity(t *testing.T) {
 // Pod 2: Obeka vs Oloro 1v1 (2-seat).
 // Pod 3: aggro-heavy pod stacked against Oloro.
 func TestStress_OloroMatchups(t *testing.T) {
+	requireFullIntegration(t)
 	corpus, meta := loadCorpus(t)
 	allPaths := findAllDecksExtended(t, 4)
 

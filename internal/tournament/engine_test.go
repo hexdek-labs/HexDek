@@ -819,6 +819,7 @@ func itoa(n int) string {
 // ---------------------------------------------------------------------------
 
 func TestMCTSHat_TournamentIntegration(t *testing.T) {
+	requireFullIntegration(t)
 	corpus, meta := loadCorpus(t)
 	paths := findDecks(t, 2)
 	if len(paths) < 2 {
