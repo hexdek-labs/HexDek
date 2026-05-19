@@ -513,6 +513,44 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 					}
 				}
 
+			case "Hamza, Guardian of Arashin":
+				// "This spell costs {1} less to cast for each creature
+				// you control with a +1/+1 counter on it. Creature spells
+				// you cast cost {1} less to cast for each creature you
+				// control with a +1/+1 counter on it." Both clauses
+				// reduce by the same count; the first is a self-discount
+				// (when Hamza itself is the spell being cast — picked up
+				// by a separate command-zone scan above for commanders,
+				// but the printed first clause specifically applies when
+				// Hamza is on the stack and would be double-counted by
+				// scanning the battlefield-Hamza, so we honor only the
+				// second clause here: creature spells the controller
+				// casts get the discount per +1/+1-bearing creature.
+				if isSelf && isCreature {
+					n := 0
+					ownSeat := gs.Seats[seatIdx]
+					if ownSeat != nil {
+						for _, p := range ownSeat.Battlefield {
+							if p == nil || p.Card == nil {
+								continue
+							}
+							if !p.IsCreature() {
+								continue
+							}
+							if p.Counters != nil && p.Counters["+1/+1"] > 0 {
+								n++
+							}
+						}
+					}
+					if n > 0 {
+						mods = append(mods, CostModifier{
+							Kind:   CostModReduction,
+							Amount: n,
+							Source: name,
+						})
+					}
+				}
+
 			case "Gonti, Canny Acquisitor":
 				// "Spells you cast but don't own cost {1} less to cast."
 				// The card's Owner field is the original owner's seat;
