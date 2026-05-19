@@ -199,6 +199,27 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 		}
 	}
 
+	// Dargo, the Shipwrecker self-cast reduction: "{2} less for each
+	// other artifact or creature you've sacrificed this turn." The
+	// reducer is on the card being cast (not a battlefield perm), so
+	// it's evaluated up here against the caster's turn-sacrificed
+	// counter. seat.Turn.Sacrificed tracks all permanent sacrifices
+	// — for a stub port we take that as a fuzzy artifact-or-creature
+	// approximation (most sacrifice outlets target artifacts /
+	// creatures in practice).
+	if strings.EqualFold(card.DisplayName(), "Dargo, the Shipwrecker") {
+		if seatIdx >= 0 && seatIdx < len(gs.Seats) {
+			seat := gs.Seats[seatIdx]
+			if seat != nil && seat.Turn.Sacrificed > 0 {
+				mods = append(mods, CostModifier{
+					Kind:   CostModReduction,
+					Amount: 2 * seat.Turn.Sacrificed,
+					Source: "Dargo, the Shipwrecker (self-cast)",
+				})
+			}
+		}
+	}
+
 	for _, seat := range gs.Seats {
 		if seat == nil {
 			continue
