@@ -1766,6 +1766,12 @@ func placeDiverseOpponentBoard(gs *gameengine.GameState) {
 		{"Opponent Artifact", []string{"artifact"}, 0, 0},
 		{"Opponent Enchantment", []string{"enchantment"}, 0, 0},
 		{"Opponent Artifact Creature", []string{"artifact", "creature"}, 2, 2},
+		// Opponent basic-land target — without this, "destroy target land"
+		// effects (Demonic Hordes, Sinkhole, Boil) couldn't find a victim
+		// because the opponent's battlefield held only artifact /
+		// enchantment / creature fodder. Land permanents are valid targets
+		// for type=land filters via cardHasType("land").
+		{"Opponent Forest", []string{"land", "basic"}, 0, 0},
 	}
 	for _, t := range types {
 		perm := &gameengine.Permanent{
@@ -1794,6 +1800,14 @@ func placeFaceDownCreature(gs *gameengine.GameState) {
 		Types:         []string{"creature"},
 		BasePower:     3,
 		BaseToughness: 3,
+		// CR §707.2: the canonical "face-down" state lives on Card.FaceDown
+		// (Permanent.Flags["face_down"] is a separate scaffold-only marker
+		// used by some condition probes). resolveTurnFaceUp / TurnFaceUp
+		// consult Card.FaceDown, so set it here too — without this, "turn
+		// target face-down creature face up" effects (Expose the Culprit)
+		// short-circuit because no card on the battlefield reports as
+		// face-down.
+		FaceDown: true,
 	}
 	perm := &gameengine.Permanent{
 		Card:       card,
@@ -2826,6 +2840,11 @@ var verifiableEffects = map[string]bool{
 	"optional_effect":     true,
 	"cast_trigger_tail":   true,
 	"conditional":         true,
+	// Wave 4 (r42b) — face-down mechanics. Expose the Culprit and the
+	// disguise/cloak family hit the goldilocks_unverified bucket because
+	// their effect tree resolves to TurnFaceUp via Choice unwrap, and
+	// turn_face_up wasn't in the verifiable set.
+	"turn_face_up": true,
 }
 
 // ---------------------------------------------------------------------------

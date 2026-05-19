@@ -95,7 +95,18 @@ func etaliETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 			cardHasType(card, "enchantment") ||
 			cardHasType(card, "planeswalker") ||
 			cardHasType(card, "battle") {
-			gameengine.MoveCard(gs, card, ex.seat, "exile", "battlefield", "etali_free_cast")
+			// CR §111 / §603: when "you may cast" puts a non-owner card on
+			// the battlefield under your control, the resulting permanent
+			// lives on the controller's side only. Previously we called
+			// MoveCard(ownerSeat=ex.seat, ..., "battlefield") AND
+			// enterBattlefieldWithETB(seat=controller) — the first wrapped
+			// the card in a Permanent on the OWNER's battlefield, the
+			// second created a SECOND Permanent on the controller's
+			// battlefield, leaving the same card pointer in two zones (the
+			// CardIdentity invariant violation seen in r41/r42 goldilocks).
+			// enterBattlefieldWithETB → createPermanent already sweeps the
+			// owner's exile via RemoveCardFromAllPrivateZones, so a single
+			// call is sufficient and produces exactly one Permanent.
 			ent := enterBattlefieldWithETB(gs, controller, card, false)
 			if ent != nil {
 				castNames = append(castNames, card.DisplayName())
