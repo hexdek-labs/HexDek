@@ -110,7 +110,11 @@ func TestMDFC_GrinderIntegration_NoFFMDFCPermanentTypeViolations(t *testing.T) {
 		t.Skipf("only %d FF-MDFC decks parsed cleanly", len(decks))
 	}
 
-	const numGames = 200
+	// 80 games keeps the FF-MDFC hit rate ample (~30 games with the cycle
+	// reaching a battlefield) while letting this integration test fit
+	// inside the per-package 300s timeout when `go test ./...` saturates
+	// cores with the gameengine/astload binaries in parallel.
+	const numGames = 80
 	const maxTurns = 50
 	const nSeats = 4
 
