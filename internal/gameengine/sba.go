@@ -687,12 +687,29 @@ func sba704_5j(gs *GameState) bool {
 		if s == nil {
 			continue
 		}
+		// The Master, Multiplied: "The 'legend rule' doesn't apply to
+		// creature tokens you control." If the controller has The
+		// Master on the battlefield, drop their creature tokens from
+		// the legend-rule grouping pass entirely.
+		masterActive := false
+		for _, p := range s.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			if p.Card.DisplayName() == "The Master, Multiplied" {
+				masterActive = true
+				break
+			}
+		}
 		groups := map[string][]*Permanent{}
 		for _, p := range s.Battlefield {
 			if p.PhasedOut {
 				continue
 			}
 			if !p.IsLegendary() {
+				continue
+			}
+			if masterActive && p.IsToken() && p.IsCreature() {
 				continue
 			}
 			name := p.Card.DisplayName()
