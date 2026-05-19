@@ -1271,14 +1271,27 @@ func writeReport(path string, d reportData) {
 		}
 		fmt.Fprintf(f, "\n")
 
-		// Show first 30 violation details.
-		limit := len(d.Violations)
-		if limit > 30 {
-			limit = 30
+		// Show up to 5 violation details PER invariant kind so the
+		// report surfaces every cluster (CardIdentity / ZoneConservation /
+		// AttachmentConsistency / etc.) instead of just whichever name
+		// happens to win the iteration race at the top of the slice.
+		const perKind = 5
+		idxByName := map[string][]int{}
+		for vi := range d.Violations {
+			idxByName[d.Violations[vi].InvariantName] = append(idxByName[d.Violations[vi].InvariantName], vi)
 		}
-		fmt.Fprintf(f, "### Violation Details (first %d)\n\n", limit)
-		for i := 0; i < limit; i++ {
-			v := &d.Violations[i]
+		var details []int
+		for _, idxs := range idxByName {
+			n := len(idxs)
+			if n > perKind {
+				n = perKind
+			}
+			details = append(details, idxs[:n]...)
+		}
+		fmt.Fprintf(f, "### Violation Details (up to %d per invariant kind, %d shown)\n\n", perKind, len(details))
+		for k, vi := range details {
+			v := &d.Violations[vi]
+			i := k
 			fmt.Fprintf(f, "#### Violation %d\n\n", i+1)
 			fmt.Fprintf(f, "- **Game**: %d (seed %d, perm %d)\n", v.GameIdx, v.GameSeed, v.Permutation)
 			fmt.Fprintf(f, "- **Invariant**: %s\n", v.InvariantName)
@@ -1294,8 +1307,8 @@ func writeReport(path string, d reportData) {
 				fmt.Fprintf(f, "```\n\n</details>\n\n")
 			}
 		}
-		if len(d.Violations) > limit {
-			fmt.Fprintf(f, "*... and %d more violations not shown.*\n\n", len(d.Violations)-limit)
+		if len(d.Violations) > len(details) {
+			fmt.Fprintf(f, "*... and %d more violations not shown.*\n\n", len(d.Violations)-len(details))
 		}
 	}
 
