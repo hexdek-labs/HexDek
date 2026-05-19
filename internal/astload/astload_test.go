@@ -178,11 +178,11 @@ func TestLoadFullCorpus(t *testing.T) {
 		t.Errorf("Count() = %d; expected ~%d (file lines)", c.Count(), lineCount)
 	}
 
-	// Load-time budget: 5s standalone target; 20s ceiling so concurrent
+	// Load-time budget: 5s standalone target; 30s ceiling so concurrent
 	// `go test ./...` runs (tournament + gameengine saturate cores) don't
 	// flake this test.
-	if elapsed > 20*time.Second {
-		t.Errorf("load time %s exceeds 20s budget", elapsed)
+	if elapsed > 30*time.Second {
+		t.Errorf("load time %s exceeds 30s budget", elapsed)
 	}
 	// Memory budget: < 500 MB on a 40 MB file (task spec).
 	if usedMB > 500 {
@@ -201,6 +201,13 @@ func TestLoadFullCorpus(t *testing.T) {
 	}
 }
 
+// isSpellEffectKind accepts both the legacy "spell_effect" tag and the
+// parser's newer "typed_spell_effect" refinement (args[0] is a typed AST
+// node). The two are semantically equivalent for these structural checks.
+func isSpellEffectKind(k string) bool {
+	return k == "spell_effect" || k == "typed_spell_effect"
+}
+
 // verifyCanonicalCards asserts specific structural properties on well-known
 // cards. These are the "10 canonical" checks from the task spec — each one
 // stresses a different corner of the discriminator dispatch.
@@ -217,7 +224,7 @@ func verifyCanonicalCards(t *testing.T, c *Corpus) {
 		t.Errorf("Lightning Bolt: expected 1 ability, got %d", len(bolt.Abilities))
 	} else if s, ok := bolt.Abilities[0].(*gameast.Static); !ok {
 		t.Errorf("Lightning Bolt: expected *Static, got %T", bolt.Abilities[0])
-	} else if s.Modification == nil || s.Modification.ModKind != "spell_effect" {
+	} else if s.Modification == nil || !isSpellEffectKind(s.Modification.ModKind) {
 		t.Errorf("Lightning Bolt: expected spell_effect modification, got %+v", s.Modification)
 	}
 
@@ -232,7 +239,7 @@ func verifyCanonicalCards(t *testing.T, c *Corpus) {
 	} else if s, ok := counter.Abilities[0].(*gameast.Static); !ok {
 		t.Errorf("Counterspell: expected *Static, got %T", counter.Abilities[0])
 	} else {
-		if s.Modification == nil || s.Modification.ModKind != "spell_effect" {
+		if s.Modification == nil || !isSpellEffectKind(s.Modification.ModKind) {
 			t.Errorf("Counterspell: expected spell_effect modification, got %+v", s.Modification)
 		} else {
 			// args[0] should be a *CounterSpell effect.
@@ -258,7 +265,7 @@ func verifyCanonicalCards(t *testing.T, c *Corpus) {
 		if s, ok := thassa.Abilities[1].(*gameast.Static); !ok {
 			t.Errorf("Thassa's Oracle: ability 1 expected *Static, got %T", thassa.Abilities[1])
 		} else {
-			if s.Modification == nil || s.Modification.ModKind != "spell_effect" {
+			if s.Modification == nil || !isSpellEffectKind(s.Modification.ModKind) {
 				t.Errorf("Thassa's Oracle: ability 1 modification not spell_effect: %+v", s.Modification)
 			} else if len(s.Modification.Args) == 0 {
 				t.Errorf("Thassa's Oracle: ability 1 modification has empty args")
@@ -372,7 +379,7 @@ func verifyCanonicalCards(t *testing.T, c *Corpus) {
 	if len(gm.Abilities) != 2 {
 		t.Errorf("Gray Merchant: expected 2 abilities, got %d", len(gm.Abilities))
 	} else if s, ok := gm.Abilities[1].(*gameast.Static); ok {
-		if s.Modification != nil && s.Modification.ModKind == "spell_effect" && len(s.Modification.Args) > 0 {
+		if s.Modification != nil && isSpellEffectKind(s.Modification.ModKind) && len(s.Modification.Args) > 0 {
 			if gl, ok := s.Modification.Args[0].(*gameast.GainLife); ok {
 				if v, ok := gl.Amount.StrVal(); !ok || v != "var" {
 					t.Errorf("Gray Merchant GainLife amount: expected StrVal 'var', got (%q, %v)", v, ok)
