@@ -540,9 +540,14 @@ func resolveActivatedAbility(gs *GameState, item *StackItem) {
 	if item.Effect != nil {
 		src := item.Source
 		if src == nil && item.Card != nil {
+			// Mirror the spell-resolution synthetic-Permanent in
+			// ResolveStackTop: handlers that key off src.Owner (e.g.
+			// shuffle_into_owner_library) need a non-zero Owner so the
+			// effect routes to the card's actual owner, not seat 0.
 			src = &Permanent{
 				Card:       item.Card,
 				Controller: item.Controller,
+				Owner:      item.Card.Owner,
 				Flags:      map[string]int{},
 			}
 		}

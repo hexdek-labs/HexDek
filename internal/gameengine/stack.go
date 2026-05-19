@@ -605,12 +605,45 @@ func collectSpellEffect(card *Card) gameast.Effect {
 	if card == nil || card.AST == nil {
 		return nil
 	}
+	// CR §112.1 — permanent spells (creature/artifact/enchantment/
+	// planeswalker/battle) have no spell-resolution effect. The card simply
+	// becomes a permanent (CR §608.3); printed activated/triggered abilities
+	// only function on the battlefield (CR §112.6, §603.5). Returning a
+	// non-nil Effect here causes the first Activated ability to fire at cast
+	// time, which is wrong — Cerulean Sphinx's "{U}: Its owner shuffles it
+	// into their library" was running before ETB, putting the card into
+	// owner's library AND the controller's battlefield simultaneously.
+	// See docs/loki-r41-report.md / Loki r41 follow-up.
+	if isPermanentSpell(card) {
+		return nil
+	}
+	// Instants/sorceries: the spell body sometimes comes through as an
+	// Activated AST node with an empty cost (parser artifact for cards like
+	// Summon the School, Divergent Growth, Eldrazi Confluence). Only return
+	// Activated effects that have no real activation cost — a non-empty
+	// Mana/Tap/Untap/Sacrifice/etc. means this is a genuine activated
+	// ability that should only function on the battlefield, not the
+	// spell body of an instant/sorcery.
 	for _, ab := range card.AST.Abilities {
 		if a, ok := ab.(*gameast.Activated); ok && a.Effect != nil {
-			return a.Effect
+			if isEmptyActivationCost(a.Cost) {
+				return a.Effect
+			}
 		}
 	}
 	return nil
+}
+
+// isEmptyActivationCost reports whether c carries no real activation cost.
+// Spell-body AST nodes for instants/sorceries occasionally come through as
+// Activated with an all-nil Cost (the parser couldn't unify them with a
+// Static spell_effect shape). Genuine activated abilities always carry at
+// least one of: mana, tap, untap, sacrifice, discard, pay-life, exile-self,
+// return-self-to-hand, or counter removal.
+func isEmptyActivationCost(c gameast.Cost) bool {
+	return c.Mana == nil && !c.Tap && !c.Untap && c.Sacrifice == nil &&
+		c.Discard == nil && c.PayLife == nil && !c.ExileSelf &&
+		!c.ReturnSelfToHand && c.RemoveCountersN == nil
 }
 
 // ---------------------------------------------------------------------------
@@ -1072,10 +1105,15 @@ func ResolveStackTop(gs *GameState) {
 		} else if item.Card != nil {
 			// For spell resolution we synthesize a transient Permanent as
 			// the source so existing resolve.go handlers (which all take
-			// *Permanent) have a controller + name to reference.
+			// *Permanent) have a controller + name to reference. Owner
+			// must mirror the Card's Owner — handlers that key off
+			// src.Owner (e.g. shuffle_into_owner_library) otherwise read
+			// the zero-value seat 0 and route effects to the wrong player
+			// for any spell not cast by seat 0.
 			src = &Permanent{
 				Card:       item.Card,
 				Controller: item.Controller,
+				Owner:      item.Card.Owner,
 				Flags:      map[string]int{},
 			}
 		}
