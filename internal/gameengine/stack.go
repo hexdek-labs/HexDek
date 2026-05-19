@@ -727,11 +727,24 @@ func PriorityRound(gs *GameState) {
 			// Policy picked a response. Pay its cost; if broke, skip.
 			cost := manaCostOf(resp.Card)
 			if s.ManaPool < cost {
-				// Return the card to hand — we took it out optimistically.
-				if resp.Card != nil {
-					s.Hand = append(s.Hand, resp.Card)
-				}
 				continue
+			}
+			// CR §601.2a — the response spell leaves its origin zone (hand)
+			// when it's announced. Hat policies (GreedyHat / Yggdrasil /
+			// Poker) return read-only advice — their ChooseResponse leaves
+			// the card in hand for engine inspection. The legacy fallback
+			// branch of GetResponse pre-removed it; here we remove it
+			// centrally so EVERY response path (Hat or fallback) sees the
+			// card leave hand before stack push. Without this the card
+			// pointer ends up in BOTH hand and stack — and on resolution,
+			// hand + battlefield — which is the Adric / Doctor's Companion
+			// pattern surfaced in Loki r43 (562 of 564 CardIdentity hits,
+			// game 170 seed 1700042, see docs/loki-r43-postfix.md).
+			//
+			// removeFromHand is a no-op when the card isn't there (the
+			// legacy fallback already pulled it), so this is idempotent.
+			if resp.Card != nil {
+				removeFromHand(s, resp.Card)
 			}
 			s.ManaPool -= cost
 			SyncManaAfterSpend(s)
@@ -836,10 +849,13 @@ func GetResponse(gs *GameState, defenderSeat int, incoming *StackItem) *StackIte
 		if !CounterCanTarget(ceff, incoming) {
 			continue
 		}
-		// Pull the card OUT of hand (PriorityRound will handle the cost
-		// and re-push-to-hand on failure). We do this so each priority
-		// iteration doesn't re-pick the same card if its cost check fails.
-		s.Hand = append(s.Hand[:i], s.Hand[i+1:]...)
+		// Return advice — PriorityRound centralizes the hand-removal
+		// side-effect so both Hat and fallback response paths converge on
+		// the same place. Without that single source of truth, the Hat
+		// path left the card in hand AND on the stack, tripping
+		// CardIdentity on resolution (the Adric / Doctor's Companion
+		// pattern from Loki r43 game 170).
+		_ = i
 		return &StackItem{
 			Controller: defenderSeat,
 			Card:       c,
@@ -861,6 +877,22 @@ func GetResponse(gs *GameState, defenderSeat int, incoming *StackItem) *StackIte
 // This function scans both.
 func counterSpellEffect(c *Card) gameast.Effect {
 	if c == nil || c.AST == nil {
+		return nil
+	}
+	// CR §112.6 / §603.5: a permanent spell (creature, artifact,
+	// enchantment, planeswalker, battle) becomes a permanent on
+	// resolution — it does NOT cast as a counterspell, even if one of
+	// its printed activated abilities counters spells (Adric,
+	// Mathematical Genius's Ultimate Sacrifice; Mindcrank-style
+	// triggered counter abilities). Treating the card itself as a
+	// counter-response selector pulls the permanent's *Card out of
+	// hand and pushes it onto the stack with an instant-speed effect,
+	// which then resolves to the battlefield while the original *Card
+	// reference remains in hand (the Adric leak in Loki r43 game 170).
+	// Only Layout-1 (Activated-with-empty-cost) and Layout-2 (Static
+	// spell_effect) shapes belong to instants/sorceries — neither is
+	// a permanent spell, so the early-return is a strict refinement.
+	if isPermanentSpell(c) {
 		return nil
 	}
 	for _, ab := range c.AST.Abilities {
