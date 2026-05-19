@@ -884,20 +884,30 @@ func counterSpellEffect(c *Card) gameast.Effect {
 	// resolution — it does NOT cast as a counterspell, even if one of
 	// its printed activated abilities counters spells (Adric,
 	// Mathematical Genius's Ultimate Sacrifice; Mindcrank-style
-	// triggered counter abilities). Treating the card itself as a
+	// triggered counter abilities; Disruptive Pitmage's morph-era
+	// `{T}: Counter target spell`). Treating the card itself as a
 	// counter-response selector pulls the permanent's *Card out of
 	// hand and pushes it onto the stack with an instant-speed effect,
 	// which then resolves to the battlefield while the original *Card
-	// reference remains in hand (the Adric leak in Loki r43 game 170).
-	// Only Layout-1 (Activated-with-empty-cost) and Layout-2 (Static
-	// spell_effect) shapes belong to instants/sorceries — neither is
-	// a permanent spell, so the early-return is a strict refinement.
+	// reference remains in hand (Adric leak in Loki r43 game 170;
+	// Pitmage leak in r44 game 404). Only Layout-1 (Activated-with-
+	// empty-cost) and Layout-2 (Static spell_effect) shapes belong to
+	// instants/sorceries — neither is a permanent spell, so the
+	// early-return is a strict refinement.
 	if isPermanentSpell(c) {
 		return nil
 	}
 	for _, ab := range c.AST.Abilities {
-		// Layout 1: Activated ability (test cards / legacy).
+		// Layout 1: Activated ability with EMPTY cost (test cards / legacy
+		// spell-body shape — Summon the School-style parser artifacts). A
+		// non-empty cost means this is a genuine activated ability that
+		// only functions on the battlefield, even on an instant/sorcery —
+		// it must not register as a hand-castable counterspell. Mirrors
+		// collectSpellEffect's r41 follow-up gating.
 		if a, ok := ab.(*gameast.Activated); ok && a.Effect != nil {
+			if !isEmptyActivationCost(a.Cost) {
+				continue
+			}
 			if isCounterSpellEffect(a.Effect) {
 				return a.Effect
 			}
