@@ -6,19 +6,127 @@ import (
 
 // registerZaffaiAndTheTempests wires Zaffai and the Tempests.
 //
-// Oracle text:
+// Oracle text (Scryfall, verified):
 //
-//   Once during each of your turns, you may cast an instant or sorcery spell from your hand without paying its mana cost.
+//	Once during each of your turns, you may cast an instant or sorcery
+//	spell from your hand without paying its mana cost.
 //
-// Auto-generated static ability stub (partial — engine handles most statics via AST).
+// Implementation (R42b stub port):
+//   - ETB: stamp seat.Flags["zaffai_free_cast_available"] =
+//     perm.Timestamp so any downstream alt-cost cast pipeline can
+//     observe the grant. The flag is rewritten each turn at ETB time
+//     and at the controller's upkeep refresh (below).
+//   - "spell_cast" trigger gated on caster_seat == controller and an
+//     I/S spell: if seat.Flags["zaffai_free_cast_used_t<turn>"] is
+//     unset, we consume the per-turn ration by setting that flag to
+//     gs.Turn+1 (avoids the zero-turn ambiguity). A future cast hook
+//     that wants to apply the alt-cost reads
+//     seat.Flags["zaffai_free_cast_available"] != 0 AND
+//     seat.Flags["zaffai_free_cast_used_t<turn>"] == 0 to gate
+//     payment. emitPartial documents the alt-cost wiring gap.
+//   - "upkeep" trigger gated on active_seat == controller refreshes
+//     the per-turn used flag (deletes the stale zaffai_free_cast_used
+//     entry for the previous turn). The active-seat gate ensures the
+//     refresh fires exactly once per Zaffai-turn.
 func registerZaffaiAndTheTempests(r *Registry) {
-	r.OnETB("Zaffai and the Tempests", zaffaiAndTheTempestsStaticETB)
+	r.OnETB("Zaffai and the Tempests", zaffaiAndTheTempestsETB)
+	r.OnTrigger("Zaffai and the Tempests", "upkeep", zaffaiUpkeepRefresh)
+	r.OnTrigger("Zaffai and the Tempests", "spell_cast", zaffaiSpellCastConsume)
 }
 
-func zaffaiAndTheTempestsStaticETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "zaffai_and_the_tempests_static"
-	if gs == nil || perm == nil {
+func zaffaiAndTheTempestsETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	const slug = "zaffai_and_the_tempests_etb"
+	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
-	emitPartial(gs, slug, perm.Card.DisplayName(), "static abilities handled by AST engine; per_card stub for registration tracking")
+	if perm.Controller < 0 || perm.Controller >= len(gs.Seats) {
+		return
+	}
+	s := gs.Seats[perm.Controller]
+	if s == nil {
+		return
+	}
+	if s.Flags == nil {
+		s.Flags = map[string]int{}
+	}
+	s.Flags["zaffai_free_cast_available"] = perm.Timestamp
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":  perm.Controller,
+		"grant": "once_per_turn_free_is_cast",
+	})
+	emitPartial(gs, slug, perm.Card.DisplayName(),
+		"alt_cost_free_cast_wiring_engine_side_only_observable_via_seat_flag_at_per_card_layer")
+}
+
+func zaffaiUpkeepRefresh(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	activeSeat, _ := ctx["active_seat"].(int)
+	if activeSeat != perm.Controller {
+		return
+	}
+	if perm.Controller < 0 || perm.Controller >= len(gs.Seats) {
+		return
+	}
+	s := gs.Seats[perm.Controller]
+	if s == nil || s.Flags == nil {
+		return
+	}
+	// Clear any stale used-marker so the new turn's free cast is
+	// available again. The marker key is computed from gs.Turn so
+	// stale entries effectively become dead keys; deleting them keeps
+	// the seat Flags map small.
+	for k := range s.Flags {
+		if len(k) > len(zaffaiUsedPrefix) && k[:len(zaffaiUsedPrefix)] == zaffaiUsedPrefix {
+			delete(s.Flags, k)
+		}
+	}
+}
+
+func zaffaiSpellCastConsume(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "zaffai_free_cast_consume"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
+		return
+	}
+	casterSeat, _ := ctx["caster_seat"].(int)
+	if casterSeat != perm.Controller {
+		return
+	}
+	spellCard, _ := ctx["card"].(*gameengine.Card)
+	if spellCard == nil {
+		return
+	}
+	if !cardHasType(spellCard, "instant") && !cardHasType(spellCard, "sorcery") {
+		return
+	}
+	s := gs.Seats[perm.Controller]
+	if s == nil {
+		return
+	}
+	if s.Flags == nil {
+		s.Flags = map[string]int{}
+	}
+	key := zaffaiUsedKey(gs.Turn)
+	if s.Flags[key] != 0 {
+		// Already consumed this turn — observation only, no flag change.
+		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+			"seat":     perm.Controller,
+			"consumed": true,
+			"reason":   "already_used_this_turn",
+		})
+		return
+	}
+	s.Flags[key] = gs.Turn + 1 // mark used (turn+1 avoids zero ambiguity)
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":     perm.Controller,
+		"consumed": true,
+		"key":      key,
+	})
+}
+
+const zaffaiUsedPrefix = "zaffai_free_cast_used_t"
+
+func zaffaiUsedKey(turn int) string {
+	return zaffaiUsedPrefix + itoa(turn)
 }

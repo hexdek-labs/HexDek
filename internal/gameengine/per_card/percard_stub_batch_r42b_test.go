@@ -7,125 +7,17 @@ import (
 )
 
 // R42b stub-batch ports — five gen_*.go pure-stub handlers from the
-// alphabetical second half (n-z), distinct from dev-5's parallel
-// r42 batch and from earlier R36/R37/R41 sets.
+// alphabetical second half (n-z), distinct from earlier R36/R37/R41
+// sets and from dev-5's parallel R42 batch (Rosnakht and Second
+// Doctor were claimed by both and resolved in favor of dev-5's
+// versions when r42 landed in main first — see r42b commit message).
 //
-// Picks:
-//   - Rosnakht, Heir of Rohgahh        Heroic Kobold token on spell-cast
+// Picks (final):
 //   - Uril, the Miststalker             Aura-count P/T buff via Modifications
-//   - The Second Doctor                 end_step draw + opponent attack flag
 //   - Noctis, Prince of Lucis           graveyard zone-cast grant +3 life
 //   - Shilgengar, Sire of Famine        activated sac-for-Blood + mass reanim
-
-// ---------------------------------------------------------------------------
-// Rosnakht — Heroic spell-cast trigger
-// ---------------------------------------------------------------------------
-
-func TestRosnakht_HeroicMintsKoboldOnSelfTarget(t *testing.T) {
-	gs := newGame(t, 2)
-	ros := stampCreaturePT(addPerm(gs, 0, "Rosnakht, Heir of Rohgahh", "creature", "legendary"), 1, 1)
-
-	spellCard := &gameengine.Card{
-		Name:  "Giant Growth",
-		Owner: 0,
-		Types: []string{"instant"},
-	}
-	item := &gameengine.StackItem{
-		Card:       spellCard,
-		Controller: 0,
-		Targets: []gameengine.Target{
-			{Kind: gameengine.TargetKindPermanent, Permanent: ros},
-		},
-	}
-
-	preBF := len(gs.Seats[0].Battlefield)
-	rosnakhtHeroicKoboldToken(gs, ros, map[string]interface{}{
-		"caster_seat": 0,
-		"card":        spellCard,
-		"stack_item":  item,
-	})
-	if got := len(gs.Seats[0].Battlefield); got != preBF+1 {
-		t.Fatalf("battlefield delta = %d, want +1 Kobold", got-preBF)
-	}
-	found := false
-	for _, p := range gs.Seats[0].Battlefield {
-		if p.Card != nil && p.Card.Name == "Kobolds of Kher Keep" {
-			found = true
-			if p.Card.BasePower != 0 || p.Card.BaseToughness != 1 {
-				t.Errorf("Kobold P/T = %d/%d, want 0/1", p.Card.BasePower, p.Card.BaseToughness)
-			}
-			hasR := false
-			for _, c := range p.Card.Colors {
-				if c == "R" {
-					hasR = true
-				}
-			}
-			if !hasR {
-				t.Errorf("Kobold colors = %v, want includes R", p.Card.Colors)
-			}
-		}
-	}
-	if !found {
-		t.Fatal("Kobold token not found on battlefield")
-	}
-}
-
-func TestRosnakht_HeroicSkipsWhenSpellDoesNotTargetRosnakht(t *testing.T) {
-	gs := newGame(t, 2)
-	ros := stampCreaturePT(addPerm(gs, 0, "Rosnakht, Heir of Rohgahh", "creature", "legendary"), 1, 1)
-	other := stampCreaturePT(addPerm(gs, 0, "Llanowar Elves", "creature"), 1, 1)
-
-	spellCard := &gameengine.Card{
-		Name:  "Giant Growth",
-		Owner: 0,
-		Types: []string{"instant"},
-	}
-	item := &gameengine.StackItem{
-		Card:       spellCard,
-		Controller: 0,
-		Targets: []gameengine.Target{
-			{Kind: gameengine.TargetKindPermanent, Permanent: other},
-		},
-	}
-
-	preBF := len(gs.Seats[0].Battlefield)
-	rosnakhtHeroicKoboldToken(gs, ros, map[string]interface{}{
-		"caster_seat": 0,
-		"card":        spellCard,
-		"stack_item":  item,
-	})
-	if got := len(gs.Seats[0].Battlefield); got != preBF {
-		t.Errorf("spell that doesn't target Rosnakht should NOT mint Kobold; bf delta=%d", got-preBF)
-	}
-}
-
-func TestRosnakht_HeroicIgnoresOpponentCasts(t *testing.T) {
-	gs := newGame(t, 2)
-	ros := stampCreaturePT(addPerm(gs, 0, "Rosnakht, Heir of Rohgahh", "creature", "legendary"), 1, 1)
-
-	spellCard := &gameengine.Card{
-		Name:  "Smite",
-		Owner: 1,
-		Types: []string{"instant"},
-	}
-	item := &gameengine.StackItem{
-		Card:       spellCard,
-		Controller: 1, // opponent's spell
-		Targets: []gameengine.Target{
-			{Kind: gameengine.TargetKindPermanent, Permanent: ros},
-		},
-	}
-
-	preBF := len(gs.Seats[0].Battlefield)
-	rosnakhtHeroicKoboldToken(gs, ros, map[string]interface{}{
-		"caster_seat": 1,
-		"card":        spellCard,
-		"stack_item":  item,
-	})
-	if got := len(gs.Seats[0].Battlefield); got != preBF {
-		t.Errorf("opponent's spell targeting Rosnakht should NOT trigger Heroic; bf delta=%d", got-preBF)
-	}
-}
+//   - Wraith, Vicious Vigilante         unblockable static flag
+//   - Zaffai and the Tempests           once-per-turn free I/S cast tracker
 
 // ---------------------------------------------------------------------------
 // Uril, the Miststalker — +2/+2 per Aura attached
@@ -204,68 +96,6 @@ func TestUril_RecomputeReplacesPriorBuff(t *testing.T) {
 	for _, m := range uril.Modifications {
 		if m.Duration == urilAuraBuffTag {
 			t.Errorf("residual uril_aura_buff Modification after recompute: %+v", m)
-		}
-	}
-}
-
-// ---------------------------------------------------------------------------
-// The Second Doctor — How Civil of You end step
-// ---------------------------------------------------------------------------
-
-func TestSecondDoctor_EachPlayerDraws(t *testing.T) {
-	gs := newGame(t, 3)
-	doc := stampCreaturePT(addPerm(gs, 0, "The Second Doctor", "creature", "legendary"), 4, 4)
-	addLibrary(gs, 0, "A1")
-	addLibrary(gs, 1, "B1")
-	addLibrary(gs, 2, "C1")
-
-	theSecondDoctorHowCivil(gs, doc, map[string]interface{}{
-		"active_seat": 0,
-	})
-
-	for i := 0; i < 3; i++ {
-		if len(gs.Seats[i].Hand) != 1 {
-			t.Errorf("seat %d should have drawn 1; hand size = %d", i, len(gs.Seats[i].Hand))
-		}
-	}
-}
-
-func TestSecondDoctor_StampsAttackBlockFlagOnOpponentsThatDrew(t *testing.T) {
-	gs := newGame(t, 3)
-	doc := stampCreaturePT(addPerm(gs, 0, "The Second Doctor", "creature", "legendary"), 4, 4)
-	addLibrary(gs, 0, "A1")
-	addLibrary(gs, 1, "B1")
-	// seat 2 has no library — can't draw, shouldn't get flag.
-
-	theSecondDoctorHowCivil(gs, doc, map[string]interface{}{
-		"active_seat": 0,
-	})
-
-	flagKey := doctorAttackBlockKey(0)
-	if v := gs.Seats[1].Flags[flagKey]; v != gs.Turn+1 {
-		t.Errorf("seat 1 should have flag %s = %d; got %d", flagKey, gs.Turn+1, v)
-	}
-	if v := gs.Seats[2].Flags[flagKey]; v != 0 {
-		t.Errorf("seat 2 didn't draw and should NOT have flag; got %d", v)
-	}
-	if v := gs.Seats[0].Flags[flagKey]; v != 0 {
-		t.Errorf("Doctor's own seat should NOT have flag against itself; got %d", v)
-	}
-}
-
-func TestSecondDoctor_SkipsOpponentEndStep(t *testing.T) {
-	gs := newGame(t, 2)
-	doc := stampCreaturePT(addPerm(gs, 0, "The Second Doctor", "creature", "legendary"), 4, 4)
-	addLibrary(gs, 0, "A1")
-	addLibrary(gs, 1, "B1")
-
-	theSecondDoctorHowCivil(gs, doc, map[string]interface{}{
-		"active_seat": 1, // opponent's end step
-	})
-
-	for i := 0; i < 2; i++ {
-		if len(gs.Seats[i].Hand) != 0 {
-			t.Errorf("seat %d should NOT have drawn on opponent end step; hand=%d", i, len(gs.Seats[i].Hand))
 		}
 	}
 }
@@ -485,5 +315,116 @@ func TestShilgengar_MassReanimNeedsSixBloods(t *testing.T) {
 	}
 	if hasEvent(gs, "per_card_failed") < 1 {
 		t.Errorf("expected per_card_failed for insufficient bloods")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Wraith, Vicious Vigilante — Fear Gas unblockable static
+// ---------------------------------------------------------------------------
+
+func TestWraith_ETBStampsUnblockableFlag(t *testing.T) {
+	gs := newGame(t, 2)
+	wraith := stampCreaturePT(addPerm(gs, 0, "Wraith, Vicious Vigilante", "creature"), 3, 3)
+
+	wraithViciousVigilanteETB(gs, wraith)
+
+	if wraith.Flags["unblockable"] != 1 {
+		t.Errorf("Wraith should be stamped unblockable; flags=%v", wraith.Flags)
+	}
+}
+
+func TestWraith_ETBNilSafe(t *testing.T) {
+	wraithViciousVigilanteETB(nil, nil)
+	gs := newGame(t, 2)
+	wraithViciousVigilanteETB(gs, nil)
+	// No panic = pass.
+}
+
+// ---------------------------------------------------------------------------
+// Zaffai and the Tempests — once-per-turn free I/S cast tracker
+// ---------------------------------------------------------------------------
+
+func TestZaffai_ETBStampsAvailableFlag(t *testing.T) {
+	gs := newGame(t, 2)
+	zaffai := stampCreaturePT(addPerm(gs, 0, "Zaffai and the Tempests", "creature", "legendary"), 3, 3)
+
+	zaffaiAndTheTempestsETB(gs, zaffai)
+
+	if got := gs.Seats[0].Flags["zaffai_free_cast_available"]; got == 0 {
+		t.Errorf("Zaffai ETB should stamp zaffai_free_cast_available; got %d", got)
+	}
+}
+
+func TestZaffai_SpellCastConsumesOncePerTurn(t *testing.T) {
+	gs := newGame(t, 2)
+	zaffai := stampCreaturePT(addPerm(gs, 0, "Zaffai and the Tempests", "creature", "legendary"), 3, 3)
+	zaffaiAndTheTempestsETB(gs, zaffai)
+
+	spell := &gameengine.Card{Name: "Bolt", Owner: 0, Types: []string{"instant"}}
+	zaffaiSpellCastConsume(gs, zaffai, map[string]interface{}{
+		"caster_seat": 0,
+		"card":        spell,
+	})
+
+	key := zaffaiUsedKey(gs.Turn)
+	if got := gs.Seats[0].Flags[key]; got == 0 {
+		t.Errorf("first I/S cast should consume the ration; flag %s = %d", key, got)
+	}
+}
+
+func TestZaffai_IgnoresOpponentSpells(t *testing.T) {
+	gs := newGame(t, 2)
+	zaffai := stampCreaturePT(addPerm(gs, 0, "Zaffai and the Tempests", "creature", "legendary"), 3, 3)
+	zaffaiAndTheTempestsETB(gs, zaffai)
+
+	spell := &gameengine.Card{Name: "Bolt", Owner: 1, Types: []string{"instant"}}
+	zaffaiSpellCastConsume(gs, zaffai, map[string]interface{}{
+		"caster_seat": 1, // opponent
+		"card":        spell,
+	})
+
+	key := zaffaiUsedKey(gs.Turn)
+	if got := gs.Seats[0].Flags[key]; got != 0 {
+		t.Errorf("opponent's I/S cast should NOT consume Zaffai's ration; flag %s = %d", key, got)
+	}
+}
+
+func TestZaffai_IgnoresNonInstantSorcerySpells(t *testing.T) {
+	gs := newGame(t, 2)
+	zaffai := stampCreaturePT(addPerm(gs, 0, "Zaffai and the Tempests", "creature", "legendary"), 3, 3)
+	zaffaiAndTheTempestsETB(gs, zaffai)
+
+	creature := &gameengine.Card{Name: "Goblin", Owner: 0, Types: []string{"creature"}}
+	zaffaiSpellCastConsume(gs, zaffai, map[string]interface{}{
+		"caster_seat": 0,
+		"card":        creature,
+	})
+
+	key := zaffaiUsedKey(gs.Turn)
+	if got := gs.Seats[0].Flags[key]; got != 0 {
+		t.Errorf("creature cast should NOT consume Zaffai's ration; flag %s = %d", key, got)
+	}
+}
+
+func TestZaffai_UpkeepRefreshClearsPriorTurnsUsedFlag(t *testing.T) {
+	gs := newGame(t, 2)
+	zaffai := stampCreaturePT(addPerm(gs, 0, "Zaffai and the Tempests", "creature", "legendary"), 3, 3)
+	zaffaiAndTheTempestsETB(gs, zaffai)
+
+	// Manually stamp two stale "used" flags from prior turns.
+	if gs.Seats[0].Flags == nil {
+		gs.Seats[0].Flags = map[string]int{}
+	}
+	gs.Seats[0].Flags[zaffaiUsedKey(0)] = 1
+	gs.Seats[0].Flags[zaffaiUsedKey(3)] = 4
+
+	zaffaiUpkeepRefresh(gs, zaffai, map[string]interface{}{
+		"active_seat": 0,
+	})
+
+	for k := range gs.Seats[0].Flags {
+		if len(k) > len(zaffaiUsedPrefix) && k[:len(zaffaiUsedPrefix)] == zaffaiUsedPrefix {
+			t.Errorf("upkeep refresh should clear used-flags; %s still set", k)
+		}
 	}
 }

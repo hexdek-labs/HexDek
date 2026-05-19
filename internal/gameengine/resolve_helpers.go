@@ -13,6 +13,28 @@ func containsIgnoreCase(s, substr string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
 
+// lifeChangeRe matches "lose N life" / "gain N life" patterns inside a
+// raw clause. Used by resolveModificationEffect's life_effect fallback
+// when the parser left the predicate unstructured (typically because of
+// trailing "unless/if/when" qualifiers it couldn't lift). The sign of
+// the returned delta encodes direction: positive = gain, negative = lose.
+var lifeChangeRe = regexp.MustCompile(`\b(lose|gain)s?\s+(\d+)\s+life\b`)
+
+func parseLifeChange(raw string) (int, bool) {
+	m := lifeChangeRe.FindStringSubmatch(strings.ToLower(raw))
+	if m == nil {
+		return 0, false
+	}
+	n, err := strconv.Atoi(m[2])
+	if err != nil || n <= 0 {
+		return 0, false
+	}
+	if m[1] == "lose" {
+		return -n, true
+	}
+	return n, true
+}
+
 // resolveModificationEffect handles ModificationEffect nodes — Wave 1a
 // promoted labels that didn't get their own typed AST node. The Python
 // parser emits these as Modification(kind="...", args=(...)) at effect
@@ -2942,15 +2964,40 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		})
 
 	// -----------------------------------------------------------------
-	// life_effect (21) — life gain/loss effect. Args carry direction
-	// and amount. MVP: apply the life change.
+	// life_effect (21) — life gain/loss effect. Args may carry direction
+	// and amount as a structured int (Args[0]=±N), or as raw text the
+	// parser couldn't decompose ("you lose 2 life unless you control
+	// another Pirate", "you lose 1 life", "target opponent gains 3 life").
+	// MVP: try structured first, then extract the magnitude + direction
+	// from the raw text. The "unless/if" gating is intentionally ignored
+	// here — for engine purposes we fire the life change; per-card
+	// scaffolds (or higher-level conditionals) gate it where required.
 	// -----------------------------------------------------------------
 	case "life_effect":
 		seat := controllerSeat(src)
 		n := 0
+		// 1) Structured int form (legacy / well-parsed clauses).
 		if len(e.Args) > 0 {
 			if v, ok := asInt(e.Args[0]); ok {
 				n = v
+			}
+		}
+		// 2) Text fallback: scan Args for "lose N life" / "gain N life".
+		//    Many Modification(kind="life_effect") clauses come through
+		//    as a single raw-text Arg because the predicate ("unless you
+		//    control...") wasn't structurally extracted. Covers Reaver
+		//    Drone, Scourge of Numai, Fathom Fleet Boarder, Lord of
+		//    Tresserhorn, and similar conditional-upkeep life drains.
+		if n == 0 {
+			for _, arg := range e.Args {
+				txt, ok := arg.(string)
+				if !ok || txt == "" {
+					continue
+				}
+				if delta, found := parseLifeChange(txt); found {
+					n = delta
+					break
+				}
 			}
 		}
 		if seat >= 0 && seat < len(gs.Seats) && n != 0 {

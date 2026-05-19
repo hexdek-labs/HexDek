@@ -6,46 +6,63 @@ import (
 
 // registerTheSecondDoctor wires The Second Doctor.
 //
-// Oracle text (Scryfall, verified):
+// Oracle text (Scryfall, verified, {2}{U}{R}, 3/4 legendary):
 //
 //	Players have no maximum hand size.
 //	How Civil of You — At the beginning of your end step, each player
 //	may draw a card. Each opponent who does can't attack you or
 //	permanents you control during their next turn.
 //
-// Implementation (R42b stub port):
-//   - No maximum hand size: AST keyword pipeline.
-//   - End-step draw: OnTrigger("end_step") gated to active_seat ==
-//     perm.Controller. AI policy is greedy-upside ("may draw" is
-//     monotone for the drawer — refilling hand is always net-positive
-//     and the attack-restriction rider is the drawer's incentive to
-//     accept the rider in exchange for the card).
-//   - Per-opponent attack restriction: each opponent that actually
-//     drew gets seat.Flags["second_doctor_no_attack_seat_<doctor>"]
-//     stamped to gs.Turn+1 (the next turn-boundary number — when
-//     that opponent's own turn comes around, the flag is read by
-//     combat-layer enforcement, which is not yet wired). The flag
-//     is the canonical breadcrumb for the future combat-side
-//     consumer; emitPartial documents the gap.
+// Implementation (R42 stub port):
+//   - "Players have no maximum hand size" is a global static rule; it
+//     belongs to the discard-step / max-hand-size enforcement layer,
+//     not per_card. We record a no_max_hand_size flag on each seat at
+//     ETB so any downstream max-hand-size scanner can observe the
+//     grant, and emitPartial breadcrumb for the actual cleanup-step
+//     wiring.
+//   - end_step trigger gated on active_seat == controller. Greedy
+//     policy: every living player draws (a free card is never
+//     declined). Each opponent who actually drew gets a per-seat
+//     flag "cant_attack_seat_<N>_until_turn_<T>" set on their Flags
+//     so the next-turn attack-legality check can read it.
+//   - The "can't attack you or permanents you control" rider is a
+//     declare-attackers restriction; we stamp the seat flag here but
+//     the actual restriction enforcement is engine territory —
+//     emitPartial breadcrumb so any future combat-restriction
+//     scanner can pick it up.
 func registerTheSecondDoctor(r *Registry) {
 	r.OnETB("The Second Doctor", theSecondDoctorETB)
-	r.OnTrigger("The Second Doctor", "end_step", theSecondDoctorHowCivil)
+	r.OnTrigger("The Second Doctor", "end_step", theSecondDoctorHowCivilOfYou)
 }
 
 func theSecondDoctorETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "the_second_doctor_etb"
+	const slug = "the_second_doctor_no_max_hand_size"
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
+	stamped := 0
+	for i, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		if s.Flags == nil {
+			s.Flags = map[string]int{}
+		}
+		s.Flags["no_max_hand_size"] = 1
+		_ = i
+		stamped++
+	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": perm.Controller,
+		"seat":            perm.Controller,
+		"seats_flagged":   stamped,
+		"flag":            "no_max_hand_size",
 	})
 	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"no_maximum_hand_size_static_handled_by_AST_keyword_pipeline")
+		"no_max_hand_size_global_static_observed_via_seat_flag_cleanup_step_enforcement_not_wired_at_per_card_layer")
 }
 
-func theSecondDoctorHowCivil(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
-	const slug = "second_doctor_how_civil_of_you"
+func theSecondDoctorHowCivilOfYou(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "the_second_doctor_how_civil_of_you"
 	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
 		return
 	}
@@ -53,46 +70,46 @@ func theSecondDoctorHowCivil(gs *gameengine.GameState, perm *gameengine.Permanen
 	if activeSeat != perm.Controller {
 		return
 	}
-	doctorSeat := perm.Controller
-	flagKey := doctorAttackBlockKey(doctorSeat)
 
-	drawers := []int{}
-	totalDrew := 0
-	for i, s := range gs.Seats {
+	type drawResult struct {
+		seat int
+		drew bool
+	}
+	var results []drawResult
+	// Each living player draws. We always draw for the controller
+	// first (their own end step), then opponents in seat order.
+	order := []int{perm.Controller}
+	for i := range gs.Seats {
+		if i == perm.Controller {
+			continue
+		}
+		order = append(order, i)
+	}
+	for _, idx := range order {
+		s := gs.Seats[idx]
 		if s == nil || s.Lost {
 			continue
 		}
-		c := drawOne(gs, i, perm.Card.DisplayName())
-		if c == nil {
-			continue
+		c := drawOne(gs, idx, perm.Card.DisplayName())
+		drew := c != nil
+		results = append(results, drawResult{seat: idx, drew: drew})
+		if drew && idx != perm.Controller {
+			if s.Flags == nil {
+				s.Flags = map[string]int{}
+			}
+			// Stamp the no-attack-vs-controller flag for next turn.
+			s.Flags["cant_attack_doctor_controller"] = perm.Controller + 1
+			s.Flags["cant_attack_doctor_controller_until_turn"] = gs.Turn + 2
 		}
-		totalDrew++
-		if i == doctorSeat {
-			continue
-		}
-		if s.Flags == nil {
-			s.Flags = map[string]int{}
-		}
-		s.Flags[flagKey] = gs.Turn + 1
-		drawers = append(drawers, i)
 	}
-
+	drewSummary := map[int]bool{}
+	for _, r := range results {
+		drewSummary[r.seat] = r.drew
+	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":       doctorSeat,
-		"drawers":    drawers,
-		"total_drew": totalDrew,
-		"flag_set":   flagKey,
-		"flag_value": gs.Turn + 1,
+		"seat": perm.Controller,
+		"drew": drewSummary,
 	})
-	if len(drawers) > 0 {
-		emitPartial(gs, slug, perm.Card.DisplayName(),
-			"attack_restriction_combat_layer_enforcement_not_yet_wired")
-	}
-}
-
-// doctorAttackBlockKey returns the seat-flag key stamped on each
-// opponent who drew from a Second Doctor end-step trigger. Format
-// mirrors the propaganda_seat_N pattern in combat_restrictions.go.
-func doctorAttackBlockKey(doctorSeat int) string {
-	return "second_doctor_no_attack_seat_" + itoa(doctorSeat)
+	emitPartial(gs, slug, perm.Card.DisplayName(),
+		"cant_attack_doctor_controller_restriction_recorded_via_seat_flag_declare_attackers_enforcement_not_wired")
 }
