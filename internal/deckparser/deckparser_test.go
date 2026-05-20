@@ -104,9 +104,11 @@ func TestParseDeckReader(t *testing.T) {
 `
 	td, err := ParseDeckReader(strings.NewReader(text), nil, meta)
 	if err != nil {
-		// Tergrid is a legendary card that might or might not be in
-		// the meta. Don't fail hard.
-		t.Skipf("parse: %v", err)
+		// Tergrid is present in the production AST corpus. If parse fails
+		// here, either the corpus has dropped a legendary creature (data
+		// regression) or ParseDeckReader has a parser regression on DFC
+		// commanders — both worth surfacing loudly instead of skipping.
+		t.Fatalf("ParseDeckReader: %v", err)
 	}
 	if td.CommanderName == "" {
 		t.Fatalf("no commander parsed")
