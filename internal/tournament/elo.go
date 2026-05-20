@@ -1,6 +1,9 @@
 package tournament
 
-import "math"
+import (
+	"math"
+	"sort"
+)
 
 const (
 	eloDefault = 1500.0
@@ -88,13 +91,8 @@ func (e *ELORatings) Snapshot() []ELOEntry {
 			Games:     e.Games[name],
 		})
 	}
-	// Sort descending by rating.
-	for i := 0; i < len(entries); i++ {
-		for j := i + 1; j < len(entries); j++ {
-			if entries[j].Rating > entries[i].Rating {
-				entries[i], entries[j] = entries[j], entries[i]
-			}
-		}
-	}
+	sort.SliceStable(entries, func(i, j int) bool {
+		return entries[i].Rating > entries[j].Rating
+	})
 	return entries
 }

@@ -1,6 +1,8 @@
 package tournament
 
 import (
+	"fmt"
+
 	"github.com/hexdek/hexdek/internal/analytics"
 	"github.com/hexdek/hexdek/internal/trueskill"
 )
@@ -179,6 +181,14 @@ func aggregate(outcomes <-chan GameOutcome, nGames, nSeats int, commanderNames [
 	r.ELO = elo.Snapshot()
 	r.TrueSkill = ts.Snapshot()
 
-	_ = nGames // seen should == nGames; we don't enforce
+	// seen should == nGames. Mismatch means worker goroutines dropped
+	// outcomes (panic-and-recover, channel close before send, etc.) —
+	// surface it in CrashLogs so it shows up in the tournament report
+	// instead of silently inflating per-deck win rates.
+	if seen != nGames {
+		r.CrashLogs = append(r.CrashLogs,
+			fmt.Sprintf("aggregate: received %d outcomes, expected %d (%d dropped)",
+				seen, nGames, nGames-seen))
+	}
 	return r
 }
