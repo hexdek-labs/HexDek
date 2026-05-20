@@ -9,24 +9,28 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
-	"strings"
+	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
+	"syscall"
+	"time"
 
 	"github.com/hexdek/hexdek/internal/ai"
 	"github.com/hexdek/hexdek/internal/credits"
 	"github.com/hexdek/hexdek/internal/db"
+	"github.com/hexdek/hexdek/internal/friends"
 	"github.com/hexdek/hexdek/internal/hexapi"
 	"github.com/hexdek/hexdek/internal/hub"
 	"github.com/hexdek/hexdek/internal/moxfield"
 	"github.com/hexdek/hexdek/internal/oracle"
-	"github.com/hexdek/hexdek/internal/friends"
 	"github.com/hexdek/hexdek/internal/party"
 	"github.com/hexdek/hexdek/internal/pincer"
 	"github.com/hexdek/hexdek/internal/shuffle"
@@ -145,17 +149,24 @@ func main() {
 	// pprof debug endpoints — localhost only, gated behind env var
 	if os.Getenv("ENABLE_PPROF") == "1" {
 		go func() {
-			log.Printf("pprof: listening on 127.0.0.1:6060")
-			http.ListenAndServe("127.0.0.1:6060", nil)
+			const pprofAddr = "127.0.0.1:6060"
+			log.Printf("pprof: listening on %s", pprofAddr)
+			if err := http.ListenAndServe(pprofAddr, nil); err != nil {
+				log.Printf("pprof: endpoint disabled, ListenAndServe(%s): %v", pprofAddr, err)
+			}
 		}()
 	}
 
 	// Ship 6: Web UI (static files served from web/ if it exists)
 	mux.Handle("GET /ui/", http.StripPrefix("/ui/", http.FileServer(http.Dir("web"))))
 
-	// Convenience: serve the test deck JSON so the UI can fetch it directly.
+	// Convenience: serve the configured test deck JSON so the UI can fetch
+	// it directly. Route slug stays `yuriko-deck-json` for client back-compat,
+	// but the served file follows --deck so operators who point at a
+	// non-Yuriko deck don't get a silent UI/data mismatch.
+	testDeckPath := *deckPath
 	mux.HandleFunc("GET /api/test/yuriko-deck-json", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "data/decks/yuriko_v1.json")
+		http.ServeFile(w, r, testDeckPath)
 	})
 
 	// Temporal Pincer: anonymous UUID session tracking + auth stitching.
@@ -201,8 +212,46 @@ func main() {
 	log.Printf("Ship 3: ws://%s/ws/party/{id}?token={token}", *addr)
 
 	handler := corsMiddleware(pincerTracker.Middleware(userprofile.LocaleMiddleware(mux)))
-	if err := http.ListenAndServe(*addr, handler); err != nil {
-		log.Fatalf("server: %v", err)
+	httpSrv := &http.Server{
+		Addr:    *addr,
+		Handler: handler,
+		// Slow-loris hardening. WebSocket upgrades hijack the connection
+		// so these per-request timeouts no longer apply once the WS
+		// handshake completes.
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
+
+	// Graceful shutdown: run ListenAndServe in a goroutine, block main on
+	// SIGINT/SIGTERM, then Shutdown with a 15s drain. Defers (including
+	// database.Close) fire on return — the previous log.Fatalf path bypassed
+	// them via os.Exit.
+	serverErr := make(chan error, 1)
+	go func() {
+		if err := httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
+		}
+		close(serverErr)
+	}()
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+
+	select {
+	case sig := <-sigCh:
+		log.Printf("received %s, draining (15s timeout)", sig)
+	case err, ok := <-serverErr:
+		if ok && err != nil {
+			log.Printf("server: %v", err)
+		}
+	}
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
+		log.Printf("graceful shutdown: %v", err)
 	}
 }
 
@@ -343,8 +392,18 @@ var allowedOrigins = map[string]bool{
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
+		// Vary: Origin is required whenever the Access-Control-Allow-Origin
+		// header varies by request. Without it, CDNs and browser caches
+		// serve a response cached for one allowed origin to a different
+		// origin, silently breaking CORS or worse.
+		w.Header().Add("Vary", "Origin")
 		if allowedOrigins[origin] || strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://192.168.1.") {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
+			// Allow-Credentials lets frontend fetches with
+			// credentials:'include' carry the pincer hexdek_session cookie.
+			// Required by spec to be paired with a specific (non-wildcard)
+			// Allow-Origin, which we already echo.
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
