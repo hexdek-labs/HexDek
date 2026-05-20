@@ -318,14 +318,17 @@ func TestStackTrace_PerCardTriggerUsesStack(t *testing.T) {
 			e.Action, e.Card, e.Seat, e.StackSize, e.Detail)
 	}
 
-	// Verify trace shows trigger_push before resolve.
+	// Verify trace shows trigger_push before resolve. Triggered
+	// abilities now emit "trigger_resolve" (distinct from spell
+	// "resolve") per CR §608.2 audit shaping — accept either action
+	// so the ordering invariant survives the kind split.
 	trigPushIdx := -1
 	resolveIdx := -1
 	for i, e := range GlobalStackTrace.Entries {
 		if e.Action == "trigger_push" && e.Card == "Blood Artist" && trigPushIdx == -1 {
 			trigPushIdx = i
 		}
-		if e.Action == "resolve" && e.Card == "Blood Artist" && resolveIdx == -1 {
+		if (e.Action == "resolve" || e.Action == "trigger_resolve") && e.Card == "Blood Artist" && resolveIdx == -1 {
 			resolveIdx = i
 		}
 	}
@@ -333,10 +336,10 @@ func TestStackTrace_PerCardTriggerUsesStack(t *testing.T) {
 		t.Error("no trigger_push entry in trace for Blood Artist -- CR §603.3 violation")
 	}
 	if resolveIdx < 0 {
-		t.Error("no resolve entry in trace for Blood Artist")
+		t.Error("no resolve/trigger_resolve entry in trace for Blood Artist")
 	}
 	if trigPushIdx >= 0 && resolveIdx >= 0 && trigPushIdx >= resolveIdx {
-		t.Error("trigger_push should come before resolve")
+		t.Error("trigger_push should come before (trigger_)resolve")
 	}
 
 	// Verify a priority_pass appears between push and resolve.
@@ -350,7 +353,7 @@ func TestStackTrace_PerCardTriggerUsesStack(t *testing.T) {
 		}
 	}
 	if !hasPriority {
-		t.Error("no priority pass between trigger_push and resolve -- players cannot respond to trigger")
+		t.Error("no priority pass between trigger_push and (trigger_)resolve -- players cannot respond to trigger")
 	}
 
 	// Verify a triggered_ability event was logged.

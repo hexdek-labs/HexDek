@@ -1020,8 +1020,18 @@ func ResolveStackTop(gs *GameState) {
 	} else if item.Source != nil {
 		name = item.Source.Card.DisplayName()
 	}
-	// Stack trace: log resolution for CR audit.
-	GlobalStackTrace.Log("resolve", name, item.Controller, len(gs.Stack), "resolving")
+	// Stack trace: log resolution for CR audit. CR §608.2 covers both
+	// spells and triggered abilities, but the audit tool documents them
+	// as distinct event kinds ("resolve" vs "trigger_resolve") because
+	// downstream consumers need to count them separately (e.g.,
+	// "how many triggered abilities resolved this turn"). A triggered
+	// ability is identified by item.Kind=="triggered" or by carrying a
+	// Source permanent without a Card (legacy zero-Kind path).
+	resolveKind := "resolve"
+	if item.Kind == "triggered" || (item.Source != nil && !isSpell) {
+		resolveKind = "trigger_resolve"
+	}
+	GlobalStackTrace.Log(resolveKind, name, item.Controller, len(gs.Stack), "resolving")
 	gs.LogEvent(Event{
 		Kind:   "stack_resolve",
 		Seat:   item.Controller,
