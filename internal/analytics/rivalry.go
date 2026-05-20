@@ -56,7 +56,7 @@ func PersistRivalries(dir string, matchupWins, matchupGames map[string]map[strin
 	}
 
 	path := filepath.Join(dir, "matchups.json")
-	existing := loadRivalries(path)
+	existing, _ := loadRivalries(path)
 	index := make(map[string]*Rivalry, len(existing))
 	for i := range existing {
 		r := &existing[i]
@@ -112,11 +112,12 @@ func PersistRivalries(dir string, matchupWins, matchupGames map[string]map[strin
 	return atomicWriteJSON(path, out)
 }
 
-// LoadRivalries reads all rivalries from disk.
+// LoadRivalries reads all rivalries from disk. Missing file is not an
+// error; a corrupt file surfaces the JSON parse error so callers can
+// distinguish "no history yet" from "stored history is unreadable".
 func LoadRivalries(dir string) ([]Rivalry, error) {
 	path := filepath.Join(dir, "matchups.json")
-	rivalries := loadRivalries(path)
-	return rivalries, nil
+	return loadRivalries(path)
 }
 
 // TopRivals returns the top N rivals for a given commander, sorted by
@@ -161,14 +162,19 @@ func TopRivals(rivalries []Rivalry, commander string, n int) []RivalrySummary {
 	return matches
 }
 
-func loadRivalries(path string) []Rivalry {
+func loadRivalries(path string) ([]Rivalry, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
 	}
 	var out []Rivalry
-	json.Unmarshal(data, &out)
-	return out
+	if err := json.Unmarshal(data, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func atomicWriteJSON(path string, v any) error {

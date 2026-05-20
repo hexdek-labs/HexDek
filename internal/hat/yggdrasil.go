@@ -6857,15 +6857,6 @@ func (h *YggdrasilHat) AvailableZoneCastGrants(gs *gameengine.GameState, seatIdx
 	return out
 }
 
-// linkedExilesAgainstUs returns the count of cards each opponent has
-// currently exiled with a linked permanent (CR §406.7). High values
-// flag good removal targets — destroying that permanent returns the
-// exiled card. Returns nil if not yet initialized.
-func (h *YggdrasilHat) linkedExilesAgainstUs(seatIdx int) []int {
-	_ = seatIdx
-	return h.linkedExilesByOpponent
-}
-
 // opponentHasInteraction estimates whether an opponent seat is likely
 // holding instant-speed interaction based on: open mana, known colors
 // (blue/black = counters/removal), hand size, and entropy signals.

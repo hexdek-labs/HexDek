@@ -251,12 +251,6 @@ func checkExactlyOneWinner(gs *gameengine.GameState, r *OracleResult) {
 
 		// Turn-cap games now resolve a winner via seat-order tiebreak,
 		// so they should always satisfy N-1 Lost. No downgrade needed.
-		turnCapped := gs.Turn >= 80
-		if !turnCapped && gs.Flags != nil && gs.Flags["turn_capped"] > 0 {
-			turnCapped = true
-		}
-		_ = turnCapped
-
 		r.Violations = append(r.Violations, OracleViolation{
 			Rule:        "game_end",
 			Description: fmt.Sprintf("%d of %d seats lost (expected %d)", lost, len(gs.Seats), expected),

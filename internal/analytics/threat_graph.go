@@ -286,7 +286,7 @@ func PersistThreatGraph(dir string, records []KillRecord) error {
 	}
 
 	path := filepath.Join(dir, "threat_graph.json")
-	existing := loadThreatGraph(path)
+	existing, _ := loadThreatGraph(path)
 
 	// Merge new records into the edge map.
 	type edgeKey struct{ killer, victim string }
@@ -346,10 +346,12 @@ func PersistThreatGraph(dir string, records []KillRecord) error {
 	return atomicWriteJSON(path, out)
 }
 
-// LoadThreatGraph reads the threat graph from disk.
+// LoadThreatGraph reads the threat graph from disk. Missing file is not
+// an error; a corrupt file surfaces the JSON parse error so callers can
+// distinguish "no graph yet" from "stored graph is unreadable".
 func LoadThreatGraph(dir string) ([]ThreatEdge, error) {
 	path := filepath.Join(dir, "threat_graph.json")
-	return loadThreatGraph(path), nil
+	return loadThreatGraph(path)
 }
 
 // ThreatSummaryFor builds a user-facing threat graph summary for one
@@ -385,12 +387,17 @@ func ThreatSummaryFor(edges []ThreatEdge, commander string, topN int) ThreatGrap
 	return s
 }
 
-func loadThreatGraph(path string) []ThreatEdge {
+func loadThreatGraph(path string) ([]ThreatEdge, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
 	}
 	var out []ThreatEdge
-	json.Unmarshal(data, &out)
-	return out
+	if err := json.Unmarshal(data, &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
