@@ -66,10 +66,20 @@ func applyMigrations(db *sql.DB) error {
 		{"showmatch_game", "verified", "INTEGER NOT NULL DEFAULT 0"},
 	}
 	// Migrate showmatch_elo from commander-keyed to deck_key-keyed.
-	hasDeckKey, _ := columnExists(db, "showmatch_elo", "deck_key")
+	// Both Execs were previously unchecked — a DROP failure (e.g., FK
+	// constraint, locked db) would let the CREATE silently apply against
+	// the legacy schema, leaving the server running on a half-migrated
+	// table. Now any error short-circuits applyMigrations so Open()
+	// surfaces it instead of corrupting state.
+	hasDeckKey, err := columnExists(db, "showmatch_elo", "deck_key")
+	if err != nil {
+		return fmt.Errorf("check showmatch_elo.deck_key: %w", err)
+	}
 	if !hasDeckKey {
-		db.Exec("DROP TABLE IF EXISTS showmatch_elo")
-		db.Exec(`CREATE TABLE IF NOT EXISTS showmatch_elo (
+		if _, err := db.Exec("DROP TABLE IF EXISTS showmatch_elo"); err != nil {
+			return fmt.Errorf("drop legacy showmatch_elo: %w", err)
+		}
+		if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS showmatch_elo (
 			deck_key     TEXT PRIMARY KEY,
 			commander    TEXT NOT NULL DEFAULT '',
 			owner        TEXT NOT NULL DEFAULT '',
@@ -79,7 +89,9 @@ func applyMigrations(db *sql.DB) error {
 			losses       INTEGER NOT NULL DEFAULT 0,
 			delta        REAL NOT NULL DEFAULT 0.0,
 			updated_at   INTEGER NOT NULL DEFAULT 0
-		)`)
+		)`); err != nil {
+			return fmt.Errorf("create showmatch_elo (deck_key-keyed): %w", err)
+		}
 	}
 
 	for _, m := range migrations {

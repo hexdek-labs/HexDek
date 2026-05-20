@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 )
 
 type ELORecord struct {
@@ -153,7 +154,11 @@ func PersistGameTx(ctx context.Context, sqlDB *sql.DB, g GameRecord, seats []Gam
 		tx.Rollback()
 		return 0, err
 	}
-	gameID, _ := res.LastInsertId()
+	gameID, err := res.LastInsertId()
+	if err != nil {
+		tx.Rollback()
+		return 0, fmt.Errorf("LastInsertId for showmatch_game: %w", err)
+	}
 	stmt, err := tx.PrepareContext(ctx,
 		`INSERT INTO showmatch_game_seat (game_id, seat, commander, deck_key, life, hand_size, library_size, gy_size, bf_size, lost, battlefield_cards)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
@@ -374,16 +379,23 @@ func LoadOwnerGames(ctx context.Context, sqlDB *sql.DB, owner string, limit int)
 		return nil, err
 	}
 	for i := range games {
-		oppRows, err := sqlDB.QueryContext(ctx,
+		oppRows, qerr := sqlDB.QueryContext(ctx,
 			`SELECT commander FROM showmatch_game_seat WHERE game_id = ? AND seat != ? ORDER BY seat`,
 			games[i].GameID, games[i].MySeat)
-		if err != nil {
-			continue
+		if qerr != nil {
+			return nil, fmt.Errorf("load opponents for game %d: %w", games[i].GameID, qerr)
 		}
 		for oppRows.Next() {
 			var c string
-			oppRows.Scan(&c)
+			if serr := oppRows.Scan(&c); serr != nil {
+				oppRows.Close()
+				return nil, fmt.Errorf("scan opponent for game %d: %w", games[i].GameID, serr)
+			}
 			games[i].Opponents = append(games[i].Opponents, c)
+		}
+		if rerr := oppRows.Err(); rerr != nil {
+			oppRows.Close()
+			return nil, fmt.Errorf("opponents rows.Err for game %d: %w", games[i].GameID, rerr)
 		}
 		oppRows.Close()
 	}
