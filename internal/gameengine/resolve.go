@@ -2602,6 +2602,15 @@ func resolveCopySpell(gs *GameState, src *Permanent, e *gameast.CopySpell) {
 	// as it does on cast. FireMagecraftTriggers filters by spell type so
 	// copies of non-instant/sorcery spells are ignored automatically.
 	FireMagecraftTriggers(gs, controller, copyCard, true)
+	// Per-card dispatch for cards that trigger on copying a spell
+	// (e.g. The Twelfth Doctor: +1/+1 counter when you copy a spell).
+	// Per-card-driven copies (Kalamax, Alania, Riku) log copy_spell
+	// themselves but don't reach this dispatch; that's a partial.
+	FireCardTrigger(gs, "spell_copied", map[string]interface{}{
+		"caster_seat":  controller,
+		"copied_card":  copyCard,
+		"source_card":  target.Card,
+	})
 }
 
 func resolveCopyPermanent(gs *GameState, src *Permanent, e *gameast.CopyPermanent) {

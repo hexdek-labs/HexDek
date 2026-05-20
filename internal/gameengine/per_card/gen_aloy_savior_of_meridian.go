@@ -70,6 +70,11 @@ func aloyAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[s
 		"attacker_count": count,
 		"discover_x":     maxPow,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"discover_pipeline_not_wired_for_per_card")
+	if maxPow > 0 {
+		// CR §702.165 — discover X: exile cards from the top of the
+		// library until you exile a nonland card with MV ≤ X. You may
+		// cast it without paying its mana cost or put it into your
+		// hand. ApplyDiscover wraps the full mechanic.
+		gameengine.ApplyDiscover(gs, perm.Controller, maxPow)
+	}
 }
