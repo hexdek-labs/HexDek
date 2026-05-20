@@ -116,11 +116,19 @@ func (c *Cost) applyToken(token string) error {
 		c.Colored[Colorless]++
 	case "X":
 		c.Variable++
+	case "S":
+		// Snow mana: {S} means "one mana from a snow source." The MVP
+		// engine doesn't model the snow supertype on land sources, so
+		// from a payability standpoint snow pips are satisfied by any
+		// one mana — treat them as generic. This lets snow lands
+		// (Arctic Treeline, Boreal Shelf) and snow-cost cards
+		// (Arcum's Astrolabe, Marit Lage's Slumber) parse.
+		c.Generic++
 	default:
-		// Hybrid mana ({W/U}, {2/W}), Phyrexian ({W/P}), snow ({S}) — not
-		// handled in MVP. These are rare in our deck list and can be added
-		// later if needed.
-		return fmt.Errorf("unsupported mana symbol %q (hybrid/phyrexian/snow not yet implemented)", token)
+		// Hybrid mana ({W/U}, {2/W}) and Phyrexian ({W/P}) still
+		// need Pool.CanPay support for "this pip satisfied by either
+		// color" — not handled in MVP.
+		return fmt.Errorf("unsupported mana symbol %q (hybrid/phyrexian not yet implemented)", token)
 	}
 	return nil
 }

@@ -120,6 +120,26 @@ func TestParseXSpell(t *testing.T) {
 	}
 }
 
+func TestParseSnow(t *testing.T) {
+	// {S} is "one mana from a snow source." The MVP engine doesn't track
+	// the snow supertype on land sources, so the parser treats snow pips
+	// as generic mana — any one mana satisfies the pip. This unblocks
+	// snow lands and snow-cost cards (Arctic Treeline, Arcum's Astrolabe).
+	c, err := Parse("{S}{S}{U}")
+	if err != nil {
+		t.Fatalf("Parse({S}{S}{U}): unexpected error %v", err)
+	}
+	if c.Generic != 2 {
+		t.Errorf("Parse({S}{S}{U}): Generic = %d, want 2 (snow → generic)", c.Generic)
+	}
+	if c.Colored[Blue] != 1 {
+		t.Errorf("Parse({S}{S}{U}): Blue = %d, want 1", c.Colored[Blue])
+	}
+	if c.CMC() != 3 {
+		t.Errorf("Parse({S}{S}{U}): CMC = %d, want 3", c.CMC())
+	}
+}
+
 func TestParseBadInput(t *testing.T) {
 	cases := []string{
 		"U",          // missing braces

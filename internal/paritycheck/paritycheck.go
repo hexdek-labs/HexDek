@@ -30,6 +30,7 @@ package paritycheck
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -189,7 +190,9 @@ func Run(cfg Config) (*ParityReport, error) {
 	if err != nil {
 		return nil, fmt.Errorf("paritycheck: metadb: %w", err)
 	}
-	_ = meta.SupplementWithOracleJSON(cfg.OraclePath)
+	if err := meta.SupplementWithOracleJSON(cfg.OraclePath); err != nil {
+		log.Printf("paritycheck: oracle supplement %s failed (continuing with AST-only metadata, P/T fidelity reduced): %v", cfg.OraclePath, err)
+	}
 
 	decks := make([]*deckparser.TournamentDeck, 0, len(cfg.DeckPaths))
 	for _, p := range cfg.DeckPaths {
