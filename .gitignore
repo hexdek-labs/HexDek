@@ -6,6 +6,7 @@
 /hexdek-*
 /mtgsquad-*
 /ceiling-check
+/gen-handlers
 /bin/
 
 # Cross-compiled binaries

@@ -28,11 +28,9 @@ import zh from './locales/zh.json'
 import pt from './locales/pt.json'
 
 // Add new languages here. Keep keys ISO 639-1 (en, de, ja, ...).
-// Stub catalogs (ja/de/fr/ko/zh/pt) are intentionally `{}` and fall
-// through to English on every lookup — they mark the locale as
-// "available" in the picker so contributors can fill them in
-// incrementally. Card names always stay English (Scryfall localization
-// is a separate step).
+// Missing keys in any catalog fall through to English, then to the
+// literal key string. Card names always stay English (Scryfall
+// localization is a separate step).
 const LOCALES = { en, es, ja, de, fr, ko, zh, pt }
 const FALLBACK = 'en'
 const STORAGE_KEY = 'hexdek.locale'

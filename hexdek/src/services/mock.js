@@ -90,25 +90,3 @@ export const MOCK_LIVE_STATS = {
   userRank: '4,217 / 184K',
   throughput: [34, 52, 46, 71, 63, 80, 58, 72, 69, 84, 77, 90, 82, 68, 74, 86, 94, 88, 76, 82, 90, 84, 78, 72],
 }
-
-export const MOCK_DECK_ANALYSIS = {
-  tinybones: {
-    archetype: 'COMBO-CONTROL',
-    powerScore: 7.4,
-    b5Optimal: 8.9,
-    delta: -1.5,
-    intent: 'DRAIN OPPONENTS VIA DISCARD TRIGGERS.',
-    finish: 'SANGUINE BOND + EXQUISITE BLOOD LOOP.',
-    fallback: 'TORMENT OF HAILFIRE @ X≥10.',
-    combos: [
-      { symbol: 'α', type: 'INFINITE', cards: 'SANGUINE BOND + EXQUISITE BLOOD', desc: '"EITHER PIECE + ANY LIFE GAIN = INFINITE LOOP"', kind: 'bad' },
-      { symbol: 'β', type: 'DETERMINED', cards: 'GRAY MERCHANT + PHYREXIAN RECLAMATION', desc: '"REPEATABLE DRAIN, TERMINATES AT OPP LIFE"', kind: 'ok' },
-      { symbol: 'γ', type: 'FINISHER', cards: 'TORMENT OF HAILFIRE (X=10+)', desc: '"ONLINE T7+ WITH CABAL COFFERS DEVOTION"', kind: 'warn' },
-      { symbol: 'δ', type: 'SYNERGY', cards: 'TINYBONES + WASTE NOT', desc: '"EACH OPP DISCARD = DRAW + MANA + ZOMBIE"', kind: null },
-    ],
-    benchmarkYour: { winRate: '34%', tAvg: '7.2', consistency: '0.69', mullRate: '18%' },
-    benchmarkB5: { winRate: '41%', tAvg: '6.0', consistency: '0.82', mullRate: '11%' },
-    categories: { instants: 12, sorceries: 8, enchantments: 9, artifacts: 11, lands: 33, planeswalkers: 2, tokens: 4, sideboard: 0 },
-    kvStats: { avgCmc: '2.8', lands: '33 ⚠', ramp: '11 ✓', draw: '14 ✓', removal: '8', tutors: '6 ✓', interaction: '12' },
-  },
-}
