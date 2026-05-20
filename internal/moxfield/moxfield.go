@@ -15,6 +15,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -192,36 +193,52 @@ func FetchDeckName(url string) (string, error) {
 }
 
 // formatDecklist converts a Moxfield API response into our text decklist format.
+//
+// Each board is iterated in card-name order so the output is deterministic.
+// Partner decks emit two COMMANDER: lines; without sorting, Go's randomized
+// map iteration would flip which partner appears first across fetches, and
+// the downstream deckparser treats the first commander as primary.
 func formatDecklist(data *apiResponse) (string, error) {
 	var sb strings.Builder
 
-	// Write commander(s).
-	for _, entry := range data.commanders() {
-		if entry.Card.Name != "" {
-			sb.WriteString(fmt.Sprintf("COMMANDER: %s\n", entry.Card.Name))
+	writeEntries := func(entries map[string]apiCardEntry, format func(apiCardEntry) string) {
+		keys := make([]string, 0, len(entries))
+		for k := range entries {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			line := format(entries[k])
+			if line != "" {
+				sb.WriteString(line)
+			}
 		}
 	}
 
-	// Write mainboard.
-	for _, entry := range data.mainboard() {
-		if entry.Card.Name != "" && entry.Quantity > 0 {
-			sb.WriteString(fmt.Sprintf("%d %s\n", entry.Quantity, entry.Card.Name))
+	writeEntries(data.commanders(), func(e apiCardEntry) string {
+		if e.Card.Name == "" {
+			return ""
 		}
-	}
-
-	// Write sideboard as comments (so parser can skip them).
-	for _, entry := range data.sideboard() {
-		if entry.Card.Name != "" && entry.Quantity > 0 {
-			sb.WriteString(fmt.Sprintf("// Sideboard: %d %s\n", entry.Quantity, entry.Card.Name))
+		return fmt.Sprintf("COMMANDER: %s\n", e.Card.Name)
+	})
+	writeEntries(data.mainboard(), func(e apiCardEntry) string {
+		if e.Card.Name == "" || e.Quantity <= 0 {
+			return ""
 		}
-	}
-
-	// Write companions.
-	for _, entry := range data.companions() {
-		if entry.Card.Name != "" && entry.Quantity > 0 {
-			sb.WriteString(fmt.Sprintf("// Companion: %d %s\n", entry.Quantity, entry.Card.Name))
+		return fmt.Sprintf("%d %s\n", e.Quantity, e.Card.Name)
+	})
+	writeEntries(data.sideboard(), func(e apiCardEntry) string {
+		if e.Card.Name == "" || e.Quantity <= 0 {
+			return ""
 		}
-	}
+		return fmt.Sprintf("// Sideboard: %d %s\n", e.Quantity, e.Card.Name)
+	})
+	writeEntries(data.companions(), func(e apiCardEntry) string {
+		if e.Card.Name == "" || e.Quantity <= 0 {
+			return ""
+		}
+		return fmt.Sprintf("// Companion: %d %s\n", e.Quantity, e.Card.Name)
+	})
 
 	result := sb.String()
 	if strings.TrimSpace(result) == "" {

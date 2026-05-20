@@ -148,7 +148,6 @@ func (m *MetaDB) SupplementWithOracleJSON(path string) error {
 	if d, ok := tok.(json.Delim); !ok || d != '[' {
 		return fmt.Errorf("deckparser: oracle expected [, got %v", tok)
 	}
-	merged := 0
 	for dec.More() {
 		var e oracleCard
 		if err := dec.Decode(&e); err != nil {
@@ -197,7 +196,6 @@ func (m *MetaDB) SupplementWithOracleJSON(path string) error {
 		if cm.Toughness == 0 {
 			cm.Toughness = tg
 		}
-		merged++
 	}
 	return nil
 }

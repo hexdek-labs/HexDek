@@ -11,6 +11,7 @@ package hub
 import (
 	"context"
 	"errors"
+	"sort"
 	"sync"
 )
 
@@ -113,7 +114,9 @@ func (h *Hub) CountByParty(partyID string) int {
 }
 
 // PartyDeviceIDs returns the device IDs of all connections currently in a
-// party. Useful for diagnostics and lobby UI.
+// party, sorted for stable display. Lobby UI iterates this directly, so an
+// unsorted (random-iteration) result would visibly shuffle players between
+// refreshes.
 func (h *Hub) PartyDeviceIDs(partyID string) []string {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
@@ -125,6 +128,7 @@ func (h *Hub) PartyDeviceIDs(partyID string) []string {
 	for id := range conns {
 		ids = append(ids, id)
 	}
+	sort.Strings(ids)
 	return ids
 }
 
