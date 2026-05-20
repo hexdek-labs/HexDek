@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"regexp"
 	"sort"
@@ -14,10 +15,21 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
-func main() {
-	corpus, _ := astload.Load("data/rules/ast_dataset.jsonl")
+const (
+	astPath    = "data/rules/ast_dataset.jsonl"
+	oraclePath = "data/rules/oracle-cards.json"
+)
 
-	f, _ := os.Open("data/rules/oracle-cards.json")
+func main() {
+	corpus, err := astload.Load(astPath)
+	if err != nil {
+		log.Fatalf("load AST corpus %s: %v", astPath, err)
+	}
+
+	f, err := os.Open(oraclePath)
+	if err != nil {
+		log.Fatalf("open oracle corpus %s: %v", oraclePath, err)
+	}
 	var entries []struct {
 		Name       string   `json:"name"`
 		TypeLine   string   `json:"type_line"`
@@ -27,7 +39,10 @@ func main() {
 			OracleText string `json:"oracle_text"`
 		} `json:"card_faces"`
 	}
-	json.NewDecoder(f).Decode(&entries)
+	if err := json.NewDecoder(f).Decode(&entries); err != nil {
+		f.Close()
+		log.Fatalf("decode oracle corpus %s: %v", oraclePath, err)
+	}
 	f.Close()
 
 	unSets := map[string]bool{"Unstable": true, "Unhinged": true, "Unglued": true, "Unsanctioned": true, "Unfinity": true}

@@ -33,9 +33,15 @@ func main() {
 	defer db.Close()
 
 	var eloCount, gameCount, seatCount, cardCount int
-	db.QueryRow("SELECT COUNT(*) FROM showmatch_elo").Scan(&eloCount)
-	db.QueryRow("SELECT COUNT(*) FROM showmatch_game").Scan(&gameCount)
-	db.QueryRow("SELECT COUNT(*) FROM showmatch_game_seat").Scan(&seatCount)
+	if err := db.QueryRow("SELECT COUNT(*) FROM showmatch_elo").Scan(&eloCount); err != nil {
+		log.Fatalf("count showmatch_elo: %v", err)
+	}
+	if err := db.QueryRow("SELECT COUNT(*) FROM showmatch_game").Scan(&gameCount); err != nil {
+		log.Fatalf("count showmatch_game: %v", err)
+	}
+	if err := db.QueryRow("SELECT COUNT(*) FROM showmatch_game_seat").Scan(&seatCount); err != nil {
+		log.Fatalf("count showmatch_game_seat: %v", err)
+	}
 
 	hasCardStats := true
 	if err := db.QueryRow("SELECT COUNT(*) FROM showmatch_card_stats").Scan(&cardCount); err != nil {
@@ -48,11 +54,19 @@ func main() {
 	}
 	fmt.Println()
 
-	db.Exec("DELETE FROM showmatch_elo")
-	db.Exec("DELETE FROM showmatch_game_seat")
-	db.Exec("DELETE FROM showmatch_game")
+	if _, err := db.Exec("DELETE FROM showmatch_elo"); err != nil {
+		log.Fatalf("delete showmatch_elo: %v", err)
+	}
+	if _, err := db.Exec("DELETE FROM showmatch_game_seat"); err != nil {
+		log.Fatalf("delete showmatch_game_seat: %v", err)
+	}
+	if _, err := db.Exec("DELETE FROM showmatch_game"); err != nil {
+		log.Fatalf("delete showmatch_game: %v", err)
+	}
 	if hasCardStats {
-		db.Exec("DELETE FROM showmatch_card_stats")
+		if _, err := db.Exec("DELETE FROM showmatch_card_stats"); err != nil {
+			log.Fatalf("delete showmatch_card_stats: %v", err)
+		}
 	}
 
 	fmt.Println("ELO reset complete — all rating tables cleared")

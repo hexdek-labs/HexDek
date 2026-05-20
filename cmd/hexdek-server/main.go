@@ -43,6 +43,15 @@ func main() {
 	pincerSecure := flag.Bool("pincer-secure-cookie", false, "Set Secure flag on hexdek_session cookie (true behind HTTPS)")
 	flag.Parse()
 
+	// Sanity check: warn if the configured deck file is missing so the
+	// operator gets a clear hint before LoadDeckFromFile fatals a few lines
+	// down. (The historical init()-time check ran with a hardcoded path
+	// before flags were parsed and only warned on non-IsNotExist errors —
+	// i.e. it never fired for the case operators actually care about.)
+	if _, statErr := os.Stat(*deckPath); statErr != nil {
+		log.Printf("warning: deck file %s not accessible: %v", *deckPath, statErr)
+	}
+
 	// Open SQLite
 	database, err := db.Open(*dbPath)
 	if err != nil {
@@ -279,12 +288,15 @@ func (s *server) handleTopN(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
-	if err := enc.Encode(map[string]any{
-		"deck_name":     s.deck.Name,
-		"library_size":  len(s.library),
-		"revealed_top":  view,
-		"yuriko_damage_if_top_revealed": s.library[0].CMC,
-	}); err != nil {
+	payload := map[string]any{
+		"deck_name":    s.deck.Name,
+		"library_size": len(s.library),
+		"revealed_top": view,
+	}
+	if len(s.library) > 0 {
+		payload["yuriko_damage_if_top_revealed"] = s.library[0].CMC
+	}
+	if err := enc.Encode(payload); err != nil {
 		log.Printf("encode error: %v", err)
 	}
 }
@@ -344,9 +356,3 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// Sanity check at startup that the deck file exists before binding to a port.
-func init() {
-	if _, err := os.Stat("data/decks/yuriko_v1.json"); err != nil && !os.IsNotExist(err) {
-		log.Printf("warning: deck file pre-check failed: %v", err)
-	}
-}
