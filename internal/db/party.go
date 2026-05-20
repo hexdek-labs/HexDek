@@ -34,7 +34,10 @@ func CreateParty(ctx context.Context, db *sql.DB, hostDeviceID string, maxPlayer
 		return nil, fmt.Errorf("max_players must be 2-4, got %d", maxPlayers)
 	}
 
-	// Retry on code collision (very unlikely with 30^6 = 729M codes)
+	// Retry on code collision (very unlikely with 30^6 = 729M codes).
+	// Both the party row and the auto-host party_member row are written
+	// inside a single transaction so a partial failure can't leave an
+	// orphan empty-lobby party that the host then has to abandon.
 	const maxAttempts = 5
 	for attempt := 0; attempt < maxAttempts; attempt++ {
 		p := &Party{
@@ -44,19 +47,32 @@ func CreateParty(ctx context.Context, db *sql.DB, hostDeviceID string, maxPlayer
 			MaxPlayers:   maxPlayers,
 			CreatedAt:    Now(),
 		}
-		_, err := db.ExecContext(ctx,
+		tx, err := db.BeginTx(ctx, nil)
+		if err != nil {
+			return nil, fmt.Errorf("begin party tx: %w", err)
+		}
+		_, err = tx.ExecContext(ctx,
 			`INSERT INTO party (id, host_device_id, state, max_players, created_at) VALUES (?, ?, ?, ?, ?)`,
 			p.ID, p.HostDeviceID, p.State, p.MaxPlayers, p.CreatedAt)
-		if err == nil {
-			// Auto-add host as first member at seat 0
-			if _, err := db.ExecContext(ctx,
-				`INSERT INTO party_member (party_id, device_id, seat_position, is_ai, joined_at)
-				 VALUES (?, ?, 0, 0, ?)`, p.ID, hostDeviceID, p.CreatedAt); err != nil {
-				return nil, fmt.Errorf("auto-join host: %w", err)
-			}
-			return p, nil
+		if err != nil {
+			tx.Rollback()
+			// Likely a code collision (PRIMARY KEY conflict) — retry with
+			// a fresh code. Other errors will keep failing on retry; the
+			// final attempt's "failed after N" error message documents the
+			// cap. (Distinguishing constraint vs. transport errors via
+			// driver-specific errno is M1 in the audit — follow-up work.)
+			continue
 		}
-		// On ID collision try a new code
+		if _, err := tx.ExecContext(ctx,
+			`INSERT INTO party_member (party_id, device_id, seat_position, is_ai, joined_at)
+			 VALUES (?, ?, 0, 0, ?)`, p.ID, hostDeviceID, p.CreatedAt); err != nil {
+			tx.Rollback()
+			return nil, fmt.Errorf("auto-join host: %w", err)
+		}
+		if err := tx.Commit(); err != nil {
+			return nil, fmt.Errorf("commit party tx: %w", err)
+		}
+		return p, nil
 	}
 	return nil, fmt.Errorf("party code generation failed after %d attempts", maxAttempts)
 }

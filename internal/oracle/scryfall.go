@@ -13,6 +13,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -86,7 +87,13 @@ func Lookup(ctx context.Context, database *sql.DB, name string) (*Card, error) {
 		return nil, err
 	}
 	if err := saveToCache(ctx, database, key, c); err != nil {
-		_ = err
+		// A persistent cache-write failure (disk full, schema mismatch,
+		// locked db) silently disables the cache and causes Scryfall API
+		// hammering on every subsequent lookup. Surface it so an operator
+		// notices instead of silently burning through the ~10 req/s
+		// ceiling. The fresh card is still returned to the caller.
+		log.Printf("oracle: cache write for %q failed: %v", key, err)
+		cacheWriteFailures.Add(1)
 	}
 	return c, nil
 }
@@ -96,6 +103,40 @@ var (
 	lastScryfallHit  time.Time
 	scryfallInterval = 120 * time.Millisecond
 )
+
+// cacheWriteFailures is an atomic counter of saveToCache errors observed
+// by Lookup / LookupMany. Exported via CacheWriteFailures so tests and
+// any future /healthz probe can read it. Reset via test code only.
+var cacheWriteFailures atomicCounter
+
+// CacheWriteFailures returns the number of saveToCache errors observed by
+// Lookup / LookupMany since process start.
+func CacheWriteFailures() int64 { return cacheWriteFailures.Load() }
+
+// atomicCounter is a tiny int64 counter using sync/atomic semantics; kept
+// inline to avoid a one-off package dependency.
+type atomicCounter struct {
+	mu sync.Mutex
+	n  int64
+}
+
+func (c *atomicCounter) Add(d int64) {
+	c.mu.Lock()
+	c.n += d
+	c.mu.Unlock()
+}
+
+func (c *atomicCounter) Load() int64 {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.n
+}
+
+func (c *atomicCounter) reset() {
+	c.mu.Lock()
+	c.n = 0
+	c.mu.Unlock()
+}
 
 // LookupMany fetches multiple cards. Missing ones are fetched via Scryfall's
 // bulk /cards/collection endpoint (up to 75 cards per request, one API call
@@ -137,7 +178,10 @@ func LookupMany(ctx context.Context, database *sql.DB, names []string) map[strin
 		}
 		for name, card := range fetched {
 			out[name] = card
-			_ = saveToCache(ctx, database, name, card)
+			if err := saveToCache(ctx, database, name, card); err != nil {
+				log.Printf("oracle: cache write for %q failed: %v", name, err)
+				cacheWriteFailures.Add(1)
+			}
 		}
 		// Detect which names in this chunk didn't come back.
 		for _, n := range chunk {
