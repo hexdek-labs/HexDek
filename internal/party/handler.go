@@ -4,7 +4,6 @@
 package party
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -547,9 +546,16 @@ func (h *Handler) startGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Mark party as playing
-	_, _ = h.DB.ExecContext(r.Context(),
-		`UPDATE party SET state = 'playing' WHERE id = ?`, partyID)
+	// Mark party as playing. If this UPDATE fails, the game record from
+	// gameengine.StartGame already exists but the party row would still
+	// report state='lobby' — surface the error so the host can't try to
+	// startGame again and create a duplicate game.
+	if _, err := h.DB.ExecContext(r.Context(),
+		`UPDATE party SET state = 'playing' WHERE id = ?`, partyID); err != nil {
+		writeErr(w, http.StatusInternalServerError,
+			fmt.Sprintf("game started but party state update failed: %v", err))
+		return
+	}
 
 	if h.OnGameStart != nil {
 		h.OnGameStart(g.ID, partyID, len(members))
@@ -736,5 +742,3 @@ func writeErr(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
 }
 
-// Bind exposes a context-helper for tests.
-var _ = context.Background

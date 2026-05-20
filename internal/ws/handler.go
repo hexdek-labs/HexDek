@@ -162,7 +162,14 @@ func (h *Handler) dispatch(ctx context.Context, partyID string, conn *connection
 		var msg struct {
 			Text string `json:"text"`
 		}
-		_ = json.Unmarshal(env.Payload, &msg)
+		if err := json.Unmarshal(env.Payload, &msg); err != nil {
+			h.sendErr(ctx, conn, "invalid chat payload: "+err.Error())
+			return
+		}
+		if msg.Text == "" {
+			h.sendErr(ctx, conn, "chat text is required")
+			return
+		}
 		out, _ := json.Marshal(envelope{
 			Type: "chat",
 			Payload: mustJSON(map[string]any{

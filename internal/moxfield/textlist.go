@@ -22,7 +22,11 @@ type ParsedDecklist struct {
 	Mainboard []ParsedEntry
 }
 
-var lineRE = regexp.MustCompile(`^\s*(\d+)\s*[xX]?\s+(.+?)\s*$`)
+var (
+	lineRE        = regexp.MustCompile(`^\s*(\d+)\s*[xX]?\s+(.+?)\s*$`)
+	foilMarkerRE  = regexp.MustCompile(`\s*\*[A-Z]+\*\s*$`)
+	bracketTagRE  = regexp.MustCompile(`\s*\[[^\]]+\]\s*$`)
+)
 
 // ParseDecklist accepts the text exported by Moxfield / Archidekt / Goldfish /
 // any tool that emits the "{qty} {name}" decklist convention.
@@ -132,7 +136,7 @@ func ParseDecklist(text string) (*ParsedDecklist, error) {
 func cleanName(s string) string {
 	s = strings.TrimSpace(s)
 	// Strip foil markers like *F*, *E*, [foil], [etched]
-	s = regexp.MustCompile(`\s*\*[A-Z]+\*\s*$`).ReplaceAllString(s, "")
-	s = regexp.MustCompile(`\s*\[[^\]]+\]\s*$`).ReplaceAllString(s, "")
+	s = foilMarkerRE.ReplaceAllString(s, "")
+	s = bracketTagRE.ReplaceAllString(s, "")
 	return strings.TrimSpace(s)
 }
