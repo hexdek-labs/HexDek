@@ -48,6 +48,8 @@ func captainAmericaFirstAvengerActivate(gs *gameengine.GameState, src *gameengin
 		return
 	}
 	// Find highest-MV Equipment currently attached to Captain America.
+	// We do this BEFORE paying mana so an activation that can't find an
+	// attached Equipment doesn't burn the {3} cost.
 	var bestEq *gameengine.Permanent
 	bestCMC := -1
 	for _, p := range seat.Battlefield {
@@ -70,9 +72,19 @@ func captainAmericaFirstAvengerActivate(gs *gameengine.GameState, src *gameengin
 		emitFail(gs, slug, src.Card.DisplayName(), "no_equipment_attached", nil)
 		return
 	}
-	// Defensive cost top-up.
-	if seat.ManaPool >= 3 {
-		seat.ManaPool -= 3
+	// Real cost gate: {3}. Prior code used a "defensive top-up"
+	// (`if seat.ManaPool >= 3 { seat.ManaPool -= 3 }`) which allowed
+	// the activation to proceed with insufficient mana when callers
+	// bypassed the engine's ActivateAbility check (test fixtures, AI
+	// evaluator probes, replay rebuilds). Match the Erebos / Tasigur /
+	// Yenna pattern: refuse cleanly.
+	const manaCost = 3
+	if !gameengine.PayGenericCost(gs, seat, manaCost, "activated", "captain_america_throw", src.Card.DisplayName()) {
+		emitFail(gs, slug, src.Card.DisplayName(), "insufficient_mana", map[string]interface{}{
+			"mana_pool": seat.ManaPool,
+			"mana_cost": manaCost,
+		})
+		return
 	}
 	// Unattach.
 	bestEq.AttachedTo = nil
