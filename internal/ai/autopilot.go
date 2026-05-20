@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hexdek/hexdek/internal/db"
 	"github.com/hexdek/hexdek/internal/game"
 	"github.com/hexdek/hexdek/internal/mana"
 )
@@ -230,5 +229,3 @@ func aiSeatsForGame(ctx context.Context, database *sql.DB, gameID string) (map[i
 	}
 	return out, rows.Err()
 }
-
-var _ = db.Now

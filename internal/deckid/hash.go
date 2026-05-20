@@ -64,29 +64,31 @@ func CardList(commanders []*gameengine.Card, library []*gameengine.Card) []strin
 }
 
 // CardDelta computes the number of card changes between two sorted card lists.
-// Returns |symmetric difference| / 2 (cards added + cards removed).
+// Returns added + removed counts (cards added going parent→child, plus cards
+// removed). Multiplicity-aware: a deck swapping 30 Plains for 35 Plains is a
+// delta of 5, not 0 — Commander allows duplicates only for basics, but those
+// basics are the primary mana-base tuning surface.
 func CardDelta(parentList, childList []string) int {
-	parentSet := make(map[string]bool, len(parentList))
+	parentCounts := make(map[string]int, len(parentList))
 	for _, c := range parentList {
-		parentSet[c] = true
+		parentCounts[c]++
 	}
-	childSet := make(map[string]bool, len(childList))
+	childCounts := make(map[string]int, len(childList))
 	for _, c := range childList {
-		childSet[c] = true
+		childCounts[c]++
 	}
-	added := 0
-	for c := range childSet {
-		if !parentSet[c] {
-			added++
+	delta := 0
+	for c, n := range childCounts {
+		if extra := n - parentCounts[c]; extra > 0 {
+			delta += extra
 		}
 	}
-	removed := 0
-	for c := range parentSet {
-		if !childSet[c] {
-			removed++
+	for c, n := range parentCounts {
+		if extra := n - childCounts[c]; extra > 0 {
+			delta += extra
 		}
 	}
-	return added + removed
+	return delta
 }
 
 // normalizeName lowercases and folds accents for consistent hashing.

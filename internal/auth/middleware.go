@@ -3,6 +3,8 @@ package auth
 import (
 	"context"
 	"database/sql"
+	"errors"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -37,6 +39,24 @@ func extractToken(r *http.Request) string {
 	return r.URL.Query().Get("token")
 }
 
+// authErrorMessage maps a ValidateSession error to a safe client-facing 401
+// body. Sentinel errors (invalid / expired token) tell the client exactly
+// what's wrong so it can re-prompt for login. Unexpected errors (DB faults,
+// driver messages) are logged server-side and returned as a generic
+// "unauthorized" so a probing attacker can't enumerate the persistence
+// layer.
+func authErrorMessage(err error) string {
+	switch {
+	case errors.Is(err, ErrInvalidToken):
+		return "unauthorized: invalid or unknown session token"
+	case errors.Is(err, ErrSessionExpired):
+		return "unauthorized: session token expired"
+	default:
+		log.Printf("auth: validate session: %v", err)
+		return "unauthorized"
+	}
+}
+
 // Required wraps a handler to require a valid session token. Unauthenticated
 // requests get a 401 response.
 func Required(database *sql.DB, next http.Handler) http.Handler {
@@ -44,7 +64,7 @@ func Required(database *sql.DB, next http.Handler) http.Handler {
 		token := extractToken(r)
 		s, err := ValidateSession(r.Context(), database, token)
 		if err != nil {
-			http.Error(w, "unauthorized: "+err.Error(), http.StatusUnauthorized)
+			http.Error(w, authErrorMessage(err), http.StatusUnauthorized)
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(withSession(r.Context(), s)))
@@ -57,7 +77,7 @@ func RequiredFunc(database *sql.DB, next http.HandlerFunc) http.HandlerFunc {
 		token := extractToken(r)
 		s, err := ValidateSession(r.Context(), database, token)
 		if err != nil {
-			http.Error(w, "unauthorized: "+err.Error(), http.StatusUnauthorized)
+			http.Error(w, authErrorMessage(err), http.StatusUnauthorized)
 			return
 		}
 		next.ServeHTTP(w, r.WithContext(withSession(r.Context(), s)))
