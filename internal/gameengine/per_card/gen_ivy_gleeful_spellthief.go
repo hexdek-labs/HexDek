@@ -13,16 +13,18 @@ import (
 //	creature other than Ivy, you may copy that spell. The copy
 //	targets Ivy. (A copy of an Aura spell becomes a token.)
 //
-// Implementation:
+// Implementation (R46 stub port):
 //   - Flying: handled by the AST keyword pipeline.
-//   - "spell_cast" trigger: inspect the cast spell's target list. We
-//     count creature targets and require exactly one creature target,
-//     not Ivy herself, and no non-creature targets. The "may copy /
-//     copy targets Ivy" routing depends on the engine's spell-copy +
-//     retarget pipeline, which doesn't yet expose to per_card; we
-//     emit the trigger fire so observers see Ivy reacted.
-//
-// emitPartial: spell-copy-with-retarget is engine-side TODO.
+//   - "spell_cast" trigger: inspect the cast spell's target list.
+//     Require exactly one creature target that isn't Ivy. We locate
+//     the originating StackItem by Card pointer (passed via
+//     ctx["card"]), then push a copy onto the stack with IsCopy=true
+//     and a single retargeted creature target (Ivy). Pattern mirrors
+//     Strionic Resonator / resolve.go's CR §707.2 copy primitive.
+//   - The Aura→token conversion rider (CR §707.10g) on a copied Aura
+//     spell isn't handled here; if the original is an Aura spell the
+//     copy will resolve normally but won't be converted into a token
+//     by this handler — partial.
 func registerIvyGleefulSpellthief(r *Registry) {
 	r.OnTrigger("Ivy, Gleeful Spellthief", "spell_cast", ivySpellCast)
 }
@@ -50,10 +52,46 @@ func ivySpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 	if tperm == perm {
 		return // can't be Ivy herself
 	}
+	// Find the originating spell on the stack. Prefer the most recent
+	// item whose Card matches ctx["card"]; fall back to top instant/
+	// sorcery if ctx is missing the pointer (older event emitters).
+	castCard, _ := ctx["card"].(*gameengine.Card)
+	var originItem *gameengine.StackItem
+	for i := len(gs.Stack) - 1; i >= 0; i-- {
+		si := gs.Stack[i]
+		if si == nil || si.Card == nil {
+			continue
+		}
+		if castCard != nil && si.Card != castCard {
+			continue
+		}
+		originItem = si
+		break
+	}
+	if originItem == nil {
+		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+			"original_target": tperm.Card.DisplayName(),
+			"reason":          "origin_spell_not_on_stack",
+		})
+		return
+	}
+	copyCard := originItem.Card.DeepCopy()
+	copyCard.IsCopy = true
+	copyItem := &gameengine.StackItem{
+		Controller: perm.Controller,
+		Card:       copyCard,
+		Effect:     originItem.Effect,
+		Kind:       originItem.Kind,
+		IsCopy:     true,
+		Targets: []gameengine.Target{
+			{Kind: gameengine.TargetKindPermanent, Permanent: perm},
+		},
+	}
+	gameengine.PushStackItem(gs, copyItem)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"original_target": tperm.Card.DisplayName(),
 		"new_target":      perm.Card.DisplayName(),
+		"copied":          originItem.Card.DisplayName(),
+		"rule":            "707.2",
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"spell_copy_and_retarget_pipeline_not_wired_for_per_card")
 }
