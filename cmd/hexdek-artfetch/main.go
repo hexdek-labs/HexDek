@@ -26,6 +26,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -89,21 +91,54 @@ func main() {
 		return
 	}
 
-	// 3. Download uncached art.
-	errors := 0
-	for i, name := range uncached {
-		if err := fetchArt(name, *cacheDir); err != nil {
-			log.Printf("[%d/%d] FAIL  %s: %v", i+1, len(uncached), name, err)
-			errors++
-		} else {
-			log.Printf("[%d/%d] OK    %s", i+1, len(uncached), name)
-		}
-		// Respect Scryfall rate limit: 75ms between requests.
-		time.Sleep(75 * time.Millisecond)
+	// 3. Download uncached art. Workers share a single rate-limit ticker so
+	// the total request rate across all goroutines stays under Scryfall's
+	// 50–100 ms cadence regardless of --workers.
+	n := *workers
+	if n < 1 {
+		n = 1
+	}
+	if n > len(uncached) {
+		n = len(uncached)
 	}
 
+	ticker := time.NewTicker(75 * time.Millisecond)
+	defer ticker.Stop()
+
+	work := make(chan struct {
+		idx  int
+		name string
+	}, n)
+
+	var errors int64
+	var wg sync.WaitGroup
+	for w := 0; w < n; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for item := range work {
+				<-ticker.C
+				if err := fetchArt(item.name, *cacheDir); err != nil {
+					log.Printf("[%d/%d] FAIL  %s: %v", item.idx+1, len(uncached), item.name, err)
+					atomic.AddInt64(&errors, 1)
+				} else {
+					log.Printf("[%d/%d] OK    %s", item.idx+1, len(uncached), item.name)
+				}
+			}
+		}()
+	}
+	for i, name := range uncached {
+		work <- struct {
+			idx  int
+			name string
+		}{i, name}
+	}
+	close(work)
+	wg.Wait()
+
+	errCount := int(atomic.LoadInt64(&errors))
 	log.Printf("done: %d fetched, %d errors, %d total cached",
-		len(uncached)-errors, errors, cached+len(uncached)-errors)
+		len(uncached)-errCount, errCount, cached+len(uncached)-errCount)
 }
 
 // scanDecks walks the decks directory and returns a sorted, deduplicated
