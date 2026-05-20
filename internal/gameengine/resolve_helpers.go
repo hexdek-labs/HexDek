@@ -4234,16 +4234,47 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		})
 
 	case "god_eternal_tuck":
-		// CR §(God-Eternal cycle) — "put it third from the top of its
-		// owner's library." Remove from battlefield and insert into library
-		// at position 2 (0-indexed, so behind two cards).
+		// CR §(God-Eternal cycle) — "When this dies or is put into exile
+		// from anywhere, you may put it into your owner's library third
+		// from the top."
+		//
+		// The trigger fires AFTER the zone change, so by resolve time the
+		// card is already in the graveyard (most common path) or exile.
+		// Calling removePermanent on the now-off-battlefield permanent is
+		// a no-op, so we additionally fall through to sweep the card out
+		// of graveyard / exile / hand before inserting it into the
+		// library. Without this fallback the card ends up referenced by
+		// both its prior zone and the library — the CardIdentity
+		// invariant violation surfaced by Loki r47 game 333 / God-Eternal
+		// Oketra. Mirrors the Dread / Adric fixes (2026-05-08).
 		if src != nil && src.Card != nil {
 			owner := src.Owner
 			if owner < 0 || owner >= len(gs.Seats) {
 				owner = src.Controller
 			}
 			card := src.Card
-			gs.removePermanent(src)
+			fromZone := "battlefield"
+			removed := gs.removePermanent(src)
+			if removed {
+				gs.UnregisterReplacementsForPermanent(src)
+				gs.UnregisterContinuousEffectsForPermanent(src)
+			} else {
+				for seatIdx := range gs.Seats {
+					seat := gs.Seats[seatIdx]
+					if removeFromZone(seat, card, "graveyard") {
+						fromZone = "graveyard"
+						break
+					}
+					if removeFromZone(seat, card, "exile") {
+						fromZone = "exile"
+						break
+					}
+					if removeFromZone(seat, card, "hand") {
+						fromZone = "hand"
+						break
+					}
+				}
+			}
 			if owner >= 0 && owner < len(gs.Seats) {
 				lib := gs.Seats[owner].Library
 				insertAt := 2
@@ -4257,6 +4288,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 				newLib = append(newLib, lib[insertAt:]...)
 				gs.Seats[owner].Library = newLib
 			}
+			FireZoneChangeTriggers(gs, src, card, fromZone, "library")
 		}
 		gs.LogEvent(Event{
 			Kind:   "tuck_third_from_top",
