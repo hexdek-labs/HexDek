@@ -926,17 +926,20 @@ func (h *Handler) handleDeckEvents(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleProfile(w http.ResponseWriter, r *http.Request) {
+	// Global / unauthenticated profile envelope. Per-owner data lives at
+	// /api/profile/{owner}; this endpoint only surfaces server-wide
+	// Showmatch stats so the public dashboard has something to render.
 	profile := map[string]any{
-		"username":     "OPERATOR",
-		"userId":       "USR.0001",
-		"joined":       "04.2026",
-		"elo":          1500,
+		"username":     "",
+		"userId":       "",
+		"joined":       "",
+		"elo":          0,
 		"eloChange":    0,
-		"tier":         "UNRANKED",
-		"streak":       "—",
-		"primaryColor": "—",
-		"archetype":    "OBSERVER",
-		"percentile":   "—",
+		"tier":         "",
+		"streak":       "",
+		"primaryColor": "",
+		"archetype":    "",
+		"percentile":   "",
 		"gamesPlayed":  0,
 		"winRate":      0.0,
 		"avgWinTurn":   0.0,

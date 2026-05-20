@@ -18,7 +18,6 @@ import { useLiveSocket } from '../hooks/useLiveSocket'
 import { useModalKeyboard } from '../hooks/useModalKeyboard'
 import { useAuth } from '../context/AuthContext'
 import { trackEvent } from '../hooks/useAnalytics'
-import { MOCK_DECK_ANALYSIS } from '../services/mock'
 import { DeckPicker } from './DeckCompare'
 import DeckExportModal from '../components/DeckExportModal'
 import ContextBox from '../components/ContextBox'
@@ -730,7 +729,7 @@ export default function DeckArchive() {
 
   useEffect(() => {
     if (!owner || !id) {
-      setAnalysis(MOCK_DECK_ANALYSIS.tinybones)
+      setAnalysis(null)
       setLoading(false)
       return
     }

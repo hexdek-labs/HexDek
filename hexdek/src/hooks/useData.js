@@ -4,7 +4,6 @@ import {
   MOCK_PROFILE,
   MOCK_DECKS,
   MOCK_GAMES,
-  MOCK_MATCHUPS,
   MOCK_LIVE_STATS,
   MOCK_DECK_ANALYSIS,
 } from '../services/mock'
@@ -49,9 +48,9 @@ function timeAgo(dateStr) {
 function transformProfile(raw) {
   return {
     username: raw.username || 'OPERATOR',
-    userId: raw.userId || 'USR.0001',
-    joined: raw.joined || '04.2026',
-    elo: raw.elo || 1500,
+    userId: raw.userId || '—',
+    joined: raw.joined || '—',
+    elo: raw.elo || 0,
     eloChange: raw.eloChange || 0,
     tier: raw.tier || 'UNRANKED',
     streak: raw.streak || '—',
@@ -137,13 +136,6 @@ export function useGames(limit = 20) {
   return useAsync(
     () => api.getGames(limit).then(transformGames),
     MOCK_GAMES,
-  )
-}
-
-export function useMatchups() {
-  return useAsync(
-    api.getTournamentStats,
-    MOCK_MATCHUPS,
   )
 }
 

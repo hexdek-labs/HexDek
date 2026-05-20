@@ -335,7 +335,7 @@ export default function Forge() {
                   <Btn solid arrow="▶" onClick={handleStartGauntlet}>RUN GAUNTLET</Btn>
                 )}
                 {gauntlet?.status === 'running' && (
-                  <Btn solid arrow="◼" onClick={() => {}}>RUNNING ({gauntlet.games || 0}/{gauntlet.target || gauntletGames})</Btn>
+                  <Btn solid arrow="◼" disabled>RUNNING ({gauntlet.games || 0}/{gauntlet.target || gauntletGames})</Btn>
                 )}
                 <Btn ghost arrow="↗" onClick={() => {
                   if (!cards.length) return
