@@ -126,36 +126,11 @@ func TestScheduler_SelectAndEnqueue_PerSeatRows(t *testing.T) {
 	now := time.Now().Unix()
 	gid := seedGame(t, d, []string{"alice/aggro", "bob/control", "carol/combo", "dave/midrange"}, 1, 18, now-3600, 42)
 
-	// Force selection by seeding so the first Bernoulli draw lands a hit
-	// and at p=0.10 we're virtually guaranteed to pick the single ID.
-	s := NewSpotCheckScheduler(d, 0.10, 1)
-	// Repeat-Selection fallback: brute-force a seed if the first didn't pick.
-	picked := s.Select([]int64{gid})
-	if len(picked) == 0 {
-		// retry with different seeds until a hit; bound it so the test
-		// never loops indefinitely.
-		for seed := int64(2); seed < 100; seed++ {
-			s = NewSpotCheckScheduler(d, MaxSamplingRate, seed)
-			picked = s.Select([]int64{gid})
-			if len(picked) > 0 {
-				break
-			}
-		}
-	}
-	if len(picked) == 0 {
-		t.Skip("could not find an RNG seed that picks the test game; retry budget exhausted")
-	}
-
-	queueIDs, err := s.SelectAndEnqueue(context.Background(), []int64{gid})
-	if err != nil {
-		t.Fatalf("SelectAndEnqueue: %v", err)
-	}
-	// SelectAndEnqueue rolls the dice again — it might miss this round.
-	// To make the test deterministic, run at the max rate over a batch
-	// large enough that at least one seat fires.
-	_ = queueIDs
-
-	// Direct path: enqueue manually to verify the per-seat fan-out.
+	// This test exercises the per-seat fan-out of EnqueueVerification
+	// directly. SelectAndEnqueue's Bernoulli sampling is covered by
+	// TestScheduler_Select_DeterministicWithSeed elsewhere in this file —
+	// duplicating it here with a 100-seed retry loop produced a flaky
+	// skip and didn't add coverage, so it was removed in r48.
 	keys := []string{"alice/aggro", "bob/control", "carol/combo", "dave/midrange"}
 	for _, dk := range keys {
 		_, err := db.EnqueueVerification(context.Background(), d, db.VerificationEnqueueParams{

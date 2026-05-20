@@ -63,10 +63,10 @@ func TestYggdrasil_1v1(t *testing.T) {
 
 func runYggdrasilDiag(t *testing.T, label string, budget int, wantRollout bool, nSeats int) {
 	corpus, meta := loadCorpus(t)
+	// findAllDecks fatal-skips itself if it can't find ≥nSeats decks, so
+	// a follow-up len() check would be dead code (runtime.Goexit fires
+	// inside the helper).
 	paths := findAllDecks(t, nSeats)
-	if len(paths) < nSeats {
-		t.Skipf("need at least %d decks, found %d", nSeats, len(paths))
-	}
 	decks := loadNDecks(t, paths[:nSeats], corpus, meta)
 
 	logs := make([]*[]string, nSeats)
@@ -183,10 +183,8 @@ func runYggdrasilDiag(t *testing.T, label string, budget int, wantRollout bool, 
 
 func TestMCTSDiagnostic_4Player_TokenTrace(t *testing.T) {
 	corpus, meta := loadCorpus(t)
+	// findAllDecks fatal-skips itself if it can't find ≥4 decks.
 	paths := findAllDecks(t, 4)
-	if len(paths) < 4 {
-		t.Skip("need 4 decks")
-	}
 	decks := loadNDecks(t, paths[:4], corpus, meta)
 
 	nSeats := 4
@@ -315,10 +313,8 @@ func findAllDecks(t *testing.T, minN int) []string {
 
 func runMCTSDiag(t *testing.T, label string, budget int, wantRollout bool, nSeats int) {
 	corpus, meta := loadCorpus(t)
+	// findAllDecks fatal-skips itself if it can't find ≥nSeats decks.
 	paths := findAllDecks(t, nSeats)
-	if len(paths) < nSeats {
-		t.Skipf("need at least %d decks, found %d", nSeats, len(paths))
-	}
 	decks := loadNDecks(t, paths[:nSeats], corpus, meta)
 
 	// Collect decision logs per seat.

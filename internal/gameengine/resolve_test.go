@@ -979,8 +979,11 @@ func TestWithCorpus_LightningBolt(t *testing.T) {
 		}
 	}
 	if dmg == nil {
-		// The current parser wraps Bolt as parsed_tail; skip gracefully.
-		t.Skip("Lightning Bolt Damage not structured in corpus (parsed_tail); skipping")
+		// Parser regression: Lightning Bolt's Damage effect was historically
+		// wrapped as parsed_tail (and this branch skipped). As of r41 the
+		// corpus structures Bolt as Static→ModificationEffect→Damage; if
+		// dmg is nil today, the parser has regressed.
+		t.Fatalf("Lightning Bolt Damage not structured in corpus — parser regression?")
 	}
 	gs := newFixtureGame(t)
 	src := addBattlefield(gs, 0, "Lightning Bolt", 0, 0, "instant")

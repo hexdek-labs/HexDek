@@ -183,7 +183,11 @@ func TestMDFC_GrinderIntegration_NoFFMDFCPermanentTypeViolations(t *testing.T) {
 		numGames, gamesWithFFCardOnBattlefield, totalPermViolations, ffViolations)
 
 	if gamesWithFFCardOnBattlefield == 0 {
-		t.Skip("no FF MDFC card reached a battlefield in any game — test was vacuous, " +
+		// Hard-fail rather than skip: a vacuous integration test is a
+		// silent false-pass. If this fires, increase numGames/maxTurns
+		// or update the FF-MDFC deck pool until at least one card from
+		// the cycle reaches the battlefield.
+		t.Errorf("no FF MDFC card reached a battlefield in any game — test was vacuous, " +
 			"increase numGames/maxTurns or pick decks more likely to play these lands")
 	}
 }

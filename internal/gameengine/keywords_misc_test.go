@@ -1702,10 +1702,6 @@ func TestCountCreaturesInHand(t *testing.T) {
 func TestRaid_CombatSetsFlag(t *testing.T) {
 	// After DeclareAttackers runs, the seat should have attacked_this_turn.
 	gs := newMiscGame(t)
-	// Need at least 2 seats for combat.
-	if len(gs.Seats) < 2 {
-		t.Skip("need 2 seats")
-	}
 	gs.Active = 0
 
 	// Add a creature that can attack (not summoning sick, not tapped).
