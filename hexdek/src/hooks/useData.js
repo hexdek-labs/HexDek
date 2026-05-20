@@ -5,7 +5,6 @@ import {
   MOCK_DECKS,
   MOCK_GAMES,
   MOCK_LIVE_STATS,
-  MOCK_DECK_ANALYSIS,
 } from '../services/mock'
 
 function useAsync(fetcher, fallback) {
@@ -150,21 +149,5 @@ export function useLiveELO() {
   return useAsync(
     () => api.getLiveELO(),
     [],
-  )
-}
-
-export function useDeckAnalysis(deckId) {
-  const fallback = MOCK_DECK_ANALYSIS[deckId] || MOCK_DECK_ANALYSIS.tinybones
-  return useAsync(
-    () => api.getDeckAnalysis(deckId),
-    fallback,
-  )
-}
-
-export function useDeckDetail(owner, id) {
-  const fallback = null
-  return useAsync(
-    () => api.getDeck(`${owner}/${id}`),
-    fallback,
   )
 }

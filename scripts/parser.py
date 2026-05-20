@@ -1047,9 +1047,9 @@ def _untap_those(m):
     return UntapEffect(target=Filter(base="creatures", quantifier="those", targeted=False))
 
 
-@rule(r"^all creatures get [+-]\d+/[+-]\d+ until end of turn(?:\.|$)")
+@rule(r"^all creatures get ([+-]\d+)/([+-]\d+) until end of turn(?:\.|$)")
 def _all_creatures_buff(m):
-    return Buff(power=0, toughness=0,  # placeholder: TODO parse stats
+    return Buff(power=int(m.group(1)), toughness=int(m.group(2)),
                 target=Filter(base="creature", quantifier="all"))
 
 
