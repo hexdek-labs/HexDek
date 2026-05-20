@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Panel, KV, Bar, Tag, Btn, Tape, MiniBars } from '../components/chrome'
 import ImportModal from '../components/ImportModal'
-import { useProfile, useDecks, useGames, useMatchups } from '../hooks/useData'
+import { useProfile, useDecks, useGames } from '../hooks/useData'
 import { useLiveSocket } from '../hooks/useLiveSocket'
 import { useAuth } from '../context/AuthContext'
 import { api, cardArtUrl } from '../services/api'
@@ -189,7 +189,6 @@ export default function Dashboard() {
   const { data: profile } = useProfile()
   const { data: decks, refetch: refetchDecks } = useDecks()
   const { data: games } = useGames()
-  const { data: matchups } = useMatchups()
   const { stats: rawStats, elo: rawElo } = useLiveSocket()
   const live = rawStats ? {
     activeForges: 1,

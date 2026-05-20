@@ -82,12 +82,6 @@ export const MOCK_GAMES = [
   { id: 'G.243', deck: 'TINYBONES', opponent: 'VS 3× B2 PRECON', result: 'WIN', detail: 'T8 / DRAIN LOOP', time: '2D AGO', kind: 'ok' },
 ]
 
-export const MOCK_MATCHUPS = [
-  { deck: 'TINY', aggro: 38, ctrl: 31, combo: 28, stax: 19 },
-  { deck: 'SEN', aggro: 22, ctrl: 41, combo: 33, stax: 27 },
-  { deck: 'KRRK', aggro: 44, ctrl: 29, combo: 51, stax: 12 },
-]
-
 export const MOCK_LIVE_STATS = {
   activeForges: 1247,
   totalGames: 2847391024,
