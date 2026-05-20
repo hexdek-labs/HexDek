@@ -2784,36 +2784,38 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			}
 			kaResolved = true
 		case strings.HasPrefix(kaRaw, "explore"):
-			// CR §701.40: reveal top card; if land, put to hand; else +1/+1
-			// counter and optionally put to graveyard. MVP: draw one card.
-			gs.drawOne(kaSeat)
-			kaResolved = true
+			// CR §701.40: delegate to PerformExplore (which does the
+			// reveal-top / land-to-hand / +1/+1 counter dance). The
+			// keyword_action path was previously a draw-one stub that
+			// produced the wrong observable for proliferate/explore
+			// archetypes (Wildgrowth Walker, Huatli's Raptor, etc.).
+			if src != nil && src.IsCreature() {
+				PerformExplore(gs, src)
+				kaResolved = true
+			} else {
+				// No creature to explore on — leave kaResolved=false so
+				// the residual-text fallback can pick it up if needed.
+				gs.LogEvent(Event{
+					Kind:   "explore_no_creature",
+					Seat:   kaSeat,
+					Source: sourceName(src),
+				})
+			}
 		case strings.HasPrefix(kaRaw, "mill"):
 			for i := 0; i < kaCount; i++ {
 				gs.millOne(kaSeat)
 			}
 			kaResolved = true
 		case strings.HasPrefix(kaRaw, "proliferate"):
-			// CR §701.27: add one counter of each kind to any number of
-			// permanents/players that already have counters. MVP: add a
-			// +1/+1 counter to each friendly creature that has any counters.
-			proliferatedKA := 0
-			if kaSeat >= 0 && kaSeat < len(gs.Seats) {
-				for _, p := range gs.Seats[kaSeat].Battlefield {
-					if p != nil && p.IsCreature() && len(p.Counters) > 0 {
-						for kind := range p.Counters {
-							p.Counters[kind]++
-							proliferatedKA++
-							break // one counter type per permanent for MVP
-						}
-					}
-				}
-				gs.InvalidateCharacteristicsCache()
-			}
-			FireCardTrigger(gs, "proliferate", map[string]interface{}{
-				"seat":   kaSeat,
-				"amount": proliferatedKA,
-			})
+			// CR §701.27: delegate to the canonical "proliferate"
+			// resolver above (which already walks every perm's full
+			// counter set with the GreedyHat opponent-counter policy
+			// and dispatches the post-proliferate trigger). The
+			// keyword_action path only reaches here when the parser
+			// emitted proliferate as a raw keyword string rather than
+			// a structured ModKind; route both shapes through one
+			// implementation so they stay in lockstep.
+			ResolveEffect(gs, src, &gameast.ModificationEffect{ModKind: "proliferate"})
 			kaResolved = true
 		case strings.HasPrefix(kaRaw, "connive"):
 			// CR §701.47: draw a card, then discard a card. If you discarded
@@ -2863,9 +2865,14 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			}
 			kaResolved = true
 		case strings.HasPrefix(kaRaw, "populate"):
-			// CR §701.30: create a copy of a creature token you control.
-			// MVP: log only (token copying not fully modeled).
-			kaResolved = false
+			// CR §701.30 — delegate to the canonical "populate" ModKind
+			// resolver, which picks the strongest creature token the
+			// controller owns and mints a copy with the standard ETB
+			// cascade (GreedyHat policy). The keyword_action path only
+			// reaches here when the parser emitted populate as a raw
+			// keyword string rather than a structured ModKind.
+			ResolveEffect(gs, src, &gameast.ModificationEffect{ModKind: "populate"})
+			kaResolved = true
 		case strings.HasPrefix(kaRaw, "amass"):
 			// CR §701.44: create an Army token or put +1/+1 counters on
 			// one you already control. MVP: create a 0/0 token and add
@@ -4113,8 +4120,17 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			s := gs.Seats[seat]
 			switch e.ModKind {
 			case "reorder_top_of_library":
-				// Shuffle the top N cards (MVP: top 3 or library size, whichever is smaller).
+				// Shuffle the top N cards. The parser stuffs N into Args
+				// for "look at the top N cards of your library" effects;
+				// fall back to 3 when no numeric arg is present (covers
+				// Scry-like shapes the parser didn't normalize).
 				n := 3
+				for _, arg := range e.Args {
+					if v, ok := asInt(arg); ok && v > 0 {
+						n = v
+						break
+					}
+				}
 				if len(s.Library) < n {
 					n = len(s.Library)
 				}
@@ -4323,14 +4339,22 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		// CR §702.XXX — Bloomburrow gift mechanic. An opponent receives a
 		// benefit (e.g., draw a card, gain life) and in return the controller
 		// gets a more powerful effect. The actual gift/reward pair varies per
-		// card and is encoded in Args. Simulation: log with structured args;
-		// the sub-effects are resolved by nested ModificationEffects if present.
+		// card and is encoded in Args as nested Effect nodes — dispatch each
+		// in declared order so the gift-and-reward pair both resolve.
+		giftResolved := 0
+		for _, arg := range e.Args {
+			if eff, ok := arg.(gameast.Effect); ok {
+				ResolveEffect(gs, src, eff)
+				giftResolved++
+			}
+		}
 		gs.LogEvent(Event{
 			Kind:   "gift",
 			Seat:   controllerSeat(src),
 			Source: sourceName(src),
 			Details: map[string]interface{}{
-				"args": e.Args,
+				"args":     e.Args,
+				"resolved": giftResolved,
 			},
 		})
 
