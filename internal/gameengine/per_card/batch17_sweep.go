@@ -1189,13 +1189,25 @@ func lichsMasteryLifeLost(gs *gameengine.GameState, perm *gameengine.Permanent, 
 		// full §406.3 lifecycle: would_be_exiled replacement chain,
 		// removePermanent, UnregisterReplacements/Continuous, detachAll,
 		// commander redirect, and LTB triggers.
-		if len(s.Battlefield) > 0 {
-			p := s.Battlefield[len(s.Battlefield)-1]
-			if p != nil && p.Card != nil {
-				if gameengine.ExilePermanent(gs, p, perm) {
-					exiled++
-					continue
-				}
+		// r58 follow-up: skip Lich's Mastery itself. The original
+		// `last-permanent` picker would auto-self-exile when Lich was
+		// the last entry in the battlefield slice, triggering its own
+		// "leaves the battlefield → you lose the game" SBA and
+		// defeating the engine's entire purpose. Scan backward for the
+		// most-recent non-source permanent instead.
+		var victim *gameengine.Permanent
+		for idx := len(s.Battlefield) - 1; idx >= 0; idx-- {
+			cand := s.Battlefield[idx]
+			if cand == nil || cand.Card == nil || cand == perm {
+				continue
+			}
+			victim = cand
+			break
+		}
+		if victim != nil {
+			if gameengine.ExilePermanent(gs, victim, perm) {
+				exiled++
+				continue
 			}
 		}
 		if len(s.Hand) > 0 {
