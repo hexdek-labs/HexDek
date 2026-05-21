@@ -196,3 +196,95 @@ func TestGodEternalTuck_EmptyLibraryStillInserts(t *testing.T) {
 		t.Errorf("expected graveyard cleared, got %d", len(gs.Seats[0].Graveyard))
 	}
 }
+
+// TestGodEternalTuck_R56_FromCommandZoneDoesNotDuplicate pins the R56 fix
+// for Loki r55 game-3458 / God-Eternal Bontu library↔command_zone leak.
+//
+// Bug shape (pre-r56): when a God-Eternal is the controller's commander
+// and dies, CR §903.9b redirects the death to command_zone instead of
+// graveyard. The God-Eternal's own "die or be exiled → owner's library
+// third from top" trigger fires AFTER the §903.9b redirect, so by
+// resolve time the card is in command_zone. The handler's fallthrough
+// scanned graveyard / exile / hand but NOT command_zone — the card was
+// inserted into the library without being removed from command_zone,
+// duplicating the *Card across both zones.
+//
+// Fix: extend the fallthrough scan to include command_zone.
+func TestGodEternalTuck_R56_FromCommandZoneDoesNotDuplicate(t *testing.T) {
+	gs := newOketraGame(t)
+	bontu := &Card{Name: "God-Eternal Bontu", Owner: 0, Types: []string{"creature", "legendary"}}
+	// Simulate the real-game state: Bontu died as commander, §903.9b
+	// redirected to command_zone. The Permanent pointer is the stale
+	// ex-battlefield reference the trigger carries.
+	perm := &Permanent{
+		Card:       bontu,
+		Controller: 0,
+		Owner:      0,
+		Timestamp:  gs.NextTimestamp(),
+		Counters:   map[string]int{},
+		Flags:      map[string]int{},
+	}
+	gs.Seats[0].CommandZone = append(gs.Seats[0].CommandZone, bontu)
+	oketraSeedLibrary(gs, 0, "Top1", "Top2", "Top3")
+
+	resolveModificationEffect(gs, perm, godEternalTuckMod())
+
+	// The card must be removed from the command_zone.
+	for _, c := range gs.Seats[0].CommandZone {
+		if c == bontu {
+			t.Errorf("CardIdentity leak: Bontu still in command_zone after tuck (r56 regression)")
+		}
+	}
+	// Library should now contain Bontu at index 2 (third from top).
+	if len(gs.Seats[0].Library) != 4 {
+		t.Fatalf("expected library size 4 after tuck, got %d", len(gs.Seats[0].Library))
+	}
+	if gs.Seats[0].Library[2] != bontu {
+		t.Errorf("expected Bontu at index 2; got %q", gs.Seats[0].Library[2].DisplayName())
+	}
+	// And NOT anywhere else in the library.
+	for i, c := range gs.Seats[0].Library {
+		if i != 2 && c == bontu {
+			t.Errorf("Bontu duplicated at library index %d", i)
+		}
+	}
+}
+
+// TestGodEternalTuck_R56_CommandZoneOnOpponentSeat covers the case where
+// the commander's command_zone instance lives on a different seat index
+// from the perm.Controller (e.g., a §903.9b redirect on a stolen Bontu —
+// the §903.9b redirect goes to the OWNER's command zone, not the
+// controller's). The fallthrough loops over every seat, so the scan
+// finds the card regardless of which seat hosts the command_zone entry.
+func TestGodEternalTuck_R56_CommandZoneOnOwnerNotController(t *testing.T) {
+	gs := newOketraGame(t)
+	bontu := &Card{Name: "God-Eternal Bontu", Owner: 1, Types: []string{"creature", "legendary"}}
+	// Bontu was stolen by seat 0 (controller=0), but owner=1; §903.9b
+	// redirects to seat 1's command zone.
+	perm := &Permanent{
+		Card:       bontu,
+		Controller: 0,
+		Owner:      1,
+		Timestamp:  gs.NextTimestamp(),
+		Counters:   map[string]int{},
+		Flags:      map[string]int{},
+	}
+	gs.Seats[1].CommandZone = append(gs.Seats[1].CommandZone, bontu)
+	oketraSeedLibrary(gs, 1, "Top1", "Top2", "Top3")
+
+	resolveModificationEffect(gs, perm, godEternalTuckMod())
+
+	// Bontu must be removed from seat 1's command_zone.
+	for _, c := range gs.Seats[1].CommandZone {
+		if c == bontu {
+			t.Errorf("CardIdentity leak: Bontu still in seat 1 command_zone after tuck")
+		}
+	}
+	// And must end up in OWNER's (seat 1) library at index 2.
+	if len(gs.Seats[1].Library) != 4 {
+		t.Fatalf("expected seat 1 library size 4, got %d", len(gs.Seats[1].Library))
+	}
+	if gs.Seats[1].Library[2] != bontu {
+		t.Errorf("expected Bontu at seat 1 library index 2; got %q", gs.Seats[1].Library[2].DisplayName())
+	}
+}

@@ -4242,11 +4242,14 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		// card is already in the graveyard (most common path) or exile.
 		// Calling removePermanent on the now-off-battlefield permanent is
 		// a no-op, so we additionally fall through to sweep the card out
-		// of graveyard / exile / hand before inserting it into the
-		// library. Without this fallback the card ends up referenced by
-		// both its prior zone and the library — the CardIdentity
-		// invariant violation surfaced by Loki r47 game 333 / God-Eternal
-		// Oketra. Mirrors the Dread / Adric fixes (2026-05-08).
+		// of graveyard / exile / hand / command_zone before inserting it
+		// into the library. Without this fallback the card ends up
+		// referenced by both its prior zone and the library — the
+		// CardIdentity invariant violation surfaced by Loki r47 game 333
+		// / God-Eternal Oketra (battlefield → graveyard path) and Loki
+		// r55 game 3458 / God-Eternal Bontu (commander → §903.9b
+		// command_zone redirect path; r56 fix added the command_zone arm
+		// to the scan). Mirrors the Dread / Adric fixes (2026-05-08).
 		if src != nil && src.Card != nil {
 			owner := src.Owner
 			if owner < 0 || owner >= len(gs.Seats) {
@@ -4271,6 +4274,10 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 					}
 					if removeFromZone(seat, card, "hand") {
 						fromZone = "hand"
+						break
+					}
+					if removeFromZone(seat, card, "command_zone") {
+						fromZone = "command_zone"
 						break
 					}
 				}
