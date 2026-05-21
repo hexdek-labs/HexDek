@@ -467,35 +467,119 @@ func PayColoredPip(p *ColoredManaPool, color, spellType string) string {
 
 // --- Phase-end drain -----------------------------------------------------
 
+// ManaPoolExemption — one registered "this color of mana doesn't empty
+// at phase end" exception. Replaces the hardcoded card-name check that
+// previously lived inside PoolExemptColors. Per_card handlers register
+// on ETB and unregister at LTB via the helpers below.
+//
+// Colors values: "W", "U", "B", "R", "G", "C" (single colors), or
+// "any" (all colors — Upwelling). Seat: the seat whose pool is
+// affected, or -1 for "all seats" (Upwelling).
+type ManaPoolExemption struct {
+	Source *Permanent
+	Seat   int
+	Colors map[string]bool
+}
+
+// RegisterManaPoolExemption registers a phase-drain exemption tied to
+// perm. The exemption persists until the matching call to
+// UnregisterManaPoolExemptionForPerm (typically from a permanent_ltb
+// hook). seatScope = -1 means "applies to every seat" (Upwelling);
+// any non-negative value scopes the exemption to that seat only
+// (Omnath: only the controller's green stays).
+func RegisterManaPoolExemption(gs *GameState, perm *Permanent, seatScope int, colors []string) {
+	if gs == nil || perm == nil {
+		return
+	}
+	cs := map[string]bool{}
+	for _, c := range colors {
+		cs[strings.ToUpper(c)] = true
+	}
+	if len(cs) == 0 {
+		return
+	}
+	gs.ManaPoolExemptions = append(gs.ManaPoolExemptions, &ManaPoolExemption{
+		Source: perm,
+		Seat:   seatScope,
+		Colors: cs,
+	})
+}
+
+// UnregisterManaPoolExemptionForPerm drops every exemption whose
+// Source is perm. Call from the permanent_ltb hook of the registering
+// card.
+func UnregisterManaPoolExemptionForPerm(gs *GameState, perm *Permanent) {
+	if gs == nil || perm == nil || len(gs.ManaPoolExemptions) == 0 {
+		return
+	}
+	out := gs.ManaPoolExemptions[:0]
+	for _, e := range gs.ManaPoolExemptions {
+		if e == nil || e.Source == perm {
+			continue
+		}
+		out = append(out, e)
+	}
+	gs.ManaPoolExemptions = out
+}
+
 // PoolExemptColors — CR §106.4 / §613 layer 6. Returns the set of color
-// codes whose mana is RETAINED at phase boundaries for this seat.
+// codes whose mana is RETAINED at phase boundaries for `seat`.
 // Values: subset of {"W","U","B","R","G","C"}, or "any" → all retained
 // (Upwelling).
+//
+// Data-driven via the ManaPoolExemptions registry — populated by the
+// per_card OnETB hooks of "doesn't empty" cards (Omnath, Locus of Mana;
+// Upwelling; etc.).
 func PoolExemptColors(gs *GameState, seat *Seat) map[string]bool {
 	if gs == nil || seat == nil {
 		return nil
 	}
 	exempt := map[string]bool{}
-	for _, s := range gs.Seats {
-		if s == nil {
+	for _, e := range gs.ManaPoolExemptions {
+		if e == nil || e.Source == nil {
 			continue
 		}
-		for _, perm := range s.Battlefield {
-			if perm == nil || perm.Card == nil {
-				continue
-			}
-			name := perm.Card.DisplayName()
-			if name == "Upwelling" {
-				return map[string]bool{"any": true}
-			}
-			if name == "Omnath, Locus of Mana" {
-				if perm.Controller == seat.Idx {
-					exempt["G"] = true
-				}
-			}
+		// Seat scope: -1 = all seats, otherwise must match.
+		if e.Seat >= 0 && e.Seat != seat.Idx {
+			continue
+		}
+		// "any" wins outright — short-circuit.
+		if e.Colors["ANY"] || e.Colors["any"] {
+			return map[string]bool{"any": true}
+		}
+		for c := range e.Colors {
+			exempt[c] = true
 		}
 	}
 	return exempt
+}
+
+// AddManaPerCount adds `color` mana to seat's pool equal to the count
+// of permanents the seat controls that match `predicate`. Returns the
+// count added (zero when no match). The single batched AddMana call
+// keeps the event log compact ("added N B mana" vs N×"add_mana").
+func AddManaPerCount(gs *GameState, seatIdx int, color string,
+	predicate func(*Permanent) bool, source string) int {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) || predicate == nil {
+		return 0
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return 0
+	}
+	n := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		if predicate(p) {
+			n++
+		}
+	}
+	if n > 0 {
+		AddMana(gs, seat, color, n, source)
+	}
+	return n
 }
 
 // DrainAllPools — CR §106.4 empties each player's mana pool at every
