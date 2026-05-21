@@ -128,16 +128,21 @@ func kolodinTriumphCasterETBTrigger(gs *gameengine.GameState, perm *gameengine.P
 	}
 	if cardSubtypeMatches(entered.Card, "vehicle") {
 		entered.Flags["kw:artifact_creature_until_eot"] = 1
-		// Add a "creature" type tag for the duration so combat code sees
-		// the vehicle as a creature without needing crew.
-		entered.Card.Types = append(entered.Card.Types, "creature_until_eot")
+		// R54 layer port: Vehicle becomes an artifact creature until
+		// end of turn. Layer 4 adds "creature" + "artifact" types to
+		// the Vehicle's effective characteristics; the Vehicle's
+		// printed P/T already lives in Card.BasePower/BaseToughness,
+		// so no Layer 7b is needed — Layer 4 alone makes it a
+		// creature for combat math. DurationEndOfTurn expires via
+		// ScanExpiredDurations at cleanup.
+		gameengine.RegisterAddTypes(gs, entered, []string{"creature", "artifact"},
+			gameengine.DurationEndOfTurn, "Kolodin, Triumph Caster", "vehicle_animate")
+		gs.InvalidateCharacteristicsCache()
 		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-			"seat":     perm.Controller,
-			"target":   entered.Card.DisplayName(),
-			"effect":   "becomes_artifact_creature_until_eot",
+			"seat":   perm.Controller,
+			"target": entered.Card.DisplayName(),
+			"effect": "becomes_artifact_creature_until_eot",
 		})
-		emitPartial(gs, slug, perm.Card.DisplayName(),
-			"vehicle_creature_type_grant_eot_cleanup_relies_on_engine_until_eot_pass")
 		return
 	}
 }

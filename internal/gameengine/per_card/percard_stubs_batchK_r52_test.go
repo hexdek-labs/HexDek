@@ -227,8 +227,10 @@ func TestStubsBatchK_TophHardheaded_SpellCastEarthbendAndLessonBonus(t *testing.
 		"card":        &gameengine.Card{Name: "Test Lesson", Types: []string{"sorcery", "lesson"}},
 	})
 
-	if land.Counters["+1/+1"] != 1 {
-		t.Errorf("expected +1/+1 counter on earthbent land for Lesson cast, got %v", land.Counters)
+	// R54: spell_cast now actually applies the base earthbend (+1
+	// counter) on top of the Lesson bonus (+1 counter). Total = 2.
+	if land.Counters["+1/+1"] != 2 {
+		t.Errorf("expected 2 +1/+1 counters (1 earthbend + 1 Lesson), got %v", land.Counters)
 	}
 }
 

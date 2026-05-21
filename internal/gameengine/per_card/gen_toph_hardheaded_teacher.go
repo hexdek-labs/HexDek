@@ -47,42 +47,62 @@ func tophHardheadedTeacherSpellCast(gs *gameengine.GameState, perm *gameengine.P
 	if casterSeat != perm.Controller {
 		return
 	}
-	gameengine.Earthbend(gs, perm.Controller)
 	seat := gs.Seats[perm.Controller]
 	if seat == nil {
 		return
 	}
-	// Lesson bonus: +1 additional +1/+1 counter on the just-earthbent
-	// land. We approximate "the just-earthbent land" by finding the
-	// most-recently-stamped land with the earthbent flag still set.
+	// R54 layer-7b port: earthbend 1 — pick a non-creature land and
+	// apply the canonical Layer 4 (creature) + Layer 7b (0/0) +
+	// Layer 6 (haste) continuous-effect chain. The land gets one
+	// +1/+1 counter (stacked on top via §613.4c). Lesson casts add
+	// another +1/+1 on the freshly earthbent land per oracle rider.
+	var land *gameengine.Permanent
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		if p.IsLand() && !p.IsCreature() {
+			land = p
+			break
+		}
+	}
+	if land != nil {
+		if land.Flags == nil {
+			land.Flags = map[string]int{}
+		}
+		land.Flags["earthbent"] = 1
+		gameengine.RegisterAddTypes(gs, land, []string{"creature"},
+			gameengine.DurationUntilSourceLeaves, "Toph, Hardheaded Teacher", "earthbend")
+		gameengine.RegisterSetPT(gs, land, 0, 0,
+			gameengine.DurationUntilSourceLeaves, "Toph, Hardheaded Teacher", "earthbend")
+		gameengine.RegisterGrantKeyword(gs, land, "haste",
+			gameengine.DurationUntilSourceLeaves, "Toph, Hardheaded Teacher", "earthbend")
+		land.AddCounter("+1/+1", 1)
+		land.SummoningSick = false
+		gs.InvalidateCharacteristicsCache()
+	}
+	gameengine.Earthbend(gs, perm.Controller)
+
 	card, _ := ctx["card"].(*gameengine.Card)
 	isLesson := false
 	if card != nil && cardHasSubtype(card, "lesson") {
 		isLesson = true
 	}
-	if isLesson {
-		var pick *gameengine.Permanent
-		var bestTS int
-		for _, p := range seat.Battlefield {
-			if p == nil || p.Card == nil || p.Flags == nil {
-				continue
-			}
-			if p.Flags["earthbent"] == 0 {
-				continue
-			}
-			if pick == nil || p.Timestamp > bestTS {
-				pick = p
-				bestTS = p.Timestamp
-			}
-		}
-		if pick != nil {
-			pick.AddCounter("+1/+1", 1)
-		}
+	if isLesson && land != nil {
+		land.AddCounter("+1/+1", 1)
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":      perm.Controller,
 		"is_lesson": isLesson,
+		"target":    landNameOrEmpty(land),
 	})
+}
+
+func landNameOrEmpty(p *gameengine.Permanent) string {
+	if p == nil || p.Card == nil {
+		return ""
+	}
+	return p.Card.DisplayName()
 }
 
 func tophETBDiscardRebuy(gs *gameengine.GameState, perm *gameengine.Permanent) {

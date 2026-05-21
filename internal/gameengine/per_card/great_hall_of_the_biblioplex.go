@@ -85,12 +85,27 @@ func greatHallOfTheBiblioplexActivated(gs *gameengine.GameState, src *gameengine
 		}
 		s.ManaPool -= 5
 		gameengine.SyncManaAfterSpend(s)
+		// R54 layer-7b port: register the becomes-2/4-Wizard-creature
+		// continuous effect chain. Layer 4 adds "creature" + "wizard"
+		// types in addition to land; Layer 7b sets base P/T to 2/4.
+		// Duration is "until_source_leaves" — printed text doesn't
+		// limit to end of turn, so the animation persists until Great
+		// Hall leaves the battlefield (UnregisterContinuousEffectsForPermanent
+		// auto-cleans then).
+		gameengine.RegisterAddTypes(gs, src, []string{"creature", "wizard"},
+			gameengine.DurationUntilSourceLeaves, src.Card.DisplayName(), "biblioplex_animate")
+		gameengine.RegisterSetPT(gs, src, 2, 4,
+			gameengine.DurationUntilSourceLeaves, src.Card.DisplayName(), "biblioplex_animate")
+		gs.InvalidateCharacteristicsCache()
 		emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-			"seat": seat,
-			"cost": 5,
+			"seat":      seat,
+			"cost":      5,
+			"animated":  "2/4 Wizard creature (still a land)",
+			"layer_4":   []string{"creature", "wizard"},
+			"layer_7b":  [2]int{2, 4},
 		})
 		emitPartial(gs, slug, src.Card.DisplayName(),
-			"becomes_2_4_wizard_creature_with_cast_pump_needs_phase8_layers_overlay")
+			"cast_trigger_plus_1_0_eot_pump_rider_needs_separate_per_card_trigger_wiring")
 
 	default:
 		emitFail(gs, "biblioplex_unknown_ability", src.Card.DisplayName(), "unknown_ability_idx", map[string]interface{}{
