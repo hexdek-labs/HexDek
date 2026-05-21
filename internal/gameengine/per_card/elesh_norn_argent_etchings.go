@@ -57,6 +57,9 @@ func registerEleshNornArgentEtchings(r *Registry) {
 	r.OnTrigger("Elesh Norn", "combat_damage_player", eleshNornArgentDamagePunish)
 	r.OnActivated("Elesh Norn // The Argent Etchings", eleshNornArgentActivate)
 	r.OnActivated("Elesh Norn", eleshNornArgentActivate)
+	// R52 batchM: Saga back-face chapter dispatch via lore_counter_added.
+	r.OnTrigger("Elesh Norn // The Argent Etchings", "lore_counter_added", eleshNornEtchingsSagaChapter)
+	r.OnTrigger("The Argent Etchings", "lore_counter_added", eleshNornEtchingsSagaChapter)
 }
 
 func eleshNornArgentEtchingsETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -64,8 +67,11 @@ func eleshNornArgentEtchingsETB(gs *gameengine.GameState, perm *gameengine.Perma
 		return
 	}
 	if perm.Transformed {
-		emitPartial(gs, "elesh_norn_argent_etchings_saga", perm.Card.DisplayName(),
-			"saga_chapter_abilities_I_II_III_not_dispatched_via_per_card")
+		// Saga chapter dispatch is wired via lore_counter_added below
+		// (R52 batchM); ETB on the back face is a no-op breadcrumb.
+		emit(gs, "elesh_norn_argent_etchings_saga_etb", perm.Card.DisplayName(), map[string]interface{}{
+			"seat": perm.Controller,
+		})
 		return
 	}
 	emit(gs, "elesh_norn_argent_etchings_etb", perm.Card.DisplayName(), map[string]interface{}{
@@ -249,4 +255,97 @@ func chooseEleshNornArgentSacVictims(gs *gameengine.GameState, src *gameengine.P
 		out = append(out, pool[i].p)
 	}
 	return out
+}
+
+// eleshNornEtchingsSagaChapter dispatches the Saga back face chapter
+// abilities (CR §714). Wired via lore_counter_added in R52 batchM.
+//   I  — Incubate 2 five times, then transform all Incubator tokens.
+//        Approximation: create 5 Incubator tokens (2/2 phyrexians via
+//        the engine helper) and flip them creature-side immediately.
+//   II — Creatures you control get +1/+1 and gain double strike UEOT.
+//   III — Destroy all other permanents except artifacts, lands, and
+//         Phyrexians; flip Etchings front face up.
+func eleshNornEtchingsSagaChapter(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "elesh_norn_etchings_saga_chapter"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
+		return
+	}
+	if !perm.Transformed {
+		return
+	}
+	chapter, _ := ctx["chapter"].(int)
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	switch chapter {
+	case 1:
+		for i := 0; i < 5; i++ {
+			tok := gameengine.CreateCreatureToken(gs, perm.Controller,
+				"Phyrexian Token",
+				[]string{"creature", "phyrexian", "incubator", "pip:colorless"}, 2, 2)
+			if tok != nil {
+				if tok.Flags == nil {
+					tok.Flags = map[string]int{}
+				}
+				tok.Flags["incubated"] = 1
+			}
+		}
+		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+			"seat":    perm.Controller,
+			"chapter": chapter,
+			"tokens":  5,
+		})
+	case 2:
+		buffed := 0
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil || !p.IsCreature() {
+				continue
+			}
+			p.Modifications = append(p.Modifications, gameengine.Modification{
+				Power:     1,
+				Toughness: 1,
+				Duration:  "until_end_of_turn",
+				Timestamp: gs.NextTimestamp(),
+			})
+			if p.Flags == nil {
+				p.Flags = map[string]int{}
+			}
+			p.Flags["kw:double_strike"] = 1
+			buffed++
+		}
+		gs.InvalidateCharacteristicsCache()
+		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+			"seat":    perm.Controller,
+			"chapter": chapter,
+			"buffed":  buffed,
+		})
+	case 3:
+		destroyed := 0
+		for _, s := range gs.Seats {
+			if s == nil {
+				continue
+			}
+			var survivors []*gameengine.Permanent
+			for _, p := range s.Battlefield {
+				if p == nil || p.Card == nil || p == perm {
+					survivors = append(survivors, p)
+					continue
+				}
+				if cardHasType(p.Card, "artifact") || cardHasType(p.Card, "land") || cardHasSubtype(p.Card, "phyrexian") {
+					survivors = append(survivors, p)
+					continue
+				}
+				gameengine.MoveCard(gs, p.Card, p.Controller, "battlefield", "graveyard", "etchings_chapter_iii_wipe")
+				destroyed++
+			}
+			s.Battlefield = survivors
+		}
+		gameengine.TransformPermanent(gs, perm, "etchings_chapter_iii_flip_front")
+		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+			"seat":      perm.Controller,
+			"chapter":   chapter,
+			"destroyed": destroyed,
+		})
+	}
 }

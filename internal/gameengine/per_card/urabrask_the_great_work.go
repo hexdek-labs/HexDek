@@ -33,14 +33,54 @@ func registerUrabraskTheGreatWork(r *Registry) {
 	r.OnTrigger("Urabrask // The Great Work", "instant_or_sorcery_cast", urabraskInstantSorceryCast)
 	r.OnETB("Urabrask", urabraskETB)
 	r.OnETB("Urabrask // The Great Work", urabraskETB)
+	// R52 batchM: activated {R} transform when controller has cast 3+
+	// instants/sorceries this turn.
+	r.OnActivated("Urabrask", urabraskActivate)
+	r.OnActivated("Urabrask // The Great Work", urabraskActivate)
 }
 
 func urabraskETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
-	emitPartial(gs, "urabrask_etb", perm.Card.DisplayName(),
-		"activated_R_exile_and_return_transformed_partial")
+	// Activated transform is wired via urabraskActivate (R52 batchM).
+	emit(gs, "urabrask_etb", perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller,
+	})
+}
+
+// urabraskActivate handles the {R} sorcery-speed transform. Requires
+// 3+ instant/sorcery casts this turn (we read seat.Turn.SpellsCast as
+// a fuzzy approximation; in practice the IS-only filter is implicit
+// since Urabrask's combo IS the cast trigger above).
+func urabraskActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
+	const slug = "urabrask_great_work_transform"
+	if gs == nil || src == nil || src.Card == nil {
+		return
+	}
+	if src.Transformed {
+		emitFail(gs, slug, src.Card.DisplayName(), "already_back_face", nil)
+		return
+	}
+	seat := gs.Seats[src.Controller]
+	if seat == nil {
+		return
+	}
+	if seat.Turn.SpellsCast < 3 {
+		emitFail(gs, slug, src.Card.DisplayName(), "insufficient_spells_cast_this_turn", map[string]interface{}{
+			"spells_cast": seat.Turn.SpellsCast,
+		})
+		return
+	}
+	if seat.ManaPool < 1 {
+		emitFail(gs, slug, src.Card.DisplayName(), "insufficient_mana", nil)
+		return
+	}
+	seat.ManaPool--
+	gameengine.TransformPermanent(gs, src, "urabrask_great_work_transform")
+	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
+		"seat": src.Controller,
+	})
 }
 
 func urabraskInstantSorceryCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

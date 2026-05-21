@@ -210,12 +210,18 @@ func sheoldredTSLore(gs *gameengine.GameState, perm *gameengine.Permanent, ctx m
 				count++
 			}
 		}
+		// R52 batchM: chapter III also flips Scriptures back to front.
+		// The printed text is "exile this Saga, then return it to the
+		// battlefield (front face up)"; TransformPermanent is the
+		// mechanical equivalent in this engine.
+		if perm.Transformed {
+			gameengine.TransformPermanent(gs, perm, "scriptures_chapter_iii_flip_front")
+		}
 		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 			"seat":         perm.Controller,
 			"chapter":      3,
 			"reanimated":   count,
+			"flipped_front": true,
 		})
-		emitPartial(gs, slug, perm.Card.DisplayName(),
-			"chapter_three_exile_and_return_front_face_not_implemented")
 	}
 }
