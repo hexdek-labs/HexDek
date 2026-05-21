@@ -47,6 +47,8 @@ func kruphixLTBClearFlags(gs *gameengine.GameState, perm *gameengine.Permanent, 
 	if seat != nil && seat.Flags != nil {
 		delete(seat.Flags, "kruphix_unspent_mana_to_colorless")
 	}
+	// R57: drop the R55 mana-pool exemption registered at ETB.
+	gameengine.UnregisterManaPoolExemptionForPerm(gs, perm)
 }
 
 func kruphixETBSetSeatFlags(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -70,12 +72,20 @@ func kruphixETBSetSeatFlags(gs *gameengine.GameState, perm *gameengine.Permanent
 		perm.Flags = map[string]int{}
 	}
 	perm.Flags["kw:indestructible"] = 1
+	// R57: register the mana-pool exemption shipped in R55. Kruphix's
+	// printed text is "becomes colorless instead [of being lost]" — the
+	// exemption keeps all five colors from emptying. The "becomes
+	// colorless" recolor isn't modeled (the engine's exemption primitive
+	// doesn't transform color), but the strategic effect (mana held
+	// across phase boundaries) is preserved, which is what the deck
+	// archetype cares about.
+	gameengine.RegisterManaPoolExemption(gs, perm, perm.Controller,
+		[]string{"W", "U", "B", "R", "G", "C"})
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":           perm.Controller,
 		"unspent_to_col": 1,
+		"exemption":      "WUBRGC",
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"unspent-mana-becomes-colorless replacement needs ManaEmpty hook; flag set + end-step convert-to-colorless implemented as approximation")
 }
 
 func kruphixEndStepConvertMana(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

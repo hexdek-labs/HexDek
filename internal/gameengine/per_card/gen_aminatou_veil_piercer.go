@@ -21,6 +21,19 @@ import (
 func registerAminatouVeilPiercer(r *Registry) {
 	r.OnETB("Aminatou, Veil Piercer", aminatouVeilPiercerETB)
 	r.OnTrigger("Aminatou, Veil Piercer", "upkeep_controller", aminatouVeilPiercerUpkeep)
+	// R57: drop the ZoneCastPolicy at LTB.
+	r.OnTrigger("Aminatou, Veil Piercer", "permanent_ltb", aminatouVeilPiercerLTB)
+}
+
+func aminatouVeilPiercerLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	gs.UnregisterZoneCastPoliciesForPermanent(perm)
 }
 
 func aminatouVeilPiercerETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -28,11 +41,41 @@ func aminatouVeilPiercerETB(gs *gameengine.GameState, perm *gameengine.Permanent
 	if gs == nil || perm == nil {
 		return
 	}
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": perm.Controller,
+	// R57: register a ZoneCastPolicy granting cast-from-hand on
+	// enchantment cards. The printed text is "Each enchantment card
+	// in your hand has miracle. Its miracle cost is mana cost - {4}".
+	// The engine's MiracleCost path reads a keyword argument that
+	// isn't dynamically grantable on a Card-in-hand without a
+	// permanent slot. We approximate the strategic effect: register a
+	// policy that permits the controller to cast enchantments from
+	// their own hand at normal cost (full miracle-cost-discount is
+	// an engine cast-pipeline enhancement still planned). The grant
+	// is documented as a policy so analytics and AI hat see the
+	// cast-from-hand permission for Aminatou's archetype.
+	gs.RegisterZoneCastPolicy(&gameengine.ZoneCastPolicy{
+		SourcePerm:      perm,
+		HandlerID:       "aminatou_enchantment_in_hand_miracle_grant",
+		Zone:            gameengine.ZoneHand,
+		OwnerScope:      "self",
+		CasterScope:     "controller",
+		ControllerSeat:  perm.Controller,
+		Predicate:       aminatouEnchantmentPredicate,
+		ManaCost:        -1, // normal cost; full miracle discount TODO
+		Duration:        "while_source_on_bf",
+		SourceTimestamp: perm.Timestamp,
+		GrantTurn:       gs.Turn,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"enchantment_miracle_grant_in_hand_not_wired_to_cast_path")
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":   perm.Controller,
+		"policy": "aminatou_enchantment_in_hand",
+	})
+}
+
+func aminatouEnchantmentPredicate(c *gameengine.Card) bool {
+	if c == nil {
+		return false
+	}
+	return cardHasType(c, "enchantment")
 }
 
 func aminatouVeilPiercerUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

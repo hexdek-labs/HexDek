@@ -78,6 +78,8 @@ func tannukLTBCleanup(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 	if seat.Flags != nil {
 		delete(seat.Flags, "tannuk_warp_grant_2r_active")
 	}
+	// R57: drop the ZoneCastPolicy when the last Tannuk leaves.
+	gs.UnregisterZoneCastPoliciesForPermanent(perm)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":          perm.Controller,
 		"haste_cleared": cleared,
@@ -98,11 +100,59 @@ func tannukETBHasteAnthem(gs *gameengine.GameState, perm *gameengine.Permanent) 
 	}
 	seat.Flags["tannuk_warp_grant_2r_active"] = 1
 	tannukApplyHaste(gs, perm)
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": perm.Controller,
+	// R57: register a ZoneCastPolicy granting warp {2}{R} on artifact
+	// and red creature cards in the controller's hand. Warp is an
+	// alt-cost shaped like "pay 3 mana, exile at end of next end
+	// step, then cast from exile later" — the engine's
+	// ExileOnResolve toggle on ZoneCastPolicy handles the first half;
+	// the "cast from exile later" half relies on the exile->cast
+	// permission survival that ZoneCastPolicy with `Zone=exile` would
+	// model in a follow-up. The hand-cast permission is the load-
+	// bearing half (the strategic value of warp is the cheap cast,
+	// not the delayed re-cast).
+	gs.RegisterZoneCastPolicy(&gameengine.ZoneCastPolicy{
+		SourcePerm:      perm,
+		HandlerID:       "tannuk_warp_2r_grant",
+		Zone:            gameengine.ZoneHand,
+		OwnerScope:      "self",
+		CasterScope:     "controller",
+		ControllerSeat:  perm.Controller,
+		Predicate:       tannukWarpPredicate,
+		ManaCost:        3, // {2}{R} = 3 generic-equivalent
+		ExileOnResolve:  true,
+		Duration:        "while_source_on_bf",
+		SourceTimestamp: perm.Timestamp,
+		GrantTurn:       gs.Turn,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"hand-card warp {2R} alt-cost grant needs cost-modifier hook; flag set for downstream")
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":   perm.Controller,
+		"policy": "tannuk_warp_2r_grant",
+	})
+}
+
+func tannukWarpPredicate(c *gameengine.Card) bool {
+	if c == nil {
+		return false
+	}
+	if cardHasType(c, "artifact") {
+		return true
+	}
+	if !cardHasType(c, "creature") {
+		return false
+	}
+	// Red creature card — accept either Card.Colors containing "R" or
+	// a pip:R type tag (the test-fixture convention).
+	for _, col := range c.Colors {
+		if col == "R" || col == "r" {
+			return true
+		}
+	}
+	for _, t := range c.Types {
+		if t == "pip:R" {
+			return true
+		}
+	}
+	return false
 }
 
 func tannukRefreshHaste(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

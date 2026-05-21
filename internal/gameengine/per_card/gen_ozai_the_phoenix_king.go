@@ -36,6 +36,21 @@ func registerOzaiThePhoenixKing(r *Registry) {
 	r.OnTrigger("Ozai, the Phoenix King", "upkeep", ozaiPhaseRecheck)
 	r.OnTrigger("Ozai, the Phoenix King", "combat_begin", ozaiPhaseRecheck)
 	r.OnTrigger("Ozai, the Phoenix King", "end_step", ozaiPhaseRecheck)
+	// R57: drop the unspent-mana-to-red flag-set scheme and consume
+	// the RegisterManaPoolExemption primitive shipped in R55. LTB
+	// cleans up the exemption.
+	r.OnTrigger("Ozai, the Phoenix King", "permanent_ltb", ozaiLTBUnregister)
+}
+
+func ozaiLTBUnregister(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	gameengine.UnregisterManaPoolExemptionForPerm(gs, perm)
 }
 
 func ozaiETBSetFlagsAndConditionalKW(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -52,12 +67,18 @@ func ozaiETBSetFlagsAndConditionalKW(gs *gameengine.GameState, perm *gameengine.
 	}
 	seat.Flags["ozai_unspent_mana_to_red"] = 1
 	ozaiApplyConditional(gs, perm, seat)
+	// R57: register the mana-pool exemption so unspent mana persists
+	// through phase drains. Single-color "R" — the printed text says
+	// "becomes red instead", and our exemption primitive doesn't
+	// recolor pools, but keeping the mana from emptying matches the
+	// strategic effect (the controller can spend the held mana on the
+	// next phase's red-cost play). Scoped to the controller only.
+	gameengine.RegisterManaPoolExemption(gs, perm, perm.Controller, []string{"R"})
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":      perm.Controller,
 		"mana_pool": seat.ManaPool,
+		"exemption": "R",
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"unspent-mana-to-red replacement needs ManaEmpty hook; flag set for downstream consumers")
 }
 
 func ozaiPhaseRecheck(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

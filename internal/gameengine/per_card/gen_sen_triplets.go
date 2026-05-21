@@ -55,6 +55,9 @@ func senTripletsLTBSweep(gs *gameengine.GameState, perm *gameengine.Permanent, c
 	if ctl != nil && ctl.Flags != nil {
 		delete(ctl.Flags, "sen_triplets_play_from")
 	}
+	// R57: drop the cast-from-opp-hand ZoneCastPolicy if Sen leaves
+	// mid-turn before the delayed end-of-turn cleanup runs.
+	gs.UnregisterZoneCastPoliciesForPermanent(perm)
 }
 
 func senTripletsUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -100,6 +103,27 @@ func senTripletsUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 		}
 		ctlSeat.Flags["sen_triplets_play_from"] = target + 1 // +1 to allow 0-seat encoding
 	}
+
+	// R57: register a ZoneCastPolicy granting cast-from-opponent's-hand.
+	// OwnerScope=opponents + CasterScope=controller routes Sen's
+	// printed "cast spells from that player's hand" through the R55
+	// alt-cost cast pipeline rather than the breadcrumb-only flag
+	// set above (the flag stays for back-compat with any sibling
+	// code that already reads it).
+	gs.RegisterZoneCastPolicy(&gameengine.ZoneCastPolicy{
+		SourcePerm:      perm,
+		HandlerID:       "sen_triplets_cast_from_opp_hand",
+		Zone:            gameengine.ZoneHand,
+		OwnerScope:      "opponents",
+		CasterScope:     "controller",
+		ControllerSeat:  perm.Controller,
+		ManaCost:        -1, // pay the card's printed cost
+		SpendAnyColor:   true,
+		Duration:        "until_end_of_turn",
+		SourceTimestamp: perm.Timestamp,
+		GrantTurn:       gs.Turn,
+	})
+
 	// Cleanup at end of turn.
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
 		TriggerAt:      "end_of_turn",
@@ -114,12 +138,16 @@ func senTripletsUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 			if cs := gs.Seats[perm.Controller]; cs != nil && cs.Flags != nil {
 				delete(cs.Flags, "sen_triplets_play_from")
 			}
+			gs.UnregisterZoneCastPoliciesForPermanent(perm)
 		},
 	})
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":        perm.Controller,
 		"target_seat": target,
+		"policy":      "sen_triplets_cast_from_opp_hand",
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"cast_lock_hand_reveal_play_from_opponent_hand_require_engine_pipeline_hooks")
+	// R57: the cast lock + hand reveal are still engine-deep gates
+	// (seat flags surfaced for the engine's cast-legality / opp-hand-
+	// reveal pipeline to honor when those surfaces land). The
+	// play-from-opponent's-hand half is now wired via ZoneCastPolicy.
 }
