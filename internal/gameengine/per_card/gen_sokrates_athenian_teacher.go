@@ -15,23 +15,30 @@ import (
 //	that damage. This creature's controller and that player each draw
 //	half that many cards, rounded down."
 //
-// Implementation:
-//   - Defender: AST keyword pipeline.
-//   - Hexproof-while-untapped: a continuous effect that adds the
-//     hexproof keyword while !src.Tapped. Refreshed on activation
-//     since tap state matters; for the runtime fast-path we toggle
-//     Flags["kw:hexproof"] from the ETB hook and keep it in sync via
-//     a tiny check at activation time. Engine-side proper continuous
-//     "while X" predicate would be cleaner; flagged as a partial.
-//   - Activated ability ({T}): pick a target creature (heuristic: a
-//     friendly creature with high power, since the dialogue trade
-//     converts power into draws), tag it with the runtime flag
-//     "sokrates_dialogue_until_eot" so the engine combat-damage path
-//     can detect the convert-damage-to-draws state. The actual draw
-//     conversion happens in combat code we don't have a hook into;
-//     we emit a partial breadcrumb. The tap cost is enforced.
+// R49 stub-batch-E port (defensive utility — conditional self-hexproof):
+//
+//	The R37 breadcrumb stamped Flags["kw:hexproof"] one-shot at ETB
+//	and let tap-state drift. The HasHexproof / target-legality path
+//	reads Flags["kw:hexproof"] directly, so a conditional grant must
+//	keep the Flag in sync with src.Tapped.
+//
+//	This port keeps the Flag-driven fast-path (the engine surface
+//	HasHexproof reads) and adds the missing toggles:
+//	  - permanent_tapped → clear the flag when Sokrates becomes tapped
+//	  - upkeep             → re-stamp on every turn upkeep, since the
+//	                          untap step that ran moments earlier might
+//	                          have untapped Sokrates and the flag was
+//	                          cleared by the previous activation
+//
+//	Defender + Sokratic Dialogue ({T}) activated ability are kept on
+//	their existing shapes. The activated ability still clears the
+//	hexproof flag inline when paying the tap cost so observers reading
+//	Flags between the activation and the next layer recompute see the
+//	synced state.
 func registerSokratesAthenianTeacher(r *Registry) {
-	r.OnETB("Sokrates, Athenian Teacher", sokratesETBHexproof)
+	r.OnETB("Sokrates, Athenian Teacher", sokratesETBStampHexproof)
+	r.OnTrigger("Sokrates, Athenian Teacher", "permanent_tapped", sokratesTappedClearHexproof)
+	r.OnTrigger("Sokrates, Athenian Teacher", "upkeep", sokratesUpkeepRestampHexproof)
 	r.OnActivated("Sokrates, Athenian Teacher", sokratesDialogue)
 	// R49 batch C: re-stamp the hexproof-while-untapped flag at the
 	// start of each of our untap steps (cheapest "tap state may have
@@ -68,8 +75,51 @@ func sokratesLTBClearHexproof(gs *gameengine.GameState, perm *gameengine.Permane
 	}
 }
 
-func sokratesETBHexproof(gs *gameengine.GameState, perm *gameengine.Permanent) {
+func sokratesETBStampHexproof(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	const slug = "sokrates_hexproof_etb"
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	sokratesSyncHexproof(perm)
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":   perm.Controller,
+		"tapped": perm.Tapped,
+	})
+}
+
+func sokratesTappedClearHexproof(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "sokrates_hexproof_clear_on_tap"
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	// permanent_tapped is an alias of tap_event; payload typically
+	// includes the tapped Permanent. Filter to Sokrates self.
+	target, _ := ctx["target_perm"].(*gameengine.Permanent)
+	if target == nil {
+		// Fall back to ctx["perm"].
+		target, _ = ctx["perm"].(*gameengine.Permanent)
+	}
+	if target != nil && target != perm {
+		return
+	}
+	if perm.Flags != nil {
+		delete(perm.Flags, "kw:hexproof")
+	}
+	gs.InvalidateCharacteristicsCache()
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller,
+	})
+}
+
+func sokratesUpkeepRestampHexproof(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
 	if gs == nil || perm == nil {
+		return
+	}
+	sokratesSyncHexproof(perm)
+}
+
+func sokratesSyncHexproof(perm *gameengine.Permanent) {
+	if perm == nil {
 		return
 	}
 	if perm.Flags == nil {
@@ -77,9 +127,9 @@ func sokratesETBHexproof(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	}
 	if !perm.Tapped {
 		perm.Flags["kw:hexproof"] = 1
+	} else {
+		delete(perm.Flags, "kw:hexproof")
 	}
-	emitPartial(gs, "sokrates_hexproof_while_untapped", perm.Card.DisplayName(),
-		"runtime flag stamped at ETB; tap state changes don't auto-clear hexproof — engine continuous effect with tap-predicate would be cleaner")
 }
 
 func sokratesDialogue(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
@@ -121,11 +171,14 @@ func sokratesDialogue(gs *gameengine.GameState, src *gameengine.Permanent, abili
 		return
 	}
 
-	// Pay tap cost. Tapping clears the hexproof flag — keep them in sync.
+	// Pay tap cost. Tapping clears the hexproof flag — keep them in sync
+	// inline so a same-tick observer reading Flags directly (before the
+	// permanent_tapped trigger fires) sees the synced state.
 	src.Tapped = true
 	if src.Flags != nil {
 		delete(src.Flags, "kw:hexproof")
 	}
+	gs.InvalidateCharacteristicsCache()
 
 	// Stamp the target with the dialogue flag so combat-damage code can
 	// detect the convert-damage-to-draws state. Cleaned up by the
