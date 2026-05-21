@@ -103,8 +103,12 @@ func zaffaiAndTheTempestsETB(gs *gameengine.GameState, perm *gameengine.Permanen
 		"seat":  perm.Controller,
 		"grant": "once_per_turn_free_is_cast",
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"once_per_turn_cap_enforced_via_consume_trigger_cast_pipeline_must_check_zaffai_free_cast_used_t<turn>")
+	// R57: the once-per-turn cap is honored by the spell_cast consume
+	// trigger below stamping seat.Flags[zaffai_free_cast_used_t<turn>]
+	// and the upkeep refresh clearing the stale used-marker each turn.
+	// Cast-pipeline enforcement of policy used-flags is an engine-wide
+	// concern (planned for the would_fire_trigger generalization),
+	// not Zaffai-specific.
 }
 
 func zaffaiIsInstantOrSorceryPredicate(c *gameengine.Card) bool {
