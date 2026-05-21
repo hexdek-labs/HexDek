@@ -36,6 +36,8 @@ func magnusTheRedETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
+	// Unearthly Power cost reduction is wired in
+	// gameengine/cost_modifiers.go (landed in a prior R49 batch).
 }
 
 func magnusTheRedCombatDamage(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

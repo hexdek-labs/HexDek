@@ -137,8 +137,10 @@ func mendicantSpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"copied": card.DisplayName(),
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"spell_copy_pipeline_with_pay1_decision_not_wired_for_per_card")
+	// The actual copy + pay-{1} decision is wired in
+	// custom_mendicant_core_guidelight.go (R49 batchD); it observes the
+	// same spell_cast event and pushes a copy StackItem when at max
+	// speed and mana is available.
 }
 
 func snapshotKey(seatIdx int) string {

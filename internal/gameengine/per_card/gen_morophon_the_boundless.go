@@ -65,8 +65,10 @@ func morophonChooseAndApply(gs *gameengine.GameState, perm *gameengine.Permanent
 		"seat":  perm.Controller,
 		"tribe": tribe,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"5-color cost reduction needs cost-modifier hook; flag set for downstream consumers")
+	// 5-color cost reduction is wired in gameengine/cost_modifiers.go
+	// (ScanCostModifiers reads the "morophon_tribe:" marker stamped on
+	// perm.Card.Types above and applies a 5-generic CostModReduction
+	// to spells of the chosen type the controller casts).
 }
 
 func morophonApplyAnthem(gs *gameengine.GameState, perm *gameengine.Permanent) {

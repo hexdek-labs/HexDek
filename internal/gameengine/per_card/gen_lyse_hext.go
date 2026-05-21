@@ -74,7 +74,8 @@ func lyseHextSpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 		})
 	}
 	// Noncreature cost reduction is wired in cost_modifiers.go under
-	// "Lyse Hext"; nothing to do at the per-cast trigger.
+	// "Lyse Hext" (R49 batchA — pre-batchD); per-cast trigger here just
+	// counts noncreature casts for the double-strike threshold.
 }
 
 func lyseHextResetIfStale(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

@@ -33,8 +33,10 @@ func firesongAndSunspeakerETB(gs *gameengine.GameState, perm *gameengine.Permane
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"red_instant_sorcery_lifelink_grant_handled_by_ast_keyword_pipeline")
+	// Red I/S lifelink-grant is wired in custom_firesong_and_sunspeaker.go
+	// (R49 batchD) — we listen on noncombat damage events and reflect
+	// the damage as life gain when the resolving spell is a red I/S the
+	// controller cast.
 }
 
 func firesongAndSunspeakerLifeGained(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

@@ -45,8 +45,8 @@ func capitolineTriadETBSetup(gs *gameengine.GameState, perm *gameengine.Permanen
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"per-historic-graveyard-card cost reduction needs cost-modifier hook; flag set for downstream")
+	// Per-historic-graveyard-card cost reduction is wired in
+	// gameengine/cost_modifiers.go (R49 batchD).
 }
 
 func capitolineTriadEmblemActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {

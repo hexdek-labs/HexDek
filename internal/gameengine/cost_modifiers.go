@@ -784,6 +784,80 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 					}
 				}
 
+			case "The Capitoline Triad":
+				// "Those Who Came Before — This spell costs {1} less to cast
+				// for each historic card in your graveyard. (Artifacts,
+				// legendaries, and Sagas are historic.)" Self-cast discount
+				// applied when Triad is on the battlefield AND being cast
+				// from the command zone (or flickered back). Per Hamza's
+				// pattern we honor the discount whenever a Triad permanent
+				// sees its own controller casting a "The Capitoline Triad"
+				// spell — engine pre-routes both clauses through the same
+				// ScanCostModifiers entry.
+				if isSelf && strings.EqualFold(card.DisplayName(), "The Capitoline Triad") {
+					n := 0
+					own := gs.Seats[seatIdx]
+					if own != nil {
+						for _, gc := range own.Graveyard {
+							if gc == nil {
+								continue
+							}
+							if cardHasType(gc, "artifact") || cardHasType(gc, "legendary") || cardHasType(gc, "saga") {
+								n++
+							}
+						}
+					}
+					if n > 0 {
+						mods = append(mods, CostModifier{
+							Kind:   CostModReduction,
+							Amount: n,
+							Source: name,
+						})
+					}
+				}
+
+			case "Morophon, the Boundless":
+				// "As Morophon enters, choose a creature type. Spells of the
+				// chosen type you cast cost {W}{U}{B}{R}{G} less to cast.
+				// This effect reduces only the amount of colored mana you
+				// pay." The Morophon ETB handler stamps the chosen tribe
+				// on perm.Card.Types as "morophon_tribe:<subtype>". The
+				// printed clause discounts colored pips; we approximate as
+				// a 5-generic reduction since the CalculateTotalCost path
+				// works in generic-equivalent units. Changelings count as
+				// every creature type — they always match.
+				if isSelf && perm.Card != nil {
+					tribe := ""
+					for _, t := range perm.Card.Types {
+						if strings.HasPrefix(t, "morophon_tribe:") {
+							tribe = strings.TrimPrefix(t, "morophon_tribe:")
+							break
+						}
+					}
+					if tribe != "" {
+						matched := false
+						if cardHasSubtype(card, tribe) {
+							matched = true
+						}
+						if !matched && cardHasSubtype(card, "changeling") {
+							matched = true
+						}
+						if !matched {
+							lowerOracle := OracleTextLower(card)
+							if strings.Contains(lowerOracle, "changeling") {
+								matched = true
+							}
+						}
+						if matched {
+							mods = append(mods, CostModifier{
+								Kind:   CostModReduction,
+								Amount: 5,
+								Source: name,
+							})
+						}
+					}
+				}
+
 			// --- MINIMUMS ---
 
 			case "Trinisphere":
