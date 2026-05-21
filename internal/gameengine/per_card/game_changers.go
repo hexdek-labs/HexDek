@@ -1360,21 +1360,22 @@ func gaeasCradleActivate(gs *gameengine.GameState, src *gameengine.Permanent, ab
 	if seat < 0 || seat >= len(gs.Seats) {
 		return
 	}
-	s := gs.Seats[seat]
 
-	// Count creatures controlled.
-	creatures := 0
-	for _, p := range s.Battlefield {
-		if p != nil && p.IsCreature() {
-			creatures++
-		}
-	}
-
+	// R57: route through the R55 AddManaPerCount primitive. The
+	// helper handles the count, the typed-pool AddMana call, and
+	// the add_mana event emission uniformly with the other "X mana
+	// per Y count" cards (Cabal Coffers, Sanctum Weaver, Magus of
+	// the Coffers, Serra's Sanctum). Behavior is identical to the
+	// pre-refactor hand-rolled body — same count, same untyped pool
+	// effect, same event shape.
+	creatures := gameengine.AddManaPerCount(gs, seat, "G", func(p *gameengine.Permanent) bool {
+		return p != nil && p.IsCreature()
+	}, "Gaea's Cradle")
 	if creatures > 0 {
-		s.ManaPool += creatures
-		gameengine.SyncManaAfterAdd(s, creatures)
+		// The legacy event shape kept "creatures" in details for
+		// downstream observers (Heimdall analytics). Preserve.
 		gs.LogEvent(gameengine.Event{
-			Kind:   "add_mana",
+			Kind:   "gaeas_cradle_tap",
 			Seat:   seat,
 			Target: seat,
 			Source: "Gaea's Cradle",
@@ -1665,21 +1666,15 @@ func serrasSanctumActivate(gs *gameengine.GameState, src *gameengine.Permanent, 
 	if seat < 0 || seat >= len(gs.Seats) {
 		return
 	}
-	s := gs.Seats[seat]
 
-	// Count enchantments controlled.
-	enchantments := 0
-	for _, p := range s.Battlefield {
-		if p != nil && p.IsEnchantment() {
-			enchantments++
-		}
-	}
-
+	// R57: route through the R55 AddManaPerCount primitive (see the
+	// Gaea's Cradle refactor above for rationale).
+	enchantments := gameengine.AddManaPerCount(gs, seat, "W", func(p *gameengine.Permanent) bool {
+		return p != nil && p.IsEnchantment()
+	}, "Serra's Sanctum")
 	if enchantments > 0 {
-		s.ManaPool += enchantments
-		gameengine.SyncManaAfterAdd(s, enchantments)
 		gs.LogEvent(gameengine.Event{
-			Kind:   "add_mana",
+			Kind:   "serras_sanctum_tap",
 			Seat:   seat,
 			Target: seat,
 			Source: "Serra's Sanctum",

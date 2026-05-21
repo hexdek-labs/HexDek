@@ -905,6 +905,12 @@ func registerDefaults() {
 	registerCabalCoffers(Global())
 	registerSanctumWeaver(Global())
 	registerAncientZiggurat(Global())
+	// R57 — three new mana-primitive ports. (Gaea's Cradle + Serra's
+	// Sanctum already registered upstream; R57 refactors their bodies
+	// in game_changers.go to use AddManaPerCount.)
+	registerAshlingFlameDancerManaExemption(Global())
+	registerMagusOfTheCoffers(Global())
+	registerCavernOfSouls(Global())
 
 	// Batch #17 — token-creation triggers and aristocrat payoffs.
 	// Anointed Procession's token_created trigger is upgraded in
