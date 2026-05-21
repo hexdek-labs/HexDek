@@ -260,17 +260,67 @@ func TestMondrak_ETBSetsTokenDoublerFlag(t *testing.T) {
 	}
 }
 
-func TestMondrak_ActivationAddsIndestructibleCounters(t *testing.T) {
+func TestMondrak_ActivationSacrificesTwoAndAddsIndestructibleCounter(t *testing.T) {
 	gs := newGame(t, 2)
 	mondrak := addPerm(gs, 0, "Mondrak, Glory Dominus", "creature")
-	gs.Seats[0].ManaPool = 4
-	addPerm(gs, 0, "Llanowar Elves", "creature")
-	addPerm(gs, 0, "Birds of Paradise", "creature")
+	gs.Seats[0].ManaPool = 3
+	fodder1 := addPerm(gs, 0, "Llanowar Elves", "creature")
+	fodder2 := addPerm(gs, 0, "Birds of Paradise", "creature")
 
 	mondrakIndestructibleActivate(gs, mondrak, 0, nil)
 
-	if mondrak.Counters["indestructible"] != 2 {
-		t.Errorf("expected 2 indestructible counters on Mondrak; got %d", mondrak.Counters["indestructible"])
+	if mondrak.Counters["indestructible"] != 1 {
+		t.Errorf("expected 1 indestructible counter on Mondrak (printed oracle); got %d", mondrak.Counters["indestructible"])
+	}
+	if gs.Seats[0].ManaPool != 0 {
+		t.Errorf("expected 3 mana spent ({1}{W/P}{W/P}); pool=%d", gs.Seats[0].ManaPool)
+	}
+	// r51 leak regression: sacrificed creatures must NOT be in both
+	// battlefield and exile (Loki r48/r50 game-59 CardIdentity surface).
+	// Sacrifice routes victims to graveyard via SacrificePermanent.
+	if len(gs.Seats[0].Exile) != 0 {
+		t.Errorf("sac cost should NOT route victims to exile; exile=%d (r48/r50 leak signature)", len(gs.Seats[0].Exile))
+	}
+	if len(gs.Seats[0].Graveyard) != 2 {
+		t.Errorf("expected 2 sacrificed creatures in graveyard; got %d", len(gs.Seats[0].Graveyard))
+	}
+	for _, p := range gs.Seats[0].Battlefield {
+		if p != nil && (p.Card == fodder1.Card || p.Card == fodder2.Card) {
+			t.Errorf("sacrificed creature still on battlefield — CardIdentity leak regression")
+		}
+	}
+}
+
+// r51 regression: pin the exact game-59 / Avatar Enthusiasts leak shape.
+// The pre-r51 handler exiled creatures with MoveCard(battlefield→exile),
+// which left the Permanent on the battlefield AND added the *Card pointer
+// to seat.Exile. The fix uses SacrificePermanent (which drops the
+// Permanent properly).
+func TestMondrak_ActivationDoesNotLeakAvatarEnthusiastsIntoExile(t *testing.T) {
+	gs := newGame(t, 2)
+	mondrak := addPerm(gs, 0, "Mondrak, Glory Dominus", "creature")
+	avatar := addPerm(gs, 0, "Avatar Enthusiasts", "creature")
+	addPerm(gs, 0, "Llanowar Elves", "creature")
+	gs.Seats[0].ManaPool = 3
+
+	avatarCard := avatar.Card
+	mondrakIndestructibleActivate(gs, mondrak, 0, nil)
+
+	// The Avatar Enthusiasts Card pointer must NOT appear in seat.Exile.
+	for _, c := range gs.Seats[0].Exile {
+		if c == avatarCard {
+			t.Fatalf("REGRESSION: Avatar Enthusiasts *Card pointer in exile (r48/r50 game-59 leak)")
+		}
+	}
+	// It also must NOT still be on the battlefield as a Permanent
+	// (the leak's other half — Permanent retained while Card duped to exile).
+	for _, p := range gs.Seats[0].Battlefield {
+		if p != nil && p.Card == avatarCard {
+			t.Fatalf("REGRESSION: Avatar Enthusiasts Permanent still on battlefield after sac")
+		}
+	}
+	if mondrak.Counters["indestructible"] != 1 {
+		t.Errorf("expected 1 indestructible counter; got %d", mondrak.Counters["indestructible"])
 	}
 }
 

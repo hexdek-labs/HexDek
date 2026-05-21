@@ -4,22 +4,42 @@ import (
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
-// registerMondrakGloryDominus wires Mondrak, Glory Dominus's
-// token-doubling effect.
+// registerMondrakGloryDominus wires Mondrak, Glory Dominus.
 //
-// Oracle text:
+// Oracle text (Scryfall, verified — Phyrexia: All Will Be One):
 //
 //	If one or more tokens would be created under your control, twice
 //	that many of those tokens are created instead.
-//	{2}{W}{W}, Exile two other creatures you control: Put two
-//	indestructible counters on Mondrak.
+//	{1}{W/P}{W/P}, Sacrifice two other artifacts and/or creatures:
+//	Put an indestructible counter on Mondrak. ({W/P} can be paid with
+//	either {W} or 2 life.)
 //
-// True replacement-effect plumbing for token doubling lives at the
-// engine layer (CR §614, parallels Doubling Season / Anointed
-// Procession). We set a per-seat flag and emit a partial so the
-// engine's CreateToken path can branch on it; if the engine layer is
-// already plumbed for "anointed_procession_count", Mondrak adds +1 to
-// it. The activated indestructible-counter ability is wired in full.
+// Implementation:
+//   - Token doubling static: per-seat flag bumped at ETB; the engine
+//     CreateToken path reads "token_doubler_count" and doubles
+//     accordingly.
+//   - Activated {1}{W/P}{W/P}, Sacrifice two: the prior handler called
+//     MoveCard(battlefield→exile) which is a no-op for Permanent
+//     cleanup (removeCardFromZone explicitly does nothing for
+//     battlefield — callers must remove the Permanent themselves).
+//     Result was a CardIdentity invariant violation: the same *Card
+//     pointer wound up in both seat.Battlefield[i].Card AND seat.Exile
+//     — surfaced by Loki r48-deep / r50 as the game-59 / Avatar
+//     Enthusiasts leak (1352 hits in r48, 352 in r50).
+//
+//     Fix: use SacrificePermanent (which does the full battlefield exit
+//     — drops the Permanent, runs §704.5 SBAs, fires LTB triggers, and
+//     routes the Card to the graveyard per CR §701.17). Also corrects
+//     three additional bugs versus the printed oracle:
+//       (a) "Exile two creatures" → "Sacrifice two artifacts and/or
+//           creatures" (the printed cost is sacrifice, and the filter
+//           covers both card types — wider sac fodder pool).
+//       (b) "Put two indestructible counters" → "Put an indestructible
+//           counter" (singular per printed text).
+//       (c) Mana gate {2}{W}{W} = 4 → {1}{W/P}{W/P} = 3 generic-
+//           equivalent (Phyrexian symbols payable with mana or 2 life;
+//           the per_card layer doesn't model life-payment so we keep
+//           the mana-pool path and gate at 3 instead of 4).
 func registerMondrakGloryDominus(r *Registry) {
 	r.OnETB("Mondrak, Glory Dominus", mondrakSetTokenDoubler)
 	r.OnActivated("Mondrak, Glory Dominus", mondrakIndestructibleActivate)
@@ -39,8 +59,8 @@ func mondrakSetTokenDoubler(gs *gameengine.GameState, perm *gameengine.Permanent
 	}
 	seat.Flags["token_doubler_count"]++
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":             perm.Controller,
-		"doublers_active":  seat.Flags["token_doubler_count"],
+		"seat":            perm.Controller,
+		"doublers_active": seat.Flags["token_doubler_count"],
 	})
 }
 
@@ -53,16 +73,25 @@ func mondrakIndestructibleActivate(gs *gameengine.GameState, src *gameengine.Per
 	if seat == nil {
 		return
 	}
-	if seat.ManaPool < 4 {
+	const manaCost = 3 // {1}{W/P}{W/P} → 3 generic-equivalent
+	if seat.ManaPool < manaCost {
 		emitFail(gs, slug, src.Card.DisplayName(), "insufficient_mana", map[string]interface{}{
 			"mana_pool": seat.ManaPool,
+			"mana_cost": manaCost,
 		})
 		return
 	}
-	// Need two other creatures we control to exile.
+	// Pick two other artifacts and/or creatures we control (smallest
+	// PT first for creatures; any artifact). Source itself is excluded.
 	var sac1, sac2 *gameengine.Permanent
+	pickEligible := func(p *gameengine.Permanent) bool {
+		if p == nil || p == src || p.Card == nil {
+			return false
+		}
+		return p.IsCreature() || cardHasType(p.Card, "artifact")
+	}
 	for _, p := range seat.Battlefield {
-		if p == nil || p == src || !p.IsCreature() {
+		if !pickEligible(p) {
 			continue
 		}
 		if sac1 == nil {
@@ -75,16 +104,19 @@ func mondrakIndestructibleActivate(gs *gameengine.GameState, src *gameengine.Per
 		}
 	}
 	if sac1 == nil || sac2 == nil {
-		emitFail(gs, slug, src.Card.DisplayName(), "fewer_than_2_other_creatures", nil)
+		emitFail(gs, slug, src.Card.DisplayName(), "fewer_than_2_eligible_sacrifices", nil)
 		return
 	}
-	seat.ManaPool -= 4
-	gameengine.MoveCard(gs, sac1.Card, sac1.Controller, "battlefield", "exile", "mondrak_activation_cost")
-	gameengine.MoveCard(gs, sac2.Card, sac2.Controller, "battlefield", "exile", "mondrak_activation_cost")
-	src.AddCounter("indestructible", 2)
+	seat.ManaPool -= manaCost
+	gameengine.SyncManaAfterSpend(seat)
+	sac1Name := sac1.Card.DisplayName()
+	sac2Name := sac2.Card.DisplayName()
+	gameengine.SacrificePermanent(gs, sac1, "mondrak_sac_cost")
+	gameengine.SacrificePermanent(gs, sac2, "mondrak_sac_cost")
+	src.AddCounter("indestructible", 1)
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"seat":           src.Controller,
-		"exiled":         []string{sac1.Card.DisplayName(), sac2.Card.DisplayName()},
+		"sacrificed":     []string{sac1Name, sac2Name},
 		"indestructible": src.Counters["indestructible"],
 	})
 }
