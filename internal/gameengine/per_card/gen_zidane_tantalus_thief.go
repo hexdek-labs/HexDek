@@ -6,36 +6,151 @@ import (
 
 // registerZidaneTantalusThief wires Zidane, Tantalus Thief.
 //
-// Oracle text:
+// Oracle text (Scryfall, verified):
 //
-//   When Zidane enters, gain control of target creature an opponent controls until end of turn. Untap it. It gains lifelink and haste until end of turn.
-//   Whenever an opponent gains control of a permanent from you, you create a Treasure token.
+//	When Zidane enters, gain control of target creature an opponent
+//	controls until end of turn. Untap it. It gains lifelink and haste
+//	until end of turn.
+//	Whenever an opponent gains control of a permanent from you, you
+//	create a Treasure token.
 //
-// Auto-generated ETB handler.
+// Implementation (R49 stub port):
+//   - ETB control-grab: pick the highest-power opponent creature
+//     (kill-priority bias). Move it to controller's battlefield, give
+//     it a fresh timestamp, untap, grant kw:lifelink + kw:haste +
+//     mark control_until_eot_owner = original-owner for the
+//     end-of-turn return. A next_end_step delayed trigger restores
+//     control, clears the lifelink/haste flags, and removes the
+//     marker. Mirrors the standard control-steal-UEOT pattern.
+//   - Opp-gain-control Treasure trigger: the engine doesn't currently
+//     emit a card-trigger event when an opponent's effect grabs one
+//     of our permanents (the resolve_helpers.go gain_control path
+//     logs an event but does not call FireCardTrigger). emitPartial
+//     so the gap is visible to audits — when the engine surface
+//     lands, this hook is the wire-up point.
 func registerZidaneTantalusThief(r *Registry) {
 	r.OnETB("Zidane, Tantalus Thief", zidaneTantalusThiefETB)
 }
 
 func zidaneTantalusThiefETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "zidane_tantalus_thief_etb"
-	if gs == nil || perm == nil {
+	const slug = "zidane_tantalus_steal_creature_eot"
+	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
-	seat := perm.Controller
-	if seat < 0 || seat >= len(gs.Seats) {
+	seatIdx := perm.Controller
+	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
 		return
 	}
-	gameengine.GainLife(gs, seat, 1, perm.Card.DisplayName())
-	token := &gameengine.Card{
-		Name:          "1/1 Creature Token",
-		Owner:         seat,
-		BasePower:     1,
-		BaseToughness: 1,
-		Types:         []string{"token", "creature", "creature"},
+
+	// Pick the highest-power opponent creature with a tiebreak on most
+	// recent timestamp (fresh threats are typically the danger).
+	var target *gameengine.Permanent
+	var origOwner int = -1
+	bestPow := -1
+	bestTS := -1
+	for i, s := range gs.Seats {
+		if i == seatIdx || s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		for _, p := range s.Battlefield {
+			if p == nil || p.Card == nil || !p.IsCreature() {
+				continue
+			}
+			pow := gs.PowerOf(p)
+			if pow > bestPow || (pow == bestPow && p.Timestamp > bestTS) {
+				bestPow = pow
+				bestTS = p.Timestamp
+				target = p
+				origOwner = i
+			}
+		}
 	}
-	enterBattlefieldWithETB(gs, seat, token, false)
-	emitPartial(gs, slug, perm.Card.DisplayName(), "additional non-ETB abilities not implemented")
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": seat,
+	if target == nil {
+		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+			"seat":     seatIdx,
+			"no_target": true,
+		})
+		emitPartial(gs, slug, perm.Card.DisplayName(),
+			"opp_gain_control_treasure_trigger_event_not_emitted_engine_side")
+		return
+	}
+
+	// Move the permanent to Zidane's seat. Mirror the in-engine
+	// gain_control pattern.
+	src := gs.Seats[origOwner]
+	for i, p := range src.Battlefield {
+		if p == target {
+			src.Battlefield = append(src.Battlefield[:i], src.Battlefield[i+1:]...)
+			break
+		}
+	}
+	target.Controller = seatIdx
+	target.Timestamp = gs.NextTimestamp()
+	target.Tapped = false
+	if target.Flags == nil {
+		target.Flags = map[string]int{}
+	}
+	target.Flags["kw:lifelink"] = 1
+	target.Flags["kw:haste"] = 1
+	gs.Seats[seatIdx].Battlefield = append(gs.Seats[seatIdx].Battlefield, target)
+	gs.LogEvent(gameengine.Event{
+		Kind:   "gain_control",
+		Seat:   seatIdx,
+		Target: origOwner,
+		Source: perm.Card.DisplayName(),
+		Details: map[string]interface{}{
+			"target_card": target.Card.DisplayName(),
+			"duration":    "until_end_of_turn",
+		},
 	})
+
+	captured := target
+	originalOwner := origOwner
+	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
+		TriggerAt:      "next_end_step",
+		ControllerSeat: seatIdx,
+		SourceCardName: perm.Card.DisplayName(),
+		OneShot:        true,
+		EffectFn: func(gs *gameengine.GameState) {
+			if captured == nil || captured.Card == nil {
+				return
+			}
+			// Pluck from current controller's bf and return to original.
+			cur := gs.Seats[captured.Controller]
+			if cur != nil {
+				for i, p := range cur.Battlefield {
+					if p == captured {
+						cur.Battlefield = append(cur.Battlefield[:i], cur.Battlefield[i+1:]...)
+						break
+					}
+				}
+			}
+			if originalOwner >= 0 && originalOwner < len(gs.Seats) {
+				captured.Controller = originalOwner
+				captured.Timestamp = gs.NextTimestamp()
+				gs.Seats[originalOwner].Battlefield = append(gs.Seats[originalOwner].Battlefield, captured)
+				gs.LogEvent(gameengine.Event{
+					Kind:   "gain_control",
+					Seat:   originalOwner,
+					Source: perm.Card.DisplayName(),
+					Details: map[string]interface{}{
+						"target_card": captured.Card.DisplayName(),
+						"reason":      "zidane_eot_return",
+					},
+				})
+			}
+			if captured.Flags != nil {
+				delete(captured.Flags, "kw:lifelink")
+				delete(captured.Flags, "kw:haste")
+			}
+		},
+	})
+
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":     seatIdx,
+		"target":   target.Card.DisplayName(),
+		"from_seat": origOwner,
+	})
+	emitPartial(gs, slug, perm.Card.DisplayName(),
+		"opp_gain_control_treasure_trigger_event_not_emitted_engine_side")
 }
