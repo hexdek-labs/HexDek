@@ -220,6 +220,64 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 		}
 	}
 
+	// Sunderflock self-cast reduction: "This spell costs {X} less to
+	// cast, where X is the greatest mana value among Elementals you
+	// control." Scan the caster's battlefield for Elementals.
+	if strings.EqualFold(card.DisplayName(), "Sunderflock") {
+		if seatIdx >= 0 && seatIdx < len(gs.Seats) {
+			seat := gs.Seats[seatIdx]
+			if seat != nil {
+				bestMV := 0
+				for _, p := range seat.Battlefield {
+					if p == nil || p.Card == nil {
+						continue
+					}
+					if !cardHasType(p.Card, "elemental") {
+						continue
+					}
+					mv := ManaCostOf(p.Card)
+					if mv > bestMV {
+						bestMV = mv
+					}
+				}
+				if bestMV > 0 {
+					mods = append(mods, CostModifier{
+						Kind:   CostModReduction,
+						Amount: bestMV,
+						Source: "Sunderflock (self-cast)",
+					})
+				}
+			}
+		}
+	}
+
+	// The Dawning Archaic self-cast reduction: "This spell costs {1} less
+	// to cast for each instant and sorcery card in your graveyard." Scan
+	// the caster's graveyard.
+	if strings.EqualFold(card.DisplayName(), "The Dawning Archaic") {
+		if seatIdx >= 0 && seatIdx < len(gs.Seats) {
+			seat := gs.Seats[seatIdx]
+			if seat != nil {
+				n := 0
+				for _, c := range seat.Graveyard {
+					if c == nil {
+						continue
+					}
+					if cardHasType(c, "instant") || cardHasType(c, "sorcery") {
+						n++
+					}
+				}
+				if n > 0 {
+					mods = append(mods, CostModifier{
+						Kind:   CostModReduction,
+						Amount: n,
+						Source: "The Dawning Archaic (self-cast)",
+					})
+				}
+			}
+		}
+	}
+
 	for _, seat := range gs.Seats {
 		if seat == nil {
 			continue
@@ -325,6 +383,47 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 						Amount: 1,
 						Source: name,
 					})
+				}
+
+			case "Lyse Hext":
+				// "Noncreature spells you cast cost {1} less to cast."
+				// Only when Lyse's controller is the caster.
+				if isSelf && isNoncreature && perm.Controller == seatIdx {
+					mods = append(mods, CostModifier{
+						Kind:   CostModReduction,
+						Amount: 1,
+						Source: name,
+					})
+				}
+
+			case "Magnus the Red":
+				// "Unearthly Power — Instant and sorcery spells you cast
+				// cost {1} less to cast for each creature token you
+				// control." Only fires when Magnus's controller is the
+				// caster.
+				if isSelf && isInstantOrSorcery && perm.Controller == seatIdx {
+					tokens := 0
+					if casterSeat := gs.Seats[seatIdx]; casterSeat != nil {
+						for _, p := range casterSeat.Battlefield {
+							if p == nil || p.Card == nil {
+								continue
+							}
+							if !cardHasType(p.Card, "creature") {
+								continue
+							}
+							if !cardHasType(p.Card, "token") {
+								continue
+							}
+							tokens++
+						}
+					}
+					if tokens > 0 {
+						mods = append(mods, CostModifier{
+							Kind:   CostModReduction,
+							Amount: tokens,
+							Source: name,
+						})
+					}
 				}
 
 			case "Mizzix of the Izmagnus":

@@ -17,13 +17,20 @@ import (
 //	  sorcery card from your graveyard without paying its mana cost. If
 //	  that spell would be put into your graveyard, exile it instead.
 //
-// Implementation:
-//   - Cost reduction is done by the cost_modifiers.go scanner via
-//     oracle-text inspection (a known pattern); not handled here.
+// Implementation (R49 stub port — batch A):
 //   - Reach via AST.
-//   - Attack trigger: emitPartial — casting cards from graveyard without
-//     paying their mana cost requires the spell-replay path which isn't
-//     surfaced cleanly to per_card today.
+//   - Self-cast cost reduction "costs {1} less for each instant and
+//     sorcery card in your graveyard" is wired in cost_modifiers.go
+//     under "The Dawning Archaic" self-cast.
+//   - Attack trigger approximation: "may cast target instant or sorcery
+//     card from your graveyard without paying its mana cost. If that
+//     spell would be put into your graveyard, exile it instead." The
+//     full spell-replay path (push StackItem with alt-cost zero and
+//     "exile if would die" replacement) isn't surfaced to per_card.
+//     We approximate the value swing by returning the highest-CMC
+//     instant or sorcery from the controller's graveyard to hand —
+//     captures the recursion piece, omits the cast-this-turn timing
+//     and exile-instead replacement. emitPartial flags the gap.
 func registerTheDawningArchaic(r *Registry) {
 	r.OnETB("The Dawning Archaic", theDawningArchaicETB)
 	r.OnTrigger("The Dawning Archaic", "creature_attacks", theDawningArchaicAttack)
@@ -33,12 +40,13 @@ func theDawningArchaicETB(gs *gameengine.GameState, perm *gameengine.Permanent) 
 	if gs == nil || perm == nil {
 		return
 	}
-	emitPartial(gs, "the_dawning_archaic_etb", perm.Card.DisplayName(),
-		"static_cost_reduction_per_is_in_graveyard_and_attack_replay_partial")
+	emit(gs, "the_dawning_archaic_etb", perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller,
+	})
 }
 
 func theDawningArchaicAttack(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
-	const slug = "the_dawning_archaic_attack_replay"
+	const slug = "the_dawning_archaic_attack_recur"
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
@@ -46,9 +54,39 @@ func theDawningArchaicAttack(gs *gameengine.GameState, perm *gameengine.Permanen
 	if atkPerm == nil || atkPerm != perm {
 		return
 	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	var pick *gameengine.Card
+	pickCMC := -1
+	for _, c := range seat.Graveyard {
+		if c == nil {
+			continue
+		}
+		if !cardHasType(c, "instant") && !cardHasType(c, "sorcery") {
+			continue
+		}
+		cmc := cardCMC(c)
+		if cmc > pickCMC {
+			pickCMC = cmc
+			pick = c
+		}
+	}
+	if pick == nil {
+		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+			"seat":   perm.Controller,
+			"found":  false,
+			"reason": "no_is_in_graveyard",
+		})
+		return
+	}
+	gameengine.MoveCard(gs, pick, perm.Controller, "graveyard", "hand", slug)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": perm.Controller,
+		"seat":      perm.Controller,
+		"recurred":  pick.DisplayName(),
+		"cmc":       pickCMC,
 	})
 	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"may_cast_target_is_from_graveyard_without_paying_mana_partial")
+		"cast_without_mana_cost_and_exile_if_would_die_approximated_as_to_hand")
 }

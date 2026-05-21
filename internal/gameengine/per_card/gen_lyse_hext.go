@@ -73,8 +73,8 @@ func lyseHextSpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 			"noncreature_casts": perm.Flags["lyse_noncreature_count"],
 		})
 	}
-	emitPartial(gs, "lyse_hext_cost_reduction", perm.Card.DisplayName(),
-		"noncreature_cost_reduction_replacement_not_wired_engine_side_TODO")
+	// Noncreature cost reduction is wired in cost_modifiers.go under
+	// "Lyse Hext"; nothing to do at the per-cast trigger.
 }
 
 func lyseHextResetIfStale(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

@@ -39,8 +39,6 @@ func sunderflockETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 			"bounced": 0,
 			"reason":  "not_cast",
 		})
-		emitPartial(gs, slug, perm.Card.DisplayName(),
-			"cost_reduction_x_equals_greatest_elemental_mv_unmodeled")
 		return
 	}
 
@@ -71,6 +69,5 @@ func sunderflockETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		"seat":    perm.Controller,
 		"bounced": bounced,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"cost_reduction_x_equals_greatest_elemental_mv_unmodeled")
+	// Cost reduction is wired in cost_modifiers.go under "Sunderflock".
 }
