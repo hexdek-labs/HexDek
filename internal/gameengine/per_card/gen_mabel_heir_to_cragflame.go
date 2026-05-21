@@ -29,67 +29,20 @@ func mabelHeirToCragflameETB(gs *gameengine.GameState, perm *gameengine.Permanen
 	if gs == nil || perm == nil {
 		return
 	}
-	seatIdx := perm.Controller
-	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return
-	}
-	seat := gs.Seats[seatIdx]
-	if seat == nil {
+	seat := perm.Controller
+	if seat < 0 || seat >= len(gs.Seats) {
 		return
 	}
 	token := &gameengine.Card{
 		Name:  "Cragflame",
-		Owner: seatIdx,
+		Owner: seat,
 		Types: []string{"token", "legendary", "artifact", "equipment", "cragflame_equipment_grant"},
 	}
-	tokenPerm := enterBattlefieldWithETB(gs, seatIdx, token, false)
-
-	// R51 batch H port: auto-attach Cragflame to the best friendly Mouse
-	// (or, if none, the highest-power friendly creature including Mabel
-	// herself). The printed equip {2} cost is a Hat-driven decision the
-	// engine doesn't yet plan; firing the attach at ETB matches the
-	// strictly-positive value swing that Mabel decks reach for and gives
-	// the per-token grant something to bite on for combat math.
-	var target *gameengine.Permanent
-	bestPow := -1 << 30
-	for _, p := range seat.Battlefield {
-		if p == nil || p == tokenPerm || p.Card == nil || !p.IsCreature() {
-			continue
-		}
-		if cardHasSubtype(p.Card, "mouse") {
-			pow := p.Power()
-			if pow > bestPow {
-				bestPow = pow
-				target = p
-			}
-		}
-	}
-	if target == nil {
-		for _, p := range seat.Battlefield {
-			if p == nil || p == tokenPerm || p.Card == nil || !p.IsCreature() {
-				continue
-			}
-			pow := p.Power()
-			if pow > bestPow {
-				bestPow = pow
-				target = p
-			}
-		}
-	}
-	if tokenPerm != nil && target != nil {
-		tokenPerm.AttachedTo = target
-		if target.Flags == nil {
-			target.Flags = map[string]int{}
-		}
-		target.Flags["kw:vigilance"] = 1
-		target.Flags["kw:trample"] = 1
-		target.Flags["kw:haste"] = 1
-		target.Flags["cragflame_equipped"] = 1
-	}
-
+	enterBattlefieldWithETB(gs, seat, token, false)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":     seatIdx,
-		"token":    "Cragflame",
-		"attached": target != nil,
+		"seat":  seat,
+		"token": "Cragflame",
 	})
+	emitPartial(gs, slug, perm.Card.DisplayName(),
+		"cragflame_equip_grant_not_auto_attached_engine_lacks_equip_planner")
 }

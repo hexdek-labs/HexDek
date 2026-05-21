@@ -33,6 +33,51 @@ import (
 func registerTheSecondDoctor(r *Registry) {
 	r.OnETB("The Second Doctor", theSecondDoctorETB)
 	r.OnTrigger("The Second Doctor", "end_step", theSecondDoctorHowCivilOfYou)
+	// R51 batch I: LTB clears the no_max_hand_size flag on each seat
+	// (only when no OTHER Second Doctor remains in play) so the
+	// cleanup-step max-hand-size scanner reverts. Also clears the
+	// per-opponent cant_attack_doctor_controller restriction tied to
+	// this Doctor's controller, since the restriction is rooted in
+	// the printed "you" — when the Doctor leaves, the controller's
+	// claim on the restriction goes with it.
+	r.OnTrigger("The Second Doctor", "permanent_ltb", theSecondDoctorLTB)
+}
+
+func theSecondDoctorLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	// Bail if another Second Doctor still in play (any seat — the
+	// printed static applies globally).
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, p := range s.Battlefield {
+			if p == nil || p == perm || p.Card == nil {
+				continue
+			}
+			if normalizeName(p.Card.DisplayName()) == normalizeName("The Second Doctor") {
+				return
+			}
+		}
+	}
+	for _, s := range gs.Seats {
+		if s == nil || s.Flags == nil {
+			continue
+		}
+		delete(s.Flags, "no_max_hand_size")
+		// Clear the attack-restriction stamps tied to this Doctor's
+		// controller. The encoded payload is controller_seat + 1.
+		if s.Flags["cant_attack_doctor_controller"] == perm.Controller+1 {
+			delete(s.Flags, "cant_attack_doctor_controller")
+			delete(s.Flags, "cant_attack_doctor_controller_until_turn")
+		}
+	}
 }
 
 func theSecondDoctorETB(gs *gameengine.GameState, perm *gameengine.Permanent) {

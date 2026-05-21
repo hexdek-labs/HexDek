@@ -24,6 +24,33 @@ func registerNerivHeartOfTheStorm(r *Registry) {
 	r.OnETB("Neriv, Heart of the Storm", nerivETBSetSeatFlag)
 	r.OnTrigger("Neriv, Heart of the Storm", "permanent_etb", nerivStampEnteringCreature)
 	r.OnTrigger("Neriv, Heart of the Storm", "end_step", nerivClearMarkers)
+	// R51 batch I: LTB clears the seat-level damage-doubler activation
+	// flag + sweeps all per-perm neriv_doubles_damage markers so a
+	// removed Neriv doesn't leave the replacement contract active.
+	r.OnTrigger("Neriv, Heart of the Storm", "permanent_ltb", nerivLTBClearFlags)
+}
+
+func nerivLTBClearFlags(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	if seat.Flags != nil {
+		delete(seat.Flags, "neriv_double_etb_damage_active")
+	}
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Flags == nil {
+			continue
+		}
+		delete(p.Flags, "neriv_doubles_damage")
+	}
 }
 
 func nerivETBSetSeatFlag(gs *gameengine.GameState, perm *gameengine.Permanent) {

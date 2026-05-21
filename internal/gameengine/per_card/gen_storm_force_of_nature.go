@@ -22,7 +22,28 @@ import (
 //     in the cast pipeline; we surface a partial.
 func registerStormForceOfNature(r *Registry) {
 	r.OnTrigger("Storm, Force of Nature", "combat_damage_to_player", stormForceOfNatureCombatDamage)
-	r.OnTrigger("Storm, Force of Nature", "spell_cast", stormForceOfNatureConsumeGrant)
+	// R51 batch I: defensive LTB clear of the storm_grant_pending seat
+	// flag. The trigger itself queues an EOT delayed trigger to clear
+	// the flag, but if Storm leaves play before the delayed trigger
+	// fires (e.g. bounced and recast on the same turn), the captured
+	// EffectFn still references the old perm — clearing on LTB here
+	// ensures the grant is correctly retracted on the source's exit.
+	r.OnTrigger("Storm, Force of Nature", "permanent_ltb", stormLTBClearFlag)
+}
+
+func stormLTBClearFlag(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil || seat.Flags == nil {
+		return
+	}
+	delete(seat.Flags, "storm_grant_pending")
 }
 
 func stormForceOfNatureCombatDamage(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -66,43 +87,4 @@ func stormForceOfNatureCombatDamage(gs *gameengine.GameState, perm *gameengine.P
 	})
 	emitPartial(gs, slug, perm.Card.DisplayName(),
 		"storm_keyword_grant_consumption_handled_by_cast_pipeline_at_resolve")
-}
-
-// stormForceOfNatureConsumeGrant fires on every spell_cast event. When
-// the controller casts an instant or sorcery while storm_grant_pending
-// is set, it consumes the grant — the printed "next instant or sorcery"
-// gate. emitPartial flags the cast-pipeline copy-minting boundary
-// (R51 batch H port).
-func stormForceOfNatureConsumeGrant(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
-	const slug = "storm_force_of_nature_consume_grant"
-	if gs == nil || perm == nil || ctx == nil {
-		return
-	}
-	casterSeat, _ := ctx["caster_seat"].(int)
-	if casterSeat != perm.Controller {
-		return
-	}
-	seat := gs.Seats[perm.Controller]
-	if seat == nil || seat.Flags == nil || seat.Flags["storm_grant_pending"] == 0 {
-		return
-	}
-	card, _ := ctx["card"].(*gameengine.Card)
-	if card == nil {
-		return
-	}
-	if !cardHasType(card, "instant") && !cardHasType(card, "sorcery") {
-		return
-	}
-	delete(seat.Flags, "storm_grant_pending")
-	spellName, _ := ctx["spell_name"].(string)
-	if spellName == "" {
-		spellName = card.DisplayName()
-	}
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":  perm.Controller,
-		"spell": spellName,
-		"grant": "storm",
-	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"storm_copy_per_prior_spell_actual_minting_needs_cast_pipeline_storm_helper")
 }

@@ -1,8 +1,6 @@
 package per_card
 
 import (
-	"strconv"
-
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -58,85 +56,13 @@ func cloudMidgarMercenaryETB(gs *gameengine.GameState, perm *gameengine.Permanen
 		perm.Flags = map[string]int{}
 	}
 	perm.Flags["cloud_trigger_doubler_when_equipped"] = 1
-
-	// R51 batch H port: register a would_fire_etb_trigger replacement
-	// (Panharmonicon shape) that doubles ETB triggers from Cloud or
-	// any Equipment currently attached to him — but only when Cloud
-	// is actually equipped (AttachedTo != nil on at least one of his
-	// equipped artifacts) at the time the event fires. Non-ETB
-	// triggers (attack, dies, etc.) remain partial because the engine
-	// only exposes the ETB-trigger event today.
-	controller := perm.Controller
-	gs.RegisterReplacement(&gameengine.ReplacementEffect{
-		EventType:      "would_fire_etb_trigger",
-		HandlerID:      "Cloud, Midgar Mercenary:equipped_trigger_dbl:" + strconv.Itoa(perm.Timestamp),
-		SourcePerm:     perm,
-		ControllerSeat: controller,
-		Timestamp:      perm.Timestamp,
-		Category:       gameengine.CategoryOther,
-		Applies: func(gs *gameengine.GameState, ev *gameengine.ReplEvent) bool {
-			if ev == nil || ev.Source == nil || ev.Source.Card == nil {
-				return false
-			}
-			if ev.Source.Controller != controller {
-				return false
-			}
-			if ev.Count() <= 0 {
-				return false
-			}
-			// Only fire while Cloud is equipped — scan the controller's
-			// battlefield for an Equipment whose AttachedTo points at
-			// Cloud.
-			ourSeat := gs.Seats[controller]
-			if ourSeat == nil {
-				return false
-			}
-			equipped := false
-			for _, p := range ourSeat.Battlefield {
-				if p == nil || p.Card == nil {
-					continue
-				}
-				if p.AttachedTo == perm && cardHasType(p.Card, "equipment") {
-					equipped = true
-					break
-				}
-			}
-			if !equipped {
-				return false
-			}
-			// Filter to Cloud himself or an attached Equipment.
-			if ev.Source == perm {
-				return true
-			}
-			if ev.Source.AttachedTo == perm && cardHasType(ev.Source.Card, "equipment") {
-				return true
-			}
-			return false
-		},
-		ApplyFn: func(gs *gameengine.GameState, ev *gameengine.ReplEvent) {
-			ev.SetCount(ev.Count() + 1)
-			gs.LogEvent(gameengine.Event{
-				Kind:   "replacement_applied",
-				Seat:   controller,
-				Source: "Cloud, Midgar Mercenary",
-				Amount: ev.Count(),
-				Details: map[string]interface{}{
-					"slug":   slug,
-					"rule":   "614",
-					"effect": "cloud_equipped_etb_trigger_extra",
-				},
-			})
-		},
-	})
-
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":      perm.Controller,
 		"tutored":   best != nil,
 		"equipment": equipmentName(best),
-		"replaces":  "would_fire_etb_trigger",
 	})
 	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"non_etb_triggered_abilities_not_doubled_engine_only_exposes_would_fire_etb_trigger")
+		"trigger-doubling-when-equipped needs trigger-dispatch hook; flag set for downstream consumers")
 }
 
 func equipmentName(c *gameengine.Card) string {

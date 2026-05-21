@@ -58,17 +58,6 @@ func theMasterOfKeysETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		gameengine.MoveCard(gs, card, seatIdx, "library", "graveyard", "master_of_keys_mill")
 		milled++
 	}
-	// R51 batch H port: stamp a per-seat flag so cast-legality scanners
-	// can recognize the enchantment-escape grant on graveyard
-	// enchantments (escape cost = mana cost + exile 3 other yard
-	// cards). The actual cast-from-grave-with-escape path is
-	// engine-side; the flag is the per_card-layer surface that lets
-	// downstream consumers (and tests) observe the grant.
-	if seat.Flags == nil {
-		seat.Flags = map[string]int{}
-	}
-	seat.Flags["master_of_keys_enchantment_escape_grant"] = 1
-
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":     seatIdx,
 		"x":        x,
@@ -76,5 +65,5 @@ func theMasterOfKeysETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		"milled":   milled,
 	})
 	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"enchantment_escape_grant_actual_cast_path_needs_engine_side_escape_helper")
+		"enchantment_escape_grant_static_handled_by_ast_layer")
 }
