@@ -29,6 +29,27 @@ func registerSamutTheDrivingForce(r *Registry) {
 	r.OnTrigger("Samut, the Driving Force", "life_lost", samutOnOpponentLoseLife)
 	r.OnTrigger("Samut, the Driving Force", "upkeep_controller", samutClearTurnGate)
 	r.OnTrigger("Samut, the Driving Force", "permanent_etb", samutRefreshAnthem)
+	// R51 batch I: LTB clears the per-turn speed-bump gate so a Samut
+	// that left mid-turn doesn't leave the gate stuck for the rest of
+	// the turn. The "speed" counter itself is intentionally preserved
+	// — speed is a player property (CR start-your-engines) that
+	// persists past the source's leaving.
+	r.OnTrigger("Samut, the Driving Force", "permanent_ltb", samutLTBClearTurnGate)
+}
+
+func samutLTBClearTurnGate(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil || seat.Flags == nil {
+		return
+	}
+	delete(seat.Flags, "speed_bumped_this_turn")
 }
 
 func samutETBInitSpeed(gs *gameengine.GameState, perm *gameengine.Permanent) {

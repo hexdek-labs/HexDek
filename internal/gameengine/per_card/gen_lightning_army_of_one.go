@@ -30,6 +30,31 @@ import (
 // when that wiring lands.
 func registerLightningArmyOfOne(r *Registry) {
 	r.OnTrigger("Lightning, Army of One", "combat_damage_to_player", lightningStaggerArm)
+	// R51 batch I: defensive LTB clear of all lightning_stagger_seat*
+	// _until_turn keys this Lightning armed. Even though the stagger
+	// flag is self-expiring via turn comparison, downstream scanners
+	// that walk the flag map keep paying the cost of a stale key for
+	// every damage check between LTB and the natural expiry tick.
+	r.OnTrigger("Lightning, Army of One", "permanent_ltb", lightningLTBClearStagger)
+}
+
+func lightningLTBClearStagger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	if gs.Flags == nil {
+		return
+	}
+	const prefix = "lightning_stagger_seat"
+	for k := range gs.Flags {
+		if len(k) >= len(prefix) && k[:len(prefix)] == prefix {
+			delete(gs.Flags, k)
+		}
+	}
 }
 
 func lightningStaggerArm(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

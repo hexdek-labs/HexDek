@@ -28,6 +28,33 @@ import (
 //     surface partials so audits can find the wiring boundary.
 func registerSenTriplets(r *Registry) {
 	r.OnTrigger("Sen Triplets", "upkeep_controller", senTripletsUpkeep)
+	// R51 batch I: LTB sweeps the per-opponent locked/revealed flags +
+	// the controller's play_from flag if Sen left mid-turn before the
+	// delayed end-of-turn cleanup runs. Without this, killing Sen
+	// during the upkeep-pickup turn leaves the lockout stuck on the
+	// targeted opponent for the rest of the turn.
+	r.OnTrigger("Sen Triplets", "permanent_ltb", senTripletsLTBSweep)
+}
+
+func senTripletsLTBSweep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	for _, s := range gs.Seats {
+		if s == nil || s.Flags == nil {
+			continue
+		}
+		delete(s.Flags, "sen_triplets_locked")
+		delete(s.Flags, "sen_triplets_revealed")
+	}
+	ctl := gs.Seats[perm.Controller]
+	if ctl != nil && ctl.Flags != nil {
+		delete(ctl.Flags, "sen_triplets_play_from")
+	}
 }
 
 func senTripletsUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

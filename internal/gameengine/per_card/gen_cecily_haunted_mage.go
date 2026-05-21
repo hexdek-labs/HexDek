@@ -30,6 +30,37 @@ import (
 func registerCecilyHauntedMage(r *Registry) {
 	r.OnETB("Cecily, Haunted Mage", cecilyHauntedMageETB)
 	r.OnTrigger("Cecily, Haunted Mage", "creature_attacks", cecilyHauntedMageAttack)
+	// R51 batch I: LTB clears the max_hand_size = 11 seat flag (only
+	// when no OTHER Cecily remains on the controller's battlefield)
+	// so the cleanup-step max-hand-size scanner reverts to the 7-card
+	// default once Cecily leaves play.
+	r.OnTrigger("Cecily, Haunted Mage", "permanent_ltb", cecilyLTBClearFlag)
+}
+
+func cecilyLTBClearFlag(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	// Don't clear if another Cecily still in play.
+	for _, p := range seat.Battlefield {
+		if p == nil || p == perm || p.Card == nil {
+			continue
+		}
+		if normalizeName(p.Card.DisplayName()) == normalizeName("Cecily, Haunted Mage") {
+			return
+		}
+	}
+	if seat.Flags != nil {
+		delete(seat.Flags, "max_hand_size")
+	}
 }
 
 func cecilyHauntedMageETB(gs *gameengine.GameState, perm *gameengine.Permanent) {

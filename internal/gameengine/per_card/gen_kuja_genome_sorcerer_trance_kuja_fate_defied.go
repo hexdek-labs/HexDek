@@ -30,6 +30,40 @@ func registerKujaGenomeSorcererTranceKujaFateDefied(r *Registry) {
 	// Also accept short-name binding so engines that dispatch by single-face name find us.
 	r.OnETB("Kuja, Genome Sorcerer", kujaETBSetDamageDoubler)
 	r.OnTrigger("Kuja, Genome Sorcerer", "end_step", kujaEndStepSpawnAndCheckTransform)
+	// R51 batch I: LTB clears the wizard-damage-doubler seat flag
+	// (only when no OTHER Kuja remains on the controller's
+	// battlefield) so a removed Kuja doesn't leave the Flare-Star
+	// replacement contract active for downstream consumers.
+	r.OnTrigger("Kuja, Genome Sorcerer // Trance Kuja, Fate Defied", "permanent_ltb", kujaLTBClearFlag)
+	r.OnTrigger("Kuja, Genome Sorcerer", "permanent_ltb", kujaLTBClearFlag)
+}
+
+func kujaLTBClearFlag(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	for _, p := range seat.Battlefield {
+		if p == nil || p == perm || p.Card == nil {
+			continue
+		}
+		dn := normalizeName(p.Card.DisplayName())
+		if dn == normalizeName("Kuja, Genome Sorcerer") ||
+			dn == normalizeName("Kuja, Genome Sorcerer // Trance Kuja, Fate Defied") ||
+			dn == normalizeName("Trance Kuja, Fate Defied") {
+			return
+		}
+	}
+	if seat.Flags != nil {
+		delete(seat.Flags, "kuja_wizard_damage_doubler_active")
+	}
 }
 
 func kujaETBSetDamageDoubler(gs *gameengine.GameState, perm *gameengine.Permanent) {

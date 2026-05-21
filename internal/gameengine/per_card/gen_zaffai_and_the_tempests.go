@@ -32,6 +32,30 @@ func registerZaffaiAndTheTempests(r *Registry) {
 	r.OnETB("Zaffai and the Tempests", zaffaiAndTheTempestsETB)
 	r.OnTrigger("Zaffai and the Tempests", "upkeep", zaffaiUpkeepRefresh)
 	r.OnTrigger("Zaffai and the Tempests", "spell_cast", zaffaiSpellCastConsume)
+	// R51 batch I: LTB clears the alt-cost grant flag + any stale
+	// per-turn used markers so a removed Zaffai doesn't leave the
+	// once-per-turn free-cast contract active for downstream consumers.
+	r.OnTrigger("Zaffai and the Tempests", "permanent_ltb", zaffaiLTBClearFlags)
+}
+
+func zaffaiLTBClearFlags(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	s := gs.Seats[perm.Controller]
+	if s == nil || s.Flags == nil {
+		return
+	}
+	delete(s.Flags, "zaffai_free_cast_available")
+	for k := range s.Flags {
+		if len(k) > len(zaffaiUsedPrefix) && k[:len(zaffaiUsedPrefix)] == zaffaiUsedPrefix {
+			delete(s.Flags, k)
+		}
+	}
 }
 
 func zaffaiAndTheTempestsETB(gs *gameengine.GameState, perm *gameengine.Permanent) {

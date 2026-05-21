@@ -28,6 +28,25 @@ import (
 func registerNaduWingedWisdom(r *Registry) {
 	r.OnETB("Nadu, Winged Wisdom", naduWingedWisdomETB)
 	r.OnTrigger("Nadu, Winged Wisdom", "creature_targeted", naduWingedWisdomTargeted)
+	// R51 batch I: LTB clears the nadu_grant_active seat flag so a
+	// removed Nadu doesn't leave the granted-target-trigger contract
+	// active for downstream consumers.
+	r.OnTrigger("Nadu, Winged Wisdom", "permanent_ltb", naduLTBClearFlag)
+}
+
+func naduLTBClearFlag(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil || seat.Flags == nil {
+		return
+	}
+	delete(seat.Flags, "nadu_grant_active")
 }
 
 func naduWingedWisdomETB(gs *gameengine.GameState, perm *gameengine.Permanent) {

@@ -22,6 +22,28 @@ import (
 //     in the cast pipeline; we surface a partial.
 func registerStormForceOfNature(r *Registry) {
 	r.OnTrigger("Storm, Force of Nature", "combat_damage_to_player", stormForceOfNatureCombatDamage)
+	// R51 batch I: defensive LTB clear of the storm_grant_pending seat
+	// flag. The trigger itself queues an EOT delayed trigger to clear
+	// the flag, but if Storm leaves play before the delayed trigger
+	// fires (e.g. bounced and recast on the same turn), the captured
+	// EffectFn still references the old perm — clearing on LTB here
+	// ensures the grant is correctly retracted on the source's exit.
+	r.OnTrigger("Storm, Force of Nature", "permanent_ltb", stormLTBClearFlag)
+}
+
+func stormLTBClearFlag(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil || seat.Flags == nil {
+		return
+	}
+	delete(seat.Flags, "storm_grant_pending")
 }
 
 func stormForceOfNatureCombatDamage(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
