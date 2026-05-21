@@ -34,6 +34,24 @@ import (
 func registerLoreholdArchivist(r *Registry) {
 	r.OnTrigger("Lorehold Archivist", "upkeep_controller", loreholdArchivistUpkeep)
 	r.OnTrigger("Lorehold Archivist // Restore Relic", "upkeep_controller", loreholdArchivistUpkeep)
+	r.OnTrigger("Lorehold Archivist", "end_step", loreholdArchivistEndStep)
+	r.OnTrigger("Lorehold Archivist // Restore Relic", "end_step", loreholdArchivistEndStep)
+}
+
+// loreholdArchivistEndStep clears the "prepared" flag at end of turn so
+// each turn's upkeep can re-evaluate the ≥3 yard threshold against
+// current graveyard state.
+func loreholdArchivistEndStep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || perm.Flags == nil {
+		return
+	}
+	if perm.Flags["prepared"] == 0 {
+		return
+	}
+	delete(perm.Flags, "prepared")
+	emit(gs, "lorehold_archivist_unprepare_eos", perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller,
+	})
 }
 
 func loreholdArchivistUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
