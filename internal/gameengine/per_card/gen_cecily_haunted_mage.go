@@ -118,6 +118,31 @@ func cecilyHauntedMageAttack(gs *gameengine.GameState, perm *gameengine.Permanen
 	}
 	if freeCastEligible {
 		seat.Flags["cecily_free_is_cast_pending"] = 1
+		// R55: register a ZoneCastPolicy that lets the controller
+		// cast one I/S spell from their hand for free this turn.
+		// Duration "until_end_of_turn" — the delayed end-of-turn
+		// trigger below also drops the seat flag so the
+		// per_card-side bookkeeping stays consistent. The policy
+		// gates on (1) caster == Cecily's controller, (2) card is
+		// instant or sorcery in caster's own hand. The "free" cost
+		// is enforced by ManaCost=0. Note this is a STANDING
+		// policy until EOT — the printed text says "you may cast an
+		// instant or sorcery spell from your hand without paying
+		// its mana cost", and the trigger fires once per attack.
+		gs.RegisterZoneCastPolicy(&gameengine.ZoneCastPolicy{
+			SourcePerm:      perm,
+			HandlerID:       "cecily_free_is_cast",
+			Zone:            gameengine.ZoneHand,
+			OwnerScope:      "self",
+			CasterScope:     "controller",
+			ControllerSeat:  perm.Controller,
+			Predicate:       cecilyIsInstantOrSorceryPredicate,
+			ManaCost:        0,
+			Duration:        "until_end_of_turn",
+			SourceTimestamp: perm.Timestamp,
+			GrantTurn:       gs.Turn,
+		})
+		captured := perm
 		gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
 			TriggerAt:      "end_of_turn",
 			ControllerSeat: perm.Controller,
@@ -128,6 +153,9 @@ func cecilyHauntedMageAttack(gs *gameengine.GameState, perm *gameengine.Permanen
 				if s != nil && s.Flags != nil {
 					delete(s.Flags, "cecily_free_is_cast_pending")
 				}
+				// Drop only Cecily's own policies — leaves
+				// concurrent Aluren / Zaffai / Karn etc. intact.
+				gs.UnregisterZoneCastPoliciesForPermanent(captured)
 			},
 		})
 	} else {
@@ -141,11 +169,14 @@ func cecilyHauntedMageAttack(gs *gameengine.GameState, perm *gameengine.Permanen
 		"hand_size":          handCount,
 		"free_cast_eligible": freeCastEligible,
 	})
-	if freeCastEligible {
-		// Kept-alive breadcrumb: the per_card layer can't drive the
-		// actual alt-cost cast from hand; emitPartial documents the
-		// cast-pipeline boundary alongside the seat flag set above.
-		emitPartial(gs, slug, perm.Card.DisplayName(),
-			"free_is_cast_from_hand_alt_cost_pipeline_not_wired_at_per_card_layer")
+}
+
+// cecilyIsInstantOrSorceryPredicate filters cards eligible for the
+// hand-≥11 free cast. Defined at file scope so the closure registered
+// by every Cecily ETB shares the same predicate pointer.
+func cecilyIsInstantOrSorceryPredicate(c *gameengine.Card) bool {
+	if c == nil {
+		return false
 	}
+	return cardHasType(c, "instant") || cardHasType(c, "sorcery")
 }

@@ -107,13 +107,17 @@ func TestCecily_AttackEmits11PlusFreeCastBreadcrumb(t *testing.T) {
 		gs.Seats[0].Hand = append(gs.Seats[0].Hand, &gameengine.Card{Name: "Filler", Owner: 0})
 	}
 
-	prePartial := hasEvent(gs, "per_card_partial")
+	// R55: the prior emitPartial breadcrumb was replaced by a real
+	// ZoneCastPolicy registration. Assert the policy is registered
+	// when hand ≥ 11, which is the upgraded contract.
+	preCount := len(gs.ZoneCastPolicies)
 	cecilyHauntedMageAttack(gs, cecily, map[string]interface{}{
 		"attacker_perm": cecily,
 		"attacker_seat": 0,
 	})
-	if hasEvent(gs, "per_card_partial") <= prePartial {
-		t.Errorf("expected per_card_partial breadcrumb when hand ≥ 11")
+	if len(gs.ZoneCastPolicies) <= preCount {
+		t.Errorf("expected ZoneCastPolicy registered when hand ≥ 11; pre=%d post=%d",
+			preCount, len(gs.ZoneCastPolicies))
 	}
 }
 
