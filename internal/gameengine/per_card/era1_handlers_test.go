@@ -16,7 +16,10 @@ import (
 
 func TestMabelEra1_ETBCreatesCragflameToken(t *testing.T) {
 	gs := newGame(t, 2)
-	mabel := addPerm(gs, 0, "Mabel, Heir to Cragflame", "creature", "legendary")
+	// Stamp P/T so SBA doesn't destroy Mabel when the R50 batchH anthem
+	// trigger fan-out runs StateBasedActions after my permanent_etb
+	// handler resolves through the stack bridge.
+	mabel := stampCreaturePT(addPerm(gs, 0, "Mabel, Heir to Cragflame", "creature", "legendary"), 3, 3)
 
 	bfBefore := len(gs.Seats[0].Battlefield)
 	mabelHeirToCragflameETB(gs, mabel)
@@ -269,7 +272,10 @@ func TestQueenMarchesaEra1_NoTokenWhenSelfIsMonarch(t *testing.T) {
 
 func TestTheSwarmweaverEra1_ETBSpawnsTwoInsects(t *testing.T) {
 	gs := newGame(t, 2)
-	weaver := addPerm(gs, 0, "The Swarmweaver", "creature", "legendary", "artifact")
+	// Stamp P/T so SBA doesn't destroy Swarmweaver when the R50 batchH
+	// delirium-anthem trigger fan-out runs StateBasedActions after each
+	// Insect-token spawn fires permanent_etb.
+	weaver := stampCreaturePT(addPerm(gs, 0, "The Swarmweaver", "creature", "legendary", "artifact"), 2, 3)
 
 	bfBefore := len(gs.Seats[0].Battlefield)
 	theSwarmweaverETB(gs, weaver)

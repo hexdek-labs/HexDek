@@ -33,8 +33,11 @@ func registerJodahTheUnifier(r *Registry) {
 }
 
 func jodahETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	emitPartial(gs, "jodah_legendary_anthem", perm.Card.DisplayName(),
-		"static_layer_7_pt_buff_unimplemented")
+	// Legendary-anthem +X/+X is wired in custom_jodah_the_unifier.go
+	// (R50 batchH) via Cynette-style Duration-tagged Modification
+	// refresh on permanent_etb / _ltb.
+	_ = perm
+	_ = gs
 }
 
 func jodahLegendaryCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

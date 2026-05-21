@@ -91,8 +91,9 @@ func kolodinTriumphCasterETB(gs *gameengine.GameState, perm *gameengine.Permanen
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"mount_vehicle_haste_static_handled_by_ast_keyword_pipeline")
+	// Mount/Vehicle haste anthem is wired in
+	// custom_kolodin_triumph_caster.go (R50 batchH) via kw:haste flag
+	// stamping on permanent_etb / permanent_ltb refresh.
 }
 
 func kolodinTriumphCasterETBTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

@@ -99,6 +99,8 @@ func tovolarUpkeepNight(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 		"seat":  perm.Controller,
 		"count": count,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"transform_human_werewolves_partial")
+	// Human-Werewolf transformation rider is wired in
+	// custom_tovolar_dire_overlord.go (R50 batchH) — runs after we
+	// flip is_night and calls TransformPermanent on every own DFC
+	// Human Werewolf front face.
 }
