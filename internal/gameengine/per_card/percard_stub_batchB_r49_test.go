@@ -455,6 +455,13 @@ func TestRatKing_NotEnoughRatsFails(t *testing.T) {
 func TestWanderingMinstrel_BalladTriggersAt5Towns(t *testing.T) {
 	gs := newGame(t, 2)
 	wm := addPerm(gs, 0, "The Wandering Minstrel", "creature", "legendary")
+	// R58: the trigger-batch flush from the token's permanent_etb now
+	// runs SBAs (via the new permanent_etb hook for lands-enter-
+	// untapped), so the test fixture must give Minstrel a non-zero
+	// toughness — otherwise she dies as a 0/0 to §704.5f before the
+	// foundElem check fires.
+	wm.Card.BasePower = 2
+	wm.Card.BaseToughness = 4
 	for i := 0; i < 5; i++ {
 		t := addPerm(gs, 0, "Town", "land", "town")
 		_ = t
@@ -480,6 +487,8 @@ func TestWanderingMinstrel_BalladTriggersAt5Towns(t *testing.T) {
 func TestWanderingMinstrel_BalladSkipsUnder5Towns(t *testing.T) {
 	gs := newGame(t, 2)
 	wm := addPerm(gs, 0, "The Wandering Minstrel", "creature")
+	wm.Card.BasePower = 2
+	wm.Card.BaseToughness = 4
 	for i := 0; i < 4; i++ {
 		addPerm(gs, 0, "Town", "land", "town")
 	}
@@ -497,7 +506,11 @@ func TestWanderingMinstrel_BalladSkipsUnder5Towns(t *testing.T) {
 func TestWanderingMinstrel_ActivatedPumpsOthersByTownCount(t *testing.T) {
 	gs := newGame(t, 2)
 	wm := addPerm(gs, 0, "The Wandering Minstrel", "creature")
+	wm.Card.BasePower = 2
+	wm.Card.BaseToughness = 4
 	other := addPerm(gs, 0, "Servo", "creature")
+	other.Card.BasePower = 1
+	other.Card.BaseToughness = 1
 	for i := 0; i < 3; i++ {
 		addPerm(gs, 0, "Town", "land", "town")
 	}

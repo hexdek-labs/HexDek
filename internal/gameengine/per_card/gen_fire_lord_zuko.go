@@ -14,14 +14,14 @@ import (
 //	control enters from exile, put a +1/+1 counter on each creature
 //	you control.
 //
-// Implementation (R44 stub port):
+// Implementation (R44 stub port; R58 mana-pool primitive port):
 //   - Firebending X: OnTrigger("creature_attacks") gated to
 //     attacker_perm == perm. Add perm.Power() red mana to the
-//     controller's pool (mirrors Fire Lord Azula's firebending 2
-//     pattern). "Lasts until end of combat" is approximated by the
-//     default mana-empty-step behavior (the engine clears unspent
-//     mana between phases; full "mana doesn't empty" requires the
-//     keyword pipeline, which is breadcrumbed in Azula's port too).
+//     controller's pool. R58: register a ManaPoolExemption({R})
+//     scoped to the controller so the firebent red mana survives the
+//     combat→post-combat phase boundary; a delayed end_of_combat
+//     trigger unregisters the exemption so it doesn't bleed into the
+//     next combat. LTB also unregisters defensively.
 //   - Cast-from-exile counter trigger: OnTrigger("spell_cast")
 //     gated on caster_seat == controller AND cast_zone == "exile".
 //   - ETB-from-exile counter trigger: OnTrigger("nonland_permanent
@@ -34,6 +34,7 @@ func registerFireLordZuko(r *Registry) {
 	r.OnTrigger("Fire Lord Zuko", "creature_attacks", fireLordZukoFirebending)
 	r.OnTrigger("Fire Lord Zuko", "spell_cast", fireLordZukoSpellFromExile)
 	r.OnTrigger("Fire Lord Zuko", "nonland_permanent_etb", fireLordZukoEtbFromExile)
+	r.OnTrigger("Fire Lord Zuko", "permanent_ltb", fireLordZukoLTB)
 }
 
 func fireLordZukoETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -44,8 +45,17 @@ func fireLordZukoETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"firebending_mana_until_end_of_combat_lifetime_not_modeled_default_phase_empty_used_instead")
+}
+
+func fireLordZukoLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	gameengine.UnregisterManaPoolExemptionForPerm(gs, perm)
 }
 
 func fireLordZukoFirebending(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -77,10 +87,26 @@ func fireLordZukoFirebending(gs *gameengine.GameState, perm *gameengine.Permanen
 			"reason": "firebending_x",
 		},
 	})
+	// R58: keep the firebent {R} from draining at the combat→post-combat
+	// phase boundary. Register a ManaPoolExemption tied to Zuko + a
+	// delayed end_of_combat trigger that drops it. Per-combat scope so
+	// the exemption doesn't bleed into the next turn's combat.
+	gameengine.RegisterManaPoolExemption(gs, perm, perm.Controller, []string{"R"})
+	captured := perm
+	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
+		TriggerAt:      "end_of_combat",
+		ControllerSeat: perm.Controller,
+		SourceCardName: perm.Card.DisplayName(),
+		OneShot:        true,
+		EffectFn: func(gs *gameengine.GameState) {
+			gameengine.UnregisterManaPoolExemptionForPerm(gs, captured)
+		},
+	})
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":  perm.Controller,
-		"x":     x,
-		"color": "R",
+		"seat":      perm.Controller,
+		"x":         x,
+		"color":     "R",
+		"exemption": "R_until_eoc",
 	})
 }
 

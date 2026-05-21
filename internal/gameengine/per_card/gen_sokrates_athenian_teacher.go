@@ -251,6 +251,6 @@ func sokratesDialogue(gs *gameengine.GameState, src *gameengine.Permanent, abili
 		"seat":   src.Controller,
 		"target": target.Card.DisplayName(),
 	})
-	emitPartial(gs, slug, src.Card.DisplayName(),
-		"combat-damage→draws conversion needs engine-side replacement effect on the dialogue flag")
+	// R58: the damage replacement above IS the engine-side replacement
+	// effect the stale R54 partial referenced — drop the breadcrumb.
 }
