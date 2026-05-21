@@ -29,6 +29,60 @@ import (
 //     port flags the gap.
 func registerTophHardheadedTeacher(r *Registry) {
 	r.OnETB("Toph, Hardheaded Teacher", tophETBDiscardRebuy)
+	// R52 batch K: spell_cast trigger fires earthbend 1 on each spell
+	// the controller casts. The Lesson +1/+1 rider applies an extra
+	// counter to the freshly earthbent land — we detect the most-
+	// recently-stamped earthbent land in the controller's battlefield
+	// (the one just made into a 0/0 creature) and bump it by another
+	// +1/+1 when the spell is a Lesson.
+	r.OnTrigger("Toph, Hardheaded Teacher", "spell_cast", tophHardheadedTeacherSpellCast)
+}
+
+func tophHardheadedTeacherSpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "toph_hardheaded_teacher_spell_cast_earthbend"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
+		return
+	}
+	casterSeat, _ := ctx["caster_seat"].(int)
+	if casterSeat != perm.Controller {
+		return
+	}
+	gameengine.Earthbend(gs, perm.Controller)
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	// Lesson bonus: +1 additional +1/+1 counter on the just-earthbent
+	// land. We approximate "the just-earthbent land" by finding the
+	// most-recently-stamped land with the earthbent flag still set.
+	card, _ := ctx["card"].(*gameengine.Card)
+	isLesson := false
+	if card != nil && cardHasSubtype(card, "lesson") {
+		isLesson = true
+	}
+	if isLesson {
+		var pick *gameengine.Permanent
+		var bestTS int
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil || p.Flags == nil {
+				continue
+			}
+			if p.Flags["earthbent"] == 0 {
+				continue
+			}
+			if pick == nil || p.Timestamp > bestTS {
+				pick = p
+				bestTS = p.Timestamp
+			}
+		}
+		if pick != nil {
+			pick.AddCounter("+1/+1", 1)
+		}
+	}
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":      perm.Controller,
+		"is_lesson": isLesson,
+	})
 }
 
 func tophETBDiscardRebuy(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -83,8 +137,7 @@ func tophETBDiscardRebuy(gs *gameengine.GameState, perm *gameengine.Permanent) {
 			"opted_in":  false,
 			"reason":    tophDeclineReason(returnTarget, discardVictim),
 		})
-		emitPartial(gs, slug, perm.Card.DisplayName(),
-			"earthbend_on_cast_trigger_not_implemented_separate_helper_needed")
+		// Earthbend-on-cast wired by tophHardheadedTeacherSpellCast (R52 batch K).
 		return
 	}
 

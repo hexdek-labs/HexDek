@@ -297,6 +297,11 @@ func TestTheSwarmweaverEra1_ETBSpawnsTwoInsects(t *testing.T) {
 func TestRendmawEra1_ETBSpawnsBirdPerPlayer(t *testing.T) {
 	gs := newGame(t, 4)
 	rendmaw := addPerm(gs, 0, "Rendmaw, Creaking Nest", "creature", "legendary")
+	// R52 batch K: give Rendmaw real P/T so SBA doesn't kill her when
+	// the new permanent_etb trigger (for multi-type land ETB) pushes
+	// to the stack and runs SBA between resolutions.
+	rendmaw.Card.BasePower = 5
+	rendmaw.Card.BaseToughness = 5
 
 	totalsBefore := []int{}
 	for _, s := range gs.Seats {
@@ -322,6 +327,8 @@ func TestRendmawEra1_ETBSpawnsBirdPerPlayer(t *testing.T) {
 func TestRendmawEra1_SpellCastSinglyTypedDoesNotTrigger(t *testing.T) {
 	gs := newGame(t, 4)
 	rendmaw := addPerm(gs, 0, "Rendmaw, Creaking Nest", "creature", "legendary")
+	rendmaw.Card.BasePower = 5
+	rendmaw.Card.BaseToughness = 5
 	beforeTotal := 0
 	for _, s := range gs.Seats {
 		beforeTotal += len(s.Battlefield)
@@ -349,6 +356,8 @@ func TestRendmawEra1_SpellCastSinglyTypedDoesNotTrigger(t *testing.T) {
 func TestRendmawEra1_SpellCastMultiTypedTriggers(t *testing.T) {
 	gs := newGame(t, 4)
 	rendmaw := addPerm(gs, 0, "Rendmaw, Creaking Nest", "creature", "legendary")
+	rendmaw.Card.BasePower = 5
+	rendmaw.Card.BaseToughness = 5
 	beforeTotal := 0
 	for _, s := range gs.Seats {
 		beforeTotal += len(s.Battlefield)

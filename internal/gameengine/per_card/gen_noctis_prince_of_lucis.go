@@ -38,6 +38,45 @@ func registerNoctisPrinceOfLucis(r *Registry) {
 	r.OnETB("Noctis, Prince of Lucis", noctisPrinceOfLucisETB)
 	r.OnTrigger("Noctis, Prince of Lucis", "permanent_ltb", noctisRefreshGrants)
 	r.OnTrigger("Noctis, Prince of Lucis", "creature_dies", noctisRefreshGrants)
+	// R52 batch K: finality-counter rider. Every nonland permanent
+	// that ETBs under Noctis's controller and whose Card carries the
+	// "cast_via_noctis" type tag (stamped by the cast pipeline when
+	// the graveyard-cast permission was used) gets a finality counter.
+	// The tag is consumed (removed) at ETB so a flicker / re-cast
+	// from a different source doesn't re-stamp the counter.
+	r.OnTrigger("Noctis, Prince of Lucis", "permanent_etb", noctisStampFinality)
+}
+
+func noctisStampFinality(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "noctis_finality_counter_on_etb"
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	entering, _ := ctx["perm"].(*gameengine.Permanent)
+	if entering == nil || entering.Card == nil {
+		return
+	}
+	if entering.Controller != perm.Controller {
+		return
+	}
+	tagged := false
+	filtered := entering.Card.Types[:0]
+	for _, t := range entering.Card.Types {
+		if t == "cast_via_noctis" {
+			tagged = true
+			continue
+		}
+		filtered = append(filtered, t)
+	}
+	if !tagged {
+		return
+	}
+	entering.Card.Types = filtered
+	entering.AddCounter("finality", 1)
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":   entering.Controller,
+		"target": entering.Card.DisplayName(),
+	})
 }
 
 func noctisPrinceOfLucisETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -51,8 +90,10 @@ func noctisPrinceOfLucisETB(gs *gameengine.GameState, perm *gameengine.Permanent
 		"artifacts_in_gy":  count,
 		"grants_installed": count,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"finality_counter_on_post_resolve_permanent_not_stamped_at_per_card_layer")
+	// Finality-counter rider wired by noctisStampFinality (R52 batch K).
+	// The cast pipeline must stamp "cast_via_noctis" on the spell's
+	// Card.Types when the graveyard cast-permission is used; tests set
+	// the tag directly to simulate the cast path.
 }
 
 func noctisRefreshGrants(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

@@ -61,13 +61,21 @@ func zethiETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		if mover.FinalZone != "exile" {
 			continue
 		}
-		// Mark the exiled card via a side-channel flag map on the
-		// game state so attack triggers can find these later. We key
-		// by card pointer through the engine's exile zone scan.
-		if gs.Flags == nil {
-			gs.Flags = map[string]int{}
+		// R52 batch K: tag the exiled Card directly via its Types
+		// slice (canonical per-card side-channel for transient tags
+		// — see Lara Croft's discovery_counter tag) instead of
+		// keying gs.Flags by display name. Name-keying was fragile
+		// for cards that share names across copies.
+		hasTag := false
+		for _, t := range c.Types {
+			if t == "zethi_kick_counter" {
+				hasTag = true
+				break
+			}
 		}
-		gs.Flags["zethi_kicked_"+c.DisplayName()]++
+		if !hasTag {
+			c.Types = append(c.Types, "zethi_kick_counter")
+		}
 		exiled++
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
@@ -94,8 +102,11 @@ func zethiAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 		if c == nil {
 			continue
 		}
-		if gs.Flags != nil && gs.Flags["zethi_kicked_"+c.DisplayName()] > 0 {
-			copies++
+		for _, t := range c.Types {
+			if t == "zethi_kick_counter" {
+				copies++
+				break
+			}
 		}
 	}
 	if copies > 0 {

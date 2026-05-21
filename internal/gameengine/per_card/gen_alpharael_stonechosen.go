@@ -25,8 +25,29 @@ import (
 //
 // emitPartial: warp-spell-tracking is engine-side TODO.
 func registerAlpharaelStonechosen(r *Registry) {
+	r.OnETB("Alpharael, Stonechosen", alpharaelETBWardStamp)
 	r.OnTrigger("Alpharael, Stonechosen", "permanent_ltb", alpharaelTrackVoid)
 	r.OnTrigger("Alpharael, Stonechosen", "creature_attacks", alpharaelAttacks)
+}
+
+// alpharaelETBWardStamp (R52 batch K) stamps the "Ward—Discard a card
+// at random" cost on Alpharael as the canonical ward + ward_kind perm
+// flags. The target dispatcher reads ward_kind to route Ward to the
+// random-discard executor instead of the default mana cost.
+func alpharaelETBWardStamp(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	const slug = "alpharael_ward_discard_random"
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	perm.Flags["ward"] = 1                       // canonical "ward is present" surface
+	perm.Flags["ward_discard_random"] = 1        // ward-kind variant
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":      perm.Controller,
+		"ward_kind": "discard_random",
+	})
 }
 
 func alpharaelTrackVoid(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
