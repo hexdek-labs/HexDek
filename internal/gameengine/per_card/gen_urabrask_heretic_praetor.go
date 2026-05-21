@@ -29,6 +29,12 @@ import (
 func registerUrabraskHereticPraetor(r *Registry) {
 	r.OnETB("Urabrask, Heretic Praetor", urabraskHereticPraetorETB)
 	r.OnTrigger("Urabrask, Heretic Praetor", "upkeep", urabraskUpkeepImpulse)
+	// R52 batch K: register a per-opponent would_draw replacement at
+	// each opponent's upkeep that fires on the next draw THAT TURN.
+	// The replacement cancels the draw, exiles the top of that
+	// opponent's library instead, and grants them a ZoneCastPermission
+	// to play the exiled card until end of their turn.
+	r.OnTrigger("Urabrask, Heretic Praetor", "upkeep", urabraskRegisterOppDrawReplacement)
 }
 
 func urabraskHereticPraetorETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -39,8 +45,6 @@ func urabraskHereticPraetorETB(gs *gameengine.GameState, perm *gameengine.Perman
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"opponent_upkeep_draw_to_exile_replacement_not_wired_at_per_card_layer")
 }
 
 func urabraskUpkeepImpulse(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -50,11 +54,7 @@ func urabraskUpkeepImpulse(gs *gameengine.GameState, perm *gameengine.Permanent,
 	}
 	activeSeat, _ := ctx["active_seat"].(int)
 	if activeSeat != perm.Controller {
-		// Opponent's upkeep — the printed effect is a draw-replacement
-		// on that opponent, which we can't drive from the per_card
-		// layer. Breadcrumb only.
-		emitPartial(gs, slug, perm.Card.DisplayName(),
-			"opponent_upkeep_draw_replacement_not_modeled")
+		// Opponent's upkeep handled by urabraskRegisterOppDrawReplacement.
 		return
 	}
 	s := gs.Seats[perm.Controller]
@@ -97,5 +97,78 @@ func urabraskUpkeepImpulse(gs *gameengine.GameState, perm *gameengine.Permanent,
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":   perm.Controller,
 		"exiled": top.DisplayName(),
+	})
+}
+
+// urabraskRegisterOppDrawReplacement fires on every upkeep event. When
+// the active seat is OPPONENT-of-Urabrask, we register a one-shot
+// would_draw replacement for that seat that cancels the next draw,
+// exiles the top of their library, and grants them a play-this-turn
+// ZoneCastPermission (R52 batch K port).
+func urabraskRegisterOppDrawReplacement(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "urabrask_register_opp_draw_replacement"
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	activeSeat, _ := ctx["active_seat"].(int)
+	if activeSeat == perm.Controller {
+		return // own upkeep handled by urabraskUpkeepImpulse
+	}
+	if activeSeat < 0 || activeSeat >= len(gs.Seats) {
+		return
+	}
+	armTurn := gs.Turn
+	fired := false
+	gs.RegisterReplacement(&gameengine.ReplacementEffect{
+		EventType:      "would_draw",
+		HandlerID:      "Urabrask, Heretic Praetor:opp_draw_replace:" + perm.Card.DisplayName(),
+		SourcePerm:     perm,
+		ControllerSeat: perm.Controller,
+		Timestamp:      perm.Timestamp,
+		Category:       gameengine.CategoryOther,
+		Applies: func(gs *gameengine.GameState, ev *gameengine.ReplEvent) bool {
+			if fired {
+				return false
+			}
+			if gs.Turn != armTurn {
+				return false
+			}
+			if ev == nil || ev.TargetSeat != activeSeat {
+				return false
+			}
+			return ev.Count() > 0
+		},
+		ApplyFn: func(gs *gameengine.GameState, ev *gameengine.ReplEvent) {
+			fired = true
+			ev.Cancelled = true
+			s := gs.Seats[activeSeat]
+			if s == nil || len(s.Library) == 0 {
+				return
+			}
+			top := s.Library[0]
+			if top == nil {
+				return
+			}
+			gameengine.MoveCard(gs, top, activeSeat, "library", "exile", "urabrask_opp_draw_replace")
+			gameengine.RegisterZoneCastGrant(gs, top, &gameengine.ZoneCastPermission{
+				Zone:              gameengine.ZoneExile,
+				Keyword:           "urabrask_opp_impulse_play",
+				ManaCost:          -1,
+				RequireController: activeSeat,
+				SourceName:        "Urabrask, Heretic Praetor",
+				Duration:          "until_end_of_turn",
+				GrantTurn:         gs.Turn,
+			})
+			gs.LogEvent(gameengine.Event{
+				Kind:   "replacement_applied",
+				Seat:   perm.Controller,
+				Source: "Urabrask, Heretic Praetor",
+				Details: map[string]interface{}{
+					"slug":        slug,
+					"target_seat": activeSeat,
+					"exiled":      top.DisplayName(),
+				},
+			})
+		},
 	})
 }

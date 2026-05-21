@@ -28,6 +28,11 @@ import (
 func registerRendmawCreakingNest(r *Registry) {
 	r.OnETB("Rendmaw, Creaking Nest", rendmawETB)
 	r.OnTrigger("Rendmaw, Creaking Nest", "spell_cast", rendmawSpellCast)
+	// R52 batch K: also fire on permanent_etb for multi-type lands
+	// the controller plays (printed text says "play a card with two
+	// or more card types" — lands aren't cast but they ARE played).
+	// permanent_etb is the canonical dispatch event in the engine.
+	r.OnTrigger("Rendmaw, Creaking Nest", "permanent_etb", rendmawLandPlayed)
 }
 
 func rendmawETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -36,8 +41,29 @@ func rendmawETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		return
 	}
 	rendmawSpawnBirdsForEachPlayer(gs, perm, "etb")
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"played_land_with_2_plus_types_not_detected_no_land_play_event_for_per_card")
+	_ = slug
+}
+
+func rendmawLandPlayed(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	entering, _ := ctx["perm"].(*gameengine.Permanent)
+	if entering == nil || entering.Card == nil {
+		return
+	}
+	if entering.Controller != perm.Controller {
+		return
+	}
+	// Only fire for multi-type LANDS (the spell_cast path covers
+	// non-land multi-type cards already).
+	if !entering.IsLand() {
+		return
+	}
+	if countDistinctCardTypes(entering.Card) < 2 {
+		return
+	}
+	rendmawSpawnBirdsForEachPlayer(gs, perm, "multi_type_land_etb")
 }
 
 func rendmawSpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

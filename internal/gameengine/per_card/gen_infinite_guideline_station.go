@@ -35,6 +35,59 @@ import (
 func registerInfiniteGuidelineStation(r *Registry) {
 	r.OnETB("Infinite Guideline Station", infiniteGuidelineStationETB)
 	r.OnTrigger("Infinite Guideline Station", "creature_attacks", infiniteGuidelineAttackDraw)
+	// R52 batch K: Station activated ability. "Tap another creature
+	// you control: Put charge counters equal to its power on this
+	// Spacecraft." Sorcery-speed gate + tap-target chosen
+	// heuristically as the highest-power friendly creature other
+	// than the Station itself. The 12+ flying / artifact-creature
+	// type change is a layered effect we still defer.
+	r.OnActivated("Infinite Guideline Station", infiniteGuidelineStationActivate)
+}
+
+func infiniteGuidelineStationActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
+	const slug = "infinite_guideline_station_station_activate"
+	if gs == nil || src == nil || src.Card == nil {
+		return
+	}
+	if !isSorcerySpeed(gs, src.Controller) {
+		emitFail(gs, slug, src.Card.DisplayName(), "not_sorcery_speed", nil)
+		return
+	}
+	seat := gs.Seats[src.Controller]
+	if seat == nil {
+		return
+	}
+	var pick *gameengine.Permanent
+	bestPow := -1
+	for _, p := range seat.Battlefield {
+		if p == nil || p == src || p.Card == nil || !p.IsCreature() {
+			continue
+		}
+		if p.Tapped {
+			continue
+		}
+		pow := p.Power()
+		if pow > bestPow {
+			bestPow = pow
+			pick = p
+		}
+	}
+	if pick == nil {
+		emitFail(gs, slug, src.Card.DisplayName(), "no_untapped_friendly_creature", nil)
+		return
+	}
+	pick.Tapped = true
+	if bestPow > 0 {
+		src.AddCounter("charge", bestPow)
+	}
+	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
+		"seat":             src.Controller,
+		"tapped":           pick.Card.DisplayName(),
+		"charge_counters":  bestPow,
+		"total_charge":     src.Counters["charge"],
+	})
+	emitPartial(gs, slug, src.Card.DisplayName(),
+		"becomes_artifact_creature_at_12_plus_layered_type_change_deferred")
 }
 
 func infiniteGuidelineStationETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -64,8 +117,10 @@ func infiniteGuidelineStationETB(gs *gameengine.GameState, perm *gameengine.Perm
 		"multicolored":  multi,
 		"robots_minted": multi,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"station_charge_counter_activated_ability_and_12_plus_spacecraft_type_change_not_modeled")
+	// Station charge-counter activated ability is wired by
+	// infiniteGuidelineStationActivate (R52 batch K). The 12+
+	// artifact-creature type change remains a layered effect deferred
+	// to Phase 8 layers work.
 }
 
 func infiniteGuidelineAttackDraw(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
