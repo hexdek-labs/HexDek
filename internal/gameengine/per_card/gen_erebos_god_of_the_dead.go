@@ -8,14 +8,61 @@ import (
 //
 // Oracle text:
 //
-//   Indestructible
-//   As long as your devotion to black is less than five, Erebos isn't a creature. (Each {B} in the mana costs of permanents you control counts toward your devotion to black.)
-//   Your opponents can't gain life.
-//   {1}{B}, Pay 2 life: Draw a card.
+//	Indestructible
+//	As long as your devotion to black is less than five, Erebos isn't a creature. (Each {B} in the mana costs of permanents you control counts toward your devotion to black.)
+//	Your opponents can't gain life.
+//	{1}{B}, Pay 2 life: Draw a card.
 //
-// Auto-generated activated ability handler.
+// R49 stub-batch-E port (defensive utility — lifegain denial):
+//   - "Your opponents can't gain life" — register a §614
+//     `would_gain_life` replacement on ETB. Applies when target seat is
+//     an opponent; sets ev.Count(0) so the gain is reduced to zero.
+//     UnregisterReplacementsForPermanent on LTB auto-cleans.
+//   - Existing {1}{B}, Pay 2 life: Draw a card activation kept intact.
+//   - Indestructible + devotion creature-toggle: AST keyword + layer-7
+//     CDA territory.
 func registerErebosGodOfTheDead(r *Registry) {
+	r.OnETB("Erebos, God of the Dead", erebosETBRegisterLifegainDenial)
 	r.OnActivated("Erebos, God of the Dead", erebosGodOfTheDeadActivate)
+}
+
+func erebosETBRegisterLifegainDenial(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	const slug = "erebos_opponents_cant_gain_life"
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	gs.RegisterReplacement(&gameengine.ReplacementEffect{
+		EventType:      "would_gain_life",
+		HandlerID:      "erebos_god_of_the_dead:no_opp_lifegain:" + perm.Card.DisplayName(),
+		SourcePerm:     perm,
+		ControllerSeat: perm.Controller,
+		Timestamp:      perm.Timestamp,
+		Category:       gameengine.CategoryOther,
+		Applies: func(gs *gameengine.GameState, ev *gameengine.ReplEvent) bool {
+			if ev.TargetSeat == perm.Controller {
+				return false
+			}
+			return ev.Count() > 0
+		},
+		ApplyFn: func(gs *gameengine.GameState, ev *gameengine.ReplEvent) {
+			prev := ev.Count()
+			ev.SetCount(0)
+			gs.LogEvent(gameengine.Event{
+				Kind:   "replacement_applied",
+				Seat:   perm.Controller,
+				Source: "Erebos, God of the Dead",
+				Details: map[string]interface{}{
+					"rule":           "614",
+					"effect":         "opp_cant_gain_life",
+					"original_count": prev,
+					"target_seat":    ev.TargetSeat,
+				},
+			})
+		},
+	})
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller,
+	})
 }
 
 func erebosGodOfTheDeadActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
@@ -56,7 +103,7 @@ func erebosGodOfTheDeadActivate(gs *gameengine.GameState, src *gameengine.Perman
 	gameengine.LoseLife(gs, seatIdx, lifeCost, src.Card.DisplayName())
 	drawOne(gs, seatIdx, src.Card.DisplayName())
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-		"seat":     seatIdx,
+		"seat":      seatIdx,
 		"mana_paid": manaCost,
 		"life_paid": lifeCost,
 	})

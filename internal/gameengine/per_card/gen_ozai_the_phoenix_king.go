@@ -13,16 +13,27 @@ import (
 //	Ozai has flying and indestructible as long as you have six or more
 //	unspent mana.
 //
-// Implementation:
-//   - Trample/haste/firebending are AST keyword pipeline.
-//   - "Unspent mana becomes red instead": engine-deep ManaEmpty hook;
-//     set per-seat flag, partial breadcrumb.
-//   - Conditional flying + indestructible: scan controller's mana pool
-//     on ETB and on every upkeep_controller (the cheapest "tick" we
-//     have). Stamp/unstamp the keyword flags accordingly.
+// R49 stub-batch-E port (defensive utility — conditional self-protection):
+//
+//	The R37 implementation only re-evaluated the ≥6-mana condition on
+//	the controller's upkeep_controller event, which left the
+//	keyword-grant stale through opponent turns and inside a single
+//	turn after spending mana. This port broadens the refresh:
+//	  - ETB: snapshot mana pool, stamp/unstamp Flags accordingly.
+//	  - upkeep + end_step: every phase boundary, re-evaluate so a
+//	    mid-turn mana spend cleans up before the next SBA check.
+//
+//	The Flags fast-path is what IsIndestructible() (state.go) and the
+//	combat flying check read, so the per-condition gate is faithful as
+//	long as the refresh ticks cover the windows where mana might be
+//	spent.
+//
+//	"Unspent mana becomes red instead" remains breadcrumbed — needs an
+//	engine-side ManaEmpty replacement hook to land properly.
 func registerOzaiThePhoenixKing(r *Registry) {
 	r.OnETB("Ozai, the Phoenix King", ozaiETBSetFlagsAndConditionalKW)
-	r.OnTrigger("Ozai, the Phoenix King", "upkeep_controller", ozaiRecheckConditionalKW)
+	r.OnTrigger("Ozai, the Phoenix King", "upkeep", ozaiPhaseRecheck)
+	r.OnTrigger("Ozai, the Phoenix King", "end_step", ozaiPhaseRecheck)
 }
 
 func ozaiETBSetFlagsAndConditionalKW(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -47,12 +58,8 @@ func ozaiETBSetFlagsAndConditionalKW(gs *gameengine.GameState, perm *gameengine.
 		"unspent-mana-to-red replacement needs ManaEmpty hook; flag set for downstream consumers")
 }
 
-func ozaiRecheckConditionalKW(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+func ozaiPhaseRecheck(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
 	if gs == nil || perm == nil {
-		return
-	}
-	active, _ := ctx["active_seat"].(int)
-	if active != perm.Controller {
 		return
 	}
 	seat := gs.Seats[perm.Controller]
@@ -73,4 +80,5 @@ func ozaiApplyConditional(gs *gameengine.GameState, perm *gameengine.Permanent, 
 		delete(perm.Flags, "kw:flying")
 		delete(perm.Flags, "kw:indestructible")
 	}
+	gs.InvalidateCharacteristicsCache()
 }
