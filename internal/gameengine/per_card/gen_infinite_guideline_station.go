@@ -39,9 +39,42 @@ func registerInfiniteGuidelineStation(r *Registry) {
 	// you control: Put charge counters equal to its power on this
 	// Spacecraft." Sorcery-speed gate + tap-target chosen
 	// heuristically as the highest-power friendly creature other
-	// than the Station itself. The 12+ flying / artifact-creature
-	// type change is a layered effect we still defer.
+	// than the Station itself.
 	r.OnActivated("Infinite Guideline Station", infiniteGuidelineStationActivate)
+	// R55: 12+ flying / artifact-creature threshold via R54 Layer 4
+	// + Layer 6 primitives.
+	r.OnTrigger("Infinite Guideline Station", "counter_placed", infiniteGuidelineCheckSpacecraftThreshold)
+}
+
+// infiniteGuidelineCheckSpacecraftThreshold wires the 12+ Spacecraft
+// transition. R55 port via Layer 4 (add creature type) + Layer 6
+// (grant flying) primitives.
+func infiniteGuidelineCheckSpacecraftThreshold(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	if perm.Counters == nil || perm.Counters["charge"] < 12 {
+		return
+	}
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	if perm.Flags["infinite_guideline_spacecraft_active"] == 1 {
+		return
+	}
+	perm.Flags["infinite_guideline_spacecraft_active"] = 1
+	gameengine.RegisterAddTypes(gs, perm, []string{"creature"},
+		gameengine.DurationUntilSourceLeaves,
+		"Infinite Guideline Station (Spacecraft 12+)",
+		"infinite_guideline_spacecraft_creature")
+	gameengine.RegisterGrantKeyword(gs, perm, "flying",
+		gameengine.DurationUntilSourceLeaves,
+		"Infinite Guideline Station (Spacecraft 12+)",
+		"infinite_guideline_spacecraft_flying")
+	emit(gs, "infinite_guideline_spacecraft_threshold_crossed", perm.Card.DisplayName(), map[string]interface{}{
+		"seat":            perm.Controller,
+		"charge_counters": perm.Counters["charge"],
+	})
 }
 
 func infiniteGuidelineStationActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
@@ -86,8 +119,10 @@ func infiniteGuidelineStationActivate(gs *gameengine.GameState, src *gameengine.
 		"charge_counters":  bestPow,
 		"total_charge":     src.Counters["charge"],
 	})
-	emitPartial(gs, slug, src.Card.DisplayName(),
-		"becomes_artifact_creature_at_12_plus_layered_type_change_deferred")
+	// R55: re-check the Spacecraft 12+ threshold now that we just
+	// stamped charge counters. The trigger-based counter_placed hook
+	// also covers external counter placements (proliferate, etc.).
+	infiniteGuidelineCheckSpacecraftThreshold(gs, src, nil)
 }
 
 func infiniteGuidelineStationETB(gs *gameengine.GameState, perm *gameengine.Permanent) {

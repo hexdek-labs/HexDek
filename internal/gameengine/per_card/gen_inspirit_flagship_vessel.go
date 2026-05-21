@@ -37,6 +37,11 @@ func registerInspiritFlagshipVessel(r *Registry) {
 	r.OnETB("Inspirit, Flagship Vessel", inspiritFlagshipVesselETB)
 	r.OnTrigger("Inspirit, Flagship Vessel", "nonland_permanent_etb", inspiritRefreshArtifactGrants)
 	r.OnTrigger("Inspirit, Flagship Vessel", "combat_begin", inspiritCombatBeginCounter)
+	// R55: Spacecraft 8+ → flying artifact creature, via R54 Layer 4
+	// (add types) + Layer 6 (kw:flying) primitives. The Spacecraft
+	// threshold check fires on counter_placed (charge counters accrue
+	// through Station activations) and on ETB.
+	r.OnTrigger("Inspirit, Flagship Vessel", "counter_placed", inspiritCheckSpacecraftThreshold)
 }
 
 func inspiritFlagshipVesselETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -49,8 +54,49 @@ func inspiritFlagshipVesselETB(gs *gameengine.GameState, perm *gameengine.Perman
 		"seat":           perm.Controller,
 		"artifacts_buff": stamped,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"station_activated_ability_and_8_plus_spacecraft_type_transition_not_modeled")
+	// R55: Station activated ability is the engine's standard activated
+	// dispatch (caller goes through Station tap-creature → charge
+	// counter mechanic in the AST keyword pipeline). 8+ Spacecraft
+	// threshold wired via inspiritCheckSpacecraftThreshold on
+	// counter_placed.
+	inspiritCheckSpacecraftThreshold(gs, perm, map[string]interface{}{
+		"perm": perm,
+	})
+}
+
+// inspiritCheckSpacecraftThreshold wires the Spacecraft transition:
+// once Inspirit has 8+ charge counters, it becomes a flying artifact
+// creature. R55 uses the Layer-4 add-types + Layer-6 grant-keyword
+// primitives added in R54.
+func inspiritCheckSpacecraftThreshold(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	if perm.Counters == nil {
+		return
+	}
+	if perm.Counters["charge"] < 8 {
+		return
+	}
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	if perm.Flags["inspirit_spacecraft_active"] == 1 {
+		return // already crossed the threshold; layered effects are registered
+	}
+	perm.Flags["inspirit_spacecraft_active"] = 1
+	gameengine.RegisterAddTypes(gs, perm, []string{"creature"},
+		gameengine.DurationUntilSourceLeaves,
+		"Inspirit, Flagship Vessel (Spacecraft 8+)",
+		"inspirit_spacecraft_creature")
+	gameengine.RegisterGrantKeyword(gs, perm, "flying",
+		gameengine.DurationUntilSourceLeaves,
+		"Inspirit, Flagship Vessel (Spacecraft 8+)",
+		"inspirit_spacecraft_flying")
+	emit(gs, "inspirit_spacecraft_threshold_crossed", perm.Card.DisplayName(), map[string]interface{}{
+		"seat":             perm.Controller,
+		"charge_counters":  perm.Counters["charge"],
+	})
 }
 
 func inspiritRefreshArtifactGrants(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
