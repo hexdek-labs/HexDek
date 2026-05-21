@@ -14,7 +14,9 @@ import (
 //	Zombie Rogue creature tokens. This ability triggers only once each
 //	turn.
 //
-// "Commit a crime" tracking is non-trivial; tribal pump is AST.
+// "Commit a crime" tracking is non-trivial. Skeleton/Zombie +1/+1 +
+// menace tribal anthem is wired in custom_gisa_the_hellraiser.go
+// (R50 batchH) via Modification refresh on permanent_etb / _ltb.
 func registerGisaTheHellraiser(r *Registry) {
 	r.OnTrigger("Gisa, the Hellraiser", "commit_crime", gisaCommitCrime)
 }

@@ -490,6 +490,25 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 					}
 				}
 
+			case "Samut, the Driving Force":
+				// "Noncreature spells you cast cost {X} less to cast,
+				// where X is your speed." Read seat.Flags["speed"]
+				// (the per-seat speed counter the gen_*.go handler
+				// keeps in sync at the +X/+0 anthem refresh path).
+				if isSelf && isNoncreature && perm.Controller == seatIdx {
+					casterSeat := gs.Seats[seatIdx]
+					if casterSeat != nil && casterSeat.Flags != nil {
+						sp := casterSeat.Flags["speed"]
+						if sp > 0 {
+							mods = append(mods, CostModifier{
+								Kind:   CostModReduction,
+								Amount: sp,
+								Source: name,
+							})
+						}
+					}
+				}
+
 			case "Mizzix of the Izmagnus":
 				// Instant and sorcery spells you cast cost {1} less for each
 				// experience counter you have (CR §601.2f, floor 0).

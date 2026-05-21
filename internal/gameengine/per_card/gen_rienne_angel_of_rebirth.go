@@ -32,8 +32,9 @@ func rienneAngelOfRebirthETB(gs *gameengine.GameState, perm *gameengine.Permanen
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"plus_one_zero_anthem_for_multicolored_creatures_handled_by_ast")
+	// Multicolored +1/+0 anthem is wired in
+	// custom_rienne_angel_of_rebirth.go (R50 batchH) via Modification
+	// refresh on permanent_etb / permanent_ltb.
 }
 
 func rienneAngelOfRebirthDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

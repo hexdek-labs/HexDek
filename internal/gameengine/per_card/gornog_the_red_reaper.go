@@ -26,6 +26,10 @@ func gornogTheRedReaperETB(gs *gameengine.GameState, perm *gameengine.Permanent)
 	if gs == nil || perm == nil {
 		return
 	}
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"coward_type_change_warrior_buff_and_block_restriction_unimplemented")
+	// Coward-tag attack rider, attacking-Warrior +X/+0 anthem, and the
+	// seat-level "cowards can't block warriors" marker are wired in
+	// custom_gornog_the_red_reaper.go (R50 batchH).
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller,
+	})
 }

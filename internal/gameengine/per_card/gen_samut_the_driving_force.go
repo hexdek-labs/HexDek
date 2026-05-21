@@ -51,8 +51,9 @@ func samutETBInitSpeed(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		"seat":  perm.Controller,
 		"speed": seat.Flags["speed"],
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"noncreature {X}-discount needs cost-modifier hook; speed counter wired for downstream")
+	// Noncreature {X}-discount is wired in gameengine/cost_modifiers.go
+	// (R50 batchH — "Samut, the Driving Force" case reads
+	// seat.Flags["speed"]).
 }
 
 func samutOnOpponentLoseLife(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
