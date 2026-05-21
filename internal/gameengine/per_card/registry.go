@@ -891,6 +891,16 @@ func registerDefaults() {
 	registerSerrasSanctum(Global())
 	registerTabernacleAtPendrellVale(Global())
 
+	// R55 — mana-pool primitive cards (see mana_pool_primitive_r55.go).
+	// Three-facet triad: exempt-from-drain, per-X mana add, and spend-
+	// restricted mana — all data-driven via the new ManaPoolExemption /
+	// AddManaPerCount / AddRestrictedMana primitives.
+	registerOmnathLocusOfMana(Global())
+	registerUpwelling(Global())
+	registerCabalCoffers(Global())
+	registerSanctumWeaver(Global())
+	registerAncientZiggurat(Global())
+
 	// Batch #17 — token-creation triggers and aristocrat payoffs.
 	// Anointed Procession's token_created trigger is upgraded in
 	// batch17_sweep.go (registered via its own init()).

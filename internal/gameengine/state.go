@@ -206,6 +206,18 @@ type GameState struct {
 	// cast. Consumed by the AI/Hat's cast-from-zone decision logic.
 	ZoneCastGrants map[*Card]*ZoneCastPermission
 
+	// ManaPoolExemptions registers permanents that prevent some or all
+	// mana from being emptied at phase/step boundaries (CR §106.4 phase
+	// drain exception list). Examples:
+	//   - Omnath, Locus of Mana: green mana doesn't empty (controller-
+	//     scoped, Colors={"G"}, Seat=controller)
+	//   - Upwelling: all mana doesn't empty for every player (Seat=-1,
+	//     Colors={"any"})
+	// Populated by per_card OnETB hooks via RegisterManaPoolExemption;
+	// cleared by UnregisterManaPoolExemptionForPerm at LTB. Read by
+	// PoolExemptColors at DrainAllPools time (CR §106.4).
+	ManaPoolExemptions []*ManaPoolExemption
+
 	// MayhemDiscards tracks which cards were discarded on which turn. CR
 	// §702.187: a card with mayhem may be cast from its owner's graveyard
 	// for its mayhem cost "if you discarded it this turn." Keyed by the

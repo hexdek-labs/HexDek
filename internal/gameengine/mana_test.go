@@ -197,6 +197,10 @@ func TestOmnathRetainsGreen(t *testing.T) {
 		Counters: map[string]int{}, Flags: map[string]int{},
 	}
 	seat.Battlefield = append(seat.Battlefield, omnath)
+	// r55 — exemptions are now registry-driven (the engine no longer
+	// looks at card names directly). The per_card Omnath ETB handler
+	// makes this call in production; the test calls it explicitly.
+	RegisterManaPoolExemption(gs, omnath, omnath.Controller, []string{"G"})
 	AddMana(gs, seat, "G", 5, "test")
 	AddMana(gs, seat, "R", 3, "test")
 	AddMana(gs, seat, "any", 2, "test")
@@ -224,6 +228,9 @@ func TestUpwellingRetainsAll(t *testing.T) {
 		Counters: map[string]int{}, Flags: map[string]int{},
 	}
 	seat.Battlefield = append(seat.Battlefield, up)
+	// r55 — Upwelling's all-seat all-color exemption is registry-driven
+	// (Seat scope = -1 means "every seat", Colors = "any").
+	RegisterManaPoolExemption(gs, up, -1, []string{"any"})
 	AddMana(gs, seat, "W", 2, "test")
 	AddMana(gs, seat, "R", 2, "test")
 	AddMana(gs, seat, "any", 2, "test")
