@@ -22,7 +22,21 @@ import (
 //     yet (so we can steal it on death); fall back to our own biggest
 //     creature. Add coin counter via AddCounter.
 //   - "creature_dies": if the dying perm had a coin counter and the card
-//     is non-token, route the card from graveyard onto our battlefield.
+//     is non-token, route the card from graveyard onto our battlefield
+//     under our control. r54 fix: the prior handler did
+//     `MoveCard(card, owner_seat, gy→bf)` followed by
+//     `createPermanent(athreos_seat, card)`. MoveCard's "battlefield"
+//     arm wraps the card in a fresh Permanent on the OWNER's seat, and
+//     createPermanent's dedup guard only checks the TARGET seat — so
+//     when the dying creature's owner ≠ Athreos's controller (the
+//     normal steal case), we ended up with two Permanents wrapping the
+//     same *Card pointer on two seats' battlefield slices. Surfaced by
+//     Loki r53 as the game-3107 "Eager Cadet appears in both seat 0
+//     and seat 3 battlefield" CardIdentity violation (206 hits in 5K).
+//     Fixed by using `enterBattlefieldWithETB` directly — createPermanent
+//     sweeps the card from owner's private zones (incl. graveyard) and
+//     wraps it in a single Permanent on Athreos's controller's seat;
+//     enterBattlefieldWithETB then fires the ETB cascade.
 //   - The exile branch is approximated via emitPartial — the engine
 //     doesn't yet expose a per-card "creature_exiled" pipeline.
 //   - Devotion/indestructible handled at static-effect level — we flag
@@ -122,9 +136,18 @@ func athreosShroudDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	if owner < 0 || owner >= len(gs.Seats) {
 		return
 	}
-	gameengine.MoveCard(gs, dyingCard, owner, "graveyard", "battlefield", "athreos_shroud_steal")
-	// Recreate as a permanent under Athreos's controller.
-	createPermanent(gs, perm.Controller, dyingCard, false)
+	// Single-step zone change: createPermanent (via enterBattlefieldWithETB)
+	// sweeps the card from the owner's private zones — including the
+	// graveyard — and wraps it in exactly one Permanent on Athreos's
+	// controller's seat. No separate MoveCard call (that anti-pattern
+	// left the card on the owner's battlefield too).
+	stolen := enterBattlefieldWithETB(gs, perm.Controller, dyingCard, false)
+	if stolen == nil {
+		emitFail(gs, slug, perm.Card.DisplayName(), "etb_failed", map[string]interface{}{
+			"creature": dyingCard.DisplayName(),
+		})
+		return
+	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":       perm.Controller,
 		"creature":   dyingCard.DisplayName(),
