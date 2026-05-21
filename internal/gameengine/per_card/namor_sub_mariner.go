@@ -14,12 +14,14 @@ import (
 //	  symbols in its mana cost, create that many 1/1 blue Merfolk
 //	  creature tokens.
 //
-// Implementation:
+// Implementation (R56 port — power CDA via RegisterDynamicSetPower):
 //   - "noncreature_spell_cast": gate on caster_seat == perm.Controller.
 //     Count {U} pips in cast card's mana cost. Mint that many 1/1 U
 //     Merfolk tokens.
-//   - PT-equals-merfolk-count is a continuous-effect characteristic —
-//     emitPartial on ETB.
+//   - Power CDA: Layer 7b RegisterDynamicSetPower fed by
+//     namorCountMerfolk (counts Merfolk subtype across the
+//     controller's battlefield each layer pass). Toughness is left at
+//     printed.
 //   - Flying handled by AST keyword pipeline.
 func registerNamorSubMariner(r *Registry) {
 	r.OnETB("Namor the Sub-Mariner", namorETB)
@@ -27,11 +29,36 @@ func registerNamorSubMariner(r *Registry) {
 }
 
 func namorETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	if gs == nil || perm == nil {
+	const slug = "namor_cda_layer7b"
+	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
-	emitPartial(gs, "namor_pt_static", perm.Card.DisplayName(),
-		"power_equals_merfolk_count_continuous_static_not_modeled")
+	gameengine.RegisterDynamicSetPower(gs, perm, namorCountMerfolk,
+		gameengine.DurationUntilSourceLeaves, "Namor the Sub-Mariner", "cda_power")
+	gs.InvalidateCharacteristicsCache()
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller,
+	})
+}
+
+func namorCountMerfolk(gs *gameengine.GameState, perm *gameengine.Permanent) int {
+	if gs == nil || perm == nil {
+		return 0
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return 0
+	}
+	n := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		if cardHasSubtype(p.Card, "merfolk") {
+			n++
+		}
+	}
+	return n
 }
 
 func namorNoncreatureSpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

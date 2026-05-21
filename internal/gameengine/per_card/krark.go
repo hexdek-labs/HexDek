@@ -62,9 +62,20 @@ func krarkTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 		break
 	}
 
-	// R55: prefer the per-game RNG when available so tests aren't
+	// R55/R56: prefer the per-game RNG when available so tests aren't
 	// at the mercy of global math/rand state from other tests.
 	// Fallback to global rand for callers that didn't seed gs.Rng.
+	//
+	// Backstory: r55's Layer-7b CDA port batch (Sandman + Namor +
+	// Multani) tripped TestKrark via global-rand pollution — adding
+	// any code that consumed or shifted package-init ordering pushed
+	// math/rand off-phase, so `rand.Seed(2)` no longer reliably
+	// produced won=false on the next rand.Intn(2). We deferred the
+	// ports and inserted this gs.Rng preference. R56 then verified
+	// that the deferred ports run cleanly against the gs.Rng path
+	// and finished them (custom_sandman_shifting_scoundrel.go,
+	// namor_sub_mariner.go). The global-rand pollution still exists
+	// in the test binary, but Krark no longer cares.
 	var won bool
 	if gs != nil && gs.Rng != nil {
 		won = gs.Rng.Intn(2) == 1

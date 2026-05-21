@@ -392,13 +392,17 @@ func TestSandman_PowerToughnessEqualsLandCount(t *testing.T) {
 		addPerm(gs, 0, "Mountain", "land", "basic")
 	}
 
+	// R56: Sandman's CDA is a Layer 7b continuous effect registered at
+	// ETB. Effective characteristics (not Card.BasePower) carry the
+	// runtime value. Pre-R56 this test read Card.BasePower directly.
 	sandmanRefreshPTOnETB(gs, sand)
 
-	if sand.Card.BasePower != 5 {
-		t.Errorf("expected Sandman base power 5 with 5 lands, got %d", sand.Card.BasePower)
+	chars := gameengine.GetEffectiveCharacteristics(gs, sand)
+	if chars.Power != 5 {
+		t.Errorf("expected Sandman effective power 5 with 5 lands, got %d", chars.Power)
 	}
-	if sand.Card.BaseToughness != 5 {
-		t.Errorf("expected Sandman base toughness 5 with 5 lands, got %d", sand.Card.BaseToughness)
+	if chars.Toughness != 5 {
+		t.Errorf("expected Sandman effective toughness 5 with 5 lands, got %d", chars.Toughness)
 	}
 }
 
@@ -407,16 +411,17 @@ func TestSandman_RefreshOnPermanentETB(t *testing.T) {
 	sand := addPerm(gs, 0, "Sandman, Shifting Scoundrel", "creature", "legendary")
 	addPerm(gs, 0, "Island", "land", "basic")
 	sandmanRefreshPTOnETB(gs, sand)
-	if sand.Card.BasePower != 1 {
-		t.Fatalf("baseline mismatch: want 1, got %d", sand.Card.BasePower)
+	chars := gameengine.GetEffectiveCharacteristics(gs, sand)
+	if chars.Power != 1 {
+		t.Fatalf("baseline mismatch: want effective power 1, got %d", chars.Power)
 	}
 
-	// Land enters → refresh.
+	// Second land enters — the CDA re-evaluates on the next layer pass.
 	addPerm(gs, 0, "Forest", "land", "basic")
-	sandmanRefreshPTOnEvent(gs, sand, nil)
-
-	if sand.Card.BasePower != 2 {
-		t.Errorf("expected base power to refresh to 2 after second land, got %d", sand.Card.BasePower)
+	gs.InvalidateCharacteristicsCache()
+	chars = gameengine.GetEffectiveCharacteristics(gs, sand)
+	if chars.Power != 2 {
+		t.Errorf("expected effective power to refresh to 2 after second land, got %d", chars.Power)
 	}
 }
 
