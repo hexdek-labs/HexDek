@@ -1559,6 +1559,28 @@ func applyCombatDamageToPlayer(gs *GameState, src *Permanent, amount, seatIdx in
 			return
 		}
 	}
+	// §614 damage replacement (R54) — Torbran +2 to opponents,
+	// Lightning stagger doubling, Kuja Flare-Star doubling, Neriv
+	// ETB-this-turn doubling, Sokrates dialogue prevent-and-draw
+	// all funnel through here BEFORE the §615 prevention shield
+	// reduction. Per §616 the application order is replacement
+	// effects → prevention; the controller of the affected object
+	// picks an ordering among the replacements (approximated by
+	// registration order here).
+	if len(gs.DamageReplacements) > 0 && src != nil && src.Card != nil {
+		ctx := &DamageContext{
+			Source:     src,
+			SourceName: src.Card.DisplayName(),
+			TargetSeat: seatIdx,
+			Kind:       DamageCombatPlayer,
+			Amount:     amount,
+		}
+		ApplyDamageReplacement(gs, ctx)
+		if ctx.Prevented || ctx.Amount <= 0 {
+			return
+		}
+		amount = ctx.Amount
+	}
 	// §615: apply prevention shields before dealing combat damage.
 	amount = PreventDamageToPlayer(gs, seatIdx, amount, src)
 	if amount <= 0 {
@@ -1706,6 +1728,25 @@ func applyCombatDamageToCreature(gs *GameState, src *Permanent, amount int, targ
 			},
 		})
 		return
+	}
+	// §614 damage replacement (R54) — Torbran +2 to opponent
+	// permanents, Kuja Flare-Star doubling on Wizards, Lightning
+	// stagger doubling against the marked defender. Runs before the
+	// §615 prevention shields per §616.
+	if len(gs.DamageReplacements) > 0 && src != nil && src.Card != nil && target.Card != nil {
+		ctx := &DamageContext{
+			Source:     src,
+			SourceName: src.Card.DisplayName(),
+			TargetSeat: target.Controller,
+			TargetPerm: target,
+			Kind:       DamageCombatCreature,
+			Amount:     amount,
+		}
+		ApplyDamageReplacement(gs, ctx)
+		if ctx.Prevented || ctx.Amount <= 0 {
+			return
+		}
+		amount = ctx.Amount
 	}
 	// §615: apply prevention shields before dealing combat damage.
 	amount = PreventDamageToPermanent(gs, target, amount, src)
