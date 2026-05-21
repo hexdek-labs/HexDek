@@ -29,11 +29,19 @@ func raphaelNinjaDestroyerETB(gs *gameengine.GameState, perm *gameengine.Permane
 	if gs == nil || perm == nil {
 		return
 	}
+	// R51 batch H port: stamp the canonical must_be_blocked perm flag
+	// (same key the AST keyword "must_be_blocked" path uses) so the
+	// combat blocker-legality scanner forces an opponent to block
+	// Raphael when able. The flag lives on the perm and dies with it
+	// at LTB — no cleanup hook required.
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	perm.Flags["must_be_blocked"] = 1
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": perm.Controller,
+		"seat":            perm.Controller,
+		"must_be_blocked": true,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"must_be_blocked_combat_restriction_engine_side")
 }
 
 func raphaelNinjaDestroyerEnrage(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
