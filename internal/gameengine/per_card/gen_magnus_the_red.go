@@ -36,8 +36,8 @@ func magnusTheRedETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"unearthly_power_cost_reduction_handled_by_scan_cost_modifiers_not_yet_wired")
+	// Unearthly Power cost reduction is wired in
+	// gameengine/cost_modifiers.go (R49 batchD).
 }
 
 func magnusTheRedCombatDamage(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

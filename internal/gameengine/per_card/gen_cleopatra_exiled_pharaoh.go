@@ -99,15 +99,10 @@ func cleopatraBetrayalDies(gs *gameengine.GameState, perm *gameengine.Permanent,
 	if dying == nil {
 		return
 	}
-	if dying == perm {
-		// Cleopatra herself dying with counters: stub-port excludes the
-		// self-trigger to keep the observable surface tight. CR §603.10
-		// LTB look-back would permit this; revisit when we have a
-		// per_card death look-back test harness.
-		emitPartial(gs, slug, perm.Card.DisplayName(),
-			"self_betrayal_trigger_excluded_per_stub_port")
-		return
-	}
+	// R49 batchD: self-betrayal now included. CR §603.10 LTB look-back
+	// lets a creature's own dies-trigger see its pre-death state,
+	// including counters. Cleopatra dying with counters draws the
+	// controller cards (and they still lose 2 life).
 	if dying.Card == nil {
 		return
 	}
