@@ -46,6 +46,10 @@ func zaffaiLTBClearFlags(gs *gameengine.GameState, perm *gameengine.Permanent, c
 	if leaving != perm {
 		return
 	}
+	// R55: drop the Zaffai-owned ZoneCastPolicy. Concurrent Aluren /
+	// Karn / Cecily policies are unaffected since they're keyed by a
+	// different SourcePerm.
+	gs.UnregisterZoneCastPoliciesForPermanent(perm)
 	s := gs.Seats[perm.Controller]
 	if s == nil || s.Flags == nil {
 		return
@@ -74,12 +78,40 @@ func zaffaiAndTheTempestsETB(gs *gameengine.GameState, perm *gameengine.Permanen
 		s.Flags = map[string]int{}
 	}
 	s.Flags["zaffai_free_cast_available"] = perm.Timestamp
+	// R55: register a ZoneCastPolicy for the once-per-turn free
+	// I/S cast. The standing-policy lifetime is while_source_on_bf
+	// (Zaffai must be on the battlefield to grant the free cast).
+	// The "once per turn" cap is enforced by the spell_cast trigger
+	// below stamping the zaffai_free_cast_used_t<turn> key — the
+	// cast pipeline should check that key alongside the policy
+	// before applying ManaCost=0. The policy itself is duration-less
+	// (it covers every cast attempt; the per-turn cap is upstream).
+	gs.RegisterZoneCastPolicy(&gameengine.ZoneCastPolicy{
+		SourcePerm:      perm,
+		HandlerID:       "zaffai_free_is_cast_once_per_turn",
+		Zone:            gameengine.ZoneHand,
+		OwnerScope:      "self",
+		CasterScope:     "controller",
+		ControllerSeat:  perm.Controller,
+		Predicate:       zaffaiIsInstantOrSorceryPredicate,
+		ManaCost:        0,
+		Duration:        "while_source_on_bf",
+		SourceTimestamp: perm.Timestamp,
+		GrantTurn:       gs.Turn,
+	})
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":  perm.Controller,
 		"grant": "once_per_turn_free_is_cast",
 	})
 	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"alt_cost_free_cast_wiring_engine_side_only_observable_via_seat_flag_at_per_card_layer")
+		"once_per_turn_cap_enforced_via_consume_trigger_cast_pipeline_must_check_zaffai_free_cast_used_t<turn>")
+}
+
+func zaffaiIsInstantOrSorceryPredicate(c *gameengine.Card) bool {
+	if c == nil {
+		return false
+	}
+	return cardHasType(c, "instant") || cardHasType(c, "sorcery")
 }
 
 func zaffaiUpkeepRefresh(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

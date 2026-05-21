@@ -628,6 +628,8 @@ func registerDefaults() {
 	registerPalinchron(Global())
 	registerDeadeyeNavigator(Global())
 	registerBolassCitadel(Global())
+	registerAluren(Global())
+	registerKarnTheGreatCreator(Global())
 	registerManaCrypt(Global())
 	registerDocksideExtortionist(Global())
 	registerUrzaLordHighArtificer(Global())

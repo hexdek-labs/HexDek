@@ -107,6 +107,18 @@ type GameState struct {
 	// inserting applicability predicates rather than registering wildcards.
 	Replacements []*ReplacementEffect
 
+	// ZoneCastPolicies is the §614 filter-driven zone-cast policy
+	// registry (R55). Complements gs.ZoneCastGrants (per-*Card-pointer)
+	// with predicate-driven multi-card grants — Aluren-style "any
+	// player may cast creature spells with mana value 3 or less from
+	// hand without paying their mana cost", Karn the Great Creator's
+	// wishboard, Tinybones-style "cast from opponent's graveyard."
+	// Populated by ETB hooks calling RegisterZoneCastPolicy; drained
+	// on LTB via UnregisterZoneCastPoliciesForPermanent. Consulted by
+	// FindZoneCastPolicy at cast-legality time. See
+	// zone_cast_policy.go for the policy shape and semantics.
+	ZoneCastPolicies []*ZoneCastPolicy
+
 	// DamageReplacements is the §614 damage-replacement registry
 	// (R54). Populated by ETB hooks that call
 	// RegisterDamageReplacement (Torbran +2, Sokrates dialogue,
