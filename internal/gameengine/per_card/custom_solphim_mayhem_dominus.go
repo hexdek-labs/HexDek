@@ -31,6 +31,28 @@ import (
 func registerSolphimMayhemDominus(r *Registry) {
 	r.OnETB("Solphim, Mayhem Dominus", solphimSetDamageDoublerFlag)
 	r.OnActivated("Solphim, Mayhem Dominus", solphimIndestructibleActivate)
+	r.OnTrigger("Solphim, Mayhem Dominus", "permanent_ltb", solphimLTBUnregister)
+}
+
+func solphimLTBUnregister(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	gs.UnregisterDamageReplacementsForPermanent(perm)
+	seat := gs.Seats[perm.Controller]
+	if seat == nil || seat.Flags == nil {
+		return
+	}
+	if seat.Flags["noncombat_damage_doubler_count"] > 0 {
+		seat.Flags["noncombat_damage_doubler_count"]--
+		if seat.Flags["noncombat_damage_doubler_count"] == 0 {
+			delete(seat.Flags, "noncombat_damage_doubler_count")
+		}
+	}
 }
 
 func solphimSetDamageDoublerFlag(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -46,12 +68,47 @@ func solphimSetDamageDoublerFlag(gs *gameengine.GameState, perm *gameengine.Perm
 		seat.Flags = map[string]int{}
 	}
 	seat.Flags["noncombat_damage_doubler_count"]++
+
+	// R54: real damage-replacement via the engine primitive. Filter:
+	// (a) noncombat damage (DamageNonCombatPlayer / Creature /
+	// Planeswalker), (b) source is a permanent controlled by Solphim's
+	// controller, (c) target is opponent or opponent-controlled
+	// permanent. ctx.Amount *= 2. Multiple Solphims stack (closure
+	// registered per source perm; each doubles independently per
+	// CR §616 multiple-replacement application).
+	controller := perm.Controller
+	gs.RegisterDamageReplacement(&gameengine.DamageReplacement{
+		SourcePerm: perm,
+		HandlerID:  "solphim_noncombat_double",
+		Fn: func(gs *gameengine.GameState, ctx *gameengine.DamageContext) {
+			if ctx == nil {
+				return
+			}
+			// Combat damage is not affected — printed text restricts
+			// to noncombat damage only.
+			switch ctx.Kind {
+			case gameengine.DamageNonCombatPlayer,
+				gameengine.DamageNonCombatCreature,
+				gameengine.DamageNonCombatPlaneswalker:
+			default:
+				return
+			}
+			if ctx.Source == nil || ctx.Source.Controller != controller {
+				return
+			}
+			if ctx.TargetSeat == controller {
+				return // "to an opponent or a permanent an opponent controls"
+			}
+			if ctx.Amount <= 0 {
+				return
+			}
+			ctx.Amount *= 2
+		},
+	})
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":     perm.Controller,
 		"doublers": seat.Flags["noncombat_damage_doubler_count"],
 	})
-	emitPartial(gs, "solphim_doubles_noncombat_damage", perm.Card.DisplayName(),
-		"noncombat damage doubling requires DealDamage replacement-effect hook; flag set for downstream")
 }
 
 func solphimIndestructibleActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {

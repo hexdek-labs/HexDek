@@ -44,23 +44,31 @@ import (
 // Torbran, Thane of Red Fell — LTB cleanup
 // ---------------------------------------------------------------------------
 
+// NOTE: Torbran was migrated in R54 from the seat-flag breadcrumb
+// scheme to the real engine DamageReplacement primitive
+// (gs.DamageReplacements). The R49 batch C tests below have been
+// updated to assert against the new registry — both the +2 bonus
+// stacking across multiple Torbrans and the LTB unregistration are
+// now observable via len(gs.DamageReplacements) instead of seat
+// flags. The original test names are preserved for git-blame
+// continuity. See percard_damage_replacement_r54_test.go for the
+// new tests asserting the actual damage delta on combat / noncombat
+// damage paths.
+
 func TestTorbran_ETBSetsBonusAndLTBClears(t *testing.T) {
 	gs := newGame(t, 2)
 	torbran := addPerm(gs, 0, "Torbran, Thane of Red Fell", "creature", "legendary")
 
-	torbranETBSetDamageFlag(gs, torbran)
+	torbranETBRegisterReplacement(gs, torbran)
 
-	if gs.Flags["torbran_red_damage_bonus"] != 2 {
-		t.Errorf("ETB should set bonus = 2, got %d", gs.Flags["torbran_red_damage_bonus"])
+	if len(gs.DamageReplacements) != 1 {
+		t.Errorf("ETB should register 1 damage replacement, got %d", len(gs.DamageReplacements))
 	}
 
-	torbranLTBClearDamageFlag(gs, torbran, map[string]interface{}{"perm": torbran})
+	torbranLTBUnregister(gs, torbran, map[string]interface{}{"perm": torbran})
 
-	if gs.Flags["torbran_red_damage_bonus"] != 0 {
-		t.Errorf("LTB should clear bonus to 0, got %d", gs.Flags["torbran_red_damage_bonus"])
-	}
-	if _, has := gs.Flags["torbran_red_damage_seat"]; has {
-		t.Errorf("seat key should be deleted at zero bonus")
+	if len(gs.DamageReplacements) != 0 {
+		t.Errorf("LTB should unregister Torbran's replacement, got %d", len(gs.DamageReplacements))
 	}
 }
 
@@ -68,17 +76,14 @@ func TestTorbran_TwoTorbransLTBLeavesPartialBonus(t *testing.T) {
 	gs := newGame(t, 2)
 	t1 := addPerm(gs, 0, "Torbran, Thane of Red Fell", "creature", "legendary")
 	t2 := addPerm(gs, 0, "Torbran, Thane of Red Fell", "creature", "legendary")
-	torbranETBSetDamageFlag(gs, t1)
-	torbranETBSetDamageFlag(gs, t2)
-	if gs.Flags["torbran_red_damage_bonus"] != 4 {
-		t.Fatalf("two Torbrans should stack to +4; got %d", gs.Flags["torbran_red_damage_bonus"])
+	torbranETBRegisterReplacement(gs, t1)
+	torbranETBRegisterReplacement(gs, t2)
+	if len(gs.DamageReplacements) != 2 {
+		t.Fatalf("two Torbrans should register 2 damage replacements, got %d", len(gs.DamageReplacements))
 	}
-	torbranLTBClearDamageFlag(gs, t1, map[string]interface{}{"perm": t1})
-	if gs.Flags["torbran_red_damage_bonus"] != 2 {
-		t.Errorf("after one Torbran leaves, bonus should be 2; got %d", gs.Flags["torbran_red_damage_bonus"])
-	}
-	if gs.Flags["torbran_red_damage_seat"] == 0 {
-		t.Errorf("seat flag should remain set while one Torbran still on battlefield")
+	torbranLTBUnregister(gs, t1, map[string]interface{}{"perm": t1})
+	if len(gs.DamageReplacements) != 1 {
+		t.Errorf("after one Torbran leaves, 1 replacement should remain; got %d", len(gs.DamageReplacements))
 	}
 }
 
@@ -86,10 +91,10 @@ func TestTorbran_LTBIgnoresOtherPermLeavingPlay(t *testing.T) {
 	gs := newGame(t, 2)
 	torbran := addPerm(gs, 0, "Torbran, Thane of Red Fell", "creature", "legendary")
 	other := addPerm(gs, 0, "Bear", "creature")
-	torbranETBSetDamageFlag(gs, torbran)
-	torbranLTBClearDamageFlag(gs, torbran, map[string]interface{}{"perm": other})
-	if gs.Flags["torbran_red_damage_bonus"] != 2 {
-		t.Errorf("non-Torbran LTB should NOT decrement bonus; got %d", gs.Flags["torbran_red_damage_bonus"])
+	torbranETBRegisterReplacement(gs, torbran)
+	torbranLTBUnregister(gs, torbran, map[string]interface{}{"perm": other})
+	if len(gs.DamageReplacements) != 1 {
+		t.Errorf("non-Torbran LTB should NOT unregister; got %d replacements", len(gs.DamageReplacements))
 	}
 }
 

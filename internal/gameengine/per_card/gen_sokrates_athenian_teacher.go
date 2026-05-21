@@ -63,6 +63,14 @@ func sokratesUpkeepRefreshHexproof(gs *gameengine.GameState, perm *gameengine.Pe
 }
 
 func sokratesLTBClearHexproof(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs != nil && perm != nil {
+		// R54: drop any dialogue damage-replacement closures this
+		// Sokrates registered. The flag on the targeted creature is
+		// cleared by the EOT flag-sweep regardless of Sokrates'
+		// presence (the printed "until end of turn" duration outlives
+		// the source per CR §611.2c).
+		gs.UnregisterDamageReplacementsForPermanent(perm)
+	}
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
@@ -180,13 +188,65 @@ func sokratesDialogue(gs *gameengine.GameState, src *gameengine.Permanent, abili
 	}
 	gs.InvalidateCharacteristicsCache()
 
-	// Stamp the target with the dialogue flag so combat-damage code can
-	// detect the convert-damage-to-draws state. Cleaned up by the
-	// existing end-of-turn flag-sweep.
+	// Stamp the target with the dialogue flag so the damage
+	// replacement closure below can detect the convert-damage-to-draws
+	// state. Cleaned up by the existing end-of-turn flag-sweep.
 	if target.Flags == nil {
 		target.Flags = map[string]int{}
 	}
 	target.Flags["sokrates_dialogue_until_eot"] = 1
+
+	// R54: register a damage replacement keyed to Sokrates the source.
+	// Fires whenever the stamped target would deal COMBAT damage to a
+	// player — prevents the damage and routes draw-half-rounded-down
+	// to both Sokrates' controller and the damaged player. The closure
+	// self-no-ops once the dialogue flag clears at EOT (existing
+	// flag-sweep). The duplicate-registration guard via HandlerID lets
+	// repeat activations (multi-turn lifelink builds) re-tag without
+	// double-firing.
+	sourceController := src.Controller
+	srcName := src.Card.DisplayName()
+	gs.RegisterDamageReplacement(&gameengine.DamageReplacement{
+		SourcePerm: src,
+		HandlerID:  "sokrates_dialogue_prevent_and_draw",
+		Fn: func(gs *gameengine.GameState, dctx *gameengine.DamageContext) {
+			if dctx == nil || dctx.Source == nil {
+				return
+			}
+			if dctx.Kind != gameengine.DamageCombatPlayer {
+				return
+			}
+			if dctx.Source.Flags == nil || dctx.Source.Flags["sokrates_dialogue_until_eot"] != 1 {
+				return
+			}
+			amount := dctx.Amount
+			if amount <= 0 {
+				return
+			}
+			half := amount / 2 // round down per oracle
+			dctx.Prevented = true
+			gs.LogEvent(gameengine.Event{
+				Kind:   "damage_prevented",
+				Seat:   sourceController,
+				Target: dctx.TargetSeat,
+				Source: srcName,
+				Amount: amount,
+				Details: map[string]interface{}{
+					"reason": "sokrates_dialogue_convert",
+				},
+			})
+			if half > 0 {
+				for i := 0; i < half; i++ {
+					drawOne(gs, sourceController, srcName)
+				}
+				if dctx.TargetSeat != sourceController {
+					for i := 0; i < half; i++ {
+						drawOne(gs, dctx.TargetSeat, srcName)
+					}
+				}
+			}
+		},
+	})
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"seat":   src.Controller,
 		"target": target.Card.DisplayName(),
