@@ -1176,12 +1176,26 @@ func lichsMasteryLifeLost(gs *gameengine.GameState, perm *gameengine.Permanent, 
 	exiled := 0
 	for i := 0; i < amount; i++ {
 		// Priority: battlefield permanents first, then hand, then graveyard.
+		//
+		// R58 fix (Loki r57 lead 1, Mire's Grasp game-3744): the
+		// battlefield path used to call MoveCard(card, seat, "battlefield",
+		// "exile", ...). MoveCard's removeCardFromZone is intentionally a
+		// no-op for "battlefield" (zone_move.go:239 — battlefield source
+		// removal is the caller's responsibility — see Krark r54 fix for
+		// the same class of bug). The Permanent was never unwound from
+		// the battlefield, so the *Card ended up in both exile (from the
+		// FireZoneChange write) and the still-live battlefield Permanent
+		// — CardIdentity duplication. Use ExilePermanent, which does the
+		// full §406.3 lifecycle: would_be_exiled replacement chain,
+		// removePermanent, UnregisterReplacements/Continuous, detachAll,
+		// commander redirect, and LTB triggers.
 		if len(s.Battlefield) > 0 {
 			p := s.Battlefield[len(s.Battlefield)-1]
 			if p != nil && p.Card != nil {
-				gameengine.MoveCard(gs, p.Card, seat, "battlefield", "exile", "lichs_mastery")
-				exiled++
-				continue
+				if gameengine.ExilePermanent(gs, p, perm) {
+					exiled++
+					continue
+				}
 			}
 		}
 		if len(s.Hand) > 0 {
