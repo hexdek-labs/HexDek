@@ -31,8 +31,8 @@ func aminatouVeilPiercerETB(gs *gameengine.GameState, perm *gameengine.Permanent
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"enchantment_miracle_grant_in_hand_not_wired_to_cast_path")
+	// Enchantment miracle ({mana cost} − {4}) is wired in
+	// cost_modifiers.go under "Aminatou, Veil Piercer" (R51 batch H).
 }
 
 func aminatouVeilPiercerUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

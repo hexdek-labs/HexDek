@@ -284,6 +284,38 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 		}
 	}
 
+	// Aminatou, Veil Piercer enchantment-miracle grant (R51 batch H):
+	// "Each enchantment card in your hand has miracle. Its miracle
+	// cost is equal to its mana cost reduced by {4}." When the caster
+	// controls Aminatou and the card being cast is an enchantment,
+	// reduce its cost by 4 (floored at 0 by CalculateTotalCost). This
+	// approximates the miracle alt-cost without needing the full
+	// top-of-library / first-draw-this-turn cast pipeline, and lets
+	// the cast-legality scanner see a discounted cost for enchantments
+	// the controller could miracle.
+	if seatIdx >= 0 && seatIdx < len(gs.Seats) && cardHasType(card, "enchantment") {
+		seat := gs.Seats[seatIdx]
+		if seat != nil {
+			hasAminatou := false
+			for _, p := range seat.Battlefield {
+				if p == nil || p.Card == nil {
+					continue
+				}
+				if strings.EqualFold(p.Card.DisplayName(), "Aminatou, Veil Piercer") {
+					hasAminatou = true
+					break
+				}
+			}
+			if hasAminatou {
+				mods = append(mods, CostModifier{
+					Kind:   CostModReduction,
+					Amount: 4,
+					Source: "Aminatou, Veil Piercer (enchantment miracle approximation)",
+				})
+			}
+		}
+	}
+
 	// Sunderflock self-cast reduction: "This spell costs {X} less to
 	// cast, where X is the greatest mana value among Elementals you
 	// control." Scan the caster's battlefield for Elementals.

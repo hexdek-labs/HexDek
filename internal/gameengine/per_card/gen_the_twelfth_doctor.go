@@ -27,6 +27,13 @@ import (
 func registerTheTwelfthDoctor(r *Registry) {
 	r.OnETB("The Twelfth Doctor", theTwelfthDoctorETB)
 	r.OnTrigger("The Twelfth Doctor", "spell_copied", theTwelfthDoctorCounter)
+	// R51 batch H port: track the demonstrate grant via seat flags so
+	// the cast pipeline (when it consults them) can apply demonstrate
+	// to the first non-hand cast each turn. The upkeep_controller arm
+	// re-pends the flag at turn start; the spell_cast consumer drops
+	// the flag once a non-hand cast lands.
+	r.OnTrigger("The Twelfth Doctor", "upkeep_controller", theTwelfthDoctorArmDemonstrate)
+	r.OnTrigger("The Twelfth Doctor", "spell_cast", theTwelfthDoctorConsumeDemonstrate)
 }
 
 func theTwelfthDoctorETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -34,11 +41,65 @@ func theTwelfthDoctorETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
+	if seat := gs.Seats[perm.Controller]; seat != nil {
+		if seat.Flags == nil {
+			seat.Flags = map[string]int{}
+		}
+		seat.Flags["twelfth_doctor_demonstrate_pending"] = 1
+	}
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":                perm.Controller,
+		"demonstrate_pending": true,
+	})
+}
+
+func theTwelfthDoctorArmDemonstrate(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "the_twelfth_doctor_arm_demonstrate"
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	activeSeat, _ := ctx["active_seat"].(int)
+	if activeSeat != perm.Controller {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	if seat.Flags == nil {
+		seat.Flags = map[string]int{}
+	}
+	seat.Flags["twelfth_doctor_demonstrate_pending"] = 1
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
+}
+
+func theTwelfthDoctorConsumeDemonstrate(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "the_twelfth_doctor_consume_demonstrate"
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	casterSeat, _ := ctx["caster_seat"].(int)
+	if casterSeat != perm.Controller {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil || seat.Flags == nil || seat.Flags["twelfth_doctor_demonstrate_pending"] == 0 {
+		return
+	}
+	zone, _ := ctx["cast_zone"].(string)
+	if zone == "" || zone == "hand" {
+		return
+	}
+	delete(seat.Flags, "twelfth_doctor_demonstrate_pending")
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":      perm.Controller,
+		"cast_zone": zone,
+		"granted":   "demonstrate",
+	})
 	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"demonstrate_grant_on_first_non_hand_cast_per_turn_not_wired_in_cast_pipeline")
+		"demonstrate_grant_acknowledged_but_actual_copy_uses_cast_pipeline_when_wired")
 }
 
 func theTwelfthDoctorCounter(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

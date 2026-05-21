@@ -2,6 +2,7 @@ package per_card
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
@@ -24,12 +25,78 @@ import (
 //     seat and Lightning's controller's NEXT turn (current turn + N
 //     where N is the seat count, approximating "until your next turn").
 //
-// emitPartial: the actual damage-doubling replacement effect needs an
-// engine-side replacement-effect framework that consults the staged
-// flag — we fire the arm event so downstream observers can pick it up
-// when that wiring lands.
+// R51 batch H port: register a would_be_dealt_damage replacement at
+// ETB that doubles damage routed at a staggered player or their
+// permanents. The replacement reads the same gs.Flags
+// "lightning_stagger_seat<N>_until_turn" key the arm sets and is
+// active while gs.Turn is below the expiry turn.
 func registerLightningArmyOfOne(r *Registry) {
+	r.OnETB("Lightning, Army of One", lightningETBRegisterReplacement)
 	r.OnTrigger("Lightning, Army of One", "combat_damage_to_player", lightningStaggerArm)
+}
+
+func lightningETBRegisterReplacement(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	const slug = "lightning_army_of_one_etb_stagger_replacement"
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	controller := perm.Controller
+	gs.RegisterReplacement(&gameengine.ReplacementEffect{
+		EventType:      "would_be_dealt_damage",
+		HandlerID:      "Lightning, Army of One:stagger:" + strconv.Itoa(perm.Timestamp),
+		SourcePerm:     perm,
+		ControllerSeat: controller,
+		Timestamp:      perm.Timestamp,
+		Category:       gameengine.CategoryOther,
+		Applies: func(gs *gameengine.GameState, ev *gameengine.ReplEvent) bool {
+			if ev == nil || ev.Count() <= 0 {
+				return false
+			}
+			// Determine the seat the damage routes to.
+			ts := ev.TargetSeat
+			if ev.TargetPerm != nil {
+				ts = ev.TargetPerm.Controller
+			}
+			if ts < 0 || ts >= len(gs.Seats) {
+				return false
+			}
+			if gs.Flags == nil {
+				return false
+			}
+			key := fmt.Sprintf("lightning_stagger_seat%d_until_turn", ts)
+			expires := gs.Flags[key]
+			if expires == 0 || gs.Turn >= expires {
+				return false
+			}
+			return true
+		},
+		ApplyFn: func(gs *gameengine.GameState, ev *gameengine.ReplEvent) {
+			before := ev.Count()
+			ev.SetCount(before * 2)
+			ts := ev.TargetSeat
+			if ev.TargetPerm != nil {
+				ts = ev.TargetPerm.Controller
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "replacement_applied",
+				Seat:   controller,
+				Source: "Lightning, Army of One",
+				Amount: ev.Count(),
+				Details: map[string]interface{}{
+					"slug":          slug,
+					"rule":          "614",
+					"effect":        "stagger_double_damage",
+					"target_seat":   ts,
+					"before":        before,
+					"after":         ev.Count(),
+				},
+			})
+		},
+	})
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":     controller,
+		"replaces": "would_be_dealt_damage",
+	})
 }
 
 func lightningStaggerArm(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -64,6 +131,5 @@ func lightningStaggerArm(gs *gameengine.GameState, perm *gameengine.Permanent, c
 		"defender_seat":  defender,
 		"expires_turn":   expiresOnTurn,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"damage_doubling_replacement_effect_not_wired_engine_side_TODO")
+	// Damage-doubling replacement is wired by lightningETBRegisterReplacement.
 }
