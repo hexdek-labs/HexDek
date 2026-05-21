@@ -33,13 +33,33 @@ func donAndresNoncreature(gs *gameengine.GameState, perm *gameengine.Permanent, 
 		// Owned spell — no trigger.
 		return
 	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	// R53 batch N: tap the freshly-minted Treasures (printed "two
+	// tapped Treasure tokens"). CreateTreasureToken appends to the
+	// controller's battlefield in order, so the last two perms after
+	// minting are our new Treasures.
+	beforeLen := len(seat.Battlefield)
 	for i := 0; i < 2; i++ {
 		gameengine.CreateTreasureToken(gs, perm.Controller)
+	}
+	tapped := 0
+	for i := beforeLen; i < len(seat.Battlefield); i++ {
+		p := seat.Battlefield[i]
+		if p == nil || p.Card == nil {
+			continue
+		}
+		if !cardHasType(p.Card, "treasure") {
+			continue
+		}
+		p.Tapped = true
+		tapped++
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":      perm.Controller,
 		"treasures": 2,
+		"tapped":    tapped,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"treasure_tokens_should_enter_tapped")
 }
