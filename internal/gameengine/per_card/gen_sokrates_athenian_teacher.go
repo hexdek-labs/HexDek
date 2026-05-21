@@ -33,6 +33,39 @@ import (
 func registerSokratesAthenianTeacher(r *Registry) {
 	r.OnETB("Sokrates, Athenian Teacher", sokratesETBHexproof)
 	r.OnActivated("Sokrates, Athenian Teacher", sokratesDialogue)
+	// R49 batch C: re-stamp the hexproof-while-untapped flag at the
+	// start of each of our untap steps (cheapest "tap state may have
+	// changed" tick), and clear it on LTB so a stolen/exiled Sokrates
+	// can't leave stale kw:hexproof on a transient permanent.
+	r.OnTrigger("Sokrates, Athenian Teacher", "upkeep_controller", sokratesUpkeepRefreshHexproof)
+	r.OnTrigger("Sokrates, Athenian Teacher", "permanent_ltb", sokratesLTBClearHexproof)
+}
+
+func sokratesUpkeepRefreshHexproof(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	if !perm.Tapped {
+		perm.Flags["kw:hexproof"] = 1
+	} else {
+		delete(perm.Flags, "kw:hexproof")
+	}
+}
+
+func sokratesLTBClearHexproof(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	if perm.Flags != nil {
+		delete(perm.Flags, "kw:hexproof")
+	}
 }
 
 func sokratesETBHexproof(gs *gameengine.GameState, perm *gameengine.Permanent) {

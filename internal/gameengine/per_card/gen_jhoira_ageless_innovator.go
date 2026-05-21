@@ -1,31 +1,17 @@
 package per_card
 
-import (
-	"github.com/hexdek/hexdek/internal/gameengine"
-)
-
-// registerJhoiraAgelessInnovator wires Jhoira, Ageless Innovator.
+// registerJhoiraAgelessInnovator is the auto-generated entry point
+// retained so the batch_generated.go registry call keeps compiling.
+// The real activated ability ({T}: add two ingenuity counters, then
+// optionally cheat an artifact with MV X from hand where X = counter
+// count) lives in custom_jhoira_ageless_innovator.go and is wired via
+// registerJhoiraAgelessInnovatorCustom
+// (zz_activated_stubs_register.go).
 //
-// Oracle text:
-//
-//   {T}: Put two ingenuity counters on Jhoira, then you may put an artifact card with mana value X or less from your hand onto the battlefield, where X is the number of ingenuity counters on Jhoira.
-//
-// Auto-generated activated ability handler.
+// The auto-gen activated body emitted a misleading partial breadcrumb
+// on every Jhoira activation even though the custom handler already
+// implemented the counter+cheat logic. Neutered here (R49 batch C)
+// so the partial channel doesn't surface a duplicate parser-gap.
 func registerJhoiraAgelessInnovator(r *Registry) {
-	r.OnActivated("Jhoira, Ageless Innovator", jhoiraAgelessInnovatorActivate)
-}
-
-func jhoiraAgelessInnovatorActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
-	const slug = "jhoira_ageless_innovator_activate"
-	if gs == nil || src == nil {
-		return
-	}
-	seat := src.Controller
-	if seat < 0 || seat >= len(gs.Seats) {
-		return
-	}
-	emitPartial(gs, slug, src.Card.DisplayName(), "auto-gen: activated effect not parsed from oracle text")
-	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-		"seat": seat,
-	})
+	_ = r
 }

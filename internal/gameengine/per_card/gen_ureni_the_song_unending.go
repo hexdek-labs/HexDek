@@ -1,32 +1,15 @@
 package per_card
 
-import (
-	"github.com/hexdek/hexdek/internal/gameengine"
-)
-
-// registerUreniTheSongUnending wires Ureni, the Song Unending.
+// registerUreniTheSongUnending is the auto-generated entry point retained
+// so the batch_generated.go registry call keeps compiling. The real ETB
+// (divided X damage where X = lands controlled) lives in
+// custom_ureni_the_song_unending.go and is wired via
+// zz_handler_q45_register.go's registerUreniTheSongUnendingCustom.
 //
-// Oracle text:
-//
-//   Flying, protection from white and from black
-//   When Ureni enters, it deals X damage divided as you choose among any number of target creatures and/or planeswalkers your opponents control, where X is the number of lands you control.
-//
-// Auto-generated ETB handler.
+// The auto-gen body emitted a misleading partial breadcrumb on every
+// Ureni ETB even though the custom handler already implemented the
+// full divided-X damage. Neutered here (R49 batch C) so the partial
+// channel doesn't get polluted with a fake gap.
 func registerUreniTheSongUnending(r *Registry) {
-	r.OnETB("Ureni, the Song Unending", ureniTheSongUnendingETB)
-}
-
-func ureniTheSongUnendingETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "ureni_the_song_unending_etb"
-	if gs == nil || perm == nil {
-		return
-	}
-	seat := perm.Controller
-	if seat < 0 || seat >= len(gs.Seats) {
-		return
-	}
-	emitPartial(gs, slug, perm.Card.DisplayName(), "auto-gen: ETB effect not parsed from oracle text")
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": seat,
-	})
+	_ = r
 }

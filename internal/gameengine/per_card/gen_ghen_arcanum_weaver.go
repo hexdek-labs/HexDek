@@ -1,31 +1,16 @@
 package per_card
 
-import (
-	"github.com/hexdek/hexdek/internal/gameengine"
-)
-
-// registerGhenArcanumWeaver wires Ghen, Arcanum Weaver.
+// registerGhenArcanumWeaver is the auto-generated entry point retained
+// so the batch_generated.go registry call keeps compiling. The real
+// activated ability ({R}{W}{B}, {T}, Sacrifice an enchantment: return
+// target enchantment card from your graveyard to the battlefield) lives
+// in custom_ghen_arcanum_weaver.go and is wired via
+// registerGhenArcanumWeaverCustom (zz_activated_stubs_register.go).
 //
-// Oracle text:
-//
-//   {R}{W}{B}, {T}, Sacrifice an enchantment: Return target enchantment card from your graveyard to the battlefield.
-//
-// Auto-generated activated ability handler.
+// The auto-gen activated body emitted a misleading partial breadcrumb
+// on every Ghen activation even though the custom handler already
+// implemented the reanimation. Neutered here (R49 batch C) so the
+// partial channel reflects the real custom-side gap, not a duplicate.
 func registerGhenArcanumWeaver(r *Registry) {
-	r.OnActivated("Ghen, Arcanum Weaver", ghenArcanumWeaverActivate)
-}
-
-func ghenArcanumWeaverActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
-	const slug = "ghen_arcanum_weaver_activate"
-	if gs == nil || src == nil {
-		return
-	}
-	seat := src.Controller
-	if seat < 0 || seat >= len(gs.Seats) {
-		return
-	}
-	emitPartial(gs, slug, src.Card.DisplayName(), "auto-gen: activated effect not parsed from oracle text")
-	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-		"seat": seat,
-	})
+	_ = r
 }
