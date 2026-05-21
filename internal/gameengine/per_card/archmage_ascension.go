@@ -24,6 +24,11 @@ import (
 //     built-in table; emitPartial.
 func registerArchmageAscension(r *Registry) {
 	r.OnTrigger("Archmage Ascension", "end_step", archmageAscensionEndStep)
+	// R52 batchM: 6+ quest counters → "draw a card" becomes "search
+	// your library for a card, put it into your hand, then shuffle".
+	// Wired via player_would_draw, matching the Chains of Mephistopheles
+	// precedent for trigger-style draw replacements.
+	r.OnTrigger("Archmage Ascension", "player_would_draw", archmageAscensionTutorOnDraw)
 }
 
 func archmageAscensionEndStep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -60,6 +65,63 @@ func archmageAscensionEndStep(gs *gameengine.GameState, perm *gameengine.Permane
 		"drawn":          drawn,
 		"quest_counters": perm.Counters["quest"],
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"draw_replacement_at_6_counters_needs_per_card_replacement_effect_registration")
+	// Draw replacement at 6+ counters wired in
+	// archmageAscensionTutorOnDraw (R52 batchM); end-step counter add
+	// is the only thing this hook owns now.
+}
+
+// archmageAscensionTutorOnDraw replaces the controller's draw with a
+// library tutor when Ascension has 6+ quest counters. Matches the
+// Chains of Mephistopheles trigger-style replacement precedent — sets
+// ctx["draw_replaced"] = true for downstream consumers + performs the
+// tutor (highest-CMC card for upside, matching the AI's "always
+// accept" stance on this monotone-good effect).
+func archmageAscensionTutorOnDraw(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "archmage_ascension_tutor_draw"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
+		return
+	}
+	if perm.Counters == nil || perm.Counters["quest"] < 6 {
+		return
+	}
+	drawSeat, _ := ctx["draw_seat"].(int)
+	if drawSeat != perm.Controller {
+		return
+	}
+	seat := gs.Seats[drawSeat]
+	if seat == nil || seat.Lost {
+		return
+	}
+	if len(seat.Library) == 0 {
+		return
+	}
+	// AI picks the highest-CMC card as the tutor target.
+	var pick *gameengine.Card
+	bestCMC := -1
+	for _, c := range seat.Library {
+		if c == nil {
+			continue
+		}
+		cmc := cardCMC(c)
+		if cmc > bestCMC {
+			bestCMC = cmc
+			pick = c
+		}
+	}
+	if pick == nil {
+		return
+	}
+	gameengine.MoveCard(gs, pick, drawSeat, "library", "hand", "archmage_ascension_tutor")
+	// Shuffle the remaining library.
+	if gs.Rng != nil && len(seat.Library) > 1 {
+		gs.Rng.Shuffle(len(seat.Library), func(i, j int) {
+			seat.Library[i], seat.Library[j] = seat.Library[j], seat.Library[i]
+		})
+	}
+	ctx["draw_replaced"] = true
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":   drawSeat,
+		"picked": pick.DisplayName(),
+		"cmc":    bestCMC,
+	})
 }

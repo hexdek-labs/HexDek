@@ -36,6 +36,10 @@ import (
 //     Muninn tracks the residual gap.
 func registerNecromancy(r *Registry) {
 	r.OnETB("Necromancy", necromancyETB)
+	// R52 batchM: "When this enchantment leaves the battlefield, that
+	// creature's controller sacrifices it." Wired via permanent_ltb on
+	// every battlefield perm whose handler matches "Necromancy".
+	r.OnTrigger("Necromancy", "permanent_ltb", necromancyLTBSacBondedCreature)
 }
 
 // necromancyTargets maps a Necromancy *Permanent to the creature *Permanent
@@ -142,6 +146,36 @@ func necromancyETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		"cmc":        bestCMC,
 	})
 
-	emitPartial(gs, slug, "Necromancy",
-		"flash_off_curve_cleanup_sacrifice_and_aura_ltb_creature_sacrifice_clauses_not_modeled")
+	// LTB sacrifice rider wired in necromancyLTBSacBondedCreature (R52
+	// batchM). Flash + off-curve cleanup sacrifice is a cast-time gate
+	// the engine doesn't surface at the per-card layer; left documented.
+}
+
+// necromancyLTBSacBondedCreature fires when Necromancy itself leaves
+// the battlefield. The bonded creature stored in necromancyTargets is
+// then sacrificed by its current controller (CR §702.108 / §400.7).
+func necromancyLTBSacBondedCreature(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "necromancy_ltb_sac_bonded"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	bonded, ok := necromancyTargets.Load(perm)
+	if !ok || bonded == nil {
+		return
+	}
+	creature, ok := bonded.(*gameengine.Permanent)
+	if !ok || creature == nil || creature.Card == nil {
+		return
+	}
+	gameengine.SacrificePermanent(gs, creature, "necromancy_ltb_sac")
+	necromancyTargets.Delete(perm)
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":         perm.Controller,
+		"sacrificed":   creature.Card.DisplayName(),
+		"sac_seat":     creature.Controller,
+	})
 }

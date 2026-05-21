@@ -127,12 +127,78 @@ func heliodPickCounterTarget(seat *gameengine.Seat) *gameengine.Permanent {
 	return firstEnchantment
 }
 
+// heliodSunCrownedActivate handles "{1}{W}: Another target creature
+// gains lifelink until end of turn." R52 batchM port — stamps the
+// kw:lifelink flag and schedules a cleanup delayed trigger at the
+// next end step so the grant truly is UEOT.
 func heliodSunCrownedActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
-	if gs == nil || src == nil {
+	const slug = "heliod_sun_crowned_lifelink_grant"
+	if gs == nil || src == nil || src.Card == nil {
 		return
 	}
-	// {1}{W}: Another target creature gains lifelink until end of turn.
-	// UEOT keyword grants require the layers pipeline — not yet modelled.
-	emitPartial(gs, "heliod_sun_crowned_lifelink_grant", src.Card.DisplayName(),
-		"ueot_lifelink_grant_not_modelled_by_layers_pipeline")
+	seat := gs.Seats[src.Controller]
+	if seat == nil {
+		return
+	}
+	if seat.ManaPool < 2 {
+		emitFail(gs, slug, src.Card.DisplayName(), "insufficient_mana", nil)
+		return
+	}
+	// Pick the highest-power OTHER creature on any seat. Prefer our own
+	// creatures first (lifelink upside is biggest on attackers we control).
+	var target *gameengine.Permanent
+	bestScore := -1
+	for i, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, p := range s.Battlefield {
+			if p == nil || p == src || p.Card == nil || !p.IsCreature() {
+				continue
+			}
+			if p.Flags != nil && p.Flags["kw:lifelink"] == 1 {
+				continue // already has lifelink
+			}
+			score := gs.PowerOf(p)
+			if i == src.Controller {
+				score += 100 // prefer own creatures
+			}
+			if score > bestScore {
+				bestScore = score
+				target = p
+			}
+		}
+	}
+	if target == nil {
+		emitFail(gs, slug, src.Card.DisplayName(), "no_legal_target", nil)
+		return
+	}
+	seat.ManaPool -= 2
+	if target.Flags == nil {
+		target.Flags = map[string]int{}
+	}
+	target.Flags["kw:lifelink"] = 1
+	target.Flags["kw:lifelink_from_heliod_ueot"] = 1
+	// Cleanup at end step.
+	captured := target
+	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
+		TriggerAt:      "next_end_step",
+		ControllerSeat: src.Controller,
+		SourceCardName: src.Card.DisplayName(),
+		OneShot:        true,
+		EffectFn: func(gs *gameengine.GameState) {
+			if captured == nil || captured.Flags == nil {
+				return
+			}
+			if captured.Flags["kw:lifelink_from_heliod_ueot"] == 1 {
+				delete(captured.Flags, "kw:lifelink_from_heliod_ueot")
+				delete(captured.Flags, "kw:lifelink")
+				gs.InvalidateCharacteristicsCache()
+			}
+		},
+	})
+	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
+		"seat":   src.Controller,
+		"target": target.Card.DisplayName(),
+	})
 }

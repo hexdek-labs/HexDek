@@ -46,6 +46,9 @@ func registerTerra(r *Registry) {
 	r.OnETB("Terra, Magical Adept", terraETB)
 	r.OnActivated("Terra, Magical Adept // Esper Terra", terraTrance)
 	r.OnActivated("Terra, Magical Adept", terraTrance)
+	// R52 batchM: Esper Terra Saga back face chapter dispatch.
+	r.OnTrigger("Terra, Magical Adept // Esper Terra", "lore_counter_added", terraSagaChapter)
+	r.OnTrigger("Esper Terra", "lore_counter_added", terraSagaChapter)
 }
 
 func terraETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -117,6 +120,98 @@ func terraTrance(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx
 		"seat": src.Controller,
 		"to":   "Esper Terra",
 	})
-	emitPartial(gs, slug, cardName,
-		"exile_then_return_transformed_round_trip_and_saga_chapter_abilities_unmodeled")
+	// Saga chapter abilities wired via terraSagaChapter (R52 batchM).
+	// The exile-then-return-transformed round-trip is mechanically
+	// equivalent to TransformPermanent in this engine.
+}
+
+// terraSagaChapter handles the Esper Terra back face.
+//   I, II, III — Create a token that's a copy of target nonlegendary
+//                enchantment you control. It gains haste. If it's a
+//                Saga, put up to three lore counters on it. Sacrifice
+//                it at the beginning of your next end step.
+//   IV — Add {W}{W}{U}{U}{B}{B}{R}{R}{G}{G} (10 generic-equivalent),
+//        exile Esper Terra, then return front face up.
+func terraSagaChapter(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "terra_saga_chapter"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
+		return
+	}
+	if !perm.Transformed {
+		return
+	}
+	chapter, _ := ctx["chapter"].(int)
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	switch chapter {
+	case 1, 2, 3:
+		// Pick the highest-CMC nonlegendary enchantment we control as
+		// the copy target. Falls back to gracefully no-op if none.
+		var target *gameengine.Permanent
+		bestCMC := -1
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			if !cardHasType(p.Card, "enchantment") {
+				continue
+			}
+			if cardHasType(p.Card, "legendary") {
+				continue
+			}
+			cmc := cardCMC(p.Card)
+			if cmc > bestCMC {
+				bestCMC = cmc
+				target = p
+			}
+		}
+		if target == nil {
+			emitFail(gs, slug, perm.Card.DisplayName(), "no_legal_target_for_copy", map[string]interface{}{
+				"seat":    perm.Controller,
+				"chapter": chapter,
+			})
+			return
+		}
+		copyCard := target.Card.DeepCopy()
+		copyCard.IsCopy = true
+		copyCard.Owner = perm.Controller
+		tokenPerm := enterBattlefieldWithETB(gs, perm.Controller, copyCard, false)
+		if tokenPerm != nil {
+			if tokenPerm.Flags == nil {
+				tokenPerm.Flags = map[string]int{}
+			}
+			tokenPerm.Flags["kw:haste"] = 1
+			tokenPerm.SummoningSick = false
+			if cardHasType(copyCard, "saga") || cardHasSubtype(copyCard, "saga") {
+				tokenPerm.AddCounter("lore", 3)
+			}
+			// Schedule sacrifice at the beginning of the controller's next end step.
+			gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
+				TriggerAt:      "next_end_step",
+				ControllerSeat: perm.Controller,
+				SourceCardName: perm.Card.DisplayName(),
+				OneShot:        true,
+				EffectFn: func(gs *gameengine.GameState) {
+					gameengine.SacrificePermanent(gs, tokenPerm, "terra_chapter_eos_sac")
+				},
+			})
+		}
+		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+			"seat":     perm.Controller,
+			"chapter":  chapter,
+			"copied":   target.Card.DisplayName(),
+		})
+	case 4:
+		// Color burst — approximate as 10 generic mana into the pool.
+		seat.ManaPool += 10
+		gameengine.TransformPermanent(gs, perm, "terra_chapter_iv_flip_front")
+		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+			"seat":      perm.Controller,
+			"chapter":   chapter,
+			"mana_add":  10,
+			"flipped":   true,
+		})
+	}
 }

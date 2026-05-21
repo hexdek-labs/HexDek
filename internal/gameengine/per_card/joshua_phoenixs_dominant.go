@@ -35,6 +35,14 @@ func registerJoshuaPhoenixsDominant(r *Registry) {
 	r.OnETB("Joshua, Phoenix's Dominant // Phoenix, Warden of Fire", joshuaPhoenixsETB)
 	r.OnActivated("Joshua, Phoenix's Dominant", joshuaPhoenixsActivate)
 	r.OnActivated("Joshua, Phoenix's Dominant // Phoenix, Warden of Fire", joshuaPhoenixsActivate)
+	// R52 batchM: Saga back-face chapter dispatch via lore_counter_added.
+	// Chapters I and II both fire the "Rising Flames — 2 damage to each
+	// opponent" payload (one per lore tick). Chapter III reanimates
+	// creature cards with total mana value ≤ 6 from the controller's
+	// graveyard, then flips front face up.
+	r.OnTrigger("Joshua, Phoenix's Dominant", "lore_counter_added", joshuaPhoenixsSagaChapter)
+	r.OnTrigger("Joshua, Phoenix's Dominant // Phoenix, Warden of Fire", "lore_counter_added", joshuaPhoenixsSagaChapter)
+	r.OnTrigger("Phoenix, Warden of Fire", "lore_counter_added", joshuaPhoenixsSagaChapter)
 }
 
 func joshuaPhoenixsETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -95,9 +103,105 @@ func joshuaPhoenixsETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 }
 
 func joshuaPhoenixsActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
-	if gs == nil || src == nil {
+	const slug = "joshua_phoenixs_transform"
+	if gs == nil || src == nil || src.Card == nil {
 		return
 	}
-	emitPartial(gs, "joshua_phoenixs_transform", src.Card.DisplayName(),
-		"transform_to_phoenix_warden_of_fire_back_face_not_implemented")
+	if src.Tapped {
+		emitFail(gs, slug, src.Card.DisplayName(), "already_tapped", nil)
+		return
+	}
+	if src.Transformed {
+		emitFail(gs, slug, src.Card.DisplayName(), "already_back_face", nil)
+		return
+	}
+	// {3}{R}{W}, {T}: 5 generic-equivalent.
+	seat := gs.Seats[src.Controller]
+	if seat == nil || seat.ManaPool < 5 {
+		emitFail(gs, slug, src.Card.DisplayName(), "insufficient_mana", nil)
+		return
+	}
+	seat.ManaPool -= 5
+	src.Tapped = true
+	gameengine.TransformPermanent(gs, src, "joshua_phoenixs_trance")
+	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
+		"seat": src.Controller,
+	})
+}
+
+// joshuaPhoenixsSagaChapter handles the Phoenix, Warden of Fire back
+// face. Lore counters tick to chapters I, II, III and the printed text
+// gives I+II the same effect ("Rising Flames — Phoenix deals 2 damage
+// to each opponent") and III the reanimate-then-flip payload.
+func joshuaPhoenixsSagaChapter(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "joshua_phoenixs_saga_chapter"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
+		return
+	}
+	// Saga effect only fires when Joshua is in his Saga back-face form.
+	if !perm.Transformed {
+		return
+	}
+	chapter, _ := ctx["chapter"].(int)
+	switch chapter {
+	case 1, 2:
+		hits := 0
+		for _, oppIdx := range gs.Opponents(perm.Controller) {
+			s := gs.Seats[oppIdx]
+			if s == nil || s.Lost {
+				continue
+			}
+			gameengine.DealDamage(gs, oppIdx, 2, perm.Card.DisplayName())
+			hits++
+		}
+		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+			"seat":         perm.Controller,
+			"chapter":      chapter,
+			"opponents_hit": hits,
+		})
+		_ = gs.CheckEnd()
+	case 3:
+		seat := gs.Seats[perm.Controller]
+		if seat == nil {
+			return
+		}
+		// Greedy: highest-CMC creatures first, stop once total > 6.
+		type pick struct {
+			c   *gameengine.Card
+			cmc int
+		}
+		var candidates []pick
+		for _, c := range seat.Graveyard {
+			if c == nil || !cardHasType(c, "creature") {
+				continue
+			}
+			candidates = append(candidates, pick{c, cardCMC(c)})
+		}
+		// Sort by CMC desc to fit as many big creatures as possible.
+		for i := 0; i < len(candidates); i++ {
+			for j := i + 1; j < len(candidates); j++ {
+				if candidates[j].cmc > candidates[i].cmc {
+					candidates[i], candidates[j] = candidates[j], candidates[i]
+				}
+			}
+		}
+		total := 0
+		returned := 0
+		for _, p := range candidates {
+			if total+p.cmc > 6 {
+				continue
+			}
+			gameengine.MoveCard(gs, p.c, perm.Controller, "graveyard", "battlefield", "joshua_phoenixs_chapter_iii")
+			total += p.cmc
+			returned++
+		}
+		// Flip back to Joshua, front face up.
+		gameengine.TransformPermanent(gs, perm, "joshua_phoenixs_chapter_iii_flip_front")
+		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+			"seat":           perm.Controller,
+			"chapter":        chapter,
+			"reanimated":     returned,
+			"total_mv":       total,
+		})
+	}
 }
