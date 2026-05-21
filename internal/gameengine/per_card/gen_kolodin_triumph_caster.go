@@ -26,6 +26,61 @@ import (
 func registerKolodinTriumphCaster(r *Registry) {
 	r.OnETB("Kolodin, Triumph Caster", kolodinTriumphCasterETB)
 	r.OnTrigger("Kolodin, Triumph Caster", "permanent_etb", kolodinTriumphCasterETBTrigger)
+	// End-of-turn sweep: clear the "until end of turn" flags Kolodin
+	// stamped (saddled / artifact-creature-until-eot) and remove the
+	// transient "creature_until_eot" type tag from vehicle Cards so
+	// the type doesn't leak into next turn's combat. The engine's
+	// generic cleanup pass *should* handle this, but the type-tag
+	// slice mutation needs a card-level revert that the cleanup pass
+	// doesn't (yet) drive — this sweep is defense-in-depth.
+	r.OnTrigger("Kolodin, Triumph Caster", "end_step", kolodinTriumphCasterEOTSweep)
+}
+
+func kolodinTriumphCasterEOTSweep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "kolodin_triumph_caster_eot_sweep"
+	if gs == nil || perm == nil {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	swept := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		if p.Flags != nil {
+			if p.Flags["saddled_until_eot"] != 0 {
+				delete(p.Flags, "saddled")
+				delete(p.Flags, "saddled_until_eot")
+				swept++
+			}
+			if p.Flags["kw:artifact_creature_until_eot"] != 0 {
+				delete(p.Flags, "kw:artifact_creature_until_eot")
+				swept++
+			}
+		}
+		// Strip the transient "creature_until_eot" tag if present.
+		filtered := p.Card.Types[:0]
+		removed := false
+		for _, t := range p.Card.Types {
+			if t == "creature_until_eot" {
+				removed = true
+				continue
+			}
+			filtered = append(filtered, t)
+		}
+		if removed {
+			p.Card.Types = filtered
+		}
+	}
+	if swept > 0 {
+		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+			"seat":  perm.Controller,
+			"swept": swept,
+		})
+	}
 }
 
 func kolodinTriumphCasterETB(gs *gameengine.GameState, perm *gameengine.Permanent) {

@@ -31,6 +31,7 @@ import (
 //     variant when gs.Active == perm.Controller).
 func registerLaraCroftTombRaider(r *Registry) {
 	r.OnETB("Lara Croft, Tomb Raider", laraCroftStaticETB)
+	r.OnTrigger("Lara Croft, Tomb Raider", "creature_attacks", laraCroftAttackTrigger)
 	r.OnTrigger("Lara Croft, Tomb Raider", "end_of_combat", laraCroftRaidTreasure)
 }
 
@@ -39,8 +40,85 @@ func laraCroftStaticETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller,
+	})
+}
+
+// laraCroftAttackTrigger fires when Lara Croft attacks (CR §702.0). The
+// engine fires "creature_attacks" with ctx["attacker_perm"]; we filter
+// to Lara herself. Scans every graveyard for a legendary artifact or
+// legendary land card, picks the highest-CMC, exiles it, stamps a
+// "discovery_counter" flag on the card so future cast-from-exile
+// pipeline work can honor the "you may play it this turn" permission.
+//
+// emitPartial flags the play-from-exile gap (engine doesn't yet support
+// generalized "play from exile if it has a discovery counter").
+func laraCroftAttackTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "lara_croft_attack_exile_discovery"
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	atk, _ := ctx["attacker_perm"].(*gameengine.Permanent)
+	if atk == nil || atk != perm {
+		return
+	}
+	var bestCard *gameengine.Card
+	var bestSeat int
+	bestCMC := -1
+	for i, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, c := range s.Graveyard {
+			if c == nil {
+				continue
+			}
+			if !cardHasType(c, "legendary") {
+				continue
+			}
+			if !cardHasType(c, "artifact") && !cardHasType(c, "land") {
+				continue
+			}
+			if cmc := cardCMC(c); cmc > bestCMC {
+				bestCMC = cmc
+				bestCard = c
+				bestSeat = i
+			}
+		}
+	}
+	if bestCard == nil {
+		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+			"seat":    perm.Controller,
+			"exiled":  false,
+			"reason":  "no_legendary_artifact_or_land_in_any_graveyard",
+		})
+		return
+	}
+	gameengine.MoveCard(gs, bestCard, bestSeat, "graveyard", "exile", slug)
+	// Tag the card with a discovery_counter marker. The card's Types
+	// slice is the per_card runtime carrier for ad-hoc flags (mirror
+	// the "discovery_counter" tag the play-from-exile scanner would
+	// read once wired).
+	tagged := false
+	for _, t := range bestCard.Types {
+		if t == "discovery_counter" {
+			tagged = true
+			break
+		}
+	}
+	if !tagged {
+		bestCard.Types = append(bestCard.Types, "discovery_counter")
+	}
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":           perm.Controller,
+		"exiled":         bestCard.DisplayName(),
+		"from_seat":      bestSeat,
+		"cmc":            bestCMC,
+		"discovery_set":  true,
+	})
 	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"attack-trigger discovery-counter + play-from-exile not modeled; Raid Treasure-token handled by end_of_combat hook")
+		"play_from_exile_with_discovery_counter_this_turn_pipeline_not_wired")
 }
 
 // laraCroftRaidTreasure fires at end of combat. Per CR §702.128a

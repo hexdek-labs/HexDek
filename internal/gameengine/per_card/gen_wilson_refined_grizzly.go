@@ -13,17 +13,36 @@ import (
 //	Ward {2}
 //	Choose a Background (You can have a Background as a second commander.)
 //
-// Implementation:
-//   - All four lines are statics. ETB stamps:
-//       - kw:cant_be_countered (handled at cast-time by the cast pipeline
-//         when checking the resolving spell's source perm)
-//       - ward:2 (read by the target dispatcher when an opponent targets)
-//       - kw:vigilance, kw:reach, kw:trample (engine combat reads)
-//       - allow_background_partner (commander-deck construction reads)
-//   - The "becomes the target" trigger that ward fires lives in the
-//     engine target dispatcher; we just declare the cost via the flag.
+// Implementation (R50 batch F):
+//   - OnCast stamps CostMeta["cannot_be_countered"]=true so the
+//     counter-spell resolver refuses to counter Wilson on the stack
+//     (same shape as Thrun, Breaker of Silence).
+//   - ETB stamps the static keyword flags:
+//       - ward:2 (read by target dispatcher)
+//       - kw:vigilance, kw:reach, kw:trample (combat reads)
+//   - Choose-a-Background partner is deck-construction-time only.
 func registerWilsonRefinedGrizzly(r *Registry) {
+	r.OnCast("Wilson, Refined Grizzly", wilsonRefinedGrizzlyCast)
 	r.OnETB("Wilson, Refined Grizzly", wilsonRefinedGrizzlyETB)
+}
+
+func wilsonRefinedGrizzlyCast(gs *gameengine.GameState, item *gameengine.StackItem) {
+	const slug = "wilson_refined_grizzly_cant_be_countered"
+	if gs == nil || item == nil {
+		return
+	}
+	if item.CostMeta == nil {
+		item.CostMeta = map[string]interface{}{}
+	}
+	item.CostMeta["cannot_be_countered"] = true
+	name := ""
+	if item.Card != nil {
+		name = item.Card.DisplayName()
+	}
+	emit(gs, slug, name, map[string]interface{}{
+		"seat":          item.Controller,
+		"stack_flagged": true,
+	})
 }
 
 func wilsonRefinedGrizzlyETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -38,13 +57,9 @@ func wilsonRefinedGrizzlyETB(gs *gameengine.GameState, perm *gameengine.Permanen
 	perm.Flags["kw:vigilance"] = 1
 	perm.Flags["kw:reach"] = 1
 	perm.Flags["kw:trample"] = 1
-	// "This spell can't be countered" applies to the cast event itself;
-	// once Wilson resolves, it's a non-issue. We surface the boundary.
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":      perm.Controller,
-		"ward":      2,
-		"keywords":  []string{"vigilance", "reach", "trample"},
+		"seat":     perm.Controller,
+		"ward":     2,
+		"keywords": []string{"vigilance", "reach", "trample"},
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"choose_background_partner_handled_at_deck_construction_time")
 }

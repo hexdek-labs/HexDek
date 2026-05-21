@@ -51,8 +51,20 @@ func normanOsbornETBPartial(gs *gameengine.GameState, perm *gameengine.Permanent
 	if gs == nil || perm == nil {
 		return
 	}
+	// "Norman Osborn can't be blocked." Stamp the canonical
+	// Flags["unblockable"]=1 the combat blocker-legality check reads
+	// (same wiring as Wraith, Vicious Vigilante). The flag is per-
+	// permanent so it dies with the perm at LTB — no cleanup needed.
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	perm.Flags["unblockable"] = 1
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":        perm.Controller,
+		"unblockable": true,
+	})
 	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"unblockable + transform + back-face graveyard-cast cost reduction not yet ported; combat-damage connive handled by trigger hook")
+		"transform + back-face graveyard-cast cost reduction not yet ported; combat-damage connive handled by trigger hook")
 }
 
 // normanOsbornCombatDamageConnive fires for every combat-damage-to-

@@ -23,6 +23,26 @@ import (
 func registerOzaiThePhoenixKing(r *Registry) {
 	r.OnETB("Ozai, the Phoenix King", ozaiETBSetFlagsAndConditionalKW)
 	r.OnTrigger("Ozai, the Phoenix King", "upkeep_controller", ozaiRecheckConditionalKW)
+	// R50 batch F: re-evaluate the conditional flying/indestructible on
+	// combat_begin so a mid-turn mana spend or float lands the right
+	// state for combat. Without this, only upkeep_controller ticked
+	// the flags, meaning a player who spent mana to ≥6 unspent during
+	// main phase 1 wouldn't see flying/indestructible until next
+	// upkeep. End_step refresh keeps a stale grant from leaking past
+	// the turn.
+	r.OnTrigger("Ozai, the Phoenix King", "combat_begin", ozaiRecheckAny)
+	r.OnTrigger("Ozai, the Phoenix King", "end_step", ozaiRecheckAny)
+}
+
+func ozaiRecheckAny(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	ozaiApplyConditional(gs, perm, seat)
 }
 
 func ozaiETBSetFlagsAndConditionalKW(gs *gameengine.GameState, perm *gameengine.Permanent) {

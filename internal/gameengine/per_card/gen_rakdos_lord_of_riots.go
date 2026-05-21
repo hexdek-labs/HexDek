@@ -39,6 +39,7 @@ func rakdosLordOfRiotsETB(gs *gameengine.GameState, perm *gameengine.Permanent) 
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"cast_restriction_opponent_lost_life_not_wired_at_per_card_layer")
+	// Cast restriction "can't cast Rakdos unless an opponent lost life
+	// this turn" is wired in cost_modifiers.go as a CostModMinimum
+	// (R50 batch F). Cost reduction handled separately there.
 }

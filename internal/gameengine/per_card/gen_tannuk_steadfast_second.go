@@ -22,6 +22,60 @@ import (
 func registerTannukSteadfastSecond(r *Registry) {
 	r.OnETB("Tannuk, Steadfast Second", tannukETBHasteAnthem)
 	r.OnTrigger("Tannuk, Steadfast Second", "permanent_etb", tannukRefreshHaste)
+	// LTB cleanup: when Tannuk leaves the battlefield, strip the
+	// kw:haste flag from creatures the controller still controls that
+	// don't have native haste (so the anthem doesn't persist past
+	// Tannuk). Also clear the warp grant seat flag.
+	r.OnTrigger("Tannuk, Steadfast Second", "permanent_ltb", tannukLTBCleanup)
+}
+
+func tannukLTBCleanup(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "tannuk_steadfast_second_ltb_cleanup"
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	// Confirm no OTHER Tannuk still in play before clearing global grant.
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, p := range s.Battlefield {
+			if p == nil || p == perm || p.Card == nil {
+				continue
+			}
+			if normalizeName(p.Card.DisplayName()) == normalizeName("Tannuk, Steadfast Second") {
+				// Another Tannuk is still on the battlefield — keep grants.
+				return
+			}
+		}
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	cleared := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p == perm || p.Flags == nil {
+			continue
+		}
+		// Only clear the anthem-granted haste; native-haste cards have
+		// "haste" baked into their Types tag so the AST reapplies it.
+		if p.Flags["kw:haste"] == 1 && p.Card != nil && !cardHasType(p.Card, "haste") {
+			delete(p.Flags, "kw:haste")
+			cleared++
+		}
+	}
+	if seat.Flags != nil {
+		delete(seat.Flags, "tannuk_warp_grant_2r_active")
+	}
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":          perm.Controller,
+		"haste_cleared": cleared,
+	})
 }
 
 func tannukETBHasteAnthem(gs *gameengine.GameState, perm *gameengine.Permanent) {
