@@ -30,8 +30,18 @@ import (
 //     controller's battlefield.
 //   - Companion deckbuilding constraint is engine territory and is
 //     emitPartial-flagged.
+// R52 batch L: REGISTRATION NEUTERED. The gen_yorion_sky_nomad.go
+// auto-gen body was promoted to a substantive blink implementation
+// in R41 (registerYorionSkyNomad in batch_generated.go). This
+// custom_*.go was added later via zz_handler_q45_register.go and
+// duplicated the entire ETB blink, so every Yorion ETB exiled-and-
+// returned the controller's nonland-permanent set TWICE. Neutering
+// the custom-side registration keeps the canonical gen handler as
+// the sole owner; the local helper functions are retained because
+// other tests in the package import them, but the registry hook is
+// dropped.
 func registerYorionSkyNomadCustom(r *Registry) {
-	r.OnETB("Yorion, Sky Nomad", yorionETB)
+	_ = r
 }
 
 func yorionETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
