@@ -186,3 +186,50 @@ func TestLayer7Ports_Multani_PTEqualsAllHands(t *testing.T) {
 		t.Errorf("expected 5/5, got %d/%d", chars.Power, chars.Toughness)
 	}
 }
+
+// 11. Sandman, Shifting Scoundrel — P/T = lands you control. R55
+//     deferred this port due to a global-rand interaction with
+//     TestKrark; r55's krark.go switched to gs.Rng, and r56 finishes
+//     the port (custom_sandman_shifting_scoundrel.go).
+func TestLayer7Ports_R56_Sandman_PTEqualsLands(t *testing.T) {
+	gs := newGame(t, 2)
+	sand := addPerm(gs, 0, "Sandman, Shifting Scoundrel", "creature", "legendary")
+	for i := 0; i < 3; i++ {
+		addPerm(gs, 0, "Forest", "land", "basic", "forest")
+	}
+	gameengine.InvokeETBHook(gs, sand)
+
+	chars := gameengine.GetEffectiveCharacteristics(gs, sand)
+	if chars.Power != 3 || chars.Toughness != 3 {
+		t.Errorf("expected 3/3 with 3 lands, got %d/%d", chars.Power, chars.Toughness)
+	}
+	// Tracking: add a 4th land; CDA should now read 4/4 on next layer pass.
+	addPerm(gs, 0, "Mountain", "land", "basic", "mountain")
+	gs.InvalidateCharacteristicsCache()
+	chars = gameengine.GetEffectiveCharacteristics(gs, sand)
+	if chars.Power != 4 || chars.Toughness != 4 {
+		t.Errorf("expected 4/4 after 4th land, got %d/%d", chars.Power, chars.Toughness)
+	}
+}
+
+// 12. Namor the Sub-Mariner — power = Merfolk you control. r55
+//     deferred; r56 ports namor_sub_mariner.go to
+//     RegisterDynamicSetPower.
+func TestLayer7Ports_R56_Namor_PowerEqualsMerfolk(t *testing.T) {
+	gs := newGame(t, 2)
+	namor := addPerm(gs, 0, "Namor the Sub-Mariner", "creature", "legendary")
+	namor.Card.BasePower = 0
+	namor.Card.BaseToughness = 4
+	addPerm(gs, 0, "Merrow Wavebreaker", "creature", "merfolk")
+	addPerm(gs, 0, "Merfolk Looter", "creature", "merfolk")
+	addPerm(gs, 0, "Plain Bear", "creature", "bear")
+	gameengine.InvokeETBHook(gs, namor)
+
+	chars := gameengine.GetEffectiveCharacteristics(gs, namor)
+	if chars.Power != 2 {
+		t.Errorf("expected power 2 (2 Merfolk; Namor isn't a Merfolk), got %d", chars.Power)
+	}
+	if chars.Toughness != 4 {
+		t.Errorf("expected toughness preserved at printed 4, got %d", chars.Toughness)
+	}
+}
