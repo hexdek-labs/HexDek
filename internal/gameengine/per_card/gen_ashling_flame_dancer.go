@@ -18,8 +18,11 @@ import (
 //	add {R}{R}{R}{R}.
 //
 // Implementation (R36 stub port):
-//   - "Don't lose unspent red mana" is engine territory (mana-empty
-//     hook); emitPartial breadcrumb on ETB and skipped here.
+//   - "Don't lose unspent red mana": handled by the R57 side-handler
+//     registerAshlingFlameDancerManaExemption (mana_pool_primitive_r57.go)
+//     which calls RegisterManaPoolExemption({R}) at ETB and unregisters
+//     on LTB. The R58 stale-partial sweep drops the breadcrumb here
+//     since the primitive is wired.
 //   - Magecraft trigger: listen on "instant_or_sorcery_cast" gated
 //     to caster_seat == controller. The keywords_magecraft.go canonical
 //     surface fires this on both real casts AND copies (R28), which
@@ -43,8 +46,6 @@ func ashlingFlameDancerETB(gs *gameengine.GameState, perm *gameengine.Permanent)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"unspent_red_mana_retention_static_not_modelled_at_per_card_layer")
 }
 
 func ashlingFlameDancerMagecraft(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

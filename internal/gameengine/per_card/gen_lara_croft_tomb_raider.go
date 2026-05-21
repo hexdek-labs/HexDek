@@ -16,13 +16,14 @@ import (
 //   Raid — At end of combat on your turn, if you attacked this turn,
 //          create a Treasure token.
 //
-// R37 port:
+// R37 port; R58 zone-cast-policy port:
 //
 //   - First strike + reach: AST keyword pipeline.
 //   - Attack trigger (exile + discovery counter + play-from-exile
-//     permission): NOT ported — would need a discovery-counter +
-//     play-from-exile system that doesn't currently exist. Flagged in
-//     emitPartial.
+//     permission): R58 — the exile + discovery-counter stamp ports
+//     directly. The play-from-exile permission is now a per-attack
+//     ZoneCastPolicy(Zone=exile, predicate=has discovery_counter,
+//     Duration=until_end_of_turn).
 //   - Raid: PORTED. end_of_combat_controller trigger fires
 //     CreateTreasureToken when the controller attacked this turn.
 //     Reads Seat.Turn.Attacked (set by combat.go's DeclareAttackers).
@@ -33,6 +34,34 @@ func registerLaraCroftTombRaider(r *Registry) {
 	r.OnETB("Lara Croft, Tomb Raider", laraCroftStaticETB)
 	r.OnTrigger("Lara Croft, Tomb Raider", "creature_attacks", laraCroftAttackTrigger)
 	r.OnTrigger("Lara Croft, Tomb Raider", "end_of_combat", laraCroftRaidTreasure)
+	r.OnTrigger("Lara Croft, Tomb Raider", "permanent_ltb", laraCroftLTB)
+}
+
+func laraCroftLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	gs.UnregisterZoneCastPoliciesForPermanent(perm)
+}
+
+// laraCroftDiscoveryPredicate matches any card carrying the
+// "discovery_counter" type tag laraCroftAttackTrigger stamps. Defined at
+// file scope so the closure registered by every Lara Croft attack
+// shares the same predicate pointer.
+func laraCroftDiscoveryPredicate(c *gameengine.Card) bool {
+	if c == nil {
+		return false
+	}
+	for _, t := range c.Types {
+		if t == "discovery_counter" {
+			return true
+		}
+	}
+	return false
 }
 
 func laraCroftStaticETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -110,15 +139,32 @@ func laraCroftAttackTrigger(gs *gameengine.GameState, perm *gameengine.Permanent
 	if !tagged {
 		bestCard.Types = append(bestCard.Types, "discovery_counter")
 	}
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":           perm.Controller,
-		"exiled":         bestCard.DisplayName(),
-		"from_seat":      bestSeat,
-		"cmc":            bestCMC,
-		"discovery_set":  true,
+	// R58: register a ZoneCastPolicy granting Lara's controller
+	// permission to cast any discovery-counter-tagged card from exile
+	// until end of turn. ManaCost=-1 honors the card's printed cost; the
+	// "you may play it" wording covers lands and spells alike — the
+	// engine's CastFromZone path handles the land-vs-spell branch.
+	gs.RegisterZoneCastPolicy(&gameengine.ZoneCastPolicy{
+		SourcePerm:      perm,
+		HandlerID:       "lara_croft_discovery_play_from_exile",
+		Zone:            gameengine.ZoneExile,
+		OwnerScope:      "any",
+		CasterScope:     "controller",
+		ControllerSeat:  perm.Controller,
+		Predicate:       laraCroftDiscoveryPredicate,
+		ManaCost:        -1,
+		Duration:        "until_end_of_turn",
+		SourceTimestamp: perm.Timestamp,
+		GrantTurn:       gs.Turn,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"play_from_exile_with_discovery_counter_this_turn_pipeline_not_wired")
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":          perm.Controller,
+		"exiled":        bestCard.DisplayName(),
+		"from_seat":     bestSeat,
+		"cmc":           bestCMC,
+		"discovery_set": true,
+		"policy":        "lara_croft_discovery_play_from_exile",
+	})
 }
 
 // laraCroftRaidTreasure fires at end of combat. Per CR §702.128a

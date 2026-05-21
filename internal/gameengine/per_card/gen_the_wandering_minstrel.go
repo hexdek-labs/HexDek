@@ -17,9 +17,16 @@ import (
 //	{3}{W}{U}{B}{R}{G}: Other creatures you control get +X/+X until
 //	end of turn, where X is the number of Towns you control.
 //
-// Implementation (R49 stub port):
-//   - "Lands enter untapped" — engine-side AST static; emitPartial gap
-//     breadcrumb (the per_card layer can't intercept land-ETB tap state).
+// Implementation (R49 stub port; R58 lands-enter-untapped port):
+//   - "Lands you control enter untapped": R58 — permanent_etb hook
+//     untaps any land entering the Minstrel's controller's battlefield.
+//     This is the same shape as Archelos' ETB-tap replacement, only in
+//     reverse: instead of stamping Tapped=true on entering perms we
+//     stamp Tapped=false. Existing "enter tapped" effects (Sandstone
+//     Needle, fetchland triggers) all run BEFORE per_card permanent_etb
+//     fires, so this hook overrides them by design — matching the
+//     printed text "Lands you control enter untapped (or replace any
+//     other 'enters tapped' effects)" intent.
 //   - The Minstrel's Ballad (combat_begin trigger): gate on
 //     active_seat == controller AND townCount(controller) >= 5. Spawns
 //     a 2/2 Elemental token stamped with all five colors.
@@ -33,6 +40,7 @@ func registerTheWanderingMinstrel(r *Registry) {
 	r.OnETB("The Wandering Minstrel", theWanderingMinstrelETB)
 	r.OnActivated("The Wandering Minstrel", theWanderingMinstrelActivate)
 	r.OnTrigger("The Wandering Minstrel", "combat_begin", theWanderingMinstrelCombatBegin)
+	r.OnTrigger("The Wandering Minstrel", "permanent_etb", theWanderingMinstrelOnLandETB)
 }
 
 func theWanderingMinstrelETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -43,8 +51,37 @@ func theWanderingMinstrelETB(gs *gameengine.GameState, perm *gameengine.Permanen
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"lands_enter_untapped_static_handled_by_ast_engine")
+}
+
+// theWanderingMinstrelOnLandETB untaps any land entering the
+// Minstrel's controller's battlefield. Mirrors Archelos' ETB-tap
+// replacement shape inverted: stamp Tapped=false on the entering perm
+// when it's a land controlled by the Minstrel's controller.
+func theWanderingMinstrelOnLandETB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "the_wandering_minstrel_land_untap"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
+		return
+	}
+	entering, _ := ctx["perm"].(*gameengine.Permanent)
+	if entering == nil || entering == perm || entering.Card == nil {
+		return
+	}
+	if entering.Controller != perm.Controller {
+		return
+	}
+	if !cardHasType(entering.Card, "land") &&
+		!strings.Contains(strings.ToLower(entering.Card.TypeLine), "land") {
+		return
+	}
+	if !entering.Tapped {
+		return
+	}
+	entering.Tapped = false
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":      perm.Controller,
+		"land":      entering.Card.DisplayName(),
+		"untapped":  true,
+	})
 }
 
 func minstrelTownCount(gs *gameengine.GameState, seatIdx int) int {

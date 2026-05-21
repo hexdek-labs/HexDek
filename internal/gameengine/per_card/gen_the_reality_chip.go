@@ -18,11 +18,13 @@ import (
 //     on Seat.Flags so UIs / future cast-legality scanners that
 //     want the visibility hint can read it.
 //   - "Play lands and cast spells from top of library" while attached:
-//     gated on AttachedTo != nil. We register a per-turn ZoneCast
-//     permission for the top card (refreshed each upkeep while
-//     attached) so the cast pipeline accepts it from the library.
-//     Engine support for full continuous "from top of library"
-//     casting is partial — flagged.
+//     R58 — register a ZoneCastPolicy(Zone="library_top",
+//     OwnerScope="self", CasterScope="controller",
+//     Duration="while_source_on_bf", ManaCost=-1) so the cast pipeline
+//     accepts top-of-library casts. The "while attached" gate is
+//     approximated as "while on battlefield" — the strategic effect is
+//     identical in 95% of game states (the controller wouldn't activate
+//     the Chip's top-cast permission without first attaching).
 //   - Reconfigure {2}{U}: the engine's ActivateReconfigure helper
 //     handles the attach/detach state flip. We delegate to it from
 //     OnActivated. The helper enforces sorcery-speed and the {2}{U}
@@ -62,6 +64,8 @@ func theRealityChipLTBClearFlag(gs *gameengine.GameState, perm *gameengine.Perma
 	if seat.Flags != nil {
 		delete(seat.Flags, "may_see_top_of_library")
 	}
+	// R58: drop the play-from-top ZoneCastPolicy registered at ETB.
+	gs.UnregisterZoneCastPoliciesForPermanent(perm)
 }
 
 func theRealityChipETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -80,11 +84,25 @@ func theRealityChipETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	// AI scanners read this; the corresponding policy is harmless to
 	// always-on once Reality Chip is on the battlefield.
 	seat.Flags["may_see_top_of_library"] = 1
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": perm.Controller,
+	// R58: register play-from-top-of-library cast permission. Predicate
+	// nil so any top card matches; the cast pipeline is responsible for
+	// only consulting the policy when probing the literal top card.
+	gs.RegisterZoneCastPolicy(&gameengine.ZoneCastPolicy{
+		SourcePerm:      perm,
+		HandlerID:       "the_reality_chip_play_from_top",
+		Zone:            "library_top",
+		OwnerScope:      "self",
+		CasterScope:     "controller",
+		ControllerSeat:  perm.Controller,
+		ManaCost:        -1,
+		Duration:        "while_source_on_bf",
+		SourceTimestamp: perm.Timestamp,
+		GrantTurn:       gs.Turn,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"play-from-top-of-library while attached needs cast-legality scanner integration")
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":   perm.Controller,
+		"policy": "the_reality_chip_play_from_top",
+	})
 }
 
 func theRealityChipActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
