@@ -1,32 +1,16 @@
 package per_card
 
-import (
-	"github.com/hexdek/hexdek/internal/gameengine"
-)
-
-// registerSplinterRadicalRat wires Splinter, Radical Rat.
+// registerSplinterRadicalRat is the auto-generated entry point
+// retained so the batch_generated.go registry call keeps compiling.
+// The real implementation (Ninja triggered-ability doubler + {1}{U}
+// target-Ninja-unblockable activated ability) lives in
+// custom_splinter_radical_rat.go and is wired via
+// registerSplinterRadicalRatCustom (zz_activated_stubs_register.go).
 //
-// Oracle text:
-//
-//   If a triggered ability of a Ninja creature you control triggers, that ability triggers an additional time.
-//   {1}{U}: Target Ninja can't be blocked this turn.
-//
-// Auto-generated activated ability handler.
+// The auto-gen activated body emitted a misleading partial breadcrumb
+// on every Splinter activation even though the custom handler already
+// implements the unblockable grant. Neutered here (R50 batch G) so
+// the partial channel doesn't surface a duplicate parser-gap signal.
 func registerSplinterRadicalRat(r *Registry) {
-	r.OnActivated("Splinter, Radical Rat", splinterRadicalRatActivate)
-}
-
-func splinterRadicalRatActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
-	const slug = "splinter_radical_rat_activate"
-	if gs == nil || src == nil {
-		return
-	}
-	seat := src.Controller
-	if seat < 0 || seat >= len(gs.Seats) {
-		return
-	}
-	emitPartial(gs, slug, src.Card.DisplayName(), "auto-gen: activated effect not parsed from oracle text")
-	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-		"seat": seat,
-	})
+	_ = r
 }

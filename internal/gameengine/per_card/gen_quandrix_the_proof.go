@@ -1,26 +1,19 @@
 package per_card
 
-import (
-	"github.com/hexdek/hexdek/internal/gameengine"
-)
-
-// registerQuandrixTheProof wires Quandrix, the Proof.
+// registerQuandrixTheProof is the auto-generated entry point retained
+// so the batch_generated.go registry call keeps compiling. The real
+// implementation (ETB +1/+1 counter doubler + cast-from-command-zone
+// counter distribution) lives in custom_quandrix_the_proof.go and is
+// wired via registerQuandrixTheProofCustom (registered from
+// registry.go).
 //
-// Oracle text:
-//
-//   Flying, trample
-//   Cascade (When you cast this spell, exile cards from the top of your library until you exile a nonland card that costs less. You may cast it without paying its mana cost. Put the exiled cards on the bottom in a random order.)
-//   Instant and sorcery spells you cast from your hand have cascade.
-//
-// Auto-generated static ability stub (partial — engine handles most statics via AST).
+// Note: the auto-gen oracle text in this stub describes a different
+// printing (cascade-rider). The custom handler implements the
+// Strixhaven Commander 2021 printing's counter-doubling effect. The
+// auto-gen body emitted a misleading "static abilities handled by
+// AST engine" partial breadcrumb on every Quandrix ETB regardless.
+// Neutered here (R50 batch G) so the partial channel doesn't surface
+// the fake AST gap.
 func registerQuandrixTheProof(r *Registry) {
-	r.OnETB("Quandrix, the Proof", quandrixTheProofStaticETB)
-}
-
-func quandrixTheProofStaticETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "quandrix_the_proof_static"
-	if gs == nil || perm == nil {
-		return
-	}
-	emitPartial(gs, slug, perm.Card.DisplayName(), "static abilities handled by AST engine; per_card stub for registration tracking")
+	_ = r
 }

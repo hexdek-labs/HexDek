@@ -1,32 +1,18 @@
 package per_card
 
-import (
-	"github.com/hexdek/hexdek/internal/gameengine"
-)
-
-// registerShadowheartDarkJusticiar wires Shadowheart, Dark Justiciar.
+// registerShadowheartDarkJusticiar is the auto-generated entry point
+// retained so the batch_generated.go registry call keeps compiling.
+// The real activated ability ({1}{B}, {T}, sac another creature: draw
+// X cards where X = sacrificed creature's power) lives in
+// custom_shadowheart_dark_justiciar.go and is wired via
+// registerShadowheartDarkJusticiarCustom
+// (zz_activated_stubs_register.go).
 //
-// Oracle text:
-//
-//   {1}{B}, {T}, Sacrifice another creature: Draw X cards, where X is that creature's power.
-//   Choose a Background (You can have a Background as a second commander.)
-//
-// Auto-generated activated ability handler.
+// The auto-gen activated body emitted a misleading partial breadcrumb
+// on every Shadowheart activation even though the custom handler
+// already implements the sac-for-cards effect. Neutered here (R50
+// batch G) so the partial channel doesn't surface a duplicate
+// parser-gap signal.
 func registerShadowheartDarkJusticiar(r *Registry) {
-	r.OnActivated("Shadowheart, Dark Justiciar", shadowheartDarkJusticiarActivate)
-}
-
-func shadowheartDarkJusticiarActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
-	const slug = "shadowheart_dark_justiciar_activate"
-	if gs == nil || src == nil {
-		return
-	}
-	seat := src.Controller
-	if seat < 0 || seat >= len(gs.Seats) {
-		return
-	}
-	emitPartial(gs, slug, src.Card.DisplayName(), "auto-gen: activated effect not parsed from oracle text")
-	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-		"seat": seat,
-	})
+	_ = r
 }

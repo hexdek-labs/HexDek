@@ -22,6 +22,25 @@ import (
 func registerTannukSteadfastSecond(r *Registry) {
 	r.OnETB("Tannuk, Steadfast Second", tannukETBHasteAnthem)
 	r.OnTrigger("Tannuk, Steadfast Second", "permanent_etb", tannukRefreshHaste)
+	// R50 batch G: LTB clears the warp-grant seat flag so a stolen /
+	// exiled Tannuk doesn't leave the alt-cost grant contract active
+	// for downstream consumers.
+	r.OnTrigger("Tannuk, Steadfast Second", "permanent_ltb", tannukLTBClearFlag)
+}
+
+func tannukLTBClearFlag(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil || seat.Flags == nil {
+		return
+	}
+	delete(seat.Flags, "tannuk_warp_grant_2r_active")
 }
 
 func tannukETBHasteAnthem(gs *gameengine.GameState, perm *gameengine.Permanent) {

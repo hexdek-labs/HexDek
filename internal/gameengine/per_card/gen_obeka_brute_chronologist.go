@@ -1,31 +1,18 @@
 package per_card
 
-import (
-	"github.com/hexdek/hexdek/internal/gameengine"
-)
-
-// registerObekaBruteChronologist wires Obeka, Brute Chronologist.
+// registerObekaBruteChronologist is the auto-generated entry point
+// retained so the batch_generated.go registry call keeps compiling.
+// The real activated ability ({T}: the player whose turn it is may
+// end the turn — stack exile + hand-size discard + damage wear-off +
+// UEOT cleanup) lives in custom_obeka_brute_chronologist.go and is
+// wired via registerObekaBruteChronologistCustom
+// (zz_activated_stubs_register.go).
 //
-// Oracle text:
-//
-//   {T}: The player whose turn it is may end the turn. (Exile all spells and abilities from the stack. The player whose turn it is discards down to their maximum hand size. Damage wears off, and "this turn" and "until end of turn" effects end.)
-//
-// Auto-generated activated ability handler.
+// The auto-gen activated body emitted a misleading partial breadcrumb
+// on every Obeka activation even though the custom handler already
+// implements the full end-the-turn sequence. Neutered here (R50
+// batch G) so the partial channel doesn't surface a duplicate
+// parser-gap signal.
 func registerObekaBruteChronologist(r *Registry) {
-	r.OnActivated("Obeka, Brute Chronologist", obekaBruteChronologistActivate)
-}
-
-func obekaBruteChronologistActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
-	const slug = "obeka_brute_chronologist_activate"
-	if gs == nil || src == nil {
-		return
-	}
-	seat := src.Controller
-	if seat < 0 || seat >= len(gs.Seats) {
-		return
-	}
-	emitPartial(gs, slug, src.Card.DisplayName(), "auto-gen: activated effect not parsed from oracle text")
-	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-		"seat": seat,
-	})
+	_ = r
 }
