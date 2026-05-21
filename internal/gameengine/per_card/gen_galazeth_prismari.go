@@ -1,41 +1,18 @@
 package per_card
 
-import (
-	"github.com/hexdek/hexdek/internal/gameengine"
-)
-
-// registerGalazethPrismari wires Galazeth Prismari.
+// registerGalazethPrismari is the auto-generated entry point retained
+// so the batch_generated.go registry call keeps compiling. The real
+// ETB (create a Treasure token) and the artifact-tap mana grant live
+// in custom_galazeth_prismari.go and are wired via
+// registerGalazethPrismariCustom (registered from registry.go).
 //
-// Oracle text:
-//
-//   Flying
-//   When Galazeth Prismari enters, create a Treasure token.
-//   Artifacts you control have "{T}: Add one mana of any color. Spend this mana only to cast an instant or sorcery spell."
-//
-// Auto-generated ETB handler.
+// REPLACES BROKEN AUTO-GEN ETB: the previous gen body minted a 1/1
+// "Creature Token" on every Galazeth ETB — neither a Treasure (per
+// the printed oracle) nor a behavior recoverable from the oracle
+// text. The custom handler already creates the Treasure correctly.
+// Neutered here (R49 batch C) so each Galazeth ETB no longer adds a
+// phantom 1/1 to the controller's battlefield alongside the proper
+// Treasure.
 func registerGalazethPrismari(r *Registry) {
-	r.OnETB("Galazeth Prismari", galazethPrismariETB)
-}
-
-func galazethPrismariETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "galazeth_prismari_etb"
-	if gs == nil || perm == nil {
-		return
-	}
-	seat := perm.Controller
-	if seat < 0 || seat >= len(gs.Seats) {
-		return
-	}
-	token := &gameengine.Card{
-		Name:          "1/1 Creature Token",
-		Owner:         seat,
-		BasePower:     1,
-		BaseToughness: 1,
-		Types:         []string{"token", "creature", "creature"},
-	}
-	enterBattlefieldWithETB(gs, seat, token, false)
-	emitPartial(gs, slug, perm.Card.DisplayName(), "additional non-ETB abilities not implemented")
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": seat,
-	})
+	_ = r
 }

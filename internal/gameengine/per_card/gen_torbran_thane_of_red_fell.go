@@ -18,8 +18,34 @@ import (
 // can read and emit the partial breadcrumb so the audit catches the gap.
 // The flag value carries the controller seat (+1 so default 0 = off)
 // AND the damage bonus, so multiple Torbrans stack additively.
+//
+// R49 batch C add: LTB hook decrements the bonus stack so the flag
+// goes inert when Torbran leaves play. Without this the +2 stuck on
+// the game state forever once Torbran ever entered, and a second
+// Torbran would leave +4 stuck after the first one bounced.
 func registerTorbranThaneOfRedFell(r *Registry) {
 	r.OnETB("Torbran, Thane of Red Fell", torbranETBSetDamageFlag)
+	r.OnTrigger("Torbran, Thane of Red Fell", "permanent_ltb", torbranLTBClearDamageFlag)
+}
+
+func torbranLTBClearDamageFlag(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	if gs.Flags == nil {
+		return
+	}
+	if gs.Flags["torbran_red_damage_bonus"] >= 2 {
+		gs.Flags["torbran_red_damage_bonus"] -= 2
+	}
+	if gs.Flags["torbran_red_damage_bonus"] <= 0 {
+		delete(gs.Flags, "torbran_red_damage_bonus")
+		delete(gs.Flags, "torbran_red_damage_seat")
+	}
 }
 
 func torbranETBSetDamageFlag(gs *gameengine.GameState, perm *gameengine.Permanent) {

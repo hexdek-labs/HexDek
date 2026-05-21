@@ -1,25 +1,17 @@
 package per_card
 
-import (
-	"github.com/hexdek/hexdek/internal/gameengine"
-)
-
-// registerMisterNegative wires Mister Negative.
+// registerMisterNegative is the auto-generated entry point retained so
+// the batch_generated.go registry call keeps compiling. The real ETB
+// (Darkforce Inversion: exchange life totals with target opponent;
+// draw cards equal to life lost) lives in
+// custom_mister_negative.go and is wired via
+// registerMisterNegativeCustom (zz_handler_q45_register.go).
 //
-// Oracle text:
-//
-//   Vigilance, lifelink
-//   Darkforce Inversion — When Mister Negative enters, you may exchange life totals with target opponent. If you lost life this way, draw that many cards.
-//
-// Auto-generated static ability stub (partial — engine handles most statics via AST).
+// The auto-gen body emitted a misleading "static abilities handled by
+// AST engine" partial breadcrumb on every Mister Negative ETB — but
+// Darkforce Inversion is a one-shot ETB effect, not a static, and the
+// custom handler already implements it. Neutered here (R49 batch C)
+// so the partial channel doesn't surface a fake static-AST gap.
 func registerMisterNegative(r *Registry) {
-	r.OnETB("Mister Negative", misterNegativeStaticETB)
-}
-
-func misterNegativeStaticETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "mister_negative_static"
-	if gs == nil || perm == nil {
-		return
-	}
-	emitPartial(gs, slug, perm.Card.DisplayName(), "static abilities handled by AST engine; per_card stub for registration tracking")
+	_ = r
 }

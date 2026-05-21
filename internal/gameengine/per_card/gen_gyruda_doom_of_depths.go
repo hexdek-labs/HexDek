@@ -1,33 +1,15 @@
 package per_card
 
-import (
-	"github.com/hexdek/hexdek/internal/gameengine"
-)
-
-// registerGyrudaDoomOfDepths wires Gyruda, Doom of Depths.
+// registerGyrudaDoomOfDepths is the auto-generated entry point retained
+// so the batch_generated.go registry call keeps compiling. The real ETB
+// (each player mills four; reanimate an even-MV creature from the
+// milled cards) lives in custom_gyruda_doom_of_depths.go and is wired
+// via registerGyrudaDoomOfDepthsCustom (zz_handler_q45_register.go).
 //
-// Oracle text:
-//
-//   Companion — Your starting deck contains only cards with even mana values. (If this card is your chosen companion, you may put it into your hand from outside the game for {3} as a sorcery.)
-//   When Gyruda enters, each player mills four cards. Put a creature card with an even mana value from among the milled cards onto the battlefield under your control.
-//
-// Auto-generated ETB handler.
+// The auto-gen body emitted TWO misleading partial breadcrumbs on every
+// Gyruda ETB even though the custom handler already implemented the
+// mill-and-reanimate. Neutered here (R49 batch C) so the partial
+// channel doesn't surface duplicate parser-gap signals.
 func registerGyrudaDoomOfDepths(r *Registry) {
-	r.OnETB("Gyruda, Doom of Depths", gyrudaDoomOfDepthsETB)
-}
-
-func gyrudaDoomOfDepthsETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "gyruda_doom_of_depths_etb"
-	if gs == nil || perm == nil {
-		return
-	}
-	seat := perm.Controller
-	if seat < 0 || seat >= len(gs.Seats) {
-		return
-	}
-	emitPartial(gs, slug, perm.Card.DisplayName(), "auto-gen: ETB effect not parsed from oracle text")
-	emitPartial(gs, slug, perm.Card.DisplayName(), "additional non-ETB abilities not implemented")
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": seat,
-	})
+	_ = r
 }
