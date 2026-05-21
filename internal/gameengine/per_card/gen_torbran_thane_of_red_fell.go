@@ -1,6 +1,8 @@
 package per_card
 
 import (
+	"strings"
+
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -12,23 +14,62 @@ import (
 //	permanent an opponent controls, it deals that much damage plus 2
 //	instead.
 //
-// Implementation: a damage replacement is engine-deep (it has to wrap
-// every DealDamage call from a red source controlled by Torbran's
-// controller). Until that hook lands, set per-seat flags the engine
-// can read and emit the partial breadcrumb so the audit catches the gap.
-// The flag value carries the controller seat (+1 so default 0 = off)
-// AND the damage bonus, so multiple Torbrans stack additively.
-//
-// R49 batch C add: LTB hook decrements the bonus stack so the flag
-// goes inert when Torbran leaves play. Without this the +2 stuck on
-// the game state forever once Torbran ever entered, and a second
-// Torbran would leave +4 stuck after the first one bounced.
+// Implementation (R54 — damage replacement primitive):
+//   - ETB registers a DamageReplacement closure on the engine's
+//     gs.DamageReplacements registry. The closure filters on
+//     (source is red AND source controlled by Torbran's controller
+//     AND target is opponent or opponent-controlled permanent) and
+//     adds +2 to ctx.Amount.
+//   - LTB unregisters the closure via
+//     UnregisterDamageReplacementsForPermanent so a bounced /
+//     exiled Torbran stops applying the +2.
+//   - Multiple Torbrans stack additively per §616 — registering
+//     each replacement independently means a second Torbran adds
+//     another +2 closure (total +4).
+//   - The pre-R54 seat-flag breadcrumbs (torbran_red_damage_seat /
+//     torbran_red_damage_bonus) are dropped — the engine now reads
+//     the actual replacement registry, not the flag.
 func registerTorbranThaneOfRedFell(r *Registry) {
-	r.OnETB("Torbran, Thane of Red Fell", torbranETBSetDamageFlag)
-	r.OnTrigger("Torbran, Thane of Red Fell", "permanent_ltb", torbranLTBClearDamageFlag)
+	r.OnETB("Torbran, Thane of Red Fell", torbranETBRegisterReplacement)
+	r.OnTrigger("Torbran, Thane of Red Fell", "permanent_ltb", torbranLTBUnregister)
 }
 
-func torbranLTBClearDamageFlag(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+func torbranETBRegisterReplacement(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	const slug = "torbran_red_damage_plus_two"
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	controller := perm.Controller
+	gs.RegisterDamageReplacement(&gameengine.DamageReplacement{
+		SourcePerm: perm,
+		HandlerID:  "torbran_red_plus_two",
+		Fn: func(gs *gameengine.GameState, ctx *gameengine.DamageContext) {
+			if ctx == nil || ctx.Source == nil || ctx.Source.Card == nil {
+				return
+			}
+			if ctx.Source.Controller != controller {
+				return
+			}
+			if !torbranIsRedSource(ctx.Source.Card) {
+				return
+			}
+			// "an opponent or a permanent an opponent controls" —
+			// TargetSeat is the seat of either the damaged player
+			// (player-target damage) or the target permanent's
+			// controller (creature/planeswalker-target damage).
+			if ctx.TargetSeat == controller {
+				return
+			}
+			ctx.Amount += 2
+		},
+	})
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":  controller,
+		"bonus": 2,
+	})
+}
+
+func torbranLTBUnregister(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
@@ -36,35 +77,25 @@ func torbranLTBClearDamageFlag(gs *gameengine.GameState, perm *gameengine.Perman
 	if leaving != perm {
 		return
 	}
-	if gs.Flags == nil {
-		return
-	}
-	if gs.Flags["torbran_red_damage_bonus"] >= 2 {
-		gs.Flags["torbran_red_damage_bonus"] -= 2
-	}
-	if gs.Flags["torbran_red_damage_bonus"] <= 0 {
-		delete(gs.Flags, "torbran_red_damage_bonus")
-		delete(gs.Flags, "torbran_red_damage_seat")
-	}
+	gs.UnregisterDamageReplacementsForPermanent(perm)
 }
 
-func torbranETBSetDamageFlag(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "torbran_red_damage_plus_two"
-	if gs == nil || perm == nil || perm.Card == nil {
-		return
+// torbranIsRedSource returns true if the card has red among its
+// colors or carries a "pip:R" type tag (matches the test-fixture
+// convention used throughout per_card_test.go for color-by-tag).
+func torbranIsRedSource(c *gameengine.Card) bool {
+	if c == nil {
+		return false
 	}
-	if gs.Flags == nil {
-		gs.Flags = map[string]int{}
+	for _, col := range c.Colors {
+		if strings.EqualFold(col, "R") {
+			return true
+		}
 	}
-	// Encode controller seat (+1 so 0 means inactive) and the damage
-	// bonus stack count. A second Torbran adds another +2 — they stack
-	// per the rules cleanup ruling on multiple replacement effects.
-	gs.Flags["torbran_red_damage_seat"] = perm.Controller + 1
-	gs.Flags["torbran_red_damage_bonus"] += 2
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":  perm.Controller,
-		"bonus": gs.Flags["torbran_red_damage_bonus"],
-	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"red-source-damage replacement needs DealDamage hook to apply +2; flag set for downstream consumers")
+	for _, t := range c.Types {
+		if strings.EqualFold(t, "pip:R") {
+			return true
+		}
+	}
+	return false
 }

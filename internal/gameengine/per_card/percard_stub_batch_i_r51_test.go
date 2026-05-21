@@ -228,21 +228,32 @@ func TestStorm_LTBClearsStormGrantPending(t *testing.T) {
 	}
 }
 
+// NOTE: Lightning was migrated in R54 from gs.Flags["lightning_
+// stagger_seat*_until_turn"] keys to real DamageReplacement closures
+// on gs.DamageReplacements. The test asserts that LTB unregisters
+// the closures; the actual damage-doubling delta is asserted in
+// percard_damage_replacement_r54_test.go via combat dispatch.
+
 func TestLightning_LTBSweepsStaggerKeys(t *testing.T) {
 	gs := newGame(t, 3)
 	lit := addPerm(gs, 0, "Lightning, Army of One", "creature", "legendary")
 	gs.Flags = map[string]int{}
-	gs.Flags["lightning_stagger_seat1_until_turn"] = 6
-	gs.Flags["lightning_stagger_seat2_until_turn"] = 6
 	gs.Flags["other_unrelated_flag"] = 1
-
-	lightningLTBClearStagger(gs, lit, map[string]interface{}{"perm": lit})
-
-	if _, has := gs.Flags["lightning_stagger_seat1_until_turn"]; has {
-		t.Errorf("LTB should sweep seat1 stagger key")
+	// Arm two stagger replacements (different defenders).
+	lightningStaggerArm(gs, lit, map[string]interface{}{
+		"attacker_perm": lit,
+		"defender":      1,
+	})
+	lightningStaggerArm(gs, lit, map[string]interface{}{
+		"attacker_perm": lit,
+		"defender":      2,
+	})
+	if len(gs.DamageReplacements) != 2 {
+		t.Fatalf("expected 2 stagger replacements registered; got %d", len(gs.DamageReplacements))
 	}
-	if _, has := gs.Flags["lightning_stagger_seat2_until_turn"]; has {
-		t.Errorf("LTB should sweep seat2 stagger key")
+	lightningLTBUnregister(gs, lit, map[string]interface{}{"perm": lit})
+	if len(gs.DamageReplacements) != 0 {
+		t.Errorf("LTB should unregister all Lightning replacements; got %d", len(gs.DamageReplacements))
 	}
 	if gs.Flags["other_unrelated_flag"] != 1 {
 		t.Errorf("LTB must NOT clear unrelated flags")
@@ -269,7 +280,7 @@ func TestBatchI_NonSourceLTBIgnoredByAllHandlers(t *testing.T) {
 	samutLTBClearTurnGate(gs, z, map[string]interface{}{"perm": other})
 	senTripletsLTBSweep(gs, z, map[string]interface{}{"perm": other})
 	stormLTBClearFlag(gs, z, map[string]interface{}{"perm": other})
-	lightningLTBClearStagger(gs, z, map[string]interface{}{"perm": other})
+	lightningLTBUnregister(gs, z, map[string]interface{}{"perm": other})
 
 	if gs.Seats[0].Flags["zaffai_free_cast_available"] == 0 {
 		t.Errorf("non-source-perm LTB should NOT clear Zaffai's grant flag")

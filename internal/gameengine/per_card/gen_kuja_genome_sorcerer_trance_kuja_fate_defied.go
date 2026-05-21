@@ -46,6 +46,12 @@ func kujaLTBClearFlag(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 	if leaving != perm {
 		return
 	}
+	// R54: drop this Kuja's damage replacement unconditionally — the
+	// closure is keyed by SourcePerm so unregistering THIS perm leaves
+	// any sibling Kuja's closures intact (and the seat flag refcount
+	// scan below still runs the legacy cleanup for the seat flag).
+	gs.UnregisterDamageReplacementsForPermanent(perm)
+
 	seat := gs.Seats[perm.Controller]
 	if seat == nil {
 		return
@@ -79,11 +85,33 @@ func kujaETBSetDamageDoubler(gs *gameengine.GameState, perm *gameengine.Permanen
 		seat.Flags = map[string]int{}
 	}
 	seat.Flags["kuja_wizard_damage_doubler_active"] = 1
+
+	// R54: real damage-replacement via the engine primitive.
+	// Filter: source is a Wizard creature controlled by Kuja's
+	// controller. ctx.Amount *= 2.
+	controller := perm.Controller
+	gs.RegisterDamageReplacement(&gameengine.DamageReplacement{
+		SourcePerm: perm,
+		HandlerID:  "kuja_flare_star_wizard_double",
+		Fn: func(gs *gameengine.GameState, ctx *gameengine.DamageContext) {
+			if ctx == nil || ctx.Source == nil || ctx.Source.Card == nil {
+				return
+			}
+			if ctx.Source.Controller != controller {
+				return
+			}
+			if !cardHasSubtype(ctx.Source.Card, "wizard") {
+				return
+			}
+			if ctx.Amount <= 0 {
+				return
+			}
+			ctx.Amount *= 2
+		},
+	})
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"Wizard damage doubling needs DealDamage replacement hook; flag set for downstream consumers")
 }
 
 func kujaEndStepSpawnAndCheckTransform(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

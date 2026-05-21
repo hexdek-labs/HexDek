@@ -107,6 +107,19 @@ type GameState struct {
 	// inserting applicability predicates rather than registering wildcards.
 	Replacements []*ReplacementEffect
 
+	// DamageReplacements is the §614 damage-replacement registry
+	// (R54). Populated by ETB hooks that call
+	// RegisterDamageReplacement (Torbran +2, Sokrates dialogue,
+	// Kuja Flare-Star double, Lightning stagger, Neriv ETB-this-turn
+	// double, etc.); drained on LTB via
+	// UnregisterDamageReplacementsForPermanent. Walked by
+	// ApplyDamageReplacement, which is consulted by
+	// applyCombatDamageToPlayer / applyCombatDamageToCreature
+	// (combat.go) and DealDamage (state.go) before the actual damage
+	// is applied. See docs/percard-stub-census-r53.md §"DealDamage
+	// replacement hooks" for the 4-card slate this primitive unblocks.
+	DamageReplacements []*DamageReplacement
+
 	// ContinuousEffects is the §613 layer-system registry (Phase 8).
 	// Every static ability that changes a copiable value (copy effects,
 	// control change, text change, type-add/remove, color change, ability
@@ -1636,6 +1649,25 @@ func DealDamage(gs *GameState, seat, amount int, source string) {
 	s := gs.Seats[seat]
 	if s == nil || s.Lost {
 		return
+	}
+	// §614 damage replacement (R54) — consult any registered
+	// "if a source you control would deal damage..." effects.
+	// Torbran's red-source +2, Solphim's noncombat doubling, etc.
+	// fire here. The replacement may zero the amount or fully
+	// prevent (Sokrates-style dialogue conversion isn't reachable
+	// from noncombat damage so its filter no-ops here).
+	if len(gs.DamageReplacements) > 0 {
+		ctx := &DamageContext{
+			SourceName: source,
+			TargetSeat: seat,
+			Kind:       DamageNonCombatPlayer,
+			Amount:     amount,
+		}
+		ApplyDamageReplacement(gs, ctx)
+		if ctx.Prevented || ctx.Amount <= 0 {
+			return
+		}
+		amount = ctx.Amount
 	}
 	s.Life -= amount
 	s.Turn.LifeLost += amount

@@ -12,21 +12,20 @@ import (
 //	If a creature you control that entered this turn would deal damage,
 //	it deals twice that much damage instead.
 //
-// Implementation:
+// Implementation (R54 — damage replacement primitive):
 //   - Flying: AST keyword pipeline.
-//   - Damage doubling: engine-deep DealDamage replacement on creatures
-//     with the "entered_this_turn" marker. Set per-seat flag, emit
-//     partial. Approximate the marker on every permanent_etb event by
-//     stamping the entering perm with Flags["neriv_doubles_damage"]=1
-//     when Neriv is on its controller's battlefield. The engine's
-//     end-of-turn cleanup should clear that flag.
+//   - ETB: register a DamageReplacement closure that filters on
+//     (ctx.Source != nil AND source.Controller == Neriv's controller
+//     AND source is a creature AND source.Flags["neriv_doubles_damage"]
+//     == 1). Per-permanent "entered this turn" marker is stamped on
+//     Neriv himself at ETB and on every creature entering after Neriv
+//     via the permanent_etb trigger; end_step clears the markers so
+//     the rider's "this turn" duration is honored.
+//   - LTB unregisters the closure and sweeps remaining markers.
 func registerNerivHeartOfTheStorm(r *Registry) {
 	r.OnETB("Neriv, Heart of the Storm", nerivETBSetSeatFlag)
 	r.OnTrigger("Neriv, Heart of the Storm", "permanent_etb", nerivStampEnteringCreature)
 	r.OnTrigger("Neriv, Heart of the Storm", "end_step", nerivClearMarkers)
-	// R51 batch I: LTB clears the seat-level damage-doubler activation
-	// flag + sweeps all per-perm neriv_doubles_damage markers so a
-	// removed Neriv doesn't leave the replacement contract active.
 	r.OnTrigger("Neriv, Heart of the Storm", "permanent_ltb", nerivLTBClearFlags)
 }
 
@@ -38,6 +37,7 @@ func nerivLTBClearFlags(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 	if leaving != perm {
 		return
 	}
+	gs.UnregisterDamageReplacementsForPermanent(perm)
 	seat := gs.Seats[perm.Controller]
 	if seat == nil {
 		return
@@ -66,18 +66,37 @@ func nerivETBSetSeatFlag(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		seat.Flags = map[string]int{}
 	}
 	seat.Flags["neriv_double_etb_damage_active"] = 1
-	// Stamp Neriv himself + every creature already on the battlefield
-	// that entered this turn — best-effort: we don't track entered-this-turn
-	// for existing permanents, so we mark only Neriv on ETB.
 	if perm.Flags == nil {
 		perm.Flags = map[string]int{}
 	}
 	perm.Flags["neriv_doubles_damage"] = 1
+
+	controller := perm.Controller
+	gs.RegisterDamageReplacement(&gameengine.DamageReplacement{
+		SourcePerm: perm,
+		HandlerID:  "neriv_double_entered_this_turn",
+		Fn: func(gs *gameengine.GameState, ctx *gameengine.DamageContext) {
+			if ctx == nil || ctx.Source == nil {
+				return
+			}
+			if ctx.Source.Controller != controller {
+				return
+			}
+			if !ctx.Source.IsCreature() {
+				return
+			}
+			if ctx.Source.Flags == nil || ctx.Source.Flags["neriv_doubles_damage"] != 1 {
+				return
+			}
+			if ctx.Amount <= 0 {
+				return
+			}
+			ctx.Amount *= 2
+		},
+	})
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"damage doubling needs DealDamage replacement hook; per-perm marker stamped for downstream consumers")
 }
 
 func nerivStampEnteringCreature(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
