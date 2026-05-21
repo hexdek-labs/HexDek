@@ -220,6 +220,70 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 		}
 	}
 
+	// Hamza, Guardian of Arashin self-cast reduction (R50 batch F): the
+	// first clause of the printed text — "This spell costs {1} less to
+	// cast for each creature you control with a +1/+1 counter on it."
+	// Fires when Hamza himself is the spell being cast, regardless of
+	// where Hamza is being cast from (hand, command zone, exile via
+	// flicker). Mirrors the Ur-Dragon command-zone scan shape so the
+	// reduction applies on the FIRST cast (when Hamza isn't on the
+	// battlefield yet) and on re-casts from the command zone.
+	if strings.EqualFold(card.DisplayName(), "Hamza, Guardian of Arashin") {
+		if seatIdx >= 0 && seatIdx < len(gs.Seats) {
+			own := gs.Seats[seatIdx]
+			if own != nil {
+				n := 0
+				for _, p := range own.Battlefield {
+					if p == nil || p.Card == nil {
+						continue
+					}
+					if !p.IsCreature() {
+						continue
+					}
+					if p.Counters != nil && p.Counters["+1/+1"] > 0 {
+						n++
+					}
+				}
+				if n > 0 {
+					mods = append(mods, CostModifier{
+						Kind:   CostModReduction,
+						Amount: n,
+						Source: "Hamza, Guardian of Arashin (self-cast)",
+					})
+				}
+			}
+		}
+	}
+
+	// Rakdos, Lord of Riots self-cast restriction (R50 batch F): "You
+	// can't cast Rakdos unless an opponent lost life this turn." When
+	// Rakdos is the spell being cast and no opponent has lost life
+	// yet this turn, push a CostModMinimum of 999 so the cost
+	// calculation produces a prohibitively-high total. Matches the
+	// pattern used by Trinisphere's floor (CostModMinimum) — once the
+	// gate opens (any opponent loses life), the minimum drops and
+	// Rakdos becomes castable.
+	if strings.EqualFold(card.DisplayName(), "Rakdos, Lord of Riots") {
+		if seatIdx >= 0 && seatIdx < len(gs.Seats) {
+			oppLifeLost := 0
+			for i, s := range gs.Seats {
+				if s == nil || i == seatIdx {
+					continue
+				}
+				if s.Turn.LifeLost > 0 {
+					oppLifeLost += s.Turn.LifeLost
+				}
+			}
+			if oppLifeLost == 0 {
+				mods = append(mods, CostModifier{
+					Kind:   CostModMinimum,
+					Amount: 999,
+					Source: "Rakdos, Lord of Riots (cant_cast_no_opp_life_lost)",
+				})
+			}
+		}
+	}
+
 	// Sunderflock self-cast reduction: "This spell costs {X} less to
 	// cast, where X is the greatest mana value among Elementals you
 	// control." Scan the caster's battlefield for Elementals.

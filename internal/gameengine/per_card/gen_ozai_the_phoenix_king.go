@@ -13,15 +13,16 @@ import (
 //	Ozai has flying and indestructible as long as you have six or more
 //	unspent mana.
 //
-// R49 stub-batch-E port (defensive utility — conditional self-protection):
+// R49 stub-batch-E + R50 batch F merged port:
 //
-//	The R37 implementation only re-evaluated the ≥6-mana condition on
-//	the controller's upkeep_controller event, which left the
+//	The original implementation only re-evaluated the ≥6-mana condition
+//	on the controller's upkeep_controller event, which left the
 //	keyword-grant stale through opponent turns and inside a single
 //	turn after spending mana. This port broadens the refresh:
 //	  - ETB: snapshot mana pool, stamp/unstamp Flags accordingly.
-//	  - upkeep + end_step: every phase boundary, re-evaluate so a
-//	    mid-turn mana spend cleans up before the next SBA check.
+//	  - upkeep / combat_begin / end_step: every phase boundary,
+//	    re-evaluate so a mid-turn mana spend cleans up before the
+//	    next SBA check and so combat math sees the right state.
 //
 //	The Flags fast-path is what IsIndestructible() (state.go) and the
 //	combat flying check read, so the per-condition gate is faithful as
@@ -33,6 +34,7 @@ import (
 func registerOzaiThePhoenixKing(r *Registry) {
 	r.OnETB("Ozai, the Phoenix King", ozaiETBSetFlagsAndConditionalKW)
 	r.OnTrigger("Ozai, the Phoenix King", "upkeep", ozaiPhaseRecheck)
+	r.OnTrigger("Ozai, the Phoenix King", "combat_begin", ozaiPhaseRecheck)
 	r.OnTrigger("Ozai, the Phoenix King", "end_step", ozaiPhaseRecheck)
 }
 

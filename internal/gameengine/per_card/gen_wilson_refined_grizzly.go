@@ -13,22 +13,27 @@ import (
 //	Ward {2}
 //	Choose a Background (You can have a Background as a second commander.)
 //
-// R49 stub-batch-E port (defensive utility):
-//   - "This spell can't be countered" — PORTED via OnCast hook
-//     mirroring Thrun. Stamps StackItem.CostMeta["cannot_be_countered"]=true
-//     so counter_resolve.go's spellCannotBeCountered refuses to counter it.
-//   - Vigilance / reach / trample + ward: kept as runtime flag stamps at
-//     ETB. ward already lives on Flags["ward"]; AST keyword pipeline
-//     handles the rest in parallel — flags are belt-and-suspenders for
-//     test seats that build Cards without AST.
-//   - Background partner: deck-construction concern, breadcrumb only.
+// R49 stub-batch-E + R50 batch F merged port:
+//   - OnCast stamps CostMeta["cannot_be_countered"]=true so the
+//     counter-spell resolver refuses to counter Wilson on the stack
+//     (same shape as Thrun, Breaker of Silence).
+//   - ETB stamps the static keyword flags:
+//       - ward:2 (read by target dispatcher)
+//       - kw:vigilance, kw:reach, kw:trample (combat reads)
+//   - Choose-a-Background partner is deck-construction-time only.
 func registerWilsonRefinedGrizzly(r *Registry) {
-	r.OnCast("Wilson, Refined Grizzly", wilsonRefinedGrizzlyCastUncounterable)
+	r.OnCast("Wilson, Refined Grizzly", wilsonRefinedGrizzlyCast)
 	r.OnETB("Wilson, Refined Grizzly", wilsonRefinedGrizzlyETB)
 }
 
+// wilsonRefinedGrizzlyCastUncounterable is a kept-alive alias for the
+// pre-merge function name. Removed in a follow-up sweep.
 func wilsonRefinedGrizzlyCastUncounterable(gs *gameengine.GameState, item *gameengine.StackItem) {
-	const slug = "wilson_refined_grizzly_cast_uncounterable"
+	wilsonRefinedGrizzlyCast(gs, item)
+}
+
+func wilsonRefinedGrizzlyCast(gs *gameengine.GameState, item *gameengine.StackItem) {
+	const slug = "wilson_refined_grizzly_cant_be_countered"
 	if gs == nil || item == nil {
 		return
 	}
@@ -63,6 +68,4 @@ func wilsonRefinedGrizzlyETB(gs *gameengine.GameState, perm *gameengine.Permanen
 		"ward":     2,
 		"keywords": []string{"vigilance", "reach", "trample"},
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"choose_background_partner_handled_at_deck_construction_time")
 }

@@ -42,6 +42,6 @@ func hamzaGuardianOfArashinETB(gs *gameengine.GameState, perm *gameengine.Perman
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"self_cost_reduction_first_clause_command_zone_path_not_wired")
+	// Self-cost reduction (first clause) wired in cost_modifiers.go as
+	// a top-level Hamza self-cast scan (R50 batch F).
 }

@@ -1,6 +1,8 @@
 package per_card
 
 import (
+	"strconv"
+
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -14,12 +16,15 @@ import (
 //	Vehicle you control, that many plus one +1/+1 counters are put on
 //	it instead.
 //
-// Implementation:
-//   - ETB tutor: scan library for highest-CMC Mount or Vehicle card,
-//     move to hand, shuffle.
-//   - +1/+1 replacement: engine-deep counter-placement hook (it has to
-//     intercept every AddCounter call). Until that exists, set a
-//     per-seat flag the engine can read and emit the partial.
+// Implementation (R50 batch F):
+//   - ETB tutor: highest-CMC Mount or Vehicle from library → hand,
+//     shuffle.
+//   - +1/+1 replacement: register a "would_put_counter" replacement
+//     (Hardened Scales pattern) gated to creatures or Vehicles the
+//     controller controls and to "+1/+1" counter_type. Adds +1 to
+//     ev.Count().
+//   - SourcePerm = Caradora, so UnregisterReplacementsForPermanent
+//     cleans up on LTB.
 func registerCaradoraHeartOfAlacria(r *Registry) {
 	r.OnETB("Caradora, Heart of Alacria", caradoraETBTutorAndReplaceFlag)
 }
@@ -56,15 +61,54 @@ func caradoraETBTutorAndReplaceFlag(gs *gameengine.GameState, perm *gameengine.P
 			})
 		}
 	}
-	if seat.Flags == nil {
-		seat.Flags = map[string]int{}
-	}
-	seat.Flags["caradora_plus_one_counter_replacement"] = 1
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":     perm.Controller,
-		"tutored":  best != nil,
-		"target":   equipmentName(best),
+
+	// Register the +1/+1 counter replacement effect.
+	controller := perm.Controller
+	gs.RegisterReplacement(&gameengine.ReplacementEffect{
+		EventType:      "would_put_counter",
+		HandlerID:      "Caradora, Heart of Alacria:plus_one_counter:" + strconv.Itoa(perm.Timestamp),
+		SourcePerm:     perm,
+		ControllerSeat: controller,
+		Timestamp:      perm.Timestamp,
+		Category:       gameengine.CategoryOther,
+		Applies: func(_ *gameengine.GameState, ev *gameengine.ReplEvent) bool {
+			if ev == nil || ev.TargetPerm == nil {
+				return false
+			}
+			if ev.TargetPerm.Controller != controller {
+				return false
+			}
+			if ev.String("counter_type") != "+1/+1" {
+				return false
+			}
+			// "creature or Vehicle you control"
+			if ev.TargetPerm.Card == nil {
+				return false
+			}
+			tc := ev.TargetPerm.Card
+			if !ev.TargetPerm.IsCreature() && !cardHasSubtype(tc, "vehicle") && !cardHasType(tc, "vehicle") {
+				return false
+			}
+			return ev.Count() > 0
+		},
+		ApplyFn: func(_ *gameengine.GameState, ev *gameengine.ReplEvent) {
+			ev.SetCount(ev.Count() + 1)
+			gs.LogEvent(gameengine.Event{
+				Kind:   "replacement_applied",
+				Seat:   controller,
+				Source: "Caradora, Heart of Alacria",
+				Amount: ev.Count(),
+				Details: map[string]interface{}{
+					"rule":   "614",
+					"effect": "plus_one_counter_for_creature_or_vehicle",
+				},
+			})
+		},
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"+1/+1 counter +1 replacement needs AddCounter hook; flag set for downstream consumers")
+
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":    perm.Controller,
+		"tutored": best != nil,
+		"target":  equipmentName(best),
+	})
 }
