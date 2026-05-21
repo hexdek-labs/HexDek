@@ -76,12 +76,12 @@ func theReaperDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	if perm.Flags == nil {
-		perm.Flags = map[string]int{}
-	}
-	if perm.Flags["reaper_stole_turn"] == gs.Turn {
-		return
-	}
+	// R53 batch O: the once-per-turn gate now lives on the controller's
+	// Seat.Flags instead of perm.Flags. The printed text — "Do this
+	// only once each turn" — caps the controller, not the source. The
+	// old perm.Flags scheme allowed a flicker (perm leaves and comes
+	// back with a fresh Flags map) to bypass the cap and steal twice
+	// in one turn. Keying off the controller's seat closes that hole.
 	dyingPerm, _ := ctx["perm"].(*gameengine.Permanent)
 	dyingCard, _ := ctx["card"].(*gameengine.Card)
 	controllerSeat, _ := ctx["controller_seat"].(int)
@@ -98,11 +98,21 @@ func theReaperDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 	if !hadMinus {
 		return
 	}
+	ownSeat := gs.Seats[perm.Controller]
+	if ownSeat == nil {
+		return
+	}
+	if ownSeat.Flags == nil {
+		ownSeat.Flags = map[string]int{}
+	}
+	if ownSeat.Flags["reaper_stole_turn"] == gs.Turn+1 {
+		return
+	}
 	mover := gameengine.MoveCard(gs, dyingCard, dyingCard.Owner, "graveyard", "battlefield", "the_reaper_steal")
 	if mover.Permanent != nil {
 		mover.Permanent.Controller = perm.Controller
 	}
-	perm.Flags["reaper_stole_turn"] = gs.Turn
+	ownSeat.Flags["reaper_stole_turn"] = gs.Turn + 1 // +1 to avoid 0-collision on turn 0
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"stolen":    dyingCard.DisplayName(),
 		"from_seat": controllerSeat,

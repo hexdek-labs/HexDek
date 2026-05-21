@@ -22,16 +22,15 @@ import (
 //   - Token created with type tags "balloon", "pip:R", `kw:flying`,
 //     `kw:haste`. Sacrifice queued via DelayedTrigger at next end step.
 func registerTheJollyBalloonMan(r *Registry) {
-	r.OnETB("The Jolly Balloon Man", theJollyBalloonManStaticETB)
+	// R53 batch O: dropped the OnETB hook. The previous body emitted a
+	// misleading per_card_partial / parser_gap event every ETB saying
+	// "haste static handled by AST engine; per_card stub for
+	// registration tracking" — but haste IS handled by the AST keyword
+	// pipeline (not a per_card gap), and "registration tracking" is
+	// already satisfied via OnActivated below. The emit polluted the
+	// parser_gap audit channel with a false gap signal on every
+	// Balloon Man ETB.
 	r.OnActivated("The Jolly Balloon Man", theJollyBalloonManCopy)
-}
-
-func theJollyBalloonManStaticETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "the_jolly_balloon_man_static"
-	if gs == nil || perm == nil {
-		return
-	}
-	emitPartial(gs, slug, perm.Card.DisplayName(), "haste static handled by AST engine; per_card stub for registration tracking")
 }
 
 func theJollyBalloonManCopy(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
