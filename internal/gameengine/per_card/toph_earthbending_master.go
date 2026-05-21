@@ -105,19 +105,40 @@ func tophEarthbend(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 		})
 		return
 	}
-	// Mark the land as a 0/0 with haste, plus X +1/+1 counters.
-	if target.Flags == nil {
-		target.Flags = map[string]int{}
-	}
+	// R54 layer-7b port: earthbend N — register the canonical
+	// "becomes a 0/0 creature with haste that's still a land"
+	// continuous-effect chain. Layer 4 adds "creature", Layer 7b
+	// sets base P/T to 0/0, Layer 6 grants haste. Each effect's
+	// SourcePerm = target, so UnregisterContinuousEffectsForPermanent
+	// tears them down naturally when the land leaves the battlefield.
+	// X +1/+1 counters stack on top of the 0/0 base via §613.4c
+	// (applyCountersAndMods), so combat math reads X/X correctly.
+	target.Flags = ensureFlags(target.Flags)
 	target.Flags["earthbent"] = 1
-	target.Flags["temp_haste"] = 1
+	gameengine.RegisterAddTypes(gs, target, []string{"creature"},
+		gameengine.DurationUntilSourceLeaves, "Toph, Earthbending Master", "earthbend")
+	gameengine.RegisterSetPT(gs, target, 0, 0,
+		gameengine.DurationUntilSourceLeaves, "Toph, Earthbending Master", "earthbend")
+	gameengine.RegisterGrantKeyword(gs, target, "haste",
+		gameengine.DurationUntilSourceLeaves, "Toph, Earthbending Master", "earthbend")
 	target.AddCounter("+1/+1", x)
 	target.SummoningSick = false
+	gs.InvalidateCharacteristicsCache()
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":     perm.Controller,
 		"target":   target.Card.DisplayName(),
 		"counters": x,
+		"layer_7b": [2]int{0, 0},
 	})
 	emitPartial(gs, slug, perm.Card.DisplayName(),
 		"return_on_die_or_exile_replacement_partial")
+}
+
+// ensureFlags ensures p.Flags is non-nil so subsequent indexing is safe.
+// Helper local to the earthbend port for ergonomic flag stamping.
+func ensureFlags(m map[string]int) map[string]int {
+	if m == nil {
+		return map[string]int{}
+	}
+	return m
 }

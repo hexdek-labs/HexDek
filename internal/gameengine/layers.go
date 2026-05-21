@@ -978,6 +978,116 @@ func RegisterHumility(gs *GameState, p *Permanent) {
 	})
 }
 
+// RegisterSetPT (R54) registers a Layer 7b continuous effect that sets
+// `target`'s base power and toughness to (power, toughness) for
+// `duration`. SourcePerm = target so when target leaves the
+// battlefield UnregisterContinuousEffectsForPermanent automatically
+// tears down the effect.
+//
+// The disc argument disambiguates multiple set-PT effects targeting
+// the same permanent (e.g. earthbend + a separate becomes-X/X effect).
+// Pass a stable per-card slug like "earthbend" or "biblioplex_animate".
+//
+// CR §613.4b. Counters and §613.4c +1/+1 / Modification bumps stack
+// on top in applyCountersAndMods, so a 0/0 earthbent land with two
+// +1/+1 counters reads as 2/2 just like the printed text predicts.
+func RegisterSetPT(gs *GameState, target *Permanent, power, toughness int,
+	duration, sourceCardName, disc string) *ContinuousEffect {
+	if gs == nil || target == nil {
+		return nil
+	}
+	ts := gs.NextTimestamp()
+	tsBuf := itoaLayers(ts)
+	ce := &ContinuousEffect{
+		Layer:          LayerPT,
+		Sublayer:       "b",
+		Timestamp:      ts,
+		SourcePerm:     target,
+		SourceCardName: sourceCardName,
+		ControllerSeat: target.Controller,
+		HandlerID:      "setpt:" + disc + ":" + sourceCardName + ":" + itoaLayers(target.Timestamp) + ":" + tsBuf,
+		Duration:       duration,
+		ApplyFn: func(_ *GameState, p *Permanent, chars *Characteristics) {
+			if p != target {
+				return
+			}
+			chars.Power = power
+			chars.Toughness = toughness
+			chars.BasePower = power
+			chars.BaseToughness = toughness
+		},
+	}
+	return gs.RegisterContinuousEffect(ce)
+}
+
+// RegisterAddTypes (R54) registers a Layer 4 continuous effect that
+// ADDS each entry of `addTypes` to `target`'s types in addition to
+// its other types (CR §613.1d). Existing types are preserved. Idempotent
+// per layer pass — re-applying the same type is a no-op via the
+// charsHaveType check inside ApplyFn.
+func RegisterAddTypes(gs *GameState, target *Permanent, addTypes []string,
+	duration, sourceCardName, disc string) *ContinuousEffect {
+	if gs == nil || target == nil || len(addTypes) == 0 {
+		return nil
+	}
+	ts := gs.NextTimestamp()
+	addCopy := append([]string{}, addTypes...)
+	ce := &ContinuousEffect{
+		Layer:          LayerType,
+		Timestamp:      ts,
+		SourcePerm:     target,
+		SourceCardName: sourceCardName,
+		ControllerSeat: target.Controller,
+		HandlerID:      "addtypes:" + disc + ":" + sourceCardName + ":" + itoaLayers(target.Timestamp) + ":" + itoaLayers(ts),
+		Duration:       duration,
+		ApplyFn: func(_ *GameState, p *Permanent, chars *Characteristics) {
+			if p != target {
+				return
+			}
+			for _, t := range addCopy {
+				if !charsHaveType(chars.Types, t) {
+					chars.Types = append(chars.Types, t)
+				}
+			}
+		},
+	}
+	return gs.RegisterContinuousEffect(ce)
+}
+
+// RegisterGrantKeyword (R54) registers a Layer 6 continuous effect
+// that ADDS a single keyword (e.g. "haste", "trample") to `target`'s
+// effective Keywords slice for the duration. Idempotent — duplicate
+// keywords are skipped.
+func RegisterGrantKeyword(gs *GameState, target *Permanent, keyword string,
+	duration, sourceCardName, disc string) *ContinuousEffect {
+	if gs == nil || target == nil || keyword == "" {
+		return nil
+	}
+	ts := gs.NextTimestamp()
+	kw := keyword
+	ce := &ContinuousEffect{
+		Layer:          LayerAbility,
+		Timestamp:      ts,
+		SourcePerm:     target,
+		SourceCardName: sourceCardName,
+		ControllerSeat: target.Controller,
+		HandlerID:      "grantkw:" + disc + ":" + sourceCardName + ":" + keyword + ":" + itoaLayers(target.Timestamp) + ":" + itoaLayers(ts),
+		Duration:       duration,
+		ApplyFn: func(_ *GameState, p *Permanent, chars *Characteristics) {
+			if p != target {
+				return
+			}
+			for _, k := range chars.Keywords {
+				if strings.EqualFold(k, kw) {
+					return
+				}
+			}
+			chars.Keywords = append(chars.Keywords, kw)
+		},
+	}
+	return gs.RegisterContinuousEffect(ce)
+}
+
 // RegisterOpalescence wires the post-2017 oracle Opalescence:
 //   - Layer 4: each OTHER non-Aura enchantment is a creature in
 //     addition to its other types (self-exclusion via "other").

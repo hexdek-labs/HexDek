@@ -224,8 +224,11 @@ func TestToph1stMB_EndStepStampsLand(t *testing.T) {
 	if land.Flags["earthbent"] != 1 {
 		t.Errorf("expected land earthbent flag, got %d", land.Flags["earthbent"])
 	}
-	if land.Flags["temp_haste"] != 1 {
-		t.Errorf("expected land temp_haste flag, got %d", land.Flags["temp_haste"])
+	// R54: haste now comes from a Layer 6 continuous effect, not the
+	// transient temp_haste perm flag. Read effective characteristics.
+	if !gs.HasKeywordOf(land, "haste") {
+		t.Errorf("expected layer-6 haste keyword grant, keywords=%v",
+			gameengine.GetEffectiveCharacteristics(gs, land).Keywords)
 	}
 	if got := land.Counters["+1/+1"]; got != 2 {
 		t.Errorf("expected 2 +1/+1 counters on land, got %d", got)

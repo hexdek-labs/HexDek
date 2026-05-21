@@ -78,14 +78,24 @@ func tophFirstMetalbenderEndStep(gs *gameengine.GameState, perm *gameengine.Perm
 		target.Flags = map[string]int{}
 	}
 	target.Flags["earthbent"] = 1
-	target.Flags["temp_haste"] = 1
+	// R54 layer-7b port: earthbend 2 — Layer 4 (creature) + Layer 7b
+	// (0/0) + Layer 6 (haste), all keyed to the target so they tear
+	// down on LTB. 2× +1/+1 counters stack via §613.4c.
+	gameengine.RegisterAddTypes(gs, target, []string{"creature"},
+		gameengine.DurationUntilSourceLeaves, "Toph, the First Metalbender", "earthbend")
+	gameengine.RegisterSetPT(gs, target, 0, 0,
+		gameengine.DurationUntilSourceLeaves, "Toph, the First Metalbender", "earthbend")
+	gameengine.RegisterGrantKeyword(gs, target, "haste",
+		gameengine.DurationUntilSourceLeaves, "Toph, the First Metalbender", "earthbend")
 	target.AddCounter("+1/+1", 2)
 	target.SummoningSick = false
+	gs.InvalidateCharacteristicsCache()
 	gameengine.Earthbend(gs, perm.Controller)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":     perm.Controller,
 		"target":   target.Card.DisplayName(),
 		"counters": 2,
+		"layer_7b": [2]int{0, 0},
 	})
 	emitPartial(gs, slug, perm.Card.DisplayName(),
 		"return_on_die_or_exile_replacement_partial")
