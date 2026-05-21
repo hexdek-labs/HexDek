@@ -27,6 +27,67 @@ import (
 //     overlay needs the Phase 8 layers pass. emitPartial.
 func registerPhoenixFleetAirship(r *Registry) {
 	r.OnTrigger("Phoenix Fleet Airship", "end_step", phoenixFleetAirshipEndStep)
+	// R55: 8+ named-copies → artifact creature via Layer 4 add-types.
+	// Refresh on ETB (self + each Airship token spawn) and on
+	// permanent_ltb (a copy dying may drop us below 8).
+	r.OnETB("Phoenix Fleet Airship", phoenixFleetAirshipCheckThreshold)
+	r.OnTrigger("Phoenix Fleet Airship", "permanent_etb", phoenixFleetAirshipRefreshOnEvent)
+	r.OnTrigger("Phoenix Fleet Airship", "permanent_ltb", phoenixFleetAirshipRefreshOnEvent)
+}
+
+func phoenixFleetAirshipRefreshOnEvent(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	phoenixFleetAirshipCheckThreshold(gs, perm)
+}
+
+// phoenixFleetAirshipCheckThreshold registers (or skips) a Layer 4
+// add-creature-type effect when controller has 8+ Airship copies.
+// The "as long as" clause is sticky-while-condition-holds; we model
+// it as DurationUntilSourceLeaves on this perm. Multi-perm boards
+// each get their own registration with idempotency via the
+// phoenix_fleet_creature_active flag.
+func phoenixFleetAirshipCheckThreshold(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	count := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		if strings.EqualFold(p.Card.DisplayName(), "Phoenix Fleet Airship") {
+			count++
+		}
+	}
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	hasGrant := perm.Flags["phoenix_fleet_creature_active"] == 1
+	wantGrant := count >= 8
+	if hasGrant == wantGrant {
+		return
+	}
+	if wantGrant {
+		gameengine.RegisterAddTypes(gs, perm, []string{"creature"},
+			gameengine.DurationUntilSourceLeaves,
+			"Phoenix Fleet Airship (8+ named copies)",
+			"phoenix_fleet_creature_active")
+		perm.Flags["phoenix_fleet_creature_active"] = 1
+	} else {
+		// Drop count; unregister our Layer 4 effect. The continuous
+		// effects framework supports per-permanent unregistration via
+		// the source pointer + HandlerID match.
+		gs.UnregisterContinuousEffectsForPermanent(perm)
+		delete(perm.Flags, "phoenix_fleet_creature_active")
+	}
+	emit(gs, "phoenix_fleet_airship_threshold_check", perm.Card.DisplayName(), map[string]interface{}{
+		"seat":         perm.Controller,
+		"count":        count,
+		"creature_now": wantGrant,
+	})
 }
 
 func phoenixFleetAirshipEndStep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -74,6 +135,7 @@ func phoenixFleetAirshipEndStep(gs *gameengine.GameState, perm *gameengine.Perma
 		"sacrificed": seat.Turn.Sacrificed,
 		"token":      "Phoenix Fleet Airship (token copy)",
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"static_eight_copies_become_creature_needs_phase8_layers_overlay")
+	// R55: the new token's ETB will fire phoenixFleetAirshipCheckThreshold
+	// for every existing Airship on the controller's battlefield via the
+	// permanent_etb trigger; that pass re-evaluates the 8+ count.
 }

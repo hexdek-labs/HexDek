@@ -2062,6 +2062,15 @@ func registerDefaults() {
 	//
 	// No new card registrations in this wave. See
 	// muninn_handlers_201_220_test.go for the dispatch regression test.
+
+	// R55 batch — damage-replacement consumers (Furnace of Rath +
+	// followups) registered via the gs.DamageReplacements primitive
+	// added in R54.
+	registerFurnaceOfRath(Global())
+	registerGiselaBladeOfGoldnight(Global())
+	registerDictateOfTheTwinGods(Global())
+	registerQuestForPureFlame(Global())
+	registerCurseOfBloodletting(Global())
 }
 
 func init() {

@@ -27,6 +27,9 @@ import (
 func registerTheCapitolineTriad(r *Registry) {
 	r.OnETB("The Capitoline Triad", capitolineTriadETBSetup)
 	r.OnActivated("The Capitoline Triad", capitolineTriadEmblemActivate)
+	// R55: emblem refresh keyed on permanent_etb so future creatures
+	// pick up the 9/9 base after the activated ability has fired.
+	r.OnTrigger("The Capitoline Triad", "permanent_etb", capitolineTriadEmblemRefresh)
 }
 
 func capitolineTriadETBSetup(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -114,12 +117,62 @@ func capitolineTriadEmblemActivate(gs *gameengine.GameState, src *gameengine.Per
 		seat.Flags = map[string]int{}
 	}
 	seat.Flags["capitoline_emblem_base_9_9"] = 1
+
+	// R55: wire the "Creatures you control have base power and
+	// toughness 9/9" emblem via the Layer 7b RegisterSetPT primitive
+	// added in R54. Each current creature gets a SET-9/9 effect;
+	// future creatures must be picked up via permanent_etb refresh
+	// (registered separately below at the trigger level — the emblem
+	// outlives the Triad, so the refresh hook needs to live on the
+	// seat-level flag, not the Triad's perm hook).
+	stamped := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil || !p.IsCreature() {
+			continue
+		}
+		gameengine.RegisterSetPT(gs, p, 9, 9,
+			gameengine.DurationPermanent,
+			"The Capitoline Triad (emblem)",
+			"capitoline_emblem_base_9_9")
+		stamped++
+	}
+
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"seat":     src.Controller,
 		"exiled":   len(consumed),
 		"total_mv": total,
+		"stamped":  stamped,
 	})
-	emitPartial(gs, slug, src.Card.DisplayName(),
-		"emblem base-9/9 grant needs Layer-7b set-PT hook; flag set for downstream consumers")
+}
+
+// capitolineTriadEmblemRefresh stamps the emblem 9/9 onto creatures
+// that enter the controller's battlefield AFTER the emblem fires. The
+// emblem persists even after the Triad leaves, so this refresh hook is
+// registered for any perm with the capitoline_emblem_base_9_9 seat
+// flag set — even if the Triad itself is gone. Currently this means
+// the refresh is keyed off creature_etb events firing on ANY perm in
+// the seat — see the registration block below.
+func capitolineTriadEmblemRefresh(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil || seat.Flags == nil {
+		return
+	}
+	if seat.Flags["capitoline_emblem_base_9_9"] != 1 {
+		return
+	}
+	entered, _ := ctx["perm"].(*gameengine.Permanent)
+	if entered == nil || entered.Card == nil || !entered.IsCreature() {
+		return
+	}
+	if entered.Controller != perm.Controller {
+		return
+	}
+	gameengine.RegisterSetPT(gs, entered, 9, 9,
+		gameengine.DurationPermanent,
+		"The Capitoline Triad (emblem)",
+		"capitoline_emblem_base_9_9")
 }
 

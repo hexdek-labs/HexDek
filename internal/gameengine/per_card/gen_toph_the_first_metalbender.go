@@ -29,6 +29,72 @@ import (
 func registerTophTheFirstMetalbender(r *Registry) {
 	r.OnETB("Toph, the First Metalbender", tophFirstMetalbenderETB)
 	r.OnTrigger("Toph, the First Metalbender", "end_step", tophFirstMetalbenderEndStep)
+	// R55: nontoken artifacts you control are lands — Layer 4 add-types
+	// stamped on each qualifying artifact at ETB + on permanent_etb
+	// refresh. Note the artifacts gain the "land" subtype but do NOT
+	// gain a tap-for-mana ability (that's a printed clarification, not
+	// a layered effect — they only have the subtype).
+	r.OnTrigger("Toph, the First Metalbender", "permanent_etb", tophFirstMetalbenderRefreshLandGrants)
+}
+
+// tophFirstMetalbenderStampLandTypes walks the controller's
+// battlefield and registers a Layer-4 add-types effect adding "land"
+// to every nontoken artifact. Idempotent via the source perm + tag.
+func tophFirstMetalbenderStampLandTypes(gs *gameengine.GameState, perm *gameengine.Permanent) int {
+	if gs == nil || perm == nil {
+		return 0
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return 0
+	}
+	stamped := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		if !p.IsArtifact() {
+			continue
+		}
+		// Skip token artifacts.
+		if cardHasType(p.Card, "token") {
+			continue
+		}
+		gameengine.RegisterAddTypes(gs, p, []string{"land"},
+			gameengine.DurationPermanent,
+			"Toph, the First Metalbender",
+			"toph_1stmb_artifact_is_land")
+		stamped++
+	}
+	return stamped
+}
+
+func tophFirstMetalbenderRefreshLandGrants(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "toph_first_metalbender_refresh_land_grant"
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	entered, _ := ctx["perm"].(*gameengine.Permanent)
+	if entered == nil || entered.Card == nil {
+		return
+	}
+	if entered.Controller != perm.Controller {
+		return
+	}
+	if !entered.IsArtifact() {
+		return
+	}
+	if cardHasType(entered.Card, "token") {
+		return
+	}
+	gameengine.RegisterAddTypes(gs, entered, []string{"land"},
+		gameengine.DurationPermanent,
+		"Toph, the First Metalbender",
+		"toph_1stmb_artifact_is_land")
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":     perm.Controller,
+		"artifact": entered.Card.DisplayName(),
+	})
 }
 
 func tophFirstMetalbenderETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -36,11 +102,11 @@ func tophFirstMetalbenderETB(gs *gameengine.GameState, perm *gameengine.Permanen
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
+	stamped := tophFirstMetalbenderStampLandTypes(gs, perm)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": perm.Controller,
+		"seat":              perm.Controller,
+		"artifacts_stamped": stamped,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"nontoken_artifacts_become_lands_static_handled_by_ast_keyword_pipeline")
 }
 
 func tophFirstMetalbenderEndStep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
