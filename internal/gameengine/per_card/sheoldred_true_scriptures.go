@@ -194,7 +194,7 @@ func sheoldredTSLore(gs *gameengine.GameState, perm *gameengine.Permanent, ctx m
 	case 3:
 		// Reanimate all creatures from all graveyards under your control.
 		count := 0
-		for i, s := range gs.Seats {
+		for _, s := range gs.Seats {
 			if s == nil {
 				continue
 			}
@@ -205,8 +205,16 @@ func sheoldredTSLore(gs *gameengine.GameState, perm *gameengine.Permanent, ctx m
 				}
 			}
 			for _, c := range creatures {
-				gameengine.MoveCard(gs, c, i, "graveyard", "battlefield", "scriptures_chapter_3")
-				createPermanent(gs, perm.Controller, c, false)
+				// r54 fix (sibling of Athreos game-3107 leak): the prior
+				// MoveCard(c, i, gy→bf) + createPermanent(perm.Controller, c)
+				// pair left the same *Card wrapped by two Permanents when
+				// the dying creature's owner ≠ perm.Controller (chapter 3
+				// reanimates from every graveyard, including opponents').
+				// enterBattlefieldWithETB does the full single-step move:
+				// createPermanent sweeps the card from its owner's
+				// graveyard and wraps it as one Permanent under
+				// perm.Controller, then fires ETB.
+				enterBattlefieldWithETB(gs, perm.Controller, c, false)
 				count++
 			}
 		}
