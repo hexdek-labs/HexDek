@@ -94,36 +94,64 @@ func TestDerevi_CombatDamageTrigger_IgnoresOpponentAttacker(t *testing.T) {
 // Drivnod, Carnage Dominus — activated indestructible counters
 // ---------------------------------------------------------------------------
 
-func TestDrivnod_ActivationExilesTwoAndAddsIndestructible(t *testing.T) {
+func TestDrivnod_ActivationExilesThreeCreaturesFromGraveyard(t *testing.T) {
 	gs := newGame(t, 2)
 	drivnod := addPerm(gs, 0, "Drivnod, Carnage Dominus", "creature")
-	addPerm(gs, 0, "Sac Fodder A", "creature")
-	addPerm(gs, 0, "Sac Fodder B", "creature")
-	gs.Seats[0].ManaPool = 4
+	// Seed the graveyard with 3 creature cards + 1 non-creature filler.
+	for _, n := range []string{"Dead Bear A", "Dead Bear B", "Dead Bear C"} {
+		gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, &gameengine.Card{
+			Name:  n,
+			Owner: 0,
+			Types: []string{"creature"},
+		})
+	}
+	gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, &gameengine.Card{
+		Name:  "Lightning Bolt",
+		Owner: 0,
+		Types: []string{"instant"},
+	})
+	gs.Seats[0].ManaPool = 2
 
 	drivnodIndestructibleActivate(gs, drivnod, 0, nil)
 
-	if drivnod.Counters["indestructible"] != 2 {
-		t.Fatalf("expected 2 indestructible counters; got %d", drivnod.Counters["indestructible"])
+	if drivnod.Counters["indestructible"] != 1 {
+		t.Fatalf("expected 1 indestructible counter (printed oracle); got %d", drivnod.Counters["indestructible"])
 	}
 	if gs.Seats[0].ManaPool != 0 {
-		t.Fatalf("expected 4 mana spent; pool=%d", gs.Seats[0].ManaPool)
+		t.Fatalf("expected 2 mana spent ({B/P}{B/P}); pool=%d", gs.Seats[0].ManaPool)
 	}
-	if len(gs.Seats[0].Exile) != 2 {
-		t.Fatalf("expected 2 cards exiled; got %d", len(gs.Seats[0].Exile))
+	if len(gs.Seats[0].Exile) != 3 {
+		t.Fatalf("expected 3 creature cards exiled from graveyard; got %d", len(gs.Seats[0].Exile))
+	}
+	// Lightning Bolt should still be in graveyard (non-creature, untouched).
+	foundBolt := false
+	for _, c := range gs.Seats[0].Graveyard {
+		if c != nil && c.DisplayName() == "Lightning Bolt" {
+			foundBolt = true
+		}
+	}
+	if !foundBolt {
+		t.Fatalf("Lightning Bolt should remain in graveyard (only creatures get exiled)")
 	}
 }
 
-func TestDrivnod_ActivationFailsWithoutTwoOtherCreatures(t *testing.T) {
+func TestDrivnod_ActivationFailsWithoutThreeCreatureCardsInGraveyard(t *testing.T) {
 	gs := newGame(t, 2)
 	drivnod := addPerm(gs, 0, "Drivnod, Carnage Dominus", "creature")
-	addPerm(gs, 0, "Lone Bear", "creature") // only one fodder
-	gs.Seats[0].ManaPool = 4
+	// Only 2 creatures in graveyard.
+	for _, n := range []string{"Dead Bear A", "Dead Bear B"} {
+		gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, &gameengine.Card{
+			Name:  n,
+			Owner: 0,
+			Types: []string{"creature"},
+		})
+	}
+	gs.Seats[0].ManaPool = 2
 
 	drivnodIndestructibleActivate(gs, drivnod, 0, nil)
 
 	if drivnod.Counters["indestructible"] != 0 {
-		t.Fatalf("should not gain counters without two fodder creatures")
+		t.Fatalf("should not gain counters with fewer than 3 creature cards in graveyard")
 	}
 	if hasEvent(gs, "per_card_failed") < 1 {
 		t.Fatalf("expected per_card_failed event")
@@ -193,20 +221,50 @@ func TestKardur_ETBSetsGoadFlag(t *testing.T) {
 // Solphim, Mayhem Dominus — activated indestructible counters
 // ---------------------------------------------------------------------------
 
-func TestSolphim_ActivationExilesTwoAndAddsIndestructible(t *testing.T) {
+func TestSolphim_ActivationDiscardsTwoAndAddsIndestructible(t *testing.T) {
 	gs := newGame(t, 2)
 	solphim := addPerm(gs, 0, "Solphim, Mayhem Dominus", "creature")
-	addPerm(gs, 0, "Sac Fodder A", "creature")
-	addPerm(gs, 0, "Sac Fodder B", "creature")
-	gs.Seats[0].ManaPool = 4
+	// Seed hand with 2 cards to discard.
+	for _, n := range []string{"Fireball", "Lightning Bolt"} {
+		gs.Seats[0].Hand = append(gs.Seats[0].Hand, &gameengine.Card{
+			Name:  n,
+			Owner: 0,
+			Types: []string{"instant"},
+		})
+	}
+	gs.Seats[0].ManaPool = 3
 
 	solphimIndestructibleActivate(gs, solphim, 0, nil)
 
-	if solphim.Counters["indestructible"] != 2 {
-		t.Fatalf("expected 2 indestructible counters; got %d", solphim.Counters["indestructible"])
+	if solphim.Counters["indestructible"] != 1 {
+		t.Fatalf("expected 1 indestructible counter (printed oracle); got %d", solphim.Counters["indestructible"])
 	}
-	if len(gs.Seats[0].Exile) != 2 {
-		t.Fatalf("expected 2 cards exiled; got %d", len(gs.Seats[0].Exile))
+	if gs.Seats[0].ManaPool != 0 {
+		t.Fatalf("expected 3 mana spent ({1}{R/P}{R/P}); pool=%d", gs.Seats[0].ManaPool)
+	}
+	if len(gs.Seats[0].Hand) != 0 {
+		t.Fatalf("expected hand emptied after discarding 2; got %d", len(gs.Seats[0].Hand))
+	}
+	if len(gs.Seats[0].Graveyard) != 2 {
+		t.Fatalf("expected 2 cards in graveyard from discard; got %d", len(gs.Seats[0].Graveyard))
+	}
+}
+
+func TestSolphim_ActivationFailsWithoutTwoCardsInHand(t *testing.T) {
+	gs := newGame(t, 2)
+	solphim := addPerm(gs, 0, "Solphim, Mayhem Dominus", "creature")
+	gs.Seats[0].Hand = append(gs.Seats[0].Hand, &gameengine.Card{
+		Name: "Lone Card", Owner: 0, Types: []string{"instant"},
+	})
+	gs.Seats[0].ManaPool = 3
+
+	solphimIndestructibleActivate(gs, solphim, 0, nil)
+
+	if solphim.Counters["indestructible"] != 0 {
+		t.Fatalf("should not gain counters without 2 cards to discard")
+	}
+	if hasEvent(gs, "per_card_failed") < 1 {
+		t.Fatalf("expected per_card_failed event")
 	}
 }
 
@@ -233,20 +291,36 @@ func TestYurlok_ETBSetsPainManaFlag(t *testing.T) {
 // Zopandrel, Hunger Dominus — activated indestructible counters
 // ---------------------------------------------------------------------------
 
-func TestZopandrel_ActivationExilesTwoAndAddsIndestructible(t *testing.T) {
+func TestZopandrel_ActivationSacrificesTwoAndAddsIndestructible(t *testing.T) {
 	gs := newGame(t, 2)
 	zopandrel := addPerm(gs, 0, "Zopandrel, Hunger Dominus", "creature")
-	addPerm(gs, 0, "Sac Fodder A", "creature")
-	addPerm(gs, 0, "Sac Fodder B", "creature")
-	gs.Seats[0].ManaPool = 4
+	fodder1 := addPerm(gs, 0, "Sac Fodder A", "creature")
+	fodder2 := addPerm(gs, 0, "Sac Fodder B", "creature")
+	gs.Seats[0].ManaPool = 2
 
 	zopandrelIndestructibleActivate(gs, zopandrel, 0, nil)
 
-	if zopandrel.Counters["indestructible"] != 2 {
-		t.Fatalf("expected 2 indestructible counters; got %d", zopandrel.Counters["indestructible"])
+	if zopandrel.Counters["indestructible"] != 1 {
+		t.Fatalf("expected 1 indestructible counter (printed oracle); got %d", zopandrel.Counters["indestructible"])
 	}
-	if len(gs.Seats[0].Exile) != 2 {
-		t.Fatalf("expected 2 cards exiled; got %d", len(gs.Seats[0].Exile))
+	if gs.Seats[0].ManaPool != 0 {
+		t.Fatalf("expected 2 mana spent ({G/P}{G/P}); pool=%d", gs.Seats[0].ManaPool)
+	}
+	// Sacrificed creatures should be in the graveyard, NOT in exile,
+	// and NOT in both battlefield and another zone (the r48/r50 game-59
+	// CardIdentity leak signature).
+	if len(gs.Seats[0].Exile) != 0 {
+		t.Fatalf("sac cost should route victims to graveyard, not exile; exile=%d", len(gs.Seats[0].Exile))
+	}
+	if len(gs.Seats[0].Graveyard) != 2 {
+		t.Fatalf("expected 2 sacrificed creatures in graveyard; got %d", len(gs.Seats[0].Graveyard))
+	}
+	// Sentinel: neither fodder1.Card nor fodder2.Card should still
+	// appear in seat.Battlefield (the leak surface).
+	for _, p := range gs.Seats[0].Battlefield {
+		if p != nil && (p.Card == fodder1.Card || p.Card == fodder2.Card) {
+			t.Fatalf("sacrificed creature still on battlefield — CardIdentity leak regression")
+		}
 	}
 }
 

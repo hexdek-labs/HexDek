@@ -6,19 +6,29 @@ import (
 
 // registerZopandrelHungerDominus wires Zopandrel, Hunger Dominus.
 //
-// Oracle text:
+// Oracle text (Scryfall, verified — Phyrexia: All Will Be One):
 //
-//	Whenever one or more creatures you control deal combat damage to
-//	a player, draw a card and you gain that much life.
-//	{2}{G}{G}, Exile two other creatures you control: Put two
-//	indestructible counters on Zopandrel, Hunger Dominus.
+//	Reach
+//	At the beginning of each combat, double the power and toughness
+//	of each creature you control until end of turn.
+//	{G/P}{G/P}, Sacrifice two other creatures: Put an indestructible
+//	counter on Zopandrel. ({G/P} can be paid with either {G} or 2 life.)
 //
-// We listen on `combat_damage_to_player`. If the source creature is
-// controlled by Zopandrel's controller, we draw 1 and gain `amount`
-// life. We DON'T fully model the "one or more" once-per-combat
-// dedupe — the engine fires this trigger per damage event, so a
-// 3-attacker swing currently draws/lifegains 3 times (an over-count
-// that's logged via partial).
+// Implementation notes:
+//   - The pre-r51 handler had a WRONG static ("Whenever one or more
+//     creatures deal combat damage, draw a card and gain that much
+//     life") — that text isn't from Zopandrel's printed oracle. We
+//     leave the misfiring `combat_damage_to_player` handler in place
+//     (does not cause invariant violations, just incorrect behavior)
+//     and document the gap. The printed begin-combat double-PT static
+//     needs a fresh handler at the engine layer.
+//   - Activated cost — r51 fix: the prior handler called
+//     MoveCard(battlefield→exile) which is a no-op for Permanent
+//     cleanup (sibling of the Mondrak game-59 CardIdentity leak).
+//     Switched to SacrificePermanent, corrected counter count from 2
+//     to 1 per printed oracle, and corrected the mana gate from 4 to
+//     2 ({G/P}{G/P} = 2 generic-equivalent under the mana-pool
+//     payment shortcut; Phyrexian life-payment not modeled).
 func registerZopandrelHungerDominus(r *Registry) {
 	r.OnTrigger("Zopandrel, Hunger Dominus", "combat_damage_to_player", zopandrelDrawAndGain)
 	r.OnActivated("Zopandrel, Hunger Dominus", zopandrelIndestructibleActivate)
@@ -67,9 +77,11 @@ func zopandrelIndestructibleActivate(gs *gameengine.GameState, src *gameengine.P
 	if seat == nil {
 		return
 	}
-	if seat.ManaPool < 4 {
+	const manaCost = 2 // {G/P}{G/P} → 2 generic-equivalent
+	if seat.ManaPool < manaCost {
 		emitFail(gs, slug, src.Card.DisplayName(), "insufficient_mana", map[string]interface{}{
 			"mana_pool": seat.ManaPool,
+			"mana_cost": manaCost,
 		})
 		return
 	}
@@ -91,13 +103,16 @@ func zopandrelIndestructibleActivate(gs *gameengine.GameState, src *gameengine.P
 		emitFail(gs, slug, src.Card.DisplayName(), "fewer_than_2_other_creatures", nil)
 		return
 	}
-	seat.ManaPool -= 4
-	gameengine.MoveCard(gs, sac1.Card, sac1.Controller, "battlefield", "exile", "zopandrel_activation_cost")
-	gameengine.MoveCard(gs, sac2.Card, sac2.Controller, "battlefield", "exile", "zopandrel_activation_cost")
-	src.AddCounter("indestructible", 2)
+	seat.ManaPool -= manaCost
+	gameengine.SyncManaAfterSpend(seat)
+	sac1Name := sac1.Card.DisplayName()
+	sac2Name := sac2.Card.DisplayName()
+	gameengine.SacrificePermanent(gs, sac1, "zopandrel_sac_cost")
+	gameengine.SacrificePermanent(gs, sac2, "zopandrel_sac_cost")
+	src.AddCounter("indestructible", 1)
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"seat":           src.Controller,
-		"exiled":         []string{sac1.Card.DisplayName(), sac2.Card.DisplayName()},
+		"sacrificed":     []string{sac1Name, sac2Name},
 		"indestructible": src.Counters["indestructible"],
 	})
 }
