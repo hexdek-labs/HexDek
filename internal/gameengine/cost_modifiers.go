@@ -284,6 +284,36 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 		}
 	}
 
+	// Kadena, Slinking Sorcerer face-down cast reduction (R53 batch N):
+	// "The first face-down creature spell you cast each turn costs
+	// {3} less to cast." Triggered when (a) the caster controls
+	// Kadena on the battlefield, (b) the card being cast carries the
+	// "face_down" type tag, and (c) the caster hasn't already used
+	// the per-turn discount (tracked via seat.Flags["kadena_used_turn"]).
+	if seatIdx >= 0 && seatIdx < len(gs.Seats) && cardHasType(card, "face_down") {
+		seat := gs.Seats[seatIdx]
+		if seat != nil {
+			hasKadena := false
+			for _, p := range seat.Battlefield {
+				if p == nil || p.Card == nil {
+					continue
+				}
+				if strings.EqualFold(p.Card.DisplayName(), "Kadena, Slinking Sorcerer") {
+					hasKadena = true
+					break
+				}
+			}
+			usedKey := gs.Turn + 1 // +1 sentinel so 0-turn discount is non-zero
+			if hasKadena && (seat.Flags == nil || seat.Flags["kadena_used_turn"] != usedKey) {
+				mods = append(mods, CostModifier{
+					Kind:   CostModReduction,
+					Amount: 3,
+					Source: "Kadena, Slinking Sorcerer (first face-down/turn)",
+				})
+			}
+		}
+	}
+
 	// Sunderflock self-cast reduction: "This spell costs {X} less to
 	// cast, where X is the greatest mana value among Elementals you
 	// control." Scan the caster's battlefield for Elementals.
