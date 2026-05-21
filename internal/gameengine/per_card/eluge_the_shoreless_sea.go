@@ -17,15 +17,49 @@ import (
 //	(or {1}) less to cast for each land you control with a flood
 //	counter on it.
 //
-// CDA p/t and cost reduction are AST-resolved. We wire ETB/attack flood
-// counter placement.
+// CDA p/t now wired via Layer 7b (R55) — see elugeFlood.
+// Cost reduction is AST-resolved.
 func registerElugeTheShorelessSea(r *Registry) {
 	r.OnETB("Eluge, the Shoreless Sea", elugeFlood)
 	r.OnTrigger("Eluge, the Shoreless Sea", "attacks", elugeFloodAttack)
 }
 
 func elugeFlood(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	// R55: P/T = Islands you control. Layer 7b CDA via dynamic primitive.
+	// Lands with a flood counter count as Islands too, per the granted
+	// type clause — we approximate by checking BOTH "island" type AND
+	// the "flood" counter on the controller's lands.
+	gameengine.RegisterDynamicSetPT(gs, perm, elugeCountIslands,
+		gameengine.DurationUntilSourceLeaves, "Eluge, the Shoreless Sea", "cda_pt")
+	gs.InvalidateCharacteristicsCache()
 	elugePlaceFloodCounter(gs, perm)
+}
+
+func elugeCountIslands(gs *gameengine.GameState, perm *gameengine.Permanent) (int, int) {
+	if gs == nil || perm == nil {
+		return 0, 0
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return 0, 0
+	}
+	n := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil || !p.IsLand() {
+			continue
+		}
+		if cardHasType(p.Card, "island") {
+			n++
+			continue
+		}
+		// Flood-counter lands count as Islands per Eluge's own static
+		// (printed text: "It's an Island in addition to its other types
+		// for as long as it has a flood counter on it.").
+		if p.Counters != nil && p.Counters["flood"] > 0 {
+			n++
+		}
+	}
+	return n, n
 }
 
 func elugeFloodAttack(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

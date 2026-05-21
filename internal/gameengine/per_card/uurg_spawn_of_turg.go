@@ -15,23 +15,27 @@ import (
 //	{B}{G}, Sacrifice a land: You gain 2 life.
 //
 // Implementation:
-//   - Power equals land cards in graveyard: implemented via a "set_power"
-//     flag refresh hook that fires on ETB and during upkeep. We update
-//     perm.Flags["set_power"] = land_count_in_graveyard so the layers
-//     pipeline can consult it (emitPartial because the engine's CDA
-//     pipeline does not yet route through per_card cleanly).
+//   - R55: power CDA via RegisterDynamicSetPower (Layer 7b sublayer).
+//     The compute fn re-evaluates the graveyard land count on every
+//     layer pass, so power tracks live state without explicit refresh.
 //   - Upkeep: surveil 1 via gameengine.Surveil.
-//   - Activated {B}{G} sac-land → 2 life: emitPartial.
+//   - Activated {B}{G} sac-land → 2 life remains partial (engine-deep
+//     activated-cost dispatch).
 func registerUurgSpawnOfTurg(r *Registry) {
 	r.OnETB("Uurg, Spawn of Turg", uurgETB)
 	r.OnTrigger("Uurg, Spawn of Turg", "upkeep_controller", uurgUpkeep)
 }
 
 func uurgETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	if gs == nil || perm == nil {
+	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
-	uurgRefreshPower(gs, perm)
+	gameengine.RegisterDynamicSetPower(gs, perm, uurgCountLandsInGraveyard,
+		gameengine.DurationUntilSourceLeaves, "Uurg, Spawn of Turg", "cda_power")
+	gs.InvalidateCharacteristicsCache()
+	emit(gs, "uurg_etb", perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller,
+	})
 	emitPartial(gs, "uurg_etb", perm.Card.DisplayName(),
 		"activated_BG_sac_land_gain_2_partial")
 }
@@ -46,32 +50,27 @@ func uurgUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[st
 		return
 	}
 	gameengine.Surveil(gs, perm.Controller, 1)
-	uurgRefreshPower(gs, perm)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
 }
 
-func uurgRefreshPower(gs *gameengine.GameState, perm *gameengine.Permanent) {
+func uurgCountLandsInGraveyard(gs *gameengine.GameState, perm *gameengine.Permanent) int {
+	if gs == nil || perm == nil {
+		return 0
+	}
 	seat := gs.Seats[perm.Controller]
 	if seat == nil {
-		return
+		return 0
 	}
-	count := 0
+	n := 0
 	for _, c := range seat.Graveyard {
 		if c == nil {
 			continue
 		}
 		if cardHasType(c, "land") {
-			count++
+			n++
 		}
 	}
-	if perm.Flags == nil {
-		perm.Flags = map[string]int{}
-	}
-	perm.Flags["set_power"] = count
-	emit(gs, "uurg_refresh_power", perm.Card.DisplayName(), map[string]interface{}{
-		"seat":  perm.Controller,
-		"power": count,
-	})
+	return n
 }

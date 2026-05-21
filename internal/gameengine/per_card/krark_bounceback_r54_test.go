@@ -29,7 +29,19 @@ import (
 // stdlib determinism; verified empirically.
 func forceKrarkLoseFlip(t *testing.T) {
 	t.Helper()
-	rand.Seed(2) // empirically: first rand.Intn(2) returns 0 → won=false (lose).
+	// R55: krarkTrigger now prefers gs.Rng (per-game RNG) so it isn't
+	// at the mercy of global math/rand state. The tests in this file
+	// re-seed BOTH the global stream (for any caller that still falls
+	// through to it) and overwrite gs.Rng before calling krarkTrigger.
+	rand.Seed(2) // legacy global-rand fallback
+}
+
+// forceKrarkLoseFlipOn pins gs.Rng to a fresh source so krarkTrigger's
+// rand.Intn(2) returns 0 ("lose") deterministically. Empirically:
+// NewSource(2).Intn(2) → 0 on the first draw.
+func forceKrarkLoseFlipOn(t *testing.T, gs *gameengine.GameState) {
+	t.Helper()
+	gs.Rng = rand.New(rand.NewSource(2))
 }
 
 func TestKrark_R54_LoseFlipNoOpWhenSpellLeftStack(t *testing.T) {
@@ -51,6 +63,7 @@ func TestKrark_R54_LoseFlipNoOpWhenSpellLeftStack(t *testing.T) {
 	preStack := len(gs.Stack)
 
 	forceKrarkLoseFlip(t)
+	forceKrarkLoseFlipOn(t, gs)
 	krarkTrigger(gs, krark, map[string]interface{}{
 		"caster_seat": 0,
 		"card":        spellCard,
@@ -106,6 +119,7 @@ func TestKrark_R54_LoseFlipBouncesWhenSpellOnStack(t *testing.T) {
 	preHand := len(gs.Seats[0].Hand)
 
 	forceKrarkLoseFlip(t)
+	forceKrarkLoseFlipOn(t, gs)
 	krarkTrigger(gs, krark, map[string]interface{}{
 		"caster_seat": 0,
 		"card":        spellCard,
@@ -149,6 +163,7 @@ func TestKrark_R54_LoseFlipNoOpWhenSpellInHandAlready(t *testing.T) {
 	preHand := len(gs.Seats[0].Hand)
 
 	forceKrarkLoseFlip(t)
+	forceKrarkLoseFlipOn(t, gs)
 	krarkTrigger(gs, krark, map[string]interface{}{
 		"caster_seat": 0,
 		"card":        spellCard,

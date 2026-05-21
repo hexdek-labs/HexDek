@@ -67,7 +67,32 @@ func ixidronETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		}
 	}
 
+	// R55: P/T = face-down creatures on battlefield. Layer 7b CDA.
+	gameengine.RegisterDynamicSetPT(gs, perm, ixidronCountFaceDown,
+		gameengine.DurationUntilSourceLeaves, "Ixidron", "cda_pt")
+	gs.InvalidateCharacteristicsCache()
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"creatures_flipped": flipped,
 	})
+}
+
+func ixidronCountFaceDown(gs *gameengine.GameState, perm *gameengine.Permanent) (int, int) {
+	if gs == nil {
+		return 0, 0
+	}
+	n := 0
+	for _, seat := range gs.Seats {
+		if seat == nil {
+			continue
+		}
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			if p.Card.FaceDown {
+				n++
+			}
+		}
+	}
+	return n, n
 }

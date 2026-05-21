@@ -25,11 +25,41 @@ func registerGreensleevesMaroSorcerer(r *Registry) {
 }
 
 func greensleevesETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	if gs == nil || perm == nil {
+	const slug = "greensleeves_cda_layer7b"
+	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
+	// R55 port: P/T = lands you control. Layer 7b CDA.
+	gameengine.RegisterDynamicSetPT(gs, perm, greensleevesCountLands,
+		gameengine.DurationUntilSourceLeaves, "Greensleeves, Maro-Sorcerer", "cda_pt")
+	// Protection from planeswalkers / Wizards is engine-deep target
+	// filtering; keep the partial breadcrumb for that half only.
+	gs.InvalidateCharacteristicsCache()
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller,
+	})
 	emitPartial(gs, "greensleeves_static", perm.Card.DisplayName(),
-		"protection_and_pt_equals_lands_continuous_static_not_modeled")
+		"protection_from_planeswalkers_and_wizards_target_filter_not_modeled")
+}
+
+func greensleevesCountLands(gs *gameengine.GameState, perm *gameengine.Permanent) (int, int) {
+	if gs == nil || perm == nil {
+		return 0, 0
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return 0, 0
+	}
+	n := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		if cardHasType(p.Card, "land") {
+			n++
+		}
+	}
+	return n, n
 }
 
 func greensleevesLandfall(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
