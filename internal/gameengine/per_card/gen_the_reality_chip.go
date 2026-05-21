@@ -32,6 +32,36 @@ import (
 func registerTheRealityChip(r *Registry) {
 	r.OnETB("The Reality Chip", theRealityChipETB)
 	r.OnActivated("The Reality Chip", theRealityChipActivate)
+	// R52 batch L: LTB clears the may_see_top_of_library seat flag
+	// (refcounted via a scan for any other Reality Chip still on the
+	// controller's battlefield) so a removed Chip doesn't leave the
+	// hidden-info visibility hint stuck for downstream consumers.
+	r.OnTrigger("The Reality Chip", "permanent_ltb", theRealityChipLTBClearFlag)
+}
+
+func theRealityChipLTBClearFlag(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	for _, p := range seat.Battlefield {
+		if p == nil || p == perm || p.Card == nil {
+			continue
+		}
+		if normalizeName(p.Card.DisplayName()) == normalizeName("The Reality Chip") {
+			return
+		}
+	}
+	if seat.Flags != nil {
+		delete(seat.Flags, "may_see_top_of_library")
+	}
 }
 
 func theRealityChipETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
