@@ -38,11 +38,22 @@ func registerCecilDarkKnightCecilRedeemedPaladin(r *Registry) {
 	r.OnTrigger(name, "noncombat_damage_to_player", cecilDamageHook)
 	r.OnTrigger(name, "noncombat_damage_to_creature", cecilDamageHook)
 	r.OnTrigger(name, "creature_attacks", cecilAttackProtect)
-	// Bind under each face so attack triggers under the back face also
-	// dispatch through the same hook regardless of which face name the
-	// engine surfaces.
+	// Bind under each face so triggers dispatched by the engine's
+	// face-only Card.Name (e.g., after a transform) still find their
+	// handlers. R53 batch O extends the attack-trigger aliases the R44
+	// port added with the three damage triggers — without these, a
+	// Cecil whose Card.Name resolves to "Cecil, Dark Knight" or
+	// "Cecil, Redeemed Paladin" alone would silently skip the
+	// Darkness self-drain (lookupCandidates strips DFC composite to
+	// front but does NOT compose front-only back to composite).
 	r.OnTrigger("Cecil, Dark Knight", "creature_attacks", cecilAttackProtect)
 	r.OnTrigger("Cecil, Redeemed Paladin", "creature_attacks", cecilAttackProtect)
+	r.OnTrigger("Cecil, Dark Knight", "combat_damage_to_player", cecilDamageHook)
+	r.OnTrigger("Cecil, Dark Knight", "noncombat_damage_to_player", cecilDamageHook)
+	r.OnTrigger("Cecil, Dark Knight", "noncombat_damage_to_creature", cecilDamageHook)
+	r.OnTrigger("Cecil, Redeemed Paladin", "combat_damage_to_player", cecilDamageHook)
+	r.OnTrigger("Cecil, Redeemed Paladin", "noncombat_damage_to_player", cecilDamageHook)
+	r.OnTrigger("Cecil, Redeemed Paladin", "noncombat_damage_to_creature", cecilDamageHook)
 }
 
 func cecilDamageHook(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
