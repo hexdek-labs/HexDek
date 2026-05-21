@@ -75,11 +75,18 @@ func arguelsBloodFastUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent
 		})
 		return
 	}
+	// R51 batch J: promote breadcrumb. The engine exposes
+	// TransformPermanent (used by Cecil's darkness threshold + others);
+	// call it directly so Arguel's flips to Temple of Aclazotz when the
+	// 5-or-less-life condition holds. Idempotent on already-transformed
+	// permanents (TransformPermanent self-skips).
+	if !perm.Transformed {
+		gameengine.TransformPermanent(gs, perm, "arguels_blood_fast_low_life")
+	}
 	emit(gs, slug, "Arguel's Blood Fast", map[string]interface{}{
-		"seat":      perm.Controller,
-		"triggered": true,
-		"life":      life,
+		"seat":        perm.Controller,
+		"triggered":   true,
+		"life":        life,
+		"transformed": perm.Transformed,
 	})
-	emitPartial(gs, slug, "Arguel's Blood Fast",
-		"transform_to_temple_of_aclazotz_engine_call_unimplemented")
 }

@@ -1,6 +1,8 @@
 package per_card
 
 import (
+	"strconv"
+
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -85,14 +87,61 @@ func kolodinTriumphCasterEOTSweep(gs *gameengine.GameState, perm *gameengine.Per
 
 func kolodinTriumphCasterETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	const slug = "kolodin_triumph_caster_etb"
-	if gs == nil || perm == nil {
+	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": perm.Controller,
+	// R51 batch J: promote the haste static from AST-pipeline breadcrumb
+	// to a real layer-6 continuous effect that grants kw:haste to every
+	// Mount or Vehicle the controller controls. Predicate runs at
+	// layer evaluation time so newly entering Mounts/Vehicles pick up
+	// haste immediately, and the grant tears down via
+	// UnregisterContinuousEffectsForPermanent on Kolodin's LTB.
+	src := perm
+	ts := perm.Timestamp
+	suffix := strconv.Itoa(ts)
+	gs.RegisterContinuousEffect(&gameengine.ContinuousEffect{
+		Layer:          gameengine.LayerAbility,
+		Timestamp:      ts,
+		SourcePerm:     src,
+		SourceCardName: "Kolodin, Triumph Caster",
+		ControllerSeat: perm.Controller,
+		HandlerID:      "Kolodin, Triumph Caster:mount_vehicle_haste:" + suffix,
+		Duration:       gameengine.DurationUntilSourceLeaves,
+		Predicate: func(_ *gameengine.GameState, t *gameengine.Permanent) bool {
+			if t == nil || t.Card == nil {
+				return false
+			}
+			if t.Controller != src.Controller {
+				return false
+			}
+			return cardSubtypeMatches(t.Card, "mount") || cardSubtypeMatches(t.Card, "vehicle")
+		},
+		ApplyFn: func(_ *gameengine.GameState, target *gameengine.Permanent, chars *gameengine.Characteristics) {
+			if chars != nil {
+				already := false
+				for _, k := range chars.Keywords {
+					if k == "haste" {
+						already = true
+						break
+					}
+				}
+				if !already {
+					chars.Keywords = append(chars.Keywords, "haste")
+				}
+			}
+			if target != nil {
+				if target.Flags == nil {
+					target.Flags = map[string]int{}
+				}
+				target.Flags["kw:haste"] = 1
+			}
+		},
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"mount_vehicle_haste_static_handled_by_ast_keyword_pipeline")
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":  perm.Controller,
+		"layer": "6",
+		"grant": "haste_to_mounts_vehicles",
+	})
 }
 
 func kolodinTriumphCasterETBTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
