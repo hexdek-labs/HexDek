@@ -27,6 +27,25 @@ import (
 func registerArchelosLagoonMystic(r *Registry) {
 	r.OnETB("Archelos, Lagoon Mystic", archelosETBSetFlag)
 	r.OnTrigger("Archelos, Lagoon Mystic", "permanent_etb", archelosOnPermanentETB)
+	// R50 batch G: LTB hook clears the game-level archelos_tapped_seat
+	// + archelos_etb_mode flags so a removed Archelos doesn't leave the
+	// ETB-tap replacement contract active for downstream consumers.
+	r.OnTrigger("Archelos, Lagoon Mystic", "permanent_ltb", archelosLTBClearFlag)
+}
+
+func archelosLTBClearFlag(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	if gs.Flags == nil {
+		return
+	}
+	delete(gs.Flags, "archelos_tapped_seat")
+	delete(gs.Flags, "archelos_etb_mode")
 }
 
 func archelosETBSetFlag(gs *gameengine.GameState, perm *gameengine.Permanent) {

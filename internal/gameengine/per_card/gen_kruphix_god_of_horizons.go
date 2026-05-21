@@ -26,6 +26,27 @@ import (
 func registerKruphixGodOfHorizons(r *Registry) {
 	r.OnETB("Kruphix, God of Horizons", kruphixETBSetSeatFlags)
 	r.OnTrigger("Kruphix, God of Horizons", "end_step", kruphixEndStepConvertMana)
+	// R50 batch G: LTB hook clears the seat + game flags so a
+	// stolen / exiled Kruphix doesn't leave permanent no-max-hand-size
+	// + unspent-mana-to-colorless effects on the controller.
+	r.OnTrigger("Kruphix, God of Horizons", "permanent_ltb", kruphixLTBClearFlags)
+}
+
+func kruphixLTBClearFlags(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	if gs.Flags != nil {
+		delete(gs.Flags, "no_max_hand_size_seat_"+intToStr(perm.Controller))
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat != nil && seat.Flags != nil {
+		delete(seat.Flags, "kruphix_unspent_mana_to_colorless")
+	}
 }
 
 func kruphixETBSetSeatFlags(gs *gameengine.GameState, perm *gameengine.Permanent) {
