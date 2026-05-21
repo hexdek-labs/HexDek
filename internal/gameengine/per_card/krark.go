@@ -66,10 +66,33 @@ func krarkTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 
 	if !won {
 		// Lose: return the spell to its owner's hand.
-		owner := card.Owner
-		if stackIdx >= 0 {
-			gs.Stack = append(gs.Stack[:stackIdx], gs.Stack[stackIdx+1:]...)
+		//
+		// CR §608.2b — at resolution we must check that the trigger's target
+		// (the cast spell) is still on the stack. If it isn't, the bounce
+		// effect does nothing for that target. This matters because
+		// PushPerCardTrigger defers our handler via gs.pendingTriggers when
+		// the cast event fires inside another resolution frame (CR §608.2c).
+		// By the time pendingTriggers drains, the original spell may have
+		// already resolved into graveyard / exile / hand. Pre-r54, the lose
+		// branch unconditionally called MoveCard(card, owner, "stack",
+		// "hand"); removeCardFromZone("stack") is a no-op (zone_move.go:239
+		// — battlefield/stack source removal is the caller's responsibility),
+		// so the engine appended the card to hand without removing it from
+		// its actual current zone. Result: the same *Card pointer appearing
+		// in both graveyard and hand — Loki r53 lead 1 (Glyph of Destruction
+		// game 490 with Krark, the Thumbless).
+		if stackIdx < 0 {
+			emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+				"seat":  perm.Controller,
+				"flip":  "lose",
+				"spell": card.DisplayName(),
+				"noop":  "spell_no_longer_on_stack",
+				"rule":  "608.2b",
+			})
+			return
 		}
+		owner := card.Owner
+		gs.Stack = append(gs.Stack[:stackIdx], gs.Stack[stackIdx+1:]...)
 		gameengine.MoveCard(gs, card, owner, "stack", "hand", "krark_bounce")
 		gs.LogEvent(gameengine.Event{
 			Kind:   "bounce",
@@ -84,10 +107,10 @@ func krarkTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 			},
 		})
 		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-			"seat":      perm.Controller,
-			"flip":      "lose",
-			"spell":     card.DisplayName(),
-			"returned":  true,
+			"seat":     perm.Controller,
+			"flip":     "lose",
+			"spell":    card.DisplayName(),
+			"returned": true,
 		})
 		return
 	}
