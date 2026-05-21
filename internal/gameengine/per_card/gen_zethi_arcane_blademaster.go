@@ -29,6 +29,47 @@ import (
 func registerZethiArcaneBlademaster(r *Registry) {
 	r.OnETB("Zethi, Arcane Blademaster", zethiETB)
 	r.OnTrigger("Zethi, Arcane Blademaster", "creature_attacks", zethiAttacks)
+	// R52 batch L: LTB sweeps the gs.Flags["zethi_kicked_*"] reverse-
+	// lookup keys. The keys are read by the attack trigger to find
+	// kicked-counter-bearing exiled cards. Once Zethi leaves play the
+	// attack trigger can't fire again, so the keys are orphaned dead
+	// memory until a new Zethi enters. The kick counters themselves
+	// live on the exiled cards (CR card-attached state) and are
+	// preserved — only the reverse-lookup keys are dropped.
+	r.OnTrigger("Zethi, Arcane Blademaster", "permanent_ltb", zethiLTBSweepLookup)
+}
+
+func zethiLTBSweepLookup(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	// Bail if another Zethi remains anywhere in play (any seat).
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, p := range s.Battlefield {
+			if p == nil || p == perm || p.Card == nil {
+				continue
+			}
+			if normalizeName(p.Card.DisplayName()) == normalizeName("Zethi, Arcane Blademaster") {
+				return
+			}
+		}
+	}
+	if gs.Flags == nil {
+		return
+	}
+	const prefix = "zethi_kicked_"
+	for k := range gs.Flags {
+		if len(k) >= len(prefix) && k[:len(prefix)] == prefix {
+			delete(gs.Flags, k)
+		}
+	}
 }
 
 func zethiETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
