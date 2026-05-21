@@ -1,6 +1,8 @@
 package per_card
 
 import (
+	"strconv"
+
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -14,62 +16,61 @@ import (
 //	Akiri gets +1/+0 for each artifact you control.
 //	Partner
 //
-// Implementation:
-//   - ETB: count artifacts controlled by us, set temp_power.
-//   - Refresh on artifact ETB events for upkeep accuracy. Continuous
-//     layers not modeled — emitPartial.
+// R51 batch J port (cheap CMC=2 commander; promote stub to real layer effect):
+//   - Replace the ETB-snapshot + per-artifact-ETB recount approach with a
+//     layer-7c continuous effect whose ApplyFn counts the controller's
+//     artifacts at evaluation time and writes +N/+0 directly to chars.
+//     This stays in sync without per-artifact triggers and survives
+//     artifact LTBs that the prior implementation didn't react to.
+//   - SourcePerm = Akiri so UnregisterContinuousEffectsForPermanent on
+//     LTB tears down automatically. First strike + vigilance + Partner
+//     stay on the AST keyword pipeline.
 func registerAkiriLineSlinger(r *Registry) {
-	r.OnETB("Akiri, Line-Slinger", akiriLineSlingerRefresh)
-	r.OnTrigger("Akiri, Line-Slinger", "permanent_etb", akiriLineSlingerEtbTrigger)
+	r.OnETB("Akiri, Line-Slinger", akiriLineSlingerRegister)
 }
 
-func akiriLineSlingerRefresh(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	akiriLineSlingerApply(gs, perm, "akiri_line_slinger_etb_buff")
-}
-
-func akiriLineSlingerEtbTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
-	if gs == nil || perm == nil || ctx == nil {
+func akiriLineSlingerRegister(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	const slug = "akiri_line_slinger_layer_7c_artifact_buff"
+	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
-	enteringPerm, _ := ctx["permanent"].(*gameengine.Permanent)
-	if enteringPerm == nil || enteringPerm.Card == nil {
-		return
-	}
-	if enteringPerm.Controller != perm.Controller {
-		return
-	}
-	if !cardHasType(enteringPerm.Card, "artifact") {
-		return
-	}
-	akiriLineSlingerApply(gs, perm, "akiri_line_slinger_artifact_etb_refresh")
-}
-
-func akiriLineSlingerApply(gs *gameengine.GameState, perm *gameengine.Permanent, slug string) {
-	seat := gs.Seats[perm.Controller]
-	if seat == nil {
-		return
-	}
-	count := 0
-	for _, p := range seat.Battlefield {
-		if p == nil || p.Card == nil {
-			continue
-		}
-		if cardHasType(p.Card, "artifact") {
-			count++
-		}
-	}
-	if perm.Flags == nil {
-		perm.Flags = map[string]int{}
-	}
-	prev := perm.Flags["akiri_artifact_buff"]
-	delta := count - prev
-	perm.Flags["akiri_artifact_buff"] = count
-	perm.Flags["temp_power"] += delta
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":         perm.Controller,
-		"artifact_count": count,
-		"power_delta":  delta,
+	src := perm
+	ts := perm.Timestamp
+	suffix := strconv.Itoa(ts)
+	gs.RegisterContinuousEffect(&gameengine.ContinuousEffect{
+		Layer:          gameengine.LayerPT,
+		Sublayer:       "c",
+		Timestamp:      ts,
+		SourcePerm:     src,
+		SourceCardName: "Akiri, Line-Slinger",
+		ControllerSeat: perm.Controller,
+		HandlerID:      "Akiri, Line-Slinger:artifact_buff:" + suffix,
+		Duration:       gameengine.DurationUntilSourceLeaves,
+		Predicate: func(_ *gameengine.GameState, t *gameengine.Permanent) bool {
+			return t == src
+		},
+		ApplyFn: func(gs *gameengine.GameState, _ *gameengine.Permanent, chars *gameengine.Characteristics) {
+			if chars == nil {
+				return
+			}
+			seat := gs.Seats[src.Controller]
+			if seat == nil {
+				return
+			}
+			count := 0
+			for _, p := range seat.Battlefield {
+				if p == nil || p.Card == nil {
+					continue
+				}
+				if cardHasType(p.Card, "artifact") {
+					count++
+				}
+			}
+			chars.Power += count
+		},
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"static_buff_refreshed_on_artifact_etb_only_not_continuously_layered")
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":  perm.Controller,
+		"layer": "7c",
+	})
 }
