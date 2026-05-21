@@ -40,7 +40,7 @@ func registerMendicantCoreGuidelight(r *Registry) {
 }
 
 func mendicantETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	if gs == nil || perm == nil {
+	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
 	if perm.Flags == nil {
@@ -50,35 +50,41 @@ func mendicantETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if perm.Flags["speed"] <= 0 {
 		perm.Flags["speed"] = 1
 	}
-	mendicantRefreshPower(gs, perm)
+	// R55: power = artifacts you control. Layer 7b dynamic power-only.
+	// Replaces the prior Card.BasePower mutation (which polluted every
+	// shared copy of the Card).
+	gameengine.RegisterDynamicSetPower(gs, perm, mendicantCountArtifacts,
+		gameengine.DurationUntilSourceLeaves, "Mendicant Core, Guidelight", "cda_power")
+	gs.InvalidateCharacteristicsCache()
 }
 
-func mendicantRefreshPower(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	if gs == nil || perm == nil || perm.Card == nil {
-		return
+func mendicantCountArtifacts(gs *gameengine.GameState, perm *gameengine.Permanent) int {
+	if gs == nil || perm == nil {
+		return 0
 	}
 	seat := gs.Seats[perm.Controller]
 	if seat == nil {
-		return
+		return 0
 	}
-	count := 0
+	n := 0
 	for _, p := range seat.Battlefield {
 		if p == nil || p.Card == nil {
 			continue
 		}
 		if cardHasType(p.Card, "artifact") {
-			count++
+			n++
 		}
 	}
-	perm.Card.BasePower = count
-	gs.InvalidateCharacteristicsCache()
+	return n
 }
 
 func mendicantBeginCombat(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
-	if gs == nil || perm == nil {
-		return
-	}
-	mendicantRefreshPower(gs, perm)
+	// R55: CDA is now a continuous effect; power recomputes on each
+	// layer pass. No combat-begin refresh needed. Kept as a no-op for
+	// trigger-coverage parity with the pre-R55 registration shape.
+	_ = gs
+	_ = perm
+	_ = ctx
 }
 
 func mendicantSpeedTick(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

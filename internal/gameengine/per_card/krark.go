@@ -62,7 +62,15 @@ func krarkTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 		break
 	}
 
-	won := rand.Intn(2) == 1
+	// R55: prefer the per-game RNG when available so tests aren't
+	// at the mercy of global math/rand state from other tests.
+	// Fallback to global rand for callers that didn't seed gs.Rng.
+	var won bool
+	if gs != nil && gs.Rng != nil {
+		won = gs.Rng.Intn(2) == 1
+	} else {
+		won = rand.Intn(2) == 1
+	}
 
 	if !won {
 		// Lose: return the spell to its owner's hand.

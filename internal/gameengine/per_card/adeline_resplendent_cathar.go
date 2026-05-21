@@ -27,33 +27,38 @@ func registerAdelineResplendentCathar(r *Registry) {
 }
 
 func adelineETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "adeline_resplendent_cathar_etb_buff"
-	if gs == nil || perm == nil {
+	const slug = "adeline_cda_layer7b"
+	if gs == nil || perm == nil || perm.Card == nil {
 		return
+	}
+	// R55: power = creatures you control. Layer 7b CDA via dynamic
+	// power-only primitive (toughness stays at printed 3).
+	gameengine.RegisterDynamicSetPower(gs, perm, adelineCountCreatures,
+		gameengine.DurationUntilSourceLeaves, "Adeline, Resplendent Cathar", "cda_power")
+	gs.InvalidateCharacteristicsCache()
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller,
+	})
+}
+
+func adelineCountCreatures(gs *gameengine.GameState, perm *gameengine.Permanent) int {
+	if gs == nil || perm == nil {
+		return 0
 	}
 	seat := gs.Seats[perm.Controller]
 	if seat == nil {
-		return
+		return 0
 	}
-	count := 0
+	n := 0
 	for _, p := range seat.Battlefield {
 		if p == nil || p.Card == nil {
 			continue
 		}
 		if p.IsCreature() {
-			count++
+			n++
 		}
 	}
-	if perm.Flags == nil {
-		perm.Flags = map[string]int{}
-	}
-	perm.Flags["temp_power"] += count - 1
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":           perm.Controller,
-		"creature_count": count,
-	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"power_equals_creature_count_only_refreshed_on_etb")
+	return n
 }
 
 func adelineAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

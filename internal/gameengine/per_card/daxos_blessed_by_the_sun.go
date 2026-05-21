@@ -15,8 +15,30 @@ import (
 // The toughness CDA is left to the AST/state-resolver pipeline. We wire
 // the gain-life trigger here.
 func registerDaxosBlessedByTheSun(r *Registry) {
+	r.OnETB("Daxos, Blessed by the Sun", daxosETBRegisterCDA)
 	r.OnTrigger("Daxos, Blessed by the Sun", "permanent_etb", daxosCreatureETB)
 	r.OnTrigger("Daxos, Blessed by the Sun", "creature_dies", daxosCreatureDies)
+}
+
+func daxosETBRegisterCDA(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	const slug = "daxos_cda_layer7b"
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	// R55: toughness = devotion to white. Layer 7b dynamic toughness-only.
+	gameengine.RegisterDynamicSetToughness(gs, perm, daxosDevotionWhite,
+		gameengine.DurationUntilSourceLeaves, "Daxos, Blessed by the Sun", "cda_tough")
+	gs.InvalidateCharacteristicsCache()
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller,
+	})
+}
+
+func daxosDevotionWhite(gs *gameengine.GameState, perm *gameengine.Permanent) int {
+	if gs == nil || perm == nil {
+		return 0
+	}
+	return gameengine.DevotionToWhite(gs, perm.Controller)
 }
 
 func daxosCreatureETB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

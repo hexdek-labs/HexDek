@@ -1088,6 +1088,113 @@ func RegisterGrantKeyword(gs *GameState, target *Permanent, keyword string,
 	return gs.RegisterContinuousEffect(ce)
 }
 
+// RegisterDynamicSetPT (R55) registers a Layer 7b continuous effect
+// that sets `target`'s base P/T to values computed dynamically on each
+// layer pass. Use this for characteristic-defining abilities (CDA) like
+// Maro ("P/T = cards in your hand"), Tarmogoyf, Lord of Extinction, etc.
+//
+// The compute fn is called fresh inside ApplyFn so the value tracks
+// game state. SourcePerm = target so the effect auto-cleans on LTB
+// via UnregisterContinuousEffectsForPermanent.
+//
+// CR §613.4b / §613.2 (CDAs are tracked at layer 7b).
+func RegisterDynamicSetPT(gs *GameState, target *Permanent,
+	compute func(*GameState, *Permanent) (power, toughness int),
+	duration, sourceCardName, disc string) *ContinuousEffect {
+	if gs == nil || target == nil || compute == nil {
+		return nil
+	}
+	ts := gs.NextTimestamp()
+	ce := &ContinuousEffect{
+		Layer:          LayerPT,
+		Sublayer:       "b",
+		Timestamp:      ts,
+		SourcePerm:     target,
+		SourceCardName: sourceCardName,
+		ControllerSeat: target.Controller,
+		HandlerID:      "dynsetpt:" + disc + ":" + sourceCardName + ":" + itoaLayers(target.Timestamp) + ":" + itoaLayers(ts),
+		Duration:       duration,
+		ApplyFn: func(g *GameState, p *Permanent, chars *Characteristics) {
+			if p != target {
+				return
+			}
+			pw, th := compute(g, p)
+			chars.Power = pw
+			chars.Toughness = th
+			chars.BasePower = pw
+			chars.BaseToughness = th
+		},
+	}
+	return gs.RegisterContinuousEffect(ce)
+}
+
+// RegisterDynamicSetPower (R55) is the power-only variant of
+// RegisterDynamicSetPT. Toughness is left at whatever the printed /
+// upstream-layer base produced; the dynamic compute fn only sets
+// Power and BasePower.
+//
+// Use for cards like Adeline, Resplendent Cathar ("Adeline's power is
+// equal to the number of creatures you control") whose toughness is
+// printed and shouldn't track game state.
+func RegisterDynamicSetPower(gs *GameState, target *Permanent,
+	compute func(*GameState, *Permanent) int,
+	duration, sourceCardName, disc string) *ContinuousEffect {
+	if gs == nil || target == nil || compute == nil {
+		return nil
+	}
+	ts := gs.NextTimestamp()
+	ce := &ContinuousEffect{
+		Layer:          LayerPT,
+		Sublayer:       "b",
+		Timestamp:      ts,
+		SourcePerm:     target,
+		SourceCardName: sourceCardName,
+		ControllerSeat: target.Controller,
+		HandlerID:      "dynsetpwr:" + disc + ":" + sourceCardName + ":" + itoaLayers(target.Timestamp) + ":" + itoaLayers(ts),
+		Duration:       duration,
+		ApplyFn: func(g *GameState, p *Permanent, chars *Characteristics) {
+			if p != target {
+				return
+			}
+			pw := compute(g, p)
+			chars.Power = pw
+			chars.BasePower = pw
+		},
+	}
+	return gs.RegisterContinuousEffect(ce)
+}
+
+// RegisterDynamicSetToughness (R55) is the toughness-only counterpart
+// for cards like Daxos, Blessed by the Sun ("Daxos's toughness is
+// equal to your devotion to white"). Power is preserved.
+func RegisterDynamicSetToughness(gs *GameState, target *Permanent,
+	compute func(*GameState, *Permanent) int,
+	duration, sourceCardName, disc string) *ContinuousEffect {
+	if gs == nil || target == nil || compute == nil {
+		return nil
+	}
+	ts := gs.NextTimestamp()
+	ce := &ContinuousEffect{
+		Layer:          LayerPT,
+		Sublayer:       "b",
+		Timestamp:      ts,
+		SourcePerm:     target,
+		SourceCardName: sourceCardName,
+		ControllerSeat: target.Controller,
+		HandlerID:      "dynsettgh:" + disc + ":" + sourceCardName + ":" + itoaLayers(target.Timestamp) + ":" + itoaLayers(ts),
+		Duration:       duration,
+		ApplyFn: func(g *GameState, p *Permanent, chars *Characteristics) {
+			if p != target {
+				return
+			}
+			th := compute(g, p)
+			chars.Toughness = th
+			chars.BaseToughness = th
+		},
+	}
+	return gs.RegisterContinuousEffect(ce)
+}
+
 // RegisterOpalescence wires the post-2017 oracle Opalescence:
 //   - Layer 4: each OTHER non-Aura enchantment is a creature in
 //     addition to its other types (self-exclusion via "other").
