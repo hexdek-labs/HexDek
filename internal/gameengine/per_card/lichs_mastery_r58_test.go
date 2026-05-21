@@ -83,6 +83,84 @@ func TestLichsMastery_R58_FallsBackToHandWhenBattlefieldEmpty(t *testing.T) {
 	}
 }
 
+// r58 follow-up — Lich's Mastery must not exile itself. The "last
+// permanent in the slice" picker auto-self-exiles when Lich is the
+// only (or last-positioned) battlefield permanent, triggering its own
+// "leaves the battlefield → you lose the game" SBA and defeating the
+// engine's whole purpose. Pin that the handler skips the source and
+// falls back to hand/graveyard.
+func TestLichsMastery_R58_DoesNotExileSelfWhenLastOnBattlefield(t *testing.T) {
+	gs := newGame(t, 2)
+	mastery := stampCreaturePT(addPerm(gs, 0, "Lich's Mastery", "enchantment"), 0, 0)
+	// Lich's Mastery is the SOLE battlefield permanent. Provide a hand
+	// fallback so the handler has something to exile that isn't Lich.
+	handCard := &gameengine.Card{
+		Name: "Fallback Card", Owner: 0, Types: []string{"instant"},
+	}
+	gs.Seats[0].Hand = append(gs.Seats[0].Hand, handCard)
+
+	lichsMasteryLifeLost(gs, mastery, map[string]interface{}{
+		"seat":   0,
+		"amount": 1,
+	})
+
+	// Lich's Mastery must still be on the battlefield.
+	stillOnBf := false
+	for _, p := range gs.Seats[0].Battlefield {
+		if p == mastery {
+			stillOnBf = true
+		}
+	}
+	if !stillOnBf {
+		t.Fatalf("REGRESSION: Lich's Mastery exiled itself — would trigger LTB lose-the-game SBA")
+	}
+	// And the hand card should have been exiled instead.
+	if len(gs.Seats[0].Hand) != 0 {
+		t.Errorf("expected hand emptied via fallback; got %d remaining", len(gs.Seats[0].Hand))
+	}
+	if len(gs.Seats[0].Exile) != 1 {
+		t.Errorf("expected 1 card in exile (the hand fallback); got %d", len(gs.Seats[0].Exile))
+	}
+	for _, c := range gs.Seats[0].Exile {
+		if c == mastery.Card {
+			t.Errorf("REGRESSION: Lich's Mastery's *Card appended to exile (self-target leak)")
+		}
+	}
+}
+
+// r58 follow-up — pin amount>1 with mixed seat 0 battlefield: 1 Lich +
+// N other permanents. The handler must exile N-1 others (NOT Lich)
+// without ever entering an infinite loop or self-target.
+func TestLichsMastery_R58_MultiAmountSkipsSelfAndExilesOthers(t *testing.T) {
+	gs := newGame(t, 2)
+	mastery := stampCreaturePT(addPerm(gs, 0, "Lich's Mastery", "enchantment"), 0, 0)
+	addPerm(gs, 0, "Mire's Grasp", "enchantment", "aura")
+	addPerm(gs, 0, "Mire's Grasp", "enchantment", "aura")
+	addPerm(gs, 0, "Mire's Grasp", "enchantment", "aura")
+
+	lichsMasteryLifeLost(gs, mastery, map[string]interface{}{
+		"seat":   0,
+		"amount": 3,
+	})
+
+	// All three Mires exiled, Lich stays.
+	stillOnBf := false
+	for _, p := range gs.Seats[0].Battlefield {
+		if p == mastery {
+			stillOnBf = true
+		}
+	}
+	if !stillOnBf {
+		t.Fatalf("Lich's Mastery self-exiled (regression)")
+	}
+	if len(gs.Seats[0].Battlefield) != 1 {
+		t.Errorf("expected only Lich's Mastery left on bf; got %d permanents", len(gs.Seats[0].Battlefield))
+	}
+	if len(gs.Seats[0].Exile) != 3 {
+		t.Errorf("expected 3 cards in exile; got %d", len(gs.Seats[0].Exile))
+	}
+}
+
 func TestLichsMastery_R58_DoesNotFireForOpponentLifeLoss(t *testing.T) {
 	gs := newGame(t, 2)
 	mastery := stampCreaturePT(addPerm(gs, 0, "Lich's Mastery", "enchantment"), 0, 0)
