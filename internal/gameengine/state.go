@@ -107,6 +107,18 @@ type GameState struct {
 	// inserting applicability predicates rather than registering wildcards.
 	Replacements []*ReplacementEffect
 
+	// CounterThresholds is the counter-accumulator threshold registry
+	// (R58). Per-card handlers register an effect that fires when a
+	// source permanent's Counters[X] reaches a threshold at upkeep
+	// evaluation. Helix Pinnacle (tower → 100 → win), Darksteel Reactor
+	// (charge → 20 → win), Azor's Elocutors (filibuster → 5 → win),
+	// Quest for Ula's Temple (quest → 3 → upkeep Kraken from hand) all
+	// share this shape. See counter_threshold.go for the effect
+	// struct + RegisterCounterThreshold /
+	// UnregisterCounterThresholdsForPermanent /
+	// EvaluateCounterThresholds APIs.
+	CounterThresholds []*CounterThresholdEffect
+
 	// ZoneCastPolicies is the §614 filter-driven zone-cast policy
 	// registry (R55). Complements gs.ZoneCastGrants (per-*Card-pointer)
 	// with predicate-driven multi-card grants — Aluren-style "any

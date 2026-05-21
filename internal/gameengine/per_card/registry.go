@@ -911,6 +911,11 @@ func registerDefaults() {
 	registerAshlingFlameDancerManaExemption(Global())
 	registerMagusOfTheCoffers(Global())
 	registerCavernOfSouls(Global())
+	// R58 — counter-accumulator-threshold primitive + 4 ports.
+	registerHelixPinnacle(Global())
+	registerDarksteelReactor(Global())
+	registerAzorsElocutors(Global())
+	registerQuestForUlasTemple(Global())
 
 	// Batch #17 — token-creation triggers and aristocrat payoffs.
 	// Anointed Procession's token_created trigger is upgraded in
