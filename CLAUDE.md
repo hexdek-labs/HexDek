@@ -181,6 +181,7 @@ Fetch oracle data: `scripts/fetch-oracle.sh`
 | 2026-05-19 | Loki r41 | **TriggerCompleteness (8)** — trigger batch opened but never drained | Low | Likely `BeginTriggerBatch` whose `defer EndTriggerBatch` was bypassed by an early return |
 | 2026-05-19 | Loki r41 | **ZoneCastGrantExpiry (8)** — impulse-play / cast-from-exile grant outlived its declared expiry | Low | Suspect `resolveResidualByText` impulse_play grants (resolve_helpers.go:4691) lacking cleanup hook |
 | 2026-05-19 | Loki r44 / game 420 | **ZoneConservation "real cards disappeared"** — 28 hits in game 420 (Breya/Baron Bertram/Alela/SP//dr deck) at turn 10+, seat 3 census reads 4 cards low. Different cluster from r41–r43 (cards going MISSING, not duplicating) | Med | Surfaced once the game 404 Pitmage cluster cleared. Repro: `--games 421 --seed 41` |
+| 2026-05-22 | Forge gauntlet | **TLA flashback-grant unimplemented** — `Iroh, Grand Lotus`'s "during your turn, each non-Lesson instant/sorcery in your graveyard has flashback (= mana cost); Lessons have flashback {1}" parses to a `phase_scoped_static` scaffold node with the whole clause dumped as a raw-text arg — engine never grants flashback to graveyard cards. Surfaced via a B3 deck gauntlet where Iroh ran at 19% (rank 11/12) with his entire recursion engine inert. Likely representative of TLA complex-ability cards broadly. | Med | Needs a per_card handler / a `grant_flashback_in_graveyard` primitive. Repro: inspect `ast_dataset.jsonl` entry for Iroh |
 
 ### Resolved
 
