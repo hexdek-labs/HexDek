@@ -1,6 +1,28 @@
 import { Component, Suspense, useState, useEffect } from 'react'
 
-function DefaultFallback() {
+// LazyBoundary.jsx
+// ---------------------------------------------------------------------
+// Two related primitives for screen-level resilience.
+//
+//   <ErrorBoundary>
+//     Catches ANY render-time error in its subtree — chunk-load
+//     failures from React.lazy, but also synchronous throws from
+//     normal (eager) components like DeckArchive. iOS Safari render
+//     errors (storage access, getImageData taint, etc.) bubble here
+//     instead of unmounting the route to a black screen.
+//
+//   <LazyBoundary>
+//     ErrorBoundary + Suspense. Use this around any subtree that
+//     contains React.lazy descendants — gets both the loading
+//     fallback and the crash recovery in one wrapper.
+//
+// componentDidCatch only fires for errors thrown during render /
+// during a lifecycle method / inside a hook. Async errors (a setState
+// inside a fetch.then handler) are NOT caught — those need their own
+// try/catch at the call site.
+// ---------------------------------------------------------------------
+
+function DefaultLoadingFallback() {
   const [show, setShow] = useState(false)
   useEffect(() => {
     const id = setTimeout(() => setShow(true), 250)
@@ -30,9 +52,30 @@ function DefaultFallback() {
   )
 }
 
+function classifyError(error) {
+  const msg = String(error?.message || error || '')
+  const name = String(error?.name || '')
+  if (/chunk|loading.*dynamically|failed to fetch dynamically/i.test(msg)) {
+    return 'chunk'
+  }
+  if (name === 'SecurityError' || /securityerror|quotaexceeded/i.test(msg)) {
+    return 'storage'
+  }
+  return 'render'
+}
+
 function ErrorFallback({ error, onRetry }) {
-  const msg = String(error?.message || error || 'unknown error')
-  const isChunk = /chunk|loading|dynamically imported|importing/i.test(msg)
+  const kind = classifyError(error)
+  const headline =
+    kind === 'chunk' ? '> CONNECTION HICCUP'
+    : kind === 'storage' ? '> BROWSER STORAGE BLOCKED'
+    : '> SOMETHING BROKE'
+  const detail =
+    kind === 'chunk'
+      ? 'Failed to fetch this page. Tap retry to try again, or full-reload to refresh the bundle.'
+      : kind === 'storage'
+      ? 'Private browsing mode is blocking storage access. Exit private mode and reload, or continue with full-reload.'
+      : String(error?.message || error || 'Unknown render error').slice(0, 240)
   return (
     <div
       role="alert"
@@ -50,12 +93,10 @@ function ErrorFallback({ error, onRetry }) {
       }}
     >
       <div style={{ fontSize: 13, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--danger, #c33)', fontWeight: 700 }}>
-        &gt; SCREEN FAILED TO LOAD
+        {headline}
       </div>
       <div style={{ fontSize: 11, letterSpacing: '0.04em', color: 'var(--ink-2, #888)', maxWidth: 420, lineHeight: 1.5 }}>
-        {isChunk
-          ? 'Connection hiccup while fetching this page. Tap retry to try again.'
-          : msg.slice(0, 200)}
+        {detail}
       </div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
         <button
@@ -76,7 +117,7 @@ function ErrorFallback({ error, onRetry }) {
           RETRY
         </button>
         <button
-          onClick={() => { window.location.reload() }}
+          onClick={() => { try { window.location.reload() } catch {} }}
           style={{
             padding: '10px 18px',
             background: 'transparent',
@@ -97,38 +138,43 @@ function ErrorFallback({ error, onRetry }) {
   )
 }
 
-class LazyErrorBoundary extends Component {
+export class ErrorBoundary extends Component {
   constructor(props) {
     super(props)
-    this.state = { error: null }
+    this.state = { error: null, bumpKey: 0 }
   }
   static getDerivedStateFromError(error) {
     return { error }
   }
   componentDidCatch(error, info) {
     if (typeof console !== 'undefined') {
-      console.error('[LazyBoundary]', error, info?.componentStack)
+      console.error('[ErrorBoundary]', error, info?.componentStack)
     }
   }
   reset = () => {
-    this.setState({ error: null })
-    this.props.onReset?.()
+    // Bump the wrapper key on reset so React remounts the subtree
+    // from scratch — important when the prior render left a child
+    // hook in a corrupted state (e.g., a half-resolved lazy import).
+    this.setState(s => ({ error: null, bumpKey: s.bumpKey + 1 }))
   }
   render() {
     if (this.state.error) {
       return <ErrorFallback error={this.state.error} onRetry={this.reset} />
     }
-    return this.props.children
+    return (
+      <div key={this.state.bumpKey} style={{ display: 'contents' }}>
+        {this.props.children}
+      </div>
+    )
   }
 }
 
-export default function LazyBoundary({ children }) {
-  const [bumpKey, setBumpKey] = useState(0)
+export default function LazyBoundary({ children, fallback }) {
   return (
-    <LazyErrorBoundary onReset={() => setBumpKey(k => k + 1)}>
-      <Suspense fallback={<DefaultFallback />}>
-        <div key={bumpKey} style={{ display: 'contents' }}>{children}</div>
+    <ErrorBoundary>
+      <Suspense fallback={fallback ?? <DefaultLoadingFallback />}>
+        {children}
       </Suspense>
-    </LazyErrorBoundary>
+    </ErrorBoundary>
   )
 }

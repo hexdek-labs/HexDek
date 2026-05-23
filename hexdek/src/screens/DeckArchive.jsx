@@ -630,8 +630,15 @@ export default function DeckArchive() {
     }
   }
 
+  // localStorage access during render is unsafe on iOS Safari private
+  // browsing (and inside some embedded WebViews) — getItem can throw
+  // SecurityError, which would unmount the entire route to a black
+  // screen if uncaught. ErrorBoundary covers us now, but guard at the
+  // call site too so the route stays interactive in private mode.
+  let storedOwnerSlug = ''
+  try { storedOwnerSlug = localStorage.getItem('hexdek_owner') || '' } catch {}
   const userOwnerSlug = user
-    ? (localStorage.getItem('hexdek_owner') || user.displayName?.toLowerCase() || user.email?.split('@')[0]?.split('.')[0] || '')
+    ? (storedOwnerSlug || user.displayName?.toLowerCase() || user.email?.split('@')[0]?.split('.')[0] || '')
     : ''
   const isOwner = !!owner && !!userOwnerSlug && userOwnerSlug === owner.toLowerCase()
   const canFriend = !!user && !!userOwnerSlug && !!owner && !isOwner
