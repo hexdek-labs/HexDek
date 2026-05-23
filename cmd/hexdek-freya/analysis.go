@@ -265,9 +265,16 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		p.Produces = append(p.Produces, ResToken)
 	}
 
-	// Card draw.
-	if containsAny(ot, "draw a card", "draw two", "draw three", "draw cards",
-		"draws a card", "draw x") && !strings.Contains(ot, "withdraw") {
+	// Card draw. Strip "whenever/when/if you/player draw[s]" trigger clauses
+	// first — a card that *reacts* to drawing (e.g. The Locust God's
+	// "Whenever you draw a card, create a 1/1 ... token") is not itself a
+	// card-producer. The token it makes is a permanent, not a card, so the
+	// "draw a card" substring inside the trigger condition must not register
+	// as ResCard production. Only actual draw effects on the card's own
+	// text should mark Produces = ResCard.
+	otNoDrawTrig := stripDrawTriggerClauses(ot)
+	if containsAny(otNoDrawTrig, "draw a card", "draw two", "draw three", "draw cards",
+		"draws a card", "draw x") && !strings.Contains(otNoDrawTrig, "withdraw") {
 		p.Produces = append(p.Produces, ResCard)
 	}
 
@@ -314,9 +321,15 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		}
 	}
 
-	// Discard as a cost.
-	if containsAny(ot, "discard a card", "discard two", "discard your hand",
-		"discard a ", "as an additional cost") && strings.Contains(ot, "discard") {
+	// Discard as a COST (not an effect). True discard costs appear as either
+	// an activated-ability cost ("..., discard a card: <effect>" / "discard
+	// a card: <effect>") or as an additional spell cost ("as an additional
+	// cost ... discard"). Plain "draw a card, then discard a card" /
+	// "discard a card unless you ..." patterns are post-draw effects, not
+	// costs, and must not mark the card as a card-consumer — otherwise a
+	// rummage/loot effect spuriously closes a card↔card resource cycle with
+	// any other draw effect in the deck.
+	if isDiscardCost(ot) {
 		p.Consumes = append(p.Consumes, ResCard)
 	}
 
@@ -3082,6 +3095,85 @@ func deduplicateCombos(combos []ComboResult) []ComboResult {
 		result = append(result, c)
 	}
 	return result
+}
+
+// stripDrawTriggerClauses removes draw-trigger phrases from oracle text so
+// substring scans for "draw a card" / "draw cards" don't false-match on the
+// trigger condition of a card that merely *reacts* to drawing.
+//
+// Removed clauses (all lowercase, expected by `ot`):
+//
+//	"whenever you draw a card"        "when you draw a card"
+//	"whenever you draw your"          "when you draw your"
+//	"whenever a player draws a card"  "whenever an opponent draws a card"
+//	"whenever you draw cards"         "if you would draw a card"
+//	"if you draw a card"
+//
+// This is intentionally a strip-and-rescan rather than a regex parse: the
+// downstream production check only cares whether *any* actual draw effect
+// remains on the card outside its trigger condition.
+func stripDrawTriggerClauses(ot string) string {
+	clauses := []string{
+		"whenever you draw a card",
+		"whenever you draw your",
+		"whenever you draw cards",
+		"whenever a player draws a card",
+		"whenever a player draws their",
+		"whenever an opponent draws a card",
+		"whenever an opponent draws cards",
+		"when you draw a card",
+		"when you draw your",
+		"if you would draw a card",
+		"if you draw a card",
+		"if a player would draw a card",
+	}
+	out := ot
+	for _, c := range clauses {
+		out = strings.ReplaceAll(out, c, " ")
+	}
+	return out
+}
+
+// isDiscardCost reports whether oracle text uses discard as an actual cost
+// (activated-ability cost or additional spell cost), not merely as a
+// post-draw effect. A rummage/loot effect like "draw a card, then discard a
+// card" is NOT a discard cost — it's a hand-filter effect that nets zero
+// cards.
+//
+// Recognised cost patterns (lowercase):
+//
+//	"discard a card:" / "discard two cards:" / "discard your hand:" / "discard X cards:"
+//	"discard a card,"  preceded earlier on the same line by an activation-cost
+//	                   anchor (mana symbol "{...}" or "{t}") and followed by ":"
+//	"as an additional cost" + "discard"
+func isDiscardCost(ot string) bool {
+	if containsAny(ot,
+		"discard a card:",
+		"discard two cards:",
+		"discard three cards:",
+		"discard your hand:",
+		"discard a creature card:",
+		"discard an artifact card:",
+		"discard a land card:",
+	) {
+		return true
+	}
+	if strings.Contains(ot, "as an additional cost") && strings.Contains(ot, "discard") {
+		return true
+	}
+	// Activated ability with "discard" inside the cost segment (left of the
+	// first colon on a line). Scan each line for "<...>discard<...>:".
+	for _, line := range strings.Split(ot, "\n") {
+		colon := strings.Index(line, ":")
+		if colon < 0 {
+			continue
+		}
+		costSeg := line[:colon]
+		if strings.Contains(costSeg, "discard") {
+			return true
+		}
+	}
+	return false
 }
 
 // containsAny checks if s contains any of the given substrings.
