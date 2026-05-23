@@ -135,7 +135,9 @@ Fetch oracle data: `scripts/fetch-oracle.sh`
 ## Freya Improvement Kanban
 
 ### Ready
-- [ ] Fix triple combo cycle ordering (only tests 2/6 orderings — misses valid 3-card combos)
+
+### Done (2026-05-22)
+- [x] Fix triple combo cycle ordering — enumerate all 6 permutations in `checkTripleCombo` (was 2/6); regressions in `cmd/hexdek-freya/triple_cycle_test.go`
 
 ### Done (2026-04-29)
 - [x] Fix combo false positives (self-exile, hand vs battlefield, attack-trigger dependency, randomness)
