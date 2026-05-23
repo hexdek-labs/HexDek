@@ -2085,6 +2085,15 @@ func registerDefaults() {
 	registerDictateOfTheTwinGods(Global())
 	registerQuestForPureFlame(Global())
 	registerCurseOfBloodletting(Global())
+
+	// R60 — Yawgmoth's Will family. Play-lands-and-cast-spells-from-
+	// graveyard with exile-on-resolve and graveyard→exile redirect.
+	// All four share the play_from_graveyard primitive in
+	// gameengine/play_from_graveyard.go.
+	registerYawgmothsWill(Global())
+	registerGaeasWill(Global())
+	registerYawgmothsAgenda(Global())
+	registerMagusOfTheWill(Global())
 }
 
 func init() {

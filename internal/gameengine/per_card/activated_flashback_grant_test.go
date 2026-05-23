@@ -122,7 +122,13 @@ func TestSapphireCollector_InsufficientManaFails(t *testing.T) {
 // Magus of the Will
 // -----------------------------------------------------------------------------
 
-func TestMagusOfTheWill_ExilesSelfAndGrantsAllInstantsAndSorceries(t *testing.T) {
+func TestMagusOfTheWill_ExilesSelfAndGrantsAllNonlandCards(t *testing.T) {
+	// R60 follow-up: Magus of the Will now routes through the broader
+	// play_from_graveyard primitive, so the grant covers EVERY nonland
+	// card type in the graveyard (instant, sorcery, creature,
+	// artifact, enchantment) — not just instants/sorceries — matching
+	// the printed "cast spells from your graveyard" text. Lands are
+	// excluded because they're played, not cast.
 	gs := newGame(t, 2)
 	magus := addPerm(gs, 0, "Magus of the Will", "creature")
 	gs.Seats[0].ManaPool = 5
@@ -130,7 +136,8 @@ func TestMagusOfTheWill_ExilesSelfAndGrantsAllInstantsAndSorceries(t *testing.T)
 	bolt := &gameengine.Card{Name: "Lightning Bolt", Owner: 0, Types: []string{"instant"}, CMC: 1}
 	wrath := &gameengine.Card{Name: "Wrath of God", Owner: 0, Types: []string{"sorcery"}, CMC: 4}
 	bear := &gameengine.Card{Name: "Grizzly Bears", Owner: 0, Types: []string{"creature"}, CMC: 2}
-	gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, bolt, wrath, bear)
+	plains := &gameengine.Card{Name: "Plains", Owner: 0, Types: []string{"land"}}
+	gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, bolt, wrath, bear, plains)
 
 	gameengine.InvokeActivatedHook(gs, magus, 0, nil)
 
@@ -154,21 +161,22 @@ func TestMagusOfTheWill_ExilesSelfAndGrantsAllInstantsAndSorceries(t *testing.T)
 		t.Errorf("Magus card should be in seat 0's exile")
 	}
 
-	// Both i/s in graveyard should have a flashback grant; bear should not.
-	if grant := gameengine.GetZoneCastGrant(gs, bolt); grant == nil {
-		t.Errorf("bolt should have a flashback grant after Magus")
+	// Every nonland card in graveyard should now have a grant
+	// (instants, sorceries, AND creatures — Yawg-Will body).
+	for _, c := range []*gameengine.Card{bolt, wrath, bear} {
+		if grant := gameengine.GetZoneCastGrant(gs, c); grant == nil {
+			t.Errorf("%s should have a graveyard cast grant after Magus", c.Name)
+		}
 	}
-	if grant := gameengine.GetZoneCastGrant(gs, wrath); grant == nil {
-		t.Errorf("wrath should have a flashback grant after Magus")
+	if grant := gameengine.GetZoneCastGrant(gs, plains); grant != nil {
+		t.Errorf("land card (plains) should NOT receive a cast grant")
 	}
-	if grant := gameengine.GetZoneCastGrant(gs, bear); grant != nil {
-		t.Errorf("creature card (bear) should NOT receive a flashback grant")
+	if hasEvent(gs, "play_from_graveyard_granted") < 1 {
+		t.Errorf("expected play_from_graveyard_granted event from primitive")
 	}
-	if hasEvent(gs, "activated_flashback_grant") < 1 {
-		t.Errorf("expected activated_flashback_grant event")
-	}
-	if hasEvent(gs, "per_card_partial") < 2 {
-		t.Errorf("expected at least 2 per_card_partial events for lands + replacement effect, got %d",
+	// Land-play half is still partial — emitPartial flags the gap.
+	if hasEvent(gs, "per_card_partial") < 1 {
+		t.Errorf("expected at least 1 per_card_partial event for the land-play gap, got %d",
 			hasEvent(gs, "per_card_partial"))
 	}
 }

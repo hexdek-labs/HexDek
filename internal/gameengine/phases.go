@@ -315,6 +315,8 @@ func ScanExpiredDurations(gs *GameState, phase, step string) {
 
 		ExpireZoneCastGrants(gs)
 		ExpireOrphanedGraveyardFlashbackGrants(gs)
+		ExpireZoneCastPoliciesByDuration(gs)
+		ExpirePlayFromGraveyardForTurn(gs)
 		ClearMayhemDiscards(gs)
 		ClearVisitFlags(gs)
 		EndStepClearStartYourEngines(gs)
