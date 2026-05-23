@@ -1,6 +1,7 @@
-import { lazy, Suspense } from 'react'
+import { lazy } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import AppShell from './components/AppShell'
+import LazyBoundary from './components/LazyBoundary'
 import { useAuth } from './context/AuthContext'
 import { usePageTracking } from './hooks/useAnalytics'
 
@@ -65,9 +66,9 @@ export default function App() {
       <Route
         path="share/:owner/:id"
         element={
-          <Suspense fallback={null}>
+          <LazyBoundary>
             <SharePreview />
-          </Suspense>
+          </LazyBoundary>
         }
       />
       <Route path="stream/:gameId" element={<StreamOverlay />} />
@@ -84,14 +85,7 @@ export default function App() {
         <Route path="decks/:owner/:id" element={<DeckArchive />} />
         <Route path="import" element={<Import />} />
         <Route path="compare/:owner1/:deck1/:owner2/:deck2" element={<DeckCompare />} />
-        <Route
-          path="cards/:cardName"
-          element={
-            <Suspense fallback={null}>
-              <CardPage />
-            </Suspense>
-          }
-        />
+        <Route path="cards/:cardName" element={<CardPage />} />
         <Route path="play" element={<GameBoard />} />
         <Route path="forge" element={<Forge />} />
         <Route path="leaderboard" element={<Leaderboard />} />
@@ -108,14 +102,7 @@ export default function App() {
         <Route path="operator" element={<RequireAuth><OperatorProfile /></RequireAuth>} />
         <Route path="me" element={<Navigate to="/operator" replace />} />
         <Route path="friends" element={<RequireAuth><Friends /></RequireAuth>} />
-        <Route
-          path="admin/conviction"
-          element={
-            <Suspense fallback={null}>
-              <AdminConviction />
-            </Suspense>
-          }
-        />
+        <Route path="admin/conviction" element={<AdminConviction />} />
       </Route>
     </Routes>
   )
