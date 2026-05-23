@@ -1892,12 +1892,23 @@ func hasMutualTriggerLoop(a, b CardProfile) bool {
 }
 
 func checkTripleCombo(a, b, c CardProfile) *ComboResult {
-	// Try all 3 cycle orderings: A->B->C->A, A->C->B->A.
-	if combo := tryTripleCycle(a, b, c); combo != nil {
-		return combo
+	// Enumerate all 6 permutations of {a,b,c}. Mathematically these reduce to
+	// 2 distinct directed cycles, but exhaustive enumeration is defense in
+	// depth against asymmetries in resource matching (e.g. when a card's
+	// Produces / Consumes lists are populated inconsistently across roles)
+	// and ensures the first non-nil result wins, regardless of input order.
+	perms := [6][3]CardProfile{
+		{a, b, c},
+		{a, c, b},
+		{b, a, c},
+		{b, c, a},
+		{c, a, b},
+		{c, b, a},
 	}
-	if combo := tryTripleCycle(a, c, b); combo != nil {
-		return combo
+	for _, p := range perms {
+		if combo := tryTripleCycle(p[0], p[1], p[2]); combo != nil {
+			return combo
+		}
 	}
 	return nil
 }
