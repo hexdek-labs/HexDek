@@ -259,6 +259,63 @@ func TestHandleSeatElimination_RemovesStolenOwnedPermanent(t *testing.T) {
 	}
 }
 
+// TestHandleSeatElimination_DetachesAurasFromDeadTokens pins the Loki r59
+// AttachmentConsistency fix. Tokens owned by a leaving seat cease to exist
+// when that seat leaves the game (CR §800.4a + §704.5d). Auras and Equipment
+// on surviving seats' battlefields that were attached to those tokens must
+// have their AttachedTo cleared so the AttachmentConsistency invariant
+// doesn't flag them as pointing at off-battlefield permanents.
+func TestHandleSeatElimination_DetachesAurasFromDeadTokens(t *testing.T) {
+	gs := newMultiplayerGame(t, 4)
+	// Seat 1 controls a creature token they own.
+	token := addBattlefield(gs, 1, "Goat Token", 1, 1, "creature", "token")
+	token.Owner = 1
+	// Seat 0 has equipment attached to that token (cross-seat equip from
+	// a prior Sigarda's Aid / Brass Squire shenanigans, or Boros aura
+	// targeting an opp's creature).
+	gear := addBattlefield(gs, 0, "Hero's Blade", 0, 0, "artifact", "equipment")
+	gear.AttachedTo = token
+	// Seat 0 has an aura attached as well.
+	aura := addBattlefield(gs, 0, "Gorgon's Head", 0, 0, "enchantment", "aura")
+	aura.AttachedTo = token
+
+	gs.Seats[1].Lost = true
+	HandleSeatElimination(gs, 1)
+
+	if gear.AttachedTo != nil {
+		t.Fatalf("Hero's Blade should be detached after token owner left, got AttachedTo=%v", gear.AttachedTo)
+	}
+	if aura.AttachedTo != nil {
+		t.Fatalf("Gorgon's Head should be detached after token owner left, got AttachedTo=%v", aura.AttachedTo)
+	}
+	// Invariant check confirms no stale references survived.
+	if err := checkAttachmentConsistency(gs); err != nil {
+		t.Fatalf("AttachmentConsistency violation after seat elimination: %v", err)
+	}
+}
+
+// TestHandleSeatElimination_DetachesEquipmentFromStolenCreature covers the
+// Gilded Drake variant: opp's equipment on a creature whose owner leaves.
+func TestHandleSeatElimination_DetachesEquipmentFromStolenCreature(t *testing.T) {
+	gs := newMultiplayerGame(t, 4)
+	// Seat 1 owns the creature; seat 0 controls it (Gilded Drake trade).
+	stolen := addBattlefield(gs, 0, "Stolen Angel", 4, 4, "creature")
+	stolen.Owner = 1
+	// Seat 2 has equipment attached.
+	sword := addBattlefield(gs, 2, "Sword of Light and Shadow", 0, 0, "artifact", "equipment")
+	sword.AttachedTo = stolen
+
+	gs.Seats[1].Lost = true
+	HandleSeatElimination(gs, 1)
+
+	if sword.AttachedTo != nil {
+		t.Fatalf("Sword of Light and Shadow should be detached after target's owner left, got AttachedTo=%v", sword.AttachedTo)
+	}
+	if err := checkAttachmentConsistency(gs); err != nil {
+		t.Fatalf("AttachmentConsistency violation: %v", err)
+	}
+}
+
 // -----------------------------------------------------------------------------
 // CheckEnd — §104.2a last seat standing
 // -----------------------------------------------------------------------------

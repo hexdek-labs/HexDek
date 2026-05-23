@@ -311,7 +311,15 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 
 	// Step 1: Walk EVERY seat's battlefield (the leaving player may
 	// still own cards an opponent now controls — Gilded Drake trade).
+	// Collect removed permanents so we can run detachAll after all
+	// battlefields are rewritten — auras/equipment on a SURVIVING
+	// seat's battlefield must not retain AttachedTo pointers to a
+	// token/permanent that just ceased to exist (Loki r41/r59
+	// AttachmentConsistency cluster: tokens owned by a leaving seat
+	// disappear, Gorgon's Head / Hero's Blade / Dowsing Dagger left
+	// pointing at the dead token).
 	removed := 0
+	var detached []*Permanent
 	for _, other := range gs.Seats {
 		if other == nil || len(other.Battlefield) == 0 {
 			continue
@@ -329,12 +337,16 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 				if p.Card != nil && !p.IsToken() {
 					realCardsLeaving++
 				}
+				detached = append(detached, p)
 				removed++
 				continue
 			}
 			kept = append(kept, p)
 		}
 		other.Battlefield = kept
+	}
+	for _, p := range detached {
+		detachAll(gs, p)
 	}
 
 	// Step 2: purge stack items sourced from this seat. §800.4a:
