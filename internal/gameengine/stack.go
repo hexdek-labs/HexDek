@@ -203,6 +203,28 @@ func PushTriggeredAbility(gs *GameState, src *Permanent, effect gameast.Effect) 
 		item.Card = src.Card
 	}
 
+	// CR §603.2: "the ability automatically triggers." Log the trigger
+	// formation now — before the batch/push fork — so TriggerCompleteness
+	// and downstream observers see a marker regardless of whether the
+	// trigger goes through the §603.3b batch path (collectTrigger →
+	// PushSimultaneousTriggers, which doesn't log per-item) or the
+	// inline push+resolve path. Without this, AST-driven dies/etb triggers
+	// whose Effect resolution doesn't itself emit life_change/etc. leave
+	// no event-log breadcrumb that the invariant accepts.
+	trigName := ""
+	if src.Card != nil {
+		trigName = src.Card.DisplayName()
+	}
+	gs.LogEvent(Event{
+		Kind:   "triggered_ability",
+		Seat:   src.Controller,
+		Source: trigName,
+		Details: map[string]interface{}{
+			"rule":    "603.2",
+			"batched": gs.triggerBatchDepth > 0,
+		},
+	})
+
 	// CR §603.3b: if a batch is open, defer the push so siblings can be
 	// ordered together at EndTriggerBatch. See trigger_batch.go.
 	if gs.triggerBatchDepth > 0 {
@@ -211,10 +233,6 @@ func PushTriggeredAbility(gs *GameState, src *Permanent, effect gameast.Effect) 
 	}
 
 	// Stack trace: log triggered ability push for CR audit.
-	trigName := ""
-	if src.Card != nil {
-		trigName = src.Card.DisplayName()
-	}
 	GlobalStackTrace.Log("trigger_push", trigName, src.Controller, len(gs.Stack), "triggered_ability")
 	PushStackItem(gs, item)
 
