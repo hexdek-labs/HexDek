@@ -146,21 +146,29 @@ func CastFlashback(gs *GameState, seatIdx int, card *Card, flashbackCost int) (*
 	if card == nil {
 		return nil, &CastError{Reason: "nil card"}
 	}
-	// Permission check: either the card has the printed keyword OR a
-	// flashback grant has been registered for it (Snapcaster path).
+	// Permission check: either the card has the printed keyword, OR a
+	// per-card flashback grant has been registered (Snapcaster path),
+	// OR a graveyard-wide flashback grant applies (Iroh / Lier path).
 	hasIntrinsic := HasFlashback(card)
 	grant := GetZoneCastGrant(gs, card)
 	hasGrant := grant != nil && grant.Keyword == "flashback" && grant.Zone == ZoneGraveyard
-	if !hasIntrinsic && !hasGrant {
+	graveCost, hasGraveGrant := EffectiveFlashbackCostFromGraveyardGrants(gs, seatIdx, card)
+	if !hasIntrinsic && !hasGrant && !hasGraveGrant {
 		return nil, &CastError{Reason: "no_flashback_permission"}
 	}
 	// Resolve cost: caller may pass -1 to mean "use the printed flashback
-	// cost (or the grant's cost)".
+	// cost (or the grant's cost)". Per-card grant beats intrinsic; the
+	// graveyard-wide grant is consulted only when neither of the prior
+	// sources supply a cost (matches the "lowest castable cost wins"
+	// expectation for stacked sources).
 	if flashbackCost < 0 {
-		if hasGrant && grant.ManaCost >= 0 {
+		switch {
+		case hasGrant && grant.ManaCost >= 0:
 			flashbackCost = grant.ManaCost
-		} else {
+		case hasIntrinsic:
 			flashbackCost = FlashbackCost(card)
+		case hasGraveGrant:
+			flashbackCost = graveCost
 		}
 	}
 	if flashbackCost < 0 {
