@@ -1495,6 +1495,8 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 					ExileOnResolve:    false,
 					RequireController: seat,
 					SourceName:        sourceName(src),
+					Duration:          "until_end_of_turn",
+					GrantTurn:         gs.Turn,
 				}
 				RegisterZoneCastGrant(gs, top, perm)
 			}
@@ -4605,6 +4607,11 @@ var (
 	reKeywordActionCount = regexp.MustCompile(`(?i)\b(\d+)\s*$`)
 
 	reResPlayThisTurn   = regexp.MustCompile(`(?i)^you may (?:play|cast) (?:that card|it|those cards|them|this card) (?:this turn|until end of turn|for as long as it remains exiled)`)
+	// reResPlayAsLongAsExiled detects the "while still in exile" variant of
+	// reResPlayThisTurn — these grants don't have a turn clock, so the EOT
+	// expiry shouldn't be attached (grant is consumed by RemoveZoneCastGrant
+	// when the card leaves exile, e.g. on cast resolution).
+	reResPlayAsLongAsExiled = regexp.MustCompile(`(?i)^you may (?:play|cast) (?:that card|it|those cards|them|this card) for as long as it remains exiled`)
 	reResExilePlay      = regexp.MustCompile(`(?i)^play exiled cards? until end of turn`)
 	reResExtraLand      = regexp.MustCompile(`(?i)^(?:you may play an )?extra land`)
 	reResGoad           = regexp.MustCompile(`(?i)^goad (?:it|that creature|target creature|each creature|pronoun)`)
@@ -4655,6 +4662,14 @@ func resolveResidualByText(gs *GameState, src *Permanent, raw string) bool {
 					ExileOnResolve:    false,
 					RequireController: seat,
 					SourceName:        sourceName(src),
+				}
+				// CR-derived duration: "this turn" / "until end of turn"
+				// are EOT-bound. "for as long as it remains exiled" has no
+				// turn-clock — the grant naturally ends when the card
+				// leaves exile (cast → RemoveZoneCastGrant on resolve).
+				if !reResPlayAsLongAsExiled.MatchString(raw) {
+					perm.Duration = "until_end_of_turn"
+					perm.GrantTurn = gs.Turn
 				}
 				RegisterZoneCastGrant(gs, top, perm)
 			}
