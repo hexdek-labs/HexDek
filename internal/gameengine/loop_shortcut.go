@@ -163,6 +163,7 @@ func (ld *loopDetector) projectAndApply(gs *GameState) bool {
 		}
 	}
 	if allZero {
+		evacuateStackSpellsToGraveyard(gs)
 		gs.Stack = gs.Stack[:0]
 		gs.LogEvent(Event{
 			Kind:   "loop_shortcut",
@@ -203,6 +204,7 @@ func (ld *loopDetector) projectAndApply(gs *GameState) bool {
 		}
 	}
 	if maxCycles <= 0 {
+		evacuateStackSpellsToGraveyard(gs)
 		gs.Stack = gs.Stack[:0]
 		return true
 	}
@@ -233,6 +235,7 @@ func (ld *loopDetector) projectAndApply(gs *GameState) bool {
 		}
 	}
 
+	evacuateStackSpellsToGraveyard(gs)
 	gs.Stack = gs.Stack[:0]
 
 	gs.LogEvent(Event{
@@ -248,4 +251,46 @@ func (ld *loopDetector) projectAndApply(gs *GameState) bool {
 	})
 
 	return true
+}
+
+// evacuateStackSpellsToGraveyard sweeps unresolved spell items off the
+// stack and routes the underlying *Card to its owner's graveyard. Copies
+// (CR §707.10) and ability items (triggered/activated, which have a
+// Source permanent and no spell-card identity) are dropped without zone
+// placement — those aren't real cards.
+//
+// Called by projectAndApply before clearing gs.Stack on either the no-op
+// loop break or the maxCycles==0 cap path. Without this, when the stack
+// holds a real spell that couldn't resolve (e.g. ResolveStackTop
+// short-circuits because gs.Flags["ended"]==1 from an SBA infinite-loop
+// cap), nuking gs.Stack vanishes the card and breaks zone conservation
+// — see Loki r44 game 420 / Breya pod / Dragonborn Looter +
+// A Tale for the Ages disappearing post-Unholy-Indenture reanimate loop.
+func evacuateStackSpellsToGraveyard(gs *GameState) {
+	if gs == nil {
+		return
+	}
+	for _, item := range gs.Stack {
+		if item == nil || item.IsCopy {
+			continue
+		}
+		if item.Source != nil || item.Card == nil {
+			continue
+		}
+		owner := item.Card.Owner
+		if owner < 0 || owner >= len(gs.Seats) || gs.Seats[owner] == nil {
+			continue
+		}
+		gs.Seats[owner].Graveyard = append(gs.Seats[owner].Graveyard, item.Card)
+		gs.LogEvent(Event{
+			Kind:   "stack_evacuated",
+			Seat:   owner,
+			Source: item.Card.DisplayName(),
+			Details: map[string]interface{}{
+				"reason": "loop_shortcut_break",
+				"to":     "graveyard",
+				"rule":   "727",
+			},
+		})
+	}
 }
