@@ -193,6 +193,16 @@ type GameState struct {
 	// cast. Consumed by the AI/Hat's cast-from-zone decision logic.
 	ZoneCastGrants map[*Card]*ZoneCastPermission
 
+	// GraveyardFlashbackGrants is the registry of source-driven
+	// "cards in your graveyard have flashback" continuous effects
+	// (e.g. Iroh, Grand Lotus; Lier, Disciple of the Drowned). Unlike
+	// ZoneCastGrants, these are not keyed by card pointer — they are
+	// predicates evaluated dynamically against any card in the
+	// controller's graveyard at flashback-cast time. Lifecycle is tied
+	// to the source permanent's Timestamp; LTB clears matching grants
+	// via ExpireGraveyardFlashbackGrantsBySource.
+	GraveyardFlashbackGrants []*GraveyardFlashbackGrant
+
 	// MayhemDiscards tracks which cards were discarded on which turn. CR
 	// §702.187: a card with mayhem may be cast from its owner's graveyard
 	// for its mayhem cost "if you discarded it this turn." Keyed by the
