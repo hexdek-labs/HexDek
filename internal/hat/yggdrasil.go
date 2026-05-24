@@ -4904,6 +4904,40 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 			}
 		}
 
+		// Lifelink-killshot: an unblocked lifelink attacker is a 2x life
+		// swing (we lose N, opp gains N). The favorable-trade fallback
+		// above only accepts STRICTLY lighter blockers, so a 4/4 vanilla
+		// vs a 4/4 lifelink attacker falls through — we eat 4 damage AND
+		// concede 4 life. A parity trade (both die, equal stats) is a
+		// life-positive outcome against lifelink even when we lose the
+		// body, because we're trading creature-for-creature instead of
+		// creature-for-creature-AND-8-life. Require simulateBlockerTrade
+		// to confirm the blocker actually kills the attacker; feeding the
+		// lifelink with a non-killing block would be strictly worse.
+		// Pick the smallest qualifying mutual-killer to minimize the
+		// committed-stats loss.
+		if len(chosen) == 0 && atkPow > 0 && atk.HasKeyword("lifelink") {
+			var best *gameengine.Permanent
+			bestSum := 1 << 30
+			for _, b := range legal {
+				if b == nil || gs.PowerOf(b) <= 0 {
+					continue
+				}
+				aDies, _ := simulateBlockerTrade(gs, atk, b)
+				if !aDies {
+					continue
+				}
+				bSum := gs.PowerOf(b) + gs.ToughnessOf(b)
+				if bSum < bestSum {
+					best = b
+					bestSum = bSum
+				}
+			}
+			if best != nil {
+				chosen = []*gameengine.Permanent{best}
+			}
+		}
+
 		if len(chosen) == 0 && (willDieIfUnblocked || mustBlock) {
 			// Deathtouch trade-up: prefer a deathtouch blocker that can
 			// take down the attacker (any damage is lethal) over a chump.
@@ -4952,6 +4986,10 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 				// CR §702.19c trample with first/double strike: if the
 				// chump can't absorb enough damage to keep us alive, the
 				// block burns a creature for nothing. Skip the chump.
+				// (Simple-trample wastes are caught by the post-decision
+				// trample-leak guard further down, which covers the
+				// favorable-trade branch above too — that branch can
+				// pick a chump before this one ever runs.)
 				if useChump && atk.HasKeyword("trample") && atkFS &&
 					!chump.HasKeyword("deathtouch") &&
 					!chump.HasKeyword("first strike") && !chump.HasKeyword("first_strike") &&
@@ -4977,6 +5015,50 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 				}
 				if useChump {
 					chosen = []*gameengine.Permanent{chump}
+				}
+			}
+		}
+
+		// Trample-leak waste guard (CR §702.19, post-decision). Both
+		// the favorable-trade fallback and the chump branch can pick a
+		// single chump blocker against a trample attacker. When we're
+		// at lethal-from-the-leak even AFTER the block (chump dies,
+		// excess trample tramples over and kills us) the chump was
+		// burned for nothing — the right play is to preserve the body
+		// for instant-speed responses or next turn (if a fog/wipe is
+		// in hand we'd rather not have committed). Skipped when:
+		//   - we're under must-block (annihilator/infect/commander
+		//     clock at 21 — those are catastrophic if unblocked even
+		//     when we don't die from raw damage),
+		//   - the chump survives (irrelevant — chump branch caps stats
+		//     well below survivor pool, but defensive check),
+		//   - the chosen blocker is gang-sized (handled below),
+		//   - the chump has DT/FS/DS or is indestructible (a real
+		//     trade-up, not waste — those kill the trampler or take
+		//     no damage themselves).
+		if len(chosen) == 1 && atk.HasKeyword("trample") && !mustBlock {
+			chump := chosen[0]
+			ignoresTrample := chump.HasKeyword("deathtouch") ||
+				chump.HasKeyword("first strike") || chump.HasKeyword("first_strike") ||
+				chump.HasKeyword("double strike") || chump.HasKeyword("double_strike") ||
+				chump.HasKeyword("indestructible")
+			if !ignoresTrample {
+				ap := atkPow
+				if atkDS {
+					ap *= 2
+				}
+				absorbed := gs.ToughnessOf(chump) - chump.MarkedDamage
+				if absorbed < 0 {
+					absorbed = 0
+				}
+				leak := ap - absorbed
+				if leak < 0 {
+					leak = 0
+				}
+				if life-leak <= 0 {
+					h.logf("  trample-waste: dropping %s vs %s (leak %d kills us at %d life)",
+						chump.Card.DisplayName(), atk.Card.DisplayName(), leak, life)
+					chosen = nil
 				}
 			}
 		}
