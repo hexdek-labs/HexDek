@@ -288,13 +288,29 @@ func SpellFlashbackedThisTurn(gs *GameState, seatIdx int) bool {
 // `sourceName` should be the granting card's name (e.g. "Snapcaster Mage")
 // for log/observability purposes.
 func GrantFlashbackUntilEOT(gs *GameState, card *Card, targetSeat int, sourceName string) {
+	grantFlashbackUntilEOTInternal(gs, card, targetSeat, sourceName, -1)
+}
+
+// GrantFlashbackUntilEOTWithCost is the same single-target flashback grant
+// as GrantFlashbackUntilEOT, but with an explicit flashback cost override.
+// Used by cards whose grant specifies a non-mana-cost flashback cost — e.g.
+// Archmage's Newt (flashback {0} when saddled), The Fugitive Doctor
+// (flashback {2}{R}{G} after sacrificing a Clue). Pass cost as the total
+// mana value (the engine's ManaCost is a single int). Negative cost is
+// treated as "use the card's printed mana cost", matching the default
+// GrantFlashbackUntilEOT behavior.
+func GrantFlashbackUntilEOTWithCost(gs *GameState, card *Card, targetSeat int, sourceName string, cost int) {
+	grantFlashbackUntilEOTInternal(gs, card, targetSeat, sourceName, cost)
+}
+
+func grantFlashbackUntilEOTInternal(gs *GameState, card *Card, targetSeat int, sourceName string, overrideCost int) {
 	if gs == nil || card == nil {
 		return
 	}
 	if targetSeat < 0 || targetSeat >= len(gs.Seats) {
 		return
 	}
-	// Snapcaster targets only instants/sorceries.
+	// Single-target flashback grants only target instants/sorceries.
 	if !cardHasType(card, "instant") && !cardHasType(card, "sorcery") {
 		gs.LogEvent(Event{
 			Kind:   "flashback_grant_rejected",
@@ -308,7 +324,10 @@ func GrantFlashbackUntilEOT(gs *GameState, card *Card, targetSeat int, sourceNam
 		})
 		return
 	}
-	cost := manaCostOf(card)
+	cost := overrideCost
+	if cost < 0 {
+		cost = manaCostOf(card)
+	}
 	perm := &ZoneCastPermission{
 		Zone:              ZoneGraveyard,
 		Keyword:           "flashback",
