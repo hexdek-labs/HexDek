@@ -61,7 +61,7 @@ func TestClassifyOpponent_AggroByCreatureCount(t *testing.T) {
 	// Three creature casts by turn 3.
 	for i := 0; i < 3; i++ {
 		card := newTestCardMinimal("Goblin Guide", []string{"creature"}, 1, nil)
-		h.recordOpponentPlay("cast", card.DisplayName(), 1, card)
+		h.recordOpponentPlay("cast", card.DisplayName(), 1, card, gs.Turn)
 	}
 
 	prof := h.classifyOpponent(gs, 1)
@@ -82,11 +82,11 @@ func TestClassifyOpponent_ComboByTutorAndHeldMana(t *testing.T) {
 	h := primedYggdrasilHat(2)
 
 	// Tutor used + sandbagging mana for 2 turns + light creature board.
-	h.recordOpponentPlay("tutor", "Demonic Tutor", 1, nil)
+	h.recordOpponentPlay("tutor", "Demonic Tutor", 1, nil, gs.Turn)
 	h.opponentHeldMana[1] = 3
 	// One creature on the board, no more.
 	creature := newTestCardMinimal("Mox Bot", []string{"creature"}, 0, nil)
-	h.recordOpponentPlay("cast", creature.DisplayName(), 1, creature)
+	h.recordOpponentPlay("cast", creature.DisplayName(), 1, creature, gs.Turn)
 
 	prof := h.classifyOpponent(gs, 1)
 	if prof.Archetype != "combo" {
@@ -115,7 +115,7 @@ func TestClassifyOpponent_ControlByRemovalPattern(t *testing.T) {
 	counterspell.Types = append(counterspell.Types, "oracle:counter target spell")
 
 	for _, c := range []*gameengine.Card{swordsAST, doomBlade, counterspell} {
-		h.recordOpponentPlay("cast", c.DisplayName(), 1, c)
+		h.recordOpponentPlay("cast", c.DisplayName(), 1, c, gs.Turn)
 	}
 
 	prof := h.classifyOpponent(gs, 1)
@@ -132,7 +132,7 @@ func TestClassifyOpponent_ConfidenceIncreasesOverTime(t *testing.T) {
 
 	for i := 0; i < 3; i++ {
 		card := newTestCardMinimal("Goblin Guide", []string{"creature"}, 1, nil)
-		h.recordOpponentPlay("cast", card.DisplayName(), 1, card)
+		h.recordOpponentPlay("cast", card.DisplayName(), 1, card, gs.Turn)
 	}
 
 	prof1 := h.classifyOpponent(gs, 1)
@@ -145,7 +145,7 @@ func TestClassifyOpponent_ConfidenceIncreasesOverTime(t *testing.T) {
 	gs.Turn = 4
 	// Another creature reinforces.
 	card := newTestCardMinimal("Lightning Bolt-Hands", []string{"creature"}, 1, nil)
-	h.recordOpponentPlay("cast", card.DisplayName(), 1, card)
+	h.recordOpponentPlay("cast", card.DisplayName(), 1, card, gs.Turn)
 	prof2 := h.classifyOpponent(gs, 1)
 	conf2 := prof2.Confidence
 
@@ -180,11 +180,11 @@ func TestClassifyOpponent_ComboThreatHigherThanIdle(t *testing.T) {
 	gs.Seats[1].Life = 40
 
 	h := primedYggdrasilHat(2)
-	h.recordOpponentPlay("tutor", "Demonic Tutor", 1, nil)
-	h.recordOpponentPlay("tutor", "Vampiric Tutor", 1, nil)
+	h.recordOpponentPlay("tutor", "Demonic Tutor", 1, nil, gs.Turn)
+	h.recordOpponentPlay("tutor", "Vampiric Tutor", 1, nil, gs.Turn)
 	h.opponentHeldMana[1] = 3
 	creature := newTestCardMinimal("Mox Bot", []string{"creature"}, 0, nil)
-	h.recordOpponentPlay("cast", creature.DisplayName(), 1, creature)
+	h.recordOpponentPlay("cast", creature.DisplayName(), 1, creature, gs.Turn)
 	combo := h.classifyOpponent(gs, 1)
 
 	// Reset for an "idle" opponent (no plays).
@@ -214,15 +214,15 @@ func TestBestTarget_PrefersComboOpponent(t *testing.T) {
 	gs.Seats[2].Life = 30
 
 	// Seat 1 = confident combo (tutor + held mana).
-	h.recordOpponentPlay("tutor", "Demonic Tutor", 1, nil)
-	h.recordOpponentPlay("tutor", "Vampiric Tutor", 1, nil)
+	h.recordOpponentPlay("tutor", "Demonic Tutor", 1, nil, gs.Turn)
+	h.recordOpponentPlay("tutor", "Vampiric Tutor", 1, nil, gs.Turn)
 	h.opponentHeldMana[1] = 3
 
 	// Seat 2 = confident control (3 removal).
 	for _, name := range []string{"Doom Blade", "Swords to Plowshares", "Counterspell"} {
 		c := newTestCardMinimal(name, []string{"instant"}, 2, nil)
 		c.Types = append(c.Types, "oracle:destroy target creature")
-		h.recordOpponentPlay("cast", c.DisplayName(), 2, c)
+		h.recordOpponentPlay("cast", c.DisplayName(), 2, c, gs.Turn)
 	}
 
 	// Warm the classifier (it caches by seat).
