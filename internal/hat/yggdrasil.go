@@ -3098,6 +3098,21 @@ func (h *YggdrasilHat) ChooseMulligan(gs *gameengine.GameState, seatIdx int, han
 				return true
 			}
 		}
+
+		// Combo-threat tightening: if any opponent's commander looks like
+		// a combo win condition (oracle text hits "infinite" / "win the
+		// game" / "extra turn" / "untap all" / "create a copy"), demand
+		// either interaction or an engine card in hand. A marginal hand
+		// with only lands + ramp + cuttables vs a combo opponent gets
+		// run over before turn 4 — better to dig for a counter or a
+		// stax piece.
+		if someOpponentLooksCombo(gs, seatIdx) {
+			hasInteraction := handHasInteraction(hand)
+			hasEngine := veCount >= 1 || starCount >= 1 || comboCount >= 1
+			if !hasInteraction && !hasEngine {
+				return true
+			}
+		}
 	}
 
 	// On 6 or fewer: star cards make marginal hands keepable.
@@ -6118,6 +6133,74 @@ func (h *YggdrasilHat) OrderReplacements(gs *gameengine.GameState, seatIdx int, 
 	return out
 }
 
+// someOpponentLooksCombo scans each opponent's command zone for a
+// commander whose oracle text suggests a combo win condition. Used at
+// mulligan time when perceivedArchetype isn't populated yet (no cards
+// seen on turn 0). Substring scan only — over-broad rather than miss
+// hits, mirroring isRemovalText's style.
+//
+// Triggers: "infinite", "win the game", "win a game", "extra turn",
+// "untap all", "create a copy of", "additional combat", "doesn't
+// untap" (e.g. Aetherflux/Niv-Mizzet-class combos use these phrases
+// in the commander's own oracle text, not just the supporting deck).
+func someOpponentLooksCombo(gs *gameengine.GameState, seatIdx int) bool {
+	if gs == nil {
+		return false
+	}
+	for i, s := range gs.Seats {
+		if i == seatIdx || s == nil || s.Lost {
+			continue
+		}
+		for _, c := range s.CommandZone {
+			if c == nil {
+				continue
+			}
+			ot := gameengine.OracleTextLower(c)
+			if ot == "" {
+				continue
+			}
+			if strings.Contains(ot, "infinite") ||
+				strings.Contains(ot, "win the game") ||
+				strings.Contains(ot, "win a game") ||
+				strings.Contains(ot, "extra turn") ||
+				strings.Contains(ot, "untap all") ||
+				strings.Contains(ot, "create a copy of") ||
+				strings.Contains(ot, "additional combat") ||
+				strings.Contains(ot, "doesn't untap") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// handHasInteraction reports whether `hand` contains at least one card
+// that smells like a counterspell or single-target/sweep removal. The
+// removal half reuses isRemovalText (opponent_profile.go); the
+// counter half does a separate substring scan because counter wording
+// ("counter target spell", "counter target ... unless") isn't covered
+// by isRemovalText.
+func handHasInteraction(hand []*gameengine.Card) bool {
+	for _, c := range hand {
+		if c == nil {
+			continue
+		}
+		ot := gameengine.OracleTextLower(c)
+		if ot == "" {
+			continue
+		}
+		if isRemovalText(ot) {
+			return true
+		}
+		if strings.Contains(ot, "counter target spell") ||
+			strings.Contains(ot, "counter target activated") ||
+			strings.Contains(ot, "counter that spell") {
+			return true
+		}
+	}
+	return false
+}
+
 // hasGraveyardRecursionValue returns true if the card has intrinsic
 // recursion potential from the graveyard — flashback, unearth, escape,
 // disturb, embalm, eternalize, encore, jump-start, aftermath, retrace,
@@ -6566,21 +6649,88 @@ func (h *YggdrasilHat) ChooseBottomCards(gs *gameengine.GameState, seatIdx int, 
 	if count >= len(hand) {
 		return hand
 	}
-	// Bottom the worst cards by heuristic.
+	// Bottom the worst cards by an enriched heuristic. cardHeuristic
+	// alone misses the combo / value-engine / star / cuttable biases
+	// that ChooseDiscard applies, so a combo piece on a London bottom
+	// would sit at the same value as a vanilla creature. Mirror the
+	// ChooseDiscard weights so the bottom pile is consistent with the
+	// discard pile.
 	type ranked struct {
 		card  *gameengine.Card
 		value float64
+		isLand bool
 	}
 	ranked_ := make([]ranked, 0, len(hand))
+	landsInHand := 0
 	for _, c := range hand {
 		if c == nil {
 			continue
 		}
-		ranked_ = append(ranked_, ranked{c, h.cardHeuristic(gs, seatIdx, c)})
+		v := h.cardHeuristic(gs, seatIdx, c)
+		if h.isComboRelevant(c) {
+			v += 1.0
+		}
+		if h.isValueEngineKey(c) {
+			v += 0.5
+		}
+		if h.isStarCard(c) {
+			v += 0.75
+		}
+		if h.isCuttable(c) {
+			v -= 0.5
+		}
+		isLand := typeLineContains(c, "land")
+		if isLand {
+			landsInHand++
+		}
+		ranked_ = append(ranked_, ranked{c, v, isLand})
 	}
 	sort.SliceStable(ranked_, func(i, j int) bool {
 		return ranked_[i].value < ranked_[j].value
 	})
+
+	// Land floor: if the original hand had at least 2 lands, never
+	// bottom into a sub-2-land hand. We swap a land out of the bottom
+	// pile for the next non-land candidate until the keep-side floor
+	// holds. Applies only at the London 7→6 / 6→5 transition where
+	// keeping at least 2 lands materially changes the keep value;
+	// when the original hand already has <2 lands the floor is moot
+	// (we don't have the supply to honor it).
+	if landsInHand >= 2 {
+		const landFloor = 2
+		// Iteratively pull lands out of the bottom slice until either
+		// (a) bottoming the chosen `count` leaves landFloor lands in
+		// hand, or (b) there's no more non-land in the keep pile to
+		// swap up. Bounded by `count` so always terminates.
+		for attempt := 0; attempt < count; attempt++ {
+			landsBottomed := 0
+			lastLandBottomIdx := -1
+			for i := 0; i < count; i++ {
+				if ranked_[i].isLand {
+					landsBottomed++
+					lastLandBottomIdx = i
+				}
+			}
+			if landsInHand-landsBottomed >= landFloor {
+				break
+			}
+			// Need to swap a land out. Find the highest-priority
+			// non-land card currently in the keep pile (i.e. the
+			// first non-land at or after index `count`).
+			swapIdx := -1
+			for i := count; i < len(ranked_); i++ {
+				if !ranked_[i].isLand {
+					swapIdx = i
+					break
+				}
+			}
+			if swapIdx < 0 || lastLandBottomIdx < 0 {
+				break
+			}
+			ranked_[lastLandBottomIdx], ranked_[swapIdx] = ranked_[swapIdx], ranked_[lastLandBottomIdx]
+		}
+	}
+
 	out := make([]*gameengine.Card, 0, count)
 	for i := 0; i < count && i < len(ranked_); i++ {
 		out = append(out, ranked_[i].card)
