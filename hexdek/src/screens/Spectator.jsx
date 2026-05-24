@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Panel, KV, Bar, Tag, Btn, Tape } from '../components/chrome'
 import GlossaryTerm from '../components/GlossaryTerm'
@@ -235,6 +235,11 @@ export default function Spectator() {
   const { game, elo, stats, speed, status, history } = useLiveSocket()
   const logContainerRef = useRef(null)
   const userScrolledRef = useRef(false)
+  // Last observed scrollHeight of the log container, captured at the
+  // tail of each render's useLayoutEffect. Used to scroll-anchor the
+  // user's reading position when new events prepend to the (reversed,
+  // newest-first) log while they're scrolled into the past.
+  const lastLogScrollHeightRef = useRef(0)
   const heatmapRefs = useRef([])
   const heatmapAnimsRef = useRef([])
   const heatmapPrevEvalRef = useRef([])
@@ -298,10 +303,29 @@ export default function Spectator() {
     } catch {}
   }
 
-  useEffect(() => {
+  // Log scroll management. The log container renders newest-at-top
+  // (see `[...log].reverse()` below), so each incoming event prepends
+  // a row. With no compensation, that pushes whatever the user is
+  // reading downward by one row each tick — visually their viewport
+  // "rewinds" to an earlier entry while they sit still. useLayoutEffect
+  // runs after the new rows are in the DOM but before paint, so we can
+  // measure the height delta and add it to scrollTop in the same
+  // frame, anchoring the user's reading position with no flicker.
+  // When the user is at the top (userScrolledRef false) we just snap
+  // back to 0 so they stay on the newest entry.
+  useLayoutEffect(() => {
     const el = logContainerRef.current
-    if (!el || userScrolledRef.current) return
-    requestAnimationFrame(() => { el.scrollTop = 0 })
+    if (!el) return
+    const newHeight = el.scrollHeight
+    if (userScrolledRef.current) {
+      if (lastLogScrollHeightRef.current > 0) {
+        const delta = newHeight - lastLogScrollHeightRef.current
+        if (delta > 0) el.scrollTop += delta
+      }
+    } else {
+      el.scrollTop = 0
+    }
+    lastLogScrollHeightRef.current = newHeight
   }, [game?.log?.length])
 
   useEffect(() => {
