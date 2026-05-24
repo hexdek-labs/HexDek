@@ -409,10 +409,13 @@ func topNRoles(counts map[RoleTag]int, n int) []RoleCount {
 func deriveStrengths(report *FreyaReport, dp *DeckProfile) []string {
 	var s []string
 
-	if report.TutorCount >= 8 {
-		s = append(s, fmt.Sprintf("deep tutor package (%d tutors)", report.TutorCount))
-	} else if report.TutorCount >= 5 {
-		s = append(s, fmt.Sprintf("strong tutor package (%d tutors)", report.TutorCount))
+	// Use NonLandTutorCount — basic-land ramp should not inflate the
+	// "tutor package" headline. A 100-card deck with 10 ramp pieces and
+	// 0 real tutors is not a tutor deck.
+	if report.NonLandTutorCount >= 8 {
+		s = append(s, fmt.Sprintf("deep tutor package (%d tutors)", report.NonLandTutorCount))
+	} else if report.NonLandTutorCount >= 5 {
+		s = append(s, fmt.Sprintf("strong tutor package (%d tutors)", report.NonLandTutorCount))
 	}
 
 	if dp.DrawCount >= 12 {
@@ -478,9 +481,9 @@ func deriveStrengths(report *FreyaReport, dp *DeckProfile) []string {
 func deriveWeaknesses(report *FreyaReport, dp *DeckProfile) []string {
 	var w []string
 
-	if report.TutorCount < 3 && report.TutorCount > 0 {
-		w = append(w, fmt.Sprintf("thin tutor package (%d tutors)", report.TutorCount))
-	} else if report.TutorCount == 0 {
+	if report.NonLandTutorCount < 3 && report.NonLandTutorCount > 0 {
+		w = append(w, fmt.Sprintf("thin tutor package (%d tutors)", report.NonLandTutorCount))
+	} else if report.NonLandTutorCount == 0 {
 		w = append(w, "no tutors")
 	}
 
@@ -558,10 +561,11 @@ func ComputeEvalWeights(dp *DeckProfile, report *FreyaReport) *jsonEvalWeights {
 
 	w := *defaults
 
-	// Tutor density boosts combo proximity weight.
-	if report.TutorCount >= 8 {
+	// Tutor density boosts combo proximity weight. NonLandTutorCount only —
+	// fetchlands/ramp don't help find combo pieces.
+	if report.NonLandTutorCount >= 8 {
 		w.ComboProximity += 0.3
-	} else if report.TutorCount >= 5 {
+	} else if report.NonLandTutorCount >= 5 {
 		w.ComboProximity += 0.15
 	}
 
@@ -787,8 +791,8 @@ func buildGameplanSummary(dp *DeckProfile, report *FreyaReport) string {
 	}
 
 	var tutorNote string
-	if dp.HasTutorAccess && report.TutorCount >= 5 {
-		tutorNote = fmt.Sprintf(" Supported by %d tutors.", report.TutorCount)
+	if dp.HasTutorAccess && report.NonLandTutorCount >= 5 {
+		tutorNote = fmt.Sprintf(" Supported by %d tutors.", report.NonLandTutorCount)
 	}
 
 	var gcNote string

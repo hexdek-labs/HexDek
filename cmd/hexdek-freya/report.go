@@ -586,7 +586,8 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 	dp := r.Profile
 	if dp == nil {
 		fmt.Fprintf(w, "DECK PROFILE\n")
-		fmt.Fprintf(w, "  Tutors:    %d cards\n", r.TutorCount)
+		fmt.Fprintf(w, "  Tutors:    %d cards (%d real, %d land/ramp)\n",
+			r.TutorCount, r.NonLandTutorCount, r.LandTutorCount)
 		fmt.Fprintf(w, "  Removal:   %d cards\n", r.RemovalCount)
 		fmt.Fprintf(w, "  Outlets:   %d sacrifice outlets\n", r.OutletCount)
 		fmt.Fprintf(w, "  Win Cons:  %d win conditions\n", r.WinConCount)
@@ -1148,10 +1149,13 @@ type jsonCombo struct {
 }
 
 type jsonProfile struct {
-	Tutors  int `json:"tutors"`
-	Removal int `json:"removal"`
-	Outlets int `json:"sacrifice_outlets"`
-	WinCons int `json:"win_conditions"`
+	Tutors        int `json:"tutors"`
+	NonLandTutors int `json:"non_land_tutors"`
+	LandTutors    int `json:"land_tutors"`
+	WishTutors    int `json:"wish_tutors,omitempty"`
+	Removal       int `json:"removal"`
+	Outlets       int `json:"sacrifice_outlets"`
+	WinCons       int `json:"win_conditions"`
 }
 
 type jsonDeckProfile struct {
@@ -1339,10 +1343,13 @@ func printJSON(w io.Writer, r *FreyaReport) {
 			Warnings: r.ColorMismatch,
 		},
 		Profile: jsonProfile{
-			Tutors:  r.TutorCount,
-			Removal: r.RemovalCount,
-			Outlets: r.OutletCount,
-			WinCons: r.WinConCount,
+			Tutors:        r.TutorCount,
+			NonLandTutors: r.NonLandTutorCount,
+			LandTutors:    r.LandTutorCount,
+			WishTutors:    r.WishTutorCount,
+			Removal:       r.RemovalCount,
+			Outlets:       r.OutletCount,
+			WinCons:       r.WinConCount,
 		},
 		FullProfile: buildJSONDeckProfile(r.Profile),
 		Statistics:  buildJSONStats(r.Stats),

@@ -121,24 +121,55 @@ var knownTutors = map[string]tutorSpec{
 	"gifts ungiven":            {"any", "hand"},
 	"gamble":                   {"any", "hand"},
 
-	"cultivate":                {"land", "hand"},
-	"kodama's reach":           {"land", "hand"},
-	"farseek":                  {"land", "battlefield"},
-	"nature's lore":            {"land", "battlefield"},
-	"three visits":             {"land", "battlefield"},
-	"rampant growth":           {"land", "battlefield"},
-	"sakura-tribe elder":       {"land", "battlefield"},
-	"wood elves":               {"land", "battlefield"},
-	"farhaven elf":             {"land", "battlefield"},
-	"solemn simulacrum":        {"land", "battlefield"},
-	"burnished hart":           {"land", "battlefield"},
-	"explosive vegetation":     {"land", "battlefield"},
-	"skyshroud claim":          {"land", "battlefield"},
-	"migration path":           {"land", "battlefield"},
-	"circuitous route":         {"land", "battlefield"},
+	"cultivate":                {"basic_land", "hand"},
+	"kodama's reach":           {"basic_land", "hand"},
+	"farseek":                  {"basic_land", "battlefield"},
+	"nature's lore":            {"basic_land", "battlefield"},
+	"three visits":             {"basic_land", "battlefield"},
+	"rampant growth":           {"basic_land", "battlefield"},
+	"sakura-tribe elder":       {"basic_land", "battlefield"},
+	"wood elves":               {"basic_land", "battlefield"},
+	"farhaven elf":             {"basic_land", "battlefield"},
+	"solemn simulacrum":        {"basic_land", "battlefield"},
+	"burnished hart":           {"basic_land", "battlefield"},
+	"explosive vegetation":     {"basic_land", "battlefield"},
+	"skyshroud claim":          {"basic_land", "battlefield"},
+	"migration path":           {"basic_land", "battlefield"},
+	"circuitous route":         {"basic_land", "battlefield"},
 	"primeval titan":           {"land", "battlefield"},
 	"oracle of mul daya":       {"land", "battlefield"},
-	"springbloom druid":        {"land", "battlefield"},
+	"springbloom druid":        {"basic_land", "battlefield"},
+
+	// Wish-style / outside-the-game tutors. Modeled as Restricted="wish"
+	// because Freya doesn't track sideboards; treated as "any" for win-
+	// line coverage purposes (see tutorCanFind).
+	"burning wish":              {"wish", "hand"},
+	"cunning wish":              {"wish", "hand"},
+	"living wish":               {"wish", "hand"},
+	"glittering wish":           {"wish", "hand"},
+	"mastermind's acquisition":  {"wish", "hand"},
+	"karn, the great creator":   {"wish", "battlefield"},
+	"spawnsire of ulamog":       {"wish", "battlefield"},
+	"research // development":   {"wish", "hand"},
+
+	// Tribal subtype tutors — restricted="tribe:<subtype>" routes through
+	// the type-line check in tutorCanFind.
+	"goblin matron":            {"tribe:goblin", "hand"},
+	"goblin recruiter":         {"tribe:goblin", "top"},
+	"imperial recruiter":       {"cmcle2", "hand"}, // "creature ... power 2 or less"
+	"recruiter of the guard":   {"cmcle1", "hand"}, // "toughness 1 or less"
+	"merfolk searcher":         {"tribe:merfolk", "hand"},
+	"diregraf colossus":        {"tribe:zombie", "battlefield"},
+	"sliver overlord":          {"tribe:sliver", "hand"},
+	"sliver legion":            {"tribe:sliver", "hand"},
+	"patriarch's bidding":      {"tribe:any", "battlefield"}, // mass reanimate by tribe
+
+	// Conditional CMC tutors.
+	"bring to light":            {"cmcle5", "battlefield"},
+	"diabolic revelation":       {"any", "hand"}, // unbounded X, treat as any
+	"increasing ambition":       {"any", "hand"},
+	"demonic collusion":         {"any", "hand"},
+	"insidious dreams":          {"any", "top"},
 
 	"flooded strand":           {"land", "battlefield"},
 	"polluted delta":           {"land", "battlefield"},
@@ -178,7 +209,14 @@ func ComputeWinLines(report *FreyaReport, qtyProfiles []CardProfileQty, oracle *
 
 	var winTutors []TutorInfo
 	for _, t := range allTutors {
-		if t.Restricted != "land" {
+		// Land/basic-land tutors don't find combo pieces; they belong to
+		// the ramp package. A nonbasic-land tutor (Crop Rotation, Expedition
+		// Map) might fetch a combo-relevant utility land — those still
+		// surface here when they're not classified "land"/"basic_land"
+		// (e.g. Expedition Map is registered as "land" — that's fine: if
+		// a deck's win line names a land card, tutorCanFind will pick it
+		// up from a separate explicit entry).
+		if t.Restricted != "land" && t.Restricted != "basic_land" {
 			winTutors = append(winTutors, t)
 		}
 	}
@@ -266,10 +304,48 @@ func buildTutorMap(qtyProfiles []CardProfileQty, oracle *oracleDB) []TutorInfo {
 	return tutors
 }
 
+// inferTutorRestriction reads oracle text and infers what kind of card the
+// tutor can fetch, plus where it ends up. The output Restricted strings are
+// consumed by tutorCanFind below.
+//
+// Recognized restriction keys:
+//
+//	any                        — unrestricted (Demonic Tutor)
+//	creature                   — creature-only (Worldly Tutor, Birthing Pod)
+//	artifact                   — artifact-only (Fabricate, Trinket Mage)
+//	enchantment                — enchantment-only (Idyllic Tutor)
+//	artifact_enchantment       — either (Enlightened Tutor)
+//	instant                    — instant-only (Merchant Scroll)
+//	sorcery                    — sorcery-only (Personal Tutor)
+//	instant_sorcery            — either (Mystical Tutor, Spellseeker)
+//	planeswalker               — planeswalker-only
+//	land                       — any land
+//	basic_land                 — basic lands only (Rampant Growth, Cultivate)
+//	cmcN                       — exact mana value N (transmute cards)
+//	cmcleN                     — mana value N or less (Bring to Light: cmcle5)
+//	cmcgeN                     — mana value N or greater
+//	multicolored               — multicolored card (Bring to Light)
+//	monocolored                — monocolored card
+//	tribe:<subtype>            — creature subtype tutor (Goblin Matron → tribe:goblin)
+//	wish                       — fetches a card from outside the game / sideboard
+//
+// Recognized delivery values: hand (default), top, battlefield, graveyard,
+// exile.
 func inferTutorRestriction(ot, tl string) (string, string) {
 	restricted := "any"
 	delivery := "hand"
 
+	// Wish-style: outside the game / sideboard. Detected first so the
+	// downstream "search your library" branches don't override.
+	if containsAny(ot, "from outside the game", "from your sideboard") &&
+		containsAny(ot, "choose a ", "choose an ",
+			"reveal a ", "reveal an ", "reveal any number",
+			"may put", "may cast", "you own from outside",
+			"you own in exile") {
+		return "wish", inferTutorDelivery(ot)
+	}
+
+	// Transmute / pure CMC-equal tutors.
 	if strings.Contains(ot, "transmute") {
 		for cmc := 0; cmc <= 9; cmc++ {
 			if strings.Contains(ot, fmt.Sprintf("mana value %d", cmc)) ||
@@ -279,42 +355,196 @@ func inferTutorRestriction(ot, tl string) (string, string) {
 		}
 	}
 
-	if strings.Contains(ot, "search your library for a land") ||
-		strings.Contains(ot, "search your library for a basic land") ||
-		strings.Contains(ot, "search your library for up to two basic land") ||
-		strings.Contains(ot, "search your library for a plains") ||
-		strings.Contains(ot, "search your library for a forest") ||
-		strings.Contains(ot, "search your library for a card with a basic land type") ||
-		(strings.Contains(ot, "search your library") && strings.Contains(ot, "land card") &&
-			!strings.Contains(ot, "nonland")) {
+	// Land tutors. Basic-land restricted gets a separate key so a
+	// non-basic land tutor (Crop Rotation, Expedition Map) can still feed
+	// utility lands into combo lines.
+	if isBasicLandSearch(ot) {
+		restricted = "basic_land"
+	} else if isLandSearch(ot) {
 		restricted = "land"
-	} else if strings.Contains(ot, "search your library for a creature") {
+	} else if strings.Contains(ot, "search your library for a creature") ||
+		strings.Contains(ot, "search your library for up to one creature") ||
+		strings.Contains(ot, "search your library for up to two creature") ||
+		strings.Contains(ot, "search your library for up to three creature") {
 		restricted = "creature"
-	} else if strings.Contains(ot, "search your library for an artifact") {
+	} else if strings.Contains(ot, "search your library for an artifact") ||
+		strings.Contains(ot, "search your library for up to one artifact") ||
+		strings.Contains(ot, "search your library for up to two artifact") {
 		restricted = "artifact"
 	} else if strings.Contains(ot, "search your library for an enchantment") {
 		restricted = "enchantment"
-	} else if strings.Contains(ot, "search your library for an instant") ||
-		strings.Contains(ot, "search your library for a sorcery") {
+	} else if strings.Contains(ot, "search your library for an instant") &&
+		strings.Contains(ot, "or sorcery") {
 		restricted = "instant_sorcery"
+	} else if strings.Contains(ot, "search your library for an instant") {
+		restricted = "instant"
+	} else if strings.Contains(ot, "search your library for a sorcery") {
+		restricted = "sorcery"
+	} else if strings.Contains(ot, "search your library for a planeswalker") {
+		restricted = "planeswalker"
+	} else if tribe := extractTribalSearch(ot); tribe != "" {
+		restricted = "tribe:" + tribe
 	}
 
-	if strings.Contains(ot, "put it on top") || strings.Contains(ot, "on top of your library") {
-		delivery = "top"
-	} else if strings.Contains(ot, "onto the battlefield") || strings.Contains(ot, "put it onto the battlefield") ||
-		strings.Contains(ot, "put that card onto the battlefield") {
-		delivery = "battlefield"
-	} else if strings.Contains(ot, "into your graveyard") || strings.Contains(ot, "put it into your graveyard") {
-		delivery = "graveyard"
+	// CMC-bound restrictions stack on the type bucket. "Bring to Light"
+	// reads "search your library for a multicolored card with converted
+	// mana cost 5 or less" — that's both multicolored and cmcle5. When
+	// both apply we prefer the CMC restriction (it's the tighter, more
+	// useful filter for combo win-line coverage).
+	if cmcle := extractCmcLeBound(ot); cmcle >= 0 {
+		restricted = fmt.Sprintf("cmcle%d", cmcle)
+	} else if cmcge := extractCmcGeBound(ot); cmcge >= 0 {
+		restricted = fmt.Sprintf("cmcge%d", cmcge)
+	} else if restricted == "any" {
+		// Only fall back to color restriction when no other bucket fits.
+		if strings.Contains(ot, "for a multicolored card") ||
+			strings.Contains(ot, "for a multicolored creature") {
+			restricted = "multicolored"
+		} else if strings.Contains(ot, "for a monocolored card") {
+			restricted = "monocolored"
+		}
 	}
 
+	delivery = inferTutorDelivery(ot)
 	return restricted, delivery
 }
+
+func inferTutorDelivery(ot string) string {
+	// "on top" in oracle text overwhelmingly refers to library top in a
+	// tutor context. Vampiric Tutor says "shuffle and put that card on top
+	// of it" — "of it" refers back to the library. Cover the common
+	// phrasings explicitly so a stray "on top of each creature" elsewhere
+	// in the oracle text doesn't false-trigger.
+	if containsAny(ot,
+		"on top of your library",
+		"on top of their library",
+		"put it on top",
+		"put that card on top",
+		"puts it on top",
+		"put them on top") {
+		return "top"
+	}
+	if strings.Contains(ot, "onto the battlefield") ||
+		strings.Contains(ot, "put it onto the battlefield") ||
+		strings.Contains(ot, "put that card onto the battlefield") {
+		return "battlefield"
+	}
+	if strings.Contains(ot, "into your graveyard") ||
+		strings.Contains(ot, "put it into your graveyard") {
+		return "graveyard"
+	}
+	if strings.Contains(ot, "exile it") && strings.Contains(ot, "you may cast") {
+		return "exile"
+	}
+	return "hand"
+}
+
+// isLandSearch covers any land tutor — basic, nonbasic, or unrestricted.
+func isLandSearch(ot string) bool {
+	return containsAny(ot,
+		"search your library for a land",
+		"search your library for up to two land",
+		"search your library for up to three land",
+		"search your library for up to four land",
+		"search your library for up to one land") ||
+		(strings.Contains(ot, "search your library") && strings.Contains(ot, "land card") &&
+			!strings.Contains(ot, "nonland"))
+}
+
+// isBasicLandSearch is the tighter form: only basic land types.
+func isBasicLandSearch(ot string) bool {
+	return containsAny(ot,
+		"search your library for a basic land",
+		"search your library for up to two basic land",
+		"search your library for up to three basic land",
+		"search your library for up to four basic land",
+		"search your library for a plains",
+		"search your library for an island",
+		"search your library for a swamp",
+		"search your library for a mountain",
+		"search your library for a forest",
+		"search your library for a card with a basic land type",
+		"search your library for a basic plains",
+		"search your library for a basic island",
+		"search your library for a basic swamp",
+		"search your library for a basic mountain",
+		"search your library for a basic forest")
+}
+
+// extractTribalSearch detects "search your library for a <Subtype> card"
+// patterns and returns the lowercase subtype name, or "" if none. Covers
+// the common Commander tribes; the exact list is intentional rather than
+// exhaustive — adding a new tribe later is a one-liner.
+func extractTribalSearch(ot string) string {
+	tribes := []string{
+		"goblin", "elf", "merfolk", "zombie", "vampire", "dragon",
+		"sliver", "wizard", "soldier", "knight", "human", "angel",
+		"demon", "spirit", "dwarf", "elemental", "beast", "cat",
+		"warrior", "rogue", "cleric", "shaman", "druid", "rat",
+		"sphinx", "hydra", "treefolk", "elder", "samurai", "ninja",
+		"giant", "minotaur", "centaur", "satyr", "horror", "eldrazi",
+		"phyrexian", "construct",
+	}
+	for _, t := range tribes {
+		if strings.Contains(ot, "search your library for a "+t+" card") ||
+			strings.Contains(ot, "search your library for an "+t+" card") ||
+			strings.Contains(ot, "search your library for a "+t+" creature") {
+			return t
+		}
+	}
+	return ""
+}
+
+// extractCmcLeBound parses "with mana value N or less" / "with converted
+// mana cost N or less" phrases when they appear inside a search clause.
+// Returns -1 when no such bound is present.
+func extractCmcLeBound(ot string) int {
+	if !strings.Contains(ot, "search your library") {
+		return -1
+	}
+	for n := 0; n <= 12; n++ {
+		needles := []string{
+			fmt.Sprintf("mana value %d or less", n),
+			fmt.Sprintf("converted mana cost %d or less", n),
+			fmt.Sprintf("mana value of %d or less", n),
+			fmt.Sprintf("converted mana cost of %d or less", n),
+		}
+		if containsAny(ot, needles...) {
+			return n
+		}
+	}
+	return -1
+}
+
+func extractCmcGeBound(ot string) int {
+	if !strings.Contains(ot, "search your library") {
+		return -1
+	}
+	for n := 12; n >= 0; n-- {
+		needles := []string{
+			fmt.Sprintf("mana value %d or greater", n),
+			fmt.Sprintf("converted mana cost %d or greater", n),
+		}
+		if containsAny(ot, needles...) {
+			return n
+		}
+	}
+	return -1
+}
+
 
 func tutorCanFind(tutor TutorInfo, cardName string, typeByName map[string]string, oracle *oracleDB) bool {
 	if tutor.Restricted == "any" {
 		return true
 	}
+	// Wish tutors can fetch anything the pilot has access to in their
+	// sideboard / outside-game pool. Freya doesn't model sideboards, so we
+	// treat wishes as "any" for win-line coverage purposes — they're a
+	// real combo enabler in cEDH (Burning Wish → Tendrils, etc.).
+	if tutor.Restricted == "wish" {
+		return true
+	}
+
 	tl := typeByName[cardName]
 	if tl == "" && oracle != nil {
 		entry := oracle.lookup(cardName)
@@ -338,18 +568,66 @@ func tutorCanFind(tutor TutorInfo, cardName string, typeByName map[string]string
 		return strings.Contains(tl, "instant")
 	case "sorcery":
 		return strings.Contains(tl, "sorcery")
+	case "planeswalker":
+		return strings.Contains(tl, "planeswalker")
 	case "land":
 		return strings.Contains(tl, "land")
-	case "cmc0", "cmc1", "cmc2", "cmc3", "cmc4", "cmc5", "cmc6", "cmc7":
+	case "basic_land":
+		return strings.Contains(tl, "basic") && strings.Contains(tl, "land")
+	}
+
+	// CMC-bound buckets.
+	if strings.HasPrefix(tutor.Restricted, "cmcle") {
+		target, _ := strconv.Atoi(tutor.Restricted[5:])
+		if oracle != nil {
+			if entry := oracle.lookup(cardName); entry != nil {
+				return int(entry.CMC) <= target
+			}
+		}
+		return false
+	}
+	if strings.HasPrefix(tutor.Restricted, "cmcge") {
+		target, _ := strconv.Atoi(tutor.Restricted[5:])
+		if oracle != nil {
+			if entry := oracle.lookup(cardName); entry != nil {
+				return int(entry.CMC) >= target
+			}
+		}
+		return false
+	}
+	if strings.HasPrefix(tutor.Restricted, "cmc") {
 		target, _ := strconv.Atoi(tutor.Restricted[3:])
 		if oracle != nil {
-			entry := oracle.lookup(cardName)
-			if entry != nil {
+			if entry := oracle.lookup(cardName); entry != nil {
 				return int(entry.CMC) == target
 			}
 		}
 		return false
 	}
+
+	// Tribal subtype tutors (Goblin Matron → tribe:goblin).
+	if strings.HasPrefix(tutor.Restricted, "tribe:") {
+		tribe := tutor.Restricted[len("tribe:"):]
+		return strings.Contains(tl, tribe)
+	}
+
+	// Color-bound restrictions. Without parsing mana cost colors we can
+	// only do this when oracle data is present.
+	if tutor.Restricted == "multicolored" || tutor.Restricted == "monocolored" {
+		if oracle == nil {
+			return false
+		}
+		entry := oracle.lookup(cardName)
+		if entry == nil {
+			return false
+		}
+		nColors := len(entry.ColorIdentity)
+		if tutor.Restricted == "multicolored" {
+			return nColors >= 2
+		}
+		return nColors == 1
+	}
+
 	return false
 }
 

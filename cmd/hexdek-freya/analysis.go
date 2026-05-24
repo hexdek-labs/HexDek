@@ -54,7 +54,9 @@ type CardProfile struct {
 	IsTribalLord   bool     // grants bonuses to creatures of a type
 
 	IsOutlet    bool // can sacrifice/use OTHER permanents
-	IsTutor     bool // searches library
+	IsTutor     bool // searches library OR fetches from outside the game / sideboard
+	IsLandTutor bool // tutor is restricted to lands (Cultivate, Rampant Growth) — ramp, not a consistency tutor
+	IsWishTutor bool // fetches a card from outside the game / sideboard (Burning Wish, Karn the Great Creator, Mastermind's Acquisition)
 	IsRemoval   bool // destroys/exiles targets
 	IsWinCon    bool // can win the game directly
 	IsMassWipe  bool // destroys/exiles all
@@ -142,10 +144,13 @@ type FreyaReport struct {
 	// Legality validation (runs before all other phases)
 	Legality *LegalityReport
 
-	TutorCount   int
-	RemovalCount int
-	OutletCount  int
-	WinConCount  int
+	TutorCount        int // all tutors (legacy field — includes land tutors)
+	NonLandTutorCount int // tutors that find a non-land card (the consistency engine for combo decks)
+	LandTutorCount    int // land/ramp tutors (Cultivate, Rampant Growth, fetchlands)
+	WishTutorCount    int // tutors that fetch from outside the game / sideboard
+	RemovalCount      int
+	OutletCount       int
+	WinConCount       int
 
 	// Mana curve
 	ManaCurve     [8]int // index 0-6 = CMC 0-6, index 7 = CMC 7+
@@ -753,16 +758,7 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		"target player loses the game", "each opponent loses the game") {
 		p.IsWinCon = true
 	}
-	if strings.Contains(ot, "search your library") {
-		isCyclingSearch := (strings.Contains(ot, "cycling") || strings.Contains(ot, "landcycling") ||
-			strings.Contains(ot, "swampcycling") || strings.Contains(ot, "forestcycling") ||
-			strings.Contains(ot, "mountaincycling") || strings.Contains(ot, "islandcycling") ||
-			strings.Contains(ot, "plainscycling")) &&
-			!strings.Contains(ot, "search your library for a card")
-		if !isCyclingSearch {
-			p.IsTutor = true
-		}
-	}
+	classifyTutorInto(&p, ot, tl, name)
 	if containsAny(ot, "destroy target", "exile target") {
 		p.IsRemoval = true
 	}
@@ -1188,6 +1184,14 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 	for _, p := range profiles {
 		if p.IsTutor {
 			report.TutorCount++
+			if p.IsLandTutor {
+				report.LandTutorCount++
+			} else {
+				report.NonLandTutorCount++
+			}
+			if p.IsWishTutor {
+				report.WishTutorCount++
+			}
 		}
 		if p.IsRemoval {
 			report.RemovalCount++
@@ -3280,6 +3284,115 @@ func isDiscardCost(ot string) bool {
 		}
 	}
 	return false
+}
+
+// classifyTutorInto sets IsTutor / IsLandTutor / IsWishTutor on p based on
+// oracle text. Two surfaces qualify as a tutor:
+//
+//  1. "search your library" — the canonical wording, covering modal spells,
+//     conditional searches ("for a card with mana value X or less"), tribal
+//     searches ("for a Goblin card"), and reanimator tutors ("put it into
+//     your graveyard"). Cycling/landcycling clauses are excluded because the
+//     underlying "search your library for a basic [type] card" only fires
+//     when the cycling ability is activated, not as a free-cast tutor.
+//
+//  2. Wish-style: "from outside the game" / "from your sideboard" — Burning
+//     Wish, Cunning Wish, Glittering Wish, Living Wish, Mastermind's
+//     Acquisition, Karn the Great Creator, Spawnsire of Ulamog. These fetch
+//     a specific card by name and should count toward the consistency engine.
+//
+// Land-restricted tutors (Cultivate, Rampant Growth, Sakura-Tribe Elder,
+// fetchlands) are flagged separately via IsLandTutor — they belong to the
+// ramp package, not the consistency package. The legacy IsTutor flag stays
+// true for backward compatibility, but NonLandTutorCount in the report is
+// the metric scoring sites should consume.
+func classifyTutorInto(p *CardProfile, ot, tl, name string) {
+	// 1. Library-search tutors.
+	if strings.Contains(ot, "search your library") {
+		isCyclingSearch := containsAny(ot, "cycling", "landcycling",
+			"swampcycling", "forestcycling", "mountaincycling",
+			"islandcycling", "plainscycling") &&
+			!strings.Contains(ot, "search your library for a card")
+		if !isCyclingSearch {
+			p.IsTutor = true
+			if isLandRestrictedSearch(ot) {
+				p.IsLandTutor = true
+			}
+		}
+	}
+
+	// 2. Wish-style tutors: fetch from outside the game / sideboard. The
+	// wording variants are deliberately enumerated rather than collapsed to
+	// "outside the game" alone, because "you own from outside the game"
+	// covers the Wishes and "from your sideboard" covers older printings and
+	// Karn the Great Creator's activation.
+	if containsAny(ot, "from outside the game", "from your sideboard") {
+		// Guard against false positives like Conspiracy / Reflector Mage
+		// flavor text — restrict to clauses that actually fetch a card:
+		// "choose", "reveal", "may put", "may cast", "owner from outside".
+		if containsAny(ot, "choose a ", "choose an ",
+			"reveal a ", "reveal an ", "reveal any number",
+			"may put", "may cast", "you own from outside",
+			"you own in exile") {
+			p.IsTutor = true
+			p.IsWishTutor = true
+		}
+	}
+}
+
+// isLandRestrictedSearch returns true when the only thing the "search your
+// library" clause can find is a land. The clause shape is varied — basic
+// land types, "land card", "card with a basic land type", "up to two basic
+// land cards" — and the matcher errs on the side of "land-only" only when
+// no non-land object appears. A clause like "search your library for a
+// creature or land card" stays a non-land tutor (the creature mode is the
+// consistency-relevant one).
+func isLandRestrictedSearch(ot string) bool {
+	// Hard exclusion: any of these phrases imply the search can land on a
+	// nonland card, even if "land" also appears in the text.
+	if containsAny(ot, "search your library for a card",
+		"search your library for any number of cards",
+		"search your library for up to",
+		"search your library for a creature",
+		"search your library for an artifact",
+		"search your library for an enchantment",
+		"search your library for an instant",
+		"search your library for a sorcery",
+		"search your library for a planeswalker") {
+		// "up to two basic land" is a land tutor but matches "up to";
+		// re-check below.
+		if !containsAny(ot,
+			"search your library for up to two basic",
+			"search your library for up to three basic",
+			"search your library for up to four basic",
+			"search your library for up to five basic",
+			"search your library for up to one basic",
+			"search your library for up to two land",
+			"search your library for up to three land",
+			"search your library for up to four land",
+			"search your library for up to one land") {
+			return false
+		}
+	}
+	return containsAny(ot,
+		"search your library for a land",
+		"search your library for a basic land",
+		"search your library for up to two basic land",
+		"search your library for up to three basic land",
+		"search your library for up to four basic land",
+		"search your library for up to two land",
+		"search your library for up to three land",
+		"search your library for a plains",
+		"search your library for an island",
+		"search your library for a swamp",
+		"search your library for a mountain",
+		"search your library for a forest",
+		"search your library for a card with a basic land type",
+		"search your library for a basic plains",
+		"search your library for a basic island",
+		"search your library for a basic swamp",
+		"search your library for a basic mountain",
+		"search your library for a basic forest")
 }
 
 // containsAny checks if s contains any of the given substrings.
