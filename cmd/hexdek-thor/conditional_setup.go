@@ -5443,7 +5443,15 @@ func applyConditionScaffolding(gs *gameengine.GameState, cond *gameast.Condition
 		switch cs.subtype {
 		case "first_combat_phase":
 			gs.Phase = "combat"
-			gs.Step = "begin_combat"
+			// Canonical step name per checkTurnStructure's allow-list in
+			// internal/gameengine/invariants.go ("begin_of_combat" /
+			// "beginning_of_combat" / "combat_start"). The earlier
+			// "begin_combat" spelling was a typo that tripped the
+			// TurnStructure invariant on Karlach Fury of Avernus + Finest
+			// Hour during goldilocks R60 (2 invariant fails). Matches the
+			// sibling condScaffoldBeginningOfOrdinalStep handler above,
+			// which already uses "begin_of_combat".
+			gs.Step = "begin_of_combat"
 			if gs.Flags == nil {
 				gs.Flags = map[string]int{}
 			}
