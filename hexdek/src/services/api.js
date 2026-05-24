@@ -12,13 +12,18 @@ async function request(path, opts = {}) {
     ...opts,
   })
   if (!res.ok) {
-    // Pull the body out so callers can show a meaningful message and
-    // attach the status as a property (callers shouldn't have to grep
-    // an error string for "401"). We swallow JSON parse errors — the
-    // body is plain text on http.Error responses anyway.
+    // hexapi's unified ErrorResponse shape is {error, status} as JSON;
+    // unwrap the message so the user sees "missing card name" rather
+    // than the raw JSON envelope. Fall back to the raw text body for
+    // older / third-party endpoints that still return plain text.
     let body = ''
     try { body = await res.text() } catch { /* noop */ }
-    const err = new Error(body?.trim() || `API ${res.status}: ${path}`)
+    let message = body?.trim()
+    try {
+      const parsed = JSON.parse(body)
+      if (parsed && typeof parsed.error === 'string') message = parsed.error
+    } catch { /* not JSON — keep the raw text */ }
+    const err = new Error(message || `API ${res.status}: ${path}`)
     err.status = res.status
     err.body = body
     throw err

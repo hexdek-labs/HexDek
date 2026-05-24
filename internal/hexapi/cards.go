@@ -208,13 +208,13 @@ func (h *Handler) handleCardByName(w http.ResponseWriter, r *http.Request) {
 	raw := r.PathValue("name")
 	name, err := url.PathUnescape(raw)
 	if err != nil || name == "" {
-		http.Error(w, "invalid name", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid name")
 		return
 	}
 	key := strings.ToLower(strings.TrimSpace(name))
 	info, ok := h.cardDB[key]
 	if !ok {
-		http.Error(w, "card not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "card not found")
 		return
 	}
 

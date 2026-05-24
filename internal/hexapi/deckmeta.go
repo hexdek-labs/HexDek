@@ -315,16 +315,16 @@ func (h *Handler) handlePatchDeck(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 	if !checkOwnership(r, owner) {
-		http.Error(w, "forbidden: not deck owner", http.StatusForbidden)
+		writeError(w, http.StatusForbidden, "forbidden: not deck owner")
 		return
 	}
 
 	if findDeckFile(h.DecksDir, owner, id) == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
@@ -333,30 +333,30 @@ func (h *Handler) handlePatchDeck(w http.ResponseWriter, r *http.Request) {
 		Tags *[]string `json:"tags"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
 	if body.Name == nil && body.Tags == nil {
-		http.Error(w, "no patchable fields supplied", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "no patchable fields supplied")
 		return
 	}
 
 	if body.Name != nil {
 		name := strings.TrimSpace(*body.Name)
 		if len(name) > 120 {
-			http.Error(w, "name too long (max 120 chars)", http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "name too long (max 120 chars)")
 			return
 		}
 		// Disallow control chars and embedded newlines so the name renders
 		// cleanly in the UI and as a hero title.
 		for _, c := range name {
 			if c < 0x20 || c == 0x7f {
-				http.Error(w, "name contains control characters", http.StatusBadRequest)
+				writeError(w, http.StatusBadRequest, "name contains control characters")
 				return
 			}
 		}
 		if err := h.saveCustomName(r.Context(), owner, id, name); err != nil {
-			http.Error(w, "save: "+err.Error(), http.StatusInternalServerError)
+			writeError(w, http.StatusInternalServerError, "save: "+err.Error())
 			return
 		}
 	}
@@ -364,11 +364,11 @@ func (h *Handler) handlePatchDeck(w http.ResponseWriter, r *http.Request) {
 	if body.Tags != nil {
 		tagsJSON, err := normalizeTags(*body.Tags)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		if err := h.saveTags(r.Context(), owner, id, tagsJSON); err != nil {
-			http.Error(w, "save: "+err.Error(), http.StatusInternalServerError)
+			writeError(w, http.StatusInternalServerError, "save: "+err.Error())
 			return
 		}
 	}
@@ -424,7 +424,7 @@ func (h *Handler) handleListTags(w http.ResponseWriter, r *http.Request) {
 
 	suggestions, err := h.allTagsForOwner(r.Context(), owner)
 	if err != nil {
-		http.Error(w, "tags: "+err.Error(), http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "tags: "+err.Error())
 		return
 	}
 

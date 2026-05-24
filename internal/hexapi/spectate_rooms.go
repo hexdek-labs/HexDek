@@ -729,13 +729,13 @@ func (sm *Showmatch) handleSpawnSpectateRoom(w http.ResponseWriter, r *http.Requ
 		DeckID string `json:"deck_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.DeckID == "" {
-		http.Error(w, "deck_id required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "deck_id required")
 		return
 	}
 
 	room, err := sm.rooms.SpawnOrReuse(sm, body.DeckID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, err.Error())
 		return
 	}
 
@@ -756,7 +756,7 @@ func (sm *Showmatch) handleGetSpectateRoom(w http.ResponseWriter, r *http.Reques
 	roomID := r.PathValue("room_id")
 	room := sm.rooms.GetRoom(roomID)
 	if room == nil {
-		http.Error(w, "room not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "room not found")
 		return
 	}
 
@@ -784,7 +784,7 @@ func (sm *Showmatch) handleSpectateRoomWS(w http.ResponseWriter, r *http.Request
 	roomID := r.PathValue("room_id")
 	room := sm.rooms.GetRoom(roomID)
 	if room == nil {
-		http.Error(w, "room not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "room not found")
 		return
 	}
 
