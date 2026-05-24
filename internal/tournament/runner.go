@@ -1065,14 +1065,40 @@ func runPool(cfg TournamentConfig, workers, maxTurns int, gameTimeout time.Durat
 	}
 	fmt.Printf("\nCoverage: %d/%d commanders appeared in at least 1 game\n", len(entries)-noCoverage, len(entries))
 
+	// Promote the per-deck stats we already computed into the
+	// TournamentResult so report.go's per-commander winrate path (which
+	// already keys on len(GamesPlayedByCommander) > 0) sees the data.
+	// Without this, pool-mode reports divided wins by totalGames — wrong
+	// for any pool larger than nSeats, and especially wrong under the
+	// #145/#150 seeding constraints which deliberately skew the
+	// distribution.
+	winsByCmdr := make(map[string]int, len(stats))
+	gamesByCmdr := make(map[string]int, len(stats))
+	commanderNames := make([]string, 0, len(stats))
+	for name, s := range stats {
+		commanderNames = append(commanderNames, name)
+		gamesByCmdr[name] = s.games
+		if s.wins > 0 {
+			winsByCmdr[name] = s.wins
+		}
+	}
 	result := &TournamentResult{
-		Games:     totalGames,
-		Duration:  elapsed,
-		CrashLogs: crashLogs,
+		Games:                  totalGames,
+		Crashes:                crashes,
+		Duration:               elapsed,
+		CrashLogs:              crashLogs,
+		NSeats:                 cfg.NSeats,
+		CommanderNames:         commanderNames,
+		WinsByCommander:        winsByCmdr,
+		GamesPlayedByCommander: gamesByCmdr,
 	}
 	if elapsed.Seconds() > 0 {
 		result.GamesPerSecond = float64(totalGames) / elapsed.Seconds()
 	}
+	if totalGames > 0 {
+		result.AvgTurns = float64(totalTurns) / float64(totalGames)
+	}
+	result.TotalConcessions = totalConcessions
 
 	// Flush remaining buffered Muninn data for pool mode.
 	if err := poolBatcher.Close(); err != nil {
@@ -1339,10 +1365,27 @@ func runLazyPool(cfg TournamentConfig, workers, maxTurns int, gameTimeout time.D
 	fmt.Printf("\nCoverage: %d/%d commanders appeared in at least 1 game\n",
 		len(entries)-noCov, len(entries))
 
+	// Promote per-deck stats into the TournamentResult so the report
+	// layer can compute correct per-commander winrates. See the parallel
+	// runPool comment for rationale.
+	winsByCmdr := make(map[string]int, len(stats))
+	gamesByCmdr := make(map[string]int, len(stats))
+	commanderNames := make([]string, 0, len(stats))
+	for name, s := range stats {
+		commanderNames = append(commanderNames, name)
+		gamesByCmdr[name] = s.games
+		if s.wins > 0 {
+			winsByCmdr[name] = s.wins
+		}
+	}
 	result := &TournamentResult{
-		Games:     totalGames,
-		Duration:  elapsed,
-		CrashLogs: crashLogs,
+		Games:                  totalGames,
+		Duration:               elapsed,
+		CrashLogs:              crashLogs,
+		NSeats:                 cfg.NSeats,
+		CommanderNames:         commanderNames,
+		WinsByCommander:        winsByCmdr,
+		GamesPlayedByCommander: gamesByCmdr,
 	}
 	if elapsed.Seconds() > 0 {
 		result.GamesPerSecond = float64(totalGames) / elapsed.Seconds()
