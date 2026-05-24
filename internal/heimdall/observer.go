@@ -1,11 +1,15 @@
 package heimdall
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"sync"
+
+	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
 const (
@@ -21,6 +25,7 @@ type Observer struct {
 	huginn    HuginnSink
 	muninn    MuninnSink
 	telemetry TelemetrySink
+	snapshot  SnapshotSink // optional; wired via SetSnapshotSink
 	dataDir   string
 	mu        sync.Mutex
 }
@@ -36,6 +41,60 @@ func New(dataDir string, huginn HuginnSink, muninn MuninnSink, telemetry Telemet
 	}
 	os.MkdirAll(filepath.Join(dataDir, "heimdall"), 0755)
 	return o
+}
+
+// SetSnapshotSink wires (or rewires) the optional SnapshotSink for
+// per-game observation persistence. Pass nil to disable. Kept as a
+// setter rather than a New() argument so callers that don't have a
+// DB-backed adapter at startup (test harnesses, ad-hoc replays) can
+// continue to construct an Observer with the existing four-arg
+// New(); production code paths attach the sink after the DB
+// connection is ready.
+func (o *Observer) SetSnapshotSink(s SnapshotSink) {
+	o.mu.Lock()
+	o.snapshot = s
+	o.mu.Unlock()
+}
+
+// HasSnapshotSink reports whether a sink is currently wired. Used
+// by callers that want to skip the snapshot-building work when no
+// sink will receive it. Not strictly necessary — RecordSnapshot
+// short-circuits on nil — but useful for skipping the GameState
+// walk in SnapshotFromObservation when nobody's listening.
+func (o *Observer) HasSnapshotSink() bool {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.snapshot != nil
+}
+
+// RecordSnapshot builds a GameObservationSnapshot from the current
+// observation + game state and persists it via the wired
+// SnapshotSink. Designed for incremental use: live game paths can
+// invoke this multiple times during a game (e.g., once per turn,
+// or on each major event) and each call upserts the latest state.
+// No-op when no SnapshotSink is wired.
+//
+// Errors from the sink are logged rather than returned — the live
+// game must not stall on a persistence failure. Operators read the
+// log to spot persistence breakage; clients that need to know
+// whether a snapshot landed should query the read-side
+// /api/games/{id}/summary directly.
+//
+// gs may be nil: the resulting snapshot will carry just the obs
+// signals + Seed (turning-point reconstruction at read time
+// degrades to game_end only). Callers that have a live GameState
+// should pass it for the richer reconstruction.
+func (o *Observer) RecordSnapshot(ctx context.Context, gameID int64, obs Observation, gs *gameengine.GameState) {
+	o.mu.Lock()
+	sink := o.snapshot
+	o.mu.Unlock()
+	if sink == nil {
+		return
+	}
+	snap := SnapshotFromObservation(obs, gs)
+	if err := sink.PersistGameObservation(ctx, gameID, snap); err != nil {
+		log.Printf("heimdall: persist snapshot for game %d: %v", gameID, err)
+	}
 }
 
 // RecordSeed is called after EVERY game. Zero-allocation fast path -- appends
