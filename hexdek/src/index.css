@@ -397,6 +397,21 @@ body {
   font-size: 7px; color: #fff;
   background-size: cover; background-position: center;
   overflow: hidden; position: relative;
+  /* Animate the hover ring + brightness independently. transform is
+     deliberately NOT transitioned — the tapped state's inline rotate(6deg)
+     should snap, not tween, when a permanent gets tapped mid-frame. */
+  transition: outline-color 80ms ease, filter 80ms ease, box-shadow 80ms ease;
+}
+.perm-tile:hover {
+  /* outline (not border) so the ring sits OUTSIDE the box and doesn't
+     reflow the 1-px-bordered tile or its neighbors. z-index lift
+     guarantees the ring + its 1-px offset draw on top of adjacent tiles
+     instead of being painted behind them. */
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+  filter: brightness(1.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  z-index: 1;
 }
 .perm-tag {
   background: rgba(0,0,0,0.75); padding: 0 2px;
