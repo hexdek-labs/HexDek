@@ -197,6 +197,17 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	p := CardProfile{Name: name, TypeLine: typeLine, ManaCost: manaCost, CMC: cmc}
 	ot := strings.ToLower(oracleText)
 	tl := strings.ToLower(typeLine)
+	// otClean = oracle text with parenthesized reminder text stripped.
+	// Used by classifiers that are vulnerable to reminder-text leak —
+	// cascade's "exile cards from the top of your library until ..."
+	// falsely tagged every cascade card as EmptiesLibrary; flashback /
+	// encore / embalm / eternalize / aftermath all carry "exile this
+	// card from your graveyard" reminders that falsely tagged hundreds
+	// of cards as graveyard_curate engines. Other classifiers (mana
+	// production, keyword detection) intentionally keep `ot` because
+	// reminder text is often where the structural cue actually lives
+	// (land color hints, keyword glosses).
+	otClean := strings.ToLower(stripReminder(oracleText))
 
 	// Detect lands and their color production.
 	if strings.Contains(tl, "land") {
@@ -479,8 +490,13 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	if containsAny(nameLower, "tainted pact", "demonic consultation") {
 		p.EmptiesLibrary = true
 	}
-	// "exile cards from the top of your library" pattern (generic)
-	if strings.Contains(ot, "exile") && containsAny(ot, "cards from the top of your library", "from the top of your library until") {
+	// "exile cards from the top of your library" pattern (generic).
+	// Uses otClean so cascade's reminder text doesn't false-fire — every
+	// cascade card was previously misflagged as a Doomsday-pattern
+	// finisher.
+	if strings.Contains(otClean, "exile") && containsAny(otClean,
+		"cards from the top of your library",
+		"from the top of your library until") {
 		p.EmptiesLibrary = true
 	}
 
@@ -733,9 +749,12 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		p.Effects = append(p.Effects, "land_fetch")
 	}
 
-	// Graveyard curation (exile from your graveyard for value)
-	if strings.Contains(ot, "exile") && strings.Contains(ot, "your graveyard") &&
-		!strings.Contains(ot, "return") {
+	// Graveyard curation (exile from your graveyard for value). Uses
+	// otClean so the flashback / encore / embalm / eternalize /
+	// aftermath reminders ("exile this card from your graveyard ...")
+	// don't false-tag hundreds of cards as graveyard engines.
+	if strings.Contains(otClean, "exile") && strings.Contains(otClean, "your graveyard") &&
+		!strings.Contains(otClean, "return") {
 		p.Consumes = append(p.Consumes, ResGraveyardFill)
 		p.Effects = append(p.Effects, "graveyard_curate")
 	}
