@@ -7041,9 +7041,34 @@ func (h *YggdrasilHat) ChooseSurveil(gs *gameengine.GameState, seatIdx int, card
 
 		if h.isComboRelevant(c) || h.isValueEngineKey(c) || h.isStarCard(c) {
 			top = append(top, c)
-		} else if h.isCuttable(c) {
+			continue
+		}
+		// Archetype bias: control sends non-keeper creatures to the
+		// graveyard. Control decks don't need creature density — what
+		// reaches the battlefield is usually a single finisher and the
+		// commander, and excess creatures rot in hand. We've already
+		// filtered combo / VE / star keepers above so this only fires
+		// on filler creatures.
+		if arch == ArchetypeControl && typeLineContains(c, "creature") {
 			graveyard = append(graveyard, c)
-		} else if val >= 0.35 {
+			continue
+		}
+		if h.isCuttable(c) {
+			graveyard = append(graveyard, c)
+			continue
+		}
+		// Archetype bias: combo decks want the top of library reserved
+		// for combo pieces and tutors. Raise the keep threshold so
+		// mid-quality filler is sent to the graveyard instead of held
+		// at the top — the next draw should hit something that builds
+		// toward the win condition. Other archetypes keep the 0.35
+		// threshold so they don't accidentally bottom into card
+		// disadvantage.
+		topThreshold := 0.35
+		if arch == ArchetypeCombo {
+			topThreshold = 0.50
+		}
+		if val >= topThreshold {
 			top = append(top, c)
 		} else {
 			graveyard = append(graveyard, c)
