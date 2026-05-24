@@ -528,14 +528,36 @@ func DeclareAttackers(gs *GameState, attackerSeat int) []*Permanent {
 	// Step 2: scoop in permanents that entered "tapped and attacking"
 	// (CreateToken with e.Tapped + setPermFlag(attacking)). These are
 	// attacking creatures per §506.3 but don't fire own-attack triggers.
+	//
+	// R60: clear SummoningSick on the scooped-in creatures. Per CR §506.3,
+	// the "enters the battlefield attacking" effect grants the creature
+	// license to attack this combat despite normally being §302.1
+	// summoning-sick — the seven per_card handlers that produce these
+	// (Raph & Mikey, Kaalia, Sauron, Strefan, Winota, Satya, ninjutsu via
+	// ninja_sneak.go) all stamp `Flags["attacking"]=1` on a freshly-created
+	// permanent whose SummoningSick is still true. The scoop-in is the
+	// canonical "you are legally attacking" moment — without clearing SS
+	// here, a mid-combat game end (TakeTurn returns early on
+	// gs.CheckEnd() before EndOfCombatStep clears flagAttacking) leaves
+	// the bad SS=true + attacking=true combo for checkCombatLegality to
+	// flag. Bit-stable signature across r41 -> r44 -> r60 round 1/2/3 as
+	// "Behemoth of Vault 0 is attacking with summoning sickness and no
+	// haste" — Behemoth is the cheated-creature target in chaos games
+	// where one of the seven enabler cards lives in seat 0's deck.
 	attackers := append([]*Permanent{}, declared...)
 	for _, p := range seat.Battlefield {
 		if permFlag(p, flagAttacking) && !permFlag(p, flagDeclaredAttacker) {
+			if p.SummoningSick {
+				p.SummoningSick = false
+			}
 			attackers = append(attackers, p)
 			gs.LogEvent(Event{
 				Kind: "entered_attacking", Seat: attackerSeat,
 				Source: p.Card.DisplayName(),
-				Details: map[string]interface{}{"rule": "506.3"},
+				Details: map[string]interface{}{
+					"rule":               "506.3",
+					"cleared_summoning":  true,
+				},
 			})
 		}
 	}

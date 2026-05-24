@@ -472,6 +472,12 @@ func CheckSneak(gs *GameState, attackerSeat int, attackers []*Permanent, blocker
 		if sneakPerm != nil {
 			sneakPerm.Tapped = true
 			setPermFlag(sneakPerm, flagAttacking, true)
+			// R60: CR §506.3 — the sneak'd creature is legally attacking
+			// despite §302.1 summoning sickness. Sneak Attack grants
+			// haste on the card text, but defensive: clear SS too so
+			// checkCombatLegality doesn't trip on mid-combat game end
+			// if a path bypasses the haste grant.
+			sneakPerm.SummoningSick = false
 			// Like ninjutsu, do NOT set flagDeclaredAttacker.
 			if defSeat >= 0 {
 				setAttackerDefender(sneakPerm, defSeat)
