@@ -102,35 +102,84 @@ type hoserMapping struct {
 	Condition string
 	Hoser     string
 	Reason    string
+	// Severity grades the hoser-vs-condition matchup, not the hoser
+	// itself. 3=critical (engine-killing or hard lock), 2=major
+	// (one-shot wipe / tax / static drag), 1=minor (chip damage,
+	// avoidable). Used to sort VulnerableTo descending so the most
+	// dangerous matchups surface first and to tag critical entries
+	// with a "(critical)" prefix in the report.
+	Severity int
 }
 
+// Severity constants. Names align with the comment on hoserMapping.Severity
+// so future entries don't have to puzzle out which int means what.
+const (
+	hoserSeverityMinor    = 1
+	hoserSeverityMajor    = 2
+	hoserSeverityCritical = 3
+)
+
 var hoserDB = []hoserMapping{
-	{"graveyard_heavy", "Rest in Peace", "exiles your graveyard engine"},
-	{"graveyard_heavy", "Leyline of the Void", "prevents your graveyard from filling"},
-	{"graveyard_heavy", "Dauthi Voidwalker", "exiles your dying creatures"},
-	{"artifact_heavy", "Collector Ouphe", "shuts down your artifact mana and combo pieces"},
-	{"artifact_heavy", "Stony Silence", "locks your artifact activations"},
-	{"artifact_heavy", "Vandalblast", "one-sided artifact wipe"},
-	{"creature_heavy", "Cyclonic Rift", "bounces your entire board"},
-	{"creature_heavy", "Toxic Deluge", "uncounterable creature wipe"},
-	{"creature_heavy", "Elesh Norn, Grand Cenobite", "shrinks your board while pumping theirs"},
-	{"combo_heavy", "Rule of Law", "locks you to one spell per turn"},
-	{"combo_heavy", "Drannith Magistrate", "prevents casting from non-hand zones"},
-	{"combo_heavy", "Stifle", "counters your critical triggers"},
-	{"token_heavy", "Massacre Wurm", "kills tokens and drains you"},
-	{"token_heavy", "Rakdos Charm", "each creature deals 1 to you"},
-	{"enchantment_heavy", "Aura Shards", "destroys enchantments on creature ETB"},
-	{"enchantment_heavy", "Back to Nature", "instant-speed enchantment wipe"},
-	{"tutor_heavy", "Opposition Agent", "steals your tutored cards"},
-	{"tutor_heavy", "Aven Mindcensor", "limits your searches to top 4"},
-	{"lifegain", "Erebos, God of the Dead", "prevents your lifegain"},
-	{"lifegain", "Sulfuric Vortex", "prevents lifegain and pressures life total"},
-	{"etb_heavy", "Torpor Orb", "shuts down all your ETB triggers"},
-	{"etb_heavy", "Hushbringer", "prevents ETB and death triggers"},
-	{"spellslinger", "Deafening Silence", "limits noncreature spells to one per turn"},
-	{"spellslinger", "Thalia, Guardian of Thraben", "taxes your noncreature spells"},
-	{"land_ramp", "Blood Moon", "turns your nonbasics into Mountains"},
-	{"land_ramp", "Back to Basics", "taps your nonbasics"},
+	// ── Existing conditions (R59 and earlier) ──
+	{"graveyard_heavy", "Rest in Peace", "exiles your graveyard engine", hoserSeverityCritical},
+	{"graveyard_heavy", "Leyline of the Void", "prevents your graveyard from filling", hoserSeverityCritical},
+	{"graveyard_heavy", "Dauthi Voidwalker", "exiles your dying creatures", hoserSeverityMajor},
+	{"artifact_heavy", "Collector Ouphe", "shuts down your artifact mana and combo pieces", hoserSeverityCritical},
+	{"artifact_heavy", "Stony Silence", "locks your artifact activations", hoserSeverityCritical},
+	{"artifact_heavy", "Vandalblast", "one-sided artifact wipe", hoserSeverityMajor},
+	{"creature_heavy", "Cyclonic Rift", "bounces your entire board", hoserSeverityMajor},
+	{"creature_heavy", "Toxic Deluge", "uncounterable creature wipe", hoserSeverityMajor},
+	{"creature_heavy", "Elesh Norn, Grand Cenobite", "shrinks your board while pumping theirs", hoserSeverityMajor},
+	{"combo_heavy", "Rule of Law", "locks you to one spell per turn", hoserSeverityCritical},
+	{"combo_heavy", "Drannith Magistrate", "prevents casting from non-hand zones", hoserSeverityCritical},
+	{"combo_heavy", "Stifle", "counters your critical triggers", hoserSeverityMajor},
+	{"token_heavy", "Massacre Wurm", "kills tokens and drains you", hoserSeverityCritical},
+	{"token_heavy", "Rakdos Charm", "each creature deals 1 to you", hoserSeverityMinor},
+	{"enchantment_heavy", "Aura Shards", "destroys enchantments on creature ETB", hoserSeverityCritical},
+	{"enchantment_heavy", "Back to Nature", "instant-speed enchantment wipe", hoserSeverityMajor},
+	{"tutor_heavy", "Opposition Agent", "steals your tutored cards", hoserSeverityCritical},
+	{"tutor_heavy", "Aven Mindcensor", "limits your searches to top 4", hoserSeverityMajor},
+	{"lifegain", "Erebos, God of the Dead", "prevents your lifegain", hoserSeverityMajor},
+	{"lifegain", "Sulfuric Vortex", "prevents lifegain and pressures life total", hoserSeverityMajor},
+	{"etb_heavy", "Torpor Orb", "shuts down all your ETB triggers", hoserSeverityCritical},
+	{"etb_heavy", "Hushbringer", "prevents ETB and death triggers", hoserSeverityCritical},
+	{"spellslinger", "Deafening Silence", "limits noncreature spells to one per turn", hoserSeverityCritical},
+	{"spellslinger", "Thalia, Guardian of Thraben", "taxes your noncreature spells", hoserSeverityMajor},
+	{"land_ramp", "Blood Moon", "turns your nonbasics into Mountains", hoserSeverityMajor},
+	{"land_ramp", "Back to Basics", "taps your nonbasics", hoserSeverityMajor},
+
+	// ── R60 expansion: 5 new conditions, 11 new entries ──
+	// Reanimator: graveyard_heavy fires for any self-mill or recursion,
+	// but reanimator decks specifically fear instant-speed graveyard
+	// exile that can deny a single key target mid-cast. Bojuka Bog +
+	// Faerie Macabre are colorless / free and slot into any deck.
+	{"reanimator", "Faerie Macabre", "instant-speed graveyard exile of two cards for free", hoserSeverityCritical},
+	{"reanimator", "Bojuka Bog", "colorless one-sided graveyard wipe — slots into any mana base", hoserSeverityCritical},
+	{"reanimator", "Soul-Guide Lantern", "exiles your graveyard for {1} and replaces itself", hoserSeverityMajor},
+	// Storm-explicit: the existing spellslinger condition covers
+	// generic noncreature-spell decks. Storm finishers have unique
+	// hosers that lock the cast chain itself, not just per-turn count.
+	{"storm_explicit", "Eidolon of Rhetoric", "1 spell per turn — kills storm cast chain", hoserSeverityCritical},
+	{"storm_explicit", "Damping Sphere", "additional cost {1} per spell after the first, snowballs storm cost", hoserSeverityCritical},
+	// Commander-centric: dp.IsCommanderCentric is detected for Voltron /
+	// commander-engine decks (e.g. Uril, Yuriko, Sythis). They survive
+	// removal because they can recast — but commander-altering enchantments
+	// neutralize without sending the commander to the zone where it can be
+	// recast cheaply.
+	{"commander_centric", "Imprisoned in the Moon", "turns commander into a colorless land — survives commander tax", hoserSeverityCritical},
+	{"commander_centric", "Song of the Dryads", "turns commander into a forest — same shape, removed-by-enchantment-only", hoserSeverityCritical},
+	{"commander_centric", "Darksteel Mutation", "turns commander into an indestructible 0/1 — can't even die to commander tax", hoserSeverityCritical},
+	// Counters-matter: +1/+1 counters / proliferate strategies.
+	// Solemnity is the hard lock (counters can't enter); Hex Parasite
+	// is a flexible removal piece that scales with counter count.
+	{"counters_matter", "Solemnity", "no +1/+1 counters can enter — turns off the entire deck", hoserSeverityCritical},
+	{"counters_matter", "Hex Parasite", "removes counters at instant speed for {1} each", hoserSeverityMajor},
+	// Wheels: Wheel of Fortune / Windfall / Time Spiral / Echo of Eons
+	// decks. Notion Thief and Hullbreacher convert every wheel into a
+	// gift to the deck's opponents — catastrophic when the deck's
+	// whole engine is "draw 7s".
+	{"wheels", "Notion Thief", "wheel hands replace the wheeler's draws — your wheels become opponent tutors", hoserSeverityCritical},
+	{"wheels", "Hullbreacher", "same shape — your wheels generate Treasures for the opponent instead of cards for you", hoserSeverityCritical},
 }
 
 func computeThreatAssessment(dp *DeckProfile, report *FreyaReport) {
@@ -223,12 +272,121 @@ func computeThreatAssessment(dp *DeckProfile, report *FreyaReport) {
 		conditions["spellslinger"] = true
 	}
 
+	// ── R60: 5 new condition detectors ──
+	// reanimator: explicit reanimator archetype OR graveyard_heavy with
+	// enough mass-reanimate spells (Living Death / Patriarch's Bidding /
+	// Balthor the Defiled) to credibly cast multiple reanimate turns.
+	if containsAny(arch, "reanimator") {
+		conditions["reanimator"] = true
+	} else if conditions["graveyard_heavy"] {
+		massReanimate := 0
+		for _, p := range report.Profiles {
+			if containsAny(strings.Join(p.Effects, ","), "mass_reanimate") {
+				massReanimate++
+			}
+		}
+		if massReanimate >= 2 {
+			conditions["reanimator"] = true
+		}
+	}
+	// storm_explicit: storm archetype, OR has a storm_finisher win-line
+	// class. Note this fires IN ADDITION to spellslinger, not instead —
+	// storm decks are still spellslinger and want both layers of hosers
+	// surfaced.
+	if containsAny(arch, "storm") {
+		conditions["storm_explicit"] = true
+	} else if report.WinLines != nil {
+		for _, wl := range report.WinLines.WinLines {
+			if wl.Class == ComboClassStormFinisher {
+				conditions["storm_explicit"] = true
+				break
+			}
+		}
+	}
+	// commander_centric: flag set by computeOpeningHandSim →
+	// detectCommanderCentric. Voltron / engine-commander decks.
+	if dp.IsCommanderCentric {
+		conditions["commander_centric"] = true
+	}
+	// counters_matter: archetype name OR commander themes name "counters"
+	// OR a notable fraction of profiles produce +1/+1 counters. The
+	// fraction threshold is loose (5+ counter-producers) since most
+	// decks running counters revolve around them, not dabble.
+	if containsAny(arch, "counter") {
+		conditions["counters_matter"] = true
+	} else if dp.CommanderThemes != nil {
+		for _, theme := range dp.CommanderThemes {
+			if strings.Contains(strings.ToLower(theme), "counter") {
+				conditions["counters_matter"] = true
+				break
+			}
+		}
+	}
+	if !conditions["counters_matter"] {
+		counterProducers := 0
+		for _, p := range report.Profiles {
+			if containsAny(strings.Join(p.Effects, ","), "counter_add", "counter_move", "proliferate") {
+				counterProducers++
+			}
+		}
+		if counterProducers >= 5 {
+			conditions["counters_matter"] = true
+		}
+	}
+	// wheels: archetype name OR presence of 2+ canonical wheel spells.
+	// Hosers are catastrophic enough (Notion Thief flips the engine)
+	// that even a "soft wheel" sub-theme deserves the warning.
+	if containsAny(arch, "wheel") {
+		conditions["wheels"] = true
+	} else {
+		wheelHits := 0
+		wheelCards := map[string]bool{
+			"Wheel of Fortune": true, "Windfall": true, "Time Spiral": true,
+			"Echo of Eons": true, "Wheel of Misfortune": true,
+			"Magus of the Wheel": true, "Whispering Madness": true,
+			"Day's Undoing": true, "Timetwister": true, "Memory Jar": true,
+		}
+		for _, p := range report.Profiles {
+			if wheelCards[p.Name] {
+				wheelHits++
+			}
+		}
+		if wheelHits >= 2 {
+			conditions["wheels"] = true
+		}
+	}
+
+	// Collect matches preserving Severity so we can sort
+	// most-dangerous-first and tag critical entries inline. The dedupe
+	// pass keeps an earlier match's Severity if the same hoser appears
+	// under multiple conditions (e.g. Rest in Peace could conceivably
+	// be added to both graveyard_heavy AND reanimator in the future) —
+	// hoserDB ordering decides the canonical condition.
+	type matched struct {
+		Hoser    string
+		Reason   string
+		Severity int
+	}
 	seen := map[string]bool{}
+	var hits []matched
 	for _, h := range hoserDB {
-		if conditions[h.Condition] && !seen[h.Hoser] {
+		if !conditions[h.Condition] || seen[h.Hoser] {
+			continue
+		}
+		seen[h.Hoser] = true
+		hits = append(hits, matched{Hoser: h.Hoser, Reason: h.Reason, Severity: h.Severity})
+	}
+	// Stable sort by severity desc — entries of equal severity keep
+	// their hoserDB ordering, which is grouped by condition for
+	// readability.
+	sort.SliceStable(hits, func(i, j int) bool { return hits[i].Severity > hits[j].Severity })
+	for _, h := range hits {
+		if h.Severity >= hoserSeverityCritical {
+			dp.VulnerableTo = append(dp.VulnerableTo,
+				fmt.Sprintf("%s (critical) — %s", h.Hoser, h.Reason))
+		} else {
 			dp.VulnerableTo = append(dp.VulnerableTo,
 				fmt.Sprintf("%s — %s", h.Hoser, h.Reason))
-			seen[h.Hoser] = true
 		}
 	}
 }

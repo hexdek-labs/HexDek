@@ -187,8 +187,11 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	computeInteractionQuality(dp, report, oracle)
 	computeProtectionDensity(dp, report, oracle)
 	computeManaBaseGrade(dp, report, oracle)
-	computeThreatAssessment(dp, report)
+	// Opening hand sim runs first so dp.IsCommanderCentric is populated
+	// before threat assessment reads it (commander-centric decks fear
+	// commander-targeting hosers like Imprisoned in the Moon).
 	computeOpeningHandSim(dp, report, oracle)
+	computeThreatAssessment(dp, report)
 	computeSynergyClusters(dp, report, oracle)
 	computeMetaPositioning(dp)
 	computeCardQualityTiers(dp, report, oracle)
