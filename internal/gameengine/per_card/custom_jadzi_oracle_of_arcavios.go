@@ -150,6 +150,7 @@ func jadziDiscardBounce(gs *gameengine.GameState, src *gameengine.Permanent, abi
 	gs.UnregisterReplacementsForPermanent(src)
 	gs.UnregisterContinuousEffectsForPermanent(src)
 	gameengine.FireZoneChangeTriggers(gs, src, card, "battlefield", "hand")
+	gameengine.DetachAll(gs, src)
 	gs.Seats[owner].Hand = append(gs.Seats[owner].Hand, card)
 
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{

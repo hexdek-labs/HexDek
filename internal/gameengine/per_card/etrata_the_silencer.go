@@ -54,6 +54,7 @@ func etrataSilencerCombat(gs *gameengine.GameState, perm *gameengine.Permanent, 
 	if target != nil && target.Card != nil {
 		card := target.Card
 		removePermanent(gs, target)
+		gameengine.DetachAll(gs, target)
 		moveCardBetweenZones(gs, defenderSeat, card, "battlefield", "exile", "etrata_silencer")
 		// Track hit counters on the defender via seat flag.
 		if def.Flags == nil {
@@ -79,5 +80,6 @@ func etrataSilencerCombat(gs *gameengine.GameState, perm *gameengine.Permanent, 
 	owner := perm.Owner
 	card := perm.Card
 	removePermanent(gs, perm)
+	gameengine.DetachAll(gs, perm)
 	moveCardBetweenZones(gs, owner, card, "battlefield", "library", "etrata_shuffle")
 }

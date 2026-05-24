@@ -285,6 +285,7 @@ func lordXanderEra3Dies(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 			continue
 		}
 		removePermanent(gs, victim)
+		gameengine.DetachAll(gs, victim)
 		if victim.Card != nil {
 			gameengine.MoveCard(gs, victim.Card, target, "battlefield", "graveyard", "lord_xander_sac")
 		}

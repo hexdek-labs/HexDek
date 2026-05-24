@@ -150,6 +150,7 @@ func deadeyeNavigatorActivate(gs *gameengine.GameState, src *gameengine.Permanen
 	gs.UnregisterContinuousEffectsForPermanent(target)
 	// Fire LTB triggers for the departing permanent.
 	gameengine.FireZoneChangeTriggers(gs, target, card, "battlefield", "exile")
+	gameengine.DetachAll(gs, target)
 	newPerm := createPermanent(gs, owner, card, false)
 	gs.LogEvent(gameengine.Event{
 		Kind:   "flicker",

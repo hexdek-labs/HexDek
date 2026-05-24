@@ -111,6 +111,7 @@ func bilboBirthdayCelebrantActivate(gs *gameengine.GameState, src *gameengine.Pe
 	// Exile Bilbo from the battlefield.
 	moveCardBetweenZones(gs, seatIdx, src.Card, "battlefield", "exile", "bilbo_birthday_exile")
 	removePermanent(gs, src)
+	gameengine.DetachAll(gs, src)
 
 	// Pull every creature card out of the library, then shuffle.
 	var keep []*gameengine.Card

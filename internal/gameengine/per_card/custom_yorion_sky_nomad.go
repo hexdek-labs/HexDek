@@ -82,6 +82,7 @@ func yorionETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		removePermanent(gs, p)
 		gs.Seats[seatIdx].Exile = append(gs.Seats[seatIdx].Exile, card)
 		gameengine.FireZoneChangeTriggers(gs, p, card, "battlefield", "exile")
+		gameengine.DetachAll(gs, p)
 		exiled = append(exiled, card)
 	}
 
