@@ -1313,7 +1313,8 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 	}
 
 	knownComboKeys := map[string]bool{} // track confirmed combos to avoid heuristic dupes
-	for _, known := range KnownCombos {
+	combosForDeck := allKnownCombos()   // curated + Spellbook import, deduped
+	for _, known := range combosForDeck {
 		allPresent := true
 		for _, piece := range known.Pieces {
 			if !deckCardNames[piece] {
@@ -1366,7 +1367,7 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 	}
 
 	// ── Flag individual combo pieces (partial matches) ──
-	for _, known := range KnownCombos {
+	for _, known := range combosForDeck {
 		var presentPieces []string
 		var missingPieces []string
 		for _, piece := range known.Pieces {

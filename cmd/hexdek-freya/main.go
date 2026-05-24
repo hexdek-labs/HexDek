@@ -58,11 +58,38 @@ func main() {
 	var deckPath string
 	var deckDir string
 	var format string
+	var spellbookCache string
+	var spellbookFetchURL string
 
 	flag.StringVar(&deckPath, "deck", "", "path to decklist file")
 	flag.StringVar(&deckDir, "all-decks", "", "analyze all decks in directory")
 	flag.StringVar(&format, "format", "text", "output format: text, markdown, json")
+	flag.StringVar(&spellbookCache, "spellbook", DefaultSpellbookCache,
+		"path to Commander Spellbook variants JSON cache (loaded if present)")
+	flag.StringVar(&spellbookFetchURL, "spellbook-fetch", "",
+		"URL to download Spellbook JSON into --spellbook cache before analysis (e.g. "+DefaultSpellbookURL+")")
 	flag.Parse()
+
+	if spellbookFetchURL != "" {
+		log.Printf("fetching Commander Spellbook from %s ...", spellbookFetchURL)
+		n, err := FetchSpellbook(spellbookFetchURL, spellbookCache)
+		if err != nil {
+			log.Fatalf("spellbook fetch: %v", err)
+		}
+		log.Printf("  wrote %d bytes to %s", n, spellbookCache)
+	}
+
+	if spellbookCache != "" {
+		imported, warnings, err := LoadSpellbookCache(spellbookCache)
+		if err != nil {
+			log.Printf("spellbook load: %v (continuing with curated combos only)", err)
+		} else if len(imported) > 0 {
+			_, dropped := MergeKnownCombos(KnownCombos, imported)
+			ImportedCombos = imported
+			log.Printf("loaded %d Spellbook combos from %s (%d skipped as duplicates of curated entries, %d parse warnings)",
+				len(imported), spellbookCache, len(dropped), len(warnings))
+		}
+	}
 
 	if deckPath == "" && deckDir == "" {
 		fmt.Fprintf(os.Stderr, "Usage: hexdek-freya --deck <path> | --all-decks <dir>\n")
