@@ -712,6 +712,25 @@ func checkTriggerCompleteness(gs *GameState) error {
 				}
 			}
 		}
+		// R60: per CR §700.4, "dies" = battlefield → GRAVEYARD only.
+		// When a §614 replacement (Rest in Peace, Leyline of the Void,
+		// Anafenza the Foremost, etc.) redirects the destination to
+		// exile / library / hand / command zone, the creature didn't
+		// die — `creature_dies` triggers don't fire and the invariant
+		// must not demand one. The destroyPermSBA / sacrificePermSBA
+		// emitters at sba.go:1889 / 1950 already stamp `to_zone` in
+		// Details (and zone_change.go's creature_dies event mirrors it
+		// at line 453). Skip the death event when to_zone is anything
+		// other than "graveyard". Bit-stable signature: Rest in Peace
+		// on seat 0 redirecting seat 3's Firemane Commando death to
+		// exile, while seat 3 owns Gerrard, Weatherlight Hero (whose
+		// "dies" trigger is wired to creature_dies dispatch) — loki
+		// round 1-3 seed-42 game 4512.
+		if ev.Details != nil {
+			if tz, ok := ev.Details["to_zone"].(string); ok && tz != "" && tz != "graveyard" {
+				continue
+			}
+		}
 		// Only check if a trigger-bearer controls the dying creature.
 		// Most "creature_dies" triggers only fire for your own creatures.
 		deathSeat := ev.Seat
