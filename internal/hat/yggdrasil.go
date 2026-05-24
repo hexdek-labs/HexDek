@@ -5458,6 +5458,17 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 		return nil
 	}
 
+	// R60 defensive signal — lethal-incoming combat with a fog / mass-
+	// protection answer in hand. Checked BEFORE the counterspell fast-path
+	// because no number of countered spells stops an already-declared
+	// attack; the fog/protection IS the answer. The defender only has
+	// this priority window because some opponent-controlled item (usually
+	// an attack trigger) is on the stack — without that window, the
+	// engine wouldn't poll for a response at all.
+	if defResp := h.maybeCastDefensiveAnswer(gs, seatIdx); defResp != nil {
+		return defResp
+	}
+
 	// Fast-path: scan for an affordable counterspell BEFORE running the
 	// evaluator. Most seats most of the time have zero counters — this
 	// skips the expensive relativePosition call entirely.
@@ -5614,6 +5625,140 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 		Card:       bestCounter,
 		Controller: seatIdx,
 	}
+}
+
+// maybeCastDefensiveAnswer returns a fog or mass-protection spell from
+// hand when this combat phase has enough incoming damage to kill the
+// defender. Returns nil unless ALL of:
+//   - we're in the combat phase (no point fogging out of combat),
+//   - blockers have NOT yet been declared (otherwise the blocker math
+//     already absorbed some of the damage and the incoming estimate is
+//     stale),
+//   - sum of unblocked attacker power targeting seatIdx ≥ our life,
+//   - an affordable instant-shaped fog/protection card is in hand.
+//
+// The fog-or-protection scan uses oracle-text patterns rather than a
+// hard-coded card list so it picks up reprints and variants (Fog,
+// Moment's Peace, Holy Day, Heroic Intervention, Teferi's Protection,
+// Boros Charm-style indestructible grants).
+func (h *YggdrasilHat) maybeCastDefensiveAnswer(gs *gameengine.GameState, seatIdx int) *gameengine.StackItem {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return nil
+	}
+	if gs.Phase != "combat" {
+		return nil
+	}
+	// Avoid double-counting: if blockers were already declared, the
+	// ChooseBlockers path has already shaped the incoming numbers and
+	// we'd be re-pricing a partial situation. Only fire in the windows
+	// BEFORE declare_blockers (begin_of_combat, declare_attackers).
+	if gs.Step == "declare_blockers" ||
+		gs.Step == "first_strike_damage" ||
+		gs.Step == "combat_damage" ||
+		gs.Step == "end_of_combat" {
+		return nil
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil || seat.Lost || seat.Life <= 0 {
+		return nil
+	}
+	incoming := unblockedCombatDamageTo(gs, seatIdx)
+	if incoming < seat.Life {
+		return nil
+	}
+	avail := gameengine.AvailableManaEstimate(gs, seat)
+	for _, c := range seat.Hand {
+		if c == nil {
+			continue
+		}
+		if avail < gameengine.ManaCostOf(c) {
+			continue
+		}
+		if !isDefensiveInstantSpell(c) {
+			continue
+		}
+		h.logf("DEFENSIVE-ANSWER seat=%d → %s (incoming=%d life=%d)",
+			seatIdx, c.DisplayName(), incoming, seat.Life)
+		return &gameengine.StackItem{Card: c, Controller: seatIdx}
+	}
+	return nil
+}
+
+// unblockedCombatDamageTo sums the raw power of every attacking
+// permanent targeting seatIdx (per AttackerDefender). Doubles power for
+// double_strike (their two damage steps both land). Trample and other
+// keyword nuances are intentionally ignored — the helper is a pre-
+// blocker estimate; the only question is whether the swing would
+// outright kill us if nothing changes.
+func unblockedCombatDamageTo(gs *gameengine.GameState, seatIdx int) int {
+	if gs == nil {
+		return 0
+	}
+	total := 0
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, p := range s.Battlefield {
+			if p == nil || !p.IsAttacking() {
+				continue
+			}
+			def, ok := gameengine.AttackerDefender(p)
+			if !ok || def != seatIdx {
+				continue
+			}
+			pow := gs.PowerOf(p)
+			if pow <= 0 {
+				continue
+			}
+			if p.HasKeyword("double strike") || p.HasKeyword("double_strike") {
+				pow *= 2
+			}
+			total += pow
+		}
+	}
+	return total
+}
+
+// isDefensiveInstantSpell returns true for fogs (prevent all combat
+// damage), mass damage-prevention turn-effects, and mass protection
+// grants (creatures-you-control gain indestructible until EOT, phase
+// out, etc.). Pattern-matched on oracle text so variants and reprints
+// are picked up automatically.
+func isDefensiveInstantSpell(card *gameengine.Card) bool {
+	if card == nil {
+		return false
+	}
+	ot := gameengine.OracleTextLower(card)
+	if ot == "" {
+		return false
+	}
+	// Fog family.
+	if strings.Contains(ot, "prevent all combat damage") {
+		return true
+	}
+	if strings.Contains(ot, "prevent all damage") && strings.Contains(ot, "this turn") {
+		return true
+	}
+	// Mass-protection family: indestructible/hexproof grant to our
+	// permanents until end of turn. Requires both the keyword and the
+	// "you control" + "until end of turn" anchors so a single-target
+	// buff or a permanent-source static doesn't false-positive.
+	hasGrant := strings.Contains(ot, "creatures you control") ||
+		strings.Contains(ot, "permanents you control")
+	hasEOT := strings.Contains(ot, "until end of turn")
+	if hasGrant && hasEOT {
+		if strings.Contains(ot, "indestructible") ||
+			strings.Contains(ot, "hexproof") {
+			return true
+		}
+	}
+	// Phase-out protection (Teferi's Protection): "phase out" + "you control".
+	if strings.Contains(ot, "phase out") &&
+		(strings.Contains(ot, "you control") || strings.Contains(ot, "your life total")) {
+		return true
+	}
+	return false
 }
 
 // -- Interface: ChooseTarget --
