@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/astload"
@@ -249,6 +250,10 @@ func ReplayWithObservation(rc *ReplayContext, seed GameSeed, obs *Observer) erro
 	//     answer-magnet commanders vs sticky board commanders.
 	observation.CommanderZoneVisits = ExtractCommanderZoneVisits(gs)
 
+	// 2c. Regret cards: nonland CMC≥1 cards still in hand at game
+	//     end — the "stranded in hand" half of the regret signal.
+	observation.RegretCards = ExtractRegretCards(gs)
+
 	// 3. Combo detection: TODO — requires Freya integration to know what
 	//    the deck's intended combo line is and whether pieces were
 	//    assembled.
@@ -354,6 +359,78 @@ func ExtractParserGaps(gs *gameengine.GameState) []string {
 		// most gaps, and Muninn accumulates across many replays.
 	}
 	return gaps
+}
+
+// ExtractRegretCards walks every seat's hand at game end and returns
+// one RegretCard per nonland CMC≥1 card still held — the "stranded
+// in hand" half of the regret signal. Results are sorted by Seat
+// ascending then CMC descending so the biggest stranded spell per
+// seat surfaces first.
+//
+// Filtering rules:
+//   - Skip cards with the "land" type (lands in hand aren't
+//     intrinsically regretful; a flood/screw signal would be a
+//     separate metric).
+//   - Skip cards with EffectiveCMC < 1 (free spells, 0-cost
+//     artifacts, modal DFC back-faces that report 0 — these are
+//     held for reasons other than mana-affordability regret).
+//   - Skip nil Cards defensively.
+func ExtractRegretCards(gs *gameengine.GameState) []RegretCard {
+	if gs == nil {
+		return nil
+	}
+	var out []RegretCard
+	for seatIdx, seat := range gs.Seats {
+		if seat == nil {
+			continue
+		}
+		for _, c := range seat.Hand {
+			if c == nil {
+				continue
+			}
+			if cardHasType(c, "land") {
+				continue
+			}
+			cmc := c.EffectiveCMC()
+			if cmc < 1 {
+				continue
+			}
+			out = append(out, RegretCard{
+				Seat:     seatIdx,
+				CardName: c.Name,
+				CMC:      cmc,
+				Reason:   "stranded_in_hand",
+			})
+		}
+	}
+	// Stable sort: seat ascending, CMC descending within seat. A
+	// tie-breaker on card name keeps the output deterministic when
+	// two equal-CMC cards land in the same hand.
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Seat != out[j].Seat {
+			return out[i].Seat < out[j].Seat
+		}
+		if out[i].CMC != out[j].CMC {
+			return out[i].CMC > out[j].CMC
+		}
+		return out[i].CardName < out[j].CardName
+	})
+	return out
+}
+
+// cardHasType is a hand-side mirror of Permanent.hasType — the engine
+// stores Card.Types as lowercased tokens at parse time, so direct
+// equality is sufficient.
+func cardHasType(c *gameengine.Card, t string) bool {
+	if c == nil {
+		return false
+	}
+	for _, x := range c.Types {
+		if x == t {
+			return true
+		}
+	}
+	return false
 }
 
 // ExtractCommanderZoneVisits walks every seat's commander list and

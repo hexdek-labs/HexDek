@@ -41,6 +41,12 @@ type Observation struct {
 	// "stayed on the battlefield all game" (sticky/protected board
 	// presence). Populated per seat per commander card.
 	CommanderZoneVisits []CommanderZoneVisit
+
+	// RegretCards lists cards that a seat held but never cast — the
+	// high-CMC stranded-in-hand signal Heimdall surfaces to flag
+	// deck-construction or pilot-decision regret. Sorted by Seat
+	// ascending then CMC descending (biggest regret per seat first).
+	RegretCards []RegretCard
 }
 
 // ZoneCastEvent records a zone-cast grant lifecycle moment or an
@@ -145,6 +151,29 @@ type CommanderZoneVisit struct {
 	CastCount     int    `json:"cast_count"`
 	InZoneAtEnd   bool   `json:"in_zone_at_end"`
 	Visits        int    `json:"visits"`
+}
+
+// RegretCard records one card a seat held but never deployed. The
+// archetypal signal is "I was sitting on a 7-mana bomb the whole
+// game and never cast it" — a deck-construction or game-plan flag
+// worth surfacing per-game.
+//
+// Reason discriminates how the regret was identified:
+//
+//   - "stranded_in_hand": card was in the seat's hand at game end
+//     with CMC ≥ 1 (i.e., a real spell, not a 0-cost rider or land).
+//     Derivable from end-state alone; no event log required.
+//
+// Fizzle / no-legal-target / redundant detection requires
+// RetainEvents and is deferred — the fast replay path runs with
+// events disabled. When that surface is added, additional Reason
+// values ("fizzled", "no_legal_target", "redundant_etb") will
+// extend this type rather than introducing a parallel struct.
+type RegretCard struct {
+	Seat     int    `json:"seat"`
+	CardName string `json:"card_name"`
+	CMC      int    `json:"cmc"`
+	Reason   string `json:"reason"`
 }
 
 // HealthPulse is the periodic telemetry snapshot sent to GA4.
