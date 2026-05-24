@@ -136,6 +136,9 @@ Fetch oracle data: `scripts/fetch-oracle.sh`
 
 ### Ready
 
+### Done (2026-05-23)
+- [x] 4-card combo detection — `checkQuadCombo` enumerates all 24 permutations via nested distinct-index loops (structurally generated, not hand-listed); prefiltered to flow-active candidates and capped at 70 to bound runtime at ~3s worst case. Regressions in `cmd/hexdek-freya/quad_cycle_test.go`; runtime tradeoff in `docs/freya-4card-runtime.md`
+
 ### Done (2026-05-22)
 - [x] Fix triple combo cycle ordering — enumerate all 6 permutations in `checkTripleCombo` (was 2/6); regressions in `cmd/hexdek-freya/triple_cycle_test.go`
 
@@ -165,7 +168,7 @@ Fetch oracle data: `scripts/fetch-oracle.sh`
 - [x] Power percentile within archetype (multi-factor scoring: tutors, mana base, interaction, draw, curve, hands)
 
 ### Backlog
-- [ ] 4-card+ combo detection (currently capped at triples)
+- [ ] 5-card+ combo detection (would need graph-walk, not brute-force per `docs/freya-4card-runtime.md`)
 - [ ] Tutor inference for modal spells and complex wording
 - [ ] Commander Spellbook integration (external combo DB import)
 - [ ] NLP-grade oracle text parsing (replace substring matching for edge cases)
