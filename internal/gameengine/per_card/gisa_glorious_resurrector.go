@@ -48,18 +48,37 @@ func gisaResurrectorDies(gs *gameengine.GameState, perm *gameengine.Permanent, c
 		return
 	}
 	// Lift from the dying seat's graveyard if it's still there.
+	// Defensive: by the time this trigger resolves, sibling SBAs may
+	// have already relocated the card — most notably §704.6d, which
+	// lifts dying commanders from the graveyard into their owner's
+	// command zone. If the card is no longer in the owner's graveyard,
+	// some other SBA owns it now; do NOT steal a fresh copy into
+	// Gisa's exile or we end up with the same *Card pointer in two
+	// zones (Loki r60 round 3 / game 1173: Abuelo, Ancestral Echo
+	// in seat 1 command_zone + seat 3 exile after Gisa raced §704.6d).
+	// Same race surface as the The Reaper §704.6d fix
+	// (gen_the_reaper_king_no_more.go).
 	ownerSeat := dyingCard.Owner
 	if ownerSeat < 0 || ownerSeat >= len(gs.Seats) {
 		ownerSeat = controllerSeat
 	}
+	stillInGraveyard := false
 	if ownerSeat >= 0 && ownerSeat < len(gs.Seats) && gs.Seats[ownerSeat] != nil {
 		gy := gs.Seats[ownerSeat].Graveyard
 		for i, c := range gy {
 			if c == dyingCard {
 				gs.Seats[ownerSeat].Graveyard = append(gy[:i], gy[i+1:]...)
+				stillInGraveyard = true
 				break
 			}
 		}
+	}
+	if !stillInGraveyard {
+		// SBA §704.6d (or another sibling) already moved the card
+		// elsewhere — most commonly a commander lifted into its owner's
+		// command zone. Skip the exile-instead steal; the card lives
+		// where the previous SBA placed it.
+		return
 	}
 	// Stash to our exile pile (we'll re-spawn at upkeep).
 	gs.Seats[perm.Controller].Exile = append(gs.Seats[perm.Controller].Exile, dyingCard)
