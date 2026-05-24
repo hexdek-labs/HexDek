@@ -394,7 +394,18 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 	var explicitCommander string
 	var explicitPartner string
 	var lines []lineEntry
-	inMainSection := true
+	// commanderSectionNames: cards seen under a Moxfield "Commander" /
+	// "Commanders" section header. These are an alternative to the
+	// COMMANDER:/PARTNER: directive footers — Moxfield's native plaintext
+	// export uses section headers, not directives, and partner decks list
+	// both commanders under "Commanders" with no footer at all.
+	var commanderSectionNames []string
+	section := "main"
+	sectionDrops := map[string]bool{
+		"sideboard": true, "maybeboard": true, "considering": true,
+		"companion": true, "tokens": true, "signature spells": true,
+		"stickers": true, "attractions": true, "outside the game": true,
+	}
 
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 0, 1024), 1024*1024)
@@ -403,7 +414,9 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		if raw == "" || strings.HasPrefix(raw, "#") || strings.HasPrefix(raw, "//") {
 			continue
 		}
-		// COMMANDER: <name> — Moxfield uses two COMMANDER: lines for partners
+		// COMMANDER: <name> — Moxfield's directive-style export uses two
+		// COMMANDER: lines for partners. Distinct from the section-header
+		// path below.
 		if m := commanderLineRE.FindStringSubmatch(raw); m != nil {
 			name := strings.TrimSpace(m[1])
 			if explicitCommander == "" {
@@ -418,40 +431,80 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			explicitPartner = strings.TrimSpace(m[1])
 			continue
 		}
-		// Section headers: Sideboard, Maybeboard, Companion, etc.
-		// Commander doesn't use sideboards — drop non-main sections.
+		// Section headers: Sideboard, Maybeboard, Companion, Commander,
+		// Commanders, Tokens, etc. Commander section feeds the commander
+		// slots directly so Moxfield's native export (no directive footer)
+		// preserves partner pairs.
 		if sm := sectionHeaderRE.FindStringSubmatch(raw); sm != nil {
-			section := strings.ToLower(sm[1])
-			inMainSection = section == "deck" || section == "mainboard" || strings.HasPrefix(section, "main")
+			label := strings.ToLower(strings.TrimSpace(sm[1]))
+			label = strings.Join(strings.Fields(label), " ") // collapse whitespace
+			switch {
+			case label == "commander" || label == "commanders":
+				section = "commander"
+			case label == "deck" || label == "mainboard" || strings.HasPrefix(label, "main"):
+				section = "main"
+			case sectionDrops[label]:
+				section = "drop"
+			default:
+				section = "drop"
+			}
 			continue
 		}
-		if !inMainSection {
+		if section == "drop" {
 			continue
 		}
-		// Strip "(SET) 123" suffix.
+		// Strip "(SET) 123" suffix (set code + collector number + foil flag).
 		if idx := strings.Index(raw, "("); idx > 0 {
 			raw = strings.TrimSpace(raw[:idx])
 		}
 		m := deckLineRE.FindStringSubmatch(raw)
+		var qty int
+		var name string
 		if m != nil {
-			qty, _ := strconv.Atoi(m[1])
+			qty, _ = strconv.Atoi(m[1])
 			if qty < 1 {
 				continue
 			}
-			name := strings.TrimSpace(m[2])
-			if name == "" {
-				continue
-			}
-			lines = append(lines, lineEntry{qty, name})
+			name = m[2]
+		} else {
+			qty = 1
+			name = raw
+		}
+		name = cleanCardName(name)
+		if name == "" {
 			continue
 		}
-		// Bare card name (no quantity prefix) — default to 1.
-		if raw != "" {
-			lines = append(lines, lineEntry{1, raw})
+		if section == "commander" {
+			// Each card under a Commander section becomes a commander slot
+			// (up to 2 for partner pairs). Extras are silently dropped per
+			// CR §903.5b.
+			for i := 0; i < qty; i++ {
+				commanderSectionNames = append(commanderSectionNames, name)
+			}
+			continue
 		}
+		lines = append(lines, lineEntry{qty, name})
 	}
 	if err := sc.Err(); err != nil {
 		return nil, fmt.Errorf("deckparser: scan: %w", err)
+	}
+
+	// Promote `Commander` / `Commanders` section entries into the
+	// explicit commander slots so the directive-style and section-style
+	// Moxfield exports share one resolution path.
+	if explicitCommander == "" && len(commanderSectionNames) > 0 {
+		explicitCommander = commanderSectionNames[0]
+		if explicitPartner == "" && len(commanderSectionNames) > 1 {
+			explicitPartner = commanderSectionNames[1]
+		}
+	} else if explicitPartner == "" && len(commanderSectionNames) > 0 {
+		// Directive named the primary; section may still carry a partner.
+		for _, n := range commanderSectionNames {
+			if normalizeName(n) != normalizeName(explicitCommander) {
+				explicitPartner = n
+				break
+			}
+		}
 	}
 
 	// Commander + partner resolution. Names to pull out of the main
@@ -704,7 +757,39 @@ func CloneCards(src []*gameengine.Card) []*gameengine.Card {
 var deckLineRE = regexp.MustCompile(`^\s*(\d+)\s*[xX]?\s+(.+?)\s*$`)
 var commanderLineRE = regexp.MustCompile(`(?i)^\s*COMMANDER\s*:\s*(.+?)\s*$`)
 var partnerLineRE = regexp.MustCompile(`(?i)^\s*PARTNER\s*:\s*(.+?)\s*$`)
-var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companion|Considering|Deck|Main\s*Deck|Mainboard)\s*:?\s*$`)
+var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companion|Considering|Deck|Main\s*Deck|Mainboard|Commanders?|Tokens|Signature\s*Spells|Stickers|Attractions|Outside\s*the\s*Game)\s*:?\s*$`)
+
+// trailing-suffix patterns mirrored from internal/moxfield/textlist.go so
+// the gauntlet-side parser strips the same Moxfield / Archidekt / TappedOut
+// noise the import-side already handles.
+var (
+	foilMarkerRE = regexp.MustCompile(`\s*\*[A-Za-z]+\*\s*$`)
+	bracketTagRE = regexp.MustCompile(`\s*\[[^\]]+\]\s*$`)
+	hashTagRE    = regexp.MustCompile(`\s+#\S+(?:\s+#\S+)*\s*$`)
+)
+
+// cleanCardName trims a card name of Moxfield-style decoration that real
+// exports include after the card name: foil markers like `*F*` / `*E*`,
+// bracket category tags like `[Burn]`, and hash tags like `#wincon #combo`.
+// The "(SET) 123" set/collector tail is already stripped by the caller
+// before this runs; this handles the suffixes that survive when no set
+// parens are emitted (Archidekt, TappedOut, custom exports).
+func cleanCardName(name string) string {
+	s := strings.TrimSpace(name)
+	// Repeat-strip because a card may carry several trailing decorations
+	// (e.g. `Sol Ring *F* #ramp`); each pass peels one off.
+	for i := 0; i < 4; i++ {
+		before := s
+		s = foilMarkerRE.ReplaceAllString(s, "")
+		s = bracketTagRE.ReplaceAllString(s, "")
+		s = hashTagRE.ReplaceAllString(s, "")
+		s = strings.TrimSpace(s)
+		if s == before {
+			break
+		}
+	}
+	return s
+}
 
 // parseTypes splits a Scryfall type_line into the engine's lower-case
 // type tokens. "Legendary Creature — Human Ninja" becomes

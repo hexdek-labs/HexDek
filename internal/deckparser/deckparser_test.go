@@ -6,7 +6,20 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/hexdek/hexdek/internal/gameengine"
 )
+
+func libraryNames(lib []*gameengine.Card) []string {
+	out := make([]string, 0, len(lib))
+	for _, c := range lib {
+		if c == nil {
+			continue
+		}
+		out = append(out, c.Name)
+	}
+	return out
+}
 
 // astDatasetPath walks up from this test file to find data/rules/ast_dataset.jsonl.
 func astDatasetPath() string {
@@ -289,6 +302,160 @@ Sideboard
 		if c.Name == "Lightning Greaves" || c.Name == "Feed the Swarm" {
 			t.Fatalf("sideboard card %q leaked into library", c.Name)
 		}
+	}
+}
+
+// TestParseDeckReader_CommanderSectionHeader covers Moxfield's native
+// plaintext export, which uses a `Commander` section header rather than
+// the `COMMANDER:` directive footer. Prior to r60 this caused the literal
+// word "Commander" to be treated as a bare card name (hitting Unresolved)
+// while the deck still parsed by accident — the first resolvable line
+// became commander. Verify the header-driven path now resolves cleanly
+// with no spurious Unresolved entries.
+func TestParseDeckReader_CommanderSectionHeader(t *testing.T) {
+	meta := &MetaDB{byName: map[string]*CardMeta{}}
+	for _, n := range []string{"Tergrid, God of Fright", "Sol Ring", "Dark Ritual"} {
+		meta.byName[normalizeName(n)] = &CardMeta{
+			Name: n, TypeLine: "Legendary Creature", Types: []string{"legendary", "creature"}, CMC: 4,
+		}
+	}
+	text := `Commander
+1 Tergrid, God of Fright
+
+Deck
+1 Sol Ring
+1 Dark Ritual
+`
+	td, err := ParseDeckReader(strings.NewReader(text), nil, meta)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if td.CommanderName != "Tergrid, God of Fright" {
+		t.Fatalf("commander want Tergrid, got %q", td.CommanderName)
+	}
+	if len(td.Library) != 2 {
+		t.Fatalf("library want 2, got %d (%v)", len(td.Library), libraryNames(td.Library))
+	}
+	if len(td.Unresolved) != 0 {
+		t.Fatalf("unresolved should be empty, got %v", td.Unresolved)
+	}
+}
+
+// TestParseDeckReader_MoxfieldCommandersPartner covers Moxfield's native
+// export for partner decks: a single `Commanders` section block lists
+// both partners, with NO directive footer. Prior to r60 the second
+// commander silently leaked into the 99 because partner detection
+// required an explicit `PARTNER:` line. This is the worst gap the audit
+// surfaced — silent corruption of any partner deck pasted directly out
+// of Moxfield.
+func TestParseDeckReader_MoxfieldCommandersPartner(t *testing.T) {
+	meta := &MetaDB{byName: map[string]*CardMeta{}}
+	for _, n := range []string{"Kraum, Ludevic's Opus", "Tymna the Weaver", "Sol Ring", "Command Tower"} {
+		meta.byName[normalizeName(n)] = &CardMeta{
+			Name: n, TypeLine: "Legendary Creature", Types: []string{"legendary", "creature"}, CMC: 2,
+		}
+	}
+	text := `Commanders
+1 Kraum, Ludevic's Opus
+1 Tymna the Weaver
+
+Deck
+1 Sol Ring
+1 Command Tower
+`
+	td, err := ParseDeckReader(strings.NewReader(text), nil, meta)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if len(td.CommanderCards) != 2 {
+		t.Fatalf("want 2 commanders, got %d (%v)", len(td.CommanderCards), td.CommanderNames())
+	}
+	names := td.CommanderNames()
+	if names[0] != "Kraum, Ludevic's Opus" || names[1] != "Tymna the Weaver" {
+		t.Fatalf("commander order wrong: %v", names)
+	}
+	for _, c := range td.Library {
+		if c.Name == "Kraum, Ludevic's Opus" || c.Name == "Tymna the Weaver" {
+			t.Fatalf("library still contains commander %q", c.Name)
+		}
+	}
+	if len(td.Library) != 2 {
+		t.Fatalf("library want 2 non-commander entries, got %d", len(td.Library))
+	}
+}
+
+// TestParseDeckReader_FoilAndTagSuffixStripping covers the
+// non-set-paren decoration shapes other exporters emit (Archidekt,
+// TappedOut, hand-edited Moxfield lists): trailing `*F*`/`*E*` foil
+// markers, `[Category]` bracket tags, and `#hashtag` annotations.
+// Prior to r60 these survived through to the meta lookup and silently
+// landed the card in Unresolved.
+func TestParseDeckReader_FoilAndTagSuffixStripping(t *testing.T) {
+	meta := &MetaDB{byName: map[string]*CardMeta{}}
+	for _, n := range []string{"Atraxa, Praetors' Voice", "Sol Ring", "Mana Crypt", "Demonic Tutor", "Cyclonic Rift"} {
+		meta.byName[normalizeName(n)] = &CardMeta{
+			Name: n, TypeLine: "Legendary Creature", Types: []string{"legendary", "creature"}, CMC: 1,
+		}
+	}
+	text := `COMMANDER: Atraxa, Praetors' Voice
+1 Sol Ring *F*
+1 Mana Crypt [foil]
+1 Demonic Tutor #wincon
+1 Cyclonic Rift *E* [etched] #removal #blowout
+`
+	td, err := ParseDeckReader(strings.NewReader(text), nil, meta)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if len(td.Library) != 4 {
+		t.Fatalf("library want 4, got %d (%v); unresolved=%v",
+			len(td.Library), libraryNames(td.Library), td.Unresolved)
+	}
+	if len(td.Unresolved) != 0 {
+		t.Fatalf("unresolved should be empty, got %v", td.Unresolved)
+	}
+	for _, c := range td.Library {
+		if strings.ContainsAny(c.Name, "*[#") {
+			t.Fatalf("library card name still has decoration: %q", c.Name)
+		}
+	}
+}
+
+// TestParseDeckReader_DroppedSectionExpansion covers the new section
+// drops: Tokens, Signature Spells, Stickers, Attractions, Outside the
+// Game. Anything under those headers must be excluded from the library.
+func TestParseDeckReader_DroppedSectionExpansion(t *testing.T) {
+	meta := &MetaDB{byName: map[string]*CardMeta{}}
+	for _, n := range []string{"Tinybones, the Pickpocket", "Sol Ring", "Goblin Token", "Demonic Tutor", "Sticker Sheet", "Attraction"} {
+		meta.byName[normalizeName(n)] = &CardMeta{
+			Name: n, TypeLine: "Legendary Creature", Types: []string{"legendary", "creature"}, CMC: 1,
+		}
+	}
+	text := `COMMANDER: Tinybones, the Pickpocket
+1 Sol Ring
+
+Tokens
+1 Goblin Token
+
+Signature Spells
+1 Demonic Tutor
+
+Stickers
+1 Sticker Sheet
+
+Attractions
+1 Attraction
+
+Outside the Game
+1 Demonic Tutor
+`
+	td, err := ParseDeckReader(strings.NewReader(text), nil, meta)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	if len(td.Library) != 1 {
+		t.Fatalf("library want 1 (only Sol Ring), got %d (%v)",
+			len(td.Library), libraryNames(td.Library))
 	}
 }
 
