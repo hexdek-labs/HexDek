@@ -460,6 +460,49 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 			// CR §702.46 — Soulshift: return a Spirit from graveyard to hand.
 			CheckSoulshift(gs, perm)
 		}
+	} else if fromZone == "battlefield" && toZone != "graveyard" {
+		// A creature left the battlefield but a §614 replacement redirected
+		// the destination away from graveyard (Rest in Peace → exile,
+		// Anafenza → exile, Leyline of the Void → exile, Tergrid →
+		// hand/library, commander §903.9b → command_zone, etc.). Per CR
+		// §700.4 "dies" means battlefield → graveyard specifically, so the
+		// dies trigger is correctly NOT fired. But the dispatcher still
+		// saw and acknowledged the death event — emit a trigger_evaluated
+		// marker so the TriggerCompleteness invariant has a follow-up
+		// event. Without this, the invariant flags every
+		// destroy-under-RIP as "trigger-bearer on battlefield, no
+		// subsequent trigger event found" (Loki r60 round 3 game 4512
+		// Gerrard cluster).
+		isCreature := false
+		if perm != nil && perm.IsCreature() {
+			isCreature = true
+		} else if card != nil && cardHasType(card, "creature") {
+			isCreature = true
+		}
+		if isCreature {
+			seat := -1
+			if perm != nil {
+				seat = perm.Controller
+			} else if card != nil {
+				seat = card.Owner
+			}
+			name := ""
+			if card != nil {
+				name = card.DisplayName()
+			}
+			gs.LogEvent(Event{
+				Kind:   "trigger_evaluated",
+				Seat:   seat,
+				Target: -1,
+				Source: name,
+				Details: map[string]interface{}{
+					"event":   "creature_dies",
+					"skipped": "destination_not_graveyard",
+					"to_zone": toZone,
+					"rule":    "700.4",
+				},
+			})
+		}
 	}
 	if fromZone == "battlefield" && perm != nil {
 		FireCardTrigger(gs, "permanent_ltb", map[string]interface{}{
