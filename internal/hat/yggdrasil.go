@@ -5789,6 +5789,14 @@ func (h *YggdrasilHat) scoreModeEffect(gs *gameengine.GameState, seatIdx int, ef
 		if score == 0 {
 			score = 0.05
 		}
+		// Control archetype leans into removal modes — a Cryptic
+		// Command-style "counter" vs "destroy" choice should bias
+		// toward the answer for the open threat. The bump is small
+		// enough not to flip a near-zero removal score against a
+		// strong alternative.
+		if h.Strategy != nil && (h.Strategy.Archetype == ArchetypeControl || h.Strategy.Archetype == ArchetypeStax) {
+			score += 0.05
+		}
 
 	case "damage", "lose_life":
 		// Scale by how close to lethal the closest opponent is. The
@@ -5806,14 +5814,51 @@ func (h *YggdrasilHat) scoreModeEffect(gs *gameengine.GameState, seatIdx int, ef
 		if pos > 0.3 {
 			score += 0.10
 		}
+		// Aggro / spellslinger care more about damage modes than
+		// other archetypes: damage IS their win condition. Small
+		// bump so the mode-pick gravitates toward burn over a parity
+		// effect like draw when lethal isn't on the line.
+		if h.Strategy != nil && (h.Strategy.Archetype == ArchetypeAggro || h.Strategy.Archetype == ArchetypeSpellslinger) {
+			score += 0.05
+		}
+
+	case "counter_spell":
+		// Countering only matters if there's a hostile spell on the
+		// stack to counter. With nothing to point at the mode is a
+		// dead floor — pick something else. Spells we control are
+		// excluded so a Cryptic Command pointed at our own draw
+		// trigger doesn't read as "high value".
+		hostileOnStack := false
+		for _, item := range gs.Stack {
+			if item == nil {
+				continue
+			}
+			if item.IsCopy {
+				continue
+			}
+			if item.Controller != seatIdx {
+				hostileOnStack = true
+				break
+			}
+		}
+		if hostileOnStack {
+			score = 0.85
+		} else {
+			score = 0.05
+		}
+		if h.Strategy != nil && (h.Strategy.Archetype == ArchetypeControl || h.Strategy.Archetype == ArchetypeSpellslinger) {
+			score += 0.05
+		}
 
 	case "draw":
 		// Empty-hand draw is huge; full-hand draw is incremental and
 		// risks hand-size discard at end of turn.
 		seat := gs.Seats[seatIdx]
 		hand := 0
+		lib := 0
 		if seat != nil {
 			hand = len(seat.Hand)
+			lib = len(seat.Library)
 		}
 		switch {
 		case hand == 0:
@@ -5829,6 +5874,22 @@ func (h *YggdrasilHat) scoreModeEffect(gs *gameengine.GameState, seatIdx int, ef
 		}
 		if pos < -0.2 {
 			score += 0.05
+		}
+		// Library-low decking penalty: drawing into a near-empty
+		// library accelerates a §704.5b loss. Below ~7 cards the
+		// expected draws-to-deckout meaningfully shrink with each
+		// drawn card; below ~3 we're one trigger / cantrip from
+		// drawing on empty. lib==0 falls through unchanged: the
+		// game is effectively over (next draw is the loss), no
+		// useful signal in scaling the mode score, and leaving the
+		// base score deterministic helps edge-case test reproducibility.
+		if lib > 0 {
+			switch {
+			case lib <= 3:
+				score *= 0.25
+			case lib <= 7:
+				score *= 0.60
+			}
 		}
 
 	case "create_token":
