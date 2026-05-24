@@ -1915,6 +1915,7 @@ func destroyPermSBA(gs *GameState, p *Permanent, reason, rule string) {
 	// r60: drop while_source_on_bf ZoneCastGrants sourced from p's
 	// Timestamp (Yawgmoth's Agenda, Karador, Lurrus, etc.).
 	ExpireSourceGrants(gs, p.Timestamp)
+	gs.ExpireSourceBoundPolicies(p)
 }
 
 // sacrificePermSBA mirrors destroyPermSBA but uses "sba_<rule>_sacrifice"
@@ -1961,6 +1962,7 @@ func sacrificePermSBA(gs *GameState, p *Permanent, reason, rule string, extra ma
 	}
 	detachAll(gs, p)
 	ExpireSourceGrants(gs, p.Timestamp)
+	gs.ExpireSourceBoundPolicies(p)
 }
 
 // DetachAll is the exported entry point for detachAll, callable from

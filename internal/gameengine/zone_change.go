@@ -146,6 +146,7 @@ func DestroyPermanent(gs *GameState, perm *Permanent, source *Permanent) bool {
 	// from Yawgmoth's Agenda, Karador, Maestros Ascendancy, Lurrus, etc.
 	// survive their host's death and trip the ZoneCastGrantExpiry invariant.
 	ExpireSourceGrants(gs, perm.Timestamp)
+	gs.ExpireSourceBoundPolicies(perm)
 
 	// Tokens cease to exist — skip zone write (§704.5d cleanup).
 	if !perm.IsToken() {
@@ -206,6 +207,7 @@ func ExilePermanent(gs *GameState, perm *Permanent, source *Permanent) bool {
 
 	detachAll(gs, perm)
 	ExpireSourceGrants(gs, perm.Timestamp)
+	gs.ExpireSourceBoundPolicies(perm)
 
 	if !perm.IsToken() {
 		finalZone := FireZoneChange(gs, perm, perm.Card, perm.Card.Owner, "battlefield", destZone)
@@ -311,6 +313,7 @@ func sacrificePermanentImpl(gs *GameState, perm *Permanent, source *Permanent, r
 
 	detachAll(gs, perm)
 	ExpireSourceGrants(gs, perm.Timestamp)
+	gs.ExpireSourceBoundPolicies(perm)
 
 	if !perm.IsToken() {
 		finalZone := FireZoneChange(gs, perm, perm.Card, perm.Card.Owner, "battlefield", destZone)
@@ -387,6 +390,7 @@ func BouncePermanent(gs *GameState, perm *Permanent, source *Permanent, dest str
 
 	detachAll(gs, perm)
 	ExpireSourceGrants(gs, perm.Timestamp)
+	gs.ExpireSourceBoundPolicies(perm)
 
 	if !perm.IsToken() {
 		finalZone := FireZoneChange(gs, perm, perm.Card, perm.Card.Owner, "battlefield", dest)
