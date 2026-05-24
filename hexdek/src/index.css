@@ -1373,6 +1373,17 @@ body {
 .speed-marks {
   display: flex; justify-content: space-between; margin-top: 4px;
 }
+/* Speed preset buttons (Spectator). Visually identical to the legacy
+   <span> presets in SpectateRoom (kept on the > :nth-child rule below)
+   but keyboard-focusable as a real <button>. The :focus-visible ring
+   uses --accent so it shows up over the dark FT.SPD background. */
+.speed-mark-btn {
+  background: none; border: none; padding: 0; margin: 0;
+  font: inherit; cursor: pointer;
+}
+.speed-mark-btn:focus-visible {
+  outline: 1px solid var(--accent); outline-offset: 2px;
+}
 
 /* ── IMPORT MODAL ── (styles moved to components/ImportModal.css) */
 
@@ -1765,10 +1776,13 @@ body {
 
   .winline-row { grid-template-columns: 30px 80px 1fr; gap: 6px; }
 
-  .speed-marks > span:nth-child(2),
-  .speed-marks > span:nth-child(4),
-  .speed-marks > span:nth-child(6),
-  .speed-marks > span:nth-child(8) { display: none; }
+  /* Match both legacy <span> presets (SpectateRoom) and new <button>
+     presets (Spectator). Hides every other preset on narrow viewports
+     so the row doesn't overflow. */
+  .speed-marks > :nth-child(2),
+  .speed-marks > :nth-child(4),
+  .speed-marks > :nth-child(6),
+  .speed-marks > :nth-child(8) { display: none; }
 
   .punch { font-size: 36px; }
   .headline { font-size: 48px; }

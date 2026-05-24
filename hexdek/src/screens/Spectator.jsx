@@ -843,6 +843,8 @@ export default function Spectator() {
                       step={1}
                       value={idx}
                       onChange={(e) => setSpeedMultiplier(SPEED_MARKS[e.target.value])}
+                      aria-label="Playback speed"
+                      aria-valuetext={`${parseFloat(speed.toFixed(2))}× playback`}
                       style={{
                         flex: 1,
                         background: `linear-gradient(to right, var(--ok) ${pct}%, var(--rule-2) ${pct}%)`,
@@ -854,17 +856,23 @@ export default function Spectator() {
                   {parseFloat(speed.toFixed(2))}×
                 </span>
               </div>
-              <div className="speed-marks">
-                {SPEED_MARKS.map((m, i) => (
-                  <span
-                    key={i}
-                    className="t-xs"
-                    style={{ cursor: 'pointer', color: Math.abs(speed - m) < 0.01 ? 'var(--ok)' : 'var(--ink-2)' }}
-                    onClick={() => setSpeedMultiplier(m)}
-                  >
-                    {m}×
-                  </span>
-                ))}
+              <div className="speed-marks" role="group" aria-label="Speed presets">
+                {SPEED_MARKS.map((m, i) => {
+                  const active = Math.abs(speed - m) < 0.01
+                  return (
+                    <button
+                      type="button"
+                      key={i}
+                      className="t-xs speed-mark-btn"
+                      onClick={() => setSpeedMultiplier(m)}
+                      aria-label={`Set playback speed to ${m}×`}
+                      aria-pressed={active}
+                      style={{ color: active ? 'var(--ok)' : 'var(--ink-2)' }}
+                    >
+                      {m}×
+                    </button>
+                  )
+                })}
               </div>
             </Panel>
 
