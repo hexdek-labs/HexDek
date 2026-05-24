@@ -481,6 +481,15 @@ func addToZone(seat *Seat, card *Card, zone string) {
 		// Put back on top.
 		seat.Library = append([]*Card{card}, seat.Library...)
 	case "command_zone":
+		// Idempotent insert — matches moveToZone (state.go:1576) and
+		// the §903.9b redirect in commander.go. A rollback that races
+		// an SBA §704.6d sweep would otherwise stack two copies of the
+		// same *Card in command_zone.
+		for _, existing := range seat.CommandZone {
+			if existing == card {
+				return
+			}
+		}
 		seat.CommandZone = append(seat.CommandZone, card)
 	}
 }
@@ -699,6 +708,30 @@ func shouldExpireGrant(gs *GameState, p *ZoneCastPermission) bool {
 		return gs.Turn >= p.GrantTurn
 	case "until_end_of_next_turn":
 		return gs.Turn > p.GrantTurn
+	case "while_source_on_bf":
+		return !permanentWithTimestampExists(gs, p.SourceTimestamp)
+	}
+	return false
+}
+
+// grantIsLeaked reports whether a grant SHOULD have been cleaned up by
+// a previous turn's cleanup pass and is therefore a true invariant
+// violation. Distinct from shouldExpireGrant (which the cleanup itself
+// uses): the invariant must NOT flag a grant registered earlier in
+// the current turn — that grant is still alive until its own turn's
+// cleanup runs. Using `>=` (cleanup semantics) inside the invariant
+// false-positives on every grant observed before end-of-turn cleanup,
+// which is most of the time. See Loki r60 / game 536 (Illusionary
+// Mask → Midnight Covenant grant flagged at turn 55 draw step).
+func grantIsLeaked(gs *GameState, p *ZoneCastPermission) bool {
+	if p == nil {
+		return true
+	}
+	switch p.Duration {
+	case "until_end_of_turn":
+		return gs.Turn > p.GrantTurn
+	case "until_end_of_next_turn":
+		return gs.Turn > p.GrantTurn+1
 	case "while_source_on_bf":
 		return !permanentWithTimestampExists(gs, p.SourceTimestamp)
 	}
