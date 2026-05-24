@@ -264,11 +264,29 @@ export default function Spectator() {
     const ev = game?.seats?.[seatIdx]?.eval
     if (!ev) return
     const val = ev[key]
+    // Edge-aware placement: the tooltip default-anchors 12px right /
+    // 8px above the cursor, which clips off-screen for the
+    // right-column heatmaps in a 2x2 seat grid and for any seat near
+    // the bottom edge on short viewports. Flip the anchor when the
+    // cursor sits near a viewport edge.
+    const vw = window.innerWidth || document.documentElement.clientWidth || 0
+    const vh = window.innerHeight || document.documentElement.clientHeight || 0
+    const tipW = 150 // generous upper bound for "Cmdr: +0.34"
+    const tipH = 24
+    const margin = 8
+    const flipX = e.clientX + 12 + tipW > vw - margin
+    const flipY = e.clientY + tipH > vh - margin
+    const left = flipX
+      ? Math.max(margin, e.clientX - 12 - tipW)
+      : e.clientX + 12
+    const top = flipY
+      ? Math.max(margin, e.clientY - 8 - tipH)
+      : e.clientY - 8
     setHeatmapTip({
       label: EVAL_LABELS[key],
       value: val != null ? (val >= 0 ? '+' : '') + val.toFixed(2) : '—',
-      x: e.clientX,
-      y: e.clientY,
+      left,
+      top,
     })
   }, [game])
 
@@ -452,7 +470,7 @@ export default function Spectator() {
   return (
     <div className="spectator-page">
       {heatmapTip && (
-        <div className="heatmap-tooltip" style={{ left: heatmapTip.x + 12, top: heatmapTip.y - 8 }}>
+        <div className="heatmap-tooltip" style={{ left: heatmapTip.left, top: heatmapTip.top }}>
           {heatmapTip.label}: {heatmapTip.value}
         </div>
       )}
