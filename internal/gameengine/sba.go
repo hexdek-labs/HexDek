@@ -170,6 +170,38 @@ func StateBasedActions(gs *GameState) bool {
 		}
 		gs.Flags["game_draw"] = 1
 		gs.Flags["ended"] = 1
+		// r60 loki stress / seed 1337 game 465: previously, the cap path
+		// only set ended/game_draw flags and returned. The very next
+		// StateBasedActions call short-circuited on the ended flag (see
+		// line 41), but CheckEnd's `len(alive) > 1` gate still reported
+		// "game continues" because no seats were marked Lost — so the
+		// turn loop kept calling TakeTurn with SBAs permanently muted.
+		// Combat damage subsequently took a seat to life=0 with no SBA
+		// pass to set Lost, surfacing as "SBACompleteness — SBA 704.5a
+		// missed" until the maxTurns cap.
+		//
+		// CR §104.4b: a mandatory loop with no break declares the game
+		// a draw for every player still in it. Mark every non-Lost seat
+		// as Lost with a distinct reason — that drains LivingSeats to 0
+		// so CheckEnd returns true on the next call (simultaneous-elim
+		// draw branch), and invariant scans see no alive-at-life-≤-0
+		// seats since all are Lost.
+		for _, s := range gs.Seats {
+			if s == nil || s.Lost {
+				continue
+			}
+			s.Lost = true
+			s.LossReason = "mandatory loop draw (CR 104.4b via SBA cap)"
+			gs.LogEvent(Event{
+				Kind:   "seat_lost",
+				Seat:   s.Idx,
+				Target: -1,
+				Details: map[string]interface{}{
+					"rule":   "104.4b",
+					"reason": "mandatory_loop_draw",
+				},
+			})
+		}
 	}
 	if anyChange {
 		gs.LogEvent(Event{
