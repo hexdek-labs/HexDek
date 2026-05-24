@@ -29,20 +29,61 @@ func mabelHeirToCragflameETB(gs *gameengine.GameState, perm *gameengine.Permanen
 	if gs == nil || perm == nil {
 		return
 	}
-	seat := perm.Controller
-	if seat < 0 || seat >= len(gs.Seats) {
+	seatIdx := perm.Controller
+	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
 		return
 	}
 	token := &gameengine.Card{
 		Name:  "Cragflame",
-		Owner: seat,
+		Owner: seatIdx,
 		Types: []string{"token", "legendary", "artifact", "equipment", "cragflame_equipment_grant"},
 	}
-	enterBattlefieldWithETB(gs, seat, token, false)
+	cragflame := enterBattlefieldWithETB(gs, seatIdx, token, false)
+	target := pickBestMouseForCragflame(gs.Seats[seatIdx], perm)
+	if cragflame != nil && target != nil {
+		cragflame.AttachedTo = target
+		if target.Flags == nil {
+			target.Flags = map[string]int{}
+		}
+		target.Flags["kw:vigilance"] = 1
+		target.Flags["kw:trample"] = 1
+		target.Flags["kw:haste"] = 1
+	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":  seat,
-		"token": "Cragflame",
+		"seat":     seatIdx,
+		"token":    "Cragflame",
+		"attached": target != nil,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"cragflame_equip_grant_not_auto_attached_engine_lacks_equip_planner")
+}
+
+// pickBestMouseForCragflame returns the friendly Mouse the auto-equip
+// planner should attach Cragflame to: highest base power, with non-
+// commander mice preferred over Mabel herself on a tie. Returns nil when
+// the controller has no Mouse on the battlefield.
+func pickBestMouseForCragflame(seat *gameengine.Seat, mabel *gameengine.Permanent) *gameengine.Permanent {
+	if seat == nil {
+		return nil
+	}
+	var best *gameengine.Permanent
+	bestPower := -1
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		if !cardHasType(p.Card, "creature") {
+			continue
+		}
+		if !cardHasSubtype(p.Card, "mouse") {
+			continue
+		}
+		pwr := p.Card.BasePower
+		if pwr > bestPower {
+			best, bestPower = p, pwr
+			continue
+		}
+		if pwr == bestPower && best == mabel && p != mabel {
+			best = p
+		}
+	}
+	return best
 }

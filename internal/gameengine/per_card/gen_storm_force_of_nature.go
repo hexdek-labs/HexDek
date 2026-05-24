@@ -29,6 +29,40 @@ func registerStormForceOfNature(r *Registry) {
 	// EffectFn still references the old perm — clearing on LTB here
 	// ensures the grant is correctly retracted on the source's exit.
 	r.OnTrigger("Storm, Force of Nature", "permanent_ltb", stormLTBClearFlag)
+	// R60 followup: the printed "the next instant or sorcery spell you
+	// cast this turn has storm" requires consuming the per-seat
+	// storm_grant_pending flag at the spell-cast event. Creature /
+	// land / artifact spells do not consume the grant.
+	r.OnTrigger("Storm, Force of Nature", "spell_cast", stormForceOfNatureConsumeGrant)
+}
+
+func stormForceOfNatureConsumeGrant(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	casterSeat, _ := ctx["caster_seat"].(int)
+	if casterSeat != perm.Controller {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil || seat.Flags == nil {
+		return
+	}
+	if seat.Flags["storm_grant_pending"] <= 0 {
+		return
+	}
+	card, _ := ctx["card"].(*gameengine.Card)
+	if card == nil {
+		return
+	}
+	if !cardHasType(card, "instant") && !cardHasType(card, "sorcery") {
+		return
+	}
+	seat.Flags["storm_grant_pending"] = 0
+	emit(gs, "storm_force_of_nature_grant_consumed", perm.Card.DisplayName(), map[string]interface{}{
+		"seat":  perm.Controller,
+		"spell": card.DisplayName(),
+	})
 }
 
 func stormLTBClearFlag(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
