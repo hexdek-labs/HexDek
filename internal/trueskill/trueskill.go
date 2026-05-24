@@ -7,7 +7,21 @@ import (
 
 const (
 	defaultMu    = 25.0
-	defaultSigma = 25.0 / 3.0
+	defaultSigma = defaultMu / 3.0
+
+	// ffaBetaScale tunes the performance-noise parameter for 4-player
+	// free-for-all Commander pods. Microsoft's 1v1 default is β = σ/2
+	// (≈4.17), calibrated for chess/Halo where game outcomes are a
+	// relatively crisp function of skill. Commander adds three sources of
+	// per-game noise that don't exist in 1v1: political negotiations
+	// (kingmaking, threat-assessment), mana variance (flood/screw is far
+	// more decisive in a slower format), and table position effects (the
+	// player most threatening from seat 0 absorbs more aggression than
+	// the same skill level from seat 2). Bumping β to σ·0.6 (≈5.0) adds
+	// ~20% performance-noise so each update is appropriately humbler.
+	// Convergence stays fast because 4-player FFA already produces ~3×
+	// the pairwise comparisons per game vs 1v1.
+	ffaBetaScale = 0.6
 )
 
 type Rating struct {
@@ -29,12 +43,30 @@ type Config struct {
 	DrawProbability float64
 }
 
+// DefaultConfig returns the Microsoft TrueSkill 1v1 reference config:
+// β = σ/2, τ = σ/100, draw probability 2%. Use this for head-to-head
+// (Update2Player) call sites that want the literature defaults. For the
+// 4-player FFA pod context HexDek primarily runs in, prefer
+// [DefaultFFAConfig].
 func DefaultConfig() Config {
 	return Config{
-		Beta:            defaultMu / 6.0,
-		Tau:             defaultMu / 300.0,
+		Beta:            defaultSigma / 2.0,
+		Tau:             defaultSigma / 100.0,
 		DrawProbability: 0.02,
 	}
+}
+
+// DefaultFFAConfig returns the TrueSkill config tuned for HexDek's
+// 4-player Commander pod context. The only divergence from
+// [DefaultConfig] is β: we widen it from σ/2 to σ·0.6 (see
+// ffaBetaScale's documentation for the FFA-specific noise sources that
+// motivate this). τ and draw probability are unchanged — deck skill is
+// (in self-play) static, and decisive games dominate over genuine
+// multi-way draws. NewTrueSkillRatings uses this preset by default.
+func DefaultFFAConfig() Config {
+	c := DefaultConfig()
+	c.Beta = defaultSigma * ffaBetaScale
+	return c
 }
 
 // normPDF is the standard normal probability density function.
@@ -244,11 +276,21 @@ type TrueSkillRatings struct {
 	cfg     Config
 }
 
+// NewTrueSkillRatings constructs a fresh ratings tracker for the named
+// participants, configured with [DefaultFFAConfig] (HexDek's 4-player
+// pod preset). Use [NewTrueSkillRatingsWithConfig] if you need a custom
+// config (e.g. a 1v1 dueling tournament).
 func NewTrueSkillRatings(names []string) *TrueSkillRatings {
+	return NewTrueSkillRatingsWithConfig(names, DefaultFFAConfig())
+}
+
+// NewTrueSkillRatingsWithConfig is the explicit-config constructor. The
+// no-arg form above wraps this with the FFA preset.
+func NewTrueSkillRatingsWithConfig(names []string, cfg Config) *TrueSkillRatings {
 	ts := &TrueSkillRatings{
 		Ratings: make(map[string]Rating, len(names)),
 		Games:   make(map[string]int, len(names)),
-		cfg:     DefaultConfig(),
+		cfg:     cfg,
 	}
 	for _, n := range names {
 		ts.Ratings[n] = DefaultRating()
