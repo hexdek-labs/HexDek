@@ -241,20 +241,34 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.1,
 	},
 	ArchetypeAristocrats: {
-		BoardPresence:          0.6,
+		// R60 round 2 audit retune. DrainEngine=2.0 correctly highest
+		// (Blood Artist / Zulaport Cutthroat / Marionette Master), but
+		// three load-bearing dimensions were under-weighted:
+		//   - BoardPresence: every sac trigger needs a body. Aristocrats
+		//     decks spew tokens (Pawn of Ulamog, Bitterblossom, Ophiomancer)
+		//     specifically to keep the sac engine fueled.
+		//   - ActivationTempo: sac outlets ARE activated abilities
+		//     (Carrion Feeder, Viscera Seer, Yawgmoth Thran Physician,
+		//     Goblin Bombardment, Phyrexian Altar). The whole gameplan
+		//     loop is "make body, tap/activate sac outlet, repeat."
+		//   - GraveyardValue: Karmic Guide / Reveillark / Sun Titan /
+		//     Marionette Master / Skullclamp loop the same creatures
+		//     turn after turn. Treating GY as a thin resource (0.8)
+		//     missed that recursion IS the deck.
+		BoardPresence:          1.1, // was 0.6 — sac engine needs MORE bodies than midrange
 		CardAdvantage:          0.7,
 		ManaAdvantage:          0.5,
 		LifeResource:           0.5,
 		ComboProximity:         1.0,
 		ThreatExposure:         0.5,
 		CommanderProgress:      0.8,
-		GraveyardValue:         0.8,
+		GraveyardValue:         1.2, // was 0.8
 		DrainEngine:            2.0,
 		ArtifactSynergy:        0.3,
 		EnchantmentSynergy:     0.3,
 		OpponentGraveyardThreat: 0.6,
 		PartnerSynergy:         0.4,
-		ActivationTempo:        0.5,
+		ActivationTempo:        0.9, // was 0.5
 		ToolboxBreadth:         0.3,
 		ThreatTrajectory:       0.4,
 		StackInteraction:       0.4,
@@ -351,23 +365,41 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeVoltron: {
+		// R60 round 2 audit retune. CommanderProgress=2.0 correctly
+		// highest (Voltron's win condition is commander damage), but
+		// four dimensions were under-weighted given the deck's whole
+		// gameplan revolves around equipping/enchanting one creature:
+		//   - ThreatExposure: a Swords to Plowshares on the commander
+		//     is a tempo + card disaster — the deck has no plan B. The
+		//     0.9 weight made it equal to a midrange creature deck;
+		//     bumped to put it above ThreatExposure for Control (1.2).
+		//   - ArtifactSynergy: Hammer of Nazahn, Embercleave, Colossus
+		//     Hammer, Lightning Greaves, Swiftfoot Boots, Skullclamp —
+		//     equipment IS the deck. 0.6 was the same weight as a
+		//     midrange-y "we have some artifacts" rating.
+		//   - EnchantmentSynergy: Eldrazi Conscription, All That
+		//     Glitters, Shielded by Faith, Daybreak Coronet, Ethereal
+		//     Armor — voltron-aura subarchetype is half the deck list.
+		//   - StackInteraction: Heroic Intervention / Boros Charm /
+		//     Teferi's Protection to save the commander before it eats
+		//     removal is the difference between game-over and recover.
 		BoardPresence:          0.8,
 		CardAdvantage:          0.5,
 		ManaAdvantage:          0.5,
 		LifeResource:           0.6,
 		ComboProximity:         0.2,
-		ThreatExposure:         0.9,
+		ThreatExposure:         1.4, // was 0.9
 		CommanderProgress:      2.0,
 		GraveyardValue:         0.3,
 		DrainEngine:            0.1,
-		ArtifactSynergy:        0.6,
-		EnchantmentSynergy:     0.5,
+		ArtifactSynergy:        1.1, // was 0.6
+		EnchantmentSynergy:     0.9, // was 0.5
 		OpponentGraveyardThreat: 0.3,
 		PartnerSynergy:         0.3,
 		ActivationTempo:        0.5,
 		ToolboxBreadth:         0.4,
 		ThreatTrajectory:       0.6,
-		StackInteraction:       0.4,
+		StackInteraction:       0.8, // was 0.4
 		PlaneswalkerProgress:   0.2,
 		ExileZoneAssets:        0.2,
 		StaxLockProgress:       0.1,
