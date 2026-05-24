@@ -185,8 +185,8 @@ Fetch oracle data: `scripts/fetch-oracle.sh`
 
 | Date | Source | Issue | Severity | Notes |
 |------|--------|-------|----------|-------|
-
-_(No open issues. The 2026-05-24 seed-1337 game-465 row was closed within the hour by the SBA-cap mandatory-loop-draw cleanup fix — see Resolved below.)_
+| 2026-05-24 | Loki r60 mega-stress / seed 31415 game 237 | **TriggerCompleteness x2 — Gisa, Glorious Resurrector flagged as missing trigger on a SAME-CONTROLLER sacrifice** (Blackbloom Rogue sac'd via Birthing Ritual chain at turn 55 cleanup). Gisa's oracle triggers only on OPPONENT's nontoken creatures dying, so she should NOT trigger on seat 0's own sacrifice — the invariant `checkTriggerCompleteness` lacks an opponent-controller filter for the `creature_dies_opp` trigger class. Deterministic reproducer: `go run ./cmd/hexdek-loki --games 240 --seed 31415 --invariant trigger-completeness`. | Low | Likely an invariant false positive, not an engine bug. See `docs/loki-r60-mega-stress.md`. |
+| 2026-05-24 | Loki r60 mega-stress / nightmare boards | **CardIdentity x2 — across seeds 31415 and 271828, 4 nightmare boards total** out of 50,000 fuzzed. No per-board context emitted by the nightmare phase; same invariant family that closed multiple times in prior r60 waves (Adric, Oketra, Dread). | Low | 0.008% rate. Needs nightmare-phase per-board breadcrumb plumbing before it can be isolated to specific cards. |
 
 ### Resolved
 
