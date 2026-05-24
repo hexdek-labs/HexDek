@@ -254,6 +254,10 @@ func ReplayWithObservation(rc *ReplayContext, seed GameSeed, obs *Observer) erro
 	//     end — the "stranded in hand" half of the regret signal.
 	observation.RegretCards = ExtractRegretCards(gs)
 
+	// 2d. MVP cards: top mvpTopN permanents per seat at game end,
+	//     scored by CMC + positive-counters + commander bonus.
+	observation.MVPCards = ExtractMVPCards(gs)
+
 	// 3. Combo detection: TODO — requires Freya integration to know what
 	//    the deck's intended combo line is and whether pieces were
 	//    assembled.
@@ -359,6 +363,97 @@ func ExtractParserGaps(gs *gameengine.GameState) []string {
 		// most gaps, and Muninn accumulates across many replays.
 	}
 	return gaps
+}
+
+// mvpTopN bounds how many MVP records ExtractMVPCards returns per
+// seat. Three is the user-visible default; the type docstring uses
+// the constant so consumers can audit if it ever shifts.
+const mvpTopN = 3
+
+// mvpCommanderBonus is the score adder applied when an MVP candidate
+// is one of the controlling seat's commanders. Reflects that a
+// commander on the battlefield carries game-defining weight beyond
+// its raw mana value.
+const mvpCommanderBonus = 4
+
+// mvpPositiveCounterKeys is the set of counter types that contribute
+// to the MVP positive-counter tally. +1/+1, loyalty, charge, and
+// level meaningfully reflect "the card grew or leveled up during
+// the game." Other counter types (-1/-1, stun, time, etc.) are
+// noise or negative for MVP purposes and are ignored.
+var mvpPositiveCounterKeys = []string{"+1/+1", "loyalty", "charge", "level"}
+
+// ExtractMVPCards walks every seat's battlefield at game end and
+// returns the top mvpTopN permanents per seat by score, where:
+//
+//	score = EffectiveCMC + sum(positive counters) + commander bonus
+//
+// Basic lands are filtered out. Tokens and copies surface normally
+// — their CMC is whatever the engine set on their backing Card.
+// Results are appended seat-by-seat in seat-ascending order; within
+// each seat's window, sort is score descending then card name
+// ascending for determinism.
+func ExtractMVPCards(gs *gameengine.GameState) []MVPCard {
+	if gs == nil {
+		return nil
+	}
+	var out []MVPCard
+	for seatIdx, seat := range gs.Seats {
+		if seat == nil {
+			continue
+		}
+		commanderSet := make(map[string]bool, len(seat.CommanderNames))
+		for _, n := range seat.CommanderNames {
+			commanderSet[n] = true
+		}
+		var perSeat []MVPCard
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			if cardHasType(p.Card, "basic") {
+				continue
+			}
+			cmc := p.Card.EffectiveCMC()
+			counters := 0
+			if p.Counters != nil {
+				for _, key := range mvpPositiveCounterKeys {
+					if v := p.Counters[key]; v > 0 {
+						counters += v
+					}
+				}
+			}
+			isCmdr := commanderSet[p.Card.Name]
+			score := cmc + counters
+			if isCmdr {
+				score += mvpCommanderBonus
+			}
+			turnPlayed := 0
+			if gs.CardFirstPlayed != nil {
+				turnPlayed = gs.CardFirstPlayed[p.Card.Name]
+			}
+			perSeat = append(perSeat, MVPCard{
+				Seat:        seatIdx,
+				CardName:    p.Card.Name,
+				CMC:         cmc,
+				TurnPlayed:  turnPlayed,
+				Counters:    counters,
+				Score:       score,
+				IsCommander: isCmdr,
+			})
+		}
+		sort.SliceStable(perSeat, func(i, j int) bool {
+			if perSeat[i].Score != perSeat[j].Score {
+				return perSeat[i].Score > perSeat[j].Score
+			}
+			return perSeat[i].CardName < perSeat[j].CardName
+		})
+		if len(perSeat) > mvpTopN {
+			perSeat = perSeat[:mvpTopN]
+		}
+		out = append(out, perSeat...)
+	}
+	return out
 }
 
 // ExtractRegretCards walks every seat's hand at game end and returns
