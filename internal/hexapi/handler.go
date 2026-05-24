@@ -186,6 +186,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/telemetry/stitch", h.handleStitch)
 	mux.HandleFunc("GET /api/resolve-owner", h.handleResolveOwner)
 	mux.HandleFunc("GET /api/tags", h.handleListTags)
+	mux.HandleFunc("GET /api/games/{id}/summary", h.handleGameSummary)
 }
 
 type DeckSummary struct {
