@@ -79,14 +79,51 @@ func (h *Hub) Unregister(partyID string, conn Conn) {
 
 // Broadcast sends a payload to every connection in a party.
 // errs is a slice of any send errors (one per failed connection).
+//
+// Any conn whose Send fails is treated as dead — a WebSocket Write
+// failure means the socket is closed, the write timed out (the client
+// is unreachable, e.g. a spectator whose laptop suspended and whose TCP
+// RST never surfaced, or a NAT silently aged out the conn), or the
+// remote peer hung up. In every case the conn is unrecoverable from
+// the hub's perspective, so we evict it AND call Close to wake the
+// read-loop side (which runs the per-conn cleanup defer including
+// Unregister). Eviction uses pointer identity via evictIfSame so a
+// fresh reconnect that landed during the in-flight Broadcast is not
+// accidentally clobbered.
 func (h *Hub) Broadcast(ctx context.Context, partyID string, payload []byte) (errs []error) {
 	conns := h.partyConnsCopy(partyID)
 	for _, c := range conns {
 		if err := c.Send(ctx, payload); err != nil {
 			errs = append(errs, err)
+			h.evictIfSame(partyID, c)
 		}
 	}
 	return errs
+}
+
+// evictIfSame removes conn from the party iff the currently-registered
+// conn for conn.DeviceID() is the SAME pointer. This guards against a
+// reconnect race where a fresh conn replaced an old one between our
+// snapshot copy and the Send call — we don't want a stale Send failure
+// to evict the healthy replacement.
+func (h *Hub) evictIfSame(partyID string, conn Conn) {
+	h.mu.Lock()
+	conns, ok := h.byParty[partyID]
+	if !ok {
+		h.mu.Unlock()
+		return
+	}
+	if existing, found := conns[conn.DeviceID()]; found && existing == conn {
+		delete(conns, conn.DeviceID())
+	}
+	if len(conns) == 0 {
+		delete(h.byParty, partyID)
+	}
+	h.mu.Unlock()
+	// Close OUTSIDE the lock — Close may block on the websocket close
+	// handshake (CLOSE frame round-trip), and we don't want hub ops to
+	// stall waiting for a slow / unreachable peer.
+	_ = conn.Close()
 }
 
 // SendToDevice sends a payload to a specific device's connection in a
