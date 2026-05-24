@@ -7068,7 +7068,7 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 			// counts, removal/counter/tutor classification, combo
 			// piece detection).
 			card := findCardByName(gs, event.Seat, event.Source)
-			h.recordOpponentPlay("cast", event.Source, event.Seat, card)
+			h.recordOpponentPlay("cast", event.Source, event.Seat, card, gs.Turn)
 		}
 	}
 
@@ -7076,10 +7076,10 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 	if event.Seat >= 0 && event.Seat < h.seatCount && event.Seat != seatIdx {
 		switch event.Kind {
 		case "play_land":
-			h.recordOpponentPlay("play_land", event.Source, event.Seat, nil)
+			h.recordOpponentPlay("play_land", event.Source, event.Seat, nil, gs.Turn)
 		case "permanent_etb", "creature_etb":
 			card := findCardByName(gs, event.Seat, event.Source)
-			h.recordOpponentPlay(event.Kind, event.Source, event.Seat, card)
+			h.recordOpponentPlay(event.Kind, event.Source, event.Seat, card, gs.Turn)
 		}
 	}
 
@@ -7101,7 +7101,7 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 		if event.Seat < len(h.opponentTutored) {
 			h.opponentTutored[event.Seat] = true
 		}
-		h.recordOpponentPlay(event.Kind, event.Source, event.Seat, nil)
+		h.recordOpponentPlay(event.Kind, event.Source, event.Seat, nil, gs.Turn)
 		// Reduce entropy: they now hold a known-purpose card.
 		if event.Seat < len(h.opponentHandEntropy) {
 			h.opponentHandEntropy[event.Seat] *= 0.6

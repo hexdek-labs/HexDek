@@ -35,10 +35,39 @@ type OpponentProfile struct {
 	CountersUsed    int
 	ComboSignals    int
 
+	// Recency tracking: turn-number of the most recent action of each
+	// kind. A tutor on turn 2 followed by 8 quiet turns is a much
+	// weaker "about to pop off" signal than a tutor on the prior turn,
+	// but the running totals above can't tell those apart. 0 means
+	// "never observed". Set by recordOpponentPlay; consumed by
+	// computeThreatLevel via TutoredWithin / ComboSignalWithin.
+	LastTutorTurn       int
+	LastComboSignalTurn int
+	LastCounterTurn     int
+	LastRemovalTurn     int
+
 	// Internal bookkeeping.
 	firstClassifiedTurn int
 	lastClassifiedTurn  int
 	stableTurns         int // consecutive turns the archetype has held
+}
+
+// TutoredWithin reports whether the opponent has tutored within the
+// last `n` turns of `turn`. Returns false when no tutor has ever been
+// observed (LastTutorTurn == 0).
+func (p *OpponentProfile) TutoredWithin(turn, n int) bool {
+	if p == nil || p.LastTutorTurn <= 0 || n <= 0 {
+		return false
+	}
+	return turn-p.LastTutorTurn < n
+}
+
+// ComboSignalWithin: same shape for combo-piece cast events.
+func (p *OpponentProfile) ComboSignalWithin(turn, n int) bool {
+	if p == nil || p.LastComboSignalTurn <= 0 || n <= 0 {
+		return false
+	}
+	return turn-p.LastComboSignalTurn < n
 }
 
 // classifyOpponent derives an OpponentProfile snapshot for a single
@@ -178,22 +207,47 @@ func computeThreatLevel(gs *gameengine.GameState, oppSeat int, prof *OpponentPro
 	// Hand size adds latent threat (more answers / threats hidden).
 	level += float64(len(s.Hand)) * 0.02
 
-	// Archetype-specific bumps.
+	// Archetype-specific bumps. Two changes from the static version:
+	//
+	//   - Multiplied by prof.Confidence. A 0.55 snap call on a half-
+	//     observed opponent shouldn't fully amplify their threat the
+	//     same as a 0.90 stable classification. The board / hand-size
+	//     terms above stay raw because they're direct observations.
+	//
+	//   - Combo opponents read their imminence off RECENT tutors, not
+	//     ever-tutored. A combo deck that tutored on turn 2 and sat
+	//     back for 8 turns is far less likely to pop off than one who
+	//     tutored last turn; the old `TutorsUsed >= 2` flag couldn't
+	//     tell those apart. Recency window matches typical cEDH
+	//     execute-turn timing: a tutor within the last 2 turns is a
+	//     setup signal, within the last 4 is a soft signal.
+	turn := 1
+	if gs != nil && gs.Turn > 0 {
+		turn = gs.Turn
+	}
 	switch prof.Archetype {
 	case "combo":
-		level += 0.25
-		if prof.TutorsUsed >= 2 {
-			level += 0.15
+		level += 0.25 * prof.Confidence
+		switch {
+		case prof.TutoredWithin(turn, 2):
+			level += 0.20 * prof.Confidence
+		case prof.TutoredWithin(turn, 4):
+			level += 0.10 * prof.Confidence
+		case prof.TutorsUsed >= 2:
+			// Old/stale tutors still bump, but at a discount — they
+			// signal "this is a combo deck" more than "popping off
+			// imminently".
+			level += 0.05 * prof.Confidence
 		}
 	case "aggro":
 		// Aggro becomes scary fast — wide board + low life pressure.
 		if creatures >= 4 {
-			level += 0.25
+			level += 0.25 * prof.Confidence
 		}
 	case "control":
 		// Mostly an indirect threat — they slow us down rather than
 		// kill us. Bump for hand size only.
-		level += 0.05
+		level += 0.05 * prof.Confidence
 	}
 
 	if level > 1.0 {
@@ -213,7 +267,7 @@ func computeThreatLevel(gs *gameengine.GameState, oppSeat int, prof *OpponentPro
 // card record. Combo-piece detection reuses h.comboPieceSet (built
 // from Freya), so unknown decks that still hit our combo-piece DB
 // flag immediately.
-func (h *YggdrasilHat) recordOpponentPlay(eventKind, sourceName string, oppSeat int, card *gameengine.Card) {
+func (h *YggdrasilHat) recordOpponentPlay(eventKind, sourceName string, oppSeat int, card *gameengine.Card, turn int) {
 	if oppSeat < 0 || oppSeat >= len(h.opponentProfiles) {
 		return
 	}
@@ -235,18 +289,30 @@ func (h *YggdrasilHat) recordOpponentPlay(eventKind, sourceName string, oppSeat 
 			}
 			if gameengine.CardHasCounterSpell(card) || hasOracleHint(card, "counter target") {
 				prof.CountersUsed++
+				if turn > 0 {
+					prof.LastCounterTurn = turn
+				}
 			}
 			ot := cardOracleText(card)
 			if isRemovalText(ot) {
 				prof.RemovalUsed++
+				if turn > 0 {
+					prof.LastRemovalTurn = turn
+				}
 			}
 			if isTutorText(ot) {
 				prof.TutorsUsed++
+				if turn > 0 {
+					prof.LastTutorTurn = turn
+				}
 			}
 		}
 		// Combo-piece DB hit (works even without a Card pointer).
 		if sourceName != "" && h.comboPieceSet[sourceName] {
 			prof.ComboSignals++
+			if turn > 0 {
+				prof.LastComboSignalTurn = turn
+			}
 		}
 	case "permanent_etb", "creature_etb":
 		// ETB events come for our own perms too; the caller should
@@ -258,6 +324,9 @@ func (h *YggdrasilHat) recordOpponentPlay(eventKind, sourceName string, oppSeat 
 		prof.LandsPlayed++
 	case "tutor", "search_library":
 		prof.TutorsUsed++
+		if turn > 0 {
+			prof.LastTutorTurn = turn
+		}
 	}
 }
 
