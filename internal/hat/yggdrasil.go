@@ -1924,6 +1924,77 @@ func (h *YggdrasilHat) spendTurnBudget(gs *gameengine.GameState, cost int) {
 	h.turnEvalsSpent += cost
 }
 
+// politicsThreatAdjustment returns a score adjustment for hitting
+// targetSeat with a hostile effect (removal, burn, etc.) given the
+// table's threat profile and our relative position. Pure function so
+// the politics rules are testable in isolation.
+//
+// Encodes two table-politics signals:
+//
+//   - "Hit the leader" — when we're competitive (relPos >= -0.3) AND
+//     there's a clear table leader (EvalScore lead >= 3.0 over the
+//     runner-up), boost the leader's seat by +3.0. This makes removal
+//     and direct damage gravitate to the seat that's actually winning,
+//     overriding the existing flashier-card bonuses (combo piece on
+//     low-threat seat).
+//
+//   - "Dodge the kingmaker" — when we're meaningfully behind
+//     (relPos < -0.3) AND a clear leader exists, hitting them just
+//     speeds our death (they retaliate with their bigger board). The
+//     leader is demoted by -3.0 and the runner-up boosted by +2.0;
+//     net effect is the kingmaker dodge — burn the contender, not
+//     the leader.
+//
+// Returns 0 when there's no clear leader (gap < 3.0) or fewer than
+// two living opponents, so the existing scoring dominates.
+//
+// `threats` is the assessAllThreats result for the asking seat; it
+// already excludes self, lost, and left-game seats.
+func politicsThreatAdjustment(threats []seatThreat, relPos float64, targetSeat int) float64 {
+	if len(threats) < 2 {
+		return 0
+	}
+	// Find the two highest EvalScore seats.
+	leaderIdx, runnerupIdx := -1, -1
+	leaderScore, runnerupScore := -1e18, -1e18
+	for i, th := range threats {
+		switch {
+		case th.EvalScore > leaderScore:
+			runnerupIdx, runnerupScore = leaderIdx, leaderScore
+			leaderIdx, leaderScore = i, th.EvalScore
+		case th.EvalScore > runnerupScore:
+			runnerupIdx, runnerupScore = i, th.EvalScore
+		}
+	}
+	if leaderIdx < 0 || runnerupIdx < 0 {
+		return 0
+	}
+	// "Clear leader" requires a meaningful EvalScore gap. Below this
+	// threshold the existing additive bonuses dominate and politics
+	// shouldn't override them.
+	const leadGap = 3.0
+	if leaderScore-runnerupScore < leadGap {
+		return 0
+	}
+	leaderSeat := threats[leaderIdx].Seat
+	runnerupSeat := threats[runnerupIdx].Seat
+	if relPos < -0.3 {
+		// We're behind — kingmaker dodge.
+		if targetSeat == leaderSeat {
+			return -3.0
+		}
+		if targetSeat == runnerupSeat {
+			return 2.0
+		}
+		return 0
+	}
+	// Competitive — hit the leader.
+	if targetSeat == leaderSeat {
+		return 3.0
+	}
+	return 0
+}
+
 // relativePosition returns how our score compares to the strongest opponent.
 // Positive = we're ahead, negative = we're behind.
 func (h *YggdrasilHat) relativePosition(gs *gameengine.GameState, seatIdx int) float64 {
@@ -5435,6 +5506,9 @@ func (h *YggdrasilHat) ChooseTarget(gs *gameengine.GameState, seatIdx int, filte
 			score  float64
 		}
 		var candidates []scoredTarget
+		// relPos drives politics-aware threat bias: hit the leader when
+		// competitive, dodge them when behind.
+		relPos := h.relativePosition(gs, seatIdx)
 		for _, t := range legal {
 			if t.Kind != gameengine.TargetKindPermanent || t.Permanent == nil {
 				continue
@@ -5531,6 +5605,10 @@ func (h *YggdrasilHat) ChooseTarget(gs *gameengine.GameState, seatIdx int, filte
 					break
 				}
 			}
+			// Politics-aware bias: when there's a clear table leader,
+			// either prefer hitting them (we're competitive) or dodge
+			// them and bias toward the runner-up (we're behind).
+			sc += politicsThreatAdjustment(threats, relPos, p.Controller)
 			candidates = append(candidates, scoredTarget{t, h.applyNoise(sc)})
 		}
 		if len(candidates) > 0 {
@@ -5555,9 +5633,14 @@ func (h *YggdrasilHat) ChooseTarget(gs *gameengine.GameState, seatIdx int, filte
 				seat  int
 				score float64
 			}
+			relPos := h.relativePosition(gs, seatIdx)
 			nt := make([]noisyThreat, len(threats))
 			for i, th := range threats {
-				nt[i] = noisyThreat{th.Seat, h.applyNoise(th.EvalScore)}
+				// Politics bias stacks on the EvalScore. The kingmaker-
+				// dodge branch flips the ranking: when we're behind, the
+				// leader is heavily demoted and the runner-up promoted.
+				bias := politicsThreatAdjustment(threats, relPos, th.Seat)
+				nt[i] = noisyThreat{th.Seat, h.applyNoise(th.EvalScore + bias)}
 			}
 			sort.SliceStable(nt, func(i, j int) bool {
 				return nt[i].score > nt[j].score
