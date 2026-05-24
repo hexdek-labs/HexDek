@@ -125,6 +125,40 @@ func (gs *GameState) RegisterZoneCastPolicy(p *ZoneCastPolicy) {
 	})
 }
 
+// ExpireSourceBoundPolicies drops every policy whose SourcePerm == p
+// AND whose Duration is "while_source_on_bf". Mirrors ExpireSourceGrants
+// on the policy side. Called from engine LTB paths (zone_change.go +
+// sba.go) so a source-bound policy can't outlive its host even when no
+// per_card LTB handler is registered. Finite-duration policies
+// (until_end_of_turn, until_end_of_next_turn) with SourcePerm set are
+// LEFT in place — those represent a triggered ability that resolved,
+// not a static effect, and CR §603 keeps the grant alive for the
+// duration even if the source leaves play before then.
+func (gs *GameState) ExpireSourceBoundPolicies(p *Permanent) {
+	if gs == nil || p == nil || len(gs.ZoneCastPolicies) == 0 {
+		return
+	}
+	out := gs.ZoneCastPolicies[:0]
+	for _, pol := range gs.ZoneCastPolicies {
+		if pol != nil && pol.SourcePerm == p && pol.Duration == "while_source_on_bf" {
+			gs.LogEvent(Event{
+				Kind:   "zone_cast_policy_expired",
+				Seat:   pol.ControllerSeat,
+				Source: pol.HandlerID,
+				Details: map[string]interface{}{
+					"reason": "source_ltb",
+				},
+			})
+			continue
+		}
+		out = append(out, pol)
+	}
+	for i := len(out); i < len(gs.ZoneCastPolicies); i++ {
+		gs.ZoneCastPolicies[i] = nil
+	}
+	gs.ZoneCastPolicies = out
+}
+
 // UnregisterZoneCastPoliciesForPermanent drops every policy whose
 // SourcePerm == p. Called from LTB hooks so a bounced / exiled /
 // destroyed source stops granting the alt-cast.

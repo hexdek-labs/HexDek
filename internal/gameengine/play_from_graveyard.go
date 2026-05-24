@@ -332,10 +332,15 @@ func ExpirePlayFromGraveyardForTurn(gs *GameState) {
 // permanent-anchored bundle when the source LTBs (Yawgmoth's Agenda
 // being destroyed / exiled / bounced). The §614 replacements with
 // SourcePerm == p are dropped by the engine's existing
-// UnregisterReplacementsForPermanent path; the ZoneCastPolicy is
-// dropped by UnregisterZoneCastPoliciesForPermanent. This helper
-// covers the seat flag and the per-Card ZoneCastGrants tied to this
-// source's timestamp.
+// UnregisterReplacementsForPermanent path; this helper covers the
+// seat flag, the per-Card ZoneCastGrants tied to this source's
+// timestamp, AND the ZoneCastPolicy that the primitive registered
+// at play_from_graveyard.go:172. The policy has SourcePerm bound but
+// the engine LTB pathway in zone_change.go does NOT call
+// UnregisterZoneCastPoliciesForPermanent — so without an explicit
+// call here, the policy survived Agenda's death and any card entering
+// the controller's graveyard later in the game still matched it as
+// free-castable (silent correctness leak, no invariant coverage).
 func UnregisterPlayFromGraveyardForPermanent(gs *GameState, p *Permanent) {
 	if gs == nil || p == nil {
 		return
@@ -364,6 +369,11 @@ func UnregisterPlayFromGraveyardForPermanent(gs *GameState, p *Permanent) {
 			}
 		}
 	}
+	// Drop the ZoneCastPolicy registered at play_from_graveyard.go:172.
+	// Its Duration is "while_source_on_bf" and ExpireZoneCastPoliciesByDuration
+	// intentionally leaves source-bound policies alone, so without this
+	// the policy survives the source LTB.
+	gs.UnregisterZoneCastPoliciesForPermanent(p)
 }
 
 // isPlayFromGraveyardTurnHandler matches the HandlerID prefix used by
