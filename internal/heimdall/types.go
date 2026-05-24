@@ -47,6 +47,12 @@ type Observation struct {
 	// deck-construction or pilot-decision regret. Sorted by Seat
 	// ascending then CMC descending (biggest regret per seat first).
 	RegretCards []RegretCard
+
+	// MVPCards lists the top permanents on each seat's battlefield at
+	// game end, scored by a CMC + counters + commander-bonus proxy
+	// for "did the most work." Companion signal to RegretCards: the
+	// cards you cast and got value from. Top mvpTopN per seat.
+	MVPCards []MVPCard
 }
 
 // ZoneCastEvent records a zone-cast grant lifecycle moment or an
@@ -174,6 +180,36 @@ type RegretCard struct {
 	CardName string `json:"card_name"`
 	CMC      int    `json:"cmc"`
 	Reason   string `json:"reason"`
+}
+
+// MVPCard records a high-impact permanent on a seat's battlefield at
+// game end. The score is an end-state proxy:
+//
+//	Score = EffectiveCMC + PositiveCounters + (4 if IsCommander)
+//
+// where PositiveCounters sums "+1/+1", "loyalty", "charge", and
+// "level" counters (the four counter types that meaningfully reflect
+// "the card grew or leveled up during the game"). The commander
+// bonus reflects that a commander on the battlefield carries
+// extra game-defining weight independent of its raw mana value.
+//
+// Limitations: without event-log retention the score can't reward
+// "made N attacks", "triggered M times", or "dealt K damage" — those
+// are the natural per-card activity dimensions that a richer MVP
+// would include. The current model is intentionally derivable from
+// end-state alone and is a deliberate proxy, not a measurement.
+//
+// Cards filtered out: anything with the "basic" type (basic lands
+// are not MVPs even when they survive all game), and nil card
+// entries on the battlefield.
+type MVPCard struct {
+	Seat        int    `json:"seat"`
+	CardName    string `json:"card_name"`
+	CMC         int    `json:"cmc"`
+	TurnPlayed  int    `json:"turn_played"`
+	Counters    int    `json:"counters"`
+	Score       int    `json:"score"`
+	IsCommander bool   `json:"is_commander"`
 }
 
 // HealthPulse is the periodic telemetry snapshot sent to GA4.
