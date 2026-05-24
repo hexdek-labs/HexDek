@@ -2549,6 +2549,49 @@ func isCommanderCard(gs *gameengine.GameState, seatIdx int, c *gameengine.Card) 
 	return false
 }
 
+// hasAttackTriggerValue is true when the commander has an attack-trigger
+// whose value (tutor / Etali-style impulse-cast / scry-and-look) is large
+// enough that we should prioritize getting it into combat over preserving
+// it from a clean trade. Matches the same substring shape used in the
+// per-attacker value loop above — keep them in sync.
+func hasAttackTriggerValue(c *gameengine.Card) bool {
+	if c == nil {
+		return false
+	}
+	ot := gameengine.OracleTextLower(c)
+	if !strings.Contains(ot, "attacks") {
+		return false
+	}
+	return strings.Contains(ot, "search") ||
+		strings.Contains(ot, "exile the top") ||
+		strings.Contains(ot, "look at the top")
+}
+
+// commanderClockNearLethal reports whether the named commander has
+// already dealt enough damage to some single opponent that one more
+// connect-or-near-connect resolves the 21-damage clock (CR §704.6c).
+// Threshold is the minimum accumulated damage on any opponent — at 13
+// every nontrivial commander (≥8 power, or buffed) can close the gap
+// in one hit, which is the case where pruning the swing wastes a real
+// kill opportunity. Returns false when the commander hasn't dealt any
+// combat damage yet — early-game commanders fall through to the normal
+// "strategic only if it does something" gate.
+func commanderClockNearLethal(gs *gameengine.GameState, dealerSeat int, c *gameengine.Card, threshold int) bool {
+	if gs == nil || c == nil {
+		return false
+	}
+	name := c.DisplayName()
+	for i, s := range gs.Seats {
+		if i == dealerSeat || s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		if gameengine.CommanderDamageFrom(s, dealerSeat, name) >= threshold {
+			return true
+		}
+	}
+	return false
+}
+
 // -- UCB1 machinery (shared across all decision types) --
 
 func (h *YggdrasilHat) ucb1(key string, baseValue float64) float64 {
@@ -4186,8 +4229,36 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 		return all
 	}
 
-	h.logf("%s ATTACK seat=%d pos=%.3f stance=%s threshold=%.2f legal=%d wrath=%v",
-		roundTag(gs, seatIdx), seatIdx, pos, stance, threshold, len(legal), wrathSuspected)
+	// Defender deathtouch density. canSwingProfitably already binary-prunes
+	// attackers that have no safe lane, but the value loop didn't soften
+	// the bonus when the worst-case opponent fields several untapped
+	// deathtouch blockers. Against e.g. a Spider tribal or Vraska's
+	// tokens, every non-deathtouch / non-first-strike / non-trample /
+	// non-indestructible swing is a one-shot trade — borderline attackers
+	// shouldn't get the same evasion/keyword bonuses that nudge them over
+	// the threshold. We track the MAX untapped-DT count across opponents
+	// because the attacker only swings into one defender, but bestTarget
+	// will pick the lane that minimizes resistance, so density is the
+	// pessimistic case and acts as a soft brake rather than a hard prune.
+	maxDeathtouchDensity := 0
+	for i, s := range gs.Seats {
+		if i == seatIdx || s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		dt := 0
+		for _, b := range s.Battlefield {
+			if b != nil && b.IsCreature() && !b.Tapped && b.HasKeyword("deathtouch") &&
+				gs.PowerOf(b) > 0 {
+				dt++
+			}
+		}
+		if dt > maxDeathtouchDensity {
+			maxDeathtouchDensity = dt
+		}
+	}
+
+	h.logf("%s ATTACK seat=%d pos=%.3f stance=%s threshold=%.2f legal=%d wrath=%v dt-density=%d",
+		roundTag(gs, seatIdx), seatIdx, pos, stance, threshold, len(legal), wrathSuspected, maxDeathtouchDensity)
 
 	var attackers []*gameengine.Permanent
 	for _, p := range legal {
@@ -4283,6 +4354,27 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 			val -= 0.15
 		}
 
+		// Deathtouch density brake. A single untapped DT blocker is one
+		// safe lane lost; two or more start to gate the entire turn. The
+		// attacker dodges the penalty if it ignores DT outright —
+		// deathtouch (we trade up by definition), first/double strike
+		// (kills the DT body in 510.5 before being bitten), trample
+		// (excess leaks past the chump), or indestructible (DT damage
+		// can't kill us). Caps at -0.20 — even a board of 4 DT spiders
+		// shouldn't push a real threat off the table by itself; this
+		// nudges marginal attackers below the swing threshold.
+		ignoresDT := p.HasKeyword("deathtouch") || p.HasKeyword("trample") ||
+			p.HasKeyword("indestructible") ||
+			p.HasKeyword("first strike") || p.HasKeyword("first_strike") ||
+			p.HasKeyword("double strike") || p.HasKeyword("double_strike")
+		if maxDeathtouchDensity > 0 && !ignoresDT {
+			penalty := 0.05 * float64(maxDeathtouchDensity)
+			if penalty > 0.20 {
+				penalty = 0.20
+			}
+			val -= penalty
+		}
+
 		tag := "ATTACK"
 		if val < threshold {
 			tag = "HOLD (below threshold)"
@@ -4315,13 +4407,35 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 			for _, p := range attackers {
 				keep := true
 				if p != nil && p.Card != nil {
-					strategic := isCommanderCard(gs, seatIdx, p.Card) ||
-						h.isValueEngineKey(p.Card) ||
+					// Commanders used to be auto-strategic (never pruned).
+					// That blanket protection lost games: a vanilla 2/2
+					// commander clean-trading into a 5/5 blocker also
+					// costs {2} extra on recast (CR §903.8 — commander
+					// tax compounds on every recast from the command
+					// zone), so the swing is *worse* than for a non-
+					// commander attacker — we get 0 damage AND owe two
+					// more mana to redeploy. Keep the strategic shield
+					// only when the commander is doing something
+					// non-vanilla: an attack-trigger (Zur, Narset,
+					// Etali) where the trigger value outweighs the
+					// trade, or a commander-damage clock that's close
+					// enough to lethal that one more poke matters.
+					strategic := h.isValueEngineKey(p.Card) ||
 						h.isComboRelevant(p.Card)
+					if isCommanderCard(gs, seatIdx, p.Card) {
+						if hasAttackTriggerValue(p.Card) ||
+							commanderClockNearLethal(gs, seatIdx, p.Card, 13) {
+							strategic = true
+						}
+					}
 					if !strategic && !canSwingProfitably(gs, p, opponents) {
 						keep = false
-						h.logf("  PRUNE: %s would die to clean block on every target",
-							p.Card.DisplayName())
+						reason := "would die to clean block on every target"
+						if isCommanderCard(gs, seatIdx, p.Card) {
+							reason += " (+{2} commander tax)"
+						}
+						h.logf("  PRUNE: %s %s",
+							p.Card.DisplayName(), reason)
 					}
 				}
 				if keep {
