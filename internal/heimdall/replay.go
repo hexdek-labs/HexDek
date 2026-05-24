@@ -244,6 +244,11 @@ func ReplayWithObservation(rc *ReplayContext, seed GameSeed, obs *Observer) erro
 	//    or adjacent turns. Simplified version of Huginn's full analysis.
 	observation.CoTriggers = ExtractCoTriggers(turnETBs)
 
+	// 2b. Commander-zone visits: per-commander cast count + end-state
+	//     command-zone presence so downstream consumers can spot
+	//     answer-magnet commanders vs sticky board commanders.
+	observation.CommanderZoneVisits = ExtractCommanderZoneVisits(gs)
+
 	// 3. Combo detection: TODO — requires Freya integration to know what
 	//    the deck's intended combo line is and whether pieces were
 	//    assembled.
@@ -349,6 +354,49 @@ func ExtractParserGaps(gs *gameengine.GameState) []string {
 		// most gaps, and Muninn accumulates across many replays.
 	}
 	return gaps
+}
+
+// ExtractCommanderZoneVisits walks every seat's commander list and
+// returns one CommanderZoneVisit per (seat, commander) pair. Reads
+// the cast count from Seat.CommanderCastCounts (§903.8 tax counter)
+// and the end-state presence from Seat.CommandZone.
+func ExtractCommanderZoneVisits(gs *gameengine.GameState) []CommanderZoneVisit {
+	if gs == nil {
+		return nil
+	}
+	var out []CommanderZoneVisit
+	for seatIdx, seat := range gs.Seats {
+		if seat == nil {
+			continue
+		}
+		// Build a quick lookup of commander names currently sitting in
+		// this seat's command zone.
+		inZone := make(map[string]bool, len(seat.CommandZone))
+		for _, c := range seat.CommandZone {
+			if c != nil {
+				inZone[c.Name] = true
+			}
+		}
+		for _, name := range seat.CommanderNames {
+			cast := 0
+			if seat.CommanderCastCounts != nil {
+				cast = seat.CommanderCastCounts[name]
+			}
+			present := inZone[name]
+			visits := cast
+			if present {
+				visits++
+			}
+			out = append(out, CommanderZoneVisit{
+				Seat:          seatIdx,
+				CommanderName: name,
+				CastCount:     cast,
+				InZoneAtEnd:   present,
+				Visits:        visits,
+			})
+		}
+	}
+	return out
 }
 
 // ExtractCoTriggers finds pairs of cards that entered the battlefield

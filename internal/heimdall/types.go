@@ -33,6 +33,14 @@ type Observation struct {
 	// ExileLinkEvents captures O-Ring style link/unlink for blink+exile
 	// pattern discovery (Huginn) and parity-divergence audit (Muninn).
 	ExileLinkEvents []ExileLinkEvent
+
+	// CommanderZoneVisits captures per-commander zone-visit and cast
+	// counts at game end. Useful for surfacing "this commander came
+	// back N times" — a strong signal that the commander is being
+	// answered repeatedly (removal-heavy meta or fragile commander) vs
+	// "stayed on the battlefield all game" (sticky/protected board
+	// presence). Populated per seat per commander card.
+	CommanderZoneVisits []CommanderZoneVisit
 }
 
 // ZoneCastEvent records a zone-cast grant lifecycle moment or an
@@ -115,6 +123,28 @@ type PivotEvent struct {
 	Turn   int
 	Action string
 	Seat   int
+}
+
+// CommanderZoneVisit records command-zone activity for one commander
+// (one seat). Visits derives from CastCount + InZoneAtEnd: each cast
+// from the command zone is one departure, and §903.9a redirects on
+// death/exile are the only way a commander re-enters the command
+// zone in standard play, so:
+//
+//	Visits = CastCount + (1 if InZoneAtEnd else 0)
+//
+// This assumes the standard §903 setup where every commander starts
+// in the command zone. Edge cases where a commander is moved out of
+// the command zone by means other than casting (e.g., stolen pre-
+// cast) will under-count by 1; flagged but not corrected here since
+// those paths are vanishingly rare and reporting CastCount + flag
+// lets downstream consumers re-derive.
+type CommanderZoneVisit struct {
+	Seat          int    `json:"seat"`
+	CommanderName string `json:"commander_name"`
+	CastCount     int    `json:"cast_count"`
+	InZoneAtEnd   bool   `json:"in_zone_at_end"`
+	Visits        int    `json:"visits"`
 }
 
 // HealthPulse is the periodic telemetry snapshot sent to GA4.
