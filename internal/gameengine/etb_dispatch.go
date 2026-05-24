@@ -21,6 +21,16 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 	// CR §708.4: face-down permanents have no abilities — skip self-triggers.
 	faceDown := perm.Flags != nil && perm.Flags["face_down"] != 0
 
+	// CR §122.1g / §614.1d — generic Static `etb_with_counters` self-
+	// replacement. Apply BEFORE the ETB trigger cascade so observers
+	// (Hardened Scales, Doubling Season, Mentor of the Meek, etc.) see
+	// the entering permanent in its final counter state. Covers blink /
+	// reanimate / token-mint paths that enter via FirePermanentETBTriggers
+	// rather than the stack-cast path in resolvePermanentSpellETB.
+	if !faceDown {
+		ApplyStaticETBCounters(gs, perm)
+	}
+
 	if !faceDown && perm.Card.AST != nil {
 		for _, ab := range perm.Card.AST.Abilities {
 			trig, ok := ab.(*gameast.Triggered)
