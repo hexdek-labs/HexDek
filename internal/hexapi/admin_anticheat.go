@@ -44,11 +44,11 @@ func (h *AdminAnticheatHandler) authorized(r *http.Request) bool {
 
 func (h *AdminAnticheatHandler) handleListVerifications(w http.ResponseWriter, r *http.Request) {
 	if !h.authorized(r) {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	if h.DB == nil {
-		http.Error(w, "db not configured", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "db not configured")
 		return
 	}
 	status := r.URL.Query().Get("status")
@@ -56,7 +56,7 @@ func (h *AdminAnticheatHandler) handleListVerifications(w http.ResponseWriter, r
 
 	rows, err := db.ListVerifications(r.Context(), h.DB, status, limit)
 	if err != nil {
-		http.Error(w, "list: "+err.Error(), http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "list: "+err.Error())
 		return
 	}
 	stats, _ := db.GetVerificationStats(r.Context(), h.DB)
@@ -73,11 +73,11 @@ func (h *AdminAnticheatHandler) handleListVerifications(w http.ResponseWriter, r
 
 func (h *AdminAnticheatHandler) handleListSanctions(w http.ResponseWriter, r *http.Request) {
 	if !h.authorized(r) {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	if h.DB == nil {
-		http.Error(w, "db not configured", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "db not configured")
 		return
 	}
 	q := r.URL.Query()
@@ -93,7 +93,7 @@ func (h *AdminAnticheatHandler) handleListSanctions(w http.ResponseWriter, r *ht
 		rows, err = db.ListSanctions(r.Context(), h.DB, activeOnly, limit)
 	}
 	if err != nil {
-		http.Error(w, "list: "+err.Error(), http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "list: "+err.Error())
 		return
 	}
 
@@ -109,11 +109,11 @@ func (h *AdminAnticheatHandler) handleListSanctions(w http.ResponseWriter, r *ht
 
 func (h *AdminAnticheatHandler) handleStats(w http.ResponseWriter, r *http.Request) {
 	if !h.authorized(r) {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	if h.DB == nil {
-		http.Error(w, "db not configured", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "db not configured")
 		return
 	}
 	queueStats, _ := db.GetVerificationStats(r.Context(), h.DB)

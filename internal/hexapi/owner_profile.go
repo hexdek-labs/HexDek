@@ -123,7 +123,7 @@ func (h *Handler) resolveCountry(owner string, r *http.Request) string {
 func (h *Handler) handleOwnerProfile(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	if !validatePathComponent(owner) {
-		http.Error(w, "invalid owner", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner")
 		return
 	}
 	writeJSON(w, OwnerProfile{

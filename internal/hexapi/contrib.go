@@ -155,12 +155,12 @@ func (d *ContribDispatcher) handleQueue(w http.ResponseWriter, r *http.Request) 
 func (d *ContribDispatcher) handleCredits(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	if owner == "" {
-		http.Error(w, "missing owner", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "missing owner")
 		return
 	}
 	c, err := db.GetContributorCredits(r.Context(), d.DB, owner)
 	if err != nil {
-		http.Error(w, "lookup failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "lookup failed")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -182,13 +182,13 @@ func (d *ContribDispatcher) handleCredits(w http.ResponseWriter, r *http.Request
 
 func (d *ContribDispatcher) handleConnect(w http.ResponseWriter, r *http.Request) {
 	if d.DB == nil {
-		http.Error(w, "contrib disabled", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "contrib disabled")
 		return
 	}
 	token := contribExtractToken(r)
 	session, err := auth.ValidateSession(r.Context(), d.DB, token)
 	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 	// Resolve the owner slug from the device. Devices store owner in

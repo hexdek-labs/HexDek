@@ -34,13 +34,13 @@ func (h *Handler) handleDeckSharePage(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
 	cmdrName, summary, ok := h.loadDeckShareMeta(owner, id)
 	if !ok {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 

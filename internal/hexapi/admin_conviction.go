@@ -31,7 +31,7 @@ func (h *AdminConvictionHandler) handleList(w http.ResponseWriter, r *http.Reque
 	// Reuse the localhost-or-admin-owner check from admin_anomalies so
 	// every conviction-related admin surface gates the same way.
 	if !adminAnomalyAuth(r) {
-		http.Error(w, "forbidden", http.StatusForbidden)
+		writeError(w, http.StatusForbidden, "forbidden")
 		return
 	}
 

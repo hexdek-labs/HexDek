@@ -2782,8 +2782,7 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 					})
 					return
 				}
-				http.Error(w, "credit charge failed: "+err.Error(),
-					http.StatusInternalServerError)
+				writeError(w, http.StatusInternalServerError, "credit charge failed: "+err.Error())
 				return
 			}
 			chargedFree = false
@@ -2816,7 +2815,7 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 	select {
 	case gauntletSem <- struct{}{}:
 	default:
-		http.Error(w, "too many gauntlets running — try again later", http.StatusTooManyRequests)
+		writeError(w, http.StatusTooManyRequests, "too many gauntlets running — try again later")
 		return
 	}
 
@@ -2917,7 +2916,7 @@ func (sm *Showmatch) handleTournamentEvents(w http.ResponseWriter, r *http.Reque
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "streaming unsupported")
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -3037,7 +3036,7 @@ func (sm *Showmatch) handleDeckCurse(w http.ResponseWriter, r *http.Request) {
 	pool := sm.cursePool[deckKey]
 	if pool == nil {
 		sm.curseMu.Unlock()
-		http.Error(w, "no curse pool for deck", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "no curse pool for deck")
 		return
 	}
 	// Snapshot under lock to avoid data races.
@@ -3088,11 +3087,11 @@ func (sm *Showmatch) handlePatchCurse(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 	if !checkOwnership(r, owner) {
-		http.Error(w, "forbidden: not deck owner", http.StatusForbidden)
+		writeError(w, http.StatusForbidden, "forbidden: not deck owner")
 		return
 	}
 
@@ -3100,18 +3099,18 @@ func (sm *Showmatch) handlePatchCurse(w http.ResponseWriter, r *http.Request) {
 		Constraints map[string]float64 `json:"constraints"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
 
 	clean := make(map[string]float64, len(body.Constraints))
 	for k, v := range body.Constraints {
 		if !hat.IsValidCurseTrait(k) {
-			http.Error(w, "invalid trait key: "+k, http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "invalid trait key: "+k)
 			return
 		}
 		if v < 0 || v > 1 || math.IsNaN(v) {
-			http.Error(w, "constraint value out of range [0,1]: "+k, http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "constraint value out of range [0,1]: "+k)
 			return
 		}
 		clean[k] = v
@@ -3123,7 +3122,7 @@ func (sm *Showmatch) handlePatchCurse(w http.ResponseWriter, r *http.Request) {
 	pool := sm.cursePool[deckKey]
 	if pool == nil {
 		sm.curseMu.Unlock()
-		http.Error(w, "no curse pool for deck", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "no curse pool for deck")
 		return
 	}
 	if len(clean) == 0 {
@@ -3143,7 +3142,7 @@ func (sm *Showmatch) handlePatchCurse(w http.ResponseWriter, r *http.Request) {
 
 	if err := hat.SavePool(sm.curseDir, poolCopy); err != nil {
 		log.Printf("curse: save after PATCH failed: %v", err)
-		http.Error(w, "save failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "save failed")
 		return
 	}
 
@@ -3272,12 +3271,12 @@ func (sm *Showmatch) handleGameByID(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id := parseInt(idStr)
 	if id <= 0 {
-		http.Error(w, "invalid game id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid game id")
 		return
 	}
 	game := sm.GetGame(id)
 	if game == nil {
-		http.Error(w, "game not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "game not found")
 		return
 	}
 	// Strip Timeline from the lightweight endpoint — callers on
@@ -3299,12 +3298,12 @@ func (sm *Showmatch) handleGameReport(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id := parseInt(idStr)
 	if id <= 0 {
-		http.Error(w, "invalid game id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid game id")
 		return
 	}
 	game := sm.GetGame(id)
 	if game == nil {
-		http.Error(w, "game not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "game not found")
 		return
 	}
 	writeJSON(w, game)
@@ -3742,7 +3741,7 @@ func (sm *Showmatch) handleSpectatorWS(w http.ResponseWriter, r *http.Request) {
 	count := len(sm.spectators)
 	sm.specMu.RUnlock()
 	if count >= maxSpectators {
-		http.Error(w, "too many spectators", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "too many spectators")
 		return
 	}
 

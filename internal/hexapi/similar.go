@@ -35,12 +35,12 @@ func (h *Handler) handleSimilarDecks(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 	ownPath := findDeckFile(h.DecksDir, owner, id)
 	if ownPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
@@ -64,7 +64,7 @@ func (h *Handler) handleSimilarDecks(w http.ResponseWriter, r *http.Request) {
 
 	owners, err := os.ReadDir(h.DecksDir)
 	if err != nil {
-		http.Error(w, "cannot read decks dir", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot read decks dir")
 		return
 	}
 	for _, oent := range owners {

@@ -103,7 +103,7 @@ func (h *Handler) LoadOwnerAliases(path string) {
 func (h *Handler) handleResolveOwner(w http.ResponseWriter, r *http.Request) {
 	email := strings.TrimSpace(r.URL.Query().Get("email"))
 	if email == "" {
-		http.Error(w, "email required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "email required")
 		return
 	}
 	prefix := strings.ToLower(strings.Split(email, "@")[0])
@@ -206,7 +206,7 @@ func (h *Handler) handleListDecks(w http.ResponseWriter, r *http.Request) {
 	decks := []DeckSummary{}
 	owners, err := os.ReadDir(h.DecksDir)
 	if err != nil {
-		http.Error(w, "cannot read decks directory", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot read decks directory")
 		return
 	}
 
@@ -317,19 +317,19 @@ func (h *Handler) handleGetDeck(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
 	deckPath := findDeckFile(h.DecksDir, owner, id)
 	if deckPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
 	data, err := os.ReadFile(deckPath)
 	if err != nil {
-		http.Error(w, "cannot read deck", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot read deck")
 		return
 	}
 
@@ -454,17 +454,17 @@ func (h *Handler) handleUpdateDeck(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 	if !checkOwnership(r, owner) {
-		http.Error(w, "forbidden: not deck owner", http.StatusForbidden)
+		writeError(w, http.StatusForbidden, "forbidden: not deck owner")
 		return
 	}
 
 	deckPath := findDeckFile(h.DecksDir, owner, id)
 	if deckPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
@@ -473,11 +473,11 @@ func (h *Handler) handleUpdateDeck(w http.ResponseWriter, r *http.Request) {
 		DeckList string `json:"deck_list"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
 	if strings.TrimSpace(req.DeckList) == "" {
-		http.Error(w, "deck_list is required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "deck_list is required")
 		return
 	}
 
@@ -501,7 +501,7 @@ func (h *Handler) handleUpdateDeck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := os.WriteFile(deckPath, []byte(req.DeckList), 0644); err != nil {
-		http.Error(w, "cannot write deck file", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot write deck file")
 		return
 	}
 
@@ -537,22 +537,22 @@ func (h *Handler) handleDeleteDeck(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 	if !checkOwnership(r, owner) {
-		http.Error(w, "forbidden: not deck owner", http.StatusForbidden)
+		writeError(w, http.StatusForbidden, "forbidden: not deck owner")
 		return
 	}
 
 	deckPath := findDeckFile(h.DecksDir, owner, id)
 	if deckPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
 	if err := os.Remove(deckPath); err != nil {
-		http.Error(w, "cannot delete deck", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot delete deck")
 		return
 	}
 
@@ -567,18 +567,18 @@ func (h *Handler) handleCloneDeck(w http.ResponseWriter, r *http.Request) {
 	srcOwner := r.PathValue("owner")
 	srcID := r.PathValue("id")
 	if !validatePathComponent(srcOwner) || !validatePathComponent(srcID) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
 	caller := strings.TrimSpace(strings.ToLower(r.Header.Get("X-HexDek-Owner")))
 	if caller == "" {
-		http.Error(w, "authentication required", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "authentication required")
 		return
 	}
 	dstOwner := sanitizeFilename(caller)
 	if dstOwner == "" {
-		http.Error(w, "invalid caller", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid caller")
 		return
 	}
 
@@ -588,9 +588,7 @@ func (h *Handler) handleCloneDeck(w http.ResponseWriter, r *http.Request) {
 	since := time.Now().Add(-time.Hour).Unix()
 	if n, err := h.cloneCountSince(r.Context(), dstOwner, since); err == nil && n >= CloneRateLimit {
 		w.Header().Set("Retry-After", "3600")
-		http.Error(w,
-			fmt.Sprintf("clone rate limit exceeded (max %d per hour)", CloneRateLimit),
-			http.StatusTooManyRequests)
+		writeError(w, http.StatusTooManyRequests, fmt.Sprintf("clone rate limit exceeded (max %d per hour)", CloneRateLimit))
 		return
 	}
 
@@ -599,19 +597,19 @@ func (h *Handler) handleCloneDeck(w http.ResponseWriter, r *http.Request) {
 	// confusing. Other handlers (PATCH, PUT) cover the legitimate
 	// "make a copy on my own deck" workflow via versioning.
 	if strings.EqualFold(srcOwner, dstOwner) {
-		http.Error(w, "cannot clone your own deck", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "cannot clone your own deck")
 		return
 	}
 
 	srcPath := findDeckFile(h.DecksDir, srcOwner, srcID)
 	if srcPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
 	dstDir := filepath.Join(h.DecksDir, dstOwner)
 	if err := os.MkdirAll(dstDir, 0755); err != nil {
-		http.Error(w, "cannot create deck directory", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot create deck directory")
 		return
 	}
 
@@ -625,18 +623,18 @@ func (h *Handler) handleCloneDeck(w http.ResponseWriter, r *http.Request) {
 		dstID = fmt.Sprintf("%s_clone%d", srcID, i)
 		dstPath = filepath.Join(dstDir, dstID+ext)
 		if i > 100 {
-			http.Error(w, "too many clones with the same name", http.StatusConflict)
+			writeError(w, http.StatusConflict, "too many clones with the same name")
 			return
 		}
 	}
 
 	deckBytes, err := os.ReadFile(srcPath)
 	if err != nil {
-		http.Error(w, "cannot read source deck", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot read source deck")
 		return
 	}
 	if err := os.WriteFile(dstPath, deckBytes, 0644); err != nil {
-		http.Error(w, "cannot write deck file", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot write deck file")
 		return
 	}
 
@@ -730,7 +728,7 @@ func (h *Handler) handleListVersions(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
@@ -776,7 +774,7 @@ func (h *Handler) handleGetAnalysis(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
@@ -792,7 +790,7 @@ func (h *Handler) handleGetAnalysis(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, map[string]any{"status": "analyzing", "message": "Freya analysis started — refresh in a few seconds"})
 			return
 		}
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
@@ -804,13 +802,13 @@ func (h *Handler) handleRunAnalysis(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
 	deckPath := findDeckFile(h.DecksDir, owner, id)
 	if deckPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
@@ -894,13 +892,13 @@ func (h *Handler) publishDeck(key string, ev deckEvent) {
 func (h *Handler) handleDeckEvents(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "streaming not supported")
 		return
 	}
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
@@ -985,12 +983,12 @@ func (h *Handler) handleImportDeck(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req ImportRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
 
 	if strings.TrimSpace(req.DeckList) == "" {
-		http.Error(w, "deck_list is required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "deck_list is required")
 		return
 	}
 
@@ -1016,7 +1014,7 @@ func (h *Handler) handleImportDeck(w http.ResponseWriter, r *http.Request) {
 	// Ensure owner directory exists
 	ownerDir := filepath.Join(h.DecksDir, owner)
 	if err := os.MkdirAll(ownerDir, 0755); err != nil {
-		http.Error(w, "cannot create deck directory", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot create deck directory")
 		return
 	}
 
@@ -1029,13 +1027,13 @@ func (h *Handler) handleImportDeck(w http.ResponseWriter, r *http.Request) {
 		}
 		deckPath = filepath.Join(ownerDir, fmt.Sprintf("%s_%d.txt", fileID, i))
 		if i > 100 {
-			http.Error(w, "too many decks with the same name", http.StatusConflict)
+			writeError(w, http.StatusConflict, "too many decks with the same name")
 			return
 		}
 	}
 
 	if err := os.WriteFile(deckPath, []byte(req.DeckList), 0644); err != nil {
-		http.Error(w, "cannot write deck file", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot write deck file")
 		return
 	}
 
@@ -1116,18 +1114,18 @@ func (h *Handler) handleMoxfieldImport(w http.ResponseWriter, r *http.Request) {
 		Tags  []string `json:"tags"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
 
 	parsed, err := url.Parse(req.URL)
 	if err != nil || parsed.Host != "www.moxfield.com" {
-		http.Error(w, "invalid Moxfield URL", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid Moxfield URL")
 		return
 	}
 	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
 	if len(parts) < 2 || parts[0] != "decks" {
-		http.Error(w, "URL must be https://www.moxfield.com/decks/{id}", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "URL must be https://www.moxfield.com/decks/{id}")
 		return
 	}
 	moxID := parts[1]
@@ -1138,20 +1136,19 @@ func (h *Handler) handleMoxfieldImport(w http.ResponseWriter, r *http.Request) {
 	apiReq.Header.Set("Accept", "application/json")
 	resp, err := moxfieldClient.Do(apiReq)
 	if err != nil {
-		writeJSON(w, map[string]string{"error": "failed to fetch from Moxfield: " + err.Error()})
-		w.WriteHeader(http.StatusBadGateway)
+		writeError(w, http.StatusBadGateway, "failed to fetch from Moxfield: "+err.Error())
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		writeJSON(w, map[string]string{"error": fmt.Sprintf("Moxfield returned %d", resp.StatusCode)})
+		writeError(w, http.StatusBadGateway, fmt.Sprintf("Moxfield returned %d", resp.StatusCode))
 		return
 	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
 	if err != nil {
-		http.Error(w, "failed to read Moxfield response", http.StatusBadGateway)
+		writeError(w, http.StatusBadGateway, "failed to read Moxfield response")
 		return
 	}
 
@@ -1172,7 +1169,7 @@ func (h *Handler) handleMoxfieldImport(w http.ResponseWriter, r *http.Request) {
 		} `json:"mainboard"`
 	}
 	if err := json.Unmarshal(body, &moxDeck); err != nil {
-		http.Error(w, "failed to parse Moxfield response", http.StatusBadGateway)
+		writeError(w, http.StatusBadGateway, "failed to parse Moxfield response")
 		return
 	}
 
@@ -1208,7 +1205,7 @@ func (h *Handler) handleMoxfieldImport(w http.ResponseWriter, r *http.Request) {
 
 	ownerDir := filepath.Join(h.DecksDir, owner)
 	if err := os.MkdirAll(ownerDir, 0755); err != nil {
-		http.Error(w, "cannot create deck directory", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot create deck directory")
 		return
 	}
 
@@ -1219,13 +1216,13 @@ func (h *Handler) handleMoxfieldImport(w http.ResponseWriter, r *http.Request) {
 		}
 		deckPath = filepath.Join(ownerDir, fmt.Sprintf("%s_%d.txt", fileID, i))
 		if i > 100 {
-			http.Error(w, "too many decks with the same name", http.StatusConflict)
+			writeError(w, http.StatusConflict, "too many decks with the same name")
 			return
 		}
 	}
 
 	if err := os.WriteFile(deckPath, []byte(deckList), 0644); err != nil {
-		http.Error(w, "cannot write deck file", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot write deck file")
 		return
 	}
 
@@ -1275,7 +1272,7 @@ func (h *Handler) logImport(ctx context.Context, e db.ImportLogEntry) {
 func (h *Handler) handleListImports(w http.ResponseWriter, r *http.Request) {
 	owner := sanitizeFilename(strings.TrimSpace(r.PathValue("owner")))
 	if owner == "" {
-		http.Error(w, "owner required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "owner required")
 		return
 	}
 	limit := 25
@@ -1290,7 +1287,7 @@ func (h *Handler) handleListImports(w http.ResponseWriter, r *http.Request) {
 	}
 	entries, err := db.ListImportLogs(r.Context(), h.Showmatch.sqlDB, owner, limit)
 	if err != nil {
-		http.Error(w, "query failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "query failed")
 		return
 	}
 	if entries == nil {
@@ -1404,7 +1401,7 @@ func (h *Handler) handleMoxfieldSources(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) handleCardWinStats(w http.ResponseWriter, r *http.Request) {
 	commander := r.PathValue("commander")
 	if commander == "" {
-		http.Error(w, "commander required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "commander required")
 		return
 	}
 	commander = strings.ReplaceAll(commander, "_", " ")
@@ -1414,7 +1411,7 @@ func (h *Handler) handleCardWinStats(w http.ResponseWriter, r *http.Request) {
 	}
 	stats, err := db.LoadCardWinStats(r.Context(), h.Showmatch.sqlDB, commander, 50)
 	if err != nil {
-		http.Error(w, "query failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "query failed")
 		return
 	}
 	writeJSON(w, map[string]any{
@@ -1432,7 +1429,7 @@ func (h *Handler) handleDeckMatchups(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 	deckKey := owner + "/" + id
@@ -1442,7 +1439,7 @@ func (h *Handler) handleDeckMatchups(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := db.LoadDeckMatchups(r.Context(), h.Showmatch.sqlDB, deckKey, 0)
 	if err != nil {
-		http.Error(w, "query failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "query failed")
 		return
 	}
 	if rows == nil {
@@ -1461,7 +1458,7 @@ func (h *Handler) handleDeckEloHistory(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 	deckKey := owner + "/" + id
@@ -1477,7 +1474,7 @@ func (h *Handler) handleDeckEloHistory(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := db.LoadGauntletRuns(r.Context(), h.Showmatch.sqlDB, deckKey, limit)
 	if err != nil {
-		http.Error(w, "query failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "query failed")
 		return
 	}
 	// DB returns newest-first; reverse for chronological display.
@@ -1912,7 +1909,7 @@ type artResult struct {
 func (h *Handler) handleCardArt(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		http.Error(w, "missing card name", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "missing card name")
 		return
 	}
 
@@ -1944,7 +1941,7 @@ func (h *Handler) handleCardArt(w http.ResponseWriter, r *http.Request) {
 		res := <-actual.(chan artResult)
 		actual.(chan artResult) <- res
 		if res.err != nil {
-			http.Error(w, "card art not found", http.StatusNotFound)
+			writeError(w, http.StatusNotFound, "card art not found")
 			return
 		}
 		w.Header().Set("Content-Type", "image/jpeg")
@@ -1964,13 +1961,13 @@ func (h *Handler) handleCardArt(w http.ResponseWriter, r *http.Request) {
 	resp, err := artHTTPClient.Do(req)
 	if err != nil {
 		ch <- artResult{err: err}
-		http.Error(w, "card art not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "card art not found")
 		return
 	}
 	if resp.StatusCode != 200 {
 		resp.Body.Close()
 		ch <- artResult{err: fmt.Errorf("scryfall %d", resp.StatusCode)}
-		http.Error(w, "card art not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "card art not found")
 		return
 	}
 	defer resp.Body.Close()
@@ -1978,7 +1975,7 @@ func (h *Handler) handleCardArt(w http.ResponseWriter, r *http.Request) {
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024))
 	if err != nil {
 		ch <- artResult{err: err}
-		http.Error(w, "failed to read art", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "failed to read art")
 		return
 	}
 
@@ -1998,7 +1995,7 @@ func (h *Handler) handleCardArt(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 	dag, err := versioning.LoadDAG(filepath.Join(h.DecksDir, ".versions"))
 	if err != nil {
-		http.Error(w, "cannot load version DAG", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot load version DAG")
 		return
 	}
 
@@ -2035,13 +2032,13 @@ func (h *Handler) handleDeckLineage(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
 	dag, err := versioning.LoadDAG(filepath.Join(h.DecksDir, ".versions"))
 	if err != nil {
-		http.Error(w, "cannot load version DAG", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot load version DAG")
 		return
 	}
 
@@ -2075,13 +2072,13 @@ func (h *Handler) handleRivalry(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
 	deckPath := findDeckFile(h.DecksDir, owner, id)
 	if deckPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
@@ -2092,7 +2089,7 @@ func (h *Handler) handleRivalry(w http.ResponseWriter, r *http.Request) {
 
 	rivalries, err := analytics.LoadRivalries("data/rivalry")
 	if err != nil {
-		http.Error(w, "cannot load rivalry data", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot load rivalry data")
 		return
 	}
 
@@ -2109,13 +2106,13 @@ func (h *Handler) handleThreatGraph(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
 	deckPath := findDeckFile(h.DecksDir, owner, id)
 	if deckPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
@@ -2126,7 +2123,7 @@ func (h *Handler) handleThreatGraph(w http.ResponseWriter, r *http.Request) {
 
 	edges, err := analytics.LoadThreatGraph("data/analytics")
 	if err != nil {
-		http.Error(w, "cannot load threat graph", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot load threat graph")
 		return
 	}
 
@@ -2144,11 +2141,11 @@ func (h *Handler) handleFeedback(w http.ResponseWriter, r *http.Request) {
 		Contact  string `json:"contact"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 32768)).Decode(&body); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
 	if body.Symptom == "" {
-		http.Error(w, "symptom required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "symptom required")
 		return
 	}
 
@@ -2170,7 +2167,7 @@ func (h *Handler) handleFeedback(w http.ResponseWriter, r *http.Request) {
 	fname := fmt.Sprintf("%d-%s.json", time.Now().UnixMilli(), body.Type)
 	if err := os.WriteFile(filepath.Join(feedbackDir, fname), data, 0644); err != nil {
 		log.Printf("feedback write error: %v", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
@@ -2180,12 +2177,12 @@ func (h *Handler) handleFeedback(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleKofiWebhook(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
 	dataStr := r.FormValue("data")
 	if dataStr == "" {
-		http.Error(w, "missing data", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "missing data")
 		return
 	}
 
@@ -2207,14 +2204,14 @@ func (h *Handler) handleKofiWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.Unmarshal([]byte(dataStr), &payload); err != nil {
 		log.Printf("kofi webhook: bad JSON: %v", err)
-		http.Error(w, "bad data", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "bad data")
 		return
 	}
 
 	expectedToken := os.Getenv("KOFI_VERIFICATION_TOKEN")
 	if expectedToken != "" && payload.VerificationToken != expectedToken {
 		log.Printf("kofi webhook: token mismatch")
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
@@ -2239,7 +2236,7 @@ func (h *Handler) handleKofiWebhook(w http.ResponseWriter, r *http.Request) {
 	fname := fmt.Sprintf("%d-%s.json", time.Now().UnixMilli(), payload.MessageID)
 	if err := os.WriteFile(filepath.Join(donationsDir, fname), data, 0644); err != nil {
 		log.Printf("kofi write error: %v", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
