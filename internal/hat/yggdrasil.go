@@ -214,6 +214,15 @@ const (
 	// Per-turn budget costs. A rollout is ~10x more expensive than a
 	// single evaluator-path decision (clone + forward sim + eval).
 	rolloutEvalCost = 10
+
+	// R60 high-stakes overrides for adaptive degradation.
+	//   highStakesLifeThreshold: any seat at or below this life makes
+	//     the next priority window decision game-deciding.
+	//   highStakesStackDepth: stack at or above this depth indicates a
+	//     counter war or triggered-ability chain where resolution-order
+	//     decisions materially change the outcome.
+	highStakesLifeThreshold = 8
+	highStakesStackDepth    = 3
 )
 
 // DecisionTier names the compute path a decision takes. The hat already
@@ -1780,10 +1789,15 @@ func (h *YggdrasilHat) DimensionMeans() [NumDimensions]float64 {
 
 // effectiveBudget returns the budget to use for this decision, degrading
 // to heuristic on complex boards or when the per-turn budget is exhausted.
+// High-stakes turns (combo assembly, low-life opponents, deep stacks)
+// bypass the complexity degrade — the whole point of the budget is to
+// spend it on decisions that matter, and "60+ permanents on the board"
+// IS a decision that matters when someone is about to die.
 func (h *YggdrasilHat) effectiveBudget(gs *gameengine.GameState) int {
 	if h.Budget == 0 {
 		return 0
 	}
+	highStakes := h.isHighStakesDecision(gs)
 	total := 0
 	for _, s := range gs.Seats {
 		if s == nil {
@@ -1791,13 +1805,47 @@ func (h *YggdrasilHat) effectiveBudget(gs *gameengine.GameState) int {
 		}
 		total += len(s.Battlefield)
 	}
-	if total >= adaptiveBudgetComplexityThreshold {
+	if total >= adaptiveBudgetComplexityThreshold && !highStakes {
 		return 0
 	}
-	if h.TurnBudget > 0 && h.turnRemaining(gs) <= 0 {
+	if h.TurnBudget > 0 && h.turnRemaining(gs) <= 0 && !highStakes {
 		return 0
 	}
 	return h.Budget
+}
+
+// isHighStakesDecision returns true when the current game state is one
+// where we want to spend evaluator budget regardless of board complexity:
+//
+//   - Combo is one piece away or executable now (existing comboPriority
+//     signal — preserve game-winning lines through the degrade).
+//   - Any seat is at low life (≤ highStakesLifeThreshold). Whether
+//     they're about to die or we are, the wrong decision here ends the
+//     game; the right one wins it.
+//   - Stack has ≥ highStakesStackDepth items. Deep stacks mean active
+//     counter wars / triggered-ability chains where each priority
+//     window's decision changes the resolution order — the kind of
+//     position where evaluator-guided play meaningfully outscores the
+//     fast-path heuristic.
+func (h *YggdrasilHat) isHighStakesDecision(gs *gameengine.GameState) bool {
+	if h == nil || gs == nil {
+		return false
+	}
+	if h.comboAssembling(gs) {
+		return true
+	}
+	for _, s := range gs.Seats {
+		if s == nil || s.Lost {
+			continue
+		}
+		if s.Life <= highStakesLifeThreshold {
+			return true
+		}
+	}
+	if len(gs.Stack) >= highStakesStackDepth {
+		return true
+	}
+	return false
 }
 
 // turnRemaining returns how many eval points are left this turn.
@@ -1835,7 +1883,11 @@ func (h *YggdrasilHat) classifyDecision(gs *gameengine.GameState) DecisionTier {
 		return TierMjolnir
 	}
 
-	comboPriority := h.comboAssembling(gs)
+	// R60: superset of the previous combo-only override — also lets
+	// low-life and deep-stack windows keep evaluator/rollout compute.
+	// Matches the gate inside effectiveBudget so the tier report no
+	// longer drifts from the actual compute path.
+	highStakes := h.isHighStakesDecision(gs)
 
 	total := 0
 	if gs != nil {
@@ -1846,10 +1898,10 @@ func (h *YggdrasilHat) classifyDecision(gs *gameengine.GameState) DecisionTier {
 			total += len(s.Battlefield)
 		}
 	}
-	if total >= adaptiveBudgetComplexityThreshold && !comboPriority {
+	if total >= adaptiveBudgetComplexityThreshold && !highStakes {
 		return TierMjolnir
 	}
-	if h.TurnBudget > 0 && h.turnRemaining(gs) <= 0 && !comboPriority {
+	if h.TurnBudget > 0 && h.turnRemaining(gs) <= 0 && !highStakes {
 		return TierMjolnir
 	}
 
