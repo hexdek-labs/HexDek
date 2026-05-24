@@ -86,26 +86,69 @@ func MaxPodSimilarity(decks []*deckparser.TournamentDeck, pod []int) float64 {
 // 32 consecutive collisions is < 1e-32.
 const defaultSeedPodMaxAttempts = 32
 
+// SeedPodOptions bundles the two orthogonal pod-seeding constraints:
+//
+//   - MaxSimilarity rejects pods containing near-clone decks (Jaccard
+//     above the threshold; see DeckSimilarity).
+//   - PreferOpposition + Archetypes biases the sampler toward pods
+//     containing at least one natural-counter pair (combo↔stax,
+//     control↔aggro, etc.; see OpposingArchetypes).
+//
+// Both constraints can be active simultaneously. The sampler tries to
+// satisfy BOTH; if no fully-satisfying pod is found within
+// defaultSeedPodMaxAttempts shuffles, the constraints relax in order:
+// first opposition (preference, not requirement), then similarity
+// (fallback to the lowest-collision pod observed). Tournaments always
+// make progress.
+type SeedPodOptions struct {
+	// MaxSimilarity is the upper bound on DeckSimilarity between any
+	// two decks in the returned pod. 0 disables.
+	MaxSimilarity float64
+
+	// PreferOpposition, when true, biases the sampler toward pods
+	// containing at least one OpposingArchetypes pair. Requires
+	// Archetypes to be populated; if Archetypes is nil/empty, this
+	// flag has no effect (no opposition data to read).
+	PreferOpposition bool
+
+	// Archetypes is parallel to the allDecks slice passed to
+	// SeedPodWithOptions: Archetypes[i] is the archetype tag for
+	// allDecks[i]. Decks without a known archetype should carry
+	// ArchetypeUnknown — OpposingArchetypes treats those as
+	// non-opposing.
+	Archetypes []Archetype
+}
+
 // SeedPod picks `nSeats` deck indices from `allDecks` such that no
-// pair in the pod has DeckSimilarity > maxSimilarity. Falls back to
-// a best-effort pod (whichever attempt produced the lowest max
-// similarity) if no fully-valid pod is found in
-// defaultSeedPodMaxAttempts shuffles.
-//
-// maxSimilarity ≤ 0 disables the constraint entirely (returns the
-// first uniform-random pod), preserving the legacy unbiased sampling
-// for callers that don't set the field.
-//
-// The fallback path lets the tournament still make progress when
-// (e.g.) every deck in the pool is a clone of one prototype — a
-// pathological case that would otherwise hang the producer goroutine.
-// Callers should detect via len(MaxPodSimilarity(...) > threshold)
-// post-hoc if they need to log the fallback.
+// pair in the pod has DeckSimilarity > maxSimilarity. Thin wrapper
+// around SeedPodWithOptions for back-compat with callers that
+// predate the archetype-opposition logic; new callers should prefer
+// SeedPodWithOptions.
 func SeedPod(allDecks []*deckparser.TournamentDeck, nSeats int, rng *rand.Rand, maxSimilarity float64) []int {
+	return SeedPodWithOptions(allDecks, nSeats, rng, SeedPodOptions{
+		MaxSimilarity: maxSimilarity,
+	})
+}
+
+// SeedPodWithOptions is the full-featured pod sampler. See
+// SeedPodOptions for the constraint vocabulary. Returns nil for
+// invalid inputs (nil rng, insufficient decks). When both constraints
+// are off (zero-value options), behaves identically to a single
+// rng.Perm(n)[:nSeats] draw — preserving the legacy unbiased path
+// for callers that don't opt in.
+//
+// Constraint relaxation order on retry-budget exhaustion:
+//
+//  1. Try to satisfy both similarity AND opposition. First pod that
+//     does so wins.
+//  2. Track the best similarity-only pod (lowest max-pairwise) seen
+//     across all attempts as a fallback.
+//  3. After defaultSeedPodMaxAttempts shuffles, return the best
+//     similarity-only fallback. Opposition is a preference, not a
+//     requirement — pathological pools (all-clones, or all-same-
+//     archetype) still get a pod and the tournament still runs.
+func SeedPodWithOptions(allDecks []*deckparser.TournamentDeck, nSeats int, rng *rand.Rand, opts SeedPodOptions) []int {
 	if rng == nil {
-		// Defensive: the production caller always passes a seeded RNG,
-		// but tests sometimes pass nil to assert on deterministic
-		// pre-validated lists.
 		return nil
 	}
 	nDecks := len(allDecks)
@@ -120,7 +163,10 @@ func SeedPod(allDecks []*deckparser.TournamentDeck, nSeats int, rng *rand.Rand, 
 		return idxs
 	}
 
-	if maxSimilarity <= 0 {
+	// Fast path: both constraints disabled → one shuffle, no biasing.
+	wantOpposition := opts.PreferOpposition && len(opts.Archetypes) > 0
+	wantSimilarity := opts.MaxSimilarity > 0
+	if !wantSimilarity && !wantOpposition {
 		return pickFirst()
 	}
 
@@ -128,14 +174,30 @@ func SeedPod(allDecks []*deckparser.TournamentDeck, nSeats int, rng *rand.Rand, 
 	bestSim := 2.0 // Sentinel above any real similarity (max is 1.0).
 	for attempt := 0; attempt < defaultSeedPodMaxAttempts; attempt++ {
 		pod := pickFirst()
-		sim := MaxPodSimilarity(allDecks, pod)
-		if sim <= maxSimilarity {
+
+		sim := 0.0
+		if wantSimilarity {
+			sim = MaxPodSimilarity(allDecks, pod)
+		}
+		simOK := !wantSimilarity || sim <= opts.MaxSimilarity
+
+		oppOK := !wantOpposition || PodHasOpposingPair(opts.Archetypes, pod)
+
+		if simOK && oppOK {
 			return pod
 		}
-		if sim < bestSim {
+		// Track best similarity-only fallback. We don't track
+		// opposition-only because opposition is binary (have it or
+		// don't) — there's nothing meaningful to "improve toward."
+		if simOK && sim < bestSim {
 			bestSim = sim
 			bestPod = pod
 		}
 	}
-	return bestPod
+	if bestPod != nil {
+		return bestPod
+	}
+	// Neither constraint satisfied within the budget — last-ditch
+	// uniform draw so the producer goroutine doesn't return nil.
+	return pickFirst()
 }
