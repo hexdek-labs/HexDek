@@ -351,7 +351,12 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 					card := oppSeat.Library[0]
 					MoveCard(gs, card, opp, "library", "exile", "heist")
 					// Grant the controller permission to cast it for free.
+					// Heist oracle text: "Until end of turn, you may play
+					// that card." Bind the grant to EOT so
+					// ExpireZoneCastGrants reclaims it during cleanup.
 					perm := NewFreeCastFromExilePermission(seat, sourceName(src))
+					perm.Duration = "until_end_of_turn"
+					perm.GrantTurn = gs.Turn
 					RegisterZoneCastGrant(gs, card, perm)
 					heisted = true
 				}
@@ -547,7 +552,14 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			exile := gs.Seats[seat].Exile
 			if len(exile) > 0 {
 				top := exile[len(exile)-1]
+				// Oracle wording matched by this modification kind is the
+				// "this turn" / "until end of turn" family (the
+				// "as long as it remains exiled" wording flows through
+				// resolveResidualByText's separate branch). Bind the
+				// grant to EOT so ExpireZoneCastGrants reclaims it.
 				perm := NewFreeCastFromExilePermission(seat, sourceName(src))
+				perm.Duration = "until_end_of_turn"
+				perm.GrantTurn = gs.Turn
 				RegisterZoneCastGrant(gs, top, perm)
 			}
 		}
