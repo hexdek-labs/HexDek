@@ -82,6 +82,29 @@ BUCKETED_KINDS = {
     "attacked_or_blocked_this_combat", "coven", "self_has_counter",
     "didnt_attack_this_turn", "dealt_damage_to_opponent_this_turn",
     "no_mana_spent_to_cast",
+    # Era 4 carry-over (already bucketed in Go scaffold).
+    "landfall", "you_descended_this_turn",
+    "it_was_a_creature", "no_creatures_on_battlefield",
+    # Era 1 R60 sweep additions — 19 new structured-Kind scaffolds.
+    "tribute_not_paid", "tribute_wasnt_paid",
+    "bargained", "was_bargained",
+    "shares_creature_type",
+    "not_their_turn", "not_your_turn",
+    "more_life_than_opponent", "you_more_life",
+    "no_time_counters", "time_counter_on_self",
+    "wasnt_cast",
+    "lost_life_last_turn",
+    "damage_dealt_to_self_this_turn", "damage_taken_this_turn",
+    "more_cards_in_hand_than_opponents", "more_cards_than_each_opponent",
+    "self_is_untapped",
+    "self_has_no_counter", "no_named_counter",
+    "surge_cost_paid",
+    "library_empty",
+    "colored_mana_spent",
+    "self_is_suspended",
+    "life_above_starting",
+    "opponent_more_life",
+    "wasnt_blocking",
 }
 
 RAW_KINDS = {"intervening_if", "as_long_as", "conditional", "raw", "if"}
@@ -141,6 +164,37 @@ RAW_PATTERNS = [
     ("becomes_target", re.compile(r"becomes (?:the|a) target")),
     ("until_eot_delayed", re.compile(r"until end of turn.*(?:whenever|delayed)|next cleanup step")),
     ("land_play_or_tap", re.compile(r"plays a land|tapped for mana")),
+    # Era 1 R60 sweep — 19 new raw-text patterns. Ordered most-specific first
+    # so the broader matchers below (life/hand/cast/you_control) don't eat
+    # them. Mirrors the detectConditionScaffold ordering in conditional_setup.go.
+    ("tribute_not_paid", re.compile(r"tribute (?:wasn't|was) paid")),
+    ("bargained", re.compile(r"it was bargained|this spell was bargained|if it was bargained")),
+    ("shares_creature_type", re.compile(r"shares a creature type")),
+    ("time_counter_on_self", re.compile(r"no time counters|had no time counters")),
+    ("self_is_suspended", re.compile(r"this card is suspended|while it'?s suspended|while suspended")),
+    ("wasnt_cast", re.compile(r"(?:it|he|she|they) (?:wasn't|weren't) cast|wasn't cast")),
+    ("wasnt_blocking", re.compile(r"wasn't blocking|wasn't being blocked by")),
+    ("surge_cost_paid", re.compile(r"surge cost was paid")),
+    ("library_empty", re.compile(r"no cards in.*library|library has no cards|library is empty")),
+    ("colored_mana_spent", re.compile(r"\{[wubrgc]\}(?:\{[wubrgc]\})?\s*was spent to cast|mana from a treasure was spent to cast")),
+    ("lost_life_last_turn", re.compile(r"lost life last turn|last turn.*(?:lost|lose) life")),
+    ("damage_dealt_to_self_turn", re.compile(r"damage was dealt to (?:it|this).*this turn|damage dealt to it.*this turn")),
+    ("more_cards_than_opponents", re.compile(r"more cards in hand than each opponent|more cards in.*hand.*than (?:each|any)")),
+    ("self_is_untapped", re.compile(r"this creature is untapped|~ is untapped|(?:this artifact|this permanent) is untapped")),
+    ("self_has_no_counter", re.compile(r"has no \S+ counters? on it|had no \S+ counters? on it")),
+    ("life_above_starting", re.compile(r"(?:greater|more) than your starting life total|above your starting life total")),
+    ("opponent_more_life", re.compile(r"(?:an? |any )?opponent has more life(?: than you)?")),
+    ("more_life_than_opponent", re.compile(r"more life than (?:an?|each) opponent|no opponent has more life than (?:that player|you)")),
+    ("not_their_turn", re.compile(r"not their turn|not your turn|isn't their turn|during another player'?s turn|on a turn that isn'?t yours")),
+    # Era 4 carry-over (already bucketed in Go scaffold): you cast it / had
+    # counters / planeswalker-ETB / still-on-battlefield. These weren't in
+    # era1's pattern list, depressing the bucketed share.
+    ("had_counters_on_it", re.compile(r"had (?:a |one or more |any |a \+1/\+1 |a death )?counters? on it")),
+    ("you_cast_from_hand", re.compile(r"you cast it from your hand|you cast it from a graveyard|you cast it(?! from)")),
+    ("planeswalker_etb_turn", re.compile(r"planeswalker (?:entered|enters) the battlefield.*this turn|planeswalker.*you've cast.*this turn")),
+    ("artifact_etb_turn", re.compile(r"artifact (?:entered|enters) the battlefield.*this turn.*(?:under your control|you control)")),
+    ("still_on_battlefield", re.compile(r"it's on the battlefield|is still on the battlefield")),
+    ("reveal_land_otherwise_hand", re.compile(r"if it's a land card.*(?:onto the battlefield|put it onto).*otherwise")),
     ("you_control_raw", re.compile(r"you control")),
 ]
 
