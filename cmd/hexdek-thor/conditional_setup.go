@@ -1401,6 +1401,37 @@ const (
 	condScaffoldStartingPlayer           // "you were the starting player" / "weren't"
 	condScaffoldQuestCounters            // "it has N or more quest counters on it" (TLA Ascension)
 	condScaffoldDragonBeheld             // "a Dragon was beheld" (Tarkir Dragonstorm)
+
+	// Era 4 R60 sweep — 19 new scaffolds bridging the dominant Era 4 (2023+)
+	// raw-text gaps surfaced by scripts/era4_scaffold_audit.py. Each maps to
+	// existing engine state (no new fields required); the top clusters are
+	// opponent-board comparisons (more creatures than you), per-source
+	// post-zone-change typechecks (wasn't a demon, didn't die, wasn't
+	// sacrificed, was cast), board-state predicates (all lands are islands,
+	// no <named> tokens, player controls no creatures), per-source counter /
+	// exile-cost thresholds (counters on self >= N, N or more cards exiled
+	// with this), and turn-scoped event predicates (no damage since last turn,
+	// first time this ability has resolved, another <type> entered last turn,
+	// one or more cards were exiled this turn).
+	condScaffoldOpponentMoreCreatures      // "an opponent controls more creatures than you"
+	condScaffoldWasntCreatureType          // "it wasn't a <subtype>" — post-death typecheck
+	condScaffoldAllLandsType               // "all lands on the battlefield are <subtype>"
+	condScaffoldWasAttacking               // "it was attacking" — per-permanent post-combat check
+	condScaffoldPermanentMVLE              // "it's a permanent card with mana value N or less"
+	condScaffoldWasCast                    // "it was cast" / "he was cast" — inverse of WasntCast
+	condScaffoldDidntDie                   // "it didn't die" — post-leave survival check
+	condScaffoldSelfDidntETBThisTurn       // "this creature didn't enter the battlefield this turn"
+	condScaffoldNoNamedTokens              // "there are no <named> tokens on the battlefield"
+	condScaffoldWasntSacrificed            // "it wasn't sacrificed" — post-leave path check
+	condScaffoldCountersOnSelfGE           // "it has N or more <kind> counters on it" (present, not past)
+	condScaffoldNoDamageSinceLastTurn      // "you haven't been dealt combat damage since your last turn"
+	condScaffoldFirstTimeResolvedThisTurn  // "this is the first time this ability has resolved this turn"
+	condScaffoldPlayerNoCreatures          // "a player controls no creatures"
+	condScaffoldAnotherTypedETBThisTurn    // "another <type> entered the battlefield under your control this turn"
+	condScaffoldCreatureETBLastTurn        // "another creature entered the battlefield under your control last turn"
+	condScaffoldExiledWithCountGE          // "N or more cards have been exiled with this artifact"
+	condScaffoldExiledThisTurn             // "one or more cards were put into exile this turn"
+	condScaffoldDamagedCreatureDied        // "a creature dealt damage by this creature this turn died"
 )
 
 type conditionScaffold struct {
@@ -1799,6 +1830,96 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		return out
 	case "dragon_beheld":
 		return conditionScaffold{kind: condScaffoldDragonBeheld}
+
+	// Era 4 R60 sweep — structured-Kind dispatch for the 19 new scaffolds.
+	// Most arrive as raw/intervening_if (handled by the text patterns below),
+	// but the parser occasionally surfaces them as named Kinds; route here so
+	// either shape resolves the same scaffold.
+	case "opponent_more_creatures", "opp_more_creatures":
+		return conditionScaffold{kind: condScaffoldOpponentMoreCreatures}
+	case "wasnt_creature_type", "wasnt_subtype":
+		out := conditionScaffold{kind: condScaffoldWasntCreatureType, subtype: "demon"}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToLower(strings.TrimSpace(s))
+			}
+		}
+		return out
+	case "all_lands_type", "all_lands_subtype":
+		out := conditionScaffold{kind: condScaffoldAllLandsType, subtype: "island"}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToLower(strings.TrimSpace(s))
+			}
+		}
+		return out
+	case "was_attacking":
+		return conditionScaffold{kind: condScaffoldWasAttacking}
+	case "permanent_mv_le", "permanent_mana_value_le":
+		out := conditionScaffold{kind: condScaffoldPermanentMVLE, count: 3}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "was_cast", "it_was_cast":
+		return conditionScaffold{kind: condScaffoldWasCast}
+	case "didnt_die":
+		return conditionScaffold{kind: condScaffoldDidntDie}
+	case "self_didnt_etb_this_turn", "didnt_enter_this_turn":
+		return conditionScaffold{kind: condScaffoldSelfDidntETBThisTurn}
+	case "no_named_tokens":
+		out := conditionScaffold{kind: condScaffoldNoNamedTokens, subtype: "reflection"}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToLower(strings.TrimSpace(s))
+			}
+		}
+		return out
+	case "wasnt_sacrificed":
+		return conditionScaffold{kind: condScaffoldWasntSacrificed}
+	case "counters_on_self_ge", "self_counter_threshold":
+		out := conditionScaffold{kind: condScaffoldCountersOnSelfGE, subtype: "+1/+1", count: 3}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToLower(strings.TrimSpace(s))
+			}
+		}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "no_damage_since_last_turn":
+		return conditionScaffold{kind: condScaffoldNoDamageSinceLastTurn}
+	case "first_time_resolved_this_turn":
+		return conditionScaffold{kind: condScaffoldFirstTimeResolvedThisTurn}
+	case "player_no_creatures":
+		return conditionScaffold{kind: condScaffoldPlayerNoCreatures}
+	case "another_typed_etb_this_turn":
+		out := conditionScaffold{kind: condScaffoldAnotherTypedETBThisTurn, subtype: "human"}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToLower(strings.TrimSpace(s))
+			}
+		}
+		return out
+	case "creature_etb_last_turn":
+		return conditionScaffold{kind: condScaffoldCreatureETBLastTurn}
+	case "exiled_with_count_ge":
+		out := conditionScaffold{kind: condScaffoldExiledWithCountGE, count: 3}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "exiled_this_turn":
+		return conditionScaffold{kind: condScaffoldExiledThisTurn}
+	case "damaged_creature_died":
+		return conditionScaffold{kind: condScaffoldDamagedCreatureDied}
 	}
 
 	switch kind {
@@ -1903,10 +2024,312 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		return cs
 	}
 
+	// "an opponent controls more creatures than you" — Garruk Unleashed,
+	// Knight of the Pilgrim's Road. Must come BEFORE the OpponentMoreLands
+	// matcher because "controls more" + "than you" overlaps both clauses;
+	// disambiguate on the explicit "creature" noun.
+	if strings.Contains(txt, "more creatures than you") ||
+		(strings.Contains(txt, "controls more") && strings.Contains(txt, "creature") &&
+			strings.Contains(txt, "than you")) {
+		cs.kind = condScaffoldOpponentMoreCreatures
+		return cs
+	}
+
 	// "an opponent controls more lands than you" / "more lands than you do"
 	if (strings.Contains(txt, "more land") || strings.Contains(txt, "controls more")) &&
 		strings.Contains(txt, "than you") {
 		cs.kind = condScaffoldOpponentMoreLands
+		return cs
+	}
+
+	// Era 4 R60 sweep — raw-text matchers for the 19 Era 4 (2023+) scaffolds.
+	// Placed HIGH in the chain because several broader matchers below
+	// (UpkeepPhase, CreatureETBThisTurn, DrawnCardThisTurn, AttackedThisTurn,
+	// HadCountersOnIt, CardInGraveyard) would otherwise eat clauses whose
+	// surrounding text contains "upkeep"/"this turn"/"draw a card"/"creature
+	// entered"/"counters on it". Ordered most-specific first; per-source
+	// post-zone-change typechecks come before broader board-state predicates.
+
+	// Counters-on-self GE — "it has three or more +1/+1 counters on it"
+	// (Ordeal of Nylea, ascend counters, Edgar Markov's Coffin bloodline).
+	// Present-state form distinct from condScaffoldHadCountersOnIt (past).
+	// MUST come early so it doesn't get eaten by the generic "has no <kind>
+	// counters" later or by HadCountersOnIt.
+	if (strings.Contains(txt, "or more") || strings.Contains(txt, "or greater")) &&
+		strings.Contains(txt, "counters on it") &&
+		(strings.Contains(txt, "it has") || strings.Contains(txt, "this creature has") ||
+			strings.Contains(txt, "this permanent has") || strings.Contains(txt, "~ has") ||
+			strings.Contains(txt, "there are")) {
+		cs.kind = condScaffoldCountersOnSelfGE
+		cs.subtype = "+1/+1"
+		cs.count = 3
+		for _, k := range []string{"+1/+1", "-1/-1", "oil", "loyalty", "stun",
+			"charge", "quest", "fade", "vanishing", "shield", "ki", "blood",
+			"divinity", "time", "verse", "wage", "wish", "bloodline", "ice",
+			"experience", "indestructibility", "page", "bore"} {
+			if strings.Contains(txt, k+" counter") {
+				cs.subtype = k
+				break
+			}
+		}
+		if m := manaSpentNumRe.FindStringSubmatch(txt); len(m) > 1 {
+			if n, err := strconv.Atoi(m[1]); err == nil && n > 0 {
+				cs.count = n
+			}
+		} else {
+			for w, n := range map[string]int{"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "ten": 10} {
+				if strings.Contains(txt, w+" or more") {
+					cs.count = n
+					break
+				}
+			}
+		}
+		return cs
+	}
+
+	// Damaged creature died — "a creature dealt damage by this creature this
+	// turn died" (Krovikan Vampire). Per-source kill-credit check. Must come
+	// before generic "died this turn" + "this turn" matchers below.
+	if strings.Contains(txt, "creature dealt damage by") &&
+		strings.Contains(txt, "this turn") &&
+		(strings.Contains(txt, "died") || strings.Contains(txt, "would die")) {
+		cs.kind = condScaffoldDamagedCreatureDied
+		return cs
+	}
+
+	// Self didn't ETB this turn — "this creature didn't enter the battlefield
+	// this turn" (Cactuar). Anti-haste check; pre-empts the generic
+	// CreatureETBThisTurn matcher which catches "creature enters ... this turn".
+	if (strings.Contains(txt, "didn't enter the battlefield this turn") ||
+		strings.Contains(txt, "didn't enter this turn") ||
+		strings.Contains(txt, "hasn't entered the battlefield this turn") ||
+		strings.Contains(txt, "wasn't put onto the battlefield this turn")) &&
+		(strings.Contains(txt, "this creature") || strings.Contains(txt, "this permanent") ||
+			strings.Contains(txt, "this artifact") || strings.Contains(txt, "~") ||
+			strings.Contains(txt, "it ")) {
+		cs.kind = condScaffoldSelfDidntETBThisTurn
+		return cs
+	}
+
+	// Another typed ETB this turn — "another human entered the battlefield
+	// under your control this turn" (Éowyn, Shieldmaiden). Subtype-scoped
+	// variant; must pre-empt generic CreatureETBThisTurn.
+	if strings.Contains(txt, "another ") &&
+		(strings.Contains(txt, "entered the battlefield") || strings.Contains(txt, "enters the battlefield")) &&
+		(strings.Contains(txt, "under your control") || strings.Contains(txt, "you control")) &&
+		strings.Contains(txt, "this turn") &&
+		!strings.Contains(txt, "another creature entered") &&
+		!strings.Contains(txt, "another creature enters") {
+		cs.kind = condScaffoldAnotherTypedETBThisTurn
+		cs.subtype = "human"
+		// "another <subtype>" — capture the noun after "another".
+		idx := strings.Index(txt, "another ")
+		if idx >= 0 {
+			rest := txt[idx+len("another "):]
+			// First word, stripped at next space/punct.
+			end := len(rest)
+			for j, r := range rest {
+				if r == ' ' || r == ',' || r == '.' || r == ';' {
+					end = j
+					break
+				}
+			}
+			if end > 0 && !isGenericWord(rest[:end]) {
+				cs.subtype = rest[:end]
+			}
+		}
+		return cs
+	}
+
+	// Creature ETB last turn — "you had another creature enter the
+	// battlefield under your control last turn" (Ephara, God of the Polis).
+	// Prior-turn variant; pre-empts the broader CreatureETBThisTurn (which
+	// won't match "last turn", but other phrase-overlap could).
+	if (strings.Contains(txt, "creature enter") || strings.Contains(txt, "creature entered")) &&
+		strings.Contains(txt, "last turn") &&
+		(strings.Contains(txt, "under your control") || strings.Contains(txt, "you control")) {
+		cs.kind = condScaffoldCreatureETBLastTurn
+		return cs
+	}
+
+	// Wasn't a creature subtype — "it wasn't a demon" / "it wasn't a zombie"
+	// (Infernal Vessel). Post-death typecheck with subtype. Excludes
+	// "wasn't a creature" (handled separately) and "wasn't cast".
+	if (strings.Contains(txt, "it wasn't a ") || strings.Contains(txt, "it wasn't an ")) &&
+		!strings.Contains(txt, "it wasn't a creature") &&
+		!strings.Contains(txt, "it wasn't cast") {
+		cs.kind = condScaffoldWasntCreatureType
+		cs.subtype = "demon"
+		for _, prefix := range []string{"it wasn't a ", "it wasn't an "} {
+			if i := strings.Index(txt, prefix); i >= 0 {
+				rest := txt[i+len(prefix):]
+				end := len(rest)
+				for j, r := range rest {
+					if r == ' ' || r == ',' || r == '.' || r == ';' {
+						end = j
+						break
+					}
+				}
+				if end > 0 && !isGenericWord(rest[:end]) {
+					cs.subtype = rest[:end]
+				}
+				break
+			}
+		}
+		return cs
+	}
+
+	// All lands type — "all lands on the battlefield are islands"
+	// (Quicksilver Fountain, Spreading Seas variants).
+	if strings.Contains(txt, "all lands on the battlefield are ") ||
+		strings.Contains(txt, "every land on the battlefield is a ") ||
+		strings.Contains(txt, "each land on the battlefield is a ") {
+		cs.kind = condScaffoldAllLandsType
+		cs.subtype = "island"
+		for _, sub := range []string{"island", "swamp", "mountain", "forest", "plains"} {
+			if strings.Contains(txt, "are "+sub) || strings.Contains(txt, "is a "+sub) {
+				cs.subtype = sub
+				break
+			}
+		}
+		return cs
+	}
+
+	// Was attacking — "it was attacking" (Zurgo Stormrender). Per-permanent
+	// post-combat check distinct from seat-level AttackedThisTurn.
+	if strings.Contains(txt, "it was attacking") ||
+		strings.Contains(txt, "if it was attacking") ||
+		strings.Contains(txt, "while it was attacking") {
+		cs.kind = condScaffoldWasAttacking
+		return cs
+	}
+
+	// Permanent card with mana value N or less — "it's a permanent card with
+	// mana value 3 or less" (Matter Reshaper). Reveal-and-route MV filter.
+	if (strings.Contains(txt, "permanent card with mana value") ||
+		strings.Contains(txt, "permanent card whose mana value")) &&
+		(strings.Contains(txt, "or less") || strings.Contains(txt, "or fewer")) {
+		cs.kind = condScaffoldPermanentMVLE
+		cs.count = 3
+		if m := manaSpentNumRe.FindStringSubmatch(txt); len(m) > 1 {
+			if n, err := strconv.Atoi(m[1]); err == nil && n > 0 {
+				cs.count = n
+			}
+		}
+		return cs
+	}
+
+	// Didn't die — "it didn't die" (Taeko, the Patient Avalanche). Post-leave
+	// survival check.
+	if strings.Contains(txt, "it didn't die") ||
+		strings.Contains(txt, "if it didn't die") ||
+		strings.Contains(txt, "didn't die this turn") {
+		cs.kind = condScaffoldDidntDie
+		return cs
+	}
+
+	// No named tokens — "there are no reflection tokens on the battlefield"
+	// (Spirit Mirror, Pious Kitsune-style legend uniqueness).
+	if (strings.Contains(txt, "there are no ") || strings.Contains(txt, "if no ")) &&
+		strings.Contains(txt, "tokens on the battlefield") {
+		cs.kind = condScaffoldNoNamedTokens
+		cs.subtype = "reflection"
+		idx := strings.Index(txt, "no ")
+		if idx >= 0 {
+			rest := txt[idx+3:]
+			endIdx := strings.Index(rest, " tokens")
+			if endIdx > 0 {
+				name := strings.TrimSpace(rest[:endIdx])
+				if name != "" && !isGenericWord(name) {
+					cs.subtype = name
+				}
+			}
+		}
+		return cs
+	}
+
+	// Wasn't sacrificed — "it wasn't sacrificed" (Urza's Miter). Post-leave
+	// path check distinct from "didn't die".
+	if strings.Contains(txt, "it wasn't sacrificed") ||
+		strings.Contains(txt, "wasn't sacrificed") {
+		cs.kind = condScaffoldWasntSacrificed
+		return cs
+	}
+
+	// No damage since last turn — "you haven't been dealt combat damage
+	// since your last turn" (Invasion of Fiora // Marchesa, Resolute Monarch).
+	// Must pre-empt DrawnCardThisTurn (which would catch "draw a card").
+	if strings.Contains(txt, "haven't been dealt") &&
+		(strings.Contains(txt, "combat damage") || strings.Contains(txt, "damage")) &&
+		(strings.Contains(txt, "since your last turn") || strings.Contains(txt, "since the last turn")) {
+		cs.kind = condScaffoldNoDamageSinceLastTurn
+		return cs
+	}
+
+	// First time this ability resolved this turn — "this is the first time
+	// this ability has resolved this turn" (Zimone, Mystery Unraveler).
+	// Pre-empts DrawnCardThisTurn (catches "draw a card" later).
+	if strings.Contains(txt, "first time this ability has resolved") ||
+		(strings.Contains(txt, "first time") && strings.Contains(txt, "resolved") &&
+			strings.Contains(txt, "this turn")) {
+		cs.kind = condScaffoldFirstTimeResolvedThisTurn
+		return cs
+	}
+
+	// Player controls no creatures — "a player controls no creatures"
+	// (Sothera, the Supervoid). Distinct from NoCreaturesOnBattlefield
+	// (board-wide); this fires when at least one seat has zero creatures.
+	if strings.Contains(txt, "a player controls no creatures") ||
+		strings.Contains(txt, "any player controls no creatures") ||
+		strings.Contains(txt, "controls no creatures") {
+		cs.kind = condScaffoldPlayerNoCreatures
+		return cs
+	}
+
+	// Exiled with count GE — "three or more cards have been exiled with this
+	// artifact/creature" (Colfenor's Urn). Per-source exile-zone count check.
+	// Must come BEFORE generic exiled_this_turn so per-source variant wins.
+	if (strings.Contains(txt, "cards have been exiled with") ||
+		strings.Contains(txt, "cards exiled with this") ||
+		strings.Contains(txt, "cards exiled with ~")) &&
+		(strings.Contains(txt, "or more") || strings.Contains(txt, "or greater")) {
+		cs.kind = condScaffoldExiledWithCountGE
+		cs.count = 3
+		if m := manaSpentNumRe.FindStringSubmatch(txt); len(m) > 1 {
+			if n, err := strconv.Atoi(m[1]); err == nil && n > 0 {
+				cs.count = n
+			}
+		} else {
+			for w, n := range map[string]int{"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "ten": 10} {
+				if strings.Contains(txt, w+" or more") {
+					cs.count = n
+					break
+				}
+			}
+		}
+		return cs
+	}
+
+	// Exiled this turn — "one or more cards were put into exile this turn"
+	// (Ennis, Debate Moderator). Global exile-count gate (not per-source).
+	if (strings.Contains(txt, "cards were put into exile this turn") ||
+		strings.Contains(txt, "card was put into exile this turn") ||
+		(strings.Contains(txt, "exile") && strings.Contains(txt, "this turn") &&
+			(strings.Contains(txt, "one or more") || strings.Contains(txt, "were exiled")))) &&
+		!strings.Contains(txt, "exiled with") {
+		cs.kind = condScaffoldExiledThisTurn
+		return cs
+	}
+
+	// It was cast (positive form) — "it was cast" / "he was cast" / "she was
+	// cast" (Anti-Venom, Mirror of Life Trapping). Inverse of WasntCast.
+	if (strings.Contains(txt, "it was cast") ||
+		strings.Contains(txt, "he was cast") ||
+		strings.Contains(txt, "she was cast") ||
+		strings.Contains(txt, "they were cast")) &&
+		!strings.Contains(txt, "wasn't cast") &&
+		!strings.Contains(txt, "weren't cast") {
+		cs.kind = condScaffoldWasCast
 		return cs
 	}
 
@@ -5528,6 +5951,430 @@ func applyConditionScaffolding(gs *gameengine.GameState, cond *gameast.Condition
 			Source: "thor_priming",
 		})
 		cs.description = "set dragon_beheld_this_turn flags + placed Dragon witness + event"
+
+	// Era 4 R60 sweep — apply implementations.
+
+	case condScaffoldOpponentMoreCreatures:
+		// Seed seat 1 with extra creatures and reduce seat 0's creatures so
+		// "an opponent controls more creatures than you" resolves true.
+		for i := 0; i < 3; i++ {
+			placeNamedFriendlyCreatureWithSubtype(gs,
+				fmt.Sprintf("Opponent Creature %d", i+1), "human")
+		}
+		// Re-controller them to seat 1 — placeNamedFriendly defaults to seat 0.
+		if len(gs.Seats) > 1 && gs.Seats[1] != nil && len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			moved := 0
+			kept := gs.Seats[0].Battlefield[:0]
+			for _, p := range gs.Seats[0].Battlefield {
+				if moved < 3 && p != nil && p.Card != nil &&
+					strings.HasPrefix(p.Card.Name, "Opponent Creature") {
+					p.Controller = 1
+					p.Owner = 1
+					p.Card.Owner = 1
+					gs.Seats[1].Battlefield = append(gs.Seats[1].Battlefield, p)
+					moved++
+					continue
+				}
+				kept = append(kept, p)
+			}
+			gs.Seats[0].Battlefield = kept
+		}
+		cs.description = "seeded 3 creatures on seat 1 (opponent_more_creatures)"
+
+	case condScaffoldWasntCreatureType:
+		// "it wasn't a <subtype>" — post-death typecheck. Stamp a per-source
+		// flag so observers reading wasnt_<subtype> succeed; also leave a
+		// non-matching graveyard placeholder so a graveyard scan agrees.
+		sub := cs.subtype
+		if sub == "" {
+			sub = "demon"
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["wasnt_"+sub] = 1
+			srcPerm.Flags["wasnt_subtype"] = 1
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, &gameengine.Card{
+				Name:          "Non-" + sub + " Setup",
+				Owner:         0,
+				Types:         []string{"creature"},
+				BasePower:     1,
+				BaseToughness: 1,
+			})
+		}
+		cs.description = fmt.Sprintf("set srcPerm.Flags[wasnt_%s]=1 (wasnt_creature_type)", sub)
+
+	case condScaffoldAllLandsType:
+		// "all lands on the battlefield are <subtype>" — Quicksilver Fountain
+		// end-state. Stamp every existing land on every seat with the named
+		// subtype and add one matching land on seat 0 so the predicate is
+		// satisfied even on empty boards.
+		sub := cs.subtype
+		if sub == "" {
+			sub = "island"
+		}
+		for _, seat := range gs.Seats {
+			if seat == nil {
+				continue
+			}
+			for _, p := range seat.Battlefield {
+				if p == nil || p.Card == nil {
+					continue
+				}
+				isLand := false
+				for _, t := range p.Card.Types {
+					if t == "land" {
+						isLand = true
+						break
+					}
+				}
+				if !isLand {
+					continue
+				}
+				// Replace the land's subtypes with just the target subtype.
+				newTypes := []string{"land", sub}
+				p.Card.Types = newTypes
+			}
+		}
+		seedSeatLands(gs, 0, 1, strings.Title(sub), sub)
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["all_lands_"+sub] = 1
+		cs.description = fmt.Sprintf("converted all lands to %q + seeded matching land on seat 0", sub)
+
+	case condScaffoldWasAttacking:
+		// "it was attacking" — per-permanent post-combat check. Stamp the
+		// attacking flag on srcPerm and seat 0's attacked-this-turn flag.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["attacking"] = 1
+			srcPerm.Flags["was_attacking"] = 1
+			srcPerm.Flags["attacked_this_combat"] = 1
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			if gs.Seats[0].Flags == nil {
+				gs.Seats[0].Flags = map[string]int{}
+			}
+			gs.Seats[0].Flags["attacked_this_turn"] = 1
+		}
+		cs.description = "stamped attacking + was_attacking flags on srcPerm"
+
+	case condScaffoldPermanentMVLE:
+		// "it's a permanent card with mana value N or less" — Matter Reshaper
+		// reveal-and-route. Seed a low-MV permanent atop seat 0's library so
+		// the reveal succeeds.
+		mv := cs.count
+		if mv < 1 {
+			mv = 3
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			low := &gameengine.Card{
+				Name:          fmt.Sprintf("Low-MV Permanent (CMC %d)", mv-1),
+				Owner:         0,
+				Types:         []string{"creature"},
+				BasePower:     1,
+				BaseToughness: 1,
+				CMC:           mv - 1,
+			}
+			if low.CMC < 0 {
+				low.CMC = 0
+			}
+			gs.Seats[0].Library = append([]*gameengine.Card{low}, gs.Seats[0].Library...)
+		}
+		cs.description = fmt.Sprintf("placed permanent CMC<=%d atop seat 0 library", mv)
+
+	case condScaffoldWasCast:
+		// "it was cast" — inverse of WasntCast; the source DID come from the
+		// stack. Stamp the cast-from-hand flag and clear the wasnt_cast flag.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["was_cast"] = 1
+			srcPerm.Flags["cast_from_hand"] = 1
+			delete(srcPerm.Flags, "wasnt_cast")
+		}
+		cs.description = "set srcPerm.Flags[was_cast]=1 + cast_from_hand"
+
+	case condScaffoldDidntDie:
+		// "it didn't die" — post-leave survival predicate. Stamp the survived
+		// flag on srcPerm and ensure it's still on the battlefield.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["didnt_die"] = 1
+			srcPerm.Flags["survived"] = 1
+			// Make sure marked damage isn't lethal so SBA doesn't kill it.
+			srcPerm.MarkedDamage = 0
+		}
+		cs.description = "set srcPerm.Flags[didnt_die]=1 + cleared marked damage"
+
+	case condScaffoldSelfDidntETBThisTurn:
+		// "this creature didn't enter the battlefield this turn" — anti-haste
+		// summoning-sickness check. Clear ETB flags on srcPerm.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			delete(srcPerm.Flags, "entered_this_turn")
+			delete(srcPerm.Flags, "summoning_sick")
+			srcPerm.Flags["didnt_etb_this_turn"] = 1
+		}
+		cs.description = "cleared entered_this_turn/summoning_sick flags on srcPerm"
+
+	case condScaffoldNoNamedTokens:
+		// "there are no <named> tokens on the battlefield" — Spirit Mirror
+		// legend-unique. Walk every seat's battlefield and remove tokens
+		// whose name matches the named token; then stamp the all-clear flag.
+		name := cs.subtype
+		if name == "" {
+			name = "reflection"
+		}
+		for _, seat := range gs.Seats {
+			if seat == nil {
+				continue
+			}
+			filtered := seat.Battlefield[:0]
+			for _, p := range seat.Battlefield {
+				if p == nil || p.Card == nil {
+					filtered = append(filtered, p)
+					continue
+				}
+				isToken := p.IsToken()
+				lname := strings.ToLower(p.Card.Name)
+				if isToken && strings.Contains(lname, name) {
+					continue
+				}
+				filtered = append(filtered, p)
+			}
+			seat.Battlefield = filtered
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["no_"+name+"_tokens"] = 1
+		cs.description = fmt.Sprintf("removed %q tokens from every seat + set no_%s_tokens flag", name, name)
+
+	case condScaffoldWasntSacrificed:
+		// "it wasn't sacrificed" — post-leave path predicate distinct from
+		// "didn't die". Stamp wasnt_sacrificed flag on srcPerm.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["wasnt_sacrificed"] = 1
+			delete(srcPerm.Flags, "sacrificed")
+		}
+		cs.description = "set srcPerm.Flags[wasnt_sacrificed]=1"
+
+	case condScaffoldCountersOnSelfGE:
+		// "it has N or more <kind> counters on it" — present-state counter
+		// threshold (Ordeal of Nylea, ascend-bloodline). Place N counters of
+		// the named kind on srcPerm.
+		kind := cs.subtype
+		if kind == "" {
+			kind = "+1/+1"
+		}
+		n := cs.count
+		if n < 1 {
+			n = 3
+		}
+		if srcPerm != nil {
+			if srcPerm.Counters == nil {
+				srcPerm.Counters = map[string]int{}
+			}
+			if srcPerm.Counters[kind] < n {
+				srcPerm.Counters[kind] = n
+			}
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["counters_on_self_ge_"+kind] = n
+		}
+		cs.description = fmt.Sprintf("placed %d %q counters on srcPerm", n, kind)
+
+	case condScaffoldNoDamageSinceLastTurn:
+		// "you haven't been dealt combat damage since your last turn" —
+		// Invasion of Fiora. Stamp seat 0's no-damage flag and zero out the
+		// damage-taken counter.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			if gs.Seats[0].Flags == nil {
+				gs.Seats[0].Flags = map[string]int{}
+			}
+			gs.Seats[0].Flags["no_damage_since_last_turn"] = 1
+			gs.Seats[0].Flags["combat_damage_taken_since_last_turn"] = 0
+		}
+		cs.description = "set seat 0 Flags[no_damage_since_last_turn]=1"
+
+	case condScaffoldFirstTimeResolvedThisTurn:
+		// "this is the first time this ability has resolved this turn" —
+		// Zimone, Mystery Unraveler. Stamp the per-source first-resolution
+		// flag (resolution counter = 0 means this firing is the first).
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["ability_resolutions_this_turn"] = 0
+			srcPerm.Flags["first_time_resolved"] = 1
+		}
+		cs.description = "set srcPerm.Flags[first_time_resolved]=1 (resolutions=0)"
+
+	case condScaffoldPlayerNoCreatures:
+		// "a player controls no creatures" — Sothera, the Supervoid. Ensure
+		// at least one opponent seat has zero creatures.
+		if len(gs.Seats) > 1 && gs.Seats[1] != nil {
+			filtered := gs.Seats[1].Battlefield[:0]
+			for _, p := range gs.Seats[1].Battlefield {
+				if p == nil || p.Card == nil {
+					filtered = append(filtered, p)
+					continue
+				}
+				isCreature := false
+				for _, t := range p.Card.Types {
+					if t == "creature" {
+						isCreature = true
+						break
+					}
+				}
+				if !isCreature {
+					filtered = append(filtered, p)
+				}
+			}
+			gs.Seats[1].Battlefield = filtered
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["a_player_controls_no_creatures"] = 1
+		cs.description = "removed creatures from seat 1 + set a_player_controls_no_creatures flag"
+
+	case condScaffoldAnotherTypedETBThisTurn:
+		// "another <type> entered the battlefield under your control this
+		// turn" — Éowyn, Shieldmaiden. Place a typed permanent on seat 0
+		// with entered_this_turn stamped.
+		sub := cs.subtype
+		if sub == "" {
+			sub = "human"
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, &gameengine.Permanent{
+				Card: &gameengine.Card{
+					Name:          "Another " + sub + " Setup",
+					Owner:         0,
+					Types:         []string{"creature", sub},
+					BasePower:     1,
+					BaseToughness: 1,
+				},
+				Controller: 0,
+				Owner:      0,
+				Flags:      map[string]int{"entered_this_turn": 1},
+				Counters:   map[string]int{},
+			})
+			if gs.Seats[0].Flags == nil {
+				gs.Seats[0].Flags = map[string]int{}
+			}
+			gs.Seats[0].Flags["another_"+sub+"_etb_this_turn"] = 1
+		}
+		cs.description = fmt.Sprintf("placed %s on seat 0 + another_%s_etb_this_turn flag", sub, sub)
+
+	case condScaffoldCreatureETBLastTurn:
+		// "you had another creature enter the battlefield under your control
+		// last turn" — Ephara, God of the Polis. Stamp the last-turn ETB
+		// counter on seat 0 (prior-turn snapshot).
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			if gs.Seats[0].Flags == nil {
+				gs.Seats[0].Flags = map[string]int{}
+			}
+			gs.Seats[0].Flags["creature_etb_last_turn"] = 1
+			gs.Seats[0].Flags["creatures_entered_last_turn"] = 2
+		}
+		cs.description = "set seat 0 Flags[creature_etb_last_turn]=1"
+
+	case condScaffoldExiledWithCountGE:
+		// "N or more cards have been exiled with this artifact" — Colfenor's
+		// Urn. Place N exile cards keyed to srcPerm via the srcPerm-name
+		// suffix in Card.Name, and stamp the count flag on srcPerm.
+		n := cs.count
+		if n < 1 {
+			n = 3
+		}
+		srcName := "Source"
+		if srcPerm != nil && srcPerm.Card != nil && srcPerm.Card.Name != "" {
+			srcName = srcPerm.Card.Name
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			for i := 0; i < n; i++ {
+				gs.Seats[0].Exile = append(gs.Seats[0].Exile, &gameengine.Card{
+					Name:          fmt.Sprintf("Exiled-With-%s %d", srcName, i+1),
+					Owner:         0,
+					Types:         []string{"creature"},
+					BasePower:     1,
+					BaseToughness: 1,
+				})
+			}
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["exiled_with_count"] = n
+		}
+		cs.description = fmt.Sprintf("placed %d cards in seat 0 exile + exiled_with_count flag", n)
+
+	case condScaffoldExiledThisTurn:
+		// "one or more cards were put into exile this turn" — Ennis, Debate
+		// Moderator. Place a card in seat 0 exile and stamp the per-game
+		// exile-this-turn flag.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Exile = append(gs.Seats[0].Exile, &gameengine.Card{
+				Name:          "Exiled-This-Turn Setup",
+				Owner:         0,
+				Types:         []string{"creature"},
+				BasePower:     1,
+				BaseToughness: 1,
+			})
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["exiled_this_turn"] = 1
+		gs.Flags["cards_exiled_this_turn"] = 1
+		gs.LogEvent(gameengine.Event{
+			Kind:   "zone_change",
+			Seat:   0,
+			Source: "thor_priming",
+		})
+		cs.description = "placed card in seat 0 exile + set exiled_this_turn flag"
+
+	case condScaffoldDamagedCreatureDied:
+		// "a creature dealt damage by this creature this turn died" —
+		// Krovikan Vampire kill-credit predicate. Stamp the per-source
+		// flag the engine reads when looking up kill credit.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["damaged_creature_died"] = 1
+			srcPerm.Flags["dealt_damage_to_dead_creature"] = 1
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, &gameengine.Card{
+				Name:          "Damaged-And-Died Setup",
+				Owner:         0,
+				Types:         []string{"creature"},
+				BasePower:     2,
+				BaseToughness: 2,
+			})
+			gs.Seats[0].Turn.CreaturesDied++
+		}
+		cs.description = "set srcPerm.Flags[damaged_creature_died]=1 + placed corpse in seat 0 graveyard"
 	}
 	return cs
 }
@@ -5784,6 +6631,46 @@ func traceConditionScaffolding(cond *gameast.Condition, tr *Tracer) {
 		desc = fmt.Sprintf("placed %d quest counters on srcPerm (threshold=%d)", cs.count+1, cs.count)
 	case condScaffoldDragonBeheld:
 		desc = "set dragon_beheld_this_turn flags + Dragon witness + event"
+
+	// Era 4 R60 sweep — trace descriptions.
+	case condScaffoldOpponentMoreCreatures:
+		desc = "seeded 3 creatures on seat 1 (opponent_more_creatures)"
+	case condScaffoldWasntCreatureType:
+		desc = fmt.Sprintf("set srcPerm.Flags[wasnt_%s]=1 (wasnt_creature_type)", nonEmpty(cs.subtype, "demon"))
+	case condScaffoldAllLandsType:
+		desc = fmt.Sprintf("converted all lands to %q + seeded matching land on seat 0", nonEmpty(cs.subtype, "island"))
+	case condScaffoldWasAttacking:
+		desc = "stamped attacking + was_attacking flags on srcPerm"
+	case condScaffoldPermanentMVLE:
+		desc = fmt.Sprintf("placed permanent CMC<=%d atop seat 0 library", maxInt(cs.count, 3))
+	case condScaffoldWasCast:
+		desc = "set srcPerm.Flags[was_cast]=1 + cast_from_hand"
+	case condScaffoldDidntDie:
+		desc = "set srcPerm.Flags[didnt_die]=1 + cleared marked damage"
+	case condScaffoldSelfDidntETBThisTurn:
+		desc = "cleared entered_this_turn/summoning_sick flags on srcPerm"
+	case condScaffoldNoNamedTokens:
+		desc = fmt.Sprintf("removed %q tokens + no_%s_tokens flag", nonEmpty(cs.subtype, "reflection"), nonEmpty(cs.subtype, "reflection"))
+	case condScaffoldWasntSacrificed:
+		desc = "set srcPerm.Flags[wasnt_sacrificed]=1"
+	case condScaffoldCountersOnSelfGE:
+		desc = fmt.Sprintf("placed %d %q counters on srcPerm (counters_on_self_ge)", maxInt(cs.count, 3), nonEmpty(cs.subtype, "+1/+1"))
+	case condScaffoldNoDamageSinceLastTurn:
+		desc = "set seat 0 Flags[no_damage_since_last_turn]=1"
+	case condScaffoldFirstTimeResolvedThisTurn:
+		desc = "set srcPerm.Flags[first_time_resolved]=1 (resolutions=0)"
+	case condScaffoldPlayerNoCreatures:
+		desc = "removed creatures from seat 1 + a_player_controls_no_creatures flag"
+	case condScaffoldAnotherTypedETBThisTurn:
+		desc = fmt.Sprintf("placed %s on seat 0 + another_%s_etb_this_turn flag", nonEmpty(cs.subtype, "human"), nonEmpty(cs.subtype, "human"))
+	case condScaffoldCreatureETBLastTurn:
+		desc = "set seat 0 Flags[creature_etb_last_turn]=1"
+	case condScaffoldExiledWithCountGE:
+		desc = fmt.Sprintf("placed %d cards in seat 0 exile + exiled_with_count flag", maxInt(cs.count, 3))
+	case condScaffoldExiledThisTurn:
+		desc = "placed card in seat 0 exile + exiled_this_turn flag"
+	case condScaffoldDamagedCreatureDied:
+		desc = "set srcPerm.Flags[damaged_creature_died]=1 + placed corpse in seat 0 graveyard"
 	}
 	tr.Record("CONDITION_SETUP", "%q → %s", cs.rawText, desc)
 }
