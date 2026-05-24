@@ -59,6 +59,50 @@ func classifyTrigger(t *gameast.Trigger) string {
 		strings.Contains(actorBase, "an opponent")
 
 	switch {
+	// Era 2 R60 sweep — 19 new trigger-event slugs surfaced by
+	// scripts/era2_scaffold_audit.py. Most are exact-match Era 2 mechanics
+	// that the substring matchers below would either miss entirely or route
+	// to the wrong handler. Order: most-specific first so the broader
+	// "contains attack/enters/draw" catches don't eat them.
+	case event == "when_you_do":
+		return "when_you_do"
+	case event == "counters_put_on_self":
+		return "counters_put_on_self"
+	case event == "tribe_you_control_etb":
+		return "tribe_you_control_etb"
+	case event == "self_crews_vehicle":
+		return "self_crews_vehicle"
+	case event == "you_whenever":
+		return "you_whenever"
+	case event == "ally_etb":
+		return "ally_etb"
+	case event == "ally_typed_etb_a":
+		return "ally_typed_etb_a"
+	case event == "ally_subtype_deal_damage":
+		return "ally_subtype_deal_damage"
+	case event == "self_and":
+		return "self_and"
+	case event == "etb_or_another":
+		return "etb_or_another"
+	case event == "opp_creature_event":
+		return "opp_creature_event"
+	case event == "self_saddles_mount":
+		return "self_saddles_mount"
+	case event == "becomes_tapped":
+		return "becomes_tapped_trigger"
+	case event == "you_get_energy":
+		return "you_get_energy"
+	case event == "player_wins_coin_flip":
+		return "player_wins_coin_flip"
+	case event == "you_action":
+		return "you_action"
+	case event == "becomes_crewed":
+		return "becomes_crewed"
+	case event == "becomes_crewed_first":
+		return "becomes_crewed_first"
+	case event == "opp_draw_card":
+		return "opp_draw_card"
+
 	case event == "dies" || strings.Contains(event, "dies") ||
 		strings.Contains(event, "is put into a graveyard"):
 		return "creature_dies"
@@ -313,6 +357,403 @@ var triggerConditionActions = map[string]conditionAction{
 			if len(gs.Seats[0].Library) < 5 {
 				fillLibrary(gs, 0, 5)
 			}
+		},
+	},
+
+	// Era 2 R60 sweep — 19 new trigger-event scaffolds. Each entry primes
+	// the smallest world that lets the listener observe its event during
+	// fireTriggerEvent. Idempotent: callers that prime multiple times
+	// (chained handlers) top up rather than duplicating entities.
+
+	// "When you do, X" — reflexive trigger that fires after the controller
+	// completes an inner action (RTR draw-then-discard, KLD prowess
+	// chains). The inner action is the outer effect's responsibility; we
+	// just stamp a per-seat flag so the reflexive listener can see "the
+	// action happened" and log a synthetic event.
+	"when_you_do": {
+		kind: "when_you_do",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp seat 0 reflexive_action_done flag + log when_you_do event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+				if gs.Seats[0].Flags == nil {
+					gs.Seats[0].Flags = map[string]int{}
+				}
+				gs.Seats[0].Flags["reflexive_action_done"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "when_you_do",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever a counter is put on this" — listener fires when a counter
+	// lands on srcPerm. Stamp a +1/+1 counter so the next state-based
+	// observation sees the placement; log a counter_placed event for any
+	// observer that consults gs.EventLog.
+	"counters_put_on_self": {
+		kind: "counters_put_on_self",
+		describe: func(t *gameast.Trigger) string {
+			return "place +1/+1 counter on srcPerm + log counter_placed event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Counters == nil {
+					srcPerm.Counters = map[string]int{}
+				}
+				srcPerm.Counters["+1/+1"]++
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "counter_placed",
+				Seat:   0,
+				Source: "thor_priming",
+				Details: map[string]interface{}{
+					"counter": "+1/+1",
+				},
+			})
+		},
+	},
+
+	// "Whenever another <subtype> you control enters" — tribal ETB listener.
+	// classifyTrigger emits this slug for the explicit event; the apply
+	// places a stand-in friendly tribal creature to satisfy the "another"
+	// actor. Default subtype is "wizard" (most-common Era 2 fingerprint).
+	"tribe_you_control_etb": {
+		kind: "tribe_you_control_etb",
+		describe: func(t *gameast.Trigger) string {
+			return "place 'Tribal ETB' wizard creature on seat 0"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreatureWithSubtype(gs, "Tribal ETB Setup", "wizard")
+		},
+	},
+
+	// "Whenever you crew ~" — Kaladesh vehicle perspective (Smuggler's
+	// Copter, Heart of Kiran). Place a pilot creature and stamp the
+	// crewed_this_turn flag on srcPerm.
+	"self_crews_vehicle": {
+		kind: "self_crews_vehicle",
+		describe: func(t *gameast.Trigger) string {
+			return "place pilot creature + stamp srcPerm.Flags[crewed_this_turn]"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreatureWithSubtype(gs, "Vehicle Pilot", "pilot")
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["crewed_this_turn"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "vehicle_crewed",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "You whenever ..." — generic controller-action wrapper. Without
+	// knowing the inner action we can only stamp a generic done-flag and
+	// log a placeholder event. Goldilocks already infers the inner action
+	// from sibling AST; this scaffold ensures the wrapper itself fires.
+	"you_whenever": {
+		kind: "you_whenever",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp seat 0 you_whenever_active flag + log you_whenever event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+				if gs.Seats[0].Flags == nil {
+					gs.Seats[0].Flags = map[string]int{}
+				}
+				gs.Seats[0].Flags["you_whenever_active"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "you_whenever",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever a creature you control enters" — ally ETB listener. Place
+	// a fresh creature so the source observes the ETB during the snapshot.
+	"ally_etb": {
+		kind: "ally_etb",
+		describe: func(t *gameast.Trigger) string {
+			return "place 'Ally ETB' creature on seat 0"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreature(gs, "Ally ETB Setup")
+		},
+	},
+
+	// "Whenever a <subtype> creature you control enters" — typed ally ETB
+	// (Goblin Chieftain-style, but the parser surfaces a distinct slug for
+	// the "a" article variant). Place a typed creature with a common Era 2
+	// fingerprint subtype.
+	"ally_typed_etb_a": {
+		kind: "ally_typed_etb_a",
+		describe: func(t *gameast.Trigger) string {
+			return "place typed (servo) ally creature on seat 0"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreatureWithSubtype(gs, "Typed Ally Setup", "servo")
+		},
+	},
+
+	// "Whenever a <subtype> deals damage to a player" — tribal-damage
+	// listener (Hazoret-style tributes, Aetherborn). Place a typed ally
+	// and log a damage event from it.
+	"ally_subtype_deal_damage": {
+		kind: "ally_subtype_deal_damage",
+		describe: func(t *gameast.Trigger) string {
+			return "place typed ally + log damage event from it to seat 1"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreatureWithSubtype(gs, "Tribal Damage Source", "warrior")
+			gs.LogEvent(gameengine.Event{
+				Kind:   "damage",
+				Seat:   0,
+				Target: 1,
+				Amount: 1,
+				Source: "Tribal Damage Source",
+			})
+		},
+	},
+
+	// "Whenever this and another <X> ..." — multi-event self trigger
+	// (Eldrazi processor / partner triggers). Place a sibling creature so
+	// the "and another" leg has a partner.
+	"self_and": {
+		kind: "self_and",
+		describe: func(t *gameast.Trigger) string {
+			return "place 'Self-And Partner' creature on seat 0"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreature(gs, "Self-And Partner")
+		},
+	},
+
+	// "Whenever this or another creature enters" — ETB family with
+	// "another" leg. Same shape as ally_etb but distinguished in the trace.
+	"etb_or_another": {
+		kind: "etb_or_another",
+		describe: func(t *gameast.Trigger) string {
+			return "place 'ETB-Or-Another Buddy' creature on seat 0"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreature(gs, "ETB-Or-Another Buddy")
+		},
+	},
+
+	// "Whenever an opponent's creature <event>" — generic opponent-creature
+	// multiplexer. Ensure opponent has a creature that can fire whichever
+	// inner event the trigger keys on.
+	"opp_creature_event": {
+		kind: "opp_creature_event",
+		describe: func(t *gameast.Trigger) string {
+			return "ensure opponent (seat 1) has a creature"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if !hasOpponentCreature(gs) {
+				placeTargetCreatureOnOpponent(gs)
+			}
+		},
+	},
+
+	// "Whenever you saddle ~" — Outlaws of Thunder Junction mounts. Place
+	// a saddler creature + stamp the saddled_this_turn flag on srcPerm.
+	"self_saddles_mount": {
+		kind: "self_saddles_mount",
+		describe: func(t *gameast.Trigger) string {
+			return "place saddler creature + stamp srcPerm.Flags[saddled_this_turn]"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			saddler := placeNamedFriendlyCreature(gs, "Mount Saddler")
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["saddled_this_turn"] = 1
+				if saddler != nil {
+					srcPerm.SaddlersThisTurn = append(srcPerm.SaddlersThisTurn, saddler)
+				}
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "mount_saddled",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever ~ becomes tapped" — Insolence, Seizures, Relic Bind.
+	// Toggle srcPerm's tap state so the listener observes an untapped →
+	// tapped transition during the fire pass.
+	"becomes_tapped_trigger": {
+		kind: "becomes_tapped_trigger",
+		describe: func(t *gameast.Trigger) string {
+			return "tap srcPerm + log becomes_tapped event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				srcPerm.Tapped = false
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Tapped = true
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "becomes_tapped",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever you get energy" — Kaladesh / Aether Revolt energy gain.
+	// Bump seat 0 energy counters + log an energy_gained event.
+	"you_get_energy": {
+		kind: "you_get_energy",
+		describe: func(t *gameast.Trigger) string {
+			return "bump seat 0 energy counters by 3 + log energy_gained event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+				if gs.Seats[0].Flags == nil {
+					gs.Seats[0].Flags = map[string]int{}
+				}
+				gs.Seats[0].Flags["energy_counters"] += 3
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "energy_gained",
+				Seat:   0,
+				Amount: 3,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever a player wins a coin flip" — Krark / Mana Clash. Log a
+	// won_coin_flip event for seat 0 so the listener can pick it up; no
+	// engine state to mutate (coin flips are stateless per CR §705).
+	"player_wins_coin_flip": {
+		kind: "player_wins_coin_flip",
+		describe: func(t *gameast.Trigger) string {
+			return "log won_coin_flip event for seat 0"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			gs.LogEvent(gameengine.Event{
+				Kind:   "won_coin_flip",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever you take an action" — Ixalan-era catch-all "you_action"
+	// wrapper. Stamp a per-seat flag + log a synthetic action event so
+	// the listener sees something to observe.
+	"you_action": {
+		kind: "you_action",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp seat 0 you_action flag + log you_action event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+				if gs.Seats[0].Flags == nil {
+					gs.Seats[0].Flags = map[string]int{}
+				}
+				gs.Seats[0].Flags["you_action"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "you_action",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever ~ becomes crewed" — vehicle-side crew listener (Cultivator
+	// of Blades, vehicle ETB-on-crew triggers). Distinct from
+	// self_crews_vehicle (which is from the perspective of "you crew");
+	// becomes_crewed reads "this vehicle gets crewed".
+	"becomes_crewed": {
+		kind: "becomes_crewed",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp srcPerm.Flags[becomes_crewed]=1 + log vehicle_crewed event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreatureWithSubtype(gs, "Crew Member", "pilot")
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["becomes_crewed"] = 1
+				srcPerm.Flags["crewed_this_turn"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "vehicle_crewed",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever ~ becomes crewed for the first time each turn" — variant
+	// of becomes_crewed that specifically wants the FIRST crew event of
+	// the turn. Same prime as becomes_crewed but stamps a distinct flag
+	// the first-crew listener reads.
+	"becomes_crewed_first": {
+		kind: "becomes_crewed_first",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp srcPerm.Flags[becomes_crewed_first]=1 + log first_crew event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreatureWithSubtype(gs, "First Pilot", "pilot")
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["becomes_crewed_first"] = 1
+				srcPerm.Flags["crewed_this_turn"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "vehicle_crewed_first",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever an opponent draws a card" — Notion Thief, Geier Reach
+	// Sanitarium. Distinct from the controller-side draw_card slug; this
+	// scaffold tops up seat 1's library and logs the draw event from the
+	// opponent's perspective.
+	"opp_draw_card": {
+		kind: "opp_draw_card",
+		describe: func(t *gameast.Trigger) string {
+			return "ensure seat 1 library has 5+ cards + log opp_draw_card event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if len(gs.Seats) > 1 && gs.Seats[1] != nil {
+				if len(gs.Seats[1].Library) < 5 {
+					fillLibrary(gs, 1, 5)
+				}
+				if gs.Seats[1].Flags == nil {
+					gs.Seats[1].Flags = map[string]int{}
+				}
+				gs.Seats[1].Flags["drew_card_this_turn"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "card_drawn",
+				Seat:   1,
+				Source: "thor_priming",
+			})
 		},
 	},
 }
