@@ -271,13 +271,20 @@ func (e *GameStateEvaluator) scoreBoard(gs *gameengine.GameState, seatIdx int) f
 	return (myPow - oppAvg) / 10.0 + float64(noncreatures) * 0.1
 }
 
-// scoreCards: hand size + library depth relative to average.
+// scoreCards: hand size + library depth + persistent draw engines on
+// battlefield + castable-from-exile cards, all relative to opponent
+// average. The engine + castable-exile terms capture virtual card
+// advantage that pure hand-count misses (a 4-card hand behind a Rhystic
+// Study + Phyrexian Arena is a different game than a 4-card hand
+// behind nothing).
 func (e *GameStateEvaluator) scoreCards(gs *gameengine.GameState, seatIdx int) float64 {
 	seat := gs.Seats[seatIdx]
 	myHand := float64(len(seat.Hand))
 	myLib := float64(len(seat.Library))
+	myEngines := drawEngineCredit(seat)
+	myCastExile := float64(castableExileCount(gs, seatIdx))
 
-	var oppHand, oppLib float64
+	var oppHand, oppLib, oppEngines, oppCastExile float64
 	var oppN int
 	for i, s := range gs.Seats {
 		if i == seatIdx || s.Lost || s.LeftGame {
@@ -285,15 +292,104 @@ func (e *GameStateEvaluator) scoreCards(gs *gameengine.GameState, seatIdx int) f
 		}
 		oppHand += float64(len(s.Hand))
 		oppLib += float64(len(s.Library))
+		oppEngines += drawEngineCredit(s)
+		oppCastExile += float64(castableExileCount(gs, i))
 		oppN++
 	}
 	if oppN == 0 {
-		return myHand / 7.0
+		return myHand/7.0 + myEngines*0.4 + myCastExile*0.3
 	}
 	avgHand := oppHand / float64(oppN)
 	avgLib := oppLib / float64(oppN)
+	avgEngines := oppEngines / float64(oppN)
+	avgCastExile := oppCastExile / float64(oppN)
 
-	return (myHand - avgHand) / 4.0 + (myLib - avgLib) / 40.0
+	return (myHand-avgHand)/4.0 +
+		(myLib-avgLib)/40.0 +
+		(myEngines-avgEngines)*0.4 +
+		(myCastExile-avgCastExile)*0.3
+}
+
+// drawEngineCredit estimates the seat's virtual cards-per-turn from
+// persistent draw engines on its battlefield (Rhystic Study, Phyrexian
+// Arena, Mystic Remora, Esper Sentinel, Sylvan Library, Howling Mine,
+// Mind's Eye, ...). Each detected engine contributes 1.0. Capped at 4
+// to bound stax/wheel-board outliers.
+func drawEngineCredit(seat *gameengine.Seat) float64 {
+	if seat == nil {
+		return 0
+	}
+	n := 0
+	for _, p := range seat.Battlefield {
+		if !isPersistentDrawEngine(p) {
+			continue
+		}
+		n++
+		if n >= 4 {
+			break
+		}
+	}
+	return float64(n)
+}
+
+// isPersistentDrawEngine returns true when perm's oracle text indicates
+// a recurring controller-facing card-draw payoff. The three matched
+// shapes — "additional card", upkeep-cadenced draw, and whenever-X you
+// (may) draw a card — cover the bulk of Commander draw enchantments,
+// artifacts, and Esper-Sentinel-style creatures. One-shot ETB drawers
+// (Elvish Visionary's "when ~ enters, you draw a card") are
+// intentionally excluded — they require the "whenever" / upkeep cue.
+func isPersistentDrawEngine(p *gameengine.Permanent) bool {
+	if p == nil || p.Card == nil {
+		return false
+	}
+	ot := gameengine.OracleTextLower(p.Card)
+	if ot == "" {
+		return false
+	}
+	if strings.Contains(ot, "additional card") {
+		return true
+	}
+	if strings.Contains(ot, "at the beginning of your upkeep") &&
+		(strings.Contains(ot, "you draw") || strings.Contains(ot, "draw a card")) {
+		return true
+	}
+	if strings.Contains(ot, "whenever") &&
+		(strings.Contains(ot, "you draw a card") || strings.Contains(ot, "you may draw a card")) {
+		return true
+	}
+	return false
+}
+
+// castableExileCount counts cards in seat's exile zone that the seat
+// can still cast as a spell via a ZoneCastGrants entry whose Zone is
+// "exile" and whose RequireController matches (or is -1 = owner-cast,
+// which we honor when the card's owner is this seat). Covers foretell,
+// plot, suspend-resolves-to-cast, Misthollow Griffin / Squee, and "may
+// cast from exile" grants such as Light Up the Stage, Prosper, Faldorn.
+func castableExileCount(gs *gameengine.GameState, seatIdx int) int {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return 0
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil || len(seat.Exile) == 0 || gs.ZoneCastGrants == nil {
+		return 0
+	}
+	n := 0
+	for _, c := range seat.Exile {
+		if c == nil {
+			continue
+		}
+		perm, ok := gs.ZoneCastGrants[c]
+		if !ok || perm == nil || perm.Zone != "exile" {
+			continue
+		}
+		if perm.RequireController == seatIdx ||
+			(perm.RequireController == -1 && c.Owner == seatIdx) {
+			n++
+		}
+	}
+	return n
 }
 
 // scoreMana: mana source count relative to average, plus color coverage.
