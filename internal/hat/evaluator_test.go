@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hexdek/hexdek/internal/gameast"
+	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
 func TestEvaluator_LostSeatReturnsNeg1(t *testing.T) {
@@ -133,6 +134,134 @@ func TestEvaluator_ComboProximity(t *testing.T) {
 	}
 	if r2.ComboProximity < 1.5 {
 		t.Errorf("full combo should score at least 1.5, got %f", r2.ComboProximity)
+	}
+}
+
+// TestEvaluator_ComboProximity_ClassAffinity verifies that scoreCombo
+// damps off-class plans relative to plans matching the deck's primary
+// combo class. Scenario: a deck with three drain-class plans and one
+// off-class infinite_token plan. Holding pieces of a drain plan should
+// outscore holding equivalent piece-count of the infinite_token plan.
+//
+// Why the test matters: prior to R60, scoreCombo took max(ratio) across
+// all plans regardless of class. A deck whose primary line is drain
+// would score an opportunistic Kiki-Jiki sighting (1/2 of the token
+// plan) equal to a Sanguine Bond sighting (1/2 of a drain plan). Class
+// affinity makes the drain piece score higher, biasing decisions toward
+// the deck's intended line.
+func TestEvaluator_ComboProximity_ClassAffinity(t *testing.T) {
+	mkGame := func() *gameengine.GameState {
+		gs := newTestGame(t, 2)
+		gs.Seats[0].Life = 40
+		gs.Seats[0].StartingLife = 40
+		gs.Seats[1].Life = 40
+		gs.Seats[1].StartingLife = 40
+		return gs
+	}
+
+	// Deck shape: three drain plans + one off-class token plan. By
+	// PrimaryComboClass() math, infinite_drain is the dominant class
+	// (count=3 vs token=1).
+	sp := &StrategyProfile{
+		Archetype: ArchetypeCombo,
+		ComboPieces: []ComboPlan{
+			{Pieces: []string{"Exquisite Blood", "Sanguine Bond"}, Type: "infinite", Class: "infinite_drain"},
+			{Pieces: []string{"Exquisite Blood", "Vito, Thorn of the Dusk Rose"}, Type: "infinite", Class: "infinite_drain"},
+			{Pieces: []string{"Exquisite Blood", "Defiant Bloodlord"}, Type: "infinite", Class: "infinite_drain"},
+			{Pieces: []string{"Kiki-Jiki, Mirror Breaker", "Zealous Conscripts"}, Type: "infinite", Class: "infinite_tokens"},
+		},
+	}
+	if got := sp.PrimaryComboClass(); got != "infinite_drain" {
+		t.Fatalf("PrimaryComboClass: want infinite_drain, got %q", got)
+	}
+	ev := NewEvaluator(sp)
+
+	// On-class scenario: hold one drain piece (Sanguine Bond).
+	gsOn := mkGame()
+	gsOn.Seats[0].Hand = append(gsOn.Seats[0].Hand,
+		newTestCardMinimal("Sanguine Bond", []string{"enchantment"}, 5, nil))
+	onClass := ev.EvaluateDetailed(gsOn, 0).ComboProximity
+
+	// Off-class scenario: hold one token piece (Kiki-Jiki).
+	gsOff := mkGame()
+	gsOff.Seats[0].Hand = append(gsOff.Seats[0].Hand,
+		newTestCardMinimal("Kiki-Jiki, Mirror Breaker", []string{"creature"}, 5, nil))
+	offClass := ev.EvaluateDetailed(gsOff, 0).ComboProximity
+
+	if onClass <= offClass {
+		t.Errorf("on-class drain piece (%.3f) should outscore off-class token piece (%.3f)",
+			onClass, offClass)
+	}
+	// Damping factor is 0.7 in evaluator.go; the on/off ratio should be
+	// roughly 1/0.7 ≈ 1.43. Allow some slack but reject pathological
+	// drift (no damping = 1.0, full block = 0.0).
+	if ratio := onClass / offClass; ratio < 1.3 || ratio > 1.6 {
+		t.Errorf("on/off ratio %.3f outside expected damping band [1.3, 1.6]", ratio)
+	}
+}
+
+// TestStrategyProfile_PrimaryComboClass covers the tie-break and
+// fallback paths for PrimaryComboClass — every-class-unique returns
+// empty, classless plans return empty, the dominant class wins.
+func TestStrategyProfile_PrimaryComboClass(t *testing.T) {
+	cases := []struct {
+		name  string
+		plans []ComboPlan
+		want  string
+	}{
+		{
+			"empty profile",
+			nil,
+			"",
+		},
+		{
+			"single plan — no dominant class possible",
+			[]ComboPlan{{Pieces: []string{"A", "B"}, Class: "infinite_drain"}},
+			"",
+		},
+		{
+			"all plans share one class",
+			[]ComboPlan{
+				{Pieces: []string{"A", "B"}, Class: "infinite_mana"},
+				{Pieces: []string{"C", "D"}, Class: "infinite_mana"},
+				{Pieces: []string{"E", "F"}, Class: "infinite_mana"},
+			},
+			"infinite_mana",
+		},
+		{
+			"three drain vs one token — drain wins",
+			[]ComboPlan{
+				{Pieces: []string{"A", "B"}, Class: "infinite_drain"},
+				{Pieces: []string{"C", "D"}, Class: "infinite_drain"},
+				{Pieces: []string{"E", "F"}, Class: "infinite_drain"},
+				{Pieces: []string{"G", "H"}, Class: "infinite_tokens"},
+			},
+			"infinite_drain",
+		},
+		{
+			"every plan in its own class — no dominant",
+			[]ComboPlan{
+				{Pieces: []string{"A", "B"}, Class: "infinite_mana"},
+				{Pieces: []string{"C", "D"}, Class: "infinite_drain"},
+				{Pieces: []string{"E", "F"}, Class: "infinite_tokens"},
+			},
+			"",
+		},
+		{
+			"all plans classless — no dominant",
+			[]ComboPlan{
+				{Pieces: []string{"A", "B"}, Class: ""},
+				{Pieces: []string{"C", "D"}, Class: ""},
+			},
+			"",
+		},
+	}
+	for _, tc := range cases {
+		sp := &StrategyProfile{ComboPieces: tc.plans}
+		got := sp.PrimaryComboClass()
+		if got != tc.want {
+			t.Errorf("%s: want %q got %q", tc.name, tc.want, got)
+		}
 	}
 }
 

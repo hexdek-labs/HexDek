@@ -118,6 +118,7 @@ type CardProfile struct {
 type ComboResult struct {
 	Cards            []string
 	LoopType         string // "determined", "true_infinite", "finisher", "synergy"
+	Class            string // ComboClass* — what the combo PRODUCES (infinite_mana, infinite_drain, library_exile_win, etc.); empty for heuristic-detected combos until ClassifyComboHeuristic runs.
 	Resources        string // what the loop produces
 	Description      string
 	Confirmed        bool // true if matched from KnownCombos database
@@ -1348,6 +1349,7 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 		combo := ComboResult{
 			Cards:       known.Pieces,
 			LoopType:    known.Type,
+			Class:       known.Class,
 			Description: known.Description,
 			Confirmed:   true,
 		}

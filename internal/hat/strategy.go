@@ -140,12 +140,56 @@ type ComboPlan struct {
 	// Pieces are the card names required for this combo.
 	Pieces []string
 
-	// Type is the combo classification: "infinite", "determined", "finisher".
+	// Type is the loop semantics: "infinite", "determined", "finisher".
 	Type string
+
+	// Class is the combo's production class (Freya's ComboClass*):
+	// infinite_mana / infinite_drain / library_exile_win / ... — empty
+	// when the source strategy.json predates the class hierarchy or
+	// when the line is a non-combo finisher (combat damage).
+	Class string
 
 	// CastOrder is the preferred casting sequence. The first element
 	// should be cast/resolved first. If empty, falls back to Pieces order.
 	CastOrder []string
+}
+
+// PrimaryComboClass returns the deck's dominant combo class — the class
+// with the most ComboPlans in this profile. Returns empty string when
+// the deck has fewer than 2 classed plans (no meaningful "primary",
+// every plan is its own class) or when all plans share no class at all.
+//
+// Used by the hat evaluator (scoreCombo) to bias ComboProximity toward
+// pieces of plans that match the deck's primary class — a combo deck
+// with three drain win lines and one off-class infinite_token plan
+// should not weight a random Kiki-Jiki sighting as equal to a Sanguine
+// Bond sighting.
+func (sp *StrategyProfile) PrimaryComboClass() string {
+	if sp == nil || len(sp.ComboPieces) < 2 {
+		return ""
+	}
+	counts := map[string]int{}
+	for _, cp := range sp.ComboPieces {
+		if cp.Class == "" {
+			continue
+		}
+		counts[cp.Class]++
+	}
+	bestClass := ""
+	bestCount := 0
+	for class, n := range counts {
+		if n > bestCount {
+			bestClass = class
+			bestCount = n
+		}
+	}
+	// Need at least 2 plans of the same class to qualify as "primary"
+	// — a single classified plan is just one signal, not a dominant
+	// direction.
+	if bestCount < 2 {
+		return ""
+	}
+	return bestClass
 }
 
 // comboPlansToKnownCombos converts ComboPlan entries into comboPair format

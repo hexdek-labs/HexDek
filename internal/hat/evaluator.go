@@ -483,6 +483,17 @@ func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) fl
 
 // scoreCombo: how close we are to assembling a combo. 1.0 = all pieces
 // in hand/battlefield, scaled down by missing pieces.
+//
+// When the deck has a primary combo class (>=2 ComboPlans share a
+// class), on-class plans score their piece-presence ratio at full
+// weight; off-class plans are dampened to 0.7x. The damping keeps
+// off-class plans relevant (a complete off-class plan still beats a
+// half-assembled on-class plan) without letting an opportunistic
+// off-class piece pull the deck off its primary line.
+//
+// Plans with empty Class always score at full weight — Class is a
+// post-hoc tag and the scorer must remain useful for unclassified
+// or legacy strategy.json files.
 func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) float64 {
 	if e.Strategy == nil || len(e.Strategy.ComboPieces) == 0 {
 		return e.scoreComboHardcoded(gs, seatIdx)
@@ -501,6 +512,9 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 		}
 	}
 
+	primaryClass := e.Strategy.PrimaryComboClass()
+	const offClassDamping = 0.7
+
 	bestRatio := 0.0
 	for _, cp := range e.Strategy.ComboPieces {
 		if len(cp.Pieces) == 0 {
@@ -513,6 +527,13 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 			}
 		}
 		ratio := float64(found) / float64(len(cp.Pieces))
+		// Off-class damping: when the deck has a primary class and this
+		// plan is in a different class, scale the contribution. Plans
+		// without a Class tag (legacy / unclassified) always score full
+		// weight.
+		if primaryClass != "" && cp.Class != "" && cp.Class != primaryClass {
+			ratio *= offClassDamping
+		}
 		if ratio > bestRatio {
 			bestRatio = ratio
 		}
