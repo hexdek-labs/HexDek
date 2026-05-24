@@ -1628,6 +1628,35 @@ func FindLoops(profiles []CardProfile) []ComboResult {
 		}
 	}
 
+	// Check all quadruples -- C(100,4) = 3.9M is too slow against the full
+	// deck, so prefilter to candidates that participate in resource flow
+	// (non-empty Produces AND non-empty Consumes). A typical EDH deck yields
+	// 20-50 such candidates; combo-heavy decks ~60. We cap at 70 to bound
+	// worst-case runtime; beyond that, drop 4-card detection rather than
+	// degrade analysis latency. See docs/freya-4card-runtime.md for the
+	// tradeoff analysis.
+	if len(profiles) <= 120 {
+		var candidates []CardProfile
+		for _, p := range profiles {
+			if len(p.Produces) > 0 && len(p.Consumes) > 0 {
+				candidates = append(candidates, p)
+			}
+		}
+		if len(candidates) <= 70 {
+			for i := 0; i < len(candidates); i++ {
+				for j := i + 1; j < len(candidates); j++ {
+					for k := j + 1; k < len(candidates); k++ {
+						for l := k + 1; l < len(candidates); l++ {
+							if combo := checkQuadCombo(candidates[i], candidates[j], candidates[k], candidates[l]); combo != nil {
+								results = append(results, *combo)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return results
 }
 
@@ -1954,6 +1983,72 @@ func tryTripleCycle(a, b, c CardProfile) *ComboResult {
 	}
 
 	return nil
+}
+
+// checkQuadCombo enumerates all 24 permutations of {a,b,c,d} and checks each
+// for a 4-card directed cycle. Mathematically the 24 input orderings reduce
+// to 3 distinct directed 4-cycles (each cycle has 4 rotations × 2 directions
+// = 8 redundant orderings, 24/8 = 3), but exhaustive enumeration is defense
+// in depth — same rationale as the r59 triple-combo fix that lifted
+// coverage from 2/6 to 6/6 permutations. The nested distinct-index loops
+// generate exactly 4! = 24 orderings by construction (4 × 3 × 2 × 1), so
+// there is no hand-maintained permutation table to drift.
+func checkQuadCombo(a, b, c, d CardProfile) *ComboResult {
+	cards := [4]CardProfile{a, b, c, d}
+	for i := 0; i < 4; i++ {
+		for j := 0; j < 4; j++ {
+			if j == i {
+				continue
+			}
+			for k := 0; k < 4; k++ {
+				if k == i || k == j {
+					continue
+				}
+				for l := 0; l < 4; l++ {
+					if l == i || l == j || l == k {
+						continue
+					}
+					if combo := tryQuadCycle(cards[i], cards[j], cards[k], cards[l]); combo != nil {
+						return combo
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func tryQuadCycle(a, b, c, d CardProfile) *ComboResult {
+	abFlow := resourceOverlap(a.Produces, b.Consumes)
+	bcFlow := resourceOverlap(b.Produces, c.Consumes)
+	cdFlow := resourceOverlap(c.Produces, d.Consumes)
+	daFlow := resourceOverlap(d.Produces, a.Consumes)
+
+	if len(abFlow) == 0 || len(bcFlow) == 0 || len(cdFlow) == 0 || len(daFlow) == 0 {
+		return nil
+	}
+	if !isInterestingLoop(abFlow) && !isInterestingLoop(bcFlow) &&
+		!isInterestingLoop(cdFlow) && !isInterestingLoop(daFlow) {
+		return nil
+	}
+
+	loopType := classifyLoop(a, b, c, d)
+	combo := &ComboResult{
+		Cards:    []string{a.Name, b.Name, c.Name, d.Name},
+		LoopType: loopType,
+		Resources: fmt.Sprintf("%v -> %v -> %v -> %v -> loop",
+			resourceNames(abFlow), resourceNames(bcFlow),
+			resourceNames(cdFlow), resourceNames(daFlow)),
+		Description: fmt.Sprintf("%s -> %s -> %s -> %s -> loop (%v -> %v -> %v -> %v)",
+			a.Name, b.Name, c.Name, d.Name,
+			resourceNames(abFlow), resourceNames(bcFlow),
+			resourceNames(cdFlow), resourceNames(daFlow)),
+	}
+	if a.HasRandomSelection || b.HasRandomSelection ||
+		c.HasRandomSelection || d.HasRandomSelection {
+		combo.NonDeterministic = true
+	}
+	return combo
 }
 
 // isInterestingLoop returns true if a resource overlap contains something
