@@ -141,6 +141,13 @@ func (r *TournamentResult) WriteMarkdown(path string) error {
 		}
 	}
 
+	// Notable Rivalries — surface the most lopsided pairwise matchups
+	// from the Matchup Matrix as a ranked, sample-size-filtered list.
+	// The matrix is exhaustive but hard to scan; this section highlights
+	// "A over-performs vs B" / "A under-performs vs B" entries that pass
+	// a Wilson 95% CI significance check against A's baseline winrate.
+	WriteRivalriesSection(&b, r, DefaultRivalryOptions(), 20)
+
 	b.WriteString("\n## Elimination Matrix\n\n")
 	b.WriteString("Rows = commander, columns = elimination slot (0 = first out, N-1 = winner).\n\n")
 	b.WriteString("| Commander |")
