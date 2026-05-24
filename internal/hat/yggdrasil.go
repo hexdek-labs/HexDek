@@ -5474,10 +5474,16 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 	// skips the expensive relativePosition call entirely.
 	seat := gs.Seats[seatIdx]
 	var bestCounter *gameengine.Card
-	avail := gameengine.AvailableManaEstimate(gs, seat)
+	// R60 color-aware mana gate: a Counterspell {U}{U} needs blue, not
+	// just generic. CanPayColoredCost folds the seat's untapped lands
+	// (mono-color → Fixed, dual → Flex bitmask) plus current pool into a
+	// greedy match against the card's printed pip cost. Falls through to
+	// the legacy generic-CMC check via Total when ManaCostString is empty
+	// (engine-minted cards / tests without printed costs still work).
+	colored := gameengine.AvailableColoredManaEstimate(gs, seat)
 	for _, c := range seat.Hand {
 		if c != nil && gameengine.CardHasCounterSpell(c) {
-			if avail >= gameengine.ManaCostOf(c) {
+			if gameengine.CanPayColoredCost(colored, c) {
 				bestCounter = c
 				break
 			}
@@ -5666,12 +5672,15 @@ func (h *YggdrasilHat) maybeCastDefensiveAnswer(gs *gameengine.GameState, seatId
 	if incoming < seat.Life {
 		return nil
 	}
-	avail := gameengine.AvailableManaEstimate(gs, seat)
+	// R60 color-aware check: Fog {G} needs green; Heroic Intervention
+	// {1}{G} needs at least one green plus one of anything. The generic
+	// ManaCostOf gate let a colorless-only pool false-positive these.
+	colored := gameengine.AvailableColoredManaEstimate(gs, seat)
 	for _, c := range seat.Hand {
 		if c == nil {
 			continue
 		}
-		if avail < gameengine.ManaCostOf(c) {
+		if !gameengine.CanPayColoredCost(colored, c) {
 			continue
 		}
 		if !isDefensiveInstantSpell(c) {
