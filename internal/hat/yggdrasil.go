@@ -3250,6 +3250,49 @@ func (h *YggdrasilHat) ChooseLandToPlay(gs *gameengine.GameState, seatIdx int, l
 		}
 	}
 
+	// Mana-curve "dead next turn" detection: is there a non-land card
+	// in hand we could realistically cast at avail+1 mana? If not, an
+	// ETB-tapped land costs no tempo this turn (we weren't deploying
+	// anyway) — soften the penalty so a color-fixer or utility land
+	// gets played over a basic when the immediate-tempo cost is zero.
+	deadNextTurn := true
+	for _, c := range seat.Hand {
+		if c == nil {
+			continue
+		}
+		isLand := false
+		for _, t := range c.Types {
+			if t == "land" {
+				isLand = true
+				break
+			}
+		}
+		if isLand {
+			continue
+		}
+		if gameengine.ManaCostOf(c) <= availMana {
+			deadNextTurn = false
+			break
+		}
+	}
+
+	// Archetype shapes how harshly tempo loss bites. Aggro and combo
+	// need to deploy on schedule; control and ramp can stomach a tapped
+	// land. Multiplier rides on top of the early/late turn penalty.
+	tappedMul := 1.0
+	if h.Strategy != nil {
+		switch h.Strategy.Archetype {
+		case ArchetypeAggro:
+			tappedMul = 1.5
+		case ArchetypeCombo:
+			tappedMul = 1.2
+		case ArchetypeControl:
+			tappedMul = 0.5
+		case ArchetypeRamp:
+			tappedMul = 0.7
+		}
+	}
+
 	type scored struct {
 		card  *gameengine.Card
 		score float64
@@ -3276,11 +3319,18 @@ func (h *YggdrasilHat) ChooseLandToPlay(gs *gameengine.GameState, seatIdx int, l
 
 		// Enters-tapped penalty — untapped lands are better early game.
 		if strings.Contains(ot, "enters tapped") || strings.Contains(ot, "enters the battlefield tapped") {
-			if gs.Turn <= 4 {
-				sc -= 2.0
-			} else {
-				sc -= 0.5
+			base := 2.0
+			if gs.Turn > 4 {
+				base = 0.5
 			}
+			// Dead-next-turn override: collapse the early penalty to
+			// the late-game floor when there's nothing to cast at
+			// avail+1 anyway. Tempo loss is the only reason ETB-tapped
+			// is bad early; no tempo to lose means no penalty to apply.
+			if deadNextTurn && gs.Turn <= 4 {
+				base = 0.5
+			}
+			sc -= base * tappedMul
 		}
 
 		// Utility land bonus.
