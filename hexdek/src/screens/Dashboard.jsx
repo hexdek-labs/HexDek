@@ -199,7 +199,9 @@ export default function Dashboard() {
     throughput: [],
   } : { activeForges: 0, totalGames: 0, gamesPerMin: 0, userContrib: 0, userRank: 'LOCAL', throughput: [] }
   const elo = rawElo || []
-  const userOwner = user ? (localStorage.getItem('hexdek_owner') || user.displayName?.toLowerCase() || user.email?.split('@')[0]?.split('.')[0] || '') : ''
+  let storedOwner = ''
+  try { storedOwner = localStorage.getItem('hexdek_owner') || '' } catch {}
+  const userOwner = user ? (storedOwner || user.displayName?.toLowerCase() || user.email?.split('@')[0]?.split('.')[0] || '') : ''
   const [ownerFilter, setOwnerFilter] = useState('')
   const [activeDeck, setActiveDeck] = useState(null)
   const [showImport, setShowImport] = useState(false)

@@ -4,6 +4,7 @@ import { Crops } from './chrome'
 import SearchBar from './SearchBar'
 import { ToastHost } from './Toast'
 import ReconnectBanner from './ReconnectBanner'
+import LazyBoundary from './LazyBoundary'
 import { useAuth } from '../context/AuthContext'
 import { useLiveSocket } from '../hooks/useLiveSocket'
 import { useTranslation } from '../i18n'
@@ -111,7 +112,9 @@ export default function AppShell() {
         </div>
 
         <div style={{ flex: 1, overflow: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <Outlet />
+          <LazyBoundary>
+            <Outlet />
+          </LazyBoundary>
         </div>
 
         <div className="statusbar" style={{ flexDirection: 'column', gap: 0, padding: 0 }}>
