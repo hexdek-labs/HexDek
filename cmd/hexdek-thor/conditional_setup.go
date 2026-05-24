@@ -920,6 +920,34 @@ const (
 	condScaffoldFullParty               // Zendikar Rising full party (4 distinct classes)
 	condScaffoldTotalToughness          // "creatures you control have total toughness N+"
 	condScaffoldMainPhaseOrFirstCombat  // "it's your main phase" / "first combat phase"
+
+	// Era 1 R60 sweep — 19 new scaffolds bridging the dominant pre-Modern
+	// raw-text gaps surfaced by scripts/era1_scaffold_audit.py. Each maps to
+	// existing engine state (no new fields required); the top clusters are
+	// tribute (KTK)/bargain (WOE) alt-cost gates, "you cast it from hand",
+	// colored-mana-spent ({R}{R}/{G}{G}/{U}{U} cast-cost predicates),
+	// life-comparison forms (you-more / opp-more / above-starting), suspend /
+	// time-counter checks, and per-source state predicates (untapped /
+	// no-counter / wasnt-cast / wasnt-blocking / damage-taken).
+	condScaffoldTributeNotPaid           // "tribute wasn't paid" — KTK tribute alt-cost
+	condScaffoldBargained                // "it was bargained" — WOE bargain alt-cost
+	condScaffoldSharesCreatureType       // "if it shares a creature type with ~" tribal-reveal
+	condScaffoldNotTheirTurn             // "it's not their turn" — off-turn predicate
+	condScaffoldMoreLifeThanOpponent     // "you have more life than an opponent" / inverse
+	condScaffoldTimeCounterOnSelf        // "had no time counters on it" — suspend post-state
+	condScaffoldWasntCast                // "it wasn't cast" — token / put-onto-battlefield path
+	condScaffoldLostLifeLastTurn         // "you lost life last turn" — last-turn life delta
+	condScaffoldDamageDealtToSelfTurn    // "N or more damage was dealt to it this turn"
+	condScaffoldMoreCardsThanOpponents   // "you have more cards in hand than each opponent"
+	condScaffoldSelfIsUntapped           // "this creature is untapped" — mirror of self_is_tapped
+	condScaffoldSelfHasNoCounter         // "has no <kind> counters on it" — negative counter check
+	condScaffoldSurgeCostPaid            // "its surge cost was paid" — EMN surge alt-cost
+	condScaffoldLibraryEmpty             // "your library has no cards in it" — Jace win-con
+	condScaffoldColoredManaSpent         // "{R}{R}/{G}{G}/{U}{U}/{R} was spent to cast it"
+	condScaffoldSelfIsSuspended          // "this card is suspended" — exile suspend state
+	condScaffoldLifeAboveStarting        // "life total is greater than your starting life total"
+	condScaffoldOpponentMoreLife         // "an opponent has more life than you"
+	condScaffoldWasntBlocking            // "it wasn't blocking" — combat exit predicate
 )
 
 type conditionScaffold struct {
@@ -1115,6 +1143,73 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		return conditionScaffold{kind: condScaffoldItWasCreature}
 	case "no_creatures_on_battlefield":
 		return conditionScaffold{kind: condScaffoldNoCreaturesOnBattlefield}
+
+	// Era 1 R60 sweep — structured-Kind dispatch for the 19 new scaffolds.
+	// Most arrive as raw/intervening_if (handled by the text patterns below),
+	// but the parser occasionally surfaces them as named Kinds; route here so
+	// either shape resolves the same scaffold.
+	case "tribute_not_paid", "tribute_wasnt_paid":
+		return conditionScaffold{kind: condScaffoldTributeNotPaid}
+	case "bargained", "was_bargained":
+		return conditionScaffold{kind: condScaffoldBargained}
+	case "shares_creature_type":
+		out := conditionScaffold{kind: condScaffoldSharesCreatureType, subtype: "elf"}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToLower(strings.TrimSpace(s))
+			}
+		}
+		return out
+	case "not_their_turn", "not_your_turn":
+		return conditionScaffold{kind: condScaffoldNotTheirTurn}
+	case "more_life_than_opponent", "you_more_life":
+		return conditionScaffold{kind: condScaffoldMoreLifeThanOpponent}
+	case "no_time_counters", "time_counter_on_self":
+		return conditionScaffold{kind: condScaffoldTimeCounterOnSelf}
+	case "wasnt_cast":
+		return conditionScaffold{kind: condScaffoldWasntCast}
+	case "lost_life_last_turn":
+		return conditionScaffold{kind: condScaffoldLostLifeLastTurn}
+	case "damage_dealt_to_self_this_turn", "damage_taken_this_turn":
+		out := conditionScaffold{kind: condScaffoldDamageDealtToSelfTurn, count: 4}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "more_cards_in_hand_than_opponents", "more_cards_than_each_opponent":
+		return conditionScaffold{kind: condScaffoldMoreCardsThanOpponents}
+	case "self_is_untapped":
+		return conditionScaffold{kind: condScaffoldSelfIsUntapped}
+	case "self_has_no_counter", "no_named_counter":
+		out := conditionScaffold{kind: condScaffoldSelfHasNoCounter, subtype: "oil"}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToLower(strings.TrimSpace(s))
+			}
+		}
+		return out
+	case "surge_cost_paid":
+		return conditionScaffold{kind: condScaffoldSurgeCostPaid}
+	case "library_empty":
+		return conditionScaffold{kind: condScaffoldLibraryEmpty}
+	case "colored_mana_spent":
+		out := conditionScaffold{kind: condScaffoldColoredManaSpent, subtype: "R", count: 1}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToUpper(strings.TrimSpace(s))
+			}
+		}
+		return out
+	case "self_is_suspended":
+		return conditionScaffold{kind: condScaffoldSelfIsSuspended}
+	case "life_above_starting":
+		return conditionScaffold{kind: condScaffoldLifeAboveStarting}
+	case "opponent_more_life":
+		return conditionScaffold{kind: condScaffoldOpponentMoreLife}
+	case "wasnt_blocking":
+		return conditionScaffold{kind: condScaffoldWasntBlocking}
 	}
 
 	switch kind {
@@ -1723,6 +1818,277 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		!strings.Contains(txt, "isn't on the battlefield") &&
 		!strings.Contains(txt, "is not on the battlefield") {
 		cs.kind = condScaffoldStillOnBattlefield
+		return cs
+	}
+
+	// Era 1 R60 sweep — raw-text matchers for the 19 pre-Modern scaffolds.
+	// Ordered most-specific first; phrases that overlap downstream matchers
+	// (e.g. "life total" / "lost life" / "cards in hand") are pinned here so
+	// the broader life/hand/cast catches don't eat them.
+
+	// Tribute (KTK) — "tribute wasn't paid" / "if tribute was paid". Anchor
+	// on the explicit "tribute" noun so we don't false-match Tributary Sage
+	// flavor text. Cards: Ornitharch, Nessian Demolok, Pharagax Giant.
+	if strings.Contains(txt, "tribute wasn't paid") ||
+		strings.Contains(txt, "tribute was paid") ||
+		(strings.Contains(txt, "tribute") &&
+			(strings.Contains(txt, "wasn't paid") || strings.Contains(txt, "was paid"))) {
+		cs.kind = condScaffoldTributeNotPaid
+		return cs
+	}
+
+	// Bargain (WOE) — "it was bargained". Trigger fires when the source was
+	// cast with bargain. Cards: Troublemaker Ouphe, Realm-Scorcher Hellkite,
+	// High Fae Negotiator.
+	if strings.Contains(txt, "it was bargained") ||
+		strings.Contains(txt, "if it was bargained") ||
+		strings.Contains(txt, "this spell was bargained") {
+		cs.kind = condScaffoldBargained
+		return cs
+	}
+
+	// Shares creature type — "if it shares a creature type with this
+	// creature". Tribal-reveal pattern: Sensation Gorger, Ink Dissolver,
+	// Squeaking Pie Grubfellows, Leaf-Crowned Elder, Wandering Graybeard.
+	// Anchor on the full noun phrase so generic "shares a type" doesn't
+	// false-match.
+	if strings.Contains(txt, "shares a creature type") {
+		cs.kind = condScaffoldSharesCreatureType
+		cs.subtype = "goblin"
+		// Try to lift a subtype hint from the surrounding tribal clause.
+		if m := rawTribalRe.FindStringSubmatch(txt); len(m) > 1 && !isGenericWord(m[1]) {
+			cs.subtype = m[1]
+		}
+		return cs
+	}
+
+	// Suspend post-state — "had no time counters on it" (Deadly Grub,
+	// Chronozoa). Pre-empts the generic counter / had-counters matcher
+	// because the engine reads the "time" counter via the suspend zone, not
+	// via the +1/+1 path.
+	if strings.Contains(txt, "no time counters") ||
+		strings.Contains(txt, "had no time counters") {
+		cs.kind = condScaffoldTimeCounterOnSelf
+		return cs
+	}
+
+	// Suspended state — "this card is suspended" (Deep-Sea Kraken, Nihilith).
+	// Distinct from the above (post-state vs current-state).
+	if strings.Contains(txt, "this card is suspended") ||
+		strings.Contains(txt, "while it's suspended") ||
+		strings.Contains(txt, "while suspended") {
+		cs.kind = condScaffoldSelfIsSuspended
+		return cs
+	}
+
+	// "you cast it from your hand" already matched above by YouCastFromHand.
+	// This block catches "it wasn't cast" — the inverse predicate that fires
+	// on token / put-onto-battlefield paths (Rapid Augmenter, Preston, the
+	// Vanisher, Mirror of Life Trapping, Anti-Venom).
+	if strings.Contains(txt, "it wasn't cast") ||
+		strings.Contains(txt, "wasn't cast") ||
+		strings.Contains(txt, "he wasn't cast") ||
+		strings.Contains(txt, "she wasn't cast") ||
+		strings.Contains(txt, "they weren't cast") {
+		cs.kind = condScaffoldWasntCast
+		return cs
+	}
+
+	// "it wasn't blocking" — combat exit predicate (Guildsworn Prowler).
+	if strings.Contains(txt, "it wasn't blocking") ||
+		strings.Contains(txt, "wasn't blocking") ||
+		strings.Contains(txt, "wasn't being blocked by") {
+		cs.kind = condScaffoldWasntBlocking
+		return cs
+	}
+
+	// Surge (EMN) — "if its surge cost was paid" (Reckless Bushwhacker,
+	// Tyrant of Valakut). Conceptual alt-cost cousin of kicker; we keep it
+	// as a distinct scaffold so the trace shows the actual mechanic.
+	if strings.Contains(txt, "surge cost was paid") ||
+		strings.Contains(txt, "its surge cost was paid") ||
+		strings.Contains(txt, "if surge cost was paid") {
+		cs.kind = condScaffoldSurgeCostPaid
+		return cs
+	}
+
+	// Library empty — "your library has no cards in it" (Jace, Wielder of
+	// Mysteries; Stillness in Motion). Win-con / mill predicate. Anchor on
+	// "no cards" + "library" so we don't match "your library is empty"
+	// metaphor in flavor text.
+	if (strings.Contains(txt, "no cards in") && strings.Contains(txt, "library")) ||
+		strings.Contains(txt, "library has no cards") ||
+		strings.Contains(txt, "library is empty") {
+		cs.kind = condScaffoldLibraryEmpty
+		return cs
+	}
+
+	// Colored mana spent to cast — "{R}{R}/{G}{G}/{U}{U}/{R} was spent to
+	// cast it" (Vibrance, Catharsis, Wistfulness, Deceit, Gruul Scrapper,
+	// Steamcore Weird). Distinct from generic mana_spent because we need
+	// a specific colored payment, not just CMC≥N.
+	if (strings.Contains(txt, "was spent to cast") ||
+		strings.Contains(txt, "spent to cast it")) &&
+		(strings.Contains(txt, "{r}") || strings.Contains(txt, "{g}") ||
+			strings.Contains(txt, "{u}") || strings.Contains(txt, "{b}") ||
+			strings.Contains(txt, "{w}") || strings.Contains(txt, "{c}") ||
+			strings.Contains(txt, "mana from a treasure")) {
+		cs.kind = condScaffoldColoredManaSpent
+		switch {
+		case strings.Contains(txt, "{r}{r}"):
+			cs.subtype = "RR"
+			cs.count = 2
+		case strings.Contains(txt, "{g}{g}"):
+			cs.subtype = "GG"
+			cs.count = 2
+		case strings.Contains(txt, "{u}{u}"):
+			cs.subtype = "UU"
+			cs.count = 2
+		case strings.Contains(txt, "{b}{b}"):
+			cs.subtype = "BB"
+			cs.count = 2
+		case strings.Contains(txt, "{w}{w}"):
+			cs.subtype = "WW"
+			cs.count = 2
+		case strings.Contains(txt, "mana from a treasure"):
+			cs.subtype = "treasure"
+			cs.count = 1
+		case strings.Contains(txt, "{r}"):
+			cs.subtype = "R"
+			cs.count = 1
+		case strings.Contains(txt, "{g}"):
+			cs.subtype = "G"
+			cs.count = 1
+		case strings.Contains(txt, "{u}"):
+			cs.subtype = "U"
+			cs.count = 1
+		case strings.Contains(txt, "{b}"):
+			cs.subtype = "B"
+			cs.count = 1
+		case strings.Contains(txt, "{w}"):
+			cs.subtype = "W"
+			cs.count = 1
+		default:
+			cs.subtype = "C"
+			cs.count = 1
+		}
+		return cs
+	}
+
+	// Lost life last turn — "you lost life last turn" (First Response,
+	// Paladin of Atonement). Distinct from LifeLostThisTurn: the prior-turn
+	// snapshot lives on Seat.Flags, not Turn.LifeLost.
+	if strings.Contains(txt, "lost life last turn") ||
+		(strings.Contains(txt, "last turn") &&
+			(strings.Contains(txt, "lost life") || strings.Contains(txt, "lose life"))) {
+		cs.kind = condScaffoldLostLifeLastTurn
+		return cs
+	}
+
+	// Damage dealt to source this turn — "N or more damage was dealt to it
+	// this turn" (Burning-Eye Zubera, Rushing-Tide Zubera). Per-source
+	// MarkedDamage / damage_taken counter.
+	if (strings.Contains(txt, "damage was dealt to it") ||
+		strings.Contains(txt, "damage was dealt to this") ||
+		strings.Contains(txt, "damage dealt to it")) &&
+		strings.Contains(txt, "this turn") {
+		cs.kind = condScaffoldDamageDealtToSelfTurn
+		cs.count = 4
+		if m := manaSpentNumRe.FindStringSubmatch(txt); len(m) > 1 {
+			if n, err := strconv.Atoi(m[1]); err == nil && n > 0 {
+				cs.count = n
+			}
+		}
+		return cs
+	}
+
+	// More cards in hand than each opponent — "you have more cards in hand
+	// than each opponent" (Death of a Thousand Stings, Exile into Darkness,
+	// Akuta, Born of Ash). Hand-size comparison predicate.
+	if strings.Contains(txt, "more cards in hand than each opponent") ||
+		(strings.Contains(txt, "more cards in") && strings.Contains(txt, "hand") &&
+			(strings.Contains(txt, "than each") || strings.Contains(txt, "than any"))) {
+		cs.kind = condScaffoldMoreCardsThanOpponents
+		return cs
+	}
+
+	// Source untapped — "this creature is untapped" (Sphinx Sovereign, Nim
+	// Abomination). Mirror of self_is_tapped; the source must be UNTAPPED
+	// for the ability to qualify.
+	if (strings.Contains(txt, "this creature is untapped") ||
+		strings.Contains(txt, "~ is untapped") ||
+		(strings.Contains(txt, "is untapped") &&
+			(strings.Contains(txt, "this creature") ||
+				strings.Contains(txt, "this artifact") ||
+				strings.Contains(txt, "this permanent")))) &&
+		!strings.Contains(txt, "as long as ~ is untapped, players can't") {
+		cs.kind = condScaffoldSelfIsUntapped
+		return cs
+	}
+
+	// Source has NO named counter — "it has no oil counters on it" /
+	// "no loyalty counters" (Evolved Spinoderm, Archfiend of the Dross,
+	// Ozolith-style negative checks). Inverse of self_has_counter.
+	if (strings.Contains(txt, "has no") || strings.Contains(txt, "had no")) &&
+		strings.Contains(txt, "counters on it") {
+		cs.kind = condScaffoldSelfHasNoCounter
+		cs.subtype = "oil"
+		// Try to extract the named counter kind ("no oil", "no -1/-1", etc).
+		for _, k := range []string{"oil", "loyalty", "+1/+1", "-1/-1", "stun",
+			"charge", "quest", "fade", "vanishing", "shield", "ki", "blood",
+			"divinity", "time", "verse", "wage", "wish"} {
+			if strings.Contains(txt, "no "+k+" counter") {
+				cs.subtype = k
+				break
+			}
+		}
+		return cs
+	}
+
+	// Life-above-starting — "your life total is greater than your starting
+	// life total" (Cosmos Elixir, A-Cosmos Elixir). Distinct from
+	// LifeAboveThreshold because the threshold itself is dynamic (40 for
+	// Commander, 20 otherwise).
+	if (strings.Contains(txt, "greater than your starting life total") ||
+		strings.Contains(txt, "more than your starting life total") ||
+		strings.Contains(txt, "above your starting life total")) {
+		cs.kind = condScaffoldLifeAboveStarting
+		return cs
+	}
+
+	// Opponent has more life than you — "an opponent has more life than you"
+	// (Linvala, the Preserver; Pulse of the Fields). Pre-empts the broader
+	// MoreLifeThanOpponent matcher (which is the inverse direction).
+	if (strings.Contains(txt, "opponent has more life than you") ||
+		strings.Contains(txt, "any opponent has more life") ||
+		strings.Contains(txt, "an opponent has more life") ||
+		(strings.Contains(txt, "opponent") && strings.Contains(txt, "more life than you"))) {
+		cs.kind = condScaffoldOpponentMoreLife
+		return cs
+	}
+
+	// "you have more life than an opponent" / "no opponent has more life
+	// than that player" (Glorious Enforcer, Feudkiller's Verdict, Survival
+	// Cache, Veteran Soldier). Mirror of the above. Must come AFTER the
+	// opponent-more-life matcher so the inverse direction wins.
+	if (strings.Contains(txt, "more life than an opponent") ||
+		strings.Contains(txt, "more life than each opponent") ||
+		strings.Contains(txt, "no opponent has more life than that player") ||
+		strings.Contains(txt, "no opponent has more life than you")) {
+		cs.kind = condScaffoldMoreLifeThanOpponent
+		return cs
+	}
+
+	// Off-turn predicate — "it's not their turn" (Glademuse, Scytheclaw
+	// Raptor, Adrenaline Jockey). Trigger fires only outside the listed
+	// player's own turn. Anchor on the exact phrase so we don't false-match
+	// "their turn" inside unrelated clauses.
+	if strings.Contains(txt, "not their turn") ||
+		strings.Contains(txt, "not your turn") ||
+		strings.Contains(txt, "isn't their turn") ||
+		strings.Contains(txt, "during another player's turn") ||
+		strings.Contains(txt, "on a turn that isn't yours") {
+		cs.kind = condScaffoldNotTheirTurn
 		return cs
 	}
 
@@ -3792,6 +4158,321 @@ func applyConditionScaffolding(gs *gameengine.GameState, cond *gameast.Condition
 			gs.Flags["main_phase"] = 1
 		}
 		cs.description = fmt.Sprintf("set Phase=%q Step=%q (%s)", gs.Phase, gs.Step, cs.subtype)
+
+	// Era 1 R60 sweep — apply implementations.
+
+	case condScaffoldTributeNotPaid:
+		// Tribute (KTK) — the trigger fires when the opponent who was
+		// offered tribute DECLINED to pay it. Stamp the source so the
+		// declined-tribute predicate resolves true.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["tribute_paid"] = 0
+			srcPerm.Flags["tribute_declined"] = 1
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["tribute_declined_this_turn"] = 1
+		cs.description = "set srcPerm.Flags[tribute_declined]=1 (tribute not paid)"
+
+	case condScaffoldBargained:
+		// Bargain (WOE) — the source was cast with bargain (sacrificing an
+		// artifact/enchantment/token for an alt benefit). Same shape as
+		// kicker; stamp the per-source flag the engine reads.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["bargained"] = 1
+			srcPerm.Flags["paid_optional_cost"] = 1
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["bargained_this_turn"] = 1
+		cs.description = "set srcPerm.Flags[bargained]=1 + paid_optional_cost flag"
+
+	case condScaffoldSharesCreatureType:
+		// "if it shares a creature type with this creature" — place a
+		// creature of the matching subtype on top of seat 0's library so
+		// the reveal succeeds. Default subtype is goblin/elf (high-density
+		// tribal); subtype carries whatever the detector lifted.
+		subtype := cs.subtype
+		if subtype == "" {
+			subtype = "goblin"
+		}
+		if srcPerm != nil && srcPerm.Card != nil {
+			// Stamp the matching subtype on srcPerm so the "this creature"
+			// side of the compare also carries it.
+			has := false
+			for _, t := range srcPerm.Card.Types {
+				if t == subtype {
+					has = true
+					break
+				}
+			}
+			if !has {
+				srcPerm.Card.Types = append(srcPerm.Card.Types, subtype)
+			}
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			match := &gameengine.Card{
+				Name:          "Shared-Type " + subtype,
+				Owner:         0,
+				Types:         []string{"creature", subtype},
+				BasePower:     1,
+				BaseToughness: 1,
+			}
+			gs.Seats[0].Library = append([]*gameengine.Card{match}, gs.Seats[0].Library...)
+		}
+		cs.description = fmt.Sprintf("placed %q creature atop seat 0 library + stamped subtype on srcPerm", subtype)
+
+	case condScaffoldNotTheirTurn:
+		// "it's not their turn" — push the active player off seat 0 so any
+		// "during another player's turn" predicate keyed off gs.Active sees
+		// a non-controlling seat.
+		if len(gs.Seats) > 1 {
+			gs.Active = 1
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["off_turn"] = 1
+		cs.description = "set gs.Active=1 + off_turn flag (not their turn)"
+
+	case condScaffoldMoreLifeThanOpponent:
+		// "you have more life than an opponent" — bump seat 0 well above
+		// seat 1's life so the per-opponent compare resolves true for at
+		// least one opponent.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Life = 40
+		}
+		if len(gs.Seats) > 1 && gs.Seats[1] != nil {
+			gs.Seats[1].Life = 20
+		}
+		cs.description = "set seat 0 life=40, seat 1 life=20 (more life than opponent)"
+
+	case condScaffoldTimeCounterOnSelf:
+		// "had no time counters on it" — suspend completion check. Clear
+		// "time" counters on srcPerm so the predicate resolves true.
+		if srcPerm != nil {
+			if srcPerm.Counters != nil {
+				delete(srcPerm.Counters, "time")
+			}
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["no_time_counters"] = 1
+			srcPerm.Flags["suspended_completed"] = 1
+		}
+		cs.description = "cleared time counters on srcPerm + suspended_completed flag"
+
+	case condScaffoldWasntCast:
+		// "it wasn't cast" — token / put-onto-battlefield path predicate.
+		// Stamp the source so observers reading the cast-status flag see
+		// the not-cast value.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["wasnt_cast"] = 1
+			delete(srcPerm.Flags, "cast_from_hand")
+			delete(srcPerm.Flags, "cast_spell_this_turn")
+		}
+		cs.description = "set srcPerm.Flags[wasnt_cast]=1 (token / put-onto-battlefield path)"
+
+	case condScaffoldLostLifeLastTurn:
+		// "you lost life last turn" — the prior-turn snapshot. Stamp the
+		// per-seat flag the engine reads during start-of-turn checks.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			if gs.Seats[0].Flags == nil {
+				gs.Seats[0].Flags = map[string]int{}
+			}
+			gs.Seats[0].Flags["lost_life_last_turn"] = 3
+			gs.Seats[0].Flags["life_lost_last_turn"] = 3
+		}
+		cs.description = "set seat 0 Flags[lost_life_last_turn]=3"
+
+	case condScaffoldDamageDealtToSelfTurn:
+		// "N or more damage was dealt to it this turn" — stamp the
+		// MarkedDamage / damage_taken counter on srcPerm. Engine reads
+		// MarkedDamage for the §704.5g destroy check; we stamp a flag
+		// in parallel for direct lookups.
+		amt := cs.count
+		if amt < 1 {
+			amt = 4
+		}
+		if srcPerm != nil {
+			srcPerm.MarkedDamage = amt
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["damage_taken_this_turn"] = amt
+		}
+		cs.description = fmt.Sprintf("set srcPerm.MarkedDamage=%d + damage_taken_this_turn flag", amt)
+
+	case condScaffoldMoreCardsThanOpponents:
+		// "you have more cards in hand than each opponent" — top up seat 0
+		// hand to 7, trim other seats' hands to 1 so the per-opponent
+		// compare resolves true for every opponent.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			trimOrFillHand(gs, 0, 7)
+		}
+		for i := 1; i < len(gs.Seats); i++ {
+			if gs.Seats[i] != nil {
+				trimOrFillHand(gs, i, 1)
+			}
+		}
+		cs.description = "set seat 0 hand=7, opponents hand=1 (more cards than each opponent)"
+
+	case condScaffoldSelfIsUntapped:
+		// Mirror of self_is_tapped — source must be UNTAPPED for the
+		// ability to qualify (Sphinx Sovereign, Nim Abomination).
+		if srcPerm != nil {
+			srcPerm.Tapped = false
+		}
+		cs.description = "untapped srcPerm (self_is_untapped active)"
+
+	case condScaffoldSelfHasNoCounter:
+		// Inverse of self_has_counter — clear the named counter so the
+		// "has no <kind> counters" predicate resolves true.
+		kind := cs.subtype
+		if kind == "" {
+			kind = "oil"
+		}
+		if srcPerm != nil && srcPerm.Counters != nil {
+			delete(srcPerm.Counters, kind)
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["no_"+kind+"_counters"] = 1
+		}
+		cs.description = fmt.Sprintf("cleared %q counters on srcPerm (no-counter predicate)", kind)
+
+	case condScaffoldSurgeCostPaid:
+		// Surge (EMN) — alt-cost cousin of kicker. Stamp the alt-cost flag
+		// and route through the same paid_optional_cost flag the engine
+		// reads for kicker-style predicates.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["surge_paid"] = 1
+			srcPerm.Flags["paid_optional_cost"] = 1
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["surge_paid"] = 1
+		cs.description = "set srcPerm.Flags[surge_paid]=1 + paid_optional_cost flag"
+
+	case condScaffoldLibraryEmpty:
+		// "your library has no cards in it" — Jace win-con. Empty seat 0
+		// library so the predicate resolves true. Keep other seats alone:
+		// the trigger is keyed on the source's controller, not globally.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Library = nil
+			if gs.Seats[0].Flags == nil {
+				gs.Seats[0].Flags = map[string]int{}
+			}
+			gs.Seats[0].Flags["library_empty"] = 1
+		}
+		cs.description = "emptied seat 0 library + set library_empty flag"
+
+	case condScaffoldColoredManaSpent:
+		// "{R}{R}/{G}{G}/{U}{U}/{R}/treasure was spent to cast it" —
+		// stamp a per-source mana-payment flag the cast-condition reader
+		// consults. Generalizes the existing mana_spent scaffold which
+		// only tracks total CMC.
+		color := cs.subtype
+		if color == "" {
+			color = "C"
+		}
+		amt := cs.count
+		if amt < 1 {
+			amt = 1
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["mana_spent_"+color] = amt
+			// Compatibility with the generic mana_spent flag for callers
+			// that don't break down by color.
+			if srcPerm.Flags["mana_spent"] < amt {
+				srcPerm.Flags["mana_spent"] = amt
+			}
+		}
+		cs.description = fmt.Sprintf("set srcPerm.Flags[mana_spent_%s]=%d", color, amt)
+
+	case condScaffoldSelfIsSuspended:
+		// "this card is suspended" — source lives in exile with the
+		// "suspended" flag and a "time" counter on its Card. Move srcPerm's
+		// Card (if any) into seat 0 exile with the suspend state stamped.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			suspendCard := &gameengine.Card{
+				Name:  "Suspended Card Setup",
+				Owner: 0,
+				Types: []string{"instant"},
+			}
+			gs.Seats[0].Exile = append(gs.Seats[0].Exile, suspendCard)
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["suspended"] = 1
+			if srcPerm.Counters == nil {
+				srcPerm.Counters = map[string]int{}
+			}
+			if srcPerm.Counters["time"] < 1 {
+				srcPerm.Counters["time"] = 2
+			}
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["suspend_active"] = 1
+		cs.description = "placed suspended card in seat 0 exile + stamped suspended flag on srcPerm"
+
+	case condScaffoldLifeAboveStarting:
+		// "life total is greater than your starting life total" — set seat
+		// 0 life well above Commander starting (40). 50 covers both
+		// 20-life formats and Commander.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Life = 50
+		}
+		cs.description = "set seat 0 life=50 (above starting life total)"
+
+	case condScaffoldOpponentMoreLife:
+		// Mirror of MoreLifeThanOpponent — opponent must have MORE life
+		// than you for the trigger to fire.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Life = 5
+		}
+		if len(gs.Seats) > 1 && gs.Seats[1] != nil {
+			gs.Seats[1].Life = 40
+		}
+		cs.description = "set seat 0 life=5, seat 1 life=40 (opponent has more life)"
+
+	case condScaffoldWasntBlocking:
+		// "it wasn't blocking" — combat exit predicate (Guildsworn
+		// Prowler). Clear any blocking state on srcPerm and set the flag
+		// the post-combat reader consults.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			delete(srcPerm.Flags, "blocking")
+			delete(srcPerm.Flags, "is_blocking")
+			srcPerm.Flags["wasnt_blocking"] = 1
+		}
+		cs.description = "cleared blocking flags on srcPerm + set wasnt_blocking"
 	}
 	return cs
 }
@@ -3992,6 +4673,46 @@ func traceConditionScaffolding(cond *gameast.Condition, tr *Tracer) {
 		desc = fmt.Sprintf("seeded creatures totaling >=%d toughness", cs.count+1)
 	case condScaffoldMainPhaseOrFirstCombat:
 		desc = fmt.Sprintf("set Phase/Step for %s", cs.subtype)
+
+	// Era 1 R60 sweep — trace descriptions.
+	case condScaffoldTributeNotPaid:
+		desc = "set srcPerm.Flags[tribute_declined]=1 (tribute not paid)"
+	case condScaffoldBargained:
+		desc = "set srcPerm.Flags[bargained]=1 + paid_optional_cost"
+	case condScaffoldSharesCreatureType:
+		desc = fmt.Sprintf("placed %q creature atop seat 0 library + stamped subtype on srcPerm", nonEmpty(cs.subtype, "goblin"))
+	case condScaffoldNotTheirTurn:
+		desc = "set gs.Active=1 + off_turn flag (not their turn)"
+	case condScaffoldMoreLifeThanOpponent:
+		desc = "set seat 0 life=40, seat 1 life=20 (more life than opponent)"
+	case condScaffoldTimeCounterOnSelf:
+		desc = "cleared time counters on srcPerm + suspended_completed flag"
+	case condScaffoldWasntCast:
+		desc = "set srcPerm.Flags[wasnt_cast]=1 (token / put-onto-bf)"
+	case condScaffoldLostLifeLastTurn:
+		desc = "set seat 0 Flags[lost_life_last_turn]=3"
+	case condScaffoldDamageDealtToSelfTurn:
+		desc = fmt.Sprintf("set srcPerm.MarkedDamage=%d + damage_taken_this_turn", maxInt(cs.count, 4))
+	case condScaffoldMoreCardsThanOpponents:
+		desc = "set seat 0 hand=7, opponents hand=1 (more cards than each opponent)"
+	case condScaffoldSelfIsUntapped:
+		desc = "untapped srcPerm (self_is_untapped)"
+	case condScaffoldSelfHasNoCounter:
+		desc = fmt.Sprintf("cleared %q counters on srcPerm (no-counter)", nonEmpty(cs.subtype, "oil"))
+	case condScaffoldSurgeCostPaid:
+		desc = "set srcPerm.Flags[surge_paid]=1 + paid_optional_cost"
+	case condScaffoldLibraryEmpty:
+		desc = "emptied seat 0 library + library_empty flag"
+	case condScaffoldColoredManaSpent:
+		desc = fmt.Sprintf("set srcPerm.Flags[mana_spent_%s]=%d", nonEmpty(cs.subtype, "C"), maxInt(cs.count, 1))
+	case condScaffoldSelfIsSuspended:
+		desc = "placed suspended card in seat 0 exile + suspended flag on srcPerm"
+	case condScaffoldLifeAboveStarting:
+		desc = "set seat 0 life=50 (above starting life total)"
+	case condScaffoldOpponentMoreLife:
+		desc = "set seat 0 life=5, seat 1 life=40 (opponent has more life)"
+	case condScaffoldWasntBlocking:
+		desc = "cleared blocking flags on srcPerm + wasnt_blocking"
 	}
 	tr.Record("CONDITION_SETUP", "%q → %s", cs.rawText, desc)
 }
