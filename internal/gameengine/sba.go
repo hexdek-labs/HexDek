@@ -1912,6 +1912,9 @@ func destroyPermSBA(gs *GameState, p *Permanent, reason, rule string) {
 	// Detach anything that was attached to p so §704.5n/§704.5p don't
 	// mis-fire next pass.
 	detachAll(gs, p)
+	// r60: drop while_source_on_bf ZoneCastGrants sourced from p's
+	// Timestamp (Yawgmoth's Agenda, Karador, Lurrus, etc.).
+	ExpireSourceGrants(gs, p.Timestamp)
 }
 
 // sacrificePermSBA mirrors destroyPermSBA but uses "sba_<rule>_sacrifice"
@@ -1957,6 +1960,7 @@ func sacrificePermSBA(gs *GameState, p *Permanent, reason, rule string, extra ma
 		FireZoneChangeTriggers(gs, p, p.Card, "battlefield", destZone)
 	}
 	detachAll(gs, p)
+	ExpireSourceGrants(gs, p.Timestamp)
 }
 
 // DetachAll is the exported entry point for detachAll, callable from
