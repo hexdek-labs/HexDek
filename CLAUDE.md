@@ -185,8 +185,7 @@ Fetch oracle data: `scripts/fetch-oracle.sh`
 
 | Date | Source | Issue | Severity | Notes |
 |------|--------|-------|----------|-------|
-
-_(No open issues. The 2026-05-24 District Mascot row was closed within hours by the static `etb_with_counters` primitive fix — see Resolved below.)_
+| 2026-05-24 | Loki r60 stress / seed 1337 game 465 | **SBACompleteness — seat 0 has life=0 with Lost=false after combat damage following a no_op_loop shortcut** (10 hits at turn 56 cleanup, all on the same stuck state). Sibling LifeConsistency 2x at turn 60 (seat 2 at life=-1) confirms the family. Event log shows: 4 APNAP priority rounds of no progress → `loop_shortcut no_op_loop` clears the stack (`loop_shortcut.go:158-178` does NOT call `StateBasedActions`) → phase advance to combat → Boot Nipper 2 + Nim Devourer 4 = 6 damage to seat 0 → next phase_step → invariant scan sees seat 0 alive at life=0. Combat-damage step at `combat.go:307` does call SBAs after damage assignment, so the bug is likely in the loop_shortcut → combat handoff — either the no-op stack-clear ate a queued §704.5a transition, or there's a phase-advance path that skips the combat-damage SBA when the no-op shortcut fired in the same window. Deterministic reproducer: `go run ./cmd/hexdek-loki --games 470 --seed 1337 --invariant sba-completeness` (~9s, 10 hits on game 465 only). 1-in-15,000-games stress-test rate across seeds 99 / 7 / 1337. | Low | Single signature, single game across 3 stress seeds. Other 2 stress seeds (99, 7) were 0/0. Full breakdown in `docs/loki-r60-stress-test.md`. |
 
 ### Resolved
 
