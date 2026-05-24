@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -15,18 +16,21 @@ import (
 // for the requested showmatch_game id. Routed at
 // GET /api/games/{id}/summary.
 //
-// Today the heimdall observation pipeline (CommanderZoneVisits /
-// RegretCards / MVPCards) is not backed by durable storage — those
-// signals only exist in memory during a live replay. For historical
-// games persisted in showmatch_game we therefore return the
-// "db_only" variant of the summary: game metadata + a game_end
-// turning point, with empty arrays for the three R60 signals.
+// Two paths:
 //
-// Once observation persistence lands, this handler is the natural
-// place to hydrate the rich path; the heimdall.BuildGameSummary
-// constructor already accepts a populated Observation, so the only
-// change will be sourcing the Observation from a new table instead
-// of falling back to a synthetic one.
+//  1. "rich" — if showmatch_game_observation has a persisted
+//     snapshot for this game, decode it and return the full
+//     GameSummary (all three R60 signal arrays + commander-first-
+//     cast turning points). This is the historical-game path that
+//     #177 unlocks: observation snapshots are written once after a
+//     game ends and re-read here on demand without replaying.
+//  2. "db_only" — fall back to game metadata + a single game_end
+//     turning point when no observation snapshot exists (older
+//     games predating the snapshot table, or games where the
+//     persistence sink wasn't wired).
+//
+// Both paths share the same response shape; the DataSource field
+// discriminates so frontends can show "rich" or "limited" badges.
 func (h *Handler) handleGameSummary(w http.ResponseWriter, r *http.Request) {
 	if h.db == nil {
 		writeError(w, http.StatusServiceUnavailable, "database unavailable")
@@ -51,6 +55,35 @@ func (h *Handler) handleGameSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Rich path: try the observation snapshot first.
+	payload, err := db.LoadGameObservation(ctx, h.db, id)
+	if err == nil {
+		snap, perr := heimdall.UnmarshalSnapshot(payload)
+		if perr == nil {
+			summary := heimdall.BuildGameSummaryFromSnapshot(snap, game.EndReason)
+			// Snapshots predating game-end stamping may leave Winner
+			// at the snapshot-time value; the GameRecord is the
+			// authoritative end-state. WinnerName is DB-only.
+			if summary.Winner != game.Winner {
+				summary.Winner = game.Winner
+			}
+			summary.WinnerName = game.WinnerName
+			if game.Turns > summary.Turns {
+				summary.Turns = game.Turns
+			}
+			writeJSON(w, summary)
+			return
+		}
+		// Malformed snapshot — log and fall through to db_only so
+		// the endpoint never hard-fails on a corrupt payload.
+		log.Printf("game_summary: malformed snapshot for game %d: %v", id, perr)
+	} else if !errors.Is(err, sql.ErrNoRows) {
+		// Real DB error (not just "no snapshot persisted") — surface.
+		writeError(w, http.StatusInternalServerError, "load observation: "+err.Error())
+		return
+	}
+
+	// Fallback: db_only summary built from GameRecord metadata alone.
 	summary := buildDBOnlyGameSummary(game)
 	writeJSON(w, summary)
 }

@@ -222,6 +222,20 @@ CREATE TABLE IF NOT EXISTS showmatch_game_seat (
 CREATE INDEX IF NOT EXISTS idx_showmatch_game_finished ON showmatch_game(finished_at);
 CREATE INDEX IF NOT EXISTS idx_showmatch_seat_commander ON showmatch_game_seat(commander);
 
+-- r60: heimdall observation snapshot persistence. One row per game
+-- holding the JSON-serialized GameObservationSnapshot
+-- (CommanderZoneVisits / RegretCards / MVPCards / CardFirstPlayed +
+-- per-seat commander names). Drives the "rich path" of the
+-- /api/games/{id}/summary endpoint — without this row the endpoint
+-- falls back to the "db_only" summary built from game metadata.
+-- ON DELETE CASCADE so snapshots clean up when the parent game row
+-- is purged.
+CREATE TABLE IF NOT EXISTS showmatch_game_observation (
+    game_id    INTEGER PRIMARY KEY REFERENCES showmatch_game(game_id) ON DELETE CASCADE,
+    payload    TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT 0
+);
+
 -- r60: LoadOwnerGames is the per-owner game-history query that
 -- powers heimdall / the dashboard "your recent games" panel. It
 -- joins three tables and filters with `e.owner = ?`. Without these
