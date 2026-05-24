@@ -1959,6 +1959,18 @@ func sacrificePermSBA(gs *GameState, p *Permanent, reason, rule string, extra ma
 	detachAll(gs, p)
 }
 
+// DetachAll is the exported entry point for detachAll, callable from
+// per_card handlers that route through their package-local removePermanent
+// helper for flicker/blink/exile-self/mutate effects. The carrier permanent
+// leaves the battlefield (briefly or permanently) and any aura/equipment
+// pointing at it must drop its AttachedTo synchronously — waiting for the
+// next SBA pass leaves a window where checkAttachmentConsistency fires
+// (Loki r41/r57 cluster: "Ghoulish Impetus", "Brilliant Wings", "Dub" auras
+// attached to off-battlefield tokens). Pure delegation to detachAll.
+func DetachAll(gs *GameState, p *Permanent) {
+	detachAll(gs, p)
+}
+
 // detachAll nils out AttachedTo on every permanent pointing at p, across
 // every seat's battlefield. Called by destroy/sacrifice helpers so attach-
 // oriented SBAs don't retain dangling references.

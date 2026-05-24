@@ -291,6 +291,7 @@ func ApplyMutate(gs *GameState, mutatingPerm *Permanent, targetPerm *Permanent, 
 		}
 		// Remove target from battlefield; keep mutating perm.
 		gs.removePermanent(targetPerm)
+		detachAll(gs, targetPerm)
 		if mutatingPerm.Flags == nil {
 			mutatingPerm.Flags = map[string]int{}
 		}
@@ -303,6 +304,7 @@ func ApplyMutate(gs *GameState, mutatingPerm *Permanent, targetPerm *Permanent, 
 		targetPerm.GrantedAbilities = append(targetPerm.GrantedAbilities, mutatingPerm.GrantedAbilities...)
 		// Remove mutating perm from battlefield.
 		gs.removePermanent(mutatingPerm)
+		detachAll(gs, mutatingPerm)
 		if targetPerm.Flags == nil {
 			targetPerm.Flags = map[string]int{}
 		}

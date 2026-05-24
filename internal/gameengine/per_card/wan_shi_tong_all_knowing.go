@@ -57,6 +57,7 @@ func wanShiTongETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		emitFail(gs, slug, perm.Card.DisplayName(), "remove_failed", nil)
 		return
 	}
+	gameengine.DetachAll(gs, target)
 	ownerSeat := gs.Seats[owner]
 	if ownerSeat == nil {
 		return

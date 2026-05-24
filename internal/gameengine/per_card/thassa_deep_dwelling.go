@@ -68,6 +68,7 @@ func thassaDeepDwellingEndStep(gs *gameengine.GameState, perm *gameengine.Perman
 	}
 	card := pick.Card
 	removePermanent(gs, pick)
+	gameengine.DetachAll(gs, pick)
 	moveCardBetweenZones(gs, perm.Controller, card, "battlefield", "exile", "thassa_blink_exile")
 	moveCardBetweenZones(gs, perm.Controller, card, "exile", "battlefield", "thassa_blink_return")
 	enterBattlefieldWithETB(gs, perm.Controller, card, false)

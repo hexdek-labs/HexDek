@@ -82,6 +82,7 @@ func bragoBlinkOnCombatDamage(gs *gameengine.GameState, perm *gameengine.Permane
 		gs.UnregisterReplacementsForPermanent(target)
 		gs.UnregisterContinuousEffectsForPermanent(target)
 		gameengine.FireZoneChangeTriggers(gs, target, card, "battlefield", "exile")
+		gameengine.DetachAll(gs, target)
 
 		newPerm := createPermanent(gs, owner, card, false)
 		if newPerm == nil {
