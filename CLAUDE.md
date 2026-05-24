@@ -136,6 +136,9 @@ Fetch oracle data: `scripts/fetch-oracle.sh`
 
 ### Ready
 
+### Done (2026-05-24)
+- [x] Commander Spellbook import — `cmd/hexdek-freya/spellbook_import.go` parses the public variants JSON, infers loop type from features (`Win the game` / `Infinite *` → true_infinite), and dedupes against the 58 curated entries via canonical (lowercased + sorted) card-name keys; curated entries always win conflicts (richer outlets/stops). CLI flags `--spellbook <cache>` and `--spellbook-fetch <url>`; cache file gitignored. 11 regressions in `cmd/hexdek-freya/spellbook_import_test.go` (parse, status filter, type inference, key normalization, curated-wins dedupe, real-curated dedupe, intra-import dedupe, missing-cache no-op, round-trip, bad JSON, accessor merge)
+
 ### Done (2026-05-23)
 - [x] 4-card combo detection — `checkQuadCombo` enumerates all 24 permutations via nested distinct-index loops (structurally generated, not hand-listed); prefiltered to flow-active candidates and capped at 70 to bound runtime at ~3s worst case. Regressions in `cmd/hexdek-freya/quad_cycle_test.go`; runtime tradeoff in `docs/freya-4card-runtime.md`
 
@@ -170,7 +173,6 @@ Fetch oracle data: `scripts/fetch-oracle.sh`
 ### Backlog
 - [ ] 5-card+ combo detection (would need graph-walk, not brute-force per `docs/freya-4card-runtime.md`)
 - [ ] Tutor inference for modal spells and complex wording
-- [ ] Commander Spellbook integration (external combo DB import)
 - [ ] NLP-grade oracle text parsing (replace substring matching for edge cases)
 
 ## Issue Log

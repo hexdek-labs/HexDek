@@ -48,6 +48,7 @@ __pycache__/
 /data/rules/oracle-cards.json
 /data/rules/finetune_pairs.jsonl
 /data/rules/ast_dataset.jsonl
+/data/rules/spellbook.json
 /data/hexdek.db
 /data/hexdek.db-shm
 /data/hexdek.db-wal
