@@ -1,6 +1,6 @@
 # Chaos Gauntlet Report
 
-Generated: 2026-05-24T14:33:18-07:00
+Generated: 2026-05-24T14:58:08-07:00
 
 ## Configuration
 
@@ -21,8 +21,8 @@ Generated: 2026-05-24T14:33:18-07:00
 
 | Metric | Count |
 |--------|-------|
-| Duration | 1m7.869s |
-| Throughput | 74 games/sec |
+| Duration | 1m17.919s |
+| Throughput | 64 games/sec |
 | Crashes | 0 (in 0 games) |
 | Invariant Violations | 0 (in 0 games) |
 | Clean Games | 5000 |
@@ -31,8 +31,8 @@ Generated: 2026-05-24T14:33:18-07:00
 
 | Metric | Count |
 |--------|-------|
-| Duration | 981ms |
-| Throughput | 10197 boards/sec |
+| Duration | 1.077s |
+| Throughput | 9281 boards/sec |
 | Crashes | 0 |
 | Invariant Violations | 0 |
 | Clean Boards | 10000 |

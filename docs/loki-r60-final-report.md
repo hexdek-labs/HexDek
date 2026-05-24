@@ -146,3 +146,64 @@ go run ./cmd/hexdek-loki --games 5000 --seed 43
 
 Both runs write a fresh `data/rules/CHAOS_REPORT.md` with up to 5
 violation details per invariant kind.
+
+---
+
+## Post-Mascot re-run (2026-05-24, after PR #169)
+
+After PR #169 (`dev/district-mascot-residual-r60` — generic Static
+`etb_with_counters` primitive wired into both ETB entry points), the
+two-seed final gauntlet was re-run on `dev/loki-r60-post-mascot-r60`
+to confirm the trajectory:
+
+| Seed | Phase | Pre-Mascot | Post-Mascot | Δ |
+|:----:|:------|:----------:|:-----------:|:-:|
+| 42 | Chaos (5K games) | 0 | **0** | flat |
+| 42 | Nightmare (10K boards) | 0 | **0** | flat |
+| 43 | Chaos (5K games) | 1 | **0** | **−1 (−100%)** |
+| 43 | Nightmare (10K boards) | 0 | **0** | flat |
+
+```
+seed 42:
+  chaos:     0 crashes, 0 violations across 5000 games (77 g/s, 1m4.73s)
+  nightmare: 0 crashes, 0 violations across 10000 boards (13108 b/s, 763ms)
+
+seed 43:
+  chaos:     0 crashes, 0 violations across 5000 games (64 g/s, 1m17.92s)
+  nightmare: 0 crashes, 0 violations across 10000 boards (9281 b/s, 1.08s)
+```
+
+### Final headline
+
+- **Two seeds, 10,000 chaos games + 20,000 nightmare boards, 0 crashes
+  and 0 invariant violations.**
+- The District Mascot SBACompleteness signature flagged in the
+  pre-Mascot run of this report is fully closed by the new
+  `ApplyStaticETBCounters` primitive — game 1003 / seed 43 now
+  resolves clean.
+- Per-game stochastic violation rate: **0%** across the gauntlet.
+- Cumulative reduction from r41 baseline (1,652 in 5,000 games at
+  33%/game): **−100% on both seeds across both phases**.
+
+### Trajectory, fully resolved
+
+| Round | Seed | Violations |
+|------:|:----:|:----------:|
+| r41 baseline | 41 | 1,652 |
+| r44 | 41 | 402 |
+| r60 round 1 | 41 | 52 |
+| r60 round 2 | 41 | 10 |
+| r60 round 3 | 41 | 0 |
+| r60 round 3 | 42 | 6 |
+| r60 final (pre-Mascot) | 42 | 0 |
+| r60 final (pre-Mascot) | 43 | 1 |
+| **r60 final (post-Mascot)** | **42** | **0** |
+| **r60 final (post-Mascot)** | **43** | **0** |
+
+### Conclusion
+
+The engine is **at genuine zero** on the two-seed final gauntlet —
+not the prior near-zero. The r60 era is closed on systemic invariant
+work *and* on the single residual rare-window bug it surfaced. The
+next loki residual will need a fresh seed sweep to surface, since
+both 42 and 43 are now exhausted.
