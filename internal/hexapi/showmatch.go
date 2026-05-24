@@ -2739,6 +2739,16 @@ var gauntletSem = make(chan struct{}, 2)
 func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
+	// Reject path components containing "..", slashes, NULs, or any
+	// character outside the deck-id alphabet before they flow into the
+	// deckKey string. deckKey is used as a credit-ledger reference, a
+	// log-line interpolation, and an SSE broadcast topic — every other
+	// deck-targeting handler in hexapi already runs this guard
+	// (handleDeckSharePage, handleDeckUpgrade, etc.).
+	if !validatePathComponent(owner) || !validatePathComponent(id) {
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
+		return
+	}
 	deckKey := owner + "/" + id
 
 	sm.gauntletMu.RLock()
@@ -2837,6 +2847,10 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 func (sm *Showmatch) handleGetGauntlet(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
+	if !validatePathComponent(owner) || !validatePathComponent(id) {
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
+		return
+	}
 	deckKey := owner + "/" + id
 
 	result := sm.GetGauntlet(deckKey)
