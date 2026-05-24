@@ -124,7 +124,16 @@ func main() {
 	sm.RegisterShowmatch(mux)
 
 	// HexDek API: deck listing, Freya analysis, live stats
-	hexAPI := &hexapi.Handler{DecksDir: "data/decks", Showmatch: sm, IndexHTMLPath: *indexHTML}
+	hexAPI := &hexapi.Handler{
+		DecksDir:      "data/decks",
+		Showmatch:     sm,
+		IndexHTMLPath: *indexHTML,
+		// r60: per-IP token bucket on POST /api/feedback. 5-token
+		// burst + 1-token-per-minute refill — enough for a real
+		// user opening multiple bug reports in a session, tight
+		// enough to throttle a bot blasting the disk.
+		FeedbackLimiter: hexapi.NewRateLimiter(5, 1.0/60.0),
+	}
 	hexAPI.SetDB(database)
 	if err := hexapi.EnsureDeckMetaSchema(context.Background(), database); err != nil {
 		log.Fatalf("deck_meta schema: %v", err)
