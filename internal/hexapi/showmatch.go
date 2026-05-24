@@ -2764,6 +2764,37 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 		numGames = n
 	}
 
+	// Verify the deck is actually in the engine pool BEFORE charging
+	// credits. RunGauntlet's findDeckInPool would otherwise just
+	// register an error result and return — leaving paying users with
+	// no refund (charging is atomic via credits.Spend, but the launch
+	// it pays for never executed). Cheap RLock-protected map walk.
+	if sm.findDeckInPool(owner, id) == nil {
+		writeError(w, http.StatusNotFound,
+			"deck not in engine pool — re-import or check the deck id")
+		return
+	}
+
+	// Acquire the global gauntlet semaphore BEFORE the credit charge
+	// for the same reason: if we're at the concurrency cap, return 429
+	// without debiting. Non-blocking select — either we get the slot
+	// or we bail.
+	select {
+	case gauntletSem <- struct{}{}:
+	default:
+		writeError(w, http.StatusTooManyRequests, "too many gauntlets running — try again later")
+		return
+	}
+	// From this point on, every error path must release gauntletSem
+	// before returning. Track release responsibility so the launching
+	// goroutine knows whether to own it.
+	semOwnedByGoroutine := false
+	defer func() {
+		if !semOwnedByGoroutine {
+			<-gauntletSem
+		}
+	}()
+
 	// Credit-economy gate. Caller identity comes from X-HexDek-Owner;
 	// if absent we fall through to free behaviour for backwards
 	// compatibility with the (already-public) gauntlet endpoint.
@@ -2779,6 +2810,10 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 			chargedFree = true
 		} else if quota.CanRunPaid {
 			// Past the free quota; debit credits before launching.
+			// Spend is atomic — either it succeeds (and we proceed) or
+			// it fails (and nothing is debited), so we never end up in
+			// the "charged but no launch" state that the previous
+			// ordering allowed.
 			if _, err := sm.credits.Spend(r.Context(), caller,
 				credits.CreditsPerGauntlet, credits.ReasonGauntletRun, deckKey); err != nil {
 				if err == credits.ErrInsufficientCredits {
@@ -2812,23 +2847,14 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		// Best-effort log of the gauntlet usage for the audit trail
-		// and the next quota check. We don't refund on a launch
-		// failure below — the spend is committed; if RunGauntlet
-		// can't actually start, the user can re-run within the
-		// existing free-tier window.
+		// and the next quota check.
 		if err := sm.credits.LogGauntlet(r.Context(), caller, deckKey,
 			numGames, chargedFree, chargedAmount); err != nil {
 			log.Printf("gauntlet: usage log failed: %v", err)
 		}
 	}
 
-	select {
-	case gauntletSem <- struct{}{}:
-	default:
-		writeError(w, http.StatusTooManyRequests, "too many gauntlets running — try again later")
-		return
-	}
-
+	semOwnedByGoroutine = true
 	go func() {
 		defer func() { <-gauntletSem }()
 		sm.RunGauntlet(owner, id, numGames)
