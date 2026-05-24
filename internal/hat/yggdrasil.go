@@ -6131,6 +6131,39 @@ func (h *YggdrasilHat) hasGraveyardRecursionEnabler(gs *gameengine.GameState, se
 	return false
 }
 
+// commanderNamesForSeat returns a copy of the seat's commander names
+// (defensive copy — callers iterate without holding the seat). Returns
+// nil if the seat has no commanders or the index is out of range.
+func commanderNamesForSeat(gs *gameengine.GameState, seatIdx int) []string {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return nil
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil || len(seat.CommanderNames) == 0 {
+		return nil
+	}
+	out := make([]string, len(seat.CommanderNames))
+	copy(out, seat.CommanderNames)
+	return out
+}
+
+// isCommanderCardName reports whether card matches any of the supplied
+// commander names. Case-sensitive match against DisplayName, mirroring
+// how the engine compares commander names elsewhere (e.g. evaluator.go
+// uses == against seat.CommanderNames entries).
+func isCommanderCardName(commanderNames []string, card *gameengine.Card) bool {
+	if card == nil || len(commanderNames) == 0 {
+		return false
+	}
+	name := card.DisplayName()
+	for _, cn := range commanderNames {
+		if cn == name {
+			return true
+		}
+	}
+	return false
+}
+
 // sacrificePreferenceScore ranks a candidate permanent for forced
 // sacrifice. Higher = more willing to feed it to a sac cost. The intent
 // is that recurring permanents (persist, undying, unearth, "return to
@@ -6279,6 +6312,7 @@ func (h *YggdrasilHat) ChooseDiscard(gs *gameengine.GameState, seatIdx int, hand
 		arch = h.Strategy.Archetype
 	}
 	hasEnabler := h.hasGraveyardRecursionEnabler(gs, seatIdx)
+	commanderNames := commanderNamesForSeat(gs, seatIdx)
 	for _, c := range hand {
 		if c == nil {
 			continue
@@ -6286,6 +6320,23 @@ func (h *YggdrasilHat) ChooseDiscard(gs *gameengine.GameState, seatIdx int, hand
 		v := h.cardHeuristic(gs, seatIdx, c)
 		if typeLineContains(c, "land") && sources >= 5 {
 			v -= 0.5
+		}
+		// Mana-starvation land protection. With fewer than three mana
+		// sources the next land drop matters far more than any card in
+		// hand — protect lands so they don't get discarded when we're
+		// behind on mana. Mirror of the sources>=5 flood penalty above.
+		if typeLineContains(c, "land") && sources < 3 {
+			v += 3.0
+		}
+		// Commander-in-hand protection. Discarding the commander throws
+		// away a card the deck is built around; the §903.9 replacement
+		// only matters once the commander has been cast and is being
+		// moved between non-hand zones. From hand, "discarded" is just
+		// "into the graveyard" with no command-zone redirect. We add a
+		// dominating positive bonus so the commander is the last card
+		// considered for discard short of being the only option.
+		if isCommanderCardName(commanderNames, c) {
+			v += 10.0
 		}
 		if h.isComboRelevant(c) {
 			v += 1.0
