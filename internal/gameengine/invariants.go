@@ -699,6 +699,19 @@ func checkTriggerCompleteness(gs *GameState) error {
 		if ev.Kind != "sacrifice" && ev.Kind != "creature_dies" && ev.Kind != "sba_704_5f" && ev.Kind != "sba_704_5g" {
 			continue
 		}
+		// "sacrifice" events cover any permanent — only creature_dies
+		// triggers care about creature deaths. Skip non-creature sacrifices
+		// (lands, artifacts, enchantments) so we don't false-positive on
+		// "sacrifice a land" effects (Strip Mine, Pillage, Crucible of
+		// Worlds shuffles, etc.) just because the controller happens to
+		// own a creature-dies bearer.
+		if ev.Kind == "sacrifice" {
+			if ev.Details != nil {
+				if wc, ok := ev.Details["was_creature"].(bool); ok && !wc {
+					continue
+				}
+			}
+		}
 		// Only check if a trigger-bearer controls the dying creature.
 		// Most "creature_dies" triggers only fire for your own creatures.
 		deathSeat := ev.Seat
