@@ -6978,18 +6978,48 @@ func (h *YggdrasilHat) ChooseScry(gs *gameengine.GameState, seatIdx int, cards [
 	} else if relPos < -0.3 {
 		threshold = 0.25
 	}
-	// Combo decks with high combo ratios want combo pieces on top.
+	arch := ArchetypeMidrange
+	if h.Strategy != nil {
+		arch = h.Strategy.Archetype
+	}
+	// Combo archetype additionally tightens the keep threshold so
+	// filler cards default to the bottom and the next draw is more
+	// likely to hit a combo piece or tutor. Mirror of the R60
+	// ChooseSurveil bias; the per-archetype lift stacks on top of the
+	// relPos-based threshold above.
+	if arch == ArchetypeCombo && threshold < 0.50 {
+		threshold = 0.50
+	}
 	for _, c := range cards {
 		if c == nil {
 			bottom = append(bottom, c)
 			continue
 		}
 		val := h.cardHeuristic(gs, seatIdx, c)
-		if h.isComboRelevant(c) || h.isValueEngineKey(c) || h.isStarCard(c) {
+		// Finisher preserve-mode: a card the deck wins with stays on
+		// top regardless of val or archetype. This is the "card on top
+		// is the only thing keeping us in" guard — when we're behind,
+		// the next draw being our finisher is the lifeline; sub-
+		// threshold-bottoming it is a strict mistake. Stacks on top of
+		// the combo / value-engine / star keep branch (which already
+		// covers cards Freya tagged as engine pieces) — finishers
+		// aren't always in StarCards so this is the gap-closer.
+		if h.isComboRelevant(c) || h.isValueEngineKey(c) || h.isStarCard(c) || h.isFinisher(c) {
 			top = append(top, c)
-		} else if h.isCuttable(c) {
+			continue
+		}
+		// Control archetype creature filter — non-keeper creatures
+		// (we've already filtered keepers above) go to the bottom.
+		// Control decks don't need creature density.
+		if arch == ArchetypeControl && typeLineContains(c, "creature") {
 			bottom = append(bottom, c)
-		} else if val >= threshold {
+			continue
+		}
+		if h.isCuttable(c) {
+			bottom = append(bottom, c)
+			continue
+		}
+		if val >= threshold {
 			top = append(top, c)
 		} else {
 			bottom = append(bottom, c)
