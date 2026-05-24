@@ -203,6 +203,20 @@ func LoadRecentGames(ctx context.Context, db *sql.DB, limit int) ([]GameRecord, 
 	return out, rows.Err()
 }
 
+// LoadGameByID fetches a single GameRecord by its primary key. Returns
+// sql.ErrNoRows verbatim when the id is unknown so callers can map it
+// to a 404. battlefield_cards and per-seat detail live on
+// LoadGameSeats; this is the lightweight metadata-only fetch used by
+// hexapi's /api/games/{id}/summary endpoint.
+func LoadGameByID(ctx context.Context, db *sql.DB, gameID int64) (GameRecord, error) {
+	var g GameRecord
+	err := db.QueryRowContext(ctx,
+		`SELECT game_id, started_at, finished_at, turns, winner, winner_name, end_reason, rng_seed
+		 FROM showmatch_game WHERE game_id = ?`, gameID).Scan(
+		&g.GameID, &g.StartedAt, &g.FinishedAt, &g.Turns, &g.Winner, &g.WinnerName, &g.EndReason, &g.Seed)
+	return g, err
+}
+
 func LoadGameSeats(ctx context.Context, db *sql.DB, gameID int64) ([]GameSeatRecord, error) {
 	rows, err := db.QueryContext(ctx,
 		`SELECT game_id, seat, commander, life, hand_size, library_size, gy_size, bf_size, lost
