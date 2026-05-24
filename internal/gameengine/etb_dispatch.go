@@ -30,9 +30,22 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 			if !EventEquals(trig.Trigger.Event, "etb") {
 				continue
 			}
-			PushTriggeredAbility(gs, perm, trig.Effect)
-			if gs.CheckEnd() {
-				return
+			// CR §614 — consult the would_fire_etb_trigger replacement
+			// chain so Panharmonicon / Yarok / Cloud / Clara / Katara can
+			// add additional firings. The handler returns the modified
+			// count (1 by default, 2+ with doublers) and a cancel flag.
+			// Pre-r60 this site pushed once unconditionally, leaving the
+			// entire ETB-doubler family silently inert in real games even
+			// though the replacement framework's unit tests pass.
+			n, cancelled := FireETBTriggerEvent(gs, perm)
+			if cancelled {
+				continue
+			}
+			for i := 0; i < n; i++ {
+				PushTriggeredAbility(gs, perm, trig.Effect)
+				if gs.CheckEnd() {
+					return
+				}
 			}
 		}
 	}
