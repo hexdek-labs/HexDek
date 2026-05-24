@@ -43,9 +43,35 @@ func jasmineBorealETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 
 func jasmineBorealActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
 	const slug = "jasmine_boreal_tap_for_gw_restricted"
-	if gs == nil || src == nil {
+	if gs == nil || src == nil || src.Card == nil {
 		return
 	}
-	emitPartial(gs, slug, src.Card.DisplayName(),
-		"tap_add_gw_spend_only_on_no_ability_creature_spells_engine_side")
+	if src.Tapped {
+		emitFail(gs, slug, src.Card.DisplayName(), "already_tapped", nil)
+		return
+	}
+	seatIdx := src.Controller
+	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return
+	}
+	src.Tapped = true
+	seat.ManaPool += 2
+	if seat.Flags == nil {
+		seat.Flags = map[string]int{}
+	}
+	// Breadcrumb the restriction so cost-spend code paths (and the AI
+	// hat's mana-availability scan) can refuse to apply this mana to
+	// spells with abilities. The full mana-restriction is engine-side;
+	// the flag tells consumers the restricted pool exists.
+	seat.Flags["jasmine_no_ability_creature_mana"] += 2
+	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
+		"seat":     seatIdx,
+		"added":    2,
+		"colors":   "GW",
+		"restrict": "no_ability_creature_spells",
+	})
 }

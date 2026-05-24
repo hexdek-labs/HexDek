@@ -45,6 +45,9 @@ func theMasterOfKeysLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 		return
 	}
 	gs.UnregisterZoneCastPoliciesForPermanent(perm)
+	if seat := gs.Seats[perm.Controller]; seat != nil && seat.Flags != nil {
+		delete(seat.Flags, "master_of_keys_enchantment_escape_grant")
+	}
 }
 
 // theMasterOfKeysEnchantmentPredicate filters cards eligible for the
@@ -88,6 +91,15 @@ func theMasterOfKeysETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		gameengine.MoveCard(gs, card, seatIdx, "library", "graveyard", "master_of_keys_mill")
 		milled++
 	}
+	// R60 followup: expose a seat flag so analytics and the AI hat can see
+	// that the enchantment-escape grant is active (and Heimdall / audit
+	// tooling can confirm the ETB ran on a fresh game state). The
+	// ZoneCastPolicy below is the load-bearing piece; this flag is a
+	// breadcrumb.
+	if seat.Flags == nil {
+		seat.Flags = map[string]int{}
+	}
+	seat.Flags["master_of_keys_enchantment_escape_grant"] = 1
 	// R58: register the enchantment-escape grant on the controller's
 	// graveyard. ManaCost=-1 means "use the card's printed mana cost";
 	// ExileOnResolve=true routes the resolved spell to exile per

@@ -435,6 +435,24 @@ func ScanCostModifiersWithContext(gs *GameState, card *Card, seatIdx int, ctx Ca
 			isSelf := perm.Controller == seatIdx
 
 			switch name {
+			// --- COST REDUCTIONS (self-targeted) ---
+
+			case "Aminatou, Veil Piercer":
+				// "Each enchantment card in your hand has miracle. Its
+				// miracle cost is equal to its mana cost reduced by {4}."
+				// Modeled as a flat {4} reduction on enchantment spells
+				// cast by Aminatou's controller. The full miracle gating
+				// (must be the first card drawn this turn) is a cast-
+				// pipeline rider; for the cost-only surface the reduction
+				// matches the printed math.
+				if isSelf && cardHasType(card, "enchantment") {
+					mods = append(mods, CostModifier{
+						Kind:   CostModReduction,
+						Amount: 4,
+						Source: name,
+					})
+				}
+
 			// --- COST INCREASES ---
 
 			case "Thalia, Guardian of Thraben":

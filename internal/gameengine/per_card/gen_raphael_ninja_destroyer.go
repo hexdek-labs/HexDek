@@ -31,11 +31,14 @@ func raphaelNinjaDestroyerETB(gs *gameengine.GameState, perm *gameengine.Permane
 	if gs == nil || perm == nil {
 		return
 	}
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	perm.Flags["must_be_blocked"] = 1
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": perm.Controller,
+		"seat":            perm.Controller,
+		"must_be_blocked": 1,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"must_be_blocked_combat_restriction_engine_side")
 }
 
 func raphaelNinjaDestroyerLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
