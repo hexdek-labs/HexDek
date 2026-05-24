@@ -1491,9 +1491,18 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 				if !EventEquals(trig.Trigger.Event, "etb") {
 					continue
 				}
-				PushTriggeredAbility(gs, perm, trig.Effect)
-				if gs.CheckEnd() {
-					return
+				// CR §614 — consult would_fire_etb_trigger so Panharmonicon
+				// and friends can add additional firings. See parallel fix
+				// in etb_dispatch.go::FirePermanentETBTriggers.
+				n, cancelled := FireETBTriggerEvent(gs, perm)
+				if cancelled {
+					continue
+				}
+				for i := 0; i < n; i++ {
+					PushTriggeredAbility(gs, perm, trig.Effect)
+					if gs.CheckEnd() {
+						return
+					}
 				}
 			}
 		}

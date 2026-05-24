@@ -70,9 +70,21 @@ func fireObserverETBTriggers(gs *GameState, entering *Permanent) {
 					},
 				})
 
-				PushTriggeredAbility(gs, observer, trig.Effect)
-				if gs.CheckEnd() {
-					return
+				// CR §614 — consult would_fire_etb_trigger so Panharmonicon
+				// and friends double observer ETB triggers (e.g. Soul
+				// Warden firing twice when Panharmonicon is in play and a
+				// creature ETBs). ev.Source = observer per the handler
+				// convention: the replacement is keyed on the permanent
+				// whose ability is firing, not on the entering permanent.
+				n, cancelled := FireETBTriggerEvent(gs, observer)
+				if cancelled {
+					continue
+				}
+				for i := 0; i < n; i++ {
+					PushTriggeredAbility(gs, observer, trig.Effect)
+					if gs.CheckEnd() {
+						return
+					}
 				}
 			}
 		}
