@@ -33,6 +33,7 @@ type freyaWinLines struct {
 type freyaWinLine struct {
 	Pieces     []string          `json:"pieces"`
 	Type       string            `json:"type"`
+	Class      string            `json:"class,omitempty"`
 	Desc       string            `json:"description,omitempty"`
 	TutorPaths []freyaTutorChain `json:"tutor_paths,omitempty"`
 }
@@ -188,6 +189,7 @@ func buildFromStrategyJSON(sj *strategyFileJSON) *StrategyProfile {
 		cp := ComboPlan{
 			Pieces: wl.Pieces,
 			Type:   wl.Type,
+			Class:  wl.Class,
 		}
 		if len(wl.TutorPaths) > 0 && len(wl.Pieces) == 2 {
 			cp.CastOrder = deriveCastOrder(wl.Pieces, wl.TutorPaths)
@@ -286,6 +288,7 @@ func buildStrategyProfile(fj *freyaJSON) *StrategyProfile {
 			cp := ComboPlan{
 				Pieces: wl.Pieces,
 				Type:   wl.Type,
+				Class:  wl.Class,
 			}
 			// Derive cast order: for 2-card combos, use tutor path hints
 			// if available. Otherwise, use piece order as-is.

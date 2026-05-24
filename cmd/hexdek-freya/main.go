@@ -702,6 +702,7 @@ type strategyMatchup struct {
 type strategyWinLine struct {
 	Pieces      []string              `json:"pieces"`
 	Type        string                `json:"type"`
+	Class       string                `json:"class,omitempty"`
 	TutorPaths  []jsonTutorChain      `json:"tutor_paths,omitempty"`
 	Description string                `json:"description,omitempty"`
 	Rationale   *jsonWinLineRationale `json:"rationale,omitempty"`
@@ -734,6 +735,7 @@ func saveStrategyJSON(path string, report *FreyaReport) {
 			swl := strategyWinLine{
 				Pieces:      wl.Pieces,
 				Type:        wl.Type,
+				Class:       wl.Class,
 				Description: wl.Desc,
 			}
 			if wl.Rationale != nil {

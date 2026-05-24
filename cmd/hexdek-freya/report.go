@@ -1292,6 +1292,7 @@ type jsonWinLines struct {
 type jsonWinLine struct {
 	Pieces     []string              `json:"pieces"`
 	Type       string                `json:"type"`
+	Class      string                `json:"class,omitempty"`
 	Desc       string                `json:"description,omitempty"`
 	TutorPaths []jsonTutorChain      `json:"tutor_paths,omitempty"`
 	Rationale  *jsonWinLineRationale `json:"rationale,omitempty"`
@@ -1548,6 +1549,7 @@ func buildJSONWinLines(wla *WinLineAnalysis) *jsonWinLines {
 		lines[i] = jsonWinLine{
 			Pieces:     wl.Pieces,
 			Type:       wl.Type,
+			Class:      wl.Class,
 			Desc:       wl.Desc,
 			TutorPaths: paths,
 			Rationale:  rat,

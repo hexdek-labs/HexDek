@@ -10,6 +10,7 @@ import (
 type WinLine struct {
 	Pieces     []string
 	Type       string // "infinite", "determined", "finisher", "combat", "commander_damage", "alt_wincon"
+	Class      string // ComboClass* — what the combo produces (sourced from ComboResult); empty for non-combo lines like commander_damage.
 	Desc       string
 	TutorPaths []TutorChain
 	Rationale  *WinLineRationale
@@ -636,6 +637,7 @@ func addComboWinLines(wla *WinLineAnalysis, combos []ComboResult, lineType strin
 		wl := WinLine{
 			Pieces: combo.Cards,
 			Type:   lineType,
+			Class:  combo.Class,
 			Desc:   combo.Description,
 		}
 

@@ -299,6 +299,10 @@ func allKnownCombos() []KnownCombo {
 	if len(ImportedCombos) == 0 {
 		return KnownCombos
 	}
+	// ImportedCombos arrive from Commander Spellbook without a curated
+	// Class; backfill via the heuristic classifier before the merge so
+	// downstream consumers see a uniformly-classified set.
+	ClassifySpellbookImported(ImportedCombos)
 	merged, _ := MergeKnownCombos(KnownCombos, ImportedCombos)
 	return merged
 }
