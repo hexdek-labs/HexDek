@@ -101,6 +101,14 @@ BUCKETED_KINDS = {
     "full_party",
     "total_toughness",
     "main_phase", "first_combat_phase",
+    # Era 3 sweep r60 additions (dev/era3-scaffold-sweep-r60 branch).
+    "discarded_nonland",
+    "control_n_tapped_creatures",
+    "gained_n_life_this_turn",
+    "drawn_n_cards_this_turn",
+    "starting_player", "you_were_starting_player",
+    "quest_counters",
+    "dragon_beheld",
 }
 
 RAW_KINDS = {"intervening_if", "as_long_as", "conditional", "raw", "if"}
@@ -174,8 +182,16 @@ RAW_PATTERNS = [
     ("full_party", re.compile(r"full party")),
     ("total_toughness", re.compile(r"total toughness")),
     ("main_phase_first_combat", re.compile(r"main phase|first combat phase")),
+    ("control_n_tapped_creatures", re.compile(r"(?:you )?control.*(?:two|three|four|\d+).*or more.*tapped creature")),
     ("control_n_creatures", re.compile(r"you control.*(?:two|three|four|five|\d+).*or more.*creature")),
     ("control_n_lands", re.compile(r"you control.*(?:two|three|four|five|six|seven|eight|\d+).*or more.*lands?")),
+    # Era 3 r60 — text-form fallbacks for the new structured Kinds above.
+    ("discarded_nonland", re.compile(r"discarded a nonland|discarded.*nonland card")),
+    ("drawn_n_cards_this_turn", re.compile(r"(?:you've|you have) drawn.*or more.*cards.*this turn")),
+    ("gained_n_life_this_turn", re.compile(r"gained.*(?:or more|at least).*life this turn")),
+    ("starting_player", re.compile(r"starting player")),
+    ("quest_counters", re.compile(r"quest counter")),
+    ("dragon_beheld", re.compile(r"(?:dragon )?was beheld")),
     ("you_control_raw", re.compile(r"you control")),
 ]
 

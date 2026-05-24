@@ -948,6 +948,18 @@ const (
 	condScaffoldLifeAboveStarting        // "life total is greater than your starting life total"
 	condScaffoldOpponentMoreLife         // "an opponent has more life than you"
 	condScaffoldWasntBlocking            // "it wasn't blocking" — combat exit predicate
+
+	// Era 3 sweep r60 — second pass at the 2025+ recent-printings cluster
+	// surfaced by data/thor-audit-era3-recent.md. Each scaffold maps to
+	// existing engine state (Turn counters, Permanent.Counters, Seat
+	// flags) — no new gameengine fields required.
+	condScaffoldDiscardedNonland         // "you discarded a nonland card" (Spider-Verse / Doom et al)
+	condScaffoldControlNTappedCreatures  // "you control N or more tapped creatures" (EoE Pilots)
+	condScaffoldGainedNLifeThisTurn      // count variant: "you gained N or more life this turn"
+	condScaffoldDrawnNCardsThisTurn      // count variant: "you've drawn N or more cards this turn"
+	condScaffoldStartingPlayer           // "you were the starting player" / "weren't"
+	condScaffoldQuestCounters            // "it has N or more quest counters on it" (TLA Ascension)
+	condScaffoldDragonBeheld             // "a Dragon was beheld" (Tarkir Dragonstorm)
 )
 
 type conditionScaffold struct {
@@ -1210,6 +1222,142 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		return conditionScaffold{kind: condScaffoldOpponentMoreLife}
 	case "wasnt_blocking":
 		return conditionScaffold{kind: condScaffoldWasntBlocking}
+
+	// Era 3 r48 scaffold wiring — the prior sweep added enum constants
+	// and apply cases but never wired structured-Kind detection. Route
+	// the AST Kinds the audit script's BUCKETED_KINDS set already lists
+	// (control_n_creatures, hand_size_*, full_party, …) to their apply
+	// paths so the dead code goes live.
+	case "control_n_creatures", "you_control_n_creatures":
+		out := conditionScaffold{kind: condScaffoldControlNCreatures, count: 3}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "control_n_lands", "you_control_n_lands":
+		out := conditionScaffold{kind: condScaffoldControlNLands, count: 5}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "counter_doubler", "counter_replacement_boost":
+		return conditionScaffold{kind: condScaffoldCounterReplacementBoost}
+	case "token_doubler", "token_replacement_boost":
+		return conditionScaffold{kind: condScaffoldTokenReplacementBoost}
+	case "persist_check", "undying_check", "no_counters":
+		out := conditionScaffold{kind: condScaffoldPersistUndyingCheck, subtype: "+1/+1"}
+		for _, a := range cond.Args {
+			if s, ok := a.(string); ok {
+				ls := strings.ToLower(strings.TrimSpace(s))
+				if strings.Contains(ls, "-1/-1") {
+					out.subtype = "-1/-1"
+				} else if strings.Contains(ls, "+1/+1") {
+					out.subtype = "+1/+1"
+				}
+			}
+		}
+		return out
+	case "card_type_reveal", "revealed_card_type":
+		out := conditionScaffold{kind: condScaffoldCardTypeReveal, subtype: "creature"}
+		for _, a := range cond.Args {
+			if s, ok := a.(string); ok {
+				ls := strings.ToLower(strings.TrimSpace(s))
+				if ls != "" && !isGenericWord(ls) {
+					out.subtype = ls
+				} else if ls != "" {
+					out.subtype = ls
+				}
+			}
+		}
+		return out
+	case "equipped", "equipment_attached":
+		return conditionScaffold{kind: condScaffoldEquipmentAttached}
+	case "hand_size_le", "hand_size_lt", "hand_size_ge", "hand_size_threshold":
+		out := conditionScaffold{kind: condScaffoldHandSizeThreshold, subtype: kind, count: 7}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n >= 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "put_counter_this_turn":
+		return conditionScaffold{kind: condScaffoldPutCounterThisTurn}
+	case "cast_n_spells_this_turn":
+		out := conditionScaffold{kind: condScaffoldCastNSpellsThisTurn, count: 2}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "full_party":
+		return conditionScaffold{kind: condScaffoldFullParty}
+	case "total_toughness":
+		out := conditionScaffold{kind: condScaffoldTotalToughness, count: 8}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "main_phase":
+		return conditionScaffold{kind: condScaffoldMainPhaseOrFirstCombat, subtype: "main_phase"}
+	case "first_combat_phase":
+		return conditionScaffold{kind: condScaffoldMainPhaseOrFirstCombat, subtype: "first_combat_phase"}
+
+	// Era 3 sweep r60 — new structured-Kind dispatch for clusters that
+	// fell out of the r48 batch.
+	case "discarded_nonland":
+		return conditionScaffold{kind: condScaffoldDiscardedNonland}
+	case "control_n_tapped_creatures":
+		out := conditionScaffold{kind: condScaffoldControlNTappedCreatures, count: 2}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "gained_n_life_this_turn":
+		out := conditionScaffold{kind: condScaffoldGainedNLifeThisTurn, count: 3}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "drawn_n_cards_this_turn":
+		out := conditionScaffold{kind: condScaffoldDrawnNCardsThisTurn, count: 2}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "starting_player", "you_were_starting_player":
+		out := conditionScaffold{kind: condScaffoldStartingPlayer, subtype: "starting"}
+		for _, a := range cond.Args {
+			if s, ok := a.(string); ok {
+				ls := strings.ToLower(strings.TrimSpace(s))
+				if strings.Contains(ls, "weren't") || strings.Contains(ls, "not") {
+					out.subtype = "not_starting"
+				}
+			}
+		}
+		return out
+	case "quest_counters":
+		out := conditionScaffold{kind: condScaffoldQuestCounters, count: 4}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "dragon_beheld":
+		return conditionScaffold{kind: condScaffoldDragonBeheld}
 	}
 
 	switch kind {
@@ -2168,6 +2316,253 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		return cs
 	}
 
+	// Era 3 r48 raw-text wiring + r60 new clusters. Each clause appears
+	// in data/thor-audit-era3-recent.md ≥3×. Order: most specific phrase
+	// first so the catch-all YouControlSubtype matcher doesn't eat
+	// "you control N or more creatures" with an empty subtype.
+
+	// Counter-doubler replacement — "one or more (+1/+1)? counters would
+	// be put on …". Distinct from PutCounterThisTurn (after-the-fact
+	// stamping) — this is a replacement-effect predicate.
+	if strings.Contains(txt, "counters would be put on") ||
+		strings.Contains(txt, "counter would be put on") ||
+		strings.Contains(txt, "one or more counters would") ||
+		strings.Contains(txt, "one or more +1/+1 counters would") {
+		cs.kind = condScaffoldCounterReplacementBoost
+		return cs
+	}
+	// Token-doubler replacement — "one or more tokens would be created".
+	if strings.Contains(txt, "tokens would be created") ||
+		strings.Contains(txt, "token would be created") ||
+		strings.Contains(txt, "one or more tokens would") {
+		cs.kind = condScaffoldTokenReplacementBoost
+		return cs
+	}
+	// Persist/undying — "if it had no +1/+1 / -1/-1 counters on it".
+	// Anchored on the "had no … counters" phrasing so we don't collide
+	// with HadCountersOnIt (the inverse / counted form).
+	if strings.Contains(txt, "had no -1/-1 counters") ||
+		strings.Contains(txt, "had no +1/+1 counters") ||
+		strings.Contains(txt, "had no counters on it") {
+		cs.kind = condScaffoldPersistUndyingCheck
+		if strings.Contains(txt, "-1/-1") {
+			cs.subtype = "-1/-1"
+		} else {
+			cs.subtype = "+1/+1"
+		}
+		return cs
+	}
+	// CardTypeReveal — "if it's a (land|creature|permanent|instant|sorcery
+	// |artifact|enchantment) card". Anchored on the "it's a … card" copula
+	// to avoid eating generic typeline clauses.
+	if (strings.Contains(txt, "it's a land card") ||
+		strings.Contains(txt, "it's a creature card") ||
+		strings.Contains(txt, "it's a permanent card") ||
+		strings.Contains(txt, "it's an instant card") ||
+		strings.Contains(txt, "it's a sorcery card") ||
+		strings.Contains(txt, "it's an artifact card") ||
+		strings.Contains(txt, "it's an enchantment card") ||
+		strings.Contains(txt, "it's a planeswalker card")) ||
+		(strings.Contains(txt, "is a") && strings.Contains(txt, "card") &&
+			(strings.Contains(txt, "land card") || strings.Contains(txt, "creature card") ||
+				strings.Contains(txt, "permanent card"))) {
+		cs.kind = condScaffoldCardTypeReveal
+		switch {
+		case strings.Contains(txt, "land card"):
+			cs.subtype = "land"
+		case strings.Contains(txt, "permanent card"):
+			cs.subtype = "permanent"
+		case strings.Contains(txt, "creature card"):
+			cs.subtype = "creature"
+		case strings.Contains(txt, "instant card"):
+			cs.subtype = "instant"
+		case strings.Contains(txt, "sorcery card"):
+			cs.subtype = "sorcery"
+		case strings.Contains(txt, "artifact card"):
+			cs.subtype = "artifact"
+		case strings.Contains(txt, "enchantment card"):
+			cs.subtype = "enchantment"
+		case strings.Contains(txt, "planeswalker card"):
+			cs.subtype = "planeswalker"
+		default:
+			cs.subtype = "creature"
+		}
+		return cs
+	}
+	// EquipmentAttached — "as long as ~ is equipped" / "equipped creature
+	// is a …" / "this Equipment is attached to a creature" / "Cloud is
+	// equipped". Anchor on the "is equipped" / "is attached to a creature"
+	// phrasings so we don't grab generic "equip" cost text.
+	if strings.Contains(txt, " is equipped") ||
+		strings.Contains(txt, "equipped creature is") ||
+		strings.Contains(txt, "while equipped") ||
+		strings.Contains(txt, "is attached to a creature") {
+		cs.kind = condScaffoldEquipmentAttached
+		return cs
+	}
+	// HandSizeThreshold — "fewer than N cards in hand" / "N or more cards
+	// in hand" / "N or fewer cards in hand".
+	if (strings.Contains(txt, "cards in") && strings.Contains(txt, "hand")) &&
+		(strings.Contains(txt, "fewer than") || strings.Contains(txt, "or more") ||
+			strings.Contains(txt, "or fewer") || strings.Contains(txt, "no more than")) {
+		cs.kind = condScaffoldHandSizeThreshold
+		cs.count = 4
+		switch {
+		case strings.Contains(txt, "fewer than"):
+			cs.subtype = "hand_size_lt"
+		case strings.Contains(txt, "or fewer"), strings.Contains(txt, "no more than"):
+			cs.subtype = "hand_size_le"
+		case strings.Contains(txt, "or more"):
+			cs.subtype = "hand_size_ge"
+		default:
+			cs.subtype = "hand_size_threshold"
+		}
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// PutCounterThisTurn — "you put a counter on … this turn".
+	if (strings.Contains(txt, "put a counter on") ||
+		strings.Contains(txt, "put a +1/+1 counter on")) &&
+		strings.Contains(txt, "this turn") &&
+		strings.Contains(txt, "you") {
+		cs.kind = condScaffoldPutCounterThisTurn
+		return cs
+	}
+	// CastNSpellsThisTurn — "you've cast N or more spells this turn".
+	// Must come BEFORE generic CastSpellThisTurn matchers in the chain
+	// above; we rely on running last (this block is below those).
+	if (strings.Contains(txt, "you've cast") || strings.Contains(txt, "you have cast")) &&
+		strings.Contains(txt, "this turn") &&
+		(strings.Contains(txt, "spells") || strings.Contains(txt, "noncreature spells")) &&
+		(strings.Contains(txt, "or more") || strings.Contains(txt, "at least")) {
+		cs.kind = condScaffoldCastNSpellsThisTurn
+		cs.count = 2
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// FullParty — Zendikar Rising 4-class party.
+	if strings.Contains(txt, "full party") {
+		cs.kind = condScaffoldFullParty
+		return cs
+	}
+	// TotalToughness — "creatures you control have total toughness N+".
+	if strings.Contains(txt, "total toughness") {
+		cs.kind = condScaffoldTotalToughness
+		cs.count = 8
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// MainPhase / FirstCombatPhase. Order: first-combat-phase before main
+	// so "it's the first combat phase" doesn't get eaten by the main test.
+	if strings.Contains(txt, "first combat phase") {
+		cs.kind = condScaffoldMainPhaseOrFirstCombat
+		cs.subtype = "first_combat_phase"
+		return cs
+	}
+	if strings.Contains(txt, "your main phase") || strings.Contains(txt, "it's your main") {
+		cs.kind = condScaffoldMainPhaseOrFirstCombat
+		cs.subtype = "main_phase"
+		return cs
+	}
+
+	// Era 3 r60 — new clusters.
+
+	// DiscardedNonland — Spider-Verse / Doctor Doom-style: "you discarded
+	// a nonland card". The bare "nonland" qualifier distinguishes from the
+	// generic DiscardedThisTurn matcher in the era 1 block above.
+	if strings.Contains(txt, "discarded a nonland") ||
+		(strings.Contains(txt, "discarded") && strings.Contains(txt, "nonland card")) {
+		cs.kind = condScaffoldDiscardedNonland
+		return cs
+	}
+	// ControlNTappedCreatures — EoE Pilots: "you control N or more tapped
+	// creatures". Must run before the generic ControlNCreatures match so
+	// the more-specific "tapped" predicate wins.
+	if strings.Contains(txt, "tapped creature") &&
+		(strings.Contains(txt, "you control") || strings.Contains(txt, "control")) &&
+		strings.Contains(txt, "or more") {
+		cs.kind = condScaffoldControlNTappedCreatures
+		cs.count = 2
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// ControlNCreatures / ControlNLands — the r48 raw patterns. Generic
+	// "you control" tail eats these if we don't claim first.
+	if strings.Contains(txt, "you control") && strings.Contains(txt, "or more") &&
+		(strings.Contains(txt, "land") && !strings.Contains(txt, "landfall")) {
+		cs.kind = condScaffoldControlNLands
+		cs.count = 5
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	if strings.Contains(txt, "you control") && strings.Contains(txt, "or more") &&
+		strings.Contains(txt, "creature") {
+		cs.kind = condScaffoldControlNCreatures
+		cs.count = 3
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// DrawnNCardsThisTurn — "you've drawn N or more cards this turn"
+	// (Avatar TLA). Count variant of DrawnCardThisTurn.
+	if (strings.Contains(txt, "you've drawn") || strings.Contains(txt, "you have drawn")) &&
+		strings.Contains(txt, "or more") && strings.Contains(txt, "cards") &&
+		strings.Contains(txt, "this turn") {
+		cs.kind = condScaffoldDrawnNCardsThisTurn
+		cs.count = 2
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// GainedNLifeThisTurn — "you gained N or more life this turn".
+	if strings.Contains(txt, "gained") && strings.Contains(txt, "life this turn") &&
+		(strings.Contains(txt, "or more") || strings.Contains(txt, "at least")) {
+		cs.kind = condScaffoldGainedNLifeThisTurn
+		cs.count = 3
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// StartingPlayer — "you were/weren't the starting player".
+	if strings.Contains(txt, "starting player") {
+		cs.kind = condScaffoldStartingPlayer
+		cs.subtype = "starting"
+		if strings.Contains(txt, "weren't") || strings.Contains(txt, "were not") {
+			cs.subtype = "not_starting"
+		}
+		return cs
+	}
+	// QuestCounters — Avatar TLA Ascension: "it has N or more quest
+	// counters on it". Distinguish from generic SelfHasCounter by the
+	// explicit "quest counter" subtype.
+	if strings.Contains(txt, "quest counter") {
+		cs.kind = condScaffoldQuestCounters
+		cs.count = 4
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// DragonBeheld — Tarkir Dragonstorm new mechanic: "a Dragon was beheld".
+	if strings.Contains(txt, "dragon was beheld") ||
+		strings.Contains(txt, "was beheld") {
+		cs.kind = condScaffoldDragonBeheld
+		return cs
+	}
+
 	// Tribal: "if you control another <subtype>" / "if you control a <subtype>".
 	// Run last because it's the most permissive matcher.
 	if strings.Contains(txt, "you control") {
@@ -2408,6 +2803,46 @@ func classifyPriorActionVerb(txt string) string {
 		return "dealt_damage"
 	}
 	return ""
+}
+
+// parseFirstSpelledInt returns the first integer (digit or English word
+// form, "one"-"twenty") found in txt, or 0 if none. Used by the era 3
+// scaffold raw-text matchers ("N or more …") that need a count without
+// committing to a specific regex shape. Word forms beat digits when both
+// appear — "two or more" should win over a stray "1" elsewhere in the
+// sentence.
+func parseFirstSpelledInt(txt string) int {
+	if txt == "" {
+		return 0
+	}
+	for _, w := range []struct {
+		word string
+		n    int
+	}{
+		{"twenty", 20}, {"nineteen", 19}, {"eighteen", 18}, {"seventeen", 17},
+		{"sixteen", 16}, {"fifteen", 15}, {"fourteen", 14}, {"thirteen", 13},
+		{"twelve", 12}, {"eleven", 11}, {"ten", 10},
+		{"nine", 9}, {"eight", 8}, {"seven", 7}, {"six", 6},
+		{"five", 5}, {"four", 4}, {"three", 3}, {"two", 2}, {"one", 1},
+	} {
+		if strings.Contains(txt, w.word) {
+			return w.n
+		}
+	}
+	for i := 0; i < len(txt); i++ {
+		c := txt[i]
+		if c < '0' || c > '9' {
+			continue
+		}
+		j := i
+		for j < len(txt) && txt[j] >= '0' && txt[j] <= '9' {
+			j++
+		}
+		if n, err := strconv.Atoi(txt[i:j]); err == nil {
+			return n
+		}
+	}
+	return 0
 }
 
 func parseGraveyardCount(txt string) int {
@@ -4473,6 +4908,185 @@ func applyConditionScaffolding(gs *gameengine.GameState, cond *gameast.Condition
 			srcPerm.Flags["wasnt_blocking"] = 1
 		}
 		cs.description = "cleared blocking flags on srcPerm + set wasnt_blocking"
+
+	case condScaffoldDiscardedNonland:
+		// "you discarded a nonland card" — Spider-Verse / Doctor Doom.
+		// Push a nonland card into seat 0's graveyard and bump the
+		// Discarded counter so per-card handlers that read either path
+		// observe a discard event. Also stamp the gs.Flags discard
+		// counter the engine sets in DiscardCard.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			seat := gs.Seats[0]
+			discarded := &gameengine.Card{
+				Name:  "Discarded Nonland",
+				Owner: 0,
+				Types: []string{"creature"},
+			}
+			seat.Graveyard = append(seat.Graveyard, discarded)
+			seat.Turn.Discarded++
+			if seat.Flags == nil {
+				seat.Flags = map[string]int{}
+			}
+			seat.Flags["discarded_this_turn"] = 1
+			seat.Flags["discarded_nonland_this_turn"] = 1
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["discarded_0"]++
+		gs.LogEvent(gameengine.Event{
+			Kind:   "card_discarded",
+			Seat:   0,
+			Source: "thor_priming",
+		})
+		cs.description = "discarded nonland card to seat 0 graveyard + flags + event"
+
+	case condScaffoldControlNTappedCreatures:
+		// "you control N or more tapped creatures" — EoE Pilots. Seed
+		// creatures and flip each one's Tapped bit so the threshold is
+		// satisfied (count+1 to clear strict-greater predicates too).
+		n := cs.count
+		if n < 1 {
+			n = 2
+		}
+		seedSeatCreatures(gs, 0, n+1, "Tapped Pilot", "")
+		tapped := 0
+		want := n + 1
+		for _, p := range gs.Seats[0].Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			isCreature := false
+			for _, t := range p.Card.Types {
+				if t == "creature" {
+					isCreature = true
+					break
+				}
+			}
+			if !isCreature {
+				continue
+			}
+			p.Tapped = true
+			tapped++
+			if tapped >= want {
+				break
+			}
+		}
+		cs.description = fmt.Sprintf("tapped %d creatures on seat 0 (control_n_tapped_creatures n=%d)", tapped, n)
+
+	case condScaffoldGainedNLifeThisTurn:
+		// "you gained N or more life this turn" — count variant of
+		// GainedLifeThisTurn. Bump Turn.LifeGained directly so the
+		// engine's threshold checks see at least N+1 gained.
+		n := cs.count
+		if n < 1 {
+			n = 3
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			seat := gs.Seats[0]
+			seat.Turn.LifeGained += n + 1
+			seat.Life += n + 1
+			if seat.Flags == nil {
+				seat.Flags = map[string]int{}
+			}
+			seat.Flags["gained_life_this_turn"] = 1
+			seat.Flags["life_gained_this_turn"] = seat.Turn.LifeGained
+		}
+		cs.description = fmt.Sprintf("bumped seat 0 LifeGained by %d (threshold=%d)", n+1, n)
+
+	case condScaffoldDrawnNCardsThisTurn:
+		// "you've drawn N or more cards this turn" — Avatar TLA. Bump
+		// Turn.CardsDrawn and the legacy drawn_card_this_turn flag.
+		n := cs.count
+		if n < 1 {
+			n = 2
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			seat := gs.Seats[0]
+			seat.Turn.CardsDrawn += n + 1
+			if seat.Flags == nil {
+				seat.Flags = map[string]int{}
+			}
+			seat.Flags["drawn_card_this_turn"] = 1
+			seat.Flags["cards_drawn_this_turn"] = seat.Turn.CardsDrawn
+		}
+		cs.description = fmt.Sprintf("bumped seat 0 CardsDrawn by %d (threshold=%d)", n+1, n)
+
+	case condScaffoldStartingPlayer:
+		// "you were the starting player" / "you weren't the starting
+		// player". The engine doesn't expose a dedicated StartingPlayer
+		// field, but the convention used by per_card handlers is to
+		// stamp gs.Flags["starting_player_seat"] = N and the seat-level
+		// "is_starting_player" flag. Set both consistently so the
+		// predicate has data to read regardless of which convention the
+		// AST handler picks up.
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		startSeat := 0
+		if cs.subtype == "not_starting" {
+			startSeat = 1
+		}
+		gs.Flags["starting_player_seat"] = startSeat
+		for i, s := range gs.Seats {
+			if s == nil {
+				continue
+			}
+			if s.Flags == nil {
+				s.Flags = map[string]int{}
+			}
+			if i == startSeat {
+				s.Flags["is_starting_player"] = 1
+			} else {
+				delete(s.Flags, "is_starting_player")
+			}
+		}
+		cs.description = fmt.Sprintf("set starting_player_seat=%d (subtype=%s)", startSeat, cs.subtype)
+
+	case condScaffoldQuestCounters:
+		// "it has N or more quest counters on it" — Avatar TLA Ascension
+		// triple. Stamp the named counter on srcPerm. Use count+1 so
+		// strict-greater thresholds also pass.
+		n := cs.count
+		if n < 1 {
+			n = 4
+		}
+		if srcPerm != nil {
+			if srcPerm.Counters == nil {
+				srcPerm.Counters = map[string]int{}
+			}
+			srcPerm.Counters["quest"] = n + 1
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["quest_counters"] = n + 1
+		}
+		cs.description = fmt.Sprintf("placed %d quest counters on srcPerm (threshold=%d)", n+1, n)
+
+	case condScaffoldDragonBeheld:
+		// "a Dragon was beheld" — Tarkir Dragonstorm. New mechanic; no
+		// dedicated engine field yet. Stamp both a gs-level and seat-level
+		// flag the per_card Behold handlers (when they land) can read.
+		// Also place a Dragon creature on seat 0 as a witness so
+		// downstream "target/sacrifice/exile a Dragon" effects have
+		// something to operate on.
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["dragon_beheld_this_turn"] = 1
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			if gs.Seats[0].Flags == nil {
+				gs.Seats[0].Flags = map[string]int{}
+			}
+			gs.Seats[0].Flags["dragon_beheld_this_turn"] = 1
+		}
+		placeNamedFriendlyCreatureWithSubtype(gs, "Beheld Dragon", "dragon")
+		gs.LogEvent(gameengine.Event{
+			Kind:   "dragon_beheld",
+			Seat:   0,
+			Source: "thor_priming",
+		})
+		cs.description = "set dragon_beheld_this_turn flags + placed Dragon witness + event"
 	}
 	return cs
 }
@@ -4713,6 +5327,22 @@ func traceConditionScaffolding(cond *gameast.Condition, tr *Tracer) {
 		desc = "set seat 0 life=5, seat 1 life=40 (opponent has more life)"
 	case condScaffoldWasntBlocking:
 		desc = "cleared blocking flags on srcPerm + wasnt_blocking"
+
+	// Era 3 sweep r60 — trace descriptions.
+	case condScaffoldDiscardedNonland:
+		desc = "discarded nonland to seat 0 graveyard + flags + event"
+	case condScaffoldControlNTappedCreatures:
+		desc = fmt.Sprintf("tapped %d creatures on seat 0 (control_n_tapped n=%d)", cs.count+1, cs.count)
+	case condScaffoldGainedNLifeThisTurn:
+		desc = fmt.Sprintf("bumped seat 0 LifeGained by %d (threshold=%d)", cs.count+1, cs.count)
+	case condScaffoldDrawnNCardsThisTurn:
+		desc = fmt.Sprintf("bumped seat 0 CardsDrawn by %d (threshold=%d)", cs.count+1, cs.count)
+	case condScaffoldStartingPlayer:
+		desc = fmt.Sprintf("set starting_player_seat (subtype=%s)", cs.subtype)
+	case condScaffoldQuestCounters:
+		desc = fmt.Sprintf("placed %d quest counters on srcPerm (threshold=%d)", cs.count+1, cs.count)
+	case condScaffoldDragonBeheld:
+		desc = "set dragon_beheld_this_turn flags + Dragon witness + event"
 	}
 	tr.Record("CONDITION_SETUP", "%q → %s", cs.rawText, desc)
 }
