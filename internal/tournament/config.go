@@ -119,6 +119,29 @@ type TournamentConfig struct {
 	// MaxPodSimilarity post-hoc.
 	MaxIntraPodSimilarity float64
 
+	// PreferArchetypeOpposition, when true, biases the PoolMode pod
+	// sampler toward pods containing at least one natural-counter
+	// matchup (combo↔stax, control↔aggro, voltron↔theft, …; see
+	// tournament.OpposingArchetypes for the full table). Useful for
+	// gauntlets where you want opposing archetypes to meet in the
+	// early games rather than waiting for the uniform sampler to
+	// stumble onto them by chance.
+	//
+	// Requires DeckArchetypes to be populated parallel to Decks. If
+	// DeckArchetypes is empty or all-Unknown, this flag is a no-op
+	// (no data to bias on). Composes with MaxIntraPodSimilarity:
+	// pods must satisfy BOTH constraints, with opposition relaxed
+	// first if no fully-satisfying pod is found in the retry budget.
+	PreferArchetypeOpposition bool
+
+	// DeckArchetypes is the per-deck archetype tag, parallel to Decks
+	// (DeckArchetypes[i] tags Decks[i]). Decks without a known
+	// archetype carry ArchetypeUnknown — those won't contribute to
+	// opposition matching. Populate this from a Freya report dump or
+	// hand-curated metadata; the tournament package doesn't classify
+	// decks itself.
+	DeckArchetypes []Archetype
+
 	// LazyPool enables on-demand deck loading for large pools. Instead
 	// of holding all decks in memory, only active game decks are loaded.
 	// Requires DeckPaths, Corpus, and Meta to be set. Decks field is ignored.

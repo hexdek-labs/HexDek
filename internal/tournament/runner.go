@@ -915,16 +915,24 @@ func runPool(cfg TournamentConfig, workers, maxTurns int, gameTimeout time.Durat
 		}()
 	}
 
-	// Job producer: for each game, pick NSeats deck indices. When
-	// cfg.MaxIntraPodSimilarity > 0, SeedPod rejection-samples until
-	// the pod has no near-clone pairings (capped at
-	// defaultSeedPodMaxAttempts shuffles, then returns the
-	// least-collided fallback). Otherwise the legacy uniform-random
-	// path runs.
+	// Job producer: for each game, pick NSeats deck indices. The
+	// sampler honors two orthogonal config knobs:
+	//   - MaxIntraPodSimilarity (Jaccard threshold; rejects near-
+	//     clone pods)
+	//   - PreferArchetypeOpposition + DeckArchetypes (biases toward
+	//     combo↔stax / control↔aggro etc. matchups)
+	// Either or both can be active; both off restores the legacy
+	// uniform-random path. See SeedPodWithOptions for the constraint
+	// relaxation order on retry-budget exhaustion.
 	go func() {
 		rng := rand.New(rand.NewSource(cfg.Seed))
+		seedOpts := SeedPodOptions{
+			MaxSimilarity:    cfg.MaxIntraPodSimilarity,
+			PreferOpposition: cfg.PreferArchetypeOpposition,
+			Archetypes:       cfg.DeckArchetypes,
+		}
 		for i := 0; i < cfg.NGames; i++ {
-			idxs := SeedPod(allDecks, nSeats, rng, cfg.MaxIntraPodSimilarity)
+			idxs := SeedPodWithOptions(allDecks, nSeats, rng, seedOpts)
 			jobs <- poolJob{gameIdx: i, deckIdxs: idxs}
 		}
 		close(jobs)
