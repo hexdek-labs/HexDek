@@ -408,10 +408,34 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 	gs.Flags["trigger_depth"]++
 	defer func() { gs.Flags["trigger_depth"]-- }()
 	if gs.Flags["trigger_depth"] > 8 {
+		// Emit a marker so TriggerCompleteness sees a follow-up event even
+		// when the runaway-loop guard silently swallows the dispatch.
+		gs.LogEvent(gameengine.Event{
+			Kind:   "trigger_evaluated",
+			Seat:   -1,
+			Target: -1,
+			Source: event,
+			Details: map[string]interface{}{
+				"event":   event,
+				"capped":  "trigger_depth",
+				"rule":    "603.3",
+			},
+		})
 		return
 	}
 	gs.Flags["trigger_total"]++
 	if gs.Flags["trigger_total"] > 2000 {
+		gs.LogEvent(gameengine.Event{
+			Kind:   "trigger_evaluated",
+			Seat:   -1,
+			Target: -1,
+			Source: event,
+			Details: map[string]interface{}{
+				"event":   event,
+				"capped":  "trigger_total",
+				"rule":    "603.3",
+			},
+		})
 		return
 	}
 	canonical := gameengine.NormalizeEventSingle(event)

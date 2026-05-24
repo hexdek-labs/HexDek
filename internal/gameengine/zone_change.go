@@ -271,10 +271,11 @@ func sacrificePermanentImpl(gs *GameState, perm *Permanent, source *Permanent, r
 		Target: perm.Controller,
 		Source: cardName,
 		Details: map[string]interface{}{
-			"target_card": cardName,
-			"to_zone":     destZone,
-			"reason":      reason,
-			"rule":        "701.17",
+			"target_card":  cardName,
+			"to_zone":      destZone,
+			"reason":       reason,
+			"rule":         "701.17",
+			"was_creature": perm.IsCreature(),
 		},
 	})
 
