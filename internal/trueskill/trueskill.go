@@ -270,9 +270,17 @@ func InheritRating(parent Rating, cardDelta int) Rating {
 
 // TrueSkillRatings tracks per-commander TrueSkill ratings across a tournament.
 // Mirrors the ELORatings API for drop-in integration.
+//
+// History is an append-only per-name log of every Update the player took
+// part in. It's the data source for DetectDrift (smurf / sandbagging /
+// rapid-skill-shift detection). The append happens unconditionally in
+// Update; callers who don't need drift detection can ignore it (the per-
+// game memory cost is one RatingDelta struct per participant — ~64
+// bytes, negligible at tournament scales).
 type TrueSkillRatings struct {
 	Ratings map[string]Rating
 	Games   map[string]int
+	History map[string][]RatingDelta
 	cfg     Config
 }
 
@@ -290,6 +298,7 @@ func NewTrueSkillRatingsWithConfig(names []string, cfg Config) *TrueSkillRatings
 	ts := &TrueSkillRatings{
 		Ratings: make(map[string]Rating, len(names)),
 		Games:   make(map[string]int, len(names)),
+		History: make(map[string][]RatingDelta, len(names)),
 		cfg:     cfg,
 	}
 	for _, n := range names {
@@ -301,22 +310,40 @@ func NewTrueSkillRatingsWithConfig(names []string, cfg Config) *TrueSkillRatings
 // Update processes a single multiplayer game. participantNames are in seat
 // order; ranks[i] is the finishing position of participant i (0=winner).
 // If all ranks are equal, it's treated as a draw.
+//
+// As a side effect, one RatingDelta is appended to History[name] for
+// each participant — the data DetectDrift consumes. Pre-allocate History
+// at construction time (NewTrueSkillRatingsWithConfig does this) so this
+// is allocation-free for hot tournament loops.
 func (ts *TrueSkillRatings) Update(participantNames []string, ranks []int) {
 	if len(participantNames) < 2 || len(ranks) != len(participantNames) {
 		return
 	}
-	for _, name := range participantNames {
+	if ts.History == nil {
+		// Defensive: cope with TrueSkillRatings constructed via struct
+		// literal (some legacy serialization paths) rather than through
+		// the constructor.
+		ts.History = make(map[string][]RatingDelta, len(participantNames))
+	}
+
+	before := make([]Rating, len(participantNames))
+	for i, name := range participantNames {
+		before[i] = ts.Ratings[name]
 		ts.Games[name]++
 	}
 
-	ratings := make([]Rating, len(participantNames))
-	for i, name := range participantNames {
-		ratings[i] = ts.Ratings[name]
-	}
+	updated := UpdateMultiplayer(ts.cfg, before, ranks)
 
-	updated := UpdateMultiplayer(ts.cfg, ratings, ranks)
 	for i, name := range participantNames {
 		ts.Ratings[name] = updated[i]
+		ts.History[name] = append(ts.History[name], RatingDelta{
+			Game:        ts.Games[name],
+			MuBefore:    before[i].Mu,
+			MuAfter:     updated[i].Mu,
+			SigmaBefore: before[i].Sigma,
+			SigmaAfter:  updated[i].Sigma,
+			Rank:        ranks[i],
+		})
 	}
 }
 
