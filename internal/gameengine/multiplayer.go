@@ -230,6 +230,18 @@ func (gs *GameState) CheckEnd() bool {
 			s.ManaPool = s.Mana.Total()
 		}
 	}
+	// r60 fuzz residual: ZoneCastGrants registered with
+	// `until_end_of_turn` (heist / Narset-exile / Cruelclaw) survive past
+	// their declared expiry when the game ends in mid-combat — the turn
+	// loop returns before EOT cleanup runs, leaving stale grants that the
+	// ZoneCastGrantExpiry invariant subsequently fires on. Flush the map
+	// here at game-end; the grants can no longer be exercised legally.
+	if len(gs.ZoneCastGrants) > 0 {
+		for card, p := range gs.ZoneCastGrants {
+			emitGrantExpired(gs, card, p, "game_end")
+			delete(gs.ZoneCastGrants, card)
+		}
+	}
 	if len(alive) == 1 {
 		gs.Flags["winner"] = alive[0]
 		gs.Seats[alive[0]].Won = true
