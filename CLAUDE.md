@@ -185,8 +185,7 @@ Fetch oracle data: `scripts/fetch-oracle.sh`
 
 | Date | Source | Issue | Severity | Notes |
 |------|--------|-------|----------|-------|
-
-_(No open issues. The 2026-05-08 corpus-audit row was closed by the R60 era 1-4 scaffold sweeps — see Resolved below.)_
+| 2026-05-24 | Loki r60 final / seed 43 game 1003 | **SBACompleteness — District Mascot survives with toughness=0** (turn 53 upkeep, seat 1; base=0/0, no counters, no mods). Printed P/T is `*/*` and SBA 704.5f should have destroyed the creature at ETB, but it persisted ~52 turns — likely an SBA-skip during a multi-pass cleanup window the loop didn't cover. New signature; not a recurrence of any prior cluster. 1-in-10,000-games stochastic rate across the two-seed final gauntlet (seed 42=0 / seed 43=1). | Low | Single residual after r60. Next single bug to chase; see `docs/loki-r60-final-report.md`. |
 
 ### Resolved
 
