@@ -417,45 +417,59 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeMill: {
+		// R60 audit retune. Pre-fix Mill weighted like a thin combo deck
+		// (ComboProximity high, everything else minimal). In practice Mill
+		// is a Control variant whose win condition is exhausting opp
+		// libraries — it needs to DRAW the mill spells (CardAdvantage),
+		// PROTECT the wincon piece (Bruvac/Tasha → StackInteraction), and
+		// LEAN ON wheel-style draw-then-mill engines (Notion Thief /
+		// Consecrated Sphinx / Hullbreacher → DrainEngine).
 		BoardPresence:          0.4,
-		CardAdvantage:          0.8,
+		CardAdvantage:          1.4, // was 0.8
 		ManaAdvantage:          0.6,
 		LifeResource:           0.5,
 		ComboProximity:         1.4,
 		ThreatExposure:         0.8,
 		CommanderProgress:      0.5,
 		GraveyardValue:         0.3,
-		DrainEngine:            0.4,
+		DrainEngine:            0.8, // was 0.4
 		ArtifactSynergy:        0.2,
 		EnchantmentSynergy:     0.2,
 		OpponentGraveyardThreat: 0.3,
 		PartnerSynergy:         0.3,
 		ActivationTempo:        0.4,
-		ToolboxBreadth:         0.4,
+		ToolboxBreadth:         0.7, // was 0.4
 		ThreatTrajectory:       0.4,
-		StackInteraction:       0.6,
+		StackInteraction:       1.1, // was 0.6
 		PlaneswalkerProgress:   0.3,
 		ExileZoneAssets:        0.3,
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeStorm: {
+		// R60 audit retune. ComboProximity (1.8) was correctly highest,
+		// but ActivationTempo at 0.3 ignored Storm's gameplan — Dark
+		// Ritual / Cabal Ritual / LED / Aetherflux Reservoir are
+		// ACTIVATIONS and UNTAPS, not raw mana. StackInteraction at 0.8
+		// underweighted protection: the spell chain dies to a single
+		// resolved counter mid-storm. GraveyardValue at 0.3 ignored
+		// Past in Flames / Yawgmoth's Will second-storm lines.
 		BoardPresence:          0.2,
 		CardAdvantage:          1.3,
-		ManaAdvantage:          1.5,
+		ManaAdvantage:          1.3, // was 1.5 — rituals matter more than raw lands
 		LifeResource:           0.2,
 		ComboProximity:         1.8,
 		ThreatExposure:         0.3,
 		CommanderProgress:      0.4,
-		GraveyardValue:         0.3,
+		GraveyardValue:         0.6, // was 0.3 — Past in Flames lines
 		DrainEngine:            0.4,
 		ArtifactSynergy:        0.3,
 		EnchantmentSynergy:     0.2,
 		OpponentGraveyardThreat: 0.3,
 		PartnerSynergy:         0.2,
-		ActivationTempo:        0.3,
+		ActivationTempo:        1.2, // was 0.3 — rituals, Aetherflux, LED
 		ToolboxBreadth:         0.5,
 		ThreatTrajectory:       0.3,
-		StackInteraction:       0.8,
+		StackInteraction:       1.4, // was 0.8 — counter war over the chain
 		PlaneswalkerProgress:   0.2,
 		ExileZoneAssets:        0.3,
 		StaxLockProgress:       0.1,
