@@ -211,7 +211,7 @@ func computeThreatAssessment(dp *DeckProfile, report *FreyaReport) {
 		conditions["land_ramp"] = true
 	}
 
-	if report.TutorCount >= 6 {
+	if report.NonLandTutorCount >= 6 {
 		conditions["tutor_heavy"] = true
 	}
 
@@ -901,11 +901,15 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 			}
 		}
 
-		// Tutors that are worse versions of other tutors in the deck
-		if p.IsTutor && p.CMC >= 4 {
+		// Tutors that are worse versions of other tutors in the deck.
+		// Compare like-with-like: land tutors against land tutors, real
+		// tutors against real tutors. A CMC-3 Cultivate is not "strictly
+		// worse than CMC-2 Vampiric Tutor" because they fetch different
+		// things.
+		if p.IsTutor && !p.IsLandTutor && p.CMC >= 4 {
 			cheaperTutors := 0
 			for _, other := range report.Profiles {
-				if other.IsTutor && other.CMC < p.CMC && other.Name != p.Name {
+				if other.IsTutor && !other.IsLandTutor && other.CMC < p.CMC && other.Name != p.Name {
 					cheaperTutors++
 				}
 			}
@@ -1106,7 +1110,7 @@ func buildPersonalityBlurb(dp *DeckProfile, report *FreyaReport) string {
 	var approach string
 	switch {
 	case containsAny(arch, "combo", "infinite", "storm"):
-		if dp.HasTutorAccess && report.TutorCount >= 5 {
+		if dp.HasTutorAccess && report.NonLandTutorCount >= 5 {
 			approach = "It assembles its kill with surgical precision, tutoring combo pieces while holding up protection."
 		} else {
 			approach = "It digs aggressively for its combo pieces, racing to assemble a kill before opponents can disrupt it."
@@ -1157,16 +1161,17 @@ func estimatePowerPercentile(dp *DeckProfile, report *FreyaReport) (int, []strin
 	score := 50 // start at median
 	var factors []string
 
-	// Tutor density
-	if report.TutorCount >= 8 {
+	// Tutor density — NonLandTutorCount only. Land tutors are ramp and are
+	// scored separately under the ramp/manabase factors.
+	if report.NonLandTutorCount >= 8 {
 		score += 15
-		factors = append(factors, fmt.Sprintf("deep tutor package (%d) → +15", report.TutorCount))
-	} else if report.TutorCount >= 5 {
+		factors = append(factors, fmt.Sprintf("deep tutor package (%d) → +15", report.NonLandTutorCount))
+	} else if report.NonLandTutorCount >= 5 {
 		score += 8
-		factors = append(factors, fmt.Sprintf("solid tutor access (%d) → +8", report.TutorCount))
-	} else if report.TutorCount <= 1 {
+		factors = append(factors, fmt.Sprintf("solid tutor access (%d) → +8", report.NonLandTutorCount))
+	} else if report.NonLandTutorCount <= 1 {
 		score -= 10
-		factors = append(factors, fmt.Sprintf("minimal tutors (%d) → -10", report.TutorCount))
+		factors = append(factors, fmt.Sprintf("minimal tutors (%d) → -10", report.NonLandTutorCount))
 	}
 
 	// Win line count
