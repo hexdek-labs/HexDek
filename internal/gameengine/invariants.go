@@ -1621,7 +1621,7 @@ func checkZoneCastGrantExpiry(gs *GameState) error {
 		if p == nil {
 			continue
 		}
-		if !shouldExpireGrant(gs, p) {
+		if !grantIsLeaked(gs, p) {
 			continue
 		}
 		name := "<unknown>"
