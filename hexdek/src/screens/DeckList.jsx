@@ -149,12 +149,13 @@ export default function DeckList() {
               <div style={{ width: 1, height: 16, background: 'var(--rule-2)' }} />
             </>
           )}
-          <div className="panel" style={{ padding: 0, flex: 1, minWidth: 200, borderStyle: filter ? 'solid' : 'dashed' }}>
+          <div className="panel decklist-search" style={{ padding: 0, flex: 1, minWidth: 200, borderStyle: filter ? 'solid' : 'dashed' }}>
             <input
               type="text"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               placeholder="SEARCH DECKS..."
+              aria-label="Search decks"
               style={{
                 width: '100%',
                 padding: '8px 12px',

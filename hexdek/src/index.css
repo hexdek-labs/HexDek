@@ -66,6 +66,16 @@ body {
   background: var(--panel);
   position: relative;
 }
+/* DeckList search field — keyboard focus indicator. The wrapper is a
+   .panel with `outline: 'none'` on the inner <input>, and its inline
+   borderStyle toggles only on content presence (dashed when empty,
+   solid when text is typed) — never on focus. Without this rule, Tab
+   landing in the field shows nothing at all. The :focus-within
+   border-color override stacks with the inline borderStyle (color and
+   style are distinct properties, so no specificity fight); inline
+   borderStyle wins for solid-vs-dashed and CSS wins for color. */
+.decklist-search { transition: border-color 80ms ease; }
+.decklist-search:focus-within { border-color: var(--accent); }
 .panel--solid { background: var(--panel-2); }
 .panel-hd {
   display: flex; align-items: center; justify-content: space-between;
