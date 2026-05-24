@@ -23,6 +23,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"sort"
 	"strings"
@@ -78,6 +79,9 @@ func main() {
 	oraclePath := flag.String("oracle", "data/rules/oracle-cards.json", "Scryfall oracle-cards JSON")
 	astPath := flag.String("ast", "data/rules/ast_dataset.jsonl", "AST dataset JSONL")
 	outPath := flag.String("out", "docs/parser-coverage-r41.md", "markdown report output path")
+	sampleSize := flag.Int("sample-size", 20, "number of uncovered cards to randomly sample for the report (0 = disabled)")
+	sampleSeed := flag.Int64("sample-seed", 42, "RNG seed for the uncovered-card sample (same seed → same sample, for reproducible reports)")
+	sampleClasses := flag.String("sample-classes", "missing,empty_ast,partial", "comma-separated subset of {missing,empty_ast,partial} to draw the sample from")
 	flag.Parse()
 
 	log.Printf("loading AST corpus from %s ...", *astPath)
@@ -99,10 +103,81 @@ func main() {
 		results = append(results, classify(e, corpus))
 	}
 
-	if err := writeReport(*outPath, results, len(entries), corpus.Count(), len(corpus.ParseWarnings)); err != nil {
+	classFilter, err := parseSampleClasses(*sampleClasses)
+	if err != nil {
+		log.Fatalf("--sample-classes: %v", err)
+	}
+	sample := sampleUncovered(results, classFilter, *sampleSize, *sampleSeed)
+
+	if err := writeReport(*outPath, results, len(entries), corpus.Count(), len(corpus.ParseWarnings), sample, *sampleSeed); err != nil {
 		log.Fatalf("writeReport: %v", err)
 	}
 	log.Printf("wrote %s", *outPath)
+}
+
+// parseSampleClasses maps the comma-separated CLI list to a set of
+// classifications. Names are case-insensitive; whitespace is trimmed.
+// Empty / "none" disables sampling. Unknown names are an error so a
+// typo doesn't silently produce an empty sample.
+func parseSampleClasses(s string) (map[classification]bool, error) {
+	out := map[classification]bool{}
+	if strings.TrimSpace(s) == "" || strings.EqualFold(strings.TrimSpace(s), "none") {
+		return out, nil
+	}
+	for _, raw := range strings.Split(s, ",") {
+		name := strings.ToLower(strings.TrimSpace(raw))
+		switch name {
+		case "":
+			continue
+		case "missing":
+			out[classMissing] = true
+		case "empty_ast", "emptyast":
+			out[classEmptyAST] = true
+		case "partial":
+			out[classPartial] = true
+		case "ok", "ok_vanilla":
+			return nil, fmt.Errorf("class %q is not an uncovered class (only missing/empty_ast/partial are sample-eligible)", name)
+		default:
+			return nil, fmt.Errorf("unknown class %q (valid: missing, empty_ast, partial)", name)
+		}
+	}
+	return out, nil
+}
+
+// sampleUncovered returns up to n random results drawn from those whose
+// Class is in classFilter. The selection is deterministic for a fixed
+// seed AND a fixed `results` order — call sites must keep `results` in
+// the iteration order produced by loadOracle so reports diff cleanly
+// across runs.
+//
+// Uses reservoir sampling so we don't materialize the full filtered
+// slice (the dataset is ~40k cards; the filtered subset is several
+// thousand). The output is sorted by name at the end for stable
+// markdown rendering.
+func sampleUncovered(results []result, classFilter map[classification]bool, n int, seed int64) []result {
+	if n <= 0 || len(classFilter) == 0 {
+		return nil
+	}
+	rng := rand.New(rand.NewSource(seed))
+	out := make([]result, 0, n)
+	seen := 0
+	for _, r := range results {
+		if !classFilter[r.Class] {
+			continue
+		}
+		seen++
+		if len(out) < n {
+			out = append(out, r)
+			continue
+		}
+		// Reservoir step: keep with probability n/seen.
+		j := rng.Intn(seen)
+		if j < n {
+			out[j] = r
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out
 }
 
 func loadOracle(path string) ([]oracleEntry, error) {
@@ -214,7 +289,7 @@ func classifyPattern(r result) string {
 	return "other"
 }
 
-func writeReport(path string, results []result, total, corpusCount, corpusWarnings int) error {
+func writeReport(path string, results []result, total, corpusCount, corpusWarnings int, sample []result, sampleSeed int64) error {
 	var counts [5]int
 	for _, r := range results {
 		counts[r.Class]++
@@ -327,6 +402,8 @@ func writeReport(path string, results []result, total, corpusCount, corpusWarnin
 		fmt.Fprintln(f)
 	}
 
+	writeUncoveredSample(f, sample, sampleSeed)
+
 	if corpusWarnings > 0 {
 		fmt.Fprintf(f, "## Astload corpus warnings (first 20)\n\n")
 		// Corpus warnings are loader-level, not per-card parse errors.
@@ -338,4 +415,64 @@ func writeReport(path string, results []result, total, corpusCount, corpusWarnin
 	fmt.Fprintf(f, "```\ngo run ./cmd/parser-coverage --out docs/parser-coverage-r41.md\n```\n")
 
 	return nil
+}
+
+// writeUncoveredSample renders the random-sample section. Output is
+// stable across runs for a given (--sample-seed, --sample-classes,
+// data corpus) tuple — the sample slice arrives pre-sorted by name
+// from sampleUncovered. Oracle text is truncated to ~120 chars on a
+// single line so the table stays readable in GitHub markdown
+// previews; the full text is recoverable from oracle-cards.json by
+// name lookup.
+func writeUncoveredSample(f *os.File, sample []result, seed int64) {
+	if len(sample) == 0 {
+		return
+	}
+	fmt.Fprintf(f, "## Uncovered card sample (random %d, seed=%d)\n\n", len(sample), seed)
+	fmt.Fprintf(f, "Random reservoir-sample of cards whose AST is missing, empty, or only partially parsed.\n")
+	fmt.Fprintf(f, "Each entry is a concrete scaffold target — pick one, read its oracle text,\n")
+	fmt.Fprintf(f, "and either add the missing parser handler or extend the existing one until\n")
+	fmt.Fprintf(f, "this card lands in the OK class. Re-running with the same `--sample-seed`\n")
+	fmt.Fprintf(f, "yields the same set, so a follow-up audit can confirm a specific card moved.\n\n")
+	fmt.Fprintf(f, "| # | Card | Class | Oracle text (truncated) |\n|---:|---|---|---|\n")
+	for i, r := range sample {
+		fmt.Fprintf(f, "| %d | %s | %s | %s |\n", i+1, escapeCell(r.Name), r.Class, escapeCell(truncateOracle(r.OracleText, 120)))
+	}
+	fmt.Fprintln(f)
+}
+
+// truncateOracle collapses newlines + truncates to maxLen with an
+// ellipsis. Markdown tables don't render embedded newlines well; a
+// single-line truncated view is the right shape for at-a-glance
+// triage. Callers wanting the full text can grep oracle-cards.json by
+// name.
+func truncateOracle(text string, maxLen int) string {
+	t := strings.TrimSpace(text)
+	t = strings.ReplaceAll(t, "\n", " ")
+	t = strings.ReplaceAll(t, "\r", " ")
+	for strings.Contains(t, "  ") {
+		t = strings.ReplaceAll(t, "  ", " ")
+	}
+	if t == "" {
+		return "_(no oracle text — MISSING entry)_"
+	}
+	if len(t) > maxLen {
+		// Trim to maxLen-1 (room for ellipsis) without slicing in the
+		// middle of a multi-byte rune.
+		cut := maxLen - 1
+		for cut > 0 && t[cut]&0xc0 == 0x80 {
+			cut--
+		}
+		t = t[:cut] + "…"
+	}
+	return t
+}
+
+// escapeCell escapes the small set of characters that break markdown
+// tables: pipes (cell delimiters) and backticks (would unbalance code
+// spans across rows). Anything else is fine in a table cell.
+func escapeCell(s string) string {
+	s = strings.ReplaceAll(s, "|", `\|`)
+	s = strings.ReplaceAll(s, "`", "'")
+	return s
 }
