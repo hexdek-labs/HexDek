@@ -3756,8 +3756,11 @@ func (h *YggdrasilHat) castHeuristic(gs *gameengine.GameState, seatIdx int, pool
 		}
 	}
 
-	// Early game: ramp > draw > threats.
-	if turn <= 12 {
+	// Ramp > draw > threats. Always fires turn ≤ 12 (early-game default).
+	// Beyond that, the rule still fires when ramping would unlock a hand
+	// card the seat couldn't cast this turn (rampUnlocksHand) — late-game
+	// ramp into a big finisher is the same tempo win as a turn-3 Cultivate.
+	if turn <= 12 || h.rampUnlocksHand(gs, seatIdx) {
 		var ramp, draw, other []*gameengine.Card
 		for _, c := range pool {
 			switch h.categorizeWithFreya(c) {
@@ -3775,23 +3778,127 @@ func (h *YggdrasilHat) castHeuristic(gs *gameengine.GameState, seatIdx int, pool
 			})
 			return ramp[0]
 		}
-		if len(draw) > 0 {
+		if turn <= 12 && len(draw) > 0 {
 			sort.SliceStable(draw, func(i, j int) bool {
 				return gameengine.ManaCostOf(draw[i]) < gameengine.ManaCostOf(draw[j])
 			})
 			return draw[0]
 		}
 		pool = other
+		// Re-include `draw` when we entered via the rampUnlocksHand
+		// branch past turn 12 — we don't want to drop draw cards from
+		// the pool just because they didn't beat ramp on this tick.
+		if turn > 12 {
+			pool = append(pool, draw...)
+		}
 	}
 
 	if len(pool) == 0 {
 		return nil
 	}
-	// Default: use cardHeuristic for archetype-aware scoring.
+	// Default: cardHeuristic-driven sort with a dead-card filter that
+	// pushes spells requiring a creature we control to the end when the
+	// seat has no creatures. Non-dead cards come first; within each
+	// group, cardHeuristic decides.
 	sort.SliceStable(pool, func(i, j int) bool {
+		iDead := h.castIsDead(gs, seatIdx, pool[i])
+		jDead := h.castIsDead(gs, seatIdx, pool[j])
+		if iDead != jDead {
+			return !iDead
+		}
 		return h.cardHeuristic(gs, seatIdx, pool[i]) > h.cardHeuristic(gs, seatIdx, pool[j])
 	})
 	return pool[0]
+}
+
+// rampUnlocksHand reports whether the seat holds a non-ramp non-land
+// card in hand whose CMC is just out of reach now but would be castable
+// after one more mana source. Used by castHeuristic to extend the
+// turn ≤ 12 ramp-priority rule into the late game when ramping would
+// directly enable a higher-CMC play next turn.
+//
+// The unlock window is [avail+1, avail+2] — a single +1 ramp source
+// typically enables a single CMC bracket, and many ramp cards (Sol
+// Ring, signets) effectively add 2 by ETB-untapping for that mana.
+func (h *YggdrasilHat) rampUnlocksHand(gs *gameengine.GameState, seatIdx int) bool {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return false
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return false
+	}
+	avail := gameengine.AvailableManaEstimate(gs, seat)
+	for _, c := range seat.Hand {
+		if c == nil {
+			continue
+		}
+		isLand := false
+		for _, t := range c.Types {
+			if t == "land" {
+				isLand = true
+				break
+			}
+		}
+		if isLand {
+			continue
+		}
+		if h.categorizeWithFreya(c) == CatRamp {
+			continue
+		}
+		cmc := gameengine.ManaCostOf(c)
+		if cmc > avail && cmc <= avail+2 {
+			return true
+		}
+	}
+	return false
+}
+
+// castIsDead reports whether casting `card` would have no useful effect
+// in the current board state. Conservative substring scan — false
+// positives are acceptable (the card just gets cast slightly later),
+// false negatives would mis-deprioritize a usable card.
+//
+// Current rules:
+//   - "Target creature you control" / "creatures you control" / "creature
+//     you control gains" + the seat controls zero creatures → dead.
+//
+// Self-creature spells (a creature card that requires "target creature
+// you control" for an ETB ability) are NOT marked dead — casting the
+// card itself adds a creature to the board, so the requirement is met
+// on resolution.
+func (h *YggdrasilHat) castIsDead(gs *gameengine.GameState, seatIdx int, card *gameengine.Card) bool {
+	if gs == nil || card == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return false
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return false
+	}
+	ot := gameengine.OracleTextLower(card)
+	if ot == "" {
+		return false
+	}
+	needsCreature := strings.Contains(ot, "target creature you control") ||
+		strings.Contains(ot, "creatures you control") ||
+		strings.Contains(ot, "creature you control gains")
+	if !needsCreature {
+		return false
+	}
+	for _, t := range card.Types {
+		if t == "creature" {
+			return false
+		}
+	}
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		if typeLineContains(p.Card, "creature") {
+			return false
+		}
+	}
+	return true
 }
 
 // simulateRolloutForCard runs a rollout simulation for casting a specific card.
