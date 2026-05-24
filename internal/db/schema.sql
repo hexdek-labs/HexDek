@@ -201,20 +201,45 @@ CREATE TABLE IF NOT EXISTS showmatch_game (
 );
 
 CREATE TABLE IF NOT EXISTS showmatch_game_seat (
-    game_id      INTEGER NOT NULL REFERENCES showmatch_game(game_id) ON DELETE CASCADE,
-    seat         INTEGER NOT NULL,
-    commander    TEXT NOT NULL,
-    life         INTEGER NOT NULL,
-    hand_size    INTEGER NOT NULL DEFAULT 0,
-    library_size INTEGER NOT NULL DEFAULT 0,
-    gy_size      INTEGER NOT NULL DEFAULT 0,
-    bf_size      INTEGER NOT NULL DEFAULT 0,
-    lost         INTEGER NOT NULL DEFAULT 0,
+    game_id           INTEGER NOT NULL REFERENCES showmatch_game(game_id) ON DELETE CASCADE,
+    seat              INTEGER NOT NULL,
+    commander         TEXT NOT NULL,
+    life              INTEGER NOT NULL,
+    hand_size         INTEGER NOT NULL DEFAULT 0,
+    library_size      INTEGER NOT NULL DEFAULT 0,
+    gy_size           INTEGER NOT NULL DEFAULT 0,
+    bf_size           INTEGER NOT NULL DEFAULT 0,
+    lost              INTEGER NOT NULL DEFAULT 0,
+    -- deck_key + battlefield_cards are also added by applyMigrations for
+    -- old DBs that pre-date PR #78 — declared here so fresh DBs see
+    -- them at CREATE TABLE time and CREATE INDEX on deck_key (below)
+    -- doesn't fail on first boot.
+    deck_key          TEXT NOT NULL DEFAULT '',
+    battlefield_cards TEXT NOT NULL DEFAULT '[]',
     PRIMARY KEY (game_id, seat)
 );
 
 CREATE INDEX IF NOT EXISTS idx_showmatch_game_finished ON showmatch_game(finished_at);
 CREATE INDEX IF NOT EXISTS idx_showmatch_seat_commander ON showmatch_game_seat(commander);
+
+-- r60: LoadOwnerGames is the per-owner game-history query that
+-- powers heimdall / the dashboard "your recent games" panel. It
+-- joins three tables and filters with `e.owner = ?`. Without these
+-- two indexes the planner is forced into a "scan all seats, look up
+-- each one's elo row by deck_key, discard rows where owner doesn't
+-- match" plan — every per-owner query touches every seat row, so
+-- latency scales linearly with TOTAL games in the DB rather than
+-- with the requested owner's history.
+--
+-- idx_showmatch_elo_owner gives the planner a starting point: search
+-- elo by owner first (small result set), then join the seats by
+-- deck_key, then join the games by id. idx_showmatch_seat_deck_key
+-- is the second half — without an index on game_seat.deck_key the
+-- planner can't follow the new join order and falls back to the old
+-- scan-seats plan. The pair is needed; the index on elo.owner alone
+-- doesn't change the plan at this dataset size.
+CREATE INDEX IF NOT EXISTS idx_showmatch_elo_owner ON showmatch_elo(owner);
+CREATE INDEX IF NOT EXISTS idx_showmatch_seat_deck_key ON showmatch_game_seat(deck_key);
 
 -- Per-gauntlet-run ELO snapshot. One row per completed gauntlet,
 -- captures the rating trajectory for the deck under test (seat 0).
