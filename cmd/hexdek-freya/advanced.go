@@ -701,14 +701,131 @@ func buildSynergyNameSet(dp *DeckProfile, report *FreyaReport, oracle *oracleDB)
 // 4. Synergy clusters — groups of cards that amplify each other.
 // ---------------------------------------------------------------------------
 
+// clusterRole encodes a card's structural role within a theme. Producers
+// create the resource the theme cares about (a token-maker for the
+// tokens theme, a sac outlet for the death_value theme), payoffs reward
+// the resource appearing (Purphoros for tokens, Blood Artist for
+// death_value). A card that satisfies both predicates ("both") slots
+// into either side of a pair. "unknown" is the fallback used for
+// themes where the producer/payoff dichotomy doesn't apply (landfall,
+// spellcast, lifegain — the producer side is too broad to tag cleanly).
+type clusterRole int
+
+const (
+	clusterRoleUnknown clusterRole = iota
+	clusterRoleProducer
+	clusterRolePayoff
+	clusterRoleBoth
+)
+
+// classifyClusterRole returns the producer/payoff role for a card
+// within a given theme. Themes without a clean dichotomy return
+// clusterRoleUnknown, which falls back to plain pair-counting.
+func classifyClusterRole(p CardProfile, theme string) clusterRole {
+	prod := false
+	payoff := false
+	switch theme {
+	case "tokens":
+		for _, r := range p.Produces {
+			if r == ResToken {
+				prod = true
+			}
+		}
+		// Token payoffs: token_created trigger directly, OR the
+		// Purphoros-shape (creature-ETB trigger + opponent-pain trigger
+		// — i.e. "whenever a creature ETBs, opponents lose / take
+		// damage"). The narrower etb+opponent_pain pair distinguishes
+		// the payoff card from generic etb-trigger value engines like
+		// Solemn Simulacrum.
+		if profileHasTrigger(p, "token_created") ||
+			(profileHasTrigger(p, "etb") && profileHasTrigger(p, "opponent_pain")) {
+			payoff = true
+		}
+	case "counters":
+		for _, r := range p.Produces {
+			if r == ResCounter {
+				prod = true
+			}
+		}
+		for _, e := range p.Effects {
+			if e == "counter_add" || e == "counter_move" || e == "proliferate" {
+				prod = true
+			}
+		}
+		if profileHasTrigger(p, "counter_placed") || profileHasTrigger(p, "counter_matters") {
+			payoff = true
+		}
+	case "death_value":
+		// Producer = the engine that GENERATES death events: a sac
+		// outlet that converts other permanents, OR a token-maker that
+		// supplies the bodies to die.
+		if p.IsOutlet {
+			prod = true
+		}
+		for _, r := range p.Produces {
+			if r == ResToken {
+				prod = true
+			}
+		}
+		// Payoff = "whenever a creature dies / is sacrificed" trigger.
+		if profileHasTrigger(p, "dies") || profileHasTrigger(p, "sacrifice") {
+			payoff = true
+		}
+	case "etb_value":
+		// Producer = card whose own ETB is worth re-triggering
+		// (HasValueETB). Payoff = the blinker that re-triggers it.
+		if p.HasValueETB {
+			prod = true
+		}
+		if p.IsBlinker {
+			payoff = true
+		}
+	default:
+		// landfall / spellcast / lifegain etc. — no clean dichotomy
+		// available from existing tags. Caller falls back to flat
+		// pair-count for these themes.
+		return clusterRoleUnknown
+	}
+	switch {
+	case prod && payoff:
+		return clusterRoleBoth
+	case prod:
+		return clusterRoleProducer
+	case payoff:
+		return clusterRolePayoff
+	default:
+		return clusterRoleUnknown
+	}
+}
+
+// rolesPairScore returns the weighted pair score between two roles in a
+// cluster. Mixed pairs (producer × payoff) score 2 because they
+// represent a complementary engine; same-role pairs score 1 because
+// they're redundant copies of the same side. "Both"-tagged cards are
+// treated as mixed-with-anything since they satisfy either side of the
+// engine. "Unknown" pairs (themes without a dichotomy) score 1 — the
+// caller is responsible for falling back to flat counting when *every*
+// pair is unknown, so this only matters at cluster boundaries.
+func rolesPairScore(a, b clusterRole) int {
+	if a == clusterRoleBoth || b == clusterRoleBoth {
+		return 2
+	}
+	if (a == clusterRoleProducer && b == clusterRolePayoff) ||
+		(a == clusterRolePayoff && b == clusterRoleProducer) {
+		return 2
+	}
+	return 1
+}
+
 func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracleDB) {
 	if oracle == nil || len(report.Profiles) < 10 {
 		return
 	}
 
 	type cardThemes struct {
-		name   string
-		themes map[string]bool
+		name    string
+		profile CardProfile
+		themes  map[string]bool
 	}
 
 	var cards []cardThemes
@@ -743,6 +860,17 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 				themes["mana"] = true
 			}
 		}
+		// Tokens-payoff detection (R60 refinement): cards whose primary
+		// shape is "rewarding tokens / creature ETBs" weren't landing in
+		// the tokens cluster because they don't Produce ResToken —
+		// they only Trigger on it. Purphoros, Impact Tremors, Reckless
+		// Fireweaver are the canonical examples; without this, a
+		// Krenko-shape token deck's actual win-condition cards stayed
+		// invisible to the tokens cluster, only surfacing in etb_value.
+		if profileHasTrigger(p, "token_created") ||
+			(profileHasTrigger(p, "etb") && profileHasTrigger(p, "opponent_pain")) {
+			themes["tokens"] = true
+		}
 		if p.IsRecursion {
 			themes["recursion"] = true
 		}
@@ -760,12 +888,14 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 		}
 
 		if len(themes) > 0 {
-			cards = append(cards, cardThemes{name: p.Name, themes: themes})
+			cards = append(cards, cardThemes{name: p.Name, profile: p, themes: themes})
 		}
 	}
 
-	// Find clusters by theme overlap
-	clusterThemes := map[string][]string{
+	// Find clusters by theme overlap. We need the per-card profile at
+	// pair-scoring time (for role classification) so the cluster member
+	// list carries cardThemes refs rather than plain names.
+	clusterMembers := map[string][]cardThemes{
 		"death_value": {},
 		"etb_value":   {},
 		"tokens":      {},
@@ -777,17 +907,9 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 
 	for _, c := range cards {
 		for theme := range c.themes {
-			if _, ok := clusterThemes[theme]; ok {
-				clusterThemes[theme] = append(clusterThemes[theme], c.name)
+			if _, ok := clusterMembers[theme]; ok {
+				clusterMembers[theme] = append(clusterMembers[theme], c)
 			}
-		}
-	}
-
-	// Also merge related themes: sacrifice + death_value + tokens = aristocrats cluster
-	aristocratsCards := map[string]bool{}
-	for _, c := range cards {
-		if c.themes["sacrifice"] || c.themes["death_value"] || c.themes["tokens"] {
-			aristocratsCards[c.name] = true
 		}
 	}
 
@@ -801,30 +923,58 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 		"lifegain":    "Lifegain Engine",
 	}
 
-	for theme, cardNames := range clusterThemes {
-		if len(cardNames) < 4 {
+	for theme, members := range clusterMembers {
+		if len(members) < 4 {
 			continue
 		}
 
-		// Deduplicate
-		cardNames = uniqueStrings(cardNames)
-		if len(cardNames) < 4 {
+		// Deduplicate by card name. The first occurrence wins (preserves
+		// theme-order priority for the display list).
+		seen := map[string]bool{}
+		deduped := make([]cardThemes, 0, len(members))
+		for _, m := range members {
+			if seen[m.name] {
+				continue
+			}
+			seen[m.name] = true
+			deduped = append(deduped, m)
+		}
+		if len(deduped) < 4 {
 			continue
 		}
 
-		// Cap display at 8 cards
-		displayed := cardNames
+		// Weighted pair scoring (R60 refinement): producer × payoff
+		// pairs count 2 each; same-role or unknown pairs count 1. A
+		// balanced engine outscores a same-role pile of the same size.
+		// For themes without a clean dichotomy (landfall, spellcast,
+		// lifegain — classifyClusterRole returns Unknown), every pair
+		// scores 1 and the result reduces to the previous n*(n-1)/2
+		// shape.
+		roles := make([]clusterRole, len(deduped))
+		for i, m := range deduped {
+			roles[i] = classifyClusterRole(m.profile, theme)
+		}
+		score := 0
+		for i := 0; i < len(deduped); i++ {
+			for j := i + 1; j < len(deduped); j++ {
+				score += rolesPairScore(roles[i], roles[j])
+			}
+		}
+
+		// Cap display at 8 cards. Use names only for the report shape.
+		displayed := make([]string, 0, len(deduped))
+		for _, m := range deduped {
+			displayed = append(displayed, m.name)
+		}
 		if len(displayed) > 8 {
 			displayed = displayed[:8]
 		}
-
-		pairCount := len(cardNames) * (len(cardNames) - 1) / 2
 
 		dp.SynergyClusters = append(dp.SynergyClusters, SynergyCluster{
 			Name:  clusterNames[theme],
 			Cards: displayed,
 			Theme: theme,
-			Score: pairCount,
+			Score: score,
 		})
 	}
 
