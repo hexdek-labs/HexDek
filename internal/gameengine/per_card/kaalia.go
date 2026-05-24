@@ -80,6 +80,12 @@ func kaaliaOfTheVastAttack(gs *gameengine.GameState, perm *gameengine.Permanent,
 		cheated.Flags = map[string]int{}
 	}
 	cheated.Flags["attacking"] = 1
+	// R60: CR §506.3 — the creature is legally attacking despite §302.1
+	// summoning sickness. Clear SS so checkCombatLegality doesn't trip
+	// after EndOfCombatStep / on a mid-combat game end. The combat.go
+	// scoop-in only runs during DeclareAttackers; this handler fires on
+	// an attack trigger so its new permanent never goes through that path.
+	cheated.SummoningSick = false
 
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":      seat,
