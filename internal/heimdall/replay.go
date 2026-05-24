@@ -307,6 +307,13 @@ func replayWithRecovery(rc *ReplayContext, seed GameSeed, obs *Observer) (retErr
 // ExtractParserGaps scans all permanents across all seats for the
 // "parser_gap" flag, which the engine's resolver sets when it encounters
 // an unhandled ability kind.
+//
+// Names that look like runtime-generated token permanents (anything
+// that's a bare "Token" or pure type-word(s) + "Token") are dropped:
+// tokens carry no parseable oracle text of their own, so a parser_gap
+// signal on a "Construct Token" or "creature token scorpion dragon
+// Token" permanent is noise — the gap (if any) belongs to the source
+// spell that minted the token, not the token's display name.
 func ExtractParserGaps(gs *gameengine.GameState) []string {
 	if gs == nil {
 		return nil
@@ -325,6 +332,9 @@ func ExtractParserGaps(gs *gameengine.GameState) []string {
 			}
 			if p.Flags != nil && p.Flags["parser_gap"] > 0 {
 				name := p.Card.DisplayName()
+				if isTypeOnlyTokenName(name) {
+					continue
+				}
 				if !seen[name] {
 					seen[name] = true
 					gaps = append(gaps, name)
@@ -423,6 +433,20 @@ func DiffBattlefield(pre, post map[string]int) []string {
 		}
 	}
 	return newCards
+}
+
+// isTypeOnlyTokenName returns true if name is a runtime-generated
+// token permanent name (the bare "Token" sentinel or any name ending
+// in " Token"). The engine's tokenName helper (resolve.go) and the
+// hand-written token constructors (tokens.go, keywords_*.go, etc.)
+// only ever produce names of the form "<type-words> Token" — no real
+// MTG card name ends in "Token", so the suffix check is a safe proxy
+// for "this is engine-minted, not a parseable oracle card."
+func isTypeOnlyTokenName(name string) bool {
+	if name == "Token" {
+		return true
+	}
+	return strings.HasSuffix(name, " Token")
 }
 
 // nextLivingReplay is the replay-local version of nextLiving (which
