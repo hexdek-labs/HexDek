@@ -195,22 +195,51 @@ func normalizeNameSlow(name string) string {
 func lookupCandidates(displayName string) []string {
 	nk := normalizeName(displayName)
 	out := []string{nk}
-	if idx := strings.LastIndex(nk, " ("); idx > 0 && strings.HasSuffix(nk, ")") {
-		stripped := strings.TrimSpace(nk[:idx])
-		if stripped != "" && stripped != nk {
-			out = append(out, stripped)
-			// After stripping the suffix, try DFC front face too — covers
-			// e.g. "Eccentric Pestfinder // Turn Stones (cascade)".
-			if dfc := strings.Index(stripped, " // "); dfc > 0 {
-				if front := strings.TrimSpace(stripped[:dfc]); front != "" {
-					out = append(out, front)
-				}
+	seen := map[string]bool{nk: true}
+	add := func(s string) {
+		if s == "" || seen[s] {
+			return
+		}
+		seen[s] = true
+		out = append(out, s)
+	}
+
+	// Iteratively strip trailing parentheticals — covers stacked renames
+	// like "Crown of Gondor (Urza copy) (Urza copy)" where the same rename
+	// source ran twice. Each layer is also tried as a DFC front face.
+	cur := nk
+	for {
+		idx := strings.LastIndex(cur, " (")
+		if idx <= 0 || !strings.HasSuffix(cur, ")") {
+			break
+		}
+		stripped := strings.TrimSpace(cur[:idx])
+		if stripped == "" || stripped == cur {
+			break
+		}
+		add(stripped)
+		if dfc := strings.Index(stripped, " // "); dfc > 0 {
+			if front := strings.TrimSpace(stripped[:dfc]); front != "" {
+				add(front)
 			}
 		}
+		cur = stripped
 	}
+
+	// Strip trailing " token" suffix — covers paren-less token names like
+	// "Myr Token", "Claim Jumper Token", "Rankle and Torbran Token" that
+	// the dragon-doubling / Restore-Relic / direct-mint paths emit when
+	// the token Name lacks a parenthetical rider tag. No printed card
+	// ends in " Token", so this is safe against collision.
+	for _, base := range append([]string{}, out...) {
+		if trimmed := strings.TrimSuffix(base, " token"); trimmed != base && trimmed != "" {
+			add(trimmed)
+		}
+	}
+
 	if idx := strings.Index(nk, " // "); idx > 0 {
-		if front := strings.TrimSpace(nk[:idx]); front != "" && front != out[len(out)-1] {
-			out = append(out, front)
+		if front := strings.TrimSpace(nk[:idx]); front != "" {
+			add(front)
 		}
 	}
 	return out
