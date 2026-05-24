@@ -2118,6 +2118,16 @@ func registerDefaults() {
 	registerGaeasWill(Global())
 	registerYawgmothsAgenda(Global())
 	registerMagusOfTheWill(Global())
+
+	// R60 — Chitinous Crawler + Illusionary Mask. Both AST'd to the
+	// over-applied impulse_play modkind; per_card handlers implement the
+	// correct cost-and-grant semantics (Crawler) or stub the face-down
+	// hand cast (Mask). Combined with the resolve_helpers.go
+	// args[0]-gated guard, this closes the last 4 ZoneCastGrantExpiry
+	// hits from loki r60 round 2 and the cross-validated goldilocks
+	// surface. See docs/loki-r60-round2-report.md.
+	registerChitinousCrawler(Global())
+	registerIllusionaryMask(Global())
 }
 
 func init() {

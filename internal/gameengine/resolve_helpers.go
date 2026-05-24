@@ -1516,29 +1516,72 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		})
 
 	case "impulse_play":
-		seat := controllerSeat(src)
-		if seat >= 0 && seat < len(gs.Seats) {
-			s := gs.Seats[seat]
-			if len(s.Library) > 0 {
-				top := s.Library[0]
-				MoveCard(gs, top, seat, "library", "exile", "impulse_play")
-				perm := &ZoneCastPermission{
-					Zone:              ZoneExile,
-					Keyword:           "impulse_play",
-					ManaCost:          -1,
-					ExileOnResolve:    false,
-					RequireController: seat,
-					SourceName:        sourceName(src),
-					Duration:          "until_end_of_turn",
-					GrantTurn:         gs.Turn,
+		// R60: the parser over-applies the impulse_play modkind to ~18
+		// cards whose printed text actually means "cast from your hand"
+		// (Maelstrom Archangel / Wildfire Eternal / Twinning Glass /
+		// Glamdring / Surtland Elementalist family — 8 cards), "cast from
+		// your graveyard" (Oskar / Ichor Aberration / Mosswood Dreadknight
+		// / Walk-In Closet — 8 cards), "face down from your hand"
+		// (Illusionary Mask — needs a per_card handler), or "play the
+		// card exiled as cost from graveyard" (Chitinous Crawler — needs
+		// a per_card handler). For all four of these the canonical
+		// library-top exile is wrong and creates a stray grant against
+		// some random library card that survives EOT cleanup with
+		// SourceTimestamp=0. Inspect args[0] and skip the library-top
+		// exile when it matches one of the non-library zone hints —
+		// per_card handlers own those semantics. See loki-r60-round2-report.md
+		// for the Chitinous Crawler + Illusionary Mask cluster that
+		// surfaced this.
+		argText := ""
+		if len(e.Args) > 0 {
+			if s, ok := e.Args[0].(string); ok {
+				argText = strings.ToLower(s)
+			}
+		}
+		skipLibraryExile := strings.Contains(argText, "face down") ||
+			strings.Contains(argText, "from your hand") ||
+			strings.Contains(argText, "in your hand") ||
+			strings.Contains(argText, "from your graveyard") ||
+			strings.Contains(argText, "from a graveyard")
+		if !skipLibraryExile {
+			seat := controllerSeat(src)
+			if seat >= 0 && seat < len(gs.Seats) {
+				s := gs.Seats[seat]
+				if len(s.Library) > 0 {
+					top := s.Library[0]
+					MoveCard(gs, top, seat, "library", "exile", "impulse_play")
+					perm := &ZoneCastPermission{
+						Zone:              ZoneExile,
+						Keyword:           "impulse_play",
+						ManaCost:          -1,
+						ExileOnResolve:    false,
+						RequireController: seat,
+						SourceName:        sourceName(src),
+						Duration:          "until_end_of_turn",
+						GrantTurn:         gs.Turn,
+					}
+					// r60: stamp SourceTimestamp so ExpireSourceGrants can
+					// reap on source-LTB. Without this the grant has
+					// SourceTimestamp=0 and ExpireSourceGrants
+					// short-circuits, leaving the only cleanup path as
+					// EOT — which can miss the grant if it's registered
+					// during cleanup's own priority round between SBA
+					// passes. See loki-r60-round2-report.md.
+					if src != nil {
+						perm.SourceTimestamp = src.Timestamp
+					}
+					RegisterZoneCastGrant(gs, top, perm)
 				}
-				RegisterZoneCastGrant(gs, top, perm)
 			}
 		}
 		gs.LogEvent(Event{
 			Kind:   "impulse_play",
 			Seat:   controllerSeat(src),
 			Source: sourceName(src),
+			Details: map[string]interface{}{
+				"skipped_library_exile": skipLibraryExile,
+				"arg_zone_hint":         argText,
+			},
 		})
 
 	case "extra_land_drop":
