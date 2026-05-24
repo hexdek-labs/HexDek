@@ -2205,6 +2205,50 @@ func chumpScore(gs *gameengine.GameState, p *gameengine.Permanent) float64 {
 	return score
 }
 
+// isLowImpactCantripSpell returns true when the incoming spell looks
+// like a small value/utility play not worth a counter — a cantrip,
+// scry, mill-1, look-at-top, or single-target tap. Used by ChooseResponse
+// as the "nothing meaningful to interrupt" early-pass signal so the
+// hat saves its counters for real threats instead of burning one on
+// a Brainstorm or Opt.
+//
+// Conservative on purpose: only fires when CMC ≤ 2 AND the oracle text
+// matches one of the low-impact templates AND none of the threat
+// templates ("destroy", "exile", "counter", "search", "extra turn",
+// "win the game") appear. A 1-mana spell whose text says "destroy
+// target creature" is real removal and stays counter-eligible.
+func isLowImpactCantripSpell(card *gameengine.Card) bool {
+	if card == nil {
+		return false
+	}
+	if gameengine.ManaCostOf(card) > 2 {
+		return false
+	}
+	ot := gameengine.OracleTextLower(card)
+	if ot == "" {
+		return false
+	}
+	for _, threat := range [...]string{
+		"destroy", "exile", "counter target", "search your library",
+		"extra turn", "extra turn after", "win the game", "lose the game",
+		"sacrifice", "discard", "deals damage",
+	} {
+		if strings.Contains(ot, threat) {
+			return false
+		}
+	}
+	for _, low := range [...]string{
+		"draw a card", "scry ", "scry.", "look at the top",
+		"mill a card", "surveil ", "surveil.",
+		"tap target creature", "tap target permanent",
+	} {
+		if strings.Contains(ot, low) {
+			return true
+		}
+	}
+	return false
+}
+
 // stackItemScore — cheap proxy for _stack_item_threat_score. CMC +
 // kind-specific bonus. Full scoring lives in the engine; this is only
 // the mode-threshold gate.

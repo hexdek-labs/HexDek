@@ -5476,6 +5476,16 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 		return nil
 	}
 
+	// R60 signal A — "nothing meaningful to interrupt" early pass.
+	// When the incoming spell is a low-impact cantrip-shaped effect
+	// (draw 1, scry, mill 1, look-at-top, tap a single creature), holding
+	// the counter for a later real threat is strictly better than burning
+	// it on a 1-mana value blip. Combo-piece names override this — even
+	// a cantrip-shaped card on the combo list still counts as a threat.
+	if isLowImpactCantripSpell(top.Card) && !h.isComboRelevant(top.Card) {
+		return nil
+	}
+
 	score := stackItemScore(top)
 
 	// Always counter combo pieces / "win the game" / mass removal.
@@ -5489,6 +5499,20 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 			mustCounter = true
 		}
 		if strings.Contains(ot, "destroy all") || strings.Contains(ot, "exile all") && score >= 1 {
+			mustCounter = true
+		}
+		// R60 signal B — eager counter on routinely game-deciding shapes
+		// that the CMC-based score gate would otherwise let through.
+		// Extra-turn spells are nearly always a combo finisher or lethal
+		// swing setup; tutors at score ≥ 2 are fetching a key piece (cheap
+		// 1-mana tutors like Vampiric / Mystical Tutor often slip past
+		// the gate but materially advance the caster's win line).
+		if strings.Contains(ot, "take an extra turn") ||
+			strings.Contains(ot, "take an additional turn") ||
+			strings.Contains(ot, "extra turn after this one") {
+			mustCounter = true
+		}
+		if strings.Contains(ot, "search your library") && score >= 2 {
 			mustCounter = true
 		}
 		// 3rd Eye: Counter kingmaker's key plays more aggressively.
