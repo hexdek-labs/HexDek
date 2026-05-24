@@ -148,6 +148,139 @@ func TestHandleGameSummary_DrawGameSurfacesMinusOneWinner(t *testing.T) {
 	}
 }
 
+// Rich path: when a snapshot is persisted for the game, the handler
+// returns the rich GameSummary (data_source = "rich") with all
+// three R60 signal arrays populated and turning points derived from
+// CardFirstPlayed.
+func TestHandleGameSummary_RichPathWhenSnapshotPersisted(t *testing.T) {
+	h, mux := newSummaryTestHandler(t)
+	gid := seedSummaryGame(t, h, 1, 12, "combat")
+
+	snap := heimdall.GameObservationSnapshot{
+		Seed: heimdall.GameSeed{
+			RNGSeed: 4242,
+			Winner:  1,
+			Turns:   12,
+		},
+		CommanderZoneVisits: []heimdall.CommanderZoneVisit{
+			{Seat: 1, CommanderName: "Atraxa, Praetors' Voice", CastCount: 1, InZoneAtEnd: true, Visits: 2},
+		},
+		RegretCards: []heimdall.RegretCard{
+			{Seat: 0, CardName: "Plague Wind", CMC: 9, Reason: "stranded_in_hand"},
+		},
+		MVPCards: []heimdall.MVPCard{
+			{Seat: 1, CardName: "Atraxa, Praetors' Voice", CMC: 4, Score: 8, IsCommander: true},
+		},
+		CardFirstPlayed:      map[string]int{"Atraxa, Praetors' Voice": 5},
+		CommanderNamesBySeat: [][]string{nil, {"Atraxa, Praetors' Voice"}, nil, nil},
+		FinalTurn:            12,
+	}
+	payload, err := heimdall.MarshalSnapshot(snap)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if err := db.InsertGameObservation(context.Background(), h.db, gid, payload); err != nil {
+		t.Fatalf("insert snapshot: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/api/games/"+intToStr(gid)+"/summary", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: want 200, got %d (%s)", rec.Code, rec.Body.String())
+	}
+	var s heimdall.GameSummary
+	if err := json.Unmarshal(rec.Body.Bytes(), &s); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if s.DataSource != "rich" {
+		t.Errorf("DataSource: want rich, got %q", s.DataSource)
+	}
+	if len(s.CommanderZoneVisits) != 1 || len(s.RegretCards) != 1 || len(s.MVPCards) != 1 {
+		t.Errorf("rich signals not surfaced: %+v", s)
+	}
+	if s.RegretCards[0].CardName != "Plague Wind" {
+		t.Errorf("regret card mismatch: %+v", s.RegretCards[0])
+	}
+	if s.MVPCards[0].CardName != "Atraxa, Praetors' Voice" || !s.MVPCards[0].IsCommander {
+		t.Errorf("MVP card mismatch: %+v", s.MVPCards[0])
+	}
+	// 2 turning points: commander_first_cast on turn 5, game_end on turn 12.
+	if len(s.TurningPoints) != 2 {
+		t.Fatalf("want 2 turning points, got %d", len(s.TurningPoints))
+	}
+	if s.TurningPoints[0].Kind != "commander_first_cast" || s.TurningPoints[0].Turn != 5 {
+		t.Errorf("position 0: %+v", s.TurningPoints[0])
+	}
+	if s.TurningPoints[1].Kind != "game_end" || s.TurningPoints[1].Turn != 12 {
+		t.Errorf("position 1: %+v", s.TurningPoints[1])
+	}
+	// GameRecord metadata (WinnerName, end_reason) wins over snapshot
+	// values since the GameRecord is the authoritative end-state.
+	if s.WinnerName != "Krenko, Mob Boss" || s.EndReason != "combat" {
+		t.Errorf("GameRecord metadata overlay failed: %+v", s)
+	}
+}
+
+// Malformed snapshot in DB: handler logs and falls back to db_only
+// rather than 500-ing.
+func TestHandleGameSummary_MalformedSnapshotFallsBackToDBOnly(t *testing.T) {
+	h, mux := newSummaryTestHandler(t)
+	gid := seedSummaryGame(t, h, 0, 7, "commander")
+
+	if err := db.InsertGameObservation(context.Background(), h.db, gid, "{{ not json"); err != nil {
+		t.Fatalf("insert malformed snapshot: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/api/games/"+intToStr(gid)+"/summary", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status: want 200 (graceful fallback), got %d (%s)", rec.Code, rec.Body.String())
+	}
+	var s heimdall.GameSummary
+	if err := json.Unmarshal(rec.Body.Bytes(), &s); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if s.DataSource != "db_only" {
+		t.Errorf("DataSource: want db_only fallback on malformed snapshot, got %q", s.DataSource)
+	}
+}
+
+// Rich-path winner conflict: snapshot says winner=2, GameRecord says
+// winner=1 — GameRecord wins.
+func TestHandleGameSummary_GameRecordWinsOverSnapshotForOutcome(t *testing.T) {
+	h, mux := newSummaryTestHandler(t)
+	gid := seedSummaryGame(t, h, 1, 14, "combat")
+
+	snap := heimdall.GameObservationSnapshot{
+		Seed:                 heimdall.GameSeed{RNGSeed: 4242, Winner: 2, Turns: 10},
+		CommanderNamesBySeat: [][]string{nil, {"Atraxa"}, nil, nil},
+		FinalTurn:            10,
+	}
+	payload, _ := heimdall.MarshalSnapshot(snap)
+	if err := db.InsertGameObservation(context.Background(), h.db, gid, payload); err != nil {
+		t.Fatalf("insert: %v", err)
+	}
+
+	req := httptest.NewRequest("GET", "/api/games/"+intToStr(gid)+"/summary", nil)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	var s heimdall.GameSummary
+	if err := json.Unmarshal(rec.Body.Bytes(), &s); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if s.Winner != 1 {
+		t.Errorf("GameRecord winner should override snapshot; got winner=%d", s.Winner)
+	}
+	if s.Turns != 14 {
+		t.Errorf("GameRecord turns (14) should win over snapshot turns (10); got %d", s.Turns)
+	}
+}
+
 // buildDBOnlyGameSummary is exercised through the handler above; this
 // unit-test pin lets it fail fast if the helper drifts.
 func TestBuildDBOnlyGameSummary_FieldsAndNonNilSlices(t *testing.T) {
