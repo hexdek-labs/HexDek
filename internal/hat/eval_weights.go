@@ -175,12 +175,25 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       2.0,
 	},
 	ArchetypeReanimator: {
+		// R60 round 3 audit retune. GraveyardValue=1.8 correctly highest,
+		// but the profile under-weighted Reanimator's combo and single-
+		// threat realities:
+		//   - ComboProximity: Reanimator IS combo-shaped — Animate Dead +
+		//     Worldgorger Dragon (infinite mana), Karmic Guide + Reveillark,
+		//     Karador + persist creatures. 0.6 weighted these as
+		//     Midrange-tier value rather than win-line proximity.
+		//   - ThreatExposure: same problem as Voltron — putting a single
+		//     fatty back into play means losing it to Path / Swords / Anguished
+		//     Unmaking is the whole game. 0.7 was creature-deck noise.
+		//   - ActivationTempo: activated reanimators (Sheoldred The
+		//     Apocalypse, Volrath, Karador, Lord Windgrace) + dredge /
+		//     surveil triggers all live on the activation axis.
 		BoardPresence:          0.8,
 		CardAdvantage:          0.6,
 		ManaAdvantage:          0.5,
 		LifeResource:           0.4,
-		ComboProximity:         0.6,
-		ThreatExposure:         0.7,
+		ComboProximity:         1.1, // was 0.6
+		ThreatExposure:         1.2, // was 0.7
 		CommanderProgress:      0.6,
 		GraveyardValue:         1.8,
 		DrainEngine:            0.4,
@@ -188,7 +201,7 @@ var archetypeWeights = map[string]EvalWeights{
 		EnchantmentSynergy:     0.2,
 		OpponentGraveyardThreat: 0.8,
 		PartnerSynergy:         0.3,
-		ActivationTempo:        0.3,
+		ActivationTempo:        0.6, // was 0.3
 		ToolboxBreadth:         0.4,
 		ThreatTrajectory:       0.5,
 		StackInteraction:       0.4,
@@ -197,11 +210,26 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeSpellslinger: {
+		// R60 round 3 audit retune. CardAdvantage=1.4 correctly highest
+		// (Niv-Mizzet / Mizzix / Kalamax draw triggers), but three
+		// dimensions sat below midrange despite being core to the
+		// gameplan:
+		//   - ComboProximity: Mizzix-Aetherflux storm lines, Niv-Mizzet
+		//     parun infinite loops, Dramatic Reversal + Isochron Scepter
+		//     all live in this archetype. 0.5 was lower than Selfmill's
+		//     0.7 — wrong direction.
+		//   - ManaAdvantage: casting many spells per turn needs ritual /
+		//     cost-reduction support (Goblin Electromancer, Birgi,
+		//     Baral, Jhoira). 0.9 missed how much the deck depends on
+		//     mana acceleration to actually CHAIN spells.
+		//   - ActivationTempo: Isochron Scepter is the canonical
+		//     spellslinger artifact — its imprint+activate loop is a
+		//     core line. 0.3 ignored it entirely.
 		BoardPresence:          0.4,
 		CardAdvantage:          1.4,
-		ManaAdvantage:          0.9,
+		ManaAdvantage:          1.1, // was 0.9
 		LifeResource:           0.5,
-		ComboProximity:         0.5,
+		ComboProximity:         1.0, // was 0.5
 		ThreatExposure:         0.8,
 		CommanderProgress:      0.5,
 		GraveyardValue:         0.4,
@@ -210,7 +238,7 @@ var archetypeWeights = map[string]EvalWeights{
 		EnchantmentSynergy:     0.3,
 		OpponentGraveyardThreat: 0.5,
 		PartnerSynergy:         0.3,
-		ActivationTempo:        0.3,
+		ActivationTempo:        0.7, // was 0.3 — Isochron Scepter
 		ToolboxBreadth:         0.6,
 		ThreatTrajectory:       0.5,
 		StackInteraction:       1.0,
@@ -219,19 +247,34 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeTribal: {
+		// R60 round 3 audit retune. BoardPresence=1.4 correctly highest
+		// (creature-flood is the gameplan), but three dimensions ignored
+		// what makes tribal DIFFERENT from a generic creature midrange:
+		//   - CardAdvantage: Vanquisher's Banner / Herald's Horn / Beast
+		//     Whisperer / Kindred Discovery turn every tribal cast into
+		//     a draw. 0.6 was below midrange (1.0).
+		//   - PartnerSynergy: lord effects (+1/+1 to other Goblins/Elves/
+		//     Slivers) ARE the tribal payoff. PartnerSynergy is the
+		//     creature-vs-creature mutual-buff dial; 0.4 was way too
+		//     low for a deck whose whole point is creatures-help-each-
+		//     other.
+		//   - CommanderProgress: tribal commanders (Edgar Markov, Reaper
+		//     King, Karador, Slimefoot, Krenko) are usually the win
+		//     condition. 1.0 was equal-with-extra-combats; bumped to
+		//     match the deck's actual reliance on the commander engine.
 		BoardPresence:          1.4,
-		CardAdvantage:          0.6,
+		CardAdvantage:          1.0, // was 0.6
 		ManaAdvantage:          0.5,
 		LifeResource:           0.7,
 		ComboProximity:         0.4,
 		ThreatExposure:         0.6,
-		CommanderProgress:      1.0,
+		CommanderProgress:      1.2, // was 1.0
 		GraveyardValue:         0.6,
 		DrainEngine:            0.3,
 		ArtifactSynergy:        0.2,
 		EnchantmentSynergy:     0.2,
 		OpponentGraveyardThreat: 0.4,
-		PartnerSynergy:         0.4,
+		PartnerSynergy:         0.8, // was 0.4 — lord effects
 		ActivationTempo:        0.3,
 		ToolboxBreadth:         0.3,
 		ThreatTrajectory:       0.4,
