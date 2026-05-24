@@ -103,6 +103,22 @@ type TournamentConfig struct {
 	// the first NSeats. Used for bug-hunting across large deck pools.
 	PoolMode bool
 
+	// MaxIntraPodSimilarity is the upper bound on Jaccard similarity
+	// between any two decks chosen for the same pod in PoolMode. 0
+	// disables the constraint (legacy uniform-random sampling). A
+	// reasonable starting value is 0.6, which lets archetype peers
+	// share a pod (typical archetype similarity ≈ 0.2–0.35) but
+	// blocks near-clone pairings (similarity ≥ 0.6). See
+	// tournament.DeckSimilarity for the reference table.
+	//
+	// When the constraint can't be satisfied within
+	// defaultSeedPodMaxAttempts shuffles (e.g. the pool is mostly
+	// clones of one prototype), SeedPod returns the lowest-similarity
+	// pod it found rather than hanging — tournaments make progress
+	// in pathological pools, but pod composition can be audited via
+	// MaxPodSimilarity post-hoc.
+	MaxIntraPodSimilarity float64
+
 	// LazyPool enables on-demand deck loading for large pools. Instead
 	// of holding all decks in memory, only active game decks are loaded.
 	// Requires DeckPaths, Corpus, and Meta to be set. Decks field is ignored.

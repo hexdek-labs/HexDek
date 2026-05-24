@@ -915,14 +915,16 @@ func runPool(cfg TournamentConfig, workers, maxTurns int, gameTimeout time.Durat
 		}()
 	}
 
-	// Job producer: for each game, pick NSeats random deck indices.
+	// Job producer: for each game, pick NSeats deck indices. When
+	// cfg.MaxIntraPodSimilarity > 0, SeedPod rejection-samples until
+	// the pod has no near-clone pairings (capped at
+	// defaultSeedPodMaxAttempts shuffles, then returns the
+	// least-collided fallback). Otherwise the legacy uniform-random
+	// path runs.
 	go func() {
 		rng := rand.New(rand.NewSource(cfg.Seed))
-		nDecks := len(allDecks)
 		for i := 0; i < cfg.NGames; i++ {
-			idxs := make([]int, nSeats)
-			perm := rng.Perm(nDecks)
-			copy(idxs, perm[:nSeats])
+			idxs := SeedPod(allDecks, nSeats, rng, cfg.MaxIntraPodSimilarity)
 			jobs <- poolJob{gameIdx: i, deckIdxs: idxs}
 		}
 		close(jobs)
@@ -1202,6 +1204,18 @@ func runLazyPool(cfg TournamentConfig, workers, maxTurns int, gameTimeout time.D
 			for s := 0; s < nSeats; s++ {
 				idxs[s] = perm[s]
 			}
+			// NOTE: cfg.MaxIntraPodSimilarity is NOT honored here.
+			// LazyPool's whole point is to avoid materializing every
+			// deck up front — but DeckSimilarity needs both decks
+			// loaded. Wiring similarity-aware seeding into lazy mode
+			// would either negate the lazy-loading optimization (load
+			// every deck just to compute the similarity matrix) or
+			// pay a per-pod load cost (load NSeats decks per attempt,
+			// times up to defaultSeedPodMaxAttempts attempts). Neither
+			// is worth it for the typical lazy-pool use case (bug-
+			// hunt across thousands of decks where collisions are
+			// rare). PoolMode supports similarity-aware seeding;
+			// LazyPool does not.
 			jobs <- lazyJob{i, idxs}
 		}
 		close(jobs)
