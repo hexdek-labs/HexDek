@@ -32,6 +32,15 @@ type Handler struct {
 	db            *sql.DB // optional — used for deck_meta (custom name, etc.)
 	ownerAliases  map[string]string // email prefix → owner slug
 
+	// FeedbackLimiter rate-limits POST /api/feedback per client IP. The
+	// endpoint is unauthenticated and writes a file to disk per
+	// request, so without a limiter a single bot can fill the
+	// feedback dir indefinitely. Nil = no limiting (backwards
+	// compatible with binaries that don't yet construct a limiter);
+	// cmd/hexdek-server sets a default (5-burst, 1/min refill) at
+	// startup.
+	FeedbackLimiter *RateLimiter
+
 	deckSubsMu sync.RWMutex
 	deckSubs   map[string]map[chan deckEvent]struct{}
 }
@@ -2132,6 +2141,21 @@ func (h *Handler) handleThreatGraph(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleFeedback(w http.ResponseWriter, r *http.Request) {
+	// Per-IP rate-limit. Anonymous endpoint that writes a file to disk
+	// per request — a single bot blasting it would fill the feedback
+	// dir. Limiter is nil-safe so older binaries keep working.
+	if h.FeedbackLimiter != nil {
+		ip := clientIP(r)
+		if ok, retryAfter := h.FeedbackLimiter.Allow(ip); !ok {
+			secs := int(retryAfter.Seconds())
+			if secs < 1 {
+				secs = 1
+			}
+			w.Header().Set("Retry-After", fmt.Sprintf("%d", secs))
+			writeError(w, http.StatusTooManyRequests, "feedback rate limit exceeded — too many requests")
+			return
+		}
+	}
 	var body struct {
 		Type     string `json:"type"`
 		Page     string `json:"page"`
