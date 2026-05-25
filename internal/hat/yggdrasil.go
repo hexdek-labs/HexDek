@@ -2471,6 +2471,16 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 		}
 	}
 
+	// R60 round 14+ ETB-trigger value bonus (see etb_trigger_value_r60.go).
+	// Cards whose value lives in their ETB (Mulldrifter, Stoneforge,
+	// Reclamation Sage, Eternal Witness) were underweighted because
+	// Freya's CatDraw / CatRamp / CatRemoval bonuses are small and the
+	// multi-mode / tutor / recursion ETB families don't fit a single
+	// Freya category cleanly. Graduated bonus by ETB payoff (tutor +0.30,
+	// draw/removal +0.20, ramp +0.15, token/recursion +0.10). Stacks
+	// with the existing category bonuses — they're complementary signals.
+	base += etbTriggerBonus(c)
+
 	// Lovelace Composer Intent: boost cards matching commander themes.
 	if h.Strategy != nil {
 		cName := c.DisplayName()
