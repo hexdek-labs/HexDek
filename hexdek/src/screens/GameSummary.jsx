@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Panel, KV, Tag, Tape } from '../components/chrome'
-import { api } from '../services/api'
+import { Panel, KV, Tag, Tape, Btn } from '../components/chrome'
+import { api, API_BASE } from '../services/api'
 
 // GameSummary renders the consolidated post-game blob from
 // GET /api/games/{id}/summary — the read surface backed by the R60
@@ -195,7 +195,20 @@ export default function GameSummary() {
             {summary.end_reason && <> · {summary.end_reason.toUpperCase()}</>}
           </>
         }
-        right={dataSourceTag(summary.data_source)}
+        right={
+          <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+            <a
+              href={`${API_BASE}/api/games/${summary.game_id}/summary.pdf`}
+              data-testid="export-pdf"
+              style={{ textDecoration: 'none' }}
+            >
+              <Btn sm ghost arrow={null} title="Download a self-contained PDF of this summary">
+                EXPORT PDF
+              </Btn>
+            </a>
+            {dataSourceTag(summary.data_source)}
+          </span>
+        }
       />
       <ZoneVisitsPanel visits={summary.commander_zone_visits} />
       <RegretCardsPanel cards={summary.regret_cards} />
