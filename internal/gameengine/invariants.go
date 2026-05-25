@@ -1344,7 +1344,11 @@ func checkWinCondition(gs *GameState) error {
 
 		if strings.Contains(reason, "commander") || strings.Contains(reason, "704.6c") {
 			// Commander damage loss — verify 21+ from a single commander.
-			if gs.CommanderFormat {
+			// Post-elimination, CommanderDamage entries can still be
+			// adjusted by clean-up paths or test scaffolding; trust the
+			// loss reason for already-cleaned-up seats (mirrors the life
+			// check below).
+			if gs.CommanderFormat && !s.LeftGame {
 				maxDmg := 0
 				for _, cmdrs := range s.CommanderDamage {
 					for _, dmg := range cmdrs {
@@ -1361,7 +1365,22 @@ func checkWinCondition(gs *GameState) error {
 		}
 
 		if strings.Contains(reason, "poison") || strings.Contains(reason, "704.5c") {
-			if s.PoisonCounters < 10 {
+			// Poison loss — verify 10+ poison counters. Post-elimination
+			// the count can drop via Hapatra-style counter-swap effects
+			// or other poison-removal abilities firing after the seat
+			// was already Lost. CR §704.5c locks in the loss at the SBA
+			// pass; subsequent counter adjustments are state-preserved
+			// for audit but do not undo the loss. Trust the loss reason
+			// for already-cleaned-up seats (mirrors the life check
+			// below).
+			//
+			// Loki r60 extended-seeds / seed 2718 game 3428 turn 39:
+			// seat 0 had 10+ poison from Blightwidow/Dakmor Scorpion
+			// infect damage, lost via SBA 704.5c, then a Hapatra-pod
+			// counter-swap effect dropped seat 0's PoisonCounters to 2.
+			// The current-state check fired despite the historical loss
+			// being correct.
+			if s.PoisonCounters < 10 && !s.LeftGame {
 				return fmt.Errorf("WinCondition: seat %d lost via poison but has only %d poison counters (< 10)",
 					s.Idx, s.PoisonCounters)
 			}
