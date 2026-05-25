@@ -1204,9 +1204,59 @@ func (e *GameStateEvaluator) scoreCommander(gs *gameengine.GameState, seatIdx in
 		if e.Strategy != nil && e.Strategy.CommanderSynergy > 0.5 {
 			taxPenalty = 0.20
 		}
-		score -= float64(tax) * taxPenalty
+
+		// R60r10: castability-weighted tax. The naive linear -tax * 0.15
+		// didn't distinguish "5 CMC commander + 4 tax = uncastable on a 6-
+		// land board" from "the same commander on a 14-land board where
+		// tax barely matters." Compute commander total cost vs land count
+		// as a rough mana-ceiling proxy and inflate or soften accordingly.
+		cmcCommander := 0
+		for _, c := range seat.CommandZone {
+			if c == nil {
+				continue
+			}
+			for _, cn := range seat.CommanderNames {
+				if c.DisplayName() == cn {
+					if cmc := gameengine.ManaCostOf(c); cmc > cmcCommander {
+						cmcCommander = cmc
+					}
+				}
+			}
+		}
+		landCount := 0
+		for _, p := range seat.Battlefield {
+			if p != nil && p.IsLand() {
+				landCount++
+			}
+		}
+		castabilityFactor := 1.0
+		totalCost := cmcCommander + tax
+		if totalCost > 0 && landCount > 0 {
+			ratio := float64(totalCost) / float64(landCount)
+			switch {
+			case ratio > 1.5: // can't cast for 2+ turns even with a land drop
+				castabilityFactor = 1.6
+			case ratio > 1.0: // turn-or-two-out
+				castabilityFactor = 1.2
+			case ratio < 0.5: // abundantly affordable, tax matters less
+				castabilityFactor = 0.6
+			}
+		} else if totalCost > 0 && landCount == 0 {
+			// No mana, commander stuck — strongest amplification.
+			castabilityFactor = 1.6
+		}
+
+		score -= float64(tax) * taxPenalty * castabilityFactor
 	}
 
+	// R60r10: concentrated commander damage signal. Voltron WINS by
+	// stacking damage on a single opponent past 21 (CR §704.6c is per-
+	// opponent, per-source). Pre-tune summed all opp damage equally —
+	// "5 on each of 4 opps" scored the same as "20 on one opp = 1 swing
+	// from lethal." Reward concentration with a convex curve on the
+	// max-per-opponent value; spread damage drops to an ambient-pressure
+	// fraction.
+	var maxDmg, sumDmg int
 	for i, opp := range gs.Seats {
 		if i == seatIdx || opp.Lost || opp.LeftGame {
 			continue
@@ -1215,10 +1265,32 @@ func (e *GameStateEvaluator) scoreCommander(gs *gameengine.GameState, seatIdx in
 			continue
 		}
 		if dmgMap, ok := opp.CommanderDamage[seatIdx]; ok {
+			perOpp := 0
 			for _, dmg := range dmgMap {
-				score += float64(dmg) / 21.0
+				perOpp += dmg
 			}
+			if perOpp > maxDmg {
+				maxDmg = perOpp
+			}
+			sumDmg += perOpp
 		}
+	}
+	if maxDmg > 0 {
+		p := float64(maxDmg) / 21.0
+		if p > 1.0 {
+			p = 1.0
+		}
+		// Convex (p²) + small linear floor (0.2*p) so early damage still
+		// registers but approaching-lethal dominates. At 21: 1.0 + 0.2 =
+		// 1.2 (was 1.0 linear). At 10: 0.227 + 0.095 = 0.32 (was 0.48
+		// linear) — early voltron is correctly understated; the swing
+		// matters when you're CLOSE.
+		score += p*p + p*0.2
+	}
+	if spread := sumDmg - maxDmg; spread > 0 {
+		// Ambient pressure — "I'm on everyone's commander-damage clock"
+		// is a real signal but not a wincon by itself.
+		score += float64(spread) / 21.0 * 0.15
 	}
 
 	return score
