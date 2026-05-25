@@ -40,6 +40,20 @@ CREATE TABLE IF NOT EXISTS clone_log (
 );
 CREATE INDEX IF NOT EXISTS idx_clone_log_owner_time
     ON clone_log(owner, cloned_at DESC);
+
+-- Per-user fork rate limiter. Parallel to clone_log but tracked
+-- separately so each action gets its own budget — forking is the
+-- attribution-preserving "branch from someone else's deck" flow, and
+-- a user mid-collaboration on a popular deck shouldn't have their
+-- private-clone budget consumed by forks (or vice versa).
+CREATE TABLE IF NOT EXISTS fork_log (
+    owner       TEXT NOT NULL,
+    src_key     TEXT NOT NULL,
+    dst_key     TEXT NOT NULL,
+    forked_at   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fork_log_owner_time
+    ON fork_log(owner, forked_at DESC);
 `
 
 // EnsureDeckMetaSchema creates the deck_meta table idempotently. Call once
@@ -63,6 +77,12 @@ func EnsureDeckMetaSchema(ctx context.Context, db *sql.DB) error {
 	}
 	if _, err := db.ExecContext(ctx,
 		`ALTER TABLE deck_meta ADD COLUMN tags TEXT NOT NULL DEFAULT ''`); err != nil {
+		if !strings.Contains(err.Error(), "duplicate column") {
+			return err
+		}
+	}
+	if _, err := db.ExecContext(ctx,
+		`ALTER TABLE deck_meta ADD COLUMN forked_from TEXT NOT NULL DEFAULT ''`); err != nil {
 		if !strings.Contains(err.Error(), "duplicate column") {
 			return err
 		}
@@ -297,6 +317,73 @@ func (h *Handler) recordClone(ctx context.Context, owner, srcKey, dstKey string)
 	}
 	_, err := h.db.ExecContext(ctx,
 		`INSERT INTO clone_log (owner, src_key, dst_key, cloned_at)
+		 VALUES (?, ?, ?, ?)`,
+		owner, srcKey, dstKey, time.Now().Unix())
+	return err
+}
+
+// ForkRateLimit is the cap on fork-creates per user per hour. Separate
+// budget from CloneRateLimit so a user mid-collaboration on a popular
+// deck doesn't have their private-clone budget consumed by forks (or
+// vice versa). Exported so tests can lower it.
+const ForkRateLimit = 10
+
+// loadForkedFrom returns the "owner/id" pointer recorded when this deck
+// was created by /fork, or "" when the deck was not forked.
+func (h *Handler) loadForkedFrom(ctx context.Context, owner, id string) string {
+	if h.db == nil {
+		return ""
+	}
+	var src string
+	err := h.db.QueryRowContext(ctx,
+		`SELECT forked_from FROM deck_meta WHERE owner = ? AND id = ?`,
+		owner, id).Scan(&src)
+	if err != nil {
+		return ""
+	}
+	return src
+}
+
+// saveForkedFrom records the source deck a fork was based on. Upserts
+// alongside any existing custom_name / cloned_from so the metadata
+// stays together for a single (owner, id).
+func (h *Handler) saveForkedFrom(ctx context.Context, owner, id, src string) error {
+	if h.db == nil {
+		return errors.New("hexapi: deck_meta storage not initialized")
+	}
+	_, err := h.db.ExecContext(ctx,
+		`INSERT INTO deck_meta (owner, id, forked_from, updated_at)
+		 VALUES (?, ?, ?, ?)
+		 ON CONFLICT(owner, id) DO UPDATE SET
+		   forked_from = excluded.forked_from,
+		   updated_at  = excluded.updated_at`,
+		owner, id, src, time.Now().Unix())
+	return err
+}
+
+// forkCountSince returns how many forks the given owner has created
+// since the supplied unix timestamp. Used by the fork handler to
+// enforce ForkRateLimit; returns 0 (i.e. allow) when the DB is absent.
+func (h *Handler) forkCountSince(ctx context.Context, owner string, since int64) (int, error) {
+	if h.db == nil {
+		return 0, nil
+	}
+	var n int
+	err := h.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM fork_log WHERE owner = ? AND forked_at >= ?`,
+		owner, since).Scan(&n)
+	return n, err
+}
+
+// recordFork appends a row to fork_log. Best-effort, same semantics as
+// recordClone: a write error here is logged but does not roll back the
+// fork file we already wrote to disk.
+func (h *Handler) recordFork(ctx context.Context, owner, srcKey, dstKey string) error {
+	if h.db == nil {
+		return nil
+	}
+	_, err := h.db.ExecContext(ctx,
+		`INSERT INTO fork_log (owner, src_key, dst_key, forked_at)
 		 VALUES (?, ?, ?, ?)`,
 		owner, srcKey, dstKey, time.Now().Unix())
 	return err

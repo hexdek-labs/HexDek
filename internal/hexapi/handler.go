@@ -195,6 +195,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/upgrade", h.handleDeckUpgrade)
 	mux.HandleFunc("POST /api/decks/{owner}/{id}/analyze", h.handleRunAnalysis)
 	mux.HandleFunc("POST /api/decks/{owner}/{id}/clone", RequireCSRF(h.CSRFStore, h.handleCloneDeck))
+	mux.HandleFunc("POST /api/decks/{owner}/{id}/fork", RequireCSRF(h.CSRFStore, h.handleForkDeck))
 	// SPA share page with OG meta injection — Caddy can route /decks/{owner}/{id}
 	// here for crawler User-Agents (or unconditionally) so Discord/Twitter unfurls
 	// pick up per-deck previews.
@@ -446,6 +447,7 @@ func (h *Handler) handleGetDeck(w http.ResponseWriter, r *http.Request) {
 	production := computeManaProduction(h.cardDB, cards)
 	customName := h.loadCustomName(r.Context(), owner, id)
 	clonedFrom := h.loadClonedFrom(r.Context(), owner, id)
+	forkedFrom := h.loadForkedFrom(r.Context(), owner, id)
 	tags := h.loadTags(r.Context(), owner, id)
 	writeJSON(w, map[string]any{
 		"id":              id,
@@ -454,6 +456,7 @@ func (h *Handler) handleGetDeck(w http.ResponseWriter, r *http.Request) {
 		"commander_card":  cmdrCard,
 		"custom_name":     customName,
 		"cloned_from":     clonedFrom,
+		"forked_from":     forkedFrom,
 		"bracket":         bracket,
 		"color":           color,
 		"card_count":      totalCards,
@@ -808,6 +811,177 @@ func (h *Handler) handleCloneDeck(w http.ResponseWriter, r *http.Request) {
 		"card_count":     len(cards),
 		"source":         srcKey,
 		"cloned_from":    srcKey,
+	})
+}
+
+// handleForkDeck duplicates a public deck into the caller's collection
+// with explicit attribution preserved via `forked_from`. Distinct from
+// clone (handleCloneDeck above) in three ways:
+//
+//   1. Intent — fork is the loud-attribution "branch from someone else's
+//      deck" flow, surfaced in the UI as "Forked from <owner>/<deck>".
+//      Clone is the quieter "(CLONE)" copy with no expectation that
+//      the original owner is collaborating.
+//   2. Storage — fork meta lives in `deck_meta.forked_from` (not
+//      `cloned_from`), and fork events log to `fork_log` (not
+//      `clone_log`), so the rate-limit budgets are independent.
+//   3. Naming — the destination file is `<srcID>_fork[N]` and the
+//      display name appends " (FORK)" rather than " (CLONE)".
+//
+// Everything else (CSRF, auth header, self-fork rejection, deck file
+// copy, freya snapshot copy, fresh Freya re-run kick-off, version
+// registration, import_log entry) mirrors the clone handler so the two
+// flows stay observably parallel.
+//
+// A future PR can factor the shared duplication-with-attribution dance
+// into a private helper that both handlers call; the current shape keeps
+// the diff scoped to "add fork without touching clone".
+func (h *Handler) handleForkDeck(w http.ResponseWriter, r *http.Request) {
+	srcOwner := r.PathValue("owner")
+	srcID := r.PathValue("id")
+	if !validatePathComponent(srcOwner) || !validatePathComponent(srcID) {
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
+		return
+	}
+
+	caller := strings.TrimSpace(strings.ToLower(r.Header.Get("X-HexDek-Owner")))
+	if caller == "" {
+		writeError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+	dstOwner := sanitizeFilename(caller)
+	if dstOwner == "" {
+		writeError(w, http.StatusBadRequest, "invalid caller")
+		return
+	}
+
+	since := time.Now().Add(-time.Hour).Unix()
+	if n, err := h.forkCountSince(r.Context(), dstOwner, since); err == nil && n >= ForkRateLimit {
+		w.Header().Set("Retry-After", "3600")
+		writeError(w, http.StatusTooManyRequests, fmt.Sprintf("fork rate limit exceeded (max %d per hour)", ForkRateLimit))
+		return
+	}
+
+	if strings.EqualFold(srcOwner, dstOwner) {
+		writeError(w, http.StatusBadRequest, "cannot fork your own deck")
+		return
+	}
+
+	srcPath := findDeckFile(h.DecksDir, srcOwner, srcID)
+	if srcPath == "" {
+		writeError(w, http.StatusNotFound, "deck not found")
+		return
+	}
+
+	dstDir := filepath.Join(h.DecksDir, dstOwner)
+	if err := os.MkdirAll(dstDir, 0755); err != nil {
+		writeError(w, http.StatusInternalServerError, "cannot create deck directory")
+		return
+	}
+
+	ext := filepath.Ext(srcPath)
+	dstID := srcID + "_fork"
+	dstPath := filepath.Join(dstDir, dstID+ext)
+	for i := 2; ; i++ {
+		if _, err := os.Stat(dstPath); os.IsNotExist(err) {
+			break
+		}
+		dstID = fmt.Sprintf("%s_fork%d", srcID, i)
+		dstPath = filepath.Join(dstDir, dstID+ext)
+		if i > 100 {
+			writeError(w, http.StatusConflict, "too many forks with the same name")
+			return
+		}
+	}
+
+	deckBytes, err := os.ReadFile(srcPath)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "cannot read source deck")
+		return
+	}
+	if err := os.WriteFile(dstPath, deckBytes, 0644); err != nil {
+		writeError(w, http.StatusInternalServerError, "cannot write deck file")
+		return
+	}
+
+	srcFreyaDir := filepath.Join(h.DecksDir, srcOwner, "freya")
+	dstFreyaDir := filepath.Join(dstDir, "freya")
+	freyaCopies := map[string]string{
+		filepath.Join(srcFreyaDir, srcID+".strategy.json"): filepath.Join(dstFreyaDir, dstID+".strategy.json"),
+		filepath.Join(srcFreyaDir, srcID+"_freya.md"):      filepath.Join(dstFreyaDir, dstID+"_freya.md"),
+	}
+	freyaMade := false
+	for src, dst := range freyaCopies {
+		data, err := os.ReadFile(src)
+		if err != nil {
+			continue
+		}
+		if !freyaMade {
+			os.MkdirAll(dstFreyaDir, 0755)
+			freyaMade = true
+		}
+		os.WriteFile(dst, data, 0644)
+	}
+
+	var cards []map[string]any
+	if strings.HasSuffix(dstPath, ".json") {
+		cards = parseDeckJSON(deckBytes)
+	} else {
+		cards = parseDeckList(string(deckBytes))
+	}
+	cmdrCard := ""
+	for _, line := range strings.Split(string(deckBytes), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "COMMANDER:") {
+			cmdrCard = strings.TrimSpace(strings.TrimPrefix(line, "COMMANDER:"))
+			break
+		}
+	}
+	var cardNames []string
+	for _, c := range cards {
+		if n, ok := c["name"].(string); ok {
+			cardNames = append(cardNames, n)
+		}
+	}
+	go h.registerDeckVersion(dstOwner, dstID, cmdrCard, cardNames)
+
+	srcCustom := h.loadCustomName(r.Context(), srcOwner, srcID)
+	forkName := srcCustom
+	if forkName == "" {
+		forkName = strings.ToUpper(srcID)
+	}
+	forkName = forkName + " (FORK)"
+	h.saveCustomName(r.Context(), dstOwner, dstID, forkName)
+
+	srcKey := srcOwner + "/" + srcID
+	dstKey := dstOwner + "/" + dstID
+	if err := h.saveForkedFrom(r.Context(), dstOwner, dstID, srcKey); err != nil {
+		log.Printf("fork: saveForkedFrom failed: %v", err)
+	}
+	if err := h.recordFork(r.Context(), dstOwner, srcKey, dstKey); err != nil {
+		log.Printf("fork: recordFork failed: %v", err)
+	}
+
+	h.logImport(r.Context(), db.ImportLogEntry{
+		Owner:     dstOwner,
+		DeckKey:   dstKey,
+		DeckName:  forkName,
+		Commander: cmdrCard,
+		Source:    "fork:" + srcKey,
+		CardCount: len(cards),
+	})
+
+	h.publishDeck(dstKey, deckEvent{Event: "freya_started", Data: `{"status":"analyzing"}`})
+	go h.runFreya(dstPath)
+
+	writeJSON(w, map[string]any{
+		"id":             dstID,
+		"owner":          dstOwner,
+		"name":           forkName,
+		"commander_card": cmdrCard,
+		"card_count":     len(cards),
+		"source":         srcKey,
+		"forked_from":    srcKey,
 	})
 }
 

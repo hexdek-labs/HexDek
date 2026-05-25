@@ -116,6 +116,7 @@ export const api = {
   }),
   deleteDeck: (id) => authedRequest(`/api/decks/${id}`, { method: 'DELETE' }),
   cloneDeck: (id) => authedRequest(`/api/decks/${id}/clone`, { method: 'POST' }),
+  forkDeck: (id) => authedRequest(`/api/decks/${id}/fork`, { method: 'POST' }),
   patchDeck: (id, fields) => authedRequest(`/api/decks/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(fields),

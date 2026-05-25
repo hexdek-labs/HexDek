@@ -907,6 +907,34 @@ paths:
         "429": { $ref: '#/components/responses/TooManyRequests' }
         "500": { $ref: '#/components/responses/InternalError' }
 
+  /api/decks/{owner}/{id}/fork:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    post:
+      tags: [decks]
+      operationId: forkDeck
+      summary: Fork someone else's deck into the caller's account with attribution preserved.
+      description: |
+        Parallel to clone but maintains a `forked_from` pointer that's surfaced
+        prominently in the UI as "Forked from <owner>/<id>". Rate-limited per
+        caller (`ForkRateLimit` per hour) against a separate budget from clone.
+        Cannot self-fork.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+      responses:
+        "200":
+          description: Fork created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "429": { $ref: '#/components/responses/TooManyRequests' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
   /api/decks/{owner}/{id}/archive:
     parameters:
       - $ref: '#/components/parameters/OwnerParam'
