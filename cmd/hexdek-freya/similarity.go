@@ -42,6 +42,7 @@ type DeckFingerprint struct {
 	PrimaryArchetype   string
 	SecondaryArchetype string
 	Bracket            int
+	BracketLabel       string   // display label for the bracket number (e.g. "Optimized")
 	ColorIdentity      []string // W/U/B/R/G
 	CommanderThemes    []string // for tiebreaker / future weighting
 }
@@ -57,6 +58,7 @@ func BuildDeckFingerprint(dp *DeckProfile, report *FreyaReport) *DeckFingerprint
 		fp.PrimaryArchetype = dp.PrimaryArchetype
 		fp.SecondaryArchetype = dp.SecondaryArchetype
 		fp.Bracket = dp.Bracket
+		fp.BracketLabel = dp.BracketLabel
 		fp.ColorIdentity = append([]string(nil), dp.ColorIdentity...)
 		fp.CommanderThemes = append([]string(nil), dp.CommanderThemes...)
 	}
