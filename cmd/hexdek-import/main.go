@@ -88,43 +88,55 @@ func main() {
 // ---------------------------------------------------------------------------
 
 func importMoxfield(url, outputDir string) {
+	outPath, err := runImportMoxfield(url, outputDir)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	// Auto-run Freya analysis (gated by env so tests skip the shell-out).
+	if os.Getenv("HEXDEK_IMPORT_SKIP_FREYA") == "" {
+		runFreyaOnDeck(outPath)
+	}
+}
+
+// runImportMoxfield is the testable core of importMoxfield: fetch the
+// Moxfield deck, write it to disk under outputDir with the standard
+// header comments, log the saved path + summary, and return the
+// written file's path. Returns error instead of log.Fatal so tests
+// can exercise the failure modes (bad URL, API error, write failure).
+func runImportMoxfield(url, outputDir string) (string, error) {
 	log.Printf("importing from Moxfield: %s", url)
 
 	deckID := moxfield.ExtractDeckID(url)
 	if deckID == "" {
-		log.Fatalf("could not extract deck ID from URL: %s", url)
+		return "", fmt.Errorf("could not extract deck ID from URL: %s", url)
 	}
 
-	// Fetch the deck name separately for the header comment.
+	// Both FetchDeckName and FetchDeck share the in-process cache, so
+	// the back-to-back pair only hits the API once.
 	deckName, nameErr := moxfield.FetchDeckName(url)
 	if nameErr != nil {
 		deckName = deckID // fallback to ID
 	}
 
-	// Fetch the full decklist text (COMMANDER: + mainboard lines).
 	text, err := moxfield.FetchDeck(url)
 	if err != nil {
-		log.Fatalf("fetch Moxfield deck: %v", err)
+		return "", fmt.Errorf("fetch Moxfield deck: %w", err)
 	}
 
-	// Build the output with header comments.
 	var sb strings.Builder
 	sb.WriteString(fmt.Sprintf("# %s\n", deckName))
 	sb.WriteString(fmt.Sprintf("# Source: %s\n", url))
 	sb.WriteString(text)
 
-	// Sanitize name for filename.
 	filename := sanitizeFilename(deckName) + ".txt"
 	outPath := filepath.Join(outputDir, filename)
 
 	if err := os.WriteFile(outPath, []byte(sb.String()), 0644); err != nil {
-		log.Fatalf("write %s: %v", outPath, err)
+		return "", fmt.Errorf("write %s: %w", outPath, err)
 	}
 	log.Printf("saved %s (%d bytes)", outPath, len(sb.String()))
 	printDeckSummary(text)
-
-	// Auto-run Freya analysis.
-	runFreyaOnDeck(outPath)
+	return outPath, nil
 }
 
 // ---------------------------------------------------------------------------
