@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"reflect"
 	"strings"
 	"sync/atomic"
@@ -281,6 +282,7 @@ func newTagsStub(t *testing.T, body string) (counter *int32, cleanup func()) {
 	t.Setenv(cacheEnvDir, tmp)
 	t.Setenv(cacheEnvDisable, "")
 	t.Setenv(cacheEnvTTL, "")
+	t.Setenv(snapshotEnvDir, filepath.Join(tmp, "snapshots"))
 	resetCachesForTest()
 
 	return &hits, func() {

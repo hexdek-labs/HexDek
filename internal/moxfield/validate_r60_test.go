@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -484,6 +485,7 @@ func newMoxStubReturning(t *testing.T, body string) func() {
 	t.Setenv(cacheEnvDir, tmp)
 	t.Setenv(cacheEnvDisable, "")
 	t.Setenv(cacheEnvTTL, "")
+	t.Setenv(snapshotEnvDir, filepath.Join(tmp, "snapshots"))
 	resetCachesForTest()
 	return func() {
 		srv.Close()
