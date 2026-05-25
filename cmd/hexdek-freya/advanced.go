@@ -1559,6 +1559,115 @@ func buildPowerExplanation(in powerExplanationInputs) string {
 	return fmt.Sprintf("%s — %s", in.tier, strings.Join(parts, " + "))
 }
 
+// computePetCards detects "pet cards" — low-tier creatures the
+// deckbuilder kept despite their off-archetype fit. A pet card signals
+// that personal taste / flavor matters more to the builder than raw
+// optimization for the deck's strategy, so the upgrade coaching
+// shouldn't hammer "cut this" against them.
+//
+// Detection requires ALL of:
+//
+//  1. PowerTier is C or D (low-tier). High-power creatures don't need
+//     a "keep for flavor" defense — they're already pulling weight.
+//  2. TypeLine contains "creature". Builders form attachments to
+//     creatures (lore, art, signature plays) far more than to generic
+//     noncreature utility. A bad spell is just a bad spell; a bad
+//     creature is often deliberate.
+//  3. Card has at least one role tag. Pure-filler / untagged cards
+//     aren't pet cards — they're cards the builder didn't realize
+//     were bad. A tagged card playing SOME role was an intentional
+//     pick.
+//  4. NONE of the card's roles match the deck's primary-archetype
+//     fingerprint. If the card's role is what the deck wants, it's
+//     just a low-power play of the right type — not a pet card.
+//     Off-archetype creatures are the canonical flavor-pick shape:
+//     "I know my Tribal deck doesn't want this Dragon, but I love it."
+//  5. NOT a dead slot (CMC 5+ Utility-only). The existing dead-slot
+//     penalty path already flags these as obvious cuts; bundling them
+//     under "pet card" would muddy both signals.
+//
+// Legendary creatures get a slightly different reason string
+// ("signature flavor pick") since legendaries are usually the
+// strongest pet-card signal — characters players genuinely care about.
+//
+// Cap at 8 display entries (sorted by Power descending so the
+// "highest-power flavor picks" lead — those are the most defensible
+// keeps), since a flavor deck can legitimately have many pet cards
+// and a longer list stops being useful guidance.
+func computePetCards(dp *DeckProfile, report *FreyaReport) {
+	if report.Roles == nil || len(dp.CardPowerLevels) == 0 {
+		return
+	}
+	profileByName := map[string]CardProfile{}
+	for _, p := range report.Profiles {
+		profileByName[p.Name] = p
+	}
+	roleMap := map[string][]RoleTag{}
+	for _, a := range report.Roles.Assignments {
+		roleMap[a.Name] = a.Roles
+	}
+	var fpRatios map[RoleTag]float64
+	for _, fp := range archetypeFingerprints {
+		if fp.Name == dp.PrimaryArchetype {
+			fpRatios = fp.Ratios
+			break
+		}
+	}
+
+	for _, pl := range dp.CardPowerLevels {
+		if pl.PowerTier != "C" && pl.PowerTier != "D" {
+			continue
+		}
+		p, ok := profileByName[pl.Name]
+		if !ok {
+			continue
+		}
+		tl := strings.ToLower(p.TypeLine)
+		if !strings.Contains(tl, "creature") {
+			continue
+		}
+		roles := roleMap[pl.Name]
+		if len(roles) == 0 {
+			continue // untagged pure-filler — not a pet
+		}
+		matched := false
+		for _, r := range roles {
+			if _, ok := fpRatios[r]; ok {
+				matched = true
+				break
+			}
+		}
+		if matched {
+			continue // role fits the archetype — not a pet
+		}
+		// Dead slot — the existing cuttable path already owns this
+		// signal; pet card would double-flag.
+		if p.CMC >= 5 && len(roles) == 1 && roles[0] == RoleUtility {
+			continue
+		}
+
+		reason := "off-archetype creature — likely a personal-taste pick (keep if you love it)"
+		if strings.Contains(tl, "legendary") {
+			reason = "off-archetype legendary creature — signature flavor pick (keep if you love it)"
+		}
+
+		dp.PetCards = append(dp.PetCards, PetCard{
+			Name:      pl.Name,
+			CMC:       p.CMC,
+			Roles:     pl.Roles,
+			Power:     pl.Power,
+			PowerTier: pl.PowerTier,
+			Reason:    reason,
+		})
+	}
+
+	// CardPowerLevels is already sorted Power desc, so PetCards inherit
+	// that ordering for free. Cap at 8 for display scannability.
+	if len(dp.PetCards) > 8 {
+		dp.PetCards = dp.PetCards[:8]
+	}
+}
+
 // computeCardPower populates dp.CardPowerLevels with a 0-100 power
 // rating for every non-land card in the deck. Power is the clamped sum
 // of three explicit components:

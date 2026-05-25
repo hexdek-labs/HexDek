@@ -749,6 +749,13 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		}
 	}
 
+	if len(dp.PetCards) > 0 {
+		fmt.Fprintf(w, "  Pet Cards (flavor picks — personal taste outweighs optimization):\n")
+		for _, pc := range dp.PetCards {
+			fmt.Fprintf(w, "    ♥ [%s %3d] %s — %s\n", pc.PowerTier, pc.Power, pc.Name, pc.Reason)
+		}
+	}
+
 	if len(dp.LandSwapSuggestions) > 0 {
 		fmt.Fprintf(w, "\n  Land Swaps:\n")
 		for _, s := range dp.LandSwapSuggestions {
@@ -1305,6 +1312,7 @@ type jsonDeckProfile struct {
 	CuttableCards      []jsonCardQuality    `json:"cuttable_cards,omitempty"`
 	CardPowerLevels    []jsonCardPowerLevel `json:"card_power_levels,omitempty"`
 	PowerTierCounts    map[string]int       `json:"power_tier_counts,omitempty"`
+	PetCards           []jsonPetCard        `json:"pet_cards,omitempty"`
 	LandSwapSuggestions []string         `json:"land_swap_suggestions,omitempty"`
 	CommanderSynergy   float64           `json:"commander_synergy,omitempty"`
 	CommanderThemes    []string          `json:"commander_themes,omitempty"`
@@ -1376,6 +1384,15 @@ type jsonCardPowerLevel struct {
 	ArchetypeFit        int      `json:"archetype_fit"`
 	CMCEfficiency       int      `json:"cmc_efficiency"`
 	SynergyContribution int      `json:"synergy_contribution"`
+}
+
+type jsonPetCard struct {
+	Name      string   `json:"name"`
+	CMC       int      `json:"cmc"`
+	Roles     []string `json:"roles,omitempty"`
+	Power     int      `json:"power"`
+	PowerTier string   `json:"power_tier"`
+	Reason    string   `json:"reason"`
 }
 
 type jsonRoleCount struct {
@@ -1638,6 +1655,17 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 			SynergyContribution: pl.SynergyContribution,
 		})
 	}
+	var petCards []jsonPetCard
+	for _, pc := range dp.PetCards {
+		petCards = append(petCards, jsonPetCard{
+			Name:      pc.Name,
+			CMC:       pc.CMC,
+			Roles:     pc.Roles,
+			Power:     pc.Power,
+			PowerTier: pc.PowerTier,
+			Reason:    pc.Reason,
+		})
+	}
 	var coaching []jsonCoachingTip
 	for _, t := range dp.CoachingTips {
 		coaching = append(coaching, jsonCoachingTip{
@@ -1700,6 +1728,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		CuttableCards:       cuttable,
 		CardPowerLevels:     powerLevels,
 		PowerTierCounts:     dp.PowerTierCounts,
+		PetCards:            petCards,
 		LandSwapSuggestions: dp.LandSwapSuggestions,
 		CommanderSynergy:   dp.CommanderSynergy,
 		CommanderThemes:    dp.CommanderThemes,
