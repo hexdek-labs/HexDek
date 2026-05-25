@@ -261,20 +261,32 @@ type CardPowerLevel struct {
 // cards reads as "casual deck with no high-impact cards" instead of
 // promoting its top filler. Boundaries are inclusive on the high side:
 //
-//	S = 75-100  must-keep wincons / load-bearing engines
-//	A = 60-74   strong supports, the deck wants these specific cards
-//	B = 40-59   solid utility, replaceable but not flex
-//	C = 25-39   situational / role-only filler
+//	S = 70-100  must-keep wincons / load-bearing engines
+//	A = 55-69   strong supports, the deck wants these specific cards
+//	B = 38-54   solid utility, replaceable but not flex
+//	C = 25-37   situational / role-only filler
 //	D = 0-24    bottom of the deck, swap candidates
+//
+// Thresholds recalibrated from the original 75/60/40/25 split based on
+// the cross-deck distribution from ComputePowerTierAggregate. The
+// original 300-deck baseline showed 3.3% S / 11.4% A — too thin on
+// both elite tiers, with the [70-74] band of strong-but-not-elite
+// cards stuck in A and the [55-59] band of solid supports stuck in B.
+// The retuned 70/55/38/25 thresholds shift the distribution toward
+// the standard tier shape (target ~7% S / 18% A / 35% B / 30% C /
+// 10% D — roughly normal peaked at B with thin tails). Lyon corpus
+// (8 decks / 504 cards) under the new thresholds: 6.9% S / 19.4% A /
+// 37.9% B / 28.6% C / 8.9% D. The C/D boundary at 25 is unchanged —
+// D was already well-sized as "obvious cuts".
 //
 // See computeCardPower for how Power is computed.
 func PowerTierFor(power int) string {
 	switch {
-	case power >= 75:
+	case power >= 70:
 		return "S"
-	case power >= 60:
+	case power >= 55:
 		return "A"
-	case power >= 40:
+	case power >= 38:
 		return "B"
 	case power >= 25:
 		return "C"

@@ -5,8 +5,10 @@ import (
 )
 
 // TestPowerTierFor pins the S/A/B/C/D thresholds. Boundary points
-// (75, 60, 40, 25) all land on the higher tier — boundaries are
-// inclusive on the high side.
+// (70, 55, 38, 25) all land on the higher tier — boundaries are
+// inclusive on the high side. Thresholds recalibrated from 75/60/40/25
+// after the cross-deck aggregate (#341) showed the original bands
+// produced only 3.3% S and 11.4% A — too thin on both elite tiers.
 func TestPowerTierFor(t *testing.T) {
 	cases := []struct {
 		power int
@@ -15,13 +17,13 @@ func TestPowerTierFor(t *testing.T) {
 		// D band
 		{0, "D"}, {10, "D"}, {24, "D"},
 		// C band
-		{25, "C"}, {30, "C"}, {39, "C"},
+		{25, "C"}, {30, "C"}, {37, "C"},
 		// B band
-		{40, "B"}, {50, "B"}, {59, "B"},
+		{38, "B"}, {45, "B"}, {54, "B"},
 		// A band
-		{60, "A"}, {70, "A"}, {74, "A"},
+		{55, "A"}, {60, "A"}, {69, "A"},
 		// S band
-		{75, "S"}, {90, "S"}, {100, "S"},
+		{70, "S"}, {85, "S"}, {100, "S"},
 	}
 	for _, tc := range cases {
 		if got := PowerTierFor(tc.power); got != tc.want {
@@ -32,12 +34,12 @@ func TestPowerTierFor(t *testing.T) {
 
 // TestPowerTierFor_BoundariesAreHighInclusive double-checks the exact
 // boundary semantics so a refactor can't silently shift them off-by-one.
-// 75 must be S (not A); 60 must be A; 40 must be B; 25 must be C; 24 D.
+// 70 must be S (not A); 55 must be A; 38 must be B; 25 must be C; 24 D.
 func TestPowerTierFor_BoundariesAreHighInclusive(t *testing.T) {
 	pairs := [][2]any{
-		{75, "S"}, {74, "A"},
-		{60, "A"}, {59, "B"},
-		{40, "B"}, {39, "C"},
+		{70, "S"}, {69, "A"},
+		{55, "A"}, {54, "B"},
+		{38, "B"}, {37, "C"},
 		{25, "C"}, {24, "D"},
 	}
 	for _, p := range pairs {
