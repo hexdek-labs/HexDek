@@ -153,6 +153,16 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.1,
 	},
 	ArchetypeStax: {
+		// R60 round 4 audit retune. StaxLockProgress=2.0 correctly
+		// highest, but two dimensions ignored what Stax actually IS:
+		//   - ArtifactSynergy: Winter Orb, Static Orb, Stasis,
+		//     Smokestack, Sphere of Resistance, Tangle Wire, Trinisphere,
+		//     Chalice of the Void, Tabernacle (well, land — but you get
+		//     the point), Mana Vault. Most stax pieces are artifacts;
+		//     0.6 ranked them below Voltron's equipment package.
+		//   - StackInteraction: lock pieces eat removal and counters
+		//     constantly — protecting the soft-lock is the difference
+		//     between winning a long game and losing a few turns later.
 		BoardPresence:          0.7,
 		CardAdvantage:          1.2,
 		ManaAdvantage:          1.0,
@@ -162,14 +172,14 @@ var archetypeWeights = map[string]EvalWeights{
 		CommanderProgress:      0.8,
 		GraveyardValue:         0.4,
 		DrainEngine:            0.2,
-		ArtifactSynergy:        0.6,
+		ArtifactSynergy:        1.2, // was 0.6 — Winter Orb / Static Orb / Stasis
 		EnchantmentSynergy:     0.5,
 		OpponentGraveyardThreat: 0.8,
 		PartnerSynergy:         0.3,
 		ActivationTempo:        0.5,
 		ToolboxBreadth:         0.4,
 		ThreatTrajectory:       0.7,
-		StackInteraction:       0.8,
+		StackInteraction:       1.1, // was 0.8 — protect lock pieces
 		PlaneswalkerProgress:   0.5,
 		ExileZoneAssets:        0.2,
 		StaxLockProgress:       2.0,
@@ -448,14 +458,26 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.1,
 	},
 	ArchetypeLandsMatter: {
+		// R60 round 4 audit retune. ManaAdvantage=1.8 correctly highest
+		// (lands ARE mana), but the profile under-weighted the deck's
+		// graveyard-as-second-hand reality:
+		//   - GraveyardValue: Crucible of Worlds / Ramunap Excavator /
+		//     Splendid Reclamation / World Shaper / Titania, Protector
+		//     of Argoth / Worm Harvest / Lord Windgrace -3 / The Gitrog
+		//     Monster — recurring lands from GY IS the gameplan. 0.8
+		//     ranked it as midrange-noise.
+		//   - ComboProximity: Lotus Field + Mystic Sanctuary loops,
+		//     Field of the Dead, Scapeshift, Valakut, Dakmor Salvage +
+		//     Gitrog Monster combo. 0.4 hid these wins behind the
+		//     "we ramp" headline.
 		BoardPresence:          0.7,
 		CardAdvantage:          0.7,
 		ManaAdvantage:          1.8,
 		LifeResource:           0.6,
-		ComboProximity:         0.4,
+		ComboProximity:         0.7, // was 0.4 — Lotus Field / Scapeshift / Gitrog
 		ThreatExposure:         0.5,
 		CommanderProgress:      0.7,
-		GraveyardValue:         0.8,
+		GraveyardValue:         1.3, // was 0.8 — Crucible / Excavator / Titania
 		DrainEngine:            0.2,
 		ArtifactSynergy:        0.2,
 		EnchantmentSynergy:     0.3,
@@ -572,11 +594,25 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.3,
 	},
 	ArchetypeBlink: {
+		// R60 round 4 audit retune. CardAdvantage=1.2 correctly highest
+		// (re-trigger ETBs = re-trigger draws), but two dimensions
+		// missed the deck's exile-as-engine and combo realities:
+		//   - ExileZoneAssets: Yorion Sky Nomad's exile pile is the
+		//     deck's resource; Brago King Eternal exiles and returns;
+		//     Soulherder accumulates +1/+1 from exiled-and-returned
+		//     creatures. 0.5 hid this from the evaluator — it was lower
+		//     than Spellslinger's ExileZoneAssets (0.6) despite Blink
+		//     literally living in exile.
+		//   - ComboProximity: Felidar Guardian + Saheeli Rai (infinite
+		//     tokens), Restoration Angel + Kiki-Jiki (infinite haste
+		//     copies), Emiel the Blessed + Tundra Wolves family,
+		//     Deadeye Navigator + Peregrine Drake — Blink decks have
+		//     two-card infinites stapled onto every ETB creature.
 		BoardPresence:          0.8,
 		CardAdvantage:          1.2,
 		ManaAdvantage:          0.7,
 		LifeResource:           0.6,
-		ComboProximity:         0.6,
+		ComboProximity:         1.0, // was 0.6 — Felidar+Saheeli, Resto+Kiki
 		ThreatExposure:         0.7,
 		CommanderProgress:      0.7,
 		GraveyardValue:         0.3,
@@ -590,7 +626,7 @@ var archetypeWeights = map[string]EvalWeights{
 		ThreatTrajectory:       0.4,
 		StackInteraction:       0.4,
 		PlaneswalkerProgress:   0.3,
-		ExileZoneAssets:        0.5,
+		ExileZoneAssets:        1.0, // was 0.5 — Yorion pile / Soulherder / Brago
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeExtraCombats: {
