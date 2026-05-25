@@ -28,6 +28,14 @@ import BracketChangelog from '../components/BracketChangelog'
 import { deckGlanceStats } from '../lib/deckStats'
 import { diffDeckText, diffSummary } from '../lib/deckHistoryDiff'
 import {
+  cardCMCForSort,
+  cardColorIdentityString,
+  cardRole,
+  cardTypeBucket,
+  sortCards,
+  toggleSort,
+} from '../lib/cardListDense'
+import {
   applySuggestion,
   extractFragment,
   MIN_FRAGMENT_CHARS,
@@ -244,6 +252,170 @@ const CardThumb = ({ name, cmc, score, compact }) => {
         </div>
       </div>
     </CardLink>
+  )
+}
+
+// CardListDense — sortable spreadsheet alternative to CardRolesGrid.
+// Same source-of-truth (Freya-tagged card list); trades large tile
+// images for a flat scannable table when the user wants to compare
+// CMC / type / role across the whole 99.
+//
+// Sort state is owned by the parent so a tab switch + return doesn't
+// jolt the user back to a default column they didn't pick. Stable
+// sort: identical-key cards always fall back to name ascending.
+const DENSE_TYPE_LABEL = {
+  creature: 'CRE',
+  planeswalker: 'PW',
+  instant: 'INS',
+  sorcery: 'SOR',
+  artifact: 'ART',
+  enchantment: 'ENC',
+  land: 'LND',
+  other: '—',
+}
+
+function DenseSortHeader({ label, sortKey, sort, onSort, align = 'left' }) {
+  const active = sort?.key === sortKey
+  const arrow = active ? (sort.dir === 'asc' ? '▲' : '▼') : ''
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      style={{
+        background: 'transparent',
+        border: 0,
+        padding: 0,
+        font: 'inherit',
+        cursor: 'pointer',
+        color: active ? 'var(--ink)' : 'var(--ink-3)',
+        textAlign: align,
+        letterSpacing: '0.08em',
+        fontWeight: 700,
+        textTransform: 'uppercase',
+        fontSize: 9,
+        userSelect: 'none',
+      }}
+      data-testid={`dense-col-${sortKey}`}
+      aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+    >
+      {label}{arrow ? ` ${arrow}` : ''}
+    </button>
+  )
+}
+
+function CardListDense({ cards, cardRoles, sort, onSort }) {
+  const rows = useMemo(
+    () => sortCards(cards, sort.key, sort.dir, cardRoles),
+    [cards, sort.key, sort.dir, cardRoles],
+  )
+
+  if (!rows.length) {
+    return (
+      <div className="t-xs muted" style={{ padding: '14px 0', textAlign: 'center' }}>
+        &gt; NO CARDS TO LIST
+      </div>
+    )
+  }
+
+  // Grid template — picked so QTY + CMC sit as right-aligned tabular
+  // numerics, name eats the rest, and TYPE/ROLE/COLOR pin to fixed
+  // narrow columns on the right.
+  const cols = '32px 1fr 130px 42px 56px 56px 42px'
+
+  return (
+    <div data-testid="card-list-dense">
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: cols,
+          gap: 6,
+          padding: '4px 6px',
+          borderBottom: '1px solid var(--rule-2)',
+          alignItems: 'baseline',
+        }}
+      >
+        <DenseSortHeader label="QTY"   sortKey="qty"   sort={sort} onSort={onSort} align="right" />
+        <DenseSortHeader label="NAME"  sortKey="name"  sort={sort} onSort={onSort} />
+        <DenseSortHeader label="MANA"  sortKey="cmc"   sort={sort} onSort={onSort} />
+        <DenseSortHeader label="CMC"   sortKey="cmc"   sort={sort} onSort={onSort} align="right" />
+        <DenseSortHeader label="TYPE"  sortKey="type"  sort={sort} onSort={onSort} />
+        <DenseSortHeader label="ROLE"  sortKey="role"  sort={sort} onSort={onSort} />
+        <DenseSortHeader label="COLOR" sortKey="color" sort={sort} onSort={onSort} />
+      </div>
+      {rows.map((c, i) => {
+        const linkName = (c.name || '').replace(/^COMMANDER:\s*/i, '').trim()
+        const bucket = cardTypeBucket(c)
+        const cmcSort = cardCMCForSort(c)
+        const cmcDisplay = bucket === 'land' ? '—' : String(c.cmc ?? '—')
+        const role = cardRole(c, cardRoles) || ''
+        const color = cardColorIdentityString(c) || (bucket === 'land' ? '—' : 'C')
+        return (
+          <div
+            key={`${c.name}-${i}`}
+            data-testid="card-list-dense-row"
+            data-card-name={c.name}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: cols,
+              gap: 6,
+              padding: '3px 6px',
+              borderBottom: i < rows.length - 1 ? '1px dotted var(--rule)' : 'none',
+              alignItems: 'center',
+              fontSize: 11,
+            }}
+          >
+            <span
+              style={{
+                textAlign: 'right',
+                fontVariantNumeric: 'tabular-nums',
+                color: (c.quantity || 1) > 1 ? 'var(--ink)' : 'var(--ink-2)',
+                fontWeight: (c.quantity || 1) > 1 ? 700 : 400,
+              }}
+            >
+              {c.quantity || 1}
+            </span>
+            <CardLink
+              name={linkName}
+              className="t-xs"
+              style={{
+                borderBottom: 'none',
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {c.name}
+            </CardLink>
+            <span style={{ display: 'flex', alignItems: 'center', minHeight: 14 }}>
+              {c.mana_cost ? <ManaCost cost={c.mana_cost} size={11} gap={1} /> : <span className="t-xs muted">—</span>}
+            </span>
+            <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--ink-2)' }}>
+              {cmcDisplay}
+              {/* hidden sort value for tests / debugging; keeps the
+                  visible number distinct from the -1 land sort key */}
+              <span style={{ display: 'none' }} data-cmc-sort={cmcSort}></span>
+            </span>
+            <span className="t-xs" style={{ letterSpacing: '0.06em', color: 'var(--ink-3)' }}>
+              {DENSE_TYPE_LABEL[bucket]}
+            </span>
+            <span className="t-xs" style={{ letterSpacing: '0.06em', color: role ? 'var(--ink-2)' : 'var(--ink-3)' }}>
+              {role ? role.toUpperCase() : '—'}
+            </span>
+            <span
+              className="t-xs"
+              style={{
+                letterSpacing: '0.04em',
+                color: color === 'C' || color === '—' ? 'var(--ink-3)' : 'var(--ink-2)',
+                fontWeight: 700,
+              }}
+            >
+              {color}
+            </span>
+          </div>
+        )
+      })}
+    </div>
   )
 }
 
@@ -983,6 +1155,19 @@ export default function DeckArchive() {
   const [ownerFriendCount, setOwnerFriendCount] = useState(null)
   const [similarDecks, setSimilarDecks] = useState(null) // null=loading, []=resolved
   const [activeTab, setActiveTab] = useState('analysis')
+  // DECK LIST view mode — persists across tab switches and across
+  // page loads (localStorage). 'tiles' = role-grouped image grid
+  // (existing CardRolesGrid + per-list panel); 'dense' = sortable
+  // spreadsheet (CardListDense) for "what's my 2-CMC removal count"
+  // style scanning.
+  const [decklistView, setDecklistView] = useState(() => {
+    if (typeof localStorage === 'undefined') return 'tiles'
+    return localStorage.getItem('hexdek_decklist_view') === 'dense' ? 'dense' : 'tiles'
+  })
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') localStorage.setItem('hexdek_decklist_view', decklistView)
+  }, [decklistView])
+  const [denseSort, setDenseSort] = useState({ key: 'type', dir: 'asc' })
   const [cardSearch, setCardSearch] = useState('')
   const [cardSearchOpen, setCardSearchOpen] = useState(false)
   const cardSearchInputRef = useRef(null)
@@ -2950,10 +3135,40 @@ export default function DeckArchive() {
             </div>
           )}
           {cards.length > 0 && (
+            <div
+              data-testid="decklist-view-toggle"
+              style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '0 2px' }}
+            >
+              <span className="t-xs muted" style={{ letterSpacing: '0.08em', marginRight: 4 }}>VIEW:</span>
+              <Tag
+                solid={decklistView === 'tiles'}
+                onClick={() => setDecklistView('tiles')}
+                style={{ cursor: 'pointer' }}
+                data-testid="decklist-view-tiles"
+              >
+                TILES
+              </Tag>
+              <Tag
+                solid={decklistView === 'dense'}
+                onClick={() => setDecklistView('dense')}
+                style={{ cursor: 'pointer' }}
+                data-testid="decklist-view-dense"
+              >
+                DENSE
+              </Tag>
+              <span className="t-xs muted" style={{ marginLeft: 'auto', letterSpacing: '0.06em' }}>
+                {decklistView === 'dense'
+                  ? `${filteredCards.length} ROWS · SORT BY ${denseSort.key.toUpperCase()} ${denseSort.dir.toUpperCase()}`
+                  : `${filteredCards.length} CARDS GROUPED BY ROLE`}
+              </span>
+            </div>
+          )}
+
+          {cards.length > 0 && decklistView === 'tiles' && (
             <CardRolesGrid cards={filteredCards} cardRoles={filteredCardRoles} />
           )}
 
-          {cards.length > 0 && (
+          {cards.length > 0 && decklistView === 'tiles' && (
             <Panel code="04.B" title={`FULL CARD LIST / / ${cardSearchQuery ? `${filteredCards.length} / ${cards.length}` : cards.length} ENTRIES`}>
               <div>
                 {filteredCards.length === 0 ? (
@@ -2975,6 +3190,17 @@ export default function DeckArchive() {
                   )
                 })}
               </div>
+            </Panel>
+          )}
+
+          {cards.length > 0 && decklistView === 'dense' && (
+            <Panel code="04.B" title={`DENSE CARD LIST / / ${cardSearchQuery ? `${filteredCards.length} / ${cards.length}` : cards.length} ENTRIES`}>
+              <CardListDense
+                cards={filteredCards}
+                cardRoles={filteredCardRoles}
+                sort={denseSort}
+                onSort={(key) => setDenseSort(s => toggleSort(s, key))}
+              />
             </Panel>
           )}
           </>}
