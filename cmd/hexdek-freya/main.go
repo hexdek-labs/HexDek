@@ -60,6 +60,7 @@ func main() {
 	var format string
 	var spellbookCache string
 	var spellbookFetchURL string
+	var clustersOut string
 
 	flag.StringVar(&deckPath, "deck", "", "path to decklist file")
 	flag.StringVar(&deckDir, "all-decks", "", "analyze all decks in directory")
@@ -68,6 +69,8 @@ func main() {
 		"path to Commander Spellbook variants JSON cache (loaded if present)")
 	flag.StringVar(&spellbookFetchURL, "spellbook-fetch", "",
 		"URL to download Spellbook JSON into --spellbook cache before analysis (e.g. "+DefaultSpellbookURL+")")
+	flag.StringVar(&clustersOut, "clusters-out", "",
+		"single-deck only: write the structured synergy-cluster export (full membership + per-card roles + score breakdown) as JSON to this path. Designed for downstream deck-builder integrations.")
 	flag.Parse()
 
 	if spellbookFetchURL != "" {
@@ -126,6 +129,16 @@ func main() {
 		PrintReport(os.Stdout, report, format)
 		// Auto-save to freya/ subfolder alongside the deck file.
 		saveFreyaData(deckPath, report)
+		// Optional standalone cluster export — designed for downstream
+		// deck-builder integrations that want JUST the structured
+		// cluster data without parsing the full Freya JSON blob.
+		if clustersOut != "" {
+			export := BuildClusterExport(report.Profile, report)
+			if err := WriteClusterExportJSON(export, clustersOut); err != nil {
+				log.Fatalf("write cluster export: %v", err)
+			}
+			log.Printf("wrote cluster export → %s (%d clusters)", clustersOut, len(export.Clusters))
+		}
 	} else {
 		// All decks mode.
 		files, err := listDeckFiles(deckDir)
