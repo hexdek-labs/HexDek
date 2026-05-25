@@ -91,8 +91,12 @@ type DeckProfile struct {
 	// Surfaced to the Decks screen as the "good against" summary.
 	StrongAgainst []MetaAdvantage
 
-	// Card quality tiers
+	// Card quality tiers — star = clear keepers tied to wincon / value
+	// chain; solid = okay-but-replaceable, scoring above the cut floor
+	// but below the star threshold (worth flagging for builders shopping
+	// upgrades); cuttable = bottom of the deck on the synergy evaluator.
 	CuttableCards []CardQuality
+	SolidCards    []CardQuality
 	StarCards     []CardQuality
 
 	// Color weight suggestions
@@ -138,7 +142,7 @@ type MetaAdvantage struct {
 
 type CardQuality struct {
 	Name   string
-	Tier   string // "star", "good", "filler", "cuttable"
+	Tier   string // "star" | "solid" | "cuttable"
 	Reason string
 	// Rationale fields (populated for cuttable tier).
 	Detected  string   // what stat/pattern triggered the recommendation

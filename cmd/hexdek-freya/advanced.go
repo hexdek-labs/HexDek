@@ -1528,19 +1528,73 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 		return scores[i].score > scores[j].score
 	})
 
-	// Top 5 = stars
-	for i := 0; i < len(scores) && i < 5; i++ {
-		if scores[i].score >= 3.0 {
-			reason := scores[i].reason
-			if reason == "" {
-				reason = "high synergy density"
-			}
-			dp.StarCards = append(dp.StarCards, CardQuality{
-				Name:   scores[i].name,
-				Tier:   "star",
-				Reason: reason,
-			})
+	// Top scorers (score >= 3) = stars. Cap at 5 to keep the list
+	// signal-dense — past the top 5 the per-card score gap is small
+	// enough that calling them "star" pollutes the recommendation.
+	starCount := 0
+	starredNames := map[string]bool{}
+	for i := 0; i < len(scores) && starCount < 5; i++ {
+		if scores[i].score < 3.0 {
+			break
 		}
+		reason := scores[i].reason
+		if reason == "" {
+			reason = "high synergy density"
+		}
+		dp.StarCards = append(dp.StarCards, CardQuality{
+			Name:   scores[i].name,
+			Tier:   "star",
+			Reason: reason,
+		})
+		starredNames[scores[i].name] = true
+		starCount++
+	}
+
+	// Solid Pick tier (R60): the middle slice — cards that scored above
+	// the cut floor but below star threshold. Surfaces "okay-but-
+	// replaceable" cards so builders shopping upgrades know which slots
+	// are flex, not load-bearing. Excludes stars and any card already
+	// scheduled for the cuttable list (handled by score floor).
+	//
+	// Window: 0.5 <= score < 3.0. The lower bound trims pure-filler that
+	// only earned points from a single role tag; the upper bound matches
+	// the star threshold so a card is never both. Cap at 5 to mirror the
+	// star list and keep the section scannable.
+	const solidMin, solidMax = 0.5, 3.0
+	solidCount := 0
+	for i := 0; i < len(scores) && solidCount < 5; i++ {
+		s := scores[i]
+		if starredNames[s.name] {
+			continue
+		}
+		if s.score < solidMin || s.score >= solidMax {
+			continue
+		}
+		reason := s.reason
+		if reason == "" {
+			// Build a default reason from the card's role mix and CMC
+			// since solid picks usually lack a dramatic standout signal.
+			roleNames := make([]string, 0, len(s.roles))
+			for _, r := range s.roles {
+				roleNames = append(roleNames, string(r))
+			}
+			switch {
+			case len(roleNames) >= 2:
+				reason = fmt.Sprintf("functional %s at CMC %d — okay but upgrade-shoppable",
+					strings.Join(roleNames, "/"), s.cmc)
+			case len(roleNames) == 1:
+				reason = fmt.Sprintf("functional %s at CMC %d — flex slot",
+					roleNames[0], s.cmc)
+			default:
+				reason = "fills a slot but not load-bearing"
+			}
+		}
+		dp.SolidCards = append(dp.SolidCards, CardQuality{
+			Name:   s.name,
+			Tier:   "solid",
+			Reason: reason,
+		})
+		solidCount++
 	}
 
 	// Bottom cards with low scores = cuttable
