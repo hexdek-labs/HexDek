@@ -236,4 +236,10 @@ type TournamentResult struct {
 	// sorted by Points desc → Wins desc → CommanderName asc. Nil for
 	// non-Swiss tournament runs.
 	SwissStandings []SwissStanding `json:"swiss_standings,omitempty"`
+
+	// EliminationStandings is populated by RunDoubleElimination with
+	// each deck's final rank, loss count, and round-of-elimination so
+	// the frontend can render the classic DE bracket placement table
+	// (1st = champion, 2nd = runner-up, etc). Nil for non-DE runs.
+	EliminationStandings []EliminationStanding `json:"elimination_standings,omitempty"`
 }

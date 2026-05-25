@@ -30,6 +30,7 @@ func TestSupportedBracketStyles_ListsAllImplementedRunners(t *testing.T) {
 		"lazy-pool":   true,
 		"round-robin": true,
 		"swiss":       true,
+		"double-elim": true,
 	}
 	if len(got) != len(want) {
 		t.Errorf("got %d styles, want %d (drift between SupportedBracketStyles and this test)",
