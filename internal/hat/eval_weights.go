@@ -445,8 +445,28 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.1,
 	},
 	ArchetypeEnchantress: {
-		BoardPresence:          0.5,
-		CardAdvantage:          1.3,
+		// R60 Enchantments archetype retune. EnchantmentSynergy=2.0
+		// correctly highest, but two load-bearing dimensions sat at
+		// midrange-or-below despite being the heart of the gameplan:
+		//   - CardAdvantage: constellation triggers (Eidolon of
+		//     Blossoms, Setessan Champion) and Enchantress draws
+		//     (Argothian / Mesa / Verduran / Femeref / Satyr
+		//     Enchantress, Sythis Harvest's Hand, Sram Senior
+		//     Edificer, Enchantress's Presence) turn every
+		//     enchantment cast into a card. The deck draws ITS WHOLE
+		//     LIBRARY on a typical curve — 1.3 was midrange-tier and
+		//     ignored that drawing IS the engine, second only to
+		//     enchantment synergy itself.
+		//   - BoardPresence: enchantment density IS the board. Sphere
+		//     of Safety scales fog cost by # enchantments, Sage's
+		//     Reverie / All That Glitters / Ethereal Armor scale
+		//     creature size by # enchantments, Greater Auramancy
+		//     protects the whole density layer. Each enchantment is
+		//     simultaneously a draw, a board scaler, and a defensive
+		//     piece. 0.5 was reanimator-tier and treated the board
+		//     as incidental when the board IS the enchantment count.
+		BoardPresence:          1.1, // was 0.5 — Sphere of Safety / All That Glitters scale with density
+		CardAdvantage:          1.5, // was 1.3 — constellation / Enchantress draws are the engine
 		ManaAdvantage:          0.7,
 		LifeResource:           0.6,
 		ComboProximity:         0.5,
