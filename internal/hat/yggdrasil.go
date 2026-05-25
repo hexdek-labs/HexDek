@@ -4995,6 +4995,17 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 				val += 0.60
 			}
 		}
+		// R60 round 9+ self-attack-trigger bonus (see
+		// attack_trigger_value_r60.go). Covers the Hellrider / Maraxus /
+		// Goldspan / Lord-of-the-Forsaken family — non-commander attack-
+		// triggers and non-tutor commander attack-triggers (pump, draw,
+		// damage, drain, treasure) that the audit found were all scoring 0.
+		// Graduated bonus by payoff category; capped well below the
+		// commander-tutor +0.60 so it lifts marginal attackers without
+		// drowning out the profitability prune downstream.
+		if p.Card != nil {
+			val += attackTriggerBonus(p.Card)
+		}
 
 		// 3rd Eye: When a wrath is suspected, hold back VE key creatures
 		// to preserve board presence post-wipe. Only applies when we're
