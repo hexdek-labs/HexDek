@@ -9,6 +9,13 @@ import CardLink, { linkifyAction } from '../components/CardLink'
 import { narrate } from '../components/NarratorOverlay'
 import ContextBox from '../components/ContextBox'
 import ArtAmbience from '../components/ArtAmbience'
+import {
+  SPECTATOR_KEYBINDINGS,
+  resolveSpectatorKeyAction,
+  nextSpeedMark,
+  computePauseToggle,
+  pickNeighboringTurnHeader,
+} from '../utils/spectatorKeybindings'
 
 const SPEED_MARKS = [0.1, 0.2, 0.3, 0.5, 0.75, 1, 1.5, 2]
 
@@ -251,6 +258,12 @@ export default function Spectator() {
   // triple-jitter bug.
   const heatmapDrawnRef = useRef([])
   const [heatmapTip, setHeatmapTip] = useState(null)
+  const [helpOpen, setHelpOpen] = useState(false)
+  // Pre-pause speed memory. Null while playing; holds the multiplier
+  // to restore when the user presses Space to resume. Lives in a ref
+  // so the keydown listener can read the latest value without being
+  // re-bound on every render.
+  const pauseResumeFromRef = useRef(null)
   const error = status === 'disconnected' ? 'WebSocket disconnected' : null
 
   useEffect(() => {
@@ -302,6 +315,78 @@ export default function Spectator() {
       await fetch(`${API_BASE}/api/live/speed?multiplier=${mult}`, { method: 'POST' })
     } catch {}
   }
+
+  // Scroll the log container to the next/previous turn header in the
+  // *rendered* (newest-first) order. The handler looks at the current
+  // scrollTop and walks one neighbor in the requested direction.
+  const scrollLogByTurn = useCallback((direction) => {
+    const el = logContainerRef.current
+    if (!el) return
+    const nodes = el.querySelectorAll('[data-turn-header]')
+    if (nodes.length === 0) return
+    const headers = []
+    for (const n of nodes) {
+      headers.push({ turn: Number(n.dataset.turnHeader), top: n.offsetTop, node: n })
+    }
+    const chosen = pickNeighboringTurnHeader(headers, el.scrollTop, direction)
+    if (!chosen) return
+    // Mark the user as actively scrolling so the prepend-anchor effect
+    // in useLayoutEffect doesn't snap them back to top on the next WS
+    // tick.
+    userScrolledRef.current = true
+    el.scrollTo({ top: chosen.top, behavior: 'smooth' })
+  }, [])
+
+  // Wire keyboard shortcuts. The listener is intentionally bound once
+  // — it reads dynamic state (speed, pauseResumeFromRef) through refs
+  // and the captured `setSpeedMultiplier` so re-binding on every speed
+  // change isn't necessary. Browser defaults (Space scroll, Arrow
+  // scroll) are suppressed via preventDefault when an action resolves.
+  useEffect(() => {
+    const onKey = (e) => {
+      const action = resolveSpectatorKeyAction(e)
+      if (!action) return
+      e.preventDefault()
+      switch (action) {
+        case 'togglePause': {
+          const r = computePauseToggle(speed, pauseResumeFromRef.current, SPEED_MARKS)
+          pauseResumeFromRef.current = r.resumeFrom
+          setSpeedMultiplier(r.speed)
+          break
+        }
+        case 'speedDown':
+          setSpeedMultiplier(nextSpeedMark(speed, SPEED_MARKS, -1))
+          break
+        case 'speedUp':
+          setSpeedMultiplier(nextSpeedMark(speed, SPEED_MARKS, +1))
+          break
+        case 'prevTurn':
+          scrollLogByTurn('prev')
+          break
+        case 'nextTurn':
+          scrollLogByTurn('next')
+          break
+        case 'toggleHelp':
+          setHelpOpen((v) => !v)
+          break
+      }
+    }
+    // Escape closes the help overlay even when it's open and stealing
+    // focus. Resolved outside resolveSpectatorKeyAction so Escape stays
+    // available to other modals (DeckArchive search, CardPopup, etc.)
+    // when the help overlay isn't the one showing.
+    const onEscape = (e) => {
+      if (e.key === 'Escape' && helpOpen) {
+        setHelpOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('keydown', onEscape)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('keydown', onEscape)
+    }
+  }, [speed, scrollLogByTurn, helpOpen])
 
   // Log scroll management. The log container renders newest-at-top
   // (see `[...log].reverse()` below), so each incoming event prepends
@@ -498,6 +583,61 @@ export default function Spectator() {
           {heatmapTip.label}: {heatmapTip.value}
         </div>
       )}
+      {helpOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Keyboard shortcuts"
+          onClick={() => setHelpOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg)',
+              border: '1px solid var(--rule)',
+              padding: '20px 24px',
+              minWidth: 320,
+              maxWidth: 480,
+              fontSize: 12,
+            }}
+          >
+            <div style={{ fontWeight: 700, letterSpacing: '0.08em', marginBottom: 12 }}>
+              KEYBOARD SHORTCUTS
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                {SPECTATOR_KEYBINDINGS.map((b) => (
+                  <tr key={b.action}>
+                    <td style={{ padding: '4px 12px 4px 0', whiteSpace: 'nowrap' }}>
+                      {b.keys.map((k, i) => (
+                        <Fragment key={k}>
+                          {i > 0 && <span className="muted" style={{ margin: '0 4px' }}>/</span>}
+                          <kbd style={{
+                            border: '1px solid var(--rule)',
+                            padding: '1px 6px',
+                            borderRadius: 3,
+                            fontFamily: 'inherit',
+                            fontSize: 11,
+                          }}>{k}</kbd>
+                        </Fragment>
+                      ))}
+                    </td>
+                    <td style={{ padding: '4px 0', color: 'var(--ink-2)' }}>{b.label}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="muted" style={{ marginTop: 12, fontSize: 10 }}>
+              Press <kbd>?</kbd> or click outside to close.
+            </div>
+          </div>
+        </div>
+      )}
       <Tape
         left={`SPECTATOR / / FISHTANK`}
         mid={game.finished ? 'GAME OVER' : 'LIVE TELEMETRY'}
@@ -682,7 +822,7 @@ export default function Spectator() {
                     return (
                       <Fragment key={i}>
                         {showTurnHeader && (
-                          <div style={{
+                          <div data-turn-header={entry.turn} style={{
                             fontSize: 9,
                             color: 'var(--ink-3)',
                             padding: '4px 0 2px',
