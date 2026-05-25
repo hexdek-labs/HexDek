@@ -113,6 +113,11 @@ const (
 	ArchetypeSuperfriends   = "superfriends"
 	ArchetypeBlink          = "blink"
 	ArchetypeExtraCombats   = "extra combats"
+	// Broader tokens / go-wide bucket — non-Voltron (no single-creature
+	// commit), non-Aristocrats (no sac-and-drain engine). Aggro that wins
+	// by flooding the board with anthem-buffed bodies. Freya's "Aggro /
+	// Go Wide" classification routes here.
+	ArchetypeTokens = "tokens"
 )
 
 // observation is a running tally of an OTHER seat's plays. A PokerHat

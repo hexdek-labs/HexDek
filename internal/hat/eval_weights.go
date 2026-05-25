@@ -1,5 +1,7 @@
 package hat
 
+import "strings"
+
 // EvalWeights controls the relative importance of each scoring dimension
 // in the GameStateEvaluator. Freya computes deck-specific weights from
 // analysis; when nil on a StrategyProfile, the evaluator falls back to
@@ -660,6 +662,56 @@ var archetypeWeights = map[string]EvalWeights{
 		ExileZoneAssets:        1.0, // was 0.5 — Yorion pile / Soulherder / Brago
 		StaxLockProgress:       0.2,
 	},
+	ArchetypeTokens: {
+		// Broader tokens / go-wide variants (Adeline / Rhys the Redeemed /
+		// Brimaz / Saskia / Talrand / Krenko / Bennie Bracks / Welcoming
+		// Vampire). Previously fell back to midrange weights because Freya's
+		// "Aggro / Go Wide" archetype string had no hat profile — that gave
+		// these decks a generic 1.0 BoardPresence and no swarm-closing
+		// signal. The retune matches deckprofile.go's "aggro / go wide"
+		// design intent (BoardPresence 1.8) and adds the closing-via-combat
+		// axes the bucket actually plays on:
+		//   - BoardPresence: 1.7 — even higher than ArchetypeAggro (1.5).
+		//     Tokens count as raw power; the swarm IS the gameplan and
+		//     under-rating it makes the hat trade tokens like they're
+		//     midrange creatures.
+		//   - ThreatTrajectory: 0.7 — bumped over midrange (0.5) because
+		//     the deck wins by leveraging the next attack step, not by
+		//     stabilising on a parity board.
+		//   - CommanderProgress: 1.0 — engine commanders (Adeline, Krenko,
+		//     Rhys, Brimaz) print bodies every turn; protecting and
+		//     deploying the commander is core, not incidental.
+		//   - PartnerSynergy: 0.9 — anthem effects (Glorious Anthem,
+		//     Intangible Virtue, Beastmaster Ascension, Coat of Arms,
+		//     Shared Animosity) buff the whole swarm. Same dial Tribal
+		//     uses for lord effects; same magnitude.
+		//   - EnchantmentSynergy: 0.5 — anthem enchantments are common
+		//     enough to register above midrange's 0.2.
+		//   - ThreatExposure: 0.7 — going wide IS the wipe-vulnerability
+		//     surface. The deck has to weigh whether to over-extend into
+		//     a Wrath, so the dial belongs above aggro (0.6) but below
+		//     control (1.2).
+		BoardPresence:          1.7,
+		CardAdvantage:          0.6,
+		ManaAdvantage:          0.4,
+		LifeResource:           0.7,
+		ComboProximity:         0.2,
+		ThreatExposure:         0.7,
+		CommanderProgress:      1.0,
+		GraveyardValue:         0.2,
+		DrainEngine:            0.3,
+		ArtifactSynergy:        0.3,
+		EnchantmentSynergy:     0.5,
+		OpponentGraveyardThreat: 0.4,
+		PartnerSynergy:         0.9,
+		ActivationTempo:        0.4,
+		ToolboxBreadth:         0.3,
+		ThreatTrajectory:       0.7,
+		StackInteraction:       0.3,
+		PlaneswalkerProgress:   0.6,
+		ExileZoneAssets:        0.3,
+		StaxLockProgress:       0.1,
+	},
 	ArchetypeExtraCombats: {
 		BoardPresence:          1.3,
 		CardAdvantage:          0.5,
@@ -693,6 +745,11 @@ var LegacyMidrangeOnly bool
 
 // DefaultWeightsForArchetype returns the tuned weight profile for the
 // given archetype string. Unknown archetypes get the midrange profile.
+//
+// Freya emits compound names like "aggro / go wide" that don't match a
+// single archetype constant; normalizeArchetypeKey collapses those onto
+// the closest registered profile so broader tokens/go-wide decks stop
+// silently falling back to midrange weights.
 func DefaultWeightsForArchetype(archetype string) EvalWeights {
 	if LegacyMidrangeOnly {
 		return archetypeWeights[ArchetypeMidrange]
@@ -700,5 +757,39 @@ func DefaultWeightsForArchetype(archetype string) EvalWeights {
 	if w, ok := archetypeWeights[archetype]; ok {
 		return w
 	}
+	if alias := normalizeArchetypeKey(archetype); alias != "" {
+		if w, ok := archetypeWeights[alias]; ok {
+			return w
+		}
+	}
 	return archetypeWeights[ArchetypeMidrange]
+}
+
+// normalizeArchetypeKey maps Freya's compound/decorated archetype strings
+// onto the registered hat archetype constants. Returns "" when no alias
+// applies (caller falls back to midrange). Token/go-wide matching is
+// gated on NOT containing voltron/aristocrats so the broader bucket
+// doesn't poach decks that already have a dedicated profile.
+func normalizeArchetypeKey(archetype string) string {
+	s := strings.ToLower(strings.TrimSpace(archetype))
+	if s == "" {
+		return ""
+	}
+	// Dedicated profiles win over the broader tokens bucket when a
+	// compound archetype names both — Voltron and Aristocrats have
+	// targeted tunings that broader-swarm weights would erase.
+	if strings.Contains(s, "voltron") {
+		return ArchetypeVoltron
+	}
+	if strings.Contains(s, "aristocrat") {
+		return ArchetypeAristocrats
+	}
+	hasTokens := strings.Contains(s, "go wide") ||
+		strings.Contains(s, "go-wide") ||
+		strings.Contains(s, "gowide") ||
+		strings.Contains(s, "tokens")
+	if hasTokens {
+		return ArchetypeTokens
+	}
+	return ""
 }
