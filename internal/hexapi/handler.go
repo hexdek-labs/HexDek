@@ -199,6 +199,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/decks/{owner}/{id}/clone", RequireCSRF(h.CSRFStore, h.handleCloneDeck))
 	mux.HandleFunc("POST /api/decks/{owner}/{id}/fork", RequireCSRF(h.CSRFStore, h.handleForkDeck))
 	mux.HandleFunc("POST /api/decks/{owner}/{id}/archetype-feedback", RequireCSRF(h.CSRFStore, h.handleArchetypeFeedback))
+	mux.HandleFunc("GET /api/decks/{owner}/{id}/archetype-history", h.handleArchetypeHistory)
 	// SPA share page with OG meta injection — Caddy can route /decks/{owner}/{id}
 	// here for crawler User-Agents (or unconditionally) so Discord/Twitter unfurls
 	// pick up per-deck previews.
@@ -1183,6 +1184,27 @@ func (h *Handler) runFreya(deckPath string) {
 	if len(parts) == 2 {
 		owner := parts[0]
 		id := strings.TrimSuffix(parts[1], filepath.Ext(parts[1]))
+
+		// Stamp the just-written archetype onto this deck's HEAD
+		// version in the DAG so /archetype-history can surface
+		// version-to-version reclassifications. Best-effort: if
+		// the DAG can't be loaded or HEAD has rotated since this
+		// Freya run started, log and move on — the publishDeck
+		// event below still fires.
+		if archetype := loadFreyaPrimaryArchetype(h.DecksDir, owner, id); archetype != "" {
+			dagDir := filepath.Join(h.DecksDir, ".versions")
+			if dag, derr := versioning.LoadDAG(dagDir); derr == nil {
+				if head := dag.GetHead(owner, id); head != nil {
+					dag.UpdateArchetype(head.Hash, archetype)
+					if serr := versioning.SaveDAG(dagDir, dag); serr != nil {
+						log.Printf("freya: save DAG archetype: %v", serr)
+					}
+				}
+			} else {
+				log.Printf("freya: load DAG to stamp archetype: %v", derr)
+			}
+		}
+
 		h.publishDeck(owner+"/"+id, deckEvent{
 			Event: "freya_complete",
 			Data:  `{"status":"complete"}`,
