@@ -23,6 +23,12 @@ import DeckExportModal from '../components/DeckExportModal'
 import ContextBox from '../components/ContextBox'
 import EloSparkline from '../components/EloSparkline'
 import { deckGlanceStats } from '../lib/deckStats'
+import {
+  applySuggestion,
+  extractFragment,
+  MIN_FRAGMENT_CHARS,
+  nextSuggestionIndex,
+} from './textareaAutocomplete'
 
 // Brutalist stat-summary panel: mana curve, card-type breakdown, color
 // pips. Computed entirely from the in-memory deck card list — no extra
@@ -313,6 +319,184 @@ function WorkshopAddCard({ onAdd }) {
               </div>
             )
           })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// WorkshopTextarea — the editable deck list with inline card-name
+// autocomplete. Wraps the raw <textarea> so we can detect the partial
+// name the user is typing on the current line, fire a debounced
+// /api/cards/search (the oracle-backed endpoint), and offer pickable
+// completions without forcing them to leave the textarea and click the
+// + ADD CARD widget above. Arrow keys + Tab/Enter navigate and accept,
+// Escape dismisses without applying.
+function WorkshopTextarea({ value, onChange, textareaRef: externalRef }) {
+  const internalRef = useRef(null)
+  const taRef = externalRef || internalRef
+  const [caret, setCaret] = useState(0)
+  const [suggestions, setSuggestions] = useState([])
+  const [highlighted, setHighlighted] = useState(0)
+  const [open, setOpen] = useState(false)
+  // dismissed pins the suggestion box closed when the user hits Escape
+  // — it stays closed until they type another character, so an aborted
+  // completion doesn't re-pop on every selection change.
+  const [dismissed, setDismissed] = useState(false)
+
+  const fragmentInfo = useMemo(
+    () => (dismissed ? null : extractFragment(value, caret)),
+    [value, caret, dismissed],
+  )
+  const fragment = fragmentInfo?.fragment || ''
+
+  useEffect(() => {
+    if (!fragmentInfo || fragment.length < MIN_FRAGMENT_CHARS) {
+      setSuggestions([])
+      setOpen(false)
+      return
+    }
+    let cancelled = false
+    const t = setTimeout(() => {
+      api.searchCards(fragment, 8).then(res => {
+        if (cancelled) return
+        const rows = Array.isArray(res) ? res : (res?.results || res?.cards || [])
+        setSuggestions(rows.slice(0, 8))
+        setHighlighted(0)
+        setOpen(rows.length > 0)
+      }).catch(() => {
+        if (!cancelled) { setSuggestions([]); setOpen(false) }
+      })
+    }, 180)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [fragment, fragmentInfo])
+
+  const accept = (suggestion) => {
+    if (!fragmentInfo || !suggestion) return
+    const name = suggestion?.name || suggestion
+    const { text: nextText, caret: nextCaret } = applySuggestion(value, fragmentInfo, name)
+    onChange(nextText)
+    setOpen(false)
+    setSuggestions([])
+    setDismissed(true)
+    // Restore caret after React's re-render. Otherwise the textarea
+    // value updates but the cursor stays at the prior offset and the
+    // next keystroke lands in the middle of the just-completed name.
+    requestAnimationFrame(() => {
+      const ta = taRef.current
+      if (ta) {
+        ta.focus()
+        ta.setSelectionRange(nextCaret, nextCaret)
+        setCaret(nextCaret)
+      }
+    })
+  }
+
+  const onKeyDown = (e) => {
+    if (!open || suggestions.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setHighlighted(h => nextSuggestionIndex(h, 1, suggestions.length))
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlighted(h => nextSuggestionIndex(h, -1, suggestions.length))
+      return
+    }
+    if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+      e.preventDefault()
+      accept(suggestions[highlighted])
+      return
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setOpen(false)
+      setDismissed(true)
+    }
+  }
+
+  const onSelect = (e) => setCaret(e.target.selectionStart || 0)
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <textarea
+        ref={taRef}
+        value={value}
+        onChange={e => {
+          onChange(e.target.value)
+          setCaret(e.target.selectionStart || 0)
+          setDismissed(false)
+        }}
+        onSelect={onSelect}
+        onClick={onSelect}
+        onKeyUp={onSelect}
+        onKeyDown={onKeyDown}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        style={{
+          width: '100%', minHeight: 300, padding: 10,
+          background: 'var(--bg-2, rgba(0,0,0,0.3))', border: '1px solid var(--rule-2)',
+          color: 'var(--ink)', fontFamily: 'inherit', fontSize: 11,
+          letterSpacing: '0.04em', lineHeight: 1.6, resize: 'vertical',
+        }}
+        spellCheck={false}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        data-testid="workshop-textarea"
+      />
+      {open && suggestions.length > 0 && (
+        <div
+          data-testid="workshop-autocomplete"
+          style={{
+            position: 'absolute',
+            // Anchor the popup to the textarea's lower-left corner. The
+            // raw textarea API doesn't expose caret coords, so caret-
+            // anchored positioning would need a hidden mirror div — too
+            // heavy for the value. A persistent dropdown at the bottom
+            // matches the WorkshopAddCard pattern users already know.
+            top: '100%', left: 0, right: 0,
+            zIndex: 10,
+            marginTop: -1,
+            background: 'var(--panel)',
+            border: '1px solid var(--rule-2)',
+            borderTop: 'none',
+            maxHeight: 240, overflowY: 'auto',
+            boxShadow: '0 6px 16px rgba(0,0,0,0.35)',
+          }}
+        >
+          <div className="t-xs muted" style={{ padding: '4px 10px', borderBottom: '1px solid var(--rule)', letterSpacing: '0.08em' }}>
+            ORACLE / / {suggestions.length} MATCH{suggestions.length === 1 ? '' : 'ES'} FOR "{fragment.toUpperCase()}"
+          </div>
+          {suggestions.map((s, i) => {
+            const name = s?.name || s
+            const active = i === highlighted
+            return (
+              <div
+                key={`${name}-${i}`}
+                role="option"
+                aria-selected={active}
+                onMouseDown={(e) => { e.preventDefault(); accept(s) }}
+                onMouseEnter={() => setHighlighted(i)}
+                style={{
+                  padding: '6px 10px',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  borderBottom: '1px solid var(--rule)',
+                  background: active ? 'var(--bg-2, rgba(255,255,255,0.06))' : 'transparent',
+                  color: active ? 'var(--ink)' : 'var(--ink-2)',
+                }}
+              >
+                {name}
+                {s.type_line && (
+                  <span className="t-xs muted" style={{ marginLeft: 8 }}>— {s.type_line}</span>
+                )}
+              </div>
+            )
+          })}
+          <div className="t-xs muted" style={{ padding: '4px 10px', letterSpacing: '0.08em', borderTop: '1px solid var(--rule)' }}>
+            ↑↓ NAV · TAB/↵ ACCEPT · ESC DISMISS
+          </div>
         </div>
       )}
     </div>
@@ -1636,17 +1820,7 @@ export default function DeckArchive() {
                 }
                 setEditText(lines.filter(l => l !== '' || lines.indexOf(l) === lines.length - 1).join('\n'))
               }} />
-              <textarea
-                value={editText}
-                onChange={e => setEditText(e.target.value)}
-                style={{
-                  width: '100%', minHeight: 300, padding: 10,
-                  background: 'var(--bg-2, rgba(0,0,0,0.3))', border: '1px solid var(--rule-2)',
-                  color: 'var(--ink)', fontFamily: 'inherit', fontSize: 11,
-                  letterSpacing: '0.04em', lineHeight: 1.6, resize: 'vertical',
-                }}
-                spellCheck={false}
-              />
+              <WorkshopTextarea value={editText} onChange={setEditText} />
               <ContextBox id="deck.edit-save" style={{ marginTop: 10 }}>
                 <strong>SAVE UPDATE</strong> writes a new version of the deck and re-runs Freya analysis.
                 {' '}<strong>CANCEL</strong> discards your edits.
