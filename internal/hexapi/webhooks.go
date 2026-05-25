@@ -37,14 +37,26 @@ var supportedWebhookEvents = map[string]bool{
 }
 
 // Default failure threshold past which the dispatcher auto-disables
-// a webhook. Five consecutive transport errors / 5xx — enough to
+// a webhook. Five consecutive FAILED DELIVERIES (each delivery may
+// retry up to MaxAttempts before counting as a failure) — enough to
 // ride out a brief outage on the consumer side without spamming a
 // dead endpoint forever.
 const webhookFailureThreshold = 5
 
-// Default per-delivery timeout. Webhook receivers should ack fast;
-// anything past ten seconds is on its own.
+// Default per-attempt HTTP timeout. Webhook receivers should ack
+// fast; anything past ten seconds is on its own.
 const webhookDeliveryTimeout = 10 * time.Second
+
+// Retry policy defaults. A delivery is tried up to MaxAttempts
+// times for transient failures (5xx, 429, transport errors) with
+// exponential backoff starting at BackoffBase and doubling each
+// attempt, capped at BackoffMax. 4xx responses other than 429 are
+// treated as permanent client errors and dead-letter immediately.
+const (
+	webhookDefaultMaxAttempts = 5
+	webhookDefaultBackoffBase = 1 * time.Second
+	webhookDefaultBackoffMax  = 30 * time.Second
+)
 
 // WebhookDispatcher fires registered webhooks for engine events.
 // Construct via NewWebhookDispatcher; wire into Handler.Webhooks and
@@ -67,6 +79,15 @@ type WebhookDispatcher struct {
 	failureThreshold int
 	deliveryTimeout  time.Duration
 
+	// Retry policy. Each delivery is tried up to maxAttempts times
+	// for retriable failures (transport errors, 5xx, 429); each
+	// retry waits backoffBase * 2^attempt, capped at backoffMax.
+	// Tests override these to 1ms-scale so retry behaviour is
+	// exercisable without real-time waits.
+	maxAttempts int
+	backoffBase time.Duration
+	backoffMax  time.Duration
+
 	// inflight is bumped each Fire call so tests can wait for fan-out
 	// to drain without sleeping.
 	inflight sync.WaitGroup
@@ -86,6 +107,9 @@ func NewWebhookDispatcher(sqlDB *sql.DB, client *http.Client) *WebhookDispatcher
 		logf:             log.Printf,
 		failureThreshold: webhookFailureThreshold,
 		deliveryTimeout:  webhookDeliveryTimeout,
+		maxAttempts:      webhookDefaultMaxAttempts,
+		backoffBase:      webhookDefaultBackoffBase,
+		backoffMax:       webhookDefaultBackoffMax,
 	}
 }
 
@@ -100,6 +124,25 @@ func (d *WebhookDispatcher) SetLogf(f func(string, ...any)) {
 // SetFailureThreshold lets tests narrow the auto-disable cutoff.
 // Values < 1 disable the auto-disable behaviour entirely.
 func (d *WebhookDispatcher) SetFailureThreshold(n int) { d.failureThreshold = n }
+
+// SetRetryPolicy overrides the per-delivery retry behaviour. Tests
+// pass 1ms-scale durations so the backoff is exercisable in real
+// time. maxAttempts < 1 means "single attempt, no retry"; pass 0
+// or negative to disable retries entirely.
+func (d *WebhookDispatcher) SetRetryPolicy(maxAttempts int, base, max time.Duration) {
+	if maxAttempts < 1 {
+		maxAttempts = 1
+	}
+	if base < 0 {
+		base = 0
+	}
+	if max < base {
+		max = base
+	}
+	d.maxAttempts = maxAttempts
+	d.backoffBase = base
+	d.backoffMax = max
+}
 
 // Wait blocks until every in-flight fan-out spawned by Fire has
 // completed. Test-only — production callers use Fire and forget.
@@ -142,10 +185,147 @@ func (d *WebhookDispatcher) Fire(ctx context.Context, eventType string, payload 
 }
 
 // deliver POSTs body to one subscriber, signed with the webhook's
-// secret, and records the outcome via UpdateWebhookHealth. Failures
-// past the configured threshold flip the row inactive in the same
-// SQL UPDATE so the next Fire skips it.
+// secret. Wraps the attempt loop in a retry-with-backoff envelope:
+//
+//   - 2xx        → success; failures reset, no retry.
+//   - 4xx ≠ 429  → permanent client failure; dead-letter immediately,
+//                  no retry (a bad URL / 401 / 410 won't recover).
+//   - 5xx, 429   → transient; retry up to maxAttempts with backoff.
+//                  429's Retry-After header is honored when numeric.
+//   - transport  → transient; same retry treatment.
+//
+// On exhaustion, a webhook_dead_letters row is inserted carrying the
+// full payload + last error so operators can replay. The webhooks
+// row's failures counter is bumped ONCE per logical delivery (not
+// per attempt) so the auto-disable threshold still measures
+// consecutive-failed-deliveries, not consecutive-failed-attempts.
 func (d *WebhookDispatcher) deliver(eventType string, body []byte, w db.Webhook) {
+	firstAttempted := time.Now()
+	maxAttempts := d.maxAttempts
+	if maxAttempts < 1 {
+		maxAttempts = 1
+	}
+
+	var (
+		lastStatus int
+		lastErr    string
+		attempt    int
+		retryAfter time.Duration
+	)
+
+	for attempt = 1; attempt <= maxAttempts; attempt++ {
+		status, err, ra := d.attemptDelivery(eventType, body, w)
+		lastStatus = status
+		retryAfter = ra
+		if err != nil {
+			lastErr = err.Error()
+		} else {
+			lastErr = ""
+		}
+
+		switch classifyDeliveryOutcome(status, err) {
+		case deliverySuccess:
+			_ = db.UpdateWebhookHealth(context.Background(), d.db, w.ID, status, d.failureThreshold)
+			return
+		case deliveryPermanent:
+			// Don't retry — dead-letter immediately. failures still
+			// bumps because the consumer-facing contract is "this
+			// delivery did not succeed."
+			d.recordDeadLetter(eventType, body, w, attempt, status, lastErr, firstAttempted)
+			_ = db.UpdateWebhookHealth(context.Background(), d.db, w.ID, status, d.failureThreshold)
+			return
+		case deliveryTransient:
+			// Fall through to retry (or exhaust below).
+		}
+
+		if attempt == maxAttempts {
+			break
+		}
+
+		// Sleep with exponential backoff, honoring Retry-After when
+		// the server provided it. Bounded by backoffMax so a buggy
+		// server can't pin a goroutine for hours.
+		wait := d.backoffFor(attempt)
+		if retryAfter > 0 && retryAfter > wait {
+			wait = retryAfter
+		}
+		if wait > d.backoffMax {
+			wait = d.backoffMax
+		}
+		time.Sleep(wait)
+	}
+
+	// All attempts failed. Dead-letter + bump failures.
+	// `attempt` is the loop counter at the moment the break fired,
+	// which equals the total number of HTTP attempts made (the loop
+	// runs 1..maxAttempts inclusive then breaks).
+	d.logf("webhook %d (%s): exhausted %d attempts, last_status=%d err=%q",
+		w.ID, w.URL, attempt, lastStatus, lastErr)
+	d.recordDeadLetter(eventType, body, w, attempt, lastStatus, lastErr, firstAttempted)
+	_ = db.UpdateWebhookHealth(context.Background(), d.db, w.ID, lastStatus, d.failureThreshold)
+}
+
+// deliveryOutcome classifies one HTTP-level result into the three
+// states the retry loop branches on.
+type deliveryOutcome int
+
+const (
+	deliverySuccess deliveryOutcome = iota
+	deliveryTransient
+	deliveryPermanent
+)
+
+// classifyDeliveryOutcome decides retry vs. give-up for one attempt.
+// Transport errors and 5xx + 429 are transient; 4xx other than 429
+// is permanent (URL bug, auth bug, target removed); 2xx is success.
+// 3xx is treated as success — http.Client follows redirects by
+// default, so we shouldn't normally see a raw 3xx, but if some
+// pathological client did, treat it as "the consumer ack'd."
+func classifyDeliveryOutcome(status int, err error) deliveryOutcome {
+	if err != nil {
+		return deliveryTransient
+	}
+	switch {
+	case status >= 200 && status < 400:
+		return deliverySuccess
+	case status == http.StatusTooManyRequests:
+		return deliveryTransient
+	case status >= 400 && status < 500:
+		return deliveryPermanent
+	case status >= 500:
+		return deliveryTransient
+	default:
+		// 1xx — unexpected for an application-level POST. Treat as
+		// transient so the next attempt has a chance to do something
+		// sensible.
+		return deliveryTransient
+	}
+}
+
+// backoffFor returns the wait before retry attempt `next` (1-based,
+// so backoffFor(1) is the wait BEFORE the second attempt). Pure
+// exponential with no jitter — the bounded fan-out (one goroutine
+// per subscriber, max ~5 subscribers in practice) makes thundering
+// herd a non-issue at this scale.
+func (d *WebhookDispatcher) backoffFor(next int) time.Duration {
+	if d.backoffBase <= 0 {
+		return 0
+	}
+	wait := d.backoffBase
+	for i := 1; i < next; i++ {
+		wait *= 2
+		if wait >= d.backoffMax {
+			return d.backoffMax
+		}
+	}
+	return wait
+}
+
+// attemptDelivery makes one HTTP POST. Returns (status, err,
+// retryAfter). retryAfter is parsed from the Retry-After header
+// when present + numeric; the caller can use it as a floor for
+// the next backoff.
+func (d *WebhookDispatcher) attemptDelivery(eventType string, body []byte, w db.Webhook) (int, error, time.Duration) {
 	ctx, cancel := context.WithTimeout(context.Background(), d.deliveryTimeout)
 	defer cancel()
 
@@ -157,8 +337,7 @@ func (d *WebhookDispatcher) deliver(eventType string, body []byte, w db.Webhook)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, w.URL, bytes.NewReader(body))
 	if err != nil {
 		d.logf("webhook %d: build request: %v", w.ID, err)
-		_ = db.UpdateWebhookHealth(context.Background(), d.db, w.ID, -1, d.failureThreshold)
-		return
+		return -1, err, 0
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("X-HexDek-Event", eventType)
@@ -170,18 +349,54 @@ func (d *WebhookDispatcher) deliver(eventType string, body []byte, w db.Webhook)
 	resp, err := d.client.Do(req)
 	if err != nil {
 		d.logf("webhook %d (%s): transport error: %v", w.ID, w.URL, err)
-		_ = db.UpdateWebhookHealth(context.Background(), d.db, w.ID, -1, d.failureThreshold)
-		return
+		return -1, err, 0
 	}
-	// Drain + close per http.Client convention so the keep-alive
-	// connection is returned to the pool.
-	_, _ = io.Copy(io.Discard, resp.Body)
-	_ = resp.Body.Close()
+	defer func() {
+		_, _ = io.Copy(io.Discard, resp.Body)
+		_ = resp.Body.Close()
+	}()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		d.logf("webhook %d (%s): non-2xx %d", w.ID, w.URL, resp.StatusCode)
 	}
-	_ = db.UpdateWebhookHealth(context.Background(), d.db, w.ID, resp.StatusCode, d.failureThreshold)
+	return resp.StatusCode, nil, parseRetryAfter(resp.Header.Get("Retry-After"))
+}
+
+// parseRetryAfter understands the integer-seconds form of the
+// Retry-After header. The HTTP-date form is rare on webhook
+// receivers; we skip it to keep the parsing one-liner. Returns
+// zero for missing / unparseable headers — the caller falls back
+// to the configured backoff.
+func parseRetryAfter(v string) time.Duration {
+	if v == "" {
+		return 0
+	}
+	secs, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil || secs <= 0 {
+		return 0
+	}
+	return time.Duration(secs) * time.Second
+}
+
+// recordDeadLetter inserts one row into webhook_dead_letters. Best-
+// effort — log and continue if the insert fails; the operator-
+// facing observability is the failure counter on the webhook row.
+func (d *WebhookDispatcher) recordDeadLetter(eventType string, body []byte, w db.Webhook,
+	attempts int, status int, lastErr string, firstAttempted time.Time) {
+	now := time.Now()
+	_, err := db.InsertWebhookDeadLetter(context.Background(), d.db, db.WebhookDeadLetter{
+		WebhookID:      w.ID,
+		EventType:      eventType,
+		Payload:        append([]byte(nil), body...), // defensive copy
+		Attempts:       attempts,
+		LastStatus:     status,
+		LastError:      lastErr,
+		FirstAttempted: firstAttempted,
+		LastAttempted:  now,
+	})
+	if err != nil {
+		d.logf("webhook %d: dead-letter insert failed: %v", w.ID, err)
+	}
 }
 
 // FireGameEnd is the typed convenience the showmatch loop calls
@@ -220,6 +435,7 @@ func (h *Handler) RegisterWebhookRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/webhooks", h.handleRegisterWebhook)
 	mux.HandleFunc("GET /api/webhooks", h.handleListWebhooks)
 	mux.HandleFunc("DELETE /api/webhooks/{id}", h.handleDeleteWebhook)
+	mux.HandleFunc("GET /api/webhooks/{id}/dead-letters", h.handleListWebhookDeadLetters)
 }
 
 // SetDB injects the SQLite handle the webhook handlers use. Kept
@@ -419,4 +635,93 @@ func generateWebhookSecret() (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(b), nil
+}
+
+// -------------------------------------------------------------------
+// Dead-letter listing
+// -------------------------------------------------------------------
+
+// webhookDeadLetterEntry is one row in the
+// GET /api/webhooks/{id}/dead-letters response. Payload is returned
+// as a string (the dispatcher writes JSON, so a string is the
+// useful surface for the operator) — clients that want the raw
+// bytes can decode it themselves.
+type webhookDeadLetterEntry struct {
+	ID             int64  `json:"id"`
+	WebhookID      int64  `json:"webhook_id"`
+	EventType      string `json:"event_type"`
+	Payload        string `json:"payload"`
+	Attempts       int    `json:"attempts"`
+	LastStatus     int    `json:"last_status"`
+	LastError      string `json:"last_error,omitempty"`
+	FirstAttempted int64  `json:"first_attempted"`
+	LastAttempted  int64  `json:"last_attempted"`
+}
+
+// handleListWebhookDeadLetters implements
+// GET /api/webhooks/{id}/dead-letters. Owner-gated: only the owner of
+// the webhook can list its dead-letters. A 404 is returned both for
+// "no such webhook" AND "webhook owned by someone else" so the
+// existence of someone else's subscription doesn't leak to a probe
+// (mirrors handleDeleteWebhook's contract).
+func (h *Handler) handleListWebhookDeadLetters(w http.ResponseWriter, r *http.Request) {
+	if h.db == nil {
+		writeError(w, http.StatusServiceUnavailable, "database not configured")
+		return
+	}
+	owner := strings.ToLower(strings.TrimSpace(r.Header.Get("X-HexDek-Owner")))
+	if owner == "" {
+		writeError(w, http.StatusUnauthorized, "missing X-HexDek-Owner header")
+		return
+	}
+	idStr := r.PathValue("id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || id <= 0 {
+		writeError(w, http.StatusBadRequest, "invalid webhook id")
+		return
+	}
+
+	// Ownership gate: confirm the webhook exists AND is owned by the
+	// caller before reading its dead-letters. db.GetWebhook returns
+	// sql.ErrNoRows on miss; both miss and ownership-mismatch surface
+	// as 404 with the same message.
+	hook, err := db.GetWebhook(r.Context(), h.db, id)
+	if err != nil || hook.Owner != owner {
+		writeError(w, http.StatusNotFound, "webhook not found")
+		return
+	}
+
+	limit := 50
+	if q := strings.TrimSpace(r.URL.Query().Get("limit")); q != "" {
+		if n, err := strconv.Atoi(q); err == nil && n > 0 {
+			if n > 500 {
+				n = 500
+			}
+			limit = n
+		}
+	}
+
+	rows, err := db.ListWebhookDeadLetters(r.Context(), h.db, id, limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "list failed")
+		return
+	}
+	out := make([]webhookDeadLetterEntry, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, webhookDeadLetterEntry{
+			ID:             row.ID,
+			WebhookID:      row.WebhookID,
+			EventType:      row.EventType,
+			Payload:        string(row.Payload),
+			Attempts:       row.Attempts,
+			LastStatus:     row.LastStatus,
+			LastError:      row.LastError,
+			FirstAttempted: row.FirstAttempted.Unix(),
+			LastAttempted:  row.LastAttempted.Unix(),
+		})
+	}
+	writeJSON(w, map[string]any{
+		"webhook_id":   id,
+		"dead_letters": out,
+	})
 }
