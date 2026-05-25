@@ -3,6 +3,14 @@ import { useParams } from 'react-router-dom'
 import { Panel, KV, Bar, Tag, Btn, Tape } from '../components/chrome'
 import SummaryActions from '../components/SummaryActions'
 import { api, cardArtUrl } from '../services/api'
+import {
+  REPLAY_SPEEDS,
+  REPLAY_DEFAULT_SPEED_IDX,
+  tickIntervalMs,
+  nextSpeedIdx,
+  stepTurn,
+  resolveReplayKeyAction,
+} from '../utils/replayControls'
 
 // ── API gaps for full report fidelity ──────────────────────────────────
 // CompletedGame currently exposes: game_id, commanders[], deck_keys[],
@@ -229,8 +237,13 @@ const ReplayScrubber = ({ game, commanders }) => {
   const totalTurns = timeline.length
   const [turnIdx, setTurnIdx] = useState(0) // 0-based into timeline
   const [playing, setPlaying] = useState(false)
+  // Index into REPLAY_SPEEDS (0.5× / 1× / 2× / 4×). The autoplay tick
+  // reads tickIntervalMs(REPLAY_SPEEDS[speedIdx]) so 1× preserves the
+  // historical 900ms cadence and 4× lets users skim a long game in a
+  // quarter the time.
+  const [speedIdx, setSpeedIdx] = useState(REPLAY_DEFAULT_SPEED_IDX)
 
-  // Auto-play tick — advance one turn per second while `playing`.
+  // Auto-play tick — advances one turn at the user-selected speed.
   useEffect(() => {
     if (!playing || totalTurns === 0) return
     const id = setInterval(() => {
@@ -241,15 +254,57 @@ const ReplayScrubber = ({ game, commanders }) => {
         }
         return i + 1
       })
-    }, 900)
+    }, tickIntervalMs(REPLAY_SPEEDS[speedIdx]))
     return () => clearInterval(id)
-  }, [playing, totalTurns])
+  }, [playing, totalTurns, speedIdx])
 
   // Clamp the slider to a valid index when timeline shrinks (e.g. on
   // game switch). Defensive — totalTurns only changes when game does.
   useEffect(() => {
     if (turnIdx >= totalTurns) setTurnIdx(Math.max(0, totalTurns - 1))
   }, [totalTurns, turnIdx])
+
+  // Keyboard shortcuts (Space/K play, ←J/→L step, Home/End jump,
+  // ↑↓/[] speed). The handler reads dispatch state through the
+  // current closures — re-binding on each render is cheap (one
+  // listener) and keeps the captured values fresh without refs.
+  useEffect(() => {
+    if (totalTurns === 0) return
+    const onKey = (e) => {
+      const action = resolveReplayKeyAction(e)
+      if (!action) return
+      e.preventDefault()
+      switch (action) {
+        case 'togglePlay':
+          setPlaying(p => !p)
+          break
+        case 'first':
+          setPlaying(false)
+          setTurnIdx(stepTurn(turnIdx, totalTurns, 'first'))
+          break
+        case 'last':
+          setPlaying(false)
+          setTurnIdx(stepTurn(turnIdx, totalTurns, 'last'))
+          break
+        case 'prev':
+          setPlaying(false)
+          setTurnIdx(stepTurn(turnIdx, totalTurns, 'prev'))
+          break
+        case 'next':
+          setPlaying(false)
+          setTurnIdx(stepTurn(turnIdx, totalTurns, 'next'))
+          break
+        case 'speedDown':
+          setSpeedIdx(i => nextSpeedIdx(i, -1))
+          break
+        case 'speedUp':
+          setSpeedIdx(i => nextSpeedIdx(i, +1))
+          break
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [turnIdx, totalTurns])
 
   if (totalTurns === 0) {
     return (
@@ -279,13 +334,41 @@ const ReplayScrubber = ({ game, commanders }) => {
         </span>
       }
     >
-      {/* Transport: prev / play / next / jump-to-end */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
-        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(0) }} disabled={turnIdx === 0} title="Jump to start">⏮</Btn>
-        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(Math.max(0, turnIdx - 1)) }} disabled={turnIdx === 0} title="Previous turn">◀</Btn>
-        <Btn sm arrow={null} solid={playing} onClick={() => setPlaying(p => !p)}>{playing ? '⏸ PAUSE' : '▶ PLAY'}</Btn>
-        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(Math.min(totalTurns - 1, turnIdx + 1)) }} disabled={turnIdx >= totalTurns - 1} title="Next turn">▶</Btn>
-        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(totalTurns - 1) }} disabled={turnIdx >= totalTurns - 1} title="Jump to end">⏭</Btn>
+      {/* Transport: prev / play / next / jump-to-end + speed presets */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
+        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'first')) }} disabled={turnIdx === 0} title="Jump to start (Home)">⏮</Btn>
+        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'prev')) }} disabled={turnIdx === 0} title="Previous turn (← / J)">◀</Btn>
+        <Btn sm arrow={null} solid={playing} onClick={() => setPlaying(p => !p)} title="Play / pause (Space / K)">{playing ? '⏸ PAUSE' : '▶ PLAY'}</Btn>
+        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'next')) }} disabled={turnIdx >= totalTurns - 1} title="Next turn (→ / L)">▶</Btn>
+        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'last')) }} disabled={turnIdx >= totalTurns - 1} title="Jump to end (End)">⏭</Btn>
+        {/* Speed: discrete presets. Active mark = ok-color. Hotkeys
+            ↑/↓ + [/] step through the same list. */}
+        <div role="group" aria-label="Playback speed" style={{ display: 'flex', gap: 2, marginLeft: 8, padding: '0 4px', borderLeft: '1px solid var(--rule-2)' }}>
+          {REPLAY_SPEEDS.map((s, i) => {
+            const active = i === speedIdx
+            return (
+              <button
+                type="button"
+                key={s}
+                onClick={() => setSpeedIdx(i)}
+                aria-pressed={active}
+                aria-label={`Set replay speed to ${s}×`}
+                title={`Replay at ${s}×`}
+                className="t-xs"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '2px 6px',
+                  fontWeight: active ? 700 : 400,
+                  color: active ? 'var(--ok)' : 'var(--ink-2)',
+                }}
+              >
+                {s}×
+              </button>
+            )
+          })}
+        </div>
         <span className="t-xs muted" style={{ marginLeft: 8 }}>
           ACTIVE: {activeSeat >= 0 ? `SEAT.${String(activeSeat + 1).padStart(2, '0')} · ${(commanders[activeSeat] || 'UNKNOWN').split(',')[0].toUpperCase()}` : '—'}
         </span>
