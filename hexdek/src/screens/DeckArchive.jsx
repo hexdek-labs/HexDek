@@ -22,6 +22,8 @@ import { DeckPicker } from './DeckCompare'
 import DeckExportModal from '../components/DeckExportModal'
 import ContextBox from '../components/ContextBox'
 import EloSparkline from '../components/EloSparkline'
+import CoachingMarker from '../components/CoachingMarker'
+import { buildCoachingIndex, coachingForCard } from '../lib/freyaCoaching'
 import DeckRating from '../components/DeckRating'
 import DeckShareDisclosure from '../components/DeckShareDisclosure'
 import BracketChangelog from '../components/BracketChangelog'
@@ -303,7 +305,7 @@ function DenseSortHeader({ label, sortKey, sort, onSort, align = 'left' }) {
   )
 }
 
-function CardListDense({ cards, cardRoles, sort, onSort }) {
+function CardListDense({ cards, cardRoles, sort, onSort, coachingIndex, onCut }) {
   const rows = useMemo(
     () => sortCards(cards, sort.key, sort.dir, cardRoles),
     [cards, sort.key, sort.dir, cardRoles],
@@ -374,19 +376,27 @@ function CardListDense({ cards, cardRoles, sort, onSort }) {
             >
               {c.quantity || 1}
             </span>
-            <CardLink
-              name={linkName}
-              className="t-xs"
-              style={{
-                borderBottom: 'none',
-                minWidth: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {c.name}
-            </CardLink>
+            <span style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+              <CardLink
+                name={linkName}
+                className="t-xs"
+                style={{
+                  borderBottom: 'none',
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {c.name}
+              </CardLink>
+              {coachingIndex && (
+                <CoachingMarker
+                  entry={coachingForCard(coachingIndex, c.name)}
+                  onCut={onCut}
+                />
+              )}
+            </span>
             <span style={{ display: 'flex', alignItems: 'center', minHeight: 14 }}>
               {c.mana_cost ? <ManaCost cost={c.mana_cost} size={11} gap={1} /> : <span className="t-xs muted">—</span>}
             </span>
@@ -1526,6 +1536,30 @@ export default function DeckArchive() {
   // Prefer the structured rationale list when Freya has produced it; fall
   // back to the flat name list for older strategy.json files on disk.
   const cuttableCards = analysis?.cuttable_card_rationale || analysis?.cuttable_cards || []
+  // Per-card coaching lookup so inline UI (dense list rows, future grid
+  // tiles) can show a marker against any flagged card without re-walking
+  // the analysis blob. Same source-of-truth as the CONSIDER CUTTING
+  // panel — pure helper, see freyaCoaching.js.
+  const coachingIndex = buildCoachingIndex(analysis)
+  // Shared "open Workshop with this card removed" handler — used by the
+  // CONSIDER CUTTING panel's CUT button AND the new inline coaching
+  // markers. Owners only; the parent's isOwner gate decides whether
+  // either call site even passes this in.
+  const handleCutCardFromWorkshop = (cardName) => {
+    const lines = cards.map(c => {
+      const cmdr = deck?.commander_card
+      if (cmdr && c.name === cmdr) return `COMMANDER: ${c.name}`
+      return c.quantity > 1 ? `${c.quantity} ${c.name}` : `1 ${c.name}`
+    }).filter(line => {
+      if (line.startsWith('COMMANDER:')) return true
+      const tail = line.replace(/^\d+\s+/, '')
+      return tail !== cardName
+    })
+    setEditText(lines.join('\n'))
+    setEditing(true)
+    api.getDeckVersions(`${owner}/${id}`).then(setVersions).catch(() => {})
+    setTimeout(() => editPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+  }
   const valueChains = analysis?.value_chains || []
   const vulnerableTo = analysis?.vulnerable_to || []
   const finisherCards = analysis?.finisher_cards || []
@@ -2797,25 +2831,7 @@ export default function DeckArchive() {
               commits. Non-owners see the CUT label as a passive flag. */}
           <ConsiderCuttingRationale
             cuts={cuttableCards}
-            onCut={isOwner ? (cardName) => {
-              const lines = cards.map(c => {
-                const cmdr = deck?.commander_card
-                if (cmdr && c.name === cmdr) return `COMMANDER: ${c.name}`
-                return c.quantity > 1 ? `${c.quantity} ${c.name}` : `1 ${c.name}`
-              }).filter(line => {
-                // Remove the card line (matches either "1 NAME" or "N NAME"
-                // for the target — commander rows are protected).
-                if (line.startsWith('COMMANDER:')) return true
-                const tail = line.replace(/^\d+\s+/, '')
-                return tail !== cardName
-              })
-              setEditText(lines.join('\n'))
-              setEditing(true)
-              api.getDeckVersions(`${owner}/${id}`).then(setVersions).catch(() => {})
-              // Scroll workshop into view on mobile so the user immediately
-              // sees the textarea with the card removed.
-              setTimeout(() => editPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
-            } : undefined}
+            onCut={isOwner ? handleCutCardFromWorkshop : undefined}
           />
 
           {/* Tutor targets */}
@@ -3253,6 +3269,8 @@ export default function DeckArchive() {
                 cardRoles={filteredCardRoles}
                 sort={denseSort}
                 onSort={(key) => setDenseSort(s => toggleSort(s, key))}
+                coachingIndex={coachingIndex}
+                onCut={isOwner ? handleCutCardFromWorkshop : undefined}
               />
             </Panel>
           )}
