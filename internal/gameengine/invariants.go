@@ -654,6 +654,29 @@ func sliceEqual(a, b []string) bool {
 // TriggerCompleteness
 // ---------------------------------------------------------------------------
 
+// opponentOnlyCreatureDiesTriggers lists per_card `creature_dies` handlers
+// that early-return on `controllerSeat == perm.Controller` because their
+// printed (or implemented) trigger condition is "whenever an OPPONENT's
+// creature dies." For these bearers the TriggerCompleteness invariant
+// must match the bearer to a DIFFERENT-seat death event, not a same-
+// seat one — otherwise it false-positives when the bearer's controller
+// sacrifices their own creature (e.g. Gisa, Glorious Resurrector +
+// Birthing Ritual's saproling sacrifice — loki r60 mega-stress seed
+// 31415 game 237 turn 55).
+//
+// Membership is derived from a one-shot audit of every per_card
+// OnTrigger("...", "creature_dies", ...) registration looking for an
+// early-return on `controllerSeat == perm.Controller`. New handlers
+// with the same shape should be added here.
+var opponentOnlyCreatureDiesTriggers = map[string]bool{
+	"Gisa, Glorious Resurrector":  true,
+	"The Reaper, King No More":    true,
+	"Toxrill, the Corrosive":      true,
+	"Yahenni, Undying Partisan":   true,
+	"Grave Pact":                  true,
+	"Grave Betrayal":              true,
+}
+
 // checkTriggerCompleteness scans the last 10 events for patterns that should
 // have produced a trigger but apparently didn't. Lightweight: only checks
 // recent events against the current battlefield, not full history.
@@ -731,14 +754,32 @@ func checkTriggerCompleteness(gs *GameState) error {
 				continue
 			}
 		}
-		// Only check if a trigger-bearer controls the dying creature.
-		// Most "creature_dies" triggers only fire for your own creatures.
+		// Only check if a trigger-bearer's seat-vs-death-seat orientation
+		// matches the bearer's printed (or per_card-coded) trigger
+		// condition. Most "creature_dies" triggers fire only on the
+		// bearer's OWN creatures dying — for those, bearer.seat must
+		// match the death seat. A small set of per_card handlers
+		// (Gisa Glorious Resurrector, Toxrill, The Reaper King No More,
+		// Yahenni, Grave Pact, Grave Betrayal) early-return on
+		// `controllerSeat == perm.Controller` because they trigger only
+		// on OPPONENT'S creatures — for those, bearer.seat must DIFFER
+		// from the death seat. Without this split the invariant false-
+		// positives on opp-only bearers when their controller sacrifices
+		// their own creature (loki r60 mega-stress seed 31415 game 237
+		// turn 55 — Gisa + Birthing Ritual chain).
 		deathSeat := ev.Seat
 		hasMatchingBearer := false
 		for _, dt := range diesTriggers {
-			if dt.seat == deathSeat {
-				hasMatchingBearer = true
-				break
+			if opponentOnlyCreatureDiesTriggers[dt.cardName] {
+				if dt.seat != deathSeat {
+					hasMatchingBearer = true
+					break
+				}
+			} else {
+				if dt.seat == deathSeat {
+					hasMatchingBearer = true
+					break
+				}
 			}
 		}
 		if !hasMatchingBearer {
