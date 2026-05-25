@@ -1043,6 +1043,34 @@ paths:
                         enum: [none]
         "400": { $ref: '#/components/responses/BadRequest' }
 
+  /api/tournament/{id}/stats:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+        description: Gauntlet run id (gauntlet_runs.run_id).
+    get:
+      tags: [tournaments]
+      operationId: getTournamentStats
+      summary: Per-tournament aggregates — deck distribution, winrate variance, longest game, fastest game.
+      description: |
+        Anchors on a gauntlet_runs row by run_id, then scans
+        showmatch_game rows in that (deck_key, started_at..finished_at)
+        window to compute games-derived signals
+        (deck_distribution, winrate_variance, longest_game,
+        fastest_game). Run-level scalars (games/wins/losses/win_rate/
+        avg_turns) echo gauntlet_runs verbatim.
+      responses:
+        "200":
+          description: TournamentStats payload.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "503": { $ref: '#/components/responses/InternalError' }
+
   /api/tournaments/{owner}/{id}/events:
     parameters:
       - $ref: '#/components/parameters/OwnerParam'
@@ -1173,20 +1201,6 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/EmptyOk' }
-
-  /api/games/compare:
-    get:
-      tags: [games]
-      operationId: compareGames
-      summary: Side-by-side comparison of two completed games. Pass `?a={game_id}&b={game_id}`.
-      responses:
-        "200":
-          description: Two-game comparison payload.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/EmptyOk' }
-        "400": { $ref: '#/components/responses/BadRequest' }
-        "404": { $ref: '#/components/responses/NotFound' }
 
   /api/games/{id}:
     parameters:
@@ -1523,32 +1537,6 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/EmptyOk' }
-
-  /api/players/{id}/trends:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string }
-        description: Player id (lower-cased owner).
-      - name: window
-        in: query
-        required: false
-        schema: { type: integer, default: 30, maximum: 200 }
-        description: Rolling window size in games (capped at 200).
-    get:
-      tags: [profile]
-      operationId: getPlayerTrends
-      summary: Rolling per-player trend summary (winrate, archetype distribution, opponent diversity).
-      responses:
-        "200":
-          description: |
-            Per-player rollup. `win_rate` is a 0..1 fraction over the actual games found (may be < window if the player has fewer records).
-            `archetype_distribution` is sorted by games desc; `opponent_diversity.top_repeat_opponents` is capped at the 5 most-encountered opponents.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/EmptyOk' }
-        "400": { $ref: '#/components/responses/BadRequest' }
 
   /api/achievements/{owner}:
     parameters:
