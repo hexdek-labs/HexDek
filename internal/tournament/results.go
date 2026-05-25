@@ -230,4 +230,10 @@ type TournamentResult struct {
 	// conviction concession. Populated regardless of audit/analytics
 	// flags (lightweight — only one record per conceding seat).
 	ConcessionRecords []muninn.ConcessionRecord
+
+	// SwissStandings is populated by RunSwiss with the cumulative
+	// per-deck points + win/loss/draw + bye counts across all rounds,
+	// sorted by Points desc → Wins desc → CommanderName asc. Nil for
+	// non-Swiss tournament runs.
+	SwissStandings []SwissStanding `json:"swiss_standings,omitempty"`
 }
