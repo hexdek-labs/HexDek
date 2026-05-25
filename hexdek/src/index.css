@@ -1503,6 +1503,25 @@ body {
   outline: 1px solid var(--accent); outline-offset: 2px;
 }
 
+/* LIVE ELO rows in the spectator sidebar. Previously a plain <div> with
+   inline cursor:pointer onClick — the cursor was the only affordance,
+   nothing for hover, and the row wasn't reachable by keyboard at all.
+   This pairs the role=button + tabIndex + onKeyDown wiring in the JSX
+   with a hover wash + :focus-visible ring so the same target works for
+   mouse, touch, and tab-key users. */
+.elo-row {
+  margin-bottom: 8px;
+  padding: 2px 4px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+.elo-row:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.elo-row:focus-visible {
+  outline: 1px solid var(--accent); outline-offset: 1px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
 /* ── IMPORT MODAL ── (styles moved to components/ImportModal.css) */
 
 /* ── DASHBOARD LAYOUT ── */
