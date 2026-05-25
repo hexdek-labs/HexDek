@@ -757,7 +757,22 @@ func CloneCards(src []*gameengine.Card) []*gameengine.Card {
 var deckLineRE = regexp.MustCompile(`^\s*(\d+)\s*[xX]?\s+(.+?)\s*$`)
 var commanderLineRE = regexp.MustCompile(`(?i)^\s*COMMANDER\s*:\s*(.+?)\s*$`)
 var partnerLineRE = regexp.MustCompile(`(?i)^\s*PARTNER\s*:\s*(.+?)\s*$`)
-var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companion|Considering|Deck|Main\s*Deck|Mainboard|Commanders?|Tokens|Signature\s*Spells|Stickers|Attractions|Outside\s*the\s*Game)\s*:?\s*$`)
+
+// sectionHeaderRE matches section banners in any of the export-format
+// shapes the parser sees in the wild:
+//
+//	Sideboard
+//	Sideboard:
+//	Sideboard (5)         ← Moxfield's native plaintext export
+//	Sideboard (5):        ← hand-edited variant
+//	Sideboard: (5)        ← Archidekt occasionally
+//
+// The trailing `(\d+)` count is the load-bearing addition vs the older
+// label-only regex: Moxfield's most-used export mode emits headers with
+// the parenthesized count, and a missed match here silently leaks every
+// sideboard / companion / token card into the library (see
+// section_count_r60_test.go).
+var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companion|Considering|Deck|Main\s*Deck|Mainboard|Commanders?|Tokens|Signature\s*Spells|Stickers|Attractions|Outside\s*the\s*Game)\s*:?\s*(?:\(\s*\d+\s*\))?\s*:?\s*$`)
 
 // trailing-suffix patterns mirrored from internal/moxfield/textlist.go so
 // the gauntlet-side parser strips the same Moxfield / Archidekt / TappedOut
