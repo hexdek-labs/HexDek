@@ -27,6 +27,11 @@ import {
   buildShareUrl,
 } from '../utils/replayShare'
 import {
+  extractKeyMoments,
+  momentMeta,
+  countsTooltip,
+} from '../utils/replayTimeline'
+import {
   SHARE_PARAM_COMPARE,
   mapSharedTurn,
   compareSeatDeltas,
@@ -599,6 +604,80 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
           )}
         </span>
       </div>
+
+      {/* Key-moment timeline strip — one cell per snapshot, colored
+          by that turn's highest-priority moment. Click a cell to
+          jump to that turn. Empty cells (no key moments) render as a
+          dim placeholder so the strip width tracks the slider width
+          exactly. extractKeyMoments is recomputed on every render —
+          cheap (single linear pass over events) and avoids stale
+          summaries on game switch. */}
+      {(() => {
+        const moments = extractKeyMoments(timeline)
+        if (moments.length === 0) return null
+        return (
+          <div
+            role="group"
+            aria-label="Key moments timeline"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${moments.length}, 1fr)`,
+              gap: 1,
+              marginBottom: 6,
+              minHeight: 16,
+            }}
+          >
+            {moments.map((m, i) => {
+              const meta = momentMeta(m.primary)
+              const isCurrent = i === turnIdx
+              if (!meta) {
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => { setPlaying(false); setTurnIdx(i) }}
+                    title={`T${m.turn ?? i + 1} — quiet turn`}
+                    aria-label={`Jump to turn ${m.turn ?? i + 1}`}
+                    style={{
+                      height: 16,
+                      background: isCurrent ? 'var(--rule)' : 'var(--rule-2)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      opacity: 0.4,
+                    }}
+                  />
+                )
+              }
+              const tip = `T${m.turn ?? i + 1} · ${meta.label}${m.totalKeyEvents > 1 ? ` — ${countsTooltip(m.counts)}` : ''}`
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => { setPlaying(false); setTurnIdx(i) }}
+                  title={tip}
+                  aria-label={tip}
+                  style={{
+                    height: 16,
+                    background: meta.color,
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                    color: 'var(--bg)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    boxShadow: isCurrent ? 'inset 0 0 0 2px var(--ink)' : undefined,
+                    opacity: m.totalKeyEvents > 0 ? 1 : 0.5,
+                  }}
+                >
+                  {meta.icon}
+                </button>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* The slider itself, with bookmark markers overlaid. Markers
           sit absolutely-positioned above the track at the % offset
