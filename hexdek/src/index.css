@@ -340,6 +340,19 @@ body {
   flex: 0 0 auto;
   white-space: nowrap; font-size: 10px;
 }
+.life-pip { font-weight: 600; }
+.life-pip--low { color: var(--warn); }
+.life-pip--crit {
+  color: var(--danger);
+  animation: life-pip-pulse 1.2s ease-in-out infinite;
+}
+@keyframes life-pip-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .life-pip--crit { animation: none; }
+}
 .seat-body {
   display: flex; height: 200px; min-width: 0; overflow: hidden;
 }
