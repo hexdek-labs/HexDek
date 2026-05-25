@@ -681,17 +681,47 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 	}
 
 	seat := gs.Seats[seatIdx]
-	available := make(map[string]bool)
+
+	// r60: piece-availability is now weighted, not boolean. Hand and
+	// battlefield pieces score full credit (1.0); graveyard pieces
+	// score half credit (0.5) to model recurrable softness — a piece
+	// in graveyard is reachable via reanimate / Sun-Titan-class /
+	// Karador / Past in Flames / Regrowth, all common in combo decks
+	// that loop dies-triggers or play long-game value. Conservatively
+	// dampened because not every deck can recur, but the signal isn't
+	// zero: a Worldgorger Dragon in the graveyard with no Animate Dead
+	// in hand is still strictly more reachable than a Worldgorger
+	// Dragon in the library.
+	available := make(map[string]float64, len(seat.Hand)+len(seat.Battlefield)+len(seat.Graveyard))
 	for _, c := range seat.Hand {
 		if c != nil {
-			available[c.DisplayName()] = true
+			available[c.DisplayName()] = 1.0
 		}
 	}
 	for _, p := range seat.Battlefield {
 		if p != nil && p.Card != nil {
-			available[p.Card.DisplayName()] = true
+			available[p.Card.DisplayName()] = 1.0
 		}
 	}
+	for _, c := range seat.Graveyard {
+		if c == nil {
+			continue
+		}
+		// Don't downgrade a hand/battlefield piece if it ALSO appears
+		// in graveyard (rare — copy effects / token returns); keep the
+		// strictly stronger zone's weight.
+		if available[c.DisplayName()] < 0.5 {
+			available[c.DisplayName()] = 0.5
+		}
+	}
+
+	// r60: tutors in hand count as "soft pieces" — 1 tutor fills 1
+	// missing slot per plan, mirroring the actual EDH reality that
+	// holding Demonic Tutor + 1 piece is functionally similar to
+	// holding 2 pieces (cast the tutor, fetch the missing piece, play
+	// next turn). Capped at 1 soft-piece per plan so a tutor-flooded
+	// hand doesn't claim multi-piece completion via tutors alone.
+	tutorsInHand := seatTutorsInHand(seat)
 
 	primaryClass := e.Strategy.PrimaryComboClass()
 	const offClassDamping = 0.7
@@ -701,13 +731,28 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 		if len(cp.Pieces) == 0 {
 			continue
 		}
-		found := 0
+		foundWeight := 0.0
+		missing := 0
 		for _, piece := range cp.Pieces {
-			if available[piece] {
-				found++
+			if w := available[piece]; w > 0 {
+				foundWeight += w
+			} else {
+				missing++
 			}
 		}
-		ratio := float64(found) / float64(len(cp.Pieces))
+		// Tutor credit: if we have at least 1 tutor in hand AND there's
+		// a missing piece, count 1 tutor as a soft-piece. Capped at 1
+		// per plan + capped by the number of missing slots (a tutor
+		// can't fill a slot that's already found).
+		if tutorsInHand > 0 && missing > 0 {
+			foundWeight += 1.0
+		}
+		// foundWeight can exceed len(pieces) when graveyard + hand +
+		// tutor stack up (shouldn't happen in practice but defensive).
+		if foundWeight > float64(len(cp.Pieces)) {
+			foundWeight = float64(len(cp.Pieces))
+		}
+		ratio := foundWeight / float64(len(cp.Pieces))
 		// Off-class damping: when the deck has a primary class and this
 		// plan is in a different class, scale the contribution. Plans
 		// without a Class tag (legacy / unclassified) always score full
@@ -724,6 +769,55 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 		return 2.0
 	}
 	return bestRatio * 1.5
+}
+
+// seatTutorsInHand counts the number of unconditional or library-search
+// tutors currently in seat's hand. Used by scoreCombo's tutor-credit
+// path to model "1 mana = 1 deployed piece next turn." Matches three
+// shapes:
+//
+//   - "search your library for a card" (Demonic Tutor, Vampiric Tutor,
+//     Imperial Seal, Personal Tutor — broad and narrow)
+//   - "search your library for an [instant|sorcery|creature|...] card"
+//     (Mystical Tutor, Worldly Tutor, Eladamri's Call, etc.)
+//   - "tutor" in card name (defense-in-depth for cards whose oracle
+//     text encodes the search via a non-standard phrasing)
+//
+// Excludes purely-creature-targeting tutors (Survival of the Fittest's
+// activated tutor effect lives on the battlefield, not the hand; a
+// resolved fetch land doesn't count). Excludes "transmute" / "cycle"
+// / "scry" — those are weaker than canonical tutors and warrant a
+// separate credit path if added.
+func seatTutorsInHand(seat *gameengine.Seat) int {
+	if seat == nil {
+		return 0
+	}
+	n := 0
+	for _, c := range seat.Hand {
+		if c == nil {
+			continue
+		}
+		ot := gameengine.OracleTextLower(c)
+		if ot == "" {
+			// Name-based fallback for cards we can't read oracle text for.
+			name := strings.ToLower(c.DisplayName())
+			if strings.Contains(name, "tutor") {
+				n++
+			}
+			continue
+		}
+		if strings.Contains(ot, "search your library for") {
+			n++
+			continue
+		}
+		// Defense in depth: name match catches cards whose oracle text
+		// shape we missed (unusual templating).
+		name := strings.ToLower(c.DisplayName())
+		if strings.Contains(name, "tutor") {
+			n++
+		}
+	}
+	return n
 }
 
 func (e *GameStateEvaluator) scoreComboHardcoded(gs *gameengine.GameState, seatIdx int) float64 {
