@@ -674,6 +674,13 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		}
 	}
 
+	if len(dp.SolidCards) > 0 {
+		fmt.Fprintf(w, "  Solid Picks:\n")
+		for _, c := range dp.SolidCards {
+			fmt.Fprintf(w, "    ● %s — %s\n", c.Name, c.Reason)
+		}
+	}
+
 	if len(dp.CuttableCards) > 0 {
 		fmt.Fprintf(w, "  Consider Cutting:\n")
 		for _, c := range dp.CuttableCards {
@@ -1219,6 +1226,7 @@ type jsonDeckProfile struct {
 	MetaMatchups       []jsonMatchup     `json:"meta_matchups,omitempty"`
 	StrongAgainst      []jsonStrongAgainst `json:"strong_against,omitempty"`
 	StarCards          []jsonCardQuality `json:"star_cards,omitempty"`
+	SolidCards         []jsonCardQuality `json:"solid_cards,omitempty"`
 	CuttableCards      []jsonCardQuality `json:"cuttable_cards,omitempty"`
 	LandSwapSuggestions []string         `json:"land_swap_suggestions,omitempty"`
 	CommanderSynergy   float64           `json:"commander_synergy,omitempty"`
@@ -1445,9 +1453,12 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 			Source:         a.Source,
 		})
 	}
-	var stars, cuttable []jsonCardQuality
+	var stars, solid, cuttable []jsonCardQuality
 	for _, c := range dp.StarCards {
 		stars = append(stars, jsonCardQuality{Name: c.Name, Tier: c.Tier, Reason: c.Reason})
+	}
+	for _, c := range dp.SolidCards {
+		solid = append(solid, jsonCardQuality{Name: c.Name, Tier: c.Tier, Reason: c.Reason})
 	}
 	for _, c := range dp.CuttableCards {
 		cuttable = append(cuttable, jsonCardQuality{
@@ -1505,6 +1516,7 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 		MetaMatchups:       matchups,
 		StrongAgainst:      strongAgainst,
 		StarCards:           stars,
+		SolidCards:          solid,
 		CuttableCards:       cuttable,
 		LandSwapSuggestions: dp.LandSwapSuggestions,
 		CommanderSynergy:   dp.CommanderSynergy,
