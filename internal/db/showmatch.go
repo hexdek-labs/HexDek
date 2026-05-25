@@ -466,6 +466,65 @@ func LoadDeckGameOutcomes(ctx context.Context, db *sql.DB, deckKey string) ([]De
 	return out, rows.Err()
 }
 
+// GameSeatGrouped is one game's worth of seat outcomes, used by the
+// archetype-vs-archetype matrix builder. Within a single game we need
+// every (this-seat, that-seat) pair to count toward the matrix, so
+// the natural shape is "all seats grouped by game" — flat per-seat
+// rows would require the caller to re-group.
+type GameSeatGrouped struct {
+	GameID     int64
+	FinishedAt int64
+	Seats      []GameSeatGroupedSeat
+}
+
+// GameSeatGroupedSeat is one seat row within a GameSeatGrouped.
+type GameSeatGroupedSeat struct {
+	DeckKey string
+	Won     bool
+}
+
+// LoadGameSeatGroups returns games (with their seat lists) whose
+// finished_at ≥ sinceUnix, sorted newest-first. limit caps the
+// number of returned games; 0 means no cap. Only seats with a
+// non-empty deck_key are included — the matrix can't bucket a seat
+// whose archetype can't be resolved.
+func LoadGameSeatGroups(ctx context.Context, sqlDB *sql.DB, sinceUnix int64, limit int) ([]GameSeatGrouped, error) {
+	q := `SELECT g.game_id, g.finished_at, s.deck_key, (CASE WHEN g.winner = s.seat THEN 1 ELSE 0 END) AS won
+	      FROM showmatch_game g
+	      JOIN showmatch_game_seat s ON s.game_id = g.game_id
+	      WHERE g.finished_at >= ? AND s.deck_key != ''
+	      ORDER BY g.finished_at DESC, g.game_id DESC, s.seat ASC`
+	args := []any{sinceUnix}
+	rows, err := sqlDB.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("game seat groups query: %w", err)
+	}
+	defer rows.Close()
+
+	out := []GameSeatGrouped{}
+	var cur *GameSeatGrouped
+	for rows.Next() {
+		var gid, fin int64
+		var deckKey string
+		var won int
+		if err := rows.Scan(&gid, &fin, &deckKey, &won); err != nil {
+			return nil, err
+		}
+		if cur == nil || cur.GameID != gid {
+			if limit > 0 && len(out) >= limit {
+				break
+			}
+			out = append(out, GameSeatGrouped{GameID: gid, FinishedAt: fin})
+			cur = &out[len(out)-1]
+		}
+		cur.Seats = append(cur.Seats, GameSeatGroupedSeat{
+			DeckKey: deckKey,
+			Won:     won == 1,
+		})
+	}
+	return out, rows.Err()
+}
+
 // HeadToHeadGame is one game where both ownerA and ownerB had seats.
 // Same shape regardless of which owner won (the caller compares
 // Winner to SeatA / SeatB to decide). Used by /api/players/compare.
