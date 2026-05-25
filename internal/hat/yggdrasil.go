@@ -6973,6 +6973,12 @@ func (h *YggdrasilHat) ChooseTarget(gs *gameengine.GameState, seatIdx int, filte
 			// either prefer hitting them (we're competitive) or dodge
 			// them and bias toward the runner-up (we're behind).
 			sc += politicsThreatAdjustment(threats, relPos, p.Controller)
+			// R60 round 13+ removal-quality penalties (see
+			// target_priority_signals_r60.go). Indestructible kills the
+			// entire removal spell with a no-op; death-payoff creatures
+			// hand the opp value on death.
+			sc += removalTargetIndestructiblePenalty(p)
+			sc += removalTargetDeathPayoffPenalty(p)
 			candidates = append(candidates, scoredTarget{t, h.applyNoise(sc)})
 		}
 		if len(candidates) > 0 {
