@@ -708,6 +708,23 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		}
 	}
 
+	if len(dp.StrongAgainst) > 0 {
+		fmt.Fprintf(w, "\n  Favored Against (reverse-lookup):\n")
+		for _, a := range dp.StrongAgainst {
+			tag := ""
+			switch a.Source {
+			case "both":
+				tag = " [both directions]"
+			case "reverse":
+				tag = " [from opponent's perspective]"
+			}
+			fmt.Fprintf(w, "    ▲ %s%s — %s\n", a.Archetype, tag, a.Reason)
+			if a.OpponentReason != "" {
+				fmt.Fprintf(w, "        ↳ they say: %s\n", a.OpponentReason)
+			}
+		}
+	}
+
 	if len(dp.SynergyClusters) > 0 {
 		fmt.Fprintf(w, "\n  Synergy Clusters:\n")
 		for _, sc := range dp.SynergyClusters {
@@ -1200,6 +1217,7 @@ type jsonDeckProfile struct {
 	CommanderCMC            int           `json:"commander_cmc,omitempty"`
 	SynergyClusters    []jsonCluster     `json:"synergy_clusters,omitempty"`
 	MetaMatchups       []jsonMatchup     `json:"meta_matchups,omitempty"`
+	StrongAgainst      []jsonStrongAgainst `json:"strong_against,omitempty"`
 	StarCards          []jsonCardQuality `json:"star_cards,omitempty"`
 	CuttableCards      []jsonCardQuality `json:"cuttable_cards,omitempty"`
 	LandSwapSuggestions []string         `json:"land_swap_suggestions,omitempty"`
@@ -1221,6 +1239,13 @@ type jsonMatchup struct {
 	Archetype string `json:"vs_archetype"`
 	Rating    string `json:"rating"`
 	Reason    string `json:"reason"`
+}
+
+type jsonStrongAgainst struct {
+	Archetype      string `json:"vs_archetype"`
+	Reason         string `json:"reason"`
+	OpponentReason string `json:"opponent_reason,omitempty"`
+	Source         string `json:"source"` // "forward" | "reverse" | "both"
 }
 
 type jsonCardQuality struct {
@@ -1411,6 +1436,15 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 			Archetype: m.Archetype, Rating: m.Rating, Reason: m.Reason,
 		})
 	}
+	var strongAgainst []jsonStrongAgainst
+	for _, a := range dp.StrongAgainst {
+		strongAgainst = append(strongAgainst, jsonStrongAgainst{
+			Archetype:      a.Archetype,
+			Reason:         a.Reason,
+			OpponentReason: a.OpponentReason,
+			Source:         a.Source,
+		})
+	}
 	var stars, cuttable []jsonCardQuality
 	for _, c := range dp.StarCards {
 		stars = append(stars, jsonCardQuality{Name: c.Name, Tier: c.Tier, Reason: c.Reason})
@@ -1469,6 +1503,7 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 		CommanderCMC:            dp.CommanderCMC,
 		SynergyClusters:    clusters,
 		MetaMatchups:       matchups,
+		StrongAgainst:      strongAgainst,
 		StarCards:           stars,
 		CuttableCards:       cuttable,
 		LandSwapSuggestions: dp.LandSwapSuggestions,

@@ -84,6 +84,13 @@ type DeckProfile struct {
 	// Meta positioning
 	MetaMatchups []MetaMatchup
 
+	// "Favored against" reverse-lookup — archetypes this deck reliably
+	// beats, combined from both forward (X's own favored matchups) and
+	// reverse (other archetypes that list themselves unfavored vs X)
+	// directions of the matchup DB. See MetaStrongAgainst for details.
+	// Surfaced to the Decks screen as the "good against" summary.
+	StrongAgainst []MetaAdvantage
+
 	// Card quality tiers
 	CuttableCards []CardQuality
 	StarCards     []CardQuality
@@ -115,6 +122,18 @@ type MetaMatchup struct {
 	Archetype string
 	Rating    string // "favored", "neutral", "unfavored"
 	Reason    string
+}
+
+// MetaAdvantage is the per-entry shape of the "favored against" list
+// produced by MetaStrongAgainst. Reason is the headline why-line
+// (forward perspective if available — "X beats Y because Z"); when
+// Source is "both", OpponentReason carries the corroborating reverse
+// perspective ("Y can't answer X because W").
+type MetaAdvantage struct {
+	Archetype      string
+	Reason         string
+	OpponentReason string // populated only when Source == "both"
+	Source         string // "forward" | "reverse" | "both"
 }
 
 type CardQuality struct {

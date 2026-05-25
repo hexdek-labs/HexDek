@@ -1205,32 +1205,172 @@ var metaMatchupDB = map[string][]matchupEntry{
 	},
 }
 
-func computeMetaPositioning(dp *DeckProfile) {
-	arch := strings.ToLower(dp.PrimaryArchetype)
-
-	// Normalize some archetype names to match the DB
+// canonicaliseMetaArchetypeKey maps a free-form archetype string (the
+// classifier's output, e.g. "Go Wide Tokens" / "Infinite Combo") to the
+// lowercase key used by metaMatchupDB. Shared by computeMetaPositioning
+// (forward lookup) and MetaStrongAgainst (reverse lookup) so the two
+// stay in lockstep — a new alias added here lights up both directions.
+func canonicaliseMetaArchetypeKey(archetype string) string {
+	arch := strings.ToLower(archetype)
 	switch {
-	case containsAny(arch, "aggro", "go wide", "tribal", "extra combats"):
-		arch = "aggro"
+	case containsAny(arch, "aggro", "go wide", "token", "tribal", "extra combats"):
+		return "aggro"
 	case containsAny(arch, "combo", "infinite"):
-		arch = "combo"
+		return "combo"
 	case containsAny(arch, "stax"):
-		arch = "stax"
+		return "stax"
 	case containsAny(arch, "aristocrats"):
-		arch = "aristocrats"
+		return "aristocrats"
 	case containsAny(arch, "voltron"):
-		arch = "voltron"
+		return "voltron"
 	case containsAny(arch, "reanimator"):
-		arch = "reanimator"
+		return "reanimator"
 	case containsAny(arch, "storm", "spellslinger"):
-		arch = "storm"
+		return "storm"
 	case containsAny(arch, "enchantress"):
-		arch = "enchantress"
+		return "enchantress"
 	case containsAny(arch, "control", "mill", "discard"):
-		arch = "control"
+		return "control"
 	default:
-		arch = "midrange"
+		return "midrange"
 	}
+}
+
+// archetypeKeyToLabels returns the human-facing labels that appear as
+// vsArchetype values in metaMatchupDB and resolve back to the given
+// canonical key. Used by MetaStrongAgainst to do reverse-direction
+// matching — e.g. "aggro" matches both "Aggro" and "Token/Go Wide" so
+// a Tokens deck picks up Voltron's "Token/Go Wide: unfavored" entry.
+func archetypeKeyToLabels(key string) []string {
+	switch key {
+	case "aggro":
+		return []string{"Aggro", "Token/Go Wide"}
+	case "combo":
+		return []string{"Combo"}
+	case "control":
+		return []string{"Control"}
+	case "aristocrats":
+		return []string{"Aristocrats"}
+	case "voltron":
+		return []string{"Voltron"}
+	case "stax":
+		return []string{"Stax"}
+	case "reanimator":
+		return []string{"Reanimator"}
+	case "storm":
+		return []string{"Storm"}
+	case "enchantress":
+		return []string{"Enchantress"}
+	case "midrange":
+		return []string{"Midrange"}
+	}
+	return nil
+}
+
+// MetaStrongAgainst answers "which archetypes does X reliably beat?"
+// by combining BOTH directions of the matchup DB:
+//
+//   - Forward: entries in metaMatchupDB[X] with rating=favored — X's
+//     own claim that it beats Y.
+//   - Reverse: entries elsewhere in the DB where vsArchetype resolves
+//     to X (via archetypeKeyToLabels) and rating=unfavored — Y's own
+//     claim that it loses to X.
+//
+// The reciprocity invariant (TestMetaMatchups_ReciprocityInvariant)
+// guarantees the two directions mostly agree, but the reverse pass
+// adds two distinct values: (1) it surfaces matchups against meta-call
+// labels that aren't DB keys (Voltron's "Token/Go Wide: unfavored" is
+// invisible to a forward-only Tokens lookup); (2) the reverse reason
+// reads from the opponent's perspective ("Y can't tutor its enabler
+// against X") which complements the forward reason ("X denies Y's
+// cast lines") on the same matchup.
+//
+// Output is sorted: matchups corroborated by BOTH directions first,
+// then forward-only, then reverse-only — each tier sorted by archetype
+// name for stability. The Decks screen consumes this as the
+// "favored against" line under a deck profile.
+func MetaStrongAgainst(archetype string) []MetaAdvantage {
+	key := canonicaliseMetaArchetypeKey(archetype)
+	selfLabels := map[string]bool{}
+	for _, lbl := range archetypeKeyToLabels(key) {
+		selfLabels[lbl] = true
+	}
+
+	// Forward pass: X's own favored entries.
+	out := []MetaAdvantage{}
+	idx := map[string]int{}
+	for _, m := range metaMatchupDB[key] {
+		if m.rating != "favored" {
+			continue
+		}
+		idx[m.vsArchetype] = len(out)
+		out = append(out, MetaAdvantage{
+			Archetype: m.vsArchetype,
+			Reason:    m.reason,
+			Source:    "forward",
+		})
+	}
+
+	// Reverse pass: other archetypes' unfavored-vs-X entries. The
+	// `inverseLabels` step is the key trick — Tokens' "aggro" key
+	// matches both "Aggro" and "Token/Go Wide" as opponent-side labels.
+	for otherKey, matchups := range metaMatchupDB {
+		if otherKey == key {
+			continue
+		}
+		otherLabels := archetypeKeyToLabels(otherKey)
+		if len(otherLabels) == 0 {
+			continue
+		}
+		otherLabel := otherLabels[0] // the canonical display label
+		for _, m := range matchups {
+			if m.rating != "unfavored" {
+				continue
+			}
+			if !selfLabels[m.vsArchetype] {
+				continue
+			}
+			if i, ok := idx[otherLabel]; ok {
+				// Already on the list from forward direction —
+				// upgrade to "both" and attach the opponent's reason.
+				if out[i].OpponentReason == "" {
+					out[i].OpponentReason = m.reason
+					out[i].Source = "both"
+				}
+				continue
+			}
+			idx[otherLabel] = len(out)
+			out = append(out, MetaAdvantage{
+				Archetype: otherLabel,
+				Reason:    m.reason,
+				Source:    "reverse",
+			})
+			break // one entry per other-archetype is enough
+		}
+	}
+
+	sort.SliceStable(out, func(i, j int) bool {
+		rank := func(src string) int {
+			switch src {
+			case "both":
+				return 0
+			case "forward":
+				return 1
+			case "reverse":
+				return 2
+			}
+			return 3
+		}
+		if ri, rj := rank(out[i].Source), rank(out[j].Source); ri != rj {
+			return ri < rj
+		}
+		return out[i].Archetype < out[j].Archetype
+	})
+	return out
+}
+
+func computeMetaPositioning(dp *DeckProfile) {
+	arch := canonicaliseMetaArchetypeKey(dp.PrimaryArchetype)
 
 	matchups, ok := metaMatchupDB[arch]
 	if !ok {
@@ -1244,6 +1384,8 @@ func computeMetaPositioning(dp *DeckProfile) {
 			Reason:    m.reason,
 		})
 	}
+
+	dp.StrongAgainst = MetaStrongAgainst(dp.PrimaryArchetype)
 }
 
 // ---------------------------------------------------------------------------
