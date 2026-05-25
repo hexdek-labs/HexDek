@@ -165,31 +165,43 @@ func safeJSON(v interface{}) (template.JS, error) {
 	return template.JS(b), nil
 }
 
-// writeHTMLReport renders the embedded coverage.html.tmpl into path
-// with the given result set as the payload. The HTML is fully
-// self-contained (no external CSS/JS/font requests) so it works
-// offline and over file://. Browsers open the file directly; no
-// server needed.
-func writeHTMLReport(path string, results []result, includeOK bool, now time.Time) error {
+// renderHTMLReport renders the embedded coverage.html.tmpl against
+// the given result set and returns the page as a byte slice. The
+// HTML is fully self-contained (no external CSS/JS/font requests)
+// so it works offline, over file://, and through the in-memory
+// --serve handler.
+//
+// Pull this out of writeHTMLReport so the --serve path can hold the
+// bytes in memory without round-tripping through disk.
+func renderHTMLReport(results []result, includeOK bool, now time.Time) ([]byte, error) {
 	payload := resultsToHTMLPayload(results, includeOK, now)
 	dataJS, err := safeJSON(payload)
 	if err != nil {
-		return fmt.Errorf("marshal payload: %w", err)
+		return nil, fmt.Errorf("marshal payload: %w", err)
 	}
 	tpl, err := template.New("coverage").Parse(htmlTemplate)
 	if err != nil {
-		return fmt.Errorf("parse template: %w", err)
+		return nil, fmt.Errorf("parse template: %w", err)
 	}
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	return tpl.Execute(f, struct {
+	var buf bytes.Buffer
+	if err := tpl.Execute(&buf, struct {
 		GeneratedAt string
 		DataJSON    template.JS
 	}{
 		GeneratedAt: payload.GeneratedAt,
 		DataJSON:    dataJS,
-	})
+	}); err != nil {
+		return nil, fmt.Errorf("execute template: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+// writeHTMLReport renders the report and writes it to path. Thin
+// wrapper around renderHTMLReport for the on-disk export flow.
+func writeHTMLReport(path string, results []result, includeOK bool, now time.Time) error {
+	b, err := renderHTMLReport(results, includeOK, now)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, b, 0o644)
 }

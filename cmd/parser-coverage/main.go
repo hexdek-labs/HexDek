@@ -19,14 +19,17 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"math/rand"
 	"os"
+	"os/signal"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/hexdek/hexdek/internal/astload"
@@ -97,6 +100,8 @@ func main() {
 	bySetTopN := flag.Int("by-set-top", 0, "limit the --by-set report to the top N sets by uncovered count (0 = include every set)")
 	htmlPath := flag.String("html", "", "optional path to write a self-contained interactive HTML report for browsing uncovered cards by set/era/type")
 	htmlIncludeOK := flag.Bool("html-include-ok", false, "include OK and OK_VANILLA cards in the HTML table (default: uncovered only)")
+	serve := flag.Bool("serve", false, "after rendering, serve the interactive HTML report on a local HTTP port (blocks until Ctrl-C)")
+	serveAddr := flag.String("serve-addr", defaultServeAddr, "bind address for --serve (default loopback-only; use ':8765' to bind all interfaces)")
 	flag.Parse()
 
 	log.Printf("loading AST corpus from %s ...", *astPath)
@@ -159,6 +164,30 @@ func main() {
 			log.Fatalf("writeHTMLReport: %v", err)
 		}
 		log.Printf("wrote %s (interactive html, include_ok=%v)", *htmlPath, *htmlIncludeOK)
+	}
+
+	if *serve {
+		html, err := renderHTMLReport(results, *htmlIncludeOK, time.Now())
+		if err != nil {
+			log.Fatalf("renderHTMLReport: %v", err)
+		}
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		sigCh := make(chan os.Signal, 1)
+		signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+		go func() {
+			<-sigCh
+			log.Printf("shutdown signal received, draining...")
+			cancel()
+		}()
+		err = serveHTML(ctx, *serveAddr, html, func(actual string) {
+			log.Printf("serving interactive coverage report at http://%s/", resolveAddrForBrowser(actual))
+			log.Printf("press Ctrl-C to stop")
+		})
+		if err != nil {
+			log.Fatalf("serveHTML: %v", err)
+		}
+		log.Printf("server stopped")
 	}
 
 	if strings.TrimSpace(*bySetPath) != "" {
