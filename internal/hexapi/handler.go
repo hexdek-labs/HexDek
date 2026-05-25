@@ -51,6 +51,16 @@ type Handler struct {
 	// default (10-burst, 1 per 30s refill) at startup.
 	DeckImportLimiter *RateLimiter
 
+	// CSRFStore mints and verifies stateless CSRF tokens. When non-nil
+	// the destructive endpoints (DELETE deck, POST clone) require a
+	// valid X-CSRF-Token header sourced from GET /api/csrf. When nil
+	// the wrapper is a pass-through — preserves backwards compatibility
+	// with binaries that haven't constructed the store yet, and lets
+	// cmd/hexdek-server gate enforcement on HEXDEK_CSRF_ENFORCE so the
+	// existing React SPA keeps working until it's updated to issue +
+	// echo the token.
+	CSRFStore *CSRFStore
+
 	deckSubsMu sync.RWMutex
 	deckSubs   map[string]map[chan deckEvent]struct{}
 
@@ -157,7 +167,10 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/decks/{owner}/{id}", h.handleGetDeck)
 	mux.HandleFunc("PUT /api/decks/{owner}/{id}", h.handleUpdateDeck)
 	mux.HandleFunc("PATCH /api/decks/{owner}/{id}", h.handlePatchDeck)
-	mux.HandleFunc("DELETE /api/decks/{owner}/{id}", h.handleDeleteDeck)
+	// CSRF-gated when h.CSRFStore != nil; pass-through otherwise. Both
+	// endpoints below are destructive / state-creating with no second
+	// chance, so they're the natural first wave for token enforcement.
+	mux.HandleFunc("DELETE /api/decks/{owner}/{id}", RequireCSRF(h.CSRFStore, h.handleDeleteDeck))
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/versions", h.handleListVersions)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/version-trends", h.handleDeckVersionTrends)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/analysis", h.handleGetAnalysis)
@@ -165,7 +178,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/elo-history", h.handleDeckEloHistory)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/upgrade", h.handleDeckUpgrade)
 	mux.HandleFunc("POST /api/decks/{owner}/{id}/analyze", h.handleRunAnalysis)
-	mux.HandleFunc("POST /api/decks/{owner}/{id}/clone", h.handleCloneDeck)
+	mux.HandleFunc("POST /api/decks/{owner}/{id}/clone", RequireCSRF(h.CSRFStore, h.handleCloneDeck))
 	// SPA share page with OG meta injection — Caddy can route /decks/{owner}/{id}
 	// here for crawler User-Agents (or unconditionally) so Discord/Twitter unfurls
 	// pick up per-deck previews.
@@ -212,6 +225,11 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/games/{id}/summary.pdf", h.handleGameSummaryPDF)
 	mux.HandleFunc("GET /api/games/summaries", h.handleGameSummaryArchive)
 	mux.HandleFunc("GET /api/games/compare", h.handleGameCompare)
+	// CSRF token issuance — always registered. Returns 503 when the
+	// store is nil so clients can detect that the server isn't
+	// participating in token-based CSRF and fall back to the existing
+	// custom-header-only protection.
+	mux.HandleFunc("GET /api/csrf", HandleIssueCSRF(h.CSRFStore))
 }
 
 type DeckSummary struct {

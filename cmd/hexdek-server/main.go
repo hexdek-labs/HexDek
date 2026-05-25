@@ -151,6 +151,34 @@ func main() {
 		// Freya subprocess queue.
 		DeckImportLimiter: hexapi.NewRateLimiter(10, 1.0/30.0),
 	}
+	// r60: stateless CSRF tokens for destructive endpoints (DELETE
+	// /api/decks/{owner}/{id} + POST /api/decks/{owner}/{id}/clone).
+	// Wiring is opt-in via HEXDEK_CSRF_ENFORCE=1 so the existing React
+	// SPA keeps working until it's been updated to call GET /api/csrf
+	// and echo the token in X-CSRF-Token. When unset (default):
+	//   - CSRFStore is nil
+	//   - GET /api/csrf returns 503 (clear signal that the server
+	//     isn't participating in tokens yet)
+	//   - RequireCSRF wrappers on DELETE/clone pass through unchanged
+	// When HEXDEK_CSRF_ENFORCE=1: both issuance and enforcement go live.
+	// Secret source: HEXDEK_CSRF_SECRET env (preferred for multi-replica
+	// deployments where tokens must survive a single node's restart);
+	// falls back to per-boot random bytes.
+	if os.Getenv("HEXDEK_CSRF_ENFORCE") == "1" {
+		csrfSecret := []byte(os.Getenv("HEXDEK_CSRF_SECRET"))
+		if len(csrfSecret) == 0 {
+			var err error
+			csrfSecret, err = hexapi.RandomCSRFSecret()
+			if err != nil {
+				log.Fatalf("csrf: random secret: %v", err)
+			}
+			log.Printf("csrf: HEXDEK_CSRF_SECRET unset, using per-boot random secret (tokens won't survive restart)")
+		}
+		hexAPI.CSRFStore = hexapi.NewCSRFStore(csrfSecret, 0) // default 1-hour TTL
+		log.Printf("csrf: enforcement ENABLED on DELETE + clone endpoints")
+	} else {
+		log.Printf("csrf: disabled (set HEXDEK_CSRF_ENFORCE=1 to enable token issuance + enforcement)")
+	}
 	hexAPI.SetDB(database)
 	if err := hexapi.EnsureDeckMetaSchema(context.Background(), database); err != nil {
 		log.Fatalf("deck_meta schema: %v", err)
