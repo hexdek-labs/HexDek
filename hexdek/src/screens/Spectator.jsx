@@ -1151,14 +1151,29 @@ export default function Spectator() {
                 {elo.length === 0 ? (
                   <div className="t-xs muted">NO ELO DATA YET</div>
                 ) : (
-                  elo.slice(0, 10).map((r) => (
-                    <div key={r.deck_id || r.commander} style={{ marginBottom: 8, cursor: 'pointer' }} onClick={() => {
+                  elo.slice(0, 10).map((r) => {
+                    const goToDeck = () => {
                       if (r.owner && r.deck_id) {
                         navigate(`/decks/${r.owner}/${r.deck_id}`)
                       } else {
                         navigate(`/decks?q=${encodeURIComponent(r.commander)}`)
                       }
-                    }}>
+                    }
+                    return (
+                    <div
+                      key={r.deck_id || r.commander}
+                      className="elo-row"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Open deck ${r.commander || r.deck_id}`}
+                      onClick={goToDeck}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          goToDeck()
+                        }
+                      }}
+                    >
                       <div className="flex justify-between">
                         <span className="t-xs" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160, textDecoration: 'underline', textDecorationColor: 'var(--rule-2)' }}>
                           {r.commander?.toUpperCase() || r.deck_id?.toUpperCase()}
@@ -1174,7 +1189,8 @@ export default function Spectator() {
                         <Bar value={Math.max(0, ((r.hex_rating || r.rating || 1500) - 1300) / 4)} />
                       </div>
                     </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </Panel>
