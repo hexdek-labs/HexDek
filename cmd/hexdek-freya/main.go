@@ -61,6 +61,7 @@ func main() {
 	var spellbookCache string
 	var spellbookFetchURL string
 	var clustersOut string
+	var powerAggregateOut string
 
 	flag.StringVar(&deckPath, "deck", "", "path to decklist file")
 	flag.StringVar(&deckDir, "all-decks", "", "analyze all decks in directory")
@@ -71,6 +72,8 @@ func main() {
 		"URL to download Spellbook JSON into --spellbook cache before analysis (e.g. "+DefaultSpellbookURL+")")
 	flag.StringVar(&clustersOut, "clusters-out", "",
 		"single-deck only: write the structured synergy-cluster export (full membership + per-card roles + score breakdown) as JSON to this path. Designed for downstream deck-builder integrations.")
+	flag.StringVar(&powerAggregateOut, "power-aggregate-out", "",
+		"--all-decks only: write the S/A/B/C/D power-tier distribution rollup (overall mix, per-bracket and per-archetype breakdown, 5-point score histogram) as JSON to this path. Designed for calibrating PowerTierFor thresholds against a real-world corpus.")
 	flag.Parse()
 
 	if spellbookFetchURL != "" {
@@ -172,6 +175,23 @@ func main() {
 			enc.Encode(reports)
 		} else {
 			PrintAllDecksSummary(os.Stdout, reports)
+		}
+
+		if powerAggregateOut != "" {
+			agg := ComputePowerTierAggregate(reports)
+			f, err := os.Create(powerAggregateOut)
+			if err != nil {
+				log.Fatalf("create power-aggregate-out: %v", err)
+			}
+			enc := json.NewEncoder(f)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(agg); err != nil {
+				f.Close()
+				log.Fatalf("encode power aggregate: %v", err)
+			}
+			f.Close()
+			log.Printf("wrote power-tier aggregate → %s (%d decks / %d cards)",
+				powerAggregateOut, agg.DeckCount, agg.TotalCards)
 		}
 	}
 }

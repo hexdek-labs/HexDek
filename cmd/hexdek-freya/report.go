@@ -1883,4 +1883,8 @@ func PrintAllDecksSummary(w io.Writer, reports []*FreyaReport) {
 	fmt.Fprintf(w, "%-40s %5s %5d %5d %5d %5d\n",
 		"TOTALS", "", totalInf, totalDet, totalFin, totalSyn)
 	fmt.Fprintf(w, "\n")
+
+	// Power-tier rollup — useful for calibrating the S/A/B/C/D
+	// thresholds against a real-world corpus. See power_aggregate.go.
+	PrintPowerTierAggregate(w, ComputePowerTierAggregate(reports))
 }
