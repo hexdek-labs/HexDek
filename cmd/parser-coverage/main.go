@@ -27,6 +27,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/hexdek/hexdek/internal/astload"
 )
@@ -87,6 +88,8 @@ func main() {
 	actionListOut := flag.String("action-list-out", "", "optional path to write the action-list markdown (defaults to stdout)")
 	csvExport := flag.String("csv-export", "", "optional path to write a per-card CSV export for spreadsheet analysis; runs additively alongside the markdown report")
 	csvIncludeOK := flag.Bool("csv-include-ok", false, "include OK and OK_VANILLA rows in the CSV export (default: uncovered only)")
+	historyPath := flag.String("history", "", "optional JSONL file to append this run's stats to; if file exists, prints a delta-vs-previous summary")
+	historyLabel := flag.String("history-label", "", "optional label for this history entry (e.g., 'r60', '2026-05-24'); shown in future delta summaries")
 	flag.Parse()
 
 	log.Printf("loading AST corpus from %s ...", *astPath)
@@ -142,6 +145,24 @@ func main() {
 			log.Fatalf("writeCSV: %v", err)
 		}
 		log.Printf("wrote %s (csv export, include_ok=%v)", *csvExport, *csvIncludeOK)
+	}
+
+	if strings.TrimSpace(*historyPath) != "" {
+		entry := resultsToHistoryEntry(results, len(entries), corpus.Count(), len(corpus.ParseWarnings), *historyLabel, time.Now())
+		prev, err := readHistory(*historyPath)
+		if err != nil {
+			log.Fatalf("readHistory: %v", err)
+		}
+		if len(prev) > 0 {
+			delta := computeDelta(prev[len(prev)-1], entry)
+			fmt.Fprint(os.Stderr, renderHistoryDelta(delta))
+		} else {
+			log.Printf("history: no previous entries in %s — recording baseline", *historyPath)
+		}
+		if err := appendHistory(*historyPath, entry); err != nil {
+			log.Fatalf("appendHistory: %v", err)
+		}
+		log.Printf("appended history entry to %s (label=%q)", *historyPath, *historyLabel)
 	}
 }
 
