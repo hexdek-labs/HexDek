@@ -123,6 +123,24 @@ type YggdrasilHat struct {
 	// (from reveal effects). These are zero-entropy slots.
 	opponentKnownCards []map[string]bool
 
+	// -- 3rd Eye: Bluff detection (R60 round 5) --
+	//
+	// opponentLoadedSilentTurns counts consecutive turns where an
+	// opponent's perceived interaction probability was >= 0.4 but they
+	// did NOT cast any interactive spell that turn. High values
+	// indicate they're more likely bluffing (or genuinely empty) — the
+	// hat dampens `opponentHasInteraction` by a factor derived from
+	// this count via `perceivedInteractionThreat`. Capped at
+	// bluffMaxStreak so a single counter cast meaningfully resets the
+	// signal.
+	opponentLoadedSilentTurns []int
+
+	// opponentFiredInteractionThisRound is a per-opponent bool that
+	// flips true when we observe them casting an interactive spell
+	// (counter / targeted removal / instant-speed answer); reset on
+	// each upkeep where we evaluate the bluff signal.
+	opponentFiredInteractionThisRound []bool
+
 	// Pre-computed lookup sets for O(1) card relevance checks.
 	comboPieceSet    map[string]bool
 	valueEngineSet   map[string]bool
@@ -7954,6 +7972,8 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 		h.opponentHandEntropy = make([]float64, h.seatCount)
 		h.opponentHeldMana = make([]int, h.seatCount)
 		h.opponentTutored = make([]bool, h.seatCount)
+		h.opponentLoadedSilentTurns = make([]int, h.seatCount)
+		h.opponentFiredInteractionThisRound = make([]bool, h.seatCount)
 		h.opponentKnownCards = make([]map[string]bool, h.seatCount)
 		h.linkedExilesByOpponent = make([]int, h.seatCount)
 		h.myZoneCastGrants = make(map[string]int)
@@ -7997,6 +8017,12 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 			}
 			if i < len(h.opponentTutored) {
 				h.opponentTutored[i] = false
+			}
+			if i < len(h.opponentLoadedSilentTurns) {
+				h.opponentLoadedSilentTurns[i] = 0
+			}
+			if i < len(h.opponentFiredInteractionThisRound) {
+				h.opponentFiredInteractionThisRound[i] = false
 			}
 			if i < len(h.opponentKnownCards) {
 				h.opponentKnownCards[i] = make(map[string]bool)
@@ -8146,6 +8172,18 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 		if event.Seat < len(h.opponentHeldMana) {
 			h.opponentHeldMana[event.Seat] = 0
 		}
+		// R60 round 5 — bluff signal. If this cast IS an interactive
+		// spell, the opponent demonstrably has interaction (no bluff)
+		// and we reset their loaded-silent streak. The flag is sticky
+		// across the round until the next upkeep evaluation.
+		if isInteractionSpellName(event.Source) {
+			if event.Seat < len(h.opponentFiredInteractionThisRound) {
+				h.opponentFiredInteractionThisRound[event.Seat] = true
+			}
+			if event.Seat < len(h.opponentLoadedSilentTurns) {
+				h.opponentLoadedSilentTurns[event.Seat] = 0
+			}
+		}
 	}
 
 	// -- Zone-cast grant lifecycle --
@@ -8252,6 +8290,24 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 				h.opponentHeldMana[i]++
 			} else {
 				h.opponentHeldMana[i] = 0
+			}
+
+			// R60 round 5 — bluff signal tally. If this opponent looked
+			// loaded at the start of the previous round but did NOT
+			// cast any interaction during it, their loaded-silent
+			// streak grows. The streak is what `perceivedInteractionThreat`
+			// uses to dampen the raw `opponentHasInteraction` probability.
+			if i < len(h.opponentLoadedSilentTurns) && i < len(h.opponentFiredInteractionThisRound) {
+				if !h.opponentFiredInteractionThisRound[i] {
+					currentProb := h.opponentHasInteraction(gs, i)
+					if currentProb >= bluffLoadedThreshold {
+						if h.opponentLoadedSilentTurns[i] < bluffMaxStreak {
+							h.opponentLoadedSilentTurns[i]++
+						}
+					}
+				}
+				// Reset the per-round flag for the upcoming round.
+				h.opponentFiredInteractionThisRound[i] = false
 			}
 		}
 	}
@@ -8411,6 +8467,91 @@ func (h *YggdrasilHat) AvailableZoneCastGrants(gs *gameengine.GameState, seatIdx
 	return out
 }
 
+// -- R60 round 5: Bluff detection constants --
+//
+// bluffLoadedThreshold is the perceived-interaction probability above
+// which an opponent is considered "loaded" for the purposes of bluff
+// tracking. A turn where they're loaded and don't fire any interactive
+// spell adds one to their loaded-silent streak.
+//
+// bluffMaxStreak caps the streak counter so a long game doesn't drive
+// the dampening factor past a sensible floor; with bluffStepPerTurn at
+// 0.15 and the 0.4 floor, max=4 hits the floor exactly. Past the cap a
+// single interaction cast still resets cleanly to 0.
+//
+// bluffStepPerTurn is the per-streak-tick reduction in the bluff
+// factor returned by `perceivedInteractionThreat`.
+//
+// bluffFloor is the lowest multiplier the bluff factor can reach.
+// Even at maximum bluffing, an opponent might still be holding the
+// LAST interaction spell — we never fully discount.
+const (
+	bluffLoadedThreshold = 0.4
+	bluffMaxStreak       = 4
+	bluffStepPerTurn     = 0.15
+	bluffFloor           = 0.4
+)
+
+// isInteractionSpellName returns true if a card-name string matches
+// any of the known interactive patterns (counters / targeted removal /
+// instant-speed answers). Mirrors the keyword check in
+// `opponentHasInteraction`'s reveal scan so the "spell fired" reset
+// uses the same definition of "interaction" as the "spell suspected"
+// detection. Case-insensitive substring match.
+func isInteractionSpellName(name string) bool {
+	if name == "" {
+		return false
+	}
+	n := strings.ToLower(name)
+	return strings.Contains(n, "counter") ||
+		strings.Contains(n, "negate") ||
+		strings.Contains(n, "swan song") ||
+		strings.Contains(n, "force of") ||
+		strings.Contains(n, "pact of negation") ||
+		strings.Contains(n, "swords to plowshares") ||
+		strings.Contains(n, "path to exile") ||
+		strings.Contains(n, "fatal push") ||
+		strings.Contains(n, "go for the throat") ||
+		strings.Contains(n, "doom blade") ||
+		strings.Contains(n, "dispel") ||
+		strings.Contains(n, "mana drain") ||
+		strings.Contains(n, "mana leak") ||
+		strings.Contains(n, "spell pierce")
+}
+
+// bluffFactor returns the [bluffFloor, 1.0] dampening multiplier the
+// bluff signal applies to an opponent's perceived interaction
+// probability. 1.0 = no bluff suspected (recent interaction observed
+// or never looked loaded). Lower values = stronger suspicion they're
+// running on empty.
+func (h *YggdrasilHat) bluffFactor(oppSeat int) float64 {
+	if oppSeat < 0 || oppSeat >= len(h.opponentLoadedSilentTurns) {
+		return 1.0
+	}
+	streak := h.opponentLoadedSilentTurns[oppSeat]
+	if streak <= 0 {
+		return 1.0
+	}
+	factor := 1.0 - float64(streak)*bluffStepPerTurn
+	if factor < bluffFloor {
+		factor = bluffFloor
+	}
+	return factor
+}
+
+// perceivedInteractionThreat is the public "use this instead of
+// opponentHasInteraction when bluff context matters" surface. It
+// returns `opponentHasInteraction * bluffFactor` — the raw signal
+// dampened by how long the opponent has been holding mana open with
+// nothing to show for it. When deciding whether to walk into a
+// suspected counter, callers should prefer this over the raw
+// probability so a four-turn "I'm holding Counterspell" routine
+// stops paralyzing the hat.
+func (h *YggdrasilHat) perceivedInteractionThreat(gs *gameengine.GameState, oppSeat int) float64 {
+	raw := h.opponentHasInteraction(gs, oppSeat)
+	return raw * h.bluffFactor(oppSeat)
+}
+
 // opponentHasInteraction estimates whether an opponent seat is likely
 // holding instant-speed interaction based on: open mana, known colors
 // (blue/black = counters/removal), hand size, and entropy signals.
@@ -8478,13 +8619,19 @@ func (h *YggdrasilHat) opponentHasInteraction(gs *gameengine.GameState, oppSeat 
 
 // tableInteractionRisk returns the maximum interaction probability across
 // all opponents, used to decide whether to walk into countermagic.
+//
+// R60 round 5 — switched from `opponentHasInteraction` to
+// `perceivedInteractionThreat` so the table-wide risk reflects the
+// bluff signal. An opponent who has been "holding Counterspell" for
+// 4+ turns without firing gets dampened by up to 60%, so the hat
+// stops paralyzing on a stale threat signal.
 func (h *YggdrasilHat) tableInteractionRisk(gs *gameengine.GameState, seatIdx int) float64 {
 	maxRisk := 0.0
 	for i := range gs.Seats {
 		if i == seatIdx {
 			continue
 		}
-		risk := h.opponentHasInteraction(gs, i)
+		risk := h.perceivedInteractionThreat(gs, i)
 		if risk > maxRisk {
 			maxRisk = risk
 		}
