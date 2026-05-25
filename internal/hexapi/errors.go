@@ -35,3 +35,32 @@ func writeError(w http.ResponseWriter, status int, message string) {
 		log.Printf("hexapi writeError encode: %v", err)
 	}
 }
+
+// writeErrorWithDetails is the extended form of writeError for
+// handlers that need to ship additional structured fields alongside
+// the unified envelope — e.g. the gauntlet credits gate has to surface
+// the user's current balance and required credit count so the
+// frontend can render an actionable "earn or wait" prompt.
+//
+// The emitted body always carries the unified `error` + `status`
+// fields; any key in `details` is merged in. If `details` reuses the
+// `error` or `status` keys they are silently dropped — the unified
+// contract wins, so existing decoders that bind ErrorResponse stay
+// compatible. Headers match writeError exactly.
+func writeErrorWithDetails(w http.ResponseWriter, status int, message string, details map[string]any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(status)
+	body := make(map[string]any, len(details)+2)
+	for k, v := range details {
+		if k == "error" || k == "status" {
+			continue
+		}
+		body[k] = v
+	}
+	body["error"] = message
+	body["status"] = status
+	if err := json.NewEncoder(w).Encode(body); err != nil {
+		log.Printf("hexapi writeErrorWithDetails encode: %v", err)
+	}
+}

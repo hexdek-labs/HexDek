@@ -2817,10 +2817,7 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 			if _, err := sm.credits.Spend(r.Context(), caller,
 				credits.CreditsPerGauntlet, credits.ReasonGauntletRun, deckKey); err != nil {
 				if err == credits.ErrInsufficientCredits {
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusPaymentRequired)
-					_ = json.NewEncoder(w).Encode(map[string]any{
-						"error":   "insufficient_credits",
+					writeErrorWithDetails(w, http.StatusPaymentRequired, "insufficient_credits", map[string]any{
 						"balance": quota.Balance,
 						"needed":  credits.CreditsPerGauntlet,
 						"quota":   quota,
@@ -2836,10 +2833,7 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 			// Out of free runs and short on credits — surface the
 			// quota state so the frontend can render an actionable
 			// "earn or wait" message.
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusPaymentRequired)
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"error":   "free_quota_exhausted",
+			writeErrorWithDetails(w, http.StatusPaymentRequired, "free_quota_exhausted", map[string]any{
 				"balance": quota.Balance,
 				"needed":  credits.CreditsPerGauntlet,
 				"quota":   quota,
