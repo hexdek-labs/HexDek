@@ -159,6 +159,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /api/decks/{owner}/{id}", h.handlePatchDeck)
 	mux.HandleFunc("DELETE /api/decks/{owner}/{id}", h.handleDeleteDeck)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/versions", h.handleListVersions)
+	mux.HandleFunc("GET /api/decks/{owner}/{id}/version-trends", h.handleDeckVersionTrends)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/analysis", h.handleGetAnalysis)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/matchups", h.handleDeckMatchups)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/elo-history", h.handleDeckEloHistory)
