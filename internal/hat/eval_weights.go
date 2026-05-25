@@ -511,24 +511,53 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeCountersMatter: {
-		BoardPresence:          1.2,
-		CardAdvantage:          0.7,
-		ManaAdvantage:          0.6,
+		// R60 audit retune (PR #?). Pre-fix the profile looked like
+		// "midrange + BoardPresence nudge" — it failed to encode the
+		// three things Counters Matter actually IS:
+		//   - BoardPresence is both the engine AND the wincon. Each
+		//     creature with +1/+1 counters compounds non-linearly via
+		//     doublers (Hardened Scales, Branching Evolution, Doubling
+		//     Season) and proliferate. A board of 4 creatures with one
+		//     counter each becomes a board of 4 creatures with five
+		//     counters after one Inexorable Tide trigger plus a couple
+		//     of proliferate activations.
+		//   - CommanderProgress: Atraxa, Ezuri Claw of Progress,
+		//     Pir+Toothy, Hapatra, Skullbriar, Marchesa, Vorel,
+		//     Animar, Ghave — the commanders that ANCHOR this archetype
+		//     ARE the counter payoff. Casting them isn't a "play your
+		//     commander when convenient" decision, it's the gameplan.
+		//   - ComboProximity: infect (10 poison via Skithiryx /
+		//     Phyrexian Crusader / Triumph of the Hordes) and the
+		//     +1/+1 finishers (Walking Ballista, Hangarback Walker,
+		//     Kalonian Hydra + Doubling Season for one-shot lethal,
+		//     Animar storm) are real win lines, not noise. 0.5 hid
+		//     them behind the value-engine framing.
+		// Secondary lifts: ArtifactSynergy (Modular, Walking Ballista,
+		// Arcbound, Hangarback) and EnchantmentSynergy (Hardened Scales,
+		// Doubling Season, Inexorable Tide, Branching Evolution) are
+		// signature support packages — 0.3 ranked them below random
+		// generic-synergy noise. ActivationTempo (Ezuri overrun, Wand
+		// of Orcus, repeated proliferate activations) and
+		// PlaneswalkerProgress (Atraxa decks abuse pw loyalty counters
+		// via proliferate) both deserve the bump.
+		BoardPresence:          1.6, // was 1.2 — engine + wincon, compounds non-linearly
+		CardAdvantage:          0.9, // was 0.7 — proliferate grinds (Inexorable Tide)
+		ManaAdvantage:          0.7, // was 0.6
 		LifeResource:           0.6,
-		ComboProximity:         0.5,
+		ComboProximity:         1.3, // was 0.5 — infect / Walking Ballista / Hydra+DS
 		ThreatExposure:         0.7,
-		CommanderProgress:      0.9,
-		GraveyardValue:         0.3,
+		CommanderProgress:      1.4, // was 0.9 — Atraxa/Ezuri/Pir+Toothy ARE the payoff
+		GraveyardValue:         0.4, // was 0.3 — persist/undying flips counter type
 		DrainEngine:            0.2,
-		ArtifactSynergy:        0.3,
-		EnchantmentSynergy:     0.3,
+		ArtifactSynergy:        0.5, // was 0.3 — Modular / Walking Ballista / Hangarback
+		EnchantmentSynergy:     0.5, // was 0.3 — Hardened Scales / Doubling Season
 		OpponentGraveyardThreat: 0.4,
 		PartnerSynergy:         0.4,
-		ActivationTempo:        0.5,
-		ToolboxBreadth:         0.3,
-		ThreatTrajectory:       0.5,
+		ActivationTempo:        0.8, // was 0.5 — Ezuri activation, proliferate cycles
+		ToolboxBreadth:         0.4, // was 0.3
+		ThreatTrajectory:       0.6, // was 0.5 — proliferate lethals accelerate non-linearly
 		StackInteraction:       0.4,
-		PlaneswalkerProgress:   0.4,
+		PlaneswalkerProgress:   0.7, // was 0.4 — Atraxa abuses pw loyalty via proliferate
 		ExileZoneAssets:        0.3,
 		StaxLockProgress:       0.2,
 	},
