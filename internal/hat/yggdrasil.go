@@ -5191,6 +5191,14 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 		if wrathSuspected && relPos > -0.2 && p.Card != nil && h.isValueEngineKey(p.Card) {
 			val -= 0.15
 		}
+		// R60 round 11+ counter-balance (see attack_into_wipe_signals_r60.go):
+		// the inverse case — sometimes attacking INTO the wipe is correct.
+		// Expendable creatures generate free chip damage before dying;
+		// triggered creatures capture their use-it-or-lose-it payoff
+		// before the wipe takes the body. Both gated on the same
+		// wrathSuspected + relPos > -0.2 envelope as the hold-back above.
+		val += h.wipeBaitExpendableBonus(gs, seatIdx, p, wrathSuspected, relPos)
+		val += useItOrLoseItTriggerBonus(p, wrathSuspected, relPos)
 
 		// Deathtouch density brake. A single untapped DT blocker is one
 		// safe lane lost; two or more start to gate the entire turn. The
