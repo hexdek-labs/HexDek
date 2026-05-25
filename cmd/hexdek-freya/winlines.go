@@ -392,10 +392,29 @@ func inferTutorRestriction(ot, tl string) (string, string) {
 	// mana cost 5 or less" — that's both multicolored and cmcle5. When
 	// both apply we prefer the CMC restriction (it's the tighter, more
 	// useful filter for combo win-line coverage).
+	//
+	// Power/toughness bounds (Imperial Recruiter, Recruiter of the Guard,
+	// Ranger of Eos) override the plain "creature" bucket because they're
+	// strictly tighter — power_le_2 finds Dockside Extortionist and Dark
+	// Confidant but not Craterhoof, so a deck that runs Imperial Recruiter
+	// can reach a 2-power combo piece but NOT a 6-power finisher.
+	//
+	// Variable-X CMC bounds (Chord of Calling, Birthing Pod, Eldritch
+	// Evolution) collapse to a single "cmc_variable" key — the bound
+	// exists but depends on game state we can't model statically.
 	if cmcle := extractCmcLeBound(ot); cmcle >= 0 {
 		restricted = fmt.Sprintf("cmcle%d", cmcle)
 	} else if cmcge := extractCmcGeBound(ot); cmcge >= 0 {
 		restricted = fmt.Sprintf("cmcge%d", cmcge)
+	} else if pwle := extractPowerLeBound(ot); pwle >= 0 {
+		restricted = fmt.Sprintf("power_le_%d", pwle)
+	} else if tghle := extractToughnessLeBound(ot); tghle >= 0 {
+		restricted = fmt.Sprintf("toughness_le_%d", tghle)
+	} else if detectVariableCmcSearch(ot) && restricted == "creature" {
+		// Only override "creature" — preserving narrower buckets (tribe,
+		// land) that may also have variable-CMC clauses (Genesis Wave
+		// variants).
+		restricted = "cmc_variable"
 	} else if restricted == "any" {
 		// Only fall back to color restriction when no other bucket fits.
 		if strings.Contains(ot, "for a multicolored card") ||
@@ -533,6 +552,76 @@ func extractCmcGeBound(ot string) int {
 	return -1
 }
 
+// extractPowerLeBound parses "with power N or less" inside a search clause.
+// Imperial Recruiter ("creature card with power 2 or less"), Ranger of Eos
+// ("creature card with mana value 1 or less" — different axis; this helper
+// targets POWER specifically), Recruiter of the Wheel-style cards.
+// Returns -1 when no power bound is present.
+func extractPowerLeBound(ot string) int {
+	if !strings.Contains(ot, "search your library") {
+		return -1
+	}
+	for n := 0; n <= 12; n++ {
+		needles := []string{
+			fmt.Sprintf("power %d or less", n),
+			fmt.Sprintf("power of %d or less", n),
+		}
+		if containsAny(ot, needles...) {
+			return n
+		}
+	}
+	return -1
+}
+
+// extractToughnessLeBound parses "with toughness N or less" inside a search
+// clause. Recruiter of the Guard ("creature card with toughness 2 or less"),
+// Skullclamp-adjacent tutors.
+func extractToughnessLeBound(ot string) int {
+	if !strings.Contains(ot, "search your library") {
+		return -1
+	}
+	for n := 0; n <= 12; n++ {
+		needles := []string{
+			fmt.Sprintf("toughness %d or less", n),
+			fmt.Sprintf("toughness of %d or less", n),
+		}
+		if containsAny(ot, needles...) {
+			return n
+		}
+	}
+	return -1
+}
+
+// detectVariableCmcSearch returns true when a "search your library" clause
+// has a CMC bound that depends on game state rather than a literal digit:
+//
+//   - Chord of Calling: "with mana value X or less" (X from convoke)
+//   - Birthing Pod: "with mana value equal to [sacrificed creature]'s mana
+//     value plus 1"
+//   - Eldritch Evolution: "with converted mana cost equal to or less than 2
+//     plus the sacrificed creature's converted mana cost"
+//   - Natural Order family: variants on "plus 1" / "plus 2" / "plus N"
+//
+// We collapse all of these into a single "cmc_variable" restriction key —
+// downstream `tutorCanFind` treats it as a soft restriction (returns true
+// for any creature/card on the assumption that the variable will exceed
+// the target's CMC often enough to count as coverage). This is more honest
+// than the pre-fix behavior, which dropped the bound entirely and treated
+// these as plain "creature" or "any" tutors.
+func detectVariableCmcSearch(ot string) bool {
+	if !strings.Contains(ot, "search your library") {
+		return false
+	}
+	return containsAny(ot,
+		"mana value x or less",
+		"converted mana cost x or less",
+		"with mana value equal to",
+		"with converted mana cost equal to",
+		"equal to or less than",
+		"mana value of the sacrificed",
+		"converted mana cost of the sacrificed")
+}
+
 
 func tutorCanFind(tutor TutorInfo, cardName string, typeByName map[string]string, oracle *oracleDB) bool {
 	if tutor.Restricted == "any" {
@@ -596,7 +685,7 @@ func tutorCanFind(tutor TutorInfo, cardName string, typeByName map[string]string
 		}
 		return false
 	}
-	if strings.HasPrefix(tutor.Restricted, "cmc") {
+	if strings.HasPrefix(tutor.Restricted, "cmc") && !strings.HasPrefix(tutor.Restricted, "cmc_variable") {
 		target, _ := strconv.Atoi(tutor.Restricted[3:])
 		if oracle != nil {
 			if entry := oracle.lookup(cardName); entry != nil {
@@ -604,6 +693,50 @@ func tutorCanFind(tutor TutorInfo, cardName string, typeByName map[string]string
 			}
 		}
 		return false
+	}
+
+	// Power/toughness-restricted creature tutors. The candidate MUST be a
+	// creature AND have power/toughness within the bound. Falls back to
+	// "no oracle data → assume in-range" when the oracle DB is absent
+	// (mirrors how tribal tutors handle the no-DB case).
+	if strings.HasPrefix(tutor.Restricted, "power_le_") {
+		if !strings.Contains(tl, "creature") {
+			return false
+		}
+		target, _ := strconv.Atoi(tutor.Restricted[len("power_le_"):])
+		if oracle != nil {
+			if entry := oracle.lookup(cardName); entry != nil {
+				pw, err := strconv.Atoi(entry.Power)
+				if err == nil {
+					return pw <= target
+				}
+				// Non-integer power ("*", "1+*") — assume coverable.
+			}
+		}
+		return true
+	}
+	if strings.HasPrefix(tutor.Restricted, "toughness_le_") {
+		if !strings.Contains(tl, "creature") {
+			return false
+		}
+		target, _ := strconv.Atoi(tutor.Restricted[len("toughness_le_"):])
+		if oracle != nil {
+			if entry := oracle.lookup(cardName); entry != nil {
+				tg, err := strconv.Atoi(entry.Toughness)
+				if err == nil {
+					return tg <= target
+				}
+			}
+		}
+		return true
+	}
+
+	// Variable-CMC tutors (Chord of Calling, Birthing Pod, Eldritch
+	// Evolution) — the bound exists but depends on game state we can't
+	// model statically. Treat as a soft restriction: any creature passes,
+	// non-creatures don't (these tutors are all creature-typed in practice).
+	if tutor.Restricted == "cmc_variable" {
+		return strings.Contains(tl, "creature")
 	}
 
 	// Tribal subtype tutors (Goblin Matron → tribe:goblin).

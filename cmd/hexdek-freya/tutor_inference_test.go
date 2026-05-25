@@ -53,7 +53,12 @@ var realCardTutorCases = []tutorCase{
 		oracleText:  "as an additional cost to cast this spell, sacrifice a creature. search your library for a creature card with converted mana cost equal to or less than 2 plus the sacrificed creature's converted mana cost, put that card onto the battlefield, then shuffle. exile this spell.",
 		typeLine:    "sorcery",
 		wantTutor:   true,
-		wantRestrict: "creature",
+		// r60: detectVariableCmcSearch now picks up "equal to or less than
+		// 2 plus the sacrificed creature's mana value" and promotes the
+		// plain "creature" classification to the tighter "cmc_variable" —
+		// honest about the game-state-dependent bound that the plain
+		// "creature" bucket dropped.
+		wantRestrict: "cmc_variable",
 		wantDeliver:  "battlefield",
 	},
 
