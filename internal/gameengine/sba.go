@@ -190,8 +190,7 @@ func StateBasedActions(gs *GameState) bool {
 			if s == nil || s.Lost {
 				continue
 			}
-			s.Lost = true
-			s.LossReason = "mandatory loop draw (CR 104.4b via SBA cap)"
+			markSeatLost(s, "mandatory loop draw (CR 104.4b via SBA cap)")
 			gs.LogEvent(Event{
 				Kind:   "seat_lost",
 				Seat:   s.Idx,
@@ -318,8 +317,7 @@ func sba704_5a(gs *GameState) bool {
 				"reason": "life_total_zero_or_less",
 			},
 		})
-		s.Lost = true
-		s.LossReason = "life total 0 or less (CR 704.5a)"
+		markSeatLost(s, "life total 0 or less (CR 704.5a)")
 		changed = true
 	}
 	return changed
@@ -348,8 +346,7 @@ func sba704_5b(gs *GameState) bool {
 			},
 		})
 		if !s.Lost {
-			s.Lost = true
-			s.LossReason = "drew from empty library (CR 704.5b)"
+			markSeatLost(s, "drew from empty library (CR 704.5b)")
 		}
 		s.AttemptedEmptyDraw = false
 		changed = true
@@ -370,8 +367,7 @@ func sba704_5c(gs *GameState) bool {
 			continue
 		}
 		if s.PoisonCounters >= 10 {
-			s.Lost = true
-			s.LossReason = "ten or more poison counters (CR 704.5c)"
+			markSeatLost(s, "ten or more poison counters (CR 704.5c)")
 			gs.LogEvent(Event{
 				Kind:   "sba_704_5c",
 				Seat:   s.Idx,
@@ -1708,8 +1704,7 @@ func sba704_6c(gs *GameState) bool {
 		for dealer, byName := range s.CommanderDamage {
 			for name, dmg := range byName {
 				if dmg >= 21 {
-					s.Lost = true
-					s.LossReason = "21+ commander damage from " + name + " (CR 704.6c)"
+					markSeatLost(s, "21+ commander damage from "+name+" (CR 704.6c)")
 					gs.LogEvent(Event{
 						Kind:   "sba_704_6c",
 						Seat:   s.Idx,
@@ -2037,6 +2032,29 @@ func ruleToEventSuffix(rule string) string {
 		}
 	}
 	return string(out)
+}
+
+// markSeatLost flips s.Lost, stamps the reason, and drains any mana the
+// seat is holding. The §704.5e empty-mana-pool reaper only runs on phase
+// change, so a seat that loses mid-step would otherwise retain its
+// ManaPool until the next phase boundary — `checkResourceConservation`
+// catches that as "seat N is Lost but has ManaPool=X". A Lost seat
+// cannot spend mana anyway, so draining on the loss transition is the
+// natural cleanup site.
+//
+// Used at every `s.Lost = true` site in this file (§704.5a life-loss,
+// §704.5b empty-library draw, §704.5c poison, §704.6c commander damage,
+// and the §104.4b mandatory-loop-draw cap path).
+func markSeatLost(s *Seat, reason string) {
+	if s == nil {
+		return
+	}
+	s.Lost = true
+	s.LossReason = reason
+	s.ManaPool = 0
+	if s.Mana != nil {
+		s.Mana.Clear()
+	}
 }
 
 // isCommanderName returns true if name matches any entry in the seat's
