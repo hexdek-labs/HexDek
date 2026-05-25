@@ -26,6 +26,11 @@ import {
   parseShareParams,
   buildShareUrl,
 } from '../utils/replayShare'
+import {
+  SHARE_PARAM_COMPARE,
+  mapSharedTurn,
+  compareSeatDeltas,
+} from '../utils/replayCompare'
 
 // ── API gaps for full report fidelity ──────────────────────────────────
 // CompletedGame currently exposes: game_id, commanders[], deck_keys[],
@@ -247,7 +252,7 @@ const deriveTimeline = (game, commanders) => {
    data isn't persisted); we render a single-line notice and skip the
    scrubber instead of fabricating interpolated frames.
 */
-const ReplayScrubber = ({ game, commanders }) => {
+const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommanders = [], onClearCompare }) => {
   const timeline = game?.timeline || []
   const totalTurns = timeline.length
   const [turnIdx, setTurnIdx] = useState(0) // 0-based into timeline
@@ -812,6 +817,82 @@ const ReplayScrubber = ({ game, commanders }) => {
         })}
       </div>
 
+      {/* Compare mode: a parallel seat grid for a second game, locked
+          to the same shared turn number. snapA / snapB come from
+          mapSharedTurn(); ended-side renders a "GAME ENDED" badge
+          rather than the stale last snapshot. */}
+      {compareGame && (() => {
+        const sharedTurn = turnAtIdx(turnIdx)
+        const compareTimeline = compareGame?.timeline || []
+        const { a: aMap, b: bMap } = mapSharedTurn(timeline, compareTimeline, sharedTurn)
+        const deltas = compareSeatDeltas(aMap.snapshot, bMap.snapshot)
+        const compareSeats = bMap.snapshot?.seats || []
+        const compareActiveSeat = bMap.snapshot?.active_seat ?? -1
+        const lastB = compareTimeline.length > 0 ? compareTimeline[compareTimeline.length - 1].turn : '?'
+        return (
+          <>
+            <div className="hr" style={{ margin: '14px 0 10px' }} />
+            <div className="flex justify-between items-center" style={{ marginBottom: 8 }}>
+              <span className="t-xs muted" style={{ letterSpacing: '0.08em', fontWeight: 700 }}>
+                VS · GAME #{compareGame.game_id} {bMap.ended ? '· GAME ENDED' : bMap.beforeStart ? '· NOT STARTED' : `· TURN ${bMap.snapshot?.turn ?? '?'} OF ${lastB}`}
+              </span>
+              {onClearCompare && (
+                <Btn sm arrow={null} onClick={onClearCompare} title="Close compare panel">✕ CLOSE</Btn>
+              )}
+            </div>
+            <div className="grid col-4 gap-4">
+              {compareSeats.map((s, i) => {
+                const cmdr = compareCommanders[i] || 'UNKNOWN'
+                const perms = s.battlefield || []
+                const isActive = i === compareActiveSeat
+                const lifePct = Math.max(0, Math.min(100, (s.life / 40) * 100))
+                const accent = s.lost ? 'var(--danger)' : isActive ? 'var(--accent)' : 'var(--rule-2)'
+                const d = deltas[i]
+                const fmtDelta = (v) => v === 0 ? '0' : v > 0 ? `+${v}` : String(v)
+                const deltaColor = (v) => v === 0 ? 'var(--ink-3)' : v > 0 ? 'var(--ok)' : 'var(--danger)'
+                return (
+                  <div key={i} className="panel" style={{ padding: 0, borderColor: accent }}>
+                    <div style={{ padding: '8px 10px' }}>
+                      <div className="flex justify-between items-center" style={{ marginBottom: 4 }}>
+                        <span className="t-xs muted">SEAT.{String(i + 1).padStart(2, '0')}</span>
+                        {s.lost && <Tag kind="bad">ELIMINATED</Tag>}
+                        {!s.lost && isActive && <Tag kind="ok" solid>ACTIVE</Tag>}
+                      </div>
+                      <div className="t-md" style={{ fontWeight: 700, lineHeight: 1.2 }}>
+                        {cmdr.split(',')[0].toUpperCase()}
+                      </div>
+                      <div className="hr" style={{ margin: '8px 0' }} />
+                      <div className="t-xs muted" style={{ marginBottom: 2 }}>LIFE</div>
+                      <Bar value={lifePct} />
+                      <div className="t-xs" style={{ marginTop: 3, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                        {s.life} / 40
+                        {d && (
+                          <span style={{ marginLeft: 6, color: deltaColor(d.lifeDelta), fontWeight: 400 }}>
+                            ({fmtDelta(-d.lifeDelta)} vs A)
+                          </span>
+                        )}
+                      </div>
+                      <div className="hr" style={{ margin: '8px 0' }} />
+                      <KV rows={[
+                        ['HAND',        `${s.hand_size}`    + (d ? `  (${fmtDelta(-d.handDelta)})` : '')],
+                        ['LIBRARY',     `${s.library_size}` + (d ? `  (${fmtDelta(-d.librarayDelta)})` : '')],
+                        ['GRAVEYARD',   `${s.gy_size}`      + (d ? `  (${fmtDelta(-d.graveyardDelta)})` : '')],
+                        ['BATTLEFIELD', `${perms.length}`   + (d ? `  (${fmtDelta(-d.battlefieldDelta)})` : '')],
+                      ]} />
+                    </div>
+                  </div>
+                )
+              })}
+              {compareSeats.length === 0 && (
+                <div className="t-xs muted-2" style={{ gridColumn: '1 / -1', padding: '12px 4px' }}>
+                  &gt; {bMap.beforeStart ? 'NOT STARTED YET — SCRUB FORWARD' : 'GAME ENDED — SCRUB BACK TO COMPARE'}
+                </div>
+              )}
+            </div>
+          </>
+        )
+      })()}
+
       {/* Event log for this turn */}
       <div className="hr" style={{ margin: '14px 0 8px' }} />
       <div className="t-xs muted" style={{ marginBottom: 6 }}>EVENTS — TURN {turnNo}</div>
@@ -927,11 +1008,42 @@ const DeckStatsPanel = ({ games, elo, selectedDeck }) => {
 
 export default function Report() {
   const { gameId } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [game, setGame] = useState(null)
   const [games, setGames] = useState([])
   const [elo, setElo] = useState([])
   const [selectedDeck, setSelectedDeck] = useState(null)
   const [loading, setLoading] = useState(true)
+  // Compare mode. compareGame is the second game's full report (or
+  // null when compare is off). compareId mirrors `?vs=<id>` and
+  // drives the fetch; clearing it removes the second panel.
+  const compareId = searchParams.get(SHARE_PARAM_COMPARE)
+  const [compareGame, setCompareGame] = useState(null)
+  const [comparePickerOpen, setComparePickerOpen] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    // External-sync effect: react to URL ?vs= changes. The setState
+    // calls are guarded so we only update when the requested compare
+    // game actually differs from what's loaded.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (!compareId) {
+      setCompareGame(null)
+      return
+    }
+    if (String(compareId) === String(gameId || game?.game_id)) {
+      // Don't try to compare against ourselves.
+      setCompareGame(null)
+      return
+    }
+    api.getGameReport(compareId).then(g => {
+      if (!cancelled) setCompareGame(g)
+    }).catch(() => {
+      if (!cancelled) setCompareGame(null)
+    })
+    /* eslint-enable react-hooks/set-state-in-effect */
+    return () => { cancelled = true }
+  }, [compareId, gameId, game?.game_id])
 
   useEffect(() => {
     const load = async () => {
@@ -1062,7 +1174,64 @@ export default function Report() {
 
         {/* Replay scrubber — per-turn timeline with board/life/event delta */}
         {featuredGame && (
-          <ReplayScrubber game={featuredGame} commanders={commanders} />
+          <div style={{ gridColumn: '1 / -1' }}>
+            {/* Compare picker — shows when not yet comparing. Lists
+                the 8 most-recent other games; click one to start
+                compare. Writes `?vs=<id>` to the URL. */}
+            {!compareGame && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                <Btn
+                  sm
+                  arrow={null}
+                  onClick={() => setComparePickerOpen(v => !v)}
+                  title="Open a side-by-side comparison with another game"
+                >
+                  {comparePickerOpen ? '✕ COMPARE…' : '⇄ COMPARE…'}
+                </Btn>
+                {comparePickerOpen && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                    <span className="t-xs muted">PICK GAME:</span>
+                    {games
+                      .filter(g => g.game_id !== featuredGame.game_id)
+                      .slice(0, 8)
+                      .map(g => (
+                        <button
+                          key={g.game_id}
+                          type="button"
+                          className="t-xs"
+                          onClick={() => {
+                            const next = new URLSearchParams(searchParams)
+                            next.set(SHARE_PARAM_COMPARE, String(g.game_id))
+                            setSearchParams(next, { replace: true })
+                            setComparePickerOpen(false)
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid var(--rule-2)',
+                            padding: '2px 6px',
+                            cursor: 'pointer',
+                            color: 'var(--ink)',
+                          }}
+                        >
+                          #{g.game_id} · {(g.commanders?.[g.winner]?.split(',')[0] || 'DRAW').toUpperCase()}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <ReplayScrubber
+              game={featuredGame}
+              commanders={commanders}
+              compareGame={compareGame}
+              compareCommanders={compareGame?.commanders || []}
+              onClearCompare={() => {
+                const next = new URLSearchParams(searchParams)
+                next.delete(SHARE_PARAM_COMPARE)
+                setSearchParams(next, { replace: true })
+              }}
+            />
+          </div>
         )}
 
         {/* Final board state — all seats */}
