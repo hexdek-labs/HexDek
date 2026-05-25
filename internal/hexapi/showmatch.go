@@ -281,6 +281,13 @@ type Showmatch struct {
 	// updateELO hook checks for nil before recording.
 	auditor *anticheat.StatisticalAuditor
 
+	// Webhooks fan out the game.end event to caller-registered
+	// HTTP endpoints. Nil = feature disabled (default for tests
+	// and lightweight server boots); cmd/hexdek-server constructs
+	// one when HEXDEK_WEBHOOKS_ENABLED is set and the SQLite DB
+	// is wired in.
+	Webhooks *WebhookDispatcher
+
 	// GauntletLimiter rate-limits POST /api/gauntlet/{owner}/{id} per
 	// client IP. The endpoint is already protected by a global
 	// concurrency semaphore (gauntletSem, cap 2) and a credit-economy
@@ -1865,6 +1872,14 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 	select {
 	case sm.persistCh <- persistJob{game: completed, perfDeltas: cardPerformanceDeltas(gs, winner)}:
 	default:
+	}
+
+	// Fan out the game.end event to caller-registered webhooks (no-op
+	// when sm.Webhooks is nil). FireGameEnd spawns one goroutine per
+	// subscriber and returns immediately — the persist tail never
+	// waits on an external HTTP receiver.
+	if sm.Webhooks != nil {
+		sm.Webhooks.FireGameEnd(context.Background(), completed)
 	}
 
 	log.Printf("showmatch: game %d finished — turn %d, winner: %s (%s), pivot: t%d (Δ%.2f)",

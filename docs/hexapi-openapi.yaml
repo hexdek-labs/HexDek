@@ -1174,20 +1174,6 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/EmptyOk' }
 
-  /api/games/compare:
-    get:
-      tags: [games]
-      operationId: compareGames
-      summary: Side-by-side comparison of two completed games. Pass `?a={game_id}&b={game_id}`.
-      responses:
-        "200":
-          description: Two-game comparison payload.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/EmptyOk' }
-        "400": { $ref: '#/components/responses/BadRequest' }
-        "404": { $ref: '#/components/responses/NotFound' }
-
   /api/games/{id}:
     parameters:
       - $ref: '#/components/parameters/GameIdParam'
@@ -1523,32 +1509,6 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/EmptyOk' }
-
-  /api/players/{id}/trends:
-    parameters:
-      - name: id
-        in: path
-        required: true
-        schema: { type: string }
-        description: Player id (lower-cased owner).
-      - name: window
-        in: query
-        required: false
-        schema: { type: integer, default: 30, maximum: 200 }
-        description: Rolling window size in games (capped at 200).
-    get:
-      tags: [profile]
-      operationId: getPlayerTrends
-      summary: Rolling per-player trend summary (winrate, archetype distribution, opponent diversity).
-      responses:
-        "200":
-          description: |
-            Per-player rollup. `win_rate` is a 0..1 fraction over the actual games found (may be < window if the player has fewer records).
-            `archetype_distribution` is sorted by games desc; `opponent_diversity.top_repeat_opponents` is capped at the 5 most-encountered opponents.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/EmptyOk' }
-        "400": { $ref: '#/components/responses/BadRequest' }
 
   /api/achievements/{owner}:
     parameters:
@@ -2257,6 +2217,131 @@ paths:
                   pending: { type: integer }
                   spot_check_pct: { type: number, format: double }
                   worker_version: { type: string }
+
+  ## ---------------------------------------------------------------
+  ## Outbound webhook subscriptions
+  ## ---------------------------------------------------------------
+
+  /api/webhooks:
+    post:
+      tags: [webhooks]
+      operationId: registerWebhook
+      summary: Register a webhook subscription for an engine event.
+      description: |
+        Returns the assigned id + secret in the 201 body. The secret
+        is the HMAC-SHA256 key used to sign delivery payloads —
+        capture it on register; list / get responses never echo it
+        back. Auto-disable triggers after 5 consecutive transport
+        errors or 5xx responses from the consumer.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, event_type]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: Delivery target. https://* always allowed; http://* only for loopback.
+                event_type:
+                  type: string
+                  enum: [game.end]
+      responses:
+        "201":
+          description: Webhook registered.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, url, event_type, secret, created_at]
+                properties:
+                  id: { type: integer, format: int64 }
+                  url: { type: string }
+                  event_type: { type: string }
+                  secret:
+                    type: string
+                    description: HMAC-SHA256 key; returned ONCE on register. Store it.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Unix seconds.
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+    get:
+      tags: [webhooks]
+      operationId: listWebhooks
+      summary: List caller-owned webhooks. Secret is omitted.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+      responses:
+        "200":
+          description: Webhook list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [owner, webhooks]
+                properties:
+                  owner: { type: string }
+                  webhooks:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, url, event_type, created_at, active]
+                      properties:
+                        id: { type: integer, format: int64 }
+                        url: { type: string }
+                        event_type: { type: string }
+                        created_at: { type: integer, format: int64 }
+                        last_fired_at: { type: integer, format: int64 }
+                        last_status: { type: integer }
+                        failures: { type: integer }
+                        active: { type: boolean }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/webhooks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Webhook row id from POST /api/webhooks.
+        schema:
+          type: integer
+          format: int64
+    delete:
+      tags: [webhooks]
+      operationId: deleteWebhook
+      summary: Delete a webhook subscription. Owner-gated.
+      description: |
+        Returns 404 both when the id is unknown and when it is owned
+        by a different caller — the existence of someone else's
+        subscription is intentionally not leaked.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+      responses:
+        "200":
+          description: Webhook deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deleted, id]
+                properties:
+                  deleted: { type: boolean }
+                  id: { type: integer, format: int64 }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
 
   ## ---------------------------------------------------------------
   ## HTML share pages (OG meta injection)

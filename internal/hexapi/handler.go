@@ -230,6 +230,10 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	// participating in token-based CSRF and fall back to the existing
 	// custom-header-only protection.
 	mux.HandleFunc("GET /api/csrf", HandleIssueCSRF(h.CSRFStore))
+	// Webhook subscriptions — owner-registered HTTP callbacks for
+	// engine events (currently just game.end). Returns 503 when h.db
+	// is nil so the registry can detect that no SQLite is wired.
+	h.RegisterWebhookRoutes(mux)
 }
 
 type DeckSummary struct {
