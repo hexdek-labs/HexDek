@@ -22,6 +22,7 @@ import { DeckPicker } from './DeckCompare'
 import DeckExportModal from '../components/DeckExportModal'
 import ContextBox from '../components/ContextBox'
 import EloSparkline from '../components/EloSparkline'
+import DeckRating from '../components/DeckRating'
 import { deckGlanceStats } from '../lib/deckStats'
 import {
   applySuggestion,
@@ -1592,6 +1593,12 @@ export default function DeckArchive() {
                     ['DELTA', <span style={{ color: deckElo.delta >= 0 ? 'var(--ok)' : 'var(--danger)' }}>{deckElo.delta >= 0 ? '+' : ''}{Math.round(deckElo.delta)}</span>, 'delta'],
                   ]} />
                 )}
+              </>
+            )}
+            {isOwner && owner && id && (
+              <>
+                <div className="hr" style={{ margin: '10px 0' }} />
+                <DeckRating userSlug={userOwnerSlug} deckKey={`${owner}/${id}`} />
               </>
             )}
             <div className="hr" style={{ margin: '10px 0' }} />
