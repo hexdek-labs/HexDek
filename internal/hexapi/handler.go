@@ -187,6 +187,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/decks/{owner}/{id}", RequireCSRF(h.CSRFStore, h.handleDeleteDeck))
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/versions", h.handleListVersions)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/versions/{version}", h.handleGetVersion)
+	mux.HandleFunc("GET /api/decks/{owner}/{id}/budget", h.handleDeckBudget)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/version-trends", h.handleDeckVersionTrends)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/archive", h.handleDeckArchive)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/analysis", h.handleGetAnalysis)

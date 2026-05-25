@@ -123,6 +123,7 @@ export const api = {
   }),
   getDeckVersions: (id) => request(`/api/decks/${id}/versions`),
   getDeckVersion: (id, version) => request(`/api/decks/${id}/versions/${encodeURIComponent(version)}`),
+  getDeckBudget: (id) => request(`/api/decks/${id}/budget`),
   getDeckCurse: (id) => request(`/api/decks/${id}/curse`),
   patchDeckCurse: (id, constraints) => authedRequest(`/api/decks/${id}/curse`, {
     method: 'PATCH',
