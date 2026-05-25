@@ -133,12 +133,44 @@ var archetypeFingerprints = []archetypeFingerprint{
 		},
 	},
 	{
+		// R60-13: broadened the Aristocrats fingerprint after a tournament
+		// pass surfaced sac-themed decks landing on the Midrange fallback.
+		// The original AND (sacOutlets≥5 AND deathTriggers≥3) caught the
+		// canonical Sidisi / Meren / Korvold builds but missed:
+		//   - token-flood + drain decks with light sac outlets (Elenda the
+		//     Dusk Rose, Teysa Karlov, Marchesa the Black Rose) where the
+		//     payoff cards outnumber the outlets. The deck still wants the
+		//     Aristocrats weight profile (BoardPresence + DrainEngine), but
+		//     sacrificeCount=2-3 with 6+ death triggers fell out of the AND.
+		//   - persist-recursion shells (Reassembling Skeleton / Bloodghast /
+		//     Gravecrawler) where the GY bodies ARE the sac fuel and the
+		//     strict outlet count missed them.
+		// The disjunction below keeps the strict shape as the strongest
+		// signal, then adds two looser shapes that still require either
+		// a meaningful drain payoff cluster OR a real graveyard presence
+		// so it doesn't poach generic creature midrange decks.
 		Name: "Aristocrats",
 		Ratios: map[RoleTag]float64{
 			RoleThreat: 0.10, RoleCombo: 0.06, RoleDraw: 0.10, RoleRamp: 0.08,
 		},
 		Require: func(ctx *classifyContext) bool {
-			return ctx.sacrificeCount >= 5 && ctx.deathTriggers >= 3
+			if ctx.sacrificeCount >= 5 && ctx.deathTriggers >= 3 {
+				return true
+			}
+			// Drain-heavy / payoff-heavy shape: fewer outlets, more
+			// death-trigger payoffs (Blood Artist / Zulaport Cutthroat /
+			// Cruel Celebrant / Bastion of Remembrance / Marionette Master).
+			if ctx.sacrificeCount >= 2 && ctx.deathTriggers >= 6 {
+				return true
+			}
+			// Persist / GY-recursion shape: bodies in the GY power the
+			// sac engine (Reassembling Skeleton + Phyrexian Altar +
+			// Pitiless Plunderer). Requires a real GY presence so it
+			// doesn't poach generic midrange creature decks.
+			if ctx.sacrificeCount >= 3 && ctx.deathTriggers >= 3 && ctx.graveyardCount >= 4 {
+				return true
+			}
+			return false
 		},
 	},
 	{
