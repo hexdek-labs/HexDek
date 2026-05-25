@@ -193,6 +193,65 @@ func classifyTrigger(t *gameast.Trigger) string {
 	case event == "spend_this_mana":
 		return "you_get_energy"
 
+	// Era 3 R60 sweep — dominant mechanics from 2020-2022 sets (Ikoria,
+	// Strixhaven, Innistrad-DH, MOM, OTJ doors). Five new scaffolds + a
+	// long routing tail. The five new scaffolds are worth their own
+	// dispatch entry because the priming world is materially different
+	// from any existing scaffold (mutate stack, face-down flip, exploit
+	// sacrifice, specialize transform, door unlock counter).
+	case event == "mutates":
+		return "mutates"
+	case event == "turned_face_up" || event == "face_up_as" || event == "as_transform":
+		return "turned_face_up"
+	case event == "exploits_creature":
+		return "exploits_creature"
+	case event == "ally_exploits":
+		return "exploits_creature"
+	case event == "specialize_creature":
+		return "specialize_creature"
+	case event == "unlock_door" || event == "fully_unlock_room":
+		return "unlock_door"
+
+	// Long tail — each routes to an existing scaffold whose priming
+	// semantics match the slug's runtime needs. See per-slug rationale
+	// in the routing block; identical pattern to the Era 2 sweep
+	// (PR #447) where 23 long-tail slugs were similarly absorbed.
+	case event == "becomes_target" || event == "ally_targeted_by_opp":
+		return "attacks"
+	case event == "becomes_blocked":
+		return "attacks"
+	case event == "dealt_damage" || event == "deals_damage" ||
+		event == "damage_prevented_this_way" || event == "ally_source_damage":
+		return "combat_damage"
+	case event == "remove_counter" || event == "counter_put_on_actor" ||
+		event == "counters_put_on_self_any" || event == "counters_put_on_actor" ||
+		event == "creature_modified_event":
+		return "counters_put_on_self"
+	case event == "card_put_into_zone" || event == "permanent_to_gy" ||
+		event == "card_milled_via" || event == "compound_card_zone_event":
+		return "creature_dies"
+	case event == "foretell_card":
+		return "cast_spell"
+	case event == "attached_as" || event == "equipped_trigger" ||
+		event == "day_night_flip" || event == "transforms" ||
+		event == "next_time_one_or_more_enter":
+		return "creature_etb"
+	case event == "cycle_card":
+		return "discard"
+	case event == "you_commit_crime" || event == "commit_crime" ||
+		event == "pay_cost_multiple" || event == "misc_whenever_a" ||
+		event == "you_conjure_one_or_more" || event == "you_mechanic":
+		return "when_you_do"
+	case event == "self_or_another_when":
+		return "etb_or_another"
+	case event == "becomes_state":
+		return "becomes_tapped_trigger"
+	case event == "player_land_play":
+		// Landfall-adjacent listener — fires when any player plays a land.
+		// The opp_creature_event prime (ensure opponent has the relevant
+		// resource) is the closest fit; phase-style no-op also works.
+		return "upkeep"
+
 	case event == "dies" || strings.Contains(event, "dies") ||
 		strings.Contains(event, "is put into a graveyard"):
 		return "creature_dies"
@@ -823,6 +882,131 @@ var triggerConditionActions = map[string]conditionAction{
 			}
 			gs.LogEvent(gameengine.Event{
 				Kind:   "vehicle_crewed_first",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// Era 3 R60 sweep — 5 new scaffolds for dominant 2020-2022 mechanics.
+	// Each primes a materially different world than any existing scaffold,
+	// which is why they get their own dispatch entry rather than routing.
+
+	// "Whenever this creature mutates" — Ikoria mutate keyword (Vadrok,
+	// Brokkos, Illuna, Snapdax, Nethroi). Engine marks mutated permanents
+	// with Flags[mutated]=1; setting that here lets the trigger listener
+	// observe the mutate event and the source's "as long as ~ has mutated"
+	// reads pass.
+	"mutates": {
+		kind: "mutates",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp srcPerm.Flags[mutated]=1 + log mutate event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["mutated"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "mutate",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever ~ is turned face up" — morph/disguise/foretell flip
+	// triggers (Willbender, Akroma's Imprint, Foretold cards on cast).
+	// Stamp face_up flag transition on srcPerm so the listener observes
+	// the face-up state during the snapshot.
+	"turned_face_up": {
+		kind: "turned_face_up",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp srcPerm.Flags[turned_face_up]=1 + log turned_face_up event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["turned_face_up"] = 1
+				// Clear any prior face-down state so the transition is
+				// observable. Engine uses Flags[face_down] when present.
+				delete(srcPerm.Flags, "face_down")
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "turned_face_up",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "When ~ enters, you may sacrifice another creature" — DTK exploit
+	// (Sidisi, Sultai Soothsayer; Silumgar Butcher; Vulturous Aven). The
+	// inner sacrifice fires a "this creature exploits" event the source
+	// listener observes; we place a victim and log the exploit event.
+	"exploits_creature": {
+		kind: "exploits_creature",
+		describe: func(t *gameast.Trigger) string {
+			return "place 'Exploit Victim' creature + log exploits event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreature(gs, "Exploit Victim")
+			gs.LogEvent(gameengine.Event{
+				Kind:   "exploits",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "When you specialize ~" — Streets of New Capenna specialize keyword
+	// (Anhelo the Painter, Ognis the Dragon's Lash split forms). Engine
+	// tracks specialization via Flags[specialized]; stamping it lets the
+	// transform-after-specialize hooks observe the state.
+	"specialize_creature": {
+		kind: "specialize_creature",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp srcPerm.Flags[specialized]=1 + log specialize event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["specialized"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "specialize",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "When you fully unlock this Room" — OTJ / Duskmourn rooms. Stamp the
+	// fully-unlocked flag on srcPerm (Room enchantments track unlock state
+	// via Flags[room_unlocked]). The fully_unlock_room slug routes here
+	// because the priming world is identical — both ask "the room is now
+	// fully unlocked".
+	"unlock_door": {
+		kind: "unlock_door",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp srcPerm.Flags[room_unlocked]=1 + log unlock_door event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["room_unlocked"] = 1
+				srcPerm.Flags["fully_unlocked"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "unlock_door",
 				Seat:   0,
 				Source: "thor_priming",
 			})

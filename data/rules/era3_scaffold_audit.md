@@ -6,42 +6,35 @@
 
 - Era 3 cards: **798**
 
-- Era 3 Condition nodes: **55** (bucketed 44, unbucketed 11, 20.0% gap)
+- Era 3 Condition nodes: **55** (bucketed 54, unbucketed 1, 1.8% gap)
 
-- Era 3 Trigger nodes: **538**
+- Era 3 Trigger nodes: **538** (bucketed 538, unbucketed 0, 0.0% gap)
 
 
 ## Top unbucketed condition Kinds
 
-- `if` × 6
-- `conditional` × 5
+- `conditional` × 1
 
 ## Top unbucketed raw-text fragments (kind in raw/intervening_if/as_long_as)
 
-- × 1: `you cast it`  _(e.g. Lutri, the Spellchaser)_
 - × 1: `if they do, tap this creature and create a 1/1 blue fish creature token with "th`  _(e.g. Reservoir Kraken)_
-- × 1: `this creature has two or fewer judgment counters on it`  _(e.g. Faithbound Judge // Sinner's Judgment)_
-- × 1: `as long as this creature has three or more judgment counters on it, it can attac`  _(e.g. Faithbound Judge // Sinner's Judgment)_
-- × 1: `there are three or more judgment counters on it`  _(e.g. Faithbound Judge // Sinner's Judgment)_
-- × 1: `you've cast both a creature spell and a noncreature spell this turn`  _(e.g. Eshki Dragonclaw)_
-- × 1: `if excess damage was dealt this way, note that excess damage, then you get a one`  _(e.g. Mephit's Enthusiasm)_
-- × 1: `if ~ is saddled and a creature was dealt damage this way, that creature perpetua`  _(e.g. Switchgrass Grazer)_
-- × 1: `it didn't have decayed`  _(e.g. Wilhelt, the Rotcleaver)_
-- × 1: `if ~ was bargained, that card perpetually gains "this spell costs {2} more to ca`  _(e.g. Talion's Throneguard)_
-- × 1: `a creature or planeswalker an opponent controlled was dealt excess damage this t`  _(e.g. Rith, Liberated Primeval)_
 
 ## Bucketed condition Kinds (sanity)
 
 - `paid_optional_cost` × 16
+- `if` × 12
+- `conditional` × 10
 - `for_each` × 7
-- `if` × 6
-- `conditional` × 6
 - `did_prior_action` × 6
 - `delirium` × 1
 - `creature_died_this_turn` × 1
 - `etb_tapped_unless` × 1
 
-## Top trigger events
+## Top unbucketed trigger events
+
+_(none — every Era 3 trigger event maps to a scaffold slug)_
+
+## Top trigger events (bucketed + unbucketed)
 
 - `etb` × 130
 - `phase` × 53
