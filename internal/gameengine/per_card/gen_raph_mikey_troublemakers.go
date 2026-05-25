@@ -70,6 +70,14 @@ func raphMikeyTroublemakersAttack(gs *gameengine.GameState, perm *gameengine.Per
 			newPerm.Flags = map[string]int{}
 		}
 		newPerm.Flags["attacking"] = 1
+		// R60: CR §506.3 — the creature is legally attacking despite
+		// §302.1 summoning sickness. Clear SS so checkCombatLegality
+		// doesn't trip on a mid-combat game end. This is the dominant
+		// fuzz repro for the "Behemoth of Vault 0" signature
+		// (Raph & Mikey's chaos-game commander deck includes Behemoth
+		// of Vault 0 as the pick target in the bit-stable seed-42 game
+		// 1611). See docs/loki-r60-round2-report.md.
+		newPerm.SummoningSick = false
 		if def, ok := gameengine.AttackerDefender(perm); ok {
 			gameengine.SetAttackerDefender(newPerm, def)
 		}

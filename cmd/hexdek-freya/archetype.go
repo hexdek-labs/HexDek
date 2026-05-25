@@ -20,6 +20,38 @@ type ArchetypeClassification struct {
 	GameChangerCount  int
 	GameChangerCards  []string
 	Signals           []string
+	// BracketRationale documents how the bracket was derived: which
+	// signals contributed (and how many points), what cards backed each
+	// scoring tier, and which ceilings/floors/gates fired to adjust the
+	// raw score. Surfaces the WHY behind the bracket call so deck
+	// builders can see exactly which density / card-list signals pushed
+	// them across a threshold.
+	BracketRationale *BracketRationale
+}
+
+// BracketSignal records a single contributing observation in the bracket
+// calculation. Kind distinguishes scoring contributions from post-score
+// adjustments (ceiling caps, floor lifts, B5 gate demotions) — for the
+// latter, Contribution is 0 and the explanation lives in Note.
+type BracketSignal struct {
+	Name         string   // signal label ("Game Changers", "Free interaction", "B5 gate")
+	Kind         string   // "score" | "ceiling" | "floor" | "gate"
+	Tier         string   // matched threshold band ("8+", "12%+", "lean curve <2.0")
+	Measurement  string   // actual measurement ("10 pieces", "13% of nonlands")
+	Evidence     []string // card names backing the signal, where curated lists exist
+	Contribution int      // points added (positive) or subtracted (negative); 0 for adjustments
+	Note         string   // free-form why-line, used heavily by adjustment kinds
+}
+
+// BracketRationale is the assembled explanation for a single bracket
+// call. RawScore is the sum of Contribution across Kind="score"
+// signals before any adjustments fire. FinalBracket / FinalLabel are
+// the post-adjustment outcome.
+type BracketRationale struct {
+	FinalBracket int
+	FinalLabel   string
+	RawScore     int
+	Signals      []BracketSignal
 }
 
 type archetypeFingerprint struct {
@@ -53,12 +85,53 @@ type classifyContext struct {
 	planeswalkerCount int
 	millOppCount   int // opponent-targeting mill
 	discardForceCount int
+	// R60 new-archetype counters
+	pillowfortCount     int // attack-tax / damage-prevention cards (Propaganda, Sphere of Safety, Solitary Confinement)
+	groupSlugCount      int // passive damage-to-opponents triggers (Manabarbs, Pyrostatic Pillar, Underworld Dreams)
+	damageRedirectCount int // "dealt damage, it deals" reflectors + redirect effects (Stuffy Doll, Boros Reckoner, Pariah)
 	bannedCount      int
 	gameChangerCount int
 	gameChangerNames []string
+	// freeInteractionCount tracks pitch-counter / phyrexian-mana / pact /
+	// commander-free / evoke spells (see cedhFreeInteractionList). The
+	// strongest single-deck-shape signal that separates true cEDH (B5)
+	// from merely-optimized B4.
+	freeInteractionCount int
+	freeInteractionNames []string
 	profiles       []CardProfile
 	qtyProfiles    []CardProfileQty
 	oracle         *oracleDB
+}
+
+// cEDHFreeInteractionList tracks the cEDH-defining "free" interaction
+// suite — spells castable for {0} via alternative casting cost (pitch a
+// blue card, return a land, commander on battlefield, evoke, phyrexian
+// life). The presence of multiple free-interaction pieces is the
+// strongest deck-shape signal that separates true cEDH (B5) from
+// merely-optimized B4 decks. B4 players use Counterspell at 2 mana;
+// B5 players hold up Force of Will / Fierce Guardianship / Mental
+// Misstep so the counter doesn't trade their tempo against winning
+// faster. We intentionally do NOT include "cheap" interaction
+// (Counterspell, Swan Song, An Offer You Can't Refuse) — those are
+// strong B4 interaction but not the discriminating B5 signal.
+var cedhFreeInteractionList = map[string]bool{
+	// Pitch counters (exile a card of matching color)
+	"force of will": true, "force of negation": true, "force of vigor": true,
+	"force of despair": true, "force of rage": true, "force of virtue": true,
+	"misdirection": true, "foil": true, "commandeer": true,
+	"disrupting shoal": true, "thwart": true, "daze": true,
+	// Phyrexian-mana free spells
+	"mental misstep": true, "gut shot": true, "snuff out": true,
+	// Pact cycle (free now, pay next turn)
+	"pact of negation": true, "slaughter pact": true, "intervention pact": true,
+	"summoner's pact": true, "pact of the titan": true,
+	// Commander-on-battlefield free spells (cEDH partner-rich decks lean on these)
+	"fierce guardianship": true, "deflecting swat": true, "deadly rollick": true,
+	"fierce retribution": true, "obscuring haze": true, "tribute to the world tree": true,
+	// Evoke elementals (free with tempo cost)
+	"subtlety": true, "endurance": true, "solitude": true, "grief": true, "fury": true,
+	// Other 0-mana / free alternative-cost interaction
+	"snapback": true, "unmask": true, "chain of vapor": true,
 }
 
 // WotC Commander Game Changers list (53 cards, Feb 2026 update).
@@ -133,12 +206,44 @@ var archetypeFingerprints = []archetypeFingerprint{
 		},
 	},
 	{
+		// R60-13: broadened the Aristocrats fingerprint after a tournament
+		// pass surfaced sac-themed decks landing on the Midrange fallback.
+		// The original AND (sacOutlets≥5 AND deathTriggers≥3) caught the
+		// canonical Sidisi / Meren / Korvold builds but missed:
+		//   - token-flood + drain decks with light sac outlets (Elenda the
+		//     Dusk Rose, Teysa Karlov, Marchesa the Black Rose) where the
+		//     payoff cards outnumber the outlets. The deck still wants the
+		//     Aristocrats weight profile (BoardPresence + DrainEngine), but
+		//     sacrificeCount=2-3 with 6+ death triggers fell out of the AND.
+		//   - persist-recursion shells (Reassembling Skeleton / Bloodghast /
+		//     Gravecrawler) where the GY bodies ARE the sac fuel and the
+		//     strict outlet count missed them.
+		// The disjunction below keeps the strict shape as the strongest
+		// signal, then adds two looser shapes that still require either
+		// a meaningful drain payoff cluster OR a real graveyard presence
+		// so it doesn't poach generic creature midrange decks.
 		Name: "Aristocrats",
 		Ratios: map[RoleTag]float64{
 			RoleThreat: 0.10, RoleCombo: 0.06, RoleDraw: 0.10, RoleRamp: 0.08,
 		},
 		Require: func(ctx *classifyContext) bool {
-			return ctx.sacrificeCount >= 5 && ctx.deathTriggers >= 3
+			if ctx.sacrificeCount >= 5 && ctx.deathTriggers >= 3 {
+				return true
+			}
+			// Drain-heavy / payoff-heavy shape: fewer outlets, more
+			// death-trigger payoffs (Blood Artist / Zulaport Cutthroat /
+			// Cruel Celebrant / Bastion of Remembrance / Marionette Master).
+			if ctx.sacrificeCount >= 2 && ctx.deathTriggers >= 6 {
+				return true
+			}
+			// Persist / GY-recursion shape: bodies in the GY power the
+			// sac engine (Reassembling Skeleton + Phyrexian Altar +
+			// Pitiless Plunderer). Requires a real GY presence so it
+			// doesn't poach generic midrange creature decks.
+			if ctx.sacrificeCount >= 3 && ctx.deathTriggers >= 3 && ctx.graveyardCount >= 4 {
+				return true
+			}
+			return false
 		},
 	},
 	{
@@ -276,6 +381,55 @@ var archetypeFingerprints = []archetypeFingerprint{
 			return ctx.discardForceCount >= 6
 		},
 	},
+	// ── R60: Three new archetype detectors ──
+	{
+		// Pillowfort: attack-tax + damage-prevention shell that wins
+		// slowly while opponents are deflected elsewhere. Often runs
+		// enchantments (Ghostly Prison, Sphere of Safety) so the
+		// fingerprint can land alongside Enchantress — the classifier
+		// picks the closer-distance match. Threshold of 5 pillowfort
+		// pieces avoids false positives from incidental Ghostly Prison
+		// inclusions in unrelated decks.
+		Name: "Pillowfort",
+		Ratios: map[RoleTag]float64{
+			RoleProtection: 0.10, RoleRemoval: 0.10, RoleDraw: 0.10,
+			RoleRamp: 0.08, RoleStax: 0.04, RoleThreat: 0.06,
+		},
+		Require: func(ctx *classifyContext) bool {
+			return ctx.pillowfortCount >= 5
+		},
+	},
+	{
+		// Group Slug: passive damage triggers (Manabarbs / Pyrostatic
+		// Pillar / Underworld Dreams) that punish opponents for normal
+		// actions. Distinct from Aristocrats (no sac engine) and
+		// Spellslinger (no active spell-chain). Threshold of 5 to
+		// require a real seed — incidental Eidolon of the Great Revel
+		// in a burn deck shouldn't poach it.
+		Name: "Group Slug",
+		Ratios: map[RoleTag]float64{
+			RoleThreat: 0.08, RoleRemoval: 0.10, RoleDraw: 0.10,
+			RoleRamp: 0.08, RoleStax: 0.04,
+		},
+		Require: func(ctx *classifyContext) bool {
+			return ctx.groupSlugCount >= 5
+		},
+	},
+	{
+		// Damage Redirect: Stuffy Doll / Boros Reckoner shell —
+		// punisher creatures that reflect damage at opponents, often
+		// supported by damage doublers (Furnace of Rath, Gisela).
+		// Smaller archetype so the threshold is 4 (not 5); the cards
+		// are distinctive enough that 4 pieces signals real intent.
+		Name: "Damage Redirect",
+		Ratios: map[RoleTag]float64{
+			RoleThreat: 0.10, RoleProtection: 0.08, RoleRemoval: 0.10,
+			RoleDraw: 0.08, RoleRamp: 0.08,
+		},
+		Require: func(ctx *classifyContext) bool {
+			return ctx.damageRedirectCount >= 4
+		},
+	},
 	{
 		Name: "Midrange",
 		Ratios: map[RoleTag]float64{
@@ -340,7 +494,7 @@ func ClassifyArchetype(report *FreyaReport, qtyProfiles []CardProfileQty, oracle
 
 	ac.Signals = buildSignals(ctx, ac)
 	ac.Intent = buildIntent(ac, report, ctx)
-	ac.Bracket, ac.BracketLabel = estimateBracket(ctx, report)
+	ac.Bracket, ac.BracketLabel, ac.BracketRationale = estimateBracket(ctx, report)
 	ac.PlaysLike, ac.PlaysLikeLabel = estimatePlaysLike(ctx, report)
 	ac.GameChangerCount = ctx.gameChangerCount
 	ac.GameChangerCards = ctx.gameChangerNames
@@ -384,6 +538,10 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 		if gameChangersList[nameLower] {
 			ctx.gameChangerCount += qp.Qty
 			ctx.gameChangerNames = append(ctx.gameChangerNames, qp.Profile.Name)
+		}
+		if cedhFreeInteractionList[nameLower] {
+			ctx.freeInteractionCount += qp.Qty
+			ctx.freeInteractionNames = append(ctx.freeInteractionNames, qp.Profile.Name)
 		}
 		nonlandTotal += qp.Qty
 		tl := strings.ToLower(qp.Profile.TypeLine)
@@ -479,6 +637,55 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 			ctx.discardForceCount += qp.Qty
 		}
 
+		// R60 new-archetype detectors.
+		//
+		// Pillowfort: combat-tax + damage-prevention shell. Canonical
+		// signatures are Propaganda/Ghostly Prison ("can't attack you
+		// unless their controller pays"), No Mercy ("whenever a creature
+		// deals damage to you, destroy it"), Crawlspace ("no more than
+		// two creatures can attack you each combat"), and Solitary
+		// Confinement ("prevent all damage that would be dealt to you").
+		// "can't attack you" alone covers Propaganda / Ghostly Prison /
+		// Sphere of Safety / Norn's Annex / Windborn Muse.
+		if containsAny(ot,
+			"can't attack you", "to attack you, pay",
+			"creatures attacking you have",
+			"prevent all damage that would be dealt to you",
+			"whenever a creature deals damage to you") ||
+			(strings.Contains(ot, "no more than") && strings.Contains(ot, "attack you")) {
+			ctx.pillowfortCount += qp.Qty
+		}
+		// Group Slug: passive damage triggers vs opponents. "each
+		// opponent loses" covers Underworld Dreams / Liliana's Caress
+		// / Polluted Bonds. "deals damage to each opponent" covers
+		// Manabarbs / Pyrostatic Pillar / Eidolon of the Great Revel /
+		// Sulfuric Vortex (which actually phrases it as "deals damage
+		// to each player" — caught by the second clause).
+		if containsAny(ot,
+			"each opponent loses",
+			"deals damage to each opponent",
+			"deals damage to each player",
+			"whenever an opponent casts",
+			"whenever an opponent draws a card") {
+			ctx.groupSlugCount += qp.Qty
+		}
+		// Damage Redirect: the signature core phrase across the cluster
+		// is "deals that much damage" — Boros Reckoner / Spitemare /
+		// Truefire Captain / Brash Taunter use the active "is dealt
+		// damage, it deals that much damage" wording; Stuffy Doll uses
+		// the passive "damage is dealt to {this}, it deals that much
+		// damage"; Repercussion uses the spread "damage is dealt to a
+		// creature, it deals that much damage to that creature's
+		// controller". Pariah's "all damage that would be dealt to you
+		// is dealt to enchanted creature instead" + Toralf's "redirect"
+		// wording round out the cluster.
+		if containsAny(ot,
+			"deals that much damage",
+			"would be dealt to you is dealt to",
+			"redirect that damage") {
+			ctx.damageRedirectCount += qp.Qty
+		}
+
 		if qp.Profile.CMC <= 2 {
 			for _, r := range qp.Profile.Produces {
 				if r == ResMana {
@@ -558,6 +765,10 @@ func buildSignals(ctx *classifyContext, ac *ArchetypeClassification) []string {
 		signals = append(signals, "strong tribal core")
 	}
 
+	if ctx.freeInteractionCount >= 2 {
+		signals = append(signals, fmt.Sprintf("free interaction suite (%d pieces)", ctx.freeInteractionCount))
+	}
+
 	if ctx.gameChangerCount > 0 {
 		signals = append(signals, fmt.Sprintf("%d Game Changer(s)", ctx.gameChangerCount))
 	}
@@ -628,6 +839,12 @@ func buildIntent(ac *ArchetypeClassification, report *FreyaReport, ctx *classify
 		gameplan = "empty opponent libraries through mill effects"
 	case "Discard":
 		gameplan = "strip opponents' hands and profit from discard triggers"
+	case "Pillowfort":
+		gameplan = "tax and deflect attacks against itself while grinding to a slow inevitability"
+	case "Group Slug":
+		gameplan = "punish opponents passively — every spell, draw, and untap chips away at their life total"
+	case "Damage Redirect":
+		gameplan = "absorb damage onto a Stuffy Doll-style redirector and reflect it back at opponents"
 	default:
 		gameplan = "execute its game plan through incremental advantage"
 	}
@@ -649,62 +866,114 @@ func buildIntent(ac *ArchetypeClassification, report *FreyaReport, ctx *classify
 	return fmt.Sprintf("This is a %s that wants to %s.%s%s", label, gameplan, disguise, speed)
 }
 
-func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string) {
-	score := 0
+func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string, *BracketRationale) {
+	rationale := &BracketRationale{}
+	addScore := func(name, tier, measurement string, evidence []string, points int) {
+		rationale.RawScore += points
+		rationale.Signals = append(rationale.Signals, BracketSignal{
+			Name:         name,
+			Kind:         "score",
+			Tier:         tier,
+			Measurement:  measurement,
+			Evidence:     evidence,
+			Contribution: points,
+		})
+	}
 
 	// WotC Game Changers — heaviest signal, aligns with official bracket axis
-	if ctx.gameChangerCount >= 8 {
-		score += 4
-	} else if ctx.gameChangerCount >= 4 {
-		score += 3
-	} else if ctx.gameChangerCount >= 2 {
-		score += 2
-	} else if ctx.gameChangerCount >= 1 {
-		score += 1
+	switch {
+	case ctx.gameChangerCount >= 8:
+		addScore("Game Changers", "8+", fmt.Sprintf("%d on WotC list", ctx.gameChangerCount),
+			ctx.gameChangerNames, 4)
+	case ctx.gameChangerCount >= 4:
+		addScore("Game Changers", "4-7", fmt.Sprintf("%d on WotC list", ctx.gameChangerCount),
+			ctx.gameChangerNames, 3)
+	case ctx.gameChangerCount >= 2:
+		addScore("Game Changers", "2-3", fmt.Sprintf("%d on WotC list", ctx.gameChangerCount),
+			ctx.gameChangerNames, 2)
+	case ctx.gameChangerCount >= 1:
+		addScore("Game Changers", "1", fmt.Sprintf("%d on WotC list", ctx.gameChangerCount),
+			ctx.gameChangerNames, 1)
 	}
 
-	if ctx.tutorDensity >= 0.12 {
-		score += 3
-	} else if ctx.tutorDensity >= 0.08 {
-		score += 2
-	} else if ctx.tutorDensity >= 0.04 {
-		score += 1
+	switch {
+	case ctx.tutorDensity >= 0.12:
+		addScore("Tutor density", "12%+", fmt.Sprintf("%.0f%% of nonlands", ctx.tutorDensity*100), nil, 3)
+	case ctx.tutorDensity >= 0.08:
+		addScore("Tutor density", "8-11%", fmt.Sprintf("%.0f%% of nonlands", ctx.tutorDensity*100), nil, 2)
+	case ctx.tutorDensity >= 0.04:
+		addScore("Tutor density", "4-7%", fmt.Sprintf("%.0f%% of nonlands", ctx.tutorDensity*100), nil, 1)
 	}
 
-	if ctx.comboCount >= 5 {
-		score += 3
-	} else if ctx.comboCount >= 2 {
-		score += 2
-	} else if ctx.comboCount >= 1 {
-		score += 1
+	switch {
+	case ctx.comboCount >= 5:
+		addScore("Combo lines", "5+", fmt.Sprintf("%d true-infinite/determined loops", ctx.comboCount), nil, 3)
+	case ctx.comboCount >= 2:
+		addScore("Combo lines", "2-4", fmt.Sprintf("%d true-infinite/determined loops", ctx.comboCount), nil, 2)
+	case ctx.comboCount >= 1:
+		addScore("Combo lines", "1", fmt.Sprintf("%d true-infinite/determined loop", ctx.comboCount), nil, 1)
 	}
 
-	if ctx.avgCMC < 2.0 {
-		score += 2
-	} else if ctx.avgCMC < 2.5 {
-		score += 1
-	} else if ctx.avgCMC > 3.5 {
-		score -= 1
+	switch {
+	case ctx.avgCMC < 2.0:
+		addScore("Average CMC", "lean (<2.0)", fmt.Sprintf("%.1f avg", ctx.avgCMC), nil, 2)
+	case ctx.avgCMC < 2.5:
+		addScore("Average CMC", "moderate (<2.5)", fmt.Sprintf("%.1f avg", ctx.avgCMC), nil, 1)
+	case ctx.avgCMC > 3.5:
+		addScore("Average CMC", "heavy (>3.5)", fmt.Sprintf("%.1f avg", ctx.avgCMC), nil, -1)
 	}
 
-	if ctx.fastManaCount >= 10 {
-		score += 3
-	} else if ctx.fastManaCount >= 6 {
-		score += 2
-	} else if ctx.fastManaCount >= 3 {
-		score += 1
+	switch {
+	case ctx.fastManaCount >= 10:
+		addScore("Fast mana", "10+", fmt.Sprintf("%d sub-2-CMC mana producers", ctx.fastManaCount), nil, 3)
+	case ctx.fastManaCount >= 6:
+		addScore("Fast mana", "6-9", fmt.Sprintf("%d sub-2-CMC mana producers", ctx.fastManaCount), nil, 2)
+	case ctx.fastManaCount >= 3:
+		addScore("Fast mana", "3-5", fmt.Sprintf("%d sub-2-CMC mana producers", ctx.fastManaCount), nil, 1)
 	}
 
 	if ctx.roleRatios[RoleCounterspell] >= 0.06 {
-		score += 1
+		addScore("Counterspell density", "6%+",
+			fmt.Sprintf("%.0f%% of nonlands", ctx.roleRatios[RoleCounterspell]*100), nil, 1)
 	}
 
 	if report.Roles != nil {
 		landRatio := ctx.roleRatios[RoleLand]
 		if landRatio < 0.30 {
-			score += 1
+			addScore("Land ratio", "<30%",
+				fmt.Sprintf("%.0f%% lands (spell-dense)", landRatio*100), nil, 1)
 		}
 	}
+
+	// Finisher density — distinct win-condition lines signal tuned optimization.
+	finisherCount := len(report.Finishers)
+	switch {
+	case finisherCount >= 8:
+		addScore("Finisher density", "8+",
+			fmt.Sprintf("%d distinct finisher lines", finisherCount), nil, 2)
+	case finisherCount >= 4:
+		addScore("Finisher density", "4-7",
+			fmt.Sprintf("%d distinct finisher lines", finisherCount), nil, 1)
+	}
+
+	// Free interaction — the deck-shape signal that separates true cEDH
+	// from merely-optimized B4. Pitch counters, phyrexian-mana spells,
+	// pact cycle, commander-free spells, evoke elementals.
+	switch {
+	case ctx.freeInteractionCount >= 4:
+		addScore("Free interaction", "4+",
+			fmt.Sprintf("%d pitch/phyrexian/commander-free pieces", ctx.freeInteractionCount),
+			ctx.freeInteractionNames, 3)
+	case ctx.freeInteractionCount >= 2:
+		addScore("Free interaction", "2-3",
+			fmt.Sprintf("%d pitch/phyrexian/commander-free pieces", ctx.freeInteractionCount),
+			ctx.freeInteractionNames, 2)
+	case ctx.freeInteractionCount >= 1:
+		addScore("Free interaction", "1",
+			fmt.Sprintf("%d pitch/phyrexian/commander-free piece", ctx.freeInteractionCount),
+			ctx.freeInteractionNames, 1)
+	}
+	score := rationale.RawScore
 
 	var bracket int
 	var label string
@@ -726,27 +995,135 @@ func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string) {
 		label = "Exhibition"
 	}
 
-	// Ceilings — WotC GC caps
-	if ctx.gameChangerCount == 0 && bracket > 2 {
-		bracket = 2
-		label = "Core"
-	}
-	if ctx.gameChangerCount >= 1 && ctx.gameChangerCount <= 3 && bracket > 3 {
-		bracket = 3
-		label = "Upgraded"
+	addAdjustment := func(name, kind, note string) {
+		rationale.Signals = append(rationale.Signals, BracketSignal{
+			Name: name,
+			Kind: kind,
+			Note: note,
+		})
 	}
 
-	// Floors — GC presence guarantees minimum bracket
+	// B5 confirmation gate. The raw score threshold of 12+ catches tuned
+	// decks but can be reached by stacking GCs + tutors + fast mana even
+	// when the deck doesn't have the deck-shape signature of cEDH (free
+	// interaction, multi-tutor density, low CMC). Decks that reach B5
+	// score-wise but lack ALL of these markers are demoted to B4 — they're
+	// optimized but not tournament-tuned. The gate requires AT LEAST ONE
+	// hard cEDH marker:
+	//   - 2+ free interaction pieces (the primary signal)
+	//   - 12%+ tutor density (consistency required for tournament play)
+	//   - 8+ Game Changers (heavy cEDH-card density)
+	// AND avgCMC < 2.8 (cEDH decks are lean; a 3.0+ CMC pile is too slow
+	// to win on turn 3-4 regardless of how many GCs it stacks).
+	if bracket == 5 {
+		hasCEDHMarker := ctx.freeInteractionCount >= 2 ||
+			ctx.tutorDensity >= 0.12 ||
+			ctx.gameChangerCount >= 8
+		switch {
+		case !hasCEDHMarker:
+			bracket = 4
+			label = "Optimized"
+			addAdjustment("B5 gate", "gate",
+				fmt.Sprintf("demoted to B4: no cEDH marker (free interaction %d<2, tutors %.0f%%<12, GCs %d<8)",
+					ctx.freeInteractionCount, ctx.tutorDensity*100, ctx.gameChangerCount))
+		case ctx.avgCMC >= 2.8:
+			bracket = 4
+			label = "Optimized"
+			addAdjustment("B5 gate", "gate",
+				fmt.Sprintf("demoted to B4: avg CMC %.1f >= 2.8 (cEDH curves are leaner)", ctx.avgCMC))
+		default:
+			addAdjustment("B5 gate", "gate",
+				fmt.Sprintf("confirmed: cEDH marker present (free interaction %d / tutors %.0f%% / GCs %d) and avg CMC %.1f < 2.8",
+					ctx.freeInteractionCount, ctx.tutorDensity*100, ctx.gameChangerCount, ctx.avgCMC))
+		}
+	}
+
+	// Ceilings — WotC GC caps, modulated by combo presence.
+	// Per WotC bracket framework: a 2-card combo that wins the game is itself
+	// a B4 marker (Bracket 3 explicitly disallows winning 2-card infinites;
+	// Bracket 4 explicitly allows them). So combo presence lifts the GC ceiling.
+	// Determined-loop counts are intentionally NOT used here — heuristic combo
+	// detection over-classifies value engines (e.g. tribal Werewolf with 4
+	// "determined loops" is really value, not B4 combo).
+	trueInfCount := len(report.TrueInfinites)
+	hasWinningCombo := trueInfCount >= 1
+	// Finisher-density override: many distinct closer lines + accelerator
+	// density signals tuned optimization even without an explicit infinite.
+	tunedRedundancy := finisherCount >= 8 && ctx.fastManaCount >= 6
+
+	preCeilingBracket := bracket
+	if ctx.gameChangerCount == 0 {
+		// No Game Changers: B2 cap by default, but a true winning 2-card combo
+		// is itself a B4 marker per WotC's combo carveout.
+		if hasWinningCombo {
+			if bracket > 4 {
+				bracket = 4
+				label = "Optimized"
+				addAdjustment("GC=0 ceiling", "ceiling",
+					"capped at B4: true-infinite combo present (WotC combo carveout)")
+			}
+		} else if bracket > 2 {
+			bracket = 2
+			label = "Core"
+			addAdjustment("GC=0 ceiling", "ceiling",
+				fmt.Sprintf("capped at B2: no Game Changers and no true-infinite combo (was B%d on raw score)", preCeilingBracket))
+		}
+	} else if ctx.gameChangerCount <= 3 {
+		// Light GC presence: B3 cap by default; lifts to B4 when a real
+		// winning combo or tuned-redundancy signal is present.
+		if hasWinningCombo || tunedRedundancy {
+			if bracket > 4 {
+				bracket = 4
+				label = "Optimized"
+				addAdjustment("GC=1-3 ceiling", "ceiling",
+					"capped at B4: winning combo or tuned-redundancy signal present")
+			}
+		} else if bracket > 3 {
+			bracket = 3
+			label = "Upgraded"
+			addAdjustment("GC=1-3 ceiling", "ceiling",
+				fmt.Sprintf("capped at B3: %d GC and no winning combo (was B%d on raw score)",
+					ctx.gameChangerCount, preCeilingBracket))
+		}
+	}
+
+	// Floors — GC presence guarantees minimum bracket.
+	// 5+ Game Changers is a deliberate optimization choice — floor at B4.
+	preFloorBracket := bracket
 	if ctx.gameChangerCount >= 1 && ctx.gameChangerCount <= 3 && bracket < 2 {
 		bracket = 2
 		label = "Core"
+		addAdjustment("GC=1-3 floor", "floor",
+			fmt.Sprintf("lifted to B2: %d GC present (was B%d on raw score)",
+				ctx.gameChangerCount, preFloorBracket))
 	}
 	if ctx.gameChangerCount >= 4 && bracket < 3 {
 		bracket = 3
 		label = "Upgraded"
+		addAdjustment("GC=4+ floor", "floor",
+			fmt.Sprintf("lifted to B3: %d GC present (was B%d on raw score)",
+				ctx.gameChangerCount, preFloorBracket))
+	}
+	if ctx.gameChangerCount >= 5 && bracket < 4 {
+		bracket = 4
+		label = "Optimized"
+		addAdjustment("GC=5+ floor", "floor",
+			fmt.Sprintf("lifted to B4: %d GC = deliberate optimization (was B%d)",
+				ctx.gameChangerCount, preFloorBracket))
+	}
+	// Tuned-redundancy floor: many distinct finisher lines + fast-mana density
+	// is operationally B4 regardless of GC count.
+	if tunedRedundancy && bracket < 4 {
+		bracket = 4
+		label = "Optimized"
+		addAdjustment("Tuned-redundancy floor", "floor",
+			fmt.Sprintf("lifted to B4: %d finishers + %d fast-mana pieces (was B%d)",
+				finisherCount, ctx.fastManaCount, preFloorBracket))
 	}
 
-	return bracket, label
+	rationale.FinalBracket = bracket
+	rationale.FinalLabel = label
+	return bracket, label, rationale
 }
 
 // estimatePlaysLike determines what bracket a deck PERFORMS at based on

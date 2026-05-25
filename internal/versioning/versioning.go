@@ -60,6 +60,15 @@ type VersionNode struct {
 
 	// IsHead is true if this is the current (latest) version.
 	IsHead bool `json:"is_head"`
+
+	// Archetype is the Freya primary_archetype label at the moment
+	// strategy.json was last produced for this version (e.g.
+	// "Combo / Infinite", "Lands Matter"). Empty when Freya hasn't
+	// classified this version yet — older nodes that predate this
+	// field stay empty until the next runFreya completes and calls
+	// UpdateArchetype. Populated by hexapi.runFreya's success path,
+	// consumed by the /archetype-history timeline endpoint.
+	Archetype string `json:"archetype,omitempty"`
 }
 
 // DeckDAG holds the full version history for all decks.
@@ -226,6 +235,23 @@ func (dag *DeckDAG) UpdateRating(hash string, rating trueskill.Rating, gamesPlay
 	if node, ok := dag.Nodes[hash]; ok {
 		node.Rating = rating
 		node.GamesPlayed = gamesPlayed
+	}
+}
+
+// UpdateArchetype stamps Freya's primary_archetype label onto the
+// version node identified by hash. Called by hexapi.runFreya's
+// success path once strategy.json has been written, so the DAG
+// always tracks "what archetype was Freya calling this version at
+// creation time." Consecutive versions with different Archetype
+// values surface as reclassification events in the
+// /api/decks/{owner}/{id}/archetype-history timeline.
+//
+// No-op when the hash is unknown (the runFreya callback can't
+// guarantee the DAG still contains the version it ran against —
+// concurrent registerDeckVersion calls could have rotated HEAD).
+func (dag *DeckDAG) UpdateArchetype(hash, archetype string) {
+	if node, ok := dag.Nodes[hash]; ok {
+		node.Archetype = archetype
 	}
 }
 

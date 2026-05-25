@@ -115,6 +115,55 @@ func zidaneTantalusThiefETB(gs *gameengine.GameState, perm *gameengine.Permanent
 			if captured == nil || captured.Card == nil {
 				return
 			}
+			// CR §611.3c: when a control-changing effect ends, control
+			// reverts to the owner ONLY IF the permanent is still on the
+			// battlefield. If `captured` has left play (died → graveyard,
+			// exiled, bounced to hand, etc.) since Zidane's ETB, there is
+			// nothing to give back — the perm ceased to exist as a
+			// battlefield object and the control duration's expiry is a
+			// no-op per the rules.
+			//
+			// Loki r60 extreme-stress / seed 1337 game 8921: 40
+			// CardIdentity hits because the pre-fix EOT delayed trigger
+			// blindly re-added the captured Permanent to originalOwner's
+			// battlefield even when its `*Card` had already moved to a
+			// different zone (graveyard / exile / hand). The re-add
+			// created a fresh Permanent wrapping a `*Card` that was also
+			// present in its real post-death zone — same-pointer-in-
+			// two-zones CardIdentity violation, persisting until the perm
+			// itself was destroyed again.
+			//
+			// Same defensive pattern as the Adric / Oketra / Gisa /
+			// Athreos / The Reaper §704.6d / Athreos PR #200 fixes: when
+			// a per_card handler wants to "restore" or "claim" a card
+			// across a delay, validate the card is in the expected source
+			// state before acting.
+			stillOnBattlefield := false
+			for _, s := range gs.Seats {
+				if s == nil {
+					continue
+				}
+				for _, p := range s.Battlefield {
+					if p == captured {
+						stillOnBattlefield = true
+						break
+					}
+				}
+				if stillOnBattlefield {
+					break
+				}
+			}
+			if !stillOnBattlefield {
+				// Permanent left the battlefield — control return is a
+				// no-op per CR §611.3c. Drop the lifelink/haste flags so
+				// they don't ride along with a future reanimation that
+				// rewraps the same *Card pointer.
+				if captured.Flags != nil {
+					delete(captured.Flags, "kw:lifelink")
+					delete(captured.Flags, "kw:haste")
+				}
+				return
+			}
 			// Pluck from current controller's bf and return to original.
 			cur := gs.Seats[captured.Controller]
 			if cur != nil {

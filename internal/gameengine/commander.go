@@ -295,9 +295,25 @@ func FireZoneChange(gs *GameState, perm *Permanent, card *Card, ownerSeat int, f
 	}
 	// Apply the destination.
 	if dest == "command_zone" {
-		// §903.9b destination.
+		// §903.9b destination. Idempotent insert: if the card is already
+		// in the seat's command_zone (e.g. an SBA §704.6d sweep raced
+		// this redirect, or the caller fired the event twice for the
+		// same card pointer), DO NOT append a second copy — that's the
+		// "*Card appears in command_zone AND battlefield" CardIdentity
+		// cluster Loki r60 surfaced on The Convention Enthusiast.
+		// Matches the idempotency guard moveToZone uses for every other
+		// zone (state.go:1535 `inSlice`).
 		if ownerSeat >= 0 && ownerSeat < len(gs.Seats) {
-			gs.Seats[ownerSeat].CommandZone = append(gs.Seats[ownerSeat].CommandZone, card)
+			alreadyPresent := false
+			for _, existing := range gs.Seats[ownerSeat].CommandZone {
+				if existing == card {
+					alreadyPresent = true
+					break
+				}
+			}
+			if !alreadyPresent {
+				gs.Seats[ownerSeat].CommandZone = append(gs.Seats[ownerSeat].CommandZone, card)
+			}
 			gs.LogEvent(Event{
 				Kind: "zone_change", Seat: ownerSeat, Target: -1,
 				Source: card.DisplayName(),

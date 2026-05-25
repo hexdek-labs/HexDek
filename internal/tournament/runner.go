@@ -915,14 +915,24 @@ func runPool(cfg TournamentConfig, workers, maxTurns int, gameTimeout time.Durat
 		}()
 	}
 
-	// Job producer: for each game, pick NSeats random deck indices.
+	// Job producer: for each game, pick NSeats deck indices. The
+	// sampler honors two orthogonal config knobs:
+	//   - MaxIntraPodSimilarity (Jaccard threshold; rejects near-
+	//     clone pods)
+	//   - PreferArchetypeOpposition + DeckArchetypes (biases toward
+	//     combo↔stax / control↔aggro etc. matchups)
+	// Either or both can be active; both off restores the legacy
+	// uniform-random path. See SeedPodWithOptions for the constraint
+	// relaxation order on retry-budget exhaustion.
 	go func() {
 		rng := rand.New(rand.NewSource(cfg.Seed))
-		nDecks := len(allDecks)
+		seedOpts := SeedPodOptions{
+			MaxSimilarity:    cfg.MaxIntraPodSimilarity,
+			PreferOpposition: cfg.PreferArchetypeOpposition,
+			Archetypes:       cfg.DeckArchetypes,
+		}
 		for i := 0; i < cfg.NGames; i++ {
-			idxs := make([]int, nSeats)
-			perm := rng.Perm(nDecks)
-			copy(idxs, perm[:nSeats])
+			idxs := SeedPodWithOptions(allDecks, nSeats, rng, seedOpts)
 			jobs <- poolJob{gameIdx: i, deckIdxs: idxs}
 		}
 		close(jobs)
@@ -1055,14 +1065,40 @@ func runPool(cfg TournamentConfig, workers, maxTurns int, gameTimeout time.Durat
 	}
 	fmt.Printf("\nCoverage: %d/%d commanders appeared in at least 1 game\n", len(entries)-noCoverage, len(entries))
 
+	// Promote the per-deck stats we already computed into the
+	// TournamentResult so report.go's per-commander winrate path (which
+	// already keys on len(GamesPlayedByCommander) > 0) sees the data.
+	// Without this, pool-mode reports divided wins by totalGames — wrong
+	// for any pool larger than nSeats, and especially wrong under the
+	// #145/#150 seeding constraints which deliberately skew the
+	// distribution.
+	winsByCmdr := make(map[string]int, len(stats))
+	gamesByCmdr := make(map[string]int, len(stats))
+	commanderNames := make([]string, 0, len(stats))
+	for name, s := range stats {
+		commanderNames = append(commanderNames, name)
+		gamesByCmdr[name] = s.games
+		if s.wins > 0 {
+			winsByCmdr[name] = s.wins
+		}
+	}
 	result := &TournamentResult{
-		Games:     totalGames,
-		Duration:  elapsed,
-		CrashLogs: crashLogs,
+		Games:                  totalGames,
+		Crashes:                crashes,
+		Duration:               elapsed,
+		CrashLogs:              crashLogs,
+		NSeats:                 cfg.NSeats,
+		CommanderNames:         commanderNames,
+		WinsByCommander:        winsByCmdr,
+		GamesPlayedByCommander: gamesByCmdr,
 	}
 	if elapsed.Seconds() > 0 {
 		result.GamesPerSecond = float64(totalGames) / elapsed.Seconds()
 	}
+	if totalGames > 0 {
+		result.AvgTurns = float64(totalTurns) / float64(totalGames)
+	}
+	result.TotalConcessions = totalConcessions
 
 	// Flush remaining buffered Muninn data for pool mode.
 	if err := poolBatcher.Close(); err != nil {
@@ -1202,6 +1238,18 @@ func runLazyPool(cfg TournamentConfig, workers, maxTurns int, gameTimeout time.D
 			for s := 0; s < nSeats; s++ {
 				idxs[s] = perm[s]
 			}
+			// NOTE: cfg.MaxIntraPodSimilarity is NOT honored here.
+			// LazyPool's whole point is to avoid materializing every
+			// deck up front — but DeckSimilarity needs both decks
+			// loaded. Wiring similarity-aware seeding into lazy mode
+			// would either negate the lazy-loading optimization (load
+			// every deck just to compute the similarity matrix) or
+			// pay a per-pod load cost (load NSeats decks per attempt,
+			// times up to defaultSeedPodMaxAttempts attempts). Neither
+			// is worth it for the typical lazy-pool use case (bug-
+			// hunt across thousands of decks where collisions are
+			// rare). PoolMode supports similarity-aware seeding;
+			// LazyPool does not.
 			jobs <- lazyJob{i, idxs}
 		}
 		close(jobs)
@@ -1317,10 +1365,27 @@ func runLazyPool(cfg TournamentConfig, workers, maxTurns int, gameTimeout time.D
 	fmt.Printf("\nCoverage: %d/%d commanders appeared in at least 1 game\n",
 		len(entries)-noCov, len(entries))
 
+	// Promote per-deck stats into the TournamentResult so the report
+	// layer can compute correct per-commander winrates. See the parallel
+	// runPool comment for rationale.
+	winsByCmdr := make(map[string]int, len(stats))
+	gamesByCmdr := make(map[string]int, len(stats))
+	commanderNames := make([]string, 0, len(stats))
+	for name, s := range stats {
+		commanderNames = append(commanderNames, name)
+		gamesByCmdr[name] = s.games
+		if s.wins > 0 {
+			winsByCmdr[name] = s.wins
+		}
+	}
 	result := &TournamentResult{
-		Games:     totalGames,
-		Duration:  elapsed,
-		CrashLogs: crashLogs,
+		Games:                  totalGames,
+		Duration:               elapsed,
+		CrashLogs:              crashLogs,
+		NSeats:                 cfg.NSeats,
+		CommanderNames:         commanderNames,
+		WinsByCommander:        winsByCmdr,
+		GamesPlayedByCommander: gamesByCmdr,
 	}
 	if elapsed.Seconds() > 0 {
 		result.GamesPerSecond = float64(totalGames) / elapsed.Seconds()

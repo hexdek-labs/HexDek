@@ -33,6 +33,69 @@ type Observation struct {
 	// ExileLinkEvents captures O-Ring style link/unlink for blink+exile
 	// pattern discovery (Huginn) and parity-divergence audit (Muninn).
 	ExileLinkEvents []ExileLinkEvent
+
+	// CommanderZoneVisits captures per-commander zone-visit and cast
+	// counts at game end. Useful for surfacing "this commander came
+	// back N times" — a strong signal that the commander is being
+	// answered repeatedly (removal-heavy meta or fragile commander) vs
+	// "stayed on the battlefield all game" (sticky/protected board
+	// presence). Populated per seat per commander card.
+	CommanderZoneVisits []CommanderZoneVisit
+
+	// RegretCards lists cards that a seat held but never cast — the
+	// high-CMC stranded-in-hand signal Heimdall surfaces to flag
+	// deck-construction or pilot-decision regret. Sorted by Seat
+	// ascending then CMC descending (biggest regret per seat first).
+	RegretCards []RegretCard
+
+	// MVPCards lists the top permanents on each seat's battlefield at
+	// game end, scored by a CMC + counters + commander-bonus proxy
+	// for "did the most work." Companion signal to RegretCards: the
+	// cards you cast and got value from. Top mvpTopN per seat.
+	MVPCards []MVPCard
+
+	// MulliganStats captures per-seat opening-hand outcomes from the
+	// London mulligan procedure: how many mulligans each seat took
+	// and a Freya-style keepable evaluation of the actually-kept
+	// opener (lands count + action-card count + the simple
+	// 2-5-lands-AND-an-action keepable rule). Populated from
+	// gs.MulliganHistory at observation time; empty when mulligans
+	// were not run.
+	MulliganStats []MulliganStat
+
+	// CompositionPriorEffects records the per-seat impact of the R60
+	// composition prior (PRs #403/#408/#415) on this game's TrueSkill
+	// rating update. One entry per seat. The MuDeltaVsBaseline field
+	// is the gold metric: how much did the prior shift this seat's
+	// μ update vs. what vanilla TrueSkill would have produced.
+	// Aggregated downstream by Heimdall analytics for prior-health
+	// monitoring.
+	CompositionPriorEffects []CompositionPriorEffect
+}
+
+// CompositionPriorEffect is the per-seat monitoring record for one
+// composition-prior-aware TrueSkill update. All fields are 0/empty
+// when the prior was disabled or had zero confidence for the cell
+// (i.e. the update reduced to vanilla TrueSkill — no observable
+// effect to record).
+type CompositionPriorEffect struct {
+	Seat              int     `json:"seat"`
+	Archetype         string  `json:"archetype"`
+	// Offset is the μ-shift the prior applied to this seat's rating
+	// before the TrueSkill update (Weight × Confidence × Scale ×
+	// (ExpectedWinrate − 1/podSize)).
+	Offset            float64 `json:"offset"`
+	// Confidence is the prior's [0..1] trust in its expected-winrate
+	// estimate for this (archetype, pod) cell.
+	Confidence        float64 `json:"confidence"`
+	// ExpectedWinrate is the prior's pod-conditioned baseline
+	// (0..1, uniform 0.25 for 4-player).
+	ExpectedWinrate   float64 `json:"expected_winrate"`
+	// MuDeltaVsBaseline is the difference between the actual μ-change
+	// applied with the prior on, and the μ-change vanilla TrueSkill
+	// would have applied. Positive = prior credited the seat MORE
+	// rating change than vanilla; negative = prior credited LESS.
+	MuDeltaVsBaseline float64 `json:"mu_delta_vs_baseline"`
 }
 
 // ZoneCastEvent records a zone-cast grant lifecycle moment or an
@@ -115,6 +178,108 @@ type PivotEvent struct {
 	Turn   int
 	Action string
 	Seat   int
+}
+
+// CommanderZoneVisit records command-zone activity for one commander
+// (one seat). Visits derives from CastCount + InZoneAtEnd: each cast
+// from the command zone is one departure, and §903.9a redirects on
+// death/exile are the only way a commander re-enters the command
+// zone in standard play, so:
+//
+//	Visits = CastCount + (1 if InZoneAtEnd else 0)
+//
+// This assumes the standard §903 setup where every commander starts
+// in the command zone. Edge cases where a commander is moved out of
+// the command zone by means other than casting (e.g., stolen pre-
+// cast) will under-count by 1; flagged but not corrected here since
+// those paths are vanishingly rare and reporting CastCount + flag
+// lets downstream consumers re-derive.
+type CommanderZoneVisit struct {
+	Seat          int    `json:"seat"`
+	CommanderName string `json:"commander_name"`
+	CastCount     int    `json:"cast_count"`
+	InZoneAtEnd   bool   `json:"in_zone_at_end"`
+	Visits        int    `json:"visits"`
+}
+
+// RegretCard records one card a seat held but never deployed. The
+// archetypal signal is "I was sitting on a 7-mana bomb the whole
+// game and never cast it" — a deck-construction or game-plan flag
+// worth surfacing per-game.
+//
+// Reason discriminates how the regret was identified:
+//
+//   - "stranded_in_hand": card was in the seat's hand at game end
+//     with CMC ≥ 1 (i.e., a real spell, not a 0-cost rider or land).
+//     Derivable from end-state alone; no event log required.
+//
+// Fizzle / no-legal-target / redundant detection requires
+// RetainEvents and is deferred — the fast replay path runs with
+// events disabled. When that surface is added, additional Reason
+// values ("fizzled", "no_legal_target", "redundant_etb") will
+// extend this type rather than introducing a parallel struct.
+type RegretCard struct {
+	Seat     int    `json:"seat"`
+	CardName string `json:"card_name"`
+	CMC      int    `json:"cmc"`
+	Reason   string `json:"reason"`
+}
+
+// MVPCard records a high-impact permanent on a seat's battlefield at
+// game end. The score is an end-state proxy:
+//
+//	Score = EffectiveCMC + PositiveCounters + (4 if IsCommander)
+//
+// where PositiveCounters sums "+1/+1", "loyalty", "charge", and
+// "level" counters (the four counter types that meaningfully reflect
+// "the card grew or leveled up during the game"). The commander
+// bonus reflects that a commander on the battlefield carries
+// extra game-defining weight independent of its raw mana value.
+//
+// Limitations: without event-log retention the score can't reward
+// "made N attacks", "triggered M times", or "dealt K damage" — those
+// are the natural per-card activity dimensions that a richer MVP
+// would include. The current model is intentionally derivable from
+// end-state alone and is a deliberate proxy, not a measurement.
+//
+// Cards filtered out: anything with the "basic" type (basic lands
+// are not MVPs even when they survive all game), and nil card
+// entries on the battlefield.
+type MVPCard struct {
+	Seat        int    `json:"seat"`
+	CardName    string `json:"card_name"`
+	CMC         int    `json:"cmc"`
+	TurnPlayed  int    `json:"turn_played"`
+	Counters    int    `json:"counters"`
+	Score       int    `json:"score"`
+	IsCommander bool   `json:"is_commander"`
+}
+
+// MulliganStat captures one seat's opening-hand outcome from the
+// London mulligan procedure (CR §103.5). MulligansTaken is the count
+// of times that seat shipped its hand back; the remaining fields
+// describe the FINAL post-bottom hand (the cards actually entering
+// turn 1).
+//
+// Keepable mirrors Freya's standard-keepable rule from
+// computeOpeningHandSim: a hand is keepable when it has 2-5 lands AND
+// at least one action card (creature / instant / sorcery /
+// planeswalker). The rule does not require a sample — it's a single
+// boolean evaluation of the actual hand, so it stays cheap.
+// Surfaced alongside the raw Lands/ActionCards counts so downstream
+// callers can compute their own grading (snap-keep, marginal, etc.)
+// without re-deriving from card names.
+//
+// OpeningHandSize is the number of cards in the final hand
+// (7 - MulligansTaken, clamped at 0). Stored explicitly so consumers
+// don't have to recompute it from the formula at every read site.
+type MulliganStat struct {
+	Seat            int  `json:"seat"`
+	MulligansTaken  int  `json:"mulligans_taken"`
+	OpeningHandSize int  `json:"opening_hand_size"`
+	Lands           int  `json:"lands"`
+	ActionCards     int  `json:"action_cards"`
+	Keepable        bool `json:"keepable"`
 }
 
 // HealthPulse is the periodic telemetry snapshot sent to GA4.

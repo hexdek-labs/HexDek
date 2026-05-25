@@ -29,6 +29,57 @@ CREATE TABLE IF NOT EXISTS session (
 CREATE INDEX IF NOT EXISTS idx_session_device ON session(device_id);
 CREATE INDEX IF NOT EXISTS idx_session_expires ON session(expires_at);
 
+-- API keys for programmatic access alongside sessions. Sessions are
+-- short-lived (30-day default) browser bearer tokens minted at
+-- device registration; API keys are user-issued, long-lived (or
+-- explicit-expiry), individually revocable credentials for CI /
+-- scripts / external integrations.
+--
+-- Storage shape:
+--   id        — short hex handle (6 bytes / 12 hex chars). Public,
+--               used as the revoke path component. NOT a secret.
+--   key_hash  — SHA-256 hex of the plaintext key. Plaintext is
+--               shown to the user once at issuance and never stored.
+--               Hash is unique so a leaked storage layer can't
+--               trivially reconstruct credentials.
+--   name      — user-supplied display string for "which key is this".
+--   expires_at / revoked_at — both 0 means active. Either non-zero
+--               means inactive (expires_at = lifecycle cap; revoked_at
+--               = user explicitly revoked from the management UI).
+CREATE TABLE IF NOT EXISTS api_key (
+    id            TEXT PRIMARY KEY,
+    device_id     TEXT NOT NULL REFERENCES device(id) ON DELETE CASCADE,
+    name          TEXT NOT NULL DEFAULT '',
+    key_hash      TEXT NOT NULL UNIQUE,
+    created_at    INTEGER NOT NULL,
+    last_used_at  INTEGER NOT NULL DEFAULT 0,
+    expires_at    INTEGER NOT NULL DEFAULT 0,   -- 0 = no expiry
+    revoked_at    INTEGER NOT NULL DEFAULT 0    -- 0 = active
+);
+CREATE INDEX IF NOT EXISTS idx_api_key_device ON api_key(device_id);
+CREATE INDEX IF NOT EXISTS idx_api_key_hash ON api_key(key_hash);
+
+-- TOTP (RFC 6238) enrollment state per device. Two-row lifecycle:
+--   1. EnrollTOTP inserts with status='pending' + a fresh secret.
+--   2. ConfirmTOTP transitions to status='active' after the user
+--      submits a sample code that verifies — until then the secret
+--      MUST NOT gate any auth (the user might typo the QR scan and
+--      need to retry).
+-- DisableTOTP removes the row entirely; a fresh enrollment then
+-- starts at pending again.
+--
+-- See docs/auth-2fa-survey.md for the full scope rationale + the
+-- pieces deferred to follow-up PRs (HTTP endpoints, session
+-- elevation, backup codes, rate-limit on verify).
+CREATE TABLE IF NOT EXISTS device_totp (
+    device_id     TEXT PRIMARY KEY REFERENCES device(id) ON DELETE CASCADE,
+    secret        TEXT NOT NULL,                  -- base32-encoded, no padding
+    status        TEXT NOT NULL,                  -- 'pending' | 'active'
+    created_at    INTEGER NOT NULL,               -- enrollment start
+    confirmed_at  INTEGER NOT NULL DEFAULT 0      -- 0 = unconfirmed
+);
+CREATE INDEX IF NOT EXISTS idx_device_totp_status ON device_totp(status);
+
 CREATE TABLE IF NOT EXISTS deck (
     id                TEXT PRIMARY KEY,
     owner_device_id   TEXT NOT NULL REFERENCES device(id),
@@ -166,7 +217,8 @@ CREATE TABLE IF NOT EXISTS card_oracle (
     image_uri_normal TEXT,                    -- Scryfall normal-size image URL
     image_uri_art    TEXT,                    -- art-crop image URL
     set_code         TEXT,
-    cached_at        INTEGER NOT NULL
+    cached_at        INTEGER NOT NULL,
+    legalities       TEXT NOT NULL DEFAULT '' -- JSON {format: "legal|not_legal|banned|restricted"}
 );
 
 CREATE INDEX IF NOT EXISTS idx_card_oracle_name ON card_oracle(name);
@@ -201,20 +253,59 @@ CREATE TABLE IF NOT EXISTS showmatch_game (
 );
 
 CREATE TABLE IF NOT EXISTS showmatch_game_seat (
-    game_id      INTEGER NOT NULL REFERENCES showmatch_game(game_id) ON DELETE CASCADE,
-    seat         INTEGER NOT NULL,
-    commander    TEXT NOT NULL,
-    life         INTEGER NOT NULL,
-    hand_size    INTEGER NOT NULL DEFAULT 0,
-    library_size INTEGER NOT NULL DEFAULT 0,
-    gy_size      INTEGER NOT NULL DEFAULT 0,
-    bf_size      INTEGER NOT NULL DEFAULT 0,
-    lost         INTEGER NOT NULL DEFAULT 0,
+    game_id           INTEGER NOT NULL REFERENCES showmatch_game(game_id) ON DELETE CASCADE,
+    seat              INTEGER NOT NULL,
+    commander         TEXT NOT NULL,
+    life              INTEGER NOT NULL,
+    hand_size         INTEGER NOT NULL DEFAULT 0,
+    library_size      INTEGER NOT NULL DEFAULT 0,
+    gy_size           INTEGER NOT NULL DEFAULT 0,
+    bf_size           INTEGER NOT NULL DEFAULT 0,
+    lost              INTEGER NOT NULL DEFAULT 0,
+    -- deck_key + battlefield_cards are also added by applyMigrations for
+    -- old DBs that pre-date PR #78 — declared here so fresh DBs see
+    -- them at CREATE TABLE time and CREATE INDEX on deck_key (below)
+    -- doesn't fail on first boot.
+    deck_key          TEXT NOT NULL DEFAULT '',
+    battlefield_cards TEXT NOT NULL DEFAULT '[]',
     PRIMARY KEY (game_id, seat)
 );
 
 CREATE INDEX IF NOT EXISTS idx_showmatch_game_finished ON showmatch_game(finished_at);
 CREATE INDEX IF NOT EXISTS idx_showmatch_seat_commander ON showmatch_game_seat(commander);
+
+-- r60: heimdall observation snapshot persistence. One row per game
+-- holding the JSON-serialized GameObservationSnapshot
+-- (CommanderZoneVisits / RegretCards / MVPCards / CardFirstPlayed +
+-- per-seat commander names). Drives the "rich path" of the
+-- /api/games/{id}/summary endpoint — without this row the endpoint
+-- falls back to the "db_only" summary built from game metadata.
+-- ON DELETE CASCADE so snapshots clean up when the parent game row
+-- is purged.
+CREATE TABLE IF NOT EXISTS showmatch_game_observation (
+    game_id    INTEGER PRIMARY KEY REFERENCES showmatch_game(game_id) ON DELETE CASCADE,
+    payload    TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT 0
+);
+
+-- r60: LoadOwnerGames is the per-owner game-history query that
+-- powers heimdall / the dashboard "your recent games" panel. It
+-- joins three tables and filters with `e.owner = ?`. Without these
+-- two indexes the planner is forced into a "scan all seats, look up
+-- each one's elo row by deck_key, discard rows where owner doesn't
+-- match" plan — every per-owner query touches every seat row, so
+-- latency scales linearly with TOTAL games in the DB rather than
+-- with the requested owner's history.
+--
+-- idx_showmatch_elo_owner gives the planner a starting point: search
+-- elo by owner first (small result set), then join the seats by
+-- deck_key, then join the games by id. idx_showmatch_seat_deck_key
+-- is the second half — without an index on game_seat.deck_key the
+-- planner can't follow the new join order and falls back to the old
+-- scan-seats plan. The pair is needed; the index on elo.owner alone
+-- doesn't change the plan at this dataset size.
+CREATE INDEX IF NOT EXISTS idx_showmatch_elo_owner ON showmatch_elo(owner);
+CREATE INDEX IF NOT EXISTS idx_showmatch_seat_deck_key ON showmatch_game_seat(deck_key);
 
 -- Per-gauntlet-run ELO snapshot. One row per completed gauntlet,
 -- captures the rating trajectory for the deck under test (seat 0).
@@ -245,6 +336,31 @@ CREATE TABLE IF NOT EXISTS gauntlet_runs (
 );
 CREATE INDEX IF NOT EXISTS idx_gauntlet_runs_deck     ON gauntlet_runs(deck_key, finished_at DESC);
 CREATE INDEX IF NOT EXISTS idx_gauntlet_runs_finished ON gauntlet_runs(finished_at);
+
+-- r60 gauntlet replay archive: explicit junction between a
+-- gauntlet_runs row and the showmatch_game rows it produced.
+-- Without this junction the only way to recover a gauntlet's
+-- per-game data is the (deck_key, time-window) heuristic the
+-- tournament-stats endpoint uses today — which mis-attributes
+-- games when two gauntlets for the same deck overlap.
+--
+-- game_index is the 0-based ordinal of the game within the
+-- gauntlet, so consumers can replay games in their original
+-- sequence regardless of database insertion order (which can
+-- reorder slightly under concurrent writes).
+--
+-- ON DELETE CASCADE both directions: dropping a gauntlet_runs
+-- row drops its junction rows; dropping a showmatch_game row
+-- drops the corresponding junction entry (the game is gone, the
+-- link to it shouldn't dangle).
+CREATE TABLE IF NOT EXISTS gauntlet_run_game (
+    gauntlet_id INTEGER NOT NULL REFERENCES gauntlet_runs(run_id) ON DELETE CASCADE,
+    game_id     INTEGER NOT NULL REFERENCES showmatch_game(game_id) ON DELETE CASCADE,
+    game_index  INTEGER NOT NULL,
+    PRIMARY KEY (gauntlet_id, game_id)
+);
+CREATE INDEX IF NOT EXISTS idx_gauntlet_run_game_gauntlet ON gauntlet_run_game(gauntlet_id, game_index);
+CREATE INDEX IF NOT EXISTS idx_gauntlet_run_game_game ON gauntlet_run_game(game_id);
 
 CREATE TABLE IF NOT EXISTS card_win_stats (
     card_name    TEXT NOT NULL,

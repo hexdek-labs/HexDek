@@ -141,6 +141,12 @@ func DestroyPermanent(gs *GameState, perm *Permanent, source *Permanent) bool {
 	}
 
 	detachAll(gs, perm)
+	// r60: drop any `while_source_on_bf` ZoneCastGrants sourced from this
+	// permanent's Timestamp. Without this, graveyard / exile cast grants
+	// from Yawgmoth's Agenda, Karador, Maestros Ascendancy, Lurrus, etc.
+	// survive their host's death and trip the ZoneCastGrantExpiry invariant.
+	ExpireSourceGrants(gs, perm.Timestamp)
+	gs.ExpireSourceBoundPolicies(perm)
 
 	// Tokens cease to exist — skip zone write (§704.5d cleanup).
 	if !perm.IsToken() {
@@ -200,6 +206,8 @@ func ExilePermanent(gs *GameState, perm *Permanent, source *Permanent) bool {
 	}
 
 	detachAll(gs, perm)
+	ExpireSourceGrants(gs, perm.Timestamp)
+	gs.ExpireSourceBoundPolicies(perm)
 
 	if !perm.IsToken() {
 		finalZone := FireZoneChange(gs, perm, perm.Card, perm.Card.Owner, "battlefield", destZone)
@@ -265,10 +273,11 @@ func sacrificePermanentImpl(gs *GameState, perm *Permanent, source *Permanent, r
 		Target: perm.Controller,
 		Source: cardName,
 		Details: map[string]interface{}{
-			"target_card": cardName,
-			"to_zone":     destZone,
-			"reason":      reason,
-			"rule":        "701.17",
+			"target_card":  cardName,
+			"to_zone":      destZone,
+			"reason":       reason,
+			"rule":         "701.17",
+			"was_creature": perm.IsCreature(),
 		},
 	})
 
@@ -303,6 +312,8 @@ func sacrificePermanentImpl(gs *GameState, perm *Permanent, source *Permanent, r
 	}
 
 	detachAll(gs, perm)
+	ExpireSourceGrants(gs, perm.Timestamp)
+	gs.ExpireSourceBoundPolicies(perm)
 
 	if !perm.IsToken() {
 		finalZone := FireZoneChange(gs, perm, perm.Card, perm.Card.Owner, "battlefield", destZone)
@@ -378,6 +389,8 @@ func BouncePermanent(gs *GameState, perm *Permanent, source *Permanent, dest str
 	}
 
 	detachAll(gs, perm)
+	ExpireSourceGrants(gs, perm.Timestamp)
+	gs.ExpireSourceBoundPolicies(perm)
 
 	if !perm.IsToken() {
 		finalZone := FireZoneChange(gs, perm, perm.Card, perm.Card.Owner, "battlefield", dest)
@@ -446,6 +459,49 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 			})
 			// CR §702.46 — Soulshift: return a Spirit from graveyard to hand.
 			CheckSoulshift(gs, perm)
+		}
+	} else if fromZone == "battlefield" && toZone != "graveyard" {
+		// A creature left the battlefield but a §614 replacement redirected
+		// the destination away from graveyard (Rest in Peace → exile,
+		// Anafenza → exile, Leyline of the Void → exile, Tergrid →
+		// hand/library, commander §903.9b → command_zone, etc.). Per CR
+		// §700.4 "dies" means battlefield → graveyard specifically, so the
+		// dies trigger is correctly NOT fired. But the dispatcher still
+		// saw and acknowledged the death event — emit a trigger_evaluated
+		// marker so the TriggerCompleteness invariant has a follow-up
+		// event. Without this, the invariant flags every
+		// destroy-under-RIP as "trigger-bearer on battlefield, no
+		// subsequent trigger event found" (Loki r60 round 3 game 4512
+		// Gerrard cluster).
+		isCreature := false
+		if perm != nil && perm.IsCreature() {
+			isCreature = true
+		} else if card != nil && cardHasType(card, "creature") {
+			isCreature = true
+		}
+		if isCreature {
+			seat := -1
+			if perm != nil {
+				seat = perm.Controller
+			} else if card != nil {
+				seat = card.Owner
+			}
+			name := ""
+			if card != nil {
+				name = card.DisplayName()
+			}
+			gs.LogEvent(Event{
+				Kind:   "trigger_evaluated",
+				Seat:   seat,
+				Target: -1,
+				Source: name,
+				Details: map[string]interface{}{
+					"event":   "creature_dies",
+					"skipped": "destination_not_graveyard",
+					"to_zone": toZone,
+					"rule":    "700.4",
+				},
+			})
 		}
 	}
 	if fromZone == "battlefield" && perm != nil {

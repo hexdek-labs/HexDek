@@ -29,7 +29,7 @@ func ArtCacheHandler(cacheDir string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		name := r.PathValue("name")
 		if name == "" {
-			http.Error(w, "missing card name", http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "missing card name")
 			return
 		}
 

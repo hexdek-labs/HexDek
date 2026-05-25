@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? ''
+// import.meta.env is Vite-only; guard the read so this module loads
+// cleanly under plain `node --test` for the unwrapApiError unit tests.
+const API_BASE = (import.meta.env && import.meta.env.VITE_API_URL) ?? ''
 
 function getOwnerSlug() {
   try {
@@ -12,18 +14,73 @@ async function request(path, opts = {}) {
     ...opts,
   })
   if (!res.ok) {
-    // Pull the body out so callers can show a meaningful message and
-    // attach the status as a property (callers shouldn't have to grep
-    // an error string for "401"). We swallow JSON parse errors — the
-    // body is plain text on http.Error responses anyway.
+    // hexapi's r60 unified ErrorResponse shape:
+    //   {error: {code, message, details?}, request_id, status}
+    // Pre-r60 shape (still on stale backends during deploy crossover):
+    //   {error: "msg", status}
+    // Pre-unified shape (third-party / not-yet-migrated routes):
+    //   plain text or arbitrary JSON
+    // unwrapApiError normalizes all three so consumers can always read
+    // err.code / err.message / err.details / err.requestId without
+    // re-parsing err.body.
     let body = ''
     try { body = await res.text() } catch { /* noop */ }
-    const err = new Error(body?.trim() || `API ${res.status}: ${path}`)
-    err.status = res.status
-    err.body = body
-    throw err
+    throw unwrapApiError({ status: res.status, path, body })
   }
   return res.json()
+}
+
+// unwrapApiError normalizes any error body shape into a flat Error
+// with code/message/details/requestId/status/body fields. Exported
+// so direct fetch() callers (BugReport, MatchupsPanel, Meta, etc.)
+// can opt into the same decoder if they want richer error info.
+//
+// Backward-compat is intentional: this layer is the deploy-crossover
+// shim. Once every consumer has migrated to err.code / err.message,
+// the legacy-string branch can be deleted — but for now, callers
+// authored against the flat shape continue to work because the
+// decoder upgrades the wire body to the rich shape regardless of
+// which server version answered.
+export function unwrapApiError({ status, path, body }) {
+  let code = ''
+  let message = (body || '').trim()
+  let details = null
+  let requestId
+  try {
+    const parsed = JSON.parse(body)
+    if (parsed && typeof parsed === 'object') {
+      if (typeof parsed.request_id === 'string') requestId = parsed.request_id
+      const e = parsed.error
+      if (e && typeof e === 'object') {
+        // r60 nested envelope.
+        if (typeof e.code === 'string') code = e.code
+        if (typeof e.message === 'string') message = e.message
+        if (e.details && typeof e.details === 'object') details = e.details
+      } else if (typeof e === 'string') {
+        // Pre-r60 flat envelope: hoist string error to message; also
+        // expose it as code so existing switch-on-code consumers
+        // (e.g. DeckArchive credits gate's "free_quota_exhausted"
+        // string check) keep working against either server version.
+        message = e
+        code = e
+        // Pre-r60 also merged extras at top level — surface them
+        // under .details so the new-shape consumer path resolves.
+        const extras = { ...parsed }
+        delete extras.error
+        delete extras.status
+        delete extras.request_id
+        if (Object.keys(extras).length > 0) details = extras
+      }
+    }
+  } catch { /* not JSON — fall through with raw text as message */ }
+  if (!message) message = `API ${status}: ${path}`
+  const err = new Error(message)
+  err.status = status
+  err.code = code
+  err.details = details
+  err.requestId = requestId
+  err.body = body
+  return err
 }
 
 function authedRequest(path, opts = {}) {
@@ -62,6 +119,19 @@ export const api = {
   getGames: (limit = 20) => request(`/api/games?limit=${limit}`),
   getGame: (id) => request(`/api/games/${id}`),
   getGameReport: (id) => request(`/api/games/${id}/report`),
+  getGameSummary: (id) => request(`/api/games/${id}/summary`),
+  searchGameSummaries: ({ since, until, commander, deck, winner, limit, offset } = {}) => {
+    const params = new URLSearchParams()
+    if (since) params.set('since', String(since))
+    if (until) params.set('until', String(until))
+    if (commander) params.set('commander', commander)
+    if (deck) params.set('deck', deck)
+    if (winner) params.set('winner', winner)
+    if (limit) params.set('limit', String(limit))
+    if (offset) params.set('offset', String(offset))
+    const qs = params.toString()
+    return request(`/api/games/summaries${qs ? `?${qs}` : ''}`)
+  },
   getLiveStats: () => request('/api/live/stats'),
   getLiveGame: () => request('/api/live/game'),
   getLiveELO: () => request('/api/live/elo'),
@@ -76,6 +146,10 @@ export const api = {
     body: JSON.stringify({ name, owner, deck_list: deckList, ...(tags?.length ? { tags } : {}) }),
   }),
   importMoxfield: ({ url, owner, tags }) => request('/api/import/moxfield', {
+    method: 'POST',
+    body: JSON.stringify({ url, owner, ...(tags?.length ? { tags } : {}) }),
+  }),
+  importArchidekt: ({ url, owner, tags }) => request('/api/import/archidekt', {
     method: 'POST',
     body: JSON.stringify({ url, owner, ...(tags?.length ? { tags } : {}) }),
   }),
@@ -98,11 +172,21 @@ export const api = {
   }),
   deleteDeck: (id) => authedRequest(`/api/decks/${id}`, { method: 'DELETE' }),
   cloneDeck: (id) => authedRequest(`/api/decks/${id}/clone`, { method: 'POST' }),
+  forkDeck: (id) => authedRequest(`/api/decks/${id}/fork`, { method: 'POST' }),
+  archetypeFeedback: (id, action, archetype) => authedRequest(
+    `/api/decks/${id}/archetype-feedback`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ action, ...(archetype ? { archetype } : {}) }),
+    },
+  ),
   patchDeck: (id, fields) => authedRequest(`/api/decks/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(fields),
   }),
   getDeckVersions: (id) => request(`/api/decks/${id}/versions`),
+  getDeckVersion: (id, version) => request(`/api/decks/${id}/versions/${encodeURIComponent(version)}`),
+  getDeckBudget: (id) => request(`/api/decks/${id}/budget`),
   getDeckCurse: (id) => request(`/api/decks/${id}/curse`),
   patchDeckCurse: (id, constraints) => authedRequest(`/api/decks/${id}/curse`, {
     method: 'PATCH',

@@ -54,7 +54,7 @@ func (h *Handler) handleCardSharePage(w http.ResponseWriter, r *http.Request) {
 	raw := r.PathValue("name")
 	name, err := url.PathUnescape(raw)
 	if err != nil || name == "" {
-		http.Error(w, "invalid name", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid name")
 		return
 	}
 
@@ -86,7 +86,7 @@ func (h *Handler) handleCardSharePage(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleOperatorSharePage(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	if !validatePathComponent(owner) {
-		http.Error(w, "invalid owner", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner")
 		return
 	}
 	ownerLower := strings.ToLower(owner)

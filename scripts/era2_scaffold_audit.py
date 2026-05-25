@@ -168,6 +168,90 @@ def match_raw(text: str) -> str | None:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Trigger-side bucketing — mirrors classifyTrigger + triggerConditionActions
+# in cmd/hexdek-thor/conditional_setup.go. A trigger event is BUCKETED when
+# (a) it matches one of the EVENT_EXACT slugs (Era 2 R60 additions), or
+# (b) it satisfies one of the substring catches (cast/spell, enters, dies,
+#     attack, combat damage, gain/lose life, draw, discard, leaves/ltb,
+#     sacrific, phase).
+# Anything else lands in trig_events_unbucketed for the report.
+# ---------------------------------------------------------------------------
+
+TRIGGER_EVENT_EXACT = {
+    "when_you_do", "counters_put_on_self", "tribe_you_control_etb",
+    "self_crews_vehicle", "you_whenever", "ally_etb", "ally_typed_etb_a",
+    "ally_subtype_deal_damage", "self_and", "etb_or_another",
+    "opp_creature_event", "self_saddles_mount", "becomes_tapped",
+    "you_get_energy", "player_wins_coin_flip", "you_action",
+    "becomes_crewed", "becomes_crewed_first", "opp_draw_card",
+    # Phase slugs that don't need a substring match.
+    "etb", "attacks", "deal_combat_damage", "deals_combat_damage", "phase",
+}
+
+TRIGGER_SUBSTRING_CATCHES = [
+    "dies", "is put into a graveyard",
+    "enters", "attack", "combat damage",
+    # Era 2 R60 follow-up — underscore-form combat damage slugs
+    # (combat_damage_player, group_combat_damage_player, etc.) the parser
+    # canonicalizes from prose. The prose "combat damage" substring missed
+    # them because the slug uses underscores. Adding "combat_damage" here
+    # mirrors the Go-side change in classifyTrigger and is the single
+    # largest gap-closer for Era 2 (32/59 = 54%).
+    "combat_damage",
+    "cast", "spell",
+    "gain", "lose",  # paired with "life" check below
+    "draw", "discard",
+    "leaves", "ltb", "sacrific",
+]
+
+# Era 2 R60 follow-up — long-tail event slugs that map to existing scaffolds
+# (see classifyTrigger in cmd/hexdek-thor/conditional_setup.go for routing).
+# These are EXACT matches; the substring catches above don't see them.
+TRIGGER_EXTRA_EXACT = {
+    "die", "to_graveyard",   # → creature_dies
+    "etb_as",                # → creature_etb
+    "cycle",                 # → discard
+    "block",                 # → attacks
+    "coin_flip_result",      # → player_wins_coin_flip
+    "lose_game",             # → sacrifice
+    # Second-tier long tail — see classifyTrigger comment block for the
+    # per-slug routing rationale.
+    "beginning_of_ordinal_step",  # → upkeep
+    "token_event",                # → creature_etb
+    "nontoken_ally_event",        # → ally_etb
+    "nontoken_creature_event",    # → creature_etb
+    "compound_opp_tribe_event",   # → opp_creature_event
+    "one_or_more_typed_event",    # → tribe_you_control_etb
+    "ally_explore",               # → ally_etb
+    "self_and_another",           # → self_and
+    "conditional_state",          # → when_you_do
+    "misc_when",                  # → when_you_do
+    "spend_this_mana",            # → you_get_energy
+}
+
+
+def classify_trigger_event(event: str, phase: str) -> bool:
+    """Returns True if classifyTrigger would route this event to a registered
+    triggerConditionActions slug (i.e. the trigger is scaffold-bucketed)."""
+    e = (event or "").lower().strip()
+    p = (phase or "").lower().strip()
+    if not e and not p:
+        return False
+    if e in TRIGGER_EVENT_EXACT or e in TRIGGER_EXTRA_EXACT:
+        return True
+    # Substring catches mirroring the Go switch.
+    for kw in TRIGGER_SUBSTRING_CATCHES:
+        if kw in e:
+            # The "gain"/"lose" catches also require "life".
+            if kw in ("gain", "lose") and "life" not in e:
+                continue
+            return True
+    if p:
+        return True  # phase events route to phase_<name> slug
+    return False
+
+
 def walk(node, conds, trigs):
     if isinstance(node, dict):
         t = node.get("__ast_type__")
@@ -187,6 +271,8 @@ def main():
     cond_kinds_bucketed = Counter()
     cond_kinds_unbucketed = Counter()
     trig_events = Counter()
+    trig_events_bucketed = Counter()
+    trig_events_unbucketed = Counter()
     raw_buckets = Counter()
     raw_unbucketed_text = Counter()
     raw_unbucketed_examples = defaultdict(list)
@@ -236,7 +322,12 @@ def main():
                     cond_kinds_unbucketed[k] += 1
             for tg in trigs:
                 ev = (tg.get("event") or "").lower()
+                ph = (tg.get("phase") or "").lower()
                 trig_events[ev] += 1
+                if classify_trigger_event(ev, ph):
+                    trig_events_bucketed[ev] += 1
+                else:
+                    trig_events_unbucketed[ev] += 1
 
     total_conds = sum(cond_kinds.values())
     total_bucket = sum(cond_kinds_bucketed.values())
@@ -251,7 +342,12 @@ def main():
     lines.append(f"- Era {TARGET_ERA} Condition nodes: **{total_conds}** "
                  f"(bucketed {total_bucket}, unbucketed {total_unbucket}, "
                  f"{100.0*total_unbucket/max(1,total_conds):.1f}% gap)\n")
-    lines.append(f"- Era {TARGET_ERA} Trigger nodes: **{sum(trig_events.values())}**\n")
+    total_trigs = sum(trig_events.values())
+    total_trig_bucket = sum(trig_events_bucketed.values())
+    total_trig_unbucket = sum(trig_events_unbucketed.values())
+    lines.append(f"- Era {TARGET_ERA} Trigger nodes: **{total_trigs}** "
+                 f"(bucketed {total_trig_bucket}, unbucketed {total_trig_unbucket}, "
+                 f"{100.0*total_trig_unbucket/max(1,total_trigs):.1f}% gap)\n")
 
     lines.append("\n## Top unbucketed condition Kinds\n")
     for k, n in cond_kinds_unbucketed.most_common(60):
@@ -266,9 +362,16 @@ def main():
     for k, n in cond_kinds_bucketed.most_common(20):
         lines.append(f"- `{k}` × {n}")
 
-    lines.append("\n## Top trigger events\n")
-    for ev, n in trig_events.most_common(40):
+    lines.append("\n## Top unbucketed trigger events\n")
+    if not trig_events_unbucketed:
+        lines.append("_(none — every Era 2 trigger event maps to a scaffold slug)_")
+    for ev, n in trig_events_unbucketed.most_common(40):
         lines.append(f"- `{ev or '<empty>'}` × {n}")
+
+    lines.append("\n## Top trigger events (bucketed + unbucketed)\n")
+    for ev, n in trig_events.most_common(40):
+        marker = "" if ev in trig_events_bucketed else " _(unbucketed)_"
+        lines.append(f"- `{ev or '<empty>'}` × {n}{marker}")
 
     OUT.write_text("\n".join(lines))
     print("\n".join(lines))

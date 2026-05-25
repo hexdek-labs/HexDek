@@ -306,22 +306,43 @@ func atoiSafe(s string) (int, bool) {
 // Main
 // ---------------------------------------------------------------------------
 
+// invariantFilter, when non-empty, restricts violation recording to the
+// single invariant whose canonical (camelCase) name matches. Set by main
+// after parsing --invariant; consumed inside checkChaosInvariants and
+// checkNightmareInvariants. Empty = match-all (legacy behavior).
+var invariantFilter string
+
 func main() {
 	var (
-		gamesFlag     = flag.Int("games", 1000, "number of chaos games to run")
-		seedFlag      = flag.Int64("seed", 42, "master RNG seed")
-		permsFlag     = flag.Int("permutations", 1, "shuffles per deck set")
-		seatsFlag     = flag.Int("seats", 4, "seats per game")
-		maxTurnsFlag  = flag.Int("max-turns", 60, "max turns per game")
-		workersFlag   = flag.Int("workers", 0, "worker goroutines (0 = NumCPU)")
-		reportFlag    = flag.String("report", "data/rules/CHAOS_REPORT.md", "markdown report output path")
-		astPath       = flag.String("ast", "data/rules/ast_dataset.jsonl", "AST dataset JSONL path")
-		oraclePath    = flag.String("oracle", "data/rules/oracle-cards.json", "Scryfall oracle-cards.json path")
-		nightmareFlag = flag.Int("nightmare-boards", 10000, "number of nightmare board tests")
-		seedCardsFlag = flag.String("seed-cards", "", "comma-separated card names to force into seat 0's deck every chaos game (handler-focused fuzz)")
-		seedCmdrFlag  = flag.String("seed-cmdr", "", "force seat 0's commander to this name (must be a legendary creature in oracle corpus)")
+		gamesFlag      = flag.Int("games", 1000, "number of chaos games to run")
+		seedFlag       = flag.Int64("seed", 42, "master RNG seed")
+		permsFlag      = flag.Int("permutations", 1, "shuffles per deck set")
+		seatsFlag      = flag.Int("seats", 4, "seats per game")
+		maxTurnsFlag   = flag.Int("max-turns", 60, "max turns per game")
+		workersFlag    = flag.Int("workers", 0, "worker goroutines (0 = NumCPU)")
+		reportFlag     = flag.String("report", "data/rules/CHAOS_REPORT.md", "markdown report output path")
+		astPath        = flag.String("ast", "data/rules/ast_dataset.jsonl", "AST dataset JSONL path")
+		oraclePath     = flag.String("oracle", "data/rules/oracle-cards.json", "Scryfall oracle-cards.json path")
+		nightmareFlag  = flag.Int("nightmare-boards", 10000, "number of nightmare board tests")
+		seedCardsFlag  = flag.String("seed-cards", "", "comma-separated card names to force into seat 0's deck every chaos game (handler-focused fuzz)")
+		seedCmdrFlag   = flag.String("seed-cmdr", "", "force seat 0's commander to this name (must be a legendary creature in oracle corpus)")
+		invariantFlag  = flag.String("invariant", "", "filter violations to a single invariant kind (case-insensitive, accepts CamelCase or kebab-case; empty = all). Example: --invariant zone-conservation")
+		listInvFlag    = flag.Bool("list-invariants", false, "print the full set of known invariant names and exit")
 	)
 	flag.Parse()
+
+	knownInvariants := invariantNames(gameengine.AllInvariants())
+	if *listInvFlag {
+		for _, n := range knownInvariants {
+			fmt.Println(n)
+		}
+		return
+	}
+	if canonical, err := canonicalizeInvariantName(*invariantFlag, knownInvariants); err != nil {
+		log.Fatalf("--invariant: %v", err)
+	} else {
+		invariantFilter = canonical
+	}
 
 	var seedCards []string
 	if strings.TrimSpace(*seedCardsFlag) != "" {
@@ -345,6 +366,9 @@ func main() {
 	log.Printf("  max-turns:       %d", *maxTurnsFlag)
 	log.Printf("  workers:         %d", workers)
 	log.Printf("  nightmare-boards: %d", *nightmareFlag)
+	if invariantFilter != "" {
+		log.Printf("  invariant filter: %s (other invariants will still RUN but their violations are dropped from the report)", invariantFilter)
+	}
 
 	// Load AST corpus + meta (needed to build gameengine.Card objects).
 	log.Printf("loading AST corpus from %s ...", *astPath)
@@ -1091,6 +1115,9 @@ func checkChaosInvariants(gs *gameengine.GameState, gameIdx int, gameSeed int64,
 	permutation int, commanders []string, result *chaosGameResult) {
 	violations := gameengine.RunAllInvariants(gs)
 	for _, v := range violations {
+		if !matchesInvariantFilter(v.Name, invariantFilter) {
+			continue
+		}
 		viol := chaosViolation{
 			GameIdx:       gameIdx,
 			GameSeed:      gameSeed,
@@ -1113,6 +1140,9 @@ func checkNightmareInvariants(gs *gameengine.GameState, boardIdx int, seed int64
 	cardNames []string, result *nightmareResult) {
 	violations := gameengine.RunAllInvariants(gs)
 	for _, v := range violations {
+		if !matchesInvariantFilter(v.Name, invariantFilter) {
+			continue
+		}
 		viol := chaosViolation{
 			GameIdx:       boardIdx,
 			GameSeed:      seed,
@@ -1127,6 +1157,56 @@ func checkNightmareInvariants(gs *gameengine.GameState, boardIdx int, seed int64
 		}
 		result.Violations = append(result.Violations, viol)
 	}
+}
+
+// invariantNames returns the canonical (camelCase) names from a slice of
+// gameengine.Invariant. Order preserved so help output matches the
+// runner's evaluation order.
+func invariantNames(invs []gameengine.Invariant) []string {
+	out := make([]string, len(invs))
+	for i, inv := range invs {
+		out[i] = inv.Name
+	}
+	return out
+}
+
+// normalizeInvariantKey lowercases and strips hyphens/underscores so the
+// CLI accepts both "ZoneConservation" and "zone-conservation" /
+// "zone_conservation" / "zoneconservation" as equivalent.
+func normalizeInvariantKey(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	s = strings.ReplaceAll(s, "-", "")
+	s = strings.ReplaceAll(s, "_", "")
+	return s
+}
+
+// canonicalizeInvariantName resolves the user-supplied --invariant value
+// against the set of known invariant names. Returns the canonical
+// camelCase form on match, "" on empty input (match-all), or an error
+// listing the valid names on a typo.
+func canonicalizeInvariantName(input string, known []string) (string, error) {
+	if strings.TrimSpace(input) == "" {
+		return "", nil
+	}
+	want := normalizeInvariantKey(input)
+	for _, name := range known {
+		if normalizeInvariantKey(name) == want {
+			return name, nil
+		}
+	}
+	return "", fmt.Errorf("unknown invariant %q (valid: %s)", input, strings.Join(known, ", "))
+}
+
+// matchesInvariantFilter returns true iff the violation's invariant name
+// passes the active filter. Empty canonical = match-all (legacy
+// behavior). Comparison is exact on the canonical camelCase name —
+// canonicalizeInvariantName already normalized the user input at flag-
+// parse time.
+func matchesInvariantFilter(invariantName, canonical string) bool {
+	if canonical == "" {
+		return true
+	}
+	return invariantName == canonical
 }
 
 func nextLivingSeat(gs *gameengine.GameState) int {
@@ -1342,6 +1422,40 @@ func writeReport(path string, d reportData) {
 			fmt.Fprintf(f, "| %s | %d |\n", name, count)
 		}
 		fmt.Fprintf(f, "\n")
+
+		// Per-board violation details (up to 5 per invariant kind, mirroring
+		// the chaos-violations report). Needed to isolate which random card
+		// combination is leaking — count-only isn't enough to find the bug.
+		if len(d.NightmareViolations) > 0 {
+			const perKind = 5
+			idxByName := map[string][]int{}
+			for vi := range d.NightmareViolations {
+				name := d.NightmareViolations[vi].InvariantName
+				idxByName[name] = append(idxByName[name], vi)
+			}
+			var details []int
+			for _, idxs := range idxByName {
+				n := len(idxs)
+				if n > perKind {
+					n = perKind
+				}
+				details = append(details, idxs[:n]...)
+			}
+			fmt.Fprintf(f, "### Nightmare Violation Details (up to %d per invariant kind, %d shown)\n\n", perKind, len(details))
+			for k, vi := range details {
+				v := &d.NightmareViolations[vi]
+				fmt.Fprintf(f, "#### Nightmare Violation %d\n\n", k+1)
+				fmt.Fprintf(f, "- **Board**: %d (seed %d)\n", v.GameIdx, v.GameSeed)
+				fmt.Fprintf(f, "- **Invariant**: %s\n", v.InvariantName)
+				fmt.Fprintf(f, "- **Message**: %s\n\n", v.Message)
+				if v.StateSummary != "" {
+					fmt.Fprintf(f, "<details>\n<summary>Board State</summary>\n\n```\n%s\n```\n\n</details>\n\n", v.StateSummary)
+				}
+			}
+			if len(d.NightmareViolations) > len(details) {
+				fmt.Fprintf(f, "*... and %d more nightmare violations not shown.*\n\n", len(d.NightmareViolations)-len(details))
+			}
+		}
 	}
 
 	// Statistical analysis: Top 10 cards correlated with violations.

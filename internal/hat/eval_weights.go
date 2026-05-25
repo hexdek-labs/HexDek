@@ -43,10 +43,37 @@ func (w EvalWeights) AsArray() [NumDimensions]float64 {
 
 var archetypeWeights = map[string]EvalWeights{
 	ArchetypeAggro: {
-		BoardPresence:          1.5,
+		// R60 round 5 retune — Aggro off the generic creature-deck profile.
+		// Pre-fix the profile shipped with BoardPresence=1.5 (above midrange
+		// but not anchored), ManaAdvantage=0.3 (well below midrange), and
+		// LifeResource=0.8 (own-life only). Aggro's actual gameplan is
+		// "press the strongest opponent's life to zero before they assemble
+		// their plan" — that needs four corrections:
+		//   - BoardPresence: 1.5 → 2.0 — signature dimension anchored at the
+		//     2.0 mark every other custom profile uses for its primary axis
+		//     (Reanimator GraveyardValue, Voltron CommanderProgress,
+		//     Aristocrats DrainEngine, Storm ComboProximity, etc.). Aggro's
+		//     primary axis IS the board.
+		//   - LifeResource: 0.8 → 1.6 — Aggro evaluates opponent life as
+		//     the win clock, not own life as a survival resource.
+		//     `scoreLife` now folds an opponent-pressure component into its
+		//     output so a high LifeResource weight makes aggro VALUE
+		//     lowering the strongest opp's life, not just preserving its
+		//     own. Without the dimension bump the new pressure signal
+		//     would be invisible to MCTS.
+		//   - ManaAdvantage: 0.3 → 0.8 — neutral, equal to midrange. Aggro
+		//     doesn't need ramp acceleration but also shouldn't actively
+		//     devalue keeping mana up for combat tricks / second wave
+		//     threats. The previous 0.3 made the hat skip cheap utility
+		//     ramp (Sol Ring, Arcane Signet) when it should take them on
+		//     curve.
+		//   - ComboProximity: 0.1 — kept low. Aggro doesn't assemble
+		//     combos; an off-class engine piece shouldn't pull the hat
+		//     off-line.
+		BoardPresence:          2.0, // was 1.5 — anchor signature dimension
 		CardAdvantage:          0.4,
-		ManaAdvantage:          0.3,
-		LifeResource:           0.8,
+		ManaAdvantage:          0.8, // was 0.3 — neutral (midrange-equal)
+		LifeResource:           1.6, // was 0.8 — opponent life is the win clock
 		ComboProximity:         0.1,
 		ThreatExposure:         0.6,
 		CommanderProgress:      0.9,
@@ -87,12 +114,36 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.3,
 	},
 	ArchetypeControl: {
-		BoardPresence:          0.5,
-		CardAdvantage:          1.5,
-		ManaAdvantage:          0.8,
+		// R60 round 4 audit retune. Original Control profile leaned on
+		// StackInteraction + CardAdvantage but left three core Control
+		// dials misweighted relative to how Control actually wins games:
+		//   - ManaAdvantage was 0.8 (below midrange's 0.8 baseline) — but
+		//     Control's defining tempo edge is leaving mana up at end of
+		//     opponent's turn for instant-speed interaction. A draw-go
+		//     deck without mana to hold up its answers is just a slow
+		//     midrange deck. Raised to 1.3 so the evaluator rewards
+		//     opening Brainstorm / Counterspell mana windows.
+		//   - ThreatExposure was 1.2 — Control wins by correctly ranking
+		//     and neutralizing the biggest opponent threats, not by
+		//     racing them. Bumped to 1.3 (still below Voltron's 1.4 —
+		//     Voltron's single-threat fragility keeps it the most
+		//     ThreatExposure-sensitive archetype per round-2 tuning).
+		//   - BoardPresence was 0.5 — set deliberately low to deprioritize
+		//     creature commitment, but went *too* low: Control still
+		//     needs a finisher land/blocker count, and 0.5 made the
+		//     evaluator treat any non-empty board as wasted weight.
+		//     Raised to 1.0 (midrange-neutral) so a 1/3 blocker or a
+		//     finisher's-in-play state register correctly without
+		//     overweighting board commitment.
+		// CardAdvantage 1.6 keeps it the dominant dial (above
+		// StackInteraction 1.5 and ThreatExposure 1.5) — Control's
+		// long-game win condition is to outdraw the table.
+		BoardPresence:          1.0, // was 0.5 — neutral, not deprioritized
+		CardAdvantage:          1.6, // was 1.5 — remains the highest dial
+		ManaAdvantage:          1.3, // was 0.8 — hold-up mana for instants
 		LifeResource:           0.6,
 		ComboProximity:         0.4,
-		ThreatExposure:         1.2,
+		ThreatExposure:         1.3, // was 1.2 — answer the biggest threat (capped under Voltron 1.4)
 		CommanderProgress:      0.5,
 		GraveyardValue:         0.4,
 		DrainEngine:            0.2,
@@ -131,10 +182,35 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeRamp: {
-		BoardPresence:          0.6,
+		// R60 round 4 audit retune. ManaAdvantage=1.8 was correctly the
+		// highest dimension, but the profile was indistinguishable from a
+		// generic "we play lands" deck on the other axes. Three changes:
+		//   - ManaAdvantage: 1.8 → 2.0 to anchor the signature dimension
+		//     at the standard 2.0 used by every other custom profile
+		//     (Storm/Mill/Voltron/Aristocrats/Reanimator/Spellslinger/
+		//     Tribal/Stax/Selfmill/Enchantress/Artifacts/Lifegain all
+		//     anchor their highest at 2.0). 1.8 was the same under-anchor
+		//     bug Lifegain had pre-R60.
+		//   - BoardPresence: 0.6 → 1.1 to reflect big_creature_density.
+		//     Ramp's whole point is dumping fatties early — Craterhoof
+		//     Behemoth, Vorinclex Voice of Hunger, Avenger of Zendikar,
+		//     Eldrazi titans (Ulamog/Kozilek/Emrakul), Worldspine Wurm,
+		//     End-Raze Forerunners, Hornet Queen, Apex Devastator. A ramp
+		//     deck with 9 mana and no body on the board has failed its
+		//     gameplan. 0.6 ranked board presence BELOW even the Combo
+		//     profile's 0.4-tier creature contempt, which was wrong: ramp
+		//     cares about the board even though it doesn't care about
+		//     individual small creatures.
+		//   - LifeResource: 0.5 → 0.7 to land at midrange-neutral. The
+		//     prior 0.5 made ramp eager to trade life for mana, but ramp
+		//     decks aren't Storm/Mill — they need to SURVIVE the early
+		//     turns where they're tapped out ramping, then sit behind a
+		//     fatty. Life equals time-to-fatty. Neutral midrange-tier
+		//     (0.7) is the correct read.
+		BoardPresence:          1.1, // was 0.6 — big_creature_density (Craterhoof / Vorinclex / Eldrazi)
 		CardAdvantage:          0.7,
-		ManaAdvantage:          1.8,
-		LifeResource:           0.5,
+		ManaAdvantage:          2.0, // was 1.8 — anchor signature at standard 2.0
+		LifeResource:           0.7, // was 0.5 — neutral (life = time-to-fatty)
 		ComboProximity:         0.3,
 		ThreatExposure:         0.6,
 		CommanderProgress:      0.8,
@@ -153,6 +229,16 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.1,
 	},
 	ArchetypeStax: {
+		// R60 round 4 audit retune. StaxLockProgress=2.0 correctly
+		// highest, but two dimensions ignored what Stax actually IS:
+		//   - ArtifactSynergy: Winter Orb, Static Orb, Stasis,
+		//     Smokestack, Sphere of Resistance, Tangle Wire, Trinisphere,
+		//     Chalice of the Void, Tabernacle (well, land — but you get
+		//     the point), Mana Vault. Most stax pieces are artifacts;
+		//     0.6 ranked them below Voltron's equipment package.
+		//   - StackInteraction: lock pieces eat removal and counters
+		//     constantly — protecting the soft-lock is the difference
+		//     between winning a long game and losing a few turns later.
 		BoardPresence:          0.7,
 		CardAdvantage:          1.2,
 		ManaAdvantage:          1.0,
@@ -162,25 +248,38 @@ var archetypeWeights = map[string]EvalWeights{
 		CommanderProgress:      0.8,
 		GraveyardValue:         0.4,
 		DrainEngine:            0.2,
-		ArtifactSynergy:        0.6,
+		ArtifactSynergy:        1.2, // was 0.6 — Winter Orb / Static Orb / Stasis
 		EnchantmentSynergy:     0.5,
 		OpponentGraveyardThreat: 0.8,
 		PartnerSynergy:         0.3,
 		ActivationTempo:        0.5,
 		ToolboxBreadth:         0.4,
 		ThreatTrajectory:       0.7,
-		StackInteraction:       0.8,
+		StackInteraction:       1.1, // was 0.8 — protect lock pieces
 		PlaneswalkerProgress:   0.5,
 		ExileZoneAssets:        0.2,
 		StaxLockProgress:       2.0,
 	},
 	ArchetypeReanimator: {
+		// R60 round 3 audit retune. GraveyardValue=1.8 correctly highest,
+		// but the profile under-weighted Reanimator's combo and single-
+		// threat realities:
+		//   - ComboProximity: Reanimator IS combo-shaped — Animate Dead +
+		//     Worldgorger Dragon (infinite mana), Karmic Guide + Reveillark,
+		//     Karador + persist creatures. 0.6 weighted these as
+		//     Midrange-tier value rather than win-line proximity.
+		//   - ThreatExposure: same problem as Voltron — putting a single
+		//     fatty back into play means losing it to Path / Swords / Anguished
+		//     Unmaking is the whole game. 0.7 was creature-deck noise.
+		//   - ActivationTempo: activated reanimators (Sheoldred The
+		//     Apocalypse, Volrath, Karador, Lord Windgrace) + dredge /
+		//     surveil triggers all live on the activation axis.
 		BoardPresence:          0.8,
 		CardAdvantage:          0.6,
 		ManaAdvantage:          0.5,
 		LifeResource:           0.4,
-		ComboProximity:         0.6,
-		ThreatExposure:         0.7,
+		ComboProximity:         1.1, // was 0.6
+		ThreatExposure:         1.2, // was 0.7
 		CommanderProgress:      0.6,
 		GraveyardValue:         1.8,
 		DrainEngine:            0.4,
@@ -188,7 +287,7 @@ var archetypeWeights = map[string]EvalWeights{
 		EnchantmentSynergy:     0.2,
 		OpponentGraveyardThreat: 0.8,
 		PartnerSynergy:         0.3,
-		ActivationTempo:        0.3,
+		ActivationTempo:        0.6, // was 0.3
 		ToolboxBreadth:         0.4,
 		ThreatTrajectory:       0.5,
 		StackInteraction:       0.4,
@@ -197,11 +296,26 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeSpellslinger: {
+		// R60 round 3 audit retune. CardAdvantage=1.4 correctly highest
+		// (Niv-Mizzet / Mizzix / Kalamax draw triggers), but three
+		// dimensions sat below midrange despite being core to the
+		// gameplan:
+		//   - ComboProximity: Mizzix-Aetherflux storm lines, Niv-Mizzet
+		//     parun infinite loops, Dramatic Reversal + Isochron Scepter
+		//     all live in this archetype. 0.5 was lower than Selfmill's
+		//     0.7 — wrong direction.
+		//   - ManaAdvantage: casting many spells per turn needs ritual /
+		//     cost-reduction support (Goblin Electromancer, Birgi,
+		//     Baral, Jhoira). 0.9 missed how much the deck depends on
+		//     mana acceleration to actually CHAIN spells.
+		//   - ActivationTempo: Isochron Scepter is the canonical
+		//     spellslinger artifact — its imprint+activate loop is a
+		//     core line. 0.3 ignored it entirely.
 		BoardPresence:          0.4,
 		CardAdvantage:          1.4,
-		ManaAdvantage:          0.9,
+		ManaAdvantage:          1.1, // was 0.9
 		LifeResource:           0.5,
-		ComboProximity:         0.5,
+		ComboProximity:         1.0, // was 0.5
 		ThreatExposure:         0.8,
 		CommanderProgress:      0.5,
 		GraveyardValue:         0.4,
@@ -210,7 +324,7 @@ var archetypeWeights = map[string]EvalWeights{
 		EnchantmentSynergy:     0.3,
 		OpponentGraveyardThreat: 0.5,
 		PartnerSynergy:         0.3,
-		ActivationTempo:        0.3,
+		ActivationTempo:        0.7, // was 0.3 — Isochron Scepter
 		ToolboxBreadth:         0.6,
 		ThreatTrajectory:       0.5,
 		StackInteraction:       1.0,
@@ -219,19 +333,34 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeTribal: {
+		// R60 round 3 audit retune. BoardPresence=1.4 correctly highest
+		// (creature-flood is the gameplan), but three dimensions ignored
+		// what makes tribal DIFFERENT from a generic creature midrange:
+		//   - CardAdvantage: Vanquisher's Banner / Herald's Horn / Beast
+		//     Whisperer / Kindred Discovery turn every tribal cast into
+		//     a draw. 0.6 was below midrange (1.0).
+		//   - PartnerSynergy: lord effects (+1/+1 to other Goblins/Elves/
+		//     Slivers) ARE the tribal payoff. PartnerSynergy is the
+		//     creature-vs-creature mutual-buff dial; 0.4 was way too
+		//     low for a deck whose whole point is creatures-help-each-
+		//     other.
+		//   - CommanderProgress: tribal commanders (Edgar Markov, Reaper
+		//     King, Karador, Slimefoot, Krenko) are usually the win
+		//     condition. 1.0 was equal-with-extra-combats; bumped to
+		//     match the deck's actual reliance on the commander engine.
 		BoardPresence:          1.4,
-		CardAdvantage:          0.6,
+		CardAdvantage:          1.0, // was 0.6
 		ManaAdvantage:          0.5,
 		LifeResource:           0.7,
 		ComboProximity:         0.4,
 		ThreatExposure:         0.6,
-		CommanderProgress:      1.0,
+		CommanderProgress:      1.2, // was 1.0
 		GraveyardValue:         0.6,
 		DrainEngine:            0.3,
 		ArtifactSynergy:        0.2,
 		EnchantmentSynergy:     0.2,
 		OpponentGraveyardThreat: 0.4,
-		PartnerSynergy:         0.4,
+		PartnerSynergy:         0.8, // was 0.4 — lord effects
 		ActivationTempo:        0.3,
 		ToolboxBreadth:         0.3,
 		ThreatTrajectory:       0.4,
@@ -241,20 +370,51 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.1,
 	},
 	ArchetypeAristocrats: {
-		BoardPresence:          0.6,
+		// R60 round 2 audit retune (PR #179) bumped BoardPresence /
+		// GraveyardValue / ActivationTempo off the original midrange-ish
+		// baseline. R60-13 follow-up pushes three of those dials further
+		// after Aristocrats wins came back leaning on infinite-sac lines
+		// the evaluator was under-counting:
+		//   - GraveyardValue 1.2 → 1.5: persist-recursion bodies live in
+		//     the graveyard between cycles — Reassembling Skeleton, Blood-
+		//     ghast, Gravecrawler, Nether Traitor, Bridge from Below. With
+		//     Phyrexian Altar / Pitiless Plunderer mana, every body in GY
+		//     is a fresh sac trigger. 1.2 still ranked the graveyard below
+		//     a generic Midrange GraveyardValue * 2.4; 1.5 puts it in the
+		//     "graveyard IS the engine" tier alongside Reanimator (1.8) /
+		//     LandsMatter (1.3) instead of clustering with value-engine
+		//     decks that merely benefit from recursion.
+		//   - BoardPresence 1.1 → 1.3: sac fodder is the throttle on every
+		//     drain trigger. Pawn of Ulamog, Bitterblossom, Ophiomancer,
+		//     Krenko, Mob Boss, Endrek Sahr, Ant Queen — tokens-per-turn
+		//     IS the deck's rate-of-damage. 1.1 read as "midrange creature
+		//     deck"; 1.3 pushes the evaluator to actually keep the board
+		//     wider than the table can wipe.
+		//   - ComboProximity 1.0 → 1.4: Aristocrats overlaps heavily with
+		//     two-card infinite-sac combos — Mikaeus, the Unhallowed +
+		//     Triskelion / Walking Ballista / Geralf's Messenger (infinite
+		//     damage); Persist creature + sac outlet + Melira / Mikaeus
+		//     (infinite ETBs → infinite drain via Blood Artist); Reassem-
+		//     bling Skeleton + Phyrexian Altar + Pitiless Plunderer (infin-
+		//     ite drain + mana); Murderous Redcap + persist enabler.
+		//     1.0 weighted these "infinite_sac" lines as Midrange-tier
+		//     side plans; 1.4 lets the evaluator commit to the combo turn
+		//     when the pieces line up, matching Mill (1.4) / CountersMatter
+		//     (still below Combo's 2.0 to keep DrainEngine the headliner).
+		BoardPresence:          1.3, // r60-13: was 1.1, was 0.6 — sac fodder is the throttle
 		CardAdvantage:          0.7,
 		ManaAdvantage:          0.5,
 		LifeResource:           0.5,
-		ComboProximity:         1.0,
+		ComboProximity:         1.4, // r60-13: was 1.0 — Mikaeus+Triskelion / Persist+sac
 		ThreatExposure:         0.5,
 		CommanderProgress:      0.8,
-		GraveyardValue:         0.8,
+		GraveyardValue:         1.5, // r60-13: was 1.2, was 0.8 — persist bodies live in GY
 		DrainEngine:            2.0,
 		ArtifactSynergy:        0.3,
 		EnchantmentSynergy:     0.3,
 		OpponentGraveyardThreat: 0.6,
 		PartnerSynergy:         0.4,
-		ActivationTempo:        0.5,
+		ActivationTempo:        0.9,
 		ToolboxBreadth:         0.3,
 		ThreatTrajectory:       0.4,
 		StackInteraction:       0.4,
@@ -285,8 +445,28 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.1,
 	},
 	ArchetypeEnchantress: {
-		BoardPresence:          0.5,
-		CardAdvantage:          1.3,
+		// R60 Enchantments archetype retune. EnchantmentSynergy=2.0
+		// correctly highest, but two load-bearing dimensions sat at
+		// midrange-or-below despite being the heart of the gameplan:
+		//   - CardAdvantage: constellation triggers (Eidolon of
+		//     Blossoms, Setessan Champion) and Enchantress draws
+		//     (Argothian / Mesa / Verduran / Femeref / Satyr
+		//     Enchantress, Sythis Harvest's Hand, Sram Senior
+		//     Edificer, Enchantress's Presence) turn every
+		//     enchantment cast into a card. The deck draws ITS WHOLE
+		//     LIBRARY on a typical curve — 1.3 was midrange-tier and
+		//     ignored that drawing IS the engine, second only to
+		//     enchantment synergy itself.
+		//   - BoardPresence: enchantment density IS the board. Sphere
+		//     of Safety scales fog cost by # enchantments, Sage's
+		//     Reverie / All That Glitters / Ethereal Armor scale
+		//     creature size by # enchantments, Greater Auramancy
+		//     protects the whole density layer. Each enchantment is
+		//     simultaneously a draw, a board scaler, and a defensive
+		//     piece. 0.5 was reanimator-tier and treated the board
+		//     as incidental when the board IS the enchantment count.
+		BoardPresence:          1.1, // was 0.5 — Sphere of Safety / All That Glitters scale with density
+		CardAdvantage:          1.5, // was 1.3 — constellation / Enchantress draws are the engine
 		ManaAdvantage:          0.7,
 		LifeResource:           0.6,
 		ComboProximity:         0.5,
@@ -307,11 +487,33 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.4,
 	},
 	ArchetypeArtifacts: {
-		BoardPresence:          0.7,
+		// R60 audit retune. ArtifactSynergy=2.0 correctly anchors the
+		// signature dimension, but three load-bearing dials were close to
+		// generic-midrange values despite being core to what an Artifacts
+		// deck actually does:
+		//   - ManaAdvantage: Sol Ring / Mana Crypt / Mana Vault / Grim
+		//     Monolith / Basalt Monolith / Thran Dynamo / Thought Vessel /
+		//     Mind Stone / the entire signets+talismans package — mana
+		//     rocks ARE the Artifacts mana base. 1.1 ranked them barely
+		//     above midrange's 0.8 when in practice rock-density is the
+		//     deck's defining advantage over a creature-based ramp deck.
+		//   - ComboProximity (infinite_mana_via_rocks): Basalt Monolith +
+		//     Forsaken Monument, Grim Monolith + Power Artifact / Rings of
+		//     Brighthearth, KCI (Krark-Clan Ironworks) + Scrap Trawler /
+		//     Myr Retriever loops, Sensei's Divining Top + Future Sight,
+		//     Isochron Scepter + Dramatic Reversal in artifact-mana shells.
+		//     0.8 treated these as occasional wins; they're the deck's
+		//     actual closer line.
+		//   - BoardPresence (metalcraft): Mox Opal counts artifacts on the
+		//     battlefield, Cranial Plating scales with artifact count,
+		//     Etched Champion / Inkmoth Nexus / Arcbound Ravager all care
+		//     about parallel artifact bodies. 0.7 missed that more board
+		//     artifacts means more of the rest of the deck functions.
+		BoardPresence:          1.0, // was 0.7 — metalcraft, Mox Opal, Cranial Plating
 		CardAdvantage:          1.0,
-		ManaAdvantage:          1.1,
+		ManaAdvantage:          1.4, // was 1.1 — Sol Ring / Crypt / Vault / Monolith package
 		LifeResource:           0.5,
-		ComboProximity:         0.8,
+		ComboProximity:         1.3, // was 0.8 — infinite mana via rocks (Basalt+Forsaken, KCI)
 		ThreatExposure:         0.7,
 		CommanderProgress:      0.7,
 		GraveyardValue:         0.4,
@@ -329,12 +531,31 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.5,
 	},
 	ArchetypeLifegain: {
-		BoardPresence:          0.9,
+		// R60 follow-up tune. LifeResource was already highest at 1.8 and
+		// DrainEngine at 1.2 covered the Sanguine Bond / Vito drain wins,
+		// but three dimensions under-weighted what Lifegain ACTUALLY does
+		// on the board:
+		//   - LifeResource: bumped 1.8 → 2.0 to match the "signature
+		//     dimension at the 2.0 anchor" pattern used by every other
+		//     custom profile (Storm/Mill/Voltron/Aristocrats/Reanimator/
+		//     Spellslinger/Tribal/Stax/Selfmill/Enchantress/Artifacts all
+		//     anchor their highest at 2.0). Lifegain's 1.8 was the only
+		//     custom profile under-anchored.
+		//   - BoardPresence: Ajani's Pridemate / Karlov of the Ghost
+		//     Council / Heliod Sun-Crowned grow as the deck gains life;
+		//     the board scales WITH the life total, so creatures aren't
+		//     incidental — they're the closer. 0.9 was midrange-tier.
+		//   - ThreatExposure: lifelink creatures (Soul Warden, Heliod,
+		//     Bishop of Wings, Trelasarra, Crested Sunmare) ARE the life-
+		//     gain engine. Removing one means the deck stops gaining life
+		//     means Pridemate stops growing means the wincon stalls. 0.6
+		//     ignored the chained dependency.
+		BoardPresence:          1.2, // was 0.9 — Pridemate / Karlov / Heliod grow
 		CardAdvantage:          0.7,
 		ManaAdvantage:          0.5,
-		LifeResource:           1.8,
+		LifeResource:           2.0, // was 1.8 — anchor signature at standard 2.0
 		ComboProximity:         0.8,
-		ThreatExposure:         0.6,
+		ThreatExposure:         1.0, // was 0.6 — protect the lifelink engine
 		CommanderProgress:      0.6,
 		GraveyardValue:         0.3,
 		DrainEngine:            1.2,
@@ -351,36 +572,90 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeVoltron: {
+		// R60 round 2 audit retune. CommanderProgress=2.0 correctly
+		// highest (Voltron's win condition is commander damage), but
+		// four dimensions were under-weighted given the deck's whole
+		// gameplan revolves around equipping/enchanting one creature:
+		//   - ThreatExposure: a Swords to Plowshares on the commander
+		//     is a tempo + card disaster — the deck has no plan B. The
+		//     0.9 weight made it equal to a midrange creature deck;
+		//     bumped to put it above ThreatExposure for Control (1.2).
+		//   - ArtifactSynergy: Hammer of Nazahn, Embercleave, Colossus
+		//     Hammer, Lightning Greaves, Swiftfoot Boots, Skullclamp —
+		//     equipment IS the deck. 0.6 was the same weight as a
+		//     midrange-y "we have some artifacts" rating.
+		//   - EnchantmentSynergy: Eldrazi Conscription, All That
+		//     Glitters, Shielded by Faith, Daybreak Coronet, Ethereal
+		//     Armor — voltron-aura subarchetype is half the deck list.
+		//   - StackInteraction: Heroic Intervention / Boros Charm /
+		//     Teferi's Protection to save the commander before it eats
+		//     removal is the difference between game-over and recover.
+		// R60 round 5 (self-play diversity tune, PR #252 analysis):
+		// PR #251's 5-pod × 500g diversity gauntlet measured Wyleth/
+		// Voltron at 2.8% mean winrate (σ=0.15) — uniformly destroyed
+		// across every pod composition. Spread vs. the top deck
+		// (Korvold/Aristocrats at 44.6%) is 41.8 percentage points,
+		// the largest systemic bias in the corpus. Identical-hat
+		// self-play over-converges on punishing single-creature plans
+		// because every opponent makes the same removal decision; live
+		// politics would absorb some of this, but the AI doesn't form
+		// attacking alliances.
+		//
+		// Hat-side fix (can't fix the deck): push the defensive dials
+		// further so the Voltron seat invests more in protection
+		// BEFORE the commander gets pointed at.
+		//   - ThreatExposure 1.4 → 1.8: anchor at the "highest secondary"
+		//     tier alongside CommanderProgress=2.0. The commander IS the
+		//     entire winrate; treating its survival as nearly as
+		//     important as advancing it matches the deck's structural
+		//     reality.
+		//   - StackInteraction 0.8 → 1.2: protection spells (Heroic
+		//     Intervention, Boros Charm, Teferi's Protection, Akroma's
+		//     Will) must be valued enough to actually cast on the right
+		//     turn rather than held for "a better moment" that never
+		//     comes.
 		BoardPresence:          0.8,
 		CardAdvantage:          0.5,
 		ManaAdvantage:          0.5,
 		LifeResource:           0.6,
 		ComboProximity:         0.2,
-		ThreatExposure:         0.9,
+		ThreatExposure:         1.8, // R5: 1.4 → 1.8 — protect-the-commander dimension
 		CommanderProgress:      2.0,
 		GraveyardValue:         0.3,
 		DrainEngine:            0.1,
-		ArtifactSynergy:        0.6,
-		EnchantmentSynergy:     0.5,
+		ArtifactSynergy:        1.1,
+		EnchantmentSynergy:     0.9,
 		OpponentGraveyardThreat: 0.3,
 		PartnerSynergy:         0.3,
 		ActivationTempo:        0.5,
 		ToolboxBreadth:         0.4,
 		ThreatTrajectory:       0.6,
-		StackInteraction:       0.4,
+		StackInteraction:       1.2, // R5: 0.8 → 1.2 — instant-speed protection
 		PlaneswalkerProgress:   0.2,
 		ExileZoneAssets:        0.2,
 		StaxLockProgress:       0.1,
 	},
 	ArchetypeLandsMatter: {
+		// R60 round 4 audit retune. ManaAdvantage=1.8 correctly highest
+		// (lands ARE mana), but the profile under-weighted the deck's
+		// graveyard-as-second-hand reality:
+		//   - GraveyardValue: Crucible of Worlds / Ramunap Excavator /
+		//     Splendid Reclamation / World Shaper / Titania, Protector
+		//     of Argoth / Worm Harvest / Lord Windgrace -3 / The Gitrog
+		//     Monster — recurring lands from GY IS the gameplan. 0.8
+		//     ranked it as midrange-noise.
+		//   - ComboProximity: Lotus Field + Mystic Sanctuary loops,
+		//     Field of the Dead, Scapeshift, Valakut, Dakmor Salvage +
+		//     Gitrog Monster combo. 0.4 hid these wins behind the
+		//     "we ramp" headline.
 		BoardPresence:          0.7,
 		CardAdvantage:          0.7,
 		ManaAdvantage:          1.8,
 		LifeResource:           0.6,
-		ComboProximity:         0.4,
+		ComboProximity:         0.7, // was 0.4 — Lotus Field / Scapeshift / Gitrog
 		ThreatExposure:         0.5,
 		CommanderProgress:      0.7,
-		GraveyardValue:         0.8,
+		GraveyardValue:         1.3, // was 0.8 — Crucible / Excavator / Titania
 		DrainEngine:            0.2,
 		ArtifactSynergy:        0.2,
 		EnchantmentSynergy:     0.3,
@@ -395,78 +670,159 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeCountersMatter: {
-		BoardPresence:          1.2,
-		CardAdvantage:          0.7,
-		ManaAdvantage:          0.6,
+		// R60 audit retune (PR #?). Pre-fix the profile looked like
+		// "midrange + BoardPresence nudge" — it failed to encode the
+		// three things Counters Matter actually IS:
+		//   - BoardPresence is both the engine AND the wincon. Each
+		//     creature with +1/+1 counters compounds non-linearly via
+		//     doublers (Hardened Scales, Branching Evolution, Doubling
+		//     Season) and proliferate. A board of 4 creatures with one
+		//     counter each becomes a board of 4 creatures with five
+		//     counters after one Inexorable Tide trigger plus a couple
+		//     of proliferate activations.
+		//   - CommanderProgress: Atraxa, Ezuri Claw of Progress,
+		//     Pir+Toothy, Hapatra, Skullbriar, Marchesa, Vorel,
+		//     Animar, Ghave — the commanders that ANCHOR this archetype
+		//     ARE the counter payoff. Casting them isn't a "play your
+		//     commander when convenient" decision, it's the gameplan.
+		//   - ComboProximity: infect (10 poison via Skithiryx /
+		//     Phyrexian Crusader / Triumph of the Hordes) and the
+		//     +1/+1 finishers (Walking Ballista, Hangarback Walker,
+		//     Kalonian Hydra + Doubling Season for one-shot lethal,
+		//     Animar storm) are real win lines, not noise. 0.5 hid
+		//     them behind the value-engine framing.
+		// Secondary lifts: ArtifactSynergy (Modular, Walking Ballista,
+		// Arcbound, Hangarback) and EnchantmentSynergy (Hardened Scales,
+		// Doubling Season, Inexorable Tide, Branching Evolution) are
+		// signature support packages — 0.3 ranked them below random
+		// generic-synergy noise. ActivationTempo (Ezuri overrun, Wand
+		// of Orcus, repeated proliferate activations) and
+		// PlaneswalkerProgress (Atraxa decks abuse pw loyalty counters
+		// via proliferate) both deserve the bump.
+		BoardPresence:          1.6, // was 1.2 — engine + wincon, compounds non-linearly
+		CardAdvantage:          0.9, // was 0.7 — proliferate grinds (Inexorable Tide)
+		ManaAdvantage:          0.7, // was 0.6
 		LifeResource:           0.6,
-		ComboProximity:         0.5,
+		ComboProximity:         1.3, // was 0.5 — infect / Walking Ballista / Hydra+DS
 		ThreatExposure:         0.7,
-		CommanderProgress:      0.9,
-		GraveyardValue:         0.3,
+		CommanderProgress:      1.4, // was 0.9 — Atraxa/Ezuri/Pir+Toothy ARE the payoff
+		GraveyardValue:         0.4, // was 0.3 — persist/undying flips counter type
 		DrainEngine:            0.2,
-		ArtifactSynergy:        0.3,
-		EnchantmentSynergy:     0.3,
+		ArtifactSynergy:        0.5, // was 0.3 — Modular / Walking Ballista / Hangarback
+		EnchantmentSynergy:     0.5, // was 0.3 — Hardened Scales / Doubling Season
 		OpponentGraveyardThreat: 0.4,
 		PartnerSynergy:         0.4,
-		ActivationTempo:        0.5,
-		ToolboxBreadth:         0.3,
-		ThreatTrajectory:       0.5,
+		ActivationTempo:        0.8, // was 0.5 — Ezuri activation, proliferate cycles
+		ToolboxBreadth:         0.4, // was 0.3
+		ThreatTrajectory:       0.6, // was 0.5 — proliferate lethals accelerate non-linearly
 		StackInteraction:       0.4,
-		PlaneswalkerProgress:   0.4,
+		PlaneswalkerProgress:   0.7, // was 0.4 — Atraxa abuses pw loyalty via proliferate
 		ExileZoneAssets:        0.3,
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeMill: {
+		// R60 audit retune. Pre-fix Mill weighted like a thin combo deck
+		// (ComboProximity high, everything else minimal). In practice Mill
+		// is a Control variant whose win condition is exhausting opp
+		// libraries — it needs to DRAW the mill spells (CardAdvantage),
+		// PROTECT the wincon piece (Bruvac/Tasha → StackInteraction), and
+		// LEAN ON wheel-style draw-then-mill engines (Notion Thief /
+		// Consecrated Sphinx / Hullbreacher → DrainEngine).
+		//
+		// R60 follow-up (PR #194 gauntlet): Phenax (Mill) regressed 3.7%
+		// after the cross-cutting late-game LifeResource bump (lateFactor
+		// *0.15) merged in #191 because Mill decks WANT to trade life
+		// for mill progress — taking damage to keep mana up for another
+		// Maddening Cacophony / Glimpse the Unthinkable / Bruvac trigger
+		// is correct play. The global bump pushed Mill's effective
+		// late-game LifeResource from 0.5 → 0.575, making the hat refuse
+		// trades it should take. Dropping the baseline to 0.3 lets the
+		// global bump land Mill at 0.345 late-game — comfortably below
+		// midrange's 0.575 — restoring the "life is cheaper for Mill
+		// than for midrange" property the deck depends on.
 		BoardPresence:          0.4,
-		CardAdvantage:          0.8,
+		CardAdvantage:          1.4, // was 0.8
 		ManaAdvantage:          0.6,
-		LifeResource:           0.5,
+		LifeResource:           0.3, // was 0.5 — life is tradeable for mill progress
 		ComboProximity:         1.4,
 		ThreatExposure:         0.8,
 		CommanderProgress:      0.5,
 		GraveyardValue:         0.3,
-		DrainEngine:            0.4,
+		DrainEngine:            0.8, // was 0.4
 		ArtifactSynergy:        0.2,
 		EnchantmentSynergy:     0.2,
 		OpponentGraveyardThreat: 0.3,
 		PartnerSynergy:         0.3,
 		ActivationTempo:        0.4,
-		ToolboxBreadth:         0.4,
+		ToolboxBreadth:         0.7, // was 0.4
 		ThreatTrajectory:       0.4,
-		StackInteraction:       0.6,
+		StackInteraction:       1.1, // was 0.6
 		PlaneswalkerProgress:   0.3,
 		ExileZoneAssets:        0.3,
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeStorm: {
+		// R60 audit retune. ComboProximity (1.8) was correctly highest,
+		// but ActivationTempo at 0.3 ignored Storm's gameplan — Dark
+		// Ritual / Cabal Ritual / LED / Aetherflux Reservoir are
+		// ACTIVATIONS and UNTAPS, not raw mana. StackInteraction at 0.8
+		// underweighted protection: the spell chain dies to a single
+		// resolved counter mid-storm. GraveyardValue at 0.3 ignored
+		// Past in Flames / Yawgmoth's Will second-storm lines.
 		BoardPresence:          0.2,
 		CardAdvantage:          1.3,
-		ManaAdvantage:          1.5,
+		ManaAdvantage:          1.3, // was 1.5 — rituals matter more than raw lands
 		LifeResource:           0.2,
 		ComboProximity:         1.8,
 		ThreatExposure:         0.3,
 		CommanderProgress:      0.4,
-		GraveyardValue:         0.3,
+		GraveyardValue:         0.6, // was 0.3 — Past in Flames lines
 		DrainEngine:            0.4,
 		ArtifactSynergy:        0.3,
 		EnchantmentSynergy:     0.2,
 		OpponentGraveyardThreat: 0.3,
 		PartnerSynergy:         0.2,
-		ActivationTempo:        0.3,
+		ActivationTempo:        1.2, // was 0.3 — rituals, Aetherflux, LED
 		ToolboxBreadth:         0.5,
 		ThreatTrajectory:       0.3,
-		StackInteraction:       0.8,
+		StackInteraction:       1.4, // was 0.8 — counter war over the chain
 		PlaneswalkerProgress:   0.2,
 		ExileZoneAssets:        0.3,
 		StaxLockProgress:       0.1,
 	},
 	ArchetypeSuperfriends: {
+		// R60 round 5 retune — pull Planeswalkers off the generic
+		// midrange shape. PlaneswalkerProgress=2.0 was correctly the
+		// signature dimension, but two load-bearing axes still sat at
+		// midrange or below despite being core to how the deck actually
+		// wins and loses:
+		//   - CardAdvantage (ultimate_threats): walker +1s ARE draw
+		//     spells (Jace's Ingenuity, Tamiyo, Dack Fayden, Tezzeret
+		//     the Seeker, Ajani Steadfast, Garruk Wildspeaker), and
+		//     every ultimate is a game-winning card-advantage swing
+		//     (Jace TMS mills a player out, Karn Liberated restarts
+		//     the game, Liliana of the Veil empties hands, Ugin nukes
+		//     the board and you keep the walker). 1.2 (midrange-tier)
+		//     under-weighted the deck's whole "tick toward ultimate"
+		//     win line. Lifted to Control-tier (1.5).
+		//   - ThreatExposure (walker_loyalty_protection): walkers are
+		//     fragile. Any creature attack that connects shaves
+		//     loyalty; a single Hero's Downfall / Vraska's Contempt /
+		//     Bolt / commander hit can kill the walker outright; once
+		//     it dies the +1 sequence resets and the deck has no plan
+		//     B. Protecting walker loyalty (Heroic Intervention,
+		//     Teferi's Protection, The Wandering Emperor flicker, fog
+		//     effects, Doubling Season floors) is the difference
+		//     between an active ult and a dead walker. 1.0 was a
+		//     generic creature-deck rating; lifted near Voltron-tier
+		//     (1.4) since walker death is as devastating as commander
+		//     removal in Voltron.
 		BoardPresence:          0.9,
-		CardAdvantage:          1.2,
+		CardAdvantage:          1.5, // was 1.2 — +1 draws + ultimates
 		ManaAdvantage:          0.7,
 		LifeResource:           0.8,
 		ComboProximity:         0.4,
-		ThreatExposure:         1.0,
+		ThreatExposure:         1.4, // was 1.0 — protect walker loyalty
 		CommanderProgress:      0.4,
 		GraveyardValue:         0.3,
 		DrainEngine:            0.2,
@@ -483,11 +839,25 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.3,
 	},
 	ArchetypeBlink: {
+		// R60 round 4 audit retune. CardAdvantage=1.2 correctly highest
+		// (re-trigger ETBs = re-trigger draws), but two dimensions
+		// missed the deck's exile-as-engine and combo realities:
+		//   - ExileZoneAssets: Yorion Sky Nomad's exile pile is the
+		//     deck's resource; Brago King Eternal exiles and returns;
+		//     Soulherder accumulates +1/+1 from exiled-and-returned
+		//     creatures. 0.5 hid this from the evaluator — it was lower
+		//     than Spellslinger's ExileZoneAssets (0.6) despite Blink
+		//     literally living in exile.
+		//   - ComboProximity: Felidar Guardian + Saheeli Rai (infinite
+		//     tokens), Restoration Angel + Kiki-Jiki (infinite haste
+		//     copies), Emiel the Blessed + Tundra Wolves family,
+		//     Deadeye Navigator + Peregrine Drake — Blink decks have
+		//     two-card infinites stapled onto every ETB creature.
 		BoardPresence:          0.8,
 		CardAdvantage:          1.2,
 		ManaAdvantage:          0.7,
 		LifeResource:           0.6,
-		ComboProximity:         0.6,
+		ComboProximity:         1.0, // was 0.6 — Felidar+Saheeli, Resto+Kiki
 		ThreatExposure:         0.7,
 		CommanderProgress:      0.7,
 		GraveyardValue:         0.3,
@@ -501,7 +871,7 @@ var archetypeWeights = map[string]EvalWeights{
 		ThreatTrajectory:       0.4,
 		StackInteraction:       0.4,
 		PlaneswalkerProgress:   0.3,
-		ExileZoneAssets:        0.5,
+		ExileZoneAssets:        1.0, // was 0.5 — Yorion pile / Soulherder / Brago
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeExtraCombats: {
@@ -524,6 +894,117 @@ var archetypeWeights = map[string]EvalWeights{
 		StackInteraction:       0.3,
 		PlaneswalkerProgress:   0.3,
 		ExileZoneAssets:        0.2,
+		StaxLockProgress:       0.1,
+	},
+	ArchetypeGroupHug: {
+		// R60 follow-up. Group Hug (Phelddagrif, Zedruu, Kynaios and
+		// Tiro, Selvala Explorer Returned, Howling Mine / Temple Bell /
+		// Dictate of Kruphix style) wins through politics, raw card
+		// draw, and survival until a long-game finisher (Approach of the
+		// Second Sun, mill-yourself-out + Laboratory Maniac, Kynaios
+		// trigger payoff with mass landfall, or table-wide threat
+		// asymmetry from out-drawing everyone).
+		//
+		// Signature: CardAdvantage at the 2.0 anchor — Howling Mine /
+		// Temple Bell / Font of Mythos / Veteran Explorer mean the
+		// whole table draws cards but Group Hug benefits the most
+		// because it usually runs Rhystic Study / Smothering Tithe /
+		// Mystic Remora to TAX the giving, and Consecrated Sphinx /
+		// Nezahal scales with table-wide draw.
+		//
+		// LifeResource intentionally LOW (0.3): Group Hug doesn't care
+		// if it's hit. The table generally leaves the pillow-fort player
+		// alone because killing them ends the card-draw engine — taking
+		// damage to keep mana up for another Mind's Eye / Rhystic Study
+		// trigger is correct. Same shape as Mill's R60 follow-up.
+		//
+		// BoardPresence neutral (1.0) — Group Hug usually plays a few
+		// creature engines (Selvala, Phelddagrif, Maelstrom Wanderer-
+		// style finishers) but isn't a creature-flood deck.
+		//
+		// StackInteraction boosted (0.9) — Group Hug runs counterspells
+		// to disrupt the table's combos and survive the late game when
+		// they're inevitably the kingmaker. ToolboxBreadth (0.8) for
+		// the political-deal flexibility.
+		BoardPresence:          1.0, // neutral — engines, not floods
+		CardAdvantage:          2.0, // signature — tax the table's draws
+		ManaAdvantage:          1.0,
+		LifeResource:           0.3, // low — don't care if hit
+		ComboProximity:         0.6, // Approach of the Second Sun / Lab Maniac
+		ThreatExposure:         0.7,
+		CommanderProgress:      0.9, // Zedruu / Phelddagrif / Kynaios trigger payoffs
+		GraveyardValue:         0.3,
+		DrainEngine:            0.4,
+		ArtifactSynergy:        0.6, // Howling Mine / Mind's Eye / Temple Bell
+		EnchantmentSynergy:     0.7, // Rhystic Study / Mystic Remora / Smothering Tithe
+		OpponentGraveyardThreat: 0.4,
+		PartnerSynergy:         0.5,
+		ActivationTempo:        0.5,
+		ToolboxBreadth:         0.8, // political flexibility
+		ThreatTrajectory:       0.5,
+		StackInteraction:       0.9, // disrupt table combos, survive the late game
+		PlaneswalkerProgress:   0.5,
+		ExileZoneAssets:        0.3,
+		StaxLockProgress:       0.2,
+	},
+	ArchetypeBurn: {
+		// R60 — Burn off generic. Pre-fix Burn decks (Torbran, Heartless
+		// Hidetsugu, Toralf, Neheb the Eternal, Krenko, Tor Wauki, Mishra
+		// Lost to Madness, Obosh-shaped X-burn lists) fell through to
+		// midrange weights, which mis-priced the deck's three signature
+		// axes:
+		//
+		//   - LifeResource (opponent_life): Burn IS a life-pressure
+		//     archetype. The wincon is "drop the table from 40 → 0 via
+		//     stacked damage" (Lightning Bolt → Lava Spike → Skewer the
+		//     Critics → Bonecrusher Giant → Torbran multiplier → Toralf
+		//     copy → Hailfire X). Every decision should ask "does this
+		//     widen the life delta?" — that's what LifeResource scores.
+		//     Anchored at 1.8 (signature dim, just under the 2.0 reserved
+		//     for Lifegain whose own life IS the resource).
+		//
+		//   - ComboProximity: Burn doesn't ASSEMBLE — it SEQUENCES.
+		//     There's no two-card kill assembly to score; the deck just
+		//     plays burn spell after burn spell. Bumping ComboProximity
+		//     would cause the AI to chase phantom assembly plans across
+		//     non-existent piece graphs. Floor at 0.1 (below Aggro's 0.1
+		//     and Voltron's 0.2 — those at least have Voltron-helms or
+		//     equipment chains; Burn has nothing combo-shaped).
+		//
+		//   - ThreatExposure (direct_damage_sources): Burn's "threats"
+		//     are the damage SOURCES themselves — Goblin Guide, Eidolon
+		//     of the Great Revel, Bonecrusher Giant, Torbran (4x
+		//     multiplier), Toralf (copy on excess), Neheb (post-combat
+		//     mana). Losing one to a Path / Swords / Anguished Unmaking
+		//     is losing a whole damage windowʼs worth of pressure. 1.4
+		//     puts it above Control's 1.2 (Control protects answers;
+		//     Burn protects the WIN itself).
+		//
+		// The remaining dimensions are calibrated relative to Aggro
+		// (Burn's parent archetype) with deck-specific shifts:
+		//   - ActivationTempo 0.6: X-burn (Hailfire, Exsanguinate-as-
+		//     fire-variant, Earthquake activations, Kumano Master Yamabushi).
+		//   - GraveyardValue 0.2: no recursion; one shot per spell.
+		//   - StaxLockProgress 0.1: Burn doesn't lock — it kills.
+		BoardPresence:          0.5,
+		CardAdvantage:          0.7,
+		ManaAdvantage:          0.7,
+		LifeResource:           1.8, // signature — opponent_life pressure
+		ComboProximity:         0.1, // Burn sequences, doesn't assemble
+		ThreatExposure:         1.4, // protect direct-damage sources
+		CommanderProgress:      0.8, // commander often is the damage piece
+		GraveyardValue:         0.2,
+		DrainEngine:            0.5,
+		ArtifactSynergy:        0.3,
+		EnchantmentSynergy:     0.3, // Sulfuric Vortex, Manabarbs, Pyrohemia
+		OpponentGraveyardThreat: 0.3,
+		PartnerSynergy:         0.3,
+		ActivationTempo:        0.6, // X-cost burn activations
+		ToolboxBreadth:         0.3,
+		ThreatTrajectory:       0.7, // clock-tracking is core
+		StackInteraction:       0.4,
+		PlaneswalkerProgress:   0.3, // Chandra walkers
+		ExileZoneAssets:        0.3,
 		StaxLockProgress:       0.1,
 	},
 }

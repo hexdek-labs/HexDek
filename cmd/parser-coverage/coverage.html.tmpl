@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Parser Coverage — Interactive</title>
+<style>
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, sans-serif; font-size: 13px; color: #222; }
+.layout { display: grid; grid-template-columns: 280px 1fr; height: 100vh; }
+.sidebar { background: #f6f7f9; border-right: 1px solid #ddd; padding: 14px; overflow-y: auto; }
+.main { padding: 14px 18px; overflow-y: auto; }
+.sidebar h1 { font-size: 16px; margin: 0 0 6px; }
+.sidebar h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; margin: 16px 0 6px; }
+.gen-stamp { font-size: 11px; color: #888; margin-bottom: 10px; }
+.summary { font-size: 12px; line-height: 1.6; margin-bottom: 10px; }
+.summary .pill { display: inline-block; padding: 1px 6px; border-radius: 8px; background: #e8eaef; margin: 1px 2px; font-family: ui-monospace, monospace; }
+input[type=search], select { width: 100%; padding: 6px 8px; font: inherit; border: 1px solid #ccc; border-radius: 4px; background: white; }
+.filter-list label { display: block; padding: 2px 0; font-size: 12px; cursor: pointer; user-select: none; }
+.filter-list label:hover { background: #ececec; }
+.filter-list input { margin-right: 6px; vertical-align: middle; }
+.filter-actions { margin: 4px 0 6px; }
+.filter-actions a { font-size: 11px; color: #06c; cursor: pointer; margin-right: 10px; text-decoration: underline; }
+.result-bar { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #eee; }
+.result-count { font-weight: bold; font-size: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+thead th { position: sticky; top: 0; background: #f6f7f9; border-bottom: 2px solid #ccc; padding: 6px 8px; text-align: left; cursor: pointer; user-select: none; white-space: nowrap; }
+thead th:hover { background: #e9ebef; }
+thead th .arrow { color: #888; font-size: 10px; margin-left: 3px; }
+tbody td { padding: 5px 8px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+tbody tr.row:hover { background: #fafbfd; cursor: pointer; }
+.class-MISSING { color: #c0392b; font-weight: 600; }
+.class-EMPTY_AST { color: #b9770e; font-weight: 600; }
+.class-PARTIAL { color: #2471a3; font-weight: 600; }
+.class-OK { color: #229954; }
+.class-OK_VANILLA { color: #95a5a6; }
+.oracle-snip { font-family: ui-monospace, "SF Mono", monospace; font-size: 11px; color: #555; max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+tr.expanded-body td { padding: 12px 16px; background: #fcfcfc; border-bottom: 2px solid #e8e8e8; }
+.expanded-body .ot { font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; background: white; padding: 10px; border: 1px solid #eee; border-radius: 3px; }
+.expanded-body .meta { font-size: 11px; color: #666; margin-bottom: 6px; }
+.expanded-body .errs { margin-top: 8px; color: #c0392b; }
+.expanded-body .errs li { font-family: ui-monospace, monospace; font-size: 11px; }
+.empty-state { padding: 40px; text-align: center; color: #888; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <h1>Parser Coverage</h1>
+    <div class="gen-stamp">Generated {{.GeneratedAt}}</div>
+    <div class="summary" id="summary"></div>
+    <h2>Search</h2>
+    <input type="search" id="search" placeholder="Card name contains…" />
+    <h2>Class</h2>
+    <div class="filter-actions"><a data-group="class" data-action="all">all</a><a data-group="class" data-action="none">none</a></div>
+    <div class="filter-list" id="filters-class"></div>
+    <h2>Era</h2>
+    <div class="filter-actions"><a data-group="era" data-action="all">all</a><a data-group="era" data-action="none">none</a></div>
+    <div class="filter-list" id="filters-era"></div>
+    <h2>Primary type</h2>
+    <div class="filter-actions"><a data-group="type" data-action="all">all</a><a data-group="type" data-action="none">none</a></div>
+    <div class="filter-list" id="filters-type"></div>
+    <h2>Set</h2>
+    <input type="search" id="set-search" placeholder="Filter sets…" />
+    <select id="set-select" size="10" style="margin-top: 4px;"></select>
+    <div class="filter-actions"><a id="set-clear">clear set filter</a></div>
+  </aside>
+  <main class="main">
+    <div class="result-bar">
+      <div class="result-count" id="result-count">…</div>
+      <div style="font-size: 11px; color: #888;">Click any row to expand.</div>
+    </div>
+    <table id="cards">
+      <thead><tr>
+        <th data-sort="name">Name <span class="arrow"></span></th>
+        <th data-sort="class">Class <span class="arrow"></span></th>
+        <th data-sort="primaryType">Type <span class="arrow"></span></th>
+        <th data-sort="setName">Set <span class="arrow"></span></th>
+        <th data-sort="year">Year <span class="arrow"></span></th>
+        <th data-sort="oracleLen">Oracle <span class="arrow"></span></th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+    <div id="empty-state" class="empty-state" style="display: none;">No cards match the current filters.</div>
+  </main>
+</div>
+<script>
+const DATA = {{.DataJSON}};
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => {
+  if (s == null) return "";
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+};
+const truncate = (s, n) => {
+  if (!s) return "";
+  const collapsed = s.replace(/\s+/g, " ");
+  return collapsed.length > n ? collapsed.slice(0, n - 1) + "…" : collapsed;
+};
+
+const state = {
+  classes: new Set(Object.keys(DATA.counts).filter(k => k !== "OK" && k !== "OK_VANILLA")),
+  eras: new Set(),
+  types: new Set(),
+  sets: new Set(),  // empty = no set filter (all sets allowed)
+  search: "",
+  sortBy: "name",
+  sortAsc: true,
+  expanded: new Set(),
+};
+
+function populateFilters() {
+  const classes = Object.keys(DATA.counts).sort();
+  const eras = [...new Set(DATA.cards.map(c => c.era))].sort();
+  const types = [...new Set(DATA.cards.map(c => c.primaryType || "(none)"))].sort();
+  for (const e of eras) state.eras.add(e);
+  for (const t of types) state.types.add(t);
+
+  function build(targetId, items, group, selectedSet) {
+    const el = $(targetId);
+    el.innerHTML = "";
+    for (const item of items) {
+      const id = group + "-" + item.replace(/[^a-zA-Z0-9]/g, "_");
+      const label = document.createElement("label");
+      label.innerHTML = `<input type="checkbox" id="${id}" data-group="${group}" data-value="${esc(item)}" ${selectedSet.has(item) ? "checked" : ""}/> ${esc(item)}`;
+      el.appendChild(label);
+    }
+  }
+  build("filters-class", classes, "class", state.classes);
+  build("filters-era", eras, "era", state.eras);
+  build("filters-type", types, "type", state.types);
+
+  // Set picker — populate the <select> with every set name.
+  const sets = [...new Set(DATA.cards.map(c => c.setName || "(unknown)"))].sort();
+  const sel = $("set-select");
+  sel.innerHTML = "";
+  for (const s of sets) {
+    const opt = document.createElement("option");
+    opt.value = s;
+    opt.textContent = s;
+    sel.appendChild(opt);
+  }
+}
+
+function applySetSearch(q) {
+  const sel = $("set-select");
+  const lower = q.toLowerCase();
+  for (const opt of sel.options) {
+    opt.hidden = lower && !opt.value.toLowerCase().includes(lower);
+  }
+}
+
+function renderSummary() {
+  const el = $("summary");
+  const total = (DATA.cards || []).length;
+  const parts = [`<b>${total}</b> cards in payload`];
+  for (const k of ["MISSING", "EMPTY_AST", "PARTIAL", "OK", "OK_VANILLA"]) {
+    if (DATA.counts[k] != null) {
+      parts.push(`<span class="pill"><span class="class-${k}">${k}</span> ${DATA.counts[k]}</span>`);
+    }
+  }
+  el.innerHTML = parts.join(" ");
+}
+
+function filtered() {
+  const q = state.search.toLowerCase();
+  return DATA.cards.filter(c => {
+    if (!state.classes.has(c.class)) return false;
+    if (!state.eras.has(c.era)) return false;
+    if (!state.types.has(c.primaryType || "(none)")) return false;
+    if (state.sets.size > 0 && !state.sets.has(c.setName || "(unknown)")) return false;
+    if (q && !c.name.toLowerCase().includes(q)) return false;
+    return true;
+  });
+}
+
+function sortRows(rows) {
+  const k = state.sortBy;
+  const dir = state.sortAsc ? 1 : -1;
+  rows.sort((a, b) => {
+    let av = a[k], bv = b[k];
+    if (av == null) av = "";
+    if (bv == null) bv = "";
+    if (typeof av === "number" && typeof bv === "number") {
+      return (av - bv) * dir;
+    }
+    return String(av).localeCompare(String(bv)) * dir;
+  });
+  return rows;
+}
+
+function render() {
+  const rows = sortRows(filtered());
+  $("result-count").textContent = `${rows.length} card${rows.length === 1 ? "" : "s"}`;
+  $("empty-state").style.display = rows.length === 0 ? "block" : "none";
+
+  // Update sort arrows.
+  for (const th of document.querySelectorAll("thead th")) {
+    const arrow = th.querySelector(".arrow");
+    arrow.textContent = th.dataset.sort === state.sortBy ? (state.sortAsc ? "▲" : "▼") : "";
+  }
+
+  const tbody = $("rows");
+  const frag = document.createDocumentFragment();
+  for (const c of rows) {
+    const tr = document.createElement("tr");
+    tr.className = "row";
+    tr.dataset.name = c.name;
+    tr.innerHTML = `
+      <td><b>${esc(c.name)}</b></td>
+      <td class="class-${c.class}">${c.class}</td>
+      <td>${esc(c.primaryType || "")}</td>
+      <td>${esc(c.setName || "(unknown)")}</td>
+      <td>${c.year || ""}</td>
+      <td class="oracle-snip">${esc(truncate(c.oracle, 90))}</td>`;
+    frag.appendChild(tr);
+    if (state.expanded.has(c.name)) {
+      const exp = document.createElement("tr");
+      exp.className = "expanded-body";
+      const err = c.parseErrors && c.parseErrors.length
+        ? `<div class="errs"><b>Parse errors:</b><ul>${c.parseErrors.map(e => `<li>${esc(e)}</li>`).join("")}</ul></div>` : "";
+      exp.innerHTML = `<td colspan="6">
+        <div class="meta"><b>${esc(c.name)}</b> — ${esc(c.typeLine || "")} · ${esc(c.setName || "(unknown)")} (${c.year || "—"}, ${esc(c.era)}) · class=<span class="class-${c.class}">${c.class}</span></div>
+        <div class="ot">${esc(c.oracle || "(no oracle text)")}</div>
+        ${err}
+      </td>`;
+      frag.appendChild(exp);
+    }
+  }
+  tbody.innerHTML = "";
+  tbody.appendChild(frag);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  populateFilters();
+  renderSummary();
+  render();
+
+  $("search").addEventListener("input", (e) => { state.search = e.target.value; render(); });
+  $("set-search").addEventListener("input", (e) => { applySetSearch(e.target.value); });
+  $("set-select").addEventListener("change", () => {
+    const sel = $("set-select");
+    state.sets = new Set([...sel.selectedOptions].map(o => o.value));
+    render();
+  });
+  $("set-clear").addEventListener("click", () => {
+    $("set-select").selectedIndex = -1;
+    state.sets = new Set();
+    render();
+  });
+
+  document.addEventListener("change", (e) => {
+    const t = e.target;
+    if (t.matches('input[type="checkbox"][data-group]')) {
+      const group = t.dataset.group, value = t.dataset.value;
+      const bag = state[group + (group === "class" ? "es" : "s")];
+      if (!bag) return;
+      if (t.checked) bag.add(value); else bag.delete(value);
+      render();
+    }
+  });
+
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest("a[data-group][data-action]");
+    if (link) {
+      e.preventDefault();
+      const g = link.dataset.group, action = link.dataset.action;
+      const targetId = "filters-" + g;
+      const checkboxes = $(targetId).querySelectorAll('input[type="checkbox"]');
+      const bag = state[g + (g === "class" ? "es" : "s")];
+      checkboxes.forEach(cb => {
+        cb.checked = action === "all";
+        if (action === "all") bag.add(cb.dataset.value); else bag.delete(cb.dataset.value);
+      });
+      render();
+      return;
+    }
+    const th = e.target.closest("thead th[data-sort]");
+    if (th) {
+      const col = th.dataset.sort;
+      if (state.sortBy === col) state.sortAsc = !state.sortAsc;
+      else { state.sortBy = col; state.sortAsc = true; }
+      render();
+      return;
+    }
+    const row = e.target.closest("tbody tr.row");
+    if (row) {
+      const name = row.dataset.name;
+      if (state.expanded.has(name)) state.expanded.delete(name); else state.expanded.add(name);
+      render();
+    }
+  });
+});
+</script>
+</body>
+</html>

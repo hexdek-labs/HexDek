@@ -54,7 +54,9 @@ type CardProfile struct {
 	IsTribalLord   bool     // grants bonuses to creatures of a type
 
 	IsOutlet    bool // can sacrifice/use OTHER permanents
-	IsTutor     bool // searches library
+	IsTutor     bool // searches library OR fetches from outside the game / sideboard
+	IsLandTutor bool // tutor is restricted to lands (Cultivate, Rampant Growth) — ramp, not a consistency tutor
+	IsWishTutor bool // fetches a card from outside the game / sideboard (Burning Wish, Karn the Great Creator, Mastermind's Acquisition)
 	IsRemoval   bool // destroys/exiles targets
 	IsWinCon    bool // can win the game directly
 	IsMassWipe  bool // destroys/exiles all
@@ -116,6 +118,7 @@ type CardProfile struct {
 type ComboResult struct {
 	Cards            []string
 	LoopType         string // "determined", "true_infinite", "finisher", "synergy"
+	Class            string // ComboClass* — what the combo PRODUCES (infinite_mana, infinite_drain, library_exile_win, etc.); empty for heuristic-detected combos until ClassifyComboHeuristic runs.
 	Resources        string // what the loop produces
 	Description      string
 	Confirmed        bool // true if matched from KnownCombos database
@@ -142,10 +145,13 @@ type FreyaReport struct {
 	// Legality validation (runs before all other phases)
 	Legality *LegalityReport
 
-	TutorCount   int
-	RemovalCount int
-	OutletCount  int
-	WinConCount  int
+	TutorCount        int // all tutors (legacy field — includes land tutors)
+	NonLandTutorCount int // tutors that find a non-land card (the consistency engine for combo decks)
+	LandTutorCount    int // land/ramp tutors (Cultivate, Rampant Growth, fetchlands)
+	WishTutorCount    int // tutors that fetch from outside the game / sideboard
+	RemovalCount      int
+	OutletCount       int
+	WinConCount       int
 
 	// Mana curve
 	ManaCurve     [8]int // index 0-6 = CMC 0-6, index 7 = CMC 7+
@@ -192,6 +198,17 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	p := CardProfile{Name: name, TypeLine: typeLine, ManaCost: manaCost, CMC: cmc}
 	ot := strings.ToLower(oracleText)
 	tl := strings.ToLower(typeLine)
+	// otClean = oracle text with parenthesized reminder text stripped.
+	// Used by classifiers that are vulnerable to reminder-text leak —
+	// cascade's "exile cards from the top of your library until ..."
+	// falsely tagged every cascade card as EmptiesLibrary; flashback /
+	// encore / embalm / eternalize / aftermath all carry "exile this
+	// card from your graveyard" reminders that falsely tagged hundreds
+	// of cards as graveyard_curate engines. Other classifiers (mana
+	// production, keyword detection) intentionally keep `ot` because
+	// reminder text is often where the structural cue actually lives
+	// (land color hints, keyword glosses).
+	otClean := strings.ToLower(stripReminder(oracleText))
 
 	// Detect lands and their color production.
 	if strings.Contains(tl, "land") {
@@ -474,8 +491,13 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	if containsAny(nameLower, "tainted pact", "demonic consultation") {
 		p.EmptiesLibrary = true
 	}
-	// "exile cards from the top of your library" pattern (generic)
-	if strings.Contains(ot, "exile") && containsAny(ot, "cards from the top of your library", "from the top of your library until") {
+	// "exile cards from the top of your library" pattern (generic).
+	// Uses otClean so cascade's reminder text doesn't false-fire — every
+	// cascade card was previously misflagged as a Doomsday-pattern
+	// finisher.
+	if strings.Contains(otClean, "exile") && containsAny(otClean,
+		"cards from the top of your library",
+		"from the top of your library until") {
 		p.EmptiesLibrary = true
 	}
 
@@ -613,8 +635,12 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		p.IsMassTokens = true
 	}
 
-	// Infect / grants infect
-	if containsAny(ot, "infect", "poison counter") && !strings.Contains(ot, "remove a poison") {
+	// Infect / grants infect. Word-boundary match on "infect" so cards
+	// mentioning "infectious", "infection", or names like "Infectious
+	// Inquiry" don't trip the keyword check. "poison counter" is a
+	// distinct multi-token phrase that doesn't collide.
+	if (hasKeyword(ot, "infect") || strings.Contains(ot, "poison counter")) &&
+		!strings.Contains(ot, "remove a poison") {
 		p.HasInfect = true
 	}
 	if containsAny(ot, "creatures you control have infect", "creatures you control gain infect") {
@@ -626,8 +652,11 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		p.HasInfect = true
 	}
 
-	// Storm finisher
-	if strings.Contains(ot, "storm") &&
+	// Storm finisher. Word-boundary match on "storm" so creature names
+	// like Storm Crow, Stormtide Leviathan, Stormchaser Mage (which all
+	// contain "storm" as a substring of a longer word in the type line
+	// or oracle reference) don't false-fire the Storm keyword detector.
+	if hasKeyword(ot, "storm") &&
 		containsAny(ot, "damage", "loses life", "copy of this spell", "mills") {
 		p.IsStormFinisher = true
 	}
@@ -664,7 +693,11 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	if containsAny(ot, "exile target", "exile all", "exile each") {
 		p.Effects = append(p.Effects, "exile")
 	}
-	if strings.Contains(ot, "mill") {
+	// Word-boundary match on the mill verb so a card whose oracle text
+	// references "Millstone" (the card name) doesn't get the mill effect
+	// tag. The legitimate verb forms (mill, mills, milled, milling) are
+	// all whole-word.
+	if hasKeyword(ot, "mill") || hasKeyword(ot, "mills") || hasKeyword(ot, "milled") || hasKeyword(ot, "milling") {
 		p.Effects = append(p.Effects, "mill")
 	}
 	if containsAny(ot, "each opponent loses", "each opponent lose") {
@@ -681,15 +714,23 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	// LAND & GRAVEYARD STRATEGY DETECTION
 	// ---------------------------------------------------------------
 
-	// Landfall triggers
-	if strings.Contains(ot, "landfall") ||
+	// Landfall triggers. Word-boundary on the "landfall" keyword so a
+	// card body that references "Landfall — Dragon Storm" in flavor
+	// or a long-form ability doesn't false-fire on a non-keyword
+	// substring match. The fallback "whenever … land … enters" branch
+	// keeps the implicit-landfall detection (Tireless Tracker style).
+	if hasKeyword(ot, "landfall") ||
 		(strings.Contains(ot, "whenever") && strings.Contains(ot, "land") &&
 			(strings.Contains(ot, "enters") || strings.Contains(ot, "enter"))) {
 		p.Triggers = append(p.Triggers, "landfall")
 	}
 
-	// Self-mill (intentional graveyard filling)
-	if strings.Contains(ot, "mill") && !strings.Contains(ot, "opponent") {
+	// Self-mill (intentional graveyard filling). Word-boundary "mill"
+	// avoids matching "Millstone" by name; the "opponent" guard stays as
+	// a substring check because any mention of opponent in the same card
+	// text is a strong signal that the mill is opponent-targeted (or
+	// symmetric and not the deck's primary graveyard-fill source).
+	if (hasKeyword(ot, "mill") || hasKeyword(ot, "mills")) && !strings.Contains(ot, "opponent") {
 		p.Produces = append(p.Produces, ResGraveyardFill)
 		p.Effects = append(p.Effects, "self_mill")
 	}
@@ -728,9 +769,12 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		p.Effects = append(p.Effects, "land_fetch")
 	}
 
-	// Graveyard curation (exile from your graveyard for value)
-	if strings.Contains(ot, "exile") && strings.Contains(ot, "your graveyard") &&
-		!strings.Contains(ot, "return") {
+	// Graveyard curation (exile from your graveyard for value). Uses
+	// otClean so the flashback / encore / embalm / eternalize /
+	// aftermath reminders ("exile this card from your graveyard ...")
+	// don't false-tag hundreds of cards as graveyard engines.
+	if strings.Contains(otClean, "exile") && strings.Contains(otClean, "your graveyard") &&
+		!strings.Contains(otClean, "return") {
 		p.Consumes = append(p.Consumes, ResGraveyardFill)
 		p.Effects = append(p.Effects, "graveyard_curate")
 	}
@@ -753,16 +797,7 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		"target player loses the game", "each opponent loses the game") {
 		p.IsWinCon = true
 	}
-	if strings.Contains(ot, "search your library") {
-		isCyclingSearch := (strings.Contains(ot, "cycling") || strings.Contains(ot, "landcycling") ||
-			strings.Contains(ot, "swampcycling") || strings.Contains(ot, "forestcycling") ||
-			strings.Contains(ot, "mountaincycling") || strings.Contains(ot, "islandcycling") ||
-			strings.Contains(ot, "plainscycling")) &&
-			!strings.Contains(ot, "search your library for a card")
-		if !isCyclingSearch {
-			p.IsTutor = true
-		}
-	}
+	classifyTutorInto(&p, ot, tl, name)
 	if containsAny(ot, "destroy target", "exile target") {
 		p.IsRemoval = true
 	}
@@ -982,7 +1017,10 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		p.Triggers = append(p.Triggers, "daynight")
 		p.Effects = append(p.Effects, "transform")
 	}
-	if strings.Contains(ot, "transform") || strings.Contains(ot, "transforms") {
+	// Word-boundary so "transformation" / "transformative" in flavor
+	// text doesn't add a transform effect. The day/night branch above
+	// already covers most legitimate transform cards.
+	if hasKeyword(ot, "transform") || hasKeyword(ot, "transforms") {
 		p.Effects = append(p.Effects, "transform")
 	}
 	if strings.Contains(ot, "it becomes night") || strings.Contains(ot, "it becomes day") ||
@@ -1014,8 +1052,12 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	// - "facedown_enabler": puts OTHER cards face-down (manifest, Scroll of Fate)
 	// - "facedown" trigger: card cares about OTHER face-down creatures existing
 	// - "face_up" effect: card rewards things being turned face up (not just self)
-	hasMorphKeyword := strings.Contains(ot, "morph") || strings.Contains(ot, "megamorph") ||
-		strings.Contains(ot, "disguise")
+	// Word-boundary keyword checks so "polymorph" / "Polymorphist's Jest"
+	// don't false-fire the morph detector, and "disguised" used as a
+	// non-keyword verb doesn't trip disguise. Megamorph is a keyword
+	// that only appears as its own whole word.
+	hasMorphKeyword := hasKeyword(ot, "morph") || hasKeyword(ot, "megamorph") ||
+		hasKeyword(ot, "disguise")
 
 	if hasMorphKeyword {
 		p.Effects = append(p.Effects, "facedown_create")
@@ -1188,6 +1230,14 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 	for _, p := range profiles {
 		if p.IsTutor {
 			report.TutorCount++
+			if p.IsLandTutor {
+				report.LandTutorCount++
+			} else {
+				report.NonLandTutorCount++
+			}
+			if p.IsWishTutor {
+				report.WishTutorCount++
+			}
 		}
 		if p.IsRemoval {
 			report.RemovalCount++
@@ -1309,7 +1359,8 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 	}
 
 	knownComboKeys := map[string]bool{} // track confirmed combos to avoid heuristic dupes
-	for _, known := range KnownCombos {
+	combosForDeck := allKnownCombos()   // curated + Spellbook import, deduped
+	for _, known := range combosForDeck {
 		allPresent := true
 		for _, piece := range known.Pieces {
 			if !deckCardNames[piece] {
@@ -1324,6 +1375,7 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 		combo := ComboResult{
 			Cards:       known.Pieces,
 			LoopType:    known.Type,
+			Class:       known.Class,
 			Description: known.Description,
 			Confirmed:   true,
 		}
@@ -1362,7 +1414,17 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 	}
 
 	// ── Flag individual combo pieces (partial matches) ──
-	for _, known := range KnownCombos {
+	//
+	// For 2- and 3-card combos any partial overlap is noteworthy (1-of-2,
+	// 1-of-3, 2-of-3 — at most 2 missing pieces). For 4-card combos, we
+	// gate the note on having AT LEAST 3 of 4 pieces — the prefix-pruning
+	// described in CLAUDE.md's combo-detection backlog. Without the gate,
+	// a typical EDH deck partially matches dozens of 4-card combos at
+	// 1-of-4 / 2-of-4 (anyone running a Sol Ring "matches" any combo
+	// with a Sol Ring outlet listed), drowning real near-miss signals
+	// in noise. The 75%-threshold gate keeps the report focused on
+	// actionable "you are one card away from a known 4-card win" hints.
+	for _, known := range combosForDeck {
 		var presentPieces []string
 		var missingPieces []string
 		for _, piece := range known.Pieces {
@@ -1372,13 +1434,21 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 				missingPieces = append(missingPieces, piece)
 			}
 		}
-		// If we have SOME but not ALL pieces, note the potential.
-		if len(presentPieces) > 0 && len(missingPieces) > 0 {
-			report.ComboNotes = append(report.ComboNotes, fmt.Sprintf(
-				"%s: have %s, missing %s for %s",
-				known.Name, strings.Join(presentPieces, " + "),
-				strings.Join(missingPieces, " + "), known.Type))
+		if len(presentPieces) == 0 || len(missingPieces) == 0 {
+			continue
 		}
+		// Prefix-pruning: for 4+ card combos require ≥75% of pieces
+		// present before surfacing the near-miss note.
+		if len(known.Pieces) >= 4 {
+			needed := (len(known.Pieces) * 3 + 3) / 4 // ceil(N * 0.75)
+			if len(presentPieces) < needed {
+				continue
+			}
+		}
+		report.ComboNotes = append(report.ComboNotes, fmt.Sprintf(
+			"%s: have %s, missing %s for %s",
+			known.Name, strings.Join(presentPieces, " + "),
+			strings.Join(missingPieces, " + "), known.Type))
 	}
 
 	// Run all detectors.
@@ -1622,6 +1692,35 @@ func FindLoops(profiles []CardProfile) []ComboResult {
 				for k := j + 1; k < len(profiles); k++ {
 					if combo := checkTripleCombo(profiles[i], profiles[j], profiles[k]); combo != nil {
 						results = append(results, *combo)
+					}
+				}
+			}
+		}
+	}
+
+	// Check all quadruples -- C(100,4) = 3.9M is too slow against the full
+	// deck, so prefilter to candidates that participate in resource flow
+	// (non-empty Produces AND non-empty Consumes). A typical EDH deck yields
+	// 20-50 such candidates; combo-heavy decks ~60. We cap at 70 to bound
+	// worst-case runtime; beyond that, drop 4-card detection rather than
+	// degrade analysis latency. See docs/freya-4card-runtime.md for the
+	// tradeoff analysis.
+	if len(profiles) <= 120 {
+		var candidates []CardProfile
+		for _, p := range profiles {
+			if len(p.Produces) > 0 && len(p.Consumes) > 0 {
+				candidates = append(candidates, p)
+			}
+		}
+		if len(candidates) <= 70 {
+			for i := 0; i < len(candidates); i++ {
+				for j := i + 1; j < len(candidates); j++ {
+					for k := j + 1; k < len(candidates); k++ {
+						for l := k + 1; l < len(candidates); l++ {
+							if combo := checkQuadCombo(candidates[i], candidates[j], candidates[k], candidates[l]); combo != nil {
+								results = append(results, *combo)
+							}
+						}
 					}
 				}
 			}
@@ -1954,6 +2053,72 @@ func tryTripleCycle(a, b, c CardProfile) *ComboResult {
 	}
 
 	return nil
+}
+
+// checkQuadCombo enumerates all 24 permutations of {a,b,c,d} and checks each
+// for a 4-card directed cycle. Mathematically the 24 input orderings reduce
+// to 3 distinct directed 4-cycles (each cycle has 4 rotations × 2 directions
+// = 8 redundant orderings, 24/8 = 3), but exhaustive enumeration is defense
+// in depth — same rationale as the r59 triple-combo fix that lifted
+// coverage from 2/6 to 6/6 permutations. The nested distinct-index loops
+// generate exactly 4! = 24 orderings by construction (4 × 3 × 2 × 1), so
+// there is no hand-maintained permutation table to drift.
+func checkQuadCombo(a, b, c, d CardProfile) *ComboResult {
+	cards := [4]CardProfile{a, b, c, d}
+	for i := 0; i < 4; i++ {
+		for j := 0; j < 4; j++ {
+			if j == i {
+				continue
+			}
+			for k := 0; k < 4; k++ {
+				if k == i || k == j {
+					continue
+				}
+				for l := 0; l < 4; l++ {
+					if l == i || l == j || l == k {
+						continue
+					}
+					if combo := tryQuadCycle(cards[i], cards[j], cards[k], cards[l]); combo != nil {
+						return combo
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func tryQuadCycle(a, b, c, d CardProfile) *ComboResult {
+	abFlow := resourceOverlap(a.Produces, b.Consumes)
+	bcFlow := resourceOverlap(b.Produces, c.Consumes)
+	cdFlow := resourceOverlap(c.Produces, d.Consumes)
+	daFlow := resourceOverlap(d.Produces, a.Consumes)
+
+	if len(abFlow) == 0 || len(bcFlow) == 0 || len(cdFlow) == 0 || len(daFlow) == 0 {
+		return nil
+	}
+	if !isInterestingLoop(abFlow) && !isInterestingLoop(bcFlow) &&
+		!isInterestingLoop(cdFlow) && !isInterestingLoop(daFlow) {
+		return nil
+	}
+
+	loopType := classifyLoop(a, b, c, d)
+	combo := &ComboResult{
+		Cards:    []string{a.Name, b.Name, c.Name, d.Name},
+		LoopType: loopType,
+		Resources: fmt.Sprintf("%v -> %v -> %v -> %v -> loop",
+			resourceNames(abFlow), resourceNames(bcFlow),
+			resourceNames(cdFlow), resourceNames(daFlow)),
+		Description: fmt.Sprintf("%s -> %s -> %s -> %s -> loop (%v -> %v -> %v -> %v)",
+			a.Name, b.Name, c.Name, d.Name,
+			resourceNames(abFlow), resourceNames(bcFlow),
+			resourceNames(cdFlow), resourceNames(daFlow)),
+	}
+	if a.HasRandomSelection || b.HasRandomSelection ||
+		c.HasRandomSelection || d.HasRandomSelection {
+		combo.NonDeterministic = true
+	}
+	return combo
 }
 
 // isInterestingLoop returns true if a resource overlap contains something
@@ -3185,6 +3350,115 @@ func isDiscardCost(ot string) bool {
 		}
 	}
 	return false
+}
+
+// classifyTutorInto sets IsTutor / IsLandTutor / IsWishTutor on p based on
+// oracle text. Two surfaces qualify as a tutor:
+//
+//  1. "search your library" — the canonical wording, covering modal spells,
+//     conditional searches ("for a card with mana value X or less"), tribal
+//     searches ("for a Goblin card"), and reanimator tutors ("put it into
+//     your graveyard"). Cycling/landcycling clauses are excluded because the
+//     underlying "search your library for a basic [type] card" only fires
+//     when the cycling ability is activated, not as a free-cast tutor.
+//
+//  2. Wish-style: "from outside the game" / "from your sideboard" — Burning
+//     Wish, Cunning Wish, Glittering Wish, Living Wish, Mastermind's
+//     Acquisition, Karn the Great Creator, Spawnsire of Ulamog. These fetch
+//     a specific card by name and should count toward the consistency engine.
+//
+// Land-restricted tutors (Cultivate, Rampant Growth, Sakura-Tribe Elder,
+// fetchlands) are flagged separately via IsLandTutor — they belong to the
+// ramp package, not the consistency package. The legacy IsTutor flag stays
+// true for backward compatibility, but NonLandTutorCount in the report is
+// the metric scoring sites should consume.
+func classifyTutorInto(p *CardProfile, ot, tl, name string) {
+	// 1. Library-search tutors.
+	if strings.Contains(ot, "search your library") {
+		isCyclingSearch := containsAny(ot, "cycling", "landcycling",
+			"swampcycling", "forestcycling", "mountaincycling",
+			"islandcycling", "plainscycling") &&
+			!strings.Contains(ot, "search your library for a card")
+		if !isCyclingSearch {
+			p.IsTutor = true
+			if isLandRestrictedSearch(ot) {
+				p.IsLandTutor = true
+			}
+		}
+	}
+
+	// 2. Wish-style tutors: fetch from outside the game / sideboard. The
+	// wording variants are deliberately enumerated rather than collapsed to
+	// "outside the game" alone, because "you own from outside the game"
+	// covers the Wishes and "from your sideboard" covers older printings and
+	// Karn the Great Creator's activation.
+	if containsAny(ot, "from outside the game", "from your sideboard") {
+		// Guard against false positives like Conspiracy / Reflector Mage
+		// flavor text — restrict to clauses that actually fetch a card:
+		// "choose", "reveal", "may put", "may cast", "owner from outside".
+		if containsAny(ot, "choose a ", "choose an ",
+			"reveal a ", "reveal an ", "reveal any number",
+			"may put", "may cast", "you own from outside",
+			"you own in exile") {
+			p.IsTutor = true
+			p.IsWishTutor = true
+		}
+	}
+}
+
+// isLandRestrictedSearch returns true when the only thing the "search your
+// library" clause can find is a land. The clause shape is varied — basic
+// land types, "land card", "card with a basic land type", "up to two basic
+// land cards" — and the matcher errs on the side of "land-only" only when
+// no non-land object appears. A clause like "search your library for a
+// creature or land card" stays a non-land tutor (the creature mode is the
+// consistency-relevant one).
+func isLandRestrictedSearch(ot string) bool {
+	// Hard exclusion: any of these phrases imply the search can land on a
+	// nonland card, even if "land" also appears in the text.
+	if containsAny(ot, "search your library for a card",
+		"search your library for any number of cards",
+		"search your library for up to",
+		"search your library for a creature",
+		"search your library for an artifact",
+		"search your library for an enchantment",
+		"search your library for an instant",
+		"search your library for a sorcery",
+		"search your library for a planeswalker") {
+		// "up to two basic land" is a land tutor but matches "up to";
+		// re-check below.
+		if !containsAny(ot,
+			"search your library for up to two basic",
+			"search your library for up to three basic",
+			"search your library for up to four basic",
+			"search your library for up to five basic",
+			"search your library for up to one basic",
+			"search your library for up to two land",
+			"search your library for up to three land",
+			"search your library for up to four land",
+			"search your library for up to one land") {
+			return false
+		}
+	}
+	return containsAny(ot,
+		"search your library for a land",
+		"search your library for a basic land",
+		"search your library for up to two basic land",
+		"search your library for up to three basic land",
+		"search your library for up to four basic land",
+		"search your library for up to two land",
+		"search your library for up to three land",
+		"search your library for a plains",
+		"search your library for an island",
+		"search your library for a swamp",
+		"search your library for a mountain",
+		"search your library for a forest",
+		"search your library for a card with a basic land type",
+		"search your library for a basic plains",
+		"search your library for a basic island",
+		"search your library for a basic swamp",
+		"search your library for a basic mountain",
+		"search your library for a basic forest")
 }
 
 // containsAny checks if s contains any of the given substrings.

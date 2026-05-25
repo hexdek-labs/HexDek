@@ -66,16 +66,16 @@ func (h *Handler) handlePageview(w http.ResponseWriter, r *http.Request) {
 	}
 	var body pageviewBody
 	if err := json.NewDecoder(io.LimitReader(r.Body, int64(maxBodyLen))).Decode(&body); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
 	if !validAnonID(body.AnonID) {
-		http.Error(w, "anon_id must be a UUID", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "anon_id must be a UUID")
 		return
 	}
 	path := strings.TrimSpace(body.Path)
 	if path == "" {
-		http.Error(w, "path required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "path required")
 		return
 	}
 	path = clampStr(path, maxPathLen)
@@ -90,7 +90,7 @@ func (h *Handler) handlePageview(w http.ResponseWriter, r *http.Request) {
 		`INSERT INTO pageviews (anon_id, owner, path, ts, referrer) VALUES (?, NULL, ?, ?, ?)`,
 		body.AnonID, path, ts, nullableStr(referrer))
 	if err != nil {
-		http.Error(w, "insert failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "insert failed")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -108,23 +108,23 @@ func (h *Handler) handleStitch(w http.ResponseWriter, r *http.Request) {
 	}
 	var body stitchBody
 	if err := json.NewDecoder(io.LimitReader(r.Body, int64(maxBodyLen))).Decode(&body); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
 	if !validAnonID(body.AnonID) {
-		http.Error(w, "anon_id must be a UUID", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "anon_id must be a UUID")
 		return
 	}
 	owner := strings.ToLower(strings.TrimSpace(body.Owner))
 	if owner == "" || len(owner) > 64 {
-		http.Error(w, "owner required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "owner required")
 		return
 	}
 	now := time.Now().UnixMilli()
 
 	tx, err := h.db.BeginTx(r.Context(), nil)
 	if err != nil {
-		http.Error(w, "tx failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "tx failed")
 		return
 	}
 	defer tx.Rollback()
@@ -132,18 +132,18 @@ func (h *Handler) handleStitch(w http.ResponseWriter, r *http.Request) {
 	if _, err := tx.ExecContext(r.Context(),
 		`INSERT OR REPLACE INTO session_stitch (anon_id, owner, stitched_at) VALUES (?, ?, ?)`,
 		body.AnonID, owner, now); err != nil {
-		http.Error(w, "stitch failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "stitch failed")
 		return
 	}
 	res, err := tx.ExecContext(r.Context(),
 		`UPDATE pageviews SET owner = ? WHERE anon_id = ? AND owner IS NULL`,
 		owner, body.AnonID)
 	if err != nil {
-		http.Error(w, "backfill failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "backfill failed")
 		return
 	}
 	if err := tx.Commit(); err != nil {
-		http.Error(w, "commit failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "commit failed")
 		return
 	}
 	backfilled, _ := res.RowsAffected()

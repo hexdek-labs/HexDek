@@ -194,6 +194,7 @@ func CastWithSweep(gs *GameState, seatIdx int, card *Card, landType string, retu
 			owner = p.Controller
 		}
 		gs.removePermanent(p)
+		detachAll(gs, p)
 		MoveCard(gs, p.Card, owner, "battlefield", "hand", "sweep")
 	}
 

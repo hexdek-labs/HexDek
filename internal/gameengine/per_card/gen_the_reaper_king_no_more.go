@@ -108,6 +108,33 @@ func theReaperDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 	if ownSeat.Flags["reaper_stole_turn"] == gs.Turn+1 {
 		return
 	}
+	// Defensive: the dying card may have been moved out of its owner's
+	// graveyard by other SBAs in the same cycle — most notably
+	// §704.6d, which lifts dying commanders from the graveyard into
+	// their owner's command zone before this trigger resolves. Calling
+	// MoveCard("graveyard" → "battlefield") on a card no longer in the
+	// graveyard does NOT fail; it just adds a fresh Permanent to the
+	// battlefield with the same *Card pointer, producing a
+	// command_zone-and-battlefield duplicate (Loki r60 / game 3042 —
+	// The Convention Enthusiast). Verify the card is still in its
+	// owner's graveyard before stealing.
+	if dyingCard.Owner < 0 || dyingCard.Owner >= len(gs.Seats) {
+		return
+	}
+	ownerSeat := gs.Seats[dyingCard.Owner]
+	if ownerSeat == nil {
+		return
+	}
+	stillInGraveyard := false
+	for _, c := range ownerSeat.Graveyard {
+		if c == dyingCard {
+			stillInGraveyard = true
+			break
+		}
+	}
+	if !stillInGraveyard {
+		return
+	}
 	mover := gameengine.MoveCard(gs, dyingCard, dyingCard.Owner, "graveyard", "battlefield", "the_reaper_steal")
 	if mover.Permanent != nil {
 		mover.Permanent.Controller = perm.Controller

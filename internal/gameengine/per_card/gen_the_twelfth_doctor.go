@@ -27,6 +27,7 @@ import (
 func registerTheTwelfthDoctor(r *Registry) {
 	r.OnETB("The Twelfth Doctor", theTwelfthDoctorETB)
 	r.OnTrigger("The Twelfth Doctor", "spell_copied", theTwelfthDoctorCounter)
+	r.OnTrigger("The Twelfth Doctor", "spell_cast", theTwelfthDoctorConsumeGrant)
 }
 
 func theTwelfthDoctorETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -34,11 +35,47 @@ func theTwelfthDoctorETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
+	seat := gs.Seats[perm.Controller]
+	if seat != nil {
+		if seat.Flags == nil {
+			seat.Flags = map[string]int{}
+		}
+		seat.Flags["twelfth_doctor_demonstrate_pending"] = 1
+	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": perm.Controller,
+		"seat":               perm.Controller,
+		"demonstrate_armed": 1,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"demonstrate_grant_on_first_non_hand_cast_per_turn_not_wired_in_cast_pipeline")
+}
+
+// theTwelfthDoctorConsumeGrant consumes the demonstrate-pending flag on
+// the first spell the controller casts from a zone other than hand each
+// turn. The flag is re-armed by the per-turn untap helper (or simply by
+// re-ETB), so this handler only needs to clear it.
+func theTwelfthDoctorConsumeGrant(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	casterSeat, _ := ctx["caster_seat"].(int)
+	if casterSeat != perm.Controller {
+		return
+	}
+	zone, _ := ctx["cast_zone"].(string)
+	if zone == "" || zone == "hand" {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil || seat.Flags == nil {
+		return
+	}
+	if seat.Flags["twelfth_doctor_demonstrate_pending"] <= 0 {
+		return
+	}
+	seat.Flags["twelfth_doctor_demonstrate_pending"] = 0
+	emit(gs, "the_twelfth_doctor_demonstrate_consumed", perm.Card.DisplayName(), map[string]interface{}{
+		"seat":      perm.Controller,
+		"cast_zone": zone,
+	})
 }
 
 func theTwelfthDoctorCounter(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

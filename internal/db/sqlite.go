@@ -64,6 +64,20 @@ func applyMigrations(db *sql.DB) error {
 		// verification worker. 0 = unchecked (default), 1 = spot-check
 		// passed, -1 = spot-check failed OR quarantined by cauterize.
 		{"showmatch_game", "verified", "INTEGER NOT NULL DEFAULT 0"},
+		// Scryfall format-legality cache: JSON-encoded {format: status}
+		// map populated by oracle.Lookup / LookupMany. Empty for rows
+		// cached before this migration — moxfield.ValidateFormat treats
+		// "no legality data" as "skip" (can't validate what we don't
+		// know), so the missing data degrades gracefully into "no
+		// violation reported" until the next time the card is fetched.
+		{"card_oracle", "legalities", "TEXT NOT NULL DEFAULT ''"},
+		// Scryfall prices cache: JSON-encoded {currency: amount} map
+		// (usd, usd_foil, usd_etched, eur, eur_foil, tix). Empty on rows
+		// cached before this migration — the deck budget endpoint
+		// treats empty as "needs refresh" and triggers a fresh Scryfall
+		// fetch so older cache hits fill in their prices on first
+		// budget request.
+		{"card_oracle", "prices", "TEXT NOT NULL DEFAULT ''"},
 	}
 	// Migrate showmatch_elo from commander-keyed to deck_key-keyed.
 	// Both Execs were previously unchecked — a DROP failure (e.g., FK

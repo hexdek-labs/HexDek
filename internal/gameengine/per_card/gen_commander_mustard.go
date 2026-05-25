@@ -24,6 +24,55 @@ import (
 //     breadcrumb so audits can find the wiring boundary.
 func registerCommanderMustard(r *Registry) {
 	r.OnActivated("Commander Mustard", commanderMustardActivate)
+	r.OnTrigger("Commander Mustard", "creature_attacks", commanderMustardSoldierPing)
+}
+
+// commanderMustardSoldierPing implements the "Soldiers you control gain
+// 'Whenever this creature attacks, it deals 1 damage to defending player'"
+// rider. Gated on the per-seat mustard_soldier_attack_ping flag the
+// activated ability sets. Fires once per attacking Soldier on Mustard's
+// controller's side; the defender's life total goes down by 1 per ping.
+func commanderMustardSoldierPing(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil || seat.Flags == nil {
+		return
+	}
+	if seat.Flags["mustard_soldier_attack_ping"] <= 0 {
+		return
+	}
+	attacker, _ := ctx["attacker_perm"].(*gameengine.Permanent)
+	if attacker == nil || attacker.Card == nil {
+		return
+	}
+	if attacker.Controller != perm.Controller {
+		return
+	}
+	if !cardHasSubtype(attacker.Card, "soldier") {
+		return
+	}
+	defender := -1
+	if v, ok := ctx["defender_seat"].(int); ok {
+		defender = v
+	} else if v, ok := ctx["defender"].(int); ok {
+		defender = v
+	}
+	if defender < 0 || defender >= len(gs.Seats) {
+		return
+	}
+	def := gs.Seats[defender]
+	if def == nil {
+		return
+	}
+	def.Life--
+	emit(gs, "commander_mustard_soldier_attack_ping", perm.Card.DisplayName(), map[string]interface{}{
+		"seat":          perm.Controller,
+		"attacker":      attacker.Card.DisplayName(),
+		"defender_seat": defender,
+		"damage":        1,
+	})
 }
 
 func commanderMustardActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {

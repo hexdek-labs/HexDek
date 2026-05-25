@@ -195,22 +195,51 @@ func normalizeNameSlow(name string) string {
 func lookupCandidates(displayName string) []string {
 	nk := normalizeName(displayName)
 	out := []string{nk}
-	if idx := strings.LastIndex(nk, " ("); idx > 0 && strings.HasSuffix(nk, ")") {
-		stripped := strings.TrimSpace(nk[:idx])
-		if stripped != "" && stripped != nk {
-			out = append(out, stripped)
-			// After stripping the suffix, try DFC front face too — covers
-			// e.g. "Eccentric Pestfinder // Turn Stones (cascade)".
-			if dfc := strings.Index(stripped, " // "); dfc > 0 {
-				if front := strings.TrimSpace(stripped[:dfc]); front != "" {
-					out = append(out, front)
-				}
+	seen := map[string]bool{nk: true}
+	add := func(s string) {
+		if s == "" || seen[s] {
+			return
+		}
+		seen[s] = true
+		out = append(out, s)
+	}
+
+	// Iteratively strip trailing parentheticals — covers stacked renames
+	// like "Crown of Gondor (Urza copy) (Urza copy)" where the same rename
+	// source ran twice. Each layer is also tried as a DFC front face.
+	cur := nk
+	for {
+		idx := strings.LastIndex(cur, " (")
+		if idx <= 0 || !strings.HasSuffix(cur, ")") {
+			break
+		}
+		stripped := strings.TrimSpace(cur[:idx])
+		if stripped == "" || stripped == cur {
+			break
+		}
+		add(stripped)
+		if dfc := strings.Index(stripped, " // "); dfc > 0 {
+			if front := strings.TrimSpace(stripped[:dfc]); front != "" {
+				add(front)
 			}
 		}
+		cur = stripped
 	}
+
+	// Strip trailing " token" suffix — covers paren-less token names like
+	// "Myr Token", "Claim Jumper Token", "Rankle and Torbran Token" that
+	// the dragon-doubling / Restore-Relic / direct-mint paths emit when
+	// the token Name lacks a parenthetical rider tag. No printed card
+	// ends in " Token", so this is safe against collision.
+	for _, base := range append([]string{}, out...) {
+		if trimmed := strings.TrimSuffix(base, " token"); trimmed != base && trimmed != "" {
+			add(trimmed)
+		}
+	}
+
 	if idx := strings.Index(nk, " // "); idx > 0 {
-		if front := strings.TrimSpace(nk[:idx]); front != "" && front != out[len(out)-1] {
-			out = append(out, front)
+		if front := strings.TrimSpace(nk[:idx]); front != "" {
+			add(front)
 		}
 	}
 	return out
@@ -408,10 +437,34 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 	gs.Flags["trigger_depth"]++
 	defer func() { gs.Flags["trigger_depth"]-- }()
 	if gs.Flags["trigger_depth"] > 8 {
+		// Emit a marker so TriggerCompleteness sees a follow-up event even
+		// when the runaway-loop guard silently swallows the dispatch.
+		gs.LogEvent(gameengine.Event{
+			Kind:   "trigger_evaluated",
+			Seat:   -1,
+			Target: -1,
+			Source: event,
+			Details: map[string]interface{}{
+				"event":   event,
+				"capped":  "trigger_depth",
+				"rule":    "603.3",
+			},
+		})
 		return
 	}
 	gs.Flags["trigger_total"]++
 	if gs.Flags["trigger_total"] > 2000 {
+		gs.LogEvent(gameengine.Event{
+			Kind:   "trigger_evaluated",
+			Seat:   -1,
+			Target: -1,
+			Source: event,
+			Details: map[string]interface{}{
+				"event":   event,
+				"capped":  "trigger_total",
+				"rule":    "603.3",
+			},
+		})
 		return
 	}
 	canonical := gameengine.NormalizeEventSingle(event)
@@ -2085,6 +2138,25 @@ func registerDefaults() {
 	registerDictateOfTheTwinGods(Global())
 	registerQuestForPureFlame(Global())
 	registerCurseOfBloodletting(Global())
+
+	// R60 — Yawgmoth's Will family. Play-lands-and-cast-spells-from-
+	// graveyard with exile-on-resolve and graveyard→exile redirect.
+	// All four share the play_from_graveyard primitive in
+	// gameengine/play_from_graveyard.go.
+	registerYawgmothsWill(Global())
+	registerGaeasWill(Global())
+	registerYawgmothsAgenda(Global())
+	registerMagusOfTheWill(Global())
+
+	// R60 — Chitinous Crawler + Illusionary Mask. Both AST'd to the
+	// over-applied impulse_play modkind; per_card handlers implement the
+	// correct cost-and-grant semantics (Crawler) or stub the face-down
+	// hand cast (Mask). Combined with the resolve_helpers.go
+	// args[0]-gated guard, this closes the last 4 ZoneCastGrantExpiry
+	// hits from loki r60 round 2 and the cross-validated goldilocks
+	// surface. See docs/loki-r60-round2-report.md.
+	registerChitinousCrawler(Global())
+	registerIllusionaryMask(Global())
 }
 
 func init() {

@@ -59,6 +59,317 @@ func classifyTrigger(t *gameast.Trigger) string {
 		strings.Contains(actorBase, "an opponent")
 
 	switch {
+	// Era 2 R60 sweep — 19 new trigger-event slugs surfaced by
+	// scripts/era2_scaffold_audit.py. Most are exact-match Era 2 mechanics
+	// that the substring matchers below would either miss entirely or route
+	// to the wrong handler. Order: most-specific first so the broader
+	// "contains attack/enters/draw" catches don't eat them.
+	case event == "when_you_do":
+		return "when_you_do"
+	case event == "counters_put_on_self":
+		return "counters_put_on_self"
+	case event == "tribe_you_control_etb":
+		return "tribe_you_control_etb"
+	case event == "self_crews_vehicle":
+		return "self_crews_vehicle"
+	case event == "you_whenever":
+		return "you_whenever"
+	case event == "ally_etb":
+		return "ally_etb"
+	case event == "ally_typed_etb_a":
+		return "ally_typed_etb_a"
+	case event == "ally_subtype_deal_damage":
+		return "ally_subtype_deal_damage"
+	case event == "self_and":
+		return "self_and"
+	case event == "etb_or_another":
+		return "etb_or_another"
+	case event == "opp_creature_event":
+		return "opp_creature_event"
+	case event == "self_saddles_mount":
+		return "self_saddles_mount"
+	case event == "becomes_tapped":
+		return "becomes_tapped_trigger"
+	case event == "you_get_energy":
+		return "you_get_energy"
+	case event == "player_wins_coin_flip":
+		return "player_wins_coin_flip"
+	case event == "you_action":
+		return "you_action"
+	case event == "becomes_crewed":
+		return "becomes_crewed"
+	case event == "becomes_crewed_first":
+		return "becomes_crewed_first"
+	case event == "opp_draw_card":
+		return "opp_draw_card"
+
+	// Era 2 R60 audit follow-up — long-tail event slugs the parser emits
+	// for canonical Era 2 mechanics that didn't have an exact match below.
+	// Each routes to an existing scaffold whose priming semantics match:
+	//
+	//   - die / to_graveyard       → creature_dies (singular form + the
+	//                                 parser's "any zone → graveyard"
+	//                                 wrapper both fire on the same world
+	//                                 shape as "dies")
+	//   - etb_as                   → creature_etb (etb_as is a printed-as
+	//                                 modal-ETB variant; the priming
+	//                                 world is identical)
+	//   - cycle                    → discard (cycling is discard + draw;
+	//                                 priming hand+library suffices)
+	//   - block                    → attacks (block requires the attacks
+	//                                 priming — opponent creature + untapped
+	//                                 source so combat can resolve)
+	//   - coin_flip_result         → player_wins_coin_flip (existing flip
+	//                                 scaffold logs the flip event the
+	//                                 listener observes)
+	//   - lose_game                → sacrifice (the priming world — a
+	//                                 sac-fodder creature whose death feeds
+	//                                 the "if a player would lose the game"
+	//                                 redirect — matches what these listeners
+	//                                 need; the lose-the-game redirect
+	//                                 itself is exercised by the source's
+	//                                 ETB or activation)
+	//
+	// Routing through existing scaffolds (rather than coining a new one
+	// per slug) keeps the dispatch table small and matches how the
+	// dominant `combat_damage_*` family handles its variants.
+	case event == "die" || event == "to_graveyard":
+		return "creature_dies"
+	case event == "etb_as":
+		return "creature_etb"
+	case event == "cycle":
+		return "discard"
+	case event == "block":
+		return "attacks"
+	case event == "coin_flip_result":
+		return "player_wins_coin_flip"
+	case event == "lose_game":
+		return "sacrifice"
+
+	// Era 2 R60 follow-up — second-tier long tail. Each routes to an
+	// existing scaffold whose priming semantics best fit the slug:
+	//
+	//   - beginning_of_ordinal_step → upkeep (the parser emits this for
+	//                                 "at the beginning of the Nth step";
+	//                                 the upkeep no-priming scaffold is
+	//                                 the right fit — fireTriggerEvent
+	//                                 advances the phase itself)
+	//   - token_event                → creature_etb (token entering = ETB)
+	//   - nontoken_ally_event        → ally_etb (existing ally scaffold;
+	//                                 the priming creature is by default
+	//                                 a non-token built via placeNamed*)
+	//   - nontoken_creature_event    → creature_etb (same — friendly
+	//                                 creature ETB primes the right world)
+	//   - compound_opp_tribe_event   → opp_creature_event (existing
+	//                                 opponent-tribal scaffold)
+	//   - one_or_more_typed_event    → tribe_you_control_etb (typed ETB
+	//                                 listener — wizard token scaffold
+	//                                 covers the "one or more" leg)
+	//   - ally_explore               → ally_etb (explore is an ETB-style
+	//                                 trigger from a friendly creature)
+	//   - self_and_another           → self_and (existing pair scaffold)
+	//   - conditional_state          → when_you_do (reflexive flag carrier)
+	//   - misc_when                  → when_you_do (catch-all reflexive)
+	//   - spend_this_mana            → you_get_energy (existing resource-
+	//                                 spend scaffold logs the right event)
+	case event == "beginning_of_ordinal_step":
+		return "upkeep"
+	case event == "token_event":
+		return "creature_etb"
+	case event == "nontoken_ally_event":
+		return "ally_etb"
+	case event == "nontoken_creature_event":
+		return "creature_etb"
+	case event == "compound_opp_tribe_event":
+		return "opp_creature_event"
+	case event == "one_or_more_typed_event":
+		return "tribe_you_control_etb"
+	case event == "ally_explore":
+		return "ally_etb"
+	case event == "self_and_another":
+		return "self_and"
+	case event == "conditional_state" || event == "misc_when":
+		return "when_you_do"
+	case event == "spend_this_mana":
+		return "you_get_energy"
+
+	// Era 3 R60 sweep — dominant mechanics from 2020-2022 sets (Ikoria,
+	// Strixhaven, Innistrad-DH, MOM, OTJ doors). Five new scaffolds + a
+	// long routing tail. The five new scaffolds are worth their own
+	// dispatch entry because the priming world is materially different
+	// from any existing scaffold (mutate stack, face-down flip, exploit
+	// sacrifice, specialize transform, door unlock counter).
+	case event == "mutates":
+		return "mutates"
+	case event == "turned_face_up" || event == "face_up_as" || event == "as_transform":
+		return "turned_face_up"
+	case event == "exploits_creature":
+		return "exploits_creature"
+	case event == "ally_exploits":
+		return "exploits_creature"
+	case event == "specialize_creature":
+		return "specialize_creature"
+	case event == "unlock_door" || event == "fully_unlock_room":
+		return "unlock_door"
+
+	// Long tail — each routes to an existing scaffold whose priming
+	// semantics match the slug's runtime needs. See per-slug rationale
+	// in the routing block; identical pattern to the Era 2 sweep
+	// (PR #447) where 23 long-tail slugs were similarly absorbed.
+	case event == "becomes_target" || event == "ally_targeted_by_opp":
+		return "attacks"
+	case event == "becomes_blocked":
+		return "attacks"
+	case event == "dealt_damage" || event == "deals_damage" ||
+		event == "damage_prevented_this_way" || event == "ally_source_damage":
+		return "combat_damage"
+	case event == "remove_counter" || event == "counter_put_on_actor" ||
+		event == "counters_put_on_self_any" || event == "counters_put_on_actor" ||
+		event == "creature_modified_event":
+		return "counters_put_on_self"
+	case event == "card_put_into_zone" || event == "permanent_to_gy" ||
+		event == "card_milled_via" || event == "compound_card_zone_event":
+		return "creature_dies"
+	case event == "foretell_card":
+		return "cast_spell"
+	case event == "attached_as" || event == "equipped_trigger" ||
+		event == "day_night_flip" || event == "transforms" ||
+		event == "next_time_one_or_more_enter":
+		return "creature_etb"
+	case event == "cycle_card":
+		return "discard"
+	case event == "you_commit_crime" || event == "commit_crime" ||
+		event == "pay_cost_multiple" || event == "misc_whenever_a" ||
+		event == "you_conjure_one_or_more" || event == "you_mechanic":
+		return "when_you_do"
+	case event == "self_or_another_when":
+		return "etb_or_another"
+	case event == "becomes_state":
+		return "becomes_tapped_trigger"
+	case event == "player_land_play":
+		// Landfall-adjacent listener — fires when any player plays a land.
+		// The opp_creature_event prime (ensure opponent has the relevant
+		// resource) is the closest fit; phase-style no-op also works.
+		return "upkeep"
+
+	// Era 1 R60 sweep — 4 new scaffolds for dominant 1993-2014 mechanics
+	// the Era 2/3 sweeps left uncovered + 50 long-tail routing cases.
+	// Same pattern as Era 2 (PR #447) and Era 3 (PR #451): each new
+	// scaffold primes a materially different world; long-tail slugs
+	// route to existing scaffolds whose primed state already fits.
+	case event == "becomes_untapped":
+		return "becomes_untapped"
+	case event == "becomes_monstrous":
+		return "becomes_monstrous"
+	case event == "tapped_for_mana" || event == "tap_for_mana" ||
+		event == "land_tapped_for_mana":
+		return "tapped_for_mana"
+	case event == "you_roll_dice":
+		return "you_roll_dice"
+
+	// Long-tail routing — Era 1 mechanics (blocking, scry, monstrosity
+	// adjacent, mana-tap, proliferate, dice, monarch, expend, surveil,
+	// exert, equipment, lose-control, leave-graveyard, ability-activation).
+	case event == "block_or_becomes_blocked" || event == "block_creature" ||
+		event == "becomes_blocked_by" || event == "self_blocks" ||
+		event == "tap_opp_creature":
+		return "attacks"
+	case event == "self_deals_damage_player" || event == "you_dealt_damage" ||
+		event == "per_damage_prevented" || event == "opp_dealt_damage":
+		return "combat_damage"
+	case event == "creature_etb_any" || event == "land_etb_any" ||
+		event == "artifact_etb" || event == "any_typed_etb" ||
+		event == "one_or_more_lands" || event == "equipment_attach_state_change" ||
+		event == "you_create_one_or_more_tokens" || event == "create_token" ||
+		event == "gain_control_event" || event == "another_creature_or_artifact_event":
+		return "creature_etb"
+	case event == "another_typed_etb":
+		return "tribe_you_control_etb"
+	case event == "ally_typed_etb" || event == "legend_ally_event" ||
+		event == "one_or_more_other_ally_event" ||
+		event == "one_or_more_ally_with_x_enter":
+		return "ally_etb"
+	case event == "you_scry" || event == "you_surveil":
+		// Scry / surveil = topdeck manipulation; the draw_card prime
+		// (top up library to 5+) is the right world.
+		return "draw_card"
+	case event == "to_gy_from_anywhere" || event == "creature_cards_leave_gy" ||
+		event == "card_to_gy_anywhere" || event == "enchanted_perm_to_gy" ||
+		event == "lose_control_of" || event == "one_or_more_milled" ||
+		event == "mill_event" || event == "creature_cards_to_zone" ||
+		event == "any_player_loses_game":
+		return "creature_dies"
+	case event == "any_cycle":
+		return "discard"
+	case event == "you_put_counters_on" || event == "you_put_counters_on_any" ||
+		event == "you_proliferate" || event == "counter_removed_from_self":
+		return "counters_put_on_self"
+	case event == "any_player_sacs":
+		return "sacrifice"
+	case event == "opp_activate" || event == "opp_searches_library":
+		return "opp_creature_event"
+	case event == "any_player_tap_land" || event == "self_phase_inout" ||
+		event == "until_eot_trigger":
+		return "upkeep"
+	case event == "you_misc_event" || event == "you_exert_creature" ||
+		event == "as_you_draft_a_card" || event == "become_monarch" ||
+		event == "you_expend_n" || event == "self_ability_activated":
+		return "when_you_do"
+
+	// Era 1 R60 second pass — phase-style event slugs the parser emits as
+	// exact events (not via the phase: field) plus a long tail of mechanic
+	// variants. Same routing pattern as PR #447 / #451.
+	case event == "end_step":
+		return "end_step"
+	case event == "upkeep" || event == "each_upkeep" ||
+		event == "cumulative_upkeep_unpaid" || event == "cumulative_upkeep_paid" ||
+		event == "until_next_phase" || event == "saga_final_chapter" ||
+		event == "ordinal_trigger" || event == "upkeep_life_leader" ||
+		event == "first_main":
+		return "upkeep"
+	case event == "untap_step":
+		return "untap_step"
+	case event == "becomes_renowned":
+		// One-shot keyword counter (Magic Origins) — same world as monstrosity.
+		return "becomes_monstrous"
+	case event == "evolve_event" || event == "counter_put_on_self" ||
+		event == "counters_removed_from_self" || event == "counters_put_on_actor_any" ||
+		event == "remove_last_counter" || event == "counter_threshold" ||
+		event == "proliferate":
+		return "counters_put_on_self"
+	case event == "flip":
+		return "player_wins_coin_flip"
+	case event == "aura_attached_event" || event == "forest_etb" ||
+		event == "creature_etb" || event == "power_threshold_etb":
+		return "creature_etb"
+	case event == "compound_opponents_event" || event == "opp_landfall" ||
+		event == "opp_shuffle":
+		return "opp_creature_event"
+	case event == "compound_tribe_die_or_leave" || event == "self_card_zone_to_zone" ||
+		event == "lose_control" || event == "is_sac_or_destroyed" ||
+		event == "permanent_returned" || event == "self_enter_or_die" ||
+		event == "exiled":
+		return "creature_dies"
+	case event == "activation_non_mana" || event == "this_card_event" ||
+		event == "chosen_color_mana_added" || event == "chosen_color_mana_tapped" ||
+		event == "tempting_offer" || event == "vote" ||
+		event == "self_squad_action":
+		return "when_you_do"
+	case event == "one_or_more_other_creatures":
+		return "etb_or_another"
+	case event == "one_or_more_ally_creatures":
+		return "ally_etb"
+	case event == "paired_whenever":
+		return "self_and"
+	case event == "opponents_dealt_combat_dmg":
+		return "combat_damage"
+	case event == "becomes_saddled_first":
+		return "self_saddles_mount"
+	case event == "you_sac_one_or_more":
+		return "sacrifice"
+	case event == "you_control_7_thrulls":
+		return "tribe_you_control_etb"
+
 	case event == "dies" || strings.Contains(event, "dies") ||
 		strings.Contains(event, "is put into a graveyard"):
 		return "creature_dies"
@@ -67,7 +378,16 @@ func classifyTrigger(t *gameast.Trigger) string {
 	case event == "attacks" || strings.Contains(event, "attack"):
 		return "attacks"
 	case event == "deal_combat_damage" || event == "deals_combat_damage" ||
-		strings.Contains(event, "combat damage"):
+		strings.Contains(event, "combat damage") ||
+		strings.Contains(event, "combat_damage"):
+		// The "combat_damage" underscore variant is the load-bearing
+		// addition: the parser canonicalizes combat-damage events as
+		// `combat_damage_player`, `combat_damage_player_or_pw`,
+		// `group_combat_damage_player`, `combat_damage_opponent`,
+		// `self_combat_damage` — none of which the prose "combat damage"
+		// substring matched. This single line closes 32/59 of the Era 2
+		// trigger gap (54%) by routing the entire underscore family to
+		// the existing combat_damage scaffold.
 		return "combat_damage"
 	case strings.Contains(event, "cast") || strings.Contains(event, "spell"):
 		if opponentActor {
@@ -313,6 +633,620 @@ var triggerConditionActions = map[string]conditionAction{
 			if len(gs.Seats[0].Library) < 5 {
 				fillLibrary(gs, 0, 5)
 			}
+		},
+	},
+
+	// Era 2 R60 sweep — 19 new trigger-event scaffolds. Each entry primes
+	// the smallest world that lets the listener observe its event during
+	// fireTriggerEvent. Idempotent: callers that prime multiple times
+	// (chained handlers) top up rather than duplicating entities.
+
+	// "When you do, X" — reflexive trigger that fires after the controller
+	// completes an inner action (RTR draw-then-discard, KLD prowess
+	// chains). The inner action is the outer effect's responsibility; we
+	// just stamp a per-seat flag so the reflexive listener can see "the
+	// action happened" and log a synthetic event.
+	"when_you_do": {
+		kind: "when_you_do",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp seat 0 reflexive_action_done flag + log when_you_do event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+				if gs.Seats[0].Flags == nil {
+					gs.Seats[0].Flags = map[string]int{}
+				}
+				gs.Seats[0].Flags["reflexive_action_done"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "when_you_do",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever a counter is put on this" — listener fires when a counter
+	// lands on srcPerm. Stamp a +1/+1 counter so the next state-based
+	// observation sees the placement; log a counter_placed event for any
+	// observer that consults gs.EventLog.
+	"counters_put_on_self": {
+		kind: "counters_put_on_self",
+		describe: func(t *gameast.Trigger) string {
+			return "place +1/+1 counter on srcPerm + log counter_placed event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Counters == nil {
+					srcPerm.Counters = map[string]int{}
+				}
+				srcPerm.Counters["+1/+1"]++
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "counter_placed",
+				Seat:   0,
+				Source: "thor_priming",
+				Details: map[string]interface{}{
+					"counter": "+1/+1",
+				},
+			})
+		},
+	},
+
+	// "Whenever another <subtype> you control enters" — tribal ETB listener.
+	// classifyTrigger emits this slug for the explicit event; the apply
+	// places a stand-in friendly tribal creature to satisfy the "another"
+	// actor. Default subtype is "wizard" (most-common Era 2 fingerprint).
+	"tribe_you_control_etb": {
+		kind: "tribe_you_control_etb",
+		describe: func(t *gameast.Trigger) string {
+			return "place 'Tribal ETB' wizard creature on seat 0"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreatureWithSubtype(gs, "Tribal ETB Setup", "wizard")
+		},
+	},
+
+	// "Whenever you crew ~" — Kaladesh vehicle perspective (Smuggler's
+	// Copter, Heart of Kiran). Place a pilot creature and stamp the
+	// crewed_this_turn flag on srcPerm.
+	"self_crews_vehicle": {
+		kind: "self_crews_vehicle",
+		describe: func(t *gameast.Trigger) string {
+			return "place pilot creature + stamp srcPerm.Flags[crewed_this_turn]"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreatureWithSubtype(gs, "Vehicle Pilot", "pilot")
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["crewed_this_turn"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "vehicle_crewed",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "You whenever ..." — generic controller-action wrapper. Without
+	// knowing the inner action we can only stamp a generic done-flag and
+	// log a placeholder event. Goldilocks already infers the inner action
+	// from sibling AST; this scaffold ensures the wrapper itself fires.
+	"you_whenever": {
+		kind: "you_whenever",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp seat 0 you_whenever_active flag + log you_whenever event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+				if gs.Seats[0].Flags == nil {
+					gs.Seats[0].Flags = map[string]int{}
+				}
+				gs.Seats[0].Flags["you_whenever_active"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "you_whenever",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever a creature you control enters" — ally ETB listener. Place
+	// a fresh creature so the source observes the ETB during the snapshot.
+	"ally_etb": {
+		kind: "ally_etb",
+		describe: func(t *gameast.Trigger) string {
+			return "place 'Ally ETB' creature on seat 0"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreature(gs, "Ally ETB Setup")
+		},
+	},
+
+	// "Whenever a <subtype> creature you control enters" — typed ally ETB
+	// (Goblin Chieftain-style, but the parser surfaces a distinct slug for
+	// the "a" article variant). Place a typed creature with a common Era 2
+	// fingerprint subtype.
+	"ally_typed_etb_a": {
+		kind: "ally_typed_etb_a",
+		describe: func(t *gameast.Trigger) string {
+			return "place typed (servo) ally creature on seat 0"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreatureWithSubtype(gs, "Typed Ally Setup", "servo")
+		},
+	},
+
+	// "Whenever a <subtype> deals damage to a player" — tribal-damage
+	// listener (Hazoret-style tributes, Aetherborn). Place a typed ally
+	// and log a damage event from it.
+	"ally_subtype_deal_damage": {
+		kind: "ally_subtype_deal_damage",
+		describe: func(t *gameast.Trigger) string {
+			return "place typed ally + log damage event from it to seat 1"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreatureWithSubtype(gs, "Tribal Damage Source", "warrior")
+			gs.LogEvent(gameengine.Event{
+				Kind:   "damage",
+				Seat:   0,
+				Target: 1,
+				Amount: 1,
+				Source: "Tribal Damage Source",
+			})
+		},
+	},
+
+	// "Whenever this and another <X> ..." — multi-event self trigger
+	// (Eldrazi processor / partner triggers). Place a sibling creature so
+	// the "and another" leg has a partner.
+	"self_and": {
+		kind: "self_and",
+		describe: func(t *gameast.Trigger) string {
+			return "place 'Self-And Partner' creature on seat 0"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreature(gs, "Self-And Partner")
+		},
+	},
+
+	// "Whenever this or another creature enters" — ETB family with
+	// "another" leg. Same shape as ally_etb but distinguished in the trace.
+	"etb_or_another": {
+		kind: "etb_or_another",
+		describe: func(t *gameast.Trigger) string {
+			return "place 'ETB-Or-Another Buddy' creature on seat 0"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreature(gs, "ETB-Or-Another Buddy")
+		},
+	},
+
+	// "Whenever an opponent's creature <event>" — generic opponent-creature
+	// multiplexer. Ensure opponent has a creature that can fire whichever
+	// inner event the trigger keys on.
+	"opp_creature_event": {
+		kind: "opp_creature_event",
+		describe: func(t *gameast.Trigger) string {
+			return "ensure opponent (seat 1) has a creature"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if !hasOpponentCreature(gs) {
+				placeTargetCreatureOnOpponent(gs)
+			}
+		},
+	},
+
+	// "Whenever you saddle ~" — Outlaws of Thunder Junction mounts. Place
+	// a saddler creature + stamp the saddled_this_turn flag on srcPerm.
+	"self_saddles_mount": {
+		kind: "self_saddles_mount",
+		describe: func(t *gameast.Trigger) string {
+			return "place saddler creature + stamp srcPerm.Flags[saddled_this_turn]"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			saddler := placeNamedFriendlyCreature(gs, "Mount Saddler")
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["saddled_this_turn"] = 1
+				if saddler != nil {
+					srcPerm.SaddlersThisTurn = append(srcPerm.SaddlersThisTurn, saddler)
+				}
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "mount_saddled",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever ~ becomes tapped" — Insolence, Seizures, Relic Bind.
+	// Toggle srcPerm's tap state so the listener observes an untapped →
+	// tapped transition during the fire pass.
+	"becomes_tapped_trigger": {
+		kind: "becomes_tapped_trigger",
+		describe: func(t *gameast.Trigger) string {
+			return "tap srcPerm + log becomes_tapped event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				srcPerm.Tapped = false
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Tapped = true
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "becomes_tapped",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever you get energy" — Kaladesh / Aether Revolt energy gain.
+	// Bump seat 0 energy counters + log an energy_gained event.
+	"you_get_energy": {
+		kind: "you_get_energy",
+		describe: func(t *gameast.Trigger) string {
+			return "bump seat 0 energy counters by 3 + log energy_gained event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+				if gs.Seats[0].Flags == nil {
+					gs.Seats[0].Flags = map[string]int{}
+				}
+				gs.Seats[0].Flags["energy_counters"] += 3
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "energy_gained",
+				Seat:   0,
+				Amount: 3,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever a player wins a coin flip" — Krark / Mana Clash. Log a
+	// won_coin_flip event for seat 0 so the listener can pick it up; no
+	// engine state to mutate (coin flips are stateless per CR §705).
+	"player_wins_coin_flip": {
+		kind: "player_wins_coin_flip",
+		describe: func(t *gameast.Trigger) string {
+			return "log won_coin_flip event for seat 0"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			gs.LogEvent(gameengine.Event{
+				Kind:   "won_coin_flip",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever you take an action" — Ixalan-era catch-all "you_action"
+	// wrapper. Stamp a per-seat flag + log a synthetic action event so
+	// the listener sees something to observe.
+	"you_action": {
+		kind: "you_action",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp seat 0 you_action flag + log you_action event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+				if gs.Seats[0].Flags == nil {
+					gs.Seats[0].Flags = map[string]int{}
+				}
+				gs.Seats[0].Flags["you_action"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "you_action",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever ~ becomes crewed" — vehicle-side crew listener (Cultivator
+	// of Blades, vehicle ETB-on-crew triggers). Distinct from
+	// self_crews_vehicle (which is from the perspective of "you crew");
+	// becomes_crewed reads "this vehicle gets crewed".
+	"becomes_crewed": {
+		kind: "becomes_crewed",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp srcPerm.Flags[becomes_crewed]=1 + log vehicle_crewed event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreatureWithSubtype(gs, "Crew Member", "pilot")
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["becomes_crewed"] = 1
+				srcPerm.Flags["crewed_this_turn"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "vehicle_crewed",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever ~ becomes crewed for the first time each turn" — variant
+	// of becomes_crewed that specifically wants the FIRST crew event of
+	// the turn. Same prime as becomes_crewed but stamps a distinct flag
+	// the first-crew listener reads.
+	"becomes_crewed_first": {
+		kind: "becomes_crewed_first",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp srcPerm.Flags[becomes_crewed_first]=1 + log first_crew event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreatureWithSubtype(gs, "First Pilot", "pilot")
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["becomes_crewed_first"] = 1
+				srcPerm.Flags["crewed_this_turn"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "vehicle_crewed_first",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// Era 3 R60 sweep — 5 new scaffolds for dominant 2020-2022 mechanics.
+	// Each primes a materially different world than any existing scaffold,
+	// which is why they get their own dispatch entry rather than routing.
+
+	// "Whenever this creature mutates" — Ikoria mutate keyword (Vadrok,
+	// Brokkos, Illuna, Snapdax, Nethroi). Engine marks mutated permanents
+	// with Flags[mutated]=1; setting that here lets the trigger listener
+	// observe the mutate event and the source's "as long as ~ has mutated"
+	// reads pass.
+	"mutates": {
+		kind: "mutates",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp srcPerm.Flags[mutated]=1 + log mutate event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["mutated"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "mutate",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever ~ is turned face up" — morph/disguise/foretell flip
+	// triggers (Willbender, Akroma's Imprint, Foretold cards on cast).
+	// Stamp face_up flag transition on srcPerm so the listener observes
+	// the face-up state during the snapshot.
+	"turned_face_up": {
+		kind: "turned_face_up",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp srcPerm.Flags[turned_face_up]=1 + log turned_face_up event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["turned_face_up"] = 1
+				// Clear any prior face-down state so the transition is
+				// observable. Engine uses Flags[face_down] when present.
+				delete(srcPerm.Flags, "face_down")
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "turned_face_up",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "When ~ enters, you may sacrifice another creature" — DTK exploit
+	// (Sidisi, Sultai Soothsayer; Silumgar Butcher; Vulturous Aven). The
+	// inner sacrifice fires a "this creature exploits" event the source
+	// listener observes; we place a victim and log the exploit event.
+	"exploits_creature": {
+		kind: "exploits_creature",
+		describe: func(t *gameast.Trigger) string {
+			return "place 'Exploit Victim' creature + log exploits event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			placeNamedFriendlyCreature(gs, "Exploit Victim")
+			gs.LogEvent(gameengine.Event{
+				Kind:   "exploits",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "When you specialize ~" — Streets of New Capenna specialize keyword
+	// (Anhelo the Painter, Ognis the Dragon's Lash split forms). Engine
+	// tracks specialization via Flags[specialized]; stamping it lets the
+	// transform-after-specialize hooks observe the state.
+	"specialize_creature": {
+		kind: "specialize_creature",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp srcPerm.Flags[specialized]=1 + log specialize event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["specialized"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "specialize",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "When you fully unlock this Room" — OTJ / Duskmourn rooms. Stamp the
+	// fully-unlocked flag on srcPerm (Room enchantments track unlock state
+	// via Flags[room_unlocked]). The fully_unlock_room slug routes here
+	// because the priming world is identical — both ask "the room is now
+	// fully unlocked".
+	"unlock_door": {
+		kind: "unlock_door",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp srcPerm.Flags[room_unlocked]=1 + log unlock_door event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["room_unlocked"] = 1
+				srcPerm.Flags["fully_unlocked"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "unlock_door",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// Era 1 R60 sweep — 4 new scaffolds for dominant 1993-2014 mechanics.
+
+	// "Whenever ~ becomes untapped" — Awakening, Wilderness Reclamation,
+	// Quicksilver Dagger. Counterpart to becomes_tapped_trigger. Force
+	// srcPerm into the tapped → untapped transition so the listener fires.
+	"becomes_untapped": {
+		kind: "becomes_untapped",
+		describe: func(t *gameast.Trigger) string {
+			return "tap then untap srcPerm + log becomes_untapped event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Tapped = false // observable transition
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "becomes_untapped",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever ~ becomes monstrous" — Theros monstrosity (Polukranos,
+	// Stormbreath Dragon, Fanatic of Xenagos). Engine tracks monstrosity
+	// via Flags[monstrous]; stamping it observable to the listener.
+	"becomes_monstrous": {
+		kind: "becomes_monstrous",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp srcPerm.Flags[monstrous]=1 + log monstrosity event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["monstrous"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "becomes_monstrous",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever ~ is tapped for mana" — Mana Reflection, Heartbeat of
+	// Spring, Nyxbloom Ancient. Distinct from becomes_tapped because the
+	// listener specifically wants the tap to be FOR MANA — we tap the
+	// source AND log a mana_added event so both "tapped" and "for mana"
+	// halves are satisfied.
+	"tapped_for_mana": {
+		kind: "tapped_for_mana",
+		describe: func(t *gameast.Trigger) string {
+			return "tap srcPerm + log mana_added event (tapped_for_mana)"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Tapped = true
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "tapped_for_mana",
+				Seat:   0,
+				Source: "thor_priming",
+				Amount: 1,
+			})
+		},
+	},
+
+	// "Whenever you roll a die" — D&D set dice rolls (Adventures in the
+	// Forgotten Realms, Game of Chaos). Log a synthetic die_rolled event
+	// so listeners can observe; no engine state to mutate.
+	"you_roll_dice": {
+		kind: "you_roll_dice",
+		describe: func(t *gameast.Trigger) string {
+			return "log die_rolled event for seat 0"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			gs.LogEvent(gameengine.Event{
+				Kind:   "die_rolled",
+				Seat:   0,
+				Source: "thor_priming",
+				Amount: 10, // mid-range d20 result
+			})
+		},
+	},
+
+	// "Whenever an opponent draws a card" — Notion Thief, Geier Reach
+	// Sanitarium. Distinct from the controller-side draw_card slug; this
+	// scaffold tops up seat 1's library and logs the draw event from the
+	// opponent's perspective.
+	"opp_draw_card": {
+		kind: "opp_draw_card",
+		describe: func(t *gameast.Trigger) string {
+			return "ensure seat 1 library has 5+ cards + log opp_draw_card event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if len(gs.Seats) > 1 && gs.Seats[1] != nil {
+				if len(gs.Seats[1].Library) < 5 {
+					fillLibrary(gs, 1, 5)
+				}
+				if gs.Seats[1].Flags == nil {
+					gs.Seats[1].Flags = map[string]int{}
+				}
+				gs.Seats[1].Flags["drew_card_this_turn"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "card_drawn",
+				Seat:   1,
+				Source: "thor_priming",
+			})
 		},
 	},
 }
@@ -920,6 +1854,77 @@ const (
 	condScaffoldFullParty               // Zendikar Rising full party (4 distinct classes)
 	condScaffoldTotalToughness          // "creatures you control have total toughness N+"
 	condScaffoldMainPhaseOrFirstCombat  // "it's your main phase" / "first combat phase"
+
+	// Era 1 R60 sweep — 19 new scaffolds bridging the dominant pre-Modern
+	// raw-text gaps surfaced by scripts/era1_scaffold_audit.py. Each maps to
+	// existing engine state (no new fields required); the top clusters are
+	// tribute (KTK)/bargain (WOE) alt-cost gates, "you cast it from hand",
+	// colored-mana-spent ({R}{R}/{G}{G}/{U}{U} cast-cost predicates),
+	// life-comparison forms (you-more / opp-more / above-starting), suspend /
+	// time-counter checks, and per-source state predicates (untapped /
+	// no-counter / wasnt-cast / wasnt-blocking / damage-taken).
+	condScaffoldTributeNotPaid           // "tribute wasn't paid" — KTK tribute alt-cost
+	condScaffoldBargained                // "it was bargained" — WOE bargain alt-cost
+	condScaffoldSharesCreatureType       // "if it shares a creature type with ~" tribal-reveal
+	condScaffoldNotTheirTurn             // "it's not their turn" — off-turn predicate
+	condScaffoldMoreLifeThanOpponent     // "you have more life than an opponent" / inverse
+	condScaffoldTimeCounterOnSelf        // "had no time counters on it" — suspend post-state
+	condScaffoldWasntCast                // "it wasn't cast" — token / put-onto-battlefield path
+	condScaffoldLostLifeLastTurn         // "you lost life last turn" — last-turn life delta
+	condScaffoldDamageDealtToSelfTurn    // "N or more damage was dealt to it this turn"
+	condScaffoldMoreCardsThanOpponents   // "you have more cards in hand than each opponent"
+	condScaffoldSelfIsUntapped           // "this creature is untapped" — mirror of self_is_tapped
+	condScaffoldSelfHasNoCounter         // "has no <kind> counters on it" — negative counter check
+	condScaffoldSurgeCostPaid            // "its surge cost was paid" — EMN surge alt-cost
+	condScaffoldLibraryEmpty             // "your library has no cards in it" — Jace win-con
+	condScaffoldColoredManaSpent         // "{R}{R}/{G}{G}/{U}{U}/{R} was spent to cast it"
+	condScaffoldSelfIsSuspended          // "this card is suspended" — exile suspend state
+	condScaffoldLifeAboveStarting        // "life total is greater than your starting life total"
+	condScaffoldOpponentMoreLife         // "an opponent has more life than you"
+	condScaffoldWasntBlocking            // "it wasn't blocking" — combat exit predicate
+
+	// Era 3 sweep r60 — second pass at the 2025+ recent-printings cluster
+	// surfaced by data/thor-audit-era3-recent.md. Each scaffold maps to
+	// existing engine state (Turn counters, Permanent.Counters, Seat
+	// flags) — no new gameengine fields required.
+	condScaffoldDiscardedNonland         // "you discarded a nonland card" (Spider-Verse / Doom et al)
+	condScaffoldControlNTappedCreatures  // "you control N or more tapped creatures" (EoE Pilots)
+	condScaffoldGainedNLifeThisTurn      // count variant: "you gained N or more life this turn"
+	condScaffoldDrawnNCardsThisTurn      // count variant: "you've drawn N or more cards this turn"
+	condScaffoldStartingPlayer           // "you were the starting player" / "weren't"
+	condScaffoldQuestCounters            // "it has N or more quest counters on it" (TLA Ascension)
+	condScaffoldDragonBeheld             // "a Dragon was beheld" (Tarkir Dragonstorm)
+
+	// Era 4 R60 sweep — 19 new scaffolds bridging the dominant Era 4 (2023+)
+	// raw-text gaps surfaced by scripts/era4_scaffold_audit.py. Each maps to
+	// existing engine state (no new fields required); the top clusters are
+	// opponent-board comparisons (more creatures than you), per-source
+	// post-zone-change typechecks (wasn't a demon, didn't die, wasn't
+	// sacrificed, was cast), board-state predicates (all lands are islands,
+	// no <named> tokens, player controls no creatures), per-source counter /
+	// exile-cost thresholds (counters on self >= N, N or more cards exiled
+	// with this), and turn-scoped event predicates (no damage since last turn,
+	// first time this ability has resolved, another <type> entered last turn,
+	// one or more cards were exiled this turn).
+	condScaffoldOpponentMoreCreatures      // "an opponent controls more creatures than you"
+	condScaffoldWasntCreatureType          // "it wasn't a <subtype>" — post-death typecheck
+	condScaffoldAllLandsType               // "all lands on the battlefield are <subtype>"
+	condScaffoldWasAttacking               // "it was attacking" — per-permanent post-combat check
+	condScaffoldPermanentMVLE              // "it's a permanent card with mana value N or less"
+	condScaffoldWasCast                    // "it was cast" / "he was cast" — inverse of WasntCast
+	condScaffoldDidntDie                   // "it didn't die" — post-leave survival check
+	condScaffoldSelfDidntETBThisTurn       // "this creature didn't enter the battlefield this turn"
+	condScaffoldNoNamedTokens              // "there are no <named> tokens on the battlefield"
+	condScaffoldWasntSacrificed            // "it wasn't sacrificed" — post-leave path check
+	condScaffoldCountersOnSelfGE           // "it has N or more <kind> counters on it" (present, not past)
+	condScaffoldNoDamageSinceLastTurn      // "you haven't been dealt combat damage since your last turn"
+	condScaffoldFirstTimeResolvedThisTurn  // "this is the first time this ability has resolved this turn"
+	condScaffoldPlayerNoCreatures          // "a player controls no creatures"
+	condScaffoldAnotherTypedETBThisTurn    // "another <type> entered the battlefield under your control this turn"
+	condScaffoldCreatureETBLastTurn        // "another creature entered the battlefield under your control last turn"
+	condScaffoldExiledWithCountGE          // "N or more cards have been exiled with this artifact"
+	condScaffoldExiledThisTurn             // "one or more cards were put into exile this turn"
+	condScaffoldDamagedCreatureDied        // "a creature dealt damage by this creature this turn died"
 )
 
 type conditionScaffold struct {
@@ -1115,6 +2120,299 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		return conditionScaffold{kind: condScaffoldItWasCreature}
 	case "no_creatures_on_battlefield":
 		return conditionScaffold{kind: condScaffoldNoCreaturesOnBattlefield}
+
+	// Era 1 R60 sweep — structured-Kind dispatch for the 19 new scaffolds.
+	// Most arrive as raw/intervening_if (handled by the text patterns below),
+	// but the parser occasionally surfaces them as named Kinds; route here so
+	// either shape resolves the same scaffold.
+	case "tribute_not_paid", "tribute_wasnt_paid":
+		return conditionScaffold{kind: condScaffoldTributeNotPaid}
+	case "bargained", "was_bargained":
+		return conditionScaffold{kind: condScaffoldBargained}
+	case "shares_creature_type":
+		out := conditionScaffold{kind: condScaffoldSharesCreatureType, subtype: "elf"}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToLower(strings.TrimSpace(s))
+			}
+		}
+		return out
+	case "not_their_turn", "not_your_turn":
+		return conditionScaffold{kind: condScaffoldNotTheirTurn}
+	case "more_life_than_opponent", "you_more_life":
+		return conditionScaffold{kind: condScaffoldMoreLifeThanOpponent}
+	case "no_time_counters", "time_counter_on_self":
+		return conditionScaffold{kind: condScaffoldTimeCounterOnSelf}
+	case "wasnt_cast":
+		return conditionScaffold{kind: condScaffoldWasntCast}
+	case "lost_life_last_turn":
+		return conditionScaffold{kind: condScaffoldLostLifeLastTurn}
+	case "damage_dealt_to_self_this_turn", "damage_taken_this_turn":
+		out := conditionScaffold{kind: condScaffoldDamageDealtToSelfTurn, count: 4}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "more_cards_in_hand_than_opponents", "more_cards_than_each_opponent":
+		return conditionScaffold{kind: condScaffoldMoreCardsThanOpponents}
+	case "self_is_untapped":
+		return conditionScaffold{kind: condScaffoldSelfIsUntapped}
+	case "self_has_no_counter", "no_named_counter":
+		out := conditionScaffold{kind: condScaffoldSelfHasNoCounter, subtype: "oil"}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToLower(strings.TrimSpace(s))
+			}
+		}
+		return out
+	case "surge_cost_paid":
+		return conditionScaffold{kind: condScaffoldSurgeCostPaid}
+	case "library_empty":
+		return conditionScaffold{kind: condScaffoldLibraryEmpty}
+	case "colored_mana_spent":
+		out := conditionScaffold{kind: condScaffoldColoredManaSpent, subtype: "R", count: 1}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToUpper(strings.TrimSpace(s))
+			}
+		}
+		return out
+	case "self_is_suspended":
+		return conditionScaffold{kind: condScaffoldSelfIsSuspended}
+	case "life_above_starting":
+		return conditionScaffold{kind: condScaffoldLifeAboveStarting}
+	case "opponent_more_life":
+		return conditionScaffold{kind: condScaffoldOpponentMoreLife}
+	case "wasnt_blocking":
+		return conditionScaffold{kind: condScaffoldWasntBlocking}
+
+	// Era 3 r48 scaffold wiring — the prior sweep added enum constants
+	// and apply cases but never wired structured-Kind detection. Route
+	// the AST Kinds the audit script's BUCKETED_KINDS set already lists
+	// (control_n_creatures, hand_size_*, full_party, …) to their apply
+	// paths so the dead code goes live.
+	case "control_n_creatures", "you_control_n_creatures":
+		out := conditionScaffold{kind: condScaffoldControlNCreatures, count: 3}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "control_n_lands", "you_control_n_lands":
+		out := conditionScaffold{kind: condScaffoldControlNLands, count: 5}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "counter_doubler", "counter_replacement_boost":
+		return conditionScaffold{kind: condScaffoldCounterReplacementBoost}
+	case "token_doubler", "token_replacement_boost":
+		return conditionScaffold{kind: condScaffoldTokenReplacementBoost}
+	case "persist_check", "undying_check", "no_counters":
+		out := conditionScaffold{kind: condScaffoldPersistUndyingCheck, subtype: "+1/+1"}
+		for _, a := range cond.Args {
+			if s, ok := a.(string); ok {
+				ls := strings.ToLower(strings.TrimSpace(s))
+				if strings.Contains(ls, "-1/-1") {
+					out.subtype = "-1/-1"
+				} else if strings.Contains(ls, "+1/+1") {
+					out.subtype = "+1/+1"
+				}
+			}
+		}
+		return out
+	case "card_type_reveal", "revealed_card_type":
+		out := conditionScaffold{kind: condScaffoldCardTypeReveal, subtype: "creature"}
+		for _, a := range cond.Args {
+			if s, ok := a.(string); ok {
+				ls := strings.ToLower(strings.TrimSpace(s))
+				if ls != "" && !isGenericWord(ls) {
+					out.subtype = ls
+				} else if ls != "" {
+					out.subtype = ls
+				}
+			}
+		}
+		return out
+	case "equipped", "equipment_attached":
+		return conditionScaffold{kind: condScaffoldEquipmentAttached}
+	case "hand_size_le", "hand_size_lt", "hand_size_ge", "hand_size_threshold":
+		out := conditionScaffold{kind: condScaffoldHandSizeThreshold, subtype: kind, count: 7}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n >= 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "put_counter_this_turn":
+		return conditionScaffold{kind: condScaffoldPutCounterThisTurn}
+	case "cast_n_spells_this_turn":
+		out := conditionScaffold{kind: condScaffoldCastNSpellsThisTurn, count: 2}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "full_party":
+		return conditionScaffold{kind: condScaffoldFullParty}
+	case "total_toughness":
+		out := conditionScaffold{kind: condScaffoldTotalToughness, count: 8}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "main_phase":
+		return conditionScaffold{kind: condScaffoldMainPhaseOrFirstCombat, subtype: "main_phase"}
+	case "first_combat_phase":
+		return conditionScaffold{kind: condScaffoldMainPhaseOrFirstCombat, subtype: "first_combat_phase"}
+
+	// Era 3 sweep r60 — new structured-Kind dispatch for clusters that
+	// fell out of the r48 batch.
+	case "discarded_nonland":
+		return conditionScaffold{kind: condScaffoldDiscardedNonland}
+	case "control_n_tapped_creatures":
+		out := conditionScaffold{kind: condScaffoldControlNTappedCreatures, count: 2}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "gained_n_life_this_turn":
+		out := conditionScaffold{kind: condScaffoldGainedNLifeThisTurn, count: 3}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "drawn_n_cards_this_turn":
+		out := conditionScaffold{kind: condScaffoldDrawnNCardsThisTurn, count: 2}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "starting_player", "you_were_starting_player":
+		out := conditionScaffold{kind: condScaffoldStartingPlayer, subtype: "starting"}
+		for _, a := range cond.Args {
+			if s, ok := a.(string); ok {
+				ls := strings.ToLower(strings.TrimSpace(s))
+				if strings.Contains(ls, "weren't") || strings.Contains(ls, "not") {
+					out.subtype = "not_starting"
+				}
+			}
+		}
+		return out
+	case "quest_counters":
+		out := conditionScaffold{kind: condScaffoldQuestCounters, count: 4}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "dragon_beheld":
+		return conditionScaffold{kind: condScaffoldDragonBeheld}
+
+	// Era 4 R60 sweep — structured-Kind dispatch for the 19 new scaffolds.
+	// Most arrive as raw/intervening_if (handled by the text patterns below),
+	// but the parser occasionally surfaces them as named Kinds; route here so
+	// either shape resolves the same scaffold.
+	case "opponent_more_creatures", "opp_more_creatures":
+		return conditionScaffold{kind: condScaffoldOpponentMoreCreatures}
+	case "wasnt_creature_type", "wasnt_subtype":
+		out := conditionScaffold{kind: condScaffoldWasntCreatureType, subtype: "demon"}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToLower(strings.TrimSpace(s))
+			}
+		}
+		return out
+	case "all_lands_type", "all_lands_subtype":
+		out := conditionScaffold{kind: condScaffoldAllLandsType, subtype: "island"}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToLower(strings.TrimSpace(s))
+			}
+		}
+		return out
+	case "was_attacking":
+		return conditionScaffold{kind: condScaffoldWasAttacking}
+	case "permanent_mv_le", "permanent_mana_value_le":
+		out := conditionScaffold{kind: condScaffoldPermanentMVLE, count: 3}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "was_cast", "it_was_cast":
+		return conditionScaffold{kind: condScaffoldWasCast}
+	case "didnt_die":
+		return conditionScaffold{kind: condScaffoldDidntDie}
+	case "self_didnt_etb_this_turn", "didnt_enter_this_turn":
+		return conditionScaffold{kind: condScaffoldSelfDidntETBThisTurn}
+	case "no_named_tokens":
+		out := conditionScaffold{kind: condScaffoldNoNamedTokens, subtype: "reflection"}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToLower(strings.TrimSpace(s))
+			}
+		}
+		return out
+	case "wasnt_sacrificed":
+		return conditionScaffold{kind: condScaffoldWasntSacrificed}
+	case "counters_on_self_ge", "self_counter_threshold":
+		out := conditionScaffold{kind: condScaffoldCountersOnSelfGE, subtype: "+1/+1", count: 3}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToLower(strings.TrimSpace(s))
+			}
+		}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "no_damage_since_last_turn":
+		return conditionScaffold{kind: condScaffoldNoDamageSinceLastTurn}
+	case "first_time_resolved_this_turn":
+		return conditionScaffold{kind: condScaffoldFirstTimeResolvedThisTurn}
+	case "player_no_creatures":
+		return conditionScaffold{kind: condScaffoldPlayerNoCreatures}
+	case "another_typed_etb_this_turn":
+		out := conditionScaffold{kind: condScaffoldAnotherTypedETBThisTurn, subtype: "human"}
+		if len(cond.Args) > 0 {
+			if s, ok := cond.Args[0].(string); ok {
+				out.subtype = strings.ToLower(strings.TrimSpace(s))
+			}
+		}
+		return out
+	case "creature_etb_last_turn":
+		return conditionScaffold{kind: condScaffoldCreatureETBLastTurn}
+	case "exiled_with_count_ge":
+		out := conditionScaffold{kind: condScaffoldExiledWithCountGE, count: 3}
+		for _, a := range cond.Args {
+			if n, ok := a.(int); ok && n > 0 {
+				out.count = n
+			}
+		}
+		return out
+	case "exiled_this_turn":
+		return conditionScaffold{kind: condScaffoldExiledThisTurn}
+	case "damaged_creature_died":
+		return conditionScaffold{kind: condScaffoldDamagedCreatureDied}
 	}
 
 	switch kind {
@@ -1219,10 +2517,312 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		return cs
 	}
 
+	// "an opponent controls more creatures than you" — Garruk Unleashed,
+	// Knight of the Pilgrim's Road. Must come BEFORE the OpponentMoreLands
+	// matcher because "controls more" + "than you" overlaps both clauses;
+	// disambiguate on the explicit "creature" noun.
+	if strings.Contains(txt, "more creatures than you") ||
+		(strings.Contains(txt, "controls more") && strings.Contains(txt, "creature") &&
+			strings.Contains(txt, "than you")) {
+		cs.kind = condScaffoldOpponentMoreCreatures
+		return cs
+	}
+
 	// "an opponent controls more lands than you" / "more lands than you do"
 	if (strings.Contains(txt, "more land") || strings.Contains(txt, "controls more")) &&
 		strings.Contains(txt, "than you") {
 		cs.kind = condScaffoldOpponentMoreLands
+		return cs
+	}
+
+	// Era 4 R60 sweep — raw-text matchers for the 19 Era 4 (2023+) scaffolds.
+	// Placed HIGH in the chain because several broader matchers below
+	// (UpkeepPhase, CreatureETBThisTurn, DrawnCardThisTurn, AttackedThisTurn,
+	// HadCountersOnIt, CardInGraveyard) would otherwise eat clauses whose
+	// surrounding text contains "upkeep"/"this turn"/"draw a card"/"creature
+	// entered"/"counters on it". Ordered most-specific first; per-source
+	// post-zone-change typechecks come before broader board-state predicates.
+
+	// Counters-on-self GE — "it has three or more +1/+1 counters on it"
+	// (Ordeal of Nylea, ascend counters, Edgar Markov's Coffin bloodline).
+	// Present-state form distinct from condScaffoldHadCountersOnIt (past).
+	// MUST come early so it doesn't get eaten by the generic "has no <kind>
+	// counters" later or by HadCountersOnIt.
+	if (strings.Contains(txt, "or more") || strings.Contains(txt, "or greater")) &&
+		strings.Contains(txt, "counters on it") &&
+		(strings.Contains(txt, "it has") || strings.Contains(txt, "this creature has") ||
+			strings.Contains(txt, "this permanent has") || strings.Contains(txt, "~ has") ||
+			strings.Contains(txt, "there are")) {
+		cs.kind = condScaffoldCountersOnSelfGE
+		cs.subtype = "+1/+1"
+		cs.count = 3
+		for _, k := range []string{"+1/+1", "-1/-1", "oil", "loyalty", "stun",
+			"charge", "quest", "fade", "vanishing", "shield", "ki", "blood",
+			"divinity", "time", "verse", "wage", "wish", "bloodline", "ice",
+			"experience", "indestructibility", "page", "bore"} {
+			if strings.Contains(txt, k+" counter") {
+				cs.subtype = k
+				break
+			}
+		}
+		if m := manaSpentNumRe.FindStringSubmatch(txt); len(m) > 1 {
+			if n, err := strconv.Atoi(m[1]); err == nil && n > 0 {
+				cs.count = n
+			}
+		} else {
+			for w, n := range map[string]int{"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "ten": 10} {
+				if strings.Contains(txt, w+" or more") {
+					cs.count = n
+					break
+				}
+			}
+		}
+		return cs
+	}
+
+	// Damaged creature died — "a creature dealt damage by this creature this
+	// turn died" (Krovikan Vampire). Per-source kill-credit check. Must come
+	// before generic "died this turn" + "this turn" matchers below.
+	if strings.Contains(txt, "creature dealt damage by") &&
+		strings.Contains(txt, "this turn") &&
+		(strings.Contains(txt, "died") || strings.Contains(txt, "would die")) {
+		cs.kind = condScaffoldDamagedCreatureDied
+		return cs
+	}
+
+	// Self didn't ETB this turn — "this creature didn't enter the battlefield
+	// this turn" (Cactuar). Anti-haste check; pre-empts the generic
+	// CreatureETBThisTurn matcher which catches "creature enters ... this turn".
+	if (strings.Contains(txt, "didn't enter the battlefield this turn") ||
+		strings.Contains(txt, "didn't enter this turn") ||
+		strings.Contains(txt, "hasn't entered the battlefield this turn") ||
+		strings.Contains(txt, "wasn't put onto the battlefield this turn")) &&
+		(strings.Contains(txt, "this creature") || strings.Contains(txt, "this permanent") ||
+			strings.Contains(txt, "this artifact") || strings.Contains(txt, "~") ||
+			strings.Contains(txt, "it ")) {
+		cs.kind = condScaffoldSelfDidntETBThisTurn
+		return cs
+	}
+
+	// Another typed ETB this turn — "another human entered the battlefield
+	// under your control this turn" (Éowyn, Shieldmaiden). Subtype-scoped
+	// variant; must pre-empt generic CreatureETBThisTurn.
+	if strings.Contains(txt, "another ") &&
+		(strings.Contains(txt, "entered the battlefield") || strings.Contains(txt, "enters the battlefield")) &&
+		(strings.Contains(txt, "under your control") || strings.Contains(txt, "you control")) &&
+		strings.Contains(txt, "this turn") &&
+		!strings.Contains(txt, "another creature entered") &&
+		!strings.Contains(txt, "another creature enters") {
+		cs.kind = condScaffoldAnotherTypedETBThisTurn
+		cs.subtype = "human"
+		// "another <subtype>" — capture the noun after "another".
+		idx := strings.Index(txt, "another ")
+		if idx >= 0 {
+			rest := txt[idx+len("another "):]
+			// First word, stripped at next space/punct.
+			end := len(rest)
+			for j, r := range rest {
+				if r == ' ' || r == ',' || r == '.' || r == ';' {
+					end = j
+					break
+				}
+			}
+			if end > 0 && !isGenericWord(rest[:end]) {
+				cs.subtype = rest[:end]
+			}
+		}
+		return cs
+	}
+
+	// Creature ETB last turn — "you had another creature enter the
+	// battlefield under your control last turn" (Ephara, God of the Polis).
+	// Prior-turn variant; pre-empts the broader CreatureETBThisTurn (which
+	// won't match "last turn", but other phrase-overlap could).
+	if (strings.Contains(txt, "creature enter") || strings.Contains(txt, "creature entered")) &&
+		strings.Contains(txt, "last turn") &&
+		(strings.Contains(txt, "under your control") || strings.Contains(txt, "you control")) {
+		cs.kind = condScaffoldCreatureETBLastTurn
+		return cs
+	}
+
+	// Wasn't a creature subtype — "it wasn't a demon" / "it wasn't a zombie"
+	// (Infernal Vessel). Post-death typecheck with subtype. Excludes
+	// "wasn't a creature" (handled separately) and "wasn't cast".
+	if (strings.Contains(txt, "it wasn't a ") || strings.Contains(txt, "it wasn't an ")) &&
+		!strings.Contains(txt, "it wasn't a creature") &&
+		!strings.Contains(txt, "it wasn't cast") {
+		cs.kind = condScaffoldWasntCreatureType
+		cs.subtype = "demon"
+		for _, prefix := range []string{"it wasn't a ", "it wasn't an "} {
+			if i := strings.Index(txt, prefix); i >= 0 {
+				rest := txt[i+len(prefix):]
+				end := len(rest)
+				for j, r := range rest {
+					if r == ' ' || r == ',' || r == '.' || r == ';' {
+						end = j
+						break
+					}
+				}
+				if end > 0 && !isGenericWord(rest[:end]) {
+					cs.subtype = rest[:end]
+				}
+				break
+			}
+		}
+		return cs
+	}
+
+	// All lands type — "all lands on the battlefield are islands"
+	// (Quicksilver Fountain, Spreading Seas variants).
+	if strings.Contains(txt, "all lands on the battlefield are ") ||
+		strings.Contains(txt, "every land on the battlefield is a ") ||
+		strings.Contains(txt, "each land on the battlefield is a ") {
+		cs.kind = condScaffoldAllLandsType
+		cs.subtype = "island"
+		for _, sub := range []string{"island", "swamp", "mountain", "forest", "plains"} {
+			if strings.Contains(txt, "are "+sub) || strings.Contains(txt, "is a "+sub) {
+				cs.subtype = sub
+				break
+			}
+		}
+		return cs
+	}
+
+	// Was attacking — "it was attacking" (Zurgo Stormrender). Per-permanent
+	// post-combat check distinct from seat-level AttackedThisTurn.
+	if strings.Contains(txt, "it was attacking") ||
+		strings.Contains(txt, "if it was attacking") ||
+		strings.Contains(txt, "while it was attacking") {
+		cs.kind = condScaffoldWasAttacking
+		return cs
+	}
+
+	// Permanent card with mana value N or less — "it's a permanent card with
+	// mana value 3 or less" (Matter Reshaper). Reveal-and-route MV filter.
+	if (strings.Contains(txt, "permanent card with mana value") ||
+		strings.Contains(txt, "permanent card whose mana value")) &&
+		(strings.Contains(txt, "or less") || strings.Contains(txt, "or fewer")) {
+		cs.kind = condScaffoldPermanentMVLE
+		cs.count = 3
+		if m := manaSpentNumRe.FindStringSubmatch(txt); len(m) > 1 {
+			if n, err := strconv.Atoi(m[1]); err == nil && n > 0 {
+				cs.count = n
+			}
+		}
+		return cs
+	}
+
+	// Didn't die — "it didn't die" (Taeko, the Patient Avalanche). Post-leave
+	// survival check.
+	if strings.Contains(txt, "it didn't die") ||
+		strings.Contains(txt, "if it didn't die") ||
+		strings.Contains(txt, "didn't die this turn") {
+		cs.kind = condScaffoldDidntDie
+		return cs
+	}
+
+	// No named tokens — "there are no reflection tokens on the battlefield"
+	// (Spirit Mirror, Pious Kitsune-style legend uniqueness).
+	if (strings.Contains(txt, "there are no ") || strings.Contains(txt, "if no ")) &&
+		strings.Contains(txt, "tokens on the battlefield") {
+		cs.kind = condScaffoldNoNamedTokens
+		cs.subtype = "reflection"
+		idx := strings.Index(txt, "no ")
+		if idx >= 0 {
+			rest := txt[idx+3:]
+			endIdx := strings.Index(rest, " tokens")
+			if endIdx > 0 {
+				name := strings.TrimSpace(rest[:endIdx])
+				if name != "" && !isGenericWord(name) {
+					cs.subtype = name
+				}
+			}
+		}
+		return cs
+	}
+
+	// Wasn't sacrificed — "it wasn't sacrificed" (Urza's Miter). Post-leave
+	// path check distinct from "didn't die".
+	if strings.Contains(txt, "it wasn't sacrificed") ||
+		strings.Contains(txt, "wasn't sacrificed") {
+		cs.kind = condScaffoldWasntSacrificed
+		return cs
+	}
+
+	// No damage since last turn — "you haven't been dealt combat damage
+	// since your last turn" (Invasion of Fiora // Marchesa, Resolute Monarch).
+	// Must pre-empt DrawnCardThisTurn (which would catch "draw a card").
+	if strings.Contains(txt, "haven't been dealt") &&
+		(strings.Contains(txt, "combat damage") || strings.Contains(txt, "damage")) &&
+		(strings.Contains(txt, "since your last turn") || strings.Contains(txt, "since the last turn")) {
+		cs.kind = condScaffoldNoDamageSinceLastTurn
+		return cs
+	}
+
+	// First time this ability resolved this turn — "this is the first time
+	// this ability has resolved this turn" (Zimone, Mystery Unraveler).
+	// Pre-empts DrawnCardThisTurn (catches "draw a card" later).
+	if strings.Contains(txt, "first time this ability has resolved") ||
+		(strings.Contains(txt, "first time") && strings.Contains(txt, "resolved") &&
+			strings.Contains(txt, "this turn")) {
+		cs.kind = condScaffoldFirstTimeResolvedThisTurn
+		return cs
+	}
+
+	// Player controls no creatures — "a player controls no creatures"
+	// (Sothera, the Supervoid). Distinct from NoCreaturesOnBattlefield
+	// (board-wide); this fires when at least one seat has zero creatures.
+	if strings.Contains(txt, "a player controls no creatures") ||
+		strings.Contains(txt, "any player controls no creatures") ||
+		strings.Contains(txt, "controls no creatures") {
+		cs.kind = condScaffoldPlayerNoCreatures
+		return cs
+	}
+
+	// Exiled with count GE — "three or more cards have been exiled with this
+	// artifact/creature" (Colfenor's Urn). Per-source exile-zone count check.
+	// Must come BEFORE generic exiled_this_turn so per-source variant wins.
+	if (strings.Contains(txt, "cards have been exiled with") ||
+		strings.Contains(txt, "cards exiled with this") ||
+		strings.Contains(txt, "cards exiled with ~")) &&
+		(strings.Contains(txt, "or more") || strings.Contains(txt, "or greater")) {
+		cs.kind = condScaffoldExiledWithCountGE
+		cs.count = 3
+		if m := manaSpentNumRe.FindStringSubmatch(txt); len(m) > 1 {
+			if n, err := strconv.Atoi(m[1]); err == nil && n > 0 {
+				cs.count = n
+			}
+		} else {
+			for w, n := range map[string]int{"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "ten": 10} {
+				if strings.Contains(txt, w+" or more") {
+					cs.count = n
+					break
+				}
+			}
+		}
+		return cs
+	}
+
+	// Exiled this turn — "one or more cards were put into exile this turn"
+	// (Ennis, Debate Moderator). Global exile-count gate (not per-source).
+	if (strings.Contains(txt, "cards were put into exile this turn") ||
+		strings.Contains(txt, "card was put into exile this turn") ||
+		(strings.Contains(txt, "exile") && strings.Contains(txt, "this turn") &&
+			(strings.Contains(txt, "one or more") || strings.Contains(txt, "were exiled")))) &&
+		!strings.Contains(txt, "exiled with") {
+		cs.kind = condScaffoldExiledThisTurn
+		return cs
+	}
+
+	// It was cast (positive form) — "it was cast" / "he was cast" / "she was
+	// cast" (Anti-Venom, Mirror of Life Trapping). Inverse of WasntCast.
+	if (strings.Contains(txt, "it was cast") ||
+		strings.Contains(txt, "he was cast") ||
+		strings.Contains(txt, "she was cast") ||
+		strings.Contains(txt, "they were cast")) &&
+		!strings.Contains(txt, "wasn't cast") &&
+		!strings.Contains(txt, "weren't cast") {
+		cs.kind = condScaffoldWasCast
 		return cs
 	}
 
@@ -1726,6 +3326,277 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		return cs
 	}
 
+	// Era 1 R60 sweep — raw-text matchers for the 19 pre-Modern scaffolds.
+	// Ordered most-specific first; phrases that overlap downstream matchers
+	// (e.g. "life total" / "lost life" / "cards in hand") are pinned here so
+	// the broader life/hand/cast catches don't eat them.
+
+	// Tribute (KTK) — "tribute wasn't paid" / "if tribute was paid". Anchor
+	// on the explicit "tribute" noun so we don't false-match Tributary Sage
+	// flavor text. Cards: Ornitharch, Nessian Demolok, Pharagax Giant.
+	if strings.Contains(txt, "tribute wasn't paid") ||
+		strings.Contains(txt, "tribute was paid") ||
+		(strings.Contains(txt, "tribute") &&
+			(strings.Contains(txt, "wasn't paid") || strings.Contains(txt, "was paid"))) {
+		cs.kind = condScaffoldTributeNotPaid
+		return cs
+	}
+
+	// Bargain (WOE) — "it was bargained". Trigger fires when the source was
+	// cast with bargain. Cards: Troublemaker Ouphe, Realm-Scorcher Hellkite,
+	// High Fae Negotiator.
+	if strings.Contains(txt, "it was bargained") ||
+		strings.Contains(txt, "if it was bargained") ||
+		strings.Contains(txt, "this spell was bargained") {
+		cs.kind = condScaffoldBargained
+		return cs
+	}
+
+	// Shares creature type — "if it shares a creature type with this
+	// creature". Tribal-reveal pattern: Sensation Gorger, Ink Dissolver,
+	// Squeaking Pie Grubfellows, Leaf-Crowned Elder, Wandering Graybeard.
+	// Anchor on the full noun phrase so generic "shares a type" doesn't
+	// false-match.
+	if strings.Contains(txt, "shares a creature type") {
+		cs.kind = condScaffoldSharesCreatureType
+		cs.subtype = "goblin"
+		// Try to lift a subtype hint from the surrounding tribal clause.
+		if m := rawTribalRe.FindStringSubmatch(txt); len(m) > 1 && !isGenericWord(m[1]) {
+			cs.subtype = m[1]
+		}
+		return cs
+	}
+
+	// Suspend post-state — "had no time counters on it" (Deadly Grub,
+	// Chronozoa). Pre-empts the generic counter / had-counters matcher
+	// because the engine reads the "time" counter via the suspend zone, not
+	// via the +1/+1 path.
+	if strings.Contains(txt, "no time counters") ||
+		strings.Contains(txt, "had no time counters") {
+		cs.kind = condScaffoldTimeCounterOnSelf
+		return cs
+	}
+
+	// Suspended state — "this card is suspended" (Deep-Sea Kraken, Nihilith).
+	// Distinct from the above (post-state vs current-state).
+	if strings.Contains(txt, "this card is suspended") ||
+		strings.Contains(txt, "while it's suspended") ||
+		strings.Contains(txt, "while suspended") {
+		cs.kind = condScaffoldSelfIsSuspended
+		return cs
+	}
+
+	// "you cast it from your hand" already matched above by YouCastFromHand.
+	// This block catches "it wasn't cast" — the inverse predicate that fires
+	// on token / put-onto-battlefield paths (Rapid Augmenter, Preston, the
+	// Vanisher, Mirror of Life Trapping, Anti-Venom).
+	if strings.Contains(txt, "it wasn't cast") ||
+		strings.Contains(txt, "wasn't cast") ||
+		strings.Contains(txt, "he wasn't cast") ||
+		strings.Contains(txt, "she wasn't cast") ||
+		strings.Contains(txt, "they weren't cast") {
+		cs.kind = condScaffoldWasntCast
+		return cs
+	}
+
+	// "it wasn't blocking" — combat exit predicate (Guildsworn Prowler).
+	if strings.Contains(txt, "it wasn't blocking") ||
+		strings.Contains(txt, "wasn't blocking") ||
+		strings.Contains(txt, "wasn't being blocked by") {
+		cs.kind = condScaffoldWasntBlocking
+		return cs
+	}
+
+	// Surge (EMN) — "if its surge cost was paid" (Reckless Bushwhacker,
+	// Tyrant of Valakut). Conceptual alt-cost cousin of kicker; we keep it
+	// as a distinct scaffold so the trace shows the actual mechanic.
+	if strings.Contains(txt, "surge cost was paid") ||
+		strings.Contains(txt, "its surge cost was paid") ||
+		strings.Contains(txt, "if surge cost was paid") {
+		cs.kind = condScaffoldSurgeCostPaid
+		return cs
+	}
+
+	// Library empty — "your library has no cards in it" (Jace, Wielder of
+	// Mysteries; Stillness in Motion). Win-con / mill predicate. Anchor on
+	// "no cards" + "library" so we don't match "your library is empty"
+	// metaphor in flavor text.
+	if (strings.Contains(txt, "no cards in") && strings.Contains(txt, "library")) ||
+		strings.Contains(txt, "library has no cards") ||
+		strings.Contains(txt, "library is empty") {
+		cs.kind = condScaffoldLibraryEmpty
+		return cs
+	}
+
+	// Colored mana spent to cast — "{R}{R}/{G}{G}/{U}{U}/{R} was spent to
+	// cast it" (Vibrance, Catharsis, Wistfulness, Deceit, Gruul Scrapper,
+	// Steamcore Weird). Distinct from generic mana_spent because we need
+	// a specific colored payment, not just CMC≥N.
+	if (strings.Contains(txt, "was spent to cast") ||
+		strings.Contains(txt, "spent to cast it")) &&
+		(strings.Contains(txt, "{r}") || strings.Contains(txt, "{g}") ||
+			strings.Contains(txt, "{u}") || strings.Contains(txt, "{b}") ||
+			strings.Contains(txt, "{w}") || strings.Contains(txt, "{c}") ||
+			strings.Contains(txt, "mana from a treasure")) {
+		cs.kind = condScaffoldColoredManaSpent
+		switch {
+		case strings.Contains(txt, "{r}{r}"):
+			cs.subtype = "RR"
+			cs.count = 2
+		case strings.Contains(txt, "{g}{g}"):
+			cs.subtype = "GG"
+			cs.count = 2
+		case strings.Contains(txt, "{u}{u}"):
+			cs.subtype = "UU"
+			cs.count = 2
+		case strings.Contains(txt, "{b}{b}"):
+			cs.subtype = "BB"
+			cs.count = 2
+		case strings.Contains(txt, "{w}{w}"):
+			cs.subtype = "WW"
+			cs.count = 2
+		case strings.Contains(txt, "mana from a treasure"):
+			cs.subtype = "treasure"
+			cs.count = 1
+		case strings.Contains(txt, "{r}"):
+			cs.subtype = "R"
+			cs.count = 1
+		case strings.Contains(txt, "{g}"):
+			cs.subtype = "G"
+			cs.count = 1
+		case strings.Contains(txt, "{u}"):
+			cs.subtype = "U"
+			cs.count = 1
+		case strings.Contains(txt, "{b}"):
+			cs.subtype = "B"
+			cs.count = 1
+		case strings.Contains(txt, "{w}"):
+			cs.subtype = "W"
+			cs.count = 1
+		default:
+			cs.subtype = "C"
+			cs.count = 1
+		}
+		return cs
+	}
+
+	// Lost life last turn — "you lost life last turn" (First Response,
+	// Paladin of Atonement). Distinct from LifeLostThisTurn: the prior-turn
+	// snapshot lives on Seat.Flags, not Turn.LifeLost.
+	if strings.Contains(txt, "lost life last turn") ||
+		(strings.Contains(txt, "last turn") &&
+			(strings.Contains(txt, "lost life") || strings.Contains(txt, "lose life"))) {
+		cs.kind = condScaffoldLostLifeLastTurn
+		return cs
+	}
+
+	// Damage dealt to source this turn — "N or more damage was dealt to it
+	// this turn" (Burning-Eye Zubera, Rushing-Tide Zubera). Per-source
+	// MarkedDamage / damage_taken counter.
+	if (strings.Contains(txt, "damage was dealt to it") ||
+		strings.Contains(txt, "damage was dealt to this") ||
+		strings.Contains(txt, "damage dealt to it")) &&
+		strings.Contains(txt, "this turn") {
+		cs.kind = condScaffoldDamageDealtToSelfTurn
+		cs.count = 4
+		if m := manaSpentNumRe.FindStringSubmatch(txt); len(m) > 1 {
+			if n, err := strconv.Atoi(m[1]); err == nil && n > 0 {
+				cs.count = n
+			}
+		}
+		return cs
+	}
+
+	// More cards in hand than each opponent — "you have more cards in hand
+	// than each opponent" (Death of a Thousand Stings, Exile into Darkness,
+	// Akuta, Born of Ash). Hand-size comparison predicate.
+	if strings.Contains(txt, "more cards in hand than each opponent") ||
+		(strings.Contains(txt, "more cards in") && strings.Contains(txt, "hand") &&
+			(strings.Contains(txt, "than each") || strings.Contains(txt, "than any"))) {
+		cs.kind = condScaffoldMoreCardsThanOpponents
+		return cs
+	}
+
+	// Source untapped — "this creature is untapped" (Sphinx Sovereign, Nim
+	// Abomination). Mirror of self_is_tapped; the source must be UNTAPPED
+	// for the ability to qualify.
+	if (strings.Contains(txt, "this creature is untapped") ||
+		strings.Contains(txt, "~ is untapped") ||
+		(strings.Contains(txt, "is untapped") &&
+			(strings.Contains(txt, "this creature") ||
+				strings.Contains(txt, "this artifact") ||
+				strings.Contains(txt, "this permanent")))) &&
+		!strings.Contains(txt, "as long as ~ is untapped, players can't") {
+		cs.kind = condScaffoldSelfIsUntapped
+		return cs
+	}
+
+	// Source has NO named counter — "it has no oil counters on it" /
+	// "no loyalty counters" (Evolved Spinoderm, Archfiend of the Dross,
+	// Ozolith-style negative checks). Inverse of self_has_counter.
+	if (strings.Contains(txt, "has no") || strings.Contains(txt, "had no")) &&
+		strings.Contains(txt, "counters on it") {
+		cs.kind = condScaffoldSelfHasNoCounter
+		cs.subtype = "oil"
+		// Try to extract the named counter kind ("no oil", "no -1/-1", etc).
+		for _, k := range []string{"oil", "loyalty", "+1/+1", "-1/-1", "stun",
+			"charge", "quest", "fade", "vanishing", "shield", "ki", "blood",
+			"divinity", "time", "verse", "wage", "wish"} {
+			if strings.Contains(txt, "no "+k+" counter") {
+				cs.subtype = k
+				break
+			}
+		}
+		return cs
+	}
+
+	// Life-above-starting — "your life total is greater than your starting
+	// life total" (Cosmos Elixir, A-Cosmos Elixir). Distinct from
+	// LifeAboveThreshold because the threshold itself is dynamic (40 for
+	// Commander, 20 otherwise).
+	if (strings.Contains(txt, "greater than your starting life total") ||
+		strings.Contains(txt, "more than your starting life total") ||
+		strings.Contains(txt, "above your starting life total")) {
+		cs.kind = condScaffoldLifeAboveStarting
+		return cs
+	}
+
+	// Opponent has more life than you — "an opponent has more life than you"
+	// (Linvala, the Preserver; Pulse of the Fields). Pre-empts the broader
+	// MoreLifeThanOpponent matcher (which is the inverse direction).
+	if (strings.Contains(txt, "opponent has more life than you") ||
+		strings.Contains(txt, "any opponent has more life") ||
+		strings.Contains(txt, "an opponent has more life") ||
+		(strings.Contains(txt, "opponent") && strings.Contains(txt, "more life than you"))) {
+		cs.kind = condScaffoldOpponentMoreLife
+		return cs
+	}
+
+	// "you have more life than an opponent" / "no opponent has more life
+	// than that player" (Glorious Enforcer, Feudkiller's Verdict, Survival
+	// Cache, Veteran Soldier). Mirror of the above. Must come AFTER the
+	// opponent-more-life matcher so the inverse direction wins.
+	if (strings.Contains(txt, "more life than an opponent") ||
+		strings.Contains(txt, "more life than each opponent") ||
+		strings.Contains(txt, "no opponent has more life than that player") ||
+		strings.Contains(txt, "no opponent has more life than you")) {
+		cs.kind = condScaffoldMoreLifeThanOpponent
+		return cs
+	}
+
+	// Off-turn predicate — "it's not their turn" (Glademuse, Scytheclaw
+	// Raptor, Adrenaline Jockey). Trigger fires only outside the listed
+	// player's own turn. Anchor on the exact phrase so we don't false-match
+	// "their turn" inside unrelated clauses.
+	if strings.Contains(txt, "not their turn") ||
+		strings.Contains(txt, "not your turn") ||
+		strings.Contains(txt, "isn't their turn") ||
+		strings.Contains(txt, "during another player's turn") ||
+		strings.Contains(txt, "on a turn that isn't yours") {
+		cs.kind = condScaffoldNotTheirTurn
+		return cs
+	}
+
 	// Era 2 raw-text matchers — anchored on Era 2-specific keywords so they
 	// don't false-match the broader corpus. Each clause is rare per card but
 	// the mechanic cluster matters for vehicle/crew/mutate/eminence
@@ -1799,6 +3670,253 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 	if strings.Contains(txt, "in the command zone") ||
 		strings.Contains(txt, "from the command zone") {
 		cs.kind = condScaffoldEminenceCommandZone
+		return cs
+	}
+
+	// Era 3 r48 raw-text wiring + r60 new clusters. Each clause appears
+	// in data/thor-audit-era3-recent.md ≥3×. Order: most specific phrase
+	// first so the catch-all YouControlSubtype matcher doesn't eat
+	// "you control N or more creatures" with an empty subtype.
+
+	// Counter-doubler replacement — "one or more (+1/+1)? counters would
+	// be put on …". Distinct from PutCounterThisTurn (after-the-fact
+	// stamping) — this is a replacement-effect predicate.
+	if strings.Contains(txt, "counters would be put on") ||
+		strings.Contains(txt, "counter would be put on") ||
+		strings.Contains(txt, "one or more counters would") ||
+		strings.Contains(txt, "one or more +1/+1 counters would") {
+		cs.kind = condScaffoldCounterReplacementBoost
+		return cs
+	}
+	// Token-doubler replacement — "one or more tokens would be created".
+	if strings.Contains(txt, "tokens would be created") ||
+		strings.Contains(txt, "token would be created") ||
+		strings.Contains(txt, "one or more tokens would") {
+		cs.kind = condScaffoldTokenReplacementBoost
+		return cs
+	}
+	// Persist/undying — "if it had no +1/+1 / -1/-1 counters on it".
+	// Anchored on the "had no … counters" phrasing so we don't collide
+	// with HadCountersOnIt (the inverse / counted form).
+	if strings.Contains(txt, "had no -1/-1 counters") ||
+		strings.Contains(txt, "had no +1/+1 counters") ||
+		strings.Contains(txt, "had no counters on it") {
+		cs.kind = condScaffoldPersistUndyingCheck
+		if strings.Contains(txt, "-1/-1") {
+			cs.subtype = "-1/-1"
+		} else {
+			cs.subtype = "+1/+1"
+		}
+		return cs
+	}
+	// CardTypeReveal — "if it's a (land|creature|permanent|instant|sorcery
+	// |artifact|enchantment) card". Anchored on the "it's a … card" copula
+	// to avoid eating generic typeline clauses.
+	if (strings.Contains(txt, "it's a land card") ||
+		strings.Contains(txt, "it's a creature card") ||
+		strings.Contains(txt, "it's a permanent card") ||
+		strings.Contains(txt, "it's an instant card") ||
+		strings.Contains(txt, "it's a sorcery card") ||
+		strings.Contains(txt, "it's an artifact card") ||
+		strings.Contains(txt, "it's an enchantment card") ||
+		strings.Contains(txt, "it's a planeswalker card")) ||
+		(strings.Contains(txt, "is a") && strings.Contains(txt, "card") &&
+			(strings.Contains(txt, "land card") || strings.Contains(txt, "creature card") ||
+				strings.Contains(txt, "permanent card"))) {
+		cs.kind = condScaffoldCardTypeReveal
+		switch {
+		case strings.Contains(txt, "land card"):
+			cs.subtype = "land"
+		case strings.Contains(txt, "permanent card"):
+			cs.subtype = "permanent"
+		case strings.Contains(txt, "creature card"):
+			cs.subtype = "creature"
+		case strings.Contains(txt, "instant card"):
+			cs.subtype = "instant"
+		case strings.Contains(txt, "sorcery card"):
+			cs.subtype = "sorcery"
+		case strings.Contains(txt, "artifact card"):
+			cs.subtype = "artifact"
+		case strings.Contains(txt, "enchantment card"):
+			cs.subtype = "enchantment"
+		case strings.Contains(txt, "planeswalker card"):
+			cs.subtype = "planeswalker"
+		default:
+			cs.subtype = "creature"
+		}
+		return cs
+	}
+	// EquipmentAttached — "as long as ~ is equipped" / "equipped creature
+	// is a …" / "this Equipment is attached to a creature" / "Cloud is
+	// equipped". Anchor on the "is equipped" / "is attached to a creature"
+	// phrasings so we don't grab generic "equip" cost text.
+	if strings.Contains(txt, " is equipped") ||
+		strings.Contains(txt, "equipped creature is") ||
+		strings.Contains(txt, "while equipped") ||
+		strings.Contains(txt, "is attached to a creature") {
+		cs.kind = condScaffoldEquipmentAttached
+		return cs
+	}
+	// HandSizeThreshold — "fewer than N cards in hand" / "N or more cards
+	// in hand" / "N or fewer cards in hand".
+	if (strings.Contains(txt, "cards in") && strings.Contains(txt, "hand")) &&
+		(strings.Contains(txt, "fewer than") || strings.Contains(txt, "or more") ||
+			strings.Contains(txt, "or fewer") || strings.Contains(txt, "no more than")) {
+		cs.kind = condScaffoldHandSizeThreshold
+		cs.count = 4
+		switch {
+		case strings.Contains(txt, "fewer than"):
+			cs.subtype = "hand_size_lt"
+		case strings.Contains(txt, "or fewer"), strings.Contains(txt, "no more than"):
+			cs.subtype = "hand_size_le"
+		case strings.Contains(txt, "or more"):
+			cs.subtype = "hand_size_ge"
+		default:
+			cs.subtype = "hand_size_threshold"
+		}
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// PutCounterThisTurn — "you put a counter on … this turn".
+	if (strings.Contains(txt, "put a counter on") ||
+		strings.Contains(txt, "put a +1/+1 counter on")) &&
+		strings.Contains(txt, "this turn") &&
+		strings.Contains(txt, "you") {
+		cs.kind = condScaffoldPutCounterThisTurn
+		return cs
+	}
+	// CastNSpellsThisTurn — "you've cast N or more spells this turn".
+	// Must come BEFORE generic CastSpellThisTurn matchers in the chain
+	// above; we rely on running last (this block is below those).
+	if (strings.Contains(txt, "you've cast") || strings.Contains(txt, "you have cast")) &&
+		strings.Contains(txt, "this turn") &&
+		(strings.Contains(txt, "spells") || strings.Contains(txt, "noncreature spells")) &&
+		(strings.Contains(txt, "or more") || strings.Contains(txt, "at least")) {
+		cs.kind = condScaffoldCastNSpellsThisTurn
+		cs.count = 2
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// FullParty — Zendikar Rising 4-class party.
+	if strings.Contains(txt, "full party") {
+		cs.kind = condScaffoldFullParty
+		return cs
+	}
+	// TotalToughness — "creatures you control have total toughness N+".
+	if strings.Contains(txt, "total toughness") {
+		cs.kind = condScaffoldTotalToughness
+		cs.count = 8
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// MainPhase / FirstCombatPhase. Order: first-combat-phase before main
+	// so "it's the first combat phase" doesn't get eaten by the main test.
+	if strings.Contains(txt, "first combat phase") {
+		cs.kind = condScaffoldMainPhaseOrFirstCombat
+		cs.subtype = "first_combat_phase"
+		return cs
+	}
+	if strings.Contains(txt, "your main phase") || strings.Contains(txt, "it's your main") {
+		cs.kind = condScaffoldMainPhaseOrFirstCombat
+		cs.subtype = "main_phase"
+		return cs
+	}
+
+	// Era 3 r60 — new clusters.
+
+	// DiscardedNonland — Spider-Verse / Doctor Doom-style: "you discarded
+	// a nonland card". The bare "nonland" qualifier distinguishes from the
+	// generic DiscardedThisTurn matcher in the era 1 block above.
+	if strings.Contains(txt, "discarded a nonland") ||
+		(strings.Contains(txt, "discarded") && strings.Contains(txt, "nonland card")) {
+		cs.kind = condScaffoldDiscardedNonland
+		return cs
+	}
+	// ControlNTappedCreatures — EoE Pilots: "you control N or more tapped
+	// creatures". Must run before the generic ControlNCreatures match so
+	// the more-specific "tapped" predicate wins.
+	if strings.Contains(txt, "tapped creature") &&
+		(strings.Contains(txt, "you control") || strings.Contains(txt, "control")) &&
+		strings.Contains(txt, "or more") {
+		cs.kind = condScaffoldControlNTappedCreatures
+		cs.count = 2
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// ControlNCreatures / ControlNLands — the r48 raw patterns. Generic
+	// "you control" tail eats these if we don't claim first.
+	if strings.Contains(txt, "you control") && strings.Contains(txt, "or more") &&
+		(strings.Contains(txt, "land") && !strings.Contains(txt, "landfall")) {
+		cs.kind = condScaffoldControlNLands
+		cs.count = 5
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	if strings.Contains(txt, "you control") && strings.Contains(txt, "or more") &&
+		strings.Contains(txt, "creature") {
+		cs.kind = condScaffoldControlNCreatures
+		cs.count = 3
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// DrawnNCardsThisTurn — "you've drawn N or more cards this turn"
+	// (Avatar TLA). Count variant of DrawnCardThisTurn.
+	if (strings.Contains(txt, "you've drawn") || strings.Contains(txt, "you have drawn")) &&
+		strings.Contains(txt, "or more") && strings.Contains(txt, "cards") &&
+		strings.Contains(txt, "this turn") {
+		cs.kind = condScaffoldDrawnNCardsThisTurn
+		cs.count = 2
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// GainedNLifeThisTurn — "you gained N or more life this turn".
+	if strings.Contains(txt, "gained") && strings.Contains(txt, "life this turn") &&
+		(strings.Contains(txt, "or more") || strings.Contains(txt, "at least")) {
+		cs.kind = condScaffoldGainedNLifeThisTurn
+		cs.count = 3
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// StartingPlayer — "you were/weren't the starting player".
+	if strings.Contains(txt, "starting player") {
+		cs.kind = condScaffoldStartingPlayer
+		cs.subtype = "starting"
+		if strings.Contains(txt, "weren't") || strings.Contains(txt, "were not") {
+			cs.subtype = "not_starting"
+		}
+		return cs
+	}
+	// QuestCounters — Avatar TLA Ascension: "it has N or more quest
+	// counters on it". Distinguish from generic SelfHasCounter by the
+	// explicit "quest counter" subtype.
+	if strings.Contains(txt, "quest counter") {
+		cs.kind = condScaffoldQuestCounters
+		cs.count = 4
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// DragonBeheld — Tarkir Dragonstorm new mechanic: "a Dragon was beheld".
+	if strings.Contains(txt, "dragon was beheld") ||
+		strings.Contains(txt, "was beheld") {
+		cs.kind = condScaffoldDragonBeheld
 		return cs
 	}
 
@@ -2042,6 +4160,46 @@ func classifyPriorActionVerb(txt string) string {
 		return "dealt_damage"
 	}
 	return ""
+}
+
+// parseFirstSpelledInt returns the first integer (digit or English word
+// form, "one"-"twenty") found in txt, or 0 if none. Used by the era 3
+// scaffold raw-text matchers ("N or more …") that need a count without
+// committing to a specific regex shape. Word forms beat digits when both
+// appear — "two or more" should win over a stray "1" elsewhere in the
+// sentence.
+func parseFirstSpelledInt(txt string) int {
+	if txt == "" {
+		return 0
+	}
+	for _, w := range []struct {
+		word string
+		n    int
+	}{
+		{"twenty", 20}, {"nineteen", 19}, {"eighteen", 18}, {"seventeen", 17},
+		{"sixteen", 16}, {"fifteen", 15}, {"fourteen", 14}, {"thirteen", 13},
+		{"twelve", 12}, {"eleven", 11}, {"ten", 10},
+		{"nine", 9}, {"eight", 8}, {"seven", 7}, {"six", 6},
+		{"five", 5}, {"four", 4}, {"three", 3}, {"two", 2}, {"one", 1},
+	} {
+		if strings.Contains(txt, w.word) {
+			return w.n
+		}
+	}
+	for i := 0; i < len(txt); i++ {
+		c := txt[i]
+		if c < '0' || c > '9' {
+			continue
+		}
+		j := i
+		for j < len(txt) && txt[j] >= '0' && txt[j] <= '9' {
+			j++
+		}
+		if n, err := strconv.Atoi(txt[i:j]); err == nil {
+			return n
+		}
+	}
+	return 0
 }
 
 func parseGraveyardCount(txt string) int {
@@ -3778,7 +5936,15 @@ func applyConditionScaffolding(gs *gameengine.GameState, cond *gameast.Condition
 		switch cs.subtype {
 		case "first_combat_phase":
 			gs.Phase = "combat"
-			gs.Step = "begin_combat"
+			// Canonical step name per checkTurnStructure's allow-list in
+			// internal/gameengine/invariants.go ("begin_of_combat" /
+			// "beginning_of_combat" / "combat_start"). The earlier
+			// "begin_combat" spelling was a typo that tripped the
+			// TurnStructure invariant on Karlach Fury of Avernus + Finest
+			// Hour during goldilocks R60 (2 invariant fails). Matches the
+			// sibling condScaffoldBeginningOfOrdinalStep handler above,
+			// which already uses "begin_of_combat".
+			gs.Step = "begin_of_combat"
 			if gs.Flags == nil {
 				gs.Flags = map[string]int{}
 			}
@@ -3792,6 +5958,924 @@ func applyConditionScaffolding(gs *gameengine.GameState, cond *gameast.Condition
 			gs.Flags["main_phase"] = 1
 		}
 		cs.description = fmt.Sprintf("set Phase=%q Step=%q (%s)", gs.Phase, gs.Step, cs.subtype)
+
+	// Era 1 R60 sweep — apply implementations.
+
+	case condScaffoldTributeNotPaid:
+		// Tribute (KTK) — the trigger fires when the opponent who was
+		// offered tribute DECLINED to pay it. Stamp the source so the
+		// declined-tribute predicate resolves true.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["tribute_paid"] = 0
+			srcPerm.Flags["tribute_declined"] = 1
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["tribute_declined_this_turn"] = 1
+		cs.description = "set srcPerm.Flags[tribute_declined]=1 (tribute not paid)"
+
+	case condScaffoldBargained:
+		// Bargain (WOE) — the source was cast with bargain (sacrificing an
+		// artifact/enchantment/token for an alt benefit). Same shape as
+		// kicker; stamp the per-source flag the engine reads.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["bargained"] = 1
+			srcPerm.Flags["paid_optional_cost"] = 1
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["bargained_this_turn"] = 1
+		cs.description = "set srcPerm.Flags[bargained]=1 + paid_optional_cost flag"
+
+	case condScaffoldSharesCreatureType:
+		// "if it shares a creature type with this creature" — place a
+		// creature of the matching subtype on top of seat 0's library so
+		// the reveal succeeds. Default subtype is goblin/elf (high-density
+		// tribal); subtype carries whatever the detector lifted.
+		subtype := cs.subtype
+		if subtype == "" {
+			subtype = "goblin"
+		}
+		if srcPerm != nil && srcPerm.Card != nil {
+			// Stamp the matching subtype on srcPerm so the "this creature"
+			// side of the compare also carries it.
+			has := false
+			for _, t := range srcPerm.Card.Types {
+				if t == subtype {
+					has = true
+					break
+				}
+			}
+			if !has {
+				srcPerm.Card.Types = append(srcPerm.Card.Types, subtype)
+			}
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			match := &gameengine.Card{
+				Name:          "Shared-Type " + subtype,
+				Owner:         0,
+				Types:         []string{"creature", subtype},
+				BasePower:     1,
+				BaseToughness: 1,
+			}
+			gs.Seats[0].Library = append([]*gameengine.Card{match}, gs.Seats[0].Library...)
+		}
+		cs.description = fmt.Sprintf("placed %q creature atop seat 0 library + stamped subtype on srcPerm", subtype)
+
+	case condScaffoldNotTheirTurn:
+		// "it's not their turn" — push the active player off seat 0 so any
+		// "during another player's turn" predicate keyed off gs.Active sees
+		// a non-controlling seat.
+		if len(gs.Seats) > 1 {
+			gs.Active = 1
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["off_turn"] = 1
+		cs.description = "set gs.Active=1 + off_turn flag (not their turn)"
+
+	case condScaffoldMoreLifeThanOpponent:
+		// "you have more life than an opponent" — bump seat 0 well above
+		// seat 1's life so the per-opponent compare resolves true for at
+		// least one opponent.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Life = 40
+		}
+		if len(gs.Seats) > 1 && gs.Seats[1] != nil {
+			gs.Seats[1].Life = 20
+		}
+		cs.description = "set seat 0 life=40, seat 1 life=20 (more life than opponent)"
+
+	case condScaffoldTimeCounterOnSelf:
+		// "had no time counters on it" — suspend completion check. Clear
+		// "time" counters on srcPerm so the predicate resolves true.
+		if srcPerm != nil {
+			if srcPerm.Counters != nil {
+				delete(srcPerm.Counters, "time")
+			}
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["no_time_counters"] = 1
+			srcPerm.Flags["suspended_completed"] = 1
+		}
+		cs.description = "cleared time counters on srcPerm + suspended_completed flag"
+
+	case condScaffoldWasntCast:
+		// "it wasn't cast" — token / put-onto-battlefield path predicate.
+		// Stamp the source so observers reading the cast-status flag see
+		// the not-cast value.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["wasnt_cast"] = 1
+			delete(srcPerm.Flags, "cast_from_hand")
+			delete(srcPerm.Flags, "cast_spell_this_turn")
+		}
+		cs.description = "set srcPerm.Flags[wasnt_cast]=1 (token / put-onto-battlefield path)"
+
+	case condScaffoldLostLifeLastTurn:
+		// "you lost life last turn" — the prior-turn snapshot. Stamp the
+		// per-seat flag the engine reads during start-of-turn checks.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			if gs.Seats[0].Flags == nil {
+				gs.Seats[0].Flags = map[string]int{}
+			}
+			gs.Seats[0].Flags["lost_life_last_turn"] = 3
+			gs.Seats[0].Flags["life_lost_last_turn"] = 3
+		}
+		cs.description = "set seat 0 Flags[lost_life_last_turn]=3"
+
+	case condScaffoldDamageDealtToSelfTurn:
+		// "N or more damage was dealt to it this turn" — stamp the
+		// MarkedDamage / damage_taken counter on srcPerm. Engine reads
+		// MarkedDamage for the §704.5g destroy check; we stamp a flag
+		// in parallel for direct lookups.
+		amt := cs.count
+		if amt < 1 {
+			amt = 4
+		}
+		if srcPerm != nil {
+			srcPerm.MarkedDamage = amt
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["damage_taken_this_turn"] = amt
+		}
+		cs.description = fmt.Sprintf("set srcPerm.MarkedDamage=%d + damage_taken_this_turn flag", amt)
+
+	case condScaffoldMoreCardsThanOpponents:
+		// "you have more cards in hand than each opponent" — top up seat 0
+		// hand to 7, trim other seats' hands to 1 so the per-opponent
+		// compare resolves true for every opponent.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			trimOrFillHand(gs, 0, 7)
+		}
+		for i := 1; i < len(gs.Seats); i++ {
+			if gs.Seats[i] != nil {
+				trimOrFillHand(gs, i, 1)
+			}
+		}
+		cs.description = "set seat 0 hand=7, opponents hand=1 (more cards than each opponent)"
+
+	case condScaffoldSelfIsUntapped:
+		// Mirror of self_is_tapped — source must be UNTAPPED for the
+		// ability to qualify (Sphinx Sovereign, Nim Abomination).
+		if srcPerm != nil {
+			srcPerm.Tapped = false
+		}
+		cs.description = "untapped srcPerm (self_is_untapped active)"
+
+	case condScaffoldSelfHasNoCounter:
+		// Inverse of self_has_counter — clear the named counter so the
+		// "has no <kind> counters" predicate resolves true.
+		kind := cs.subtype
+		if kind == "" {
+			kind = "oil"
+		}
+		if srcPerm != nil && srcPerm.Counters != nil {
+			delete(srcPerm.Counters, kind)
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["no_"+kind+"_counters"] = 1
+		}
+		cs.description = fmt.Sprintf("cleared %q counters on srcPerm (no-counter predicate)", kind)
+
+	case condScaffoldSurgeCostPaid:
+		// Surge (EMN) — alt-cost cousin of kicker. Stamp the alt-cost flag
+		// and route through the same paid_optional_cost flag the engine
+		// reads for kicker-style predicates.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["surge_paid"] = 1
+			srcPerm.Flags["paid_optional_cost"] = 1
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["surge_paid"] = 1
+		cs.description = "set srcPerm.Flags[surge_paid]=1 + paid_optional_cost flag"
+
+	case condScaffoldLibraryEmpty:
+		// "your library has no cards in it" — Jace win-con. Empty seat 0
+		// library so the predicate resolves true. Keep other seats alone:
+		// the trigger is keyed on the source's controller, not globally.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Library = nil
+			if gs.Seats[0].Flags == nil {
+				gs.Seats[0].Flags = map[string]int{}
+			}
+			gs.Seats[0].Flags["library_empty"] = 1
+		}
+		cs.description = "emptied seat 0 library + set library_empty flag"
+
+	case condScaffoldColoredManaSpent:
+		// "{R}{R}/{G}{G}/{U}{U}/{R}/treasure was spent to cast it" —
+		// stamp a per-source mana-payment flag the cast-condition reader
+		// consults. Generalizes the existing mana_spent scaffold which
+		// only tracks total CMC.
+		color := cs.subtype
+		if color == "" {
+			color = "C"
+		}
+		amt := cs.count
+		if amt < 1 {
+			amt = 1
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["mana_spent_"+color] = amt
+			// Compatibility with the generic mana_spent flag for callers
+			// that don't break down by color.
+			if srcPerm.Flags["mana_spent"] < amt {
+				srcPerm.Flags["mana_spent"] = amt
+			}
+		}
+		cs.description = fmt.Sprintf("set srcPerm.Flags[mana_spent_%s]=%d", color, amt)
+
+	case condScaffoldSelfIsSuspended:
+		// "this card is suspended" — source lives in exile with the
+		// "suspended" flag and a "time" counter on its Card. Move srcPerm's
+		// Card (if any) into seat 0 exile with the suspend state stamped.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			suspendCard := &gameengine.Card{
+				Name:  "Suspended Card Setup",
+				Owner: 0,
+				Types: []string{"instant"},
+			}
+			gs.Seats[0].Exile = append(gs.Seats[0].Exile, suspendCard)
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["suspended"] = 1
+			if srcPerm.Counters == nil {
+				srcPerm.Counters = map[string]int{}
+			}
+			if srcPerm.Counters["time"] < 1 {
+				srcPerm.Counters["time"] = 2
+			}
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["suspend_active"] = 1
+		cs.description = "placed suspended card in seat 0 exile + stamped suspended flag on srcPerm"
+
+	case condScaffoldLifeAboveStarting:
+		// "life total is greater than your starting life total" — set seat
+		// 0 life well above Commander starting (40). 50 covers both
+		// 20-life formats and Commander.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Life = 50
+		}
+		cs.description = "set seat 0 life=50 (above starting life total)"
+
+	case condScaffoldOpponentMoreLife:
+		// Mirror of MoreLifeThanOpponent — opponent must have MORE life
+		// than you for the trigger to fire.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Life = 5
+		}
+		if len(gs.Seats) > 1 && gs.Seats[1] != nil {
+			gs.Seats[1].Life = 40
+		}
+		cs.description = "set seat 0 life=5, seat 1 life=40 (opponent has more life)"
+
+	case condScaffoldWasntBlocking:
+		// "it wasn't blocking" — combat exit predicate (Guildsworn
+		// Prowler). Clear any blocking state on srcPerm and set the flag
+		// the post-combat reader consults.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			delete(srcPerm.Flags, "blocking")
+			delete(srcPerm.Flags, "is_blocking")
+			srcPerm.Flags["wasnt_blocking"] = 1
+		}
+		cs.description = "cleared blocking flags on srcPerm + set wasnt_blocking"
+
+	case condScaffoldDiscardedNonland:
+		// "you discarded a nonland card" — Spider-Verse / Doctor Doom.
+		// Push a nonland card into seat 0's graveyard and bump the
+		// Discarded counter so per-card handlers that read either path
+		// observe a discard event. Also stamp the gs.Flags discard
+		// counter the engine sets in DiscardCard.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			seat := gs.Seats[0]
+			discarded := &gameengine.Card{
+				Name:  "Discarded Nonland",
+				Owner: 0,
+				Types: []string{"creature"},
+			}
+			seat.Graveyard = append(seat.Graveyard, discarded)
+			seat.Turn.Discarded++
+			if seat.Flags == nil {
+				seat.Flags = map[string]int{}
+			}
+			seat.Flags["discarded_this_turn"] = 1
+			seat.Flags["discarded_nonland_this_turn"] = 1
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["discarded_0"]++
+		gs.LogEvent(gameengine.Event{
+			Kind:   "card_discarded",
+			Seat:   0,
+			Source: "thor_priming",
+		})
+		cs.description = "discarded nonland card to seat 0 graveyard + flags + event"
+
+	case condScaffoldControlNTappedCreatures:
+		// "you control N or more tapped creatures" — EoE Pilots. Seed
+		// creatures and flip each one's Tapped bit so the threshold is
+		// satisfied (count+1 to clear strict-greater predicates too).
+		n := cs.count
+		if n < 1 {
+			n = 2
+		}
+		seedSeatCreatures(gs, 0, n+1, "Tapped Pilot", "")
+		tapped := 0
+		want := n + 1
+		for _, p := range gs.Seats[0].Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			isCreature := false
+			for _, t := range p.Card.Types {
+				if t == "creature" {
+					isCreature = true
+					break
+				}
+			}
+			if !isCreature {
+				continue
+			}
+			p.Tapped = true
+			tapped++
+			if tapped >= want {
+				break
+			}
+		}
+		cs.description = fmt.Sprintf("tapped %d creatures on seat 0 (control_n_tapped_creatures n=%d)", tapped, n)
+
+	case condScaffoldGainedNLifeThisTurn:
+		// "you gained N or more life this turn" — count variant of
+		// GainedLifeThisTurn. Bump Turn.LifeGained directly so the
+		// engine's threshold checks see at least N+1 gained.
+		n := cs.count
+		if n < 1 {
+			n = 3
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			seat := gs.Seats[0]
+			seat.Turn.LifeGained += n + 1
+			seat.Life += n + 1
+			if seat.Flags == nil {
+				seat.Flags = map[string]int{}
+			}
+			seat.Flags["gained_life_this_turn"] = 1
+			seat.Flags["life_gained_this_turn"] = seat.Turn.LifeGained
+		}
+		cs.description = fmt.Sprintf("bumped seat 0 LifeGained by %d (threshold=%d)", n+1, n)
+
+	case condScaffoldDrawnNCardsThisTurn:
+		// "you've drawn N or more cards this turn" — Avatar TLA. Bump
+		// Turn.CardsDrawn and the legacy drawn_card_this_turn flag.
+		n := cs.count
+		if n < 1 {
+			n = 2
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			seat := gs.Seats[0]
+			seat.Turn.CardsDrawn += n + 1
+			if seat.Flags == nil {
+				seat.Flags = map[string]int{}
+			}
+			seat.Flags["drawn_card_this_turn"] = 1
+			seat.Flags["cards_drawn_this_turn"] = seat.Turn.CardsDrawn
+		}
+		cs.description = fmt.Sprintf("bumped seat 0 CardsDrawn by %d (threshold=%d)", n+1, n)
+
+	case condScaffoldStartingPlayer:
+		// "you were the starting player" / "you weren't the starting
+		// player". The engine doesn't expose a dedicated StartingPlayer
+		// field, but the convention used by per_card handlers is to
+		// stamp gs.Flags["starting_player_seat"] = N and the seat-level
+		// "is_starting_player" flag. Set both consistently so the
+		// predicate has data to read regardless of which convention the
+		// AST handler picks up.
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		startSeat := 0
+		if cs.subtype == "not_starting" {
+			startSeat = 1
+		}
+		gs.Flags["starting_player_seat"] = startSeat
+		for i, s := range gs.Seats {
+			if s == nil {
+				continue
+			}
+			if s.Flags == nil {
+				s.Flags = map[string]int{}
+			}
+			if i == startSeat {
+				s.Flags["is_starting_player"] = 1
+			} else {
+				delete(s.Flags, "is_starting_player")
+			}
+		}
+		cs.description = fmt.Sprintf("set starting_player_seat=%d (subtype=%s)", startSeat, cs.subtype)
+
+	case condScaffoldQuestCounters:
+		// "it has N or more quest counters on it" — Avatar TLA Ascension
+		// triple. Stamp the named counter on srcPerm. Use count+1 so
+		// strict-greater thresholds also pass.
+		n := cs.count
+		if n < 1 {
+			n = 4
+		}
+		if srcPerm != nil {
+			if srcPerm.Counters == nil {
+				srcPerm.Counters = map[string]int{}
+			}
+			srcPerm.Counters["quest"] = n + 1
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["quest_counters"] = n + 1
+		}
+		cs.description = fmt.Sprintf("placed %d quest counters on srcPerm (threshold=%d)", n+1, n)
+
+	case condScaffoldDragonBeheld:
+		// "a Dragon was beheld" — Tarkir Dragonstorm. New mechanic; no
+		// dedicated engine field yet. Stamp both a gs-level and seat-level
+		// flag the per_card Behold handlers (when they land) can read.
+		// Also place a Dragon creature on seat 0 as a witness so
+		// downstream "target/sacrifice/exile a Dragon" effects have
+		// something to operate on.
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["dragon_beheld_this_turn"] = 1
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			if gs.Seats[0].Flags == nil {
+				gs.Seats[0].Flags = map[string]int{}
+			}
+			gs.Seats[0].Flags["dragon_beheld_this_turn"] = 1
+		}
+		placeNamedFriendlyCreatureWithSubtype(gs, "Beheld Dragon", "dragon")
+		gs.LogEvent(gameengine.Event{
+			Kind:   "dragon_beheld",
+			Seat:   0,
+			Source: "thor_priming",
+		})
+		cs.description = "set dragon_beheld_this_turn flags + placed Dragon witness + event"
+
+	// Era 4 R60 sweep — apply implementations.
+
+	case condScaffoldOpponentMoreCreatures:
+		// Seed seat 1 with extra creatures and reduce seat 0's creatures so
+		// "an opponent controls more creatures than you" resolves true.
+		for i := 0; i < 3; i++ {
+			placeNamedFriendlyCreatureWithSubtype(gs,
+				fmt.Sprintf("Opponent Creature %d", i+1), "human")
+		}
+		// Re-controller them to seat 1 — placeNamedFriendly defaults to seat 0.
+		if len(gs.Seats) > 1 && gs.Seats[1] != nil && len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			moved := 0
+			kept := gs.Seats[0].Battlefield[:0]
+			for _, p := range gs.Seats[0].Battlefield {
+				if moved < 3 && p != nil && p.Card != nil &&
+					strings.HasPrefix(p.Card.Name, "Opponent Creature") {
+					p.Controller = 1
+					p.Owner = 1
+					p.Card.Owner = 1
+					gs.Seats[1].Battlefield = append(gs.Seats[1].Battlefield, p)
+					moved++
+					continue
+				}
+				kept = append(kept, p)
+			}
+			gs.Seats[0].Battlefield = kept
+		}
+		cs.description = "seeded 3 creatures on seat 1 (opponent_more_creatures)"
+
+	case condScaffoldWasntCreatureType:
+		// "it wasn't a <subtype>" — post-death typecheck. Stamp a per-source
+		// flag so observers reading wasnt_<subtype> succeed; also leave a
+		// non-matching graveyard placeholder so a graveyard scan agrees.
+		sub := cs.subtype
+		if sub == "" {
+			sub = "demon"
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["wasnt_"+sub] = 1
+			srcPerm.Flags["wasnt_subtype"] = 1
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, &gameengine.Card{
+				Name:          "Non-" + sub + " Setup",
+				Owner:         0,
+				Types:         []string{"creature"},
+				BasePower:     1,
+				BaseToughness: 1,
+			})
+		}
+		cs.description = fmt.Sprintf("set srcPerm.Flags[wasnt_%s]=1 (wasnt_creature_type)", sub)
+
+	case condScaffoldAllLandsType:
+		// "all lands on the battlefield are <subtype>" — Quicksilver Fountain
+		// end-state. Stamp every existing land on every seat with the named
+		// subtype and add one matching land on seat 0 so the predicate is
+		// satisfied even on empty boards.
+		sub := cs.subtype
+		if sub == "" {
+			sub = "island"
+		}
+		for _, seat := range gs.Seats {
+			if seat == nil {
+				continue
+			}
+			for _, p := range seat.Battlefield {
+				if p == nil || p.Card == nil {
+					continue
+				}
+				isLand := false
+				for _, t := range p.Card.Types {
+					if t == "land" {
+						isLand = true
+						break
+					}
+				}
+				if !isLand {
+					continue
+				}
+				// Replace the land's subtypes with just the target subtype.
+				newTypes := []string{"land", sub}
+				p.Card.Types = newTypes
+			}
+		}
+		seedSeatLands(gs, 0, 1, strings.Title(sub), sub)
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["all_lands_"+sub] = 1
+		cs.description = fmt.Sprintf("converted all lands to %q + seeded matching land on seat 0", sub)
+
+	case condScaffoldWasAttacking:
+		// "it was attacking" — per-permanent post-combat check. Stamp the
+		// attacking flag on srcPerm and seat 0's attacked-this-turn flag.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["attacking"] = 1
+			srcPerm.Flags["was_attacking"] = 1
+			srcPerm.Flags["attacked_this_combat"] = 1
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			if gs.Seats[0].Flags == nil {
+				gs.Seats[0].Flags = map[string]int{}
+			}
+			gs.Seats[0].Flags["attacked_this_turn"] = 1
+		}
+		cs.description = "stamped attacking + was_attacking flags on srcPerm"
+
+	case condScaffoldPermanentMVLE:
+		// "it's a permanent card with mana value N or less" — Matter Reshaper
+		// reveal-and-route. Seed a low-MV permanent atop seat 0's library so
+		// the reveal succeeds.
+		mv := cs.count
+		if mv < 1 {
+			mv = 3
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			low := &gameengine.Card{
+				Name:          fmt.Sprintf("Low-MV Permanent (CMC %d)", mv-1),
+				Owner:         0,
+				Types:         []string{"creature"},
+				BasePower:     1,
+				BaseToughness: 1,
+				CMC:           mv - 1,
+			}
+			if low.CMC < 0 {
+				low.CMC = 0
+			}
+			gs.Seats[0].Library = append([]*gameengine.Card{low}, gs.Seats[0].Library...)
+		}
+		cs.description = fmt.Sprintf("placed permanent CMC<=%d atop seat 0 library", mv)
+
+	case condScaffoldWasCast:
+		// "it was cast" — inverse of WasntCast; the source DID come from the
+		// stack. Stamp the cast-from-hand flag and clear the wasnt_cast flag.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["was_cast"] = 1
+			srcPerm.Flags["cast_from_hand"] = 1
+			delete(srcPerm.Flags, "wasnt_cast")
+		}
+		cs.description = "set srcPerm.Flags[was_cast]=1 + cast_from_hand"
+
+	case condScaffoldDidntDie:
+		// "it didn't die" — post-leave survival predicate. Stamp the survived
+		// flag on srcPerm and ensure it's still on the battlefield.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["didnt_die"] = 1
+			srcPerm.Flags["survived"] = 1
+			// Make sure marked damage isn't lethal so SBA doesn't kill it.
+			srcPerm.MarkedDamage = 0
+		}
+		cs.description = "set srcPerm.Flags[didnt_die]=1 + cleared marked damage"
+
+	case condScaffoldSelfDidntETBThisTurn:
+		// "this creature didn't enter the battlefield this turn" — anti-haste
+		// summoning-sickness check. Clear ETB flags on srcPerm.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			delete(srcPerm.Flags, "entered_this_turn")
+			delete(srcPerm.Flags, "summoning_sick")
+			srcPerm.Flags["didnt_etb_this_turn"] = 1
+		}
+		cs.description = "cleared entered_this_turn/summoning_sick flags on srcPerm"
+
+	case condScaffoldNoNamedTokens:
+		// "there are no <named> tokens on the battlefield" — Spirit Mirror
+		// legend-unique. Walk every seat's battlefield and remove tokens
+		// whose name matches the named token; then stamp the all-clear flag.
+		name := cs.subtype
+		if name == "" {
+			name = "reflection"
+		}
+		for _, seat := range gs.Seats {
+			if seat == nil {
+				continue
+			}
+			filtered := seat.Battlefield[:0]
+			for _, p := range seat.Battlefield {
+				if p == nil || p.Card == nil {
+					filtered = append(filtered, p)
+					continue
+				}
+				isToken := p.IsToken()
+				lname := strings.ToLower(p.Card.Name)
+				if isToken && strings.Contains(lname, name) {
+					continue
+				}
+				filtered = append(filtered, p)
+			}
+			seat.Battlefield = filtered
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["no_"+name+"_tokens"] = 1
+		cs.description = fmt.Sprintf("removed %q tokens from every seat + set no_%s_tokens flag", name, name)
+
+	case condScaffoldWasntSacrificed:
+		// "it wasn't sacrificed" — post-leave path predicate distinct from
+		// "didn't die". Stamp wasnt_sacrificed flag on srcPerm.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["wasnt_sacrificed"] = 1
+			delete(srcPerm.Flags, "sacrificed")
+		}
+		cs.description = "set srcPerm.Flags[wasnt_sacrificed]=1"
+
+	case condScaffoldCountersOnSelfGE:
+		// "it has N or more <kind> counters on it" — present-state counter
+		// threshold (Ordeal of Nylea, ascend-bloodline). Place N counters of
+		// the named kind on srcPerm.
+		kind := cs.subtype
+		if kind == "" {
+			kind = "+1/+1"
+		}
+		n := cs.count
+		if n < 1 {
+			n = 3
+		}
+		if srcPerm != nil {
+			if srcPerm.Counters == nil {
+				srcPerm.Counters = map[string]int{}
+			}
+			if srcPerm.Counters[kind] < n {
+				srcPerm.Counters[kind] = n
+			}
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["counters_on_self_ge_"+kind] = n
+		}
+		cs.description = fmt.Sprintf("placed %d %q counters on srcPerm", n, kind)
+
+	case condScaffoldNoDamageSinceLastTurn:
+		// "you haven't been dealt combat damage since your last turn" —
+		// Invasion of Fiora. Stamp seat 0's no-damage flag and zero out the
+		// damage-taken counter.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			if gs.Seats[0].Flags == nil {
+				gs.Seats[0].Flags = map[string]int{}
+			}
+			gs.Seats[0].Flags["no_damage_since_last_turn"] = 1
+			gs.Seats[0].Flags["combat_damage_taken_since_last_turn"] = 0
+		}
+		cs.description = "set seat 0 Flags[no_damage_since_last_turn]=1"
+
+	case condScaffoldFirstTimeResolvedThisTurn:
+		// "this is the first time this ability has resolved this turn" —
+		// Zimone, Mystery Unraveler. Stamp the per-source first-resolution
+		// flag (resolution counter = 0 means this firing is the first).
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["ability_resolutions_this_turn"] = 0
+			srcPerm.Flags["first_time_resolved"] = 1
+		}
+		cs.description = "set srcPerm.Flags[first_time_resolved]=1 (resolutions=0)"
+
+	case condScaffoldPlayerNoCreatures:
+		// "a player controls no creatures" — Sothera, the Supervoid. Ensure
+		// at least one opponent seat has zero creatures.
+		if len(gs.Seats) > 1 && gs.Seats[1] != nil {
+			filtered := gs.Seats[1].Battlefield[:0]
+			for _, p := range gs.Seats[1].Battlefield {
+				if p == nil || p.Card == nil {
+					filtered = append(filtered, p)
+					continue
+				}
+				isCreature := false
+				for _, t := range p.Card.Types {
+					if t == "creature" {
+						isCreature = true
+						break
+					}
+				}
+				if !isCreature {
+					filtered = append(filtered, p)
+				}
+			}
+			gs.Seats[1].Battlefield = filtered
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["a_player_controls_no_creatures"] = 1
+		cs.description = "removed creatures from seat 1 + set a_player_controls_no_creatures flag"
+
+	case condScaffoldAnotherTypedETBThisTurn:
+		// "another <type> entered the battlefield under your control this
+		// turn" — Éowyn, Shieldmaiden. Place a typed permanent on seat 0
+		// with entered_this_turn stamped.
+		sub := cs.subtype
+		if sub == "" {
+			sub = "human"
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, &gameengine.Permanent{
+				Card: &gameengine.Card{
+					Name:          "Another " + sub + " Setup",
+					Owner:         0,
+					Types:         []string{"creature", sub},
+					BasePower:     1,
+					BaseToughness: 1,
+				},
+				Controller: 0,
+				Owner:      0,
+				Flags:      map[string]int{"entered_this_turn": 1},
+				Counters:   map[string]int{},
+			})
+			if gs.Seats[0].Flags == nil {
+				gs.Seats[0].Flags = map[string]int{}
+			}
+			gs.Seats[0].Flags["another_"+sub+"_etb_this_turn"] = 1
+		}
+		cs.description = fmt.Sprintf("placed %s on seat 0 + another_%s_etb_this_turn flag", sub, sub)
+
+	case condScaffoldCreatureETBLastTurn:
+		// "you had another creature enter the battlefield under your control
+		// last turn" — Ephara, God of the Polis. Stamp the last-turn ETB
+		// counter on seat 0 (prior-turn snapshot).
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			if gs.Seats[0].Flags == nil {
+				gs.Seats[0].Flags = map[string]int{}
+			}
+			gs.Seats[0].Flags["creature_etb_last_turn"] = 1
+			gs.Seats[0].Flags["creatures_entered_last_turn"] = 2
+		}
+		cs.description = "set seat 0 Flags[creature_etb_last_turn]=1"
+
+	case condScaffoldExiledWithCountGE:
+		// "N or more cards have been exiled with this artifact" — Colfenor's
+		// Urn. Place N exile cards keyed to srcPerm via the srcPerm-name
+		// suffix in Card.Name, and stamp the count flag on srcPerm.
+		n := cs.count
+		if n < 1 {
+			n = 3
+		}
+		srcName := "Source"
+		if srcPerm != nil && srcPerm.Card != nil && srcPerm.Card.Name != "" {
+			srcName = srcPerm.Card.Name
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			for i := 0; i < n; i++ {
+				gs.Seats[0].Exile = append(gs.Seats[0].Exile, &gameengine.Card{
+					Name:          fmt.Sprintf("Exiled-With-%s %d", srcName, i+1),
+					Owner:         0,
+					Types:         []string{"creature"},
+					BasePower:     1,
+					BaseToughness: 1,
+				})
+			}
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["exiled_with_count"] = n
+		}
+		cs.description = fmt.Sprintf("placed %d cards in seat 0 exile + exiled_with_count flag", n)
+
+	case condScaffoldExiledThisTurn:
+		// "one or more cards were put into exile this turn" — Ennis, Debate
+		// Moderator. Place a card in seat 0 exile and stamp the per-game
+		// exile-this-turn flag.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Exile = append(gs.Seats[0].Exile, &gameengine.Card{
+				Name:          "Exiled-This-Turn Setup",
+				Owner:         0,
+				Types:         []string{"creature"},
+				BasePower:     1,
+				BaseToughness: 1,
+			})
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["exiled_this_turn"] = 1
+		gs.Flags["cards_exiled_this_turn"] = 1
+		gs.LogEvent(gameengine.Event{
+			Kind:   "zone_change",
+			Seat:   0,
+			Source: "thor_priming",
+		})
+		cs.description = "placed card in seat 0 exile + set exiled_this_turn flag"
+
+	case condScaffoldDamagedCreatureDied:
+		// "a creature dealt damage by this creature this turn died" —
+		// Krovikan Vampire kill-credit predicate. Stamp the per-source
+		// flag the engine reads when looking up kill credit.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["damaged_creature_died"] = 1
+			srcPerm.Flags["dealt_damage_to_dead_creature"] = 1
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, &gameengine.Card{
+				Name:          "Damaged-And-Died Setup",
+				Owner:         0,
+				Types:         []string{"creature"},
+				BasePower:     2,
+				BaseToughness: 2,
+			})
+			gs.Seats[0].Turn.CreaturesDied++
+		}
+		cs.description = "set srcPerm.Flags[damaged_creature_died]=1 + placed corpse in seat 0 graveyard"
 	}
 	return cs
 }
@@ -3992,6 +7076,102 @@ func traceConditionScaffolding(cond *gameast.Condition, tr *Tracer) {
 		desc = fmt.Sprintf("seeded creatures totaling >=%d toughness", cs.count+1)
 	case condScaffoldMainPhaseOrFirstCombat:
 		desc = fmt.Sprintf("set Phase/Step for %s", cs.subtype)
+
+	// Era 1 R60 sweep — trace descriptions.
+	case condScaffoldTributeNotPaid:
+		desc = "set srcPerm.Flags[tribute_declined]=1 (tribute not paid)"
+	case condScaffoldBargained:
+		desc = "set srcPerm.Flags[bargained]=1 + paid_optional_cost"
+	case condScaffoldSharesCreatureType:
+		desc = fmt.Sprintf("placed %q creature atop seat 0 library + stamped subtype on srcPerm", nonEmpty(cs.subtype, "goblin"))
+	case condScaffoldNotTheirTurn:
+		desc = "set gs.Active=1 + off_turn flag (not their turn)"
+	case condScaffoldMoreLifeThanOpponent:
+		desc = "set seat 0 life=40, seat 1 life=20 (more life than opponent)"
+	case condScaffoldTimeCounterOnSelf:
+		desc = "cleared time counters on srcPerm + suspended_completed flag"
+	case condScaffoldWasntCast:
+		desc = "set srcPerm.Flags[wasnt_cast]=1 (token / put-onto-bf)"
+	case condScaffoldLostLifeLastTurn:
+		desc = "set seat 0 Flags[lost_life_last_turn]=3"
+	case condScaffoldDamageDealtToSelfTurn:
+		desc = fmt.Sprintf("set srcPerm.MarkedDamage=%d + damage_taken_this_turn", maxInt(cs.count, 4))
+	case condScaffoldMoreCardsThanOpponents:
+		desc = "set seat 0 hand=7, opponents hand=1 (more cards than each opponent)"
+	case condScaffoldSelfIsUntapped:
+		desc = "untapped srcPerm (self_is_untapped)"
+	case condScaffoldSelfHasNoCounter:
+		desc = fmt.Sprintf("cleared %q counters on srcPerm (no-counter)", nonEmpty(cs.subtype, "oil"))
+	case condScaffoldSurgeCostPaid:
+		desc = "set srcPerm.Flags[surge_paid]=1 + paid_optional_cost"
+	case condScaffoldLibraryEmpty:
+		desc = "emptied seat 0 library + library_empty flag"
+	case condScaffoldColoredManaSpent:
+		desc = fmt.Sprintf("set srcPerm.Flags[mana_spent_%s]=%d", nonEmpty(cs.subtype, "C"), maxInt(cs.count, 1))
+	case condScaffoldSelfIsSuspended:
+		desc = "placed suspended card in seat 0 exile + suspended flag on srcPerm"
+	case condScaffoldLifeAboveStarting:
+		desc = "set seat 0 life=50 (above starting life total)"
+	case condScaffoldOpponentMoreLife:
+		desc = "set seat 0 life=5, seat 1 life=40 (opponent has more life)"
+	case condScaffoldWasntBlocking:
+		desc = "cleared blocking flags on srcPerm + wasnt_blocking"
+
+	// Era 3 sweep r60 — trace descriptions.
+	case condScaffoldDiscardedNonland:
+		desc = "discarded nonland to seat 0 graveyard + flags + event"
+	case condScaffoldControlNTappedCreatures:
+		desc = fmt.Sprintf("tapped %d creatures on seat 0 (control_n_tapped n=%d)", cs.count+1, cs.count)
+	case condScaffoldGainedNLifeThisTurn:
+		desc = fmt.Sprintf("bumped seat 0 LifeGained by %d (threshold=%d)", cs.count+1, cs.count)
+	case condScaffoldDrawnNCardsThisTurn:
+		desc = fmt.Sprintf("bumped seat 0 CardsDrawn by %d (threshold=%d)", cs.count+1, cs.count)
+	case condScaffoldStartingPlayer:
+		desc = fmt.Sprintf("set starting_player_seat (subtype=%s)", cs.subtype)
+	case condScaffoldQuestCounters:
+		desc = fmt.Sprintf("placed %d quest counters on srcPerm (threshold=%d)", cs.count+1, cs.count)
+	case condScaffoldDragonBeheld:
+		desc = "set dragon_beheld_this_turn flags + Dragon witness + event"
+
+	// Era 4 R60 sweep — trace descriptions.
+	case condScaffoldOpponentMoreCreatures:
+		desc = "seeded 3 creatures on seat 1 (opponent_more_creatures)"
+	case condScaffoldWasntCreatureType:
+		desc = fmt.Sprintf("set srcPerm.Flags[wasnt_%s]=1 (wasnt_creature_type)", nonEmpty(cs.subtype, "demon"))
+	case condScaffoldAllLandsType:
+		desc = fmt.Sprintf("converted all lands to %q + seeded matching land on seat 0", nonEmpty(cs.subtype, "island"))
+	case condScaffoldWasAttacking:
+		desc = "stamped attacking + was_attacking flags on srcPerm"
+	case condScaffoldPermanentMVLE:
+		desc = fmt.Sprintf("placed permanent CMC<=%d atop seat 0 library", maxInt(cs.count, 3))
+	case condScaffoldWasCast:
+		desc = "set srcPerm.Flags[was_cast]=1 + cast_from_hand"
+	case condScaffoldDidntDie:
+		desc = "set srcPerm.Flags[didnt_die]=1 + cleared marked damage"
+	case condScaffoldSelfDidntETBThisTurn:
+		desc = "cleared entered_this_turn/summoning_sick flags on srcPerm"
+	case condScaffoldNoNamedTokens:
+		desc = fmt.Sprintf("removed %q tokens + no_%s_tokens flag", nonEmpty(cs.subtype, "reflection"), nonEmpty(cs.subtype, "reflection"))
+	case condScaffoldWasntSacrificed:
+		desc = "set srcPerm.Flags[wasnt_sacrificed]=1"
+	case condScaffoldCountersOnSelfGE:
+		desc = fmt.Sprintf("placed %d %q counters on srcPerm (counters_on_self_ge)", maxInt(cs.count, 3), nonEmpty(cs.subtype, "+1/+1"))
+	case condScaffoldNoDamageSinceLastTurn:
+		desc = "set seat 0 Flags[no_damage_since_last_turn]=1"
+	case condScaffoldFirstTimeResolvedThisTurn:
+		desc = "set srcPerm.Flags[first_time_resolved]=1 (resolutions=0)"
+	case condScaffoldPlayerNoCreatures:
+		desc = "removed creatures from seat 1 + a_player_controls_no_creatures flag"
+	case condScaffoldAnotherTypedETBThisTurn:
+		desc = fmt.Sprintf("placed %s on seat 0 + another_%s_etb_this_turn flag", nonEmpty(cs.subtype, "human"), nonEmpty(cs.subtype, "human"))
+	case condScaffoldCreatureETBLastTurn:
+		desc = "set seat 0 Flags[creature_etb_last_turn]=1"
+	case condScaffoldExiledWithCountGE:
+		desc = fmt.Sprintf("placed %d cards in seat 0 exile + exiled_with_count flag", maxInt(cs.count, 3))
+	case condScaffoldExiledThisTurn:
+		desc = "placed card in seat 0 exile + exiled_this_turn flag"
+	case condScaffoldDamagedCreatureDied:
+		desc = "set srcPerm.Flags[damaged_creature_died]=1 + placed corpse in seat 0 graveyard"
 	}
 	tr.Record("CONDITION_SETUP", "%q → %s", cs.rawText, desc)
 }

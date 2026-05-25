@@ -47,6 +47,14 @@ type YggdrasilHat struct {
 	actionStats  map[string]*actionStat
 	totalVisits  int
 
+	// rolloutSeed is bumped per rollout invocation to give each candidate
+	// a distinct RNG stream within a decision. PER-HAT (not a package
+	// global) so that hats running in parallel — or multiple hats in
+	// the same process — don't share seed state. Reset on game_start
+	// so each game starts from a known seed sequence (reproducible
+	// replays + test stability).
+	rolloutSeed int64
+
 	// Per-opponent observation for politics.
 	damageDealtTo     []int
 	damageReceivedFrom []int
@@ -115,6 +123,24 @@ type YggdrasilHat struct {
 	// (from reveal effects). These are zero-entropy slots.
 	opponentKnownCards []map[string]bool
 
+	// -- 3rd Eye: Bluff detection (R60 round 5) --
+	//
+	// opponentLoadedSilentTurns counts consecutive turns where an
+	// opponent's perceived interaction probability was >= 0.4 but they
+	// did NOT cast any interactive spell that turn. High values
+	// indicate they're more likely bluffing (or genuinely empty) — the
+	// hat dampens `opponentHasInteraction` by a factor derived from
+	// this count via `perceivedInteractionThreat`. Capped at
+	// bluffMaxStreak so a single counter cast meaningfully resets the
+	// signal.
+	opponentLoadedSilentTurns []int
+
+	// opponentFiredInteractionThisRound is a per-opponent bool that
+	// flips true when we observe them casting an interactive spell
+	// (counter / targeted removal / instant-speed answer); reset on
+	// each upkeep where we evaluate the bluff signal.
+	opponentFiredInteractionThisRound []bool
+
 	// Pre-computed lookup sets for O(1) card relevance checks.
 	comboPieceSet    map[string]bool
 	valueEngineSet   map[string]bool
@@ -169,6 +195,43 @@ type YggdrasilHat struct {
 	// Reset by ResetMjolnirStats() and exposed via MjolnirStats().
 	tierCounts [numDecisionTiers]int
 
+	// R60 cascading-decisions audit. Parent-decision tier propagation:
+	// when ChooseCastFromHand / ChooseActivation / ChooseAttackers /
+	// ChooseResponse classifies a decision at a given tier, that tier
+	// is also stamped here as the "ambient" tier. Downstream cascading
+	// decisions (ChooseTarget called during the cast's resolution,
+	// ChooseMode for modal triggers, ChooseSacrifice for an X-cost
+	// payment, OrderTriggers for same-event APNAP ordering) read
+	// `lastParentTier` so they can escalate their evaluation when the
+	// parent decision earned Ragnarok-tier compute. Without this
+	// propagation, a Ragnarok-rollout-evaluated Demonic Tutor cast
+	// would resolve into a TierMjolnir first-match target pick — the
+	// expensive parent decision priced the WRONG thing.
+	lastParentTier     DecisionTier
+	lastParentTierTurn int
+
+	// stackItemTiers — R60 round 5 multi-instance priority window
+	// audit. Per-stack-item record of the DecisionTier classified by
+	// the ChooseResponse call for that item. Survives ChooseResponse
+	// overwrites of lastParentTier (which only holds the MOST RECENT
+	// classification), so cascade decisions firing during an earlier
+	// item's resolution can recover the correct tier by ID lookup.
+	// Reset on game_start; lazily cleared on first stamp of a new
+	// turn via stackItemTiersTurn.
+	stackItemTiers     map[int]DecisionTier
+	stackItemTiersTurn int
+
+	// R60 round 5 — multi-mode follow-up detection state. When the
+	// engine's resolveChoice loops ChooseMode `pick` times for a
+	// pick-2 modal spell (Cryptic Command, charms, …), each iteration
+	// shows a slice that's the previous one minus the prior pick. We
+	// remember the previous pick + slice so the next call can detect
+	// the subset relationship and apply complement scoring (counter
+	// → bounce, bounce → draw, etc.).
+	lastChooseModePick  gameast.Effect
+	lastChooseModeSlice []gameast.Effect
+	lastChooseModeTurn  int
+
 	// -- Zone-cast grant tracking (flashback / escape / impulse / etc.) --
 
 	// myZoneCastGrants counts how many active zone-cast permissions the
@@ -214,6 +277,15 @@ const (
 	// Per-turn budget costs. A rollout is ~10x more expensive than a
 	// single evaluator-path decision (clone + forward sim + eval).
 	rolloutEvalCost = 10
+
+	// R60 high-stakes overrides for adaptive degradation.
+	//   highStakesLifeThreshold: any seat at or below this life makes
+	//     the next priority window decision game-deciding.
+	//   highStakesStackDepth: stack at or above this depth indicates a
+	//     counter war or triggered-ability chain where resolution-order
+	//     decisions materially change the outcome.
+	highStakesLifeThreshold = 8
+	highStakesStackDepth    = 3
 )
 
 // DecisionTier names the compute path a decision takes. The hat already
@@ -1556,20 +1628,41 @@ func (h *YggdrasilHat) bestTarget(gs *gameengine.GameState, seatIdx int, attacke
 			score -= threat.InteractionProb * 0.5
 		}
 
-		// 12b. Opponent-archetype targeting bias — small bumps tied to
-		// the rolling OpponentProfile classifier. Combo seats get
-		// pressured (disrupt their setup); control seats get a small
-		// avoidance penalty (they have removal aimed at attackers).
-		// Aggro seats default to neutral here because the existing
-		// momentum / kingmaker scoring already covers them. Bias is
-		// proportional to confidence so an early-game guess doesn't
-		// override the politics math.
-		if prof := h.classifyOpponent(gs, def); prof != nil && prof.Confidence > 0.4 {
-			switch prof.Archetype {
-			case "combo":
-				score += prof.Confidence * 1.5
-			case "control":
-				score -= prof.Confidence * 0.6
+		// 12b. Opponent-archetype targeting bias — bumps tied to the
+		// rolling OpponentProfile classifier. R60r5 — bias is now
+		// scaled by archetypeBiasMultiplier so high-confidence reads
+		// (tutored 3 turns in a row → 0.90+) commit harder than
+		// moderate-confidence reads, instead of the prior linear
+		// pass-through that treated 0.45 and 0.90 as scaling-equivalent.
+		//
+		// Combo seats get pressured (disrupt their setup); control
+		// seats get a small avoidance penalty (they have removal aimed
+		// at attackers); aggro seats get pressured too at high
+		// confidence (race the racer — closing their clock first beats
+		// trading with their second wave).
+		if prof := h.classifyOpponent(gs, def); prof != nil {
+			// R60 round 5 — `effectiveArchetypeBias` folds in
+			// MetaConfidence so a thin-sample / contradiction-laden
+			// classification dampens the bias even at moderate raw
+			// confidence. The bias-threshold gates (>0, >0.75) stay
+			// the same; the value flowing through them is just
+			// meta-corrected.
+			mult := effectiveArchetypeBias(prof)
+			if mult > 0 {
+				switch prof.Archetype {
+				case "combo":
+					score += mult * 1.5
+				case "control":
+					score -= mult * 0.6
+				case "aggro":
+					// Only commits at high confidence (mult > 0.75) —
+					// at moderate confidence the existing momentum /
+					// kingmaker scoring is doing the work and we
+					// shouldn't double-count.
+					if mult > 0.75 {
+						score += (mult - 0.75) * 1.0
+					}
+				}
 			}
 		}
 
@@ -1680,6 +1773,58 @@ func noLegalBlockerOnSeat(gs *gameengine.GameState, attacker *gameengine.Permane
 }
 
 // anyOpponentHasReachOrFlyingBlocker reports whether any opponent of
+// isCombatFirstArchetype returns true for archetypes whose plan IS
+// early-game damage: Aggro, Burn, Voltron, Tribal. These archetypes
+// should not pay the uniform PhaseDeploy +0.15 conservative bump on
+// attack threshold — holding back a turn-2 1/1 because "we should
+// develop more board" is the exact early-game-too-defensive bug the
+// R60 round 5 aggression audit surfaced. nil-safe.
+func isCombatFirstArchetype(sp *StrategyProfile) bool {
+	if sp == nil {
+		return false
+	}
+	switch sp.Archetype {
+	case ArchetypeAggro, ArchetypeBurn, ArchetypeVoltron, ArchetypeTribal:
+		return true
+	}
+	return false
+}
+
+// anyOpponentHasOpenLane reports whether at least one opponent has
+// ZERO untapped creatures available as potential blockers. When true,
+// every attacker (even a vanilla 1/1) gets a "damage is free" bonus
+// — chip damage into an undefended seat adds up, and refusing to
+// swing on an open table is exactly the defensive failure mode aggro
+// audits flagged. Skips dead / left-game seats. The check is
+// pessimistic: a tapped creature is treated as no blocker even though
+// it may untap before combat resumes; that matches what the swinger
+// actually faces in this combat step.
+func anyOpponentHasOpenLane(gs *gameengine.GameState, seatIdx int) bool {
+	if gs == nil {
+		return false
+	}
+	for i, s := range gs.Seats {
+		if i == seatIdx || s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		untappedBlockers := 0
+		for _, b := range s.Battlefield {
+			if b == nil || !b.IsCreature() || b.Tapped {
+				continue
+			}
+			if gs.PowerOf(b) <= 0 && gs.ToughnessOf(b) <= 0 {
+				// 0/0 creatures are SBA fodder, not blockers.
+				continue
+			}
+			untappedBlockers++
+		}
+		if untappedBlockers == 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // seatIdx controls an untapped creature with reach or flying. Used to
 // downgrade flying's evasion bonus when the lane isn't actually open.
 func anyOpponentHasReachOrFlyingBlocker(gs *gameengine.GameState, seatIdx int) bool {
@@ -1780,10 +1925,15 @@ func (h *YggdrasilHat) DimensionMeans() [NumDimensions]float64 {
 
 // effectiveBudget returns the budget to use for this decision, degrading
 // to heuristic on complex boards or when the per-turn budget is exhausted.
+// High-stakes turns (combo assembly, low-life opponents, deep stacks)
+// bypass the complexity degrade — the whole point of the budget is to
+// spend it on decisions that matter, and "60+ permanents on the board"
+// IS a decision that matters when someone is about to die.
 func (h *YggdrasilHat) effectiveBudget(gs *gameengine.GameState) int {
 	if h.Budget == 0 {
 		return 0
 	}
+	highStakes := h.isHighStakesDecision(gs)
 	total := 0
 	for _, s := range gs.Seats {
 		if s == nil {
@@ -1791,13 +1941,47 @@ func (h *YggdrasilHat) effectiveBudget(gs *gameengine.GameState) int {
 		}
 		total += len(s.Battlefield)
 	}
-	if total >= adaptiveBudgetComplexityThreshold {
+	if total >= adaptiveBudgetComplexityThreshold && !highStakes {
 		return 0
 	}
-	if h.TurnBudget > 0 && h.turnRemaining(gs) <= 0 {
+	if h.TurnBudget > 0 && h.turnRemaining(gs) <= 0 && !highStakes {
 		return 0
 	}
 	return h.Budget
+}
+
+// isHighStakesDecision returns true when the current game state is one
+// where we want to spend evaluator budget regardless of board complexity:
+//
+//   - Combo is one piece away or executable now (existing comboPriority
+//     signal — preserve game-winning lines through the degrade).
+//   - Any seat is at low life (≤ highStakesLifeThreshold). Whether
+//     they're about to die or we are, the wrong decision here ends the
+//     game; the right one wins it.
+//   - Stack has ≥ highStakesStackDepth items. Deep stacks mean active
+//     counter wars / triggered-ability chains where each priority
+//     window's decision changes the resolution order — the kind of
+//     position where evaluator-guided play meaningfully outscores the
+//     fast-path heuristic.
+func (h *YggdrasilHat) isHighStakesDecision(gs *gameengine.GameState) bool {
+	if h == nil || gs == nil {
+		return false
+	}
+	if h.comboAssembling(gs) {
+		return true
+	}
+	for _, s := range gs.Seats {
+		if s == nil || s.Lost {
+			continue
+		}
+		if s.Life <= highStakesLifeThreshold {
+			return true
+		}
+	}
+	if len(gs.Stack) >= highStakesStackDepth {
+		return true
+	}
+	return false
 }
 
 // turnRemaining returns how many eval points are left this turn.
@@ -1835,7 +2019,11 @@ func (h *YggdrasilHat) classifyDecision(gs *gameengine.GameState) DecisionTier {
 		return TierMjolnir
 	}
 
-	comboPriority := h.comboAssembling(gs)
+	// R60: superset of the previous combo-only override — also lets
+	// low-life and deep-stack windows keep evaluator/rollout compute.
+	// Matches the gate inside effectiveBudget so the tier report no
+	// longer drifts from the actual compute path.
+	highStakes := h.isHighStakesDecision(gs)
 
 	total := 0
 	if gs != nil {
@@ -1846,10 +2034,10 @@ func (h *YggdrasilHat) classifyDecision(gs *gameengine.GameState) DecisionTier {
 			total += len(s.Battlefield)
 		}
 	}
-	if total >= adaptiveBudgetComplexityThreshold && !comboPriority {
+	if total >= adaptiveBudgetComplexityThreshold && !highStakes {
 		return TierMjolnir
 	}
-	if h.TurnBudget > 0 && h.turnRemaining(gs) <= 0 && !comboPriority {
+	if h.TurnBudget > 0 && h.turnRemaining(gs) <= 0 && !highStakes {
 		return TierMjolnir
 	}
 
@@ -1890,6 +2078,120 @@ func (h *YggdrasilHat) recordDecisionTier(t DecisionTier) {
 	h.tierCounts[t]++
 }
 
+// recordParentTier wraps recordDecisionTier for the PARENT decision
+// entry points (ChooseCastFromHand, ChooseActivation, ChooseAttackers,
+// ChooseResponse). In addition to bumping tierCounts, it stamps
+// `lastParentTier` so cascading downstream decisions (ChooseTarget,
+// ChooseMode, ChooseX, ChooseSacrifice, OrderTriggers, ...) can read
+// it and escalate their own evaluation.
+//
+// `turn` is the current game turn — used to invalidate the parent
+// tier when a new turn starts (priority windows don't span turns,
+// and stale Ragnarok context from last turn would over-escalate
+// downstream decisions on the new turn).
+func (h *YggdrasilHat) recordParentTier(t DecisionTier, turn int) {
+	if h == nil {
+		return
+	}
+	h.recordDecisionTier(t)
+	h.lastParentTier = t
+	h.lastParentTierTurn = turn
+}
+
+// recordResponseTier is the ChooseResponse-specific variant of
+// recordParentTier. It stamps lastParentTier (legacy compat) AND
+// records the tier keyed by the stack item's ID in stackItemTiers
+// so that downstream cascade decisions firing during THIS specific
+// item's resolution can recover the correct tier even after a
+// LATER ChooseResponse call has overwritten lastParentTier.
+//
+// R60 round 5 — multi-instance priority window audit. Pre-fix the
+// sequence:
+//
+//   1. Trigger A pushed. ChooseResponse → lastParentTier = T_A.
+//   2. Hat declines to counter A.
+//   3. Trigger B pushed (before A resolves). ChooseResponse →
+//      lastParentTier = T_B (overwrites T_A).
+//   4. B resolves, its cascades read T_B. Correct.
+//   5. A resolves, its cascades read T_B. STALE — should be T_A.
+//
+// stackItemTiers gives us a per-item record so step 5's cascade
+// can lookup T_A by stack item ID instead of falling back to the
+// overwritten lastParentTier. Map is turn-scoped via
+// stackItemTiersTurn — entries from prior turns are cleared
+// lazily on the first stamp of a new turn.
+func (h *YggdrasilHat) recordResponseTier(t DecisionTier, turn int, top *gameengine.StackItem) {
+	if h == nil {
+		return
+	}
+	h.recordParentTier(t, turn)
+	if top == nil || top.ID == 0 {
+		return
+	}
+	if h.stackItemTiers == nil || h.stackItemTiersTurn != turn {
+		h.stackItemTiers = make(map[int]DecisionTier, 4)
+		h.stackItemTiersTurn = turn
+	}
+	h.stackItemTiers[top.ID] = t
+}
+
+// tierForStackItem returns the DecisionTier that was stamped for a
+// stack item via recordResponseTier this turn. Returns
+// (TierMjolnir, false) if no stamp exists.
+func (h *YggdrasilHat) tierForStackItem(turn, stackID int) (DecisionTier, bool) {
+	if h == nil || h.stackItemTiers == nil || h.stackItemTiersTurn != turn {
+		return TierMjolnir, false
+	}
+	t, ok := h.stackItemTiers[stackID]
+	return t, ok
+}
+
+// recordCascadeDecision is the downstream-method analogue of
+// recordDecisionTier: bumps the tier counter to reflect the cascade
+// (using the parent's tier when still in the same turn, else
+// defaulting to TierMjolnir). Keeps MjolnirStats accurate when the
+// real work happens in downstream Choose* — without this, a
+// Ragnarok cast followed by 3 ChooseTarget calls under-counts
+// Ragnarok 3-to-1.
+func (h *YggdrasilHat) recordCascadeDecision(gs *gameengine.GameState) DecisionTier {
+	if h == nil {
+		return TierMjolnir
+	}
+	t := TierMjolnir
+	// R60r5 — prefer the per-stack-item tier when the current stack top
+	// (the item closest to resolving / triggering this cascade) has a
+	// stamped tier. This avoids the multi-instance priority window bug
+	// where consecutive ChooseResponse calls overwrite lastParentTier
+	// and an earlier item's cascade reads the latest item's tier.
+	if gs != nil && len(gs.Stack) > 0 {
+		topID := gs.Stack[len(gs.Stack)-1].ID
+		if stamped, ok := h.tierForStackItem(gs.Turn, topID); ok {
+			t = stamped
+			h.recordDecisionTier(t)
+			return t
+		}
+	}
+	if gs != nil && h.lastParentTierTurn == gs.Turn {
+		t = h.lastParentTier
+	}
+	h.recordDecisionTier(t)
+	return t
+}
+
+// parentTierIs reports whether the most recently classified parent
+// decision (within the current turn) is at-or-above `min`. Lets
+// cascading decisions gate "do extra work" branches without having
+// to inspect tierCounts directly.
+func (h *YggdrasilHat) parentTierIs(gs *gameengine.GameState, min DecisionTier) bool {
+	if h == nil || gs == nil {
+		return false
+	}
+	if h.lastParentTierTurn != gs.Turn {
+		return false
+	}
+	return h.lastParentTier >= min
+}
+
 // MjolnirStats returns the per-tier decision distribution for this hat
 // since the last reset (or hat construction).
 func (h *YggdrasilHat) MjolnirStats() MjolnirStats {
@@ -1922,6 +2224,77 @@ func (h *YggdrasilHat) spendTurnBudget(gs *gameengine.GameState, cost int) {
 		h.turnBudgetTurn = gs.Turn
 	}
 	h.turnEvalsSpent += cost
+}
+
+// politicsThreatAdjustment returns a score adjustment for hitting
+// targetSeat with a hostile effect (removal, burn, etc.) given the
+// table's threat profile and our relative position. Pure function so
+// the politics rules are testable in isolation.
+//
+// Encodes two table-politics signals:
+//
+//   - "Hit the leader" — when we're competitive (relPos >= -0.3) AND
+//     there's a clear table leader (EvalScore lead >= 3.0 over the
+//     runner-up), boost the leader's seat by +3.0. This makes removal
+//     and direct damage gravitate to the seat that's actually winning,
+//     overriding the existing flashier-card bonuses (combo piece on
+//     low-threat seat).
+//
+//   - "Dodge the kingmaker" — when we're meaningfully behind
+//     (relPos < -0.3) AND a clear leader exists, hitting them just
+//     speeds our death (they retaliate with their bigger board). The
+//     leader is demoted by -3.0 and the runner-up boosted by +2.0;
+//     net effect is the kingmaker dodge — burn the contender, not
+//     the leader.
+//
+// Returns 0 when there's no clear leader (gap < 3.0) or fewer than
+// two living opponents, so the existing scoring dominates.
+//
+// `threats` is the assessAllThreats result for the asking seat; it
+// already excludes self, lost, and left-game seats.
+func politicsThreatAdjustment(threats []seatThreat, relPos float64, targetSeat int) float64 {
+	if len(threats) < 2 {
+		return 0
+	}
+	// Find the two highest EvalScore seats.
+	leaderIdx, runnerupIdx := -1, -1
+	leaderScore, runnerupScore := -1e18, -1e18
+	for i, th := range threats {
+		switch {
+		case th.EvalScore > leaderScore:
+			runnerupIdx, runnerupScore = leaderIdx, leaderScore
+			leaderIdx, leaderScore = i, th.EvalScore
+		case th.EvalScore > runnerupScore:
+			runnerupIdx, runnerupScore = i, th.EvalScore
+		}
+	}
+	if leaderIdx < 0 || runnerupIdx < 0 {
+		return 0
+	}
+	// "Clear leader" requires a meaningful EvalScore gap. Below this
+	// threshold the existing additive bonuses dominate and politics
+	// shouldn't override them.
+	const leadGap = 3.0
+	if leaderScore-runnerupScore < leadGap {
+		return 0
+	}
+	leaderSeat := threats[leaderIdx].Seat
+	runnerupSeat := threats[runnerupIdx].Seat
+	if relPos < -0.3 {
+		// We're behind — kingmaker dodge.
+		if targetSeat == leaderSeat {
+			return -3.0
+		}
+		if targetSeat == runnerupSeat {
+			return 2.0
+		}
+		return 0
+	}
+	// Competitive — hit the leader.
+	if targetSeat == leaderSeat {
+		return 3.0
+	}
+	return 0
 }
 
 // relativePosition returns how our score compares to the strongest opponent.
@@ -2085,6 +2458,28 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 			base += 0.15
 		}
 	}
+
+	// R60 round 7+ defend-vs-aggro signals (see defend_vs_aggro_signals_r60.go).
+	// Only fire when projected single-turn opp damage crosses 33% of life;
+	// scale by urgency so the bias grows as pressure climbs. Both signals
+	// use the SAME urgency value so they pull in the same direction.
+	if urgency := h.defenseUrgencyVsAggro(gs, seatIdx); urgency >= 0.33 {
+		if h.isDefensiveCard(c) {
+			base += 0.20 * urgency
+		} else if cmc >= 5 {
+			base -= 0.15 * urgency
+		}
+	}
+
+	// R60 round 14+ ETB-trigger value bonus (see etb_trigger_value_r60.go).
+	// Cards whose value lives in their ETB (Mulldrifter, Stoneforge,
+	// Reclamation Sage, Eternal Witness) were underweighted because
+	// Freya's CatDraw / CatRamp / CatRemoval bonuses are small and the
+	// multi-mode / tutor / recursion ETB families don't fit a single
+	// Freya category cleanly. Graduated bonus by ETB payoff (tutor +0.30,
+	// draw/removal +0.20, ramp +0.15, token/recursion +0.10). Stacks
+	// with the existing category bonuses — they're complementary signals.
+	base += etbTriggerBonus(c)
 
 	// Lovelace Composer Intent: boost cards matching commander themes.
 	if h.Strategy != nil {
@@ -2381,6 +2776,20 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 		}
 	}
 
+	// R60 Second Main Phase audit — Signal B: precombat main bonus
+	// for cards whose value-on-the-table evaporates if they sit in
+	// hand through combat (haste creatures, attack-trigger commanders,
+	// anthems, equipment). Boost is +0.30 in precombat_main so the
+	// cast ranking tilts ahead of generic CatDraw / CatRamp picks;
+	// gated off in postcombat_main (too late for this turn's combat).
+	// Sized to outweigh the typical CatDraw PhaseDevelop bonus
+	// (+0.10) and the mana-efficiency advantage of higher-CMC
+	// alternatives so a 1-mana haste creature actually wins over a
+	// 3-mana Divination in main1.
+	if gs != nil && gs.Phase == "precombat_main" && cardPrefersMain1(c) {
+		base += 0.30
+	}
+
 	return base
 }
 
@@ -2545,6 +2954,215 @@ func isCommanderCard(gs *gameengine.GameState, seatIdx int, c *gameengine.Card) 
 		if cn == name {
 			return true
 		}
+	}
+	return false
+}
+
+// hasAttackTriggerValue is true when the commander has an attack-trigger
+// whose value (tutor / Etali-style impulse-cast / scry-and-look) is large
+// enough that we should prioritize getting it into combat over preserving
+// it from a clean trade. Matches the same substring shape used in the
+// per-attacker value loop above — keep them in sync.
+func hasAttackTriggerValue(c *gameengine.Card) bool {
+	if c == nil {
+		return false
+	}
+	ot := gameengine.OracleTextLower(c)
+	if !strings.Contains(ot, "attacks") {
+		return false
+	}
+	return strings.Contains(ot, "search") ||
+		strings.Contains(ot, "exile the top") ||
+		strings.Contains(ot, "look at the top")
+}
+
+// commanderClockNearLethal reports whether the named commander has
+// already dealt enough damage to some single opponent that one more
+// connect-or-near-connect resolves the 21-damage clock (CR §704.6c).
+// Threshold is the minimum accumulated damage on any opponent — at 13
+// every nontrivial commander (≥8 power, or buffed) can close the gap
+// in one hit, which is the case where pruning the swing wastes a real
+// kill opportunity. Returns false when the commander hasn't dealt any
+// combat damage yet — early-game commanders fall through to the normal
+// "strategic only if it does something" gate.
+func commanderClockNearLethal(gs *gameengine.GameState, dealerSeat int, c *gameengine.Card, threshold int) bool {
+	if gs == nil || c == nil {
+		return false
+	}
+	name := c.DisplayName()
+	for i, s := range gs.Seats {
+		if i == dealerSeat || s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		if gameengine.CommanderDamageFrom(s, dealerSeat, name) >= threshold {
+			return true
+		}
+	}
+	return false
+}
+
+// hasDeathPayoffValue reports whether a creature's death generates
+// meaningful value — either via a self-referential death trigger
+// ("when ~ dies"), a damage-taken trigger ("when ~ is dealt damage"),
+// or a recursion keyword (persist / undying / unearth) that brings
+// the creature back. These are the "trick attack" archetype: the
+// creature WANTS to attack into a clean block because the trade is
+// the engine.
+//
+// Examples this catches:
+//   - Reassembling Skeleton (own dies, return on activation — paired
+//     with an explicit sac outlet, but the recursion is the value)
+//   - Hangarback Walker ("when ~ dies, create N Thopters")
+//   - Murderous Redcap (persist — comes back 1/1 with damage trigger)
+//   - Bloodghast ("landfall: return ~ from your graveyard")
+//   - Doomed Traveler ("when ~ dies, create a Spirit token")
+//   - Sakura-Tribe Elder, Solemn Simulacrum (sac/die for land + draw)
+//
+// Why oracle-text + keyword rather than a per-card list: the corpus
+// is too big to hand-curate, but the textual shape of "death IS the
+// win" effects is extremely consistent ("when this dies" / "whenever
+// ~ dies" / "if ~ dies this turn" / "~ enters with ... persist /
+// undying"). Same approach as the existing hasAttackTriggerValue
+// helper — see the kept-in-sync comment there.
+func hasDeathPayoffValue(c *gameengine.Card) bool {
+	if c == nil {
+		return false
+	}
+	// Persist / Undying / Unearth — strict recursion keywords. The
+	// creature comes back after dying, so the swing-into-block trade
+	// is at worst neutral (-1/-1 or +1/+1 counter restored) and
+	// usually positive (Murderous Redcap re-triggers the damage on
+	// re-ETB, Geralf's Messenger pings on the persist return).
+	ot := gameengine.OracleTextLower(c)
+	if ot == "" {
+		return false
+	}
+	if strings.Contains(ot, "persist") ||
+		strings.Contains(ot, "undying") ||
+		strings.Contains(ot, "unearth") {
+		return true
+	}
+	// Self-referential death trigger. Matches "when ~ dies" and the
+	// generic "creature dies" pattern only when paired with a
+	// self-reference. "When a creature dies" without "this" / "~" is
+	// a global trigger (Blood Artist) — those creatures get value
+	// from OTHER deaths, not from attacking and dying themselves, so
+	// they don't qualify as trick-attackers.
+	if strings.Contains(ot, "when this dies") ||
+		strings.Contains(ot, "when this creature dies") ||
+		strings.Contains(ot, "if this dies") ||
+		strings.Contains(ot, "whenever this dies") {
+		return true
+	}
+	// Damage-taken trigger ("whenever ~ is dealt damage, ...") — the
+	// creature converts incoming damage into value (Mardu Hateblade
+	// family, Stuffy Doll, Boros Reckoner).
+	if strings.Contains(ot, "is dealt damage") ||
+		strings.Contains(ot, "when this is dealt damage") {
+		return true
+	}
+	return false
+}
+
+// hasSacFuelValue reports whether the controller has a sac outlet on
+// the battlefield AND this creature is cheap enough (≤ 2 mana) to
+// serve as one-shot fuel. The combination means the attacker can
+// swing into a block, get blocked (or not), and on a bad trade the
+// outlet drains the creature into a triggered effect (Phyrexian
+// Altar mana, Goblin Bombardment damage, Yawgmoth draw, Viscera
+// Seer scry).
+//
+// This is the "intentional chump" signal: the attacker is a token /
+// 1-drop / 2-drop the controller is happy to lose because the sac
+// outlet converts the loss into value the block was supposed to
+// deny. The block becomes a tempo trade where WE pick the timing.
+func hasSacFuelValue(gs *gameengine.GameState, seatIdx int, p *gameengine.Permanent) bool {
+	if gs == nil || p == nil || p.Card == nil ||
+		seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return false
+	}
+	if gameengine.ManaCostOf(p.Card) > 2 {
+		return false
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return false
+	}
+	for _, other := range seat.Battlefield {
+		if other == nil || other.Card == nil || other == p {
+			continue
+		}
+		ot := gameengine.OracleTextLower(other.Card)
+		// "sacrifice a creature:" with a colon is the activated-ability
+		// shape ("Sacrifice a creature: Add {B}." / "Sacrifice a
+		// creature: Target creature gets +2/+0."). Skip free-floating
+		// "sacrifice a creature" in costs of one-shot spells — those
+		// aren't on the battlefield as standing outlets.
+		if strings.Contains(ot, "sacrifice a creature:") ||
+			strings.Contains(ot, "sacrifice another creature:") ||
+			strings.Contains(ot, "sacrifice another creature,") ||
+			strings.Contains(ot, ", sacrifice a creature:") {
+			return true
+		}
+	}
+	return false
+}
+
+// cardPrefersMain1 reports whether a card wants to be cast in the
+// precombat main phase (rather than postcombat_main) because its
+// value is tied to THIS turn's combat:
+//
+//   - Haste creatures want to attack the turn they enter.
+//   - Attack-trigger commanders (Etali, Zur, Narset, Goblin Guide,
+//     Bonecrusher Giant) need to be in play before declare_attackers
+//     to swing for their value trigger.
+//   - Anthem effects ("creatures you control get +X/+X until end of
+//     turn" / "until your next turn") only buff a combat that hasn't
+//     happened yet; main2 is too late.
+//   - Equipment / aura cards with "equip" / "enchant creature" want
+//     to be deployed + attached before combat to make the swing
+//     bigger.
+//
+// Used by ChooseCastFromHand to bias the cast-vs-pass decision in
+// precombat_main toward cards whose value-on-the-table evaporates if
+// they sit in hand through the combat phase.
+func cardPrefersMain1(c *gameengine.Card) bool {
+	if c == nil {
+		return false
+	}
+	ot := gameengine.OracleTextLower(c)
+	if ot == "" {
+		return false
+	}
+	if strings.Contains(ot, "haste") {
+		return true
+	}
+	// Attack-trigger value (shares the substring shape with the
+	// existing hasAttackTriggerValue helper used by the attack-target
+	// pipeline — keep in sync; the helper is on a Card already).
+	if hasAttackTriggerValue(c) {
+		return true
+	}
+	// Anthem family — only buffs this turn's combat. "until end of
+	// turn" and "until your next turn" variants both qualify; static
+	// anthems (Glorious Anthem, Honor of the Pure) are also main1-
+	// preferring because the buff applies to the combat-step state.
+	if strings.Contains(ot, "creatures you control get +") {
+		return true
+	}
+	if strings.Contains(ot, "attacking creatures get +") {
+		return true
+	}
+	if strings.Contains(ot, "creatures you control gain") &&
+		(strings.Contains(ot, "haste") || strings.Contains(ot, "trample") ||
+			strings.Contains(ot, "first strike")) {
+		return true
+	}
+	// Equipment — the card itself wants to be deployed AND attached
+	// pre-combat. Bias the cast toward main1 so the engine's equip
+	// activation window in the same main phase can attach.
+	if typeLineContains(c, "equipment") {
+		return true
 	}
 	return false
 }
@@ -3055,6 +3673,21 @@ func (h *YggdrasilHat) ChooseMulligan(gs *gameengine.GameState, seatIdx int, han
 				return true
 			}
 		}
+
+		// Combo-threat tightening: if any opponent's commander looks like
+		// a combo win condition (oracle text hits "infinite" / "win the
+		// game" / "extra turn" / "untap all" / "create a copy"), demand
+		// either interaction or an engine card in hand. A marginal hand
+		// with only lands + ramp + cuttables vs a combo opponent gets
+		// run over before turn 4 — better to dig for a counter or a
+		// stax piece.
+		if someOpponentLooksCombo(gs, seatIdx) {
+			hasInteraction := handHasInteraction(hand)
+			hasEngine := veCount >= 1 || starCount >= 1 || comboCount >= 1
+			if !hasInteraction && !hasEngine {
+				return true
+			}
+		}
 	}
 
 	// On 6 or fewer: star cards make marginal hands keepable.
@@ -3121,6 +3754,49 @@ func (h *YggdrasilHat) ChooseLandToPlay(gs *gameengine.GameState, seatIdx int, l
 		}
 	}
 
+	// Mana-curve "dead next turn" detection: is there a non-land card
+	// in hand we could realistically cast at avail+1 mana? If not, an
+	// ETB-tapped land costs no tempo this turn (we weren't deploying
+	// anyway) — soften the penalty so a color-fixer or utility land
+	// gets played over a basic when the immediate-tempo cost is zero.
+	deadNextTurn := true
+	for _, c := range seat.Hand {
+		if c == nil {
+			continue
+		}
+		isLand := false
+		for _, t := range c.Types {
+			if t == "land" {
+				isLand = true
+				break
+			}
+		}
+		if isLand {
+			continue
+		}
+		if gameengine.ManaCostOf(c) <= availMana {
+			deadNextTurn = false
+			break
+		}
+	}
+
+	// Archetype shapes how harshly tempo loss bites. Aggro and combo
+	// need to deploy on schedule; control and ramp can stomach a tapped
+	// land. Multiplier rides on top of the early/late turn penalty.
+	tappedMul := 1.0
+	if h.Strategy != nil {
+		switch h.Strategy.Archetype {
+		case ArchetypeAggro:
+			tappedMul = 1.5
+		case ArchetypeCombo:
+			tappedMul = 1.2
+		case ArchetypeControl:
+			tappedMul = 0.5
+		case ArchetypeRamp:
+			tappedMul = 0.7
+		}
+	}
+
 	type scored struct {
 		card  *gameengine.Card
 		score float64
@@ -3147,11 +3823,18 @@ func (h *YggdrasilHat) ChooseLandToPlay(gs *gameengine.GameState, seatIdx int, l
 
 		// Enters-tapped penalty — untapped lands are better early game.
 		if strings.Contains(ot, "enters tapped") || strings.Contains(ot, "enters the battlefield tapped") {
-			if gs.Turn <= 4 {
-				sc -= 2.0
-			} else {
-				sc -= 0.5
+			base := 2.0
+			if gs.Turn > 4 {
+				base = 0.5
 			}
+			// Dead-next-turn override: collapse the early penalty to
+			// the late-game floor when there's nothing to cast at
+			// avail+1 anyway. Tempo loss is the only reason ETB-tapped
+			// is bad early; no tempo to lose means no penalty to apply.
+			if deadNextTurn && gs.Turn <= 4 {
+				base = 0.5
+			}
+			sc -= base * tappedMul
 		}
 
 		// Utility land bonus.
@@ -3232,7 +3915,7 @@ func (h *YggdrasilHat) ChooseLandToPlay(gs *gameengine.GameState, seatIdx int, l
 // -- Interface: ChooseCastFromHand --
 
 func (h *YggdrasilHat) ChooseCastFromHand(gs *gameengine.GameState, seatIdx int, castable []*gameengine.Card) *gameengine.Card {
-	h.recordDecisionTier(h.classifyDecision(gs))
+	h.recordParentTier(h.classifyDecision(gs), gs.Turn)
 	h.explorationFactor(gs, seatIdx)
 
 	pool := make([]*gameengine.Card, 0, len(castable))
@@ -3443,6 +4126,21 @@ func (h *YggdrasilHat) ChooseCastFromHand(gs *gameengine.GameState, seatIdx int,
 		}
 		passBoost -= clockPressure
 	}
+	// R60 Second Main Phase audit — Signal A: main2 deploy push.
+	// In postcombat_main we're past the only meaningful combat
+	// window this turn; unused mana doesn't carry over (mana pools
+	// empty at end-of-each-step per CR §106.4). The archetype-based
+	// passBoost above represents "save mana for instants / hold the
+	// counterspell" — useful in main1 because we still have combat +
+	// opponents' turns to spend mana into. In main2 the only window
+	// left is our end step, then opp upkeep. Trim the boost so we
+	// actually deploy before EOT instead of passing held mana into
+	// the void. Counter-hold passBoost stays (still relevant for opp
+	// end-step plays); this only relaxes the archetype-stance
+	// component.
+	if gs != nil && gs.Phase == "postcombat_main" {
+		passBoost -= 0.20
+	}
 	passUCB := h.ucb1(passKey, pos+passBoost)
 	h.logf("  pass: ucb=%.3f (boost=%.2f)", passUCB, passBoost)
 
@@ -3512,10 +4210,13 @@ func (h *YggdrasilHat) ChooseCastFromHand(gs *gameengine.GameState, seatIdx int,
 	best := candidates[pick]
 
 	bestKey := prefix + "cast:" + best.card.DisplayName()
+	tierLabel := "heuristic"
 	if canISRollout {
+		tierLabel = "is_mcts_rollout"
 		h.logf("  → CAST %s (ucb=%.3f, beat pass by %.3f, IS-MCTS, pick=%d/%d)",
 			best.card.DisplayName(), best.ucb, best.ucb-passUCB, pick, len(candidates))
 	} else if canRollout {
+		tierLabel = "rollout"
 		h.logf("  → CAST %s (ucb=%.3f, beat pass by %.3f, pick=%d/%d)",
 			best.card.DisplayName(), best.ucb, best.ucb-passUCB, pick, len(candidates))
 	} else {
@@ -3523,6 +4224,23 @@ func (h *YggdrasilHat) ChooseCastFromHand(gs *gameengine.GameState, seatIdx int,
 			best.card.DisplayName(), best.ucb, pick, len(candidates))
 	}
 	h.recordAction(bestKey, pos+h.cardHeuristic(gs, seatIdx, best.card))
+	// R60 decision-replay surface — emit a structured event so post-
+	// game "why did hat cast X?" analysis can read the candidate-vs-pass
+	// scoring without re-running the eval. Best.ucb / passUCB / margin
+	// are the three numbers that justify the pick; tier and pool size
+	// give the context (was this an expensive Ragnarok decision over a
+	// 12-card pool, or a cheap heuristic over 2?).
+	h.emitDecisionEvent(gs, seatIdx, "cast", map[string]interface{}{
+		"card":         best.card.DisplayName(),
+		"ucb":          best.ucb,
+		"pass_ucb":     passUCB,
+		"margin":       best.ucb - passUCB,
+		"pool_size":    len(pool),
+		"candidates":   len(candidates),
+		"tier":         tierLabel,
+		"pos":          pos,
+		"interaction":  interactionRisk,
+	})
 	return best.card
 }
 
@@ -3577,8 +4295,11 @@ func (h *YggdrasilHat) castHeuristic(gs *gameengine.GameState, seatIdx int, pool
 		}
 	}
 
-	// Early game: ramp > draw > threats.
-	if turn <= 12 {
+	// Ramp > draw > threats. Always fires turn ≤ 12 (early-game default).
+	// Beyond that, the rule still fires when ramping would unlock a hand
+	// card the seat couldn't cast this turn (rampUnlocksHand) — late-game
+	// ramp into a big finisher is the same tempo win as a turn-3 Cultivate.
+	if turn <= 12 || h.rampUnlocksHand(gs, seatIdx) {
 		var ramp, draw, other []*gameengine.Card
 		for _, c := range pool {
 			switch h.categorizeWithFreya(c) {
@@ -3596,23 +4317,127 @@ func (h *YggdrasilHat) castHeuristic(gs *gameengine.GameState, seatIdx int, pool
 			})
 			return ramp[0]
 		}
-		if len(draw) > 0 {
+		if turn <= 12 && len(draw) > 0 {
 			sort.SliceStable(draw, func(i, j int) bool {
 				return gameengine.ManaCostOf(draw[i]) < gameengine.ManaCostOf(draw[j])
 			})
 			return draw[0]
 		}
 		pool = other
+		// Re-include `draw` when we entered via the rampUnlocksHand
+		// branch past turn 12 — we don't want to drop draw cards from
+		// the pool just because they didn't beat ramp on this tick.
+		if turn > 12 {
+			pool = append(pool, draw...)
+		}
 	}
 
 	if len(pool) == 0 {
 		return nil
 	}
-	// Default: use cardHeuristic for archetype-aware scoring.
+	// Default: cardHeuristic-driven sort with a dead-card filter that
+	// pushes spells requiring a creature we control to the end when the
+	// seat has no creatures. Non-dead cards come first; within each
+	// group, cardHeuristic decides.
 	sort.SliceStable(pool, func(i, j int) bool {
+		iDead := h.castIsDead(gs, seatIdx, pool[i])
+		jDead := h.castIsDead(gs, seatIdx, pool[j])
+		if iDead != jDead {
+			return !iDead
+		}
 		return h.cardHeuristic(gs, seatIdx, pool[i]) > h.cardHeuristic(gs, seatIdx, pool[j])
 	})
 	return pool[0]
+}
+
+// rampUnlocksHand reports whether the seat holds a non-ramp non-land
+// card in hand whose CMC is just out of reach now but would be castable
+// after one more mana source. Used by castHeuristic to extend the
+// turn ≤ 12 ramp-priority rule into the late game when ramping would
+// directly enable a higher-CMC play next turn.
+//
+// The unlock window is [avail+1, avail+2] — a single +1 ramp source
+// typically enables a single CMC bracket, and many ramp cards (Sol
+// Ring, signets) effectively add 2 by ETB-untapping for that mana.
+func (h *YggdrasilHat) rampUnlocksHand(gs *gameengine.GameState, seatIdx int) bool {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return false
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return false
+	}
+	avail := gameengine.AvailableManaEstimate(gs, seat)
+	for _, c := range seat.Hand {
+		if c == nil {
+			continue
+		}
+		isLand := false
+		for _, t := range c.Types {
+			if t == "land" {
+				isLand = true
+				break
+			}
+		}
+		if isLand {
+			continue
+		}
+		if h.categorizeWithFreya(c) == CatRamp {
+			continue
+		}
+		cmc := gameengine.ManaCostOf(c)
+		if cmc > avail && cmc <= avail+2 {
+			return true
+		}
+	}
+	return false
+}
+
+// castIsDead reports whether casting `card` would have no useful effect
+// in the current board state. Conservative substring scan — false
+// positives are acceptable (the card just gets cast slightly later),
+// false negatives would mis-deprioritize a usable card.
+//
+// Current rules:
+//   - "Target creature you control" / "creatures you control" / "creature
+//     you control gains" + the seat controls zero creatures → dead.
+//
+// Self-creature spells (a creature card that requires "target creature
+// you control" for an ETB ability) are NOT marked dead — casting the
+// card itself adds a creature to the board, so the requirement is met
+// on resolution.
+func (h *YggdrasilHat) castIsDead(gs *gameengine.GameState, seatIdx int, card *gameengine.Card) bool {
+	if gs == nil || card == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return false
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return false
+	}
+	ot := gameengine.OracleTextLower(card)
+	if ot == "" {
+		return false
+	}
+	needsCreature := strings.Contains(ot, "target creature you control") ||
+		strings.Contains(ot, "creatures you control") ||
+		strings.Contains(ot, "creature you control gains")
+	if !needsCreature {
+		return false
+	}
+	for _, t := range card.Types {
+		if t == "creature" {
+			return false
+		}
+	}
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		if typeLineContains(p.Card, "creature") {
+			return false
+		}
+	}
+	return true
 }
 
 // simulateRolloutForCard runs a rollout simulation for casting a specific card.
@@ -3647,7 +4472,7 @@ func (h *YggdrasilHat) ChooseActivation(gs *gameengine.GameState, seatIdx int, o
 	if len(options) == 0 {
 		return nil
 	}
-	h.recordDecisionTier(h.classifyDecision(gs))
+	h.recordParentTier(h.classifyDecision(gs), gs.Turn)
 
 	// Combo sequencer override: if a combo is executable and the next
 	// action matches an activation (already on battlefield), prefer it.
@@ -3951,7 +4776,7 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 	if len(legal) == 0 {
 		return nil
 	}
-	h.recordDecisionTier(h.classifyDecision(gs))
+	h.recordParentTier(h.classifyDecision(gs), gs.Turn)
 
 	pos := h.evalPosition(gs, seatIdx)
 	relPos := h.relativePosition(gs, seatIdx)
@@ -4040,13 +4865,26 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 	}
 
 	// Phase-of-game shift on attack threshold:
-	//   Deploy  → +0.15 (very conservative; we'd rather develop board)
+	//   Deploy  → +0.15 (conservative; develop board over chip damage)
 	//   Develop → 0.0   (default behavior)
-	//   Execute → -0.10 (more aggressive; lower bar to swing)
+	//   Execute → -0.10 (aggressive; lower bar to swing)
+	//
+	// R60 round 5 — combat-first archetypes (Aggro / Burn / Voltron /
+	// Tribal) INVERT the deploy bump. Their gameplan IS early damage:
+	// a turn-2 Goblin Guide HOLDing because "we should develop more
+	// board" is exactly the bug the audit surfaced. They get a small
+	// -0.05 shift instead so a 1/1 (val=0.10) on turn 2 still clears
+	// the swing bar.
+	combatFirst := isCombatFirstArchetype(h.Strategy)
 	switch h.detectPhase(gs, seatIdx) {
 	case PhaseDeploy:
-		threshold += 0.15
-		stance += "+DEPLOY"
+		if combatFirst {
+			threshold -= 0.05
+			stance += "+DEPLOY-AGGRO"
+		} else {
+			threshold += 0.15
+			stance += "+DEPLOY"
+		}
 	case PhaseExecute:
 		threshold -= 0.10
 		stance += "+EXECUTE"
@@ -4186,8 +5024,61 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 		return all
 	}
 
-	h.logf("%s ATTACK seat=%d pos=%.3f stance=%s threshold=%.2f legal=%d wrath=%v",
-		roundTag(gs, seatIdx), seatIdx, pos, stance, threshold, len(legal), wrathSuspected)
+	// Defender deathtouch density. canSwingProfitably already binary-prunes
+	// attackers that have no safe lane, but the value loop didn't soften
+	// the bonus when the worst-case opponent fields several untapped
+	// deathtouch blockers. Against e.g. a Spider tribal or Vraska's
+	// tokens, every non-deathtouch / non-first-strike / non-trample /
+	// non-indestructible swing is a one-shot trade — borderline attackers
+	// shouldn't get the same evasion/keyword bonuses that nudge them over
+	// the threshold. We track the MAX untapped-DT count across opponents
+	// because the attacker only swings into one defender, but bestTarget
+	// will pick the lane that minimizes resistance, so density is the
+	// pessimistic case and acts as a soft brake rather than a hard prune.
+	maxDeathtouchDensity := 0
+	for i, s := range gs.Seats {
+		if i == seatIdx || s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		dt := 0
+		for _, b := range s.Battlefield {
+			if b != nil && b.IsCreature() && !b.Tapped && b.HasKeyword("deathtouch") &&
+				gs.PowerOf(b) > 0 {
+				dt++
+			}
+		}
+		if dt > maxDeathtouchDensity {
+			maxDeathtouchDensity = dt
+		}
+	}
+
+	// R60 round 5 — open-lane detection. If at least one opponent has
+	// ZERO untapped potential blockers, every attacker gets a "damage
+	// is free" bonus. Bonus scales with archetype: combat-first decks
+	// (Aggro / Burn / Voltron / Tribal) treat open lanes as their PLAN
+	// and get the full +0.20; others get +0.10 because chip damage is
+	// still positive but less central to their gameplan. Pre-R60r5 a
+	// turn-3 vanilla 1/1 (val=0.10) staring at an empty seat held its
+	// ground because the score sat below the deploy-phase threshold —
+	// that's the early-game-too-defensive failure the audit flagged.
+	openLaneBonus := 0.0
+	if anyOpponentHasOpenLane(gs, seatIdx) {
+		if combatFirst {
+			openLaneBonus = 0.20
+		} else {
+			openLaneBonus = 0.10
+		}
+	}
+
+	// R60 round 12+ chain-attack awareness (see chain_attack_signals_r60.go).
+	// Pending-extra-combats: read the engine's FIFO queue. Anticipated:
+	// scan the legal pool for an "additional combat" trigger source about
+	// to swing this combat. Both bonuses encourage committing chip-damage
+	// attackers when multiple combats are queued or imminent.
+	chainBonus := chainAttackPendingBonus(gs) + chainAttackAnticipationBonus(legal)
+
+	h.logf("%s ATTACK seat=%d pos=%.3f stance=%s threshold=%.2f legal=%d wrath=%v dt-density=%d open-lane=%.2f chain=%.2f",
+		roundTag(gs, seatIdx), seatIdx, pos, stance, threshold, len(legal), wrathSuspected, maxDeathtouchDensity, openLaneBonus, chainBonus)
 
 	var attackers []*gameengine.Permanent
 	for _, p := range legal {
@@ -4199,6 +5090,16 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 			continue
 		}
 		val := float64(pw) / 10.0
+		// R60 round 5 — open-lane bonus. Applied universally to every
+		// attacker (vanilla 1/1s included) when a defenseless seat
+		// exists; the bonus is sized so it can lift a marginal attacker
+		// over the deploy-phase threshold without overriding the
+		// profitability prune that handles bad trades downstream.
+		val += openLaneBonus
+		// R60 round 12+ chain-attack horizon bonus. Same per-attacker
+		// shape as openLaneBonus — fold the queue-aware and anticipated
+		// extra-combat awareness into every attacker's commit score.
+		val += chainBonus
 		if p.HasKeyword("deathtouch") {
 			val += 0.3
 		}
@@ -4262,6 +5163,23 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 		if p.Card != nil && h.isValueEngineKey(p.Card) {
 			val += 0.15
 		}
+		// R60 — trick attacks. Creatures whose death IS the value (die-
+		// triggers like Hangarback Walker / Doomed Traveler, persist /
+		// undying / unearth recursion, damage-taken triggers) should
+		// swing INTO clean blocks — the trade is the engine. Adds a
+		// fixed bump so the value loop tilts them above the threshold;
+		// the strategic-shield below also bypasses the lose-to-clean-
+		// block prune for the same set.
+		if p.Card != nil && hasDeathPayoffValue(p.Card) {
+			val += 0.20
+		}
+		// R60 — intentional chump. Cheap (≤2 CMC) attackers when a sac
+		// outlet is on the board: the block becomes a tempo trade we
+		// choose to take (Phyrexian Altar mana, Goblin Bombardment
+		// damage, Viscera Seer scry on the would-be casualty).
+		if hasSacFuelValue(gs, seatIdx, p) {
+			val += 0.15
+		}
 		// Commander damage matters — always worth sending.
 		if p.Card != nil && isCommanderCard(gs, seatIdx, p.Card) {
 			val += 0.10
@@ -4275,12 +5193,64 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 				val += 0.60
 			}
 		}
+		// R60 round 9+ self-attack-trigger bonus (see
+		// attack_trigger_value_r60.go). Covers the Hellrider / Maraxus /
+		// Goldspan / Lord-of-the-Forsaken family — non-commander attack-
+		// triggers and non-tutor commander attack-triggers (pump, draw,
+		// damage, drain, treasure) that the audit found were all scoring 0.
+		// Graduated bonus by payoff category; capped well below the
+		// commander-tutor +0.60 so it lifts marginal attackers without
+		// drowning out the profitability prune downstream.
+		if p.Card != nil {
+			val += attackTriggerBonus(p.Card)
+		}
+		// R60 round 10+ postcombat-trigger bonus (see
+		// postcombat_trigger_value_r60.go). Disjoint family from
+		// attackTriggerBonus: "deals combat damage to a player" (Toski,
+		// Bident bearers), "additional combat phase" (Aurelia, Scourge,
+		// Combat Celebrant), "at the end of combat" generic, and
+		// "becomes blocked" pumps. Both helpers can fire on the same
+		// attacker when the card has both an attack trigger AND a
+		// postcombat trigger (rare — e.g. Maelstrom Wanderer), which
+		// correctly compounds the value.
+		if p.Card != nil {
+			val += postcombatTriggerBonus(p.Card)
+		}
 
 		// 3rd Eye: When a wrath is suspected, hold back VE key creatures
 		// to preserve board presence post-wipe. Only applies when we're
 		// not desperate (ahead or neutral).
 		if wrathSuspected && relPos > -0.2 && p.Card != nil && h.isValueEngineKey(p.Card) {
 			val -= 0.15
+		}
+		// R60 round 11+ counter-balance (see attack_into_wipe_signals_r60.go):
+		// the inverse case — sometimes attacking INTO the wipe is correct.
+		// Expendable creatures generate free chip damage before dying;
+		// triggered creatures capture their use-it-or-lose-it payoff
+		// before the wipe takes the body. Both gated on the same
+		// wrathSuspected + relPos > -0.2 envelope as the hold-back above.
+		val += h.wipeBaitExpendableBonus(gs, seatIdx, p, wrathSuspected, relPos)
+		val += useItOrLoseItTriggerBonus(p, wrathSuspected, relPos)
+
+		// Deathtouch density brake. A single untapped DT blocker is one
+		// safe lane lost; two or more start to gate the entire turn. The
+		// attacker dodges the penalty if it ignores DT outright —
+		// deathtouch (we trade up by definition), first/double strike
+		// (kills the DT body in 510.5 before being bitten), trample
+		// (excess leaks past the chump), or indestructible (DT damage
+		// can't kill us). Caps at -0.20 — even a board of 4 DT spiders
+		// shouldn't push a real threat off the table by itself; this
+		// nudges marginal attackers below the swing threshold.
+		ignoresDT := p.HasKeyword("deathtouch") || p.HasKeyword("trample") ||
+			p.HasKeyword("indestructible") ||
+			p.HasKeyword("first strike") || p.HasKeyword("first_strike") ||
+			p.HasKeyword("double strike") || p.HasKeyword("double_strike")
+		if maxDeathtouchDensity > 0 && !ignoresDT {
+			penalty := 0.05 * float64(maxDeathtouchDensity)
+			if penalty > 0.20 {
+				penalty = 0.20
+			}
+			val -= penalty
 		}
 
 		tag := "ATTACK"
@@ -4315,13 +5285,43 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 			for _, p := range attackers {
 				keep := true
 				if p != nil && p.Card != nil {
-					strategic := isCommanderCard(gs, seatIdx, p.Card) ||
-						h.isValueEngineKey(p.Card) ||
+					// Commanders used to be auto-strategic (never pruned).
+					// That blanket protection lost games: a vanilla 2/2
+					// commander clean-trading into a 5/5 blocker also
+					// costs {2} extra on recast (CR §903.8 — commander
+					// tax compounds on every recast from the command
+					// zone), so the swing is *worse* than for a non-
+					// commander attacker — we get 0 damage AND owe two
+					// more mana to redeploy. Keep the strategic shield
+					// only when the commander is doing something
+					// non-vanilla: an attack-trigger (Zur, Narset,
+					// Etali) where the trigger value outweighs the
+					// trade, or a commander-damage clock that's close
+					// enough to lethal that one more poke matters.
+					strategic := h.isValueEngineKey(p.Card) ||
 						h.isComboRelevant(p.Card)
+					if isCommanderCard(gs, seatIdx, p.Card) {
+						if hasAttackTriggerValue(p.Card) ||
+							commanderClockNearLethal(gs, seatIdx, p.Card, 13) {
+							strategic = true
+						}
+					}
+					// R60 trick-attack shield. Death-payoff and sac-fuel
+					// attackers WANT a clean block — pruning them as
+					// "would die on every target" loses the engine. Both
+					// signals are oracle / battlefield scoped; see
+					// hasDeathPayoffValue + hasSacFuelValue for the shape.
+					if hasDeathPayoffValue(p.Card) || hasSacFuelValue(gs, seatIdx, p) {
+						strategic = true
+					}
 					if !strategic && !canSwingProfitably(gs, p, opponents) {
 						keep = false
-						h.logf("  PRUNE: %s would die to clean block on every target",
-							p.Card.DisplayName())
+						reason := "would die to clean block on every target"
+						if isCommanderCard(gs, seatIdx, p.Card) {
+							reason += " (+{2} commander tax)"
+						}
+						h.logf("  PRUNE: %s %s",
+							p.Card.DisplayName(), reason)
 					}
 				}
 				if keep {
@@ -4667,6 +5667,13 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 		// has first/double strike and can kill the attacker before the
 		// regular damage step. Likewise, our deathtouch blocker survives
 		// any attacker without first/double strike.
+		//
+		// R60 round 8+ combat-trick awareness (see
+		// block_priority_signals_r60.go). Two signals reshape the survivor
+		// pool: hasTrick → rescue otherwise-dead blockers; oppTrick →
+		// require a 1-toughness buffer for marginal survivors.
+		hasTrick := h.hasAffordableDefensiveTrick(gs, seatIdx)
+		oppTrick := h.oppHasCombatTrickMana(gs, seatIdx)
 		var survivors []*gameengine.Permanent
 		for _, b := range legal {
 			if b == nil {
@@ -4708,9 +5715,27 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 				continue
 			}
 			if atkDT && incomingToBlocker >= 1 {
+				// Signal A doesn't rescue against deathtouch — pump tricks
+				// don't escape the DT trigger, and regen-vs-DT is
+				// case-specific. Skip to next candidate.
 				continue
 			}
-			if bTou > incomingToBlocker {
+			// Survivor margin: how many toughness over lethal. Signal B
+			// requires margin ≥ 2 when opp has combat-trick mana up so a
+			// trick that pumps the attacker +1/+1 doesn't kill the blocker.
+			margin := bTou - incomingToBlocker
+			survives := margin > 0
+			requiredMargin := 1
+			if oppTrick {
+				requiredMargin = 2
+			}
+			if survives && margin >= requiredMargin {
+				survivors = append(survivors, b)
+				continue
+			}
+			// Signal A: trust our defensive trick to rescue a would-die
+			// blocker. Gated on hasTrick + !atkDT (handled above).
+			if !survives && hasTrick {
 				survivors = append(survivors, b)
 			}
 		}
@@ -4775,6 +5800,40 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 			}
 		}
 
+		// Lifelink-killshot: an unblocked lifelink attacker is a 2x life
+		// swing (we lose N, opp gains N). The favorable-trade fallback
+		// above only accepts STRICTLY lighter blockers, so a 4/4 vanilla
+		// vs a 4/4 lifelink attacker falls through — we eat 4 damage AND
+		// concede 4 life. A parity trade (both die, equal stats) is a
+		// life-positive outcome against lifelink even when we lose the
+		// body, because we're trading creature-for-creature instead of
+		// creature-for-creature-AND-8-life. Require simulateBlockerTrade
+		// to confirm the blocker actually kills the attacker; feeding the
+		// lifelink with a non-killing block would be strictly worse.
+		// Pick the smallest qualifying mutual-killer to minimize the
+		// committed-stats loss.
+		if len(chosen) == 0 && atkPow > 0 && atk.HasKeyword("lifelink") {
+			var best *gameengine.Permanent
+			bestSum := 1 << 30
+			for _, b := range legal {
+				if b == nil || gs.PowerOf(b) <= 0 {
+					continue
+				}
+				aDies, _ := simulateBlockerTrade(gs, atk, b)
+				if !aDies {
+					continue
+				}
+				bSum := gs.PowerOf(b) + gs.ToughnessOf(b)
+				if bSum < bestSum {
+					best = b
+					bestSum = bSum
+				}
+			}
+			if best != nil {
+				chosen = []*gameengine.Permanent{best}
+			}
+		}
+
 		if len(chosen) == 0 && (willDieIfUnblocked || mustBlock) {
 			// Deathtouch trade-up: prefer a deathtouch blocker that can
 			// take down the attacker (any damage is lethal) over a chump.
@@ -4823,6 +5882,10 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 				// CR §702.19c trample with first/double strike: if the
 				// chump can't absorb enough damage to keep us alive, the
 				// block burns a creature for nothing. Skip the chump.
+				// (Simple-trample wastes are caught by the post-decision
+				// trample-leak guard further down, which covers the
+				// favorable-trade branch above too — that branch can
+				// pick a chump before this one ever runs.)
 				if useChump && atk.HasKeyword("trample") && atkFS &&
 					!chump.HasKeyword("deathtouch") &&
 					!chump.HasKeyword("first strike") && !chump.HasKeyword("first_strike") &&
@@ -4848,6 +5911,50 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 				}
 				if useChump {
 					chosen = []*gameengine.Permanent{chump}
+				}
+			}
+		}
+
+		// Trample-leak waste guard (CR §702.19, post-decision). Both
+		// the favorable-trade fallback and the chump branch can pick a
+		// single chump blocker against a trample attacker. When we're
+		// at lethal-from-the-leak even AFTER the block (chump dies,
+		// excess trample tramples over and kills us) the chump was
+		// burned for nothing — the right play is to preserve the body
+		// for instant-speed responses or next turn (if a fog/wipe is
+		// in hand we'd rather not have committed). Skipped when:
+		//   - we're under must-block (annihilator/infect/commander
+		//     clock at 21 — those are catastrophic if unblocked even
+		//     when we don't die from raw damage),
+		//   - the chump survives (irrelevant — chump branch caps stats
+		//     well below survivor pool, but defensive check),
+		//   - the chosen blocker is gang-sized (handled below),
+		//   - the chump has DT/FS/DS or is indestructible (a real
+		//     trade-up, not waste — those kill the trampler or take
+		//     no damage themselves).
+		if len(chosen) == 1 && atk.HasKeyword("trample") && !mustBlock {
+			chump := chosen[0]
+			ignoresTrample := chump.HasKeyword("deathtouch") ||
+				chump.HasKeyword("first strike") || chump.HasKeyword("first_strike") ||
+				chump.HasKeyword("double strike") || chump.HasKeyword("double_strike") ||
+				chump.HasKeyword("indestructible")
+			if !ignoresTrample {
+				ap := atkPow
+				if atkDS {
+					ap *= 2
+				}
+				absorbed := gs.ToughnessOf(chump) - chump.MarkedDamage
+				if absorbed < 0 {
+					absorbed = 0
+				}
+				leak := ap - absorbed
+				if leak < 0 {
+					leak = 0
+				}
+				if life-leak <= 0 {
+					h.logf("  trample-waste: dropping %s vs %s (leak %d kills us at %d life)",
+						chump.Card.DisplayName(), atk.Card.DisplayName(), leak, life)
+					chosen = nil
 				}
 			}
 		}
@@ -5008,10 +6115,63 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 	if top == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
 		return nil
 	}
-	if top.Controller == seatIdx || top.Countered {
+	if top.Countered {
 		return nil
 	}
-	h.recordDecisionTier(h.classifyDecision(gs))
+	// R60 round 15+ self-trigger response (see self_trigger_response_r60.go).
+	// The general rule "skip self-controlled stack items" holds for
+	// spells and activations, but the narrow edge case "my draw trigger
+	// + my Underworld Dreams = I die" is correctly handled by countering
+	// our own trigger. shouldCounterOwnTrigger gates this tightly —
+	// requires a triggered ability source, a damage-on-draw punisher
+	// on our board, and projected lethal damage.
+	if top.Controller == seatIdx {
+		if h.shouldCounterOwnTrigger(gs, seatIdx, top) {
+			// Find an affordable counterspell and use it. Mirrors the
+			// counter-cast logic below at line ~6402.
+			seat := gs.Seats[seatIdx]
+			colored := gameengine.AvailableColoredManaEstimate(gs, seat)
+			for _, c := range seat.Hand {
+				if c != nil && gameengine.CardHasCounterSpell(c) &&
+					gameengine.CanPayColoredCost(colored, c) {
+					h.logf("SELF-TRIGGER-COUNTER seat=%d top=%v (self-harm via punisher)",
+						seatIdx, top.Kind)
+					// Emit a structured decision event so post-game
+					// audit logs can count self-counter fires (one of
+					// the few cases where the hat goes against its own
+					// stack item — rare enough that audit-derived
+					// counts are the right observability surface).
+					sourceName := ""
+					if top.Source != nil && top.Source.Card != nil {
+						sourceName = top.Source.Card.DisplayName()
+					}
+					counterName := ""
+					if c != nil {
+						counterName = c.DisplayName()
+					}
+					h.emitDecisionEvent(gs, seatIdx, "self_trigger_counter",
+						map[string]interface{}{
+							"source":  sourceName,
+							"counter": counterName,
+							"life":    seat.Life,
+						})
+					// Process-lifetime atomic counter for gauntlet
+					// observability (see SelfTriggerCounterFires).
+					selfTriggerCounterFires.Add(1)
+					return &gameengine.StackItem{
+						Card:       c,
+						Controller: seatIdx,
+					}
+				}
+			}
+		}
+		return nil
+	}
+	// R60r5 — stamp tier keyed by top.ID so that even after a LATER
+	// ChooseResponse call overwrites lastParentTier, cascade decisions
+	// firing during THIS item's resolution can still recover the
+	// correct tier.
+	h.recordResponseTier(h.classifyDecision(gs), gs.Turn, top)
 	if gameengine.SplitSecondActive(gs) {
 		return nil
 	}
@@ -5019,15 +6179,32 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 		return nil
 	}
 
+	// R60 defensive signal — lethal-incoming combat with a fog / mass-
+	// protection answer in hand. Checked BEFORE the counterspell fast-path
+	// because no number of countered spells stops an already-declared
+	// attack; the fog/protection IS the answer. The defender only has
+	// this priority window because some opponent-controlled item (usually
+	// an attack trigger) is on the stack — without that window, the
+	// engine wouldn't poll for a response at all.
+	if defResp := h.maybeCastDefensiveAnswer(gs, seatIdx); defResp != nil {
+		return defResp
+	}
+
 	// Fast-path: scan for an affordable counterspell BEFORE running the
 	// evaluator. Most seats most of the time have zero counters — this
 	// skips the expensive relativePosition call entirely.
 	seat := gs.Seats[seatIdx]
 	var bestCounter *gameengine.Card
-	avail := gameengine.AvailableManaEstimate(gs, seat)
+	// R60 color-aware mana gate: a Counterspell {U}{U} needs blue, not
+	// just generic. CanPayColoredCost folds the seat's untapped lands
+	// (mono-color → Fixed, dual → Flex bitmask) plus current pool into a
+	// greedy match against the card's printed pip cost. Falls through to
+	// the legacy generic-CMC check via Total when ManaCostString is empty
+	// (engine-minted cards / tests without printed costs still work).
+	colored := gameengine.AvailableColoredManaEstimate(gs, seat)
 	for _, c := range seat.Hand {
 		if c != nil && gameengine.CardHasCounterSpell(c) {
-			if avail >= gameengine.ManaCostOf(c) {
+			if gameengine.CanPayColoredCost(colored, c) {
 				bestCounter = c
 				break
 			}
@@ -5037,20 +6214,114 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 		return nil
 	}
 
+	// R60 priority-window audit — resolve the EFFECTIVE response card
+	// once, then drive all downstream heuristics off it. For spells
+	// this is identical to top.Card; for triggered / activated
+	// abilities (top.Card == nil) it's top.Source.Card — the
+	// permanent whose oracle text describes the trigger payload.
+	// Pre-R60 every "top.Card != nil" branch silently short-circuited
+	// on triggers, leaving the hat blind to Etali attack triggers,
+	// Sheoldred drain triggers, Smothering Tithe draw triggers, and
+	// the wider "what's resolving right now" question across complex
+	// trigger stacks.
+	respondCard := effectiveResponseCard(top)
+	isTrigger := isAbilityOnStack(top)
+
+	// R60 signal A — "nothing meaningful to interrupt" early pass.
+	// Cantrip-shape only applies to SPELLS (a triggered ability that
+	// draws a card is the entire payload of its source permanent, not
+	// a low-impact value blip — those almost always indicate a value
+	// engine worth countering when we have the window).
+	if !isTrigger && isLowImpactCantripSpell(respondCard) && !h.isComboRelevant(respondCard) {
+		return nil
+	}
+
 	score := stackItemScore(top)
+
+	// R60 — stack-depth context. With the stack at 3+ items, the literal
+	// top is rarely the meaningful decision: an opponent's counter is
+	// aimed at our spell below, removal is timed to interrupt an
+	// already-committed line, or a counter-war is mid-flight. The simple
+	// `stackItemScore(top)` gate can't see any of that. See
+	// `computeStackDepthSignals` for the three signals folded in here.
+	depthSig := h.computeStackDepthSignals(gs, seatIdx, top)
+	// R60 follow-up to #310 — multi-level stack-resolution awareness.
+	// holdForBiggerBelow (defer counter when a higher-threat hostile
+	// item sits below; single-counter holders save the response window)
+	// and forceCounterShield (top is a Veil-of-Summer-shape protection
+	// spell about to lock our counters out of the bigger threats below).
+	h.stackResolutionSignals(gs, seatIdx, top, &depthSig)
+	if depthSig.scoreBonus > 0 {
+		score += depthSig.scoreBonus
+	}
+	// holdForBiggerBelow short-circuits to pass — saving the single
+	// available counter for the larger threat's own priority window.
+	// Skipped when mustCounter is set (the helper already gates this,
+	// but defense-in-depth here keeps the contract explicit).
+	if depthSig.holdForBiggerBelow && !depthSig.mustCounter {
+		h.logf("STACK-RESOLUTION seat=%d depth=%d HOLD reason=%s",
+			seatIdx, len(gs.Stack), depthSig.reason)
+		return nil
+	}
 
 	// Always counter combo pieces / "win the game" / mass removal.
 	mustCounter := false
-	if top.Card != nil {
-		if h.isComboRelevant(top.Card) {
+	if depthSig.mustCounter {
+		mustCounter = true
+		topName := "<unknown>"
+		if top.Card != nil {
+			topName = top.Card.DisplayName()
+		}
+		h.logf("STACK-DEPTH-RESPONSE seat=%d depth=%d MUST-COUNTER reason=%s top=%s",
+			seatIdx, len(gs.Stack), depthSig.reason, topName)
+	}
+	if respondCard != nil {
+		if h.isComboRelevant(respondCard) {
 			mustCounter = true
 		}
-		ot := gameengine.OracleTextLower(top.Card)
+		ot := gameengine.OracleTextLower(respondCard)
 		if strings.Contains(ot, "win the game") {
 			mustCounter = true
 		}
 		if strings.Contains(ot, "destroy all") || strings.Contains(ot, "exile all") && score >= 1 {
 			mustCounter = true
+		}
+		// R60 signal B — eager counter on routinely game-deciding shapes
+		// that the CMC-based score gate would otherwise let through.
+		// Extra-turn spells are nearly always a combo finisher or lethal
+		// swing setup; tutors at score ≥ 2 are fetching a key piece (cheap
+		// 1-mana tutors like Vampiric / Mystical Tutor often slip past
+		// the gate but materially advance the caster's win line).
+		if strings.Contains(ot, "take an extra turn") ||
+			strings.Contains(ot, "take an additional turn") ||
+			strings.Contains(ot, "extra turn after this one") {
+			mustCounter = true
+		}
+		if strings.Contains(ot, "search your library") && score >= 2 {
+			mustCounter = true
+		}
+		// R60 priority-window audit — high-value trigger payloads. When
+		// the stack item is a triggered ability whose source's oracle
+		// text matches a known game-impactful pattern (attack-trigger
+		// value extraction, mass-draw, mass-drain, theft), force a
+		// must-counter even at a low CMC-derived score. Etali, Zur,
+		// Narset (attack-trigger search); Sheoldred / Toxic Deluge-on-
+		// resolve (mass drain); Smothering Tithe / Esper Sentinel (mass
+		// draw); Tergrid (theft) all match.
+		if isTrigger {
+			if strings.Contains(ot, "exile the top") && strings.Contains(ot, "of each") {
+				mustCounter = true // Etali pattern
+			}
+			if strings.Contains(ot, "search your library") {
+				mustCounter = true // Zur / Narset attack-trigger tutors
+			}
+			if strings.Contains(ot, "each opponent") && strings.Contains(ot, "loses") {
+				mustCounter = true // Sheoldred drain shape
+			}
+			if strings.Contains(ot, "each opponent draws") ||
+				strings.Contains(ot, "whenever an opponent draws") {
+				mustCounter = true // Sheoldred / wheel-style trigger
+			}
 		}
 		// 3rd Eye: Counter kingmaker's key plays more aggressively.
 		if h.isKingmaker(gs, top.Controller) && score >= 2 {
@@ -5058,7 +6329,7 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 		}
 		// Counter cards we're specifically vulnerable to (Freya threat assessment).
 		if len(h.vulnerableToSet) > 0 {
-			if h.vulnerableToSet[strings.ToLower(top.Card.DisplayName())] {
+			if h.vulnerableToSet[strings.ToLower(respondCard.DisplayName())] {
 				mustCounter = true
 			}
 		}
@@ -5071,7 +6342,7 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 			mustCounter = true
 		}
 		// 3rd Eye: Counter cards we've seen wreck the board before.
-		cardName := top.Card.DisplayName()
+		cardName := respondCard.DisplayName()
 		if top.Controller >= 0 && top.Controller < len(h.cardsSeen) {
 			if h.cardsSeen[top.Controller][cardName] > 1 {
 				score += 2
@@ -5142,15 +6413,441 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 			}
 		}
 
+		// R60 — deep-stack commit-or-lose adjustment. When the stack
+		// already has 2+ hostile items pending, holding the counter for
+		// "a bigger threat later" usually fails to find a use — the
+		// chain itself IS the bigger threat, and the resolved items
+		// will close the window. Drop the gate to fire on what we have.
+		if depthSig.minScoreDelta > 0 {
+			minScore -= depthSig.minScoreDelta
+			if minScore < 1 {
+				minScore = 1
+			}
+		}
+
 		if score < minScore {
 			return nil
 		}
 	}
 
+	// R60 decision-replay surface — emit a structured event so post-
+	// game "why did hat counter X?" analysis can read the score gate,
+	// the depth-aware signal that tipped it, and the resolved-target
+	// card (effectiveResponseCard handles the trigger-source case).
+	respondTarget := "<unknown>"
+	if rc := effectiveResponseCard(top); rc != nil {
+		respondTarget = rc.DisplayName()
+	}
+	h.emitDecisionEvent(gs, seatIdx, "response_counter", map[string]interface{}{
+		"counter":     bestCounter.DisplayName(),
+		"target":      respondTarget,
+		"top_kind":    top.Kind,
+		"score":       score,
+		"must_reason": depthSig.reason,
+		"must":        depthSig.mustCounter,
+		"stack_depth": len(gs.Stack),
+	})
+
 	return &gameengine.StackItem{
 		Card:       bestCounter,
 		Controller: seatIdx,
 	}
+}
+
+// stackDepthSignals carries context the literal stackItemScore can't
+// capture. Populated by computeStackDepthSignals and consumed by
+// ChooseResponse to escalate the counter-decision at deep stacks.
+//
+// The three signals address concrete misjudgements the pre-R60 hat
+// would make at stack depth ≥ 3:
+//
+//   - mustCounter — top is a counter (or other "kill the spell"
+//     effect) aimed at one of OUR spells already on the stack below.
+//     The pre-fix path scored the counter at its raw CMC (≈ 2) which
+//     fell below the standard minScore=3 gate, so we passed and
+//     watched our committed spell evaporate. The fix forces a counter
+//     in that exact window — the only window we'll get to save the
+//     investment.
+//
+//   - scoreBonus — top targets one of our permanents (removal /
+//     bounce / steal aimed at us), OR we have a non-copy spell of our
+//     own pending below at deep stacks. Both raise the stake of
+//     letting the top resolve, but not to MUST-counter level — a 1
+//     damage ping at a 4/4 doesn't deserve a hard counter just
+//     because it has a target.
+//
+//   - minScoreDelta — pile-up signal. Two+ hostile items below the
+//     top mean we're in a counter war or trigger chain where holding
+//     the counter for "the next big threat" is the wrong frame —
+//     this IS the big moment. Drop the threshold by 1 so a borderline
+//     top fires.
+type stackDepthSignals struct {
+	mustCounter   bool
+	scoreBonus    int
+	minScoreDelta int
+	// R60 follow-up to #310 — stack-resolution awareness across levels.
+	//
+	// holdForBiggerBelow: a higher-threat hostile item sits BELOW the
+	// top. Burning our counter on the smaller top wastes it — passing
+	// lets the small top resolve, then the engine grants us a fresh
+	// priority window over the bigger threat (the formerly-below item
+	// becomes the new top). Single-counter holders gain a turn-level
+	// payoff from this deferral; multi-counter holders fall through to
+	// the normal mustCounter / score path because the higher-threat
+	// item will get its own counter on its window.
+	//
+	// forceCounterShield: top is a counter-protection spell (Veil of
+	// Summer / Autumn's Veil / Silence / Grand Abolisher activation)
+	// that, if it resolves, locks our counters out of the bigger
+	// threats below it on the stack. We have ONE window — counter
+	// the shield now or lose the response chain.
+	holdForBiggerBelow bool
+	forceCounterShield bool
+	reason             string // short tag for log lines
+}
+
+// computeStackDepthSignals scans gs.Stack relative to `top` and
+// `seatIdx`, producing the depth-aware response signals. Safe at any
+// stack depth; returns zero-value signals when nothing of interest is
+// happening (the cheap fast-path for the depth=1 common case).
+//
+// Two passes over gs.Stack:
+//   1. Examine top.Targets / oracle text for the mustCounter and
+//      scoreBonus triggers — these fire at any depth (depth=2 with
+//      top=counter aimed at our depth=1 spell still must-counters).
+//   2. At depth ≥ highStakesStackDepth, scan items below top to
+//      build the investment-protection and hostile-pile-up signals.
+func (h *YggdrasilHat) computeStackDepthSignals(gs *gameengine.GameState, seatIdx int, top *gameengine.StackItem) stackDepthSignals {
+	var sig stackDepthSignals
+	if gs == nil || top == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return sig
+	}
+	depth := len(gs.Stack)
+
+	// ----- Pass 1: top-item target / effect inspection ----------------
+	if top.Card != nil {
+		// Resolved Targets — the engine populates these at cast time so
+		// we have authoritative target IDs to match against.
+		for _, tg := range top.Targets {
+			switch tg.Kind {
+			case gameengine.TargetKindStackItem:
+				if tg.Stack != nil && tg.Stack.Controller == seatIdx && !tg.Stack.IsCopy {
+					sig.mustCounter = true
+					sig.reason = "top_counters_our_stack_item"
+					return sig
+				}
+			case gameengine.TargetKindPermanent:
+				if tg.Permanent != nil && tg.Permanent.Controller == seatIdx {
+					sig.scoreBonus += 2
+					if sig.reason == "" {
+						sig.reason = "top_targets_our_permanent"
+					}
+				}
+			}
+		}
+		// Heuristic fallback when Targets are empty (some engine paths
+		// push spells with the Targets slice unpopulated, and tests
+		// commonly do so). If top has counterspell oracle and any of
+		// our items is below in the stack, treat as the same situation.
+		if !sig.mustCounter && depth >= 2 {
+			ot := gameengine.OracleTextLower(top.Card)
+			isCounter := strings.Contains(ot, "counter target spell") ||
+				strings.Contains(ot, "counter target activated") ||
+				strings.Contains(ot, "counter target triggered") ||
+				strings.Contains(ot, "counter that spell")
+			if isCounter {
+				for i := 0; i < depth-1; i++ {
+					it := gs.Stack[i]
+					if it == nil || it.IsCopy {
+						continue
+					}
+					if it.Controller == seatIdx {
+						sig.mustCounter = true
+						sig.reason = "top_counters_our_stack_item_heuristic"
+						return sig
+					}
+				}
+			}
+		}
+	}
+
+	if depth < highStakesStackDepth {
+		return sig
+	}
+
+	// ----- Pass 2: deep-stack investment + pile-up scan ---------------
+	hasOurSpellBelow := false
+	hostileBelow := 0
+	for i := 0; i < depth-1; i++ {
+		it := gs.Stack[i]
+		if it == nil || it.IsCopy {
+			continue
+		}
+		if it.Controller == seatIdx {
+			hasOurSpellBelow = true
+		} else {
+			hostileBelow++
+		}
+	}
+	if hasOurSpellBelow {
+		sig.scoreBonus += 2
+		if sig.reason == "" {
+			sig.reason = "investment_below_top_at_depth"
+		}
+	}
+	if hostileBelow >= 2 {
+		sig.minScoreDelta = 1
+		if sig.reason == "" {
+			sig.reason = "hostile_pile_up_at_depth"
+		}
+	}
+	return sig
+}
+
+// stackResolutionSignals adds the cross-level signals on top of
+// stackDepthSignals. Mutates the passed-in sig in place — separate
+// helper so the multi-level reasoning is testable independently of
+// the existing depth-context detection.
+//
+// holdForBiggerBelow fires when:
+//   - the top is hostile AND scores below a higher-threat hostile
+//     item somewhere below it on the stack;
+//   - the seat has exactly ONE affordable counter in hand (more than
+//     one means we can counter both; zero is moot — ChooseResponse
+//     short-circuits before this runs).
+//
+// forceCounterShield fires when:
+//   - the top is a counter-protection spell (oracle text matches
+//     "can't be countered" / "hexproof from blue" / "spells you cast
+//     this turn can't be countered" / "no player may cast spells");
+//   - and a hostile item sits below the top (otherwise the shield
+//     protects nothing material — let it resolve and save the
+//     counter).
+func (h *YggdrasilHat) stackResolutionSignals(gs *gameengine.GameState, seatIdx int, top *gameengine.StackItem, sig *stackDepthSignals) {
+	if gs == nil || top == nil || sig == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return
+	}
+	depth := len(gs.Stack)
+	if depth < 2 {
+		return
+	}
+
+	// ----- forceCounterShield ----------------------------------------
+	respondCard := effectiveResponseCard(top)
+	if respondCard != nil && top.Controller != seatIdx {
+		ot := gameengine.OracleTextLower(respondCard)
+		shieldShape := strings.Contains(ot, "can't be countered") ||
+			strings.Contains(ot, "hexproof from blue") ||
+			strings.Contains(ot, "your opponents can't cast spells") ||
+			strings.Contains(ot, "no player may cast")
+		if shieldShape {
+			hostileBelow := false
+			for i := 0; i < depth-1; i++ {
+				it := gs.Stack[i]
+				if it == nil || it.IsCopy {
+					continue
+				}
+				if it.Controller != seatIdx {
+					hostileBelow = true
+					break
+				}
+			}
+			if hostileBelow {
+				sig.forceCounterShield = true
+				sig.mustCounter = true
+				if sig.reason == "" {
+					sig.reason = "counter_shield_protects_opp_stack"
+				}
+			}
+		}
+	}
+
+	// ----- holdForBiggerBelow ----------------------------------------
+	// Only the deferral case — if mustCounter is already set (Etali /
+	// must-counter / shield), we'll counter regardless and this signal
+	// is irrelevant. Same if top is our own item.
+	if sig.mustCounter || top.Controller == seatIdx {
+		return
+	}
+	topScore := stackItemScore(top) + sig.scoreBonus
+	maxBelowScore := 0
+	for i := 0; i < depth-1; i++ {
+		it := gs.Stack[i]
+		if it == nil || it.IsCopy {
+			continue
+		}
+		if it.Controller == seatIdx {
+			continue
+		}
+		if s := stackItemScore(it); s > maxBelowScore {
+			maxBelowScore = s
+		}
+	}
+	if maxBelowScore <= topScore {
+		return
+	}
+	// Count affordable counters in hand. Defer the counter only when
+	// we have a SINGLE one — with multiple, we can spend on the top
+	// AND the below.
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return
+	}
+	colored := gameengine.AvailableColoredManaEstimate(gs, seat)
+	affordable := 0
+	for _, c := range seat.Hand {
+		if c != nil && gameengine.CardHasCounterSpell(c) &&
+			gameengine.CanPayColoredCost(colored, c) {
+			affordable++
+			if affordable >= 2 {
+				break
+			}
+		}
+	}
+	if affordable >= 2 {
+		return
+	}
+	sig.holdForBiggerBelow = true
+	if sig.reason == "" {
+		sig.reason = "hold_counter_for_bigger_threat_below"
+	}
+}
+
+// maybeCastDefensiveAnswer returns a fog or mass-protection spell from
+// hand when this combat phase has enough incoming damage to kill the
+// defender. Returns nil unless ALL of:
+//   - we're in the combat phase (no point fogging out of combat),
+//   - blockers have NOT yet been declared (otherwise the blocker math
+//     already absorbed some of the damage and the incoming estimate is
+//     stale),
+//   - sum of unblocked attacker power targeting seatIdx ≥ our life,
+//   - an affordable instant-shaped fog/protection card is in hand.
+//
+// The fog-or-protection scan uses oracle-text patterns rather than a
+// hard-coded card list so it picks up reprints and variants (Fog,
+// Moment's Peace, Holy Day, Heroic Intervention, Teferi's Protection,
+// Boros Charm-style indestructible grants).
+func (h *YggdrasilHat) maybeCastDefensiveAnswer(gs *gameengine.GameState, seatIdx int) *gameengine.StackItem {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return nil
+	}
+	if gs.Phase != "combat" {
+		return nil
+	}
+	// Avoid double-counting: if blockers were already declared, the
+	// ChooseBlockers path has already shaped the incoming numbers and
+	// we'd be re-pricing a partial situation. Only fire in the windows
+	// BEFORE declare_blockers (begin_of_combat, declare_attackers).
+	if gs.Step == "declare_blockers" ||
+		gs.Step == "first_strike_damage" ||
+		gs.Step == "combat_damage" ||
+		gs.Step == "end_of_combat" {
+		return nil
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil || seat.Lost || seat.Life <= 0 {
+		return nil
+	}
+	incoming := unblockedCombatDamageTo(gs, seatIdx)
+	if incoming < seat.Life {
+		return nil
+	}
+	// R60 color-aware check: Fog {G} needs green; Heroic Intervention
+	// {1}{G} needs at least one green plus one of anything. The generic
+	// ManaCostOf gate let a colorless-only pool false-positive these.
+	colored := gameengine.AvailableColoredManaEstimate(gs, seat)
+	for _, c := range seat.Hand {
+		if c == nil {
+			continue
+		}
+		if !gameengine.CanPayColoredCost(colored, c) {
+			continue
+		}
+		if !isDefensiveInstantSpell(c) {
+			continue
+		}
+		h.logf("DEFENSIVE-ANSWER seat=%d → %s (incoming=%d life=%d)",
+			seatIdx, c.DisplayName(), incoming, seat.Life)
+		return &gameengine.StackItem{Card: c, Controller: seatIdx}
+	}
+	return nil
+}
+
+// unblockedCombatDamageTo sums the raw power of every attacking
+// permanent targeting seatIdx (per AttackerDefender). Doubles power for
+// double_strike (their two damage steps both land). Trample and other
+// keyword nuances are intentionally ignored — the helper is a pre-
+// blocker estimate; the only question is whether the swing would
+// outright kill us if nothing changes.
+func unblockedCombatDamageTo(gs *gameengine.GameState, seatIdx int) int {
+	if gs == nil {
+		return 0
+	}
+	total := 0
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, p := range s.Battlefield {
+			if p == nil || !p.IsAttacking() {
+				continue
+			}
+			def, ok := gameengine.AttackerDefender(p)
+			if !ok || def != seatIdx {
+				continue
+			}
+			pow := gs.PowerOf(p)
+			if pow <= 0 {
+				continue
+			}
+			if p.HasKeyword("double strike") || p.HasKeyword("double_strike") {
+				pow *= 2
+			}
+			total += pow
+		}
+	}
+	return total
+}
+
+// isDefensiveInstantSpell returns true for fogs (prevent all combat
+// damage), mass damage-prevention turn-effects, and mass protection
+// grants (creatures-you-control gain indestructible until EOT, phase
+// out, etc.). Pattern-matched on oracle text so variants and reprints
+// are picked up automatically.
+func isDefensiveInstantSpell(card *gameengine.Card) bool {
+	if card == nil {
+		return false
+	}
+	ot := gameengine.OracleTextLower(card)
+	if ot == "" {
+		return false
+	}
+	// Fog family.
+	if strings.Contains(ot, "prevent all combat damage") {
+		return true
+	}
+	if strings.Contains(ot, "prevent all damage") && strings.Contains(ot, "this turn") {
+		return true
+	}
+	// Mass-protection family: indestructible/hexproof grant to our
+	// permanents until end of turn. Requires both the keyword and the
+	// "you control" + "until end of turn" anchors so a single-target
+	// buff or a permanent-source static doesn't false-positive.
+	hasGrant := strings.Contains(ot, "creatures you control") ||
+		strings.Contains(ot, "permanents you control")
+	hasEOT := strings.Contains(ot, "until end of turn")
+	if hasGrant && hasEOT {
+		if strings.Contains(ot, "indestructible") ||
+			strings.Contains(ot, "hexproof") {
+			return true
+		}
+	}
+	// Phase-out protection (Teferi's Protection): "phase out" + "you control".
+	if strings.Contains(ot, "phase out") &&
+		(strings.Contains(ot, "you control") || strings.Contains(ot, "your life total")) {
+		return true
+	}
+	return false
 }
 
 // -- Interface: ChooseTarget --
@@ -5162,6 +6859,7 @@ func (h *YggdrasilHat) ChooseTarget(gs *gameengine.GameState, seatIdx int, filte
 	if len(legal) == 1 {
 		return legal[0]
 	}
+	h.recordCascadeDecision(gs)
 
 	// Combo sequencer tutor override: if we're assembling a combo and
 	// this is a tutor resolving, prefer the missing piece above all else.
@@ -5224,6 +6922,9 @@ func (h *YggdrasilHat) ChooseTarget(gs *gameengine.GameState, seatIdx int, filte
 			score  float64
 		}
 		var candidates []scoredTarget
+		// relPos drives politics-aware threat bias: hit the leader when
+		// competitive, dodge them when behind.
+		relPos := h.relativePosition(gs, seatIdx)
 		for _, t := range legal {
 			if t.Kind != gameengine.TargetKindPermanent || t.Permanent == nil {
 				continue
@@ -5288,21 +6989,28 @@ func (h *YggdrasilHat) ChooseTarget(gs *gameengine.GameState, seatIdx int, filte
 				// removal (anything granting +1/+1 or "creatures you
 				// control") over picking off lone creatures, since
 				// the lord lifts their entire board.
-				if prof := h.classifyOpponent(gs, p.Controller); prof != nil && prof.Confidence > 0.5 {
-					switch prof.Archetype {
-					case "combo":
-						if h.comboPieceSet[cardName] {
-							sc += 1.5 * prof.Confidence
-						}
-						if typeLineContains(p.Card, "artifact") || typeLineContains(p.Card, "enchantment") {
-							sc += 0.6 * prof.Confidence
-						}
-					case "aggro":
-						lowOT := gameengine.OracleTextLower(p.Card)
-						if strings.Contains(lowOT, "creatures you control") ||
-							strings.Contains(lowOT, "other creatures get +") ||
-							strings.Contains(lowOT, "+1/+1") {
-							sc += 1.5 * prof.Confidence
+				if prof := h.classifyOpponent(gs, p.Controller); prof != nil {
+					// R60r5 — meta-confidence-folded bias. Matches the
+					// attack-target site so removal selection and
+					// attack target selection consume the same
+					// composed signal.
+					mult := effectiveArchetypeBias(prof)
+					if mult > 0 {
+						switch prof.Archetype {
+						case "combo":
+							if h.comboPieceSet[cardName] {
+								sc += 1.5 * mult
+							}
+							if typeLineContains(p.Card, "artifact") || typeLineContains(p.Card, "enchantment") {
+								sc += 0.6 * mult
+							}
+						case "aggro":
+							lowOT := gameengine.OracleTextLower(p.Card)
+							if strings.Contains(lowOT, "creatures you control") ||
+								strings.Contains(lowOT, "other creatures get +") ||
+								strings.Contains(lowOT, "+1/+1") {
+								sc += 1.5 * mult
+							}
 						}
 					}
 				}
@@ -5320,6 +7028,16 @@ func (h *YggdrasilHat) ChooseTarget(gs *gameengine.GameState, seatIdx int, filte
 					break
 				}
 			}
+			// Politics-aware bias: when there's a clear table leader,
+			// either prefer hitting them (we're competitive) or dodge
+			// them and bias toward the runner-up (we're behind).
+			sc += politicsThreatAdjustment(threats, relPos, p.Controller)
+			// R60 round 13+ removal-quality penalties (see
+			// target_priority_signals_r60.go). Indestructible kills the
+			// entire removal spell with a no-op; death-payoff creatures
+			// hand the opp value on death.
+			sc += removalTargetIndestructiblePenalty(p)
+			sc += removalTargetDeathPayoffPenalty(p)
 			candidates = append(candidates, scoredTarget{t, h.applyNoise(sc)})
 		}
 		if len(candidates) > 0 {
@@ -5344,9 +7062,14 @@ func (h *YggdrasilHat) ChooseTarget(gs *gameengine.GameState, seatIdx int, filte
 				seat  int
 				score float64
 			}
+			relPos := h.relativePosition(gs, seatIdx)
 			nt := make([]noisyThreat, len(threats))
 			for i, th := range threats {
-				nt[i] = noisyThreat{th.Seat, h.applyNoise(th.EvalScore)}
+				// Politics bias stacks on the EvalScore. The kingmaker-
+				// dodge branch flips the ranking: when we're behind, the
+				// leader is heavily demoted and the runner-up promoted.
+				bias := politicsThreatAdjustment(threats, relPos, th.Seat)
+				nt[i] = noisyThreat{th.Seat, h.applyNoise(th.EvalScore + bias)}
 			}
 			sort.SliceStable(nt, func(i, j int) bool {
 				return nt[i].score > nt[j].score
@@ -5435,8 +7158,21 @@ func (h *YggdrasilHat) ChooseMode(gs *gameengine.GameState, seatIdx int, modes [
 	if len(modes) == 1 {
 		return 0
 	}
+	h.recordCascadeDecision(gs)
 
 	pos := h.evalPosition(gs, seatIdx)
+
+	// R60 round 5 — multi-mode follow-up detection. The engine's
+	// resolveChoice loops ChooseMode `pick` times for pick > 1
+	// (Cryptic Command, Charms, etc.), narrowing the modes slice by
+	// one between calls. We detect that "the slice we're being shown
+	// now is the previous slice minus our previous pick" and apply a
+	// synergy bonus that complements the prior pick — so a Cryptic
+	// Command first picking "counter" naturally pairs with "bounce"
+	// or "draw" on the second pick instead of forcing the same
+	// best-effort scoring without context. See `complementBonus` for
+	// the pairing rules.
+	priorMode := h.priorChooseModePickIfFollowup(gs, modes)
 
 	type scoredMode struct {
 		idx   int
@@ -5444,7 +7180,11 @@ func (h *YggdrasilHat) ChooseMode(gs *gameengine.GameState, seatIdx int, modes [
 	}
 	scored := make([]scoredMode, len(modes))
 	for i, m := range modes {
-		scored[i] = scoredMode{i, h.scoreModeEffect(gs, seatIdx, m, pos)}
+		s := h.scoreModeEffect(gs, seatIdx, m, pos)
+		if priorMode != nil {
+			s += complementBonus(priorMode, m)
+		}
+		scored[i] = scoredMode{i, s}
 	}
 	sort.SliceStable(scored, func(i, j int) bool {
 		return scored[i].score > scored[j].score
@@ -5481,7 +7221,109 @@ func (h *YggdrasilHat) ChooseMode(gs *gameengine.GameState, seatIdx int, modes [
 	})
 	h.logf("MODE seat=%d -> idx=%d score=%.3f (top: %v scores=%v)",
 		seatIdx, scored[pick].idx, scored[pick].score, topIdx, topScores)
+	// R60r5 — remember the pick + the full slice we just saw so the
+	// next ChooseMode call (if it's a follow-up pick on the same
+	// modal spell) can detect the subset relationship and apply
+	// complement scoring.
+	h.lastChooseModePick = modes[scored[pick].idx]
+	h.lastChooseModeSlice = append(h.lastChooseModeSlice[:0], modes...)
+	h.lastChooseModeTurn = gs.Turn
 	return scored[pick].idx
+}
+
+// priorChooseModePickIfFollowup reports the previously-picked Effect
+// when the current `modes` slice is a strict subset of the previous
+// ChooseMode call's slice within the same turn — i.e., the engine
+// stripped the prior pick and is asking us for the next mode of the
+// same modal spell. Returns nil when the call isn't a follow-up.
+//
+// gameast.Effect concrete types contain Filter structs that aren't
+// `==`-comparable at runtime (Filter has slices/maps internally), so
+// we compare via Kind() string matching: the prior slice must
+// multiset-match the current slice PLUS one of-the-prior-pick-kind
+// entry. Pointer identity would be more precise but the engine
+// re-builds the slice between calls so the same Effect can move
+// addresses; Kind matching is safe and the false-positive risk
+// (different spell happens to have identical kind-multiset minus one)
+// is negligible in practice given the multi-mode-spell corpus.
+func (h *YggdrasilHat) priorChooseModePickIfFollowup(gs *gameengine.GameState, modes []gameast.Effect) gameast.Effect {
+	if h == nil || gs == nil || h.lastChooseModePick == nil {
+		return nil
+	}
+	if h.lastChooseModeTurn != gs.Turn {
+		return nil
+	}
+	if len(modes) != len(h.lastChooseModeSlice)-1 {
+		return nil
+	}
+	priorKinds := make(map[string]int, len(h.lastChooseModeSlice))
+	for _, m := range h.lastChooseModeSlice {
+		if m != nil {
+			priorKinds[m.Kind()]++
+		}
+	}
+	currKinds := make(map[string]int, len(modes))
+	for _, m := range modes {
+		if m != nil {
+			currKinds[m.Kind()]++
+		}
+	}
+	pickKind := h.lastChooseModePick.Kind()
+	// Multiset relation: prior == current + {pickKind: 1}.
+	if priorKinds[pickKind] == 0 || priorKinds[pickKind] != currKinds[pickKind]+1 {
+		return nil
+	}
+	for k, v := range priorKinds {
+		if k == pickKind {
+			continue
+		}
+		if currKinds[k] != v {
+			return nil
+		}
+	}
+	return h.lastChooseModePick
+}
+
+// complementBonus returns a small score bonus for picking `cand` as
+// the SECOND (or later) mode of a modal spell that already picked
+// `prior`. Encodes the canonical multi-mode-spell synergies in
+// commander / cEDH:
+//
+//   counter   → bounce / draw : Cryptic Command's classic line
+//   bounce    → draw / counter : tempo + refill
+//   destroy   → draw / counter : "kill + replace card"
+//   damage    → draw : burn + cantrip
+//   draw      → counter / bounce : reactive mana left up for the
+//                                  drawn answer
+//   gain_life → draw / counter : stabilize and rebuild
+//
+// The bonus is small (0.10) — large enough to break ties between
+// similarly-scored modes, small enough not to override a strongly-
+// favored mode (e.g., a lethal `damage` should still win over the
+// "synergistic" draw). Unknown / non-paired kinds return 0.
+func complementBonus(prior, cand gameast.Effect) float64 {
+	if prior == nil || cand == nil {
+		return 0
+	}
+	pk := prior.Kind()
+	ck := cand.Kind()
+	if pk == ck {
+		return -0.05 // mild penalty against picking the same kind twice
+	}
+	synergies := map[string]map[string]bool{
+		"counter_spell": {"bounce": true, "draw": true},
+		"bounce":        {"draw": true, "counter_spell": true},
+		"destroy":       {"draw": true, "counter_spell": true},
+		"exile":         {"draw": true, "counter_spell": true},
+		"damage":        {"draw": true},
+		"lose_life":     {"draw": true},
+		"draw":          {"counter_spell": true, "bounce": true},
+		"gain_life":     {"draw": true, "counter_spell": true},
+	}
+	if paired, ok := synergies[pk]; ok && paired[ck] {
+		return 0.10
+	}
+	return 0
 }
 
 func (h *YggdrasilHat) scoreModeEffect(gs *gameengine.GameState, seatIdx int, eff gameast.Effect, pos float64) float64 {
@@ -5494,6 +7336,14 @@ func (h *YggdrasilHat) scoreModeEffect(gs *gameengine.GameState, seatIdx int, ef
 		score = h.bestOpponentRemovalScore(gs, seatIdx)
 		if score == 0 {
 			score = 0.05
+		}
+		// Control archetype leans into removal modes — a Cryptic
+		// Command-style "counter" vs "destroy" choice should bias
+		// toward the answer for the open threat. The bump is small
+		// enough not to flip a near-zero removal score against a
+		// strong alternative.
+		if h.Strategy != nil && (h.Strategy.Archetype == ArchetypeControl || h.Strategy.Archetype == ArchetypeStax) {
+			score += 0.05
 		}
 
 	case "damage", "lose_life":
@@ -5512,14 +7362,51 @@ func (h *YggdrasilHat) scoreModeEffect(gs *gameengine.GameState, seatIdx int, ef
 		if pos > 0.3 {
 			score += 0.10
 		}
+		// Aggro / spellslinger care more about damage modes than
+		// other archetypes: damage IS their win condition. Small
+		// bump so the mode-pick gravitates toward burn over a parity
+		// effect like draw when lethal isn't on the line.
+		if h.Strategy != nil && (h.Strategy.Archetype == ArchetypeAggro || h.Strategy.Archetype == ArchetypeSpellslinger) {
+			score += 0.05
+		}
+
+	case "counter_spell":
+		// Countering only matters if there's a hostile spell on the
+		// stack to counter. With nothing to point at the mode is a
+		// dead floor — pick something else. Spells we control are
+		// excluded so a Cryptic Command pointed at our own draw
+		// trigger doesn't read as "high value".
+		hostileOnStack := false
+		for _, item := range gs.Stack {
+			if item == nil {
+				continue
+			}
+			if item.IsCopy {
+				continue
+			}
+			if item.Controller != seatIdx {
+				hostileOnStack = true
+				break
+			}
+		}
+		if hostileOnStack {
+			score = 0.85
+		} else {
+			score = 0.05
+		}
+		if h.Strategy != nil && (h.Strategy.Archetype == ArchetypeControl || h.Strategy.Archetype == ArchetypeSpellslinger) {
+			score += 0.05
+		}
 
 	case "draw":
 		// Empty-hand draw is huge; full-hand draw is incremental and
 		// risks hand-size discard at end of turn.
 		seat := gs.Seats[seatIdx]
 		hand := 0
+		lib := 0
 		if seat != nil {
 			hand = len(seat.Hand)
+			lib = len(seat.Library)
 		}
 		switch {
 		case hand == 0:
@@ -5535,6 +7422,22 @@ func (h *YggdrasilHat) scoreModeEffect(gs *gameengine.GameState, seatIdx int, ef
 		}
 		if pos < -0.2 {
 			score += 0.05
+		}
+		// Library-low decking penalty: drawing into a near-empty
+		// library accelerates a §704.5b loss. Below ~7 cards the
+		// expected draws-to-deckout meaningfully shrink with each
+		// drawn card; below ~3 we're one trigger / cantrip from
+		// drawing on empty. lib==0 falls through unchanged: the
+		// game is effectively over (next draw is the loss), no
+		// useful signal in scaling the mode score, and leaving the
+		// base score deterministic helps edge-case test reproducibility.
+		if lib > 0 {
+			switch {
+			case lib <= 3:
+				score *= 0.25
+			case lib <= 7:
+				score *= 0.60
+			}
 		}
 
 	case "create_token":
@@ -6004,6 +7907,74 @@ func (h *YggdrasilHat) OrderReplacements(gs *gameengine.GameState, seatIdx int, 
 	return out
 }
 
+// someOpponentLooksCombo scans each opponent's command zone for a
+// commander whose oracle text suggests a combo win condition. Used at
+// mulligan time when perceivedArchetype isn't populated yet (no cards
+// seen on turn 0). Substring scan only — over-broad rather than miss
+// hits, mirroring isRemovalText's style.
+//
+// Triggers: "infinite", "win the game", "win a game", "extra turn",
+// "untap all", "create a copy of", "additional combat", "doesn't
+// untap" (e.g. Aetherflux/Niv-Mizzet-class combos use these phrases
+// in the commander's own oracle text, not just the supporting deck).
+func someOpponentLooksCombo(gs *gameengine.GameState, seatIdx int) bool {
+	if gs == nil {
+		return false
+	}
+	for i, s := range gs.Seats {
+		if i == seatIdx || s == nil || s.Lost {
+			continue
+		}
+		for _, c := range s.CommandZone {
+			if c == nil {
+				continue
+			}
+			ot := gameengine.OracleTextLower(c)
+			if ot == "" {
+				continue
+			}
+			if strings.Contains(ot, "infinite") ||
+				strings.Contains(ot, "win the game") ||
+				strings.Contains(ot, "win a game") ||
+				strings.Contains(ot, "extra turn") ||
+				strings.Contains(ot, "untap all") ||
+				strings.Contains(ot, "create a copy of") ||
+				strings.Contains(ot, "additional combat") ||
+				strings.Contains(ot, "doesn't untap") {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// handHasInteraction reports whether `hand` contains at least one card
+// that smells like a counterspell or single-target/sweep removal. The
+// removal half reuses isRemovalText (opponent_profile.go); the
+// counter half does a separate substring scan because counter wording
+// ("counter target spell", "counter target ... unless") isn't covered
+// by isRemovalText.
+func handHasInteraction(hand []*gameengine.Card) bool {
+	for _, c := range hand {
+		if c == nil {
+			continue
+		}
+		ot := gameengine.OracleTextLower(c)
+		if ot == "" {
+			continue
+		}
+		if isRemovalText(ot) {
+			return true
+		}
+		if strings.Contains(ot, "counter target spell") ||
+			strings.Contains(ot, "counter target activated") ||
+			strings.Contains(ot, "counter that spell") {
+			return true
+		}
+	}
+	return false
+}
+
 // hasGraveyardRecursionValue returns true if the card has intrinsic
 // recursion potential from the graveyard — flashback, unearth, escape,
 // disturb, embalm, eternalize, encore, jump-start, aftermath, retrace,
@@ -6029,6 +8000,139 @@ func (h *YggdrasilHat) hasGraveyardRecursionValue(c *gameengine.Card) bool {
 		strings.Contains(ot, "aftermath") ||
 		strings.Contains(ot, "retrace") ||
 		strings.Contains(ot, "dredge")
+}
+
+// ZoneCastCandidate is one ranked option for the cast-from-graveyard /
+// cast-from-exile pipeline. Returned by RankZoneCastCandidates in
+// score-descending order so the cast pipeline can take the head as
+// the recommended pick.
+//
+// The current tournament turn loop only scans seat.Hand for castable
+// spells — it does NOT consult gs.ZoneCastGrants — so flashback /
+// escape / Iroh / Mizzix-shaped grants surfaced by per-card handlers
+// are never offered to the hat as a cast choice. This helper is the
+// prioritization machinery that becomes load-bearing once the turn
+// loop is extended to enumerate zone-cast options (tracked as a
+// follow-up in the commit body). Tests pin the ranking contract
+// today so the integration only needs to wire the call-through.
+type ZoneCastCandidate struct {
+	Card       *gameengine.Card
+	Permission *gameengine.ZoneCastPermission
+	Score      float64
+	// Reason carries a short string explaining the top scoring
+	// signals — for the decision-replay surface and tests.
+	Reason string
+}
+
+// RankZoneCastCandidates enumerates every (card, ZoneCastPermission)
+// pair on the seat's side that's affordable RIGHT NOW (mana + life
+// + colored-pip gates) and returns them sorted high-score-first.
+//
+// Prioritization signals (additive):
+//
+//   - Free casts (ManaCost == 0): Iroh's flashback grant, Past in
+//     Flames, Yawgmoth's Will, Underworld Breach escape-without-cost
+//     paths. +3.0 — pure value with no mana opportunity cost.
+//   - Combo-relevant card: +2.5 (decides games — Past-in-Flames
+//     re-buying a Demonic Tutor, flashback Tendrils chains).
+//   - Value-engine key: +1.5.
+//   - Tutor pattern in oracle ("search your library"): +1.5.
+//   - Mass-effect ("destroy all" / "exile all" / "win the game"):
+//     +2.0 — cast-from-yard board wipes are routinely game-defining.
+//   - High-CMC original (CMC ≥ 5): +1.0 per CMC bucket above 5,
+//     capped at +2.5. Bigger spells underneath the grant mean more
+//     value extracted.
+//   - Once-per-turn-per-source already consumed this turn: SKIP
+//     (engine-side gate blocks the cast anyway, but the helper
+//     should not surface the candidate at all — it'd waste a
+//     ChooseCastFromHand window).
+func (h *YggdrasilHat) RankZoneCastCandidates(gs *gameengine.GameState, seatIdx int) []ZoneCastCandidate {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) ||
+		gs.ZoneCastGrants == nil || len(gs.ZoneCastGrants) == 0 {
+		return nil
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return nil
+	}
+	// Build a permission-list per card so CanCastFromZone can apply
+	// the engine's affordability + once-per-turn checks uniformly.
+	out := make([]ZoneCastCandidate, 0, len(gs.ZoneCastGrants))
+	for card, perm := range gs.ZoneCastGrants {
+		if card == nil || perm == nil {
+			continue
+		}
+		if perm.RequireController >= 0 && perm.RequireController != seatIdx {
+			continue
+		}
+		// Engine-side affordability + once-per-turn gate.
+		approved := gameengine.CanCastFromZone(gs, seatIdx, card, perm.Zone,
+			[]*gameengine.ZoneCastPermission{perm})
+		if approved == nil {
+			continue
+		}
+		score, reason := h.scoreZoneCastCandidate(gs, seatIdx, card, perm)
+		out = append(out, ZoneCastCandidate{
+			Card:       card,
+			Permission: perm,
+			Score:      score,
+			Reason:     reason,
+		})
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Score != out[j].Score {
+			return out[i].Score > out[j].Score
+		}
+		// Stable tie-break on card name so tests are deterministic.
+		return out[i].Card.DisplayName() < out[j].Card.DisplayName()
+	})
+	return out
+}
+
+// scoreZoneCastCandidate returns (score, reason) for a single
+// zone-cast option. Pure function so the per-signal contribution is
+// testable without spinning up the full Rank flow.
+func (h *YggdrasilHat) scoreZoneCastCandidate(gs *gameengine.GameState, seatIdx int, card *gameengine.Card, perm *gameengine.ZoneCastPermission) (float64, string) {
+	score := 0.0
+	reasons := make([]string, 0, 4)
+	// Base: every candidate starts above zero so an unranked
+	// affordable cast still surfaces.
+	score = 1.0
+	if perm.ManaCost == 0 {
+		score += 3.0
+		reasons = append(reasons, "free")
+	}
+	if h.isComboRelevant(card) {
+		score += 2.5
+		reasons = append(reasons, "combo")
+	}
+	if h.isValueEngineKey(card) {
+		score += 1.5
+		reasons = append(reasons, "value_engine")
+	}
+	ot := gameengine.OracleTextLower(card)
+	if strings.Contains(ot, "search your library") {
+		score += 1.5
+		reasons = append(reasons, "tutor")
+	}
+	if strings.Contains(ot, "destroy all") ||
+		strings.Contains(ot, "exile all") ||
+		strings.Contains(ot, "win the game") {
+		score += 2.0
+		reasons = append(reasons, "mass_effect")
+	}
+	if cmc := gameengine.ManaCostOf(card); cmc >= 5 {
+		bump := float64(cmc-4) * 0.5
+		if bump > 2.5 {
+			bump = 2.5
+		}
+		score += bump
+		reasons = append(reasons, "big_spell")
+	}
+	if len(reasons) == 0 {
+		reasons = append(reasons, "baseline")
+	}
+	return score, strings.Join(reasons, ",")
 }
 
 // hasActiveGraveyardCastGrant returns true if the seat has at least one
@@ -6126,6 +8230,39 @@ func (h *YggdrasilHat) hasGraveyardRecursionEnabler(gs *gameengine.GameState, se
 			if perm.Zone == "graveyard" {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+// commanderNamesForSeat returns a copy of the seat's commander names
+// (defensive copy — callers iterate without holding the seat). Returns
+// nil if the seat has no commanders or the index is out of range.
+func commanderNamesForSeat(gs *gameengine.GameState, seatIdx int) []string {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return nil
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil || len(seat.CommanderNames) == 0 {
+		return nil
+	}
+	out := make([]string, len(seat.CommanderNames))
+	copy(out, seat.CommanderNames)
+	return out
+}
+
+// isCommanderCardName reports whether card matches any of the supplied
+// commander names. Case-sensitive match against DisplayName, mirroring
+// how the engine compares commander names elsewhere (e.g. evaluator.go
+// uses == against seat.CommanderNames entries).
+func isCommanderCardName(commanderNames []string, card *gameengine.Card) bool {
+	if card == nil || len(commanderNames) == 0 {
+		return false
+	}
+	name := card.DisplayName()
+	for _, cn := range commanderNames {
+		if cn == name {
+			return true
 		}
 	}
 	return false
@@ -6279,6 +8416,7 @@ func (h *YggdrasilHat) ChooseDiscard(gs *gameengine.GameState, seatIdx int, hand
 		arch = h.Strategy.Archetype
 	}
 	hasEnabler := h.hasGraveyardRecursionEnabler(gs, seatIdx)
+	commanderNames := commanderNamesForSeat(gs, seatIdx)
 	for _, c := range hand {
 		if c == nil {
 			continue
@@ -6286,6 +8424,23 @@ func (h *YggdrasilHat) ChooseDiscard(gs *gameengine.GameState, seatIdx int, hand
 		v := h.cardHeuristic(gs, seatIdx, c)
 		if typeLineContains(c, "land") && sources >= 5 {
 			v -= 0.5
+		}
+		// Mana-starvation land protection. With fewer than three mana
+		// sources the next land drop matters far more than any card in
+		// hand — protect lands so they don't get discarded when we're
+		// behind on mana. Mirror of the sources>=5 flood penalty above.
+		if typeLineContains(c, "land") && sources < 3 {
+			v += 3.0
+		}
+		// Commander-in-hand protection. Discarding the commander throws
+		// away a card the deck is built around; the §903.9 replacement
+		// only matters once the commander has been cast and is being
+		// moved between non-hand zones. From hand, "discarded" is just
+		// "into the graveyard" with no command-zone redirect. We add a
+		// dominating positive bonus so the commander is the last card
+		// considered for discard short of being the only option.
+		if isCommanderCardName(commanderNames, c) {
+			v += 10.0
 		}
 		if h.isComboRelevant(c) {
 			v += 1.0
@@ -6334,6 +8489,7 @@ func (h *YggdrasilHat) OrderTriggers(gs *gameengine.GameState, seatIdx int, trig
 	if len(triggers) <= 1 {
 		return triggers
 	}
+	h.recordCascadeDecision(gs)
 	// Stack resolves LIFO — last item resolves first. Put highest-priority
 	// triggers at the END so they resolve first.
 	sort.SliceStable(triggers, func(i, j int) bool {
@@ -6343,17 +8499,29 @@ func (h *YggdrasilHat) OrderTriggers(gs *gameengine.GameState, seatIdx int, trig
 }
 
 func (h *YggdrasilHat) triggerPriority(item *gameengine.StackItem) float64 {
-	if item == nil || item.Card == nil {
+	if item == nil {
+		return 0
+	}
+	// R60 cascading-decisions audit. OrderTriggers exclusively receives
+	// triggered abilities (per CR §603.3b same-event same-controller
+	// stack), but pre-R60 this helper dereferenced item.Card — which is
+	// always nil for triggers. Every priority returned 0 and the
+	// sort.SliceStable was a silent no-op; trigger ordering was
+	// effectively insertion-order. effectiveResponseCard resolves the
+	// source permanent's card so the trigger payload's oracle text
+	// drives the ordering.
+	card := effectiveResponseCard(item)
+	if card == nil {
 		return 0
 	}
 	pri := 0.0
-	if h.isComboRelevant(item.Card) {
+	if h.isComboRelevant(card) {
 		pri += 3.0
 	}
-	if h.isValueEngineKey(item.Card) {
+	if h.isValueEngineKey(card) {
 		pri += 2.0
 	}
-	ot := gameengine.OracleTextLower(item.Card)
+	ot := gameengine.OracleTextLower(card)
 	if strings.Contains(ot, "draw") {
 		pri += 1.5
 	}
@@ -6376,6 +8544,7 @@ func (h *YggdrasilHat) ChooseX(gs *gameengine.GameState, seatIdx int, card *game
 	if availableMana <= 0 {
 		return 0
 	}
+	h.recordCascadeDecision(gs)
 	// Control/stax: hold back 2 mana for potential interaction unless
 	// this is a critical spell.
 	if h.Strategy != nil {
@@ -6401,21 +8570,102 @@ func (h *YggdrasilHat) ChooseBottomCards(gs *gameengine.GameState, seatIdx int, 
 	if count >= len(hand) {
 		return hand
 	}
-	// Bottom the worst cards by heuristic.
+	// Bottom the worst cards by an enriched heuristic. cardHeuristic
+	// alone misses the combo / value-engine / star / cuttable biases
+	// that ChooseDiscard applies, so a combo piece on a London bottom
+	// would sit at the same value as a vanilla creature. Mirror the
+	// ChooseDiscard weights so the bottom pile is consistent with the
+	// discard pile.
 	type ranked struct {
 		card  *gameengine.Card
 		value float64
+		isLand bool
 	}
 	ranked_ := make([]ranked, 0, len(hand))
+	landsInHand := 0
+	// R60 round 6+ London-mulligan signals: compute hand-wide context
+	// once, then apply per-card biases below. See
+	// mulligan_bottom_signals_r60.go for the rationale.
+	handColorMask := handProducedColorMask(hand)
+	cheapPlayables := countCheapPlayables(hand)
 	for _, c := range hand {
 		if c == nil {
 			continue
 		}
-		ranked_ = append(ranked_, ranked{c, h.cardHeuristic(gs, seatIdx, c)})
+		v := h.cardHeuristic(gs, seatIdx, c)
+		if h.isComboRelevant(c) {
+			v += 1.0
+		}
+		if h.isValueEngineKey(c) {
+			v += 0.5
+		}
+		if h.isStarCard(c) {
+			v += 0.75
+		}
+		if h.isCuttable(c) {
+			v -= 0.5
+		}
+		// London signals — small biases that don't override the existing
+		// scaffolding but shift tiebreakers toward keep-side cards the
+		// hand can actually cast on curve.
+		if cardColorDeadAgainstHand(c, handColorMask) {
+			v -= 0.4
+		}
+		if isEarlyPlayAnchor(c, cheapPlayables) {
+			v += 0.6
+		}
+		isLand := typeLineContains(c, "land")
+		if isLand {
+			landsInHand++
+		}
+		ranked_ = append(ranked_, ranked{c, v, isLand})
 	}
 	sort.SliceStable(ranked_, func(i, j int) bool {
 		return ranked_[i].value < ranked_[j].value
 	})
+
+	// Land floor: if the original hand had at least 2 lands, never
+	// bottom into a sub-2-land hand. We swap a land out of the bottom
+	// pile for the next non-land candidate until the keep-side floor
+	// holds. Applies only at the London 7→6 / 6→5 transition where
+	// keeping at least 2 lands materially changes the keep value;
+	// when the original hand already has <2 lands the floor is moot
+	// (we don't have the supply to honor it).
+	if landsInHand >= 2 {
+		const landFloor = 2
+		// Iteratively pull lands out of the bottom slice until either
+		// (a) bottoming the chosen `count` leaves landFloor lands in
+		// hand, or (b) there's no more non-land in the keep pile to
+		// swap up. Bounded by `count` so always terminates.
+		for attempt := 0; attempt < count; attempt++ {
+			landsBottomed := 0
+			lastLandBottomIdx := -1
+			for i := 0; i < count; i++ {
+				if ranked_[i].isLand {
+					landsBottomed++
+					lastLandBottomIdx = i
+				}
+			}
+			if landsInHand-landsBottomed >= landFloor {
+				break
+			}
+			// Need to swap a land out. Find the highest-priority
+			// non-land card currently in the keep pile (i.e. the
+			// first non-land at or after index `count`).
+			swapIdx := -1
+			for i := count; i < len(ranked_); i++ {
+				if !ranked_[i].isLand {
+					swapIdx = i
+					break
+				}
+			}
+			if swapIdx < 0 || lastLandBottomIdx < 0 {
+				break
+			}
+			ranked_[lastLandBottomIdx], ranked_[swapIdx] = ranked_[swapIdx], ranked_[lastLandBottomIdx]
+		}
+	}
+
 	out := make([]*gameengine.Card, 0, count)
 	for i := 0; i < count && i < len(ranked_); i++ {
 		out = append(out, ranked_[i].card)
@@ -6437,18 +8687,48 @@ func (h *YggdrasilHat) ChooseScry(gs *gameengine.GameState, seatIdx int, cards [
 	} else if relPos < -0.3 {
 		threshold = 0.25
 	}
-	// Combo decks with high combo ratios want combo pieces on top.
+	arch := ArchetypeMidrange
+	if h.Strategy != nil {
+		arch = h.Strategy.Archetype
+	}
+	// Combo archetype additionally tightens the keep threshold so
+	// filler cards default to the bottom and the next draw is more
+	// likely to hit a combo piece or tutor. Mirror of the R60
+	// ChooseSurveil bias; the per-archetype lift stacks on top of the
+	// relPos-based threshold above.
+	if arch == ArchetypeCombo && threshold < 0.50 {
+		threshold = 0.50
+	}
 	for _, c := range cards {
 		if c == nil {
 			bottom = append(bottom, c)
 			continue
 		}
 		val := h.cardHeuristic(gs, seatIdx, c)
-		if h.isComboRelevant(c) || h.isValueEngineKey(c) || h.isStarCard(c) {
+		// Finisher preserve-mode: a card the deck wins with stays on
+		// top regardless of val or archetype. This is the "card on top
+		// is the only thing keeping us in" guard — when we're behind,
+		// the next draw being our finisher is the lifeline; sub-
+		// threshold-bottoming it is a strict mistake. Stacks on top of
+		// the combo / value-engine / star keep branch (which already
+		// covers cards Freya tagged as engine pieces) — finishers
+		// aren't always in StarCards so this is the gap-closer.
+		if h.isComboRelevant(c) || h.isValueEngineKey(c) || h.isStarCard(c) || h.isFinisher(c) {
 			top = append(top, c)
-		} else if h.isCuttable(c) {
+			continue
+		}
+		// Control archetype creature filter — non-keeper creatures
+		// (we've already filtered keepers above) go to the bottom.
+		// Control decks don't need creature density.
+		if arch == ArchetypeControl && typeLineContains(c, "creature") {
 			bottom = append(bottom, c)
-		} else if val >= threshold {
+			continue
+		}
+		if h.isCuttable(c) {
+			bottom = append(bottom, c)
+			continue
+		}
+		if val >= threshold {
 			top = append(top, c)
 		} else {
 			bottom = append(bottom, c)
@@ -6500,9 +8780,34 @@ func (h *YggdrasilHat) ChooseSurveil(gs *gameengine.GameState, seatIdx int, card
 
 		if h.isComboRelevant(c) || h.isValueEngineKey(c) || h.isStarCard(c) {
 			top = append(top, c)
-		} else if h.isCuttable(c) {
+			continue
+		}
+		// Archetype bias: control sends non-keeper creatures to the
+		// graveyard. Control decks don't need creature density — what
+		// reaches the battlefield is usually a single finisher and the
+		// commander, and excess creatures rot in hand. We've already
+		// filtered combo / VE / star keepers above so this only fires
+		// on filler creatures.
+		if arch == ArchetypeControl && typeLineContains(c, "creature") {
 			graveyard = append(graveyard, c)
-		} else if val >= 0.35 {
+			continue
+		}
+		if h.isCuttable(c) {
+			graveyard = append(graveyard, c)
+			continue
+		}
+		// Archetype bias: combo decks want the top of library reserved
+		// for combo pieces and tutors. Raise the keep threshold so
+		// mid-quality filler is sent to the graveyard instead of held
+		// at the top — the next draw should hit something that builds
+		// toward the win condition. Other archetypes keep the 0.35
+		// threshold so they don't accidentally bottom into card
+		// disadvantage.
+		topThreshold := 0.35
+		if arch == ArchetypeCombo {
+			topThreshold = 0.50
+		}
+		if val >= topThreshold {
 			top = append(top, c)
 		} else {
 			graveyard = append(graveyard, c)
@@ -6564,6 +8869,8 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 		h.opponentHandEntropy = make([]float64, h.seatCount)
 		h.opponentHeldMana = make([]int, h.seatCount)
 		h.opponentTutored = make([]bool, h.seatCount)
+		h.opponentLoadedSilentTurns = make([]int, h.seatCount)
+		h.opponentFiredInteractionThisRound = make([]bool, h.seatCount)
 		h.opponentKnownCards = make([]map[string]bool, h.seatCount)
 		h.linkedExilesByOpponent = make([]int, h.seatCount)
 		h.myZoneCastGrants = make(map[string]int)
@@ -6582,6 +8889,12 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 	if event.Kind == "game_start" {
 		h.actionStats = make(map[string]*actionStat)
 		h.totalVisits = 0
+		h.rolloutSeed = 0
+		h.stackItemTiers = nil
+		h.stackItemTiersTurn = 0
+		h.lastChooseModePick = nil
+		h.lastChooseModeSlice = nil
+		h.lastChooseModeTurn = 0
 		h.planState = PlanState{}
 		h.Evaluator.PlanMultiplier = nil
 		for i := range h.damageDealtTo {
@@ -6606,6 +8919,12 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 			}
 			if i < len(h.opponentTutored) {
 				h.opponentTutored[i] = false
+			}
+			if i < len(h.opponentLoadedSilentTurns) {
+				h.opponentLoadedSilentTurns[i] = 0
+			}
+			if i < len(h.opponentFiredInteractionThisRound) {
+				h.opponentFiredInteractionThisRound[i] = false
 			}
 			if i < len(h.opponentKnownCards) {
 				h.opponentKnownCards[i] = make(map[string]bool)
@@ -6671,7 +8990,7 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 			// counts, removal/counter/tutor classification, combo
 			// piece detection).
 			card := findCardByName(gs, event.Seat, event.Source)
-			h.recordOpponentPlay("cast", event.Source, event.Seat, card)
+			h.recordOpponentPlay("cast", event.Source, event.Seat, card, gs.Turn)
 		}
 	}
 
@@ -6679,10 +8998,10 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 	if event.Seat >= 0 && event.Seat < h.seatCount && event.Seat != seatIdx {
 		switch event.Kind {
 		case "play_land":
-			h.recordOpponentPlay("play_land", event.Source, event.Seat, nil)
+			h.recordOpponentPlay("play_land", event.Source, event.Seat, nil, gs.Turn)
 		case "permanent_etb", "creature_etb":
 			card := findCardByName(gs, event.Seat, event.Source)
-			h.recordOpponentPlay(event.Kind, event.Source, event.Seat, card)
+			h.recordOpponentPlay(event.Kind, event.Source, event.Seat, card, gs.Turn)
 		}
 	}
 
@@ -6704,7 +9023,7 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 		if event.Seat < len(h.opponentTutored) {
 			h.opponentTutored[event.Seat] = true
 		}
-		h.recordOpponentPlay(event.Kind, event.Source, event.Seat, nil)
+		h.recordOpponentPlay(event.Kind, event.Source, event.Seat, nil, gs.Turn)
 		// Reduce entropy: they now hold a known-purpose card.
 		if event.Seat < len(h.opponentHandEntropy) {
 			h.opponentHandEntropy[event.Seat] *= 0.6
@@ -6754,6 +9073,18 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 		}
 		if event.Seat < len(h.opponentHeldMana) {
 			h.opponentHeldMana[event.Seat] = 0
+		}
+		// R60 round 5 — bluff signal. If this cast IS an interactive
+		// spell, the opponent demonstrably has interaction (no bluff)
+		// and we reset their loaded-silent streak. The flag is sticky
+		// across the round until the next upkeep evaluation.
+		if isInteractionSpellName(event.Source) {
+			if event.Seat < len(h.opponentFiredInteractionThisRound) {
+				h.opponentFiredInteractionThisRound[event.Seat] = true
+			}
+			if event.Seat < len(h.opponentLoadedSilentTurns) {
+				h.opponentLoadedSilentTurns[event.Seat] = 0
+			}
 		}
 	}
 
@@ -6861,6 +9192,24 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 				h.opponentHeldMana[i]++
 			} else {
 				h.opponentHeldMana[i] = 0
+			}
+
+			// R60 round 5 — bluff signal tally. If this opponent looked
+			// loaded at the start of the previous round but did NOT
+			// cast any interaction during it, their loaded-silent
+			// streak grows. The streak is what `perceivedInteractionThreat`
+			// uses to dampen the raw `opponentHasInteraction` probability.
+			if i < len(h.opponentLoadedSilentTurns) && i < len(h.opponentFiredInteractionThisRound) {
+				if !h.opponentFiredInteractionThisRound[i] {
+					currentProb := h.opponentHasInteraction(gs, i)
+					if currentProb >= bluffLoadedThreshold {
+						if h.opponentLoadedSilentTurns[i] < bluffMaxStreak {
+							h.opponentLoadedSilentTurns[i]++
+						}
+					}
+				}
+				// Reset the per-round flag for the upcoming round.
+				h.opponentFiredInteractionThisRound[i] = false
 			}
 		}
 	}
@@ -7020,6 +9369,91 @@ func (h *YggdrasilHat) AvailableZoneCastGrants(gs *gameengine.GameState, seatIdx
 	return out
 }
 
+// -- R60 round 5: Bluff detection constants --
+//
+// bluffLoadedThreshold is the perceived-interaction probability above
+// which an opponent is considered "loaded" for the purposes of bluff
+// tracking. A turn where they're loaded and don't fire any interactive
+// spell adds one to their loaded-silent streak.
+//
+// bluffMaxStreak caps the streak counter so a long game doesn't drive
+// the dampening factor past a sensible floor; with bluffStepPerTurn at
+// 0.15 and the 0.4 floor, max=4 hits the floor exactly. Past the cap a
+// single interaction cast still resets cleanly to 0.
+//
+// bluffStepPerTurn is the per-streak-tick reduction in the bluff
+// factor returned by `perceivedInteractionThreat`.
+//
+// bluffFloor is the lowest multiplier the bluff factor can reach.
+// Even at maximum bluffing, an opponent might still be holding the
+// LAST interaction spell — we never fully discount.
+const (
+	bluffLoadedThreshold = 0.4
+	bluffMaxStreak       = 4
+	bluffStepPerTurn     = 0.15
+	bluffFloor           = 0.4
+)
+
+// isInteractionSpellName returns true if a card-name string matches
+// any of the known interactive patterns (counters / targeted removal /
+// instant-speed answers). Mirrors the keyword check in
+// `opponentHasInteraction`'s reveal scan so the "spell fired" reset
+// uses the same definition of "interaction" as the "spell suspected"
+// detection. Case-insensitive substring match.
+func isInteractionSpellName(name string) bool {
+	if name == "" {
+		return false
+	}
+	n := strings.ToLower(name)
+	return strings.Contains(n, "counter") ||
+		strings.Contains(n, "negate") ||
+		strings.Contains(n, "swan song") ||
+		strings.Contains(n, "force of") ||
+		strings.Contains(n, "pact of negation") ||
+		strings.Contains(n, "swords to plowshares") ||
+		strings.Contains(n, "path to exile") ||
+		strings.Contains(n, "fatal push") ||
+		strings.Contains(n, "go for the throat") ||
+		strings.Contains(n, "doom blade") ||
+		strings.Contains(n, "dispel") ||
+		strings.Contains(n, "mana drain") ||
+		strings.Contains(n, "mana leak") ||
+		strings.Contains(n, "spell pierce")
+}
+
+// bluffFactor returns the [bluffFloor, 1.0] dampening multiplier the
+// bluff signal applies to an opponent's perceived interaction
+// probability. 1.0 = no bluff suspected (recent interaction observed
+// or never looked loaded). Lower values = stronger suspicion they're
+// running on empty.
+func (h *YggdrasilHat) bluffFactor(oppSeat int) float64 {
+	if oppSeat < 0 || oppSeat >= len(h.opponentLoadedSilentTurns) {
+		return 1.0
+	}
+	streak := h.opponentLoadedSilentTurns[oppSeat]
+	if streak <= 0 {
+		return 1.0
+	}
+	factor := 1.0 - float64(streak)*bluffStepPerTurn
+	if factor < bluffFloor {
+		factor = bluffFloor
+	}
+	return factor
+}
+
+// perceivedInteractionThreat is the public "use this instead of
+// opponentHasInteraction when bluff context matters" surface. It
+// returns `opponentHasInteraction * bluffFactor` — the raw signal
+// dampened by how long the opponent has been holding mana open with
+// nothing to show for it. When deciding whether to walk into a
+// suspected counter, callers should prefer this over the raw
+// probability so a four-turn "I'm holding Counterspell" routine
+// stops paralyzing the hat.
+func (h *YggdrasilHat) perceivedInteractionThreat(gs *gameengine.GameState, oppSeat int) float64 {
+	raw := h.opponentHasInteraction(gs, oppSeat)
+	return raw * h.bluffFactor(oppSeat)
+}
+
 // opponentHasInteraction estimates whether an opponent seat is likely
 // holding instant-speed interaction based on: open mana, known colors
 // (blue/black = counters/removal), hand size, and entropy signals.
@@ -7087,13 +9521,19 @@ func (h *YggdrasilHat) opponentHasInteraction(gs *gameengine.GameState, oppSeat 
 
 // tableInteractionRisk returns the maximum interaction probability across
 // all opponents, used to decide whether to walk into countermagic.
+//
+// R60 round 5 — switched from `opponentHasInteraction` to
+// `perceivedInteractionThreat` so the table-wide risk reflects the
+// bluff signal. An opponent who has been "holding Counterspell" for
+// 4+ turns without firing gets dampened by up to 60%, so the hat
+// stops paralyzing on a stale threat signal.
 func (h *YggdrasilHat) tableInteractionRisk(gs *gameengine.GameState, seatIdx int) float64 {
 	maxRisk := 0.0
 	for i := range gs.Seats {
 		if i == seatIdx {
 			continue
 		}
-		risk := h.opponentHasInteraction(gs, i)
+		risk := h.perceivedInteractionThreat(gs, i)
 		if risk > maxRisk {
 			maxRisk = risk
 		}
@@ -7520,8 +9960,10 @@ func (h *YggdrasilHat) canRollout() bool {
 }
 
 func (h *YggdrasilHat) simulateRollout(gs *gameengine.GameState, seatIdx int, actionFn func(clone *gameengine.GameState)) float64 {
-	rolloutSeedCounter++
-	rng := rand.New(rand.NewSource(int64(gs.Turn)*1000 + int64(seatIdx)*100 + rolloutSeedCounter))
+	// Per-hat seed counter — see rollout.go for the rationale on dropping
+	// the package-global `rolloutSeedCounter`.
+	h.rolloutSeed++
+	rng := rand.New(rand.NewSource(int64(gs.Turn)*1000 + int64(seatIdx)*100 + h.rolloutSeed))
 	clone := gs.CloneForRollout(rng)
 	if clone == nil {
 		return 0
@@ -7542,7 +9984,11 @@ func (h *YggdrasilHat) simulateRollout(gs *gameengine.GameState, seatIdx int, ac
 	resolveStack(clone)
 	gameengine.StateBasedActions(clone)
 
-	for i := 0; i < rolloutDepth; i++ {
+	depth := rolloutDepth
+	if h.Strategy != nil {
+		depth = rolloutDepthFor(h.Strategy.Archetype)
+	}
+	for i := 0; i < depth; i++ {
 		if clone.CheckEnd() {
 			break
 		}

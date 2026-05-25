@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -40,6 +42,45 @@ CREATE TABLE IF NOT EXISTS clone_log (
 );
 CREATE INDEX IF NOT EXISTS idx_clone_log_owner_time
     ON clone_log(owner, cloned_at DESC);
+
+-- Per-user fork rate limiter. Parallel to clone_log but tracked
+-- separately so each action gets its own budget — forking is the
+-- attribution-preserving "branch from someone else's deck" flow, and
+-- a user mid-collaboration on a popular deck shouldn't have their
+-- private-clone budget consumed by forks (or vice versa).
+CREATE TABLE IF NOT EXISTS fork_log (
+    owner       TEXT NOT NULL,
+    src_key     TEXT NOT NULL,
+    dst_key     TEXT NOT NULL,
+    forked_at   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_fork_log_owner_time
+    ON fork_log(owner, forked_at DESC);
+
+-- Append-only log of every user feedback action on a Freya-
+-- assigned archetype. This is the training signal — future Freya
+-- recalibration passes can sample this table to spot recurring
+-- "Freya says combo but the human always corrects to stax" patterns
+-- and adjust archetype fingerprints accordingly.
+--
+-- Each row captures the FULL context at the moment of feedback:
+-- which deck, what Freya said at the time, what action the user
+-- took, and (for corrections) what they renamed it to. We don't
+-- overwrite or de-dupe — every click lands a row, so the log shows
+-- the user's full history of agreement / disagreement with Freya
+-- over time.
+CREATE TABLE IF NOT EXISTS archetype_feedback_log (
+    owner            TEXT NOT NULL,
+    deck_id          TEXT NOT NULL,
+    freya_archetype  TEXT NOT NULL DEFAULT '',
+    user_action      TEXT NOT NULL,
+    user_archetype   TEXT NOT NULL DEFAULT '',
+    recorded_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_archetype_feedback_owner_time
+    ON archetype_feedback_log(owner, recorded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_archetype_feedback_freya
+    ON archetype_feedback_log(freya_archetype);
 `
 
 // EnsureDeckMetaSchema creates the deck_meta table idempotently. Call once
@@ -63,6 +104,18 @@ func EnsureDeckMetaSchema(ctx context.Context, db *sql.DB) error {
 	}
 	if _, err := db.ExecContext(ctx,
 		`ALTER TABLE deck_meta ADD COLUMN tags TEXT NOT NULL DEFAULT ''`); err != nil {
+		if !strings.Contains(err.Error(), "duplicate column") {
+			return err
+		}
+	}
+	if _, err := db.ExecContext(ctx,
+		`ALTER TABLE deck_meta ADD COLUMN forked_from TEXT NOT NULL DEFAULT ''`); err != nil {
+		if !strings.Contains(err.Error(), "duplicate column") {
+			return err
+		}
+	}
+	if _, err := db.ExecContext(ctx,
+		`ALTER TABLE deck_meta ADD COLUMN archetype_feedback TEXT NOT NULL DEFAULT ''`); err != nil {
 		if !strings.Contains(err.Error(), "duplicate column") {
 			return err
 		}
@@ -140,6 +193,85 @@ const MaxTagsPerDeck = 16
 
 // MaxTagLen bounds the length of a single tag string.
 const MaxTagLen = 32
+
+// SystemTagPrefix marks tags derived from automated analysis (today:
+// Freya's primary_archetype) so frontends can render them with a
+// distinct chip style and so user tags can never collide with them.
+// Users can still add ANY value to their own tags (including the
+// bare archetype name) — the prefixed system tag and the unprefixed
+// user tag coexist as two separate entries, which is the documented
+// "override" path.
+const SystemTagPrefix = "archetype:"
+
+// loadFreyaSystemTags reads strategy.json for a deck and returns the
+// derived system tag(s). Currently a single-element slice carrying
+// the primary_archetype (e.g. ["archetype:combo"]); the shape is a
+// slice so additional auto-derived tags (bracket, color identity,
+// power tier) can join later without changing the API contract.
+//
+// Returns nil when:
+//   - strategy.json doesn't exist (Freya hasn't been run)
+//   - strategy.json is unparseable
+//   - primary_archetype is empty
+//
+// Side-effect free: derives on-the-fly from Freya's own output, no
+// DB write, no persistence. Re-running Freya naturally refreshes
+// the tag on the next GET.
+func loadFreyaSystemTags(decksDir, owner, id string) []string {
+	if decksDir == "" || owner == "" || id == "" {
+		return nil
+	}
+	p := filepath.Join(decksDir, owner, "freya", id+".strategy.json")
+	data, err := os.ReadFile(p)
+	if err != nil {
+		return nil
+	}
+	var s struct {
+		PrimaryArchetype string `json:"primary_archetype"`
+	}
+	if json.Unmarshal(data, &s) != nil {
+		return nil
+	}
+	tag := normalizeSystemTagValue(s.PrimaryArchetype)
+	if tag == "" {
+		return nil
+	}
+	return []string{SystemTagPrefix + tag}
+}
+
+// normalizeSystemTagValue lowercases + collapses whitespace into
+// single hyphens so multi-word archetype labels ("Lands Matter")
+// round-trip as stable, URL-safe tag values ("lands-matter").
+// Control chars are stripped; the result is empty when the input
+// is whitespace-only or contains nothing safe.
+func normalizeSystemTagValue(raw string) string {
+	raw = strings.TrimSpace(strings.ToLower(raw))
+	if raw == "" {
+		return ""
+	}
+	var b strings.Builder
+	b.Grow(len(raw))
+	prevHyphen := false
+	for _, c := range raw {
+		if c < 0x20 || c == 0x7f {
+			continue
+		}
+		if c == ' ' || c == '\t' || c == '-' || c == '_' || c == '/' {
+			if !prevHyphen && b.Len() > 0 {
+				b.WriteByte('-')
+				prevHyphen = true
+			}
+			continue
+		}
+		b.WriteRune(c)
+		prevHyphen = false
+	}
+	out := strings.TrimRight(b.String(), "-")
+	if len(out) > MaxTagLen-len(SystemTagPrefix) {
+		out = out[:MaxTagLen-len(SystemTagPrefix)]
+	}
+	return out
+}
 
 // normalizeTags trims, lowercases, dedupes and length-limits an incoming
 // tag list. Tag matching elsewhere is case-insensitive, so we normalize
@@ -224,6 +356,88 @@ func (h *Handler) saveTags(ctx context.Context, owner, id, tagsJSON string) erro
 	return err
 }
 
+// ArchetypeFeedbackConfirmed and ArchetypeFeedbackCleared are the
+// sentinel string values stored in deck_meta.archetype_feedback when
+// the user's feedback is something other than a corrected archetype
+// name. Any other non-empty value is treated as a normalized
+// correction (e.g. "stax", "lands-matter").
+const (
+	ArchetypeFeedbackConfirmed = "confirmed"
+	ArchetypeFeedbackCleared   = ""
+)
+
+// loadArchetypeFeedback returns the user's current feedback on
+// Freya's archetype assignment: "" (no opinion), "confirmed", or
+// the normalized corrected archetype name. Returns "" when the row
+// or column is absent.
+func (h *Handler) loadArchetypeFeedback(ctx context.Context, owner, id string) string {
+	if h.db == nil {
+		return ""
+	}
+	var v string
+	err := h.db.QueryRowContext(ctx,
+		`SELECT archetype_feedback FROM deck_meta WHERE owner = ? AND id = ?`,
+		owner, id).Scan(&v)
+	if err != nil {
+		return ""
+	}
+	return v
+}
+
+// saveArchetypeFeedback upserts the user's feedback on the
+// archetype assignment and appends a row to archetype_feedback_log
+// in the SAME transaction so the persistent state and the training
+// log can never diverge. freyaArchetype is the archetype Freya
+// reported at the moment of feedback (for the log row's snapshot;
+// the saved deck_meta value only carries the user's response).
+//
+// action must be one of "confirm" / "correct" / "clear". For
+// "correct", userArchetype must already be normalized
+// (normalizeSystemTagValue) by the caller.
+func (h *Handler) saveArchetypeFeedback(ctx context.Context, owner, id, freyaArchetype, action, userArchetype string) error {
+	if h.db == nil {
+		return errors.New("hexapi: deck_meta storage not initialized")
+	}
+	var stored string
+	switch action {
+	case "confirm":
+		stored = ArchetypeFeedbackConfirmed
+	case "correct":
+		if userArchetype == "" {
+			return errors.New("hexapi: correct action requires a non-empty archetype")
+		}
+		stored = userArchetype
+	case "clear":
+		stored = ArchetypeFeedbackCleared
+	default:
+		return errors.New("hexapi: invalid archetype-feedback action")
+	}
+
+	tx, err := h.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO deck_meta (owner, id, archetype_feedback, updated_at)
+		 VALUES (?, ?, ?, ?)
+		 ON CONFLICT(owner, id) DO UPDATE SET
+		   archetype_feedback = excluded.archetype_feedback,
+		   updated_at         = excluded.updated_at`,
+		owner, id, stored, time.Now().Unix()); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO archetype_feedback_log
+		 (owner, deck_id, freya_archetype, user_action, user_archetype, recorded_at)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		owner, id, freyaArchetype, action, userArchetype, time.Now().Unix()); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
 // allTagsForOwner returns every distinct tag string used by the given
 // owner, with a usage count so the autocomplete can rank common tags
 // first. When owner is empty the query spans every owner — handy for
@@ -302,6 +516,73 @@ func (h *Handler) recordClone(ctx context.Context, owner, srcKey, dstKey string)
 	return err
 }
 
+// ForkRateLimit is the cap on fork-creates per user per hour. Separate
+// budget from CloneRateLimit so a user mid-collaboration on a popular
+// deck doesn't have their private-clone budget consumed by forks (or
+// vice versa). Exported so tests can lower it.
+const ForkRateLimit = 10
+
+// loadForkedFrom returns the "owner/id" pointer recorded when this deck
+// was created by /fork, or "" when the deck was not forked.
+func (h *Handler) loadForkedFrom(ctx context.Context, owner, id string) string {
+	if h.db == nil {
+		return ""
+	}
+	var src string
+	err := h.db.QueryRowContext(ctx,
+		`SELECT forked_from FROM deck_meta WHERE owner = ? AND id = ?`,
+		owner, id).Scan(&src)
+	if err != nil {
+		return ""
+	}
+	return src
+}
+
+// saveForkedFrom records the source deck a fork was based on. Upserts
+// alongside any existing custom_name / cloned_from so the metadata
+// stays together for a single (owner, id).
+func (h *Handler) saveForkedFrom(ctx context.Context, owner, id, src string) error {
+	if h.db == nil {
+		return errors.New("hexapi: deck_meta storage not initialized")
+	}
+	_, err := h.db.ExecContext(ctx,
+		`INSERT INTO deck_meta (owner, id, forked_from, updated_at)
+		 VALUES (?, ?, ?, ?)
+		 ON CONFLICT(owner, id) DO UPDATE SET
+		   forked_from = excluded.forked_from,
+		   updated_at  = excluded.updated_at`,
+		owner, id, src, time.Now().Unix())
+	return err
+}
+
+// forkCountSince returns how many forks the given owner has created
+// since the supplied unix timestamp. Used by the fork handler to
+// enforce ForkRateLimit; returns 0 (i.e. allow) when the DB is absent.
+func (h *Handler) forkCountSince(ctx context.Context, owner string, since int64) (int, error) {
+	if h.db == nil {
+		return 0, nil
+	}
+	var n int
+	err := h.db.QueryRowContext(ctx,
+		`SELECT COUNT(*) FROM fork_log WHERE owner = ? AND forked_at >= ?`,
+		owner, since).Scan(&n)
+	return n, err
+}
+
+// recordFork appends a row to fork_log. Best-effort, same semantics as
+// recordClone: a write error here is logged but does not roll back the
+// fork file we already wrote to disk.
+func (h *Handler) recordFork(ctx context.Context, owner, srcKey, dstKey string) error {
+	if h.db == nil {
+		return nil
+	}
+	_, err := h.db.ExecContext(ctx,
+		`INSERT INTO fork_log (owner, src_key, dst_key, forked_at)
+		 VALUES (?, ?, ?, ?)`,
+		owner, srcKey, dstKey, time.Now().Unix())
+	return err
+}
+
 // handlePatchDeck handles `PATCH /api/decks/{owner}/{id}` for lightweight
 // metadata updates. Today: only `name` (the user-set display title). Other
 // fields can be added later without changing the route.
@@ -312,19 +593,25 @@ func (h *Handler) recordClone(ctx context.Context, owner, srcKey, dstKey string)
 // Returns the updated DeckSummary-shaped JSON so the frontend can swap it
 // into local state without a follow-up GET.
 func (h *Handler) handlePatchDeck(w http.ResponseWriter, r *http.Request) {
+	// Per-user rate-limit (owner-keyed). Shares the DeckMutationLimiter
+	// budget with PUT + DELETE so a single user's rapid edit-rename-
+	// delete loop sums against one bucket, not three.
+	if enforceRateLimitByOwner(h.DeckMutationLimiter, w, r, "deck patch") {
+		return
+	}
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 	if !checkOwnership(r, owner) {
-		http.Error(w, "forbidden: not deck owner", http.StatusForbidden)
+		writeError(w, http.StatusForbidden, "forbidden: not deck owner")
 		return
 	}
 
 	if findDeckFile(h.DecksDir, owner, id) == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
@@ -333,30 +620,30 @@ func (h *Handler) handlePatchDeck(w http.ResponseWriter, r *http.Request) {
 		Tags *[]string `json:"tags"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
 	if body.Name == nil && body.Tags == nil {
-		http.Error(w, "no patchable fields supplied", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "no patchable fields supplied")
 		return
 	}
 
 	if body.Name != nil {
 		name := strings.TrimSpace(*body.Name)
 		if len(name) > 120 {
-			http.Error(w, "name too long (max 120 chars)", http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "name too long (max 120 chars)")
 			return
 		}
 		// Disallow control chars and embedded newlines so the name renders
 		// cleanly in the UI and as a hero title.
 		for _, c := range name {
 			if c < 0x20 || c == 0x7f {
-				http.Error(w, "name contains control characters", http.StatusBadRequest)
+				writeError(w, http.StatusBadRequest, "name contains control characters")
 				return
 			}
 		}
 		if err := h.saveCustomName(r.Context(), owner, id, name); err != nil {
-			http.Error(w, "save: "+err.Error(), http.StatusInternalServerError)
+			writeError(w, http.StatusInternalServerError, "save: "+err.Error())
 			return
 		}
 	}
@@ -364,11 +651,11 @@ func (h *Handler) handlePatchDeck(w http.ResponseWriter, r *http.Request) {
 	if body.Tags != nil {
 		tagsJSON, err := normalizeTags(*body.Tags)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
 		if err := h.saveTags(r.Context(), owner, id, tagsJSON); err != nil {
-			http.Error(w, "save: "+err.Error(), http.StatusInternalServerError)
+			writeError(w, http.StatusInternalServerError, "save: "+err.Error())
 			return
 		}
 	}
@@ -424,7 +711,7 @@ func (h *Handler) handleListTags(w http.ResponseWriter, r *http.Request) {
 
 	suggestions, err := h.allTagsForOwner(r.Context(), owner)
 	if err != nil {
-		http.Error(w, "tags: "+err.Error(), http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "tags: "+err.Error())
 		return
 	}
 

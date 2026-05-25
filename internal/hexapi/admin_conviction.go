@@ -17,9 +17,10 @@ import (
 //
 //	GET /api/admin/conviction-events?since=<seq>&limit=<n>&triggered=1
 //
-// Auth uses the same shape as admin_anomalies: an HEXDEK_ADMIN_OWNER
-// env var matched against the X-HexDek-Owner header, falling back to
-// localhost-only when no admin owner is configured.
+// Auth uses the same fail-closed shape as admin_anomalies: requires
+// HEXDEK_ADMIN_OWNER env set + X-HexDek-Owner header match. There is
+// no localhost fallback — see adminAnomalyAuth's docstring for the
+// CWE-290 history behind that decision.
 type AdminConvictionHandler struct{}
 
 // Register wires the handler into mux.
@@ -31,7 +32,7 @@ func (h *AdminConvictionHandler) handleList(w http.ResponseWriter, r *http.Reque
 	// Reuse the localhost-or-admin-owner check from admin_anomalies so
 	// every conviction-related admin surface gates the same way.
 	if !adminAnomalyAuth(r) {
-		http.Error(w, "forbidden", http.StatusForbidden)
+		writeError(w, http.StatusForbidden, "forbidden")
 		return
 	}
 

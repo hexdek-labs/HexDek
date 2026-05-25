@@ -157,47 +157,95 @@ func TestFeather_DoesNotStampWhenSpellTargetsOpponentCreature(t *testing.T) {
 
 // ---------------------------------------------------------------------
 // Kess, Dissident Mage — once-per-turn cast-from-graveyard
+//
+// R60 rewired Kess onto the once_per_turn_cast_from_graveyard primitive
+// in gameengine/zone_cast.go. The handler no longer pushes a synthetic
+// stack item from an activated hook — it registers ZoneCastGrants and
+// the engine's CastFromZone consumes them. These tests verify the new
+// contract: ETB seeds grants for every instant/sorcery in the
+// controller's graveyard with the right shape (exile-on-resolve,
+// once-per-turn-per-source, source-pinned to this Kess).
 // ---------------------------------------------------------------------
 
-func TestKess_CastsHighestCMCFromGraveyard(t *testing.T) {
+func TestKess_ETBGrantsExileOnResolveForGraveyardInstantsAndSorceries(t *testing.T) {
 	gs := newGame(t, 2)
 	kess := addPerm(gs, 0, "Kess, Dissident Mage", "creature")
 	kess.Flags = map[string]int{}
 
 	bolt := &gameengine.Card{Name: "Lightning Bolt", Owner: 0, Types: []string{"instant", "cmc:1"}}
 	wrath := &gameengine.Card{Name: "Wrath of God", Owner: 0, Types: []string{"sorcery", "cmc:4"}}
-	gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, bolt, wrath)
-	stackBefore := len(gs.Stack)
+	bear := &gameengine.Card{Name: "Grizzly Bears", Owner: 0, Types: []string{"creature"}}
+	gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, bolt, wrath, bear)
 
-	kessCastFromGY(gs, kess, 0, nil)
+	kessETB(gs, kess)
 
-	if len(gs.Stack) != stackBefore+1 {
-		t.Fatalf("Kess should push 1 spell onto the stack; got delta %d", len(gs.Stack)-stackBefore)
+	pBolt := gameengine.GetZoneCastGrant(gs, bolt)
+	pWrath := gameengine.GetZoneCastGrant(gs, wrath)
+	pBear := gameengine.GetZoneCastGrant(gs, bear)
+
+	if pBolt == nil || pWrath == nil {
+		t.Fatalf("Kess ETB must grant cast-from-graveyard to instant + sorcery (bolt=%v wrath=%v)", pBolt, pWrath)
 	}
-	top := gs.Stack[len(gs.Stack)-1]
-	if top.Card != wrath {
-		t.Fatalf("Kess should pick highest-CMC spell (Wrath); got %s", top.Card.DisplayName())
+	if pBear != nil {
+		t.Fatalf("Kess ETB must NOT grant cast permission to a creature (got %+v)", pBear)
 	}
-	if v, _ := top.CostMeta["exile_on_resolve"].(bool); !v {
-		t.Fatalf("Kess-cast spell should be flagged exile_on_resolve")
+	if !pBolt.ExileOnResolve || !pWrath.ExileOnResolve {
+		t.Fatalf("Kess grants must be exile-on-resolve per oracle text")
 	}
-	if kess.Flags["kess_used_this_turn"] != 1 {
-		t.Fatalf("Kess should mark used_this_turn=1 after casting")
+	if !pBolt.OncePerTurnPerSource || pBolt.SourceTimestamp != kess.Timestamp {
+		t.Fatalf("Kess grant must be once-per-turn pinned to this Kess (got src=%d, want %d, opt=%v)",
+			pBolt.SourceTimestamp, kess.Timestamp, pBolt.OncePerTurnPerSource)
+	}
+	if pBolt.RequireController != 0 {
+		t.Fatalf("Kess grant should restrict casting to Kess's controller")
 	}
 }
 
-func TestKess_RefusesSecondCastSameTurn(t *testing.T) {
+func TestKess_RefreshGrantsNewlyMilledInstants(t *testing.T) {
 	gs := newGame(t, 2)
 	kess := addPerm(gs, 0, "Kess, Dissident Mage", "creature")
-	kess.Flags = map[string]int{"kess_used_this_turn": 1}
+	kess.Flags = map[string]int{}
+	kessETB(gs, kess)
+
+	// New instant lands in the graveyard mid-turn (mill/discard/etc.).
+	freshBolt := &gameengine.Card{Name: "Counterspell", Owner: 0, Types: []string{"instant"}}
+	gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, freshBolt)
+	kessRefreshGrants(gs, kess, nil)
+
+	if g := gameengine.GetZoneCastGrant(gs, freshBolt); g == nil {
+		t.Fatalf("refresh must pick up instants that landed in the graveyard after ETB")
+	}
+}
+
+func TestKess_GrantExpiresWhenSourceLeavesBattlefield(t *testing.T) {
+	// We don't hook LTB directly — the engine's EOT cleanup
+	// (ExpireZoneCastGrants) prunes "while_source_on_bf" grants when no
+	// permanent with the source's Timestamp is on the battlefield. This
+	// test simulates Kess leaving by removing her permanent, then runs
+	// the cleanup and verifies the grant is gone.
+	gs := newGame(t, 2)
+	kess := addPerm(gs, 0, "Kess, Dissident Mage", "creature")
+	kess.Flags = map[string]int{}
 	bolt := &gameengine.Card{Name: "Lightning Bolt", Owner: 0, Types: []string{"instant"}}
 	gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, bolt)
-	stackBefore := len(gs.Stack)
+	kessETB(gs, kess)
 
-	kessCastFromGY(gs, kess, 0, nil)
+	if gameengine.GetZoneCastGrant(gs, bolt) == nil {
+		t.Fatalf("precondition: Kess should have granted Lightning Bolt a cast permission")
+	}
 
-	if len(gs.Stack) != stackBefore {
-		t.Fatalf("Kess should refuse a second cast same turn")
+	// Yank Kess off the battlefield.
+	bf := gs.Seats[0].Battlefield[:0]
+	for _, p := range gs.Seats[0].Battlefield {
+		if p != kess {
+			bf = append(bf, p)
+		}
+	}
+	gs.Seats[0].Battlefield = bf
+
+	gameengine.ExpireZoneCastGrants(gs)
+	if gameengine.GetZoneCastGrant(gs, bolt) != nil {
+		t.Fatalf("EOT cleanup must revoke grants whose source has left the battlefield")
 	}
 }
 

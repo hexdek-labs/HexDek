@@ -363,95 +363,12 @@ func TestIndominus_NoCreaturesInHandDrawsZero(t *testing.T) {
 // Iroh, Grand Lotus — flashback grants on own turn
 // ---------------------------------------------------------------------------
 
-func TestIroh_RegistersFlashbackForInstantsSorceriesOnOwnTurn(t *testing.T) {
-	gs := newGame(t, 2)
-	iroh := stampCreaturePT(addPerm(gs, 0, "Iroh, Grand Lotus", "creature", "legendary"), 3, 3)
-	gs.Active = 0 // controller's turn
-
-	bolt := &gameengine.Card{
-		Name: "Bolt", Owner: 0, CMC: 1,
-		Types: []string{"instant", "cmc:1"},
-	}
-	wrath := &gameengine.Card{
-		Name: "Wrath", Owner: 0, CMC: 4,
-		Types: []string{"sorcery", "cmc:4"},
-	}
-	creat := &gameengine.Card{
-		Name: "Bear", Owner: 0, Types: []string{"creature"},
-	}
-	gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, bolt, wrath, creat)
-
-	irohGrandLotusETB(gs, iroh)
-
-	for _, c := range []*gameengine.Card{bolt, wrath} {
-		if gs.ZoneCastGrants == nil || gs.ZoneCastGrants[c] == nil {
-			t.Errorf("I/S card %q should have a flashback grant", c.DisplayName())
-			continue
-		}
-		g := gs.ZoneCastGrants[c]
-		if g.Zone != gameengine.ZoneGraveyard {
-			t.Errorf("grant Zone = %q, want graveyard", g.Zone)
-		}
-		if g.Keyword != "flashback" {
-			t.Errorf("grant keyword = %q, want flashback", g.Keyword)
-		}
-		if !g.ExileOnResolve {
-			t.Errorf("flashback grant should have ExileOnResolve = true")
-		}
-	}
-	if gs.ZoneCastGrants != nil && gs.ZoneCastGrants[creat] != nil {
-		t.Errorf("creature card should NOT receive flashback grant")
-	}
-}
-
-func TestIroh_LessonGetsFlashbackOne(t *testing.T) {
-	gs := newGame(t, 2)
-	iroh := stampCreaturePT(addPerm(gs, 0, "Iroh, Grand Lotus", "creature", "legendary"), 3, 3)
-	gs.Active = 0
-
-	lesson := &gameengine.Card{
-		Name: "Mascot Exhibition", Owner: 0, CMC: 6,
-		Types: []string{"sorcery", "lesson", "cmc:6"},
-	}
-	gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, lesson)
-
-	irohGrandLotusETB(gs, iroh)
-
-	g := gs.ZoneCastGrants[lesson]
-	if g == nil {
-		t.Fatal("Lesson should have flashback grant")
-	}
-	if g.ManaCost != 1 {
-		t.Errorf("Lesson flashback cost = %d, want 1 (flashback {1})", g.ManaCost)
-	}
-}
-
-func TestIroh_NoGrantsOnOpponentTurn(t *testing.T) {
-	gs := newGame(t, 2)
-	iroh := stampCreaturePT(addPerm(gs, 0, "Iroh, Grand Lotus", "creature", "legendary"), 3, 3)
-	gs.Active = 1 // opponent's turn
-
-	bolt := &gameengine.Card{Name: "Bolt", Owner: 0, CMC: 1, Types: []string{"instant", "cmc:1"}}
-	gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, bolt)
-
-	irohGrandLotusETB(gs, iroh)
-
-	if gs.ZoneCastGrants != nil && gs.ZoneCastGrants[bolt] != nil {
-		t.Errorf("opponent-turn ETB should NOT install flashback grants")
-	}
-}
-
-func TestIroh_UpkeepRefreshGrantsOnOwnTurn(t *testing.T) {
-	gs := newGame(t, 2)
-	iroh := stampCreaturePT(addPerm(gs, 0, "Iroh, Grand Lotus", "creature", "legendary"), 3, 3)
-	bolt := &gameengine.Card{Name: "Bolt", Owner: 0, CMC: 1, Types: []string{"instant", "cmc:1"}}
-	gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, bolt)
-
-	irohRefreshOnUpkeep(gs, iroh, map[string]interface{}{
-		"active_seat": 0,
-	})
-
-	if gs.ZoneCastGrants == nil || gs.ZoneCastGrants[bolt] == nil {
-		t.Errorf("upkeep refresh on own turn should register flashback")
-	}
-}
+// TestIroh_* legacy assertions deleted in R60 — these were orphaned by an
+// earlier refactor that migrated Iroh from the per-card ZoneCastGrants
+// model to the continuous GraveyardFlashbackGrant predicate model. The
+// removed symbol `irohRefreshOnUpkeep` blocked the per_card test binary
+// from compiling at all, masking the orphaned-state of the sibling tests.
+// Current Iroh behavior is fully covered by the dedicated suite in
+// iroh_grand_lotus_test.go (RegistersGraveyardFlashbackGrantOnETB,
+// GrantsFlashbackToNonLessonInstantSorcery_DuringOwnTurn,
+// LessonFlashbackCostIsOne, GrantInactiveOnOpponentTurn, etc.).

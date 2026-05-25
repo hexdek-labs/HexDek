@@ -22,6 +22,35 @@ import { DeckPicker } from './DeckCompare'
 import DeckExportModal from '../components/DeckExportModal'
 import ContextBox from '../components/ContextBox'
 import EloSparkline from '../components/EloSparkline'
+import ArchetypeChipRow from '../components/ArchetypeChipRow'
+import CoachingMarker from '../components/CoachingMarker'
+import { buildCoachingIndex, coachingForCard } from '../lib/freyaCoaching'
+import DeckRating from '../components/DeckRating'
+import DeckShareDisclosure from '../components/DeckShareDisclosure'
+import BracketChangelog from '../components/BracketChangelog'
+import { deckGlanceStats } from '../lib/deckStats'
+import { diffDeckText, diffSummary } from '../lib/deckHistoryDiff'
+import { formatUSD, summarize as summarizeBudget } from '../lib/deckBudget'
+import {
+  cardCMCForSort,
+  cardColorIdentityString,
+  cardRole,
+  cardTypeBucket,
+  sortCards,
+  toggleSort,
+} from '../lib/cardListDense'
+import {
+  applySuggestion,
+  extractFragment,
+  MIN_FRAGMENT_CHARS,
+  nextSuggestionIndex,
+} from './textareaAutocomplete'
+import {
+  outcomeForDeck,
+  opponentCommanders,
+  formatRelativeFinished,
+  summarizeRecentGames,
+} from '../lib/recentGames'
 
 // Brutalist stat-summary panel: mana curve, card-type breakdown, color
 // pips. Computed entirely from the in-memory deck card list — no extra
@@ -236,6 +265,178 @@ const CardThumb = ({ name, cmc, score, compact }) => {
   )
 }
 
+// CardListDense — sortable spreadsheet alternative to CardRolesGrid.
+// Same source-of-truth (Freya-tagged card list); trades large tile
+// images for a flat scannable table when the user wants to compare
+// CMC / type / role across the whole 99.
+//
+// Sort state is owned by the parent so a tab switch + return doesn't
+// jolt the user back to a default column they didn't pick. Stable
+// sort: identical-key cards always fall back to name ascending.
+const DENSE_TYPE_LABEL = {
+  creature: 'CRE',
+  planeswalker: 'PW',
+  instant: 'INS',
+  sorcery: 'SOR',
+  artifact: 'ART',
+  enchantment: 'ENC',
+  land: 'LND',
+  other: '—',
+}
+
+function DenseSortHeader({ label, sortKey, sort, onSort, align = 'left' }) {
+  const active = sort?.key === sortKey
+  const arrow = active ? (sort.dir === 'asc' ? '▲' : '▼') : ''
+  return (
+    <button
+      type="button"
+      onClick={() => onSort(sortKey)}
+      style={{
+        background: 'transparent',
+        border: 0,
+        padding: 0,
+        font: 'inherit',
+        cursor: 'pointer',
+        color: active ? 'var(--ink)' : 'var(--ink-3)',
+        textAlign: align,
+        letterSpacing: '0.08em',
+        fontWeight: 700,
+        textTransform: 'uppercase',
+        fontSize: 9,
+        userSelect: 'none',
+      }}
+      data-testid={`dense-col-${sortKey}`}
+      aria-sort={active ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+    >
+      {label}{arrow ? ` ${arrow}` : ''}
+    </button>
+  )
+}
+
+function CardListDense({ cards, cardRoles, sort, onSort, coachingIndex, onCut }) {
+  const rows = useMemo(
+    () => sortCards(cards, sort.key, sort.dir, cardRoles),
+    [cards, sort.key, sort.dir, cardRoles],
+  )
+
+  if (!rows.length) {
+    return (
+      <div className="t-xs muted" style={{ padding: '14px 0', textAlign: 'center' }}>
+        &gt; NO CARDS TO LIST
+      </div>
+    )
+  }
+
+  // Grid template — picked so QTY + CMC sit as right-aligned tabular
+  // numerics, name eats the rest, and TYPE/ROLE/COLOR pin to fixed
+  // narrow columns on the right.
+  const cols = '32px 1fr 130px 42px 56px 56px 42px'
+
+  return (
+    <div data-testid="card-list-dense">
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: cols,
+          gap: 6,
+          padding: '4px 6px',
+          borderBottom: '1px solid var(--rule-2)',
+          alignItems: 'baseline',
+        }}
+      >
+        <DenseSortHeader label="QTY"   sortKey="qty"   sort={sort} onSort={onSort} align="right" />
+        <DenseSortHeader label="NAME"  sortKey="name"  sort={sort} onSort={onSort} />
+        <DenseSortHeader label="MANA"  sortKey="cmc"   sort={sort} onSort={onSort} />
+        <DenseSortHeader label="CMC"   sortKey="cmc"   sort={sort} onSort={onSort} align="right" />
+        <DenseSortHeader label="TYPE"  sortKey="type"  sort={sort} onSort={onSort} />
+        <DenseSortHeader label="ROLE"  sortKey="role"  sort={sort} onSort={onSort} />
+        <DenseSortHeader label="COLOR" sortKey="color" sort={sort} onSort={onSort} />
+      </div>
+      {rows.map((c, i) => {
+        const linkName = (c.name || '').replace(/^COMMANDER:\s*/i, '').trim()
+        const bucket = cardTypeBucket(c)
+        const cmcSort = cardCMCForSort(c)
+        const cmcDisplay = bucket === 'land' ? '—' : String(c.cmc ?? '—')
+        const role = cardRole(c, cardRoles) || ''
+        const color = cardColorIdentityString(c) || (bucket === 'land' ? '—' : 'C')
+        return (
+          <div
+            key={`${c.name}-${i}`}
+            data-testid="card-list-dense-row"
+            data-card-name={c.name}
+            style={{
+              display: 'grid',
+              gridTemplateColumns: cols,
+              gap: 6,
+              padding: '3px 6px',
+              borderBottom: i < rows.length - 1 ? '1px dotted var(--rule)' : 'none',
+              alignItems: 'center',
+              fontSize: 11,
+            }}
+          >
+            <span
+              style={{
+                textAlign: 'right',
+                fontVariantNumeric: 'tabular-nums',
+                color: (c.quantity || 1) > 1 ? 'var(--ink)' : 'var(--ink-2)',
+                fontWeight: (c.quantity || 1) > 1 ? 700 : 400,
+              }}
+            >
+              {c.quantity || 1}
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', minWidth: 0 }}>
+              <CardLink
+                name={linkName}
+                className="t-xs"
+                style={{
+                  borderBottom: 'none',
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {c.name}
+              </CardLink>
+              {coachingIndex && (
+                <CoachingMarker
+                  entry={coachingForCard(coachingIndex, c.name)}
+                  onCut={onCut}
+                />
+              )}
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', minHeight: 14 }}>
+              {c.mana_cost ? <ManaCost cost={c.mana_cost} size={11} gap={1} /> : <span className="t-xs muted">—</span>}
+            </span>
+            <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--ink-2)' }}>
+              {cmcDisplay}
+              {/* hidden sort value for tests / debugging; keeps the
+                  visible number distinct from the -1 land sort key */}
+              <span style={{ display: 'none' }} data-cmc-sort={cmcSort}></span>
+            </span>
+            <span className="t-xs" style={{ letterSpacing: '0.06em', color: 'var(--ink-3)' }}>
+              {DENSE_TYPE_LABEL[bucket]}
+            </span>
+            <span className="t-xs" style={{ letterSpacing: '0.06em', color: role ? 'var(--ink-2)' : 'var(--ink-3)' }}>
+              {role ? role.toUpperCase() : '—'}
+            </span>
+            <span
+              className="t-xs"
+              style={{
+                letterSpacing: '0.04em',
+                color: color === 'C' || color === '—' ? 'var(--ink-3)' : 'var(--ink-2)',
+                fontWeight: 700,
+              }}
+            >
+              {color}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // WorkshopAddCard — typeahead-style card-add input for the Workshop
 // editor. Debounced search against /api/cards/search, dropdown shows
 // up to 6 matches, Enter or click appends. Lets the user add cards
@@ -312,6 +513,541 @@ function WorkshopAddCard({ onAdd }) {
               </div>
             )
           })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// WorkshopTextarea — the editable deck list with inline card-name
+// autocomplete. Wraps the raw <textarea> so we can detect the partial
+// name the user is typing on the current line, fire a debounced
+// /api/cards/search (the oracle-backed endpoint), and offer pickable
+// completions without forcing them to leave the textarea and click the
+// + ADD CARD widget above. Arrow keys + Tab/Enter navigate and accept,
+// Escape dismisses without applying.
+function WorkshopTextarea({ value, onChange, textareaRef: externalRef }) {
+  const internalRef = useRef(null)
+  const taRef = externalRef || internalRef
+  const [caret, setCaret] = useState(0)
+  const [suggestions, setSuggestions] = useState([])
+  const [highlighted, setHighlighted] = useState(0)
+  const [open, setOpen] = useState(false)
+  // dismissed pins the suggestion box closed when the user hits Escape
+  // — it stays closed until they type another character, so an aborted
+  // completion doesn't re-pop on every selection change.
+  const [dismissed, setDismissed] = useState(false)
+
+  const fragmentInfo = useMemo(
+    () => (dismissed ? null : extractFragment(value, caret)),
+    [value, caret, dismissed],
+  )
+  const fragment = fragmentInfo?.fragment || ''
+
+  useEffect(() => {
+    if (!fragmentInfo || fragment.length < MIN_FRAGMENT_CHARS) {
+      setSuggestions([])
+      setOpen(false)
+      return
+    }
+    let cancelled = false
+    const t = setTimeout(() => {
+      api.searchCards(fragment, 8).then(res => {
+        if (cancelled) return
+        const rows = Array.isArray(res) ? res : (res?.results || res?.cards || [])
+        setSuggestions(rows.slice(0, 8))
+        setHighlighted(0)
+        setOpen(rows.length > 0)
+      }).catch(() => {
+        if (!cancelled) { setSuggestions([]); setOpen(false) }
+      })
+    }, 180)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [fragment, fragmentInfo])
+
+  const accept = (suggestion) => {
+    if (!fragmentInfo || !suggestion) return
+    const name = suggestion?.name || suggestion
+    const { text: nextText, caret: nextCaret } = applySuggestion(value, fragmentInfo, name)
+    onChange(nextText)
+    setOpen(false)
+    setSuggestions([])
+    setDismissed(true)
+    // Restore caret after React's re-render. Otherwise the textarea
+    // value updates but the cursor stays at the prior offset and the
+    // next keystroke lands in the middle of the just-completed name.
+    requestAnimationFrame(() => {
+      const ta = taRef.current
+      if (ta) {
+        ta.focus()
+        ta.setSelectionRange(nextCaret, nextCaret)
+        setCaret(nextCaret)
+      }
+    })
+  }
+
+  const onKeyDown = (e) => {
+    if (!open || suggestions.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setHighlighted(h => nextSuggestionIndex(h, 1, suggestions.length))
+      return
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setHighlighted(h => nextSuggestionIndex(h, -1, suggestions.length))
+      return
+    }
+    if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
+      e.preventDefault()
+      accept(suggestions[highlighted])
+      return
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      setOpen(false)
+      setDismissed(true)
+    }
+  }
+
+  const onSelect = (e) => setCaret(e.target.selectionStart || 0)
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <textarea
+        ref={taRef}
+        value={value}
+        onChange={e => {
+          onChange(e.target.value)
+          setCaret(e.target.selectionStart || 0)
+          setDismissed(false)
+        }}
+        onSelect={onSelect}
+        onClick={onSelect}
+        onKeyUp={onSelect}
+        onKeyDown={onKeyDown}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        style={{
+          width: '100%', minHeight: 300, padding: 10,
+          background: 'var(--bg-2, rgba(0,0,0,0.3))', border: '1px solid var(--rule-2)',
+          color: 'var(--ink)', fontFamily: 'inherit', fontSize: 11,
+          letterSpacing: '0.04em', lineHeight: 1.6, resize: 'vertical',
+        }}
+        spellCheck={false}
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="off"
+        data-testid="workshop-textarea"
+      />
+      {open && suggestions.length > 0 && (
+        <div
+          data-testid="workshop-autocomplete"
+          style={{
+            position: 'absolute',
+            // Anchor the popup to the textarea's lower-left corner. The
+            // raw textarea API doesn't expose caret coords, so caret-
+            // anchored positioning would need a hidden mirror div — too
+            // heavy for the value. A persistent dropdown at the bottom
+            // matches the WorkshopAddCard pattern users already know.
+            top: '100%', left: 0, right: 0,
+            zIndex: 10,
+            marginTop: -1,
+            background: 'var(--panel)',
+            border: '1px solid var(--rule-2)',
+            borderTop: 'none',
+            maxHeight: 240, overflowY: 'auto',
+            boxShadow: '0 6px 16px rgba(0,0,0,0.35)',
+          }}
+        >
+          <div className="t-xs muted" style={{ padding: '4px 10px', borderBottom: '1px solid var(--rule)', letterSpacing: '0.08em' }}>
+            ORACLE / / {suggestions.length} MATCH{suggestions.length === 1 ? '' : 'ES'} FOR "{fragment.toUpperCase()}"
+          </div>
+          {suggestions.map((s, i) => {
+            const name = s?.name || s
+            const active = i === highlighted
+            return (
+              <div
+                key={`${name}-${i}`}
+                role="option"
+                aria-selected={active}
+                onMouseDown={(e) => { e.preventDefault(); accept(s) }}
+                onMouseEnter={() => setHighlighted(i)}
+                style={{
+                  padding: '6px 10px',
+                  cursor: 'pointer',
+                  fontSize: 11,
+                  borderBottom: '1px solid var(--rule)',
+                  background: active ? 'var(--bg-2, rgba(255,255,255,0.06))' : 'transparent',
+                  color: active ? 'var(--ink)' : 'var(--ink-2)',
+                }}
+              >
+                {name}
+                {s.type_line && (
+                  <span className="t-xs muted" style={{ marginLeft: 8 }}>— {s.type_line}</span>
+                )}
+              </div>
+            )
+          })}
+          <div className="t-xs muted" style={{ padding: '4px 10px', letterSpacing: '0.08em', borderTop: '1px solid var(--rule)' }}>
+            ↑↓ NAV · TAB/↵ ACCEPT · ESC DISMISS
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// DeckBudgetPanel — USD price rollup pulled from the Scryfall-backed
+// oracle cache. Lazy-fetched: only hits the backend when the panel
+// first mounts (it's invisible on other tabs, so the cost is paid
+// once-per-deck-view). Cards Scryfall has no $ for show as "—" in
+// the per-card list and surface in a "N CARDS UNPRICED" subtitle so
+// the user understands why the headline number might be low.
+function DeckBudgetPanel({ deckId }) {
+  const [payload, setPayload] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!deckId) return
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    api.getDeckBudget(deckId)
+      .then(res => {
+        if (cancelled) return
+        setPayload(res)
+        setLoading(false)
+      })
+      .catch(err => {
+        if (cancelled) return
+        setError(err?.message || 'BUDGET FETCH FAILED')
+        setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [deckId])
+
+  if (loading && !payload) {
+    return (
+      <Panel code="04.$" title="DECK BUDGET">
+        <div className="t-xs muted" style={{ padding: '14px 0', textAlign: 'center' }}>
+          &gt; PRICING DECK<span className="blink">_</span>
+        </div>
+      </Panel>
+    )
+  }
+  if (error) {
+    return (
+      <Panel code="04.$" title="DECK BUDGET">
+        <div className="t-xs" style={{ padding: '12px 0', color: 'var(--danger)' }}>
+          ✗ {error}
+        </div>
+      </Panel>
+    )
+  }
+  if (!payload) return null
+
+  const summary = summarizeBudget(payload)
+  const coveragePct = Math.round(summary.coverage * 100)
+
+  return (
+    <Panel
+      code="04.$"
+      title="DECK BUDGET"
+      right={<Tag solid>{summary.tier}</Tag>}
+    >
+      <div data-testid="deck-budget-summary" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <div className="t-xs muted" style={{ letterSpacing: '0.08em' }}>YOUR DECK COSTS</div>
+          <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '0.02em' }} data-testid="deck-budget-total">
+            {formatUSD(summary.total)}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+          <BudgetMetric label="AVG / CARD" value={formatUSD(summary.avgPerCard)} />
+          <BudgetMetric label="CARDS" value={`${summary.cardCount}`} />
+          <BudgetMetric
+            label="PRICED"
+            value={`${summary.pricedCount} / ${summary.uniqueCount}`}
+            sub={summary.uniqueCount > 0 ? `${coveragePct}% COVERAGE` : null}
+          />
+          {summary.missingCount > 0 && (
+            <BudgetMetric
+              label="UNPRICED"
+              value={`${summary.missingCount}`}
+              sub="SCRYFALL HAS NO $"
+              warn
+            />
+          )}
+        </div>
+      </div>
+
+      {summary.topExpensive.length > 0 && (
+        <>
+          <div className="hr" style={{ margin: '10px 0' }} />
+          <div className="t-xs muted" style={{ marginBottom: 6, letterSpacing: '0.08em' }}>
+            TOP CONTRIBUTORS
+          </div>
+          <div data-testid="deck-budget-top">
+            {summary.topExpensive.map((c, i) => (
+              <div
+                key={`${c.name}-${i}`}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '20px 1fr 80px 80px',
+                  gap: 6,
+                  alignItems: 'baseline',
+                  padding: '3px 0',
+                  borderBottom: i < summary.topExpensive.length - 1 ? '1px dotted var(--rule)' : 'none',
+                  fontSize: 11,
+                }}
+              >
+                <span className="t-xs muted" style={{ fontVariantNumeric: 'tabular-nums' }}>{i + 1}.</span>
+                <CardLink name={c.name} className="t-xs" style={{ borderBottom: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {c.name}
+                </CardLink>
+                <span className="t-xs muted" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  {(c.qty || 1) > 1 ? `${formatUSD(c.unit)} × ${c.qty}` : formatUSD(c.unit)}
+                </span>
+                <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                  {formatUSD(c.line)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <div className="t-xs muted" style={{ marginTop: 8, letterSpacing: '0.04em' }}>
+        Prices from Scryfall · {summary.currency} · basics not counted
+      </div>
+    </Panel>
+  )
+}
+
+function BudgetMetric({ label, value, sub, warn }) {
+  return (
+    <div>
+      <div className="t-xs muted" style={{ letterSpacing: '0.08em' }}>{label}</div>
+      <div style={{
+        fontSize: 15, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+        color: warn ? 'var(--warn, #c0a060)' : 'var(--ink)',
+      }}>
+        {value}
+      </div>
+      {sub && <div className="t-xs muted" style={{ fontSize: 9, letterSpacing: '0.06em' }}>{sub}</div>}
+    </div>
+  )
+}
+
+// DeckHistoryPanel — full deck-history view. Lists every archived
+// version of the deck (plus a synthetic CURRENT entry for the live
+// file), and on row expand fetches the version body + the immediately
+// previous version's body and renders the per-card diff (added /
+// removed / qty-changed). Lazy fetch: only the rows the user actually
+// opens hit the network, so a 50-version deck doesn't burst-fetch on
+// mount.
+function DeckHistoryPanel({ versions, deckId, currentDeckText, commanderName }) {
+  // Synthetic CURRENT row. Its diff is computed against the latest
+  // archived version using already-known data (currentDeckText +
+  // a lazy fetch of versions[0]'s body).
+  const rows = useMemo(() => {
+    // versions is returned newest-first by /api/decks/{id}/versions.
+    const v = Array.isArray(versions) ? [...versions] : []
+    const out = []
+    if (currentDeckText) {
+      out.push({
+        kind: 'current',
+        version: 'current',
+        label: 'CURRENT',
+        saved_at: null,
+        prevVersion: v[0]?.version ?? null,
+      })
+    }
+    for (let i = 0; i < v.length; i++) {
+      out.push({
+        kind: 'archived',
+        version: v[i].version,
+        label: `V${v[i].version}`,
+        saved_at: v[i].saved_at || null,
+        prevVersion: v[i + 1]?.version ?? null,
+      })
+    }
+    return out
+  }, [versions, currentDeckText])
+
+  const [open, setOpen] = useState({})
+  const [bodies, setBodies] = useState({})    // version# → deck text
+  const [errors, setErrors] = useState({})    // version# → message
+  const [loadingKey, setLoadingKey] = useState(null)
+
+  const fetchBody = async (version) => {
+    if (version == null) return null
+    if (bodies[version] != null) return bodies[version]
+    setLoadingKey(version)
+    try {
+      const v = await api.getDeckVersion(deckId, version)
+      const text = v?.deck_list ?? ''
+      setBodies(prev => ({ ...prev, [version]: text }))
+      return text
+    } catch (err) {
+      setErrors(prev => ({ ...prev, [version]: err?.message || 'FETCH FAILED' }))
+      return null
+    } finally {
+      setLoadingKey(null)
+    }
+  }
+
+  const toggle = async (row) => {
+    const key = row.version
+    if (open[key]) {
+      setOpen(prev => ({ ...prev, [key]: false }))
+      return
+    }
+    setOpen(prev => ({ ...prev, [key]: true }))
+    // Lazy load both sides of the diff.
+    if (row.kind === 'archived') await fetchBody(row.version)
+    if (row.prevVersion != null) await fetchBody(row.prevVersion)
+  }
+
+  if (rows.length === 0) {
+    return (
+      <Panel code="04.H" title="DECK HISTORY">
+        <div className="t-xs muted" style={{ padding: '12px 0' }}>
+          &gt; NO HISTORY YET — VERSIONS ARE ARCHIVED ON EVERY SAVE UPDATE
+        </div>
+      </Panel>
+    )
+  }
+
+  return (
+    <Panel code="04.H" title="DECK HISTORY" right={<Tag>{rows.length} ENTRIES</Tag>}>
+      <ContextBox id="deck.history" compact style={{ marginBottom: 8 }}>
+        Every <strong>SAVE UPDATE</strong> archives the prior deck as a new version.
+        Click a row to see what changed since the previous version — added cards, cut cards, and quantity tweaks.
+      </ContextBox>
+      <div data-testid="deck-history-list">
+        {rows.map(row => {
+          const isOpen = !!open[row.version]
+          const baselineText = row.prevVersion != null ? bodies[row.prevVersion] : ''
+          const currentText = row.kind === 'current' ? (currentDeckText || '') : (bodies[row.version] || '')
+          const ready = row.kind === 'current'
+            ? (row.prevVersion == null || baselineText != null)
+            : (bodies[row.version] != null && (row.prevVersion == null || baselineText != null))
+          const diff = ready ? diffDeckText(baselineText, currentText) : null
+          const isLoading = loadingKey === row.version || (row.prevVersion != null && loadingKey === row.prevVersion)
+          const err = errors[row.version] || (row.prevVersion != null ? errors[row.prevVersion] : null)
+          return (
+            <div
+              key={row.version}
+              data-testid={`deck-history-row-${row.version}`}
+              style={{ borderBottom: '1px dotted var(--rule)' }}
+            >
+              <button
+                type="button"
+                onClick={() => toggle(row)}
+                aria-expanded={isOpen}
+                style={{
+                  width: '100%',
+                  display: 'grid',
+                  gridTemplateColumns: '24px 90px 1fr auto',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 0',
+                  background: 'transparent',
+                  border: 0,
+                  color: 'inherit',
+                  font: 'inherit',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <span style={{
+                  fontSize: 10,
+                  color: 'var(--ink-2)',
+                  transition: 'transform 120ms ease',
+                  transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+                  display: 'inline-block',
+                }}>▶</span>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                  {row.label}{row.kind === 'current' && <span className="t-xs muted" style={{ marginLeft: 6 }}>(LIVE)</span>}
+                </span>
+                <span className="t-xs muted">
+                  {row.saved_at ? new Date(row.saved_at).toLocaleString() : (row.kind === 'current' ? '— UNSAVED IF EDITED' : '')}
+                </span>
+                <span className="t-xs" style={{ letterSpacing: '0.06em', color: diff && !diff.isClean ? 'var(--ink)' : 'var(--ink-3)' }}>
+                  {isOpen && isLoading ? 'LOADING…' : (diff ? diffSummary(diff) : (row.prevVersion == null ? 'INITIAL IMPORT' : ''))}
+                </span>
+              </button>
+              {isOpen && (
+                <div style={{ padding: '4px 0 10px 32px' }}>
+                  {err && (
+                    <div className="t-xs" style={{ color: 'var(--danger)' }}>✗ {err}</div>
+                  )}
+                  {!ready && !err && (
+                    <div className="t-xs muted">&gt; FETCHING VERSION{row.prevVersion != null ? ' + BASELINE' : ''}…</div>
+                  )}
+                  {ready && row.prevVersion == null && (
+                    <div className="t-xs muted">&gt; INITIAL IMPORT — NO PRIOR VERSION TO DIFF AGAINST</div>
+                  )}
+                  {ready && diff && row.prevVersion != null && (
+                    <DeckHistoryDiffBlock diff={diff} baselineLabel={`V${row.prevVersion}`} currentLabel={row.label} />
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {commanderName && (
+        <div className="t-xs muted" style={{ marginTop: 6, letterSpacing: '0.06em' }}>
+          COMMANDER: {commanderName.toUpperCase()}
+        </div>
+      )}
+    </Panel>
+  )
+}
+
+function DeckHistoryDiffBlock({ diff, baselineLabel, currentLabel }) {
+  if (!diff || diff.isClean) {
+    return <div className="t-xs muted">&gt; NO CHANGES BETWEEN {baselineLabel} AND {currentLabel}</div>
+  }
+  return (
+    <div data-testid="deck-history-diff" style={{ fontSize: 11 }}>
+      <div className="t-xs muted" style={{ marginBottom: 4, letterSpacing: '0.06em' }}>
+        {baselineLabel} → {currentLabel} · +{diff.addedCards} cards / -{diff.removedCards} cards / net {diff.netCards >= 0 ? '+' : ''}{diff.netCards}
+      </div>
+      {diff.added.length > 0 && (
+        <div style={{ marginTop: 4 }}>
+          <div style={{ fontSize: 9, color: 'var(--ok)', letterSpacing: '0.08em', fontWeight: 700 }}>ADDED</div>
+          {diff.added.map((a, i) => (
+            <div key={`a-${i}`} style={{ fontSize: 11 }}>
+              <span style={{ color: 'var(--ok)' }}>+{a.delta}</span> {a.name}
+            </div>
+          ))}
+        </div>
+      )}
+      {diff.removed.length > 0 && (
+        <div style={{ marginTop: 4 }}>
+          <div style={{ fontSize: 9, color: 'var(--danger)', letterSpacing: '0.08em', fontWeight: 700 }}>REMOVED</div>
+          {diff.removed.map((r, i) => (
+            <div key={`r-${i}`} style={{ fontSize: 11 }}>
+              <span style={{ color: 'var(--danger)' }}>-{r.delta}</span> {r.name}
+            </div>
+          ))}
+        </div>
+      )}
+      {diff.changed.length > 0 && (
+        <div style={{ marginTop: 4 }}>
+          <div style={{ fontSize: 9, color: 'var(--ink-2)', letterSpacing: '0.08em', fontWeight: 700 }}>QTY CHANGED</div>
+          {diff.changed.map((c, i) => (
+            <div key={`c-${i}`} style={{ fontSize: 11 }}>
+              <span style={{ color: c.delta > 0 ? 'var(--ok)' : 'var(--danger)' }}>
+                {c.delta > 0 ? '+' : ''}{c.delta}
+              </span>{' '}
+              {c.name}{' '}
+              <span className="t-xs muted">({c.from} → {c.to})</span>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -542,6 +1278,17 @@ export default function DeckArchive() {
     // would invalidate the baseline every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing])
+  // Lazy-load versions when the HISTORY tab opens. Other entry points
+  // (workshop save, clone, etc.) refresh `versions` already; this
+  // covers the read-only viewer who clicks HISTORY without opening
+  // the workshop first.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (activeTab === 'history' && owner && id) {
+      api.getDeckVersions(`${owner}/${id}`).then(setVersions).catch(() => {})
+    }
+  }, [activeTab, owner, id])
+
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [comparePickerOpen, setComparePickerOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
@@ -569,14 +1316,32 @@ export default function DeckArchive() {
   // gauntlet, captures elo_start / elo_end / win_rate / placements. Drives
   // the rating-over-time chart on the deck page.
   const [eloHistory, setEloHistory] = useState(null)
+  // Recent games — last N persisted GameSummaries this deck appeared in.
+  // null while pending; [] when the deck has no archived games.
+  const [recentGames, setRecentGames] = useState(null)
   const [cloning, setCloning] = useState(false)
   const [creditsRefreshKey, setCreditsRefreshKey] = useState(0)
   const [confirmClone, setConfirmClone] = useState(false)
+  const [confirmFork, setConfirmFork] = useState(false)
+  const [forking, setForking] = useState(false)
   const [spawningRoom, setSpawningRoom] = useState(false)
   const [isFriend, setIsFriend] = useState(false)
   const [friendBusy, setFriendBusy] = useState(false)
   const [ownerFriendCount, setOwnerFriendCount] = useState(null)
   const [similarDecks, setSimilarDecks] = useState(null) // null=loading, []=resolved
+  // DECK LIST view mode — persists across tab switches and across
+  // page loads (localStorage). 'tiles' = role-grouped image grid
+  // (existing CardRolesGrid + per-list panel); 'dense' = sortable
+  // spreadsheet (CardListDense) for "what's my 2-CMC removal count"
+  // style scanning.
+  const [decklistView, setDecklistView] = useState(() => {
+    if (typeof localStorage === 'undefined') return 'tiles'
+    return localStorage.getItem('hexdek_decklist_view') === 'dense' ? 'dense' : 'tiles'
+  })
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') localStorage.setItem('hexdek_decklist_view', decklistView)
+  }, [decklistView])
+  const [denseSort, setDenseSort] = useState({ key: 'type', dir: 'asc' })
   const { elo } = useLiveSocket()
   const { user } = useAuth()
 
@@ -815,6 +1580,25 @@ export default function DeckArchive() {
     return () => { cancelled = true }
   }, [owner, id])
 
+  // Recent games — last 10 persisted GameSummary rows this deck appeared in.
+  // Backed by /api/games/summaries?deck=owner/id&limit=10 (substring match on
+  // showmatch_game_seat.deck_key). Empty array means "no archive entries yet"
+  // (no observation persisted), which is distinct from "deck never played" —
+  // the panel just stays hidden in either case.
+  useEffect(() => {
+    // Initial state is null — no need to reset on the missing-route case,
+    // and avoiding setState in this branch keeps the effect compiler-clean.
+    if (!owner || !id) return
+    let cancelled = false
+    api.searchGameSummaries({ deck: `${owner}/${id}`, limit: 10 })
+      .then(res => {
+        if (cancelled) return
+        setRecentGames(Array.isArray(res?.rows) ? res.rows : [])
+      })
+      .catch(() => { if (!cancelled) setRecentGames([]) })
+    return () => { cancelled = true }
+  }, [owner, id])
+
   // PR #78 — commander-aggregate card stats fetch. Surfaces "is this card
   // pulling weight" across all decks of the same commander. True per-deck
   // card performance is a future enhancement; the commander aggregate is
@@ -930,6 +1714,30 @@ export default function DeckArchive() {
   // Prefer the structured rationale list when Freya has produced it; fall
   // back to the flat name list for older strategy.json files on disk.
   const cuttableCards = analysis?.cuttable_card_rationale || analysis?.cuttable_cards || []
+  // Per-card coaching lookup so inline UI (dense list rows, future grid
+  // tiles) can show a marker against any flagged card without re-walking
+  // the analysis blob. Same source-of-truth as the CONSIDER CUTTING
+  // panel — pure helper, see freyaCoaching.js.
+  const coachingIndex = buildCoachingIndex(analysis)
+  // Shared "open Workshop with this card removed" handler — used by the
+  // CONSIDER CUTTING panel's CUT button AND the new inline coaching
+  // markers. Owners only; the parent's isOwner gate decides whether
+  // either call site even passes this in.
+  const handleCutCardFromWorkshop = (cardName) => {
+    const lines = cards.map(c => {
+      const cmdr = deck?.commander_card
+      if (cmdr && c.name === cmdr) return `COMMANDER: ${c.name}`
+      return c.quantity > 1 ? `${c.quantity} ${c.name}` : `1 ${c.name}`
+    }).filter(line => {
+      if (line.startsWith('COMMANDER:')) return true
+      const tail = line.replace(/^\d+\s+/, '')
+      return tail !== cardName
+    })
+    setEditText(lines.join('\n'))
+    setEditing(true)
+    api.getDeckVersions(`${owner}/${id}`).then(setVersions).catch(() => {})
+    setTimeout(() => editPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
+  }
   const valueChains = analysis?.value_chains || []
   const vulnerableTo = analysis?.vulnerable_to || []
   const finisherCards = analysis?.finisher_cards || []
@@ -943,6 +1751,10 @@ export default function DeckArchive() {
   const emergentSynergies = analysis?.emergent_synergies || []
   const metaMatchups = analysis?.meta_matchups || []
   const cardRoles = analysis?.card_roles || null
+
+  // AT A GLANCE — consolidated Freya stats panel. Pure helper so the shape
+  // is unit-tested independently of the page render (see deckStats.test.mjs).
+  const glance = deckGlanceStats({ deck, analysis, deckElo, eloHistory })
 
   // In-deck name search. Applied only to the visible decklist panels
   // (CardRolesGrid + FULL CARD LIST) — stats, curve, and analysis stay
@@ -1212,7 +2024,34 @@ export default function DeckArchive() {
           {cmdrCardName && cmdrCardName.toUpperCase() !== deckName && (
             <div className="deck-hero__sub">{cmdrCardName}</div>
           )}
+          {/* Fork attribution — surfaces "Forked from <owner>/<id>" when
+              this deck originated as a /fork of someone else's. Clickable
+              link lets the viewer jump back to the source. */}
+          {deck?.forked_from && (
+            <div className="deck-hero__sub" style={{ fontSize: 11, opacity: 0.8, marginTop: 4, letterSpacing: '0.04em' }}>
+              FORKED FROM{' '}
+              <Link
+                to={`/decks/${deck.forked_from}`}
+                style={{ color: 'inherit', borderBottom: '1px dotted currentColor', textDecoration: 'none' }}
+              >
+                {deck.forked_from}
+              </Link>
+            </div>
+          )}
           {/* gameplan_summary hidden — Freya win-line detection needs accuracy pass */}
+          {/* System tags (Freya-derived archetype, prefixed "archetype:")
+              are rendered as a distinct read-only chip row above the
+              user-editable tag area. They're locked because they're
+              derived from Freya's analysis — the user "overrides" by
+              adding their own tag with whatever text they prefer, not
+              by deleting the system tag. */}
+          {Array.isArray(deck?.system_tags) && deck.system_tags.length > 0 && (
+            <ArchetypeChipRow
+              deck={deck}
+              isOwner={isOwner}
+              onFeedbackChange={setDeck}
+            />
+          )}
           {/* Tags: owners get an editable autocomplete chip field; visitors
               see a static chip row when there are any. The field is hidden
               from visitors with no tags to avoid an empty box. */}
@@ -1280,6 +2119,11 @@ export default function DeckArchive() {
           ) : (
             <div className="deck-vital-signs__sub" style={{ opacity: 0.55 }}>PENDING ANALYSIS</div>
           )}
+          {owner && id && wbs && wbs !== '?' && (
+            <div className="deck-vital-signs__sub" style={{ marginTop: 2 }}>
+              <BracketChangelog deckKey={`${owner}/${id}`} bracket={wbs} />
+            </div>
+          )}
         </div>
         <div className="deck-vital-signs__cell">
           <div className="deck-vital-signs__num">
@@ -1297,6 +2141,70 @@ export default function DeckArchive() {
           )}
         </div>
       </div>
+
+      {/* AT A GLANCE — bracket + archetype + win conditions + recent gauntlet
+          winrate, surfaced together so spectators don't have to scroll the
+          full Freya analysis to read the deck. The all-time win rate already
+          lives in the vital-signs strip; the value added here is "what's it
+          done lately" (last ≤5 gauntlet runs, weighted by games). */}
+      {(glance.bracket || glance.archetype || glance.winConditions.length > 0 || glance.recent) && (
+        <Panel code="04.AG" title="AT A GLANCE">
+          <div className="deck-glance-grid" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: 12,
+          }}>
+            <div>
+              <div className="t-xs muted">BRACKET</div>
+              <div className="t-lg" style={{ fontWeight: 700, marginTop: 2 }}>
+                {glance.bracket
+                  ? `B${glance.bracket}${glance.playsLike ? ` → B${glance.playsLike}` : ''}`
+                  : '—'}
+              </div>
+              {glance.bracketLabel && (
+                <div className="t-xs muted" style={{ marginTop: 2 }}>{glance.bracketLabel.toUpperCase()}</div>
+              )}
+            </div>
+            <div>
+              <div className="t-xs muted">ARCHETYPE</div>
+              <div className="t-lg" style={{ fontWeight: 700, marginTop: 2 }}>
+                {glance.archetype || '—'}
+              </div>
+            </div>
+            <div>
+              <div className="t-xs muted">RECENT WIN RATE</div>
+              <div className="t-lg" style={{ fontWeight: 700, marginTop: 2 }}>
+                {glance.recent
+                  ? `${glance.recent.pct}%`
+                  : glance.allTime
+                    ? `${glance.allTime.pct}%`
+                    : '—'}
+              </div>
+              <div className="t-xs muted" style={{ marginTop: 2 }}>
+                {glance.recent
+                  ? `LAST ${glance.recent.runs} RUN${glance.recent.runs === 1 ? '' : 'S'} · ${glance.recent.games.toLocaleString()} GAMES`
+                  : glance.allTime
+                    ? `ALL-TIME · ${glance.allTime.games.toLocaleString()} GAMES`
+                    : 'NO GAUNTLET YET'}
+              </div>
+            </div>
+            <div>
+              <div className="t-xs muted">WIN CONDITIONS</div>
+              {glance.winConditions.length > 0 ? (
+                <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {glance.winConditions.map((name, i) => (
+                    <CardLink key={i} name={name}>
+                      <Tag>{name.toUpperCase()}</Tag>
+                    </CardLink>
+                  ))}
+                </div>
+              ) : (
+                <div className="t-md" style={{ fontWeight: 700, marginTop: 2 }}>—</div>
+              )}
+            </div>
+          </div>
+        </Panel>
+      )}
 
       {/* Deck stats summary — always visible between hero and main columns. */}
       <div className="deck-stats-summary-row">
@@ -1345,6 +2253,14 @@ export default function DeckArchive() {
                     ['DELTA', <span style={{ color: deckElo.delta >= 0 ? 'var(--ok)' : 'var(--danger)' }}>{deckElo.delta >= 0 ? '+' : ''}{Math.round(deckElo.delta)}</span>, 'delta'],
                   ]} />
                 )}
+              </>
+            )}
+            {isOwner && owner && id && (
+              <>
+                <div className="hr" style={{ margin: '10px 0' }} />
+                <DeckRating userSlug={userOwnerSlug} deckKey={`${owner}/${id}`} />
+                <div className="hr" style={{ margin: '10px 0' }} />
+                <DeckShareDisclosure owner={owner} id={id} />
               </>
             )}
             <div className="hr" style={{ margin: '10px 0' }} />
@@ -1411,6 +2327,43 @@ export default function DeckArchive() {
                         {cloning ? 'CLONING (FREYA RUNNING)...' : 'CONFIRM CLONE'}
                       </Btn>
                       <Btn ghost arrow="✕" onClick={() => setConfirmClone(false)} disabled={cloning}>CANCEL</Btn>
+                    </div>
+                  )}
+                </>
+              )}
+              {owner && id && !isOwner && user && (
+                <>
+                  <ContextBox id="deck.fork" compact>Forks this deck into your own collection with attribution preserved — "Forked from {owner}/{id}" stays visible on your copy, so the original builder gets credit. Use FORK when you're building on top of someone's public work; use CLONE for a quieter private duplicate.</ContextBox>
+                  {!confirmFork ? (
+                    <Btn arrow="⑂" onClick={() => setConfirmFork(true)}>
+                      FORK DECK
+                    </Btn>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <Btn
+                        arrow="⑂"
+                        disabled={forking}
+                        onClick={() => {
+                          if (forking) return
+                          setForking(true)
+                          trackEvent('fork_deck', { deck: `${owner}/${id}` })
+                          api.forkDeck(`${owner}/${id}`).then(res => {
+                            toast.success('DECK FORKED — RUNNING FREYA')
+                            navigate(`/decks/${res.owner}/${res.id}`)
+                          }).catch(err => {
+                            if (err?.status === 401) toast.error('SIGN IN TO FORK')
+                            else if (err?.status === 429) toast.error('FORK LIMIT REACHED — TRY AGAIN IN AN HOUR')
+                            else if (err?.status === 400) toast.error(err.message || 'FORK REJECTED')
+                            else if (err?.status === 404) toast.error('SOURCE DECK NOT FOUND')
+                            else toast.error('FORK FAILED')
+                            setForking(false)
+                            setConfirmFork(false)
+                          })
+                        }}
+                      >
+                        {forking ? 'FORKING (FREYA RUNNING)...' : 'CONFIRM FORK'}
+                      </Btn>
+                      <Btn ghost arrow="✕" onClick={() => setConfirmFork(false)} disabled={forking}>CANCEL</Btn>
                     </div>
                   )}
                 </>
@@ -1547,6 +2500,7 @@ export default function DeckArchive() {
           <div className="deck-tabs">
             <button type="button" className={`deck-tab ${activeTab === 'analysis' ? 'active' : ''}`} onClick={() => setActiveTab('analysis')}>ANALYSIS</button>
             <button type="button" className={`deck-tab ${activeTab === 'decklist' ? 'active' : ''}`} onClick={() => setActiveTab('decklist')}>DECK LIST</button>
+            <button type="button" className={`deck-tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')} data-testid="history-tab">HISTORY</button>
             <button type="button" className={`deck-tab ${activeTab === 'achievements' ? 'active' : ''}`} onClick={() => setActiveTab('achievements')}>ACHIEVEMENTS</button>
           </div>
 
@@ -1573,17 +2527,7 @@ export default function DeckArchive() {
                 }
                 setEditText(lines.filter(l => l !== '' || lines.indexOf(l) === lines.length - 1).join('\n'))
               }} />
-              <textarea
-                value={editText}
-                onChange={e => setEditText(e.target.value)}
-                style={{
-                  width: '100%', minHeight: 300, padding: 10,
-                  background: 'var(--bg-2, rgba(0,0,0,0.3))', border: '1px solid var(--rule-2)',
-                  color: 'var(--ink)', fontFamily: 'inherit', fontSize: 11,
-                  letterSpacing: '0.04em', lineHeight: 1.6, resize: 'vertical',
-                }}
-                spellCheck={false}
-              />
+              <WorkshopTextarea value={editText} onChange={setEditText} />
               <ContextBox id="deck.edit-save" style={{ marginTop: 10 }}>
                 <strong>SAVE UPDATE</strong> writes a new version of the deck and re-runs Freya analysis.
                 {' '}<strong>CANCEL</strong> discards your edits.
@@ -1628,6 +2572,13 @@ export default function DeckArchive() {
 
           {/* === ANALYSIS TAB === */}
           {activeTab === 'analysis' && <>
+          {/* USD price rollup. Lazy-fetched on first analysis-tab
+              mount via /api/decks/{id}/budget — pulls from the
+              Scryfall-backed oracle cache and shows total, top
+              contributors, unpriced count. Sits above the Freya
+              panel so the "your deck costs $X" headline is the
+              first thing visible. */}
+          <DeckBudgetPanel deckId={`${owner}/${id}`} />
           <Panel code="04.C" title="FREYA / / ENGINE ANALYSIS" right={<Tag solid>{wbs ? `Bracket B${wbs}${pls && pls !== wbs ? ` → Plays Like B${pls}` : ''}` : 'Bracket pending'}</Tag>}>
             {!analysis ? (
               <div style={{ padding: '20px 0', textAlign: 'center' }}>
@@ -1697,15 +2648,18 @@ export default function DeckArchive() {
                 }).catch(err => {
                   // 402 from the server when the user is out of free
                   // runs and has no credits, or when the spend itself
-                  // would overdraft. The body is JSON with an error
-                  // code + the current quota state.
+                  // would overdraft. services/api.js's unwrapApiError
+                  // exposes the error code + details across both r60
+                  // (nested) and pre-r60 (flat) envelope shapes, so
+                  // we can switch on err.code regardless of which
+                  // backend version is answering during the deploy
+                  // crossover.
                   if (err?.status === 402) {
-                    let parsed = null
-                    try { parsed = JSON.parse(err.body) } catch {}
-                    if (parsed?.error === 'free_quota_exhausted') {
+                    const details = err?.details || {}
+                    if (err?.code === 'free_quota_exhausted') {
                       toast.error('OUT OF FREE GAUNTLETS — EARN CREDITS OR WAIT FOR RESET')
                     } else {
-                      toast.error(`INSUFFICIENT CREDITS — NEED ${parsed?.needed ?? '?'} CR (HAVE ${parsed?.balance ?? 0})`)
+                      toast.error(`INSUFFICIENT CREDITS — NEED ${details.needed ?? '?'} CR (HAVE ${details.balance ?? 0})`)
                     }
                     setCreditsRefreshKey(k => k + 1)
                   } else if (err?.status === 401) {
@@ -2078,25 +3032,7 @@ export default function DeckArchive() {
               commits. Non-owners see the CUT label as a passive flag. */}
           <ConsiderCuttingRationale
             cuts={cuttableCards}
-            onCut={isOwner ? (cardName) => {
-              const lines = cards.map(c => {
-                const cmdr = deck?.commander_card
-                if (cmdr && c.name === cmdr) return `COMMANDER: ${c.name}`
-                return c.quantity > 1 ? `${c.quantity} ${c.name}` : `1 ${c.name}`
-              }).filter(line => {
-                // Remove the card line (matches either "1 NAME" or "N NAME"
-                // for the target — commander rows are protected).
-                if (line.startsWith('COMMANDER:')) return true
-                const tail = line.replace(/^\d+\s+/, '')
-                return tail !== cardName
-              })
-              setEditText(lines.join('\n'))
-              setEditing(true)
-              api.getDeckVersions(`${owner}/${id}`).then(setVersions).catch(() => {})
-              // Scroll workshop into view on mobile so the user immediately
-              // sees the textarea with the card removed.
-              setTimeout(() => editPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
-            } : undefined}
+            onCut={isOwner ? handleCutCardFromWorkshop : undefined}
           />
 
           {/* Tutor targets */}
@@ -2341,6 +3277,87 @@ export default function DeckArchive() {
             </Panel>
           )}
 
+          {/* RECENT GAMES — last 10 persisted GameSummary rows this deck
+              appeared in. Each row navigates to /games/:id/summary. Hidden
+              when the archive has nothing yet so the rail stays clean. */}
+          {recentGames && recentGames.length > 0 && (() => {
+            const myKey = `${owner}/${id}`
+            const summary = summarizeRecentGames(recentGames, myKey)
+            return (
+              <Panel
+                code="04.RG"
+                title={`RECENT GAMES / / ${recentGames.length}`}
+                right={summary.total > 0 ? (
+                  <span className="t-xs muted">
+                    <span style={{ color: 'var(--ok)' }}>{summary.wins}W</span>
+                    {' · '}
+                    <span style={{ color: 'var(--danger)' }}>{summary.losses}L</span>
+                    {summary.draws > 0 && (
+                      <>
+                        {' · '}
+                        <span className="muted-2">{summary.draws}D</span>
+                      </>
+                    )}
+                  </span>
+                ) : null}
+              >
+                <div className="t-xs muted" style={{ marginBottom: 6 }}>
+                  Last {recentGames.length} archived games this deck appeared in (newest first). Click a row to open the post-game summary.
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }} data-testid="recent-games-table">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--rule-2)', textAlign: 'left' }}>
+                      <th style={{ padding: '4px 6px', width: 50 }}>RESULT</th>
+                      <th style={{ padding: '4px 6px' }}>GAME</th>
+                      <th style={{ padding: '4px 6px' }}>OPPONENTS</th>
+                      <th style={{ padding: '4px 6px', width: 38 }}>T</th>
+                      <th style={{ padding: '4px 6px' }}>END</th>
+                      <th style={{ padding: '4px 6px', width: 80 }}>WHEN</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentGames.map((r) => {
+                      const outcome = outcomeForDeck(r, myKey)
+                      const opps = opponentCommanders(r, myKey)
+                      const resultColor =
+                        outcome === 'win'  ? 'var(--ok)'      :
+                        outcome === 'loss' ? 'var(--danger)'  :
+                        outcome === 'draw' ? 'var(--ink-2)'   : 'var(--ink-3)'
+                      const resultLabel =
+                        outcome === 'win'  ? 'WIN'  :
+                        outcome === 'loss' ? 'LOSS' :
+                        outcome === 'draw' ? 'DRAW' : '—'
+                      return (
+                        <tr
+                          key={r.game_id}
+                          onClick={() => navigate(`/games/${r.game_id}/summary`)}
+                          style={{ borderBottom: '1px solid var(--rule-3)', cursor: 'pointer' }}
+                          data-testid={`recent-game-${r.game_id}`}
+                          title="Open game summary"
+                        >
+                          <td style={{ padding: '4px 6px', fontWeight: 700, color: resultColor, letterSpacing: '0.06em' }}>
+                            {resultLabel}
+                          </td>
+                          <td style={{ padding: '4px 6px' }}><strong>#{r.game_id}</strong></td>
+                          <td style={{ padding: '4px 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}>
+                            <span className="muted">vs </span>{opps.join(' · ') || '—'}
+                          </td>
+                          <td style={{ padding: '4px 6px' }}>{r.turns || '—'}</td>
+                          <td style={{ padding: '4px 6px' }}>
+                            <span className="muted-2">{(r.end_reason || '').toUpperCase() || '—'}</span>
+                          </td>
+                          <td style={{ padding: '4px 6px' }}>
+                            <span className="muted">{formatRelativeFinished(r.finished_at)}</span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </Panel>
+            )
+          })()}
+
           {/* PR #79 — ELO HISTORY chart. Pulls /api/decks/{id}/elo-history,
               renders rating-over-time SVG. Hidden when no runs exist (new
               deck, never gauntleted) so we don't show an empty axis box. */}
@@ -2469,10 +3486,40 @@ export default function DeckArchive() {
             </div>
           )}
           {cards.length > 0 && (
+            <div
+              data-testid="decklist-view-toggle"
+              style={{ display: 'flex', gap: 6, alignItems: 'center', padding: '0 2px' }}
+            >
+              <span className="t-xs muted" style={{ letterSpacing: '0.08em', marginRight: 4 }}>VIEW:</span>
+              <Tag
+                solid={decklistView === 'tiles'}
+                onClick={() => setDecklistView('tiles')}
+                style={{ cursor: 'pointer' }}
+                data-testid="decklist-view-tiles"
+              >
+                TILES
+              </Tag>
+              <Tag
+                solid={decklistView === 'dense'}
+                onClick={() => setDecklistView('dense')}
+                style={{ cursor: 'pointer' }}
+                data-testid="decklist-view-dense"
+              >
+                DENSE
+              </Tag>
+              <span className="t-xs muted" style={{ marginLeft: 'auto', letterSpacing: '0.06em' }}>
+                {decklistView === 'dense'
+                  ? `${filteredCards.length} ROWS · SORT BY ${denseSort.key.toUpperCase()} ${denseSort.dir.toUpperCase()}`
+                  : `${filteredCards.length} CARDS GROUPED BY ROLE`}
+              </span>
+            </div>
+          )}
+
+          {cards.length > 0 && decklistView === 'tiles' && (
             <CardRolesGrid cards={filteredCards} cardRoles={filteredCardRoles} />
           )}
 
-          {cards.length > 0 && (
+          {cards.length > 0 && decklistView === 'tiles' && (
             <Panel code="04.B" title={`FULL CARD LIST / / ${cardSearchQuery ? `${filteredCards.length} / ${cards.length}` : cards.length} ENTRIES`}>
               <div>
                 {filteredCards.length === 0 ? (
@@ -2496,7 +3543,35 @@ export default function DeckArchive() {
               </div>
             </Panel>
           )}
+
+          {cards.length > 0 && decklistView === 'dense' && (
+            <Panel code="04.B" title={`DENSE CARD LIST / / ${cardSearchQuery ? `${filteredCards.length} / ${cards.length}` : cards.length} ENTRIES`}>
+              <CardListDense
+                cards={filteredCards}
+                cardRoles={filteredCardRoles}
+                sort={denseSort}
+                onSort={(key) => setDenseSort(s => toggleSort(s, key))}
+                coachingIndex={coachingIndex}
+                onCut={isOwner ? handleCutCardFromWorkshop : undefined}
+              />
+            </Panel>
+          )}
           </>}
+
+          {/* === HISTORY TAB === */}
+          {activeTab === 'history' && (
+            <DeckHistoryPanel
+              versions={versions}
+              deckId={`${owner}/${id}`}
+              currentDeckText={cards.map(c => {
+                const cmdr = deck?.commander_card
+                if (cmdr && c.name === cmdr) return `COMMANDER: ${c.name}`
+                const qty = c.quantity > 1 ? c.quantity : 1
+                return `${qty} ${c.name}`
+              }).join('\n')}
+              commanderName={deck?.commander_card || deck?.commander || ''}
+            />
+          )}
 
           {/* === ACHIEVEMENTS TAB === */}
           {activeTab === 'achievements' && <>

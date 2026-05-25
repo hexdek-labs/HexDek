@@ -58,6 +58,7 @@ func emielActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityI
 	gs.UnregisterReplacementsForPermanent(target)
 	gs.UnregisterContinuousEffectsForPermanent(target)
 	gameengine.FireZoneChangeTriggers(gs, target, card, "battlefield", "exile")
+	gameengine.DetachAll(gs, target)
 
 	newPerm := createPermanent(gs, owner, card, false)
 	gs.LogEvent(gameengine.Event{

@@ -82,6 +82,9 @@ func satyaOnAttack(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 		tokenPerm.Flags = map[string]int{}
 	}
 	tokenPerm.Flags["attacking"] = 1
+	// R60: CR §506.3 — the token is legally attacking despite §302.1
+	// summoning sickness. Clear SS so checkCombatLegality doesn't trip.
+	tokenPerm.SummoningSick = false
 
 	// Grant {E}{E}.
 	gameengine.GainEnergy(gs, seat, 2)

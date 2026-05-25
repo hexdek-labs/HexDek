@@ -56,11 +56,48 @@ type CostModifier struct {
 	Source string // card name for logging
 }
 
+// CastContext carries optional metadata about a cast that
+// zone-aware cost modifiers need to honor. The zero value is the
+// standard cast-from-hand path; alternative-cost callsites
+// (CastFlashback, CastWithEscape, CastWithDisturb, ...) populate
+// FromGraveyard before invoking the context-aware cost calculation.
+// CR §601.2a defines "the player chooses the zone from which to
+// cast the spell," and a number of static effects (Patrician Geist,
+// Gravebreaker Lamia, Emet-Selch of the Third Seat, Doc Aurlock)
+// gate their cost reduction on that chosen zone.
+type CastContext struct {
+	// FromGraveyard is true when the spell is being cast from its
+	// owner's graveyard (flashback, escape, disturb, embalm-from-gy
+	// variants, jump-start, retrace, recover, aftermath-half-from-gy,
+	// Underworld Breach permission, etc.).
+	FromGraveyard bool
+	// FromExile is true when the spell is cast from an exile zone
+	// (foretell, suspend, plot, omen, mayhem, warp, splice-from-exile,
+	// adventure-from-exile, impulse-draw "cast from exile" effects,
+	// or any ZoneCastGrant whose Zone == ZoneExile).
+	FromExile bool
+}
+
 // CalculateTotalCost computes the total mana cost for casting `card`
 // by `seatIdx`, walking the battlefield for static cost-modifying
 // effects. Returns the final cost after increases, reductions, and
 // minimums per CR §601.2f ordering.
+//
+// Equivalent to CalculateTotalCostWithContext with a zero-value
+// CastContext (hand cast). Alt-cost callers that need zone-aware
+// reductions should use CalculateTotalCostWithContext directly, or
+// invoke ApplyGraveyardCastReduction on a separately-computed alt
+// cost.
 func CalculateTotalCost(gs *GameState, card *Card, seatIdx int) int {
+	return CalculateTotalCostWithContext(gs, card, seatIdx, CastContext{})
+}
+
+// CalculateTotalCostWithContext is the zone-aware variant. It honors
+// cost modifiers whose effects depend on the spell's source zone —
+// e.g. Patrician Geist ("Spells you cast from your graveyard cost
+// {1} less") only contributes a reduction when ctx.FromGraveyard is
+// true.
+func CalculateTotalCostWithContext(gs *GameState, card *Card, seatIdx int, ctx CastContext) int {
 	if gs == nil || card == nil {
 		return 0
 	}
@@ -68,7 +105,7 @@ func CalculateTotalCost(gs *GameState, card *Card, seatIdx int) int {
 	if card.CastingBackFace && card.BackFaceCMC > 0 {
 		baseCost = card.BackFaceCMC
 	}
-	mods := ScanCostModifiers(gs, card, seatIdx)
+	mods := ScanCostModifiersWithContext(gs, card, seatIdx, ctx)
 
 	// §903.8 — Commander tax. Each prior cast from the command zone adds {2}
 	// to the cost. This applies when the game is in commander format and the
@@ -163,7 +200,20 @@ func ApplyCostModifiers(baseCost int, mods []CostModifier) int {
 //   Minimums:
 //     - Trinisphere: spells cost at least {3} (only opponent's in practice,
 //       but CR says all spells)
+//
+// ScanCostModifiers is the zero-context (hand-cast) variant; for
+// alternative-cost paths (flashback / escape / disturb / etc.) call
+// ScanCostModifiersWithContext with CastContext.FromGraveyard=true so
+// graveyard-cast reducers (Patrician Geist, Gravebreaker Lamia,
+// Emet-Selch of the Third Seat, Doc Aurlock, …) contribute.
 func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
+	return ScanCostModifiersWithContext(gs, card, seatIdx, CastContext{})
+}
+
+// ScanCostModifiersWithContext is the zone-aware scan. It mirrors
+// ScanCostModifiers but also recognizes cost reducers whose static
+// effect is gated on the spell's source zone (graveyard / exile).
+func ScanCostModifiersWithContext(gs *GameState, card *Card, seatIdx int, ctx CastContext) []CostModifier {
 	if gs == nil || card == nil {
 		return nil
 	}
@@ -385,6 +435,24 @@ func ScanCostModifiers(gs *GameState, card *Card, seatIdx int) []CostModifier {
 			isSelf := perm.Controller == seatIdx
 
 			switch name {
+			// --- COST REDUCTIONS (self-targeted) ---
+
+			case "Aminatou, Veil Piercer":
+				// "Each enchantment card in your hand has miracle. Its
+				// miracle cost is equal to its mana cost reduced by {4}."
+				// Modeled as a flat {4} reduction on enchantment spells
+				// cast by Aminatou's controller. The full miracle gating
+				// (must be the first card drawn this turn) is a cast-
+				// pipeline rider; for the cost-only surface the reduction
+				// matches the printed math.
+				if isSelf && cardHasType(card, "enchantment") {
+					mods = append(mods, CostModifier{
+						Kind:   CostModReduction,
+						Amount: 4,
+						Source: name,
+					})
+				}
+
 			// --- COST INCREASES ---
 
 			case "Thalia, Guardian of Thraben":

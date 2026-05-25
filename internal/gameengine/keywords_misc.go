@@ -2831,7 +2831,14 @@ func ActivateCraft(gs *GameState, perm *Permanent, materialType string) bool {
 }
 
 // removePermanentFromBattlefield removes a permanent without triggering
-// dies/LTB (used for exile-and-return effects like Craft).
+// dies/LTB (used for exile-and-return effects like Craft / Meld / Aura
+// swap, and for activation-cost ExileSelf shapes like Channel).
+//
+// r60: also detaches any auras/equipment pointing at p. The carrier is
+// leaving the battlefield, so by §704.5m/§704.5n attached objects would
+// be cleaned up at the next SBA — but the window before SBA runs is
+// observed by checkAttachmentConsistency (Loki r41/r57 cluster). Run
+// detachAll synchronously to close the window.
 func removePermanentFromBattlefield(gs *GameState, p *Permanent) {
 	if gs == nil || p == nil {
 		return
@@ -2843,6 +2850,7 @@ func removePermanentFromBattlefield(gs *GameState, p *Permanent) {
 	gs.removePermanent(p)
 	gs.UnregisterReplacementsForPermanent(p)
 	gs.UnregisterContinuousEffectsForPermanent(p)
+	detachAll(gs, p)
 }
 
 // permHasTriggerEvent checks if a permanent's AST has a triggered ability

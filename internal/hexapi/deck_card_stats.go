@@ -70,18 +70,18 @@ func (h *Handler) handleDeckCardStats(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
 	deckPath := findDeckFile(h.DecksDir, owner, id)
 	if deckPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 	data, err := os.ReadFile(deckPath)
 	if err != nil {
-		http.Error(w, "cannot read deck", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot read deck")
 		return
 	}
 	var cards []map[string]any

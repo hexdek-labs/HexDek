@@ -32,6 +32,11 @@ type DeckProfile struct {
 	GameChangerCount    int
 	GameChangerCards    []string
 	Intent              string
+	// BracketRationale documents how the bracket call was derived —
+	// which density / card-list signals contributed, raw score, and
+	// any ceiling/floor/gate adjustments. Surfaced to JSON + report so
+	// builders can see why the deck landed where it did.
+	BracketRationale *BracketRationale
 
 	PrimaryWinLine    string
 	WinLineCount      int
@@ -81,18 +86,65 @@ type DeckProfile struct {
 	// Synergy clusters
 	SynergyClusters []SynergyCluster
 
+	// Alt-build suggestions — when ≥2 clusters are above the pivot
+	// threshold, surface each non-primary as a "you could refocus
+	// around X" candidate so the Decks screen can show "this deck is
+	// trying to do two things; pick one." See computeAltBuildSuggestions.
+	AltBuildSuggestions []AltBuildSuggestion
+
 	// Meta positioning
 	MetaMatchups []MetaMatchup
 
-	// Card quality tiers
+	// "Favored against" reverse-lookup — archetypes this deck reliably
+	// beats, combined from both forward (X's own favored matchups) and
+	// reverse (other archetypes that list themselves unfavored vs X)
+	// directions of the matchup DB. See MetaStrongAgainst for details.
+	// Surfaced to the Decks screen as the "good against" summary.
+	StrongAgainst []MetaAdvantage
+
+	// Card quality tiers — star = clear keepers tied to wincon / value
+	// chain; solid = okay-but-replaceable, scoring above the cut floor
+	// but below the star threshold (worth flagging for builders shopping
+	// upgrades); cuttable = bottom of the deck on the synergy evaluator.
 	CuttableCards []CardQuality
+	SolidCards    []CardQuality
 	StarCards     []CardQuality
+
+	// CardPowerLevels is the full 0-100 power rating for every non-land
+	// card in the deck, sorted high → low. See CardPowerLevel for the
+	// three-component breakdown (archetype fit + CMC efficiency + synergy
+	// contribution). Each tier entry above (StarCards / SolidCards /
+	// CuttableCards) echoes the same Power on its CardQuality.Power field.
+	CardPowerLevels []CardPowerLevel
+
+	// PowerTierCounts is the per-tier (S/A/B/C/D) card distribution
+	// summary derived from CardPowerLevels — surfaces "this deck has
+	// 3 S, 5 A, 12 B, 28 C, 50 D" so builders can pace upgrade
+	// purchases. Map keys are always in PowerTierOrder; absent tiers
+	// are present with value 0 for stable rendering.
+	PowerTierCounts map[string]int
+
+	// PetCards are low-tier (C/D) creatures whose role tags don't match
+	// the deck's primary-archetype fingerprint — the deckbuilder kept
+	// them despite the suboptimal fit, which strongly signals a personal-
+	// taste / flavor pick rather than a card they'd cut on review. The
+	// report surfaces these as "keep if you love it" so the upgrade
+	// coaching respects personal taste instead of just hammering "cut
+	// this." See computePetCards for the exact detection signals.
+	PetCards []PetCard
 
 	// Color weight suggestions
 	LandSwapSuggestions []string
 
 	// Deck personality
 	PersonalityBlurb string
+
+	// Deck coaching — 3-5 prioritized actionable suggestions synthesized
+	// across mana base, interaction, ramp/draw, win-line redundancy,
+	// protection density, cuts, and commander-synergy signals. Thresholds
+	// flex with archetype + bracket goal so a B2 casual deck isn't
+	// lectured about tutor density. See computeCoachingTips.
+	CoachingTips []CoachingTip
 
 	// Power ranking
 	PowerPercentile int    // 0-100 estimated percentile within archetype
@@ -105,10 +157,31 @@ type RoleCount struct {
 }
 
 type SynergyCluster struct {
-	Name  string
-	Cards []string
-	Theme string
-	Score int // number of pairwise synergies within the cluster
+	Name        string
+	Cards       []string // capped at 8 for display
+	Theme       string
+	Score       int // number of pairwise synergies within the cluster
+	MemberCount int // full deduped count (uncapped) — used by alt-build threshold
+	// AllMembers is the full deduped member list (uncapped). Cards is the
+	// display-capped subset; AllMembers feeds the structured export
+	// (cluster_export.go) so downstream deck-builder integrations get
+	// the complete membership for each theme cluster, not just the
+	// 8-card preview.
+	AllMembers []string
+}
+
+// AltBuildSuggestion is a "you could re-focus the deck around X" hint
+// surfaced when the deck has multiple synergy clusters above the
+// pivotable-size threshold — the deckbuilder is splitting slot
+// priority across two engines and could commit to one. See
+// computeAltBuildSuggestions.
+type AltBuildSuggestion struct {
+	Cluster     string // theme key (e.g. "tokens", "recursion")
+	ClusterName string // display name ("Token Engine")
+	MemberCount int    // cards already aligned with the theme
+	Score       int    // pair-weighted score from the cluster
+	Pivot       string // "You could refocus around X — ..."
+	Trade       string // "Currently splits with Y — picking one frees N slots"
 }
 
 type MetaMatchup struct {
@@ -117,16 +190,138 @@ type MetaMatchup struct {
 	Reason    string
 }
 
+// MetaAdvantage is the per-entry shape of the "favored against" list
+// produced by MetaStrongAgainst. Reason is the headline why-line
+// (forward perspective if available — "X beats Y because Z"); when
+// Source is "both", OpponentReason carries the corroborating reverse
+// perspective ("Y can't answer X because W").
+type MetaAdvantage struct {
+	Archetype      string
+	Reason         string
+	OpponentReason string // populated only when Source == "both"
+	Source         string // "forward" | "reverse" | "both"
+}
+
+// CoachingTip is one prioritized, actionable suggestion for improving
+// the deck. Coach surfaces ≤5 sorted by Priority (descending).
+//
+//   - Category groups tips for the Decks-screen filter rail
+//     ("cut" | "add" | "manabase" | "ratio" | "consistency").
+//   - Priority is the impact score (1-10). 10 = deck won't function
+//     without this fix (severe land shortage); 5 = stylistic
+//     improvement. Coach uses this for the sort + truncation pass.
+//   - Title is a one-line headline rendered as the tip bullet.
+//   - Detail is 1-3 sentences naming the specific signal that
+//     triggered the tip (counts, percentages, named themes).
+//   - Action is the concrete next step — what to actually do, with
+//     named candidate cards where applicable.
+//   - Tags carry archetype/bracket affinity for downstream filtering.
+type CoachingTip struct {
+	Category string
+	Priority int
+	Title    string
+	Detail   string
+	Action   string
+	Tags     []string
+}
+
 type CardQuality struct {
-	Name   string
-	Tier   string // "star", "good", "filler", "cuttable"
-	Reason string
+	Name             string
+	Tier             string // "star" | "solid" | "cuttable" (synergy-tier classification)
+	Reason           string
+	Power            int    // 0-100 power level — see CardPowerLevel for components
+	PowerTier        string // "S" | "A" | "B" | "C" | "D" — see PowerTierFor
+	PowerExplanation string // human-readable "S — wincon piece + 4-role at CMC 1 + Combo-archetype fit"
 	// Rationale fields (populated for cuttable tier).
 	Detected  string   // what stat/pattern triggered the recommendation
 	WhyCut    string   // why cutting it is recommended
 	Effect    string   // resulting effect on the deck if cut
 	Suggested []string // suggested swap candidates
 }
+
+// CardPowerLevel is the 0-100 per-card power rating produced by
+// computeCardPower. The total is the sum of three explicit components,
+// each capped at its own max so the final Power is clamped to [0, 100].
+//
+//	ArchetypeFit         0-40 — how well the card's roles align with
+//	                            the deck's primary-archetype fingerprint
+//	CMCEfficiency        0-20 — curve placement (cheap multi-role = peak)
+//	SynergyContribution  0-40 — win-line / value-chain / combo / cluster
+//	                            participation
+//
+// Surfaced through DeckProfile.CardPowerLevels (sorted high → low) plus
+// echoed onto each CardQuality entry's Power field so star / solid /
+// cuttable lists show the rating inline.
+type CardPowerLevel struct {
+	Name                string
+	CMC                 int
+	Roles               []string
+	Power               int
+	PowerTier           string // "S" | "A" | "B" | "C" | "D" — see PowerTierFor
+	Explanation         string // human-readable why-line — see buildPowerExplanation
+	ArchetypeFit        int
+	CMCEfficiency       int
+	SynergyContribution int
+}
+
+// PetCard is a low-tier creature the deckbuilder kept despite its
+// off-archetype fit — almost certainly a personal-taste / flavor pick.
+// Surfaced as a "keep if you love it" hint so the report doesn't
+// hammer "cut this" against cards the builder consciously included
+// for flavor. See computePetCards for the detection criteria.
+type PetCard struct {
+	Name      string
+	CMC       int
+	Roles     []string
+	Power     int
+	PowerTier string
+	Reason    string // "off-archetype legendary creature — signature flavor pick"
+}
+
+// PowerTierFor maps a 0-100 power score to a letter grade for "deck
+// buy-it pacing" — S-tier first, A second, etc. Absolute bands
+// (intentionally not percentile-based) so a casual deck with no S
+// cards reads as "casual deck with no high-impact cards" instead of
+// promoting its top filler. Boundaries are inclusive on the high side:
+//
+//	S = 70-100  must-keep wincons / load-bearing engines
+//	A = 55-69   strong supports, the deck wants these specific cards
+//	B = 38-54   solid utility, replaceable but not flex
+//	C = 25-37   situational / role-only filler
+//	D = 0-24    bottom of the deck, swap candidates
+//
+// Thresholds recalibrated from the original 75/60/40/25 split based on
+// the cross-deck distribution from ComputePowerTierAggregate. The
+// original 300-deck baseline showed 3.3% S / 11.4% A — too thin on
+// both elite tiers, with the [70-74] band of strong-but-not-elite
+// cards stuck in A and the [55-59] band of solid supports stuck in B.
+// The retuned 70/55/38/25 thresholds shift the distribution toward
+// the standard tier shape (target ~7% S / 18% A / 35% B / 30% C /
+// 10% D — roughly normal peaked at B with thin tails). Lyon corpus
+// (8 decks / 504 cards) under the new thresholds: 6.9% S / 19.4% A /
+// 37.9% B / 28.6% C / 8.9% D. The C/D boundary at 25 is unchanged —
+// D was already well-sized as "obvious cuts".
+//
+// See computeCardPower for how Power is computed.
+func PowerTierFor(power int) string {
+	switch {
+	case power >= 70:
+		return "S"
+	case power >= 55:
+		return "A"
+	case power >= 38:
+		return "B"
+	case power >= 25:
+		return "C"
+	default:
+		return "D"
+	}
+}
+
+// PowerTierOrder is the deterministic ordering for tier iteration
+// (high → low). Use this anywhere you print or count tiers so output
+// always reads S/A/B/C/D, never C/A/S/B/D from map iteration order.
+var PowerTierOrder = []string{"S", "A", "B", "C", "D"}
 
 func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	dp := &DeckProfile{
@@ -167,6 +362,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 		dp.GameChangerCount = report.Archetype.GameChangerCount
 		dp.GameChangerCards = report.Archetype.GameChangerCards
 		dp.Intent = report.Archetype.Intent
+		dp.BracketRationale = report.Archetype.BracketRationale
 	}
 
 	if report.WinLines != nil {
@@ -187,11 +383,17 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	computeInteractionQuality(dp, report, oracle)
 	computeProtectionDensity(dp, report, oracle)
 	computeManaBaseGrade(dp, report, oracle)
-	computeThreatAssessment(dp, report)
+	// Opening hand sim runs first so dp.IsCommanderCentric is populated
+	// before threat assessment reads it (commander-centric decks fear
+	// commander-targeting hosers like Imprisoned in the Moon).
 	computeOpeningHandSim(dp, report, oracle)
+	computeThreatAssessment(dp, report)
 	computeSynergyClusters(dp, report, oracle)
+	computeAltBuildSuggestions(dp)
 	computeMetaPositioning(dp)
+	computeCardPower(dp, report)
 	computeCardQualityTiers(dp, report, oracle)
+	computePetCards(dp, report)
 	computeLandSwapSuggestions(dp, report)
 	dp.PersonalityBlurb = buildPersonalityBlurb(dp, report)
 	dp.PowerPercentile, dp.PowerFactors = estimatePowerPercentile(dp, report)
@@ -199,6 +401,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	dp.Strengths = deriveStrengths(report, dp)
 	dp.Weaknesses = deriveWeaknesses(report, dp)
 	dp.GameplanSummary = buildGameplanSummary(dp, report)
+	dp.CoachingTips = computeCoachingTips(dp, report)
 
 	return dp
 }
@@ -409,10 +612,13 @@ func topNRoles(counts map[RoleTag]int, n int) []RoleCount {
 func deriveStrengths(report *FreyaReport, dp *DeckProfile) []string {
 	var s []string
 
-	if report.TutorCount >= 8 {
-		s = append(s, fmt.Sprintf("deep tutor package (%d tutors)", report.TutorCount))
-	} else if report.TutorCount >= 5 {
-		s = append(s, fmt.Sprintf("strong tutor package (%d tutors)", report.TutorCount))
+	// Use NonLandTutorCount — basic-land ramp should not inflate the
+	// "tutor package" headline. A 100-card deck with 10 ramp pieces and
+	// 0 real tutors is not a tutor deck.
+	if report.NonLandTutorCount >= 8 {
+		s = append(s, fmt.Sprintf("deep tutor package (%d tutors)", report.NonLandTutorCount))
+	} else if report.NonLandTutorCount >= 5 {
+		s = append(s, fmt.Sprintf("strong tutor package (%d tutors)", report.NonLandTutorCount))
 	}
 
 	if dp.DrawCount >= 12 {
@@ -478,9 +684,9 @@ func deriveStrengths(report *FreyaReport, dp *DeckProfile) []string {
 func deriveWeaknesses(report *FreyaReport, dp *DeckProfile) []string {
 	var w []string
 
-	if report.TutorCount < 3 && report.TutorCount > 0 {
-		w = append(w, fmt.Sprintf("thin tutor package (%d tutors)", report.TutorCount))
-	} else if report.TutorCount == 0 {
+	if report.NonLandTutorCount < 3 && report.NonLandTutorCount > 0 {
+		w = append(w, fmt.Sprintf("thin tutor package (%d tutors)", report.NonLandTutorCount))
+	} else if report.NonLandTutorCount == 0 {
 		w = append(w, "no tutors")
 	}
 
@@ -558,10 +764,11 @@ func ComputeEvalWeights(dp *DeckProfile, report *FreyaReport) *jsonEvalWeights {
 
 	w := *defaults
 
-	// Tutor density boosts combo proximity weight.
-	if report.TutorCount >= 8 {
+	// Tutor density boosts combo proximity weight. NonLandTutorCount only —
+	// fetchlands/ramp don't help find combo pieces.
+	if report.NonLandTutorCount >= 8 {
 		w.ComboProximity += 0.3
-	} else if report.TutorCount >= 5 {
+	} else if report.NonLandTutorCount >= 5 {
 		w.ComboProximity += 0.15
 	}
 
@@ -787,8 +994,8 @@ func buildGameplanSummary(dp *DeckProfile, report *FreyaReport) string {
 	}
 
 	var tutorNote string
-	if dp.HasTutorAccess && report.TutorCount >= 5 {
-		tutorNote = fmt.Sprintf(" Supported by %d tutors.", report.TutorCount)
+	if dp.HasTutorAccess && report.NonLandTutorCount >= 5 {
+		tutorNote = fmt.Sprintf(" Supported by %d tutors.", report.NonLandTutorCount)
 	}
 
 	var gcNote string

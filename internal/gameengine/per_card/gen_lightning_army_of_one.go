@@ -1,6 +1,9 @@
 package per_card
 
 import (
+	"fmt"
+	"strconv"
+
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -46,6 +49,7 @@ func lightningLTBUnregister(gs *gameengine.GameState, perm *gameengine.Permanent
 		return
 	}
 	gs.UnregisterDamageReplacementsForPermanent(perm)
+	gs.UnregisterReplacementsForPermanent(perm)
 }
 
 func lightningStaggerArm(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -70,14 +74,16 @@ func lightningStaggerArm(gs *gameengine.GameState, perm *gameengine.Permanent, c
 	}
 	// "Until your next turn" — current turn + one full round.
 	expiresOnTurn := gs.Turn + len(gs.Seats)
+	// Combat-path replacement (gs.DamageReplacements is consulted by
+	// combat.go's deal-damage routine).
 	gs.RegisterDamageReplacement(&gameengine.DamageReplacement{
 		SourcePerm: perm,
 		HandlerID:  "lightning_stagger_defender",
-		Fn: func(gs *gameengine.GameState, dctx *gameengine.DamageContext) {
+		Fn: func(g *gameengine.GameState, dctx *gameengine.DamageContext) {
 			if dctx == nil {
 				return
 			}
-			if gs.Turn > expiresOnTurn {
+			if g.Turn > expiresOnTurn {
 				return
 			}
 			if dctx.TargetSeat != defender {
@@ -89,6 +95,38 @@ func lightningStaggerArm(gs *gameengine.GameState, perm *gameengine.Permanent, c
 			dctx.Amount *= 2
 		},
 	})
+	// Generic-event replacement (gs.Replacements via FireEvent; consulted
+	// by FireDamageEvent and any other "would_be_dealt_damage" emitter).
+	// R60 followup: the combat-path replacement above isn't seen by the
+	// generic FireEvent dispatcher — register a sibling ReplacementEffect
+	// so non-combat damage routed through FireDamageEvent (instants,
+	// triggered abilities) also gets doubled while the stagger is armed.
+	gs.RegisterReplacement(&gameengine.ReplacementEffect{
+		EventType:      "would_be_dealt_damage",
+		HandlerID:      "Lightning, Army of One:stagger_double:" + strconv.Itoa(perm.Timestamp) + ":seat" + strconv.Itoa(defender),
+		SourcePerm:     perm,
+		ControllerSeat: perm.Controller,
+		Timestamp:      perm.Timestamp,
+		Category:       gameengine.CategoryOther,
+		Applies: func(g *gameengine.GameState, ev *gameengine.ReplEvent) bool {
+			if ev == nil || ev.Count() <= 0 {
+				return false
+			}
+			if g.Turn > expiresOnTurn {
+				return false
+			}
+			return ev.TargetSeat == defender
+		},
+		ApplyFn: func(g *gameengine.GameState, ev *gameengine.ReplEvent) {
+			ev.SetCount(ev.Count() * 2)
+		},
+	})
+	// Diagnostic flag so audit tooling (and TestStubsBatchH_Lightning)
+	// can see the active stagger window per defender seat.
+	if gs.Flags == nil {
+		gs.Flags = map[string]int{}
+	}
+	gs.Flags[fmt.Sprintf("lightning_stagger_seat%d_until_turn", defender)] = expiresOnTurn
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"defender_seat": defender,
 		"expires_turn":  expiresOnTurn,

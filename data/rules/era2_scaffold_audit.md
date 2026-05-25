@@ -8,7 +8,7 @@
 
 - Era 2 Condition nodes: **75** (bucketed 75, unbucketed 0, 0.0% gap)
 
-- Era 2 Trigger nodes: **408**
+- Era 2 Trigger nodes: **408** (bucketed 408, unbucketed 0, 0.0% gap)
 
 
 ## Top unbucketed condition Kinds
@@ -28,7 +28,11 @@
 - `you_attacked_this_turn` × 1
 - `self_has_counter` × 1
 
-## Top trigger events
+## Top unbucketed trigger events
+
+_(none — every Era 2 trigger event maps to a scaffold slug)_
+
+## Top trigger events (bucketed + unbucketed)
 
 - `etb` × 131
 - `attack` × 76

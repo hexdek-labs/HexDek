@@ -230,6 +230,18 @@ func (gs *GameState) CheckEnd() bool {
 			s.ManaPool = s.Mana.Total()
 		}
 	}
+	// r60 fuzz residual: ZoneCastGrants registered with
+	// `until_end_of_turn` (heist / Narset-exile / Cruelclaw) survive past
+	// their declared expiry when the game ends in mid-combat — the turn
+	// loop returns before EOT cleanup runs, leaving stale grants that the
+	// ZoneCastGrantExpiry invariant subsequently fires on. Flush the map
+	// here at game-end; the grants can no longer be exercised legally.
+	if len(gs.ZoneCastGrants) > 0 {
+		for card, p := range gs.ZoneCastGrants {
+			emitGrantExpired(gs, card, p, "game_end")
+			delete(gs.ZoneCastGrants, card)
+		}
+	}
 	if len(alive) == 1 {
 		gs.Flags["winner"] = alive[0]
 		gs.Seats[alive[0]].Won = true
@@ -311,7 +323,15 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 
 	// Step 1: Walk EVERY seat's battlefield (the leaving player may
 	// still own cards an opponent now controls — Gilded Drake trade).
+	// Collect removed permanents so we can run detachAll after all
+	// battlefields are rewritten — auras/equipment on a SURVIVING
+	// seat's battlefield must not retain AttachedTo pointers to a
+	// token/permanent that just ceased to exist (Loki r41/r59
+	// AttachmentConsistency cluster: tokens owned by a leaving seat
+	// disappear, Gorgon's Head / Hero's Blade / Dowsing Dagger left
+	// pointing at the dead token).
 	removed := 0
+	var detached []*Permanent
 	for _, other := range gs.Seats {
 		if other == nil || len(other.Battlefield) == 0 {
 			continue
@@ -325,16 +345,32 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 				// Unregister any §614 / §613 hooks tied to this permanent.
 				gs.UnregisterReplacementsForPermanent(p)
 				gs.UnregisterContinuousEffectsForPermanent(p)
+				// r60 extreme-stress / seed 42 game 5480: Kess, Dissident
+				// Mage's `while_source_on_bf` graveyard-cast grant on
+				// Compound Fracture survived seat 0's elimination because
+				// the seat-loss cleanup path (this loop) never called
+				// ExpireSourceGrants, even though every other LTB path
+				// (DestroyPermanent / ExilePermanent / sacrificePermanentImpl
+				// / BouncePermanent / destroyPermSBA / sacrificePermSBA)
+				// does. Without this, the grant outlived its source by
+				// many turns and tripped ZoneCastGrantExpiry. Same shape
+				// as PR #106's LTB plumbing — extending the same hook to
+				// the §800.4a seat-elimination path.
+				ExpireSourceGrants(gs, p.Timestamp)
 				// Count real cards for zone conservation tracking.
 				if p.Card != nil && !p.IsToken() {
 					realCardsLeaving++
 				}
+				detached = append(detached, p)
 				removed++
 				continue
 			}
 			kept = append(kept, p)
 		}
 		other.Battlefield = kept
+	}
+	for _, p := range detached {
+		detachAll(gs, p)
 	}
 
 	// Step 2: purge stack items sourced from this seat. §800.4a:
@@ -364,6 +400,44 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 				Details: map[string]interface{}{
 					"rule":   "800.4a",
 					"reason": "seat_left_game",
+				},
+			})
+		}
+	}
+
+	// Step 2b: purge PENDING triggered abilities sourced from this seat.
+	// CR §800.4a: abilities of a leaving player cease to exist. The CR
+	// §603.3b trigger batch (`gs.pendingTriggers`) holds abilities that
+	// triggered but haven't been pushed onto the stack yet — they need
+	// the same cessation treatment. Without this, a Myr-Moonvessel-style
+	// "when this dies, add {1} to your mana pool" trigger fired by SBA
+	// 704.5g on the same seat the player just lost from triggers, gets
+	// batched, the seat eliminates (mana cleared to 0), the batch
+	// flushes, the trigger resolves, and add_mana puts the seat back to
+	// ManaPool=1 — ResourceConservation invariant fires
+	// ("seat 0 is Lost but has ManaPool=1"). Loki r60 extreme-stress /
+	// seed 99 game 9804 turn 42.
+	if len(gs.pendingTriggers) > 0 {
+		purged := 0
+		kept := gs.pendingTriggers[:0]
+		for _, item := range gs.pendingTriggers {
+			if item == nil {
+				continue
+			}
+			if item.Controller == seatIdx {
+				purged++
+				continue
+			}
+			kept = append(kept, item)
+		}
+		gs.pendingTriggers = kept
+		if purged > 0 {
+			gs.LogEvent(Event{
+				Kind: "pending_triggers_purged_on_leave", Seat: seatIdx, Target: -1,
+				Amount: purged,
+				Details: map[string]interface{}{
+					"rule":   "800.4a",
+					"reason": "abilities_cease_to_exist",
 				},
 			})
 		}

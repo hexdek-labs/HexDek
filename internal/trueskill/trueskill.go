@@ -7,7 +7,63 @@ import (
 
 const (
 	defaultMu    = 25.0
-	defaultSigma = 25.0 / 3.0
+	defaultSigma = defaultMu / 3.0
+
+	// ffaBetaScale tunes the performance-noise parameter for 4-player
+	// free-for-all Commander pods. Microsoft's 1v1 default is β = σ/2
+	// (≈4.17), calibrated for chess/Halo where game outcomes are a
+	// relatively crisp function of skill. Commander adds three sources of
+	// per-game noise that don't exist in 1v1: political negotiations
+	// (kingmaking, threat-assessment), mana variance (flood/screw is far
+	// more decisive in a slower format), and table position effects (the
+	// player most threatening from seat 0 absorbs more aggression than
+	// the same skill level from seat 2). Bumping β to σ·0.6 (≈5.0) adds
+	// ~20% performance-noise so each update is appropriately humbler.
+	// Convergence stays fast because 4-player FFA already produces ~3×
+	// the pairwise comparisons per game vs 1v1.
+	ffaBetaScale = 0.6
+
+	// ffaTauScale tunes the dynamics-noise parameter for HexDek's FFA
+	// self-play context. Microsoft's 1v1 paper sets τ = σ/100 (≈0.083),
+	// modeling per-game skill drift for human players whose underlying
+	// skill genuinely changes between sessions. Halo 2 deployed the same
+	// τ. Halo Reach later lowered it for the slow-drift action-game
+	// environment.
+	//
+	// HexDek's primary use case is even MORE static than Halo: the deck
+	// doesn't change between games. Skill drift is meaningful only when
+	// the engine/AI version changes — and that's handled separately by
+	// `InheritRating` (sigma inflation proportional to card-delta on
+	// deck-version changes). Between same-version games against same-
+	// version opponents, the underlying deck strength is truly constant.
+	//
+	// τ = σ/200 (≈0.042) halves the dynamics noise vs the Microsoft
+	// 1v1 reference. Convergence is faster (fewer games to tight σ),
+	// reflecting the static-deck reality, while keeping enough headroom
+	// that within-engine-version Hat tuning (which IS dynamic — eval-
+	// weight shifts can move winrate 1-2pp) remains trackable. Halo
+	// Reach's σ/300 is the precedent for going lower; we picked σ/200
+	// as the conservative midpoint pending the Hat-eval-tuning cycle
+	// stabilizing.
+	ffaTauScale = 1.0 / 200.0
+
+	// ffaDrawProbability tunes the modeled draw rate for HexDek's
+	// 4-player FFA games. Microsoft's 1v1 reference is 0.02 — a hedge
+	// for action games where rare ties happen. Chess uses 0.10 because
+	// draws are common in tournament play.
+	//
+	// HexDek's measured 4-player Commander draw rate is essentially
+	// zero: genuine multi-way ties happen only via CR §104.4b
+	// mandatory-loop-draw, fired by the SBA cap at < 1 per 10,000
+	// games. The 0.02 hedge widens the win/loss decision margin
+	// (epsilon = drawMargin(p, β)) unnecessarily, slightly damping the
+	// score updates near 50/50 matchups.
+	//
+	// 0.005 reflects observed reality (0.05% > the actual ~0.01% rate,
+	// still far below the 1v1 hedge). Tightens the win/loss margin
+	// without over-fitting to the near-zero observed rate, leaving
+	// headroom for the occasional mandatory-loop draw.
+	ffaDrawProbability = 0.005
 )
 
 type Rating struct {
@@ -29,11 +85,42 @@ type Config struct {
 	DrawProbability float64
 }
 
+// DefaultConfig returns the Microsoft TrueSkill 1v1 reference config:
+// β = σ/2, τ = σ/100, draw probability 2%. Use this for head-to-head
+// (Update2Player) call sites that want the literature defaults. For the
+// 4-player FFA pod context HexDek primarily runs in, prefer
+// [DefaultFFAConfig].
 func DefaultConfig() Config {
 	return Config{
-		Beta:            defaultMu / 6.0,
-		Tau:             defaultMu / 300.0,
+		Beta:            defaultSigma / 2.0,
+		Tau:             defaultSigma / 100.0,
 		DrawProbability: 0.02,
+	}
+}
+
+// DefaultFFAConfig returns the TrueSkill config tuned for HexDek's
+// 4-player Commander pod context. Three divergences from
+// [DefaultConfig]:
+//
+//   - β = σ·0.6 (vs σ/2) — wider performance noise for political /
+//     mana-variance / table-position FFA effects. See ffaBetaScale.
+//   - τ = σ/200 (vs σ/100) — halved dynamics noise. HexDek decks
+//     don't drift between games on the same engine version; engine
+//     upgrades are handled via `InheritRating`. See ffaTauScale.
+//   - DrawProbability = 0.005 (vs 0.02) — tightens the win/loss
+//     decision margin to match the observed near-zero rate of
+//     genuine 4-player multi-way draws (only CR §104.4b mandatory-
+//     loop, < 1 per 10,000 games). See ffaDrawProbability.
+//
+// NewTrueSkillRatings uses this preset by default. The literature-
+// reference 1v1 config remains available as [DefaultConfig] for
+// 1v1 dueling tournaments and parity checks against the Microsoft
+// 2007 paper / Halo 2 deployment.
+func DefaultFFAConfig() Config {
+	return Config{
+		Beta:            defaultSigma * ffaBetaScale,
+		Tau:             defaultSigma * ffaTauScale,
+		DrawProbability: ffaDrawProbability,
 	}
 }
 
@@ -238,17 +325,36 @@ func InheritRating(parent Rating, cardDelta int) Rating {
 
 // TrueSkillRatings tracks per-commander TrueSkill ratings across a tournament.
 // Mirrors the ELORatings API for drop-in integration.
+//
+// History is an append-only per-name log of every Update the player took
+// part in. It's the data source for DetectDrift (smurf / sandbagging /
+// rapid-skill-shift detection). The append happens unconditionally in
+// Update; callers who don't need drift detection can ignore it (the per-
+// game memory cost is one RatingDelta struct per participant — ~64
+// bytes, negligible at tournament scales).
 type TrueSkillRatings struct {
 	Ratings map[string]Rating
 	Games   map[string]int
+	History map[string][]RatingDelta
 	cfg     Config
 }
 
+// NewTrueSkillRatings constructs a fresh ratings tracker for the named
+// participants, configured with [DefaultFFAConfig] (HexDek's 4-player
+// pod preset). Use [NewTrueSkillRatingsWithConfig] if you need a custom
+// config (e.g. a 1v1 dueling tournament).
 func NewTrueSkillRatings(names []string) *TrueSkillRatings {
+	return NewTrueSkillRatingsWithConfig(names, DefaultFFAConfig())
+}
+
+// NewTrueSkillRatingsWithConfig is the explicit-config constructor. The
+// no-arg form above wraps this with the FFA preset.
+func NewTrueSkillRatingsWithConfig(names []string, cfg Config) *TrueSkillRatings {
 	ts := &TrueSkillRatings{
 		Ratings: make(map[string]Rating, len(names)),
 		Games:   make(map[string]int, len(names)),
-		cfg:     DefaultConfig(),
+		History: make(map[string][]RatingDelta, len(names)),
+		cfg:     cfg,
 	}
 	for _, n := range names {
 		ts.Ratings[n] = DefaultRating()
@@ -259,22 +365,40 @@ func NewTrueSkillRatings(names []string) *TrueSkillRatings {
 // Update processes a single multiplayer game. participantNames are in seat
 // order; ranks[i] is the finishing position of participant i (0=winner).
 // If all ranks are equal, it's treated as a draw.
+//
+// As a side effect, one RatingDelta is appended to History[name] for
+// each participant — the data DetectDrift consumes. Pre-allocate History
+// at construction time (NewTrueSkillRatingsWithConfig does this) so this
+// is allocation-free for hot tournament loops.
 func (ts *TrueSkillRatings) Update(participantNames []string, ranks []int) {
 	if len(participantNames) < 2 || len(ranks) != len(participantNames) {
 		return
 	}
-	for _, name := range participantNames {
+	if ts.History == nil {
+		// Defensive: cope with TrueSkillRatings constructed via struct
+		// literal (some legacy serialization paths) rather than through
+		// the constructor.
+		ts.History = make(map[string][]RatingDelta, len(participantNames))
+	}
+
+	before := make([]Rating, len(participantNames))
+	for i, name := range participantNames {
+		before[i] = ts.Ratings[name]
 		ts.Games[name]++
 	}
 
-	ratings := make([]Rating, len(participantNames))
-	for i, name := range participantNames {
-		ratings[i] = ts.Ratings[name]
-	}
+	updated := UpdateMultiplayer(ts.cfg, before, ranks)
 
-	updated := UpdateMultiplayer(ts.cfg, ratings, ranks)
 	for i, name := range participantNames {
 		ts.Ratings[name] = updated[i]
+		ts.History[name] = append(ts.History[name], RatingDelta{
+			Game:        ts.Games[name],
+			MuBefore:    before[i].Mu,
+			MuAfter:     updated[i].Mu,
+			SigmaBefore: before[i].Sigma,
+			SigmaAfter:  updated[i].Sigma,
+			Rank:        ranks[i],
+		})
 	}
 }
 

@@ -101,6 +101,9 @@ func emryActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityId
 	// graveyard." Register a zone-cast permission from graveyard.
 	// ExileOnResolve = true implements the "if that spell would be put
 	// into a graveyard this turn, exile it instead" clause.
+	// Oracle "you may cast it this turn" → stamp Duration + GrantTurn so
+	// ExpireZoneCastGrants reaps at EOT cleanup of the grant turn even
+	// if the delayed-trigger fallback below races or is skipped.
 	gameengine.RegisterZoneCastGrant(gs, target, &gameengine.ZoneCastPermission{
 		Zone:              gameengine.ZoneGraveyard,
 		Keyword:           "emry_artifact_cast",
@@ -108,6 +111,8 @@ func emryActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityId
 		ExileOnResolve:    true,
 		RequireController: seat,
 		SourceName:        "Emry, Lurker of the Loch",
+		Duration:          "until_end_of_turn",
+		GrantTurn:         gs.Turn,
 	})
 	src.Flags["emry_activated_this_turn"] = 1
 

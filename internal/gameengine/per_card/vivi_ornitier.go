@@ -99,6 +99,11 @@ func viviOrnitierCombatDamage(gs *gameengine.GameState, perm *gameengine.Permane
 			// Don't override an existing grant (e.g. Underworld Breach escape).
 			continue
 		}
+		// Implementation treats Vivi's per-trigger cast opportunity as a
+		// EOT-bounded window (the delayed-trigger fallback below also
+		// reclaims at end_of_turn). Stamp Duration + GrantTurn so
+		// ExpireZoneCastGrants reaps deterministically regardless of
+		// delayed-trigger timing.
 		zonePerm := &gameengine.ZoneCastPermission{
 			Zone:              gameengine.ZoneGraveyard,
 			Keyword:           "vivi_free_cast",
@@ -106,6 +111,8 @@ func viviOrnitierCombatDamage(gs *gameengine.GameState, perm *gameengine.Permane
 			ExileOnResolve:    true,
 			RequireController: perm.Controller,
 			SourceName:        perm.Card.DisplayName(),
+			Duration:          "until_end_of_turn",
+			GrantTurn:         gs.Turn,
 		}
 		gameengine.RegisterZoneCastGrant(gs, c.card, zonePerm)
 		grantedNames = append(grantedNames, c.card.DisplayName())

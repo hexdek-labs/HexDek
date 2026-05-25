@@ -52,8 +52,8 @@ func (h *YggdrasilHat) multiRolloutForCard(gs *gameengine.GameState, seatIdx int
 	}
 	var total float64
 	for i := 0; i < n; i++ {
-		rolloutSeedCounter++
-		rng := rand.New(rand.NewSource(int64(gs.Turn)*1000 + int64(seatIdx)*100 + rolloutSeedCounter + int64(i)*7))
+		h.rolloutSeed++
+		rng := rand.New(rand.NewSource(int64(gs.Turn)*1000 + int64(seatIdx)*100 + h.rolloutSeed + int64(i)*7))
 		clone := gs.CloneForRollout(rng)
 		if clone == nil {
 			continue
@@ -75,7 +75,11 @@ func (h *YggdrasilHat) multiRolloutForCard(gs *gameengine.GameState, seatIdx int
 		resolveStack(clone)
 		gameengine.StateBasedActions(clone)
 
-		for t := 0; t < rolloutDepth; t++ {
+		depth := rolloutDepth
+		if h.Strategy != nil {
+			depth = rolloutDepthFor(h.Strategy.Archetype)
+		}
+		for t := 0; t < depth; t++ {
 			if clone.CheckEnd() {
 				break
 			}

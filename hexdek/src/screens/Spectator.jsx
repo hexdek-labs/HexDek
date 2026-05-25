@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, Fragment } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Panel, KV, Bar, Tag, Btn, Tape } from '../components/chrome'
 import GlossaryTerm from '../components/GlossaryTerm'
@@ -9,6 +9,143 @@ import CardLink, { linkifyAction } from '../components/CardLink'
 import { narrate } from '../components/NarratorOverlay'
 import ContextBox from '../components/ContextBox'
 import ArtAmbience from '../components/ArtAmbience'
+import {
+  SPECTATOR_KEYBINDINGS,
+  resolveSpectatorKeyAction,
+  nextSpeedMark,
+  computePauseToggle,
+  pickNeighboringTurnHeader,
+} from '../utils/spectatorKeybindings'
+import { isNotableAction, explainAction } from '../utils/actionExplain'
+import { computeTooltipPlacement, MIN_VIEWPORT_MARGIN } from '../utils/mobileLayout'
+
+// ActionExplainBadge — small ⓘ pill rendered next to a notable log
+// entry. Tap / hover / focus opens a tooltip showing what the hat's
+// telemetry says about why this action makes sense for the acting
+// seat: archetype, archetype bias sentence, top-2 eval dimensions,
+// threat read, score, pilot. `explanation` is the object returned
+// by explainAction(); when null the badge renders nothing.
+//
+// Mobile audit fix (R60): the prior popover used
+// `position: absolute; left: 0; top: 100%` which overflowed the
+// viewport's right + bottom edges on small screens. The popover is
+// now `position: fixed` and positioned via computeTooltipPlacement
+// against the badge's bounding rect — flips horizontally when it
+// would overflow the right edge and vertically when it would
+// overflow the bottom. Tap also toggles open/closed for touch
+// users (mouseenter is unreliable on touch).
+function ActionExplainBadge({ explanation }) {
+  const [open, setOpen] = useState(false)
+  const [placement, setPlacement] = useState({ left: 0, top: 0 })
+  const anchorRef = useRef(null)
+  const tooltipRef = useRef(null)
+
+  useLayoutEffect(() => {
+    if (!open) return
+    const anchor = anchorRef.current
+    const tooltip = tooltipRef.current
+    if (!anchor) return
+    const anchorRect = anchor.getBoundingClientRect()
+    // Use the tooltip's actual measured size when we already have a
+    // ref to it; otherwise fall back to the documented min size.
+    const tooltipSize = tooltip
+      ? { width: tooltip.offsetWidth, height: tooltip.offsetHeight }
+      : { width: 240, height: 120 }
+    const viewport = {
+      width:  window.innerWidth  || document.documentElement.clientWidth  || 0,
+      height: window.innerHeight || document.documentElement.clientHeight || 0,
+    }
+    setPlacement(computeTooltipPlacement({ anchorRect, tooltipSize, viewport }))
+  }, [open])
+
+  // Close on outside click / Escape so a tapped-open tooltip on
+  // touch doesn't get stuck.
+  useEffect(() => {
+    if (!open) return
+    const onDocClick = (e) => {
+      if (anchorRef.current?.contains(e.target)) return
+      if (tooltipRef.current?.contains(e.target)) return
+      setOpen(false)
+    }
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('touchstart', onDocClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('touchstart', onDocClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  if (!explanation) return null
+  return (
+    <span style={{ display: 'inline-block', marginLeft: 4 }}>
+      <span
+        ref={anchorRef}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        aria-label="Explain this action"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        onClick={(e) => { e.stopPropagation(); setOpen(v => !v) }}
+        style={{
+          fontSize: 10,
+          padding: '2px 6px',
+          borderRadius: 8,
+          border: '1px solid var(--rule-2)',
+          color: 'var(--ink-2)',
+          cursor: 'help',
+          background: 'var(--bg)',
+          // Bigger tap target on touch — 24px minimum on the y-axis
+          // satisfies WCAG 2.5.5 (Target Size, Enhanced) without
+          // making the desktop pill look chunky.
+          minHeight: 18,
+          display: 'inline-block',
+          lineHeight: 1.4,
+        }}
+      >
+        ⓘ WHY?
+      </span>
+      {open && (
+        <div
+          ref={tooltipRef}
+          role="tooltip"
+          style={{
+            position: 'fixed',
+            zIndex: 1000,
+            left: placement.left,
+            top: placement.top,
+            minWidth: 0,
+            maxWidth: `calc(100vw - ${MIN_VIEWPORT_MARGIN * 2}px)`,
+            width: 'min(280px, calc(100vw - 16px))',
+            background: 'var(--bg)',
+            border: '1px solid var(--rule)',
+            padding: '8px 10px',
+            fontSize: 11,
+            lineHeight: 1.4,
+            color: 'var(--ink)',
+            boxShadow: '0 6px 18px rgba(0,0,0,0.4)',
+            whiteSpace: 'normal',
+          }}
+        >
+          <div style={{ fontWeight: 700, letterSpacing: '0.04em', marginBottom: 4 }}>
+            {explanation.headline?.toUpperCase()}
+          </div>
+          {explanation.bullets.map((b, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 6, padding: '1px 0' }}>
+              <span className="muted" style={{ textTransform: 'uppercase', fontSize: 10 }}>{b.label}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{b.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </span>
+  )
+}
 
 const SPEED_MARKS = [0.1, 0.2, 0.3, 0.5, 0.75, 1, 1.5, 2]
 
@@ -116,22 +253,27 @@ const permStat = (p) => {
 
 const stackPerms = (perms) => {
   const groups = {}
-  const order = []
+  const commanders = []
+  const rest = []
   for (const p of perms) {
     if (p.is_commander) {
-      order.push({ ...p, count: 1 })
+      commanders.push({ ...p, count: 1 })
       continue
     }
     const key = p.name || '???'
     if (!groups[key]) {
       groups[key] = { ...p, count: 1 }
-      order.push(groups[key])
+      rest.push(groups[key])
     } else {
       groups[key].count++
       if (p.tapped) groups[key].tapped = true
     }
   }
-  return order
+  // Commanders first so they never get cut off by the slice(0, 12) cap in
+  // the render. Backend battlefield order is insertion-order, which means
+  // a commander cast on turn 4 sits behind every land/creature played
+  // before it — easily past index 12 in a developed boardstate.
+  return commanders.concat(rest)
 }
 
 const LOG_COLORS = {
@@ -235,6 +377,11 @@ export default function Spectator() {
   const { game, elo, stats, speed, status, history } = useLiveSocket()
   const logContainerRef = useRef(null)
   const userScrolledRef = useRef(false)
+  // Last observed scrollHeight of the log container, captured at the
+  // tail of each render's useLayoutEffect. Used to scroll-anchor the
+  // user's reading position when new events prepend to the (reversed,
+  // newest-first) log while they're scrolled into the past.
+  const lastLogScrollHeightRef = useRef(0)
   const heatmapRefs = useRef([])
   const heatmapAnimsRef = useRef([])
   const heatmapPrevEvalRef = useRef([])
@@ -246,6 +393,12 @@ export default function Spectator() {
   // triple-jitter bug.
   const heatmapDrawnRef = useRef([])
   const [heatmapTip, setHeatmapTip] = useState(null)
+  const [helpOpen, setHelpOpen] = useState(false)
+  // Pre-pause speed memory. Null while playing; holds the multiplier
+  // to restore when the user presses Space to resume. Lives in a ref
+  // so the keydown listener can read the latest value without being
+  // re-bound on every render.
+  const pauseResumeFromRef = useRef(null)
   const error = status === 'disconnected' ? 'WebSocket disconnected' : null
 
   useEffect(() => {
@@ -264,11 +417,29 @@ export default function Spectator() {
     const ev = game?.seats?.[seatIdx]?.eval
     if (!ev) return
     const val = ev[key]
+    // Edge-aware placement: the tooltip default-anchors 12px right /
+    // 8px above the cursor, which clips off-screen for the
+    // right-column heatmaps in a 2x2 seat grid and for any seat near
+    // the bottom edge on short viewports. Flip the anchor when the
+    // cursor sits near a viewport edge.
+    const vw = window.innerWidth || document.documentElement.clientWidth || 0
+    const vh = window.innerHeight || document.documentElement.clientHeight || 0
+    const tipW = 150 // generous upper bound for "Cmdr: +0.34"
+    const tipH = 24
+    const margin = 8
+    const flipX = e.clientX + 12 + tipW > vw - margin
+    const flipY = e.clientY + tipH > vh - margin
+    const left = flipX
+      ? Math.max(margin, e.clientX - 12 - tipW)
+      : e.clientX + 12
+    const top = flipY
+      ? Math.max(margin, e.clientY - 8 - tipH)
+      : e.clientY - 8
     setHeatmapTip({
       label: EVAL_LABELS[key],
       value: val != null ? (val >= 0 ? '+' : '') + val.toFixed(2) : '—',
-      x: e.clientX,
-      y: e.clientY,
+      left,
+      top,
     })
   }, [game])
 
@@ -280,10 +451,101 @@ export default function Spectator() {
     } catch {}
   }
 
-  useEffect(() => {
+  // Scroll the log container to the next/previous turn header in the
+  // *rendered* (newest-first) order. The handler looks at the current
+  // scrollTop and walks one neighbor in the requested direction.
+  const scrollLogByTurn = useCallback((direction) => {
     const el = logContainerRef.current
-    if (!el || userScrolledRef.current) return
-    requestAnimationFrame(() => { el.scrollTop = 0 })
+    if (!el) return
+    const nodes = el.querySelectorAll('[data-turn-header]')
+    if (nodes.length === 0) return
+    const headers = []
+    for (const n of nodes) {
+      headers.push({ turn: Number(n.dataset.turnHeader), top: n.offsetTop, node: n })
+    }
+    const chosen = pickNeighboringTurnHeader(headers, el.scrollTop, direction)
+    if (!chosen) return
+    // Mark the user as actively scrolling so the prepend-anchor effect
+    // in useLayoutEffect doesn't snap them back to top on the next WS
+    // tick.
+    userScrolledRef.current = true
+    el.scrollTo({ top: chosen.top, behavior: 'smooth' })
+  }, [])
+
+  // Wire keyboard shortcuts. The listener is intentionally bound once
+  // — it reads dynamic state (speed, pauseResumeFromRef) through refs
+  // and the captured `setSpeedMultiplier` so re-binding on every speed
+  // change isn't necessary. Browser defaults (Space scroll, Arrow
+  // scroll) are suppressed via preventDefault when an action resolves.
+  useEffect(() => {
+    const onKey = (e) => {
+      const action = resolveSpectatorKeyAction(e)
+      if (!action) return
+      e.preventDefault()
+      switch (action) {
+        case 'togglePause': {
+          const r = computePauseToggle(speed, pauseResumeFromRef.current, SPEED_MARKS)
+          pauseResumeFromRef.current = r.resumeFrom
+          setSpeedMultiplier(r.speed)
+          break
+        }
+        case 'speedDown':
+          setSpeedMultiplier(nextSpeedMark(speed, SPEED_MARKS, -1))
+          break
+        case 'speedUp':
+          setSpeedMultiplier(nextSpeedMark(speed, SPEED_MARKS, +1))
+          break
+        case 'prevTurn':
+          scrollLogByTurn('prev')
+          break
+        case 'nextTurn':
+          scrollLogByTurn('next')
+          break
+        case 'toggleHelp':
+          setHelpOpen((v) => !v)
+          break
+      }
+    }
+    // Escape closes the help overlay even when it's open and stealing
+    // focus. Resolved outside resolveSpectatorKeyAction so Escape stays
+    // available to other modals (DeckArchive search, CardPopup, etc.)
+    // when the help overlay isn't the one showing.
+    const onEscape = (e) => {
+      if (e.key === 'Escape' && helpOpen) {
+        setHelpOpen(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    window.addEventListener('keydown', onEscape)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('keydown', onEscape)
+    }
+  }, [speed, scrollLogByTurn, helpOpen])
+
+  // Log scroll management. The log container renders newest-at-top
+  // (see `[...log].reverse()` below), so each incoming event prepends
+  // a row. With no compensation, that pushes whatever the user is
+  // reading downward by one row each tick — visually their viewport
+  // "rewinds" to an earlier entry while they sit still. useLayoutEffect
+  // runs after the new rows are in the DOM but before paint, so we can
+  // measure the height delta and add it to scrollTop in the same
+  // frame, anchoring the user's reading position with no flicker.
+  // When the user is at the top (userScrolledRef false) we just snap
+  // back to 0 so they stay on the newest entry.
+  useLayoutEffect(() => {
+    const el = logContainerRef.current
+    if (!el) return
+    const newHeight = el.scrollHeight
+    if (userScrolledRef.current) {
+      if (lastLogScrollHeightRef.current > 0) {
+        const delta = newHeight - lastLogScrollHeightRef.current
+        if (delta > 0) el.scrollTop += delta
+      }
+    } else {
+      el.scrollTop = 0
+    }
+    lastLogScrollHeightRef.current = newHeight
   }, [game?.log?.length])
 
   useEffect(() => {
@@ -452,8 +714,72 @@ export default function Spectator() {
   return (
     <div className="spectator-page">
       {heatmapTip && (
-        <div className="heatmap-tooltip" style={{ left: heatmapTip.x + 12, top: heatmapTip.y - 8 }}>
+        <div className="heatmap-tooltip" style={{ left: heatmapTip.left, top: heatmapTip.top }}>
           {heatmapTip.label}: {heatmapTip.value}
+        </div>
+      )}
+      {helpOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Keyboard shortcuts"
+          onClick={() => setHelpOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            background: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 8,
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--bg)',
+              border: '1px solid var(--rule)',
+              padding: '20px 24px',
+              // Mobile audit fix (R60): was `minWidth: 320` — that's
+              // exactly the iPhone SE viewport width, so the dialog
+              // tipped past the viewport edges with no margin.
+              // `min(480px, calc(100vw - 16px))` keeps the desktop
+              // size and shrinks naturally on small screens.
+              width: 'min(480px, calc(100vw - 16px))',
+              maxHeight: 'calc(100vh - 16px)',
+              overflow: 'auto',
+              boxSizing: 'border-box',
+              fontSize: 12,
+            }}
+          >
+            <div style={{ fontWeight: 700, letterSpacing: '0.08em', marginBottom: 12 }}>
+              KEYBOARD SHORTCUTS
+            </div>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                {SPECTATOR_KEYBINDINGS.map((b) => (
+                  <tr key={b.action}>
+                    <td style={{ padding: '4px 12px 4px 0', whiteSpace: 'nowrap' }}>
+                      {b.keys.map((k, i) => (
+                        <Fragment key={k}>
+                          {i > 0 && <span className="muted" style={{ margin: '0 4px' }}>/</span>}
+                          <kbd style={{
+                            border: '1px solid var(--rule)',
+                            padding: '1px 6px',
+                            borderRadius: 3,
+                            fontFamily: 'inherit',
+                            fontSize: 11,
+                          }}>{k}</kbd>
+                        </Fragment>
+                      ))}
+                    </td>
+                    <td style={{ padding: '4px 0', color: 'var(--ink-2)' }}>{b.label}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="muted" style={{ marginTop: 12, fontSize: 10 }}>
+              Press <kbd>?</kbd> or click outside to close.
+            </div>
+          </div>
         </div>
       )}
       <Tape
@@ -471,7 +797,20 @@ export default function Spectator() {
         {/* All 4 seats — full width, above the fold */}
         <div className="spectator-seats">
           <div className="seat-grid">
-            {[0, 1, 3, 2].filter(i => i < seats.length).map(i => {
+            {(() => {
+              // Per-seat turn of elimination, pulled from the first
+              // ELIMINATION_KINDS log entry for that seat. Surfaced on
+              // the GG overlay so spectators can tell at a glance when
+              // each loser dropped — important context when scanning a
+              // mid-game spectator screen ("seat 2 went out on T14 to
+              // SBA 704.5b — has the mill axis stayed live since?").
+              const elimTurnBySeat = {}
+              for (const e of log) {
+                if (ELIMINATION_KINDS.has(e.kind) && e.seat != null && elimTurnBySeat[e.seat] == null) {
+                  elimTurnBySeat[e.seat] = e.turn
+                }
+              }
+              return [0, 1, 3, 2].filter(i => i < seats.length).map(i => {
               const s = seats[i]
               const e = eloByCommander[s.commander] || {}
               const delta = e.hex_delta || e.delta || 0
@@ -480,9 +819,10 @@ export default function Spectator() {
               const isActive = i === game.active_seat && !game.finished
               const isWinner = game.finished && game.winner === i
               const artUrl = cardArtUrl(s.commander)
+              const elimTurn = elimTurnBySeat[i]
 
               return (
-                <div key={i} className="seat-panel" style={{ borderColor: isWinner ? 'var(--ok)' : isActive ? 'var(--warn)' : undefined }}>
+                <div key={i} className={`seat-panel${isWinner ? ' seat-panel--winner' : isActive ? ' seat-panel--active' : ''}`}>
                   <div className="seat-hd">
                     <span className="seat-name">
                       {s.commander?.toUpperCase() || 'UNKNOWN'}
@@ -491,7 +831,13 @@ export default function Spectator() {
                       {s.lost && !isWinner && <span style={{ color: 'var(--danger)' }}> ✕</span>}
                     </span>
                     <span className="seat-stats">
-                      ♥{s.life} · {rating}{' '}
+                      <span
+                        className={`life-pip ${s.life <= 5 ? 'life-pip--crit' : s.life <= 10 ? 'life-pip--low' : ''}`}
+                        title={s.life <= 5 ? 'Lethal range' : s.life <= 10 ? 'Low life' : `${s.life} life`}
+                      >
+                        ♥{s.life}
+                      </span>
+                      {' · '}{rating}{' '}
                       <span style={{ color: delta >= 0 ? 'var(--ok)' : 'var(--danger)', fontSize: 9 }}>
                         {delta >= 0 ? '+' : ''}{delta}
                       </span>
@@ -507,11 +853,14 @@ export default function Spectator() {
                           fontSize: 28, fontWeight: 900, letterSpacing: '0.15em', color: 'var(--danger)',
                           opacity: 0.7, textShadow: '0 0 12px rgba(0,0,0,0.8)',
                         }}>GG</span>
-                        {s.loss_reason && (
+                        {(s.loss_reason || elimTurn != null) && (
                           <span style={{
                             fontSize: 9, fontWeight: 600, color: 'var(--danger)',
                             opacity: 0.6, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em',
-                          }}>{s.loss_reason.replace(/\s*\(CR.*\)/, '')}</span>
+                          }}>
+                            {elimTurn != null && <>{rt(elimTurn)}{s.loss_reason ? ' · ' : ''}</>}
+                            {s.loss_reason?.replace(/\s*\(CR.*\)/, '')}
+                          </span>
                         )}
                       </div>
                     )}
@@ -541,6 +890,7 @@ export default function Spectator() {
                             key={j}
                             title={`${p.name}${p.count > 1 ? ` ×${p.count}` : ''}`}
                             className="perm-tile"
+                            data-stack={p.count >= 6 ? '3' : p.count >= 3 ? '2' : p.count >= 2 ? '1' : undefined}
                             style={{
                               borderColor: p.is_commander ? 'var(--warn)' : 'var(--rule-2)',
                               opacity: p.tapped ? 0.4 : 1,
@@ -555,19 +905,41 @@ export default function Spectator() {
                       })()}
                       {(() => {
                         const stacked = stackPerms(perms)
-                        return stacked.length > 12 ? (
-                          <span className="t-xs muted" style={{ alignSelf: 'center', fontSize: 9 }}>+{stacked.length - 12}</span>
-                        ) : null
+                        if (stacked.length <= 12) return null
+                        const hidden = stacked.slice(12)
+                        const tip = hidden
+                          .map(p => `${p.name || '???'}${p.count > 1 ? ` ×${p.count}` : ''}`)
+                          .join('\n')
+                        return (
+                          <span
+                            className="perm-overflow"
+                            title={tip}
+                          >+{hidden.length}</span>
+                        )
                       })()}
                     </div>
                   </div>
                   <div className="seat-ft">
-                    <span>H{s.hand_size} L{s.library_size} G{s.gy_size} B{perms.length}</span>
+                    <span>
+                      H{s.hand_size}{' '}
+                      <span
+                        className={s.library_size <= 3 ? 'lib-pip--crit' : s.library_size <= 7 ? 'lib-pip--low' : ''}
+                        title={s.library_size <= 3 ? 'Mill danger' : s.library_size <= 7 ? 'Low library' : `${s.library_size} cards left`}
+                      >L{s.library_size}</span>{' '}
+                      G{s.gy_size} B{perms.length}
+                      {s.mana_pool > 0 && (
+                        <>
+                          {' '}
+                          <span className="mana-pip" title={`${s.mana_pool} floating mana`}>◊{s.mana_pool}</span>
+                        </>
+                      )}
+                    </span>
                     {isActive && <span style={{ color: 'var(--ok)' }}>● PRI</span>}
                   </div>
                 </div>
               )
-            })}
+            })
+            })()}
           </div>
 
           {/* Turn status — single compact line */}
@@ -625,6 +997,15 @@ export default function Spectator() {
                     const gc = findGameChangerInText(entry.action)
                     const narrated = narrate(entry, seats)
                     const seatColor = SEAT_COLORS[entry.seat] || 'var(--ink-2)'
+                    // Hat decision explanation. The badge attaches to
+                    // notable entries (cast / combat / counter / removal
+                    // / reanimate / extra_turn / activate) and pulls
+                    // archetype + top-2 eval dims + threat read from
+                    // the acting seat's live `eval` snapshot.
+                    const actingSeat = seats[entry.seat]
+                    const explanation = isNotableAction(entry)
+                      ? explainAction(entry, actingSeat?.eval, actingSeat?.commander)
+                      : null
                     const showTurnHeader = entry.turn !== lastTurn
                     lastTurn = entry.turn
                     const rowClasses = [
@@ -634,7 +1015,7 @@ export default function Spectator() {
                     return (
                       <Fragment key={i}>
                         {showTurnHeader && (
-                          <div style={{
+                          <div data-turn-header={entry.turn} style={{
                             fontSize: 9,
                             color: 'var(--ink-3)',
                             padding: '4px 0 2px',
@@ -670,6 +1051,7 @@ export default function Spectator() {
                                 {gc && <span className="gc-pill" title="Game Changer">★ GC</span>}
                                 {entry.count > 1 && <span style={{ background: 'var(--ink-3)', color: 'var(--bg)', borderRadius: 3, padding: '0 4px', fontSize: 9, marginRight: 4, fontWeight: 700 }}>×{entry.count}</span>}
                                 {linkifyNarrated(narrated.text, entry.source, entry.targets)}
+                                <ActionExplainBadge explanation={explanation} />
                               </span>
                             ) : isElim ? (
                               <span style={{
@@ -696,6 +1078,7 @@ export default function Spectator() {
                                     </>
                                   )
                                 })()}
+                                <ActionExplainBadge explanation={explanation} />
                               </span>
                             )}
                           </div>
@@ -801,6 +1184,8 @@ export default function Spectator() {
                       step={1}
                       value={idx}
                       onChange={(e) => setSpeedMultiplier(SPEED_MARKS[e.target.value])}
+                      aria-label="Playback speed"
+                      aria-valuetext={`${parseFloat(speed.toFixed(2))}× playback`}
                       style={{
                         flex: 1,
                         background: `linear-gradient(to right, var(--ok) ${pct}%, var(--rule-2) ${pct}%)`,
@@ -812,17 +1197,23 @@ export default function Spectator() {
                   {parseFloat(speed.toFixed(2))}×
                 </span>
               </div>
-              <div className="speed-marks">
-                {SPEED_MARKS.map((m, i) => (
-                  <span
-                    key={i}
-                    className="t-xs"
-                    style={{ cursor: 'pointer', color: Math.abs(speed - m) < 0.01 ? 'var(--ok)' : 'var(--ink-2)' }}
-                    onClick={() => setSpeedMultiplier(m)}
-                  >
-                    {m}×
-                  </span>
-                ))}
+              <div className="speed-marks" role="group" aria-label="Speed presets">
+                {SPEED_MARKS.map((m, i) => {
+                  const active = Math.abs(speed - m) < 0.01
+                  return (
+                    <button
+                      type="button"
+                      key={i}
+                      className="t-xs speed-mark-btn"
+                      onClick={() => setSpeedMultiplier(m)}
+                      aria-label={`Set playback speed to ${m}×`}
+                      aria-pressed={active}
+                      style={{ color: active ? 'var(--ok)' : 'var(--ink-2)' }}
+                    >
+                      {m}×
+                    </button>
+                  )
+                })}
               </div>
             </Panel>
 
@@ -831,14 +1222,29 @@ export default function Spectator() {
                 {elo.length === 0 ? (
                   <div className="t-xs muted">NO ELO DATA YET</div>
                 ) : (
-                  elo.slice(0, 10).map((r) => (
-                    <div key={r.deck_id || r.commander} style={{ marginBottom: 8, cursor: 'pointer' }} onClick={() => {
+                  elo.slice(0, 10).map((r) => {
+                    const goToDeck = () => {
                       if (r.owner && r.deck_id) {
                         navigate(`/decks/${r.owner}/${r.deck_id}`)
                       } else {
                         navigate(`/decks?q=${encodeURIComponent(r.commander)}`)
                       }
-                    }}>
+                    }
+                    return (
+                    <div
+                      key={r.deck_id || r.commander}
+                      className="elo-row"
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Open deck ${r.commander || r.deck_id}`}
+                      onClick={goToDeck}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          goToDeck()
+                        }
+                      }}
+                    >
                       <div className="flex justify-between">
                         <span className="t-xs" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 160, textDecoration: 'underline', textDecorationColor: 'var(--rule-2)' }}>
                           {r.commander?.toUpperCase() || r.deck_id?.toUpperCase()}
@@ -854,7 +1260,8 @@ export default function Spectator() {
                         <Bar value={Math.max(0, ((r.hex_rating || r.rating || 1500) - 1300) / 4)} />
                       </div>
                     </div>
-                  ))
+                    )
+                  })
                 )}
               </div>
             </Panel>

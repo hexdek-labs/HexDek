@@ -58,11 +58,47 @@ func main() {
 	var deckPath string
 	var deckDir string
 	var format string
+	var spellbookCache string
+	var spellbookFetchURL string
+	var clustersOut string
+	var powerAggregateOut string
+	var corpusStatsOut string
 
 	flag.StringVar(&deckPath, "deck", "", "path to decklist file")
 	flag.StringVar(&deckDir, "all-decks", "", "analyze all decks in directory")
 	flag.StringVar(&format, "format", "text", "output format: text, markdown, json")
+	flag.StringVar(&spellbookCache, "spellbook", DefaultSpellbookCache,
+		"path to Commander Spellbook variants JSON cache (loaded if present)")
+	flag.StringVar(&spellbookFetchURL, "spellbook-fetch", "",
+		"URL to download Spellbook JSON into --spellbook cache before analysis (e.g. "+DefaultSpellbookURL+")")
+	flag.StringVar(&clustersOut, "clusters-out", "",
+		"single-deck only: write the structured synergy-cluster export (full membership + per-card roles + score breakdown) as JSON to this path. Designed for downstream deck-builder integrations.")
+	flag.StringVar(&powerAggregateOut, "power-aggregate-out", "",
+		"--all-decks only: write the S/A/B/C/D power-tier distribution rollup (overall mix, per-bracket and per-archetype breakdown, 5-point score histogram) as JSON to this path. Designed for calibrating PowerTierFor thresholds against a real-world corpus.")
+	flag.StringVar(&corpusStatsOut, "corpus-stats-out", "",
+		"--all-decks only: write the corpus-wide rollup (average bracket / archetype / curve / density signals, distributions, presence percentages) as JSON to this path.")
 	flag.Parse()
+
+	if spellbookFetchURL != "" {
+		log.Printf("fetching Commander Spellbook from %s ...", spellbookFetchURL)
+		n, err := FetchSpellbook(spellbookFetchURL, spellbookCache)
+		if err != nil {
+			log.Fatalf("spellbook fetch: %v", err)
+		}
+		log.Printf("  wrote %d bytes to %s", n, spellbookCache)
+	}
+
+	if spellbookCache != "" {
+		imported, warnings, err := LoadSpellbookCache(spellbookCache)
+		if err != nil {
+			log.Printf("spellbook load: %v (continuing with curated combos only)", err)
+		} else if len(imported) > 0 {
+			_, dropped := MergeKnownCombos(KnownCombos, imported)
+			ImportedCombos = imported
+			log.Printf("loaded %d Spellbook combos from %s (%d skipped as duplicates of curated entries, %d parse warnings)",
+				len(imported), spellbookCache, len(dropped), len(warnings))
+		}
+	}
 
 	if deckPath == "" && deckDir == "" {
 		fmt.Fprintf(os.Stderr, "Usage: hexdek-freya --deck <path> | --all-decks <dir>\n")
@@ -99,6 +135,16 @@ func main() {
 		PrintReport(os.Stdout, report, format)
 		// Auto-save to freya/ subfolder alongside the deck file.
 		saveFreyaData(deckPath, report)
+		// Optional standalone cluster export — designed for downstream
+		// deck-builder integrations that want JUST the structured
+		// cluster data without parsing the full Freya JSON blob.
+		if clustersOut != "" {
+			export := BuildClusterExport(report.Profile, report)
+			if err := WriteClusterExportJSON(export, clustersOut); err != nil {
+				log.Fatalf("write cluster export: %v", err)
+			}
+			log.Printf("wrote cluster export → %s (%d clusters)", clustersOut, len(export.Clusters))
+		}
 	} else {
 		// All decks mode.
 		files, err := listDeckFiles(deckDir)
@@ -132,6 +178,40 @@ func main() {
 			enc.Encode(reports)
 		} else {
 			PrintAllDecksSummary(os.Stdout, reports)
+		}
+
+		if powerAggregateOut != "" {
+			agg := ComputePowerTierAggregate(reports)
+			f, err := os.Create(powerAggregateOut)
+			if err != nil {
+				log.Fatalf("create power-aggregate-out: %v", err)
+			}
+			enc := json.NewEncoder(f)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(agg); err != nil {
+				f.Close()
+				log.Fatalf("encode power aggregate: %v", err)
+			}
+			f.Close()
+			log.Printf("wrote power-tier aggregate → %s (%d decks / %d cards)",
+				powerAggregateOut, agg.DeckCount, agg.TotalCards)
+		}
+
+		if corpusStatsOut != "" {
+			cs := ComputeCorpusStats(reports)
+			f, err := os.Create(corpusStatsOut)
+			if err != nil {
+				log.Fatalf("create corpus-stats-out: %v", err)
+			}
+			enc := json.NewEncoder(f)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(cs); err != nil {
+				f.Close()
+				log.Fatalf("encode corpus stats: %v", err)
+			}
+			f.Close()
+			log.Printf("wrote corpus stats → %s (%d decks, avg B%.1f, most common %s)",
+				corpusStatsOut, cs.DeckCount, cs.AvgBracket, cs.MostCommonArchetype)
 		}
 	}
 }
@@ -675,6 +755,7 @@ type strategyMatchup struct {
 type strategyWinLine struct {
 	Pieces      []string              `json:"pieces"`
 	Type        string                `json:"type"`
+	Class       string                `json:"class,omitempty"`
 	TutorPaths  []jsonTutorChain      `json:"tutor_paths,omitempty"`
 	Description string                `json:"description,omitempty"`
 	Rationale   *jsonWinLineRationale `json:"rationale,omitempty"`
@@ -707,6 +788,7 @@ func saveStrategyJSON(path string, report *FreyaReport) {
 			swl := strategyWinLine{
 				Pieces:      wl.Pieces,
 				Type:        wl.Type,
+				Class:       wl.Class,
 				Description: wl.Desc,
 			}
 			if wl.Rationale != nil {

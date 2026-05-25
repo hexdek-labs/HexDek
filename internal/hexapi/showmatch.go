@@ -224,6 +224,13 @@ type GauntletResult struct {
 	// W/L view obscures. By definition Wins == Placements[0] and Losses
 	// == Placements[1] + Placements[2] + Placements[3].
 	Placements [4]int    `json:"placements,omitempty"`
+
+	// RunID is the gauntlet_runs.run_id reserved at gauntlet start.
+	// Used by the replay-archive path to link this run's per-game
+	// showmatch_game rows back to its aggregate row via the
+	// gauntlet_run_game junction table. 0 when the gauntlet started
+	// without a SQL backing store (tests / dev runs).
+	RunID int64 `json:"run_id,omitempty"`
 }
 
 type Showmatch struct {
@@ -256,6 +263,14 @@ type Showmatch struct {
 	selfPlay    *hat.SelfPlayManager // Level 6 self-play training loop
 	strategies  map[string]*hat.StrategyProfile // deck key → Freya strategy profile
 
+	// compositionPrior is the R60 archetype-pod-conditioned TrueSkill
+	// prior (PR #403 + #408). When non-nil, updateELO applies it to
+	// the per-game rating update so ratings represent "skill modulo
+	// composition" instead of raw winrate. Validation (#411) showed
+	// +1.4pp prediction accuracy + +0.036 log-loss vs. vanilla.
+	compositionPrior    *trueskill.CompositionPrior
+	compositionPriorCfg trueskill.CompositionUpdateConfig
+
 	specMu     sync.RWMutex
 	spectators map[*spectatorConn]struct{}
 
@@ -280,6 +295,36 @@ type Showmatch struct {
 	// Nil when no SQLite DB is wired (tests, ephemeral runs); the
 	// updateELO hook checks for nil before recording.
 	auditor *anticheat.StatisticalAuditor
+
+	// Webhooks fan out the game.end event to caller-registered
+	// HTTP endpoints. Nil = feature disabled (default for tests
+	// and lightweight server boots); cmd/hexdek-server constructs
+	// one when HEXDEK_WEBHOOKS_ENABLED is set and the SQLite DB
+	// is wired in.
+	Webhooks *WebhookDispatcher
+
+	// Events is the in-process pub/sub bus that backs the
+	// /ws/events WebSocket stream. Nil = feature disabled; the
+	// game-end tail no-ops the Publish call. cmd/hexdek-server
+	// constructs the bus + handler at startup when wiring is on.
+	Events *EventBus
+
+	// GauntletLimiter rate-limits POST /api/gauntlet/{owner}/{id} per
+	// client IP. The endpoint is already protected by a global
+	// concurrency semaphore (gauntletSem, cap 2) and a credit-economy
+	// gate for authenticated callers, but unauthenticated bursts still
+	// burn deck-key lookups + credit-quota checks + can occupy the two
+	// free slots indefinitely. Per-IP token-bucket is a layered defense
+	// in front of the sem cap. Nil = no limiting (backwards-compat);
+	// cmd/hexdek-server sets a default at startup.
+	GauntletLimiter *RateLimiter
+
+	// SpectateSpawnLimiter rate-limits POST /api/spectate/spawn per
+	// client IP. SpawnOrReuse de-dupes per deck-key but a single caller
+	// can still spawn one room per unique deck id they enumerate; each
+	// room runs a game-driver goroutine. Nil = no limiting. cmd/hexdek-
+	// server sets a default at startup.
+	SpectateSpawnLimiter *RateLimiter
 }
 
 // SetCreditStore attaches a credits.Store to the Showmatch. Called
@@ -335,6 +380,13 @@ func NewShowmatch(astPath, oraclePath, decksDir string, database *sql.DB) *Showm
 		curseDir:       "data/curse",
 		trainingDir:     "data/training",
 	}
+	// R60 composition prior — initialized empty; ObserveGame in
+	// updateELO populates it as games complete, and after the prior
+	// has enough data per (archetype, pod) cell, Confidence rises
+	// and the offsets start meaningfully shaping new rating updates.
+	// Until then the gate is no-op (Confidence=0 → offset=0).
+	sm.compositionPrior = trueskill.NewCompositionPrior(showmatchSeats)
+	sm.compositionPriorCfg = trueskill.DefaultCompositionUpdateConfig(sm.compositionPrior)
 	if database != nil {
 		if err := db.EnsureCardStatsSchema(context.Background(), database); err != nil {
 			log.Printf("showmatch: card_stats schema: %v", err)
@@ -752,6 +804,23 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 	sm.gauntlets[deckKey] = result
 	sm.gauntletMu.Unlock()
 
+	// Reserve the gauntlet_runs row up front so per-game showmatch_game
+	// inserts can link back via the gauntlet_run_game junction. Without
+	// this, the only post-hoc link is the (deck_key, time-window)
+	// heuristic — which mis-attributes games when two gauntlets for
+	// the same deck overlap in time. Best-effort: a DB error here leaves
+	// result.RunID=0 and the gauntlet still runs (per-game writes will
+	// skip the link step).
+	if sm.sqlDB != nil {
+		runID, err := db.InsertPendingGauntletRun(context.Background(), sm.sqlDB,
+			deckKey, targetDeck.CommanderName, result.StartedAt)
+		if err != nil {
+			log.Printf("gauntlet_runs reserve: %v", err)
+		} else {
+			result.RunID = runID
+		}
+	}
+
 	log.Printf("gauntlet: starting %d games for %s (%s)", numGames, deckKey, targetDeck.CommanderName)
 
 	beaten := map[string]int{}
@@ -912,8 +981,25 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 		sm.mu.Lock()
 		sm.stats.gamesPlayed++
 		sm.stats.totalTurns += gs.Turn
-		sm.updateELO(deckKeys, commanders, pickedDecks, winner, gs.Turn)
+		priorEffects := sm.updateELO(deckKeys, commanders, pickedDecks, winner, gs.Turn)
 		sm.mu.Unlock()
+
+		// Replay archive: persist per-game outcomes and link them to
+		// this gauntlet run so future analysis can recover the original
+		// game stream without re-running. Best-effort — a DB error
+		// here leaves the row out of the archive but the gauntlet
+		// keeps running (in-memory result remains correct).
+		if sm.sqlDB != nil && result.RunID > 0 {
+			gameID, perr := sm.persistGauntletGame(deckKeys, commanders, gs, gameSeed, winner)
+			if perr != nil {
+				log.Printf("gauntlet replay: persist game %d: %v", g, perr)
+			} else if gameID > 0 {
+				if err := db.InsertGauntletRunGame(context.Background(), sm.sqlDB,
+					result.RunID, gameID, g); err != nil {
+					log.Printf("gauntlet replay: link game %d to run %d: %v", gameID, result.RunID, err)
+				}
+			}
+		}
 
 		gauntSeed := heimdall.GameSeed{
 			RNGSeed:    gameSeed,
@@ -925,10 +1011,11 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 		if sm.heimdall != nil {
 			sm.heimdall.RecordSeed(gauntSeed)
 			sm.heimdall.RecordObservation(heimdall.Observation{
-				Seed:            gauntSeed,
-				ParserGaps:      heimdall.ExtractParserGaps(gs),
-				CoTriggers:      heimdall.ExtractCoTriggers(turnETBs),
-				CardFirstPlayed: gs.CardFirstPlayed,
+				Seed:                    gauntSeed,
+				ParserGaps:              heimdall.ExtractParserGaps(gs),
+				CoTriggers:              heimdall.ExtractCoTriggers(turnETBs),
+				CardFirstPlayed:         gs.CardFirstPlayed,
+				CompositionPriorEffects: priorEffects,
 			})
 		}
 
@@ -1038,8 +1125,16 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 	// Persist snapshot for ELO-history chart. Best-effort — a DB error
 	// here doesn't fail the gauntlet (the in-memory result still serves
 	// the API). Logged on failure so we notice trends.
+	//
+	// Replay-archive path: when result.RunID > 0 we reserved a
+	// pending row up front and stamped per-game links along the way,
+	// so finalize via UPDATE rather than a fresh INSERT. RunID == 0
+	// means InsertPendingGauntletRun failed (or sqlDB was nil at
+	// gauntlet start) — fall back to the legacy single-INSERT path
+	// so older callers / failure modes still produce a row.
 	if sm.sqlDB != nil {
 		rec := db.GauntletRunRecord{
+			RunID:      result.RunID,
 			DeckKey:    result.DeckKey,
 			Commander:  result.Commander,
 			StartedAt:  result.StartedAt,
@@ -1057,8 +1152,14 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 			Place3rd:   result.Placements[2],
 			Place4th:   result.Placements[3],
 		}
-		if err := db.InsertGauntletRun(context.Background(), sm.sqlDB, rec); err != nil {
-			log.Printf("gauntlet_runs insert: %v", err)
+		var err error
+		if result.RunID > 0 {
+			err = db.FinalizeGauntletRun(context.Background(), sm.sqlDB, rec)
+		} else {
+			err = db.InsertGauntletRun(context.Background(), sm.sqlDB, rec)
+		}
+		if err != nil {
+			log.Printf("gauntlet_runs persist: %v", err)
 		}
 	}
 
@@ -1484,7 +1585,7 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 	sm.mu.Lock()
 	sm.stats.gamesPlayed++
 	sm.stats.totalTurns += gs.Turn
-	sm.updateELO(deckKeys, commanders, pickedDecks, winner, gs.Turn)
+	bracketPriorEffects := sm.updateELO(deckKeys, commanders, pickedDecks, winner, gs.Turn)
 	sm.mu.Unlock()
 
 	bracketSeed := heimdall.GameSeed{
@@ -1497,10 +1598,11 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 	if sm.heimdall != nil {
 		sm.heimdall.RecordSeed(bracketSeed)
 		sm.heimdall.RecordObservation(heimdall.Observation{
-			Seed:            bracketSeed,
-			ParserGaps:      heimdall.ExtractParserGaps(gs),
-			CoTriggers:      heimdall.ExtractCoTriggers(bracketETBs),
-			CardFirstPlayed: gs.CardFirstPlayed,
+			Seed:                    bracketSeed,
+			ParserGaps:              heimdall.ExtractParserGaps(gs),
+			CoTriggers:              heimdall.ExtractCoTriggers(bracketETBs),
+			CardFirstPlayed:         gs.CardFirstPlayed,
+			CompositionPriorEffects: bracketPriorEffects,
 		})
 	}
 
@@ -1776,7 +1878,7 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 	sm.snap = finalSnap
 	sm.stats.gamesPlayed++
 	sm.stats.totalTurns += gs.Turn
-	sm.updateELO(deckKeys, commanders, pickedDecks, winner, gs.Turn)
+	showPriorEffects := sm.updateELO(deckKeys, commanders, pickedDecks, winner, gs.Turn)
 
 	completed := CompletedGame{
 		GameID:     gameNum,
@@ -1808,10 +1910,11 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 	if sm.heimdall != nil {
 		sm.heimdall.RecordSeed(showSeed)
 		sm.heimdall.RecordObservation(heimdall.Observation{
-			Seed:            showSeed,
-			ParserGaps:      heimdall.ExtractParserGaps(gs),
-			CoTriggers:      heimdall.ExtractCoTriggers(showETBs),
-			CardFirstPlayed: gs.CardFirstPlayed,
+			Seed:                    showSeed,
+			ParserGaps:              heimdall.ExtractParserGaps(gs),
+			CoTriggers:              heimdall.ExtractCoTriggers(showETBs),
+			CardFirstPlayed:         gs.CardFirstPlayed,
+			CompositionPriorEffects: showPriorEffects,
 		})
 	}
 
@@ -1850,6 +1953,33 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 	default:
 	}
 
+	// Fan out the game.end event to caller-registered webhooks (no-op
+	// when sm.Webhooks is nil). FireGameEnd spawns one goroutine per
+	// subscriber and returns immediately — the persist tail never
+	// waits on an external HTTP receiver.
+	if sm.Webhooks != nil {
+		sm.Webhooks.FireGameEnd(context.Background(), completed)
+	}
+
+	// Publish the same shape to the in-process events bus that backs
+	// /ws/events. Non-blocking — Publish drops to subscribers whose
+	// buffer is full rather than stalling the persist tail.
+	if sm.Events != nil {
+		sm.Events.Publish(Event{
+			Type: EventGameEnd,
+			Data: map[string]any{
+				"game_id":     completed.GameID,
+				"winner":      completed.Winner,
+				"winner_name": completed.WinnerName,
+				"commanders":  completed.Commanders,
+				"deck_keys":   completed.DeckKeys,
+				"turns":       completed.Turns,
+				"end_reason":  completed.EndReason,
+				"finished_at": completed.FinishedAt.UTC().Format(time.RFC3339),
+			},
+		})
+	}
+
 	log.Printf("showmatch: game %d finished — turn %d, winner: %s (%s), pivot: t%d (Δ%.2f)",
 		gameNum, gs.Turn, safeCommander(commanders, winner), endReason,
 		showPivot.Turn, showPivot.DeltaScore)
@@ -1857,6 +1987,93 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 	sm.broadcastToSpectators(wsEnvelope{Type: "game", Payload: finalSnap})
 	sm.broadcastToSpectators(wsEnvelope{Type: "stats", Payload: sm.GetStats()})
 	sm.broadcastToSpectators(wsEnvelope{Type: "elo", Payload: sm.GetELO()})
+}
+
+// persistGauntletGame writes one gauntlet game's outcome to
+// showmatch_game + showmatch_game_seat in a single transaction.
+// Returns the new game_id so the caller can link it to a
+// gauntlet_runs row via the gauntlet_run_game junction.
+//
+// Distinct from persistGame() which consumes a CompletedGame
+// summary from the continuous-game pipeline; this variant works
+// directly off the live gameengine.GameState at end-of-game so
+// the gauntlet path doesn't have to materialize an intermediate
+// snapshot. Card-win-stat aggregation is intentionally omitted
+// — the continuous-game pipeline keeps that aggregate fresh, and
+// duplicating per-card writes here would distort the count.
+func (sm *Showmatch) persistGauntletGame(
+	deckKeys, commanders []string,
+	gs *gameengine.GameState,
+	gameSeed int64,
+	winner int,
+) (int64, error) {
+	if sm.sqlDB == nil || gs == nil {
+		return 0, nil
+	}
+	now := time.Now()
+	winnerName := ""
+	if winner >= 0 && winner < len(commanders) {
+		winnerName = commanders[winner]
+	} else {
+		winnerName = "DRAW"
+	}
+	endReason := "unknown"
+	if gs.Flags != nil {
+		if r, ok := gs.Flags["end_reason"]; ok {
+			switch r {
+			case 1:
+				endReason = "last_seat_standing"
+			case 2:
+				endReason = "turn_cap"
+			case 3:
+				endReason = "turn_cap_tie"
+			}
+		}
+	}
+	gameRec := db.GameRecord{
+		StartedAt:  now.Add(-time.Duration(gs.Turn) * 3600 * time.Millisecond).Unix(),
+		FinishedAt: now.Unix(),
+		Turns:      gs.Turn,
+		Winner:     winner,
+		WinnerName: winnerName,
+		EndReason:  endReason,
+		Seed:       gameSeed,
+	}
+	seats := make([]db.GameSeatRecord, 0, len(gs.Seats))
+	for i, seat := range gs.Seats {
+		if seat == nil {
+			continue
+		}
+		cmdr := ""
+		if i < len(commanders) {
+			cmdr = commanders[i]
+		}
+		dk := ""
+		if i < len(deckKeys) {
+			dk = deckKeys[i]
+		}
+		bfNames := make([]string, 0, len(seat.Battlefield))
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			bfNames = append(bfNames, p.Card.Name)
+		}
+		bfJSON, _ := json.Marshal(bfNames)
+		seats = append(seats, db.GameSeatRecord{
+			Seat:             i,
+			Commander:        cmdr,
+			DeckKey:          dk,
+			Life:             seat.Life,
+			HandSize:         len(seat.Hand),
+			LibrarySize:      len(seat.Library),
+			GYSize:           len(seat.Graveyard),
+			BFSize:           len(seat.Battlefield),
+			Lost:             seat.Lost,
+			BattlefieldCards: string(bfJSON),
+		})
+	}
+	return db.PersistGameTx(context.Background(), sm.sqlDB, gameRec, seats)
 }
 
 func (sm *Showmatch) persistGame(g CompletedGame) {
@@ -2345,11 +2562,11 @@ func hexELOStreakBreakBonus(lossStreak int) float64 {
 	return math.Min(float64(lossStreak)*3.0, 30.0)
 }
 
-func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparser.TournamentDeck, winner int, turns int) {
+func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparser.TournamentDeck, winner int, turns int) []heimdall.CompositionPriorEffect {
 	const baseK = 32.0
 	n := len(deckKeys)
 	if n < 2 {
-		return
+		return nil
 	}
 	kScaled := baseK / float64(n-1)
 
@@ -2375,6 +2592,73 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 		sm.elo[deckKeys[winner]].wins++
 	}
 
+	// --- R60: Composition prior offsets (PR #408 wiring) ---
+	// Each deck's rating update will be performed in offset-shifted
+	// μ-space so the prior's pod-conditioned expectations correctly
+	// modulate how much "credit" a win in a favored composition
+	// receives. Confidence=0 cells produce 0 offset → no behavioral
+	// change when the prior has no data, which is true at cold-start
+	// and remains true for any (archetype, pod) cell the prior has
+	// never seen.
+	podArchetypes := make([]string, n)
+	for i, key := range deckKeys {
+		if sp := sm.strategies[key]; sp != nil {
+			podArchetypes[i] = sp.Archetype
+		}
+	}
+	offsets := make([]float64, n)
+	priorConfidence := make([]float64, n)
+	priorExpected := make([]float64, n)
+	for i, arch := range podArchetypes {
+		offsets[i] = trueskill.ComputeCompositionOffset(
+			sm.compositionPrior, arch, podArchetypes, sm.compositionPriorCfg)
+		// Snapshot Confidence + ExpectedWinrate at the SAME moment
+		// the offset is computed so monitoring records reflect the
+		// state that produced the offset, not the post-ObserveGame
+		// state at the end of updateELO.
+		if sm.compositionPrior != nil {
+			priorConfidence[i] = sm.compositionPrior.Confidence(arch, podArchetypes)
+			priorExpected[i] = sm.compositionPrior.ExpectedWinrate(arch, podArchetypes)
+		}
+	}
+
+	// --- R60 monitoring (PR #418): per-seat μ-before snapshot + a
+	// shadow vanilla update for the "what would have happened without
+	// the prior" baseline. Cheap (~one extra round of pairwise
+	// updates, ~12 floating-point ops per seat) and gives Heimdall the
+	// MuDeltaVsBaseline signal without doing it offline.
+	muBefore := make([]float64, n)
+	for i, key := range deckKeys {
+		muBefore[i] = sm.elo[key].tsMu
+	}
+	vanillaAfter := make([]float64, n)
+	{
+		// Shadow vanilla update: same input as the real update below
+		// but without composition offsets. Don't mutate any state.
+		shadowRatings := make([]trueskill.Rating, n)
+		for i, key := range deckKeys {
+			shadowRatings[i] = trueskill.Rating{Mu: sm.elo[key].tsMu, Sigma: sm.elo[key].tsSigma}
+		}
+		if winner >= 0 && winner < n {
+			wR := shadowRatings[winner]
+			for i := range deckKeys {
+				if i == winner {
+					continue
+				}
+				wNew, lNew := trueskill.Update2Player(tsConfig, wR, shadowRatings[i])
+				wR = wNew
+				shadowRatings[i] = lNew
+			}
+			shadowRatings[winner] = wR
+		} else {
+			ranks := make([]int, n)
+			shadowRatings = trueskill.UpdateMultiplayer(tsConfig, shadowRatings, ranks)
+		}
+		for i := range deckKeys {
+			vanillaAfter[i] = shadowRatings[i].Mu
+		}
+	}
+
 	// --- TrueSkill update (primary rating) ---
 	// Pairwise decomposition: winner vs each loser independently.
 	// UpdateMultiplayer's adjacent-pair chain doesn't properly propagate
@@ -2382,12 +2666,14 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 	if winner >= 0 && winner < n {
 		winKey := deckKeys[winner]
 		wRating := trueskill.Rating{Mu: sm.elo[winKey].tsMu, Sigma: sm.elo[winKey].tsSigma}
+		wOffset := offsets[winner]
 		for i, key := range deckKeys {
 			if i == winner {
 				continue
 			}
 			lRating := trueskill.Rating{Mu: sm.elo[key].tsMu, Sigma: sm.elo[key].tsSigma}
-			wNew, lNew := trueskill.Update2Player(tsConfig, wRating, lRating)
+			wNew, lNew := trueskill.Update2PlayerWithOffsets(
+				tsConfig, wRating, lRating, wOffset, offsets[i])
 			// Accumulate winner's gains across all pairwise comparisons.
 			wRating = wNew
 			oldLR := sm.elo[key].rating
@@ -2418,6 +2704,21 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 		}
 	}
 
+	// --- R60: Feed the composition prior with this game's outcome ---
+	// Done AFTER the TrueSkill update so the offsets the prior would
+	// compute for THIS game (which were already applied above) reflect
+	// what the prior knew BEFORE the game. Future games of the same
+	// archetype-pod composition will benefit from the new observation.
+	// Both decisive games and draws update the prior (draws via empty
+	// winnerArchetype, which credits participation only).
+	if sm.compositionPrior != nil {
+		winnerArch := ""
+		if winner >= 0 && winner < n {
+			winnerArch = podArchetypes[winner]
+		}
+		_ = sm.compositionPrior.ObserveGame(podArchetypes, winnerArch)
+	}
+
 	// --- HexELO update (bracket-aware K + gravity + floor/streak) ---
 	winnerKey := ""
 	if winner >= 0 && winner < n {
@@ -2439,7 +2740,7 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 		for _, key := range deckKeys {
 			sm.elo[key].lossStreak++
 		}
-		return
+		return sm.buildCompositionPriorEffects(deckKeys, podArchetypes, offsets, priorConfidence, priorExpected, muBefore, vanillaAfter)
 	}
 
 	// Winner: streak break bonus + reset streak.
@@ -2531,6 +2832,34 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 			}
 		}
 	}
+
+	return sm.buildCompositionPriorEffects(deckKeys, podArchetypes, offsets, priorConfidence, priorExpected, muBefore, vanillaAfter)
+}
+
+// buildCompositionPriorEffects assembles the per-seat monitoring
+// records (PR #418) used by Heimdall analytics. priorConfidence /
+// priorExpected are pre-update snapshots — they reflect the state
+// that produced the offset, NOT the post-ObserveGame state. Reads
+// each deck's post-update μ from sm.elo to compute MuDeltaVsBaseline.
+// MuDeltaVsBaseline = priorAfter - vanillaAfter (same μBefore for
+// both → simplifies the formal definition).
+func (sm *Showmatch) buildCompositionPriorEffects(
+	deckKeys, podArchetypes []string,
+	offsets, priorConfidence, priorExpected, muBefore, vanillaAfter []float64,
+) []heimdall.CompositionPriorEffect {
+	effects := make([]heimdall.CompositionPriorEffect, len(deckKeys))
+	for i, key := range deckKeys {
+		muAfterPrior := sm.elo[key].tsMu
+		effects[i] = heimdall.CompositionPriorEffect{
+			Seat:              i,
+			Archetype:         podArchetypes[i],
+			Offset:            offsets[i],
+			Confidence:        priorConfidence[i],
+			ExpectedWinrate:   priorExpected[i],
+			MuDeltaVsBaseline: muAfterPrior - vanillaAfter[i],
+		}
+	}
+	return effects
 }
 
 func (sm *Showmatch) GetSnapshot() *GameSnapshot {
@@ -2737,8 +3066,26 @@ func (sm *Showmatch) RegisterShowmatch(mux *http.ServeMux) {
 var gauntletSem = make(chan struct{}, 2)
 
 func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request) {
+	// Per-IP rate-limit gate, layered in FRONT of the global semaphore +
+	// credit-economy checks. The sem cap already throttles concurrent
+	// gauntlets; the limiter prevents an attacker from rapidly cycling
+	// through the cap (start-fail-start-fail) or burning deck-pool
+	// lookups across many invalid deck ids. Limiter is nil-safe.
+	if enforceRateLimit(sm.GauntletLimiter, w, r, "gauntlet start") {
+		return
+	}
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
+	// Reject path components containing "..", slashes, NULs, or any
+	// character outside the deck-id alphabet before they flow into the
+	// deckKey string. deckKey is used as a credit-ledger reference, a
+	// log-line interpolation, and an SSE broadcast topic — every other
+	// deck-targeting handler in hexapi already runs this guard
+	// (handleDeckSharePage, handleDeckUpgrade, etc.).
+	if !validatePathComponent(owner) || !validatePathComponent(id) {
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
+		return
+	}
 	deckKey := owner + "/" + id
 
 	sm.gauntletMu.RLock()
@@ -2753,6 +3100,37 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 	if n := parseInt(r.URL.Query().Get("games")); n > 0 && n <= 50000 {
 		numGames = n
 	}
+
+	// Verify the deck is actually in the engine pool BEFORE charging
+	// credits. RunGauntlet's findDeckInPool would otherwise just
+	// register an error result and return — leaving paying users with
+	// no refund (charging is atomic via credits.Spend, but the launch
+	// it pays for never executed). Cheap RLock-protected map walk.
+	if sm.findDeckInPool(owner, id) == nil {
+		writeError(w, http.StatusNotFound,
+			"deck not in engine pool — re-import or check the deck id")
+		return
+	}
+
+	// Acquire the global gauntlet semaphore BEFORE the credit charge
+	// for the same reason: if we're at the concurrency cap, return 429
+	// without debiting. Non-blocking select — either we get the slot
+	// or we bail.
+	select {
+	case gauntletSem <- struct{}{}:
+	default:
+		writeError(w, http.StatusTooManyRequests, "too many gauntlets running — try again later")
+		return
+	}
+	// From this point on, every error path must release gauntletSem
+	// before returning. Track release responsibility so the launching
+	// goroutine knows whether to own it.
+	semOwnedByGoroutine := false
+	defer func() {
+		if !semOwnedByGoroutine {
+			<-gauntletSem
+		}
+	}()
 
 	// Credit-economy gate. Caller identity comes from X-HexDek-Owner;
 	// if absent we fall through to free behaviour for backwards
@@ -2769,21 +3147,21 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 			chargedFree = true
 		} else if quota.CanRunPaid {
 			// Past the free quota; debit credits before launching.
+			// Spend is atomic — either it succeeds (and we proceed) or
+			// it fails (and nothing is debited), so we never end up in
+			// the "charged but no launch" state that the previous
+			// ordering allowed.
 			if _, err := sm.credits.Spend(r.Context(), caller,
 				credits.CreditsPerGauntlet, credits.ReasonGauntletRun, deckKey); err != nil {
 				if err == credits.ErrInsufficientCredits {
-					w.Header().Set("Content-Type", "application/json")
-					w.WriteHeader(http.StatusPaymentRequired)
-					_ = json.NewEncoder(w).Encode(map[string]any{
-						"error":   "insufficient_credits",
+					writeErrorWithDetails(w, http.StatusPaymentRequired, "insufficient_credits", map[string]any{
 						"balance": quota.Balance,
 						"needed":  credits.CreditsPerGauntlet,
 						"quota":   quota,
 					})
 					return
 				}
-				http.Error(w, "credit charge failed: "+err.Error(),
-					http.StatusInternalServerError)
+				writeError(w, http.StatusInternalServerError, "credit charge failed: "+err.Error())
 				return
 			}
 			chargedFree = false
@@ -2792,10 +3170,7 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 			// Out of free runs and short on credits — surface the
 			// quota state so the frontend can render an actionable
 			// "earn or wait" message.
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusPaymentRequired)
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"error":   "free_quota_exhausted",
+			writeErrorWithDetails(w, http.StatusPaymentRequired, "free_quota_exhausted", map[string]any{
 				"balance": quota.Balance,
 				"needed":  credits.CreditsPerGauntlet,
 				"quota":   quota,
@@ -2803,23 +3178,14 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 			return
 		}
 		// Best-effort log of the gauntlet usage for the audit trail
-		// and the next quota check. We don't refund on a launch
-		// failure below — the spend is committed; if RunGauntlet
-		// can't actually start, the user can re-run within the
-		// existing free-tier window.
+		// and the next quota check.
 		if err := sm.credits.LogGauntlet(r.Context(), caller, deckKey,
 			numGames, chargedFree, chargedAmount); err != nil {
 			log.Printf("gauntlet: usage log failed: %v", err)
 		}
 	}
 
-	select {
-	case gauntletSem <- struct{}{}:
-	default:
-		http.Error(w, "too many gauntlets running — try again later", http.StatusTooManyRequests)
-		return
-	}
-
+	semOwnedByGoroutine = true
 	go func() {
 		defer func() { <-gauntletSem }()
 		sm.RunGauntlet(owner, id, numGames)
@@ -2838,6 +3204,10 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 func (sm *Showmatch) handleGetGauntlet(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
+	if !validatePathComponent(owner) || !validatePathComponent(id) {
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
+		return
+	}
 	deckKey := owner + "/" + id
 
 	result := sm.GetGauntlet(deckKey)
@@ -2913,11 +3283,20 @@ func (sm *Showmatch) closeGauntletSubs(deckKey string) {
 func (sm *Showmatch) handleTournamentEvents(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
+	// Mirror the validatePathComponent guard the two gauntlet handlers
+	// already run on owner / id. deckKey is the SSE subscriber-map key
+	// and gets baked into broadcast snapshots — without validation, a
+	// "../foo" owner or an id with a slash could pollute the topic map
+	// or smuggle controlled bytes into snapshot payloads.
+	if !validatePathComponent(owner) || !validatePathComponent(id) {
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
+		return
+	}
 	deckKey := owner + "/" + id
 
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "streaming unsupported", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "streaming unsupported")
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -3037,7 +3416,7 @@ func (sm *Showmatch) handleDeckCurse(w http.ResponseWriter, r *http.Request) {
 	pool := sm.cursePool[deckKey]
 	if pool == nil {
 		sm.curseMu.Unlock()
-		http.Error(w, "no curse pool for deck", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "no curse pool for deck")
 		return
 	}
 	// Snapshot under lock to avoid data races.
@@ -3088,11 +3467,11 @@ func (sm *Showmatch) handlePatchCurse(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 	if !checkOwnership(r, owner) {
-		http.Error(w, "forbidden: not deck owner", http.StatusForbidden)
+		writeError(w, http.StatusForbidden, "forbidden: not deck owner")
 		return
 	}
 
@@ -3100,18 +3479,18 @@ func (sm *Showmatch) handlePatchCurse(w http.ResponseWriter, r *http.Request) {
 		Constraints map[string]float64 `json:"constraints"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
 
 	clean := make(map[string]float64, len(body.Constraints))
 	for k, v := range body.Constraints {
 		if !hat.IsValidCurseTrait(k) {
-			http.Error(w, "invalid trait key: "+k, http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "invalid trait key: "+k)
 			return
 		}
 		if v < 0 || v > 1 || math.IsNaN(v) {
-			http.Error(w, "constraint value out of range [0,1]: "+k, http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "constraint value out of range [0,1]: "+k)
 			return
 		}
 		clean[k] = v
@@ -3123,7 +3502,7 @@ func (sm *Showmatch) handlePatchCurse(w http.ResponseWriter, r *http.Request) {
 	pool := sm.cursePool[deckKey]
 	if pool == nil {
 		sm.curseMu.Unlock()
-		http.Error(w, "no curse pool for deck", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "no curse pool for deck")
 		return
 	}
 	if len(clean) == 0 {
@@ -3143,7 +3522,7 @@ func (sm *Showmatch) handlePatchCurse(w http.ResponseWriter, r *http.Request) {
 
 	if err := hat.SavePool(sm.curseDir, poolCopy); err != nil {
 		log.Printf("curse: save after PATCH failed: %v", err)
-		http.Error(w, "save failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "save failed")
 		return
 	}
 
@@ -3272,12 +3651,12 @@ func (sm *Showmatch) handleGameByID(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id := parseInt(idStr)
 	if id <= 0 {
-		http.Error(w, "invalid game id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid game id")
 		return
 	}
 	game := sm.GetGame(id)
 	if game == nil {
-		http.Error(w, "game not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "game not found")
 		return
 	}
 	// Strip Timeline from the lightweight endpoint — callers on
@@ -3299,12 +3678,12 @@ func (sm *Showmatch) handleGameReport(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	id := parseInt(idStr)
 	if id <= 0 {
-		http.Error(w, "invalid game id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid game id")
 		return
 	}
 	game := sm.GetGame(id)
 	if game == nil {
-		http.Error(w, "game not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "game not found")
 		return
 	}
 	writeJSON(w, game)
@@ -3742,7 +4121,7 @@ func (sm *Showmatch) handleSpectatorWS(w http.ResponseWriter, r *http.Request) {
 	count := len(sm.spectators)
 	sm.specMu.RUnlock()
 	if count >= maxSpectators {
-		http.Error(w, "too many spectators", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "too many spectators")
 		return
 	}
 

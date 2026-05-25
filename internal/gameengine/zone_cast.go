@@ -126,7 +126,21 @@ type ZoneCastPermission struct {
 	// any color to pay for this spell (CR §106.11 — Gonti, Fallen Shinobi,
 	// Sen Triplets, Hostage Taker).
 	SpendAnyColor bool
+
+	// OncePerTurnPerSource: if true, only one spell may be cast through
+	// permissions sharing this SourceTimestamp per turn (Kess, Maestros
+	// Ascendancy, Karador, Lurrus, Gisa & Geralf, ...). The usage flag
+	// lives on the source Permanent (gated by SourceTimestamp). CR §605
+	// is not directly applicable — this is the "once during each of your
+	// turns, you may cast" idiom which restricts the casting permission
+	// itself, not the activated ability count.
+	OncePerTurnPerSource bool
 }
+
+// permanentFlagKey is the slot on Permanent.Flags used to track that the
+// once-per-turn cast permission has already been consumed this turn.
+// Stored as the turn number it was used; 0 means "not used this turn".
+const permanentOncePerTurnCastFlag = "zone_cast_once_per_turn_used"
 
 // ---------------------------------------------------------------------------
 // CanCastFromZone — check if a card can be cast from a given zone.
@@ -180,6 +194,10 @@ func CanCastFromZone(gs *GameState, seatIdx int, card *Card, zone string, perms 
 		if !affordable {
 			continue
 		}
+		// Once-per-turn-per-source budget (Kess, Maestros, Karador, ...).
+		if oncePerTurnConsumed(gs, p) {
+			continue
+		}
 		return p
 	}
 	return nil
@@ -217,6 +235,13 @@ func CastFromZone(
 	}
 	if perm == nil {
 		return nil, &CastError{Reason: "no zone_cast_permission"}
+	}
+	// Reject up-front when the once-per-turn budget on the granting
+	// permanent is already spent this turn. We re-check inside the
+	// payment block so the gate is honored even when callers bypass
+	// CanCastFromZone (e.g. invariant tests).
+	if oncePerTurnConsumed(gs, perm) {
+		return nil, &CastError{Reason: "once_per_turn_consumed"}
 	}
 	seat := gs.Seats[seatIdx]
 
@@ -337,6 +362,11 @@ func CastFromZone(
 	if zone == "exile" && seatIdx >= 0 && seatIdx < len(gs.Seats) && gs.Seats[seatIdx] != nil {
 		gs.Seats[seatIdx].Turn.CastFromExile++
 	}
+	// Stamp the source permanent once costs are paid and the cast has
+	// committed. We mark BEFORE stack resolution so cast-triggered re-
+	// entry (e.g. a cast trigger that grants another cast) can't sneak a
+	// second use through the same source this turn.
+	markOncePerTurnConsumed(gs, perm)
 	fireCastTriggersFromZone(gs, seatIdx, card, zone)
 	FireCastTriggerObservers(gs, card, seatIdx, false)
 
@@ -451,6 +481,15 @@ func addToZone(seat *Seat, card *Card, zone string) {
 		// Put back on top.
 		seat.Library = append([]*Card{card}, seat.Library...)
 	case "command_zone":
+		// Idempotent insert — matches moveToZone (state.go:1576) and
+		// the §903.9b redirect in commander.go. A rollback that races
+		// an SBA §704.6d sweep would otherwise stack two copies of the
+		// same *Card in command_zone.
+		for _, existing := range seat.CommandZone {
+			if existing == card {
+				return
+			}
+		}
 		seat.CommandZone = append(seat.CommandZone, card)
 	}
 }
@@ -675,9 +714,41 @@ func shouldExpireGrant(gs *GameState, p *ZoneCastPermission) bool {
 	return false
 }
 
+// grantIsLeaked reports whether a grant SHOULD have been cleaned up by
+// a previous turn's cleanup pass and is therefore a true invariant
+// violation. Distinct from shouldExpireGrant (which the cleanup itself
+// uses): the invariant must NOT flag a grant registered earlier in
+// the current turn — that grant is still alive until its own turn's
+// cleanup runs. Using `>=` (cleanup semantics) inside the invariant
+// false-positives on every grant observed before end-of-turn cleanup,
+// which is most of the time. See Loki r60 / game 536 (Illusionary
+// Mask → Midnight Covenant grant flagged at turn 55 draw step).
+func grantIsLeaked(gs *GameState, p *ZoneCastPermission) bool {
+	if p == nil {
+		return true
+	}
+	switch p.Duration {
+	case "until_end_of_turn":
+		return gs.Turn > p.GrantTurn
+	case "until_end_of_next_turn":
+		return gs.Turn > p.GrantTurn+1
+	case "while_source_on_bf":
+		return !permanentWithTimestampExists(gs, p.SourceTimestamp)
+	}
+	return false
+}
+
 func permanentWithTimestampExists(gs *GameState, ts int) bool {
-	if ts == 0 {
-		return false
+	return findPermanentByTimestamp(gs, ts) != nil
+}
+
+// findPermanentByTimestamp returns the on-battlefield permanent whose
+// Timestamp matches ts, or nil if no such permanent exists. Used to
+// resolve a ZoneCastPermission's SourceTimestamp back to the granting
+// permanent so we can read/write its Flags (for once-per-turn gating).
+func findPermanentByTimestamp(gs *GameState, ts int) *Permanent {
+	if gs == nil || ts == 0 {
+		return nil
 	}
 	for _, seat := range gs.Seats {
 		if seat == nil {
@@ -685,9 +756,93 @@ func permanentWithTimestampExists(gs *GameState, ts int) bool {
 		}
 		for _, perm := range seat.Battlefield {
 			if perm != nil && perm.Timestamp == ts {
-				return true
+				return perm
 			}
 		}
 	}
-	return false
+	return nil
+}
+
+// NewOncePerTurnGraveyardCastPermission builds a ZoneCastPermission for
+// the "Once during each of your turns, you may cast a [filter] spell
+// from your graveyard" family (Kess Dissident Mage, Maestros Ascendancy,
+// Karador, Lurrus of the Dream-Den, Gisa & Geralf, ...).
+//
+// The permission attaches to a single graveyard card via
+// RegisterZoneCastGrant. Callers are expected to scan the controller's
+// graveyard at ETB and register one permission per eligible card, then
+// refresh on graveyard-change events. The once-per-turn budget is
+// enforced across all permissions sharing the same SourceTimestamp via
+// the source permanent's Flags slot.
+//
+// Parameters:
+//
+//   controllerSeat   — RequireController; only this seat may cast.
+//   sourceName       — Card name granting the permission (for logs).
+//   sourceTimestamp  — Permanent.Timestamp of the granting permanent;
+//                      used for once-per-turn gating + lifecycle.
+//   manaCost         — -1 to use the card's own mana cost, or a fixed
+//                      override (e.g. an alternative flat cost).
+//   exileOnResolve   — true for Kess/Maestros ("If a spell cast this
+//                      way would be put into your graveyard, exile it
+//                      instead"); false for plain reanimate-style
+//                      privileges.
+//   additionalCosts  — extra costs like "sacrifice a creature"
+//                      (Maestros), or "exile three other cards"
+//                      (Kotis). May be nil for Kess/Karador.
+func NewOncePerTurnGraveyardCastPermission(
+	controllerSeat int,
+	sourceName string,
+	sourceTimestamp int,
+	manaCost int,
+	exileOnResolve bool,
+	additionalCosts []*AdditionalCost,
+) *ZoneCastPermission {
+	return &ZoneCastPermission{
+		Zone:                 ZoneGraveyard,
+		Keyword:              "once_per_turn_cast_from_graveyard",
+		ManaCost:             manaCost,
+		AdditionalCosts:      additionalCosts,
+		ExileOnResolve:       exileOnResolve,
+		RequireController:    controllerSeat,
+		SourceName:           sourceName,
+		SourceTimestamp:      sourceTimestamp,
+		Duration:             "while_source_on_bf",
+		OncePerTurnPerSource: true,
+	}
+}
+
+// oncePerTurnConsumed returns true if the once-per-turn budget on the
+// source permanent (resolved via SourceTimestamp) has already been
+// spent this turn.
+func oncePerTurnConsumed(gs *GameState, p *ZoneCastPermission) bool {
+	if gs == nil || p == nil || !p.OncePerTurnPerSource {
+		return false
+	}
+	src := findPermanentByTimestamp(gs, p.SourceTimestamp)
+	if src == nil {
+		// Source no longer on battlefield — grant should have expired;
+		// treat as consumed to avoid an off-by-one with cleanup timing.
+		return true
+	}
+	if src.Flags == nil {
+		return false
+	}
+	return src.Flags[permanentOncePerTurnCastFlag] == gs.Turn
+}
+
+// markOncePerTurnConsumed stamps the source permanent so subsequent
+// CanCastFromZone calls reject further casts this turn.
+func markOncePerTurnConsumed(gs *GameState, p *ZoneCastPermission) {
+	if gs == nil || p == nil || !p.OncePerTurnPerSource {
+		return
+	}
+	src := findPermanentByTimestamp(gs, p.SourceTimestamp)
+	if src == nil {
+		return
+	}
+	if src.Flags == nil {
+		src.Flags = map[string]int{}
+	}
+	src.Flags[permanentOncePerTurnCastFlag] = gs.Turn
 }

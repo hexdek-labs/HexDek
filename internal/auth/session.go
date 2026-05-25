@@ -14,6 +14,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/hexdek/hexdek/internal/db"
 )
@@ -81,6 +83,113 @@ func ValidateSession(ctx context.Context, database *sql.DB, token string) (*Sess
 func RevokeSession(ctx context.Context, database *sql.DB, token string) error {
 	_, err := database.ExecContext(ctx, `DELETE FROM session WHERE token = ?`, token)
 	return err
+}
+
+// RevokeAllForDevice deletes every session token issued to the given
+// device. This is the "log out everywhere on this device" primitive —
+// when a user clicks logout in one browser tab they expect all sibling
+// tabs (and any phantom tokens left over from background refreshes) to
+// stop authenticating. Returns the number of tokens revoked so the
+// caller can surface it in audit logs ("revoked 4 sessions for
+// device_id=X"). An empty deviceID is rejected to avoid an accidental
+// mass-revoke that would log out the whole fleet.
+func RevokeAllForDevice(ctx context.Context, database *sql.DB, deviceID string) (int64, error) {
+	if deviceID == "" {
+		return 0, errors.New("auth: empty deviceID")
+	}
+	res, err := database.ExecContext(ctx,
+		`DELETE FROM session WHERE device_id = ?`, deviceID)
+	if err != nil {
+		return 0, fmt.Errorf("revoke all for device: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		// Driver doesn't support RowsAffected — the delete still ran,
+		// surface that with count=0 rather than failing the caller.
+		return 0, nil
+	}
+	return n, nil
+}
+
+// ExpireSessions deletes every session row whose expires_at is in the
+// past (and non-zero — expires_at=0 means "never expires" by convention,
+// see IssueSession). Returns the number of rows reaped so periodic
+// callers can log a metric. Safe to call concurrently with
+// ValidateSession; the worst case is a session that was about to be
+// reaped instead getting a final "expired" error from a racing
+// validation, which is the same answer the client would have received
+// either way. Uses the idx_session_expires index for efficiency.
+func ExpireSessions(ctx context.Context, database *sql.DB) (int64, error) {
+	now := db.Now()
+	res, err := database.ExecContext(ctx,
+		`DELETE FROM session WHERE expires_at > 0 AND expires_at < ?`, now)
+	if err != nil {
+		return 0, fmt.Errorf("expire sessions: %w", err)
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return 0, nil
+	}
+	return n, nil
+}
+
+// RunSessionGC starts the periodic session-expiry reaper. Runs one
+// synchronous pass before spawning the background goroutine so callers
+// can rely on a clean session table BEFORE the http server accepts
+// traffic — useful after a long downtime where many sessions may have
+// expired in-flight. The goroutine then ticks at `interval` and exits
+// cleanly when ctx is cancelled.
+//
+// Design history (r60 audit): ExpireSessions and its tests have lived
+// in this package for some time, but no production caller actually
+// invoked it on a schedule — expired session rows accumulated in the
+// SQLite session table indefinitely. Leaving expired rows around is
+// (1) a privacy leak if the DB is later compromised (device_id +
+// last_used_at history persists past intended lifetime), (2) audit-
+// trail noise that masks recently-active sessions in admin queries,
+// and (3) a slow-burn bloat on the table that the idx_session_expires
+// index promised would be reaped. This wires the long-documented
+// "periodic reaper" the docstring on ExpireSessions already advertised.
+//
+// Errors during a tick are logged but do not stop the goroutine — a
+// transient SQLite "database is locked" must not silently disable
+// session cleanup for the rest of the server's lifetime.
+func RunSessionGC(ctx context.Context, database *sql.DB, interval time.Duration) {
+	if interval <= 0 {
+		interval = time.Hour
+	}
+	// Synchronous first pass: callers (cmd/hexdek-server's main) wait
+	// for this to return before binding the listener so a long-running
+	// reap doesn't race incoming auth requests.
+	if n, err := ExpireSessions(ctx, database); err != nil {
+		log.Printf("session GC: initial pass failed: %v", err)
+	} else if n > 0 {
+		log.Printf("session GC: reaped %d expired session(s) at startup", n)
+	}
+	go func() {
+		t := time.NewTicker(interval)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				n, err := ExpireSessions(ctx, database)
+				if err != nil {
+					// Log + continue. A persistent error will keep
+					// firing once per interval — operators can spot it
+					// in logs and intervene. Better than a silent
+					// goroutine exit that leaves expiry-cleanup dead
+					// until the server restarts.
+					log.Printf("session GC: %v", err)
+					continue
+				}
+				if n > 0 {
+					log.Printf("session GC: reaped %d expired session(s)", n)
+				}
+			}
+		}
+	}()
 }
 
 // ErrInvalidToken is returned for missing, malformed, or unknown tokens.

@@ -33,7 +33,7 @@ func (h *Handler) handleCardPerformance(w http.ResponseWriter, r *http.Request) 
 	rawName := r.PathValue("name")
 	cardName, err := url.PathUnescape(rawName)
 	if err != nil || cardName == "" {
-		http.Error(w, "missing card name", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "missing card name")
 		return
 	}
 	cardName = strings.TrimSpace(cardName)

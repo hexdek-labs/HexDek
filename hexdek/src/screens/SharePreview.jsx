@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useSearchParams } from 'react-router-dom'
+import { isAnonymousShare } from '../lib/deckShare'
 import { Panel, Tag, Tape } from '../components/chrome'
 import CardLink from '../components/CardLink'
 import { api, cardArtUrl, cardImageUrl } from '../services/api'
@@ -77,6 +78,11 @@ function deriveTheme(colorIdentity) {
 // the surrounding chrome doesn't clip the preview frame on social embeds.
 export default function SharePreview() {
   const { owner, id } = useParams()
+  // ?anon=1 — strips owner-revealing UI (tape label, corner badge, doc
+  // title, full-deck-page link). The deck data itself still fetches by
+  // owner/id, but the rendered surface and the meta tags omit the owner.
+  const [searchParams] = useSearchParams()
+  const anonymous = isAnonymousShare(searchParams)
   const [deck, setDeck] = useState(null)
   const [analysis, setAnalysis] = useState(null)
   const [commanderCardStats, setCommanderCardStats] = useState(null)
@@ -185,9 +191,9 @@ export default function SharePreview() {
 
   useEffect(() => {
     if (!deckName) return
-    const ownerLabel = owner ? ` · ${owner.toUpperCase()}` : ''
+    const ownerLabel = (anonymous || !owner) ? '' : ` · ${owner.toUpperCase()}`
     document.title = `${deckName}${ownerLabel} — HEXDEK`
-  }, [deckName, owner])
+  }, [deckName, owner, anonymous])
 
   // Mirror the backend OG injection client-side. Crawlers parse static
   // HTML so the Go /share/{owner}/{id} handler does the real work; this
@@ -210,7 +216,7 @@ export default function SharePreview() {
     const summary = summaryParts.length
       ? summaryParts.join(' · ')
       : `${title} — Commander deck on HEXDEK.`
-    const pageURL = `https://hexdek.dev/share/${owner}/${id}`
+    const pageURL = `https://hexdek.dev/share/${owner}/${id}${anonymous ? '?anon=1' : ''}`
     const imageURL = cmdrCardName
       ? `https://hexdek.dev/api/card-art/${encodeURIComponent(cmdrCardName.split('//')[0].trim())}`
       : 'https://hexdek.dev/og-default.png'
@@ -234,7 +240,7 @@ export default function SharePreview() {
     setMeta('meta[name="twitter:description"]', 'content', summary)
     setMeta('meta[name="twitter:image"]', 'content', imageURL)
     setMeta('meta[name="twitter:card"]', 'content', 'summary_large_image')
-  }, [deck, deckName, cmdrCardName, archetype, wbs, deckElo, owner, id])
+  }, [deck, deckName, cmdrCardName, archetype, wbs, deckElo, owner, id, anonymous])
 
   if (loading) {
     return (
@@ -280,7 +286,9 @@ export default function SharePreview() {
       )}
 
       <Tape
-        left={`SHARE / / ${owner?.toUpperCase()} / / ${deckName}`}
+        left={anonymous
+          ? `SHARE / / ANONYMOUS / / ${deckName}`
+          : `SHARE / / ${owner?.toUpperCase()} / / ${deckName}`}
         mid={
           pls && wbs
             ? `Plays Like B${pls} (Bracket B${wbs}) · ${pageTheme.label}`
@@ -300,7 +308,7 @@ export default function SharePreview() {
       >
         <div className="deck-hero__scrim" />
         <div className="deck-hero__corner deck-hero__corner--tl">04.HERO / / {pageTheme.label}</div>
-        <div className="deck-hero__corner deck-hero__corner--tr">{owner?.toUpperCase()} / / {id}</div>
+        <div className="deck-hero__corner deck-hero__corner--tr">{anonymous ? 'ANONYMOUS' : owner?.toUpperCase()} / / {id}</div>
         <div className="deck-hero__body">
           {cmdrFullUrl && (
             <div className="deck-hero__card">
@@ -427,12 +435,15 @@ export default function SharePreview() {
 
         {/* Footer link to the full deck page — keeps the share preview
             self-contained as a teaser but lets readers click through for
-            the analysis tab, decklist, gauntlet history, etc. */}
-        <div style={{ padding: '8px 12px', textAlign: 'center' }}>
-          <Link to={`/decks/${owner}/${id}`} className="t-xs muted" style={{ letterSpacing: '0.06em' }}>
-            VIEW FULL DECK PAGE ON HEXDEK ↗
-          </Link>
-        </div>
+            the analysis tab, decklist, gauntlet history, etc. Hidden in
+            anonymous mode since the target URL contains the owner slug. */}
+        {!anonymous && (
+          <div style={{ padding: '8px 12px', textAlign: 'center' }}>
+            <Link to={`/decks/${owner}/${id}`} className="t-xs muted" style={{ letterSpacing: '0.06em' }}>
+              VIEW FULL DECK PAGE ON HEXDEK ↗
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   )

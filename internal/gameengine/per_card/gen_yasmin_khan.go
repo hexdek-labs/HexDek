@@ -59,6 +59,14 @@ func yasminKhanActivate(gs *gameengine.GameState, src *gameengine.Permanent, abi
 	if gs.ZoneCastGrants == nil {
 		gs.ZoneCastGrants = map[*gameengine.Card]*gameengine.ZoneCastPermission{}
 	}
+	// Oracle: "Until your next end step, you may play it." Yasmin is
+	// activated at sorcery speed ({T} on her own turn), so the "next end
+	// step" is the current turn's end step — i.e. EOT semantics.
+	// Use the canonical "until_end_of_turn" Duration value so the
+	// engine's ExpireZoneCastGrants + ZoneCastGrantExpiry invariant
+	// recognise the lifetime; the previous "until_next_end_step" value
+	// was not in either switch and the cleanup ran only via the
+	// delayed-trigger fallback below.
 	gs.ZoneCastGrants[c] = &gameengine.ZoneCastPermission{
 		Zone:              gameengine.ZoneExile,
 		Keyword:           "yasmin_khan_may_play",
@@ -66,7 +74,7 @@ func yasminKhanActivate(gs *gameengine.GameState, src *gameengine.Permanent, abi
 		ExileOnResolve:    false,
 		RequireController: src.Controller,
 		SourceName:        "Yasmin Khan",
-		Duration:          "until_next_end_step",
+		Duration:          "until_end_of_turn",
 		GrantTurn:         gs.Turn,
 	}
 

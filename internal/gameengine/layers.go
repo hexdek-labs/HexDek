@@ -419,13 +419,16 @@ func GetEffectiveCharacteristics(gs *GameState, perm *Permanent) *Characteristic
 	applyLayer(gs, perm, chars, LayerPT, "a")
 	applyLayer(gs, perm, chars, LayerPT, "b")
 	applyLayer(gs, perm, chars, LayerPT, "c")
+	// CR §613.4c — counters and Permanent.Modifications (Berserk +X/+0,
+	// Brute Force +3/+3, level-up brackets, etc.) belong in sublayer 7c
+	// alongside anthem-style continuous effects, BEFORE 7d switch. Applying
+	// them as a post-pass after 7d produces incorrect P/T for asymmetric
+	// pumps combined with switch (e.g. Berserk + Hands of Binding on a 3/2
+	// should read 2/6, not 5/3). Humility (7b set 1/1) + +1/+1 counter
+	// still reads 2/2 because the counter is now added between 7b and 7d.
+	applyCountersAndMods(perm, chars)
 	applyLayer(gs, perm, chars, LayerPT, "d")
 	applyLayer(gs, perm, chars, LayerPT, "e")
-
-	// Counter + modification post-pass (§613.4c).
-	// Humility's layer 7b sets base to 1/1; counters are applied ON TOP
-	// of that, producing e.g. 2/2 for a Humility+1/+1-counter creature.
-	applyCountersAndMods(perm, chars)
 
 	// Stash.
 	if gs.charCache == nil {

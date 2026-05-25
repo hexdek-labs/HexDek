@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/astload"
@@ -244,6 +245,24 @@ func ReplayWithObservation(rc *ReplayContext, seed GameSeed, obs *Observer) erro
 	//    or adjacent turns. Simplified version of Huginn's full analysis.
 	observation.CoTriggers = ExtractCoTriggers(turnETBs)
 
+	// 2b. Commander-zone visits: per-commander cast count + end-state
+	//     command-zone presence so downstream consumers can spot
+	//     answer-magnet commanders vs sticky board commanders.
+	observation.CommanderZoneVisits = ExtractCommanderZoneVisits(gs)
+
+	// 2c. Regret cards: nonland CMC≥1 cards still in hand at game
+	//     end — the "stranded in hand" half of the regret signal.
+	observation.RegretCards = ExtractRegretCards(gs)
+
+	// 2d. MVP cards: top mvpTopN permanents per seat at game end,
+	//     scored by CMC + positive-counters + commander bonus.
+	observation.MVPCards = ExtractMVPCards(gs)
+
+	// 2e. Mulligan stats: per-seat mulligan count + Freya-style
+	//     keepable evaluation of the kept opener, read off
+	//     gs.MulliganHistory (populated by RunLondonMulligan above).
+	observation.MulliganStats = ExtractMulliganStats(gs)
+
 	// 3. Combo detection: TODO — requires Freya integration to know what
 	//    the deck's intended combo line is and whether pieces were
 	//    assembled.
@@ -307,6 +326,13 @@ func replayWithRecovery(rc *ReplayContext, seed GameSeed, obs *Observer) (retErr
 // ExtractParserGaps scans all permanents across all seats for the
 // "parser_gap" flag, which the engine's resolver sets when it encounters
 // an unhandled ability kind.
+//
+// Names that look like runtime-generated token permanents (anything
+// that's a bare "Token" or pure type-word(s) + "Token") are dropped:
+// tokens carry no parseable oracle text of their own, so a parser_gap
+// signal on a "Construct Token" or "creature token scorpion dragon
+// Token" permanent is noise — the gap (if any) belongs to the source
+// spell that minted the token, not the token's display name.
 func ExtractParserGaps(gs *gameengine.GameState) []string {
 	if gs == nil {
 		return nil
@@ -325,6 +351,9 @@ func ExtractParserGaps(gs *gameengine.GameState) []string {
 			}
 			if p.Flags != nil && p.Flags["parser_gap"] > 0 {
 				name := p.Card.DisplayName()
+				if isTypeOnlyTokenName(name) {
+					continue
+				}
 				if !seen[name] {
 					seen[name] = true
 					gaps = append(gaps, name)
@@ -339,6 +368,212 @@ func ExtractParserGaps(gs *gameengine.GameState) []string {
 		// most gaps, and Muninn accumulates across many replays.
 	}
 	return gaps
+}
+
+// mvpTopN bounds how many MVP records ExtractMVPCards returns per
+// seat. Three is the user-visible default; the type docstring uses
+// the constant so consumers can audit if it ever shifts.
+const mvpTopN = 3
+
+// mvpCommanderBonus is the score adder applied when an MVP candidate
+// is one of the controlling seat's commanders. Reflects that a
+// commander on the battlefield carries game-defining weight beyond
+// its raw mana value.
+const mvpCommanderBonus = 4
+
+// mvpPositiveCounterKeys is the set of counter types that contribute
+// to the MVP positive-counter tally. +1/+1, loyalty, charge, and
+// level meaningfully reflect "the card grew or leveled up during
+// the game." Other counter types (-1/-1, stun, time, etc.) are
+// noise or negative for MVP purposes and are ignored.
+var mvpPositiveCounterKeys = []string{"+1/+1", "loyalty", "charge", "level"}
+
+// ExtractMVPCards walks every seat's battlefield at game end and
+// returns the top mvpTopN permanents per seat by score, where:
+//
+//	score = EffectiveCMC + sum(positive counters) + commander bonus
+//
+// Basic lands are filtered out. Tokens and copies surface normally
+// — their CMC is whatever the engine set on their backing Card.
+// Results are appended seat-by-seat in seat-ascending order; within
+// each seat's window, sort is score descending then card name
+// ascending for determinism.
+func ExtractMVPCards(gs *gameengine.GameState) []MVPCard {
+	if gs == nil {
+		return nil
+	}
+	var out []MVPCard
+	for seatIdx, seat := range gs.Seats {
+		if seat == nil {
+			continue
+		}
+		commanderSet := make(map[string]bool, len(seat.CommanderNames))
+		for _, n := range seat.CommanderNames {
+			commanderSet[n] = true
+		}
+		var perSeat []MVPCard
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			if cardHasType(p.Card, "basic") {
+				continue
+			}
+			cmc := p.Card.EffectiveCMC()
+			counters := 0
+			if p.Counters != nil {
+				for _, key := range mvpPositiveCounterKeys {
+					if v := p.Counters[key]; v > 0 {
+						counters += v
+					}
+				}
+			}
+			isCmdr := commanderSet[p.Card.Name]
+			score := cmc + counters
+			if isCmdr {
+				score += mvpCommanderBonus
+			}
+			turnPlayed := 0
+			if gs.CardFirstPlayed != nil {
+				turnPlayed = gs.CardFirstPlayed[p.Card.Name]
+			}
+			perSeat = append(perSeat, MVPCard{
+				Seat:        seatIdx,
+				CardName:    p.Card.Name,
+				CMC:         cmc,
+				TurnPlayed:  turnPlayed,
+				Counters:    counters,
+				Score:       score,
+				IsCommander: isCmdr,
+			})
+		}
+		sort.SliceStable(perSeat, func(i, j int) bool {
+			if perSeat[i].Score != perSeat[j].Score {
+				return perSeat[i].Score > perSeat[j].Score
+			}
+			return perSeat[i].CardName < perSeat[j].CardName
+		})
+		if len(perSeat) > mvpTopN {
+			perSeat = perSeat[:mvpTopN]
+		}
+		out = append(out, perSeat...)
+	}
+	return out
+}
+
+// ExtractRegretCards walks every seat's hand at game end and returns
+// one RegretCard per nonland CMC≥1 card still held — the "stranded
+// in hand" half of the regret signal. Results are sorted by Seat
+// ascending then CMC descending so the biggest stranded spell per
+// seat surfaces first.
+//
+// Filtering rules:
+//   - Skip cards with the "land" type (lands in hand aren't
+//     intrinsically regretful; a flood/screw signal would be a
+//     separate metric).
+//   - Skip cards with EffectiveCMC < 1 (free spells, 0-cost
+//     artifacts, modal DFC back-faces that report 0 — these are
+//     held for reasons other than mana-affordability regret).
+//   - Skip nil Cards defensively.
+func ExtractRegretCards(gs *gameengine.GameState) []RegretCard {
+	if gs == nil {
+		return nil
+	}
+	var out []RegretCard
+	for seatIdx, seat := range gs.Seats {
+		if seat == nil {
+			continue
+		}
+		for _, c := range seat.Hand {
+			if c == nil {
+				continue
+			}
+			if cardHasType(c, "land") {
+				continue
+			}
+			cmc := c.EffectiveCMC()
+			if cmc < 1 {
+				continue
+			}
+			out = append(out, RegretCard{
+				Seat:     seatIdx,
+				CardName: c.Name,
+				CMC:      cmc,
+				Reason:   "stranded_in_hand",
+			})
+		}
+	}
+	// Stable sort: seat ascending, CMC descending within seat. A
+	// tie-breaker on card name keeps the output deterministic when
+	// two equal-CMC cards land in the same hand.
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Seat != out[j].Seat {
+			return out[i].Seat < out[j].Seat
+		}
+		if out[i].CMC != out[j].CMC {
+			return out[i].CMC > out[j].CMC
+		}
+		return out[i].CardName < out[j].CardName
+	})
+	return out
+}
+
+// cardHasType is a hand-side mirror of Permanent.hasType — the engine
+// stores Card.Types as lowercased tokens at parse time, so direct
+// equality is sufficient.
+func cardHasType(c *gameengine.Card, t string) bool {
+	if c == nil {
+		return false
+	}
+	for _, x := range c.Types {
+		if x == t {
+			return true
+		}
+	}
+	return false
+}
+
+// ExtractCommanderZoneVisits walks every seat's commander list and
+// returns one CommanderZoneVisit per (seat, commander) pair. Reads
+// the cast count from Seat.CommanderCastCounts (§903.8 tax counter)
+// and the end-state presence from Seat.CommandZone.
+func ExtractCommanderZoneVisits(gs *gameengine.GameState) []CommanderZoneVisit {
+	if gs == nil {
+		return nil
+	}
+	var out []CommanderZoneVisit
+	for seatIdx, seat := range gs.Seats {
+		if seat == nil {
+			continue
+		}
+		// Build a quick lookup of commander names currently sitting in
+		// this seat's command zone.
+		inZone := make(map[string]bool, len(seat.CommandZone))
+		for _, c := range seat.CommandZone {
+			if c != nil {
+				inZone[c.Name] = true
+			}
+		}
+		for _, name := range seat.CommanderNames {
+			cast := 0
+			if seat.CommanderCastCounts != nil {
+				cast = seat.CommanderCastCounts[name]
+			}
+			present := inZone[name]
+			visits := cast
+			if present {
+				visits++
+			}
+			out = append(out, CommanderZoneVisit{
+				Seat:          seatIdx,
+				CommanderName: name,
+				CastCount:     cast,
+				InZoneAtEnd:   present,
+				Visits:        visits,
+			})
+		}
+	}
+	return out
 }
 
 // ExtractCoTriggers finds pairs of cards that entered the battlefield
@@ -423,6 +658,20 @@ func DiffBattlefield(pre, post map[string]int) []string {
 		}
 	}
 	return newCards
+}
+
+// isTypeOnlyTokenName returns true if name is a runtime-generated
+// token permanent name (the bare "Token" sentinel or any name ending
+// in " Token"). The engine's tokenName helper (resolve.go) and the
+// hand-written token constructors (tokens.go, keywords_*.go, etc.)
+// only ever produce names of the form "<type-words> Token" — no real
+// MTG card name ends in "Token", so the suffix check is a safe proxy
+// for "this is engine-minted, not a parseable oracle card."
+func isTypeOnlyTokenName(name string) bool {
+	if name == "Token" {
+		return true
+	}
+	return strings.HasSuffix(name, " Token")
 }
 
 // nextLivingReplay is the replay-local version of nextLiving (which

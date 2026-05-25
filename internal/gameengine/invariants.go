@@ -282,6 +282,19 @@ func checkSBACompleteness(gs *GameState) error {
 	if gs == nil {
 		return nil
 	}
+	// Once the game has ended (§104.2 / §104.3a), StateBasedActions returns
+	// early without running any §704.5 checks (see sba.go:41). Permanents
+	// that would have been destroyed by the final SBA pass — e.g. a creature
+	// whose toughness went ≤ 0 from a +X/-X mod that resolved after the last
+	// opponent died — legitimately remain on the battlefield in the ended
+	// snapshot, so the creature-toughness loop is skipped below in that case.
+	//
+	// The life-loss check is NOT skipped on ended=1: the cap-draw r60 bug
+	// (seed 1337 game 465) was specifically a state where ended=1 was set
+	// without marking all seats Lost, leaving the game zombie-stuck. The
+	// fix to that bug requires all seats be Lost at ended=1; this invariant
+	// is the regression pin that enforces it.
+	ended := gs.Flags != nil && gs.Flags["ended"] == 1
 	for _, s := range gs.Seats {
 		if s == nil {
 			continue
@@ -292,6 +305,10 @@ func checkSBACompleteness(gs *GameState) error {
 				s.Idx, s.Life)
 		}
 		// Check creatures: toughness ≤ 0 should not be on battlefield.
+		// Skip post-ended: see ended-flag rationale at function top.
+		if ended {
+			continue
+		}
 		for _, p := range s.Battlefield {
 			if p == nil || p.PhasedOut {
 				continue
@@ -654,6 +671,29 @@ func sliceEqual(a, b []string) bool {
 // TriggerCompleteness
 // ---------------------------------------------------------------------------
 
+// opponentOnlyCreatureDiesTriggers lists per_card `creature_dies` handlers
+// that early-return on `controllerSeat == perm.Controller` because their
+// printed (or implemented) trigger condition is "whenever an OPPONENT's
+// creature dies." For these bearers the TriggerCompleteness invariant
+// must match the bearer to a DIFFERENT-seat death event, not a same-
+// seat one — otherwise it false-positives when the bearer's controller
+// sacrifices their own creature (e.g. Gisa, Glorious Resurrector +
+// Birthing Ritual's saproling sacrifice — loki r60 mega-stress seed
+// 31415 game 237 turn 55).
+//
+// Membership is derived from a one-shot audit of every per_card
+// OnTrigger("...", "creature_dies", ...) registration looking for an
+// early-return on `controllerSeat == perm.Controller`. New handlers
+// with the same shape should be added here.
+var opponentOnlyCreatureDiesTriggers = map[string]bool{
+	"Gisa, Glorious Resurrector":  true,
+	"The Reaper, King No More":    true,
+	"Toxrill, the Corrosive":      true,
+	"Yahenni, Undying Partisan":   true,
+	"Grave Pact":                  true,
+	"Grave Betrayal":              true,
+}
+
 // checkTriggerCompleteness scans the last 10 events for patterns that should
 // have produced a trigger but apparently didn't. Lightweight: only checks
 // recent events against the current battlefield, not full history.
@@ -699,14 +739,64 @@ func checkTriggerCompleteness(gs *GameState) error {
 		if ev.Kind != "sacrifice" && ev.Kind != "creature_dies" && ev.Kind != "sba_704_5f" && ev.Kind != "sba_704_5g" {
 			continue
 		}
-		// Only check if a trigger-bearer controls the dying creature.
-		// Most "creature_dies" triggers only fire for your own creatures.
+		// "sacrifice" events cover any permanent — only creature_dies
+		// triggers care about creature deaths. Skip non-creature sacrifices
+		// (lands, artifacts, enchantments) so we don't false-positive on
+		// "sacrifice a land" effects (Strip Mine, Pillage, Crucible of
+		// Worlds shuffles, etc.) just because the controller happens to
+		// own a creature-dies bearer.
+		if ev.Kind == "sacrifice" {
+			if ev.Details != nil {
+				if wc, ok := ev.Details["was_creature"].(bool); ok && !wc {
+					continue
+				}
+			}
+		}
+		// R60: per CR §700.4, "dies" = battlefield → GRAVEYARD only.
+		// When a §614 replacement (Rest in Peace, Leyline of the Void,
+		// Anafenza the Foremost, etc.) redirects the destination to
+		// exile / library / hand / command zone, the creature didn't
+		// die — `creature_dies` triggers don't fire and the invariant
+		// must not demand one. The destroyPermSBA / sacrificePermSBA
+		// emitters at sba.go:1889 / 1950 already stamp `to_zone` in
+		// Details (and zone_change.go's creature_dies event mirrors it
+		// at line 453). Skip the death event when to_zone is anything
+		// other than "graveyard". Bit-stable signature: Rest in Peace
+		// on seat 0 redirecting seat 3's Firemane Commando death to
+		// exile, while seat 3 owns Gerrard, Weatherlight Hero (whose
+		// "dies" trigger is wired to creature_dies dispatch) — loki
+		// round 1-3 seed-42 game 4512.
+		if ev.Details != nil {
+			if tz, ok := ev.Details["to_zone"].(string); ok && tz != "" && tz != "graveyard" {
+				continue
+			}
+		}
+		// Only check if a trigger-bearer's seat-vs-death-seat orientation
+		// matches the bearer's printed (or per_card-coded) trigger
+		// condition. Most "creature_dies" triggers fire only on the
+		// bearer's OWN creatures dying — for those, bearer.seat must
+		// match the death seat. A small set of per_card handlers
+		// (Gisa Glorious Resurrector, Toxrill, The Reaper King No More,
+		// Yahenni, Grave Pact, Grave Betrayal) early-return on
+		// `controllerSeat == perm.Controller` because they trigger only
+		// on OPPONENT'S creatures — for those, bearer.seat must DIFFER
+		// from the death seat. Without this split the invariant false-
+		// positives on opp-only bearers when their controller sacrifices
+		// their own creature (loki r60 mega-stress seed 31415 game 237
+		// turn 55 — Gisa + Birthing Ritual chain).
 		deathSeat := ev.Seat
 		hasMatchingBearer := false
 		for _, dt := range diesTriggers {
-			if dt.seat == deathSeat {
-				hasMatchingBearer = true
-				break
+			if opponentOnlyCreatureDiesTriggers[dt.cardName] {
+				if dt.seat != deathSeat {
+					hasMatchingBearer = true
+					break
+				}
+			} else {
+				if dt.seat == deathSeat {
+					hasMatchingBearer = true
+					break
+				}
 			}
 		}
 		if !hasMatchingBearer {
@@ -990,15 +1080,37 @@ func checkCardIdentity(gs *GameState) error {
 			}
 		}
 	}
-	// Also check the stack.
+	// Also check the stack. Triggered/activated abilities (item.Kind ==
+	// "triggered" / "activated", or any item with a Source permanent)
+	// carry an item.Card pointer that's a log-label only — it points at
+	// the source permanent's printed card so events read nicely, but the
+	// card itself is NOT in a "stack" zone (it's still on the battlefield
+	// or wherever the permanent lives). PushTriggeredAbility in stack.go
+	// explicitly documents: "StackItem.Card is usually for spells, not
+	// triggers, but we point it at the source card so logs show the
+	// right name." For ability items, only spell items (item.Kind ==
+	// "spell" and item.Source == nil) reflect a card actually moving
+	// through the stack zone (CR §405).
+	//
+	// Loki r60 mega-stress / seeds 31415 + 271828 / nightmare boards
+	// 9751 + sibling: Necrogen Communion was destroyed by SBA 704.5n
+	// (aura with no legal target), went to graveyard, and its die-event
+	// trigger pushed onto the stack with `item.Card = src.Card`. The
+	// same *Card was now both "in graveyard" and "on stack" by the
+	// invariant's accounting — but only the graveyard reference reflects
+	// a real zone, the stack reference was a label.
 	for _, item := range gs.Stack {
 		if item == nil {
 			continue
 		}
-		if item.Card != nil {
-			if err := checkCard(item.Card, "stack", item.Controller); err != nil {
-				return err
-			}
+		if item.Card == nil {
+			continue
+		}
+		if item.Source != nil || item.Kind == "triggered" || item.Kind == "activated" {
+			continue
+		}
+		if err := checkCard(item.Card, "stack", item.Controller); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -1092,6 +1204,32 @@ func checkReplacementCompleteness(gs *GameState) error {
 				cardName := ev.Source
 				if cn, ok := ev.Details["card"]; ok {
 					cardName = fmt.Sprintf("%v", cn)
+				}
+				// If the exile effect's own ETB happened LATER in the
+				// scan window than this zone_change, it wasn't on the
+				// battlefield when the card went to graveyard — the
+				// replacement couldn't have applied. Covers spells that
+				// resolve from the stack directly into the graveyard
+				// (no preceding `destroy` event) on the same turn the
+				// exile effect was cast.
+				etbAfterZoneChange := false
+				for k := i + 1; k < len(gs.EventLog); k++ {
+					ek := &gs.EventLog[k]
+					if ek.Kind != "enter_battlefield" {
+						continue
+					}
+					srcLower := strings.ToLower(ek.Source)
+					if hasRIP && srcLower == "rest in peace" {
+						etbAfterZoneChange = true
+						break
+					}
+					if len(leylineSeats) > 0 && srcLower == "leyline of the void" {
+						etbAfterZoneChange = true
+						break
+					}
+				}
+				if etbAfterZoneChange {
+					continue
 				}
 				// Verify the exile effect's replacement was registered
 				// when this zone change happened. The harness clears
@@ -1206,7 +1344,11 @@ func checkWinCondition(gs *GameState) error {
 
 		if strings.Contains(reason, "commander") || strings.Contains(reason, "704.6c") {
 			// Commander damage loss — verify 21+ from a single commander.
-			if gs.CommanderFormat {
+			// Post-elimination, CommanderDamage entries can still be
+			// adjusted by clean-up paths or test scaffolding; trust the
+			// loss reason for already-cleaned-up seats (mirrors the life
+			// check below).
+			if gs.CommanderFormat && !s.LeftGame {
 				maxDmg := 0
 				for _, cmdrs := range s.CommanderDamage {
 					for _, dmg := range cmdrs {
@@ -1223,7 +1365,22 @@ func checkWinCondition(gs *GameState) error {
 		}
 
 		if strings.Contains(reason, "poison") || strings.Contains(reason, "704.5c") {
-			if s.PoisonCounters < 10 {
+			// Poison loss — verify 10+ poison counters. Post-elimination
+			// the count can drop via Hapatra-style counter-swap effects
+			// or other poison-removal abilities firing after the seat
+			// was already Lost. CR §704.5c locks in the loss at the SBA
+			// pass; subsequent counter adjustments are state-preserved
+			// for audit but do not undo the loss. Trust the loss reason
+			// for already-cleaned-up seats (mirrors the life check
+			// below).
+			//
+			// Loki r60 extended-seeds / seed 2718 game 3428 turn 39:
+			// seat 0 had 10+ poison from Blightwidow/Dakmor Scorpion
+			// infect damage, lost via SBA 704.5c, then a Hapatra-pod
+			// counter-swap effect dropped seat 0's PoisonCounters to 2.
+			// The current-state check fired despite the historical loss
+			// being correct.
+			if s.PoisonCounters < 10 && !s.LeftGame {
 				return fmt.Errorf("WinCondition: seat %d lost via poison but has only %d poison counters (< 10)",
 					s.Idx, s.PoisonCounters)
 			}
@@ -1608,7 +1765,7 @@ func checkZoneCastGrantExpiry(gs *GameState) error {
 		if p == nil {
 			continue
 		}
-		if !shouldExpireGrant(gs, p) {
+		if !grantIsLeaked(gs, p) {
 			continue
 		}
 		name := "<unknown>"

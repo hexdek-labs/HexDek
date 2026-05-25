@@ -52,6 +52,9 @@ func (r *AnalyticsReport) WriteMarkdown(path string) error {
 	// Per-Commander Breakdown.
 	r.writeCommanderBreakdown(&b)
 
+	// Per-Deck Aggregates (winrate, turn-to-finisher, common matchups).
+	r.writeDeckAggregates(&b, 5)
+
 	// Missed Combos.
 	r.writeMissedCombos(&b)
 
@@ -647,6 +650,87 @@ func (r *AnalyticsReport) WriteTempoAnalysisTo(b *strings.Builder) {
 // WriteCommanderBreakdownTo writes the per-commander breakdown section.
 func (r *AnalyticsReport) WriteCommanderBreakdownTo(b *strings.Builder) {
 	r.writeCommanderBreakdown(b)
+}
+
+// writeDeckAggregates writes a deck-level aggregate roll-up: winrate,
+// turn-to-finisher, win-condition mix, and the deck's top opponents
+// with per-matchup records. Sits one layer above
+// writeCommanderBreakdown (which is per-game-instance averages); this
+// section answers "how did each DECK perform across the tournament,
+// and who did it face."
+func (r *AnalyticsReport) writeDeckAggregates(b *strings.Builder, topMatchups int) {
+	aggs := AggregateDecks(r.Analyses, r.CommanderNames)
+	if len(aggs) == 0 {
+		return
+	}
+
+	b.WriteString("## Per-Deck Aggregates\n\n")
+	b.WriteString("_Multi-game rollup per deck: winrate, average turn the winning card hit the table (turn-to-finisher), and most-faced opponents._\n\n")
+
+	b.WriteString("| Deck | Games | Wins | Win% | Avg Turn-to-Finisher | Avg Game Length |\n")
+	b.WriteString("|---|---:|---:|---:|---:|---:|\n")
+	for i := range aggs {
+		d := &aggs[i]
+		ttf := "n/a"
+		if d.FinisherSampleSize > 0 {
+			ttf = fmt.Sprintf("%.1f (n=%d)", d.AvgTurnToFinisher, d.FinisherSampleSize)
+		}
+		fmt.Fprintf(b, "| %s | %d | %d | %.1f%% | %s | %.1f |\n",
+			d.CommanderName, d.GamesPlayed, d.GamesWon, d.WinRate*100, ttf, d.AvgGameLength)
+	}
+	b.WriteString("\n")
+
+	// Per-deck matchup breakdowns + win-condition mix.
+	for i := range aggs {
+		d := &aggs[i]
+		if d.GamesPlayed == 0 {
+			continue
+		}
+		fmt.Fprintf(b, "### %s\n\n", d.CommanderName)
+
+		if len(d.WinConditions) > 0 {
+			b.WriteString("**Wins by condition:** ")
+			type kv struct {
+				k string
+				v int
+			}
+			conds := make([]kv, 0, len(d.WinConditions))
+			for k, v := range d.WinConditions {
+				conds = append(conds, kv{k, v})
+			}
+			sort.SliceStable(conds, func(i, j int) bool { return conds[i].v > conds[j].v })
+			parts := make([]string, 0, len(conds))
+			for _, c := range conds {
+				parts = append(parts, fmt.Sprintf("%s=%d", c.k, c.v))
+			}
+			b.WriteString(strings.Join(parts, ", "))
+			b.WriteString("\n\n")
+		}
+
+		if len(d.Matchups) == 0 {
+			continue
+		}
+		b.WriteString("**Common matchups:**\n\n")
+		b.WriteString("| Opponent | Games | Wins | Losses | Win% |\n")
+		b.WriteString("|---|---:|---:|---:|---:|\n")
+		limit := topMatchups
+		if limit <= 0 || limit > len(d.Matchups) {
+			limit = len(d.Matchups)
+		}
+		for j := 0; j < limit; j++ {
+			m := &d.Matchups[j]
+			fmt.Fprintf(b, "| %s | %d | %d | %d | %.1f%% |\n",
+				m.Opponent, m.Games, m.Wins, m.Losses, m.WinRate*100)
+		}
+		b.WriteString("\n")
+	}
+}
+
+// WriteDeckAggregatesTo writes the per-deck aggregates section to an
+// external builder. topMatchups caps the matchup rows shown per deck
+// (0 or negative = all).
+func (r *AnalyticsReport) WriteDeckAggregatesTo(b *strings.Builder, topMatchups int) {
+	r.writeDeckAggregates(b, topMatchups)
 }
 
 // WriteStallWarningsTo writes the stall warning section to an external builder.

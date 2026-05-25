@@ -1,7 +1,51 @@
-import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { Panel, KV, Bar, Tag, Btn, Tape } from '../components/chrome'
+import SummaryActions from '../components/SummaryActions'
 import { api, cardArtUrl } from '../services/api'
+import {
+  REPLAY_SPEEDS,
+  REPLAY_DEFAULT_SPEED_IDX,
+  tickIntervalMs,
+  nextSpeedIdx,
+  stepTurn,
+  resolveReplayKeyAction,
+} from '../utils/replayControls'
+import {
+  BOOKMARK_KINDS,
+  DEFAULT_BOOKMARK_KIND,
+  loadBookmarks,
+  saveBookmarks,
+  addBookmark,
+  removeBookmark,
+  nextBookmarkTurn,
+  kindMeta,
+  resolveBookmarkKeyAction,
+} from '../utils/replayBookmarks'
+import {
+  parseShareParams,
+  buildShareUrl,
+} from '../utils/replayShare'
+import {
+  extractKeyMoments,
+  momentMeta,
+  countsTooltip,
+} from '../utils/replayTimeline'
+import {
+  SHARE_PARAM_COMPARE,
+  mapSharedTurn,
+  compareSeatDeltas,
+} from '../utils/replayCompare'
+import {
+  isVideoExportSupported,
+  recordReplayVideo,
+  videoFileName,
+  formatVideoDuration,
+  buildFramePlan,
+  pickMimeType,
+  DEFAULT_VIDEO_WIDTH,
+  DEFAULT_VIDEO_HEIGHT,
+} from '../utils/videoExport'
 
 // ── API gaps for full report fidelity ──────────────────────────────────
 // CompletedGame currently exposes: game_id, commanders[], deck_keys[],
@@ -223,13 +267,111 @@ const deriveTimeline = (game, commanders) => {
    data isn't persisted); we render a single-line notice and skip the
    scrubber instead of fabricating interpolated frames.
 */
-const ReplayScrubber = ({ game, commanders }) => {
+const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommanders = [], onClearCompare }) => {
   const timeline = game?.timeline || []
   const totalTurns = timeline.length
   const [turnIdx, setTurnIdx] = useState(0) // 0-based into timeline
   const [playing, setPlaying] = useState(false)
+  // Index into REPLAY_SPEEDS (0.5× / 1× / 2× / 4×). The autoplay tick
+  // reads tickIntervalMs(REPLAY_SPEEDS[speedIdx]) so 1× preserves the
+  // historical 900ms cadence and 4× lets users skim a long game in a
+  // quarter the time.
+  const [speedIdx, setSpeedIdx] = useState(REPLAY_DEFAULT_SPEED_IDX)
+  // Bookmarks persist per game in localStorage. The state mirrors what's
+  // on disk so the render is synchronous; we re-read on game switch
+  // (game?.game_id dep) and write through whenever the list changes.
+  const gameId = game?.game_id
+  const [bookmarks, setBookmarks] = useState([])
+  const [bookmarkKind, setBookmarkKind] = useState(DEFAULT_BOOKMARK_KIND)
+  // Focused seat (0..3) for the share link's optional &seat=. null
+  // means "no seat highlighted" — the seat card outline thickens
+  // when this is set. Click any seat-card header to toggle focus.
+  const [focusedSeat, setFocusedSeat] = useState(null)
+  // Toast for the "share" button feedback. null when idle, a string
+  // when the URL was just copied (auto-clears after ~2s).
+  const [shareToast, setShareToast] = useState(null)
+  // Video export state. exportStatus is one of: null (idle),
+  // 'recording' (in progress), 'saved' (just finished — shown as a
+  // toast briefly), 'error'. exportProgress is { idx, total } for
+  // the progress bar. exportCanvasRef holds the offscreen canvas we
+  // paint frames onto; it's an attached <canvas> (1280×720, opacity
+  // 0 so it doesn't visually intrude) because OffscreenCanvas isn't
+  // universally supported and a hidden <canvas> works in every
+  // browser that has MediaRecorder.
+  const [exportStatus, setExportStatus] = useState(null)
+  const [exportProgress, setExportProgress] = useState({ idx: 0, total: 0 })
+  const exportCanvasRef = useRef(null)
+  const exportAbortRef = useRef(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  // Track whether we've already consumed an initial ?t=/&seat= for
+  // THIS game so a later URL edit (back / forward) re-applies, but a
+  // normal scrub doesn't keep snapping back.
+  const consumedInitialParamsRef = useRef({ gameId: null, payload: '' })
 
-  // Auto-play tick — advance one turn per second while `playing`.
+  // Load bookmarks when the game id changes. This effect intentionally
+  // calls setState — it's the only way to react to a foreign data source
+  // (localStorage) keyed off a prop. The cascading-renders lint rule
+  // doesn't have a way to express "external sync" so we silence it
+  // here; the read is cheap (single JSON parse) and only runs on game
+  // switch.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBookmarks(loadBookmarks(window.localStorage, gameId))
+  }, [gameId])
+
+  // Persist bookmarks on every mutation. Cheap (small JSON, infrequent).
+  useEffect(() => {
+    if (typeof window === 'undefined' || gameId == null) return
+    saveBookmarks(window.localStorage, gameId, bookmarks)
+  }, [gameId, bookmarks])
+
+  // turnAtIdx maps a 0-based timeline index to the game's actual turn
+  // number (timeline entries can start at turn 1 with optional gaps).
+  // Used by the bookmark add/jump handlers so persisted bookmarks
+  // survive a future replay-server change that re-orders snapshots.
+  const turnAtIdx = (idx) => timeline[idx]?.turn ?? (idx + 1)
+
+  const idxAtTurn = (turn) => {
+    for (let i = 0; i < timeline.length; i++) {
+      if (timeline[i].turn === turn) return i
+    }
+    // Closest preceding snapshot if the exact turn isn't in the timeline.
+    let chosen = 0
+    for (let i = 0; i < timeline.length; i++) {
+      if (timeline[i].turn <= turn) chosen = i
+      else break
+    }
+    return chosen
+  }
+
+  // Deep-link consumption. When the URL carries ?t=N (& optionally
+  // &seat=I), jump the scrubber to that turn and highlight that seat.
+  // The ref-guard re-applies only when the params or game change, so
+  // a user scrubbing past the shared moment doesn't get yanked back.
+  useEffect(() => {
+    if (totalTurns === 0) return
+    const lastTurn = timeline[totalTurns - 1].turn
+    const seatCount = timeline[0]?.seats?.length || 0
+    const { turn, seat } = parseShareParams(searchParams, { maxTurn: lastTurn, maxSeats: seatCount })
+    const payload = `${turn}|${seat}`
+    const consumed = consumedInitialParamsRef.current
+    if (consumed.gameId === gameId && consumed.payload === payload) return
+    consumedInitialParamsRef.current = { gameId, payload }
+    // External-sync effect: react to a foreign data source (URL
+    // query params) keyed off the gameId + searchParams. The
+    // cascading-renders lint rule doesn't have a way to express
+    // this; ref-guard above ensures we only setState when the URL
+    // payload genuinely changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (turn != null) { setTurnIdx(idxAtTurn(turn)); setPlaying(false) }
+    if (seat != null) setFocusedSeat(seat)
+    // searchParams comes from useSearchParams; idxAtTurn / timeline
+    // close over the same render snapshot, no extra deps needed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, gameId, totalTurns])
+
+  // Auto-play tick — advances one turn at the user-selected speed.
   useEffect(() => {
     if (!playing || totalTurns === 0) return
     const id = setInterval(() => {
@@ -240,15 +382,87 @@ const ReplayScrubber = ({ game, commanders }) => {
         }
         return i + 1
       })
-    }, 900)
+    }, tickIntervalMs(REPLAY_SPEEDS[speedIdx]))
     return () => clearInterval(id)
-  }, [playing, totalTurns])
+  }, [playing, totalTurns, speedIdx])
 
   // Clamp the slider to a valid index when timeline shrinks (e.g. on
   // game switch). Defensive — totalTurns only changes when game does.
   useEffect(() => {
     if (turnIdx >= totalTurns) setTurnIdx(Math.max(0, totalTurns - 1))
   }, [totalTurns, turnIdx])
+
+  // Keyboard shortcuts. Two handlers: replay transport (Space/K play,
+  // ←J/→L step, Home/End jump, ↑↓/[] speed) and bookmarks (B to mark
+  // the current turn, , and . to jump to the prev/next bookmark).
+  useEffect(() => {
+    if (totalTurns === 0) return
+    const onKey = (e) => {
+      const action = resolveReplayKeyAction(e)
+      if (action) {
+        e.preventDefault()
+        switch (action) {
+          case 'togglePlay':
+            setPlaying(p => !p)
+            break
+          case 'first':
+            setPlaying(false)
+            setTurnIdx(stepTurn(turnIdx, totalTurns, 'first'))
+            break
+          case 'last':
+            setPlaying(false)
+            setTurnIdx(stepTurn(turnIdx, totalTurns, 'last'))
+            break
+          case 'prev':
+            setPlaying(false)
+            setTurnIdx(stepTurn(turnIdx, totalTurns, 'prev'))
+            break
+          case 'next':
+            setPlaying(false)
+            setTurnIdx(stepTurn(turnIdx, totalTurns, 'next'))
+            break
+          case 'speedDown':
+            setSpeedIdx(i => nextSpeedIdx(i, -1))
+            break
+          case 'speedUp':
+            setSpeedIdx(i => nextSpeedIdx(i, +1))
+            break
+        }
+        return
+      }
+      const bm = resolveBookmarkKeyAction(e)
+      if (!bm) return
+      e.preventDefault()
+      const currentTurn = turnAtIdx(turnIdx)
+      switch (bm) {
+        case 'addBookmark':
+          setBookmarks(list => addBookmark(list, currentTurn, bookmarkKind, ''))
+          break
+        case 'prevBookmark': {
+          const t = nextBookmarkTurn(bookmarks, currentTurn, -1)
+          if (t != null) {
+            setPlaying(false)
+            setTurnIdx(idxAtTurn(t))
+          }
+          break
+        }
+        case 'nextBookmark': {
+          const t = nextBookmarkTurn(bookmarks, currentTurn, +1)
+          if (t != null) {
+            setPlaying(false)
+            setTurnIdx(idxAtTurn(t))
+          }
+          break
+        }
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // turnAtIdx / idxAtTurn close over `timeline`; tracking
+    // timeline.length covers the only mutation path that matters
+    // (game switch / snapshot append).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turnIdx, totalTurns, bookmarks, bookmarkKind])
 
   if (totalTurns === 0) {
     return (
@@ -278,32 +492,418 @@ const ReplayScrubber = ({ game, commanders }) => {
         </span>
       }
     >
-      {/* Transport: prev / play / next / jump-to-end */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
-        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(0) }} disabled={turnIdx === 0} title="Jump to start">⏮</Btn>
-        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(Math.max(0, turnIdx - 1)) }} disabled={turnIdx === 0} title="Previous turn">◀</Btn>
-        <Btn sm arrow={null} solid={playing} onClick={() => setPlaying(p => !p)}>{playing ? '⏸ PAUSE' : '▶ PLAY'}</Btn>
-        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(Math.min(totalTurns - 1, turnIdx + 1)) }} disabled={turnIdx >= totalTurns - 1} title="Next turn">▶</Btn>
-        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(totalTurns - 1) }} disabled={turnIdx >= totalTurns - 1} title="Jump to end">⏭</Btn>
+      {/* Transport: prev / play / next / jump-to-end + speed presets */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
+        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'first')) }} disabled={turnIdx === 0} title="Jump to start (Home)">⏮</Btn>
+        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'prev')) }} disabled={turnIdx === 0} title="Previous turn (← / J)">◀</Btn>
+        <Btn sm arrow={null} solid={playing} onClick={() => setPlaying(p => !p)} title="Play / pause (Space / K)">{playing ? '⏸ PAUSE' : '▶ PLAY'}</Btn>
+        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'next')) }} disabled={turnIdx >= totalTurns - 1} title="Next turn (→ / L)">▶</Btn>
+        <Btn sm arrow={null} onClick={() => { setPlaying(false); setTurnIdx(stepTurn(turnIdx, totalTurns, 'last')) }} disabled={turnIdx >= totalTurns - 1} title="Jump to end (End)">⏭</Btn>
+        {/* Speed: discrete presets. Active mark = ok-color. Hotkeys
+            ↑/↓ + [/] step through the same list. */}
+        <div role="group" aria-label="Playback speed" style={{ display: 'flex', gap: 2, marginLeft: 8, padding: '0 4px', borderLeft: '1px solid var(--rule-2)' }}>
+          {REPLAY_SPEEDS.map((s, i) => {
+            const active = i === speedIdx
+            return (
+              <button
+                type="button"
+                key={s}
+                onClick={() => setSpeedIdx(i)}
+                aria-pressed={active}
+                aria-label={`Set replay speed to ${s}×`}
+                title={`Replay at ${s}×`}
+                className="t-xs"
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: '2px 6px',
+                  fontWeight: active ? 700 : 400,
+                  color: active ? 'var(--ok)' : 'var(--ink-2)',
+                }}
+              >
+                {s}×
+              </button>
+            )
+          })}
+        </div>
+        {/* Bookmark add: kind picker + "+" button. The picker stores
+            the kind for the next add; pressing B uses the same kind.
+            Existing-mark detection swaps "+" for a "remove" affordance
+            when the current turn already carries a bookmark of the
+            selected kind. */}
+        <div role="group" aria-label="Bookmark current turn" style={{ display: 'flex', gap: 2, marginLeft: 8, padding: '0 4px', borderLeft: '1px solid var(--rule-2)', alignItems: 'center' }}>
+          <select
+            value={bookmarkKind}
+            onChange={(e) => setBookmarkKind(e.target.value)}
+            aria-label="Bookmark kind"
+            className="t-xs"
+            style={{
+              background: 'transparent',
+              color: 'var(--ink)',
+              border: '1px solid var(--rule-2)',
+              padding: '1px 4px',
+              cursor: 'pointer',
+            }}
+          >
+            {BOOKMARK_KINDS.map(k => (
+              <option key={k.id} value={k.id}>{k.icon} {k.label}</option>
+            ))}
+          </select>
+          {(() => {
+            const currentTurn = turnAtIdx(turnIdx)
+            const existingId = `${currentTurn}-${bookmarkKind}`
+            const isMarked = bookmarks.some(b => b.id === existingId)
+            return (
+              <Btn
+                sm
+                arrow={null}
+                solid={isMarked}
+                title={isMarked ? `Remove ${kindMeta(bookmarkKind).label} bookmark (T${currentTurn})` : `Bookmark T${currentTurn} as ${kindMeta(bookmarkKind).label} (B)`}
+                onClick={() => {
+                  if (isMarked) {
+                    setBookmarks(list => removeBookmark(list, existingId))
+                  } else {
+                    setBookmarks(list => addBookmark(list, currentTurn, bookmarkKind, ''))
+                  }
+                }}
+              >
+                {isMarked ? '−' : '+'} {kindMeta(bookmarkKind).icon}
+              </Btn>
+            )
+          })()}
+        </div>
+        {/* Share this exact moment. Builds a URL with ?t=N (and
+            &seat=I if a seat is focused), copies it to the clipboard,
+            and writes the same params into the address bar via
+            setSearchParams so a manual refresh lands on the same
+            moment. The "SHARED" toast auto-clears after ~2s. */}
+        <div style={{ display: 'flex', gap: 6, marginLeft: 8, padding: '0 4px', borderLeft: '1px solid var(--rule-2)', alignItems: 'center' }}>
+          <Btn
+            sm
+            arrow={null}
+            title={`Copy link to T${turnAtIdx(turnIdx)}${focusedSeat != null ? ` · SEAT.${String(focusedSeat + 1).padStart(2, '0')}` : ''}`}
+            onClick={() => {
+              const turn = turnAtIdx(turnIdx)
+              const next = new URLSearchParams(searchParams)
+              next.set('t', String(turn))
+              if (focusedSeat != null) next.set('seat', String(focusedSeat))
+              else next.delete('seat')
+              // Reflect the share state in the URL bar without pushing
+              // a history entry per share click.
+              setSearchParams(next, { replace: true })
+              if (typeof window !== 'undefined') {
+                const url = buildShareUrl(window.location.origin + window.location.pathname, {
+                  turn,
+                  seat: focusedSeat,
+                })
+                if (navigator?.clipboard?.writeText) {
+                  navigator.clipboard.writeText(url).then(
+                    () => { setShareToast('LINK COPIED') },
+                    () => { setShareToast('COPY FAILED') },
+                  )
+                } else {
+                  setShareToast('LINK READY')
+                }
+                setTimeout(() => setShareToast(null), 2000)
+              }
+            }}
+          >
+            ⇪ SHARE
+          </Btn>
+          {shareToast && (
+            <span className="t-xs" style={{ color: 'var(--ok)', fontWeight: 700 }}>
+              {shareToast}
+            </span>
+          )}
+        </div>
+        {/* Video export. Renders only when the browser supports
+            MediaRecorder + canvas.captureStream + at least one of
+            our preferred MIME types — node tests + older browsers
+            silently hide the button. Click starts a recording that
+            paints each turn onto a hidden 1280×720 canvas; the
+            resulting Blob downloads as `hexdek-replay-<id>.mp4`
+            (Safari) or `.webm` (Chrome/Firefox). */}
+        {typeof window !== 'undefined' && isVideoExportSupported(window) && (
+          <div style={{ display: 'flex', gap: 6, marginLeft: 8, padding: '0 4px', borderLeft: '1px solid var(--rule-2)', alignItems: 'center' }}>
+            <Btn
+              sm
+              arrow={null}
+              solid={exportStatus === 'recording'}
+              title={(() => {
+                if (exportStatus === 'recording') return 'Cancel recording'
+                const plan = buildFramePlan(timeline)
+                const mime = pickMimeType(window) || ''
+                const ext = mime.includes('mp4') ? 'mp4' : 'webm'
+                return `Export this replay as a ${ext} (≈ ${formatVideoDuration(plan.totalMs)})`
+              })()}
+              onClick={async () => {
+                if (exportStatus === 'recording') {
+                  // Mid-recording click cancels.
+                  exportAbortRef.current?.abort()
+                  return
+                }
+                const canvas = exportCanvasRef.current
+                if (!canvas) return
+                setExportStatus('recording')
+                setExportProgress({ idx: 0, total: 0 })
+                const controller = new AbortController()
+                exportAbortRef.current = controller
+                try {
+                  const blob = await recordReplayVideo({
+                    canvas,
+                    timeline,
+                    commanders,
+                    gameId: game?.game_id ?? 'unknown',
+                    signal: controller.signal,
+                    onProgress: ({ idx, total }) => setExportProgress({ idx, total }),
+                  })
+                  const mime = pickMimeType(window) || 'video/webm'
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = videoFileName(game?.game_id, mime)
+                  document.body.appendChild(a)
+                  a.click()
+                  document.body.removeChild(a)
+                  URL.revokeObjectURL(url)
+                  setExportStatus('saved')
+                  setTimeout(() => setExportStatus(null), 2500)
+                } catch (err) {
+                  console.warn('replay export failed:', err)
+                  setExportStatus('error')
+                  setTimeout(() => setExportStatus(null), 2500)
+                } finally {
+                  exportAbortRef.current = null
+                }
+              }}
+            >
+              {exportStatus === 'recording'
+                ? `⏺ REC ${exportProgress.total ? `${exportProgress.idx + 1}/${exportProgress.total}` : ''}`
+                : '⬇ EXPORT'}
+            </Btn>
+            {exportStatus === 'saved' && (
+              <span className="t-xs" style={{ color: 'var(--ok)', fontWeight: 700 }}>SAVED</span>
+            )}
+            {exportStatus === 'error' && (
+              <span className="t-xs" style={{ color: 'var(--danger)', fontWeight: 700 }}>FAILED</span>
+            )}
+            {/* The offscreen render target. position:absolute +
+                opacity:0 keeps it laid out (so captureStream() works)
+                while staying invisible. pointerEvents none so it
+                doesn't intercept clicks. */}
+            <canvas
+              ref={exportCanvasRef}
+              width={DEFAULT_VIDEO_WIDTH}
+              height={DEFAULT_VIDEO_HEIGHT}
+              aria-hidden="true"
+              style={{
+                position: 'absolute', left: -9999, top: -9999,
+                width: 1, height: 1, opacity: 0, pointerEvents: 'none',
+              }}
+            />
+          </div>
+        )}
         <span className="t-xs muted" style={{ marginLeft: 8 }}>
           ACTIVE: {activeSeat >= 0 ? `SEAT.${String(activeSeat + 1).padStart(2, '0')} · ${(commanders[activeSeat] || 'UNKNOWN').split(',')[0].toUpperCase()}` : '—'}
+          {focusedSeat != null && (
+            <span style={{ marginLeft: 6, color: 'var(--accent)' }}>
+              · FOCUS: SEAT.{String(focusedSeat + 1).padStart(2, '0')}
+            </span>
+          )}
         </span>
       </div>
 
-      {/* The slider itself */}
-      <input
-        type="range"
-        min={0}
-        max={totalTurns - 1}
-        value={turnIdx}
-        onChange={e => { setPlaying(false); setTurnIdx(parseInt(e.target.value, 10)) }}
-        style={{ width: '100%', accentColor: 'var(--accent)' }}
-        aria-label="Turn slider"
-      />
+      {/* Key-moment timeline strip — one cell per snapshot, colored
+          by that turn's highest-priority moment. Click a cell to
+          jump to that turn. Empty cells (no key moments) render as a
+          dim placeholder so the strip width tracks the slider width
+          exactly. extractKeyMoments is recomputed on every render —
+          cheap (single linear pass over events) and avoids stale
+          summaries on game switch. */}
+      {(() => {
+        const moments = extractKeyMoments(timeline)
+        if (moments.length === 0) return null
+        return (
+          <div
+            role="group"
+            aria-label="Key moments timeline"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: `repeat(${moments.length}, 1fr)`,
+              gap: 1,
+              marginBottom: 6,
+              minHeight: 16,
+            }}
+          >
+            {moments.map((m, i) => {
+              const meta = momentMeta(m.primary)
+              const isCurrent = i === turnIdx
+              if (!meta) {
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => { setPlaying(false); setTurnIdx(i) }}
+                    title={`T${m.turn ?? i + 1} — quiet turn`}
+                    aria-label={`Jump to turn ${m.turn ?? i + 1}`}
+                    style={{
+                      height: 16,
+                      background: isCurrent ? 'var(--rule)' : 'var(--rule-2)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      opacity: 0.4,
+                    }}
+                  />
+                )
+              }
+              const tip = `T${m.turn ?? i + 1} · ${meta.label}${m.totalKeyEvents > 1 ? ` — ${countsTooltip(m.counts)}` : ''}`
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => { setPlaying(false); setTurnIdx(i) }}
+                  title={tip}
+                  aria-label={tip}
+                  style={{
+                    height: 16,
+                    background: meta.color,
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                    color: 'var(--bg)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    lineHeight: 1,
+                    boxShadow: isCurrent ? 'inset 0 0 0 2px var(--ink)' : undefined,
+                    opacity: m.totalKeyEvents > 0 ? 1 : 0.5,
+                  }}
+                >
+                  {meta.icon}
+                </button>
+              )
+            })}
+          </div>
+        )
+      })()}
+
+      {/* The slider itself, with bookmark markers overlaid. Markers
+          sit absolutely-positioned above the track at the % offset
+          that matches each bookmark's snapshot index; clicking one
+          jumps to that turn. */}
+      <div style={{ position: 'relative', width: '100%' }}>
+        <input
+          type="range"
+          min={0}
+          max={totalTurns - 1}
+          value={turnIdx}
+          onChange={e => { setPlaying(false); setTurnIdx(parseInt(e.target.value, 10)) }}
+          style={{ width: '100%', accentColor: 'var(--accent)', display: 'block' }}
+          aria-label="Turn slider"
+        />
+        {bookmarks.length > 0 && (
+          <div
+            aria-hidden="true"
+            style={{ position: 'absolute', left: 0, right: 0, top: -6, height: 6, pointerEvents: 'none' }}
+          >
+            {bookmarks.map(b => {
+              const idx = idxAtTurn(b.turn)
+              const pct = totalTurns > 1 ? (idx / (totalTurns - 1)) * 100 : 0
+              const meta = kindMeta(b.kind)
+              return (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => { setPlaying(false); setTurnIdx(idx) }}
+                  title={`${meta.label} — T${b.turn}${b.note ? ` · ${b.note}` : ''}`}
+                  aria-label={`Jump to ${meta.label} bookmark at turn ${b.turn}`}
+                  style={{
+                    position: 'absolute',
+                    left: `calc(${pct}% - 6px)`,
+                    top: 0,
+                    width: 12,
+                    height: 6,
+                    padding: 0,
+                    border: 'none',
+                    background: meta.color,
+                    cursor: 'pointer',
+                    pointerEvents: 'auto',
+                    borderRadius: 2,
+                  }}
+                />
+              )
+            })}
+          </div>
+        )}
+      </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
         <span className="t-xs muted-2">T1</span>
         <span className="t-xs muted-2">T{timeline[totalTurns - 1].turn}</span>
       </div>
+
+      {/* Bookmark list — chronological, click-to-jump, ✕ to remove.
+          Only renders when at least one bookmark exists so the empty
+          state doesn't add chrome. */}
+      {bookmarks.length > 0 && (
+        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <span className="t-xs muted" style={{ alignSelf: 'center' }}>BOOKMARKS:</span>
+          {bookmarks.map(b => {
+            const meta = kindMeta(b.kind)
+            const idx = idxAtTurn(b.turn)
+            const isCurrent = idx === turnIdx
+            return (
+              <span
+                key={b.id}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '2px 6px',
+                  borderRadius: 3,
+                  border: `1px solid ${meta.color}`,
+                  background: isCurrent ? meta.color : 'transparent',
+                  color: isCurrent ? 'var(--bg)' : 'var(--ink)',
+                  fontSize: 11,
+                  fontWeight: isCurrent ? 700 : 400,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => { setPlaying(false); setTurnIdx(idx) }}
+                  className="t-xs"
+                  title={b.note || meta.label}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                    color: 'inherit',
+                  }}
+                >
+                  {meta.icon} T{b.turn}{b.note ? ` · ${b.note}` : ''}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBookmarks(list => removeBookmark(list, b.id))}
+                  aria-label={`Remove ${meta.label} bookmark at turn ${b.turn}`}
+                  title="Remove bookmark"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '0 2px',
+                    color: 'inherit',
+                    fontSize: 10,
+                  }}
+                >
+                  ✕
+                </button>
+              </span>
+            )
+          })}
+        </div>
+      )}
 
       <div className="hr" style={{ margin: '14px 0 10px' }} />
 
@@ -313,15 +913,43 @@ const ReplayScrubber = ({ game, commanders }) => {
           const cmdr = commanders[i] || 'UNKNOWN'
           const perms = s.battlefield || []
           const isActive = i === activeSeat
+          const isFocused = i === focusedSeat
           const lifePct = Math.max(0, Math.min(100, (s.life / 40) * 100))
-          const accent = s.lost ? 'var(--danger)' : isActive ? 'var(--accent)' : 'var(--rule-2)'
+          const accent = isFocused ? 'var(--ok)'
+            : s.lost ? 'var(--danger)'
+            : isActive ? 'var(--accent)'
+            : 'var(--rule-2)'
           return (
-            <div key={i} className="panel" style={{ padding: 0, borderColor: accent }}>
+            <div
+              key={i}
+              className="panel"
+              style={{
+                padding: 0,
+                borderColor: accent,
+                borderWidth: isFocused ? 2 : undefined,
+              }}
+            >
               <div style={{ padding: '8px 10px' }}>
-                <div className="flex justify-between items-center" style={{ marginBottom: 4 }}>
+                <div
+                  className="flex justify-between items-center"
+                  style={{ marginBottom: 4, cursor: 'pointer' }}
+                  onClick={() => setFocusedSeat(prev => prev === i ? null : i)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setFocusedSeat(prev => prev === i ? null : i)
+                    }
+                  }}
+                  aria-pressed={isFocused}
+                  aria-label={`${isFocused ? 'Unfocus' : 'Focus'} seat ${i + 1} for share link`}
+                  title={isFocused ? 'Click to unfocus (omit from share URL)' : 'Click to focus this seat in the share URL'}
+                >
                   <span className="t-xs muted">SEAT.{String(i + 1).padStart(2, '0')}</span>
                   {s.lost && <Tag kind="bad">ELIMINATED</Tag>}
                   {!s.lost && isActive && <Tag kind="ok" solid>ACTIVE</Tag>}
+                  {isFocused && <Tag kind="ok">FOCUS</Tag>}
                 </div>
                 <div className="t-md" style={{ fontWeight: 700, lineHeight: 1.2 }}>
                   {cmdr.split(',')[0].toUpperCase()}
@@ -376,6 +1004,82 @@ const ReplayScrubber = ({ game, commanders }) => {
           )
         })}
       </div>
+
+      {/* Compare mode: a parallel seat grid for a second game, locked
+          to the same shared turn number. snapA / snapB come from
+          mapSharedTurn(); ended-side renders a "GAME ENDED" badge
+          rather than the stale last snapshot. */}
+      {compareGame && (() => {
+        const sharedTurn = turnAtIdx(turnIdx)
+        const compareTimeline = compareGame?.timeline || []
+        const { a: aMap, b: bMap } = mapSharedTurn(timeline, compareTimeline, sharedTurn)
+        const deltas = compareSeatDeltas(aMap.snapshot, bMap.snapshot)
+        const compareSeats = bMap.snapshot?.seats || []
+        const compareActiveSeat = bMap.snapshot?.active_seat ?? -1
+        const lastB = compareTimeline.length > 0 ? compareTimeline[compareTimeline.length - 1].turn : '?'
+        return (
+          <>
+            <div className="hr" style={{ margin: '14px 0 10px' }} />
+            <div className="flex justify-between items-center" style={{ marginBottom: 8 }}>
+              <span className="t-xs muted" style={{ letterSpacing: '0.08em', fontWeight: 700 }}>
+                VS · GAME #{compareGame.game_id} {bMap.ended ? '· GAME ENDED' : bMap.beforeStart ? '· NOT STARTED' : `· TURN ${bMap.snapshot?.turn ?? '?'} OF ${lastB}`}
+              </span>
+              {onClearCompare && (
+                <Btn sm arrow={null} onClick={onClearCompare} title="Close compare panel">✕ CLOSE</Btn>
+              )}
+            </div>
+            <div className="grid col-4 gap-4">
+              {compareSeats.map((s, i) => {
+                const cmdr = compareCommanders[i] || 'UNKNOWN'
+                const perms = s.battlefield || []
+                const isActive = i === compareActiveSeat
+                const lifePct = Math.max(0, Math.min(100, (s.life / 40) * 100))
+                const accent = s.lost ? 'var(--danger)' : isActive ? 'var(--accent)' : 'var(--rule-2)'
+                const d = deltas[i]
+                const fmtDelta = (v) => v === 0 ? '0' : v > 0 ? `+${v}` : String(v)
+                const deltaColor = (v) => v === 0 ? 'var(--ink-3)' : v > 0 ? 'var(--ok)' : 'var(--danger)'
+                return (
+                  <div key={i} className="panel" style={{ padding: 0, borderColor: accent }}>
+                    <div style={{ padding: '8px 10px' }}>
+                      <div className="flex justify-between items-center" style={{ marginBottom: 4 }}>
+                        <span className="t-xs muted">SEAT.{String(i + 1).padStart(2, '0')}</span>
+                        {s.lost && <Tag kind="bad">ELIMINATED</Tag>}
+                        {!s.lost && isActive && <Tag kind="ok" solid>ACTIVE</Tag>}
+                      </div>
+                      <div className="t-md" style={{ fontWeight: 700, lineHeight: 1.2 }}>
+                        {cmdr.split(',')[0].toUpperCase()}
+                      </div>
+                      <div className="hr" style={{ margin: '8px 0' }} />
+                      <div className="t-xs muted" style={{ marginBottom: 2 }}>LIFE</div>
+                      <Bar value={lifePct} />
+                      <div className="t-xs" style={{ marginTop: 3, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                        {s.life} / 40
+                        {d && (
+                          <span style={{ marginLeft: 6, color: deltaColor(d.lifeDelta), fontWeight: 400 }}>
+                            ({fmtDelta(-d.lifeDelta)} vs A)
+                          </span>
+                        )}
+                      </div>
+                      <div className="hr" style={{ margin: '8px 0' }} />
+                      <KV rows={[
+                        ['HAND',        `${s.hand_size}`    + (d ? `  (${fmtDelta(-d.handDelta)})` : '')],
+                        ['LIBRARY',     `${s.library_size}` + (d ? `  (${fmtDelta(-d.librarayDelta)})` : '')],
+                        ['GRAVEYARD',   `${s.gy_size}`      + (d ? `  (${fmtDelta(-d.graveyardDelta)})` : '')],
+                        ['BATTLEFIELD', `${perms.length}`   + (d ? `  (${fmtDelta(-d.battlefieldDelta)})` : '')],
+                      ]} />
+                    </div>
+                  </div>
+                )
+              })}
+              {compareSeats.length === 0 && (
+                <div className="t-xs muted-2" style={{ gridColumn: '1 / -1', padding: '12px 4px' }}>
+                  &gt; {bMap.beforeStart ? 'NOT STARTED YET — SCRUB FORWARD' : 'GAME ENDED — SCRUB BACK TO COMPARE'}
+                </div>
+              )}
+            </div>
+          </>
+        )
+      })()}
 
       {/* Event log for this turn */}
       <div className="hr" style={{ margin: '14px 0 8px' }} />
@@ -492,11 +1196,42 @@ const DeckStatsPanel = ({ games, elo, selectedDeck }) => {
 
 export default function Report() {
   const { gameId } = useParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [game, setGame] = useState(null)
   const [games, setGames] = useState([])
   const [elo, setElo] = useState([])
   const [selectedDeck, setSelectedDeck] = useState(null)
   const [loading, setLoading] = useState(true)
+  // Compare mode. compareGame is the second game's full report (or
+  // null when compare is off). compareId mirrors `?vs=<id>` and
+  // drives the fetch; clearing it removes the second panel.
+  const compareId = searchParams.get(SHARE_PARAM_COMPARE)
+  const [compareGame, setCompareGame] = useState(null)
+  const [comparePickerOpen, setComparePickerOpen] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    // External-sync effect: react to URL ?vs= changes. The setState
+    // calls are guarded so we only update when the requested compare
+    // game actually differs from what's loaded.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (!compareId) {
+      setCompareGame(null)
+      return
+    }
+    if (String(compareId) === String(gameId || game?.game_id)) {
+      // Don't try to compare against ourselves.
+      setCompareGame(null)
+      return
+    }
+    api.getGameReport(compareId).then(g => {
+      if (!cancelled) setCompareGame(g)
+    }).catch(() => {
+      if (!cancelled) setCompareGame(null)
+    })
+    /* eslint-enable react-hooks/set-state-in-effect */
+    return () => { cancelled = true }
+  }, [compareId, gameId, game?.game_id])
 
   useEffect(() => {
     const load = async () => {
@@ -598,7 +1333,13 @@ export default function Report() {
         {/* Result block */}
         {featuredGame && (
           <div className="panel" style={{ padding: 0, gridColumn: '1 / -1' }}>
-            <div className="panel-hd"><span>RESULT BLOCK</span><span>GAME.{featuredGame.game_id}</span></div>
+            <div className="panel-hd">
+              <span>RESULT BLOCK</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                <SummaryActions gameId={featuredGame.game_id} />
+                <span>GAME.{featuredGame.game_id}</span>
+              </span>
+            </div>
             <div className="result-block-grid" style={{ padding: '18px 22px' }}>
               <div>
                 <div className="t-xs muted">OUTCOME</div>
@@ -621,7 +1362,64 @@ export default function Report() {
 
         {/* Replay scrubber — per-turn timeline with board/life/event delta */}
         {featuredGame && (
-          <ReplayScrubber game={featuredGame} commanders={commanders} />
+          <div style={{ gridColumn: '1 / -1' }}>
+            {/* Compare picker — shows when not yet comparing. Lists
+                the 8 most-recent other games; click one to start
+                compare. Writes `?vs=<id>` to the URL. */}
+            {!compareGame && (
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                <Btn
+                  sm
+                  arrow={null}
+                  onClick={() => setComparePickerOpen(v => !v)}
+                  title="Open a side-by-side comparison with another game"
+                >
+                  {comparePickerOpen ? '✕ COMPARE…' : '⇄ COMPARE…'}
+                </Btn>
+                {comparePickerOpen && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                    <span className="t-xs muted">PICK GAME:</span>
+                    {games
+                      .filter(g => g.game_id !== featuredGame.game_id)
+                      .slice(0, 8)
+                      .map(g => (
+                        <button
+                          key={g.game_id}
+                          type="button"
+                          className="t-xs"
+                          onClick={() => {
+                            const next = new URLSearchParams(searchParams)
+                            next.set(SHARE_PARAM_COMPARE, String(g.game_id))
+                            setSearchParams(next, { replace: true })
+                            setComparePickerOpen(false)
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid var(--rule-2)',
+                            padding: '2px 6px',
+                            cursor: 'pointer',
+                            color: 'var(--ink)',
+                          }}
+                        >
+                          #{g.game_id} · {(g.commanders?.[g.winner]?.split(',')[0] || 'DRAW').toUpperCase()}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
+            <ReplayScrubber
+              game={featuredGame}
+              commanders={commanders}
+              compareGame={compareGame}
+              compareCommanders={compareGame?.commanders || []}
+              onClearCompare={() => {
+                const next = new URLSearchParams(searchParams)
+                next.delete(SHARE_PARAM_COMPARE)
+                setSearchParams(next, { replace: true })
+              }}
+            />
+          </div>
         )}
 
         {/* Final board state — all seats */}

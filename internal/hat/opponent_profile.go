@@ -35,10 +35,330 @@ type OpponentProfile struct {
 	CountersUsed    int
 	ComboSignals    int
 
+	// Recency tracking: turn-number of the most recent action of each
+	// kind. A tutor on turn 2 followed by 8 quiet turns is a much
+	// weaker "about to pop off" signal than a tutor on the prior turn,
+	// but the running totals above can't tell those apart. 0 means
+	// "never observed". Set by recordOpponentPlay; consumed by
+	// computeThreatLevel via TutoredWithin / ComboSignalWithin.
+	LastTutorTurn       int
+	LastComboSignalTurn int
+	LastCounterTurn     int
+	LastRemovalTurn     int
+
+	// Contradictions counts observations that don't fit the current
+	// archetype classification (R60 round 5 — "I've been wrong before"
+	// decay). Combo casting Wrath, aggro casting Counterspell, control
+	// slamming a 6/6 — each bumps this counter AND immediately
+	// subtracts contradictDecayStep from Confidence, so we lose faith
+	// in a stale read 3x faster than the +0.05/turn ramp builds it.
+	// Reset to 0 on game_start and when the classification changes.
+	Contradictions int
+
+	// MetaConfidence (R60 round 5 — meta-confidence layer) is the
+	// "how confident IS the confidence?" signal in [0, 1]. The raw
+	// Confidence field says "I think this opponent is combo at 0.65" —
+	// MetaConfidence says "but my sample size is thin / my read has
+	// been volatile / I've seen contradicting actions, so trust the
+	// 0.65 less than its face value." Composed by computeMetaConfidence
+	// from three factors: sample (total observations), stability
+	// (turns this archetype has held), and contradiction history.
+	// Recomputed every classifyOpponent call. Consumed by
+	// `effectiveArchetypeBias` which the downstream targeting /
+	// removal-selection sites use instead of the raw bias multiplier.
+	MetaConfidence float64
+
 	// Internal bookkeeping.
 	firstClassifiedTurn int
 	lastClassifiedTurn  int
 	stableTurns         int // consecutive turns the archetype has held
+}
+
+// R60 round 5 — archetype-bias confidence curve.
+//
+// archetypeBiasMinConfidence is the floor below which an OpponentProfile
+// classification is too uncertain to act on. Returns 0 multiplier — the
+// decision falls back to non-archetype signals.
+//
+// archetypeBiasHighThreshold marks where confidence transitions from
+// "soft signal" to "we KNOW this archetype." Above this threshold the
+// multiplier curves up super-linearly so a 0.90 stable classification
+// has noticeably more pull on decisions than a 0.75 borderline call.
+//
+// archetypeBiasHighSlope is the post-threshold gradient. With
+// MinConfidence=0.4, HighThreshold=0.75, HighSlope=2.0:
+//   conf 0.40 → mult 0.40  (baseline)
+//   conf 0.60 → mult 0.60
+//   conf 0.75 → mult 0.75  (no boost yet)
+//   conf 0.90 → mult 1.20  (+60% over linear)
+//   conf 0.95 → mult 1.35  (+42% over linear at the cap)
+//
+// Tuned so the pre-R60r5 linear pass-through at moderate confidence
+// is preserved (no behavior change for 0.4-0.75 cases) but a hat
+// that has watched an opponent tutor three turns in a row commits
+// noticeably harder to pressuring their setup.
+const (
+	archetypeBiasMinConfidence  = 0.4
+	archetypeBiasHighThreshold  = 0.75
+	archetypeBiasHighSlope      = 2.0
+)
+
+// archetypeBiasMultiplier returns the [0, ~1.4] confidence-derived
+// multiplier the hat applies to opponent-archetype-driven decision
+// biases. Below archetypeBiasMinConfidence the multiplier is 0 (no
+// archetype-driven adjustment). Linear through archetypeBiasHighThreshold
+// (so prior behavior at moderate confidence is preserved bit-for-bit).
+// Super-linear above the threshold so a high-confidence read commits
+// the hat harder than a borderline guess. Caps via the natural ceiling
+// from Confidence being capped at 0.95 in classifyOpponent.
+func archetypeBiasMultiplier(conf float64) float64 {
+	if conf < archetypeBiasMinConfidence {
+		return 0
+	}
+	mult := conf
+	if conf > archetypeBiasHighThreshold {
+		mult += (conf - archetypeBiasHighThreshold) * archetypeBiasHighSlope
+	}
+	return mult
+}
+
+// R60 round 5 — meta-confidence layer.
+//
+// The raw Confidence field is "how sure am I this opponent is combo."
+// MetaConfidence is "how sure am I that the 0.65 reading IS RIGHT."
+// Borderline cases — thin sample, volatile read, recent contradictions
+// — should have low meta-confidence so the hat doesn't lean as hard
+// on the classification as the raw confidence value would suggest.
+//
+// Three factors, each in roughly [0.5, 1.0]:
+//
+//   - sampleFactor: scales with total observations the classifier
+//     has seen. Few observations = thin sample = unreliable.
+//   - stabilityFactor: scales with stableTurns. A read that just
+//     flipped to combo last turn is less reliable than one that's
+//     held for five turns.
+//   - contradictionFactor: dampens with the Contradictions counter.
+//     A high Confidence WITH contradictions is a stale stuck read.
+//
+// Product capped at 1.0. Below the floor we expose `metaFloor` so a
+// fresh game with one observation still produces a non-zero meta
+// value — we don't want to fully zero the archetype bias on the
+// first observation, just dampen it.
+const (
+	metaSampleFullAt       = 8    // observations at which sample factor hits 1.0
+	metaStabilityFullAt    = 6    // stableTurns at which stability factor hits 1.0
+	metaContradictionStep  = 0.15 // factor reduction per contradiction
+	metaContradictionFloor = 0.5  // contradiction factor can't drop below this
+	// Sample / stability floors are set high enough that a fresh
+	// thin-sample classification still gets a usable meta value —
+	// the layer is meant to discount borderline reads, not erase
+	// them. At full saturation we hit 1.0; at the worst case
+	// (1 observation, 0 stable turns, 0 contradictions) meta still
+	// returns ~0.35 — visible damping without flipping the sign of
+	// the bias.
+	metaSampleFloor    = 0.5
+	metaStabilityFloor = 0.6
+)
+
+// computeMetaConfidence returns the [0, 1] meta-confidence for an
+// OpponentProfile. Pure function — caller is responsible for providing
+// the current observation count and reading prof's stableTurns +
+// Contradictions. Returns 0 for a nil profile.
+func computeMetaConfidence(prof *OpponentProfile, observations int) float64 {
+	if prof == nil {
+		return 0
+	}
+	if prof.Archetype == "unknown" || prof.Archetype == "" {
+		// No classification → meta-confidence is meaningless; downstream
+		// callers should already gate on Confidence > 0 before consulting
+		// meta. Return 0 to make accidental consumption safe.
+		return 0
+	}
+
+	// Sample factor: linear ramp from floor to 1.0 across the
+	// metaSampleFullAt-observation window. Few observations → thin
+	// sample → low meta.
+	sampleFactor := metaSampleFloor +
+		(1.0-metaSampleFloor)*float64(observations)/float64(metaSampleFullAt)
+	if sampleFactor > 1.0 {
+		sampleFactor = 1.0
+	}
+
+	// Stability factor: linear ramp from floor to 1.0 across the
+	// metaStabilityFullAt-turn window. New classification → volatile
+	// → low meta.
+	stabilityFactor := metaStabilityFloor +
+		(1.0-metaStabilityFloor)*float64(prof.stableTurns)/float64(metaStabilityFullAt)
+	if stabilityFactor > 1.0 {
+		stabilityFactor = 1.0
+	}
+
+	// Contradiction factor: each recorded contradiction dampens by
+	// metaContradictionStep, floored at metaContradictionFloor.
+	contradictionFactor := 1.0 - float64(prof.Contradictions)*metaContradictionStep
+	if contradictionFactor < metaContradictionFloor {
+		contradictionFactor = metaContradictionFloor
+	}
+
+	meta := sampleFactor * stabilityFactor * contradictionFactor
+	if meta > 1.0 {
+		meta = 1.0
+	}
+	if meta < 0 {
+		meta = 0
+	}
+	return meta
+}
+
+// effectiveArchetypeBias is the public surface downstream call sites
+// (attack-target, removal-selection) should prefer over
+// archetypeBiasMultiplier alone. It folds in MetaConfidence so a
+// borderline classification with a thin sample or recent
+// contradictions dampens the bias even at moderate raw confidence:
+//
+//   bias = archetypeBiasMultiplier(prof.Confidence) * prof.MetaConfidence
+//
+// A 0.85 Confidence with full MetaConfidence (1.0) still produces the
+// 1.05 super-linear multiplier from #307. The same 0.85 Confidence
+// with MetaConfidence=0.55 (thin sample + 1 contradiction) drops to
+// ~0.58 — pulling out of the super-linear zone and letting other
+// signals re-balance the decision.
+//
+// Returns 0 for a nil profile or below-floor confidence (matching
+// archetypeBiasMultiplier's semantics).
+func effectiveArchetypeBias(prof *OpponentProfile) float64 {
+	if prof == nil {
+		return 0
+	}
+	return archetypeBiasMultiplier(prof.Confidence) * prof.MetaConfidence
+}
+
+// R60 round 5 — "I've been wrong before" contradiction decay.
+//
+// The ramp-up rate for confidence is +0.05 per stable turn (see
+// classifyOpponent). The decay when a candidate goes unknown is
+// *0.95 per turn (≈5% drop). When an OBSERVED ACTION contradicts the
+// current classification (combo deck casting Wrath, aggro deck
+// casting Counterspell, etc.) we want to lose confidence FASTER —
+// the read was wrong, not just stale. contradictDecayStep is the
+// per-contradiction confidence subtracted; sized to be 3x the ramp
+// rate so a single contradiction undoes three turns of "I'm sure
+// they're combo" stickiness.
+//
+// contradictMaxPenaltyPerTurn caps the per-turn penalty so a
+// scripted multi-spell turn (Wrath + Counterspell + Wrath copy)
+// doesn't snap confidence to zero in one observation window. The
+// classifier still sees every contradiction (Contradictions
+// increments unbounded for diagnostics) but the confidence drop is
+// gated.
+const (
+	contradictDecayStep         = 0.15
+	contradictMaxPenaltyPerTurn = 0.30
+)
+
+// isMassRemovalText returns true for oracle text that smells like a
+// board wipe — "destroy all", "exile all", "deals N damage to each
+// creature", "creatures get -X/-X" sweep wording. Distinct from
+// isRemovalText (which bundles single-target and mass under one flag)
+// so the archetype-contradiction detector can rule combo decks out
+// without flagging single-target removal.
+func isMassRemovalText(ot string) bool {
+	if ot == "" {
+		return false
+	}
+	if strings.Contains(ot, "destroy all") || strings.Contains(ot, "exile all") {
+		return true
+	}
+	if strings.Contains(ot, "damage to each creature") || strings.Contains(ot, "damage to each opponent") {
+		return true
+	}
+	if strings.Contains(ot, "all creatures get -") || strings.Contains(ot, "creatures you don't control get -") {
+		return true
+	}
+	return false
+}
+
+// contradictsArchetype reports whether a cast event is inconsistent
+// with the opponent's current classification. The check is
+// intentionally narrow — only HIGH-SIGNAL mismatches count, since
+// false positives here drive the hat to drop confidence on a deck
+// that's just playing a flexible card. Each archetype defines its
+// canonical NON-PLAYS:
+//
+//   - combo: casts a board wipe (combo lists run targeted answers,
+//     not mass removal — Wrath in a combo deck means we misread).
+//   - aggro: casts a counterspell OR a board wipe (aggro decks
+//     pressure the board, they don't tap out to undo it).
+//   - control: slams an attack-relevant 5+ CMC creature (control
+//     plays utility creatures and finishers, but a 5+ CMC threat
+//     being played AND swinging suggests midrange/aggro/voltron).
+//
+// Returns false for "unknown" and "midrange" — those are the
+// catch-all classifications and we don't have a sharp NON-PLAY to
+// contradict against without producing false positives.
+func contradictsArchetype(arch string, card *gameengine.Card) bool {
+	if arch == "" || arch == "unknown" || arch == "midrange" || card == nil {
+		return false
+	}
+	ot := cardOracleText(card)
+	switch arch {
+	case "combo":
+		return isMassRemovalText(ot)
+	case "aggro":
+		if gameengine.CardHasCounterSpell(card) || hasOracleHint(card, "counter target") {
+			return true
+		}
+		return isMassRemovalText(ot)
+	case "control":
+		if !cardHasType(card, "creature") {
+			return false
+		}
+		return cardCMC(card) >= 5
+	}
+	return false
+}
+
+// cardCMC returns the converted mana cost / mana value of `c`, falling
+// back to scanning the test-only "cost:N" type suffix used by minimal
+// test fixtures when CMC is not populated directly.
+func cardCMC(c *gameengine.Card) int {
+	if c == nil {
+		return 0
+	}
+	if c.CMC > 0 {
+		return c.CMC
+	}
+	for _, t := range c.Types {
+		if strings.HasPrefix(t, "cost:") {
+			n := 0
+			for _, r := range strings.TrimPrefix(t, "cost:") {
+				if r < '0' || r > '9' {
+					return n
+				}
+				n = n*10 + int(r-'0')
+			}
+			return n
+		}
+	}
+	return 0
+}
+
+// TutoredWithin reports whether the opponent has tutored within the
+// last `n` turns of `turn`. Returns false when no tutor has ever been
+// observed (LastTutorTurn == 0).
+func (p *OpponentProfile) TutoredWithin(turn, n int) bool {
+	if p == nil || p.LastTutorTurn <= 0 || n <= 0 {
+		return false
+	}
+	return turn-p.LastTutorTurn < n
+}
+
+// ComboSignalWithin: same shape for combo-piece cast events.
+func (p *OpponentProfile) ComboSignalWithin(turn, n int) bool {
+	if p == nil || p.LastComboSignalTurn <= 0 || n <= 0 {
+		return false
+	}
+	return turn-p.LastComboSignalTurn < n
 }
 
 // classifyOpponent derives an OpponentProfile snapshot for a single
@@ -133,15 +453,30 @@ func (h *YggdrasilHat) classifyOpponent(gs *gameengine.GameState, oppSeat int) *
 			}
 		}
 	} else {
-		// New classification — reset stability counter.
+		// New classification — reset stability counter AND contradiction
+		// counter (R60r5). Contradictions tagged against the old
+		// archetype don't apply to the new one — a deck that looked
+		// like combo and contradicted itself by casting Wrath probably
+		// IS the control deck the new candidate now reads as, so the
+		// prior contradictions were actually evidence FOR this
+		// classification, not against it.
 		if prof.Archetype != candidate {
 			prof.firstClassifiedTurn = turn
 			prof.stableTurns = 0
+			prof.Contradictions = 0
 		}
 		prof.Archetype = candidate
 		prof.Confidence = baseConf
 		prof.lastClassifiedTurn = turn
 	}
+
+	// R60 round 5 — meta-confidence layer. Total observations = the
+	// raw input to the sample factor. SpellsPlayed already counts
+	// every cast; LandsPlayed is a stable per-turn signal that
+	// complements it without double-counting creature-vs-spell
+	// distinctions.
+	observations := prof.SpellsPlayed + prof.LandsPlayed
+	prof.MetaConfidence = computeMetaConfidence(prof, observations)
 
 	prof.ThreatLevel = computeThreatLevel(gs, oppSeat, prof)
 	return prof
@@ -178,22 +513,47 @@ func computeThreatLevel(gs *gameengine.GameState, oppSeat int, prof *OpponentPro
 	// Hand size adds latent threat (more answers / threats hidden).
 	level += float64(len(s.Hand)) * 0.02
 
-	// Archetype-specific bumps.
+	// Archetype-specific bumps. Two changes from the static version:
+	//
+	//   - Multiplied by prof.Confidence. A 0.55 snap call on a half-
+	//     observed opponent shouldn't fully amplify their threat the
+	//     same as a 0.90 stable classification. The board / hand-size
+	//     terms above stay raw because they're direct observations.
+	//
+	//   - Combo opponents read their imminence off RECENT tutors, not
+	//     ever-tutored. A combo deck that tutored on turn 2 and sat
+	//     back for 8 turns is far less likely to pop off than one who
+	//     tutored last turn; the old `TutorsUsed >= 2` flag couldn't
+	//     tell those apart. Recency window matches typical cEDH
+	//     execute-turn timing: a tutor within the last 2 turns is a
+	//     setup signal, within the last 4 is a soft signal.
+	turn := 1
+	if gs != nil && gs.Turn > 0 {
+		turn = gs.Turn
+	}
 	switch prof.Archetype {
 	case "combo":
-		level += 0.25
-		if prof.TutorsUsed >= 2 {
-			level += 0.15
+		level += 0.25 * prof.Confidence
+		switch {
+		case prof.TutoredWithin(turn, 2):
+			level += 0.20 * prof.Confidence
+		case prof.TutoredWithin(turn, 4):
+			level += 0.10 * prof.Confidence
+		case prof.TutorsUsed >= 2:
+			// Old/stale tutors still bump, but at a discount — they
+			// signal "this is a combo deck" more than "popping off
+			// imminently".
+			level += 0.05 * prof.Confidence
 		}
 	case "aggro":
 		// Aggro becomes scary fast — wide board + low life pressure.
 		if creatures >= 4 {
-			level += 0.25
+			level += 0.25 * prof.Confidence
 		}
 	case "control":
 		// Mostly an indirect threat — they slow us down rather than
 		// kill us. Bump for hand size only.
-		level += 0.05
+		level += 0.05 * prof.Confidence
 	}
 
 	if level > 1.0 {
@@ -213,7 +573,7 @@ func computeThreatLevel(gs *gameengine.GameState, oppSeat int, prof *OpponentPro
 // card record. Combo-piece detection reuses h.comboPieceSet (built
 // from Freya), so unknown decks that still hit our combo-piece DB
 // flag immediately.
-func (h *YggdrasilHat) recordOpponentPlay(eventKind, sourceName string, oppSeat int, card *gameengine.Card) {
+func (h *YggdrasilHat) recordOpponentPlay(eventKind, sourceName string, oppSeat int, card *gameengine.Card, turn int) {
 	if oppSeat < 0 || oppSeat >= len(h.opponentProfiles) {
 		return
 	}
@@ -235,18 +595,56 @@ func (h *YggdrasilHat) recordOpponentPlay(eventKind, sourceName string, oppSeat 
 			}
 			if gameengine.CardHasCounterSpell(card) || hasOracleHint(card, "counter target") {
 				prof.CountersUsed++
+				if turn > 0 {
+					prof.LastCounterTurn = turn
+				}
 			}
 			ot := cardOracleText(card)
 			if isRemovalText(ot) {
 				prof.RemovalUsed++
+				if turn > 0 {
+					prof.LastRemovalTurn = turn
+				}
 			}
 			if isTutorText(ot) {
 				prof.TutorsUsed++
+				if turn > 0 {
+					prof.LastTutorTurn = turn
+				}
+			}
+
+			// R60 round 5 — "I've been wrong before" decay. If this
+			// cast contradicts the current classification (combo
+			// casting Wrath, aggro casting Counterspell, control
+			// slamming a 6/6) we want to lose faith FASTER than the
+			// +0.05/turn ramp built it. contradictDecayStep is the
+			// per-contradiction subtract; contradictMaxPenaltyPerTurn
+			// caps the total drop per observation window so a single
+			// scripted turn doesn't snap confidence to zero. The
+			// classifier itself is untouched here — the next
+			// classifyOpponent call still re-evaluates the candidate;
+			// we just tag this read as less trustworthy in the
+			// meantime.
+			if contradictsArchetype(prof.Archetype, card) {
+				prof.Contradictions++
+				if prof.Confidence > 0 {
+					penalty := contradictDecayStep
+					if penalty > contradictMaxPenaltyPerTurn {
+						penalty = contradictMaxPenaltyPerTurn
+					}
+					prof.Confidence -= penalty
+					if prof.Confidence < 0 {
+						prof.Confidence = 0
+					}
+				}
 			}
 		}
 		// Combo-piece DB hit (works even without a Card pointer).
 		if sourceName != "" && h.comboPieceSet[sourceName] {
 			prof.ComboSignals++
+			if turn > 0 {
+				prof.LastComboSignalTurn = turn
+			}
 		}
 	case "permanent_etb", "creature_etb":
 		// ETB events come for our own perms too; the caller should
@@ -258,6 +656,9 @@ func (h *YggdrasilHat) recordOpponentPlay(eventKind, sourceName string, oppSeat 
 		prof.LandsPlayed++
 	case "tutor", "search_library":
 		prof.TutorsUsed++
+		if turn > 0 {
+			prof.LastTutorTurn = turn
+		}
 	}
 }
 

@@ -44,7 +44,12 @@ func seedFlag(t *testing.T, db *sql.DB) int64 {
 	return id
 }
 
-func TestHandleListAnomalies_LocalhostAllowed(t *testing.T) {
+// TestHandleListAnomalies_UnsetEnvFailsClosed pins the post-r60-audit
+// contract: no HEXDEK_ADMIN_OWNER configured → no admin access, period.
+// (Pre-fix behavior fell back to "Host == localhost" which a remote
+// attacker could spoof — see TestHandleListAnomalies_SpoofedHostHeaderRejected
+// below.)
+func TestHandleListAnomalies_UnsetEnvFailsClosed(t *testing.T) {
 	db := newTestDB(t)
 	auditor, err := anticheat.NewStatisticalAuditor(db)
 	if err != nil {
@@ -55,26 +60,43 @@ func TestHandleListAnomalies_LocalhostAllowed(t *testing.T) {
 	mux := http.NewServeMux()
 	RegisterAdminAnomalies(mux, auditor)
 
+	// Localhost host header, no env, no header — pre-fix: 200. Post-fix: 403.
 	req := httptest.NewRequest("GET", "http://localhost/api/admin/anomalies", nil)
 	req.Host = "localhost"
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, body = %s", rr.Code, rr.Body.String())
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status = %d (body=%s) — want 403, HEXDEK_ADMIN_OWNER must be required",
+			rr.Code, rr.Body.String())
 	}
-	var resp struct {
-		Flags []flagJSON `json:"flags"`
-		Count int        `json:"count"`
-	}
-	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if resp.Count != 1 || len(resp.Flags) != 1 {
-		t.Fatalf("expected 1 flag, got %+v", resp)
-	}
-	if resp.Flags[0].ContributorID != "cheater" {
-		t.Errorf("flag contributor = %q, want cheater", resp.Flags[0].ContributorID)
+}
+
+// TestHandleListAnomalies_SpoofedHostHeaderRejected is the explicit
+// CWE-290 regression for the dropped Host-header fallback. A remote
+// attacker who reaches the server (LAN, WireGuard, or through a reverse
+// proxy that preserves Host) used to be able to send `Host: localhost`
+// and get full admin access. With the env var SET (production shape)
+// the spoofed host must not affect the auth decision.
+func TestHandleListAnomalies_SpoofedHostHeaderRejected(t *testing.T) {
+	t.Setenv("HEXDEK_ADMIN_OWNER", "alice")
+	db := newTestDB(t)
+	auditor, _ := anticheat.NewStatisticalAuditor(db)
+	seedFlag(t, db)
+
+	mux := http.NewServeMux()
+	RegisterAdminAnomalies(mux, auditor)
+
+	// Attacker spoofs every localhost-shaped Host header but doesn't know
+	// the admin owner slug. Each MUST 403.
+	for _, host := range []string{"localhost", "127.0.0.1", "[::1]", "localhost:8090"} {
+		req := httptest.NewRequest("GET", "http://attacker.example/api/admin/anomalies", nil)
+		req.Host = host
+		rr := httptest.NewRecorder()
+		mux.ServeHTTP(rr, req)
+		if rr.Code != http.StatusForbidden {
+			t.Errorf("spoofed Host=%q: status=%d, want 403 (admin owner header missing)", host, rr.Code)
+		}
 	}
 }
 
@@ -125,6 +147,9 @@ func TestHandleListAnomalies_AdminOwnerEnvAllowed(t *testing.T) {
 }
 
 func TestHandleResolveAnomaly_HappyPath(t *testing.T) {
+	// Post-r60-audit: admin endpoints require env-configured owner +
+	// matching header. No more Host-header fallback.
+	t.Setenv("HEXDEK_ADMIN_OWNER", "alice")
 	db := newTestDB(t)
 	auditor, _ := anticheat.NewStatisticalAuditor(db)
 	id := seedFlag(t, db)
@@ -163,6 +188,7 @@ func TestHandleResolveAnomaly_HappyPath(t *testing.T) {
 	rr2 := httptest.NewRecorder()
 	req2 := httptest.NewRequest("POST", "http://localhost/api/admin/anomalies/"+strconv.FormatInt(id, 10)+"/resolve", strings.NewReader(`{}`))
 	req2.Host = "localhost"
+	req2.Header.Set("X-HexDek-Owner", "alice")
 	mux.ServeHTTP(rr2, req2)
 	if rr2.Code != http.StatusNotFound {
 		t.Errorf("expected 404 on re-resolve, got %d", rr2.Code)
@@ -170,6 +196,7 @@ func TestHandleResolveAnomaly_HappyPath(t *testing.T) {
 }
 
 func TestHandleResolveAnomaly_BadID(t *testing.T) {
+	t.Setenv("HEXDEK_ADMIN_OWNER", "alice")
 	db := newTestDB(t)
 	auditor, _ := anticheat.NewStatisticalAuditor(db)
 
@@ -179,6 +206,7 @@ func TestHandleResolveAnomaly_BadID(t *testing.T) {
 	for _, idStr := range []string{"abc", "0", "-1"} {
 		req := httptest.NewRequest("POST", "http://localhost/api/admin/anomalies/"+idStr+"/resolve", strings.NewReader(`{}`))
 		req.Host = "localhost"
+		req.Header.Set("X-HexDek-Owner", "alice")
 		rr := httptest.NewRecorder()
 		mux.ServeHTTP(rr, req)
 		if rr.Code != http.StatusBadRequest {
@@ -188,6 +216,7 @@ func TestHandleResolveAnomaly_BadID(t *testing.T) {
 }
 
 func TestHandleListAnomalies_OnlyActiveFilter(t *testing.T) {
+	t.Setenv("HEXDEK_ADMIN_OWNER", "alice")
 	db := newTestDB(t)
 	auditor, _ := anticheat.NewStatisticalAuditor(db)
 	id := seedFlag(t, db)
@@ -203,6 +232,7 @@ func TestHandleListAnomalies_OnlyActiveFilter(t *testing.T) {
 	// Default — only_active=true.
 	req := httptest.NewRequest("GET", "http://localhost/api/admin/anomalies", nil)
 	req.Host = "localhost"
+	req.Header.Set("X-HexDek-Owner", "alice")
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 	var resp struct{ Count int `json:"count"` }
@@ -216,6 +246,7 @@ func TestHandleListAnomalies_OnlyActiveFilter(t *testing.T) {
 	// include_resolved=1 → both rows.
 	req2 := httptest.NewRequest("GET", "http://localhost/api/admin/anomalies?include_resolved=1", nil)
 	req2.Host = "localhost"
+	req2.Header.Set("X-HexDek-Owner", "alice")
 	rr2 := httptest.NewRecorder()
 	mux.ServeHTTP(rr2, req2)
 	var resp2 struct{ Count int `json:"count"` }

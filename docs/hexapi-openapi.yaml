@@ -1,0 +1,3023 @@
+openapi: 3.1.0
+info:
+  title: HexDek HTTP API
+  version: "r60-2026-05-24"
+  summary: HexDek game engine, analytics, and game-state HTTP surface.
+  description: |
+    OpenAPI 3.1 spec for the HexDek HTTP API exposed by
+    `internal/hexapi/` and registered through
+    `Handler.Register(mux)` + `Showmatch.RegisterShowmatch(mux)`.
+
+    **Audience.** Frontend (`hexdek/` React + Vite SPA), third-party
+    analytics consumers, and any future integrators against the
+    public hexdek.dev surface.
+
+    **Error envelope.** Every non-success response that originates
+    inside `hexapi/` is shaped as `ErrorResponse` — `{ error: string,
+    status: int }` — emitted by `writeError` in `errors.go`. A small
+    number of paths (the gauntlet credits gate at the moment) extend
+    the envelope with caller-actionable details via
+    `writeErrorWithDetails` (see `ErrorResponseWithDetails`). Both
+    shapes share the unified `error`/`status` discriminator so a
+    decoder that binds `ErrorResponse` always succeeds.
+
+    **WebSocket endpoints.** Listed in this spec for inventory
+    completeness only — OpenAPI cannot model the WS message stream.
+    They appear with `operationId` ending in `Ws` and a 101 response
+    placeholder.
+
+    **HTML share pages.** Endpoints under `/decks/{owner}/{id}`,
+    `/cards/{name}`, `/operator/{owner}`, `/spectate`, and
+    `/leaderboard` return `text/html` for crawler User-Agents (OG
+    meta injection). Each lists `text/html` as its `200` content.
+
+    **Rate limits and concurrency.** Where the handler enforces a
+    server-side cap (e.g. `gauntletSem` capacity 2, deck-clone
+    rate-limit per owner) the spec calls it out in the operation
+    description and lists the corresponding `429` response.
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: /
+    description: Same-origin (default for runtime validation middleware — host-agnostic).
+  - url: https://hexdek.dev
+    description: Production (DARKSTAR engine behind MISTY Caddy).
+  - url: http://localhost:8090
+    description: Local development (default `hexdek-server` port).
+
+tags:
+  - name: decks
+    description: Deck CRUD, analysis, versioning, lineage, and similarity.
+  - name: deck-events
+    description: Deck-scoped Server-Sent Event streams.
+  - name: gauntlet
+    description: Per-deck gauntlet runs (500-game default, paid past free tier).
+  - name: tournaments
+    description: Live tournament / gauntlet progress over SSE.
+  - name: live
+    description: Live spectator game endpoints and ELO drift.
+  - name: games
+    description: Completed game history, summaries, replays, archives.
+  - name: spectate
+    description: Spectator room management and live WebSockets.
+  - name: cards
+    description: Card oracle and per-card detail endpoints.
+  - name: card-stats
+    description: Per-card analytics, win rates, inclusion, by-commander.
+  - name: profile
+    description: Owner / authenticated user profile endpoints.
+  - name: leaderboard
+    description: Global ELO leaderboard and donation summary.
+  - name: imports
+    description: Moxfield deck import history and sources.
+  - name: meta
+    description: Server metadata, search, tag enumeration.
+  - name: telemetry
+    description: Front-end telemetry ingestion (pageview, stitch).
+  - name: feedback
+    description: User feedback intake.
+  - name: contrib
+    description: Distributed contributor compute (WS + credit ledger).
+  - name: admin
+    description: Operator-only routes guarded by admin token / X-HexDek-Admin.
+  - name: share
+    description: HTML share pages with Open Graph meta for unfurls.
+  - name: webhooks
+    description: External webhook intake (Ko-fi donation events).
+  - name: graphql
+    description: GraphQL endpoint over the game graph (proof-of-concept).
+
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      description: |
+        Unified error envelope. Returned by every non-success path
+        registered under `internal/hexapi/`. `status` mirrors the HTTP
+        status code so intermediaries that strip the line can still
+        surface the failure code to the user. `Content-Type` is
+        always `application/json` and `X-Content-Type-Options:
+        nosniff` is set.
+      required: [error, status]
+      properties:
+        error:
+          type: string
+          description: Human-readable failure summary, or a stable discriminator code (e.g. "insufficient_credits").
+          examples: ["invalid owner or id", "deck not found"]
+        status:
+          type: integer
+          format: int32
+          description: HTTP status code, mirrored from the response status line.
+          examples: [400, 404]
+
+    ErrorResponseWithDetails:
+      type: object
+      description: |
+        Extended `ErrorResponse` used by a small set of handlers that
+        need to ship caller-actionable extras alongside the unified
+        envelope — currently the gauntlet credits gate at
+        `POST /api/gauntlet/{owner}/{id}`. Decoders that only bind
+        `ErrorResponse` still see `error` + `status`; richer clients
+        pick up the additional top-level fields.
+      required: [error, status]
+      allOf:
+        - $ref: '#/components/schemas/ErrorResponse'
+      properties:
+        balance:
+          type: integer
+          format: int64
+          description: Credits available to the caller at the moment the gate fired.
+        needed:
+          type: integer
+          format: int64
+          description: Credits required for one gauntlet run.
+        quota:
+          $ref: '#/components/schemas/GauntletQuotaState'
+
+    GauntletQuotaState:
+      type: object
+      description: Free-tier / paid-tier posture for a single owner (mirrors `internal/credits.GauntletQuotaState`).
+      properties:
+        used:
+          type: integer
+          description: Free-tier gauntlets used today.
+        free:
+          type: integer
+          description: Free-tier gauntlets still available today.
+        free_limit:
+          type: integer
+          description: Daily free-tier ceiling (`credits.FreeGauntletsPerDay`).
+        balance:
+          type: integer
+          format: int64
+          description: Current credit balance.
+        cost:
+          type: integer
+          format: int64
+          description: Credits required for one paid gauntlet (`credits.CreditsPerGauntlet`).
+        can_run_free:
+          type: boolean
+        can_run_paid:
+          type: boolean
+
+    GauntletResult:
+      type: object
+      description: Per-deck gauntlet progress / outcome (mirrors `hexapi.GauntletResult`).
+      properties:
+        deck_key:
+          type: string
+          description: "`<owner>/<id>` form."
+          examples: ["alice/korvold"]
+        commander:
+          type: string
+        status:
+          type: string
+          enum: [none, starting, running, complete, error]
+        games:
+          type: integer
+          description: Games played so far in this run.
+        target:
+          type: integer
+          description: Target game count for the run.
+        wins:
+          type: integer
+        losses:
+          type: integer
+        win_rate:
+          type: number
+          format: double
+        elo_start:
+          type: number
+          format: double
+        elo_end:
+          type: number
+          format: double
+        elo_delta:
+          type: number
+          format: double
+        avg_turns:
+          type: number
+          format: double
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type: string
+          format: date-time
+        top_beaten:
+          type: array
+          items:
+            type: string
+        top_lost_to:
+          type: array
+          items:
+            type: string
+        placements:
+          type: array
+          minItems: 4
+          maxItems: 4
+          description: Finish-position counts under test (seat 0). Index 0 = 1st place; 1 = 2nd; 2 = 3rd; 3 = 4th. `wins == placements[0]` and `losses == placements[1] + placements[2] + placements[3]`.
+          items:
+            type: integer
+
+    DeckSummary:
+      type: object
+      description: Compact deck listing row (mirrors `hexapi.DeckSummary`).
+      required: [id, owner, name, commander, card_count, bracket, color, imported_at]
+      properties:
+        id:
+          type: string
+        owner:
+          type: string
+        name:
+          type: string
+        commander:
+          type: string
+        commander_card:
+          type: string
+        card_count:
+          type: integer
+        bracket:
+          type: string
+          description: "Estimated WotC bracket (`b1`..`b5`)."
+        color:
+          type: string
+          description: Color identity (single letters concatenated, e.g. `BRG`).
+        imported_at:
+          type: string
+          format: date-time
+        wbs:
+          type: integer
+        wbs_label:
+          type: string
+        pls:
+          type: integer
+        pls_label:
+          type: string
+        game_changer_count:
+          type: integer
+        archetype:
+          type: string
+        legal:
+          type: boolean
+        tags:
+          type: array
+          items:
+            type: string
+
+    OwnerProfile:
+      type: object
+      description: Public-facing owner profile (mirrors `hexapi.OwnerProfile`).
+      required: [owner]
+      properties:
+        owner:
+          type: string
+        country:
+          type: string
+          description: ISO 3166-1 alpha-2 (uppercase). Empty when no preference is stored.
+          minLength: 2
+          maxLength: 2
+
+    CardStatsOverview:
+      type: object
+      description: Aggregated per-card analytics (mirrors `db.CardStatsOverview`).
+      required: [card_name, win_rate, games_played, wins, losses, inclusion_rate, decks_using, total_decks, top_commanders, bracket_distribution]
+      properties:
+        card_name:
+          type: string
+        win_rate:
+          type: number
+          format: double
+        games_played:
+          type: integer
+        wins:
+          type: integer
+        losses:
+          type: integer
+        inclusion_rate:
+          type: number
+          format: double
+        decks_using:
+          type: integer
+        total_decks:
+          type: integer
+        top_commanders:
+          type: array
+          items:
+            $ref: '#/components/schemas/CardCommanderStat'
+        bracket_distribution:
+          type: array
+          items:
+            $ref: '#/components/schemas/CardBracketEntry'
+
+    CardCommanderStat:
+      type: object
+      required: [commander, games, wins, win_rate]
+      properties:
+        commander:
+          type: string
+        games:
+          type: integer
+        wins:
+          type: integer
+        win_rate:
+          type: number
+          format: double
+
+    CardBracketEntry:
+      type: object
+      required: [bracket, count]
+      properties:
+        bracket:
+          type: integer
+        count:
+          type: integer
+
+    UpgradeSuggestion:
+      type: object
+      description: One per-slot upgrade recommendation produced by `handleDeckUpgrade`.
+      properties:
+        current_card:
+          type: string
+        suggested_card:
+          type: string
+        current_win_rate:
+          type: number
+          format: double
+        suggested_win_rate:
+          type: number
+          format: double
+        win_rate_delta:
+          type: number
+          format: double
+        reason:
+          type: string
+
+    StartGauntletResponse:
+      type: object
+      required: [status, deck_key, games]
+      properties:
+        status:
+          type: string
+          enum: [started, running]
+        deck_key:
+          type: string
+        games:
+          type: integer
+        credits_charged:
+          type: integer
+          format: int64
+          description: Present only on the paid-tier path; omitted when the run was free-tier.
+
+    DeckListResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/DeckSummary'
+
+    EmptyOk:
+      type: object
+      description: Generic success body; specific fields are response-dependent.
+      additionalProperties: true
+
+    Tag:
+      type: string
+      description: Free-form tag string applied to a deck.
+
+  parameters:
+    OwnerParam:
+      name: owner
+      in: path
+      required: true
+      description: |
+        Owner slug. Path components MUST satisfy `validatePathComponent`:
+        non-empty, not "." or "..", no `/`, `\`, or NUL byte, and only
+        `[A-Za-z0-9._-]`. Violations return `400 invalid owner` (or
+        `invalid owner or id`).
+      schema:
+        type: string
+        pattern: '^[A-Za-z0-9_.-]+$'
+        examples: ["alice"]
+
+    DeckIdParam:
+      name: id
+      in: path
+      required: true
+      description: Deck id. Same validation rules as `owner`.
+      schema:
+        type: string
+        pattern: '^[A-Za-z0-9_.-]+$'
+        examples: ["korvold_combo"]
+
+    CardNameParam:
+      name: name
+      in: path
+      required: true
+      description: Card name (URL-escaped; spaces survive percent-decoding).
+      schema:
+        type: string
+        examples: ["Sol Ring"]
+
+    CardNameSlugParam:
+      name: cardName
+      in: path
+      required: true
+      description: Card name (URL-escaped) for the card-stats sub-tree.
+      schema:
+        type: string
+        examples: ["Sol Ring"]
+
+    CommanderParam:
+      name: commander
+      in: path
+      required: true
+      description: Commander name (URL-escaped).
+      schema:
+        type: string
+        examples: ["Korvold, Fae-Cursed King"]
+
+    GameIdParam:
+      name: id
+      in: path
+      required: true
+      description: Game UUID.
+      schema:
+        type: string
+        format: uuid
+
+    RoomIdParam:
+      name: room_id
+      in: path
+      required: true
+      description: Spectate room id.
+      schema:
+        type: string
+
+    XHexDekOwner:
+      name: X-HexDek-Owner
+      in: header
+      required: false
+      description: |
+        Caller identity used by the credits ledger and ownership
+        checks. Lowercased before comparison. Absent → anonymous /
+        free-tier path; required by ownership-gated mutating routes
+        (`PUT /api/decks/{owner}/{id}`, `PATCH .../curse`, etc).
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Validation failed — missing or malformed input.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Missing or invalid authentication for a gated route.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Caller authenticated but lacks ownership / admin rights.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Requested resource does not exist.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Resource conflict (e.g. too many decks with the same name on clone).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    PaymentRequired:
+      description: |
+        Caller exhausted the free-tier daily quota and either has
+        insufficient credits to upgrade (`free_quota_exhausted`) or
+        a credit-spend attempt failed with insufficient balance
+        (`insufficient_credits`). Body extends `ErrorResponse` with
+        `balance`, `needed`, and `quota`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponseWithDetails'
+    TooManyRequests:
+      description: |
+        Server-side rate limit / concurrency cap engaged. Examples:
+        `gauntletSem` (capacity 2) is saturated; per-owner clone
+        rate-limit exceeded; feedback rate-limit exceeded.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ServiceUnavailable:
+      description: A dependency (DB, anomaly auditor, contrib pipeline) is unavailable.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    BadGateway:
+      description: Upstream call (e.g. Moxfield) failed.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Server-side failure.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+paths:
+  ## ---------------------------------------------------------------
+  ## Decks: CRUD + analysis + lineage
+  ## ---------------------------------------------------------------
+
+  /api/decks:
+    get:
+      tags: [decks]
+      operationId: listDecks
+      summary: List all decks, optionally filtered.
+      parameters:
+        - name: owner
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: contains
+          in: query
+          required: false
+          description: Case-insensitive substring filter against deck name / commander.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deck list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeckListResponse'
+        "500": { $ref: '#/components/responses/InternalError' }
+
+    post:
+      tags: [decks]
+      operationId: importDeck
+      summary: Create a new deck from a pasted deck list.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deck_list]
+              properties:
+                deck_list:
+                  type: string
+                  description: Plain-text deck list (one card per line).
+                owner:
+                  type: string
+                name:
+                  type: string
+      responses:
+        "201":
+          description: Deck created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/decks/import:
+    post:
+      tags: [decks]
+      operationId: importDeckExplicit
+      summary: Alias for `POST /api/decks` (full-page import flow).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deck_list]
+              properties:
+                deck_list:
+                  type: string
+                owner:
+                  type: string
+                name:
+                  type: string
+      responses:
+        "201":
+          description: Deck created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "409": { $ref: '#/components/responses/Conflict' }
+
+  /api/decks/{owner}/{id}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeck
+      summary: Get a single deck with cards, metadata, and freya summary.
+      responses:
+        "200":
+          description: Deck detail.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+    put:
+      tags: [decks]
+      operationId: updateDeck
+      summary: Replace the deck's mainboard.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deck_list]
+              properties:
+                deck_list:
+                  type: string
+      responses:
+        "200":
+          description: Deck updated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+    patch:
+      tags: [decks]
+      operationId: patchDeck
+      summary: Patch deck metadata (name, tags). Ownership-gated.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                tags:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/Tag'
+      responses:
+        "200":
+          description: Deck metadata patched.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+    delete:
+      tags: [decks]
+      operationId: deleteDeck
+      summary: Delete a deck. Ownership-gated.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+      responses:
+        "200":
+          description: Deck deleted.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/decks/{owner}/{id}/versions:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: listDeckVersions
+      summary: List historical versions of a deck.
+      responses:
+        "200":
+          description: Version list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+
+  /api/decks/{owner}/{id}/archetype-feedback:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    post:
+      tags: [decks]
+      operationId: postArchetypeFeedback
+      summary: Confirm or correct Freya's system-assigned archetype. Persists user feedback into deck_meta + appends to the archetype_feedback_log training signal.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [confirm, correct, clear]
+                archetype:
+                  type: string
+                  description: Required when action=correct; user-supplied override (any non-empty string, normalized server-side).
+              required: [action]
+      responses:
+        "200":
+          description: Feedback recorded.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/freya/training-signal:
+    get:
+      tags: [decks]
+      operationId: getArchetypeTrainingSignal
+      summary: Aggregate (freya_archetype → user_archetype) correction clusters from archetype_feedback_log. Surfaces patterns where N+ distinct owners have overridden Freya, feeding back into manual archetype-fingerprint review.
+      parameters:
+        - name: min
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 5 }
+          description: Minimum distinct-owner count for a cluster to surface. Defaults to 5 per the documented training-loop threshold.
+      responses:
+        "200":
+          description: Clusters + echoed threshold + generated_at timestamp.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "503":
+          description: Database not available.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/decks/{owner}/{id}/freya-export:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getFreyaExport
+      summary: External-consumer JSON envelope bundling Freya's full strategy.json analysis with deck context (commander, color identity, card list) and R60 extras (system_tags, user_archetype_feedback, version_hash). Schema-versioned for stable third-party integration (EDHrec, external deck-builders). Read-only — returns 404 when strategy.json doesn't yet exist rather than auto-kicking-off Freya like /analysis does.
+      responses:
+        "200":
+          description: Full Freya export envelope with schema_version, generated_at, deck, analysis (passthrough), and extras.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/decks/{owner}/{id}/archetype-history:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getArchetypeHistory
+      summary: Chronological timeline of a deck's archetype state — Freya's per-version classifications merged with user confirm/correct/clear actions from the feedback log.
+      responses:
+        "200":
+          description: Event list ordered chronologically.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/decks/{owner}/{id}/budget:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeckBudget
+      summary: USD price rollup. Pulls per-card prices from the Scryfall-backed oracle cache and returns total + per-card breakdown + top contributors. Basics priced at $0.
+      responses:
+        "200":
+          description: Budget rollup.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/decks/{owner}/{id}/versions/{version}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+      - name: version
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1, maximum: 500 }
+    get:
+      tags: [decks]
+      operationId: getDeckVersion
+      summary: Get one historical version's decklist text + parsed cards. Drives the DECK HISTORY view's per-row diff.
+      responses:
+        "200":
+          description: Version body.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/decks/{owner}/{id}/version-trends:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeckVersionTrends
+      summary: Per-version winrate rollup for this deck. Buckets each game into the version that was HEAD at its finished_at timestamp.
+      responses:
+        "200":
+          description: |
+            Per-version rollup. `versions` lists every version in chronological order with its games/wins/losses/draws/win_rate (0..1).
+            `untracked_games` counts games predating the earliest known version.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+
+  /api/decks/{owner}/{id}/analysis:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeckAnalysis
+      summary: Get Freya analysis output (archetype, combos, win lines, roles).
+      responses:
+        "200":
+          description: 'Freya strategy + deck profile JSON. Returns `{status:"analyzing"}` if analysis is in-flight.'
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/decks/{owner}/{id}/analyze:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    post:
+      tags: [decks]
+      operationId: runDeckAnalysis
+      summary: Kick off Freya analysis for a deck.
+      responses:
+        "200":
+          description: Analysis launch acknowledged.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  deck:
+                    type: string
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/decks/{owner}/{id}/matchups:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeckMatchups
+      summary: Per-opponent matchup record for this deck.
+      responses:
+        "200":
+          description: Matchup list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deck_key:
+                    type: string
+                  matchups:
+                    type: array
+                    items: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/decks/{owner}/{id}/elo-history:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeckEloHistory
+      summary: Time-series of ELO deltas for this deck.
+      responses:
+        "200":
+          description: ELO run history.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deck_key:
+                    type: string
+                  runs:
+                    type: array
+                    items: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/decks/{owner}/{id}/upgrade:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeckUpgrade
+      summary: Suggest higher win-rate card swaps for this deck.
+      responses:
+        "200":
+          description: Upgrade suggestions + meta (`reason` populated when suggestions are empty for an explainable reason — e.g. no card_stats data).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  suggestions:
+                    type: array
+                    items: { $ref: '#/components/schemas/UpgradeSuggestion' }
+                  meta:
+                    type: object
+                    additionalProperties: true
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/decks/{owner}/{id}/clone:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    post:
+      tags: [decks]
+      operationId: cloneDeck
+      summary: Clone someone else's deck into the caller's account.
+      description: Rate-limited per caller (`CloneRateLimit` per hour). Cannot self-clone.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+      responses:
+        "200":
+          description: Clone created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "429": { $ref: '#/components/responses/TooManyRequests' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/decks/{owner}/{id}/fork:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    post:
+      tags: [decks]
+      operationId: forkDeck
+      summary: Fork someone else's deck into the caller's account with attribution preserved.
+      description: |
+        Parallel to clone but maintains a `forked_from` pointer that's surfaced
+        prominently in the UI as "Forked from <owner>/<id>". Rate-limited per
+        caller (`ForkRateLimit` per hour) against a separate budget from clone.
+        Cannot self-fork.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+      responses:
+        "200":
+          description: Fork created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "429": { $ref: '#/components/responses/TooManyRequests' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/decks/{owner}/{id}/archive:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeckArchive
+      summary: Consolidated deck archive (identity + lineage + games + archetype timeline).
+      description: |
+        Returns the full archive blob: identity (current commander +
+        archetype), the version DAG with per-version games / wins /
+        losses / winrate, aggregate game stats, the trailing N
+        recent games, and an archetype evolution timeline. Empty
+        payload (200) when the deck has no lineage / games yet —
+        the frontend renders that as "no history" rather than 404.
+      parameters:
+        - name: recent
+          in: query
+          required: false
+          description: How many trailing games to include in the archive blob.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Deck archive document.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/decks/{owner}/{id}/lineage:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeckLineage
+      summary: Show ancestor / descendant lineage walk for this deck.
+      responses:
+        "200":
+          description: Lineage list (possibly empty).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/decks/{owner}/{id}/similar:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getSimilarDecks
+      summary: Find decks similar to this one by card overlap / archetype.
+      responses:
+        "200":
+          description: Similar deck rows.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/decks/{owner}/{id}/events:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [deck-events]
+      operationId: deckEventsSSE
+      summary: Server-Sent Events stream of deck-scoped events.
+      responses:
+        "200":
+          description: SSE stream.
+          content:
+            text/event-stream: {}
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/decks/{owner}/{id}/curse:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeckCurse
+      summary: Get the deck's hat-curse pool (per-deck trait knobs).
+      responses:
+        "200":
+          description: Curse pool.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "404": { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [decks]
+      operationId: patchDeckCurse
+      summary: Patch the deck's curse pool. Ownership-gated; values clamped to [0,1].
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: number
+                format: double
+                minimum: 0
+                maximum: 1
+      responses:
+        "200":
+          description: Curse pool patched.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  ## ---------------------------------------------------------------
+  ## Gauntlet & Tournament SSE
+  ## ---------------------------------------------------------------
+
+  /api/gauntlet/{owner}/{id}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    post:
+      tags: [gauntlet]
+      operationId: startGauntlet
+      summary: Launch (or resume) a gauntlet run for a deck.
+      description: |
+        Concurrency-capped at 2 simultaneous gauntlets server-wide
+        (`gauntletSem`). Free-tier callers (3/day per
+        `credits.FreeGauntletsPerDay`) run for free; past that the
+        handler debits `credits.CreditsPerGauntlet` credits before
+        launching. Credit spends are atomic — if the launch can't
+        proceed (deck missing, sem full), no debit occurs.
+      parameters:
+        - name: games
+          in: query
+          required: false
+          description: Number of games to run (default 500, max 50000).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50000
+            default: 500
+        - $ref: '#/components/parameters/XHexDekOwner'
+      responses:
+        "200":
+          description: Gauntlet launch acknowledged.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/StartGauntletResponse' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "402": { $ref: '#/components/responses/PaymentRequired' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "429": { $ref: '#/components/responses/TooManyRequests' }
+        "500": { $ref: '#/components/responses/InternalError' }
+    get:
+      tags: [gauntlet]
+      operationId: getGauntlet
+      summary: Get current gauntlet state for a deck.
+      responses:
+        "200":
+          description: 'Gauntlet result (`status:"none"` when no run has been launched).'
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/GauntletResult'
+                  - type: object
+                    required: [status]
+                    properties:
+                      status:
+                        type: string
+                        enum: [none]
+        "400": { $ref: '#/components/responses/BadRequest' }
+
+  /api/tournament/{id}/stats:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+        description: Gauntlet run id (gauntlet_runs.run_id).
+    get:
+      tags: [tournaments]
+      operationId: getTournamentStats
+      summary: Per-tournament aggregates — deck distribution, winrate variance, longest game, fastest game.
+      description: |
+        Anchors on a gauntlet_runs row by run_id, then scans
+        showmatch_game rows in that (deck_key, started_at..finished_at)
+        window to compute games-derived signals
+        (deck_distribution, winrate_variance, longest_game,
+        fastest_game). Run-level scalars (games/wins/losses/win_rate/
+        avg_turns) echo gauntlet_runs verbatim.
+      responses:
+        "200":
+          description: TournamentStats payload.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "503": { $ref: '#/components/responses/InternalError' }
+
+  /api/tournaments/{owner}/{id}/events:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [tournaments]
+      operationId: tournamentEventsSSE
+      summary: Server-Sent Events stream of gauntlet progress for this deck.
+      description: |
+        Emits an initial `snapshot` frame with the current state, then
+        further `snapshot` frames after every completed game. Stream
+        terminates when the deck reaches a terminal status
+        (`complete` | `error`) or the client disconnects.
+      responses:
+        "200":
+          description: "SSE snapshot stream. Each frame's `data:` line is a JSON `GauntletResult`."
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/GauntletResult'
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  ## ---------------------------------------------------------------
+  ## Live / Games / Spectate
+  ## ---------------------------------------------------------------
+
+  /api/live/game:
+    get:
+      tags: [live]
+      operationId: getLiveGame
+      summary: Current live game snapshot.
+      responses:
+        "200":
+          description: Live game state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/live/elo:
+    get:
+      tags: [live]
+      operationId: getLiveElo
+      summary: Current live ELO table.
+      responses:
+        "200":
+          description: ELO map.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/live/elo/drift:
+    get:
+      tags: [live]
+      operationId: getLiveEloDrift
+      summary: ELO drift diagnostic.
+      responses:
+        "200":
+          description: ELO drift report.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/live/stats:
+    get:
+      tags: [live]
+      operationId: getLiveStats
+      summary: Live engine session stats.
+      responses:
+        "200":
+          description: Session stats.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/live/speed:
+    get:
+      tags: [live]
+      operationId: getLiveSpeed
+      summary: Current live-game speed multiplier.
+      responses:
+        "200":
+          description: Multiplier.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  multiplier:
+                    type: number
+                    format: double
+    post:
+      tags: [live]
+      operationId: setLiveSpeed
+      summary: Set the live-game speed multiplier.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                multiplier:
+                  type: number
+                  format: double
+      responses:
+        "200":
+          description: New multiplier acknowledged.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  multiplier:
+                    type: number
+                    format: double
+
+  /api/games:
+    get:
+      tags: [games]
+      operationId: listGames
+      summary: List recent completed games.
+      responses:
+        "200":
+          description: Game list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/games/{id}:
+    parameters:
+      - $ref: '#/components/parameters/GameIdParam'
+    get:
+      tags: [games]
+      operationId: getGameByID
+      summary: Get a completed game by id (lite view).
+      responses:
+        "200":
+          description: Game lite view.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/games/{id}/report:
+    parameters:
+      - $ref: '#/components/parameters/GameIdParam'
+    get:
+      tags: [games]
+      operationId: getGameReport
+      summary: Full per-game report (game state + per-seat detail).
+      responses:
+        "200":
+          description: Game report.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/games/{id}/summary:
+    parameters:
+      - $ref: '#/components/parameters/GameIdParam'
+    get:
+      tags: [games]
+      operationId: getGameSummary
+      summary: Heimdall post-game summary for a single game.
+      responses:
+        "200":
+          description: Game summary.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/games/{id}/replay:
+    parameters:
+      - $ref: '#/components/parameters/GameIdParam'
+    get:
+      tags: [games]
+      operationId: getGameReplay
+      summary: Full per-game replay (observation snapshot bundle).
+      responses:
+        "200":
+          description: Replay JSON.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/games/{id}/summary.pdf:
+    parameters:
+      - $ref: '#/components/parameters/GameIdParam'
+    get:
+      tags: [games]
+      operationId: getGameSummaryPDF
+      summary: Rendered PDF of the Heimdall summary for a game.
+      responses:
+        "200":
+          description: PDF document.
+          content:
+            application/pdf: {}
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/games/summaries:
+    get:
+      tags: [games]
+      operationId: searchGameSummaries
+      summary: Search the archive of past game summaries.
+      responses:
+        "200":
+          description: Search hits.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/games/compare:
+    get:
+      tags: [games]
+      operationId: compareGames
+      summary: Side-by-side comparison of two completed games.
+      description: |
+        Embeds rich Heimdall summaries when observation snapshots
+        exist for both ids; degrades to "db_only" summaries for older
+        games (MVPDiff is empty in that case, but outcome / turns /
+        shared-deck diffs are still populated).
+      parameters:
+        - name: a
+          in: query
+          required: true
+          description: First game id (integer, > 0).
+          schema:
+            type: integer
+            minimum: 1
+        - name: b
+          in: query
+          required: true
+          description: Second game id (integer, > 0, distinct from `a`).
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Comparison document.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/players/compare:
+    get:
+      tags: [profile]
+      operationId: comparePlayers
+      summary: Side-by-side comparison of two players' rolling trends.
+      parameters:
+        - name: a
+          in: query
+          required: true
+          description: First player id (same validation rules as `owner`).
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9_.-]+$'
+        - name: b
+          in: query
+          required: true
+          description: Second player id, distinct from `a`.
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9_.-]+$'
+        - name: window
+          in: query
+          required: false
+          description: Rolling window size for per-player PlayerTrends (1..200; default 30).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 30
+        - name: recent_window
+          in: query
+          required: false
+          description: Sub-window for the "recent" half of rating velocity (1..100; default 10).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        "200":
+          description: PlayerComparison body.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/players/{id}/trends:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Player slug (same validation rules as `owner`).
+        schema:
+          type: string
+          pattern: '^[A-Za-z0-9_.-]+$'
+    get:
+      tags: [profile]
+      operationId: getPlayerTrends
+      summary: Rolling-window trend metrics for a player.
+      description: |
+        Returns the player's recent-form snapshot — wins, win rate,
+        archetype split, opponent breakdown — over a sliding window of
+        the most recent games. When the player has no recorded games,
+        returns a well-formed payload with `games_played: 0` and
+        empty breakdowns so the frontend can render an empty state.
+      parameters:
+        - name: window
+          in: query
+          required: false
+          description: Rolling window size (1..200; default 30).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 30
+      responses:
+        "200":
+          description: Player trends document.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+
+  /api/spectate/spawn:
+    post:
+      tags: [spectate]
+      operationId: spawnSpectateRoom
+      summary: Spawn a new spectate room for a deck.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deck_id]
+              properties:
+                deck_id:
+                  type: string
+      responses:
+        "200":
+          description: Room created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/spectate/rooms:
+    get:
+      tags: [spectate]
+      operationId: listSpectateRooms
+      summary: List active spectate rooms.
+      responses:
+        "200":
+          description: Room list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/spectate/rooms/{room_id}:
+    parameters:
+      - $ref: '#/components/parameters/RoomIdParam'
+    get:
+      tags: [spectate]
+      operationId: getSpectateRoom
+      summary: Get a single spectate room.
+      responses:
+        "200":
+          description: Room.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /ws/live:
+    get:
+      tags: [live]
+      operationId: spectatorWs
+      summary: WebSocket — live game spectator feed.
+      description: "WebSocket upgrade endpoint (not modelled by OpenAPI). Connect with `Sec-WebSocket-Version: 13`."
+      responses:
+        "101":
+          description: Switching Protocols → WebSocket.
+
+  /ws/spectate/{room_id}:
+    parameters:
+      - $ref: '#/components/parameters/RoomIdParam'
+    get:
+      tags: [spectate]
+      operationId: spectateRoomWs
+      summary: WebSocket — per-room spectator feed.
+      responses:
+        "101":
+          description: Switching Protocols → WebSocket.
+
+  /ws/events:
+    get:
+      tags: [live]
+      operationId: eventsWs
+      summary: WebSocket — generic engine events stream (game.end + future event types).
+      description: |
+        Real-time push of discrete engine events without polling.
+        Default subscription on connect is "all events"; clients
+        can narrow via `{"action":"subscribe","events":["game.end"]}`
+        and exercise liveness via `{"action":"ping"}` → server
+        replies with `{"event":"pong","data":{"server_time":...}}`.
+
+        Capacity-capped at 100 concurrent sessions; further upgrades
+        return `503 too many event subscribers` as the unified
+        ErrorResponse envelope before the WebSocket handshake.
+
+        Per-subscriber outgoing buffer is 64 messages. Publisher
+        drops to slow consumers rather than blocking the engine
+        loop — clients should reconnect and treat the stream as
+        lossy (the webhook system covers the durable side).
+      responses:
+        "101":
+          description: Switching Protocols → WebSocket.
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  ## ---------------------------------------------------------------
+  ## Profiles / Owner
+  ## ---------------------------------------------------------------
+
+  /api/profile:
+    get:
+      tags: [profile]
+      operationId: getAuthedProfile
+      summary: Get the authenticated caller's profile + session stats.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+      responses:
+        "200":
+          description: Profile object.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerProfile' }
+
+  /api/profile/{owner}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+    get:
+      tags: [profile]
+      operationId: getOwnerProfile
+      summary: Get a public-facing owner profile by slug.
+      responses:
+        "200":
+          description: Profile object.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerProfile' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+
+  /api/profiles:
+    get:
+      tags: [profile]
+      operationId: getOwnerProfilesBatch
+      summary: Batch lookup of multiple owner profiles.
+      parameters:
+        - name: owners
+          in: query
+          required: true
+          description: Comma-separated owner slugs.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Map of `owner → OwnerProfile`.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/OwnerProfile'
+
+  /api/owner/{owner}/stats:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+    get:
+      tags: [profile]
+      operationId: getOwnerStats
+      summary: Aggregate stats (games, wins, losses, win rate) for an owner.
+      responses:
+        "200":
+          description: Stats object.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  games: { type: integer }
+                  wins: { type: integer }
+                  losses: { type: integer }
+                  win_rate: { type: number, format: double }
+
+  /api/owner/{owner}/games:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+    get:
+      tags: [profile]
+      operationId: getOwnerGames
+      summary: Recent games for an owner.
+      responses:
+        "200":
+          description: Game list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/achievements/{owner}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+    get:
+      tags: [profile]
+      operationId: getAchievements
+      summary: Earned-achievement snapshot for an owner.
+      responses:
+        "200":
+          description: Achievements snapshot.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/resolve-owner:
+    get:
+      tags: [profile]
+      operationId: resolveOwner
+      summary: Resolve an email to its owner slug.
+      parameters:
+        - name: email
+          in: query
+          required: true
+          schema:
+            type: string
+            format: email
+      responses:
+        "200":
+          description: Resolved slug.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [owner]
+                properties:
+                  owner:
+                    type: string
+        "400": { $ref: '#/components/responses/BadRequest' }
+
+  ## ---------------------------------------------------------------
+  ## Cards / Card Stats
+  ## ---------------------------------------------------------------
+
+  /api/cards/{name}:
+    parameters:
+      - $ref: '#/components/parameters/CardNameParam'
+    get:
+      tags: [cards]
+      operationId: getCardByName
+      summary: Get a card's oracle text + meta by name.
+      responses:
+        "200":
+          description: Card detail.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/cards/search:
+    get:
+      tags: [cards]
+      operationId: searchCards
+      summary: Substring search across card names and oracle text.
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search hits.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/cards/{name}/stats:
+    parameters:
+      - $ref: '#/components/parameters/CardNameParam'
+    get:
+      tags: [card-stats]
+      operationId: getCardStats
+      summary: Per-card win/loss stats (cross-commander).
+      responses:
+        "200":
+          description: Card stats.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+
+  /api/cards/{name}/performance:
+    parameters:
+      - $ref: '#/components/parameters/CardNameParam'
+    get:
+      tags: [card-stats]
+      operationId: getCardPerformance
+      summary: Per-card on-board performance (presence, conversion rate).
+      responses:
+        "200":
+          description: Performance metrics.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+
+  /api/card-art/{name}:
+    parameters:
+      - $ref: '#/components/parameters/CardNameParam'
+    get:
+      tags: [cards]
+      operationId: getCardArt
+      summary: Serve cached card art image (binary).
+      responses:
+        "200":
+          description: Card art image (JPEG / PNG).
+          content:
+            image/jpeg: {}
+            image/png: {}
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/card-stats/{commander}:
+    parameters:
+      - $ref: '#/components/parameters/CommanderParam'
+    get:
+      tags: [card-stats]
+      operationId: getCardWinStatsForCommander
+      summary: Card-by-card win stats under a given commander.
+      responses:
+        "200":
+          description: Win-stat rows.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/card-stats/card/{cardName}:
+    parameters:
+      - $ref: '#/components/parameters/CardNameSlugParam'
+    get:
+      tags: [card-stats]
+      operationId: getCardStatsOverview
+      summary: Aggregated per-card analytics (cross-commander win rate, inclusion, top commanders, bracket distribution).
+      responses:
+        "200":
+          description: Overview document. Always populated arrays (`top_commanders`, `bracket_distribution`) even when DB is unavailable.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CardStatsOverview' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+
+  /api/card-stats/card/{cardName}/by-commander:
+    parameters:
+      - $ref: '#/components/parameters/CardNameSlugParam'
+    get:
+      tags: [card-stats]
+      operationId: getCardStatsByCommander
+      summary: Per-commander breakdown for one card.
+      responses:
+        "200":
+          description: Per-commander rows.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [card_name, commanders]
+                properties:
+                  card_name:
+                    type: string
+                  commanders:
+                    type: array
+                    items: { $ref: '#/components/schemas/CardCommanderStat' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+
+  /api/deck-card-stats/{owner}/{id}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [card-stats]
+      operationId: getDeckCardStats
+      summary: Per-card stats for every card in this deck.
+      responses:
+        "200":
+          description: Per-card breakdown.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/analytics/cards:
+    get:
+      tags: [card-stats]
+      operationId: getCardAnalytics
+      summary: Top / bottom cards across the engine corpus.
+      responses:
+        "200":
+          description: Analytics buckets.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  ## ---------------------------------------------------------------
+  ## Meta / Leaderboard / Search / Tags
+  ## ---------------------------------------------------------------
+
+  /api/meta:
+    get:
+      tags: [meta]
+      operationId: getMeta
+      summary: Engine meta (build, commit, deck pool size, ready flag).
+      responses:
+        "200":
+          description: Meta object.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/meta/archetype-vs-archetype:
+    get:
+      tags: [meta]
+      operationId: getArchetypeMatrix
+      summary: Archetype-vs-archetype winrate matrix across the recorded meta.
+      responses:
+        "200":
+          description: Per-archetype matchup matrix.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/meta/evolution:
+    get:
+      tags: [meta]
+      operationId: getMetaEvolution
+      summary: Meta-share evolution time series (archetype prevalence over time).
+      responses:
+        "200":
+          description: Per-archetype prevalence time series.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/meta/trends:
+    get:
+      tags: [meta]
+      operationId: getMetaTrends
+      summary: Rolling-window meta trend rollup (archetype shifts, biggest gainers / losers).
+      parameters:
+        - name: weeks
+          in: query
+          required: false
+          description: Window size in weeks (1..26; default 4).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 26
+            default: 4
+      responses:
+        "200":
+          description: Meta trends body. Empty arrays when no games exist in the window or the showmatch DB isn't wired.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/meta/evolution:
+    get:
+      tags: [meta]
+      operationId: getMetaEvolution
+      summary: Time-series of archetype mix across the engine's game history.
+      responses:
+        "200":
+          description: Meta evolution body.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/meta/archetype-vs-archetype:
+    get:
+      tags: [meta]
+      operationId: getArchetypeMatrix
+      summary: Archetype-vs-archetype matchup matrix across recorded games.
+      responses:
+        "200":
+          description: Archetype matrix body.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/leaderboard:
+    get:
+      tags: [leaderboard]
+      operationId: getLeaderboard
+      summary: Global ELO leaderboard.
+      responses:
+        "200":
+          description: Leaderboard rows.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/donations/summary:
+    get:
+      tags: [leaderboard]
+      operationId: getDonationsSummary
+      summary: Donation totals (month + all-time).
+      responses:
+        "200":
+          description: Summary.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  month_total: { type: number, format: double }
+                  all_time_total: { type: number, format: double }
+                  recent:
+                    type: array
+                    items: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/search:
+    get:
+      tags: [meta]
+      operationId: globalSearch
+      summary: Cross-cutting search (decks, cards, owners).
+      parameters:
+        - name: q
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Search hits grouped by category.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/tags:
+    get:
+      tags: [meta]
+      operationId: listTags
+      summary: List the set of deck tags seen across the corpus.
+      responses:
+        "200":
+          description: Tag list.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Tag' }
+
+  /api/rivalry/{owner}/{id}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getRivalry
+      summary: Pairwise rivalry data (head-to-head) for this deck.
+      responses:
+        "200":
+          description: Rivalry document.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/threat-graph/{owner}/{id}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getThreatGraph
+      summary: Threat-assessment graph for this deck (Freya 3rd-Eye output).
+      responses:
+        "200":
+          description: Threat graph.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  ## ---------------------------------------------------------------
+  ## Imports / Moxfield
+  ## ---------------------------------------------------------------
+
+  /api/import/moxfield:
+    post:
+      tags: [imports]
+      operationId: importMoxfieldDeck
+      summary: Import a deck from a Moxfield URL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  pattern: '^https://www\.moxfield\.com/decks/'
+                owner:
+                  type: string
+                name:
+                  type: string
+      responses:
+        "201":
+          description: Deck imported.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "402": { $ref: '#/components/responses/PaymentRequired' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "502": { $ref: '#/components/responses/BadGateway' }
+
+  /api/import/archidekt:
+    post:
+      tags: [imports]
+      operationId: importArchidektDeck
+      summary: Import a deck from an Archidekt URL.
+      description: |
+        Parallel to /api/import/moxfield. Accepts an archidekt.com deck URL
+        (numeric ID, optionally followed by a slug), fetches the JSON via
+        Archidekt's public API, and writes a plain-text decklist into the
+        caller's collection. Maybeboard / Sideboard / Considering categories
+        are routed to commented-out lines so they don't count toward the
+        legal Commander deck.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  pattern: '^https://(www\.)?archidekt\.com/decks/\d+'
+                owner:
+                  type: string
+                tags:
+                  type: array
+                  items: { type: string }
+      responses:
+        "201":
+          description: Deck imported.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "502": { $ref: '#/components/responses/BadGateway' }
+
+  /api/imports/{owner}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+    get:
+      tags: [imports]
+      operationId: listImports
+      summary: Per-owner Moxfield import history.
+      responses:
+        "200":
+          description: Imports.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  owner:
+                    type: string
+                  imports:
+                    type: array
+                    items: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/imports/source/moxfield:
+    get:
+      tags: [imports]
+      operationId: getMoxfieldSources
+      summary: Aggregate Moxfield source data across all imports.
+      responses:
+        "200":
+          description: Source rollup.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  ## ---------------------------------------------------------------
+  ## Telemetry / Feedback / Webhooks
+  ## ---------------------------------------------------------------
+
+  /api/telemetry/pageview:
+    post:
+      tags: [telemetry]
+      operationId: telemetryPageview
+      summary: Record an anonymous page-view event.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [anon_id, path]
+              properties:
+                anon_id:
+                  type: string
+                  format: uuid
+                path:
+                  type: string
+      responses:
+        "204":
+          description: Recorded (no body).
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/telemetry/stitch:
+    post:
+      tags: [telemetry]
+      operationId: telemetryStitch
+      summary: Backfill-stitch an anonymous telemetry session to an owner.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [anon_id, owner]
+              properties:
+                anon_id:
+                  type: string
+                  format: uuid
+                owner:
+                  type: string
+      responses:
+        "200":
+          description: Stitch result.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "204":
+          description: Skipped (silent).
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/csrf:
+    get:
+      tags: [csrf]
+      operationId: issueCSRFToken
+      summary: Mint a stateless CSRF token for use against destructive endpoints.
+      description: |
+        Returns a base64url-encoded token bound to a server-side HMAC secret. Echo
+        the value back in the `X-CSRF-Token` request header on `DELETE /api/decks/{owner}/{id}`
+        and `POST /api/decks/{owner}/{id}/clone`. Returns `503` when the server has not
+        opted into token-based CSRF (`HEXDEK_CSRF_ENFORCE != 1`); clients should treat
+        that as a signal to fall back to the existing custom-header-only protection.
+        Tokens carry a 1-hour TTL by default.
+      responses:
+        "200":
+          description: Fresh token issued.
+          headers:
+            Cache-Control:
+              description: Always `no-store` — tokens MUST NOT be cached or shared.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, expires_at, header]
+                properties:
+                  token:
+                    type: string
+                    description: Opaque token blob — echo unchanged in the named header.
+                  expires_at:
+                    type: integer
+                    format: int64
+                    description: Unix seconds at which the token stops verifying.
+                  header:
+                    type: string
+                    description: HTTP header name the server expects the token in (always `X-CSRF-Token`).
+        "503": { $ref: '#/components/responses/InternalError' }
+
+  /api/feedback:
+    post:
+      tags: [feedback]
+      operationId: submitFeedback
+      summary: Submit user feedback.
+      description: Rate-limited per caller — the handler returns `429` once a per-window limit is exceeded.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [symptom]
+              properties:
+                symptom:
+                  type: string
+                note:
+                  type: string
+                owner:
+                  type: string
+      responses:
+        "200":
+          description: Feedback accepted.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "429": { $ref: '#/components/responses/TooManyRequests' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/kofi/webhook:
+    post:
+      tags: [webhooks]
+      operationId: kofiWebhook
+      summary: Ko-fi donation webhook receiver.
+      description: |
+        Inbound webhook from Ko-fi. Body is the Ko-fi-defined
+        `application/x-www-form-urlencoded` shape (one `data` field
+        holding a JSON document). Signature is verified against the
+        shared secret server-side.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: string
+      responses:
+        "200":
+          description: Webhook accepted.
+
+  ## ---------------------------------------------------------------
+  ## Admin
+  ## ---------------------------------------------------------------
+
+  /api/admin/verifications:
+    get:
+      tags: [admin]
+      operationId: adminListVerifications
+      summary: List anti-cheat verifications (admin token required).
+      responses:
+        "200":
+          description: Verifications.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/admin/sanctions:
+    get:
+      tags: [admin]
+      operationId: adminListSanctions
+      summary: List anti-cheat sanctions (admin token required).
+      responses:
+        "200":
+          description: Sanctions.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/admin/anticheat/stats:
+    get:
+      tags: [admin]
+      operationId: adminAnticheatStats
+      summary: Anti-cheat aggregate stats (admin token required).
+      responses:
+        "200":
+          description: Stats.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/admin/conviction-events:
+    get:
+      tags: [admin]
+      operationId: adminListConvictionEvents
+      summary: List recent conviction events (admin token required).
+      responses:
+        "200":
+          description: Events.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+
+  /api/admin/anomalies:
+    get:
+      tags: [admin]
+      operationId: adminListAnomalies
+      summary: List flagged anomalies (admin token required).
+      responses:
+        "200":
+          description: Flagged anomalies.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/admin/anomalies/{id}/resolve:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags: [admin]
+      operationId: adminResolveAnomaly
+      summary: Resolve a flagged anomaly (admin token required).
+      responses:
+        "200":
+          description: Resolved.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  ## ---------------------------------------------------------------
+  ## Contributor compute
+  ## ---------------------------------------------------------------
+
+  /api/contrib/connect:
+    get:
+      tags: [contrib]
+      operationId: contribConnectWs
+      summary: WebSocket — contributor compute (HMAC session, hex-worker dispatch).
+      responses:
+        "101":
+          description: Switching Protocols → WebSocket.
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/contrib/credits/{owner}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+    get:
+      tags: [contrib]
+      operationId: getContribCredits
+      summary: Get contributor credit row for an owner.
+      responses:
+        "200":
+          description: Contributor credit row.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  owner: { type: string }
+                  credits_total: { type: integer, format: int64 }
+                  chunks_completed: { type: integer }
+                  chunks_rejected: { type: integer }
+                  games_simulated: { type: integer, format: int64 }
+                  frozen: { type: boolean }
+                  frozen_reason: { type: string }
+                  first_seen_at: { type: string, format: date-time }
+                  last_active_at: { type: string, format: date-time }
+                  last_z_score: { type: number, format: double }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/contrib/queue:
+    get:
+      tags: [contrib]
+      operationId: getContribQueue
+      summary: Contributor compute queue stats.
+      responses:
+        "200":
+          description: Queue snapshot.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  pending: { type: integer }
+                  spot_check_pct: { type: number, format: double }
+                  worker_version: { type: string }
+
+  ## ---------------------------------------------------------------
+  ## Outbound webhook subscriptions
+  ## ---------------------------------------------------------------
+
+  /api/webhooks:
+    post:
+      tags: [webhooks]
+      operationId: registerWebhook
+      summary: Register a webhook subscription for an engine event.
+      description: |
+        Returns the assigned id + secret in the 201 body. The secret
+        is the HMAC-SHA256 key used to sign delivery payloads —
+        capture it on register; list / get responses never echo it
+        back. Auto-disable triggers after 5 consecutive transport
+        errors or 5xx responses from the consumer.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, event_type]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  description: Delivery target. https://* always allowed; http://* only for loopback.
+                event_type:
+                  type: string
+                  enum: [game.end]
+      responses:
+        "201":
+          description: Webhook registered.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, url, event_type, secret, created_at]
+                properties:
+                  id: { type: integer, format: int64 }
+                  url: { type: string }
+                  event_type: { type: string }
+                  secret:
+                    type: string
+                    description: HMAC-SHA256 key; returned ONCE on register. Store it.
+                  created_at:
+                    type: integer
+                    format: int64
+                    description: Unix seconds.
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+    get:
+      tags: [webhooks]
+      operationId: listWebhooks
+      summary: List caller-owned webhooks. Secret is omitted.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+      responses:
+        "200":
+          description: Webhook list.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [owner, webhooks]
+                properties:
+                  owner: { type: string }
+                  webhooks:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, url, event_type, created_at, active]
+                      properties:
+                        id: { type: integer, format: int64 }
+                        url: { type: string }
+                        event_type: { type: string }
+                        created_at: { type: integer, format: int64 }
+                        last_fired_at: { type: integer, format: int64 }
+                        last_status: { type: integer }
+                        failures: { type: integer }
+                        active: { type: boolean }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/webhooks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Webhook row id from POST /api/webhooks.
+        schema:
+          type: integer
+          format: int64
+    delete:
+      tags: [webhooks]
+      operationId: deleteWebhook
+      summary: Delete a webhook subscription. Owner-gated.
+      description: |
+        Returns 404 both when the id is unknown and when it is owned
+        by a different caller — the existence of someone else's
+        subscription is intentionally not leaked.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+      responses:
+        "200":
+          description: Webhook deleted.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [deleted, id]
+                properties:
+                  deleted: { type: boolean }
+                  id: { type: integer, format: int64 }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/webhooks/{id}/dead-letters:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Webhook row id from POST /api/webhooks.
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [webhooks]
+      operationId: listWebhookDeadLetters
+      summary: List terminal delivery failures (post-retry-exhaustion + 4xx) for one webhook.
+      description: |
+        Each row carries the full payload + last status / error so an
+        operator can replay or audit. Two sources land rows here:
+
+          - Retry exhaustion: a delivery that failed `MaxAttempts`
+            times with retriable statuses (5xx / 429 / transport).
+          - Permanent failures: any non-429 4xx — bad URL, expired
+            auth, target removed — dead-letters on the first attempt
+            with no retry.
+
+        Owner-gated: callers see only their own webhooks'
+        dead-letters. A 404 covers both "no such webhook" and
+        "webhook owned by someone else" so subscription existence
+        doesn't leak.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+        - name: limit
+          in: query
+          required: false
+          description: Max rows to return (1..500; default 50).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 50
+      responses:
+        "200":
+          description: Dead-letter list, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [webhook_id, dead_letters]
+                properties:
+                  webhook_id:
+                    type: integer
+                    format: int64
+                  dead_letters:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, webhook_id, event_type, payload, attempts, last_status, first_attempted, last_attempted]
+                      properties:
+                        id: { type: integer, format: int64 }
+                        webhook_id: { type: integer, format: int64 }
+                        event_type: { type: string }
+                        payload:
+                          type: string
+                          description: JSON-encoded delivery body (returned as a string for portability).
+                        attempts: { type: integer }
+                        last_status:
+                          type: integer
+                          description: HTTP status of the final attempt, or -1 for transport error.
+                        last_error: { type: string }
+                        first_attempted: { type: integer, format: int64 }
+                        last_attempted: { type: integer, format: int64 }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  ## ---------------------------------------------------------------
+  ## HTML share pages (OG meta injection)
+  ## ---------------------------------------------------------------
+
+  /decks/{owner}/{id}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [share]
+      operationId: deckSharePage
+      summary: HTML share page for a deck (Open Graph meta for unfurls).
+      responses:
+        "200":
+          description: HTML page.
+          content:
+            text/html: {}
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /share/{owner}/{id}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [share]
+      operationId: deckShareAltPage
+      summary: Alternative share-page URL for a deck (legacy /share/ path).
+      responses:
+        "200":
+          description: HTML page.
+          content:
+            text/html: {}
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /cards/{name}:
+    parameters:
+      - $ref: '#/components/parameters/CardNameParam'
+    get:
+      tags: [share]
+      operationId: cardSharePage
+      summary: HTML share page for a card.
+      responses:
+        "200":
+          description: HTML page.
+          content:
+            text/html: {}
+        "400": { $ref: '#/components/responses/BadRequest' }
+
+  /operator/{owner}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+    get:
+      tags: [share]
+      operationId: operatorSharePage
+      summary: HTML share page for an operator (owner) profile.
+      responses:
+        "200":
+          description: HTML page.
+          content:
+            text/html: {}
+        "400": { $ref: '#/components/responses/BadRequest' }
+
+  /spectate:
+    get:
+      tags: [share]
+      operationId: spectateSharePage
+      summary: HTML share page for the live spectator surface.
+      responses:
+        "200":
+          description: HTML page.
+          content:
+            text/html: {}
+
+  /leaderboard:
+    get:
+      tags: [share]
+      operationId: leaderboardSharePage
+      summary: HTML share page for the global leaderboard.
+      responses:
+        "200":
+          description: HTML page.
+          content:
+            text/html: {}
+
+  ## ---------------------------------------------------------------
+  ## GraphQL POC (minimal, opt-in)
+  ## ---------------------------------------------------------------
+
+  /graphql:
+    post:
+      tags: [graphql]
+      operationId: graphqlPost
+      summary: GraphQL endpoint over the game graph (POC).
+      description: |
+        Minimal viable proof-of-concept. The schema currently exposes
+        two root queries — `game(id: Int!)` and `games(limit: Int)`
+        — backed by Showmatch's in-memory CompletedGame history.
+        Selective field projection + aliasing are the primary
+        ergonomics this surface buys over REST.
+
+        Per the GraphQL transport spec, validation / execution
+        errors are surfaced as a 200 response with `errors`
+        populated, NOT as a 4xx. HTTP failure codes are reserved
+        for transport-level problems (malformed body, missing
+        query).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                  description: GraphQL query document.
+                variables:
+                  type: object
+                  additionalProperties: true
+                operationName:
+                  type: string
+      responses:
+        "200":
+          description: GraphQL execution result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        "400": { $ref: '#/components/responses/BadRequest' }
+    get:
+      tags: [graphql]
+      operationId: graphqlGet
+      summary: Ad-hoc browser query form (?query=&variables=).
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: variables
+          in: query
+          required: false
+          description: JSON-encoded variable map.
+          schema:
+            type: string
+        - name: operationName
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: GraphQL execution result. Same shape as POST.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400": { $ref: '#/components/responses/BadRequest' }
+
+  /graphql/subscriptions:
+    get:
+      tags: [graphql]
+      operationId: graphqlSubscriptionsWs
+      summary: WebSocket — GraphQL subscriptions over the `graphql-transport-ws` subprotocol.
+      description: |
+        Companion to `POST /graphql` (queries + mutations) and the
+        `/ws/events` raw event stream. Clients that already speak
+        GraphQL (Apollo Client, urql, etc.) connect with the
+        `graphql-transport-ws` subprotocol and run subscription
+        documents against the same schema.
+
+        Current subscription roots: `gameEnded`. Adding more is a
+        schema-only change; the transport handles any number of
+        subscription fields without code edits.
+
+        Capacity-capped at 100 concurrent sessions (same budget as
+        /ws/events); further upgrades return `503 too many
+        subscription clients` as the unified ErrorResponse envelope
+        before the WebSocket handshake.
+
+        Selective field projection works end-to-end — asking for
+        `subscription { gameEnded { id winner } }` produces frames
+        that omit every other field. The field-projection ergonomic
+        is the load-bearing argument for this surface vs the
+        existing /ws/events JSON firehose.
+      responses:
+        "101":
+          description: Switching Protocols → WebSocket (subprotocol `graphql-transport-ws`).
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }

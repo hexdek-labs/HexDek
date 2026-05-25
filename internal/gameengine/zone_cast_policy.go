@@ -125,6 +125,40 @@ func (gs *GameState) RegisterZoneCastPolicy(p *ZoneCastPolicy) {
 	})
 }
 
+// ExpireSourceBoundPolicies drops every policy whose SourcePerm == p
+// AND whose Duration is "while_source_on_bf". Mirrors ExpireSourceGrants
+// on the policy side. Called from engine LTB paths (zone_change.go +
+// sba.go) so a source-bound policy can't outlive its host even when no
+// per_card LTB handler is registered. Finite-duration policies
+// (until_end_of_turn, until_end_of_next_turn) with SourcePerm set are
+// LEFT in place — those represent a triggered ability that resolved,
+// not a static effect, and CR §603 keeps the grant alive for the
+// duration even if the source leaves play before then.
+func (gs *GameState) ExpireSourceBoundPolicies(p *Permanent) {
+	if gs == nil || p == nil || len(gs.ZoneCastPolicies) == 0 {
+		return
+	}
+	out := gs.ZoneCastPolicies[:0]
+	for _, pol := range gs.ZoneCastPolicies {
+		if pol != nil && pol.SourcePerm == p && pol.Duration == "while_source_on_bf" {
+			gs.LogEvent(Event{
+				Kind:   "zone_cast_policy_expired",
+				Seat:   pol.ControllerSeat,
+				Source: pol.HandlerID,
+				Details: map[string]interface{}{
+					"reason": "source_ltb",
+				},
+			})
+			continue
+		}
+		out = append(out, pol)
+	}
+	for i := len(out); i < len(gs.ZoneCastPolicies); i++ {
+		gs.ZoneCastPolicies[i] = nil
+	}
+	gs.ZoneCastPolicies = out
+}
+
 // UnregisterZoneCastPoliciesForPermanent drops every policy whose
 // SourcePerm == p. Called from LTB hooks so a bounced / exiled /
 // destroyed source stops granting the alt-cast.
@@ -146,6 +180,60 @@ func (gs *GameState) UnregisterZoneCastPoliciesForPermanent(p *Permanent) {
 			continue
 		}
 		out = append(out, pol)
+	}
+	for i := len(out); i < len(gs.ZoneCastPolicies); i++ {
+		gs.ZoneCastPolicies[i] = nil
+	}
+	gs.ZoneCastPolicies = out
+}
+
+// ExpireZoneCastPoliciesByDuration sweeps gs.ZoneCastPolicies for
+// duration-elapsed entries. Mirrors ExpireZoneCastGrants but for the
+// R55 filter-driven primitive. Called from phases.go EndOfTurnCleanup
+// alongside the per-Card grant sweep.
+//
+// Durations handled:
+//   - "until_end_of_turn"      — expires when gs.Turn > GrantTurn-1
+//                                (i.e. at the cleanup of the granting
+//                                turn; the cleanup step runs while
+//                                gs.Turn still equals GrantTurn, so
+//                                we drop entries whose GrantTurn
+//                                matches the current turn during
+//                                cleanup).
+//   - "until_end_of_next_turn" — expires when gs.Turn > GrantTurn.
+//
+// "while_source_on_bf" entries are cleaned up by
+// UnregisterZoneCastPoliciesForPermanent on LTB; this function
+// leaves them alone.
+func ExpireZoneCastPoliciesByDuration(gs *GameState) {
+	if gs == nil || len(gs.ZoneCastPolicies) == 0 {
+		return
+	}
+	out := gs.ZoneCastPolicies[:0]
+	for _, p := range gs.ZoneCastPolicies {
+		if p == nil {
+			continue
+		}
+		expired := false
+		switch p.Duration {
+		case "until_end_of_turn":
+			expired = gs.Turn >= p.GrantTurn
+		case "until_end_of_next_turn":
+			expired = gs.Turn > p.GrantTurn
+		}
+		if expired {
+			gs.LogEvent(Event{
+				Kind:   "zone_cast_policy_expired",
+				Seat:   p.ControllerSeat,
+				Source: p.HandlerID,
+				Details: map[string]interface{}{
+					"reason":   "duration_elapsed",
+					"duration": p.Duration,
+				},
+			})
+			continue
+		}
+		out = append(out, p)
 	}
 	for i := len(out); i < len(gs.ZoneCastPolicies); i++ {
 		gs.ZoneCastPolicies[i] = nil

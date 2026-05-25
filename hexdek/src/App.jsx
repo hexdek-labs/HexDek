@@ -28,6 +28,8 @@ const GameBoard = lazy(() => import('./screens/GameBoard'))
 const Spectator = lazy(() => import('./screens/Spectator'))
 const SpectateRoom = lazy(() => import('./screens/SpectateRoom'))
 const Report = lazy(() => import('./screens/Report'))
+const GameSummary = lazy(() => import('./screens/GameSummary'))
+const SummaryArchive = lazy(() => import('./screens/SummaryArchive'))
 const Forge = lazy(() => import('./screens/Forge'))
 const About = lazy(() => import('./screens/About'))
 const BugReport = lazy(() => import('./screens/BugReport'))
@@ -94,6 +96,8 @@ export default function App() {
         <Route path="spectate/:roomId" element={<SpectateRoom />} />
         <Route path="report" element={<Report />} />
         <Route path="report/:gameId" element={<Report />} />
+        <Route path="games/:gameId/summary" element={<GameSummary />} />
+        <Route path="games/summaries" element={<SummaryArchive />} />
         <Route path="about" element={<About />} />
         <Route path="feedback" element={<BugReport />} />
         <Route path="donations" element={<Donations />} />

@@ -67,9 +67,17 @@ func thassaDeepDwellingEndStep(gs *gameengine.GameState, perm *gameengine.Perman
 		return
 	}
 	card := pick.Card
-	removePermanent(gs, pick)
-	moveCardBetweenZones(gs, perm.Controller, card, "battlefield", "exile", "thassa_blink_exile")
-	moveCardBetweenZones(gs, perm.Controller, card, "exile", "battlefield", "thassa_blink_return")
+	// Exile through the canonical battlefield-exit API so §614
+	// would_be_exiled replacements + aura detach + replacement-effect
+	// unregister + LTB triggers fire. ExilePermanent handles the
+	// "battlefield → exile" leg cleanly; enterBattlefieldWithETB pulls
+	// the same *Card pointer back from exile and re-ETBs it (the
+	// canonical Thassa blink: ETB triggers fire on the return because
+	// the new permanent is a fresh object per CR §400.7).
+	if !gameengine.ExilePermanent(gs, pick, perm) {
+		emitFail(gs, slug, perm.Card.DisplayName(), "exile_failed_or_replaced", nil)
+		return
+	}
 	enterBattlefieldWithETB(gs, perm.Controller, card, false)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":     perm.Controller,

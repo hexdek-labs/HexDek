@@ -66,6 +66,16 @@ body {
   background: var(--panel);
   position: relative;
 }
+/* DeckList search field — keyboard focus indicator. The wrapper is a
+   .panel with `outline: 'none'` on the inner <input>, and its inline
+   borderStyle toggles only on content presence (dashed when empty,
+   solid when text is typed) — never on focus. Without this rule, Tab
+   landing in the field shows nothing at all. The :focus-within
+   border-color override stacks with the inline borderStyle (color and
+   style are distinct properties, so no specificity fight); inline
+   borderStyle wins for solid-vs-dashed and CSS wins for color. */
+.decklist-search { transition: border-color 80ms ease; }
+.decklist-search:focus-within { border-color: var(--accent); }
 .panel--solid { background: var(--panel-2); }
 .panel-hd {
   display: flex; align-items: center; justify-content: space-between;
@@ -315,6 +325,21 @@ body {
   border: 1px solid var(--rule-2); background: var(--bg-2, rgba(0,0,0,0.2));
   min-width: 0; overflow: hidden; box-sizing: border-box;
   contain: layout style;
+  transition: border-color 120ms ease, box-shadow 160ms ease;
+}
+/* Active / winner seats: a 1px border alone is easy to miss against the
+   ambient blurred art behind the seat-grid. Add a soft 2px halo via
+   box-shadow (doesn't affect layout, ignores overflow:hidden because
+   shadows draw outside the box) so the priority seat reads at a glance
+   from across the room. Winner takes precedence over active — they're
+   mutually exclusive in JSX, but the order here makes that explicit. */
+.seat-panel--active {
+  border-color: var(--warn);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 35%, transparent);
+}
+.seat-panel--winner {
+  border-color: var(--ok);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok) 40%, transparent);
 }
 .seat-hd {
   display: flex; justify-content: space-between; align-items: center;
@@ -329,6 +354,33 @@ body {
 .seat-stats {
   flex: 0 0 auto;
   white-space: nowrap; font-size: 10px;
+}
+.life-pip { font-weight: 600; }
+.life-pip--low { color: var(--warn); }
+.life-pip--crit {
+  color: var(--danger);
+  animation: life-pip-pulse 1.2s ease-in-out infinite;
+}
+@keyframes life-pip-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+/* Library-size pip in .seat-ft: warn when one bad mill / few draws away,
+   pulse danger when mill is the imminent loss vector. Reuses the
+   life-pip-pulse keyframe so the two threat states share the same beat. */
+/* Floating-mana pip in .seat-ft: only rendered when mana_pool > 0 (mana
+   empties at phase end per CR §106.4, so most ticks are 0). Uses the warn
+   token so it reads as "live resource available right now" without
+   competing with the pulsing low-life / low-library pips. */
+.mana-pip { color: var(--warn); font-weight: 600; }
+.lib-pip--low { color: var(--warn); font-weight: 600; }
+.lib-pip--crit {
+  color: var(--danger); font-weight: 600;
+  animation: life-pip-pulse 1.2s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .life-pip--crit,
+  .lib-pip--crit { animation: none; }
 }
 .seat-body {
   display: flex; height: 200px; min-width: 0; overflow: hidden;
@@ -397,6 +449,72 @@ body {
   font-size: 7px; color: #fff;
   background-size: cover; background-position: center;
   overflow: hidden; position: relative;
+  /* Stack-of-cards shadow layers. Lit up via data-stack="1|2|3" on the
+     tile when stackPerms() coalesces multiple copies (lands, tokens).
+     Default to transparent so the box-shadow shorthand still composes
+     cleanly with the hover lift below. */
+  --stack-s1: 0 0 transparent;
+  --stack-s2: 0 0 transparent;
+  --stack-s3: 0 0 transparent;
+  --hover-lift: 0 0 transparent;
+  box-shadow: var(--stack-s3), var(--stack-s2), var(--stack-s1), var(--hover-lift);
+  /* ETB pop: tiles play perm-etb once on mount. With key={j} (index),
+     React only freshly mounts tiles when the perms array extends —
+     i.e. a new permanent entered the battlefield. Uses the standalone
+     `scale` property (independent of `transform`) so it composes cleanly
+     with the inline transform: rotate(6deg) used for tapped permanents. */
+  animation: perm-etb 220ms ease-out;
+  /* Animate the hover ring + brightness independently. transform is
+     deliberately NOT transitioned — the tapped state's inline rotate(6deg)
+     should snap, not tween, when a permanent gets tapped mid-frame. */
+  transition: outline-color 80ms ease, filter 80ms ease, box-shadow 80ms ease;
+}
+@keyframes perm-etb {
+  from { scale: 0.7; }
+  60%  { scale: 1.04; }
+  to   { scale: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .perm-tile { animation: none; }
+}
+/* Overflow indicator when stackPerms() returns more tiles than the
+   .seat-perms grid caps at (12). Hover reveals the hidden card names
+   via the title attribute; the visible pill is a small but discoverable
+   counter, not the previously near-invisible muted-2 9px text. */
+.perm-overflow {
+  align-self: center;
+  padding: 2px 5px;
+  font-size: 9px; font-weight: 600; letter-spacing: 0.04em;
+  color: var(--ink-2);
+  border: 1px dashed var(--rule-2);
+  cursor: help;
+}
+.perm-overflow:hover { color: var(--ink); border-color: var(--rule); }
+/* Paper-stack offsets: rule-2 (dim) for the first layer back, rule for
+   the second, alternating again for the deepest tier. Negative spread
+   tightens the shadow to a thin sliver so it reads as a stacked card
+   edge rather than a drop shadow. Offsets stay ≤4px so they fall into
+   the 3px .seat-perms gap and aren't fully occluded by the next tile. */
+.perm-tile[data-stack="1"] { --stack-s1: 2px 2px 0 -1px var(--rule-2); }
+.perm-tile[data-stack="2"] {
+  --stack-s1: 2px 2px 0 -1px var(--rule-2);
+  --stack-s2: 4px 4px 0 -1px var(--rule);
+}
+.perm-tile[data-stack="3"] {
+  --stack-s1: 2px 2px 0 -1px var(--rule-2);
+  --stack-s2: 4px 4px 0 -1px var(--rule);
+  --stack-s3: 6px 6px 0 -1px var(--rule-2);
+}
+.perm-tile:hover {
+  /* outline (not border) so the ring sits OUTSIDE the box and doesn't
+     reflow the 1-px-bordered tile or its neighbors. z-index lift
+     guarantees the ring + its 1-px offset draw on top of adjacent tiles
+     instead of being painted behind them. */
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+  filter: brightness(1.15);
+  --hover-lift: 0 2px 8px rgba(0, 0, 0, 0.45);
+  z-index: 1;
 }
 .perm-tag {
   background: rgba(0,0,0,0.75); padding: 0 2px;
@@ -1373,6 +1491,36 @@ body {
 .speed-marks {
   display: flex; justify-content: space-between; margin-top: 4px;
 }
+/* Speed preset buttons (Spectator). Visually identical to the legacy
+   <span> presets in SpectateRoom (kept on the > :nth-child rule below)
+   but keyboard-focusable as a real <button>. The :focus-visible ring
+   uses --accent so it shows up over the dark FT.SPD background. */
+.speed-mark-btn {
+  background: none; border: none; padding: 0; margin: 0;
+  font: inherit; cursor: pointer;
+}
+.speed-mark-btn:focus-visible {
+  outline: 1px solid var(--accent); outline-offset: 2px;
+}
+
+/* LIVE ELO rows in the spectator sidebar. Previously a plain <div> with
+   inline cursor:pointer onClick — the cursor was the only affordance,
+   nothing for hover, and the row wasn't reachable by keyboard at all.
+   This pairs the role=button + tabIndex + onKeyDown wiring in the JSX
+   with a hover wash + :focus-visible ring so the same target works for
+   mouse, touch, and tab-key users. */
+.elo-row {
+  margin-bottom: 8px;
+  padding: 2px 4px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 100ms ease;
+}
+.elo-row:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.elo-row:focus-visible {
+  outline: 1px solid var(--accent); outline-offset: 1px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
 
 /* ── IMPORT MODAL ── (styles moved to components/ImportModal.css) */
 
@@ -1765,10 +1913,13 @@ body {
 
   .winline-row { grid-template-columns: 30px 80px 1fr; gap: 6px; }
 
-  .speed-marks > span:nth-child(2),
-  .speed-marks > span:nth-child(4),
-  .speed-marks > span:nth-child(6),
-  .speed-marks > span:nth-child(8) { display: none; }
+  /* Match both legacy <span> presets (SpectateRoom) and new <button>
+     presets (Spectator). Hides every other preset on narrow viewports
+     so the row doesn't overflow. */
+  .speed-marks > :nth-child(2),
+  .speed-marks > :nth-child(4),
+  .speed-marks > :nth-child(6),
+  .speed-marks > :nth-child(8) { display: none; }
 
   .punch { font-size: 36px; }
   .headline { font-size: 48px; }

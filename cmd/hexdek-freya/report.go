@@ -527,6 +527,10 @@ func printArchetypeText(w io.Writer, ac *ArchetypeClassification) {
 	fmt.Fprintf(w, "  Bracket:    %d/5 — %s\n", ac.Bracket, ac.BracketLabel)
 	fmt.Fprintf(w, "\n")
 
+	if ac.BracketRationale != nil {
+		printBracketRationaleText(w, ac.BracketRationale, "  ")
+	}
+
 	if len(ac.Signals) > 0 {
 		fmt.Fprintf(w, "  Signals:\n")
 		for _, s := range ac.Signals {
@@ -536,6 +540,36 @@ func printArchetypeText(w io.Writer, ac *ArchetypeClassification) {
 	}
 
 	fmt.Fprintf(w, "  Intent: %s\n\n", ac.Intent)
+}
+
+// printBracketRationaleText renders the bracket-derivation breakdown
+// under the bracket header: each scoring signal with its tier, evidence,
+// and contribution; followed by any ceiling/floor/gate adjustments and
+// the raw-vs-final score. indent is the leading whitespace per line.
+func printBracketRationaleText(w io.Writer, br *BracketRationale, indent string) {
+	if br == nil || len(br.Signals) == 0 {
+		return
+	}
+	fmt.Fprintf(w, "%sBracket rationale (raw score %d → B%d %s):\n",
+		indent, br.RawScore, br.FinalBracket, br.FinalLabel)
+	for _, sig := range br.Signals {
+		if sig.Kind == "score" {
+			line := fmt.Sprintf("%s  [%+d] %s (%s): %s",
+				indent, sig.Contribution, sig.Name, sig.Tier, sig.Measurement)
+			if len(sig.Evidence) > 0 {
+				ev := sig.Evidence
+				if len(ev) > 6 {
+					ev = append([]string{}, ev[:6]...)
+					ev = append(ev, fmt.Sprintf("+%d more", len(sig.Evidence)-6))
+				}
+				line += " — " + strings.Join(ev, ", ")
+			}
+			fmt.Fprintln(w, line)
+		} else {
+			fmt.Fprintf(w, "%s  [%s] %s: %s\n", indent, sig.Kind, sig.Name, sig.Note)
+		}
+	}
+	fmt.Fprintf(w, "\n")
 }
 
 func printRolesText(w io.Writer, ra *RoleAnalysis) {
@@ -586,7 +620,8 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 	dp := r.Profile
 	if dp == nil {
 		fmt.Fprintf(w, "DECK PROFILE\n")
-		fmt.Fprintf(w, "  Tutors:    %d cards\n", r.TutorCount)
+		fmt.Fprintf(w, "  Tutors:    %d cards (%d real, %d land/ramp)\n",
+			r.TutorCount, r.NonLandTutorCount, r.LandTutorCount)
 		fmt.Fprintf(w, "  Removal:   %d cards\n", r.RemovalCount)
 		fmt.Fprintf(w, "  Outlets:   %d sacrifice outlets\n", r.OutletCount)
 		fmt.Fprintf(w, "  Win Cons:  %d win conditions\n", r.WinConCount)
@@ -628,6 +663,20 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		fmt.Fprintf(w, "  %s\n\n", dp.PersonalityBlurb)
 	}
 
+	if len(dp.CoachingTips) > 0 {
+		fmt.Fprintf(w, "  Coaching (bracket %d, %s):\n", dp.Bracket, dp.PrimaryArchetype)
+		for _, t := range dp.CoachingTips {
+			fmt.Fprintf(w, "    [P%d %s] %s\n", t.Priority, t.Category, t.Title)
+			if t.Detail != "" {
+				fmt.Fprintf(w, "        %s\n", t.Detail)
+			}
+			if t.Action != "" {
+				fmt.Fprintf(w, "        → %s\n", t.Action)
+			}
+		}
+		fmt.Fprintf(w, "\n")
+	}
+
 	if dp.ManaBaseGrade != "" {
 		fmt.Fprintf(w, "  Mana Base:  Grade %s", dp.ManaBaseGrade)
 		if dp.FetchCount > 0 || dp.TaplandCount > 0 {
@@ -666,17 +715,44 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 			dp.InteractionQuality, dp.CheapInteraction, dp.ExpensiveInteraction)
 	}
 
+	if len(dp.PowerTierCounts) > 0 {
+		parts := make([]string, 0, len(PowerTierOrder))
+		for _, t := range PowerTierOrder {
+			parts = append(parts, fmt.Sprintf("%d%s", dp.PowerTierCounts[t], t))
+		}
+		fmt.Fprintf(w, "\n  Power Tiers: %s (buy S→A first; D = cut candidates)\n",
+			strings.Join(parts, " / "))
+	}
+
+	renderTierCard := func(glyph string, c CardQuality) {
+		fmt.Fprintf(w, "    %s [%s %3d] %s — %s\n", glyph, c.PowerTier, c.Power, c.Name, c.Reason)
+		if c.PowerExplanation != "" {
+			fmt.Fprintf(w, "             why: %s\n", c.PowerExplanation)
+		}
+	}
 	if len(dp.StarCards) > 0 {
 		fmt.Fprintf(w, "\n  Star Cards:\n")
 		for _, c := range dp.StarCards {
-			fmt.Fprintf(w, "    ★ %s — %s\n", c.Name, c.Reason)
+			renderTierCard("★", c)
 		}
 	}
-
+	if len(dp.SolidCards) > 0 {
+		fmt.Fprintf(w, "  Solid Picks:\n")
+		for _, c := range dp.SolidCards {
+			renderTierCard("●", c)
+		}
+	}
 	if len(dp.CuttableCards) > 0 {
 		fmt.Fprintf(w, "  Consider Cutting:\n")
 		for _, c := range dp.CuttableCards {
-			fmt.Fprintf(w, "    ✂ %s — %s\n", c.Name, c.Reason)
+			renderTierCard("✂", c)
+		}
+	}
+
+	if len(dp.PetCards) > 0 {
+		fmt.Fprintf(w, "  Pet Cards (flavor picks — personal taste outweighs optimization):\n")
+		for _, pc := range dp.PetCards {
+			fmt.Fprintf(w, "    ♥ [%s %3d] %s — %s\n", pc.PowerTier, pc.Power, pc.Name, pc.Reason)
 		}
 	}
 
@@ -707,10 +783,35 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		}
 	}
 
+	if len(dp.StrongAgainst) > 0 {
+		fmt.Fprintf(w, "\n  Favored Against (reverse-lookup):\n")
+		for _, a := range dp.StrongAgainst {
+			tag := ""
+			switch a.Source {
+			case "both":
+				tag = " [both directions]"
+			case "reverse":
+				tag = " [from opponent's perspective]"
+			}
+			fmt.Fprintf(w, "    ▲ %s%s — %s\n", a.Archetype, tag, a.Reason)
+			if a.OpponentReason != "" {
+				fmt.Fprintf(w, "        ↳ they say: %s\n", a.OpponentReason)
+			}
+		}
+	}
+
 	if len(dp.SynergyClusters) > 0 {
 		fmt.Fprintf(w, "\n  Synergy Clusters:\n")
 		for _, sc := range dp.SynergyClusters {
 			fmt.Fprintf(w, "    [%s] %s (%d pairwise synergies)\n", sc.Name, strings.Join(sc.Cards, ", "), sc.Score)
+		}
+	}
+
+	if len(dp.AltBuildSuggestions) > 0 {
+		fmt.Fprintf(w, "\n  Alt-Build Suggestions (deck splits across multiple engines):\n")
+		for _, a := range dp.AltBuildSuggestions {
+			fmt.Fprintf(w, "    ◆ %s\n", a.Pivot)
+			fmt.Fprintf(w, "        %s\n", a.Trade)
 		}
 	}
 
@@ -1148,10 +1249,13 @@ type jsonCombo struct {
 }
 
 type jsonProfile struct {
-	Tutors  int `json:"tutors"`
-	Removal int `json:"removal"`
-	Outlets int `json:"sacrifice_outlets"`
-	WinCons int `json:"win_conditions"`
+	Tutors        int `json:"tutors"`
+	NonLandTutors int `json:"non_land_tutors"`
+	LandTutors    int `json:"land_tutors"`
+	WishTutors    int `json:"wish_tutors,omitempty"`
+	Removal       int `json:"removal"`
+	Outlets       int `json:"sacrifice_outlets"`
+	WinCons       int `json:"win_conditions"`
 }
 
 type jsonDeckProfile struct {
@@ -1195,22 +1299,53 @@ type jsonDeckProfile struct {
 	CommanderCentricReason  string        `json:"commander_centric_reason,omitempty"`
 	CommanderCMC            int           `json:"commander_cmc,omitempty"`
 	SynergyClusters    []jsonCluster     `json:"synergy_clusters,omitempty"`
+	// ClusterExport is the rich structured export — full membership,
+	// per-card roles, score breakdown. Downstream deck-builder
+	// integrations consume this; the display-oriented SynergyClusters
+	// above stays for backward compatibility. See cluster_export.go.
+	ClusterExport      *SynergyClusterExport `json:"cluster_export,omitempty"`
+	AltBuildSuggestions []jsonAltBuild   `json:"alt_build_suggestions,omitempty"`
 	MetaMatchups       []jsonMatchup     `json:"meta_matchups,omitempty"`
-	StarCards          []jsonCardQuality `json:"star_cards,omitempty"`
-	CuttableCards      []jsonCardQuality `json:"cuttable_cards,omitempty"`
+	StrongAgainst      []jsonStrongAgainst `json:"strong_against,omitempty"`
+	StarCards          []jsonCardQuality    `json:"star_cards,omitempty"`
+	SolidCards         []jsonCardQuality    `json:"solid_cards,omitempty"`
+	CuttableCards      []jsonCardQuality    `json:"cuttable_cards,omitempty"`
+	CardPowerLevels    []jsonCardPowerLevel `json:"card_power_levels,omitempty"`
+	PowerTierCounts    map[string]int       `json:"power_tier_counts,omitempty"`
+	PetCards           []jsonPetCard        `json:"pet_cards,omitempty"`
 	LandSwapSuggestions []string         `json:"land_swap_suggestions,omitempty"`
 	CommanderSynergy   float64           `json:"commander_synergy,omitempty"`
 	CommanderThemes    []string          `json:"commander_themes,omitempty"`
 	InteractionQuality float64           `json:"interaction_quality,omitempty"`
 	PowerPercentile    int               `json:"power_percentile,omitempty"`
 	PowerFactors       []string          `json:"power_factors,omitempty"`
+	CoachingTips       []jsonCoachingTip `json:"coaching_tips,omitempty"`
+}
+
+type jsonCoachingTip struct {
+	Category string   `json:"category"`
+	Priority int      `json:"priority"`
+	Title    string   `json:"title"`
+	Detail   string   `json:"detail,omitempty"`
+	Action   string   `json:"action,omitempty"`
+	Tags     []string `json:"tags,omitempty"`
 }
 
 type jsonCluster struct {
-	Name  string   `json:"name"`
-	Cards []string `json:"cards"`
-	Theme string   `json:"theme"`
-	Score int      `json:"synergy_count"`
+	Name        string   `json:"name"`
+	Cards       []string `json:"cards"`
+	Theme       string   `json:"theme"`
+	Score       int      `json:"synergy_count"`
+	MemberCount int      `json:"member_count,omitempty"`
+}
+
+type jsonAltBuild struct {
+	Cluster     string `json:"cluster"`
+	ClusterName string `json:"cluster_name"`
+	MemberCount int    `json:"member_count"`
+	Score       int    `json:"score"`
+	Pivot       string `json:"pivot"`
+	Trade       string `json:"trade"`
 }
 
 type jsonMatchup struct {
@@ -1219,14 +1354,45 @@ type jsonMatchup struct {
 	Reason    string `json:"reason"`
 }
 
+type jsonStrongAgainst struct {
+	Archetype      string `json:"vs_archetype"`
+	Reason         string `json:"reason"`
+	OpponentReason string `json:"opponent_reason,omitempty"`
+	Source         string `json:"source"` // "forward" | "reverse" | "both"
+}
+
 type jsonCardQuality struct {
+	Name             string   `json:"name"`
+	Tier             string   `json:"tier"`
+	Reason           string   `json:"reason"`
+	Power            int      `json:"power,omitempty"`
+	PowerTier        string   `json:"power_tier,omitempty"`
+	PowerExplanation string   `json:"power_explanation,omitempty"`
+	Detected         string   `json:"detected,omitempty"`
+	WhyCut           string   `json:"why_cut,omitempty"`
+	Effect           string   `json:"effect,omitempty"`
+	Suggested        []string `json:"suggested,omitempty"`
+}
+
+type jsonCardPowerLevel struct {
+	Name                string   `json:"name"`
+	CMC                 int      `json:"cmc"`
+	Roles               []string `json:"roles,omitempty"`
+	Power               int      `json:"power"`
+	PowerTier           string   `json:"power_tier"`
+	Explanation         string   `json:"explanation,omitempty"`
+	ArchetypeFit        int      `json:"archetype_fit"`
+	CMCEfficiency       int      `json:"cmc_efficiency"`
+	SynergyContribution int      `json:"synergy_contribution"`
+}
+
+type jsonPetCard struct {
 	Name      string   `json:"name"`
-	Tier      string   `json:"tier"`
+	CMC       int      `json:"cmc"`
+	Roles     []string `json:"roles,omitempty"`
+	Power     int      `json:"power"`
+	PowerTier string   `json:"power_tier"`
 	Reason    string   `json:"reason"`
-	Detected  string   `json:"detected,omitempty"`
-	WhyCut    string   `json:"why_cut,omitempty"`
-	Effect    string   `json:"effect,omitempty"`
-	Suggested []string `json:"suggested,omitempty"`
 }
 
 type jsonRoleCount struct {
@@ -1269,13 +1435,31 @@ type jsonRoleAssignment struct {
 }
 
 type jsonArchetype struct {
-	Primary    string   `json:"primary"`
-	Confidence float64  `json:"confidence"`
-	Secondary  string   `json:"secondary,omitempty"`
-	Bracket    int      `json:"bracket"`
-	BracketLbl string   `json:"bracket_label"`
-	Signals    []string `json:"signals,omitempty"`
-	Intent     string   `json:"intent"`
+	Primary    string             `json:"primary"`
+	Confidence float64            `json:"confidence"`
+	Secondary  string             `json:"secondary,omitempty"`
+	Bracket    int                `json:"bracket"`
+	BracketLbl string             `json:"bracket_label"`
+	Signals    []string           `json:"signals,omitempty"`
+	Intent     string             `json:"intent"`
+	Rationale  *jsonBracketRationale `json:"bracket_rationale,omitempty"`
+}
+
+type jsonBracketRationale struct {
+	FinalBracket int                  `json:"final_bracket"`
+	FinalLabel   string               `json:"final_label"`
+	RawScore     int                  `json:"raw_score"`
+	Signals      []jsonBracketSignal  `json:"signals"`
+}
+
+type jsonBracketSignal struct {
+	Name         string   `json:"name"`
+	Kind         string   `json:"kind"`
+	Tier         string   `json:"tier,omitempty"`
+	Measurement  string   `json:"measurement,omitempty"`
+	Evidence     []string `json:"evidence,omitempty"`
+	Contribution int      `json:"contribution"`
+	Note         string   `json:"note,omitempty"`
 }
 
 type jsonWinLines struct {
@@ -1288,6 +1472,7 @@ type jsonWinLines struct {
 type jsonWinLine struct {
 	Pieces     []string              `json:"pieces"`
 	Type       string                `json:"type"`
+	Class      string                `json:"class,omitempty"`
 	Desc       string                `json:"description,omitempty"`
 	TutorPaths []jsonTutorChain      `json:"tutor_paths,omitempty"`
 	Rationale  *jsonWinLineRationale `json:"rationale,omitempty"`
@@ -1339,12 +1524,15 @@ func printJSON(w io.Writer, r *FreyaReport) {
 			Warnings: r.ColorMismatch,
 		},
 		Profile: jsonProfile{
-			Tutors:  r.TutorCount,
-			Removal: r.RemovalCount,
-			Outlets: r.OutletCount,
-			WinCons: r.WinConCount,
+			Tutors:        r.TutorCount,
+			NonLandTutors: r.NonLandTutorCount,
+			LandTutors:    r.LandTutorCount,
+			WishTutors:    r.WishTutorCount,
+			Removal:       r.RemovalCount,
+			Outlets:       r.OutletCount,
+			WinCons:       r.WinConCount,
 		},
-		FullProfile: buildJSONDeckProfile(r.Profile),
+		FullProfile: buildJSONDeckProfile(r.Profile, r),
 		Statistics:  buildJSONStats(r.Stats),
 		Roles:       buildJSONRoles(r.Roles),
 		Archetype:   buildJSONArchetype(r.Archetype),
@@ -1383,7 +1571,7 @@ func buildJSONStats(s *DeckStatistics) *jsonStats {
 	}
 }
 
-func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
+func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile {
 	if dp == nil {
 		return nil
 	}
@@ -1395,6 +1583,18 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 	for _, sc := range dp.SynergyClusters {
 		clusters = append(clusters, jsonCluster{
 			Name: sc.Name, Cards: sc.Cards, Theme: sc.Theme, Score: sc.Score,
+			MemberCount: sc.MemberCount,
+		})
+	}
+	var altBuilds []jsonAltBuild
+	for _, a := range dp.AltBuildSuggestions {
+		altBuilds = append(altBuilds, jsonAltBuild{
+			Cluster:     a.Cluster,
+			ClusterName: a.ClusterName,
+			MemberCount: a.MemberCount,
+			Score:       a.Score,
+			Pivot:       a.Pivot,
+			Trade:       a.Trade,
 		})
 	}
 	var matchups []jsonMatchup
@@ -1403,19 +1603,78 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 			Archetype: m.Archetype, Rating: m.Rating, Reason: m.Reason,
 		})
 	}
-	var stars, cuttable []jsonCardQuality
+	var strongAgainst []jsonStrongAgainst
+	for _, a := range dp.StrongAgainst {
+		strongAgainst = append(strongAgainst, jsonStrongAgainst{
+			Archetype:      a.Archetype,
+			Reason:         a.Reason,
+			OpponentReason: a.OpponentReason,
+			Source:         a.Source,
+		})
+	}
+	var stars, solid, cuttable []jsonCardQuality
 	for _, c := range dp.StarCards {
-		stars = append(stars, jsonCardQuality{Name: c.Name, Tier: c.Tier, Reason: c.Reason})
+		stars = append(stars, jsonCardQuality{
+			Name: c.Name, Tier: c.Tier, Reason: c.Reason,
+			Power: c.Power, PowerTier: c.PowerTier,
+			PowerExplanation: c.PowerExplanation,
+		})
+	}
+	for _, c := range dp.SolidCards {
+		solid = append(solid, jsonCardQuality{
+			Name: c.Name, Tier: c.Tier, Reason: c.Reason,
+			Power: c.Power, PowerTier: c.PowerTier,
+			PowerExplanation: c.PowerExplanation,
+		})
 	}
 	for _, c := range dp.CuttableCards {
 		cuttable = append(cuttable, jsonCardQuality{
-			Name:      c.Name,
-			Tier:      c.Tier,
-			Reason:    c.Reason,
-			Detected:  c.Detected,
-			WhyCut:    c.WhyCut,
-			Effect:    c.Effect,
-			Suggested: c.Suggested,
+			Name:             c.Name,
+			Tier:             c.Tier,
+			Reason:           c.Reason,
+			Power:            c.Power,
+			PowerTier:        c.PowerTier,
+			PowerExplanation: c.PowerExplanation,
+			Detected:         c.Detected,
+			WhyCut:           c.WhyCut,
+			Effect:           c.Effect,
+			Suggested:        c.Suggested,
+		})
+	}
+	var powerLevels []jsonCardPowerLevel
+	for _, pl := range dp.CardPowerLevels {
+		powerLevels = append(powerLevels, jsonCardPowerLevel{
+			Name:                pl.Name,
+			CMC:                 pl.CMC,
+			Roles:               pl.Roles,
+			Power:               pl.Power,
+			PowerTier:           pl.PowerTier,
+			Explanation:         pl.Explanation,
+			ArchetypeFit:        pl.ArchetypeFit,
+			CMCEfficiency:       pl.CMCEfficiency,
+			SynergyContribution: pl.SynergyContribution,
+		})
+	}
+	var petCards []jsonPetCard
+	for _, pc := range dp.PetCards {
+		petCards = append(petCards, jsonPetCard{
+			Name:      pc.Name,
+			CMC:       pc.CMC,
+			Roles:     pc.Roles,
+			Power:     pc.Power,
+			PowerTier: pc.PowerTier,
+			Reason:    pc.Reason,
+		})
+	}
+	var coaching []jsonCoachingTip
+	for _, t := range dp.CoachingTips {
+		coaching = append(coaching, jsonCoachingTip{
+			Category: t.Category,
+			Priority: t.Priority,
+			Title:    t.Title,
+			Detail:   t.Detail,
+			Action:   t.Action,
+			Tags:     t.Tags,
 		})
 	}
 
@@ -1460,15 +1719,23 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 		CommanderCentricReason:  dp.CommanderCentricReason,
 		CommanderCMC:            dp.CommanderCMC,
 		SynergyClusters:    clusters,
+		ClusterExport:      BuildClusterExport(dp, report),
+		AltBuildSuggestions: altBuilds,
 		MetaMatchups:       matchups,
+		StrongAgainst:      strongAgainst,
 		StarCards:           stars,
+		SolidCards:          solid,
 		CuttableCards:       cuttable,
+		CardPowerLevels:     powerLevels,
+		PowerTierCounts:     dp.PowerTierCounts,
+		PetCards:            petCards,
 		LandSwapSuggestions: dp.LandSwapSuggestions,
 		CommanderSynergy:   dp.CommanderSynergy,
 		CommanderThemes:    dp.CommanderThemes,
 		InteractionQuality: dp.InteractionQuality,
 		PowerPercentile:    dp.PowerPercentile,
 		PowerFactors:       dp.PowerFactors,
+		CoachingTips:       coaching,
 	}
 }
 
@@ -1507,7 +1774,32 @@ func buildJSONArchetype(ac *ArchetypeClassification) *jsonArchetype {
 		BracketLbl: ac.BracketLabel,
 		Signals:    ac.Signals,
 		Intent:     ac.Intent,
+		Rationale:  buildJSONBracketRationale(ac.BracketRationale),
 	}
+}
+
+func buildJSONBracketRationale(br *BracketRationale) *jsonBracketRationale {
+	if br == nil {
+		return nil
+	}
+	out := &jsonBracketRationale{
+		FinalBracket: br.FinalBracket,
+		FinalLabel:   br.FinalLabel,
+		RawScore:     br.RawScore,
+		Signals:      make([]jsonBracketSignal, 0, len(br.Signals)),
+	}
+	for _, s := range br.Signals {
+		out.Signals = append(out.Signals, jsonBracketSignal{
+			Name:         s.Name,
+			Kind:         s.Kind,
+			Tier:         s.Tier,
+			Measurement:  s.Measurement,
+			Evidence:     s.Evidence,
+			Contribution: s.Contribution,
+			Note:         s.Note,
+		})
+	}
+	return out
 }
 
 func buildJSONWinLines(wla *WinLineAnalysis) *jsonWinLines {
@@ -1541,6 +1833,7 @@ func buildJSONWinLines(wla *WinLineAnalysis) *jsonWinLines {
 		lines[i] = jsonWinLine{
 			Pieces:     wl.Pieces,
 			Type:       wl.Type,
+			Class:      wl.Class,
 			Desc:       wl.Desc,
 			TutorPaths: paths,
 			Rationale:  rat,
@@ -1619,4 +1912,13 @@ func PrintAllDecksSummary(w io.Writer, reports []*FreyaReport) {
 	fmt.Fprintf(w, "%-40s %5s %5d %5d %5d %5d\n",
 		"TOTALS", "", totalInf, totalDet, totalFin, totalSyn)
 	fmt.Fprintf(w, "\n")
+
+	// Corpus-wide stats — bracket / archetype / curve / density rollup
+	// so the user gets a real-world context for the per-deck rows
+	// above ("the corpus averages B3.2 / Midrange / 3.4 CMC").
+	PrintCorpusStats(w, ComputeCorpusStats(reports))
+
+	// Power-tier rollup — useful for calibrating the S/A/B/C/D
+	// thresholds against a real-world corpus. See power_aggregate.go.
+	PrintPowerTierAggregate(w, ComputePowerTierAggregate(reports))
 }

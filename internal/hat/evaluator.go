@@ -241,16 +241,40 @@ func (e *GameStateEvaluator) scoreTurnTempo(gs *gameengine.GameState, seatIdx in
 // -----------------------------------------------------------------------
 
 // scoreBoard: total creature power relative to opponents' average.
+// scoreBoard returns this seat's relative BoardPresence score: power
+// differential vs opponent average plus noncreature density.
+//
+// r60 sweep — two targeted improvements (see effectiveBoardPower in
+// poker.go + liveCreatureCount):
+//
+//  1. Use effectiveBoardPower instead of raw boardPower so tapped +
+//     summoning-sick (no-haste) creatures are correctly de-rated. A
+//     fully-committed board that can't defend should score lower than
+//     a fresh untapped board with equal raw power.
+//
+//  2. Width bonus: per-creature-count differential vs opponent average,
+//     weighted at 0.05 per body. Captures the value of multiple bodies
+//     independent of total power — 6 untapped 1/1 tokens have the same
+//     raw power as one untapped 6/6 but score modestly higher because
+//     each token can independently block, sac, crew, equip, or feed
+//     ETB-doubler triggers. Cap implicit at oppN-relative averaging.
+//     0.05 per body keeps the bonus small (4-body differential = 0.2
+//     score points, vs ~1.0 for a 10-power swing) so width doesn't
+//     drown out the dominant power term.
 func (e *GameStateEvaluator) scoreBoard(gs *gameengine.GameState, seatIdx int) float64 {
-	myPow := float64(boardPower(gs, gs.Seats[seatIdx]))
+	mySeat := gs.Seats[seatIdx]
+	myPow := float64(effectiveBoardPower(gs, mySeat))
+	myCreatures := float64(liveCreatureCount(mySeat))
 
 	var oppSum float64
+	var oppCreaturesSum float64
 	var oppN int
 	for i, s := range gs.Seats {
 		if i == seatIdx || s.Lost || s.LeftGame {
 			continue
 		}
-		oppSum += float64(boardPower(gs, s))
+		oppSum += float64(effectiveBoardPower(gs, s))
+		oppCreaturesSum += float64(liveCreatureCount(s))
 		oppN++
 	}
 	if oppN == 0 {
@@ -260,24 +284,34 @@ func (e *GameStateEvaluator) scoreBoard(gs *gameengine.GameState, seatIdx int) f
 		return 0
 	}
 	oppAvg := oppSum / float64(oppN)
+	oppCreaturesAvg := oppCreaturesSum / float64(oppN)
 
 	noncreatures := 0
-	for _, p := range gs.Seats[seatIdx].Battlefield {
+	for _, p := range mySeat.Battlefield {
 		if p != nil && !p.IsCreature() {
 			noncreatures++
 		}
 	}
 
-	return (myPow - oppAvg) / 10.0 + float64(noncreatures) * 0.1
+	return (myPow-oppAvg)/10.0 +
+		float64(noncreatures)*0.1 +
+		(myCreatures-oppCreaturesAvg)*0.05
 }
 
-// scoreCards: hand size + library depth relative to average.
+// scoreCards: hand size + library depth + persistent draw engines on
+// battlefield + castable-from-exile cards, all relative to opponent
+// average. The engine + castable-exile terms capture virtual card
+// advantage that pure hand-count misses (a 4-card hand behind a Rhystic
+// Study + Phyrexian Arena is a different game than a 4-card hand
+// behind nothing).
 func (e *GameStateEvaluator) scoreCards(gs *gameengine.GameState, seatIdx int) float64 {
 	seat := gs.Seats[seatIdx]
 	myHand := float64(len(seat.Hand))
 	myLib := float64(len(seat.Library))
+	myEngines := drawEngineCredit(seat)
+	myCastExile := float64(castableExileCount(gs, seatIdx))
 
-	var oppHand, oppLib float64
+	var oppHand, oppLib, oppEngines, oppCastExile float64
 	var oppN int
 	for i, s := range gs.Seats {
 		if i == seatIdx || s.Lost || s.LeftGame {
@@ -285,15 +319,177 @@ func (e *GameStateEvaluator) scoreCards(gs *gameengine.GameState, seatIdx int) f
 		}
 		oppHand += float64(len(s.Hand))
 		oppLib += float64(len(s.Library))
+		oppEngines += drawEngineCredit(s)
+		oppCastExile += float64(castableExileCount(gs, i))
 		oppN++
 	}
 	if oppN == 0 {
-		return myHand / 7.0
+		return myHand/7.0 + myEngines*0.4 + myCastExile*0.3
 	}
 	avgHand := oppHand / float64(oppN)
 	avgLib := oppLib / float64(oppN)
+	avgEngines := oppEngines / float64(oppN)
+	avgCastExile := oppCastExile / float64(oppN)
 
-	return (myHand - avgHand) / 4.0 + (myLib - avgLib) / 40.0
+	return (myHand-avgHand)/4.0 +
+		(myLib-avgLib)/40.0 +
+		(myEngines-avgEngines)*0.4 +
+		(myCastExile-avgCastExile)*0.3
+}
+
+// drawEngineCredit estimates the seat's virtual cards-per-turn from
+// persistent draw engines on its battlefield (Rhystic Study, Phyrexian
+// Arena, Mystic Remora, Esper Sentinel, Sylvan Library, Howling Mine,
+// Mind's Eye, ...). Each engine contributes a rate-class weight via
+// drawEngineRate. Capped at 4.0 total to bound stax/wheel-board
+// outliers.
+//
+// r60 retune: pre-r60 every engine contributed 1.0 uniformly. Rhystic
+// Study (which fires 3-6 times per turn cycle in a 4-player pod) was
+// treated identically to Phyrexian Arena (1 fire per turn cycle) and
+// Howling Mine (1 fire per turn cycle that ALSO helps opponents).
+// Differentiating these rates produces strictly more honest
+// CardAdvantage scoring without changing the dimension's relative
+// weight. See drawEngineRate for the rate-class table.
+func drawEngineCredit(seat *gameengine.Seat) float64 {
+	if seat == nil {
+		return 0
+	}
+	const cap = 4.0
+	total := 0.0
+	for _, p := range seat.Battlefield {
+		w := drawEngineRate(p)
+		if w == 0 {
+			continue
+		}
+		total += w
+		if total >= cap {
+			return cap
+		}
+	}
+	return total
+}
+
+// drawEngineRate returns the per-engine weight, classifying by oracle-
+// text shape:
+//
+//	0.0   — not a persistent draw engine
+//	0.6   — symmetric draw ("each player draws") — Howling Mine, Temple
+//	        Bell, Font of Mythos, Dictate of Kruphix. The owner gets
+//	        the cards but so does every opponent — a 4-player table
+//	        diffuses 75% of the value to other seats. Weighting these
+//	        at full credit double-counted shared cards as if they were
+//	        purely our advantage.
+//	1.0   — upkeep-cadenced / passive controller-only draw — Phyrexian
+//	        Arena, Sylvan Library, Mind's Eye. One fire per turn cycle
+//	        for one card. The standard pre-r60 baseline.
+//	1.5   — opponent-action-triggered draw — Rhystic Study, Mystic
+//	        Remora, Esper Sentinel. Each opponent's spell triggers a
+//	        draw window; in a 4-player pod with 3 opponents casting
+//	        2-3 spells each per turn cycle, these engines fire 4-9
+//	        times per turn. Even derated for the unless-pay clause +
+//	        Remora's cumulative-upkeep churn, the throughput is ~1.5x
+//	        the upkeep-cadenced baseline.
+//
+// The classifier is conservative: a card needs to match the rate-class
+// pattern explicitly to upgrade; ambiguous shapes (e.g. "whenever a
+// creature you control dies, draw a card") stay at the 1.0 baseline
+// since their rate depends on board state.
+func drawEngineRate(p *gameengine.Permanent) float64 {
+	if p == nil || p.Card == nil {
+		return 0
+	}
+	ot := gameengine.OracleTextLower(p.Card)
+	if ot == "" {
+		return 0
+	}
+	if !isPersistentDrawEngine(p) {
+		return 0
+	}
+	// Symmetric (each-player-draws) effects diffuse their value across
+	// the table. Detect before the opp-trigger gate so a "each player
+	// may draw" doesn't accidentally upgrade. Multiple phrasings:
+	//   - "each player draws a card" (Temple Bell)
+	//   - "each player may draw" (rare modal)
+	//   - "each player's draw step" (Howling Mine, Font of Mythos,
+	//     Dictate of Kruphix — table-wide draw-step enabler with "that
+	//     player draws an additional card" follow-up)
+	if strings.Contains(ot, "each player draws") ||
+		strings.Contains(ot, "each player may draw") ||
+		strings.Contains(ot, "each player's draw step") {
+		return 0.6
+	}
+	// Opponent-action triggers fire ~3-6 times per turn cycle in a 4p
+	// pod vs the upkeep-cadenced 1 fire / cycle baseline. The "unless
+	// that player pays {N}" Rhystic / Remora clause is intentionally
+	// not parsed out — the 1.5 weight already accounts for the partial
+	// pay-through rate.
+	if strings.Contains(ot, "whenever an opponent casts") ||
+		strings.Contains(ot, "whenever an opponent cycles") ||
+		strings.Contains(ot, "whenever a player other than you") {
+		return 1.5
+	}
+	return 1.0
+}
+
+// isPersistentDrawEngine returns true when perm's oracle text indicates
+// a recurring controller-facing card-draw payoff. The three matched
+// shapes — "additional card", upkeep-cadenced draw, and whenever-X you
+// (may) draw a card — cover the bulk of Commander draw enchantments,
+// artifacts, and Esper-Sentinel-style creatures. One-shot ETB drawers
+// (Elvish Visionary's "when ~ enters, you draw a card") are
+// intentionally excluded — they require the "whenever" / upkeep cue.
+func isPersistentDrawEngine(p *gameengine.Permanent) bool {
+	if p == nil || p.Card == nil {
+		return false
+	}
+	ot := gameengine.OracleTextLower(p.Card)
+	if ot == "" {
+		return false
+	}
+	if strings.Contains(ot, "additional card") {
+		return true
+	}
+	if strings.Contains(ot, "at the beginning of your upkeep") &&
+		(strings.Contains(ot, "you draw") || strings.Contains(ot, "draw a card")) {
+		return true
+	}
+	if strings.Contains(ot, "whenever") &&
+		(strings.Contains(ot, "you draw a card") || strings.Contains(ot, "you may draw a card")) {
+		return true
+	}
+	return false
+}
+
+// castableExileCount counts cards in seat's exile zone that the seat
+// can still cast as a spell via a ZoneCastGrants entry whose Zone is
+// "exile" and whose RequireController matches (or is -1 = owner-cast,
+// which we honor when the card's owner is this seat). Covers foretell,
+// plot, suspend-resolves-to-cast, Misthollow Griffin / Squee, and "may
+// cast from exile" grants such as Light Up the Stage, Prosper, Faldorn.
+func castableExileCount(gs *gameengine.GameState, seatIdx int) int {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return 0
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil || len(seat.Exile) == 0 || gs.ZoneCastGrants == nil {
+		return 0
+	}
+	n := 0
+	for _, c := range seat.Exile {
+		if c == nil {
+			continue
+		}
+		perm, ok := gs.ZoneCastGrants[c]
+		if !ok || perm == nil || perm.Zone != "exile" {
+			continue
+		}
+		if perm.RequireController == seatIdx ||
+			(perm.RequireController == -1 && c.Owner == seatIdx) {
+			n++
+		}
+	}
+	return n
 }
 
 // scoreMana: mana source count relative to average, plus color coverage.
@@ -317,27 +513,97 @@ func (e *GameStateEvaluator) scoreMana(gs *gameengine.GameState, seatIdx int) fl
 		rawScore = (mySources - oppSum/float64(oppN)) / 4.0
 	}
 
+	// r60: response-mana bonus on opponent turns. When it's NOT our turn,
+	// only untapped sources are usable for instants / counters / activated
+	// removal. A deck with 8 sources all tapped is worse off at end-of-
+	// opponent-turn than one with 6 untapped — the same total raw count
+	// hides a real tempo asymmetry. Add a small bonus proportional to the
+	// untapped-source ratio when responding. Capped at +0.25 so it doesn't
+	// override the primary count delta. On our own turn the bonus is 0:
+	// tapped sources will untap on the next upkeep, so the distinction is
+	// noise within the turn.
+	if gs.Active != seatIdx && mySources > 0 {
+		untapped := float64(CountUntappedManaSources(gs.Seats[seatIdx]))
+		rawScore += 0.25 * (untapped / mySources)
+	}
+
 	if e.Strategy == nil || e.Strategy.ColorDemand == nil {
 		return rawScore
 	}
 
+	// r60: depth-weighted color coverage. The previous binary check
+	// (`fieldColorSources(...) > 0`) gave a deck with 1 black source the
+	// same credit as one with 4 — but a {BBBB}-pip demand profile needs
+	// actual depth, not just presence. Switch to a sqrt-decay weight: 1
+	// source = 0.5 credit, 2 sources = 0.71, 4 sources = 1.0, more = 1.0.
+	// Preserves the existing average-credit semantics (0.5 baseline) so
+	// the (coverage - 0.5) * 0.8 final step still nets to 0 at "one
+	// source per demanded color" — only DEEP coverage shifts the score.
 	totalDemand := 0
-	coveredDemand := 0
+	coveredDemand := 0.0
 	for col, demand := range e.Strategy.ColorDemand {
 		if demand < 2 {
 			continue
 		}
 		totalDemand += demand
-		if fieldColorSources(gs.Seats[seatIdx], col) > 0 {
-			coveredDemand += demand
-		}
+		coveredDemand += float64(demand) * colorDepthWeight(fieldColorSources(gs.Seats[seatIdx], col))
 	}
 	if totalDemand > 0 {
-		coverage := float64(coveredDemand) / float64(totalDemand)
+		coverage := coveredDemand / float64(totalDemand)
 		rawScore += (coverage - 0.5) * 0.8
 	}
 
 	return rawScore
+}
+
+// colorDepthWeight maps a per-color source count to a [0..1] credit
+// using a sqrt-decay so the first 1-2 sources contribute the most and
+// the curve asymptotes at 4 sources. Tuned so 1 source ≈ 0.5 (parity
+// with the pre-r60 binary coverage) and 4+ ≈ 1.0.
+//
+//	count | weight
+//	------|-------
+//	  0   | 0.00
+//	  1   | 0.50
+//	  2   | 0.71
+//	  3   | 0.87
+//	  4+  | 1.00
+func colorDepthWeight(n int) float64 {
+	if n <= 0 {
+		return 0
+	}
+	if n >= 4 {
+		return 1.0
+	}
+	// sqrt-based decay: 0.5 at 1, 0.71 at 2, 0.87 at 3, 1.0 at 4.
+	return math.Sqrt(float64(n)) * 0.5
+}
+
+// CountUntappedManaSources counts the seat's currently-untapped mana-
+// producing permanents — used by scoreMana to weight response mana on
+// opponent turns. Mirrors CountManaRocksAndLands (lands + cheap mana
+// artifacts) but only counts sources with `Tapped == false`.
+func CountUntappedManaSources(seat *gameengine.Seat) int {
+	if seat == nil {
+		return 0
+	}
+	n := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil || p.Tapped {
+			continue
+		}
+		if p.IsLand() {
+			n++
+			continue
+		}
+		if typeLineContains(p.Card, "artifact") && gameengine.ManaCostOf(p.Card) <= 3 {
+			ot := gameengine.OracleTextLower(p.Card)
+			if strings.Contains(ot, "mana") || strings.Contains(ot, "{t}") {
+				n++
+			}
+		}
+	}
+	return n
 }
 
 // scoreLife: life as a resource. In commander, 40 is starting; < 10 is
@@ -371,52 +637,201 @@ func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) fl
 		}
 	}
 
+	// R60r9: convex danger curve. Pre-tune the danger band (life ≤ 10) was
+	// linear in ratio, so life=1 (one shock = death) scored only ~2x worse
+	// than life=10 — under-weighting proximity-to-zero. Added quadratic
+	// (10 - life)² penalty so each life point lost below 10 hurts more
+	// than the last. Mid-band (>10) preserved as-is to avoid retuning the
+	// established "calm zone" semantics; the convexity is targeted at
+	// shock-range death proximity.
+	var base float64
 	if seat.Life <= 10 {
-		base := ratio - 0.5
+		base = ratio - 0.5
+		danger := float64(10-seat.Life) / 10.0 // 0..1
+		base -= danger * danger * 0.5
 		if hasLifePayoff {
 			base *= 0.5
 		}
-		return base
+	} else {
+		base = (ratio - 0.5) * 0.5
+		if hasLifePayoff && seat.Life > 20 {
+			base += 0.1
+		}
 	}
-	base := (ratio - 0.5) * 0.5
-	if hasLifePayoff && seat.Life > 20 {
-		base += 0.1
+
+	// R60r9: lifegain on the battlefield is a forward-looking recovery
+	// signal that softens the danger penalty. Soul Warden / Soul's
+	// Attendant / Heliod / Trelasarra-style passive triggers and lifelink
+	// attackers recoup life over time, so the current life total is more
+	// durable than the raw number suggests. Each active engine reduces
+	// the negative penalty by 10% (capped at 30% — three engines isn't
+	// infinite life, and we still respect the underlying clock). Only
+	// applied when base is negative; engines don't add positive score,
+	// they only dampen the deficit.
+	if base < 0 {
+		engines := 0
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			if p.HasKeyword("lifelink") && p.IsCreature() && gs.PowerOf(p) >= 2 {
+				engines++
+				continue
+			}
+			ot := gameengine.OracleTextLower(p.Card)
+			if strings.Contains(ot, "gain") && strings.Contains(ot, "life") &&
+				(strings.Contains(ot, "whenever") || strings.Contains(ot, "at the beginning")) {
+				engines++
+			}
+		}
+		if engines > 3 {
+			engines = 3
+		}
+		if engines > 0 {
+			base *= 1.0 - 0.1*float64(engines)
+		}
+	}
+
+	// R60 round 5: fold an opponent-pressure component into LifeResource so
+	// aggressive archetypes (whose LifeResource weight is high) actually
+	// value lowering opponents' life totals — not just preserving their
+	// own. Pressure is the strongest opponent's life ratio inverted, capped
+	// at +0.5 contribution so it can't dominate the own-life term. For
+	// 4-player commander with one opp at 12/40 life: ratio=0.30, pressure
+	// = (1 - 0.30) * 0.5 = +0.35 (lethal-clock signal). For all opps at
+	// starting life: pressure = 0 (no signal).
+	pressure := 0.0
+	for i, s := range gs.Seats {
+		if i == seatIdx || s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		oppStarting := float64(s.StartingLife)
+		if oppStarting <= 0 {
+			oppStarting = 40
+		}
+		oppLife := float64(s.Life)
+		if oppLife <= 0 {
+			oppLife = 0
+		}
+		oppRatio := oppLife / oppStarting
+		// Take the WEAKEST (lowest life ratio) opponent — that's the one
+		// closest to elimination, which is where the win clock is.
+		oppPressure := (1.0 - oppRatio) * 0.5
+		if oppPressure > pressure {
+			pressure = oppPressure
+		}
+	}
+	if pressure < 0 {
+		pressure = 0
+	}
+	if pressure > 0.5 {
+		pressure = 0.5
+	}
+	base += pressure
+	if base < -1 {
+		base = -1
 	}
 	return base
 }
 
 // scoreCombo: how close we are to assembling a combo. 1.0 = all pieces
 // in hand/battlefield, scaled down by missing pieces.
+//
+// When the deck has a primary combo class (>=2 ComboPlans share a
+// class), on-class plans score their piece-presence ratio at full
+// weight; off-class plans are dampened to 0.7x. The damping keeps
+// off-class plans relevant (a complete off-class plan still beats a
+// half-assembled on-class plan) without letting an opportunistic
+// off-class piece pull the deck off its primary line.
+//
+// Plans with empty Class always score at full weight — Class is a
+// post-hoc tag and the scorer must remain useful for unclassified
+// or legacy strategy.json files.
 func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) float64 {
 	if e.Strategy == nil || len(e.Strategy.ComboPieces) == 0 {
 		return e.scoreComboHardcoded(gs, seatIdx)
 	}
 
 	seat := gs.Seats[seatIdx]
-	available := make(map[string]bool)
+
+	// r60: piece-availability is now weighted, not boolean. Hand and
+	// battlefield pieces score full credit (1.0); graveyard pieces
+	// score half credit (0.5) to model recurrable softness — a piece
+	// in graveyard is reachable via reanimate / Sun-Titan-class /
+	// Karador / Past in Flames / Regrowth, all common in combo decks
+	// that loop dies-triggers or play long-game value. Conservatively
+	// dampened because not every deck can recur, but the signal isn't
+	// zero: a Worldgorger Dragon in the graveyard with no Animate Dead
+	// in hand is still strictly more reachable than a Worldgorger
+	// Dragon in the library.
+	available := make(map[string]float64, len(seat.Hand)+len(seat.Battlefield)+len(seat.Graveyard))
 	for _, c := range seat.Hand {
 		if c != nil {
-			available[c.DisplayName()] = true
+			available[c.DisplayName()] = 1.0
 		}
 	}
 	for _, p := range seat.Battlefield {
 		if p != nil && p.Card != nil {
-			available[p.Card.DisplayName()] = true
+			available[p.Card.DisplayName()] = 1.0
 		}
 	}
+	for _, c := range seat.Graveyard {
+		if c == nil {
+			continue
+		}
+		// Don't downgrade a hand/battlefield piece if it ALSO appears
+		// in graveyard (rare — copy effects / token returns); keep the
+		// strictly stronger zone's weight.
+		if available[c.DisplayName()] < 0.5 {
+			available[c.DisplayName()] = 0.5
+		}
+	}
+
+	// r60: tutors in hand count as "soft pieces" — 1 tutor fills 1
+	// missing slot per plan, mirroring the actual EDH reality that
+	// holding Demonic Tutor + 1 piece is functionally similar to
+	// holding 2 pieces (cast the tutor, fetch the missing piece, play
+	// next turn). Capped at 1 soft-piece per plan so a tutor-flooded
+	// hand doesn't claim multi-piece completion via tutors alone.
+	tutorsInHand := seatTutorsInHand(seat)
+
+	primaryClass := e.Strategy.PrimaryComboClass()
+	const offClassDamping = 0.7
 
 	bestRatio := 0.0
 	for _, cp := range e.Strategy.ComboPieces {
 		if len(cp.Pieces) == 0 {
 			continue
 		}
-		found := 0
+		foundWeight := 0.0
+		missing := 0
 		for _, piece := range cp.Pieces {
-			if available[piece] {
-				found++
+			if w := available[piece]; w > 0 {
+				foundWeight += w
+			} else {
+				missing++
 			}
 		}
-		ratio := float64(found) / float64(len(cp.Pieces))
+		// Tutor credit: if we have at least 1 tutor in hand AND there's
+		// a missing piece, count 1 tutor as a soft-piece. Capped at 1
+		// per plan + capped by the number of missing slots (a tutor
+		// can't fill a slot that's already found).
+		if tutorsInHand > 0 && missing > 0 {
+			foundWeight += 1.0
+		}
+		// foundWeight can exceed len(pieces) when graveyard + hand +
+		// tutor stack up (shouldn't happen in practice but defensive).
+		if foundWeight > float64(len(cp.Pieces)) {
+			foundWeight = float64(len(cp.Pieces))
+		}
+		ratio := foundWeight / float64(len(cp.Pieces))
+		// Off-class damping: when the deck has a primary class and this
+		// plan is in a different class, scale the contribution. Plans
+		// without a Class tag (legacy / unclassified) always score full
+		// weight.
+		if primaryClass != "" && cp.Class != "" && cp.Class != primaryClass {
+			ratio *= offClassDamping
+		}
 		if ratio > bestRatio {
 			bestRatio = ratio
 		}
@@ -426,6 +841,55 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 		return 2.0
 	}
 	return bestRatio * 1.5
+}
+
+// seatTutorsInHand counts the number of unconditional or library-search
+// tutors currently in seat's hand. Used by scoreCombo's tutor-credit
+// path to model "1 mana = 1 deployed piece next turn." Matches three
+// shapes:
+//
+//   - "search your library for a card" (Demonic Tutor, Vampiric Tutor,
+//     Imperial Seal, Personal Tutor — broad and narrow)
+//   - "search your library for an [instant|sorcery|creature|...] card"
+//     (Mystical Tutor, Worldly Tutor, Eladamri's Call, etc.)
+//   - "tutor" in card name (defense-in-depth for cards whose oracle
+//     text encodes the search via a non-standard phrasing)
+//
+// Excludes purely-creature-targeting tutors (Survival of the Fittest's
+// activated tutor effect lives on the battlefield, not the hand; a
+// resolved fetch land doesn't count). Excludes "transmute" / "cycle"
+// / "scry" — those are weaker than canonical tutors and warrant a
+// separate credit path if added.
+func seatTutorsInHand(seat *gameengine.Seat) int {
+	if seat == nil {
+		return 0
+	}
+	n := 0
+	for _, c := range seat.Hand {
+		if c == nil {
+			continue
+		}
+		ot := gameengine.OracleTextLower(c)
+		if ot == "" {
+			// Name-based fallback for cards we can't read oracle text for.
+			name := strings.ToLower(c.DisplayName())
+			if strings.Contains(name, "tutor") {
+				n++
+			}
+			continue
+		}
+		if strings.Contains(ot, "search your library for") {
+			n++
+			continue
+		}
+		// Defense in depth: name match catches cards whose oracle text
+		// shape we missed (unusual templating).
+		name := strings.ToLower(c.DisplayName())
+		if strings.Contains(name, "tutor") {
+			n++
+		}
+	}
+	return n
 }
 
 func (e *GameStateEvaluator) scoreComboHardcoded(gs *gameengine.GameState, seatIdx int) float64 {
@@ -462,14 +926,18 @@ func (e *GameStateEvaluator) scoreThreat(gs *gameengine.GameState, seatIdx int) 
 	}
 
 	var maxOppPow float64
+	hardestToAnswer := 0.0
 	dangerousPermanents := 0.0
 	for i, s := range gs.Seats {
 		if i == seatIdx || s.Lost || s.LeftGame {
 			continue
 		}
-		bp := float64(boardPower(gs, s))
+		bp := effectiveOffensivePower(gs, s)
 		if bp > maxOppPow {
 			maxOppPow = bp
+		}
+		if h := hardToAnswerScore(gs, s); h > hardestToAnswer {
+			hardestToAnswer = h
 		}
 		for _, p := range s.Battlefield {
 			if p == nil || p.Card == nil {
@@ -520,6 +988,14 @@ func (e *GameStateEvaluator) scoreThreat(gs *gameengine.GameState, seatIdx int) 
 	if lethalRatio >= 1.0 {
 		return -1.0
 	}
+
+	// Hard-to-answer multiplier: threats with indestructible / hexproof /
+	// ward / protection compound the lethal clock because they survive
+	// generic removal — we burn into specific answers (exile, board wipe,
+	// -X/-X) and may not have one. Adds up to +20% to the offensive
+	// pressure score, capped so a single huge protected creature never
+	// flips the dimension to lethal on its own.
+	hardToAnswerPenalty := hardestToAnswer * lethalRatio * 0.2
 
 	// Poison threat: high poison counters are an existential threat
 	// regardless of combat board state. 10 = lethal per §704.5c.
@@ -599,7 +1075,99 @@ func (e *GameStateEvaluator) scoreThreat(gs *gameengine.GameState, seatIdx int) 
 		}
 	}
 
-	return -lethalRatio*0.8 - dangerousPermanents*0.3 - hoserPenalty - poisonPenalty - millPenalty - cmdrPenalty
+	return -lethalRatio*0.8 - dangerousPermanents*0.3 - hoserPenalty - poisonPenalty - millPenalty - cmdrPenalty - hardToAnswerPenalty
+}
+
+// effectiveOffensivePower returns an evasion-weighted, summoning-sickness-
+// discounted offensive-power figure for a seat. Used by scoreThreat in
+// place of raw boardPower so that "the opponent has 12 power on board"
+// reflects how much of that power can actually pressure us NEXT combat:
+//
+//   - Flying / shadow / horsemanship / unblockable: 1.5x weight — ground
+//     blockers don't apply.
+//   - Trample: 1.25x weight — chump-blocking only partially mitigates.
+//   - Menace: 1.20x weight — single-blocker chumps don't work.
+//   - Summoning sick & no haste: 0.6x weight — the creature can attack
+//     NEXT turn, not this one, so there's a turn of warning for the
+//     defender to find an answer. Planeswalkers and lands are unaffected
+//     (a PW's loyalty ticks immediately on the turn it ETBs).
+//
+// Multipliers stack multiplicatively (a flying trampler is 1.5 * 1.25
+// = 1.875x). Planeswalker loyalty proxy carries over from boardPower.
+func effectiveOffensivePower(gs *gameengine.GameState, seat *gameengine.Seat) float64 {
+	if seat == nil {
+		return 0
+	}
+	total := 0.0
+	for _, p := range seat.Battlefield {
+		if p == nil {
+			continue
+		}
+		if p.IsCreature() {
+			pw := gs.PowerOf(p)
+			if pw <= 0 {
+				continue
+			}
+			mult := 1.0
+			if p.HasKeyword("flying") || p.HasKeyword("shadow") ||
+				p.HasKeyword("horsemanship") || p.HasKeyword("unblockable") {
+				mult *= 1.5
+			}
+			if p.HasKeyword("trample") {
+				mult *= 1.25
+			}
+			if p.HasKeyword("menace") {
+				mult *= 1.20
+			}
+			if p.SummoningSick && !p.HasKeyword("haste") {
+				mult *= 0.6
+			}
+			total += float64(pw) * mult
+			continue
+		}
+		if p.IsPlaneswalker() {
+			loy := 0
+			if p.Counters != nil {
+				loy = p.Counters["loyalty"]
+			}
+			if loy < 0 {
+				loy = 0
+			}
+			total += float64(loy + 2)
+		}
+	}
+	return total
+}
+
+// hardToAnswerScore returns 0..1 reflecting how much of seat's offensive
+// pressure rides on creatures that resist single-target removal.
+// Indestructible / hexproof / shroud / ward / protection each count; the
+// raw count is normalized so 3+ hard-to-answer attackers saturates at 1.0.
+// Threshold gates on power >= 3 so a 1/1 ward-bearing utility creature
+// doesn't move the dimension.
+func hardToAnswerScore(gs *gameengine.GameState, seat *gameengine.Seat) float64 {
+	if seat == nil {
+		return 0
+	}
+	count := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || !p.IsCreature() {
+			continue
+		}
+		if gs.PowerOf(p) < 3 {
+			continue
+		}
+		if p.HasKeyword("indestructible") || p.HasKeyword("hexproof") ||
+			p.HasKeyword("shroud") || p.HasKeyword("ward") ||
+			p.HasKeyword("protection") {
+			count++
+		}
+	}
+	score := float64(count) / 3.0
+	if score > 1.0 {
+		score = 1.0
+	}
+	return score
 }
 
 // scoreCommander: commander combat damage dealt + commander zone status.
@@ -1509,6 +2077,14 @@ func (e *GameStateEvaluator) rescaleWeights(gs *gameengine.GameState, seatIdx in
 	w.ThreatTrajectory *= 1.0 + lateFactor*0.15
 	w.OpponentGraveyardThreat *= 1.0 + lateFactor*0.2
 	w.StackInteraction *= 1.0 + lateFactor*0.25
+	// R60 cross-cutting rebalance: life as a resource matters more once
+	// the game drags past turn 12 — everyone's taken combat damage, drain
+	// engines threaten lethal sooner, and the gap between "we have 30
+	// life" and "we have 10 life" is now the difference between
+	// surviving a swing and dying. Pre-R60 LifeResource was only bumped
+	// when AHEAD, missing the case where a long late game made life
+	// scarce for all seats.
+	w.LifeResource *= 1.0 + lateFactor*0.15
 
 	// Mid-game: activated abilities, synergy engines, and lock pieces peak.
 	midFactor := 1.0 - math.Abs(stage-0.5)*2
@@ -1533,6 +2109,13 @@ func (e *GameStateEvaluator) rescaleWeights(gs *gameengine.GameState, seatIdx in
 	// Ahead: consolidate advantage.
 	if positionSignal > 0.3 {
 		aheadFactor := math.Min(1.0, (positionSignal-0.3)*2)
+		// R60 cross-cutting rebalance: a board-ahead deck should
+		// consolidate by adding MORE board (extending the lead), not
+		// just by adding more cards. Pre-R60 the ahead branch bumped
+		// CardAdvantage/ManaAdvantage/LifeResource but not BoardPresence
+		// — which made the evaluator treat "ahead on board" the same as
+		// "behind on board" for the purpose of valuing the next creature.
+		w.BoardPresence *= 1.0 + aheadFactor*0.2
 		w.CardAdvantage *= 1.0 + aheadFactor*0.3
 		w.ManaAdvantage *= 1.0 + aheadFactor*0.2
 		w.LifeResource *= 1.0 + aheadFactor*0.2

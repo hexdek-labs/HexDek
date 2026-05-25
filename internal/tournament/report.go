@@ -2,6 +2,7 @@ package tournament
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"sort"
 	"strings"
@@ -91,6 +92,33 @@ func (r *TournamentResult) WriteMarkdown(path string) error {
 		}
 	}
 
+	// Pod-participation distribution. Surfaces uneven game-count
+	// allocation across the deck pool — especially valuable under the
+	// MaxIntraPodSimilarity / PreferArchetypeOpposition constraints
+	// (#145 / #150), which can deliberately skew the distribution
+	// when re-sampling rejects pods. min/median/max/stddev gives the
+	// operator the at-a-glance summary; under-played decks (≤ half
+	// the median) are called out by name.
+	if hasPerCmdr && len(r.GamesPlayedByCommander) > 1 {
+		ps := computeParticipationStats(r.GamesPlayedByCommander)
+		b.WriteString("\n## Pod Participation Distribution\n\n")
+		fmt.Fprintf(&b, "- Decks in pool: %d\n", ps.NDecks)
+		fmt.Fprintf(&b, "- Games per deck: min=%d  median=%d  max=%d  mean=%.1f  stddev=%.1f\n",
+			ps.Min, ps.Median, ps.Max, ps.Mean, ps.StdDev)
+		if ps.NeverPlayed > 0 {
+			fmt.Fprintf(&b, "- Decks that never appeared in a pod: **%d**\n", ps.NeverPlayed)
+		}
+		if len(ps.UnderPlayed) > 0 {
+			fmt.Fprintf(&b, "- Decks with ≤ half the median games played: %d\n",
+				len(ps.UnderPlayed))
+			b.WriteString("\n  | Commander | Games |\n  |---|---:|\n")
+			for _, u := range ps.UnderPlayed {
+				fmt.Fprintf(&b, "  | %s | %d |\n", u.Name, u.Games)
+			}
+		}
+		b.WriteString("\n")
+	}
+
 	// Game length distribution.
 	b.WriteString("\n## Game Length Distribution\n\n")
 	b.WriteString("| Turn Range | Games | Pct |\n")
@@ -140,6 +168,13 @@ func (r *TournamentResult) WriteMarkdown(path string) error {
 			b.WriteString("\n")
 		}
 	}
+
+	// Notable Rivalries — surface the most lopsided pairwise matchups
+	// from the Matchup Matrix as a ranked, sample-size-filtered list.
+	// The matrix is exhaustive but hard to scan; this section highlights
+	// "A over-performs vs B" / "A under-performs vs B" entries that pass
+	// a Wilson 95% CI significance check against A's baseline winrate.
+	WriteRivalriesSection(&b, r, DefaultRivalryOptions(), 20)
 
 	b.WriteString("\n## Elimination Matrix\n\n")
 	b.WriteString("Rows = commander, columns = elimination slot (0 = first out, N-1 = winner).\n\n")
@@ -236,6 +271,100 @@ func writeAnalyticsSections(b *strings.Builder, ar *analytics.AnalyticsReport) {
 
 	// Per-Commander Breakdown.
 	ar.WriteCommanderBreakdownTo(b)
+}
+
+// ParticipationStats summarizes the per-deck game-count distribution.
+// Produced from a (commander → games) map; used by report.go to render
+// the Pod Participation Distribution section and by tests to pin the
+// math. All counts are inclusive of decks that played zero games (so
+// NeverPlayed lands in Min when applicable).
+type ParticipationStats struct {
+	NDecks      int
+	Min         int
+	Max         int
+	Median      int
+	Mean        float64
+	StdDev      float64
+	NeverPlayed int
+	// UnderPlayed lists decks with games ≤ Median/2 (and games > 0
+	// — the zero-game decks are reported via NeverPlayed). Sorted by
+	// games ascending then name for stable test output.
+	UnderPlayed []ParticipationEntry
+}
+
+// ParticipationEntry is one row of the under-played list. Exported so
+// callers (and tests) can drill into the contents of UnderPlayed.
+type ParticipationEntry struct {
+	Name  string
+	Games int
+}
+
+// computeParticipationStats walks gamesByCmdr and returns the
+// distribution summary. Empty/nil input returns the zero value
+// (NDecks=0); callers should check NDecks > 1 before rendering since
+// stddev/median are undefined for a single point.
+func computeParticipationStats(gamesByCmdr map[string]int) ParticipationStats {
+	var ps ParticipationStats
+	if len(gamesByCmdr) == 0 {
+		return ps
+	}
+	ps.NDecks = len(gamesByCmdr)
+	values := make([]int, 0, ps.NDecks)
+	names := make([]string, 0, ps.NDecks)
+	sum := 0
+	for name, n := range gamesByCmdr {
+		values = append(values, n)
+		names = append(names, name)
+		sum += n
+		if n == 0 {
+			ps.NeverPlayed++
+		}
+	}
+	sortedValues := append([]int(nil), values...)
+	sort.Ints(sortedValues)
+	ps.Min = sortedValues[0]
+	ps.Max = sortedValues[len(sortedValues)-1]
+	if n := len(sortedValues); n%2 == 1 {
+		ps.Median = sortedValues[n/2]
+	} else {
+		// Even-count median: lower of the two middle values rather
+		// than the float average. Games-per-deck is an integer count
+		// — returning a half-game would be misleading.
+		ps.Median = sortedValues[n/2-1]
+	}
+	ps.Mean = float64(sum) / float64(ps.NDecks)
+	if ps.NDecks > 1 {
+		var ssd float64
+		for _, v := range values {
+			d := float64(v) - ps.Mean
+			ssd += d * d
+		}
+		// Population stddev (divide by N), not sample (N-1) — we have
+		// the whole population in hand, not a sample.
+		ps.StdDev = math.Sqrt(ssd / float64(ps.NDecks))
+	}
+
+	// Under-played list: positive games but ≤ half the median. Skip
+	// when median is ≤ 1 (the threshold collapses to "0 games" which
+	// is already covered by NeverPlayed).
+	if ps.Median >= 2 {
+		threshold := ps.Median / 2
+		for i, n := range values {
+			if n > 0 && n <= threshold {
+				ps.UnderPlayed = append(ps.UnderPlayed, ParticipationEntry{
+					Name:  names[i],
+					Games: n,
+				})
+			}
+		}
+		sort.SliceStable(ps.UnderPlayed, func(i, j int) bool {
+			if ps.UnderPlayed[i].Games != ps.UnderPlayed[j].Games {
+				return ps.UnderPlayed[i].Games < ps.UnderPlayed[j].Games
+			}
+			return ps.UnderPlayed[i].Name < ps.UnderPlayed[j].Name
+		})
+	}
+	return ps
 }
 
 func max1i(v int) int {
@@ -355,6 +484,43 @@ func (r *TournamentResult) PrintDashboard(showMatchup bool) {
 		for i, e := range r.TrueSkill {
 			fmt.Printf("  %d. %-40s μ=%.1f  σ=%.1f  conservative=%.1f  (%d games)\n",
 				i+1, e.Commander, e.Mu, e.Sigma, e.Conservative, e.Games)
+		}
+	}
+
+	// R60 seat-bias measurement output. Only printed when populated
+	// (rotate mode aggregator). Per-seat totals + per-(commander, seat)
+	// breakdown surface play-position bias the per-commander winrate
+	// table can't show. See docs/seat-bias-measurement-r60.md.
+	if len(r.WinsBySeat) > 0 && games > 0 {
+		fmt.Println()
+		fmt.Println("SEAT-POSITION BIAS:")
+		expected := float64(games) / float64(len(r.WinsBySeat))
+		for i, w := range r.WinsBySeat {
+			rate := 100 * float64(w) / float64(games)
+			delta := float64(w) - expected
+			fmt.Printf("  seat %d: %4d wins  %5.1f%%  (expected %.1f, Δ %+.1f)\n",
+				i, w, rate, expected, delta)
+		}
+		if len(r.WinsByCommanderBySeat) > 0 {
+			fmt.Println()
+			fmt.Println("WINRATE BY (COMMANDER, SEAT):")
+			fmt.Printf("  %-40s %8s %8s %8s %8s\n", "commander", "seat0", "seat1", "seat2", "seat3")
+			for _, name := range r.CommanderNames {
+				wins := r.WinsByCommanderBySeat[name]
+				gp := r.GamesByCommanderBySeat[name]
+				if len(wins) == 0 || len(gp) == 0 {
+					continue
+				}
+				fmt.Printf("  %-40s", name)
+				for i := 0; i < len(wins) && i < 4; i++ {
+					if gp[i] > 0 {
+						fmt.Printf(" %6.1f%% ", 100*float64(wins[i])/float64(gp[i]))
+					} else {
+						fmt.Printf(" %7s ", "--")
+					}
+				}
+				fmt.Println()
+			}
 		}
 	}
 

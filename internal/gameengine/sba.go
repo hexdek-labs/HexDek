@@ -170,6 +170,37 @@ func StateBasedActions(gs *GameState) bool {
 		}
 		gs.Flags["game_draw"] = 1
 		gs.Flags["ended"] = 1
+		// r60 loki stress / seed 1337 game 465: previously, the cap path
+		// only set ended/game_draw flags and returned. The very next
+		// StateBasedActions call short-circuited on the ended flag (see
+		// line 41), but CheckEnd's `len(alive) > 1` gate still reported
+		// "game continues" because no seats were marked Lost — so the
+		// turn loop kept calling TakeTurn with SBAs permanently muted.
+		// Combat damage subsequently took a seat to life=0 with no SBA
+		// pass to set Lost, surfacing as "SBACompleteness — SBA 704.5a
+		// missed" until the maxTurns cap.
+		//
+		// CR §104.4b: a mandatory loop with no break declares the game
+		// a draw for every player still in it. Mark every non-Lost seat
+		// as Lost with a distinct reason — that drains LivingSeats to 0
+		// so CheckEnd returns true on the next call (simultaneous-elim
+		// draw branch), and invariant scans see no alive-at-life-≤-0
+		// seats since all are Lost.
+		for _, s := range gs.Seats {
+			if s == nil || s.Lost {
+				continue
+			}
+			markSeatLost(s, "mandatory loop draw (CR 104.4b via SBA cap)")
+			gs.LogEvent(Event{
+				Kind:   "seat_lost",
+				Seat:   s.Idx,
+				Target: -1,
+				Details: map[string]interface{}{
+					"rule":   "104.4b",
+					"reason": "mandatory_loop_draw",
+				},
+			})
+		}
 	}
 	if anyChange {
 		gs.LogEvent(Event{
@@ -286,8 +317,7 @@ func sba704_5a(gs *GameState) bool {
 				"reason": "life_total_zero_or_less",
 			},
 		})
-		s.Lost = true
-		s.LossReason = "life total 0 or less (CR 704.5a)"
+		markSeatLost(s, "life total 0 or less (CR 704.5a)")
 		changed = true
 	}
 	return changed
@@ -316,8 +346,7 @@ func sba704_5b(gs *GameState) bool {
 			},
 		})
 		if !s.Lost {
-			s.Lost = true
-			s.LossReason = "drew from empty library (CR 704.5b)"
+			markSeatLost(s, "drew from empty library (CR 704.5b)")
 		}
 		s.AttemptedEmptyDraw = false
 		changed = true
@@ -338,8 +367,7 @@ func sba704_5c(gs *GameState) bool {
 			continue
 		}
 		if s.PoisonCounters >= 10 {
-			s.Lost = true
-			s.LossReason = "ten or more poison counters (CR 704.5c)"
+			markSeatLost(s, "ten or more poison counters (CR 704.5c)")
 			gs.LogEvent(Event{
 				Kind:   "sba_704_5c",
 				Seat:   s.Idx,
@@ -1676,8 +1704,7 @@ func sba704_6c(gs *GameState) bool {
 		for dealer, byName := range s.CommanderDamage {
 			for name, dmg := range byName {
 				if dmg >= 21 {
-					s.Lost = true
-					s.LossReason = "21+ commander damage from " + name + " (CR 704.6c)"
+					markSeatLost(s, "21+ commander damage from "+name+" (CR 704.6c)")
 					gs.LogEvent(Event{
 						Kind:   "sba_704_6c",
 						Seat:   s.Idx,
@@ -1912,6 +1939,10 @@ func destroyPermSBA(gs *GameState, p *Permanent, reason, rule string) {
 	// Detach anything that was attached to p so §704.5n/§704.5p don't
 	// mis-fire next pass.
 	detachAll(gs, p)
+	// r60: drop while_source_on_bf ZoneCastGrants sourced from p's
+	// Timestamp (Yawgmoth's Agenda, Karador, Lurrus, etc.).
+	ExpireSourceGrants(gs, p.Timestamp)
+	gs.ExpireSourceBoundPolicies(p)
 }
 
 // sacrificePermSBA mirrors destroyPermSBA but uses "sba_<rule>_sacrifice"
@@ -1957,6 +1988,20 @@ func sacrificePermSBA(gs *GameState, p *Permanent, reason, rule string, extra ma
 		FireZoneChangeTriggers(gs, p, p.Card, "battlefield", destZone)
 	}
 	detachAll(gs, p)
+	ExpireSourceGrants(gs, p.Timestamp)
+	gs.ExpireSourceBoundPolicies(p)
+}
+
+// DetachAll is the exported entry point for detachAll, callable from
+// per_card handlers that route through their package-local removePermanent
+// helper for flicker/blink/exile-self/mutate effects. The carrier permanent
+// leaves the battlefield (briefly or permanently) and any aura/equipment
+// pointing at it must drop its AttachedTo synchronously — waiting for the
+// next SBA pass leaves a window where checkAttachmentConsistency fires
+// (Loki r41/r57 cluster: "Ghoulish Impetus", "Brilliant Wings", "Dub" auras
+// attached to off-battlefield tokens). Pure delegation to detachAll.
+func DetachAll(gs *GameState, p *Permanent) {
+	detachAll(gs, p)
 }
 
 // detachAll nils out AttachedTo on every permanent pointing at p, across
@@ -1987,6 +2032,29 @@ func ruleToEventSuffix(rule string) string {
 		}
 	}
 	return string(out)
+}
+
+// markSeatLost flips s.Lost, stamps the reason, and drains any mana the
+// seat is holding. The §704.5e empty-mana-pool reaper only runs on phase
+// change, so a seat that loses mid-step would otherwise retain its
+// ManaPool until the next phase boundary — `checkResourceConservation`
+// catches that as "seat N is Lost but has ManaPool=X". A Lost seat
+// cannot spend mana anyway, so draining on the loss transition is the
+// natural cleanup site.
+//
+// Used at every `s.Lost = true` site in this file (§704.5a life-loss,
+// §704.5b empty-library draw, §704.5c poison, §704.6c commander damage,
+// and the §104.4b mandatory-loop-draw cap path).
+func markSeatLost(s *Seat, reason string) {
+	if s == nil {
+		return
+	}
+	s.Lost = true
+	s.LossReason = reason
+	s.ManaPool = 0
+	if s.Mana != nil {
+		s.Mana.Clear()
+	}
 }
 
 // isCommanderName returns true if name matches any entry in the seat's

@@ -78,6 +78,12 @@ func displacerKittenOnCast(gs *gameengine.GameState, perm *gameengine.Permanent,
 	gs.UnregisterContinuousEffectsForPermanent(target)
 	// Fire LTB triggers for the departing permanent.
 	gameengine.FireZoneChangeTriggers(gs, target, card, "battlefield", "exile")
+	// Detach any auras/equipment that were attached to the flickered carrier.
+	// Blink re-enters as a NEW permanent (createPermanent below), so attached
+	// objects don't follow — they would point at a no-longer-on-BF perm and
+	// trip checkAttachmentConsistency in the window before SBA §704.5m/n
+	// cleans them up (Loki r41/r57 cluster).
+	gameengine.DetachAll(gs, target)
 	newPerm := createPermanent(gs, owner, card, false)
 	gs.LogEvent(gameengine.Event{
 		Kind:   "flicker",

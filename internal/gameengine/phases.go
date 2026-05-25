@@ -314,10 +314,21 @@ func ScanExpiredDurations(gs *GameState, phase, step string) {
 		}
 
 		ExpireZoneCastGrants(gs)
+		ExpireEOTGraveyardFlashbackGrants(gs)
 		ExpireOrphanedGraveyardFlashbackGrants(gs)
+		ExpireZoneCastPoliciesByDuration(gs)
+		ExpirePlayFromGraveyardForTurn(gs)
 		ClearMayhemDiscards(gs)
 		ClearVisitFlags(gs)
 		EndStepClearStartYourEngines(gs)
+
+		// Reset the per-card trigger runaway-detection counter. This is a
+		// per-turn budget, not a lifetime cap; without the reset a long
+		// game accumulates trigger fires until every subsequent dispatch
+		// is silently swallowed, breaking TriggerCompleteness on every
+		// later death event (Loki r41 cluster, dominantly seen at turn
+		// 40+ when the counter exceeds 2000).
+		delete(gs.Flags, "trigger_total")
 	}
 
 	// 3) Delayed triggers — we don't expire them here; they consume

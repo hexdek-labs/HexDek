@@ -12,17 +12,29 @@ import (
 	"github.com/hexdek/hexdek/internal/anticheat"
 )
 
+// adminAnomalyAuth gates the admin-anomaly + admin-conviction surfaces.
+// Fail-closed by design: requires HEXDEK_ADMIN_OWNER to be set in the
+// server environment and an exact (case-insensitive) match against the
+// X-HexDek-Owner request header.
+//
+// Security history (r60 audit): the previous implementation fell back
+// to a "host is localhost" check (`r.Host == "localhost"`) when the env
+// var was unset. r.Host is the client-controlled `Host:` request
+// header, NOT the socket peer — any remote attacker reaching the
+// server could send `Host: localhost` and bypass admin auth. Caddy on
+// MISTY preserves the original Host header into the backend by
+// default, so the bypass was reachable through the public reverse
+// proxy as well as direct port hits on the LAN / WireGuard. Fix:
+// drop the localhost fallback entirely. Dev environments must set
+// `HEXDEK_ADMIN_OWNER=<dev-slug>` explicitly — one-line addition that
+// removes a footgun whose only "convenience" was a CWE-290 bypass.
 func adminAnomalyAuth(r *http.Request) bool {
-	owner := strings.ToLower(strings.TrimSpace(r.Header.Get("X-HexDek-Owner")))
 	expected := strings.ToLower(strings.TrimSpace(os.Getenv("HEXDEK_ADMIN_OWNER")))
-	if expected != "" {
-		return owner != "" && owner == expected
+	if expected == "" {
+		return false
 	}
-	host := r.Host
-	if i := strings.IndexByte(host, ':'); i >= 0 {
-		host = host[:i]
-	}
-	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+	owner := strings.ToLower(strings.TrimSpace(r.Header.Get("X-HexDek-Owner")))
+	return owner != "" && owner == expected
 }
 
 type flagJSON struct {
@@ -64,11 +76,11 @@ func toFlagJSON(f anticheat.Flag) flagJSON {
 func HandleListAnomalies(auditor *anticheat.StatisticalAuditor) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !adminAnomalyAuth(r) {
-			http.Error(w, "forbidden", http.StatusForbidden)
+			writeError(w, http.StatusForbidden, "forbidden")
 			return
 		}
 		if auditor == nil {
-			http.Error(w, "anomaly auditor not configured", http.StatusServiceUnavailable)
+			writeError(w, http.StatusServiceUnavailable, "anomaly auditor not configured")
 			return
 		}
 		onlyActive := r.URL.Query().Get("include_resolved") != "1"
@@ -80,7 +92,7 @@ func HandleListAnomalies(auditor *anticheat.StatisticalAuditor) http.HandlerFunc
 		}
 		flags, err := auditor.ListFlags(r.Context(), onlyActive, limit)
 		if err != nil {
-			http.Error(w, "list flags: "+err.Error(), http.StatusInternalServerError)
+			writeError(w, http.StatusInternalServerError, "list flags: "+err.Error())
 			return
 		}
 		out := make([]flagJSON, len(flags))
@@ -98,17 +110,17 @@ func HandleListAnomalies(auditor *anticheat.StatisticalAuditor) http.HandlerFunc
 func HandleResolveAnomaly(auditor *anticheat.StatisticalAuditor) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !adminAnomalyAuth(r) {
-			http.Error(w, "forbidden", http.StatusForbidden)
+			writeError(w, http.StatusForbidden, "forbidden")
 			return
 		}
 		if auditor == nil {
-			http.Error(w, "anomaly auditor not configured", http.StatusServiceUnavailable)
+			writeError(w, http.StatusServiceUnavailable, "anomaly auditor not configured")
 			return
 		}
 		idStr := r.PathValue("id")
 		id, err := strconv.ParseInt(idStr, 10, 64)
 		if err != nil || id <= 0 {
-			http.Error(w, "invalid id", http.StatusBadRequest)
+			writeError(w, http.StatusBadRequest, "invalid id")
 			return
 		}
 		var body struct {
@@ -119,10 +131,10 @@ func HandleResolveAnomaly(auditor *anticheat.StatisticalAuditor) http.HandlerFun
 
 		if err := auditor.ResolveFlag(r.Context(), id, by, body.Note); err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				http.Error(w, "flag not found or already resolved", http.StatusNotFound)
+				writeError(w, http.StatusNotFound, "flag not found or already resolved")
 				return
 			}
-			http.Error(w, "resolve: "+err.Error(), http.StatusInternalServerError)
+			writeError(w, http.StatusInternalServerError, "resolve: "+err.Error())
 			return
 		}
 		writeJSON(w, map[string]any{"resolved": true, "id": id})

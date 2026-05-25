@@ -91,14 +91,19 @@ const permStat = (p) => {
 
 const stackPerms = (perms) => {
   const groups = {}
-  const order = []
+  const commanders = []
+  const rest = []
   for (const p of perms) {
-    if (p.is_commander) { order.push({ ...p, count: 1 }); continue }
+    if (p.is_commander) { commanders.push({ ...p, count: 1 }); continue }
     const key = p.name || '???'
-    if (!groups[key]) { groups[key] = { ...p, count: 1 }; order.push(groups[key]) }
+    if (!groups[key]) { groups[key] = { ...p, count: 1 }; rest.push(groups[key]) }
     else { groups[key].count++; if (p.tapped) groups[key].tapped = true }
   }
-  return order
+  // Commanders first so they never get cut off by the slice(0, 12) cap in
+  // the render. Backend battlefield order is insertion-order, which means
+  // a commander cast on turn 4 sits behind every land/creature played
+  // before it — easily past index 12 in a developed boardstate.
+  return commanders.concat(rest)
 }
 
 const LOG_COLORS = {
@@ -400,6 +405,7 @@ export default function SpectateRoom() {
                         const stacked = stackPerms(perms)
                         return stacked.slice(0, 12).map((p, j) => (
                           <div key={j} title={`${p.name}${p.count > 1 ? ` ×${p.count}` : ''}`} className="perm-tile"
+                            data-stack={p.count >= 6 ? '3' : p.count >= 3 ? '2' : p.count >= 2 ? '1' : undefined}
                             style={{
                               borderColor: p.is_commander ? 'var(--warn)' : 'var(--rule-2)',
                               opacity: p.tapped ? 0.4 : 1, transform: p.tapped ? 'rotate(6deg)' : 'none',
@@ -410,11 +416,30 @@ export default function SpectateRoom() {
                           </div>
                         ))
                       })()}
-                      {(() => { const stacked = stackPerms(perms); return stacked.length > 12 ? <span className="t-xs muted" style={{ alignSelf: 'center', fontSize: 9 }}>+{stacked.length - 12}</span> : null })()}
+                      {(() => {
+                        const stacked = stackPerms(perms)
+                        if (stacked.length <= 12) return null
+                        const hidden = stacked.slice(12)
+                        const tip = hidden.map(p => `${p.name || '???'}${p.count > 1 ? ` ×${p.count}` : ''}`).join('\n')
+                        return <span className="perm-overflow" title={tip}>+{hidden.length}</span>
+                      })()}
                     </div>
                   </div>
                   <div className="seat-ft">
-                    <span>H{s.hand_size} L{s.library_size} G{s.gy_size} B{perms.length}</span>
+                    <span>
+                      H{s.hand_size}{' '}
+                      <span
+                        className={s.library_size <= 3 ? 'lib-pip--crit' : s.library_size <= 7 ? 'lib-pip--low' : ''}
+                        title={s.library_size <= 3 ? 'Mill danger' : s.library_size <= 7 ? 'Low library' : `${s.library_size} cards left`}
+                      >L{s.library_size}</span>{' '}
+                      G{s.gy_size} B{perms.length}
+                      {s.mana_pool > 0 && (
+                        <>
+                          {' '}
+                          <span className="mana-pip" title={`${s.mana_pool} floating mana`}>◊{s.mana_pool}</span>
+                        </>
+                      )}
+                    </span>
                     {isActive && <span style={{ color: 'var(--ok)' }}>● PRI</span>}
                   </div>
                 </div>

@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/hexdek/hexdek/internal/ai"
+	"github.com/hexdek/hexdek/internal/auth"
 	"github.com/hexdek/hexdek/internal/credits"
 	"github.com/hexdek/hexdek/internal/db"
 	"github.com/hexdek/hexdek/internal/friends"
@@ -63,6 +64,22 @@ func main() {
 	}
 	defer database.Close()
 	log.Printf("sqlite ready at %s", *dbPath)
+
+	// Background context for long-lived workers (session GC, etc.). The
+	// SIGINT/SIGTERM handler below cancels this so workers shut down
+	// cleanly alongside the http server. Defined here at top level so
+	// each subsystem that wants graceful shutdown can plug into it.
+	bgCtx, bgCancel := context.WithCancel(context.Background())
+	defer bgCancel()
+
+	// r60: wire the long-documented session-expiry reaper that was
+	// never actually scheduled. Runs one synchronous pass now (clears
+	// rows that expired during downtime), then ticks hourly until
+	// bgCancel fires at shutdown. Without this, expired session rows
+	// accumulated in the SQLite session table indefinitely — privacy
+	// leak (device_id + last_used_at history persists past intended
+	// lifetime), audit-trail noise, and slow row bloat.
+	auth.RunSessionGC(bgCtx, database, time.Hour)
 
 	// Load test deck (Ship 1 demo)
 	deck, err := moxfield.LoadDeckFromFile(*deckPath)
@@ -121,10 +138,75 @@ func main() {
 		"data/decks",
 		database,
 	)
+	// r60 round 2: per-IP token buckets on the two mutating Showmatch
+	// endpoints. Gauntlet start is already protected by a global cap-2
+	// semaphore + credit gate, but the limiter blocks rapid-cycle abuse
+	// against the cap. Spectate spawn has no upstream protection and
+	// each room runs a game-driver goroutine. Limiters are nil-safe in
+	// tests / ephemeral builds; here we wire defaults for the
+	// production server.
+	sm.GauntletLimiter = hexapi.NewRateLimiter(3, 1.0/60.0)      // 3-burst, 1/min
+	sm.SpectateSpawnLimiter = hexapi.NewRateLimiter(5, 1.0/30.0) // 5-burst, 1 per 30s
 	sm.RegisterShowmatch(mux)
 
 	// HexDek API: deck listing, Freya analysis, live stats
-	hexAPI := &hexapi.Handler{DecksDir: "data/decks", Showmatch: sm, IndexHTMLPath: *indexHTML}
+	hexAPI := &hexapi.Handler{
+		DecksDir:      "data/decks",
+		Showmatch:     sm,
+		IndexHTMLPath: *indexHTML,
+		// r60: per-IP token bucket on POST /api/feedback. 5-token
+		// burst + 1-token-per-minute refill — enough for a real
+		// user opening multiple bug reports in a session, tight
+		// enough to throttle a bot blasting the disk.
+		FeedbackLimiter: hexapi.NewRateLimiter(5, 1.0/60.0),
+		// r60 round 2: per-IP token bucket shared across the deck-write
+		// endpoints (POST /api/decks, POST /api/decks/import, POST
+		// /api/import/moxfield, POST /api/decks/{owner}/{id}/analyze).
+		// 10-burst + 1 per 30s — sized for a legitimate "import 5
+		// decks back-to-back, then analyze a couple" session, tight
+		// enough to stop a bot from filling DecksDir or pinning the
+		// Freya subprocess queue.
+		DeckImportLimiter: hexapi.NewRateLimiter(10, 1.0/30.0),
+		// r60: FIRST per-user (not per-IP) rate limit. Buckets by
+		// X-HexDek-Owner so a household sharing one IP doesn't
+		// cross-throttle and one user's edit session on phone + laptop
+		// shares a single budget. Applied to PUT/PATCH/DELETE on
+		// /api/decks/{owner}/{id} — the owner-authenticated deck
+		// mutation surface that previously had no rate limit at all.
+		// 30-burst + 1 per 10s — sized for a real "tidy up my deck
+		// collection" session (batch rename + delete a handful of old
+		// versions) without letting a runaway script churn the
+		// versioning DAG.
+		DeckMutationLimiter: hexapi.NewRateLimiter(30, 1.0/10.0),
+	}
+	// r60: stateless CSRF tokens for destructive endpoints (DELETE
+	// /api/decks/{owner}/{id} + POST /api/decks/{owner}/{id}/clone).
+	// Wiring is opt-in via HEXDEK_CSRF_ENFORCE=1 so the existing React
+	// SPA keeps working until it's been updated to call GET /api/csrf
+	// and echo the token in X-CSRF-Token. When unset (default):
+	//   - CSRFStore is nil
+	//   - GET /api/csrf returns 503 (clear signal that the server
+	//     isn't participating in tokens yet)
+	//   - RequireCSRF wrappers on DELETE/clone pass through unchanged
+	// When HEXDEK_CSRF_ENFORCE=1: both issuance and enforcement go live.
+	// Secret source: HEXDEK_CSRF_SECRET env (preferred for multi-replica
+	// deployments where tokens must survive a single node's restart);
+	// falls back to per-boot random bytes.
+	if os.Getenv("HEXDEK_CSRF_ENFORCE") == "1" {
+		csrfSecret := []byte(os.Getenv("HEXDEK_CSRF_SECRET"))
+		if len(csrfSecret) == 0 {
+			var err error
+			csrfSecret, err = hexapi.RandomCSRFSecret()
+			if err != nil {
+				log.Fatalf("csrf: random secret: %v", err)
+			}
+			log.Printf("csrf: HEXDEK_CSRF_SECRET unset, using per-boot random secret (tokens won't survive restart)")
+		}
+		hexAPI.CSRFStore = hexapi.NewCSRFStore(csrfSecret, 0) // default 1-hour TTL
+		log.Printf("csrf: enforcement ENABLED on DELETE + clone endpoints")
+	} else {
+		log.Printf("csrf: disabled (set HEXDEK_CSRF_ENFORCE=1 to enable token issuance + enforcement)")
+	}
 	hexAPI.SetDB(database)
 	if err := hexapi.EnsureDeckMetaSchema(context.Background(), database); err != nil {
 		log.Fatalf("deck_meta schema: %v", err)
@@ -211,7 +293,7 @@ func main() {
 	log.Printf("Ship 2: curl -XPOST http://%s/api/device/register -d '{\"display_name\":\"Hex\"}'", *addr)
 	log.Printf("Ship 3: ws://%s/ws/party/{id}?token={token}", *addr)
 
-	handler := corsMiddleware(pincerTracker.Middleware(userprofile.LocaleMiddleware(mux)))
+	handler := hexapi.RequestIDMiddleware(corsMiddleware(pincerTracker.Middleware(userprofile.LocaleMiddleware(mux))))
 	httpSrv := &http.Server{
 		Addr:    *addr,
 		Handler: handler,
@@ -248,6 +330,11 @@ func main() {
 		}
 	}
 
+	// Cancel bgCtx FIRST so background workers (session GC, etc.) stop
+	// touching the DB before Shutdown drains in-flight requests — keeps
+	// the shutdown log readable and avoids a racing reaper firing
+	// against a closing connection pool.
+	bgCancel()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
@@ -406,7 +493,12 @@ func corsMiddleware(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-Id")
+		// Expose X-Request-Id so browser clients can read it off
+		// the response and surface it in error reports — the
+		// header is non-CORS-safelisted, so without this it's
+		// hidden from fetch().
+		w.Header().Set("Access-Control-Expose-Headers", "X-Request-Id")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return

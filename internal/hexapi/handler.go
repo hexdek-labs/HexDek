@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/hexdek/hexdek/internal/analytics"
+	"github.com/hexdek/hexdek/internal/archidekt"
 	"github.com/hexdek/hexdek/internal/db"
 	"github.com/hexdek/hexdek/internal/versioning"
 )
@@ -32,8 +33,60 @@ type Handler struct {
 	db            *sql.DB // optional — used for deck_meta (custom name, etc.)
 	ownerAliases  map[string]string // email prefix → owner slug
 
+	// FeedbackLimiter rate-limits POST /api/feedback per client IP. The
+	// endpoint is unauthenticated and writes a file to disk per
+	// request, so without a limiter a single bot can fill the
+	// feedback dir indefinitely. Nil = no limiting (backwards
+	// compatible with binaries that don't yet construct a limiter);
+	// cmd/hexdek-server sets a default (5-burst, 1/min refill) at
+	// startup.
+	FeedbackLimiter *RateLimiter
+
+	// DeckImportLimiter rate-limits the anonymous deck-write endpoints
+	// per client IP: POST /api/decks, POST /api/decks/import, POST
+	// /api/import/moxfield, and POST /api/decks/{owner}/{id}/analyze.
+	// Each call writes a file under DecksDir or kicks off an external
+	// fetch + Freya subprocess (analyze) — unbounded calls let an
+	// attacker fill disk and saturate the analyze mutex. Nil = no
+	// limiting (backwards-compatible). cmd/hexdek-server sets a
+	// default (10-burst, 1 per 30s refill) at startup.
+	DeckImportLimiter *RateLimiter
+
+	// CSRFStore mints and verifies stateless CSRF tokens. When non-nil
+	// the destructive endpoints (DELETE deck, POST clone) require a
+	// valid X-CSRF-Token header sourced from GET /api/csrf. When nil
+	// the wrapper is a pass-through — preserves backwards compatibility
+	// with binaries that haven't constructed the store yet, and lets
+	// cmd/hexdek-server gate enforcement on HEXDEK_CSRF_ENFORCE so the
+	// existing React SPA keeps working until it's updated to issue +
+	// echo the token.
+	CSRFStore *CSRFStore
+
+	// DeckMutationLimiter is the first PER-USER (not per-IP) limiter.
+	// Buckets by X-HexDek-Owner so the rate budget follows the user
+	// across devices and networks. Applied to the owner-authenticated
+	// deck mutation endpoints (PUT/PATCH/DELETE /api/decks/{owner}/{id})
+	// which previously had no rate limit at all. Per-IP keying was
+	// wrong here for two reasons: (1) a household sharing one IP would
+	// cross-throttle (alice's bulk edits would lock bob out); (2) a
+	// single user with a phone + laptop on different networks would
+	// get two separate budgets for what's actually one human's edit
+	// session. Falls back to per-IP bucketing when the owner header
+	// is missing — see ownerOrIPKey. Nil = no limiting (backwards
+	// compatible); cmd/hexdek-server sets a default at startup.
+	DeckMutationLimiter *RateLimiter
+
 	deckSubsMu sync.RWMutex
 	deckSubs   map[string]map[chan deckEvent]struct{}
+
+	// snapshotCache caches parsed heimdall.GameObservationSnapshot
+	// values for /api/games/{id}/summary + /api/games/{id}/summary.pdf
+	// + /api/games/{id}/replay. Lazily initialized on first read via
+	// ensureSnapshotCache so existing constructors don't need to know
+	// about it. Versioned by showmatch_game_observation.created_at so
+	// upserts naturally invalidate cached entries.
+	snapshotCache     *snapshotCache
+	snapshotCacheOnce sync.Once
 }
 
 type deckEvent struct {
@@ -103,7 +156,7 @@ func (h *Handler) LoadOwnerAliases(path string) {
 func (h *Handler) handleResolveOwner(w http.ResponseWriter, r *http.Request) {
 	email := strings.TrimSpace(r.URL.Query().Get("email"))
 	if email == "" {
-		http.Error(w, "email required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "email required")
 		return
 	}
 	prefix := strings.ToLower(strings.Split(email, "@")[0])
@@ -129,14 +182,26 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/decks/{owner}/{id}", h.handleGetDeck)
 	mux.HandleFunc("PUT /api/decks/{owner}/{id}", h.handleUpdateDeck)
 	mux.HandleFunc("PATCH /api/decks/{owner}/{id}", h.handlePatchDeck)
-	mux.HandleFunc("DELETE /api/decks/{owner}/{id}", h.handleDeleteDeck)
+	// CSRF-gated when h.CSRFStore != nil; pass-through otherwise. Both
+	// endpoints below are destructive / state-creating with no second
+	// chance, so they're the natural first wave for token enforcement.
+	mux.HandleFunc("DELETE /api/decks/{owner}/{id}", RequireCSRF(h.CSRFStore, h.handleDeleteDeck))
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/versions", h.handleListVersions)
+	mux.HandleFunc("GET /api/decks/{owner}/{id}/versions/{version}", h.handleGetVersion)
+	mux.HandleFunc("GET /api/decks/{owner}/{id}/budget", h.handleDeckBudget)
+	mux.HandleFunc("GET /api/decks/{owner}/{id}/version-trends", h.handleDeckVersionTrends)
+	mux.HandleFunc("GET /api/decks/{owner}/{id}/archive", h.handleDeckArchive)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/analysis", h.handleGetAnalysis)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/matchups", h.handleDeckMatchups)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/elo-history", h.handleDeckEloHistory)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/upgrade", h.handleDeckUpgrade)
 	mux.HandleFunc("POST /api/decks/{owner}/{id}/analyze", h.handleRunAnalysis)
-	mux.HandleFunc("POST /api/decks/{owner}/{id}/clone", h.handleCloneDeck)
+	mux.HandleFunc("POST /api/decks/{owner}/{id}/clone", RequireCSRF(h.CSRFStore, h.handleCloneDeck))
+	mux.HandleFunc("POST /api/decks/{owner}/{id}/fork", RequireCSRF(h.CSRFStore, h.handleForkDeck))
+	mux.HandleFunc("POST /api/decks/{owner}/{id}/archetype-feedback", RequireCSRF(h.CSRFStore, h.handleArchetypeFeedback))
+	mux.HandleFunc("GET /api/decks/{owner}/{id}/archetype-history", h.handleArchetypeHistory)
+	mux.HandleFunc("GET /api/freya/training-signal", h.handleArchetypeTrainingSignal)
+	mux.HandleFunc("GET /api/decks/{owner}/{id}/freya-export", h.handleFreyaExport)
 	// SPA share page with OG meta injection — Caddy can route /decks/{owner}/{id}
 	// here for crawler User-Agents (or unconditionally) so Discord/Twitter unfurls
 	// pick up per-deck previews.
@@ -154,12 +219,16 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/cards/{name}/stats", h.handleCardStats)
 	mux.HandleFunc("GET /api/cards/{name}/performance", h.handleCardPerformance)
 	mux.HandleFunc("GET /api/meta", h.handleMeta)
+	mux.HandleFunc("GET /api/meta/trends", h.handleMetaTrends)
+	mux.HandleFunc("GET /api/meta/evolution", h.handleMetaEvolution)
+	mux.HandleFunc("GET /api/meta/archetype-vs-archetype", h.handleArchetypeMatrix)
 	mux.HandleFunc("GET /api/rivalry/{owner}/{id}", h.handleRivalry)
 	mux.HandleFunc("GET /api/threat-graph/{owner}/{id}", h.handleThreatGraph)
 	mux.HandleFunc("GET /api/leaderboard", h.handleLeaderboard)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/lineage", h.handleDeckLineage)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/similar", h.handleSimilarDecks)
 	mux.HandleFunc("POST /api/import/moxfield", h.handleMoxfieldImport)
+	mux.HandleFunc("POST /api/import/archidekt", h.handleArchidektImport)
 	mux.HandleFunc("GET /api/imports/{owner}", h.handleListImports)
 	mux.HandleFunc("GET /api/imports/source/moxfield", h.handleMoxfieldSources)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/events", h.handleDeckEvents)
@@ -177,6 +246,24 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/telemetry/stitch", h.handleStitch)
 	mux.HandleFunc("GET /api/resolve-owner", h.handleResolveOwner)
 	mux.HandleFunc("GET /api/tags", h.handleListTags)
+	mux.HandleFunc("GET /api/players/{id}/trends", h.handlePlayerTrends)
+	mux.HandleFunc("GET /api/players/compare", h.handlePlayerCompare)
+	mux.HandleFunc("GET /api/tournament/{id}/stats", h.handleTournamentStats)
+	mux.HandleFunc("GET /api/games/{id}/summary", h.handleGameSummary)
+	mux.HandleFunc("GET /api/games/{id}/replay", h.handleGameReplay)
+	mux.HandleFunc("GET /api/games/{id}/summary.pdf", h.handleGameSummaryPDF)
+	mux.HandleFunc("GET /api/games/summaries", h.handleGameSummaryArchive)
+	mux.HandleFunc("GET /api/games/search", h.handleGameSearch)
+	mux.HandleFunc("GET /api/games/compare", h.handleGameCompare)
+	// CSRF token issuance — always registered. Returns 503 when the
+	// store is nil so clients can detect that the server isn't
+	// participating in token-based CSRF and fall back to the existing
+	// custom-header-only protection.
+	mux.HandleFunc("GET /api/csrf", HandleIssueCSRF(h.CSRFStore))
+	// Webhook subscriptions — owner-registered HTTP callbacks for
+	// engine events (currently just game.end). Returns 503 when h.db
+	// is nil so the registry can detect that no SQLite is wired.
+	h.RegisterWebhookRoutes(mux)
 }
 
 type DeckSummary struct {
@@ -197,6 +284,7 @@ type DeckSummary struct {
 	Archetype        string    `json:"archetype,omitempty"`
 	Legal            *bool     `json:"legal,omitempty"`
 	Tags             []string  `json:"tags,omitempty"`
+	SystemTags       []string  `json:"system_tags,omitempty"`
 }
 
 func (h *Handler) handleListDecks(w http.ResponseWriter, r *http.Request) {
@@ -206,7 +294,7 @@ func (h *Handler) handleListDecks(w http.ResponseWriter, r *http.Request) {
 	decks := []DeckSummary{}
 	owners, err := os.ReadDir(h.DecksDir)
 	if err != nil {
-		http.Error(w, "cannot read decks directory", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot read decks directory")
 		return
 	}
 
@@ -266,6 +354,7 @@ func (h *Handler) handleListDecks(w http.ResponseWriter, r *http.Request) {
 			decks[i].Name = custom
 		}
 		decks[i].Tags = h.loadTags(r.Context(), decks[i].Owner, decks[i].ID)
+		decks[i].SystemTags = loadFreyaSystemTags(h.DecksDir, decks[i].Owner, decks[i].ID)
 	}
 
 	sort.Slice(decks, func(i, j int) bool {
@@ -317,19 +406,19 @@ func (h *Handler) handleGetDeck(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
 	deckPath := findDeckFile(h.DecksDir, owner, id)
 	if deckPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
 	data, err := os.ReadFile(deckPath)
 	if err != nil {
-		http.Error(w, "cannot read deck", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot read deck")
 		return
 	}
 
@@ -370,20 +459,26 @@ func (h *Handler) handleGetDeck(w http.ResponseWriter, r *http.Request) {
 	production := computeManaProduction(h.cardDB, cards)
 	customName := h.loadCustomName(r.Context(), owner, id)
 	clonedFrom := h.loadClonedFrom(r.Context(), owner, id)
+	forkedFrom := h.loadForkedFrom(r.Context(), owner, id)
 	tags := h.loadTags(r.Context(), owner, id)
+	systemTags := loadFreyaSystemTags(h.DecksDir, owner, id)
+	archetypeFeedback := h.loadArchetypeFeedback(r.Context(), owner, id)
 	writeJSON(w, map[string]any{
-		"id":              id,
-		"owner":           owner,
-		"commander":       commander,
-		"commander_card":  cmdrCard,
-		"custom_name":     customName,
-		"cloned_from":     clonedFrom,
-		"bracket":         bracket,
-		"color":           color,
-		"card_count":      totalCards,
-		"cards":           cards,
-		"mana_production": production,
-		"tags":            tags,
+		"id":                 id,
+		"owner":              owner,
+		"commander":          commander,
+		"commander_card":     cmdrCard,
+		"custom_name":        customName,
+		"cloned_from":        clonedFrom,
+		"forked_from":        forkedFrom,
+		"bracket":            bracket,
+		"color":              color,
+		"card_count":         totalCards,
+		"cards":              cards,
+		"mana_production":    production,
+		"tags":               tags,
+		"system_tags":        systemTags,
+		"archetype_feedback": archetypeFeedback,
 	})
 }
 
@@ -451,20 +546,26 @@ func computeManaProduction(cardDB map[string]oracleCard, cards []map[string]any)
 }
 
 func (h *Handler) handleUpdateDeck(w http.ResponseWriter, r *http.Request) {
+	// Per-user rate-limit. Replaces a deck file on every call; bursts
+	// fan into versioning + disk churn. Keyed by owner so alice and
+	// bob on the same household IP don't cross-throttle.
+	if enforceRateLimitByOwner(h.DeckMutationLimiter, w, r, "deck update") {
+		return
+	}
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 	if !checkOwnership(r, owner) {
-		http.Error(w, "forbidden: not deck owner", http.StatusForbidden)
+		writeError(w, http.StatusForbidden, "forbidden: not deck owner")
 		return
 	}
 
 	deckPath := findDeckFile(h.DecksDir, owner, id)
 	if deckPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
@@ -473,11 +574,11 @@ func (h *Handler) handleUpdateDeck(w http.ResponseWriter, r *http.Request) {
 		DeckList string `json:"deck_list"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
 	if strings.TrimSpace(req.DeckList) == "" {
-		http.Error(w, "deck_list is required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "deck_list is required")
 		return
 	}
 
@@ -501,7 +602,7 @@ func (h *Handler) handleUpdateDeck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := os.WriteFile(deckPath, []byte(req.DeckList), 0644); err != nil {
-		http.Error(w, "cannot write deck file", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot write deck file")
 		return
 	}
 
@@ -534,25 +635,30 @@ func (h *Handler) handleUpdateDeck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleDeleteDeck(w http.ResponseWriter, r *http.Request) {
+	// Per-user rate-limit on top of CSRF + ownership. Destructive ops
+	// shouldn't run in a tight loop even from an authenticated owner.
+	if enforceRateLimitByOwner(h.DeckMutationLimiter, w, r, "deck delete") {
+		return
+	}
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 	if !checkOwnership(r, owner) {
-		http.Error(w, "forbidden: not deck owner", http.StatusForbidden)
+		writeError(w, http.StatusForbidden, "forbidden: not deck owner")
 		return
 	}
 
 	deckPath := findDeckFile(h.DecksDir, owner, id)
 	if deckPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
 	if err := os.Remove(deckPath); err != nil {
-		http.Error(w, "cannot delete deck", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot delete deck")
 		return
 	}
 
@@ -567,18 +673,18 @@ func (h *Handler) handleCloneDeck(w http.ResponseWriter, r *http.Request) {
 	srcOwner := r.PathValue("owner")
 	srcID := r.PathValue("id")
 	if !validatePathComponent(srcOwner) || !validatePathComponent(srcID) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
 	caller := strings.TrimSpace(strings.ToLower(r.Header.Get("X-HexDek-Owner")))
 	if caller == "" {
-		http.Error(w, "authentication required", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "authentication required")
 		return
 	}
 	dstOwner := sanitizeFilename(caller)
 	if dstOwner == "" {
-		http.Error(w, "invalid caller", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid caller")
 		return
 	}
 
@@ -588,9 +694,7 @@ func (h *Handler) handleCloneDeck(w http.ResponseWriter, r *http.Request) {
 	since := time.Now().Add(-time.Hour).Unix()
 	if n, err := h.cloneCountSince(r.Context(), dstOwner, since); err == nil && n >= CloneRateLimit {
 		w.Header().Set("Retry-After", "3600")
-		http.Error(w,
-			fmt.Sprintf("clone rate limit exceeded (max %d per hour)", CloneRateLimit),
-			http.StatusTooManyRequests)
+		writeError(w, http.StatusTooManyRequests, fmt.Sprintf("clone rate limit exceeded (max %d per hour)", CloneRateLimit))
 		return
 	}
 
@@ -599,19 +703,19 @@ func (h *Handler) handleCloneDeck(w http.ResponseWriter, r *http.Request) {
 	// confusing. Other handlers (PATCH, PUT) cover the legitimate
 	// "make a copy on my own deck" workflow via versioning.
 	if strings.EqualFold(srcOwner, dstOwner) {
-		http.Error(w, "cannot clone your own deck", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "cannot clone your own deck")
 		return
 	}
 
 	srcPath := findDeckFile(h.DecksDir, srcOwner, srcID)
 	if srcPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
 	dstDir := filepath.Join(h.DecksDir, dstOwner)
 	if err := os.MkdirAll(dstDir, 0755); err != nil {
-		http.Error(w, "cannot create deck directory", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot create deck directory")
 		return
 	}
 
@@ -625,18 +729,18 @@ func (h *Handler) handleCloneDeck(w http.ResponseWriter, r *http.Request) {
 		dstID = fmt.Sprintf("%s_clone%d", srcID, i)
 		dstPath = filepath.Join(dstDir, dstID+ext)
 		if i > 100 {
-			http.Error(w, "too many clones with the same name", http.StatusConflict)
+			writeError(w, http.StatusConflict, "too many clones with the same name")
 			return
 		}
 	}
 
 	deckBytes, err := os.ReadFile(srcPath)
 	if err != nil {
-		http.Error(w, "cannot read source deck", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot read source deck")
 		return
 	}
 	if err := os.WriteFile(dstPath, deckBytes, 0644); err != nil {
-		http.Error(w, "cannot write deck file", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot write deck file")
 		return
 	}
 
@@ -726,11 +830,182 @@ func (h *Handler) handleCloneDeck(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleForkDeck duplicates a public deck into the caller's collection
+// with explicit attribution preserved via `forked_from`. Distinct from
+// clone (handleCloneDeck above) in three ways:
+//
+//   1. Intent — fork is the loud-attribution "branch from someone else's
+//      deck" flow, surfaced in the UI as "Forked from <owner>/<deck>".
+//      Clone is the quieter "(CLONE)" copy with no expectation that
+//      the original owner is collaborating.
+//   2. Storage — fork meta lives in `deck_meta.forked_from` (not
+//      `cloned_from`), and fork events log to `fork_log` (not
+//      `clone_log`), so the rate-limit budgets are independent.
+//   3. Naming — the destination file is `<srcID>_fork[N]` and the
+//      display name appends " (FORK)" rather than " (CLONE)".
+//
+// Everything else (CSRF, auth header, self-fork rejection, deck file
+// copy, freya snapshot copy, fresh Freya re-run kick-off, version
+// registration, import_log entry) mirrors the clone handler so the two
+// flows stay observably parallel.
+//
+// A future PR can factor the shared duplication-with-attribution dance
+// into a private helper that both handlers call; the current shape keeps
+// the diff scoped to "add fork without touching clone".
+func (h *Handler) handleForkDeck(w http.ResponseWriter, r *http.Request) {
+	srcOwner := r.PathValue("owner")
+	srcID := r.PathValue("id")
+	if !validatePathComponent(srcOwner) || !validatePathComponent(srcID) {
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
+		return
+	}
+
+	caller := strings.TrimSpace(strings.ToLower(r.Header.Get("X-HexDek-Owner")))
+	if caller == "" {
+		writeError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+	dstOwner := sanitizeFilename(caller)
+	if dstOwner == "" {
+		writeError(w, http.StatusBadRequest, "invalid caller")
+		return
+	}
+
+	since := time.Now().Add(-time.Hour).Unix()
+	if n, err := h.forkCountSince(r.Context(), dstOwner, since); err == nil && n >= ForkRateLimit {
+		w.Header().Set("Retry-After", "3600")
+		writeError(w, http.StatusTooManyRequests, fmt.Sprintf("fork rate limit exceeded (max %d per hour)", ForkRateLimit))
+		return
+	}
+
+	if strings.EqualFold(srcOwner, dstOwner) {
+		writeError(w, http.StatusBadRequest, "cannot fork your own deck")
+		return
+	}
+
+	srcPath := findDeckFile(h.DecksDir, srcOwner, srcID)
+	if srcPath == "" {
+		writeError(w, http.StatusNotFound, "deck not found")
+		return
+	}
+
+	dstDir := filepath.Join(h.DecksDir, dstOwner)
+	if err := os.MkdirAll(dstDir, 0755); err != nil {
+		writeError(w, http.StatusInternalServerError, "cannot create deck directory")
+		return
+	}
+
+	ext := filepath.Ext(srcPath)
+	dstID := srcID + "_fork"
+	dstPath := filepath.Join(dstDir, dstID+ext)
+	for i := 2; ; i++ {
+		if _, err := os.Stat(dstPath); os.IsNotExist(err) {
+			break
+		}
+		dstID = fmt.Sprintf("%s_fork%d", srcID, i)
+		dstPath = filepath.Join(dstDir, dstID+ext)
+		if i > 100 {
+			writeError(w, http.StatusConflict, "too many forks with the same name")
+			return
+		}
+	}
+
+	deckBytes, err := os.ReadFile(srcPath)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "cannot read source deck")
+		return
+	}
+	if err := os.WriteFile(dstPath, deckBytes, 0644); err != nil {
+		writeError(w, http.StatusInternalServerError, "cannot write deck file")
+		return
+	}
+
+	srcFreyaDir := filepath.Join(h.DecksDir, srcOwner, "freya")
+	dstFreyaDir := filepath.Join(dstDir, "freya")
+	freyaCopies := map[string]string{
+		filepath.Join(srcFreyaDir, srcID+".strategy.json"): filepath.Join(dstFreyaDir, dstID+".strategy.json"),
+		filepath.Join(srcFreyaDir, srcID+"_freya.md"):      filepath.Join(dstFreyaDir, dstID+"_freya.md"),
+	}
+	freyaMade := false
+	for src, dst := range freyaCopies {
+		data, err := os.ReadFile(src)
+		if err != nil {
+			continue
+		}
+		if !freyaMade {
+			os.MkdirAll(dstFreyaDir, 0755)
+			freyaMade = true
+		}
+		os.WriteFile(dst, data, 0644)
+	}
+
+	var cards []map[string]any
+	if strings.HasSuffix(dstPath, ".json") {
+		cards = parseDeckJSON(deckBytes)
+	} else {
+		cards = parseDeckList(string(deckBytes))
+	}
+	cmdrCard := ""
+	for _, line := range strings.Split(string(deckBytes), "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "COMMANDER:") {
+			cmdrCard = strings.TrimSpace(strings.TrimPrefix(line, "COMMANDER:"))
+			break
+		}
+	}
+	var cardNames []string
+	for _, c := range cards {
+		if n, ok := c["name"].(string); ok {
+			cardNames = append(cardNames, n)
+		}
+	}
+	go h.registerDeckVersion(dstOwner, dstID, cmdrCard, cardNames)
+
+	srcCustom := h.loadCustomName(r.Context(), srcOwner, srcID)
+	forkName := srcCustom
+	if forkName == "" {
+		forkName = strings.ToUpper(srcID)
+	}
+	forkName = forkName + " (FORK)"
+	h.saveCustomName(r.Context(), dstOwner, dstID, forkName)
+
+	srcKey := srcOwner + "/" + srcID
+	dstKey := dstOwner + "/" + dstID
+	if err := h.saveForkedFrom(r.Context(), dstOwner, dstID, srcKey); err != nil {
+		log.Printf("fork: saveForkedFrom failed: %v", err)
+	}
+	if err := h.recordFork(r.Context(), dstOwner, srcKey, dstKey); err != nil {
+		log.Printf("fork: recordFork failed: %v", err)
+	}
+
+	h.logImport(r.Context(), db.ImportLogEntry{
+		Owner:     dstOwner,
+		DeckKey:   dstKey,
+		DeckName:  forkName,
+		Commander: cmdrCard,
+		Source:    "fork:" + srcKey,
+		CardCount: len(cards),
+	})
+
+	h.publishDeck(dstKey, deckEvent{Event: "freya_started", Data: `{"status":"analyzing"}`})
+	go h.runFreya(dstPath)
+
+	writeJSON(w, map[string]any{
+		"id":             dstID,
+		"owner":          dstOwner,
+		"name":           forkName,
+		"commander_card": cmdrCard,
+		"card_count":     len(cards),
+		"source":         srcKey,
+		"forked_from":    srcKey,
+	})
+}
+
 func (h *Handler) handleListVersions(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
@@ -772,11 +1047,67 @@ func (h *Handler) handleListVersions(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, versions)
 }
 
+// handleGetVersion answers GET /api/decks/{owner}/{id}/versions/{version}
+// with the raw decklist text + parsed cards for that historical
+// snapshot. The DECK HISTORY UI uses this to render a per-version
+// detail and to diff two versions client-side.
+//
+// Returns 404 when the version file is missing — covers both "deck has
+// never been edited" (no versions dir) and "version N doesn't exist"
+// (gap in the sequence). The decklist text is returned verbatim so
+// the client diff renders the same "COMMANDER: X" prefix the saved
+// file contains.
+func (h *Handler) handleGetVersion(w http.ResponseWriter, r *http.Request) {
+	owner := r.PathValue("owner")
+	id := r.PathValue("id")
+	versionStr := r.PathValue("version")
+	if !validatePathComponent(owner) || !validatePathComponent(id) {
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
+		return
+	}
+	ver := parseInt(versionStr)
+	if ver <= 0 || ver > 500 {
+		writeError(w, http.StatusBadRequest, "invalid version")
+		return
+	}
+
+	versionsDir := filepath.Join(h.DecksDir, owner, "versions")
+	// Try both .txt and .json extensions — handleUpdateDeck preserves
+	// the source file's extension when archiving, so the version file
+	// could be either depending on how the deck was originally imported.
+	var data []byte
+	var foundPath string
+	for _, ext := range []string{".txt", ".json"} {
+		candidate := filepath.Join(versionsDir, fmt.Sprintf("%s_v%d%s", id, ver, ext))
+		if b, err := os.ReadFile(candidate); err == nil {
+			data = b
+			foundPath = candidate
+			break
+		}
+	}
+	if foundPath == "" {
+		writeError(w, http.StatusNotFound, "version not found")
+		return
+	}
+
+	content := string(data)
+	resp := map[string]any{
+		"version":   ver,
+		"filename":  filepath.Base(foundPath),
+		"deck_list": content,
+		"cards":     parseDeckList(content),
+	}
+	if info, err := os.Stat(foundPath); err == nil {
+		resp["saved_at"] = info.ModTime()
+	}
+	writeJSON(w, resp)
+}
+
 func (h *Handler) handleGetAnalysis(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
@@ -792,7 +1123,7 @@ func (h *Handler) handleGetAnalysis(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, map[string]any{"status": "analyzing", "message": "Freya analysis started — refresh in a few seconds"})
 			return
 		}
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
@@ -801,16 +1132,24 @@ func (h *Handler) handleGetAnalysis(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleRunAnalysis(w http.ResponseWriter, r *http.Request) {
+	// Per-IP rate-limit. Each call kicks off a Freya subprocess (serialized
+	// behind freyaMu, but the queue is unbounded — an attacker spamming
+	// this endpoint pins a worker indefinitely). Shares DeckImportLimiter
+	// with the other deck-write endpoints so a burst across them sums
+	// against the same budget.
+	if enforceRateLimit(h.DeckImportLimiter, w, r, "deck analyze") {
+		return
+	}
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
 	deckPath := findDeckFile(h.DecksDir, owner, id)
 	if deckPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
@@ -847,6 +1186,27 @@ func (h *Handler) runFreya(deckPath string) {
 	if len(parts) == 2 {
 		owner := parts[0]
 		id := strings.TrimSuffix(parts[1], filepath.Ext(parts[1]))
+
+		// Stamp the just-written archetype onto this deck's HEAD
+		// version in the DAG so /archetype-history can surface
+		// version-to-version reclassifications. Best-effort: if
+		// the DAG can't be loaded or HEAD has rotated since this
+		// Freya run started, log and move on — the publishDeck
+		// event below still fires.
+		if archetype := loadFreyaPrimaryArchetype(h.DecksDir, owner, id); archetype != "" {
+			dagDir := filepath.Join(h.DecksDir, ".versions")
+			if dag, derr := versioning.LoadDAG(dagDir); derr == nil {
+				if head := dag.GetHead(owner, id); head != nil {
+					dag.UpdateArchetype(head.Hash, archetype)
+					if serr := versioning.SaveDAG(dagDir, dag); serr != nil {
+						log.Printf("freya: save DAG archetype: %v", serr)
+					}
+				}
+			} else {
+				log.Printf("freya: load DAG to stamp archetype: %v", derr)
+			}
+		}
+
 		h.publishDeck(owner+"/"+id, deckEvent{
 			Event: "freya_complete",
 			Data:  `{"status":"complete"}`,
@@ -894,13 +1254,13 @@ func (h *Handler) publishDeck(key string, ev deckEvent) {
 func (h *Handler) handleDeckEvents(w http.ResponseWriter, r *http.Request) {
 	flusher, ok := w.(http.Flusher)
 	if !ok {
-		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "streaming not supported")
 		return
 	}
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
@@ -982,15 +1342,22 @@ type ImportRequest struct {
 }
 
 func (h *Handler) handleImportDeck(w http.ResponseWriter, r *http.Request) {
+	// Per-IP rate-limit. POST /api/decks + POST /api/decks/import both
+	// route here; both write a file under DecksDir and parse the body.
+	// Unbounded calls let an attacker fill disk with arbitrary deck
+	// text. Limiter is nil-safe.
+	if enforceRateLimit(h.DeckImportLimiter, w, r, "deck import") {
+		return
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req ImportRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
 
 	if strings.TrimSpace(req.DeckList) == "" {
-		http.Error(w, "deck_list is required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "deck_list is required")
 		return
 	}
 
@@ -1016,7 +1383,7 @@ func (h *Handler) handleImportDeck(w http.ResponseWriter, r *http.Request) {
 	// Ensure owner directory exists
 	ownerDir := filepath.Join(h.DecksDir, owner)
 	if err := os.MkdirAll(ownerDir, 0755); err != nil {
-		http.Error(w, "cannot create deck directory", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot create deck directory")
 		return
 	}
 
@@ -1029,13 +1396,13 @@ func (h *Handler) handleImportDeck(w http.ResponseWriter, r *http.Request) {
 		}
 		deckPath = filepath.Join(ownerDir, fmt.Sprintf("%s_%d.txt", fileID, i))
 		if i > 100 {
-			http.Error(w, "too many decks with the same name", http.StatusConflict)
+			writeError(w, http.StatusConflict, "too many decks with the same name")
 			return
 		}
 	}
 
 	if err := os.WriteFile(deckPath, []byte(req.DeckList), 0644); err != nil {
-		http.Error(w, "cannot write deck file", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot write deck file")
 		return
 	}
 
@@ -1109,6 +1476,12 @@ var moxfieldClient = &http.Client{
 }
 
 func (h *Handler) handleMoxfieldImport(w http.ResponseWriter, r *http.Request) {
+	// Per-IP rate-limit. Each call fans out to moxfield.com (external
+	// network cost we pay) and then writes a deck file under DecksDir.
+	// Shares DeckImportLimiter with the local-import path.
+	if enforceRateLimit(h.DeckImportLimiter, w, r, "moxfield import") {
+		return
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req struct {
 		URL   string   `json:"url"`
@@ -1116,18 +1489,18 @@ func (h *Handler) handleMoxfieldImport(w http.ResponseWriter, r *http.Request) {
 		Tags  []string `json:"tags"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
 		return
 	}
 
 	parsed, err := url.Parse(req.URL)
 	if err != nil || parsed.Host != "www.moxfield.com" {
-		http.Error(w, "invalid Moxfield URL", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid Moxfield URL")
 		return
 	}
 	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
 	if len(parts) < 2 || parts[0] != "decks" {
-		http.Error(w, "URL must be https://www.moxfield.com/decks/{id}", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "URL must be https://www.moxfield.com/decks/{id}")
 		return
 	}
 	moxID := parts[1]
@@ -1138,20 +1511,19 @@ func (h *Handler) handleMoxfieldImport(w http.ResponseWriter, r *http.Request) {
 	apiReq.Header.Set("Accept", "application/json")
 	resp, err := moxfieldClient.Do(apiReq)
 	if err != nil {
-		writeJSON(w, map[string]string{"error": "failed to fetch from Moxfield: " + err.Error()})
-		w.WriteHeader(http.StatusBadGateway)
+		writeError(w, http.StatusBadGateway, "failed to fetch from Moxfield: "+err.Error())
 		return
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		writeJSON(w, map[string]string{"error": fmt.Sprintf("Moxfield returned %d", resp.StatusCode)})
+		writeError(w, http.StatusBadGateway, fmt.Sprintf("Moxfield returned %d", resp.StatusCode))
 		return
 	}
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 2*1024*1024))
 	if err != nil {
-		http.Error(w, "failed to read Moxfield response", http.StatusBadGateway)
+		writeError(w, http.StatusBadGateway, "failed to read Moxfield response")
 		return
 	}
 
@@ -1172,7 +1544,7 @@ func (h *Handler) handleMoxfieldImport(w http.ResponseWriter, r *http.Request) {
 		} `json:"mainboard"`
 	}
 	if err := json.Unmarshal(body, &moxDeck); err != nil {
-		http.Error(w, "failed to parse Moxfield response", http.StatusBadGateway)
+		writeError(w, http.StatusBadGateway, "failed to parse Moxfield response")
 		return
 	}
 
@@ -1208,7 +1580,7 @@ func (h *Handler) handleMoxfieldImport(w http.ResponseWriter, r *http.Request) {
 
 	ownerDir := filepath.Join(h.DecksDir, owner)
 	if err := os.MkdirAll(ownerDir, 0755); err != nil {
-		http.Error(w, "cannot create deck directory", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot create deck directory")
 		return
 	}
 
@@ -1219,13 +1591,13 @@ func (h *Handler) handleMoxfieldImport(w http.ResponseWriter, r *http.Request) {
 		}
 		deckPath = filepath.Join(ownerDir, fmt.Sprintf("%s_%d.txt", fileID, i))
 		if i > 100 {
-			http.Error(w, "too many decks with the same name", http.StatusConflict)
+			writeError(w, http.StatusConflict, "too many decks with the same name")
 			return
 		}
 	}
 
 	if err := os.WriteFile(deckPath, []byte(deckList), 0644); err != nil {
-		http.Error(w, "cannot write deck file", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot write deck file")
 		return
 	}
 
@@ -1261,6 +1633,152 @@ func (h *Handler) handleMoxfieldImport(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// handleArchidektImport mirrors handleMoxfieldImport against
+// archidekt.com URLs. The two handlers stay observably parallel —
+// same auth/rate-limit/output JSON shape, same per-card flow into
+// register/log/saveTags — but they consult different APIs with
+// different response shapes, so the fetch + parse + bucket logic
+// lives in internal/archidekt (pure helper, see archidekt.go) and
+// this handler just adapts it onto the import pipeline.
+//
+// Source attribution in import_log is "archidekt" (not "moxfield")
+// so the existing /api/import/source/moxfield endpoint and the
+// Dashboard's MOXFIELD chip stay correct without changes — and a
+// future /api/import/source/archidekt endpoint can list these
+// imports without disturbing the moxfield path.
+func (h *Handler) handleArchidektImport(w http.ResponseWriter, r *http.Request) {
+	if enforceRateLimit(h.DeckImportLimiter, w, r, "archidekt import") {
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req struct {
+		URL   string   `json:"url"`
+		Owner string   `json:"owner"`
+		Tags  []string `json:"tags"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	parsed, err := url.Parse(req.URL)
+	if err != nil || (parsed.Host != "archidekt.com" && parsed.Host != "www.archidekt.com") {
+		writeError(w, http.StatusBadRequest, "invalid Archidekt URL")
+		return
+	}
+	deckID := archidekt.ExtractDeckID(req.URL)
+	if deckID == "" {
+		writeError(w, http.StatusBadRequest, "URL must be https://archidekt.com/decks/{id}")
+		return
+	}
+
+	// Fetch + format via the internal/archidekt helper. That package
+	// handles the API call, JSON parse, category bucketing, and the
+	// commander / mainboard / excluded-section routing.
+	deckList, err := archidekt.FetchDeckByID(deckID)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	deckName, err := archidekt.FetchDeckName(req.URL)
+	if err != nil {
+		// Cache hit means this can't fail after a successful FetchDeck,
+		// but we don't depend on that — fall back to a stable default.
+		deckName = ""
+	}
+
+	// Parse the formatted decklist to lift commander + card names for
+	// the import log and version registration. The text format is
+	// stable (see archidekt.formatDecklist) so a simple line walk is
+	// enough — no need to re-parse the JSON.
+	var cmdrName string
+	var cardNames []string
+	for _, line := range strings.Split(deckList, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "//") {
+			continue
+		}
+		if strings.HasPrefix(line, "COMMANDER:") {
+			name := strings.TrimSpace(strings.TrimPrefix(line, "COMMANDER:"))
+			if cmdrName == "" {
+				cmdrName = name
+			}
+			cardNames = append(cardNames, name)
+			continue
+		}
+		// "N Card Name" rows — strip the leading quantity.
+		if idx := strings.Index(line, " "); idx > 0 {
+			cardNames = append(cardNames, strings.TrimSpace(line[idx+1:]))
+		}
+	}
+
+	owner := sanitizeFilename(strings.TrimSpace(req.Owner))
+	if owner == "" {
+		owner = "imported"
+	}
+	if deckName == "" {
+		deckName = cmdrName
+	}
+	fileID := sanitizeFilename(strings.ToLower(deckName))
+	if fileID == "" {
+		fileID = "archidekt_deck"
+	}
+
+	ownerDir := filepath.Join(h.DecksDir, owner)
+	if err := os.MkdirAll(ownerDir, 0755); err != nil {
+		writeError(w, http.StatusInternalServerError, "cannot create deck directory")
+		return
+	}
+
+	deckPath := filepath.Join(ownerDir, fileID+".txt")
+	for i := 2; ; i++ {
+		if _, err := os.Stat(deckPath); os.IsNotExist(err) {
+			break
+		}
+		deckPath = filepath.Join(ownerDir, fmt.Sprintf("%s_%d.txt", fileID, i))
+		if i > 100 {
+			writeError(w, http.StatusConflict, "too many decks with the same name")
+			return
+		}
+	}
+
+	if err := os.WriteFile(deckPath, []byte(deckList), 0644); err != nil {
+		writeError(w, http.StatusInternalServerError, "cannot write deck file")
+		return
+	}
+
+	finalID := strings.TrimSuffix(filepath.Base(deckPath), ".txt")
+	go h.registerDeckVersion(owner, finalID, cmdrName, cardNames)
+
+	if len(req.Tags) > 0 {
+		if tagsJSON, err := normalizeTags(req.Tags); err == nil && tagsJSON != "" {
+			h.saveTags(r.Context(), owner, finalID, tagsJSON)
+		}
+	}
+
+	h.logImport(r.Context(), db.ImportLogEntry{
+		Owner:     owner,
+		DeckKey:   owner + "/" + finalID,
+		DeckName:  deckName,
+		Commander: cmdrName,
+		Source:    "archidekt",
+		SourceURL: req.URL,
+		CardCount: len(cardNames),
+	})
+
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, map[string]any{
+		"id":           finalID,
+		"owner":        owner,
+		"name":         deckName,
+		"commander":    cmdrName,
+		"card_count":   len(cardNames),
+		"source":       "archidekt",
+		"archidekt_id": deckID,
+		"tags":         h.loadTags(r.Context(), owner, finalID),
+	})
+}
+
 // logImport persists a deck-import event. Best-effort: a missing or failing
 // SQLite layer must not fail the import itself, so errors are logged only.
 func (h *Handler) logImport(ctx context.Context, e db.ImportLogEntry) {
@@ -1275,7 +1793,7 @@ func (h *Handler) logImport(ctx context.Context, e db.ImportLogEntry) {
 func (h *Handler) handleListImports(w http.ResponseWriter, r *http.Request) {
 	owner := sanitizeFilename(strings.TrimSpace(r.PathValue("owner")))
 	if owner == "" {
-		http.Error(w, "owner required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "owner required")
 		return
 	}
 	limit := 25
@@ -1290,7 +1808,7 @@ func (h *Handler) handleListImports(w http.ResponseWriter, r *http.Request) {
 	}
 	entries, err := db.ListImportLogs(r.Context(), h.Showmatch.sqlDB, owner, limit)
 	if err != nil {
-		http.Error(w, "query failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "query failed")
 		return
 	}
 	if entries == nil {
@@ -1404,7 +1922,7 @@ func (h *Handler) handleMoxfieldSources(w http.ResponseWriter, r *http.Request) 
 func (h *Handler) handleCardWinStats(w http.ResponseWriter, r *http.Request) {
 	commander := r.PathValue("commander")
 	if commander == "" {
-		http.Error(w, "commander required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "commander required")
 		return
 	}
 	commander = strings.ReplaceAll(commander, "_", " ")
@@ -1414,7 +1932,7 @@ func (h *Handler) handleCardWinStats(w http.ResponseWriter, r *http.Request) {
 	}
 	stats, err := db.LoadCardWinStats(r.Context(), h.Showmatch.sqlDB, commander, 50)
 	if err != nil {
-		http.Error(w, "query failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "query failed")
 		return
 	}
 	writeJSON(w, map[string]any{
@@ -1432,7 +1950,7 @@ func (h *Handler) handleDeckMatchups(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 	deckKey := owner + "/" + id
@@ -1442,7 +1960,7 @@ func (h *Handler) handleDeckMatchups(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := db.LoadDeckMatchups(r.Context(), h.Showmatch.sqlDB, deckKey, 0)
 	if err != nil {
-		http.Error(w, "query failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "query failed")
 		return
 	}
 	if rows == nil {
@@ -1461,7 +1979,7 @@ func (h *Handler) handleDeckEloHistory(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 	deckKey := owner + "/" + id
@@ -1477,7 +1995,7 @@ func (h *Handler) handleDeckEloHistory(w http.ResponseWriter, r *http.Request) {
 	}
 	rows, err := db.LoadGauntletRuns(r.Context(), h.Showmatch.sqlDB, deckKey, limit)
 	if err != nil {
-		http.Error(w, "query failed", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "query failed")
 		return
 	}
 	// DB returns newest-first; reverse for chronological display.
@@ -1912,7 +2430,7 @@ type artResult struct {
 func (h *Handler) handleCardArt(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	if name == "" {
-		http.Error(w, "missing card name", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "missing card name")
 		return
 	}
 
@@ -1944,7 +2462,7 @@ func (h *Handler) handleCardArt(w http.ResponseWriter, r *http.Request) {
 		res := <-actual.(chan artResult)
 		actual.(chan artResult) <- res
 		if res.err != nil {
-			http.Error(w, "card art not found", http.StatusNotFound)
+			writeError(w, http.StatusNotFound, "card art not found")
 			return
 		}
 		w.Header().Set("Content-Type", "image/jpeg")
@@ -1964,13 +2482,13 @@ func (h *Handler) handleCardArt(w http.ResponseWriter, r *http.Request) {
 	resp, err := artHTTPClient.Do(req)
 	if err != nil {
 		ch <- artResult{err: err}
-		http.Error(w, "card art not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "card art not found")
 		return
 	}
 	if resp.StatusCode != 200 {
 		resp.Body.Close()
 		ch <- artResult{err: fmt.Errorf("scryfall %d", resp.StatusCode)}
-		http.Error(w, "card art not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "card art not found")
 		return
 	}
 	defer resp.Body.Close()
@@ -1978,7 +2496,7 @@ func (h *Handler) handleCardArt(w http.ResponseWriter, r *http.Request) {
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 5*1024*1024))
 	if err != nil {
 		ch <- artResult{err: err}
-		http.Error(w, "failed to read art", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "failed to read art")
 		return
 	}
 
@@ -1998,7 +2516,7 @@ func (h *Handler) handleCardArt(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 	dag, err := versioning.LoadDAG(filepath.Join(h.DecksDir, ".versions"))
 	if err != nil {
-		http.Error(w, "cannot load version DAG", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot load version DAG")
 		return
 	}
 
@@ -2035,13 +2553,13 @@ func (h *Handler) handleDeckLineage(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
 	dag, err := versioning.LoadDAG(filepath.Join(h.DecksDir, ".versions"))
 	if err != nil {
-		http.Error(w, "cannot load version DAG", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot load version DAG")
 		return
 	}
 
@@ -2075,13 +2593,13 @@ func (h *Handler) handleRivalry(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
 	deckPath := findDeckFile(h.DecksDir, owner, id)
 	if deckPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
@@ -2092,7 +2610,7 @@ func (h *Handler) handleRivalry(w http.ResponseWriter, r *http.Request) {
 
 	rivalries, err := analytics.LoadRivalries("data/rivalry")
 	if err != nil {
-		http.Error(w, "cannot load rivalry data", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot load rivalry data")
 		return
 	}
 
@@ -2109,13 +2627,13 @@ func (h *Handler) handleThreatGraph(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
-		http.Error(w, "invalid owner or id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
 		return
 	}
 
 	deckPath := findDeckFile(h.DecksDir, owner, id)
 	if deckPath == "" {
-		http.Error(w, "deck not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "deck not found")
 		return
 	}
 
@@ -2126,7 +2644,7 @@ func (h *Handler) handleThreatGraph(w http.ResponseWriter, r *http.Request) {
 
 	edges, err := analytics.LoadThreatGraph("data/analytics")
 	if err != nil {
-		http.Error(w, "cannot load threat graph", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "cannot load threat graph")
 		return
 	}
 
@@ -2135,6 +2653,12 @@ func (h *Handler) handleThreatGraph(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleFeedback(w http.ResponseWriter, r *http.Request) {
+	// Per-IP rate-limit. Anonymous endpoint that writes a file to disk
+	// per request — a single bot blasting it would fill the feedback
+	// dir. Limiter is nil-safe so older binaries keep working.
+	if enforceRateLimit(h.FeedbackLimiter, w, r, "feedback") {
+		return
+	}
 	var body struct {
 		Type     string `json:"type"`
 		Page     string `json:"page"`
@@ -2144,11 +2668,11 @@ func (h *Handler) handleFeedback(w http.ResponseWriter, r *http.Request) {
 		Contact  string `json:"contact"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 32768)).Decode(&body); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
 	if body.Symptom == "" {
-		http.Error(w, "symptom required", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "symptom required")
 		return
 	}
 
@@ -2170,7 +2694,7 @@ func (h *Handler) handleFeedback(w http.ResponseWriter, r *http.Request) {
 	fname := fmt.Sprintf("%d-%s.json", time.Now().UnixMilli(), body.Type)
 	if err := os.WriteFile(filepath.Join(feedbackDir, fname), data, 0644); err != nil {
 		log.Printf("feedback write error: %v", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 
@@ -2180,12 +2704,12 @@ func (h *Handler) handleFeedback(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) handleKofiWebhook(w http.ResponseWriter, r *http.Request) {
 	if err := r.ParseForm(); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "bad request")
 		return
 	}
 	dataStr := r.FormValue("data")
 	if dataStr == "" {
-		http.Error(w, "missing data", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "missing data")
 		return
 	}
 
@@ -2207,14 +2731,14 @@ func (h *Handler) handleKofiWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := json.Unmarshal([]byte(dataStr), &payload); err != nil {
 		log.Printf("kofi webhook: bad JSON: %v", err)
-		http.Error(w, "bad data", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "bad data")
 		return
 	}
 
 	expectedToken := os.Getenv("KOFI_VERIFICATION_TOKEN")
 	if expectedToken != "" && payload.VerificationToken != expectedToken {
 		log.Printf("kofi webhook: token mismatch")
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		writeError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
 
@@ -2239,7 +2763,7 @@ func (h *Handler) handleKofiWebhook(w http.ResponseWriter, r *http.Request) {
 	fname := fmt.Sprintf("%d-%s.json", time.Now().UnixMilli(), payload.MessageID)
 	if err := os.WriteFile(filepath.Join(donationsDir, fname), data, 0644); err != nil {
 		log.Printf("kofi write error: %v", err)
-		http.Error(w, "internal error", http.StatusInternalServerError)
+		writeError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
 

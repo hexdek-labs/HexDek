@@ -113,6 +113,16 @@ const (
 	ArchetypeSuperfriends   = "superfriends"
 	ArchetypeBlink          = "blink"
 	ArchetypeExtraCombats   = "extra combats"
+	// R60 follow-up: Group Hug is a Freya-recognized archetype that fell
+	// back to midrange weights. Signature: Howling Mine / Zedruu the
+	// Greathearted / Phelddagrif / Selvala Explorer Returned / Kynaios
+	// and Tiro — give-everyone-cards effects that turn the political
+	// game into a card-engine win condition.
+	ArchetypeGroupHug = "group hug"
+	// R60 follow-up: Burn — direct-damage primary win condition.
+	// Signature: Shock / Lightning Bolt / Lava Spike / Goblin Guide /
+	// Eidolon of the Great Revel — LifeResource focus, life-total race.
+	ArchetypeBurn = "burn"
 )
 
 // observation is a running tally of an OTHER seat's plays. A PokerHat
@@ -1875,6 +1885,85 @@ func boardPower(gs *gameengine.GameState, seat *gameengine.Seat) int {
 	return n
 }
 
+// effectiveBoardPower returns boardPower with availability discounts:
+//
+//   - A tapped creature contributes 70% — it can't block this round, so
+//     half its defensive value is gone (and it's only useful next turn).
+//   - A summoning-sick creature without haste contributes 80% — it can't
+//     attack this turn, so its offensive value is delayed by a turn.
+//   - A creature that is BOTH tapped AND summoning-sick (rare; happens
+//     when an effect taps it on the turn it ETB'd, e.g. crewed vehicle
+//     mounting up the turn it entered) gets the multiplied discount
+//     0.7 × 0.8 = 0.56.
+//   - Haste cancels the summoning-sick discount entirely (the engine
+//     leaves SummoningSick=true on freshly-ETB'd haste creatures but
+//     they CAN attack, so the discount doesn't apply).
+//   - Planeswalkers are unaffected by the discount — loyalty is a
+//     persistent threat clock, not a per-turn availability question.
+//
+// Returns rounded-half-up integer to match boardPower's int signature.
+//
+// Rationale: pre-r60 scoreBoard treated 4 tapped 3/3s = 4 untapped 3/3s
+// (both contribute 12 raw power), so the hat's BoardPresence dimension
+// couldn't tell "fully committed, can't defend" from "fresh board, can
+// attack and block". The discount surfaces the difference without
+// changing dimension weights.
+func effectiveBoardPower(gs *gameengine.GameState, seat *gameengine.Seat) int {
+	if seat == nil {
+		return 0
+	}
+	total := 0.0
+	for _, p := range seat.Battlefield {
+		if p == nil {
+			continue
+		}
+		if p.IsCreature() {
+			pw := gs.PowerOf(p)
+			if pw > 0 {
+				weight := 1.0
+				if p.Tapped {
+					weight *= 0.7
+				}
+				if p.SummoningSick && !p.HasKeyword("haste") {
+					weight *= 0.8
+				}
+				total += float64(pw) * weight
+			}
+		}
+		if p.IsPlaneswalker() {
+			loy := 0
+			if p.Counters != nil {
+				loy = p.Counters["loyalty"]
+			}
+			if loy < 0 {
+				loy = 0
+			}
+			total += float64(loy + 2)
+		}
+	}
+	// Round-half-up to int so the public surface matches boardPower.
+	return int(total + 0.5)
+}
+
+// liveCreatureCount returns the number of creatures on the seat's
+// battlefield (excludes planeswalkers and noncreatures). Used by
+// scoreBoard's width bonus — a wide board of small bodies (Bitterblossom,
+// Avenger of Zendikar tokens, weenie aggro) has independent blockers,
+// sac fodder, crew, ETB triggers, and equipment recipients that a
+// single tall creature with equal total power lacks.
+func liveCreatureCount(seat *gameengine.Seat) int {
+	if seat == nil {
+		return 0
+	}
+	n := 0
+	for _, p := range seat.Battlefield {
+		if p != nil && p.IsCreature() {
+			n++
+		}
+	}
+	return n
+}
+
 func highCMCPermanents(seat *gameengine.Seat) int {
 	if seat == nil {
 		return 0
@@ -2029,14 +2118,17 @@ func hasUnconditionalEvasion(p *gameengine.Permanent) bool {
 // i.e., somewhere in the legal-target set there is no untapped clean
 // answer. Used to prune unprofitable attackers from the swing list.
 //
-// "Clean answer" = an untapped creature that (a) can legally block
-// per evasion rules, (b) survives the trade (toughness > attacker
-// power, accounting for first/double strike), and (c) deals lethal
-// damage back to the attacker.
+// "Clean answer" = an untapped legal blocker that either (a) is by
+// itself a single-blocker killer (toughness > attacker power, power
+// ≥ attacker toughness, accounting for first/double strike), OR (b)
+// combines with other untapped blockers into a gang-block that kills
+// the attacker (R60 — see gangBlockKillsAttacker).
 //
 // Attackers with deathtouch, indestructible, or unconditional evasion
-// always swing profitably. Trample creatures always leak damage to the
-// player so the swing isn't wasted. First-strike attackers don't trade
+// always swing profitably. Trample's short-circuit is conditional on
+// the attacker actually leaking damage past the available blockers
+// (R60 — see leakIsMeaningfulAgainst): a 2/2 trampler into a 3/3
+// blocker leaks 0 and just dies. First-strike attackers don't trade
 // down to blockers smaller than their own power.
 func canSwingProfitably(gs *gameengine.GameState, attacker *gameengine.Permanent, opponents []*gameengine.Seat) bool {
 	if attacker == nil {
@@ -2048,9 +2140,6 @@ func canSwingProfitably(gs *gameengine.GameState, attacker *gameengine.Permanent
 	if attacker.HasKeyword("deathtouch") || attacker.HasKeyword("indestructible") {
 		return true
 	}
-	if attacker.HasKeyword("trample") {
-		return true
-	}
 	ap := gs.PowerOf(attacker)
 	at := gs.ToughnessOf(attacker)
 	if ap <= 0 {
@@ -2058,25 +2147,24 @@ func canSwingProfitably(gs *gameengine.GameState, attacker *gameengine.Permanent
 	}
 	doubleStrike := attacker.HasKeyword("double strike") || attacker.HasKeyword("double_strike")
 	firstStrike := attacker.HasKeyword("first strike") || attacker.HasKeyword("first_strike") || doubleStrike
+	trample := attacker.HasKeyword("trample")
 
 	for _, opp := range opponents {
 		if opp == nil || opp.Lost || opp.LeftGame {
 			continue
 		}
-		untapped := make([]*gameengine.Permanent, 0, len(opp.Battlefield))
+		legalBlockers := make([]*gameengine.Permanent, 0, len(opp.Battlefield))
 		for _, b := range opp.Battlefield {
-			if b != nil && b.IsCreature() && !b.Tapped {
-				untapped = append(untapped, b)
+			if b != nil && b.IsCreature() && !b.Tapped && gameengine.CanBlock(attacker, b) {
+				legalBlockers = append(legalBlockers, b)
 			}
 		}
-		if len(untapped) == 0 {
+		if len(legalBlockers) == 0 {
 			return true
 		}
-		deadly := false
-		for _, b := range untapped {
-			if !gameengine.CanBlock(attacker, b) {
-				continue
-			}
+		// Single-blocker deadly check.
+		singleDeadly := false
+		for _, b := range legalBlockers {
 			bp := gs.PowerOf(b)
 			bt := gs.ToughnessOf(b) - b.MarkedDamage
 			if bt <= 0 {
@@ -2086,19 +2174,140 @@ func canSwingProfitably(gs *gameengine.GameState, attacker *gameengine.Permanent
 				continue
 			}
 			if bt > ap && bp >= at {
-				deadly = true
+				singleDeadly = true
 				break
 			}
 			if b.HasKeyword("deathtouch") && bp > 0 {
-				deadly = true
+				singleDeadly = true
 				break
 			}
 		}
-		if !deadly {
+		// R60 — Gang-block deadly check. Two+ blockers whose combined
+		// power exceeds attacker toughness will kill the attacker even
+		// when no single blocker is "deadly" by itself. Trample doesn't
+		// auto-save: a 6/6 trample into 3/3 + 3/3 trades the attacker
+		// for both blockers with 0 leak (sum_toughness=6 ≥ ap=6).
+		gangDeadly := gangBlockKillsAttacker(gs, attacker, legalBlockers)
+
+		if !singleDeadly && !gangDeadly {
+			return true
+		}
+		// R60 — conditional trample profitability. Even when the
+		// blockers can kill, trample leaks excess damage to the
+		// player; that leak is the win clock. Require the leak to be
+		// meaningful (≥ 2 damage AND ≥ half the attacker's power) so
+		// a 1-power leak with a 6-power attacker doesn't excuse the
+		// trade.
+		if trample && leakIsMeaningfulAgainst(gs, attacker, legalBlockers) {
 			return true
 		}
 	}
 	return false
+}
+
+// gangBlockKillsAttacker reports whether 2+ legal blockers can combine
+// to kill the attacker via cumulative damage in a situation where the
+// defender is actually incentivised to gang. Gated on "no single
+// blocker can deliver lethal on its own" — when a single blocker can
+// already kill the attacker (even mutually), defenders single-block
+// instead of ganging, so the gang signal is irrelevant and we leave
+// the existing single-blocker logic in charge.
+//
+// Conservative on the FS/DS attacker case — FS damage may pre-kill one
+// blocker before regular-step damage from the gang, so the heuristic
+// subtracts the attacker's power once from the gang's sum-power
+// (approximating the smallest blocker dying in §510.5 before swinging
+// back). This keeps canSwingProfitably on the permissive side for
+// FS/DS attackers, which are usually the right play.
+//
+// Returns false for indestructible attackers (gang block doesn't kill
+// what doesn't die) and for blocker pools where fewer than 2 active
+// (positive-power) blockers remain.
+func gangBlockKillsAttacker(gs *gameengine.GameState, attacker *gameengine.Permanent, legal []*gameengine.Permanent) bool {
+	if attacker == nil || attacker.HasKeyword("indestructible") {
+		return false
+	}
+	if len(legal) < 2 {
+		return false
+	}
+	at := gs.ToughnessOf(attacker)
+	if at <= 0 {
+		return false
+	}
+	// Defender-incentive gate: gang-block only matters when no single
+	// blocker can deliver lethal damage on its own. If any single
+	// blocker has bp ≥ at, the defender's natural play is to
+	// single-block (1-for-1 mutual trade or strict win for them) —
+	// they won't waste two bodies to gang what one body kills.
+	for _, b := range legal {
+		if b == nil {
+			continue
+		}
+		if gs.PowerOf(b) >= at {
+			return false
+		}
+	}
+	sumPower := 0
+	activeBlockers := 0
+	for _, b := range legal {
+		if b == nil {
+			continue
+		}
+		bp := gs.PowerOf(b)
+		if bp <= 0 {
+			continue
+		}
+		sumPower += bp
+		activeBlockers++
+	}
+	if activeBlockers < 2 {
+		return false
+	}
+	fs := attacker.HasKeyword("first strike") || attacker.HasKeyword("first_strike") ||
+		attacker.HasKeyword("double strike") || attacker.HasKeyword("double_strike")
+	if fs {
+		ap := gs.PowerOf(attacker)
+		sumPower -= ap
+	}
+	return sumPower >= at
+}
+
+// leakIsMeaningfulAgainst reports whether a trample attacker leaks
+// enough damage past the legal-blocker pool to make the trade worth
+// the body. Threshold tuned to ignore 1-damage leaks (a 6-power
+// attacker leaking 1 to dribble down a 40-life opponent isn't worth
+// losing the attacker) while still rewarding genuine breakthroughs
+// (a 4-power attacker leaking 3 past two 1/1 chumps).
+//
+// The math: leak = attacker.Power − sum(blocker.Toughness). Returns
+// true when leak ≥ 2 AND leak ≥ attacker.Power / 2 (so the breakthrough
+// is a meaningful fraction of the attacker's swing, not a token bleed).
+func leakIsMeaningfulAgainst(gs *gameengine.GameState, attacker *gameengine.Permanent, legal []*gameengine.Permanent) bool {
+	if attacker == nil {
+		return false
+	}
+	ap := gs.PowerOf(attacker)
+	if ap <= 0 {
+		return false
+	}
+	sumTough := 0
+	for _, b := range legal {
+		if b == nil {
+			continue
+		}
+		bt := gs.ToughnessOf(b) - b.MarkedDamage
+		if bt > 0 {
+			sumTough += bt
+		}
+	}
+	leak := ap - sumTough
+	if leak < 2 {
+		return false
+	}
+	if leak*2 < ap {
+		return false
+	}
+	return true
 }
 
 // attackerRank returns a deadliest-first numeric score. The bumps are
@@ -2205,20 +2414,74 @@ func chumpScore(gs *gameengine.GameState, p *gameengine.Permanent) float64 {
 	return score
 }
 
+// isLowImpactCantripSpell returns true when the incoming spell looks
+// like a small value/utility play not worth a counter — a cantrip,
+// scry, mill-1, look-at-top, or single-target tap. Used by ChooseResponse
+// as the "nothing meaningful to interrupt" early-pass signal so the
+// hat saves its counters for real threats instead of burning one on
+// a Brainstorm or Opt.
+//
+// Conservative on purpose: only fires when CMC ≤ 2 AND the oracle text
+// matches one of the low-impact templates AND none of the threat
+// templates ("destroy", "exile", "counter", "search", "extra turn",
+// "win the game") appear. A 1-mana spell whose text says "destroy
+// target creature" is real removal and stays counter-eligible.
+func isLowImpactCantripSpell(card *gameengine.Card) bool {
+	if card == nil {
+		return false
+	}
+	if gameengine.ManaCostOf(card) > 2 {
+		return false
+	}
+	ot := gameengine.OracleTextLower(card)
+	if ot == "" {
+		return false
+	}
+	for _, threat := range [...]string{
+		"destroy", "exile", "counter target", "search your library",
+		"extra turn", "extra turn after", "win the game", "lose the game",
+		"sacrifice", "discard", "deals damage",
+	} {
+		if strings.Contains(ot, threat) {
+			return false
+		}
+	}
+	for _, low := range [...]string{
+		"draw a card", "scry ", "scry.", "look at the top",
+		"mill a card", "surveil ", "surveil.",
+		"tap target creature", "tap target permanent",
+	} {
+		if strings.Contains(ot, low) {
+			return true
+		}
+	}
+	return false
+}
+
 // stackItemScore — cheap proxy for _stack_item_threat_score. CMC +
 // kind-specific bonus. Full scoring lives in the engine; this is only
 // the mode-threshold gate.
+//
+// R60 priority-window audit: triggered + activated abilities have
+// top.Card == nil but top.Source != nil. Pre-R60 the score returned 0
+// for these stack items, so the gate never recognised an opponent's
+// Etali attack trigger / Smothering Tithe draw trigger / Sheoldred
+// drain trigger as a threat — every "top.Card != nil" branch silently
+// short-circuited. Now we resolve the EFFECTIVE card via
+// effectiveResponseCard and score against its CMC + threat-word
+// patterns. Triggers also pick up a flat +2 ability-on-stack
+// surcharge because trigger payloads are usually game-impactful even
+// when the source is cheap (Etali is 6 CMC but the trigger ITSELF is
+// free, and the trigger is what's resolving).
 func stackItemScore(top *gameengine.StackItem) int {
 	if top == nil {
 		return 0
 	}
+	card := effectiveResponseCard(top)
 	score := 0
-	if top.Card != nil {
-		score += gameengine.ManaCostOf(top.Card)
-	}
-	// Bump for mass-effect hints on the AST.
-	if top.Card != nil {
-		ot := gameengine.OracleTextLower(top.Card)
+	if card != nil {
+		score += gameengine.ManaCostOf(card)
+		ot := gameengine.OracleTextLower(card)
 		if strings.Contains(ot, "win the game") {
 			score += 10
 		}
@@ -2226,5 +2489,46 @@ func stackItemScore(top *gameengine.StackItem) int {
 			score += 5
 		}
 	}
+	if isAbilityOnStack(top) {
+		score += 2
+	}
 	return score
+}
+
+// effectiveResponseCard returns the card whose oracle text should
+// drive priority-window threat detection for `top`. Spells expose
+// their cast card directly (top.Card); triggered and activated
+// abilities have top.Card == nil but expose top.Source, the
+// permanent whose ability is resolving — that permanent's card
+// carries the oracle text describing the trigger payload.
+//
+// Returns nil when neither is available (defensive — should not
+// happen for engine-pushed stack items but tests sometimes build
+// bare items).
+func effectiveResponseCard(top *gameengine.StackItem) *gameengine.Card {
+	if top == nil {
+		return nil
+	}
+	if top.Card != nil {
+		return top.Card
+	}
+	if top.Source != nil {
+		return top.Source.Card
+	}
+	return nil
+}
+
+// isAbilityOnStack reports whether `top` is a triggered or activated
+// ability rather than a cast spell. The engine populates StackItem.Kind
+// for new items; legacy items (engine-internal pushes) may leave Kind
+// empty but always have Source non-nil for abilities, so the OR check
+// covers both paths.
+func isAbilityOnStack(top *gameengine.StackItem) bool {
+	if top == nil {
+		return false
+	}
+	if top.Kind == "triggered" || top.Kind == "activated" {
+		return true
+	}
+	return top.Card == nil && top.Source != nil
 }

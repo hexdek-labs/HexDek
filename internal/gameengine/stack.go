@@ -1455,6 +1455,14 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	// §702.136 — Riot: as this enters, choose +1/+1 counter or haste.
 	ApplyRiot(gs, perm)
 
+	// CR §122.1g / §614.1d — generic "enters with N counters" Static
+	// self-replacement. Covers AST shapes with no per-card OnETB handler
+	// (e.g. District Mascot, whose printed P/T is 0/0 and depends on the
+	// ETB +1/+1 counter to be playable). Must run BEFORE the ETB trigger
+	// fan-out so observer triggers (Mentor of the Meek, Hardened Scales,
+	// etc.) see the entering perm in its final counter state.
+	ApplyStaticETBCounters(gs, perm)
+
 	// Register §613 continuous effects (layers 1-7).
 	RegisterContinuousEffectsForPermanent(gs, perm)
 	// Register §614 replacement effects.
@@ -1491,9 +1499,18 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 				if !EventEquals(trig.Trigger.Event, "etb") {
 					continue
 				}
-				PushTriggeredAbility(gs, perm, trig.Effect)
-				if gs.CheckEnd() {
-					return
+				// CR §614 — consult would_fire_etb_trigger so Panharmonicon
+				// and friends can add additional firings. See parallel fix
+				// in etb_dispatch.go::FirePermanentETBTriggers.
+				n, cancelled := FireETBTriggerEvent(gs, perm)
+				if cancelled {
+					continue
+				}
+				for i := 0; i < n; i++ {
+					PushTriggeredAbility(gs, perm, trig.Effect)
+					if gs.CheckEnd() {
+						return
+					}
 				}
 			}
 		}
