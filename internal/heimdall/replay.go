@@ -258,6 +258,11 @@ func ReplayWithObservation(rc *ReplayContext, seed GameSeed, obs *Observer) erro
 	//     scored by CMC + positive-counters + commander bonus.
 	observation.MVPCards = ExtractMVPCards(gs)
 
+	// 2e. Mulligan stats: per-seat mulligan count + Freya-style
+	//     keepable evaluation of the kept opener, read off
+	//     gs.MulliganHistory (populated by RunLondonMulligan above).
+	observation.MulliganStats = ExtractMulliganStats(gs)
+
 	// 3. Combo detection: TODO — requires Freya integration to know what
 	//    the deck's intended combo line is and whether pieces were
 	//    assembled.

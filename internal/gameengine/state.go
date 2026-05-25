@@ -310,6 +310,19 @@ type GameState struct {
 	// of games it appears in" queries.
 	CardFirstPlayed map[string]int
 
+	// MulliganHistory captures the result of the London-mulligan procedure
+	// per seat (CR §103.5). Index by seat; nil/empty when mulligans were
+	// not run (engine-internal unit tests that hand-build a GameState).
+	// Populated by tournament.RunLondonMulligan at the end of each seat's
+	// mulligan resolution and read by Heimdall's ExtractMulliganStats so
+	// downstream summaries can surface "seat 2 took 3 mulligans and kept
+	// a 4-card hand" without requiring event-log retention.
+	//
+	// OpeningHandNames captures the FINAL post-bottom hand — the cards
+	// actually entering turn 1 — not the pre-bottom hand. Snapshot only,
+	// not used by the engine for any decisions.
+	MulliganHistory []SeatMulliganStats
+
 	// triggerBatchDepth and pendingTriggers implement CR §603.3b batched
 	// trigger placement. When BeginTriggerBatch opens a batch (depth 0→1),
 	// subsequent PushTriggeredAbility calls append to pendingTriggers
@@ -328,6 +341,33 @@ const (
 	DayNightDay     = "day"
 	DayNightNight   = "night"
 )
+
+// SeatMulliganStats captures the per-seat outcome of CR §103.5 (the
+// London mulligan procedure) for one game. Stored on
+// GameState.MulliganHistory at the end of each seat's mulligan
+// resolution by tournament.RunLondonMulligan. Read by Heimdall's
+// ExtractMulliganStats to surface "how many mulligans + what kind of
+// hand was kept" in GameSummary, independent of event-log retention.
+//
+// OpeningHand is the FINAL post-bottom hand — the cards entering
+// turn 1 — not any intermediate draw. Name + Types are captured by
+// value so the snapshot survives later zone changes / token reuse on
+// the same *Card pointers, and downstream consumers (Heimdall's
+// keepable evaluator) don't need to hold the original *Card.
+type SeatMulliganStats struct {
+	MulligansTaken int                  `json:"mulligans_taken"`
+	OpeningHand    []MulliganHandEntry  `json:"opening_hand,omitempty"`
+}
+
+// MulliganHandEntry is one card captured into a SeatMulliganStats
+// snapshot. Types holds the runtime Card.Types slice (lowercase
+// engine-canonical type strings: "land", "creature", "instant", etc.)
+// so consumers can classify the card without re-resolving against the
+// corpus.
+type MulliganHandEntry struct {
+	Name  string   `json:"name"`
+	Types []string `json:"types,omitempty"`
+}
 
 // DelayedTrigger is one registered §603.7 delayed-trigger entry. Mirrors
 // Python DelayedTrigger dataclass.

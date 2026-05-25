@@ -53,6 +53,15 @@ type Observation struct {
 	// for "did the most work." Companion signal to RegretCards: the
 	// cards you cast and got value from. Top mvpTopN per seat.
 	MVPCards []MVPCard
+
+	// MulliganStats captures per-seat opening-hand outcomes from the
+	// London mulligan procedure: how many mulligans each seat took
+	// and a Freya-style keepable evaluation of the actually-kept
+	// opener (lands count + action-card count + the simple
+	// 2-5-lands-AND-an-action keepable rule). Populated from
+	// gs.MulliganHistory at observation time; empty when mulligans
+	// were not run.
+	MulliganStats []MulliganStat
 }
 
 // ZoneCastEvent records a zone-cast grant lifecycle moment or an
@@ -210,6 +219,33 @@ type MVPCard struct {
 	Counters    int    `json:"counters"`
 	Score       int    `json:"score"`
 	IsCommander bool   `json:"is_commander"`
+}
+
+// MulliganStat captures one seat's opening-hand outcome from the
+// London mulligan procedure (CR §103.5). MulligansTaken is the count
+// of times that seat shipped its hand back; the remaining fields
+// describe the FINAL post-bottom hand (the cards actually entering
+// turn 1).
+//
+// Keepable mirrors Freya's standard-keepable rule from
+// computeOpeningHandSim: a hand is keepable when it has 2-5 lands AND
+// at least one action card (creature / instant / sorcery /
+// planeswalker). The rule does not require a sample — it's a single
+// boolean evaluation of the actual hand, so it stays cheap.
+// Surfaced alongside the raw Lands/ActionCards counts so downstream
+// callers can compute their own grading (snap-keep, marginal, etc.)
+// without re-deriving from card names.
+//
+// OpeningHandSize is the number of cards in the final hand
+// (7 - MulligansTaken, clamped at 0). Stored explicitly so consumers
+// don't have to recompute it from the formula at every read site.
+type MulliganStat struct {
+	Seat            int  `json:"seat"`
+	MulligansTaken  int  `json:"mulligans_taken"`
+	OpeningHandSize int  `json:"opening_hand_size"`
+	Lands           int  `json:"lands"`
+	ActionCards     int  `json:"action_cards"`
+	Keepable        bool `json:"keepable"`
 }
 
 // HealthPulse is the periodic telemetry snapshot sent to GA4.
