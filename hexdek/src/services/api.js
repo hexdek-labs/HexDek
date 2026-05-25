@@ -115,7 +115,16 @@ export const api = {
     body: JSON.stringify({ deck_list: deckList }),
   }),
   deleteDeck: (id) => authedRequest(`/api/decks/${id}`, { method: 'DELETE' }),
-  cloneDeck: (id) => authedRequest(`/api/decks/${id}/clone`, { method: 'POST' }),
+  cloneDeck: (id, opts = {}) => {
+    const body = {}
+    if (typeof opts.name === 'string' && opts.name.trim()) {
+      body.name = opts.name.trim()
+    }
+    return authedRequest(`/api/decks/${id}/clone`, {
+      method: 'POST',
+      ...(Object.keys(body).length ? { body: JSON.stringify(body) } : {}),
+    })
+  },
   patchDeck: (id, fields) => authedRequest(`/api/decks/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(fields),

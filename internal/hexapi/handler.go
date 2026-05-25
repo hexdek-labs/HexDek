@@ -641,6 +641,35 @@ func (h *Handler) handleCloneDeck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Optional user-supplied name override is parsed UP-FRONT so a
+	// 400 here means nothing on disk has been touched. Doing this
+	// later would leak a half-cloned file + a registered version
+	// in the DAG when the name is rejected. Empty / whitespace /
+	// missing body all fall back to the auto-suffixed "(CLONE)"
+	// default; the input is genuinely optional.
+	var overrideName string
+	if r.Body != nil && r.ContentLength != 0 {
+		var body struct {
+			Name string `json:"name"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err == nil {
+			candidate := strings.TrimSpace(body.Name)
+			if candidate != "" {
+				if len(candidate) > 120 {
+					writeError(w, http.StatusBadRequest, "name too long (max 120 chars)")
+					return
+				}
+				for _, c := range candidate {
+					if c < 0x20 || c == 0x7f {
+						writeError(w, http.StatusBadRequest, "name contains control characters")
+						return
+					}
+				}
+				overrideName = candidate
+			}
+		}
+	}
+
 	// Rate-limit: at most CloneRateLimit clones per owner per rolling
 	// hour. Counted from clone_log; the limiter is permissive when no
 	// DB is attached (tests can inject one or accept unlimited).
@@ -738,12 +767,15 @@ func (h *Handler) handleCloneDeck(w http.ResponseWriter, r *http.Request) {
 	}
 	go h.registerDeckVersion(dstOwner, dstID, cmdrCard, cardNames)
 
-	srcCustom := h.loadCustomName(r.Context(), srcOwner, srcID)
-	cloneName := srcCustom
+	cloneName := overrideName
 	if cloneName == "" {
-		cloneName = strings.ToUpper(srcID)
+		srcCustom := h.loadCustomName(r.Context(), srcOwner, srcID)
+		cloneName = srcCustom
+		if cloneName == "" {
+			cloneName = strings.ToUpper(srcID)
+		}
+		cloneName = cloneName + " (CLONE)"
 	}
-	cloneName = cloneName + " (CLONE)"
 	h.saveCustomName(r.Context(), dstOwner, dstID, cloneName)
 
 	srcKey := srcOwner + "/" + srcID

@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -183,6 +184,125 @@ func TestCloneDeck_RateLimit(t *testing.T) {
 	}
 	if rec.Header().Get("Retry-After") == "" {
 		t.Error("rate-limited response missing Retry-After header")
+	}
+}
+
+// Body {"name": "..."} overrides the default "(CLONE)" suffix and
+// is what saveCustomName persists for the cloned deck.
+func TestCloneDeck_CustomNameOverride(t *testing.T) {
+	_, mux, _ := setupCloneTest(t)
+
+	req := httptest.NewRequest("POST", "/api/decks/alice/krenko/clone",
+		strings.NewReader(`{"name":"MY GOBLIN BUILD"}`))
+	req.Header.Set("X-HexDek-Owner", "bob")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != 200 {
+		t.Fatalf("clone: code=%d body=%s", rec.Code, rec.Body.String())
+	}
+	var resp map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp["name"] != "MY GOBLIN BUILD" {
+		t.Errorf("name = %v, want MY GOBLIN BUILD", resp["name"])
+	}
+
+	// Verify the override persisted to deck_meta — a subsequent GET
+	// surfaces the override, not the auto-suffixed default.
+	id, _ := resp["id"].(string)
+	getReq := httptest.NewRequest("GET", "/api/decks/bob/"+id, nil)
+	getRec := httptest.NewRecorder()
+	mux.ServeHTTP(getRec, getReq)
+	var got map[string]any
+	_ = json.Unmarshal(getRec.Body.Bytes(), &got)
+	// GET surfaces the saved custom name under "custom_name".
+	if got["custom_name"] != "MY GOBLIN BUILD" {
+		t.Errorf("GET custom_name = %v, want MY GOBLIN BUILD", got["custom_name"])
+	}
+}
+
+// Empty / whitespace name falls back to the default suffix — input
+// is optional, not required-or-error.
+func TestCloneDeck_EmptyNameFallsBackToDefault(t *testing.T) {
+	_, mux, _ := setupCloneTest(t)
+
+	req := httptest.NewRequest("POST", "/api/decks/alice/krenko/clone",
+		strings.NewReader(`{"name":"   "}`))
+	req.Header.Set("X-HexDek-Owner", "bob")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != 200 {
+		t.Fatalf("clone: code=%d", rec.Code)
+	}
+	var resp map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
+	name, _ := resp["name"].(string)
+	if !strings.HasSuffix(name, "(CLONE)") {
+		t.Errorf("name = %q, want auto-suffixed (CLONE) default", name)
+	}
+}
+
+// Length cap and control-char rejection mirror handlePatchDeck so
+// the override path can't sneak in names that the regular PATCH
+// would reject. 120 chars + no \x00-\x1F or \x7F.
+func TestCloneDeck_NameRejectsTooLong(t *testing.T) {
+	_, mux, _ := setupCloneTest(t)
+
+	tooLong := strings.Repeat("X", 121)
+	body := `{"name":"` + tooLong + `"}`
+	req := httptest.NewRequest("POST", "/api/decks/alice/krenko/clone",
+		strings.NewReader(body))
+	req.Header.Set("X-HexDek-Owner", "bob")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != 400 {
+		t.Errorf("121-char name: want 400, got %d (body=%s)", rec.Code, rec.Body.String())
+	}
+}
+
+func TestCloneDeck_NameRejectsControlChars(t *testing.T) {
+	_, mux, _ := setupCloneTest(t)
+
+	req := httptest.NewRequest("POST", "/api/decks/alice/krenko/clone",
+		strings.NewReader("{\"name\":\"my\\u0007name\"}"))
+	req.Header.Set("X-HexDek-Owner", "bob")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != 400 {
+		t.Errorf("control-char name: want 400, got %d", rec.Code)
+	}
+}
+
+// Malformed JSON body falls back to the default suffix rather than
+// 400ing — the body is genuinely optional and a broken body
+// shouldn't block a clone the user is trying to make.
+func TestCloneDeck_MalformedBodyFallsBackToDefault(t *testing.T) {
+	_, mux, _ := setupCloneTest(t)
+
+	req := httptest.NewRequest("POST", "/api/decks/alice/krenko/clone",
+		strings.NewReader("{ broken"))
+	req.Header.Set("X-HexDek-Owner", "bob")
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != 200 {
+		t.Fatalf("malformed body should fall through to default; got %d", rec.Code)
+	}
+	var resp map[string]any
+	_ = json.Unmarshal(rec.Body.Bytes(), &resp)
+	name, _ := resp["name"].(string)
+	if !strings.HasSuffix(name, "(CLONE)") {
+		t.Errorf("name = %q, want fallback to default (CLONE) suffix", name)
 	}
 }
 

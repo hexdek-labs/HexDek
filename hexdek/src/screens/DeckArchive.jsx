@@ -748,6 +748,7 @@ export default function DeckArchive() {
   const [cloning, setCloning] = useState(false)
   const [creditsRefreshKey, setCreditsRefreshKey] = useState(0)
   const [confirmClone, setConfirmClone] = useState(false)
+  const [cloneNameInput, setCloneNameInput] = useState('')
   const [spawningRoom, setSpawningRoom] = useState(false)
   const [isFriend, setIsFriend] = useState(false)
   const [friendBusy, setFriendBusy] = useState(false)
@@ -1396,6 +1397,22 @@ export default function DeckArchive() {
           {cmdrCardName && cmdrCardName.toUpperCase() !== deckName && (
             <div className="deck-hero__sub">{cmdrCardName}</div>
           )}
+          {deck?.cloned_from && (
+            <div
+              className="deck-hero__sub"
+              data-testid="cloned-from"
+              style={{ fontSize: 10, opacity: 0.8 }}
+            >
+              CLONED FROM{' '}
+              <a
+                href={`/decks/${deck.cloned_from}`}
+                onClick={(e) => { e.preventDefault(); navigate(`/decks/${deck.cloned_from}`) }}
+                style={{ color: 'inherit', textDecoration: 'underline' }}
+              >
+                {deck.cloned_from}
+              </a>
+            </div>
+          )}
           {/* gameplan_summary hidden — Freya win-line detection needs accuracy pass */}
           {/* Tags: owners get an editable autocomplete chip field; visitors
               see a static chip row when there are any. The field is hidden
@@ -1635,36 +1652,69 @@ export default function DeckArchive() {
                 <>
                   <ContextBox id="deck.clone" compact>Copies this deck into your account so you can edit and tune your own version. The clone re-runs Freya analysis on import.</ContextBox>
                   {!confirmClone ? (
-                    <Btn solid arrow="⎘" onClick={() => setConfirmClone(true)}>
+                    <Btn solid arrow="⎘" onClick={() => {
+                      // Seed the name input with the source's display
+                      // name + " (CLONE)" so the user can either accept
+                      // the default or edit before confirming. Mirrors
+                      // the backend's auto-suffix when the input is
+                      // left empty.
+                      setCloneNameInput(`${deckName} (CLONE)`)
+                      setConfirmClone(true)
+                    }}>
                       CLONE DECK
                     </Btn>
                   ) : (
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <Btn
-                        solid
-                        arrow="⎘"
-                        disabled={cloning}
-                        onClick={() => {
-                          if (cloning) return
-                          setCloning(true)
-                          trackEvent('clone_deck', { deck: `${owner}/${id}` })
-                          api.cloneDeck(`${owner}/${id}`).then(res => {
-                            toast.success('DECK CLONED — RUNNING FREYA')
-                            navigate(`/decks/${res.owner}/${res.id}`)
-                          }).catch(err => {
-                            if (err?.status === 401) toast.error('SIGN IN TO CLONE')
-                            else if (err?.status === 429) toast.error('CLONE LIMIT REACHED — TRY AGAIN IN AN HOUR')
-                            else if (err?.status === 400) toast.error(err.message || 'CLONE REJECTED')
-                            else if (err?.status === 404) toast.error('SOURCE DECK NOT FOUND')
-                            else toast.error('CLONE FAILED')
-                            setCloning(false)
-                            setConfirmClone(false)
-                          })
-                        }}
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flexDirection: 'column' }}>
+                      <label
+                        style={{ display: 'grid', gap: 2, fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.1em' }}
                       >
-                        {cloning ? 'CLONING (FREYA RUNNING)...' : 'CONFIRM CLONE'}
-                      </Btn>
-                      <Btn ghost arrow="✕" onClick={() => setConfirmClone(false)} disabled={cloning}>CANCEL</Btn>
+                        CLONE NAME
+                        <input
+                          type="text"
+                          value={cloneNameInput}
+                          onChange={(e) => setCloneNameInput(e.target.value)}
+                          maxLength={120}
+                          disabled={cloning}
+                          data-testid="clone-name-input"
+                          style={{
+                            background: 'var(--ink-bg-2, #0b0c10)',
+                            border: '1px solid var(--rule-2)',
+                            color: 'var(--ink-0)',
+                            padding: '4px 8px',
+                            fontSize: 11,
+                          }}
+                          placeholder={`${deckName} (CLONE)`}
+                        />
+                      </label>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <Btn
+                          solid
+                          arrow="⎘"
+                          disabled={cloning}
+                          data-testid="clone-confirm"
+                          onClick={() => {
+                            if (cloning) return
+                            setCloning(true)
+                            trackEvent('clone_deck', { deck: `${owner}/${id}` })
+                            const opts = cloneNameInput.trim() ? { name: cloneNameInput.trim() } : {}
+                            api.cloneDeck(`${owner}/${id}`, opts).then(res => {
+                              toast.success('DECK CLONED — RUNNING FREYA')
+                              navigate(`/decks/${res.owner}/${res.id}`)
+                            }).catch(err => {
+                              if (err?.status === 401) toast.error('SIGN IN TO CLONE')
+                              else if (err?.status === 429) toast.error('CLONE LIMIT REACHED — TRY AGAIN IN AN HOUR')
+                              else if (err?.status === 400) toast.error(err.message || 'CLONE REJECTED')
+                              else if (err?.status === 404) toast.error('SOURCE DECK NOT FOUND')
+                              else toast.error('CLONE FAILED')
+                              setCloning(false)
+                              setConfirmClone(false)
+                            })
+                          }}
+                        >
+                          {cloning ? 'CLONING (FREYA RUNNING)...' : 'CONFIRM CLONE'}
+                        </Btn>
+                        <Btn ghost arrow="✕" onClick={() => setConfirmClone(false)} disabled={cloning}>CANCEL</Btn>
+                      </div>
                     </div>
                   )}
                 </>
