@@ -2946,6 +2946,15 @@ func (sm *Showmatch) closeGauntletSubs(deckKey string) {
 func (sm *Showmatch) handleTournamentEvents(w http.ResponseWriter, r *http.Request) {
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
+	// Mirror the validatePathComponent guard the two gauntlet handlers
+	// already run on owner / id. deckKey is the SSE subscriber-map key
+	// and gets baked into broadcast snapshots — without validation, a
+	// "../foo" owner or an id with a slash could pollute the topic map
+	// or smuggle controlled bytes into snapshot payloads.
+	if !validatePathComponent(owner) || !validatePathComponent(id) {
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
+		return
+	}
 	deckKey := owner + "/" + id
 
 	flusher, ok := w.(http.Flusher)
