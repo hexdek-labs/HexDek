@@ -242,4 +242,10 @@ type TournamentResult struct {
 	// the frontend can render the classic DE bracket placement table
 	// (1st = champion, 2nd = runner-up, etc). Nil for non-DE runs.
 	EliminationStandings []EliminationStanding `json:"elimination_standings,omitempty"`
+
+	// BalancedPodPlan is populated by RunBalancedPool with the
+	// snake-draft pod assignments derived from per-deck strength
+	// scores. One BalancedPod per pod, in the order pods were
+	// scheduled. Nil for non-balanced-pool runs.
+	BalancedPodPlan []BalancedPod `json:"balanced_pod_plan,omitempty"`
 }
