@@ -1872,6 +1872,44 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "500": { $ref: '#/components/responses/InternalError' }
 
+  /api/csrf:
+    get:
+      tags: [csrf]
+      operationId: issueCSRFToken
+      summary: Mint a stateless CSRF token for use against destructive endpoints.
+      description: |
+        Returns a base64url-encoded token bound to a server-side HMAC secret. Echo
+        the value back in the `X-CSRF-Token` request header on `DELETE /api/decks/{owner}/{id}`
+        and `POST /api/decks/{owner}/{id}/clone`. Returns `503` when the server has not
+        opted into token-based CSRF (`HEXDEK_CSRF_ENFORCE != 1`); clients should treat
+        that as a signal to fall back to the existing custom-header-only protection.
+        Tokens carry a 1-hour TTL by default.
+      responses:
+        "200":
+          description: Fresh token issued.
+          headers:
+            Cache-Control:
+              description: Always `no-store` — tokens MUST NOT be cached or shared.
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [token, expires_at, header]
+                properties:
+                  token:
+                    type: string
+                    description: Opaque token blob — echo unchanged in the named header.
+                  expires_at:
+                    type: integer
+                    format: int64
+                    description: Unix seconds at which the token stops verifying.
+                  header:
+                    type: string
+                    description: HTTP header name the server expects the token in (always `X-CSRF-Token`).
+        "503": { $ref: '#/components/responses/InternalError' }
+
   /api/feedback:
     post:
       tags: [feedback]
