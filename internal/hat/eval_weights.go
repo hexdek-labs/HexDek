@@ -487,11 +487,33 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.4,
 	},
 	ArchetypeArtifacts: {
-		BoardPresence:          0.7,
+		// R60 audit retune. ArtifactSynergy=2.0 correctly anchors the
+		// signature dimension, but three load-bearing dials were close to
+		// generic-midrange values despite being core to what an Artifacts
+		// deck actually does:
+		//   - ManaAdvantage: Sol Ring / Mana Crypt / Mana Vault / Grim
+		//     Monolith / Basalt Monolith / Thran Dynamo / Thought Vessel /
+		//     Mind Stone / the entire signets+talismans package — mana
+		//     rocks ARE the Artifacts mana base. 1.1 ranked them barely
+		//     above midrange's 0.8 when in practice rock-density is the
+		//     deck's defining advantage over a creature-based ramp deck.
+		//   - ComboProximity (infinite_mana_via_rocks): Basalt Monolith +
+		//     Forsaken Monument, Grim Monolith + Power Artifact / Rings of
+		//     Brighthearth, KCI (Krark-Clan Ironworks) + Scrap Trawler /
+		//     Myr Retriever loops, Sensei's Divining Top + Future Sight,
+		//     Isochron Scepter + Dramatic Reversal in artifact-mana shells.
+		//     0.8 treated these as occasional wins; they're the deck's
+		//     actual closer line.
+		//   - BoardPresence (metalcraft): Mox Opal counts artifacts on the
+		//     battlefield, Cranial Plating scales with artifact count,
+		//     Etched Champion / Inkmoth Nexus / Arcbound Ravager all care
+		//     about parallel artifact bodies. 0.7 missed that more board
+		//     artifacts means more of the rest of the deck functions.
+		BoardPresence:          1.0, // was 0.7 — metalcraft, Mox Opal, Cranial Plating
 		CardAdvantage:          1.0,
-		ManaAdvantage:          1.1,
+		ManaAdvantage:          1.4, // was 1.1 — Sol Ring / Crypt / Vault / Monolith package
 		LifeResource:           0.5,
-		ComboProximity:         0.8,
+		ComboProximity:         1.3, // was 0.8 — infinite mana via rocks (Basalt+Forsaken, KCI)
 		ThreatExposure:         0.7,
 		CommanderProgress:      0.7,
 		GraveyardValue:         0.4,
