@@ -100,6 +100,10 @@ func main() {
 	chartTitle := flag.String("chart-title", "Parser Coverage Progress", "title used in the rendered chart")
 	bySetPath := flag.String("by-set", "", "optional path to write a markdown report grouping uncovered cards by Magic set, ranked by uncovered count")
 	bySetTopN := flag.Int("by-set-top", 0, "limit the --by-set report to the top N sets by uncovered count (0 = include every set)")
+	setPriorityPath := flag.String("set-priority", "", "optional path to write a deck-weighted set-priority worklist (what Thor should scaffold next to unblock the most decks)")
+	setPriorityDecks := flag.String("set-priority-decks", "data/decks", "directory to scan for .txt deck files when computing set-priority deck weights")
+	setPriorityTopN := flag.Int("set-priority-top", 0, "limit the --set-priority table to the top N sets (0 = include every set with a non-zero score)")
+	setPriorityCards := flag.Int("set-priority-top-cards", 5, "number of top uncovered cards to show per set in the --set-priority report")
 	htmlPath := flag.String("html", "", "optional path to write a self-contained interactive HTML report for browsing uncovered cards by set/era/type")
 	htmlIncludeOK := flag.Bool("html-include-ok", false, "include OK and OK_VANILLA cards in the HTML table (default: uncovered only)")
 	serve := flag.Bool("serve", false, "after rendering, serve the interactive HTML report on a local HTTP port (blocks until Ctrl-C)")
@@ -203,6 +207,18 @@ func main() {
 		}
 		log.Printf("wrote %s (by-set report, %d sets shown of %d)", *bySetPath, shown, len(groups))
 		log.Printf("  %s", formatBySetSummary(groups, 5))
+	}
+
+	if strings.TrimSpace(*setPriorityPath) != "" {
+		freq, deckCount, err := scanDeckFrequencies(*setPriorityDecks)
+		if err != nil {
+			log.Fatalf("scanDeckFrequencies: %v", err)
+		}
+		priorities := computeSetPriority(results, freq, *setPriorityCards)
+		if err := writeSetPriorityReport(*setPriorityPath, priorities, deckCount, *setPriorityTopN); err != nil {
+			log.Fatalf("writeSetPriorityReport: %v", err)
+		}
+		log.Printf("wrote %s (set-priority, %d decks scanned)", *setPriorityPath, deckCount)
 	}
 
 	if strings.TrimSpace(*historyPath) != "" {
