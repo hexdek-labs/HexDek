@@ -6115,7 +6115,34 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 	if top == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
 		return nil
 	}
-	if top.Controller == seatIdx || top.Countered {
+	if top.Countered {
+		return nil
+	}
+	// R60 round 15+ self-trigger response (see self_trigger_response_r60.go).
+	// The general rule "skip self-controlled stack items" holds for
+	// spells and activations, but the narrow edge case "my draw trigger
+	// + my Underworld Dreams = I die" is correctly handled by countering
+	// our own trigger. shouldCounterOwnTrigger gates this tightly —
+	// requires a triggered ability source, a damage-on-draw punisher
+	// on our board, and projected lethal damage.
+	if top.Controller == seatIdx {
+		if h.shouldCounterOwnTrigger(gs, seatIdx, top) {
+			// Find an affordable counterspell and use it. Mirrors the
+			// counter-cast logic below at line ~6402.
+			seat := gs.Seats[seatIdx]
+			colored := gameengine.AvailableColoredManaEstimate(gs, seat)
+			for _, c := range seat.Hand {
+				if c != nil && gameengine.CardHasCounterSpell(c) &&
+					gameengine.CanPayColoredCost(colored, c) {
+					h.logf("SELF-TRIGGER-COUNTER seat=%d top=%v (self-harm via punisher)",
+						seatIdx, top.Kind)
+					return &gameengine.StackItem{
+						Card:       c,
+						Controller: seatIdx,
+					}
+				}
+			}
+		}
 		return nil
 	}
 	// R60r5 — stamp tier keyed by top.ID so that even after a LATER
