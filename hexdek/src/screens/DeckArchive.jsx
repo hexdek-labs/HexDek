@@ -2032,6 +2032,31 @@ export default function DeckArchive() {
             </div>
           )}
           {/* gameplan_summary hidden — Freya win-line detection needs accuracy pass */}
+          {/* System tags (Freya-derived archetype, prefixed "archetype:")
+              are rendered as a distinct read-only chip row above the
+              user-editable tag area. They're locked because they're
+              derived from Freya's analysis — the user "overrides" by
+              adding their own tag with whatever text they prefer, not
+              by deleting the system tag. */}
+          {Array.isArray(deck?.system_tags) && deck.system_tags.length > 0 && (
+            <div
+              style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}
+              data-testid="system-tags"
+              title="System-assigned tags from Freya analysis. Override by adding your own tag below."
+            >
+              <span className="muted-2" style={{ fontSize: 9, letterSpacing: '0.1em', marginRight: 4 }}>
+                FREYA
+              </span>
+              {deck.system_tags.map(t => {
+                const label = t.startsWith('archetype:') ? t.slice('archetype:'.length) : t
+                return (
+                  <Tag key={t} kind="info" solid>
+                    {label.toUpperCase()}
+                  </Tag>
+                )
+              })}
+            </div>
+          )}
           {/* Tags: owners get an editable autocomplete chip field; visitors
               see a static chip row when there are any. The field is hidden
               from visitors with no tags to avoid an empty box. */}
