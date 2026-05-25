@@ -405,6 +405,44 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 		}
 	}
 
+	// Step 2b: purge PENDING triggered abilities sourced from this seat.
+	// CR §800.4a: abilities of a leaving player cease to exist. The CR
+	// §603.3b trigger batch (`gs.pendingTriggers`) holds abilities that
+	// triggered but haven't been pushed onto the stack yet — they need
+	// the same cessation treatment. Without this, a Myr-Moonvessel-style
+	// "when this dies, add {1} to your mana pool" trigger fired by SBA
+	// 704.5g on the same seat the player just lost from triggers, gets
+	// batched, the seat eliminates (mana cleared to 0), the batch
+	// flushes, the trigger resolves, and add_mana puts the seat back to
+	// ManaPool=1 — ResourceConservation invariant fires
+	// ("seat 0 is Lost but has ManaPool=1"). Loki r60 extreme-stress /
+	// seed 99 game 9804 turn 42.
+	if len(gs.pendingTriggers) > 0 {
+		purged := 0
+		kept := gs.pendingTriggers[:0]
+		for _, item := range gs.pendingTriggers {
+			if item == nil {
+				continue
+			}
+			if item.Controller == seatIdx {
+				purged++
+				continue
+			}
+			kept = append(kept, item)
+		}
+		gs.pendingTriggers = kept
+		if purged > 0 {
+			gs.LogEvent(Event{
+				Kind: "pending_triggers_purged_on_leave", Seat: seatIdx, Target: -1,
+				Amount: purged,
+				Details: map[string]interface{}{
+					"rule":   "800.4a",
+					"reason": "abilities_cease_to_exist",
+				},
+			})
+		}
+	}
+
 	// Adjust zone conservation baseline for cards leaving the game.
 	// Also count cards remaining in the eliminated seat's private zones
 	// (hand, library, graveyard, exile, command zone) that are now "out
