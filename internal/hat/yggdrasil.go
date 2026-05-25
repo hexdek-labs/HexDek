@@ -5438,6 +5438,13 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 		// has first/double strike and can kill the attacker before the
 		// regular damage step. Likewise, our deathtouch blocker survives
 		// any attacker without first/double strike.
+		//
+		// R60 round 8+ combat-trick awareness (see
+		// block_priority_signals_r60.go). Two signals reshape the survivor
+		// pool: hasTrick → rescue otherwise-dead blockers; oppTrick →
+		// require a 1-toughness buffer for marginal survivors.
+		hasTrick := h.hasAffordableDefensiveTrick(gs, seatIdx)
+		oppTrick := h.oppHasCombatTrickMana(gs, seatIdx)
 		var survivors []*gameengine.Permanent
 		for _, b := range legal {
 			if b == nil {
@@ -5479,9 +5486,27 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 				continue
 			}
 			if atkDT && incomingToBlocker >= 1 {
+				// Signal A doesn't rescue against deathtouch — pump tricks
+				// don't escape the DT trigger, and regen-vs-DT is
+				// case-specific. Skip to next candidate.
 				continue
 			}
-			if bTou > incomingToBlocker {
+			// Survivor margin: how many toughness over lethal. Signal B
+			// requires margin ≥ 2 when opp has combat-trick mana up so a
+			// trick that pumps the attacker +1/+1 doesn't kill the blocker.
+			margin := bTou - incomingToBlocker
+			survives := margin > 0
+			requiredMargin := 1
+			if oppTrick {
+				requiredMargin = 2
+			}
+			if survives && margin >= requiredMargin {
+				survivors = append(survivors, b)
+				continue
+			}
+			// Signal A: trust our defensive trick to rescue a would-die
+			// blocker. Gated on hasTrick + !atkDT (handled above).
+			if !survives && hasTrick {
 				survivors = append(survivors, b)
 			}
 		}
