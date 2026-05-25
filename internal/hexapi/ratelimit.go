@@ -103,11 +103,38 @@ func (rl *RateLimiter) Allow(key string) (bool, time.Duration) {
 // `label` appears in the user-visible error body so an operator
 // tailing logs / a developer in devtools can tell which endpoint
 // fired the limiter (vs. a generic "too many requests").
+//
+// Use enforceRateLimitByOwner instead when the endpoint is
+// owner-authenticated — sharing a residential IP shouldn't make
+// roommates compete for the same per-user budget.
 func enforceRateLimit(rl *RateLimiter, w http.ResponseWriter, r *http.Request, label string) bool {
+	return enforceRateLimitByKey(rl, w, r, clientIP(r), label)
+}
+
+// enforceRateLimitByOwner is the per-user-account variant of
+// enforceRateLimit. Buckets by X-HexDek-Owner so authenticated
+// callers get individual budgets that follow them across devices and
+// networks. Falls back to per-IP bucketing when the header is absent
+// — a missing owner header must NOT bypass throttling (the upstream
+// ownership check will still 403, but the limiter mustn't grant an
+// attacker an effectively unlimited rate to drive that 403).
+//
+// Bucket keys are namespaced ("owner:" / "ip:") so an attacker can't
+// collide their owner slug with a victim's IP to share the victim's
+// budget refill.
+func enforceRateLimitByOwner(rl *RateLimiter, w http.ResponseWriter, r *http.Request, label string) bool {
+	return enforceRateLimitByKey(rl, w, r, ownerOrIPKey(r), label)
+}
+
+// enforceRateLimitByKey is the shared core. Callers compute the
+// bucket key (per-IP, per-owner, per-API-token, ...) and hand it in.
+// Centralizing the over-limit response shape (429 + Retry-After +
+// labeled body) keeps the keying decision in one place per endpoint.
+func enforceRateLimitByKey(rl *RateLimiter, w http.ResponseWriter, _ *http.Request, key, label string) bool {
 	if rl == nil {
 		return false
 	}
-	ok, retryAfter := rl.Allow(clientIP(r))
+	ok, retryAfter := rl.Allow(key)
 	if ok {
 		return false
 	}
@@ -118,6 +145,19 @@ func enforceRateLimit(rl *RateLimiter, w http.ResponseWriter, r *http.Request, l
 	w.Header().Set("Retry-After", fmt.Sprintf("%d", secs))
 	writeError(w, http.StatusTooManyRequests, label+" rate limit exceeded — too many requests")
 	return true
+}
+
+// ownerOrIPKey derives the bucket key for per-user rate limits.
+// Prefers the X-HexDek-Owner header (lowercased + trimmed); falls back
+// to the client IP when the header is missing or blank. Keys are
+// namespaced to prevent cross-pool collisions ("owner:alice" cannot
+// share a bucket with the IP "alice", however unlikely that string
+// match would be — defense in depth costs nothing here).
+func ownerOrIPKey(r *http.Request) string {
+	if owner := strings.ToLower(strings.TrimSpace(r.Header.Get("X-HexDek-Owner"))); owner != "" {
+		return "owner:" + owner
+	}
+	return "ip:" + clientIP(r)
 }
 
 // clientIP extracts the originating client IP from an http.Request.
