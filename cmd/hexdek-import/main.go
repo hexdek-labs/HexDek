@@ -134,6 +134,16 @@ func runImportMoxfield(url, outputDir string) (string, error) {
 		return "", fmt.Errorf("could not extract deck ID from URL: %s", url)
 	}
 
+	// Capture the prior-snapshot count BEFORE fetching so we can tell
+	// after the fetch whether a new snapshot was created (cache miss
+	// → new file landed) or this is a no-op re-import (cache hit →
+	// snapshot count unchanged). Only the new-snapshot case produces
+	// a meaningful version diff.
+	priorSnapCount := 0
+	if snaps, err := moxfield.ListSnapshots(deckID); err == nil {
+		priorSnapCount = len(snaps)
+	}
+
 	// Both FetchDeckName and FetchDeck share the in-process cache, so
 	// the back-to-back pair only hits the API once.
 	deckName, nameErr := moxfield.FetchDeckName(url)
@@ -166,10 +176,54 @@ func runImportMoxfield(url, outputDir string) (string, error) {
 	// IO failure rather than failing the import.
 	recordImportRegistry(deckID, url, deckName, outPath)
 
+	// Re-import diff: if this fetch produced a new snapshot AND there
+	// was a prior snapshot to compare against, show what changed
+	// upstream since last import. Skipped silently when:
+	//   - first import (priorSnapCount == 0)
+	//   - cache hit (no new snapshot created)
+	//   - HEXDEK_IMPORT_NO_DIFF=1 (opt-out for scripted bulk imports)
+	if os.Getenv("HEXDEK_IMPORT_NO_DIFF") == "" {
+		showImportDiff(deckID, priorSnapCount)
+	}
+
 	if os.Getenv("HEXDEK_IMPORT_VALIDATE_FORMAT") != "" {
 		runFormatValidation(deckID)
 	}
 	return outPath, nil
+}
+
+// showImportDiff compares the just-fetched snapshot against the
+// previously-newest one and prints the deck-level changes. Quiet
+// when this is the first import or when the fetch hit cache (no new
+// snapshot landed).
+func showImportDiff(deckID string, priorSnapCount int) {
+	snaps, err := moxfield.ListSnapshots(deckID)
+	if err != nil {
+		log.Printf("  [diff] could not list snapshots: %v", err)
+		return
+	}
+	if len(snaps) <= priorSnapCount {
+		// Cache hit — no new snapshot, nothing to diff against this
+		// import.
+		return
+	}
+	if priorSnapCount == 0 {
+		log.Printf("  [diff] first import of deck %s (no prior version to diff)", deckID)
+		return
+	}
+	d, err := moxfield.DiffLatestSnapshots(deckID)
+	if err != nil {
+		log.Printf("  [diff] could not compute diff: %v", err)
+		return
+	}
+	if d == nil || d.IsEmpty() {
+		log.Printf("  [diff] no upstream changes vs previous import")
+		return
+	}
+	log.Printf("  [diff] changes since previous import:")
+	for _, line := range strings.Split(d.String(), "\n") {
+		log.Printf("  [diff] %s", line)
+	}
 }
 
 // recordImportRegistry upserts an entry in the moxfield import
