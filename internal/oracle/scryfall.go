@@ -79,6 +79,14 @@ type Card struct {
 	ImageURIArt    string `json:"image_uri_art"`
 	SetCode        string `json:"set_code"`
 	CachedAt       int64  `json:"cached_at"`
+
+	// Legalities maps format slug (commander, brawl, modern, legacy,
+	// vintage, pauper, pioneer, standard, etc.) to Scryfall's status
+	// for that format: "legal", "not_legal", "banned", or "restricted".
+	// May be nil/empty on cache hits written before the r60 legalities
+	// migration — callers that need legality data should treat
+	// nil/empty as "unknown" rather than as "all legal."
+	Legalities map[string]string `json:"legalities,omitempty"`
 }
 
 // Lookup returns card data for the given name. Tries the SQLite cache
@@ -383,6 +391,7 @@ func fetchScryfallCollection(ctx context.Context, names []string) (map[string]*C
 			ImageURIArt:    imgArt,
 			SetCode:        sr.Set,
 			CachedAt:       db.Now(),
+			Legalities:     sr.Legalities,
 		}
 	}
 	return out, nil
@@ -409,6 +418,7 @@ type scryfallNamedResp struct {
 			ArtCrop string `json:"art_crop"`
 		} `json:"image_uris"`
 	} `json:"card_faces"`
+	Legalities map[string]string `json:"legalities"`
 }
 
 // ErrNotFound is returned when Scryfall has no match for the queried name.
@@ -475,27 +485,48 @@ func fetchScryfall(ctx context.Context, name string) (*Card, error) {
 		ImageURIArt:    imgArt,
 		SetCode:        sr.Set,
 		CachedAt:       db.Now(),
+		Legalities:     sr.Legalities,
 	}, nil
 }
 
 func getCached(ctx context.Context, database *sql.DB, key string) (*Card, error) {
 	c := &Card{}
+	var legalitiesJSON string
 	err := database.QueryRowContext(ctx,
 		`SELECT display_name, scryfall_id, mana_cost, cmc, type_line, oracle_text,
-		        image_uri_normal, image_uri_art, set_code, cached_at
+		        image_uri_normal, image_uri_art, set_code, cached_at, legalities
 		 FROM card_oracle WHERE name = ?`, key,
 	).Scan(&c.Name, &c.ScryfallID, &c.ManaCost, &c.CMC, &c.TypeLine, &c.OracleText,
-		&c.ImageURINormal, &c.ImageURIArt, &c.SetCode, &c.CachedAt)
-	return c, err
+		&c.ImageURINormal, &c.ImageURIArt, &c.SetCode, &c.CachedAt, &legalitiesJSON)
+	if err != nil {
+		return c, err
+	}
+	// Empty string is the pre-migration default; treat it as "no
+	// legality data" without erroring. Malformed JSON also degrades to
+	// nil rather than failing the whole cache read — losing legality
+	// info beats losing the card.
+	if legalitiesJSON != "" {
+		var leg map[string]string
+		if jerr := json.Unmarshal([]byte(legalitiesJSON), &leg); jerr == nil {
+			c.Legalities = leg
+		}
+	}
+	return c, nil
 }
 
 func saveToCache(ctx context.Context, database *sql.DB, key string, c *Card) error {
+	legalitiesJSON := ""
+	if len(c.Legalities) > 0 {
+		if b, jerr := json.Marshal(c.Legalities); jerr == nil {
+			legalitiesJSON = string(b)
+		}
+	}
 	_, err := database.ExecContext(ctx,
 		`INSERT OR REPLACE INTO card_oracle
 		 (name, display_name, scryfall_id, mana_cost, cmc, type_line, oracle_text,
-		  image_uri_normal, image_uri_art, set_code, cached_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		  image_uri_normal, image_uri_art, set_code, cached_at, legalities)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		key, c.Name, c.ScryfallID, c.ManaCost, c.CMC, c.TypeLine, c.OracleText,
-		c.ImageURINormal, c.ImageURIArt, c.SetCode, c.CachedAt)
+		c.ImageURINormal, c.ImageURIArt, c.SetCode, c.CachedAt, legalitiesJSON)
 	return err
 }
