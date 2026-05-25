@@ -53,6 +53,10 @@ type classifyContext struct {
 	planeswalkerCount int
 	millOppCount   int // opponent-targeting mill
 	discardForceCount int
+	// R60 new-archetype counters
+	pillowfortCount     int // attack-tax / damage-prevention cards (Propaganda, Sphere of Safety, Solitary Confinement)
+	groupSlugCount      int // passive damage-to-opponents triggers (Manabarbs, Pyrostatic Pillar, Underworld Dreams)
+	damageRedirectCount int // "dealt damage, it deals" reflectors + redirect effects (Stuffy Doll, Boros Reckoner, Pariah)
 	bannedCount      int
 	gameChangerCount int
 	gameChangerNames []string
@@ -345,6 +349,55 @@ var archetypeFingerprints = []archetypeFingerprint{
 			return ctx.discardForceCount >= 6
 		},
 	},
+	// ── R60: Three new archetype detectors ──
+	{
+		// Pillowfort: attack-tax + damage-prevention shell that wins
+		// slowly while opponents are deflected elsewhere. Often runs
+		// enchantments (Ghostly Prison, Sphere of Safety) so the
+		// fingerprint can land alongside Enchantress — the classifier
+		// picks the closer-distance match. Threshold of 5 pillowfort
+		// pieces avoids false positives from incidental Ghostly Prison
+		// inclusions in unrelated decks.
+		Name: "Pillowfort",
+		Ratios: map[RoleTag]float64{
+			RoleProtection: 0.10, RoleRemoval: 0.10, RoleDraw: 0.10,
+			RoleRamp: 0.08, RoleStax: 0.04, RoleThreat: 0.06,
+		},
+		Require: func(ctx *classifyContext) bool {
+			return ctx.pillowfortCount >= 5
+		},
+	},
+	{
+		// Group Slug: passive damage triggers (Manabarbs / Pyrostatic
+		// Pillar / Underworld Dreams) that punish opponents for normal
+		// actions. Distinct from Aristocrats (no sac engine) and
+		// Spellslinger (no active spell-chain). Threshold of 5 to
+		// require a real seed — incidental Eidolon of the Great Revel
+		// in a burn deck shouldn't poach it.
+		Name: "Group Slug",
+		Ratios: map[RoleTag]float64{
+			RoleThreat: 0.08, RoleRemoval: 0.10, RoleDraw: 0.10,
+			RoleRamp: 0.08, RoleStax: 0.04,
+		},
+		Require: func(ctx *classifyContext) bool {
+			return ctx.groupSlugCount >= 5
+		},
+	},
+	{
+		// Damage Redirect: Stuffy Doll / Boros Reckoner shell —
+		// punisher creatures that reflect damage at opponents, often
+		// supported by damage doublers (Furnace of Rath, Gisela).
+		// Smaller archetype so the threshold is 4 (not 5); the cards
+		// are distinctive enough that 4 pieces signals real intent.
+		Name: "Damage Redirect",
+		Ratios: map[RoleTag]float64{
+			RoleThreat: 0.10, RoleProtection: 0.08, RoleRemoval: 0.10,
+			RoleDraw: 0.08, RoleRamp: 0.08,
+		},
+		Require: func(ctx *classifyContext) bool {
+			return ctx.damageRedirectCount >= 4
+		},
+	},
 	{
 		Name: "Midrange",
 		Ratios: map[RoleTag]float64{
@@ -552,6 +605,55 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 			ctx.discardForceCount += qp.Qty
 		}
 
+		// R60 new-archetype detectors.
+		//
+		// Pillowfort: combat-tax + damage-prevention shell. Canonical
+		// signatures are Propaganda/Ghostly Prison ("can't attack you
+		// unless their controller pays"), No Mercy ("whenever a creature
+		// deals damage to you, destroy it"), Crawlspace ("no more than
+		// two creatures can attack you each combat"), and Solitary
+		// Confinement ("prevent all damage that would be dealt to you").
+		// "can't attack you" alone covers Propaganda / Ghostly Prison /
+		// Sphere of Safety / Norn's Annex / Windborn Muse.
+		if containsAny(ot,
+			"can't attack you", "to attack you, pay",
+			"creatures attacking you have",
+			"prevent all damage that would be dealt to you",
+			"whenever a creature deals damage to you") ||
+			(strings.Contains(ot, "no more than") && strings.Contains(ot, "attack you")) {
+			ctx.pillowfortCount += qp.Qty
+		}
+		// Group Slug: passive damage triggers vs opponents. "each
+		// opponent loses" covers Underworld Dreams / Liliana's Caress
+		// / Polluted Bonds. "deals damage to each opponent" covers
+		// Manabarbs / Pyrostatic Pillar / Eidolon of the Great Revel /
+		// Sulfuric Vortex (which actually phrases it as "deals damage
+		// to each player" — caught by the second clause).
+		if containsAny(ot,
+			"each opponent loses",
+			"deals damage to each opponent",
+			"deals damage to each player",
+			"whenever an opponent casts",
+			"whenever an opponent draws a card") {
+			ctx.groupSlugCount += qp.Qty
+		}
+		// Damage Redirect: the signature core phrase across the cluster
+		// is "deals that much damage" — Boros Reckoner / Spitemare /
+		// Truefire Captain / Brash Taunter use the active "is dealt
+		// damage, it deals that much damage" wording; Stuffy Doll uses
+		// the passive "damage is dealt to {this}, it deals that much
+		// damage"; Repercussion uses the spread "damage is dealt to a
+		// creature, it deals that much damage to that creature's
+		// controller". Pariah's "all damage that would be dealt to you
+		// is dealt to enchanted creature instead" + Toralf's "redirect"
+		// wording round out the cluster.
+		if containsAny(ot,
+			"deals that much damage",
+			"would be dealt to you is dealt to",
+			"redirect that damage") {
+			ctx.damageRedirectCount += qp.Qty
+		}
+
 		if qp.Profile.CMC <= 2 {
 			for _, r := range qp.Profile.Produces {
 				if r == ResMana {
@@ -705,6 +807,12 @@ func buildIntent(ac *ArchetypeClassification, report *FreyaReport, ctx *classify
 		gameplan = "empty opponent libraries through mill effects"
 	case "Discard":
 		gameplan = "strip opponents' hands and profit from discard triggers"
+	case "Pillowfort":
+		gameplan = "tax and deflect attacks against itself while grinding to a slow inevitability"
+	case "Group Slug":
+		gameplan = "punish opponents passively — every spell, draw, and untap chips away at their life total"
+	case "Damage Redirect":
+		gameplan = "absorb damage onto a Stuffy Doll-style redirector and reflect it back at opponents"
 	default:
 		gameplan = "execute its game plan through incremental advantage"
 	}
