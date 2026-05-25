@@ -121,6 +121,15 @@ func main() {
 		"data/decks",
 		database,
 	)
+	// r60 round 2: per-IP token buckets on the two mutating Showmatch
+	// endpoints. Gauntlet start is already protected by a global cap-2
+	// semaphore + credit gate, but the limiter blocks rapid-cycle abuse
+	// against the cap. Spectate spawn has no upstream protection and
+	// each room runs a game-driver goroutine. Limiters are nil-safe in
+	// tests / ephemeral builds; here we wire defaults for the
+	// production server.
+	sm.GauntletLimiter = hexapi.NewRateLimiter(3, 1.0/60.0)      // 3-burst, 1/min
+	sm.SpectateSpawnLimiter = hexapi.NewRateLimiter(5, 1.0/30.0) // 5-burst, 1 per 30s
 	sm.RegisterShowmatch(mux)
 
 	// HexDek API: deck listing, Freya analysis, live stats
@@ -133,6 +142,14 @@ func main() {
 		// user opening multiple bug reports in a session, tight
 		// enough to throttle a bot blasting the disk.
 		FeedbackLimiter: hexapi.NewRateLimiter(5, 1.0/60.0),
+		// r60 round 2: per-IP token bucket shared across the deck-write
+		// endpoints (POST /api/decks, POST /api/decks/import, POST
+		// /api/import/moxfield, POST /api/decks/{owner}/{id}/analyze).
+		// 10-burst + 1 per 30s — sized for a legitimate "import 5
+		// decks back-to-back, then analyze a couple" session, tight
+		// enough to stop a bot from filling DecksDir or pinning the
+		// Freya subprocess queue.
+		DeckImportLimiter: hexapi.NewRateLimiter(10, 1.0/30.0),
 	}
 	hexAPI.SetDB(database)
 	if err := hexapi.EnsureDeckMetaSchema(context.Background(), database); err != nil {

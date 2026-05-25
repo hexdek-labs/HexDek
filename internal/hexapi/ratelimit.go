@@ -1,6 +1,7 @@
 package hexapi
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"strings"
@@ -89,6 +90,34 @@ func (rl *RateLimiter) Allow(key string) (bool, time.Duration) {
 	}
 	secs := deficit / rl.refillPerSecond
 	return false, time.Duration(secs * float64(time.Second))
+}
+
+// enforceRateLimit wraps the "per-IP token-bucket gate" pattern used by
+// every mutating endpoint that opted into rate limiting. Returns true
+// when the request is over-budget — in that case the response has
+// already been written (429 + Retry-After) and the caller should
+// return. Returns false (and writes nothing) when the request is
+// within budget or when `rl` is nil (backwards-compatible no-op for
+// older binaries that don't construct a limiter).
+//
+// `label` appears in the user-visible error body so an operator
+// tailing logs / a developer in devtools can tell which endpoint
+// fired the limiter (vs. a generic "too many requests").
+func enforceRateLimit(rl *RateLimiter, w http.ResponseWriter, r *http.Request, label string) bool {
+	if rl == nil {
+		return false
+	}
+	ok, retryAfter := rl.Allow(clientIP(r))
+	if ok {
+		return false
+	}
+	secs := int(retryAfter.Seconds())
+	if secs < 1 {
+		secs = 1
+	}
+	w.Header().Set("Retry-After", fmt.Sprintf("%d", secs))
+	writeError(w, http.StatusTooManyRequests, label+" rate limit exceeded — too many requests")
+	return true
 }
 
 // clientIP extracts the originating client IP from an http.Request.
