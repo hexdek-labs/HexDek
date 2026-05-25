@@ -18,6 +18,9 @@ func aggregate(outcomes <-chan GameOutcome, nGames, nSeats int, commanderNames [
 		NSeats:                       nSeats,
 		CommanderNames:               append([]string(nil), commanderNames...),
 		WinsByCommander:              make(map[string]int, nSeats),
+		WinsBySeat:                   make([]int, nSeats),
+		WinsByCommanderBySeat:        make(map[string][]int, nSeats),
+		GamesByCommanderBySeat:       make(map[string][]int, nSeats),
 		EliminationByCommanderBySlot: make(map[string][]int, nSeats),
 		ParserGapSnippets:            map[string]int{},
 		AvgTurnToWin:                 make(map[string]float64, nSeats),
@@ -26,6 +29,8 @@ func aggregate(outcomes <-chan GameOutcome, nGames, nSeats int, commanderNames [
 	}
 	for _, name := range commanderNames {
 		r.EliminationByCommanderBySlot[name] = make([]int, nSeats)
+		r.WinsByCommanderBySeat[name] = make([]int, nSeats)
+		r.GamesByCommanderBySeat[name] = make([]int, nSeats)
 		r.MatchupMatrix[name] = make(map[string]int, nSeats)
 		r.MatchupGames[name] = make(map[string]int, nSeats)
 	}
@@ -65,6 +70,30 @@ func aggregate(outcomes <-chan GameOutcome, nGames, nSeats int, commanderNames [
 			winTurnCount[winnerName]++
 		} else {
 			r.Draws++
+		}
+
+		// R60 seat-bias measurement (per 7174n1c proposal): aggregate
+		// wins by play-seat (post-rotation), and by (commander, seat)
+		// for the archetype × seat penalty matrix. Also count
+		// (commander, seat) participation so per-cell winrate can be
+		// derived without assuming perfect fair rotation.
+		if outcome.Winner >= 0 && outcome.Winner < nSeats {
+			r.WinsBySeat[outcome.Winner]++
+		}
+		// Each ParticipantCommanderIdxs[i] tells us which deck played
+		// from play-seat i this game. Increment participation counts.
+		for seatIdx, deckIdx := range outcome.ParticipantCommanderIdxs {
+			if seatIdx >= nSeats {
+				break
+			}
+			if deckIdx < 0 || deckIdx >= len(commanderNames) {
+				continue
+			}
+			name := commanderNames[deckIdx]
+			r.GamesByCommanderBySeat[name][seatIdx]++
+			if outcome.Winner == seatIdx && winnerName == name {
+				r.WinsByCommanderBySeat[name][seatIdx]++
+			}
 		}
 
 		// Turn-length distribution: [0]=1-5, [1]=6-10, [2]=11-20, [3]=21+
