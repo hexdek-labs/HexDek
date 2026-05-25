@@ -192,11 +192,43 @@ TRIGGER_EVENT_EXACT = {
 TRIGGER_SUBSTRING_CATCHES = [
     "dies", "is put into a graveyard",
     "enters", "attack", "combat damage",
+    # Era 2 R60 follow-up — underscore-form combat damage slugs
+    # (combat_damage_player, group_combat_damage_player, etc.) the parser
+    # canonicalizes from prose. The prose "combat damage" substring missed
+    # them because the slug uses underscores. Adding "combat_damage" here
+    # mirrors the Go-side change in classifyTrigger and is the single
+    # largest gap-closer for Era 2 (32/59 = 54%).
+    "combat_damage",
     "cast", "spell",
     "gain", "lose",  # paired with "life" check below
     "draw", "discard",
     "leaves", "ltb", "sacrific",
 ]
+
+# Era 2 R60 follow-up — long-tail event slugs that map to existing scaffolds
+# (see classifyTrigger in cmd/hexdek-thor/conditional_setup.go for routing).
+# These are EXACT matches; the substring catches above don't see them.
+TRIGGER_EXTRA_EXACT = {
+    "die", "to_graveyard",   # → creature_dies
+    "etb_as",                # → creature_etb
+    "cycle",                 # → discard
+    "block",                 # → attacks
+    "coin_flip_result",      # → player_wins_coin_flip
+    "lose_game",             # → sacrifice
+    # Second-tier long tail — see classifyTrigger comment block for the
+    # per-slug routing rationale.
+    "beginning_of_ordinal_step",  # → upkeep
+    "token_event",                # → creature_etb
+    "nontoken_ally_event",        # → ally_etb
+    "nontoken_creature_event",    # → creature_etb
+    "compound_opp_tribe_event",   # → opp_creature_event
+    "one_or_more_typed_event",    # → tribe_you_control_etb
+    "ally_explore",               # → ally_etb
+    "self_and_another",           # → self_and
+    "conditional_state",          # → when_you_do
+    "misc_when",                  # → when_you_do
+    "spend_this_mana",            # → you_get_energy
+}
 
 
 def classify_trigger_event(event: str, phase: str) -> bool:
@@ -206,7 +238,7 @@ def classify_trigger_event(event: str, phase: str) -> bool:
     p = (phase or "").lower().strip()
     if not e and not p:
         return False
-    if e in TRIGGER_EVENT_EXACT:
+    if e in TRIGGER_EVENT_EXACT or e in TRIGGER_EXTRA_EXACT:
         return True
     # Substring catches mirroring the Go switch.
     for kw in TRIGGER_SUBSTRING_CATCHES:
