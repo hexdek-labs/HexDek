@@ -85,6 +85,8 @@ func main() {
 	sampleClasses := flag.String("sample-classes", "missing,empty_ast,partial", "comma-separated subset of {missing,empty_ast,partial} to draw the sample from")
 	actionList := flag.String("action-list", "", "card name to generate a scaffold/handler TODO checklist for; when set, the tool prints the action list and skips the coverage report")
 	actionListOut := flag.String("action-list-out", "", "optional path to write the action-list markdown (defaults to stdout)")
+	csvExport := flag.String("csv-export", "", "optional path to write a per-card CSV export for spreadsheet analysis; runs additively alongside the markdown report")
+	csvIncludeOK := flag.Bool("csv-include-ok", false, "include OK and OK_VANILLA rows in the CSV export (default: uncovered only)")
 	flag.Parse()
 
 	log.Printf("loading AST corpus from %s ...", *astPath)
@@ -134,6 +136,13 @@ func main() {
 		log.Fatalf("writeReport: %v", err)
 	}
 	log.Printf("wrote %s", *outPath)
+
+	if strings.TrimSpace(*csvExport) != "" {
+		if err := writeCSV(*csvExport, results, *csvIncludeOK); err != nil {
+			log.Fatalf("writeCSV: %v", err)
+		}
+		log.Printf("wrote %s (csv export, include_ok=%v)", *csvExport, *csvIncludeOK)
+	}
 }
 
 // parseSampleClasses maps the comma-separated CLI list to a set of
