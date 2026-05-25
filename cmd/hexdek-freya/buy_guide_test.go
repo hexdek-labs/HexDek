@@ -165,14 +165,14 @@ func TestBuildBuyGuide_ColorIdentityFilter(t *testing.T) {
 	}
 	// Sol Ring (colorless) and Wheel of Fortune (red) should still
 	// be eligible.
-	if !contains(guideAdds(guide), "Sol Ring") {
+	if !containsName(guideAdds(guide), "Sol Ring") {
 		t.Errorf("Sol Ring (colorless) should be a candidate in any color identity")
 	}
-	if !contains(guideAdds(guide), "Wheel of Fortune") {
+	if !containsName(guideAdds(guide), "Wheel of Fortune") {
 		t.Errorf("Wheel of Fortune (red) should be a candidate in mono-red")
 	}
 	// Pure-blue card should NOT appear.
-	if contains(guideAdds(guide), "Counterspell") {
+	if containsName(guideAdds(guide), "Counterspell") {
 		t.Errorf("Counterspell (blue) shouldn't be a candidate in mono-red, got %v",
 			guideAdds(guide))
 	}
@@ -201,7 +201,7 @@ func TestBuildBuyGuide_OwnedCardsSkipped(t *testing.T) {
 		}
 	}
 	// Path to Exile (W) isn't owned and the deck plays W — should appear.
-	if !contains(guideAdds(guide), "Path to Exile") {
+	if !containsName(guideAdds(guide), "Path to Exile") {
 		t.Errorf("expected Path to Exile (unowned W card) in candidates, got %v",
 			guideAdds(guide))
 	}
@@ -258,7 +258,7 @@ func TestBuildBuyGuide_OverBudgetGoesToWishlist(t *testing.T) {
 	}
 	// Mana Crypt / Rhystic Study should be in SkippedOverBudget.
 	skippedNames := addNames(guide.SkippedOverBudget)
-	if !contains(skippedNames, "Mana Crypt") || !contains(skippedNames, "Rhystic Study") {
+	if !containsName(skippedNames, "Mana Crypt") || !containsName(skippedNames, "Rhystic Study") {
 		t.Errorf("expected over-budget candidates in wishlist, got %v", skippedNames)
 	}
 }
@@ -456,7 +456,7 @@ func guideAdds(g *BuyGuide) []string {
 	return addNames(g.AllCandidates)
 }
 
-func contains(haystack []string, needle string) bool {
+func containsName(haystack []string, needle string) bool {
 	for _, h := range haystack {
 		if h == needle {
 			return true
