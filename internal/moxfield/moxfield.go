@@ -210,6 +210,26 @@ type apiResponse struct {
 	Commanders map[string]apiCardEntry `json:"commanders"`
 	Sideboard  map[string]apiCardEntry `json:"sideboard"`
 	Companions map[string]apiCardEntry `json:"companions"`
+
+	// User-applied tags. Moxfield exposes two parallel tagging surfaces:
+	//   - Hubs:  community-curated canonical labels (Combo, Token, Stax,
+	//            +1/+1 Counters, Tribal, Voltron, etc.). Each hub is a
+	//            structured object with a name + slug.
+	//   - Tags:  free-form per-user strings. Less normalized; some decks
+	//            use these to mirror Hub names with custom casing or to
+	//            add personal tags not in the Hub vocabulary.
+	// Both surface as the same archetype-hint signal for downstream
+	// consumers (Freya can use them to weight an archetype guess); we
+	// merge + dedupe them via deckTags().
+	Hubs []apiHub `json:"hubs"`
+	Tags []string `json:"tags"`
+}
+
+// apiHub mirrors a Moxfield Hub entry. We only need the display name;
+// Moxfield also returns slug + description + image fields we ignore.
+type apiHub struct {
+	Name string `json:"name"`
+	Slug string `json:"slug"`
 }
 
 type apiBoard struct {
@@ -243,6 +263,39 @@ func (r *apiResponse) companions() map[string]apiCardEntry {
 		return r.Boards.Companions.Cards
 	}
 	return r.Companions
+}
+
+// deckTags returns the merged Hubs + Tags list, deduped
+// case-insensitively and sorted alphabetically (case-sensitive sort so
+// the output is deterministic regardless of which surface contributed
+// a given tag). Empty / whitespace-only entries are dropped.
+//
+// Hubs win on case when both surfaces contribute the same tag: if the
+// API returns Hub "Combo" + free-form Tag "combo", the output contains
+// "Combo" only. Hubs are iterated first.
+func (r *apiResponse) deckTags() []string {
+	seen := map[string]bool{}
+	out := []string{}
+	add := func(t string) {
+		t = strings.TrimSpace(t)
+		if t == "" {
+			return
+		}
+		key := strings.ToLower(t)
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		out = append(out, t)
+	}
+	for _, h := range r.Hubs {
+		add(h.Name)
+	}
+	for _, t := range r.Tags {
+		add(t)
+	}
+	sort.Strings(out)
+	return out
 }
 
 type apiCardEntry struct {
@@ -306,6 +359,30 @@ func FetchDeckName(url string) (string, error) {
 	return data.Name, nil
 }
 
+// DeckMeta exposes deck-level Moxfield metadata for callers that want
+// more than the bare decklist text — currently the deck's display
+// name and its user-applied tags (Hubs ∪ free-form tags, deduped and
+// sorted). Returned by FetchDeckMeta.
+type DeckMeta struct {
+	Name string
+	Tags []string
+}
+
+// FetchDeckMeta returns the deck's name and user-applied tags. Shares
+// the in-process + disk cache with FetchDeck/FetchDeckName so calling
+// FetchDeckMeta in addition to FetchDeck doesn't add a second HTTP hit.
+func FetchDeckMeta(url string) (*DeckMeta, error) {
+	deckID := ExtractDeckID(url)
+	if deckID == "" {
+		return nil, fmt.Errorf("moxfield: could not extract deck ID from URL %q", url)
+	}
+	data, err := fetchDeckRaw(deckID)
+	if err != nil {
+		return nil, err
+	}
+	return &DeckMeta{Name: data.Name, Tags: data.deckTags()}, nil
+}
+
 // fetchDeckRaw is the single source of truth for "give me the parsed
 // Moxfield API response for this deck ID." Consults the in-process
 // cache, then the disk cache, then the API in that order. Cache
@@ -364,7 +441,11 @@ func fetchDeckRaw(deckID string) (*apiResponse, error) {
 // map iteration would flip which partner appears first across fetches, and
 // the downstream deckparser treats the first commander as primary.
 func formatDecklist(data *apiResponse) (string, error) {
-	var sb strings.Builder
+	// Build card content into its own builder first so the empty-deck
+	// check below stays a pure "are there cards?" question — without
+	// this, a deck with tags but no cards would slip past the check.
+	var cardsBuf strings.Builder
+	sb := &cardsBuf
 
 	writeEntries := func(entries map[string]apiCardEntry, format func(apiCardEntry) string) {
 		keys := make([]string, 0, len(entries))
@@ -405,10 +486,20 @@ func formatDecklist(data *apiResponse) (string, error) {
 		return fmt.Sprintf("// Companion: %d %s\n", e.Quantity, e.Card.Name)
 	})
 
-	result := sb.String()
-	if strings.TrimSpace(result) == "" {
+	cards := cardsBuf.String()
+	if strings.TrimSpace(cards) == "" {
 		return "", fmt.Errorf("moxfield: deck %q is empty (no mainboard or commanders)", data.Name)
 	}
 
-	return result, nil
+	// Prepend the `// Tags:` line (when present) so it lands above the
+	// commander/mainboard lines. The downstream deckparser silently
+	// skips unrecognized `//` / `#` comments, so positioning is free
+	// — putting it at the top makes the tag set visible at a glance
+	// when a human eyeballs the .txt file.
+	var out strings.Builder
+	if tags := data.deckTags(); len(tags) > 0 {
+		out.WriteString("// Tags: " + strings.Join(tags, ", ") + "\n")
+	}
+	out.WriteString(cards)
+	return out.String(), nil
 }
