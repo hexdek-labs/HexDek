@@ -29,6 +29,36 @@ CREATE TABLE IF NOT EXISTS session (
 CREATE INDEX IF NOT EXISTS idx_session_device ON session(device_id);
 CREATE INDEX IF NOT EXISTS idx_session_expires ON session(expires_at);
 
+-- API keys for programmatic access alongside sessions. Sessions are
+-- short-lived (30-day default) browser bearer tokens minted at
+-- device registration; API keys are user-issued, long-lived (or
+-- explicit-expiry), individually revocable credentials for CI /
+-- scripts / external integrations.
+--
+-- Storage shape:
+--   id        — short hex handle (6 bytes / 12 hex chars). Public,
+--               used as the revoke path component. NOT a secret.
+--   key_hash  — SHA-256 hex of the plaintext key. Plaintext is
+--               shown to the user once at issuance and never stored.
+--               Hash is unique so a leaked storage layer can't
+--               trivially reconstruct credentials.
+--   name      — user-supplied display string for "which key is this".
+--   expires_at / revoked_at — both 0 means active. Either non-zero
+--               means inactive (expires_at = lifecycle cap; revoked_at
+--               = user explicitly revoked from the management UI).
+CREATE TABLE IF NOT EXISTS api_key (
+    id            TEXT PRIMARY KEY,
+    device_id     TEXT NOT NULL REFERENCES device(id) ON DELETE CASCADE,
+    name          TEXT NOT NULL DEFAULT '',
+    key_hash      TEXT NOT NULL UNIQUE,
+    created_at    INTEGER NOT NULL,
+    last_used_at  INTEGER NOT NULL DEFAULT 0,
+    expires_at    INTEGER NOT NULL DEFAULT 0,   -- 0 = no expiry
+    revoked_at    INTEGER NOT NULL DEFAULT 0    -- 0 = active
+);
+CREATE INDEX IF NOT EXISTS idx_api_key_device ON api_key(device_id);
+CREATE INDEX IF NOT EXISTS idx_api_key_hash ON api_key(key_hash);
+
 -- TOTP (RFC 6238) enrollment state per device. Two-row lifecycle:
 --   1. EnrollTOTP inserts with status='pending' + a fresh secret.
 --   2. ConfirmTOTP transitions to status='active' after the user
