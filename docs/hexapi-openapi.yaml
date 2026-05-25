@@ -764,6 +764,29 @@ paths:
         "403": { $ref: '#/components/responses/Forbidden' }
         "404": { $ref: '#/components/responses/NotFound' }
 
+  /api/freya/training-signal:
+    get:
+      tags: [decks]
+      operationId: getArchetypeTrainingSignal
+      summary: Aggregate (freya_archetype → user_archetype) correction clusters from archetype_feedback_log. Surfaces patterns where N+ distinct owners have overridden Freya, feeding back into manual archetype-fingerprint review.
+      parameters:
+        - name: min
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 5 }
+          description: Minimum distinct-owner count for a cluster to surface. Defaults to 5 per the documented training-loop threshold.
+      responses:
+        "200":
+          description: Clusters + echoed threshold + generated_at timestamp.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "503":
+          description: Database not available.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
   /api/decks/{owner}/{id}/archetype-history:
     parameters:
       - $ref: '#/components/parameters/OwnerParam'
