@@ -635,8 +635,12 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		p.IsMassTokens = true
 	}
 
-	// Infect / grants infect
-	if containsAny(ot, "infect", "poison counter") && !strings.Contains(ot, "remove a poison") {
+	// Infect / grants infect. Word-boundary match on "infect" so cards
+	// mentioning "infectious", "infection", or names like "Infectious
+	// Inquiry" don't trip the keyword check. "poison counter" is a
+	// distinct multi-token phrase that doesn't collide.
+	if (hasKeyword(ot, "infect") || strings.Contains(ot, "poison counter")) &&
+		!strings.Contains(ot, "remove a poison") {
 		p.HasInfect = true
 	}
 	if containsAny(ot, "creatures you control have infect", "creatures you control gain infect") {
@@ -648,8 +652,11 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		p.HasInfect = true
 	}
 
-	// Storm finisher
-	if strings.Contains(ot, "storm") &&
+	// Storm finisher. Word-boundary match on "storm" so creature names
+	// like Storm Crow, Stormtide Leviathan, Stormchaser Mage (which all
+	// contain "storm" as a substring of a longer word in the type line
+	// or oracle reference) don't false-fire the Storm keyword detector.
+	if hasKeyword(ot, "storm") &&
 		containsAny(ot, "damage", "loses life", "copy of this spell", "mills") {
 		p.IsStormFinisher = true
 	}
@@ -686,7 +693,11 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	if containsAny(ot, "exile target", "exile all", "exile each") {
 		p.Effects = append(p.Effects, "exile")
 	}
-	if strings.Contains(ot, "mill") {
+	// Word-boundary match on the mill verb so a card whose oracle text
+	// references "Millstone" (the card name) doesn't get the mill effect
+	// tag. The legitimate verb forms (mill, mills, milled, milling) are
+	// all whole-word.
+	if hasKeyword(ot, "mill") || hasKeyword(ot, "mills") || hasKeyword(ot, "milled") || hasKeyword(ot, "milling") {
 		p.Effects = append(p.Effects, "mill")
 	}
 	if containsAny(ot, "each opponent loses", "each opponent lose") {
@@ -703,15 +714,23 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	// LAND & GRAVEYARD STRATEGY DETECTION
 	// ---------------------------------------------------------------
 
-	// Landfall triggers
-	if strings.Contains(ot, "landfall") ||
+	// Landfall triggers. Word-boundary on the "landfall" keyword so a
+	// card body that references "Landfall — Dragon Storm" in flavor
+	// or a long-form ability doesn't false-fire on a non-keyword
+	// substring match. The fallback "whenever … land … enters" branch
+	// keeps the implicit-landfall detection (Tireless Tracker style).
+	if hasKeyword(ot, "landfall") ||
 		(strings.Contains(ot, "whenever") && strings.Contains(ot, "land") &&
 			(strings.Contains(ot, "enters") || strings.Contains(ot, "enter"))) {
 		p.Triggers = append(p.Triggers, "landfall")
 	}
 
-	// Self-mill (intentional graveyard filling)
-	if strings.Contains(ot, "mill") && !strings.Contains(ot, "opponent") {
+	// Self-mill (intentional graveyard filling). Word-boundary "mill"
+	// avoids matching "Millstone" by name; the "opponent" guard stays as
+	// a substring check because any mention of opponent in the same card
+	// text is a strong signal that the mill is opponent-targeted (or
+	// symmetric and not the deck's primary graveyard-fill source).
+	if (hasKeyword(ot, "mill") || hasKeyword(ot, "mills")) && !strings.Contains(ot, "opponent") {
 		p.Produces = append(p.Produces, ResGraveyardFill)
 		p.Effects = append(p.Effects, "self_mill")
 	}
@@ -998,7 +1017,10 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		p.Triggers = append(p.Triggers, "daynight")
 		p.Effects = append(p.Effects, "transform")
 	}
-	if strings.Contains(ot, "transform") || strings.Contains(ot, "transforms") {
+	// Word-boundary so "transformation" / "transformative" in flavor
+	// text doesn't add a transform effect. The day/night branch above
+	// already covers most legitimate transform cards.
+	if hasKeyword(ot, "transform") || hasKeyword(ot, "transforms") {
 		p.Effects = append(p.Effects, "transform")
 	}
 	if strings.Contains(ot, "it becomes night") || strings.Contains(ot, "it becomes day") ||
@@ -1030,8 +1052,12 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	// - "facedown_enabler": puts OTHER cards face-down (manifest, Scroll of Fate)
 	// - "facedown" trigger: card cares about OTHER face-down creatures existing
 	// - "face_up" effect: card rewards things being turned face up (not just self)
-	hasMorphKeyword := strings.Contains(ot, "morph") || strings.Contains(ot, "megamorph") ||
-		strings.Contains(ot, "disguise")
+	// Word-boundary keyword checks so "polymorph" / "Polymorphist's Jest"
+	// don't false-fire the morph detector, and "disguised" used as a
+	// non-keyword verb doesn't trip disguise. Megamorph is a keyword
+	// that only appears as its own whole word.
+	hasMorphKeyword := hasKeyword(ot, "morph") || hasKeyword(ot, "megamorph") ||
+		hasKeyword(ot, "disguise")
 
 	if hasMorphKeyword {
 		p.Effects = append(p.Effects, "facedown_create")
