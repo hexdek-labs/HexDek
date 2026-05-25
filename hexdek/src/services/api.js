@@ -68,6 +68,18 @@ export const api = {
   getGame: (id) => request(`/api/games/${id}`),
   getGameReport: (id) => request(`/api/games/${id}/report`),
   getGameSummary: (id) => request(`/api/games/${id}/summary`),
+  searchGameSummaries: ({ since, until, commander, deck, winner, limit, offset } = {}) => {
+    const params = new URLSearchParams()
+    if (since) params.set('since', String(since))
+    if (until) params.set('until', String(until))
+    if (commander) params.set('commander', commander)
+    if (deck) params.set('deck', deck)
+    if (winner) params.set('winner', winner)
+    if (limit) params.set('limit', String(limit))
+    if (offset) params.set('offset', String(offset))
+    const qs = params.toString()
+    return request(`/api/games/summaries${qs ? `?${qs}` : ''}`)
+  },
   getLiveStats: () => request('/api/live/stats'),
   getLiveGame: () => request('/api/live/game'),
   getLiveELO: () => request('/api/live/elo'),
