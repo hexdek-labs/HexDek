@@ -211,11 +211,12 @@ type CoachingTip struct {
 }
 
 type CardQuality struct {
-	Name      string
-	Tier      string // "star" | "solid" | "cuttable" (synergy-tier classification)
-	Reason    string
-	Power     int    // 0-100 power level — see CardPowerLevel for components
-	PowerTier string // "S" | "A" | "B" | "C" | "D" — see PowerTierFor
+	Name             string
+	Tier             string // "star" | "solid" | "cuttable" (synergy-tier classification)
+	Reason           string
+	Power            int    // 0-100 power level — see CardPowerLevel for components
+	PowerTier        string // "S" | "A" | "B" | "C" | "D" — see PowerTierFor
+	PowerExplanation string // human-readable "S — wincon piece + 4-role at CMC 1 + Combo-archetype fit"
 	// Rationale fields (populated for cuttable tier).
 	Detected  string   // what stat/pattern triggered the recommendation
 	WhyCut    string   // why cutting it is recommended
@@ -242,6 +243,7 @@ type CardPowerLevel struct {
 	Roles               []string
 	Power               int
 	PowerTier           string // "S" | "A" | "B" | "C" | "D" — see PowerTierFor
+	Explanation         string // human-readable why-line — see buildPowerExplanation
 	ArchetypeFit        int
 	CMCEfficiency       int
 	SynergyContribution int
