@@ -1414,6 +1414,16 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 	}
 
 	// ── Flag individual combo pieces (partial matches) ──
+	//
+	// For 2- and 3-card combos any partial overlap is noteworthy (1-of-2,
+	// 1-of-3, 2-of-3 — at most 2 missing pieces). For 4-card combos, we
+	// gate the note on having AT LEAST 3 of 4 pieces — the prefix-pruning
+	// described in CLAUDE.md's combo-detection backlog. Without the gate,
+	// a typical EDH deck partially matches dozens of 4-card combos at
+	// 1-of-4 / 2-of-4 (anyone running a Sol Ring "matches" any combo
+	// with a Sol Ring outlet listed), drowning real near-miss signals
+	// in noise. The 75%-threshold gate keeps the report focused on
+	// actionable "you are one card away from a known 4-card win" hints.
 	for _, known := range combosForDeck {
 		var presentPieces []string
 		var missingPieces []string
@@ -1424,13 +1434,21 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 				missingPieces = append(missingPieces, piece)
 			}
 		}
-		// If we have SOME but not ALL pieces, note the potential.
-		if len(presentPieces) > 0 && len(missingPieces) > 0 {
-			report.ComboNotes = append(report.ComboNotes, fmt.Sprintf(
-				"%s: have %s, missing %s for %s",
-				known.Name, strings.Join(presentPieces, " + "),
-				strings.Join(missingPieces, " + "), known.Type))
+		if len(presentPieces) == 0 || len(missingPieces) == 0 {
+			continue
 		}
+		// Prefix-pruning: for 4+ card combos require ≥75% of pieces
+		// present before surfacing the near-miss note.
+		if len(known.Pieces) >= 4 {
+			needed := (len(known.Pieces) * 3 + 3) / 4 // ceil(N * 0.75)
+			if len(presentPieces) < needed {
+				continue
+			}
+		}
+		report.ComboNotes = append(report.ComboNotes, fmt.Sprintf(
+			"%s: have %s, missing %s for %s",
+			known.Name, strings.Join(presentPieces, " + "),
+			strings.Join(missingPieces, " + "), known.Type))
 	}
 
 	// Run all detectors.

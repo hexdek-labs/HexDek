@@ -625,4 +625,69 @@ var KnownCombos = []KnownCombo{
 		Outlets:     []string{"Blood Artist", "Goblin Bombardment", "Altar of Dementia"},
 		Stops:       []string{"Remove Vizier"},
 	},
+
+	// ─────────────────────────────────────────────────────────────────────
+	// 4-CARD COMBOS (R60 sweep)
+	// ─────────────────────────────────────────────────────────────────────
+	// Curated subset of well-documented 4-card cEDH win lines. Each entry
+	// is irreducible — none of these is a strict superset of an existing
+	// 1/2/3-card combo in this database (verified by allKnownCombos
+	// dedup-by-pieces in spellbook_import.go).
+	//
+	// The KnownCombos lookup in analysis.go is O(combos × max_pieces) per
+	// deck and supports any arity natively, so adding 4-card entries
+	// requires no detector-side plumbing. The heuristic FindLoops path
+	// (checkQuadCombo) handles UNNAMED 4-card cycles; this section
+	// handles NAMED ones with curated descriptions + outlets + stops.
+
+	{
+		Name:        "Citadel + Top + Birgi + Aetherflux",
+		Pieces:      []string{"Bolas's Citadel", "Sensei's Divining Top", "Birgi, God of Storytelling", "Aetherflux Reservoir"},
+		Type:        "determined",
+		Class:       ComboClassStormFinisher,
+		Mandatory:   false,
+		Description: "Bolas's Citadel casts off top paying life. Sensei's Divining Top {1}: draw → goes on top → cast again. Birgi gives {R} per spell cast, paying for Top's {1} re-cast. Aetherflux gains 1 life per cast — stacks to 51+ life across the storm chain; pay 50 to nuke any opponent. Self-sustaining Storm finisher.",
+		Outlets:     []string{"Aetherflux Reservoir"}, // the wincon IS the outlet
+		Stops:       []string{"Remove Aetherflux mid-loop", "Remove Birgi (Top stops cycling for free)", "Force Birgi off the battlefield"},
+	},
+	{
+		Name:        "Twiddle Storm",
+		Pieces:      []string{"Bonus Round", "Twiddle", "High Tide", "Brain Freeze"},
+		Type:        "determined",
+		Class:       ComboClassInfiniteMill,
+		Mandatory:   false,
+		Description: "High Tide doubles each Island's mana. Bonus Round copies the next instant/sorcery. Twiddle untaps an Island — copy via Bonus Round = 2 free untaps per cast, generating storm count and mana. Brain Freeze with storm = mill 30+ cards. Each Twiddle nets +mana; chain ends with lethal Brain Freeze on each opponent.",
+		Outlets:     []string{"Brain Freeze", "Grapeshot", "Tendrils of Agony"},
+		Stops:       []string{"Counter the storm payoff", "Bojuka Bog / graveyard hate post-resolution to prevent flashback chains"},
+	},
+	{
+		Name:        "Hermit Druid Dread Return Line",
+		Pieces:      []string{"Hermit Druid", "Narcomoeba", "Dread Return", "Thassa's Oracle"},
+		Type:        "determined",
+		Class:       ComboClassLibraryExileWin,
+		Mandatory:   false,
+		Description: "Hermit Druid mills entire library (no basics in deck). Narcomoebas hit the battlefield from the mill. Dread Return flashback sacrificing 3 Narcomoebas to reanimate Thassa's Oracle. Oracle ETB → library is empty → win. Classic 4-card Hermit Druid combo.",
+		Outlets:     []string{"Thassa's Oracle", "Laboratory Maniac", "Jace, Wielder of Mysteries"},
+		Stops:       []string{"Graveyard hate on either Druid's mill or pre-Dread-Return", "Counter Dread Return", "Counter Oracle ETB", "Surgical Extraction on a Narcomoeba"},
+	},
+	{
+		Name:        "Worldgorger Dragon + Animate Dead + Outlet + Sac Creature",
+		Pieces:      []string{"Worldgorger Dragon", "Animate Dead", "Goblin Bombardment", "Bloodghast"},
+		Type:        "determined",
+		Class:       ComboClassInfiniteDamage,
+		Mandatory:   false,
+		Description: "Animate Dead reanimates Worldgorger Dragon (exiles all your other permanents on ETB). Animate Dead falls off (no creature to enchant) → Worldgorger dies → permanents return → Animate Dead reanimates Worldgorger again → loop. Each cycle re-ETBs every permanent — Bloodghast triggers landfall infinitely if any land returns, or use Bombardment to sacrifice for direct damage every cycle. Untapped lands give infinite mana along the way.",
+		Outlets:     []string{"Goblin Bombardment", "Walking Ballista", "Impact Tremors", "Purphoros, God of the Forge", "Blood Artist"},
+		Stops:       []string{"Stifle the Worldgorger ETB", "Counter Animate Dead", "Disenchant the Animate Dead mid-loop"},
+	},
+	{
+		Name:        "Necrotic Ooze + Phyrexian Devourer + Triskelion + Hermit Druid",
+		Pieces:      []string{"Necrotic Ooze", "Phyrexian Devourer", "Triskelion", "Hermit Druid"},
+		Type:        "determined",
+		Class:       ComboClassInfiniteDamage,
+		Mandatory:   false,
+		Description: "Hermit Druid mills entire library (no basics) → Devourer + Triskelion land in graveyard. Necrotic Ooze ETBs and grants all activated abilities from creatures in graveyards. Devourer's 'exile cards from library, gain +X/+X' is now on Ooze — exile-yourself-empty doesn't matter because library is already milled. Triskelion's 'remove +1/+1 counter, deal 1 damage' is also on Ooze — sink infinite counters into infinite damage. Removes all opponents at instant speed.",
+		Outlets:     []string{"Triskelion (the wincon IS the outlet)"},
+		Stops:       []string{"Graveyard hate on Devourer / Triskelion / Ooze pre-resolution", "Counter Hermit Druid activation"},
+	},
 }
