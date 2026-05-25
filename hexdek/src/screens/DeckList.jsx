@@ -10,6 +10,39 @@ import { MOCK_DECKS } from '../services/mock'
 import ContextBox from '../components/ContextBox'
 
 const VIEW_KEY = 'hexdek_deck_view'
+const SORT_KEY = 'hexdek_deck_sort'
+
+// Bracket strings look like "B4", "B3.5", "B?". Pull out the numeric piece for sort;
+// unknowns sink to the bottom regardless of direction.
+function bracketSortValue(d) {
+  const raw = d.pls || d.wbs || d.bracket
+  const n = parseFloat(raw)
+  return Number.isFinite(n) ? n : null
+}
+
+function compareDecks(a, b, key, dir, eloByDeckId) {
+  const mult = dir === 'asc' ? 1 : -1
+  const aKey = `${a.owner}/${a.id}`
+  const bKey = `${b.owner}/${b.id}`
+  const aElo = eloByDeckId[aKey] || eloByDeckId[a.id]
+  const bElo = eloByDeckId[bKey] || eloByDeckId[b.id]
+  const num = (x, y) => {
+    if (x == null && y == null) return 0
+    if (x == null) return 1   // missing always sinks
+    if (y == null) return -1
+    return (x - y) * mult
+  }
+  const str = (x, y) => (x || '').localeCompare(y || '') * mult
+  switch (key) {
+    case 'name':      return str(a.name || a.commander_card || a.commander, b.name || b.commander_card || b.commander)
+    case 'commander': return str(a.commander_card || a.commander, b.commander_card || b.commander)
+    case 'owner':     return str(a.owner, b.owner)
+    case 'bracket':   return num(bracketSortValue(a), bracketSortValue(b))
+    case 'elo':       return num(aElo?.rating, bElo?.rating)
+    case 'record':    return num(aElo?.win_rate, bElo?.win_rate)
+    default:          return 0
+  }
+}
 
 const ARCHETYPE_CHIPS = [
   { id: 'all', label: 'ALL', match: () => true },
@@ -45,6 +78,16 @@ export default function DeckList() {
     if (typeof localStorage === 'undefined') return 'shelf'
     return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'shelf'
   })
+  const [sort, setSort] = useState(() => {
+    if (typeof localStorage === 'undefined') return { key: 'elo', dir: 'desc' }
+    try {
+      const stored = JSON.parse(localStorage.getItem(SORT_KEY) || '')
+      if (stored && stored.key && stored.dir) return stored
+    } catch {
+      // fall through to default
+    }
+    return { key: 'elo', dir: 'desc' }
+  })
   const navigate = useNavigate()
   const { elo } = useLiveSocket()
   const upload = useUploadDeck(() => loadDecks())
@@ -52,6 +95,16 @@ export default function DeckList() {
   useEffect(() => {
     if (typeof localStorage !== 'undefined') localStorage.setItem(VIEW_KEY, viewMode)
   }, [viewMode])
+
+  useEffect(() => {
+    if (typeof localStorage !== 'undefined') localStorage.setItem(SORT_KEY, JSON.stringify(sort))
+  }, [sort])
+
+  const onSort = (key) => {
+    setSort(s => s.key === key
+      ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' }
+      : { key, dir: (key === 'name' || key === 'commander' || key === 'owner') ? 'asc' : 'desc' })
+  }
 
   useEffect(() => {
     const t = searchParams.get('tab')
@@ -85,7 +138,7 @@ export default function DeckList() {
   const baseDecks = (tab === 'mine' && user) ? myDecks : decks
   const hasLegalityData = decks.some(d => d.legal != null)
   const activeChip = ARCHETYPE_CHIPS.find(c => c.id === archetypeFilter) || ARCHETYPE_CHIPS[0]
-  const filtered = baseDecks.filter(d => {
+  const matched = baseDecks.filter(d => {
     if (legalFilter === 'legal' && d.legal === false) return false
     if (legalFilter === 'illegal' && d.legal !== false) return false
     if (archetypeFilter !== 'all') {
@@ -97,6 +150,8 @@ export default function DeckList() {
     const haystack = `${d.name} ${d.commander_card || ''} ${d.commander || ''} ${d.owner || ''}`.toLowerCase()
     return haystack.includes(q)
   })
+
+  const filtered = [...matched].sort((a, b) => compareDecks(a, b, sort.key, sort.dir, eloByDeckId))
 
   const tapeLabel = tab === 'mine' && hasMyDecks
     ? `DECK ARCHIVE / / MY BUILDS`
@@ -210,7 +265,7 @@ export default function DeckList() {
         ) : viewMode === 'shelf' ? (
           <DeckShelf decks={filtered.slice(0, 60)} eloByDeckId={eloByDeckId} navigate={navigate} onAddCard={upload.open} />
         ) : (
-          <ListView decks={filtered.slice(0, 60)} eloByDeckId={eloByDeckId} navigate={navigate} onUpload={upload.open} />
+          <ListView decks={filtered.slice(0, 60)} eloByDeckId={eloByDeckId} navigate={navigate} onUpload={upload.open} sort={sort} onSort={onSort} />
         )}
 
         {filtered.length > 60 && (
@@ -225,7 +280,25 @@ export default function DeckList() {
   )
 }
 
-function ListView({ decks, eloByDeckId, navigate, onUpload }) {
+function SortHeader({ sortKey, sort, onSort, children }) {
+  const active = sort?.key === sortKey
+  const arrow = active ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : ''
+  return (
+    <span
+      onClick={() => onSort?.(sortKey)}
+      style={{
+        cursor: 'pointer',
+        color: active ? 'var(--ink)' : 'var(--ink-3)',
+        userSelect: 'none',
+      }}
+      title={`Sort by ${sortKey}`}
+    >
+      {children}{arrow}
+    </span>
+  )
+}
+
+function ListView({ decks, eloByDeckId, navigate, onUpload, sort, onSort }) {
   return (
     <div className="panel" style={{ padding: 0 }}>
       <div
@@ -242,12 +315,12 @@ function ListView({ decks, eloByDeckId, navigate, onUpload }) {
         }}
       >
         <span></span>
-        <span>NAME</span>
-        <span>COMMANDER</span>
-        <span>OWNER</span>
-        <span>BRACKET</span>
-        <span>ELO</span>
-        <span>RECORD</span>
+        <SortHeader sortKey="name" sort={sort} onSort={onSort}>NAME</SortHeader>
+        <SortHeader sortKey="commander" sort={sort} onSort={onSort}>COMMANDER</SortHeader>
+        <SortHeader sortKey="owner" sort={sort} onSort={onSort}>OWNER</SortHeader>
+        <SortHeader sortKey="bracket" sort={sort} onSort={onSort}>BRACKET</SortHeader>
+        <SortHeader sortKey="elo" sort={sort} onSort={onSort}>ELO</SortHeader>
+        <SortHeader sortKey="record" sort={sort} onSort={onSort}>RECORD</SortHeader>
       </div>
       <div style={{ padding: '6px 10px 0', borderBottom: '1px solid var(--rule)' }}>
         <ContextBox id="decklist.import" compact>Click below to import a deck — paste a Moxfield URL or raw decklist. Freya analyzes it automatically (~10–20 seconds) and then redirects you to the new deck page.</ContextBox>
