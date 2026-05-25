@@ -2,6 +2,7 @@ package hexapi
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -49,6 +50,32 @@ import (
 //     deck(owner: String!, id: String!): Deck
 //     decks(owner: String, limit: Int = 50): [Deck]
 //   }
+//
+//   input DeckImportInput {
+//     deckList: String!
+//     owner:    String
+//     name:     String
+//   }
+//
+//   type Mutation {
+//     importDeck(input: DeckImportInput!): Deck
+//     deleteDeck(owner: String!, id: String!): Boolean
+//   }
+//
+// Mutations notes:
+//
+//   - importDeck mirrors POST /api/decks: writes a deck file under
+//     decksDir/{owner}/{id}.txt with the same sanitization,
+//     unique-filename collision avoidance, and default owner/name
+//     rules. Anonymous-friendly (no caller-owner check) because
+//     "import a deck" is a self-creation action.
+//
+//   - deleteDeck mirrors DELETE /api/decks/{owner}/{id}: gated on
+//     X-HexDek-Owner via callerOwner(ctx) — caller MUST match the
+//     target owner. Returns true on successful deletion, false on
+//     missing file; ownership failure / path-traversal raise a
+//     GraphQL error so the client sees it under `errors` rather
+//     than as a silent false.
 //
 // Design notes:
 //
@@ -422,6 +449,167 @@ func buildGraphQLSchema(h *GraphQLHandler) (graphql.Schema, error) {
 		},
 	})
 
-	return graphql.NewSchema(graphql.SchemaConfig{Query: queryRoot})
+	// ---- Mutations ----
+	deckImportInput := graphql.NewInputObject(graphql.InputObjectConfig{
+		Name:        "DeckImportInput",
+		Description: "Body for importDeck. deckList is the raw deck text (parsed lazily on read); owner + name fall back to defaults when blank.",
+		Fields: graphql.InputObjectConfigFieldMap{
+			"deckList": &graphql.InputObjectFieldConfig{
+				Type:        graphql.NewNonNull(graphql.String),
+				Description: "Deck list body — same format the REST POST /api/decks accepts.",
+			},
+			"owner": &graphql.InputObjectFieldConfig{
+				Type:        graphql.String,
+				Description: "Owner slug. Sanitized to [a-z0-9_-]; falls back to \"imported\" when blank.",
+			},
+			"name": &graphql.InputObjectFieldConfig{
+				Type:        graphql.String,
+				Description: "Display name. Sanitized to [a-z0-9_-]; falls back to \"imported_deck\" when blank.",
+			},
+		},
+	})
+
+	mutationRoot := graphql.NewObject(graphql.ObjectConfig{
+		Name: "Mutation",
+		Fields: graphql.Fields{
+			"importDeck": &graphql.Field{
+				Type:        deckType,
+				Description: "Write a new deck file under decksDir/{owner}/{id}.txt and return the resulting Deck. Anonymous — no caller-owner check (importing a deck is a self-creation action).",
+				Args: graphql.FieldConfigArgument{
+					"input": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(deckImportInput),
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (any, error) {
+					input, _ := p.Args["input"].(map[string]any)
+					if input == nil {
+						return nil, errors.New("importDeck: missing input")
+					}
+					deckList, _ := input["deckList"].(string)
+					if strings.TrimSpace(deckList) == "" {
+						return nil, errors.New("importDeck: deckList is required")
+					}
+					owner, _ := input["owner"].(string)
+					name, _ := input["name"].(string)
+					resolvedOwner, resolvedID, err := writeImportedDeckFile(h.decksDir, owner, name, deckList)
+					if err != nil {
+						return nil, err
+					}
+					ds := loadGraphQLDeckSummary(h.decksDir, resolvedOwner, resolvedID)
+					if ds == nil {
+						// Should be impossible — the write just succeeded
+						// — but if loadDeckSummary fails the client
+						// shouldn't get a misleading null without context.
+						return nil, fmt.Errorf("importDeck: file written but reload failed (owner=%s id=%s)",
+							resolvedOwner, resolvedID)
+					}
+					return *ds, nil
+				},
+			},
+			"deleteDeck": &graphql.Field{
+				Type:        graphql.Boolean,
+				Description: "Remove a deck file. Caller's X-HexDek-Owner header MUST equal the target owner; mismatched or missing header raises an error rather than silently returning false (so the client can't misread it as \"deck didn't exist\").",
+				Args: graphql.FieldConfigArgument{
+					"owner": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.String),
+					},
+					"id": &graphql.ArgumentConfig{
+						Type: graphql.NewNonNull(graphql.String),
+					},
+				},
+				Resolve: func(p graphql.ResolveParams) (any, error) {
+					owner, _ := p.Args["owner"].(string)
+					id, _ := p.Args["id"].(string)
+					if !validatePathComponent(owner) || !validatePathComponent(id) {
+						return nil, errors.New("deleteDeck: invalid owner or id")
+					}
+					caller := callerOwner(p.Context)
+					if caller == "" {
+						return nil, errors.New("deleteDeck: caller identity missing (set X-HexDek-Owner)")
+					}
+					if caller != strings.ToLower(owner) {
+						return nil, errors.New("deleteDeck: forbidden — caller is not the deck owner")
+					}
+					if h.decksDir == "" {
+						return false, nil
+					}
+					deckPath := findDeckFile(h.decksDir, owner, id)
+					if deckPath == "" {
+						// File didn't exist; the operation is a no-op,
+						// not an error. Mirrors the REST handler's
+						// 404 → false (here) distinction.
+						return false, nil
+					}
+					if err := os.Remove(deckPath); err != nil {
+						return nil, fmt.Errorf("deleteDeck: remove: %w", err)
+					}
+					// Clean up Freya strategy file alongside, same as the
+					// REST handler does — keeps the on-disk state
+					// consistent across mutation paths.
+					_ = os.Remove(filepath.Join(h.decksDir, owner, "freya", id+".strategy.json"))
+					return true, nil
+				},
+			},
+		},
+	})
+
+	return graphql.NewSchema(graphql.SchemaConfig{
+		Query:    queryRoot,
+		Mutation: mutationRoot,
+	})
+}
+
+// writeImportedDeckFile mirrors handleImportDeck's disk-write logic.
+// Sanitizes owner + name, creates the owner dir, finds a unique
+// filename (appends _2.._100 on collision), writes the deck list.
+// Returns the resolved owner + id so the caller can reload a Deck
+// summary off the same path.
+//
+// Kept here rather than refactoring handleImportDeck to call into it
+// because the REST handler does several response-specific bits
+// (request-body limit reader, DeckSummary marshal) that aren't worth
+// generalizing for one extra consumer. Behavior MUST stay in sync —
+// covered by the graphql_mutations test that exercises sanitization
+// + collision rules end-to-end.
+func writeImportedDeckFile(decksDir, ownerArg, nameArg, deckList string) (owner, id string, err error) {
+	if decksDir == "" {
+		return "", "", errors.New("decksDir not configured")
+	}
+	owner = strings.TrimSpace(ownerArg)
+	if owner == "" {
+		owner = "imported"
+	}
+	owner = sanitizeFilename(owner)
+	if owner == "" {
+		return "", "", errors.New("owner sanitized to empty")
+	}
+	name := strings.TrimSpace(nameArg)
+	if name == "" {
+		name = "imported_deck"
+	}
+	fileID := sanitizeFilename(strings.ToLower(name))
+	if fileID == "" {
+		fileID = "deck"
+	}
+	ownerDir := filepath.Join(decksDir, owner)
+	if err := os.MkdirAll(ownerDir, 0o755); err != nil {
+		return "", "", fmt.Errorf("create owner dir: %w", err)
+	}
+	deckPath := filepath.Join(ownerDir, fileID+".txt")
+	finalID := fileID
+	for i := 2; ; i++ {
+		if _, statErr := os.Stat(deckPath); os.IsNotExist(statErr) {
+			break
+		}
+		finalID = fmt.Sprintf("%s_%d", fileID, i)
+		deckPath = filepath.Join(ownerDir, finalID+".txt")
+		if i > 100 {
+			return "", "", errors.New("too many decks with the same name")
+		}
+	}
+	if err := os.WriteFile(deckPath, []byte(deckList), 0o644); err != nil {
+		return "", "", fmt.Errorf("write deck: %w", err)
+	}
+	return owner, finalID, nil
 }
 

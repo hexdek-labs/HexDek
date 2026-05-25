@@ -1,9 +1,11 @@
 package hexapi
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/graphql-go/graphql"
 )
@@ -31,8 +33,18 @@ import (
 //   deck(owner: String!, id: String!)           → one deck or null
 //   decks(owner: String, limit: Int = 50)       → decks, filterable
 //
-// Out of POC scope (and still): mutations, subscriptions, depth
-// limits, persisted queries, an introspection toggle, dataloader.
+// Mutations (r60):
+//   importDeck(input: DeckImportInput!): Deck   — write a new deck file
+//   deleteDeck(owner: String!, id: String!): Boolean
+//                                               — caller-owner-checked
+//
+// Mutations check the caller's identity by reading X-HexDek-Owner from
+// the request headers and stashing it in the resolver context. Same
+// header-based ownership shape the REST handlers use (checkOwnership);
+// mirrored here so the GraphQL surface doesn't become the soft spot.
+//
+// Out of POC scope (and still): subscriptions, depth limits, persisted
+// queries, an introspection toggle, dataloader.
 
 // GraphQLHandler wraps a Showmatch + decksDir + a compiled GraphQL
 // schema. The schema is built once per process at construction;
@@ -103,12 +115,20 @@ func (h *GraphQLHandler) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Stash the caller's owner identity in the resolver context so
+	// mutation resolvers can do an ownership check without reaching
+	// back to the http.Request (which graphql-go doesn't pass through
+	// by default). Mirrors REST's checkOwnership(r, owner).
+	ctx := r.Context()
+	if owner := strings.ToLower(strings.TrimSpace(r.Header.Get("X-HexDek-Owner"))); owner != "" {
+		ctx = withCallerOwner(ctx, owner)
+	}
 	result := graphql.Do(graphql.Params{
 		Schema:         h.schema,
 		RequestString:  req.Query,
 		VariableValues: req.Variables,
 		OperationName:  req.OperationName,
-		Context:        r.Context(),
+		Context:        ctx,
 	})
 	// graphql.Do never returns a transport error — it always emits
 	// a Result, with any execution / validation errors collected in
@@ -117,5 +137,27 @@ func (h *GraphQLHandler) serve(w http.ResponseWriter, r *http.Request) {
 	// result.Errors populated for the client to surface.
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(result)
+}
+
+// graphqlCtxKey is the private context-key type for resolver-side
+// auth lookups. Unexported so callers outside this file can't collide
+// with the key namespace.
+type graphqlCtxKey string
+
+const ctxKeyCallerOwner graphqlCtxKey = "caller_owner"
+
+// withCallerOwner returns a derived context carrying the lowercased
+// caller-owner slug pulled from the X-HexDek-Owner request header.
+// Used by mutation resolvers to gate owner-targeted operations.
+func withCallerOwner(ctx context.Context, owner string) context.Context {
+	return context.WithValue(ctx, ctxKeyCallerOwner, owner)
+}
+
+// callerOwner returns the slug previously stashed via withCallerOwner,
+// or "" if absent. Resolvers use the empty return as "unauthenticated"
+// — same shape as REST's checkOwnership treating a blank header.
+func callerOwner(ctx context.Context) string {
+	v, _ := ctx.Value(ctxKeyCallerOwner).(string)
+	return v
 }
 
