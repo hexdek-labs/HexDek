@@ -706,6 +706,16 @@ func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string) {
 		}
 	}
 
+	// Finisher density — distinct win-condition lines signal tuned optimization.
+	// Decks with many independent finishers are operating at B4+ regardless of
+	// raw combo/GC count (e.g. tribal Voltron with 14 finisher overlap).
+	finisherCount := len(report.Finishers)
+	if finisherCount >= 8 {
+		score += 2
+	} else if finisherCount >= 4 {
+		score += 1
+	}
+
 	var bracket int
 	var label string
 	switch {
@@ -726,17 +736,47 @@ func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string) {
 		label = "Exhibition"
 	}
 
-	// Ceilings — WotC GC caps
-	if ctx.gameChangerCount == 0 && bracket > 2 {
-		bracket = 2
-		label = "Core"
-	}
-	if ctx.gameChangerCount >= 1 && ctx.gameChangerCount <= 3 && bracket > 3 {
-		bracket = 3
-		label = "Upgraded"
+	// Ceilings — WotC GC caps, modulated by combo presence.
+	// Per WotC bracket framework: a 2-card combo that wins the game is itself
+	// a B4 marker (Bracket 3 explicitly disallows winning 2-card infinites;
+	// Bracket 4 explicitly allows them). So combo presence lifts the GC ceiling.
+	// Determined-loop counts are intentionally NOT used here — heuristic combo
+	// detection over-classifies value engines (e.g. tribal Werewolf with 4
+	// "determined loops" is really value, not B4 combo).
+	trueInfCount := len(report.TrueInfinites)
+	hasWinningCombo := trueInfCount >= 1
+	// Finisher-density override: many distinct closer lines + accelerator
+	// density signals tuned optimization even without an explicit infinite.
+	tunedRedundancy := finisherCount >= 8 && ctx.fastManaCount >= 6
+
+	if ctx.gameChangerCount == 0 {
+		// No Game Changers: B2 cap by default, but a true winning 2-card combo
+		// is itself a B4 marker per WotC's combo carveout.
+		if hasWinningCombo {
+			if bracket > 4 {
+				bracket = 4
+				label = "Optimized"
+			}
+		} else if bracket > 2 {
+			bracket = 2
+			label = "Core"
+		}
+	} else if ctx.gameChangerCount <= 3 {
+		// Light GC presence: B3 cap by default; lifts to B4 when a real
+		// winning combo or tuned-redundancy signal is present.
+		if hasWinningCombo || tunedRedundancy {
+			if bracket > 4 {
+				bracket = 4
+				label = "Optimized"
+			}
+		} else if bracket > 3 {
+			bracket = 3
+			label = "Upgraded"
+		}
 	}
 
-	// Floors — GC presence guarantees minimum bracket
+	// Floors — GC presence guarantees minimum bracket.
+	// 5+ Game Changers is a deliberate optimization choice — floor at B4.
 	if ctx.gameChangerCount >= 1 && ctx.gameChangerCount <= 3 && bracket < 2 {
 		bracket = 2
 		label = "Core"
@@ -744,6 +784,17 @@ func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string) {
 	if ctx.gameChangerCount >= 4 && bracket < 3 {
 		bracket = 3
 		label = "Upgraded"
+	}
+	if ctx.gameChangerCount >= 5 && bracket < 4 {
+		bracket = 4
+		label = "Optimized"
+	}
+	// Tuned-redundancy floor: many distinct finisher lines + fast-mana density
+	// is operationally B4 regardless of GC count (e.g. voja-style tribal
+	// Voltron with 14 finishers + 8 fast mana pieces).
+	if tunedRedundancy && bracket < 4 {
+		bracket = 4
+		label = "Optimized"
 	}
 
 	return bracket, label
