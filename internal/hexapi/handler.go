@@ -43,6 +43,15 @@ type Handler struct {
 
 	deckSubsMu sync.RWMutex
 	deckSubs   map[string]map[chan deckEvent]struct{}
+
+	// snapshotCache caches parsed heimdall.GameObservationSnapshot
+	// values for /api/games/{id}/summary + /api/games/{id}/summary.pdf
+	// + /api/games/{id}/replay. Lazily initialized on first read via
+	// ensureSnapshotCache so existing constructors don't need to know
+	// about it. Versioned by showmatch_game_observation.created_at so
+	// upserts naturally invalidate cached entries.
+	snapshotCache     *snapshotCache
+	snapshotCacheOnce sync.Once
 }
 
 type deckEvent struct {

@@ -51,26 +51,26 @@ func (h *Handler) handleGameSummaryPDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Mirror the /summary handler: try the snapshot first; on
-	// success, overlay GameRecord's authoritative end-state.
+	// Mirror the /summary handler: cached parsed snapshot first,
+	// fall back to db_only on miss / malformed payload, GameRecord
+	// overlay for authoritative end-state.
+	h.ensureSnapshotCache()
 	var summary heimdall.GameSummary
-	payload, err := db.LoadGameObservation(ctx, h.db, id)
-	if err == nil {
-		snap, perr := heimdall.UnmarshalSnapshot(payload)
-		if perr == nil {
-			summary = heimdall.BuildGameSummaryFromSnapshot(snap, game.EndReason)
-			summary.Winner = game.Winner
-			summary.WinnerName = game.WinnerName
-			if game.Turns > summary.Turns {
-				summary.Turns = game.Turns
-			}
-		} else {
-			log.Printf("game_summary_pdf: malformed snapshot for game %d: %v", id, perr)
-			summary = buildDBOnlyGameSummary(game)
+	snap, _, err := h.loadCachedSnapshot(ctx, id)
+	switch {
+	case err == nil:
+		summary = heimdall.BuildGameSummaryFromSnapshot(snap, game.EndReason)
+		summary.Winner = game.Winner
+		summary.WinnerName = game.WinnerName
+		if game.Turns > summary.Turns {
+			summary.Turns = game.Turns
 		}
-	} else if errors.Is(err, sql.ErrNoRows) {
+	case errors.Is(err, sql.ErrNoRows):
 		summary = buildDBOnlyGameSummary(game)
-	} else {
+	case IsMalformedSnapshot(err):
+		log.Printf("game_summary_pdf: malformed snapshot for game %d: %v", id, err)
+		summary = buildDBOnlyGameSummary(game)
+	default:
 		writeError(w, http.StatusInternalServerError, "load observation: "+err.Error())
 		return
 	}
