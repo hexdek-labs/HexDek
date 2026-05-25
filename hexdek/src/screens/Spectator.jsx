@@ -533,7 +533,13 @@ export default function Spectator() {
                       {s.lost && !isWinner && <span style={{ color: 'var(--danger)' }}> ✕</span>}
                     </span>
                     <span className="seat-stats">
-                      ♥{s.life} · {rating}{' '}
+                      <span
+                        className={`life-pip ${s.life <= 5 ? 'life-pip--crit' : s.life <= 10 ? 'life-pip--low' : ''}`}
+                        title={s.life <= 5 ? 'Lethal range' : s.life <= 10 ? 'Low life' : `${s.life} life`}
+                      >
+                        ♥{s.life}
+                      </span>
+                      {' · '}{rating}{' '}
                       <span style={{ color: delta >= 0 ? 'var(--ok)' : 'var(--danger)', fontSize: 9 }}>
                         {delta >= 0 ? '+' : ''}{delta}
                       </span>
