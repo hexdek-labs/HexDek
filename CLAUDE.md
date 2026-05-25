@@ -197,6 +197,7 @@ Fetch oracle data: `scripts/fetch-oracle.sh`
 
 | Date | Source | Issue | Severity | Notes |
 |------|--------|-------|----------|-------|
+| 2026-05-25 | Loki r60 extended-seeds / seed 2718 game 3428 | **WinCondition x2 — "seat 0 lost via poison but has only 2 poison counters (< 10)"** (turn 39 end_of_combat; pod: Genevieve Conniving Dragon / Bartolomé del Presidio / Zndrsplt / Hapatra Vizier of Poisons). Per CR §704.5c, a player loses with ≥10 poison counters; seat 0 has only 2 but is marked Lost with "via poison" attribution. Likely root cause: `LossReason` mis-attribution — seat 0 lost via a non-poison path (battlefield=0 + life=16 suggests instakill / mill / Broodguard Elite "when this dies, target opponent loses" trigger) but a `LossReason` string from a different code path stamps "poison" flavor onto a non-poison loss. Either the loss-reason emitter is wrong, or the invariant should match `LossReason="poison"` against actual poison-counter state. Deterministic reproducer: `go run ./cmd/hexdek-loki --games 3430 --seed 2718 --invariant win-condition`. | Medium | New residual surfaced at extended-seeds 10K depth; not in #377's original catalog. WinCondition family is high-severity (incorrect game-end attribution affects ELO/TrueSkill audit). See `docs/loki-r60-extended-seeds.md`. |
 
 ### Resolved
 
