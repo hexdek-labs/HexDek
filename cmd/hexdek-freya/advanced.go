@@ -1447,6 +1447,201 @@ func computeMetaPositioning(dp *DeckProfile) {
 // 6. Card quality tiers — identify star performers and cuttable cards.
 // ---------------------------------------------------------------------------
 
+// computeCardPower populates dp.CardPowerLevels with a 0-100 power
+// rating for every non-land card in the deck. Power is the clamped sum
+// of three explicit components:
+//
+//	ArchetypeFit (0-40)         — card roles aligned with the deck's
+//	                              primary-archetype fingerprint ratios.
+//	                              Tagged cards get a small floor (10)
+//	                              so role-less cards aren't lumped with
+//	                              filler that earned nothing.
+//	CMCEfficiency (0-20)        — curve placement with a low-CMC bias.
+//	                              Multi-role at CMC<=2 earns a bonus.
+//	SynergyContribution (0-40)  — wincon piece (+25), value-chain bridge
+//	                              (+20) / step (+10), finisher (+12),
+//	                              cluster member (+6), per-role floor
+//	                              (+2). Penalties for expensive-tutor
+//	                              redundancy (-8) and CMC5+ utility-only
+//	                              dead slots (-10) subtract within the
+//	                              component (clamped to [0, 40]).
+//
+// Final Power = sum, clamped [0, 100]. Sorted high → low.
+func computeCardPower(dp *DeckProfile, report *FreyaReport) {
+	if report.Roles == nil {
+		return
+	}
+	// Role assignment lookup.
+	roleMap := map[string][]RoleTag{}
+	for _, a := range report.Roles.Assignments {
+		roleMap[a.Name] = a.Roles
+	}
+	// Primary-archetype fingerprint for the fit component. Falls back
+	// to an empty map when the deck didn't match a fingerprint, so the
+	// fit component reduces to the tagged-card floor.
+	var fpRatios map[RoleTag]float64
+	for _, fp := range archetypeFingerprints {
+		if fp.Name == dp.PrimaryArchetype {
+			fpRatios = fp.Ratios
+			break
+		}
+	}
+
+	// Win-line / value-chain / finisher / cluster membership sets.
+	winLinePieces := map[string]bool{}
+	if report.WinLines != nil {
+		for _, wl := range report.WinLines.WinLines {
+			for _, piece := range wl.Pieces {
+				winLinePieces[piece] = true
+			}
+		}
+	}
+	chainSteps := map[string]bool{}
+	chainBridges := map[string]bool{}
+	for _, vc := range report.ValueChains {
+		for _, step := range vc.Steps {
+			for _, card := range step.Cards {
+				chainSteps[card] = true
+			}
+		}
+		for _, b := range vc.BridgeCards {
+			chainBridges[b] = true
+		}
+	}
+	finisherPieces := map[string]bool{}
+	for _, c := range report.Finishers {
+		for _, name := range c.Cards {
+			finisherPieces[name] = true
+		}
+	}
+	clusterMembers := map[string]bool{}
+	for _, cl := range dp.SynergyClusters {
+		for _, name := range cl.Cards {
+			clusterMembers[name] = true
+		}
+	}
+
+	// Tutor density for the redundant-tutor penalty.
+	cheaperTutorsThan := map[int]int{} // cmc → count of cheaper non-land tutors
+	for _, p := range report.Profiles {
+		if !p.IsTutor || p.IsLandTutor {
+			continue
+		}
+		for cmc := p.CMC + 1; cmc <= 10; cmc++ {
+			cheaperTutorsThan[cmc]++
+		}
+	}
+
+	clamp := func(v, lo, hi int) int {
+		if v < lo {
+			return lo
+		}
+		if v > hi {
+			return hi
+		}
+		return v
+	}
+
+	for _, p := range report.Profiles {
+		if p.IsLand {
+			continue
+		}
+		roles := roleMap[p.Name]
+
+		// --- Archetype fit (0-40) ---
+		archFit := 0
+		for _, r := range roles {
+			if ratio, ok := fpRatios[r]; ok {
+				archFit += int(ratio * 200) // 0.10 → 20; 0.20 → 40
+			}
+		}
+		// Tagged cards that didn't match the fingerprint still get a small
+		// fit credit — they're playing SOME role, just not the deck's
+		// signature one (e.g. a Removal card in a Combo deck).
+		if len(roles) > 0 && archFit < 10 {
+			archFit = 10
+		}
+		archFit = clamp(archFit, 0, 40)
+
+		// --- CMC efficiency (0-20) ---
+		var cmcEff int
+		switch {
+		case p.CMC <= 1:
+			cmcEff = 20
+		case p.CMC == 2:
+			cmcEff = 18
+		case p.CMC == 3:
+			cmcEff = 14
+		case p.CMC == 4:
+			cmcEff = 10
+		case p.CMC == 5:
+			cmcEff = 6
+		default:
+			cmcEff = 2
+		}
+		// Multi-role at low CMC is the efficiency sweet spot.
+		if p.CMC <= 2 && len(roles) >= 2 {
+			cmcEff += 2
+		}
+		cmcEff = clamp(cmcEff, 0, 20)
+
+		// --- Synergy contribution (0-40) ---
+		syn := 0
+		if winLinePieces[p.Name] {
+			syn += 25
+		}
+		if chainBridges[p.Name] {
+			syn += 20
+		} else if chainSteps[p.Name] {
+			syn += 10
+		}
+		if finisherPieces[p.Name] {
+			syn += 12
+		}
+		if clusterMembers[p.Name] {
+			syn += 6
+		}
+		// Per-role floor — generic tagged cards land at modest synergy
+		// rather than zero.
+		syn += len(roles) * 2
+
+		// Penalty: redundant expensive tutor when 3+ cheaper non-land
+		// tutors already exist in the deck.
+		if p.IsTutor && !p.IsLandTutor && p.CMC >= 4 && cheaperTutorsThan[p.CMC] >= 3 {
+			syn -= 8
+		}
+		// Penalty: CMC 5+ with only RoleUtility tag is a dead slot.
+		if p.CMC >= 5 && len(roles) == 1 && roles[0] == RoleUtility {
+			syn -= 10
+		}
+		syn = clamp(syn, 0, 40)
+
+		power := clamp(archFit+cmcEff+syn, 0, 100)
+
+		roleStrs := make([]string, len(roles))
+		for i, r := range roles {
+			roleStrs[i] = string(r)
+		}
+
+		dp.CardPowerLevels = append(dp.CardPowerLevels, CardPowerLevel{
+			Name:                p.Name,
+			CMC:                 p.CMC,
+			Roles:               roleStrs,
+			Power:               power,
+			ArchetypeFit:        archFit,
+			CMCEfficiency:       cmcEff,
+			SynergyContribution: syn,
+		})
+	}
+
+	sort.Slice(dp.CardPowerLevels, func(i, j int) bool {
+		if dp.CardPowerLevels[i].Power != dp.CardPowerLevels[j].Power {
+			return dp.CardPowerLevels[i].Power > dp.CardPowerLevels[j].Power
+		}
+		return dp.CardPowerLevels[i].Name < dp.CardPowerLevels[j].Name
+	})
+}
+
 func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracleDB) {
 	if report.Roles == nil {
 		return
@@ -1470,6 +1665,12 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 	roleMap := map[string][]RoleTag{}
 	for _, a := range report.Roles.Assignments {
 		roleMap[a.Name] = a.Roles
+	}
+
+	// Power-level lookup (populated by computeCardPower upstream).
+	powerByName := map[string]int{}
+	for _, pl := range dp.CardPowerLevels {
+		powerByName[pl.Name] = pl.Power
 	}
 
 	// Score combo pieces mentioned in win lines
@@ -1600,6 +1801,7 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 			Name:   scores[i].name,
 			Tier:   "star",
 			Reason: reason,
+			Power:  powerByName[scores[i].name],
 		})
 		starredNames[scores[i].name] = true
 		starCount++
@@ -1648,6 +1850,7 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 			Name:   s.name,
 			Tier:   "solid",
 			Reason: reason,
+			Power:  powerByName[s.name],
 		})
 		solidCount++
 	}
@@ -1687,6 +1890,7 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 			Name:      s.name,
 			Tier:      "cuttable",
 			Reason:    reason,
+			Power:     powerByName[s.name],
 			Detected:  detected,
 			WhyCut:    whyCut,
 			Effect:    effect,

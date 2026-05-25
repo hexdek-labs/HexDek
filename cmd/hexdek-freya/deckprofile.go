@@ -110,6 +110,13 @@ type DeckProfile struct {
 	SolidCards    []CardQuality
 	StarCards     []CardQuality
 
+	// CardPowerLevels is the full 0-100 power rating for every non-land
+	// card in the deck, sorted high → low. See CardPowerLevel for the
+	// three-component breakdown (archetype fit + CMC efficiency + synergy
+	// contribution). Each tier entry above (StarCards / SolidCards /
+	// CuttableCards) echoes the same Power on its CardQuality.Power field.
+	CardPowerLevels []CardPowerLevel
+
 	// Color weight suggestions
 	LandSwapSuggestions []string
 
@@ -200,11 +207,35 @@ type CardQuality struct {
 	Name   string
 	Tier   string // "star" | "solid" | "cuttable"
 	Reason string
+	Power  int // 0-100 power level — see CardPowerLevel for components
 	// Rationale fields (populated for cuttable tier).
 	Detected  string   // what stat/pattern triggered the recommendation
 	WhyCut    string   // why cutting it is recommended
 	Effect    string   // resulting effect on the deck if cut
 	Suggested []string // suggested swap candidates
+}
+
+// CardPowerLevel is the 0-100 per-card power rating produced by
+// computeCardPower. The total is the sum of three explicit components,
+// each capped at its own max so the final Power is clamped to [0, 100].
+//
+//	ArchetypeFit         0-40 — how well the card's roles align with
+//	                            the deck's primary-archetype fingerprint
+//	CMCEfficiency        0-20 — curve placement (cheap multi-role = peak)
+//	SynergyContribution  0-40 — win-line / value-chain / combo / cluster
+//	                            participation
+//
+// Surfaced through DeckProfile.CardPowerLevels (sorted high → low) plus
+// echoed onto each CardQuality entry's Power field so star / solid /
+// cuttable lists show the rating inline.
+type CardPowerLevel struct {
+	Name                string
+	CMC                 int
+	Roles               []string
+	Power               int
+	ArchetypeFit        int
+	CMCEfficiency       int
+	SynergyContribution int
 }
 
 func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
@@ -275,6 +306,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	computeSynergyClusters(dp, report, oracle)
 	computeAltBuildSuggestions(dp)
 	computeMetaPositioning(dp)
+	computeCardPower(dp, report)
 	computeCardQualityTiers(dp, report, oracle)
 	computeLandSwapSuggestions(dp, report)
 	dp.PersonalityBlurb = buildPersonalityBlurb(dp, report)
