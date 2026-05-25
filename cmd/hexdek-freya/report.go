@@ -715,24 +715,33 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 			dp.InteractionQuality, dp.CheapInteraction, dp.ExpensiveInteraction)
 	}
 
+	if len(dp.PowerTierCounts) > 0 {
+		parts := make([]string, 0, len(PowerTierOrder))
+		for _, t := range PowerTierOrder {
+			parts = append(parts, fmt.Sprintf("%d%s", dp.PowerTierCounts[t], t))
+		}
+		fmt.Fprintf(w, "\n  Power Tiers: %s (buy S→A first; D = cut candidates)\n",
+			strings.Join(parts, " / "))
+	}
+
 	if len(dp.StarCards) > 0 {
 		fmt.Fprintf(w, "\n  Star Cards:\n")
 		for _, c := range dp.StarCards {
-			fmt.Fprintf(w, "    ★ [%3d] %s — %s\n", c.Power, c.Name, c.Reason)
+			fmt.Fprintf(w, "    ★ [%s %3d] %s — %s\n", c.PowerTier, c.Power, c.Name, c.Reason)
 		}
 	}
 
 	if len(dp.SolidCards) > 0 {
 		fmt.Fprintf(w, "  Solid Picks:\n")
 		for _, c := range dp.SolidCards {
-			fmt.Fprintf(w, "    ● [%3d] %s — %s\n", c.Power, c.Name, c.Reason)
+			fmt.Fprintf(w, "    ● [%s %3d] %s — %s\n", c.PowerTier, c.Power, c.Name, c.Reason)
 		}
 	}
 
 	if len(dp.CuttableCards) > 0 {
 		fmt.Fprintf(w, "  Consider Cutting:\n")
 		for _, c := range dp.CuttableCards {
-			fmt.Fprintf(w, "    ✂ [%3d] %s — %s\n", c.Power, c.Name, c.Reason)
+			fmt.Fprintf(w, "    ✂ [%s %3d] %s — %s\n", c.PowerTier, c.Power, c.Name, c.Reason)
 		}
 	}
 
@@ -1286,6 +1295,7 @@ type jsonDeckProfile struct {
 	SolidCards         []jsonCardQuality    `json:"solid_cards,omitempty"`
 	CuttableCards      []jsonCardQuality    `json:"cuttable_cards,omitempty"`
 	CardPowerLevels    []jsonCardPowerLevel `json:"card_power_levels,omitempty"`
+	PowerTierCounts    map[string]int       `json:"power_tier_counts,omitempty"`
 	LandSwapSuggestions []string         `json:"land_swap_suggestions,omitempty"`
 	CommanderSynergy   float64           `json:"commander_synergy,omitempty"`
 	CommanderThemes    []string          `json:"commander_themes,omitempty"`
@@ -1339,6 +1349,7 @@ type jsonCardQuality struct {
 	Tier      string   `json:"tier"`
 	Reason    string   `json:"reason"`
 	Power     int      `json:"power,omitempty"`
+	PowerTier string   `json:"power_tier,omitempty"`
 	Detected  string   `json:"detected,omitempty"`
 	WhyCut    string   `json:"why_cut,omitempty"`
 	Effect    string   `json:"effect,omitempty"`
@@ -1350,6 +1361,7 @@ type jsonCardPowerLevel struct {
 	CMC                 int      `json:"cmc"`
 	Roles               []string `json:"roles,omitempty"`
 	Power               int      `json:"power"`
+	PowerTier           string   `json:"power_tier"`
 	ArchetypeFit        int      `json:"archetype_fit"`
 	CMCEfficiency       int      `json:"cmc_efficiency"`
 	SynergyContribution int      `json:"synergy_contribution"`
@@ -1574,10 +1586,16 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 	}
 	var stars, solid, cuttable []jsonCardQuality
 	for _, c := range dp.StarCards {
-		stars = append(stars, jsonCardQuality{Name: c.Name, Tier: c.Tier, Reason: c.Reason, Power: c.Power})
+		stars = append(stars, jsonCardQuality{
+			Name: c.Name, Tier: c.Tier, Reason: c.Reason,
+			Power: c.Power, PowerTier: c.PowerTier,
+		})
 	}
 	for _, c := range dp.SolidCards {
-		solid = append(solid, jsonCardQuality{Name: c.Name, Tier: c.Tier, Reason: c.Reason, Power: c.Power})
+		solid = append(solid, jsonCardQuality{
+			Name: c.Name, Tier: c.Tier, Reason: c.Reason,
+			Power: c.Power, PowerTier: c.PowerTier,
+		})
 	}
 	for _, c := range dp.CuttableCards {
 		cuttable = append(cuttable, jsonCardQuality{
@@ -1585,6 +1603,7 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 			Tier:      c.Tier,
 			Reason:    c.Reason,
 			Power:     c.Power,
+			PowerTier: c.PowerTier,
 			Detected:  c.Detected,
 			WhyCut:    c.WhyCut,
 			Effect:    c.Effect,
@@ -1598,6 +1617,7 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 			CMC:                 pl.CMC,
 			Roles:               pl.Roles,
 			Power:               pl.Power,
+			PowerTier:           pl.PowerTier,
 			ArchetypeFit:        pl.ArchetypeFit,
 			CMCEfficiency:       pl.CMCEfficiency,
 			SynergyContribution: pl.SynergyContribution,
@@ -1663,6 +1683,7 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 		SolidCards:          solid,
 		CuttableCards:       cuttable,
 		CardPowerLevels:     powerLevels,
+		PowerTierCounts:     dp.PowerTierCounts,
 		LandSwapSuggestions: dp.LandSwapSuggestions,
 		CommanderSynergy:   dp.CommanderSynergy,
 		CommanderThemes:    dp.CommanderThemes,
