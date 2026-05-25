@@ -420,10 +420,34 @@ body {
   font-size: 7px; color: #fff;
   background-size: cover; background-position: center;
   overflow: hidden; position: relative;
+  /* Stack-of-cards shadow layers. Lit up via data-stack="1|2|3" on the
+     tile when stackPerms() coalesces multiple copies (lands, tokens).
+     Default to transparent so the box-shadow shorthand still composes
+     cleanly with the hover lift below. */
+  --stack-s1: 0 0 transparent;
+  --stack-s2: 0 0 transparent;
+  --stack-s3: 0 0 transparent;
+  --hover-lift: 0 0 transparent;
+  box-shadow: var(--stack-s3), var(--stack-s2), var(--stack-s1), var(--hover-lift);
   /* Animate the hover ring + brightness independently. transform is
      deliberately NOT transitioned — the tapped state's inline rotate(6deg)
      should snap, not tween, when a permanent gets tapped mid-frame. */
   transition: outline-color 80ms ease, filter 80ms ease, box-shadow 80ms ease;
+}
+/* Paper-stack offsets: rule-2 (dim) for the first layer back, rule for
+   the second, alternating again for the deepest tier. Negative spread
+   tightens the shadow to a thin sliver so it reads as a stacked card
+   edge rather than a drop shadow. Offsets stay ≤4px so they fall into
+   the 3px .seat-perms gap and aren't fully occluded by the next tile. */
+.perm-tile[data-stack="1"] { --stack-s1: 2px 2px 0 -1px var(--rule-2); }
+.perm-tile[data-stack="2"] {
+  --stack-s1: 2px 2px 0 -1px var(--rule-2);
+  --stack-s2: 4px 4px 0 -1px var(--rule);
+}
+.perm-tile[data-stack="3"] {
+  --stack-s1: 2px 2px 0 -1px var(--rule-2);
+  --stack-s2: 4px 4px 0 -1px var(--rule);
+  --stack-s3: 6px 6px 0 -1px var(--rule-2);
 }
 .perm-tile:hover {
   /* outline (not border) so the ring sits OUTSIDE the box and doesn't
@@ -433,7 +457,7 @@ body {
   outline: 1px solid var(--accent);
   outline-offset: 1px;
   filter: brightness(1.15);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+  --hover-lift: 0 2px 8px rgba(0, 0, 0, 0.45);
   z-index: 1;
 }
 .perm-tag {

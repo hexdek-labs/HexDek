@@ -729,6 +729,7 @@ export default function Spectator() {
                             key={j}
                             title={`${p.name}${p.count > 1 ? ` ×${p.count}` : ''}`}
                             className="perm-tile"
+                            data-stack={p.count >= 6 ? '3' : p.count >= 3 ? '2' : p.count >= 2 ? '1' : undefined}
                             style={{
                               borderColor: p.is_commander ? 'var(--warn)' : 'var(--rule-2)',
                               opacity: p.tapped ? 0.4 : 1,
