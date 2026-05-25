@@ -4117,10 +4117,13 @@ func (h *YggdrasilHat) ChooseCastFromHand(gs *gameengine.GameState, seatIdx int,
 	best := candidates[pick]
 
 	bestKey := prefix + "cast:" + best.card.DisplayName()
+	tierLabel := "heuristic"
 	if canISRollout {
+		tierLabel = "is_mcts_rollout"
 		h.logf("  → CAST %s (ucb=%.3f, beat pass by %.3f, IS-MCTS, pick=%d/%d)",
 			best.card.DisplayName(), best.ucb, best.ucb-passUCB, pick, len(candidates))
 	} else if canRollout {
+		tierLabel = "rollout"
 		h.logf("  → CAST %s (ucb=%.3f, beat pass by %.3f, pick=%d/%d)",
 			best.card.DisplayName(), best.ucb, best.ucb-passUCB, pick, len(candidates))
 	} else {
@@ -4128,6 +4131,23 @@ func (h *YggdrasilHat) ChooseCastFromHand(gs *gameengine.GameState, seatIdx int,
 			best.card.DisplayName(), best.ucb, pick, len(candidates))
 	}
 	h.recordAction(bestKey, pos+h.cardHeuristic(gs, seatIdx, best.card))
+	// R60 decision-replay surface — emit a structured event so post-
+	// game "why did hat cast X?" analysis can read the candidate-vs-pass
+	// scoring without re-running the eval. Best.ucb / passUCB / margin
+	// are the three numbers that justify the pick; tier and pool size
+	// give the context (was this an expensive Ragnarok decision over a
+	// 12-card pool, or a cheap heuristic over 2?).
+	h.emitDecisionEvent(gs, seatIdx, "cast", map[string]interface{}{
+		"card":         best.card.DisplayName(),
+		"ucb":          best.ucb,
+		"pass_ucb":     passUCB,
+		"margin":       best.ucb - passUCB,
+		"pool_size":    len(pool),
+		"candidates":   len(candidates),
+		"tier":         tierLabel,
+		"pos":          pos,
+		"interaction":  interactionRisk,
+	})
 	return best.card
 }
 
@@ -6232,6 +6252,24 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 			return nil
 		}
 	}
+
+	// R60 decision-replay surface — emit a structured event so post-
+	// game "why did hat counter X?" analysis can read the score gate,
+	// the depth-aware signal that tipped it, and the resolved-target
+	// card (effectiveResponseCard handles the trigger-source case).
+	respondTarget := "<unknown>"
+	if rc := effectiveResponseCard(top); rc != nil {
+		respondTarget = rc.DisplayName()
+	}
+	h.emitDecisionEvent(gs, seatIdx, "response_counter", map[string]interface{}{
+		"counter":     bestCounter.DisplayName(),
+		"target":      respondTarget,
+		"top_kind":    top.Kind,
+		"score":       score,
+		"must_reason": depthSig.reason,
+		"must":        depthSig.mustCounter,
+		"stack_depth": len(gs.Stack),
+	})
 
 	return &gameengine.StackItem{
 		Card:       bestCounter,
