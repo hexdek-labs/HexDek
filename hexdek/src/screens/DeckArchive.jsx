@@ -22,6 +22,7 @@ import { DeckPicker } from './DeckCompare'
 import DeckExportModal from '../components/DeckExportModal'
 import ContextBox from '../components/ContextBox'
 import EloSparkline from '../components/EloSparkline'
+import { deckGlanceStats } from '../lib/deckStats'
 
 // Brutalist stat-summary panel: mana curve, card-type breakdown, color
 // pips. Computed entirely from the in-memory deck card list — no extra
@@ -938,6 +939,10 @@ export default function DeckArchive() {
   const metaMatchups = analysis?.meta_matchups || []
   const cardRoles = analysis?.card_roles || null
 
+  // AT A GLANCE — consolidated Freya stats panel. Pure helper so the shape
+  // is unit-tested independently of the page render (see deckStats.test.mjs).
+  const glance = deckGlanceStats({ deck, analysis, deckElo, eloHistory })
+
   // In-deck name search. Applied only to the visible decklist panels
   // (CardRolesGrid + FULL CARD LIST) — stats, curve, and analysis stay
   // computed off the full list.
@@ -1291,6 +1296,70 @@ export default function DeckArchive() {
           )}
         </div>
       </div>
+
+      {/* AT A GLANCE — bracket + archetype + win conditions + recent gauntlet
+          winrate, surfaced together so spectators don't have to scroll the
+          full Freya analysis to read the deck. The all-time win rate already
+          lives in the vital-signs strip; the value added here is "what's it
+          done lately" (last ≤5 gauntlet runs, weighted by games). */}
+      {(glance.bracket || glance.archetype || glance.winConditions.length > 0 || glance.recent) && (
+        <Panel code="04.AG" title="AT A GLANCE">
+          <div className="deck-glance-grid" style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: 12,
+          }}>
+            <div>
+              <div className="t-xs muted">BRACKET</div>
+              <div className="t-lg" style={{ fontWeight: 700, marginTop: 2 }}>
+                {glance.bracket
+                  ? `B${glance.bracket}${glance.playsLike ? ` → B${glance.playsLike}` : ''}`
+                  : '—'}
+              </div>
+              {glance.bracketLabel && (
+                <div className="t-xs muted" style={{ marginTop: 2 }}>{glance.bracketLabel.toUpperCase()}</div>
+              )}
+            </div>
+            <div>
+              <div className="t-xs muted">ARCHETYPE</div>
+              <div className="t-lg" style={{ fontWeight: 700, marginTop: 2 }}>
+                {glance.archetype || '—'}
+              </div>
+            </div>
+            <div>
+              <div className="t-xs muted">RECENT WIN RATE</div>
+              <div className="t-lg" style={{ fontWeight: 700, marginTop: 2 }}>
+                {glance.recent
+                  ? `${glance.recent.pct}%`
+                  : glance.allTime
+                    ? `${glance.allTime.pct}%`
+                    : '—'}
+              </div>
+              <div className="t-xs muted" style={{ marginTop: 2 }}>
+                {glance.recent
+                  ? `LAST ${glance.recent.runs} RUN${glance.recent.runs === 1 ? '' : 'S'} · ${glance.recent.games.toLocaleString()} GAMES`
+                  : glance.allTime
+                    ? `ALL-TIME · ${glance.allTime.games.toLocaleString()} GAMES`
+                    : 'NO GAUNTLET YET'}
+              </div>
+            </div>
+            <div>
+              <div className="t-xs muted">WIN CONDITIONS</div>
+              {glance.winConditions.length > 0 ? (
+                <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                  {glance.winConditions.map((name, i) => (
+                    <CardLink key={i} name={name}>
+                      <Tag>{name.toUpperCase()}</Tag>
+                    </CardLink>
+                  ))}
+                </div>
+              ) : (
+                <div className="t-md" style={{ fontWeight: 700, marginTop: 2 }}>—</div>
+              )}
+            </div>
+          </div>
+        </Panel>
+      )}
 
       {/* Deck stats summary — always visible between hero and main columns. */}
       <div className="deck-stats-summary-row">
