@@ -413,27 +413,97 @@ func (e *GameStateEvaluator) scoreMana(gs *gameengine.GameState, seatIdx int) fl
 		rawScore = (mySources - oppSum/float64(oppN)) / 4.0
 	}
 
+	// r60: response-mana bonus on opponent turns. When it's NOT our turn,
+	// only untapped sources are usable for instants / counters / activated
+	// removal. A deck with 8 sources all tapped is worse off at end-of-
+	// opponent-turn than one with 6 untapped — the same total raw count
+	// hides a real tempo asymmetry. Add a small bonus proportional to the
+	// untapped-source ratio when responding. Capped at +0.25 so it doesn't
+	// override the primary count delta. On our own turn the bonus is 0:
+	// tapped sources will untap on the next upkeep, so the distinction is
+	// noise within the turn.
+	if gs.Active != seatIdx && mySources > 0 {
+		untapped := float64(CountUntappedManaSources(gs.Seats[seatIdx]))
+		rawScore += 0.25 * (untapped / mySources)
+	}
+
 	if e.Strategy == nil || e.Strategy.ColorDemand == nil {
 		return rawScore
 	}
 
+	// r60: depth-weighted color coverage. The previous binary check
+	// (`fieldColorSources(...) > 0`) gave a deck with 1 black source the
+	// same credit as one with 4 — but a {BBBB}-pip demand profile needs
+	// actual depth, not just presence. Switch to a sqrt-decay weight: 1
+	// source = 0.5 credit, 2 sources = 0.71, 4 sources = 1.0, more = 1.0.
+	// Preserves the existing average-credit semantics (0.5 baseline) so
+	// the (coverage - 0.5) * 0.8 final step still nets to 0 at "one
+	// source per demanded color" — only DEEP coverage shifts the score.
 	totalDemand := 0
-	coveredDemand := 0
+	coveredDemand := 0.0
 	for col, demand := range e.Strategy.ColorDemand {
 		if demand < 2 {
 			continue
 		}
 		totalDemand += demand
-		if fieldColorSources(gs.Seats[seatIdx], col) > 0 {
-			coveredDemand += demand
-		}
+		coveredDemand += float64(demand) * colorDepthWeight(fieldColorSources(gs.Seats[seatIdx], col))
 	}
 	if totalDemand > 0 {
-		coverage := float64(coveredDemand) / float64(totalDemand)
+		coverage := coveredDemand / float64(totalDemand)
 		rawScore += (coverage - 0.5) * 0.8
 	}
 
 	return rawScore
+}
+
+// colorDepthWeight maps a per-color source count to a [0..1] credit
+// using a sqrt-decay so the first 1-2 sources contribute the most and
+// the curve asymptotes at 4 sources. Tuned so 1 source ≈ 0.5 (parity
+// with the pre-r60 binary coverage) and 4+ ≈ 1.0.
+//
+//	count | weight
+//	------|-------
+//	  0   | 0.00
+//	  1   | 0.50
+//	  2   | 0.71
+//	  3   | 0.87
+//	  4+  | 1.00
+func colorDepthWeight(n int) float64 {
+	if n <= 0 {
+		return 0
+	}
+	if n >= 4 {
+		return 1.0
+	}
+	// sqrt-based decay: 0.5 at 1, 0.71 at 2, 0.87 at 3, 1.0 at 4.
+	return math.Sqrt(float64(n)) * 0.5
+}
+
+// CountUntappedManaSources counts the seat's currently-untapped mana-
+// producing permanents — used by scoreMana to weight response mana on
+// opponent turns. Mirrors CountManaRocksAndLands (lands + cheap mana
+// artifacts) but only counts sources with `Tapped == false`.
+func CountUntappedManaSources(seat *gameengine.Seat) int {
+	if seat == nil {
+		return 0
+	}
+	n := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil || p.Tapped {
+			continue
+		}
+		if p.IsLand() {
+			n++
+			continue
+		}
+		if typeLineContains(p.Card, "artifact") && gameengine.ManaCostOf(p.Card) <= 3 {
+			ot := gameengine.OracleTextLower(p.Card)
+			if strings.Contains(ot, "mana") || strings.Contains(ot, "{t}") {
+				n++
+			}
+		}
+	}
+	return n
 }
 
 // scoreLife: life as a resource. In commander, 40 is starting; < 10 is
