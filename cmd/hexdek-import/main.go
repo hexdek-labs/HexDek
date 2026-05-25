@@ -40,6 +40,7 @@ func main() {
 	archidektURL := flag.String("archidekt", "", "Archidekt deck URL to import")
 	outputDir := flag.String("output", "", "output directory for deck files (overrides --owner)")
 	owner := flag.String("owner", "imported", "owner/group folder name for the deck (saves to data/decks/<owner>/)")
+	refresh := flag.Bool("refresh", false, "invalidate the cached Moxfield deck JSON before fetching (default: serve from ~/.cache/hexdek/moxfield if fresher than HEXDEK_MOXFIELD_CACHE_TTL)")
 	flag.Parse()
 
 	if *moxfieldURL == "" && *archidektURL == "" {
@@ -55,6 +56,7 @@ func main() {
 		fmt.Println("  --archidekt URL   Archidekt deck URL to import")
 		fmt.Println("  --owner NAME      Owner/group folder (default: imported)")
 		fmt.Println("  --output DIR      Output directory (overrides --owner)")
+		fmt.Println("  --refresh         Invalidate the Moxfield deck cache before fetching")
 		os.Exit(1)
 	}
 
@@ -69,6 +71,11 @@ func main() {
 	}
 
 	if *moxfieldURL != "" {
+		if *refresh {
+			if id := moxfield.ExtractDeckID(*moxfieldURL); id != "" {
+				moxfield.Refresh(id)
+			}
+		}
 		importMoxfield(*moxfieldURL, resolvedOutputDir)
 	}
 	if *archidektURL != "" {

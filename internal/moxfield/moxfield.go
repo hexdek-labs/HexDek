@@ -14,11 +14,161 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
+
+// ----- deck cache -----
+//
+// The CLI used to call FetchDeckName followed by FetchDeck for every
+// import, hitting api2.moxfield.com twice for identical JSON. Worse,
+// repeat imports of the same deck (re-runs, scripted batch imports,
+// tooling that loops over a list with overlapping IDs) hammered the
+// API anew each time. Two layers fix this:
+//
+//   1. inProcCache — sync.Map of deckID -> *apiResponse, lifetime of
+//      the process. Zero-config; the FetchDeck/FetchDeckName/FetchDeckRaw
+//      pair only does one HTTP round-trip per deck per process.
+//   2. Disk cache (~/.cache/hexdek/moxfield/{id}.json, TTL-gated).
+//      Survives across CLI invocations so back-to-back re-imports skip
+//      the API. Tunable via env:
+//        HEXDEK_MOXFIELD_CACHE=0           disable disk cache entirely
+//        HEXDEK_MOXFIELD_CACHE_TTL=<sec>   override default 1h TTL
+//        HEXDEK_MOXFIELD_CACHE_DIR=<dir>   override default cache dir
+//
+// Both layers are bypassable from the CLI via the --refresh flag, which
+// calls Refresh(deckID) to invalidate the deck before fetching.
+
+var (
+	inProcCache sync.Map // map[string]*apiResponse
+
+	// httpClientVar and apiBaseVar are package vars so tests can swap
+	// the transport (httptest.Server) without touching production code.
+	httpClientVar = &http.Client{Timeout: 30 * time.Second}
+	apiBaseVar    = "https://api2.moxfield.com"
+)
+
+const (
+	defaultCacheTTL = 1 * time.Hour
+	cacheEnvDisable = "HEXDEK_MOXFIELD_CACHE"
+	cacheEnvTTL     = "HEXDEK_MOXFIELD_CACHE_TTL"
+	cacheEnvDir     = "HEXDEK_MOXFIELD_CACHE_DIR"
+)
+
+func cacheEnabled() bool {
+	return os.Getenv(cacheEnvDisable) != "0"
+}
+
+func cacheTTL() time.Duration {
+	if s := os.Getenv(cacheEnvTTL); s != "" {
+		if n, err := strconv.Atoi(s); err == nil && n > 0 {
+			return time.Duration(n) * time.Second
+		}
+	}
+	return defaultCacheTTL
+}
+
+func cacheDir() string {
+	if d := os.Getenv(cacheEnvDir); d != "" {
+		return d
+	}
+	if xdg := os.Getenv("XDG_CACHE_HOME"); xdg != "" {
+		return filepath.Join(xdg, "hexdek", "moxfield")
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(home, ".cache", "hexdek", "moxfield")
+}
+
+func cachePath(deckID string) string {
+	dir := cacheDir()
+	if dir == "" {
+		return ""
+	}
+	// Defensive: deck IDs are alnum+_-, but sanitize anyway in case Moxfield
+	// changes their ID format.
+	safe := strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_':
+			return r
+		default:
+			return '_'
+		}
+	}, deckID)
+	return filepath.Join(dir, safe+".json")
+}
+
+// readDiskCache returns the cached apiResponse for deckID if present and
+// not expired. Returns nil on miss / expired / IO error (best-effort).
+func readDiskCache(deckID string) *apiResponse {
+	if !cacheEnabled() {
+		return nil
+	}
+	path := cachePath(deckID)
+	if path == "" {
+		return nil
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		return nil
+	}
+	if time.Since(info.ModTime()) > cacheTTL() {
+		return nil
+	}
+	bytes, err := os.ReadFile(path)
+	if err != nil {
+		return nil
+	}
+	var data apiResponse
+	if err := json.Unmarshal(bytes, &data); err != nil {
+		return nil
+	}
+	return &data
+}
+
+// writeDiskCache persists the apiResponse for deckID. Best-effort: a
+// failed write logs nothing and returns silently — the in-process
+// cache and the fresh response still serve the current call.
+func writeDiskCache(deckID string, body []byte) {
+	if !cacheEnabled() {
+		return
+	}
+	path := cachePath(deckID)
+	if path == "" {
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return
+	}
+	_ = os.WriteFile(path, body, 0644)
+}
+
+// Refresh invalidates both cache layers for a deck ID so the next
+// fetch hits the API. Used by the importer's --refresh flag.
+func Refresh(deckID string) {
+	inProcCache.Delete(deckID)
+	if path := cachePath(deckID); path != "" {
+		_ = os.Remove(path)
+	}
+}
+
+// resetCachesForTest clears both cache layers and removes the entire
+// cache dir. Test-only — package-private export via a _test.go shim
+// in callers that need it.
+func resetCachesForTest() {
+	inProcCache.Range(func(k, _ any) bool { inProcCache.Delete(k); return true })
+	if d := cacheDir(); d != "" {
+		_ = os.RemoveAll(d)
+	}
+}
 
 // moxfieldURLRE extracts the deck ID from a Moxfield URL.
 // Supports:
@@ -122,74 +272,77 @@ func FetchDeck(url string) (string, error) {
 
 // FetchDeckByID downloads a decklist from the Moxfield API using a deck ID.
 func FetchDeckByID(deckID string) (string, error) {
-	apiURL := fmt.Sprintf("https://api2.moxfield.com/v3/decks/all/%s", deckID)
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	req, err := http.NewRequest("GET", apiURL, nil)
+	data, err := fetchDeckRaw(deckID)
 	if err != nil {
-		return "", fmt.Errorf("moxfield: build request: %w", err)
+		return "", err
 	}
-	// Moxfield API requires a User-Agent header.
-	req.Header.Set("User-Agent", "hexdek/1.0")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("moxfield: fetch %s: %w", apiURL, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return "", fmt.Errorf("moxfield: API returned %d for deck %s: %s", resp.StatusCode, deckID, string(body))
-	}
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", fmt.Errorf("moxfield: read response: %w", err)
-	}
-
-	var data apiResponse
-	if err := json.Unmarshal(bodyBytes, &data); err != nil {
-		return "", fmt.Errorf("moxfield: parse JSON: %w", err)
-	}
-
-	return formatDecklist(&data)
+	return formatDecklist(data)
 }
 
 // FetchDeckName downloads just the deck name from a Moxfield URL.
+// Shares the full-deck cache so the common importer pattern
+// (FetchDeckName + FetchDeck back-to-back) only makes one HTTP call.
 func FetchDeckName(url string) (string, error) {
 	deckID := ExtractDeckID(url)
 	if deckID == "" {
 		return "", fmt.Errorf("moxfield: could not extract deck ID from URL %q", url)
 	}
+	data, err := fetchDeckRaw(deckID)
+	if err != nil {
+		return "", err
+	}
+	return data.Name, nil
+}
 
-	apiURL := fmt.Sprintf("https://api2.moxfield.com/v3/decks/all/%s", deckID)
-	client := &http.Client{Timeout: 30 * time.Second}
+// fetchDeckRaw is the single source of truth for "give me the parsed
+// Moxfield API response for this deck ID." Consults the in-process
+// cache, then the disk cache, then the API in that order. Cache
+// writes happen on both layers after a successful fetch.
+func fetchDeckRaw(deckID string) (*apiResponse, error) {
+	if deckID == "" {
+		return nil, fmt.Errorf("moxfield: empty deck ID")
+	}
+
+	if v, ok := inProcCache.Load(deckID); ok {
+		return v.(*apiResponse), nil
+	}
+	if data := readDiskCache(deckID); data != nil {
+		inProcCache.Store(deckID, data)
+		return data, nil
+	}
+
+	apiURL := fmt.Sprintf("%s/v3/decks/all/%s", apiBaseVar, deckID)
 	req, err := http.NewRequest("GET", apiURL, nil)
 	if err != nil {
-		return "", fmt.Errorf("moxfield: build request: %w", err)
+		return nil, fmt.Errorf("moxfield: build request: %w", err)
 	}
 	req.Header.Set("User-Agent", "hexdek/1.0")
 	req.Header.Set("Accept", "application/json")
 
-	resp, err := client.Do(req)
+	resp, err := httpClientVar.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("moxfield: fetch: %w", err)
+		return nil, fmt.Errorf("moxfield: fetch %s: %w", apiURL, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("moxfield: API returned %d", resp.StatusCode)
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return nil, fmt.Errorf("moxfield: API returned %d for deck %s: %s", resp.StatusCode, deckID, string(body))
 	}
 
-	var data struct {
-		Name string `json:"name"`
+	bodyBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("moxfield: read response: %w", err)
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		return "", fmt.Errorf("moxfield: parse: %w", err)
+
+	var data apiResponse
+	if err := json.Unmarshal(bodyBytes, &data); err != nil {
+		return nil, fmt.Errorf("moxfield: parse JSON: %w", err)
 	}
-	return data.Name, nil
+
+	inProcCache.Store(deckID, &data)
+	writeDiskCache(deckID, bodyBytes)
+	return &data, nil
 }
 
 // formatDecklist converts a Moxfield API response into our text decklist format.
