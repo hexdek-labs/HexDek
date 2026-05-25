@@ -955,6 +955,12 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 		"landfall":    {},
 		"spellcast":   {},
 		"lifegain":    {},
+		// recursion: reanimator / dredge / flashback cards already get
+		// themes["recursion"] tagged but had no bucket — surfacing it
+		// here lets alt-build suggestions catch "you could lean fully
+		// into reanimator" when the rest of the deck is split across
+		// engines.
+		"recursion": {},
 	}
 
 	for _, c := range cards {
@@ -973,6 +979,7 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 		"landfall":    "Landfall Package",
 		"spellcast":   "Spellslinger Package",
 		"lifegain":    "Lifegain Engine",
+		"recursion":   "Reanimator / Recursion Package",
 	}
 
 	for theme, members := range clusterMembers {
@@ -1054,10 +1061,11 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 		}
 
 		dp.SynergyClusters = append(dp.SynergyClusters, SynergyCluster{
-			Name:  clusterNames[theme],
-			Cards: displayed,
-			Theme: theme,
-			Score: score,
+			Name:        clusterNames[theme],
+			Cards:       displayed,
+			Theme:       theme,
+			Score:       score,
+			MemberCount: len(deduped),
 		})
 	}
 
@@ -1069,6 +1077,53 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 	// Cap at 5 clusters
 	if len(dp.SynergyClusters) > 5 {
 		dp.SynergyClusters = dp.SynergyClusters[:5]
+	}
+}
+
+// altBuildPivotThreshold is the minimum cluster MemberCount that
+// qualifies as a "pivotable seed" — enough aligned cards that the
+// deckbuilder could commit to the theme without rebuilding from
+// scratch. 8 is the lower bar; the user's headline example was a
+// "12 vs 8" split so anything below 8 wouldn't be worth a suggestion.
+const altBuildPivotThreshold = 8
+
+// computeAltBuildSuggestions detects when the deck has ≥2 synergy
+// clusters above the pivot threshold and emits a suggestion for each
+// non-primary cluster. The Decks screen renders these as "this deck
+// is trying to do two things — you could focus on X or Y" hints.
+//
+// Requires the primary cluster to also clear the threshold — if the
+// top cluster has only 5 aligned cards, the deck doesn't have a real
+// spine yet and "alt-build" framing is misleading.
+//
+// Capped at 3 alt-builds to keep the Decks screen output bounded;
+// past that, the deck is so unfocused that the suggestion list is
+// itself noise.
+func computeAltBuildSuggestions(dp *DeckProfile) {
+	if len(dp.SynergyClusters) < 2 {
+		return
+	}
+	primary := dp.SynergyClusters[0]
+	if primary.MemberCount < altBuildPivotThreshold {
+		return
+	}
+	for i := 1; i < len(dp.SynergyClusters) && len(dp.AltBuildSuggestions) < 3; i++ {
+		sec := dp.SynergyClusters[i]
+		if sec.MemberCount < altBuildPivotThreshold {
+			continue
+		}
+		dp.AltBuildSuggestions = append(dp.AltBuildSuggestions, AltBuildSuggestion{
+			Cluster:     sec.Theme,
+			ClusterName: sec.Name,
+			MemberCount: sec.MemberCount,
+			Score:       sec.Score,
+			Pivot: fmt.Sprintf(
+				"You could refocus around %s — %d cards already lean that way (cluster score %d).",
+				sec.Name, sec.MemberCount, sec.Score),
+			Trade: fmt.Sprintf(
+				"Currently splits slot priority with %s (%d cards). Picking one frees ~%d slots for deeper payoffs.",
+				primary.Name, primary.MemberCount, sec.MemberCount/2),
+		})
 	}
 }
 

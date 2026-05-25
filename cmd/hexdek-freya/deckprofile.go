@@ -81,6 +81,12 @@ type DeckProfile struct {
 	// Synergy clusters
 	SynergyClusters []SynergyCluster
 
+	// Alt-build suggestions — when ≥2 clusters are above the pivot
+	// threshold, surface each non-primary as a "you could refocus
+	// around X" candidate so the Decks screen can show "this deck is
+	// trying to do two things; pick one." See computeAltBuildSuggestions.
+	AltBuildSuggestions []AltBuildSuggestion
+
 	// Meta positioning
 	MetaMatchups []MetaMatchup
 
@@ -116,10 +122,25 @@ type RoleCount struct {
 }
 
 type SynergyCluster struct {
-	Name  string
-	Cards []string
-	Theme string
-	Score int // number of pairwise synergies within the cluster
+	Name        string
+	Cards       []string // capped at 8 for display
+	Theme       string
+	Score       int // number of pairwise synergies within the cluster
+	MemberCount int // full deduped count (uncapped) — used by alt-build threshold
+}
+
+// AltBuildSuggestion is a "you could re-focus the deck around X" hint
+// surfaced when the deck has multiple synergy clusters above the
+// pivotable-size threshold — the deckbuilder is splitting slot
+// priority across two engines and could commit to one. See
+// computeAltBuildSuggestions.
+type AltBuildSuggestion struct {
+	Cluster     string // theme key (e.g. "tokens", "recursion")
+	ClusterName string // display name ("Token Engine")
+	MemberCount int    // cards already aligned with the theme
+	Score       int    // pair-weighted score from the cluster
+	Pivot       string // "You could refocus around X — ..."
+	Trade       string // "Currently splits with Y — picking one frees N slots"
 }
 
 type MetaMatchup struct {
@@ -216,6 +237,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	computeOpeningHandSim(dp, report, oracle)
 	computeThreatAssessment(dp, report)
 	computeSynergyClusters(dp, report, oracle)
+	computeAltBuildSuggestions(dp)
 	computeMetaPositioning(dp)
 	computeCardQualityTiers(dp, report, oracle)
 	computeLandSwapSuggestions(dp, report)
