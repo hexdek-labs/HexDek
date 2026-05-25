@@ -153,6 +153,12 @@ type SynergyCluster struct {
 	Theme       string
 	Score       int // number of pairwise synergies within the cluster
 	MemberCount int // full deduped count (uncapped) — used by alt-build threshold
+	// AllMembers is the full deduped member list (uncapped). Cards is the
+	// display-capped subset; AllMembers feeds the structured export
+	// (cluster_export.go) so downstream deck-builder integrations get
+	// the complete membership for each theme cluster, not just the
+	// 8-card preview.
+	AllMembers []string
 }
 
 // AltBuildSuggestion is a "you could re-focus the deck around X" hint

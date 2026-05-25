@@ -1051,11 +1051,15 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 		}
 		score += chainCount * 3
 
-		// Cap display at 8 cards. Use names only for the report shape.
-		displayed := make([]string, 0, len(deduped))
+		// Build the full member list once, then cap a separate slice
+		// for display. AllMembers feeds the structured cluster export
+		// (cluster_export.go) so downstream consumers get the complete
+		// membership, not just the 8-card preview.
+		allMembers := make([]string, 0, len(deduped))
 		for _, m := range deduped {
-			displayed = append(displayed, m.name)
+			allMembers = append(allMembers, m.name)
 		}
+		displayed := allMembers
 		if len(displayed) > 8 {
 			displayed = displayed[:8]
 		}
@@ -1066,6 +1070,7 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 			Theme:       theme,
 			Score:       score,
 			MemberCount: len(deduped),
+			AllMembers:  allMembers,
 		})
 	}
 

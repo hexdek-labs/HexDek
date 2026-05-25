@@ -1292,6 +1292,11 @@ type jsonDeckProfile struct {
 	CommanderCentricReason  string        `json:"commander_centric_reason,omitempty"`
 	CommanderCMC            int           `json:"commander_cmc,omitempty"`
 	SynergyClusters    []jsonCluster     `json:"synergy_clusters,omitempty"`
+	// ClusterExport is the rich structured export — full membership,
+	// per-card roles, score breakdown. Downstream deck-builder
+	// integrations consume this; the display-oriented SynergyClusters
+	// above stays for backward compatibility. See cluster_export.go.
+	ClusterExport      *SynergyClusterExport `json:"cluster_export,omitempty"`
 	AltBuildSuggestions []jsonAltBuild   `json:"alt_build_suggestions,omitempty"`
 	MetaMatchups       []jsonMatchup     `json:"meta_matchups,omitempty"`
 	StrongAgainst      []jsonStrongAgainst `json:"strong_against,omitempty"`
@@ -1510,7 +1515,7 @@ func printJSON(w io.Writer, r *FreyaReport) {
 			Outlets:       r.OutletCount,
 			WinCons:       r.WinConCount,
 		},
-		FullProfile: buildJSONDeckProfile(r.Profile),
+		FullProfile: buildJSONDeckProfile(r.Profile, r),
 		Statistics:  buildJSONStats(r.Stats),
 		Roles:       buildJSONRoles(r.Roles),
 		Archetype:   buildJSONArchetype(r.Archetype),
@@ -1549,7 +1554,7 @@ func buildJSONStats(s *DeckStatistics) *jsonStats {
 	}
 }
 
-func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
+func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile {
 	if dp == nil {
 		return nil
 	}
@@ -1686,6 +1691,7 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 		CommanderCentricReason:  dp.CommanderCentricReason,
 		CommanderCMC:            dp.CommanderCMC,
 		SynergyClusters:    clusters,
+		ClusterExport:      BuildClusterExport(dp, report),
 		AltBuildSuggestions: altBuilds,
 		MetaMatchups:       matchups,
 		StrongAgainst:      strongAgainst,
