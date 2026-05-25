@@ -96,6 +96,8 @@ func main() {
 	csvIncludeOK := flag.Bool("csv-include-ok", false, "include OK and OK_VANILLA rows in the CSV export (default: uncovered only)")
 	historyPath := flag.String("history", "", "optional JSONL file to append this run's stats to; if file exists, prints a delta-vs-previous summary")
 	historyLabel := flag.String("history-label", "", "optional label for this history entry (e.g., 'r60', '2026-05-24'); shown in future delta summaries")
+	chartPath := flag.String("chart", "", "optional path to render a progress chart from the --history JSONL (.svg = line chart, .md = sparkline + table)")
+	chartTitle := flag.String("chart-title", "Parser Coverage Progress", "title used in the rendered chart")
 	bySetPath := flag.String("by-set", "", "optional path to write a markdown report grouping uncovered cards by Magic set, ranked by uncovered count")
 	bySetTopN := flag.Int("by-set-top", 0, "limit the --by-set report to the top N sets by uncovered count (0 = include every set)")
 	htmlPath := flag.String("html", "", "optional path to write a self-contained interactive HTML report for browsing uncovered cards by set/era/type")
@@ -219,6 +221,21 @@ func main() {
 			log.Fatalf("appendHistory: %v", err)
 		}
 		log.Printf("appended history entry to %s (label=%q)", *historyPath, *historyLabel)
+	}
+
+	if strings.TrimSpace(*chartPath) != "" {
+		if strings.TrimSpace(*historyPath) == "" {
+			log.Fatalf("--chart requires --history <path> to know which history file to chart")
+		}
+		entries, err := readHistory(*historyPath)
+		if err != nil {
+			log.Fatalf("readHistory for chart: %v", err)
+		}
+		points := computeProgress(entries)
+		if err := writeProgressChart(*chartPath, points, *chartTitle); err != nil {
+			log.Fatalf("writeProgressChart: %v", err)
+		}
+		log.Printf("wrote %s (progress chart, %d points)", *chartPath, len(points))
 	}
 }
 
