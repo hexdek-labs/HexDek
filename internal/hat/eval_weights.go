@@ -43,10 +43,37 @@ func (w EvalWeights) AsArray() [NumDimensions]float64 {
 
 var archetypeWeights = map[string]EvalWeights{
 	ArchetypeAggro: {
-		BoardPresence:          1.5,
+		// R60 round 5 retune — Aggro off the generic creature-deck profile.
+		// Pre-fix the profile shipped with BoardPresence=1.5 (above midrange
+		// but not anchored), ManaAdvantage=0.3 (well below midrange), and
+		// LifeResource=0.8 (own-life only). Aggro's actual gameplan is
+		// "press the strongest opponent's life to zero before they assemble
+		// their plan" — that needs four corrections:
+		//   - BoardPresence: 1.5 → 2.0 — signature dimension anchored at the
+		//     2.0 mark every other custom profile uses for its primary axis
+		//     (Reanimator GraveyardValue, Voltron CommanderProgress,
+		//     Aristocrats DrainEngine, Storm ComboProximity, etc.). Aggro's
+		//     primary axis IS the board.
+		//   - LifeResource: 0.8 → 1.6 — Aggro evaluates opponent life as
+		//     the win clock, not own life as a survival resource.
+		//     `scoreLife` now folds an opponent-pressure component into its
+		//     output so a high LifeResource weight makes aggro VALUE
+		//     lowering the strongest opp's life, not just preserving its
+		//     own. Without the dimension bump the new pressure signal
+		//     would be invisible to MCTS.
+		//   - ManaAdvantage: 0.3 → 0.8 — neutral, equal to midrange. Aggro
+		//     doesn't need ramp acceleration but also shouldn't actively
+		//     devalue keeping mana up for combat tricks / second wave
+		//     threats. The previous 0.3 made the hat skip cheap utility
+		//     ramp (Sol Ring, Arcane Signet) when it should take them on
+		//     curve.
+		//   - ComboProximity: 0.1 — kept low. Aggro doesn't assemble
+		//     combos; an off-class engine piece shouldn't pull the hat
+		//     off-line.
+		BoardPresence:          2.0, // was 1.5 — anchor signature dimension
 		CardAdvantage:          0.4,
-		ManaAdvantage:          0.3,
-		LifeResource:           0.8,
+		ManaAdvantage:          0.8, // was 0.3 — neutral (midrange-equal)
+		LifeResource:           1.6, // was 0.8 — opponent life is the win clock
 		ComboProximity:         0.1,
 		ThreatExposure:         0.6,
 		CommanderProgress:      0.9,

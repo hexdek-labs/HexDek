@@ -467,17 +467,55 @@ func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) fl
 		}
 	}
 
+	var base float64
 	if seat.Life <= 10 {
-		base := ratio - 0.5
+		base = ratio - 0.5
 		if hasLifePayoff {
 			base *= 0.5
 		}
-		return base
+	} else {
+		base = (ratio - 0.5) * 0.5
+		if hasLifePayoff && seat.Life > 20 {
+			base += 0.1
+		}
 	}
-	base := (ratio - 0.5) * 0.5
-	if hasLifePayoff && seat.Life > 20 {
-		base += 0.1
+
+	// R60 round 5: fold an opponent-pressure component into LifeResource so
+	// aggressive archetypes (whose LifeResource weight is high) actually
+	// value lowering opponents' life totals — not just preserving their
+	// own. Pressure is the strongest opponent's life ratio inverted, capped
+	// at +0.5 contribution so it can't dominate the own-life term. For
+	// 4-player commander with one opp at 12/40 life: ratio=0.30, pressure
+	// = (1 - 0.30) * 0.5 = +0.35 (lethal-clock signal). For all opps at
+	// starting life: pressure = 0 (no signal).
+	pressure := 0.0
+	for i, s := range gs.Seats {
+		if i == seatIdx || s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		oppStarting := float64(s.StartingLife)
+		if oppStarting <= 0 {
+			oppStarting = 40
+		}
+		oppLife := float64(s.Life)
+		if oppLife <= 0 {
+			oppLife = 0
+		}
+		oppRatio := oppLife / oppStarting
+		// Take the WEAKEST (lowest life ratio) opponent — that's the one
+		// closest to elimination, which is where the win clock is.
+		oppPressure := (1.0 - oppRatio) * 0.5
+		if oppPressure > pressure {
+			pressure = oppPressure
+		}
 	}
+	if pressure < 0 {
+		pressure = 0
+	}
+	if pressure > 0.5 {
+		pressure = 0.5
+	}
+	base += pressure
 	return base
 }
 
