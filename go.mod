@@ -5,6 +5,7 @@ go 1.25.0
 require (
 	github.com/coder/websocket v1.8.14
 	github.com/getkin/kin-openapi v0.139.0
+	github.com/graphql-go/graphql v0.8.1
 	modernc.org/sqlite v1.48.2
 )
 

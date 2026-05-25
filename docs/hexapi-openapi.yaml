@@ -86,6 +86,8 @@ tags:
     description: HTML share pages with Open Graph meta for unfurls.
   - name: webhooks
     description: External webhook intake (Ko-fi donation events).
+  - name: graphql
+    description: GraphQL endpoint over the game graph (proof-of-concept).
 
 components:
   schemas:
@@ -882,6 +884,40 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "409": { $ref: '#/components/responses/Conflict' }
         "429": { $ref: '#/components/responses/TooManyRequests' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
+  /api/decks/{owner}/{id}/archive:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeckArchive
+      summary: Consolidated deck archive (identity + lineage + games + archetype timeline).
+      description: |
+        Returns the full archive blob: identity (current commander +
+        archetype), the version DAG with per-version games / wins /
+        losses / winrate, aggregate game stats, the trailing N
+        recent games, and an archetype evolution timeline. Empty
+        payload (200) when the deck has no lineage / games yet —
+        the frontend renders that as "no history" rather than 404.
+      parameters:
+        - name: recent
+          in: query
+          required: false
+          description: How many trailing games to include in the archive blob.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Deck archive document.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
         "500": { $ref: '#/components/responses/InternalError' }
 
   /api/decks/{owner}/{id}/lineage:
@@ -2456,3 +2492,88 @@ paths:
           description: HTML page.
           content:
             text/html: {}
+
+  ## ---------------------------------------------------------------
+  ## GraphQL POC (minimal, opt-in)
+  ## ---------------------------------------------------------------
+
+  /graphql:
+    post:
+      tags: [graphql]
+      operationId: graphqlPost
+      summary: GraphQL endpoint over the game graph (POC).
+      description: |
+        Minimal viable proof-of-concept. The schema currently exposes
+        two root queries — `game(id: Int!)` and `games(limit: Int)`
+        — backed by Showmatch's in-memory CompletedGame history.
+        Selective field projection + aliasing are the primary
+        ergonomics this surface buys over REST.
+
+        Per the GraphQL transport spec, validation / execution
+        errors are surfaced as a 200 response with `errors`
+        populated, NOT as a 4xx. HTTP failure codes are reserved
+        for transport-level problems (malformed body, missing
+        query).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                  description: GraphQL query document.
+                variables:
+                  type: object
+                  additionalProperties: true
+                operationName:
+                  type: string
+      responses:
+        "200":
+          description: GraphQL execution result.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+        "400": { $ref: '#/components/responses/BadRequest' }
+    get:
+      tags: [graphql]
+      operationId: graphqlGet
+      summary: Ad-hoc browser query form (?query=&variables=).
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: variables
+          in: query
+          required: false
+          description: JSON-encoded variable map.
+          schema:
+            type: string
+        - name: operationName
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: GraphQL execution result. Same shape as POST.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400": { $ref: '#/components/responses/BadRequest' }
