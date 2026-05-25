@@ -61,6 +61,20 @@ type Handler struct {
 	// echo the token.
 	CSRFStore *CSRFStore
 
+	// DeckMutationLimiter is the first PER-USER (not per-IP) limiter.
+	// Buckets by X-HexDek-Owner so the rate budget follows the user
+	// across devices and networks. Applied to the owner-authenticated
+	// deck mutation endpoints (PUT/PATCH/DELETE /api/decks/{owner}/{id})
+	// which previously had no rate limit at all. Per-IP keying was
+	// wrong here for two reasons: (1) a household sharing one IP would
+	// cross-throttle (alice's bulk edits would lock bob out); (2) a
+	// single user with a phone + laptop on different networks would
+	// get two separate budgets for what's actually one human's edit
+	// session. Falls back to per-IP bucketing when the owner header
+	// is missing — see ownerOrIPKey. Nil = no limiting (backwards
+	// compatible); cmd/hexdek-server sets a default at startup.
+	DeckMutationLimiter *RateLimiter
+
 	deckSubsMu sync.RWMutex
 	deckSubs   map[string]map[chan deckEvent]struct{}
 
@@ -510,6 +524,12 @@ func computeManaProduction(cardDB map[string]oracleCard, cards []map[string]any)
 }
 
 func (h *Handler) handleUpdateDeck(w http.ResponseWriter, r *http.Request) {
+	// Per-user rate-limit. Replaces a deck file on every call; bursts
+	// fan into versioning + disk churn. Keyed by owner so alice and
+	// bob on the same household IP don't cross-throttle.
+	if enforceRateLimitByOwner(h.DeckMutationLimiter, w, r, "deck update") {
+		return
+	}
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
@@ -593,6 +613,11 @@ func (h *Handler) handleUpdateDeck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleDeleteDeck(w http.ResponseWriter, r *http.Request) {
+	// Per-user rate-limit on top of CSRF + ownership. Destructive ops
+	// shouldn't run in a tight loop even from an authenticated owner.
+	if enforceRateLimitByOwner(h.DeckMutationLimiter, w, r, "deck delete") {
+		return
+	}
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {

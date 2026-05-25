@@ -312,6 +312,12 @@ func (h *Handler) recordClone(ctx context.Context, owner, srcKey, dstKey string)
 // Returns the updated DeckSummary-shaped JSON so the frontend can swap it
 // into local state without a follow-up GET.
 func (h *Handler) handlePatchDeck(w http.ResponseWriter, r *http.Request) {
+	// Per-user rate-limit (owner-keyed). Shares the DeckMutationLimiter
+	// budget with PUT + DELETE so a single user's rapid edit-rename-
+	// delete loop sums against one bucket, not three.
+	if enforceRateLimitByOwner(h.DeckMutationLimiter, w, r, "deck patch") {
+		return
+	}
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {

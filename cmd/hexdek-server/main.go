@@ -167,6 +167,17 @@ func main() {
 		// enough to stop a bot from filling DecksDir or pinning the
 		// Freya subprocess queue.
 		DeckImportLimiter: hexapi.NewRateLimiter(10, 1.0/30.0),
+		// r60: FIRST per-user (not per-IP) rate limit. Buckets by
+		// X-HexDek-Owner so a household sharing one IP doesn't
+		// cross-throttle and one user's edit session on phone + laptop
+		// shares a single budget. Applied to PUT/PATCH/DELETE on
+		// /api/decks/{owner}/{id} — the owner-authenticated deck
+		// mutation surface that previously had no rate limit at all.
+		// 30-burst + 1 per 10s — sized for a real "tidy up my deck
+		// collection" session (batch rename + delete a handful of old
+		// versions) without letting a runaway script churn the
+		// versioning DAG.
+		DeckMutationLimiter: hexapi.NewRateLimiter(30, 1.0/10.0),
 	}
 	// r60: stateless CSRF tokens for destructive endpoints (DELETE
 	// /api/decks/{owner}/{id} + POST /api/decks/{owner}/{id}/clone).
