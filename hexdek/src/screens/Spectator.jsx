@@ -16,6 +16,74 @@ import {
   computePauseToggle,
   pickNeighboringTurnHeader,
 } from '../utils/spectatorKeybindings'
+import { isNotableAction, explainAction } from '../utils/actionExplain'
+
+// ActionExplainBadge — small ⓘ pill rendered next to a notable log
+// entry. Hover (or focus) opens a tooltip showing what the hat's
+// telemetry says about why this action makes sense for the acting
+// seat: archetype, archetype bias sentence, top-2 eval dimensions,
+// threat read, score, pilot. `explanation` is the object returned
+// by explainAction(); when null the badge renders nothing.
+function ActionExplainBadge({ explanation }) {
+  const [open, setOpen] = useState(false)
+  if (!explanation) return null
+  return (
+    <span style={{ position: 'relative', display: 'inline-block', marginLeft: 4 }}>
+      <span
+        role="button"
+        tabIndex={0}
+        aria-label="Explain this action"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setOpen(false)}
+        style={{
+          fontSize: 10,
+          padding: '0 4px',
+          borderRadius: 8,
+          border: '1px solid var(--rule-2)',
+          color: 'var(--ink-2)',
+          cursor: 'help',
+          background: 'var(--bg)',
+        }}
+      >
+        ⓘ WHY?
+      </span>
+      {open && (
+        <div
+          role="tooltip"
+          style={{
+            position: 'absolute',
+            zIndex: 100,
+            left: 0,
+            top: '100%',
+            marginTop: 4,
+            minWidth: 240,
+            maxWidth: 320,
+            background: 'var(--bg)',
+            border: '1px solid var(--rule)',
+            padding: '8px 10px',
+            fontSize: 11,
+            lineHeight: 1.4,
+            color: 'var(--ink)',
+            boxShadow: '0 6px 18px rgba(0,0,0,0.4)',
+            whiteSpace: 'normal',
+          }}
+        >
+          <div style={{ fontWeight: 700, letterSpacing: '0.04em', marginBottom: 4 }}>
+            {explanation.headline?.toUpperCase()}
+          </div>
+          {explanation.bullets.map((b, i) => (
+            <div key={i} style={{ display: 'grid', gridTemplateColumns: '90px 1fr', gap: 6, padding: '1px 0' }}>
+              <span className="muted" style={{ textTransform: 'uppercase', fontSize: 10 }}>{b.label}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{b.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </span>
+  )
+}
 
 const SPEED_MARKS = [0.1, 0.2, 0.3, 0.5, 0.75, 1, 1.5, 2]
 
@@ -840,6 +908,15 @@ export default function Spectator() {
                     const gc = findGameChangerInText(entry.action)
                     const narrated = narrate(entry, seats)
                     const seatColor = SEAT_COLORS[entry.seat] || 'var(--ink-2)'
+                    // Hat decision explanation. The badge attaches to
+                    // notable entries (cast / combat / counter / removal
+                    // / reanimate / extra_turn / activate) and pulls
+                    // archetype + top-2 eval dims + threat read from
+                    // the acting seat's live `eval` snapshot.
+                    const actingSeat = seats[entry.seat]
+                    const explanation = isNotableAction(entry)
+                      ? explainAction(entry, actingSeat?.eval, actingSeat?.commander)
+                      : null
                     const showTurnHeader = entry.turn !== lastTurn
                     lastTurn = entry.turn
                     const rowClasses = [
@@ -885,6 +962,7 @@ export default function Spectator() {
                                 {gc && <span className="gc-pill" title="Game Changer">★ GC</span>}
                                 {entry.count > 1 && <span style={{ background: 'var(--ink-3)', color: 'var(--bg)', borderRadius: 3, padding: '0 4px', fontSize: 9, marginRight: 4, fontWeight: 700 }}>×{entry.count}</span>}
                                 {linkifyNarrated(narrated.text, entry.source, entry.targets)}
+                                <ActionExplainBadge explanation={explanation} />
                               </span>
                             ) : isElim ? (
                               <span style={{
@@ -911,6 +989,7 @@ export default function Spectator() {
                                     </>
                                   )
                                 })()}
+                                <ActionExplainBadge explanation={explanation} />
                               </span>
                             )}
                           </div>
