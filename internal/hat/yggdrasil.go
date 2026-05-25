@@ -5963,8 +5963,23 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 	// `stackItemScore(top)` gate can't see any of that. See
 	// `computeStackDepthSignals` for the three signals folded in here.
 	depthSig := h.computeStackDepthSignals(gs, seatIdx, top)
+	// R60 follow-up to #310 — multi-level stack-resolution awareness.
+	// holdForBiggerBelow (defer counter when a higher-threat hostile
+	// item sits below; single-counter holders save the response window)
+	// and forceCounterShield (top is a Veil-of-Summer-shape protection
+	// spell about to lock our counters out of the bigger threats below).
+	h.stackResolutionSignals(gs, seatIdx, top, &depthSig)
 	if depthSig.scoreBonus > 0 {
 		score += depthSig.scoreBonus
+	}
+	// holdForBiggerBelow short-circuits to pass — saving the single
+	// available counter for the larger threat's own priority window.
+	// Skipped when mustCounter is set (the helper already gates this,
+	// but defense-in-depth here keeps the contract explicit).
+	if depthSig.holdForBiggerBelow && !depthSig.mustCounter {
+		h.logf("STACK-RESOLUTION seat=%d depth=%d HOLD reason=%s",
+			seatIdx, len(gs.Stack), depthSig.reason)
+		return nil
 	}
 
 	// Always counter combo pieces / "win the game" / mass removal.
@@ -6170,7 +6185,25 @@ type stackDepthSignals struct {
 	mustCounter   bool
 	scoreBonus    int
 	minScoreDelta int
-	reason        string // short tag for log lines
+	// R60 follow-up to #310 — stack-resolution awareness across levels.
+	//
+	// holdForBiggerBelow: a higher-threat hostile item sits BELOW the
+	// top. Burning our counter on the smaller top wastes it — passing
+	// lets the small top resolve, then the engine grants us a fresh
+	// priority window over the bigger threat (the formerly-below item
+	// becomes the new top). Single-counter holders gain a turn-level
+	// payoff from this deferral; multi-counter holders fall through to
+	// the normal mustCounter / score path because the higher-threat
+	// item will get its own counter on its window.
+	//
+	// forceCounterShield: top is a counter-protection spell (Veil of
+	// Summer / Autumn's Veil / Silence / Grand Abolisher activation)
+	// that, if it resolves, locks our counters out of the bigger
+	// threats below it on the stack. We have ONE window — counter
+	// the shield now or lose the response chain.
+	holdForBiggerBelow bool
+	forceCounterShield bool
+	reason             string // short tag for log lines
 }
 
 // computeStackDepthSignals scans gs.Stack relative to `top` and
@@ -6269,6 +6302,115 @@ func (h *YggdrasilHat) computeStackDepthSignals(gs *gameengine.GameState, seatId
 		}
 	}
 	return sig
+}
+
+// stackResolutionSignals adds the cross-level signals on top of
+// stackDepthSignals. Mutates the passed-in sig in place — separate
+// helper so the multi-level reasoning is testable independently of
+// the existing depth-context detection.
+//
+// holdForBiggerBelow fires when:
+//   - the top is hostile AND scores below a higher-threat hostile
+//     item somewhere below it on the stack;
+//   - the seat has exactly ONE affordable counter in hand (more than
+//     one means we can counter both; zero is moot — ChooseResponse
+//     short-circuits before this runs).
+//
+// forceCounterShield fires when:
+//   - the top is a counter-protection spell (oracle text matches
+//     "can't be countered" / "hexproof from blue" / "spells you cast
+//     this turn can't be countered" / "no player may cast spells");
+//   - and a hostile item sits below the top (otherwise the shield
+//     protects nothing material — let it resolve and save the
+//     counter).
+func (h *YggdrasilHat) stackResolutionSignals(gs *gameengine.GameState, seatIdx int, top *gameengine.StackItem, sig *stackDepthSignals) {
+	if gs == nil || top == nil || sig == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return
+	}
+	depth := len(gs.Stack)
+	if depth < 2 {
+		return
+	}
+
+	// ----- forceCounterShield ----------------------------------------
+	respondCard := effectiveResponseCard(top)
+	if respondCard != nil && top.Controller != seatIdx {
+		ot := gameengine.OracleTextLower(respondCard)
+		shieldShape := strings.Contains(ot, "can't be countered") ||
+			strings.Contains(ot, "hexproof from blue") ||
+			strings.Contains(ot, "your opponents can't cast spells") ||
+			strings.Contains(ot, "no player may cast")
+		if shieldShape {
+			hostileBelow := false
+			for i := 0; i < depth-1; i++ {
+				it := gs.Stack[i]
+				if it == nil || it.IsCopy {
+					continue
+				}
+				if it.Controller != seatIdx {
+					hostileBelow = true
+					break
+				}
+			}
+			if hostileBelow {
+				sig.forceCounterShield = true
+				sig.mustCounter = true
+				if sig.reason == "" {
+					sig.reason = "counter_shield_protects_opp_stack"
+				}
+			}
+		}
+	}
+
+	// ----- holdForBiggerBelow ----------------------------------------
+	// Only the deferral case — if mustCounter is already set (Etali /
+	// must-counter / shield), we'll counter regardless and this signal
+	// is irrelevant. Same if top is our own item.
+	if sig.mustCounter || top.Controller == seatIdx {
+		return
+	}
+	topScore := stackItemScore(top) + sig.scoreBonus
+	maxBelowScore := 0
+	for i := 0; i < depth-1; i++ {
+		it := gs.Stack[i]
+		if it == nil || it.IsCopy {
+			continue
+		}
+		if it.Controller == seatIdx {
+			continue
+		}
+		if s := stackItemScore(it); s > maxBelowScore {
+			maxBelowScore = s
+		}
+	}
+	if maxBelowScore <= topScore {
+		return
+	}
+	// Count affordable counters in hand. Defer the counter only when
+	// we have a SINGLE one — with multiple, we can spend on the top
+	// AND the below.
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return
+	}
+	colored := gameengine.AvailableColoredManaEstimate(gs, seat)
+	affordable := 0
+	for _, c := range seat.Hand {
+		if c != nil && gameengine.CardHasCounterSpell(c) &&
+			gameengine.CanPayColoredCost(colored, c) {
+			affordable++
+			if affordable >= 2 {
+				break
+			}
+		}
+	}
+	if affordable >= 2 {
+		return
+	}
+	sig.holdForBiggerBelow = true
+	if sig.reason == "" {
+		sig.reason = "hold_counter_for_bigger_threat_below"
+	}
 }
 
 // maybeCastDefensiveAnswer returns a fog or mass-protection spell from
