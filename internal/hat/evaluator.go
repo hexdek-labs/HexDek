@@ -854,14 +854,18 @@ func (e *GameStateEvaluator) scoreThreat(gs *gameengine.GameState, seatIdx int) 
 	}
 
 	var maxOppPow float64
+	hardestToAnswer := 0.0
 	dangerousPermanents := 0.0
 	for i, s := range gs.Seats {
 		if i == seatIdx || s.Lost || s.LeftGame {
 			continue
 		}
-		bp := float64(boardPower(gs, s))
+		bp := effectiveOffensivePower(gs, s)
 		if bp > maxOppPow {
 			maxOppPow = bp
+		}
+		if h := hardToAnswerScore(gs, s); h > hardestToAnswer {
+			hardestToAnswer = h
 		}
 		for _, p := range s.Battlefield {
 			if p == nil || p.Card == nil {
@@ -912,6 +916,14 @@ func (e *GameStateEvaluator) scoreThreat(gs *gameengine.GameState, seatIdx int) 
 	if lethalRatio >= 1.0 {
 		return -1.0
 	}
+
+	// Hard-to-answer multiplier: threats with indestructible / hexproof /
+	// ward / protection compound the lethal clock because they survive
+	// generic removal — we burn into specific answers (exile, board wipe,
+	// -X/-X) and may not have one. Adds up to +20% to the offensive
+	// pressure score, capped so a single huge protected creature never
+	// flips the dimension to lethal on its own.
+	hardToAnswerPenalty := hardestToAnswer * lethalRatio * 0.2
 
 	// Poison threat: high poison counters are an existential threat
 	// regardless of combat board state. 10 = lethal per §704.5c.
@@ -991,7 +1003,99 @@ func (e *GameStateEvaluator) scoreThreat(gs *gameengine.GameState, seatIdx int) 
 		}
 	}
 
-	return -lethalRatio*0.8 - dangerousPermanents*0.3 - hoserPenalty - poisonPenalty - millPenalty - cmdrPenalty
+	return -lethalRatio*0.8 - dangerousPermanents*0.3 - hoserPenalty - poisonPenalty - millPenalty - cmdrPenalty - hardToAnswerPenalty
+}
+
+// effectiveOffensivePower returns an evasion-weighted, summoning-sickness-
+// discounted offensive-power figure for a seat. Used by scoreThreat in
+// place of raw boardPower so that "the opponent has 12 power on board"
+// reflects how much of that power can actually pressure us NEXT combat:
+//
+//   - Flying / shadow / horsemanship / unblockable: 1.5x weight — ground
+//     blockers don't apply.
+//   - Trample: 1.25x weight — chump-blocking only partially mitigates.
+//   - Menace: 1.20x weight — single-blocker chumps don't work.
+//   - Summoning sick & no haste: 0.6x weight — the creature can attack
+//     NEXT turn, not this one, so there's a turn of warning for the
+//     defender to find an answer. Planeswalkers and lands are unaffected
+//     (a PW's loyalty ticks immediately on the turn it ETBs).
+//
+// Multipliers stack multiplicatively (a flying trampler is 1.5 * 1.25
+// = 1.875x). Planeswalker loyalty proxy carries over from boardPower.
+func effectiveOffensivePower(gs *gameengine.GameState, seat *gameengine.Seat) float64 {
+	if seat == nil {
+		return 0
+	}
+	total := 0.0
+	for _, p := range seat.Battlefield {
+		if p == nil {
+			continue
+		}
+		if p.IsCreature() {
+			pw := gs.PowerOf(p)
+			if pw <= 0 {
+				continue
+			}
+			mult := 1.0
+			if p.HasKeyword("flying") || p.HasKeyword("shadow") ||
+				p.HasKeyword("horsemanship") || p.HasKeyword("unblockable") {
+				mult *= 1.5
+			}
+			if p.HasKeyword("trample") {
+				mult *= 1.25
+			}
+			if p.HasKeyword("menace") {
+				mult *= 1.20
+			}
+			if p.SummoningSick && !p.HasKeyword("haste") {
+				mult *= 0.6
+			}
+			total += float64(pw) * mult
+			continue
+		}
+		if p.IsPlaneswalker() {
+			loy := 0
+			if p.Counters != nil {
+				loy = p.Counters["loyalty"]
+			}
+			if loy < 0 {
+				loy = 0
+			}
+			total += float64(loy + 2)
+		}
+	}
+	return total
+}
+
+// hardToAnswerScore returns 0..1 reflecting how much of seat's offensive
+// pressure rides on creatures that resist single-target removal.
+// Indestructible / hexproof / shroud / ward / protection each count; the
+// raw count is normalized so 3+ hard-to-answer attackers saturates at 1.0.
+// Threshold gates on power >= 3 so a 1/1 ward-bearing utility creature
+// doesn't move the dimension.
+func hardToAnswerScore(gs *gameengine.GameState, seat *gameengine.Seat) float64 {
+	if seat == nil {
+		return 0
+	}
+	count := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || !p.IsCreature() {
+			continue
+		}
+		if gs.PowerOf(p) < 3 {
+			continue
+		}
+		if p.HasKeyword("indestructible") || p.HasKeyword("hexproof") ||
+			p.HasKeyword("shroud") || p.HasKeyword("ward") ||
+			p.HasKeyword("protection") {
+			count++
+		}
+	}
+	score := float64(count) / 3.0
+	if score > 1.0 {
+		score = 1.0
+	}
+	return score
 }
 
 // scoreCommander: commander combat damage dealt + commander zone status.
