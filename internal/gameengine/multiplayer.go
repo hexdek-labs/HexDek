@@ -345,6 +345,18 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 				// Unregister any §614 / §613 hooks tied to this permanent.
 				gs.UnregisterReplacementsForPermanent(p)
 				gs.UnregisterContinuousEffectsForPermanent(p)
+				// r60 extreme-stress / seed 42 game 5480: Kess, Dissident
+				// Mage's `while_source_on_bf` graveyard-cast grant on
+				// Compound Fracture survived seat 0's elimination because
+				// the seat-loss cleanup path (this loop) never called
+				// ExpireSourceGrants, even though every other LTB path
+				// (DestroyPermanent / ExilePermanent / sacrificePermanentImpl
+				// / BouncePermanent / destroyPermSBA / sacrificePermSBA)
+				// does. Without this, the grant outlived its source by
+				// many turns and tripped ZoneCastGrantExpiry. Same shape
+				// as PR #106's LTB plumbing — extending the same hook to
+				// the §800.4a seat-elimination path.
+				ExpireSourceGrants(gs, p.Timestamp)
 				// Count real cards for zone conservation tracking.
 				if p.Card != nil && !p.IsToken() {
 					realCardsLeaving++
