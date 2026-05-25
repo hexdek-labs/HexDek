@@ -241,12 +241,17 @@ func TestDefaultConfig_LiteratureDefaults(t *testing.T) {
 	}
 }
 
-// TestDefaultFFAConfig_DivergenceFromBaseline pins the FFA preset's
-// single intentional divergence from the literature defaults: β widens
-// from σ/2 to σ·0.6 to absorb Commander pod noise (politics, mana
-// variance, kingmaking). τ and drawP match DefaultConfig exactly — if
-// you find yourself motivating a τ bump, document the meta-drift
-// argument and update both this test and ffaBetaScale's comment.
+// TestDefaultFFAConfig_DivergenceFromBaseline pins all three of the
+// FFA preset's intentional divergences from the Microsoft 1v1 literature
+// defaults. Documented in `docs/trueskill-tuning-r60.md`.
+//
+//	β  widens  σ/2   → σ·0.6  — Commander pod noise (politics, mana, position)
+//	τ  shrinks σ/100 → σ/200  — static-deck self-play needs less drift than action games
+//	dP shrinks 0.02  → 0.005  — observed 4p Commander draw rate is ~0.01%
+//
+// If you find yourself re-tuning any of these, update this test, the
+// matching ffa*Scale / ffaDrawProbability constant comment, AND the
+// rationale doc.
 func TestDefaultFFAConfig_DivergenceFromBaseline(t *testing.T) {
 	base := DefaultConfig()
 	ffa := DefaultFFAConfig()
@@ -258,13 +263,23 @@ func TestDefaultFFAConfig_DivergenceFromBaseline(t *testing.T) {
 	if ffa.Beta <= base.Beta {
 		t.Errorf("FFA Beta should exceed 1v1 Beta: ffa=%f base=%f", ffa.Beta, base.Beta)
 	}
-	// τ and drawP must MATCH the 1v1 baseline — any change here needs
-	// explicit justification (see ffaBetaScale comment).
-	if math.Abs(ffa.Tau-base.Tau) > 1e-9 {
-		t.Errorf("FFA Tau should equal 1v1 Tau: ffa=%f base=%f", ffa.Tau, base.Tau)
+
+	// r60 retune: τ = σ/200. Must be STRICTLY less than the 1v1 baseline.
+	wantTau := defaultSigma * ffaTauScale
+	if math.Abs(ffa.Tau-wantTau) > 1e-9 {
+		t.Errorf("DefaultFFAConfig.Tau = %f, want σ·%.4f = %f", ffa.Tau, ffaTauScale, wantTau)
 	}
-	if math.Abs(ffa.DrawProbability-base.DrawProbability) > 1e-9 {
-		t.Errorf("FFA DrawProbability should equal 1v1: ffa=%f base=%f",
+	if ffa.Tau >= base.Tau {
+		t.Errorf("FFA Tau should be less than 1v1 Tau (static-deck context): ffa=%f base=%f", ffa.Tau, base.Tau)
+	}
+
+	// r60 retune: DrawProbability = 0.005. Must be STRICTLY less than
+	// the 1v1 baseline (0.02 action-game hedge).
+	if math.Abs(ffa.DrawProbability-ffaDrawProbability) > 1e-9 {
+		t.Errorf("DefaultFFAConfig.DrawProbability = %f, want %f", ffa.DrawProbability, ffaDrawProbability)
+	}
+	if ffa.DrawProbability >= base.DrawProbability {
+		t.Errorf("FFA DrawProbability should be less than 1v1: ffa=%f base=%f",
 			ffa.DrawProbability, base.DrawProbability)
 	}
 }
@@ -352,16 +367,21 @@ func TestFFAConvergence_4PlayerDeterministicSkill(t *testing.T) {
 	}
 }
 
-// TestFFAvs1v1_RetainsMoreUncertainty runs the same 200-game scenario
-// under both presets and pins the key empirical signature of the β bump:
-// the FFA preset retains MORE σ at convergence (it considers each game
-// less informative about skill), while still ordering strong > weak.
+// TestFFAvs1v1_ConvergesTighterUnderStaticDeckTau runs the same
+// 200-game scenario under both presets and pins the joint signature of
+// the r60 retune: σ converges TIGHTER under the FFA preset over a
+// long-horizon static-deck self-play, because the τ reduction (σ/100 →
+// σ/200) overpowers the β widening (σ/2 → σ·0.6) in σ-shrinkage rate.
 //
-// Note: the FFA μ spread can actually exceed 1v1 over the same horizon
-// — higher β slows σ shrinkage, which leaves μ free to drift further
-// per game. The defining property of "humbler" is per-update (see
-// TestHigherBeta_ProducesHumblerUpdates), not long-horizon spread.
-func TestFFAvs1v1_RetainsMoreUncertainty(t *testing.T) {
+// This is the *intended* property for HexDek: decks don't drift between
+// games, so the rating system should converge faster to a tight σ
+// rather than retaining session-noise headroom that a human-skill-drift
+// scenario would need. The pre-r60 FFA preset retained MORE σ than 1v1
+// (β-only divergence); the r60 retune flipped that for static-deck
+// realism.
+//
+// Both presets still order strong > weak.
+func TestFFAvs1v1_ConvergesTighterUnderStaticDeckTau(t *testing.T) {
 	run := func(cfg Config) (strongMu, weakMu, strongSigma float64) {
 		ts := NewTrueSkillRatingsWithConfig(
 			[]string{"strong", "weak1", "weak2", "weak3"}, cfg)
@@ -380,8 +400,8 @@ func TestFFAvs1v1_RetainsMoreUncertainty(t *testing.T) {
 	if strongFFA <= weakFFA {
 		t.Errorf("FFA preset must separate strong from weak: %f vs %f", strongFFA, weakFFA)
 	}
-	if sigmaFFA <= sigma1v1 {
-		t.Errorf("FFA σ should exceed 1v1 σ at convergence (higher β = slower shrinkage): "+
+	if sigmaFFA >= sigma1v1 {
+		t.Errorf("FFA σ should be LESS than 1v1 σ at convergence (r60: τ shrink overpowers β widen): "+
 			"ffa=%f 1v1=%f", sigmaFFA, sigma1v1)
 	}
 }

@@ -22,6 +22,48 @@ const (
 	// Convergence stays fast because 4-player FFA already produces ~3×
 	// the pairwise comparisons per game vs 1v1.
 	ffaBetaScale = 0.6
+
+	// ffaTauScale tunes the dynamics-noise parameter for HexDek's FFA
+	// self-play context. Microsoft's 1v1 paper sets τ = σ/100 (≈0.083),
+	// modeling per-game skill drift for human players whose underlying
+	// skill genuinely changes between sessions. Halo 2 deployed the same
+	// τ. Halo Reach later lowered it for the slow-drift action-game
+	// environment.
+	//
+	// HexDek's primary use case is even MORE static than Halo: the deck
+	// doesn't change between games. Skill drift is meaningful only when
+	// the engine/AI version changes — and that's handled separately by
+	// `InheritRating` (sigma inflation proportional to card-delta on
+	// deck-version changes). Between same-version games against same-
+	// version opponents, the underlying deck strength is truly constant.
+	//
+	// τ = σ/200 (≈0.042) halves the dynamics noise vs the Microsoft
+	// 1v1 reference. Convergence is faster (fewer games to tight σ),
+	// reflecting the static-deck reality, while keeping enough headroom
+	// that within-engine-version Hat tuning (which IS dynamic — eval-
+	// weight shifts can move winrate 1-2pp) remains trackable. Halo
+	// Reach's σ/300 is the precedent for going lower; we picked σ/200
+	// as the conservative midpoint pending the Hat-eval-tuning cycle
+	// stabilizing.
+	ffaTauScale = 1.0 / 200.0
+
+	// ffaDrawProbability tunes the modeled draw rate for HexDek's
+	// 4-player FFA games. Microsoft's 1v1 reference is 0.02 — a hedge
+	// for action games where rare ties happen. Chess uses 0.10 because
+	// draws are common in tournament play.
+	//
+	// HexDek's measured 4-player Commander draw rate is essentially
+	// zero: genuine multi-way ties happen only via CR §104.4b
+	// mandatory-loop-draw, fired by the SBA cap at < 1 per 10,000
+	// games. The 0.02 hedge widens the win/loss decision margin
+	// (epsilon = drawMargin(p, β)) unnecessarily, slightly damping the
+	// score updates near 50/50 matchups.
+	//
+	// 0.005 reflects observed reality (0.05% > the actual ~0.01% rate,
+	// still far below the 1v1 hedge). Tightens the win/loss margin
+	// without over-fitting to the near-zero observed rate, leaving
+	// headroom for the occasional mandatory-loop draw.
+	ffaDrawProbability = 0.005
 )
 
 type Rating struct {
@@ -57,16 +99,29 @@ func DefaultConfig() Config {
 }
 
 // DefaultFFAConfig returns the TrueSkill config tuned for HexDek's
-// 4-player Commander pod context. The only divergence from
-// [DefaultConfig] is β: we widen it from σ/2 to σ·0.6 (see
-// ffaBetaScale's documentation for the FFA-specific noise sources that
-// motivate this). τ and draw probability are unchanged — deck skill is
-// (in self-play) static, and decisive games dominate over genuine
-// multi-way draws. NewTrueSkillRatings uses this preset by default.
+// 4-player Commander pod context. Three divergences from
+// [DefaultConfig]:
+//
+//   - β = σ·0.6 (vs σ/2) — wider performance noise for political /
+//     mana-variance / table-position FFA effects. See ffaBetaScale.
+//   - τ = σ/200 (vs σ/100) — halved dynamics noise. HexDek decks
+//     don't drift between games on the same engine version; engine
+//     upgrades are handled via `InheritRating`. See ffaTauScale.
+//   - DrawProbability = 0.005 (vs 0.02) — tightens the win/loss
+//     decision margin to match the observed near-zero rate of
+//     genuine 4-player multi-way draws (only CR §104.4b mandatory-
+//     loop, < 1 per 10,000 games). See ffaDrawProbability.
+//
+// NewTrueSkillRatings uses this preset by default. The literature-
+// reference 1v1 config remains available as [DefaultConfig] for
+// 1v1 dueling tournaments and parity checks against the Microsoft
+// 2007 paper / Halo 2 deployment.
 func DefaultFFAConfig() Config {
-	c := DefaultConfig()
-	c.Beta = defaultSigma * ffaBetaScale
-	return c
+	return Config{
+		Beta:            defaultSigma * ffaBetaScale,
+		Tau:             defaultSigma * ffaTauScale,
+		DrawProbability: ffaDrawProbability,
+	}
 }
 
 // normPDF is the standard normal probability density function.
