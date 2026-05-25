@@ -2039,14 +2039,17 @@ func hasUnconditionalEvasion(p *gameengine.Permanent) bool {
 // i.e., somewhere in the legal-target set there is no untapped clean
 // answer. Used to prune unprofitable attackers from the swing list.
 //
-// "Clean answer" = an untapped creature that (a) can legally block
-// per evasion rules, (b) survives the trade (toughness > attacker
-// power, accounting for first/double strike), and (c) deals lethal
-// damage back to the attacker.
+// "Clean answer" = an untapped legal blocker that either (a) is by
+// itself a single-blocker killer (toughness > attacker power, power
+// ≥ attacker toughness, accounting for first/double strike), OR (b)
+// combines with other untapped blockers into a gang-block that kills
+// the attacker (R60 — see gangBlockKillsAttacker).
 //
 // Attackers with deathtouch, indestructible, or unconditional evasion
-// always swing profitably. Trample creatures always leak damage to the
-// player so the swing isn't wasted. First-strike attackers don't trade
+// always swing profitably. Trample's short-circuit is conditional on
+// the attacker actually leaking damage past the available blockers
+// (R60 — see leakIsMeaningfulAgainst): a 2/2 trampler into a 3/3
+// blocker leaks 0 and just dies. First-strike attackers don't trade
 // down to blockers smaller than their own power.
 func canSwingProfitably(gs *gameengine.GameState, attacker *gameengine.Permanent, opponents []*gameengine.Seat) bool {
 	if attacker == nil {
@@ -2058,9 +2061,6 @@ func canSwingProfitably(gs *gameengine.GameState, attacker *gameengine.Permanent
 	if attacker.HasKeyword("deathtouch") || attacker.HasKeyword("indestructible") {
 		return true
 	}
-	if attacker.HasKeyword("trample") {
-		return true
-	}
 	ap := gs.PowerOf(attacker)
 	at := gs.ToughnessOf(attacker)
 	if ap <= 0 {
@@ -2068,25 +2068,24 @@ func canSwingProfitably(gs *gameengine.GameState, attacker *gameengine.Permanent
 	}
 	doubleStrike := attacker.HasKeyword("double strike") || attacker.HasKeyword("double_strike")
 	firstStrike := attacker.HasKeyword("first strike") || attacker.HasKeyword("first_strike") || doubleStrike
+	trample := attacker.HasKeyword("trample")
 
 	for _, opp := range opponents {
 		if opp == nil || opp.Lost || opp.LeftGame {
 			continue
 		}
-		untapped := make([]*gameengine.Permanent, 0, len(opp.Battlefield))
+		legalBlockers := make([]*gameengine.Permanent, 0, len(opp.Battlefield))
 		for _, b := range opp.Battlefield {
-			if b != nil && b.IsCreature() && !b.Tapped {
-				untapped = append(untapped, b)
+			if b != nil && b.IsCreature() && !b.Tapped && gameengine.CanBlock(attacker, b) {
+				legalBlockers = append(legalBlockers, b)
 			}
 		}
-		if len(untapped) == 0 {
+		if len(legalBlockers) == 0 {
 			return true
 		}
-		deadly := false
-		for _, b := range untapped {
-			if !gameengine.CanBlock(attacker, b) {
-				continue
-			}
+		// Single-blocker deadly check.
+		singleDeadly := false
+		for _, b := range legalBlockers {
 			bp := gs.PowerOf(b)
 			bt := gs.ToughnessOf(b) - b.MarkedDamage
 			if bt <= 0 {
@@ -2096,19 +2095,140 @@ func canSwingProfitably(gs *gameengine.GameState, attacker *gameengine.Permanent
 				continue
 			}
 			if bt > ap && bp >= at {
-				deadly = true
+				singleDeadly = true
 				break
 			}
 			if b.HasKeyword("deathtouch") && bp > 0 {
-				deadly = true
+				singleDeadly = true
 				break
 			}
 		}
-		if !deadly {
+		// R60 — Gang-block deadly check. Two+ blockers whose combined
+		// power exceeds attacker toughness will kill the attacker even
+		// when no single blocker is "deadly" by itself. Trample doesn't
+		// auto-save: a 6/6 trample into 3/3 + 3/3 trades the attacker
+		// for both blockers with 0 leak (sum_toughness=6 ≥ ap=6).
+		gangDeadly := gangBlockKillsAttacker(gs, attacker, legalBlockers)
+
+		if !singleDeadly && !gangDeadly {
+			return true
+		}
+		// R60 — conditional trample profitability. Even when the
+		// blockers can kill, trample leaks excess damage to the
+		// player; that leak is the win clock. Require the leak to be
+		// meaningful (≥ 2 damage AND ≥ half the attacker's power) so
+		// a 1-power leak with a 6-power attacker doesn't excuse the
+		// trade.
+		if trample && leakIsMeaningfulAgainst(gs, attacker, legalBlockers) {
 			return true
 		}
 	}
 	return false
+}
+
+// gangBlockKillsAttacker reports whether 2+ legal blockers can combine
+// to kill the attacker via cumulative damage in a situation where the
+// defender is actually incentivised to gang. Gated on "no single
+// blocker can deliver lethal on its own" — when a single blocker can
+// already kill the attacker (even mutually), defenders single-block
+// instead of ganging, so the gang signal is irrelevant and we leave
+// the existing single-blocker logic in charge.
+//
+// Conservative on the FS/DS attacker case — FS damage may pre-kill one
+// blocker before regular-step damage from the gang, so the heuristic
+// subtracts the attacker's power once from the gang's sum-power
+// (approximating the smallest blocker dying in §510.5 before swinging
+// back). This keeps canSwingProfitably on the permissive side for
+// FS/DS attackers, which are usually the right play.
+//
+// Returns false for indestructible attackers (gang block doesn't kill
+// what doesn't die) and for blocker pools where fewer than 2 active
+// (positive-power) blockers remain.
+func gangBlockKillsAttacker(gs *gameengine.GameState, attacker *gameengine.Permanent, legal []*gameengine.Permanent) bool {
+	if attacker == nil || attacker.HasKeyword("indestructible") {
+		return false
+	}
+	if len(legal) < 2 {
+		return false
+	}
+	at := gs.ToughnessOf(attacker)
+	if at <= 0 {
+		return false
+	}
+	// Defender-incentive gate: gang-block only matters when no single
+	// blocker can deliver lethal damage on its own. If any single
+	// blocker has bp ≥ at, the defender's natural play is to
+	// single-block (1-for-1 mutual trade or strict win for them) —
+	// they won't waste two bodies to gang what one body kills.
+	for _, b := range legal {
+		if b == nil {
+			continue
+		}
+		if gs.PowerOf(b) >= at {
+			return false
+		}
+	}
+	sumPower := 0
+	activeBlockers := 0
+	for _, b := range legal {
+		if b == nil {
+			continue
+		}
+		bp := gs.PowerOf(b)
+		if bp <= 0 {
+			continue
+		}
+		sumPower += bp
+		activeBlockers++
+	}
+	if activeBlockers < 2 {
+		return false
+	}
+	fs := attacker.HasKeyword("first strike") || attacker.HasKeyword("first_strike") ||
+		attacker.HasKeyword("double strike") || attacker.HasKeyword("double_strike")
+	if fs {
+		ap := gs.PowerOf(attacker)
+		sumPower -= ap
+	}
+	return sumPower >= at
+}
+
+// leakIsMeaningfulAgainst reports whether a trample attacker leaks
+// enough damage past the legal-blocker pool to make the trade worth
+// the body. Threshold tuned to ignore 1-damage leaks (a 6-power
+// attacker leaking 1 to dribble down a 40-life opponent isn't worth
+// losing the attacker) while still rewarding genuine breakthroughs
+// (a 4-power attacker leaking 3 past two 1/1 chumps).
+//
+// The math: leak = attacker.Power − sum(blocker.Toughness). Returns
+// true when leak ≥ 2 AND leak ≥ attacker.Power / 2 (so the breakthrough
+// is a meaningful fraction of the attacker's swing, not a token bleed).
+func leakIsMeaningfulAgainst(gs *gameengine.GameState, attacker *gameengine.Permanent, legal []*gameengine.Permanent) bool {
+	if attacker == nil {
+		return false
+	}
+	ap := gs.PowerOf(attacker)
+	if ap <= 0 {
+		return false
+	}
+	sumTough := 0
+	for _, b := range legal {
+		if b == nil {
+			continue
+		}
+		bt := gs.ToughnessOf(b) - b.MarkedDamage
+		if bt > 0 {
+			sumTough += bt
+		}
+	}
+	leak := ap - sumTough
+	if leak < 2 {
+		return false
+	}
+	if leak*2 < ap {
+		return false
+	}
+	return true
 }
 
 // attackerRank returns a deadliest-first numeric score. The bumps are

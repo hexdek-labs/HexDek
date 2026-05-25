@@ -49,14 +49,39 @@ func TestCanSwingProfitably_DeathtouchAlwaysProfitable(t *testing.T) {
 	}
 }
 
-func TestCanSwingProfitably_TrampleAlwaysProfitable(t *testing.T) {
+// R60 — replaces "TrampleAlwaysProfitable". The pre-R60 behavior
+// short-circuited canSwingProfitably to true for any trample
+// attacker, but trample only leaks damage when attacker.Power >
+// sum(blocker.Toughness). A 3-power trampler into a 5-toughness wall
+// leaks 0 and just dies for nothing — leakIsMeaningfulAgainst rejects
+// the swing. The corollary positive cases ("trample with real leak"
+// and "trample with no blockers") still pass.
+func TestCanSwingProfitably_TrampleIntoTallWallIsNotProfitable(t *testing.T) {
 	gs := newTestGame(t, 2)
 	atk := newTestPermanent(gs.Seats[0], newTestCardMinimal("Beast", []string{"creature"}, 4, nil), 3, 3)
 	addKeyword(atk, "trample")
+	// 4/5 wall absorbs all 3 attacker power → 0 trample leak →
+	// attacker just dies. The pre-R60 short-circuit hid this; the
+	// R60 leak math correctly prunes it.
 	newTestPermanent(gs.Seats[1], newTestCardMinimal("Wall", []string{"creature"}, 5, nil), 4, 5)
 
+	if canSwingProfitably(gs, atk, []*gameengine.Seat{gs.Seats[1]}) {
+		t.Errorf("3-power trample into a 5-toughness wall leaks 0 damage and should NOT be profitable")
+	}
+}
+
+// R60 — trample WITH meaningful leak still swings profitably. A 6/6
+// trample into a 4/5 blocker leaks 2 damage past, which exceeds the
+// leak threshold (≥ 2 AND ≥ half attacker power). The trade burns the
+// attacker but advances the win clock by a useful amount.
+func TestCanSwingProfitably_TrampleWithMeaningfulLeakIsProfitable(t *testing.T) {
+	gs := newTestGame(t, 2)
+	atk := newTestPermanent(gs.Seats[0], newTestCardMinimal("Big Beast", []string{"creature"}, 6, nil), 6, 6)
+	addKeyword(atk, "trample")
+	newTestPermanent(gs.Seats[1], newTestCardMinimal("Wall", []string{"creature"}, 5, nil), 4, 4)
+
 	if !canSwingProfitably(gs, atk, []*gameengine.Seat{gs.Seats[1]}) {
-		t.Errorf("trample attacker should swing for chip damage even into clean block")
+		t.Errorf("6-power trample into a 4-toughness blocker leaks 2 damage and should be profitable")
 	}
 }
 
