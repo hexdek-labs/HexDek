@@ -72,6 +72,7 @@ type result struct {
 	Name        string
 	Class       classification
 	OracleText  string
+	TypeLine    string
 	ParseErrors []string
 }
 
@@ -82,6 +83,8 @@ func main() {
 	sampleSize := flag.Int("sample-size", 20, "number of uncovered cards to randomly sample for the report (0 = disabled)")
 	sampleSeed := flag.Int64("sample-seed", 42, "RNG seed for the uncovered-card sample (same seed → same sample, for reproducible reports)")
 	sampleClasses := flag.String("sample-classes", "missing,empty_ast,partial", "comma-separated subset of {missing,empty_ast,partial} to draw the sample from")
+	actionList := flag.String("action-list", "", "card name to generate a scaffold/handler TODO checklist for; when set, the tool prints the action list and skips the coverage report")
+	actionListOut := flag.String("action-list-out", "", "optional path to write the action-list markdown (defaults to stdout)")
 	flag.Parse()
 
 	log.Printf("loading AST corpus from %s ...", *astPath)
@@ -101,6 +104,24 @@ func main() {
 	results := make([]result, 0, len(entries))
 	for _, e := range entries {
 		results = append(results, classify(e, corpus))
+	}
+
+	if strings.TrimSpace(*actionList) != "" {
+		r, ok := findResultByName(results, *actionList)
+		if !ok {
+			log.Fatalf("--action-list: card %q not found in oracle corpus", *actionList)
+		}
+		actions := generateActionList(r, r.TypeLine)
+		md := renderActionList(r.Name, r.TypeLine, r, actions)
+		if *actionListOut == "" {
+			fmt.Print(md)
+		} else {
+			if err := os.WriteFile(*actionListOut, []byte(md), 0o644); err != nil {
+				log.Fatalf("write action list: %v", err)
+			}
+			log.Printf("wrote %s", *actionListOut)
+		}
+		return
 	}
 
 	classFilter, err := parseSampleClasses(*sampleClasses)
@@ -180,6 +201,24 @@ func sampleUncovered(results []result, classFilter map[classification]bool, n in
 	return out
 }
 
+// findResultByName looks up a result by card name. Case-sensitive
+// first pass (so exact Scryfall names hit immediately), then a
+// case-insensitive fallback so the CLI accepts lowercased input.
+func findResultByName(results []result, name string) (result, bool) {
+	for _, r := range results {
+		if r.Name == name {
+			return r, true
+		}
+	}
+	low := strings.ToLower(name)
+	for _, r := range results {
+		if strings.EqualFold(r.Name, low) {
+			return r, true
+		}
+	}
+	return result{}, false
+}
+
 func loadOracle(path string) ([]oracleEntry, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -212,20 +251,20 @@ func loadOracle(path string) ([]oracleEntry, error) {
 func classify(e oracleEntry, corpus *astload.Corpus) result {
 	card, ok := corpus.Get(e.Name)
 	if !ok {
-		return result{Name: e.Name, Class: classMissing, OracleText: e.OracleText}
+		return result{Name: e.Name, Class: classMissing, OracleText: e.OracleText, TypeLine: e.TypeLine}
 	}
 	text := strings.TrimSpace(e.OracleText)
 	vanilla := text == "" || isBasicLand(e.TypeLine)
 	if !card.FullyParsed || len(card.ParseErrors) > 0 {
-		return result{Name: e.Name, Class: classPartial, OracleText: text, ParseErrors: card.ParseErrors}
+		return result{Name: e.Name, Class: classPartial, OracleText: text, TypeLine: e.TypeLine, ParseErrors: card.ParseErrors}
 	}
 	if len(card.Abilities) == 0 {
 		if vanilla {
-			return result{Name: e.Name, Class: classOKVanilla, OracleText: text}
+			return result{Name: e.Name, Class: classOKVanilla, OracleText: text, TypeLine: e.TypeLine}
 		}
-		return result{Name: e.Name, Class: classEmptyAST, OracleText: text}
+		return result{Name: e.Name, Class: classEmptyAST, OracleText: text, TypeLine: e.TypeLine}
 	}
-	return result{Name: e.Name, Class: classOK, OracleText: text}
+	return result{Name: e.Name, Class: classOK, OracleText: text, TypeLine: e.TypeLine}
 }
 
 func isBasicLand(typeLine string) bool {
