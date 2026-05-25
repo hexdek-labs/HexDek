@@ -313,23 +313,96 @@ func (e *GameStateEvaluator) scoreCards(gs *gameengine.GameState, seatIdx int) f
 // drawEngineCredit estimates the seat's virtual cards-per-turn from
 // persistent draw engines on its battlefield (Rhystic Study, Phyrexian
 // Arena, Mystic Remora, Esper Sentinel, Sylvan Library, Howling Mine,
-// Mind's Eye, ...). Each detected engine contributes 1.0. Capped at 4
-// to bound stax/wheel-board outliers.
+// Mind's Eye, ...). Each engine contributes a rate-class weight via
+// drawEngineRate. Capped at 4.0 total to bound stax/wheel-board
+// outliers.
+//
+// r60 retune: pre-r60 every engine contributed 1.0 uniformly. Rhystic
+// Study (which fires 3-6 times per turn cycle in a 4-player pod) was
+// treated identically to Phyrexian Arena (1 fire per turn cycle) and
+// Howling Mine (1 fire per turn cycle that ALSO helps opponents).
+// Differentiating these rates produces strictly more honest
+// CardAdvantage scoring without changing the dimension's relative
+// weight. See drawEngineRate for the rate-class table.
 func drawEngineCredit(seat *gameengine.Seat) float64 {
 	if seat == nil {
 		return 0
 	}
-	n := 0
+	const cap = 4.0
+	total := 0.0
 	for _, p := range seat.Battlefield {
-		if !isPersistentDrawEngine(p) {
+		w := drawEngineRate(p)
+		if w == 0 {
 			continue
 		}
-		n++
-		if n >= 4 {
-			break
+		total += w
+		if total >= cap {
+			return cap
 		}
 	}
-	return float64(n)
+	return total
+}
+
+// drawEngineRate returns the per-engine weight, classifying by oracle-
+// text shape:
+//
+//	0.0   — not a persistent draw engine
+//	0.6   — symmetric draw ("each player draws") — Howling Mine, Temple
+//	        Bell, Font of Mythos, Dictate of Kruphix. The owner gets
+//	        the cards but so does every opponent — a 4-player table
+//	        diffuses 75% of the value to other seats. Weighting these
+//	        at full credit double-counted shared cards as if they were
+//	        purely our advantage.
+//	1.0   — upkeep-cadenced / passive controller-only draw — Phyrexian
+//	        Arena, Sylvan Library, Mind's Eye. One fire per turn cycle
+//	        for one card. The standard pre-r60 baseline.
+//	1.5   — opponent-action-triggered draw — Rhystic Study, Mystic
+//	        Remora, Esper Sentinel. Each opponent's spell triggers a
+//	        draw window; in a 4-player pod with 3 opponents casting
+//	        2-3 spells each per turn cycle, these engines fire 4-9
+//	        times per turn. Even derated for the unless-pay clause +
+//	        Remora's cumulative-upkeep churn, the throughput is ~1.5x
+//	        the upkeep-cadenced baseline.
+//
+// The classifier is conservative: a card needs to match the rate-class
+// pattern explicitly to upgrade; ambiguous shapes (e.g. "whenever a
+// creature you control dies, draw a card") stay at the 1.0 baseline
+// since their rate depends on board state.
+func drawEngineRate(p *gameengine.Permanent) float64 {
+	if p == nil || p.Card == nil {
+		return 0
+	}
+	ot := gameengine.OracleTextLower(p.Card)
+	if ot == "" {
+		return 0
+	}
+	if !isPersistentDrawEngine(p) {
+		return 0
+	}
+	// Symmetric (each-player-draws) effects diffuse their value across
+	// the table. Detect before the opp-trigger gate so a "each player
+	// may draw" doesn't accidentally upgrade. Multiple phrasings:
+	//   - "each player draws a card" (Temple Bell)
+	//   - "each player may draw" (rare modal)
+	//   - "each player's draw step" (Howling Mine, Font of Mythos,
+	//     Dictate of Kruphix — table-wide draw-step enabler with "that
+	//     player draws an additional card" follow-up)
+	if strings.Contains(ot, "each player draws") ||
+		strings.Contains(ot, "each player may draw") ||
+		strings.Contains(ot, "each player's draw step") {
+		return 0.6
+	}
+	// Opponent-action triggers fire ~3-6 times per turn cycle in a 4p
+	// pod vs the upkeep-cadenced 1 fire / cycle baseline. The "unless
+	// that player pays {N}" Rhystic / Remora clause is intentionally
+	// not parsed out — the 1.5 weight already accounts for the partial
+	// pay-through rate.
+	if strings.Contains(ot, "whenever an opponent casts") ||
+		strings.Contains(ot, "whenever an opponent cycles") ||
+		strings.Contains(ot, "whenever a player other than you") {
+		return 1.5
+	}
+	return 1.0
 }
 
 // isPersistentDrawEngine returns true when perm's oracle text indicates
