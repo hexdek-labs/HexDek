@@ -32,6 +32,11 @@ type DeckProfile struct {
 	GameChangerCount    int
 	GameChangerCards    []string
 	Intent              string
+	// BracketRationale documents how the bracket call was derived —
+	// which density / card-list signals contributed, raw score, and
+	// any ceiling/floor/gate adjustments. Surfaced to JSON + report so
+	// builders can see why the deck landed where it did.
+	BracketRationale *BracketRationale
 
 	PrimaryWinLine    string
 	WinLineCount      int
@@ -211,6 +216,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 		dp.GameChangerCount = report.Archetype.GameChangerCount
 		dp.GameChangerCards = report.Archetype.GameChangerCards
 		dp.Intent = report.Archetype.Intent
+		dp.BracketRationale = report.Archetype.BracketRationale
 	}
 
 	if report.WinLines != nil {
