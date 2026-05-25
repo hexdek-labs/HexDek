@@ -5060,8 +5060,15 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 		}
 	}
 
-	h.logf("%s ATTACK seat=%d pos=%.3f stance=%s threshold=%.2f legal=%d wrath=%v dt-density=%d open-lane=%.2f",
-		roundTag(gs, seatIdx), seatIdx, pos, stance, threshold, len(legal), wrathSuspected, maxDeathtouchDensity, openLaneBonus)
+	// R60 round 12+ chain-attack awareness (see chain_attack_signals_r60.go).
+	// Pending-extra-combats: read the engine's FIFO queue. Anticipated:
+	// scan the legal pool for an "additional combat" trigger source about
+	// to swing this combat. Both bonuses encourage committing chip-damage
+	// attackers when multiple combats are queued or imminent.
+	chainBonus := chainAttackPendingBonus(gs) + chainAttackAnticipationBonus(legal)
+
+	h.logf("%s ATTACK seat=%d pos=%.3f stance=%s threshold=%.2f legal=%d wrath=%v dt-density=%d open-lane=%.2f chain=%.2f",
+		roundTag(gs, seatIdx), seatIdx, pos, stance, threshold, len(legal), wrathSuspected, maxDeathtouchDensity, openLaneBonus, chainBonus)
 
 	var attackers []*gameengine.Permanent
 	for _, p := range legal {
@@ -5079,6 +5086,10 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 		// over the deploy-phase threshold without overriding the
 		// profitability prune that handles bad trades downstream.
 		val += openLaneBonus
+		// R60 round 12+ chain-attack horizon bonus. Same per-attacker
+		// shape as openLaneBonus — fold the queue-aware and anticipated
+		// extra-combat awareness into every attacker's commit score.
+		val += chainBonus
 		if p.HasKeyword("deathtouch") {
 			val += 0.3
 		}
