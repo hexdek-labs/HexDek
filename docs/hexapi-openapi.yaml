@@ -727,6 +727,24 @@ paths:
                 items: { $ref: '#/components/schemas/EmptyOk' }
         "400": { $ref: '#/components/responses/BadRequest' }
 
+  /api/decks/{owner}/{id}/version-trends:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeckVersionTrends
+      summary: Per-version winrate rollup for this deck. Buckets each game into the version that was HEAD at its finished_at timestamp.
+      responses:
+        "200":
+          description: |
+            Per-version rollup. `versions` lists every version in chronological order with its games/wins/losses/draws/win_rate (0..1).
+            `untracked_games` counts games predating the earliest known version.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+
   /api/decks/{owner}/{id}/analysis:
     parameters:
       - $ref: '#/components/parameters/OwnerParam'
@@ -1154,6 +1172,20 @@ paths:
                 type: array
                 items: { $ref: '#/components/schemas/EmptyOk' }
 
+  /api/games/compare:
+    get:
+      tags: [games]
+      operationId: compareGames
+      summary: Side-by-side comparison of two completed games. Pass `?a={game_id}&b={game_id}`.
+      responses:
+        "200":
+          description: Two-game comparison payload.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
   /api/games/{id}:
     parameters:
       - $ref: '#/components/parameters/GameIdParam'
@@ -1417,6 +1449,32 @@ paths:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/players/{id}/trends:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+        description: Player id (lower-cased owner).
+      - name: window
+        in: query
+        required: false
+        schema: { type: integer, default: 30, maximum: 200 }
+        description: Rolling window size in games (capped at 200).
+    get:
+      tags: [profile]
+      operationId: getPlayerTrends
+      summary: Rolling per-player trend summary (winrate, archetype distribution, opponent diversity).
+      responses:
+        "200":
+          description: |
+            Per-player rollup. `win_rate` is a 0..1 fraction over the actual games found (may be < window if the player has fewer records).
+            `archetype_distribution` is sorted by games desc; `opponent_diversity.top_repeat_opponents` is capped at the 5 most-encountered opponents.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
 
   /api/achievements/{owner}:
     parameters:

@@ -417,6 +417,55 @@ func LoadOwnerGames(ctx context.Context, sqlDB *sql.DB, owner string, limit int)
 	return games, nil
 }
 
+// DeckGameOutcome is one row of a deck's game history reduced to the
+// signals heimdall.ComputeDeckVersionTrends needs: when the game
+// finished and whether this deck won, lost, or drew it. Used by the
+// /api/decks/{owner}/{id}/version-trends endpoint to bucket games
+// into version eras without re-loading the full GameRecord per row.
+type DeckGameOutcome struct {
+	FinishedAt int64 `json:"finished_at"`
+	Won        bool  `json:"won"`
+	Draw       bool  `json:"draw"`
+}
+
+// LoadDeckGameOutcomes returns one DeckGameOutcome per game in which
+// deckKey participated, ordered by finished_at ascending so the
+// version-trend walker can advance through versions in lockstep with
+// games.
+//
+// Won = (winner == me.seat); Draw = (winner < 0). The remaining case
+// is a loss, computed by subtraction at aggregation time. No paging:
+// the caller is expected to operate on the full per-deck history.
+func LoadDeckGameOutcomes(ctx context.Context, db *sql.DB, deckKey string) ([]DeckGameOutcome, error) {
+	if deckKey == "" {
+		return []DeckGameOutcome{}, nil
+	}
+	rows, err := db.QueryContext(ctx,
+		`SELECT g.finished_at, g.winner, me.seat
+		 FROM showmatch_game_seat me
+		 JOIN showmatch_game g ON g.game_id = me.game_id
+		 WHERE me.deck_key = ?
+		 ORDER BY g.finished_at ASC`, deckKey)
+	if err != nil {
+		return nil, fmt.Errorf("deck outcomes query: %w", err)
+	}
+	defer rows.Close()
+	var out []DeckGameOutcome
+	for rows.Next() {
+		var fin int64
+		var winner, seat int
+		if err := rows.Scan(&fin, &winner, &seat); err != nil {
+			return nil, err
+		}
+		out = append(out, DeckGameOutcome{
+			FinishedAt: fin,
+			Won:        winner == seat,
+			Draw:       winner < 0,
+		})
+	}
+	return out, rows.Err()
+}
+
 func BackfillDeckKeys(ctx context.Context, sqlDB *sql.DB) (int64, error) {
 	res, err := sqlDB.ExecContext(ctx,
 		`UPDATE showmatch_game_seat SET deck_key = (
