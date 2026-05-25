@@ -25,12 +25,13 @@ import (
 func TestSupportedBracketStyles_ListsAllImplementedRunners(t *testing.T) {
 	got := SupportedBracketStyles()
 	want := map[string]bool{
-		"rotate":      true,
-		"pool":        true,
-		"lazy-pool":   true,
-		"round-robin": true,
-		"swiss":       true,
-		"double-elim": true,
+		"rotate":        true,
+		"pool":          true,
+		"lazy-pool":     true,
+		"round-robin":   true,
+		"swiss":         true,
+		"double-elim":   true,
+		"balanced-pool": true,
 	}
 	if len(got) != len(want) {
 		t.Errorf("got %d styles, want %d (drift between SupportedBracketStyles and this test)",

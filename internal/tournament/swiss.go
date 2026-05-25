@@ -642,11 +642,12 @@ func newSwissAggResult(commanderNames []string, nSeats int) *TournamentResult {
 // list.
 func SupportedBracketStyles() []string {
 	return []string{
-		"rotate",      // Run() default: rotate the first NSeats decks each game
-		"pool",        // Run() with PoolMode=true: random pod per game
-		"lazy-pool",   // Run() with LazyPool=true: pool with on-demand deck loading
-		"round-robin", // RunRoundRobin: every C(NDecks, NSeats) combination
-		"swiss",       // RunSwiss: pod-Swiss with greedy top-down pairing
-		"double-elim", // RunDoubleElimination: two-strikes-and-out pod elimination
+		"rotate",        // Run() default: rotate the first NSeats decks each game
+		"pool",          // Run() with PoolMode=true: random pod per game
+		"lazy-pool",     // Run() with LazyPool=true: pool with on-demand deck loading
+		"round-robin",   // RunRoundRobin: every C(NDecks, NSeats) combination
+		"swiss",         // RunSwiss: pod-Swiss with greedy top-down pairing
+		"double-elim",   // RunDoubleElimination: two-strikes-and-out pod elimination
+		"balanced-pool", // RunBalancedPool: snake-draft seeding for equal-strength pods
 	}
 }
