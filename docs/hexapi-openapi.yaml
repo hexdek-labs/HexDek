@@ -731,6 +731,56 @@ paths:
                 items: { $ref: '#/components/schemas/EmptyOk' }
         "400": { $ref: '#/components/responses/BadRequest' }
 
+  /api/decks/{owner}/{id}/archetype-feedback:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    post:
+      tags: [decks]
+      operationId: postArchetypeFeedback
+      summary: Confirm or correct Freya's system-assigned archetype. Persists user feedback into deck_meta + appends to the archetype_feedback_log training signal.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [confirm, correct, clear]
+                archetype:
+                  type: string
+                  description: Required when action=correct; user-supplied override (any non-empty string, normalized server-side).
+              required: [action]
+      responses:
+        "200":
+          description: Feedback recorded.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "403": { $ref: '#/components/responses/Forbidden' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
+  /api/decks/{owner}/{id}/archetype-history:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getArchetypeHistory
+      summary: Chronological timeline of a deck's archetype state — Freya's per-version classifications merged with user confirm/correct/clear actions from the feedback log.
+      responses:
+        "200":
+          description: Event list ordered chronologically.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
   /api/decks/{owner}/{id}/budget:
     parameters:
       - $ref: '#/components/parameters/OwnerParam'
