@@ -72,3 +72,5 @@ __pycache__/
 hexdek/test-results/
 hexdek/audit-r4/
 hexdek/playwright-report/
+hexdek/e2e/test-results/
+hexdek/e2e/report/
