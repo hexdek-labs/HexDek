@@ -485,6 +485,16 @@ export default function DeckArchive() {
     }
   }, [editing])
 
+  // Declared above the keydown + focus useEffects below — those effects'
+  // dependency arrays read cardSearchOpen synchronously during render, so
+  // the binding has to exist before the effects are called. Moving these
+  // four lines down into the rest of the state block triggers a TDZ
+  // ReferenceError on first render and lazy-loads cache the broken module.
+  const [activeTab, setActiveTab] = useState('analysis')
+  const [cardSearch, setCardSearch] = useState('')
+  const [cardSearchOpen, setCardSearchOpen] = useState(false)
+  const cardSearchInputRef = useRef(null)
+
   // Cmd/Ctrl+K or bare K opens the in-deck card search modal. Bare K is
   // suppressed when the user is typing in an editable field so the
   // letter still types normally there.
@@ -567,10 +577,6 @@ export default function DeckArchive() {
   const [friendBusy, setFriendBusy] = useState(false)
   const [ownerFriendCount, setOwnerFriendCount] = useState(null)
   const [similarDecks, setSimilarDecks] = useState(null) // null=loading, []=resolved
-  const [activeTab, setActiveTab] = useState('analysis')
-  const [cardSearch, setCardSearch] = useState('')
-  const [cardSearchOpen, setCardSearchOpen] = useState(false)
-  const cardSearchInputRef = useRef(null)
   const { elo } = useLiveSocket()
   const { user } = useAuth()
 
