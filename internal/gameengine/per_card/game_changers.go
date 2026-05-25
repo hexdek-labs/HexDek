@@ -803,7 +803,10 @@ func jeskasWillResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 		}
 	}
 
-	// Register zone-cast permission so exiled cards can be played this turn.
+	// Register zone-cast permission so exiled cards can be played this
+	// turn. Oracle: "Until end of turn, you may play those cards." —
+	// stamp Duration + GrantTurn so ExpireZoneCastGrants reaps at EOT
+	// cleanup even if the delayed-trigger fallback below races.
 	for _, ec := range exiledCards {
 		gameengine.RegisterZoneCastGrant(gs, ec, &gameengine.ZoneCastPermission{
 			Zone:              gameengine.ZoneExile,
@@ -811,6 +814,8 @@ func jeskasWillResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 			ManaCost:          -1, // pay normal mana cost
 			RequireController: seat,
 			SourceName:        "Jeska's Will",
+			Duration:          "until_end_of_turn",
+			GrantTurn:         gs.Turn,
 		})
 	}
 
