@@ -521,10 +521,22 @@ var archetypeWeights = map[string]EvalWeights{
 		// PROTECT the wincon piece (Bruvac/Tasha → StackInteraction), and
 		// LEAN ON wheel-style draw-then-mill engines (Notion Thief /
 		// Consecrated Sphinx / Hullbreacher → DrainEngine).
+		//
+		// R60 follow-up (PR #194 gauntlet): Phenax (Mill) regressed 3.7%
+		// after the cross-cutting late-game LifeResource bump (lateFactor
+		// *0.15) merged in #191 because Mill decks WANT to trade life
+		// for mill progress — taking damage to keep mana up for another
+		// Maddening Cacophony / Glimpse the Unthinkable / Bruvac trigger
+		// is correct play. The global bump pushed Mill's effective
+		// late-game LifeResource from 0.5 → 0.575, making the hat refuse
+		// trades it should take. Dropping the baseline to 0.3 lets the
+		// global bump land Mill at 0.345 late-game — comfortably below
+		// midrange's 0.575 — restoring the "life is cheaper for Mill
+		// than for midrange" property the deck depends on.
 		BoardPresence:          0.4,
 		CardAdvantage:          1.4, // was 0.8
 		ManaAdvantage:          0.6,
-		LifeResource:           0.5,
+		LifeResource:           0.3, // was 0.5 — life is tradeable for mill progress
 		ComboProximity:         1.4,
 		ThreatExposure:         0.8,
 		CommanderProgress:      0.5,
