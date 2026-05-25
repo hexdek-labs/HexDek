@@ -462,6 +462,19 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .perm-tile { animation: none; }
 }
+/* Overflow indicator when stackPerms() returns more tiles than the
+   .seat-perms grid caps at (12). Hover reveals the hidden card names
+   via the title attribute; the visible pill is a small but discoverable
+   counter, not the previously near-invisible muted-2 9px text. */
+.perm-overflow {
+  align-self: center;
+  padding: 2px 5px;
+  font-size: 9px; font-weight: 600; letter-spacing: 0.04em;
+  color: var(--ink-2);
+  border: 1px dashed var(--rule-2);
+  cursor: help;
+}
+.perm-overflow:hover { color: var(--ink); border-color: var(--rule); }
 /* Paper-stack offsets: rule-2 (dim) for the first layer back, rule for
    the second, alternating again for the deepest tier. Negative spread
    tightens the shadow to a thin sliver so it reads as a stacked card

@@ -749,9 +749,17 @@ export default function Spectator() {
                       })()}
                       {(() => {
                         const stacked = stackPerms(perms)
-                        return stacked.length > 12 ? (
-                          <span className="t-xs muted" style={{ alignSelf: 'center', fontSize: 9 }}>+{stacked.length - 12}</span>
-                        ) : null
+                        if (stacked.length <= 12) return null
+                        const hidden = stacked.slice(12)
+                        const tip = hidden
+                          .map(p => `${p.name || '???'}${p.count > 1 ? ` ×${p.count}` : ''}`)
+                          .join('\n')
+                        return (
+                          <span
+                            className="perm-overflow"
+                            title={tip}
+                          >+{hidden.length}</span>
+                        )
                       })()}
                     </div>
                   </div>
