@@ -655,6 +655,42 @@ func RunLondonMulligan(gs *gameengine.GameState, seatIdx int) {
 			},
 		})
 	}
+
+	recordMulliganHistory(gs, seatIdx, mulligansTaken)
+}
+
+// recordMulliganHistory stamps the final post-bottom opening hand and
+// mulligan count onto gs.MulliganHistory[seatIdx]. Sizes the slice
+// lazily to len(gs.Seats) on first write so out-of-order seat
+// resolution (rare but valid) doesn't drop earlier seats.
+func recordMulliganHistory(gs *gameengine.GameState, seatIdx, mulligansTaken int) {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return
+	}
+	if len(gs.MulliganHistory) < len(gs.Seats) {
+		grown := make([]gameengine.SeatMulliganStats, len(gs.Seats))
+		copy(grown, gs.MulliganHistory)
+		gs.MulliganHistory = grown
+	}
+	seat := gs.Seats[seatIdx]
+	hand := make([]gameengine.MulliganHandEntry, 0, len(seat.Hand))
+	for _, c := range seat.Hand {
+		if c == nil {
+			continue
+		}
+		entry := gameengine.MulliganHandEntry{
+			Name: c.DisplayName(),
+		}
+		if len(c.Types) > 0 {
+			entry.Types = make([]string, len(c.Types))
+			copy(entry.Types, c.Types)
+		}
+		hand = append(hand, entry)
+	}
+	gs.MulliganHistory[seatIdx] = gameengine.SeatMulliganStats{
+		MulligansTaken: mulligansTaken,
+		OpeningHand:    hand,
+	}
 }
 
 // drawN draws N cards from the top of the library into hand.

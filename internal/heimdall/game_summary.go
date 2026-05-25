@@ -31,6 +31,7 @@ type GameSummary struct {
 	CommanderZoneVisits []CommanderZoneVisit `json:"commander_zone_visits"`
 	RegretCards         []RegretCard         `json:"regret_cards"`
 	MVPCards            []MVPCard            `json:"mvp_cards"`
+	MulliganStats       []MulliganStat       `json:"mulligan_stats,omitempty"`
 	TurningPoints       []TurningPoint       `json:"turning_points"`
 	DataSource          string               `json:"data_source"`
 }
@@ -91,6 +92,7 @@ func BuildGameSummary(obs Observation, gs *gameengine.GameState, endReason strin
 		CommanderZoneVisits: obs.CommanderZoneVisits,
 		RegretCards:         obs.RegretCards,
 		MVPCards:            obs.MVPCards,
+		MulliganStats:       obs.MulliganStats,
 		TurningPoints:       ExtractTurningPoints(obs, gs),
 		DataSource:          "rich",
 	}

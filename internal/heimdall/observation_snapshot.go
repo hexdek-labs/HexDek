@@ -24,6 +24,7 @@ type GameObservationSnapshot struct {
 	CommanderZoneVisits []CommanderZoneVisit `json:"commander_zone_visits,omitempty"`
 	RegretCards         []RegretCard         `json:"regret_cards,omitempty"`
 	MVPCards            []MVPCard            `json:"mvp_cards,omitempty"`
+	MulliganStats       []MulliganStat       `json:"mulligan_stats,omitempty"`
 
 	// CardFirstPlayed mirrors gameengine.GameState.CardFirstPlayed —
 	// needed at re-summary time to derive commander_first_cast
@@ -54,6 +55,7 @@ func SnapshotFromObservation(obs Observation, gs *gameengine.GameState) GameObse
 		CommanderZoneVisits: obs.CommanderZoneVisits,
 		RegretCards:         obs.RegretCards,
 		MVPCards:            obs.MVPCards,
+		MulliganStats:       obs.MulliganStats,
 	}
 	if gs == nil {
 		return snap
@@ -132,6 +134,7 @@ func BuildGameSummaryFromSnapshot(snap GameObservationSnapshot, endReason string
 		CommanderZoneVisits: snap.CommanderZoneVisits,
 		RegretCards:         snap.RegretCards,
 		MVPCards:            snap.MVPCards,
+		MulliganStats:       snap.MulliganStats,
 		TurningPoints:       turningPointsFromSnapshot(snap),
 		DataSource:          "rich",
 	}

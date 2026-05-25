@@ -111,6 +111,21 @@ func buildSummaryLines(s GameSummary) []string {
 	}
 	addBlank()
 
+	add("== MULLIGAN STATS ==")
+	if len(s.MulliganStats) == 0 {
+		add("  (no mulligan record)")
+	} else {
+		for _, m := range s.MulliganStats {
+			keep := "keep"
+			if !m.Keepable {
+				keep = "MARGINAL"
+			}
+			add("  SEAT %d - %d mull · %d-card hand · %dL/%dA · %s",
+				m.Seat, m.MulligansTaken, m.OpeningHandSize, m.Lands, m.ActionCards, keep)
+		}
+	}
+	addBlank()
+
 	add("== TURNING POINTS ==")
 	if len(s.TurningPoints) == 0 {
 		add("  (no timeline events)")
