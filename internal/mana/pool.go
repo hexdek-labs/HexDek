@@ -81,9 +81,16 @@ func (p Pool) CanPay(cost Cost, xValue int) bool {
 // pips and any-color mana for generic. Returns an error if the pool can't
 // satisfy the cost (caller should CanPay first).
 //
-// For generic cost, we deduct from colors in priority order
-// (W → U → B → R → G → C) which is conventional but arbitrary. The game
-// loop should expose explicit "tap this land" choice for advanced players.
+// For the generic portion we spend Colorless mana FIRST, then WUBRG.
+// Colorless is the least-flexible resource in the pool — it can only pay
+// generic costs or {C} pips, whereas colored mana can pay generic OR its
+// own color. Spending colorless first on generic preserves colored mana
+// for future colored requirements. Without this priority, a pool of W:1
+// C:2 paying {1} then {W} would burn W first and strand the C, failing
+// the {W} cast despite having 2 mana total.
+//
+// Within WUBRG the order is conventional. A future "explicit tap this
+// land" choice would let the player override.
 func (p *Pool) Pay(cost Cost, xValue int) error {
 	if !p.CanPay(cost, xValue) {
 		return fmt.Errorf("insufficient mana to pay cost %s (pool: %s)", cost.String(), p.String())
@@ -97,7 +104,7 @@ func (p *Pool) Pay(cost Cost, xValue int) error {
 	p.C -= cost.Colored[Colorless]
 
 	remaining := cost.Generic + xValue*cost.Variable
-	for _, slot := range []*int{&p.W, &p.U, &p.B, &p.R, &p.G, &p.C} {
+	for _, slot := range []*int{&p.C, &p.W, &p.U, &p.B, &p.R, &p.G} {
 		if remaining == 0 {
 			break
 		}

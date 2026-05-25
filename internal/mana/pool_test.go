@@ -103,7 +103,8 @@ func TestPayDeductsCorrectly(t *testing.T) {
 	if err := p.Pay(cost, 0); err != nil {
 		t.Fatalf("pay error: %v", err)
 	}
-	// After: BB used (B 3→1), then 1 generic from any (W priority but 0, then U priority → U 2→1)
+	// After: BB used (B 3→1), then 1 generic from any. With C:0, the new
+	// colorless-first priority falls through to W (0) then U → U 2→1.
 	if p.B != 1 {
 		t.Errorf("B after pay: got %d, want 1", p.B)
 	}
