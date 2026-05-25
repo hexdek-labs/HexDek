@@ -307,8 +307,8 @@ func TestHandleTournamentEvents_PathValidation(t *testing.T) {
 			if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
 				t.Fatalf("decode ErrorResponse: %v (raw=%q)", err, rr.Body.String())
 			}
-			if body.Error != tc.wantErrMsg {
-				t.Errorf("body.error: want %q, got %q", tc.wantErrMsg, body.Error)
+			if body.Error.Message != tc.wantErrMsg {
+				t.Errorf("body.error.message: want %q, got %q", tc.wantErrMsg, body.Error.Message)
 			}
 			if body.Status != tc.wantStatus {
 				t.Errorf("body.status: want %d, got %d", tc.wantStatus, body.Status)
@@ -365,8 +365,8 @@ func TestHandleTournamentEvents_StreamingUnsupported(t *testing.T) {
 	if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
 		t.Fatalf("decode ErrorResponse: %v (raw=%q)", err, rr.Body.String())
 	}
-	if body.Error != "streaming unsupported" {
-		t.Errorf("body.error: want %q, got %q", "streaming unsupported", body.Error)
+	if body.Error.Message != "streaming unsupported" {
+		t.Errorf("body.error.message: want %q, got %q", "streaming unsupported", body.Error.Message)
 	}
 	if body.Status != http.StatusInternalServerError {
 		t.Errorf("body.status: want 500, got %d", body.Status)

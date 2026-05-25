@@ -151,8 +151,8 @@ func TestArtCacheHandler(t *testing.T) {
 				}
 			case tc.wantErrMsg != "":
 				body := decodeErrorResponse(t, rr)
-				if body.Error != tc.wantErrMsg {
-					t.Errorf("body.error: want %q, got %q", tc.wantErrMsg, body.Error)
+				if body.Error.Message != tc.wantErrMsg {
+					t.Errorf("body.error.message: want %q, got %q", tc.wantErrMsg, body.Error.Message)
 				}
 			}
 		})
@@ -384,8 +384,8 @@ func TestHandleCardByName(t *testing.T) {
 
 			if tc.wantErrMsg != "" {
 				body := decodeErrorResponse(t, rr)
-				if body.Error != tc.wantErrMsg {
-					t.Errorf("body.error: want %q, got %q", tc.wantErrMsg, body.Error)
+				if body.Error.Message != tc.wantErrMsg {
+					t.Errorf("body.error.message: want %q, got %q", tc.wantErrMsg, body.Error.Message)
 				}
 				return
 			}

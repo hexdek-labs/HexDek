@@ -215,8 +215,8 @@ func TestHandleDeckSharePage(t *testing.T) {
 			}
 			if tc.wantErrMsg != "" {
 				body := decodeErrorResponse(t, rr)
-				if body.Error != tc.wantErrMsg {
-					t.Errorf("body.error: want %q, got %q", tc.wantErrMsg, body.Error)
+				if body.Error.Message != tc.wantErrMsg {
+					t.Errorf("body.error.message: want %q, got %q", tc.wantErrMsg, body.Error.Message)
 				}
 				return
 			}
@@ -345,8 +345,8 @@ func TestHandleCardSharePage(t *testing.T) {
 			}
 			if tc.wantErrMsg != "" {
 				body := decodeErrorResponse(t, rr)
-				if body.Error != tc.wantErrMsg {
-					t.Errorf("body.error: want %q, got %q", tc.wantErrMsg, body.Error)
+				if body.Error.Message != tc.wantErrMsg {
+					t.Errorf("body.error.message: want %q, got %q", tc.wantErrMsg, body.Error.Message)
 				}
 				return
 			}
@@ -414,8 +414,8 @@ func TestHandleOperatorSharePage(t *testing.T) {
 			}
 			if tc.wantErrMsg != "" {
 				body := decodeErrorResponse(t, rr)
-				if body.Error != tc.wantErrMsg {
-					t.Errorf("body.error: want %q, got %q", tc.wantErrMsg, body.Error)
+				if body.Error.Message != tc.wantErrMsg {
+					t.Errorf("body.error.message: want %q, got %q", tc.wantErrMsg, body.Error.Message)
 				}
 				return
 			}
@@ -529,8 +529,8 @@ func TestHandleCardStatsOverview(t *testing.T) {
 			}
 			if tc.wantErrMsg != "" {
 				body := decodeErrorResponse(t, rr)
-				if body.Error != tc.wantErrMsg {
-					t.Errorf("body.error: want %q, got %q", tc.wantErrMsg, body.Error)
+				if body.Error.Message != tc.wantErrMsg {
+					t.Errorf("body.error.message: want %q, got %q", tc.wantErrMsg, body.Error.Message)
 				}
 				return
 			}
@@ -639,8 +639,8 @@ func TestHandleCardStatsByCommander(t *testing.T) {
 			}
 			if tc.wantErrMsg != "" {
 				body := decodeErrorResponse(t, rr)
-				if body.Error != tc.wantErrMsg {
-					t.Errorf("body.error: want %q, got %q", tc.wantErrMsg, body.Error)
+				if body.Error.Message != tc.wantErrMsg {
+					t.Errorf("body.error.message: want %q, got %q", tc.wantErrMsg, body.Error.Message)
 				}
 				return
 			}
@@ -848,8 +848,8 @@ func TestHandleDeckUpgrade(t *testing.T) {
 			}
 			if tc.wantErrMsg != "" {
 				body := decodeErrorResponse(t, rr)
-				if body.Error != tc.wantErrMsg {
-					t.Errorf("body.error: want %q, got %q", tc.wantErrMsg, body.Error)
+				if body.Error.Message != tc.wantErrMsg {
+					t.Errorf("body.error.message: want %q, got %q", tc.wantErrMsg, body.Error.Message)
 				}
 				return
 			}

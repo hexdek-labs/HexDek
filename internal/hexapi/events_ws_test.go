@@ -209,8 +209,8 @@ func TestEventsWS_ConnectionCap_RejectsExtraSubscribers(t *testing.T) {
 	if body.Status != http.StatusServiceUnavailable {
 		t.Errorf("body.status: want 503, got %d", body.Status)
 	}
-	if !strings.Contains(body.Error, "too many") {
-		t.Errorf("body.error: want 'too many event subscribers' substring, got %q", body.Error)
+	if !strings.Contains(body.Error.Message, "too many") {
+		t.Errorf("body.error.message: want 'too many event subscribers' substring, got %q", body.Error.Message)
 	}
 }
 
