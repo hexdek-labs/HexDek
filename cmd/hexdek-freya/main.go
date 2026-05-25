@@ -61,9 +61,12 @@ func main() {
 	var spellbookCache string
 	var spellbookFetchURL string
 	var clustersOut string
+	var comparePath string
 
 	flag.StringVar(&deckPath, "deck", "", "path to decklist file")
 	flag.StringVar(&deckDir, "all-decks", "", "analyze all decks in directory")
+	flag.StringVar(&comparePath, "compare", "",
+		"single-deck only: path to a second decklist; emits a deck-to-deck comparison report (archetype/bracket/win-line/density diff) alongside the primary analysis. Headline use case: 'your Iroh vs another Iroh'.")
 	flag.StringVar(&format, "format", "text", "output format: text, markdown, json")
 	flag.StringVar(&spellbookCache, "spellbook", DefaultSpellbookCache,
 		"path to Commander Spellbook variants JSON cache (loaded if present)")
@@ -138,6 +141,18 @@ func main() {
 				log.Fatalf("write cluster export: %v", err)
 			}
 			log.Printf("wrote cluster export → %s (%d clusters)", clustersOut, len(export.Clusters))
+		}
+		// Optional deck-to-deck comparison — runs a second deck through
+		// the analysis pipeline and produces the structured diff
+		// (archetype/bracket/win-line/density). Useful for "my Iroh vs
+		// another Iroh" workflows.
+		if comparePath != "" {
+			otherReport, err := analyzeDeckFile(comparePath, oracle, mechDB)
+			if err != nil {
+				log.Fatalf("analyze comparison deck %s: %v", comparePath, err)
+			}
+			cmp := CompareDecks(report.Profile, otherReport.Profile, report, otherReport)
+			fmt.Fprintln(os.Stdout, "\n"+FormatDeckComparison(cmp))
 		}
 	} else {
 		// All decks mode.
