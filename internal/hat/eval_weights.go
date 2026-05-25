@@ -923,6 +923,66 @@ var archetypeWeights = map[string]EvalWeights{
 		ExileZoneAssets:        0.3,
 		StaxLockProgress:       0.2,
 	},
+	ArchetypeBurn: {
+		// R60 — Burn off generic. Pre-fix Burn decks (Torbran, Heartless
+		// Hidetsugu, Toralf, Neheb the Eternal, Krenko, Tor Wauki, Mishra
+		// Lost to Madness, Obosh-shaped X-burn lists) fell through to
+		// midrange weights, which mis-priced the deck's three signature
+		// axes:
+		//
+		//   - LifeResource (opponent_life): Burn IS a life-pressure
+		//     archetype. The wincon is "drop the table from 40 → 0 via
+		//     stacked damage" (Lightning Bolt → Lava Spike → Skewer the
+		//     Critics → Bonecrusher Giant → Torbran multiplier → Toralf
+		//     copy → Hailfire X). Every decision should ask "does this
+		//     widen the life delta?" — that's what LifeResource scores.
+		//     Anchored at 1.8 (signature dim, just under the 2.0 reserved
+		//     for Lifegain whose own life IS the resource).
+		//
+		//   - ComboProximity: Burn doesn't ASSEMBLE — it SEQUENCES.
+		//     There's no two-card kill assembly to score; the deck just
+		//     plays burn spell after burn spell. Bumping ComboProximity
+		//     would cause the AI to chase phantom assembly plans across
+		//     non-existent piece graphs. Floor at 0.1 (below Aggro's 0.1
+		//     and Voltron's 0.2 — those at least have Voltron-helms or
+		//     equipment chains; Burn has nothing combo-shaped).
+		//
+		//   - ThreatExposure (direct_damage_sources): Burn's "threats"
+		//     are the damage SOURCES themselves — Goblin Guide, Eidolon
+		//     of the Great Revel, Bonecrusher Giant, Torbran (4x
+		//     multiplier), Toralf (copy on excess), Neheb (post-combat
+		//     mana). Losing one to a Path / Swords / Anguished Unmaking
+		//     is losing a whole damage windowʼs worth of pressure. 1.4
+		//     puts it above Control's 1.2 (Control protects answers;
+		//     Burn protects the WIN itself).
+		//
+		// The remaining dimensions are calibrated relative to Aggro
+		// (Burn's parent archetype) with deck-specific shifts:
+		//   - ActivationTempo 0.6: X-burn (Hailfire, Exsanguinate-as-
+		//     fire-variant, Earthquake activations, Kumano Master Yamabushi).
+		//   - GraveyardValue 0.2: no recursion; one shot per spell.
+		//   - StaxLockProgress 0.1: Burn doesn't lock — it kills.
+		BoardPresence:          0.5,
+		CardAdvantage:          0.7,
+		ManaAdvantage:          0.7,
+		LifeResource:           1.8, // signature — opponent_life pressure
+		ComboProximity:         0.1, // Burn sequences, doesn't assemble
+		ThreatExposure:         1.4, // protect direct-damage sources
+		CommanderProgress:      0.8, // commander often is the damage piece
+		GraveyardValue:         0.2,
+		DrainEngine:            0.5,
+		ArtifactSynergy:        0.3,
+		EnchantmentSynergy:     0.3, // Sulfuric Vortex, Manabarbs, Pyrohemia
+		OpponentGraveyardThreat: 0.3,
+		PartnerSynergy:         0.3,
+		ActivationTempo:        0.6, // X-cost burn activations
+		ToolboxBreadth:         0.3,
+		ThreatTrajectory:       0.7, // clock-tracking is core
+		StackInteraction:       0.4,
+		PlaneswalkerProgress:   0.3, // Chandra walkers
+		ExileZoneAssets:        0.3,
+		StaxLockProgress:       0.1,
+	},
 }
 
 // LegacyMidrangeOnly, when true, makes DefaultWeightsForArchetype return

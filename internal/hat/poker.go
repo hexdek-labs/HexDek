@@ -119,6 +119,10 @@ const (
 	// and Tiro — give-everyone-cards effects that turn the political
 	// game into a card-engine win condition.
 	ArchetypeGroupHug = "group hug"
+	// R60 follow-up: Burn — direct-damage primary win condition.
+	// Signature: Shock / Lightning Bolt / Lava Spike / Goblin Guide /
+	// Eidolon of the Great Revel — LifeResource focus, life-total race.
+	ArchetypeBurn = "burn"
 )
 
 // observation is a running tally of an OTHER seat's plays. A PokerHat
