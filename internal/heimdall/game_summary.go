@@ -33,7 +33,32 @@ type GameSummary struct {
 	MVPCards            []MVPCard            `json:"mvp_cards"`
 	MulliganStats       []MulliganStat       `json:"mulligan_stats,omitempty"`
 	TurningPoints       []TurningPoint       `json:"turning_points"`
+	HatDecisions        []HatDecision        `json:"hat_decisions,omitempty"`
 	DataSource          string               `json:"data_source"`
+}
+
+// HatDecision is one row of the "why did hat do X?" log surfaced in
+// GameSummary. The hat already emits per-decision events to
+// gs.EventLog via emitDecisionEvent (Kind: "hat_decision_*"); this
+// struct projects those events into a queryable slice ordered by
+// turn + seat + insertion order.
+//
+// Kind discriminates the decision shape (mulligan / cast / attack_
+// target / block / response_counter / mode) and Details carries the
+// per-kind context (hand stats for mulligan, candidate scores for
+// cast, etc.). The Archetype field is the hat's belief at decision
+// time — stamped on every event by emitDecisionEvent so post-game
+// analysts don't have to rejoin against the deck index.
+//
+// Surfacing this list in GameSummary lets the spectator UI render
+// "hover any major decision → see why the hat chose it" without the
+// caller having to walk EventLog themselves.
+type HatDecision struct {
+	Turn      int                    `json:"turn"`
+	Seat      int                    `json:"seat"`
+	Kind      string                 `json:"kind"`             // mulligan / cast / attack_target / block / mode / response_counter
+	Archetype string                 `json:"archetype,omitempty"`
+	Details   map[string]interface{} `json:"details,omitempty"`
 }
 
 // TurningPoint records one decision-shaping moment in a game. The
@@ -94,8 +119,62 @@ func BuildGameSummary(obs Observation, gs *gameengine.GameState, endReason strin
 		MVPCards:            obs.MVPCards,
 		MulliganStats:       obs.MulliganStats,
 		TurningPoints:       ExtractTurningPoints(obs, gs),
+		HatDecisions:        ExtractHatDecisions(gs),
 		DataSource:          "rich",
 	}
+}
+
+// ExtractHatDecisions walks gs.EventLog for every "hat_decision_*"
+// event and projects each into a HatDecision row. Order is preserved
+// from EventLog (which is chronological by insertion). Returns an
+// empty slice when gs is nil or no hat decisions were recorded.
+//
+// The strip-prefix uses "hat_decision_" verbatim — kept in sync with
+// emitDecisionEvent in internal/hat/yggdrasil.go.
+func ExtractHatDecisions(gs *gameengine.GameState) []HatDecision {
+	if gs == nil || len(gs.EventLog) == 0 {
+		return nil
+	}
+	const prefix = "hat_decision_"
+	out := make([]HatDecision, 0, 16)
+	for _, ev := range gs.EventLog {
+		if len(ev.Kind) <= len(prefix) || ev.Kind[:len(prefix)] != prefix {
+			continue
+		}
+		kind := ev.Kind[len(prefix):]
+		// Defensive copy so consumers can't mutate the event log via
+		// the returned slice. Skip the "turn" key since we surface it
+		// as a typed field, and lift "archetype" out into its own
+		// field for the same reason.
+		details := make(map[string]interface{}, len(ev.Details))
+		var archetype string
+		for k, v := range ev.Details {
+			switch k {
+			case "turn":
+				continue
+			case "archetype":
+				if s, ok := v.(string); ok {
+					archetype = s
+				} else {
+					details[k] = v
+				}
+			default:
+				details[k] = v
+			}
+		}
+		turn := ev.Amount
+		if t, ok := ev.Details["turn"].(int); ok && t > 0 {
+			turn = t
+		}
+		out = append(out, HatDecision{
+			Turn:      turn,
+			Seat:      ev.Seat,
+			Kind:      kind,
+			Archetype: archetype,
+			Details:   details,
+		})
+	}
+	return out
 }
 
 // ExtractTurningPoints derives the small set of turning points that
