@@ -121,6 +121,13 @@ export const api = {
   deleteDeck: (id) => authedRequest(`/api/decks/${id}`, { method: 'DELETE' }),
   cloneDeck: (id) => authedRequest(`/api/decks/${id}/clone`, { method: 'POST' }),
   forkDeck: (id) => authedRequest(`/api/decks/${id}/fork`, { method: 'POST' }),
+  archetypeFeedback: (id, action, archetype) => authedRequest(
+    `/api/decks/${id}/archetype-feedback`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ action, ...(archetype ? { archetype } : {}) }),
+    },
+  ),
   patchDeck: (id, fields) => authedRequest(`/api/decks/${id}`, {
     method: 'PATCH',
     body: JSON.stringify(fields),

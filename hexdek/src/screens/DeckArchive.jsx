@@ -22,6 +22,7 @@ import { DeckPicker } from './DeckCompare'
 import DeckExportModal from '../components/DeckExportModal'
 import ContextBox from '../components/ContextBox'
 import EloSparkline from '../components/EloSparkline'
+import ArchetypeChipRow from '../components/ArchetypeChipRow'
 import CoachingMarker from '../components/CoachingMarker'
 import { buildCoachingIndex, coachingForCard } from '../lib/freyaCoaching'
 import DeckRating from '../components/DeckRating'
@@ -2039,23 +2040,11 @@ export default function DeckArchive() {
               adding their own tag with whatever text they prefer, not
               by deleting the system tag. */}
           {Array.isArray(deck?.system_tags) && deck.system_tags.length > 0 && (
-            <div
-              style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}
-              data-testid="system-tags"
-              title="System-assigned tags from Freya analysis. Override by adding your own tag below."
-            >
-              <span className="muted-2" style={{ fontSize: 9, letterSpacing: '0.1em', marginRight: 4 }}>
-                FREYA
-              </span>
-              {deck.system_tags.map(t => {
-                const label = t.startsWith('archetype:') ? t.slice('archetype:'.length) : t
-                return (
-                  <Tag key={t} kind="info" solid>
-                    {label.toUpperCase()}
-                  </Tag>
-                )
-              })}
-            </div>
+            <ArchetypeChipRow
+              deck={deck}
+              isOwner={isOwner}
+              onFeedbackChange={setDeck}
+            />
           )}
           {/* Tags: owners get an editable autocomplete chip field; visitors
               see a static chip row when there are any. The field is hidden
