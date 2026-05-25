@@ -42,12 +42,35 @@ type MCTSHat struct {
 	// Set by diagnostic harnesses; nil in normal tournament play.
 	DecisionLog *[]string
 
+	// PruneThreshold (R60 round 5) cuts candidate branches whose cheap
+	// heuristic falls below baseScore + PruneThreshold BEFORE the
+	// expensive rollout / UCB1 evaluation. Must be <= 0 (a negative
+	// delta from the current position score). Default -0.5 means
+	// "skip candidates that look worse than passing by half a unit or
+	// more" — clearly losing branches no longer consume rollout budget.
+	// Set to 0 to disable. Pass is never pruned (always a safe option).
+	// If pruning would empty the candidate pool, the highest-heuristic
+	// candidate is retained as a safety floor.
+	PruneThreshold float64
+
+	// PrunedCount tracks how many candidates the threshold filtered out
+	// across this hat's lifetime. Exposed for diagnostics and tests.
+	PrunedCount int
+
 	// actionStats tracks cumulative UCB1 statistics per action key.
 	// Keys are decision-specific (e.g. card name for cast decisions).
 	// Reset at the start of each game via ObserveEvent("game_start").
 	actionStats map[string]*actionStat
 	totalVisits int
 }
+
+// DefaultPruneThreshold is the default cut for MCTSHat candidate
+// pruning. -0.5 means "a candidate whose heuristic is worse than the
+// current state by half a unit or more is skipped." Calibrated so
+// `evaluateCandidate`'s baseline tempo bonus (+0.15) is still well
+// above the cut — only candidates the heuristic actively dislikes get
+// pruned.
+const DefaultPruneThreshold = -0.5
 
 type actionStat struct {
 	visits int
@@ -58,11 +81,25 @@ type actionStat struct {
 // strategy profile, and search budget.
 func NewMCTSHat(inner gameengine.Hat, sp *StrategyProfile, budget int) *MCTSHat {
 	return &MCTSHat{
-		Inner:       inner,
-		Evaluator:   NewEvaluator(sp),
-		Budget:      budget,
-		actionStats: map[string]*actionStat{},
+		Inner:          inner,
+		Evaluator:      NewEvaluator(sp),
+		Budget:         budget,
+		PruneThreshold: DefaultPruneThreshold,
+		actionStats:    map[string]*actionStat{},
 	}
+}
+
+// shouldPrune returns true if the candidate's heuristic value falls
+// below baseScore + PruneThreshold. Pruning is disabled when
+// PruneThreshold == 0 (the zero-value sentinel — safe for callers
+// who construct MCTSHat directly without the constructor). Any
+// non-zero value enables pruning: negative thresholds gate only on
+// obvious losers, positive thresholds prune aggressively.
+func (h *MCTSHat) shouldPrune(heuristicVal, baseScore float64) bool {
+	if h.PruneThreshold == 0 {
+		return false
+	}
+	return heuristicVal < baseScore+h.PruneThreshold
 }
 
 // ucb1Score returns the UCB1 selection score for an action.
@@ -123,15 +160,38 @@ func (h *MCTSHat) ChooseCastFromHand(gs *gameengine.GameState, seatIdx int, cast
 	}
 	var candidates []scored
 
+	type pruned struct {
+		card *gameengine.Card
+		name string
+		val  float64
+	}
+	var safetyFloor pruned
+	safetyFloor.val = math.Inf(-1)
+
 	for _, c := range castable {
 		if c == nil {
 			continue
 		}
+		cardValue := h.evaluateCandidate(gs, seatIdx, c, baseScore)
+
+		// Prune obvious losing branches before they consume UCB1 budget.
+		// Track the best of the pruned in case ALL candidates fall under
+		// the threshold — we still need a fallback better than passing
+		// when passing is itself a slow loss.
+		if h.shouldPrune(cardValue, baseScore) {
+			h.PrunedCount++
+			if cardValue > safetyFloor.val {
+				safetyFloor = pruned{c, c.DisplayName(), cardValue}
+			}
+			h.logDecision(fmt.Sprintf("  pruned:    %-30s heuristic=%.3f (cut at %.3f)",
+				c.DisplayName(), cardValue, baseScore+h.PruneThreshold))
+			continue
+		}
+
 		// All keys are turn-scoped so multiplayer games don't accumulate
 		// stale visit counts between a player's widely-spaced turns.
 		key := turnPrefix + "cast:" + c.DisplayName()
 
-		cardValue := h.evaluateCandidate(gs, seatIdx, c, baseScore)
 		ucb := h.ucb1Score(key, cardValue)
 		candidates = append(candidates, scored{c.DisplayName(), cardValue, ucb})
 
@@ -139,6 +199,19 @@ func (h *MCTSHat) ChooseCastFromHand(gs *gameengine.GameState, seatIdx int, cast
 			bestUCB = ucb
 			bestCard = c
 		}
+	}
+
+	// Safety floor: if pruning rejected every candidate, the highest-
+	// heuristic pruned candidate re-enters as the only option so the
+	// hat doesn't blindly pass on a forced-action turn.
+	if bestCard == nil && len(candidates) == 0 && safetyFloor.card != nil {
+		key := turnPrefix + "cast:" + safetyFloor.name
+		ucb := h.ucb1Score(key, safetyFloor.val)
+		candidates = append(candidates, scored{safetyFloor.name, safetyFloor.val, ucb})
+		bestCard = safetyFloor.card
+		bestUCB = ucb
+		h.logDecision(fmt.Sprintf("  safety:    %-30s heuristic=%.3f (all candidates pruned, restored best)",
+			safetyFloor.name, safetyFloor.val))
 	}
 
 	passKey := turnPrefix + "cast:__pass__"
@@ -194,12 +267,35 @@ func (h *MCTSHat) chooseCastViaRollout(gs *gameengine.GameState, seatIdx int, ca
 	var bestCard *gameengine.Card
 	bestUCB := passUCB
 
+	type prunedRollout struct {
+		card *gameengine.Card
+		val  float64
+	}
+	var rolloutFloor prunedRollout
+	rolloutFloor.val = math.Inf(-1)
+	var evaluated []*gameengine.Card
+
 	for _, c := range castable {
 		if c == nil {
 			continue
 		}
 		cardName := c.DisplayName()
 		key := turnPrefix + "cast:" + cardName
+
+		// Cheap heuristic gate BEFORE the expensive rollout. A rollout
+		// costs a full turn simulation; the heuristic costs one
+		// evaluator pass. Pruning here is the highest-leverage win.
+		heuristicPre := h.evaluateCandidate(gs, seatIdx, c, baseScore)
+		if h.shouldPrune(heuristicPre, baseScore) {
+			h.PrunedCount++
+			if heuristicPre > rolloutFloor.val {
+				rolloutFloor = prunedRollout{c, heuristicPre}
+			}
+			h.logDecision(fmt.Sprintf("  pruned:    %-30s heuristic=%.3f (cut at %.3f, rollout skipped)",
+				cardName, heuristicPre, baseScore+h.PruneThreshold))
+			continue
+		}
+		evaluated = append(evaluated, c)
 
 		rolloutScore := h.simulateRollout(gs, seatIdx, func(clone *gameengine.GameState) {
 			seat := clone.Seats[seatIdx]
@@ -220,10 +316,11 @@ func (h *MCTSHat) chooseCastViaRollout(gs *gameengine.GameState, seatIdx int, ca
 			}
 		})
 
-		heuristic := h.evaluateCandidate(gs, seatIdx, c, baseScore)
 		// Blend: 50/50 rollout+heuristic. Rollout now resolves spells
 		// but still doesn't model full targeting/ETB — heuristic stays
-		// important for combo/value-engine awareness.
+		// important for combo/value-engine awareness. heuristicPre was
+		// already computed for the prune gate; reuse it.
+		heuristic := heuristicPre
 		blended := 0.5*rolloutScore + 0.5*heuristic
 		ucb := h.ucb1Score(key, blended)
 
@@ -237,6 +334,18 @@ func (h *MCTSHat) chooseCastViaRollout(gs *gameengine.GameState, seatIdx int, ca
 	}
 
 	h.logDecision(fmt.Sprintf("  pass: rollout=%.3f ucb=%.3f", passScore, passUCB))
+
+	// Safety floor: if pruning rejected every non-nil candidate and pass
+	// is the only "option," restore the best-pruned card so the hat
+	// can still take an action if the game state demands it (e.g. a
+	// land-only hand on a turn the inner hat must play something).
+	if bestCard == nil && len(evaluated) == 0 && rolloutFloor.card != nil {
+		bestCard = rolloutFloor.card
+		key := turnPrefix + "cast:" + bestCard.DisplayName()
+		bestUCB = h.ucb1Score(key, rolloutFloor.val)
+		h.logDecision(fmt.Sprintf("  safety:    %-30s heuristic=%.3f (all rollout candidates pruned, restored best)",
+			bestCard.DisplayName(), rolloutFloor.val))
+	}
 
 	if bestCard != nil {
 		h.logDecision(fmt.Sprintf("  → CAST %s (ucb=%.3f, beat pass by %.3f)", bestCard.DisplayName(), bestUCB, bestUCB-passUCB))
