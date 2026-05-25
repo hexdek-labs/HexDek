@@ -1,6 +1,6 @@
 # Chaos Gauntlet Report
 
-Generated: 2026-05-24T17:01:23-07:00
+Generated: 2026-05-24T17:29:01-07:00
 
 ## Configuration
 
@@ -9,7 +9,7 @@ Generated: 2026-05-24T17:01:23-07:00
 | Oracle Corpus | 36656 cards |
 | Legendary Creatures | 3433 |
 | Total Games | 2000 |
-| Seed | 31415 |
+| Seed | 161803 |
 | Permutations | 1 |
 | Seats | 4 |
 | Max Turns | 60 |
@@ -21,8 +21,8 @@ Generated: 2026-05-24T17:01:23-07:00
 
 | Metric | Count |
 |--------|-------|
-| Duration | 25.118s |
-| Throughput | 80 games/sec |
+| Duration | 40.3s |
+| Throughput | 50 games/sec |
 | Crashes | 0 (in 0 games) |
 | Invariant Violations | 0 (in 0 games) |
 | Clean Games | 2000 |
@@ -31,24 +31,12 @@ Generated: 2026-05-24T17:01:23-07:00
 
 | Metric | Count |
 |--------|-------|
-| Duration | 801ms |
-| Throughput | 12483 boards/sec |
+| Duration | 737ms |
+| Throughput | 13573 boards/sec |
 | Crashes | 0 |
-| Invariant Violations | 2 |
-| Clean Boards | 9999 |
+| Invariant Violations | 0 |
+| Clean Boards | 10000 |
 
-## Invariant Violations (Nightmare Boards)
+## Verdict: CLEAN
 
-| Invariant | Count |
-|-----------|-------|
-| CardIdentity | 2 |
-
-## Verdict: ISSUES FOUND
-
-**2 total issues** across 2000 chaos games and 10000 nightmare boards.
-- 0 crashes in chaos games
-- 0 invariant violations in chaos games
-- 0 crashes in nightmare boards
-- 2 invariant violations in nightmare boards
-
-Review the details above to identify which cards and interactions are problematic.
+All 2000 chaos games and 10000 nightmare boards passed all invariant checks with zero crashes.
