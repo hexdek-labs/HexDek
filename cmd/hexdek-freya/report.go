@@ -732,6 +732,14 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		}
 	}
 
+	if len(dp.AltBuildSuggestions) > 0 {
+		fmt.Fprintf(w, "\n  Alt-Build Suggestions (deck splits across multiple engines):\n")
+		for _, a := range dp.AltBuildSuggestions {
+			fmt.Fprintf(w, "    ◆ %s\n", a.Pivot)
+			fmt.Fprintf(w, "        %s\n", a.Trade)
+		}
+	}
+
 	fmt.Fprintf(w, "\n")
 }
 
@@ -1216,6 +1224,7 @@ type jsonDeckProfile struct {
 	CommanderCentricReason  string        `json:"commander_centric_reason,omitempty"`
 	CommanderCMC            int           `json:"commander_cmc,omitempty"`
 	SynergyClusters    []jsonCluster     `json:"synergy_clusters,omitempty"`
+	AltBuildSuggestions []jsonAltBuild   `json:"alt_build_suggestions,omitempty"`
 	MetaMatchups       []jsonMatchup     `json:"meta_matchups,omitempty"`
 	StrongAgainst      []jsonStrongAgainst `json:"strong_against,omitempty"`
 	StarCards          []jsonCardQuality `json:"star_cards,omitempty"`
@@ -1229,10 +1238,20 @@ type jsonDeckProfile struct {
 }
 
 type jsonCluster struct {
-	Name  string   `json:"name"`
-	Cards []string `json:"cards"`
-	Theme string   `json:"theme"`
-	Score int      `json:"synergy_count"`
+	Name        string   `json:"name"`
+	Cards       []string `json:"cards"`
+	Theme       string   `json:"theme"`
+	Score       int      `json:"synergy_count"`
+	MemberCount int      `json:"member_count,omitempty"`
+}
+
+type jsonAltBuild struct {
+	Cluster     string `json:"cluster"`
+	ClusterName string `json:"cluster_name"`
+	MemberCount int    `json:"member_count"`
+	Score       int    `json:"score"`
+	Pivot       string `json:"pivot"`
+	Trade       string `json:"trade"`
 }
 
 type jsonMatchup struct {
@@ -1428,6 +1447,18 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 	for _, sc := range dp.SynergyClusters {
 		clusters = append(clusters, jsonCluster{
 			Name: sc.Name, Cards: sc.Cards, Theme: sc.Theme, Score: sc.Score,
+			MemberCount: sc.MemberCount,
+		})
+	}
+	var altBuilds []jsonAltBuild
+	for _, a := range dp.AltBuildSuggestions {
+		altBuilds = append(altBuilds, jsonAltBuild{
+			Cluster:     a.Cluster,
+			ClusterName: a.ClusterName,
+			MemberCount: a.MemberCount,
+			Score:       a.Score,
+			Pivot:       a.Pivot,
+			Trade:       a.Trade,
 		})
 	}
 	var matchups []jsonMatchup
@@ -1502,6 +1533,7 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 		CommanderCentricReason:  dp.CommanderCentricReason,
 		CommanderCMC:            dp.CommanderCMC,
 		SynergyClusters:    clusters,
+		AltBuildSuggestions: altBuilds,
 		MetaMatchups:       matchups,
 		StrongAgainst:      strongAgainst,
 		StarCards:           stars,
