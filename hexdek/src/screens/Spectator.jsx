@@ -17,49 +17,111 @@ import {
   pickNeighboringTurnHeader,
 } from '../utils/spectatorKeybindings'
 import { isNotableAction, explainAction } from '../utils/actionExplain'
+import { computeTooltipPlacement, MIN_VIEWPORT_MARGIN } from '../utils/mobileLayout'
 
 // ActionExplainBadge — small ⓘ pill rendered next to a notable log
-// entry. Hover (or focus) opens a tooltip showing what the hat's
+// entry. Tap / hover / focus opens a tooltip showing what the hat's
 // telemetry says about why this action makes sense for the acting
 // seat: archetype, archetype bias sentence, top-2 eval dimensions,
 // threat read, score, pilot. `explanation` is the object returned
 // by explainAction(); when null the badge renders nothing.
+//
+// Mobile audit fix (R60): the prior popover used
+// `position: absolute; left: 0; top: 100%` which overflowed the
+// viewport's right + bottom edges on small screens. The popover is
+// now `position: fixed` and positioned via computeTooltipPlacement
+// against the badge's bounding rect — flips horizontally when it
+// would overflow the right edge and vertically when it would
+// overflow the bottom. Tap also toggles open/closed for touch
+// users (mouseenter is unreliable on touch).
 function ActionExplainBadge({ explanation }) {
   const [open, setOpen] = useState(false)
+  const [placement, setPlacement] = useState({ left: 0, top: 0 })
+  const anchorRef = useRef(null)
+  const tooltipRef = useRef(null)
+
+  useLayoutEffect(() => {
+    if (!open) return
+    const anchor = anchorRef.current
+    const tooltip = tooltipRef.current
+    if (!anchor) return
+    const anchorRect = anchor.getBoundingClientRect()
+    // Use the tooltip's actual measured size when we already have a
+    // ref to it; otherwise fall back to the documented min size.
+    const tooltipSize = tooltip
+      ? { width: tooltip.offsetWidth, height: tooltip.offsetHeight }
+      : { width: 240, height: 120 }
+    const viewport = {
+      width:  window.innerWidth  || document.documentElement.clientWidth  || 0,
+      height: window.innerHeight || document.documentElement.clientHeight || 0,
+    }
+    setPlacement(computeTooltipPlacement({ anchorRect, tooltipSize, viewport }))
+  }, [open])
+
+  // Close on outside click / Escape so a tapped-open tooltip on
+  // touch doesn't get stuck.
+  useEffect(() => {
+    if (!open) return
+    const onDocClick = (e) => {
+      if (anchorRef.current?.contains(e.target)) return
+      if (tooltipRef.current?.contains(e.target)) return
+      setOpen(false)
+    }
+    const onKey = (e) => { if (e.key === 'Escape') setOpen(false) }
+    document.addEventListener('mousedown', onDocClick)
+    document.addEventListener('touchstart', onDocClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('touchstart', onDocClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
   if (!explanation) return null
   return (
-    <span style={{ position: 'relative', display: 'inline-block', marginLeft: 4 }}>
+    <span style={{ display: 'inline-block', marginLeft: 4 }}>
       <span
+        ref={anchorRef}
         role="button"
         tabIndex={0}
+        aria-expanded={open}
         aria-label="Explain this action"
         onMouseEnter={() => setOpen(true)}
         onMouseLeave={() => setOpen(false)}
         onFocus={() => setOpen(true)}
         onBlur={() => setOpen(false)}
+        onClick={(e) => { e.stopPropagation(); setOpen(v => !v) }}
         style={{
           fontSize: 10,
-          padding: '0 4px',
+          padding: '2px 6px',
           borderRadius: 8,
           border: '1px solid var(--rule-2)',
           color: 'var(--ink-2)',
           cursor: 'help',
           background: 'var(--bg)',
+          // Bigger tap target on touch — 24px minimum on the y-axis
+          // satisfies WCAG 2.5.5 (Target Size, Enhanced) without
+          // making the desktop pill look chunky.
+          minHeight: 18,
+          display: 'inline-block',
+          lineHeight: 1.4,
         }}
       >
         ⓘ WHY?
       </span>
       {open && (
         <div
+          ref={tooltipRef}
           role="tooltip"
           style={{
-            position: 'absolute',
-            zIndex: 100,
-            left: 0,
-            top: '100%',
-            marginTop: 4,
-            minWidth: 240,
-            maxWidth: 320,
+            position: 'fixed',
+            zIndex: 1000,
+            left: placement.left,
+            top: placement.top,
+            minWidth: 0,
+            maxWidth: `calc(100vw - ${MIN_VIEWPORT_MARGIN * 2}px)`,
+            width: 'min(280px, calc(100vw - 16px))',
             background: 'var(--bg)',
             border: '1px solid var(--rule)',
             padding: '8px 10px',
@@ -666,6 +728,8 @@ export default function Spectator() {
             position: 'fixed', inset: 0, zIndex: 1000,
             background: 'rgba(0,0,0,0.6)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: 8,
+            boxSizing: 'border-box',
           }}
         >
           <div
@@ -674,8 +738,15 @@ export default function Spectator() {
               background: 'var(--bg)',
               border: '1px solid var(--rule)',
               padding: '20px 24px',
-              minWidth: 320,
-              maxWidth: 480,
+              // Mobile audit fix (R60): was `minWidth: 320` — that's
+              // exactly the iPhone SE viewport width, so the dialog
+              // tipped past the viewport edges with no margin.
+              // `min(480px, calc(100vw - 16px))` keeps the desktop
+              // size and shrinks naturally on small screens.
+              width: 'min(480px, calc(100vw - 16px))',
+              maxHeight: 'calc(100vh - 16px)',
+              overflow: 'auto',
+              boxSizing: 'border-box',
               fontSize: 12,
             }}
           >
