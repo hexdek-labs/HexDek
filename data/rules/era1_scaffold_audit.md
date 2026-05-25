@@ -6,88 +6,84 @@
 
 - Era 1 cards: **26932**
 
-- Era 1 Condition nodes: **2499** (bucketed 2105, unbucketed 394, 15.8% gap)
+- Era 1 Condition nodes: **2499** (bucketed 2297, unbucketed 202, 8.1% gap)
 
-- Era 1 Trigger nodes: **11548**
+- Era 1 Trigger nodes: **11548** (bucketed 11500, unbucketed 48, 0.4% gap)
 
 
 ## Top unbucketed condition Kinds
 
-- `if` × 201
-- `conditional` × 185
-- `life_vs_half_starting` × 3
-- `repeat_any_optional` × 3
-- `life_threshold_both` × 1
-- `life_delta_threshold` × 1
+- `if` × 116
+- `conditional` × 86
 
 ## Top unbucketed raw-text fragments (kind in raw/intervening_if/as_long_as)
 
-- × 6: `you have the city's blessing`  _(e.g. A-Ocelot Pride, Twilight Prophet, Deadeye Brawler)_
-- × 5: `it has three or more +1/+1 counters on it`  _(e.g. The Emperor of Palamecia // The Lord Master of Hell, Ordeal of Thassa, Ordeal of Purphoros)_
-- × 4: `it's the first combat phase of the turn`  _(e.g. Karlach, Fury of Avernus, Finest Hour, Genji Glove)_
-- × 3: `this creature didn't attack this turn`  _(e.g. Erg Raiders, Civilized Scholar // Homicidal Brute, Air Nomad Student)_
-- × 3: `your team controls another warrior`  _(e.g. Sickle Dancer, Aurora Champion, Bull-Rush Bruiser)_
-- × 2: `it's a creature`  _(e.g. Trail of Mystery, Salt Road Ambushers)_
-- × 2: `you didn't play a card from exile this turn`  _(e.g. A-Visions of Phyrexia, Visions of Phyrexia)_
-- × 2: `you have a full party`  _(e.g. Squad Commander, Archpriest of Iona)_
-- × 2: `a creature died under your control this turn`  _(e.g. Denethor, Ruling Steward, Essenceknit Scholar)_
-- × 2: `as long as this creature is equipped, it gets +1/+1 and has flying`  _(e.g. Skyhunter Cub, Kitesail Apprentice)_
-- × 2: `a player lost 4 or more life this turn`  _(e.g. Y'shtola, Night's Blessed, Knight of the Ebon Legion)_
-- × 2: `as long as equipped creature is a human, it gets an additional +1/+0`  _(e.g. True-Faith Censer, Silver-Inlaid Dagger)_
-- × 2: `you have seven or more cards in hand`  _(e.g. Kiyomaro, First to Stand, Ivory Crane Netsuke)_
-- × 2: `as long as equipped creature is attacking, it has first strike and must be block`  _(e.g. Ace's Baseball Bat, The Masamune)_
-- × 2: `you put a counter on a creature this turn`  _(e.g. Lord Jyscal Guado, Lasting Tarfire)_
-- × 2: `if it's a creature or planeswalker card, you may reveal it and put it into your `  _(e.g. Vivien's Grizzly, Cabaretti Ascendancy)_
-- × 2: `as long as enchanted permanent is an equipment, it has "equipped creature gets +`  _(e.g. Rune of Might, Rune of Speed)_
-- × 2: `as long as you have seven or more cards in hand, this creature gets +2/+1 and ha`  _(e.g. Akki Underling, Deathmask Nezumi)_
-- × 2: `it has four or more quest counters on it`  _(e.g. Firebender Ascension, Waterbender Ascension)_
-- × 1: `this creature is a spirit`  _(e.g. Warden of the First Tree)_
-- × 1: `you don't control a legendary creature`  _(e.g. Errand-Rider of Gondor)_
-- × 1: `that creature's power is greater than ~'s power`  _(e.g. Yorvo, Lord of Garenbrig)_
 - × 1: `as long as an opponent has 10 or less life, this creature gets +2/+1 and has int`  _(e.g. Guul Draz Vampire)_
-- × 1: `as long as this creature has four or more +1/+1 counters on it, it has flying an`  _(e.g. Voice of the Blessed)_
-- × 1: `as long as this creature has ten or more +1/+1 counters on it, it has indestruct`  _(e.g. Voice of the Blessed)_
-- × 1: `you don't control a pest creature token`  _(e.g. Pest Rescuer)_
-- × 1: `as long as enchanted permanent is a creature, it has lifelink`  _(e.g. Rune of Sustenance)_
-- × 1: `as long as enchanted permanent is an equipment, it has "equipped creature has li`  _(e.g. Rune of Sustenance)_
-- × 1: `if its mana value is 2 or less, create a 1/1 black and green pest creature token`  _(e.g. Containment Breach)_
-- × 1: `that creature was a horror`  _(e.g. Endless Evil)_
-- × 1: `as long as ~ has four or more phyresis counters on it, it's a phyrexian creature`  _(e.g. Weatherlight Compleated)_
-- × 1: `its power is greater than this creature's power or its toughness is greater than`  _(e.g. Sharp-Eyed Rookie)_
-- × 1: `as long as you have the city's blessing, they also have vigilance`  _(e.g. Radiant Destiny)_
-- × 1: `it's modified`  _(e.g. Ian the Reckless)_
 - × 1: `as long as this creature has a counter on it, it can attack as though it didn't `  _(e.g. Demon Wall)_
 - × 1: `it has an odd number of counters on it`  _(e.g. Sab-Sunen, Luxa Embodied)_
-- × 1: `as long as enchanted permanent is a creature, it gets +3/+3 and has reach`  _(e.g. Favor of Jukai)_
-- × 1: `this creature didn't attack or come under your control this turn`  _(e.g. Mad Dog)_
-- × 1: `you didn't cast it from your hand`  _(e.g. Phage the Untouchable)_
-- × 1: `as long as enchanted permanent is a creature, it gets -1/-1 and can't block`  _(e.g. Clawing Torment)_
-- × 1: `there are three or more landmark counters on it`  _(e.g. Treasure Map // Treasure Cove)_
-- × 1: `as long as this creature is enchanted by exactly one aura, it has base power and`  _(e.g. Timber Paladin)_
-- × 1: `as long as this creature is enchanted by exactly two auras, it has base power an`  _(e.g. Timber Paladin)_
-- × 1: `as long as this creature is enchanted by three or more auras, it has base power `  _(e.g. Timber Paladin)_
-- × 1: `this creature wasn't kicked`  _(e.g. Skizzik)_
-- × 1: `as long as ~ entered this turn, you may activate her loyalty abilities any time `  _(e.g. The Wandering Emperor)_
 - × 1: `if you would begin your draw step, you may skip that step instead. if you do, yo`  _(e.g. Fasting)_
 - × 1: `if a land card was milled this way, you gain 1 life. otherwise, this enchantment`  _(e.g. Lorehold Excavation)_
-- × 1: `that creature has power 4 or greater`  _(e.g. Strider, Ranger of the North)_
-- × 1: `if it's suspected, exile it. otherwise, suspect it`  _(e.g. Agrus Kos, Spirit of Justice)_
-- × 1: `this creature is a cleric`  _(e.g. Evolved Sleeper)_
-- × 1: `this creature is a phyrexian`  _(e.g. Evolved Sleeper)_
-- × 1: `as long as your opponents control no creatures, this creature has indestructible`  _(e.g. Erebos's Titan)_
 - × 1: `if you would flip a coin, you may instead roll a d20. 1−10 is tails and 11−20 is`  _(e.g. Pokey, the Scallywagg)_
-- × 1: `your library has more cards in it than target opponent's library`  _(e.g. Jon Irenicus, the Exile)_
-- × 1: `there are three or more ribbon counters on this creature`  _(e.g. Prize Pig)_
-- × 1: `you've cast two or more spells this turn`  _(e.g. Loan Shark)_
-- × 1: `your opponents control no creatures`  _(e.g. Kezzerdrix)_
-- × 1: `as long as you've completed a dungeon, this creature has double strike`  _(e.g. Gloom Stalker)_
-- × 1: `this creature isn't saddled`  _(e.g. Caustic Bronco)_
+- × 1: `it isn't being declared as an attacker`  _(e.g. Verity Circle)_
+- × 1: `that creature has toughness 6 or greater`  _(e.g. Dormant Grove // Gnarled Grovestrider)_
+- × 1: `your life total is less than 7`  _(e.g. Elderscale Wurm)_
+- × 1: `it had power greater than drizzt's power`  _(e.g. Drizzt Do'Urden)_
+- × 1: `at least one other wall creature is blocking that creature and no non-wall creat`  _(e.g. Wall of Caltrops)_
+- × 1: `the gift was promised`  _(e.g. Scrapshooter)_
+- × 1: `they don't have any rad counters`  _(e.g. Vexing Radgull)_
+- × 1: `if it was attacking, create a 1/1 colorless drone artifact creature token with f`  _(e.g. Desculpting Blast)_
+- × 1: `that player attacked you during their last turn`  _(e.g. O-Kagachi, Vengeful Kami)_
+- × 1: `if that library contains exactly the chosen number of cards with the chosen name`  _(e.g. Mindblaze)_
+- × 1: `it isn't a token`  _(e.g. Gruff Triplets)_
+- × 1: `as long as you have four or more cards in hand, ~ has vigilance`  _(e.g. Kiyomaro, First to Stand)_
+- × 1: `three or more mana from creatures was spent to cast it`  _(e.g. Inga and Esika)_
+- × 1: `his sneak cost was paid`  _(e.g. Leonardo, Leader in Blue)_
+- × 1: `it's not that player's turn`  _(e.g. Price of Glory)_
+- × 1: `as long as this creature is attacking, it gets +x/+0, where x is the number of l`  _(e.g. Elturel Survivors)_
+- × 1: `another human died under your control this turn`  _(e.g. White Glove Gourmand)_
+- × 1: `it had a -1/-1 counter on it`  _(e.g. Blowfly Infestation)_
+- × 1: `as long as enchanted land is a basic mountain, goblin creatures get +0/+2`  _(e.g. Goblin Caves)_
+- × 1: `a +1/+1 counter was put on a permanent under your control this turn`  _(e.g. Fairgrounds Trumpeter)_
+- × 1: `a player cast two or more spells last turn`  _(e.g. Call of the Full Moon)_
+- × 1: `if that creature is attacking, x is the number of snow lands defending player co`  _(e.g. Snowblind)_
+- × 1: `it was attacking`  _(e.g. Garna, Bloodfist of Keld)_
+- × 1: `if an instant card or a card with flash is exiled this way, they lose 1 life. ot`  _(e.g. Check for Traps)_
+- × 1: `as long as ~ is enchanted, equipped, and has a counter on it, ~ has "whenever ~ `  _(e.g. Kosei, Penitent Warlord)_
+- × 1: `if that card is returned to its owner's hand this way, you may pay {u}{u}{u}. if`  _(e.g. Puppet Master)_
+- × 1: `if you've committed a crime this turn, discard a card. otherwise, discard two ca`  _(e.g. Oko, the Ringleader)_
+- × 1: `it doesn't have an indestructible counter on it`  _(e.g. Risona, Asari Commander)_
+- × 1: `if any of those cards shares a card type with that spell, copy that spell, you m`  _(e.g. Gandalf, Westward Voyager)_
+- × 1: `its power was 3 or greater`  _(e.g. Deathknell Berserker)_
+- × 1: `as long as you've put one or more +1/+1 counters on a creature this turn, this c`  _(e.g. Sigardian Paladin)_
+- × 1: `as long as you've cast two or more noncreature spells this turn, ~ has double st`  _(e.g. Lyse Hext)_
+- × 1: `if they do, exile that card. otherwise, put it into your hand`  _(e.g. Protection Racket)_
+- × 1: `as long as ~ is at the top of your library, you may look at it any time and you `  _(e.g. Chittering Illuminator)_
+- × 1: `as long as the top card of your library is a creature card, you may look at it a`  _(e.g. Chittering Illuminator)_
+- × 1: `you don't control a creature named keeper of ~`  _(e.g. Kookus)_
+- × 1: `this creature is suspected`  _(e.g. Repeat Offender)_
+- × 1: `it has madness`  _(e.g. Anje Falkenrath)_
+- × 1: `defending player has more cards in hand than you`  _(e.g. Robber of the Rich)_
+- × 1: `it has thirteen or more release counters on it`  _(e.g. The Heron Moon)_
+- × 1: `it has first strike`  _(e.g. Momentum Rumbler)_
+- × 1: `your opponents control no permanents with bounty counters on them`  _(e.g. Chevill, Bane of Monsters)_
+- × 1: `as long as this creature is enchanted, it can attack as though it didn't have de`  _(e.g. Pillar of War)_
+- × 1: `there are three or more dread counters on it`  _(e.g. Grasping Shadows // Shadows' Lair)_
+- × 1: `this creature's power is 1 or more`  _(e.g. Lesser Werewolf)_
+- × 1: `if target creature has toughness 5 or greater, it gets +4/-4 until end of turn. `  _(e.g. Blood Lust)_
+- × 1: `as long as this creature is monstrous, it has flying`  _(e.g. Chillerpillar)_
+- × 1: `this creature doesn't have a +1/+1 counter on it`  _(e.g. Shatterskull Charger)_
+- × 1: `the top card of your library is a nonland card`  _(e.g. Water Weird)_
+- × 1: `as long as you've put one or more +1/+1 counters on a creature this turn, sigard`  _(e.g. A-Sigardian Paladin)_
+- × 1: `the spell's mana value is less than or equal to the amount of life you gained th`  _(e.g. Bre of Clan Stoutarm)_
+- × 1: `you drew two or more cards this turn`  _(e.g. Archmage Ascension)_
+- × 1: `you didn't play a land this turn`  _(e.g. Mercadian Atlas)_
+- × 1: `its power was different from its base power`  _(e.g. Jason Bright, Glowing Prophet)_
 
 ## Bucketed condition Kinds (sanity)
 
+- `if` × 598
 - `paid_optional_cost` × 561
-- `if` × 513
-- `conditional` × 236
+- `conditional` × 335
 - `for_each` × 193
 - `did_prior_action` × 137
 - `etb_tapped_unless` × 97
@@ -106,7 +102,58 @@
 - `morbid` × 9
 - `you_control` × 9
 
-## Top trigger events
+## Top unbucketed trigger events
+
+- `investigate` × 1
+- `opp_tokens_event` × 1
+- `desert_etb` × 1
+- `condition_fails` × 1
+- `self_and_or_others_event` × 1
+- `tap_for_c` × 1
+- `sac_nontoken_elemental` × 1
+- `next_end_step` × 1
+- `self_becomes_tapped` × 1
+- `self_becomes_untapped` × 1
+- `state_check` × 1
+- `damage_to_x_prevented` × 1
+- `place_counter` × 1
+- `transform_into_phyrexian` × 1
+- `all_trigger` × 1
+- `each_player_upkeep` × 1
+- `any_card_to_gy_anywhere` × 1
+- `leave_gy_single` × 1
+- `self_or_enchantment_etb_or_room_unlock` × 1
+- `you_put_counter_on_any` × 1
+- `opp_commits_crime` × 1
+- `named_creature_etb` × 1
+- `colored_damage_prevented` × 1
+- `three_or_more` × 1
+- `opponent_pays_tax` × 1
+- `surveil_first_time` × 1
+- `landfall` × 1
+- `elf_etb` × 1
+- `exiled_event` × 1
+- `self_dealt_damage` × 1
+- `becomes_target_by_opp` × 1
+- `counter_threshold_reached` × 1
+- `damage_to_chosen_player` × 1
+- `graveyard_empty` × 1
+- `any_block` × 1
+- `self_or_typed_event` × 1
+- `on_card_advantage` × 1
+- `phaseout_or_exile` × 1
+- `damage_prevented` × 1
+- `you_put_counter_on` × 1
+- `typed_combat_dmg` × 1
+- `enchanted_end_step` × 1
+- `play_land` × 1
+- `search_library` × 1
+- `transform_as` × 1
+- `compound_tribe_enter` × 1
+- `card_to_gy_anywhere_once` × 1
+- `this_turn_whenever` × 1
+
+## Top trigger events (bucketed + unbucketed)
 
 - `etb` × 3252
 - `phase` × 1628
