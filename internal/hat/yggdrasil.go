@@ -7926,6 +7926,139 @@ func (h *YggdrasilHat) hasGraveyardRecursionValue(c *gameengine.Card) bool {
 		strings.Contains(ot, "dredge")
 }
 
+// ZoneCastCandidate is one ranked option for the cast-from-graveyard /
+// cast-from-exile pipeline. Returned by RankZoneCastCandidates in
+// score-descending order so the cast pipeline can take the head as
+// the recommended pick.
+//
+// The current tournament turn loop only scans seat.Hand for castable
+// spells — it does NOT consult gs.ZoneCastGrants — so flashback /
+// escape / Iroh / Mizzix-shaped grants surfaced by per-card handlers
+// are never offered to the hat as a cast choice. This helper is the
+// prioritization machinery that becomes load-bearing once the turn
+// loop is extended to enumerate zone-cast options (tracked as a
+// follow-up in the commit body). Tests pin the ranking contract
+// today so the integration only needs to wire the call-through.
+type ZoneCastCandidate struct {
+	Card       *gameengine.Card
+	Permission *gameengine.ZoneCastPermission
+	Score      float64
+	// Reason carries a short string explaining the top scoring
+	// signals — for the decision-replay surface and tests.
+	Reason string
+}
+
+// RankZoneCastCandidates enumerates every (card, ZoneCastPermission)
+// pair on the seat's side that's affordable RIGHT NOW (mana + life
+// + colored-pip gates) and returns them sorted high-score-first.
+//
+// Prioritization signals (additive):
+//
+//   - Free casts (ManaCost == 0): Iroh's flashback grant, Past in
+//     Flames, Yawgmoth's Will, Underworld Breach escape-without-cost
+//     paths. +3.0 — pure value with no mana opportunity cost.
+//   - Combo-relevant card: +2.5 (decides games — Past-in-Flames
+//     re-buying a Demonic Tutor, flashback Tendrils chains).
+//   - Value-engine key: +1.5.
+//   - Tutor pattern in oracle ("search your library"): +1.5.
+//   - Mass-effect ("destroy all" / "exile all" / "win the game"):
+//     +2.0 — cast-from-yard board wipes are routinely game-defining.
+//   - High-CMC original (CMC ≥ 5): +1.0 per CMC bucket above 5,
+//     capped at +2.5. Bigger spells underneath the grant mean more
+//     value extracted.
+//   - Once-per-turn-per-source already consumed this turn: SKIP
+//     (engine-side gate blocks the cast anyway, but the helper
+//     should not surface the candidate at all — it'd waste a
+//     ChooseCastFromHand window).
+func (h *YggdrasilHat) RankZoneCastCandidates(gs *gameengine.GameState, seatIdx int) []ZoneCastCandidate {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) ||
+		gs.ZoneCastGrants == nil || len(gs.ZoneCastGrants) == 0 {
+		return nil
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return nil
+	}
+	// Build a permission-list per card so CanCastFromZone can apply
+	// the engine's affordability + once-per-turn checks uniformly.
+	out := make([]ZoneCastCandidate, 0, len(gs.ZoneCastGrants))
+	for card, perm := range gs.ZoneCastGrants {
+		if card == nil || perm == nil {
+			continue
+		}
+		if perm.RequireController >= 0 && perm.RequireController != seatIdx {
+			continue
+		}
+		// Engine-side affordability + once-per-turn gate.
+		approved := gameengine.CanCastFromZone(gs, seatIdx, card, perm.Zone,
+			[]*gameengine.ZoneCastPermission{perm})
+		if approved == nil {
+			continue
+		}
+		score, reason := h.scoreZoneCastCandidate(gs, seatIdx, card, perm)
+		out = append(out, ZoneCastCandidate{
+			Card:       card,
+			Permission: perm,
+			Score:      score,
+			Reason:     reason,
+		})
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		if out[i].Score != out[j].Score {
+			return out[i].Score > out[j].Score
+		}
+		// Stable tie-break on card name so tests are deterministic.
+		return out[i].Card.DisplayName() < out[j].Card.DisplayName()
+	})
+	return out
+}
+
+// scoreZoneCastCandidate returns (score, reason) for a single
+// zone-cast option. Pure function so the per-signal contribution is
+// testable without spinning up the full Rank flow.
+func (h *YggdrasilHat) scoreZoneCastCandidate(gs *gameengine.GameState, seatIdx int, card *gameengine.Card, perm *gameengine.ZoneCastPermission) (float64, string) {
+	score := 0.0
+	reasons := make([]string, 0, 4)
+	// Base: every candidate starts above zero so an unranked
+	// affordable cast still surfaces.
+	score = 1.0
+	if perm.ManaCost == 0 {
+		score += 3.0
+		reasons = append(reasons, "free")
+	}
+	if h.isComboRelevant(card) {
+		score += 2.5
+		reasons = append(reasons, "combo")
+	}
+	if h.isValueEngineKey(card) {
+		score += 1.5
+		reasons = append(reasons, "value_engine")
+	}
+	ot := gameengine.OracleTextLower(card)
+	if strings.Contains(ot, "search your library") {
+		score += 1.5
+		reasons = append(reasons, "tutor")
+	}
+	if strings.Contains(ot, "destroy all") ||
+		strings.Contains(ot, "exile all") ||
+		strings.Contains(ot, "win the game") {
+		score += 2.0
+		reasons = append(reasons, "mass_effect")
+	}
+	if cmc := gameengine.ManaCostOf(card); cmc >= 5 {
+		bump := float64(cmc-4) * 0.5
+		if bump > 2.5 {
+			bump = 2.5
+		}
+		score += bump
+		reasons = append(reasons, "big_spell")
+	}
+	if len(reasons) == 0 {
+		reasons = append(reasons, "baseline")
+	}
+	return score, strings.Join(reasons, ",")
+}
+
 // hasActiveGraveyardCastGrant returns true if the seat has at least one
 // ZoneCastGrant whose Zone is "graveyard" — i.e. some permanent (Underworld
 // Breach, Yawgmoth's Will-style, Past in Flames residual) currently lets
