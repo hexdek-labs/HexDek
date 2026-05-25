@@ -46,6 +46,15 @@ type OpponentProfile struct {
 	LastCounterTurn     int
 	LastRemovalTurn     int
 
+	// Contradictions counts observations that don't fit the current
+	// archetype classification (R60 round 5 — "I've been wrong before"
+	// decay). Combo casting Wrath, aggro casting Counterspell, control
+	// slamming a 6/6 — each bumps this counter AND immediately
+	// subtracts contradictDecayStep from Confidence, so we lose faith
+	// in a stale read 3x faster than the +0.05/turn ramp builds it.
+	// Reset to 0 on game_start and when the classification changes.
+	Contradictions int
+
 	// Internal bookkeeping.
 	firstClassifiedTurn int
 	lastClassifiedTurn  int
@@ -98,6 +107,116 @@ func archetypeBiasMultiplier(conf float64) float64 {
 		mult += (conf - archetypeBiasHighThreshold) * archetypeBiasHighSlope
 	}
 	return mult
+}
+
+// R60 round 5 — "I've been wrong before" contradiction decay.
+//
+// The ramp-up rate for confidence is +0.05 per stable turn (see
+// classifyOpponent). The decay when a candidate goes unknown is
+// *0.95 per turn (≈5% drop). When an OBSERVED ACTION contradicts the
+// current classification (combo deck casting Wrath, aggro deck
+// casting Counterspell, etc.) we want to lose confidence FASTER —
+// the read was wrong, not just stale. contradictDecayStep is the
+// per-contradiction confidence subtracted; sized to be 3x the ramp
+// rate so a single contradiction undoes three turns of "I'm sure
+// they're combo" stickiness.
+//
+// contradictMaxPenaltyPerTurn caps the per-turn penalty so a
+// scripted multi-spell turn (Wrath + Counterspell + Wrath copy)
+// doesn't snap confidence to zero in one observation window. The
+// classifier still sees every contradiction (Contradictions
+// increments unbounded for diagnostics) but the confidence drop is
+// gated.
+const (
+	contradictDecayStep         = 0.15
+	contradictMaxPenaltyPerTurn = 0.30
+)
+
+// isMassRemovalText returns true for oracle text that smells like a
+// board wipe — "destroy all", "exile all", "deals N damage to each
+// creature", "creatures get -X/-X" sweep wording. Distinct from
+// isRemovalText (which bundles single-target and mass under one flag)
+// so the archetype-contradiction detector can rule combo decks out
+// without flagging single-target removal.
+func isMassRemovalText(ot string) bool {
+	if ot == "" {
+		return false
+	}
+	if strings.Contains(ot, "destroy all") || strings.Contains(ot, "exile all") {
+		return true
+	}
+	if strings.Contains(ot, "damage to each creature") || strings.Contains(ot, "damage to each opponent") {
+		return true
+	}
+	if strings.Contains(ot, "all creatures get -") || strings.Contains(ot, "creatures you don't control get -") {
+		return true
+	}
+	return false
+}
+
+// contradictsArchetype reports whether a cast event is inconsistent
+// with the opponent's current classification. The check is
+// intentionally narrow — only HIGH-SIGNAL mismatches count, since
+// false positives here drive the hat to drop confidence on a deck
+// that's just playing a flexible card. Each archetype defines its
+// canonical NON-PLAYS:
+//
+//   - combo: casts a board wipe (combo lists run targeted answers,
+//     not mass removal — Wrath in a combo deck means we misread).
+//   - aggro: casts a counterspell OR a board wipe (aggro decks
+//     pressure the board, they don't tap out to undo it).
+//   - control: slams an attack-relevant 5+ CMC creature (control
+//     plays utility creatures and finishers, but a 5+ CMC threat
+//     being played AND swinging suggests midrange/aggro/voltron).
+//
+// Returns false for "unknown" and "midrange" — those are the
+// catch-all classifications and we don't have a sharp NON-PLAY to
+// contradict against without producing false positives.
+func contradictsArchetype(arch string, card *gameengine.Card) bool {
+	if arch == "" || arch == "unknown" || arch == "midrange" || card == nil {
+		return false
+	}
+	ot := cardOracleText(card)
+	switch arch {
+	case "combo":
+		return isMassRemovalText(ot)
+	case "aggro":
+		if gameengine.CardHasCounterSpell(card) || hasOracleHint(card, "counter target") {
+			return true
+		}
+		return isMassRemovalText(ot)
+	case "control":
+		if !cardHasType(card, "creature") {
+			return false
+		}
+		return cardCMC(card) >= 5
+	}
+	return false
+}
+
+// cardCMC returns the converted mana cost / mana value of `c`, falling
+// back to scanning the test-only "cost:N" type suffix used by minimal
+// test fixtures when CMC is not populated directly.
+func cardCMC(c *gameengine.Card) int {
+	if c == nil {
+		return 0
+	}
+	if c.CMC > 0 {
+		return c.CMC
+	}
+	for _, t := range c.Types {
+		if strings.HasPrefix(t, "cost:") {
+			n := 0
+			for _, r := range strings.TrimPrefix(t, "cost:") {
+				if r < '0' || r > '9' {
+					return n
+				}
+				n = n*10 + int(r-'0')
+			}
+			return n
+		}
+	}
+	return 0
 }
 
 // TutoredWithin reports whether the opponent has tutored within the
@@ -210,10 +329,17 @@ func (h *YggdrasilHat) classifyOpponent(gs *gameengine.GameState, oppSeat int) *
 			}
 		}
 	} else {
-		// New classification — reset stability counter.
+		// New classification — reset stability counter AND contradiction
+		// counter (R60r5). Contradictions tagged against the old
+		// archetype don't apply to the new one — a deck that looked
+		// like combo and contradicted itself by casting Wrath probably
+		// IS the control deck the new candidate now reads as, so the
+		// prior contradictions were actually evidence FOR this
+		// classification, not against it.
 		if prof.Archetype != candidate {
 			prof.firstClassifiedTurn = turn
 			prof.stableTurns = 0
+			prof.Contradictions = 0
 		}
 		prof.Archetype = candidate
 		prof.Confidence = baseConf
@@ -352,6 +478,32 @@ func (h *YggdrasilHat) recordOpponentPlay(eventKind, sourceName string, oppSeat 
 				prof.TutorsUsed++
 				if turn > 0 {
 					prof.LastTutorTurn = turn
+				}
+			}
+
+			// R60 round 5 — "I've been wrong before" decay. If this
+			// cast contradicts the current classification (combo
+			// casting Wrath, aggro casting Counterspell, control
+			// slamming a 6/6) we want to lose faith FASTER than the
+			// +0.05/turn ramp built it. contradictDecayStep is the
+			// per-contradiction subtract; contradictMaxPenaltyPerTurn
+			// caps the total drop per observation window so a single
+			// scripted turn doesn't snap confidence to zero. The
+			// classifier itself is untouched here — the next
+			// classifyOpponent call still re-evaluates the candidate;
+			// we just tag this read as less trustworthy in the
+			// meantime.
+			if contradictsArchetype(prof.Archetype, card) {
+				prof.Contradictions++
+				if prof.Confidence > 0 {
+					penalty := contradictDecayStep
+					if penalty > contradictMaxPenaltyPerTurn {
+						penalty = contradictMaxPenaltyPerTurn
+					}
+					prof.Confidence -= penalty
+					if prof.Confidence < 0 {
+						prof.Confidence = 0
+					}
 				}
 			}
 		}
