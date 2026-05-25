@@ -8,6 +8,14 @@ import { useLiveSocket } from '../hooks/useLiveSocket'
 import { useUploadDeck } from '../hooks/useUploadDeck'
 import { MOCK_DECKS } from '../services/mock'
 import ContextBox from '../components/ContextBox'
+import {
+  ARCHETYPE_CHIPS,
+  BRACKET_CHIPS,
+  COLOR_CHIPS,
+  matchesArchetypeChip,
+  matchesBracketChip,
+  matchesColorChip,
+} from './deckFilters'
 
 const VIEW_KEY = 'hexdek_deck_view'
 const SORT_KEY = 'hexdek_deck_sort'
@@ -44,20 +52,6 @@ function compareDecks(a, b, key, dir, eloByDeckId) {
   }
 }
 
-const ARCHETYPE_CHIPS = [
-  { id: 'all', label: 'ALL', match: () => true },
-  { id: 'aggro', label: 'AGGRO', match: (a) => a.includes('aggro') },
-  { id: 'combo', label: 'COMBO', match: (a) => a.includes('combo') || a.includes('storm') },
-  { id: 'control', label: 'CONTROL', match: (a) => a.includes('control') },
-  { id: 'tokens', label: 'TOKENS', match: (a) => a.includes('token') || a.includes('go wide') || a.includes('aristocrat') },
-  { id: 'voltron', label: 'VOLTRON', match: (a) => a.includes('voltron') },
-  { id: 'midrange', label: 'MIDRANGE', match: (a) => a.includes('midrange') },
-  { id: 'lands', label: 'LANDS', match: (a) => a.includes('lands') },
-  { id: 'tribal', label: 'TRIBAL', match: (a) => a.includes('tribal') },
-  { id: 'stax', label: 'STAX', match: (a) => a.includes('stax') },
-  { id: 'turns', label: 'TURNS', match: (a) => a.includes('turns') },
-]
-
 export default function DeckList() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [decks, setDecks] = useState([])
@@ -73,6 +67,8 @@ export default function DeckList() {
   )
   const [legalFilter, setLegalFilter] = useState('all')
   const [archetypeFilter, setArchetypeFilter] = useState(searchParams.get('archetype') || 'all')
+  const [bracketFilter, setBracketFilter] = useState(searchParams.get('bracket') || 'all')
+  const [colorFilter, setColorFilter] = useState(searchParams.get('color') || 'all')
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState(() => {
     if (typeof localStorage === 'undefined') return 'shelf'
@@ -137,14 +133,12 @@ export default function DeckList() {
 
   const baseDecks = (tab === 'mine' && user) ? myDecks : decks
   const hasLegalityData = decks.some(d => d.legal != null)
-  const activeChip = ARCHETYPE_CHIPS.find(c => c.id === archetypeFilter) || ARCHETYPE_CHIPS[0]
   const matched = baseDecks.filter(d => {
     if (legalFilter === 'legal' && d.legal === false) return false
     if (legalFilter === 'illegal' && d.legal !== false) return false
-    if (archetypeFilter !== 'all') {
-      const a = (d.archetype || d.analysis?.archetype || '').toLowerCase()
-      if (!a || !activeChip.match(a)) return false
-    }
+    if (!matchesArchetypeChip(d, archetypeFilter)) return false
+    if (!matchesBracketChip(d, bracketFilter)) return false
+    if (!matchesColorChip(d, colorFilter)) return false
     if (!filter) return true
     const q = filter.toLowerCase()
     const haystack = `${d.name} ${d.commander_card || ''} ${d.commander || ''} ${d.owner || ''}`.toLowerCase()
@@ -231,33 +225,41 @@ export default function DeckList() {
           <Tag solid={viewMode === 'list'} onClick={() => setViewMode('list')} style={{ cursor: 'pointer' }}>LIST</Tag>
         </div>
 
-        {/* Archetype chips */}
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 6,
-            overflowX: 'auto',
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
-          {ARCHETYPE_CHIPS.map(chip => (
-            <Tag
-              key={chip.id}
-              solid={archetypeFilter === chip.id}
-              onClick={() => {
-                setArchetypeFilter(chip.id)
-                const next = new URLSearchParams(searchParams)
-                if (chip.id === 'all') next.delete('archetype')
-                else next.set('archetype', chip.id)
-                setSearchParams(next, { replace: true })
-              }}
-              style={{ cursor: 'pointer', flexShrink: 0 }}
-            >
-              {chip.label}
-            </Tag>
-          ))}
-        </div>
+        {/* Filter chip rows: bracket / color / archetype. Each chip mutates
+            the matching URL param so deep-links carry the active filter. */}
+        <ChipRow
+          aria-label="Bracket filter"
+          dataTestId="bracket-chips"
+          legend="BRACKET"
+          chips={BRACKET_CHIPS}
+          active={bracketFilter}
+          paramKey="bracket"
+          onSelect={setBracketFilter}
+          searchParams={searchParams}
+          setSearchParams={setSearchParams}
+        />
+        <ChipRow
+          aria-label="Color filter"
+          dataTestId="color-chips"
+          legend="COLOR"
+          chips={COLOR_CHIPS}
+          active={colorFilter}
+          paramKey="color"
+          onSelect={setColorFilter}
+          searchParams={searchParams}
+          setSearchParams={setSearchParams}
+        />
+        <ChipRow
+          aria-label="Archetype filter"
+          dataTestId="archetype-chips"
+          legend="ARCHETYPE"
+          chips={ARCHETYPE_CHIPS}
+          active={archetypeFilter}
+          paramKey="archetype"
+          onSelect={setArchetypeFilter}
+          searchParams={searchParams}
+          setSearchParams={setSearchParams}
+        />
 
         {/* Deck grid */}
         {loading ? (
@@ -277,6 +279,49 @@ export default function DeckList() {
 
       {upload.modal}
     </>
+  )
+}
+
+function ChipRow({ legend, chips, active, paramKey, onSelect, searchParams, setSearchParams, dataTestId, ...rest }) {
+  return (
+    <div
+      role="group"
+      data-testid={dataTestId}
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 6,
+        alignItems: 'center',
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch',
+      }}
+      {...rest}
+    >
+      <span
+        className="t-xs muted"
+        style={{ minWidth: 76, fontWeight: 700, letterSpacing: '0.08em' }}
+      >
+        {legend}
+      </span>
+      {chips.map(chip => (
+        <Tag
+          key={chip.id}
+          solid={active === chip.id}
+          onClick={() => {
+            onSelect(chip.id)
+            const next = new URLSearchParams(searchParams)
+            if (chip.id === 'all') next.delete(paramKey)
+            else next.set(paramKey, chip.id)
+            setSearchParams(next, { replace: true })
+          }}
+          style={{ cursor: 'pointer', flexShrink: 0 }}
+          data-chip-id={chip.id}
+          data-chip-group={paramKey}
+        >
+          {chip.label}
+        </Tag>
+      ))}
+    </div>
   )
 }
 
