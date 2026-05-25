@@ -1591,20 +1591,35 @@ func (h *YggdrasilHat) bestTarget(gs *gameengine.GameState, seatIdx int, attacke
 			score -= threat.InteractionProb * 0.5
 		}
 
-		// 12b. Opponent-archetype targeting bias — small bumps tied to
-		// the rolling OpponentProfile classifier. Combo seats get
-		// pressured (disrupt their setup); control seats get a small
-		// avoidance penalty (they have removal aimed at attackers).
-		// Aggro seats default to neutral here because the existing
-		// momentum / kingmaker scoring already covers them. Bias is
-		// proportional to confidence so an early-game guess doesn't
-		// override the politics math.
-		if prof := h.classifyOpponent(gs, def); prof != nil && prof.Confidence > 0.4 {
-			switch prof.Archetype {
-			case "combo":
-				score += prof.Confidence * 1.5
-			case "control":
-				score -= prof.Confidence * 0.6
+		// 12b. Opponent-archetype targeting bias — bumps tied to the
+		// rolling OpponentProfile classifier. R60r5 — bias is now
+		// scaled by archetypeBiasMultiplier so high-confidence reads
+		// (tutored 3 turns in a row → 0.90+) commit harder than
+		// moderate-confidence reads, instead of the prior linear
+		// pass-through that treated 0.45 and 0.90 as scaling-equivalent.
+		//
+		// Combo seats get pressured (disrupt their setup); control
+		// seats get a small avoidance penalty (they have removal aimed
+		// at attackers); aggro seats get pressured too at high
+		// confidence (race the racer — closing their clock first beats
+		// trading with their second wave).
+		if prof := h.classifyOpponent(gs, def); prof != nil {
+			mult := archetypeBiasMultiplier(prof.Confidence)
+			if mult > 0 {
+				switch prof.Archetype {
+				case "combo":
+					score += mult * 1.5
+				case "control":
+					score -= mult * 0.6
+				case "aggro":
+					// Only commits at high confidence (mult > 0.75) —
+					// at moderate confidence the existing momentum /
+					// kingmaker scoring is doing the work and we
+					// shouldn't double-count.
+					if mult > 0.75 {
+						score += (mult - 0.75) * 1.0
+					}
+				}
 			}
 		}
 
@@ -6471,21 +6486,27 @@ func (h *YggdrasilHat) ChooseTarget(gs *gameengine.GameState, seatIdx int, filte
 				// removal (anything granting +1/+1 or "creatures you
 				// control") over picking off lone creatures, since
 				// the lord lifts their entire board.
-				if prof := h.classifyOpponent(gs, p.Controller); prof != nil && prof.Confidence > 0.5 {
-					switch prof.Archetype {
-					case "combo":
-						if h.comboPieceSet[cardName] {
-							sc += 1.5 * prof.Confidence
-						}
-						if typeLineContains(p.Card, "artifact") || typeLineContains(p.Card, "enchantment") {
-							sc += 0.6 * prof.Confidence
-						}
-					case "aggro":
-						lowOT := gameengine.OracleTextLower(p.Card)
-						if strings.Contains(lowOT, "creatures you control") ||
-							strings.Contains(lowOT, "other creatures get +") ||
-							strings.Contains(lowOT, "+1/+1") {
-							sc += 1.5 * prof.Confidence
+				if prof := h.classifyOpponent(gs, p.Controller); prof != nil {
+					// R60r5 — same confidence-curve multiplier used by
+					// attack targeting. High-confidence reads commit
+					// harder; low-confidence (< 0.4) skip entirely.
+					mult := archetypeBiasMultiplier(prof.Confidence)
+					if mult > 0 {
+						switch prof.Archetype {
+						case "combo":
+							if h.comboPieceSet[cardName] {
+								sc += 1.5 * mult
+							}
+							if typeLineContains(p.Card, "artifact") || typeLineContains(p.Card, "enchantment") {
+								sc += 0.6 * mult
+							}
+						case "aggro":
+							lowOT := gameengine.OracleTextLower(p.Card)
+							if strings.Contains(lowOT, "creatures you control") ||
+								strings.Contains(lowOT, "other creatures get +") ||
+								strings.Contains(lowOT, "+1/+1") {
+								sc += 1.5 * mult
+							}
 						}
 					}
 				}

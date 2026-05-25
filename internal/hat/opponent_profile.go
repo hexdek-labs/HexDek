@@ -52,6 +52,54 @@ type OpponentProfile struct {
 	stableTurns         int // consecutive turns the archetype has held
 }
 
+// R60 round 5 — archetype-bias confidence curve.
+//
+// archetypeBiasMinConfidence is the floor below which an OpponentProfile
+// classification is too uncertain to act on. Returns 0 multiplier — the
+// decision falls back to non-archetype signals.
+//
+// archetypeBiasHighThreshold marks where confidence transitions from
+// "soft signal" to "we KNOW this archetype." Above this threshold the
+// multiplier curves up super-linearly so a 0.90 stable classification
+// has noticeably more pull on decisions than a 0.75 borderline call.
+//
+// archetypeBiasHighSlope is the post-threshold gradient. With
+// MinConfidence=0.4, HighThreshold=0.75, HighSlope=2.0:
+//   conf 0.40 → mult 0.40  (baseline)
+//   conf 0.60 → mult 0.60
+//   conf 0.75 → mult 0.75  (no boost yet)
+//   conf 0.90 → mult 1.20  (+60% over linear)
+//   conf 0.95 → mult 1.35  (+42% over linear at the cap)
+//
+// Tuned so the pre-R60r5 linear pass-through at moderate confidence
+// is preserved (no behavior change for 0.4-0.75 cases) but a hat
+// that has watched an opponent tutor three turns in a row commits
+// noticeably harder to pressuring their setup.
+const (
+	archetypeBiasMinConfidence  = 0.4
+	archetypeBiasHighThreshold  = 0.75
+	archetypeBiasHighSlope      = 2.0
+)
+
+// archetypeBiasMultiplier returns the [0, ~1.4] confidence-derived
+// multiplier the hat applies to opponent-archetype-driven decision
+// biases. Below archetypeBiasMinConfidence the multiplier is 0 (no
+// archetype-driven adjustment). Linear through archetypeBiasHighThreshold
+// (so prior behavior at moderate confidence is preserved bit-for-bit).
+// Super-linear above the threshold so a high-confidence read commits
+// the hat harder than a borderline guess. Caps via the natural ceiling
+// from Confidence being capped at 0.95 in classifyOpponent.
+func archetypeBiasMultiplier(conf float64) float64 {
+	if conf < archetypeBiasMinConfidence {
+		return 0
+	}
+	mult := conf
+	if conf > archetypeBiasHighThreshold {
+		mult += (conf - archetypeBiasHighThreshold) * archetypeBiasHighSlope
+	}
+	return mult
+}
+
 // TutoredWithin reports whether the opponent has tutored within the
 // last `n` turns of `turn`. Returns false when no tutor has ever been
 // observed (LastTutorTurn == 0).
