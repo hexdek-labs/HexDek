@@ -43,7 +43,12 @@ const (
 	snapshotEnvDir     = "HEXDEK_MOXFIELD_SNAPSHOT_DIR"
 	snapshotEnvDisable = "HEXDEK_MOXFIELD_SNAPSHOTS"
 	snapshotHashLen    = 12 // 6 bytes hex; collision risk ~1 in 2^48 for one deck
-	snapshotTimeLayout = "20060102T150405Z"
+	// Millisecond precision is load-bearing: two snapshots of the
+	// same deck (e.g. user re-imports immediately to compare versions,
+	// or FindStale's per-record fetch loop) can otherwise land within
+	// the same wall-second, collapsing their filename timestamps and
+	// breaking the newest-first ListSnapshots ordering.
+	snapshotTimeLayout = "20060102T150405.000Z"
 )
 
 // Snapshot describes a single point-in-time capture of a deck's raw

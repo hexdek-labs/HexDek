@@ -94,14 +94,15 @@ func newCLITestEnv(t *testing.T, body string) (counter *int32, cleanup func()) {
 	}))
 	restore := moxfield.SetAPIBaseForTest(srv.URL)
 
-	// Isolate the Moxfield disk cache + snapshot dir so this test doesn't
-	// reuse the user's real ~/.cache / ~/.local/share entries or step
-	// on parallel tests.
+	// Isolate the Moxfield disk cache + snapshot dir + import registry
+	// so this test doesn't reuse the user's real ~/.cache /
+	// ~/.local/share entries or step on parallel tests.
 	tmp := t.TempDir()
 	t.Setenv("HEXDEK_MOXFIELD_CACHE_DIR", tmp)
 	t.Setenv("HEXDEK_MOXFIELD_CACHE", "")
 	t.Setenv("HEXDEK_MOXFIELD_CACHE_TTL", "")
 	t.Setenv("HEXDEK_MOXFIELD_SNAPSHOT_DIR", tmp+"/snapshots")
+	t.Setenv("HEXDEK_MOXFIELD_IMPORTS_PATH", tmp+"/imports.json")
 	t.Setenv("HEXDEK_IMPORT_SKIP_FREYA", "1")
 	// runImportMoxfield uses a fresh deck ID, so in-process dedupe is
 	// irrelevant; the Refresh call here is defensive against tests that
@@ -214,6 +215,7 @@ func TestCLI_APIError_ReturnsError(t *testing.T) {
 	t.Setenv("HEXDEK_MOXFIELD_CACHE_DIR", tmp)
 	t.Setenv("HEXDEK_MOXFIELD_CACHE", "")
 	t.Setenv("HEXDEK_MOXFIELD_SNAPSHOT_DIR", tmp+"/snapshots")
+	t.Setenv("HEXDEK_MOXFIELD_IMPORTS_PATH", tmp+"/imports.json")
 	t.Setenv("HEXDEK_IMPORT_SKIP_FREYA", "1")
 	moxfield.Refresh("err01")
 

@@ -44,7 +44,18 @@ func main() {
 	owner := flag.String("owner", "imported", "owner/group folder name for the deck (saves to data/decks/<owner>/)")
 	refresh := flag.Bool("refresh", false, "invalidate the cached Moxfield deck JSON before fetching (default: serve from ~/.cache/hexdek/moxfield if fresher than HEXDEK_MOXFIELD_CACHE_TTL)")
 	validateFormat := flag.Bool("validate-format", false, "after import, check each card against the deck's declared format (commander/brawl/modern/...) via Scryfall and print any banned/not-legal violations as warnings (non-fatal)")
+	listImports := flag.Bool("list-imports", false, "dump the import-tracking registry (every Moxfield deck this user has imported through hexdek-import); doesn't trigger any HTTP")
+	checkStale := flag.Bool("check-stale", false, "for each deck in the import registry, re-fetch from Moxfield and report which ones have changed upstream since last import (useful for delta re-imports)")
 	flag.Parse()
+
+	if *listImports {
+		runListImports()
+		return
+	}
+	if *checkStale {
+		runCheckStale()
+		return
+	}
 
 	if *validateFormat {
 		// Env-gated so runImportMoxfield (testable core) can pick it up
@@ -67,6 +78,8 @@ func main() {
 		fmt.Println("  --output DIR      Output directory (overrides --owner)")
 		fmt.Println("  --refresh         Invalidate the Moxfield deck cache before fetching")
 		fmt.Println("  --validate-format Check each card's Scryfall legality against the deck's declared format")
+		fmt.Println("  --list-imports    Dump the import-tracking registry; no HTTP")
+		fmt.Println("  --check-stale     Compare each imported deck against upstream; flag any that have changed")
 		os.Exit(1)
 	}
 
@@ -147,10 +160,89 @@ func runImportMoxfield(url, outputDir string) (string, error) {
 	log.Printf("saved %s (%d bytes)", outPath, len(sb.String()))
 	printDeckSummary(text)
 
+	// Record the import in the per-user registry so --list-imports /
+	// --check-stale + future delta-import tooling have a truth set of
+	// "what this user has imported". Best-effort: log and continue on
+	// IO failure rather than failing the import.
+	recordImportRegistry(deckID, url, deckName, outPath)
+
 	if os.Getenv("HEXDEK_IMPORT_VALIDATE_FORMAT") != "" {
 		runFormatValidation(deckID)
 	}
 	return outPath, nil
+}
+
+// recordImportRegistry upserts an entry in the moxfield import
+// registry, pulling the most-recent snapshot's hash + path (set by
+// the fetchDeckRaw snapshot wiring) so --check-stale has a baseline
+// to compare against later. Snapshot lookup is best-effort: if
+// snapshots are disabled the registry entry still lands, just
+// without a hash baseline (FindStale skips no-baseline entries).
+func recordImportRegistry(deckID, url, deckName, outputPath string) {
+	rec := moxfield.ImportRecord{
+		DeckID:     deckID,
+		URL:        url,
+		DeckName:   deckName,
+		OutputPath: outputPath,
+	}
+	if snaps, err := moxfield.ListSnapshots(deckID); err == nil && len(snaps) > 0 {
+		rec.LastSnapshotHash = snaps[0].Hash
+		rec.LastSnapshotPath = snaps[0].Path
+	}
+	if err := moxfield.RecordImport(rec); err != nil {
+		log.Printf("  [imports] could not record in registry: %v", err)
+	}
+}
+
+// runListImports prints the import registry to stdout in a stable
+// human-readable form. Doesn't trigger any HTTP. Exits with status 0
+// even when the registry is empty.
+func runListImports() {
+	records, err := moxfield.ListImports()
+	if err != nil {
+		log.Fatalf("list-imports: %v", err)
+	}
+	if len(records) == 0 {
+		fmt.Println("(import registry is empty — no decks recorded)")
+		return
+	}
+	fmt.Printf("# Moxfield import registry: %d deck(s)\n", len(records))
+	for _, r := range records {
+		fmt.Printf("\n%s\n", r.DeckName)
+		fmt.Printf("  deck_id:        %s\n", r.DeckID)
+		fmt.Printf("  url:            %s\n", r.URL)
+		fmt.Printf("  output:         %s\n", r.OutputPath)
+		fmt.Printf("  first_imported: %s\n", r.FirstImportedAt.Format(time.RFC3339))
+		fmt.Printf("  last_imported:  %s\n", r.LastImportedAt.Format(time.RFC3339))
+		fmt.Printf("  import_count:   %d\n", r.ImportCount)
+		if r.LastSnapshotHash != "" {
+			fmt.Printf("  snapshot_hash:  %s\n", r.LastSnapshotHash)
+		}
+	}
+}
+
+// runCheckStale re-fetches each registered deck and reports those
+// whose upstream content has changed since the recorded snapshot.
+// Hits the Moxfield API for every registered deck — expensive; the
+// user opted in by setting --check-stale.
+func runCheckStale() {
+	stale, err := moxfield.FindStale(context.Background(), 0)
+	if err != nil {
+		log.Fatalf("check-stale: %v", err)
+	}
+	if len(stale) == 0 {
+		fmt.Println("(no stale decks — every imported deck matches its upstream Moxfield content)")
+		return
+	}
+	fmt.Printf("# %d deck(s) have changed upstream since last import:\n\n", len(stale))
+	for _, r := range stale {
+		fmt.Printf("- %s\n", r.DeckName)
+		fmt.Printf("    %s\n", r.URL)
+		fmt.Printf("    last imported: %s\n", r.LastImportedAt.Format(time.RFC3339))
+		fmt.Printf("    recorded hash: %s\n", r.LastSnapshotHash)
+		fmt.Println()
+	}
+	fmt.Println("Re-import each with `hexdek-import --refresh --moxfield <url>` to pick up the new state.")
 }
 
 // runFormatValidation hits Scryfall (via the rate-limited oracle
