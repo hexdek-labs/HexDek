@@ -5080,6 +5080,18 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 		if p.Card != nil {
 			val += attackTriggerBonus(p.Card)
 		}
+		// R60 round 10+ postcombat-trigger bonus (see
+		// postcombat_trigger_value_r60.go). Disjoint family from
+		// attackTriggerBonus: "deals combat damage to a player" (Toski,
+		// Bident bearers), "additional combat phase" (Aurelia, Scourge,
+		// Combat Celebrant), "at the end of combat" generic, and
+		// "becomes blocked" pumps. Both helpers can fire on the same
+		// attacker when the card has both an attack trigger AND a
+		// postcombat trigger (rare — e.g. Maelstrom Wanderer), which
+		// correctly compounds the value.
+		if p.Card != nil {
+			val += postcombatTriggerBonus(p.Card)
+		}
 
 		// 3rd Eye: When a wrath is suspected, hold back VE key creatures
 		// to preserve board presence post-wipe. Only applies when we're
