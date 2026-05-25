@@ -767,12 +767,38 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.1,
 	},
 	ArchetypeSuperfriends: {
+		// R60 round 5 retune — pull Planeswalkers off the generic
+		// midrange shape. PlaneswalkerProgress=2.0 was correctly the
+		// signature dimension, but two load-bearing axes still sat at
+		// midrange or below despite being core to how the deck actually
+		// wins and loses:
+		//   - CardAdvantage (ultimate_threats): walker +1s ARE draw
+		//     spells (Jace's Ingenuity, Tamiyo, Dack Fayden, Tezzeret
+		//     the Seeker, Ajani Steadfast, Garruk Wildspeaker), and
+		//     every ultimate is a game-winning card-advantage swing
+		//     (Jace TMS mills a player out, Karn Liberated restarts
+		//     the game, Liliana of the Veil empties hands, Ugin nukes
+		//     the board and you keep the walker). 1.2 (midrange-tier)
+		//     under-weighted the deck's whole "tick toward ultimate"
+		//     win line. Lifted to Control-tier (1.5).
+		//   - ThreatExposure (walker_loyalty_protection): walkers are
+		//     fragile. Any creature attack that connects shaves
+		//     loyalty; a single Hero's Downfall / Vraska's Contempt /
+		//     Bolt / commander hit can kill the walker outright; once
+		//     it dies the +1 sequence resets and the deck has no plan
+		//     B. Protecting walker loyalty (Heroic Intervention,
+		//     Teferi's Protection, The Wandering Emperor flicker, fog
+		//     effects, Doubling Season floors) is the difference
+		//     between an active ult and a dead walker. 1.0 was a
+		//     generic creature-deck rating; lifted near Voltron-tier
+		//     (1.4) since walker death is as devastating as commander
+		//     removal in Voltron.
 		BoardPresence:          0.9,
-		CardAdvantage:          1.2,
+		CardAdvantage:          1.5, // was 1.2 — +1 draws + ultimates
 		ManaAdvantage:          0.7,
 		LifeResource:           0.8,
 		ComboProximity:         0.4,
-		ThreatExposure:         1.0,
+		ThreatExposure:         1.4, // was 1.0 — protect walker loyalty
 		CommanderProgress:      0.4,
 		GraveyardValue:         0.3,
 		DrainEngine:            0.2,
