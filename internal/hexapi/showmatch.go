@@ -263,6 +263,14 @@ type Showmatch struct {
 	selfPlay    *hat.SelfPlayManager // Level 6 self-play training loop
 	strategies  map[string]*hat.StrategyProfile // deck key → Freya strategy profile
 
+	// compositionPrior is the R60 archetype-pod-conditioned TrueSkill
+	// prior (PR #403 + #408). When non-nil, updateELO applies it to
+	// the per-game rating update so ratings represent "skill modulo
+	// composition" instead of raw winrate. Validation (#411) showed
+	// +1.4pp prediction accuracy + +0.036 log-loss vs. vanilla.
+	compositionPrior    *trueskill.CompositionPrior
+	compositionPriorCfg trueskill.CompositionUpdateConfig
+
 	specMu     sync.RWMutex
 	spectators map[*spectatorConn]struct{}
 
@@ -372,6 +380,13 @@ func NewShowmatch(astPath, oraclePath, decksDir string, database *sql.DB) *Showm
 		curseDir:       "data/curse",
 		trainingDir:     "data/training",
 	}
+	// R60 composition prior — initialized empty; ObserveGame in
+	// updateELO populates it as games complete, and after the prior
+	// has enough data per (archetype, pod) cell, Confidence rises
+	// and the offsets start meaningfully shaping new rating updates.
+	// Until then the gate is no-op (Confidence=0 → offset=0).
+	sm.compositionPrior = trueskill.NewCompositionPrior(showmatchSeats)
+	sm.compositionPriorCfg = trueskill.DefaultCompositionUpdateConfig(sm.compositionPrior)
 	if database != nil {
 		if err := db.EnsureCardStatsSchema(context.Background(), database); err != nil {
 			log.Printf("showmatch: card_stats schema: %v", err)
@@ -2574,6 +2589,26 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 		sm.elo[deckKeys[winner]].wins++
 	}
 
+	// --- R60: Composition prior offsets (PR #408 wiring) ---
+	// Each deck's rating update will be performed in offset-shifted
+	// μ-space so the prior's pod-conditioned expectations correctly
+	// modulate how much "credit" a win in a favored composition
+	// receives. Confidence=0 cells produce 0 offset → no behavioral
+	// change when the prior has no data, which is true at cold-start
+	// and remains true for any (archetype, pod) cell the prior has
+	// never seen.
+	podArchetypes := make([]string, n)
+	for i, key := range deckKeys {
+		if sp := sm.strategies[key]; sp != nil {
+			podArchetypes[i] = sp.Archetype
+		}
+	}
+	offsets := make([]float64, n)
+	for i, arch := range podArchetypes {
+		offsets[i] = trueskill.ComputeCompositionOffset(
+			sm.compositionPrior, arch, podArchetypes, sm.compositionPriorCfg)
+	}
+
 	// --- TrueSkill update (primary rating) ---
 	// Pairwise decomposition: winner vs each loser independently.
 	// UpdateMultiplayer's adjacent-pair chain doesn't properly propagate
@@ -2581,12 +2616,14 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 	if winner >= 0 && winner < n {
 		winKey := deckKeys[winner]
 		wRating := trueskill.Rating{Mu: sm.elo[winKey].tsMu, Sigma: sm.elo[winKey].tsSigma}
+		wOffset := offsets[winner]
 		for i, key := range deckKeys {
 			if i == winner {
 				continue
 			}
 			lRating := trueskill.Rating{Mu: sm.elo[key].tsMu, Sigma: sm.elo[key].tsSigma}
-			wNew, lNew := trueskill.Update2Player(tsConfig, wRating, lRating)
+			wNew, lNew := trueskill.Update2PlayerWithOffsets(
+				tsConfig, wRating, lRating, wOffset, offsets[i])
 			// Accumulate winner's gains across all pairwise comparisons.
 			wRating = wNew
 			oldLR := sm.elo[key].rating
@@ -2615,6 +2652,21 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 			sm.elo[key].rating = updated[i].Conservative()
 			sm.elo[key].delta = sm.elo[key].rating - oldRating
 		}
+	}
+
+	// --- R60: Feed the composition prior with this game's outcome ---
+	// Done AFTER the TrueSkill update so the offsets the prior would
+	// compute for THIS game (which were already applied above) reflect
+	// what the prior knew BEFORE the game. Future games of the same
+	// archetype-pod composition will benefit from the new observation.
+	// Both decisive games and draws update the prior (draws via empty
+	// winnerArchetype, which credits participation only).
+	if sm.compositionPrior != nil {
+		winnerArch := ""
+		if winner >= 0 && winner < n {
+			winnerArch = podArchetypes[winner]
+		}
+		_ = sm.compositionPrior.ObserveGame(podArchetypes, winnerArch)
 	}
 
 	// --- HexELO update (bracket-aware K + gravity + floor/streak) ---

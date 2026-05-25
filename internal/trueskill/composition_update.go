@@ -56,6 +56,56 @@ func DefaultCompositionUpdateConfig(prior *CompositionPrior) CompositionUpdateCo
 	}
 }
 
+// ComputeCompositionOffset returns the μ-shift the prior would apply
+// for one deck in the given pod. Exposed so functional callers
+// (e.g. showmatch.updateELO, which uses Update2Player directly
+// rather than a TrueSkillRatings instance) can compute the offset
+// inline without re-implementing the Confidence × Weight × Scale ×
+// (ExpectedWinrate - uniform) formula.
+//
+// Returns 0 when prior is nil, weight ≤ 0, or the prior has no data
+// for this cell (confidence = 0). Safe to call on any input.
+func ComputeCompositionOffset(prior *CompositionPrior, archetype string, pod []string, cfg CompositionUpdateConfig) float64 {
+	if prior == nil || cfg.Weight <= 0 || archetype == "" {
+		return 0
+	}
+	scale := cfg.MuOffsetScale
+	if scale == 0 {
+		scale = 10.0
+	}
+	podSize := prior.podSizeOrDefault()
+	uniform := 1.0 / float64(podSize)
+	confidence := prior.Confidence(archetype, pod)
+	if confidence == 0 {
+		return 0
+	}
+	expected := prior.ExpectedWinrate(archetype, pod)
+	return cfg.Weight * confidence * scale * (expected - uniform)
+}
+
+// Update2PlayerWithOffsets is Update2Player with composition-prior
+// μ-offsets baked in. The offsets are added to each rating's μ
+// before the standard TrueSkill update, then the resulting Δμ is
+// applied back to the raw μ (NOT the shifted μ). σ updates flow
+// through unchanged — the Gaussian precision update is invariant
+// to constant μ shifts on each input.
+//
+// Callers must compute the offsets out-of-band via
+// ComputeCompositionOffset (or equivalent). When both offsets are
+// 0, this function returns the same result as Update2Player.
+func Update2PlayerWithOffsets(cfg Config, winner, loser Rating, wOffset, lOffset float64) (Rating, Rating) {
+	shiftedW := Rating{Mu: winner.Mu + wOffset, Sigma: winner.Sigma}
+	shiftedL := Rating{Mu: loser.Mu + lOffset, Sigma: loser.Sigma}
+	wNew, lNew := Update2Player(cfg, shiftedW, shiftedL)
+	return Rating{
+			Mu:    winner.Mu + (wNew.Mu - shiftedW.Mu),
+			Sigma: wNew.Sigma,
+		}, Rating{
+			Mu:    loser.Mu + (lNew.Mu - shiftedL.Mu),
+			Sigma: lNew.Sigma,
+		}
+}
+
 // UpdateWithComposition runs a TrueSkill rating update with a
 // composition-prior adjustment applied to each participant's μ before
 // the rank-prediction.
