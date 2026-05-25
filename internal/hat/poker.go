@@ -113,6 +113,12 @@ const (
 	ArchetypeSuperfriends   = "superfriends"
 	ArchetypeBlink          = "blink"
 	ArchetypeExtraCombats   = "extra combats"
+	// R60 follow-up: Group Hug is a Freya-recognized archetype that fell
+	// back to midrange weights. Signature: Howling Mine / Zedruu the
+	// Greathearted / Phelddagrif / Selvala Explorer Returned / Kynaios
+	// and Tiro — give-everyone-cards effects that turn the political
+	// game into a card-engine win condition.
+	ArchetypeGroupHug = "group hug"
 )
 
 // observation is a running tally of an OTHER seat's plays. A PokerHat

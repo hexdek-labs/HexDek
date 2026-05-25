@@ -706,6 +706,57 @@ var archetypeWeights = map[string]EvalWeights{
 		ExileZoneAssets:        0.2,
 		StaxLockProgress:       0.1,
 	},
+	ArchetypeGroupHug: {
+		// R60 follow-up. Group Hug (Phelddagrif, Zedruu, Kynaios and
+		// Tiro, Selvala Explorer Returned, Howling Mine / Temple Bell /
+		// Dictate of Kruphix style) wins through politics, raw card
+		// draw, and survival until a long-game finisher (Approach of the
+		// Second Sun, mill-yourself-out + Laboratory Maniac, Kynaios
+		// trigger payoff with mass landfall, or table-wide threat
+		// asymmetry from out-drawing everyone).
+		//
+		// Signature: CardAdvantage at the 2.0 anchor — Howling Mine /
+		// Temple Bell / Font of Mythos / Veteran Explorer mean the
+		// whole table draws cards but Group Hug benefits the most
+		// because it usually runs Rhystic Study / Smothering Tithe /
+		// Mystic Remora to TAX the giving, and Consecrated Sphinx /
+		// Nezahal scales with table-wide draw.
+		//
+		// LifeResource intentionally LOW (0.3): Group Hug doesn't care
+		// if it's hit. The table generally leaves the pillow-fort player
+		// alone because killing them ends the card-draw engine — taking
+		// damage to keep mana up for another Mind's Eye / Rhystic Study
+		// trigger is correct. Same shape as Mill's R60 follow-up.
+		//
+		// BoardPresence neutral (1.0) — Group Hug usually plays a few
+		// creature engines (Selvala, Phelddagrif, Maelstrom Wanderer-
+		// style finishers) but isn't a creature-flood deck.
+		//
+		// StackInteraction boosted (0.9) — Group Hug runs counterspells
+		// to disrupt the table's combos and survive the late game when
+		// they're inevitably the kingmaker. ToolboxBreadth (0.8) for
+		// the political-deal flexibility.
+		BoardPresence:          1.0, // neutral — engines, not floods
+		CardAdvantage:          2.0, // signature — tax the table's draws
+		ManaAdvantage:          1.0,
+		LifeResource:           0.3, // low — don't care if hit
+		ComboProximity:         0.6, // Approach of the Second Sun / Lab Maniac
+		ThreatExposure:         0.7,
+		CommanderProgress:      0.9, // Zedruu / Phelddagrif / Kynaios trigger payoffs
+		GraveyardValue:         0.3,
+		DrainEngine:            0.4,
+		ArtifactSynergy:        0.6, // Howling Mine / Mind's Eye / Temple Bell
+		EnchantmentSynergy:     0.7, // Rhystic Study / Mystic Remora / Smothering Tithe
+		OpponentGraveyardThreat: 0.4,
+		PartnerSynergy:         0.5,
+		ActivationTempo:        0.5,
+		ToolboxBreadth:         0.8, // political flexibility
+		ThreatTrajectory:       0.5,
+		StackInteraction:       0.9, // disrupt table combos, survive the late game
+		PlaneswalkerProgress:   0.5,
+		ExileZoneAssets:        0.3,
+		StaxLockProgress:       0.2,
+	},
 }
 
 // LegacyMidrangeOnly, when true, makes DefaultWeightsForArchetype return
