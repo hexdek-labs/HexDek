@@ -302,12 +302,21 @@ func CheckGameEnd(ctx context.Context, database *sql.DB, gameID string) error {
 		}
 		aliveList = append(aliveList, alive{seat: p.SeatPosition, deviceID: p.DeviceID})
 	}
+	// R60: capture turn count for the game record so seat-bias queries
+	// can filter by game length. Best-effort — if the turn row hasn't
+	// been initialized yet, fall back to 0.
+	turns := 0
+	if t, terr := GetTurnState(ctx, database, gameID); terr == nil && t != nil {
+		turns = t.TurnNumber
+	}
 	if len(aliveList) == 1 {
-		return FinishGame(ctx, database, gameID, aliveList[0].deviceID)
+		seat := aliveList[0].seat
+		return FinishGame(ctx, database, gameID, aliveList[0].deviceID, &seat, turns, "last_seat_standing")
 	}
 	if len(aliveList) == 0 {
-		// Draw — no winner
-		return FinishGame(ctx, database, gameID, "")
+		// Draw — no winner. Pass nil seat + "draw" reason so post-game
+		// queries can distinguish a draw from "still in progress."
+		return FinishGame(ctx, database, gameID, "", nil, turns, "draw")
 	}
 	return nil
 }

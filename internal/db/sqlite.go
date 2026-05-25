@@ -64,6 +64,14 @@ func applyMigrations(db *sql.DB) error {
 		// verification worker. 0 = unchecked (default), 1 = spot-check
 		// passed, -1 = spot-check failed OR quarantined by cauterize.
 		{"showmatch_game", "verified", "INTEGER NOT NULL DEFAULT 0"},
+		// R60 human-game seat-bias measurement (per 7174n1c proposal).
+		// `game` originally captured only winner_device_id; without
+		// these fields we can't measure per-seat winrate or filter by
+		// game length / end condition. Migrations are additive with
+		// safe defaults so existing rows keep working.
+		{"game", "winner_seat", "INTEGER"},
+		{"game", "turns", "INTEGER NOT NULL DEFAULT 0"},
+		{"game", "end_reason", "TEXT NOT NULL DEFAULT ''"},
 	}
 	// Migrate showmatch_elo from commander-keyed to deck_key-keyed.
 	// Both Execs were previously unchecked — a DROP failure (e.g., FK

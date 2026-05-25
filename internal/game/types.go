@@ -114,6 +114,20 @@ type Game struct {
 	StartedAt  int64  `json:"started_at"`
 	FinishedAt int64  `json:"finished_at,omitempty"`
 	Winner     string `json:"winner_device_id,omitempty"`
+	// R60 human-game persistence fields (per 7174n1c proposal).
+	// WinnerSeat is the seat position of the winning device. Set
+	// alongside Winner when FinishGame fires; nil for draws or
+	// in-progress games. Captured directly so seat-bias queries
+	// don't need to join through game_player.
+	WinnerSeat *int   `json:"winner_seat,omitempty"`
+	// Turns is the total turn count when the game finished. 0 for
+	// in-progress games.
+	Turns      int    `json:"turns,omitempty"`
+	// EndReason categorizes how the game ended: "last_seat_standing"
+	// (combat damage / lethal), "draw" (no winner), or
+	// engine-specific values like "concession", "mill", "poison".
+	// Empty for in-progress games.
+	EndReason  string `json:"end_reason,omitempty"`
 }
 
 // SnapshotForPlayer is the per-player view of the game state. Hidden

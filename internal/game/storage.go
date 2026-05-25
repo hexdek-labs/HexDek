@@ -26,11 +26,25 @@ func CreateGame(ctx context.Context, database *sql.DB, partyID, shuffleSeedHash 
 	return g, nil
 }
 
-// FinishGame marks a game finished and records the winner.
-func FinishGame(ctx context.Context, database *sql.DB, gameID string, winnerDeviceID string) error {
+// FinishGame marks a game finished and records the full outcome:
+// winning device, winning seat (nil for a draw), total turn count,
+// and end-reason category ("last_seat_standing" / "draw" / etc.).
+// All-zero/empty defaults work for the existing single-winner-no-
+// metadata callers; new callers should pass the seat / turns /
+// reason so seat-bias measurements can use them directly.
+func FinishGame(ctx context.Context, database *sql.DB, gameID, winnerDeviceID string, winnerSeat *int, turns int, endReason string) error {
+	// Draws pass "" for winnerDeviceID; the column is a FK to
+	// device(id) so "" would fail the constraint. Convert empty
+	// string to a NULL parameter via sql.NullString.
+	var winner any
+	if winnerDeviceID == "" {
+		winner = nil
+	} else {
+		winner = winnerDeviceID
+	}
 	_, err := database.ExecContext(ctx,
-		`UPDATE game SET finished_at = ?, winner_device_id = ? WHERE id = ?`,
-		db.Now(), winnerDeviceID, gameID)
+		`UPDATE game SET finished_at = ?, winner_device_id = ?, winner_seat = ?, turns = ?, end_reason = ? WHERE id = ?`,
+		db.Now(), winner, winnerSeat, turns, endReason, gameID)
 	return err
 }
 
@@ -39,9 +53,12 @@ func GetGame(ctx context.Context, database *sql.DB, gameID string) (*Game, error
 	g := &Game{}
 	var winner sql.NullString
 	var finishedAt sql.NullInt64
+	var winnerSeat sql.NullInt64
+	var turns sql.NullInt64
+	var endReason sql.NullString
 	err := database.QueryRowContext(ctx,
-		`SELECT id, party_id, started_at, finished_at, winner_device_id FROM game WHERE id = ?`, gameID,
-	).Scan(&g.ID, &g.PartyID, &g.StartedAt, &finishedAt, &winner)
+		`SELECT id, party_id, started_at, finished_at, winner_device_id, winner_seat, turns, end_reason FROM game WHERE id = ?`, gameID,
+	).Scan(&g.ID, &g.PartyID, &g.StartedAt, &finishedAt, &winner, &winnerSeat, &turns, &endReason)
 	if err != nil {
 		return nil, fmt.Errorf("get game: %w", err)
 	}
@@ -51,7 +68,51 @@ func GetGame(ctx context.Context, database *sql.DB, gameID string) (*Game, error
 	if winner.Valid {
 		g.Winner = winner.String
 	}
+	if winnerSeat.Valid {
+		s := int(winnerSeat.Int64)
+		g.WinnerSeat = &s
+	}
+	if turns.Valid {
+		g.Turns = int(turns.Int64)
+	}
+	if endReason.Valid {
+		g.EndReason = endReason.String
+	}
 	return g, nil
+}
+
+// SeatWinCount is one row of the per-seat winrate aggregation used
+// by the R60 seat-bias measurement. Wins is the number of finished
+// games (winner_seat IS NOT NULL) where the winner played from Seat.
+type SeatWinCount struct {
+	Seat int
+	Wins int
+}
+
+// WinsBySeat returns the per-seat win totals across all FINISHED human
+// games (those with a non-NULL winner_seat). Used by the seat-bias
+// measurement pipeline; produces the same shape as the SQL
+// `SELECT winner_seat, COUNT(*) FROM game WHERE winner_seat IS NOT NULL
+// GROUP BY winner_seat`. Returns at most one row per distinct seat.
+func WinsBySeat(ctx context.Context, database *sql.DB) ([]SeatWinCount, error) {
+	rows, err := database.QueryContext(ctx,
+		`SELECT winner_seat, COUNT(*) FROM game
+		   WHERE winner_seat IS NOT NULL
+		   GROUP BY winner_seat
+		   ORDER BY winner_seat`)
+	if err != nil {
+		return nil, fmt.Errorf("wins by seat: %w", err)
+	}
+	defer rows.Close()
+	var out []SeatWinCount
+	for rows.Next() {
+		var sw SeatWinCount
+		if err := rows.Scan(&sw.Seat, &sw.Wins); err != nil {
+			return nil, err
+		}
+		out = append(out, sw)
+	}
+	return out, rows.Err()
 }
 
 // ---------- GamePlayer ----------
