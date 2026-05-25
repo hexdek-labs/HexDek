@@ -466,6 +466,47 @@ func LoadDeckGameOutcomes(ctx context.Context, db *sql.DB, deckKey string) ([]De
 	return out, rows.Err()
 }
 
+// MetaSeatOutcome is one (game, seat) row reduced to the fields the
+// meta-trends endpoint needs: when the game finished, which deck the
+// seat piloted, and whether that seat won. The caller resolves
+// DeckKey → archetype via the freya strategy-file lookup.
+type MetaSeatOutcome struct {
+	FinishedAt int64
+	DeckKey    string
+	Won        bool
+}
+
+// LoadMetaSeatOutcomes returns every (game, seat) row whose game
+// finished at or after sinceUnix, with deck_key set. Rows are
+// returned newest-first so the caller can stop early once it crosses
+// the requested window without buffering the full result. The
+// deck_key='' filter drops seats from games that predate the
+// deck_key backfill (BackfillDeckKeys); without a deck_key we can't
+// resolve the seat's archetype, so the row contributes nothing.
+func LoadMetaSeatOutcomes(ctx context.Context, sqlDB *sql.DB, sinceUnix int64) ([]MetaSeatOutcome, error) {
+	rows, err := sqlDB.QueryContext(ctx,
+		`SELECT g.finished_at, s.deck_key, (CASE WHEN g.winner = s.seat THEN 1 ELSE 0 END) AS won
+		 FROM showmatch_game_seat s
+		 JOIN showmatch_game g ON g.game_id = s.game_id
+		 WHERE g.finished_at >= ? AND s.deck_key != ''
+		 ORDER BY g.finished_at DESC`, sinceUnix)
+	if err != nil {
+		return nil, fmt.Errorf("meta seat outcomes query: %w", err)
+	}
+	defer rows.Close()
+	var out []MetaSeatOutcome
+	for rows.Next() {
+		var o MetaSeatOutcome
+		var won int
+		if err := rows.Scan(&o.FinishedAt, &o.DeckKey, &won); err != nil {
+			return nil, err
+		}
+		o.Won = won == 1
+		out = append(out, o)
+	}
+	return out, rows.Err()
+}
+
 func BackfillDeckKeys(ctx context.Context, sqlDB *sql.DB) (int64, error) {
 	res, err := sqlDB.ExecContext(ctx,
 		`UPDATE showmatch_game_seat SET deck_key = (
