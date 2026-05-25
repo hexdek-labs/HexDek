@@ -152,6 +152,36 @@ func (h *YggdrasilHat) shouldCounterOwnTrigger(gs *gameengine.GameState, seatIdx
 	if top.Controller != seatIdx {
 		return false
 	}
+	// Three independent lethal-projection scenarios — OR-chained so any
+	// one being lethal fires the counter. Each scenario is a single
+	// pure function that returns true iff resolving the trigger would
+	// lose us the game; the dispatcher composition makes adding future
+	// self-harm scenarios (Bottomless Pit-shape, etc.) a one-line
+	// change here.
+	if triggerCausesLethalDrawDamage(gs, seatIdx, top) {
+		return true
+	}
+	// R60 round 16+ (see self_harm_signals_r60.go) — self-mill and
+	// stated-life-loss extensions.
+	if triggerCausesLethalMill(gs, seatIdx, top) {
+		return true
+	}
+	if triggerCausesLethalLifeLoss(gs, seatIdx, top) {
+		return true
+	}
+	return false
+}
+
+// triggerCausesLethalDrawDamage is the extracted-for-symmetry version
+// of the original PR #410 inline check. Returns true when the trigger
+// would draw cards × our damage-on-draw punisher damage ≥ life.
+func triggerCausesLethalDrawDamage(gs *gameengine.GameState, seatIdx int, top *gameengine.StackItem) bool {
+	if gs == nil || top == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return false
+	}
+	if top.Controller != seatIdx {
+		return false
+	}
 	dmgPerDraw := controllerHasDamageOnDrawPunisher(gs, seatIdx)
 	if dmgPerDraw == 0 {
 		return false
@@ -160,13 +190,9 @@ func (h *YggdrasilHat) shouldCounterOwnTrigger(gs *gameengine.GameState, seatIdx
 	if cards == 0 {
 		return false
 	}
-	totalDamage := dmgPerDraw * cards
 	seat := gs.Seats[seatIdx]
 	if seat == nil {
 		return false
 	}
-	// Lethal-or-worse projection. If letting the trigger resolve would
-	// take us to ≤ 0 life, countering is correct (and may literally
-	// save the game).
-	return totalDamage >= seat.Life
+	return dmgPerDraw*cards >= seat.Life
 }
