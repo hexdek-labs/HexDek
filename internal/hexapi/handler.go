@@ -214,6 +214,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/cards/{name}/performance", h.handleCardPerformance)
 	mux.HandleFunc("GET /api/meta", h.handleMeta)
 	mux.HandleFunc("GET /api/meta/trends", h.handleMetaTrends)
+	mux.HandleFunc("GET /api/meta/evolution", h.handleMetaEvolution)
 	mux.HandleFunc("GET /api/meta/archetype-vs-archetype", h.handleArchetypeMatrix)
 	mux.HandleFunc("GET /api/rivalry/{owner}/{id}", h.handleRivalry)
 	mux.HandleFunc("GET /api/threat-graph/{owner}/{id}", h.handleThreatGraph)
