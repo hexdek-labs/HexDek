@@ -7439,6 +7439,11 @@ func (h *YggdrasilHat) ChooseBottomCards(gs *gameengine.GameState, seatIdx int, 
 	}
 	ranked_ := make([]ranked, 0, len(hand))
 	landsInHand := 0
+	// R60 round 6+ London-mulligan signals: compute hand-wide context
+	// once, then apply per-card biases below. See
+	// mulligan_bottom_signals_r60.go for the rationale.
+	handColorMask := handProducedColorMask(hand)
+	cheapPlayables := countCheapPlayables(hand)
 	for _, c := range hand {
 		if c == nil {
 			continue
@@ -7455,6 +7460,15 @@ func (h *YggdrasilHat) ChooseBottomCards(gs *gameengine.GameState, seatIdx int, 
 		}
 		if h.isCuttable(c) {
 			v -= 0.5
+		}
+		// London signals — small biases that don't override the existing
+		// scaffolding but shift tiebreakers toward keep-side cards the
+		// hand can actually cast on curve.
+		if cardColorDeadAgainstHand(c, handColorMask) {
+			v -= 0.4
+		}
+		if isEarlyPlayAnchor(c, cheapPlayables) {
+			v += 0.6
 		}
 		isLand := typeLineContains(c, "land")
 		if isLand {
