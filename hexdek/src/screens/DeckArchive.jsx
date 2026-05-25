@@ -29,6 +29,12 @@ import {
   MIN_FRAGMENT_CHARS,
   nextSuggestionIndex,
 } from './textareaAutocomplete'
+import {
+  outcomeForDeck,
+  opponentCommanders,
+  formatRelativeFinished,
+  summarizeRecentGames,
+} from '../lib/recentGames'
 
 // Brutalist stat-summary panel: mana curve, card-type breakdown, color
 // pips. Computed entirely from the in-memory deck card list — no extra
@@ -744,6 +750,9 @@ export default function DeckArchive() {
   // gauntlet, captures elo_start / elo_end / win_rate / placements. Drives
   // the rating-over-time chart on the deck page.
   const [eloHistory, setEloHistory] = useState(null)
+  // Recent games — last N persisted GameSummaries this deck appeared in.
+  // null while pending; [] when the deck has no archived games.
+  const [recentGames, setRecentGames] = useState(null)
   const [cloning, setCloning] = useState(false)
   const [creditsRefreshKey, setCreditsRefreshKey] = useState(0)
   const [confirmClone, setConfirmClone] = useState(false)
@@ -991,6 +1000,25 @@ export default function DeckArchive() {
         setEloHistory(rows)
       })
       .catch(() => { if (!cancelled) setEloHistory([]) })
+    return () => { cancelled = true }
+  }, [owner, id])
+
+  // Recent games — last 10 persisted GameSummary rows this deck appeared in.
+  // Backed by /api/games/summaries?deck=owner/id&limit=10 (substring match on
+  // showmatch_game_seat.deck_key). Empty array means "no archive entries yet"
+  // (no observation persisted), which is distinct from "deck never played" —
+  // the panel just stays hidden in either case.
+  useEffect(() => {
+    // Initial state is null — no need to reset on the missing-route case,
+    // and avoiding setState in this branch keeps the effect compiler-clean.
+    if (!owner || !id) return
+    let cancelled = false
+    api.searchGameSummaries({ deck: `${owner}/${id}`, limit: 10 })
+      .then(res => {
+        if (cancelled) return
+        setRecentGames(Array.isArray(res?.rows) ? res.rows : [])
+      })
+      .catch(() => { if (!cancelled) setRecentGames([]) })
     return () => { cancelled = true }
   }, [owner, id])
 
@@ -2577,6 +2605,87 @@ export default function DeckArchive() {
               </div>
             </Panel>
           )}
+
+          {/* RECENT GAMES — last 10 persisted GameSummary rows this deck
+              appeared in. Each row navigates to /games/:id/summary. Hidden
+              when the archive has nothing yet so the rail stays clean. */}
+          {recentGames && recentGames.length > 0 && (() => {
+            const myKey = `${owner}/${id}`
+            const summary = summarizeRecentGames(recentGames, myKey)
+            return (
+              <Panel
+                code="04.RG"
+                title={`RECENT GAMES / / ${recentGames.length}`}
+                right={summary.total > 0 ? (
+                  <span className="t-xs muted">
+                    <span style={{ color: 'var(--ok)' }}>{summary.wins}W</span>
+                    {' · '}
+                    <span style={{ color: 'var(--danger)' }}>{summary.losses}L</span>
+                    {summary.draws > 0 && (
+                      <>
+                        {' · '}
+                        <span className="muted-2">{summary.draws}D</span>
+                      </>
+                    )}
+                  </span>
+                ) : null}
+              >
+                <div className="t-xs muted" style={{ marginBottom: 6 }}>
+                  Last {recentGames.length} archived games this deck appeared in (newest first). Click a row to open the post-game summary.
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }} data-testid="recent-games-table">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--rule-2)', textAlign: 'left' }}>
+                      <th style={{ padding: '4px 6px', width: 50 }}>RESULT</th>
+                      <th style={{ padding: '4px 6px' }}>GAME</th>
+                      <th style={{ padding: '4px 6px' }}>OPPONENTS</th>
+                      <th style={{ padding: '4px 6px', width: 38 }}>T</th>
+                      <th style={{ padding: '4px 6px' }}>END</th>
+                      <th style={{ padding: '4px 6px', width: 80 }}>WHEN</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentGames.map((r) => {
+                      const outcome = outcomeForDeck(r, myKey)
+                      const opps = opponentCommanders(r, myKey)
+                      const resultColor =
+                        outcome === 'win'  ? 'var(--ok)'      :
+                        outcome === 'loss' ? 'var(--danger)'  :
+                        outcome === 'draw' ? 'var(--ink-2)'   : 'var(--ink-3)'
+                      const resultLabel =
+                        outcome === 'win'  ? 'WIN'  :
+                        outcome === 'loss' ? 'LOSS' :
+                        outcome === 'draw' ? 'DRAW' : '—'
+                      return (
+                        <tr
+                          key={r.game_id}
+                          onClick={() => navigate(`/games/${r.game_id}/summary`)}
+                          style={{ borderBottom: '1px solid var(--rule-3)', cursor: 'pointer' }}
+                          data-testid={`recent-game-${r.game_id}`}
+                          title="Open game summary"
+                        >
+                          <td style={{ padding: '4px 6px', fontWeight: 700, color: resultColor, letterSpacing: '0.06em' }}>
+                            {resultLabel}
+                          </td>
+                          <td style={{ padding: '4px 6px' }}><strong>#{r.game_id}</strong></td>
+                          <td style={{ padding: '4px 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}>
+                            <span className="muted">vs </span>{opps.join(' · ') || '—'}
+                          </td>
+                          <td style={{ padding: '4px 6px' }}>{r.turns || '—'}</td>
+                          <td style={{ padding: '4px 6px' }}>
+                            <span className="muted-2">{(r.end_reason || '').toUpperCase() || '—'}</span>
+                          </td>
+                          <td style={{ padding: '4px 6px' }}>
+                            <span className="muted">{formatRelativeFinished(r.finished_at)}</span>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </Panel>
+            )
+          })()}
 
           {/* PR #79 — ELO HISTORY chart. Pulls /api/decks/{id}/elo-history,
               renders rating-over-time SVG. Hidden when no runs exist (new
