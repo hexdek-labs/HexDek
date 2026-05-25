@@ -210,6 +210,17 @@ type YggdrasilHat struct {
 	lastParentTier     DecisionTier
 	lastParentTierTurn int
 
+	// stackItemTiers — R60 round 5 multi-instance priority window
+	// audit. Per-stack-item record of the DecisionTier classified by
+	// the ChooseResponse call for that item. Survives ChooseResponse
+	// overwrites of lastParentTier (which only holds the MOST RECENT
+	// classification), so cascade decisions firing during an earlier
+	// item's resolution can recover the correct tier by ID lookup.
+	// Reset on game_start; lazily cleared on first stamp of a new
+	// turn via stackItemTiersTurn.
+	stackItemTiers     map[int]DecisionTier
+	stackItemTiersTurn int
+
 	// -- Zone-cast grant tracking (flashback / escape / impulse / etc.) --
 
 	// myZoneCastGrants counts how many active zone-cast permissions the
@@ -2076,6 +2087,54 @@ func (h *YggdrasilHat) recordParentTier(t DecisionTier, turn int) {
 	h.lastParentTierTurn = turn
 }
 
+// recordResponseTier is the ChooseResponse-specific variant of
+// recordParentTier. It stamps lastParentTier (legacy compat) AND
+// records the tier keyed by the stack item's ID in stackItemTiers
+// so that downstream cascade decisions firing during THIS specific
+// item's resolution can recover the correct tier even after a
+// LATER ChooseResponse call has overwritten lastParentTier.
+//
+// R60 round 5 — multi-instance priority window audit. Pre-fix the
+// sequence:
+//
+//   1. Trigger A pushed. ChooseResponse → lastParentTier = T_A.
+//   2. Hat declines to counter A.
+//   3. Trigger B pushed (before A resolves). ChooseResponse →
+//      lastParentTier = T_B (overwrites T_A).
+//   4. B resolves, its cascades read T_B. Correct.
+//   5. A resolves, its cascades read T_B. STALE — should be T_A.
+//
+// stackItemTiers gives us a per-item record so step 5's cascade
+// can lookup T_A by stack item ID instead of falling back to the
+// overwritten lastParentTier. Map is turn-scoped via
+// stackItemTiersTurn — entries from prior turns are cleared
+// lazily on the first stamp of a new turn.
+func (h *YggdrasilHat) recordResponseTier(t DecisionTier, turn int, top *gameengine.StackItem) {
+	if h == nil {
+		return
+	}
+	h.recordParentTier(t, turn)
+	if top == nil || top.ID == 0 {
+		return
+	}
+	if h.stackItemTiers == nil || h.stackItemTiersTurn != turn {
+		h.stackItemTiers = make(map[int]DecisionTier, 4)
+		h.stackItemTiersTurn = turn
+	}
+	h.stackItemTiers[top.ID] = t
+}
+
+// tierForStackItem returns the DecisionTier that was stamped for a
+// stack item via recordResponseTier this turn. Returns
+// (TierMjolnir, false) if no stamp exists.
+func (h *YggdrasilHat) tierForStackItem(turn, stackID int) (DecisionTier, bool) {
+	if h == nil || h.stackItemTiers == nil || h.stackItemTiersTurn != turn {
+		return TierMjolnir, false
+	}
+	t, ok := h.stackItemTiers[stackID]
+	return t, ok
+}
+
 // recordCascadeDecision is the downstream-method analogue of
 // recordDecisionTier: bumps the tier counter to reflect the cascade
 // (using the parent's tier when still in the same turn, else
@@ -2088,6 +2147,19 @@ func (h *YggdrasilHat) recordCascadeDecision(gs *gameengine.GameState) DecisionT
 		return TierMjolnir
 	}
 	t := TierMjolnir
+	// R60r5 — prefer the per-stack-item tier when the current stack top
+	// (the item closest to resolving / triggering this cascade) has a
+	// stamped tier. This avoids the multi-instance priority window bug
+	// where consecutive ChooseResponse calls overwrite lastParentTier
+	// and an earlier item's cascade reads the latest item's tier.
+	if gs != nil && len(gs.Stack) > 0 {
+		topID := gs.Stack[len(gs.Stack)-1].ID
+		if stamped, ok := h.tierForStackItem(gs.Turn, topID); ok {
+			t = stamped
+			h.recordDecisionTier(t)
+			return t
+		}
+	}
 	if gs != nil && h.lastParentTierTurn == gs.Turn {
 		t = h.lastParentTier
 	}
@@ -5986,7 +6058,11 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 	if top.Controller == seatIdx || top.Countered {
 		return nil
 	}
-	h.recordParentTier(h.classifyDecision(gs), gs.Turn)
+	// R60r5 — stamp tier keyed by top.ID so that even after a LATER
+	// ChooseResponse call overwrites lastParentTier, cascade decisions
+	// firing during THIS item's resolution can still recover the
+	// correct tier.
+	h.recordResponseTier(h.classifyDecision(gs), gs.Turn, top)
 	if gameengine.SplitSecondActive(gs) {
 		return nil
 	}
@@ -8430,6 +8506,8 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 		h.actionStats = make(map[string]*actionStat)
 		h.totalVisits = 0
 		h.rolloutSeed = 0
+		h.stackItemTiers = nil
+		h.stackItemTiersTurn = 0
 		h.planState = PlanState{}
 		h.Evaluator.PlanMultiplier = nil
 		for i := range h.damageDealtTo {
