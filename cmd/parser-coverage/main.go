@@ -100,6 +100,7 @@ func main() {
 	chartTitle := flag.String("chart-title", "Parser Coverage Progress", "title used in the rendered chart")
 	bySetPath := flag.String("by-set", "", "optional path to write a markdown report grouping uncovered cards by Magic set, ranked by uncovered count")
 	bySetTopN := flag.Int("by-set-top", 0, "limit the --by-set report to the top N sets by uncovered count (0 = include every set)")
+	byTypePath := flag.String("by-type", "", "optional path to write a markdown report grouping uncovered cards by primary card type (Creature/Instant/Sorcery/Land/…)")
 	setPriorityPath := flag.String("set-priority", "", "optional path to write a deck-weighted set-priority worklist (what Thor should scaffold next to unblock the most decks)")
 	setPriorityDecks := flag.String("set-priority-decks", "data/decks", "directory to scan for .txt deck files when computing set-priority deck weights")
 	setPriorityTopN := flag.Int("set-priority-top", 0, "limit the --set-priority table to the top N sets (0 = include every set with a non-zero score)")
@@ -207,6 +208,15 @@ func main() {
 		}
 		log.Printf("wrote %s (by-set report, %d sets shown of %d)", *bySetPath, shown, len(groups))
 		log.Printf("  %s", formatBySetSummary(groups, 5))
+	}
+
+	if strings.TrimSpace(*byTypePath) != "" {
+		groups := groupByType(results)
+		if err := writeByTypeReport(*byTypePath, groups); err != nil {
+			log.Fatalf("writeByTypeReport: %v", err)
+		}
+		log.Printf("wrote %s (by-type report, %d types)", *byTypePath, len(groups))
+		log.Printf("  %s", formatByTypeSummary(groups, 5))
 	}
 
 	if strings.TrimSpace(*setPriorityPath) != "" {
