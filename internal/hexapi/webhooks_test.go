@@ -468,6 +468,10 @@ func TestDispatcher_Fire_5xxBumpsFailuresAndAutoDisables(t *testing.T) {
 	disp := NewWebhookDispatcher(d, cap.server.Client())
 	disp.SetLogf(func(string, ...any) {})
 	disp.SetFailureThreshold(2) // disable after 2 consecutive 5xx
+	// Disable retries so this test preserves its original single-
+	// attempt-per-Fire semantics. The retry-aware behaviour is
+	// covered separately in webhooks_retry_test.go.
+	disp.SetRetryPolicy(1, 0, 0)
 
 	// First 5xx — still active.
 	disp.Fire(ctx, WebhookEventGameEnd, map[string]any{})
@@ -508,6 +512,7 @@ func TestDispatcher_Fire_RecoveryResetsFailures(t *testing.T) {
 	disp := NewWebhookDispatcher(d, cap.server.Client())
 	disp.SetLogf(func(string, ...any) {})
 	disp.SetFailureThreshold(5)
+	disp.SetRetryPolicy(1, 0, 0) // single-attempt for legacy-behaviour test
 
 	disp.Fire(ctx, WebhookEventGameEnd, map[string]any{})
 	disp.Wait()
@@ -543,6 +548,7 @@ func TestDispatcher_Fire_TransportErrorCountsAsFailure(t *testing.T) {
 	disp := NewWebhookDispatcher(d, &http.Client{Timeout: 500 * time.Millisecond})
 	disp.SetLogf(func(string, ...any) {})
 	disp.SetFailureThreshold(0) // never auto-disable so we can inspect failures
+	disp.SetRetryPolicy(1, 0, 0) // single attempt — retry tested separately
 	disp.Fire(ctx, WebhookEventGameEnd, map[string]any{})
 	disp.Wait()
 

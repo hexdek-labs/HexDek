@@ -1421,6 +1421,53 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "503": { $ref: '#/components/responses/ServiceUnavailable' }
 
+  /api/players/compare:
+    get:
+      tags: [profile]
+      operationId: comparePlayers
+      summary: Side-by-side comparison of two players' rolling trends.
+      parameters:
+        - name: a
+          in: query
+          required: true
+          description: First player id (same validation rules as `owner`).
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9_.-]+$'
+        - name: b
+          in: query
+          required: true
+          description: Second player id, distinct from `a`.
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9_.-]+$'
+        - name: window
+          in: query
+          required: false
+          description: Rolling window size for per-player PlayerTrends (1..200; default 30).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 30
+        - name: recent_window
+          in: query
+          required: false
+          description: Sub-window for the "recent" half of rating velocity (1..100; default 10).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        "200":
+          description: PlayerComparison body.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
   /api/players/{id}/trends:
     parameters:
       - name: id
@@ -2497,6 +2544,81 @@ paths:
                 properties:
                   deleted: { type: boolean }
                   id: { type: integer, format: int64 }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "401": { $ref: '#/components/responses/Unauthorized' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/webhooks/{id}/dead-letters:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Webhook row id from POST /api/webhooks.
+        schema:
+          type: integer
+          format: int64
+    get:
+      tags: [webhooks]
+      operationId: listWebhookDeadLetters
+      summary: List terminal delivery failures (post-retry-exhaustion + 4xx) for one webhook.
+      description: |
+        Each row carries the full payload + last status / error so an
+        operator can replay or audit. Two sources land rows here:
+
+          - Retry exhaustion: a delivery that failed `MaxAttempts`
+            times with retriable statuses (5xx / 429 / transport).
+          - Permanent failures: any non-429 4xx — bad URL, expired
+            auth, target removed — dead-letters on the first attempt
+            with no retry.
+
+        Owner-gated: callers see only their own webhooks'
+        dead-letters. A 404 covers both "no such webhook" and
+        "webhook owned by someone else" so subscription existence
+        doesn't leak.
+      parameters:
+        - $ref: '#/components/parameters/XHexDekOwner'
+        - name: limit
+          in: query
+          required: false
+          description: Max rows to return (1..500; default 50).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 50
+      responses:
+        "200":
+          description: Dead-letter list, newest first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [webhook_id, dead_letters]
+                properties:
+                  webhook_id:
+                    type: integer
+                    format: int64
+                  dead_letters:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, webhook_id, event_type, payload, attempts, last_status, first_attempted, last_attempted]
+                      properties:
+                        id: { type: integer, format: int64 }
+                        webhook_id: { type: integer, format: int64 }
+                        event_type: { type: string }
+                        payload:
+                          type: string
+                          description: JSON-encoded delivery body (returned as a string for portability).
+                        attempts: { type: integer }
+                        last_status:
+                          type: integer
+                          description: HTTP status of the final attempt, or -1 for transport error.
+                        last_error: { type: string }
+                        first_attempted: { type: integer, format: int64 }
+                        last_attempted: { type: integer, format: int64 }
         "400": { $ref: '#/components/responses/BadRequest' }
         "401": { $ref: '#/components/responses/Unauthorized' }
         "404": { $ref: '#/components/responses/NotFound' }
