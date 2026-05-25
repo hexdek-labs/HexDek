@@ -2,44 +2,14 @@ import { useMemo, useState } from 'react'
 import { toast } from './Toast'
 import { trackEvent } from '../hooks/useAnalytics'
 import { useModalKeyboard } from '../hooks/useModalKeyboard'
+import { buildDeckExport, exportExtension } from '../lib/deckExport'
 
 const FORMATS = [
+  { id: 'moxfield', label: 'MOXFIELD', sub: 'Moxfield bulk-paste — Commander / Deck sections' },
   { id: 'mtgo', label: 'MTGO', sub: 'Magic Online .dec — commander in sideboard' },
   { id: 'arena', label: 'ARENA', sub: 'MTG Arena import format with set codes' },
   { id: 'raw',  label: 'RAW',   sub: 'Card names only, one per line' },
 ]
-
-function buildLines(format, cards, commanderName) {
-  if (!Array.isArray(cards) || cards.length === 0) return ''
-  const cmdr = (commanderName || '').trim()
-  const isCmdr = (c) => cmdr && (c.name === cmdr || c.name?.split('//')[0]?.trim() === cmdr.split('//')[0]?.trim())
-  const main = cards.filter(c => !isCmdr(c))
-  const commanders = cards.filter(isCmdr)
-
-  const fmtMtgo = (c) => `${c.quantity || 1} ${c.name}`
-  const fmtArena = (c) => {
-    const set = (c.set || '').toUpperCase()
-    const cn = c.collector_number || c.cn || ''
-    if (set && cn) return `${c.quantity || 1} ${c.name} (${set}) ${cn}`
-    if (set)       return `${c.quantity || 1} ${c.name} (${set})`
-    return `${c.quantity || 1} ${c.name}`
-  }
-  const fmtRaw = (c) => c.name
-
-  if (format === 'raw') {
-    return cards.map(fmtRaw).join('\n')
-  }
-
-  const fmt = format === 'arena' ? fmtArena : fmtMtgo
-  const out = []
-  out.push(...main.map(fmt))
-  if (commanders.length) {
-    out.push('')
-    out.push(format === 'arena' ? 'Commander' : 'Sideboard')
-    out.push(...commanders.map(fmt))
-  }
-  return out.join('\n')
-}
 
 function copy(text) {
   if (navigator.clipboard?.writeText) {
@@ -74,14 +44,19 @@ function download(text, filename) {
 
 export default function DeckExportModal({ deck, deckId, onClose }) {
   const panelRef = useModalKeyboard({ onClose })
-  const [format, setFormat] = useState('mtgo')
+  const [format, setFormat] = useState('moxfield')
   const cards = deck?.cards || []
   const commanderName = deck?.commander_card || deck?.commander || ''
-  const text = useMemo(() => buildLines(format, cards, commanderName), [format, cards, commanderName])
-  const lineCount = text ? text.split('\n').filter(l => l && !/^(Sideboard|Commander)$/.test(l)).length : 0
+  const text = useMemo(() => buildDeckExport(format, cards, commanderName), [format, cards, commanderName])
+  // Card-line count excludes blank separators and the section header
+  // tokens (Sideboard / Commander / Commanders / Deck) that the format
+  // builders emit. Anything else is a `qty name` row.
+  const lineCount = text
+    ? text.split('\n').filter(l => l && !/^(Sideboard|Commander|Commanders|Deck)$/.test(l)).length
+    : 0
   const hasArenaData = cards.some(c => c.set || c.collector_number || c.cn)
   const baseFilename = (deckId || 'deck').replace(/[^a-z0-9_-]/gi, '_')
-  const ext = format === 'arena' ? '_arena.txt' : format === 'mtgo' ? '.dec' : '.txt'
+  const ext = exportExtension(format)
 
   const onCopy = async () => {
     if (!text) return
