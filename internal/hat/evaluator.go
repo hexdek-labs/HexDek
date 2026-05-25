@@ -610,9 +610,18 @@ func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) fl
 		}
 	}
 
+	// R60r9: convex danger curve. Pre-tune the danger band (life ≤ 10) was
+	// linear in ratio, so life=1 (one shock = death) scored only ~2x worse
+	// than life=10 — under-weighting proximity-to-zero. Added quadratic
+	// (10 - life)² penalty so each life point lost below 10 hurts more
+	// than the last. Mid-band (>10) preserved as-is to avoid retuning the
+	// established "calm zone" semantics; the convexity is targeted at
+	// shock-range death proximity.
 	var base float64
 	if seat.Life <= 10 {
 		base = ratio - 0.5
+		danger := float64(10-seat.Life) / 10.0 // 0..1
+		base -= danger * danger * 0.5
 		if hasLifePayoff {
 			base *= 0.5
 		}
@@ -620,6 +629,39 @@ func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) fl
 		base = (ratio - 0.5) * 0.5
 		if hasLifePayoff && seat.Life > 20 {
 			base += 0.1
+		}
+	}
+
+	// R60r9: lifegain on the battlefield is a forward-looking recovery
+	// signal that softens the danger penalty. Soul Warden / Soul's
+	// Attendant / Heliod / Trelasarra-style passive triggers and lifelink
+	// attackers recoup life over time, so the current life total is more
+	// durable than the raw number suggests. Each active engine reduces
+	// the negative penalty by 10% (capped at 30% — three engines isn't
+	// infinite life, and we still respect the underlying clock). Only
+	// applied when base is negative; engines don't add positive score,
+	// they only dampen the deficit.
+	if base < 0 {
+		engines := 0
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			if p.HasKeyword("lifelink") && p.IsCreature() && gs.PowerOf(p) >= 2 {
+				engines++
+				continue
+			}
+			ot := gameengine.OracleTextLower(p.Card)
+			if strings.Contains(ot, "gain") && strings.Contains(ot, "life") &&
+				(strings.Contains(ot, "whenever") || strings.Contains(ot, "at the beginning")) {
+				engines++
+			}
+		}
+		if engines > 3 {
+			engines = 3
+		}
+		if engines > 0 {
+			base *= 1.0 - 0.1*float64(engines)
 		}
 	}
 
@@ -659,6 +701,9 @@ func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) fl
 		pressure = 0.5
 	}
 	base += pressure
+	if base < -1 {
+		base = -1
+	}
 	return base
 }
 
