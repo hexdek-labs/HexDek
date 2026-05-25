@@ -254,6 +254,34 @@ func (gs *GameState) UnregisterReplacementsForPermanent(p *Permanent) {
 // without a cap; 64 is generous relative to any real card interaction.
 const maxReplacementIterations = 64
 
+// permIsOnAnyBattlefield returns true if `p` is currently on some
+// seat's battlefield. Used by `pickReplacement` as a defensive gate
+// against stale replacements whose source permanent has left play
+// without an `UnregisterReplacementsForPermanent` call — the same
+// pointer-equality scan UnregisterReplacementsForPermanent itself
+// uses, but in reverse (search across all seats' battlefields).
+//
+// Phased-out permanents (CR §702.26) are intentionally treated as
+// "still on the battlefield" for this check — phasing out doesn't
+// leave the battlefield, so a phased-out source's replacement is
+// suspended but not stale.
+func permIsOnAnyBattlefield(gs *GameState, p *Permanent) bool {
+	if gs == nil || p == nil {
+		return false
+	}
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, q := range s.Battlefield {
+			if q == p {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // FireEvent runs the CR §614/§616 replacement chain for `ev`. Callers
 // allocate a ReplEvent, call FireEvent, then read back Cancelled +
 // Payload to act on the (possibly modified) event.
@@ -322,6 +350,31 @@ func pickReplacement(gs *GameState, ev *ReplEvent) *ReplacementEffect {
 			continue
 		}
 		if ev.AppliedIDs[re.HandlerID] {
+			continue
+		}
+		// Defensive backstop: skip replacements whose SourcePerm has left
+		// the battlefield without being unregistered. Every canonical
+		// leave-play path (DestroyPermanent / ExilePermanent /
+		// sacrificePermanentImpl / BouncePermanent / destroyPermSBA /
+		// sacrificePermSBA / HandleSeatElimination's perm-sweep) calls
+		// `UnregisterReplacementsForPermanent`, but non-canonical paths
+		// (mutate-eaten perm at keywords_batch6.go:293/306, sweep alt-
+		// cost return at keywords_sweep.go:196, per_card flicker /
+		// blink / exile-self helpers that use the `removePermanent`
+		// helper directly) skip the unregister. Without this backstop a
+		// Platinum Angel cancelled `would_lose_game` event from a
+		// phantom source, perma-preventing the controller from ever
+		// losing — Loki r60 extreme-stress / seed 31415 game 9111 turn
+		// 57: 6x SBACompleteness "seat 0 life=0 Lost=false no loss-
+		// prevention — SBA 704.5a missed", recent-events log showed
+		// `replacement_applied source=Platinum Angel` firing on a
+		// Platinum Angel that wasn't on any seat's battlefield.
+		//
+		// SourcePerm==nil is legitimate for global replacement effects
+		// (PhasingDoublesYards, Anointed Procession's parameter-less
+		// shape, etc.) so the gate is "perm set BUT not on any
+		// battlefield."
+		if re.SourcePerm != nil && !permIsOnAnyBattlefield(gs, re.SourcePerm) {
 			continue
 		}
 		if re.Applies != nil && !re.Applies(gs, ev) {
