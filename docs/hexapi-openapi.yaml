@@ -731,6 +731,23 @@ paths:
                 items: { $ref: '#/components/schemas/EmptyOk' }
         "400": { $ref: '#/components/responses/BadRequest' }
 
+  /api/decks/{owner}/{id}/budget:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getDeckBudget
+      summary: USD price rollup. Pulls per-card prices from the Scryfall-backed oracle cache and returns total + per-card breakdown + top contributors. Basics priced at $0.
+      responses:
+        "200":
+          description: Budget rollup.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
   /api/decks/{owner}/{id}/versions/{version}:
     parameters:
       - $ref: '#/components/parameters/OwnerParam'

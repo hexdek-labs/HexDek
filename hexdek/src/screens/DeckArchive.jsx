@@ -27,6 +27,7 @@ import DeckShareDisclosure from '../components/DeckShareDisclosure'
 import BracketChangelog from '../components/BracketChangelog'
 import { deckGlanceStats } from '../lib/deckStats'
 import { diffDeckText, diffSummary } from '../lib/deckHistoryDiff'
+import { formatUSD, summarize as summarizeBudget } from '../lib/deckBudget'
 import {
   cardCMCForSort,
   cardColorIdentityString,
@@ -675,6 +676,148 @@ function WorkshopTextarea({ value, onChange, textareaRef: externalRef }) {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// DeckBudgetPanel — USD price rollup pulled from the Scryfall-backed
+// oracle cache. Lazy-fetched: only hits the backend when the panel
+// first mounts (it's invisible on other tabs, so the cost is paid
+// once-per-deck-view). Cards Scryfall has no $ for show as "—" in
+// the per-card list and surface in a "N CARDS UNPRICED" subtitle so
+// the user understands why the headline number might be low.
+function DeckBudgetPanel({ deckId }) {
+  const [payload, setPayload] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    if (!deckId) return
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    api.getDeckBudget(deckId)
+      .then(res => {
+        if (cancelled) return
+        setPayload(res)
+        setLoading(false)
+      })
+      .catch(err => {
+        if (cancelled) return
+        setError(err?.message || 'BUDGET FETCH FAILED')
+        setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [deckId])
+
+  if (loading && !payload) {
+    return (
+      <Panel code="04.$" title="DECK BUDGET">
+        <div className="t-xs muted" style={{ padding: '14px 0', textAlign: 'center' }}>
+          &gt; PRICING DECK<span className="blink">_</span>
+        </div>
+      </Panel>
+    )
+  }
+  if (error) {
+    return (
+      <Panel code="04.$" title="DECK BUDGET">
+        <div className="t-xs" style={{ padding: '12px 0', color: 'var(--danger)' }}>
+          ✗ {error}
+        </div>
+      </Panel>
+    )
+  }
+  if (!payload) return null
+
+  const summary = summarizeBudget(payload)
+  const coveragePct = Math.round(summary.coverage * 100)
+
+  return (
+    <Panel
+      code="04.$"
+      title="DECK BUDGET"
+      right={<Tag solid>{summary.tier}</Tag>}
+    >
+      <div data-testid="deck-budget-summary" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+        <div>
+          <div className="t-xs muted" style={{ letterSpacing: '0.08em' }}>YOUR DECK COSTS</div>
+          <div style={{ fontSize: 28, fontWeight: 700, letterSpacing: '0.02em' }} data-testid="deck-budget-total">
+            {formatUSD(summary.total)}
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+          <BudgetMetric label="AVG / CARD" value={formatUSD(summary.avgPerCard)} />
+          <BudgetMetric label="CARDS" value={`${summary.cardCount}`} />
+          <BudgetMetric
+            label="PRICED"
+            value={`${summary.pricedCount} / ${summary.uniqueCount}`}
+            sub={summary.uniqueCount > 0 ? `${coveragePct}% COVERAGE` : null}
+          />
+          {summary.missingCount > 0 && (
+            <BudgetMetric
+              label="UNPRICED"
+              value={`${summary.missingCount}`}
+              sub="SCRYFALL HAS NO $"
+              warn
+            />
+          )}
+        </div>
+      </div>
+
+      {summary.topExpensive.length > 0 && (
+        <>
+          <div className="hr" style={{ margin: '10px 0' }} />
+          <div className="t-xs muted" style={{ marginBottom: 6, letterSpacing: '0.08em' }}>
+            TOP CONTRIBUTORS
+          </div>
+          <div data-testid="deck-budget-top">
+            {summary.topExpensive.map((c, i) => (
+              <div
+                key={`${c.name}-${i}`}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '20px 1fr 80px 80px',
+                  gap: 6,
+                  alignItems: 'baseline',
+                  padding: '3px 0',
+                  borderBottom: i < summary.topExpensive.length - 1 ? '1px dotted var(--rule)' : 'none',
+                  fontSize: 11,
+                }}
+              >
+                <span className="t-xs muted" style={{ fontVariantNumeric: 'tabular-nums' }}>{i + 1}.</span>
+                <CardLink name={c.name} className="t-xs" style={{ borderBottom: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {c.name}
+                </CardLink>
+                <span className="t-xs muted" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                  {(c.qty || 1) > 1 ? `${formatUSD(c.unit)} × ${c.qty}` : formatUSD(c.unit)}
+                </span>
+                <span style={{ textAlign: 'right', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                  {formatUSD(c.line)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <div className="t-xs muted" style={{ marginTop: 8, letterSpacing: '0.04em' }}>
+        Prices from Scryfall · {summary.currency} · basics not counted
+      </div>
+    </Panel>
+  )
+}
+
+function BudgetMetric({ label, value, sub, warn }) {
+  return (
+    <div>
+      <div className="t-xs muted" style={{ letterSpacing: '0.08em' }}>{label}</div>
+      <div style={{
+        fontSize: 15, fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+        color: warn ? 'var(--warn, #c0a060)' : 'var(--ink)',
+      }}>
+        {value}
+      </div>
+      {sub && <div className="t-xs muted" style={{ fontSize: 9, letterSpacing: '0.06em' }}>{sub}</div>}
     </div>
   )
 }
@@ -2347,6 +2490,13 @@ export default function DeckArchive() {
 
           {/* === ANALYSIS TAB === */}
           {activeTab === 'analysis' && <>
+          {/* USD price rollup. Lazy-fetched on first analysis-tab
+              mount via /api/decks/{id}/budget — pulls from the
+              Scryfall-backed oracle cache and shows total, top
+              contributors, unpriced count. Sits above the Freya
+              panel so the "your deck costs $X" headline is the
+              first thing visible. */}
+          <DeckBudgetPanel deckId={`${owner}/${id}`} />
           <Panel code="04.C" title="FREYA / / ENGINE ANALYSIS" right={<Tag solid>{wbs ? `Bracket B${wbs}${pls && pls !== wbs ? ` → Plays Like B${pls}` : ''}` : 'Bracket pending'}</Tag>}>
             {!analysis ? (
               <div style={{ padding: '20px 0', textAlign: 'center' }}>

@@ -87,6 +87,32 @@ type Card struct {
 	// migration — callers that need legality data should treat
 	// nil/empty as "unknown" rather than as "all legal."
 	Legalities map[string]string `json:"legalities,omitempty"`
+
+	// Prices is Scryfall's prices block. Keys observed in the wild:
+	// "usd", "usd_foil", "usd_etched", "eur", "eur_foil", "tix". Values
+	// are strings (Scryfall returns dollar amounts with two decimal
+	// places, or null for unpriced cards — represented here as an
+	// absent key, NOT the literal string "null"). May be nil/empty on
+	// cache hits written before the r60 prices migration; the deck
+	// budget endpoint treats nil/empty as "needs refresh" and triggers
+	// a fresh Scryfall fetch.
+	Prices map[string]string `json:"prices,omitempty"`
+}
+
+// HasPrices reports whether the card carries at least one non-empty
+// price entry. Pre-migration cache hits and Scryfall responses for
+// unpriced cards both fail this check; callers use it to decide
+// whether a re-fetch is worth a network round-trip.
+func (c *Card) HasPrices() bool {
+	if c == nil || len(c.Prices) == 0 {
+		return false
+	}
+	for _, v := range c.Prices {
+		if strings.TrimSpace(v) != "" {
+			return true
+		}
+	}
+	return false
 }
 
 // Lookup returns card data for the given name. Tries the SQLite cache
@@ -308,6 +334,86 @@ func LookupMany(ctx context.Context, database *sql.DB, names []string) map[strin
 	return out
 }
 
+// RefreshPrices ensures every name in `names` has a cached card with
+// at least one non-empty price entry. Cards already priced are
+// returned from cache untouched; cards with missing or empty prices
+// (typically pre-r60-migration cache rows) are re-fetched from
+// Scryfall's collection endpoint and saved back into cache.
+//
+// Used by the deck budget endpoint to backfill prices on demand without
+// thrashing the rate-limit budget on the legality-only LookupMany
+// path. Returns the merged map of name → Card (lowercased name keys,
+// matching LookupMany's convention).
+func RefreshPrices(ctx context.Context, database *sql.DB, names []string) map[string]*Card {
+	out := make(map[string]*Card, len(names))
+	if database == nil {
+		return out
+	}
+	var needs []string
+	seen := map[string]bool{}
+	for _, n := range names {
+		key := strings.ToLower(strings.TrimSpace(n))
+		if key == "" || seen[key] {
+			continue
+		}
+		seen[key] = true
+		if c, err := getCached(ctx, database, key); err == nil && c.HasPrices() {
+			out[key] = c
+			continue
+		}
+		needs = append(needs, n)
+	}
+	if len(needs) == 0 {
+		return out
+	}
+
+	// Chunk by 75 (Scryfall's limit). Use the same parallelism as
+	// LookupMany so a 99-card deck refresh runs in ≤ 2 round-trips.
+	var chunks [][]string
+	for i := 0; i < len(needs); i += 75 {
+		end := i + 75
+		if end > len(needs) {
+			end = len(needs)
+		}
+		chunks = append(chunks, needs[i:end])
+	}
+	parallelism := scryfallParallelism
+	if parallelism < 1 {
+		parallelism = 1
+	}
+	sem := make(chan struct{}, parallelism)
+	var wg sync.WaitGroup
+	var outMu sync.Mutex
+	for _, chunk := range chunks {
+		chunk := chunk
+		select {
+		case sem <- struct{}{}:
+		case <-ctx.Done():
+			break
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			defer func() { <-sem }()
+			fetched, err := fetchScryfallCollection(ctx, chunk)
+			if err != nil {
+				return
+			}
+			for key, card := range fetched {
+				outMu.Lock()
+				out[key] = card
+				outMu.Unlock()
+				if err := saveToCache(ctx, database, key, card); err != nil {
+					log.Printf("oracle: cache write for %q failed: %v", key, err)
+					cacheWriteFailures.Add(1)
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	return out
+}
+
 // fetchScryfallCollection POSTs a batch of card identifiers to Scryfall's
 // /cards/collection endpoint. Goes through scryfallLimit for dispatch
 // rate-limiting; concurrent callers run in parallel but their request
@@ -392,6 +498,7 @@ func fetchScryfallCollection(ctx context.Context, names []string) (map[string]*C
 			SetCode:        sr.Set,
 			CachedAt:       db.Now(),
 			Legalities:     sr.Legalities,
+			Prices:         filterEmptyPrices(sr.Prices),
 		}
 	}
 	return out, nil
@@ -419,6 +526,10 @@ type scryfallNamedResp struct {
 		} `json:"image_uris"`
 	} `json:"card_faces"`
 	Legalities map[string]string `json:"legalities"`
+	// Scryfall serializes per-currency prices as a string-keyed object;
+	// entries may be JSON null (omitted from this map after decode) or
+	// strings like "0.50" / "12.34" / "1289.99".
+	Prices map[string]string `json:"prices"`
 }
 
 // ErrNotFound is returned when Scryfall has no match for the queried name.
@@ -486,18 +597,38 @@ func fetchScryfall(ctx context.Context, name string) (*Card, error) {
 		SetCode:        sr.Set,
 		CachedAt:       db.Now(),
 		Legalities:     sr.Legalities,
+		Prices:         filterEmptyPrices(sr.Prices),
 	}, nil
+}
+
+// filterEmptyPrices drops zero-value entries from Scryfall's prices
+// map so HasPrices doesn't false-positive on a {"usd":""} entry that
+// indicates the card has no recorded market price.
+func filterEmptyPrices(in map[string]string) map[string]string {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(in))
+	for k, v := range in {
+		if strings.TrimSpace(v) != "" {
+			out[k] = v
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 func getCached(ctx context.Context, database *sql.DB, key string) (*Card, error) {
 	c := &Card{}
-	var legalitiesJSON string
+	var legalitiesJSON, pricesJSON string
 	err := database.QueryRowContext(ctx,
 		`SELECT display_name, scryfall_id, mana_cost, cmc, type_line, oracle_text,
-		        image_uri_normal, image_uri_art, set_code, cached_at, legalities
+		        image_uri_normal, image_uri_art, set_code, cached_at, legalities, prices
 		 FROM card_oracle WHERE name = ?`, key,
 	).Scan(&c.Name, &c.ScryfallID, &c.ManaCost, &c.CMC, &c.TypeLine, &c.OracleText,
-		&c.ImageURINormal, &c.ImageURIArt, &c.SetCode, &c.CachedAt, &legalitiesJSON)
+		&c.ImageURINormal, &c.ImageURIArt, &c.SetCode, &c.CachedAt, &legalitiesJSON, &pricesJSON)
 	if err != nil {
 		return c, err
 	}
@@ -511,6 +642,15 @@ func getCached(ctx context.Context, database *sql.DB, key string) (*Card, error)
 			c.Legalities = leg
 		}
 	}
+	// Same fault tolerance for prices: empty = pre-migration row (deck
+	// budget endpoint will trigger a fresh fetch); malformed JSON
+	// degrades to nil rather than dropping the cache hit.
+	if pricesJSON != "" {
+		var pr map[string]string
+		if jerr := json.Unmarshal([]byte(pricesJSON), &pr); jerr == nil {
+			c.Prices = pr
+		}
+	}
 	return c, nil
 }
 
@@ -521,12 +661,18 @@ func saveToCache(ctx context.Context, database *sql.DB, key string, c *Card) err
 			legalitiesJSON = string(b)
 		}
 	}
+	pricesJSON := ""
+	if len(c.Prices) > 0 {
+		if b, jerr := json.Marshal(c.Prices); jerr == nil {
+			pricesJSON = string(b)
+		}
+	}
 	_, err := database.ExecContext(ctx,
 		`INSERT OR REPLACE INTO card_oracle
 		 (name, display_name, scryfall_id, mana_cost, cmc, type_line, oracle_text,
-		  image_uri_normal, image_uri_art, set_code, cached_at, legalities)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		  image_uri_normal, image_uri_art, set_code, cached_at, legalities, prices)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		key, c.Name, c.ScryfallID, c.ManaCost, c.CMC, c.TypeLine, c.OracleText,
-		c.ImageURINormal, c.ImageURIArt, c.SetCode, c.CachedAt, legalitiesJSON)
+		c.ImageURINormal, c.ImageURIArt, c.SetCode, c.CachedAt, legalitiesJSON, pricesJSON)
 	return err
 }
