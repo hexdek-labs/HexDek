@@ -1626,6 +1626,14 @@ func (e *GameStateEvaluator) rescaleWeights(gs *gameengine.GameState, seatIdx in
 	w.ThreatTrajectory *= 1.0 + lateFactor*0.15
 	w.OpponentGraveyardThreat *= 1.0 + lateFactor*0.2
 	w.StackInteraction *= 1.0 + lateFactor*0.25
+	// R60 cross-cutting rebalance: life as a resource matters more once
+	// the game drags past turn 12 — everyone's taken combat damage, drain
+	// engines threaten lethal sooner, and the gap between "we have 30
+	// life" and "we have 10 life" is now the difference between
+	// surviving a swing and dying. Pre-R60 LifeResource was only bumped
+	// when AHEAD, missing the case where a long late game made life
+	// scarce for all seats.
+	w.LifeResource *= 1.0 + lateFactor*0.15
 
 	// Mid-game: activated abilities, synergy engines, and lock pieces peak.
 	midFactor := 1.0 - math.Abs(stage-0.5)*2
@@ -1650,6 +1658,13 @@ func (e *GameStateEvaluator) rescaleWeights(gs *gameengine.GameState, seatIdx in
 	// Ahead: consolidate advantage.
 	if positionSignal > 0.3 {
 		aheadFactor := math.Min(1.0, (positionSignal-0.3)*2)
+		// R60 cross-cutting rebalance: a board-ahead deck should
+		// consolidate by adding MORE board (extending the lead), not
+		// just by adding more cards. Pre-R60 the ahead branch bumped
+		// CardAdvantage/ManaAdvantage/LifeResource but not BoardPresence
+		// — which made the evaluator treat "ahead on board" the same as
+		// "behind on board" for the purpose of valuing the next creature.
+		w.BoardPresence *= 1.0 + aheadFactor*0.2
 		w.CardAdvantage *= 1.0 + aheadFactor*0.3
 		w.ManaAdvantage *= 1.0 + aheadFactor*0.2
 		w.LifeResource *= 1.0 + aheadFactor*0.2
