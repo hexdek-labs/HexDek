@@ -2382,17 +2382,27 @@ func isLowImpactCantripSpell(card *gameengine.Card) bool {
 // stackItemScore — cheap proxy for _stack_item_threat_score. CMC +
 // kind-specific bonus. Full scoring lives in the engine; this is only
 // the mode-threshold gate.
+//
+// R60 priority-window audit: triggered + activated abilities have
+// top.Card == nil but top.Source != nil. Pre-R60 the score returned 0
+// for these stack items, so the gate never recognised an opponent's
+// Etali attack trigger / Smothering Tithe draw trigger / Sheoldred
+// drain trigger as a threat — every "top.Card != nil" branch silently
+// short-circuited. Now we resolve the EFFECTIVE card via
+// effectiveResponseCard and score against its CMC + threat-word
+// patterns. Triggers also pick up a flat +2 ability-on-stack
+// surcharge because trigger payloads are usually game-impactful even
+// when the source is cheap (Etali is 6 CMC but the trigger ITSELF is
+// free, and the trigger is what's resolving).
 func stackItemScore(top *gameengine.StackItem) int {
 	if top == nil {
 		return 0
 	}
+	card := effectiveResponseCard(top)
 	score := 0
-	if top.Card != nil {
-		score += gameengine.ManaCostOf(top.Card)
-	}
-	// Bump for mass-effect hints on the AST.
-	if top.Card != nil {
-		ot := gameengine.OracleTextLower(top.Card)
+	if card != nil {
+		score += gameengine.ManaCostOf(card)
+		ot := gameengine.OracleTextLower(card)
 		if strings.Contains(ot, "win the game") {
 			score += 10
 		}
@@ -2400,5 +2410,46 @@ func stackItemScore(top *gameengine.StackItem) int {
 			score += 5
 		}
 	}
+	if isAbilityOnStack(top) {
+		score += 2
+	}
 	return score
+}
+
+// effectiveResponseCard returns the card whose oracle text should
+// drive priority-window threat detection for `top`. Spells expose
+// their cast card directly (top.Card); triggered and activated
+// abilities have top.Card == nil but expose top.Source, the
+// permanent whose ability is resolving — that permanent's card
+// carries the oracle text describing the trigger payload.
+//
+// Returns nil when neither is available (defensive — should not
+// happen for engine-pushed stack items but tests sometimes build
+// bare items).
+func effectiveResponseCard(top *gameengine.StackItem) *gameengine.Card {
+	if top == nil {
+		return nil
+	}
+	if top.Card != nil {
+		return top.Card
+	}
+	if top.Source != nil {
+		return top.Source.Card
+	}
+	return nil
+}
+
+// isAbilityOnStack reports whether `top` is a triggered or activated
+// ability rather than a cast spell. The engine populates StackItem.Kind
+// for new items; legacy items (engine-internal pushes) may leave Kind
+// empty but always have Source non-nil for abilities, so the OR check
+// covers both paths.
+func isAbilityOnStack(top *gameengine.StackItem) bool {
+	if top == nil {
+		return false
+	}
+	if top.Kind == "triggered" || top.Kind == "activated" {
+		return true
+	}
+	return top.Card == nil && top.Source != nil
 }

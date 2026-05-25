@@ -5880,13 +5880,25 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 		return nil
 	}
 
+	// R60 priority-window audit — resolve the EFFECTIVE response card
+	// once, then drive all downstream heuristics off it. For spells
+	// this is identical to top.Card; for triggered / activated
+	// abilities (top.Card == nil) it's top.Source.Card — the
+	// permanent whose oracle text describes the trigger payload.
+	// Pre-R60 every "top.Card != nil" branch silently short-circuited
+	// on triggers, leaving the hat blind to Etali attack triggers,
+	// Sheoldred drain triggers, Smothering Tithe draw triggers, and
+	// the wider "what's resolving right now" question across complex
+	// trigger stacks.
+	respondCard := effectiveResponseCard(top)
+	isTrigger := isAbilityOnStack(top)
+
 	// R60 signal A — "nothing meaningful to interrupt" early pass.
-	// When the incoming spell is a low-impact cantrip-shaped effect
-	// (draw 1, scry, mill 1, look-at-top, tap a single creature), holding
-	// the counter for a later real threat is strictly better than burning
-	// it on a 1-mana value blip. Combo-piece names override this — even
-	// a cantrip-shaped card on the combo list still counts as a threat.
-	if isLowImpactCantripSpell(top.Card) && !h.isComboRelevant(top.Card) {
+	// Cantrip-shape only applies to SPELLS (a triggered ability that
+	// draws a card is the entire payload of its source permanent, not
+	// a low-impact value blip — those almost always indicate a value
+	// engine worth countering when we have the window).
+	if !isTrigger && isLowImpactCantripSpell(respondCard) && !h.isComboRelevant(respondCard) {
 		return nil
 	}
 
@@ -5914,11 +5926,11 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 		h.logf("STACK-DEPTH-RESPONSE seat=%d depth=%d MUST-COUNTER reason=%s top=%s",
 			seatIdx, len(gs.Stack), depthSig.reason, topName)
 	}
-	if top.Card != nil {
-		if h.isComboRelevant(top.Card) {
+	if respondCard != nil {
+		if h.isComboRelevant(respondCard) {
 			mustCounter = true
 		}
-		ot := gameengine.OracleTextLower(top.Card)
+		ot := gameengine.OracleTextLower(respondCard)
 		if strings.Contains(ot, "win the game") {
 			mustCounter = true
 		}
@@ -5939,13 +5951,36 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 		if strings.Contains(ot, "search your library") && score >= 2 {
 			mustCounter = true
 		}
+		// R60 priority-window audit — high-value trigger payloads. When
+		// the stack item is a triggered ability whose source's oracle
+		// text matches a known game-impactful pattern (attack-trigger
+		// value extraction, mass-draw, mass-drain, theft), force a
+		// must-counter even at a low CMC-derived score. Etali, Zur,
+		// Narset (attack-trigger search); Sheoldred / Toxic Deluge-on-
+		// resolve (mass drain); Smothering Tithe / Esper Sentinel (mass
+		// draw); Tergrid (theft) all match.
+		if isTrigger {
+			if strings.Contains(ot, "exile the top") && strings.Contains(ot, "of each") {
+				mustCounter = true // Etali pattern
+			}
+			if strings.Contains(ot, "search your library") {
+				mustCounter = true // Zur / Narset attack-trigger tutors
+			}
+			if strings.Contains(ot, "each opponent") && strings.Contains(ot, "loses") {
+				mustCounter = true // Sheoldred drain shape
+			}
+			if strings.Contains(ot, "each opponent draws") ||
+				strings.Contains(ot, "whenever an opponent draws") {
+				mustCounter = true // Sheoldred / wheel-style trigger
+			}
+		}
 		// 3rd Eye: Counter kingmaker's key plays more aggressively.
 		if h.isKingmaker(gs, top.Controller) && score >= 2 {
 			mustCounter = true
 		}
 		// Counter cards we're specifically vulnerable to (Freya threat assessment).
 		if len(h.vulnerableToSet) > 0 {
-			if h.vulnerableToSet[strings.ToLower(top.Card.DisplayName())] {
+			if h.vulnerableToSet[strings.ToLower(respondCard.DisplayName())] {
 				mustCounter = true
 			}
 		}
@@ -5958,7 +5993,7 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 			mustCounter = true
 		}
 		// 3rd Eye: Counter cards we've seen wreck the board before.
-		cardName := top.Card.DisplayName()
+		cardName := respondCard.DisplayName()
 		if top.Controller >= 0 && top.Controller < len(h.cardsSeen) {
 			if h.cardsSeen[top.Controller][cardName] > 1 {
 				score += 2
