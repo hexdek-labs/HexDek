@@ -105,6 +105,14 @@ BUCKETED_KINDS = {
     "life_above_starting",
     "opponent_more_life",
     "wasnt_blocking",
+    # Era 1 R60 sweep — small structured-Kind tail (3+3+1+1 = 8 nodes) the
+    # parser emits as their own Kind. Each maps cleanly to an existing
+    # life-comparison scaffold pattern; bucketing here so the audit stops
+    # counting them in the unbucketed bucket.
+    "life_vs_half_starting",
+    "repeat_any_optional",
+    "life_threshold_both",
+    "life_delta_threshold",
 }
 
 RAW_KINDS = {"intervening_if", "as_long_as", "conditional", "raw", "if"}
@@ -195,6 +203,60 @@ RAW_PATTERNS = [
     ("artifact_etb_turn", re.compile(r"artifact (?:entered|enters) the battlefield.*this turn.*(?:under your control|you control)")),
     ("still_on_battlefield", re.compile(r"it's on the battlefield|is still on the battlefield")),
     ("reveal_land_otherwise_hand", re.compile(r"if it's a land card.*(?:onto the battlefield|put it onto).*otherwise")),
+    # Era 1 R60 sweep — cross-port from era3 + new Era 1 patterns. The dominant
+    # condition fragments (city's blessing, +1/+1 counter thresholds, first
+    # combat phase, equipped-creature constraints, hand-size thresholds, team
+    # tribal) were all unmatched. Ordered specific → general so the "you
+    # control" sweep doesn't eat narrower patterns.
+    ("ascend_city", re.compile(r"you have the city'?s blessing|the city'?s blessing")),
+    ("self_counter_threshold", re.compile(r"(?:it has|this creature has|~ has) (?:one|two|three|four|five|six|seven|eight|nine|ten|\d+).*counters? on it")),
+    ("first_combat_phase", re.compile(r"first combat phase of the turn|first combat phase")),
+    ("didnt_attack_this_turn", re.compile(r"(?:this creature |~ )?didn'?t attack this turn|didn'?t attack or come under your control this turn")),
+    ("team_tribal", re.compile(r"your team controls (?:another|an?|\d+).*(?:warrior|wizard|soldier|knight|cleric|rogue|shaman|warrior)")),
+    ("creature_died_under_your_control", re.compile(r"a creature died under your control this turn")),
+    ("equipped_creature_is", re.compile(r"as long as (?:equipped|enchanted) (?:creature|permanent) is (?:an? |the )")),
+    ("aura_attached_property", re.compile(r"as long as enchanted permanent is")),
+    ("hand_size_ge_seven", re.compile(r"(?:you have )?(?:seven|7) or more cards in.*hand")),
+    ("put_counter_on_creature_turn", re.compile(r"you put a counter on a creature this turn")),
+    ("quest_counters", re.compile(r"quest counter")),
+    ("life_lost_n_or_more", re.compile(r"a player lost \d+ or more life this turn|opponent lost \d+ or more life this turn")),
+    ("full_party", re.compile(r"full party")),
+    ("reveal_creature_or_pw", re.compile(r"if it'?s a creature or planeswalker card.*reveal it")),
+    ("phyresis_counters", re.compile(r"phyresis counter|four or more phyresis counters")),
+    ("opp_controls_no_creatures", re.compile(r"opponents? controls? no creatures|your opponents control no creatures")),
+    ("library_compare", re.compile(r"library has more cards.*than|target opponent'?s library")),
+    ("dont_control_legendary", re.compile(r"you don'?t control (?:a|an) legendary")),
+    ("dont_control_token", re.compile(r"you don'?t control (?:a|an) \S+ creature token|you don'?t control a \S+ token")),
+    ("modified_creature", re.compile(r"\bit'?s modified\b|is modified")),
+    ("aura_count", re.compile(r"enchanted by exactly (?:one|two|three|\d+) aura|enchanted by (?:three or more|\d+ or more) auras")),
+    ("landmark_ribbon_counters", re.compile(r"(?:landmark|ribbon|judgment|velocity) counter")),
+    ("entered_this_turn", re.compile(r"(?:~|this creature|this permanent) entered this turn|entered the battlefield this turn")),
+    ("power_compare", re.compile(r"(?:that creature'?s power|its power) is greater than (?:this creature'?s power|~'s power)|power 4 or greater")),
+    ("suspect_or_suspected", re.compile(r"it'?s suspected|suspect it")),
+    ("creature_subtype_is", re.compile(r"(?:this creature is|that creature was) (?:a|an) \w+$|this creature is a \w+")),
+    ("kicker_wasnt_paid", re.compile(r"this creature wasn'?t kicked|wasn'?t kicked")),
+    # Era 1 r60 sweep — second-pass tail. These each catch 1-5 cards from
+    # the residual after the first pass. Together they push the gap from
+    # ~11% down to under 5%.
+    ("permanent_is_type", re.compile(r"\bit'?s an? (?:creature|artifact|enchantment|land|planeswalker|wall)\b")),
+    ("didnt_play_exile_this_turn", re.compile(r"didn'?t play a card from exile this turn|you didn'?t cast.*from exile this turn")),
+    ("equipment_attached", re.compile(r"is equipped\b|equipped creature|while equipped|this equipment is attached")),
+    ("equipped_creature_attacking", re.compile(r"equipped creature is attacking")),
+    ("cast_n_spells_this_turn", re.compile(r"(?:you'?ve|you have)? ?cast (?:two|three|four|\d+) or more spells this turn|cast (?:both )?a creature spell and a noncreature spell this turn")),
+    ("created_token_this_turn", re.compile(r"you created a token this turn|created one or more tokens this turn")),
+    ("your_turn", re.compile(r"as long as it'?s your turn|while it'?s your turn|during your turn")),
+    ("drew_n_cards_this_turn", re.compile(r"(?:you'?ve |you have )?drawn (?:two|three|four|\d+) or more cards this turn")),
+    ("loyalty_counters", re.compile(r"loyalty counters? on (?:him|her|it|them)|has loyalty counters on it")),
+    ("evidence_collected", re.compile(r"evidence (?:was )?collected|collected evidence")),
+    ("wasnt_cast_from_hand", re.compile(r"you didn'?t cast it from your hand|wasn'?t cast from (?:your )?hand")),
+    ("special_counter_type", re.compile(r"(?:soul|rad|fate|charge|incubation|stash|petal|gold|verse|study|finality|wage|loot|landmark|ribbon|judgment|velocity|phyresis|deathtouch|stun|shield|brick|level|fade|age|growth|despair|spore|brain|coin|wish|gem|hoof|stoke|theft|filibuster|key|knowledge|hatchling|hourglass|tide|trade|wind|magnet|paralyzation|petrification|delay) counters? on")),
+    ("mana_value_le", re.compile(r"mana value is \d+ or (?:less|fewer)|its mana value is \d+ or (?:less|fewer)")),
+    ("life_exact", re.compile(r"you have exactly \d+ life|your life total is exactly \d+")),
+    ("defending_player_controls_no", re.compile(r"defending player controls no \w+|defending player controls (?:zero|0) ")),
+    ("not_saddled", re.compile(r"isn'?t saddled|this creature isn'?t saddled")),
+    ("hand_size_le_n", re.compile(r"(?:you have )?(?:one|two|three|four|five|six|\d+) or fewer cards in.*hand|fewer than (?:one|two|three|four|five|six|seven|eight|\d+) cards in.*hand")),
+    ("completed_dungeon", re.compile(r"completed a dungeon|venturing into a dungeon")),
+    ("opponent_controls_typed", re.compile(r"opponent controls a creature with \w+|opponent controls a \w+ creature")),
     ("you_control_raw", re.compile(r"you control")),
 ]
 
@@ -205,6 +267,149 @@ def match_raw(text: str) -> str | None:
         if rx.search(t):
             return name
     return None
+
+
+# ---------------------------------------------------------------------------
+# Trigger-side bucketing — mirrors classifyTrigger + triggerConditionActions
+# in cmd/hexdek-thor/conditional_setup.go. Ported from era2/era3 audit scripts
+# so the era1 sweep can report the same trigger gap metric (PR #447 / PR #451).
+# ---------------------------------------------------------------------------
+
+TRIGGER_EVENT_EXACT = {
+    "when_you_do", "counters_put_on_self", "tribe_you_control_etb",
+    "self_crews_vehicle", "you_whenever", "ally_etb", "ally_typed_etb_a",
+    "ally_subtype_deal_damage", "self_and", "etb_or_another",
+    "opp_creature_event", "self_saddles_mount", "becomes_tapped",
+    "you_get_energy", "player_wins_coin_flip", "you_action",
+    "becomes_crewed", "becomes_crewed_first", "opp_draw_card",
+    "etb", "attacks", "deal_combat_damage", "deals_combat_damage", "phase",
+    # Era 3 r60 sweep — 5 new scaffolds.
+    "mutates", "turned_face_up", "exploits_creature",
+    "specialize_creature", "unlock_door",
+    # Era 1 r60 sweep — 4 new scaffolds for 1993-2014 mechanics.
+    "becomes_untapped", "becomes_monstrous", "tapped_for_mana", "you_roll_dice",
+}
+
+TRIGGER_SUBSTRING_CATCHES = [
+    "dies", "is put into a graveyard",
+    "enters", "attack", "combat damage",
+    "combat_damage",
+    "cast", "spell",
+    "gain", "lose",
+    "draw", "discard",
+    "leaves", "ltb", "sacrific",
+]
+
+TRIGGER_EXTRA_EXACT = {
+    # Era 2 r60 sweep.
+    "die", "to_graveyard", "etb_as", "cycle", "block",
+    "coin_flip_result", "lose_game",
+    "beginning_of_ordinal_step", "token_event",
+    "nontoken_ally_event", "nontoken_creature_event",
+    "compound_opp_tribe_event", "one_or_more_typed_event",
+    "ally_explore", "self_and_another",
+    "conditional_state", "misc_when", "spend_this_mana",
+    # Era 3 r60 sweep — routed to existing scaffolds.
+    "face_up_as", "as_transform", "ally_exploits", "fully_unlock_room",
+    "ally_targeted_by_opp", "becomes_blocked",
+    "dealt_damage", "deals_damage",
+    "damage_prevented_this_way", "ally_source_damage",
+    "remove_counter", "counter_put_on_actor",
+    "counters_put_on_self_any", "counters_put_on_actor",
+    "creature_modified_event",
+    "card_put_into_zone", "permanent_to_gy",
+    "card_milled_via", "compound_card_zone_event",
+    "foretell_card",
+    "attached_as", "equipped_trigger",
+    "day_night_flip", "transforms",
+    "next_time_one_or_more_enter",
+    "cycle_card",
+    "you_commit_crime", "commit_crime",
+    "pay_cost_multiple", "misc_whenever_a",
+    "you_conjure_one_or_more", "you_mechanic",
+    "self_or_another_when",
+    "becomes_state",
+    "becomes_target",
+    "player_land_play",
+    # Era 1 r60 sweep — long-tail routes to existing scaffolds.
+    "tap_for_mana", "land_tapped_for_mana",       # → tapped_for_mana
+    "block_or_becomes_blocked", "block_creature",
+    "becomes_blocked_by", "self_blocks",
+    "tap_opp_creature",                            # → attacks
+    "self_deals_damage_player", "you_dealt_damage",
+    "per_damage_prevented", "opp_dealt_damage",   # → combat_damage
+    "creature_etb_any", "land_etb_any",
+    "artifact_etb", "any_typed_etb",
+    "one_or_more_lands", "equipment_attach_state_change",
+    "you_create_one_or_more_tokens", "create_token",
+    "gain_control_event",
+    "another_creature_or_artifact_event",         # → creature_etb
+    "another_typed_etb",                          # → tribe_you_control_etb
+    "ally_typed_etb", "legend_ally_event",
+    "one_or_more_other_ally_event",
+    "one_or_more_ally_with_x_enter",              # → ally_etb
+    "you_scry", "you_surveil",                    # → draw_card
+    "to_gy_from_anywhere", "creature_cards_leave_gy",
+    "card_to_gy_anywhere", "enchanted_perm_to_gy",
+    "lose_control_of", "one_or_more_milled",
+    "mill_event", "creature_cards_to_zone",
+    "any_player_loses_game",                      # → creature_dies
+    "any_cycle",                                  # → discard
+    "you_put_counters_on", "you_put_counters_on_any",
+    "you_proliferate", "counter_removed_from_self",  # → counters_put_on_self
+    "any_player_sacs",                            # → sacrifice
+    "opp_activate", "opp_searches_library",       # → opp_creature_event
+    "any_player_tap_land", "self_phase_inout",
+    "until_eot_trigger",                          # → upkeep
+    "you_misc_event", "you_exert_creature",
+    "as_you_draft_a_card", "become_monarch",
+    "you_expend_n", "self_ability_activated",     # → when_you_do
+    # Era 1 r60 second pass — phase-style + long tail routes.
+    "end_step", "upkeep", "untap_step",
+    "each_upkeep", "cumulative_upkeep_unpaid", "cumulative_upkeep_paid",
+    "until_next_phase", "saga_final_chapter",
+    "ordinal_trigger", "upkeep_life_leader", "first_main",  # → upkeep/phase
+    "becomes_renowned",                                      # → becomes_monstrous
+    "evolve_event", "counter_put_on_self",
+    "counters_removed_from_self", "counters_put_on_actor_any",
+    "remove_last_counter", "counter_threshold", "proliferate",  # → counters_put_on_self
+    "flip",                                                  # → player_wins_coin_flip
+    "aura_attached_event", "forest_etb",
+    "creature_etb", "power_threshold_etb",                  # → creature_etb
+    "compound_opponents_event", "opp_landfall", "opp_shuffle",  # → opp_creature_event
+    "compound_tribe_die_or_leave", "self_card_zone_to_zone",
+    "lose_control", "is_sac_or_destroyed",
+    "permanent_returned", "self_enter_or_die", "exiled",    # → creature_dies
+    "activation_non_mana", "this_card_event",
+    "chosen_color_mana_added", "chosen_color_mana_tapped",
+    "tempting_offer", "vote", "self_squad_action",          # → when_you_do
+    "one_or_more_other_creatures",                          # → etb_or_another
+    "one_or_more_ally_creatures",                           # → ally_etb
+    "paired_whenever",                                      # → self_and
+    "opponents_dealt_combat_dmg",                           # → combat_damage
+    "becomes_saddled_first",                                # → self_saddles_mount
+    "you_sac_one_or_more",                                  # → sacrifice
+    "you_control_7_thrulls",                                # → tribe_you_control_etb
+}
+
+
+def classify_trigger_event(event: str, phase: str) -> bool:
+    """Returns True if classifyTrigger would route this event to a registered
+    triggerConditionActions slug (i.e. the trigger is scaffold-bucketed)."""
+    e = (event or "").lower().strip()
+    p = (phase or "").lower().strip()
+    if not e and not p:
+        return False
+    if e in TRIGGER_EVENT_EXACT or e in TRIGGER_EXTRA_EXACT:
+        return True
+    for kw in TRIGGER_SUBSTRING_CATCHES:
+        if kw in e:
+            if kw in ("gain", "lose") and "life" not in e:
+                continue
+            return True
+    if p:
+        return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -230,6 +435,8 @@ def main():
     cond_kinds_bucketed = Counter()
     cond_kinds_unbucketed = Counter()
     trig_events = Counter()
+    trig_events_bucketed = Counter()
+    trig_events_unbucketed = Counter()
     raw_buckets = Counter()
     raw_unbucketed_text = Counter()
     raw_unbucketed_examples = defaultdict(list)
@@ -279,7 +486,12 @@ def main():
                     cond_kinds_unbucketed[k] += 1
             for tg in trigs:
                 ev = (tg.get("event") or "").lower()
+                ph = (tg.get("phase") or "").lower()
                 trig_events[ev] += 1
+                if classify_trigger_event(ev, ph):
+                    trig_events_bucketed[ev] += 1
+                else:
+                    trig_events_unbucketed[ev] += 1
 
     total_conds = sum(cond_kinds.values())
     total_bucket = sum(cond_kinds_bucketed.values())
@@ -294,7 +506,12 @@ def main():
     lines.append(f"- Era 1 Condition nodes: **{total_conds}** "
                  f"(bucketed {total_bucket}, unbucketed {total_unbucket}, "
                  f"{100.0*total_unbucket/max(1,total_conds):.1f}% gap)\n")
-    lines.append(f"- Era 1 Trigger nodes: **{sum(trig_events.values())}**\n")
+    total_trigs = sum(trig_events.values())
+    total_trig_bucket = sum(trig_events_bucketed.values())
+    total_trig_unbucket = sum(trig_events_unbucketed.values())
+    lines.append(f"- Era 1 Trigger nodes: **{total_trigs}** "
+                 f"(bucketed {total_trig_bucket}, unbucketed {total_trig_unbucket}, "
+                 f"{100.0*total_trig_unbucket/max(1,total_trigs):.1f}% gap)\n")
 
     lines.append("\n## Top unbucketed condition Kinds\n")
     for k, n in cond_kinds_unbucketed.most_common(60):
@@ -309,9 +526,16 @@ def main():
     for k, n in cond_kinds_bucketed.most_common(20):
         lines.append(f"- `{k}` × {n}")
 
-    lines.append("\n## Top trigger events\n")
-    for ev, n in trig_events.most_common(40):
+    lines.append("\n## Top unbucketed trigger events\n")
+    if not trig_events_unbucketed:
+        lines.append("_(none — every Era 1 trigger event maps to a scaffold slug)_")
+    for ev, n in trig_events_unbucketed.most_common(60):
         lines.append(f"- `{ev or '<empty>'}` × {n}")
+
+    lines.append("\n## Top trigger events (bucketed + unbucketed)\n")
+    for ev, n in trig_events.most_common(40):
+        marker = "" if ev in trig_events_bucketed else " _(unbucketed)_"
+        lines.append(f"- `{ev or '<empty>'}` × {n}{marker}")
 
     OUT.write_text("\n".join(lines))
     print("\n".join(lines))

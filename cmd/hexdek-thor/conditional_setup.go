@@ -252,6 +252,124 @@ func classifyTrigger(t *gameast.Trigger) string {
 		// resource) is the closest fit; phase-style no-op also works.
 		return "upkeep"
 
+	// Era 1 R60 sweep — 4 new scaffolds for dominant 1993-2014 mechanics
+	// the Era 2/3 sweeps left uncovered + 50 long-tail routing cases.
+	// Same pattern as Era 2 (PR #447) and Era 3 (PR #451): each new
+	// scaffold primes a materially different world; long-tail slugs
+	// route to existing scaffolds whose primed state already fits.
+	case event == "becomes_untapped":
+		return "becomes_untapped"
+	case event == "becomes_monstrous":
+		return "becomes_monstrous"
+	case event == "tapped_for_mana" || event == "tap_for_mana" ||
+		event == "land_tapped_for_mana":
+		return "tapped_for_mana"
+	case event == "you_roll_dice":
+		return "you_roll_dice"
+
+	// Long-tail routing — Era 1 mechanics (blocking, scry, monstrosity
+	// adjacent, mana-tap, proliferate, dice, monarch, expend, surveil,
+	// exert, equipment, lose-control, leave-graveyard, ability-activation).
+	case event == "block_or_becomes_blocked" || event == "block_creature" ||
+		event == "becomes_blocked_by" || event == "self_blocks" ||
+		event == "tap_opp_creature":
+		return "attacks"
+	case event == "self_deals_damage_player" || event == "you_dealt_damage" ||
+		event == "per_damage_prevented" || event == "opp_dealt_damage":
+		return "combat_damage"
+	case event == "creature_etb_any" || event == "land_etb_any" ||
+		event == "artifact_etb" || event == "any_typed_etb" ||
+		event == "one_or_more_lands" || event == "equipment_attach_state_change" ||
+		event == "you_create_one_or_more_tokens" || event == "create_token" ||
+		event == "gain_control_event" || event == "another_creature_or_artifact_event":
+		return "creature_etb"
+	case event == "another_typed_etb":
+		return "tribe_you_control_etb"
+	case event == "ally_typed_etb" || event == "legend_ally_event" ||
+		event == "one_or_more_other_ally_event" ||
+		event == "one_or_more_ally_with_x_enter":
+		return "ally_etb"
+	case event == "you_scry" || event == "you_surveil":
+		// Scry / surveil = topdeck manipulation; the draw_card prime
+		// (top up library to 5+) is the right world.
+		return "draw_card"
+	case event == "to_gy_from_anywhere" || event == "creature_cards_leave_gy" ||
+		event == "card_to_gy_anywhere" || event == "enchanted_perm_to_gy" ||
+		event == "lose_control_of" || event == "one_or_more_milled" ||
+		event == "mill_event" || event == "creature_cards_to_zone" ||
+		event == "any_player_loses_game":
+		return "creature_dies"
+	case event == "any_cycle":
+		return "discard"
+	case event == "you_put_counters_on" || event == "you_put_counters_on_any" ||
+		event == "you_proliferate" || event == "counter_removed_from_self":
+		return "counters_put_on_self"
+	case event == "any_player_sacs":
+		return "sacrifice"
+	case event == "opp_activate" || event == "opp_searches_library":
+		return "opp_creature_event"
+	case event == "any_player_tap_land" || event == "self_phase_inout" ||
+		event == "until_eot_trigger":
+		return "upkeep"
+	case event == "you_misc_event" || event == "you_exert_creature" ||
+		event == "as_you_draft_a_card" || event == "become_monarch" ||
+		event == "you_expend_n" || event == "self_ability_activated":
+		return "when_you_do"
+
+	// Era 1 R60 second pass — phase-style event slugs the parser emits as
+	// exact events (not via the phase: field) plus a long tail of mechanic
+	// variants. Same routing pattern as PR #447 / #451.
+	case event == "end_step":
+		return "end_step"
+	case event == "upkeep" || event == "each_upkeep" ||
+		event == "cumulative_upkeep_unpaid" || event == "cumulative_upkeep_paid" ||
+		event == "until_next_phase" || event == "saga_final_chapter" ||
+		event == "ordinal_trigger" || event == "upkeep_life_leader" ||
+		event == "first_main":
+		return "upkeep"
+	case event == "untap_step":
+		return "untap_step"
+	case event == "becomes_renowned":
+		// One-shot keyword counter (Magic Origins) — same world as monstrosity.
+		return "becomes_monstrous"
+	case event == "evolve_event" || event == "counter_put_on_self" ||
+		event == "counters_removed_from_self" || event == "counters_put_on_actor_any" ||
+		event == "remove_last_counter" || event == "counter_threshold" ||
+		event == "proliferate":
+		return "counters_put_on_self"
+	case event == "flip":
+		return "player_wins_coin_flip"
+	case event == "aura_attached_event" || event == "forest_etb" ||
+		event == "creature_etb" || event == "power_threshold_etb":
+		return "creature_etb"
+	case event == "compound_opponents_event" || event == "opp_landfall" ||
+		event == "opp_shuffle":
+		return "opp_creature_event"
+	case event == "compound_tribe_die_or_leave" || event == "self_card_zone_to_zone" ||
+		event == "lose_control" || event == "is_sac_or_destroyed" ||
+		event == "permanent_returned" || event == "self_enter_or_die" ||
+		event == "exiled":
+		return "creature_dies"
+	case event == "activation_non_mana" || event == "this_card_event" ||
+		event == "chosen_color_mana_added" || event == "chosen_color_mana_tapped" ||
+		event == "tempting_offer" || event == "vote" ||
+		event == "self_squad_action":
+		return "when_you_do"
+	case event == "one_or_more_other_creatures":
+		return "etb_or_another"
+	case event == "one_or_more_ally_creatures":
+		return "ally_etb"
+	case event == "paired_whenever":
+		return "self_and"
+	case event == "opponents_dealt_combat_dmg":
+		return "combat_damage"
+	case event == "becomes_saddled_first":
+		return "self_saddles_mount"
+	case event == "you_sac_one_or_more":
+		return "sacrifice"
+	case event == "you_control_7_thrulls":
+		return "tribe_you_control_etb"
+
 	case event == "dies" || strings.Contains(event, "dies") ||
 		strings.Contains(event, "is put into a graveyard"):
 		return "creature_dies"
@@ -1009,6 +1127,98 @@ var triggerConditionActions = map[string]conditionAction{
 				Kind:   "unlock_door",
 				Seat:   0,
 				Source: "thor_priming",
+			})
+		},
+	},
+
+	// Era 1 R60 sweep — 4 new scaffolds for dominant 1993-2014 mechanics.
+
+	// "Whenever ~ becomes untapped" — Awakening, Wilderness Reclamation,
+	// Quicksilver Dagger. Counterpart to becomes_tapped_trigger. Force
+	// srcPerm into the tapped → untapped transition so the listener fires.
+	"becomes_untapped": {
+		kind: "becomes_untapped",
+		describe: func(t *gameast.Trigger) string {
+			return "tap then untap srcPerm + log becomes_untapped event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Tapped = false // observable transition
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "becomes_untapped",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever ~ becomes monstrous" — Theros monstrosity (Polukranos,
+	// Stormbreath Dragon, Fanatic of Xenagos). Engine tracks monstrosity
+	// via Flags[monstrous]; stamping it observable to the listener.
+	"becomes_monstrous": {
+		kind: "becomes_monstrous",
+		describe: func(t *gameast.Trigger) string {
+			return "stamp srcPerm.Flags[monstrous]=1 + log monstrosity event"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Flags["monstrous"] = 1
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "becomes_monstrous",
+				Seat:   0,
+				Source: "thor_priming",
+			})
+		},
+	},
+
+	// "Whenever ~ is tapped for mana" — Mana Reflection, Heartbeat of
+	// Spring, Nyxbloom Ancient. Distinct from becomes_tapped because the
+	// listener specifically wants the tap to be FOR MANA — we tap the
+	// source AND log a mana_added event so both "tapped" and "for mana"
+	// halves are satisfied.
+	"tapped_for_mana": {
+		kind: "tapped_for_mana",
+		describe: func(t *gameast.Trigger) string {
+			return "tap srcPerm + log mana_added event (tapped_for_mana)"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			if srcPerm != nil {
+				if srcPerm.Flags == nil {
+					srcPerm.Flags = map[string]int{}
+				}
+				srcPerm.Tapped = true
+			}
+			gs.LogEvent(gameengine.Event{
+				Kind:   "tapped_for_mana",
+				Seat:   0,
+				Source: "thor_priming",
+				Amount: 1,
+			})
+		},
+	},
+
+	// "Whenever you roll a die" — D&D set dice rolls (Adventures in the
+	// Forgotten Realms, Game of Chaos). Log a synthetic die_rolled event
+	// so listeners can observe; no engine state to mutate.
+	"you_roll_dice": {
+		kind: "you_roll_dice",
+		describe: func(t *gameast.Trigger) string {
+			return "log die_rolled event for seat 0"
+		},
+		apply: func(gs *gameengine.GameState, srcPerm *gameengine.Permanent) {
+			gs.LogEvent(gameengine.Event{
+				Kind:   "die_rolled",
+				Seat:   0,
+				Source: "thor_priming",
+				Amount: 10, // mid-range d20 result
 			})
 		},
 	},
