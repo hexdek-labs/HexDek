@@ -123,6 +123,27 @@ type TournamentResult struct {
 	// Python gauntlet_poker's `seat_wins` after un-rotation.
 	WinsByCommander map[string]int
 
+	// WinsBySeat[seatIdx] = count of games won by seat position
+	// AFTER rotation (i.e., play order, not deck identity). With
+	// fair seat rotation the expectation is len(games) / NSeats per
+	// seat; deviations measure structural seat-position bias.
+	// Added 2026-05-24 per 7174n1c proposal — see
+	// docs/seat-bias-measurement-r60.md.
+	WinsBySeat []int
+
+	// WinsByCommanderBySeat[commanderName][seatIdx] = win count for
+	// that commander when played from that seat position. Used to
+	// derive the archetype × seat penalty matrix without re-running
+	// the tournament. Sums across seatIdx equal WinsByCommander[name].
+	WinsByCommanderBySeat map[string][]int
+
+	// GamesByCommanderBySeat[commanderName][seatIdx] = total games
+	// played by that commander in that seat position. Needed because
+	// fair rotation only holds in expectation — short runs have noise.
+	// Divide WinsByCommanderBySeat by GamesByCommanderBySeat to get
+	// per-(commander, seat) winrate.
+	GamesByCommanderBySeat map[string][]int
+
 	// EliminationByCommanderBySlot[commanderName][slot] = count of
 	// times that commander was eliminated in that order slot. Slot 0
 	// = first out, slot NSeats-1 = winner.

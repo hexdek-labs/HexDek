@@ -487,6 +487,43 @@ func (r *TournamentResult) PrintDashboard(showMatchup bool) {
 		}
 	}
 
+	// R60 seat-bias measurement output. Only printed when populated
+	// (rotate mode aggregator). Per-seat totals + per-(commander, seat)
+	// breakdown surface play-position bias the per-commander winrate
+	// table can't show. See docs/seat-bias-measurement-r60.md.
+	if len(r.WinsBySeat) > 0 && games > 0 {
+		fmt.Println()
+		fmt.Println("SEAT-POSITION BIAS:")
+		expected := float64(games) / float64(len(r.WinsBySeat))
+		for i, w := range r.WinsBySeat {
+			rate := 100 * float64(w) / float64(games)
+			delta := float64(w) - expected
+			fmt.Printf("  seat %d: %4d wins  %5.1f%%  (expected %.1f, Δ %+.1f)\n",
+				i, w, rate, expected, delta)
+		}
+		if len(r.WinsByCommanderBySeat) > 0 {
+			fmt.Println()
+			fmt.Println("WINRATE BY (COMMANDER, SEAT):")
+			fmt.Printf("  %-40s %8s %8s %8s %8s\n", "commander", "seat0", "seat1", "seat2", "seat3")
+			for _, name := range r.CommanderNames {
+				wins := r.WinsByCommanderBySeat[name]
+				gp := r.GamesByCommanderBySeat[name]
+				if len(wins) == 0 || len(gp) == 0 {
+					continue
+				}
+				fmt.Printf("  %-40s", name)
+				for i := 0; i < len(wins) && i < 4; i++ {
+					if gp[i] > 0 {
+						fmt.Printf(" %6.1f%% ", 100*float64(wins[i])/float64(gp[i]))
+					} else {
+						fmt.Printf(" %7s ", "--")
+					}
+				}
+				fmt.Println()
+			}
+		}
+	}
+
 	// Summary line.
 	fmt.Println()
 	fmt.Printf("Duration: %s  |  Throughput: %.1f games/sec  |  Crashes: %d  |  Concessions: %d  |  Avg turns: %.1f\n",
