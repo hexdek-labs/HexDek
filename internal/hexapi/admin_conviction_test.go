@@ -23,9 +23,16 @@ func seedConviction(t *testing.T, n int) {
 	}
 }
 
-func TestAdminConviction_LocalhostAllowed(t *testing.T) {
+// TestAdminConviction_UnsetEnvFailsClosed: with no env-configured admin
+// owner, the endpoint must refuse even a localhost Host header.
+// (Pre-r60-audit: localhost Host header alone authenticated — a remote
+// attacker could spoof it via the public reverse proxy or direct port
+// hit on the LAN. See adminAnomalyAuth docstring for the CWE-290
+// history.) The env-set + header-set happy path is exercised by the
+// existing TestAdminConviction_AdminOwnerHeader.
+func TestAdminConviction_UnsetEnvFailsClosed(t *testing.T) {
 	t.Cleanup(hat.ResetConvictionTelemetry)
-	seedConviction(t, 5)
+	seedConviction(t, 1)
 
 	mux := http.NewServeMux()
 	(&AdminConvictionHandler{}).Register(mux)
@@ -34,28 +41,8 @@ func TestAdminConviction_LocalhostAllowed(t *testing.T) {
 	req.Host = "localhost"
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d body = %s", rr.Code, rr.Body.String())
-	}
-
-	var resp struct {
-		Count     int                    `json:"count"`
-		LatestSeq uint64                 `json:"latest_seq"`
-		TotalSeen uint64                 `json:"total_seen"`
-		Events    []hat.ConvictionEvent  `json:"events"`
-	}
-	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
-		t.Fatalf("decode: %v", err)
-	}
-	if resp.Count != 5 || len(resp.Events) != 5 {
-		t.Fatalf("count=%d events=%d, want 5/5", resp.Count, len(resp.Events))
-	}
-	if resp.TotalSeen != 5 {
-		t.Errorf("total_seen=%d, want 5", resp.TotalSeen)
-	}
-	if resp.LatestSeq != 5 {
-		t.Errorf("latest_seq=%d, want 5", resp.LatestSeq)
+	if rr.Code != http.StatusForbidden {
+		t.Errorf("expected 403 (env unset, no fallback), got %d", rr.Code)
 	}
 }
 
@@ -104,6 +91,7 @@ func TestAdminConviction_AdminOwnerHeader(t *testing.T) {
 }
 
 func TestAdminConviction_TriggeredFilter(t *testing.T) {
+	t.Setenv("HEXDEK_ADMIN_OWNER", "alice")
 	t.Cleanup(hat.ResetConvictionTelemetry)
 	seedConviction(t, 9) // 3 of them have AnyTriggered=true (turns 3, 6, 9)
 
@@ -112,6 +100,7 @@ func TestAdminConviction_TriggeredFilter(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "http://localhost/api/admin/conviction-events?triggered=1", nil)
 	req.Host = "localhost"
+	req.Header.Set("X-HexDek-Owner", "alice")
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 
@@ -134,6 +123,7 @@ func TestAdminConviction_TriggeredFilter(t *testing.T) {
 }
 
 func TestAdminConviction_SincePagination(t *testing.T) {
+	t.Setenv("HEXDEK_ADMIN_OWNER", "alice")
 	t.Cleanup(hat.ResetConvictionTelemetry)
 	seedConviction(t, 5)
 
@@ -142,6 +132,7 @@ func TestAdminConviction_SincePagination(t *testing.T) {
 
 	req := httptest.NewRequest("GET", "http://localhost/api/admin/conviction-events?since=3", nil)
 	req.Host = "localhost"
+	req.Header.Set("X-HexDek-Owner", "alice")
 	rr := httptest.NewRecorder()
 	mux.ServeHTTP(rr, req)
 
