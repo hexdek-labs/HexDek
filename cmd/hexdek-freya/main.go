@@ -62,6 +62,7 @@ func main() {
 	var spellbookFetchURL string
 	var clustersOut string
 	var powerAggregateOut string
+	var corpusStatsOut string
 
 	flag.StringVar(&deckPath, "deck", "", "path to decklist file")
 	flag.StringVar(&deckDir, "all-decks", "", "analyze all decks in directory")
@@ -74,6 +75,8 @@ func main() {
 		"single-deck only: write the structured synergy-cluster export (full membership + per-card roles + score breakdown) as JSON to this path. Designed for downstream deck-builder integrations.")
 	flag.StringVar(&powerAggregateOut, "power-aggregate-out", "",
 		"--all-decks only: write the S/A/B/C/D power-tier distribution rollup (overall mix, per-bracket and per-archetype breakdown, 5-point score histogram) as JSON to this path. Designed for calibrating PowerTierFor thresholds against a real-world corpus.")
+	flag.StringVar(&corpusStatsOut, "corpus-stats-out", "",
+		"--all-decks only: write the corpus-wide rollup (average bracket / archetype / curve / density signals, distributions, presence percentages) as JSON to this path.")
 	flag.Parse()
 
 	if spellbookFetchURL != "" {
@@ -192,6 +195,23 @@ func main() {
 			f.Close()
 			log.Printf("wrote power-tier aggregate → %s (%d decks / %d cards)",
 				powerAggregateOut, agg.DeckCount, agg.TotalCards)
+		}
+
+		if corpusStatsOut != "" {
+			cs := ComputeCorpusStats(reports)
+			f, err := os.Create(corpusStatsOut)
+			if err != nil {
+				log.Fatalf("create corpus-stats-out: %v", err)
+			}
+			enc := json.NewEncoder(f)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(cs); err != nil {
+				f.Close()
+				log.Fatalf("encode corpus stats: %v", err)
+			}
+			f.Close()
+			log.Printf("wrote corpus stats → %s (%d decks, avg B%.1f, most common %s)",
+				corpusStatsOut, cs.DeckCount, cs.AvgBracket, cs.MostCommonArchetype)
 		}
 	}
 }

@@ -1884,6 +1884,11 @@ func PrintAllDecksSummary(w io.Writer, reports []*FreyaReport) {
 		"TOTALS", "", totalInf, totalDet, totalFin, totalSyn)
 	fmt.Fprintf(w, "\n")
 
+	// Corpus-wide stats — bracket / archetype / curve / density rollup
+	// so the user gets a real-world context for the per-deck rows
+	// above ("the corpus averages B3.2 / Midrange / 3.4 CMC").
+	PrintCorpusStats(w, ComputeCorpusStats(reports))
+
 	// Power-tier rollup — useful for calibrating the S/A/B/C/D
 	// thresholds against a real-world corpus. See power_aggregate.go.
 	PrintPowerTierAggregate(w, ComputePowerTierAggregate(reports))
