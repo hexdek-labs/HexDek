@@ -527,6 +527,10 @@ func printArchetypeText(w io.Writer, ac *ArchetypeClassification) {
 	fmt.Fprintf(w, "  Bracket:    %d/5 — %s\n", ac.Bracket, ac.BracketLabel)
 	fmt.Fprintf(w, "\n")
 
+	if ac.BracketRationale != nil {
+		printBracketRationaleText(w, ac.BracketRationale, "  ")
+	}
+
 	if len(ac.Signals) > 0 {
 		fmt.Fprintf(w, "  Signals:\n")
 		for _, s := range ac.Signals {
@@ -536,6 +540,36 @@ func printArchetypeText(w io.Writer, ac *ArchetypeClassification) {
 	}
 
 	fmt.Fprintf(w, "  Intent: %s\n\n", ac.Intent)
+}
+
+// printBracketRationaleText renders the bracket-derivation breakdown
+// under the bracket header: each scoring signal with its tier, evidence,
+// and contribution; followed by any ceiling/floor/gate adjustments and
+// the raw-vs-final score. indent is the leading whitespace per line.
+func printBracketRationaleText(w io.Writer, br *BracketRationale, indent string) {
+	if br == nil || len(br.Signals) == 0 {
+		return
+	}
+	fmt.Fprintf(w, "%sBracket rationale (raw score %d → B%d %s):\n",
+		indent, br.RawScore, br.FinalBracket, br.FinalLabel)
+	for _, sig := range br.Signals {
+		if sig.Kind == "score" {
+			line := fmt.Sprintf("%s  [%+d] %s (%s): %s",
+				indent, sig.Contribution, sig.Name, sig.Tier, sig.Measurement)
+			if len(sig.Evidence) > 0 {
+				ev := sig.Evidence
+				if len(ev) > 6 {
+					ev = append([]string{}, ev[:6]...)
+					ev = append(ev, fmt.Sprintf("+%d more", len(sig.Evidence)-6))
+				}
+				line += " — " + strings.Join(ev, ", ")
+			}
+			fmt.Fprintln(w, line)
+		} else {
+			fmt.Fprintf(w, "%s  [%s] %s: %s\n", indent, sig.Kind, sig.Name, sig.Note)
+		}
+	}
+	fmt.Fprintf(w, "\n")
 }
 
 func printRolesText(w io.Writer, ra *RoleAnalysis) {
@@ -1325,13 +1359,31 @@ type jsonRoleAssignment struct {
 }
 
 type jsonArchetype struct {
-	Primary    string   `json:"primary"`
-	Confidence float64  `json:"confidence"`
-	Secondary  string   `json:"secondary,omitempty"`
-	Bracket    int      `json:"bracket"`
-	BracketLbl string   `json:"bracket_label"`
-	Signals    []string `json:"signals,omitempty"`
-	Intent     string   `json:"intent"`
+	Primary    string             `json:"primary"`
+	Confidence float64            `json:"confidence"`
+	Secondary  string             `json:"secondary,omitempty"`
+	Bracket    int                `json:"bracket"`
+	BracketLbl string             `json:"bracket_label"`
+	Signals    []string           `json:"signals,omitempty"`
+	Intent     string             `json:"intent"`
+	Rationale  *jsonBracketRationale `json:"bracket_rationale,omitempty"`
+}
+
+type jsonBracketRationale struct {
+	FinalBracket int                  `json:"final_bracket"`
+	FinalLabel   string               `json:"final_label"`
+	RawScore     int                  `json:"raw_score"`
+	Signals      []jsonBracketSignal  `json:"signals"`
+}
+
+type jsonBracketSignal struct {
+	Name         string   `json:"name"`
+	Kind         string   `json:"kind"`
+	Tier         string   `json:"tier,omitempty"`
+	Measurement  string   `json:"measurement,omitempty"`
+	Evidence     []string `json:"evidence,omitempty"`
+	Contribution int      `json:"contribution"`
+	Note         string   `json:"note,omitempty"`
 }
 
 type jsonWinLines struct {
@@ -1594,7 +1646,32 @@ func buildJSONArchetype(ac *ArchetypeClassification) *jsonArchetype {
 		BracketLbl: ac.BracketLabel,
 		Signals:    ac.Signals,
 		Intent:     ac.Intent,
+		Rationale:  buildJSONBracketRationale(ac.BracketRationale),
 	}
+}
+
+func buildJSONBracketRationale(br *BracketRationale) *jsonBracketRationale {
+	if br == nil {
+		return nil
+	}
+	out := &jsonBracketRationale{
+		FinalBracket: br.FinalBracket,
+		FinalLabel:   br.FinalLabel,
+		RawScore:     br.RawScore,
+		Signals:      make([]jsonBracketSignal, 0, len(br.Signals)),
+	}
+	for _, s := range br.Signals {
+		out.Signals = append(out.Signals, jsonBracketSignal{
+			Name:         s.Name,
+			Kind:         s.Kind,
+			Tier:         s.Tier,
+			Measurement:  s.Measurement,
+			Evidence:     s.Evidence,
+			Contribution: s.Contribution,
+			Note:         s.Note,
+		})
+	}
+	return out
 }
 
 func buildJSONWinLines(wla *WinLineAnalysis) *jsonWinLines {

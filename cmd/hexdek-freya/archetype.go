@@ -20,6 +20,38 @@ type ArchetypeClassification struct {
 	GameChangerCount  int
 	GameChangerCards  []string
 	Signals           []string
+	// BracketRationale documents how the bracket was derived: which
+	// signals contributed (and how many points), what cards backed each
+	// scoring tier, and which ceilings/floors/gates fired to adjust the
+	// raw score. Surfaces the WHY behind the bracket call so deck
+	// builders can see exactly which density / card-list signals pushed
+	// them across a threshold.
+	BracketRationale *BracketRationale
+}
+
+// BracketSignal records a single contributing observation in the bracket
+// calculation. Kind distinguishes scoring contributions from post-score
+// adjustments (ceiling caps, floor lifts, B5 gate demotions) — for the
+// latter, Contribution is 0 and the explanation lives in Note.
+type BracketSignal struct {
+	Name         string   // signal label ("Game Changers", "Free interaction", "B5 gate")
+	Kind         string   // "score" | "ceiling" | "floor" | "gate"
+	Tier         string   // matched threshold band ("8+", "12%+", "lean curve <2.0")
+	Measurement  string   // actual measurement ("10 pieces", "13% of nonlands")
+	Evidence     []string // card names backing the signal, where curated lists exist
+	Contribution int      // points added (positive) or subtracted (negative); 0 for adjustments
+	Note         string   // free-form why-line, used heavily by adjustment kinds
+}
+
+// BracketRationale is the assembled explanation for a single bracket
+// call. RawScore is the sum of Contribution across Kind="score"
+// signals before any adjustments fire. FinalBracket / FinalLabel are
+// the post-adjustment outcome.
+type BracketRationale struct {
+	FinalBracket int
+	FinalLabel   string
+	RawScore     int
+	Signals      []BracketSignal
 }
 
 type archetypeFingerprint struct {
@@ -462,7 +494,7 @@ func ClassifyArchetype(report *FreyaReport, qtyProfiles []CardProfileQty, oracle
 
 	ac.Signals = buildSignals(ctx, ac)
 	ac.Intent = buildIntent(ac, report, ctx)
-	ac.Bracket, ac.BracketLabel = estimateBracket(ctx, report)
+	ac.Bracket, ac.BracketLabel, ac.BracketRationale = estimateBracket(ctx, report)
 	ac.PlaysLike, ac.PlaysLikeLabel = estimatePlaysLike(ctx, report)
 	ac.GameChangerCount = ctx.gameChangerCount
 	ac.GameChangerCards = ctx.gameChangerNames
@@ -834,87 +866,114 @@ func buildIntent(ac *ArchetypeClassification, report *FreyaReport, ctx *classify
 	return fmt.Sprintf("This is a %s that wants to %s.%s%s", label, gameplan, disguise, speed)
 }
 
-func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string) {
-	score := 0
+func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string, *BracketRationale) {
+	rationale := &BracketRationale{}
+	addScore := func(name, tier, measurement string, evidence []string, points int) {
+		rationale.RawScore += points
+		rationale.Signals = append(rationale.Signals, BracketSignal{
+			Name:         name,
+			Kind:         "score",
+			Tier:         tier,
+			Measurement:  measurement,
+			Evidence:     evidence,
+			Contribution: points,
+		})
+	}
 
 	// WotC Game Changers — heaviest signal, aligns with official bracket axis
-	if ctx.gameChangerCount >= 8 {
-		score += 4
-	} else if ctx.gameChangerCount >= 4 {
-		score += 3
-	} else if ctx.gameChangerCount >= 2 {
-		score += 2
-	} else if ctx.gameChangerCount >= 1 {
-		score += 1
+	switch {
+	case ctx.gameChangerCount >= 8:
+		addScore("Game Changers", "8+", fmt.Sprintf("%d on WotC list", ctx.gameChangerCount),
+			ctx.gameChangerNames, 4)
+	case ctx.gameChangerCount >= 4:
+		addScore("Game Changers", "4-7", fmt.Sprintf("%d on WotC list", ctx.gameChangerCount),
+			ctx.gameChangerNames, 3)
+	case ctx.gameChangerCount >= 2:
+		addScore("Game Changers", "2-3", fmt.Sprintf("%d on WotC list", ctx.gameChangerCount),
+			ctx.gameChangerNames, 2)
+	case ctx.gameChangerCount >= 1:
+		addScore("Game Changers", "1", fmt.Sprintf("%d on WotC list", ctx.gameChangerCount),
+			ctx.gameChangerNames, 1)
 	}
 
-	if ctx.tutorDensity >= 0.12 {
-		score += 3
-	} else if ctx.tutorDensity >= 0.08 {
-		score += 2
-	} else if ctx.tutorDensity >= 0.04 {
-		score += 1
+	switch {
+	case ctx.tutorDensity >= 0.12:
+		addScore("Tutor density", "12%+", fmt.Sprintf("%.0f%% of nonlands", ctx.tutorDensity*100), nil, 3)
+	case ctx.tutorDensity >= 0.08:
+		addScore("Tutor density", "8-11%", fmt.Sprintf("%.0f%% of nonlands", ctx.tutorDensity*100), nil, 2)
+	case ctx.tutorDensity >= 0.04:
+		addScore("Tutor density", "4-7%", fmt.Sprintf("%.0f%% of nonlands", ctx.tutorDensity*100), nil, 1)
 	}
 
-	if ctx.comboCount >= 5 {
-		score += 3
-	} else if ctx.comboCount >= 2 {
-		score += 2
-	} else if ctx.comboCount >= 1 {
-		score += 1
+	switch {
+	case ctx.comboCount >= 5:
+		addScore("Combo lines", "5+", fmt.Sprintf("%d true-infinite/determined loops", ctx.comboCount), nil, 3)
+	case ctx.comboCount >= 2:
+		addScore("Combo lines", "2-4", fmt.Sprintf("%d true-infinite/determined loops", ctx.comboCount), nil, 2)
+	case ctx.comboCount >= 1:
+		addScore("Combo lines", "1", fmt.Sprintf("%d true-infinite/determined loop", ctx.comboCount), nil, 1)
 	}
 
-	if ctx.avgCMC < 2.0 {
-		score += 2
-	} else if ctx.avgCMC < 2.5 {
-		score += 1
-	} else if ctx.avgCMC > 3.5 {
-		score -= 1
+	switch {
+	case ctx.avgCMC < 2.0:
+		addScore("Average CMC", "lean (<2.0)", fmt.Sprintf("%.1f avg", ctx.avgCMC), nil, 2)
+	case ctx.avgCMC < 2.5:
+		addScore("Average CMC", "moderate (<2.5)", fmt.Sprintf("%.1f avg", ctx.avgCMC), nil, 1)
+	case ctx.avgCMC > 3.5:
+		addScore("Average CMC", "heavy (>3.5)", fmt.Sprintf("%.1f avg", ctx.avgCMC), nil, -1)
 	}
 
-	if ctx.fastManaCount >= 10 {
-		score += 3
-	} else if ctx.fastManaCount >= 6 {
-		score += 2
-	} else if ctx.fastManaCount >= 3 {
-		score += 1
+	switch {
+	case ctx.fastManaCount >= 10:
+		addScore("Fast mana", "10+", fmt.Sprintf("%d sub-2-CMC mana producers", ctx.fastManaCount), nil, 3)
+	case ctx.fastManaCount >= 6:
+		addScore("Fast mana", "6-9", fmt.Sprintf("%d sub-2-CMC mana producers", ctx.fastManaCount), nil, 2)
+	case ctx.fastManaCount >= 3:
+		addScore("Fast mana", "3-5", fmt.Sprintf("%d sub-2-CMC mana producers", ctx.fastManaCount), nil, 1)
 	}
 
 	if ctx.roleRatios[RoleCounterspell] >= 0.06 {
-		score += 1
+		addScore("Counterspell density", "6%+",
+			fmt.Sprintf("%.0f%% of nonlands", ctx.roleRatios[RoleCounterspell]*100), nil, 1)
 	}
 
 	if report.Roles != nil {
 		landRatio := ctx.roleRatios[RoleLand]
 		if landRatio < 0.30 {
-			score += 1
+			addScore("Land ratio", "<30%",
+				fmt.Sprintf("%.0f%% lands (spell-dense)", landRatio*100), nil, 1)
 		}
 	}
 
 	// Finisher density — distinct win-condition lines signal tuned optimization.
-	// Decks with many independent finishers are operating at B4+ regardless of
-	// raw combo/GC count (e.g. tribal Voltron with 14 finisher overlap).
 	finisherCount := len(report.Finishers)
-	if finisherCount >= 8 {
-		score += 2
-	} else if finisherCount >= 4 {
-		score += 1
+	switch {
+	case finisherCount >= 8:
+		addScore("Finisher density", "8+",
+			fmt.Sprintf("%d distinct finisher lines", finisherCount), nil, 2)
+	case finisherCount >= 4:
+		addScore("Finisher density", "4-7",
+			fmt.Sprintf("%d distinct finisher lines", finisherCount), nil, 1)
 	}
 
 	// Free interaction — the deck-shape signal that separates true cEDH
 	// from merely-optimized B4. Pitch counters, phyrexian-mana spells,
-	// pact cycle, commander-free spells, evoke elementals (see
-	// cedhFreeInteractionList). B4 players counter at 2 mana; B5 players
-	// counter for free so the tempo cost doesn't trade against winning
-	// faster. Heavy presence (4+) is one of the strongest single signals
-	// that a deck is tournament-tuned rather than casually optimized.
-	if ctx.freeInteractionCount >= 4 {
-		score += 3
-	} else if ctx.freeInteractionCount >= 2 {
-		score += 2
-	} else if ctx.freeInteractionCount >= 1 {
-		score += 1
+	// pact cycle, commander-free spells, evoke elementals.
+	switch {
+	case ctx.freeInteractionCount >= 4:
+		addScore("Free interaction", "4+",
+			fmt.Sprintf("%d pitch/phyrexian/commander-free pieces", ctx.freeInteractionCount),
+			ctx.freeInteractionNames, 3)
+	case ctx.freeInteractionCount >= 2:
+		addScore("Free interaction", "2-3",
+			fmt.Sprintf("%d pitch/phyrexian/commander-free pieces", ctx.freeInteractionCount),
+			ctx.freeInteractionNames, 2)
+	case ctx.freeInteractionCount >= 1:
+		addScore("Free interaction", "1",
+			fmt.Sprintf("%d pitch/phyrexian/commander-free piece", ctx.freeInteractionCount),
+			ctx.freeInteractionNames, 1)
 	}
+	score := rationale.RawScore
 
 	var bracket int
 	var label string
@@ -936,6 +995,14 @@ func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string) {
 		label = "Exhibition"
 	}
 
+	addAdjustment := func(name, kind, note string) {
+		rationale.Signals = append(rationale.Signals, BracketSignal{
+			Name: name,
+			Kind: kind,
+			Note: note,
+		})
+	}
+
 	// B5 confirmation gate. The raw score threshold of 12+ catches tuned
 	// decks but can be reached by stacking GCs + tutors + fast mana even
 	// when the deck doesn't have the deck-shape signature of cEDH (free
@@ -952,9 +1019,22 @@ func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string) {
 		hasCEDHMarker := ctx.freeInteractionCount >= 2 ||
 			ctx.tutorDensity >= 0.12 ||
 			ctx.gameChangerCount >= 8
-		if !hasCEDHMarker || ctx.avgCMC >= 2.8 {
+		switch {
+		case !hasCEDHMarker:
 			bracket = 4
 			label = "Optimized"
+			addAdjustment("B5 gate", "gate",
+				fmt.Sprintf("demoted to B4: no cEDH marker (free interaction %d<2, tutors %.0f%%<12, GCs %d<8)",
+					ctx.freeInteractionCount, ctx.tutorDensity*100, ctx.gameChangerCount))
+		case ctx.avgCMC >= 2.8:
+			bracket = 4
+			label = "Optimized"
+			addAdjustment("B5 gate", "gate",
+				fmt.Sprintf("demoted to B4: avg CMC %.1f >= 2.8 (cEDH curves are leaner)", ctx.avgCMC))
+		default:
+			addAdjustment("B5 gate", "gate",
+				fmt.Sprintf("confirmed: cEDH marker present (free interaction %d / tutors %.0f%% / GCs %d) and avg CMC %.1f < 2.8",
+					ctx.freeInteractionCount, ctx.tutorDensity*100, ctx.gameChangerCount, ctx.avgCMC))
 		}
 	}
 
@@ -971,6 +1051,7 @@ func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string) {
 	// density signals tuned optimization even without an explicit infinite.
 	tunedRedundancy := finisherCount >= 8 && ctx.fastManaCount >= 6
 
+	preCeilingBracket := bracket
 	if ctx.gameChangerCount == 0 {
 		// No Game Changers: B2 cap by default, but a true winning 2-card combo
 		// is itself a B4 marker per WotC's combo carveout.
@@ -978,10 +1059,14 @@ func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string) {
 			if bracket > 4 {
 				bracket = 4
 				label = "Optimized"
+				addAdjustment("GC=0 ceiling", "ceiling",
+					"capped at B4: true-infinite combo present (WotC combo carveout)")
 			}
 		} else if bracket > 2 {
 			bracket = 2
 			label = "Core"
+			addAdjustment("GC=0 ceiling", "ceiling",
+				fmt.Sprintf("capped at B2: no Game Changers and no true-infinite combo (was B%d on raw score)", preCeilingBracket))
 		}
 	} else if ctx.gameChangerCount <= 3 {
 		// Light GC presence: B3 cap by default; lifts to B4 when a real
@@ -990,36 +1075,55 @@ func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string) {
 			if bracket > 4 {
 				bracket = 4
 				label = "Optimized"
+				addAdjustment("GC=1-3 ceiling", "ceiling",
+					"capped at B4: winning combo or tuned-redundancy signal present")
 			}
 		} else if bracket > 3 {
 			bracket = 3
 			label = "Upgraded"
+			addAdjustment("GC=1-3 ceiling", "ceiling",
+				fmt.Sprintf("capped at B3: %d GC and no winning combo (was B%d on raw score)",
+					ctx.gameChangerCount, preCeilingBracket))
 		}
 	}
 
 	// Floors — GC presence guarantees minimum bracket.
 	// 5+ Game Changers is a deliberate optimization choice — floor at B4.
+	preFloorBracket := bracket
 	if ctx.gameChangerCount >= 1 && ctx.gameChangerCount <= 3 && bracket < 2 {
 		bracket = 2
 		label = "Core"
+		addAdjustment("GC=1-3 floor", "floor",
+			fmt.Sprintf("lifted to B2: %d GC present (was B%d on raw score)",
+				ctx.gameChangerCount, preFloorBracket))
 	}
 	if ctx.gameChangerCount >= 4 && bracket < 3 {
 		bracket = 3
 		label = "Upgraded"
+		addAdjustment("GC=4+ floor", "floor",
+			fmt.Sprintf("lifted to B3: %d GC present (was B%d on raw score)",
+				ctx.gameChangerCount, preFloorBracket))
 	}
 	if ctx.gameChangerCount >= 5 && bracket < 4 {
 		bracket = 4
 		label = "Optimized"
+		addAdjustment("GC=5+ floor", "floor",
+			fmt.Sprintf("lifted to B4: %d GC = deliberate optimization (was B%d)",
+				ctx.gameChangerCount, preFloorBracket))
 	}
 	// Tuned-redundancy floor: many distinct finisher lines + fast-mana density
-	// is operationally B4 regardless of GC count (e.g. voja-style tribal
-	// Voltron with 14 finishers + 8 fast mana pieces).
+	// is operationally B4 regardless of GC count.
 	if tunedRedundancy && bracket < 4 {
 		bracket = 4
 		label = "Optimized"
+		addAdjustment("Tuned-redundancy floor", "floor",
+			fmt.Sprintf("lifted to B4: %d finishers + %d fast-mana pieces (was B%d)",
+				finisherCount, ctx.fastManaCount, preFloorBracket))
 	}
 
-	return bracket, label
+	rationale.FinalBracket = bracket
+	rationale.FinalLabel = label
+	return bracket, label, rationale
 }
 
 // estimatePlaysLike determines what bracket a deck PERFORMS at based on
