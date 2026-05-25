@@ -307,6 +307,31 @@ CREATE TABLE IF NOT EXISTS gauntlet_runs (
 CREATE INDEX IF NOT EXISTS idx_gauntlet_runs_deck     ON gauntlet_runs(deck_key, finished_at DESC);
 CREATE INDEX IF NOT EXISTS idx_gauntlet_runs_finished ON gauntlet_runs(finished_at);
 
+-- r60 gauntlet replay archive: explicit junction between a
+-- gauntlet_runs row and the showmatch_game rows it produced.
+-- Without this junction the only way to recover a gauntlet's
+-- per-game data is the (deck_key, time-window) heuristic the
+-- tournament-stats endpoint uses today — which mis-attributes
+-- games when two gauntlets for the same deck overlap.
+--
+-- game_index is the 0-based ordinal of the game within the
+-- gauntlet, so consumers can replay games in their original
+-- sequence regardless of database insertion order (which can
+-- reorder slightly under concurrent writes).
+--
+-- ON DELETE CASCADE both directions: dropping a gauntlet_runs
+-- row drops its junction rows; dropping a showmatch_game row
+-- drops the corresponding junction entry (the game is gone, the
+-- link to it shouldn't dangle).
+CREATE TABLE IF NOT EXISTS gauntlet_run_game (
+    gauntlet_id INTEGER NOT NULL REFERENCES gauntlet_runs(run_id) ON DELETE CASCADE,
+    game_id     INTEGER NOT NULL REFERENCES showmatch_game(game_id) ON DELETE CASCADE,
+    game_index  INTEGER NOT NULL,
+    PRIMARY KEY (gauntlet_id, game_id)
+);
+CREATE INDEX IF NOT EXISTS idx_gauntlet_run_game_gauntlet ON gauntlet_run_game(gauntlet_id, game_index);
+CREATE INDEX IF NOT EXISTS idx_gauntlet_run_game_game ON gauntlet_run_game(game_id);
+
 CREATE TABLE IF NOT EXISTS card_win_stats (
     card_name    TEXT NOT NULL,
     commander    TEXT NOT NULL,

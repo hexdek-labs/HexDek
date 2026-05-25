@@ -8,6 +8,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -57,6 +58,114 @@ func InsertGauntletRun(ctx context.Context, sqlDB *sql.DB, rec GauntletRunRecord
 		rec.Place1st, rec.Place2nd, rec.Place3rd, rec.Place4th,
 	)
 	return err
+}
+
+// InsertPendingGauntletRun reserves a gauntlet_runs row at the
+// START of a gauntlet — before any games have been played. The
+// caller is responsible for calling FinalizeGauntletRun once the
+// run completes to write the final aggregate counters. The row is
+// inserted with Games=0 / Wins=0 / Losses=0 / finished_at=started_at
+// as placeholders.
+//
+// Returns the new run_id so the caller can link per-game
+// showmatch_game rows back via InsertGauntletRunGame as they're
+// persisted.
+func InsertPendingGauntletRun(ctx context.Context, sqlDB *sql.DB, deckKey, commander string, startedAt time.Time) (int64, error) {
+	if sqlDB == nil {
+		return 0, nil
+	}
+	res, err := sqlDB.ExecContext(ctx, `
+		INSERT INTO gauntlet_runs (
+			deck_key, commander, started_at, finished_at,
+			games, wins, losses, win_rate,
+			elo_start, elo_end, elo_delta, avg_turns,
+			place_1st, place_2nd, place_3rd, place_4th
+		) VALUES (?, ?, ?, ?, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)`,
+		deckKey, commander, startedAt.Unix(), startedAt.Unix())
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
+}
+
+// FinalizeGauntletRun updates a pending row inserted via
+// InsertPendingGauntletRun with the final aggregate counters. The
+// caller passes the same GauntletRunRecord shape InsertGauntletRun
+// expects; RunID identifies which row to overwrite. Useful for the
+// gauntlet-replay-archive pattern where the row is reserved at
+// start so per-game links have a valid foreign key target.
+func FinalizeGauntletRun(ctx context.Context, sqlDB *sql.DB, rec GauntletRunRecord) error {
+	if sqlDB == nil {
+		return nil
+	}
+	if rec.RunID <= 0 {
+		return fmt.Errorf("FinalizeGauntletRun: RunID must be > 0")
+	}
+	_, err := sqlDB.ExecContext(ctx, `
+		UPDATE gauntlet_runs SET
+			deck_key = ?, commander = ?,
+			started_at = ?, finished_at = ?,
+			games = ?, wins = ?, losses = ?, win_rate = ?,
+			elo_start = ?, elo_end = ?, elo_delta = ?, avg_turns = ?,
+			place_1st = ?, place_2nd = ?, place_3rd = ?, place_4th = ?
+		WHERE run_id = ?`,
+		rec.DeckKey, rec.Commander,
+		rec.StartedAt.Unix(), rec.FinishedAt.Unix(),
+		rec.Games, rec.Wins, rec.Losses, rec.WinRate,
+		rec.ELOStart, rec.ELOEnd, rec.ELODelta, rec.AvgTurns,
+		rec.Place1st, rec.Place2nd, rec.Place3rd, rec.Place4th,
+		rec.RunID,
+	)
+	return err
+}
+
+// InsertGauntletRunGame appends one (gauntlet_id, game_id) link
+// to the gauntlet_run_game junction. gameIndex is the 0-based
+// ordinal within the gauntlet so consumers can replay games in
+// sequence even when database insertion order drifts.
+//
+// Idempotent on the primary key (gauntlet_id, game_id) — re-runs
+// of the same insert silently no-op via INSERT OR IGNORE so
+// retries don't blow up.
+func InsertGauntletRunGame(ctx context.Context, sqlDB *sql.DB, gauntletID, gameID int64, gameIndex int) error {
+	if sqlDB == nil {
+		return nil
+	}
+	_, err := sqlDB.ExecContext(ctx,
+		`INSERT OR IGNORE INTO gauntlet_run_game (gauntlet_id, game_id, game_index) VALUES (?, ?, ?)`,
+		gauntletID, gameID, gameIndex)
+	return err
+}
+
+// LoadGauntletRunGames returns the showmatch_game.game_id values
+// linked to a gauntlet run, in their original gauntlet sequence
+// (game_index ASC). Used by the tournament-stats endpoint when
+// the explicit junction is preferred over the time-window
+// heuristic, and by future replay-archive consumers that need to
+// re-analyze a gauntlet's per-game data.
+//
+// Returns an empty slice when the gauntlet pre-dates the junction
+// table (older runs were only stored as aggregate rows).
+func LoadGauntletRunGames(ctx context.Context, sqlDB *sql.DB, gauntletID int64) ([]int64, error) {
+	if sqlDB == nil {
+		return nil, nil
+	}
+	rows, err := sqlDB.QueryContext(ctx,
+		`SELECT game_id FROM gauntlet_run_game WHERE gauntlet_id = ? ORDER BY game_index ASC, game_id ASC`,
+		gauntletID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
 }
 
 // LoadGauntletRunByID fetches one gauntlet run by its autoincrement
