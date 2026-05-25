@@ -8,6 +8,7 @@ import { useLiveSocket } from '../hooks/useLiveSocket'
 import { useUploadDeck } from '../hooks/useUploadDeck'
 import { MOCK_DECKS } from '../services/mock'
 import ContextBox from '../components/ContextBox'
+import { toast } from '../components/Toast'
 import {
   ARCHETYPE_CHIPS,
   BRACKET_CHIPS,
@@ -16,6 +17,11 @@ import {
   matchesBracketChip,
   matchesColorChip,
 } from './deckFilters'
+import {
+  inferCommander,
+  parseDeckLines,
+  summarize,
+} from '../lib/deckParser'
 
 const VIEW_KEY = 'hexdek_deck_view'
 const SORT_KEY = 'hexdek_deck_sort'
@@ -261,6 +267,19 @@ export default function DeckList() {
           setSearchParams={setSearchParams}
         />
 
+        {/* QUICK PASTE — collapsed by default. Lets a signed-in user
+            drop a decklist into the page and create a new deck without
+            walking through the full import modal. Auto-derives name
+            from commander + owner from session, so the textarea is the
+            only required input for the happy path. */}
+        {user && (
+          <QuickPasteImport
+            onImported={() => loadDecks()}
+            navigate={navigate}
+            defaultOwner={myName}
+          />
+        )}
+
         {/* Deck grid */}
         {loading ? (
           <div className="t-md muted" style={{ textAlign: 'center', padding: 36 }}>&gt; LOADING DECK ARCHIVE<span className="blink">_</span></div>
@@ -279,6 +298,184 @@ export default function DeckList() {
 
       {upload.modal}
     </>
+  )
+}
+
+function QuickPasteImport({ onImported, navigate, defaultOwner }) {
+  const [open, setOpen] = useState(false)
+  const [text, setText] = useState('')
+  const [name, setName] = useState('')
+  const [importing, setImporting] = useState(false)
+  const [error, setError] = useState(null)
+
+  const parsed = parseDeckLines(text)
+  const detectedCommander = inferCommander(text) || parsed.find(c => c.isCommander)?.name || ''
+  const summary = summarize(parsed)
+  const effectiveName = name.trim() || detectedCommander || (parsed.length > 0 ? parsed[0].name : '')
+
+  const canSubmit = !importing && parsed.length > 0 && (effectiveName || detectedCommander)
+
+  const submit = async () => {
+    if (!canSubmit) return
+    setError(null)
+    setImporting(true)
+    try {
+      const ownerToUse = defaultOwner?.trim() || 'imported'
+      const finalName = effectiveName || detectedCommander
+      // Server expects either an embedded "COMMANDER: X" line or a
+      // commander designated via the parsed isCommander flag — keep
+      // the raw text so the full import flow's commander detection
+      // (which mirrors lib/deckParser.inferCommander) finds it.
+      const result = await api.importDeck(finalName, ownerToUse, text, [])
+      onImported?.()
+      const owner = result?.owner || ownerToUse
+      const id = result?.id
+      setText('')
+      setName('')
+      setOpen(false)
+      setImporting(false)
+      if (id) navigate(`/decks/${encodeURIComponent(owner)}/${encodeURIComponent(id)}`)
+      else toast.success('DECK IMPORTED')
+    } catch (err) {
+      setImporting(false)
+      setError(err?.message || 'IMPORT FAILED')
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        data-testid="quick-paste-toggle"
+        onClick={() => setOpen(true)}
+        style={{
+          alignSelf: 'flex-start',
+          background: 'transparent',
+          border: '1px dashed var(--rule-2)',
+          padding: '6px 12px',
+          color: 'var(--ink-2)',
+          font: 'inherit',
+          fontSize: 11,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          cursor: 'pointer',
+        }}
+      >
+        + QUICK PASTE A DECKLIST
+      </button>
+    )
+  }
+
+  return (
+    <div
+      data-testid="quick-paste-panel"
+      style={{
+        border: '1px solid var(--rule-2)',
+        background: 'var(--bg-2, rgba(0,0,0,0.2))',
+        padding: 10,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 8,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <span className="t-xs muted" style={{ letterSpacing: '0.08em', fontWeight: 700 }}>
+          QUICK PASTE / / PLAIN DECKLIST
+        </span>
+        <button
+          type="button"
+          onClick={() => { setOpen(false); setError(null); setText(''); setName('') }}
+          style={{ background: 'transparent', border: 0, color: 'var(--ink-3)', cursor: 'pointer', fontSize: 11 }}
+        >
+          ✕ CLOSE
+        </button>
+      </div>
+      <textarea
+        data-testid="quick-paste-textarea"
+        value={text}
+        onChange={e => setText(e.target.value)}
+        placeholder={`Paste a decklist. Supports "1 Sol Ring", "1x Sol Ring (CMM) 339", "Commander: Atraxa, Praetors' Voice", sideboard sections, # comments…`}
+        rows={10}
+        spellCheck={false}
+        style={{
+          width: '100%',
+          padding: 8,
+          background: 'var(--bg-2, rgba(0,0,0,0.3))',
+          border: '1px solid var(--rule-2)',
+          color: 'var(--ink)',
+          fontFamily: 'inherit',
+          fontSize: 11,
+          letterSpacing: '0.04em',
+          lineHeight: 1.6,
+          resize: 'vertical',
+        }}
+      />
+      <div
+        data-testid="quick-paste-summary"
+        style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'baseline', fontSize: 11 }}
+      >
+        <span className="t-xs muted" style={{ letterSpacing: '0.08em' }}>
+          PARSED:{' '}
+          <strong style={{ color: 'var(--ink)' }}>{summary.cardCount}</strong>{' '}
+          CARDS · {summary.uniqueCount} UNIQUE
+        </span>
+        {detectedCommander && (
+          <span className="t-xs muted" style={{ letterSpacing: '0.08em' }}>
+            COMMANDER:{' '}
+            <strong style={{ color: 'var(--ink)' }}>{detectedCommander.toUpperCase()}</strong>
+          </span>
+        )}
+        {summary.hasIllegalMultiples && (
+          <span className="t-xs" style={{ color: 'var(--warn, #c0a060)', letterSpacing: '0.08em' }}>
+            ⚠ MULTIPLES OF A NON-BASIC DETECTED
+          </span>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <input
+          type="text"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder={detectedCommander ? `Deck name (defaults to ${detectedCommander})` : 'Deck name'}
+          aria-label="Deck name"
+          style={{
+            flex: 1, minWidth: 200,
+            padding: '6px 10px',
+            background: 'transparent',
+            border: '1px solid var(--rule-2)',
+            color: 'var(--ink)',
+            font: 'inherit',
+            fontSize: 11,
+            letterSpacing: '0.04em',
+          }}
+        />
+        <button
+          type="button"
+          data-testid="quick-paste-submit"
+          disabled={!canSubmit}
+          onClick={submit}
+          style={{
+            background: canSubmit ? 'var(--accent, var(--ink))' : 'transparent',
+            color: canSubmit ? 'var(--bg)' : 'var(--ink-3)',
+            border: '1px solid var(--rule-2)',
+            padding: '6px 14px',
+            font: 'inherit',
+            fontSize: 11,
+            letterSpacing: '0.1em',
+            cursor: canSubmit ? 'pointer' : 'not-allowed',
+            fontWeight: 700,
+            textTransform: 'uppercase',
+          }}
+        >
+          {importing ? 'IMPORTING…' : 'IMPORT + ANALYZE'}
+        </button>
+      </div>
+      {error && (
+        <div className="t-xs" style={{ color: 'var(--danger)', letterSpacing: '0.06em' }}>
+          ✗ {error.toUpperCase()}
+        </div>
+      )}
+    </div>
   )
 }
 
