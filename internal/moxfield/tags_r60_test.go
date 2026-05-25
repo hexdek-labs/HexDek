@@ -395,21 +395,20 @@ func TestFormatDecklist_HubExtrasIgnored(t *testing.T) {
 // Deck with many tags — make sure the join is stable and doesn't add
 // trailing commas or whitespace.
 func TestFormatDecklist_ManyTagsCleanJoin(t *testing.T) {
-	r := &apiResponse{
-		Hubs: []apiHub{
-			{Name: "A"}, {Name: "B"}, {Name: "C"}, {Name: "D"}, {Name: "E"},
-		},
-		Boards: struct {
-			Mainboard  apiBoard `json:"mainboard"`
-			Commanders apiBoard `json:"commanders"`
-			Sideboard  apiBoard `json:"sideboard"`
-			Companions apiBoard `json:"companions"`
-		}{
-			Commanders: apiBoard{Cards: map[string]apiCardEntry{"c": {Quantity: 1, Card: apiCard{Name: "Atraxa, Praetors' Voice"}}}},
-			Mainboard:  apiBoard{Cards: map[string]apiCardEntry{"m": {Quantity: 1, Card: apiCard{Name: "Sol Ring"}}}},
-		},
+	const many = `{
+		"name": "Many",
+		"format": "commander",
+		"hubs": [{"name":"A"},{"name":"B"},{"name":"C"},{"name":"D"},{"name":"E"}],
+		"boards": {
+			"commanders": {"count": 1, "cards": {"c": {"quantity": 1, "card": {"name": "Atraxa, Praetors' Voice"}}}},
+			"mainboard":  {"count": 1, "cards": {"m": {"quantity": 1, "card": {"name": "Sol Ring"}}}}
+		}
+	}`
+	var r apiResponse
+	if err := json.Unmarshal([]byte(many), &r); err != nil {
+		t.Fatalf("unmarshal: %v", err)
 	}
-	out, err := formatDecklist(r)
+	out, err := formatDecklist(&r)
 	if err != nil {
 		t.Fatalf("formatDecklist: %v", err)
 	}
