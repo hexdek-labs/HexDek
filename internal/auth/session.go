@@ -14,6 +14,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
+	"time"
 
 	"github.com/hexdek/hexdek/internal/db"
 )
@@ -129,6 +131,65 @@ func ExpireSessions(ctx context.Context, database *sql.DB) (int64, error) {
 		return 0, nil
 	}
 	return n, nil
+}
+
+// RunSessionGC starts the periodic session-expiry reaper. Runs one
+// synchronous pass before spawning the background goroutine so callers
+// can rely on a clean session table BEFORE the http server accepts
+// traffic — useful after a long downtime where many sessions may have
+// expired in-flight. The goroutine then ticks at `interval` and exits
+// cleanly when ctx is cancelled.
+//
+// Design history (r60 audit): ExpireSessions and its tests have lived
+// in this package for some time, but no production caller actually
+// invoked it on a schedule — expired session rows accumulated in the
+// SQLite session table indefinitely. Leaving expired rows around is
+// (1) a privacy leak if the DB is later compromised (device_id +
+// last_used_at history persists past intended lifetime), (2) audit-
+// trail noise that masks recently-active sessions in admin queries,
+// and (3) a slow-burn bloat on the table that the idx_session_expires
+// index promised would be reaped. This wires the long-documented
+// "periodic reaper" the docstring on ExpireSessions already advertised.
+//
+// Errors during a tick are logged but do not stop the goroutine — a
+// transient SQLite "database is locked" must not silently disable
+// session cleanup for the rest of the server's lifetime.
+func RunSessionGC(ctx context.Context, database *sql.DB, interval time.Duration) {
+	if interval <= 0 {
+		interval = time.Hour
+	}
+	// Synchronous first pass: callers (cmd/hexdek-server's main) wait
+	// for this to return before binding the listener so a long-running
+	// reap doesn't race incoming auth requests.
+	if n, err := ExpireSessions(ctx, database); err != nil {
+		log.Printf("session GC: initial pass failed: %v", err)
+	} else if n > 0 {
+		log.Printf("session GC: reaped %d expired session(s) at startup", n)
+	}
+	go func() {
+		t := time.NewTicker(interval)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				n, err := ExpireSessions(ctx, database)
+				if err != nil {
+					// Log + continue. A persistent error will keep
+					// firing once per interval — operators can spot it
+					// in logs and intervene. Better than a silent
+					// goroutine exit that leaves expiry-cleanup dead
+					// until the server restarts.
+					log.Printf("session GC: %v", err)
+					continue
+				}
+				if n > 0 {
+					log.Printf("session GC: reaped %d expired session(s)", n)
+				}
+			}
+		}
+	}()
 }
 
 // ErrInvalidToken is returned for missing, malformed, or unknown tokens.

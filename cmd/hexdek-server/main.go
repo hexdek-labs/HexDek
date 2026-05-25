@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/hexdek/hexdek/internal/ai"
+	"github.com/hexdek/hexdek/internal/auth"
 	"github.com/hexdek/hexdek/internal/credits"
 	"github.com/hexdek/hexdek/internal/db"
 	"github.com/hexdek/hexdek/internal/friends"
@@ -63,6 +64,22 @@ func main() {
 	}
 	defer database.Close()
 	log.Printf("sqlite ready at %s", *dbPath)
+
+	// Background context for long-lived workers (session GC, etc.). The
+	// SIGINT/SIGTERM handler below cancels this so workers shut down
+	// cleanly alongside the http server. Defined here at top level so
+	// each subsystem that wants graceful shutdown can plug into it.
+	bgCtx, bgCancel := context.WithCancel(context.Background())
+	defer bgCancel()
+
+	// r60: wire the long-documented session-expiry reaper that was
+	// never actually scheduled. Runs one synchronous pass now (clears
+	// rows that expired during downtime), then ticks hourly until
+	// bgCancel fires at shutdown. Without this, expired session rows
+	// accumulated in the SQLite session table indefinitely — privacy
+	// leak (device_id + last_used_at history persists past intended
+	// lifetime), audit-trail noise, and slow row bloat.
+	auth.RunSessionGC(bgCtx, database, time.Hour)
 
 	// Load test deck (Ship 1 demo)
 	deck, err := moxfield.LoadDeckFromFile(*deckPath)
@@ -302,6 +319,11 @@ func main() {
 		}
 	}
 
+	// Cancel bgCtx FIRST so background workers (session GC, etc.) stop
+	// touching the DB before Shutdown drains in-flight requests — keeps
+	// the shutdown log readable and avoids a racing reaper firing
+	// against a closing connection pool.
+	bgCancel()
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 	if err := httpSrv.Shutdown(shutdownCtx); err != nil {
