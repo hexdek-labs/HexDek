@@ -33,11 +33,12 @@ import (
 )
 
 type oracleEntry struct {
-	Name       string   `json:"name"`
-	Layout     string   `json:"layout"`
-	TypeLine   string   `json:"type_line"`
-	SetName    string   `json:"set_name"`
-	OracleText string   `json:"oracle_text"`
+	Name       string `json:"name"`
+	Layout     string `json:"layout"`
+	TypeLine   string `json:"type_line"`
+	SetName    string `json:"set_name"`
+	ReleasedAt string `json:"released_at"`
+	OracleText string `json:"oracle_text"`
 	CardFaces  []struct {
 		OracleText string `json:"oracle_text"`
 	} `json:"card_faces"`
@@ -75,6 +76,7 @@ type result struct {
 	OracleText  string
 	TypeLine    string
 	SetName     string
+	ReleasedAt  string
 	ParseErrors []string
 }
 
@@ -93,6 +95,8 @@ func main() {
 	historyLabel := flag.String("history-label", "", "optional label for this history entry (e.g., 'r60', '2026-05-24'); shown in future delta summaries")
 	bySetPath := flag.String("by-set", "", "optional path to write a markdown report grouping uncovered cards by Magic set, ranked by uncovered count")
 	bySetTopN := flag.Int("by-set-top", 0, "limit the --by-set report to the top N sets by uncovered count (0 = include every set)")
+	htmlPath := flag.String("html", "", "optional path to write a self-contained interactive HTML report for browsing uncovered cards by set/era/type")
+	htmlIncludeOK := flag.Bool("html-include-ok", false, "include OK and OK_VANILLA cards in the HTML table (default: uncovered only)")
 	flag.Parse()
 
 	log.Printf("loading AST corpus from %s ...", *astPath)
@@ -148,6 +152,13 @@ func main() {
 			log.Fatalf("writeCSV: %v", err)
 		}
 		log.Printf("wrote %s (csv export, include_ok=%v)", *csvExport, *csvIncludeOK)
+	}
+
+	if strings.TrimSpace(*htmlPath) != "" {
+		if err := writeHTMLReport(*htmlPath, results, *htmlIncludeOK, time.Now()); err != nil {
+			log.Fatalf("writeHTMLReport: %v", err)
+		}
+		log.Printf("wrote %s (interactive html, include_ok=%v)", *htmlPath, *htmlIncludeOK)
 	}
 
 	if strings.TrimSpace(*bySetPath) != "" {
@@ -295,22 +306,36 @@ func loadOracle(path string) ([]oracleEntry, error) {
 }
 
 func classify(e oracleEntry, corpus *astload.Corpus) result {
+	base := result{
+		Name:       e.Name,
+		OracleText: e.OracleText,
+		TypeLine:   e.TypeLine,
+		SetName:    e.SetName,
+		ReleasedAt: e.ReleasedAt,
+	}
 	card, ok := corpus.Get(e.Name)
 	if !ok {
-		return result{Name: e.Name, Class: classMissing, OracleText: e.OracleText, TypeLine: e.TypeLine, SetName: e.SetName}
+		base.Class = classMissing
+		return base
 	}
 	text := strings.TrimSpace(e.OracleText)
+	base.OracleText = text
 	vanilla := text == "" || isBasicLand(e.TypeLine)
 	if !card.FullyParsed || len(card.ParseErrors) > 0 {
-		return result{Name: e.Name, Class: classPartial, OracleText: text, TypeLine: e.TypeLine, SetName: e.SetName, ParseErrors: card.ParseErrors}
+		base.Class = classPartial
+		base.ParseErrors = card.ParseErrors
+		return base
 	}
 	if len(card.Abilities) == 0 {
 		if vanilla {
-			return result{Name: e.Name, Class: classOKVanilla, OracleText: text, TypeLine: e.TypeLine, SetName: e.SetName}
+			base.Class = classOKVanilla
+			return base
 		}
-		return result{Name: e.Name, Class: classEmptyAST, OracleText: text, TypeLine: e.TypeLine, SetName: e.SetName}
+		base.Class = classEmptyAST
+		return base
 	}
-	return result{Name: e.Name, Class: classOK, OracleText: text, TypeLine: e.TypeLine, SetName: e.SetName}
+	base.Class = classOK
+	return base
 }
 
 func isBasicLand(typeLine string) bool {
