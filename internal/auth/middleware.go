@@ -51,18 +51,60 @@ func authErrorMessage(err error) string {
 		return "unauthorized: invalid or unknown session token"
 	case errors.Is(err, ErrSessionExpired):
 		return "unauthorized: session token expired"
+	// API-key errors collapse to a single user-visible message so
+	// the wire response can't distinguish "key doesn't exist" from
+	// "key revoked" from "key expired" — server-side log keeps the
+	// granular reason for audit.
+	case errors.Is(err, ErrInvalidAPIKey),
+		errors.Is(err, ErrAPIKeyExpired),
+		errors.Is(err, ErrAPIKeyRevoked):
+		return "unauthorized: invalid api key"
 	default:
-		log.Printf("auth: validate session: %v", err)
+		log.Printf("auth: validate credential: %v", err)
 		return "unauthorized"
 	}
 }
 
-// Required wraps a handler to require a valid session token. Unauthenticated
-// requests get a 401 response.
+// validateCredential dispatches a bearer token to either the API-key
+// validator (when the token has the hxk_ shape) or the session
+// validator (everything else). Returns a *Session synthesized from
+// whichever credential validated — downstream FromContext callers
+// keep working without knowing which credential type was used.
+//
+// API-key path synthesizes a Session with:
+//   - Token = "apikey:<id>"  so server-side audit can tell credential
+//                            types apart without exposing the secret
+//   - DeviceID = key.DeviceID (the identity, which IS what downstream
+//                              code wants)
+//   - CreatedAt / ExpiresAt / LastUsedAt = from the api_key row
+//
+// This preserves the existing FromContext(ctx) *Session contract so
+// every existing protected handler keeps working unchanged.
+func validateCredential(ctx context.Context, database *sql.DB, token string) (*Session, error) {
+	if IsAPIKeyShape(token) {
+		k, err := ValidateAPIKey(ctx, database, token)
+		if err != nil {
+			return nil, err
+		}
+		return &Session{
+			Token:      "apikey:" + k.ID,
+			DeviceID:   k.DeviceID,
+			CreatedAt:  k.CreatedAt,
+			ExpiresAt:  k.ExpiresAt,
+			LastUsedAt: k.LastUsedAt,
+		}, nil
+	}
+	return ValidateSession(ctx, database, token)
+}
+
+// Required wraps a handler to require either a valid session token
+// or a valid API key. Unauthenticated requests get a 401 response.
+// The credential type is opaque to the wrapped handler — both
+// surface as a *Session via FromContext.
 func Required(database *sql.DB, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token := extractToken(r)
-		s, err := ValidateSession(r.Context(), database, token)
+		s, err := validateCredential(r.Context(), database, token)
 		if err != nil {
 			http.Error(w, authErrorMessage(err), http.StatusUnauthorized)
 			return
@@ -75,7 +117,7 @@ func Required(database *sql.DB, next http.Handler) http.Handler {
 func RequiredFunc(database *sql.DB, next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token := extractToken(r)
-		s, err := ValidateSession(r.Context(), database, token)
+		s, err := validateCredential(r.Context(), database, token)
 		if err != nil {
 			http.Error(w, authErrorMessage(err), http.StatusUnauthorized)
 			return
