@@ -350,8 +350,17 @@ body {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.55; }
 }
+/* Library-size pip in .seat-ft: warn when one bad mill / few draws away,
+   pulse danger when mill is the imminent loss vector. Reuses the
+   life-pip-pulse keyframe so the two threat states share the same beat. */
+.lib-pip--low { color: var(--warn); font-weight: 600; }
+.lib-pip--crit {
+  color: var(--danger); font-weight: 600;
+  animation: life-pip-pulse 1.2s ease-in-out infinite;
+}
 @media (prefers-reduced-motion: reduce) {
-  .life-pip--crit { animation: none; }
+  .life-pip--crit,
+  .lib-pip--crit { animation: none; }
 }
 .seat-body {
   display: flex; height: 200px; min-width: 0; overflow: hidden;
