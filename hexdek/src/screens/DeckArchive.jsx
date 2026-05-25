@@ -24,6 +24,7 @@ import ContextBox from '../components/ContextBox'
 import EloSparkline from '../components/EloSparkline'
 import DeckRating from '../components/DeckRating'
 import DeckShareDisclosure from '../components/DeckShareDisclosure'
+import BracketChangelog from '../components/BracketChangelog'
 import { deckGlanceStats } from '../lib/deckStats'
 import {
   applySuggestion,
@@ -1464,6 +1465,11 @@ export default function DeckArchive() {
             <div className="deck-vital-signs__sub">{wbsLabel.toUpperCase()}</div>
           ) : (
             <div className="deck-vital-signs__sub" style={{ opacity: 0.55 }}>PENDING ANALYSIS</div>
+          )}
+          {owner && id && wbs && wbs !== '?' && (
+            <div className="deck-vital-signs__sub" style={{ marginTop: 2 }}>
+              <BracketChangelog deckKey={`${owner}/${id}`} bracket={wbs} />
+            </div>
           )}
         </div>
         <div className="deck-vital-signs__cell">
