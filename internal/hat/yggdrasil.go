@@ -1604,7 +1604,13 @@ func (h *YggdrasilHat) bestTarget(gs *gameengine.GameState, seatIdx int, attacke
 		// confidence (race the racer — closing their clock first beats
 		// trading with their second wave).
 		if prof := h.classifyOpponent(gs, def); prof != nil {
-			mult := archetypeBiasMultiplier(prof.Confidence)
+			// R60 round 5 — `effectiveArchetypeBias` folds in
+			// MetaConfidence so a thin-sample / contradiction-laden
+			// classification dampens the bias even at moderate raw
+			// confidence. The bias-threshold gates (>0, >0.75) stay
+			// the same; the value flowing through them is just
+			// meta-corrected.
+			mult := effectiveArchetypeBias(prof)
 			if mult > 0 {
 				switch prof.Archetype {
 				case "combo":
@@ -6689,10 +6695,11 @@ func (h *YggdrasilHat) ChooseTarget(gs *gameengine.GameState, seatIdx int, filte
 				// control") over picking off lone creatures, since
 				// the lord lifts their entire board.
 				if prof := h.classifyOpponent(gs, p.Controller); prof != nil {
-					// R60r5 — same confidence-curve multiplier used by
-					// attack targeting. High-confidence reads commit
-					// harder; low-confidence (< 0.4) skip entirely.
-					mult := archetypeBiasMultiplier(prof.Confidence)
+					// R60r5 — meta-confidence-folded bias. Matches the
+					// attack-target site so removal selection and
+					// attack target selection consume the same
+					// composed signal.
+					mult := effectiveArchetypeBias(prof)
 					if mult > 0 {
 						switch prof.Archetype {
 						case "combo":
