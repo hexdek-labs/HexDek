@@ -1063,15 +1063,37 @@ func checkCardIdentity(gs *GameState) error {
 			}
 		}
 	}
-	// Also check the stack.
+	// Also check the stack. Triggered/activated abilities (item.Kind ==
+	// "triggered" / "activated", or any item with a Source permanent)
+	// carry an item.Card pointer that's a log-label only — it points at
+	// the source permanent's printed card so events read nicely, but the
+	// card itself is NOT in a "stack" zone (it's still on the battlefield
+	// or wherever the permanent lives). PushTriggeredAbility in stack.go
+	// explicitly documents: "StackItem.Card is usually for spells, not
+	// triggers, but we point it at the source card so logs show the
+	// right name." For ability items, only spell items (item.Kind ==
+	// "spell" and item.Source == nil) reflect a card actually moving
+	// through the stack zone (CR §405).
+	//
+	// Loki r60 mega-stress / seeds 31415 + 271828 / nightmare boards
+	// 9751 + sibling: Necrogen Communion was destroyed by SBA 704.5n
+	// (aura with no legal target), went to graveyard, and its die-event
+	// trigger pushed onto the stack with `item.Card = src.Card`. The
+	// same *Card was now both "in graveyard" and "on stack" by the
+	// invariant's accounting — but only the graveyard reference reflects
+	// a real zone, the stack reference was a label.
 	for _, item := range gs.Stack {
 		if item == nil {
 			continue
 		}
-		if item.Card != nil {
-			if err := checkCard(item.Card, "stack", item.Controller); err != nil {
-				return err
-			}
+		if item.Card == nil {
+			continue
+		}
+		if item.Source != nil || item.Kind == "triggered" || item.Kind == "activated" {
+			continue
+		}
+		if err := checkCard(item.Card, "stack", item.Controller); err != nil {
+			return err
 		}
 	}
 	return nil

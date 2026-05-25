@@ -1422,6 +1422,40 @@ func writeReport(path string, d reportData) {
 			fmt.Fprintf(f, "| %s | %d |\n", name, count)
 		}
 		fmt.Fprintf(f, "\n")
+
+		// Per-board violation details (up to 5 per invariant kind, mirroring
+		// the chaos-violations report). Needed to isolate which random card
+		// combination is leaking — count-only isn't enough to find the bug.
+		if len(d.NightmareViolations) > 0 {
+			const perKind = 5
+			idxByName := map[string][]int{}
+			for vi := range d.NightmareViolations {
+				name := d.NightmareViolations[vi].InvariantName
+				idxByName[name] = append(idxByName[name], vi)
+			}
+			var details []int
+			for _, idxs := range idxByName {
+				n := len(idxs)
+				if n > perKind {
+					n = perKind
+				}
+				details = append(details, idxs[:n]...)
+			}
+			fmt.Fprintf(f, "### Nightmare Violation Details (up to %d per invariant kind, %d shown)\n\n", perKind, len(details))
+			for k, vi := range details {
+				v := &d.NightmareViolations[vi]
+				fmt.Fprintf(f, "#### Nightmare Violation %d\n\n", k+1)
+				fmt.Fprintf(f, "- **Board**: %d (seed %d)\n", v.GameIdx, v.GameSeed)
+				fmt.Fprintf(f, "- **Invariant**: %s\n", v.InvariantName)
+				fmt.Fprintf(f, "- **Message**: %s\n\n", v.Message)
+				if v.StateSummary != "" {
+					fmt.Fprintf(f, "<details>\n<summary>Board State</summary>\n\n```\n%s\n```\n\n</details>\n\n", v.StateSummary)
+				}
+			}
+			if len(d.NightmareViolations) > len(details) {
+				fmt.Fprintf(f, "*... and %d more nightmare violations not shown.*\n\n", len(d.NightmareViolations)-len(details))
+			}
+		}
 	}
 
 	// Statistical analysis: Top 10 cards correlated with violations.
