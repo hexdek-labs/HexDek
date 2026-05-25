@@ -1,4 +1,6 @@
-const API_BASE = import.meta.env.VITE_API_URL ?? ''
+// import.meta.env is Vite-only; guard the read so this module loads
+// cleanly under plain `node --test` for the unwrapApiError unit tests.
+const API_BASE = (import.meta.env && import.meta.env.VITE_API_URL) ?? ''
 
 function getOwnerSlug() {
   try {
@@ -12,23 +14,73 @@ async function request(path, opts = {}) {
     ...opts,
   })
   if (!res.ok) {
-    // hexapi's unified ErrorResponse shape is {error, status} as JSON;
-    // unwrap the message so the user sees "missing card name" rather
-    // than the raw JSON envelope. Fall back to the raw text body for
-    // older / third-party endpoints that still return plain text.
+    // hexapi's r60 unified ErrorResponse shape:
+    //   {error: {code, message, details?}, request_id, status}
+    // Pre-r60 shape (still on stale backends during deploy crossover):
+    //   {error: "msg", status}
+    // Pre-unified shape (third-party / not-yet-migrated routes):
+    //   plain text or arbitrary JSON
+    // unwrapApiError normalizes all three so consumers can always read
+    // err.code / err.message / err.details / err.requestId without
+    // re-parsing err.body.
     let body = ''
     try { body = await res.text() } catch { /* noop */ }
-    let message = body?.trim()
-    try {
-      const parsed = JSON.parse(body)
-      if (parsed && typeof parsed.error === 'string') message = parsed.error
-    } catch { /* not JSON — keep the raw text */ }
-    const err = new Error(message || `API ${res.status}: ${path}`)
-    err.status = res.status
-    err.body = body
-    throw err
+    throw unwrapApiError({ status: res.status, path, body })
   }
   return res.json()
+}
+
+// unwrapApiError normalizes any error body shape into a flat Error
+// with code/message/details/requestId/status/body fields. Exported
+// so direct fetch() callers (BugReport, MatchupsPanel, Meta, etc.)
+// can opt into the same decoder if they want richer error info.
+//
+// Backward-compat is intentional: this layer is the deploy-crossover
+// shim. Once every consumer has migrated to err.code / err.message,
+// the legacy-string branch can be deleted — but for now, callers
+// authored against the flat shape continue to work because the
+// decoder upgrades the wire body to the rich shape regardless of
+// which server version answered.
+export function unwrapApiError({ status, path, body }) {
+  let code = ''
+  let message = (body || '').trim()
+  let details = null
+  let requestId
+  try {
+    const parsed = JSON.parse(body)
+    if (parsed && typeof parsed === 'object') {
+      if (typeof parsed.request_id === 'string') requestId = parsed.request_id
+      const e = parsed.error
+      if (e && typeof e === 'object') {
+        // r60 nested envelope.
+        if (typeof e.code === 'string') code = e.code
+        if (typeof e.message === 'string') message = e.message
+        if (e.details && typeof e.details === 'object') details = e.details
+      } else if (typeof e === 'string') {
+        // Pre-r60 flat envelope: hoist string error to message; also
+        // expose it as code so existing switch-on-code consumers
+        // (e.g. DeckArchive credits gate's "free_quota_exhausted"
+        // string check) keep working against either server version.
+        message = e
+        code = e
+        // Pre-r60 also merged extras at top level — surface them
+        // under .details so the new-shape consumer path resolves.
+        const extras = { ...parsed }
+        delete extras.error
+        delete extras.status
+        delete extras.request_id
+        if (Object.keys(extras).length > 0) details = extras
+      }
+    }
+  } catch { /* not JSON — fall through with raw text as message */ }
+  if (!message) message = `API ${status}: ${path}`
+  const err = new Error(message)
+  err.status = status
+  err.code = code
+  err.details = details
+  err.requestId = requestId
+  err.body = body
+  return err
 }
 
 function authedRequest(path, opts = {}) {
