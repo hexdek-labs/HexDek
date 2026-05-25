@@ -1205,6 +1205,32 @@ func checkReplacementCompleteness(gs *GameState) error {
 				if cn, ok := ev.Details["card"]; ok {
 					cardName = fmt.Sprintf("%v", cn)
 				}
+				// If the exile effect's own ETB happened LATER in the
+				// scan window than this zone_change, it wasn't on the
+				// battlefield when the card went to graveyard — the
+				// replacement couldn't have applied. Covers spells that
+				// resolve from the stack directly into the graveyard
+				// (no preceding `destroy` event) on the same turn the
+				// exile effect was cast.
+				etbAfterZoneChange := false
+				for k := i + 1; k < len(gs.EventLog); k++ {
+					ek := &gs.EventLog[k]
+					if ek.Kind != "enter_battlefield" {
+						continue
+					}
+					srcLower := strings.ToLower(ek.Source)
+					if hasRIP && srcLower == "rest in peace" {
+						etbAfterZoneChange = true
+						break
+					}
+					if len(leylineSeats) > 0 && srcLower == "leyline of the void" {
+						etbAfterZoneChange = true
+						break
+					}
+				}
+				if etbAfterZoneChange {
+					continue
+				}
 				// Verify the exile effect's replacement was registered
 				// when this zone change happened. The harness clears
 				// the event log each turn, so a card destroyed before
