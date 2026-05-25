@@ -553,11 +553,52 @@ func buildGraphQLSchema(h *GraphQLHandler) (graphql.Schema, error) {
 		},
 	})
 
+	// Subscription root — companion to the /graphql/subscriptions
+	// WebSocket transport. The Subscribe resolver pulls a
+	// `chan interface{}` from the per-request context (populated by
+	// the WS handler from an EventBus subscription); each value
+	// flowing through the channel is rendered through the existing
+	// Game resolvers, so subscription field projection works
+	// identically to a `query { game(id:) {...} }` resolution.
+	subscriptionRoot := graphql.NewObject(graphql.ObjectConfig{
+		Name: "Subscription",
+		Fields: graphql.Fields{
+			"gameEnded": &graphql.Field{
+				Type:        gameType,
+				Description: "Fires once per completed game. Payload mirrors the `game.end` engine event documented at /ws/events.",
+				Subscribe: func(p graphql.ResolveParams) (any, error) {
+					ch, ok := p.Context.Value(subscriptionSourceKey).(chan interface{})
+					if !ok || ch == nil {
+						return nil, errors.New("subscription source not configured in context")
+					}
+					return ch, nil
+				},
+				Resolve: func(p graphql.ResolveParams) (any, error) {
+					// p.Source is the value the WS handler pushed
+					// into the channel — a CompletedGame, which the
+					// downstream Game-type field resolvers already
+					// know how to unpack.
+					return p.Source, nil
+				},
+			},
+		},
+	})
+
 	return graphql.NewSchema(graphql.SchemaConfig{
-		Query:    queryRoot,
-		Mutation: mutationRoot,
+		Query:        queryRoot,
+		Mutation:     mutationRoot,
+		Subscription: subscriptionRoot,
 	})
 }
+
+// subscriptionSourceKey is the per-request context key under which
+// the /graphql/subscriptions WebSocket handler stashes the
+// `chan interface{}` that the Subscription root's Subscribe resolver
+// reads. Defined in this file so the schema closure and the
+// transport handler agree on the wire.
+type subscriptionSourceKeyT struct{}
+
+var subscriptionSourceKey = subscriptionSourceKeyT{}
 
 // writeImportedDeckFile mirrors handleImportDeck's disk-write logic.
 // Sanitizes owner + name, creates the owner dir, finds a unique

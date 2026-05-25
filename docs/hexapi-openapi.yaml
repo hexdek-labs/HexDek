@@ -1958,6 +1958,30 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/EmptyOk' }
 
+  /api/meta/evolution:
+    get:
+      tags: [meta]
+      operationId: getMetaEvolution
+      summary: Time-series of archetype mix across the engine's game history.
+      responses:
+        "200":
+          description: Meta evolution body.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/meta/archetype-vs-archetype:
+    get:
+      tags: [meta]
+      operationId: getArchetypeMatrix
+      summary: Archetype-vs-archetype matchup matrix across recorded games.
+      responses:
+        "200":
+          description: Archetype matrix body.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
   /api/leaderboard:
     get:
       tags: [leaderboard]
@@ -2812,3 +2836,34 @@ paths:
                 type: object
                 additionalProperties: true
         "400": { $ref: '#/components/responses/BadRequest' }
+
+  /graphql/subscriptions:
+    get:
+      tags: [graphql]
+      operationId: graphqlSubscriptionsWs
+      summary: WebSocket — GraphQL subscriptions over the `graphql-transport-ws` subprotocol.
+      description: |
+        Companion to `POST /graphql` (queries + mutations) and the
+        `/ws/events` raw event stream. Clients that already speak
+        GraphQL (Apollo Client, urql, etc.) connect with the
+        `graphql-transport-ws` subprotocol and run subscription
+        documents against the same schema.
+
+        Current subscription roots: `gameEnded`. Adding more is a
+        schema-only change; the transport handles any number of
+        subscription fields without code edits.
+
+        Capacity-capped at 100 concurrent sessions (same budget as
+        /ws/events); further upgrades return `503 too many
+        subscription clients` as the unified ErrorResponse envelope
+        before the WebSocket handshake.
+
+        Selective field projection works end-to-end — asking for
+        `subscription { gameEnded { id winner } }` produces frames
+        that omit every other field. The field-projection ergonomic
+        is the load-bearing argument for this surface vs the
+        existing /ws/events JSON firehose.
+      responses:
+        "101":
+          description: Switching Protocols → WebSocket (subprotocol `graphql-transport-ws`).
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
