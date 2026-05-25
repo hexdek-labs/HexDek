@@ -66,16 +66,22 @@ func (h *MCTSHat) canRollout() bool {
 	return h.Budget >= rolloutBudgetGe && h.TurnRunner != nil
 }
 
-// rolloutSeedCounter is bumped per-rollout within a decision to give each
-// candidate a different RNG stream.
-var rolloutSeedCounter int64
-
 // simulateRollout clones gs, applies actionFn to the clone, then runs
 // rolloutDepth turns and evaluates the resulting position for seatIdx.
 // Returns the evaluator score of the terminal clone state.
+//
+// The per-rollout RNG seed is derived from a HAT-LOCAL counter
+// (h.rolloutSeed) — not a package global. Pre-R60r5 this was a shared
+// `var rolloutSeedCounter int64` mutated by every hat in the process,
+// which (a) caused test-order dependence (one test's rollouts shifted
+// the next test's seeds), (b) was an unsynchronized data race under
+// parallel tournament runners, and (c) leaked seed state across game
+// boundaries within a process. The per-hat counter is reset on
+// game_start in ObserveEvent so each game starts from a deterministic
+// seed sequence given (Turn, seatIdx, decision-order).
 func (h *MCTSHat) simulateRollout(gs *gameengine.GameState, seatIdx int, actionFn func(clone *gameengine.GameState)) float64 {
-	rolloutSeedCounter++
-	rng := rand.New(rand.NewSource(int64(gs.Turn)*1000 + int64(seatIdx)*100 + rolloutSeedCounter))
+	h.rolloutSeed++
+	rng := rand.New(rand.NewSource(int64(gs.Turn)*1000 + int64(seatIdx)*100 + h.rolloutSeed))
 	clone := gs.CloneForRollout(rng)
 	if clone == nil {
 		return 0

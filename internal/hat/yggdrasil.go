@@ -47,6 +47,14 @@ type YggdrasilHat struct {
 	actionStats  map[string]*actionStat
 	totalVisits  int
 
+	// rolloutSeed is bumped per rollout invocation to give each candidate
+	// a distinct RNG stream within a decision. PER-HAT (not a package
+	// global) so that hats running in parallel — or multiple hats in
+	// the same process — don't share seed state. Reset on game_start
+	// so each game starts from a known seed sequence (reproducible
+	// replays + test stability).
+	rolloutSeed int64
+
 	// Per-opponent observation for politics.
 	damageDealtTo     []int
 	damageReceivedFrom []int
@@ -7729,6 +7737,7 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 	if event.Kind == "game_start" {
 		h.actionStats = make(map[string]*actionStat)
 		h.totalVisits = 0
+		h.rolloutSeed = 0
 		h.planState = PlanState{}
 		h.Evaluator.PlanMultiplier = nil
 		for i := range h.damageDealtTo {
@@ -8667,8 +8676,10 @@ func (h *YggdrasilHat) canRollout() bool {
 }
 
 func (h *YggdrasilHat) simulateRollout(gs *gameengine.GameState, seatIdx int, actionFn func(clone *gameengine.GameState)) float64 {
-	rolloutSeedCounter++
-	rng := rand.New(rand.NewSource(int64(gs.Turn)*1000 + int64(seatIdx)*100 + rolloutSeedCounter))
+	// Per-hat seed counter — see rollout.go for the rationale on dropping
+	// the package-global `rolloutSeedCounter`.
+	h.rolloutSeed++
+	rng := rand.New(rand.NewSource(int64(gs.Turn)*1000 + int64(seatIdx)*100 + h.rolloutSeed))
 	clone := gs.CloneForRollout(rng)
 	if clone == nil {
 		return 0
