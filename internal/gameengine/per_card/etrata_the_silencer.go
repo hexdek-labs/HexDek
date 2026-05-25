@@ -52,34 +52,40 @@ func etrataSilencerCombat(gs *gameengine.GameState, perm *gameengine.Permanent, 
 		}
 	}
 	if target != nil && target.Card != nil {
-		card := target.Card
-		removePermanent(gs, target)
-		gameengine.DetachAll(gs, target)
-		moveCardBetweenZones(gs, defenderSeat, card, "battlefield", "exile", "etrata_silencer")
-		// Track hit counters on the defender via seat flag.
-		if def.Flags == nil {
-			def.Flags = map[string]int{}
-		}
-		def.Flags["etrata_hits"]++
-		if def.Flags["etrata_hits"] >= 3 {
-			def.Lost = true
-			gs.LogEvent(gameengine.Event{
-				Kind:   "lose_game",
-				Seat:   defenderSeat,
-				Source: perm.Card.DisplayName(),
+		cardName := target.Card.DisplayName()
+		// Route exile through the canonical battlefield-exit API so §614
+		// would_be_exiled replacements, §903.9b commander redirect, aura
+		// detachAll, replacement-effect unregistering, and LTB triggers
+		// all fire. Same root-cause refactor as abdel_adrian.go (commit
+		// 7e782cf) — see docs/may11-nil-deref-forensics.md.
+		if gameengine.ExilePermanent(gs, target, perm) {
+			// Track hit counters on the defender via seat flag.
+			if def.Flags == nil {
+				def.Flags = map[string]int{}
+			}
+			def.Flags["etrata_hits"]++
+			if def.Flags["etrata_hits"] >= 3 {
+				def.Lost = true
+				gs.LogEvent(gameengine.Event{
+					Kind:   "lose_game",
+					Seat:   defenderSeat,
+					Source: perm.Card.DisplayName(),
+				})
+			}
+			emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+				"seat":        perm.Controller,
+				"defender":    defenderSeat,
+				"hits":        def.Flags["etrata_hits"],
+				"exiled_card": cardName,
 			})
 		}
-		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-			"seat":         perm.Controller,
-			"defender":     defenderSeat,
-			"hits":         def.Flags["etrata_hits"],
-			"exiled_card":  card.DisplayName(),
-		})
 	}
-	// Shuffle Etrata into owner's library.
+	// Shuffle Etrata into owner's library. BouncePermanent handles
+	// removePermanent + DetachAll + UnregisterReplacements + FireZoneChange
+	// (which honors §903.9b commander redirect — Etrata is legendary and
+	// is often used as a commander, so the redirect path is load-bearing).
 	owner := perm.Owner
-	card := perm.Card
-	removePermanent(gs, perm)
-	gameengine.DetachAll(gs, perm)
-	moveCardBetweenZones(gs, owner, card, "battlefield", "library", "etrata_shuffle")
+	if gameengine.BouncePermanent(gs, perm, perm, "library") {
+		shuffleLibraryPerCard(gs, owner)
+	}
 }

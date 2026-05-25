@@ -132,7 +132,14 @@ func zimoneDinaActivate(gs *gameengine.GameState, src *gameengine.Permanent, abi
 }
 
 func zimoneDinaDoOnce(gs *gameengine.GameState, src, fodder *gameengine.Permanent) {
-	moveCardBetweenZones(gs, src.Controller, fodder.Card, "battlefield", "graveyard", "zimone_dina_sac")
+	// SacrificePermanent (CR §701.17) handles §614 "would die"
+	// replacements, §903.9b commander redirect (Zimone-and-Dina decks
+	// often sacrifice legendary commanders for value — Yawgmoth /
+	// Ashnod's Altar style), detachAll for auras/equipment, replacement
+	// unregister, dies/LTB triggers, descend tracking, and the proper
+	// sacrifice event log. The pre-fix moveCardBetweenZones direct call
+	// bypassed all of these.
+	gameengine.SacrificePermanent(gs, fodder, "zimone_dina_sac")
 	drawOne(gs, src.Controller, src.Card.DisplayName())
 	// Drop a land from hand tapped if possible.
 	seat := gs.Seats[src.Controller]

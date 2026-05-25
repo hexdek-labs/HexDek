@@ -64,12 +64,24 @@ func zabazDestroyArtifact(gs *gameengine.GameState, src *gameengine.Permanent) {
 		emitFail(gs, slug, src.Card.DisplayName(), "no_artifact_target", nil)
 		return
 	}
-	moveCardBetweenZones(gs, src.Controller, pick.Card, "battlefield", "graveyard", "zabaz_destroy")
-	emitPartial(gs, "zabaz_modular_replacement", src.Card.DisplayName(), "modular_plus_one_replacement_not_implemented")
-	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-		"seat":      src.Controller,
-		"destroyed": pick.Card.DisplayName(),
-	})
+	destroyed := pick.Card.DisplayName()
+	// DestroyPermanent handles §122.1b shield counters, §702.12b
+	// indestructible, §614 would_die replacements, §903.9b commander
+	// redirect (target artifact may be a commander artifact —
+	// Hammer of Nazahn, Skullclamp commanders), detachAll, and LTB
+	// triggers. Manual moveCardBetweenZones bypassed all of these.
+	if gameengine.DestroyPermanent(gs, pick, src) {
+		emitPartial(gs, "zabaz_modular_replacement", src.Card.DisplayName(),
+			"modular_plus_one_replacement_not_implemented")
+		emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
+			"seat":      src.Controller,
+			"destroyed": destroyed,
+		})
+	} else {
+		emitFail(gs, slug, src.Card.DisplayName(), "destroy_failed_or_prevented", map[string]interface{}{
+			"target": destroyed,
+		})
+	}
 }
 
 func zabazFlying(gs *gameengine.GameState, src *gameengine.Permanent) {

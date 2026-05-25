@@ -108,10 +108,13 @@ func bilboBirthdayCelebrantActivate(gs *gameengine.GameState, src *gameengine.Pe
 		seat.ManaPool -= 5
 	}
 	src.Tapped = true
-	// Exile Bilbo from the battlefield.
-	moveCardBetweenZones(gs, seatIdx, src.Card, "battlefield", "exile", "bilbo_birthday_exile")
-	removePermanent(gs, src)
-	gameengine.DetachAll(gs, src)
+	// Exile Bilbo from the battlefield through the canonical exit API so
+	// §614 would_be_exiled replacements + §903.9b commander redirect +
+	// aura detach + replacement-effect unregister all fire. (Bilbo is a
+	// legendary creature commonly used as a commander; the redirect path
+	// matters when she's the player's commander.) Source = src so the
+	// exile-self attribution is correct in the event log.
+	gameengine.ExilePermanent(gs, src, src)
 
 	// Pull every creature card out of the library, then shuffle.
 	var keep []*gameengine.Card
