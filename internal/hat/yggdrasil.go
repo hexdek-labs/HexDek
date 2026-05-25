@@ -221,6 +221,17 @@ type YggdrasilHat struct {
 	stackItemTiers     map[int]DecisionTier
 	stackItemTiersTurn int
 
+	// R60 round 5 — multi-mode follow-up detection state. When the
+	// engine's resolveChoice loops ChooseMode `pick` times for a
+	// pick-2 modal spell (Cryptic Command, charms, …), each iteration
+	// shows a slice that's the previous one minus the prior pick. We
+	// remember the previous pick + slice so the next call can detect
+	// the subset relationship and apply complement scoring (counter
+	// → bounce, bounce → draw, etc.).
+	lastChooseModePick  gameast.Effect
+	lastChooseModeSlice []gameast.Effect
+	lastChooseModeTurn  int
+
 	// -- Zone-cast grant tracking (flashback / escape / impulse / etc.) --
 
 	// myZoneCastGrants counts how many active zone-cast permissions the
@@ -7067,13 +7078,29 @@ func (h *YggdrasilHat) ChooseMode(gs *gameengine.GameState, seatIdx int, modes [
 
 	pos := h.evalPosition(gs, seatIdx)
 
+	// R60 round 5 — multi-mode follow-up detection. The engine's
+	// resolveChoice loops ChooseMode `pick` times for pick > 1
+	// (Cryptic Command, Charms, etc.), narrowing the modes slice by
+	// one between calls. We detect that "the slice we're being shown
+	// now is the previous slice minus our previous pick" and apply a
+	// synergy bonus that complements the prior pick — so a Cryptic
+	// Command first picking "counter" naturally pairs with "bounce"
+	// or "draw" on the second pick instead of forcing the same
+	// best-effort scoring without context. See `complementBonus` for
+	// the pairing rules.
+	priorMode := h.priorChooseModePickIfFollowup(gs, modes)
+
 	type scoredMode struct {
 		idx   int
 		score float64
 	}
 	scored := make([]scoredMode, len(modes))
 	for i, m := range modes {
-		scored[i] = scoredMode{i, h.scoreModeEffect(gs, seatIdx, m, pos)}
+		s := h.scoreModeEffect(gs, seatIdx, m, pos)
+		if priorMode != nil {
+			s += complementBonus(priorMode, m)
+		}
+		scored[i] = scoredMode{i, s}
 	}
 	sort.SliceStable(scored, func(i, j int) bool {
 		return scored[i].score > scored[j].score
@@ -7110,7 +7137,109 @@ func (h *YggdrasilHat) ChooseMode(gs *gameengine.GameState, seatIdx int, modes [
 	})
 	h.logf("MODE seat=%d -> idx=%d score=%.3f (top: %v scores=%v)",
 		seatIdx, scored[pick].idx, scored[pick].score, topIdx, topScores)
+	// R60r5 — remember the pick + the full slice we just saw so the
+	// next ChooseMode call (if it's a follow-up pick on the same
+	// modal spell) can detect the subset relationship and apply
+	// complement scoring.
+	h.lastChooseModePick = modes[scored[pick].idx]
+	h.lastChooseModeSlice = append(h.lastChooseModeSlice[:0], modes...)
+	h.lastChooseModeTurn = gs.Turn
 	return scored[pick].idx
+}
+
+// priorChooseModePickIfFollowup reports the previously-picked Effect
+// when the current `modes` slice is a strict subset of the previous
+// ChooseMode call's slice within the same turn — i.e., the engine
+// stripped the prior pick and is asking us for the next mode of the
+// same modal spell. Returns nil when the call isn't a follow-up.
+//
+// gameast.Effect concrete types contain Filter structs that aren't
+// `==`-comparable at runtime (Filter has slices/maps internally), so
+// we compare via Kind() string matching: the prior slice must
+// multiset-match the current slice PLUS one of-the-prior-pick-kind
+// entry. Pointer identity would be more precise but the engine
+// re-builds the slice between calls so the same Effect can move
+// addresses; Kind matching is safe and the false-positive risk
+// (different spell happens to have identical kind-multiset minus one)
+// is negligible in practice given the multi-mode-spell corpus.
+func (h *YggdrasilHat) priorChooseModePickIfFollowup(gs *gameengine.GameState, modes []gameast.Effect) gameast.Effect {
+	if h == nil || gs == nil || h.lastChooseModePick == nil {
+		return nil
+	}
+	if h.lastChooseModeTurn != gs.Turn {
+		return nil
+	}
+	if len(modes) != len(h.lastChooseModeSlice)-1 {
+		return nil
+	}
+	priorKinds := make(map[string]int, len(h.lastChooseModeSlice))
+	for _, m := range h.lastChooseModeSlice {
+		if m != nil {
+			priorKinds[m.Kind()]++
+		}
+	}
+	currKinds := make(map[string]int, len(modes))
+	for _, m := range modes {
+		if m != nil {
+			currKinds[m.Kind()]++
+		}
+	}
+	pickKind := h.lastChooseModePick.Kind()
+	// Multiset relation: prior == current + {pickKind: 1}.
+	if priorKinds[pickKind] == 0 || priorKinds[pickKind] != currKinds[pickKind]+1 {
+		return nil
+	}
+	for k, v := range priorKinds {
+		if k == pickKind {
+			continue
+		}
+		if currKinds[k] != v {
+			return nil
+		}
+	}
+	return h.lastChooseModePick
+}
+
+// complementBonus returns a small score bonus for picking `cand` as
+// the SECOND (or later) mode of a modal spell that already picked
+// `prior`. Encodes the canonical multi-mode-spell synergies in
+// commander / cEDH:
+//
+//   counter   → bounce / draw : Cryptic Command's classic line
+//   bounce    → draw / counter : tempo + refill
+//   destroy   → draw / counter : "kill + replace card"
+//   damage    → draw : burn + cantrip
+//   draw      → counter / bounce : reactive mana left up for the
+//                                  drawn answer
+//   gain_life → draw / counter : stabilize and rebuild
+//
+// The bonus is small (0.10) — large enough to break ties between
+// similarly-scored modes, small enough not to override a strongly-
+// favored mode (e.g., a lethal `damage` should still win over the
+// "synergistic" draw). Unknown / non-paired kinds return 0.
+func complementBonus(prior, cand gameast.Effect) float64 {
+	if prior == nil || cand == nil {
+		return 0
+	}
+	pk := prior.Kind()
+	ck := cand.Kind()
+	if pk == ck {
+		return -0.05 // mild penalty against picking the same kind twice
+	}
+	synergies := map[string]map[string]bool{
+		"counter_spell": {"bounce": true, "draw": true},
+		"bounce":        {"draw": true, "counter_spell": true},
+		"destroy":       {"draw": true, "counter_spell": true},
+		"exile":         {"draw": true, "counter_spell": true},
+		"damage":        {"draw": true},
+		"lose_life":     {"draw": true},
+		"draw":          {"counter_spell": true, "bounce": true},
+		"gain_life":     {"draw": true, "counter_spell": true},
+	}
+	if paired, ok := synergies[pk]; ok && paired[ck] {
+		return 0.10
+	}
+	return 0
 }
 
 func (h *YggdrasilHat) scoreModeEffect(gs *gameengine.GameState, seatIdx int, eff gameast.Effect, pos float64) float64 {
@@ -8546,6 +8675,9 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 		h.rolloutSeed = 0
 		h.stackItemTiers = nil
 		h.stackItemTiersTurn = 0
+		h.lastChooseModePick = nil
+		h.lastChooseModeSlice = nil
+		h.lastChooseModeTurn = 0
 		h.planState = PlanState{}
 		h.Evaluator.PlanMultiplier = nil
 		for i := range h.damageDealtTo {
