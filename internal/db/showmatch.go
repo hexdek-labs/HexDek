@@ -367,12 +367,13 @@ type OwnerGameRow struct {
 	EndReason   string   `json:"end_reason"`
 	MySeat      int      `json:"my_seat"`
 	MyCommander string   `json:"my_commander"`
+	MyDeckKey   string   `json:"my_deck_key,omitempty"`
 	Opponents   []string `json:"opponents"`
 }
 
 func LoadOwnerGames(ctx context.Context, sqlDB *sql.DB, owner string, limit int) ([]OwnerGameRow, error) {
 	rows, err := sqlDB.QueryContext(ctx,
-		`SELECT g.game_id, g.finished_at, g.turns, g.winner, g.winner_name, g.end_reason, me.seat, me.commander
+		`SELECT g.game_id, g.finished_at, g.turns, g.winner, g.winner_name, g.end_reason, me.seat, me.commander, me.deck_key
 		 FROM showmatch_game g
 		 JOIN showmatch_game_seat me ON me.game_id = g.game_id
 		 JOIN showmatch_elo e ON e.deck_key = me.deck_key AND e.owner = ?
@@ -384,7 +385,7 @@ func LoadOwnerGames(ctx context.Context, sqlDB *sql.DB, owner string, limit int)
 	var games []OwnerGameRow
 	for rows.Next() {
 		var g OwnerGameRow
-		if err := rows.Scan(&g.GameID, &g.FinishedAt, &g.Turns, &g.Winner, &g.WinnerName, &g.EndReason, &g.MySeat, &g.MyCommander); err != nil {
+		if err := rows.Scan(&g.GameID, &g.FinishedAt, &g.Turns, &g.Winner, &g.WinnerName, &g.EndReason, &g.MySeat, &g.MyCommander, &g.MyDeckKey); err != nil {
 			return nil, err
 		}
 		games = append(games, g)
