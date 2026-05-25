@@ -1936,6 +1936,30 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/EmptyOk' }
 
+  /api/meta/archetype-vs-archetype:
+    get:
+      tags: [meta]
+      operationId: getArchetypeMatrix
+      summary: Archetype-vs-archetype winrate matrix across the recorded meta.
+      responses:
+        "200":
+          description: Per-archetype matchup matrix.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/meta/evolution:
+    get:
+      tags: [meta]
+      operationId: getMetaEvolution
+      summary: Meta-share evolution time series (archetype prevalence over time).
+      responses:
+        "200":
+          description: Per-archetype prevalence time series.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
   /api/meta/trends:
     get:
       tags: [meta]

@@ -224,6 +224,13 @@ type GauntletResult struct {
 	// W/L view obscures. By definition Wins == Placements[0] and Losses
 	// == Placements[1] + Placements[2] + Placements[3].
 	Placements [4]int    `json:"placements,omitempty"`
+
+	// RunID is the gauntlet_runs.run_id reserved at gauntlet start.
+	// Used by the replay-archive path to link this run's per-game
+	// showmatch_game rows back to its aggregate row via the
+	// gauntlet_run_game junction table. 0 when the gauntlet started
+	// without a SQL backing store (tests / dev runs).
+	RunID int64 `json:"run_id,omitempty"`
 }
 
 type Showmatch struct {
@@ -782,6 +789,23 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 	sm.gauntlets[deckKey] = result
 	sm.gauntletMu.Unlock()
 
+	// Reserve the gauntlet_runs row up front so per-game showmatch_game
+	// inserts can link back via the gauntlet_run_game junction. Without
+	// this, the only post-hoc link is the (deck_key, time-window)
+	// heuristic — which mis-attributes games when two gauntlets for
+	// the same deck overlap in time. Best-effort: a DB error here leaves
+	// result.RunID=0 and the gauntlet still runs (per-game writes will
+	// skip the link step).
+	if sm.sqlDB != nil {
+		runID, err := db.InsertPendingGauntletRun(context.Background(), sm.sqlDB,
+			deckKey, targetDeck.CommanderName, result.StartedAt)
+		if err != nil {
+			log.Printf("gauntlet_runs reserve: %v", err)
+		} else {
+			result.RunID = runID
+		}
+	}
+
 	log.Printf("gauntlet: starting %d games for %s (%s)", numGames, deckKey, targetDeck.CommanderName)
 
 	beaten := map[string]int{}
@@ -945,6 +969,23 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 		sm.updateELO(deckKeys, commanders, pickedDecks, winner, gs.Turn)
 		sm.mu.Unlock()
 
+		// Replay archive: persist per-game outcomes and link them to
+		// this gauntlet run so future analysis can recover the original
+		// game stream without re-running. Best-effort — a DB error
+		// here leaves the row out of the archive but the gauntlet
+		// keeps running (in-memory result remains correct).
+		if sm.sqlDB != nil && result.RunID > 0 {
+			gameID, perr := sm.persistGauntletGame(deckKeys, commanders, gs, gameSeed, winner)
+			if perr != nil {
+				log.Printf("gauntlet replay: persist game %d: %v", g, perr)
+			} else if gameID > 0 {
+				if err := db.InsertGauntletRunGame(context.Background(), sm.sqlDB,
+					result.RunID, gameID, g); err != nil {
+					log.Printf("gauntlet replay: link game %d to run %d: %v", gameID, result.RunID, err)
+				}
+			}
+		}
+
 		gauntSeed := heimdall.GameSeed{
 			RNGSeed:    gameSeed,
 			DeckKeys:   [4]string{deckKeys[0], deckKeys[1], deckKeys[2], deckKeys[3]},
@@ -1068,8 +1109,16 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 	// Persist snapshot for ELO-history chart. Best-effort — a DB error
 	// here doesn't fail the gauntlet (the in-memory result still serves
 	// the API). Logged on failure so we notice trends.
+	//
+	// Replay-archive path: when result.RunID > 0 we reserved a
+	// pending row up front and stamped per-game links along the way,
+	// so finalize via UPDATE rather than a fresh INSERT. RunID == 0
+	// means InsertPendingGauntletRun failed (or sqlDB was nil at
+	// gauntlet start) — fall back to the legacy single-INSERT path
+	// so older callers / failure modes still produce a row.
 	if sm.sqlDB != nil {
 		rec := db.GauntletRunRecord{
+			RunID:      result.RunID,
 			DeckKey:    result.DeckKey,
 			Commander:  result.Commander,
 			StartedAt:  result.StartedAt,
@@ -1087,8 +1136,14 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 			Place3rd:   result.Placements[2],
 			Place4th:   result.Placements[3],
 		}
-		if err := db.InsertGauntletRun(context.Background(), sm.sqlDB, rec); err != nil {
-			log.Printf("gauntlet_runs insert: %v", err)
+		var err error
+		if result.RunID > 0 {
+			err = db.FinalizeGauntletRun(context.Background(), sm.sqlDB, rec)
+		} else {
+			err = db.InsertGauntletRun(context.Background(), sm.sqlDB, rec)
+		}
+		if err != nil {
+			log.Printf("gauntlet_runs persist: %v", err)
 		}
 	}
 
@@ -1914,6 +1969,93 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 	sm.broadcastToSpectators(wsEnvelope{Type: "game", Payload: finalSnap})
 	sm.broadcastToSpectators(wsEnvelope{Type: "stats", Payload: sm.GetStats()})
 	sm.broadcastToSpectators(wsEnvelope{Type: "elo", Payload: sm.GetELO()})
+}
+
+// persistGauntletGame writes one gauntlet game's outcome to
+// showmatch_game + showmatch_game_seat in a single transaction.
+// Returns the new game_id so the caller can link it to a
+// gauntlet_runs row via the gauntlet_run_game junction.
+//
+// Distinct from persistGame() which consumes a CompletedGame
+// summary from the continuous-game pipeline; this variant works
+// directly off the live gameengine.GameState at end-of-game so
+// the gauntlet path doesn't have to materialize an intermediate
+// snapshot. Card-win-stat aggregation is intentionally omitted
+// — the continuous-game pipeline keeps that aggregate fresh, and
+// duplicating per-card writes here would distort the count.
+func (sm *Showmatch) persistGauntletGame(
+	deckKeys, commanders []string,
+	gs *gameengine.GameState,
+	gameSeed int64,
+	winner int,
+) (int64, error) {
+	if sm.sqlDB == nil || gs == nil {
+		return 0, nil
+	}
+	now := time.Now()
+	winnerName := ""
+	if winner >= 0 && winner < len(commanders) {
+		winnerName = commanders[winner]
+	} else {
+		winnerName = "DRAW"
+	}
+	endReason := "unknown"
+	if gs.Flags != nil {
+		if r, ok := gs.Flags["end_reason"]; ok {
+			switch r {
+			case 1:
+				endReason = "last_seat_standing"
+			case 2:
+				endReason = "turn_cap"
+			case 3:
+				endReason = "turn_cap_tie"
+			}
+		}
+	}
+	gameRec := db.GameRecord{
+		StartedAt:  now.Add(-time.Duration(gs.Turn) * 3600 * time.Millisecond).Unix(),
+		FinishedAt: now.Unix(),
+		Turns:      gs.Turn,
+		Winner:     winner,
+		WinnerName: winnerName,
+		EndReason:  endReason,
+		Seed:       gameSeed,
+	}
+	seats := make([]db.GameSeatRecord, 0, len(gs.Seats))
+	for i, seat := range gs.Seats {
+		if seat == nil {
+			continue
+		}
+		cmdr := ""
+		if i < len(commanders) {
+			cmdr = commanders[i]
+		}
+		dk := ""
+		if i < len(deckKeys) {
+			dk = deckKeys[i]
+		}
+		bfNames := make([]string, 0, len(seat.Battlefield))
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			bfNames = append(bfNames, p.Card.Name)
+		}
+		bfJSON, _ := json.Marshal(bfNames)
+		seats = append(seats, db.GameSeatRecord{
+			Seat:             i,
+			Commander:        cmdr,
+			DeckKey:          dk,
+			Life:             seat.Life,
+			HandSize:         len(seat.Hand),
+			LibrarySize:      len(seat.Library),
+			GYSize:           len(seat.Graveyard),
+			BFSize:           len(seat.Battlefield),
+			Lost:             seat.Lost,
+			BattlefieldCards: string(bfJSON),
+		})
+	}
+	return db.PersistGameTx(context.Background(), sm.sqlDB, gameRec, seats)
 }
 
 func (sm *Showmatch) persistGame(g CompletedGame) {
