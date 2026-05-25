@@ -56,9 +56,46 @@ type classifyContext struct {
 	bannedCount      int
 	gameChangerCount int
 	gameChangerNames []string
+	// freeInteractionCount tracks pitch-counter / phyrexian-mana / pact /
+	// commander-free / evoke spells (see cedhFreeInteractionList). The
+	// strongest single-deck-shape signal that separates true cEDH (B5)
+	// from merely-optimized B4.
+	freeInteractionCount int
+	freeInteractionNames []string
 	profiles       []CardProfile
 	qtyProfiles    []CardProfileQty
 	oracle         *oracleDB
+}
+
+// cEDHFreeInteractionList tracks the cEDH-defining "free" interaction
+// suite — spells castable for {0} via alternative casting cost (pitch a
+// blue card, return a land, commander on battlefield, evoke, phyrexian
+// life). The presence of multiple free-interaction pieces is the
+// strongest deck-shape signal that separates true cEDH (B5) from
+// merely-optimized B4 decks. B4 players use Counterspell at 2 mana;
+// B5 players hold up Force of Will / Fierce Guardianship / Mental
+// Misstep so the counter doesn't trade their tempo against winning
+// faster. We intentionally do NOT include "cheap" interaction
+// (Counterspell, Swan Song, An Offer You Can't Refuse) — those are
+// strong B4 interaction but not the discriminating B5 signal.
+var cedhFreeInteractionList = map[string]bool{
+	// Pitch counters (exile a card of matching color)
+	"force of will": true, "force of negation": true, "force of vigor": true,
+	"force of despair": true, "force of rage": true, "force of virtue": true,
+	"misdirection": true, "foil": true, "commandeer": true,
+	"disrupting shoal": true, "thwart": true, "daze": true,
+	// Phyrexian-mana free spells
+	"mental misstep": true, "gut shot": true, "snuff out": true,
+	// Pact cycle (free now, pay next turn)
+	"pact of negation": true, "slaughter pact": true, "intervention pact": true,
+	"summoner's pact": true, "pact of the titan": true,
+	// Commander-on-battlefield free spells (cEDH partner-rich decks lean on these)
+	"fierce guardianship": true, "deflecting swat": true, "deadly rollick": true,
+	"fierce retribution": true, "obscuring haze": true, "tribute to the world tree": true,
+	// Evoke elementals (free with tempo cost)
+	"subtlety": true, "endurance": true, "solitude": true, "grief": true, "fury": true,
+	// Other 0-mana / free alternative-cost interaction
+	"snapback": true, "unmask": true, "chain of vapor": true,
 }
 
 // WotC Commander Game Changers list (53 cards, Feb 2026 update).
@@ -417,6 +454,10 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 			ctx.gameChangerCount += qp.Qty
 			ctx.gameChangerNames = append(ctx.gameChangerNames, qp.Profile.Name)
 		}
+		if cedhFreeInteractionList[nameLower] {
+			ctx.freeInteractionCount += qp.Qty
+			ctx.freeInteractionNames = append(ctx.freeInteractionNames, qp.Profile.Name)
+		}
 		nonlandTotal += qp.Qty
 		tl := strings.ToLower(qp.Profile.TypeLine)
 
@@ -590,6 +631,10 @@ func buildSignals(ctx *classifyContext, ac *ArchetypeClassification) []string {
 		signals = append(signals, "strong tribal core")
 	}
 
+	if ctx.freeInteractionCount >= 2 {
+		signals = append(signals, fmt.Sprintf("free interaction suite (%d pieces)", ctx.freeInteractionCount))
+	}
+
 	if ctx.gameChangerCount > 0 {
 		signals = append(signals, fmt.Sprintf("%d Game Changer(s)", ctx.gameChangerCount))
 	}
@@ -748,6 +793,21 @@ func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string) {
 		score += 1
 	}
 
+	// Free interaction — the deck-shape signal that separates true cEDH
+	// from merely-optimized B4. Pitch counters, phyrexian-mana spells,
+	// pact cycle, commander-free spells, evoke elementals (see
+	// cedhFreeInteractionList). B4 players counter at 2 mana; B5 players
+	// counter for free so the tempo cost doesn't trade against winning
+	// faster. Heavy presence (4+) is one of the strongest single signals
+	// that a deck is tournament-tuned rather than casually optimized.
+	if ctx.freeInteractionCount >= 4 {
+		score += 3
+	} else if ctx.freeInteractionCount >= 2 {
+		score += 2
+	} else if ctx.freeInteractionCount >= 1 {
+		score += 1
+	}
+
 	var bracket int
 	var label string
 	switch {
@@ -766,6 +826,28 @@ func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string) {
 	default:
 		bracket = 1
 		label = "Exhibition"
+	}
+
+	// B5 confirmation gate. The raw score threshold of 12+ catches tuned
+	// decks but can be reached by stacking GCs + tutors + fast mana even
+	// when the deck doesn't have the deck-shape signature of cEDH (free
+	// interaction, multi-tutor density, low CMC). Decks that reach B5
+	// score-wise but lack ALL of these markers are demoted to B4 — they're
+	// optimized but not tournament-tuned. The gate requires AT LEAST ONE
+	// hard cEDH marker:
+	//   - 2+ free interaction pieces (the primary signal)
+	//   - 12%+ tutor density (consistency required for tournament play)
+	//   - 8+ Game Changers (heavy cEDH-card density)
+	// AND avgCMC < 2.8 (cEDH decks are lean; a 3.0+ CMC pile is too slow
+	// to win on turn 3-4 regardless of how many GCs it stacks).
+	if bracket == 5 {
+		hasCEDHMarker := ctx.freeInteractionCount >= 2 ||
+			ctx.tutorDensity >= 0.12 ||
+			ctx.gameChangerCount >= 8
+		if !hasCEDHMarker || ctx.avgCMC >= 2.8 {
+			bracket = 4
+			label = "Optimized"
+		}
 	}
 
 	// Ceilings — WotC GC caps, modulated by combo presence.
