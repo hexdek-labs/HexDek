@@ -29,6 +29,27 @@ CREATE TABLE IF NOT EXISTS session (
 CREATE INDEX IF NOT EXISTS idx_session_device ON session(device_id);
 CREATE INDEX IF NOT EXISTS idx_session_expires ON session(expires_at);
 
+-- TOTP (RFC 6238) enrollment state per device. Two-row lifecycle:
+--   1. EnrollTOTP inserts with status='pending' + a fresh secret.
+--   2. ConfirmTOTP transitions to status='active' after the user
+--      submits a sample code that verifies — until then the secret
+--      MUST NOT gate any auth (the user might typo the QR scan and
+--      need to retry).
+-- DisableTOTP removes the row entirely; a fresh enrollment then
+-- starts at pending again.
+--
+-- See docs/auth-2fa-survey.md for the full scope rationale + the
+-- pieces deferred to follow-up PRs (HTTP endpoints, session
+-- elevation, backup codes, rate-limit on verify).
+CREATE TABLE IF NOT EXISTS device_totp (
+    device_id     TEXT PRIMARY KEY REFERENCES device(id) ON DELETE CASCADE,
+    secret        TEXT NOT NULL,                  -- base32-encoded, no padding
+    status        TEXT NOT NULL,                  -- 'pending' | 'active'
+    created_at    INTEGER NOT NULL,               -- enrollment start
+    confirmed_at  INTEGER NOT NULL DEFAULT 0      -- 0 = unconfirmed
+);
+CREATE INDEX IF NOT EXISTS idx_device_totp_status ON device_totp(status);
+
 CREATE TABLE IF NOT EXISTS deck (
     id                TEXT PRIMARY KEY,
     owner_device_id   TEXT NOT NULL REFERENCES device(id),
