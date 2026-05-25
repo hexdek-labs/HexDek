@@ -62,6 +62,40 @@ type Observation struct {
 	// gs.MulliganHistory at observation time; empty when mulligans
 	// were not run.
 	MulliganStats []MulliganStat
+
+	// CompositionPriorEffects records the per-seat impact of the R60
+	// composition prior (PRs #403/#408/#415) on this game's TrueSkill
+	// rating update. One entry per seat. The MuDeltaVsBaseline field
+	// is the gold metric: how much did the prior shift this seat's
+	// μ update vs. what vanilla TrueSkill would have produced.
+	// Aggregated downstream by Heimdall analytics for prior-health
+	// monitoring.
+	CompositionPriorEffects []CompositionPriorEffect
+}
+
+// CompositionPriorEffect is the per-seat monitoring record for one
+// composition-prior-aware TrueSkill update. All fields are 0/empty
+// when the prior was disabled or had zero confidence for the cell
+// (i.e. the update reduced to vanilla TrueSkill — no observable
+// effect to record).
+type CompositionPriorEffect struct {
+	Seat              int     `json:"seat"`
+	Archetype         string  `json:"archetype"`
+	// Offset is the μ-shift the prior applied to this seat's rating
+	// before the TrueSkill update (Weight × Confidence × Scale ×
+	// (ExpectedWinrate − 1/podSize)).
+	Offset            float64 `json:"offset"`
+	// Confidence is the prior's [0..1] trust in its expected-winrate
+	// estimate for this (archetype, pod) cell.
+	Confidence        float64 `json:"confidence"`
+	// ExpectedWinrate is the prior's pod-conditioned baseline
+	// (0..1, uniform 0.25 for 4-player).
+	ExpectedWinrate   float64 `json:"expected_winrate"`
+	// MuDeltaVsBaseline is the difference between the actual μ-change
+	// applied with the prior on, and the μ-change vanilla TrueSkill
+	// would have applied. Positive = prior credited the seat MORE
+	// rating change than vanilla; negative = prior credited LESS.
+	MuDeltaVsBaseline float64 `json:"mu_delta_vs_baseline"`
 }
 
 // ZoneCastEvent records a zone-cast grant lifecycle moment or an
