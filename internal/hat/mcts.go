@@ -62,6 +62,14 @@ type MCTSHat struct {
 	// Reset at the start of each game via ObserveEvent("game_start").
 	actionStats map[string]*actionStat
 	totalVisits int
+
+	// rolloutSeed is bumped per rollout invocation to give each candidate
+	// a distinct RNG stream within a decision. PER-HAT (not a package
+	// global) so that hats running in parallel — or multiple hats in
+	// the same process — don't share seed state. Reset on game_start
+	// so each game starts from a known seed sequence (reproducible
+	// replays + test stability).
+	rolloutSeed int64
 }
 
 // DefaultPruneThreshold is the default cut for MCTSHat candidate
@@ -624,10 +632,13 @@ func (h *MCTSHat) ChoosePutBack(gs *gameengine.GameState, seatIdx int, hand []*g
 func (h *MCTSHat) ShouldConcede(gs *gameengine.GameState, seatIdx int) bool { return false }
 
 func (h *MCTSHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event *gameengine.Event) {
-	// Reset action stats at game start.
+	// Reset action stats + rollout seed at game start so each game is
+	// reproducible from its own starting state regardless of prior
+	// games in the same process (test order, tournament gauntlet).
 	if event.Kind == "game_start" {
 		h.actionStats = map[string]*actionStat{}
 		h.totalVisits = 0
+		h.rolloutSeed = 0
 	}
 	// Forward to inner hat for its own tracking (PokerHat mode transitions etc).
 	h.Inner.ObserveEvent(gs, seatIdx, event)
