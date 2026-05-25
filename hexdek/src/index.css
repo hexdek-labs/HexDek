@@ -429,10 +429,24 @@ body {
   --stack-s3: 0 0 transparent;
   --hover-lift: 0 0 transparent;
   box-shadow: var(--stack-s3), var(--stack-s2), var(--stack-s1), var(--hover-lift);
+  /* ETB pop: tiles play perm-etb once on mount. With key={j} (index),
+     React only freshly mounts tiles when the perms array extends —
+     i.e. a new permanent entered the battlefield. Uses the standalone
+     `scale` property (independent of `transform`) so it composes cleanly
+     with the inline transform: rotate(6deg) used for tapped permanents. */
+  animation: perm-etb 220ms ease-out;
   /* Animate the hover ring + brightness independently. transform is
      deliberately NOT transitioned — the tapped state's inline rotate(6deg)
      should snap, not tween, when a permanent gets tapped mid-frame. */
   transition: outline-color 80ms ease, filter 80ms ease, box-shadow 80ms ease;
+}
+@keyframes perm-etb {
+  from { scale: 0.7; }
+  60%  { scale: 1.04; }
+  to   { scale: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .perm-tile { animation: none; }
 }
 /* Paper-stack offsets: rule-2 (dim) for the first layer back, rule for
    the second, alternating again for the deepest tier. Negative spread
