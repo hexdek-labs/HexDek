@@ -29,6 +29,12 @@ import {
   MIN_FRAGMENT_CHARS,
   nextSuggestionIndex,
 } from './textareaAutocomplete'
+import {
+  buildCardMeta,
+  computeCurve,
+  curveDelta,
+  parseDeckTextToCounts,
+} from './deckEditPreview'
 
 // Brutalist stat-summary panel: mana curve, card-type breakdown, color
 // pips. Computed entirely from the in-memory deck card list — no extra
@@ -564,6 +570,145 @@ function WorkshopDiff({ baseline, current }) {
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+// WorkshopCurvePreview — live mana-curve histogram driven by the
+// Workshop textarea, so the user sees how their edits reshape the curve
+// before they SAVE UPDATE. Seeds card metadata from deck.cards (the
+// already-resolved saved deck), then lazily fetches /api/cards/{name}
+// for any name typed in that wasn't in the saved list. Lookups are
+// rate-limited (3-at-a-time, 250ms debounce) so a paste of 100 new
+// lines doesn't fan out 100 simultaneous requests.
+const CURVE_LABELS = ['0', '1', '2', '3', '4', '5', '6', '7+']
+
+function WorkshopCurvePreview({ editText, baselineText, savedCards }) {
+  const [cardMeta, setCardMeta] = useState(() => buildCardMeta(savedCards))
+
+  // Rehydrate cache when the saved deck arrives / changes.
+  useEffect(() => {
+    setCardMeta(prev => {
+      const next = new Map(prev)
+      for (const [name, meta] of buildCardMeta(savedCards)) {
+        if (!next.has(name)) next.set(name, meta)
+      }
+      return next
+    })
+  }, [savedCards])
+
+  const counts = useMemo(() => parseDeckTextToCounts(editText), [editText])
+  const { curve, total, unknown } = useMemo(
+    () => computeCurve(counts, cardMeta),
+    [counts, cardMeta],
+  )
+  const baselineCurve = useMemo(() => {
+    const baseCounts = parseDeckTextToCounts(baselineText)
+    return computeCurve(baseCounts, cardMeta).curve
+  }, [baselineText, cardMeta])
+  const delta = useMemo(() => curveDelta(baselineCurve, curve), [baselineCurve, curve])
+
+  // Lazy fetch unknown names with a small debounce + cap. Skip when the
+  // workshop hasn't surfaced any new names. Names that resolve get
+  // folded into cardMeta and re-trigger the curve memo.
+  useEffect(() => {
+    if (unknown.length === 0) return
+    const queue = unknown.slice(0, 24) // hard cap per pass
+    let cancelled = false
+    const t = setTimeout(async () => {
+      const results = await Promise.all(queue.map(name =>
+        api.getCardByName(name)
+          .then(card => ({ name, card }))
+          .catch(() => ({ name, card: null })),
+      ))
+      if (cancelled) return
+      setCardMeta(prev => {
+        const next = new Map(prev)
+        for (const { name, card } of results) {
+          if (card && !next.has(name)) {
+            next.set(name, {
+              cmc: typeof card.cmc === 'number' ? card.cmc : 0,
+              type_line: card.type_line || '',
+            })
+          } else if (!card && !next.has(name)) {
+            // Negative-cache so we don't refetch on every keystroke; an
+            // empty type_line + 0 cmc parks the entry as a sentinel
+            // (isLandMeta treats it as land, so it stays out of curve).
+            next.set(name, { cmc: 0, type_line: '' })
+          }
+        }
+        return next
+      })
+    }, 250)
+    return () => { cancelled = true; clearTimeout(t) }
+  }, [unknown])
+
+  const max = Math.max(1, ...curve)
+  const totalDelta = delta.reduce((a, b) => a + b, 0)
+  const unresolved = unknown.length
+
+  return (
+    <div
+      data-testid="workshop-curve-preview"
+      style={{
+        margin: '8px 0', padding: '8px 10px',
+        border: '1px solid var(--rule-2)',
+        background: 'var(--bg-2, rgba(0,0,0,0.2))',
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+        <span className="t-xs muted" style={{ letterSpacing: '0.08em', fontWeight: 700 }}>
+          LIVE CURVE / / NONLAND CMC
+        </span>
+        <span className="t-xs muted">
+          {total} NONLAND
+          {totalDelta !== 0 && (
+            <span style={{ marginLeft: 6, color: totalDelta > 0 ? 'var(--ok)' : 'var(--danger)', fontWeight: 700 }}>
+              {totalDelta > 0 ? '+' : ''}{totalDelta}
+            </span>
+          )}
+          {unresolved > 0 && (
+            <span style={{ marginLeft: 6, color: 'var(--warn, #c0a060)' }}>
+              · {unresolved} LOOKING UP…
+            </span>
+          )}
+        </span>
+      </div>
+      <svg
+        viewBox="0 0 200 70"
+        preserveAspectRatio="none"
+        style={{ width: '100%', height: 70, display: 'block', border: '1px solid var(--rule)' }}
+      >
+        {curve.map((n, i) => {
+          const w = 200 / curve.length
+          const x = i * w
+          const h = (n / max) * 50
+          const y = 60 - h
+          const d = delta[i]
+          return (
+            <g key={i}>
+              <rect x={x + 2} y={y} width={w - 4} height={h} fill="var(--accent, var(--ink))" />
+              {n > 0 && (
+                <text x={x + w / 2} y={y - 1} textAnchor="middle" fontSize="6" fill="var(--ink-2)" fontFamily="inherit">{n}</text>
+              )}
+              {d !== 0 && (
+                <text
+                  x={x + w / 2}
+                  y={n > 0 ? y - 7 : 56}
+                  textAnchor="middle"
+                  fontSize="6"
+                  fontFamily="inherit"
+                  fontWeight="700"
+                  fill={d > 0 ? 'var(--ok)' : 'var(--danger)'}
+                >
+                  {d > 0 ? '+' : ''}{d}
+                </text>
+              )}
+              <text x={x + w / 2} y={68} textAnchor="middle" fontSize="7" fill="var(--ink-3)" fontFamily="inherit">{CURVE_LABELS[i]}</text>
+            </g>
+          )
+        })}
+      </svg>
     </div>
   )
 }
@@ -1825,6 +1970,11 @@ export default function DeckArchive() {
                 <strong>SAVE UPDATE</strong> writes a new version of the deck and re-runs Freya analysis.
                 {' '}<strong>CANCEL</strong> discards your edits.
               </ContextBox>
+              <WorkshopCurvePreview
+                editText={editText}
+                baselineText={originalEditText}
+                savedCards={deck?.cards}
+              />
               <WorkshopDiff baseline={originalEditText} current={editText} />
               <div style={{ display: 'flex', gap: 8 }}>
                 <Btn solid onClick={() => {

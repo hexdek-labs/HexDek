@@ -109,6 +109,7 @@ export const api = {
     return authedRequest(`/api/tags${qs ? `?${qs}` : ''}`)
   },
   searchCards: (q, limit = 6) => request(`/api/cards/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+  getCardByName: (name) => request(`/api/cards/${encodeURIComponent(name)}`),
   runAnalysis: (id) => request(`/api/decks/${id}/analyze`, { method: 'POST' }),
   updateDeck: (id, deckList) => authedRequest(`/api/decks/${id}`, {
     method: 'PUT',
