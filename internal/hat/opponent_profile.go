@@ -55,6 +55,19 @@ type OpponentProfile struct {
 	// Reset to 0 on game_start and when the classification changes.
 	Contradictions int
 
+	// MetaConfidence (R60 round 5 — meta-confidence layer) is the
+	// "how confident IS the confidence?" signal in [0, 1]. The raw
+	// Confidence field says "I think this opponent is combo at 0.65" —
+	// MetaConfidence says "but my sample size is thin / my read has
+	// been volatile / I've seen contradicting actions, so trust the
+	// 0.65 less than its face value." Composed by computeMetaConfidence
+	// from three factors: sample (total observations), stability
+	// (turns this archetype has held), and contradiction history.
+	// Recomputed every classifyOpponent call. Consumed by
+	// `effectiveArchetypeBias` which the downstream targeting /
+	// removal-selection sites use instead of the raw bias multiplier.
+	MetaConfidence float64
+
 	// Internal bookkeeping.
 	firstClassifiedTurn int
 	lastClassifiedTurn  int
@@ -107,6 +120,117 @@ func archetypeBiasMultiplier(conf float64) float64 {
 		mult += (conf - archetypeBiasHighThreshold) * archetypeBiasHighSlope
 	}
 	return mult
+}
+
+// R60 round 5 — meta-confidence layer.
+//
+// The raw Confidence field is "how sure am I this opponent is combo."
+// MetaConfidence is "how sure am I that the 0.65 reading IS RIGHT."
+// Borderline cases — thin sample, volatile read, recent contradictions
+// — should have low meta-confidence so the hat doesn't lean as hard
+// on the classification as the raw confidence value would suggest.
+//
+// Three factors, each in roughly [0.5, 1.0]:
+//
+//   - sampleFactor: scales with total observations the classifier
+//     has seen. Few observations = thin sample = unreliable.
+//   - stabilityFactor: scales with stableTurns. A read that just
+//     flipped to combo last turn is less reliable than one that's
+//     held for five turns.
+//   - contradictionFactor: dampens with the Contradictions counter.
+//     A high Confidence WITH contradictions is a stale stuck read.
+//
+// Product capped at 1.0. Below the floor we expose `metaFloor` so a
+// fresh game with one observation still produces a non-zero meta
+// value — we don't want to fully zero the archetype bias on the
+// first observation, just dampen it.
+const (
+	metaSampleFullAt       = 8    // observations at which sample factor hits 1.0
+	metaStabilityFullAt    = 6    // stableTurns at which stability factor hits 1.0
+	metaContradictionStep  = 0.15 // factor reduction per contradiction
+	metaContradictionFloor = 0.5  // contradiction factor can't drop below this
+	// Sample / stability floors are set high enough that a fresh
+	// thin-sample classification still gets a usable meta value —
+	// the layer is meant to discount borderline reads, not erase
+	// them. At full saturation we hit 1.0; at the worst case
+	// (1 observation, 0 stable turns, 0 contradictions) meta still
+	// returns ~0.35 — visible damping without flipping the sign of
+	// the bias.
+	metaSampleFloor    = 0.5
+	metaStabilityFloor = 0.6
+)
+
+// computeMetaConfidence returns the [0, 1] meta-confidence for an
+// OpponentProfile. Pure function — caller is responsible for providing
+// the current observation count and reading prof's stableTurns +
+// Contradictions. Returns 0 for a nil profile.
+func computeMetaConfidence(prof *OpponentProfile, observations int) float64 {
+	if prof == nil {
+		return 0
+	}
+	if prof.Archetype == "unknown" || prof.Archetype == "" {
+		// No classification → meta-confidence is meaningless; downstream
+		// callers should already gate on Confidence > 0 before consulting
+		// meta. Return 0 to make accidental consumption safe.
+		return 0
+	}
+
+	// Sample factor: linear ramp from floor to 1.0 across the
+	// metaSampleFullAt-observation window. Few observations → thin
+	// sample → low meta.
+	sampleFactor := metaSampleFloor +
+		(1.0-metaSampleFloor)*float64(observations)/float64(metaSampleFullAt)
+	if sampleFactor > 1.0 {
+		sampleFactor = 1.0
+	}
+
+	// Stability factor: linear ramp from floor to 1.0 across the
+	// metaStabilityFullAt-turn window. New classification → volatile
+	// → low meta.
+	stabilityFactor := metaStabilityFloor +
+		(1.0-metaStabilityFloor)*float64(prof.stableTurns)/float64(metaStabilityFullAt)
+	if stabilityFactor > 1.0 {
+		stabilityFactor = 1.0
+	}
+
+	// Contradiction factor: each recorded contradiction dampens by
+	// metaContradictionStep, floored at metaContradictionFloor.
+	contradictionFactor := 1.0 - float64(prof.Contradictions)*metaContradictionStep
+	if contradictionFactor < metaContradictionFloor {
+		contradictionFactor = metaContradictionFloor
+	}
+
+	meta := sampleFactor * stabilityFactor * contradictionFactor
+	if meta > 1.0 {
+		meta = 1.0
+	}
+	if meta < 0 {
+		meta = 0
+	}
+	return meta
+}
+
+// effectiveArchetypeBias is the public surface downstream call sites
+// (attack-target, removal-selection) should prefer over
+// archetypeBiasMultiplier alone. It folds in MetaConfidence so a
+// borderline classification with a thin sample or recent
+// contradictions dampens the bias even at moderate raw confidence:
+//
+//   bias = archetypeBiasMultiplier(prof.Confidence) * prof.MetaConfidence
+//
+// A 0.85 Confidence with full MetaConfidence (1.0) still produces the
+// 1.05 super-linear multiplier from #307. The same 0.85 Confidence
+// with MetaConfidence=0.55 (thin sample + 1 contradiction) drops to
+// ~0.58 — pulling out of the super-linear zone and letting other
+// signals re-balance the decision.
+//
+// Returns 0 for a nil profile or below-floor confidence (matching
+// archetypeBiasMultiplier's semantics).
+func effectiveArchetypeBias(prof *OpponentProfile) float64 {
+	if prof == nil {
+		return 0
+	}
+	return archetypeBiasMultiplier(prof.Confidence) * prof.MetaConfidence
 }
 
 // R60 round 5 — "I've been wrong before" contradiction decay.
@@ -345,6 +469,14 @@ func (h *YggdrasilHat) classifyOpponent(gs *gameengine.GameState, oppSeat int) *
 		prof.Confidence = baseConf
 		prof.lastClassifiedTurn = turn
 	}
+
+	// R60 round 5 — meta-confidence layer. Total observations = the
+	// raw input to the sample factor. SpellsPlayed already counts
+	// every cast; LandsPlayed is a stable per-turn signal that
+	// complements it without double-counting creature-vs-spell
+	// distinctions.
+	observations := prof.SpellsPlayed + prof.LandsPlayed
+	prof.MetaConfidence = computeMetaConfidence(prof, observations)
 
 	prof.ThreatLevel = computeThreatLevel(gs, oppSeat, prof)
 	return prof

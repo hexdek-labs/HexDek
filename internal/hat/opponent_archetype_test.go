@@ -213,9 +213,17 @@ func TestBestTarget_PrefersComboOpponent(t *testing.T) {
 	gs.Seats[1].Life = 30
 	gs.Seats[2].Life = 30
 
-	// Seat 1 = confident combo (tutor + held mana).
+	// Seat 1 = confident combo (tutor + held mana). R60r5 — added a
+	// couple of cast events so the meta-confidence layer's sample
+	// factor doesn't dampen below control's; real combo decks cast
+	// spells too (rituals, cantrips, the tutored card itself), so a
+	// fixture with only `tutor` events is unrealistically thin.
 	h.recordOpponentPlay("tutor", "Demonic Tutor", 1, nil, gs.Turn)
 	h.recordOpponentPlay("tutor", "Vampiric Tutor", 1, nil, gs.Turn)
+	for _, name := range []string{"Dark Ritual", "Cabal Ritual", "Brainstorm"} {
+		c := newTestCardMinimal(name, []string{"instant"}, 1, nil)
+		h.recordOpponentPlay("cast", c.DisplayName(), 1, c, gs.Turn)
+	}
 	h.opponentHeldMana[1] = 3
 
 	// Seat 2 = confident control (3 removal).
