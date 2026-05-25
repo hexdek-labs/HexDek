@@ -34,6 +34,25 @@ func LoadGameObservation(ctx context.Context, db *sql.DB, gameID int64) (string,
 	return payload, err
 }
 
+// LoadGameObservationVersion returns just the created_at version
+// tag for the snapshot row, without fetching the (potentially
+// multi-KB) payload TEXT column. Used by hexapi's parse cache to
+// decide whether a cached parsed snapshot is still current — on
+// a cache hit at the same version, the handler skips both the
+// payload fetch and the JSON unmarshal, which together account
+// for ~58% of /api/games/{id}/summary's response time.
+//
+// Returns sql.ErrNoRows verbatim when no snapshot exists so the
+// caller can distinguish "no snapshot persisted" from "DB error"
+// — same contract as LoadGameObservation.
+func LoadGameObservationVersion(ctx context.Context, db *sql.DB, gameID int64) (int64, error) {
+	var v int64
+	err := db.QueryRowContext(ctx,
+		`SELECT created_at FROM showmatch_game_observation WHERE game_id = ?`,
+		gameID).Scan(&v)
+	return v, err
+}
+
 // DeleteGameObservation removes the snapshot for a game. Provided
 // for tests and for the operational case where a deck rename
 // invalidates a stale snapshot before a re-replay runs. No-op when

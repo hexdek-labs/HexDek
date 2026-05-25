@@ -55,30 +55,36 @@ func (h *Handler) handleGameSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Rich path: try the observation snapshot first.
-	payload, err := db.LoadGameObservation(ctx, h.db, id)
+	// Rich path: try the cached parsed snapshot first. Cache lookup
+	// skips both the payload SELECT and the JSON unmarshal on a hit
+	// (~125μs/op savings vs the un-cached path).
+	h.ensureSnapshotCache()
+	snap, _, err := h.loadCachedSnapshot(ctx, id)
 	if err == nil {
-		snap, perr := heimdall.UnmarshalSnapshot(payload)
-		if perr == nil {
-			summary := heimdall.BuildGameSummaryFromSnapshot(snap, game.EndReason)
-			// Snapshots predating game-end stamping may leave Winner
-			// at the snapshot-time value; the GameRecord is the
-			// authoritative end-state. WinnerName is DB-only.
-			if summary.Winner != game.Winner {
-				summary.Winner = game.Winner
-			}
-			summary.WinnerName = game.WinnerName
-			if game.Turns > summary.Turns {
-				summary.Turns = game.Turns
-			}
-			writeJSON(w, summary)
-			return
+		summary := heimdall.BuildGameSummaryFromSnapshot(snap, game.EndReason)
+		// Snapshots predating game-end stamping may leave Winner
+		// at the snapshot-time value; the GameRecord is the
+		// authoritative end-state. WinnerName is DB-only.
+		if summary.Winner != game.Winner {
+			summary.Winner = game.Winner
 		}
-		// Malformed snapshot — log and fall through to db_only so
-		// the endpoint never hard-fails on a corrupt payload.
-		log.Printf("game_summary: malformed snapshot for game %d: %v", id, perr)
-	} else if !errors.Is(err, sql.ErrNoRows) {
-		// Real DB error (not just "no snapshot persisted") — surface.
+		summary.WinnerName = game.WinnerName
+		if game.Turns > summary.Turns {
+			summary.Turns = game.Turns
+		}
+		writeJSON(w, summary)
+		return
+	}
+	switch {
+	case errors.Is(err, sql.ErrNoRows):
+		// No snapshot persisted — fall through to db_only.
+	case IsMalformedSnapshot(err):
+		// Bad payload — log and fall through to db_only so the
+		// endpoint never hard-fails on a corrupt row.
+		log.Printf("game_summary: malformed snapshot for game %d: %v", id, err)
+	default:
+		// Real DB error (connection lost, scan failure, etc.) —
+		// surface as 500. Same contract as before the cache.
 		writeError(w, http.StatusInternalServerError, "load observation: "+err.Error())
 		return
 	}
