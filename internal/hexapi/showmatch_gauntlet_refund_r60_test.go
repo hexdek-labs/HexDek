@@ -304,10 +304,17 @@ func waitForGauntletStatus(t *testing.T, sm *Showmatch, deckKey, want string, ti
 	t.Helper()
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
+		// Copy the status field under the lock — RunGauntlet writes
+		// to *GauntletResult.Status concurrent with this read.
+		// Reading after releasing the RLock races against the
+		// engine goroutine (caught by `go test -race`).
+		var gotStatus string
 		sm.gauntletMu.RLock()
-		got := sm.gauntlets[deckKey]
+		if g := sm.gauntlets[deckKey]; g != nil {
+			gotStatus = g.Status
+		}
 		sm.gauntletMu.RUnlock()
-		if got != nil && got.Status == want {
+		if gotStatus == want {
 			return
 		}
 		time.Sleep(20 * time.Millisecond)
