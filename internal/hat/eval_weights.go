@@ -590,23 +590,47 @@ var archetypeWeights = map[string]EvalWeights{
 		//   - StackInteraction: Heroic Intervention / Boros Charm /
 		//     Teferi's Protection to save the commander before it eats
 		//     removal is the difference between game-over and recover.
+		// R60 round 5 (self-play diversity tune, PR #252 analysis):
+		// PR #251's 5-pod × 500g diversity gauntlet measured Wyleth/
+		// Voltron at 2.8% mean winrate (σ=0.15) — uniformly destroyed
+		// across every pod composition. Spread vs. the top deck
+		// (Korvold/Aristocrats at 44.6%) is 41.8 percentage points,
+		// the largest systemic bias in the corpus. Identical-hat
+		// self-play over-converges on punishing single-creature plans
+		// because every opponent makes the same removal decision; live
+		// politics would absorb some of this, but the AI doesn't form
+		// attacking alliances.
+		//
+		// Hat-side fix (can't fix the deck): push the defensive dials
+		// further so the Voltron seat invests more in protection
+		// BEFORE the commander gets pointed at.
+		//   - ThreatExposure 1.4 → 1.8: anchor at the "highest secondary"
+		//     tier alongside CommanderProgress=2.0. The commander IS the
+		//     entire winrate; treating its survival as nearly as
+		//     important as advancing it matches the deck's structural
+		//     reality.
+		//   - StackInteraction 0.8 → 1.2: protection spells (Heroic
+		//     Intervention, Boros Charm, Teferi's Protection, Akroma's
+		//     Will) must be valued enough to actually cast on the right
+		//     turn rather than held for "a better moment" that never
+		//     comes.
 		BoardPresence:          0.8,
 		CardAdvantage:          0.5,
 		ManaAdvantage:          0.5,
 		LifeResource:           0.6,
 		ComboProximity:         0.2,
-		ThreatExposure:         1.4, // was 0.9
+		ThreatExposure:         1.8, // R5: 1.4 → 1.8 — protect-the-commander dimension
 		CommanderProgress:      2.0,
 		GraveyardValue:         0.3,
 		DrainEngine:            0.1,
-		ArtifactSynergy:        1.1, // was 0.6
-		EnchantmentSynergy:     0.9, // was 0.5
+		ArtifactSynergy:        1.1,
+		EnchantmentSynergy:     0.9,
 		OpponentGraveyardThreat: 0.3,
 		PartnerSynergy:         0.3,
 		ActivationTempo:        0.5,
 		ToolboxBreadth:         0.4,
 		ThreatTrajectory:       0.6,
-		StackInteraction:       0.8, // was 0.4
+		StackInteraction:       1.2, // R5: 0.8 → 1.2 — instant-speed protection
 		PlaneswalkerProgress:   0.2,
 		ExileZoneAssets:        0.2,
 		StaxLockProgress:       0.1,
