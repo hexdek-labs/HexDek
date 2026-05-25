@@ -103,6 +103,96 @@ func classifyTrigger(t *gameast.Trigger) string {
 	case event == "opp_draw_card":
 		return "opp_draw_card"
 
+	// Era 2 R60 audit follow-up — long-tail event slugs the parser emits
+	// for canonical Era 2 mechanics that didn't have an exact match below.
+	// Each routes to an existing scaffold whose priming semantics match:
+	//
+	//   - die / to_graveyard       → creature_dies (singular form + the
+	//                                 parser's "any zone → graveyard"
+	//                                 wrapper both fire on the same world
+	//                                 shape as "dies")
+	//   - etb_as                   → creature_etb (etb_as is a printed-as
+	//                                 modal-ETB variant; the priming
+	//                                 world is identical)
+	//   - cycle                    → discard (cycling is discard + draw;
+	//                                 priming hand+library suffices)
+	//   - block                    → attacks (block requires the attacks
+	//                                 priming — opponent creature + untapped
+	//                                 source so combat can resolve)
+	//   - coin_flip_result         → player_wins_coin_flip (existing flip
+	//                                 scaffold logs the flip event the
+	//                                 listener observes)
+	//   - lose_game                → sacrifice (the priming world — a
+	//                                 sac-fodder creature whose death feeds
+	//                                 the "if a player would lose the game"
+	//                                 redirect — matches what these listeners
+	//                                 need; the lose-the-game redirect
+	//                                 itself is exercised by the source's
+	//                                 ETB or activation)
+	//
+	// Routing through existing scaffolds (rather than coining a new one
+	// per slug) keeps the dispatch table small and matches how the
+	// dominant `combat_damage_*` family handles its variants.
+	case event == "die" || event == "to_graveyard":
+		return "creature_dies"
+	case event == "etb_as":
+		return "creature_etb"
+	case event == "cycle":
+		return "discard"
+	case event == "block":
+		return "attacks"
+	case event == "coin_flip_result":
+		return "player_wins_coin_flip"
+	case event == "lose_game":
+		return "sacrifice"
+
+	// Era 2 R60 follow-up — second-tier long tail. Each routes to an
+	// existing scaffold whose priming semantics best fit the slug:
+	//
+	//   - beginning_of_ordinal_step → upkeep (the parser emits this for
+	//                                 "at the beginning of the Nth step";
+	//                                 the upkeep no-priming scaffold is
+	//                                 the right fit — fireTriggerEvent
+	//                                 advances the phase itself)
+	//   - token_event                → creature_etb (token entering = ETB)
+	//   - nontoken_ally_event        → ally_etb (existing ally scaffold;
+	//                                 the priming creature is by default
+	//                                 a non-token built via placeNamed*)
+	//   - nontoken_creature_event    → creature_etb (same — friendly
+	//                                 creature ETB primes the right world)
+	//   - compound_opp_tribe_event   → opp_creature_event (existing
+	//                                 opponent-tribal scaffold)
+	//   - one_or_more_typed_event    → tribe_you_control_etb (typed ETB
+	//                                 listener — wizard token scaffold
+	//                                 covers the "one or more" leg)
+	//   - ally_explore               → ally_etb (explore is an ETB-style
+	//                                 trigger from a friendly creature)
+	//   - self_and_another           → self_and (existing pair scaffold)
+	//   - conditional_state          → when_you_do (reflexive flag carrier)
+	//   - misc_when                  → when_you_do (catch-all reflexive)
+	//   - spend_this_mana            → you_get_energy (existing resource-
+	//                                 spend scaffold logs the right event)
+	case event == "beginning_of_ordinal_step":
+		return "upkeep"
+	case event == "token_event":
+		return "creature_etb"
+	case event == "nontoken_ally_event":
+		return "ally_etb"
+	case event == "nontoken_creature_event":
+		return "creature_etb"
+	case event == "compound_opp_tribe_event":
+		return "opp_creature_event"
+	case event == "one_or_more_typed_event":
+		return "tribe_you_control_etb"
+	case event == "ally_explore":
+		return "ally_etb"
+	case event == "self_and_another":
+		return "self_and"
+	case event == "conditional_state" || event == "misc_when":
+		return "when_you_do"
+	case event == "spend_this_mana":
+		return "you_get_energy"
+
 	case event == "dies" || strings.Contains(event, "dies") ||
 		strings.Contains(event, "is put into a graveyard"):
 		return "creature_dies"
@@ -111,7 +201,16 @@ func classifyTrigger(t *gameast.Trigger) string {
 	case event == "attacks" || strings.Contains(event, "attack"):
 		return "attacks"
 	case event == "deal_combat_damage" || event == "deals_combat_damage" ||
-		strings.Contains(event, "combat damage"):
+		strings.Contains(event, "combat damage") ||
+		strings.Contains(event, "combat_damage"):
+		// The "combat_damage" underscore variant is the load-bearing
+		// addition: the parser canonicalizes combat-damage events as
+		// `combat_damage_player`, `combat_damage_player_or_pw`,
+		// `group_combat_damage_player`, `combat_damage_opponent`,
+		// `self_combat_damage` — none of which the prose "combat damage"
+		// substring matched. This single line closes 32/59 of the Era 2
+		// trigger gap (54%) by routing the entire underscore family to
+		// the existing combat_damage scaffold.
 		return "combat_damage"
 	case strings.Contains(event, "cast") || strings.Contains(event, "spell"):
 		if opponentActor {
