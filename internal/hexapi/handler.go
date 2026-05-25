@@ -41,6 +41,16 @@ type Handler struct {
 	// startup.
 	FeedbackLimiter *RateLimiter
 
+	// DeckImportLimiter rate-limits the anonymous deck-write endpoints
+	// per client IP: POST /api/decks, POST /api/decks/import, POST
+	// /api/import/moxfield, and POST /api/decks/{owner}/{id}/analyze.
+	// Each call writes a file under DecksDir or kicks off an external
+	// fetch + Freya subprocess (analyze) — unbounded calls let an
+	// attacker fill disk and saturate the analyze mutex. Nil = no
+	// limiting (backwards-compatible). cmd/hexdek-server sets a
+	// default (10-burst, 1 per 30s refill) at startup.
+	DeckImportLimiter *RateLimiter
+
 	deckSubsMu sync.RWMutex
 	deckSubs   map[string]map[chan deckEvent]struct{}
 
@@ -821,6 +831,14 @@ func (h *Handler) handleGetAnalysis(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleRunAnalysis(w http.ResponseWriter, r *http.Request) {
+	// Per-IP rate-limit. Each call kicks off a Freya subprocess (serialized
+	// behind freyaMu, but the queue is unbounded — an attacker spamming
+	// this endpoint pins a worker indefinitely). Shares DeckImportLimiter
+	// with the other deck-write endpoints so a burst across them sums
+	// against the same budget.
+	if enforceRateLimit(h.DeckImportLimiter, w, r, "deck analyze") {
+		return
+	}
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	if !validatePathComponent(owner) || !validatePathComponent(id) {
@@ -1002,6 +1020,13 @@ type ImportRequest struct {
 }
 
 func (h *Handler) handleImportDeck(w http.ResponseWriter, r *http.Request) {
+	// Per-IP rate-limit. POST /api/decks + POST /api/decks/import both
+	// route here; both write a file under DecksDir and parse the body.
+	// Unbounded calls let an attacker fill disk with arbitrary deck
+	// text. Limiter is nil-safe.
+	if enforceRateLimit(h.DeckImportLimiter, w, r, "deck import") {
+		return
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req ImportRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -1129,6 +1154,12 @@ var moxfieldClient = &http.Client{
 }
 
 func (h *Handler) handleMoxfieldImport(w http.ResponseWriter, r *http.Request) {
+	// Per-IP rate-limit. Each call fans out to moxfield.com (external
+	// network cost we pay) and then writes a deck file under DecksDir.
+	// Shares DeckImportLimiter with the local-import path.
+	if enforceRateLimit(h.DeckImportLimiter, w, r, "moxfield import") {
+		return
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
 	var req struct {
 		URL   string   `json:"url"`
@@ -2157,17 +2188,8 @@ func (h *Handler) handleFeedback(w http.ResponseWriter, r *http.Request) {
 	// Per-IP rate-limit. Anonymous endpoint that writes a file to disk
 	// per request — a single bot blasting it would fill the feedback
 	// dir. Limiter is nil-safe so older binaries keep working.
-	if h.FeedbackLimiter != nil {
-		ip := clientIP(r)
-		if ok, retryAfter := h.FeedbackLimiter.Allow(ip); !ok {
-			secs := int(retryAfter.Seconds())
-			if secs < 1 {
-				secs = 1
-			}
-			w.Header().Set("Retry-After", fmt.Sprintf("%d", secs))
-			writeError(w, http.StatusTooManyRequests, "feedback rate limit exceeded — too many requests")
-			return
-		}
+	if enforceRateLimit(h.FeedbackLimiter, w, r, "feedback") {
+		return
 	}
 	var body struct {
 		Type     string `json:"type"`

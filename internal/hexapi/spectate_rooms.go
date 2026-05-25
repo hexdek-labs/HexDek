@@ -725,6 +725,12 @@ func shortHash(s string) string {
 // --- HTTP handlers ---
 
 func (sm *Showmatch) handleSpawnSpectateRoom(w http.ResponseWriter, r *http.Request) {
+	// Per-IP rate-limit. SpawnOrReuse de-dupes per deck-key, but a single
+	// caller can still spawn one room per unique deck id they probe;
+	// each room runs a game-driver goroutine. Limiter is nil-safe.
+	if enforceRateLimit(sm.SpectateSpawnLimiter, w, r, "spectate spawn") {
+		return
+	}
 	var body struct {
 		DeckID string `json:"deck_id"`
 	}

@@ -280,6 +280,23 @@ type Showmatch struct {
 	// Nil when no SQLite DB is wired (tests, ephemeral runs); the
 	// updateELO hook checks for nil before recording.
 	auditor *anticheat.StatisticalAuditor
+
+	// GauntletLimiter rate-limits POST /api/gauntlet/{owner}/{id} per
+	// client IP. The endpoint is already protected by a global
+	// concurrency semaphore (gauntletSem, cap 2) and a credit-economy
+	// gate for authenticated callers, but unauthenticated bursts still
+	// burn deck-key lookups + credit-quota checks + can occupy the two
+	// free slots indefinitely. Per-IP token-bucket is a layered defense
+	// in front of the sem cap. Nil = no limiting (backwards-compat);
+	// cmd/hexdek-server sets a default at startup.
+	GauntletLimiter *RateLimiter
+
+	// SpectateSpawnLimiter rate-limits POST /api/spectate/spawn per
+	// client IP. SpawnOrReuse de-dupes per deck-key but a single caller
+	// can still spawn one room per unique deck id they enumerate; each
+	// room runs a game-driver goroutine. Nil = no limiting. cmd/hexdek-
+	// server sets a default at startup.
+	SpectateSpawnLimiter *RateLimiter
 }
 
 // SetCreditStore attaches a credits.Store to the Showmatch. Called
@@ -2737,6 +2754,14 @@ func (sm *Showmatch) RegisterShowmatch(mux *http.ServeMux) {
 var gauntletSem = make(chan struct{}, 2)
 
 func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request) {
+	// Per-IP rate-limit gate, layered in FRONT of the global semaphore +
+	// credit-economy checks. The sem cap already throttles concurrent
+	// gauntlets; the limiter prevents an attacker from rapidly cycling
+	// through the cap (start-fail-start-fail) or burning deck-pool
+	// lookups across many invalid deck ids. Limiter is nil-safe.
+	if enforceRateLimit(sm.GauntletLimiter, w, r, "gauntlet start") {
+		return
+	}
 	owner := r.PathValue("owner")
 	id := r.PathValue("id")
 	// Reject path components containing "..", slashes, NULs, or any
