@@ -117,6 +117,13 @@ type DeckProfile struct {
 	// CuttableCards) echoes the same Power on its CardQuality.Power field.
 	CardPowerLevels []CardPowerLevel
 
+	// PowerTierCounts is the per-tier (S/A/B/C/D) card distribution
+	// summary derived from CardPowerLevels — surfaces "this deck has
+	// 3 S, 5 A, 12 B, 28 C, 50 D" so builders can pace upgrade
+	// purchases. Map keys are always in PowerTierOrder; absent tiers
+	// are present with value 0 for stable rendering.
+	PowerTierCounts map[string]int
+
 	// Color weight suggestions
 	LandSwapSuggestions []string
 
@@ -204,10 +211,11 @@ type CoachingTip struct {
 }
 
 type CardQuality struct {
-	Name   string
-	Tier   string // "star" | "solid" | "cuttable"
-	Reason string
-	Power  int // 0-100 power level — see CardPowerLevel for components
+	Name      string
+	Tier      string // "star" | "solid" | "cuttable" (synergy-tier classification)
+	Reason    string
+	Power     int    // 0-100 power level — see CardPowerLevel for components
+	PowerTier string // "S" | "A" | "B" | "C" | "D" — see PowerTierFor
 	// Rationale fields (populated for cuttable tier).
 	Detected  string   // what stat/pattern triggered the recommendation
 	WhyCut    string   // why cutting it is recommended
@@ -233,10 +241,44 @@ type CardPowerLevel struct {
 	CMC                 int
 	Roles               []string
 	Power               int
+	PowerTier           string // "S" | "A" | "B" | "C" | "D" — see PowerTierFor
 	ArchetypeFit        int
 	CMCEfficiency       int
 	SynergyContribution int
 }
+
+// PowerTierFor maps a 0-100 power score to a letter grade for "deck
+// buy-it pacing" — S-tier first, A second, etc. Absolute bands
+// (intentionally not percentile-based) so a casual deck with no S
+// cards reads as "casual deck with no high-impact cards" instead of
+// promoting its top filler. Boundaries are inclusive on the high side:
+//
+//	S = 75-100  must-keep wincons / load-bearing engines
+//	A = 60-74   strong supports, the deck wants these specific cards
+//	B = 40-59   solid utility, replaceable but not flex
+//	C = 25-39   situational / role-only filler
+//	D = 0-24    bottom of the deck, swap candidates
+//
+// See computeCardPower for how Power is computed.
+func PowerTierFor(power int) string {
+	switch {
+	case power >= 75:
+		return "S"
+	case power >= 60:
+		return "A"
+	case power >= 40:
+		return "B"
+	case power >= 25:
+		return "C"
+	default:
+		return "D"
+	}
+}
+
+// PowerTierOrder is the deterministic ordering for tier iteration
+// (high → low). Use this anywhere you print or count tiers so output
+// always reads S/A/B/C/D, never C/A/S/B/D from map iteration order.
+var PowerTierOrder = []string{"S", "A", "B", "C", "D"}
 
 func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	dp := &DeckProfile{

@@ -1628,6 +1628,7 @@ func computeCardPower(dp *DeckProfile, report *FreyaReport) {
 			CMC:                 p.CMC,
 			Roles:               roleStrs,
 			Power:               power,
+			PowerTier:           PowerTierFor(power),
 			ArchetypeFit:        archFit,
 			CMCEfficiency:       cmcEff,
 			SynergyContribution: syn,
@@ -1640,6 +1641,14 @@ func computeCardPower(dp *DeckProfile, report *FreyaReport) {
 		}
 		return dp.CardPowerLevels[i].Name < dp.CardPowerLevels[j].Name
 	})
+
+	// Aggregate the tier histogram. Pre-seed all 5 tiers with 0 so
+	// downstream rendering always reads S/A/B/C/D in stable order even
+	// when a deck has zero S-tier cards.
+	dp.PowerTierCounts = map[string]int{"S": 0, "A": 0, "B": 0, "C": 0, "D": 0}
+	for _, pl := range dp.CardPowerLevels {
+		dp.PowerTierCounts[pl.PowerTier]++
+	}
 }
 
 func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracleDB) {
@@ -1797,11 +1806,13 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 		if reason == "" {
 			reason = "high synergy density"
 		}
+		power := powerByName[scores[i].name]
 		dp.StarCards = append(dp.StarCards, CardQuality{
-			Name:   scores[i].name,
-			Tier:   "star",
-			Reason: reason,
-			Power:  powerByName[scores[i].name],
+			Name:      scores[i].name,
+			Tier:      "star",
+			Reason:    reason,
+			Power:     power,
+			PowerTier: PowerTierFor(power),
 		})
 		starredNames[scores[i].name] = true
 		starCount++
@@ -1846,11 +1857,13 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 				reason = "fills a slot but not load-bearing"
 			}
 		}
+		power := powerByName[s.name]
 		dp.SolidCards = append(dp.SolidCards, CardQuality{
-			Name:   s.name,
-			Tier:   "solid",
-			Reason: reason,
-			Power:  powerByName[s.name],
+			Name:      s.name,
+			Tier:      "solid",
+			Reason:    reason,
+			Power:     power,
+			PowerTier: PowerTierFor(power),
 		})
 		solidCount++
 	}
@@ -1886,11 +1899,13 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 		if effect == "" {
 			effect = "Removing it costs the deck almost nothing on offense or defense and clears a slot for a synergy-tagged replacement."
 		}
+		power := powerByName[s.name]
 		dp.CuttableCards = append(dp.CuttableCards, CardQuality{
 			Name:      s.name,
 			Tier:      "cuttable",
 			Reason:    reason,
-			Power:     powerByName[s.name],
+			Power:     power,
+			PowerTier: PowerTierFor(power),
 			Detected:  detected,
 			WhyCut:    whyCut,
 			Effect:    effect,
