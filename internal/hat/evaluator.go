@@ -241,16 +241,40 @@ func (e *GameStateEvaluator) scoreTurnTempo(gs *gameengine.GameState, seatIdx in
 // -----------------------------------------------------------------------
 
 // scoreBoard: total creature power relative to opponents' average.
+// scoreBoard returns this seat's relative BoardPresence score: power
+// differential vs opponent average plus noncreature density.
+//
+// r60 sweep — two targeted improvements (see effectiveBoardPower in
+// poker.go + liveCreatureCount):
+//
+//  1. Use effectiveBoardPower instead of raw boardPower so tapped +
+//     summoning-sick (no-haste) creatures are correctly de-rated. A
+//     fully-committed board that can't defend should score lower than
+//     a fresh untapped board with equal raw power.
+//
+//  2. Width bonus: per-creature-count differential vs opponent average,
+//     weighted at 0.05 per body. Captures the value of multiple bodies
+//     independent of total power — 6 untapped 1/1 tokens have the same
+//     raw power as one untapped 6/6 but score modestly higher because
+//     each token can independently block, sac, crew, equip, or feed
+//     ETB-doubler triggers. Cap implicit at oppN-relative averaging.
+//     0.05 per body keeps the bonus small (4-body differential = 0.2
+//     score points, vs ~1.0 for a 10-power swing) so width doesn't
+//     drown out the dominant power term.
 func (e *GameStateEvaluator) scoreBoard(gs *gameengine.GameState, seatIdx int) float64 {
-	myPow := float64(boardPower(gs, gs.Seats[seatIdx]))
+	mySeat := gs.Seats[seatIdx]
+	myPow := float64(effectiveBoardPower(gs, mySeat))
+	myCreatures := float64(liveCreatureCount(mySeat))
 
 	var oppSum float64
+	var oppCreaturesSum float64
 	var oppN int
 	for i, s := range gs.Seats {
 		if i == seatIdx || s.Lost || s.LeftGame {
 			continue
 		}
-		oppSum += float64(boardPower(gs, s))
+		oppSum += float64(effectiveBoardPower(gs, s))
+		oppCreaturesSum += float64(liveCreatureCount(s))
 		oppN++
 	}
 	if oppN == 0 {
@@ -260,15 +284,18 @@ func (e *GameStateEvaluator) scoreBoard(gs *gameengine.GameState, seatIdx int) f
 		return 0
 	}
 	oppAvg := oppSum / float64(oppN)
+	oppCreaturesAvg := oppCreaturesSum / float64(oppN)
 
 	noncreatures := 0
-	for _, p := range gs.Seats[seatIdx].Battlefield {
+	for _, p := range mySeat.Battlefield {
 		if p != nil && !p.IsCreature() {
 			noncreatures++
 		}
 	}
 
-	return (myPow - oppAvg) / 10.0 + float64(noncreatures) * 0.1
+	return (myPow-oppAvg)/10.0 +
+		float64(noncreatures)*0.1 +
+		(myCreatures-oppCreaturesAvg)*0.05
 }
 
 // scoreCards: hand size + library depth + persistent draw engines on

@@ -1885,6 +1885,85 @@ func boardPower(gs *gameengine.GameState, seat *gameengine.Seat) int {
 	return n
 }
 
+// effectiveBoardPower returns boardPower with availability discounts:
+//
+//   - A tapped creature contributes 70% — it can't block this round, so
+//     half its defensive value is gone (and it's only useful next turn).
+//   - A summoning-sick creature without haste contributes 80% — it can't
+//     attack this turn, so its offensive value is delayed by a turn.
+//   - A creature that is BOTH tapped AND summoning-sick (rare; happens
+//     when an effect taps it on the turn it ETB'd, e.g. crewed vehicle
+//     mounting up the turn it entered) gets the multiplied discount
+//     0.7 × 0.8 = 0.56.
+//   - Haste cancels the summoning-sick discount entirely (the engine
+//     leaves SummoningSick=true on freshly-ETB'd haste creatures but
+//     they CAN attack, so the discount doesn't apply).
+//   - Planeswalkers are unaffected by the discount — loyalty is a
+//     persistent threat clock, not a per-turn availability question.
+//
+// Returns rounded-half-up integer to match boardPower's int signature.
+//
+// Rationale: pre-r60 scoreBoard treated 4 tapped 3/3s = 4 untapped 3/3s
+// (both contribute 12 raw power), so the hat's BoardPresence dimension
+// couldn't tell "fully committed, can't defend" from "fresh board, can
+// attack and block". The discount surfaces the difference without
+// changing dimension weights.
+func effectiveBoardPower(gs *gameengine.GameState, seat *gameengine.Seat) int {
+	if seat == nil {
+		return 0
+	}
+	total := 0.0
+	for _, p := range seat.Battlefield {
+		if p == nil {
+			continue
+		}
+		if p.IsCreature() {
+			pw := gs.PowerOf(p)
+			if pw > 0 {
+				weight := 1.0
+				if p.Tapped {
+					weight *= 0.7
+				}
+				if p.SummoningSick && !p.HasKeyword("haste") {
+					weight *= 0.8
+				}
+				total += float64(pw) * weight
+			}
+		}
+		if p.IsPlaneswalker() {
+			loy := 0
+			if p.Counters != nil {
+				loy = p.Counters["loyalty"]
+			}
+			if loy < 0 {
+				loy = 0
+			}
+			total += float64(loy + 2)
+		}
+	}
+	// Round-half-up to int so the public surface matches boardPower.
+	return int(total + 0.5)
+}
+
+// liveCreatureCount returns the number of creatures on the seat's
+// battlefield (excludes planeswalkers and noncreatures). Used by
+// scoreBoard's width bonus — a wide board of small bodies (Bitterblossom,
+// Avenger of Zendikar tokens, weenie aggro) has independent blockers,
+// sac fodder, crew, ETB triggers, and equipment recipients that a
+// single tall creature with equal total power lacks.
+func liveCreatureCount(seat *gameengine.Seat) int {
+	if seat == nil {
+		return 0
+	}
+	n := 0
+	for _, p := range seat.Battlefield {
+		if p != nil && p.IsCreature() {
+			n++
+		}
+	}
+	return n
+}
+
 func highCMCPermanents(seat *gameengine.Seat) int {
 	if seat == nil {
 		return 0
