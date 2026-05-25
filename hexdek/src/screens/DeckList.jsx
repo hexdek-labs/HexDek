@@ -22,6 +22,13 @@ import {
   parseDeckLines,
   summarize,
 } from '../lib/deckParser'
+import {
+  POWER_TIER_KEYS,
+  POWER_TIER_LABELS,
+  peakFlavor,
+  summarizePowerTiers,
+  topArchetypes,
+} from '../lib/deckPowerSummary'
 
 const VIEW_KEY = 'hexdek_deck_view'
 const SORT_KEY = 'hexdek_deck_sort'
@@ -280,6 +287,14 @@ export default function DeckList() {
           />
         )}
 
+        {/* Power-tier dashboard summary — only renders on the MY DECKS
+            tab once the collection has ≥3 decks. Three is the
+            minimum threshold where the distribution starts to read
+            as a "collection" rather than incidental noise. */}
+        {tab === 'mine' && hasMyDecks && myDecks.length >= 3 && (
+          <DeckPowerSummaryPanel decks={myDecks} />
+        )}
+
         {/* Deck grid */}
         {loading ? (
           <div className="t-md muted" style={{ textAlign: 'center', padding: 36 }}>&gt; LOADING DECK ARCHIVE<span className="blink">_</span></div>
@@ -298,6 +313,153 @@ export default function DeckList() {
 
       {upload.modal}
     </>
+  )
+}
+
+// Per-tier visual hue. Kept in sync with the BRACKET chip palette
+// elsewhere on the deck shelf — bracket 1/2 lean cool, 3 neutral,
+// 4/5 hot — so a user scanning chrome on /decks reads "your decks"
+// and "filter by bracket" with the same visual vocabulary.
+const POWER_TIER_COLORS = {
+  b1: '#82c472',          // green — casual
+  b2: '#6e8fa0',          // blue-gray — focused
+  b3: '#cda73c',          // amber — optimized
+  b4: '#cc5c4a',          // red — high power
+  b5: '#9c6ab0',          // purple — cEDH
+  unknown: 'var(--ink-3)',
+}
+
+function DeckPowerSummaryPanel({ decks }) {
+  const summary = summarizePowerTiers(decks)
+  const top = topArchetypes(decks, 5)
+  const flavor = peakFlavor(summary)
+  const segments = POWER_TIER_KEYS
+    .map(k => ({ k, count: summary.counts[k], pct: summary.percentages[k] }))
+    .filter(s => s.count > 0)
+
+  return (
+    <div
+      data-testid="deck-power-summary"
+      style={{
+        border: '1px solid var(--rule-2)',
+        background: 'var(--bg-2, rgba(0,0,0,0.2))',
+        padding: 12,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+        <span className="t-xs muted" style={{ letterSpacing: '0.08em', fontWeight: 700 }}>
+          MY COLLECTION / / POWER-TIER DISTRIBUTION
+        </span>
+        <span className="t-xs muted" style={{ letterSpacing: '0.06em' }}>
+          {summary.total} DECKS
+        </span>
+      </div>
+
+      {/* Stacked bar — one segment per non-zero tier, width proportional
+          to that tier's share. Each segment carries a `data-tier` attr
+          for the e2e suite to assert against without re-deriving the
+          percentages from rendered styles. */}
+      <div
+        data-testid="deck-power-tier-bar"
+        role="img"
+        aria-label={flavor || 'No bracket data'}
+        style={{
+          display: 'flex',
+          width: '100%',
+          height: 18,
+          border: '1px solid var(--rule)',
+          background: 'var(--bg, #181915)',
+          overflow: 'hidden',
+        }}
+      >
+        {segments.length === 0 ? (
+          <div className="t-xs muted" style={{ alignSelf: 'center', margin: '0 auto', letterSpacing: '0.06em' }}>
+            — NO TIER DATA —
+          </div>
+        ) : segments.map(seg => (
+          <div
+            key={seg.k}
+            data-tier={seg.k}
+            data-count={seg.count}
+            title={`${POWER_TIER_LABELS[seg.k]} — ${seg.count} (${seg.pct}%)`}
+            style={{
+              width: `${seg.pct}%`,
+              minWidth: seg.count > 0 ? 4 : 0, // visible sliver even at 1%
+              background: POWER_TIER_COLORS[seg.k],
+              borderRight: '1px solid rgba(0,0,0,0.25)',
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Per-tier card row */}
+      <div
+        data-testid="deck-power-tier-cards"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+          gap: 8,
+        }}
+      >
+        {POWER_TIER_KEYS.map(k => {
+          const count = summary.counts[k]
+          const pct = summary.percentages[k]
+          const dim = count === 0
+          return (
+            <div
+              key={k}
+              data-tier={k}
+              style={{
+                padding: '6px 8px',
+                border: '1px solid var(--rule-2)',
+                background: dim ? 'transparent' : 'rgba(255,255,255,0.02)',
+                opacity: dim ? 0.45 : 1,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 8, height: 8, background: POWER_TIER_COLORS[k], border: '1px solid var(--rule-2)' }} />
+                <span className="t-xs muted" style={{ letterSpacing: '0.06em', fontWeight: 700 }}>
+                  {POWER_TIER_LABELS[k]}
+                </span>
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>
+                {count}
+              </div>
+              <div className="t-xs muted" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                {pct}%
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {flavor && (
+        <div className="t-xs" style={{ letterSpacing: '0.06em', color: 'var(--ink-2)' }}>
+          {flavor}
+        </div>
+      )}
+
+      {top.length > 0 && (
+        <div data-testid="deck-power-top-archetypes" style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+          <span className="t-xs muted" style={{ letterSpacing: '0.08em', fontWeight: 700 }}>
+            TOP ARCHETYPES:
+          </span>
+          {top.map((r, i) => (
+            <span key={r.archetype} className="t-xs" style={{ letterSpacing: '0.04em' }}>
+              <strong style={{ color: 'var(--ink)' }}>{r.archetype.toUpperCase()}</strong>
+              <span className="muted"> ×{r.count}</span>
+              {i < top.length - 1 ? <span className="muted"> · </span> : null}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
   )
 }
 
