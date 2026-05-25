@@ -11,6 +11,17 @@ import {
   stepTurn,
   resolveReplayKeyAction,
 } from '../utils/replayControls'
+import {
+  BOOKMARK_KINDS,
+  DEFAULT_BOOKMARK_KIND,
+  loadBookmarks,
+  saveBookmarks,
+  addBookmark,
+  removeBookmark,
+  nextBookmarkTurn,
+  kindMeta,
+  resolveBookmarkKeyAction,
+} from '../utils/replayBookmarks'
 
 // ── API gaps for full report fidelity ──────────────────────────────────
 // CompletedGame currently exposes: game_id, commanders[], deck_keys[],
@@ -242,6 +253,49 @@ const ReplayScrubber = ({ game, commanders }) => {
   // historical 900ms cadence and 4× lets users skim a long game in a
   // quarter the time.
   const [speedIdx, setSpeedIdx] = useState(REPLAY_DEFAULT_SPEED_IDX)
+  // Bookmarks persist per game in localStorage. The state mirrors what's
+  // on disk so the render is synchronous; we re-read on game switch
+  // (game?.game_id dep) and write through whenever the list changes.
+  const gameId = game?.game_id
+  const [bookmarks, setBookmarks] = useState([])
+  const [bookmarkKind, setBookmarkKind] = useState(DEFAULT_BOOKMARK_KIND)
+
+  // Load bookmarks when the game id changes. This effect intentionally
+  // calls setState — it's the only way to react to a foreign data source
+  // (localStorage) keyed off a prop. The cascading-renders lint rule
+  // doesn't have a way to express "external sync" so we silence it
+  // here; the read is cheap (single JSON parse) and only runs on game
+  // switch.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBookmarks(loadBookmarks(window.localStorage, gameId))
+  }, [gameId])
+
+  // Persist bookmarks on every mutation. Cheap (small JSON, infrequent).
+  useEffect(() => {
+    if (typeof window === 'undefined' || gameId == null) return
+    saveBookmarks(window.localStorage, gameId, bookmarks)
+  }, [gameId, bookmarks])
+
+  // turnAtIdx maps a 0-based timeline index to the game's actual turn
+  // number (timeline entries can start at turn 1 with optional gaps).
+  // Used by the bookmark add/jump handlers so persisted bookmarks
+  // survive a future replay-server change that re-orders snapshots.
+  const turnAtIdx = (idx) => timeline[idx]?.turn ?? (idx + 1)
+
+  const idxAtTurn = (turn) => {
+    for (let i = 0; i < timeline.length; i++) {
+      if (timeline[i].turn === turn) return i
+    }
+    // Closest preceding snapshot if the exact turn isn't in the timeline.
+    let chosen = 0
+    for (let i = 0; i < timeline.length; i++) {
+      if (timeline[i].turn <= turn) chosen = i
+      else break
+    }
+    return chosen
+  }
 
   // Auto-play tick — advances one turn at the user-selected speed.
   useEffect(() => {
@@ -264,47 +318,77 @@ const ReplayScrubber = ({ game, commanders }) => {
     if (turnIdx >= totalTurns) setTurnIdx(Math.max(0, totalTurns - 1))
   }, [totalTurns, turnIdx])
 
-  // Keyboard shortcuts (Space/K play, ←J/→L step, Home/End jump,
-  // ↑↓/[] speed). The handler reads dispatch state through the
-  // current closures — re-binding on each render is cheap (one
-  // listener) and keeps the captured values fresh without refs.
+  // Keyboard shortcuts. Two handlers: replay transport (Space/K play,
+  // ←J/→L step, Home/End jump, ↑↓/[] speed) and bookmarks (B to mark
+  // the current turn, , and . to jump to the prev/next bookmark).
   useEffect(() => {
     if (totalTurns === 0) return
     const onKey = (e) => {
       const action = resolveReplayKeyAction(e)
-      if (!action) return
+      if (action) {
+        e.preventDefault()
+        switch (action) {
+          case 'togglePlay':
+            setPlaying(p => !p)
+            break
+          case 'first':
+            setPlaying(false)
+            setTurnIdx(stepTurn(turnIdx, totalTurns, 'first'))
+            break
+          case 'last':
+            setPlaying(false)
+            setTurnIdx(stepTurn(turnIdx, totalTurns, 'last'))
+            break
+          case 'prev':
+            setPlaying(false)
+            setTurnIdx(stepTurn(turnIdx, totalTurns, 'prev'))
+            break
+          case 'next':
+            setPlaying(false)
+            setTurnIdx(stepTurn(turnIdx, totalTurns, 'next'))
+            break
+          case 'speedDown':
+            setSpeedIdx(i => nextSpeedIdx(i, -1))
+            break
+          case 'speedUp':
+            setSpeedIdx(i => nextSpeedIdx(i, +1))
+            break
+        }
+        return
+      }
+      const bm = resolveBookmarkKeyAction(e)
+      if (!bm) return
       e.preventDefault()
-      switch (action) {
-        case 'togglePlay':
-          setPlaying(p => !p)
+      const currentTurn = turnAtIdx(turnIdx)
+      switch (bm) {
+        case 'addBookmark':
+          setBookmarks(list => addBookmark(list, currentTurn, bookmarkKind, ''))
           break
-        case 'first':
-          setPlaying(false)
-          setTurnIdx(stepTurn(turnIdx, totalTurns, 'first'))
+        case 'prevBookmark': {
+          const t = nextBookmarkTurn(bookmarks, currentTurn, -1)
+          if (t != null) {
+            setPlaying(false)
+            setTurnIdx(idxAtTurn(t))
+          }
           break
-        case 'last':
-          setPlaying(false)
-          setTurnIdx(stepTurn(turnIdx, totalTurns, 'last'))
+        }
+        case 'nextBookmark': {
+          const t = nextBookmarkTurn(bookmarks, currentTurn, +1)
+          if (t != null) {
+            setPlaying(false)
+            setTurnIdx(idxAtTurn(t))
+          }
           break
-        case 'prev':
-          setPlaying(false)
-          setTurnIdx(stepTurn(turnIdx, totalTurns, 'prev'))
-          break
-        case 'next':
-          setPlaying(false)
-          setTurnIdx(stepTurn(turnIdx, totalTurns, 'next'))
-          break
-        case 'speedDown':
-          setSpeedIdx(i => nextSpeedIdx(i, -1))
-          break
-        case 'speedUp':
-          setSpeedIdx(i => nextSpeedIdx(i, +1))
-          break
+        }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [turnIdx, totalTurns])
+    // turnAtIdx / idxAtTurn close over `timeline`; tracking
+    // timeline.length covers the only mutation path that matters
+    // (game switch / snapshot append).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turnIdx, totalTurns, bookmarks, bookmarkKind])
 
   if (totalTurns === 0) {
     return (
@@ -369,25 +453,173 @@ const ReplayScrubber = ({ game, commanders }) => {
             )
           })}
         </div>
+        {/* Bookmark add: kind picker + "+" button. The picker stores
+            the kind for the next add; pressing B uses the same kind.
+            Existing-mark detection swaps "+" for a "remove" affordance
+            when the current turn already carries a bookmark of the
+            selected kind. */}
+        <div role="group" aria-label="Bookmark current turn" style={{ display: 'flex', gap: 2, marginLeft: 8, padding: '0 4px', borderLeft: '1px solid var(--rule-2)', alignItems: 'center' }}>
+          <select
+            value={bookmarkKind}
+            onChange={(e) => setBookmarkKind(e.target.value)}
+            aria-label="Bookmark kind"
+            className="t-xs"
+            style={{
+              background: 'transparent',
+              color: 'var(--ink)',
+              border: '1px solid var(--rule-2)',
+              padding: '1px 4px',
+              cursor: 'pointer',
+            }}
+          >
+            {BOOKMARK_KINDS.map(k => (
+              <option key={k.id} value={k.id}>{k.icon} {k.label}</option>
+            ))}
+          </select>
+          {(() => {
+            const currentTurn = turnAtIdx(turnIdx)
+            const existingId = `${currentTurn}-${bookmarkKind}`
+            const isMarked = bookmarks.some(b => b.id === existingId)
+            return (
+              <Btn
+                sm
+                arrow={null}
+                solid={isMarked}
+                title={isMarked ? `Remove ${kindMeta(bookmarkKind).label} bookmark (T${currentTurn})` : `Bookmark T${currentTurn} as ${kindMeta(bookmarkKind).label} (B)`}
+                onClick={() => {
+                  if (isMarked) {
+                    setBookmarks(list => removeBookmark(list, existingId))
+                  } else {
+                    setBookmarks(list => addBookmark(list, currentTurn, bookmarkKind, ''))
+                  }
+                }}
+              >
+                {isMarked ? '−' : '+'} {kindMeta(bookmarkKind).icon}
+              </Btn>
+            )
+          })()}
+        </div>
         <span className="t-xs muted" style={{ marginLeft: 8 }}>
           ACTIVE: {activeSeat >= 0 ? `SEAT.${String(activeSeat + 1).padStart(2, '0')} · ${(commanders[activeSeat] || 'UNKNOWN').split(',')[0].toUpperCase()}` : '—'}
         </span>
       </div>
 
-      {/* The slider itself */}
-      <input
-        type="range"
-        min={0}
-        max={totalTurns - 1}
-        value={turnIdx}
-        onChange={e => { setPlaying(false); setTurnIdx(parseInt(e.target.value, 10)) }}
-        style={{ width: '100%', accentColor: 'var(--accent)' }}
-        aria-label="Turn slider"
-      />
+      {/* The slider itself, with bookmark markers overlaid. Markers
+          sit absolutely-positioned above the track at the % offset
+          that matches each bookmark's snapshot index; clicking one
+          jumps to that turn. */}
+      <div style={{ position: 'relative', width: '100%' }}>
+        <input
+          type="range"
+          min={0}
+          max={totalTurns - 1}
+          value={turnIdx}
+          onChange={e => { setPlaying(false); setTurnIdx(parseInt(e.target.value, 10)) }}
+          style={{ width: '100%', accentColor: 'var(--accent)', display: 'block' }}
+          aria-label="Turn slider"
+        />
+        {bookmarks.length > 0 && (
+          <div
+            aria-hidden="true"
+            style={{ position: 'absolute', left: 0, right: 0, top: -6, height: 6, pointerEvents: 'none' }}
+          >
+            {bookmarks.map(b => {
+              const idx = idxAtTurn(b.turn)
+              const pct = totalTurns > 1 ? (idx / (totalTurns - 1)) * 100 : 0
+              const meta = kindMeta(b.kind)
+              return (
+                <button
+                  key={b.id}
+                  type="button"
+                  onClick={() => { setPlaying(false); setTurnIdx(idx) }}
+                  title={`${meta.label} — T${b.turn}${b.note ? ` · ${b.note}` : ''}`}
+                  aria-label={`Jump to ${meta.label} bookmark at turn ${b.turn}`}
+                  style={{
+                    position: 'absolute',
+                    left: `calc(${pct}% - 6px)`,
+                    top: 0,
+                    width: 12,
+                    height: 6,
+                    padding: 0,
+                    border: 'none',
+                    background: meta.color,
+                    cursor: 'pointer',
+                    pointerEvents: 'auto',
+                    borderRadius: 2,
+                  }}
+                />
+              )
+            })}
+          </div>
+        )}
+      </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 2 }}>
         <span className="t-xs muted-2">T1</span>
         <span className="t-xs muted-2">T{timeline[totalTurns - 1].turn}</span>
       </div>
+
+      {/* Bookmark list — chronological, click-to-jump, ✕ to remove.
+          Only renders when at least one bookmark exists so the empty
+          state doesn't add chrome. */}
+      {bookmarks.length > 0 && (
+        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          <span className="t-xs muted" style={{ alignSelf: 'center' }}>BOOKMARKS:</span>
+          {bookmarks.map(b => {
+            const meta = kindMeta(b.kind)
+            const idx = idxAtTurn(b.turn)
+            const isCurrent = idx === turnIdx
+            return (
+              <span
+                key={b.id}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '2px 6px',
+                  borderRadius: 3,
+                  border: `1px solid ${meta.color}`,
+                  background: isCurrent ? meta.color : 'transparent',
+                  color: isCurrent ? 'var(--bg)' : 'var(--ink)',
+                  fontSize: 11,
+                  fontWeight: isCurrent ? 700 : 400,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => { setPlaying(false); setTurnIdx(idx) }}
+                  className="t-xs"
+                  title={b.note || meta.label}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                    color: 'inherit',
+                  }}
+                >
+                  {meta.icon} T{b.turn}{b.note ? ` · ${b.note}` : ''}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBookmarks(list => removeBookmark(list, b.id))}
+                  aria-label={`Remove ${meta.label} bookmark at turn ${b.turn}`}
+                  title="Remove bookmark"
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: '0 2px',
+                    color: 'inherit',
+                    fontSize: 10,
+                  }}
+                >
+                  ✕
+                </button>
+              </span>
+            )
+          })}
+        </div>
+      )}
 
       <div className="hr" style={{ margin: '14px 0 10px' }} />
 
