@@ -288,6 +288,12 @@ type Showmatch struct {
 	// is wired in.
 	Webhooks *WebhookDispatcher
 
+	// Events is the in-process pub/sub bus that backs the
+	// /ws/events WebSocket stream. Nil = feature disabled; the
+	// game-end tail no-ops the Publish call. cmd/hexdek-server
+	// constructs the bus + handler at startup when wiring is on.
+	Events *EventBus
+
 	// GauntletLimiter rate-limits POST /api/gauntlet/{owner}/{id} per
 	// client IP. The endpoint is already protected by a global
 	// concurrency semaphore (gauntletSem, cap 2) and a credit-economy
@@ -1880,6 +1886,25 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 	// waits on an external HTTP receiver.
 	if sm.Webhooks != nil {
 		sm.Webhooks.FireGameEnd(context.Background(), completed)
+	}
+
+	// Publish the same shape to the in-process events bus that backs
+	// /ws/events. Non-blocking — Publish drops to subscribers whose
+	// buffer is full rather than stalling the persist tail.
+	if sm.Events != nil {
+		sm.Events.Publish(Event{
+			Type: EventGameEnd,
+			Data: map[string]any{
+				"game_id":     completed.GameID,
+				"winner":      completed.Winner,
+				"winner_name": completed.WinnerName,
+				"commanders":  completed.Commanders,
+				"deck_keys":   completed.DeckKeys,
+				"turns":       completed.Turns,
+				"end_reason":  completed.EndReason,
+				"finished_at": completed.FinishedAt.UTC().Format(time.RFC3339),
+			},
+		})
 	}
 
 	log.Printf("showmatch: game %d finished — turn %d, winner: %s (%s), pivot: t%d (Δ%.2f)",
