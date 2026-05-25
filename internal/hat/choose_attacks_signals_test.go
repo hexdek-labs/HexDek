@@ -33,12 +33,16 @@ func TestYggdrasil_ChooseAttackers_DeathtouchDensityBrake(t *testing.T) {
 	gs.Seats[2].Life = 40
 
 	// Seat 1 fields three untapped 1/1 deathtouch creatures (Spider
-	// tribal flavor). Seat 2 fields nothing — the safe lane.
+	// tribal flavor). Seat 2 fields a vanilla blocker so the R60r5
+	// open-lane bonus doesn't fire — without that, swinging at the
+	// undefended seat would correctly outweigh the DT brake. We want
+	// to isolate the brake's behavior on density alone here.
 	for i := 0; i < 3; i++ {
 		dt := newTestPermanent(gs.Seats[1], newTestCardMinimal("Spider", []string{"creature"}, 1, nil), 1, 1)
 		addKeyword(dt, "deathtouch")
 		dt.Tapped = false
 	}
+	newTestPermanent(gs.Seats[2], newTestCardMinimal("Wall", []string{"creature"}, 1, nil), 0, 4)
 
 	atk := newTestPermanent(gs.Seats[0], newTestCardMinimal("Goblin", []string{"creature"}, 1, nil), 2, 2)
 

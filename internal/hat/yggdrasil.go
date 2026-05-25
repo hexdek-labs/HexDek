@@ -1697,6 +1697,58 @@ func noLegalBlockerOnSeat(gs *gameengine.GameState, attacker *gameengine.Permane
 }
 
 // anyOpponentHasReachOrFlyingBlocker reports whether any opponent of
+// isCombatFirstArchetype returns true for archetypes whose plan IS
+// early-game damage: Aggro, Burn, Voltron, Tribal. These archetypes
+// should not pay the uniform PhaseDeploy +0.15 conservative bump on
+// attack threshold — holding back a turn-2 1/1 because "we should
+// develop more board" is the exact early-game-too-defensive bug the
+// R60 round 5 aggression audit surfaced. nil-safe.
+func isCombatFirstArchetype(sp *StrategyProfile) bool {
+	if sp == nil {
+		return false
+	}
+	switch sp.Archetype {
+	case ArchetypeAggro, ArchetypeBurn, ArchetypeVoltron, ArchetypeTribal:
+		return true
+	}
+	return false
+}
+
+// anyOpponentHasOpenLane reports whether at least one opponent has
+// ZERO untapped creatures available as potential blockers. When true,
+// every attacker (even a vanilla 1/1) gets a "damage is free" bonus
+// — chip damage into an undefended seat adds up, and refusing to
+// swing on an open table is exactly the defensive failure mode aggro
+// audits flagged. Skips dead / left-game seats. The check is
+// pessimistic: a tapped creature is treated as no blocker even though
+// it may untap before combat resumes; that matches what the swinger
+// actually faces in this combat step.
+func anyOpponentHasOpenLane(gs *gameengine.GameState, seatIdx int) bool {
+	if gs == nil {
+		return false
+	}
+	for i, s := range gs.Seats {
+		if i == seatIdx || s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		untappedBlockers := 0
+		for _, b := range s.Battlefield {
+			if b == nil || !b.IsCreature() || b.Tapped {
+				continue
+			}
+			if gs.PowerOf(b) <= 0 && gs.ToughnessOf(b) <= 0 {
+				// 0/0 creatures are SBA fodder, not blockers.
+				continue
+			}
+			untappedBlockers++
+		}
+		if untappedBlockers == 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // seatIdx controls an untapped creature with reach or flying. Used to
 // downgrade flying's evasion bonus when the lane isn't actually open.
 func anyOpponentHasReachOrFlyingBlocker(gs *gameengine.GameState, seatIdx int) bool {
@@ -4493,13 +4545,26 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 	}
 
 	// Phase-of-game shift on attack threshold:
-	//   Deploy  → +0.15 (very conservative; we'd rather develop board)
+	//   Deploy  → +0.15 (conservative; develop board over chip damage)
 	//   Develop → 0.0   (default behavior)
-	//   Execute → -0.10 (more aggressive; lower bar to swing)
+	//   Execute → -0.10 (aggressive; lower bar to swing)
+	//
+	// R60 round 5 — combat-first archetypes (Aggro / Burn / Voltron /
+	// Tribal) INVERT the deploy bump. Their gameplan IS early damage:
+	// a turn-2 Goblin Guide HOLDing because "we should develop more
+	// board" is exactly the bug the audit surfaced. They get a small
+	// -0.05 shift instead so a 1/1 (val=0.10) on turn 2 still clears
+	// the swing bar.
+	combatFirst := isCombatFirstArchetype(h.Strategy)
 	switch h.detectPhase(gs, seatIdx) {
 	case PhaseDeploy:
-		threshold += 0.15
-		stance += "+DEPLOY"
+		if combatFirst {
+			threshold -= 0.05
+			stance += "+DEPLOY-AGGRO"
+		} else {
+			threshold += 0.15
+			stance += "+DEPLOY"
+		}
 	case PhaseExecute:
 		threshold -= 0.10
 		stance += "+EXECUTE"
@@ -4667,8 +4732,26 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 		}
 	}
 
-	h.logf("%s ATTACK seat=%d pos=%.3f stance=%s threshold=%.2f legal=%d wrath=%v dt-density=%d",
-		roundTag(gs, seatIdx), seatIdx, pos, stance, threshold, len(legal), wrathSuspected, maxDeathtouchDensity)
+	// R60 round 5 — open-lane detection. If at least one opponent has
+	// ZERO untapped potential blockers, every attacker gets a "damage
+	// is free" bonus. Bonus scales with archetype: combat-first decks
+	// (Aggro / Burn / Voltron / Tribal) treat open lanes as their PLAN
+	// and get the full +0.20; others get +0.10 because chip damage is
+	// still positive but less central to their gameplan. Pre-R60r5 a
+	// turn-3 vanilla 1/1 (val=0.10) staring at an empty seat held its
+	// ground because the score sat below the deploy-phase threshold —
+	// that's the early-game-too-defensive failure the audit flagged.
+	openLaneBonus := 0.0
+	if anyOpponentHasOpenLane(gs, seatIdx) {
+		if combatFirst {
+			openLaneBonus = 0.20
+		} else {
+			openLaneBonus = 0.10
+		}
+	}
+
+	h.logf("%s ATTACK seat=%d pos=%.3f stance=%s threshold=%.2f legal=%d wrath=%v dt-density=%d open-lane=%.2f",
+		roundTag(gs, seatIdx), seatIdx, pos, stance, threshold, len(legal), wrathSuspected, maxDeathtouchDensity, openLaneBonus)
 
 	var attackers []*gameengine.Permanent
 	for _, p := range legal {
@@ -4680,6 +4763,12 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 			continue
 		}
 		val := float64(pw) / 10.0
+		// R60 round 5 — open-lane bonus. Applied universally to every
+		// attacker (vanilla 1/1s included) when a defenseless seat
+		// exists; the bonus is sized so it can lift a marginal attacker
+		// over the deploy-phase threshold without overriding the
+		// profitability prune that handles bad trades downstream.
+		val += openLaneBonus
 		if p.HasKeyword("deathtouch") {
 			val += 0.3
 		}
