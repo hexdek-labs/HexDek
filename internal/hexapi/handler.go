@@ -247,6 +247,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/games/{id}/replay", h.handleGameReplay)
 	mux.HandleFunc("GET /api/games/{id}/summary.pdf", h.handleGameSummaryPDF)
 	mux.HandleFunc("GET /api/games/summaries", h.handleGameSummaryArchive)
+	mux.HandleFunc("GET /api/games/search", h.handleGameSearch)
 	mux.HandleFunc("GET /api/games/compare", h.handleGameCompare)
 	// CSRF token issuance — always registered. Returns 503 when the
 	// store is nil so clients can detect that the server isn't
