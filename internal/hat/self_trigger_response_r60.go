@@ -2,9 +2,31 @@ package hat
 
 import (
 	"strings"
+	"sync/atomic"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
+
+// selfTriggerCounterFires is a process-lifetime atomic counter
+// incremented every time ChooseResponse fires a counter against a
+// self-controlled trigger. Surfaces observability for the gauntlet
+// validation in docs/hat-self-trigger-gauntlet.md without requiring
+// audit-log retention. Reset via ResetSelfTriggerCounterFires;
+// readable via SelfTriggerCounterFires.
+var selfTriggerCounterFires atomic.Int64
+
+// SelfTriggerCounterFires returns the cumulative count of self-trigger
+// counter fires across the process lifetime.
+func SelfTriggerCounterFires() int64 {
+	return selfTriggerCounterFires.Load()
+}
+
+// ResetSelfTriggerCounterFires zeroes the counter. Useful for
+// gauntlet-scoped measurements that want a clean baseline before
+// running games.
+func ResetSelfTriggerCounterFires() {
+	selfTriggerCounterFires.Store(0)
+}
 
 // self_trigger_response_r60.go — R60 round 15+ ChooseResponse audit fix.
 //

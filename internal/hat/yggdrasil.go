@@ -6136,6 +6136,28 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 					gameengine.CanPayColoredCost(colored, c) {
 					h.logf("SELF-TRIGGER-COUNTER seat=%d top=%v (self-harm via punisher)",
 						seatIdx, top.Kind)
+					// Emit a structured decision event so post-game
+					// audit logs can count self-counter fires (one of
+					// the few cases where the hat goes against its own
+					// stack item — rare enough that audit-derived
+					// counts are the right observability surface).
+					sourceName := ""
+					if top.Source != nil && top.Source.Card != nil {
+						sourceName = top.Source.Card.DisplayName()
+					}
+					counterName := ""
+					if c != nil {
+						counterName = c.DisplayName()
+					}
+					h.emitDecisionEvent(gs, seatIdx, "self_trigger_counter",
+						map[string]interface{}{
+							"source":  sourceName,
+							"counter": counterName,
+							"life":    seat.Life,
+						})
+					// Process-lifetime atomic counter for gauntlet
+					// observability (see SelfTriggerCounterFires).
+					selfTriggerCounterFires.Add(1)
 					return &gameengine.StackItem{
 						Card:       c,
 						Controller: seatIdx,

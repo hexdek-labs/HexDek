@@ -317,6 +317,7 @@ func main() {
 				fmt.Printf("\n--- Crash %d ---\n%s\n", i+1, cl)
 			}
 		}
+		fmt.Printf("\nSELF-TRIGGER-COUNTER fires: %d\n", hat.SelfTriggerCounterFires())
 		if *reportPath != "" {
 			fmt.Printf("\nReport written to %s\n", *reportPath)
 		}
@@ -360,6 +361,7 @@ func main() {
 				fmt.Printf("\n--- Crash %d ---\n%s\n", i+1, cl)
 			}
 		}
+		fmt.Printf("\nSELF-TRIGGER-COUNTER fires: %d\n", hat.SelfTriggerCounterFires())
 		if *reportPath != "" {
 			fmt.Printf("\nReport written to %s\n", *reportPath)
 		}
