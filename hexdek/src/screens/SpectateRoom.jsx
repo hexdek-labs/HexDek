@@ -415,7 +415,14 @@ export default function SpectateRoom() {
                     </div>
                   </div>
                   <div className="seat-ft">
-                    <span>H{s.hand_size} L{s.library_size} G{s.gy_size} B{perms.length}</span>
+                    <span>
+                      H{s.hand_size}{' '}
+                      <span
+                        className={s.library_size <= 3 ? 'lib-pip--crit' : s.library_size <= 7 ? 'lib-pip--low' : ''}
+                        title={s.library_size <= 3 ? 'Mill danger' : s.library_size <= 7 ? 'Low library' : `${s.library_size} cards left`}
+                      >L{s.library_size}</span>{' '}
+                      G{s.gy_size} B{perms.length}
+                    </span>
                     {isActive && <span style={{ color: 'var(--ok)' }}>● PRI</span>}
                   </div>
                 </div>
