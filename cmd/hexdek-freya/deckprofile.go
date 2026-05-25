@@ -124,6 +124,15 @@ type DeckProfile struct {
 	// are present with value 0 for stable rendering.
 	PowerTierCounts map[string]int
 
+	// PetCards are low-tier (C/D) creatures whose role tags don't match
+	// the deck's primary-archetype fingerprint — the deckbuilder kept
+	// them despite the suboptimal fit, which strongly signals a personal-
+	// taste / flavor pick rather than a card they'd cut on review. The
+	// report surfaces these as "keep if you love it" so the upgrade
+	// coaching respects personal taste instead of just hammering "cut
+	// this." See computePetCards for the exact detection signals.
+	PetCards []PetCard
+
 	// Color weight suggestions
 	LandSwapSuggestions []string
 
@@ -255,6 +264,20 @@ type CardPowerLevel struct {
 	SynergyContribution int
 }
 
+// PetCard is a low-tier creature the deckbuilder kept despite its
+// off-archetype fit — almost certainly a personal-taste / flavor pick.
+// Surfaced as a "keep if you love it" hint so the report doesn't
+// hammer "cut this" against cards the builder consciously included
+// for flavor. See computePetCards for the detection criteria.
+type PetCard struct {
+	Name      string
+	CMC       int
+	Roles     []string
+	Power     int
+	PowerTier string
+	Reason    string // "off-archetype legendary creature — signature flavor pick"
+}
+
 // PowerTierFor maps a 0-100 power score to a letter grade for "deck
 // buy-it pacing" — S-tier first, A second, etc. Absolute bands
 // (intentionally not percentile-based) so a casual deck with no S
@@ -370,6 +393,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	computeMetaPositioning(dp)
 	computeCardPower(dp, report)
 	computeCardQualityTiers(dp, report, oracle)
+	computePetCards(dp, report)
 	computeLandSwapSuggestions(dp, report)
 	dp.PersonalityBlurb = buildPersonalityBlurb(dp, report)
 	dp.PowerPercentile, dp.PowerFactors = estimatePowerPercentile(dp, report)
