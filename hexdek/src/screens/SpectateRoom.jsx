@@ -91,14 +91,19 @@ const permStat = (p) => {
 
 const stackPerms = (perms) => {
   const groups = {}
-  const order = []
+  const commanders = []
+  const rest = []
   for (const p of perms) {
-    if (p.is_commander) { order.push({ ...p, count: 1 }); continue }
+    if (p.is_commander) { commanders.push({ ...p, count: 1 }); continue }
     const key = p.name || '???'
-    if (!groups[key]) { groups[key] = { ...p, count: 1 }; order.push(groups[key]) }
+    if (!groups[key]) { groups[key] = { ...p, count: 1 }; rest.push(groups[key]) }
     else { groups[key].count++; if (p.tapped) groups[key].tapped = true }
   }
-  return order
+  // Commanders first so they never get cut off by the slice(0, 12) cap in
+  // the render. Backend battlefield order is insertion-order, which means
+  // a commander cast on turn 4 sits behind every land/creature played
+  // before it — easily past index 12 in a developed boardstate.
+  return commanders.concat(rest)
 }
 
 const LOG_COLORS = {
