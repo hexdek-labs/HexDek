@@ -2642,15 +2642,18 @@ export default function DeckArchive() {
                 }).catch(err => {
                   // 402 from the server when the user is out of free
                   // runs and has no credits, or when the spend itself
-                  // would overdraft. The body is JSON with an error
-                  // code + the current quota state.
+                  // would overdraft. services/api.js's unwrapApiError
+                  // exposes the error code + details across both r60
+                  // (nested) and pre-r60 (flat) envelope shapes, so
+                  // we can switch on err.code regardless of which
+                  // backend version is answering during the deploy
+                  // crossover.
                   if (err?.status === 402) {
-                    let parsed = null
-                    try { parsed = JSON.parse(err.body) } catch {}
-                    if (parsed?.error === 'free_quota_exhausted') {
+                    const details = err?.details || {}
+                    if (err?.code === 'free_quota_exhausted') {
                       toast.error('OUT OF FREE GAUNTLETS — EARN CREDITS OR WAIT FOR RESET')
                     } else {
-                      toast.error(`INSUFFICIENT CREDITS — NEED ${parsed?.needed ?? '?'} CR (HAVE ${parsed?.balance ?? 0})`)
+                      toast.error(`INSUFFICIENT CREDITS — NEED ${details.needed ?? '?'} CR (HAVE ${details.balance ?? 0})`)
                     }
                     setCreditsRefreshKey(k => k + 1)
                   } else if (err?.status === 401) {

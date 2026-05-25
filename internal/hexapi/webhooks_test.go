@@ -177,8 +177,8 @@ func TestHandleRegisterWebhook(t *testing.T) {
 			if body.Status != tc.wantStatus {
 				t.Errorf("body.status: want %d, got %d", tc.wantStatus, body.Status)
 			}
-			if tc.wantErr != "" && body.Error != tc.wantErr {
-				t.Errorf("body.error: want %q, got %q", tc.wantErr, body.Error)
+			if tc.wantErr != "" && body.Error.Message != tc.wantErr {
+				t.Errorf("body.error.message: want %q, got %q", tc.wantErr, body.Error.Message)
 			}
 		})
 	}

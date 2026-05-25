@@ -347,7 +347,7 @@ func TestGraphQL_MissingQuery_400(t *testing.T) {
 	if e := json.NewDecoder(rr.Body).Decode(&err); e != nil {
 		t.Fatalf("decode ErrorResponse: %v", e)
 	}
-	if err.Error != "query required" || err.Status != 400 {
+	if err.Error.Message != "query required" || err.Status != 400 {
 		t.Errorf("envelope: want {query required, 400}, got %+v", err)
 	}
 }

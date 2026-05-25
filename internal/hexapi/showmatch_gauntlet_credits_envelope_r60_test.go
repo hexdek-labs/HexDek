@@ -9,23 +9,22 @@ import (
 	"github.com/hexdek/hexdek/internal/credits"
 )
 
-// r60 round 2 — pin the gauntlet credits gate's 402 responses to the
-// unified ErrorResponse shape (PR #93). Pre-fix, handleStartGauntlet
-// hand-rolled a JSON envelope without the `status` field and without
-// the `X-Content-Type-Options: nosniff` header that writeError
-// guarantees, so frontends that bound the response into ErrorResponse
-// saw `status: 0` even though the HTTP code was 402. The two 402
-// paths now route through writeErrorWithDetails, which merges the
-// extra `balance` / `needed` / `quota` fields on top of the unified
-// `error` + `status` envelope.
+// r60 round 2 — pins the gauntlet credits gate's 402 responses to
+// the unified ErrorResponse shape (originally PR #93, evolved by the
+// r60 error-shape sweep). Pre-r60, handleStartGauntlet hand-rolled a
+// JSON envelope without the `status` field and without
+// X-Content-Type-Options: nosniff. The r60 sweep further moved the
+// extras (`balance` / `needed` / `quota`) from top-level fields into
+// the nested `error.details` map so the envelope shape stays uniform
+// regardless of which fields a handler ships.
 
 // TestStartGauntlet_FreeQuotaExhausted_UsesUnifiedEnvelope drives the
 // handler into the "out of free runs, balance too low to upgrade"
-// branch and asserts (1) the unified Error + Status decode succeeds,
-// (2) the `balance`, `needed`, and `quota` extras are still present
-// at the top level for the frontend's earn/wait prompt, and (3) the
-// nosniff header is set so middleware proxies can't sniff the body
-// into HTML.
+// branch and asserts (1) the unified Error.Code + Error.Message +
+// Status decode succeeds, (2) the `balance`, `needed`, and `quota`
+// extras are nested under `error.details` for the frontend's
+// earn/wait prompt, and (3) the nosniff header is set so middleware
+// proxies can't sniff the body into HTML.
 func TestStartGauntlet_FreeQuotaExhausted_UsesUnifiedEnvelope(t *testing.T) {
 	f := newGauntletRefundFixture(t)
 	// Exhaust the free quota for the day but leave the balance at 0
@@ -48,33 +47,34 @@ func TestStartGauntlet_FreeQuotaExhausted_UsesUnifiedEnvelope(t *testing.T) {
 		t.Errorf("Content-Type: want application/json, got %q", got)
 	}
 
-	// Base ErrorResponse fields must populate — this is what frontend
+	// Unified envelope fields must populate — this is what frontend
 	// decoders bind to.
 	var base ErrorResponse
 	if err := json.Unmarshal(rr.Body.Bytes(), &base); err != nil {
 		t.Fatalf("ErrorResponse decode: %v (raw=%q)", err, rr.Body.String())
 	}
-	if base.Error != "free_quota_exhausted" {
-		t.Errorf("body.error: want %q, got %q", "free_quota_exhausted", base.Error)
+	if base.Error.Message != "free_quota_exhausted" {
+		t.Errorf("body.error.message: want %q, got %q", "free_quota_exhausted", base.Error.Message)
 	}
 	if base.Status != http.StatusPaymentRequired {
-		t.Errorf("body.status: want 402, got %d (PRE-FIX BUG: status field was missing)", base.Status)
+		t.Errorf("body.status: want 402, got %d", base.Status)
 	}
 
-	// Extras must still be on the top level so the React "earn or
-	// wait" prompt can render the actionable values.
-	var full map[string]any
-	if err := json.Unmarshal(rr.Body.Bytes(), &full); err != nil {
-		t.Fatalf("full body decode: %v", err)
+	// Extras live nested under error.details so the envelope shape
+	// stays stable. The React "earn or wait" prompt reads the same
+	// three fields, now via body.error.details.{balance,needed,quota}.
+	details, ok := base.Error.Details.(map[string]any)
+	if !ok {
+		t.Fatalf("body.error.details: want map[string]any, got %T (%v)", base.Error.Details, base.Error.Details)
 	}
-	if _, ok := full["balance"]; !ok {
-		t.Errorf("balance missing from body: %+v", full)
+	if _, ok := details["balance"]; !ok {
+		t.Errorf("balance missing from error.details: %+v", details)
 	}
-	if got, _ := full["needed"].(float64); int64(got) != credits.CreditsPerGauntlet {
-		t.Errorf("needed: want %d, got %v", credits.CreditsPerGauntlet, full["needed"])
+	if got, _ := details["needed"].(float64); int64(got) != credits.CreditsPerGauntlet {
+		t.Errorf("needed: want %d, got %v", credits.CreditsPerGauntlet, details["needed"])
 	}
-	if _, ok := full["quota"]; !ok {
-		t.Errorf("quota missing from body: %+v", full)
+	if _, ok := details["quota"]; !ok {
+		t.Errorf("quota missing from error.details: %+v", details)
 	}
 
 	// Sanity: the failure path must not have debited credits (already

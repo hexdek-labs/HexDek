@@ -293,7 +293,7 @@ func main() {
 	log.Printf("Ship 2: curl -XPOST http://%s/api/device/register -d '{\"display_name\":\"Hex\"}'", *addr)
 	log.Printf("Ship 3: ws://%s/ws/party/{id}?token={token}", *addr)
 
-	handler := corsMiddleware(pincerTracker.Middleware(userprofile.LocaleMiddleware(mux)))
+	handler := hexapi.RequestIDMiddleware(corsMiddleware(pincerTracker.Middleware(userprofile.LocaleMiddleware(mux))))
 	httpSrv := &http.Server{
 		Addr:    *addr,
 		Handler: handler,
@@ -493,7 +493,12 @@ func corsMiddleware(next http.Handler) http.Handler {
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 		}
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Request-Id")
+		// Expose X-Request-Id so browser clients can read it off
+		// the response and surface it in error reports — the
+		// header is non-CORS-safelisted, so without this it's
+		// hidden from fetch().
+		w.Header().Set("Access-Control-Expose-Headers", "X-Request-Id")
 		if r.Method == http.MethodOptions {
 			w.WriteHeader(http.StatusNoContent)
 			return

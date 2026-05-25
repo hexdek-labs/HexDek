@@ -10,19 +10,20 @@ import (
 
 // TestWriteError_ShapeAndHeaders pins the unified error contract:
 // Content-Type is application/json, the body decodes into
-// ErrorResponse with both fields populated, and the HTTP status on the
-// response matches the status field in the body.
+// ErrorResponse with nested code+message populated, and the HTTP
+// status on the response matches the status field in the body.
 func TestWriteError_ShapeAndHeaders(t *testing.T) {
 	cases := []struct {
-		name    string
-		status  int
-		message string
+		name     string
+		status   int
+		message  string
+		wantCode string
 	}{
-		{"bad request", http.StatusBadRequest, "missing card name"},
-		{"forbidden", http.StatusForbidden, "forbidden"},
-		{"not found", http.StatusNotFound, "card not found"},
-		{"internal", http.StatusInternalServerError, "list: db closed"},
-		{"too many", http.StatusTooManyRequests, "clone rate limit exceeded (max 5 per hour)"},
+		{"bad request", http.StatusBadRequest, "missing card name", "bad_request"},
+		{"forbidden", http.StatusForbidden, "forbidden", "forbidden"},
+		{"not found", http.StatusNotFound, "card not found", "not_found"},
+		{"internal", http.StatusInternalServerError, "list: db closed", "internal_server_error"},
+		{"too many", http.StatusTooManyRequests, "clone rate limit exceeded (max 5 per hour)", "too_many_requests"},
 	}
 	for _, tc := range cases {
 		tc := tc
@@ -45,19 +46,22 @@ func TestWriteError_ShapeAndHeaders(t *testing.T) {
 			if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
 				t.Fatalf("body did not decode as ErrorResponse: %v (raw=%q)", err, rr.Body.String())
 			}
-			if body.Error != tc.message {
-				t.Errorf("body.Error: want %q, got %q", tc.message, body.Error)
+			if body.Error.Message != tc.message {
+				t.Errorf("body.error.message: want %q, got %q", tc.message, body.Error.Message)
+			}
+			if body.Error.Code != tc.wantCode {
+				t.Errorf("body.error.code: want %q, got %q", tc.wantCode, body.Error.Code)
 			}
 			if body.Status != tc.status {
-				t.Errorf("body.Status: want %d, got %d", tc.status, body.Status)
+				t.Errorf("body.status: want %d, got %d", tc.status, body.Status)
 			}
 		})
 	}
 }
 
-// TestWriteError_NoTrailingHeaders verifies that writeError commits
-// the status before writing the body. Regression for the pre-r60 bug
-// where two handlers in handler.go called writeJSON before
+// TestWriteError_StatusCommittedBeforeBody verifies that writeError
+// commits the status before writing the body. Regression for the
+// pre-r60 bug where two handlers in handler.go called writeJSON before
 // WriteHeader, causing the status to silently default to 200.
 func TestWriteError_StatusCommittedBeforeBody(t *testing.T) {
 	rr := httptest.NewRecorder()
@@ -71,16 +75,15 @@ func TestWriteError_StatusCommittedBeforeBody(t *testing.T) {
 	}
 }
 
-// TestWriteErrorWithDetails_MergesExtras pins the extended-envelope
+// TestWriteErrorWithDetails_NestedDetails pins the extended-envelope
 // contract: handlers that need additional structured fields alongside
-// `error` + `status` (e.g. the gauntlet credits gate which surfaces
-// balance / needed / quota) get them merged in without breaking the
-// base contract. Decoders that only know ErrorResponse must still
-// pull a populated Error + Status pair, AND callers that look for
-// the extras must find them at the top level.
-func TestWriteErrorWithDetails_MergesExtras(t *testing.T) {
+// `error.code` + `error.message` (e.g. the gauntlet credits gate which
+// surfaces balance / needed / quota) get them nested under
+// `error.details` so the envelope shape stays stable regardless of
+// which fields a handler ships.
+func TestWriteErrorWithDetails_NestedDetails(t *testing.T) {
 	rr := httptest.NewRecorder()
-	writeErrorWithDetails(rr, http.StatusPaymentRequired, "insufficient_credits", map[string]any{
+	writeErrorCodeWithDetails(rr, http.StatusPaymentRequired, "insufficient_credits", "not enough credits", map[string]any{
 		"balance": 7,
 		"needed":  5,
 	})
@@ -88,97 +91,150 @@ func TestWriteErrorWithDetails_MergesExtras(t *testing.T) {
 	if rr.Code != http.StatusPaymentRequired {
 		t.Errorf("status: want 402, got %d", rr.Code)
 	}
-	if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
-		t.Errorf("Content-Type: want application/json, got %q", ct)
-	}
-	if rr.Header().Get("X-Content-Type-Options") != "nosniff" {
-		t.Errorf("X-Content-Type-Options: want nosniff, got %q", rr.Header().Get("X-Content-Type-Options"))
-	}
 
-	// Base ErrorResponse fields must be present.
-	var base ErrorResponse
-	if err := json.Unmarshal(rr.Body.Bytes(), &base); err != nil {
+	var body ErrorResponse
+	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
 		t.Fatalf("body did not decode as ErrorResponse: %v (raw=%q)", err, rr.Body.String())
 	}
-	if base.Error != "insufficient_credits" {
-		t.Errorf("body.error: want %q, got %q", "insufficient_credits", base.Error)
+	if body.Error.Code != "insufficient_credits" {
+		t.Errorf("body.error.code: want %q, got %q", "insufficient_credits", body.Error.Code)
 	}
-	if base.Status != http.StatusPaymentRequired {
-		t.Errorf("body.status: want 402, got %d", base.Status)
+	if body.Error.Message != "not enough credits" {
+		t.Errorf("body.error.message: want %q, got %q", "not enough credits", body.Error.Message)
+	}
+	if body.Status != http.StatusPaymentRequired {
+		t.Errorf("body.status: want 402, got %d", body.Status)
 	}
 
-	// Extras must round-trip too.
-	var full map[string]any
-	if err := json.Unmarshal(rr.Body.Bytes(), &full); err != nil {
-		t.Fatalf("full body decode: %v", err)
+	details, ok := body.Error.Details.(map[string]any)
+	if !ok {
+		t.Fatalf("body.error.details: want map, got %T (%v)", body.Error.Details, body.Error.Details)
 	}
-	if got, _ := full["balance"].(float64); int(got) != 7 {
-		t.Errorf("balance: want 7, got %v", full["balance"])
+	if got, _ := details["balance"].(float64); int(got) != 7 {
+		t.Errorf("details.balance: want 7, got %v", details["balance"])
 	}
-	if got, _ := full["needed"].(float64); int(got) != 5 {
-		t.Errorf("needed: want 5, got %v", full["needed"])
+	if got, _ := details["needed"].(float64); int(got) != 5 {
+		t.Errorf("details.needed: want 5, got %v", details["needed"])
 	}
 }
 
-// TestWriteErrorWithDetails_DropsReservedKeys verifies that callers
-// cannot overwrite the unified `error` / `status` discriminator from
-// the details map. The unified contract wins so frontend decoders
-// remain stable even if a handler accidentally passes a clashing key.
-func TestWriteErrorWithDetails_DropsReservedKeys(t *testing.T) {
-	rr := httptest.NewRecorder()
-	writeErrorWithDetails(rr, http.StatusForbidden, "forbidden", map[string]any{
-		"error":  "OVERRIDDEN", // must be ignored
-		"status": 999,           // must be ignored
-		"reason": "policy_x",
-	})
-
-	var body map[string]any
-	if err := json.Unmarshal(rr.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode: %v (raw=%q)", err, rr.Body.String())
-	}
-	if got, _ := body["error"].(string); got != "forbidden" {
-		t.Errorf("error: caller override leaked, want %q got %q", "forbidden", got)
-	}
-	if got, _ := body["status"].(float64); int(got) != http.StatusForbidden {
-		t.Errorf("status: caller override leaked, want %d got %v", http.StatusForbidden, body["status"])
-	}
-	if got, _ := body["reason"].(string); got != "policy_x" {
-		t.Errorf("reason: want %q, got %q", "policy_x", got)
-	}
-}
-
-// TestWriteErrorWithDetails_NilDetailsBehavesLikeWriteError pins the
-// degenerate case: a handler that has no extras to share should still
-// be safe to call this helper (it just becomes a writeError
-// equivalent), so we don't have to keep two paths in sync.
-func TestWriteErrorWithDetails_NilDetailsBehavesLikeWriteError(t *testing.T) {
+// TestWriteErrorWithDetails_NilDetailsOmitsField pins the degenerate
+// case: a handler that has no extras to share should still be safe to
+// call this helper, AND the wire body must NOT include a null/empty
+// "details" field. Decoders that only know about ErrorBody.Code +
+// Message stay clean.
+func TestWriteErrorWithDetails_NilDetailsOmitsField(t *testing.T) {
 	rr := httptest.NewRecorder()
 	writeErrorWithDetails(rr, http.StatusBadRequest, "missing field", nil)
 
 	if rr.Code != http.StatusBadRequest {
 		t.Errorf("status: want 400, got %d", rr.Code)
 	}
+	raw := rr.Body.String()
+	if strings.Contains(raw, `"details"`) {
+		t.Errorf("nil details should be omitted from wire body, got %q", raw)
+	}
+	var body ErrorResponse
+	if err := json.Unmarshal([]byte(raw), &body); err != nil {
+		t.Fatalf("decode: %v (raw=%q)", err, raw)
+	}
+	if body.Error.Message != "missing field" || body.Status != http.StatusBadRequest {
+		t.Errorf("body: want {missing field, 400}, got %+v", body)
+	}
+}
+
+// TestWriteErrorCode_ExplicitCodeOverridesStatusDerived pins that
+// handlers with a domain-specific slug (e.g. csrf_invalid,
+// insufficient_credits) get their code emitted verbatim, not
+// overwritten by the http.StatusText-derived default.
+func TestWriteErrorCode_ExplicitCodeOverridesStatusDerived(t *testing.T) {
+	rr := httptest.NewRecorder()
+	writeErrorCode(rr, http.StatusForbidden, "csrf_invalid", "bad token")
+
 	var body ErrorResponse
 	if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if body.Error != "missing field" || body.Status != http.StatusBadRequest {
-		t.Errorf("body: want {missing field, 400}, got %+v", body)
+	if body.Error.Code != "csrf_invalid" {
+		t.Errorf("body.error.code: want csrf_invalid, got %q", body.Error.Code)
+	}
+	if body.Error.Message != "bad token" {
+		t.Errorf("body.error.message: want %q, got %q", "bad token", body.Error.Message)
 	}
 }
 
 // TestErrorResponse_JSONSchema pins the public JSON field names so
 // existing frontend / third-party clients don't break on a rename.
 func TestErrorResponse_JSONSchema(t *testing.T) {
-	payload, err := json.Marshal(ErrorResponse{Error: "boom", Status: 500})
+	payload, err := json.Marshal(ErrorResponse{
+		Error:     ErrorBody{Code: "internal_server_error", Message: "boom"},
+		RequestID: "abc123",
+		Status:    500,
+	})
 	if err != nil {
 		t.Fatalf("marshal: %v", err)
 	}
 	s := string(payload)
-	if !strings.Contains(s, `"error":"boom"`) {
-		t.Errorf("expected \"error\" field, got %s", s)
+	for _, want := range []string{
+		`"error":{`,
+		`"code":"internal_server_error"`,
+		`"message":"boom"`,
+		`"request_id":"abc123"`,
+		`"status":500`,
+	} {
+		if !strings.Contains(s, want) {
+			t.Errorf("expected substring %q in payload, got %s", want, s)
+		}
 	}
-	if !strings.Contains(s, `"status":500`) {
-		t.Errorf("expected \"status\" field, got %s", s)
+}
+
+// TestErrorResponse_RequestIDRoundTrips pins the integration: when
+// RequestIDMiddleware has set X-Request-Id on the response headers
+// before the handler runs, writeError must pull it back and include
+// it in the body so error logs from the browser console can be
+// correlated against server logs without a separate trace fetch.
+func TestErrorResponse_RequestIDRoundTrips(t *testing.T) {
+	rr := httptest.NewRecorder()
+	rr.Header().Set(RequestIDHeader, "test-trace-deadbeef")
+
+	writeError(rr, http.StatusBadRequest, "bad input")
+
+	if got := rr.Header().Get(RequestIDHeader); got != "test-trace-deadbeef" {
+		t.Errorf("response X-Request-Id header: want test-trace-deadbeef, got %q", got)
+	}
+	var body ErrorResponse
+	if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if body.RequestID != "test-trace-deadbeef" {
+		t.Errorf("body.request_id: want test-trace-deadbeef, got %q", body.RequestID)
+	}
+}
+
+// TestDefaultCodeForStatus pins the http.StatusText → snake_case
+// derivation for the codes that handlers most commonly emit.
+func TestDefaultCodeForStatus(t *testing.T) {
+	cases := []struct {
+		status int
+		want   string
+	}{
+		{http.StatusBadRequest, "bad_request"},
+		{http.StatusUnauthorized, "unauthorized"},
+		{http.StatusForbidden, "forbidden"},
+		{http.StatusNotFound, "not_found"},
+		{http.StatusMethodNotAllowed, "method_not_allowed"},
+		{http.StatusConflict, "conflict"},
+		{http.StatusPaymentRequired, "payment_required"},
+		{http.StatusTooManyRequests, "too_many_requests"},
+		{http.StatusInternalServerError, "internal_server_error"},
+		{http.StatusBadGateway, "bad_gateway"},
+		{http.StatusServiceUnavailable, "service_unavailable"},
+		{http.StatusGatewayTimeout, "gateway_timeout"},
+		{499, "error_499"}, // unknown status falls back
+	}
+	for _, tc := range cases {
+		if got := defaultCodeForStatus(tc.status); got != tc.want {
+			t.Errorf("defaultCodeForStatus(%d): want %q, got %q", tc.status, tc.want, got)
+		}
 	}
 }

@@ -224,8 +224,8 @@ func TestOpenAPIValidate_UnknownRoute(t *testing.T) {
 				if body.Status != http.StatusNotFound {
 					t.Errorf("body.status: want 404, got %d", body.Status)
 				}
-				if !strings.Contains(body.Error, "OpenAPI") {
-					t.Errorf("body.error should mention OpenAPI, got %q", body.Error)
+				if !strings.Contains(body.Error.Message, "OpenAPI") {
+					t.Errorf("body.error.message should mention OpenAPI, got %q", body.Error.Message)
 				}
 			}
 			lines := rec.snapshot()
@@ -393,8 +393,8 @@ func TestOpenAPIValidate_ResponseValidation_RejectsBadStatus(t *testing.T) {
 	if body.Status != http.StatusInternalServerError {
 		t.Errorf("body.status: want 500, got %d", body.Status)
 	}
-	if !strings.Contains(strings.ToLower(body.Error), "openapi") {
-		t.Errorf("body.error: want OpenAPI mention, got %q", body.Error)
+	if !strings.Contains(strings.ToLower(body.Error.Message), "openapi") {
+		t.Errorf("body.error.message: want OpenAPI mention, got %q", body.Error.Message)
 	}
 	lines := rec.snapshot()
 	foundLog := false
