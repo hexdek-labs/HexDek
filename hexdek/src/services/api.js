@@ -67,6 +67,7 @@ export const api = {
   getGames: (limit = 20) => request(`/api/games?limit=${limit}`),
   getGame: (id) => request(`/api/games/${id}`),
   getGameReport: (id) => request(`/api/games/${id}/report`),
+  getGameSummary: (id) => request(`/api/games/${id}/summary`),
   getLiveStats: () => request('/api/live/stats'),
   getLiveGame: () => request('/api/live/game'),
   getLiveELO: () => request('/api/live/elo'),
