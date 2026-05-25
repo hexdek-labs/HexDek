@@ -1,6 +1,7 @@
 package gameengine
 
 import (
+	"sort"
 	"strconv"
 	"strings"
 
@@ -285,14 +286,57 @@ func resolveChoice(gs *GameState, src *Permanent, e *gameast.Choice) {
 	}
 
 	// Delegate mode selection to Hat if available (§601.2c).
+	//
+	// R60 round 5 — for pick > 1 (Cryptic Command, Charms, Mardu Charm,
+	// commands and other multi-mode spells) the pre-fix path called
+	// ChooseMode ONCE and resolved ONE mode, regardless of `pick`. The
+	// "fallback: first N in order" path below was the only thing
+	// honoring pick > 1, and it only fired when no Hat was present. So
+	// every multi-mode spell cast by an AI-driven seat under-resolved.
+	//
+	// Fix: loop ChooseMode `pick` times. Between calls, remove the
+	// chosen mode from the slice the hat sees so it can't re-pick the
+	// same option (the hat may also use its own follow-up-pick detection
+	// to bias toward synergistic complements — see yggdrasil
+	// ChooseMode's same-source diversity logic). Resolve all chosen
+	// effects in PRINTED ORDER per CR §608.2g — modes resolve in the
+	// order they appear on the card, NOT the order they were chosen.
 	seatIdx := 0
 	if src != nil {
 		seatIdx = src.Controller
 	}
 	if seatIdx >= 0 && seatIdx < len(gs.Seats) && gs.Seats[seatIdx] != nil && gs.Seats[seatIdx].Hat != nil {
-		chosen := gs.Seats[seatIdx].Hat.ChooseMode(gs, seatIdx, e.Options)
-		if chosen >= 0 && chosen < len(e.Options) {
-			ResolveEffect(gs, src, e.Options[chosen])
+		hat := gs.Seats[seatIdx].Hat
+
+		// Working slices: `remaining` is what we present to ChooseMode;
+		// `remainingIdx` maps each entry back to its original position
+		// in e.Options so we can resolve in printed order at the end.
+		remaining := make([]gameast.Effect, len(e.Options))
+		copy(remaining, e.Options)
+		remainingIdx := make([]int, len(e.Options))
+		for i := range remainingIdx {
+			remainingIdx[i] = i
+		}
+
+		chosenOriginalIdx := make([]int, 0, pick)
+		for picks := 0; picks < pick && len(remaining) > 0; picks++ {
+			localPick := hat.ChooseMode(gs, seatIdx, remaining)
+			if localPick < 0 || localPick >= len(remaining) {
+				break
+			}
+			chosenOriginalIdx = append(chosenOriginalIdx, remainingIdx[localPick])
+			// Remove the picked entry from both slices to prevent
+			// duplicate-mode picks on subsequent iterations.
+			remaining = append(remaining[:localPick], remaining[localPick+1:]...)
+			remainingIdx = append(remainingIdx[:localPick], remainingIdx[localPick+1:]...)
+		}
+
+		if len(chosenOriginalIdx) > 0 {
+			// Resolve in printed order per CR §608.2g.
+			sort.Ints(chosenOriginalIdx)
+			for _, idx := range chosenOriginalIdx {
+				ResolveEffect(gs, src, e.Options[idx])
+			}
 			return
 		}
 	}
