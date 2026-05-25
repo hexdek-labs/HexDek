@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useParams } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { Panel, KV, Bar, Tag, Btn, Tape } from '../components/chrome'
 import SummaryActions from '../components/SummaryActions'
 import { api, cardArtUrl } from '../services/api'
@@ -22,6 +22,10 @@ import {
   kindMeta,
   resolveBookmarkKeyAction,
 } from '../utils/replayBookmarks'
+import {
+  parseShareParams,
+  buildShareUrl,
+} from '../utils/replayShare'
 
 // ── API gaps for full report fidelity ──────────────────────────────────
 // CompletedGame currently exposes: game_id, commanders[], deck_keys[],
@@ -259,6 +263,18 @@ const ReplayScrubber = ({ game, commanders }) => {
   const gameId = game?.game_id
   const [bookmarks, setBookmarks] = useState([])
   const [bookmarkKind, setBookmarkKind] = useState(DEFAULT_BOOKMARK_KIND)
+  // Focused seat (0..3) for the share link's optional &seat=. null
+  // means "no seat highlighted" — the seat card outline thickens
+  // when this is set. Click any seat-card header to toggle focus.
+  const [focusedSeat, setFocusedSeat] = useState(null)
+  // Toast for the "share" button feedback. null when idle, a string
+  // when the URL was just copied (auto-clears after ~2s).
+  const [shareToast, setShareToast] = useState(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  // Track whether we've already consumed an initial ?t=/&seat= for
+  // THIS game so a later URL edit (back / forward) re-applies, but a
+  // normal scrub doesn't keep snapping back.
+  const consumedInitialParamsRef = useRef({ gameId: null, payload: '' })
 
   // Load bookmarks when the game id changes. This effect intentionally
   // calls setState — it's the only way to react to a foreign data source
@@ -296,6 +312,32 @@ const ReplayScrubber = ({ game, commanders }) => {
     }
     return chosen
   }
+
+  // Deep-link consumption. When the URL carries ?t=N (& optionally
+  // &seat=I), jump the scrubber to that turn and highlight that seat.
+  // The ref-guard re-applies only when the params or game change, so
+  // a user scrubbing past the shared moment doesn't get yanked back.
+  useEffect(() => {
+    if (totalTurns === 0) return
+    const lastTurn = timeline[totalTurns - 1].turn
+    const seatCount = timeline[0]?.seats?.length || 0
+    const { turn, seat } = parseShareParams(searchParams, { maxTurn: lastTurn, maxSeats: seatCount })
+    const payload = `${turn}|${seat}`
+    const consumed = consumedInitialParamsRef.current
+    if (consumed.gameId === gameId && consumed.payload === payload) return
+    consumedInitialParamsRef.current = { gameId, payload }
+    // External-sync effect: react to a foreign data source (URL
+    // query params) keyed off the gameId + searchParams. The
+    // cascading-renders lint rule doesn't have a way to express
+    // this; ref-guard above ensures we only setState when the URL
+    // payload genuinely changes.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (turn != null) { setTurnIdx(idxAtTurn(turn)); setPlaying(false) }
+    if (seat != null) setFocusedSeat(seat)
+    // searchParams comes from useSearchParams; idxAtTurn / timeline
+    // close over the same render snapshot, no extra deps needed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, gameId, totalTurns])
 
   // Auto-play tick — advances one turn at the user-selected speed.
   useEffect(() => {
@@ -499,8 +541,57 @@ const ReplayScrubber = ({ game, commanders }) => {
             )
           })()}
         </div>
+        {/* Share this exact moment. Builds a URL with ?t=N (and
+            &seat=I if a seat is focused), copies it to the clipboard,
+            and writes the same params into the address bar via
+            setSearchParams so a manual refresh lands on the same
+            moment. The "SHARED" toast auto-clears after ~2s. */}
+        <div style={{ display: 'flex', gap: 6, marginLeft: 8, padding: '0 4px', borderLeft: '1px solid var(--rule-2)', alignItems: 'center' }}>
+          <Btn
+            sm
+            arrow={null}
+            title={`Copy link to T${turnAtIdx(turnIdx)}${focusedSeat != null ? ` · SEAT.${String(focusedSeat + 1).padStart(2, '0')}` : ''}`}
+            onClick={() => {
+              const turn = turnAtIdx(turnIdx)
+              const next = new URLSearchParams(searchParams)
+              next.set('t', String(turn))
+              if (focusedSeat != null) next.set('seat', String(focusedSeat))
+              else next.delete('seat')
+              // Reflect the share state in the URL bar without pushing
+              // a history entry per share click.
+              setSearchParams(next, { replace: true })
+              if (typeof window !== 'undefined') {
+                const url = buildShareUrl(window.location.origin + window.location.pathname, {
+                  turn,
+                  seat: focusedSeat,
+                })
+                if (navigator?.clipboard?.writeText) {
+                  navigator.clipboard.writeText(url).then(
+                    () => { setShareToast('LINK COPIED') },
+                    () => { setShareToast('COPY FAILED') },
+                  )
+                } else {
+                  setShareToast('LINK READY')
+                }
+                setTimeout(() => setShareToast(null), 2000)
+              }
+            }}
+          >
+            ⇪ SHARE
+          </Btn>
+          {shareToast && (
+            <span className="t-xs" style={{ color: 'var(--ok)', fontWeight: 700 }}>
+              {shareToast}
+            </span>
+          )}
+        </div>
         <span className="t-xs muted" style={{ marginLeft: 8 }}>
           ACTIVE: {activeSeat >= 0 ? `SEAT.${String(activeSeat + 1).padStart(2, '0')} · ${(commanders[activeSeat] || 'UNKNOWN').split(',')[0].toUpperCase()}` : '—'}
+          {focusedSeat != null && (
+            <span style={{ marginLeft: 6, color: 'var(--accent)' }}>
+              · FOCUS: SEAT.{String(focusedSeat + 1).padStart(2, '0')}
+            </span>
+          )}
         </span>
       </div>
 
@@ -629,15 +720,43 @@ const ReplayScrubber = ({ game, commanders }) => {
           const cmdr = commanders[i] || 'UNKNOWN'
           const perms = s.battlefield || []
           const isActive = i === activeSeat
+          const isFocused = i === focusedSeat
           const lifePct = Math.max(0, Math.min(100, (s.life / 40) * 100))
-          const accent = s.lost ? 'var(--danger)' : isActive ? 'var(--accent)' : 'var(--rule-2)'
+          const accent = isFocused ? 'var(--ok)'
+            : s.lost ? 'var(--danger)'
+            : isActive ? 'var(--accent)'
+            : 'var(--rule-2)'
           return (
-            <div key={i} className="panel" style={{ padding: 0, borderColor: accent }}>
+            <div
+              key={i}
+              className="panel"
+              style={{
+                padding: 0,
+                borderColor: accent,
+                borderWidth: isFocused ? 2 : undefined,
+              }}
+            >
               <div style={{ padding: '8px 10px' }}>
-                <div className="flex justify-between items-center" style={{ marginBottom: 4 }}>
+                <div
+                  className="flex justify-between items-center"
+                  style={{ marginBottom: 4, cursor: 'pointer' }}
+                  onClick={() => setFocusedSeat(prev => prev === i ? null : i)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      setFocusedSeat(prev => prev === i ? null : i)
+                    }
+                  }}
+                  aria-pressed={isFocused}
+                  aria-label={`${isFocused ? 'Unfocus' : 'Focus'} seat ${i + 1} for share link`}
+                  title={isFocused ? 'Click to unfocus (omit from share URL)' : 'Click to focus this seat in the share URL'}
+                >
                   <span className="t-xs muted">SEAT.{String(i + 1).padStart(2, '0')}</span>
                   {s.lost && <Tag kind="bad">ELIMINATED</Tag>}
                   {!s.lost && isActive && <Tag kind="ok" solid>ACTIVE</Tag>}
+                  {isFocused && <Tag kind="ok">FOCUS</Tag>}
                 </div>
                 <div className="t-md" style={{ fontWeight: 700, lineHeight: 1.2 }}>
                   {cmdr.split(',')[0].toUpperCase()}
