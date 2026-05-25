@@ -294,34 +294,51 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.1,
 	},
 	ArchetypeAristocrats: {
-		// R60 round 2 audit retune. DrainEngine=2.0 correctly highest
-		// (Blood Artist / Zulaport Cutthroat / Marionette Master), but
-		// three load-bearing dimensions were under-weighted:
-		//   - BoardPresence: every sac trigger needs a body. Aristocrats
-		//     decks spew tokens (Pawn of Ulamog, Bitterblossom, Ophiomancer)
-		//     specifically to keep the sac engine fueled.
-		//   - ActivationTempo: sac outlets ARE activated abilities
-		//     (Carrion Feeder, Viscera Seer, Yawgmoth Thran Physician,
-		//     Goblin Bombardment, Phyrexian Altar). The whole gameplan
-		//     loop is "make body, tap/activate sac outlet, repeat."
-		//   - GraveyardValue: Karmic Guide / Reveillark / Sun Titan /
-		//     Marionette Master / Skullclamp loop the same creatures
-		//     turn after turn. Treating GY as a thin resource (0.8)
-		//     missed that recursion IS the deck.
-		BoardPresence:          1.1, // was 0.6 — sac engine needs MORE bodies than midrange
+		// R60 round 2 audit retune (PR #179) bumped BoardPresence /
+		// GraveyardValue / ActivationTempo off the original midrange-ish
+		// baseline. R60-13 follow-up pushes three of those dials further
+		// after Aristocrats wins came back leaning on infinite-sac lines
+		// the evaluator was under-counting:
+		//   - GraveyardValue 1.2 → 1.5: persist-recursion bodies live in
+		//     the graveyard between cycles — Reassembling Skeleton, Blood-
+		//     ghast, Gravecrawler, Nether Traitor, Bridge from Below. With
+		//     Phyrexian Altar / Pitiless Plunderer mana, every body in GY
+		//     is a fresh sac trigger. 1.2 still ranked the graveyard below
+		//     a generic Midrange GraveyardValue * 2.4; 1.5 puts it in the
+		//     "graveyard IS the engine" tier alongside Reanimator (1.8) /
+		//     LandsMatter (1.3) instead of clustering with value-engine
+		//     decks that merely benefit from recursion.
+		//   - BoardPresence 1.1 → 1.3: sac fodder is the throttle on every
+		//     drain trigger. Pawn of Ulamog, Bitterblossom, Ophiomancer,
+		//     Krenko, Mob Boss, Endrek Sahr, Ant Queen — tokens-per-turn
+		//     IS the deck's rate-of-damage. 1.1 read as "midrange creature
+		//     deck"; 1.3 pushes the evaluator to actually keep the board
+		//     wider than the table can wipe.
+		//   - ComboProximity 1.0 → 1.4: Aristocrats overlaps heavily with
+		//     two-card infinite-sac combos — Mikaeus, the Unhallowed +
+		//     Triskelion / Walking Ballista / Geralf's Messenger (infinite
+		//     damage); Persist creature + sac outlet + Melira / Mikaeus
+		//     (infinite ETBs → infinite drain via Blood Artist); Reassem-
+		//     bling Skeleton + Phyrexian Altar + Pitiless Plunderer (infin-
+		//     ite drain + mana); Murderous Redcap + persist enabler.
+		//     1.0 weighted these "infinite_sac" lines as Midrange-tier
+		//     side plans; 1.4 lets the evaluator commit to the combo turn
+		//     when the pieces line up, matching Mill (1.4) / CountersMatter
+		//     (still below Combo's 2.0 to keep DrainEngine the headliner).
+		BoardPresence:          1.3, // r60-13: was 1.1, was 0.6 — sac fodder is the throttle
 		CardAdvantage:          0.7,
 		ManaAdvantage:          0.5,
 		LifeResource:           0.5,
-		ComboProximity:         1.0,
+		ComboProximity:         1.4, // r60-13: was 1.0 — Mikaeus+Triskelion / Persist+sac
 		ThreatExposure:         0.5,
 		CommanderProgress:      0.8,
-		GraveyardValue:         1.2, // was 0.8
+		GraveyardValue:         1.5, // r60-13: was 1.2, was 0.8 — persist bodies live in GY
 		DrainEngine:            2.0,
 		ArtifactSynergy:        0.3,
 		EnchantmentSynergy:     0.3,
 		OpponentGraveyardThreat: 0.6,
 		PartnerSynergy:         0.4,
-		ActivationTempo:        0.9, // was 0.5
+		ActivationTempo:        0.9,
 		ToolboxBreadth:         0.3,
 		ThreatTrajectory:       0.4,
 		StackInteraction:       0.4,
