@@ -466,6 +466,71 @@ func LoadDeckGameOutcomes(ctx context.Context, db *sql.DB, deckKey string) ([]De
 	return out, rows.Err()
 }
 
+// HeadToHeadGame is one game where both ownerA and ownerB had seats.
+// Same shape regardless of which owner won (the caller compares
+// Winner to SeatA / SeatB to decide). Used by /api/players/compare.
+type HeadToHeadGame struct {
+	GameID     int64
+	FinishedAt int64
+	Winner     int // -1 = draw
+	SeatA      int
+	SeatB      int
+}
+
+// LoadPlayerHeadToHead returns up to limit games (newest first) in
+// which BOTH ownerA and ownerB had a seat. The query joins
+// showmatch_game_seat to itself via game_id and filters each side
+// against showmatch_elo to get the owner — same join pattern as
+// LoadOwnerGames so the existing idx_showmatch_elo_owner index is
+// hit on both legs.
+//
+// Dedupe by game_id (one row per unique game), keeping the first
+// (sa.seat, sb.seat) pair observed — the caller doesn't need every
+// (A-deck × B-deck) cartesian row when both players brought multiple
+// decks to the same game. limit==0 means no cap.
+func LoadPlayerHeadToHead(ctx context.Context, sqlDB *sql.DB, ownerA, ownerB string, limit int) ([]HeadToHeadGame, error) {
+	if ownerA == "" || ownerB == "" || ownerA == ownerB {
+		return []HeadToHeadGame{}, nil
+	}
+	q := `SELECT g.game_id, g.finished_at, g.winner, sa.seat, sb.seat
+	      FROM showmatch_game_seat sa
+	      JOIN showmatch_game_seat sb ON sb.game_id = sa.game_id AND sb.seat != sa.seat
+	      JOIN showmatch_game g ON g.game_id = sa.game_id
+	      JOIN showmatch_elo ea ON ea.deck_key = sa.deck_key AND ea.owner = ?
+	      JOIN showmatch_elo eb ON eb.deck_key = sb.deck_key AND eb.owner = ?
+	      ORDER BY g.finished_at DESC`
+	args := []any{ownerA, ownerB}
+	if limit > 0 {
+		// Pull limit*4 worth of raw rows; dedupe will collapse them.
+		// 4 covers the worst case where each player has 4 decks in
+		// a multi-seat Commander game (highly unlikely but bounded).
+		q += " LIMIT ?"
+		args = append(args, limit*4)
+	}
+	rows, err := sqlDB.QueryContext(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("head-to-head query: %w", err)
+	}
+	defer rows.Close()
+	seen := make(map[int64]bool)
+	var out []HeadToHeadGame
+	for rows.Next() {
+		var g HeadToHeadGame
+		if err := rows.Scan(&g.GameID, &g.FinishedAt, &g.Winner, &g.SeatA, &g.SeatB); err != nil {
+			return nil, err
+		}
+		if seen[g.GameID] {
+			continue
+		}
+		seen[g.GameID] = true
+		out = append(out, g)
+		if limit > 0 && len(out) >= limit {
+			break
+		}
+	}
+	return out, rows.Err()
+}
+
 // MetaSeatOutcome is one (game, seat) row reduced to the fields the
 // meta-trends endpoint needs: when the game finished, which deck the
 // seat piloted, and whether that seat won. The caller resolves
