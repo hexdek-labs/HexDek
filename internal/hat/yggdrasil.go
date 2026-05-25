@@ -2715,6 +2715,113 @@ func commanderClockNearLethal(gs *gameengine.GameState, dealerSeat int, c *gamee
 	return false
 }
 
+// hasDeathPayoffValue reports whether a creature's death generates
+// meaningful value — either via a self-referential death trigger
+// ("when ~ dies"), a damage-taken trigger ("when ~ is dealt damage"),
+// or a recursion keyword (persist / undying / unearth) that brings
+// the creature back. These are the "trick attack" archetype: the
+// creature WANTS to attack into a clean block because the trade is
+// the engine.
+//
+// Examples this catches:
+//   - Reassembling Skeleton (own dies, return on activation — paired
+//     with an explicit sac outlet, but the recursion is the value)
+//   - Hangarback Walker ("when ~ dies, create N Thopters")
+//   - Murderous Redcap (persist — comes back 1/1 with damage trigger)
+//   - Bloodghast ("landfall: return ~ from your graveyard")
+//   - Doomed Traveler ("when ~ dies, create a Spirit token")
+//   - Sakura-Tribe Elder, Solemn Simulacrum (sac/die for land + draw)
+//
+// Why oracle-text + keyword rather than a per-card list: the corpus
+// is too big to hand-curate, but the textual shape of "death IS the
+// win" effects is extremely consistent ("when this dies" / "whenever
+// ~ dies" / "if ~ dies this turn" / "~ enters with ... persist /
+// undying"). Same approach as the existing hasAttackTriggerValue
+// helper — see the kept-in-sync comment there.
+func hasDeathPayoffValue(c *gameengine.Card) bool {
+	if c == nil {
+		return false
+	}
+	// Persist / Undying / Unearth — strict recursion keywords. The
+	// creature comes back after dying, so the swing-into-block trade
+	// is at worst neutral (-1/-1 or +1/+1 counter restored) and
+	// usually positive (Murderous Redcap re-triggers the damage on
+	// re-ETB, Geralf's Messenger pings on the persist return).
+	ot := gameengine.OracleTextLower(c)
+	if ot == "" {
+		return false
+	}
+	if strings.Contains(ot, "persist") ||
+		strings.Contains(ot, "undying") ||
+		strings.Contains(ot, "unearth") {
+		return true
+	}
+	// Self-referential death trigger. Matches "when ~ dies" and the
+	// generic "creature dies" pattern only when paired with a
+	// self-reference. "When a creature dies" without "this" / "~" is
+	// a global trigger (Blood Artist) — those creatures get value
+	// from OTHER deaths, not from attacking and dying themselves, so
+	// they don't qualify as trick-attackers.
+	if strings.Contains(ot, "when this dies") ||
+		strings.Contains(ot, "when this creature dies") ||
+		strings.Contains(ot, "if this dies") ||
+		strings.Contains(ot, "whenever this dies") {
+		return true
+	}
+	// Damage-taken trigger ("whenever ~ is dealt damage, ...") — the
+	// creature converts incoming damage into value (Mardu Hateblade
+	// family, Stuffy Doll, Boros Reckoner).
+	if strings.Contains(ot, "is dealt damage") ||
+		strings.Contains(ot, "when this is dealt damage") {
+		return true
+	}
+	return false
+}
+
+// hasSacFuelValue reports whether the controller has a sac outlet on
+// the battlefield AND this creature is cheap enough (≤ 2 mana) to
+// serve as one-shot fuel. The combination means the attacker can
+// swing into a block, get blocked (or not), and on a bad trade the
+// outlet drains the creature into a triggered effect (Phyrexian
+// Altar mana, Goblin Bombardment damage, Yawgmoth draw, Viscera
+// Seer scry).
+//
+// This is the "intentional chump" signal: the attacker is a token /
+// 1-drop / 2-drop the controller is happy to lose because the sac
+// outlet converts the loss into value the block was supposed to
+// deny. The block becomes a tempo trade where WE pick the timing.
+func hasSacFuelValue(gs *gameengine.GameState, seatIdx int, p *gameengine.Permanent) bool {
+	if gs == nil || p == nil || p.Card == nil ||
+		seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return false
+	}
+	if gameengine.ManaCostOf(p.Card) > 2 {
+		return false
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return false
+	}
+	for _, other := range seat.Battlefield {
+		if other == nil || other.Card == nil || other == p {
+			continue
+		}
+		ot := gameengine.OracleTextLower(other.Card)
+		// "sacrifice a creature:" with a colon is the activated-ability
+		// shape ("Sacrifice a creature: Add {B}." / "Sacrifice a
+		// creature: Target creature gets +2/+0."). Skip free-floating
+		// "sacrifice a creature" in costs of one-shot spells — those
+		// aren't on the battlefield as standing outlets.
+		if strings.Contains(ot, "sacrifice a creature:") ||
+			strings.Contains(ot, "sacrifice another creature:") ||
+			strings.Contains(ot, "sacrifice another creature,") ||
+			strings.Contains(ot, ", sacrifice a creature:") {
+			return true
+		}
+	}
+	return false
+}
+
 // -- UCB1 machinery (shared across all decision types) --
 
 func (h *YggdrasilHat) ucb1(key string, baseValue float64) float64 {
@@ -4628,6 +4735,23 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 		if p.Card != nil && h.isValueEngineKey(p.Card) {
 			val += 0.15
 		}
+		// R60 — trick attacks. Creatures whose death IS the value (die-
+		// triggers like Hangarback Walker / Doomed Traveler, persist /
+		// undying / unearth recursion, damage-taken triggers) should
+		// swing INTO clean blocks — the trade is the engine. Adds a
+		// fixed bump so the value loop tilts them above the threshold;
+		// the strategic-shield below also bypasses the lose-to-clean-
+		// block prune for the same set.
+		if p.Card != nil && hasDeathPayoffValue(p.Card) {
+			val += 0.20
+		}
+		// R60 — intentional chump. Cheap (≤2 CMC) attackers when a sac
+		// outlet is on the board: the block becomes a tempo trade we
+		// choose to take (Phyrexian Altar mana, Goblin Bombardment
+		// damage, Viscera Seer scry on the would-be casualty).
+		if hasSacFuelValue(gs, seatIdx, p) {
+			val += 0.15
+		}
 		// Commander damage matters — always worth sending.
 		if p.Card != nil && isCommanderCard(gs, seatIdx, p.Card) {
 			val += 0.10
@@ -4722,6 +4846,14 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 							commanderClockNearLethal(gs, seatIdx, p.Card, 13) {
 							strategic = true
 						}
+					}
+					// R60 trick-attack shield. Death-payoff and sac-fuel
+					// attackers WANT a clean block — pruning them as
+					// "would die on every target" loses the engine. Both
+					// signals are oracle / battlefield scoped; see
+					// hasDeathPayoffValue + hasSacFuelValue for the shape.
+					if hasDeathPayoffValue(p.Card) || hasSacFuelValue(gs, seatIdx, p) {
+						strategic = true
 					}
 					if !strategic && !canSwingProfitably(gs, p, opponents) {
 						keep = false
