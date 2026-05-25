@@ -242,6 +242,9 @@ func runAnalytics(decksPath, astPath, oraclePath string, seed int64, seats, maxT
 	// Per-commander summary.
 	printCommanderSummary(result)
 
+	// Per-deck aggregates (winrate, turn-to-finisher, common matchups).
+	printDeckAggregates(result)
+
 	// Co-trigger interactions.
 	printCoTriggers(result)
 
@@ -436,6 +439,39 @@ func printCommanderSummary(r *tournament.TournamentResult) {
 		fmt.Printf("  %s:\n", name)
 		fmt.Printf("    Win%%=%.1f%%  AvgDmg=%.1f  AvgTaken=%.1f  AvgSpells=%.1f  AvgRemoval=%.1f  PeakBoard=%.1f\n",
 			100*float64(cs.wins)/g, cs.avgDmg/g, cs.avgTaken/g, cs.avgSpells/g, cs.avgRemoval/g, cs.avgBoard/g)
+	}
+}
+
+func printDeckAggregates(r *tournament.TournamentResult) {
+	aggs := analytics.AggregateDecks(r.Analyses, r.CommanderNames)
+	if len(aggs) == 0 {
+		return
+	}
+	fmt.Println()
+	fmt.Printf("%s%sPER-DECK AGGREGATES:%s\n", colorBold, colorCyan, colorReset)
+	for i := range aggs {
+		d := &aggs[i]
+		ttf := "n/a"
+		if d.FinisherSampleSize > 0 {
+			ttf = fmt.Sprintf("%.1f (n=%d)", d.AvgTurnToFinisher, d.FinisherSampleSize)
+		}
+		fmt.Printf("  %s:\n", d.CommanderName)
+		fmt.Printf("    Games=%d  Wins=%d  Win%%=%.1f%%  TurnToFinisher=%s  AvgGameLen=%.1f\n",
+			d.GamesPlayed, d.GamesWon, d.WinRate*100, ttf, d.AvgGameLength)
+		if len(d.Matchups) > 0 {
+			fmt.Printf("    Top matchups: ")
+			limit := 3
+			if limit > len(d.Matchups) {
+				limit = len(d.Matchups)
+			}
+			parts := make([]string, 0, limit)
+			for j := 0; j < limit; j++ {
+				m := &d.Matchups[j]
+				parts = append(parts, fmt.Sprintf("vs %s %d-%d (%.0f%%)",
+					m.Opponent, m.Wins, m.Losses, m.WinRate*100))
+			}
+			fmt.Println(strings.Join(parts, "  |  "))
+		}
 	}
 }
 
