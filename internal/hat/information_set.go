@@ -75,7 +75,11 @@ func (h *YggdrasilHat) multiRolloutForCard(gs *gameengine.GameState, seatIdx int
 		resolveStack(clone)
 		gameengine.StateBasedActions(clone)
 
-		for t := 0; t < rolloutDepth; t++ {
+		depth := rolloutDepth
+		if h.Strategy != nil {
+			depth = rolloutDepthFor(h.Strategy.Archetype)
+		}
+		for t := 0; t < depth; t++ {
 			if clone.CheckEnd() {
 				break
 			}

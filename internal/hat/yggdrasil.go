@@ -8525,7 +8525,11 @@ func (h *YggdrasilHat) simulateRollout(gs *gameengine.GameState, seatIdx int, ac
 	resolveStack(clone)
 	gameengine.StateBasedActions(clone)
 
-	for i := 0; i < rolloutDepth; i++ {
+	depth := rolloutDepth
+	if h.Strategy != nil {
+		depth = rolloutDepthFor(h.Strategy.Archetype)
+	}
+	for i := 0; i < depth; i++ {
 		if clone.CheckEnd() {
 			break
 		}
