@@ -178,3 +178,59 @@ Narrow seed-31415 reproducer (game 237 only, single signature):
 ```bash
 go run ./cmd/hexdek-loki --games 240 --seed 31415 --invariant trigger-completeness
 ```
+
+---
+
+## Post-#184 confirmation re-run (2026-05-24)
+
+After PR #184 (Gisa-opp-only TriggerCompleteness false-positive fix —
+`opponentOnlyCreatureDiesTriggers` map in invariants.go) shipped, the
+mega-stress was re-run identically (5 seeds × 2,000 chaos games + 10K
+nightmare boards each):
+
+| Seed | Chaos (2K games) | Δ vs original | Nightmare (10K boards) | Δ |
+|:----:|:----------------:|:-------------:|:----------------------:|:-:|
+| 2024 | **0** | flat | **0** | flat |
+| 2025 | **0** | flat | **0** | flat |
+| 31415 (π) | **0** | **2 → 0 (−100%)** | **2** | flat (separate residual) |
+| 271828 (e) | **0** | flat | **2** | flat (separate residual) |
+| 161803 (φ) | **0** | flat | **0** | flat |
+
+### Headline
+
+- **Chaos phase: 0 violations across all 5 seeds × 10,000 chaos games
+  = 0 in 10,000.** Every chaos-phase signature this mega-stress run
+  surfaced is now closed.
+- **Nightmare phase: 4 violations across 2 seeds × 10,000 boards each
+  = 4 in 50,000 (0.008% per board).** Same CardIdentity signature
+  as the original run — unchanged because PR #184 fixed the chaos-
+  side Gisa false positive, not the nightmare CardIdentity family.
+- **4 of 5 seeds now fully clean both phases** (up from 3/5 in the
+  original mega-stress).
+
+### Status update vs prior verdict
+
+The original mega-stress concluded "substantively clean but NOT
+officially clean at the wide-seed level" because of two signatures.
+With PR #184 merged:
+
+- Gisa TriggerCompleteness false-positive: **CLOSED** (chaos goes
+  from 2-in-10,000 → 0-in-10,000 across the wide-seed sweep)
+- Nightmare CardIdentity: **STILL OPEN** (4-in-50,000 / 2 boards
+  per affected seed)
+
+The "wide-seed officially clean" bar requires zero violations across
+all 5 seeds. Chaos phase clears that bar; nightmare does not. The
+verdict is now: **officially clean at the chaos level across the
+wide seed sweep; nightmare phase still has one bounded long-tail
+signature**.
+
+### Reproducer (post-#184)
+
+```bash
+go run ./cmd/hexdek-loki --games 2000 --seed 2024     # expect: 0/0
+go run ./cmd/hexdek-loki --games 2000 --seed 2025     # expect: 0/0
+go run ./cmd/hexdek-loki --games 2000 --seed 31415    # expect: 0 chaos / 2 nightmare
+go run ./cmd/hexdek-loki --games 2000 --seed 271828   # expect: 0 chaos / 2 nightmare
+go run ./cmd/hexdek-loki --games 2000 --seed 161803   # expect: 0/0
+```
