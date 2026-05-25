@@ -787,6 +787,23 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
 
+  /api/decks/{owner}/{id}/freya-export:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+    get:
+      tags: [decks]
+      operationId: getFreyaExport
+      summary: External-consumer JSON envelope bundling Freya's full strategy.json analysis with deck context (commander, color identity, card list) and R60 extras (system_tags, user_archetype_feedback, version_hash). Schema-versioned for stable third-party integration (EDHrec, external deck-builders). Read-only — returns 404 when strategy.json doesn't yet exist rather than auto-kicking-off Freya like /analysis does.
+      responses:
+        "200":
+          description: Full Freya export envelope with schema_version, generated_at, deck, analysis (passthrough), and extras.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
   /api/decks/{owner}/{id}/archetype-history:
     parameters:
       - $ref: '#/components/parameters/OwnerParam'
