@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { Panel, KV, Bar, Tag, Btn, Tape } from '../components/chrome'
+import SummaryActions from '../components/SummaryActions'
 import { api, cardArtUrl } from '../services/api'
 
 // ── API gaps for full report fidelity ──────────────────────────────────
@@ -598,7 +599,13 @@ export default function Report() {
         {/* Result block */}
         {featuredGame && (
           <div className="panel" style={{ padding: 0, gridColumn: '1 / -1' }}>
-            <div className="panel-hd"><span>RESULT BLOCK</span><span>GAME.{featuredGame.game_id}</span></div>
+            <div className="panel-hd">
+              <span>RESULT BLOCK</span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 12 }}>
+                <SummaryActions gameId={featuredGame.game_id} />
+                <span>GAME.{featuredGame.game_id}</span>
+              </span>
+            </div>
             <div className="result-block-grid" style={{ padding: '18px 22px' }}>
               <div>
                 <div className="t-xs muted">OUTCOME</div>
