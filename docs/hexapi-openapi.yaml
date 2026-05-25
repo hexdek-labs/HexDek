@@ -40,6 +40,8 @@ info:
     identifier: MIT
 
 servers:
+  - url: /
+    description: Same-origin (default for runtime validation middleware — host-agnostic).
   - url: https://hexdek.dev
     description: Production (DARKSTAR engine behind MISTY Caddy).
   - url: http://localhost:8090
@@ -164,7 +166,7 @@ components:
       properties:
         deck_key:
           type: string
-          description: `<owner>/<id>` form.
+          description: "`<owner>/<id>` form."
           examples: ["alice/korvold"]
         commander:
           type: string
@@ -737,7 +739,7 @@ paths:
       summary: Get Freya analysis output (archetype, combos, win lines, roles).
       responses:
         "200":
-          description: Freya strategy + deck profile JSON. Returns `{status:"analyzing"}` if analysis is in-flight.
+          description: 'Freya strategy + deck profile JSON. Returns `{status:"analyzing"}` if analysis is in-flight.'
           content:
             application/json:
               schema: { $ref: '#/components/schemas/EmptyOk' }
@@ -1009,7 +1011,7 @@ paths:
       summary: Get current gauntlet state for a deck.
       responses:
         "200":
-          description: Gauntlet result (`status:"none"` when no run has been launched).
+          description: 'Gauntlet result (`status:"none"` when no run has been launched).'
           content:
             application/json:
               schema:
@@ -1038,7 +1040,7 @@ paths:
         (`complete` | `error`) or the client disconnects.
       responses:
         "200":
-          description: SSE snapshot stream. Each frame's `data:` line is a JSON `GauntletResult`.
+          description: "SSE snapshot stream. Each frame's `data:` line is a JSON `GauntletResult`."
           content:
             text/event-stream:
               schema:
@@ -1253,6 +1255,78 @@ paths:
         "500": { $ref: '#/components/responses/InternalError' }
         "503": { $ref: '#/components/responses/ServiceUnavailable' }
 
+  /api/games/compare:
+    get:
+      tags: [games]
+      operationId: compareGames
+      summary: Side-by-side comparison of two completed games.
+      description: |
+        Embeds rich Heimdall summaries when observation snapshots
+        exist for both ids; degrades to "db_only" summaries for older
+        games (MVPDiff is empty in that case, but outcome / turns /
+        shared-deck diffs are still populated).
+      parameters:
+        - name: a
+          in: query
+          required: true
+          description: First game id (integer, > 0).
+          schema:
+            type: integer
+            minimum: 1
+        - name: b
+          in: query
+          required: true
+          description: Second game id (integer, > 0, distinct from `a`).
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Comparison document.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
+  /api/players/{id}/trends:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Player slug (same validation rules as `owner`).
+        schema:
+          type: string
+          pattern: '^[A-Za-z0-9_.-]+$'
+    get:
+      tags: [profile]
+      operationId: getPlayerTrends
+      summary: Rolling-window trend metrics for a player.
+      description: |
+        Returns the player's recent-form snapshot — wins, win rate,
+        archetype split, opponent breakdown — over a sliding window of
+        the most recent games. When the player has no recorded games,
+        returns a well-formed payload with `games_played: 0` and
+        empty breakdowns so the frontend can render an empty state.
+      parameters:
+        - name: window
+          in: query
+          required: false
+          description: Rolling window size (1..200; default 30).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 30
+      responses:
+        "200":
+          description: Player trends document.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+
   /api/spectate/spawn:
     post:
       tags: [spectate]
@@ -1311,7 +1385,7 @@ paths:
       tags: [live]
       operationId: spectatorWs
       summary: WebSocket — live game spectator feed.
-      description: WebSocket upgrade endpoint (not modelled by OpenAPI). Connect with `Sec-WebSocket-Version: 13`.
+      description: "WebSocket upgrade endpoint (not modelled by OpenAPI). Connect with `Sec-WebSocket-Version: 13`."
       responses:
         "101":
           description: Switching Protocols → WebSocket.
