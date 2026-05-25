@@ -182,10 +182,35 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.2,
 	},
 	ArchetypeRamp: {
-		BoardPresence:          0.6,
+		// R60 round 4 audit retune. ManaAdvantage=1.8 was correctly the
+		// highest dimension, but the profile was indistinguishable from a
+		// generic "we play lands" deck on the other axes. Three changes:
+		//   - ManaAdvantage: 1.8 → 2.0 to anchor the signature dimension
+		//     at the standard 2.0 used by every other custom profile
+		//     (Storm/Mill/Voltron/Aristocrats/Reanimator/Spellslinger/
+		//     Tribal/Stax/Selfmill/Enchantress/Artifacts/Lifegain all
+		//     anchor their highest at 2.0). 1.8 was the same under-anchor
+		//     bug Lifegain had pre-R60.
+		//   - BoardPresence: 0.6 → 1.1 to reflect big_creature_density.
+		//     Ramp's whole point is dumping fatties early — Craterhoof
+		//     Behemoth, Vorinclex Voice of Hunger, Avenger of Zendikar,
+		//     Eldrazi titans (Ulamog/Kozilek/Emrakul), Worldspine Wurm,
+		//     End-Raze Forerunners, Hornet Queen, Apex Devastator. A ramp
+		//     deck with 9 mana and no body on the board has failed its
+		//     gameplan. 0.6 ranked board presence BELOW even the Combo
+		//     profile's 0.4-tier creature contempt, which was wrong: ramp
+		//     cares about the board even though it doesn't care about
+		//     individual small creatures.
+		//   - LifeResource: 0.5 → 0.7 to land at midrange-neutral. The
+		//     prior 0.5 made ramp eager to trade life for mana, but ramp
+		//     decks aren't Storm/Mill — they need to SURVIVE the early
+		//     turns where they're tapped out ramping, then sit behind a
+		//     fatty. Life equals time-to-fatty. Neutral midrange-tier
+		//     (0.7) is the correct read.
+		BoardPresence:          1.1, // was 0.6 — big_creature_density (Craterhoof / Vorinclex / Eldrazi)
 		CardAdvantage:          0.7,
-		ManaAdvantage:          1.8,
-		LifeResource:           0.5,
+		ManaAdvantage:          2.0, // was 1.8 — anchor signature at standard 2.0
+		LifeResource:           0.7, // was 0.5 — neutral (life = time-to-fatty)
 		ComboProximity:         0.3,
 		ThreatExposure:         0.6,
 		CommanderProgress:      0.8,
