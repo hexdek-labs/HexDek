@@ -3,6 +3,7 @@ package main
 import (
 	"regexp"
 	"strings"
+	"sync"
 )
 
 // oracletext — tiny token-/regex-based helpers for cleaning Scryfall
@@ -160,6 +161,133 @@ func hasKeyword(ot, kw string) bool {
 	if kw == "" {
 		return false
 	}
-	re := regexp.MustCompile(`\b` + regexp.QuoteMeta(kw) + `\b`)
+	re := keywordRegexFor(kw)
 	return re.MatchString(ot)
 }
+
+// keywordRegexCache memoises `\b<kw>\b` patterns so the per-card hot path
+// (called 100s of times per deck × 100 cards) avoids regex re-compilation.
+// The cache is tiny — Magic keyword vocabulary is bounded — so a plain map
+// with a sync.Mutex is enough.
+var (
+	keywordRegexCache = map[string]*regexp.Regexp{}
+	keywordRegexMu    sync.Mutex
+)
+
+func keywordRegexFor(kw string) *regexp.Regexp {
+	keywordRegexMu.Lock()
+	defer keywordRegexMu.Unlock()
+	if re, ok := keywordRegexCache[kw]; ok {
+		return re
+	}
+	re := regexp.MustCompile(`\b` + regexp.QuoteMeta(kw) + `\b`)
+	keywordRegexCache[kw] = re
+	return re
+}
+
+// CleanForScan returns oracle text lowercased, with parenthesized reminder
+// text stripped and whitespace collapsed. This is the canonical input shape
+// for substring-style scanners that should not leak on reminder text — every
+// fix in the issue log (cascade EmptiesLibrary, flashback graveyard_curate,
+// embalm/eternalize/encore graveyard engines) hinges on this normalization.
+//
+// Callers that want raw oracle text (e.g. for mana symbol scanning, where
+// the reminder gloss *is* the structural cue) should not use this.
+func CleanForScan(ot string) string {
+	return strings.ToLower(stripReminder(ot))
+}
+
+// SplitClauses splits oracle text into sentence-sized clauses. Splits
+// happen at:
+//
+//   - newlines (paragraph breaks between separate abilities)
+//   - sentence-terminating "." followed by whitespace
+//   - the activated-ability cost/effect divider ":" — the cost segment and
+//     the effect segment are functionally separate clauses
+//
+// Trailing whitespace is trimmed; empty clauses are dropped. Mana symbols
+// in braces ({1.5} doesn't exist but {2} and friends do) are preserved
+// unchanged because the split is on `". "`, not on a bare period.
+//
+// Use this to bound substring matches to a single clause. Without it,
+// "return target creature to its owner's hand. Then draw a card." in a
+// bounce-then-draw spell can co-fire a graveyard-recursion classifier
+// looking for `return` + `graveyard` (when the actual `graveyard` token
+// appears in a completely unrelated reminder or ability line).
+func SplitClauses(ot string) []string {
+	if ot == "" {
+		return nil
+	}
+	// Pre-normalize: newlines → " | " sentinel so the period-splitter can
+	// also split on paragraph boundaries without losing the cue.
+	withSentinels := strings.ReplaceAll(ot, "\n", " | ")
+	// Split on `". "` first (sentence break with following whitespace).
+	pieces := []string{}
+	for _, sent := range clauseSplitRE.Split(withSentinels, -1) {
+		sent = strings.TrimSpace(sent)
+		if sent == "" {
+			continue
+		}
+		// Then split each sentence at the sentinel.
+		for _, piece := range strings.Split(sent, "|") {
+			piece = strings.TrimSpace(piece)
+			piece = strings.TrimRight(piece, ".")
+			if piece == "" {
+				continue
+			}
+			// Activation cost / effect split — only meaningful when a `:`
+			// appears outside braces (mana costs are `{T}:` style, so the
+			// `:` is fine to split on; the mana cost token itself stays
+			// in the left clause).
+			if idx := topLevelColon(piece); idx >= 0 {
+				left := strings.TrimSpace(piece[:idx])
+				right := strings.TrimSpace(piece[idx+1:])
+				if left != "" {
+					pieces = append(pieces, left)
+				}
+				if right != "" {
+					pieces = append(pieces, right)
+				}
+				continue
+			}
+			pieces = append(pieces, piece)
+		}
+	}
+	return pieces
+}
+
+var clauseSplitRE = regexp.MustCompile(`\.\s+`)
+
+// topLevelColon returns the index of the first `:` that is not inside a
+// brace pair (so `{T}: draw a card` splits at the colon after `{T}`, but
+// `{2}{U}{U}` won't surface a colon). Returns -1 when no top-level colon
+// exists.
+func topLevelColon(s string) int {
+	depth := 0
+	for i, r := range s {
+		switch r {
+		case '{':
+			depth++
+		case '}':
+			if depth > 0 {
+				depth--
+			}
+		case ':':
+			if depth == 0 {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
+// HasKeywordIn reports whether any clause in `ot` contains `kw` as a whole
+// word. Useful when the caller wants to know `kw` appears AT ALL but cares
+// only about word-boundary matches (so "storm" doesn't fire on "Storm
+// Crow", "morph" doesn't fire on "polymorph", "infect" doesn't fire on
+// "infectious", "transform" doesn't fire on "transformation").
+//
+// Equivalent to hasKeyword(ot, kw) but the explicit "In" name documents
+// the boundary semantics at the call site, where the previous code reads
+// strings.Contains(ot, kw).
+func HasKeywordIn(ot, kw string) bool { return hasKeyword(ot, kw) }
