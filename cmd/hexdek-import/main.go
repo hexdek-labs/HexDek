@@ -18,6 +18,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -32,6 +33,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hexdek/hexdek/internal/db"
 	"github.com/hexdek/hexdek/internal/moxfield"
 )
 
@@ -41,7 +43,14 @@ func main() {
 	outputDir := flag.String("output", "", "output directory for deck files (overrides --owner)")
 	owner := flag.String("owner", "imported", "owner/group folder name for the deck (saves to data/decks/<owner>/)")
 	refresh := flag.Bool("refresh", false, "invalidate the cached Moxfield deck JSON before fetching (default: serve from ~/.cache/hexdek/moxfield if fresher than HEXDEK_MOXFIELD_CACHE_TTL)")
+	validateFormat := flag.Bool("validate-format", false, "after import, check each card against the deck's declared format (commander/brawl/modern/...) via Scryfall and print any banned/not-legal violations as warnings (non-fatal)")
 	flag.Parse()
+
+	if *validateFormat {
+		// Env-gated so runImportMoxfield (testable core) can pick it up
+		// without changing its signature.
+		_ = os.Setenv("HEXDEK_IMPORT_VALIDATE_FORMAT", "1")
+	}
 
 	if *moxfieldURL == "" && *archidektURL == "" {
 		fmt.Println("hexdek-import — import decks from Moxfield and Archidekt")
@@ -57,6 +66,7 @@ func main() {
 		fmt.Println("  --owner NAME      Owner/group folder (default: imported)")
 		fmt.Println("  --output DIR      Output directory (overrides --owner)")
 		fmt.Println("  --refresh         Invalidate the Moxfield deck cache before fetching")
+		fmt.Println("  --validate-format Check each card's Scryfall legality against the deck's declared format")
 		os.Exit(1)
 	}
 
@@ -136,7 +146,61 @@ func runImportMoxfield(url, outputDir string) (string, error) {
 	}
 	log.Printf("saved %s (%d bytes)", outPath, len(sb.String()))
 	printDeckSummary(text)
+
+	if os.Getenv("HEXDEK_IMPORT_VALIDATE_FORMAT") != "" {
+		runFormatValidation(deckID)
+	}
 	return outPath, nil
+}
+
+// runFormatValidation hits Scryfall (via the rate-limited oracle
+// package) for every unique card in the deck's commander+mainboard and
+// reports any cards whose declared-format legality is banned /
+// not_legal / restricted. Best-effort: on any setup error (DB open
+// fail, format unknown) the function logs a notice and returns
+// without failing the import. The flag is opt-in (--validate-format
+// or HEXDEK_IMPORT_VALIDATE_FORMAT=1) so the default fast-path stays
+// network-free beyond the one Moxfield deck fetch.
+func runFormatValidation(deckID string) {
+	// Use an in-memory SQLite cache so the validation is self-contained
+	// and doesn't depend on (or pollute) the user's persistent oracle
+	// cache. The cost is that legalities won't be cached across imports
+	// — fine for an opt-in flag that already accepts the Scryfall RTT.
+	d, err := db.Open(":memory:")
+	if err != nil {
+		log.Printf("  [validate] could not open temp oracle cache: %v (skipping)", err)
+		return
+	}
+	defer d.Close()
+
+	data, err := moxfield.FetchDeckMeta("https://moxfield.com/decks/" + deckID)
+	if err != nil {
+		log.Printf("  [validate] could not fetch deck meta for %s: %v (skipping)", deckID, err)
+		return
+	}
+	// FetchDeckMeta primes the in-process moxfield cache; reach into it
+	// for the full deck data via the public FetchDeckByID path so we
+	// have the actual card list. ValidateFormatFromDeck takes the raw
+	// apiResponse — but that type is unexported. Use the exported
+	// helper ValidateFormatFromURL instead (added in this branch).
+	report := moxfield.ValidateFormatFromURL(context.Background(), d, "https://moxfield.com/decks/"+deckID)
+	if report == nil {
+		log.Printf("  [validate] no validation report produced (skipping)")
+		return
+	}
+
+	log.Printf("  [validate] format=%q  violations=%d  skipped=%d  (deck name: %q)",
+		report.Format, len(report.Violations), len(report.SkippedUnknown), data.Name)
+	for _, v := range report.Violations {
+		log.Printf("  [validate]   ! %s", v.String())
+	}
+	if len(report.SkippedUnknown) > 0 && len(report.SkippedUnknown) <= 5 {
+		log.Printf("  [validate]   (skipped legality check for %d card(s) with no Scryfall data: %v)",
+			len(report.SkippedUnknown), report.SkippedUnknown)
+	} else if len(report.SkippedUnknown) > 5 {
+		log.Printf("  [validate]   (skipped legality check for %d card(s) with no Scryfall data)",
+			len(report.SkippedUnknown))
+	}
 }
 
 // ---------------------------------------------------------------------------

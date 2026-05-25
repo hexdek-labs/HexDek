@@ -166,7 +166,8 @@ CREATE TABLE IF NOT EXISTS card_oracle (
     image_uri_normal TEXT,                    -- Scryfall normal-size image URL
     image_uri_art    TEXT,                    -- art-crop image URL
     set_code         TEXT,
-    cached_at        INTEGER NOT NULL
+    cached_at        INTEGER NOT NULL,
+    legalities       TEXT NOT NULL DEFAULT '' -- JSON {format: "legal|not_legal|banned|restricted"}
 );
 
 CREATE INDEX IF NOT EXISTS idx_card_oracle_name ON card_oracle(name);
