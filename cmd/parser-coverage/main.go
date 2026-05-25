@@ -98,6 +98,8 @@ func main() {
 	historyLabel := flag.String("history-label", "", "optional label for this history entry (e.g., 'r60', '2026-05-24'); shown in future delta summaries")
 	chartPath := flag.String("chart", "", "optional path to render a progress chart from the --history JSONL (.svg = line chart, .md = sparkline + table)")
 	chartTitle := flag.String("chart-title", "Parser Coverage Progress", "title used in the rendered chart")
+	trendPath := flag.String("trend", "", "optional path to write a release-note-style trend report comparing the latest --history entry vs a baseline (use '-' for stdout)")
+	trendBaseline := flag.String("trend-baseline", "oldest", "baseline selector for --trend: 'oldest' (default), 'previous', a label, or a YYYY-MM-DD date")
 	bySetPath := flag.String("by-set", "", "optional path to write a markdown report grouping uncovered cards by Magic set, ranked by uncovered count")
 	bySetTopN := flag.Int("by-set-top", 0, "limit the --by-set report to the top N sets by uncovered count (0 = include every set)")
 	byTypePath := flag.String("by-type", "", "optional path to write a markdown report grouping uncovered cards by primary card type (Creature/Instant/Sorcery/Land/…)")
@@ -247,6 +249,18 @@ func main() {
 			log.Fatalf("appendHistory: %v", err)
 		}
 		log.Printf("appended history entry to %s (label=%q)", *historyPath, *historyLabel)
+	}
+
+	if *trendPath != "" {
+		if strings.TrimSpace(*historyPath) == "" {
+			log.Fatalf("--trend requires --history <path> to know which history file to read")
+		}
+		if err := writeTrendReport(*trendPath, *historyPath, *trendBaseline); err != nil {
+			log.Fatalf("writeTrendReport: %v", err)
+		}
+		if *trendPath != "" && *trendPath != "-" {
+			log.Printf("wrote %s (trend vs baseline=%q)", *trendPath, *trendBaseline)
+		}
 	}
 
 	if strings.TrimSpace(*chartPath) != "" {
