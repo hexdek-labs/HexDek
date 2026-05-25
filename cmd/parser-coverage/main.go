@@ -74,6 +74,7 @@ type result struct {
 	Class       classification
 	OracleText  string
 	TypeLine    string
+	SetName     string
 	ParseErrors []string
 }
 
@@ -90,6 +91,8 @@ func main() {
 	csvIncludeOK := flag.Bool("csv-include-ok", false, "include OK and OK_VANILLA rows in the CSV export (default: uncovered only)")
 	historyPath := flag.String("history", "", "optional JSONL file to append this run's stats to; if file exists, prints a delta-vs-previous summary")
 	historyLabel := flag.String("history-label", "", "optional label for this history entry (e.g., 'r60', '2026-05-24'); shown in future delta summaries")
+	bySetPath := flag.String("by-set", "", "optional path to write a markdown report grouping uncovered cards by Magic set, ranked by uncovered count")
+	bySetTopN := flag.Int("by-set-top", 0, "limit the --by-set report to the top N sets by uncovered count (0 = include every set)")
 	flag.Parse()
 
 	log.Printf("loading AST corpus from %s ...", *astPath)
@@ -145,6 +148,19 @@ func main() {
 			log.Fatalf("writeCSV: %v", err)
 		}
 		log.Printf("wrote %s (csv export, include_ok=%v)", *csvExport, *csvIncludeOK)
+	}
+
+	if strings.TrimSpace(*bySetPath) != "" {
+		groups := groupBySet(results)
+		if err := writeBySetReport(*bySetPath, groups, *bySetTopN); err != nil {
+			log.Fatalf("writeBySetReport: %v", err)
+		}
+		shown := len(groups)
+		if *bySetTopN > 0 && *bySetTopN < shown {
+			shown = *bySetTopN
+		}
+		log.Printf("wrote %s (by-set report, %d sets shown of %d)", *bySetPath, shown, len(groups))
+		log.Printf("  %s", formatBySetSummary(groups, 5))
 	}
 
 	if strings.TrimSpace(*historyPath) != "" {
@@ -281,20 +297,20 @@ func loadOracle(path string) ([]oracleEntry, error) {
 func classify(e oracleEntry, corpus *astload.Corpus) result {
 	card, ok := corpus.Get(e.Name)
 	if !ok {
-		return result{Name: e.Name, Class: classMissing, OracleText: e.OracleText, TypeLine: e.TypeLine}
+		return result{Name: e.Name, Class: classMissing, OracleText: e.OracleText, TypeLine: e.TypeLine, SetName: e.SetName}
 	}
 	text := strings.TrimSpace(e.OracleText)
 	vanilla := text == "" || isBasicLand(e.TypeLine)
 	if !card.FullyParsed || len(card.ParseErrors) > 0 {
-		return result{Name: e.Name, Class: classPartial, OracleText: text, TypeLine: e.TypeLine, ParseErrors: card.ParseErrors}
+		return result{Name: e.Name, Class: classPartial, OracleText: text, TypeLine: e.TypeLine, SetName: e.SetName, ParseErrors: card.ParseErrors}
 	}
 	if len(card.Abilities) == 0 {
 		if vanilla {
-			return result{Name: e.Name, Class: classOKVanilla, OracleText: text, TypeLine: e.TypeLine}
+			return result{Name: e.Name, Class: classOKVanilla, OracleText: text, TypeLine: e.TypeLine, SetName: e.SetName}
 		}
-		return result{Name: e.Name, Class: classEmptyAST, OracleText: text, TypeLine: e.TypeLine}
+		return result{Name: e.Name, Class: classEmptyAST, OracleText: text, TypeLine: e.TypeLine, SetName: e.SetName}
 	}
-	return result{Name: e.Name, Class: classOK, OracleText: text, TypeLine: e.TypeLine}
+	return result{Name: e.Name, Class: classOK, OracleText: text, TypeLine: e.TypeLine, SetName: e.SetName}
 }
 
 func isBasicLand(typeLine string) bool {
