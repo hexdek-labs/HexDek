@@ -726,7 +726,20 @@ export default function Spectator() {
         {/* All 4 seats — full width, above the fold */}
         <div className="spectator-seats">
           <div className="seat-grid">
-            {[0, 1, 3, 2].filter(i => i < seats.length).map(i => {
+            {(() => {
+              // Per-seat turn of elimination, pulled from the first
+              // ELIMINATION_KINDS log entry for that seat. Surfaced on
+              // the GG overlay so spectators can tell at a glance when
+              // each loser dropped — important context when scanning a
+              // mid-game spectator screen ("seat 2 went out on T14 to
+              // SBA 704.5b — has the mill axis stayed live since?").
+              const elimTurnBySeat = {}
+              for (const e of log) {
+                if (ELIMINATION_KINDS.has(e.kind) && e.seat != null && elimTurnBySeat[e.seat] == null) {
+                  elimTurnBySeat[e.seat] = e.turn
+                }
+              }
+              return [0, 1, 3, 2].filter(i => i < seats.length).map(i => {
               const s = seats[i]
               const e = eloByCommander[s.commander] || {}
               const delta = e.hex_delta || e.delta || 0
@@ -735,6 +748,7 @@ export default function Spectator() {
               const isActive = i === game.active_seat && !game.finished
               const isWinner = game.finished && game.winner === i
               const artUrl = cardArtUrl(s.commander)
+              const elimTurn = elimTurnBySeat[i]
 
               return (
                 <div key={i} className={`seat-panel${isWinner ? ' seat-panel--winner' : isActive ? ' seat-panel--active' : ''}`}>
@@ -768,11 +782,14 @@ export default function Spectator() {
                           fontSize: 28, fontWeight: 900, letterSpacing: '0.15em', color: 'var(--danger)',
                           opacity: 0.7, textShadow: '0 0 12px rgba(0,0,0,0.8)',
                         }}>GG</span>
-                        {s.loss_reason && (
+                        {(s.loss_reason || elimTurn != null) && (
                           <span style={{
                             fontSize: 9, fontWeight: 600, color: 'var(--danger)',
                             opacity: 0.6, marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em',
-                          }}>{s.loss_reason.replace(/\s*\(CR.*\)/, '')}</span>
+                          }}>
+                            {elimTurn != null && <>{rt(elimTurn)}{s.loss_reason ? ' · ' : ''}</>}
+                            {s.loss_reason?.replace(/\s*\(CR.*\)/, '')}
+                          </span>
                         )}
                       </div>
                     )}
@@ -850,7 +867,8 @@ export default function Spectator() {
                   </div>
                 </div>
               )
-            })}
+            })
+            })()}
           </div>
 
           {/* Turn status — single compact line */}
