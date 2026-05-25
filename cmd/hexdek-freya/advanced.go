@@ -1470,60 +1470,155 @@ func computeLandSwapSuggestions(dp *DeckProfile, report *FreyaReport) {
 // ---------------------------------------------------------------------------
 
 func buildPersonalityBlurb(dp *DeckProfile, report *FreyaReport) string {
-	arch := strings.ToLower(dp.PrimaryArchetype)
-	speed := "methodical"
-	if dp.AvgCMC < 2.5 {
-		speed = "lightning-fast"
-	} else if dp.AvgCMC < 3.0 {
-		speed = "agile"
-	} else if dp.AvgCMC > 3.8 {
-		speed = "slow but devastating"
-	}
-
-	var approach string
-	switch {
-	case containsAny(arch, "combo", "infinite", "storm"):
-		if dp.HasTutorAccess && report.NonLandTutorCount >= 5 {
-			approach = "It assembles its kill with surgical precision, tutoring combo pieces while holding up protection."
-		} else {
-			approach = "It digs aggressively for its combo pieces, racing to assemble a kill before opponents can disrupt it."
-		}
-	case containsAny(arch, "control", "stax"):
-		approach = "It grinds opponents into submission, answering threats while slowly accumulating an insurmountable advantage."
-	case containsAny(arch, "aggro", "go wide", "tribal"):
-		approach = "It floods the board and turns sideways, overwhelming opponents before they can stabilize."
-	case containsAny(arch, "voltron"):
-		approach = "It suits up its commander and swings for lethal, protecting its investment with shields and counters."
-	case containsAny(arch, "aristocrats"):
-		approach = "It feeds the death machine — sacrificing and recurring creatures in a loop of incremental drains that bypass combat entirely."
-	case containsAny(arch, "reanimator"):
-		approach = "It cheats massive threats into play from the graveyard, bypassing mana costs for devastating early haymakers."
-	case containsAny(arch, "enchantress"):
-		approach = "It weaves a web of enchantments, drawing cards off each one until the value engine becomes unstoppable."
-	case containsAny(arch, "lands"):
-		approach = "It turns land drops into a resource engine, triggering landfall chains that generate exponential value."
-	case containsAny(arch, "blink", "flicker"):
-		approach = "It blinks creatures in and out of existence, squeezing maximum value from every ETB trigger."
-	case containsAny(arch, "mill"):
-		approach = "It attacks libraries instead of life totals, grinding opponents out card by card until they draw from nothing."
-	case containsAny(arch, "superfriends"):
-		approach = "It deploys an army of planeswalkers, ticking up loyalty counters behind a wall of protection until ultimates end the game."
-	default:
-		approach = "It plays a flexible game, adapting its strategy based on the table and finding the right moment to strike."
-	}
-
-	var closer string
-	if dp.Bracket >= 4 {
-		closer = fmt.Sprintf("Built at bracket %d (%s), this is a deck that demands respect from turn one.", dp.Bracket, dp.BracketLabel)
-	} else if dp.WinLineCount >= 3 {
-		closer = fmt.Sprintf("With %d paths to victory, it always has a plan B.", dp.WinLineCount)
-	} else if dp.CommanderSynergy >= 0.50 {
-		closer = fmt.Sprintf("Tightly built around its commander's strengths, every card pulls its weight.")
-	} else {
-		closer = fmt.Sprintf("A solid %s build that rewards patient piloting.", dp.BracketLabel)
-	}
-
+	speed := describeSpeed(dp)
+	approach := describeApproach(dp, report)
+	closer := describeCloser(dp, report)
 	return fmt.Sprintf("This is a %s %s deck. %s %s", speed, dp.PrimaryArchetype, approach, closer)
+}
+
+// describeSpeed factors in both curve and ramp density. A 4.0 avg CMC with
+// 14 ramp pieces is "explosive" (the ramp is part of the plan), not "slow
+// but devastating" — and a 2.2 avg with no ramp is "lightning-fast"
+// regardless. Pure CMC alone misreads ramp decks.
+func describeSpeed(dp *DeckProfile) string {
+	switch {
+	case dp.AvgCMC < 2.5:
+		return "lightning-fast"
+	case dp.AvgCMC < 3.0:
+		return "agile"
+	case dp.AvgCMC > 3.8 && dp.RampCount >= 12:
+		return "explosive"
+	case dp.AvgCMC > 3.8 && dp.RampCount < 8:
+		return "lumbering"
+	case dp.AvgCMC > 3.8:
+		return "slow but devastating"
+	case dp.RampCount >= 12:
+		return "ramp-fueled"
+	default:
+		return "methodical"
+	}
+}
+
+func describeApproach(dp *DeckProfile, report *FreyaReport) string {
+	arch := strings.ToLower(dp.PrimaryArchetype)
+	switch {
+	case containsAny(arch, "storm"):
+		return "It chains rituals and cantrips into a single explosive turn, riding the storm count to a one-shot kill."
+	case containsAny(arch, "combo", "infinite"):
+		if dp.HasTutorAccess && report.NonLandTutorCount >= 5 {
+			return "It assembles its kill with surgical precision, tutoring combo pieces while holding up protection."
+		}
+		return "It digs aggressively for its combo pieces, racing to assemble a kill before opponents can disrupt it."
+	case containsAny(arch, "stax"):
+		return "It locks the table down with asymmetric resource denial, taxing every spell and untap until opponents have no moves left."
+	case containsAny(arch, "control"):
+		return "It answers threats one by one, drawing extra cards off the exchange until the table runs out of pressure."
+	case containsAny(arch, "voltron"):
+		return "It suits up its commander and swings for lethal, protecting its investment with shields and counters."
+	case containsAny(arch, "aristocrats"):
+		return "It feeds the death machine — sacrificing and recurring creatures in a loop of incremental drains that bypass combat entirely."
+	case containsAny(arch, "reanimator"):
+		return "It cheats massive threats into play from the graveyard, bypassing mana costs for devastating early haymakers."
+	case containsAny(arch, "enchantress"):
+		return "It weaves a web of enchantments, drawing cards off each one until the value engine becomes unstoppable."
+	case containsAny(arch, "artifact"):
+		return "It snowballs an artifact board into mana, draw, and lethal payoffs that win on overwhelming density."
+	case containsAny(arch, "lands"):
+		return "It turns land drops into a resource engine, triggering landfall chains that generate exponential value."
+	case containsAny(arch, "blink", "flicker"):
+		return "It blinks creatures in and out of existence, squeezing maximum value from every ETB trigger."
+	case containsAny(arch, "mill"):
+		return "It attacks libraries instead of life totals, grinding opponents out card by card until they draw from nothing."
+	case containsAny(arch, "superfriends"):
+		return "It deploys an army of planeswalkers, ticking up loyalty counters behind a wall of protection until ultimates end the game."
+	case containsAny(arch, "lifegain"):
+		return "It builds an unkillable life buffer and turns each gain trigger into incremental advantage, draining the table once the engine clicks."
+	case containsAny(arch, "spellslinger"):
+		return "It chains instants and sorceries to fuel magecraft and prowess payoffs, snowballing each spell into the next."
+	case containsAny(arch, "counters matter"):
+		return "It stacks +1/+1 counters and proliferates them across its board, turning a single threat into a lethal one in a turn cycle."
+	case containsAny(arch, "extra combats"):
+		return "It chains attack steps to swing for unblockable lethal in a single turn, weaponizing haste and double strike."
+	case containsAny(arch, "theft", "clone"):
+		return "It hijacks the strongest pieces on the table, turning opponents' threats and engines into its own win condition."
+	case containsAny(arch, "ninjutsu", "evasion"):
+		return "It tempos in cheap evasive creatures and ninjutsus bigger threats onto an unprotected board, racing damage past blockers."
+	case containsAny(arch, "discard", "hand attack"):
+		return "It strips opponents' hands before they can act, leaving the table topdecking while it deploys threats into empty boards."
+	case containsAny(arch, "tribal"):
+		return "It builds a tribal swarm — every creature pumps the next, and the lord effects compound until the board overwhelms."
+	case containsAny(arch, "aggro", "go wide"):
+		return "It floods the board and turns sideways, overwhelming opponents before they can stabilize."
+	case containsAny(arch, "ramp"):
+		return "It powers out mana well ahead of curve, then drops haymakers two turns before the table can answer them."
+	case containsAny(arch, "group hug"):
+		return "It hands out cards and mana to keep the table happy, then quietly tips the politics — and the win — its own way."
+	case containsAny(arch, "midrange"):
+		return "It trades resources efficiently, leaning on card-for-card value until its threats outclass whatever opponents have left."
+	default:
+		return "It plays a flexible game, adapting its strategy based on the table and finding the right moment to strike."
+	}
+}
+
+// describeCloser prefers naming the actual primary win line over a generic
+// "X paths to victory" count — readers want to know HOW the deck wins, not
+// just that it can. Falls back to bracket / synergy framing when the win
+// line is generic combat damage with no named finisher.
+func describeCloser(dp *DeckProfile, report *FreyaReport) string {
+	if note := finisherNote(dp, report); note != "" {
+		return note
+	}
+	if dp.Bracket >= 4 {
+		return fmt.Sprintf("Built at bracket %d (%s), this is a deck that demands respect from turn one.", dp.Bracket, dp.BracketLabel)
+	}
+	if dp.WinLineCount >= 3 {
+		return fmt.Sprintf("With %d paths to victory, it always has a plan B.", dp.WinLineCount)
+	}
+	if dp.CommanderSynergy >= 0.50 {
+		return "Tightly built around its commander's strengths, every card pulls its weight."
+	}
+	if dp.Bracket <= 2 {
+		return fmt.Sprintf("A casual %s build geared for table presence over speed.", dp.BracketLabel)
+	}
+	return fmt.Sprintf("A solid %s build that rewards patient piloting.", dp.BracketLabel)
+}
+
+// finisherNote names the primary win line when it points at a specific
+// combo or finisher card. Returns empty for generic combat damage with no
+// named card, so the caller can fall through to bracket/synergy framing.
+func finisherNote(dp *DeckProfile, report *FreyaReport) string {
+	if report == nil || report.WinLines == nil || len(report.WinLines.WinLines) == 0 {
+		return ""
+	}
+	wl := report.WinLines.WinLines[0]
+	pieces := strings.Join(wl.Pieces, " + ")
+	if pieces == "" {
+		return ""
+	}
+	backup := ""
+	if dp.WinLineCount >= 3 {
+		backup = fmt.Sprintf(" %d backup lines stand behind it.", dp.WinLineCount-1)
+	} else if dp.WinLineCount == 2 {
+		backup = " A backup line waits if the primary gets answered."
+	}
+	switch wl.Type {
+	case "infinite":
+		return fmt.Sprintf("The kill is %s — an infinite loop that ends the game outright.%s", pieces, backup)
+	case "determined":
+		return fmt.Sprintf("It closes through %s, a deterministic line that wins on resolution.%s", pieces, backup)
+	case "finisher":
+		return fmt.Sprintf("%s is the trigger that ends games, dropping the table from a stable board state to zero in one turn.%s", pieces, backup)
+	case "commander_damage":
+		if dp.Bracket >= 4 {
+			return fmt.Sprintf("21 commander damage from %s is the primary close — and the clock starts the turn it lands.", dp.Commander)
+		}
+		return fmt.Sprintf("21 commander damage from %s is the primary close.", dp.Commander)
+	case "alt_wincon":
+		return fmt.Sprintf("%s is an alternate-win condition the table has to answer specifically.%s", pieces, backup)
+	}
+	// "combat" and unknown types: don't name a generic Pieces string —
+	// caller falls back to bracket/synergy framing.
+	return ""
 }
 
 // ---------------------------------------------------------------------------
