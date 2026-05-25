@@ -2582,6 +2582,20 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 		}
 	}
 
+	// R60 Second Main Phase audit — Signal B: precombat main bonus
+	// for cards whose value-on-the-table evaporates if they sit in
+	// hand through combat (haste creatures, attack-trigger commanders,
+	// anthems, equipment). Boost is +0.30 in precombat_main so the
+	// cast ranking tilts ahead of generic CatDraw / CatRamp picks;
+	// gated off in postcombat_main (too late for this turn's combat).
+	// Sized to outweigh the typical CatDraw PhaseDevelop bonus
+	// (+0.10) and the mana-efficiency advantage of higher-CMC
+	// alternatives so a 1-mana haste creature actually wins over a
+	// 3-mana Divination in main1.
+	if gs != nil && gs.Phase == "precombat_main" && cardPrefersMain1(c) {
+		base += 0.30
+	}
+
 	return base
 }
 
@@ -2896,6 +2910,65 @@ func hasSacFuelValue(gs *gameengine.GameState, seatIdx int, p *gameengine.Perman
 			strings.Contains(ot, ", sacrifice a creature:") {
 			return true
 		}
+	}
+	return false
+}
+
+// cardPrefersMain1 reports whether a card wants to be cast in the
+// precombat main phase (rather than postcombat_main) because its
+// value is tied to THIS turn's combat:
+//
+//   - Haste creatures want to attack the turn they enter.
+//   - Attack-trigger commanders (Etali, Zur, Narset, Goblin Guide,
+//     Bonecrusher Giant) need to be in play before declare_attackers
+//     to swing for their value trigger.
+//   - Anthem effects ("creatures you control get +X/+X until end of
+//     turn" / "until your next turn") only buff a combat that hasn't
+//     happened yet; main2 is too late.
+//   - Equipment / aura cards with "equip" / "enchant creature" want
+//     to be deployed + attached before combat to make the swing
+//     bigger.
+//
+// Used by ChooseCastFromHand to bias the cast-vs-pass decision in
+// precombat_main toward cards whose value-on-the-table evaporates if
+// they sit in hand through the combat phase.
+func cardPrefersMain1(c *gameengine.Card) bool {
+	if c == nil {
+		return false
+	}
+	ot := gameengine.OracleTextLower(c)
+	if ot == "" {
+		return false
+	}
+	if strings.Contains(ot, "haste") {
+		return true
+	}
+	// Attack-trigger value (shares the substring shape with the
+	// existing hasAttackTriggerValue helper used by the attack-target
+	// pipeline — keep in sync; the helper is on a Card already).
+	if hasAttackTriggerValue(c) {
+		return true
+	}
+	// Anthem family — only buffs this turn's combat. "until end of
+	// turn" and "until your next turn" variants both qualify; static
+	// anthems (Glorious Anthem, Honor of the Pure) are also main1-
+	// preferring because the buff applies to the combat-step state.
+	if strings.Contains(ot, "creatures you control get +") {
+		return true
+	}
+	if strings.Contains(ot, "attacking creatures get +") {
+		return true
+	}
+	if strings.Contains(ot, "creatures you control gain") &&
+		(strings.Contains(ot, "haste") || strings.Contains(ot, "trample") ||
+			strings.Contains(ot, "first strike")) {
+		return true
+	}
+	// Equipment — the card itself wants to be deployed AND attached
+	// pre-combat. Bias the cast toward main1 so the engine's equip
+	// activation window in the same main phase can attach.
+	if typeLineContains(c, "equipment") {
+		return true
 	}
 	return false
 }
@@ -3858,6 +3931,21 @@ func (h *YggdrasilHat) ChooseCastFromHand(gs *gameengine.GameState, seatIdx int,
 			}
 		}
 		passBoost -= clockPressure
+	}
+	// R60 Second Main Phase audit — Signal A: main2 deploy push.
+	// In postcombat_main we're past the only meaningful combat
+	// window this turn; unused mana doesn't carry over (mana pools
+	// empty at end-of-each-step per CR §106.4). The archetype-based
+	// passBoost above represents "save mana for instants / hold the
+	// counterspell" — useful in main1 because we still have combat +
+	// opponents' turns to spend mana into. In main2 the only window
+	// left is our end step, then opp upkeep. Trim the boost so we
+	// actually deploy before EOT instead of passing held mana into
+	// the void. Counter-hold passBoost stays (still relevant for opp
+	// end-step plays); this only relaxes the archetype-stance
+	// component.
+	if gs != nil && gs.Phase == "postcombat_main" {
+		passBoost -= 0.20
 	}
 	passUCB := h.ucb1(passKey, pos+passBoost)
 	h.logf("  pass: ucb=%.3f (boost=%.2f)", passUCB, passBoost)
