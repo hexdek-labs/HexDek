@@ -1504,6 +1504,31 @@ paths:
         "101":
           description: Switching Protocols → WebSocket.
 
+  /ws/events:
+    get:
+      tags: [live]
+      operationId: eventsWs
+      summary: WebSocket — generic engine events stream (game.end + future event types).
+      description: |
+        Real-time push of discrete engine events without polling.
+        Default subscription on connect is "all events"; clients
+        can narrow via `{"action":"subscribe","events":["game.end"]}`
+        and exercise liveness via `{"action":"ping"}` → server
+        replies with `{"event":"pong","data":{"server_time":...}}`.
+
+        Capacity-capped at 100 concurrent sessions; further upgrades
+        return `503 too many event subscribers` as the unified
+        ErrorResponse envelope before the WebSocket handshake.
+
+        Per-subscriber outgoing buffer is 64 messages. Publisher
+        drops to slow consumers rather than blocking the engine
+        loop — clients should reconnect and treat the stream as
+        lossy (the webhook system covers the durable side).
+      responses:
+        "101":
+          description: Switching Protocols → WebSocket.
+        "503": { $ref: '#/components/responses/ServiceUnavailable' }
+
   ## ---------------------------------------------------------------
   ## Profiles / Owner
   ## ---------------------------------------------------------------
@@ -1815,6 +1840,28 @@ paths:
       responses:
         "200":
           description: Meta object.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+
+  /api/meta/trends:
+    get:
+      tags: [meta]
+      operationId: getMetaTrends
+      summary: Rolling-window meta trend rollup (archetype shifts, biggest gainers / losers).
+      parameters:
+        - name: weeks
+          in: query
+          required: false
+          description: Window size in weeks (1..26; default 4).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 26
+            default: 4
+      responses:
+        "200":
+          description: Meta trends body. Empty arrays when no games exist in the window or the showmatch DB isn't wired.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/EmptyOk' }
