@@ -209,6 +209,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/games/{id}/replay", h.handleGameReplay)
 	mux.HandleFunc("GET /api/games/{id}/summary.pdf", h.handleGameSummaryPDF)
 	mux.HandleFunc("GET /api/games/summaries", h.handleGameSummaryArchive)
+	mux.HandleFunc("GET /api/games/compare", h.handleGameCompare)
 }
 
 type DeckSummary struct {
