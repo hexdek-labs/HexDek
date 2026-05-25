@@ -149,6 +149,15 @@ func (o *Observer) RecordObservation(obs Observation) {
 			}
 		}
 	}
+	// R60: persist per-game composition prior effects for the replay
+	// CLI (PR #422). Best-effort, no-op when the obs carries no
+	// effects (pre-#420 paths or games that ran with a nil prior).
+	if len(obs.CompositionPriorEffects) > 0 {
+		writeCompositionPriorRecord(o.dataDir, CompositionPriorReplayRecord{
+			GameSeed: obs.Seed,
+			Effects:  obs.CompositionPriorEffects,
+		})
+	}
 }
 
 // RecordCrash is called from panic recovery. Routes to Muninn immediately.
