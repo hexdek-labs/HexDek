@@ -396,12 +396,31 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.5,
 	},
 	ArchetypeLifegain: {
-		BoardPresence:          0.9,
+		// R60 follow-up tune. LifeResource was already highest at 1.8 and
+		// DrainEngine at 1.2 covered the Sanguine Bond / Vito drain wins,
+		// but three dimensions under-weighted what Lifegain ACTUALLY does
+		// on the board:
+		//   - LifeResource: bumped 1.8 → 2.0 to match the "signature
+		//     dimension at the 2.0 anchor" pattern used by every other
+		//     custom profile (Storm/Mill/Voltron/Aristocrats/Reanimator/
+		//     Spellslinger/Tribal/Stax/Selfmill/Enchantress/Artifacts all
+		//     anchor their highest at 2.0). Lifegain's 1.8 was the only
+		//     custom profile under-anchored.
+		//   - BoardPresence: Ajani's Pridemate / Karlov of the Ghost
+		//     Council / Heliod Sun-Crowned grow as the deck gains life;
+		//     the board scales WITH the life total, so creatures aren't
+		//     incidental — they're the closer. 0.9 was midrange-tier.
+		//   - ThreatExposure: lifelink creatures (Soul Warden, Heliod,
+		//     Bishop of Wings, Trelasarra, Crested Sunmare) ARE the life-
+		//     gain engine. Removing one means the deck stops gaining life
+		//     means Pridemate stops growing means the wincon stalls. 0.6
+		//     ignored the chained dependency.
+		BoardPresence:          1.2, // was 0.9 — Pridemate / Karlov / Heliod grow
 		CardAdvantage:          0.7,
 		ManaAdvantage:          0.5,
-		LifeResource:           1.8,
+		LifeResource:           2.0, // was 1.8 — anchor signature at standard 2.0
 		ComboProximity:         0.8,
-		ThreatExposure:         0.6,
+		ThreatExposure:         1.0, // was 0.6 — protect the lifelink engine
 		CommanderProgress:      0.6,
 		GraveyardValue:         0.3,
 		DrainEngine:            1.2,
