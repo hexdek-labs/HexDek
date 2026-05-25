@@ -1149,6 +1149,8 @@ export default function DeckArchive() {
   const [cloning, setCloning] = useState(false)
   const [creditsRefreshKey, setCreditsRefreshKey] = useState(0)
   const [confirmClone, setConfirmClone] = useState(false)
+  const [confirmFork, setConfirmFork] = useState(false)
+  const [forking, setForking] = useState(false)
   const [spawningRoom, setSpawningRoom] = useState(false)
   const [isFriend, setIsFriend] = useState(false)
   const [friendBusy, setFriendBusy] = useState(false)
@@ -1810,6 +1812,20 @@ export default function DeckArchive() {
           {cmdrCardName && cmdrCardName.toUpperCase() !== deckName && (
             <div className="deck-hero__sub">{cmdrCardName}</div>
           )}
+          {/* Fork attribution — surfaces "Forked from <owner>/<id>" when
+              this deck originated as a /fork of someone else's. Clickable
+              link lets the viewer jump back to the source. */}
+          {deck?.forked_from && (
+            <div className="deck-hero__sub" style={{ fontSize: 11, opacity: 0.8, marginTop: 4, letterSpacing: '0.04em' }}>
+              FORKED FROM{' '}
+              <Link
+                to={`/decks/${deck.forked_from}`}
+                style={{ color: 'inherit', borderBottom: '1px dotted currentColor', textDecoration: 'none' }}
+              >
+                {deck.forked_from}
+              </Link>
+            </div>
+          )}
           {/* gameplan_summary hidden — Freya win-line detection needs accuracy pass */}
           {/* Tags: owners get an editable autocomplete chip field; visitors
               see a static chip row when there are any. The field is hidden
@@ -2086,6 +2102,43 @@ export default function DeckArchive() {
                         {cloning ? 'CLONING (FREYA RUNNING)...' : 'CONFIRM CLONE'}
                       </Btn>
                       <Btn ghost arrow="✕" onClick={() => setConfirmClone(false)} disabled={cloning}>CANCEL</Btn>
+                    </div>
+                  )}
+                </>
+              )}
+              {owner && id && !isOwner && user && (
+                <>
+                  <ContextBox id="deck.fork" compact>Forks this deck into your own collection with attribution preserved — "Forked from {owner}/{id}" stays visible on your copy, so the original builder gets credit. Use FORK when you're building on top of someone's public work; use CLONE for a quieter private duplicate.</ContextBox>
+                  {!confirmFork ? (
+                    <Btn arrow="⑂" onClick={() => setConfirmFork(true)}>
+                      FORK DECK
+                    </Btn>
+                  ) : (
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <Btn
+                        arrow="⑂"
+                        disabled={forking}
+                        onClick={() => {
+                          if (forking) return
+                          setForking(true)
+                          trackEvent('fork_deck', { deck: `${owner}/${id}` })
+                          api.forkDeck(`${owner}/${id}`).then(res => {
+                            toast.success('DECK FORKED — RUNNING FREYA')
+                            navigate(`/decks/${res.owner}/${res.id}`)
+                          }).catch(err => {
+                            if (err?.status === 401) toast.error('SIGN IN TO FORK')
+                            else if (err?.status === 429) toast.error('FORK LIMIT REACHED — TRY AGAIN IN AN HOUR')
+                            else if (err?.status === 400) toast.error(err.message || 'FORK REJECTED')
+                            else if (err?.status === 404) toast.error('SOURCE DECK NOT FOUND')
+                            else toast.error('FORK FAILED')
+                            setForking(false)
+                            setConfirmFork(false)
+                          })
+                        }}
+                      >
+                        {forking ? 'FORKING (FREYA RUNNING)...' : 'CONFIRM FORK'}
+                      </Btn>
+                      <Btn ghost arrow="✕" onClick={() => setConfirmFork(false)} disabled={forking}>CANCEL</Btn>
                     </div>
                   )}
                 </>
