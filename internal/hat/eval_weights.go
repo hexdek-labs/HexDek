@@ -87,12 +87,36 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.3,
 	},
 	ArchetypeControl: {
-		BoardPresence:          0.5,
-		CardAdvantage:          1.5,
-		ManaAdvantage:          0.8,
+		// R60 round 4 audit retune. Original Control profile leaned on
+		// StackInteraction + CardAdvantage but left three core Control
+		// dials misweighted relative to how Control actually wins games:
+		//   - ManaAdvantage was 0.8 (below midrange's 0.8 baseline) — but
+		//     Control's defining tempo edge is leaving mana up at end of
+		//     opponent's turn for instant-speed interaction. A draw-go
+		//     deck without mana to hold up its answers is just a slow
+		//     midrange deck. Raised to 1.3 so the evaluator rewards
+		//     opening Brainstorm / Counterspell mana windows.
+		//   - ThreatExposure was 1.2 — Control wins by correctly ranking
+		//     and neutralizing the biggest opponent threats, not by
+		//     racing them. Bumped to 1.3 (still below Voltron's 1.4 —
+		//     Voltron's single-threat fragility keeps it the most
+		//     ThreatExposure-sensitive archetype per round-2 tuning).
+		//   - BoardPresence was 0.5 — set deliberately low to deprioritize
+		//     creature commitment, but went *too* low: Control still
+		//     needs a finisher land/blocker count, and 0.5 made the
+		//     evaluator treat any non-empty board as wasted weight.
+		//     Raised to 1.0 (midrange-neutral) so a 1/3 blocker or a
+		//     finisher's-in-play state register correctly without
+		//     overweighting board commitment.
+		// CardAdvantage 1.6 keeps it the dominant dial (above
+		// StackInteraction 1.5 and ThreatExposure 1.5) — Control's
+		// long-game win condition is to outdraw the table.
+		BoardPresence:          1.0, // was 0.5 — neutral, not deprioritized
+		CardAdvantage:          1.6, // was 1.5 — remains the highest dial
+		ManaAdvantage:          1.3, // was 0.8 — hold-up mana for instants
 		LifeResource:           0.6,
 		ComboProximity:         0.4,
-		ThreatExposure:         1.2,
+		ThreatExposure:         1.3, // was 1.2 — answer the biggest threat (capped under Voltron 1.4)
 		CommanderProgress:      0.5,
 		GraveyardValue:         0.4,
 		DrainEngine:            0.2,
