@@ -669,7 +669,7 @@ export default function Spectator() {
               const artUrl = cardArtUrl(s.commander)
 
               return (
-                <div key={i} className="seat-panel" style={{ borderColor: isWinner ? 'var(--ok)' : isActive ? 'var(--warn)' : undefined }}>
+                <div key={i} className={`seat-panel${isWinner ? ' seat-panel--winner' : isActive ? ' seat-panel--active' : ''}`}>
                   <div className="seat-hd">
                     <span className="seat-name">
                       {s.commander?.toUpperCase() || 'UNKNOWN'}

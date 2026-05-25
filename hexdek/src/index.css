@@ -325,6 +325,21 @@ body {
   border: 1px solid var(--rule-2); background: var(--bg-2, rgba(0,0,0,0.2));
   min-width: 0; overflow: hidden; box-sizing: border-box;
   contain: layout style;
+  transition: border-color 120ms ease, box-shadow 160ms ease;
+}
+/* Active / winner seats: a 1px border alone is easy to miss against the
+   ambient blurred art behind the seat-grid. Add a soft 2px halo via
+   box-shadow (doesn't affect layout, ignores overflow:hidden because
+   shadows draw outside the box) so the priority seat reads at a glance
+   from across the room. Winner takes precedence over active — they're
+   mutually exclusive in JSX, but the order here makes that explicit. */
+.seat-panel--active {
+  border-color: var(--warn);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 35%, transparent);
+}
+.seat-panel--winner {
+  border-color: var(--ok);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok) 40%, transparent);
 }
 .seat-hd {
   display: flex; justify-content: space-between; align-items: center;
