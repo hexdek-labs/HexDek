@@ -7,6 +7,7 @@ import { trackEvent } from '../hooks/useAnalytics'
 import AuthPrompt from './AuthPrompt'
 import ContextBox from './ContextBox'
 import TagInput from './TagInput'
+import { BASIC_LANDS, inferCommander, parseDeckLines } from '../lib/deckParser'
 import './ImportModal.css'
 
 // ─── Constants ──────────────────────────────────────────────────
@@ -18,12 +19,6 @@ const MODES = [
 
 const ACCEPTED_EXTENSIONS = ['.txt', '.dec', '.mwDeck']
 const MOXFIELD_REGEX = /^https?:\/\/(www\.)?moxfield\.com\/decks\/[\w-]+/i
-const BASIC_LANDS = new Set([
-  'plains', 'island', 'swamp', 'mountain', 'forest',
-  'snow-covered plains', 'snow-covered island', 'snow-covered swamp',
-  'snow-covered mountain', 'snow-covered forest',
-  'wastes',
-])
 
 // Debounce helper
 function useDebouncedValue(value, delay) {
@@ -35,49 +30,16 @@ function useDebouncedValue(value, delay) {
   return debounced
 }
 
-// ─── Helpers ────────────────────────────────────────────────────
-function inferCommander(text) {
-  if (!text) return ''
-  for (const raw of text.split('\n')) {
-    const line = raw.trim()
-    if (/^commander\s*:/i.test(line)) {
-      return line.replace(/^commander\s*:/i, '').trim()
-    }
-  }
-  return ''
-}
+// Parser helpers (inferCommander / parseDeckLines / BASIC_LANDS) moved
+// to lib/deckParser.js so the inline QUICK PASTE box on /decks shares
+// the exact same parsing semantics and the format coverage gets
+// unit-tested without spinning up React.
 
 function stripCommanderLine(text) {
   return text
     .split('\n')
     .filter(line => !/^\s*commander\s*:/i.test(line))
     .join('\n')
-}
-
-function parseDeckLines(text) {
-  if (!text) return []
-  const lines = []
-  for (const raw of text.split('\n')) {
-    const line = raw.trim()
-    if (!line) continue
-    if (line.startsWith('#') || line.startsWith('//')) continue
-    if (/^sideboard|^maybeboard/i.test(line)) continue
-    if (/^commander\s*:/i.test(line)) {
-      const name = line.replace(/^commander\s*:/i, '').trim()
-      if (name) lines.push({ name, quantity: 1, isCommander: true })
-      continue
-    }
-    // Match "N Card Name (SET) CN" or just "Card Name"
-    const match = line.match(/^(\d+)\s+(.+?)(?:\s*\([^)]+\))?(?:\s+\d+)?$/)
-    if (match) {
-      lines.push({ name: match[2].trim(), quantity: parseInt(match[1], 10), isCommander: false })
-    } else {
-      // Plain card name
-      const cleaned = line.replace(/\s*\([^)]+\)\s*\d*$/, '').trim()
-      if (cleaned) lines.push({ name: cleaned, quantity: 1, isCommander: false })
-    }
-  }
-  return lines
 }
 
 // ─── Validation Hook ────────────────────────────────────────────
