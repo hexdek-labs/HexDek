@@ -2287,6 +2287,18 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 		}
 	}
 
+	// R60 round 7+ defend-vs-aggro signals (see defend_vs_aggro_signals_r60.go).
+	// Only fire when projected single-turn opp damage crosses 33% of life;
+	// scale by urgency so the bias grows as pressure climbs. Both signals
+	// use the SAME urgency value so they pull in the same direction.
+	if urgency := h.defenseUrgencyVsAggro(gs, seatIdx); urgency >= 0.33 {
+		if h.isDefensiveCard(c) {
+			base += 0.20 * urgency
+		} else if cmc >= 5 {
+			base -= 0.15 * urgency
+		}
+	}
+
 	// Lovelace Composer Intent: boost cards matching commander themes.
 	if h.Strategy != nil {
 		cName := c.DisplayName()
