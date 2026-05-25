@@ -12,17 +12,29 @@ import (
 	"github.com/hexdek/hexdek/internal/anticheat"
 )
 
+// adminAnomalyAuth gates the admin-anomaly + admin-conviction surfaces.
+// Fail-closed by design: requires HEXDEK_ADMIN_OWNER to be set in the
+// server environment and an exact (case-insensitive) match against the
+// X-HexDek-Owner request header.
+//
+// Security history (r60 audit): the previous implementation fell back
+// to a "host is localhost" check (`r.Host == "localhost"`) when the env
+// var was unset. r.Host is the client-controlled `Host:` request
+// header, NOT the socket peer — any remote attacker reaching the
+// server could send `Host: localhost` and bypass admin auth. Caddy on
+// MISTY preserves the original Host header into the backend by
+// default, so the bypass was reachable through the public reverse
+// proxy as well as direct port hits on the LAN / WireGuard. Fix:
+// drop the localhost fallback entirely. Dev environments must set
+// `HEXDEK_ADMIN_OWNER=<dev-slug>` explicitly — one-line addition that
+// removes a footgun whose only "convenience" was a CWE-290 bypass.
 func adminAnomalyAuth(r *http.Request) bool {
-	owner := strings.ToLower(strings.TrimSpace(r.Header.Get("X-HexDek-Owner")))
 	expected := strings.ToLower(strings.TrimSpace(os.Getenv("HEXDEK_ADMIN_OWNER")))
-	if expected != "" {
-		return owner != "" && owner == expected
+	if expected == "" {
+		return false
 	}
-	host := r.Host
-	if i := strings.IndexByte(host, ':'); i >= 0 {
-		host = host[:i]
-	}
-	return host == "localhost" || host == "127.0.0.1" || host == "::1"
+	owner := strings.ToLower(strings.TrimSpace(r.Header.Get("X-HexDek-Owner")))
+	return owner != "" && owner == expected
 }
 
 type flagJSON struct {
