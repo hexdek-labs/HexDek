@@ -36,6 +36,16 @@ import {
   mapSharedTurn,
   compareSeatDeltas,
 } from '../utils/replayCompare'
+import {
+  isVideoExportSupported,
+  recordReplayVideo,
+  videoFileName,
+  formatVideoDuration,
+  buildFramePlan,
+  pickMimeType,
+  DEFAULT_VIDEO_WIDTH,
+  DEFAULT_VIDEO_HEIGHT,
+} from '../utils/videoExport'
 
 // ── API gaps for full report fidelity ──────────────────────────────────
 // CompletedGame currently exposes: game_id, commanders[], deck_keys[],
@@ -280,6 +290,18 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
   // Toast for the "share" button feedback. null when idle, a string
   // when the URL was just copied (auto-clears after ~2s).
   const [shareToast, setShareToast] = useState(null)
+  // Video export state. exportStatus is one of: null (idle),
+  // 'recording' (in progress), 'saved' (just finished — shown as a
+  // toast briefly), 'error'. exportProgress is { idx, total } for
+  // the progress bar. exportCanvasRef holds the offscreen canvas we
+  // paint frames onto; it's an attached <canvas> (1280×720, opacity
+  // 0 so it doesn't visually intrude) because OffscreenCanvas isn't
+  // universally supported and a hidden <canvas> works in every
+  // browser that has MediaRecorder.
+  const [exportStatus, setExportStatus] = useState(null)
+  const [exportProgress, setExportProgress] = useState({ idx: 0, total: 0 })
+  const exportCanvasRef = useRef(null)
+  const exportAbortRef = useRef(null)
   const [searchParams, setSearchParams] = useSearchParams()
   // Track whether we've already consumed an initial ?t=/&seat= for
   // THIS game so a later URL edit (back / forward) re-applies, but a
@@ -595,6 +617,93 @@ const ReplayScrubber = ({ game, commanders, compareGame = null, compareCommander
             </span>
           )}
         </div>
+        {/* Video export. Renders only when the browser supports
+            MediaRecorder + canvas.captureStream + at least one of
+            our preferred MIME types — node tests + older browsers
+            silently hide the button. Click starts a recording that
+            paints each turn onto a hidden 1280×720 canvas; the
+            resulting Blob downloads as `hexdek-replay-<id>.mp4`
+            (Safari) or `.webm` (Chrome/Firefox). */}
+        {typeof window !== 'undefined' && isVideoExportSupported(window) && (
+          <div style={{ display: 'flex', gap: 6, marginLeft: 8, padding: '0 4px', borderLeft: '1px solid var(--rule-2)', alignItems: 'center' }}>
+            <Btn
+              sm
+              arrow={null}
+              solid={exportStatus === 'recording'}
+              title={(() => {
+                if (exportStatus === 'recording') return 'Cancel recording'
+                const plan = buildFramePlan(timeline)
+                const mime = pickMimeType(window) || ''
+                const ext = mime.includes('mp4') ? 'mp4' : 'webm'
+                return `Export this replay as a ${ext} (≈ ${formatVideoDuration(plan.totalMs)})`
+              })()}
+              onClick={async () => {
+                if (exportStatus === 'recording') {
+                  // Mid-recording click cancels.
+                  exportAbortRef.current?.abort()
+                  return
+                }
+                const canvas = exportCanvasRef.current
+                if (!canvas) return
+                setExportStatus('recording')
+                setExportProgress({ idx: 0, total: 0 })
+                const controller = new AbortController()
+                exportAbortRef.current = controller
+                try {
+                  const blob = await recordReplayVideo({
+                    canvas,
+                    timeline,
+                    commanders,
+                    gameId: game?.game_id ?? 'unknown',
+                    signal: controller.signal,
+                    onProgress: ({ idx, total }) => setExportProgress({ idx, total }),
+                  })
+                  const mime = pickMimeType(window) || 'video/webm'
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = videoFileName(game?.game_id, mime)
+                  document.body.appendChild(a)
+                  a.click()
+                  document.body.removeChild(a)
+                  URL.revokeObjectURL(url)
+                  setExportStatus('saved')
+                  setTimeout(() => setExportStatus(null), 2500)
+                } catch (err) {
+                  console.warn('replay export failed:', err)
+                  setExportStatus('error')
+                  setTimeout(() => setExportStatus(null), 2500)
+                } finally {
+                  exportAbortRef.current = null
+                }
+              }}
+            >
+              {exportStatus === 'recording'
+                ? `⏺ REC ${exportProgress.total ? `${exportProgress.idx + 1}/${exportProgress.total}` : ''}`
+                : '⬇ EXPORT'}
+            </Btn>
+            {exportStatus === 'saved' && (
+              <span className="t-xs" style={{ color: 'var(--ok)', fontWeight: 700 }}>SAVED</span>
+            )}
+            {exportStatus === 'error' && (
+              <span className="t-xs" style={{ color: 'var(--danger)', fontWeight: 700 }}>FAILED</span>
+            )}
+            {/* The offscreen render target. position:absolute +
+                opacity:0 keeps it laid out (so captureStream() works)
+                while staying invisible. pointerEvents none so it
+                doesn't intercept clicks. */}
+            <canvas
+              ref={exportCanvasRef}
+              width={DEFAULT_VIDEO_WIDTH}
+              height={DEFAULT_VIDEO_HEIGHT}
+              aria-hidden="true"
+              style={{
+                position: 'absolute', left: -9999, top: -9999,
+                width: 1, height: 1, opacity: 0, pointerEvents: 'none',
+              }}
+            />
+          </div>
+        )}
         <span className="t-xs muted" style={{ marginLeft: 8 }}>
           ACTIVE: {activeSeat >= 0 ? `SEAT.${String(activeSeat + 1).padStart(2, '0')} · ${(commanders[activeSeat] || 'UNKNOWN').split(',')[0].toUpperCase()}` : '—'}
           {focusedSeat != null && (
