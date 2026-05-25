@@ -55,20 +55,26 @@ func (h *Handler) handleGameReplay(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payload, err := db.LoadGameObservation(ctx, h.db, id)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			writeError(w, http.StatusNotFound, "no observation snapshot for game")
-			return
-		}
-		writeError(w, http.StatusInternalServerError, "load observation: "+err.Error())
+	// Same parse-cache as /api/games/{id}/summary (#202). /replay
+	// keeps its stricter error contract: missing snapshot is a
+	// 404 (vs /summary's db_only fallback), malformed is a 500
+	// (vs /summary's graceful fallback). The cache layer is
+	// transparent — it just skips the Load+Unmarshal pair on a
+	// hit (~93μs/op of the baseline 109μs handler time).
+	h.ensureSnapshotCache()
+	snap, _, err := h.loadCachedSnapshot(ctx, id)
+	switch {
+	case err == nil:
+		// fall through to render
+	case errors.Is(err, sql.ErrNoRows):
+		writeError(w, http.StatusNotFound, "no observation snapshot for game")
 		return
-	}
-
-	snap, err := heimdall.UnmarshalSnapshot(payload)
-	if err != nil {
+	case IsMalformedSnapshot(err):
 		log.Printf("game_replay: malformed snapshot for game %d: %v", id, err)
 		writeError(w, http.StatusInternalServerError, "malformed snapshot")
+		return
+	default:
+		writeError(w, http.StatusInternalServerError, "load observation: "+err.Error())
 		return
 	}
 
