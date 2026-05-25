@@ -1296,18 +1296,56 @@ func (e *GameStateEvaluator) scoreCommander(gs *gameengine.GameState, seatIdx in
 	return score
 }
 
-// scoreGraveyard: value of graveyard contents. Creature recursion
-// potential + spell flashback potential. Enhanced for self-mill
-// strategies where graveyard size itself is the win condition.
+// scoreGraveyard: value of graveyard contents. Models four overlapping
+// graveyard-as-resource modes that hat decisions need to weigh:
+//
+//  1. Recursion-target value (flashback / escape / unearth / disturb /
+//     aftermath / embalm / eternalize / encore / jump-start) scaled by
+//     the card's CMC — a 4-mana flashback bomb is worth more than a
+//     1-mana flashback cantrip, but the bonus saturates so a long
+//     graveyard of 8+ recursion cards doesn't blow out the dimension.
+//
+//  2. Reanimator-target ramp — high-CMC creatures in graveyard are
+//     worth a lot more when there's a reanimate engine on board
+//     (Animate Dead, Reanimate, Necromancy, Living Death, Karador,
+//     Meren, Muldrotha, Chainer, Sevinne's Reclamation, etc.). Without
+//     an engine the creatures score the same flat 0.15 as before
+//     (recursion is only theoretical); with one, each creature scales
+//     by min(0.40, cmc*0.08) on top of the flat baseline so a
+//     Griselbrand-in-graveyard + Animate Dead-on-board reads ~0.79,
+//     not 0.15.
+//
+//  3. Delirium gate (CR §702.108 — 4+ distinct card types in your
+//     graveyard) — adds a flat threshold bonus once active, scaled
+//     1.5x when the seat has a known delirium payoff (commander or
+//     battlefield permanent with oracle "delirium" reference). Card
+//     types tracked per CR §300.1: creature / instant / sorcery /
+//     artifact / enchantment / planeswalker / land / battle / tribal.
+//
+//  4. Threshold gate (legacy 7+ cards in your graveyard) — same shape
+//     as delirium but on graveyard size, scaled 1.5x when the seat
+//     has a known threshold payoff. Cheaper to hit than delirium so
+//     the base bonus is smaller, but it stacks with delirium for
+//     decks that care about both.
+//
+// Self-mill payoff scaling (Uurg / Sidisi / Muldrotha / Splinterfright)
+// and the cross-opponent delta are preserved from the pre-r60
+// implementation — they were the only signals before this overhaul
+// and are well-tuned at their current weights.
 func (e *GameStateEvaluator) scoreGraveyard(gs *gameengine.GameState, seatIdx int) float64 {
 	seat := gs.Seats[seatIdx]
 	if len(seat.Graveyard) == 0 {
 		return 0
 	}
 
+	hasReanimator := seatHasReanimatorEngine(seat)
+
 	value := 0.0
 	landCount := 0
 	creatureCount := 0
+	creatureCMCs := make([]int, 0, len(seat.Graveyard))
+	recursionValue := 0.0
+	typeSet := map[string]bool{}
 	for _, c := range seat.Graveyard {
 		if c == nil {
 			continue
@@ -1319,17 +1357,63 @@ func (e *GameStateEvaluator) scoreGraveyard(gs *gameengine.GameState, seatIdx in
 			case "creature":
 				isCreature = true
 				creatureCount++
+				typeSet["creature"] = true
 			case "land":
 				landCount++
+				typeSet["land"] = true
+			case "instant", "sorcery", "artifact", "enchantment", "planeswalker", "battle", "tribal":
+				typeSet[t] = true
 			}
 		}
 		if isCreature {
 			value += 0.15
+			creatureCMCs = append(creatureCMCs, gameengine.ManaCostOf(c))
 		}
-		if strings.Contains(ot, "flashback") || strings.Contains(ot, "escape") ||
-			strings.Contains(ot, "unearth") || strings.Contains(ot, "retrace") {
-			value += 0.25
+		// Recursion-keyword bonus — scaled by CMC so a 4-mana flashback
+		// bomb is worth ~0.30 vs a 1-mana cantrip at ~0.15. Floor at
+		// 0.10 (so even free spells like Jump-Start on a 0-cost card
+		// register), ceiling at 0.35 (a 6-mana flashback Cataclysm is
+		// not 6x as valuable as a 1-mana cantrip).
+		if hasGraveyardCastKeyword(ot) {
+			cmc := gameengine.ManaCostOf(c)
+			rv := 0.10 + float64(cmc)*0.05
+			if rv > 0.35 {
+				rv = 0.35
+			}
+			recursionValue += rv
 		}
+	}
+	value += recursionValue
+
+	// Reanimator-target ramp. Only fires when a reanimate engine is
+	// already on board — otherwise the high-CMC creatures are
+	// theoretical reanimation targets, valued at the base 0.15 above.
+	if hasReanimator {
+		for _, cmc := range creatureCMCs {
+			ramp := float64(cmc) * 0.08
+			if ramp > 0.40 {
+				ramp = 0.40
+			}
+			value += ramp
+		}
+	}
+
+	// Delirium (CR §702.108) — 4+ distinct card types in your graveyard.
+	if len(typeSet) >= 4 {
+		base := 0.40
+		if seatHasDeliriumPayoff(seat) {
+			base *= 1.5
+		}
+		value += base
+	}
+
+	// Threshold (legacy) — 7+ cards in your graveyard.
+	if len(seat.Graveyard) >= 7 {
+		base := 0.30
+		if seatHasThresholdPayoff(seat) {
+			base *= 1.5
+		}
+		value += base
 	}
 
 	// Self-mill bonus: check if commander or battlefield permanents
@@ -1387,6 +1471,119 @@ func (e *GameStateEvaluator) scoreGraveyard(gs *gameengine.GameState, seatIdx in
 	value += (float64(len(seat.Graveyard)) - oppAvg) * 0.05
 
 	return value
+}
+
+// hasGraveyardCastKeyword reports whether the lower-cased oracle text
+// references a keyword that lets the card be cast / activated from the
+// graveyard. Covers the pre-r60 quartet (flashback / escape / unearth
+// / retrace) plus the keywords added by post-AKH sets: disturb (MID
+// — reversible token graveyard cast), aftermath (AKH — second-half
+// graveyard cast), embalm / eternalize (AMN — token-creature
+// graveyard activations), encore (CMR — triple token attack), and
+// jump-start (GRN — discard-a-card-and-cast).
+func hasGraveyardCastKeyword(oracleLower string) bool {
+	return strings.Contains(oracleLower, "flashback") ||
+		strings.Contains(oracleLower, "escape") ||
+		strings.Contains(oracleLower, "unearth") ||
+		strings.Contains(oracleLower, "retrace") ||
+		strings.Contains(oracleLower, "disturb") ||
+		strings.Contains(oracleLower, "aftermath") ||
+		strings.Contains(oracleLower, "embalm") ||
+		strings.Contains(oracleLower, "eternalize") ||
+		strings.Contains(oracleLower, "encore") ||
+		strings.Contains(oracleLower, "jump-start")
+}
+
+// seatHasReanimatorEngine reports whether the seat has an active
+// reanimator engine on its battlefield — i.e. some permanent whose
+// oracle text suggests it can return creatures from any graveyard to
+// the battlefield. Matches the pattern used by scoreOpponentGraveyard
+// for the threat side (where the same check downgrades the position),
+// kept colocated here so the two evaluator paths stay consistent.
+//
+// Recognized engines: explicit reanimator commanders (Meren, Muldrotha,
+// Karador, Chainer, Araumi, Nethroi, Sefris, Reya) plus generic
+// oracle-text engines (Animate Dead / Reanimate / Necromancy / Living
+// Death class — "return ... creature card ... from ... graveyard ...
+// to the battlefield"). Spell-form reanimators in hand don't count;
+// the ramp only fires when an engine is actually deployed.
+func seatHasReanimatorEngine(seat *gameengine.Seat) bool {
+	if seat == nil {
+		return false
+	}
+	for _, cn := range seat.CommanderNames {
+		cnLower := strings.ToLower(cn)
+		if strings.Contains(cnLower, "meren") ||
+			strings.Contains(cnLower, "muldrotha") ||
+			strings.Contains(cnLower, "karador") ||
+			strings.Contains(cnLower, "chainer") ||
+			strings.Contains(cnLower, "araumi") ||
+			strings.Contains(cnLower, "nethroi") ||
+			strings.Contains(cnLower, "sefris") ||
+			strings.Contains(cnLower, "reya") {
+			return true
+		}
+	}
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		ot := gameengine.OracleTextLower(p.Card)
+		if strings.Contains(ot, "graveyard") &&
+			strings.Contains(ot, "battlefield") &&
+			(strings.Contains(ot, "return") || strings.Contains(ot, "put")) &&
+			(strings.Contains(ot, "creature card") || strings.Contains(ot, "creature from") ||
+				strings.Contains(ot, "target creature")) {
+			return true
+		}
+	}
+	return false
+}
+
+// seatHasDeliriumPayoff reports whether the seat owns a card (commander
+// or battlefield permanent) whose oracle text references the delirium
+// mechanic. Drives the 1.5x scalar on the delirium-active bonus —
+// hitting 4-types-in-graveyard is roughly neutral on a generic value
+// deck, but on a Tovolar's Huntmaster / Mishra Eternal Apprentice /
+// Liliana the Last Hope / Emrakul the Promised End shell it's a
+// load-bearing combat-or-cost-reduction enabler.
+func seatHasDeliriumPayoff(seat *gameengine.Seat) bool {
+	if seat == nil {
+		return false
+	}
+	for _, cn := range seat.CommanderNames {
+		if strings.Contains(strings.ToLower(cn), "delirium") {
+			return true
+		}
+	}
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		if strings.Contains(gameengine.OracleTextLower(p.Card), "delirium") {
+			return true
+		}
+	}
+	return false
+}
+
+// seatHasThresholdPayoff is the threshold-keyword sibling of
+// seatHasDeliriumPayoff. Sees Werebear / Krosan Reclamation /
+// Cabal Coffers-style "threshold —" payoffs that activate at 7+
+// cards in graveyard.
+func seatHasThresholdPayoff(seat *gameengine.Seat) bool {
+	if seat == nil {
+		return false
+	}
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		if strings.Contains(gameengine.OracleTextLower(p.Card), "threshold") {
+			return true
+		}
+	}
+	return false
 }
 
 // scoreDrainEngine: scores the presence and strength of aristocrats-style
