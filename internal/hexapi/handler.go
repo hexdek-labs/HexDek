@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/hexdek/hexdek/internal/analytics"
+	"github.com/hexdek/hexdek/internal/archidekt"
 	"github.com/hexdek/hexdek/internal/db"
 	"github.com/hexdek/hexdek/internal/versioning"
 )
@@ -223,6 +224,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/lineage", h.handleDeckLineage)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/similar", h.handleSimilarDecks)
 	mux.HandleFunc("POST /api/import/moxfield", h.handleMoxfieldImport)
+	mux.HandleFunc("POST /api/import/archidekt", h.handleArchidektImport)
 	mux.HandleFunc("GET /api/imports/{owner}", h.handleListImports)
 	mux.HandleFunc("GET /api/imports/source/moxfield", h.handleMoxfieldSources)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/events", h.handleDeckEvents)
@@ -1596,6 +1598,152 @@ func (h *Handler) handleMoxfieldImport(w http.ResponseWriter, r *http.Request) {
 		"source":      "moxfield",
 		"moxfield_id": moxID,
 		"tags":        h.loadTags(r.Context(), owner, finalID),
+	})
+}
+
+// handleArchidektImport mirrors handleMoxfieldImport against
+// archidekt.com URLs. The two handlers stay observably parallel —
+// same auth/rate-limit/output JSON shape, same per-card flow into
+// register/log/saveTags — but they consult different APIs with
+// different response shapes, so the fetch + parse + bucket logic
+// lives in internal/archidekt (pure helper, see archidekt.go) and
+// this handler just adapts it onto the import pipeline.
+//
+// Source attribution in import_log is "archidekt" (not "moxfield")
+// so the existing /api/import/source/moxfield endpoint and the
+// Dashboard's MOXFIELD chip stay correct without changes — and a
+// future /api/import/source/archidekt endpoint can list these
+// imports without disturbing the moxfield path.
+func (h *Handler) handleArchidektImport(w http.ResponseWriter, r *http.Request) {
+	if enforceRateLimit(h.DeckImportLimiter, w, r, "archidekt import") {
+		return
+	}
+	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	var req struct {
+		URL   string   `json:"url"`
+		Owner string   `json:"owner"`
+		Tags  []string `json:"tags"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	parsed, err := url.Parse(req.URL)
+	if err != nil || (parsed.Host != "archidekt.com" && parsed.Host != "www.archidekt.com") {
+		writeError(w, http.StatusBadRequest, "invalid Archidekt URL")
+		return
+	}
+	deckID := archidekt.ExtractDeckID(req.URL)
+	if deckID == "" {
+		writeError(w, http.StatusBadRequest, "URL must be https://archidekt.com/decks/{id}")
+		return
+	}
+
+	// Fetch + format via the internal/archidekt helper. That package
+	// handles the API call, JSON parse, category bucketing, and the
+	// commander / mainboard / excluded-section routing.
+	deckList, err := archidekt.FetchDeckByID(deckID)
+	if err != nil {
+		writeError(w, http.StatusBadGateway, err.Error())
+		return
+	}
+	deckName, err := archidekt.FetchDeckName(req.URL)
+	if err != nil {
+		// Cache hit means this can't fail after a successful FetchDeck,
+		// but we don't depend on that — fall back to a stable default.
+		deckName = ""
+	}
+
+	// Parse the formatted decklist to lift commander + card names for
+	// the import log and version registration. The text format is
+	// stable (see archidekt.formatDecklist) so a simple line walk is
+	// enough — no need to re-parse the JSON.
+	var cmdrName string
+	var cardNames []string
+	for _, line := range strings.Split(deckList, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "//") {
+			continue
+		}
+		if strings.HasPrefix(line, "COMMANDER:") {
+			name := strings.TrimSpace(strings.TrimPrefix(line, "COMMANDER:"))
+			if cmdrName == "" {
+				cmdrName = name
+			}
+			cardNames = append(cardNames, name)
+			continue
+		}
+		// "N Card Name" rows — strip the leading quantity.
+		if idx := strings.Index(line, " "); idx > 0 {
+			cardNames = append(cardNames, strings.TrimSpace(line[idx+1:]))
+		}
+	}
+
+	owner := sanitizeFilename(strings.TrimSpace(req.Owner))
+	if owner == "" {
+		owner = "imported"
+	}
+	if deckName == "" {
+		deckName = cmdrName
+	}
+	fileID := sanitizeFilename(strings.ToLower(deckName))
+	if fileID == "" {
+		fileID = "archidekt_deck"
+	}
+
+	ownerDir := filepath.Join(h.DecksDir, owner)
+	if err := os.MkdirAll(ownerDir, 0755); err != nil {
+		writeError(w, http.StatusInternalServerError, "cannot create deck directory")
+		return
+	}
+
+	deckPath := filepath.Join(ownerDir, fileID+".txt")
+	for i := 2; ; i++ {
+		if _, err := os.Stat(deckPath); os.IsNotExist(err) {
+			break
+		}
+		deckPath = filepath.Join(ownerDir, fmt.Sprintf("%s_%d.txt", fileID, i))
+		if i > 100 {
+			writeError(w, http.StatusConflict, "too many decks with the same name")
+			return
+		}
+	}
+
+	if err := os.WriteFile(deckPath, []byte(deckList), 0644); err != nil {
+		writeError(w, http.StatusInternalServerError, "cannot write deck file")
+		return
+	}
+
+	finalID := strings.TrimSuffix(filepath.Base(deckPath), ".txt")
+	go h.registerDeckVersion(owner, finalID, cmdrName, cardNames)
+
+	if len(req.Tags) > 0 {
+		if tagsJSON, err := normalizeTags(req.Tags); err == nil && tagsJSON != "" {
+			h.saveTags(r.Context(), owner, finalID, tagsJSON)
+		}
+	}
+
+	h.logImport(r.Context(), db.ImportLogEntry{
+		Owner:     owner,
+		DeckKey:   owner + "/" + finalID,
+		DeckName:  deckName,
+		Commander: cmdrName,
+		Source:    "archidekt",
+		SourceURL: req.URL,
+		CardCount: len(cardNames),
+	})
+
+	w.WriteHeader(http.StatusCreated)
+	writeJSON(w, map[string]any{
+		"id":           finalID,
+		"owner":        owner,
+		"name":         deckName,
+		"commander":    cmdrName,
+		"card_count":   len(cardNames),
+		"source":       "archidekt",
+		"archidekt_id": deckID,
+		"tags":         h.loadTags(r.Context(), owner, finalID),
 	})
 }
 

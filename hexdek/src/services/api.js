@@ -97,6 +97,10 @@ export const api = {
     method: 'POST',
     body: JSON.stringify({ url, owner, ...(tags?.length ? { tags } : {}) }),
   }),
+  importArchidekt: ({ url, owner, tags }) => request('/api/import/archidekt', {
+    method: 'POST',
+    body: JSON.stringify({ url, owner, ...(tags?.length ? { tags } : {}) }),
+  }),
   // Tag autocomplete — returns [{tag, count}, ...] ranked by usage.
   // Owner defaults to the caller's X-HexDek-Owner (server-side) so the
   // suggestions are personal; pass owner: '*' to span every deck.

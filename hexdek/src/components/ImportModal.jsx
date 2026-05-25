@@ -14,11 +14,15 @@ import './ImportModal.css'
 const MODES = [
   { id: 'paste', label: 'PASTE', sub: 'Paste a decklist from clipboard' },
   { id: 'moxfield', label: 'MOXFIELD', sub: 'Import from Moxfield URL' },
+  { id: 'archidekt', label: 'ARCHIDEKT', sub: 'Import from Archidekt URL' },
   { id: 'file', label: 'FILE', sub: 'Upload .txt / .dec / .mwDeck' },
 ]
 
 const ACCEPTED_EXTENSIONS = ['.txt', '.dec', '.mwDeck']
 const MOXFIELD_REGEX = /^https?:\/\/(www\.)?moxfield\.com\/decks\/[\w-]+/i
+// Archidekt URLs always carry a numeric deck ID; the optional trailing
+// /slug is purely cosmetic and not required for the API call.
+const ARCHIDEKT_REGEX = /^https?:\/\/(www\.)?archidekt\.com\/decks\/\d+/i
 
 // Debounce helper
 function useDebouncedValue(value, delay) {
@@ -210,6 +214,7 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
   const [tags, setTags] = useState([])
   const [deckList, setDeckList] = useState('')
   const [moxfieldUrl, setMoxfieldUrl] = useState('')
+  const [archidektUrl, setArchidektUrl] = useState('')
   const [fileName, setFileName] = useState('')
   const [phase, setPhase] = useState('input') // input | validating | analyzing | done
   const [error, setError] = useState(null)
@@ -220,12 +225,21 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
   const cardCount = parsedCards.filter(c => !c.isCommander).length
   const detectedCommander = useMemo(() => inferCommander(deckList), [deckList])
 
-  // Auto-detect Moxfield URL in paste
+  // Auto-detect URL in paste — moxfield OR archidekt. Order matters
+  // only insofar as both regexes match disjoint domains, so the
+  // sibling check is a clean either/or.
   useEffect(() => {
-    if (mode === 'paste' && deckList.trim() && MOXFIELD_REGEX.test(deckList.trim())) {
-      setMoxfieldUrl(deckList.trim())
+    if (mode !== 'paste') return
+    const t = deckList.trim()
+    if (!t) return
+    if (MOXFIELD_REGEX.test(t)) {
+      setMoxfieldUrl(t)
       setDeckList('')
       setMode('moxfield')
+    } else if (ARCHIDEKT_REGEX.test(t)) {
+      setArchidektUrl(t)
+      setDeckList('')
+      setMode('archidekt')
     }
   }, [deckList, mode])
 
@@ -347,6 +361,38 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
       return
     }
 
+    if (mode === 'archidekt') {
+      if (!archidektUrl.trim() || !ARCHIDEKT_REGEX.test(archidektUrl.trim())) {
+        setError('ENTER A VALID ARCHIDEKT URL (https://archidekt.com/decks/...)')
+        return
+      }
+      setPhase('analyzing')
+      try {
+        const result = await api.importArchidekt({
+          url: archidektUrl.trim(),
+          owner: owner.trim() || 'imported',
+          tags,
+        })
+        trackEvent('import_archidekt', {
+          owner: owner.trim() || 'imported',
+          cards: result.card_count,
+          archidekt_id: result.archidekt_id,
+        })
+        setPhase('done')
+        toast.success(`DECK IMPORTED: ${result.name || 'ARCHIDEKT DECK'}`)
+        onImported?.()
+        const target = `/decks/${encodeURIComponent(result.owner)}/${encodeURIComponent(result.id)}`
+        setTimeout(() => {
+          onClose()
+          navigate(target)
+        }, 600)
+      } catch (err) {
+        setPhase('input')
+        setError(err.message || 'ARCHIDEKT IMPORT FAILED')
+      }
+      return
+    }
+
     // Paste or file mode
     if (!deckList.trim()) {
       setError('DECK LIST REQUIRED — PASTE OR UPLOAD A FILE')
@@ -410,7 +456,9 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
   // ─── Render ───────────────────────────────────────────────────
   const isSubmittable = mode === 'moxfield'
     ? MOXFIELD_REGEX.test(moxfieldUrl.trim())
-    : cardCount >= 5
+    : mode === 'archidekt'
+      ? ARCHIDEKT_REGEX.test(archidektUrl.trim())
+      : cardCount >= 5
 
   return (
     <div className="import-modal" onMouseDown={onClose}>
@@ -553,6 +601,30 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
                     <div className="import-modal__moxfield-help">
                       &gt; PASTE A PUBLIC MOXFIELD DECK URL. THE DECK WILL BE FETCHED AND IMPORTED AUTOMATICALLY.
                       <br />&gt; COMMANDER AND CARD LIST ARE EXTRACTED FROM THE MOXFIELD API.
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {mode === 'archidekt' && (
+                <>
+                  <div className="import-modal__body-hd">
+                    <span>ARCHIDEKT URL</span>
+                    <span className="t-xs muted">
+                      {ARCHIDEKT_REGEX.test(archidektUrl.trim()) ? 'VALID URL' : 'PASTE URL'}
+                    </span>
+                  </div>
+                  <div className="import-modal__moxfield">
+                    <input
+                      type="url"
+                      className="import-modal__input import-modal__input--lg"
+                      value={archidektUrl}
+                      onChange={e => setArchidektUrl(e.target.value)}
+                      placeholder="https://archidekt.com/decks/123456..."
+                    />
+                    <div className="import-modal__moxfield-help">
+                      &gt; PASTE A PUBLIC ARCHIDEKT DECK URL. THE DECK WILL BE FETCHED AND IMPORTED AUTOMATICALLY.
+                      <br />&gt; COMMANDER, MAINBOARD, AND MAYBEBOARD ARE PRESERVED FROM ARCHIDEKT CATEGORIES.
                     </div>
                   </div>
                 </>
