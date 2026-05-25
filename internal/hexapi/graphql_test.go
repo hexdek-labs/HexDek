@@ -99,13 +99,13 @@ func doGraphQL(t *testing.T, h *GraphQLHandler, query string, vars map[string]an
 // -------------------------------------------------------------------
 
 func TestNewGraphQLHandler_NilShowmatch(t *testing.T) {
-	if _, err := NewGraphQLHandler(nil); err == nil {
+	if _, err := NewGraphQLHandler(nil, ""); err == nil {
 		t.Fatal("expected error for nil Showmatch, got nil")
 	}
 }
 
 func TestNewGraphQLHandler_SchemaCompiles(t *testing.T) {
-	h, err := NewGraphQLHandler(seedShowmatch(t))
+	h, err := NewGraphQLHandler(seedShowmatch(t), "")
 	if err != nil {
 		t.Fatalf("NewGraphQLHandler: %v", err)
 	}
@@ -119,7 +119,7 @@ func TestNewGraphQLHandler_SchemaCompiles(t *testing.T) {
 // -------------------------------------------------------------------
 
 func TestGraphQL_Games_ReturnsNewestFirst(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	resp := doGraphQL(t, h, `{ games(limit: 10) { id winnerName turns } }`, nil)
 	if errs, ok := resp["errors"]; ok {
 		t.Fatalf("unexpected errors: %v", errs)
@@ -141,7 +141,7 @@ func TestGraphQL_Games_ReturnsNewestFirst(t *testing.T) {
 }
 
 func TestGraphQL_Games_LimitTruncates(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	resp := doGraphQL(t, h, `{ games(limit: 2) { id } }`, nil)
 	games := resp["data"].(map[string]any)["games"].([]any)
 	if len(games) != 2 {
@@ -150,7 +150,7 @@ func TestGraphQL_Games_LimitTruncates(t *testing.T) {
 }
 
 func TestGraphQL_Games_DefaultLimit(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	// Default limit (20) is bigger than the 3 seed rows — should
 	// return all of them.
 	resp := doGraphQL(t, h, `{ games { id } }`, nil)
@@ -161,7 +161,7 @@ func TestGraphQL_Games_DefaultLimit(t *testing.T) {
 }
 
 func TestGraphQL_Games_NegativeLimitErrors(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	resp := doGraphQL(t, h, `{ games(limit: -1) { id } }`, nil)
 	if _, ok := resp["errors"]; !ok {
 		t.Errorf("expected errors for negative limit, got %v", resp)
@@ -173,7 +173,7 @@ func TestGraphQL_Games_NegativeLimitErrors(t *testing.T) {
 // -------------------------------------------------------------------
 
 func TestGraphQL_GameByID_Found(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	resp := doGraphQL(t, h, `{ game(id: 2) { id winnerName endReason } }`, nil)
 	if errs, ok := resp["errors"]; ok {
 		t.Fatalf("unexpected errors: %v", errs)
@@ -191,7 +191,7 @@ func TestGraphQL_GameByID_Found(t *testing.T) {
 }
 
 func TestGraphQL_GameByID_MissingReturnsNull(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	resp := doGraphQL(t, h, `{ game(id: 9999) { id } }`, nil)
 	if errs, ok := resp["errors"]; ok {
 		t.Fatalf("unexpected errors: %v", errs)
@@ -207,7 +207,7 @@ func TestGraphQL_GameByID_MissingReturnsNull(t *testing.T) {
 // -------------------------------------------------------------------
 
 func TestGraphQL_FieldProjection_OmitsUnaskedFields(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	resp := doGraphQL(t, h, `{ game(id: 1) { id winner } }`, nil)
 	g := resp["data"].(map[string]any)["game"].(map[string]any)
 	// Asked for these two:
@@ -233,7 +233,7 @@ func TestGraphQL_FieldProjection_OmitsUnaskedFields(t *testing.T) {
 // -------------------------------------------------------------------
 
 func TestGraphQL_Variables(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	q := `query Get($id: Int!) { game(id: $id) { id winnerName } }`
 	resp := doGraphQL(t, h, q, map[string]any{"id": 3})
 	if errs, ok := resp["errors"]; ok {
@@ -253,7 +253,7 @@ func TestGraphQL_Aliasing_BatchedGameLookup(t *testing.T) {
 	// distinct aliases. Today's REST equivalent is three /api/games/{id}
 	// GETs. Pinning this shape demonstrates the load-bearing
 	// argument for adding GraphQL to the surface.
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	q := `{
 	  g1: game(id: 1) { winnerName endReason }
 	  g2: game(id: 2) { winnerName endReason }
@@ -293,7 +293,7 @@ func TestGraphQL_Aliasing_BatchedGameLookup(t *testing.T) {
 // -------------------------------------------------------------------
 
 func TestGraphQL_SyntaxError_Returns200WithErrors(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	// Missing closing brace → parse failure → GraphQL spec says 200
 	// with errors populated, NOT a 400. (HTTP failure modes are
 	// reserved for transport / auth — the spec calls this out
@@ -314,7 +314,7 @@ func TestGraphQL_SyntaxError_Returns200WithErrors(t *testing.T) {
 }
 
 func TestGraphQL_UnknownField_Returns200WithErrors(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	resp := doGraphQL(t, h, `{ games { id totallyMadeUpField } }`, nil)
 	if _, ok := resp["errors"]; !ok {
 		t.Errorf("expected errors for unknown field, got %v", resp)
@@ -322,7 +322,7 @@ func TestGraphQL_UnknownField_Returns200WithErrors(t *testing.T) {
 }
 
 func TestGraphQL_UnknownQuery_Returns200WithErrors(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	resp := doGraphQL(t, h, `{ notARealQuery { id } }`, nil)
 	if _, ok := resp["errors"]; !ok {
 		t.Errorf("expected errors for unknown root query, got %v", resp)
@@ -334,7 +334,7 @@ func TestGraphQL_UnknownQuery_Returns200WithErrors(t *testing.T) {
 // -------------------------------------------------------------------
 
 func TestGraphQL_MissingQuery_400(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	body, _ := json.Marshal(graphqlRequest{Query: ""})
 	req := httptest.NewRequest(http.MethodPost, "/graphql", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -353,7 +353,7 @@ func TestGraphQL_MissingQuery_400(t *testing.T) {
 }
 
 func TestGraphQL_MalformedJSON_400(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	req := httptest.NewRequest(http.MethodPost, "/graphql", strings.NewReader(`{not-json`))
 	req.Header.Set("Content-Type", "application/json")
 	rr := httptest.NewRecorder()
@@ -368,7 +368,7 @@ func TestGraphQL_MalformedJSON_400(t *testing.T) {
 // -------------------------------------------------------------------
 
 func TestGraphQL_GET_QueryParamWorks(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	q := url.QueryEscape(`{ game(id: 1) { winnerName } }`)
 	req := httptest.NewRequest(http.MethodGet, "/graphql?query="+q, nil)
 	rr := httptest.NewRecorder()
@@ -385,7 +385,7 @@ func TestGraphQL_GET_QueryParamWorks(t *testing.T) {
 }
 
 func TestGraphQL_GET_WithVariables(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	q := url.QueryEscape(`query Get($id: Int!) { game(id: $id) { winnerName } }`)
 	vars := url.QueryEscape(`{"id": 2}`)
 	req := httptest.NewRequest(http.MethodGet, "/graphql?query="+q+"&variables="+vars, nil)
@@ -403,7 +403,7 @@ func TestGraphQL_GET_WithVariables(t *testing.T) {
 }
 
 func TestGraphQL_GET_MalformedVariables_400(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	q := url.QueryEscape(`{ games { id } }`)
 	req := httptest.NewRequest(http.MethodGet, "/graphql?query="+q+"&variables=not-json", nil)
 	rr := httptest.NewRecorder()
@@ -418,7 +418,7 @@ func TestGraphQL_GET_MalformedVariables_400(t *testing.T) {
 // -------------------------------------------------------------------
 
 func TestGraphQL_RegisterMountsBothMethods(t *testing.T) {
-	h, _ := NewGraphQLHandler(seedShowmatch(t))
+	h, _ := NewGraphQLHandler(seedShowmatch(t), "")
 	mux := http.NewServeMux()
 	h.RegisterGraphQL(mux)
 
