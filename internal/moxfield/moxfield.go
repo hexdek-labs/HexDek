@@ -204,12 +204,26 @@ type apiResponse struct {
 		Commanders apiBoard `json:"commanders"`
 		Sideboard  apiBoard `json:"sideboard"`
 		Companions apiBoard `json:"companions"`
+		// Per-category boards that the importer previously discarded.
+		// Maybeboard is Moxfield's canonical "cards I'm considering for
+		// this deck but haven't committed to" pile. Considering is a
+		// less-formal sibling some decks use (mirrors the deckparser's
+		// existing section-marker recognition for `// Considering`).
+		// Neither counts toward the playable Commander deck — the
+		// downstream deckparser routes both, like sideboard, to a
+		// dropped section — but capturing them in the .txt output
+		// preserves the player's intent and gives tooling visibility
+		// into the candidate pool (e.g., to suggest swaps).
+		Maybeboard  apiBoard `json:"maybeboard"`
+		Considering apiBoard `json:"considering"`
 	} `json:"boards"`
 	// Legacy top-level fields (pre-v3 boards wrapper).
-	Mainboard  map[string]apiCardEntry `json:"mainboard"`
-	Commanders map[string]apiCardEntry `json:"commanders"`
-	Sideboard  map[string]apiCardEntry `json:"sideboard"`
-	Companions map[string]apiCardEntry `json:"companions"`
+	Mainboard   map[string]apiCardEntry `json:"mainboard"`
+	Commanders  map[string]apiCardEntry `json:"commanders"`
+	Sideboard   map[string]apiCardEntry `json:"sideboard"`
+	Companions  map[string]apiCardEntry `json:"companions"`
+	Maybeboard  map[string]apiCardEntry `json:"maybeboard"`
+	Considering map[string]apiCardEntry `json:"considering"`
 
 	// User-applied tags. Moxfield exposes two parallel tagging surfaces:
 	//   - Hubs:  community-curated canonical labels (Combo, Token, Stax,
@@ -263,6 +277,20 @@ func (r *apiResponse) companions() map[string]apiCardEntry {
 		return r.Boards.Companions.Cards
 	}
 	return r.Companions
+}
+
+func (r *apiResponse) maybeboard() map[string]apiCardEntry {
+	if len(r.Boards.Maybeboard.Cards) > 0 {
+		return r.Boards.Maybeboard.Cards
+	}
+	return r.Maybeboard
+}
+
+func (r *apiResponse) considering() map[string]apiCardEntry {
+	if len(r.Boards.Considering.Cards) > 0 {
+		return r.Boards.Considering.Cards
+	}
+	return r.Considering
 }
 
 // deckTags returns the merged Hubs + Tags list, deduped
@@ -484,6 +512,18 @@ func formatDecklist(data *apiResponse) (string, error) {
 			return ""
 		}
 		return fmt.Sprintf("// Companion: %d %s\n", e.Quantity, e.Card.Name)
+	})
+	writeEntries(data.maybeboard(), func(e apiCardEntry) string {
+		if e.Card.Name == "" || e.Quantity <= 0 {
+			return ""
+		}
+		return fmt.Sprintf("// Maybeboard: %d %s\n", e.Quantity, e.Card.Name)
+	})
+	writeEntries(data.considering(), func(e apiCardEntry) string {
+		if e.Card.Name == "" || e.Quantity <= 0 {
+			return ""
+		}
+		return fmt.Sprintf("// Considering: %d %s\n", e.Quantity, e.Card.Name)
 	})
 
 	cards := cardsBuf.String()
