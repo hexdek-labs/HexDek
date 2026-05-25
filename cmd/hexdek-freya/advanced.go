@@ -709,6 +709,12 @@ func buildSynergyNameSet(dp *DeckProfile, report *FreyaReport, oracle *oracleDB)
 // into either side of a pair. "unknown" is the fallback used for
 // themes where the producer/payoff dichotomy doesn't apply (landfall,
 // spellcast, lifegain — the producer side is too broad to tag cleanly).
+//
+// R60 round 2 adds Amplifier: the chain-middle role that transforms the
+// producer's resource into payoff-triggering events (sac outlet between
+// token-maker and dies-trigger; blinker between value-ETB creature and
+// etb-rewards-others trigger). Themes that define an amplifier earn a
+// chain bonus when all three roles are present — see computeSynergyClusters.
 type clusterRole int
 
 const (
@@ -716,6 +722,7 @@ const (
 	clusterRoleProducer
 	clusterRolePayoff
 	clusterRoleBoth
+	clusterRoleAmplifier
 )
 
 // classifyClusterRole returns the producer/payoff role for a card
@@ -756,28 +763,34 @@ func classifyClusterRole(p CardProfile, theme string) clusterRole {
 			payoff = true
 		}
 	case "death_value":
-		// Producer = the engine that GENERATES death events: a sac
-		// outlet that converts other permanents, OR a token-maker that
-		// supplies the bodies to die.
+		// Three-step chain: token-maker (bodies) → sac outlet (converts
+		// bodies to death events) → dies/sacrifice trigger (rewards
+		// the events). The outlet is the central amplifier and short-
+		// circuits the producer/payoff resolution below.
 		if p.IsOutlet {
-			prod = true
+			return clusterRoleAmplifier
 		}
 		for _, r := range p.Produces {
 			if r == ResToken {
 				prod = true
 			}
 		}
-		// Payoff = "whenever a creature dies / is sacrificed" trigger.
 		if profileHasTrigger(p, "dies") || profileHasTrigger(p, "sacrifice") {
 			payoff = true
 		}
 	case "etb_value":
-		// Producer = card whose own ETB is worth re-triggering
-		// (HasValueETB). Payoff = the blinker that re-triggers it.
+		// Three-step chain: HasValueETB creature (worth re-triggering)
+		// → blinker (amplifier that re-triggers the ETB) → triggers-on-
+		// other-ETB payoff (Soul Warden / Impact Tremors / Purphoros).
+		// Note Triggers="etb" only fires for OTHER creatures' ETBs (see
+		// analysis.go:386); a card's own ETB is HasValueETB.
+		if p.IsBlinker {
+			return clusterRoleAmplifier
+		}
 		if p.HasValueETB {
 			prod = true
 		}
-		if p.IsBlinker {
+		if profileHasTrigger(p, "etb") {
 			payoff = true
 		}
 	default:
@@ -799,22 +812,29 @@ func classifyClusterRole(p CardProfile, theme string) clusterRole {
 }
 
 // rolesPairScore returns the weighted pair score between two roles in a
-// cluster. Mixed pairs (producer × payoff) score 2 because they
-// represent a complementary engine; same-role pairs score 1 because
-// they're redundant copies of the same side. "Both"-tagged cards are
-// treated as mixed-with-anything since they satisfy either side of the
-// engine. "Unknown" pairs (themes without a dichotomy) score 1 — the
-// caller is responsible for falling back to flat counting when *every*
-// pair is unknown, so this only matters at cluster boundaries.
+// cluster. Mixed pairs (any two different non-unknown roles) score 2
+// because they represent complementary engine sides; same-role pairs
+// score 1 because they're redundant copies of the same side. "Both"-
+// tagged cards are treated as mixed-with-anything since they satisfy
+// either side of the producer/payoff pair. Amplifier pairs with any
+// other non-unknown role at 2, since the amplifier is the chain middle
+// and bridges either side. "Unknown" pairs (themes without a dichotomy)
+// score 1 — the caller is responsible for falling back to flat counting
+// when *every* pair is unknown, so this only matters at cluster
+// boundaries.
 func rolesPairScore(a, b clusterRole) int {
+	if a == clusterRoleUnknown || b == clusterRoleUnknown {
+		return 1
+	}
 	if a == clusterRoleBoth || b == clusterRoleBoth {
 		return 2
 	}
-	if (a == clusterRoleProducer && b == clusterRolePayoff) ||
-		(a == clusterRolePayoff && b == clusterRoleProducer) {
-		return 2
+	if a == b {
+		return 1
 	}
-	return 1
+	// Any two distinct non-unknown roles (producer/amplifier/payoff)
+	// form a chain pair.
+	return 2
 }
 
 func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracleDB) {
@@ -837,6 +857,10 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 
 		if p.IsOutlet {
 			themes["sacrifice"] = true
+			// Sac outlets are the chain-amplifier for death_value (R60
+			// round 2). Without this the death_value cluster only saw
+			// the dies-trigger payoffs, never the conversion engine.
+			themes["death_value"] = true
 		}
 		if profileHasTrigger(p, "dies") || profileHasTrigger(p, "sacrifice") {
 			themes["death_value"] = true
@@ -892,6 +916,34 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 		}
 	}
 
+	// R60 round 2: death_value chain-context promotion. The chain is
+	// token-maker (producer) → sac outlet (amplifier) → dies-trigger
+	// (payoff). The first-pass tagging only put outlets and dies-triggers
+	// into death_value; pulling token-makers in too is contextual —
+	// only when the rest of the chain is actually present in the deck.
+	// Without this guard, every token deck would pollute death_value
+	// even with zero sac outlets and zero dies-triggers.
+	hasOutlet, hasDiesTrigger := false, false
+	for i := range cards {
+		if cards[i].profile.IsOutlet {
+			hasOutlet = true
+		}
+		if profileHasTrigger(cards[i].profile, "dies") ||
+			profileHasTrigger(cards[i].profile, "sacrifice") {
+			hasDiesTrigger = true
+		}
+	}
+	if hasOutlet && hasDiesTrigger {
+		for i := range cards {
+			for _, r := range cards[i].profile.Produces {
+				if r == ResToken {
+					cards[i].themes["death_value"] = true
+					break
+				}
+			}
+		}
+	}
+
 	// Find clusters by theme overlap. We need the per-card profile at
 	// pair-scoring time (for role classification) so the cluster member
 	// list carries cardThemes refs rather than plain names.
@@ -943,13 +995,12 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 			continue
 		}
 
-		// Weighted pair scoring (R60 refinement): producer × payoff
-		// pairs count 2 each; same-role or unknown pairs count 1. A
-		// balanced engine outscores a same-role pile of the same size.
-		// For themes without a clean dichotomy (landfall, spellcast,
-		// lifegain — classifyClusterRole returns Unknown), every pair
-		// scores 1 and the result reduces to the previous n*(n-1)/2
-		// shape.
+		// Weighted pair scoring (R60 round 1): producer × payoff pairs
+		// count 2 each; same-role or unknown pairs count 1. A balanced
+		// engine outscores a same-role pile of the same size. For themes
+		// without a clean dichotomy (landfall, spellcast, lifegain —
+		// classifyClusterRole returns Unknown), every pair scores 1 and
+		// the result reduces to the previous n*(n-1)/2 shape.
 		roles := make([]clusterRole, len(deduped))
 		for i, m := range deduped {
 			roles[i] = classifyClusterRole(m.profile, theme)
@@ -960,6 +1011,38 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 				score += rolesPairScore(roles[i], roles[j])
 			}
 		}
+
+		// Chain-depth bonus (R60 round 2): for themes with a 3-step
+		// chain (death_value, etb_value — see classifyClusterRole),
+		// reward each complete producer→amplifier→payoff triangle with
+		// +3. Counts each card in exactly one role bucket (Both counts
+		// as both producer and payoff for chain math). The chain bonus
+		// is 0 when no amplifier exists in the cluster, so adding the
+		// missing-link card to a 2-role pile gives a discontinuous jump
+		// — which matches the deckbuilding reality that a sac outlet
+		// finally makes a token+drain pile actually win.
+		producers, amps, payoffs := 0, 0, 0
+		for _, r := range roles {
+			switch r {
+			case clusterRoleProducer:
+				producers++
+			case clusterRoleAmplifier:
+				amps++
+			case clusterRolePayoff:
+				payoffs++
+			case clusterRoleBoth:
+				producers++
+				payoffs++
+			}
+		}
+		chainCount := producers
+		if amps < chainCount {
+			chainCount = amps
+		}
+		if payoffs < chainCount {
+			chainCount = payoffs
+		}
+		score += chainCount * 3
 
 		// Cap display at 8 cards. Use names only for the report shape.
 		displayed := make([]string, 0, len(deduped))
