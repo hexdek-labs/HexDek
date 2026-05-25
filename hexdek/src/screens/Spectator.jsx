@@ -758,6 +758,12 @@ export default function Spectator() {
                         title={s.library_size <= 3 ? 'Mill danger' : s.library_size <= 7 ? 'Low library' : `${s.library_size} cards left`}
                       >L{s.library_size}</span>{' '}
                       G{s.gy_size} B{perms.length}
+                      {s.mana_pool > 0 && (
+                        <>
+                          {' '}
+                          <span className="mana-pip" title={`${s.mana_pool} floating mana`}>◊{s.mana_pool}</span>
+                        </>
+                      )}
                     </span>
                     {isActive && <span style={{ color: 'var(--ok)' }}>● PRI</span>}
                   </div>
