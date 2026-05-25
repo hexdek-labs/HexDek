@@ -195,6 +195,21 @@ type YggdrasilHat struct {
 	// Reset by ResetMjolnirStats() and exposed via MjolnirStats().
 	tierCounts [numDecisionTiers]int
 
+	// R60 cascading-decisions audit. Parent-decision tier propagation:
+	// when ChooseCastFromHand / ChooseActivation / ChooseAttackers /
+	// ChooseResponse classifies a decision at a given tier, that tier
+	// is also stamped here as the "ambient" tier. Downstream cascading
+	// decisions (ChooseTarget called during the cast's resolution,
+	// ChooseMode for modal triggers, ChooseSacrifice for an X-cost
+	// payment, OrderTriggers for same-event APNAP ordering) read
+	// `lastParentTier` so they can escalate their evaluation when the
+	// parent decision earned Ragnarok-tier compute. Without this
+	// propagation, a Ragnarok-rollout-evaluated Demonic Tutor cast
+	// would resolve into a TierMjolnir first-match target pick — the
+	// expensive parent decision priced the WRONG thing.
+	lastParentTier     DecisionTier
+	lastParentTierTurn int
+
 	// -- Zone-cast grant tracking (flashback / escape / impulse / etc.) --
 
 	// myZoneCastGrants counts how many active zone-cast permissions the
@@ -2041,6 +2056,59 @@ func (h *YggdrasilHat) recordDecisionTier(t DecisionTier) {
 	h.tierCounts[t]++
 }
 
+// recordParentTier wraps recordDecisionTier for the PARENT decision
+// entry points (ChooseCastFromHand, ChooseActivation, ChooseAttackers,
+// ChooseResponse). In addition to bumping tierCounts, it stamps
+// `lastParentTier` so cascading downstream decisions (ChooseTarget,
+// ChooseMode, ChooseX, ChooseSacrifice, OrderTriggers, ...) can read
+// it and escalate their own evaluation.
+//
+// `turn` is the current game turn — used to invalidate the parent
+// tier when a new turn starts (priority windows don't span turns,
+// and stale Ragnarok context from last turn would over-escalate
+// downstream decisions on the new turn).
+func (h *YggdrasilHat) recordParentTier(t DecisionTier, turn int) {
+	if h == nil {
+		return
+	}
+	h.recordDecisionTier(t)
+	h.lastParentTier = t
+	h.lastParentTierTurn = turn
+}
+
+// recordCascadeDecision is the downstream-method analogue of
+// recordDecisionTier: bumps the tier counter to reflect the cascade
+// (using the parent's tier when still in the same turn, else
+// defaulting to TierMjolnir). Keeps MjolnirStats accurate when the
+// real work happens in downstream Choose* — without this, a
+// Ragnarok cast followed by 3 ChooseTarget calls under-counts
+// Ragnarok 3-to-1.
+func (h *YggdrasilHat) recordCascadeDecision(gs *gameengine.GameState) DecisionTier {
+	if h == nil {
+		return TierMjolnir
+	}
+	t := TierMjolnir
+	if gs != nil && h.lastParentTierTurn == gs.Turn {
+		t = h.lastParentTier
+	}
+	h.recordDecisionTier(t)
+	return t
+}
+
+// parentTierIs reports whether the most recently classified parent
+// decision (within the current turn) is at-or-above `min`. Lets
+// cascading decisions gate "do extra work" branches without having
+// to inspect tierCounts directly.
+func (h *YggdrasilHat) parentTierIs(gs *gameengine.GameState, min DecisionTier) bool {
+	if h == nil || gs == nil {
+		return false
+	}
+	if h.lastParentTierTurn != gs.Turn {
+		return false
+	}
+	return h.lastParentTier >= min
+}
+
 // MjolnirStats returns the per-tier decision distribution for this hat
 // since the last reset (or hat construction).
 func (h *YggdrasilHat) MjolnirStats() MjolnirStats {
@@ -3754,7 +3822,7 @@ func (h *YggdrasilHat) ChooseLandToPlay(gs *gameengine.GameState, seatIdx int, l
 // -- Interface: ChooseCastFromHand --
 
 func (h *YggdrasilHat) ChooseCastFromHand(gs *gameengine.GameState, seatIdx int, castable []*gameengine.Card) *gameengine.Card {
-	h.recordDecisionTier(h.classifyDecision(gs))
+	h.recordParentTier(h.classifyDecision(gs), gs.Turn)
 	h.explorationFactor(gs, seatIdx)
 
 	pool := make([]*gameengine.Card, 0, len(castable))
@@ -4291,7 +4359,7 @@ func (h *YggdrasilHat) ChooseActivation(gs *gameengine.GameState, seatIdx int, o
 	if len(options) == 0 {
 		return nil
 	}
-	h.recordDecisionTier(h.classifyDecision(gs))
+	h.recordParentTier(h.classifyDecision(gs), gs.Turn)
 
 	// Combo sequencer override: if a combo is executable and the next
 	// action matches an activation (already on battlefield), prefer it.
@@ -4595,7 +4663,7 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 	if len(legal) == 0 {
 		return nil
 	}
-	h.recordDecisionTier(h.classifyDecision(gs))
+	h.recordParentTier(h.classifyDecision(gs), gs.Turn)
 
 	pos := h.evalPosition(gs, seatIdx)
 	relPos := h.relativePosition(gs, seatIdx)
@@ -5906,7 +5974,7 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 	if top.Controller == seatIdx || top.Countered {
 		return nil
 	}
-	h.recordDecisionTier(h.classifyDecision(gs))
+	h.recordParentTier(h.classifyDecision(gs), gs.Turn)
 	if gameengine.SplitSecondActive(gs) {
 		return nil
 	}
@@ -6576,6 +6644,7 @@ func (h *YggdrasilHat) ChooseTarget(gs *gameengine.GameState, seatIdx int, filte
 	if len(legal) == 1 {
 		return legal[0]
 	}
+	h.recordCascadeDecision(gs)
 
 	// Combo sequencer tutor override: if we're assembling a combo and
 	// this is a tutor resolving, prefer the missing piece above all else.
@@ -6868,6 +6937,7 @@ func (h *YggdrasilHat) ChooseMode(gs *gameengine.GameState, seatIdx int, modes [
 	if len(modes) == 1 {
 		return 0
 	}
+	h.recordCascadeDecision(gs)
 
 	pos := h.evalPosition(gs, seatIdx)
 
@@ -7947,6 +8017,7 @@ func (h *YggdrasilHat) OrderTriggers(gs *gameengine.GameState, seatIdx int, trig
 	if len(triggers) <= 1 {
 		return triggers
 	}
+	h.recordCascadeDecision(gs)
 	// Stack resolves LIFO — last item resolves first. Put highest-priority
 	// triggers at the END so they resolve first.
 	sort.SliceStable(triggers, func(i, j int) bool {
@@ -7956,17 +8027,29 @@ func (h *YggdrasilHat) OrderTriggers(gs *gameengine.GameState, seatIdx int, trig
 }
 
 func (h *YggdrasilHat) triggerPriority(item *gameengine.StackItem) float64 {
-	if item == nil || item.Card == nil {
+	if item == nil {
+		return 0
+	}
+	// R60 cascading-decisions audit. OrderTriggers exclusively receives
+	// triggered abilities (per CR §603.3b same-event same-controller
+	// stack), but pre-R60 this helper dereferenced item.Card — which is
+	// always nil for triggers. Every priority returned 0 and the
+	// sort.SliceStable was a silent no-op; trigger ordering was
+	// effectively insertion-order. effectiveResponseCard resolves the
+	// source permanent's card so the trigger payload's oracle text
+	// drives the ordering.
+	card := effectiveResponseCard(item)
+	if card == nil {
 		return 0
 	}
 	pri := 0.0
-	if h.isComboRelevant(item.Card) {
+	if h.isComboRelevant(card) {
 		pri += 3.0
 	}
-	if h.isValueEngineKey(item.Card) {
+	if h.isValueEngineKey(card) {
 		pri += 2.0
 	}
-	ot := gameengine.OracleTextLower(item.Card)
+	ot := gameengine.OracleTextLower(card)
 	if strings.Contains(ot, "draw") {
 		pri += 1.5
 	}
@@ -7989,6 +8072,7 @@ func (h *YggdrasilHat) ChooseX(gs *gameengine.GameState, seatIdx int, card *game
 	if availableMana <= 0 {
 		return 0
 	}
+	h.recordCascadeDecision(gs)
 	// Control/stax: hold back 2 mana for potential interaction unless
 	// this is a critical spell.
 	if h.Strategy != nil {
