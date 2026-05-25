@@ -151,6 +151,18 @@ func writeDiskCache(deckID string, body []byte) {
 	_ = os.WriteFile(path, body, 0644)
 }
 
+// SetAPIBaseForTest overrides the Moxfield API base URL and returns a
+// cleanup that restores the original. Test-only escape hatch for
+// out-of-package callers (cmd/hexdek-import end-to-end tests) — the
+// in-package cache_r60_test.go pokes apiBaseVar directly. Always
+// reset via the returned cleanup; otherwise other tests in the same
+// process inherit the override.
+func SetAPIBaseForTest(base string) func() {
+	orig := apiBaseVar
+	apiBaseVar = base
+	return func() { apiBaseVar = orig }
+}
+
 // Refresh invalidates both cache layers for a deck ID so the next
 // fetch hits the API. Used by the importer's --refresh flag.
 func Refresh(deckID string) {
