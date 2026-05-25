@@ -5557,8 +5557,28 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 
 	score := stackItemScore(top)
 
+	// R60 — stack-depth context. With the stack at 3+ items, the literal
+	// top is rarely the meaningful decision: an opponent's counter is
+	// aimed at our spell below, removal is timed to interrupt an
+	// already-committed line, or a counter-war is mid-flight. The simple
+	// `stackItemScore(top)` gate can't see any of that. See
+	// `computeStackDepthSignals` for the three signals folded in here.
+	depthSig := h.computeStackDepthSignals(gs, seatIdx, top)
+	if depthSig.scoreBonus > 0 {
+		score += depthSig.scoreBonus
+	}
+
 	// Always counter combo pieces / "win the game" / mass removal.
 	mustCounter := false
+	if depthSig.mustCounter {
+		mustCounter = true
+		topName := "<unknown>"
+		if top.Card != nil {
+			topName = top.Card.DisplayName()
+		}
+		h.logf("STACK-DEPTH-RESPONSE seat=%d depth=%d MUST-COUNTER reason=%s top=%s",
+			seatIdx, len(gs.Stack), depthSig.reason, topName)
+	}
 	if top.Card != nil {
 		if h.isComboRelevant(top.Card) {
 			mustCounter = true
@@ -5674,6 +5694,18 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 			}
 		}
 
+		// R60 — deep-stack commit-or-lose adjustment. When the stack
+		// already has 2+ hostile items pending, holding the counter for
+		// "a bigger threat later" usually fails to find a use — the
+		// chain itself IS the bigger threat, and the resolved items
+		// will close the window. Drop the gate to fire on what we have.
+		if depthSig.minScoreDelta > 0 {
+			minScore -= depthSig.minScoreDelta
+			if minScore < 1 {
+				minScore = 1
+			}
+		}
+
 		if score < minScore {
 			return nil
 		}
@@ -5683,6 +5715,138 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 		Card:       bestCounter,
 		Controller: seatIdx,
 	}
+}
+
+// stackDepthSignals carries context the literal stackItemScore can't
+// capture. Populated by computeStackDepthSignals and consumed by
+// ChooseResponse to escalate the counter-decision at deep stacks.
+//
+// The three signals address concrete misjudgements the pre-R60 hat
+// would make at stack depth ≥ 3:
+//
+//   - mustCounter — top is a counter (or other "kill the spell"
+//     effect) aimed at one of OUR spells already on the stack below.
+//     The pre-fix path scored the counter at its raw CMC (≈ 2) which
+//     fell below the standard minScore=3 gate, so we passed and
+//     watched our committed spell evaporate. The fix forces a counter
+//     in that exact window — the only window we'll get to save the
+//     investment.
+//
+//   - scoreBonus — top targets one of our permanents (removal /
+//     bounce / steal aimed at us), OR we have a non-copy spell of our
+//     own pending below at deep stacks. Both raise the stake of
+//     letting the top resolve, but not to MUST-counter level — a 1
+//     damage ping at a 4/4 doesn't deserve a hard counter just
+//     because it has a target.
+//
+//   - minScoreDelta — pile-up signal. Two+ hostile items below the
+//     top mean we're in a counter war or trigger chain where holding
+//     the counter for "the next big threat" is the wrong frame —
+//     this IS the big moment. Drop the threshold by 1 so a borderline
+//     top fires.
+type stackDepthSignals struct {
+	mustCounter   bool
+	scoreBonus    int
+	minScoreDelta int
+	reason        string // short tag for log lines
+}
+
+// computeStackDepthSignals scans gs.Stack relative to `top` and
+// `seatIdx`, producing the depth-aware response signals. Safe at any
+// stack depth; returns zero-value signals when nothing of interest is
+// happening (the cheap fast-path for the depth=1 common case).
+//
+// Two passes over gs.Stack:
+//   1. Examine top.Targets / oracle text for the mustCounter and
+//      scoreBonus triggers — these fire at any depth (depth=2 with
+//      top=counter aimed at our depth=1 spell still must-counters).
+//   2. At depth ≥ highStakesStackDepth, scan items below top to
+//      build the investment-protection and hostile-pile-up signals.
+func (h *YggdrasilHat) computeStackDepthSignals(gs *gameengine.GameState, seatIdx int, top *gameengine.StackItem) stackDepthSignals {
+	var sig stackDepthSignals
+	if gs == nil || top == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return sig
+	}
+	depth := len(gs.Stack)
+
+	// ----- Pass 1: top-item target / effect inspection ----------------
+	if top.Card != nil {
+		// Resolved Targets — the engine populates these at cast time so
+		// we have authoritative target IDs to match against.
+		for _, tg := range top.Targets {
+			switch tg.Kind {
+			case gameengine.TargetKindStackItem:
+				if tg.Stack != nil && tg.Stack.Controller == seatIdx && !tg.Stack.IsCopy {
+					sig.mustCounter = true
+					sig.reason = "top_counters_our_stack_item"
+					return sig
+				}
+			case gameengine.TargetKindPermanent:
+				if tg.Permanent != nil && tg.Permanent.Controller == seatIdx {
+					sig.scoreBonus += 2
+					if sig.reason == "" {
+						sig.reason = "top_targets_our_permanent"
+					}
+				}
+			}
+		}
+		// Heuristic fallback when Targets are empty (some engine paths
+		// push spells with the Targets slice unpopulated, and tests
+		// commonly do so). If top has counterspell oracle and any of
+		// our items is below in the stack, treat as the same situation.
+		if !sig.mustCounter && depth >= 2 {
+			ot := gameengine.OracleTextLower(top.Card)
+			isCounter := strings.Contains(ot, "counter target spell") ||
+				strings.Contains(ot, "counter target activated") ||
+				strings.Contains(ot, "counter target triggered") ||
+				strings.Contains(ot, "counter that spell")
+			if isCounter {
+				for i := 0; i < depth-1; i++ {
+					it := gs.Stack[i]
+					if it == nil || it.IsCopy {
+						continue
+					}
+					if it.Controller == seatIdx {
+						sig.mustCounter = true
+						sig.reason = "top_counters_our_stack_item_heuristic"
+						return sig
+					}
+				}
+			}
+		}
+	}
+
+	if depth < highStakesStackDepth {
+		return sig
+	}
+
+	// ----- Pass 2: deep-stack investment + pile-up scan ---------------
+	hasOurSpellBelow := false
+	hostileBelow := 0
+	for i := 0; i < depth-1; i++ {
+		it := gs.Stack[i]
+		if it == nil || it.IsCopy {
+			continue
+		}
+		if it.Controller == seatIdx {
+			hasOurSpellBelow = true
+		} else {
+			hostileBelow++
+		}
+	}
+	if hasOurSpellBelow {
+		sig.scoreBonus += 2
+		if sig.reason == "" {
+			sig.reason = "investment_below_top_at_depth"
+		}
+	}
+	if hostileBelow >= 2 {
+		sig.minScoreDelta = 1
+		if sig.reason == "" {
+			sig.reason = "hostile_pile_up_at_depth"
+		}
+	}
+	return sig
 }
 
 // maybeCastDefensiveAnswer returns a fog or mass-protection spell from
