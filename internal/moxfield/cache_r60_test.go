@@ -46,6 +46,9 @@ func newCacheTestEnv(t *testing.T) (counter *int32, cleanup func()) {
 	t.Setenv(cacheEnvDir, tmp)
 	t.Setenv(cacheEnvDisable, "")
 	t.Setenv(cacheEnvTTL, "")
+	// Snapshots are written on every API hit (not cache hit); isolate
+	// to tmp so test runs don't pollute the user's real ~/.local/share.
+	t.Setenv(snapshotEnvDir, filepath.Join(tmp, "snapshots"))
 
 	resetCachesForTest()
 
@@ -269,6 +272,7 @@ func TestCache_NoPoisonOnAPIError(t *testing.T) {
 	t.Setenv(cacheEnvDir, tmp)
 	t.Setenv(cacheEnvDisable, "")
 	t.Setenv(cacheEnvTTL, "")
+	t.Setenv(snapshotEnvDir, filepath.Join(tmp, "snapshots"))
 	resetCachesForTest()
 
 	if _, err := FetchDeckByID("abc123"); err == nil {

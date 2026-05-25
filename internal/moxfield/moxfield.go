@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -459,6 +460,14 @@ func fetchDeckRaw(deckID string) (*apiResponse, error) {
 
 	inProcCache.Store(deckID, &data)
 	writeDiskCache(deckID, bodyBytes)
+	// Snapshot the raw API JSON on every fresh fetch so a deck's
+	// history is preserved even if the Moxfield source is edited or
+	// deleted later. Cache hits don't snapshot — the cached data is
+	// already a prior snapshot. Best-effort: log and continue on
+	// failure rather than blocking the import on a snapshot IO error.
+	if _, err := SaveSnapshot(deckID, bodyBytes); err != nil {
+		log.Printf("moxfield: snapshot for %s failed: %v", deckID, err)
+	}
 	return &data, nil
 }
 
