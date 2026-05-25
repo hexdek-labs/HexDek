@@ -85,12 +85,17 @@ func ragavanCombatDamage(gs *gameengine.GameState, perm *gameengine.Permanent, c
 	})
 
 	// Register zone-cast grant so the controller may cast the exiled card.
+	// Oracle: "Until end of turn, you may cast that card." — stamp
+	// Duration + GrantTurn so ExpireZoneCastGrants reaps at cleanup of
+	// the grant turn (no delayed-trigger fallback exists for this card).
 	gameengine.RegisterZoneCastGrant(gs, exiledCard, &gameengine.ZoneCastPermission{
 		Zone:              "exile",
-		Keyword:           "static_exile_cast",
+		Keyword:           "ragavan_impulse_play",
 		ManaCost:          -1, // use the card's normal mana cost
 		RequireController: seat,
 		SourceName:        "Ragavan, Nimble Pilferer",
+		Duration:          "until_end_of_turn",
+		GrantTurn:         gs.Turn,
 	})
 
 	emit(gs, slug, "Ragavan, Nimble Pilferer", map[string]interface{}{
