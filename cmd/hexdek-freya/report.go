@@ -629,6 +629,20 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		fmt.Fprintf(w, "  %s\n\n", dp.PersonalityBlurb)
 	}
 
+	if len(dp.CoachingTips) > 0 {
+		fmt.Fprintf(w, "  Coaching (bracket %d, %s):\n", dp.Bracket, dp.PrimaryArchetype)
+		for _, t := range dp.CoachingTips {
+			fmt.Fprintf(w, "    [P%d %s] %s\n", t.Priority, t.Category, t.Title)
+			if t.Detail != "" {
+				fmt.Fprintf(w, "        %s\n", t.Detail)
+			}
+			if t.Action != "" {
+				fmt.Fprintf(w, "        → %s\n", t.Action)
+			}
+		}
+		fmt.Fprintf(w, "\n")
+	}
+
 	if dp.ManaBaseGrade != "" {
 		fmt.Fprintf(w, "  Mana Base:  Grade %s", dp.ManaBaseGrade)
 		if dp.FetchCount > 0 || dp.TaplandCount > 0 {
@@ -1243,6 +1257,16 @@ type jsonDeckProfile struct {
 	InteractionQuality float64           `json:"interaction_quality,omitempty"`
 	PowerPercentile    int               `json:"power_percentile,omitempty"`
 	PowerFactors       []string          `json:"power_factors,omitempty"`
+	CoachingTips       []jsonCoachingTip `json:"coaching_tips,omitempty"`
+}
+
+type jsonCoachingTip struct {
+	Category string   `json:"category"`
+	Priority int      `json:"priority"`
+	Title    string   `json:"title"`
+	Detail   string   `json:"detail,omitempty"`
+	Action   string   `json:"action,omitempty"`
+	Tags     []string `json:"tags,omitempty"`
 }
 
 type jsonCluster struct {
@@ -1502,6 +1526,17 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 			Suggested: c.Suggested,
 		})
 	}
+	var coaching []jsonCoachingTip
+	for _, t := range dp.CoachingTips {
+		coaching = append(coaching, jsonCoachingTip{
+			Category: t.Category,
+			Priority: t.Priority,
+			Title:    t.Title,
+			Detail:   t.Detail,
+			Action:   t.Action,
+			Tags:     t.Tags,
+		})
+	}
 
 	return &jsonDeckProfile{
 		DeckName:           dp.DeckName,
@@ -1556,6 +1591,7 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 		InteractionQuality: dp.InteractionQuality,
 		PowerPercentile:    dp.PowerPercentile,
 		PowerFactors:       dp.PowerFactors,
+		CoachingTips:       coaching,
 	}
 }
 

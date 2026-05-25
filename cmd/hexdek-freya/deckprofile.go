@@ -111,6 +111,13 @@ type DeckProfile struct {
 	// Deck personality
 	PersonalityBlurb string
 
+	// Deck coaching — 3-5 prioritized actionable suggestions synthesized
+	// across mana base, interaction, ramp/draw, win-line redundancy,
+	// protection density, cuts, and commander-synergy signals. Thresholds
+	// flex with archetype + bracket goal so a B2 casual deck isn't
+	// lectured about tutor density. See computeCoachingTips.
+	CoachingTips []CoachingTip
+
 	// Power ranking
 	PowerPercentile int    // 0-100 estimated percentile within archetype
 	PowerFactors    []string
@@ -159,6 +166,29 @@ type MetaAdvantage struct {
 	Reason         string
 	OpponentReason string // populated only when Source == "both"
 	Source         string // "forward" | "reverse" | "both"
+}
+
+// CoachingTip is one prioritized, actionable suggestion for improving
+// the deck. Coach surfaces ≤5 sorted by Priority (descending).
+//
+//   - Category groups tips for the Decks-screen filter rail
+//     ("cut" | "add" | "manabase" | "ratio" | "consistency").
+//   - Priority is the impact score (1-10). 10 = deck won't function
+//     without this fix (severe land shortage); 5 = stylistic
+//     improvement. Coach uses this for the sort + truncation pass.
+//   - Title is a one-line headline rendered as the tip bullet.
+//   - Detail is 1-3 sentences naming the specific signal that
+//     triggered the tip (counts, percentages, named themes).
+//   - Action is the concrete next step — what to actually do, with
+//     named candidate cards where applicable.
+//   - Tags carry archetype/bracket affinity for downstream filtering.
+type CoachingTip struct {
+	Category string
+	Priority int
+	Title    string
+	Detail   string
+	Action   string
+	Tags     []string
 }
 
 type CardQuality struct {
@@ -247,6 +277,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	dp.Strengths = deriveStrengths(report, dp)
 	dp.Weaknesses = deriveWeaknesses(report, dp)
 	dp.GameplanSummary = buildGameplanSummary(dp, report)
+	dp.CoachingTips = computeCoachingTips(dp, report)
 
 	return dp
 }
