@@ -2120,6 +2120,46 @@ paths:
         "500": { $ref: '#/components/responses/InternalError' }
         "502": { $ref: '#/components/responses/BadGateway' }
 
+  /api/import/archidekt:
+    post:
+      tags: [imports]
+      operationId: importArchidektDeck
+      summary: Import a deck from an Archidekt URL.
+      description: |
+        Parallel to /api/import/moxfield. Accepts an archidekt.com deck URL
+        (numeric ID, optionally followed by a slug), fetches the JSON via
+        Archidekt's public API, and writes a plain-text decklist into the
+        caller's collection. Maybeboard / Sideboard / Considering categories
+        are routed to commented-out lines so they don't count toward the
+        legal Commander deck.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url:
+                  type: string
+                  format: uri
+                  pattern: '^https://(www\.)?archidekt\.com/decks/\d+'
+                owner:
+                  type: string
+                tags:
+                  type: array
+                  items: { type: string }
+      responses:
+        "201":
+          description: Deck imported.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "409": { $ref: '#/components/responses/Conflict' }
+        "500": { $ref: '#/components/responses/InternalError' }
+        "502": { $ref: '#/components/responses/BadGateway' }
+
   /api/imports/{owner}:
     parameters:
       - $ref: '#/components/parameters/OwnerParam'
