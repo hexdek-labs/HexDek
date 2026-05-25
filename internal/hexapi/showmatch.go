@@ -981,7 +981,7 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 		sm.mu.Lock()
 		sm.stats.gamesPlayed++
 		sm.stats.totalTurns += gs.Turn
-		sm.updateELO(deckKeys, commanders, pickedDecks, winner, gs.Turn)
+		priorEffects := sm.updateELO(deckKeys, commanders, pickedDecks, winner, gs.Turn)
 		sm.mu.Unlock()
 
 		// Replay archive: persist per-game outcomes and link them to
@@ -1011,10 +1011,11 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 		if sm.heimdall != nil {
 			sm.heimdall.RecordSeed(gauntSeed)
 			sm.heimdall.RecordObservation(heimdall.Observation{
-				Seed:            gauntSeed,
-				ParserGaps:      heimdall.ExtractParserGaps(gs),
-				CoTriggers:      heimdall.ExtractCoTriggers(turnETBs),
-				CardFirstPlayed: gs.CardFirstPlayed,
+				Seed:                    gauntSeed,
+				ParserGaps:              heimdall.ExtractParserGaps(gs),
+				CoTriggers:              heimdall.ExtractCoTriggers(turnETBs),
+				CardFirstPlayed:         gs.CardFirstPlayed,
+				CompositionPriorEffects: priorEffects,
 			})
 		}
 
@@ -1584,7 +1585,7 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 	sm.mu.Lock()
 	sm.stats.gamesPlayed++
 	sm.stats.totalTurns += gs.Turn
-	sm.updateELO(deckKeys, commanders, pickedDecks, winner, gs.Turn)
+	bracketPriorEffects := sm.updateELO(deckKeys, commanders, pickedDecks, winner, gs.Turn)
 	sm.mu.Unlock()
 
 	bracketSeed := heimdall.GameSeed{
@@ -1597,10 +1598,11 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 	if sm.heimdall != nil {
 		sm.heimdall.RecordSeed(bracketSeed)
 		sm.heimdall.RecordObservation(heimdall.Observation{
-			Seed:            bracketSeed,
-			ParserGaps:      heimdall.ExtractParserGaps(gs),
-			CoTriggers:      heimdall.ExtractCoTriggers(bracketETBs),
-			CardFirstPlayed: gs.CardFirstPlayed,
+			Seed:                    bracketSeed,
+			ParserGaps:              heimdall.ExtractParserGaps(gs),
+			CoTriggers:              heimdall.ExtractCoTriggers(bracketETBs),
+			CardFirstPlayed:         gs.CardFirstPlayed,
+			CompositionPriorEffects: bracketPriorEffects,
 		})
 	}
 
@@ -1876,7 +1878,7 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 	sm.snap = finalSnap
 	sm.stats.gamesPlayed++
 	sm.stats.totalTurns += gs.Turn
-	sm.updateELO(deckKeys, commanders, pickedDecks, winner, gs.Turn)
+	showPriorEffects := sm.updateELO(deckKeys, commanders, pickedDecks, winner, gs.Turn)
 
 	completed := CompletedGame{
 		GameID:     gameNum,
@@ -1908,10 +1910,11 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 	if sm.heimdall != nil {
 		sm.heimdall.RecordSeed(showSeed)
 		sm.heimdall.RecordObservation(heimdall.Observation{
-			Seed:            showSeed,
-			ParserGaps:      heimdall.ExtractParserGaps(gs),
-			CoTriggers:      heimdall.ExtractCoTriggers(showETBs),
-			CardFirstPlayed: gs.CardFirstPlayed,
+			Seed:                    showSeed,
+			ParserGaps:              heimdall.ExtractParserGaps(gs),
+			CoTriggers:              heimdall.ExtractCoTriggers(showETBs),
+			CardFirstPlayed:         gs.CardFirstPlayed,
+			CompositionPriorEffects: showPriorEffects,
 		})
 	}
 
@@ -2559,11 +2562,11 @@ func hexELOStreakBreakBonus(lossStreak int) float64 {
 	return math.Min(float64(lossStreak)*3.0, 30.0)
 }
 
-func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparser.TournamentDeck, winner int, turns int) {
+func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparser.TournamentDeck, winner int, turns int) []heimdall.CompositionPriorEffect {
 	const baseK = 32.0
 	n := len(deckKeys)
 	if n < 2 {
-		return
+		return nil
 	}
 	kScaled := baseK / float64(n-1)
 
@@ -2604,9 +2607,56 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 		}
 	}
 	offsets := make([]float64, n)
+	priorConfidence := make([]float64, n)
+	priorExpected := make([]float64, n)
 	for i, arch := range podArchetypes {
 		offsets[i] = trueskill.ComputeCompositionOffset(
 			sm.compositionPrior, arch, podArchetypes, sm.compositionPriorCfg)
+		// Snapshot Confidence + ExpectedWinrate at the SAME moment
+		// the offset is computed so monitoring records reflect the
+		// state that produced the offset, not the post-ObserveGame
+		// state at the end of updateELO.
+		if sm.compositionPrior != nil {
+			priorConfidence[i] = sm.compositionPrior.Confidence(arch, podArchetypes)
+			priorExpected[i] = sm.compositionPrior.ExpectedWinrate(arch, podArchetypes)
+		}
+	}
+
+	// --- R60 monitoring (PR #418): per-seat μ-before snapshot + a
+	// shadow vanilla update for the "what would have happened without
+	// the prior" baseline. Cheap (~one extra round of pairwise
+	// updates, ~12 floating-point ops per seat) and gives Heimdall the
+	// MuDeltaVsBaseline signal without doing it offline.
+	muBefore := make([]float64, n)
+	for i, key := range deckKeys {
+		muBefore[i] = sm.elo[key].tsMu
+	}
+	vanillaAfter := make([]float64, n)
+	{
+		// Shadow vanilla update: same input as the real update below
+		// but without composition offsets. Don't mutate any state.
+		shadowRatings := make([]trueskill.Rating, n)
+		for i, key := range deckKeys {
+			shadowRatings[i] = trueskill.Rating{Mu: sm.elo[key].tsMu, Sigma: sm.elo[key].tsSigma}
+		}
+		if winner >= 0 && winner < n {
+			wR := shadowRatings[winner]
+			for i := range deckKeys {
+				if i == winner {
+					continue
+				}
+				wNew, lNew := trueskill.Update2Player(tsConfig, wR, shadowRatings[i])
+				wR = wNew
+				shadowRatings[i] = lNew
+			}
+			shadowRatings[winner] = wR
+		} else {
+			ranks := make([]int, n)
+			shadowRatings = trueskill.UpdateMultiplayer(tsConfig, shadowRatings, ranks)
+		}
+		for i := range deckKeys {
+			vanillaAfter[i] = shadowRatings[i].Mu
+		}
 	}
 
 	// --- TrueSkill update (primary rating) ---
@@ -2690,7 +2740,7 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 		for _, key := range deckKeys {
 			sm.elo[key].lossStreak++
 		}
-		return
+		return sm.buildCompositionPriorEffects(deckKeys, podArchetypes, offsets, priorConfidence, priorExpected, muBefore, vanillaAfter)
 	}
 
 	// Winner: streak break bonus + reset streak.
@@ -2782,6 +2832,34 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 			}
 		}
 	}
+
+	return sm.buildCompositionPriorEffects(deckKeys, podArchetypes, offsets, priorConfidence, priorExpected, muBefore, vanillaAfter)
+}
+
+// buildCompositionPriorEffects assembles the per-seat monitoring
+// records (PR #418) used by Heimdall analytics. priorConfidence /
+// priorExpected are pre-update snapshots — they reflect the state
+// that produced the offset, NOT the post-ObserveGame state. Reads
+// each deck's post-update μ from sm.elo to compute MuDeltaVsBaseline.
+// MuDeltaVsBaseline = priorAfter - vanillaAfter (same μBefore for
+// both → simplifies the formal definition).
+func (sm *Showmatch) buildCompositionPriorEffects(
+	deckKeys, podArchetypes []string,
+	offsets, priorConfidence, priorExpected, muBefore, vanillaAfter []float64,
+) []heimdall.CompositionPriorEffect {
+	effects := make([]heimdall.CompositionPriorEffect, len(deckKeys))
+	for i, key := range deckKeys {
+		muAfterPrior := sm.elo[key].tsMu
+		effects[i] = heimdall.CompositionPriorEffect{
+			Seat:              i,
+			Archetype:         podArchetypes[i],
+			Offset:            offsets[i],
+			Confidence:        priorConfidence[i],
+			ExpectedWinrate:   priorExpected[i],
+			MuDeltaVsBaseline: muAfterPrior - vanillaAfter[i],
+		}
+	}
+	return effects
 }
 
 func (sm *Showmatch) GetSnapshot() *GameSnapshot {
