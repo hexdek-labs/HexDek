@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -160,6 +162,85 @@ const MaxTagsPerDeck = 16
 
 // MaxTagLen bounds the length of a single tag string.
 const MaxTagLen = 32
+
+// SystemTagPrefix marks tags derived from automated analysis (today:
+// Freya's primary_archetype) so frontends can render them with a
+// distinct chip style and so user tags can never collide with them.
+// Users can still add ANY value to their own tags (including the
+// bare archetype name) — the prefixed system tag and the unprefixed
+// user tag coexist as two separate entries, which is the documented
+// "override" path.
+const SystemTagPrefix = "archetype:"
+
+// loadFreyaSystemTags reads strategy.json for a deck and returns the
+// derived system tag(s). Currently a single-element slice carrying
+// the primary_archetype (e.g. ["archetype:combo"]); the shape is a
+// slice so additional auto-derived tags (bracket, color identity,
+// power tier) can join later without changing the API contract.
+//
+// Returns nil when:
+//   - strategy.json doesn't exist (Freya hasn't been run)
+//   - strategy.json is unparseable
+//   - primary_archetype is empty
+//
+// Side-effect free: derives on-the-fly from Freya's own output, no
+// DB write, no persistence. Re-running Freya naturally refreshes
+// the tag on the next GET.
+func loadFreyaSystemTags(decksDir, owner, id string) []string {
+	if decksDir == "" || owner == "" || id == "" {
+		return nil
+	}
+	p := filepath.Join(decksDir, owner, "freya", id+".strategy.json")
+	data, err := os.ReadFile(p)
+	if err != nil {
+		return nil
+	}
+	var s struct {
+		PrimaryArchetype string `json:"primary_archetype"`
+	}
+	if json.Unmarshal(data, &s) != nil {
+		return nil
+	}
+	tag := normalizeSystemTagValue(s.PrimaryArchetype)
+	if tag == "" {
+		return nil
+	}
+	return []string{SystemTagPrefix + tag}
+}
+
+// normalizeSystemTagValue lowercases + collapses whitespace into
+// single hyphens so multi-word archetype labels ("Lands Matter")
+// round-trip as stable, URL-safe tag values ("lands-matter").
+// Control chars are stripped; the result is empty when the input
+// is whitespace-only or contains nothing safe.
+func normalizeSystemTagValue(raw string) string {
+	raw = strings.TrimSpace(strings.ToLower(raw))
+	if raw == "" {
+		return ""
+	}
+	var b strings.Builder
+	b.Grow(len(raw))
+	prevHyphen := false
+	for _, c := range raw {
+		if c < 0x20 || c == 0x7f {
+			continue
+		}
+		if c == ' ' || c == '\t' || c == '-' || c == '_' || c == '/' {
+			if !prevHyphen && b.Len() > 0 {
+				b.WriteByte('-')
+				prevHyphen = true
+			}
+			continue
+		}
+		b.WriteRune(c)
+		prevHyphen = false
+	}
+	out := strings.TrimRight(b.String(), "-")
+	if len(out) > MaxTagLen-len(SystemTagPrefix) {
+		out = out[:MaxTagLen-len(SystemTagPrefix)]
+	}
+	return out
+}
 
 // normalizeTags trims, lowercases, dedupes and length-limits an incoming
 // tag list. Tag matching elsewhere is case-insensitive, so we normalize

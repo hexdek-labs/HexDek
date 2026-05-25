@@ -280,6 +280,7 @@ type DeckSummary struct {
 	Archetype        string    `json:"archetype,omitempty"`
 	Legal            *bool     `json:"legal,omitempty"`
 	Tags             []string  `json:"tags,omitempty"`
+	SystemTags       []string  `json:"system_tags,omitempty"`
 }
 
 func (h *Handler) handleListDecks(w http.ResponseWriter, r *http.Request) {
@@ -349,6 +350,7 @@ func (h *Handler) handleListDecks(w http.ResponseWriter, r *http.Request) {
 			decks[i].Name = custom
 		}
 		decks[i].Tags = h.loadTags(r.Context(), decks[i].Owner, decks[i].ID)
+		decks[i].SystemTags = loadFreyaSystemTags(h.DecksDir, decks[i].Owner, decks[i].ID)
 	}
 
 	sort.Slice(decks, func(i, j int) bool {
@@ -455,6 +457,7 @@ func (h *Handler) handleGetDeck(w http.ResponseWriter, r *http.Request) {
 	clonedFrom := h.loadClonedFrom(r.Context(), owner, id)
 	forkedFrom := h.loadForkedFrom(r.Context(), owner, id)
 	tags := h.loadTags(r.Context(), owner, id)
+	systemTags := loadFreyaSystemTags(h.DecksDir, owner, id)
 	writeJSON(w, map[string]any{
 		"id":              id,
 		"owner":           owner,
@@ -469,6 +472,7 @@ func (h *Handler) handleGetDeck(w http.ResponseWriter, r *http.Request) {
 		"cards":           cards,
 		"mana_production": production,
 		"tags":            tags,
+		"system_tags":     systemTags,
 	})
 }
 
