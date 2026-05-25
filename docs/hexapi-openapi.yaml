@@ -731,6 +731,27 @@ paths:
                 items: { $ref: '#/components/schemas/EmptyOk' }
         "400": { $ref: '#/components/responses/BadRequest' }
 
+  /api/decks/{owner}/{id}/versions/{version}:
+    parameters:
+      - $ref: '#/components/parameters/OwnerParam'
+      - $ref: '#/components/parameters/DeckIdParam'
+      - name: version
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1, maximum: 500 }
+    get:
+      tags: [decks]
+      operationId: getDeckVersion
+      summary: Get one historical version's decklist text + parsed cards. Drives the DECK HISTORY view's per-row diff.
+      responses:
+        "200":
+          description: Version body.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EmptyOk' }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+
   /api/decks/{owner}/{id}/version-trends:
     parameters:
       - $ref: '#/components/parameters/OwnerParam'

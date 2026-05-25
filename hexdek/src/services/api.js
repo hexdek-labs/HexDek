@@ -121,6 +121,7 @@ export const api = {
     body: JSON.stringify(fields),
   }),
   getDeckVersions: (id) => request(`/api/decks/${id}/versions`),
+  getDeckVersion: (id, version) => request(`/api/decks/${id}/versions/${encodeURIComponent(version)}`),
   getDeckCurse: (id) => request(`/api/decks/${id}/curse`),
   patchDeckCurse: (id, constraints) => authedRequest(`/api/decks/${id}/curse`, {
     method: 'PATCH',

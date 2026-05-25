@@ -25,6 +25,7 @@ import EloSparkline from '../components/EloSparkline'
 import DeckRating from '../components/DeckRating'
 import DeckShareDisclosure from '../components/DeckShareDisclosure'
 import { deckGlanceStats } from '../lib/deckStats'
+import { diffDeckText, diffSummary } from '../lib/deckHistoryDiff'
 import {
   applySuggestion,
   extractFragment,
@@ -505,6 +506,221 @@ function WorkshopTextarea({ value, onChange, textareaRef: externalRef }) {
   )
 }
 
+// DeckHistoryPanel — full deck-history view. Lists every archived
+// version of the deck (plus a synthetic CURRENT entry for the live
+// file), and on row expand fetches the version body + the immediately
+// previous version's body and renders the per-card diff (added /
+// removed / qty-changed). Lazy fetch: only the rows the user actually
+// opens hit the network, so a 50-version deck doesn't burst-fetch on
+// mount.
+function DeckHistoryPanel({ versions, deckId, currentDeckText, commanderName }) {
+  // Synthetic CURRENT row. Its diff is computed against the latest
+  // archived version using already-known data (currentDeckText +
+  // a lazy fetch of versions[0]'s body).
+  const rows = useMemo(() => {
+    // versions is returned newest-first by /api/decks/{id}/versions.
+    const v = Array.isArray(versions) ? [...versions] : []
+    const out = []
+    if (currentDeckText) {
+      out.push({
+        kind: 'current',
+        version: 'current',
+        label: 'CURRENT',
+        saved_at: null,
+        prevVersion: v[0]?.version ?? null,
+      })
+    }
+    for (let i = 0; i < v.length; i++) {
+      out.push({
+        kind: 'archived',
+        version: v[i].version,
+        label: `V${v[i].version}`,
+        saved_at: v[i].saved_at || null,
+        prevVersion: v[i + 1]?.version ?? null,
+      })
+    }
+    return out
+  }, [versions, currentDeckText])
+
+  const [open, setOpen] = useState({})
+  const [bodies, setBodies] = useState({})    // version# → deck text
+  const [errors, setErrors] = useState({})    // version# → message
+  const [loadingKey, setLoadingKey] = useState(null)
+
+  const fetchBody = async (version) => {
+    if (version == null) return null
+    if (bodies[version] != null) return bodies[version]
+    setLoadingKey(version)
+    try {
+      const v = await api.getDeckVersion(deckId, version)
+      const text = v?.deck_list ?? ''
+      setBodies(prev => ({ ...prev, [version]: text }))
+      return text
+    } catch (err) {
+      setErrors(prev => ({ ...prev, [version]: err?.message || 'FETCH FAILED' }))
+      return null
+    } finally {
+      setLoadingKey(null)
+    }
+  }
+
+  const toggle = async (row) => {
+    const key = row.version
+    if (open[key]) {
+      setOpen(prev => ({ ...prev, [key]: false }))
+      return
+    }
+    setOpen(prev => ({ ...prev, [key]: true }))
+    // Lazy load both sides of the diff.
+    if (row.kind === 'archived') await fetchBody(row.version)
+    if (row.prevVersion != null) await fetchBody(row.prevVersion)
+  }
+
+  if (rows.length === 0) {
+    return (
+      <Panel code="04.H" title="DECK HISTORY">
+        <div className="t-xs muted" style={{ padding: '12px 0' }}>
+          &gt; NO HISTORY YET — VERSIONS ARE ARCHIVED ON EVERY SAVE UPDATE
+        </div>
+      </Panel>
+    )
+  }
+
+  return (
+    <Panel code="04.H" title="DECK HISTORY" right={<Tag>{rows.length} ENTRIES</Tag>}>
+      <ContextBox id="deck.history" compact style={{ marginBottom: 8 }}>
+        Every <strong>SAVE UPDATE</strong> archives the prior deck as a new version.
+        Click a row to see what changed since the previous version — added cards, cut cards, and quantity tweaks.
+      </ContextBox>
+      <div data-testid="deck-history-list">
+        {rows.map(row => {
+          const isOpen = !!open[row.version]
+          const baselineText = row.prevVersion != null ? bodies[row.prevVersion] : ''
+          const currentText = row.kind === 'current' ? (currentDeckText || '') : (bodies[row.version] || '')
+          const ready = row.kind === 'current'
+            ? (row.prevVersion == null || baselineText != null)
+            : (bodies[row.version] != null && (row.prevVersion == null || baselineText != null))
+          const diff = ready ? diffDeckText(baselineText, currentText) : null
+          const isLoading = loadingKey === row.version || (row.prevVersion != null && loadingKey === row.prevVersion)
+          const err = errors[row.version] || (row.prevVersion != null ? errors[row.prevVersion] : null)
+          return (
+            <div
+              key={row.version}
+              data-testid={`deck-history-row-${row.version}`}
+              style={{ borderBottom: '1px dotted var(--rule)' }}
+            >
+              <button
+                type="button"
+                onClick={() => toggle(row)}
+                aria-expanded={isOpen}
+                style={{
+                  width: '100%',
+                  display: 'grid',
+                  gridTemplateColumns: '24px 90px 1fr auto',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 0',
+                  background: 'transparent',
+                  border: 0,
+                  color: 'inherit',
+                  font: 'inherit',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <span style={{
+                  fontSize: 10,
+                  color: 'var(--ink-2)',
+                  transition: 'transform 120ms ease',
+                  transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)',
+                  display: 'inline-block',
+                }}>▶</span>
+                <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em' }}>
+                  {row.label}{row.kind === 'current' && <span className="t-xs muted" style={{ marginLeft: 6 }}>(LIVE)</span>}
+                </span>
+                <span className="t-xs muted">
+                  {row.saved_at ? new Date(row.saved_at).toLocaleString() : (row.kind === 'current' ? '— UNSAVED IF EDITED' : '')}
+                </span>
+                <span className="t-xs" style={{ letterSpacing: '0.06em', color: diff && !diff.isClean ? 'var(--ink)' : 'var(--ink-3)' }}>
+                  {isOpen && isLoading ? 'LOADING…' : (diff ? diffSummary(diff) : (row.prevVersion == null ? 'INITIAL IMPORT' : ''))}
+                </span>
+              </button>
+              {isOpen && (
+                <div style={{ padding: '4px 0 10px 32px' }}>
+                  {err && (
+                    <div className="t-xs" style={{ color: 'var(--danger)' }}>✗ {err}</div>
+                  )}
+                  {!ready && !err && (
+                    <div className="t-xs muted">&gt; FETCHING VERSION{row.prevVersion != null ? ' + BASELINE' : ''}…</div>
+                  )}
+                  {ready && row.prevVersion == null && (
+                    <div className="t-xs muted">&gt; INITIAL IMPORT — NO PRIOR VERSION TO DIFF AGAINST</div>
+                  )}
+                  {ready && diff && row.prevVersion != null && (
+                    <DeckHistoryDiffBlock diff={diff} baselineLabel={`V${row.prevVersion}`} currentLabel={row.label} />
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+      {commanderName && (
+        <div className="t-xs muted" style={{ marginTop: 6, letterSpacing: '0.06em' }}>
+          COMMANDER: {commanderName.toUpperCase()}
+        </div>
+      )}
+    </Panel>
+  )
+}
+
+function DeckHistoryDiffBlock({ diff, baselineLabel, currentLabel }) {
+  if (!diff || diff.isClean) {
+    return <div className="t-xs muted">&gt; NO CHANGES BETWEEN {baselineLabel} AND {currentLabel}</div>
+  }
+  return (
+    <div data-testid="deck-history-diff" style={{ fontSize: 11 }}>
+      <div className="t-xs muted" style={{ marginBottom: 4, letterSpacing: '0.06em' }}>
+        {baselineLabel} → {currentLabel} · +{diff.addedCards} cards / -{diff.removedCards} cards / net {diff.netCards >= 0 ? '+' : ''}{diff.netCards}
+      </div>
+      {diff.added.length > 0 && (
+        <div style={{ marginTop: 4 }}>
+          <div style={{ fontSize: 9, color: 'var(--ok)', letterSpacing: '0.08em', fontWeight: 700 }}>ADDED</div>
+          {diff.added.map((a, i) => (
+            <div key={`a-${i}`} style={{ fontSize: 11 }}>
+              <span style={{ color: 'var(--ok)' }}>+{a.delta}</span> {a.name}
+            </div>
+          ))}
+        </div>
+      )}
+      {diff.removed.length > 0 && (
+        <div style={{ marginTop: 4 }}>
+          <div style={{ fontSize: 9, color: 'var(--danger)', letterSpacing: '0.08em', fontWeight: 700 }}>REMOVED</div>
+          {diff.removed.map((r, i) => (
+            <div key={`r-${i}`} style={{ fontSize: 11 }}>
+              <span style={{ color: 'var(--danger)' }}>-{r.delta}</span> {r.name}
+            </div>
+          ))}
+        </div>
+      )}
+      {diff.changed.length > 0 && (
+        <div style={{ marginTop: 4 }}>
+          <div style={{ fontSize: 9, color: 'var(--ink-2)', letterSpacing: '0.08em', fontWeight: 700 }}>QTY CHANGED</div>
+          {diff.changed.map((c, i) => (
+            <div key={`c-${i}`} style={{ fontSize: 11 }}>
+              <span style={{ color: c.delta > 0 ? 'var(--ok)' : 'var(--danger)' }}>
+                {c.delta > 0 ? '+' : ''}{c.delta}
+              </span>{' '}
+              {c.name}{' '}
+              <span className="t-xs muted">({c.from} → {c.to})</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // WorkshopDiff — shows what would happen if the user clicks SAVE UPDATE.
 // Parses both the baseline (workshop-open snapshot) and the current
 // editText into card-count maps and renders a +N / -M summary plus a
@@ -719,6 +935,17 @@ export default function DeckArchive() {
     // would invalidate the baseline every keystroke.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editing])
+  // Lazy-load versions when the HISTORY tab opens. Other entry points
+  // (workshop save, clone, etc.) refresh `versions` already; this
+  // covers the read-only viewer who clicks HISTORY without opening
+  // the workshop first.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (activeTab === 'history' && owner && id) {
+      api.getDeckVersions(`${owner}/${id}`).then(setVersions).catch(() => {})
+    }
+  }, [activeTab, owner, id])
+
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [comparePickerOpen, setComparePickerOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
@@ -1804,6 +2031,7 @@ export default function DeckArchive() {
           <div className="deck-tabs">
             <button type="button" className={`deck-tab ${activeTab === 'analysis' ? 'active' : ''}`} onClick={() => setActiveTab('analysis')}>ANALYSIS</button>
             <button type="button" className={`deck-tab ${activeTab === 'decklist' ? 'active' : ''}`} onClick={() => setActiveTab('decklist')}>DECK LIST</button>
+            <button type="button" className={`deck-tab ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')} data-testid="history-tab">HISTORY</button>
             <button type="button" className={`deck-tab ${activeTab === 'achievements' ? 'active' : ''}`} onClick={() => setActiveTab('achievements')}>ACHIEVEMENTS</button>
           </div>
 
@@ -2744,6 +2972,21 @@ export default function DeckArchive() {
             </Panel>
           )}
           </>}
+
+          {/* === HISTORY TAB === */}
+          {activeTab === 'history' && (
+            <DeckHistoryPanel
+              versions={versions}
+              deckId={`${owner}/${id}`}
+              currentDeckText={cards.map(c => {
+                const cmdr = deck?.commander_card
+                if (cmdr && c.name === cmdr) return `COMMANDER: ${c.name}`
+                const qty = c.quantity > 1 ? c.quantity : 1
+                return `${qty} ${c.name}`
+              }).join('\n')}
+              commanderName={deck?.commander_card || deck?.commander || ''}
+            />
+          )}
 
           {/* === ACHIEVEMENTS TAB === */}
           {activeTab === 'achievements' && <>

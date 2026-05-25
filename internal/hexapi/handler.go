@@ -186,6 +186,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	// chance, so they're the natural first wave for token enforcement.
 	mux.HandleFunc("DELETE /api/decks/{owner}/{id}", RequireCSRF(h.CSRFStore, h.handleDeleteDeck))
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/versions", h.handleListVersions)
+	mux.HandleFunc("GET /api/decks/{owner}/{id}/versions/{version}", h.handleGetVersion)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/version-trends", h.handleDeckVersionTrends)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/archive", h.handleDeckArchive)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/analysis", h.handleGetAnalysis)
@@ -854,6 +855,62 @@ func (h *Handler) handleListVersions(w http.ResponseWriter, r *http.Request) {
 	})
 
 	writeJSON(w, versions)
+}
+
+// handleGetVersion answers GET /api/decks/{owner}/{id}/versions/{version}
+// with the raw decklist text + parsed cards for that historical
+// snapshot. The DECK HISTORY UI uses this to render a per-version
+// detail and to diff two versions client-side.
+//
+// Returns 404 when the version file is missing — covers both "deck has
+// never been edited" (no versions dir) and "version N doesn't exist"
+// (gap in the sequence). The decklist text is returned verbatim so
+// the client diff renders the same "COMMANDER: X" prefix the saved
+// file contains.
+func (h *Handler) handleGetVersion(w http.ResponseWriter, r *http.Request) {
+	owner := r.PathValue("owner")
+	id := r.PathValue("id")
+	versionStr := r.PathValue("version")
+	if !validatePathComponent(owner) || !validatePathComponent(id) {
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
+		return
+	}
+	ver := parseInt(versionStr)
+	if ver <= 0 || ver > 500 {
+		writeError(w, http.StatusBadRequest, "invalid version")
+		return
+	}
+
+	versionsDir := filepath.Join(h.DecksDir, owner, "versions")
+	// Try both .txt and .json extensions — handleUpdateDeck preserves
+	// the source file's extension when archiving, so the version file
+	// could be either depending on how the deck was originally imported.
+	var data []byte
+	var foundPath string
+	for _, ext := range []string{".txt", ".json"} {
+		candidate := filepath.Join(versionsDir, fmt.Sprintf("%s_v%d%s", id, ver, ext))
+		if b, err := os.ReadFile(candidate); err == nil {
+			data = b
+			foundPath = candidate
+			break
+		}
+	}
+	if foundPath == "" {
+		writeError(w, http.StatusNotFound, "version not found")
+		return
+	}
+
+	content := string(data)
+	resp := map[string]any{
+		"version":   ver,
+		"filename":  filepath.Base(foundPath),
+		"deck_list": content,
+		"cards":     parseDeckList(content),
+	}
+	if info, err := os.Stat(foundPath); err == nil {
+		resp["saved_at"] = info.ModTime()
+	}
+	writeJSON(w, resp)
 }
 
 func (h *Handler) handleGetAnalysis(w http.ResponseWriter, r *http.Request) {
