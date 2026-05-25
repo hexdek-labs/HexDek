@@ -282,6 +282,19 @@ func checkSBACompleteness(gs *GameState) error {
 	if gs == nil {
 		return nil
 	}
+	// Once the game has ended (§104.2 / §104.3a), StateBasedActions returns
+	// early without running any §704.5 checks (see sba.go:41). Permanents
+	// that would have been destroyed by the final SBA pass — e.g. a creature
+	// whose toughness went ≤ 0 from a +X/-X mod that resolved after the last
+	// opponent died — legitimately remain on the battlefield in the ended
+	// snapshot, so the creature-toughness loop is skipped below in that case.
+	//
+	// The life-loss check is NOT skipped on ended=1: the cap-draw r60 bug
+	// (seed 1337 game 465) was specifically a state where ended=1 was set
+	// without marking all seats Lost, leaving the game zombie-stuck. The
+	// fix to that bug requires all seats be Lost at ended=1; this invariant
+	// is the regression pin that enforces it.
+	ended := gs.Flags != nil && gs.Flags["ended"] == 1
 	for _, s := range gs.Seats {
 		if s == nil {
 			continue
@@ -292,6 +305,10 @@ func checkSBACompleteness(gs *GameState) error {
 				s.Idx, s.Life)
 		}
 		// Check creatures: toughness ≤ 0 should not be on battlefield.
+		// Skip post-ended: see ended-flag rationale at function top.
+		if ended {
+			continue
+		}
 		for _, p := range s.Battlefield {
 			if p == nil || p.PhasedOut {
 				continue
