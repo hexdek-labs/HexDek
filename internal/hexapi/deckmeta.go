@@ -56,6 +56,31 @@ CREATE TABLE IF NOT EXISTS fork_log (
 );
 CREATE INDEX IF NOT EXISTS idx_fork_log_owner_time
     ON fork_log(owner, forked_at DESC);
+
+-- Append-only log of every user feedback action on a Freya-
+-- assigned archetype. This is the training signal — future Freya
+-- recalibration passes can sample this table to spot recurring
+-- "Freya says combo but the human always corrects to stax" patterns
+-- and adjust archetype fingerprints accordingly.
+--
+-- Each row captures the FULL context at the moment of feedback:
+-- which deck, what Freya said at the time, what action the user
+-- took, and (for corrections) what they renamed it to. We don't
+-- overwrite or de-dupe — every click lands a row, so the log shows
+-- the user's full history of agreement / disagreement with Freya
+-- over time.
+CREATE TABLE IF NOT EXISTS archetype_feedback_log (
+    owner            TEXT NOT NULL,
+    deck_id          TEXT NOT NULL,
+    freya_archetype  TEXT NOT NULL DEFAULT '',
+    user_action      TEXT NOT NULL,
+    user_archetype   TEXT NOT NULL DEFAULT '',
+    recorded_at      INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_archetype_feedback_owner_time
+    ON archetype_feedback_log(owner, recorded_at DESC);
+CREATE INDEX IF NOT EXISTS idx_archetype_feedback_freya
+    ON archetype_feedback_log(freya_archetype);
 `
 
 // EnsureDeckMetaSchema creates the deck_meta table idempotently. Call once
@@ -85,6 +110,12 @@ func EnsureDeckMetaSchema(ctx context.Context, db *sql.DB) error {
 	}
 	if _, err := db.ExecContext(ctx,
 		`ALTER TABLE deck_meta ADD COLUMN forked_from TEXT NOT NULL DEFAULT ''`); err != nil {
+		if !strings.Contains(err.Error(), "duplicate column") {
+			return err
+		}
+	}
+	if _, err := db.ExecContext(ctx,
+		`ALTER TABLE deck_meta ADD COLUMN archetype_feedback TEXT NOT NULL DEFAULT ''`); err != nil {
 		if !strings.Contains(err.Error(), "duplicate column") {
 			return err
 		}
@@ -323,6 +354,88 @@ func (h *Handler) saveTags(ctx context.Context, owner, id, tagsJSON string) erro
 		   updated_at = excluded.updated_at`,
 		owner, id, tagsJSON, time.Now().Unix())
 	return err
+}
+
+// ArchetypeFeedbackConfirmed and ArchetypeFeedbackCleared are the
+// sentinel string values stored in deck_meta.archetype_feedback when
+// the user's feedback is something other than a corrected archetype
+// name. Any other non-empty value is treated as a normalized
+// correction (e.g. "stax", "lands-matter").
+const (
+	ArchetypeFeedbackConfirmed = "confirmed"
+	ArchetypeFeedbackCleared   = ""
+)
+
+// loadArchetypeFeedback returns the user's current feedback on
+// Freya's archetype assignment: "" (no opinion), "confirmed", or
+// the normalized corrected archetype name. Returns "" when the row
+// or column is absent.
+func (h *Handler) loadArchetypeFeedback(ctx context.Context, owner, id string) string {
+	if h.db == nil {
+		return ""
+	}
+	var v string
+	err := h.db.QueryRowContext(ctx,
+		`SELECT archetype_feedback FROM deck_meta WHERE owner = ? AND id = ?`,
+		owner, id).Scan(&v)
+	if err != nil {
+		return ""
+	}
+	return v
+}
+
+// saveArchetypeFeedback upserts the user's feedback on the
+// archetype assignment and appends a row to archetype_feedback_log
+// in the SAME transaction so the persistent state and the training
+// log can never diverge. freyaArchetype is the archetype Freya
+// reported at the moment of feedback (for the log row's snapshot;
+// the saved deck_meta value only carries the user's response).
+//
+// action must be one of "confirm" / "correct" / "clear". For
+// "correct", userArchetype must already be normalized
+// (normalizeSystemTagValue) by the caller.
+func (h *Handler) saveArchetypeFeedback(ctx context.Context, owner, id, freyaArchetype, action, userArchetype string) error {
+	if h.db == nil {
+		return errors.New("hexapi: deck_meta storage not initialized")
+	}
+	var stored string
+	switch action {
+	case "confirm":
+		stored = ArchetypeFeedbackConfirmed
+	case "correct":
+		if userArchetype == "" {
+			return errors.New("hexapi: correct action requires a non-empty archetype")
+		}
+		stored = userArchetype
+	case "clear":
+		stored = ArchetypeFeedbackCleared
+	default:
+		return errors.New("hexapi: invalid archetype-feedback action")
+	}
+
+	tx, err := h.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO deck_meta (owner, id, archetype_feedback, updated_at)
+		 VALUES (?, ?, ?, ?)
+		 ON CONFLICT(owner, id) DO UPDATE SET
+		   archetype_feedback = excluded.archetype_feedback,
+		   updated_at         = excluded.updated_at`,
+		owner, id, stored, time.Now().Unix()); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx,
+		`INSERT INTO archetype_feedback_log
+		 (owner, deck_id, freya_archetype, user_action, user_archetype, recorded_at)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+		owner, id, freyaArchetype, action, userArchetype, time.Now().Unix()); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // allTagsForOwner returns every distinct tag string used by the given

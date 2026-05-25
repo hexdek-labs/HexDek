@@ -198,6 +198,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/decks/{owner}/{id}/analyze", h.handleRunAnalysis)
 	mux.HandleFunc("POST /api/decks/{owner}/{id}/clone", RequireCSRF(h.CSRFStore, h.handleCloneDeck))
 	mux.HandleFunc("POST /api/decks/{owner}/{id}/fork", RequireCSRF(h.CSRFStore, h.handleForkDeck))
+	mux.HandleFunc("POST /api/decks/{owner}/{id}/archetype-feedback", RequireCSRF(h.CSRFStore, h.handleArchetypeFeedback))
 	// SPA share page with OG meta injection — Caddy can route /decks/{owner}/{id}
 	// here for crawler User-Agents (or unconditionally) so Discord/Twitter unfurls
 	// pick up per-deck previews.
@@ -458,21 +459,23 @@ func (h *Handler) handleGetDeck(w http.ResponseWriter, r *http.Request) {
 	forkedFrom := h.loadForkedFrom(r.Context(), owner, id)
 	tags := h.loadTags(r.Context(), owner, id)
 	systemTags := loadFreyaSystemTags(h.DecksDir, owner, id)
+	archetypeFeedback := h.loadArchetypeFeedback(r.Context(), owner, id)
 	writeJSON(w, map[string]any{
-		"id":              id,
-		"owner":           owner,
-		"commander":       commander,
-		"commander_card":  cmdrCard,
-		"custom_name":     customName,
-		"cloned_from":     clonedFrom,
-		"forked_from":     forkedFrom,
-		"bracket":         bracket,
-		"color":           color,
-		"card_count":      totalCards,
-		"cards":           cards,
-		"mana_production": production,
-		"tags":            tags,
-		"system_tags":     systemTags,
+		"id":                 id,
+		"owner":              owner,
+		"commander":          commander,
+		"commander_card":     cmdrCard,
+		"custom_name":        customName,
+		"cloned_from":        clonedFrom,
+		"forked_from":        forkedFrom,
+		"bracket":            bracket,
+		"color":              color,
+		"card_count":         totalCards,
+		"cards":              cards,
+		"mana_production":    production,
+		"tags":               tags,
+		"system_tags":        systemTags,
+		"archetype_feedback": archetypeFeedback,
 	})
 }
 
