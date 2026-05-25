@@ -136,6 +136,41 @@ func athreosShroudDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	if owner < 0 || owner >= len(gs.Seats) {
 		return
 	}
+	// Defensive: validate the card is still in the owner's graveyard
+	// before claiming it. When TWO Athreos, Shroud-Veiled handlers fire
+	// on the same creature_dies event (both controllers placed coin
+	// counters on the dying creature), the first handler pulls the
+	// *Card out of owner's graveyard via createPermanent's zone sweep
+	// and places it on its controller's battlefield. The second handler
+	// then races: the *Card is no longer in graveyard, but
+	// createPermanent's dedup only checks the TARGET seat's
+	// battlefield — so the race-losing handler still wraps the already-
+	// stolen *Card in a fresh Permanent on its own seat. Result: same
+	// *Card pointer on two seats' battlefields. Loki r60 deep-stress /
+	// seed 2024 game 2798: Woodland Liege + Athreos appearing on seats
+	// 2 and 3 simultaneously, 24 CardIdentity hits.
+	//
+	// Same race surface as the Adric / Oketra / Gisa / The Reaper §704.6d
+	// fixes earlier this r60 cycle. Match the established Gisa pattern:
+	// scan owner's graveyard for the dyingCard before delegating to
+	// enterBattlefieldWithETB. If absent, a sibling Athreos won the
+	// race — no-op.
+	stillInGraveyard := false
+	if gs.Seats[owner] != nil {
+		for _, c := range gs.Seats[owner].Graveyard {
+			if c == dyingCard {
+				stillInGraveyard = true
+				break
+			}
+		}
+	}
+	if !stillInGraveyard {
+		emitFail(gs, slug, perm.Card.DisplayName(), "card_already_stolen", map[string]interface{}{
+			"creature":   dyingCard.DisplayName(),
+			"from_owner": owner,
+		})
+		return
+	}
 	// Single-step zone change: createPermanent (via enterBattlefieldWithETB)
 	// sweeps the card from the owner's private zones — including the
 	// graveyard — and wraps it in exactly one Permanent on Athreos's
