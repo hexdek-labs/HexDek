@@ -724,24 +724,28 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 			strings.Join(parts, " / "))
 	}
 
+	renderTierCard := func(glyph string, c CardQuality) {
+		fmt.Fprintf(w, "    %s [%s %3d] %s — %s\n", glyph, c.PowerTier, c.Power, c.Name, c.Reason)
+		if c.PowerExplanation != "" {
+			fmt.Fprintf(w, "             why: %s\n", c.PowerExplanation)
+		}
+	}
 	if len(dp.StarCards) > 0 {
 		fmt.Fprintf(w, "\n  Star Cards:\n")
 		for _, c := range dp.StarCards {
-			fmt.Fprintf(w, "    ★ [%s %3d] %s — %s\n", c.PowerTier, c.Power, c.Name, c.Reason)
+			renderTierCard("★", c)
 		}
 	}
-
 	if len(dp.SolidCards) > 0 {
 		fmt.Fprintf(w, "  Solid Picks:\n")
 		for _, c := range dp.SolidCards {
-			fmt.Fprintf(w, "    ● [%s %3d] %s — %s\n", c.PowerTier, c.Power, c.Name, c.Reason)
+			renderTierCard("●", c)
 		}
 	}
-
 	if len(dp.CuttableCards) > 0 {
 		fmt.Fprintf(w, "  Consider Cutting:\n")
 		for _, c := range dp.CuttableCards {
-			fmt.Fprintf(w, "    ✂ [%s %3d] %s — %s\n", c.PowerTier, c.Power, c.Name, c.Reason)
+			renderTierCard("✂", c)
 		}
 	}
 
@@ -1345,15 +1349,16 @@ type jsonStrongAgainst struct {
 }
 
 type jsonCardQuality struct {
-	Name      string   `json:"name"`
-	Tier      string   `json:"tier"`
-	Reason    string   `json:"reason"`
-	Power     int      `json:"power,omitempty"`
-	PowerTier string   `json:"power_tier,omitempty"`
-	Detected  string   `json:"detected,omitempty"`
-	WhyCut    string   `json:"why_cut,omitempty"`
-	Effect    string   `json:"effect,omitempty"`
-	Suggested []string `json:"suggested,omitempty"`
+	Name             string   `json:"name"`
+	Tier             string   `json:"tier"`
+	Reason           string   `json:"reason"`
+	Power            int      `json:"power,omitempty"`
+	PowerTier        string   `json:"power_tier,omitempty"`
+	PowerExplanation string   `json:"power_explanation,omitempty"`
+	Detected         string   `json:"detected,omitempty"`
+	WhyCut           string   `json:"why_cut,omitempty"`
+	Effect           string   `json:"effect,omitempty"`
+	Suggested        []string `json:"suggested,omitempty"`
 }
 
 type jsonCardPowerLevel struct {
@@ -1362,6 +1367,7 @@ type jsonCardPowerLevel struct {
 	Roles               []string `json:"roles,omitempty"`
 	Power               int      `json:"power"`
 	PowerTier           string   `json:"power_tier"`
+	Explanation         string   `json:"explanation,omitempty"`
 	ArchetypeFit        int      `json:"archetype_fit"`
 	CMCEfficiency       int      `json:"cmc_efficiency"`
 	SynergyContribution int      `json:"synergy_contribution"`
@@ -1589,25 +1595,28 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 		stars = append(stars, jsonCardQuality{
 			Name: c.Name, Tier: c.Tier, Reason: c.Reason,
 			Power: c.Power, PowerTier: c.PowerTier,
+			PowerExplanation: c.PowerExplanation,
 		})
 	}
 	for _, c := range dp.SolidCards {
 		solid = append(solid, jsonCardQuality{
 			Name: c.Name, Tier: c.Tier, Reason: c.Reason,
 			Power: c.Power, PowerTier: c.PowerTier,
+			PowerExplanation: c.PowerExplanation,
 		})
 	}
 	for _, c := range dp.CuttableCards {
 		cuttable = append(cuttable, jsonCardQuality{
-			Name:      c.Name,
-			Tier:      c.Tier,
-			Reason:    c.Reason,
-			Power:     c.Power,
-			PowerTier: c.PowerTier,
-			Detected:  c.Detected,
-			WhyCut:    c.WhyCut,
-			Effect:    c.Effect,
-			Suggested: c.Suggested,
+			Name:             c.Name,
+			Tier:             c.Tier,
+			Reason:           c.Reason,
+			Power:            c.Power,
+			PowerTier:        c.PowerTier,
+			PowerExplanation: c.PowerExplanation,
+			Detected:         c.Detected,
+			WhyCut:           c.WhyCut,
+			Effect:           c.Effect,
+			Suggested:        c.Suggested,
 		})
 	}
 	var powerLevels []jsonCardPowerLevel
@@ -1618,6 +1627,7 @@ func buildJSONDeckProfile(dp *DeckProfile) *jsonDeckProfile {
 			Roles:               pl.Roles,
 			Power:               pl.Power,
 			PowerTier:           pl.PowerTier,
+			Explanation:         pl.Explanation,
 			ArchetypeFit:        pl.ArchetypeFit,
 			CMCEfficiency:       pl.CMCEfficiency,
 			SynergyContribution: pl.SynergyContribution,

@@ -1447,6 +1447,113 @@ func computeMetaPositioning(dp *DeckProfile) {
 // 6. Card quality tiers — identify star performers and cuttable cards.
 // ---------------------------------------------------------------------------
 
+// powerExplanationInputs is the parameter bundle for
+// buildPowerExplanation. Grouped so the caller doesn't have to pass
+// 13 positional arguments and so adding new signals is a one-field
+// change in two places instead of three.
+type powerExplanationInputs struct {
+	tier             string   // "S" / "A" / "B" / "C" / "D"
+	cmc              int
+	roles            []RoleTag
+	primaryArchetype string   // e.g. "Combo"; "" when deck didn't match a fingerprint
+	matchedFitRoles  []string // card roles that landed in the deck's fingerprint
+	fitFloorHit      bool     // true when archetype-fit was lifted to the 10-point floor
+	multiLowCMC      bool     // CMC<=2 with 2+ role tags (efficiency-sweet-spot)
+	isWincon         bool
+	isBridge         bool
+	isStep           bool
+	isFinisher       bool
+	isCluster        bool
+	isRedundantTutor bool
+	isDeadSlot       bool
+}
+
+// buildPowerExplanation assembles a one-line human-readable why for a
+// card's power-tier grade. Format:
+//
+//	TIER — signal1 + signal2 + signal3
+//
+// Signals are listed in priority order (highest-impact first) so the
+// reader sees the dominant contributor up front. Per-component
+// coverage:
+//
+//   - Synergy: wincon piece / value-chain bridge / finisher / chain
+//     step / cluster member (only the highest-tier hit, to keep the
+//     line scannable)
+//   - CMC efficiency: multi-role at low CMC, or curve placement when
+//     it's load-bearing for the verdict
+//   - Archetype fit: matched-role list, "off-archetype" for tagged
+//     non-matches, "untagged" when no roles at all
+//   - Penalties: redundant tutor / dead slot, appended at the end so
+//     they read as the explanation for low grades
+//
+// The signal set is exhaustive — every card produces at least one
+// signal (curve/fit/untagged always emit) so explanations are never
+// empty.
+func buildPowerExplanation(in powerExplanationInputs) string {
+	var parts []string
+
+	// 1. Top synergy signal — the single highest-impact membership.
+	switch {
+	case in.isWincon:
+		parts = append(parts, "wincon piece")
+	case in.isBridge:
+		parts = append(parts, "value-chain bridge")
+	case in.isFinisher:
+		parts = append(parts, "finisher")
+	case in.isStep:
+		parts = append(parts, "value-chain step")
+	case in.isCluster:
+		parts = append(parts, "cluster member")
+	}
+
+	// 2. CMC + role-count framing.
+	switch {
+	case in.multiLowCMC:
+		parts = append(parts, fmt.Sprintf("%d-role at CMC %d", len(in.roles), in.cmc))
+	case in.cmc <= 2 && len(in.roles) == 1:
+		parts = append(parts, fmt.Sprintf("%s at CMC %d", in.roles[0], in.cmc))
+	case in.cmc >= 5 && len(in.roles) <= 1:
+		parts = append(parts, fmt.Sprintf("CMC %d (curve heavy)", in.cmc))
+	case len(in.roles) == 1:
+		parts = append(parts, fmt.Sprintf("%s at CMC %d", in.roles[0], in.cmc))
+	case len(in.roles) >= 2:
+		parts = append(parts, fmt.Sprintf("%d-role at CMC %d", len(in.roles), in.cmc))
+	}
+
+	// 3. Archetype fit framing.
+	switch {
+	case len(in.matchedFitRoles) > 0:
+		archLabel := in.primaryArchetype
+		if archLabel == "" {
+			archLabel = "archetype"
+		}
+		parts = append(parts, fmt.Sprintf("%s fit (%s)", archLabel, strings.Join(in.matchedFitRoles, "/")))
+	case in.fitFloorHit:
+		parts = append(parts, "off-archetype")
+	case len(in.roles) == 0:
+		parts = append(parts, "untagged")
+	}
+
+	// 4. Penalties — surfaced at the tail so the why-line for a D-tier
+	// card explains the demotion ("D — CMC 6 (curve heavy) + untagged
+	// + dead slot").
+	if in.isRedundantTutor {
+		parts = append(parts, "redundant tutor")
+	}
+	if in.isDeadSlot {
+		parts = append(parts, "dead slot")
+	}
+
+	if len(parts) == 0 {
+		// Defensive — every code path above should emit at least one
+		// signal, but if a future refactor empties parts the line is
+		// still readable as just "TIER".
+		return in.tier
+	}
+	return fmt.Sprintf("%s — %s", in.tier, strings.Join(parts, " + "))
+}
+
 // computeCardPower populates dp.CardPowerLevels with a 0-100 power
 // rating for every non-land card in the deck. Power is the clamped sum
 // of three explicit components:
@@ -1550,16 +1657,20 @@ func computeCardPower(dp *DeckProfile, report *FreyaReport) {
 
 		// --- Archetype fit (0-40) ---
 		archFit := 0
+		var matchedFitRoles []string
 		for _, r := range roles {
 			if ratio, ok := fpRatios[r]; ok {
 				archFit += int(ratio * 200) // 0.10 → 20; 0.20 → 40
+				matchedFitRoles = append(matchedFitRoles, string(r))
 			}
 		}
+		fitFloorHit := false
 		// Tagged cards that didn't match the fingerprint still get a small
 		// fit credit — they're playing SOME role, just not the deck's
 		// signature one (e.g. a Removal card in a Combo deck).
 		if len(roles) > 0 && archFit < 10 {
 			archFit = 10
+			fitFloorHit = true
 		}
 		archFit = clamp(archFit, 0, 40)
 
@@ -1580,25 +1691,31 @@ func computeCardPower(dp *DeckProfile, report *FreyaReport) {
 			cmcEff = 2
 		}
 		// Multi-role at low CMC is the efficiency sweet spot.
-		if p.CMC <= 2 && len(roles) >= 2 {
+		multiLowCMC := p.CMC <= 2 && len(roles) >= 2
+		if multiLowCMC {
 			cmcEff += 2
 		}
 		cmcEff = clamp(cmcEff, 0, 20)
 
 		// --- Synergy contribution (0-40) ---
 		syn := 0
-		if winLinePieces[p.Name] {
+		isWincon := winLinePieces[p.Name]
+		if isWincon {
 			syn += 25
 		}
-		if chainBridges[p.Name] {
+		isBridge := chainBridges[p.Name]
+		isStep := !isBridge && chainSteps[p.Name]
+		if isBridge {
 			syn += 20
-		} else if chainSteps[p.Name] {
+		} else if isStep {
 			syn += 10
 		}
-		if finisherPieces[p.Name] {
+		isFinisher := finisherPieces[p.Name]
+		if isFinisher {
 			syn += 12
 		}
-		if clusterMembers[p.Name] {
+		isCluster := clusterMembers[p.Name]
+		if isCluster {
 			syn += 6
 		}
 		// Per-role floor — generic tagged cards land at modest synergy
@@ -1607,28 +1724,49 @@ func computeCardPower(dp *DeckProfile, report *FreyaReport) {
 
 		// Penalty: redundant expensive tutor when 3+ cheaper non-land
 		// tutors already exist in the deck.
-		if p.IsTutor && !p.IsLandTutor && p.CMC >= 4 && cheaperTutorsThan[p.CMC] >= 3 {
+		isRedundantTutor := p.IsTutor && !p.IsLandTutor && p.CMC >= 4 && cheaperTutorsThan[p.CMC] >= 3
+		if isRedundantTutor {
 			syn -= 8
 		}
 		// Penalty: CMC 5+ with only RoleUtility tag is a dead slot.
-		if p.CMC >= 5 && len(roles) == 1 && roles[0] == RoleUtility {
+		isDeadSlot := p.CMC >= 5 && len(roles) == 1 && roles[0] == RoleUtility
+		if isDeadSlot {
 			syn -= 10
 		}
 		syn = clamp(syn, 0, 40)
 
 		power := clamp(archFit+cmcEff+syn, 0, 100)
+		tier := PowerTierFor(power)
 
 		roleStrs := make([]string, len(roles))
 		for i, r := range roles {
 			roleStrs[i] = string(r)
 		}
 
+		explanation := buildPowerExplanation(powerExplanationInputs{
+			tier:             tier,
+			cmc:              p.CMC,
+			roles:            roles,
+			primaryArchetype: dp.PrimaryArchetype,
+			matchedFitRoles:  matchedFitRoles,
+			fitFloorHit:      fitFloorHit,
+			multiLowCMC:      multiLowCMC,
+			isWincon:         isWincon,
+			isBridge:         isBridge,
+			isStep:           isStep,
+			isFinisher:       isFinisher,
+			isCluster:        isCluster,
+			isRedundantTutor: isRedundantTutor,
+			isDeadSlot:       isDeadSlot,
+		})
+
 		dp.CardPowerLevels = append(dp.CardPowerLevels, CardPowerLevel{
 			Name:                p.Name,
 			CMC:                 p.CMC,
 			Roles:               roleStrs,
 			Power:               power,
-			PowerTier:           PowerTierFor(power),
+			PowerTier:           tier,
+			Explanation:         explanation,
 			ArchetypeFit:        archFit,
 			CMCEfficiency:       cmcEff,
 			SynergyContribution: syn,
@@ -1678,8 +1816,10 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 
 	// Power-level lookup (populated by computeCardPower upstream).
 	powerByName := map[string]int{}
+	explanationByName := map[string]string{}
 	for _, pl := range dp.CardPowerLevels {
 		powerByName[pl.Name] = pl.Power
+		explanationByName[pl.Name] = pl.Explanation
 	}
 
 	// Score combo pieces mentioned in win lines
@@ -1808,11 +1948,12 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 		}
 		power := powerByName[scores[i].name]
 		dp.StarCards = append(dp.StarCards, CardQuality{
-			Name:      scores[i].name,
-			Tier:      "star",
-			Reason:    reason,
-			Power:     power,
-			PowerTier: PowerTierFor(power),
+			Name:             scores[i].name,
+			Tier:             "star",
+			Reason:           reason,
+			Power:            power,
+			PowerTier:        PowerTierFor(power),
+			PowerExplanation: explanationByName[scores[i].name],
 		})
 		starredNames[scores[i].name] = true
 		starCount++
@@ -1859,11 +2000,12 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 		}
 		power := powerByName[s.name]
 		dp.SolidCards = append(dp.SolidCards, CardQuality{
-			Name:      s.name,
-			Tier:      "solid",
-			Reason:    reason,
-			Power:     power,
-			PowerTier: PowerTierFor(power),
+			Name:             s.name,
+			Tier:             "solid",
+			Reason:           reason,
+			Power:            power,
+			PowerTier:        PowerTierFor(power),
+			PowerExplanation: explanationByName[s.name],
 		})
 		solidCount++
 	}
@@ -1901,15 +2043,16 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 		}
 		power := powerByName[s.name]
 		dp.CuttableCards = append(dp.CuttableCards, CardQuality{
-			Name:      s.name,
-			Tier:      "cuttable",
-			Reason:    reason,
-			Power:     power,
-			PowerTier: PowerTierFor(power),
-			Detected:  detected,
-			WhyCut:    whyCut,
-			Effect:    effect,
-			Suggested: suggestedSwaps,
+			Name:             s.name,
+			Tier:             "cuttable",
+			Reason:           reason,
+			Power:            power,
+			PowerTier:        PowerTierFor(power),
+			PowerExplanation: explanationByName[s.name],
+			Detected:         detected,
+			WhyCut:           whyCut,
+			Effect:           effect,
+			Suggested:        suggestedSwaps,
 		})
 	}
 }
