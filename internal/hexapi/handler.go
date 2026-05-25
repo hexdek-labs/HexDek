@@ -201,6 +201,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/decks/{owner}/{id}/archetype-feedback", RequireCSRF(h.CSRFStore, h.handleArchetypeFeedback))
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/archetype-history", h.handleArchetypeHistory)
 	mux.HandleFunc("GET /api/freya/training-signal", h.handleArchetypeTrainingSignal)
+	mux.HandleFunc("GET /api/decks/{owner}/{id}/freya-export", h.handleFreyaExport)
 	// SPA share page with OG meta injection — Caddy can route /decks/{owner}/{id}
 	// here for crawler User-Agents (or unconditionally) so Discord/Twitter unfurls
 	// pick up per-deck previews.
