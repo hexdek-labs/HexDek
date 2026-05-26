@@ -104,6 +104,12 @@ type Player struct {
 	ManaPoolG      int    `json:"mana_pool_g"`
 	ManaPoolC      int    `json:"mana_pool_c"`
 	LandsPlayedTurn int   `json:"lands_played_turn"`
+	// AttemptedEmptyDraw — CR §119.5 flag. Set by DrawCards when a player
+	// is instructed to draw a card while their library is empty. The next
+	// CheckGameEnd pass eliminates seats with this flag set. Once set,
+	// stays set for the rest of the game (the loss is permanent per CR
+	// §704.5b — there is no "undo your empty-library attempt" effect).
+	AttemptedEmptyDraw bool `json:"attempted_empty_draw,omitempty"`
 }
 
 // TurnState describes the active turn.

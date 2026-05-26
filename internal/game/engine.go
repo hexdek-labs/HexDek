@@ -258,9 +258,27 @@ func DrawCards(ctx context.Context, database *sql.DB, gameID string, seat int, n
 	if err != nil {
 		return nil, err
 	}
+	// CR §119.5: if a player has zero cards in their library and is
+	// instructed to draw a card, that player loses the game the next
+	// time a player would receive priority. We flag the seat here and
+	// defer the actual elimination to CheckGameEnd (the MVP's stand-in
+	// for "next priority"). The flag is only set when the library was
+	// ALREADY empty at function entry — drawing the last card is not a
+	// loss; only the NEXT draw attempt from a now-empty library is.
+	if len(library) == 0 && n > 0 {
+		if p, perr := GetGamePlayer(ctx, database, gameID, seat); perr == nil && p != nil && !p.AttemptedEmptyDraw {
+			p.AttemptedEmptyDraw = true
+			if uerr := UpdateGamePlayer(ctx, database, p); uerr != nil {
+				return nil, fmt.Errorf("flag attempted_empty_draw for seat %d: %w", seat, uerr)
+			}
+		}
+	}
 	if n > len(library) {
-		// Drawing from empty library is a loss condition; for MVP we just
-		// draw what's available and let the caller detect the empty state.
+		// Drew more than available; clamp to library size. The §119.5
+		// flag above covers the "was empty at entry" case; if the
+		// library was non-empty here, drawing the last card is fine —
+		// only the NEXT DrawCards call (which will hit the
+		// len(library) == 0 branch above) triggers the loss.
 		n = len(library)
 	}
 	handCount, err := CountCardsInZone(ctx, database, gameID, seat, ZoneHand)
