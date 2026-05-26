@@ -55,13 +55,20 @@ func CreateParty(ctx context.Context, db *sql.DB, hostDeviceID string, maxPlayer
 			`INSERT INTO party (id, host_device_id, state, max_players, created_at) VALUES (?, ?, ?, ?, ?)`,
 			p.ID, p.HostDeviceID, p.State, p.MaxPlayers, p.CreatedAt)
 		if err != nil {
-			tx.Rollback()
-			// Likely a code collision (PRIMARY KEY conflict) — retry with
-			// a fresh code. Other errors will keep failing on retry; the
-			// final attempt's "failed after N" error message documents the
-			// cap. (Distinguishing constraint vs. transport errors via
-			// driver-specific errno is M1 in the audit — follow-up work.)
-			continue
+			tx.Rollback() //nolint:errcheck — rollback errors after an already-failed insert are not actionable; the originating err is the one we report.
+			// PRIMARY KEY conflict = code collision (1/729M per attempt).
+			// Retry with a fresh code. ALL other errors (FK missing
+			// referent, busy DB, schema drift, transport break, ...) are
+			// not fixable by re-rolling the code, so bail immediately
+			// instead of burning the remaining retries before surfacing
+			// "failed after N attempts". Closes M1 of half-finished
+			// features r48 #9; previously the loop retried on every
+			// error, masking the real failure mode behind the retry-cap
+			// message.
+			if IsSQLitePrimaryKeyConflict(err) {
+				continue
+			}
+			return nil, fmt.Errorf("insert party row: %w", err)
 		}
 		if _, err := tx.ExecContext(ctx,
 			`INSERT INTO party_member (party_id, device_id, seat_position, is_ai, joined_at)
@@ -192,6 +199,9 @@ func GetActiveGameForParty(ctx context.Context, db *sql.DB, partyID string) (str
 }
 
 // SetMemberDeck updates the deck_id of an existing party member.
+// Returns an error if the UPDATE failed, if RowsAffected couldn't be
+// read (driver-specific failure mode that's previously been swallowed),
+// or if no party_member row matched the (partyID, deviceID) pair.
 func SetMemberDeck(ctx context.Context, db *sql.DB, partyID, deviceID, deckID string) error {
 	res, err := db.ExecContext(ctx,
 		`UPDATE party_member SET deck_id = ? WHERE party_id = ? AND device_id = ?`,
@@ -199,7 +209,15 @@ func SetMemberDeck(ctx context.Context, db *sql.DB, partyID, deviceID, deckID st
 	if err != nil {
 		return err
 	}
-	n, _ := res.RowsAffected()
+	// Previously: `n, _ := res.RowsAffected()` — swallowed the error,
+	// causing the "no party_member matched" branch to fire ambiguously
+	// for both "row genuinely missing" and "driver couldn't report
+	// rows-affected." Surface the driver-side error so callers can
+	// distinguish. Closes M3 of half-finished features r48 #9.
+	n, raErr := res.RowsAffected()
+	if raErr != nil {
+		return fmt.Errorf("set member deck: rows-affected for party=%q device=%q: %w", partyID, deviceID, raErr)
+	}
 	if n == 0 {
 		return fmt.Errorf("no party_member matched (party=%q, device=%q)", partyID, deviceID)
 	}
