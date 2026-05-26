@@ -65,16 +65,6 @@ func testSpellResolve(oc *oracleCard) (result *failure) {
 		AST:    oc.ast,
 	}
 
-	// Find the first effect in the AST to use as the spell's effect.
-	var eff interface{}
-	if card.AST != nil {
-		for _, ab := range card.AST.Abilities {
-			eff = ab
-			break
-		}
-	}
-	_ = eff
-
 	item := &gameengine.StackItem{
 		Kind:       "spell",
 		Controller: 0,
