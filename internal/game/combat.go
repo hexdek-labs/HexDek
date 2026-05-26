@@ -274,8 +274,16 @@ func ResolveCombat(ctx context.Context, database *sql.DB, gameID string) (*Damag
 }
 
 // CheckGameEnd evaluates win conditions: any player at life <= 0 is out,
-// any player drawing from empty library is out, any player at 10+ poison
-// is out. If exactly one player remains, finish the game with that winner.
+// any player at 10+ poison is out, any player flagged for attempted-
+// empty-library draw is out (CR §119.5 — set by DrawCards). If exactly
+// one player remains, finish the game with that winner. If zero remain,
+// finish as a draw.
+//
+// Note: having zero cards in the library is NOT itself a loss condition
+// per CR §119.5 — only the NEXT draw attempt from an empty library
+// triggers the loss. That trigger lives in DrawCards (which sets
+// Player.AttemptedEmptyDraw); CheckGameEnd just reads the resulting
+// flag.
 func CheckGameEnd(ctx context.Context, database *sql.DB, gameID string) error {
 	players, err := ListGamePlayers(ctx, database, gameID)
 	if err != nil {
@@ -293,12 +301,12 @@ func CheckGameEnd(ctx context.Context, database *sql.DB, gameID string) error {
 		if p.PoisonCounters >= 10 {
 			continue
 		}
-		// Library size check
-		libCount, _ := CountCardsInZone(ctx, database, gameID, p.SeatPosition, ZoneLibrary)
-		if libCount == 0 {
-			// Drawing from empty = lose at next draw (we'll mark as eliminated
-			// only if a draw is attempted; for now, library 0 doesn't auto-lose)
-			// keep in alive list
+		if p.AttemptedEmptyDraw {
+			// CR §119.5 — the seat was instructed to draw from an
+			// empty library on a prior DrawCards call. The "next time
+			// a player would receive priority" is now (CheckGameEnd
+			// runs after combat damage / spell resolution); eliminate.
+			continue
 		}
 		aliveList = append(aliveList, alive{seat: p.SeatPosition, deviceID: p.DeviceID})
 	}

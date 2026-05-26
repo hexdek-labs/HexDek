@@ -53,6 +53,11 @@ func applyMigrations(db *sql.DB) error {
 	}
 	migrations := []colAdd{
 		{"game_player", "lands_played_turn", "INTEGER NOT NULL DEFAULT 0"},
+		// CR §119.5 flag — set by game.DrawCards when a player is
+		// instructed to draw a card while their library is empty. The
+		// next game.CheckGameEnd pass eliminates seats with this flag.
+		// 0 = no attempt, 1 = attempted; once set, stays set.
+		{"game_player", "attempted_empty_draw", "INTEGER NOT NULL DEFAULT 0"},
 		{"game_card", "tapped_for_mana_this_turn", "INTEGER NOT NULL DEFAULT 0"},
 		{"showmatch_game_seat", "battlefield_cards", "TEXT NOT NULL DEFAULT '[]'"},
 		{"showmatch_game_seat", "deck_key", "TEXT NOT NULL DEFAULT ''"},
