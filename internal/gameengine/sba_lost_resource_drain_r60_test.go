@@ -131,6 +131,12 @@ func TestR60_LostDrainsMana_MandatoryLoopDraw_104_4b(t *testing.T) {
 // -----------------------------------------------------------------------------
 
 func TestR60_MarkSeatLost_NilSafety(t *testing.T) {
+	// Explicit doesn't-panic assertion via recover() — Phase 2B audit.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("markSeatLost(nil, ...) must not panic; got %v", r)
+		}
+	}()
 	markSeatLost(nil, "should not panic")
 }
 

@@ -108,6 +108,14 @@ func TestRoomManager_TeardownRoom_RemovesFromIndexes(t *testing.T) {
 }
 
 func TestRoomManager_TeardownRoom_Idempotent(t *testing.T) {
+	// Explicit doesn't-panic assertion via recover() — double-closing
+	// the stopCh would panic; this assertion fails the test cleanly
+	// instead of bringing the whole test binary down. Phase 2B audit.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("TeardownRoom must be idempotent; got panic %v", r)
+		}
+	}()
 	rm := NewRoomManager()
 
 	rm.mu.Lock()
@@ -115,8 +123,7 @@ func TestRoomManager_TeardownRoom_Idempotent(t *testing.T) {
 	rm.mu.Unlock()
 
 	rm.TeardownRoom(room.ID)
-	// Second teardown must not double-close stopCh (which would panic).
-	rm.TeardownRoom(room.ID)
+	rm.TeardownRoom(room.ID) // would panic if stopCh got double-closed
 	rm.TeardownRoom("sr-does-not-exist")
 }
 
