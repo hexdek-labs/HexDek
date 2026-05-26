@@ -38,7 +38,7 @@ const FIXTURE = {
   analysis: {
     archetype: 'Voltron',
     bracket: 3,
-    plays_like: 4,
+    measured_bracket: 4,
     game_changer_count: 2,
     power_percentile: 0.78,
     keepable_hand_pct: 0.63,

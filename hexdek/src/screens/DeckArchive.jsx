@@ -1702,8 +1702,6 @@ export default function DeckArchive() {
   const measuredBracket = analysis?.measured_bracket || null
   const measuredBracketLabel = analysis?.measured_bracket_label || ''
   const bracketDiverges = measuredBracket != null && wbs != null && Number(measuredBracket) !== Number(wbs)
-  const pls = analysis?.plays_like || null
-  const plsLabel = analysis?.plays_like_label || ''
   const gameChangers = analysis?.game_changer_count ?? null
   const archetype = analysis?.archetype?.toUpperCase() || 'UNKNOWN'
   const summary = analysis?.gameplan_summary || ''
@@ -1935,8 +1933,8 @@ export default function DeckArchive() {
       <Tape
         left={`DECK ARCHIVE / / ${owner?.toUpperCase()} / / ${deckName}`}
         mid={
-          pls && wbs
-            ? `Plays Like B${pls} (Bracket B${wbs}) · ${pageTheme.label}`
+          bracketDiverges
+            ? `Estimated Bracket B${measuredBracket} (Bracket B${wbs}) · ${pageTheme.label}`
             : wbs
               ? `Bracket B${wbs} · ${pageTheme.label}`
               : `Bracket pending · ${pageTheme.label}`
@@ -2163,16 +2161,14 @@ export default function DeckArchive() {
             <div>
               <div className="t-xs muted">BRACKET</div>
               <div className="t-lg" style={{ fontWeight: 700, marginTop: 2 }}>
-                {glance.bracket
-                  ? `B${glance.bracket}${glance.playsLike ? ` → B${glance.playsLike}` : ''}`
-                  : '—'}
+                {glance.bracket ? `B${glance.bracket}` : '—'}
               </div>
               {glance.bracketLabel && (
                 <div className="t-xs muted" style={{ marginTop: 2 }}>{glance.bracketLabel.toUpperCase()}</div>
               )}
             </div>
-            <div>
-              <div className="t-xs muted">EFFECTIVE BRACKET</div>
+            <div title={glance.bracketDiverges ? 'We think it plays more like decks in this bracket.' : undefined}>
+              <div className="t-xs muted">ESTIMATED BRACKET</div>
               <div className="t-lg" style={{ fontWeight: 700, marginTop: 2, color: glance.bracketDiverges ? 'var(--warn, #d97706)' : undefined }}>
                 {glance.measuredBracket
                   ? `B${glance.measuredBracket}${glance.bracketDiverges ? ' ⚠' : ''}`
@@ -2599,7 +2595,7 @@ export default function DeckArchive() {
               panel so the "your deck costs $X" headline is the
               first thing visible. */}
           <DeckBudgetPanel deckId={`${owner}/${id}`} />
-          <Panel code="04.C" title="FREYA / / ENGINE ANALYSIS" right={<Tag solid>{wbs ? `Bracket B${wbs}${pls && pls !== wbs ? ` → Plays Like B${pls}` : ''}` : 'Bracket pending'}</Tag>}>
+          <Panel code="04.C" title="FREYA / / ENGINE ANALYSIS" right={<Tag solid title={bracketDiverges ? 'We think it plays more like decks in this bracket.' : undefined}>{wbs ? `Bracket B${wbs}${bracketDiverges ? ` → Estimated Bracket B${measuredBracket}` : ''}` : 'Bracket pending'}</Tag>}>
             {!analysis ? (
               <div style={{ padding: '20px 0', textAlign: 'center' }}>
                 <div className="t-md muted" style={{ lineHeight: 1.8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>

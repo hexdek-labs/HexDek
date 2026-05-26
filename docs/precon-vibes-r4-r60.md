@@ -1,5 +1,7 @@
 # Precon Vibes-Bracket Calibration Baseline (R60, Round 4)
 
+> **HISTORICAL — `plays_like` removed (dev/remove-plays-like-r60).** This doc references the `plays_like` signal and its `estimatePlaysLike()` simulator as a discrete code path. That scaffolding has since been removed end-to-end (Go, JSON, DB-comment, UI, glossary, tests). `measured_bracket` is now the canonical felt-power measurement; the "no wincon → floppy" semantics that `plays_like` tracked are queued for absorption into `measured_bracket` as a separate calibration chapter. The Plays-Like column has been dropped from the ranked table below; historical findings and disagreement-rate rollups are preserved as research evidence.
+
 ## Why this is round 4
 
 R1 (PR #508) imported 15 stock WotC precons, reported **2/15** B4 false-positives, and PR #513 traced both to a single predicate in `archetype.go` (the "Tuned-redundancy floor"). R2 (PR #523) ran the same exercise on 15 disjoint precons and found **1/15** B4 false-positive matching the same predicate and same execution path. R3 (PR #532) added 15 more disjoint precons, found **3/15** B4 false-positives — all still hitting the Tuned-redundancy floor — and surfaced one case (Creative Energy) the PR #513 recommendation would NOT have caught.
@@ -21,23 +23,23 @@ Era spread skews more recent than R1-R3 because the 45-deck overlap set already 
 
 ## Ranked Table
 
-| # | Era | Precon | Commander | Archetype | Meas Brkt | Plays-Like | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | avgCMC | **Decl Brkt** | Δ |
-|---|-----|--------|-----------|-----------|:---------:|:----------:|:----------:|:---------:|:----------:|:---------------------:|:---------------:|:--:|:-------:|:----:|:------:|:--------------:|:-:|
-| 1 | OTJ | Desert Bloom | Hakim, Loreweaver | midrange | **4 Optimized** | Upgraded | 74.6 | 48 | 2 | 3.00 / 3 | 0.83 | 0 | 45 | D | 3.58 | **2** | **+2** |
-| 2 | STX | Lorehold Spirit | Osgir, the Reconstructor / Quintorius, Field Historian | combo | 2 Core | Core | 69.4 | 9 | 2 | 2.83 / 3 | 0.83 | 0 | 63 | C | 3.21 | **2** | ✓ |
-| 3 | PIP | Science! | Dr. Madison Li | artifacts | **4 Optimized** | Upgraded | 98.4 | 16 | 2 | 2.71 / 3 | 0.43 | 0 | 63 | C | 3.24 | **2** | **+2** |
-| 4 | MKM | Blame Game | Anzrag, the Quake-Mole | midrange | **4 Optimized** | Exhibition | 40.3 | 12 | 1 | 2.40 / 3 | 0.40 | 0 | 55 | B | 3.65 | **2** | **+2** |
-| 5 | MKM | Deadly Disguise | Giada, Font of Hope / Kotis, the Fangkeeper | counters | 2 Core | Exhibition | 17.7 | 12 | 1 | 2.00 / 2 | 0.00 | 0 | 25 | F | 3.84 | **2** | ✓ |
-| 6 | STX | Witherbloom Pestilence | Willowdusk, Essence Seer | midrange | 2 Core | Core | 50.0 | 85 | 1 | 2.83 / 3 | 0.50 | 0 | 55 | B | 3.05 | **2** | ✓ |
-| 7 | DFT | Living Energy | Satya, Aetherflux Genius | artifacts | 2 Core | Core | 83.6 | 8 | 1 | 2.40 / 3 | 0.60 | 0 | 68 | B | 3.67 | **2** | ✓ |
-| 8 | MKM | Deep Clue Sea | Morska, Undersea Sleuth | midrange | **3 Upgraded** | Core | 93.5 | 20 | 1 | 2.50 / 3 | 0.50 | 1 | 48 | D | 3.71 | **2** | +1 |
-| 9 | OTJ | Grand Larceny | Gonti, Canny Acquisitor | midrange | 2 Core | Exhibition | 60.7 | 6 | 1 | 2.33 / 3 | 0.67 | 0 | 68 | A | 3.54 | **2** | ✓ |
-| 10 | MOM | Cavalry Charge | Bright-Palm, Soul Awakener | midrange | 2 Core | Exhibition | 55.0 | 9 | 1 | 2.40 / 3 | 0.40 | 0 | 58 | C | 3.33 | **2** | ✓ |
-| 11 | MOM | Growing Threat | Kasla, the Broken Halo / Moira and Teshar | artifacts | **4 Optimized** | Core | 88.5 | 4 | 1 | 2.50 / 3 | 0.50 | 0 | 50 | A | 4.10 | **2** | **+2** |
-| 12 | MOM | Divine Convocation | Eluge, the Shoreless Sea | midrange | 2 Core | Exhibition | 58.3 | 15 | 1 | 2.50 / 3 | 0.75 | 0 | 58 | B | 3.70 | **2** | ✓ |
-| 13 | OTJ | Most Wanted | Olivia, Opulent Outlaw | midrange | 2 Core | Core | 87.1 | 20 | 1 | 2.50 / 3 | 0.75 | 0 | 81 | A | 3.26 | **2** | ✓ |
-| 14 | OTJ | Quick Draw | Stella Lee, Wild Card | midrange | 2 Core | Exhibition | 90.2 | 4 | 1 | 2.50 / 3 | 0.25 | 0 | 76 | A | 3.28 | **2** | ✓ |
-| 15 | FIN | Limit Break | Tifa, Martial Artist | artifacts | 2 Core | Core | 82.3 | 8 | 1 | 2.50 / 3 | 0.25 | 0 | 63 | B | 3.02 | **2** | ✓ |
+| # | Era | Precon | Commander | Archetype | Meas Brkt | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | avgCMC | **Decl Brkt** | Δ |
+|---|-----|--------|-----------|-----------|:---------:|:----------:|:---------:|:----------:|:---------------------:|:---------------:|:--:|:-------:|:----:|:------:|:--------------:|:-:|
+| 1 | OTJ | Desert Bloom | Hakim, Loreweaver | midrange | **4 Optimized** | 74.6 | 48 | 2 | 3.00 / 3 | 0.83 | 0 | 45 | D | 3.58 | **2** | **+2** |
+| 2 | STX | Lorehold Spirit | Osgir, the Reconstructor / Quintorius, Field Historian | combo | 2 Core | 69.4 | 9 | 2 | 2.83 / 3 | 0.83 | 0 | 63 | C | 3.21 | **2** | ✓ |
+| 3 | PIP | Science! | Dr. Madison Li | artifacts | **4 Optimized** | 98.4 | 16 | 2 | 2.71 / 3 | 0.43 | 0 | 63 | C | 3.24 | **2** | **+2** |
+| 4 | MKM | Blame Game | Anzrag, the Quake-Mole | midrange | **4 Optimized** | 40.3 | 12 | 1 | 2.40 / 3 | 0.40 | 0 | 55 | B | 3.65 | **2** | **+2** |
+| 5 | MKM | Deadly Disguise | Giada, Font of Hope / Kotis, the Fangkeeper | counters | 2 Core | 17.7 | 12 | 1 | 2.00 / 2 | 0.00 | 0 | 25 | F | 3.84 | **2** | ✓ |
+| 6 | STX | Witherbloom Pestilence | Willowdusk, Essence Seer | midrange | 2 Core | 50.0 | 85 | 1 | 2.83 / 3 | 0.50 | 0 | 55 | B | 3.05 | **2** | ✓ |
+| 7 | DFT | Living Energy | Satya, Aetherflux Genius | artifacts | 2 Core | 83.6 | 8 | 1 | 2.40 / 3 | 0.60 | 0 | 68 | B | 3.67 | **2** | ✓ |
+| 8 | MKM | Deep Clue Sea | Morska, Undersea Sleuth | midrange | **3 Upgraded** | 93.5 | 20 | 1 | 2.50 / 3 | 0.50 | 1 | 48 | D | 3.71 | **2** | +1 |
+| 9 | OTJ | Grand Larceny | Gonti, Canny Acquisitor | midrange | 2 Core | 60.7 | 6 | 1 | 2.33 / 3 | 0.67 | 0 | 68 | A | 3.54 | **2** | ✓ |
+| 10 | MOM | Cavalry Charge | Bright-Palm, Soul Awakener | midrange | 2 Core | 55.0 | 9 | 1 | 2.40 / 3 | 0.40 | 0 | 58 | C | 3.33 | **2** | ✓ |
+| 11 | MOM | Growing Threat | Kasla, the Broken Halo / Moira and Teshar | artifacts | **4 Optimized** | 88.5 | 4 | 1 | 2.50 / 3 | 0.50 | 0 | 50 | A | 4.10 | **2** | **+2** |
+| 12 | MOM | Divine Convocation | Eluge, the Shoreless Sea | midrange | 2 Core | 58.3 | 15 | 1 | 2.50 / 3 | 0.75 | 0 | 58 | B | 3.70 | **2** | ✓ |
+| 13 | OTJ | Most Wanted | Olivia, Opulent Outlaw | midrange | 2 Core | 87.1 | 20 | 1 | 2.50 / 3 | 0.75 | 0 | 81 | A | 3.26 | **2** | ✓ |
+| 14 | OTJ | Quick Draw | Stella Lee, Wild Card | midrange | 2 Core | 90.2 | 4 | 1 | 2.50 / 3 | 0.25 | 0 | 76 | A | 3.28 | **2** | ✓ |
+| 15 | FIN | Limit Break | Tifa, Martial Artist | artifacts | 2 Core | 82.3 | 8 | 1 | 2.50 / 3 | 0.25 | 0 | 63 | B | 3.02 | **2** | ✓ |
 
 **Aggregate:** 11/15 exact, 12/15 within ±1. **4/15 B4 false-positives** (Desert Bloom, Science!, Blame Game, Growing Threat) — the highest single-round rate of R1-R4.
 

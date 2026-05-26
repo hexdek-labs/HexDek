@@ -96,7 +96,6 @@ test('deckGlanceStats: synthesizes the AT A GLANCE shape', () => {
     analysis: {
       bracket: '4',
       bracket_label: 'Optimized',
-      plays_like: '4',
       archetype: 'combo',
       finisher_cards: ['Thoracle', 'Demonic Consultation'],
       win_lines: [{ card: 'Tainted Pact' }],
@@ -105,7 +104,6 @@ test('deckGlanceStats: synthesizes the AT A GLANCE shape', () => {
     eloHistory: [{ games: 100, win_rate: 31 }, { games: 100, win_rate: 25 }],
   })
   assert.equal(out.bracket, '4')              // analysis wins over deck.bracket
-  assert.equal(out.playsLike, null)            // pls === wbs ⇒ suppressed
   assert.equal(out.bracketLabel, 'Optimized')
   assert.equal(out.archetype, 'COMBO')
   assert.deepEqual(out.winConditions, ['Thoracle', 'Demonic Consultation', 'Tainted Pact'])
@@ -122,10 +120,11 @@ test('deckGlanceStats: tolerates a totally empty input', () => {
   assert.equal(out.allTime, null)
 })
 
-test('deckGlanceStats: surfaces playsLike when it differs from bracket', () => {
+test('deckGlanceStats: surfaces measuredBracket when it differs from declared bracket', () => {
   const out = deckGlanceStats({
-    analysis: { bracket: '3', plays_like: '4', archetype: 'midrange' },
+    analysis: { bracket: '3', measured_bracket: '4', measured_bracket_label: 'Optimized', archetype: 'midrange' },
   })
   assert.equal(out.bracket, '3')
-  assert.equal(out.playsLike, '4')
+  assert.equal(out.measuredBracket, '4')
+  assert.equal(out.bracketDiverges, true)
 })

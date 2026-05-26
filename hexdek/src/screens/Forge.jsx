@@ -108,8 +108,6 @@ export default function Forge() {
   const measuredBracket = analysis?.measured_bracket || null
   const measuredBracketLabel = analysis?.measured_bracket_label || ''
   const bracketDiverges = measuredBracket != null && wbs !== '?' && measuredBracket !== Number(wbs)
-  const pls = analysis?.plays_like || null
-  const plsLabel = analysis?.plays_like_label || ''
   const gameChangers = analysis?.game_changer_count ?? null
   const archetype = analysis?.archetype?.toUpperCase() || '—'
   const summary = analysis?.gameplan_summary || ''
@@ -123,7 +121,7 @@ export default function Forge() {
     <>
       <Tape
         left="VARIANT FORGE / / DOC HX-1101"
-        mid={selectedDeck ? (pls ? `Plays Like B${pls} (Bracket B${wbs})` : `Bracket B${wbs}`) : 'SELECT DECK'}
+        mid={selectedDeck ? (bracketDiverges ? `Estimated Bracket B${measuredBracket} (Bracket B${wbs})` : `Bracket B${wbs}`) : 'SELECT DECK'}
         right={selectedDeck ? `${selectedDeck.owner?.toUpperCase()} / / ${deckName}` : ''}
       />
 
@@ -213,10 +211,9 @@ export default function Forge() {
                     ['OWNER', selectedDeck.owner?.toUpperCase()],
                     ['CARDS', `${cardCount}`],
                     ['BRACKET', `B${wbs}${wbsLabel ? ' ' + wbsLabel : ''}`],
-                    ['EFFECTIVE BRACKET', measuredBracket != null
+                    ['ESTIMATED BRACKET', measuredBracket != null
                       ? `B${measuredBracket}${measuredBracketLabel ? ' ' + measuredBracketLabel : ''}${bracketDiverges ? ' ⚠ DIVERGES' : ''}`
                       : '—'],
-                    ['PLAYS LIKE', pls ? `B${pls}${plsLabel ? ' ' + plsLabel : ''}` : '—'],
                     ['GAME CHANGERS', gameChangers != null ? `${gameChangers}` : '—'],
                     ['ARCHETYPE', archetype],
                   ]} />
@@ -230,7 +227,7 @@ export default function Forge() {
               <>
                 {/* Eval weights */}
                 {Object.keys(evalWeights).length > 0 && (
-                  <Panel code="11.B" title="FREYA / / EVAL WEIGHTS" right={<Tag solid>Bracket B{wbs}{pls && pls !== wbs ? ` → Plays Like B${pls}` : ''}</Tag>}>
+                  <Panel code="11.B" title="FREYA / / EVAL WEIGHTS" right={<Tag solid title={bracketDiverges ? 'We think it plays more like decks in this bracket.' : undefined}>Bracket B{wbs}{bracketDiverges ? ` → Estimated Bracket B${measuredBracket}` : ''}</Tag>}>
                     {Object.entries(evalWeights).slice(0, 8).map(([k, v], i) => (
                       <div key={i} style={{ display: 'grid', gridTemplateColumns: '140px 1fr 36px', alignItems: 'center', gap: 6, marginTop: 6 }}>
                         <span className="t-xs">{k.replace(/_/g, ' ').toUpperCase()}</span>

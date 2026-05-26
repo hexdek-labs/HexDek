@@ -156,7 +156,8 @@ export default function SharePreview() {
   const cards = deck?.cards || []
   const wbs = analysis?.bracket || deck?.bracket || null
   const wbsLabel = analysis?.bracket_label || ''
-  const pls = analysis?.plays_like || null
+  const measuredBracket = analysis?.measured_bracket || null
+  const bracketDiverges = measuredBracket != null && wbs != null && Number(measuredBracket) !== Number(wbs)
   const archetype = analysis?.archetype?.toUpperCase() || 'UNKNOWN'
 
   // colorIdentity walks every card scanning mana_cost regexes when the
@@ -290,8 +291,8 @@ export default function SharePreview() {
           ? `SHARE / / ANONYMOUS / / ${deckName}`
           : `SHARE / / ${owner?.toUpperCase()} / / ${deckName}`}
         mid={
-          pls && wbs
-            ? `Plays Like B${pls} (Bracket B${wbs}) · ${pageTheme.label}`
+          bracketDiverges
+            ? `Estimated Bracket B${measuredBracket} (Bracket B${wbs}) · ${pageTheme.label}`
             : wbs
               ? `Bracket B${wbs} · ${pageTheme.label}`
               : `Bracket pending · ${pageTheme.label}`

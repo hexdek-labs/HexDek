@@ -80,9 +80,9 @@ export const GLOSSARY = {
     title: 'Bracket B5',
     body: 'cEDH. The deck is constructed to win or disrupt as fast as possible against other cEDH decks. Expect turn-3 wins.',
   },
-  plays_like: {
-    title: 'Plays Like',
-    body: 'Bracket the deck behaves at, based on its win lines and speed — even if its self-declared bracket is different. A B3 stuffed with B5 staples will read "Plays Like B5".',
+  estimated_bracket: {
+    title: 'Estimated Bracket',
+    body: 'We think it plays more like decks in this bracket. Freya measures density signals (game changers, fast mana, tutors, combo lines, curve) and computes the felt-power bracket — surfaced when it diverges from the deck\'s self-declared bracket.',
   },
   game_changers: {
     title: 'Game Changers',

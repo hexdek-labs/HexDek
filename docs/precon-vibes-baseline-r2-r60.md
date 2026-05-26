@@ -1,5 +1,7 @@
 # Precon Vibes-Bracket Calibration Baseline (R60, Round 2)
 
+> **HISTORICAL — `plays_like` removed (dev/remove-plays-like-r60).** This doc references the `plays_like` signal and its `estimatePlaysLike()` simulator as a discrete code path. That scaffolding has since been removed end-to-end (Go, JSON, DB-comment, UI, glossary, tests). `measured_bracket` is now the canonical felt-power measurement; the "no wincon → floppy" semantics that `plays_like` tracked are queued for absorption into `measured_bracket` as a separate calibration chapter. The Plays-Like column has been dropped from the ranked table below; historical findings and disagreement-rate rollups are preserved as research evidence.
+
 ## Why this is round 2
 
 PR #508 imported a 15-deck unedited-WotC-precon corpus and built the first vibes-bracket baseline against them, finding **2/15 B4 false-positives** and tracing both (PR #513) to a single predicate at `cmd/hexdek-freya/archetype.go:1229` (the "Tuned-redundancy floor"). A reasonable open question: was that result driven by the specific 15 precons sampled, or does it reflect a systemic over-firing of the floor across all WotC product?
@@ -14,23 +16,23 @@ This round runs the same exercise on a **completely disjoint** 15-deck precon co
 
 ## Ranked Table
 
-| # | Era | Precon | Commander | Archetype | Mech Brkt | Plays-Like | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | **Vibes Brkt** | Δ |
-|---|-----|--------|-----------|-----------|:---------:|:----------:|:----------:|:---------:|:----------:|:---------------------:|:---------------:|:--:|:-------:|:----:|:--------------:|:-:|
-| 1 | C11 | Heavenly Inferno | Kaalia of the Vast | tribal | 2 Core | Exhibition | 11.5 | 16 | 1 | 3.00 / 3 | 0.00 | 0 | 32 | B | **2** | ✓ |
-| 2 | C17 | Vampiric Bloodlust | Edgar Markov | tribal | 2 Core | Exhibition | 58.1 | 12 | 2 | 3.00 / 3 | 0.00 | 1 | 40 | F | **2** | ✓ |
-| 3 | C18 | Nature's Vengeance | Lord Windgrace | counters | 2 Core | Core | 44.6 | 5 | 2 | 2.75 / 3 | 0.25 | 0 | 30 | D | **2** | ✓ |
-| 4 | C19 | Primal Genesis | Ghired, Conclave Exile | midrange | 2 Core | Exhibition | 70.0 | 10 | 1 | 3.00 / 3 | 1.00 | 0 | 58 | B | **2** | ✓ |
-| 5 | C20 | Timeless Wisdom | Gavi, Nest Warden | midrange | 3 Upgraded | Upgraded | 61.7 | **27,879** | 1 | 2.20 / 3 | 0.40 | 1 | 48 | D | **2** | +1 |
-| 6 | C21 | Witherbloom Witchcraft | Willowdusk, Essence Seer | tribal | 2 Core | Core | 33.9 | 36 | 3 | 2.50 / 3 | 0.50 | 0 | 45 | B | **2** | ✓ |
-| 7 | AFR | Dungeons of Death | Sefris of the Hidden Ways | midrange | 2 Core | Core | 43.3 | 10 | 2 | 2.33 / 3 | 0.50 | 0 | 58 | B | **2** | ✓ |
-| 8 | MID | Coven Counters | Leinore, Autumn Sovereign | tribal | 2 Core | Core | 41.9 | 9 | 2 | 2.20 / 3 | 0.40 | 0 | 52 | A | **2** | ✓ |
-| 9 | LCI | Veloci-Ramp-Tor | Pantlaza, Sun-Favored | midrange | 2 Core | Exhibition | 11.7 | 14 | 2 | 2.00 / 2 | 0.00 | 0 | 35 | C | **2** | ✓ |
-| 10 | 40K | Tyranid Swarm | Magus Lucea Kane | midrange | 2 Core | Core | 58.3 | 4 | 1 | 2.33 / 3 | 0.33 | 0 | 58 | B | **2** | ✓ |
-| 11 | 40K | The Ruinous Powers | Abaddon the Despoiler | tribal | 2 Core | Exhibition | 0.0 | 14 | 1 | 2.50 / 3 | 0.00 | 0 | 58 | A | **2** | ✓ |
-| 12 | LTR | Elven Council | Galadriel, Elven-Queen | combo | 2 Core | Core | 37.7 | 15 | 1 | 2.25 / 3 | 0.50 | 0 | 63 | A | **3** | −1 |
-| 13 | MH3 | Tricky Terrain | Omo, Queen of Vesuva | midrange | 2 Core | Exhibition | 16.4 | 14 | 2 | 2.60 / 3 | 0.20 | 0 | 43 | F | **2** | ✓ |
-| 14 | BLB | Family Matters | Zinnia, Valley's Voice | midrange | **4 Optimized** | Core | 31.1 | 27 | 1 | 2.33 / 3 | 0.50 | 0 | 58 | B | **2** | **+2** |
-| 15 | DSK | Jump Scare | Zimone, Mystery Unraveler | lands | 2 Core | Exhibition | 24.6 | 14 | 1 | 2.25 / 3 | 0.50 | 0 | 53 | B | **2** | ✓ |
+| # | Era | Precon | Commander | Archetype | Mech Brkt | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | **Vibes Brkt** | Δ |
+|---|-----|--------|-----------|-----------|:---------:|:----------:|:---------:|:----------:|:---------------------:|:---------------:|:--:|:-------:|:----:|:--------------:|:-:|
+| 1 | C11 | Heavenly Inferno | Kaalia of the Vast | tribal | 2 Core | 11.5 | 16 | 1 | 3.00 / 3 | 0.00 | 0 | 32 | B | **2** | ✓ |
+| 2 | C17 | Vampiric Bloodlust | Edgar Markov | tribal | 2 Core | 58.1 | 12 | 2 | 3.00 / 3 | 0.00 | 1 | 40 | F | **2** | ✓ |
+| 3 | C18 | Nature's Vengeance | Lord Windgrace | counters | 2 Core | 44.6 | 5 | 2 | 2.75 / 3 | 0.25 | 0 | 30 | D | **2** | ✓ |
+| 4 | C19 | Primal Genesis | Ghired, Conclave Exile | midrange | 2 Core | 70.0 | 10 | 1 | 3.00 / 3 | 1.00 | 0 | 58 | B | **2** | ✓ |
+| 5 | C20 | Timeless Wisdom | Gavi, Nest Warden | midrange | 3 Upgraded | 61.7 | **27,879** | 1 | 2.20 / 3 | 0.40 | 1 | 48 | D | **2** | +1 |
+| 6 | C21 | Witherbloom Witchcraft | Willowdusk, Essence Seer | tribal | 2 Core | 33.9 | 36 | 3 | 2.50 / 3 | 0.50 | 0 | 45 | B | **2** | ✓ |
+| 7 | AFR | Dungeons of Death | Sefris of the Hidden Ways | midrange | 2 Core | 43.3 | 10 | 2 | 2.33 / 3 | 0.50 | 0 | 58 | B | **2** | ✓ |
+| 8 | MID | Coven Counters | Leinore, Autumn Sovereign | tribal | 2 Core | 41.9 | 9 | 2 | 2.20 / 3 | 0.40 | 0 | 52 | A | **2** | ✓ |
+| 9 | LCI | Veloci-Ramp-Tor | Pantlaza, Sun-Favored | midrange | 2 Core | 11.7 | 14 | 2 | 2.00 / 2 | 0.00 | 0 | 35 | C | **2** | ✓ |
+| 10 | 40K | Tyranid Swarm | Magus Lucea Kane | midrange | 2 Core | 58.3 | 4 | 1 | 2.33 / 3 | 0.33 | 0 | 58 | B | **2** | ✓ |
+| 11 | 40K | The Ruinous Powers | Abaddon the Despoiler | tribal | 2 Core | 0.0 | 14 | 1 | 2.50 / 3 | 0.00 | 0 | 58 | A | **2** | ✓ |
+| 12 | LTR | Elven Council | Galadriel, Elven-Queen | combo | 2 Core | 37.7 | 15 | 1 | 2.25 / 3 | 0.50 | 0 | 63 | A | **3** | −1 |
+| 13 | MH3 | Tricky Terrain | Omo, Queen of Vesuva | midrange | 2 Core | 16.4 | 14 | 2 | 2.60 / 3 | 0.20 | 0 | 43 | F | **2** | ✓ |
+| 14 | BLB | Family Matters | Zinnia, Valley's Voice | midrange | **4 Optimized** | 31.1 | 27 | 1 | 2.33 / 3 | 0.50 | 0 | 58 | B | **2** | **+2** |
+| 15 | DSK | Jump Scare | Zimone, Mystery Unraveler | lands | 2 Core | 24.6 | 14 | 1 | 2.25 / 3 | 0.50 | 0 | 53 | B | **2** | ✓ |
 
 **Aggregate:** 12/15 exact, 14/15 within ±1. **1/15 B4 false-positive** (Family Matters).
 

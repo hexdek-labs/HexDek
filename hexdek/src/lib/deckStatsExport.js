@@ -32,13 +32,13 @@ export function extractStats(bundle) {
       commander: deck.commander_card || deck.commander || '',
       card_count: cardCount,
       color_identity: Array.isArray(deck.color_identity) ? deck.color_identity.join('') : (deck.color || ''),
-      bracket: deck.wbs ?? deck.pls ?? deck.bracket ?? null,
+      bracket: deck.wbs ?? deck.bracket ?? null,
       legal: typeof deck.legal === 'boolean' ? deck.legal : null,
     },
     analysis: analysis ? {
       archetype: analysis.archetype || '',
       bracket: analysis.bracket ?? null,
-      plays_like: analysis.plays_like ?? null,
+      measured_bracket: analysis.measured_bracket ?? null,
       game_changer_count: analysis.game_changer_count ?? null,
       power_percentile: analysis.power_percentile ?? null,
       keepable_hand_pct: analysis.keepable_hand_pct ?? null,
@@ -128,7 +128,7 @@ export function buildStatsCSV(bundle) {
   rows.push(csvRow(['overview', 'legal', stats.deck.legal]))
   if (stats.analysis) {
     rows.push(csvRow(['overview', 'archetype', stats.analysis.archetype]))
-    rows.push(csvRow(['overview', 'plays_like', stats.analysis.plays_like]))
+    rows.push(csvRow(['overview', 'measured_bracket', stats.analysis.measured_bracket]))
     rows.push(csvRow(['overview', 'game_changer_count', stats.analysis.game_changer_count]))
     rows.push(csvRow(['overview', 'power_percentile', stats.analysis.power_percentile]))
     rows.push(csvRow(['overview', 'keepable_hand_pct', stats.analysis.keepable_hand_pct]))

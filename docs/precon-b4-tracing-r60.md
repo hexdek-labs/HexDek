@@ -1,5 +1,7 @@
 # Precon B4 False-Positive Tracing (R60) — DISCOVERY ONLY
 
+> **HISTORICAL — `plays_like` removed (dev/remove-plays-like-r60).** This doc references the `plays_like` signal and its `estimatePlaysLike()` simulator as a discrete code path. That scaffolding has since been removed end-to-end (Go, JSON, DB-comment, UI, glossary, tests). `measured_bracket` is now the canonical felt-power measurement; the "no wincon → floppy" semantics that `plays_like` tracked are queued for absorption into `measured_bracket` as a separate calibration chapter. The Plays-Like column has been dropped from the ranked table below; historical findings and disagreement-rate rollups are preserved as research evidence.
+
 ## TL;DR
 
 The two B4 false-positives from PR #508 (Urza's Iron Alliance — BRO, Blast from the Past — WHO) are both lifted to B4 by **the same predicate**, on **the same line of code**:
