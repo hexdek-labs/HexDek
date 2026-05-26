@@ -5,9 +5,10 @@ import (
 )
 
 // registerSilverquillTheDisputantCustom wires the ETB drain. The
-// auto-generated stub registerSilverquillTheDisputant in the matching
-// gen_*.go remains in place — both handlers fire (its body only emits
-// a partial).
+// auto-generated gen_silverquill_the_disputant.go was a partial-emit
+// stub; both the file and its batch_generated.go register call were
+// deleted in Versailles Phase 2I — this is now the sole registration
+// site, called from registry.go::registerDefaults.
 //
 // Oracle text (Strixhaven / Commander 2021, {3}{W}{B}):
 //

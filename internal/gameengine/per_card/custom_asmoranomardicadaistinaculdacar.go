@@ -8,9 +8,10 @@ import (
 
 // registerAsmoranomardicadaistinaculdacarCustom wires the ETB Cookbook
 // tutor and the sacrifice-two-Foods activated ping. The auto-generated
-// stub registerAsmoranomardicadaistinaculdacar in
-// gen_asmoranomardicadaistinaculdacar.go remains in place — both
-// handlers fire (its body only emits a partial).
+// gen_asmoranomardicadaistinaculdacar.go was a partial-emit stub; both
+// the file and its batch_generated.go register call were deleted in
+// Versailles Phase 2I — this is now the sole registration site, called
+// from registry.go::registerDefaults.
 //
 // Oracle text (Modern Horizons 2, {1}{B}{R}{G}; alt cost {B/R}):
 //
