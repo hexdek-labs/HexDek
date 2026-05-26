@@ -834,15 +834,18 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	// and slow-fetches (Onslaught / Amonkhet cycling lands that
 	// landcycling-search), which the pair-combo detector would otherwise
 	// see as a card↔card loop via the cycling discard cost + draw effect.
-	if strings.Contains(ot, "cycling {") ||
-		strings.Contains(ot, "basic landcycling") ||
-		strings.Contains(ot, "typecycling") ||
-		strings.Contains(ot, "landcycling {") ||
-		strings.Contains(ot, "swampcycling {") ||
-		strings.Contains(ot, "forestcycling {") ||
-		strings.Contains(ot, "mountaincycling {") ||
-		strings.Contains(ot, "islandcycling {") ||
-		strings.Contains(ot, "plainscycling {") {
+	//
+	// Granted-cycling skip: cards that GIVE cycling to other cards (Jo
+	// Grant: "Each historic card in your hand has cycling {2}{W}";
+	// Tectonic Reformation: "Lands you control have cycling {R}";
+	// Tortured Existence-style "all cards in your hand have cycling")
+	// must NOT be flagged HasCycling — they're cycling-payoff enablers,
+	// not consume-once cycling cards. Scanning per-line and rejecting
+	// when the cycling keyword is preceded by "has"/"have"/"with"
+	// (granted-ability framing) keeps Jo Grant + cycling-land combo
+	// detection alive while killing the false-positive cycling-loop
+	// explosion in cycling-tribal decks like C20 Gavi (issue #523).
+	if hasSelfCyclingKeyword(ot) {
 		p.HasCycling = true
 	}
 
@@ -1824,12 +1827,34 @@ func FindLoops(profiles []CardProfile) []ComboResult {
 	// worst-case runtime; beyond that, drop 4-card detection rather than
 	// degrade analysis latency. See docs/freya-4card-runtime.md for the
 	// tradeoff analysis.
+	//
+	// Cycling-explosion mitigation: a deck like Timeless Wisdom (C20 Gavi)
+	// runs ~30 cycling cards. Every cycling card has the same shape —
+	// Consumes=[ResCard] (discard self as cost) and Produces=[ResCard]
+	// (draw a card) — so they all pass the resource prefilter and
+	// C(30,4)=27,405 quad-iterations close as false-positive cycles.
+	// Cycling is consume-once (the discarded card sits in the graveyard,
+	// not re-castable without explicit recursion), so 2+ cycling-bearing
+	// cards in the same combo isn't a renewable loop — it's the same
+	// pair/triple combo enumerated across redundant cycling-card swaps.
+	// Cap the cycling candidate count to keep iteration manageable; the
+	// per-combo cycling-coalesce guard below (cyclingCardsInCombo >= 2)
+	// catches the rest.
 	if len(profiles) <= 120 {
 		var candidates []CardProfile
+		cyclingKept := 0
+		const maxCyclingInQuadCandidates = 1
 		for _, p := range profiles {
-			if len(p.Produces) > 0 && len(p.Consumes) > 0 {
-				candidates = append(candidates, p)
+			if len(p.Produces) == 0 || len(p.Consumes) == 0 {
+				continue
 			}
+			if p.HasCycling {
+				if cyclingKept >= maxCyclingInQuadCandidates {
+					continue
+				}
+				cyclingKept++
+			}
+			candidates = append(candidates, p)
 		}
 		if len(candidates) <= 70 {
 			for i := 0; i < len(candidates); i++ {
@@ -1849,7 +1874,88 @@ func FindLoops(profiles []CardProfile) []ComboResult {
 	return results
 }
 
+// hasSelfCyclingKeyword reports whether the oracle text declares the
+// Cycling keyword (or a typed variant) ON THE CARD ITSELF — NOT as a
+// granted ability ("each historic card in your hand has cycling
+// {2}{W}", "Lands you control have cycling {R}").
+//
+// Per-line scan: a line declares self-cycling when it contains one of
+// the cycling anchors AND the line doesn't read as a grant clause
+// (preceded by "has"/"have"/"with" within the same line, or starting
+// with "each <noun> ... has").
+func hasSelfCyclingKeyword(ot string) bool {
+	anchors := []string{
+		"cycling {",
+		"basic landcycling",
+		"typecycling",
+		"landcycling {",
+		"swampcycling {",
+		"forestcycling {",
+		"mountaincycling {",
+		"islandcycling {",
+		"plainscycling {",
+	}
+	for _, line := range strings.Split(ot, "\n") {
+		line = strings.ToLower(line)
+		matched := false
+		for _, a := range anchors {
+			if strings.Contains(line, a) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			continue
+		}
+		// Granted-ability framing — Jo Grant / Tectonic Reformation /
+		// Tortured Existence-style "all cards in your hand have cycling".
+		if strings.Contains(line, "has cycling") ||
+			strings.Contains(line, "have cycling") ||
+			strings.Contains(line, "with cycling") ||
+			strings.Contains(line, "gain cycling") ||
+			strings.Contains(line, "gains cycling") ||
+			strings.Contains(line, "has landcycling") ||
+			strings.Contains(line, "have landcycling") {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+// cyclingCardsInCombo counts how many of the input profiles carry the
+// Cycling keyword. Used by the pair/triple/quad detectors to coalesce
+// cycling-loop combinations — cycling's discard-self cost + draw effect
+// makes EVERY cycling card pass the resource overlap check against every
+// other cycling card, but the loop is a false positive: the cycled card
+// sits in the graveyard (consume-once, not renewable without explicit
+// graveyard recursion). Combos containing 2+ cycling cards are either
+// false positives (all-cycling) OR redundant with a smaller combo that
+// has the same non-cycling shape plus a single representative cycling
+// card.
+//
+// Without this coalesce, a 30-cycling-card deck (Timeless Wisdom / C20
+// Gavi) produced ~27,000 determined-loop entries via the quad detector
+// alone (see issue #523).
+func cyclingCardsInCombo(cards ...CardProfile) int {
+	n := 0
+	for _, c := range cards {
+		if c.HasCycling {
+			n++
+		}
+	}
+	return n
+}
+
 func checkPairCombo(a, b CardProfile) *ComboResult {
+	// Cycling coalesce — two cycling-bearing cards "loop" only on paper
+	// (both consume a card via discard cost, both produce a card via
+	// draw) — but cycling is consume-once. See cyclingCardsInCombo for
+	// the full rationale (issue #523).
+	if cyclingCardsInCombo(a, b) >= 2 {
+		return nil
+	}
+
 	// A produces what B consumes AND B produces what A consumes = loop.
 	aProducesForB := resourceOverlap(a.Produces, b.Consumes)
 	bProducesForA := resourceOverlap(b.Produces, a.Consumes)
@@ -2123,6 +2229,15 @@ func hasMutualTriggerLoop(a, b CardProfile) bool {
 }
 
 func checkTripleCombo(a, b, c CardProfile) *ComboResult {
+	// Cycling coalesce — 2+ cycling-bearing cards in a triple is either
+	// a false positive (all-cycling chain isn't renewable) or redundant
+	// with a smaller pair combo that has the same non-cycling shape plus
+	// one representative cycling card. See cyclingCardsInCombo for the
+	// full rationale (issue #523).
+	if cyclingCardsInCombo(a, b, c) >= 2 {
+		return nil
+	}
+
 	// Enumerate all 6 permutations of {a,b,c}. Mathematically these reduce to
 	// 2 distinct directed cycles, but exhaustive enumeration is defense in
 	// depth against asymmetries in resource matching (e.g. when a card's
@@ -2183,6 +2298,15 @@ func tryTripleCycle(a, b, c CardProfile) *ComboResult {
 // generate exactly 4! = 24 orderings by construction (4 × 3 × 2 × 1), so
 // there is no hand-maintained permutation table to drift.
 func checkQuadCombo(a, b, c, d CardProfile) *ComboResult {
+	// Cycling coalesce — see cyclingCardsInCombo (issue #523). The
+	// FindLoops quad prefilter already caps cycling cards in the
+	// candidate pool, but the guard stays here as defense in depth so
+	// non-FindLoops callers (tests, direct callers) get the same
+	// coalescing behavior.
+	if cyclingCardsInCombo(a, b, c, d) >= 2 {
+		return nil
+	}
+
 	cards := [4]CardProfile{a, b, c, d}
 	for i := 0; i < 4; i++ {
 		for j := 0; j < 4; j++ {
