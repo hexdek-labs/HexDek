@@ -311,9 +311,22 @@ func ApplyMutate(gs *GameState, mutatingPerm *Permanent, targetPerm *Permanent, 
 		targetPerm.Flags["mutated"] = 1
 	}
 
-	// Fire "whenever this creature mutates" triggers.
+	// Fire "whenever this creature mutates" triggers. The "merged" perm
+	// (the one that survives the merge) is passed in ctx so per_card
+	// handlers for "Whenever this creature mutates, ..." can gate on
+	// "did I just mutate" rather than firing on every controller-level
+	// mutation. mutated_perm == mutatingPerm when onTop=true (the
+	// mutating card takes characteristics on top of the target) and
+	// targetPerm when onTop=false (the mutating card slides under the
+	// target). The single surviving permanent carries Flags["mutated"]
+	// = 1 in both branches.
+	mergedPerm := mutatingPerm
+	if !onTop {
+		mergedPerm = targetPerm
+	}
 	FireCardTrigger(gs, "creature_mutated", map[string]interface{}{
 		"controller_seat": seat,
+		"mutated_perm":    mergedPerm,
 	})
 
 	mutName := "<nil>"
