@@ -2123,6 +2123,48 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 			}
 		}
 
+		// CMC >= 4 with ZERO role tags AND not part of a detected win
+		// line / value chain = priority cuttable. The pre-r60 detector
+		// only fired on (CMC>=4 && len==1 && Utility), missing the
+		// classic vanilla-creature case (Hill Giant, Craw Wurm) where
+		// the card has no role tags at all because no role-detector
+		// fires on it. Such cards have neither raw stats worth the
+		// mana nor synergy with the deck's gameplan; they're the
+		// clearest possible cuts.
+		//
+		// Win-line / chain-piece override: a card might be tagged as
+		// a combo piece without earning a separate role (e.g. a
+		// vanilla creature that's the target of a Birthing Pod chain).
+		// Skip the penalty in those cases — the win-line membership
+		// is the role.
+		//
+		// Threshold note: CMC 4 chosen rather than CMC 5 because the
+		// 4-mana slot is dense with high-quality alternatives in every
+		// archetype; a 4-mana card paying nothing for its mana cost is
+		// already a quality miss. CMC 3 still gets a pass — there are
+		// real 3-mana cards with no role tags that earn their slot via
+		// raw stats (Watchwolf, Tarmogoyf in some shells).
+		if p.CMC >= 4 && len(s.roles) == 0 &&
+			!winLinePieces[p.Name] && !chainPieces[p.Name] && !bridgePieces[p.Name] {
+			s.score -= 2.0
+			isCreature := strings.Contains(strings.ToLower(p.TypeLine), "creature")
+			if isCreature {
+				s.reason = fmt.Sprintf("vanilla creature at CMC %d — no role tags", p.CMC)
+			} else {
+				s.reason = fmt.Sprintf("no role tags at CMC %d — pays full mana for no synergy", p.CMC)
+			}
+			s.detected = fmt.Sprintf("CMC %d, zero role tags assigned", p.CMC)
+			if isCreature {
+				s.whyCut = "Vanilla body — no abilities matter for this deck's gameplan, no role-detector fires. " +
+					"Pays full mana for raw P/T at a CMC where every other archetype's payoffs are denser."
+			} else {
+				s.whyCut = "No roles fire on this card and it's not a piece of any detected win line or value chain. " +
+					"Spending mana on it actively crowds out role-tagged alternatives."
+			}
+			s.effect = fmt.Sprintf("Frees a CMC %d slot for a role-tagged replacement "+
+				"(threat, removal, draw, tutor, or combo piece in the deck's colors).", p.CMC)
+		}
+
 		// Tutors that are worse versions of other tutors in the deck.
 		// Compare like-with-like: land tutors against land tutors, real
 		// tutors against real tutors. A CMC-3 Cultivate is not "strictly
