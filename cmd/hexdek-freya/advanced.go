@@ -1140,6 +1140,110 @@ type matchupEntry struct {
 	vsArchetype string
 	rating      string
 	reason      string
+	// strength captures the MAGNITUDE of the favored/unfavored verdict.
+	// Empty string is normalized to "moderate" by metaMatchupStrengthOrDefault.
+	//
+	//   "strong"   — mechanical hard-lock or near-unwinnable matchup.
+	//                Drannith Magistrate denying every combo cast, Rest in
+	//                Peace deleting reanimator's engine, Rule of Law / Eidolon
+	//                of Rhetoric breaking storm. Roughly a 70-80% expected
+	//                win rate for the favored side; the unfavored side is
+	//                playing for a topdeck.
+	//   "moderate" — the default. Real matchup edge from speed, density,
+	//                or value differential. Roughly 60-70%. Covers most
+	//                race-style entries ("fast clock punishes setup turns").
+	//   "slight"   — narrow edge that flips on draw quality or pod context.
+	//                "depends on draw", "race depends on", "neutral" entries
+	//                with a directional lean. Roughly 52-58%.
+	//
+	// Neutral-rated matchups MUST carry "" (normalized to "moderate" for
+	// rendering) — the strength scale is only meaningful for the
+	// favored/unfavored arms. See TestMetaMatchups_StrengthOnlyOnDirectional.
+	strength string
+}
+
+// metaMatchupStrengthOrDefault returns the entry's strength, defaulting
+// to "moderate" when unset. Neutral-rated entries always return ""
+// (strength is a directional-only signal — a neutral matchup has no
+// magnitude to report).
+func metaMatchupStrengthOrDefault(e matchupEntry) string {
+	if e.rating == "neutral" {
+		return ""
+	}
+	if e.strength == "" {
+		return "moderate"
+	}
+	return e.strength
+}
+
+// metaMatchupStrengthOverrides annotates clear-cut matchups where the
+// default "moderate" strength is misleading. Keyed on (fromArch, vsArch)
+// where both sides are the canonical lowercase keys from metaMatchupDB.
+//
+// "strong": mechanical hard-lock — the unfavored side is materially
+// unable to execute its plan even with optimal draws. The bar is high
+// to keep this list short and defensible.
+//
+// "slight": draw- or curve-dependent — the directional lean is real but
+// frequently flips on a single mulligan / topdeck. Applied to entries
+// whose reason text already contains "depends on" / "race depends" /
+// "draw-dependent" hedge language, since those are the cases where the
+// "favored" verdict was already qualified.
+//
+// Annotating in a separate map (rather than inline on every matchupEntry)
+// keeps the existing 80+ entries diff-free and makes the strength
+// signal an additive, auditable layer.
+var metaMatchupStrengthOverrides = map[[2]string]string{
+	// --- "strong" — mechanical hard-locks ---
+	{"stax", "Combo"}:        "strong", // Drannith Magistrate / Rule of Law / Cursed Totem
+	{"stax", "Storm"}:        "strong", // Rule of Law / Eidolon of Rhetoric / Damping Sphere
+	{"stax", "Reanimator"}:   "strong", // Drannith Magistrate denies the reanimation cast
+	{"stax", "Aristocrats"}:  "strong", // Cursed Totem disables creature sac outlets
+	{"stax", "Enchantress"}:  "strong", // taxes prevent enchantment engine setup
+	{"reanimator", "Graveyard Hate"}: "strong", // Rest in Peace / Leyline of the Void
+	{"aristocrats", "Graveyard Hate"}: "strong", // RIP / Leyline exile the recursion
+	{"enchantress", "Enchantment Hate"}: "strong", // Aura Shards mass removal
+	{"voltron", "Stax"}:       "strong", // commander-tax + Cursed Totem prevents recasting
+	{"voltron", "Control"}:    "strong", // single threat folds to every removal spell
+	{"storm", "Stax"}:         "strong", // Rule of Law locks the cast chain — game over
+	{"storm", "Control"}:      "strong", // one Counterspell breaks the whole turn
+
+	// --- Reciprocal entries — the other half of each hard-lock pair ---
+	// The reciprocity invariant says A favored-strong vs B should pair
+	// with B unfavored-strong vs A (both perspectives agree the matchup
+	// is lopsided). Annotating both sides keeps deck-recommendation
+	// surfaces consistent regardless of which deck's profile is being
+	// viewed.
+	{"combo", "Stax"}:         "strong",
+	{"reanimator", "Stax"}:    "strong",
+	{"aristocrats", "Stax"}:   "strong",
+	{"enchantress", "Stax"}:   "strong",
+	{"control", "Voltron"}:    "strong",
+	{"control", "Storm"}:      "strong",
+
+	// --- "slight" — draw/curve-dependent leans ---
+	// (The matching entries are RATED favored/unfavored but the reason
+	// text explicitly hedges. Tagging them as "slight" so callers can
+	// down-weight these in deck recommendations.)
+	{"aggro", "Voltron"}:      "slight", // wide board provides chumps; works only if you go wide
+	{"midrange", "Aggro"}:     "slight", // The matching entry rated neutral; no override needed but
+	// listed here as a placeholder for future tuning.
+}
+
+// init applies the strength overrides into metaMatchupDB so all readers
+// (computeMetaPositioning, MetaStrongAgainst) see consistent values
+// without each one re-doing the lookup. Runs at package init, after the
+// var-declaration block above.
+func init() {
+	for fromKey, entries := range metaMatchupDB {
+		for i, e := range entries {
+			if s, ok := metaMatchupStrengthOverrides[[2]string{fromKey, e.vsArchetype}]; ok {
+				entries[i].strength = s
+			}
+		}
+		// Range over entries gave a copy; write back the modified slice.
+		metaMatchupDB[fromKey] = entries
+	}
 }
 
 // metaMatchupDB maps the deck's primary archetype to a list of
@@ -1442,6 +1546,7 @@ func computeMetaPositioning(dp *DeckProfile) {
 			Archetype: m.vsArchetype,
 			Rating:    m.rating,
 			Reason:    m.reason,
+			Strength:  metaMatchupStrengthOrDefault(m),
 		})
 	}
 

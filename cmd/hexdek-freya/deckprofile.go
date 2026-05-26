@@ -188,6 +188,13 @@ type MetaMatchup struct {
 	Archetype string
 	Rating    string // "favored", "neutral", "unfavored"
 	Reason    string
+	// Strength is the magnitude qualifier on a directional rating:
+	// "strong" (mechanical hard-lock), "moderate" (default favored/unfavored
+	// edge), "slight" (draw/curve-dependent lean). Empty when Rating is
+	// "neutral" — a neutral matchup has no magnitude to report.
+	// Surfaces in JSON as "strength" so Decks-screen consumers can
+	// down-weight "slight" entries vs amplifying "strong" ones.
+	Strength string `json:"strength,omitempty"`
 }
 
 // MetaAdvantage is the per-entry shape of the "favored against" list
