@@ -191,15 +191,21 @@ func (o *Observer) Flush() {
 func (o *Observer) flushSeeds(seeds []GameSeed) {
 	fname := filepath.Join(o.dataDir, "heimdall", "seeds.jsonl")
 	if info, err := os.Stat(fname); err == nil && info.Size() > maxSeedFileSize {
-		os.Rename(fname, fname+".prev")
+		if rerr := os.Rename(fname, fname+".prev"); rerr != nil {
+			log.Printf("heimdall: rotate %s -> .prev failed: %v (will append instead)", fname, rerr)
+		}
 	}
 	f, err := os.OpenFile(fname, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
+		log.Printf("heimdall: open %s: %v", fname, err)
 		return
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck — read-only audit log; partial writes survive close errors.
 	enc := json.NewEncoder(f)
 	for _, s := range seeds {
-		enc.Encode(s)
+		if err := enc.Encode(s); err != nil {
+			log.Printf("heimdall: encode seed %v: %v", s, err)
+			return
+		}
 	}
 }

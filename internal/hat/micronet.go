@@ -2,6 +2,7 @@ package hat
 
 import (
 	"encoding/json"
+	"log"
 	"math"
 	"math/rand"
 	"os"
@@ -370,7 +371,9 @@ func (mt *MicroTrainer) trainDeck(deckKey string) {
 	mt.nets[deckKey] = net
 	mt.mu.Unlock()
 
-	SaveMicroNet(mt.dir, net)
+	if err := SaveMicroNet(mt.dir, net); err != nil {
+		log.Printf("micronet: save %s failed: %v (in-memory net still active)", deckKey, err)
+	}
 }
 
 func (mt *MicroTrainer) LoadAll() {

@@ -251,7 +251,7 @@ func (s *Service) runSchedulerTick(ctx context.Context) {
 	for rows.Next() {
 		var id, fin int64
 		if err := rows.Scan(&id, &fin); err != nil {
-			rows.Close()
+			_ = rows.Close() // best-effort cleanup; scan error is the reportable one
 			s.cfg.Logger.Printf("anticheat: scheduler scan: %v", err)
 			return
 		}
@@ -260,7 +260,7 @@ func (s *Service) runSchedulerTick(ctx context.Context) {
 			maxFinished = fin
 		}
 	}
-	rows.Close()
+	_ = rows.Close() // sql.Rows.Close is idempotent; rows.Err below surfaces any real failure
 	if err := rows.Err(); err != nil {
 		s.cfg.Logger.Printf("anticheat: scheduler scan: %v", err)
 		return

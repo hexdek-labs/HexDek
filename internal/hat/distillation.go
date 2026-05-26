@@ -256,12 +256,14 @@ func EnrichWithDNA(samples []PivotEnrichedSample, dna *CurseDNA) []DNAEnrichedSa
 
 // AppendDNAEnrichedSamples writes DNA-enriched samples to a JSONL file.
 func AppendDNAEnrichedSamples(path string, samples []DNAEnrichedSample) error {
-	os.MkdirAll(filepath.Dir(path), 0755)
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("dna-samples: mkdir %s: %w", filepath.Dir(path), err)
+	}
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck — append-only JSONL; encode-loop errors propagate via the return below.
 	enc := json.NewEncoder(f)
 	for _, s := range samples {
 		if err := enc.Encode(s); err != nil {
@@ -566,7 +568,9 @@ func (dm *DistillationManager) reseedUnderperformers(strategyLookup func(string)
 
 // SaveDistillationManifest writes the harvest manifest to disk.
 func SaveDistillationManifest(path string, manifest *DistillationManifest) error {
-	os.MkdirAll(filepath.Dir(path), 0755)
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("save-manifest: mkdir %s: %w", filepath.Dir(path), err)
+	}
 	data, err := json.MarshalIndent(manifest, "", "  ")
 	if err != nil {
 		return err

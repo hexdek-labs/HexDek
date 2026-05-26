@@ -93,7 +93,9 @@ func main() {
 		log.Fatalf("meta: %v", err)
 	}
 	if *oraclePath != "" {
-		meta.SupplementWithOracleJSON(*oraclePath)
+		if err := meta.SupplementWithOracleJSON(*oraclePath); err != nil {
+			log.Printf("warn: oracle supplement failed (%s): %v — metadata may be incomplete", *oraclePath, err)
+		}
 	}
 
 	// Discover all deck files.

@@ -46,7 +46,7 @@ func ArtCacheHandler(cacheDir string) http.HandlerFunc {
 
 			w.Header().Set("Content-Type", "image/jpeg")
 			w.Header().Set("Cache-Control", "public, max-age=2592000")
-			w.Write(data)
+			_, _ = w.Write(data) // ResponseWriter.Write error means client closed the connection — nothing to do.
 			return
 		}
 

@@ -125,7 +125,9 @@ func tapAllLands(ctx context.Context, database *sql.DB, gameID string, seat int)
 	}
 	for _, c := range bf {
 		if c.IsLand() && !c.Tapped {
-			game.TapLandForMana(ctx, database, gameID, seat, c.InstanceID, "")
+			if _, err := game.TapLandForMana(ctx, database, gameID, seat, c.InstanceID, ""); err != nil {
+				log.Printf("autopilot: tap land %s (game %s seat %d): %v", c.InstanceID, gameID, seat, err)
+			}
 		}
 	}
 }

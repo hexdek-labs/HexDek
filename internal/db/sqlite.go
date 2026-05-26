@@ -31,15 +31,15 @@ func Open(path string) (*sql.DB, error) {
 	}
 	db.SetMaxOpenConns(4)
 	if err := db.PingContext(context.Background()); err != nil {
-		db.Close()
+		_ = db.Close() // best-effort cleanup before returning the originating error
 		return nil, fmt.Errorf("ping sqlite: %w", err)
 	}
 	if _, err := db.Exec(schemaSQL); err != nil {
-		db.Close()
+		_ = db.Close() // best-effort cleanup before returning the originating error
 		return nil, fmt.Errorf("apply schema: %w", err)
 	}
 	if err := applyMigrations(db); err != nil {
-		db.Close()
+		_ = db.Close() // best-effort cleanup before returning the originating error
 		return nil, fmt.Errorf("apply migrations: %w", err)
 	}
 	return db, nil

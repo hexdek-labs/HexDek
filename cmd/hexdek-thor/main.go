@@ -554,8 +554,11 @@ func main() {
 				card := strings.ReplaceAll(fl.CardName, "\"", "\"\"")
 				fmt.Fprintf(csvF, "\"%s\",\"%s\",\"%s\",\"%s\",\"%s\"\n", card, fl.Interaction, fl.AbilityKind, fl.Invariant, msg)
 			}
-			csvF.Close()
-			log.Printf("  failures csv:  %s (%d rows)", *failuresCsv, len(failures))
+			if cerr := csvF.Close(); cerr != nil {
+				log.Printf("  failures csv close (%s): %v — file may be truncated", *failuresCsv, cerr)
+			} else {
+				log.Printf("  failures csv:  %s (%d rows)", *failuresCsv, len(failures))
+			}
 		}
 	}
 
