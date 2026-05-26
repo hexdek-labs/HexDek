@@ -7,6 +7,7 @@ package hat
 // or invokes the decision functions to verify integration.
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
@@ -18,6 +19,17 @@ import (
 func primedYggdrasilHat(seats int) *YggdrasilHat {
 	h := NewYggdrasilHat(nil, 0)
 	h.Noise = 0
+	// Determinism for tests: NewYggdrasilHat seeds noiseRNG with
+	// rand.Int63() (process-global, time-seeded since Go 1.20). That
+	// makes selectAmongTop's tie-breaker (yggdrasil.go:1205) flip
+	// across test invocations. Pin the RNG so primedYggdrasilHat is
+	// reproducible. Also raise confidenceThreshold from the zero-value
+	// 0 (margin=1.0, random pool wide) to a B4-equivalent 0.75 so the
+	// margin shrinks to 0.25 and clearly-better candidates win
+	// outright — matching production hats which always have a strategy
+	// profile that calls applyBracketDial.
+	h.noiseRNG = rand.New(rand.NewSource(1))
+	h.confidenceThreshold = 0.75
 	h.seatCount = seats
 	h.opponentProfiles = make([]*OpponentProfile, seats)
 	for i := 0; i < seats; i++ {
