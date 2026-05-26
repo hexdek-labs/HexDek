@@ -1117,17 +1117,25 @@ func seedbornMuseTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, c
 // ---------------------------------------------------------------------------
 
 func registerAuraShards(r *Registry) {
-	r.OnTrigger("Aura Shards", "creature_enters_battlefield", auraShardsETBTrigger)
-	r.OnTrigger("Aura Shards", "permanent_entered_battlefield", auraShardsETBTrigger)
+	r.OnTrigger("Aura Shards", "permanent_etb", auraShardsETBTrigger)
 }
 
 func auraShardsETBTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
 	const slug = "aura_shards_destroy"
-	if gs == nil || perm == nil {
+	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	// Check if the entering creature is controlled by the Aura Shards controller.
-	enteringSeat, _ := ctx["entering_seat"].(int)
+	// permanent_etb ctx: perm (entering), controller_seat, card.
+	enteringPerm, _ := ctx["perm"].(*gameengine.Permanent)
+	if enteringPerm == nil || enteringPerm.Card == nil {
+		return
+	}
+	// Oracle: "Whenever a creature enters under your control" — filter to
+	// creatures controlled by Aura Shards's controller.
+	if !enteringPerm.IsCreature() {
+		return
+	}
+	enteringSeat, _ := ctx["controller_seat"].(int)
 	if enteringSeat != perm.Controller {
 		return
 	}
@@ -1293,22 +1301,21 @@ func grandArbiterETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 // ---------------------------------------------------------------------------
 
 func registerFieldOfTheDead(r *Registry) {
-	r.OnTrigger("Field of the Dead", "permanent_entered_battlefield", fieldOfTheDeadTrigger)
-	r.OnTrigger("Field of the Dead", "land_entered_battlefield", fieldOfTheDeadTrigger)
+	r.OnTrigger("Field of the Dead", "permanent_etb", fieldOfTheDeadTrigger)
 }
 
 func fieldOfTheDeadTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
 	const slug = "field_of_the_dead_zombie"
-	if gs == nil || perm == nil {
+	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	// Check if a land entered under the controller's control.
-	enteringSeat, _ := ctx["entering_seat"].(int)
+	// permanent_etb ctx: perm (entering), controller_seat, card.
+	enteringPerm, _ := ctx["perm"].(*gameengine.Permanent)
+	if enteringPerm == nil || !enteringPerm.IsLand() {
+		return
+	}
+	enteringSeat, _ := ctx["controller_seat"].(int)
 	if enteringSeat != perm.Controller {
-		return
-	}
-	enteringPerm, _ := ctx["entering_permanent"].(*gameengine.Permanent)
-	if enteringPerm != nil && !enteringPerm.IsLand() {
 		return
 	}
 
