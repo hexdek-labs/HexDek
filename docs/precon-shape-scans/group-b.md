@@ -91,3 +91,83 @@ Data drawn from `data/decks/wizards/freya/<slug>.strategy.json` + `<slug>_freya.
 - **Freya measured_bracket:** 2 Core
 - **Verdict:** engine-correct
 - **Reasoning:** Freya labels this `combo` because of the Karmic Guide + Reveillark partial — slight overreach (one missing piece doesn't make a combo deck), but the B2 bracket is right. Real shape is Spirit tribal/spellslinger midrange that grinds value off Quintorius's graveyard payoff.
+
+### Anhelo, the Painter — Maestros Massacre (Streets of New Capenna)
+
+- **Intended archetype:** Grixis spellslinger / storm-lite reanimator. Anhelo copies the first instant/sorcery you cast each turn for the cost of sacrificing a creature.
+- **Punch-up shape:** Anhelo copy of a board wipe or X-spell for double-value; Anhelo + sacrifice outlet trades; commander damage via Anhelo's 4/3 menace body; 21 commander damage is the only explicit close path Freya found.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** off (too cold on shape, right on bracket)
+- **Reasoning:** Freya labels archetype `storm` (defensible — Anhelo is a storm-payoff commander) but detected ZERO finisher lines and only one win line (commander damage). The deck genuinely has a real spell-doubling engine that the classifier missed; a human reading would put more than a single line of "find a thing to copy" between this and any other Grixis midrange. B2 bracket is fine; the storm-line detection is the weak spot.
+
+### Anje Falkenrath — Merciless Rage (Commander 2019)
+
+- **Intended archetype:** Rakdos madness/discard-matters. Anje is a discard-to-loot enabler for Vampire Madness cards.
+- **Punch-up shape:** Anje loot loop + Madness payoffs; K'rrik, Son of Yawgmoth as a Phyrexian black-mana payoff threat; Nightmare Unmaking / In Garruk's Wake as catch-up wipes; Archfiend of Spite as a discard-rewarded big body.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** classification-mismatch
+- **Reasoning:** Freya labels `midrange` — defensible but loses the Madness/discard theme that's the deck's actual engine. 18 win lines are mostly cycling-land false combos (consume-once loop bug). B2 bracket is correct; the deck plays as a slow Rakdos value pile in stock form.
+
+### Jeleva, Nephalia's Scourge — Mind Seize (Commander 2013)
+
+- **Intended archetype:** Grixis "cast spells from the top of opponents' decks" sub-theme around Jeleva exiling cards on attack.
+- **Punch-up shape:** Jeleva exile-and-cast on combat; Decree of Pain / Starstorm / Infest as wipes; Army of the Damned as token swarm; Illusionist's Gambit / Grixis Charm for swing-back combat tricks.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** engine-correct
+- **Reasoning:** 69% synergy reflects Jeleva's clear deck-feature anchor (lots of high-CMC spells to exile-and-cast). Stock 2013 precon-paced; no real combos, no GC. B2 is the right home; the 9 win lines are wipes + a couple of mass-pump finishers that read accurately.
+
+### Riku of Two Reflections — Mirror Mastery (Commander 2011)
+
+- **Intended archetype:** Temur copy-spells / copy-creatures value. Riku's trigger doubles creature ETBs and instant/sorcery resolutions.
+- **Punch-up shape:** Riku doubling a ramp spell or an ETB creature like Acidic Slime; Garruk Wildspeaker untap-lands / make-tokens; Intet, the Dreamer commander damage as backup.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** off (too cold on shape, bracket reasonable)
+- **Reasoning:** Only 4 win lines and 2 finishers detected — extremely sparse. R3 (PR #532) flagged Mirror Mastery as a B1 false-positive on its prior run (the deck has commander_synergy that ought to keep it above the score-ladder's "nothing detected" floor). On this regenerated run it lands at B2 which is defensible; the older B1 reading was the bug.
+
+### Mishra, Eminent One — Mishra's Burnished Banner (The Brothers' War)
+
+- **Intended archetype:** Mardu artifact aristocrats. Mishra makes copy tokens of artifacts when artifacts ETB; the deck sacrifices artifacts for value.
+- **Punch-up shape:** Fain, the Broker + Farid + Oni-Cult Anvil sacrifice loop (3-step token cycle Freya correctly detected); Terisiare's Devastation as a reset; Workshop Elders / Traxos as artifact-creature beaters.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** engine-correct
+- **Reasoning:** 90% synergy on `artifacts` is well-classified. The 3-card sacrifice loop is a real engine; B2 is the appropriate floor for a deck whose finisher list (4 entries) tops out at "artifact-creature beats with a giant Atog-style closer." No GC, no true-infinite — bracket call is right.
+
+### Olivia, Opulent Outlaw — Most Wanted (Outlaws of Thunder Junction)
+
+- **Intended archetype:** Mardu Vampire/outlaw aristocrats. Olivia rewards casting outlaw spells with treasure tokens.
+- **Punch-up shape:** Deadly Dispute + Kamber, the Plunderer + Canyon Slough card-into-token loop; Fain, the Broker as a treasure-to-token engine; Life Insurance loop; Angrath's Marauders for damage doubling.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** off (engine reading is a known cold miss on this deck)
+- **Reasoning:** R5 flagged Most Wanted as the inverse miss — power_pct 81, mana A, synergy 87% but measures at B2 because of the GC=0 ceiling. The 20 detected "loop" win lines are real Aristocrats value engines (Deadly Dispute + a sac outlet + Kamber), not cycling false-positives. The right call for this deck is closer to B3; B2 is the engine's well-documented "no GC, no true-infinite → can't lift" pathology.
+
+### The Wise Mothman — Mutant Menace (Fallout)
+
+- **Intended archetype:** Sultai proliferate/-1/-1-counters Mutant tribal. Wise Mothman gives experience counters; the deck proliferates rad counters and -1/-1 counters.
+- **Punch-up shape:** Piper Wright + Tireless Tracker clue-token loop; Inexorable Tide for proliferate-based poison closes; Agent Frank Horrigan commander damage; Watchful Radstag mill-token mutual loop.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** classification-mismatch
+- **Reasoning:** Freya labels `selfmill` — partial fit (rad counters mill rad-cards into yards) but misses the proliferate / -1/-1 axis that's central to Mutant tribal. B2 bracket is right; archetype label needs a "proliferate" or "rads" tag to capture the actual engine.
+
+### Sevinne, the Chronoclasm — Mystic Intellect (Commander 2019)
+
+- **Intended archetype:** Jeskai spellslinger flashback recursion. Sevinne gives a copy of flashback spells; the deck reuses instants/sorceries.
+- **Punch-up shape:** Sevinne's Reclamation / Mystic Retrieval recur-from-graveyard loop; Devil's Play as X-burn closer; Dusk // Dawn as a recur-able wipe; commander damage from Sevinne's protection-when-copied trigger.
+- **Freya measured_bracket:** 1 Exhibition
+- **Verdict:** off (the iconic B1 false-positive flagged across R1 + R3 docs)
+- **Reasoning:** Synergy 75%, 3 partial-combo notes detected (Dockside + Temur Sabertooth class), 5 win lines — multiple cross-references say "B2 with shape". The B1 measured call is the cold-floor bug pattern documented in R1 PR #513 §2 and reconfirmed in R3 PR #532's 3 additional B1 false-positives (Mirror Mastery / Eternal Bargain / Planar Portal). Same root cause: score ladder has no positive contribution to award a flashback-recursion deck.
+
+### Lord Windgrace — Nature's Vengeance (Commander 2018)
+
+- **Intended archetype:** Jund lands-matter / landfall midrange. Windgrace recurs lands + sacrifices them for card advantage.
+- **Punch-up shape:** Windgrace +2 land discard / +0 land-from-graveyard; Whiptongue Hydra as Flying-sweeper; Gaze of Granite for X-cost wipe; Flameblast Dragon as X-burn closer; Tooth and Nail as a missing-piece big-finish partial (Freya flagged Avenger present, Tooth+Craterhoof absent).
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** classification-mismatch
+- **Reasoning:** Freya labels `counters matter` — incorrect; this is straightforward lands-matter Jund. The 45% synergy reading misses that nearly every card in the deck cares about lands going to/from yards. Bracket B2 is right; archetype label is wrong.
+
+### Szarekh, the Silent King — Necron Dynasties (Warhammer 40,000)
+
+- **Intended archetype:** Mono-Black Necron artifact tribal. Szarekh exiles a creature when it dies and returns it as a Necron token; the deck plays a reanimator-tokens loop.
+- **Punch-up shape:** Skorpekh Lord + Dread Return loop on artifact-creature targets; Tomb Fortress for repeatable reanimation; The War in Heaven and Their Number Is Legion as token-flood finishers; Mutilate as a black-mana wipe.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** engine-correct
+- **Reasoning:** 95% synergy — the second-highest in this batch, reflecting tight Necron tribal cohesion. R1 originally flagged this deck's 103 win_lines as a token-pollution data smell; this re-run reports 103 lines still but the bracket conclusion (B2) is unaffected because GC=0 keeps the ceiling firing. The win-line count is noisy but the bracket call is right.
