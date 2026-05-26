@@ -862,8 +862,14 @@ func parseTypes(typeLine string) []string {
 	return out
 }
 
-// normalizeName mirrors astload.normalizeName (accent-folded + lowercase
-// + whitespace-collapsed). Keep in sync; unit tests exercise both.
+// NormalizeName accent-folds, lowercases, and collapses whitespace in a
+// card name. Exported (R60 Phase 2C consolidation) so other internal
+// packages — specifically `internal/deckid`, which already imports
+// `deckparser` — can share the canonical implementation rather than
+// keeping a verbatim copy. Mirrors astload.normalizeName; unit tests
+// exercise both.
+func NormalizeName(name string) string { return normalizeName(name) }
+
 func normalizeName(name string) string {
 	out := make([]rune, 0, len(name))
 	prevSpace := false

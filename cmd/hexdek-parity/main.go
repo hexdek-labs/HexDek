@@ -88,10 +88,10 @@ func main() {
 	if report.PythonAvailable {
 		fmt.Printf("  outcome matches:     %d / %d (%.1f%%)\n",
 			report.OutcomeMatches, report.Games,
-			100*float64(report.OutcomeMatches)/max1(float64(report.Games)))
+			100*float64(report.OutcomeMatches)/max(float64(report.Games), 1))
 		fmt.Printf("  event stream match:  %d / %d (%.1f%%)\n",
 			report.EventStreamMatches, report.Games,
-			100*float64(report.EventStreamMatches)/max1(float64(report.Games)))
+			100*float64(report.EventStreamMatches)/max(float64(report.Games), 1))
 	}
 	if len(report.CategoryCounts) > 0 {
 		fmt.Println()
@@ -106,9 +106,3 @@ func main() {
 	os.Exit(0)
 }
 
-func max1(v float64) float64 {
-	if v < 1 {
-		return 1
-	}
-	return v
-}

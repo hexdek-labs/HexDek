@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sort"
 	"strings"
-	"unicode"
 
 	"github.com/hexdek/hexdek/internal/deckparser"
 	"github.com/hexdek/hexdek/internal/gameengine"
@@ -91,56 +90,10 @@ func CardDelta(parentList, childList []string) int {
 	return delta
 }
 
-// normalizeName lowercases and folds accents for consistent hashing.
-// Duplicated from deckparser to avoid circular imports.
-func normalizeName(name string) string {
-	out := make([]rune, 0, len(name))
-	prevSpace := false
-	for _, r := range name {
-		r = foldAccent(r)
-		if unicode.IsUpper(r) {
-			r = unicode.ToLower(r)
-		}
-		if unicode.IsSpace(r) {
-			if prevSpace || len(out) == 0 {
-				continue
-			}
-			out = append(out, ' ')
-			prevSpace = true
-			continue
-		}
-		prevSpace = false
-		out = append(out, r)
-	}
-	if n := len(out); n > 0 && out[n-1] == ' ' {
-		out = out[:n-1]
-	}
-	return string(out)
-}
-
-func foldAccent(r rune) rune {
-	switch r {
-	case 'á', 'à', 'â', 'ä', 'ã', 'å', 'ā',
-		'Á', 'À', 'Â', 'Ä', 'Ã', 'Å', 'Ā':
-		return 'a'
-	case 'é', 'è', 'ê', 'ë', 'ē',
-		'É', 'È', 'Ê', 'Ë', 'Ē':
-		return 'e'
-	case 'í', 'ì', 'î', 'ï', 'ī',
-		'Í', 'Ì', 'Î', 'Ï', 'Ī':
-		return 'i'
-	case 'ó', 'ò', 'ô', 'ö', 'õ', 'ō',
-		'Ó', 'Ò', 'Ô', 'Ö', 'Õ', 'Ō':
-		return 'o'
-	case 'ú', 'ù', 'û', 'ü', 'ū',
-		'Ú', 'Ù', 'Û', 'Ü', 'Ū':
-		return 'u'
-	case 'ñ', 'Ñ':
-		return 'n'
-	case 'ç', 'Ç':
-		return 'c'
-	case 'ß':
-		return 's'
-	}
-	return r
-}
+// normalizeName forwards to deckparser's canonical implementation
+// (R60 Phase 2C consolidation — used to be a verbatim copy of the
+// deckparser body plus its `foldAccent` helper). deckid already
+// imports deckparser, so there's no cycle to avoid — the old
+// "duplicated to avoid circular imports" comment on the prior copy
+// was stale.
+func normalizeName(name string) string { return deckparser.NormalizeName(name) }
