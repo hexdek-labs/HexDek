@@ -210,6 +210,7 @@ const SystemTagPrefix = "archetype:"
 // power tier) can join later without changing the API contract.
 //
 // Returns nil when:
+//   - any of decksDir / owner / id is empty (caller didn't wire it)
 //   - strategy.json doesn't exist (Freya hasn't been run)
 //   - strategy.json is unparseable
 //   - primary_archetype is empty
@@ -691,8 +692,10 @@ func (h *Handler) handlePatchDeck(w http.ResponseWriter, r *http.Request) {
 //	q=...      (optional) — case-insensitive substring filter.
 //	limit=N    (optional, default 20, max 100) — cap on returned suggestions.
 //
-// Always returns 200 with a JSON array (possibly empty) so the client
-// doesn't have to special-case "no decks yet".
+// Returns 200 with a JSON array (possibly empty) on the happy path so
+// the client doesn't have to special-case "no decks yet". Returns 500
+// when the underlying tag query fails (DB error); empty result for an
+// unknown owner is the empty-array 200 path, not 404.
 func (h *Handler) handleListTags(w http.ResponseWriter, r *http.Request) {
 	q := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("q")))
 	limit := 20

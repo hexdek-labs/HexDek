@@ -4156,8 +4156,8 @@ func containsType(types []string, t string) bool {
 }
 
 // executeKeyword runs the appropriate keyword function on the game state.
-// Returns true if execution succeeded (even if nothing changed — that's
-// for verifyKeyword to decide).
+// Any post-condition checks live in verifyKeyword — this just dispatches
+// the side effect; success/failure determination is the verifier's job.
 func executeKeyword(gs *gameengine.GameState, perm *gameengine.Permanent, oc *oracleCard, kw *gameast.Keyword) {
 	kwName := strings.ToLower(strings.TrimSpace(kw.Name))
 	oracleText := strings.ToLower(oc.OracleText)

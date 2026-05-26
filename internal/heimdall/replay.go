@@ -246,16 +246,13 @@ func ReplayWithObservation(rc *ReplayContext, seed GameSeed, obs *Observer) erro
 	//     gs.MulliganHistory (populated by RunLondonMulligan above).
 	observation.MulliganStats = ExtractMulliganStats(gs)
 
-	// 3. Combo detection: TODO — requires Freya integration to know what
-	//    the deck's intended combo line is and whether pieces were
-	//    assembled.
-	// observation.ComboAttempted = false
-	// observation.ComboSucceeded = false
-	// observation.ComboMissed = false
-
-	// 4. Causal pivot: TODO — requires Tesla implementation to identify
-	//    the decisive game action.
-	// observation.CausalPivot = nil
+	// 3. Combo detection: deferred — requires Freya integration to know
+	//    what the deck's intended combo line is and whether pieces were
+	//    assembled. Observation.Combo* default to false.
+	//
+	// 4. Causal pivot: deferred — requires Tesla implementation to
+	//    identify the decisive game action. Observation.CausalPivot
+	//    defaults to nil.
 
 	// Route observation to sinks.
 	if obs != nil {

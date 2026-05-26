@@ -103,10 +103,11 @@ func (s *CSRFStore) IssueToken() (string, time.Time, error) {
 }
 
 // VerifyToken returns nil if the token is well-formed, unexpired, and
-// signed with this store's secret. All other return values are
-// constant — no information leaks back to the attacker about which
-// validation step failed beyond the broad category (server logs may
-// distinguish; clients only see 403).
+// signed with this store's secret. On failure, returns one of four
+// sentinel errors (ErrCSRFMissing / ErrCSRFMalformed / ErrCSRFBadSignature
+// / ErrCSRFExpired). HTTP handlers should collapse all four into a
+// generic 403 so the wire response can't distinguish "no token" from
+// "bad signature"; the sentinel is preserved server-side for audit logs.
 func (s *CSRFStore) VerifyToken(tok string) error {
 	if tok == "" {
 		return ErrCSRFMissing

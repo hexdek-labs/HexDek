@@ -14,8 +14,10 @@
 // Only EMPTY_AST and PARTIAL count against the parser; MISSING is reported
 // separately because it reflects the parser pipeline's set, not its parsing.
 //
-// Output is a markdown report written to --out (default
-// docs/parser-coverage-r41.md).
+// Output is a markdown report written to --out. The default value is the
+// historical r41-baseline path; new audit runs should pass an era-tagged
+// --out (e.g. docs/parser-coverage-r60.md) to avoid overwriting the
+// baseline.
 package main
 
 import (

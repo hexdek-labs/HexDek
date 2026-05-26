@@ -30,7 +30,7 @@ package gameengine
 //   - Harmonize            — CR §702.180
 //   - Mobilize             — CR §702.181
 //   - Freerunning          — CR §702.169
-//   - Gift                 — CR §702.174
+//   - Gift                 — CR §702.192
 //   - Space Sculptor       — §702.173
 //   - Visit                — §702.177
 //   - Max Speed            — §702.178

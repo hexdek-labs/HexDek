@@ -153,7 +153,8 @@ func saveImports(f *importsFile) error {
 // import with different flags.
 //
 // Returns nil (no-op) if HEXDEK_MOXFIELD_IMPORTS=0 disables the
-// registry. Returns an error only on IO failure — production callers
+// registry. Returns an error on validation failure (empty DeckID) or
+// IO failure (load/save of the imports registry) — production callers
 // can log and continue without blocking the import.
 func RecordImport(rec ImportRecord) error {
 	if !importsEnabled() {
