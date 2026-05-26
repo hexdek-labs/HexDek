@@ -130,7 +130,7 @@ func (t *Tracker) AreFriends(ctx context.Context, ownerA, ownerB string) (bool, 
 	var x int
 	err = t.db.QueryRowContext(ctx,
 		`SELECT 1 FROM owner_friend WHERE owner_a = ? AND owner_b = ?`, a, b).Scan(&x)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
 	if err != nil {

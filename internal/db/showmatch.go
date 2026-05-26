@@ -3,6 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -256,7 +257,7 @@ func GetTotalTurns(ctx context.Context, db *sql.DB) (int, error) {
 func GetCommanderStats(ctx context.Context, db *sql.DB, commander string) (games, wins int, err error) {
 	err = db.QueryRowContext(ctx,
 		`SELECT COALESCE(SUM(games),0), COALESCE(SUM(wins),0) FROM showmatch_elo WHERE commander = ?`, commander).Scan(&games, &wins)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return 0, 0, nil
 	}
 	return
@@ -295,7 +296,7 @@ func BatchUpsertCardWinStats(ctx context.Context, sqlDB *sql.DB, stats []CardWin
 func KVGet(ctx context.Context, db *sql.DB, key string) (string, error) {
 	var val string
 	err := db.QueryRowContext(ctx, `SELECT value FROM kv_store WHERE key = ?`, key).Scan(&val)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil
 	}
 	return val, err

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -88,7 +89,7 @@ func ClaimNextVerification(ctx context.Context, db *sql.DB) (*VerificationQueueR
 		 ORDER BY enqueued_at ASC, queue_id ASC
 		 LIMIT 1`)
 	r, err := scanVerificationQueueRow(row)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
 	if err != nil {
@@ -358,7 +359,7 @@ func ActiveBan(ctx context.Context, db *sql.DB, deckKey string) (*SanctionRow, e
 	r := SanctionRow{}
 	if err := row.Scan(&r.SanctionID, &r.DeckKey, &r.Owner, &r.OffenseNum, &r.Severity,
 		&r.IssuedAt, &r.ExpiresAt, &r.Reason, &r.QueueID, &r.Reviewed); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
