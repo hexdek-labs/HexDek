@@ -13,7 +13,7 @@ import (
 // known-bracket deck set in data/decks/test/ (filenames encode the expected
 // bracket as `..._b[1-5]_...txt`) and pins both per-deck ±1 accuracy and the
 // overall exact-match rate. The corpus is the calibration anchor for the
-// estimateBracket scoring formula in archetype.go — if you tune the formula,
+// estimateMeasuredBracket scoring formula in archetype.go — if you tune the formula,
 // re-run this test and update the floor.
 //
 // Skipped when data/rules/oracle-cards.json is absent (gitignored 163MB blob).

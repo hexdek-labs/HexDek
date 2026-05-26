@@ -62,6 +62,13 @@ export function deckGlanceStats({ deck, analysis, deckElo, eloHistory } = {}) {
   const wbs = analysis?.bracket || deck?.bracket || null
   const pls = analysis?.plays_like || null
   const bracketLabel = analysis?.bracket_label || ''
+  // measured_bracket is Freya's signal-computed value (renamed from
+  // the legacy `mechanical_bracket`). The declared `bracket` field is
+  // the rubber-stamp identity (B2 for wizards/ precons; user-editable);
+  // measured diverges when the deck plays hotter than its stamp.
+  const measuredBracket = analysis?.measured_bracket || null
+  const measuredBracketLabel = analysis?.measured_bracket_label || ''
+  const bracketDiverges = measuredBracket != null && wbs != null && Number(measuredBracket) !== Number(wbs)
   const archetypeRaw = analysis?.archetype || ''
   const archetype = archetypeRaw ? archetypeRaw.toUpperCase() : ''
   const winConditions = topWinConditions(analysis, 3)
@@ -74,6 +81,9 @@ export function deckGlanceStats({ deck, analysis, deckElo, eloHistory } = {}) {
     bracket: wbs,
     playsLike: pls && pls !== wbs ? pls : null,
     bracketLabel,
+    measuredBracket,
+    measuredBracketLabel,
+    bracketDiverges,
     archetype,
     winConditions,
     recent,

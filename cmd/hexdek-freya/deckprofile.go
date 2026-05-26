@@ -2,9 +2,25 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 )
+
+// isWizardsPrecon reports whether deckPath points at a file under
+// data/decks/wizards/ — the corpus of unedited WotC precons. Matched by
+// substring on the cleaned path so callers can pass either absolute or
+// relative paths; the wizards/ segment is unambiguous because no other
+// directory in the data tree shares that name.
+func isWizardsPrecon(deckPath string) bool {
+	if deckPath == "" {
+		return false
+	}
+	clean := filepath.ToSlash(filepath.Clean(deckPath))
+	return strings.Contains(clean, "/data/decks/wizards/") ||
+		strings.HasPrefix(clean, "data/decks/wizards/") ||
+		strings.Contains(clean, "/decks/wizards/")
+}
 
 type DeckProfile struct {
 	DeckName      string
@@ -25,8 +41,19 @@ type DeckProfile struct {
 	PrimaryArchetype    string
 	SecondaryArchetype  string
 	ArchetypeConfidence float64
+	// Bracket is the rubber-stamp / declared bracket: what the deck
+	// identifies as. Defaults to MeasuredBracket; overridden to 2 for
+	// any deck under data/decks/wizards/ (unedited WotC precons whose
+	// product-stated intent is B2 regardless of how the bracket signals
+	// score). User-editable downstream.
 	Bracket             int
 	BracketLabel        string
+	// MeasuredBracket is Freya's signal-computed bracket — what the deck
+	// actually plays like according to the estimator. Surfaced alongside
+	// Bracket so the UI can show divergence (e.g. precon claims B2,
+	// measures B3 — tells you Atraxa is hotter than the box says).
+	MeasuredBracket      int
+	MeasuredBracketLabel string
 	PlaysLike           int
 	PlaysLikeLabel      string
 	GameChangerCount    int
@@ -362,14 +389,32 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 		dp.PrimaryArchetype = report.Archetype.Primary
 		dp.SecondaryArchetype = report.Archetype.Secondary
 		dp.ArchetypeConfidence = report.Archetype.PrimaryConfidence
-		dp.Bracket = report.Archetype.Bracket
-		dp.BracketLabel = report.Archetype.BracketLabel
+		dp.MeasuredBracket = report.Archetype.MeasuredBracket
+		dp.MeasuredBracketLabel = report.Archetype.MeasuredBracketLabel
+		// Declared bracket defaults to the measured value; the wizards/
+		// override below stamps the precon corpus to B2.
+		dp.Bracket = report.Archetype.MeasuredBracket
+		dp.BracketLabel = report.Archetype.MeasuredBracketLabel
 		dp.PlaysLike = report.Archetype.PlaysLike
 		dp.PlaysLikeLabel = report.Archetype.PlaysLikeLabel
 		dp.GameChangerCount = report.Archetype.GameChangerCount
 		dp.GameChangerCards = report.Archetype.GameChangerCards
 		dp.Intent = report.Archetype.Intent
 		dp.BracketRationale = report.Archetype.BracketRationale
+	}
+
+	// WotC precon override: any deck file under data/decks/wizards/ is
+	// stamped as B2 (Core) regardless of measured bracket. WotC publishes
+	// product-stated bracket intent for every precon as B2; the measured
+	// bracket can diverge upward (e.g. Atraxa Phyrexian Praetors measures
+	// hotter than B2), but the rubber-stamp identity stays B2.
+	if isWizardsPrecon(report.DeckPath) {
+		dp.Bracket = 2
+		dp.BracketLabel = "Core (precon)"
+		if report.Archetype != nil {
+			report.Archetype.Bracket = 2
+			report.Archetype.BracketLabel = "Core (precon)"
+		}
 	}
 
 	if report.WinLines != nil {

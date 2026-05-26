@@ -183,7 +183,7 @@ func TestEstimateBracket_LandCycleSynergyExcludedInNonLandsArchetype(t *testing.
 		roleRatios: map[RoleTag]float64{},
 		avgCMC:     3.4,
 	}
-	_, _, br := estimateBracket(ctx, report, "Combo")
+	_, _, br := estimateMeasuredBracket(ctx, report, "Combo")
 	var comboSig *BracketSignal
 	var lcsSig *BracketSignal
 	for i := range br.Signals {
@@ -224,7 +224,7 @@ func TestEstimateBracket_LandCycleSynergyCountedInLandsMatter(t *testing.T) {
 			roleRatios: map[RoleTag]float64{},
 			avgCMC:     3.0,
 		}
-		_, _, br := estimateBracket(ctx, report, archetype)
+		_, _, br := estimateMeasuredBracket(ctx, report, archetype)
 		var comboSig *BracketSignal
 		var lcsSig *BracketSignal
 		for i := range br.Signals {

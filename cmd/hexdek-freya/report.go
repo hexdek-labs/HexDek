@@ -1319,8 +1319,13 @@ type jsonDeckProfile struct {
 	PrimaryArchetype   string            `json:"primary_archetype"`
 	SecondaryArchetype string            `json:"secondary_archetype,omitempty"`
 	Confidence         float64           `json:"archetype_confidence"`
-	Bracket            int               `json:"bracket"`
-	BracketLabel       string            `json:"bracket_label"`
+	// Bracket is the declared / rubber-stamp value (see DeckProfile.Bracket).
+	// MeasuredBracket is Freya's signal-computed bracket; they diverge
+	// for wizards/ precons (declared B2, may measure hotter).
+	Bracket               int               `json:"bracket"`
+	BracketLabel          string            `json:"bracket_label"`
+	MeasuredBracket       int               `json:"measured_bracket"`
+	MeasuredBracketLabel  string            `json:"measured_bracket_label,omitempty"`
 	Intent             string            `json:"intent"`
 	PrimaryWinLine     string            `json:"primary_win_line"`
 	WinLineCount       int               `json:"win_line_count"`
@@ -1484,8 +1489,12 @@ type jsonArchetype struct {
 	Primary    string             `json:"primary"`
 	Confidence float64            `json:"confidence"`
 	Secondary  string             `json:"secondary,omitempty"`
-	Bracket    int                `json:"bracket"`
-	BracketLbl string             `json:"bracket_label"`
+	// Bracket is the declared / rubber-stamp bracket; MeasuredBracket is
+	// Freya's signal-computed value. They diverge for wizards/ precons.
+	Bracket              int                `json:"bracket"`
+	BracketLbl           string             `json:"bracket_label"`
+	MeasuredBracket      int                `json:"measured_bracket"`
+	MeasuredBracketLabel string             `json:"measured_bracket_label,omitempty"`
 	Signals    []string           `json:"signals,omitempty"`
 	Intent     string             `json:"intent"`
 	Rationale  *jsonBracketRationale `json:"bracket_rationale,omitempty"`
@@ -1700,8 +1709,10 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		PrimaryArchetype:   dp.PrimaryArchetype,
 		SecondaryArchetype: dp.SecondaryArchetype,
 		Confidence:         dp.ArchetypeConfidence,
-		Bracket:            dp.Bracket,
-		BracketLabel:       dp.BracketLabel,
+		Bracket:               dp.Bracket,
+		BracketLabel:          dp.BracketLabel,
+		MeasuredBracket:       dp.MeasuredBracket,
+		MeasuredBracketLabel:  dp.MeasuredBracketLabel,
 		Intent:             dp.Intent,
 		PrimaryWinLine:     dp.PrimaryWinLine,
 		WinLineCount:       dp.WinLineCount,
@@ -1777,8 +1788,10 @@ func buildJSONArchetype(ac *ArchetypeClassification) *jsonArchetype {
 		Primary:    ac.Primary,
 		Confidence: ac.PrimaryConfidence,
 		Secondary:  ac.Secondary,
-		Bracket:    ac.Bracket,
-		BracketLbl: ac.BracketLabel,
+		Bracket:              ac.Bracket,
+		BracketLbl:           ac.BracketLabel,
+		MeasuredBracket:      ac.MeasuredBracket,
+		MeasuredBracketLabel: ac.MeasuredBracketLabel,
 		Signals:    ac.Signals,
 		Intent:     ac.Intent,
 		Rationale:  buildJSONBracketRationale(ac.BracketRationale),

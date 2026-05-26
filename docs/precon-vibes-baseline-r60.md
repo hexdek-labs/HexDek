@@ -2,7 +2,9 @@
 
 ## Why
 
-Freya's `estimateBracket` was tuned against the 16-deck `data/decks/test/` corpus (14/16 exact, 16/16 within ±1 per `bracket_calibration_test.go`), a corpus dominated by mid-to-high-power decks (lots of B3/B4, several cEDH-leaning B5). It has had no calibration pressure from the OTHER end of the distribution: **unedited WotC precons** — product whose explicit design intent is Bracket 2 (Core). Without a precon baseline we cannot tell whether the bracket-estimator's *floor* behaves correctly, only its ceiling.
+Freya's `estimateMeasuredBracket` (renamed from `estimateBracket` as part of the bracket-vs-measured-bracket refactor; see CLAUDE.md) was tuned against the 16-deck `data/decks/test/` corpus (14/16 exact, 16/16 within ±1 per `bracket_calibration_test.go`), a corpus dominated by mid-to-high-power decks (lots of B3/B4, several cEDH-leaning B5). It has had no calibration pressure from the OTHER end of the distribution: **unedited WotC precons** — product whose explicit design intent is Bracket 2 (Core). Without a precon baseline we cannot tell whether the bracket-estimator's *floor* behaves correctly, only its ceiling.
+
+**Naming convention (post-refactor):** the new `bracket` field on `DeckProfile` is the **declared / rubber-stamp** bracket (B2 by default for any deck under `data/decks/wizards/`, user-editable). The `measured_bracket` field is what Freya's signal estimator computes. The Δ column below tabulates `measured_bracket − bracket` so precons that play hotter than their B2 stamp surface as negative deltas.
 
 This doc fixes that. It imports 15 unedited Moxfield uploads of WotC precons across 5 release eras (C13 → DSK 2024) and tabulates the mechanical-bracket call alongside the secondary metrics that should track "vibes" (commander_synergy, win_lines, combo_density, value_chain depth, recursion ratio). The point is to find the deltas — precons that mechanically score above or below WotC's stated B2 intent — so we know where the algorithm needs work.
 
@@ -11,7 +13,7 @@ This doc fixes that. It imports 15 unedited Moxfield uploads of WotC precons acr
 - **Corpus:** 15 Moxfield community uploads of stock WotC precon decklists, in `data/decks/wizards/`, owner-tagged `wizards`. Sources are the "Commander Precons" Moxfield namespace (the canonical stock-list uploader). 3 precons per era × 5 eras.
 - **Import:** `go run ./cmd/hexdek-import/ --moxfield <url> --owner wizards`. Freya auto-runs on import; per-deck output at `data/decks/wizards/freya/<slug>.strategy.json` and `<slug>_freya.md`.
 - **Metrics pulled from strategy.json:**
-  - `mechanical_bracket` ← `bracket` / `bracket_label` (Freya's `estimateBracket`)
+  - `measured_bracket` ← Freya's `estimateMeasuredBracket` signal output (was `mechanical_bracket` in r60 pre-refactor)
   - `plays_like` ← `plays_like_label` (Freya's secondary "how it actually plays" call, separate from mechanical)
   - `commander_synergy_pct` ← `commander_synergy × 100`
   - `win_lines` ← `len(win_lines)` (Freya-detected win-line entries — note: high counts on tribal/token decks reflect "every X-tribal creature is a win-line piece", not multiplicity of distinct kill paths)
@@ -19,7 +21,7 @@ This doc fixes that. It imports 15 unedited Moxfield uploads of WotC precons acr
   - `value_chain_depth` ← max / avg `depth` across `value_chains[]` entries
   - `recursion_ratio` ← fraction of value-chains with `recursion_depth ∈ {infinite, deep}`
   - `game_changers`, `power_pct`, `mana_base_grade` for additional cross-reference
-- **predicted_vibes_bracket** is a per-row judgment call against WotC's stated B2 intent, informed by the metrics above:
+- **declared_bracket** (formerly `predicted_vibes_bracket`) is a per-row judgment call against WotC's stated B2 intent, informed by the metrics above. This column is the predecessor of the formal `bracket` field — the precon corpus is now stamped to B2 automatically by `isWizardsPrecon`, so post-refactor this column is always B2 for every row and the human-judged adjustments below are advisory only:
   - **B1 (Exhibition):** power_pct < 25 AND no win_lines AND no combos
   - **B2 (Core):** WotC default for unedited precon — no overriding signal
   - **B3 (Upgraded):** power_pct ≥ 60, OR combo_density ≥ 4, OR game_changers ≥ 2
@@ -30,7 +32,7 @@ This doc fixes that. It imports 15 unedited Moxfield uploads of WotC precons acr
 
 Sorted chronologically by era, then by release window.
 
-| # | Era | Precon | Commander | Archetype | Mech Brkt | Plays-Like | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | **Vibes Brkt** | Δ |
+| # | Era | Precon | Commander | Archetype | Measured Brkt | Plays-Like | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | **Declared Brkt** | Δ |
 |---|-----|--------|-----------|-----------|:---------:|:----------:|:----------:|:---------:|:----------:|:---------------------:|:---------------:|:--:|:-------:|:----:|:--------------:|:-:|
 | 1 | C13 | Mind Seize | Jeleva, Nephalia's Scourge | midrange | 2 Core | Exhibition | 69.5 | 9 | 1 | 2.33 / 3 | 0.67 | 0 | 58 | B | **2** | ✓ |
 | 2 | C16 | Breed Lethality | Atraxa, Praetors' Voice | tribal | 2 Core | Exhibition | 56.7 | 12 | 2 | 2.50 / 3 | 0.25 | 0 | 50 | A | **2** | ✓ |
@@ -48,7 +50,7 @@ Sorted chronologically by era, then by release window.
 | 14 | BLB | Animated Army | Bello, Bard of the Brambles | combo | 2 Core | Core | 70.5 | **46** | 1 | 2.50 / 3 | 0.00 | 0 | 58 | B | **2** | ✓ |
 | 15 | DSK | Death Toll | Winter, Cynical Opportunist | midrange | 2 Core | Core | 59.0 | 6 | 1 | 3.00 / 3 | 0.50 | 0 | 55 | B | **2** | ✓ |
 
-**Δ column:** mechanical_bracket − predicted_vibes_bracket. `✓` = match. Sign convention: `−2` means the engine called the precon TWO brackets HOTTER than its vibes warrant (false-positive); `+1` means the engine called it ONE bracket COOLER than vibes (false-negative).
+**Δ column:** measured_bracket − declared_bracket. `✓` = match. Sign convention: `−2` means the engine measured the precon TWO brackets HOTTER than its declared B2 stamp warrants (the deck plays at B4 mechanics behind a B2 label); `+1` means the engine measured it ONE bracket COOLER than declared (rare; mostly B1-leaning Exhibition calls).
 
 **Aggregate:** 11/15 exact match (73%), 2/15 vibes-cooler-than-mechanical (false-positive B4 calls on stock precons), 2/15 mechanical-cooler-than-vibes (Buckle Up + Necron Dynasties as B3 candidates). Within ±1: 13/15.
 
@@ -73,7 +75,7 @@ Sevinne precons are widely regarded as among the weakest WotC ever shipped, so t
 - **Buckle Up (NEO):** power_pct 60, commander_synergy 88.7%, A-grade mana, archetype=artifacts, 3-step value chains with 40% recursive. The metrics genuinely point to a tuned-feeling deck despite the B2 call. This is the precon that famously plays better than its bracket; if anything the mechanical bracket here may be the false-NEGATIVE, not the vibes prediction.
 - **Necron Dynasties (40K):** power_pct 73, commander_synergy 95.2%, A-grade mana, 103 win_lines. The 103 is itself a calibration smell — Szarekh's "Necron token" payoff probably gets every Necron creature classified as a win-line piece (token-counting pollution). Real win-line count is probably 5-10. Even ignoring the inflated count, power_pct 73 with A mana base is the strongest stock precon in the corpus.
 
-### 4. **`mechanical_bracket` and `plays_like` disagree on 9/15 decks** (severity: MEDIUM — investigate)
+### 4. **`measured_bracket` and `plays_like` disagree on 9/15 decks** (severity: MEDIUM — investigate)
 
 The two values come from different code paths (bracket from score-ladder + floors/ceilings, plays_like from the deck-feel simulator) and were never expected to match exactly, but a 60% disagreement rate across the unedited-precon floor suggests one of them is systematically miscalibrated for the bottom of the distribution. The mismatches lean one direction — `plays_like` calls Exhibition where `bracket` calls Core — which is consistent with the bracket estimator being right for the average deck and the plays_like simulator under-rating "stuff happens" precons that don't have a clean win condition. A focused study of the 9 mismatches would clarify which path needs adjustment.
 

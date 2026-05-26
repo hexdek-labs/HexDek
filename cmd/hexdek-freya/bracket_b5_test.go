@@ -68,8 +68,8 @@ func TestEstimateBracket_FreeInteractionLifts(t *testing.T) {
 	withFree := baseCtx()
 	withFree.freeInteractionCount = 4
 
-	bNoFree, _, _ := estimateBracket(noFree, report, "")
-	bWithFree, _, _ := estimateBracket(withFree, report, "")
+	bNoFree, _, _ := estimateMeasuredBracket(noFree, report, "")
+	bWithFree, _, _ := estimateMeasuredBracket(withFree, report, "")
 
 	if bWithFree < bNoFree {
 		t.Errorf("free interaction shouldn't lower bracket: noFree=B%d, withFree=B%d",
@@ -101,7 +101,7 @@ func TestEstimateBracket_B5GateRequiresCEDHMarker(t *testing.T) {
 		gameChangerCount: 4,
 		// no free interaction
 	}
-	bDemoted, lblDemoted, _ := estimateBracket(demotedCtx, report, "")
+	bDemoted, lblDemoted, _ := estimateMeasuredBracket(demotedCtx, report, "")
 	if bDemoted != 4 {
 		t.Errorf("demotion gate: want B4, got B%d (%s) — high-score deck without cEDH markers should fall back",
 			bDemoted, lblDemoted)
@@ -118,7 +118,7 @@ func TestEstimateBracket_B5GateRequiresCEDHMarker(t *testing.T) {
 		gameChangerCount:     4,
 		freeInteractionCount: 2,
 	}
-	bKeep, lblKeep, _ := estimateBracket(keepCtx, report, "")
+	bKeep, lblKeep, _ := estimateMeasuredBracket(keepCtx, report, "")
 	if bKeep != 5 {
 		t.Errorf("free-int marker present: want B5, got B%d (%s)", bKeep, lblKeep)
 	}
@@ -146,7 +146,7 @@ func TestEstimateBracket_B5GateRequiresLowCMC(t *testing.T) {
 		gameChangerCount:     8,
 		freeInteractionCount: 2,
 	}
-	bSlow, lblSlow, _ := estimateBracket(slowCtx, report, "")
+	bSlow, lblSlow, _ := estimateMeasuredBracket(slowCtx, report, "")
 	if bSlow != 4 {
 		t.Errorf("slow-CMC gate: want B4, got B%d (%s) — high-CMC pile shouldn't reach cEDH",
 			bSlow, lblSlow)
@@ -162,7 +162,7 @@ func TestEstimateBracket_B5GateRequiresLowCMC(t *testing.T) {
 		gameChangerCount:     8,
 		freeInteractionCount: 2,
 	}
-	bLean, _, _ := estimateBracket(leanCtx, report, "")
+	bLean, _, _ := estimateMeasuredBracket(leanCtx, report, "")
 	if bLean != 5 {
 		t.Errorf("lean-CMC keep: want B5, got B%d", bLean)
 	}
