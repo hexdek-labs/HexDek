@@ -33,6 +33,9 @@ func TestTagInterpretation_ASTEnumBucketCoverage(t *testing.T) {
 		"t.Controller",   // R60 Phase 1D-residue #2
 		"e.Controller",   // gameast.Effect.Controller, same family
 		"trg.Controller", // hypothetical local-var name
+		"exLow",          // R60 Phase 1D-residue #3 — Filter.Extra iteration
+		"prefix",         // R60 Phase 1D-residue #3 — Filter.Base[:idx] extract
+		"f.Extra",        // direct field access
 	}
 	for _, tag := range expectedASTLikeTags {
 		got := tagInterpretation(tag)
