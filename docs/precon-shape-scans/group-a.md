@@ -75,3 +75,73 @@ Source data: `data/decks/wizards/freya/<stem>.profile.json` + `.strategy.json` (
 - **Freya measured_bracket:** 2 Core
 - **Your verdict:** engine-correct
 - **Reasoning:** Stock Knight tribal precon; 58% power, C-grade mana, 0 GCs, no real combos. The "midrange" archetype tag is reasonable — knights are a creature-combat midrange shell — though "Knight Tribal" would be more precise. Bracket reads correctly.
+
+### Ixhel, Scion of Atraxa — Corrupting Influence (Phyrexia: All Will Be One / ONE)
+- **Intended archetype:** Sultai Toxic / Corrupted / Proliferate. Ixhel rewards opponents being "corrupted" (3+ poison counters) with card draw + drains.
+- **Punch-up shape:** Ixhel + cheap toxic creatures (Tyvar's Stand–style infect support, Glistening Sphere) + proliferate enablers (Inexorable Tide, Karn's Bastion, Vraska's Fall) + Phyrexian board wipes (Carrion Call, Noxious Assault). Wincon is the poison drip itself, not a closed loop.
+- **Freya measured_bracket:** **4 Optimized**
+- **Your verdict:** engine-off (B4 false-positive)
+- **Reasoning:** 11.5% commander synergy + 45% power + C-grade mana + 0 GCs do not assemble a B4. 37 "win lines" on a stock toxic precon is the same finisher-detector blowup the `Tuned-redundancy floor` predicate keeps tripping (R3 documented Forces of the Imperium / Squirreled Away the same way). The toxic axis doesn't even register in Freya's themes ("blink" is the only theme tag); the archetype call ("Midrange / Tribal") misses the actual design.
+
+### Inspirit, Flagship Vessel — Counter Intelligence (Edge of Eternities / EoE)
+- **Intended archetype:** Esper Spacecraft (new Vehicle subtype) artifact precon. Inspirit stations crew onto spacecraft cheaply.
+- **Punch-up shape:** Inspirit + spacecraft (the new MV-counter-on-station artifact subtype) + counter manipulators (Bilbo Birthday Celebrant analogs, +1/+1 counter doublers) + artifact protection (Darksteel Reactor as a wincon, Threefold Thunderhulk for board impact). Wincon is grinding spacecraft anthems or scaling Reactor for the win.
+- **Freya measured_bracket:** 2 Core
+- **Your verdict:** engine-correct
+- **Reasoning:** 98.3% commander synergy is the highest in group A — the deck is genuinely Inspirit-centric. B2 is the right call for a stock EoE precon with 0 GCs and C-grade mana. The "Lonely Sandbar + Mindless Automaton" combo Freya flags is the same cycling-land FP cluster that PR #530 partially closed; Mindless Automaton sacs counters but doesn't loop with a cycling-once Sandbar — incidental detector noise.
+
+### Leinore, Autumn Sovereign — Coven Counters (Innistrad: Midnight Hunt / MID)
+- **Intended archetype:** Bant Coven (3 different power) / +1/+1 counters / human-angel tribal. Leinore puts counters on creatures and rewards coven (3 different-power creatures).
+- **Punch-up shape:** Leinore + Coven-trigger enablers (Brutal Cathar, Sigardian Savior) + +1/+1 counter doublers (Doubling Season analogs not stock; Gyre Sage stock) + angel/human payoffs (Bastion Protector, Angel of Glory's Rise). Wincon is wide attacks with anthem-stacked humans + angel finishers.
+- **Freya measured_bracket:** **4 Optimized**
+- **Your verdict:** engine-off (B4 false-positive)
+- **Reasoning:** Angel of Glory's Rise + Moorland Rescuer flagged as `infinite` is the engine over-reading a 2-card reanimator combo that requires graveyard fuel + mass-creature loop and isn't actually closed on this precon. 41.9% commander synergy + 52% power + 0 GCs + no real combos + A-grade mana (the deck does have ok manabase though) — stock human-coven tribal does NOT play at B4. Same Tuned-redundancy floor or Winning-combo floor surface as the R7 findings.
+
+### Satya, Aetherflux Genius — Creative Energy (Modern Horizons 3 / MH3)
+- **Intended archetype:** Jeskai Energy / Artifacts. Satya creates clone tokens of energy-producing artifacts.
+- **Punch-up shape:** Satya + energy producers (Aetherflux Reservoir adjacent — though that specific card isn't stock; the deck runs Esperzoa-style flickers) + cheap artifact creatures + energy payoffs (Aethergeode Miner, Crackling Drake analogs). Wincon is Satya cloning a value engine + grinding card advantage through energy.
+- **Freya measured_bracket:** **4 Optimized**
+- **Your verdict:** engine-off (B4 false-positive)
+- **Reasoning:** Documented in R3 as part of the 3/15 B4 FP cluster. Same shape as the other Tuned-redundancy-floor cases: 14 win lines + 1 GC (Farewell — the bare minimum to NOT trip the GC=0 ceiling, but the floor predicate doesn't care) + the Aethergeode Miner + Combustible Gearhulk "combo" which is just "if you have both on the battlefield, value happens." 58% power + 47.5% commander synergy clearly says Core not Optimized.
+
+### Kaust, Eyes of the Glade — Deadly Disguise (Karlov Manor / MKM)
+- **Intended archetype:** Sultai Disguise / Cloak / Face-down +1/+1 counters tribal. Kaust supports the disguise mechanic.
+- **Punch-up shape:** Kaust + disguise creatures (Krosan Cloudscraper, Brokers Veteran adjacent) + face-down tricks + +1/+1 counter payoffs. The R5 doc flagged this as one of the rare R7-era decks where the bracket call is right but the cmdr_syn is suspiciously low.
+- **Freya measured_bracket:** 2 Core
+- **Your verdict:** engine-correct
+- **Reasoning:** 25% power and F-grade mana — the engine reads this as the floor of B2, which matches what a low-power face-down precon plays like. 2 GCs (Jeska's Will + Seedborn Muse) raise eyebrows for a stock precon but Freya doesn't lift the bracket on GC=1-3 without corroborating signals, so B2 holds. The Krosan Cloudscraper + Showstopping Surprise "infinite_damage" flag is a creature-stat overflow that requires specific board state; not a real combo, but it doesn't lift the bracket here.
+
+### Winter, Cynical Opportunist — Death Toll (Duskmourn / DSK)
+- **Intended archetype:** Golgari Survival Horror aristocrats. Winter drains opponents when permanents go to graveyards.
+- **Punch-up shape:** Winter + token-makers (Wrenn and Seven, Grist) + sac outlets + death-trigger payoffs + Survival Horror Duskmourn flavor cards. Wincon is the drain itself; combat is a secondary line.
+- **Freya measured_bracket:** 2 Core
+- **Your verdict:** engine-correct
+- **Reasoning:** Clean B2 read on a stock Golgari aristocrats precon. 55% power, B-grade mana, 5 win lines, 0 GCs, no flagged combos. The "midrange" classification is fine — aristocrats fits inside midrange's umbrella for stock-precon purposes; calling this out as a separate archetype tag is the kind of thing the deckbuilder confirmation flow (PR #421) would resolve.
+
+### Morska, Undersea Sleuth — Deep Clue Sea (Karlov Manor / MKM)
+- **Intended archetype:** Bant Clues / Investigate value-grind. Morska draws when clues are sacrificed for value.
+- **Punch-up shape:** Morska + investigate generators (Tireless Tracker, Ulvenwald Mysteries, Killer Service) + clue-sac payoffs (Graf Mole, Sophia Dogged Detective) + token-makers to fuel investigate. Wincon is the Aristocrats-style drain off clue sacs amplified by Morska's draw engine.
+- **Freya measured_bracket:** 3 Upgraded
+- **Your verdict:** engine-correct
+- **Reasoning:** Documented in R5 as one of the rare engine-lifts-correctly cases. 93.5% commander synergy is the second-highest in this batch — the deck IS genuinely Morska-centric and the investigate-aristocrats engine is real. The Sophia + Tracker + Graf Mole + Killer Service "combo" Freya highlights isn't a closed infinite, but it's a strong 4-card value chain that justifies the B3 lift. 1 GC (Farewell) + 20 win lines + 25 Draw tags is honest Upgraded territory.
+
+### Yuma, Proud Protector — Desert Bloom (Outlaws of Thunder Junction / OTJ)
+- **Intended archetype:** Naya Deserts / Landfall / Sand tribal. Yuma turns deserts into 3/3 Sand creatures.
+- **Punch-up shape:** Yuma + desert lands (the new OTJ subtype) + landfall payoffs (Titania, Avenger of Zendikar) + recursion (Sevinne's Reclamation, World Shaper). Wincon is the landfall engine itself plus sand-creature combat.
+- **Freya measured_bracket:** **4 Optimized**
+- **Your verdict:** engine-off
+- **Reasoning:** The Titania + Sand Scout `infinite_tokens` combo IS mechanically real (Sand Scout's attack trigger returns lands; Titania triggers when lands die — bounce-and-replay loop), but a stock precon doesn't reliably assemble it (no tutors, D-grade mana, only 45% power). This is the kind of borderline case where the engine's "infinite combo = B4 minimum" rule from the WotC carveout over-rates the practical play pattern. 48 win lines on a landfall precon is the same finisher-detector blowup that drove the R7 B4 FPs.
+
+### Kasla, the Broken Halo — Divine Convocation (March of the Machine / MOM)
+- **Intended archetype:** Bant Convoke / Incubate token midrange. Kasla puts halo counters on creatures for end-step damage.
+- **Punch-up shape:** Kasla + convoke creatures (Knight of the New Coalition adjacent) + incubate tokens + ETB blink payoffs (Mistmeadow Vanisher) + token-makers. Wincon is the halo-counter damage stacking + go-wide token swarm.
+- **Freya measured_bracket:** 2 Core
+- **Your verdict:** engine-correct
+- **Reasoning:** 58% power + 0 GCs + 15 win lines + B-grade mana — clean B2 read on a stock convoke precon. Mistmeadow Vanisher + Cloud of Faeries flagged as `infinite_mana` is the closest the deck comes to a real combo (Vanisher blinks Cloud of Faeries which untaps lands), but it's not assembled without tutors, and Freya correctly doesn't lift the bracket on a 1-piece-determined-loop without GC corroboration.
+
+### Vrondiss, Rage of Ancients — Draconic Rage (Adventures in the Forgotten Realms / AFR)
+- **Intended archetype:** Jund Dragons tribal with self-damage. Vrondiss creates 4/4 elementals whenever a creature you control is dealt damage.
+- **Punch-up shape:** Vrondiss + dragon tribal payoffs (Skyline Despot, Bogardan Hellkite, Terror of Mount Velus) + ETB doublers (Warstorm Surge) + cheap pings to trigger Vrondiss's elemental factory. Wincon is wide dragon attacks + Warstorm-style ETB pings.
+- **Freya measured_bracket:** 2 Core
+- **Your verdict:** engine-correct
+- **Reasoning:** 11.7% commander synergy is low (most cards are generic dragons not optimized around Vrondiss's specific self-damage axis — the precon is more "dragons" than "Vrondiss"), but the B2 call is right: 48% power, B-grade mana, 0 GCs, 11 win lines, no real combos. Stock dragon tribal sits comfortably at Core.
