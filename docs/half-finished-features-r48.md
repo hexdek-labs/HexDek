@@ -1,8 +1,9 @@
 # Half-Finished Feature Hunt (R48)
 
-**Date:** 2026-05-20 · **Last reconciled:** 2026-05-26 (R60 close-out pass)
+**Date:** 2026-05-20 · **Last reconciled:** 2026-05-26 (R60 close-out pass — second sweep)
 **Branch:** `dev/half-finished-r48` (original audit) ·
-`dev/half-finished-features-r48-close-r60` (this reconciliation)
+`dev/half-finished-features-r48-close-r60` (first reconciliation) ·
+`dev/half-finished-bisect-remaining-r60` (this sweep)
 **Scope:** repo-wide scan for features that are *shaped* but missing parts —
 structs with unused fields, interfaces with one impl and a documented
 "not yet wired" extension, feature flags that are always off, audit docs
@@ -18,11 +19,11 @@ Bisected every deferred item against current `main`:
 |---|---|---|
 | 1-3 | Shipped in original r48 PR | **Resolved** |
 | 4 | WardPayer non-generic ward not wired | **Resolved** — new `internal/gameengine/ward_alt_payment.go` handles `ward_alt_kind` Permanent.Flags via `tryPayAltWardCost` (extends `CheckWardOnTargeting`); Sauron / Saruman / Auntie Ool ETBs stamp the flags and the `*_alt_payment_unimplemented` partials are gone |
-| 5 | Live-game MVP combat P/T returns 1 | **Still open** — `creaturePower` / `creatureToughness` stubs unchanged |
-| 6 | DrawCards empty-library flag | **Still open** — dead branch in `combat.go:298` unchanged |
-| 7 | Tasigur recursion + delve | **Still open** — handler still mills-only, no return-from-graveyard, no delve |
-| 8 | Profile.jsx backend sync | **Still open** — localStorage-only unchanged |
-| 9 | r47 M1/M2/M3 janitor sweep | **Still open** — M1 comment "follow-up work" intact; M2 has 6 `err == sql.ErrNoRows` sites (was 4); M3 `n, _ := res.RowsAffected()` swallow at `db/party.go:202` unchanged |
+| 5 | Live-game MVP combat P/T returns 1 | **Resolved** — `Power int` / `Toughness int` added to `internal/game/types.go::Card` + `internal/moxfield/parser.go::Card`; `creaturePower` / `creatureToughness` now read directly with 1/1 fallback. R60 Versailles; see "Closed since" #5. |
+| 6 | DrawCards empty-library flag | **Resolved** — `Player.AttemptedEmptyDraw` field + schema migration; `DrawCards` sets the flag on attempted-draw against empty library (CR §119.5 semantics); `CheckGameEnd` eliminates flagged seats. R60 Versailles; see "Closed since" #6. |
+| 7 | Tasigur recursion + delve | **Still open** — `gen_tasigur_the_golden_fang.go:43-48` mills 2 only; no return-from-graveyard, no delve. |
+| 8 | Profile.jsx backend sync | **Still open** — `hexdek/src/screens/Profile.jsx:17-23` still localStorage-only; line 75 still says "Preferences are stored locally in your browser only." |
+| 9 | r47 M1/M2/M3 janitor sweep | **Partial** — **M2 stealth-resolved** since the previous reconciliation (zero production `err == sql.ErrNoRows` sites; `internal/lint/errors_is_sql_errnorows_test.go` lint test enforces; `internal/db/errnorows_sentinels_r60_test.go` pins the migrated semantics). M1 + M3 still open: `internal/db/party.go:62-63` follow-up comment intact; `internal/db/party.go:202` `n, _ := res.RowsAffected()` swallow unchanged. |
 | 10 | Auth middleware 401 sentinel-aware | **Resolved** — `authErrorMessage` now sentinel-checks `ErrInvalidToken` / `ErrSessionExpired` / `ErrInvalid/Expired/RevokedAPIKey`; non-sentinel errors log server-side and surface generic "unauthorized". Landed in R47 stub-hunt commit `17b2cb3`, extended for API-key sentinels in PR #388. |
 
 ## Method
@@ -78,12 +79,12 @@ Five passes:
 
 - ~~**#4 WardPayer non-generic ward**~~ — **RESOLVED in R60** (see "Closed since the original audit" below).
 - ~~**#6 DrawCards empty-library flag**~~ — **RESOLVED in R60** (see "Closed since the original audit" below).
-- **#7 Tasigur recursion + delve** — `gen_tasigur_the_golden_fang.go` still mills 2 and emits a basic event; return-from-graveyard half and delve cost reduction both still missing. Needs graveyard-cost framework support.
-- **#8 Profile.jsx backend sync** — `hexdek/src/screens/Profile.jsx:17-23` still uses `localStorage.getItem/setItem` for display name + owner name; line 75 still tells users "Preferences are stored locally in your browser only." Needs `/api/me` preferences endpoint + schema decision.
-- **#9 r47 M1/M2/M3 janitor sweep**:
-  - **M1** still open: `internal/db/party.go:62-63` carries the explicit comment "Distinguishing constraint vs. transport errors via driver-specific errno is M1 in the audit — follow-up work."
-  - **M2** still open AND has grown: 6 sites still use `err == sql.ErrNoRows` (was 4): `db/anticheat.go:91,361`, `db/showmatch.go:259,298`, `friends/friends.go:133`, `userprofile/userprofile.go:70`. The migration to `errors.Is(err, sql.ErrNoRows)` never landed.
-  - **M3** still open: `internal/db/party.go:202` keeps `n, _ := res.RowsAffected()` (error swallowed; value used). Sibling `anticheat/auditor.go:486` does the same shape but checks both — `M3` was specifically the party.go site.
+- **#7 Tasigur recursion + delve** — `internal/gameengine/per_card/gen_tasigur_the_golden_fang.go:43-48` still mills 2 cards (verified 2026-05-26: handler body unchanged since original audit). The activation's second clause (*"then return a nonland card of an opponent's choice from your graveyard to your hand"*) is unimplemented; the Delve keyword (exile cards from graveyard to pay for {1}) is also not modeled at the engine level. Needs graveyard-cost framework support + an opponent-choice prompt surface.
+- **#8 Profile.jsx backend sync** — `hexdek/src/screens/Profile.jsx:17-23` still uses `localStorage.getItem/setItem` for display name + owner name; line 75 still tells users "Preferences are stored locally in your browser only." (Verified 2026-05-26.) Needs `/api/me` preferences endpoint + schema decision.
+- **#9 r47 M1/M2/M3 janitor sweep** (partial — M2 stealth-resolved):
+  - **M1** still open: `internal/db/party.go:62-63` carries the explicit comment "Distinguishing constraint vs. transport errors via driver-specific errno is M1 in the audit — follow-up work." (Verified 2026-05-26.)
+  - ~~**M2** still open AND has grown: 6 sites still use `err == sql.ErrNoRows`~~ — **STEALTH-RESOLVED.** Bisect on 2026-05-26 reports **zero** production `err == sql.ErrNoRows` sites. `internal/lint/errors_is_sql_errnorows_test.go` is a tree-wide lint test that fails CI on any new `err == sql.ErrNoRows` / `err != sql.ErrNoRows` occurrence. `internal/db/errnorows_sentinels_r60_test.go` pins the migrated semantics at the 4 originally-flagged db-package call sites (`ClaimNextVerification`, `ActiveBan`, etc.) — they now return `(nil, nil)` / `("", nil)` / sentinel-zero values on empty-row instead of leaking `sql.ErrNoRows`. The migration's other consumers (`db/showmatch.go`, `friends/friends.go`, `userprofile/userprofile.go`) are covered by the lint test rather than per-site regression coverage.
+  - **M3** still open: `internal/db/party.go:202` keeps `n, _ := res.RowsAffected()` (error swallowed; value used). Verified 2026-05-26: unchanged. Sibling `anticheat/auditor.go:486` does the same shape but checks both — `M3` was specifically the party.go site.
 
 ## Closed since the original audit
 
