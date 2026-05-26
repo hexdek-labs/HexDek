@@ -550,6 +550,14 @@ func evalCondition(gs *GameState, src *Permanent, c *gameast.Condition) bool {
 	return true
 }
 
+// compareInt is the complete set of standard int comparison operators.
+// "!=" is currently unreachable from any Go-side emitter (parser
+// produces "<=" / ">=" / "==" / "<" / ">" for Condition args + Filter
+// ManaValueOp), but the symmetry with "==" makes it forward-compat
+// for any future "not equal" oracle pattern. Phase 1D-residue audit
+// flagged the arm; kept because the alternative default (return false)
+// would silently return "values are equal" for genuinely-unequal
+// inputs if the parser ever emits "!=".
 func compareInt(a int, op string, b int) bool {
 	switch op {
 	case "<":
