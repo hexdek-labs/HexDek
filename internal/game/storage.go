@@ -262,16 +262,20 @@ func boolToInt(b bool) int {
 
 func marshalCardData(c *Card) string {
 	type staticData struct {
-		ManaCost string   `json:"mana_cost,omitempty"`
-		CMC      int      `json:"cmc"`
-		Types    []string `json:"types,omitempty"`
-		Subtypes []string `json:"subtypes,omitempty"`
+		ManaCost  string   `json:"mana_cost,omitempty"`
+		CMC       int      `json:"cmc"`
+		Power     int      `json:"power,omitempty"`
+		Toughness int      `json:"toughness,omitempty"`
+		Types     []string `json:"types,omitempty"`
+		Subtypes  []string `json:"subtypes,omitempty"`
 	}
 	sd := staticData{
-		ManaCost: c.ManaCost,
-		CMC:      c.CMC,
-		Types:    c.Types,
-		Subtypes: c.Subtypes,
+		ManaCost:  c.ManaCost,
+		CMC:       c.CMC,
+		Power:     c.Power,
+		Toughness: c.Toughness,
+		Types:     c.Types,
+		Subtypes:  c.Subtypes,
 	}
 	b, _ := jsonMarshal(sd)
 	return string(b)
@@ -279,10 +283,12 @@ func marshalCardData(c *Card) string {
 
 func hydrateCardData(c *Card, raw string) {
 	type staticData struct {
-		ManaCost string   `json:"mana_cost,omitempty"`
-		CMC      int      `json:"cmc"`
-		Types    []string `json:"types,omitempty"`
-		Subtypes []string `json:"subtypes,omitempty"`
+		ManaCost  string   `json:"mana_cost,omitempty"`
+		CMC       int      `json:"cmc"`
+		Power     int      `json:"power,omitempty"`
+		Toughness int      `json:"toughness,omitempty"`
+		Types     []string `json:"types,omitempty"`
+		Subtypes  []string `json:"subtypes,omitempty"`
 	}
 	var sd staticData
 	if err := jsonUnmarshal([]byte(raw), &sd); err != nil {
@@ -290,6 +296,8 @@ func hydrateCardData(c *Card, raw string) {
 	}
 	c.ManaCost = sd.ManaCost
 	c.CMC = sd.CMC
+	c.Power = sd.Power
+	c.Toughness = sd.Toughness
 	c.Types = sd.Types
 	c.Subtypes = sd.Subtypes
 }

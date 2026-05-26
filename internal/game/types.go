@@ -44,12 +44,21 @@ const (
 // Card is a runtime card instance within a game. The card_data field
 // stores the original deck card metadata as JSON so we can render it
 // without re-querying the oracle.
+//
+// Power and Toughness mirror the printed (or chosen) base stats from
+// the source deck JSON. The full §613 layers pipeline (counters,
+// until-EOT modifications, anthem effects) is NOT modeled in this
+// live-game MVP — see the gameengine package for that. Combat damage
+// reads Power/Toughness directly with a 1/1 fallback when both are
+// zero (a deck card was loaded without P/T metadata).
 type Card struct {
 	GameID       string `json:"game_id"`
 	InstanceID   string `json:"instance_id"`
 	Name         string `json:"name"`
 	ManaCost     string `json:"mana_cost,omitempty"`
 	CMC          int    `json:"cmc"`
+	Power        int    `json:"power,omitempty"`
+	Toughness    int    `json:"toughness,omitempty"`
 	Types        []string `json:"types,omitempty"`
 	Subtypes     []string `json:"subtypes,omitempty"`
 	OwnerSeat    int    `json:"owner_seat"`

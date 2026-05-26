@@ -312,16 +312,38 @@ func CheckGameEnd(ctx context.Context, database *sql.DB, gameID string) error {
 	return nil
 }
 
-// creaturePower extracts a creature's power from its types/subtypes
-// metadata. For MVP we use a stub: return 1 if no power is specified.
-// Real implementation would parse from oracle data.
+// creaturePower returns the creature's combat power.
+//
+// Reads Card.Power directly (populated by CreateGameCard from the deck
+// JSON's `power` field, hydrated via marshalCardData / hydrateCardData).
+// Falls back to 1 when both Power and Toughness are zero — that's the
+// "deck JSON omitted P/T metadata" case, where the 1/1 default
+// preserves the pre-r60 MVP behavior. A legitimate 0/0 creature
+// (Tarmogoyf with no types, Spellskite-as-printed) is indistinguishable
+// from "missing" in the current schema and will also receive the 1/1
+// fallback — acceptable for the MVP since the live-game test
+// endpoints don't run those cards. Full §613 layers (counters,
+// until-EOT modifications, anthems) are NOT modeled here — that's the
+// gameengine package; if/when those land in the live game, this is
+// the function that needs to consume them.
 func creaturePower(card *Card) int {
-	// Placeholder: until we wire Scryfall power/toughness into the deck JSON,
-	// every creature is 1/1. Yuriko-tribal decks live and die on Yuriko's
-	// reveal trigger, not on raw P/T anyway, so this is fine for MVP.
-	return 1
+	if card == nil {
+		return 0
+	}
+	if card.Power == 0 && card.Toughness == 0 {
+		return 1
+	}
+	return card.Power
 }
 
+// creatureToughness returns the creature's combat toughness. See
+// creaturePower for the fallback semantics.
 func creatureToughness(card *Card) int {
-	return 1
+	if card == nil {
+		return 0
+	}
+	if card.Power == 0 && card.Toughness == 0 {
+		return 1
+	}
+	return card.Toughness
 }

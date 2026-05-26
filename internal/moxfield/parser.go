@@ -23,15 +23,28 @@ type Deck struct {
 // Card is a card entry in a deck. Fields beyond Name and Quantity are
 // optional and only used when we want to inspect deck composition without
 // hitting the Scryfall oracle layer.
+//
+// Power and Toughness are integers because the deck JSON is hand-curated
+// (or imported from a tool that already normalized variable P/T to a
+// concrete value at deck-build time). Cards with non-numeric P/T like
+// Tarmogoyf or */* construct creatures should either omit the fields
+// (live-game MVP falls back to 1/1) or pin a chosen baseline. Zero is
+// indistinguishable from "missing" in JSON — both unmarshal to the
+// zero value — which is acceptable for the MVP because real 0-power
+// creatures (Wall of Omens, Spellskite, Solemn Simulacrum) still
+// receive the 1/1 fallback in the absence of a separate "is this 0/0
+// intentional" signal.
 type Card struct {
-	Name     string   `json:"name"`
-	Quantity int      `json:"quantity"`
-	ManaCost string   `json:"mana_cost,omitempty"`
-	CMC      int      `json:"cmc,omitempty"`
-	Types    []string `json:"types,omitempty"`
-	Subtypes []string `json:"subtypes,omitempty"`
-	Colors   []string `json:"colors,omitempty"`
-	Notes    string   `json:"notes,omitempty"`
+	Name      string   `json:"name"`
+	Quantity  int      `json:"quantity"`
+	ManaCost  string   `json:"mana_cost,omitempty"`
+	CMC       int      `json:"cmc,omitempty"`
+	Power     int      `json:"power,omitempty"`
+	Toughness int      `json:"toughness,omitempty"`
+	Types     []string `json:"types,omitempty"`
+	Subtypes  []string `json:"subtypes,omitempty"`
+	Colors    []string `json:"colors,omitempty"`
+	Notes     string   `json:"notes,omitempty"`
 }
 
 // LoadDeckFromFile reads a deck JSON file from disk and parses it.

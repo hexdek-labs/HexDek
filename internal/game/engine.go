@@ -88,6 +88,8 @@ func StartGame(ctx context.Context, database *sql.DB, in StartGameInput) (*Game,
 			if m.Name == deckJSON.Commander {
 				commanderCard.ManaCost = m.ManaCost
 				commanderCard.CMC = m.CMC
+				commanderCard.Power = m.Power
+				commanderCard.Toughness = m.Toughness
 				commanderCard.Types = m.Types
 				commanderCard.Subtypes = m.Subtypes
 				break
@@ -127,6 +129,8 @@ func StartGame(ctx context.Context, database *sql.DB, in StartGameInput) (*Game,
 				Name:         libCard.Name,
 				ManaCost:     libCard.ManaCost,
 				CMC:          libCard.CMC,
+				Power:        libCard.Power,
+				Toughness:    libCard.Toughness,
 				Types:        libCard.Types,
 				Subtypes:     libCard.Subtypes,
 				OwnerSeat:    sp.SeatPosition,
