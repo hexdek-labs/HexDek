@@ -141,34 +141,12 @@ func TestSokrates_LTBIgnoresOtherPermLeavingPlay(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Neutered auto-gen stubs — register functions exist but add no
-// behavior. The custom handlers (registered from elsewhere) own the
-// real implementation; the test confirms each neuter call is safe.
-// ---------------------------------------------------------------------------
-
-func TestBatchC_NeutersAreCallableNoOps(t *testing.T) {
-	// Calling each neutered register on the global registry must not
-	// panic, and must not introduce a duplicate ETB/activated handler
-	// that would compete with the custom path.
-	defer func() {
-		if r := recover(); r != nil {
-			t.Fatalf("neutered registration panicked: %v", r)
-		}
-	}()
-	r := Global()
-	registerUreniTheSongUnending(r)
-	registerJadziOracleOfArcaviosJourneyToTheOracle(r)
-	registerMisterNegative(r)
-	registerGhenArcanumWeaver(r)
-	registerJhoiraAgelessInnovator(r)
-	registerGyrudaDoomOfDepths(r)
-	registerAsmoranomardicadaistinaculdacar(r)
-	registerGalazethPrismari(r)
-}
-
-// ---------------------------------------------------------------------------
-// End-to-end: the customs still fire after Reset() — i.e., the neuters
-// haven't disturbed the registry's view of who handles each card.
+// End-to-end: the customs still fire after Reset() — verifying the gen
+// stubs that USED to neuter the auto-gen breadcrumbs were correctly
+// replaced by the custom handlers. The neutered gen stubs themselves
+// were deleted in Versailles Phase 2I along with their batch_generated.go
+// register calls, so this test is now an end-to-end "custom is wired"
+// check rather than a "neuter is callable" check.
 // ---------------------------------------------------------------------------
 
 func TestBatchC_CustomHandlersStillRegisteredAfterReset(t *testing.T) {

@@ -6,8 +6,10 @@ import (
 
 // registerQuandrixTheProofCustom wires the ETB +1/+1-doubler and the
 // optional from-command-zone counter distribution. The auto-generated
-// stub registerQuandrixTheProof in the matching gen_*.go remains in
-// place — both handlers fire (its body only emits a partial).
+// gen_quandrix_the_proof.go was a partial-emit stub; both the file and
+// its batch_generated.go register call were deleted in Versailles
+// Phase 2I — this is now the sole registration site, called from
+// registry.go::registerDefaults.
 //
 // Oracle text (Strixhaven / Commander 2021, {3}{G}{U}):
 //

@@ -145,31 +145,10 @@ func TestTannuk_LTBIgnoresOtherPermLeaving(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// 7 neuters — call each registration on the global registry; must not
-// panic and must not orphan a card whose custom_*.go handler is the
-// canonical source of behavior.
-// ---------------------------------------------------------------------------
-
-func TestBatchG_NeutersAreCallableNoOps(t *testing.T) {
-	defer func() {
-		if r := recover(); r != nil {
-			t.Fatalf("neutered registration panicked: %v", r)
-		}
-	}()
-	r := Global()
-	registerSilverquillTheDisputant(r)
-	registerQuandrixTheProof(r)
-	registerObekaBruteChronologist(r)
-	registerEllieVengefulHunter(r)
-	registerShadowheartDarkJusticiar(r)
-	registerSplinterRadicalRat(r)
-	registerPhenaxGodOfDeception(r)
-}
-
-// ---------------------------------------------------------------------------
-// After Reset(): the customs still register the canonical handlers
-// for each neutered card. Confirms the neuter didn't accidentally
-// orphan any card.
+// After Reset(): the customs still register the canonical handlers for
+// each card that USED to have a neutered gen stub. The gen stubs + their
+// register calls were deleted in Versailles Phase 2I; this test
+// continues to pin "custom handler is wired" coverage.
 // ---------------------------------------------------------------------------
 
 func TestBatchG_CustomHandlersStillRegisteredAfterReset(t *testing.T) {

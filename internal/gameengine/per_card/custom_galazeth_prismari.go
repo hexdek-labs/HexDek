@@ -5,8 +5,10 @@ import (
 )
 
 // registerGalazethPrismariCustom wires the ETB Treasure for Galazeth
-// Prismari. The auto-generated stub registerGalazethPrismari in
-// gen_galazeth_prismari.go remains an inert breadcrumb.
+// Prismari. The auto-generated gen_galazeth_prismari.go was a misfiring
+// 1/1-token stub; both the file and its batch_generated.go register
+// call were deleted in Versailles Phase 2I — this is now the sole
+// registration site, called from registry.go::registerDefaults.
 //
 // Oracle text (Strixhaven, {2}{U}{R}):
 //
