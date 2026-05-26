@@ -291,3 +291,158 @@ func topLevelColon(s string) int {
 // the boundary semantics at the call site, where the previous code reads
 // strings.Contains(ot, kw).
 func HasKeywordIn(ot, kw string) bool { return hasKeyword(ot, kw) }
+
+// SplitUnless separates a clause at " unless " into the primary effect
+// and the tax-out condition.
+//
+//	"destroy target creature unless its controller pays {3}"
+//	→ primary="destroy target creature", condition="its controller pays {3}"
+//
+// The "unless" syntax in Magic is a CONDITIONAL — the primary effect is
+// the DEFAULT outcome, and the condition is what the affected player can
+// do (or what must be true) to avoid it. Distinguishing the two lets
+// downstream removal classifiers flag soft removal (Mana Leak, Doom Blade
+// at +2 mana) separately from hard removal (Swords to Plowshares).
+//
+// Returns (clause, "") when no " unless " is present. Case-insensitive
+// match on " unless " (lowercased input expected, since this file's other
+// scanners run on CleanForScan output).
+//
+// Edge cases:
+//   - Multiple " unless " in one clause — splits at the FIRST occurrence.
+//     "Counter target spell unless its controller pays {X} unless they
+//     have hexproof" is not real Magic wording; the first-occurrence
+//     behavior is a sensible default for the synthetic case.
+//   - " unless " inside a sub-phrase ("...effects that say 'unless...'")
+//     — caller's job to avoid; SplitUnless treats every occurrence as a
+//     real split. None of the real-card scanners feed sub-quoted text
+//     into SplitUnless.
+func SplitUnless(clause string) (primary, condition string) {
+	const sep = " unless "
+	idx := strings.Index(clause, sep)
+	if idx < 0 {
+		return clause, ""
+	}
+	primary = strings.TrimSpace(clause[:idx])
+	condition = strings.TrimSpace(clause[idx+len(sep):])
+	// Drop a trailing period from the condition (the original clause's
+	// terminator survives the SplitClauses pipeline).
+	condition = strings.TrimRight(condition, ".")
+	return primary, condition
+}
+
+// IsSoftRemoval reports whether a clause is a conditional / tax-style
+// removal effect — a destroy/exile/counter wrapped in an unless-tax that
+// the opponent can pay around.
+//
+//	"counter target spell unless its controller pays {3}"  → true (Mana Leak)
+//	"destroy target creature unless its controller pays {3}"  → true (Edict tax)
+//	"destroy target creature."  → false (Doom Blade — hard removal)
+//	"counter target spell."  → false (Counterspell — hard counter)
+//
+// Used by removal-count tuning so "Mana Leak" doesn't count as a hard
+// counter the way "Counterspell" does. The DEFAULT outcome must still
+// be a removal/counter verb; "draw a card unless an opponent pays {1}"
+// does NOT qualify.
+func IsSoftRemoval(clause string) bool {
+	primary, cond := SplitUnless(clause)
+	if cond == "" {
+		return false
+	}
+	// The primary must be a removal/counter shape.
+	hasRemovalVerb := strings.Contains(primary, "destroy") ||
+		strings.Contains(primary, "exile") ||
+		strings.Contains(primary, "counter ")
+	if !hasRemovalVerb {
+		return false
+	}
+	// The condition must be a mana-payment / sacrifice / discard / life
+	// tax — not an irrelevant condition like "unless it's a token".
+	return strings.Contains(cond, "pay") ||
+		strings.Contains(cond, "sacrifice") ||
+		strings.Contains(cond, "discard")
+}
+
+// triggerHeaderRE matches the canonical "Whenever X" / "When X" / "At Y"
+// trigger headers that introduce a triggered ability. The header runs up
+// to the first comma — Magic's triggered-ability syntax always uses
+// "<header>, <effect>" or "<header>, if <condition>, <effect>".
+//
+// Anchored at start-of-string OR after a newline (multi-paragraph
+// printings) so we don't false-match a "whenever" buried inside an
+// effect body (rare but possible: "Untap each creature you control.
+// Whenever one of them attacks this turn, …" — second sentence has its
+// own trigger header).
+var triggerHeaderRE = regexp.MustCompile(
+	`(?i)(?:^|\n)\s*(whenever|when|at)\s+([^,]+),\s*`)
+
+// SplitTriggerEffect decomposes a triggered-ability clause into
+// (triggerKind, triggerCondition, ifCondition, effect):
+//
+//	"Whenever a creature you control dies, draw a card."
+//	→ ("whenever", "a creature you control dies", "", "draw a card.")
+//
+//	"Whenever ~ attacks, if you control a Goblin, deal 2 damage to any target."
+//	→ ("whenever", "~ attacks", "you control a Goblin", "deal 2 damage to any target.")
+//
+//	"At the beginning of your upkeep, draw a card."
+//	→ ("at", "the beginning of your upkeep", "", "draw a card.")
+//
+// Returns all empty strings for non-trigger clauses. The triggerKind is
+// lowercased ("whenever" / "when" / "at"). The optional ifCondition
+// (intervening-if per CR §603.4) is extracted when the effect body
+// starts with "if <X>,".
+//
+// This supersedes the hand-enumerated stripDrawTriggerClauses pattern in
+// analysis.go for a small class of detectors that need to scope substring
+// matches to the EFFECT body without bleeding into the trigger condition.
+func SplitTriggerEffect(clause string) (kind, trigger, ifCond, effect string) {
+	m := triggerHeaderRE.FindStringSubmatchIndex(clause)
+	if m == nil {
+		return "", "", "", ""
+	}
+	kind = strings.ToLower(clause[m[2]:m[3]])
+	trigger = strings.TrimSpace(clause[m[4]:m[5]])
+	effect = strings.TrimSpace(clause[m[1]:])
+
+	// Intervening-if check — the effect body starts with "if <X>,".
+	const ifPrefix = "if "
+	if strings.HasPrefix(strings.ToLower(effect), ifPrefix) {
+		// Find the comma that closes the if-clause. Bounded scan; the
+		// if-condition is by convention a single comma-terminated phrase.
+		rest := effect[len(ifPrefix):]
+		if commaIdx := strings.Index(rest, ","); commaIdx >= 0 {
+			ifCond = strings.TrimSpace(rest[:commaIdx])
+			effect = strings.TrimSpace(rest[commaIdx+1:])
+		}
+	}
+	return kind, trigger, ifCond, effect
+}
+
+// HasDependentTrigger returns true when `effect` contains a nested
+// trigger that fires as a CONSEQUENCE of the outer trigger's resolution.
+// The canonical shape is a follow-up sentence whose trigger condition
+// references "that <thing>" — pointing back at a target named by the
+// outer effect.
+//
+//	"Exile target creature that player controls. When that creature dies,
+//	you draw a card."
+//	→ true ("when that creature dies" is dependent on the exile)
+//
+//	"Exile target creature. Draw a card."
+//	→ false (no nested trigger; just a follow-up effect)
+//
+// Used by trigger-completeness analyzers to recognize that an outer
+// effect's target is load-bearing for a SECOND trigger — so a single
+// trigger primer fixture isn't enough; the dependent leg needs its
+// world too.
+//
+// Heuristic: looks for "when that <noun>" or "whenever that <noun>" as
+// a substring of the effect body. False positives are rare in real
+// Magic text — the "that <X>" demonstrative reference is a deliberate
+// callback pattern used precisely for dependent triggers.
+func HasDependentTrigger(effect string) bool {
+	low := strings.ToLower(effect)
+	return strings.Contains(low, "when that ") ||
+		strings.Contains(low, "whenever that ")
+}
