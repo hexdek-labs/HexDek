@@ -34,6 +34,7 @@ import (
 	"github.com/hexdek/hexdek/internal/oracle"
 	"github.com/hexdek/hexdek/internal/party"
 	"github.com/hexdek/hexdek/internal/pincer"
+	"github.com/hexdek/hexdek/internal/preferences"
 	"github.com/hexdek/hexdek/internal/shuffle"
 	"github.com/hexdek/hexdek/internal/userprofile"
 	"github.com/hexdek/hexdek/internal/ws"
@@ -267,6 +268,16 @@ func main() {
 		log.Fatalf("user_profile schema: %v", err)
 	}
 	userprofile.Register(mux, database)
+
+	// User preferences: per-device GET/PATCH /api/me/preferences
+	// (display_name + owner_name). Auth-gated via the session token
+	// path on internal/auth. Closes docs/half-finished-features-r48.md
+	// #8 — Profile.jsx now syncs to this endpoint with localStorage
+	// as an offline fallback.
+	if err := preferences.EnsureSchema(context.Background(), database); err != nil {
+		log.Fatalf("user_preferences schema: %v", err)
+	}
+	preferences.Register(mux, database)
 
 	// Friends: owner-keyed bidirectional friend list.
 	friendTracker, err := friends.New(database)
