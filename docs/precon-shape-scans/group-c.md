@@ -156,3 +156,105 @@ Each entry:
 - **Verdict:** engine-correct.
 - **Reasoning:** Recent (MH3) land-creature precon at the right bracket. The 16% synergy is the lands-matter blind spot (Freya's themes don't include "lands as creatures" as a first-class tag). Scute Swarm / Avenger combos are real but tutor-less; no fast mana, no infinites. B2 lands cleanly.
 
+### Magus Lucea Kane — Warhammer 40,000 Commander (40K, Tyranid Swarm)
+
+- **Intended archetype:** Temur (URG) +1/+1 counters / mutate-tribal — Lucea makes a 1/1 token (or doubles a token's counters) when tapped, supporting the Tyranid hive-mind + biomass payoff theme.
+- **Punch-up shape:** Old One Eye (hive-mind anchor with regen-from-counters), Sporocyst / Zoanthrope (counter-spreader), Hormagaunt Horde (token engine), Aberrant (mutate value), Clamavus (genestealer cult counter doubler).
+- **Freya measured_bracket:** B2 Core (declared B2). 0 GC, 4 win-lines, synergy 58%.
+- **Verdict:** engine-correct.
+- **Reasoning:** 40K precon at right bracket. Only 4 win-lines because the genestealer / hive-mind subtheme is dispersed across many small token-producers (none individually a finisher). Freya correctly avoids over-promoting; the deck is the WotC B2 template with a Tyranid skin.
+
+### Wilhelt, the Rotcleaver — Innistrad: Midnight Hunt (MID, Undead Unleashed)
+
+- **Intended archetype:** Dimir (UB) zombie tribal sacrifice — Wilhelt makes a decayed zombie token when another zombie you control dies, supporting an aristocrats + zombie-tribal recursion engine.
+- **Punch-up shape:** Diregraf Captain (zombie death → 1 to each opponent), Cemetery Reaper (graveyard recursion + anthem), Endless Ranks of the Dead (mass token), Army of the Damned (board-flood finisher), Eloise Nephalia Sleuth + Prowling Geistcatcher value loops.
+- **Freya measured_bracket:** **B4 Optimized (declared B2). 0 GC, 15 win-lines, synergy 71%.**
+- **Verdict:** off (false-positive B4).
+- **Reasoning:** Same tuned-redundancy floor pattern — zombie precons stack a lot of "creature dies → trigger" pieces (Diregraf Captain, Cemetery Reaper, Cryptbreaker, etc.) that Freya counts as finishers + win-line pieces, multiplied by the 5 zombie-recursion engines. No GCs, no fast mana, no tutors — bracket should be B2 (or B3 generously for the aristocrats engine). B4 is too hot.
+
+### Urza, Chief Artificer — The Brothers' War (BRO, Urza's Iron Alliance)
+
+- **Intended archetype:** Esper (WUB) artifact-creature go-wide — Urza makes 0/0 construct tokens with affinity-for-artifacts; classic "artifact go-wide with anthems" precon.
+- **Punch-up shape:** Master of Etherium (lord), Chief of the Foundry (lord), March of Progress (proliferate-counter spread), Phyrexian Rebirth (board wipe → giant token), Steel Hellkite (artifact-keyed sweep), Urza's Ruinous Blast (legendary-only wipe).
+- **Freya measured_bracket:** **B4 Optimized (declared B2). 0 GC, 15 win-lines, synergy 87%.**
+- **Verdict:** off (false-positive B4 — the canonical example from precon-vibes R1).
+- **Reasoning:** Urza's Iron Alliance is THE archetypal precon-vibes R1 finding for false-positive B4 (`precon-vibes-baseline-r60.md` row 9, Δ=-2). Cause is the same: 87% synergy + dense artifact-creature finisher count trips the tuned-redundancy floor even with 0 GCs and no fast mana. Real bracket is B2; the floor predicate needs the calibration follow-up flagged in the precon-vibes R1 findings.
+
+### Strefan, Maurer Progenitor — Innistrad: Crimson Vow (VOW, Vampiric Bloodline)
+
+- **Intended archetype:** Mardu (WBR) vampire tribal blood-token aggression — Strefan blitzes vampires into play from the top of your library and makes a blood token whenever damage is dealt to opponents.
+- **Punch-up shape:** Bloodtracker (X/X with counters), Kamber the Plunderer (blood + treasure), Glass-Cast Heart (blood payoff), Markov Enforcer (vamp tribal anchor), Bloodsworn Steward / Stromkirk Captain anthems.
+- **Freya measured_bracket:** B2 Core (declared B2). 0 GC, **137 win-lines**, synergy 37%.
+- **Verdict:** engine-correct (despite the inflated win-line count).
+- **Reasoning:** 137 win-lines is the blood-token + counter-pair-detection blowing up combinatorially (Underworld Connections + Kamber + Glass-Cast Heart + Arterial Alchemy + Markov Enforcer pairwise — the same kind of pair-explosion as Squirreled Away). Despite the inflation Freya correctly lands at B2 — the score-ladder didn't lift because there are no real finishers or fast mana. Good "engine-correct in spite of noisy metric" example.
+
+### Edgar Markov — Commander 2017 (Vampiric Bloodlust)
+
+- **Intended archetype:** Mardu (WBR) vampire tribal — Edgar's Eminence trigger spawns a 1/1 vampire token every time you cast a vampire spell, leveraging the C17 vampire suite.
+- **Punch-up shape:** Captivating Vampire (theft + anthem), Butcher of Malakir (edict on death), Vein Drinker (combat-removal finisher), Kindred Charge (token-double swing), Teferi's Protection (the curated GC — the only one in the precon).
+- **Freya measured_bracket:** B2 Core (declared B2). 1 GC (Teferi's Protection), 12 win-lines, synergy 58%.
+- **Verdict:** engine-correct (debatably should be B3 — Edgar is famously the strongest pre-CMR commander tribal pile).
+- **Reasoning:** Edgar Markov C17 is the borderline case — many players consider this precon the most B3-leaning of the WotC catalog because Eminence is mana-free token production and the vamp tribe is deep. Freya's B2 with the GC=1-3 ceiling correctly capping prevents over-promotion. Calling B2 is technically right; B3 would also be defensible. Mark as engine-correct since Freya isn't wrong, just conservative.
+
+### Pantlaza, Sun-Favored — The Lost Caverns of Ixalan (LCI, Veloci-Ramp-Tor)
+
+- **Intended archetype:** Naya (RGW) dinosaur tribal big-stomp with discover — Pantlaza's Descend trigger discovers when you ETB; the precon supports a dino-stomp + discover-cascade plan.
+- **Punch-up shape:** Zacama Primal Calamity (12/12 finisher with ETB-untap-lands), Wakening Sun's Avatar (dino-tribal wipe), Apex Altisaur (fight-king), Chandra's Ignition (mass burn), Akroma's Will (alpha-strike), Savage Stomp pump.
+- **Freya measured_bracket:** B2 Core (declared B2). 0 GC, 14 win-lines, synergy 12%.
+- **Verdict:** engine-correct.
+- **Reasoning:** Recent (LCI) dinosaur stomp-pile at right bracket. 12% synergy is the dino-tribal-as-themes blind spot. No fast mana, no infinites, no tutors — the kill plan is "play 7-CMC dinos and swing." Freya correctly lands at B2; this is one of the cleanest tribal-stamp baselines in the LCI era.
+
+### Kalemne, Disciple of Iroas — Commander 2015 (Wade Into Battle)
+
+- **Intended archetype:** Boros (RW) giant tribal Voltron — Kalemne grows from experience counters when you cast 5+ CMC spells; the precon is a top-heavy giant pile with combat-damage closure.
+- **Punch-up shape:** Magma Giant (mass burn), Warstorm Surge (every ETB → damage), Dream Pillager (theft-on-damage), Angel of Serenity (mass exile), Fall of the Hammer (commander burn).
+- **Freya measured_bracket:** **B4 Optimized (declared B2). 0 GC, 17 win-lines, synergy 28%.**
+- **Verdict:** off (false-positive B4).
+- **Reasoning:** Same family as Urza's Iron Alliance / Hosts of Mordor — the precon's stock 8-finisher distribution (Warstorm + 6 big creatures + a few wipes) trips the tuned-redundancy floor without any actual B4 markers (no GC, no fast mana, no tutors). C15 giant-stomp is the slowest precon era; B4 is absurd. Real bracket is B2.
+
+### Dina, Essence Brewer — Strixhaven Commander (STX, Witherbloom Pestilence)
+
+- **Intended archetype:** Golgari (BG) drain/lifegain "soul of the harvest" — Dina drains when you gain life; the precon supports a drain + sac + lifegain trio with the Witherbloom theme.
+- **Punch-up shape:** Dina Soul Steeper (the actual famous drain commander, not the lifegain version — it's in the 99), Smothering Abomination (sac + draw), Yahenni Undying Partisan (indestructible sac outlet), Gyome Master Chef (food + lifegain), Trudge Garden + High Market loops, Exsanguinate finisher.
+- **Freya measured_bracket:** B2 Core (declared B2). 0 GC, **85 win-lines**, synergy 50%.
+- **Verdict:** engine-correct.
+- **Reasoning:** Stock STX Witherbloom precon; the 85 win-lines come from Trudge Garden + Dina + High Market + Beledros pair combinatorics — same noise pattern as Strefan / Squirreled Away but Freya correctly resists promoting because no real finisher density or fast mana. The 50% synergy is the deck's actual coherent floor. B2 lands right.
+
+### Willowdusk, Essence Seer — Commander 2021 (Witherbloom Witchcraft)
+
+- **Intended archetype:** Golgari (BG) +1/+1 counters / lifegain "essence sweep" — Willowdusk redistributes counters based on life-changes; the precon supports a counters-matter + lifedrain Witherbloom shell.
+- **Punch-up shape:** Well of Lost Dreams (lifegain → card draw), Dina Soul Steeper (lifegain → opponent drain), Gyome Master Chef (food), Tivash Gloom Summoner (death → demon tokens), Deadly Tempest / Gaze of Granite wipes.
+- **Freya measured_bracket:** B2 Core (declared B2). 0 GC, 36 win-lines, synergy 34%.
+- **Verdict:** engine-correct.
+- **Reasoning:** Stock C21 Witherbloom shell; 36 win-lines from Trudge Garden / Dina / Tivash / Epicure of Blood pair-detection. Despite the lifegain-drain engine being thematically tight, Freya correctly resists promotion — no fast mana, no tutors, no GCs. Bracket B2 lands cleanly.
+
+### Hearthhull, the Worldseed — Edge of Eternities (EOE, World Shaper)
+
+- **Intended archetype:** Jund (BRG) land-sacrifice / landfall sci-fi reanimator — Hearthhull supports a graveyard-lands + landfall engine with the EOE planet/space subtheme; sacrifice lands for value, recur via World Shaper / Splendid Reclamation.
+- **Punch-up shape:** Titania Protector of Argoth (land → 5/3 token engine), Centaur Vinecrasher (recursive landfall threat), Multani Yavimaya's Avatar (land-fueled big body), Rampaging Baloths (4/4 per landfall), Omnath Locus of Rage (landfall pyrohydra), Szarel Genesis Shepherd Hearthhull-partner.
+- **Freya measured_bracket:** **B4 Optimized (declared B2). 0 GC, 47 win-lines, synergy 81%.**
+- **Verdict:** off (false-positive B4) — or possibly defensible at B3.
+- **Reasoning:** Newest precon in group C (EOE, 2026). Same tuned-redundancy lift pattern — 81% synergy + dense landfall finishers (Titania / Omnath / Rampaging Baloths / Avenger-style) trips B4 without GCs or fast mana. Land-sacrifice engines are genuinely strong (Lord Windgrace / Titania-style decks can build to B3+) but stock precon should be B2 ceiling. Possibly the most defensible "off" call in group C — could argue for B3, but B4 over-states it.
+
+---
+
+## Group C verdict tally (27 decks)
+
+| Verdict | Count | Notes |
+|---------|------:|-------|
+| engine-correct | 14 | Freya's measured_bracket matches reality at B2 (or the rare B3 that's defensible) |
+| off — false-positive B4 | 7 | Madison Li, Hazel, Sauron, Wilhelt, Urza Chief, Kalemne, Hearthhull — all stock B2 precons lifted to B4 by the tuned-redundancy / synergy floor |
+| off — false-negative B1 | 5 | Dogmeat, Mizzix, Killian, Breena, Aminatou — stock B2 precons dropped to Exhibition because the engine IS the gameplan and no card-level finisher reads as such |
+| unclear | 1 | Gavi (Timeless Wisdom) — B3 cycling lift is defensible either way |
+| **classification-mismatch** | 0 | Every archetype label was reasonable; tribal/lands-matter blind spots are noted in-line but don't rise to mis-classification |
+
+**Cluster patterns:**
+
+1. **B4 false-positive cluster (7/27 = 26%)** — same calibration surface flagged across the precon-vibes R1-R7 sweep. Common signature: 0 GC, 0 fast mana, 0 tutors, but high commander_synergy + dense finisher/win-line count tripping the tuned-redundancy floor. Affected archetypes here: artifacts (2), zombies/aristocrats (2), landfall (2), giant tribal (1). Calibration follow-up was explicitly queued in the dev/remove-plays-like-r60 PR.
+
+2. **B1 false-negative cluster (5/27 = 19%)** — the "no wincon → floppy" simulator bias inherited from the (now-removed) `plays_like` signal. Pattern: enchantress / spellslinger / blink / drain engines where the *commander is the gameplan* — no individual card reads as a finisher to Freya's heuristic, so the score ladder drops below B2. Affected: Strixhaven-era WB precons (3 of 5), Mizzix C15 spellslinger, Aminatou C18 blink. Absorbing the "no wincon → floppy" signal into measured_bracket is the next calibration chapter per the remove-plays-like-r60 PR scope-out.
+
+3. **Engine-correct (14/27 = 52%)** — when the deck has a concrete kill plan with discrete finisher cards (Henzie blitz creatures, Kathril keyword bomb, Pantlaza dino stomp), Freya correctly lands at B2 with no special handling. This is the load-bearing happy-path.
+
+**Combined with group A + B totals** (forthcoming in a roll-up): this is the third 27-deck slice of the 87-deck imported corpus. Pattern stability across the three groups will be the headline signal for the calibration follow-up.
+
