@@ -547,6 +547,13 @@ func findSacrificeCandidate(gs *GameState, seat *Seat, filter string) *Permanent
 				return perm
 			}
 		case "green creature":
+			// Forward-compat for AST-emitted color-filtered sacrifice
+			// costs ("sacrifice a green creature"). No current per_card
+			// handler emits this filter, so Phase-1D audit flagged the
+			// arm as unreachable. Kept because the default fallback
+			// (try-any-creature) would silently accept off-color
+			// sacrifices, breaking the color filter if the parser
+			// ever does emit this value.
 			if perm.IsCreature() && CardHasColor(perm.Card, "G") {
 				return perm
 			}

@@ -163,6 +163,13 @@ func matchesCounterFilter(si *StackItem, filter gameast.Filter) bool {
 	base := strings.ToLower(filter.Base)
 
 	// --- Ability filters (Stifle, Trickbind, etc.) ---
+	//
+	// "activated_ability" is a defensive alias for the canonical
+	// "activated" spelling — kept because the AST parser has emitted
+	// the longer form in the past and may again. Phase-1D audit flagged
+	// it as unreachable (no current emitter), but removing it would
+	// silently turn a counter into a no-op if the parser regresses,
+	// which is worse than carrying a 1-token alias.
 	switch base {
 	case "activated", "activated_ability":
 		return si.Kind == "activated"
@@ -254,8 +261,12 @@ func matchesCounterFilter(si *StackItem, filter gameast.Filter) bool {
 	case "battle":
 		return stackItemHasType(si, "battle")
 	case "non", "other", "or":
-		// Parser fallback: "non" / "other" / "or" are edge-case base values.
-		// Treat as "any spell" since the Extra slice carries the restriction.
+		// Parser fallback: edge-case base values. The AST has emitted
+		// "non" (negation tokens like "non-creature") and "other" /
+		// "or" in malformed-filter cases historically. Treat as
+		// "any spell" since the Extra slice carries the real
+		// restriction. Phase-1D audit flagged "or" as currently
+		// unreachable; kept as defensive parser-variant hook.
 		return true
 	}
 

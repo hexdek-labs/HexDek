@@ -224,7 +224,16 @@ func tagInterpretation(tag string) string {
 	switch {
 	case strings.Contains(low, "name") || strings.Contains(low, "displayname"):
 		return "card-name dispatch — values come from JSON data, expected false positive"
-	case strings.Contains(low, "modkind") || strings.Contains(low, "scalingkind") || strings.Contains(low, "base"):
+	case strings.Contains(low, "modkind") ||
+		strings.Contains(low, "scalingkind") ||
+		strings.Contains(low, "base") ||
+		strings.Contains(low, "actor") ||
+		strings.Contains(low, "quantifier"):
+		// `actor` was added in R60 Phase 1D-residue: gameast.Effect's
+		// Actor field is JSON-tagged and loaded from the AST dataset,
+		// so the emitter side is `scripts/mtg_ast.py`, not Go source.
+		// Same false-positive shape as ModKind. `quantifier` is the
+		// Filter.Quantifier field (also AST-emitted).
 		return "AST enum from `scripts/mtg_ast.py` — cross-check parser, expected false positive"
 	case strings.Contains(low, "kind") || strings.Contains(low, "event"):
 		return "engine event/kind — high-signal if no emitter found"
