@@ -1,0 +1,85 @@
+# Forces of the Imperium (Warhammer 40,000 Commander Precon Decklist)
+# Source: https://moxfield.com/decks/pkvfXrVXCkyG5L3OzShe2Q
+COMMANDER: Inquisitor Greyfax
+1 Talisman of Hierarchy
+1 Neyam Shai Murad
+1 Zephyrim
+1 Redemptor Dreadnought
+1 Defenders of Humanity
+1 Hour of Reckoning
+1 Sanguinary Priest
+1 Company Commander
+1 Space Marine Devastator
+1 Sister Hospitaller
+1 Sol Ring
+1 For the Emperor!
+1 Vexilus Praetor
+1 Choked Estuary
+8 Plains
+1 Space Marine Scout
+1 Sunken Hollow
+1 Scoured Barrens
+1 Primaris Chaplain
+1 Knight Paladin
+1 Inquisitor Eisenhorn
+1 Assault Intercessor
+1 Triumph of Saint Katherine
+1 Collective Effort
+1 Darkwater Catacombs
+1 Sicarian Infiltrator
+1 Exterminatus
+1 Cybernetica Datasmith
+1 Sister Repentia
+1 Entrapment Maneuver
+1 Vanguard Suppressor
+1 Tranquil Cove
+1 Bastion Protector
+1 Mortify
+1 Birth of the Imperium
+1 Dismal Backwater
+1 Swords to Plowshares
+1 Exotic Orchard
+1 Port Town
+1 Evolving Wilds
+1 Utter End
+1 Commissar Severina Raine
+1 Prairie Stream
+1 The Flesh Is Weak
+1 Grey Knight Paragon
+1 Talisman of Progress
+1 Fell the Mighty
+1 The Golden Throne
+1 Path of Ancestry
+1 Mind Stone
+1 Deny the Witch
+1 Commander's Sphere
+1 Inquisitorial Rosette
+1 Thunderhawk Gunship
+1 Talisman of Dominance
+1 Belisarius Cawl
+1 Sister of Silence
+1 Marneus Calgar
+1 Skullclamp
+1 Launch the Fleet
+1 Everflowing Chalice
+1 Thunderwolf Cavalry
+1 And They Shall Know No Fear
+1 Arcane Signet
+1 Deploy to the Front
+1 Epistolary Librarian
+1 Reaver Titan
+1 Ash Barrens
+1 Skycloud Expanse
+1 Terramorphic Expanse
+7 Swamp
+1 Celestine, the Living Saint
+5 Island
+1 Command Tower
+1 Callidus Assassin
+1 Ultramarines Honour Guard
+1 Memorial to Glory
+1 Martial Coup
+1 Reconnaissance Mission
+1 Arco-Flagellant
+1 Primaris Eliminator
+1 Arcane Sanctum
