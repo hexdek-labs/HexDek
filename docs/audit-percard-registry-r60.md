@@ -168,6 +168,94 @@ These are not bugs — they are opportunities. The engine is paying the
 cost of emitting these triggers; per_card handlers can light up the
 mechanic without further engine work.
 
+### 3a. Correction (2026-05-26) — Notable-cards / mechanic-cycle false positives
+
+The §3 table above is **strictly accurate at the EVENT level**: every
+event in the "Event" column had zero per_card `OnTrigger` registrations
+under that canonical name at audit commit `d54a118`. That part of the
+claim was verified post-hoc by snapshotting `internal/gameengine/per_card/`
+at the audit commit and grepping for `OnTrigger("...", "<event>", ...)`
+— 0 hits across all 29 rows.
+
+BUT the table's **"Notable cards"** and **"Mechanic"** columns
+implicitly suggested that named cards / whole cycles were unwired,
+which is **wrong** for the 6 cards below. Each is wired pre-audit via
+a DIFFERENT dispatch event or surface — usually because the card is
+the cycle's *causer* (fires the keyword action from a different
+trigger event) rather than its *consumer*. PR #515 (outlaw payoff
+wiring) tripped on this when it tried to wire Olivia under
+`combat_damage_player` and discovered the handler already existed.
+
+This sub-section enumerates the genuine false positives so future
+wiring PRs don't duplicate work. Sweep methodology at the bottom.
+
+#### Verified-wired (pre-audit) — but listed/implied as unwired
+
+| Audit row | Card | Pre-existing handler | Why the audit missed it |
+|---|---|---|---|
+| `investigate` (Notable: "Lonis, Cryptozoologist, Tireless Tracker") | **Lonis, Cryptozoologist** | `OnTrigger("Lonis, Cryptozoologist", "nonland_permanent_etb", ...)` + `OnActivated(...)` in `lonis_cryptozoologist.go` | Lonis is an investigate *causer* — her trigger fires the investigate action, she doesn't *listen* on the `investigate` event. The audit row is correct that no card listens on `investigate`, but listing Lonis as the example card is misleading. |
+| `outlaw_etb` (Mechanic: "OTJ outlaw" / cycle) | **Olivia, Opulent Outlaw** | `OnTrigger("Olivia, Opulent Outlaw", "combat_damage_player", ...)` in `olivia_opulent_outlaw.go` | Olivia's payoff fires from combat damage, not outlaw ETB. Her oracle isn't an `outlaw_etb` listener at all — she's an OTJ outlaw payoff via a different event. |
+| `outlaw_etb` (Mechanic: "OTJ outlaw" / cycle) | **Vihaan, Goldwaker** | `OnTrigger("Vihaan, Goldwaker", "combat_begin", ...)` in `vihaan_goldwaker.go` | Vihaan's payoff fires at beginning of combat. Same shape as Olivia — an OTJ outlaw card whose handler dispatches off a non-outlaw-ETB event. |
+| `outlaw_etb` (Mechanic: "OTJ outlaw" / cycle) | **Laughing Jasper Flint** | `OnTrigger("Laughing Jasper Flint", "upkeep_controller", ...)` in `laughing_jasper_flint.go` | Upkeep-triggered card, not an ETB listener. |
+| `magecraft` (Mechanic: "STX magecraft trigger") | **Veyran, Voice of Duality** | `OnTrigger("Veyran, Voice of Duality", "instant_or_sorcery_cast", ...)` in `custom_veyran_voice_of_duality.go` | Veyran is a magecraft *causer* / amplifier on i/s casts; her handler observes the cast directly rather than via the canonical `magecraft` event. |
+| `creature_mutated` (Mechanic: "IKO Mutate" / Mutate decks) | **Illuna, Apex of Wishes** | `OnETB("Illuna, Apex of Wishes", ...)` in `illuna_apex_of_wishes.go` | Illuna dispatches via an `OnETB` snowflake hook (not `OnTrigger("...", "creature_mutated", ...)`) — the engine treats her mutate-trigger as part of the ETB cascade. |
+
+**Recommended phrasing for future audit revisions:** keep the §3 table
+strictly event-keyed and stop putting card names in the "Notable
+cards" column. The CARD-level question ("is the famous card from this
+cycle wired?") needs a separate sweep that checks ALL dispatch
+surfaces (`OnTrigger` on any event, `OnETB`, `OnResolve`, `OnCast`,
+`OnActivated`) rather than just the named event. The grep that
+produced the §3 list only looked at one of those five surfaces.
+
+#### Mechanics confirmed STILL unwired pre-audit (sample)
+
+For each row in §3, I also sampled the broader cycle to confirm the
+mechanic was genuinely unwired beyond the named example. Pre-audit
+sweep (per `git show d54a118:<file>` × all 947 per_card files in the
+audit tree) found ZERO pre-existing handlers for:
+
+- AFR Class cycle (sampled 19: Wizard / Warlock / Artificer / Monk /
+  Sorcerer / Barbarian / Bard / Rogue / Fighter Classes + Talents +
+  Cool but Rude, Ninja Teen, Intermediate Chirography, Party Dude)
+- OTJ saddle cycle (sampled 7: Slickshot Show-Off, Calamity, Stubborn
+  Burrowfiend, Fortune, Lagorin, Akul, Goldvein Pick)
+- DSK eerie cycle (sampled 7: Victor's Seneschal, Fear of Infinity /
+  Sleep Paralysis, Ghostly Dancers, Mothlight Processionist,
+  Unwilling Vessel, Cult Healer)
+- WOE bargain cycle (sampled 6: Beseech the Mirror, Talion's
+  Throneguard, Hamlet Glutton, Realm-Scorcher Hellkite, Agatha's
+  Champion, Dunbarrow Revivalist)
+- LCI gift cycle (sampled 5: Octomancer, Starforged Sword, Coiling
+  Rebirth, Cruelclaw's Heist, Perch Protection)
+- IKO mutate beyond Illuna (sampled 13)
+- STX magecraft beyond Veyran (sampled 17)
+
+These cycles ARE genuine wiring opportunities and have been
+progressively wired by PRs #483 (magecraft), #488 (mount/saddle),
+#490 (investigate), #493 (eerie), #496 (bargain), #503 (class level-
+up), #507 (creature_mutated), #510 (gift), #515 (outlaw payoffs).
+
+#### Sweep methodology (reproducer)
+
+```bash
+# 1. Enumerate non-test files that existed at audit commit.
+git ls-tree -r --name-only d54a118 internal/gameengine/per_card/ \
+  | grep -v _test.go > /tmp/audit_files.txt
+
+# 2. Dump full pre-audit per_card source into one searchable blob.
+while read -r f; do
+  git show "d54a118:$f" 2>/dev/null
+done < /tmp/audit_files.txt > /tmp/audit_snapshot.txt
+
+# 3. For each card in question, check ALL FIVE dispatch surfaces.
+grep -E "(OnTrigger|OnETB|OnResolve|OnCast|OnActivated)\(\"<card>\"" \
+  /tmp/audit_snapshot.txt
+```
+
+Empty grep result = genuinely unwired at audit time. Any hit = the
+audit's claim is wrong (or at least misleading) for that card.
+
 ## 4. Duplicate registrations
 
 Same `(card, event)` tuple registered twice. In the registry's slice-
