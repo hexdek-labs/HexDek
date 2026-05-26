@@ -1,0 +1,88 @@
+# Enhanced Evolution (Commander 2020 Precon Decklist)
+# Source: https://moxfield.com/decks/LWso_KepWEGAF8XjYQuH9Q
+// Tags: Primer
+COMMANDER: Otrimi, the Ever-Playful
+1 Manascape Refractor
+1 Thornwood Falls
+1 Boneyard Lurker
+1 Capricopian
+1 Wydwen, the Biting Gale
+1 Migration Path
+1 Auspicious Starrix
+1 Trumpeting Gnarr
+1 Animist's Awakening
+1 Golgari Rot Farm
+1 Sol Ring
+1 Dreamtail Heron
+1 Trygon Predator
+1 Heroes' Bane
+1 Simic Growth Chamber
+1 Soaring Seacliff
+1 Profane Command
+1 Parasitic Impetus
+1 Ukkima, Stalking Shadow
+1 Shriekmaw
+1 Deadly Tempest
+1 Myriad Landscape
+1 Cold-Eyed Selkie
+1 Zaxara, the Exemplary
+1 Reclamation Sage
+1 Sunken Hollow
+1 Archipelagore
+1 Blighted Woodland
+1 Psychic Impetus
+1 Darkwater Catacombs
+1 Glowstone Recluse
+1 Hungering Hydra
+1 Boneyard Mycodrax
+1 Mortuary Mire
+1 Genesis Hydra
+1 Silent Arbiter
+1 Mindleecher
+1 Dismal Backwater
+1 Exotic Orchard
+1 Endless Sands
+1 Putrefy
+1 Masked Admirers
+1 Fertilid
+1 Predator Ooze
+1 Cazur, Ruthless Stalker
+1 Villainous Wealth
+1 Rogue's Passage
+1 Propaganda
+1 Mind Spring
+1 Lifecrafter's Bestiary
+1 Vastwood Hydra
+1 Pouncing Shoreshark
+1 Chittering Harvester
+1 Yavimaya Dryad
+1 Kodama's Reach
+1 Jungle Hollow
+1 Souvenir Snatcher
+1 Beast Within
+1 Nissa, Steward of Elements
+1 Find // Finality
+1 Tidal Barracuda
+1 Bonder's Ornament
+1 Migratory Greathorn
+1 Dredge the Mire
+1 Insatiable Hemophage
+1 Arcane Signet
+1 Temple of the False God
+1 Dimir Aqueduct
+1 Krosan Grip
+1 Sawtusk Demolisher
+1 Illusory Ambusher
+1 Cavern Whisperer
+5 Swamp
+1 Deadly Rollick
+2 Island
+1 Command Tower
+1 Predatory Impetus
+1 Opulent Palace
+1 Mulldrifter
+1 Beast Whisperer
+1 Gaze of Granite
+1 Vorapede
+1 Llanowar Wastes
+11 Forest
