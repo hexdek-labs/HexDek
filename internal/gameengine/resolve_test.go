@@ -919,6 +919,11 @@ func TestNilEffectNoPanic(t *testing.T) {
 
 // -----------------------------------------------------------------------------
 // Corpus-driven integration test (skipped if corpus absent)
+//
+// data/rules/ast_dataset.jsonl is gitignored (see CLAUDE.md "Data Files",
+// ~46 MB). When absent, the test skips with "corpus not found" rather
+// than failing — the rest of the gameengine suite stays green for fresh
+// checkouts and -short CI runs.
 // -----------------------------------------------------------------------------
 
 // corpusPath walks up from the package dir looking for data/rules/ast_dataset.jsonl.

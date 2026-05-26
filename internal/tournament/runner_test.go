@@ -16,6 +16,19 @@ import (
 
 // ---------------------------------------------------------------------
 // Shared setup — lazy-load the corpus once for the whole test package.
+//
+// Tournament integration tests in this package depend on two gitignored
+// data sources (see CLAUDE.md "Data Files"):
+//   - data/rules/ast_dataset.jsonl   (Thor's parsed oracle AST, ~46MB)
+//   - data/decks/personal/*.txt      (deck lists)
+//
+// Both are intentionally absent from CI / fresh clones — fetch via
+// scripts/fetch-oracle.sh + the deck-import workflow. When the data
+// isn't present the tests `t.Skip()` instead of failing so the rest of
+// the suite stays green for engine-only contributors. Every "need N
+// decks" / "corpus unavailable" skip in this file traces back to that
+// design choice; downstream tests just call `loadCorpus` / `findDecks`
+// and inherit the skip.
 // ---------------------------------------------------------------------
 
 var (
