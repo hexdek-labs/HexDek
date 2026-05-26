@@ -2077,7 +2077,11 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 			}
 		}
 		return out
-	case "repeat_n":
+	case "repeat_n", "repeat_any_optional":
+		// repeat_any_optional ("you may repeat this process any number of
+		// times", compound_seq.py:318) is a count-less variant — bucket
+		// alongside repeat_n with the default count of 3 since the optional
+		// form has no parser-supplied bound.
 		out := conditionScaffold{kind: condScaffoldRepeatN, count: 3}
 		for _, a := range cond.Args {
 			if n, ok := a.(int); ok && n > 0 {
