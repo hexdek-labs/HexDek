@@ -5,6 +5,7 @@
 /gameengine.test
 /hexdek-*
 /mtgsquad-*
+/snapshot-backfill
 /ceiling-check
 /gen-handlers
 /bin/
