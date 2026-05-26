@@ -13,8 +13,20 @@ type ArchetypeClassification struct {
 	Secondary         string
 	SecondaryDistance  float64
 	Intent            string
+	// Bracket is the rubber-stamp / declared bracket — the value the
+	// deck identifies AS (precons claim B2, user-built decks claim
+	// whatever the owner sets). At the ArchetypeClassification layer
+	// this defaults to the measured value; DeckProfile overrides it for
+	// known-declared sources (e.g. WotC precons under data/decks/wizards/
+	// auto-stamp to B2).
 	Bracket           int
 	BracketLabel      string
+	// MeasuredBracket is Freya's signal-computed bracket — what the deck
+	// actually plays like according to the bracket-estimator's density /
+	// card-list signals. Diverges from Bracket when a declared override
+	// is applied (e.g. precons that Freya thinks play hotter than B2).
+	MeasuredBracket      int
+	MeasuredBracketLabel string
 	PlaysLike         int
 	PlaysLikeLabel    string
 	GameChangerCount  int
@@ -588,7 +600,11 @@ func ClassifyArchetype(report *FreyaReport, qtyProfiles []CardProfileQty, oracle
 
 	ac.Signals = buildSignals(ctx, ac)
 	ac.Intent = buildIntent(ac, report, ctx)
-	ac.Bracket, ac.BracketLabel, ac.BracketRationale = estimateBracket(ctx, report, ac.Primary)
+	ac.MeasuredBracket, ac.MeasuredBracketLabel, ac.BracketRationale = estimateMeasuredBracket(ctx, report, ac.Primary)
+	// At the ArchetypeClassification layer, Bracket defaults to the
+	// measured value. DeckProfile.BuildDeckProfile applies any declared
+	// override (e.g. wizards/ precons auto-stamp to B2).
+	ac.Bracket, ac.BracketLabel = ac.MeasuredBracket, ac.MeasuredBracketLabel
 	ac.PlaysLike, ac.PlaysLikeLabel = estimatePlaysLike(ctx, report)
 	ac.GameChangerCount = ctx.gameChangerCount
 	ac.GameChangerCards = ctx.gameChangerNames
@@ -993,7 +1009,13 @@ var landCycleSynergyArchetypes = map[string]bool{
 	"Selfmill":     true,
 }
 
-func estimateBracket(ctx *classifyContext, report *FreyaReport, primaryArchetype string) (int, string, *BracketRationale) {
+// estimateMeasuredBracket computes Freya's signal-driven bracket call —
+// the "measured" bracket. The result populates ArchetypeClassification's
+// MeasuredBracket / MeasuredBracketLabel pair. The user-visible Bracket
+// field (the rubber-stamp / declared identity) defaults to this value
+// but can be overridden at the DeckProfile layer (e.g. WotC precons
+// under data/decks/wizards/ auto-stamp to B2 regardless of measurement).
+func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryArchetype string) (int, string, *BracketRationale) {
 	rationale := &BracketRationale{}
 	addScore := func(name, tier, measurement string, evidence []string, points int) {
 		rationale.RawScore += points

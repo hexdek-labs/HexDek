@@ -62,6 +62,13 @@ func applyMigrations(db *sql.DB) error {
 		{"showmatch_game_seat", "battlefield_cards", "TEXT NOT NULL DEFAULT '[]'"},
 		{"showmatch_game_seat", "deck_key", "TEXT NOT NULL DEFAULT ''"},
 		{"showmatch_elo", "bracket", "INTEGER NOT NULL DEFAULT 0"},
+		// measured_bracket is Freya's signal-computed bracket — what the
+		// deck actually plays like according to the bracket-estimator.
+		// Distinct from bracket (the declared / rubber-stamp value, which
+		// may be overridden by the deck source — wizards/ precons stamp
+		// to B2 regardless of measurement). Default 0 = "not yet
+		// computed"; populated by the Freya analyzer on next deck pass.
+		{"showmatch_elo", "measured_bracket", "INTEGER NOT NULL DEFAULT 0"},
 		{"showmatch_elo", "hex_rating", "REAL NOT NULL DEFAULT 0.0"},
 		{"showmatch_elo", "hex_delta", "REAL NOT NULL DEFAULT 0.0"},
 		{"showmatch_game", "rng_seed", "INTEGER NOT NULL DEFAULT 0"},

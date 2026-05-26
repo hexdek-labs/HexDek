@@ -1696,6 +1696,12 @@ export default function DeckArchive() {
   const userBracket = deck?.bracket || null
   const wbs = analysis?.bracket || userBracket
   const wbsLabel = analysis?.bracket_label || ''
+  // measured_bracket is Freya's signal-computed value (distinct from
+  // `bracket` which is the declared / rubber-stamp identity). Diverges
+  // for wizards/ precons that play hotter than their stamped B2.
+  const measuredBracket = analysis?.measured_bracket || null
+  const measuredBracketLabel = analysis?.measured_bracket_label || ''
+  const bracketDiverges = measuredBracket != null && wbs != null && Number(measuredBracket) !== Number(wbs)
   const pls = analysis?.plays_like || null
   const plsLabel = analysis?.plays_like_label || ''
   const gameChangers = analysis?.game_changer_count ?? null
@@ -2163,6 +2169,20 @@ export default function DeckArchive() {
               </div>
               {glance.bracketLabel && (
                 <div className="t-xs muted" style={{ marginTop: 2 }}>{glance.bracketLabel.toUpperCase()}</div>
+              )}
+            </div>
+            <div>
+              <div className="t-xs muted">EFFECTIVE BRACKET</div>
+              <div className="t-lg" style={{ fontWeight: 700, marginTop: 2, color: glance.bracketDiverges ? 'var(--warn, #d97706)' : undefined }}>
+                {glance.measuredBracket
+                  ? `B${glance.measuredBracket}${glance.bracketDiverges ? ' ⚠' : ''}`
+                  : '—'}
+              </div>
+              {glance.measuredBracketLabel && (
+                <div className="t-xs muted" style={{ marginTop: 2 }}>{glance.measuredBracketLabel.toUpperCase()}</div>
+              )}
+              {glance.bracketDiverges && (
+                <div className="t-xs muted" style={{ marginTop: 2 }}>DIVERGES FROM DECLARED</div>
               )}
             </div>
             <div>

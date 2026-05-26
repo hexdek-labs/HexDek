@@ -101,6 +101,13 @@ export default function Forge() {
   const cardCount = deck?.card_count || deck?.cards?.length || 0
   const wbs = analysis?.bracket || deck?.bracket || '?'
   const wbsLabel = analysis?.bracket_label || ''
+  // measured_bracket = Freya's signal-computed value (renamed from
+  // mechanical_bracket as part of the bracket-vs-measured refactor).
+  // Distinct from bracket which is the declared / rubber-stamp identity
+  // (B2 for wizards/ precons, user-editable otherwise).
+  const measuredBracket = analysis?.measured_bracket || null
+  const measuredBracketLabel = analysis?.measured_bracket_label || ''
+  const bracketDiverges = measuredBracket != null && wbs !== '?' && measuredBracket !== Number(wbs)
   const pls = analysis?.plays_like || null
   const plsLabel = analysis?.plays_like_label || ''
   const gameChangers = analysis?.game_changer_count ?? null
@@ -206,6 +213,9 @@ export default function Forge() {
                     ['OWNER', selectedDeck.owner?.toUpperCase()],
                     ['CARDS', `${cardCount}`],
                     ['BRACKET', `B${wbs}${wbsLabel ? ' ' + wbsLabel : ''}`],
+                    ['EFFECTIVE BRACKET', measuredBracket != null
+                      ? `B${measuredBracket}${measuredBracketLabel ? ' ' + measuredBracketLabel : ''}${bracketDiverges ? ' ⚠ DIVERGES' : ''}`
+                      : '—'],
                     ['PLAYS LIKE', pls ? `B${pls}${plsLabel ? ' ' + plsLabel : ''}` : '—'],
                     ['GAME CHANGERS', gameChangers != null ? `${gameChangers}` : '—'],
                     ['ARCHETYPE', archetype],

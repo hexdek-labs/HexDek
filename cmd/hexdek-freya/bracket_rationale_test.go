@@ -24,7 +24,7 @@ func TestBracketRationale_ScoringSignalsRecorded(t *testing.T) {
 		freeInteractionNames: []string{"Force of Will", "Mental Misstep"},
 	}
 
-	_, _, br := estimateBracket(ctx, report, "")
+	_, _, br := estimateMeasuredBracket(ctx, report, "")
 	if br == nil {
 		t.Fatalf("expected non-nil rationale")
 	}
@@ -91,7 +91,7 @@ func TestBracketRationale_EvidenceCardsAttached(t *testing.T) {
 		freeInteractionCount: 2,
 		freeInteractionNames: []string{"Force of Will", "Mental Misstep"},
 	}
-	_, _, br := estimateBracket(ctx, report, "")
+	_, _, br := estimateMeasuredBracket(ctx, report, "")
 
 	var gcSig, freeSig *BracketSignal
 	for i := range br.Signals {
@@ -133,7 +133,7 @@ func TestBracketRationale_GateDemotionRecorded(t *testing.T) {
 		fastManaCount:    10,
 		gameChangerCount: 4,
 	}
-	bracket, _, br := estimateBracket(ctx, report, "")
+	bracket, _, br := estimateMeasuredBracket(ctx, report, "")
 	if bracket != 4 {
 		t.Fatalf("expected demotion to B4, got B%d", bracket)
 	}
@@ -171,7 +171,7 @@ func TestBracketRationale_FloorLiftRecorded(t *testing.T) {
 		fastManaCount:    8,
 		gameChangerCount: 1,
 	}
-	bracket, _, br := estimateBracket(ctx, report, "")
+	bracket, _, br := estimateMeasuredBracket(ctx, report, "")
 	if bracket != 4 {
 		t.Fatalf("expected tuned-redundancy floor to B4, got B%d", bracket)
 	}
