@@ -1,54 +1,18 @@
 package per_card
 
-import (
-	"github.com/hexdek/hexdek/internal/gameengine"
-)
-
-// registerTasigurTheGoldenFang wires Tasigur, the Golden Fang.
+// registerTasigurTheGoldenFang is the auto-generated entry point
+// retained so the batch_generated.go registry call keeps compiling.
+// The real activated ability (mill 2 + opponent picks nonland from
+// graveyard to return) lives in custom_tasigur_the_golden_fang.go,
+// registered from registry.go::registerDefaults.
 //
-// Oracle text:
-//
-//   Delve (Each card you exile from your graveyard while casting this spell pays for {1}.)
-//   {2}{G/U}{G/U}: Mill two cards, then return a nonland card of an opponent's choice from your graveyard to your hand.
-//
-// Auto-generated activated ability handler.
+// The previous auto-gen body paid {4} + milled 2 then stopped, dropping
+// the return-from-graveyard half (half-finished-features-r48 #7). It
+// also collided with the custom on OnActivated("Tasigur, the Golden
+// Fang", ...) — both registrations would fire, with the gen path's
+// no-return version racing the custom path's full implementation.
+// Neutered in R60 Versailles so the partial channel doesn't surface
+// a duplicate and the custom handler is the sole owner.
 func registerTasigurTheGoldenFang(r *Registry) {
-	r.OnActivated("Tasigur, the Golden Fang", tasigurTheGoldenFangActivate)
-}
-
-func tasigurTheGoldenFangActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
-	const slug = "tasigur_the_golden_fang_activate"
-	if gs == nil || src == nil {
-		return
-	}
-	seatIdx := src.Controller
-	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return
-	}
-	s := gs.Seats[seatIdx]
-	if s == nil || s.Lost {
-		return
-	}
-	// Cost gate: {2}{G/U}{G/U}. Hybrid pips can be paid with either G or
-	// U; we ask the typed mana pool to spend any-color and fall through
-	// to the generic pool for the full 4 cost.
-	const manaCost = 4
-	if !gameengine.PayGenericCost(gs, s, manaCost, "activated", "tasigur_activate", src.Card.DisplayName()) {
-		emitFail(gs, slug, src.Card.DisplayName(), "insufficient_mana", map[string]interface{}{
-			"mana_pool": s.ManaPool,
-			"mana_cost": manaCost,
-		})
-		return
-	}
-	for i := 0; i < 2; i++ {
-		if len(s.Library) == 0 {
-			break
-		}
-		card := s.Library[0]
-		gameengine.MoveCard(gs, card, seatIdx, "library", "graveyard", "mill")
-	}
-	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-		"seat":      seatIdx,
-		"mana_paid": manaCost,
-	})
+	_ = r
 }

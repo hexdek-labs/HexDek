@@ -530,16 +530,25 @@ func TestTasigurTheGoldenFang_PaysManaAndMills(t *testing.T) {
 	gs.Seats[0].ManaPool = 6
 	addLibrary(gs, 0, "A", "B", "C")
 
-	tasigurTheGoldenFangActivate(gs, tasigur, 0, nil)
+	tasigurTheGoldenFangActivateCustom(gs, tasigur, 0, nil)
 
 	if gs.Seats[0].ManaPool != 2 {
 		t.Errorf("expected mana 6 - 4 = 2; got %d", gs.Seats[0].ManaPool)
 	}
-	if len(gs.Seats[0].Graveyard) != 2 {
-		t.Errorf("expected 2 milled; graveyard=%d", len(gs.Seats[0].Graveyard))
-	}
+	// R60: gen mill-only stub replaced by full handler. Mill 2 → opponent
+	// picks one milled card → returns it to seat 0's hand. Net zone
+	// distribution: library 1 (untouched), graveyard 1 (kept), hand 1
+	// (returned). Pre-r60 expectation was graveyard=2 (mill-only); the
+	// new contract subtracts the returned card from the post-mill
+	// graveyard count.
 	if len(gs.Seats[0].Library) != 1 {
 		t.Errorf("expected 1 left in library; got %d", len(gs.Seats[0].Library))
+	}
+	if len(gs.Seats[0].Graveyard) != 1 {
+		t.Errorf("expected 1 in graveyard after mill 2 + return 1; got %d", len(gs.Seats[0].Graveyard))
+	}
+	if len(gs.Seats[0].Hand) != 1 {
+		t.Errorf("expected 1 in hand after opponent-picks-return; got %d", len(gs.Seats[0].Hand))
 	}
 }
 
@@ -549,7 +558,7 @@ func TestTasigurTheGoldenFang_FailsWithoutMana(t *testing.T) {
 	gs.Seats[0].ManaPool = 3 // can't pay {2}{G/U}{G/U} = 4
 	addLibrary(gs, 0, "A", "B", "C")
 
-	tasigurTheGoldenFangActivate(gs, tasigur, 0, nil)
+	tasigurTheGoldenFangActivateCustom(gs, tasigur, 0, nil)
 
 	if len(gs.Seats[0].Graveyard) != 0 {
 		t.Errorf("should NOT mill without mana; graveyard=%d", len(gs.Seats[0].Graveyard))

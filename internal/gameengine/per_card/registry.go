@@ -1850,6 +1850,9 @@ func registerDefaults() {
 	registerJadziOracleOfArcaviosCustom(Global())
 	registerSilverquillTheDisputantCustom(Global())
 	registerQuandrixTheProofCustom(Global())
+	// R60: full Tasigur — gen mill-only stub neutered, custom owns
+	// the activated ability (mill 2 + opponent picks nonland to return).
+	registerTasigurTheGoldenFangCustom(Global())
 
 	// dev/etb-stub-handlers — fill ETB stubs that gen_*.go left as
 	// no-ops. Mabel and Rendmaw already have hand-edited era1 handlers
