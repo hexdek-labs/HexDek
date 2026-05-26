@@ -171,3 +171,83 @@ Data drawn from `data/decks/wizards/freya/<slug>.strategy.json` + `<slug>_freya.
 - **Freya measured_bracket:** 2 Core
 - **Verdict:** engine-correct
 - **Reasoning:** 95% synergy — the second-highest in this batch, reflecting tight Necron tribal cohesion. R1 originally flagged this deck's 103 win_lines as a token-pollution data smell; this re-run reports 103 lines still but the bracket conclusion (B2) is unaffected because GC=0 keeps the ceiling firing. The win-line count is noisy but the bracket call is right.
+
+### Kamiz, Obscura Oculus — Obscura Operation (Streets of New Capenna)
+
+- **Intended archetype:** Esper Connive/ninjas/unblockable tribal. Kamiz rewards unblocked attackers with surveil + +1/+1 counters.
+- **Punch-up shape:** Identity Thief blink chain on Tivit (infinite mana) / Misfortune Teller (infinite mana) / Aerial Extortionist / Archon of Coronation = repeatable damage/drain; Tivit + Identity Thief is a genuine infinite-mana line; Austere Command / Dusk // Dawn / Nightmare Unmaking as wipes.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** off (engine missing genuine combo signal)
+- **Reasoning:** This deck ships with a real **infinite-mana** combo (Identity Thief + Tivit/Misfortune Teller) — Freya labels those as "BLINK COMBO: ... infinite mana" win lines but does not register them as `true_infinites`, so the GC=0 ceiling caps at B2. By WotC's own bracket rules, a stock precon with a true infinite-mana combo is at minimum B3; the engine should be lifting this one but the combo-class taxonomy isn't recognizing Tivit's "+treasure for each card type" loop as infinite.
+
+### Jared Carthalion — Painbow (Dominaria United)
+
+- **Intended archetype:** 5-color (WUBRG) goodstuff value midrange. Jared's monarchy + scaling-ability text is the anchor.
+- **Punch-up shape:** Multicolor goodstuff finishers — Rienne, Angel of Rebirth / O-Kagachi / Illuna, Apex of Wishes as commander-damage-class threats; Time Wipe / Merciless Eviction / Iridian Maelstrom as multi-mode wipes; combat damage backed by 5-color anthem effects.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** engine-correct
+- **Reasoning:** 68% synergy on `midrange` is well-classified. 0 combo notes (the only-precon-in-batch with zero) — this deck has no real combo line, just a pile of multicolor value cards. B2 is exactly right for what is essentially "WUBRG goodstuff precon."
+
+### The Thirteenth Doctor — Paradox Power (Doctor Who)
+
+- **Intended archetype:** Sultai time-travel/historic. Doctor + companion partner-pair (Thirteenth + Yasmin Khan) leverages historic-card payoffs.
+- **Punch-up shape:** Frost Fair Lure Fish + Flaming Tyrannosaurus power-based lethal; Last Night Together extra-combat; combat damage with Doctor + Companion paired threats; 21 commander damage as backup.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** engine-correct
+- **Reasoning:** 63% synergy on `midrange` is sensible. The 4 detected win lines accurately reflect the deck's actual paths to lethal (creature-power-based, extra-combat, raw combat). B2 is right for a Doctor Who precon-as-shipped.
+
+### Ms. Bumbleflower — Peace Offering (Bloomburrow)
+
+- **Intended archetype:** Bant Bear Pillowfort/group-hug-with-strings. Ms. Bumbleflower hands out food/clue/treasure to opponents in exchange for triggers and value.
+- **Punch-up shape:** Triskaidekaphile as a draw-7-cards / 13-in-hand alt-win; Simic Ascendancy as a counter-accumulator alt-win; Twenty-Toed Toad as a tribal anthem; Bloodroot Apothecary for proliferate-flavored pressure.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** off (R6-documented inverse miss)
+- **Reasoning:** R6 (PR #535) flagged this deck as the SECOND inverse miss after R5's Most Wanted — power_pct=81 / mana A / synergy 80% with B2 measure because the GC=0 ceiling fires. The "3 Direct win condition" detections (Triskaidekaphile / Simic Ascendancy) are real B3 alt-wins; vibes call should be B3-B4. The engine's GC=0 ceiling has a known calibration bug at the high-cross-signal end.
+
+### Prosper, Tome-Bound — Planar Portal (Adventures in the Forgotten Realms)
+
+- **Intended archetype:** Rakdos exile-top-of-library Treasure ramp. Prosper exiles top card on attack, lets you cast from exile, generates treasure.
+- **Punch-up shape:** Lorcan, Warlock Collector + Fiendlash power-based lethal; Dream Pillager attack-trigger value; Lorcan as a commander-damage threat alongside Prosper.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** off (R3-documented B1 false-positive on the prior run, now corrected to B2)
+- **Reasoning:** R3 (PR #532) flagged this deck as a B1 false-positive with power_pct 73, synergy 87%, mana A — the strongest power signal in R3 measuring at B1. This re-run hits B2 which is the correct floor. The prior B1 reading was the score-ladder-too-cold pathology that R3 + R6 docs both flagged as needing the same kind of fix as the B4 over-firing case.
+
+### Meren of Clan Nel Toth — Plunder the Graves (Commander 2015)
+
+- **Intended archetype:** Golgari graveyard reanimator. Meren's experience-counter recursion on creature deaths is the engine.
+- **Punch-up shape:** Pathbreaker Ibex / Overwhelming Stampede / Eldrazi Monument as mass-pump finishers; Mycoloth + Eldrazi Monument token-army-then-pump; Terastodon + Jarad sacrifice-for-damage; Verdant Force / Eater of Hope as Meren-reanimation targets.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** engine-correct
+- **Reasoning:** 39% synergy is low for a deck whose every card feeds Meren's plan — the synergy scorer likely undervalues "stuff dies" graveyard-feeder cards relative to direct payoffs. Bracket is correct at B2 though; the 15 win lines accurately reflect the deck's "anthem the army, swing through" finish pattern. Stock 2015 precon paced.
+
+### Ghired, Conclave Exile — Primal Genesis (Commander 2019)
+
+- **Intended archetype:** Naya populate tribal. Ghired makes a Rhino token on attack, then the deck doubles tokens via populate.
+- **Punch-up shape:** Heart-Piercer Manticore + any large creature = power-based lethal (recurring); Doomed Artisan / Wayfaring Temple / Desolation Twin as token-makers; Giant Adephage / Tectonic Hellion as power-pressure threats.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** engine-correct
+- **Reasoning:** 70% synergy on `midrange` is well-classified (though "populate tribal" would be more precise than midrange). The 10 win lines are mostly real Manticore-pair lethal lines + a wipe; bracket call at B2 is right.
+
+### Adrix and Nev, Twincasters — Quantum Quandrix (Commander 2021)
+
+- **Intended archetype:** Simic Fractals / token doubling. Adrix and Nev double every token you make.
+- **Punch-up shape:** Garruk, Primal Hunter + Return of the Wildspeaker double-token-then-mass-pump; Hydra Broodmaster X-cost tokens; Guardian Augmenter for token anthem; Adrix and Nev commander-damage as a backup.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** engine-correct
+- **Reasoning:** 53% synergy reading on `counters matter` is the wrong sub-label (this is tokens-matter, not counters), but bracket is right. The 12 win lines accurately catch the token-doubling combos. B2 is the appropriate floor for the stock precon-as-shipped.
+
+### Stella Lee, Wild Card — Quick Draw (Outlaws of Thunder Junction)
+
+- **Intended archetype:** Izzet spellslinger / clue-tokens midrange. Stella Lee rewards casting your third+ instant/sorcery each turn with copies.
+- **Punch-up shape:** Stella Lee third-spell copy chain; Pyretic Charge as a mass-pump finisher; Shark Typhoon + Big Score draw cycle; 21 commander damage from Stella Lee's combat profile.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** off (engine too cold on shape)
+- **Reasoning:** Synergy 90% (high) but only 4 win lines + 1 finisher detected — the deck's actual win plan (Stella Lee's "copy the third spell" chain into burn or token wipes) is invisible to the win-line classifier. B2 bracket is correct for stock product; the missing win-line detection is the classifier weakness.
+
+### Neyali, Suns' Vanguard — Rebellion Rising (Phyrexia: All Will Be One)
+
+- **Intended archetype:** Naya Rebel/token aggro with Phyrexian Toxic sub-theme. Neyali grants double-strike and impulse-draw on token attacks.
+- **Punch-up shape:** Call the Coppercoats + Goldnight Commander token-army + mass-pump; Finale of Glory X-cost tokens; Heroic Reinforcements anthem-on-ETB; Castle Embereth land-anthem; Jor Kadeen Mardu artifact-anthem.
+- **Freya measured_bracket:** 2 Core
+- **Verdict:** classification-mismatch
+- **Reasoning:** Freya labels `artifacts` — incorrect; this is Soldier/Rebel token aggro with the Phyrexian Toxic sub-theme. Bracket B2 is right (23 anthem-pair win lines is real token-army shape). Archetype tag is wrong because the deck has SOME Phyrexian artifacts but isn't artifacts-payoff at all.
