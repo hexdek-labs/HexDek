@@ -1,0 +1,77 @@
+# Seize Control (Commander 2015 Precon Decklist)
+# Source: https://moxfield.com/decks/qfOr1nvopUeSE7VOvrWx-A
+COMMANDER: Mizzix of the Izmagnus
+1 Magmaquake
+1 Talrand, Sky Summoner
+1 Awaken the Sky Tyrant
+1 Faithless Looting
+1 Stroke of Genius
+1 Echoing Truth
+1 Stolen Goods
+1 Melek, Izzet Paragon
+1 Aethersnatch
+1 Preordain
+1 Act of Aggression
+1 Dominate
+1 Izzet Signet
+1 Goblin Electromancer
+1 Vandalblast
+1 Rite of the Raging Storm
+1 Firemind's Foresight
+1 Charmbreaker Devils
+1 Sol Ring
+1 Vivid Crag
+1 Izzet Guildgate
+1 Seal of the Guildpact
+1 Word of Seizing
+1 Rite of Replication
+1 Thought Vessel
+1 Urza's Rage
+1 Mystic Confluence
+1 Gigantoplasm
+1 Call the Skybreaker
+1 Etherium-Horn Sorcerer
+1 Desperate Ravings
+1 Fact or Fiction
+1 Broodbirth Viper
+1 Izzet Boilerworks
+1 Windfall
+1 Lone Revenant
+1 Chain Reaction
+1 Meteor Blast
+1 Brainstorm
+1 Evolving Wilds
+1 Mizzix's Mastery
+1 Steam Augury
+1 Counterflux
+1 Sleep
+1 Worn Powerstone
+1 Mystic Retrieval
+1 Blustersquall
+1 Rogue's Passage
+1 Mizzium Mortars
+1 Swiftwater Cliffs
+1 Warchief Giant
+1 Arjun, the Shifting Flame
+1 Thought Reflection
+1 Reins of Power
+1 Reliquary Tower
+1 Repeal
+1 Aetherize
+1 Vivid Creek
+1 Mirror Match
+1 Comet Storm
+1 Temple of the False God
+1 Illusory Ambusher
+1 Terramorphic Expanse
+1 Blatant Thievery
+14 Island
+1 Command Tower
+1 Jace's Archivist
+1 Blue Sun's Zenith
+1 Prophetic Bolt
+13 Mountain
+1 Epic Experiment
+1 Psychosis Crawler
+1 Spinerock Knoll
+1 Dragon Mage
