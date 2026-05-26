@@ -1575,7 +1575,10 @@ func buildJSONStats(s *DeckStatistics) *jsonStats {
 	}
 	ramps := make([]jsonRampCard, len(s.RampCards))
 	for i, rc := range s.RampCards {
-		ramps[i] = jsonRampCard{Name: rc.Name, Category: rc.Category}
+		// jsonRampCard and RampCard share field shape; T(x) keeps the
+		// converter trivially correct and survives field additions on
+		// either side — staticcheck S1016.
+		ramps[i] = jsonRampCard(rc)
 	}
 	return &jsonStats{
 		AvgCMCWithLands:    s.AvgCMCWithLands,
@@ -1613,14 +1616,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 	}
 	var altBuilds []jsonAltBuild
 	for _, a := range dp.AltBuildSuggestions {
-		altBuilds = append(altBuilds, jsonAltBuild{
-			Cluster:     a.Cluster,
-			ClusterName: a.ClusterName,
-			MemberCount: a.MemberCount,
-			Score:       a.Score,
-			Pivot:       a.Pivot,
-			Trade:       a.Trade,
-		})
+		altBuilds = append(altBuilds, jsonAltBuild(a))
 	}
 	var matchups []jsonMatchup
 	for _, m := range dp.MetaMatchups {
@@ -1630,15 +1626,14 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 	}
 	var strongAgainst []jsonStrongAgainst
 	for _, a := range dp.StrongAgainst {
-		strongAgainst = append(strongAgainst, jsonStrongAgainst{
-			Archetype:      a.Archetype,
-			Reason:         a.Reason,
-			OpponentReason: a.OpponentReason,
-			Source:         a.Source,
-		})
+		strongAgainst = append(strongAgainst, jsonStrongAgainst(a))
 	}
 	var stars, solid, cuttable []jsonCardQuality
 	for _, c := range dp.StarCards {
+		// Stars/solid intentionally omit the cuttable-tier rationale
+		// fields (Detected/WhyCut/Effect/Suggested) — kept as literal
+		// to preserve the field selection. Cuttable's loop below uses
+		// a T(x) conversion since it copies all fields anyway.
 		stars = append(stars, jsonCardQuality{
 			Name: c.Name, Tier: c.Tier, Reason: c.Reason,
 			Power: c.Power, PowerTier: c.PowerTier,
@@ -1653,54 +1648,19 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		})
 	}
 	for _, c := range dp.CuttableCards {
-		cuttable = append(cuttable, jsonCardQuality{
-			Name:             c.Name,
-			Tier:             c.Tier,
-			Reason:           c.Reason,
-			Power:            c.Power,
-			PowerTier:        c.PowerTier,
-			PowerExplanation: c.PowerExplanation,
-			Detected:         c.Detected,
-			WhyCut:           c.WhyCut,
-			Effect:           c.Effect,
-			Suggested:        c.Suggested,
-		})
+		cuttable = append(cuttable, jsonCardQuality(c))
 	}
 	var powerLevels []jsonCardPowerLevel
 	for _, pl := range dp.CardPowerLevels {
-		powerLevels = append(powerLevels, jsonCardPowerLevel{
-			Name:                pl.Name,
-			CMC:                 pl.CMC,
-			Roles:               pl.Roles,
-			Power:               pl.Power,
-			PowerTier:           pl.PowerTier,
-			Explanation:         pl.Explanation,
-			ArchetypeFit:        pl.ArchetypeFit,
-			CMCEfficiency:       pl.CMCEfficiency,
-			SynergyContribution: pl.SynergyContribution,
-		})
+		powerLevels = append(powerLevels, jsonCardPowerLevel(pl))
 	}
 	var petCards []jsonPetCard
 	for _, pc := range dp.PetCards {
-		petCards = append(petCards, jsonPetCard{
-			Name:      pc.Name,
-			CMC:       pc.CMC,
-			Roles:     pc.Roles,
-			Power:     pc.Power,
-			PowerTier: pc.PowerTier,
-			Reason:    pc.Reason,
-		})
+		petCards = append(petCards, jsonPetCard(pc))
 	}
 	var coaching []jsonCoachingTip
 	for _, t := range dp.CoachingTips {
-		coaching = append(coaching, jsonCoachingTip{
-			Category: t.Category,
-			Priority: t.Priority,
-			Title:    t.Title,
-			Detail:   t.Detail,
-			Action:   t.Action,
-			Tags:     t.Tags,
-		})
+		coaching = append(coaching, jsonCoachingTip(t))
 	}
 
 	return &jsonDeckProfile{
@@ -1814,15 +1774,7 @@ func buildJSONBracketRationale(br *BracketRationale) *jsonBracketRationale {
 		Signals:      make([]jsonBracketSignal, 0, len(br.Signals)),
 	}
 	for _, s := range br.Signals {
-		out.Signals = append(out.Signals, jsonBracketSignal{
-			Name:         s.Name,
-			Kind:         s.Kind,
-			Tier:         s.Tier,
-			Measurement:  s.Measurement,
-			Evidence:     s.Evidence,
-			Contribution: s.Contribution,
-			Note:         s.Note,
-		})
+		out.Signals = append(out.Signals, jsonBracketSignal(s))
 	}
 	return out
 }
@@ -1878,15 +1830,7 @@ func comboSlice(combos []ComboResult) []jsonCombo {
 	}
 	out := make([]jsonCombo, len(combos))
 	for i, c := range combos {
-		out[i] = jsonCombo{
-			Cards:            c.Cards,
-			LoopType:         c.LoopType,
-			Class:            c.Class,
-			Resources:        c.Resources,
-			Description:      c.Description,
-			Confirmed:        c.Confirmed,
-			NonDeterministic: c.NonDeterministic,
-		}
+		out[i] = jsonCombo(c)
 	}
 	return out
 }

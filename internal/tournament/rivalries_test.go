@@ -2,6 +2,7 @@ package tournament
 
 import (
 	"math"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -203,10 +204,11 @@ func makeResultFixture(matrix, games map[string]map[string]int, wins, played map
 	for k := range matrix {
 		names = append(names, k)
 	}
-	// Stable order so tests don't flake.
-	for _, k := range append(append([]string{}, names...)) {
-		_ = k
-	}
+	// Stable order so tests don't flake on map-iteration randomness.
+	// The earlier shape here was a no-op `for k := range append(...)`
+	// loop that allocated a copy but never sorted it — flagged by
+	// `go vet` (append with no values). Actually sort the slice.
+	sort.Strings(names)
 	return &TournamentResult{
 		CommanderNames:         names,
 		MatchupMatrix:          matrix,

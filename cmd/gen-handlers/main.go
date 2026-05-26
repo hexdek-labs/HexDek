@@ -582,24 +582,6 @@ var triggerEventMap = map[string]string{
 	"token_created":                "token_created",
 }
 
-// effectKindSimple maps modification kinds to simple effect descriptions.
-var effectKindSimple = map[string]string{
-	"draw":              "draw",
-	"draw_cards":        "draw",
-	"gain_life":         "gain_life",
-	"lose_life":         "lose_life",
-	"deal_damage":       "deal_damage",
-	"create_token":      "create_token",
-	"add_counter":       "add_counter",
-	"add_counters":      "add_counter",
-	"mill":              "mill",
-	"scry":              "scry",
-	"gain_energy":       "gain_energy",
-	"sacrifice":         "sacrifice",
-	"exile_from_top":    "exile_top",
-	"destroy":           "destroy",
-}
-
 func classifyCard(slug string, ast ASTDataset) ClassifiedCard {
 	cc := ClassifiedCard{
 		Slug:       slug,
@@ -997,7 +979,7 @@ func generateETBBody(cc ClassifiedCard) string {
 	if containsAny(oracle, "mill") && containsAny(oracle, "enters", "when") {
 		n := extractMillN(oracle)
 		if n > 0 {
-			lines = append(lines, fmt.Sprintf("\ts := gs.Seats[seat]"))
+			lines = append(lines, "\ts := gs.Seats[seat]")
 			lines = append(lines, fmt.Sprintf("\tfor i := 0; i < %d; i++ {", n))
 			lines = append(lines, "\t\tif len(s.Library) == 0 { break }")
 			lines = append(lines, "\t\tcard := s.Library[0]")
@@ -1008,14 +990,14 @@ func generateETBBody(cc ClassifiedCard) string {
 
 	if containsAny(oracle, "create") && containsAny(oracle, "token") && containsAny(oracle, "enters") {
 		power, tough, tokenType := extractTokenInfo(oracle)
-		lines = append(lines, fmt.Sprintf("\ttoken := &gameengine.Card{"))
+		lines = append(lines, "\ttoken := &gameengine.Card{")
 		lines = append(lines, fmt.Sprintf("\t\tName:          \"%d/%d %s Token\",", power, tough, strings.Title(tokenType)))
-		lines = append(lines, fmt.Sprintf("\t\tOwner:         seat,"))
+		lines = append(lines, "\t\tOwner:         seat,")
 		lines = append(lines, fmt.Sprintf("\t\tBasePower:     %d,", power))
 		lines = append(lines, fmt.Sprintf("\t\tBaseToughness: %d,", tough))
 		lines = append(lines, fmt.Sprintf("\t\tTypes:         []string{\"token\", \"creature\", \"%s\"},", strings.ToLower(tokenType)))
-		lines = append(lines, fmt.Sprintf("\t}"))
-		lines = append(lines, fmt.Sprintf("\tenterBattlefieldWithETB(gs, seat, token, false)"))
+		lines = append(lines, "\t}")
+		lines = append(lines, "\tenterBattlefieldWithETB(gs, seat, token, false)")
 	}
 
 	if containsAny(oracle, "scry") && containsAny(oracle, "enters", "when") {
@@ -1027,7 +1009,7 @@ func generateETBBody(cc ClassifiedCard) string {
 
 	// If we couldn't parse any specific effect, emit a partial
 	if len(lines) == 0 {
-		lines = append(lines, fmt.Sprintf("\temitPartial(gs, slug, perm.Card.DisplayName(), \"auto-gen: ETB effect not parsed from oracle text\")"))
+		lines = append(lines, "\temitPartial(gs, slug, perm.Card.DisplayName(), \"auto-gen: ETB effect not parsed from oracle text\")")
 	}
 
 	// Check for additional non-ETB abilities and mark partial
@@ -1039,7 +1021,7 @@ func generateETBBody(cc ClassifiedCard) string {
 		}
 	}
 	if hasOtherAbilities {
-		lines = append(lines, fmt.Sprintf("\temitPartial(gs, slug, perm.Card.DisplayName(), \"additional non-ETB abilities not implemented\")"))
+		lines = append(lines, "\temitPartial(gs, slug, perm.Card.DisplayName(), \"additional non-ETB abilities not implemented\")")
 	}
 
 	return strings.Join(lines, "\n")
@@ -1211,7 +1193,7 @@ func generateTriggerBody(cc ClassifiedCard, astEvent, engineEvent string) string
 	lines = append(lines, effectLines...)
 
 	if len(effectLines) == 0 {
-		lines = append(lines, fmt.Sprintf("\temitPartial(gs, slug, perm.Card.DisplayName(), \"auto-gen: trigger effect not parsed from oracle text\")"))
+		lines = append(lines, "\temitPartial(gs, slug, perm.Card.DisplayName(), \"auto-gen: trigger effect not parsed from oracle text\")")
 	}
 
 	return strings.Join(lines, "\n")

@@ -112,10 +112,6 @@ var acceptedDrift = map[string]bool{}
 // Regex to strip reminder text from oracle text.
 var reReminderText = regexp.MustCompile(`\([^)]*\)`)
 
-// Regex for keyword at start of line or after comma in a keyword list.
-// Matches patterns like "Flying, trample" or standalone "Flying".
-var reKeywordLine = regexp.MustCompile(`(?i)^([A-Za-z][A-Za-z ]+?)(?:\s*[{(]|$)`)
-
 // Regex patterns for keywords granted to other things (not innate).
 var reGrantsKeyword = regexp.MustCompile(`(?i)\b(?:gains?|has|have|gets?|with|loses?|choice of|from among|copy|target|choose|put a)\s+`)
 

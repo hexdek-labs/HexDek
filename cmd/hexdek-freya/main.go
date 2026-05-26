@@ -276,38 +276,38 @@ func analyzeDeckFile(path string, oracle *oracleDB, mechDB *MechanicDB) (*FreyaR
 		"wastes":                {Name: "Wastes", IsLand: true, LandColors: []string{}},
 	}
 	var qtyProfiles []CardProfileQty
-	if cardQtys != nil {
-		for name, qty := range cardQtys {
-			// Check basic land shortcut first
-			if bp, ok := basicLandProfiles[strings.ToLower(strings.TrimSpace(name))]; ok {
-				qtyProfiles = append(qtyProfiles, CardProfileQty{Profile: bp, Qty: qty})
-				continue
-			}
-			entry := oracle.lookup(name)
-			if entry == nil {
-				log.Printf("    [qty-pass] UNRESOLVED: %q (qty=%d)", name, qty)
-				qtyProfiles = append(qtyProfiles, CardProfileQty{
-					Profile: CardProfile{Name: name},
-					Qty:     qty,
-				})
-				continue
-			}
-			oracleText := entry.OracleText
-			typeLine := entry.TypeLine
-			manaCost := entry.ManaCost
-			cmc := int(entry.CMC)
-			if oracleText == "" && len(entry.CardFaces) > 0 {
-				oracleText = entry.CardFaces[0].OracleText
-				typeLine = entry.CardFaces[0].TypeLine
-				manaCost = entry.CardFaces[0].ManaCost
-			}
-			p := ClassifyCard(entry.Name, oracleText, typeLine, manaCost, cmc, entry.Power)
-			// Ensure land classification uses the top-level type line (not DFC face)
-			if !p.IsLand && strings.Contains(strings.ToLower(entry.TypeLine), "land") {
-				p.IsLand = true
-			}
-			qtyProfiles = append(qtyProfiles, CardProfileQty{Profile: p, Qty: qty})
+	// `range` over a nil map is a no-op (zero iterations), so the
+	// nil guard wasn't doing anything — staticcheck S1031.
+	for name, qty := range cardQtys {
+		// Check basic land shortcut first
+		if bp, ok := basicLandProfiles[strings.ToLower(strings.TrimSpace(name))]; ok {
+			qtyProfiles = append(qtyProfiles, CardProfileQty{Profile: bp, Qty: qty})
+			continue
 		}
+		entry := oracle.lookup(name)
+		if entry == nil {
+			log.Printf("    [qty-pass] UNRESOLVED: %q (qty=%d)", name, qty)
+			qtyProfiles = append(qtyProfiles, CardProfileQty{
+				Profile: CardProfile{Name: name},
+				Qty:     qty,
+			})
+			continue
+		}
+		oracleText := entry.OracleText
+		typeLine := entry.TypeLine
+		manaCost := entry.ManaCost
+		cmc := int(entry.CMC)
+		if oracleText == "" && len(entry.CardFaces) > 0 {
+			oracleText = entry.CardFaces[0].OracleText
+			typeLine = entry.CardFaces[0].TypeLine
+			manaCost = entry.CardFaces[0].ManaCost
+		}
+		p := ClassifyCard(entry.Name, oracleText, typeLine, manaCost, cmc, entry.Power)
+		// Ensure land classification uses the top-level type line (not DFC face)
+		if !p.IsLand && strings.Contains(strings.ToLower(entry.TypeLine), "land") {
+			p.IsLand = true
+		}
+		qtyProfiles = append(qtyProfiles, CardProfileQty{Profile: p, Qty: qty})
 	}
 
 	log.Printf("  %s: %d cards parsed, %d resolved, %d unresolved, %d qtyEntries",
@@ -705,37 +705,37 @@ type strategyJSON struct {
 	GameChangerCount int               `json:"game_changer_count"`
 	GameChangerCards []string          `json:"game_changer_cards,omitempty"`
 	GameplanSummary  string            `json:"gameplan_summary"`
-	WinLines        []strategyWinLine `json:"win_lines"`
-	ValueEngineKeys []string          `json:"value_engine_keys,omitempty"`
-	TutorTargets    []string          `json:"tutor_targets,omitempty"`
-	Weights         *jsonEvalWeights  `json:"eval_weights,omitempty"`
-	CardRoles       map[string]string `json:"card_roles,omitempty"`
-	FinisherCards   []string          `json:"finisher_cards,omitempty"`
-	ColorDemand     map[string]int    `json:"color_demand,omitempty"`
+	WinLines         []strategyWinLine `json:"win_lines"`
+	ValueEngineKeys  []string          `json:"value_engine_keys,omitempty"`
+	TutorTargets     []string          `json:"tutor_targets,omitempty"`
+	Weights          *jsonEvalWeights  `json:"eval_weights,omitempty"`
+	CardRoles        map[string]string `json:"card_roles,omitempty"`
+	FinisherCards    []string          `json:"finisher_cards,omitempty"`
+	ColorDemand      map[string]int    `json:"color_demand,omitempty"`
 
-	StarCards            []string          `json:"star_cards,omitempty"`
-	CuttableCards        []string          `json:"cuttable_cards,omitempty"`
-	CuttableCardRationale []jsonCardQuality `json:"cuttable_card_rationale,omitempty"`
-	ValueChains          []jsonValueChain  `json:"value_chains,omitempty"`
-	CommanderThemes  []string `json:"commander_themes,omitempty"`
-	CommanderSynergy float64  `json:"commander_synergy,omitempty"`
-	VulnerableTo     []string `json:"vulnerable_to,omitempty"`
-	InteractionAvgCMC float64 `json:"interaction_avg_cmc,omitempty"`
-	CheapInteraction int      `json:"cheap_interaction,omitempty"`
-	ManaBaseGrade    string   `json:"mana_base_grade,omitempty"`
-	KeepableHandPct         float64 `json:"keepable_hand_pct,omitempty"`
-	KeepableHandPctAdjusted float64 `json:"keepable_hand_pct_adjusted,omitempty"`
-	IsCommanderCentric      bool    `json:"is_commander_centric,omitempty"`
-	PowerPercentile  int      `json:"power_percentile,omitempty"`
-	MetaMatchups       []strategyMatchup       `json:"meta_matchups,omitempty"`
-	EmergentSynergies  []strategyEmergentSynergy `json:"emergent_synergies,omitempty"`
-	ManaCurve          *jsonManaCurve            `json:"mana_curve,omitempty"`
-	ColorBalance       *jsonColors               `json:"color_balance,omitempty"`
+	StarCards               []string                  `json:"star_cards,omitempty"`
+	CuttableCards           []string                  `json:"cuttable_cards,omitempty"`
+	CuttableCardRationale   []jsonCardQuality         `json:"cuttable_card_rationale,omitempty"`
+	ValueChains             []jsonValueChain          `json:"value_chains,omitempty"`
+	CommanderThemes         []string                  `json:"commander_themes,omitempty"`
+	CommanderSynergy        float64                   `json:"commander_synergy,omitempty"`
+	VulnerableTo            []string                  `json:"vulnerable_to,omitempty"`
+	InteractionAvgCMC       float64                   `json:"interaction_avg_cmc,omitempty"`
+	CheapInteraction        int                       `json:"cheap_interaction,omitempty"`
+	ManaBaseGrade           string                    `json:"mana_base_grade,omitempty"`
+	KeepableHandPct         float64                   `json:"keepable_hand_pct,omitempty"`
+	KeepableHandPctAdjusted float64                   `json:"keepable_hand_pct_adjusted,omitempty"`
+	IsCommanderCentric      bool                      `json:"is_commander_centric,omitempty"`
+	PowerPercentile         int                       `json:"power_percentile,omitempty"`
+	MetaMatchups            []strategyMatchup         `json:"meta_matchups,omitempty"`
+	EmergentSynergies       []strategyEmergentSynergy `json:"emergent_synergies,omitempty"`
+	ManaCurve               *jsonManaCurve            `json:"mana_curve,omitempty"`
+	ColorBalance            *jsonColors               `json:"color_balance,omitempty"`
 
-	Legality       *LegalityReport `json:"legality,omitempty"`
-	CurveWarnings  []string        `json:"curve_warnings,omitempty"`
-	ColorMismatch  []string        `json:"color_mismatch,omitempty"`
-	ComboNotes     []string        `json:"combo_notes,omitempty"`
+	Legality      *LegalityReport `json:"legality,omitempty"`
+	CurveWarnings []string        `json:"curve_warnings,omitempty"`
+	ColorMismatch []string        `json:"color_mismatch,omitempty"`
+	ComboNotes    []string        `json:"combo_notes,omitempty"`
 }
 
 type strategyEmergentSynergy struct {
