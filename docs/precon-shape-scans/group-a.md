@@ -145,3 +145,92 @@ Source data: `data/decks/wizards/freya/<stem>.profile.json` + `.strategy.json` (
 - **Freya measured_bracket:** 2 Core
 - **Your verdict:** engine-correct
 - **Reasoning:** 11.7% commander synergy is low (most cards are generic dragons not optimized around Vrondiss's specific self-damage axis — the precon is more "dragons" than "Vrondiss"), but the B2 call is right: 48% power, B-grade mana, 0 GCs, 11 win lines, no real combos. Stock dragon tribal sits comfortably at Core.
+
+### Sefris of the Hidden Ways — Dungeons of Death (Forgotten Realms / AFR)
+- **Intended archetype:** Esper Dungeon-venture reanimator. Sefris triggers dungeon-venture when a creature dies, and reanimates a CMC ≤ 3 creature on full-dungeon completion.
+- **Punch-up shape:** Sefris + dungeon-venture enablers (Acererak the Archlich, AFR-set dungeon cards) + small-creature sac fodder + reanimation payoffs (Eternal Dragon, Karmic Guide, Sharuum the Hegemon adjacent). Wincon is loop reanimation of value targets via repeated dungeon completions.
+- **Freya measured_bracket:** 2 Core
+- **Your verdict:** engine-correct
+- **Reasoning:** 58% power, B-grade mana, 0 GCs, 7 win lines — clean B2 read. The Eternal Dragon + Unburial Rites "combo" Freya flags is a real value engine but stock doesn't tutor for it; the deck plays as grindy aristocrats/reanimator at Core power, exactly as the engine reads it.
+
+### Ulalek, Fused Atrocity — Eldrazi Incursion (Modern Horizons 3 / MH3)
+- **Intended archetype:** 5-color Eldrazi tribal (Devoid/Colorless ramp). Ulalek copies cast triggers of Eldrazi spells.
+- **Punch-up shape:** Ulalek + classic Eldrazi (Eldrazi Displacer, Drowner of Hope, Warping Wail, Azlask) + colorless ramp (Eldrazi Temple, Ugin's Labyrinth adjacent) + scion-token generators. Wincon is big-mana Eldrazi turns + Ulalek's copy-trigger amplification.
+- **Freya measured_bracket:** 2 Core
+- **Your verdict:** engine-correct
+- **Reasoning:** Eldrazi Displacer + Drowner of Hope IS a real infinite-mana combo (Displacer untaps for 3, Drowner makes scions that sac for mana — net positive when configured), and Freya correctly flags it. But the bracket correctly doesn't lift because the precon has 0 GCs, 48% power, only 9 win lines, and no tutor density to assemble the combo reliably. The combo-floor predicate correctly didn't fire here — useful counterexample to the over-aggressive combo-floor cases (World Shaper, Cabaretti Cacophony) where it DID fire on weaker combo evidence.
+
+### Galadriel, Elven-Queen — Elven Council (The Lord of the Rings: Tales of Middle-earth / LTR)
+- **Intended archetype:** Bant Elves tribal with The Ring tempts mechanic. Galadriel mills/ascend-pumps elf-heavy boards.
+- **Punch-up shape:** Galadriel + elf tribal payoffs (Elvish Archdruid, Radagast, Wizard of Wilds) + The Ring tempts triggers + go-wide token-makers (Hornet Queen, Sylvan Offering) + auras / pump (Lothlórien Blade). Wincon is wide elf swarms with anthem-pump combat damage.
+- **Freya measured_bracket:** 2 Core
+- **Your verdict:** engine-correct
+- **Reasoning:** Stock elf tribal with The Ring flavor; 63% power, A-grade mana, 0 GCs, no real combos. B2 fits. Colossal Whale + Lothlórien Blade gets flagged because the Blade adds combat-damage triggers; the line is "real" but only as a finisher, not a combo. The "Tribal" archetype tag is accurate even if Freya leaves it at "Midrange / Tribal" hybrid.
+
+### Valgavoth, Harrower of Souls — Endless Punishment (Duskmourn / DSK)
+- **Intended archetype:** Rakdos Horror-discard reanimator. Valgavoth grows when an opponent discards/sacs/loses life and reanimates after death.
+- **Punch-up shape:** Valgavoth + discard outlets + opponent-discard effects (Tinybones, Trinket Thief adjacent) + recursion (Decree of Pain, Bastion of Remembrance) + Rakdos value (Rakdos, Lord of Riots; Kaervek). Wincon is Valgavoth as a recurring threat plus drain-and-recur value attrition.
+- **Freya measured_bracket:** 2 Core
+- **Your verdict:** engine-correct
+- **Reasoning:** 68% power and A-grade mana are notable for a stock B2 — this is one of the better-tuned modern precons. 0 GCs and 7 win lines keep the bracket honest at Core, but the deck is right at the B2/B3 boundary. Canyon Slough + Grab the Prize flagged as a 2-card win-line is a cycling-land FP cluster (same shape as Counter Intelligence + Blast from the Past); not a real combo, and correctly doesn't lift the bracket.
+
+### Otrimi, the Ever-Playful — Enhanced Evolution (Commander 2020)
+- **Intended archetype:** Sultai Mutate tribal. Otrimi enables mutate-from-graveyard.
+- **Punch-up shape:** Otrimi + mutate creatures (Migratory Greathorn, Trumpeting Gnarr, Auspicious Starrix) + graveyard fillers + recursion enablers. Wincon is stacked mutate triggers building one giant value-creature.
+- **Freya measured_bracket:** 2 Core
+- **Your verdict:** engine-correct
+- **Reasoning:** Classic mutate precon; 50% power, B-grade mana, 0 GCs, 6 win lines. B2 is the right read. Freya's "Midrange" archetype tag misses the mutate-tribal identity (33.9% commander synergy reflects that the precon includes a lot of generic Sultai value alongside the mutate package), but the bracket call is correct.
+
+### Oloro, Ageless Ascetic — Eternal Bargain (Commander 2013)
+- **Intended archetype:** Esper Lifegain control. Oloro gains 2 life per upkeep + drain payoff via Vizkopa Guildmage / Aetherflux.
+- **Punch-up shape:** Oloro + lifegain-as-resource (Vizkopa Guildmage IS stock; Exquisite Blood / Sanguine Bond — Freya flags Sanguine Bond is stock but Exquisite Blood is missing for true_infinite) + control wipes (Toxic Deluge, Nevinyrral's Disk) + Esper artifact value (Sharuum, Thopter Foundry). Wincon is the Sanguine Bond / Exquisite Blood drain loop on upgrade, or just outlasting opponents with grindy lifegain pre-upgrade.
+- **Freya measured_bracket:** **1 Exhibition**
+- **Your verdict:** engine-off (B1 is too cold)
+- **Reasoning:** This is the ONLY B1 measurement in group A and it reads as the engine under-rating a stock C13 precon that does have a real upgrade-target combo (Sanguine Bond → Exquisite Blood) and a soft Vizkopa Guildmage + Oloro line. Stock precon with 50% power + B-grade mana + 22 threats + 2 near-true-infinite combo lines should sit at B2 Core, not B1 Exhibition. Possible engine-side cause: lifegain archetype + low win-line count + no GCs may be tripping a too-aggressive B1 floor on archetypes Freya reads as "value-grindy with no clean wincon." Worth flagging for the lifegain-archetype calibration pass.
+
+### Morophon, the Boundless — Everyone's Invited! (Secret Lair Commander 2025)
+- **Intended archetype:** 5-color "any" tribal — Morophon names a creature type at ETB and supports it.
+- **Punch-up shape:** Morophon + flexible tribal payoffs (The Bears of Littjara, Kindred Dominance) + generic ramp (Farseek) + wide-tribal anthems (Avenger of Zendikar, Kinsbaile Cavalier). Wincon is whatever tribe you commit to + Kindred Dominance as a one-sided wipe.
+- **Freya measured_bracket:** 2 Core
+- **Your verdict:** engine-correct
+- **Reasoning:** Generic Secret Lair tribal precon; 55% power, C-grade mana, 0 GCs, 7 win lines. B2 read is right. The "Tribal" archetype tag matches the design (Morophon's design IS "pick a tribe"); cmdr_syn 48.4% reflects that without a named tribe, half the cards aren't synergy-bound to Morophon specifically.
+
+### Kadena, Slinking Sorcerer — Faceless Menace (Commander 2019)
+- **Intended archetype:** Sultai Morph / Manifest / Face-down tribal. Kadena makes the first face-down creature each turn free.
+- **Punch-up shape:** Kadena + morph creatures (Voidmage Apprentice, Ainok Survivalist) + manifest enablers + flip-up payoffs + Sultai value (Vraska the Unseen). Wincon is value-grind off cheap morphs flipping into threats + Kadena rebate.
+- **Freya measured_bracket:** 2 Core
+- **Your verdict:** engine-correct
+- **Reasoning:** Stock face-down precon; 43% power and D-grade mana (low) but 1 GC (Seedborn Muse — a stretch on a casual face-down precon, but Freya's GC list has it). 18.6% commander synergy reflects that the precon's face-down package is thin; most cards are generic Sultai value. B2 is the right call — the GC=1 ceiling rule correctly keeps it from lifting.
+
+### Zinnia, Valley's Voice — Family Matters (Bloomburrow / BLB)
+- **Intended archetype:** Bant Frogs/Otters/Bloomburrow-tribe go-wide token build. Zinnia bounces creatures back for ETB-trigger reuse.
+- **Punch-up shape:** Zinnia + cheap creatures with strong ETBs (Restoration Angel — though that's outside Bant; Junk Winder is stock; Siege-Gang Commander likely subbed for Bloomburrow flavor) + Bloomburrow tribal payoffs + token-doublers + go-wide finishers (Elspeth Sun's Champion, Martial Coup).
+- **Freya measured_bracket:** **4 Optimized**
+- **Your verdict:** engine-off (B4 false-positive)
+- **Reasoning:** Documented in R2 (PR #523) as the original B4 FP for Family Matters. Restoration Angel + Junk Winder flagged as `infinite_mana` is a real-ish combo (blink loops creatures with ETB mana production) but requires a specific board state and a stock precon doesn't reliably assemble it. 31.1% commander synergy and 58% power with 0 GCs do not justify Optimized. Same Tuned-redundancy / Winning-combo floor surface.
+
+### Sam, Loyal Attendant — Food and Fellowship (The Lord of the Rings / LTR)
+- **Intended archetype:** 4-color Food / Halfling LOTR precon. Sam supports food-token generation and Halfling tribal.
+- **Punch-up shape:** Sam + Food token-makers (Gilded Goose, Rapacious Guest, Lobelia, Defender of Bag End) + lifegain-via-food payoffs (Dawn of Hope is a stock Halfling-era inclusion) + Halfling tribal supports + token doublers. Wincon is wide Halfling swarms + food-fueled lifegain attrition.
+- **Freya measured_bracket:** **4 Optimized**
+- **Your verdict:** engine-off (B4 false-positive)
+- **Reasoning:** 53 "win lines" on a stock food/Halfling precon is the canonical finisher-detector blowup. Rapacious Guest + Gilded Goose flagged as a 2-card combo is a consume-once Food shape — same false-positive cluster R3 PR #532 surfaced on Squirreled Away ("287 detected loops on food tokens"). 63% power + 55% commander synergy + 0 GCs + B-grade mana cannot assemble a real B4. Food-token consume-once detection is the same fix surface as the cycling-land FPs from Counter Intelligence and Blast from the Past.
+
+---
+
+## Group A aggregate summary
+
+**75 decks total in `data/decks/wizards/`**; this scan covers rows 1-30 (sorted ascending). Verdicts:
+
+| Verdict | Count | Decks |
+|---|:-:|---|
+| engine-correct | 19/30 | Animated Army, Aura of Courage, Bedecked Brokers, Buckle Up, Built From Scratch, Cavalry Charge, Counter Intelligence, Deadly Disguise, Death Toll, Deep Clue Sea, Divine Convocation, Draconic Rage, Dungeons of Death, Eldrazi Incursion, Elven Council, Endless Punishment, Enhanced Evolution, Everyone's Invited!, Kadena Faceless Menace |
+| engine-off (B4 FP) | 9/30 | Blame Game, Blast From The Past, Cabaretti Cacophony, Corrupting Influence, Coven Counters, Creative Energy, Desert Bloom, Family Matters, Food and Fellowship |
+| engine-off (B1 too cold) | 1/30 | Eternal Bargain |
+| classification-mismatch | 1/30 | Breed Lethality (B2 right, "Tribal" should be "Superfriends") |
+
+**B4 false-positive rate: 9/30 (30%)** — consistent with the R7 finding that the cumulative B4 FP rate is trending up, and well above the R1+R2 baseline of ~10%. Every group-A B4 FP reads on the same two predicates (`Tuned-redundancy floor` or `Winning-combo floor`); the fix surface PR #513 covers (gate the floor predicates on GC/true-infinite/tutor density) would correctly demote MOST of them.
+
+**Food and Fellowship is a new B4 FP catch in this scan** — not in R1, R2, R3, R5, or R7's tables. Same shape as Squirreled Away (R3): the Food-token consume-once detector flags 50+ "win lines" off a stock food precon, and Rapacious Guest + Gilded Goose lifts the bracket via Winning-combo floor. Worth adding to the cumulative B4-FP tracker.
+
+**Eternal Bargain (Oloro) is the only B1 case in the corpus.** Possibly an over-aggressive B1 floor on lifegain archetypes with no clean wincon — recommend a separate lifegain-archetype calibration probe.
