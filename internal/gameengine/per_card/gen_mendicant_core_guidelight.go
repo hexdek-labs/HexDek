@@ -36,7 +36,13 @@ func registerMendicantCoreGuidelight(r *Registry) {
 	r.OnETB("Mendicant Core, Guidelight", mendicantETB)
 	r.OnTrigger("Mendicant Core, Guidelight", "combat_begin", mendicantBeginCombat)
 	r.OnTrigger("Mendicant Core, Guidelight", "upkeep_controller", mendicantSpeedTick)
-	r.OnTrigger("Mendicant Core, Guidelight", "spell_cast", mendicantSpellCast)
+	// spell_cast handling lives in custom_mendicant_core_guidelight.go's
+	// mendicantMaxSpeedCopy — that handler pays the {1} and pushes the
+	// copy StackItem. R60 Phase 2I Class C cleanup dropped the
+	// duplicate `spell_cast` registration that used to live here (the
+	// local observation-only handler double-fired alongside the custom
+	// handler on every artifact cast at max speed, emitting a spurious
+	// event before the real work happened).
 }
 
 func mendicantETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -122,31 +128,6 @@ func mendicantSpeedTick(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 		}
 		perm.Flags[key] = s.Life
 	}
-}
-
-func mendicantSpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
-	const slug = "mendicant_max_speed_copy_artifact"
-	if gs == nil || perm == nil || ctx == nil {
-		return
-	}
-	if perm.Flags == nil || perm.Flags["speed"] < 4 {
-		return
-	}
-	casterSeat, _ := ctx["caster_seat"].(int)
-	if casterSeat != perm.Controller {
-		return
-	}
-	card, _ := ctx["card"].(*gameengine.Card)
-	if card == nil || !cardHasType(card, "artifact") {
-		return
-	}
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"copied": card.DisplayName(),
-	})
-	// The actual copy + pay-{1} decision is wired in
-	// custom_mendicant_core_guidelight.go (R49 batchD); it observes the
-	// same spell_cast event and pushes a copy StackItem when at max
-	// speed and mana is available.
 }
 
 func snapshotKey(seatIdx int) string {

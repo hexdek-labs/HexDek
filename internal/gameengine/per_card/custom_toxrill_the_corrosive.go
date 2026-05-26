@@ -6,8 +6,13 @@ import (
 
 // registerToxrillTheCorrosiveCustom wires Toxrill's slime-counter end-
 // step trigger and the {U}{B}, remove-a-slime-counter draw activation.
-// The auto-generated stub registerToxrillTheCorrosive in
-// gen_toxrill_the_corrosive.go remains an inert breadcrumb.
+// The auto-generated stub gen_toxrill_the_corrosive.go was deleted in
+// R60 Phase 2I (PR #498 Class C follow-up) — the stub's "trigger 1"
+// drew a card on every end_step and minted a "1/1 Token Token" with
+// types ["token","creature","token"], while the custom handler does
+// the correct slime-counter + destroy work. Both handlers fired on
+// end_step (overlap on the same trigger event), so the broken stub
+// activated alongside the correct one in production runs.
 //
 // Oracle text (Innistrad: Crimson Vow, {4}{U}{B}{B}):
 //
