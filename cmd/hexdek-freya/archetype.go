@@ -73,6 +73,19 @@ type classifyContext struct {
 	deathTriggers  int
 	graveyardCount int
 	selfMillCount  int
+	// graveyardSizePayoffCount: cards that scale a measured value with
+	// the size or contents of YOUR graveyard. Distinct from
+	// graveyardCount (which conflates recursion + self-mill enablers)
+	// and selfMillCount (which only counts mill/dredge/surveil
+	// enablers). Drives the Selfmill fingerprint Require gate — a
+	// deck with 8 self-mill enablers but zero scaling payoffs (a pure
+	// "fill your graveyard then do nothing with it" deck) isn't
+	// Selfmill, it's confused. Examples: Splinterfright / Lhurgoyf /
+	// Mortivore (oracle "X equal to ... in your graveyard"), Jarad /
+	// Sutured Ghoul (creature stat scaling), Bonehoard (equipment
+	// scaling), Genesis Wave / Crucible-class graveyard-replay
+	// engines.
+	graveyardSizePayoffCount int
 	equipAuraCount int
 	spellCopyCount int
 	landfallCount  int
@@ -223,8 +236,20 @@ var archetypeFingerprints = []archetypeFingerprint{
 		// a meaningful drain payoff cluster OR a real graveyard presence
 		// so it doesn't poach generic creature midrange decks.
 		Name: "Aristocrats",
+		// R60 (post-#469): RoleRecursion enters the Ratios at a
+		// modest 0.06 — Aristocrats decks do run recursion (persist
+		// creatures, Reassembling Skeleton, Bloodghast, Gravecrawler,
+		// Phyrexian Reclamation, Victimize) but the engine center of
+		// gravity is the sac outlet + death-trigger payoff cluster,
+		// not the recursion density itself. 0.06 reflects ~6 of 99
+		// cards with the Recursion tag in a Korvold/Meren-as-aristo/
+		// Teysa shell.
 		Ratios: map[RoleTag]float64{
-			RoleThreat: 0.10, RoleCombo: 0.06, RoleDraw: 0.10, RoleRamp: 0.08,
+			RoleThreat:    0.10,
+			RoleCombo:     0.06,
+			RoleDraw:      0.10,
+			RoleRamp:      0.08,
+			RoleRecursion: 0.06,
 		},
 		Require: func(ctx *classifyContext) bool {
 			if ctx.sacrificeCount >= 5 && ctx.deathTriggers >= 3 {
@@ -238,9 +263,14 @@ var archetypeFingerprints = []archetypeFingerprint{
 			}
 			// Persist / GY-recursion shape: bodies in the GY power the
 			// sac engine (Reassembling Skeleton + Phyrexian Altar +
-			// Pitiless Plunderer). Requires a real GY presence so it
-			// doesn't poach generic midrange creature decks.
-			if ctx.sacrificeCount >= 3 && ctx.deathTriggers >= 3 && ctx.graveyardCount >= 4 {
+			// Pitiless Plunderer). R60 (post-#469): adds an explicit
+			// RoleRecursion >= 0.04 requirement so this arm is
+			// genuinely recursion-shape-aware — pre-r60 it accepted
+			// any deck with sacrificeCount>=3 + deathTriggers>=3 +
+			// graveyardCount>=4, where graveyardCount's conflation
+			// with self_mill effects let pure-mill decks slip in.
+			if ctx.sacrificeCount >= 3 && ctx.deathTriggers >= 3 &&
+				ctx.graveyardCount >= 4 && ctx.roleRatios[RoleRecursion] >= 0.04 {
 				return true
 			}
 			return false
@@ -295,6 +325,46 @@ var archetypeFingerprints = []archetypeFingerprint{
 			return ctx.graveyardCount >= 6 &&
 				ctx.selfMillCount >= 2 &&
 				ctx.roleRatios[RoleRecursion] >= 0.05
+		},
+	},
+	{
+		// R60 (post-#469): new Selfmill fingerprint. ArchetypeSelfmill
+		// already exists as a downstream consumer tag in
+		// internal/hat/poker.go (driving distinct MCTS weight profiles
+		// + plan state machines vs Reanimator), but freya never
+		// produced this classification — Sidisi-Brood-Tyrant /
+		// Bruvac / Phenax / Splinterfright / Tasigur decks fell
+		// through to Reanimator or Midrange. The new fingerprint
+		// targets the "fill graveyard, scale a payoff" archetype:
+		// heavy self-mill enablers + at least one graveyard-size
+		// scaling payoff (Splinterfright's "X equal to creature
+		// cards in your graveyard", Jarad's commander ability,
+		// Sidisi's "create a zombie when you mill a creature"
+		// embedded payoff via the canonical-commander match).
+		//
+		// Distinguishes from Reanimator via RoleRecursion target:
+		// Selfmill runs SOME recursion (Eternal Witness, Splendid
+		// Reclamation) but the engine center of gravity is the mill-
+		// then-scale path, not the reanimate-then-attack path. 0.06
+		// recursion target vs Reanimator's 0.12 means a deck with
+		// ~5% recursion lands closer to Selfmill via Euclidean
+		// distance, while a Meren-style 12% recursion deck stays in
+		// Reanimator.
+		Name: "Selfmill",
+		Ratios: map[RoleTag]float64{
+			RoleRecursion: 0.06,
+			RoleDraw:      0.10,
+			RoleRamp:      0.08,
+			RoleThreat:    0.08,
+		},
+		Require: func(ctx *classifyContext) bool {
+			// Strong self-mill enabler density AND at least one
+			// graveyard-size scaling payoff. Without the payoff a
+			// deck is just self-milling for value (which is the
+			// Reanimator shape — graveyard is fuel for casting
+			// from); WITH the payoff the graveyard size is a
+			// resource being measured, which is the Selfmill shape.
+			return ctx.selfMillCount >= 6 && ctx.graveyardSizePayoffCount >= 1
 		},
 	},
 	{
@@ -636,6 +706,23 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 			ctx.selfMillCount += qp.Qty
 		}
 
+		// Graveyard-size payoff detection. "equal to the number of
+		// [...] in your graveyard" / "for each [...] in your
+		// graveyard" / "[...] cards in your graveyard" + a stat-
+		// scaling verb. Excludes "opponent's graveyard" (graveyard-
+		// hate from the other side) and excludes the "from your
+		// graveyard" recursion phrasing which is already counted via
+		// IsRecursion. Sidisi/Bruvac-class self-mill commanders also
+		// register via a name match below.
+		hasGYSizeScale := (strings.Contains(ot, "equal to") || strings.Contains(ot, "for each")) &&
+			strings.Contains(ot, "in your graveyard")
+		isCanonicalSelfMillCommander := containsAny(strings.ToLower(qp.Profile.Name),
+			"sidisi", "bruvac", "phenax", "splinterfright", "lhurgoyf",
+			"tasigur", "jarad", "mortivore", "sutured ghoul")
+		if hasGYSizeScale || isCanonicalSelfMillCommander {
+			ctx.graveyardSizePayoffCount += qp.Qty
+		}
+
 		for _, t := range qp.Profile.Triggers {
 			if t == "landfall" {
 				ctx.landfallCount += qp.Qty
@@ -841,6 +928,8 @@ func buildIntent(ac *ArchetypeClassification, report *FreyaReport, ctx *classify
 		gameplan = "build a critical mass of synergistic creatures"
 	case "Reanimator":
 		gameplan = "fill the graveyard and cheat high-value threats into play"
+	case "Selfmill":
+		gameplan = "mill itself aggressively and scale graveyard-size payoffs"
 	case "Lands Matter":
 		gameplan = "abuse land drops and landfall triggers for cumulative value"
 	case "Enchantress":

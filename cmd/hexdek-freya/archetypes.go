@@ -120,6 +120,15 @@ var Archetypes = []ArchetypeDef{
 		Weight:      4,
 	},
 	{
+		Name:        "Selfmill",
+		Description: "Aggressively self-mill, scale graveyard-size payoffs",
+		Keywords:    []string{"mill", "dredge", "surveil", "equal to the number of", "for each", "in your graveyard"},
+		KeyCards:    []string{"Splinterfright", "Lhurgoyf", "Mortivore", "Sutured Ghoul", "Sidisi, Brood Tyrant", "Bruvac the Grandiloquent", "Phenax, God of Deception", "Tasigur, the Golden Fang"},
+		Triggers:    []string{"mill", "dies"},
+		Effects:     []string{"self_mill"},
+		Weight:      3,
+	},
+	{
 		Name:        "Lands Matter",
 		Description: "Land-based value engine — landfall, land sacrifice, land reanimation",
 		Keywords:    []string{"landfall", "whenever a land", "sacrifice a land", "return all land", "land enters", "explore", "dredge"},

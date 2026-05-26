@@ -43,10 +43,19 @@ func TestAristocratsRequire_DrainPayoffShapeAccepted(t *testing.T) {
 
 func TestAristocratsRequire_PersistRecursionShapeAccepted(t *testing.T) {
 	fp := findAristocratsFingerprint(t)
-	// Reassembling Skeleton / Bloodghast / Gravecrawler shells.
-	ctx := &classifyContext{sacrificeCount: 3, deathTriggers: 3, graveyardCount: 4}
+	// Reassembling Skeleton / Bloodghast / Gravecrawler shells. The
+	// persist creatures themselves tag as Recursion (their "return
+	// from graveyard" oracle text triggers analysis.go's IsRecursion
+	// flag), so the r60 Recursion-aware Require gate needs the
+	// roleRatios map populated to match the deck shape.
+	ctx := &classifyContext{
+		sacrificeCount: 3,
+		deathTriggers:  3,
+		graveyardCount: 4,
+		roleRatios:     map[RoleTag]float64{RoleRecursion: 0.05},
+	}
 	if !fp.Require(ctx) {
-		t.Fatalf("persist-recursion shape sac=3 deaths=3 gy=4 must classify Aristocrats")
+		t.Fatalf("persist-recursion shape sac=3 deaths=3 gy=4 recursion=0.05 must classify Aristocrats")
 	}
 }
 
