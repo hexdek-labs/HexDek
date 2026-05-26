@@ -205,9 +205,14 @@ func main() {
 	if *pprofFlag {
 		runtime.GC()
 		if f, err := os.Create("/tmp/hexdek_heap_baseline.prof"); err == nil {
-			rpprof.WriteHeapProfile(f)
-			f.Close()
-			log.Println("baseline heap profile written to /tmp/hexdek_heap_baseline.prof")
+			if werr := rpprof.WriteHeapProfile(f); werr != nil {
+				log.Printf("baseline heap profile write failed: %v", werr)
+			}
+			if cerr := f.Close(); cerr != nil {
+				log.Printf("baseline heap profile close failed: %v", cerr)
+			} else {
+				log.Println("baseline heap profile written to /tmp/hexdek_heap_baseline.prof")
+			}
 		}
 	}
 
@@ -369,20 +374,33 @@ func main() {
 	if *pprofFlag {
 		if cpuProfFile != nil {
 			rpprof.StopCPUProfile()
-			cpuProfFile.Close()
-			log.Println("CPU profile written to /tmp/hexdek_cpu.prof")
+			if cerr := cpuProfFile.Close(); cerr != nil {
+				log.Printf("CPU profile close: %v", cerr)
+			} else {
+				log.Println("CPU profile written to /tmp/hexdek_cpu.prof")
+			}
 		}
 		runtime.GC()
 		if f, err := os.Create("/tmp/hexdek_heap_final.prof"); err == nil {
-			rpprof.WriteHeapProfile(f)
-			f.Close()
-			log.Println("final heap profile written to /tmp/hexdek_heap_final.prof")
+			if werr := rpprof.WriteHeapProfile(f); werr != nil {
+				log.Printf("final heap profile write: %v", werr)
+			}
+			if cerr := f.Close(); cerr != nil {
+				log.Printf("final heap profile close: %v", cerr)
+			} else {
+				log.Println("final heap profile written to /tmp/hexdek_heap_final.prof")
+			}
 		}
 		if p := rpprof.Lookup("allocs"); p != nil {
 			if f, err := os.Create("/tmp/hexdek_allocs.prof"); err == nil {
-				p.WriteTo(f, 0)
-				f.Close()
-				log.Println("allocs profile written to /tmp/hexdek_allocs.prof")
+				if werr := p.WriteTo(f, 0); werr != nil {
+					log.Printf("allocs profile write: %v", werr)
+				}
+				if cerr := f.Close(); cerr != nil {
+					log.Printf("allocs profile close: %v", cerr)
+				} else {
+					log.Println("allocs profile written to /tmp/hexdek_allocs.prof")
+				}
 			}
 		}
 	}

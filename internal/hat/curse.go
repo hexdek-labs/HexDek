@@ -2,6 +2,7 @@ package hat
 
 import (
 	"encoding/json"
+	"fmt"
 	"math"
 	"math/rand"
 	"os"
@@ -670,7 +671,9 @@ func sanitizeKey(key string) string {
 
 // SavePool writes a single pool to disk as JSON.
 func SavePool(dir string, pool *CursePool) error {
-	os.MkdirAll(dir, 0755)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("savepool: mkdir %s: %w", dir, err)
+	}
 	fname := filepath.Join(dir, sanitizeKey(pool.DeckKey)+".json")
 	data, err := json.Marshal(pool)
 	if err != nil {
@@ -696,7 +699,9 @@ func LoadPool(dir, deckKey string, rng *rand.Rand) (*CursePool, error) {
 
 // SaveAllPools writes every pool to disk.
 func SaveAllPools(dir string, pools map[string]*CursePool) error {
-	os.MkdirAll(dir, 0755)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("saveallpools: mkdir %s: %w", dir, err)
+	}
 	for _, pool := range pools {
 		if err := SavePool(dir, pool); err != nil {
 			return err

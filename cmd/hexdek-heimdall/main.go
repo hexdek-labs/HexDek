@@ -125,7 +125,9 @@ func runAnalytics(decksPath, astPath, oraclePath string, seed int64, seats, maxT
 		log.Fatalf("meta: %v", err)
 	}
 	if oraclePath != "" {
-		meta.SupplementWithOracleJSON(oraclePath)
+		if err := meta.SupplementWithOracleJSON(oraclePath); err != nil {
+			log.Printf("warn: oracle supplement failed (%s): %v — metadata may be incomplete", oraclePath, err)
+		}
 	}
 	fmt.Printf("%d cards in %s\n", corpus.Count(), time.Since(t0).Round(time.Millisecond))
 
@@ -529,7 +531,9 @@ func runSpectator(decksPath, astPath, oraclePath string, seed int64, seats, maxT
 		log.Fatalf("meta: %v", err)
 	}
 	if oraclePath != "" {
-		meta.SupplementWithOracleJSON(oraclePath)
+		if err := meta.SupplementWithOracleJSON(oraclePath); err != nil {
+			log.Printf("warn: oracle supplement failed (%s): %v — metadata may be incomplete", oraclePath, err)
+		}
 	}
 	fmt.Printf("%d cards in %s\n", corpus.Count(), time.Since(t0).Round(time.Millisecond))
 

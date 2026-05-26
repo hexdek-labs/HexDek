@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"hash/fnv"
 	"io"
+	"log"
 	"os"
 	"sync"
 )
@@ -133,7 +134,10 @@ func (di *DeckIndex) Flush() {
 	if err != nil {
 		return
 	}
-	os.WriteFile(di.path, data, 0644)
+	if err := os.WriteFile(di.path, data, 0644); err != nil {
+		log.Printf("heimdall: write deck-index %s: %v (dirty flag preserved for retry)", di.path, err)
+		return
+	}
 	di.dirty = false
 }
 

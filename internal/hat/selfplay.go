@@ -148,10 +148,14 @@ const maxSamplesFileSize = 50 * 1024 * 1024 // 50MB — rotate and restart
 func (sp *SelfPlayManager) WriteEnrichedSamples(path string, samples []PivotEnrichedSample) error {
 	if fi, err := os.Stat(path); err == nil && fi.Size() > maxSamplesFileSize {
 		rotated := path + fmt.Sprintf(".%s", time.Now().Format("20060102-150405"))
-		os.Rename(path, rotated)
-		log.Printf("[selfplay] rotated samples file (%d MB) → %s",
-			fi.Size()/(1024*1024), filepath.Base(rotated))
-		cleanOldRotations(path, 3)
+		if rerr := os.Rename(path, rotated); rerr != nil {
+			log.Printf("[selfplay] rotate failed (%s → %s): %v — appending to existing file",
+				filepath.Base(path), filepath.Base(rotated), rerr)
+		} else {
+			log.Printf("[selfplay] rotated samples file (%d MB) → %s",
+				fi.Size()/(1024*1024), filepath.Base(rotated))
+			cleanOldRotations(path, 3)
+		}
 	}
 
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
