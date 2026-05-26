@@ -111,6 +111,26 @@ func printText(w io.Writer, r *FreyaReport) {
 	}
 	fmt.Fprintf(w, "\n")
 
+	// Land-cycle synergies. These are dual-cycle land pairs (Scattered
+	// Groves + Irrigated Farmland, etc.) that the heuristic detector
+	// flagged as determined loops via the cycling discard-cost +
+	// draw-effect cycle. Real value, but only a deliberate wincon
+	// component in Lands Matter / Reanimator / Selfmill — see
+	// archetype.go for the gated bracket-lift contribution.
+	if len(r.LandCycleSynergies) > 0 {
+		fmt.Fprintf(w, "[GRN] LAND CYCLE SYNERGIES -- incidental fixing outside Lands Matter / Reanimator / Selfmill (%d found)\n",
+			len(r.LandCycleSynergies))
+		for _, c := range r.LandCycleSynergies {
+			classTag := ""
+			if label := ComboClassLabel(c.Class); label != "" {
+				classTag = " [" + label + "]"
+			}
+			fmt.Fprintf(w, "  \xf0\x9f\x8c\xb1 %s%s\n", strings.Join(c.Cards, " + "), classTag)
+			fmt.Fprintf(w, "    %s\n", c.Description)
+		}
+		fmt.Fprintf(w, "\n")
+	}
+
 	// Finishers.
 	fmt.Fprintf(w, "[YLW] GAME FINISHERS (%d found)\n", len(r.Finishers))
 	if len(r.Finishers) == 0 {
@@ -1232,10 +1252,11 @@ type jsonReport struct {
 	Commander     string           `json:"commander,omitempty"`
 	TotalCards    int              `json:"total_cards"`
 	Legality      *LegalityReport  `json:"legality,omitempty"`
-	TrueInfinites []jsonCombo      `json:"true_infinites"`
-	Determined    []jsonCombo   `json:"determined_loops"`
-	Finishers     []jsonCombo   `json:"finishers"`
-	Synergies     []jsonCombo   `json:"synergies"`
+	TrueInfinites      []jsonCombo `json:"true_infinites"`
+	Determined         []jsonCombo `json:"determined_loops"`
+	Finishers          []jsonCombo `json:"finishers"`
+	Synergies          []jsonCombo `json:"synergies"`
+	LandCycleSynergies []jsonCombo `json:"land_cycle_synergies,omitempty"`
 	ComboNotes    []string      `json:"combo_notes,omitempty"`
 	ManaCurve     jsonManaCurve `json:"mana_curve"`
 	ColorBalance  jsonColors    `json:"color_balance"`
@@ -1530,10 +1551,11 @@ func printJSON(w io.Writer, r *FreyaReport) {
 		Commander:     r.Commander,
 		TotalCards:    r.TotalCards,
 		Legality:      r.Legality,
-		TrueInfinites: comboSlice(r.TrueInfinites),
-		Determined:    comboSlice(r.Determined),
-		Finishers:     comboSlice(r.Finishers),
-		Synergies:     comboSlice(r.Synergies),
+		TrueInfinites:      comboSlice(r.TrueInfinites),
+		Determined:         comboSlice(r.Determined),
+		Finishers:          comboSlice(r.Finishers),
+		Synergies:          comboSlice(r.Synergies),
+		LandCycleSynergies: comboSlice(r.LandCycleSynergies),
 		ComboNotes:    r.ComboNotes,
 		ManaCurve: jsonManaCurve{
 			Distribution: r.ManaCurve,

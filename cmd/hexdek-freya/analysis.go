@@ -62,6 +62,7 @@ type CardProfile struct {
 	IsMassWipe  bool // destroys/exiles all
 	IsRecursion bool // returns cards from graveyard
 	IsLand      bool // card is a land
+	HasCycling  bool // card has the Cycling keyword (or basic/typecycling variant)
 
 	// Blink/Flicker detection
 	IsBlinker   bool // exiles and returns permanents (blink/flicker effect)
@@ -139,6 +140,18 @@ type FreyaReport struct {
 	Determined    []ComboResult
 	Finishers     []ComboResult
 	Synergies     []ComboResult
+
+	// LandCycleSynergies holds pairs (or N-tuples) of dual-cycle lands
+	// that the heuristic loop detector would have classified as
+	// determined loops via their shared discard-cost + draw-effect
+	// signature. The synergy is real (a slow-fetch / cycling-land cycle
+	// is genuinely a small value engine and a fixing tool), but it is
+	// only a deliberate wincon component in LandsMatter / Reanimator /
+	// Selfmill shells. Surfacing them in their own bucket keeps the
+	// "this deck wins via X + Y" framing from being hijacked by two
+	// fixing lands in unrelated archetypes — see archetype.go for the
+	// gated bracket-lift contribution.
+	LandCycleSynergies []ComboResult
 
 	ComboNotes []string // partial combo piece warnings
 
@@ -811,6 +824,26 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		"deals damage to each opponent") {
 		p.IsMassWipe = true
 		p.IsRemoval = true
+	}
+
+	// Cycling keyword detection. Same anchors as the value-chain
+	// detector in valuechains.go — "cycling {" matches the keyword cost
+	// line, "basic landcycling" / "typecycling" match the typed variants.
+	// Picks up dual-cycle lands (Scattered Groves, Irrigated Farmland,
+	// Sheltered Thicket, Canyon Slough, Fetid Pools, Sheltered Thicket)
+	// and slow-fetches (Onslaught / Amonkhet cycling lands that
+	// landcycling-search), which the pair-combo detector would otherwise
+	// see as a card↔card loop via the cycling discard cost + draw effect.
+	if strings.Contains(ot, "cycling {") ||
+		strings.Contains(ot, "basic landcycling") ||
+		strings.Contains(ot, "typecycling") ||
+		strings.Contains(ot, "landcycling {") ||
+		strings.Contains(ot, "swampcycling {") ||
+		strings.Contains(ot, "forestcycling {") ||
+		strings.Contains(ot, "mountaincycling {") ||
+		strings.Contains(ot, "islandcycling {") ||
+		strings.Contains(ot, "plainscycling {") {
+		p.HasCycling = true
 	}
 
 	// Check if triggers are mandatory or optional.
@@ -1531,10 +1564,84 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 	classifyComboBucket(report.Finishers)
 	classifyComboBucket(report.Synergies)
 
+	// R60: reclassify dual-cycle land pairs out of Determined into the
+	// dedicated LandCycleSynergies bucket. Scattered Groves +
+	// Irrigated Farmland (and every other dual-cycle land combination,
+	// plus Onslaught/Amonkhet landcycling lands) close a card↔card
+	// resource cycle via their cycling discard cost + draw effect — the
+	// pair detector legitimately spots this — but in non-lands-matter
+	// archetypes it's incidental fixing, not a wincon. The bucket
+	// preserves the credit (Bracket-aware lift lives in archetype.go)
+	// without letting "Scattered Groves + Irrigated Farmland" become
+	// the headline gameplan of a flicker/value deck.
+	report.Determined, report.LandCycleSynergies = extractLandCyclePairs(
+		report.Determined, profileMapByName(profiles))
+
 	// Value chain detection.
 	report.ValueChains = DetectValueChains(profiles)
 
 	return report
+}
+
+// profileMapByName builds a name→profile lookup for the post-detection
+// reclassification passes. Profiles are uniqueing by Name (deck-list
+// duplicates collapse upstream of CardProfile assembly).
+func profileMapByName(profiles []CardProfile) map[string]CardProfile {
+	m := make(map[string]CardProfile, len(profiles))
+	for _, p := range profiles {
+		m[p.Name] = p
+	}
+	return m
+}
+
+// extractLandCyclePairs walks a determined-combo slice and pulls any
+// combo whose every card is a Land with the Cycling keyword into a
+// separate bucket. Returns the surviving determined slice and the
+// extracted land-cycle synergies. Membership requires HasCycling on
+// every card (so plain dual lands paired with a cycling spell don't
+// get pulled — only the all-land-cycle case where the "loop" is
+// genuinely just two fixing lands sharing a draw-on-cycle wiring).
+func extractLandCyclePairs(determined []ComboResult, profiles map[string]CardProfile) ([]ComboResult, []ComboResult) {
+	if len(determined) == 0 {
+		return determined, nil
+	}
+	kept := make([]ComboResult, 0, len(determined))
+	var extracted []ComboResult
+	for _, c := range determined {
+		if isLandCyclePair(c, profiles) {
+			out := c
+			out.LoopType = "land_cycle_synergy"
+			out.Class = ComboClassLandCycleSynergy
+			out.Description = "Dual-cycle land pair shares a discard-cost + draw-effect cycle. " +
+				"Real fixing/value, but only a deliberate wincon component in " +
+				"Lands Matter / Reanimator / Selfmill shells."
+			extracted = append(extracted, out)
+			continue
+		}
+		kept = append(kept, c)
+	}
+	return kept, extracted
+}
+
+// isLandCyclePair returns true when every card in the combo is a
+// Land with the Cycling keyword. Single-card combos can't form a
+// cycle so they short-circuit false; the loop detector never emits
+// single-card combos but the guard keeps the helper safe under future
+// refactors.
+func isLandCyclePair(c ComboResult, profiles map[string]CardProfile) bool {
+	if len(c.Cards) < 2 {
+		return false
+	}
+	for _, name := range c.Cards {
+		p, ok := profiles[name]
+		if !ok {
+			return false
+		}
+		if !p.IsLand || !p.HasCycling {
+			return false
+		}
+	}
+	return true
 }
 
 // ---------------------------------------------------------------------------

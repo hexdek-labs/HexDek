@@ -588,7 +588,7 @@ func ClassifyArchetype(report *FreyaReport, qtyProfiles []CardProfileQty, oracle
 
 	ac.Signals = buildSignals(ctx, ac)
 	ac.Intent = buildIntent(ac, report, ctx)
-	ac.Bracket, ac.BracketLabel, ac.BracketRationale = estimateBracket(ctx, report)
+	ac.Bracket, ac.BracketLabel, ac.BracketRationale = estimateBracket(ctx, report, ac.Primary)
 	ac.PlaysLike, ac.PlaysLikeLabel = estimatePlaysLike(ctx, report)
 	ac.GameChangerCount = ctx.gameChangerCount
 	ac.GameChangerCards = ctx.gameChangerNames
@@ -979,7 +979,21 @@ func buildIntent(ac *ArchetypeClassification, report *FreyaReport, ctx *classify
 	return fmt.Sprintf("This is a %s that wants to %s.%s%s", label, gameplan, disguise, speed)
 }
 
-func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string, *BracketRationale) {
+// landCycleSynergyArchetypes lists primary archetypes where a
+// dual-cycle land pair (Scattered Groves + Irrigated Farmland, etc.)
+// is a deliberate wincon component — Lands Matter strats use the
+// cycle as a land-into-graveyard pipeline that Crucible / Excavator /
+// Splendid Reclamation cash in; Reanimator uses the cycle as a
+// targeted-discard outlet for the reanimate target; Selfmill uses
+// the discard cost as a self-mill enabler. In every other archetype
+// the cycle is incidental fixing and must NOT lift bracket.
+var landCycleSynergyArchetypes = map[string]bool{
+	"Lands Matter": true,
+	"Reanimator":   true,
+	"Selfmill":     true,
+}
+
+func estimateBracket(ctx *classifyContext, report *FreyaReport, primaryArchetype string) (int, string, *BracketRationale) {
 	rationale := &BracketRationale{}
 	addScore := func(name, tier, measurement string, evidence []string, points int) {
 		rationale.RawScore += points
@@ -1018,13 +1032,36 @@ func estimateBracket(ctx *classifyContext, report *FreyaReport) (int, string, *B
 		addScore("Tutor density", "4-7%", fmt.Sprintf("%.0f%% of nonlands", ctx.tutorDensity*100), nil, 1)
 	}
 
+	// Combo line scoring. Land-cycle synergies are reclassified out of
+	// Determined upstream (see analysis.go extractLandCyclePairs), so
+	// ctx.comboCount already excludes them. In the LandsMatter /
+	// Reanimator / Selfmill archetypes the cycle IS the wincon
+	// component, so we add it back; everywhere else it stays
+	// out of the bracket-lifting count.
+	effectiveComboCount := ctx.comboCount
+	lcs := len(report.LandCycleSynergies)
+	if lcs > 0 && landCycleSynergyArchetypes[primaryArchetype] {
+		effectiveComboCount += lcs
+	}
 	switch {
-	case ctx.comboCount >= 5:
-		addScore("Combo lines", "5+", fmt.Sprintf("%d true-infinite/determined loops", ctx.comboCount), nil, 3)
-	case ctx.comboCount >= 2:
-		addScore("Combo lines", "2-4", fmt.Sprintf("%d true-infinite/determined loops", ctx.comboCount), nil, 2)
-	case ctx.comboCount >= 1:
-		addScore("Combo lines", "1", fmt.Sprintf("%d true-infinite/determined loop", ctx.comboCount), nil, 1)
+	case effectiveComboCount >= 5:
+		addScore("Combo lines", "5+", fmt.Sprintf("%d true-infinite/determined loops", effectiveComboCount), nil, 3)
+	case effectiveComboCount >= 2:
+		addScore("Combo lines", "2-4", fmt.Sprintf("%d true-infinite/determined loops", effectiveComboCount), nil, 2)
+	case effectiveComboCount >= 1:
+		addScore("Combo lines", "1", fmt.Sprintf("%d true-infinite/determined loop", effectiveComboCount), nil, 1)
+	}
+	if lcs > 0 {
+		kind := "note"
+		note := fmt.Sprintf("%d land-cycle synergy pair(s) excluded from combo count (incidental fixing outside Lands Matter / Reanimator / Selfmill)", lcs)
+		if landCycleSynergyArchetypes[primaryArchetype] {
+			note = fmt.Sprintf("%d land-cycle synergy pair(s) counted toward combo lines (archetype %q uses land-cycles as wincon component)", lcs, primaryArchetype)
+		}
+		rationale.Signals = append(rationale.Signals, BracketSignal{
+			Name: "Land-cycle synergy",
+			Kind: kind,
+			Note: note,
+		})
 	}
 
 	switch {

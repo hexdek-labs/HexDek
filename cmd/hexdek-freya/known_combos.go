@@ -23,6 +23,7 @@ const (
 	ComboClassManaSink        = "mana_sink"         // payoff for infinite mana (Staff of Domination solo)
 	ComboClassCombatFinisher  = "combat_finisher"   // pump/anthem-driven lethal swing (Craterhoof package)
 	ComboClassLockdown        = "lockdown"          // prison/lock loops that don't kill but prevent opponents from playing (Stasis, Knowledge Pool, Helm of Obedience + RIP, Eternity Vessel + clones)
+	ComboClassLandCycleSynergy = "land_cycle_synergy" // dual-cycle land pair (Scattered Groves + Irrigated Farmland) — real value, but only a deliberate wincon component in LandsMatter/Reanimator/Selfmill shells; in everything else it's incidental fixing
 	ComboClassUnknown         = "unknown"           // unclassified — fallback for unmatched imports
 )
 
@@ -61,6 +62,8 @@ func ComboClassLabel(class string) string {
 		return "Combat Finisher"
 	case ComboClassLockdown:
 		return "Lockdown"
+	case ComboClassLandCycleSynergy:
+		return "Land Cycle Synergy"
 	}
 	return ""
 }
