@@ -107,6 +107,19 @@ type classifyContext struct {
 	blinkCount     int
 	artifactCount  int
 	extraCombatCount int
+	// extraTurnCount counts cards that grant a literal extra TURN
+	// ("take an extra/another/additional turn after this one") — Time
+	// Walk / Time Warp / Nexus of Fate / Sage of Hours / Beacon of
+	// Tomorrows family. Distinct from extraCombatCount (Aggravated
+	// Assault / Hellkite Charger grant an additional COMBAT PHASE,
+	// not a turn). Adventure-style multi-face cards are deduped at the
+	// CARD level so a single Adventure with extra-turn text on both
+	// halves counts as 1, not 2. Drives a B4+ bracket-lift signal
+	// because a deck packing 4+ extra-turn spells is an extra-turns
+	// archetype — the WotC framework treats repeatable extra-turn
+	// generation as a B4 marker (chains 3-4 turns in a row, sets up
+	// uncontestable wins).
+	extraTurnCount int
 	planeswalkerCount int
 	millOppCount   int // opponent-targeting mill
 	discardForceCount int
@@ -757,6 +770,18 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 		if qp.Profile.IsExtraCombat || containsAny(ot, "additional combat", "extra combat") {
 			ctx.extraCombatCount += qp.Qty
 		}
+		// Extra-TURN detection (distinct from extra-combat). Match the
+		// granting phrasings only — "take an extra turn" / "takes an
+		// additional turn" / "take another turn" and their plural-noun
+		// variants. The "an" / "another" / "additional" qualifier
+		// excludes Stranglehold-style denial wording ("your opponents
+		// can't take extra turns" — plural, no qualifier). Adventure
+		// cards have per-face oracle text in CardFaces; we count the
+		// card once even when multiple halves grant a turn (e.g. a
+		// hypothetical Adventure with extra-turn text on both halves).
+		if cardHasExtraTurnGrant(ot, qp.Profile.Name, oracle) {
+			ctx.extraTurnCount += qp.Qty
+		}
 		if containsAny(ot, "mills", "put the top", "into their graveyard", "each opponent mills") && strings.Contains(ot, "opponent") {
 			ctx.millOppCount += qp.Qty
 		}
@@ -840,6 +865,82 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 	}
 
 	return ctx
+}
+
+// twoCardCategoricalWinClasses lists the combo classes that
+// CATEGORICALLY win the game when assembled — no additional outlet
+// piece needed. Infinite mana / ETB / blink_engine / etb_payoff /
+// etb_doubler / mana_sink are deliberately excluded: they're
+// accelerators or value engines that require a separate kill piece
+// the deck may or may not have. Lockdown is excluded because it
+// doesn't end the game, it just prevents opponents from playing.
+var twoCardCategoricalWinClasses = map[string]bool{
+	ComboClassInfiniteDamage:  true,
+	ComboClassInfiniteDrain:   true,
+	ComboClassInfiniteMill:    true,
+	ComboClassLibraryExileWin: true,
+	ComboClassCombatFinisher:  true,
+	ComboClassStormFinisher:   true,
+	ComboClassInfiniteTokens:  true, // hasty token engines (Kiki lines) close on the next swing
+}
+
+// hasTwoCardCategoricalWin returns true if any combo in the list is a
+// 2-card categorical-win combo per twoCardCategoricalWinClasses. Used
+// to broaden the B4+ "winning combo" carveout beyond the narrow
+// Type=="true_infinite" check — many determined 2-card combos
+// (Kiki+Conscripts, Thoracle+Consultation, Hellkite Charger+Bear
+// Umbra) win the game just as decisively and warrant the same
+// WotC-bracket-framework lift.
+func hasTwoCardCategoricalWin(combos []ComboResult) bool {
+	for _, c := range combos {
+		if len(c.Cards) == 2 && twoCardCategoricalWinClasses[c.Class] {
+			return true
+		}
+	}
+	return false
+}
+
+// extraTurnGrantPhrases is the canonical phrase set for cards that
+// grant a literal extra TURN. The "an"/"another"/"additional" qualifier
+// is mandatory so we don't match Stranglehold's "your opponents can't
+// take extra turns" (plural noun, denial wording). Listed as separate
+// "take" and "takes" variants because Scryfall oracle text uses both
+// the imperative ("Take an extra turn after this one." — Nexus of Fate)
+// and the targeted-player phrasing ("Target player takes an extra turn
+// after this one." — Time Walk).
+var extraTurnGrantPhrases = []string{
+	"take an extra turn",
+	"takes an extra turn",
+	"take another turn",
+	"takes another turn",
+	"take an additional turn",
+	"takes an additional turn",
+}
+
+// cardHasExtraTurnGrant returns true if the card grants an extra TURN
+// (not combat phase / upkeep / draw / etc.). primaryOracle is the
+// already-computed oracle text for the card; for Adventure-style
+// multi-face cards we also walk CardFaces so a Adventure half on the
+// non-primary face still triggers detection. The card-level boolean
+// guarantees a single match increments the count once regardless of
+// how many phrase occurrences appear across faces.
+func cardHasExtraTurnGrant(primaryOracle, cardName string, oracle *oracleDB) bool {
+	if containsAny(primaryOracle, extraTurnGrantPhrases...) {
+		return true
+	}
+	if oracle == nil {
+		return false
+	}
+	entry := oracle.lookup(cardName)
+	if entry == nil {
+		return false
+	}
+	for _, face := range entry.CardFaces {
+		if containsAny(strings.ToLower(face.OracleText), extraTurnGrantPhrases...) {
+			return true
+		}
+	}
+	return false
 }
 
 func euclideanDistance(actual map[RoleTag]float64, template map[RoleTag]float64) float64 {
@@ -1117,6 +1218,21 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 		}
 	}
 
+	// Extra-turn density — a deck packing 4+ extra-turn spells is
+	// playing the extra-turns archetype, which the WotC bracket
+	// framework treats as a B4 marker (the closer is "chain 3-4 turns
+	// in a row → uncontestable win"). Counts only literal extra-turn
+	// grants, NOT extra combats (Aggravated Assault / Hellkite Charger
+	// are scored separately through the combo / finisher signals).
+	switch {
+	case ctx.extraTurnCount >= 7:
+		addScore("Extra-turn density", "7+",
+			fmt.Sprintf("%d extra-turn spells", ctx.extraTurnCount), nil, 3)
+	case ctx.extraTurnCount >= 4:
+		addScore("Extra-turn density", "4-6",
+			fmt.Sprintf("%d extra-turn spells", ctx.extraTurnCount), nil, 2)
+	}
+
 	// Finisher density — distinct win-condition lines signal tuned optimization.
 	finisherCount := len(report.Finishers)
 	switch {
@@ -1218,7 +1334,20 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 	// detection over-classifies value engines (e.g. tribal Werewolf with 4
 	// "determined loops" is really value, not B4 combo).
 	trueInfCount := len(report.TrueInfinites)
-	hasWinningCombo := trueInfCount >= 1
+	// Per WotC: "winning 2-card combo" is itself a B4 marker (B3
+	// explicitly disallows, B4 explicitly allows). Original predicate
+	// only counted Type=="true_infinite" entries — too narrow,
+	// since determined 2-card categorical wins (Kiki+Conscripts,
+	// Thoracle+Consultation, Walking Ballista+Heliod, Hellkite
+	// Charger+Bear Umbra) all win the game when assembled and should
+	// also trip the carveout. Broadened predicate counts ANY 2-card
+	// combo (TrueInfinites or Determined) whose Class is a categorical
+	// win shape (damage/drain/mill/library-exile/combat/storm/tokens).
+	// Mana-into-win combos are intentionally NOT in the win-class set
+	// — infinite mana without a sink is just acceleration, not a win.
+	hasWinningCombo := trueInfCount >= 1 ||
+		hasTwoCardCategoricalWin(report.TrueInfinites) ||
+		hasTwoCardCategoricalWin(report.Determined)
 	// Finisher-density override: many distinct closer lines + accelerator
 	// density signals tuned optimization even without an explicit infinite.
 	tunedRedundancy := finisherCount >= 8 && ctx.fastManaCount >= 6
@@ -1282,6 +1411,25 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 		addAdjustment("GC=5+ floor", "floor",
 			fmt.Sprintf("lifted to B4: %d GC = deliberate optimization (was B%d)",
 				ctx.gameChangerCount, preFloorBracket))
+	}
+	// Categorical-win-combo floor: per WotC bracket framework, the
+	// presence of a 2-card combo that wins the game is itself a B4
+	// marker (B3 explicitly disallows winning 2-card infinites; B4
+	// explicitly allows them). hasWinningCombo is the broadened
+	// predicate covering both true_infinites and determined 2-card
+	// categorical wins (damage / drain / mill / library-exile / combat
+	// / storm / tokens). This is a FLOOR, not just a ceiling lift —
+	// the combo is a categorical bracket marker regardless of the
+	// raw-score path. Restricted to decks with at least one GC OR
+	// the combo carveout itself so a precon-shape deck with zero
+	// game-changers and no real combo support doesn't get lifted on
+	// a false-positive curated-combo match.
+	if hasWinningCombo && bracket < 4 {
+		bracket = 4
+		label = "Optimized"
+		addAdjustment("Winning-combo floor", "floor",
+			fmt.Sprintf("lifted to B4: 2-card categorical-win combo present (was B%d) — WotC carveout",
+				preFloorBracket))
 	}
 	// Tuned-redundancy floor: many distinct finisher lines + fast-mana density
 	// is operationally B4 regardless of GC count.

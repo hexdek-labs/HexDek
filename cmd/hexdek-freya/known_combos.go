@@ -669,6 +669,32 @@ var KnownCombos = []KnownCombo{
 		Stops:       []string{"Remove Vizier"},
 	},
 
+	// ── Extra-Combat Categorical Wins (R60) ──
+	// These are 2-card determined wins that loop combat phases for
+	// infinite attacks. They categorically win on the swing and warrant
+	// the same B4+ carveout as Kiki / Thoracle / Walking Ballista lines
+	// (per WotC: "winning 2-card combo" is itself a B4 marker).
+	{
+		Name:        "Hellkite Charger + Bear Umbra",
+		Pieces:      []string{"Hellkite Charger", "Bear Umbra"},
+		Type:        "determined",
+		Class:       ComboClassInfiniteDamage,
+		Mandatory:   false,
+		Description: "Attack with Hellkite Charger (or any creature) → Bear Umbra untaps all your lands when its enchanted creature attacks. Pay {5}{R}{R} for an additional combat phase. Repeat until lethal — infinite combats, infinite damage.",
+		Outlets:     []string{}, // the loop itself is the kill
+		Stops:       []string{"Remove Hellkite Charger before declare-attackers", "Remove Bear Umbra (loses the untap engine)", "Sweep board mid-loop"},
+	},
+	{
+		Name:        "Aggravated Assault + Bear Umbra",
+		Pieces:      []string{"Aggravated Assault", "Bear Umbra"},
+		Type:        "determined",
+		Class:       ComboClassInfiniteDamage,
+		Mandatory:   false,
+		Description: "Attack with any creature equipped with Bear Umbra → untap all lands → pay {5} for Aggravated Assault's additional combat phase. Infinite combats, infinite damage.",
+		Outlets:     []string{},
+		Stops:       []string{"Remove Aggravated Assault", "Remove Bear Umbra", "Sweep board"},
+	},
+
 	// ─────────────────────────────────────────────────────────────────────
 	// 4-CARD COMBOS (R60 sweep)
 	// ─────────────────────────────────────────────────────────────────────
