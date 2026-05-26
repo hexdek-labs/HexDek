@@ -1149,6 +1149,21 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 		})
 	}
 
+	// R60: land_value cluster. The main pass skips lands at line 928,
+	// so cycling/slow-fetch lands and the land-payoff package never
+	// surface as a deck-shape signal. land_value is computed separately
+	// across BOTH lands and nonlands: producer = cycle-land or self-
+	// sacrificing/self-mill land (cycle-lands feed the graveyard for
+	// the rest of the package); amplifier = a Crucible-style replay
+	// engine (play-lands-from-graveyard or extra-land-drop), which is
+	// the chain center that turns "cycled land in graveyard" into
+	// recurring tempo; payoff = landfall trigger or lands-in-
+	// graveyard scaling effect (Tatyova, Aesi, Omnath, Splendid
+	// Reclamation, Field of the Dead, Lord Windgrace).
+	if cluster := computeLandValueCluster(report); cluster != nil {
+		dp.SynergyClusters = append(dp.SynergyClusters, *cluster)
+	}
+
 	// Sort by score descending
 	sort.Slice(dp.SynergyClusters, func(i, j int) bool {
 		return dp.SynergyClusters[i].Score > dp.SynergyClusters[j].Score
@@ -1157,6 +1172,185 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 	// Cap at 5 clusters
 	if len(dp.SynergyClusters) > 5 {
 		dp.SynergyClusters = dp.SynergyClusters[:5]
+	}
+}
+
+// landValuePayoffNames is the curated card-name set of canonical
+// lands-matter payoffs that the substring detector below may miss
+// when oracle text doesn't include the exact "landfall" / "land
+// from your graveyard" anchors. These are name-match anchors, not a
+// blocklist — the substring scan still runs and adds cards
+// independently.
+var landValuePayoffNames = map[string]bool{
+	"tatyova, benthic druid":          true,
+	"aesi, tyrant of gyre strait":     true,
+	"omnath, locus of creation":       true,
+	"omnath, locus of rage":           true,
+	"lord windgrace":                  true,
+	"field of the dead":               true,
+	"splendid reclamation":            true,
+	"scapeshift":                      true,
+	"the gitrog monster":              true,
+	"the gitrog, ravenous ride":       true,
+	"lotus cobra":                     true,
+	"avenger of zendikar":             true,
+	"world shaper":                    true,
+	"titania, protector of argoth":    true,
+	"titania, voice of gaea":          true,
+	"emeria, the sky ruin":            true,
+	"valakut, the molten pinnacle":    true,
+}
+
+// landValueAmplifierNames are the curated replay/extra-drop engines
+// that make a graveyard-bound cycled land come back. Substring scan
+// still runs in parallel — these catch the cards whose oracle text
+// doesn't have the obvious "play lands from your graveyard" anchor.
+var landValueAmplifierNames = map[string]bool{
+	"crucible of worlds":                  true,
+	"ramunap excavator":                   true,
+	"the gitrog monster":                  true,
+	"the gitrog, ravenous ride":           true,
+	"oracle of mul daya":                  true,
+	"azusa, lost but seeking":             true,
+	"dryad of the ilysian grove":          true,
+	"exploration":                         true,
+	"burgeoning":                          true,
+	"wayward swordtooth":                  true,
+	"lord windgrace":                      true,
+	"world shaper":                        true,
+	"life from the loam":                  true,
+	"splendid reclamation":                true,
+	"scapeshift":                          true,
+}
+
+// computeLandValueCluster surfaces the lands-matter package as a
+// single synergy cluster. Returns nil when the cluster doesn't reach
+// the 4-card floor or doesn't have at least one payoff (a pile of
+// cycle-lands without a payoff isn't a wincon — see the bracket-
+// gating note in archetype.go). Scoring follows the same producer →
+// amplifier → payoff chain model as the other R60-round-2 clusters
+// in computeSynergyClusters: pair bonus 2 between distinct roles,
+// chain bonus +3 per complete producer×amplifier×payoff triangle.
+func computeLandValueCluster(report *FreyaReport) *SynergyCluster {
+	if report == nil || len(report.Profiles) < 10 {
+		return nil
+	}
+
+	type roleEntry struct {
+		name string
+		role string // "producer" / "amplifier" / "payoff"
+	}
+	var entries []roleEntry
+	seen := map[string]bool{}
+
+	add := func(name, role string) {
+		key := name + "|" + role
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		entries = append(entries, roleEntry{name: name, role: role})
+	}
+
+	for _, p := range report.Profiles {
+		nameLower := strings.ToLower(p.Name)
+
+		// Producer: cycle-lands (the graveyard-feeder). Slow-fetches
+		// and dual-cycle lands are the canonical producers because
+		// their discard cost sends the land card to the graveyard
+		// where the amplifier can replay it.
+		if p.IsLand && p.HasCycling {
+			add(p.Name, "producer")
+		}
+
+		// Amplifier: replay engines + extra-drop enablers. Crucible
+		// of Worlds / Ramunap Excavator literally play lands from
+		// the graveyard; Azusa / Exploration / Burgeoning enable
+		// extra drops that consume the producer's output faster.
+		if landValueAmplifierNames[nameLower] {
+			add(p.Name, "amplifier")
+		}
+
+		// Payoff: landfall triggers + lands-in-graveyard scaling.
+		isPayoff := false
+		if profileHasTrigger(p, "landfall") {
+			isPayoff = true
+		}
+		if landValuePayoffNames[nameLower] {
+			isPayoff = true
+		}
+		if isPayoff {
+			add(p.Name, "payoff")
+		}
+	}
+
+	producers, amps, payoffs := 0, 0, 0
+	cardSeen := map[string]bool{}
+	var allMembers []string
+	for _, e := range entries {
+		switch e.role {
+		case "producer":
+			producers++
+		case "amplifier":
+			amps++
+		case "payoff":
+			payoffs++
+		}
+		if !cardSeen[e.name] {
+			cardSeen[e.name] = true
+			allMembers = append(allMembers, e.name)
+		}
+	}
+
+	// Floor: 4 unique cards AND at least one payoff. A pile of
+	// cycle-lands without a payoff is just fixing — see the bracket
+	// gating in archetype.go. The payoff requirement is what
+	// distinguishes a wincon package from incidental land density.
+	if len(allMembers) < 4 || payoffs == 0 {
+		return nil
+	}
+
+	// Pair-score across the three role buckets. Distinct-role pairs
+	// score 2 (chain pair); same-role pairs score 1 (redundant
+	// copies). Plus chain-completion bonus: each producer×amplifier×
+	// payoff triangle adds +3. Matches the rolesPairScore /
+	// chain-depth model in computeSynergyClusters.
+	score := 0
+	pair := func(aCount, bCount, weight int) {
+		if aCount == 0 || bCount == 0 {
+			return
+		}
+		score += aCount * bCount * weight
+	}
+	pair(producers, amps, 2)
+	pair(producers, payoffs, 2)
+	pair(amps, payoffs, 2)
+	// Same-role pairs score 1 each.
+	score += (producers * (producers - 1)) / 2
+	score += (amps * (amps - 1)) / 2
+	score += (payoffs * (payoffs - 1)) / 2
+
+	chainCount := producers
+	if amps < chainCount {
+		chainCount = amps
+	}
+	if payoffs < chainCount {
+		chainCount = payoffs
+	}
+	score += chainCount * 3
+
+	displayed := allMembers
+	if len(displayed) > 8 {
+		displayed = displayed[:8]
+	}
+
+	return &SynergyCluster{
+		Name:        "Land Value Package",
+		Cards:       displayed,
+		Theme:       "land_value",
+		Score:       score,
+		MemberCount: len(allMembers),
+		AllMembers:  allMembers,
 	}
 }
 
