@@ -172,6 +172,48 @@ func classifyZoneFlows(ot, tl string, p *CardProfile) []ZoneFlow {
 		flows = append(flows, ZoneFlow{From: "battlefield", To: "graveyard", Resource: "artifact"})
 	}
 
+	// Cycling source: cards with cycling keyword discard themselves
+	// (hand → graveyard) to draw a card. The cycling cost is real mana;
+	// the value lives in the trigger landscape (Astral Drift / Drake
+	// Haven / Lightning Rift / Ominous Seas / Faith of the Devoted /
+	// New Perspectives — every cycling deck runs ≥3 of these).
+	//
+	// Detection looks for the keyword "cycling" followed by either a
+	// cost in braces ({2}) or a typeline (basiccycling) — both real
+	// printings. The word "cycle" alone isn't enough (some cards just
+	// REFERENCE cycling without having it). Reminder text inside
+	// parens is already stripped upstream when ot comes from CleanForScan
+	// callers; for raw-ot callers the substring "cycling {" is still
+	// the right anchor because the reminder gloss says "{2}, Discard
+	// this card: Draw a card." not "cycling {2}".
+	if strings.Contains(ot, "cycling {") ||
+		strings.Contains(ot, "basic landcycling") ||
+		strings.Contains(ot, "typecycling") {
+		flows = append(flows, ZoneFlow{From: "hand", To: "graveyard", Resource: "cycle_source"})
+	}
+
+	// Cycling payoff: cards that trigger when ANY card is cycled —
+	// Astral Drift / Drake Haven / Lightning Rift / Faith of the Devoted
+	// (whenever you cycle); Astral Slide / Decree of Annihilation
+	// (whenever a player cycles); Ominous Seas (whenever you cycle or
+	// discard).
+	//
+	// CRITICAL: "when you cycle this card" is a SELF-trigger on the
+	// card's own cycling (Krosan Tusker, Eternal Dragon, Decree of
+	// Justice) — that's a CYCLE_SOURCE behavior, not a battlefield-
+	// resident payoff. We must NOT match it here. Hence the explicit
+	// "whenever" / "you've cycled" anchors, plus a "when you cycle a"
+	// (article-anchored, excludes "this card") fallback.
+	cyclePayoff := strings.Contains(ot, "whenever you cycle") ||
+		strings.Contains(ot, "whenever a player cycles") ||
+		strings.Contains(ot, "when you cycle a ") ||
+		strings.Contains(ot, "when you cycle or discard") ||
+		strings.Contains(ot, "whenever you cycle or discard") ||
+		strings.Contains(ot, "you've cycled")
+	if cyclePayoff {
+		flows = append(flows, ZoneFlow{From: "battlefield", To: "battlefield", Resource: "cycle_payoff"})
+	}
+
 	return flows
 }
 
@@ -266,6 +308,27 @@ var chainTemplates = []chainTemplate{
 		Steps: []chainStepPattern{
 			{Label: "PLACE", From: "battlefield", To: "battlefield", Resource: "counter"},
 			{Label: "PAYOFF", From: "battlefield", To: "battlefield", Resource: "counter_payoff"},
+		},
+	},
+	{
+		// Cycling Engine (R60). The chain is a tight 2-step pipeline:
+		// hand → graveyard via cycling cost, then battlefield-resident
+		// payoff observes the cycle event. Drake Haven / Astral Drift /
+		// Lightning Rift / Ominous Seas / Faith of the Devoted / New
+		// Perspectives are the canonical payoffs; any card with a
+		// cycling cost feeds the source step.
+		//
+		// Like Spellslinger and Storm engines, the deck wins through
+		// REPEATED execution of the chain — one Astral Drift trigger
+		// is a Cloudshift; a chain of 10 cycling triggers in one turn
+		// is a board reset + lethal swing. The redundancy rating in
+		// matchChainTemplate captures how many of each step a deck
+		// runs (a 5-source/2-payoff deck is MEDIUM-redundancy;
+		// 12-source/4-payoff is HIGH).
+		Name: "Cycling Engine",
+		Steps: []chainStepPattern{
+			{Label: "CYCLE", From: "hand", To: "graveyard", Resource: "cycle_source"},
+			{Label: "PAYOFF", From: "battlefield", To: "battlefield", Resource: "cycle_payoff"},
 		},
 	},
 }
@@ -449,6 +512,10 @@ var engineRationaleByName = map[string]struct {
 	"Counters Matter Engine": {
 		Trigger:    "+1/+1 (or other) counters being placed",
 		HowItWorks: "Place counters via spells, ETBs, or proliferate; a payoff card converts counter density into draws, damage, or scaling threats. Proliferate accelerates the loop without spending more cards.",
+	},
+	"Cycling Engine": {
+		Trigger:    "cycling a card from hand (discard for {2} or its cycling cost)",
+		HowItWorks: "Pay the cycling cost to discard a card and draw one. Each cycle fires every cycling-payoff permanent in play: Astral Drift exiles + returns a creature, Drake Haven makes a 2/2 flier, Lightning Rift deals 2 damage, Ominous Seas adds a counter, Faith of the Devoted drains 2. A deck running 10-15 cyclers + 3-4 payoffs converts every cycle into a board-wipe-plus-tempo turn.",
 	},
 }
 
