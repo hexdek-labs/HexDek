@@ -19,6 +19,7 @@ const (
 	RoleCombo        RoleTag = "Combo"
 	RoleProtection   RoleTag = "Protection"
 	RoleStax         RoleTag = "Stax"
+	RoleRecursion    RoleTag = "Recursion"
 	RoleUtility      RoleTag = "Utility"
 	RoleLand         RoleTag = "Land"
 )
@@ -26,7 +27,7 @@ const (
 var AllRoles = []RoleTag{
 	RoleRamp, RoleDraw, RoleRemoval, RoleBoardWipe, RoleCounterspell,
 	RoleTutor, RoleThreat, RoleCombo, RoleProtection, RoleStax,
-	RoleUtility, RoleLand,
+	RoleRecursion, RoleUtility, RoleLand,
 }
 
 type CardRoleAssignment struct {
@@ -69,11 +70,18 @@ var rolePriority = map[RoleTag]int{
 	RoleCounterspell: 4,
 	RoleTutor:        5,
 	RoleRemoval:      6,
-	RoleProtection:   7,
-	RoleDraw:         8,
-	RoleRamp:         9,
-	RoleUtility:      10,
-	RoleLand:         11,
+	// Recursion sits between Removal and Protection — it's an
+	// engine/value slot that often pairs with Threat (Sun Titan,
+	// Karmic Guide, Reveillark) or stands alone (Eternal Witness,
+	// Reanimate). Renders before Protection / Draw / Ramp so
+	// multi-role recursion-creatures lead with the role that
+	// explains their strategic purpose.
+	RoleRecursion:    7,
+	RoleProtection:   8,
+	RoleDraw:         9,
+	RoleRamp:         10,
+	RoleUtility:      11,
+	RoleLand:         12,
 }
 
 func TagCardRole(name, oracleText, typeLine, manaCost string, cmc int, profile CardProfile) []RoleTag {
@@ -125,6 +133,10 @@ func TagCardRole(name, oracleText, typeLine, manaCost string, cmc int, profile C
 
 	if isStax(profile, ot) {
 		roles = append(roles, RoleStax)
+	}
+
+	if isRecursion(profile, ot, tl) {
+		roles = append(roles, RoleRecursion)
 	}
 
 	if len(roles) == 0 && !profile.IsLand {
@@ -222,6 +234,10 @@ func isThreat(p CardProfile, ot, tl string, cmc int) bool {
 	isCreature := strings.Contains(tl, "creature")
 	isPW := strings.Contains(tl, "planeswalker")
 	if isCreature && cmc >= 4 && !p.IsTutor && !p.IsRemoval && !p.IsMassWipe {
+		// Combat-keyword / attack-trigger gate. Sun Titan hits this
+		// arm via "whenever this creature attacks" — that's correct
+		// because Sun Titan IS a clock once it's down, AND a recursion
+		// engine; multi-role tagging (Threat + Recursion) handles it.
 		if containsAny(ot, "trample", "flying", "double strike", "menace",
 			"commander damage", "annihilator", "infect",
 			"deals combat damage to a player",
@@ -229,7 +245,22 @@ func isThreat(p CardProfile, ot, tl string, cmc int) bool {
 			"whenever this creature deals combat damage") {
 			return true
 		}
+		// cmc>=6 catch-all. Pre-r60 this swept every mid-CMC creature
+		// into Threat, mis-tagging pure recursion bodies that have no
+		// combat keywords (Karmic Guide as a 2/2 protection-from-black
+		// reanimator, mid-CMC ETB-recursion bodies without flying).
+		// Exempt cmc∈[6,7] recursion-engine creatures so they get the
+		// Recursion-only tag and don't pollute Threat-ratio counts in
+		// archetype.go's fingerprint match. cmc≥8 still falls through
+		// to Threat because by that point the creature IS a finisher
+		// regardless of secondary text (Worldspine Wurm, Emrakul, etc).
 		if cmc >= 6 {
+			if p.IsRecursion && cmc <= 7 {
+				// Recursion piece in the 6-7 CMC band — let isRecursion
+				// own the role. Combat-keyword cards above already
+				// returned true on their own merits.
+				return false
+			}
 			return true
 		}
 	}
@@ -237,6 +268,64 @@ func isThreat(p CardProfile, ot, tl string, cmc int) bool {
 		return true
 	}
 	if strings.Contains(ot, "each opponent loses") && !strings.Contains(ot, "whenever") {
+		return true
+	}
+	return false
+}
+
+// isRecursion reports whether a card should carry the Recursion role
+// tag. Reads the pre-existing p.IsRecursion flag (populated by
+// analysis.go from the "return ... from ... graveyard ..." oracle
+// pattern) and adds a few oracle-text patterns that the analysis-
+// layer detector misses:
+//
+//   - "exile target creature card from a graveyard" + "put it onto the
+//     battlefield" (Reanimate variants that route through exile, e.g.
+//     Bringer of the Last Gift, Necromancy at one moment in its life)
+//   - "you may cast that card from your graveyard" (Past in Flames,
+//     Snapcaster Mage's effect — though Snapcaster also fires the
+//     analysis-layer detector via "gains flashback")
+//   - "from your graveyard to the battlefield" (catches a couple of
+//     activations that don't use the "return" verb, e.g. Yawgmoth's
+//     Will, Bone Shards-class effects)
+//
+// Lands are excluded because Crucible of Worlds / Ramunap Excavator
+// land-recursion is a different value pattern (it's ramp-coded, not
+// engine-coded — handled by the Ramp tag already).
+func isRecursion(p CardProfile, ot, tl string) bool {
+	if p.IsLand {
+		return false
+	}
+	if p.IsRecursion {
+		return true
+	}
+	// Exile-and-reanimate routes (Bringer of the Last Gift, certain
+	// reanimator-via-exile spells) skip the "return from graveyard"
+	// pattern the analysis layer keys on.
+	if strings.Contains(ot, "exile target creature card from") &&
+		strings.Contains(ot, "graveyard") &&
+		(strings.Contains(ot, "put it onto the battlefield") ||
+			strings.Contains(ot, "create a token that's a copy")) {
+		return true
+	}
+	// "Cast from your graveyard" payoffs (Past in Flames,
+	// Yawgmoth's Will, Underworld Breach).
+	if strings.Contains(ot, "may cast") && strings.Contains(ot, "from your graveyard") {
+		return true
+	}
+	// Catch-all for activations that put a card from graveyard onto
+	// the battlefield without using the "return" verb.
+	if strings.Contains(ot, "from your graveyard to the battlefield") ||
+		strings.Contains(ot, "from a graveyard to the battlefield") {
+		return true
+	}
+	// Grant-flashback effects (Past in Flames, Snapcaster Mage's
+	// effect, Iroh, Lier Disciple of the Drowned). The grant turns
+	// every i/s in graveyard into a castable recursion target —
+	// strictly graveyard-value play.
+	if containsAny(ot,
+		"gains flashback", "gain flashback",
+		"has flashback", "have flashback") {
 		return true
 	}
 	return false
