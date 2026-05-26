@@ -85,7 +85,13 @@ func hashatonDiscardTrigger(gs *gameengine.GameState, perm *gameengine.Permanent
 		case "pip:B":
 			hasBlackPip = true
 		case "pip:W", "pip:U", "pip:R", "pip:G", "pip:C":
-			// Drop original color pips — token is black.
+			// Drop original color pips — Hashaton's token is mono-black.
+			// `pip:C` (colorless) is included for Eldrazi reanimations
+			// (Emrakul, Ulamog, Kozilek): their Card.Types arrays
+			// carry the C pip and we still need to strip it. Phase-1D
+			// audit flagged pip:C as unreachable because pip markers
+			// come from Card.Types JSON data, not Go source — the
+			// static scanner can't see emitter coverage there.
 			continue
 		}
 		filtered = append(filtered, t)

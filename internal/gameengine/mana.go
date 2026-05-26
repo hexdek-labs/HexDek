@@ -208,16 +208,22 @@ func RestrictionAllows(restriction, spellType string, colorless bool) bool {
 	switch r {
 	case "creature_spell_only":
 		return spellType == "creature"
-	case "noncreature_or_artifact_activation",
-		"non_creature_activation_only",
-		"noncreature_activation_only":
+	case "noncreature_or_artifact_activation":
 		return spellType == "noncreature" || spellType == "activated" ||
 			spellType == "instant" || spellType == "sorcery"
 	case "artifact_only":
 		return spellType == "artifact" || spellType == "activated"
-	case "instant_or_sorcery_only":
-		return spellType == "instant" || spellType == "sorcery"
 	}
+	// Unknown restriction → allow (conservative). Phase-1D audit
+	// confirmed three formerly-dead case arms were never emitted:
+	// "non_creature_activation_only" / "noncreature_activation_only"
+	// (variant spellings of the noncreature_or_artifact_activation
+	// canonical) and "instant_or_sorcery_only" (referenced only as a
+	// partial-emit human-readable note from custom_galazeth_prismari,
+	// never as a real restriction tag). Deleted in R60 Phase 1D-residue
+	// cleanup; this conservative fallback covers any future emitter
+	// that happens to use one of those spellings — they'll allow the
+	// payment rather than mis-routing.
 	return true
 }
 
