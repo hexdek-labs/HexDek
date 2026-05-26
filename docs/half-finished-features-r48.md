@@ -1,13 +1,29 @@
 # Half-Finished Feature Hunt (R48)
 
-**Date:** 2026-05-20
-**Branch:** `dev/half-finished-r48`
+**Date:** 2026-05-20 · **Last reconciled:** 2026-05-26 (R60 close-out pass)
+**Branch:** `dev/half-finished-r48` (original audit) ·
+`dev/half-finished-features-r48-close-r60` (this reconciliation)
 **Scope:** repo-wide scan for features that are *shaped* but missing parts —
 structs with unused fields, interfaces with one impl and a documented
 "not yet wired" extension, feature flags that are always off, audit docs
 with deferred bullets that never landed, frontend screens whose JSX is
 local-only/skeleton, generated stubs with effect wired but cost not
 gated.
+
+## R60 reconciliation summary
+
+Bisected every deferred item against current `main`:
+
+| # | Original verdict | Current state |
+|---|---|---|
+| 1-3 | Shipped in original r48 PR | **Resolved** |
+| 4 | WardPayer non-generic ward not wired | **Still open** — comment + 3 per_card emitPartials unchanged |
+| 5 | Live-game MVP combat P/T returns 1 | **Still open** — `creaturePower` / `creatureToughness` stubs unchanged |
+| 6 | DrawCards empty-library flag | **Still open** — dead branch in `combat.go:298` unchanged |
+| 7 | Tasigur recursion + delve | **Still open** — handler still mills-only, no return-from-graveyard, no delve |
+| 8 | Profile.jsx backend sync | **Still open** — localStorage-only unchanged |
+| 9 | r47 M1/M2/M3 janitor sweep | **Still open** — M1 comment "follow-up work" intact; M2 has 6 `err == sql.ErrNoRows` sites (was 4); M3 `n, _ := res.RowsAffected()` swallow at `db/party.go:202` unchanged |
+| 10 | Auth middleware 401 sentinel-aware | **Resolved** — `authErrorMessage` now sentinel-checks `ErrInvalidToken` / `ErrSessionExpired` / `ErrInvalid/Expired/RevokedAPIKey`; non-sentinel errors log server-side and surface generic "unauthorized". Landed in R47 stub-hunt commit `17b2cb3`, extended for API-key sentinels in PR #388. |
 
 ## Method
 
@@ -41,7 +57,7 @@ Five passes:
 | 7 | `internal/gameengine/per_card/gen_tasigur_the_golden_fang.go` activates `{2}{G/U}{G/U}` and mills 2 cards. | The ability text reads: *"Mill two cards, **then return a nonland card of an opponent's choice from your graveyard to your hand**."* The return-from-graveyard half (the entire reason to play Tasigur) is unimplemented. The delve cost reduction (exile cards from your graveyard to pay generic mana) is also not modeled. |
 | 8 | `hexdek/src/screens/Profile.jsx` — Display Name / Owner Name inputs persist via `localStorage.setItem(...)` and the page explicitly tells users *"Preferences are stored locally in your browser only."* | The rest of the platform has a real auth model (`AuthContext`, `/api/me`, server-side device/deck ownership). The profile preferences ride on top of localStorage with no backend sync, no cross-device portability, and no schema. Either commit to the local-only design (and remove the "owner name" field, which is load-bearing for deck visibility) or wire it through `/api/me`. |
 | 9 | `internal/anticheat/scheduler.go` / `cauterize.go` / `worker.go` Phase-2 anti-cheat lists **3 follow-ups** (M1 party-code collision via SQLite errno, M2 `errors.Is(err, sql.ErrNoRows)` migration across 4 sites, M3 `RowsAffected` swallow in `db/party.go:186`) in `docs/stub-hunt-rules-db-r47.md`. | All three are documented "Deferred (not in this PR)" — the audit shipped without them. They're trivial drive-bys waiting for a janitor PR. |
-| 10 | `internal/auth/middleware.go:47,60` returns 401 responses with `"unauthorized: "+err.Error()` — sentinel-friendly errors leak straight through. | `docs/stub-hunt-remaining-internal-r47.md` finding #6 (MED-severity) flagged this as an info-leak risk for wrapped DB errors (`validate session: <SQL driver message>`) being echoed back. Deferred from r47. |
+| 10 | ~~`internal/auth/middleware.go:47,60` returns 401 responses with `"unauthorized: "+err.Error()` — sentinel-friendly errors leak straight through.~~ | ~~`docs/stub-hunt-remaining-internal-r47.md` finding #6 (MED-severity) flagged this as an info-leak risk for wrapped DB errors (`validate session: <SQL driver message>`) being echoed back.~~ **RESOLVED.** New `authErrorMessage` helper sentinel-checks `ErrInvalidToken` / `ErrSessionExpired` / `ErrInvalidAPIKey` / `ErrAPIKeyExpired` / `ErrAPIKeyRevoked` and falls through to `log.Printf` + generic `"unauthorized"` so wrapped DB / driver messages are no longer echoed in the response body. Initial sentinel-check landed in commit `17b2cb3` (R47 stub hunt); API-key sentinel set added in PR #388 (API key system). |
 
 ### Honorable mentions (looked into, not in top 10)
 
@@ -58,12 +74,19 @@ Five passes:
 | 2 | Captain America's `Throw` activation now real-gates `{3}`: if `seat.ManaPool < 3` it `emitFail("insufficient_mana")` and returns. The equipment lookup also moves *before* the cost debit so we don't burn mana for an activation we couldn't complete. | `internal/gameengine/per_card/gen_captain_america_first_avenger.go` |
 | 3 | `paritycheck.NewRunner` now logs a warning when `SupplementWithOracleJSON` fails (matching the existing `pythonAvailable` graceful-degradation pattern), instead of silently swallowing the error. **Note:** during the rebase onto `main` this turned out to have been concurrently fixed by another worker with essentially the same wording — the rebase resolved by taking `main`'s version. The audit row above still documents the historical half-finished shape; the inline change collapsed to a no-op on merge. | `internal/paritycheck/paritycheck.go` |
 
-## Deferred / not in this PR
+## Deferred — still open as of 2026-05-26 R60 reconciliation
 
-- #4 WardPayer non-generic ward — touches the cost-pay pipeline and 3+ per_card handlers; bigger than an inline fix.
-- #5 live-game MVP combat P/T — 3-step migration (struct fields → storage → deck JSON).
-- #6 DrawCards empty-library flag — needs new Player field + CheckGameEnd wiring + DB migration.
-- #7 Tasigur recursion + delve — needs graveyard-cost framework support.
-- #8 Profile.jsx backend sync — needs `/api/me` preferences endpoint + schema decision.
-- #9 r47 M1/M2/M3 janitor sweep — folding into a future cleanup PR.
-- #10 auth middleware sentinel-aware 401 — security review on the exact response shape recommended before shipping.
+- **#4 WardPayer non-generic ward** — `internal/gameengine/hat.go:921` `WardPayer` doc comment still says non-generic ward "is not yet wired at the engine level so wardCost is always >= 0 here". Sauron / Saruman / Auntie Ool per_card handlers still call `emitPartial(..., "ward_..._alt_payment_unimplemented")` — verified at `sauron_dark_lord.go:48`, `saruman_of_many_colors.go:42`, `auntie_ool.go:43`. Touches the cost-pay pipeline and 3+ per_card handlers; bigger than an inline fix.
+- **#5 live-game MVP combat P/T** — `internal/game/combat.go:318,325` `creaturePower` / `creatureToughness` still return literal `1`. `internal/game/types.go` `Card` struct still has no Power/Toughness fields. 3-step migration (struct fields → storage → deck JSON).
+- **#6 DrawCards empty-library flag** — `internal/game/combat.go:298` dead branch `if libCount == 0 { /* keep in alive list */ }` unchanged. `internal/game/engine.go:258` MVP comment still says drawing-from-empty silently clamps. Needs new `Player.AttemptedEmptyDraw` field + CheckGameEnd wiring + DB migration.
+- **#7 Tasigur recursion + delve** — `gen_tasigur_the_golden_fang.go` still mills 2 and emits a basic event; return-from-graveyard half and delve cost reduction both still missing. Needs graveyard-cost framework support.
+- **#8 Profile.jsx backend sync** — `hexdek/src/screens/Profile.jsx:17-23` still uses `localStorage.getItem/setItem` for display name + owner name; line 75 still tells users "Preferences are stored locally in your browser only." Needs `/api/me` preferences endpoint + schema decision.
+- **#9 r47 M1/M2/M3 janitor sweep**:
+  - **M1** still open: `internal/db/party.go:62-63` carries the explicit comment "Distinguishing constraint vs. transport errors via driver-specific errno is M1 in the audit — follow-up work."
+  - **M2** still open AND has grown: 6 sites still use `err == sql.ErrNoRows` (was 4): `db/anticheat.go:91,361`, `db/showmatch.go:259,298`, `friends/friends.go:133`, `userprofile/userprofile.go:70`. The migration to `errors.Is(err, sql.ErrNoRows)` never landed.
+  - **M3** still open: `internal/db/party.go:202` keeps `n, _ := res.RowsAffected()` (error swallowed; value used). Sibling `anticheat/auditor.go:486` does the same shape but checks both — `M3` was specifically the party.go site.
+
+## Closed since the original audit
+
+- **#1-#3** shipped in the original r48 PR (commit `ccb9a9e`).
+- **#10** auth middleware sentinel-aware 401 — landed across two commits: initial sentinel-check in `17b2cb3` (R47 stub hunt), API-key sentinels added in PR #388. The current `authErrorMessage` matches the audit's recommended shape exactly.
