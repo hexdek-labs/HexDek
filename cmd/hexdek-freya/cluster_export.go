@@ -88,10 +88,11 @@ type ClusterMember struct {
 // existing classifyClusterRole helper so we don't have to plumb
 // extra state onto SynergyCluster at compute time.
 //
-// Returns nil if dp is nil or has no clusters. Always emits the
-// schema_version + generated_at metadata even when clusters is empty
-// (so downstream consumers can detect "this deck has no clusters"
-// vs "the export ran but found nothing").
+// Returns nil if dp is nil. Returns a populated SynergyClusterExport
+// with schema_version + generated_at metadata in all other cases —
+// including when dp.SynergyClusters is empty — so downstream consumers
+// can distinguish "this deck has no clusters" from "the export ran but
+// found nothing".
 func BuildClusterExport(dp *DeckProfile, report *FreyaReport) *SynergyClusterExport {
 	if dp == nil {
 		return nil

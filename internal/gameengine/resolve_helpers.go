@@ -4432,7 +4432,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		})
 
 	case "gift":
-		// CR §702.XXX — Bloomburrow gift mechanic. An opponent receives a
+		// CR §702.192 — Bloomburrow gift mechanic. An opponent receives a
 		// benefit (e.g., draw a card, gain life) and in return the controller
 		// gets a more powerful effect. The actual gift/reward pair varies per
 		// card and is encoded in Args as nested Effect nodes — dispatch each

@@ -26,15 +26,19 @@ import (
 //     first, or first enchantment if no creatures exist) and place a +1/+1
 //     counter on it via p.AddCounter. This fires for every life-gain event
 //     regardless of source, matching the oracle "whenever you gain life".
-//   - OnActivated(0): {1}{W} lifelink-grant is noted via emitPartial; full
-//     until-end-of-turn keyword tracking is not yet implemented.
+//   - OnActivated(0): {1}{W} lifelink-grant — stamps the kw:lifelink
+//     flag and schedules a next-end-step delayed trigger that unstamps
+//     it. UEOT semantics correct end-to-end (R52 batchM port, see
+//     heliodSunCrownedActivate below).
 //
 // Coverage gaps (emitPartial):
 //   - Devotion-gated creature/enchantment duality: Heliod is treated as
 //     always-on for trigger purposes; the static type toggle requires a
 //     continuous-effect layer that is not modelled here.
-//   - Activated ability lifelink grant: UEOT keyword grants are not yet
-//     tracked in the layers pipeline.
+//   - The lifelink grant uses a flag + delayed-trigger pair rather than
+//     the canonical continuous-effect layers pipeline. Functionally
+//     correct UEOT, but doesn't participate in layer-7 dependency
+//     ordering if another effect adds/removes lifelink in the same turn.
 func registerHeliodSunCrowned(r *Registry) {
 	r.OnETB("Heliod, Sun-Crowned", heliodSunCrownedETB)
 	r.OnTrigger("Heliod, Sun-Crowned", "life_gained", heliodSunCrownedLifeGained)

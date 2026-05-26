@@ -175,8 +175,8 @@ type CardTraceRecorder struct {
 }
 
 // newCardTraceRecorder creates a recorder for the given card and interaction.
-// Returns nil if the collector is nil (tracing disabled), so callers can
-// safely chain nil-receiver calls.
+// The caller (TraceCollector.Begin) is responsible for the nil-collector
+// guard; this constructor always returns a non-nil *CardTraceRecorder.
 func newCardTraceRecorder(cardName, interaction string) *CardTraceRecorder {
 	return &CardTraceRecorder{
 		trace: &CardTrace{
