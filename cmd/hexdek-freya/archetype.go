@@ -265,12 +265,36 @@ var archetypeFingerprints = []archetypeFingerprint{
 		},
 	},
 	{
+		// R60 (post-#466): RoleRecursion is now a first-class role-tag,
+		// so the Reanimator fingerprint scores directly against the
+		// recursion-role density rather than relying entirely on
+		// bag-of-words graveyardCount + selfMillCount. The 0.12 target
+		// reflects a healthy Meren/Muldrotha/Karador shell: ~12 of 99
+		// cards carry the Recursion tag (Eternal Witness, Reanimate,
+		// Animate Dead, Regrowth, Sun Titan, Karmic Guide, Bone Shards,
+		// the commander itself when it has graveyard text, etc).
+		// RoleThreat lowered 0.10→0.08 — reanimator threats are
+		// concentrated in 4-6 big bombs that target-reanimate, not the
+		// 10+ midrange threats a Voltron / Aggro shell carries.
 		Name: "Reanimator",
 		Ratios: map[RoleTag]float64{
-			RoleDraw: 0.10, RoleTutor: 0.08, RoleThreat: 0.10, RoleRamp: 0.08,
+			RoleRecursion: 0.12,
+			RoleDraw:      0.10,
+			RoleTutor:     0.08,
+			RoleThreat:    0.08,
+			RoleRamp:      0.08,
 		},
+		// Require gate strengthened: pre-r60 a Bruvac-style pure-mill
+		// deck (8+ mill payoffs, 0 reanimate spells) would pass the
+		// graveyardCount + selfMillCount gates and false-positive into
+		// Reanimator. Adding a 5% RoleRecursion floor (≈5 recursion
+		// pieces in a 99-card deck) makes the gate genuinely
+		// reanimator-shape-aware. Mill decks without recursion bodies
+		// now fall through to Selfmill / Midrange.
 		Require: func(ctx *classifyContext) bool {
-			return ctx.graveyardCount >= 6 && ctx.selfMillCount >= 2
+			return ctx.graveyardCount >= 6 &&
+				ctx.selfMillCount >= 2 &&
+				ctx.roleRatios[RoleRecursion] >= 0.05
 		},
 	},
 	{
