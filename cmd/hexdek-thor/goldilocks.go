@@ -1424,8 +1424,12 @@ func setupCondition(gs *gameengine.GameState, cond *gameast.Condition) {
 		return
 	}
 	switch cond.Kind {
-	case "fateful_hour", "life_threshold":
+	case "fateful_hour", "life_threshold", "life_delta_threshold", "life_threshold_both":
 		// Set controller life to 5 (below fateful hour threshold).
+		// life_delta_threshold ("you have N more life than starting") and
+		// life_threshold_both (two-sided "you >= N AND opponent <= M") are
+		// life-comparison variants routed to the same scaffold — setting
+		// life=5 satisfies the false-precondition shape goldilocks expects.
 		gs.Seats[0].Life = 5
 
 	case "threshold", "card_count_zone":
