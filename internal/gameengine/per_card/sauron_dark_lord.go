@@ -44,8 +44,26 @@ func sauronETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"ward_sacrifice_legendary_alt_payment_unimplemented")
+	// R60 closure of half-finished-features-r48 #4: stamp the alt-
+	// payment ward kind so CheckWardOnTargeting routes through the
+	// canonical sacrifice-a-legendary handler (ward_alt_payment.go).
+	// Replaces the previous "ward_sacrifice_legendary_alt_payment_
+	// unimplemented" emitPartial.
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	perm.Flags["kw:ward"] = 1
+	perm.Flags["ward_alt_kind"] = gameengine.WardAltKindSacrificeLegendary
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":          perm.Controller,
+		"ward_alt_kind": "sacrifice_legendary",
+	})
+	// Out-of-scope gap (NOT half-finished #4): Ring tempts from sources
+	// other than Sauron's own combat-damage trigger don't dispatch the
+	// "discard hand → draw 4" reaction. The Ring infrastructure fires
+	// TheRingTemptsYou but doesn't fan a per-card ring_tempt trigger,
+	// so this card has no way to observe tempts from other Army-bearers.
+	// Kept as a partial so a future ring_tempt-trigger PR can find it.
 	emitPartial(gs, slug, perm.Card.DisplayName(),
 		"ring_tempts_from_other_sources_does_not_dispatch_discard_draw_four")
 }

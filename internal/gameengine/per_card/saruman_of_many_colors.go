@@ -38,8 +38,18 @@ func sarumanOfManyColorsETB(gs *gameengine.GameState, perm *gameengine.Permanent
 		perm.Flags = map[string]int{}
 	}
 	perm.Flags["kw:ward"] = 1
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"ward_discard_enchantment_instant_sorcery_alt_payment_unimplemented")
+	// R60 closure of half-finished-features-r48 #4: route the discard
+	// alt-payment ward through ward_alt_payment.go's canonical handler.
+	// Replaces the prior
+	// "ward_discard_enchantment_instant_sorcery_alt_payment_unimplemented"
+	// emitPartial. The engine's caster-side handler discards the highest-
+	// CMC matching card (instant/sorcery/enchantment) from the opponent's
+	// hand; if none, the targeting spell is countered per CR §702.21c.
+	perm.Flags["ward_alt_kind"] = gameengine.WardAltKindDiscardInstSorcEnch
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":          perm.Controller,
+		"ward_alt_kind": "discard_inst_sorc_ench",
+	})
 }
 
 func sarumanOfManyColorsSecondSpell(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

@@ -929,12 +929,20 @@ type SacrificeChooser interface {
 // mana for a counterspell, or to deliberately fizzle into a recursion line).
 //
 // Implementations MUST NOT mutate gs.
+//
+// Alternative-payment ward (CR §702.21d — Ward—Sacrifice / Ward—Discard /
+// Ward—Blight N) was added in R60 via the ward_alt_kind + ward_alt_filter
+// Permanent.Flags. The engine handles those payments inline in
+// ward_alt_payment.go's tryPayAltWardCost with a "pay if affordable"
+// default; WardPayer is consulted only for the integer mana-ward path.
+// A future Hat extension can add a sibling ShouldPayAltWard interface if
+// per-hat opt-out semantics matter for the non-mana costs.
 type WardPayer interface {
 	// ShouldPayWard returns true if the caster wants to pay the ward cost
 	// on `target` for the spell/ability represented by `item`. `wardCost`
-	// is the generic mana amount the engine currently models (Ward {N});
-	// non-generic ward (Ward—Pay life, Ward—Sacrifice) is not yet wired
-	// at the engine level so wardCost is always >= 0 here.
+	// is the generic mana amount (Ward {N}); non-generic ward is handled
+	// inline by the engine via Permanent.Flags["ward_alt_kind"] and does
+	// not flow through this hook.
 	ShouldPayWard(gs *GameState, seatIdx int, item *StackItem, target *Permanent, wardCost int) bool
 }
 
