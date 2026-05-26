@@ -180,6 +180,53 @@ var hoserDB = []hoserMapping{
 	// whole engine is "draw 7s".
 	{"wheels", "Notion Thief", "wheel hands replace the wheeler's draws — your wheels become opponent tutors", hoserSeverityCritical},
 	{"wheels", "Hullbreacher", "same shape — your wheels generate Treasures for the opponent instead of cards for you", hoserSeverityCritical},
+
+	// ── R60 round 2: 10 new entries across 6 existing conditions + 1 new condition ──
+	// Enchantment-heavy: the existing Aura Shards + Back to Nature pair
+	// covered creature-ETB and instant wipes. Force of Vigor adds the
+	// FREE 2-for-1 angle (mass enchantress decks fold to free hate);
+	// Pernicious Deed adds the scaling-X wipe that doubles as artifact
+	// removal so Enchantress decks running artifact mana eat it twice.
+	{"enchantment_heavy", "Force of Vigor", "free instant 2-for-1 — destroys two artifacts/enchantments at no mana cost", hoserSeverityCritical},
+	{"enchantment_heavy", "Pernicious Deed", "scaling X-cost one-sided wipe of all artifacts and enchantments", hoserSeverityMajor},
+	// Artifact-heavy: Collector Ouphe / Stony Silence are the green/white
+	// hatebears; missing was the colorless cheap-artifact equivalent
+	// (Null Rod slots into any mana base), the static-tutor planeswalker
+	// lock (Karn, the Great Creator), and the green wipe that also
+	// punishes enchantment-heavy artifact decks (Bane of Progress).
+	{"artifact_heavy", "Null Rod", "colorless 1-cost Stony Silence — slots into any deck and shuts down artifact mana", hoserSeverityCritical},
+	{"artifact_heavy", "Karn, the Great Creator", "static lock on opp artifact activations + tutors more stax pieces from sideboard", hoserSeverityCritical},
+	{"artifact_heavy", "Bane of Progress", "ETB wipe scaling with permanents you control — kills artifacts AND enchantments", hoserSeverityMajor},
+	// Lifegain: Erebos / Sulfuric Vortex prevent the gain. Tainted Remedy
+	// FLIPS it — every "you gain N life" becomes "you lose N life",
+	// which against a lifegain deck reads as a one-card kill.
+	{"lifegain", "Tainted Remedy", "inverts every lifegain trigger into life loss — turns the deck's engine against itself", hoserSeverityCritical},
+	// Token-heavy: existing Massacre Wurm (drains) and Rakdos Charm
+	// (ping). Pyroclasm covers the cheap 2-mana mass-2-damage sweep
+	// that kills the X/1 token board in a single card.
+	{"token_heavy", "Pyroclasm", "2-mana 2-damage to each creature — one-card token board wipe", hoserSeverityMajor},
+	// Combo-heavy: Rule of Law / Drannith Magistrate / Stifle cover the
+	// per-turn limit + cast-zone lock + trigger counter angles. Missing
+	// were the graveyard-AND-library cast-source lock (Grafdigger's Cage,
+	// which kills Underworld Breach, Yawgmoth's Will, Eldritch Evolution,
+	// Birthing Pod, AND Cascade-style combos in a single 1-cost artifact)
+	// and the activated-ability-key lock (Pithing Needle on a Thassa's
+	// Oracle / Walking Ballista / Isochron Scepter).
+	{"combo_heavy", "Grafdigger's Cage", "shuts down graveyard recursion AND library tutors-to-cast — kills Breach, Birthing Pod, Eldritch Evolution in one card", hoserSeverityCritical},
+	{"combo_heavy", "Pithing Needle", "names a key activated combo piece — Walking Ballista, Isochron Scepter, Thassa's Oracle activations all stop", hoserSeverityMajor},
+	// Wheels: Notion Thief + Hullbreacher flipped wheels for the
+	// wheel-controller. Narset, Parter of Veils does the same against
+	// the wheel-CASTER from the opposite angle — wheels "draw 7" become
+	// "discard hand, draw 1", which catastrophically asymmetric.
+	{"wheels", "Narset, Parter of Veils", "limits each opponent's draws to 1 per turn — your wheels turn into mass-discard for one card replacement", hoserSeverityCritical},
+
+	// ── R60 round 2 new condition: extra_turns ──
+	// Time Walk / Time Warp / Nexus / Capture of Jingzhou decks (Yennett,
+	// Yuriko-extra-turns, Narset Enlightened Master, Wanderwine Prophets).
+	// Stranglehold is the canonical hard counter: "If an opponent would
+	// take an extra turn, instead they don't" — and as a bonus also
+	// shuts down opponent tutors.
+	{"extra_turns", "Stranglehold", "extra turns simply don't happen — also locks opponent searches as collateral", hoserSeverityCritical},
 }
 
 func computeThreatAssessment(dp *DeckProfile, report *FreyaReport) {
@@ -353,6 +400,34 @@ func computeThreatAssessment(dp *DeckProfile, report *FreyaReport) {
 		}
 		if wheelHits >= 2 {
 			conditions["wheels"] = true
+		}
+	}
+	// extra_turns: archetype name OR 2+ canonical Time-Walk-family spells.
+	// Threshold matches wheels (2) — a single Temporal Manipulation in
+	// an otherwise-blue deck is incidental; two or more is a deliberate
+	// engine choice. Stranglehold deserves the warning because it's a
+	// total lock on the deck's central play pattern.
+	if containsAny(arch, "extra turn") || containsAny(arch, "extra_turn") {
+		conditions["extra_turns"] = true
+	} else {
+		turnHits := 0
+		turnCards := map[string]bool{
+			"Time Walk": true, "Time Warp": true, "Temporal Manipulation": true,
+			"Capture of Jingzhou": true, "Walk the Aeons": true,
+			"Temporal Trespass": true, "Time Stretch": true,
+			"Nexus of Fate": true, "Karn's Temporal Sundering": true,
+			"Expropriate": true, "Final Fortune": true, "Last Chance": true,
+			"Notorious Throng": true, "Stitch in Time": true,
+			"Temporal Mastery": true, "Beacon of Tomorrows": true,
+			"Sage of Hours": true,
+		}
+		for _, p := range report.Profiles {
+			if turnCards[p.Name] {
+				turnHits++
+			}
+		}
+		if turnHits >= 2 {
+			conditions["extra_turns"] = true
 		}
 	}
 
