@@ -22,6 +22,9 @@ func libraryNames(lib []*gameengine.Card) []string {
 }
 
 // astDatasetPath walks up from this test file to find data/rules/ast_dataset.jsonl.
+// The dataset is ~46 MB and gitignored (see CLAUDE.md "Data Files"). Tests
+// that need real-corpus data t.Skip() when it's absent rather than failing,
+// so fresh checkouts run the AST-free unit tests cleanly.
 func astDatasetPath() string {
 	_, thisFile, _, _ := runtime.Caller(0)
 	dir := filepath.Dir(thisFile)

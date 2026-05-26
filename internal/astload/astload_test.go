@@ -15,6 +15,11 @@ import (
 
 // corpusPath locates data/rules/ast_dataset.jsonl relative to the repo
 // root. Test files run from the package dir, so walk up until we find it.
+//
+// ast_dataset.jsonl is a ~46 MB Thor parser output (see CLAUDE.md "Data
+// Files"); intentionally gitignored. Tests that depend on the full
+// corpus `t.Skip()` when it's absent so fresh checkouts + CI without
+// the data still run the inline-sample tests.
 func corpusPath(t testing.TB) string {
 	t.Helper()
 	// package dir: .../hexdek/internal/astload

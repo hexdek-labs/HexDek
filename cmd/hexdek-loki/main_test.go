@@ -146,6 +146,12 @@ func TestCheckChaosInvariants_FilterRespected(t *testing.T) {
 
 	// Pre-check: confirm at least one ZoneConservation or CardIdentity
 	// violation surfaces from RunAllInvariants on this synthetic state.
+	// Graceful-degradation skip: this test exercises the filter pipeline,
+	// not the invariant detector itself. If a future engine refactor makes
+	// the duplicate-card-pointer plant no longer trip any invariant, this
+	// test should skip (the filter contract is independently covered by
+	// TestMatchesInvariantFilter_* above), not fail — the invariant suite
+	// in internal/gameengine/invariants_test.go owns detector coverage.
 	raw := gameengine.RunAllInvariants(gs)
 	if len(raw) == 0 {
 		t.Skip("synthetic state did not produce a violation; engine semantics may have shifted")

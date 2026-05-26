@@ -87,6 +87,11 @@ func TestMetaStrongAgainst_ForwardOnlyAndReverseOnly(t *testing.T) {
 func TestMetaStrongAgainst_ResultOrdering(t *testing.T) {
 	got := MetaStrongAgainst("Control")
 	if len(got) < 2 {
+		// Defensive guard: the in-package matchup matrix is statically
+		// populated and the "Control" row always has ≥2 advantages today,
+		// so this branch is dormant. Kept as future-proofing for the case
+		// where the matrix is filtered/pruned and a row drops below the
+		// threshold needed to validate the multi-tier ordering contract.
 		t.Skipf("need ≥2 entries to test ordering, got %d", len(got))
 	}
 	rank := func(src string) int {
