@@ -242,6 +242,49 @@ CREATE TABLE IF NOT EXISTS showmatch_elo (
     updated_at   INTEGER NOT NULL
 );
 
+-- r60: per-deck Freya profile scalars co-keyed by deck_key. Lets
+-- analytics queries (e.g. bracket-vs-ELO correlation) join rating
+-- against archetype / synergy / power-tier distribution without
+-- re-running Freya on the raw deck list. Populated by the
+-- `runFreya` callsite in hexapi/handler.go after every Freya
+-- analysis completes — INSERT OR REPLACE semantics, so each deck
+-- carries the latest analysis (no version history). See
+-- docs/bracket-elo-distribution-r60.md "Freya synergy
+-- cross-reference" section for the motivation; this is the
+-- snapshot-schema follow-up that makes the synergy correlation
+-- runnable end-to-end against the snapshot DB.
+--
+-- Sibling table (rather than additional columns on showmatch_elo)
+-- so the rating-update hot path stays narrow and Freya re-runs
+-- don't have to touch the ELO row. The pair is joined on deck_key
+-- for any analytics query that needs both signals.
+CREATE TABLE IF NOT EXISTS deck_freya_profile (
+    deck_key            TEXT PRIMARY KEY,
+    commander           TEXT NOT NULL DEFAULT '',
+    owner               TEXT NOT NULL DEFAULT '',
+    primary_archetype   TEXT NOT NULL DEFAULT '',
+    secondary_archetype TEXT NOT NULL DEFAULT '',
+    bracket             INTEGER NOT NULL DEFAULT 0,
+    -- 0.0-100.0 percentage form of DeckProfile.CommanderSynergy
+    -- (which Freya stores as 0.0-1.0). Stored as percent so the
+    -- column reads naturally in ad-hoc SQL ("synergy_pct > 50").
+    synergy_pct         REAL NOT NULL DEFAULT 0.0,
+    power_percentile    INTEGER NOT NULL DEFAULT 0,
+    -- JSON map: {"S": int, "A": int, "B": int, "C": int, "D": int}.
+    -- Mirrors DeckProfile.PowerTierCounts. Empty-object default so
+    -- ad-hoc json_extract queries don't NULL out.
+    power_tier_counts   TEXT NOT NULL DEFAULT '{}',
+    -- JSON array of {"role": string, "count": int} ordered by
+    -- count desc, capped at the top 3 roles (DeckProfile.TopRoles).
+    primary_roles       TEXT NOT NULL DEFAULT '[]',
+    updated_at          INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX IF NOT EXISTS idx_deck_freya_profile_owner
+    ON deck_freya_profile(owner);
+CREATE INDEX IF NOT EXISTS idx_deck_freya_profile_archetype
+    ON deck_freya_profile(primary_archetype);
+
 CREATE TABLE IF NOT EXISTS showmatch_game (
     game_id      INTEGER PRIMARY KEY AUTOINCREMENT,
     started_at   INTEGER NOT NULL,

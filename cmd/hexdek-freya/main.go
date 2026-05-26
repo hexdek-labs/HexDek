@@ -692,6 +692,45 @@ func saveFreyaData(deckPath string, report *FreyaReport) {
 	// Machine-consumable strategy JSON for the hat/MCTS evaluator.
 	stratPath := filepath.Join(freyaDir, base+".strategy.json")
 	saveStrategyJSON(stratPath, report)
+
+	// Snapshot-schema sidecar: the full jsonDeckProfile blob, written
+	// next to strategy.json so the hexapi `runFreya` callsite can read
+	// it back and persist the scalar columns to `deck_freya_profile`
+	// (internal/db/freya_profile.go) without re-running Freya or
+	// shelling out to parse stdout. Kept separate from strategy.json
+	// because the hat consumes a narrower view — we don't want to bolt
+	// power_tier_counts / top_roles onto the strategy schema just to
+	// satisfy the analytics layer.
+	profilePath := filepath.Join(freyaDir, base+".profile.json")
+	saveProfileJSON(profilePath, report)
+}
+
+// saveProfileJSON writes the full jsonDeckProfile (the same payload
+// emitted to stdout under `--format json`) to a file. Used by
+// saveFreyaData and consumed by hexapi's runFreya backfill. Errors
+// are logged at warning level rather than fatal — Freya's primary job
+// (the .md report + .strategy.json) is unaffected.
+func saveProfileJSON(path string, report *FreyaReport) {
+	if report == nil || report.Profile == nil {
+		return
+	}
+	profile := buildJSONDeckProfile(report.Profile, report)
+	if profile == nil {
+		return
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		log.Printf("  [freya] failed to save %s: %v", path, err)
+		return
+	}
+	defer f.Close()
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(profile); err != nil {
+		log.Printf("  [freya] failed to encode %s: %v", path, err)
+		return
+	}
+	log.Printf("  [freya] saved %s", path)
 }
 
 // strategyJSON is the compact machine-consumable format read by
