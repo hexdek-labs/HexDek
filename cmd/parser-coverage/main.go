@@ -103,6 +103,7 @@ func main() {
 	bySetPath := flag.String("by-set", "", "optional path to write a markdown report grouping uncovered cards by Magic set, ranked by uncovered count")
 	bySetTopN := flag.Int("by-set-top", 0, "limit the --by-set report to the top N sets by uncovered count (0 = include every set)")
 	byTypePath := flag.String("by-type", "", "optional path to write a markdown report grouping uncovered cards by primary card type (Creature/Instant/Sorcery/Land/…)")
+	byMechanicPath := flag.String("by-mechanic", "", "optional path to write a markdown report grouping cards by templated mechanic (Flashback/Adventure/Saga/Mutate/Prototype/Modal DFC/…), ranked by uncovered count")
 	setPriorityPath := flag.String("set-priority", "", "optional path to write a deck-weighted set-priority worklist (what Thor should scaffold next to unblock the most decks)")
 	setPriorityDecks := flag.String("set-priority-decks", "data/decks", "directory to scan for .txt deck files when computing set-priority deck weights")
 	setPriorityTopN := flag.Int("set-priority-top", 0, "limit the --set-priority table to the top N sets (0 = include every set with a non-zero score)")
@@ -219,6 +220,15 @@ func main() {
 		}
 		log.Printf("wrote %s (by-type report, %d types)", *byTypePath, len(groups))
 		log.Printf("  %s", formatByTypeSummary(groups, 5))
+	}
+
+	if strings.TrimSpace(*byMechanicPath) != "" {
+		groups := groupByMechanic(results)
+		if err := writeByMechanicReport(*byMechanicPath, groups); err != nil {
+			log.Fatalf("writeByMechanicReport: %v", err)
+		}
+		log.Printf("wrote %s (by-mechanic report, %d mechanics)", *byMechanicPath, len(groups))
+		log.Printf("  %s", formatByMechanicSummary(groups, 5))
 	}
 
 	if strings.TrimSpace(*setPriorityPath) != "" {
