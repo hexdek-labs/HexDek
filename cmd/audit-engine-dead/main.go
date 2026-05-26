@@ -229,7 +229,10 @@ func tagInterpretation(tag string) string {
 		strings.Contains(low, "base") ||
 		strings.Contains(low, "actor") ||
 		strings.Contains(low, "quantifier") ||
-		strings.Contains(low, "controller"):
+		strings.Contains(low, "controller") ||
+		strings.Contains(low, "exlow") ||
+		strings.Contains(low, "prefix") ||
+		strings.Contains(low, "extra"):
 		// Audit-tool false-positive suppressions for parser-emitted
 		// AST enum fields. Each was added when investigation showed
 		// the case arms were unreachable from Go but reachable from
@@ -240,6 +243,13 @@ func tagInterpretation(tag string) string {
 		//     and gameast.Effect.Controller — values like "you" / "each" /
 		//     "active_player" / "opponent" route through tagless / `ctrl`
 		//     switches in phases.go.
+		//   - exlow / prefix / extra: R60 Phase 1D-residue #3, the
+		//     canonical local-variable names for values derived from
+		//     gameast.Filter.Extra / Filter.Base (e.g.
+		//     `exLow := strings.ToLower(f.Extra[i])`,
+		//     `prefix := base[:idx]`). The audit-tool's static AST
+		//     scan can't trace data flow back to the AST field, so we
+		//     pattern-match on these widely-used local names.
 		return "AST enum from `scripts/mtg_ast.py` — cross-check parser, expected false positive"
 	case strings.Contains(low, "kind") || strings.Contains(low, "event"):
 		return "engine event/kind — high-signal if no emitter found"
