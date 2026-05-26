@@ -1,0 +1,88 @@
+# Desert Bloom (Outlaws of Thunder Junction Commander Precon Decklist)
+# Source: https://moxfield.com/decks/5MXFLs15ck6nh85X5VEjyQ
+COMMANDER: Yuma, Proud Protector
+1 Thrilling Discovery
+1 Mirage Mesa
+1 Magmatic Insight
+1 Turntimber Sower
+1 World Shaper
+1 Scattered Groves
+1 Scaretiller
+1 Perpetual Timepiece
+1 Oracle of Mul Daya
+1 Escape to the Wilds
+1 Sevinne's Reclamation
+1 Nesting Dragon
+1 Winding Way
+1 Dune Chanter
+1 Painted Bluffs
+1 Sol Ring
+6 Plains
+1 Bovine Intervention
+1 Rumbleweed
+1 Requisition Raid
+1 Dunes of the Dead
+1 Cactus Preserve
+1 Ancient Greenwarden
+1 Electric Revelation
+1 Eccentric Farmer
+1 Hour of Promise
+1 Descend upon the Sinful
+1 Angel of Indemnity
+1 Heaven // Earth
+1 The Mending of Dominaria
+1 Genesis Hydra
+1 Nantuko Cultivator
+1 Creosote Heath
+1 Vengeful Regrowth
+1 Scute Swarm
+1 Swiftfoot Boots
+1 Desert of the True
+1 Evolving Wilds
+1 Satyr Wayfinder
+1 Ramunap Ruins
+1 Skullwinder
+1 Scavenger Grounds
+1 Marshal's Anthem
+1 Hazezon, Shaper of Sand
+1 Unholy Heat
+1 Bristling Backwoods
+1 Bitter Reunion
+1 Perennial Behemoth
+1 Angel of the Ruins
+1 Path to Exile
+1 Chromatic Lantern
+1 Desert of the Indomitable
+1 Sheltered Thicket
+1 Hashep Oasis
+1 Sun Titan
+1 Jungle Shrine
+1 Desert of the Fervent
+1 Embrace the Unknown
+1 Shefet Dunes
+1 Omnath, Locus of Rage
+1 Return of the Wildspeaker
+1 Map the Frontier
+1 Kirri, Talented Sprout
+1 Krosan Verge
+1 Springbloom Druid
+1 Abraded Bluffs
+1 Arcane Signet
+1 Sunscorched Divide
+1 Cataclysmic Prospecting
+1 Decimate
+1 Conduit Pylons
+1 Terramorphic Expanse
+1 Ramunap Excavator
+1 Elvish Rejuvenator
+1 Wreck and Rebuild
+1 Valorous Stance
+1 Command Tower
+1 Explore
+1 Avenger of Zendikar
+1 Crawling Sensation
+1 Titania, Protector of Argoth
+4 Mountain
+1 Sand Scout
+7 Forest
+1 Harrow
