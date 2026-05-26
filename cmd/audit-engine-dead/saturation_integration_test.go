@@ -80,13 +80,28 @@ func TestSaturationFloor_NoHighSignalFindings(t *testing.T) {
 		}
 	}
 
-	t.Logf("saturation: card-name=%d ast-enum=%d documented=%d high-signal=%d (total=%d)",
+	// Greppable saturation baseline so future PRs can confirm the
+	// audit actually ran. Format pinned for log-parsing by the
+	// residue-trajectory doc; do NOT silently reformat.
+	t.Logf("audit-engine-dead saturation: card-name=%d ast-enum=%d documented=%d high-signal=%d (total=%d)",
 		nCardName, nASTEnum, nDocumented, len(highSignal), len(res.UnusedSwitchCases))
+
+	// Sum-of-classes invariant. Every UnusedSwitchCases finding MUST
+	// land in exactly one of the four buckets. A silent classifier
+	// fall-through (case-statement typo, missing return, etc.) would
+	// otherwise mask a real high-signal finding. R60 saturation
+	// close-out (PR following #522) added this paranoia check.
+	sum := nCardName + nASTEnum + nDocumented + len(highSignal)
+	if sum != len(res.UnusedSwitchCases) {
+		t.Fatalf("classify-sum invariant broken: card-name+ast-enum+documented+high-signal=%d != total=%d (a finding fell through every classifier arm)",
+			sum, len(res.UnusedSwitchCases))
+	}
 
 	if len(highSignal) > 0 {
 		t.Errorf("expected 0 high-signal findings (saturation floor); got %d", len(highSignal))
 		for _, c := range highSignal {
 			t.Errorf("  unclassified: %q at %s:%d (tag=%q)", c.Value, c.File, c.Line, c.SwitchTag)
 		}
+		t.Errorf("triage: delete the unreachable arm, OR extend classifyTag, OR add a (tag, value) entry to documentedHighSignalArms with a PR reference.")
 	}
 }
