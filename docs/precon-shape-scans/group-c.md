@@ -92,3 +92,67 @@ Each entry:
 - **Verdict:** engine-correct.
 - **Reasoning:** Stock Innistrad spirit-tribal precon; no fast mana, no infinites, no Game Changers. Freya correctly identifies the spirit/recursion engine through win-line clustering (Ghostly Pilferer + Reconnaissance Mission, Storm of Souls, etc.) and lands on B2 — the deck is exactly what it claims to be.
 
+### Hazel of the Rootbloom — Bloomburrow (BLB, Squirreled Away)
+
+- **Intended archetype:** Golgari (BG) squirrel tribal sacrifice-tokens — Hazel produces food + squirrels; the precon stacks aristocrats payoffs around the constant token production.
+- **Punch-up shape:** Ravenous Squirrel (sac outlet + scale), Chittering Witch (sac → -1/-1 spreader), Deadly Dispute / Woe Strider (Treasure/Scout sacrifice engines), Moonstone Eulogist (squirrel anthem), Beastmaster Ascension finisher.
+- **Freya measured_bracket:** **B4 Optimized (declared B2). 0 GC, 298 win-lines, synergy 52%.**
+- **Verdict:** **off** (false-positive B4, driven by win-line blow-up).
+- **Reasoning:** 298 win-lines is the same "every sacrifice combination is a piece-combo" inflation pattern PR #523/#530 partially addressed but didn't fully resolve for sacrifice-aristocrats decks. Chittering Witch + Deadly Dispute + Woe Strider + Gilded Goose + Moonstone Eulogist combinatorially explode the pair-detection. Real bracket is B2; the lift is calibration noise, not a tournament signal.
+
+### Aminatou, the Fateshifter — Commander 2018 (Subjective Reality)
+
+- **Intended archetype:** Esper (WUB) blink + top-deck manipulation — Aminatou's 0-loyalty draws, +1 blinks a permanent, -6 swaps libraries; the precon supports a soft blink/value engine.
+- **Punch-up shape:** Yennett Cryptic Sovereign (top-deck reveal trigger), Djinn of Wishes (X cards from top), Enigma Sphinx (cascade), Akroma's Vengeance (wipe + cycle), Aminatou's +1 blink loop.
+- **Freya measured_bracket:** **B1 Exhibition (declared B2). 0 GC, 4 win-lines, synergy 54%.**
+- **Verdict:** off (false-negative — should be B2; matches the precon-vibes baseline R1 finding for this exact deck).
+- **Reasoning:** Aminatou C18 has been the canonical Exhibition under-rate since the R1 baseline (`precon-vibes-baseline-r60.md` row 3). Same root cause: the engine is "value through blinking + top manipulation" — no card individually counts as a finisher to Freya's heuristic, so the score ladder falls below the Core threshold. Bracket is B2 by inspection (and by WotC stamp).
+
+### Kathril, Aspect Warper — Commander 2020 (Symbiotic Swarm)
+
+- **Intended archetype:** Abzan (WBG) keyword-counter tribal — Kathril gives all your creatures keyword counters based on what's in your graveyard; the precon leans on self-mill + reanimate to fuel Kathril ETB.
+- **Punch-up shape:** Unburial Rites + Soul of Innistrad (mass reanimate engine), Nyx Weaver (self-mill + recursion), Odric Lunarch Marshal (keyword spreader), Akroma Angel of Wrath (8 keywords in graveyard = the full Kathril bomb), Kathril ETB itself.
+- **Freya measured_bracket:** B2 Core (declared B2). 0 GC, 7 win-lines, synergy 69%.
+- **Verdict:** engine-correct.
+- **Reasoning:** Stock C20 precon at exactly the right bracket. The Akroma/Kathril + Soul of Innistrad axis is a real engine but slow and singleton — no fast mana, no tutors, no determined infinites. Freya's 7 win-lines and 69% synergy land cleanly in the B2 band.
+
+### Ureni of the Unwritten — Tarkir: Dragonstorm (TDM, Temur Roar)
+
+- **Intended archetype:** Temur (URG) dragon tribal big-mana — Ureni cheats dragons into play off your top three cards when you cast a 4+ CMC spell; the precon is a stomp-pile of 5+ CMC dragons.
+- **Punch-up shape:** Stormbreath Dragon (protection + monstrous), Scourge of the Throne (extra-combat dragon), Dragonlord Atarka (mass burn), Lathliss Dragon Queen (token engine on dragon ETB), Become the Avalanche / Storm's Wrath wipes.
+- **Freya measured_bracket:** B2 Core (declared B2). 0 GC, 12 win-lines, synergy 15%.
+- **Verdict:** engine-correct.
+- **Reasoning:** Recent (TDM) dragon precon shaped exactly to the WotC B2 template — big creatures, no fast mana, a few wipes, no infinites. The 15% synergy score is the usual tribal-as-themes blind spot (dragon-tribe doesn't register as a Freya theme). Bracket call is right; the deck is the textbook "play 6-drops and swing" precon.
+
+### Sauron, Lord of the Rings — The Lord of the Rings Commander (LTR, The Hosts of Mordor)
+
+- **Intended archetype:** Grixis (UBR) orc/wraith tribal discard-amber — Sauron's commander spells force discard and reanimate; the LTR set's Amass + One Ring + Ring-tempts-you mechanic is the spine.
+- **Punch-up shape:** The Balrog of Moria (big finisher + discard payoff), Summons of Saruman (mass orc tokens), Moria Scavenger (recursion), Goblin Dark-Dwellers (free flashback), Notion Thief (GC card on the discard plan), Cavern-Hoard Dragon finisher.
+- **Freya measured_bracket:** **B4 Optimized (declared B2). 1 GC (Notion Thief), 24 win-lines, synergy 33%.**
+- **Verdict:** off (false-positive B4 — likely the single GC + finisher density tripping the floor).
+- **Reasoning:** Notion Thief alone shouldn't lift this to B4 — the WotC GC=1-3 ceiling rules already cap at B3 unless a winning combo is present. The lift is probably the tuned-redundancy floor (8 finishers + sometimes fast mana) firing on LTR's dense top-end. Same calibration surface as Urza's Iron Alliance. Real bracket is B2 (or generously B3 for the discard subtheme); B4 is too hot.
+
+### Abaddon the Despoiler — Warhammer 40,000 Commander (40K, The Ruinous Powers)
+
+- **Intended archetype:** Grixis (UBR) chaos/aspiring-champion tribal with cascade — Abaddon has cascade X (X=damage dealt by you to opponents); supports a chaos-marines + horus-heresy plan.
+- **Punch-up shape:** Lord of Change (free flying body with massive cantrip body), Be'lakor the Dark Master (demon-tutor engine), Aspiring Champion (chaos undivided tribal), The Horus Heresy (mass-damage finisher), Mandate of Abaddon / Blight Grenade kills.
+- **Freya measured_bracket:** B2 Core (declared B2). 0 GC, 11 win-lines, synergy 0% (themes empty — chaos isn't a Freya theme).
+- **Verdict:** engine-correct.
+- **Reasoning:** 40K precon at correct bracket. The 0% synergy + empty themes are the same tribal/setting blind spot (chaos / aspiring champion are 40K-specific subtypes Freya doesn't tag). Freya correctly finds 11 win-lines and several finishers but doesn't over-promote — the cascade-X engine is real but slow and inconsistent without tutors.
+
+### Gavi, Nest Warden — Commander 2020 (Timeless Wisdom)
+
+- **Intended archetype:** Jeskai (URW) cycling-matters tribal — Gavi makes a 2/2 dino token when you cycle for the first time each turn; the precon is the canonical cycling/Astral Drift engine.
+- **Punch-up shape:** Astral Drift (cycling → blink), Curator of Mysteries (cycling rate-loose), Valiant Rescuer (cycling token), Mercurial Chemister + cycling-payoff loops, Decree of Justice / Akroma's Vengeance cycle-or-cast modal finishers.
+- **Freya measured_bracket:** **B3 Upgraded (declared B2). 1 GC (Fierce Guardianship), 39 win-lines, synergy 62%.**
+- **Verdict:** unclear (defensible either B2 or B3).
+- **Reasoning:** Fierce Guardianship is a real GC (and cEDH-tier free counter); 39 win-lines reflect the genuine cycling-engine pair-density that PR #530 partially de-clustered for true infinites. Gavi C20 plays harder than its B2 stamp suggests — the cycling engine produces tokens and value at a quick clip. Calling this B3 is defensible; calling B2 is also defensible. Freya's B3 is a credible reading, not a clear miss.
+
+### Omo, Queen of Vesuva — Modern Horizons 3 (MH3, Tricky Terrain)
+
+- **Intended archetype:** Simic (UG) land-creature land-tribal — Omo gives lands creature types and supports a "lands as creatures" go-wide via Scute Swarm / Hydra Broodmaster / Avenger of Zendikar token storms.
+- **Punch-up shape:** Scute Swarm (landfall token blowup), Avenger of Zendikar (mass plant tokens), Hydra Broodmaster (X-mana finisher), Jyoti Moag Ancient (animate-lands + landfall), Aggressive Biomancy (counters + tokens), Vivien Reid planeswalker support.
+- **Freya measured_bracket:** B2 Core (declared B2). 0 GC, 14 win-lines, synergy 16%.
+- **Verdict:** engine-correct.
+- **Reasoning:** Recent (MH3) land-creature precon at the right bracket. The 16% synergy is the lands-matter blind spot (Freya's themes don't include "lands as creatures" as a first-class tag). Scute Swarm / Avenger combos are real but tutor-less; no fast mana, no infinites. B2 lands cleanly.
+
