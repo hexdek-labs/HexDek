@@ -45,6 +45,39 @@ func ClassifyComboHeuristic(name, description string, pieces []string) string {
 			return containsAny(h, "aetherflux reservoir", "storm count", "tendrils of agony", "grapeshot")
 		}},
 
+		// Lockdown — prison / soft-lock combos that don't kill but
+		// prevent opponents from playing the game. Listed before the
+		// generic production rules so a Helm + RIP combo (which mills
+		// out by exile-replacement) gets tagged lockdown rather than
+		// infinite_mill: the operational shape is a one-shot win
+		// CONDITION via a prison piece, not a recurring loop.
+		{ComboClassLockdown, func(h string) bool {
+			// Phrase-level lock indicators (deck-text describing the
+			// effect) — these are the safest matches.
+			if containsAny(h,
+				"prison lock",
+				"soft lock",
+				"hard lock",
+				"lock the game",
+				"locks the game",
+				"locks opponents out",
+				"opponents can't cast",
+				"opponents can't untap",
+				"opponents can't draw",
+				"opponents skip their",
+				"opponents skip every") {
+				return true
+			}
+			// Card-name indicators — only specific prison pieces that
+			// don't also appear in non-lockdown lines. Helm of Obedience
+			// + RIP is the canonical Helm lockdown; Stasis + Chronatog /
+			// Stasis + Solemnity is the Stasis line. Isochron Scepter
+			// is intentionally NOT here (it appears in infinite-mana
+			// lines via Dramatic Reversal).
+			return containsAny(h, "helm of obedience", "stasis") &&
+				containsAny(h, "rest in peace", "leyline of the void", "chronatog", "solemnity", "lock")
+		}},
+
 		// 2. Named-engine ETB shapes — fire before generic mana so
 		// Worldgorger/Deadeye/Nim Deathmantle aren't miscategorised as
 		// infinite_mana when their description mentions the side-effect
@@ -119,5 +152,21 @@ func ClassifySpellbookImported(imports []KnownCombo) {
 			continue
 		}
 		imports[i].Class = ClassifyComboHeuristic(imports[i].Name, imports[i].Description, imports[i].Pieces)
+	}
+}
+
+// classifyComboBucket runs the heuristic classifier over a slice of
+// ComboResults whose Class is empty (heuristic-detected combos from
+// FindCombos / FindFinishers / FindSynergies). Curated KnownCombos
+// arrive with Class pre-set and are left untouched. Mutates in place
+// for the same shape ClassifySpellbookImported uses on the import path.
+func classifyComboBucket(combos []ComboResult) {
+	for i := range combos {
+		if combos[i].Class != "" {
+			continue
+		}
+		// Heuristic combos don't carry a Name field; the Description is
+		// the strongest signal, with the card list as backup.
+		combos[i].Class = ClassifyComboHeuristic("", combos[i].Description, combos[i].Cards)
 	}
 }

@@ -22,8 +22,48 @@ const (
 	ComboClassBlinkEngine     = "blink_engine"      // repeated blink for ETB value
 	ComboClassManaSink        = "mana_sink"         // payoff for infinite mana (Staff of Domination solo)
 	ComboClassCombatFinisher  = "combat_finisher"   // pump/anthem-driven lethal swing (Craterhoof package)
+	ComboClassLockdown        = "lockdown"          // prison/lock loops that don't kill but prevent opponents from playing (Stasis, Knowledge Pool, Helm of Obedience + RIP, Eternity Vessel + clones)
 	ComboClassUnknown         = "unknown"           // unclassified — fallback for unmatched imports
 )
+
+// ComboClassLabel returns a human-readable label for a class constant.
+// Used by report renderers (JSON consumers, text, markdown) to surface
+// the taxonomy without leaking the snake_case constant value into the
+// reader-facing output. Unknown / empty values yield empty strings so
+// callers can skip rendering when the classifier returned nothing.
+func ComboClassLabel(class string) string {
+	switch class {
+	case ComboClassInfiniteMana:
+		return "Infinite Mana"
+	case ComboClassInfiniteDamage:
+		return "Infinite Damage"
+	case ComboClassInfiniteDrain:
+		return "Infinite Drain"
+	case ComboClassInfiniteTokens:
+		return "Infinite Tokens"
+	case ComboClassInfiniteETB:
+		return "Infinite ETB"
+	case ComboClassInfiniteMill:
+		return "Infinite Mill"
+	case ComboClassLibraryExileWin:
+		return "Library-Exile Win"
+	case ComboClassStormFinisher:
+		return "Storm Finisher"
+	case ComboClassETBPayoff:
+		return "ETB Payoff"
+	case ComboClassETBDoubler:
+		return "ETB Doubler"
+	case ComboClassBlinkEngine:
+		return "Blink Engine"
+	case ComboClassManaSink:
+		return "Mana Sink"
+	case ComboClassCombatFinisher:
+		return "Combat Finisher"
+	case ComboClassLockdown:
+		return "Lockdown"
+	}
+	return ""
+}
 
 // KnownCombo is a confirmed combo that Freya should always flag
 // with 100% confidence when all pieces are in a deck.

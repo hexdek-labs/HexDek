@@ -55,7 +55,11 @@ func printText(w io.Writer, r *FreyaReport) {
 		if c.Confirmed {
 			prefix = "\xe2\x9c\x85" // checkmark for confirmed
 		}
-		fmt.Fprintf(w, "  %s %s -- mandatory trigger loop\n", prefix, strings.Join(c.Cards, " + "))
+		classTag := ""
+		if label := ComboClassLabel(c.Class); label != "" {
+			classTag = " [" + label + "]"
+		}
+		fmt.Fprintf(w, "  %s %s -- mandatory trigger loop%s\n", prefix, strings.Join(c.Cards, " + "), classTag)
 		// Split description on " | " to show outlets on a separate line.
 		parts := strings.SplitN(c.Description, " | ", 2)
 		fmt.Fprintf(w, "    %s\n", parts[0])
@@ -87,7 +91,11 @@ func printText(w io.Writer, r *FreyaReport) {
 		if c.Confirmed {
 			prefix = "\xe2\x9c\x85" // checkmark for confirmed
 		}
-		fmt.Fprintf(w, "  %s %s\n", prefix, strings.Join(c.Cards, " + "))
+		classTag := ""
+		if label := ComboClassLabel(c.Class); label != "" {
+			classTag = " [" + label + "]"
+		}
+		fmt.Fprintf(w, "  %s %s%s\n", prefix, strings.Join(c.Cards, " + "), classTag)
 		// Split description on " | " to show outlets on a separate line.
 		parts := strings.SplitN(c.Description, " | ", 2)
 		fmt.Fprintf(w, "    %s\n", parts[0])
@@ -109,7 +117,11 @@ func printText(w io.Writer, r *FreyaReport) {
 		fmt.Fprintf(w, "  (none detected)\n")
 	}
 	for _, c := range r.Finishers {
-		fmt.Fprintf(w, "  * %s -- %s\n", strings.Join(c.Cards, " + "), c.Description)
+		classTag := ""
+		if label := ComboClassLabel(c.Class); label != "" {
+			classTag = " [" + label + "]"
+		}
+		fmt.Fprintf(w, "  * %s%s -- %s\n", strings.Join(c.Cards, " + "), classTag, c.Description)
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -843,7 +855,11 @@ func printMarkdown(w io.Writer, r *FreyaReport) {
 		if c.Confirmed {
 			prefix = "\xe2\x9c\x85"
 		}
-		fmt.Fprintf(w, "- %s **%s** -- mandatory trigger loop\n", prefix, strings.Join(c.Cards, " + "))
+		classTag := ""
+		if label := ComboClassLabel(c.Class); label != "" {
+			classTag = " _[" + label + "]_"
+		}
+		fmt.Fprintf(w, "- %s **%s** -- mandatory trigger loop%s\n", prefix, strings.Join(c.Cards, " + "), classTag)
 		parts := strings.SplitN(c.Description, " | ", 2)
 		fmt.Fprintf(w, "  - %s\n", parts[0])
 		if len(parts) > 1 {
@@ -873,7 +889,11 @@ func printMarkdown(w io.Writer, r *FreyaReport) {
 		if c.Confirmed {
 			prefix = "\xe2\x9c\x85"
 		}
-		fmt.Fprintf(w, "- %s **%s**\n", prefix, strings.Join(c.Cards, " + "))
+		classTag := ""
+		if label := ComboClassLabel(c.Class); label != "" {
+			classTag = " _[" + label + "]_"
+		}
+		fmt.Fprintf(w, "- %s **%s**%s\n", prefix, strings.Join(c.Cards, " + "), classTag)
 		parts := strings.SplitN(c.Description, " | ", 2)
 		fmt.Fprintf(w, "  - %s\n", parts[0])
 		if len(parts) > 1 {
@@ -893,7 +913,11 @@ func printMarkdown(w io.Writer, r *FreyaReport) {
 
 	fmt.Fprintf(w, "## Game Finishers (%d)\n\n", len(r.Finishers))
 	for _, c := range r.Finishers {
-		fmt.Fprintf(w, "- **%s** -- %s\n", strings.Join(c.Cards, " + "), c.Description)
+		classTag := ""
+		if label := ComboClassLabel(c.Class); label != "" {
+			classTag = " _[" + label + "]_"
+		}
+		fmt.Fprintf(w, "- **%s**%s -- %s\n", strings.Join(c.Cards, " + "), classTag, c.Description)
 	}
 	if len(r.Finishers) == 0 {
 		fmt.Fprintf(w, "_None detected._\n")
@@ -1242,6 +1266,7 @@ type jsonColors struct {
 type jsonCombo struct {
 	Cards            []string `json:"cards"`
 	LoopType         string   `json:"loop_type"`
+	Class            string   `json:"class,omitempty"`
 	Resources        string   `json:"resources,omitempty"`
 	Description      string   `json:"description"`
 	Confirmed        bool     `json:"confirmed,omitempty"`
@@ -1856,6 +1881,7 @@ func comboSlice(combos []ComboResult) []jsonCombo {
 		out[i] = jsonCombo{
 			Cards:            c.Cards,
 			LoopType:         c.LoopType,
+			Class:            c.Class,
 			Resources:        c.Resources,
 			Description:      c.Description,
 			Confirmed:        c.Confirmed,
