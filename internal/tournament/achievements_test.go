@@ -55,7 +55,12 @@ func TestAwardAchievementsResolvesOwnerByCommanderIdx(t *testing.T) {
 }
 
 func TestAwardAchievementsNilTrackerIsNoOp(t *testing.T) {
-	// Must not panic.
+	// Explicit doesn't-panic assertion via recover() — Phase 2B audit.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("awardAchievements(nil tracker, ...) must early-return; got panic %v", r)
+		}
+	}()
 	awardAchievements(nil, GameOutcome{}, nil)
 	awardAchievements(nil, GameOutcome{Turns: 5, PostGameStats: []SeatStats{{Won: true}}}, []string{"alice"})
 }

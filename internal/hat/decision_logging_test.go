@@ -109,7 +109,12 @@ func TestEmitDecisionEvent_NoStrategyEmitsEmptyArchetype(t *testing.T) {
 // anywhere. Some test harnesses pass nil to exercise hat helpers in
 // isolation.
 func TestEmitDecisionEvent_NilGameStateIsNoop(t *testing.T) {
+	// Explicit doesn't-panic assertion via recover() — Phase 2B audit.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("emitDecisionEvent(nil, ...) must not panic; got %v", r)
+		}
+	}()
 	h := NewYggdrasilHat(&StrategyProfile{Archetype: "control"}, 0)
-	// Just shouldn't panic.
 	h.emitDecisionEvent(nil, 0, "mode", map[string]interface{}{"x": 1})
 }

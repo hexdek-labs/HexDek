@@ -190,5 +190,12 @@ func TestClearVisitFlags_ResetsAcrossBattlefields(t *testing.T) {
 }
 
 func TestClearVisitFlags_NilSafe(t *testing.T) {
-	ClearVisitFlags(nil) // must not panic
+	// "Doesn't panic" assertion made explicit via recover() — pre-Phase-2B
+	// the test had no runtime check; the assertion was implicit.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("ClearVisitFlags(nil) must not panic; got %v", r)
+		}
+	}()
+	ClearVisitFlags(nil)
 }

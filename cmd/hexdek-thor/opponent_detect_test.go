@@ -408,14 +408,19 @@ func TestEnrichOpponentSeat_Idempotent(t *testing.T) {
 }
 
 func TestEnrichOpponentSeat_NilSafety(t *testing.T) {
-	// Should not panic on nil gs.
-	EnrichOpponentSeat(nil, 1, OpponentRequirement{NeedsCreatures: true})
+	// "Doesn't panic" assertion made explicit — pre-Phase-2B this
+	// test relied on the absence of a runtime panic without any
+	// recover() guard, which the Phase 2B audit flagged as a no-
+	// assertion test. The defer makes the assertion explicit.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("EnrichOpponentSeat must not panic; got %v", r)
+		}
+	}()
 
-	// Should not panic on out-of-range seat.
+	EnrichOpponentSeat(nil, 1, OpponentRequirement{NeedsCreatures: true})
 	gs := makeTestGameStateForEnrich(2)
 	EnrichOpponentSeat(gs, 5, OpponentRequirement{NeedsCreatures: true})
-
-	// Should not panic on empty requirement.
 	EnrichOpponentSeat(gs, 1, OpponentRequirement{})
 }
 

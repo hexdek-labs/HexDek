@@ -145,11 +145,15 @@ func TestObserver_RecordSnapshot_IncrementalCallsAllHitSink(t *testing.T) {
 
 // No-op when no sink is wired — RecordSnapshot must not panic and
 // must not do any snapshot-building work that could fail (e.g.,
-// nil-deref on gs.Seats).
+// nil-deref on gs.Seats). Explicit doesn't-panic assertion via
+// recover() — Phase 2B audit.
 func TestObserver_RecordSnapshot_NoSinkWiredIsNoOp(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("RecordSnapshot must early-return on nil gs when no sink wired; got panic %v", r)
+		}
+	}()
 	obs := newSinkObserver()
-	// Pass a deliberately nil gs to make sure the early-return
-	// happens before any work that could deref it.
 	obs.RecordSnapshot(context.Background(), 99, Observation{Seed: GameSeed{RNGSeed: 1}}, nil)
 }
 

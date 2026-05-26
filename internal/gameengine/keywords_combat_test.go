@@ -1346,7 +1346,15 @@ func TestAllCombatKeywords_NonEmpty(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestCombatKeywords_NilSafety(t *testing.T) {
-	// These should not panic.
+	// Explicit "doesn't panic" assertion via recover() — pre-Phase-2B
+	// this test relied on the absence of a runtime panic without any
+	// guard, which the audit flagged as a no-assertion test.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("combat-keyword helpers must not panic on nil input; got %v", r)
+		}
+	}()
+
 	CanBlockIntimidate(nil, nil)
 	CanBlockFear(nil, nil)
 	CanBlockShadow(nil, nil)

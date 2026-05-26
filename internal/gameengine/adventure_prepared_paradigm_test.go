@@ -236,10 +236,16 @@ func TestResolveParadigmCopies_SkipsCardNotInExile(t *testing.T) {
 }
 
 func TestResolveParadigmCopies_NilSafe(t *testing.T) {
-	// nil gs should not panic.
-	ResolveParadigmCopies(nil, 0)
+	// Explicit "doesn't panic" assertion via recover() — pre-Phase-2B
+	// this test relied on the absence of a runtime panic without any
+	// guard, which the audit flagged as a no-assertion test.
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("ResolveParadigmCopies must not panic; got %v", r)
+		}
+	}()
 
-	// nil ParadigmExile should not panic.
+	ResolveParadigmCopies(nil, 0)
 	gs := &GameState{
 		Seats: []*Seat{{Idx: 0, Life: 40}},
 		Flags: map[string]int{},

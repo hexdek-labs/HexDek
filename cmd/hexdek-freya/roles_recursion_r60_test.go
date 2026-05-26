@@ -276,16 +276,17 @@ func TestRoles_YawgmothsWill_CastFromGraveyardPattern(t *testing.T) {
 		"Sorcery",
 		3,
 	)
-	// Yawgmoth's Will doesn't use "may cast ... from your
-	// graveyard" — it says "cast spells from your graveyard". The
-	// generic "from your graveyard to the battlefield" branch won't
-	// fire either. This is a known-narrow detection: the test
-	// documents the current behaviour so a future tuning that
-	// broadens "cast ... from ... graveyard" can flip it.
-	_ = roles
-	// Intentional negative pin until detection broadens: not
-	// asserting Recursion here. Future detection improvement
-	// should make this case fire and update this test accordingly.
+	// Yawgmoth's Will doesn't use "may cast ... from your graveyard" —
+	// it says "cast spells from your graveyard". The generic "from
+	// your graveyard to the battlefield" branch doesn't fire either.
+	// Pin the narrow CURRENT behaviour as a negative assertion so a
+	// future tuning that broadens "cast ... from ... graveyard"
+	// detection trips this test and forces the maintainer to update
+	// it. Without the assertion, the test was a no-op probe (caught
+	// by the Phase 2B no-assertion sweep).
+	if hasRole(roles, RoleRecursion) {
+		t.Errorf("Yawgmoth's Will recursion detection broadened — update this test (got %v)", roles)
+	}
 }
 
 func TestRoles_DefaultUtilityStillFiresWhenNoRecursion(t *testing.T) {

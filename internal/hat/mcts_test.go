@@ -7,6 +7,14 @@ import (
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
+// TestMCTSHat_InterfaceSatisfaction is a COMPILE-TIME assertion that
+// MCTSHat satisfies the gameengine.Hat interface. The check is the
+// `var _ Iface = (*T)(nil)` pattern at line 1 of the function — if
+// MCTSHat ever loses a method, the file fails to compile, and
+// `go test` reports the error before any test runs. The function
+// body intentionally has no runtime assertion; Phase 2B's no-
+// assertion sweep correctly flags this — flagged-as-intentional via
+// this comment.
 func TestMCTSHat_InterfaceSatisfaction(t *testing.T) {
 	var _ gameengine.Hat = (*MCTSHat)(nil)
 }

@@ -209,9 +209,16 @@ func TestObserver_RecordCrash(t *testing.T) {
 }
 
 func TestObserver_NilSinks(t *testing.T) {
+	// Explicit doesn't-panic assertion via recover() — Phase 2B audit.
+	// All three observer methods must accept nil sinks without crashing
+	// (verified callers pass nil during bootstrap before sinks register).
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("Observer methods must accept nil sinks; got panic %v", r)
+		}
+	}()
 	dir := t.TempDir()
 	obs := New(dir, nil, nil, nil)
-
 	obs.RecordObservation(Observation{
 		ParserGaps: []string{"gap"},
 		CoTriggers: []CoTriggerPair{{CardA: "a", CardB: "b"}},

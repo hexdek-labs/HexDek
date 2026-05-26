@@ -300,8 +300,13 @@ func TestMCTSHat_PruningDoesNotBreakComboPreference(t *testing.T) {
 	}
 }
 
-// Compile-time + runtime check that the new fields don't break the Hat
-// interface implementation.
+// TestMCTSHat_PruningFieldsInterfaceStable is a COMPILE-TIME check
+// that the pruning fields don't break the Hat interface
+// implementation. The `var _ gameengine.Hat = &MCTSHat{...}` line is
+// the assertion — if the struct shape ever stops satisfying Hat, the
+// file fails to compile before `go test` runs. The function body has
+// no runtime assertion; Phase 2B's no-assertion sweep correctly flags
+// it as such — flagged-as-intentional via this comment.
 func TestMCTSHat_PruningFieldsInterfaceStable(t *testing.T) {
 	var _ gameengine.Hat = &MCTSHat{
 		Inner:          &GreedyHat{},
