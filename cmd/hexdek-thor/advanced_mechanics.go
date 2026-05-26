@@ -180,25 +180,9 @@ func findPerm(gs *gameengine.GameState, name string) *gameengine.Permanent {
 	return nil
 }
 
-// countPermsOnSeat counts permanents on a seat's battlefield.
-func countPermsOnSeat(gs *gameengine.GameState, seat int) int {
-	if seat < 0 || seat >= len(gs.Seats) || gs.Seats[seat] == nil {
-		return 0
-	}
-	return len(gs.Seats[seat].Battlefield)
-}
-
 // permOnBattlefield checks if a permanent by name is on any battlefield.
 func permOnBattlefield(gs *gameengine.GameState, name string) bool {
 	return findPerm(gs, name) != nil
-}
-
-// countInGraveyard counts cards in a seat's graveyard.
-func countInGraveyard(gs *gameengine.GameState, seat int) int {
-	if seat < 0 || seat >= len(gs.Seats) || gs.Seats[seat] == nil {
-		return 0
-	}
-	return len(gs.Seats[seat].Graveyard)
 }
 
 // cardInGraveyard checks if a card by name is in a seat's graveyard.

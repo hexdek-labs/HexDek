@@ -131,37 +131,6 @@ func collectAllLeafEffects(ast *gameast.CardAST) []leafEffect {
 	return results
 }
 
-// flattenEffect recursively unwraps composite effects to get all leaf effects.
-func flattenEffect(eff gameast.Effect) []gameast.Effect {
-	if eff == nil {
-		return nil
-	}
-	switch e := eff.(type) {
-	case *gameast.Sequence:
-		var out []gameast.Effect
-		for _, item := range e.Items {
-			out = append(out, flattenEffect(item)...)
-		}
-		return out
-	case *gameast.Optional_:
-		return flattenEffect(e.Body)
-	case *gameast.Conditional:
-		var out []gameast.Effect
-		out = append(out, flattenEffect(e.Body)...)
-		out = append(out, flattenEffect(e.ElseBody)...)
-		return out
-	case *gameast.Choice:
-		// Take first option for testing.
-		if len(e.Options) > 0 {
-			return flattenEffect(e.Options[0])
-		}
-		return nil
-	case *gameast.UnknownEffect:
-		return nil
-	default:
-		return []gameast.Effect{eff}
-	}
-}
 
 // flatLeaf wraps an effect with provenance metadata from flattenEffectEx.
 type flatLeaf struct {

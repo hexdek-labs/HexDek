@@ -3639,18 +3639,6 @@ func kwArgInt(args []interface{}, idx int) int {
 	return 0
 }
 
-// kwArgStr extracts a string from a keyword's Args at position idx.
-func kwArgStr(args []interface{}, idx int) string {
-	if idx >= len(args) {
-		return ""
-	}
-	switch v := args[idx].(type) {
-	case string:
-		return v
-	}
-	return ""
-}
-
 // extractKeywords returns all Keyword abilities from a card's AST.
 func extractKeywords(ast *gameast.CardAST) []*gameast.Keyword {
 	if ast == nil {

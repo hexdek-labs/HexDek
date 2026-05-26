@@ -215,7 +215,14 @@ func TestRoomManager_GetRoom(t *testing.T) {
 }
 
 func TestShortHash_Stable(t *testing.T) {
-	if shortHash("foo") != shortHash("foo") {
+	// Two separate calls with the same input must return the same
+	// value (determinism). The temp vars are intentional — staticcheck
+	// SA4000 would flag `shortHash("foo") != shortHash("foo")` as
+	// "same expression both sides" even though we're verifying that
+	// two distinct calls produce identical output.
+	a := shortHash("foo")
+	b := shortHash("foo")
+	if a != b {
 		t.Fatal("shortHash is not deterministic")
 	}
 	if shortHash("foo") == shortHash("bar") {

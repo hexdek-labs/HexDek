@@ -150,7 +150,7 @@ func TestNoctis_RefreshOnLTBPicksUpFreshArtifact(t *testing.T) {
 
 	// Empty graveyard at ETB time → 0 grants.
 	noctisPrinceOfLucisETB(gs, noctis)
-	if gs.ZoneCastGrants != nil && len(gs.ZoneCastGrants) != 0 {
+	if len(gs.ZoneCastGrants) != 0 {
 		t.Fatalf("expected 0 grants at ETB with empty gy, got %d", len(gs.ZoneCastGrants))
 	}
 

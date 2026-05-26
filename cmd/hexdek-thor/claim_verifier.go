@@ -90,20 +90,6 @@ func claimFail(category, claim, msg string) *failure {
 	}
 }
 
-// claimInvariantFail checks engine invariants and returns the first failure or nil.
-func claimInvariantFail(gs *gameengine.GameState, category, claim string) *failure {
-	violations := gameengine.RunAllInvariants(gs)
-	if len(violations) > 0 {
-		return &failure{
-			CardName:    claim,
-			Interaction: "claim_verify/" + category,
-			Invariant:   violations[0].Name,
-			Message:     violations[0].Message,
-		}
-	}
-	return nil
-}
-
 func buildAllClaimTests() []claimTest {
 	var all []claimTest
 	all = append(all, buildSBAClaimTests()...)

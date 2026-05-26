@@ -70,7 +70,7 @@ func TestLoadCardStatsByCommander_NoDataReturnsEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadCardStatsByCommander: %v", err)
 	}
-	if results != nil && len(results) != 0 {
+	if len(results) != 0 {
 		t.Errorf("expected empty results, got %d entries", len(results))
 	}
 }

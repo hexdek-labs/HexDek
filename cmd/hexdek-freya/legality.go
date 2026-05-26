@@ -232,9 +232,9 @@ func checkCardCount(total int, hasPartner bool) CardCountCheck {
 	if total == expected {
 		cc.Valid = true
 		if hasPartner {
-			cc.Message = fmt.Sprintf("100 cards (98 + 2 partner commanders)")
+			cc.Message = "100 cards (98 + 2 partner commanders)"
 		} else {
-			cc.Message = fmt.Sprintf("100 cards (99 + 1 commander)")
+			cc.Message = "100 cards (99 + 1 commander)"
 		}
 	} else {
 		cc.Valid = false

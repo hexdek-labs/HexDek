@@ -227,7 +227,7 @@ func TestSearchGameSummaries_LimitCappedAt500(t *testing.T) {
 	if err != nil {
 		t.Fatalf("search: %v", err)
 	}
-	if rows != nil && len(rows) > 500 {
+	if len(rows) > 500 {
 		t.Errorf("Limit should cap at 500; got %d", len(rows))
 	}
 }
