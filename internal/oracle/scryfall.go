@@ -265,12 +265,13 @@ func LookupMany(ctx context.Context, database *sql.DB, names []string) map[strin
 	}
 	sem := make(chan struct{}, parallelism)
 	var wg sync.WaitGroup
+collectLoop:
 	for _, chunk := range chunks {
 		chunk := chunk
 		select {
 		case sem <- struct{}{}:
 		case <-ctx.Done():
-			break
+			break collectLoop // ctx-cancel; bare `break` only escapes the select
 		}
 		wg.Add(1)
 		go func() {
@@ -304,12 +305,13 @@ func LookupMany(ctx context.Context, database *sql.DB, names []string) map[strin
 	wg.Wait()
 
 	// Layer 2: parallel fuzzy fallback for unresolved names.
+fuzzyLoop:
 	for _, n := range stillMissing {
 		n := n
 		select {
 		case sem <- struct{}{}:
 		case <-ctx.Done():
-			break
+			break fuzzyLoop // ctx-cancel; bare `break` only escapes the select
 		}
 		wg.Add(1)
 		go func() {
@@ -384,12 +386,13 @@ func RefreshPrices(ctx context.Context, database *sql.DB, names []string) map[st
 	sem := make(chan struct{}, parallelism)
 	var wg sync.WaitGroup
 	var outMu sync.Mutex
+prefetchLoop:
 	for _, chunk := range chunks {
 		chunk := chunk
 		select {
 		case sem <- struct{}{}:
 		case <-ctx.Done():
-			break
+			break prefetchLoop // ctx-cancel; bare `break` only escapes the select
 		}
 		wg.Add(1)
 		go func() {

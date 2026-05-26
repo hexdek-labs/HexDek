@@ -398,7 +398,6 @@ func AutoArchiveViolation(dir string, rngSeed int64, deckKeys [4]string, violati
 // Returns the rule plus the original message. If the string doesn't match
 // the format, returns ("", s).
 func parseOracleViolation(s string) (vtype, msg string) {
-	msg = s
 	if !strings.HasPrefix(s, "[") {
 		return "", s
 	}

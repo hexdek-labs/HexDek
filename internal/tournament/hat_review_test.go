@@ -130,9 +130,9 @@ func TestHatDecisionReview(t *testing.T) {
 		if nSeats == 2 {
 			mode = "1v1"
 		}
-		sb.WriteString(fmt.Sprintf("\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"))
-		sb.WriteString(fmt.Sprintf("  [%s] %s  (%s)\n", mode, pd.label, elapsed.Round(time.Millisecond)))
-		sb.WriteString(fmt.Sprintf("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"))
+		sb.WriteString("\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+		fmt.Fprintf(&sb, "  [%s] %s  (%s)\n", mode, pd.label, elapsed.Round(time.Millisecond))
+		sb.WriteString("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 
 		for i, d := range decks {
 			cmdrName := d.CommanderName

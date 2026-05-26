@@ -157,12 +157,10 @@ func GenerateChaosDeck(cc *ChaosCorpus, rng *rand.Rand) *ChaosDeck {
 			// Colorless commander — no basic lands match. Add Wastes or
 			// just use nonbasics.
 			nonBasicCount += basicCount
-			basicCount = 0
 		}
 	} else if basicCount > 0 {
 		// Colorless commander — redistribute to nonbasics.
 		nonBasicCount += basicCount
-		basicCount = 0
 	}
 
 	// Add nonbasic lands. Filter to those whose color identity is a subset

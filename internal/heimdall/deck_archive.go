@@ -159,12 +159,7 @@ func BuildDeckArchive(in DeckArchiveInput) DeckArchive {
 		return sortedGames[i].FinishedAt > sortedGames[j].FinishedAt
 	})
 	for i := 0; i < len(sortedGames) && i < limit; i++ {
-		g := sortedGames[i]
-		out.Games.Recent = append(out.Games.Recent, DeckArchiveRecentGame{
-			FinishedAt: g.FinishedAt,
-			Won:        g.Won,
-			Draw:       g.Draw,
-		})
+		out.Games.Recent = append(out.Games.Recent, DeckArchiveRecentGame(sortedGames[i]))
 	}
 
 	// Per-version rollup via the existing pure-computation path. We

@@ -276,7 +276,6 @@ func (d *ContribDispatcher) handleConnect(w http.ResponseWriter, r *http.Request
 			if err := contribSendEnvelope(ctx, wsConn, "assignment", a); err != nil {
 				log.Printf("contrib: send assignment: %v", err)
 				d.requeue(a)
-				inFlight = nil
 				return
 			}
 
@@ -296,7 +295,6 @@ func (d *ContribDispatcher) handleConnect(w http.ResponseWriter, r *http.Request
 		case "bye":
 			if inFlight != nil {
 				d.requeue(inFlight)
-				inFlight = nil
 			}
 			return
 

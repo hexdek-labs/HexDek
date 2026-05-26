@@ -286,9 +286,7 @@ func ActivateBloodrush(gs *GameState, seatIdx int, source *Card, target *Permane
 	})
 
 	// 4) Grant ability words until end of turn.
-	for _, kw := range abilities {
-		target.GrantedAbilities = append(target.GrantedAbilities, kw)
-	}
+	target.GrantedAbilities = append(target.GrantedAbilities, abilities...)
 	gs.InvalidateCharacteristicsCache()
 
 	// 5) Log with CostMeta-style stamp identifying the source card.

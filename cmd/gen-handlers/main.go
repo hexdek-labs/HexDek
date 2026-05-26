@@ -991,7 +991,7 @@ func generateETBBody(cc ClassifiedCard) string {
 	if containsAny(oracle, "create") && containsAny(oracle, "token") && containsAny(oracle, "enters") {
 		power, tough, tokenType := extractTokenInfo(oracle)
 		lines = append(lines, "\ttoken := &gameengine.Card{")
-		lines = append(lines, fmt.Sprintf("\t\tName:          \"%d/%d %s Token\",", power, tough, strings.Title(tokenType)))
+		lines = append(lines, fmt.Sprintf("\t\tName:          \"%d/%d %s Token\",", power, tough, titleCase(tokenType)))
 		lines = append(lines, "\t\tOwner:         seat,")
 		lines = append(lines, fmt.Sprintf("\t\tBasePower:     %d,", power))
 		lines = append(lines, fmt.Sprintf("\t\tBaseToughness: %d,", tough))
@@ -1724,6 +1724,21 @@ func extractScryN(oracle string) int {
 		}
 	}
 	return 0
+}
+
+// titleCase upper-cases the first rune and leaves the rest as-is —
+// replacement for strings.Title (deprecated since Go 1.18). Token type
+// names are ASCII-only, so a Unicode-aware caser via golang.org/x/text/cases
+// would be overkill here.
+func titleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	r := []rune(s)
+	if r[0] >= 'a' && r[0] <= 'z' {
+		r[0] = r[0] - 'a' + 'A'
+	}
+	return string(r)
 }
 
 func extractTokenInfo(oracle string) (int, int, string) {
