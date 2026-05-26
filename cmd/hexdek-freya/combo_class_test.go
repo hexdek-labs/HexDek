@@ -35,6 +35,7 @@ func TestKnownCombos_ClassesAreFromHierarchy(t *testing.T) {
 		ComboClassBlinkEngine:     true,
 		ComboClassManaSink:        true,
 		ComboClassCombatFinisher:  true,
+		ComboClassLockdown:        true,
 		ComboClassUnknown:         true,
 	}
 	for _, kc := range KnownCombos {

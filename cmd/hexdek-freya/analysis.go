@@ -1519,6 +1519,18 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 	// Deduplicate synergies by card-pair key.
 	report.Synergies = deduplicateCombos(report.Synergies)
 
+	// R60r2: backfill Class on heuristic-detected combos. Curated
+	// KnownCombos arrive pre-classed via line 1378; the heuristic
+	// detection paths (FindCombos / FindFinishers / FindSynergies)
+	// don't set Class, so the report's class-tag display would be
+	// blank for everything except the curated entries. Run the
+	// shared classifier over name + description + cards so all four
+	// buckets carry the taxonomy.
+	classifyComboBucket(report.TrueInfinites)
+	classifyComboBucket(report.Determined)
+	classifyComboBucket(report.Finishers)
+	classifyComboBucket(report.Synergies)
+
 	// Value chain detection.
 	report.ValueChains = DetectValueChains(profiles)
 
