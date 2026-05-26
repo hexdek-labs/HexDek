@@ -1207,10 +1207,59 @@ func (h *Handler) runFreya(deckPath string) {
 			}
 		}
 
+		// Snapshot-schema follow-up (r60): persist Freya's scalar
+		// outputs to `deck_freya_profile` so downstream analytics
+		// (e.g. the bracket-vs-ELO correlation in
+		// docs/bracket-elo-distribution-r60.md) can join against
+		// showmatch_elo without re-running Freya. saveProfileJSON
+		// (cmd/hexdek-freya/main.go) writes the sidecar; we read it
+		// back here and upsert. Best-effort: a missing or
+		// unparseable profile blob logs and continues — Freya
+		// markdown + strategy.json still arrived for the UI.
+		h.persistFreyaProfile(owner, id)
+
 		h.publishDeck(owner+"/"+id, deckEvent{
 			Event: "freya_complete",
 			Data:  `{"status":"complete"}`,
 		})
+	}
+}
+
+// persistFreyaProfile reads the .profile.json sidecar written by
+// saveFreyaData and upserts the extracted scalars into
+// `deck_freya_profile`. deck_key is the canonical
+// "<owner>/<id>" identity used by showmatch_elo, so the two tables
+// join cleanly.
+//
+// All errors are logged + swallowed. This is a backfill side-channel:
+// the user-visible freya_complete event still fires, the markdown
+// report is on disk, the strategy.json is on disk — losing the DB
+// upsert just means future analytics will re-derive the scalars on
+// the next Freya run for this deck.
+func (h *Handler) persistFreyaProfile(owner, id string) {
+	if h.Showmatch == nil || h.Showmatch.sqlDB == nil {
+		return
+	}
+	profilePath := filepath.Join(h.DecksDir, owner, "freya", id+".profile.json")
+	blob, err := os.ReadFile(profilePath)
+	if err != nil {
+		// Missing profile.json is expected on older Freya binaries
+		// that pre-date the sidecar write; the bracket-vs-ELO
+		// correlation just won't have a row for this deck until the
+		// next analyze pass.
+		if !os.IsNotExist(err) {
+			log.Printf("freya: read profile.json %s: %v", profilePath, err)
+		}
+		return
+	}
+	deckKey := owner + "/" + id
+	profile, err := db.FreyaProfileFromJSON(blob, deckKey, owner, "")
+	if err != nil {
+		log.Printf("freya: parse profile.json %s: %v", profilePath, err)
+		return
+	}
+	if err := db.UpsertFreyaProfile(context.Background(), h.Showmatch.sqlDB, profile); err != nil {
+		log.Printf("freya: upsert deck_freya_profile %s: %v", deckKey, err)
 	}
 }
 
