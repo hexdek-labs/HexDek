@@ -303,13 +303,10 @@ func ShouldEntwine(gs *GameState, seatIdx int, spellCost int, entwineCost int) b
 	return CanPayEntwine(gs, seatIdx, spellCost, entwineCost)
 }
 
-// Buyback (CR §702.27) is implemented in keywords_buyback.go as a real
-// alt-cost mechanic mirroring the Warp / Flashback pattern. The earlier
-// AdditionalCost-style stub (NewBuybackCost, CastSpellWithBuyback,
-// ShouldReturnToHandOnResolve gated on CostMeta["buyback"]) was a
-// placeholder and has been removed; the canonical hook is
-// ShouldReturnToHandOnResolve in keywords_buyback.go, gated on
-// CostMeta["bought_back"]=true and consumed by ResolveStackTop.
+// Buyback (CR §702.27) lives in keywords_buyback.go as a real alt-cost
+// mechanic mirroring Warp / Flashback. The canonical hook is
+// ShouldReturnToHandOnResolve, gated on CostMeta["bought_back"]=true and
+// consumed by ResolveStackTop.
 
 // ---------------------------------------------------------------------------
 // 5. Wither — CR §702.80

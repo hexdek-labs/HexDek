@@ -66,26 +66,6 @@ var (
 	reManaAbility  = regexp.MustCompile(`(?i)\{T\}\s*:\s*Add\s+\{`)
 	reTriggered    = regexp.MustCompile(`(?i)\b(?:when(?:ever)?|at the beginning of|at end of)\b`)
 	reSpell        = regexp.MustCompile(`(?i)^(?:instant|sorcery)`)
-	reDealsDamage  = regexp.MustCompile(`(?i)\bdeals?\s+\d+\s+damage\b`)
-	reDrawCard     = regexp.MustCompile(`(?i)\bdraw (?:a|two|three|\d+) cards?\b`)
-	reCreateToken  = regexp.MustCompile(`(?i)\bcreate[s]?\s+(?:a|two|three|\d+|an?|X)\s+\d*/?\d*\b`)
-	reCounters     = regexp.MustCompile(`(?i)\b(?:put|enter|with)\s+.*\bcounters?\b`)
-	reDestroy      = regexp.MustCompile(`(?i)\bdestroy\s+(?:target|all|each)\b`)
-	reExile        = regexp.MustCompile(`(?i)\bexile\s+(?:target|all|each|it|that)\b`)
-	reBounce       = regexp.MustCompile(`(?i)\breturn\s+(?:target|it|that|a).*\bto.*(?:hand|library)\b`)
-	reGainLife     = regexp.MustCompile(`(?i)\bgain\s+\d+\s+life\b`)
-	reLoseLife     = regexp.MustCompile(`(?i)\blose\s+\d+\s+life\b`)
-	reDiscard      = regexp.MustCompile(`(?i)\bdiscards?\s+(?:a|their|two|three|\d+)\b`)
-	reSacrifice    = regexp.MustCompile(`(?i)\bsacrifice\s+(?:a|target|it|that|~)\b`)
-	reGainControl  = regexp.MustCompile(`(?i)\bgain control of\b`)
-	reMill         = regexp.MustCompile(`(?i)\bmill\s+\d+\b`)
-	reScry         = regexp.MustCompile(`(?i)\bscry\s+\d+\b`)
-	reTutor        = regexp.MustCompile(`(?i)\bsearch\s+(?:your|their|a)\s+library\b`)
-	reFlicker      = regexp.MustCompile(`(?i)\bexile.*(?:return|enters).*battlefield\b`)
-	reFight        = regexp.MustCompile(`(?i)\bfights?\b`)
-	reCounterSpell = regexp.MustCompile(`(?i)\bcounter target\b`)
-	reCopySpell    = regexp.MustCompile(`(?i)\bcopy (?:target|that|a) (?:spell|instant|sorcery)\b`)
-	reTransform    = regexp.MustCompile(`(?i)\btransform ~\b`)
 )
 
 func inferExpectedTypes(oracleText, typeLine string) []string {
@@ -135,41 +115,6 @@ func inferExpectedTypes(oracleText, typeLine string) []string {
 	}
 
 	return types
-}
-
-func inferExpectedEffects(oracleText string) []string {
-	var effects []string
-	checks := []struct {
-		re   *regexp.Regexp
-		name string
-	}{
-		{reDealsDamage, "damage"},
-		{reDrawCard, "draw"},
-		{reCreateToken, "create_token"},
-		{reCounters, "counters"},
-		{reDestroy, "destroy"},
-		{reExile, "exile"},
-		{reBounce, "bounce"},
-		{reGainLife, "gain_life"},
-		{reLoseLife, "lose_life"},
-		{reDiscard, "discard"},
-		{reSacrifice, "sacrifice"},
-		{reGainControl, "gain_control"},
-		{reMill, "mill"},
-		{reScry, "scry"},
-		{reTutor, "tutor"},
-		{reFlicker, "flicker"},
-		{reFight, "fight"},
-		{reCounterSpell, "counter_spell"},
-		{reCopySpell, "copy_spell"},
-		{reTransform, "transform"},
-	}
-	for _, c := range checks {
-		if c.re.MatchString(oracleText) {
-			effects = append(effects, c.name)
-		}
-	}
-	return effects
 }
 
 func getHandlerTypes(name string) []string {
@@ -308,7 +253,6 @@ func runOracleCompliance(corpus *astload.Corpus, oracleCards []*oracleCard) []fa
 
 		handlerTypes := getHandlerTypes(normName)
 		expectedTypes := inferExpectedTypes(oc.OracleText, oc.TypeLine)
-		expectedEffects := inferExpectedEffects(oc.OracleText)
 
 		var issues []string
 
@@ -409,8 +353,6 @@ func runOracleCompliance(corpus *astload.Corpus, oracleCards []*oracleCard) []fa
 		case compPartial:
 			partialCount++
 		}
-
-		_ = expectedEffects
 	}
 
 	elapsed := time.Since(start)

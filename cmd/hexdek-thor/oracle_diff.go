@@ -87,7 +87,6 @@ func oracleDiffCard(oc *oracleCard) (fails []failure) {
 
 	// Extract AST claims.
 	var keywords []string
-	var hasTrigger bool
 	var hasActivated bool
 	var hasETB bool
 	var triggerEvents []string
@@ -97,7 +96,6 @@ func oracleDiffCard(oc *oracleCard) (fails []failure) {
 		case *gameast.Keyword:
 			keywords = append(keywords, strings.ToLower(a.Name))
 		case *gameast.Triggered:
-			hasTrigger = true
 			if a.Trigger.Event != "" {
 				triggerEvents = append(triggerEvents, a.Trigger.Event)
 				if a.Trigger.Event == "etb" {
@@ -195,8 +193,6 @@ func oracleDiffCard(oc *oracleCard) (fails []failure) {
 		}
 	}
 
-	_ = hasTrigger
-	_ = hasActivated
 	return fails
 }
 

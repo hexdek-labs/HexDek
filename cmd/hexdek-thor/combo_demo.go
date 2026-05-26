@@ -107,7 +107,6 @@ func traceThassasOracle_DemonicConsultation() {
 
 	// Thassa's Oracle on battlefield
 	oracle := addDemoPerm(gs, 0, "Thassa's Oracle", []string{"creature"}, 1, 3)
-	_ = oracle
 
 	// Simulate Demonic Consultation exiling entire library
 	gs.Seats[0].Library = nil // library empty after Consultation
@@ -124,8 +123,7 @@ func traceBloodArtist_SacChain() {
 	gs.EventLog = nil
 
 	// Blood Artist on battlefield
-	artist := addDemoPerm(gs, 0, "Blood Artist", []string{"creature"}, 0, 1)
-	_ = artist
+	_ = addDemoPerm(gs, 0, "Blood Artist", []string{"creature"}, 0, 1)
 
 	// 3 tokens to sacrifice
 	for i := 0; i < 3; i++ {
@@ -161,11 +159,9 @@ func traceHumility_Creatures() {
 
 	// Big creature that should become 1/1
 	big := addDemoPerm(gs, 0, "Emrakul, the Aeons Torn", []string{"creature"}, 15, 15)
-	_ = big
 
 	// Small creature
 	small := addDemoPerm(gs, 1, "Llanowar Elves", []string{"creature"}, 1, 1)
-	_ = small
 
 	gameengine.StateBasedActions(gs)
 

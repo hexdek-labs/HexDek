@@ -2208,8 +2208,6 @@ func FindFinishers(profiles []CardProfile) []ComboResult {
 
 	// Mass reanimate as finisher (Living Death, Rise of the Dark Realms)
 	for _, p := range profiles {
-		ot := strings.ToLower(p.Name)
-		_ = ot
 		hasEffect := false
 		for _, e := range p.Effects {
 			if e == "mass_reanimate" {

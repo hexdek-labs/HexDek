@@ -591,8 +591,7 @@ func buildDeepCopyScenarios() []deepScenario {
 		// 1. Copy of a copy that gained an ability.
 		{pack, "Copy_Of_Copy_With_Ability", func() *failure {
 			gs := advGameState()
-			original := makePerm(gs, 0, "Base Creature", []string{"creature"}, 3, 3)
-			_ = original
+			_ = makePerm(gs, 0, "Base Creature", []string{"creature"}, 3, 3)
 			// Clone B copies A and gains flying.
 			cloneB := makePerm(gs, 0, "Clone B", []string{"creature"}, 3, 3)
 			cloneB.Flags["is_copy"] = 1
@@ -688,8 +687,7 @@ func buildDeepCopyScenarios() []deepScenario {
 			// Humility on battlefield (all creatures are 1/1 with no abilities).
 			_ = makePerm(gs, 0, "Humility", []string{"enchantment"}, 0, 0)
 			gs.Flags["humility_active"] = 1
-			original := makePerm(gs, 0, "Big Creature", []string{"creature"}, 5, 5)
-			_ = original
+			_ = makePerm(gs, 0, "Big Creature", []string{"creature"}, 5, 5)
 			// Clone copies the 5/5 but Humility should override.
 			clone := makePerm(gs, 0, "Clone Humility", []string{"creature"}, 5, 5)
 			clone.Flags["is_copy"] = 1
@@ -1284,7 +1282,7 @@ func buildModernMechanicsScenarios() []deepScenario {
 			gameengine.DestroyPermanent(gs, parent, nil)
 			// Offspring trigger uses LKI — token is still created.
 			// Simulate the token creation (would happen on trigger resolution).
-			offspringToken := makeToken(gs, 0, "Offspring Token", 1, 1)
+			_ = makeToken(gs, 0, "Offspring Token", 1, 1)
 			gameengine.StateBasedActions(gs)
 			if f := deepInvariantFail(gs, pack, "Offspring_Parent_Dies"); f != nil {
 				return f
@@ -1293,7 +1291,6 @@ func buildModernMechanicsScenarios() []deepScenario {
 				return deepFail(pack, "Offspring_Parent_Dies",
 					"offspring token should be created even after parent dies (LKI)")
 			}
-			_ = offspringToken
 			return nil
 		}},
 
@@ -2734,7 +2731,6 @@ func buildCombatLegalityScenarios() []deepScenario {
 				return deepFail(pack, "Propaganda_Tax_Blocks_Attack",
 					"should not be able to pay propaganda tax with 0 mana")
 			}
-			_ = creature
 			return nil
 		}},
 

@@ -358,17 +358,3 @@ func TestIndominus_NoCreaturesInHandDrawsZero(t *testing.T) {
 		}
 	}
 }
-
-// ---------------------------------------------------------------------------
-// Iroh, Grand Lotus — flashback grants on own turn
-// ---------------------------------------------------------------------------
-
-// TestIroh_* legacy assertions deleted in R60 — these were orphaned by an
-// earlier refactor that migrated Iroh from the per-card ZoneCastGrants
-// model to the continuous GraveyardFlashbackGrant predicate model. The
-// removed symbol `irohRefreshOnUpkeep` blocked the per_card test binary
-// from compiling at all, masking the orphaned-state of the sibling tests.
-// Current Iroh behavior is fully covered by the dedicated suite in
-// iroh_grand_lotus_test.go (RegistersGraveyardFlashbackGrantOnETB,
-// GrantsFlashbackToNonLessonInstantSorcery_DuringOwnTurn,
-// LessonFlashbackCostIsOne, GrantInactiveOnOpponentTurn, etc.).
