@@ -228,12 +228,18 @@ func tagInterpretation(tag string) string {
 		strings.Contains(low, "scalingkind") ||
 		strings.Contains(low, "base") ||
 		strings.Contains(low, "actor") ||
-		strings.Contains(low, "quantifier"):
-		// `actor` was added in R60 Phase 1D-residue: gameast.Effect's
-		// Actor field is JSON-tagged and loaded from the AST dataset,
-		// so the emitter side is `scripts/mtg_ast.py`, not Go source.
-		// Same false-positive shape as ModKind. `quantifier` is the
-		// Filter.Quantifier field (also AST-emitted).
+		strings.Contains(low, "quantifier") ||
+		strings.Contains(low, "controller"):
+		// Audit-tool false-positive suppressions for parser-emitted
+		// AST enum fields. Each was added when investigation showed
+		// the case arms were unreachable from Go but reachable from
+		// JSON-loaded AST data:
+		//   - actor / quantifier: R60 Phase 1D-residue #1 (PR #486),
+		//     gameast.Effect.Actor and gameast.Filter.Quantifier.
+		//   - controller: R60 Phase 1D-residue #2, gameast.Trigger.Controller
+		//     and gameast.Effect.Controller — values like "you" / "each" /
+		//     "active_player" / "opponent" route through tagless / `ctrl`
+		//     switches in phases.go.
 		return "AST enum from `scripts/mtg_ast.py` — cross-check parser, expected false positive"
 	case strings.Contains(low, "kind") || strings.Contains(low, "event"):
 		return "engine event/kind — high-signal if no emitter found"
