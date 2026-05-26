@@ -129,7 +129,6 @@ func registerGeneratedHandlers(r *Registry) {
 	registerTophHardheadedTeacher(r) // Toph, Hardheaded Teacher [SIMPLE_ETB]
 	registerTophTheFirstMetalbender(r) // Toph, the First Metalbender [STATIC]
 	registerTorbranThaneOfRedFell(r) // Torbran, Thane of Red Fell [STATIC]
-	registerToxrillTheCorrosive(r) // Toxrill, the Corrosive [SIMPLE_TRIGGER]
 	registerTyLeeChiBlocker(r) // Ty Lee, Chi Blocker [SIMPLE_ETB]
 	registerUrabraskHereticPraetor(r) // Urabrask, Heretic Praetor [STATIC]
 	registerUrilTheMiststalker(r) // Uril, the Miststalker [STATIC]

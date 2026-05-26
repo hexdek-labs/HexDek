@@ -24,7 +24,6 @@ import (
 //   - Static "haste on Mounts and Vehicles you control" handled by the
 //     AST keyword pipeline; emitPartial flags the boundary.
 func registerKolodinTriumphCaster(r *Registry) {
-	r.OnETB("Kolodin, Triumph Caster", kolodinTriumphCasterETB)
 	r.OnTrigger("Kolodin, Triumph Caster", "permanent_etb", kolodinTriumphCasterETBTrigger)
 	// End-of-turn sweep: clear the "until end of turn" flags Kolodin
 	// stamped (saddled / artifact-creature-until-eot) and remove the
@@ -34,6 +33,12 @@ func registerKolodinTriumphCaster(r *Registry) {
 	// slice mutation needs a card-level revert that the cleanup pass
 	// doesn't (yet) drive — this sweep is defense-in-depth.
 	r.OnTrigger("Kolodin, Triumph Caster", "end_step", kolodinTriumphCasterEOTSweep)
+	// The Kolodin-self OnETB hook used to register kolodinTriumphCasterETB
+	// (observation-only emit), which double-fired alongside
+	// custom_kolodin_triumph_caster.go's kolodinRefreshAnthemOnETB (the
+	// real Mount/Vehicle-haste anthem refresh). R60 Phase 2I Class C
+	// cleanup dropped the duplicate emit-only registration; the custom
+	// is the canonical owner of Kolodin's self-ETB now.
 }
 
 func kolodinTriumphCasterEOTSweep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -81,19 +86,6 @@ func kolodinTriumphCasterEOTSweep(gs *gameengine.GameState, perm *gameengine.Per
 			"swept": swept,
 		})
 	}
-}
-
-func kolodinTriumphCasterETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "kolodin_triumph_caster_etb"
-	if gs == nil || perm == nil {
-		return
-	}
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": perm.Controller,
-	})
-	// Mount/Vehicle haste anthem is wired in
-	// custom_kolodin_triumph_caster.go (R50 batchH) via kw:haste flag
-	// stamping on permanent_etb / permanent_ltb refresh.
 }
 
 func kolodinTriumphCasterETBTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

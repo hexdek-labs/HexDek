@@ -20,22 +20,15 @@ import (
 //     was Rienne's controller. Schedule a delayed trigger at the next
 //     end step that returns the card from graveyard to its owner's hand.
 func registerRienneAngelOfRebirth(r *Registry) {
-	r.OnETB("Rienne, Angel of Rebirth", rienneAngelOfRebirthETB)
+	// The OnETB hook used to register an observation-only handler that
+	// double-fired alongside custom_rienne_angel_of_rebirth.go's
+	// rienneRefreshAnthemOnETB (which does the actual multicolor
+	// anthem-refresh work). R60 Phase 2I Class C cleanup dropped the
+	// emit-only ETB registration; the creature-dies trigger below is
+	// the canonical and only gen-side hook.
 	r.OnTrigger("Rienne, Angel of Rebirth", "creature_dies", rienneAngelOfRebirthDies)
 }
 
-func rienneAngelOfRebirthETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "rienne_angel_of_rebirth_etb"
-	if gs == nil || perm == nil {
-		return
-	}
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat": perm.Controller,
-	})
-	// Multicolored +1/+0 anthem is wired in
-	// custom_rienne_angel_of_rebirth.go (R50 batchH) via Modification
-	// refresh on permanent_etb / permanent_ltb.
-}
 
 func rienneAngelOfRebirthDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
 	const slug = "rienne_multicolored_eos_return"
