@@ -174,6 +174,48 @@ func writeReport(path, dir string, r *AnalyzeResult, topN int) error {
 		}
 		fmt.Fprintln(f)
 
+		// Saturation summary — buckets every finding by the
+		// classifyCase decision. The "high-signal" count is the
+		// regression signal callers actually care about:
+		//   - 0 → audit is saturated, all findings are documented
+		//     false positives. Future audit runs are watching for
+		//     NEW dead branches, not investigating the existing
+		//     long-tail.
+		//   - >0 → unclassified finding(s) worth investigating.
+		//
+		// The threshold is enforced by an integration test in
+		// internal/gameengine/audit_saturation_r60_test.go so a new
+		// genuinely-dead branch surfaces fast.
+		var (
+			nCardName     int
+			nASTEnum      int
+			nDocumented   int
+			nHighSignal   int
+		)
+		for _, c := range r.UnusedSwitchCases {
+			switch classifyCase(c) {
+			case "card-name":
+				nCardName++
+			case "ast-enum":
+				nASTEnum++
+			case "high-signal-documented":
+				nDocumented++
+			default:
+				nHighSignal++
+			}
+		}
+		fmt.Fprintf(f, "### Saturation summary\n\n")
+		fmt.Fprintf(f, "Each finding is bucketed by the classifyCase rule. **High-signal**\n")
+		fmt.Fprintf(f, "is the regression signal — anything >0 means a new dead branch\n")
+		fmt.Fprintf(f, "appeared that doesn't match an existing false-positive heuristic\n")
+		fmt.Fprintf(f, "(card-name dispatch, AST enum, or a documented per-arm exception).\n\n")
+		fmt.Fprintf(f, "| Bucket | Count | Meaning |\n|---|---:|---|\n")
+		fmt.Fprintf(f, "| card-name | %d | switch on `Card.Name` / `DisplayName()` — JSON-driven dispatch, expected FP |\n", nCardName)
+		fmt.Fprintf(f, "| ast-enum | %d | switch on AST-emitted enum (`ModKind`, `Base`, `Actor`, etc.) — parser-driven, expected FP |\n", nASTEnum)
+		fmt.Fprintf(f, "| high-signal-documented | %d | known false positive pinned by a per-arm regression (see `documentedHighSignalArms` in `cmd/audit-engine-dead/main.go`) |\n", nDocumented)
+		fmt.Fprintf(f, "| **high-signal** | **%d** | **unclassified — investigate.** Zero is the saturation target. |\n", nHighSignal)
+		fmt.Fprintln(f)
+
 		fmt.Fprintf(f, "### Per-case detail\n\n")
 		shown := len(r.UnusedSwitchCases)
 		if topN > 0 && topN < shown {
@@ -213,6 +255,98 @@ func writeReport(path, dir string, r *AnalyzeResult, topN int) error {
 	fmt.Fprintf(f, "```\ngo run ./cmd/audit-engine-dead --dir %s --out %s --top %d\n```\n",
 		dir, path, topN)
 	return nil
+}
+
+// classifyTag buckets a switch tag into one of four categories:
+//
+//	"card-name"  — JSON-driven dispatch on perm.Card.Name / DisplayName.
+//	               Every flagged arm is reachable when the engine
+//	               instantiates a card with that name from oracle data.
+//	"ast-enum"   — parser-emitted enum (mod.ModKind, e.Actor,
+//	               f.Base / base / prefix / extra, sa.ScalingKind, ...).
+//	               Reachable from `scripts/mtg_ast.py` output, invisible
+//	               to the static AST scan.
+//	"high-signal-documented" — known false positive that the existing
+//	               `tagInterpretation` doesn't pattern-match on, but
+//	               that's been investigated in a prior PR and pinned
+//	               by a regression test. Currently: the `t` arm in
+//	               `hashaton.go` for `pip:C` (documented in fix-1, PR
+//	               #486).
+//	"high-signal" — unclassified. Worth investigating. As of fix-4
+//	               (PR #516) the engine has ZERO high-signal findings
+//	               left.
+//
+// Used by the saturation summary at the top of the report so future
+// audit runs surface NEW unclassified findings — i.e., the regression
+// signal we actually care about — separately from the long-tail
+// false-positive cluster.
+func classifyTag(tag string) string {
+	low := strings.ToLower(tag)
+	switch {
+	case strings.Contains(low, "name") || strings.Contains(low, "displayname"):
+		return "card-name"
+	case strings.Contains(low, "modkind") ||
+		strings.Contains(low, "scalingkind") ||
+		strings.Contains(low, "base") ||
+		strings.Contains(low, "actor") ||
+		strings.Contains(low, "quantifier") ||
+		strings.Contains(low, "controller") ||
+		strings.Contains(low, "exlow") ||
+		strings.Contains(low, "prefix") ||
+		strings.Contains(low, "extra"):
+		return "ast-enum"
+	}
+	// Documented exceptions — switch tags that the heuristic can't see
+	// through but that have been individually investigated. The list is
+	// pin-by-tag-AND-value to avoid suppressing a legitimately-new
+	// finding that happens to reuse the tag name.
+	if isDocumentedHighSignal(tag) {
+		return "high-signal-documented"
+	}
+	return "high-signal"
+}
+
+// classifyCase returns the bucket for a specific (tag, value) pair.
+// Some documented exceptions are keyed on tag AND case-arm value (e.g.
+// hashaton's `pip:C` on a bare `t` tag): the tag alone is too coarse
+// because reusing the tag name elsewhere would silently widen the
+// exemption.
+func classifyCase(c CaseLiteral) string {
+	bucket := classifyTag(c.SwitchTag)
+	if bucket != "high-signal" {
+		return bucket
+	}
+	// Tag is bare/unclassified — check whether the specific case-arm
+	// value is a documented exception.
+	if isDocumentedHighSignalArm(c.SwitchTag, c.Value) {
+		return "high-signal-documented"
+	}
+	return bucket
+}
+
+// isDocumentedHighSignal — tag-level exception list. Currently empty;
+// reserved for future PRs that need to whitelist an entire tag.
+func isDocumentedHighSignal(tag string) bool {
+	return false
+}
+
+// isDocumentedHighSignalArm — (tag, value)-level exception list.
+//
+// Each entry must reference the PR that documented the exception so
+// future audits can find the investigation trail.
+var documentedHighSignalArms = map[[2]string]string{
+	// hashaton.go strips pip-marker types from a reanimated card's
+	// type list. `pip:C` is the colorless pip — reachable when an
+	// Eldrazi card (Emrakul, Ulamog, Kozilek) is the reanimation
+	// source. Tag is bare `t` because the loop variable name comes
+	// from `for _, t := range token.Types`. Documented in PR #486
+	// (fix-1).
+	{"t", "pip:C"}: "PR #486 (fix-1) — hashaton.go pip-stripping",
+}
+
+func isDocumentedHighSignalArm(tag, value string) bool {
+	_, ok := documentedHighSignalArms[[2]string{tag, value}]
+	return ok
 }
 
 // tagInterpretation returns a short hint about whether the switch
