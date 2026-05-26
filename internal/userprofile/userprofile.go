@@ -10,6 +10,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -67,7 +68,7 @@ func GetCountry(ctx context.Context, db *sql.DB, owner string) (string, error) {
 	err := db.QueryRowContext(ctx,
 		`SELECT country_code FROM user_profile WHERE owner = ?`, owner,
 	).Scan(&code)
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		return "", nil
 	}
 	if err != nil {
