@@ -15,14 +15,16 @@ import (
 //	Whenever an Equipment you control enters, create a 1/1 white
 //	Ally creature token.
 //
-// Implementation:
-//   - "creature_enters_battlefield": when a creature controlled by
-//     Sokka's controller enters and it's an Ally (or Sokka itself),
-//     pick the highest-MV unattached friendly Equipment and attach it.
-//   - "permanent_etb": when an Equipment controlled by Sokka's
+// Implementation: both handlers register on "permanent_etb" (the canonical
+// engine ETB event); each filters internally by type so only the matching
+// arm acts on a given ETB.
+//   - sokkaSukiAllyEnters: when a creature controlled by Sokka's controller
+//     enters and it's an Ally (or Sokka itself), pick the highest-MV
+//     unattached friendly Equipment and attach it.
+//   - sokkaSukiEquipmentEnters: when an Equipment controlled by Sokka's
 //     controller enters, mint a 1/1 Ally token.
 func registerSokkaAndSuki(r *Registry) {
-	r.OnTrigger("Sokka and Suki", "creature_enters_battlefield", sokkaSukiAllyEnters)
+	r.OnTrigger("Sokka and Suki", "permanent_etb", sokkaSukiAllyEnters)
 	r.OnTrigger("Sokka and Suki", "permanent_etb", sokkaSukiEquipmentEnters)
 }
 

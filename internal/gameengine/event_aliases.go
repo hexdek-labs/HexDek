@@ -139,9 +139,20 @@ var eventAliasTable = map[string][]string{
 	// -----------------------------------------------------------------------
 	// ETB observer — normalize to "etb" so fireObserverETBTriggers can match
 	// -----------------------------------------------------------------------
-	"creature_enters_battlefield":   {"etb"},
-	"land_entered_battlefield":      {"etb"},
-	"permanent_entered_battlefield": {"etb"},
+	// NOTE: The first three (creature_enters_battlefield / land_entered_battlefield /
+	// permanent_entered_battlefield) route to "permanent_etb" — the canonical
+	// engine event fired via FireCardTrigger from etb_dispatch.go and stack.go.
+	// These three friendly names appear exclusively in per_card OnTrigger
+	// registrations (the AST parser never emits them); aliasing them to "etb"
+	// silently dropped the handlers on the floor because the engine fires
+	// "permanent_etb" not "etb" through FireCardTrigger. The other ETB aliases
+	// below (another_typed_enters / tribe_you_control_etb / ally_etb / etc.)
+	// ARE parser-emitted on Triggered.Event and need to normalize to "etb"
+	// because the AST observer path in observer_triggers.go matches via
+	// EventEquals(trig.Trigger.Event, "etb"). See audit-percard-registry-r60.md §1.
+	"creature_enters_battlefield":   {"permanent_etb"},
+	"land_entered_battlefield":      {"permanent_etb"},
+	"permanent_entered_battlefield": {"permanent_etb"},
 	"another_typed_enters":          {"etb"},
 	"tribe_you_control_etb":  {"etb"},
 	"ally_etb":               {"etb"},
