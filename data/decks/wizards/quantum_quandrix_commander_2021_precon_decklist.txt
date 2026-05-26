@@ -1,0 +1,83 @@
+# Quantum Quandrix (Commander 2021 Precon Decklist)
+# Source: https://moxfield.com/decks/hNhQ07wNf0e7423P6S1P1g
+COMMANDER: Adrix and Nev, Twincasters
+1 Deekah, Fractal Theorist
+1 Quandrix Campus
+1 Rapid Hybridization
+1 Biomass Mutation
+1 Quandrix Cultivator
+1 Kazandu Tuskcaller
+1 Llanowar Reborn
+1 Temple of Mystery
+1 Oversimplify
+1 Desolation Twin
+1 Sol Ring
+1 Managorger Hydra
+1 Trygon Predator
+1 Simic Growth Chamber
+1 Hornet Nest
+1 Lonely Sandbar
+1 Zimone, Quandrix Prodigy
+1 Rampaging Baloths
+1 Champion of Wits
+1 Crafty Cutpurse
+1 Golden Ratio
+1 Myriad Landscape
+1 Mosswort Bridge
+1 Master Biomancer
+1 Rite of Replication
+1 Plaxcaster Frogling
+1 Rampant Growth
+1 Study Hall
+1 Simic Signet
+1 Blighted Woodland
+1 Esix, Fractal Bloom
+1 Tranquil Thicket
+1 Oran-Rief, the Vastwood
+1 Garruk, Primal Hunter
+1 Spitting Image
+1 Opal Palace
+1 Fractal Harness
+1 Terastodon
+1 Replication Technique
+1 Shamanic Revelation
+1 Exotic Orchard
+1 Theoretical Duplication
+1 Spawning Kraken
+1 Perplexing Test
+1 Coiling Oracle
+1 Novijen, Heart of Progress
+1 Nissa's Expedition
+1 Curiosity Crafter
+1 Biomathematician
+1 Kaseto, Orochi Archmage
+1 Geometric Nexus
+1 Rogue's Passage
+1 Incubation // Incongruity
+1 Arashi, the Sky Asunder
+1 Hornet Queen
+1 Kodama's Reach
+1 Reef Worm
+1 Return of the Wildspeaker
+1 Curse of the Swine
+1 Ezuri's Predation
+1 Primal Empathy
+1 Beast Within
+1 Yavimaya Coast
+1 Lumbering Falls
+1 Eureka Moment
+1 Arcane Signet
+1 Paradox Zone
+1 Temple of the False God
+1 Incubation Druid
+1 Krosan Grip
+1 Forgotten Ancient
+1 Ruxa, Patient Professor
+1 Idol of Oblivion
+1 Sequence Engine
+1 Guardian Augmenter
+10 Island
+1 Command Tower
+1 Hydra Broodmaster
+1 Commander's Insight
+11 Forest
