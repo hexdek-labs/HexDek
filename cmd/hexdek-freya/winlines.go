@@ -334,7 +334,6 @@ func buildTutorMap(qtyProfiles []CardProfileQty, oracle *oracleDB) []TutorInfo {
 // exile.
 func inferTutorRestriction(ot, tl string) (string, string) {
 	restricted := "any"
-	delivery := "hand"
 
 	// Wish-style: outside the game / sideboard. Detected first so the
 	// downstream "search your library" branches don't override.
@@ -425,7 +424,7 @@ func inferTutorRestriction(ot, tl string) (string, string) {
 		}
 	}
 
-	delivery = inferTutorDelivery(ot)
+	delivery := inferTutorDelivery(ot)
 	return restricted, delivery
 }
 

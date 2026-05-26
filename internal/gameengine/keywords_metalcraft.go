@@ -65,10 +65,7 @@ func HasMetalcraft(card *Card) bool {
 			return true
 		}
 	}
-	if strings.Contains(OracleTextLower(card), "metalcraft") {
-		return true
-	}
-	return false
+	return strings.Contains(OracleTextLower(card), "metalcraft")
 }
 
 // ---------------------------------------------------------------------------

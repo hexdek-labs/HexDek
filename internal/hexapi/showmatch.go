@@ -3429,9 +3429,7 @@ func (sm *Showmatch) handleDeckCurse(w http.ResponseWriter, r *http.Request) {
 	}
 	corr := pool.DimStats.WeightCorrections()
 	resp.DimCorrections = make([]float64, len(corr))
-	for i, v := range corr {
-		resp.DimCorrections[i] = v
-	}
+	copy(resp.DimCorrections, corr[:])
 	if len(pool.Constraints) > 0 {
 		resp.Constraints = make(map[string]float64, len(pool.Constraints))
 		for k, v := range pool.Constraints {

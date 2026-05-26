@@ -2316,6 +2316,13 @@ func (h *YggdrasilHat) relativePosition(gs *gameengine.GameState, seatIdx int) f
 
 // cardHeuristic scores a castable card for the evaluator path.
 func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *gameengine.Card) float64 {
+	// Early-guard: a downstream block at ~line 2511 re-checks gs != nil
+	// (staticcheck SA5011), implying the function may be called with nil
+	// gs from at least one caller. Match the established guards used by
+	// sibling helpers at lines 833 / 2889 / 2945 / 3080.
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) || gs.Seats[seatIdx] == nil {
+		return 0
+	}
 	base := 0.35
 	cmc := gameengine.ManaCostOf(c)
 	avail := gameengine.AvailableManaEstimate(gs, gs.Seats[seatIdx])
@@ -2897,7 +2904,7 @@ func (h *YggdrasilHat) comboCanExecute(gs *gameengine.GameState, seatIdx int, pi
 			if p == nil || p.Card == nil {
 				continue
 			}
-			if strings.ToLower(p.Card.DisplayName()) != strings.ToLower(piece) {
+			if !strings.EqualFold(p.Card.DisplayName(), piece) {
 				continue
 			}
 			ot := gameengine.OracleTextLower(p.Card)

@@ -243,7 +243,7 @@ func TestHandleGameSummaryPDF_CacheReheatsToMalformedOnVersionBump(t *testing.T)
 	// "ValidCard" — the version check should have evicted it and
 	// the malformed-fallback path doesn't have access to the
 	// snapshot content.
-	if strings.Contains(string(rec2.Body.Bytes()), "ValidCard") {
+	if strings.Contains(rec2.Body.String(), "ValidCard") {
 		t.Errorf("post-corruption PDF should not leak the cached snapshot's card data")
 	}
 }

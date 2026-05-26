@@ -33,7 +33,7 @@ func forceKrarkLoseFlip(t *testing.T) {
 	// at the mercy of global math/rand state. The tests in this file
 	// re-seed BOTH the global stream (for any caller that still falls
 	// through to it) and overwrite gs.Rng before calling krarkTrigger.
-	rand.Seed(2) // legacy global-rand fallback
+	rand.Seed(2) //nolint:staticcheck // legacy global-rand fallback for callers that haven't migrated to gs.Rng; deliberately reseeded so the global stream stays deterministic if anything reaches it.
 }
 
 // forceKrarkLoseFlipOn pins gs.Rng to a fresh source so krarkTrigger's

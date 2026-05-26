@@ -216,23 +216,6 @@ func ReplayWithObservation(rc *ReplayContext, seed GameSeed, obs *Observer) erro
 		gs.Active = nextLivingReplay(gs)
 	}
 
-	// Determine winner — same logic as runOneGameFast.
-	winner := -1
-	if gs.Flags != nil && gs.Flags["ended"] == 1 {
-		if w, ok := gs.Flags["winner"]; ok && w >= 0 && w < replaySeats {
-			winner = w
-		}
-	}
-	if winner < 0 {
-		bestLife := -999
-		for i, s := range gs.Seats {
-			if s != nil && !s.Lost && s.Life > bestLife {
-				bestLife = s.Life
-				winner = i
-			}
-		}
-	}
-
 	// --- Extract observations ---
 	observation := Observation{
 		Seed: seed,

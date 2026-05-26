@@ -1961,9 +1961,6 @@ var (
 	forEachRe        = regexp.MustCompile(`for (?:each|every)\s+([a-z]+)`)
 	entersWithCntrRe = regexp.MustCompile(`enters?(?:\s+the\s+battlefield)?\s+with\s+(\d+|a|an|one|two|three|four)\s+([+\-]\d+/[+\-]\d+|[a-z]+)\s+counters?`)
 	entersAsRe       = regexp.MustCompile(`(?:as\s+~|as\s+\w[\w\s]*?)\s+enters(?:\s+the\s+battlefield)?,\s*(?:choose|you may choose)`)
-	// did_prior_action verb scanner — order matters: most specific first.
-	priorActionVerbRe = regexp.MustCompile(`(attacked|cast (?:a |an )?(?:noncreature |creature )?spell|cast a spell|sacrificed|(?:a )?creature died|gained life|drew (?:a )?card|discarded|played (?:a )?land|dealt damage)`)
-
 	// Tier 2A patterns.
 	// "another <type> enters the battlefield under your control"
 	// "another <type> you control enters"
