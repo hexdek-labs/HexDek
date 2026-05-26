@@ -1,5 +1,7 @@
 # Precon Vibes-Bracket Calibration Baseline (R60, Round 3)
 
+> **HISTORICAL — `plays_like` removed (dev/remove-plays-like-r60).** This doc references the `plays_like` signal and its `estimatePlaysLike()` simulator as a discrete code path. That scaffolding has since been removed end-to-end (Go, JSON, DB-comment, UI, glossary, tests). `measured_bracket` is now the canonical felt-power measurement; the "no wincon → floppy" semantics that `plays_like` tracked are queued for absorption into `measured_bracket` as a separate calibration chapter. The Plays-Like column has been dropped from the ranked table below; historical findings and disagreement-rate rollups are preserved as research evidence.
+
 ## Why this is round 3
 
 R1 (PR #508) imported 15 stock WotC precons and reported 2/15 B4 false-positives, traced (PR #513) to a single predicate at `cmd/hexdek-freya/archetype.go:1229`. R2 (PR #523) ran the same exercise on 15 disjoint precons and found 1/15 B4 false-positive matching the same predicate and same execution path, confirming the trace was systemic rather than sample-specific. R3 (this) adds a third disjoint 15-deck wave to bring the corpus to 45 precons. Pre-authorized by 7174n1c.
@@ -17,23 +19,23 @@ Identical to R2:
 
 ## Ranked Table
 
-| # | Era | Precon | Commander | Archetype | Meas Brkt | Plays-Like | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | avgCMC | **Decl Brkt** | Δ |
-|---|-----|--------|-----------|-----------|:---------:|:----------:|:----------:|:---------:|:----------:|:---------------------:|:---------------:|:--:|:-------:|:----:|:------:|:--------------:|:-:|
-| 1 | C11 | Mirror Mastery | Riku of Two Reflections | midrange | **1 Exhibition** | Exhibition | 46.6 | 4 | 1 | 2.50 / 3 | 0.25 | 0 | 55 | A | 4.26 | **2** | −1 |
-| 2 | C13 | Eternal Bargain | Oloro, Ageless Ascetic | lifegain | **1 Exhibition** | Exhibition | 34.5 | 3 | 2 | 3.00 / 3 | 0.00 | 0 | 50 | B | 3.81 | **2** | −1 |
-| 3 | C14 | Built from Scratch | Daretti, Scrap Savant | artifacts | 2 Core | Core | 75.9 | 3 | 1 | 2.60 / 3 | 0.60 | 0 | 60 | A | 3.79 | **2** | ✓ |
-| 4 | C19 | Faceless Menace | Kadena, Slinking Sorcerer | midrange | 2 Core | Core | 18.6 | 4 | 1 | 2.40 / 3 | 0.40 | 1 | 43 | D | 3.59 | **2** | ✓ |
-| 5 | C20 | Enhanced Evolution | Otrimi, the Ever-Playful | midrange | 2 Core | Exhibition | 33.9 | 3 | 1 | 2.00 / 2 | 1.00 | 0 | 50 | B | 3.68 | **2** | ✓ |
-| 6 | C21 | Lorehold Legacies | Osgir, the Reconstructor | artifacts | 2 Core | Core | 100.0 | 4 | 1 | 2.67 / 3 | 0.67 | 0 | 63 | A | 3.87 | **2** | ✓ |
-| 7 | AFR | Planar Portal | Prosper, Tome-Bound | midrange | **1 Exhibition** | Core | 86.7 | 3 | 1 | 3.00 / 3 | 0.50 | 0 | 73 | A | 3.62 | **2** | −1 |
-| 8 | MID | Undead Unleashed | Wilhelt, the Rotcleaver | selfmill | 2 Core | Core | 71.2 | 3 | 1 | 2.75 / 3 | 0.75 | 0 | 55 | B | 3.97 | **2** | ✓ |
-| 9 | DMU | Painbow | Jared Carthalion | midrange | 2 Core | Core | 68.3 | 3 | 0 | 2.25 / 3 | 0.75 | 0 | 48 | F | 3.63 | **2** | ✓ |
-| 10 | 40K | Forces of the Imperium | Inquisitor Greyfax | midrange | **4 Optimized** | Exhibition | 66.1 | 3 | 1 | 2.67 / 3 | 0.33 | 0 | 58 | B | 3.81 | **2** | **+2** |
-| 11 | LTR | The Hosts of Mordor | Sauron, Lord of the Rings | midrange | **3 Upgraded** | Core | 32.8 | 4 | 2 | 2.50 / 3 | 0.50 | 1 | 63 | A | 4.08 | **2** | +1 |
-| 12 | WHO | Paradox Power | The Thirteenth Doctor | midrange | 2 Core | Exhibition | 62.9 | 3 | 1 | 2.40 / 3 | 0.60 | 0 | 63 | B | 3.44 | **2** | ✓ |
-| 13 | MH3 | Creative Energy | Satya, Aetherflux Genius | artifacts | **4 Optimized** | Core | 47.5 | 4 | 1 | 2.50 / 3 | 0.00 | 1 | 58 | B | 3.85 | **2** | **+2** |
-| 14 | BLB | Squirreled Away | Hazel of the Rootbloom | midrange | **4 Optimized** | Core | 52.5 | 3 | 1 | 3.00 / 3 | 0.67 | 0 | 58 | B | 3.31 | **2** | **+2** |
-| 15 | DSK | Endless Punishment | Valgavoth, Harrower of Souls | midrange | 2 Core | Exhibition | 31.1 | 3 | 2 | 2.50 / 3 | 0.25 | 0 | 68 | A | 3.46 | **2** | ✓ |
+| # | Era | Precon | Commander | Archetype | Meas Brkt | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | avgCMC | **Decl Brkt** | Δ |
+|---|-----|--------|-----------|-----------|:---------:|:----------:|:---------:|:----------:|:---------------------:|:---------------:|:--:|:-------:|:----:|:------:|:--------------:|:-:|
+| 1 | C11 | Mirror Mastery | Riku of Two Reflections | midrange | **1 Exhibition** | 46.6 | 4 | 1 | 2.50 / 3 | 0.25 | 0 | 55 | A | 4.26 | **2** | −1 |
+| 2 | C13 | Eternal Bargain | Oloro, Ageless Ascetic | lifegain | **1 Exhibition** | 34.5 | 3 | 2 | 3.00 / 3 | 0.00 | 0 | 50 | B | 3.81 | **2** | −1 |
+| 3 | C14 | Built from Scratch | Daretti, Scrap Savant | artifacts | 2 Core | 75.9 | 3 | 1 | 2.60 / 3 | 0.60 | 0 | 60 | A | 3.79 | **2** | ✓ |
+| 4 | C19 | Faceless Menace | Kadena, Slinking Sorcerer | midrange | 2 Core | 18.6 | 4 | 1 | 2.40 / 3 | 0.40 | 1 | 43 | D | 3.59 | **2** | ✓ |
+| 5 | C20 | Enhanced Evolution | Otrimi, the Ever-Playful | midrange | 2 Core | 33.9 | 3 | 1 | 2.00 / 2 | 1.00 | 0 | 50 | B | 3.68 | **2** | ✓ |
+| 6 | C21 | Lorehold Legacies | Osgir, the Reconstructor | artifacts | 2 Core | 100.0 | 4 | 1 | 2.67 / 3 | 0.67 | 0 | 63 | A | 3.87 | **2** | ✓ |
+| 7 | AFR | Planar Portal | Prosper, Tome-Bound | midrange | **1 Exhibition** | 86.7 | 3 | 1 | 3.00 / 3 | 0.50 | 0 | 73 | A | 3.62 | **2** | −1 |
+| 8 | MID | Undead Unleashed | Wilhelt, the Rotcleaver | selfmill | 2 Core | 71.2 | 3 | 1 | 2.75 / 3 | 0.75 | 0 | 55 | B | 3.97 | **2** | ✓ |
+| 9 | DMU | Painbow | Jared Carthalion | midrange | 2 Core | 68.3 | 3 | 0 | 2.25 / 3 | 0.75 | 0 | 48 | F | 3.63 | **2** | ✓ |
+| 10 | 40K | Forces of the Imperium | Inquisitor Greyfax | midrange | **4 Optimized** | 66.1 | 3 | 1 | 2.67 / 3 | 0.33 | 0 | 58 | B | 3.81 | **2** | **+2** |
+| 11 | LTR | The Hosts of Mordor | Sauron, Lord of the Rings | midrange | **3 Upgraded** | 32.8 | 4 | 2 | 2.50 / 3 | 0.50 | 1 | 63 | A | 4.08 | **2** | +1 |
+| 12 | WHO | Paradox Power | The Thirteenth Doctor | midrange | 2 Core | 62.9 | 3 | 1 | 2.40 / 3 | 0.60 | 0 | 63 | B | 3.44 | **2** | ✓ |
+| 13 | MH3 | Creative Energy | Satya, Aetherflux Genius | artifacts | **4 Optimized** | 47.5 | 4 | 1 | 2.50 / 3 | 0.00 | 1 | 58 | B | 3.85 | **2** | **+2** |
+| 14 | BLB | Squirreled Away | Hazel of the Rootbloom | midrange | **4 Optimized** | 52.5 | 3 | 1 | 3.00 / 3 | 0.67 | 0 | 58 | B | 3.31 | **2** | **+2** |
+| 15 | DSK | Endless Punishment | Valgavoth, Harrower of Souls | midrange | 2 Core | 31.1 | 3 | 2 | 2.50 / 3 | 0.25 | 0 | 68 | A | 3.46 | **2** | ✓ |
 
 **Aggregate:** 8/15 exact, 12/15 within ±1. **3/15 B4 false-positives** (Forces of the Imperium, Creative Energy, Squirreled Away).
 

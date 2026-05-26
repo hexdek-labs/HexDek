@@ -1,5 +1,7 @@
 # Precon Vibes-Bracket Calibration — R2 Findings Summary (R60)
 
+> **HISTORICAL — `plays_like` removed (dev/remove-plays-like-r60).** This doc references the `plays_like` signal and its `estimatePlaysLike()` simulator as a discrete code path. That scaffolding has since been removed end-to-end (Go, JSON, DB-comment, UI, glossary, tests). `measured_bracket` is now the canonical felt-power measurement; the "no wincon → floppy" semantics that `plays_like` tracked are queued for absorption into `measured_bracket` as a separate calibration chapter. The Plays-Like column has been dropped from the ranked table below; historical findings and disagreement-rate rollups are preserved as research evidence.
+
 ## Purpose
 
 Concise summary of what the two-wave precon calibration study (PRs #508, #513, #523) has established about Freya's bracket-estimator behavior on unedited WotC product. Written as a decision-support doc — separating "the algorithm has a bug" from "this specific deck looks weird" — so 7174n1c can pick the next move (engine fix vs more data vs a different scope) without re-reading three docs.

@@ -1,5 +1,7 @@
 # Precon Vibes-Bracket Calibration (R60, Round 5)
 
+> **HISTORICAL — `plays_like` removed (dev/remove-plays-like-r60).** This doc references the `plays_like` signal and its `estimatePlaysLike()` simulator as a discrete code path. That scaffolding has since been removed end-to-end (Go, JSON, DB-comment, UI, glossary, tests). `measured_bracket` is now the canonical felt-power measurement; the "no wincon → floppy" semantics that `plays_like` tracked are queued for absorption into `measured_bracket` as a separate calibration chapter. The Plays-Like column has been dropped from the ranked table below; historical findings and disagreement-rate rollups are preserved as research evidence.
+
 ## Why this is round 5
 
 PR #508 (R1) and PR #523 (R2) built the unedited-WotC-precon vibes-bracket baseline at N=30 decks, finding a stable 10% B4 false-positive rate against the `Tuned-redundancy floor` predicate and a stable ~55-60% disagreement rate between `measured_bracket` and `plays_like`. PR #525's R2 findings summary made those into decision-support recommendations; engine work followed (PR #529's bracket-vs-measured-bracket refactor, PR #530's cycling-loop combo blowup fix).
@@ -20,23 +22,23 @@ The R5 picks deliberately tilt toward the **post-2023 WotC product** (MOM, MKM, 
 
 Sorted chronologically by era, then by intra-era cluster.
 
-| # | Era | Precon | Commander | Archetype | Mch | Plays-Like | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | **Declared Brkt** | Δ |
-|---|-----|--------|-----------|-----------|:---:|:----------:|:----------:|:---------:|:----------:|:---------------------:|:---------------:|:--:|:-------:|:----:|:--------------:|:-:|
-|  1 | C21 SoS | Lorehold Spirit       | Quintorius, History Chaser    | combo        | 2 Core         | Core       | 69.4 |   9 | 2 | 3.00 / 3 | 0.33 | 0 | 63 | C | **3** | +1 |
-|  2 | C21 SoS | Witherbloom Pestilence| Dina, Essence Brewer          | midrange     | 2 Core         | Core       | 50.0 |  85 | 1 | 2.75 / 3 | 0.50 | 0 | 55 | B | **2** | ✓ |
-|  3 | MOM     | Growing Threat        | Brimaz, Blight of Oreskos     | artifacts    | 2 Core         | Core       | 88.5 |   4 | 1 | 2.83 / 3 | 0.17 | 0 | 50 | A | **2** | ✓ |
-|  4 | MOM     | Divine Convocation    | Kasla, the Broken Halo        | midrange     | 2 Core         | Exhibition | 58.3 |  15 | 1 | 2.25 / 3 | 0.50 | 0 | 58 | B | **2** | ✓ |
-|  5 | MOM     | Cavalry Charge        | Sidar Jabari of Zhalfir       | midrange     | 2 Core         | Exhibition | 55.0 |   9 | 1 | 3.00 / 3 | 0.00 | 0 | 58 | C | **2** | ✓ |
-|  6 | MKM     | Deadly Disguise       | Kaust, Eyes of the Glade      | counters     | 2 Core         | Exhibition | 17.7 |  12 | 1 | 2.40 / 3 | 0.40 | 2 | 25 | F | **3** | +1 |
-|  7 | MKM     | Blame Game            | Nelly Borca, Impulsive Accuser| midrange     | **4 Optimized**| Exhibition | 40.3 |  12 | 1 | 2.33 / 3 | 0.33 | 0 | 55 | B | **2** | **−2** |
-|  8 | MKM     | Deep Clue Sea         | Morska, Undersea Sleuth       | midrange     | 3 Upgraded     | Core       | 93.5 |  20 | 1 | 3.00 / 3 | 1.00 | 1 | 48 | D | **2** | −1 |
-|  9 | OTJ     | Most Wanted           | Olivia, Opulent Outlaw        | midrange     | 2 Core         | Core       | 87.1 |  20 | 1 | 2.50 / 3 | 0.50 | 0 | **81** | A | **4** | **+2** |
-| 10 | OTJ     | Quick Draw            | Stella Lee, Wild Card         | midrange     | 2 Core         | Exhibition | 90.2 |   4 | 1 | — / —    | 0.00 | 0 | 76 | A | **3** | +1 |
-| 11 | OTJ     | Desert Bloom          | Yuma, Proud Protector         | midrange     | 3 Upgraded     | Upgraded   | 74.6 |  48 | 2 | 2.67 / 3 | 0.67 | 0 | 45 | D | **2** | −1 |
-| 12 | OTJ     | Grand Larceny         | Gonti, Canny Acquisitor       | midrange     | 2 Core         | Exhibition | 60.7 |   6 | 1 | 2.33 / 3 | 0.67 | 0 | 68 | A | **3** | +1 |
-| 13 | FIN     | Limit Break           | Cloud, Ex-SOLDIER             | artifacts    | 2 Core         | Core       | 82.3 |   8 | 1 | 2.50 / 3 | 0.50 | 0 | 63 | B | **3** | +1 |
-| 14 | PIP     | Science!              | Dr. Madison Li                | artifacts    | **4 Optimized**| Upgraded   | 98.4 |  16 | 2 | 2.83 / 3 | 0.00 | 0 | 63 | C | **3** | **−1** |
-| 15 | DFT     | Living Energy         | Saheeli, Radiant Creator      | artifacts    | 2 Core         | Core       | 83.6 |   8 | 1 | 2.25 / 3 | 0.50 | 0 | 68 | B | **3** | +1 |
+| # | Era | Precon | Commander | Archetype | Mch | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | **Declared Brkt** | Δ |
+|---|-----|--------|-----------|-----------|:---:|:----------:|:---------:|:----------:|:---------------------:|:---------------:|:--:|:-------:|:----:|:--------------:|:-:|
+|  1 | C21 SoS | Lorehold Spirit       | Quintorius, History Chaser    | combo        | 2 Core         | 69.4 |   9 | 2 | 3.00 / 3 | 0.33 | 0 | 63 | C | **3** | +1 |
+|  2 | C21 SoS | Witherbloom Pestilence| Dina, Essence Brewer          | midrange     | 2 Core         | 50.0 |  85 | 1 | 2.75 / 3 | 0.50 | 0 | 55 | B | **2** | ✓ |
+|  3 | MOM     | Growing Threat        | Brimaz, Blight of Oreskos     | artifacts    | 2 Core         | 88.5 |   4 | 1 | 2.83 / 3 | 0.17 | 0 | 50 | A | **2** | ✓ |
+|  4 | MOM     | Divine Convocation    | Kasla, the Broken Halo        | midrange     | 2 Core         | 58.3 |  15 | 1 | 2.25 / 3 | 0.50 | 0 | 58 | B | **2** | ✓ |
+|  5 | MOM     | Cavalry Charge        | Sidar Jabari of Zhalfir       | midrange     | 2 Core         | 55.0 |   9 | 1 | 3.00 / 3 | 0.00 | 0 | 58 | C | **2** | ✓ |
+|  6 | MKM     | Deadly Disguise       | Kaust, Eyes of the Glade      | counters     | 2 Core         | 17.7 |  12 | 1 | 2.40 / 3 | 0.40 | 2 | 25 | F | **3** | +1 |
+|  7 | MKM     | Blame Game            | Nelly Borca, Impulsive Accuser| midrange     | **4 Optimized**| 40.3 |  12 | 1 | 2.33 / 3 | 0.33 | 0 | 55 | B | **2** | **−2** |
+|  8 | MKM     | Deep Clue Sea         | Morska, Undersea Sleuth       | midrange     | 3 Upgraded     | 93.5 |  20 | 1 | 3.00 / 3 | 1.00 | 1 | 48 | D | **2** | −1 |
+|  9 | OTJ     | Most Wanted           | Olivia, Opulent Outlaw        | midrange     | 2 Core         | 87.1 |  20 | 1 | 2.50 / 3 | 0.50 | 0 | **81** | A | **4** | **+2** |
+| 10 | OTJ     | Quick Draw            | Stella Lee, Wild Card         | midrange     | 2 Core         | 90.2 |   4 | 1 | — / —    | 0.00 | 0 | 76 | A | **3** | +1 |
+| 11 | OTJ     | Desert Bloom          | Yuma, Proud Protector         | midrange     | 3 Upgraded     | 74.6 |  48 | 2 | 2.67 / 3 | 0.67 | 0 | 45 | D | **2** | −1 |
+| 12 | OTJ     | Grand Larceny         | Gonti, Canny Acquisitor       | midrange     | 2 Core         | 60.7 |   6 | 1 | 2.33 / 3 | 0.67 | 0 | 68 | A | **3** | +1 |
+| 13 | FIN     | Limit Break           | Cloud, Ex-SOLDIER             | artifacts    | 2 Core         | 82.3 |   8 | 1 | 2.50 / 3 | 0.50 | 0 | 63 | B | **3** | +1 |
+| 14 | PIP     | Science!              | Dr. Madison Li                | artifacts    | **4 Optimized**| 98.4 |  16 | 2 | 2.83 / 3 | 0.00 | 0 | 63 | C | **3** | **−1** |
+| 15 | DFT     | Living Energy         | Saheeli, Radiant Creator      | artifacts    | 2 Core         | 83.6 |   8 | 1 | 2.25 / 3 | 0.50 | 0 | 68 | B | **3** | +1 |
 
 **Δ column:** declared_bracket − measured_bracket. `✓` = match. Negative Δ means the engine measured the precon HOTTER than declared (mechanical signal disagrees with the precon-floor B2 stamp); positive Δ means COOLER. Quick Draw's `—/—` chain depth reflects zero value-chain entries detected (single-shot spellslinger plan).
 

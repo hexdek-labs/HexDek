@@ -278,8 +278,6 @@ type DeckSummary struct {
 	ImportedAt       time.Time `json:"imported_at"`
 	WBS              int       `json:"wbs,omitempty"`
 	WBSLabel         string    `json:"wbs_label,omitempty"`
-	PLS              int       `json:"pls,omitempty"`
-	PLSLabel         string    `json:"pls_label,omitempty"`
 	GameChangerCount int       `json:"game_changer_count,omitempty"`
 	Archetype        string    `json:"archetype,omitempty"`
 	Legal            *bool     `json:"legal,omitempty"`
@@ -373,8 +371,6 @@ func enrichDeckSummary(decksDir string, ds *DeckSummary) {
 	var strat struct {
 		Bracket          int    `json:"bracket"`
 		BracketLabel     string `json:"bracket_label"`
-		PlaysLike        int    `json:"plays_like"`
-		PlaysLikeLabel   string `json:"plays_like_label"`
 		GameChangerCount int    `json:"game_changer_count"`
 		Archetype        string `json:"archetype"`
 		Legality         *struct {
@@ -387,10 +383,6 @@ func enrichDeckSummary(decksDir string, ds *DeckSummary) {
 	if strat.Bracket > 0 {
 		ds.WBS = strat.Bracket
 		ds.WBSLabel = strat.BracketLabel
-	}
-	if strat.PlaysLike > 0 {
-		ds.PLS = strat.PlaysLike
-		ds.PLSLabel = strat.PlaysLikeLabel
 	}
 	ds.GameChangerCount = strat.GameChangerCount
 	if strat.Archetype != "" {

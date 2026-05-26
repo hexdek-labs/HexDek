@@ -60,7 +60,6 @@ export function topWinConditions(analysis, n = 3) {
 // to repeat the null-coalescing dance.
 export function deckGlanceStats({ deck, analysis, deckElo, eloHistory } = {}) {
   const wbs = analysis?.bracket || deck?.bracket || null
-  const pls = analysis?.plays_like || null
   const bracketLabel = analysis?.bracket_label || ''
   // measured_bracket is Freya's signal-computed value (renamed from
   // the legacy `mechanical_bracket`). The declared `bracket` field is
@@ -79,7 +78,6 @@ export function deckGlanceStats({ deck, analysis, deckElo, eloHistory } = {}) {
   } : null
   return {
     bracket: wbs,
-    playsLike: pls && pls !== wbs ? pls : null,
     bracketLabel,
     measuredBracket,
     measuredBracketLabel,

@@ -1,5 +1,7 @@
 # Precon Vibes-Bracket Calibration Baseline (R60)
 
+> **HISTORICAL — `plays_like` removed (dev/remove-plays-like-r60).** This doc references the `plays_like` signal and its `estimatePlaysLike()` simulator as a discrete code path. That scaffolding has since been removed end-to-end (Go, JSON, DB-comment, UI, glossary, tests). `measured_bracket` is now the canonical felt-power measurement; the "no wincon → floppy" semantics that `plays_like` tracked are queued for absorption into `measured_bracket` as a separate calibration chapter. The Plays-Like column has been dropped from the ranked table below; historical findings and disagreement-rate rollups are preserved as research evidence.
+
 ## Why
 
 Freya's `estimateMeasuredBracket` (renamed from `estimateBracket` as part of the bracket-vs-measured-bracket refactor; see CLAUDE.md) was tuned against the 16-deck `data/decks/test/` corpus (14/16 exact, 16/16 within ±1 per `bracket_calibration_test.go`), a corpus dominated by mid-to-high-power decks (lots of B3/B4, several cEDH-leaning B5). It has had no calibration pressure from the OTHER end of the distribution: **unedited WotC precons** — product whose explicit design intent is Bracket 2 (Core). Without a precon baseline we cannot tell whether the bracket-estimator's *floor* behaves correctly, only its ceiling.
@@ -32,23 +34,23 @@ This doc fixes that. It imports 15 unedited Moxfield uploads of WotC precons acr
 
 Sorted chronologically by era, then by release window.
 
-| # | Era | Precon | Commander | Archetype | Measured Brkt | Plays-Like | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | **Declared Brkt** | Δ |
-|---|-----|--------|-----------|-----------|:---------:|:----------:|:----------:|:---------:|:----------:|:---------------------:|:---------------:|:--:|:-------:|:----:|:--------------:|:-:|
-| 1 | C13 | Mind Seize | Jeleva, Nephalia's Scourge | midrange | 2 Core | Exhibition | 69.5 | 9 | 1 | 2.33 / 3 | 0.67 | 0 | 58 | B | **2** | ✓ |
-| 2 | C16 | Breed Lethality | Atraxa, Praetors' Voice | tribal | 2 Core | Exhibition | 56.7 | 12 | 2 | 2.50 / 3 | 0.25 | 0 | 50 | A | **2** | ✓ |
-| 3 | C18 | Subjective Reality | Aminatou, the Fateshifter | midrange | 2 Core | Core | 54.2 | 15 | 1 | 2.25 / 3 | 0.50 | 0 | 38 | F | **2** | ✓ |
-| 4 | C19 | Mystic Intellect | Sevinne, the Chronoclasm | midrange | **1 Exhibition** | Exhibition | 74.6 | 5 | 3 | 2.50 / 3 | 0.25 | 0 | 58 | C | **2** | **−1** |
-| 5 | C20 | Symbiotic Swarm | Kathril, Aspect Warper | counters | 2 Core | Core | 68.9 | 8 | 2 | 3.00 / 3 | 0.00 | 0 | 50 | B | **2** | ✓ |
-| 6 | C21 | Quantum Quandrix | Adrix and Nev, Twincasters | counters | 2 Core | Exhibition | 52.5 | 12 | 1 | 2.00 / 2 | 0.50 | 0 | 50 | B | **2** | ✓ |
-| 7 | AFR | Draconic Rage | Vrondiss, Rage of Ancients | tribal | 2 Core | Exhibition | 11.7 | 11 | 1 | 2.00 / 2 | 0.50 | 0 | 48 | B | **2** | ✓ |
-| 8 | NEO | Buckle Up | Kotori, Pilot Prodigy | artifacts | 2 Core | Exhibition | 88.7 | 4 | 1 | 2.60 / 3 | 0.40 | 0 | 60 | A | **3** | +1 |
-| 9 | BRO | Urza's Iron Alliance | Urza, Chief Artificer | midrange | **4 Optimized** | Exhibition | 87.3 | 15 | 1 | 2.40 / 3 | 0.60 | 0 | 58 | C | **2** | **−2** |
-| 10 | 40K | Necron Dynasties | Szarekh, the Silent King | artifacts | 2 Core | Core | 95.2 | **103** | 1 | 2.71 / 3 | 0.57 | 0 | 73 | A | **3** | +1 |
-| 11 | LTR | Riders of Rohan | Éowyn, Shieldmaiden | tribal | 2 Core | Core | 37.7 | 24 | 3 | 2.20 / 3 | 0.40 | 0 | 50 | B | **2** | ✓ |
-| 12 | WHO | Blast from the Past | The Fourth Doctor + Sarah Jane | combo | **4 Optimized** | Core | 87.1 | 14 | 1 | 2.67 / 3 | 0.33 | 0 | 50 | D | **2** | **−2** |
-| 13 | MH3 | Eldrazi Incursion | Ulalek, Fused Atrocity | midrange | 2 Core | Exhibition | 24.6 | 10 | 1 | 2.67 / 3 | 0.00 | 0 | 48 | B | **2** | ✓ |
-| 14 | BLB | Animated Army | Bello, Bard of the Brambles | combo | 2 Core | Core | 70.5 | **46** | 1 | 2.50 / 3 | 0.00 | 0 | 58 | B | **2** | ✓ |
-| 15 | DSK | Death Toll | Winter, Cynical Opportunist | midrange | 2 Core | Core | 59.0 | 6 | 1 | 3.00 / 3 | 0.50 | 0 | 55 | B | **2** | ✓ |
+| # | Era | Precon | Commander | Archetype | Measured Brkt | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | **Declared Brkt** | Δ |
+|---|-----|--------|-----------|-----------|:---------:|:----------:|:---------:|:----------:|:---------------------:|:---------------:|:--:|:-------:|:----:|:--------------:|:-:|
+| 1 | C13 | Mind Seize | Jeleva, Nephalia's Scourge | midrange | 2 Core | 69.5 | 9 | 1 | 2.33 / 3 | 0.67 | 0 | 58 | B | **2** | ✓ |
+| 2 | C16 | Breed Lethality | Atraxa, Praetors' Voice | tribal | 2 Core | 56.7 | 12 | 2 | 2.50 / 3 | 0.25 | 0 | 50 | A | **2** | ✓ |
+| 3 | C18 | Subjective Reality | Aminatou, the Fateshifter | midrange | 2 Core | 54.2 | 15 | 1 | 2.25 / 3 | 0.50 | 0 | 38 | F | **2** | ✓ |
+| 4 | C19 | Mystic Intellect | Sevinne, the Chronoclasm | midrange | **1 Exhibition** | 74.6 | 5 | 3 | 2.50 / 3 | 0.25 | 0 | 58 | C | **2** | **−1** |
+| 5 | C20 | Symbiotic Swarm | Kathril, Aspect Warper | counters | 2 Core | 68.9 | 8 | 2 | 3.00 / 3 | 0.00 | 0 | 50 | B | **2** | ✓ |
+| 6 | C21 | Quantum Quandrix | Adrix and Nev, Twincasters | counters | 2 Core | 52.5 | 12 | 1 | 2.00 / 2 | 0.50 | 0 | 50 | B | **2** | ✓ |
+| 7 | AFR | Draconic Rage | Vrondiss, Rage of Ancients | tribal | 2 Core | 11.7 | 11 | 1 | 2.00 / 2 | 0.50 | 0 | 48 | B | **2** | ✓ |
+| 8 | NEO | Buckle Up | Kotori, Pilot Prodigy | artifacts | 2 Core | 88.7 | 4 | 1 | 2.60 / 3 | 0.40 | 0 | 60 | A | **3** | +1 |
+| 9 | BRO | Urza's Iron Alliance | Urza, Chief Artificer | midrange | **4 Optimized** | 87.3 | 15 | 1 | 2.40 / 3 | 0.60 | 0 | 58 | C | **2** | **−2** |
+| 10 | 40K | Necron Dynasties | Szarekh, the Silent King | artifacts | 2 Core | 95.2 | **103** | 1 | 2.71 / 3 | 0.57 | 0 | 73 | A | **3** | +1 |
+| 11 | LTR | Riders of Rohan | Éowyn, Shieldmaiden | tribal | 2 Core | 37.7 | 24 | 3 | 2.20 / 3 | 0.40 | 0 | 50 | B | **2** | ✓ |
+| 12 | WHO | Blast from the Past | The Fourth Doctor + Sarah Jane | combo | **4 Optimized** | 87.1 | 14 | 1 | 2.67 / 3 | 0.33 | 0 | 50 | D | **2** | **−2** |
+| 13 | MH3 | Eldrazi Incursion | Ulalek, Fused Atrocity | midrange | 2 Core | 24.6 | 10 | 1 | 2.67 / 3 | 0.00 | 0 | 48 | B | **2** | ✓ |
+| 14 | BLB | Animated Army | Bello, Bard of the Brambles | combo | 2 Core | 70.5 | **46** | 1 | 2.50 / 3 | 0.00 | 0 | 58 | B | **2** | ✓ |
+| 15 | DSK | Death Toll | Winter, Cynical Opportunist | midrange | 2 Core | 59.0 | 6 | 1 | 3.00 / 3 | 0.50 | 0 | 55 | B | **2** | ✓ |
 
 **Δ column:** measured_bracket − declared_bracket. `✓` = match. Sign convention: `−2` means the engine measured the precon TWO brackets HOTTER than its declared B2 stamp warrants (the deck plays at B4 mechanics behind a B2 label); `+1` means the engine measured it ONE bracket COOLER than declared (rare; mostly B1-leaning Exhibition calls).
 

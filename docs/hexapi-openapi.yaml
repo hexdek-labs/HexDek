@@ -252,10 +252,6 @@ components:
           type: integer
         wbs_label:
           type: string
-        pls:
-          type: integer
-        pls_label:
-          type: string
         game_changer_count:
           type: integer
         archetype:

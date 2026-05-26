@@ -1,5 +1,7 @@
 # Precon Vibes-Bracket Calibration (R60, Round 7)
 
+> **HISTORICAL — `plays_like` removed (dev/remove-plays-like-r60).** This doc references the `plays_like` signal and its `estimatePlaysLike()` simulator as a discrete code path. That scaffolding has since been removed end-to-end (Go, JSON, DB-comment, UI, glossary, tests). `measured_bracket` is now the canonical felt-power measurement; the "no wincon → floppy" semantics that `plays_like` tracked are queued for absorption into `measured_bracket` as a separate calibration chapter. The Plays-Like column has been dropped from the ranked table below; historical findings and disagreement-rate rollups are preserved as research evidence.
+
 ## Round status — R6 absent
 
 7174n1c's instruction set this up as "wait for R6 to merge, then read `data/decks/wizards/` for non-overlap (90 precons by then)." **R6 was never staffed:**
@@ -44,23 +46,23 @@ R7 deliberately fills the **all-five-SNC-decks** gap that R1-R5 left wide open, 
 
 Sorted chronologically by era, then by intra-era cluster.
 
-| # | Era | Precon | Commander | Archetype | Mch | Plays-Like | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | **Declared Brkt** | Δ |
-|---|-----|--------|-----------|-----------|:---:|:----------:|:----------:|:---------:|:----------:|:---------------------:|:---------------:|:--:|:-------:|:----:|:--------------:|:-:|
-|  1 | EoE     | World Shaper          | Hearthhull, the Worldseed     | midrange     | **4 Optimized** | Upgraded   | 80.7 |  47 | 1 | 2.80 / 3 | 0.60 | 0 | 60 | B | **3** | −1 |
-|  2 | EoE     | Counter Intelligence  | Inspirit, Flagship Vessel     | artifacts    | 2 Core         | Core       | 98.3 |   9 | 1 | 2.50 / 3 | 0.50 | 0 | 63 | C | **3** | +1 |
-|  3 | VOW     | Vampiric Bloodline    | Strefan, Maurer Progenitor    | counters     | 2 Core         | Core       | 37.1 | 137 | 1 | 2.50 / 3 | 1.00 | 0 | 63 | B | **3** | +1 |
-|  4 | VOW     | Spirit Squadron       | Millicent, Restless Revenant  | midrange     | 2 Core         | Exhibition | 48.4 |  11 | 2 | 3.00 / 3 | 0.00 | 0 | 63 | A | **3** | +1 |
-|  5 | BRO     | Mishra's Burnished Banner | Mishra, Eminent One       | artifacts    | 2 Core         | Core       | 90.3 |  11 | 1 | 3.00 / 3 | 0.67 | 0 | 63 | C | **3** | +1 |
-|  6 | C21 SoS | Silverquill Influence | Killian, Decisive Mentor      | enchantress  | 1 Exhibition   | Exhibition | 82.3 |   3 | 3 | 2.40 / 3 | 0.40 | 0 | 63 | B | **3** | **+2** |
-|  7 | SL2025  | Everyone's Invited!   | Morophon, the Boundless       | tribal       | 2 Core         | Exhibition | 48.4 |   7 | 2 | — / —    | 0.00 | 0 | 55 | C | **2** | ✓ |
-|  8 | SNC     | Bedecked Brokers      | Perrie, the Pulverizer        | midrange     | 2 Core         | Exhibition | 73.8 |   6 | 1 | 2.00 / 2 | 0.50 | 0 | 50 | C | **2** | ✓ |
-|  9 | SNC     | Cabaretti Cacophony   | Kitt Kanto, Mayhem Diva       | midrange     | **4 Optimized** | Exhibition | 50.8 |  59 | 1 | 2.00 / 2 | 1.00 | 0 | 63 | B | **3** | −1 |
-| 10 | SNC     | Maestros Massacre     | Anhelo, the Painter           | storm        | 2 Core         | Exhibition | 71.0 |   1 | 1 | 3.00 / 3 | 0.33 | 0 | 43 | B | **2** | ✓ |
-| 11 | SNC     | Obscura Operation     | Kamiz, Obscura Oculus         | midrange     | 2 Core         | Core       | 59.0 |  10 | 1 | 2.00 / 2 | 0.50 | 0 | 58 | B | **2** | ✓ |
-| 12 | SNC     | Riveteers Rampage     | Henzie "Toolbox" Torre        | midrange     | 2 Core         | Exhibition | 38.3 |  10 | 3 | 2.67 / 3 | 0.33 | 0 | 53 | B | **2** | ✓ |
-| 13 | ONE     | Rebellion Rising      | Neyali, Suns' Vanguard        | artifacts    | **4 Optimized** | Exhibition | 70.5 |  23 | 1 | 2.50 / 3 | 0.00 | 0 | 71 | B | **3** | −1 |
-| 14 | BLB     | Peace Offering        | Ms. Bumbleflower              | midrange     | 2 Core         | Core       | 80.3 |   7 | 1 | 2.00 / 2 | 1.00 | 0 | 81 | A | **4** | **+2** |
-| 15 | MH3     | Graveyard Overdrive   | Disa the Restless             | combo        | **4 Optimized** | Core       | 63.3 |  32 | 2 | 2.57 / 3 | 0.43 | 0 | 60 | B | **3** | −1 |
+| # | Era | Precon | Commander | Archetype | Mch | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | **Declared Brkt** | Δ |
+|---|-----|--------|-----------|-----------|:---:|:----------:|:---------:|:----------:|:---------------------:|:---------------:|:--:|:-------:|:----:|:--------------:|:-:|
+|  1 | EoE     | World Shaper          | Hearthhull, the Worldseed     | midrange     | **4 Optimized** | 80.7 |  47 | 1 | 2.80 / 3 | 0.60 | 0 | 60 | B | **3** | −1 |
+|  2 | EoE     | Counter Intelligence  | Inspirit, Flagship Vessel     | artifacts    | 2 Core         | 98.3 |   9 | 1 | 2.50 / 3 | 0.50 | 0 | 63 | C | **3** | +1 |
+|  3 | VOW     | Vampiric Bloodline    | Strefan, Maurer Progenitor    | counters     | 2 Core         | 37.1 | 137 | 1 | 2.50 / 3 | 1.00 | 0 | 63 | B | **3** | +1 |
+|  4 | VOW     | Spirit Squadron       | Millicent, Restless Revenant  | midrange     | 2 Core         | 48.4 |  11 | 2 | 3.00 / 3 | 0.00 | 0 | 63 | A | **3** | +1 |
+|  5 | BRO     | Mishra's Burnished Banner | Mishra, Eminent One       | artifacts    | 2 Core         | 90.3 |  11 | 1 | 3.00 / 3 | 0.67 | 0 | 63 | C | **3** | +1 |
+|  6 | C21 SoS | Silverquill Influence | Killian, Decisive Mentor      | enchantress  | 1 Exhibition   | 82.3 |   3 | 3 | 2.40 / 3 | 0.40 | 0 | 63 | B | **3** | **+2** |
+|  7 | SL2025  | Everyone's Invited!   | Morophon, the Boundless       | tribal       | 2 Core         | 48.4 |   7 | 2 | — / —    | 0.00 | 0 | 55 | C | **2** | ✓ |
+|  8 | SNC     | Bedecked Brokers      | Perrie, the Pulverizer        | midrange     | 2 Core         | 73.8 |   6 | 1 | 2.00 / 2 | 0.50 | 0 | 50 | C | **2** | ✓ |
+|  9 | SNC     | Cabaretti Cacophony   | Kitt Kanto, Mayhem Diva       | midrange     | **4 Optimized** | 50.8 |  59 | 1 | 2.00 / 2 | 1.00 | 0 | 63 | B | **3** | −1 |
+| 10 | SNC     | Maestros Massacre     | Anhelo, the Painter           | storm        | 2 Core         | 71.0 |   1 | 1 | 3.00 / 3 | 0.33 | 0 | 43 | B | **2** | ✓ |
+| 11 | SNC     | Obscura Operation     | Kamiz, Obscura Oculus         | midrange     | 2 Core         | 59.0 |  10 | 1 | 2.00 / 2 | 0.50 | 0 | 58 | B | **2** | ✓ |
+| 12 | SNC     | Riveteers Rampage     | Henzie "Toolbox" Torre        | midrange     | 2 Core         | 38.3 |  10 | 3 | 2.67 / 3 | 0.33 | 0 | 53 | B | **2** | ✓ |
+| 13 | ONE     | Rebellion Rising      | Neyali, Suns' Vanguard        | artifacts    | **4 Optimized** | 70.5 |  23 | 1 | 2.50 / 3 | 0.00 | 0 | 71 | B | **3** | −1 |
+| 14 | BLB     | Peace Offering        | Ms. Bumbleflower              | midrange     | 2 Core         | 80.3 |   7 | 1 | 2.00 / 2 | 1.00 | 0 | 81 | A | **4** | **+2** |
+| 15 | MH3     | Graveyard Overdrive   | Disa the Restless             | combo        | **4 Optimized** | 63.3 |  32 | 2 | 2.57 / 3 | 0.43 | 0 | 60 | B | **3** | −1 |
 
 **Aggregate:** 5/15 exact, 13/15 within ±1, 2/15 off by ±2. **4/15 B4 false-positives** (World Shaper, Cabaretti Cacophony, Rebellion Rising, Graveyard Overdrive) — the highest single-round B4 FP rate in the entire calibration series.
 

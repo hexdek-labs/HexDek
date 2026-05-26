@@ -1,5 +1,7 @@
 # Precon Vibes-Bracket Calibration (R60, Round 6)
 
+> **HISTORICAL — `plays_like` removed (dev/remove-plays-like-r60).** This doc references the `plays_like` signal and its `estimatePlaysLike()` simulator as a discrete code path. That scaffolding has since been removed end-to-end (Go, JSON, DB-comment, UI, glossary, tests). `measured_bracket` is now the canonical felt-power measurement; the "no wincon → floppy" semantics that `plays_like` tracked are queued for absorption into `measured_bracket` as a separate calibration chapter. The Plays-Like column has been dropped from the ranked table below; historical findings and disagreement-rate rollups are preserved as research evidence.
+
 ## Why this is round 6
 
 R1 (PR #508), R2 (PR #523), R3 (PR #532), and R5 (whenever it merges — R4 never landed per the note in R5's writeup) built the unedited-WotC-precon vibes-bracket baseline at N=60 decks. The cumulative finding through R5 was a stable ~11-13% B4 false-positive rate against the `Tuned-redundancy floor` predicate, an ~88% direction-consistent `plays_like`-cooler-than-`measured` bias, and a B4-fix design (PR #513 recommendation) with one known counter-example (Creative Energy from R3 satisfies the `gameChangerCount >= 1` disjunct via Mana Vault). R6 adds 15 more disjoint precons to bring the corpus to 75. Per dev-1's R5 note: 30+ unimported precons remain in the WotC catalog.
@@ -19,23 +21,23 @@ R6 picks deliberately mine the previously-untouched corners of the WotC catalog:
 
 ## Ranked Table
 
-| # | Era | Precon | Commander | Archetype | Meas Brkt | Plays-Like | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | avgCMC | **Decl Brkt** | Δ |
-|---|-----|--------|-----------|-----------|:---------:|:----------:|:----------:|:---------:|:----------:|:---------------------:|:---------------:|:--:|:-------:|:----:|:------:|:--------------:|:-:|
-|  1 | C15 | Wade Into Battle      | Kalemne, Disciple of Iroas    | tribal       | **4 Optimized** | Exhibition | 28.3 |  3 | 2 | 2.25 / 3 | 0.00 | 0 | 45 | B | 4.27 | **2** | **−2** |
-|  2 | C15 | Plunder the Graves    | Meren of Clan Nel Toth        | midrange     | 2 Core          | Exhibition | 39.3 |  3 | 2 | 2.80 / 3 | 0.40 | 0 | 50 | A | 4.00 | **2** | ✓ |
-|  3 | C15 | Seize Control         | Mizzix of the Izmagnus        | spellslinger | **1 Exhibition**| Exhibition | 73.3 |  3 | 1 | 2.33 / 3 | 0.33 | 0 | 63 | A | 3.83 | **3** | +2 |
-|  4 | C19 | Merciless Rage        | Anje Falkenrath               | midrange     | 2 Core          | Exhibition | 55.9 |  3 | 1 | 2.62 / 3 | 0.25 | 0 | 38 | D | 4.19 | **2** | ✓ |
-|  5 | C20 | Ruthless Regiment     | Jirina Kudro                  | midrange     | 2 Core          | Core       | 14.3 |  3 | 1 | 2.50 / 3 | 0.50 | 0 | 45 | C | 3.22 | **2** | ✓ |
-|  6 | C21 | Silverquill Statement | Breena, the Demagogue         | tribal       | **1 Exhibition**| Exhibition | 50.8 |  3 | 1 | 2.40 / 3 | 0.40 | 0 | 60 | B | 3.88 | **3** | +2 |
-|  7 | AFR | Aura of Courage       | Galea, Kindler of Hope        | voltron      | 2 Core          | Core       | 70.5 |  4 | 1 | 2.50 / 3 | 0.50 | 0 | 53 | C | 2.77 | **2** | ✓ |
-|  8 | NEC | Maestros Massacre     | Anhelo, the Painter           | storm        | 2 Core          | Exhibition | 71.0 |  2 | 1 | 3.00 / 3 | 0.00 | 0 | 43 | B | 3.65 | **2** | ✓ |
-|  9 | ONE | Corrupting Influence  | Ixhel, Scion of Atraxa        | midrange     | **4 Optimized** | Core       | 11.5 |  3 | 1 | 0.00 / 0 | 0.00 | 0 | 45 | C | 3.26 | **2** | **−2** |
-| 10 | LTR | Food and Fellowship   | Sam + Frodo                   | midrange     | **4 Optimized** | Core       | 55.0 |  3 | 2 | 2.50 / 3 | 0.50 | 0 | 63 | B | 3.28 | **3** | **−1** |
-| 11 | PIP | Mutant Menace         | The Wise Mothman              | selfmill     | 2 Core          | Core       | 70.0 |  3 | 1 | 2.60 / 3 | 0.60 | 0 | 55 | B | 3.52 | **2** | ✓ |
-| 12 | PIP | Scrappy Survivors     | Dogmeat, Ever Loyal           | voltron      | **1 Exhibition**| Exhibition | 100.0 |  3 | 1 | 2.80 / 3 | 0.40 | 0 | 58 | B | 2.82 | **2** | +1 |
-| 13 | MH3 | Graveyard Overdrive   | Disa the Restless             | combo        | **4 Optimized** | Core       | 63.3 |  3 | 2 | 2.57 / 3 | 0.43 | 0 | 60 | B | 3.68 | **3** | **−1** |
-| 14 | BLB | Peace Offering        | Ms. Bumbleflower              | midrange     | 2 Core          | Core       | 80.3 |  3 | 1 | 2.00 / 2 | 0.50 | 0 | **81** | A | 3.21 | **4** | **+2** |
-| 15 | TDM | Temur Roar            | Ureni of the Unwritten        | tribal       | 2 Core          | Exhibition | 14.5 |  3 | 1 | 2.00 / 2 | 0.00 | 0 | 45 | B | 4.05 | **2** | ✓ |
+| # | Era | Precon | Commander | Archetype | Meas Brkt | Cmdr Syn % | Win Lines | Combo Dens | Chain Depth (avg/max) | Recursion Ratio | GC | Power % | Mana | avgCMC | **Decl Brkt** | Δ |
+|---|-----|--------|-----------|-----------|:---------:|:----------:|:---------:|:----------:|:---------------------:|:---------------:|:--:|:-------:|:----:|:------:|:--------------:|:-:|
+|  1 | C15 | Wade Into Battle      | Kalemne, Disciple of Iroas    | tribal       | **4 Optimized** | 28.3 |  3 | 2 | 2.25 / 3 | 0.00 | 0 | 45 | B | 4.27 | **2** | **−2** |
+|  2 | C15 | Plunder the Graves    | Meren of Clan Nel Toth        | midrange     | 2 Core          | 39.3 |  3 | 2 | 2.80 / 3 | 0.40 | 0 | 50 | A | 4.00 | **2** | ✓ |
+|  3 | C15 | Seize Control         | Mizzix of the Izmagnus        | spellslinger | **1 Exhibition**| 73.3 |  3 | 1 | 2.33 / 3 | 0.33 | 0 | 63 | A | 3.83 | **3** | +2 |
+|  4 | C19 | Merciless Rage        | Anje Falkenrath               | midrange     | 2 Core          | 55.9 |  3 | 1 | 2.62 / 3 | 0.25 | 0 | 38 | D | 4.19 | **2** | ✓ |
+|  5 | C20 | Ruthless Regiment     | Jirina Kudro                  | midrange     | 2 Core          | 14.3 |  3 | 1 | 2.50 / 3 | 0.50 | 0 | 45 | C | 3.22 | **2** | ✓ |
+|  6 | C21 | Silverquill Statement | Breena, the Demagogue         | tribal       | **1 Exhibition**| 50.8 |  3 | 1 | 2.40 / 3 | 0.40 | 0 | 60 | B | 3.88 | **3** | +2 |
+|  7 | AFR | Aura of Courage       | Galea, Kindler of Hope        | voltron      | 2 Core          | 70.5 |  4 | 1 | 2.50 / 3 | 0.50 | 0 | 53 | C | 2.77 | **2** | ✓ |
+|  8 | NEC | Maestros Massacre     | Anhelo, the Painter           | storm        | 2 Core          | 71.0 |  2 | 1 | 3.00 / 3 | 0.00 | 0 | 43 | B | 3.65 | **2** | ✓ |
+|  9 | ONE | Corrupting Influence  | Ixhel, Scion of Atraxa        | midrange     | **4 Optimized** | 11.5 |  3 | 1 | 0.00 / 0 | 0.00 | 0 | 45 | C | 3.26 | **2** | **−2** |
+| 10 | LTR | Food and Fellowship   | Sam + Frodo                   | midrange     | **4 Optimized** | 55.0 |  3 | 2 | 2.50 / 3 | 0.50 | 0 | 63 | B | 3.28 | **3** | **−1** |
+| 11 | PIP | Mutant Menace         | The Wise Mothman              | selfmill     | 2 Core          | 70.0 |  3 | 1 | 2.60 / 3 | 0.60 | 0 | 55 | B | 3.52 | **2** | ✓ |
+| 12 | PIP | Scrappy Survivors     | Dogmeat, Ever Loyal           | voltron      | **1 Exhibition**| 100.0 |  3 | 1 | 2.80 / 3 | 0.40 | 0 | 58 | B | 2.82 | **2** | +1 |
+| 13 | MH3 | Graveyard Overdrive   | Disa the Restless             | combo        | **4 Optimized** | 63.3 |  3 | 2 | 2.57 / 3 | 0.43 | 0 | 60 | B | 3.68 | **3** | **−1** |
+| 14 | BLB | Peace Offering        | Ms. Bumbleflower              | midrange     | 2 Core          | 80.3 |  3 | 1 | 2.00 / 2 | 0.50 | 0 | **81** | A | 3.21 | **4** | **+2** |
+| 15 | TDM | Temur Roar            | Ureni of the Unwritten        | tribal       | 2 Core          | 14.5 |  3 | 1 | 2.00 / 2 | 0.00 | 0 | 45 | B | 4.05 | **2** | ✓ |
 
 **Δ column:** declared_bracket − measured_bracket. `✓` = exact match. Negative Δ = engine hotter than declared. Positive Δ = engine cooler than declared.
 

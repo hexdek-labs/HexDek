@@ -48,14 +48,13 @@ type DeckProfile struct {
 	// score). User-editable downstream.
 	Bracket             int
 	BracketLabel        string
-	// MeasuredBracket is Freya's signal-computed bracket — what the deck
-	// actually plays like according to the estimator. Surfaced alongside
-	// Bracket so the UI can show divergence (e.g. precon claims B2,
-	// measures B3 — tells you Atraxa is hotter than the box says).
+	// MeasuredBracket is Freya's signal-computed bracket — the canonical
+	// felt-power measurement, surfaced in the UI as "Estimated Bracket".
+	// Diverges from Bracket when a declared override is applied (e.g.
+	// precon claims B2, measures B3 — tells you Atraxa is hotter than
+	// the box says).
 	MeasuredBracket      int
 	MeasuredBracketLabel string
-	PlaysLike           int
-	PlaysLikeLabel      string
 	GameChangerCount    int
 	GameChangerCards    []string
 	Intent              string
@@ -395,8 +394,6 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 		// override below stamps the precon corpus to B2.
 		dp.Bracket = report.Archetype.MeasuredBracket
 		dp.BracketLabel = report.Archetype.MeasuredBracketLabel
-		dp.PlaysLike = report.Archetype.PlaysLike
-		dp.PlaysLikeLabel = report.Archetype.PlaysLikeLabel
 		dp.GameChangerCount = report.Archetype.GameChangerCount
 		dp.GameChangerCards = report.Archetype.GameChangerCards
 		dp.Intent = report.Archetype.Intent
@@ -1054,11 +1051,7 @@ func buildGameplanSummary(dp *DeckProfile, report *FreyaReport) string {
 	if dp.GameChangerCount > 0 {
 		gcNote = fmt.Sprintf(", %d GC", dp.GameChangerCount)
 	}
-	var playsLikeNote string
-	if dp.PlaysLike != dp.Bracket {
-		playsLikeNote = fmt.Sprintf(" Plays like B%d (%s).", dp.PlaysLike, dp.PlaysLikeLabel)
-	}
-	bracket := fmt.Sprintf(" Strict B%d (%s%s).%s", dp.Bracket, dp.BracketLabel, gcNote, playsLikeNote)
+	bracket := fmt.Sprintf(" Strict B%d (%s%s).", dp.Bracket, dp.BracketLabel, gcNote)
 
 	return fmt.Sprintf("%s deck that wins via %s.%s%s%s",
 		archetype, winMethod, backup, tutorNote, bracket)

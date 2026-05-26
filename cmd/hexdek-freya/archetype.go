@@ -21,14 +21,13 @@ type ArchetypeClassification struct {
 	// auto-stamp to B2).
 	Bracket           int
 	BracketLabel      string
-	// MeasuredBracket is Freya's signal-computed bracket — what the deck
-	// actually plays like according to the bracket-estimator's density /
-	// card-list signals. Diverges from Bracket when a declared override
-	// is applied (e.g. precons that Freya thinks play hotter than B2).
+	// MeasuredBracket is Freya's signal-computed bracket — the canonical
+	// felt-power measurement (surfaced in the UI as "Estimated Bracket").
+	// Derived from density / card-list signals. Diverges from Bracket
+	// when a declared override is applied (e.g. precons that Freya
+	// thinks play hotter than B2).
 	MeasuredBracket      int
 	MeasuredBracketLabel string
-	PlaysLike         int
-	PlaysLikeLabel    string
 	GameChangerCount  int
 	GameChangerCards  []string
 	Signals           []string
@@ -618,7 +617,6 @@ func ClassifyArchetype(report *FreyaReport, qtyProfiles []CardProfileQty, oracle
 	// measured value. DeckProfile.BuildDeckProfile applies any declared
 	// override (e.g. wizards/ precons auto-stamp to B2).
 	ac.Bracket, ac.BracketLabel = ac.MeasuredBracket, ac.MeasuredBracketLabel
-	ac.PlaysLike, ac.PlaysLikeLabel = estimatePlaysLike(ctx, report)
 	ac.GameChangerCount = ctx.gameChangerCount
 	ac.GameChangerCards = ctx.gameChangerNames
 
@@ -1446,134 +1444,3 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 	return bracket, label, rationale
 }
 
-// estimatePlaysLike determines what bracket a deck PERFORMS at based on
-// mechanical signals: win condition consistency, speed, redundancy, and
-// strategy coherence. This ignores card pedigree (Game Changers) and
-// focuses on how the deck actually plays.
-func estimatePlaysLike(ctx *classifyContext, report *FreyaReport) (int, string) {
-	score := 0
-
-	// Win line density — more lines = more consistent closing power
-	winLines := 0
-	if report.WinLines != nil {
-		winLines = len(report.WinLines.WinLines)
-	}
-	if winLines >= 5 {
-		score += 3
-	} else if winLines >= 2 {
-		score += 2
-	} else if winLines >= 1 {
-		score += 1
-	}
-
-	// Combo density — true infinites are the strongest signal
-	trueInf := len(report.TrueInfinites)
-	if trueInf >= 3 {
-		score += 3
-	} else if trueInf >= 1 {
-		score += 2
-	}
-	if ctx.comboCount >= 5 {
-		score += 2
-	} else if ctx.comboCount >= 2 {
-		score += 1
-	}
-
-	// Speed — low CMC decks execute faster
-	if ctx.avgCMC < 2.0 {
-		score += 3
-	} else if ctx.avgCMC < 2.5 {
-		score += 2
-	} else if ctx.avgCMC < 3.0 {
-		score += 1
-	} else if ctx.avgCMC > 4.0 {
-		score -= 1
-	}
-
-	// Tutor consistency — ability to find win conditions
-	if ctx.tutorDensity >= 0.12 {
-		score += 3
-	} else if ctx.tutorDensity >= 0.08 {
-		score += 2
-	} else if ctx.tutorDensity >= 0.04 {
-		score += 1
-	}
-
-	// Fast mana — acceleration matters for "plays like"
-	if ctx.fastManaCount >= 8 {
-		score += 2
-	} else if ctx.fastManaCount >= 4 {
-		score += 1
-	}
-
-	// Interaction density — counterspells + removal
-	if ctx.roleRatios[RoleCounterspell] >= 0.08 {
-		score += 2
-	} else if ctx.roleRatios[RoleCounterspell] >= 0.04 {
-		score += 1
-	}
-
-	// Alternate win conditions that bypass normal combat
-	// (poison, infect, commander damage voltron, mill, etc.)
-	hasAltWin := false
-	// Check commander oracle text first
-	if ctx.oracle != nil && report.Commander != "" {
-		entry := ctx.oracle.lookup(report.Commander)
-		if entry != nil {
-			ot := strings.ToLower(entry.OracleText)
-			if ot == "" && len(entry.CardFaces) > 0 {
-				ot = strings.ToLower(entry.CardFaces[0].OracleText)
-			}
-			if strings.Contains(ot, "poison counter") ||
-				strings.Contains(ot, "infect") ||
-				strings.Contains(ot, "you win the game") ||
-				strings.Contains(ot, "loses the game") ||
-				strings.Contains(ot, "commander damage") {
-				hasAltWin = true
-			}
-		}
-	}
-	// Check cards in the 99
-	if !hasAltWin {
-		for _, qp := range ctx.qtyProfiles {
-			if ctx.oracle != nil {
-				entry := ctx.oracle.lookup(qp.Profile.Name)
-				if entry != nil {
-					ot := strings.ToLower(entry.OracleText)
-					if strings.Contains(ot, "poison counter") ||
-						strings.Contains(ot, "infect") ||
-						strings.Contains(ot, "you win the game") ||
-						strings.Contains(ot, "loses the game") {
-						hasAltWin = true
-						break
-					}
-				}
-			}
-		}
-	}
-	if hasAltWin {
-		score += 2
-	}
-
-	var bracket int
-	var label string
-	switch {
-	case score >= 14:
-		bracket = 5
-		label = "cEDH"
-	case score >= 10:
-		bracket = 4
-		label = "Optimized"
-	case score >= 6:
-		bracket = 3
-		label = "Upgraded"
-	case score >= 3:
-		bracket = 2
-		label = "Core"
-	default:
-		bracket = 1
-		label = "Exhibition"
-	}
-
-	return bracket, label
-}

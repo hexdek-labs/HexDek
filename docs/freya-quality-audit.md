@@ -53,7 +53,7 @@ Spread is narrow (2.5× between min and max), so analysis cost is roughly linear
 
 ## 2. Archetype detection
 
-**0 / 20 archetype failures.** Every deck classified to the same primary archetype as the API metadata (`midrange`, `lands matter`, `stax`, `lifegain`, `artifacts`, `combo`, `counters matter`, `tribal`, `reanimator`, `aristocrats`). Cached `pls` value matched the freshly-computed `plays_like` on **all 20** — the classifier is deterministic and stable, no archetype regressions since these decks were imported.
+**0 / 20 archetype failures.** Every deck classified to the same primary archetype as the API metadata (`midrange`, `lands matter`, `stax`, `lifegain`, `artifacts`, `combo`, `counters matter`, `tribal`, `reanimator`, `aristocrats`). Cached bracket value matched the freshly-computed measured bracket on **all 20** — the classifier is deterministic and stable, no archetype regressions since these decks were imported. (Note: at the time of this audit the `plays_like` signal still existed as a separate measurement; that scaffolding was removed in the dev/remove-plays-like-r60 sweep and the canonical felt-power signal is now `measured_bracket`.)
 
 This is a strong signal that the recent expansion to 22 archetype fingerprints (CLAUDE.md Done list, 2026-04-29) is holding up against real moxfield input.
 
@@ -125,9 +125,9 @@ But the practical reading of WotC's bracket guidance is that 3 GCs is a meaningf
 
 Re-validate against Kruphix (3 GCs, currently B2 strict) and the 22-archetype calibration suite before merging.
 
-### P1 — `power_percentile` and `plays_like` use disjoint signals
+### P1 — `power_percentile` and `measured_bracket` cross-check (HISTORICAL — pre-removal)
 
-Riku reads 89th percentile but plays-like B1. The percentile estimator (`ComputePowerPercentileWithinArchetype`) considers tutors, mana base, interaction, draw, curve, hands; `estimatePlaysLike` considers win lines, infinites, speed. There is no cross-check. At minimum, when these disagree by ≥ 3 brackets, the report should flag the deck for manual review or have one reference the other (e.g. plays-like += 1 when percentile > 80).
+Riku reads 89th percentile but plays-like B1. (Historical context: at audit time, the percentile estimator and the now-removed `estimatePlaysLike` used disjoint signals.) `estimatePlaysLike` has since been removed; the canonical felt-power signal is `measured_bracket`. The "no wincon → floppy" semantics that `plays_like` tracked are scheduled for absorption into `measured_bracket` in a follow-up calibration chapter.
 
 ### P2 — Finisher classifier over-promotion
 

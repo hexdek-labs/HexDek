@@ -739,8 +739,6 @@ type strategyJSON struct {
 	Archetype        string            `json:"archetype"`
 	Bracket          int               `json:"bracket"`
 	BracketLabel     string            `json:"bracket_label"`
-	PlaysLike        int               `json:"plays_like"`
-	PlaysLikeLabel   string            `json:"plays_like_label"`
 	GameChangerCount int               `json:"game_changer_count"`
 	GameChangerCards []string          `json:"game_changer_cards,omitempty"`
 	GameplanSummary  string            `json:"gameplan_summary"`
@@ -807,8 +805,6 @@ func saveStrategyJSON(path string, report *FreyaReport) {
 		sj.Archetype = strings.ToLower(report.Profile.PrimaryArchetype)
 		sj.Bracket = report.Profile.Bracket
 		sj.BracketLabel = report.Profile.BracketLabel
-		sj.PlaysLike = report.Profile.PlaysLike
-		sj.PlaysLikeLabel = report.Profile.PlaysLikeLabel
 		sj.GameChangerCount = report.Profile.GameChangerCount
 		sj.GameChangerCards = report.Profile.GameChangerCards
 		sj.GameplanSummary = report.Profile.GameplanSummary
@@ -816,8 +812,6 @@ func saveStrategyJSON(path string, report *FreyaReport) {
 		sj.Archetype = strings.ToLower(report.Archetype.Primary)
 		sj.Bracket = report.Archetype.Bracket
 		sj.BracketLabel = report.Archetype.BracketLabel
-		sj.PlaysLike = report.Archetype.PlaysLike
-		sj.PlaysLikeLabel = report.Archetype.PlaysLikeLabel
 		sj.GameChangerCount = report.Archetype.GameChangerCount
 		sj.GameChangerCards = report.Archetype.GameChangerCards
 	}
