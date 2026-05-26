@@ -77,7 +77,6 @@ Five passes:
 ## Deferred — still open as of 2026-05-26 R60 reconciliation
 
 - **#4 WardPayer non-generic ward** — `internal/gameengine/hat.go:921` `WardPayer` doc comment still says non-generic ward "is not yet wired at the engine level so wardCost is always >= 0 here". Sauron / Saruman / Auntie Ool per_card handlers still call `emitPartial(..., "ward_..._alt_payment_unimplemented")` — verified at `sauron_dark_lord.go:48`, `saruman_of_many_colors.go:42`, `auntie_ool.go:43`. Touches the cost-pay pipeline and 3+ per_card handlers; bigger than an inline fix.
-- **#5 live-game MVP combat P/T** — `internal/game/combat.go:318,325` `creaturePower` / `creatureToughness` still return literal `1`. `internal/game/types.go` `Card` struct still has no Power/Toughness fields. 3-step migration (struct fields → storage → deck JSON).
 - **#6 DrawCards empty-library flag** — `internal/game/combat.go:298` dead branch `if libCount == 0 { /* keep in alive list */ }` unchanged. `internal/game/engine.go:258` MVP comment still says drawing-from-empty silently clamps. Needs new `Player.AttemptedEmptyDraw` field + CheckGameEnd wiring + DB migration.
 - **#7 Tasigur recursion + delve** — `gen_tasigur_the_golden_fang.go` still mills 2 and emits a basic event; return-from-graveyard half and delve cost reduction both still missing. Needs graveyard-cost framework support.
 - **#8 Profile.jsx backend sync** — `hexdek/src/screens/Profile.jsx:17-23` still uses `localStorage.getItem/setItem` for display name + owner name; line 75 still tells users "Preferences are stored locally in your browser only." Needs `/api/me` preferences endpoint + schema decision.
@@ -89,4 +88,5 @@ Five passes:
 ## Closed since the original audit
 
 - **#1-#3** shipped in the original r48 PR (commit `ccb9a9e`).
+- **#5 live-game MVP combat P/T** — landed in R60 Versailles. Added `Power int` / `Toughness int` to `internal/moxfield/parser.go::Card` and `internal/game/types.go::Card`; threaded through `marshalCardData` / `hydrateCardData` (storage layer, no schema migration — `card_data` is already a JSON blob); copied at the two `CreateGameCard` call sites in `engine.go` (commander + library); `creaturePower` / `creatureToughness` now read `Card.Power` / `Card.Toughness` directly, with a 1/1 fallback when both are zero (= deck JSON omitted the metadata) to preserve pre-r60 MVP behavior for cards that haven't been re-imported with full P/T. First test coverage for `internal/game/` lands alongside (10 tests in `combat_power_r60_test.go`).
 - **#10** auth middleware sentinel-aware 401 — landed across two commits: initial sentinel-check in `17b2cb3` (R47 stub hunt), API-key sentinels added in PR #388. The current `authErrorMessage` matches the audit's recommended shape exactly.
