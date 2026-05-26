@@ -179,6 +179,23 @@ func (gs *GameState) LivingSeats() []int {
 	return out
 }
 
+// NextLivingSeat returns the index of the next non-lost seat after
+// gs.Active, wrapping around the table. Falls back to gs.Active when
+// no other living seats remain (caller's responsibility to check the
+// game-end condition before iterating). Used by analysis tools that
+// step a finished game state through the turn order without invoking
+// the engine's turn-loop.
+func NextLivingSeat(gs *GameState) int {
+	n := len(gs.Seats)
+	for offset := 1; offset <= n; offset++ {
+		idx := (gs.Active + offset) % n
+		if gs.Seats[idx] != nil && !gs.Seats[idx].Lost {
+			return idx
+		}
+	}
+	return gs.Active
+}
+
 // -----------------------------------------------------------------------------
 // CheckEnd — CR §104.2a last-seat-standing + §800.4 elimination sweep
 // -----------------------------------------------------------------------------

@@ -279,7 +279,7 @@ func printWinConditions(r *tournament.TournamentResult) {
 
 	fmt.Println()
 	fmt.Println("WIN CONDITIONS:")
-	total := max1(r.Games)
+	total := max(r.Games, 1)
 	for cond, count := range condCounts {
 		pct := 100.0 * float64(count) / float64(total)
 		fmt.Printf("  %-20s %3.0f%%  (%d/%d)\n", cond+":", pct, count, total)
@@ -310,7 +310,7 @@ func printDeadCards(r *tournament.TournamentResult, n int) {
 	}
 
 	// Filter + sort by dead rate.
-	minGames := max1(r.Games / 10)
+	minGames := max(r.Games/10, 1)
 	type deadEntry struct {
 		name       string
 		deadRate   float64
@@ -507,12 +507,6 @@ func printCoTriggers(r *tournament.TournamentResult) {
 	}
 }
 
-func max1(v int) int {
-	if v < 1 {
-		return 1
-	}
-	return v
-}
 
 // ---------------------------------------------------------------------------
 // SPECTATOR MODE (original Eye of Sauron)
@@ -687,7 +681,7 @@ func runSpectator(decksPath, astPath, oraclePath string, seed int64, seats, maxT
 		}
 
 		prev := gs.Active
-		gs.Active = nextLivingSeat(gs)
+		gs.Active = gameengine.NextLivingSeat(gs)
 		if gs.Active <= prev || gs.Active == startingSeat {
 			round++
 		}
@@ -888,16 +882,6 @@ func printGameResult(gs *gameengine.GameState) {
 	fmt.Printf("  Events: %d\n", len(gs.EventLog))
 }
 
-func nextLivingSeat(gs *gameengine.GameState) int {
-	n := len(gs.Seats)
-	for offset := 1; offset <= n; offset++ {
-		idx := (gs.Active + offset) % n
-		if gs.Seats[idx] != nil && !gs.Seats[idx].Lost {
-			return idx
-		}
-	}
-	return gs.Active
-}
 
 func resolveDeckPaths(input string) []string {
 	// Single directory: list all .txt files.

@@ -898,7 +898,7 @@ func runChaosGame(gameIdx, permutation int,
 		if gs.CheckEnd() {
 			break
 		}
-		gs.Active = nextLivingSeat(gs)
+		gs.Active = gameengine.NextLivingSeat(gs)
 
 		// Safety: if too many crashes in one game, bail.
 		if len(result.Crashes) > 10 {
@@ -1209,16 +1209,6 @@ func matchesInvariantFilter(invariantName, canonical string) bool {
 	return invariantName == canonical
 }
 
-func nextLivingSeat(gs *gameengine.GameState) int {
-	n := len(gs.Seats)
-	for offset := 1; offset <= n; offset++ {
-		idx := (gs.Active + offset) % n
-		if gs.Seats[idx] != nil && !gs.Seats[idx].Lost {
-			return idx
-		}
-	}
-	return gs.Active
-}
 
 // extractCardFromStack tries to pull a card name from a panic stack trace.
 // Looks for common patterns in the engine like "card=<name>" or DisplayName

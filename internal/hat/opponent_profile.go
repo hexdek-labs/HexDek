@@ -732,20 +732,11 @@ func hasOracleHint(c *gameengine.Card, hint string) bool {
 	return strings.Contains(cardOracleText(c), strings.ToLower(hint))
 }
 
-// cardHasType wraps a HasType-style check at this layer to avoid
-// pulling in the per_card helper. Mirrors the pattern used by the
-// hat's internal classifiers.
+// cardHasType forwards to the engine's exported strict helper (R60
+// Phase 2C — used to be a verbatim copy of an identical body in
+// internal/gameengine/per_card/helpers.go).
 func cardHasType(c *gameengine.Card, t string) bool {
-	if c == nil {
-		return false
-	}
-	want := strings.ToLower(t)
-	for _, got := range c.Types {
-		if strings.ToLower(got) == want {
-			return true
-		}
-	}
-	return false
+	return gameengine.CardHasTypeExact(c, t)
 }
 
 // isRemovalText returns true for oracle text that smells like single-

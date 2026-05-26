@@ -284,7 +284,7 @@ func fuzzOneGame(gameIdx int, decks []*deckparser.TournamentDeck,
 		if gs.CheckEnd() {
 			break
 		}
-		gs.Active = nextLivingSeat(gs)
+		gs.Active = gameengine.NextLivingSeat(gs)
 	}
 
 	result.Turns = gs.Turn
@@ -308,17 +308,6 @@ func checkInvariants(gs *gameengine.GameState, gameIdx int, gameSeed int64, resu
 		}
 		result.Violations = append(result.Violations, viol)
 	}
-}
-
-func nextLivingSeat(gs *gameengine.GameState) int {
-	n := len(gs.Seats)
-	for offset := 1; offset <= n; offset++ {
-		idx := (gs.Active + offset) % n
-		if gs.Seats[idx] != nil && !gs.Seats[idx].Lost {
-			return idx
-		}
-	}
-	return gs.Active
 }
 
 func resolveDeckPaths(input string) []string {

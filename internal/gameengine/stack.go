@@ -1602,11 +1602,12 @@ func attachAuraOnETB(gs *GameState, perm *Permanent) {
 	}
 }
 
-// cardHasKeyword returns true if the card's AST contains a Keyword ability
+// CardHasKeyword returns true if the card's AST contains a Keyword ability
 // with the given name (case-insensitive). We check AST only — runtime
 // grants are per-permanent, not per-card, so they're not relevant to the
-// ETB initial state.
-func cardHasKeyword(c *Card, name string) bool {
+// ETB initial state. Exported (R60 Phase 2C consolidation) so the
+// per_card subpackage can share this rather than carry its own copy.
+func CardHasKeyword(c *Card, name string) bool {
 	if c == nil || c.AST == nil {
 		return false
 	}
@@ -1617,6 +1618,33 @@ func cardHasKeyword(c *Card, name string) bool {
 			continue
 		}
 		if strings.ToLower(strings.TrimSpace(kw.Name)) == want {
+			return true
+		}
+	}
+	return false
+}
+
+// cardHasKeyword retains the lowercase alias for in-package callers
+// that were here before the export. Cheap forwarder; saves churn on
+// the many engine call sites.
+func cardHasKeyword(c *Card, name string) bool {
+	return CardHasKeyword(c, name)
+}
+
+// CardHasTypeExact returns true iff `t` (case-insensitive) appears as
+// an exact element of card.Types. Distinct from the engine-internal
+// cardHasType in cost_modifiers.go which ALSO does a TypeLine
+// substring match — this strict version mirrors what the per_card
+// and hat packages need (primary-type and subtype membership without
+// TypeLine substring false positives). Exported R60 Phase 2C so those
+// two callers can share rather than copy-paste.
+func CardHasTypeExact(c *Card, t string) bool {
+	if c == nil {
+		return false
+	}
+	want := strings.ToLower(t)
+	for _, got := range c.Types {
+		if strings.ToLower(got) == want {
 			return true
 		}
 	}

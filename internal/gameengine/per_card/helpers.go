@@ -3,7 +3,6 @@ package per_card
 import (
 	"strings"
 
-	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -221,18 +220,10 @@ func permIsType(p *gameengine.Permanent, t string) bool {
 	return false
 }
 
-// cardHasType mirrors the engine's internal predicate for Card.
+// cardHasType forwards to the engine's exported strict helper (R60
+// Phase 2C — the body used to be a verbatim copy).
 func cardHasType(c *gameengine.Card, t string) bool {
-	if c == nil {
-		return false
-	}
-	want := strings.ToLower(t)
-	for _, got := range c.Types {
-		if strings.ToLower(got) == want {
-			return true
-		}
-	}
-	return false
+	return gameengine.CardHasTypeExact(c, t)
 }
 
 // moveCardBetweenZones routes a card through MoveCard so §614 replacements,
@@ -376,20 +367,10 @@ func cardCMC(c *gameengine.Card) int {
 	return 0
 }
 
-// cardHasKeyword mirrors the engine's internal helper.
+// cardHasKeyword forwards to the engine's exported helper. Kept as a
+// local alias so the dozens of per_card call sites stay unchanged
+// (R60 Phase 2C — the body used to be a verbatim copy of the engine
+// helper; consolidated to forward instead).
 func cardHasKeyword(c *gameengine.Card, name string) bool {
-	if c == nil || c.AST == nil {
-		return false
-	}
-	want := strings.ToLower(strings.TrimSpace(name))
-	for _, ab := range c.AST.Abilities {
-		kw, ok := ab.(*gameast.Keyword)
-		if !ok {
-			continue
-		}
-		if strings.ToLower(strings.TrimSpace(kw.Name)) == want {
-			return true
-		}
-	}
-	return false
+	return gameengine.CardHasKeyword(c, name)
 }

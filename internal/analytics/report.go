@@ -100,7 +100,7 @@ func (r *AnalyticsReport) writeWinConditions(b *strings.Builder) {
 	}
 	sort.SliceStable(sorted, func(i, j int) bool { return sorted[i].v > sorted[j].v })
 
-	total := max1(r.TotalGames)
+	total := max(r.TotalGames, 1)
 	for _, x := range sorted {
 		pct := 100.0 * float64(x.v) / float64(total)
 		fmt.Fprintf(b, "| %s | %d | %.1f%% |\n", x.k, x.v, pct)
@@ -143,7 +143,7 @@ func (r *AnalyticsReport) writeDeadCards(b *strings.Builder, n int) {
 	}
 
 	// Filter to cards that appeared in at least a few games and sort by dead rate.
-	minGames := max1(r.TotalGames / 10) // at least 10% of games
+	minGames := max(r.TotalGames/10, 1) // at least 10% of games
 	deadSorted := make([]CardRanking, 0)
 	for _, cr := range r.CardRankings {
 		if cr.GamesPlayed >= minGames && cr.DeadInHandRate > 0 {
@@ -782,9 +782,3 @@ func (r *AnalyticsReport) writeStallWarnings(b *strings.Builder, commanderNames 
 	b.WriteString("\n")
 }
 
-func max1(v int) int {
-	if v < 1 {
-		return 1
-	}
-	return v
-}
