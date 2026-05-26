@@ -39,8 +39,27 @@ func auntieOolETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"ward_blight_2_alt_payment_unimplemented")
+	// R60 closure of half-finished-features-r48 #4: route Blight 2 alt-
+	// payment ward through ward_alt_payment.go's canonical handler.
+	// Replaces the prior "ward_blight_2_alt_payment_unimplemented"
+	// emitPartial. The engine puts 2 -1/-1 counters on the targeting
+	// opponent's lowest-toughness creature; if they have no creatures
+	// the targeting spell is countered per CR §702.21c.
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	perm.Flags["kw:ward"] = 1
+	perm.Flags["ward_alt_kind"] = gameengine.WardAltKindBlight
+	perm.Flags["ward_alt_filter"] = 2 // Blight 2
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":          perm.Controller,
+		"ward_alt_kind": "blight",
+		"counters":      2,
+	})
+	// Out-of-scope gap (NOT half-finished #4): combat infect/wither
+	// counter placements don't currently fire the counter_placed event,
+	// so Auntie's draw/drain reaction misses those sources. Engine-side
+	// fan-out; kept as a partial for a future PR.
 	emitPartial(gs, slug, perm.Card.DisplayName(),
 		"counter_placed_not_fired_from_combat_infect_wither")
 }

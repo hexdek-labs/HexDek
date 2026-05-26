@@ -1904,6 +1904,21 @@ func CheckWardOnTargeting(gs *GameState, item *StackItem) {
 		if !perm.HasKeyword("ward") {
 			continue
 		}
+		// R60: alternative-payment ward (CR §702.21d — "Ward—Sacrifice...",
+		// "Ward—Discard...", "Ward—Blight N"). When the source permanent
+		// stamps a non-mana ward kind, route to the alt-payment handler
+		// instead of the mana-only path below. The handler decides whether
+		// the caster can pay (e.g. controls a legendary they can sac, has
+		// a discardable card of the required type, controls a creature to
+		// blight). If unaffordable, the spell is countered the same way as
+		// an unpaid mana ward (CR §702.21c).
+		if perm.Flags != nil && perm.Flags["ward_alt_kind"] != 0 {
+			tryPayAltWardCost(gs, item, perm)
+			if item.Countered {
+				return
+			}
+			continue
+		}
 		// Determine ward cost. Check Flags["ward_cost"] first, else default 1.
 		wardCost := 1
 		if perm.Flags != nil {
