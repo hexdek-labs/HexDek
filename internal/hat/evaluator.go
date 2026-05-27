@@ -391,6 +391,27 @@ func drawEngineCredit(seat *gameengine.Seat) float64 {
 //	        Remora's cumulative-upkeep churn, the throughput is ~1.5x
 //	        the upkeep-cadenced baseline.
 //
+// r60 follow-up: two new rate classes for virtual CA that pure
+// "you draw a card" detection missed:
+//
+//	0.8   — impulse-draw / exile-cast engines — recurring "exile the
+//	        top card of your library; you may play/cast it" (Outpost
+//	        Siege, Wild-Magic Sorcerer, Etali Primal Storm, Prosper
+//	        Tome-Bound, Faldorn). Each fires ~1x per cycle and adds a
+//	        castable card; rated below the 1.0 upkeep baseline because
+//	        the cast is conditional on mana availability and spell
+//	        relevance (typical real-world hit rate ~80%). The result
+//	        AFTER firing is also picked up by castableExileCount, but
+//	        scoring only the result undercounts the engine on the turn
+//	        it lands (no exile yet) and a seat that has popped its
+//	        impulse card every turn shows no engine value at all.
+//	0.3   — persistent scry / surveil engines — recurring "scry N" /
+//	        "surveil N" triggers (Path of Ancestry, Ledger Shredder).
+//	        Filters draw quality rather than adding a card; weighted
+//	        well below a true engine since it's pseudo-CA, but >0
+//	        because a 30%+ improvement in next-draw quality is a real
+//	        cards-per-turn equivalent over a game.
+//
 // The classifier is conservative: a card needs to match the rate-class
 // pattern explicitly to upgrade; ambiguous shapes (e.g. "whenever a
 // creature you control dies, draw a card") stay at the 1.0 baseline
@@ -402,6 +423,16 @@ func drawEngineRate(p *gameengine.Permanent) float64 {
 	ot := gameengine.OracleTextLower(p.Card)
 	if ot == "" {
 		return 0
+	}
+	// Most-specific gates first: impulse and scry/surveil engines
+	// don't say "you draw a card" so they fall through
+	// isPersistentDrawEngine entirely. Check them before the
+	// draw-engine gate so they register.
+	if isImpulseDrawEngine(ot) {
+		return 0.8
+	}
+	if isPersistentScryEngine(ot) {
+		return 0.3
 	}
 	if !isPersistentDrawEngine(p) {
 		return 0
@@ -459,6 +490,62 @@ func isPersistentDrawEngine(p *gameengine.Permanent) bool {
 		return true
 	}
 	return false
+}
+
+// isImpulseDrawEngine returns true when ot describes a recurring
+// "exile the top card of your library; you may play/cast it" effect.
+// Matches Outpost Siege (Khans mode, upkeep), Wild-Magic Sorcerer
+// (attack-trigger), Etali Primal Storm (attack-trigger, each player's
+// library), Prosper Tome-Bound (end-step), Faldorn (combat-trigger).
+//
+// Both the recurring cue ("whenever" / "at the beginning") AND an
+// exile-then-cast pair are required — one-shot impulse spells like
+// "Light Up the Stage" or static "you may play the top card" (Future
+// Sight, Vizier of the Menagerie, Augur of Autumn) intentionally
+// don't register as recurring exile-cast engines.
+func isImpulseDrawEngine(ot string) bool {
+	if !strings.Contains(ot, "whenever") && !strings.Contains(ot, "at the beginning") {
+		return false
+	}
+	// Exile cue must reference a library (your / each player's /
+	// their). "exile the top card" of anything else (e.g. a stack
+	// item, an opponent's hand) is a different effect family.
+	hasExile := strings.Contains(ot, "exile the top card")
+	hasLibrary := strings.Contains(ot, "your library") ||
+		strings.Contains(ot, "each player's library") ||
+		strings.Contains(ot, "their library")
+	if !hasExile || !hasLibrary {
+		return false
+	}
+	// Cast-permission cue — both "play" and "cast" variants, with
+	// the leading subject phrasing ("you may play", "you may cast")
+	// to avoid matching effects that exile and merely look at the
+	// card (Bonders' Enclave-style top-deck inspection).
+	return strings.Contains(ot, "you may play") ||
+		strings.Contains(ot, "you may cast") ||
+		strings.Contains(ot, "play that card") ||
+		strings.Contains(ot, "cast that card") ||
+		strings.Contains(ot, "play it this turn") ||
+		strings.Contains(ot, "cast it this turn")
+}
+
+// isPersistentScryEngine returns true when ot describes a recurring
+// scry or surveil trigger. Matches Path of Ancestry ("whenever you
+// cast a creature spell that shares a creature type with your
+// commander, scry 1"), Ledger Shredder ("whenever you cast the second
+// spell each turn, surveil 2"), and upkeep-cadenced scry sources.
+//
+// Recurring cue ("whenever" / "at the beginning") is required to
+// exclude activated-cost scry sources (Crystal Ball, Soothsaying)
+// whose throughput depends on mana spend and is already accounted for
+// implicitly in ManaAdvantage opportunity-cost. One-shot ETB scry on
+// creature spells (Omenspeaker, Augury Owl) also doesn't register —
+// they're not persistent.
+func isPersistentScryEngine(ot string) bool {
+	if !strings.Contains(ot, "whenever") && !strings.Contains(ot, "at the beginning") {
+		return false
+	}
+	return strings.Contains(ot, "scry ") || strings.Contains(ot, "surveil ")
 }
 
 // castableExileCount counts cards in seat's exile zone that the seat
