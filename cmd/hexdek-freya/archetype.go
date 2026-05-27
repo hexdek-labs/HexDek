@@ -142,6 +142,24 @@ type classifyContext struct {
 	// engines.
 	graveyardSizePayoffCount int
 	equipAuraCount int
+	// equipmentCount and auraCount split equipAuraCount by subtype so
+	// Equipment-Voltron and Aura-Voltron can be distinguished from
+	// generic suit-up Voltron. The sub-archetypes diverge sharply in
+	// gameplay shape (Equipment carries an extra deck-building tax for
+	// equip costs but survives bounce, while Aura-Voltron is faster but
+	// vulnerable to single-target removal) so the strategy bridge needs
+	// the distinction to weight protection vs board-wipe risk.
+	equipmentCount int
+	auraCount      int
+	// equipTriggerPayoffCount tracks cards that BOOST the equipment
+	// engine itself — Puresteel Paladin's "Whenever an Equipment enters,
+	// draw a card", Sigarda's Aid's "Auras and Equipment you control
+	// have flash + attach on ETB", Sram's "Whenever you cast an Aura,
+	// Equipment, or Vehicle, draw a card", Stoneforge Mystic's tutor +
+	// free-cast trigger. A pile of 10 equipment with zero payoffs is a
+	// midrange-with-toolbox shape; 8 equipment + 3 payoffs is the
+	// committed Equipment-Voltron archetype.
+	equipTriggerPayoffCount int
 	spellCopyCount int
 	landfallCount  int
 	counterCount   int // +1/+1 counter / proliferate cards
@@ -387,6 +405,34 @@ var archetypeFingerprints = []archetypeFingerprint{
 				return true
 			}
 			return false
+		},
+	},
+	{
+		// R60: Equipment-Voltron sub-archetype. Distinct from generic
+		// Voltron in gameplay shape:
+		//   - Equipment carries an extra deck-building tax (equip
+		//     cost mana per turn) but survives single-target bounce
+		//     since the Equipment stays on the battlefield.
+		//   - The engine REQUIRES at least one equip-payoff piece
+		//     (Puresteel Paladin / Sigarda's Aid / Stoneforge Mystic
+		//     / Sram / Halvar) to be tractable; without payoffs the
+		//     equip-cost tax stalls the clock past commander-tax
+		//     escalation. 3+ payoffs is the load-bearing signal.
+		//
+		// Gates: 8+ Equipment cards AND 3+ equip-trigger payoffs.
+		// Falls through to generic Voltron if either gate fails.
+		// Listed BEFORE generic Voltron in the fingerprint slice so
+		// the Euclidean-distance sort sees both candidates and the
+		// sub-archetype's tighter template (RoleArtifact-heavy) edges
+		// it ahead when the deck shape matches.
+		Name: "Equipment-Voltron",
+		Ratios: map[RoleTag]float64{
+			RoleProtection: 0.12, RoleThreat: 0.10, RoleRamp: 0.10, RoleRemoval: 0.05,
+		},
+		Require: func(ctx *classifyContext) bool {
+			return ctx.equipmentCount >= 8 &&
+				ctx.equipTriggerPayoffCount >= 3 &&
+				ctx.roleRatios[RoleProtection] >= 0.06
 		},
 	},
 	{
@@ -866,6 +912,17 @@ func ClassifyArchetype(report *FreyaReport, qtyProfiles []CardProfileQty, oracle
 		if fp.Name == "Tribal" && ctx.tribalLordCount >= 2 {
 			d *= 0.85
 		}
+		// Equipment-Voltron sub-archetype tie-break: generic Voltron and
+		// Equipment-Voltron share an identical role-ratio template, so
+		// with both gates passing they would land at the same Euclidean
+		// distance and the unstable sort.Slice ordering would
+		// non-deterministically pick the winner. Apply a small 5%
+		// discount to Equipment-Voltron when it qualifies so the more
+		// specific sub-archetype wins deterministically.
+		if fp.Name == "Equipment-Voltron" &&
+			ctx.equipmentCount >= 8 && ctx.equipTriggerPayoffCount >= 3 {
+			d *= 0.95
+		}
 		results = append(results, scored{name: fp.Name, distance: d})
 	}
 
@@ -972,6 +1029,19 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 
 		if strings.Contains(tl, "equipment") || strings.Contains(tl, "aura") {
 			ctx.equipAuraCount += qp.Qty
+		}
+		// Subtype split for the Equipment-Voltron / Aura-Voltron
+		// distinction. "Equipment" and "Aura" are subtypes of
+		// artifact and enchantment respectively; the TypeLine
+		// substring check is reliable because Scryfall normalizes
+		// the printed line ("Artifact — Equipment" / "Enchantment —
+		// Aura"). MDFC and split cards have their front-face
+		// TypeLine here, which is the equip-relevant face anyway.
+		if strings.Contains(tl, "equipment") {
+			ctx.equipmentCount += qp.Qty
+		}
+		if strings.Contains(tl, "aura") {
+			ctx.auraCount += qp.Qty
 		}
 		if strings.Contains(tl, "enchantment") {
 			enchantmentCount += qp.Qty
@@ -1281,6 +1351,15 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 			ctx.tribalLordCount += qp.Qty
 			tribeCounts[tribe] += qp.Qty
 		}
+		// Equipment-trigger payoff detection — cards that boost the
+		// equipment engine rather than just being an Equipment piece.
+		// Counted separately so the Equipment-Voltron fingerprint can
+		// gate on payoff density (3+ payoffs is the load-bearing
+		// signal that distinguishes a committed Equipment archetype
+		// from a midrange shell with a few equipment in the toolbox).
+		if cardIsEquipPayoff(qp.Profile.Name, ot) {
+			ctx.equipTriggerPayoffCount += qp.Qty
+		}
 	}
 	if len(tribeCounts) > 0 {
 		topTribe := ""
@@ -1479,6 +1558,91 @@ var anthemPhrases = []string{
 	"creature tokens you control have +",
 }
 
+// equipmentTriggerPayoffNames is the curated list of canonical
+// equipment-trigger payoff cards. A card matches as an
+// equipTriggerPayoff if it's in this list OR its oracle text contains
+// one of the equipmentTriggerPayoffPhrases below.
+//
+// Curated entries cover the cards whose payoff text is parser-
+// resilient but rarely catches via the substring scan (Stoneforge
+// Mystic's two-step tutor-then-free-cast doesn't read as "equipment
+// enters" / "cast an equipment"; Halvar's static buff lives behind a
+// double-faced front-back layout).
+var equipmentTriggerPayoffNames = map[string]bool{
+	"puresteel paladin":              true,
+	"sigarda's aid":                  true,
+	"sram, senior edificer":          true,
+	"stoneforge mystic":              true,
+	"stonehewer giant":               true,
+	"kemba, kha regent":              true,
+	"kemba, kha enduring":            true,
+	"akiri, line-slinger":            true,
+	"akiri, fearless voyager":        true,
+	"halvar, god of battle":          true,
+	"nahiri, forged in fury":         true,
+	"bruenor battlehammer":           true,
+	"valduk, keeper of the flame":    true,
+	"tiana, ship's caretaker":        true,
+	"toggo, goblin weaponsmith":      true,
+	"auriok steelshaper":             true,
+	"stone haven outfitter":          true,
+	"open the armory":                true,
+	"steelshaper's gift":             true,
+	"steelshaper apprentice":         true,
+	"ardenn, intrepid archaeologist": true,
+	"hammer of nazahn":               true,
+	"nazahn, revered bladesmith":     true,
+	"danitha capashen, paragon":      true,
+	"balan, wandering knight":        true,
+	"forging the tyrite sword":       true,
+}
+
+// equipmentTriggerPayoffPhrases recognises oracle-text shapes for
+// equip-payoff cards that aren't in the curated list. Patterns are
+// scoped to phrases that ONLY appear on equip-archetype payoffs —
+// generic "creatures you control" anthems are excluded, and the
+// bare-Equipment template "equipped creature gets +X/+Y" is
+// deliberately NOT included because every Equipment piece carries
+// that shape in its own buff text (Hammer of Nazahn, Bonesplitter,
+// Whispersilk Cloak all match "equipped creature gets/has..." for
+// their OWN buff — those are pieces, not payoffs). The phrases below
+// are the engine-buffing shapes: plural "equipped creatures you
+// control", board-wide "equipment you control have/get", count-up
+// "for each equipment", and the ETB / cast / attach trigger shapes.
+var equipmentTriggerPayoffPhrases = []string{
+	"whenever an equipment enters",
+	"whenever you cast an equipment",
+	"whenever you attach",
+	"equipment spells you cast cost",
+	"equipped creatures you control",
+	"equipment you control have ",
+	"equipment you control get ",
+	"for each equipment you control",
+	"equipment abilities you activate cost",
+	"search your library for an equipment",
+}
+
+// cardIsEquipPayoff returns true if the card buffs the equipment
+// engine itself — either by name (curated list) or by oracle-text
+// shape. A bare Equipment with no oracle-text payoff (Bonesplitter,
+// Whispersilk Cloak) is NOT a payoff — it's a piece. The distinction
+// is the LOAD-BEARING signal that separates Equipment-Voltron from a
+// midrange-with-equipment-toolbox shape.
+func cardIsEquipPayoff(name, ot string) bool {
+	if equipmentTriggerPayoffNames[strings.ToLower(strings.TrimSpace(name))] {
+		return true
+	}
+	if ot == "" {
+		return false
+	}
+	for _, phrase := range equipmentTriggerPayoffPhrases {
+		if strings.Contains(ot, phrase) {
+			return true
+		}
+	}
+	return false
+}
+
 // cardHasAnthem returns true if the lowercased oracle text matches
 // an anthem shape. Tribal anthems (Goblin King's "other Goblin
 // creatures you control get +1/+1") flow through the
@@ -1639,6 +1803,11 @@ func buildSignals(ctx *classifyContext, ac *ArchetypeClassification) []string {
 		signals = append(signals, fmt.Sprintf("tribal lord package (%d %s lords)", ctx.tribalLordCount, tribeLabel))
 	}
 
+	if ctx.equipmentCount >= 8 && ctx.equipTriggerPayoffCount >= 3 {
+		signals = append(signals, fmt.Sprintf("equipment engine (%d equipment + %d payoffs)",
+			ctx.equipmentCount, ctx.equipTriggerPayoffCount))
+	}
+
 	if ctx.freeInteractionCount >= 2 {
 		signals = append(signals, fmt.Sprintf("free interaction suite (%d pieces)", ctx.freeInteractionCount))
 	}
@@ -1683,6 +1852,8 @@ func buildIntent(ac *ArchetypeClassification, report *FreyaReport, ctx *classify
 		gameplan = "trade efficiently and grind value until it can close"
 	case "Voltron":
 		gameplan = "suit up the commander and eliminate players through commander damage"
+	case "Equipment-Voltron":
+		gameplan = "tutor and stack equipment on a single threat (commander), leverage equip-payoff triggers (free attaches, card draw on equipment ETB) for tempo, and close through commander damage"
 	case "Aristocrats":
 		gameplan = "sacrifice creatures for incremental drain and value"
 	case "Spellslinger":

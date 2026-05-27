@@ -26,6 +26,22 @@ var Archetypes = []ArchetypeDef{
 		Weight:      5,
 	},
 	{
+		// R60 — Equipment-Voltron sub-archetype. Distinct from generic
+		// Voltron in deck-shape commitment and gameplay rhythm:
+		// equipment carries an extra mana-tax per turn but survives
+		// single-target bounce, and the engine requires payoff pieces
+		// (Puresteel Paladin / Sigarda's Aid / Sram / Stoneforge) to
+		// be tractable. The structural fingerprint in archetype.go
+		// gates on 8+ Equipment + 3+ equip-trigger payoffs.
+		Name:        "Equipment-Voltron",
+		Description: "Tutor and stack Equipment on a single threat (commander), leverage equip-payoff triggers for tempo, close through commander damage",
+		Keywords:    []string{"equip", "equipped creature", "whenever an equipment", "equipment you control", "for each equipment", "search your library for an equipment"},
+		KeyCards:    []string{"Puresteel Paladin", "Sigarda's Aid", "Sram, Senior Edificer", "Stoneforge Mystic", "Stonehewer Giant", "Kemba, Kha Regent", "Akiri, Line-Slinger", "Halvar, God of Battle", "Nahiri, Forged in Fury", "Bruenor Battlehammer", "Ardenn, Intrepid Archaeologist", "Hammer of Nazahn", "Colossus Hammer", "Shadowspear", "Sword of Feast and Famine", "Sword of Fire and Ice"},
+		Triggers:    []string{"attacks", "etb", "cast_equipment"},
+		Effects:     []string{"equip", "attach", "tutor_equipment"},
+		Weight:      5,
+	},
+	{
 		Name:        "Aggro / Go Wide",
 		Description: "Create many tokens, buff them, swing for lethal",
 		Keywords:    []string{"create", "token", "all creatures you control get", "anthem", "overrun", "go wide"},
