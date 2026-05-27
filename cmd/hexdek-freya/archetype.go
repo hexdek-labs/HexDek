@@ -77,6 +77,14 @@ type classifyContext struct {
 	comboCount     int
 	tutorDensity   float64
 	fastManaCount  int
+	// tappedManaCount holds CMC-≤2 mana sources that ETB tapped
+	// (Coldsteel Heart, Diamond cycle, Star Compass, Coalition Relic).
+	// They're real ramp but a turn slower than untapped rocks of the same
+	// CMC, so they're excluded from fastManaCount (which feeds the B4
+	// bracket signal) and surfaced separately in the rationale. See
+	// isTappedETBRock + the Fast mana note in estimateMeasuredBracket.
+	tappedManaCount int
+	tappedManaNames []string
 	instantSorcPct float64
 	creaturePct    float64
 	topCreatureTypePct float64
@@ -177,6 +185,47 @@ var cedhFreeInteractionList = map[string]bool{
 	"subtlety": true, "endurance": true, "solitude": true, "grief": true, "fury": true,
 	// Other 0-mana / free alternative-cost interaction
 	"snapback": true, "unmask": true, "chain of vapor": true,
+}
+
+// tappedETBRocks is the curated set of CMC-≤2 artifact ramp pieces that
+// enter the battlefield tapped, so they don't tap-for-mana on the turn
+// they're cast. They're a turn slower than untapped CMC-equivalent
+// rocks (Sol Ring, Arcane Signet, signet/talisman cycles), which is the
+// material difference for the B4 bracket signal — "T1 fast rock → T2
+// 4-drop wincon" tempo doesn't exist with these. Used as a backup
+// against the oracle-text check in isTappedETBRock so detection still
+// fires on cards whose oracle data is missing from the local cache.
+var tappedETBRocks = map[string]bool{
+	"coldsteel heart":  true,
+	"charcoal diamond": true,
+	"marble diamond":   true,
+	"sky diamond":      true,
+	"fire diamond":     true,
+	"moss diamond":     true,
+	"star compass":     true,
+	"guardian idol":    true,
+}
+
+// isTappedETBRock reports whether a CMC-≤2 mana producer enters tapped
+// and should therefore be excluded from fastManaCount. Two-pronged
+// detection: the curated tappedETBRocks set handles cards whose oracle
+// text isn't available (offline classify runs); the oracle-text scan
+// catches anything else printed with the universal "enters tapped" /
+// "enters the battlefield tapped" phrasing. Matches the lowercased
+// name + lowercased oracle text the caller already has.
+func isTappedETBRock(name, ot string) bool {
+	if tappedETBRocks[strings.ToLower(name)] {
+		return true
+	}
+	// Scryfall's modern simplified oracle uses "enters tapped"; legacy
+	// printings use "enters the battlefield tapped". Substring match
+	// covers both since the shorter form is a strict prefix of the
+	// longer one when split by the same anchor word "enters".
+	if strings.Contains(ot, "enters tapped") ||
+		strings.Contains(ot, "enters the battlefield tapped") {
+		return true
+	}
+	return false
 }
 
 // WotC Commander Game Changers list (53 cards, Feb 2026 update).
@@ -998,10 +1047,23 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 
 		if qp.Profile.CMC <= 2 {
 			for _, r := range qp.Profile.Produces {
-				if r == ResMana {
-					ctx.fastManaCount += qp.Qty
-					break
+				if r != ResMana {
+					continue
 				}
+				// Tapped-ETB rocks (Coldsteel Heart, Diamond cycle, Star
+				// Compass, Coalition Relic) produce mana but don't tap-
+				// for-mana the turn they're cast — they're a turn slower
+				// than untapped rocks of the same CMC. The B4 bracket
+				// signal cares about "T1 Sol Ring → T2 4-drop" tempo, not
+				// raw mana-source count, so these are split into a
+				// separate counter and surfaced in the rationale.
+				if isTappedETBRock(qp.Profile.Name, ot) {
+					ctx.tappedManaCount += qp.Qty
+					ctx.tappedManaNames = append(ctx.tappedManaNames, qp.Profile.Name)
+				} else {
+					ctx.fastManaCount += qp.Qty
+				}
+				break
 			}
 		}
 	}
@@ -1369,6 +1431,19 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 		addScore("Fast mana", "6-9", fmt.Sprintf("%d sub-2-CMC mana producers", ctx.fastManaCount), nil, 2)
 	case ctx.fastManaCount >= 3:
 		addScore("Fast mana", "3-5", fmt.Sprintf("%d sub-2-CMC mana producers", ctx.fastManaCount), nil, 1)
+	}
+	if ctx.tappedManaCount > 0 {
+		names := ctx.tappedManaNames
+		if len(names) > 4 {
+			names = append([]string{}, names[:4]...)
+			names = append(names, fmt.Sprintf("+%d more", len(ctx.tappedManaNames)-4))
+		}
+		rationale.Signals = append(rationale.Signals, BracketSignal{
+			Name: "Fast mana",
+			Kind: "note",
+			Note: fmt.Sprintf("%d tapped-ETB rock(s) excluded from fast-mana count (%s) — they don't tap-for-mana the turn cast, so they don't drive the T2/T3 wincon tempo the B4 signal measures",
+				ctx.tappedManaCount, strings.Join(names, ", ")),
+		})
 	}
 
 	if ctx.roleRatios[RoleCounterspell] >= 0.06 {
