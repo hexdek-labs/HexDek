@@ -459,7 +459,7 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		// COMMANDER: lines for partners. Distinct from the section-header
 		// path below.
 		if m := commanderLineRE.FindStringSubmatch(raw); m != nil {
-			name := strings.TrimSpace(m[1])
+			name := cleanCardName(strings.TrimSpace(m[1]))
 			if explicitCommander == "" {
 				explicitCommander = name
 			} else if explicitPartner == "" {
@@ -469,7 +469,7 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		}
 		// PARTNER: <name>
 		if m := partnerLineRE.FindStringSubmatch(raw); m != nil {
-			explicitPartner = strings.TrimSpace(m[1])
+			explicitPartner = cleanCardName(strings.TrimSpace(m[1]))
 			continue
 		}
 		// Section headers: Sideboard, Maybeboard, Companion, Commander,
@@ -925,6 +925,34 @@ var sbPrefixRE = regexp.MustCompile(`(?i)^\s*SB\s*:\s*`)
 // codes survived through to the meta lookup and silently dropped the card
 // into Unresolved — destroying the entire library for any deck pasted from
 // MTGO. That was the worst gap surfaced by the audit.
+// emojiTrimRE peels leading-or-trailing runs of emoji + whitespace from
+// a card name. Moxfield deck tags sometimes carry pictographic markers
+// like 🔥 / ⚔️ / 💀 as a visual annotation (similar in spirit to the
+// `*F*` foil marker but without the asterisk wrapping). Pre-fix, every
+// such line landed in Unresolved because the emoji bled into the meta
+// lookup name (e.g. `1 Sol Ring 🔥` resolved as `Sol Ring 🔥`, miss).
+//
+// Strip is conservative: leading + trailing runs only, never interior
+// characters. No real Magic card name contains emoji, but card names
+// DO contain non-ASCII letters (Lim-Dûl's Vault, Jötun Grunt) so the
+// strip targets symbol/format categories only:
+//
+//   - \p{So} — Symbol, Other (most pictographic emoji)
+//   - \p{Sk} — Symbol, Modifier (skin-tone modifiers)
+//   - \p{Cf} — Format (ZWJ, BOM, etc.)
+//   - U+FE00-U+FE0F — variation selectors (the second codepoint in
+//     two-codepoint emoji like ⚔️ = U+2694 + U+FE0F). These are
+//     categorized as \p{Mn} (Mark, Nonspacing) which would over-match
+//     combining accents on letter chars; the explicit hex range
+//     targets ONLY the VS block.
+//   - U+200D — Zero-Width Joiner used in emoji sequences like
+//     👨‍👩‍👧 (man + ZWJ + woman + ZWJ + girl). Already covered by
+//     \p{Cf} but listed for clarity.
+//
+// Letter-category chars (\p{L}) are intentionally left alone, so
+// Lim-Dûl / Jötun / Æther / Séance survive.
+var emojiTrimRE = regexp.MustCompile(`(?:^[\s\p{So}\p{Sk}\p{Cf}\x{FE00}-\x{FE0F}\x{200D}]+|[\s\p{So}\p{Sk}\p{Cf}\x{FE00}-\x{FE0F}\x{200D}]+$)`)
+
 var (
 	foilMarkerRE = regexp.MustCompile(`\s*\*[A-Za-z][A-Za-z\-]*\*\s*$`)
 	// bracketTagRE peels a trailing `[Set]` tag, optionally followed by a
@@ -961,6 +989,7 @@ func cleanCardName(name string) string {
 		s = foilMarkerRE.ReplaceAllString(s, "")
 		s = bracketTagRE.ReplaceAllString(s, "")
 		s = hashTagRE.ReplaceAllString(s, "")
+		s = emojiTrimRE.ReplaceAllString(s, "")
 		s = strings.TrimSpace(s)
 		if s == before {
 			break
