@@ -1054,7 +1054,9 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 	const offClassDamping = 0.7
 
 	bestRatio := 0.0
-	for _, cp := range e.Strategy.ComboPieces {
+	var bestPlan *ComboPlan
+	for i := range e.Strategy.ComboPieces {
+		cp := &e.Strategy.ComboPieces[i]
 		if len(cp.Pieces) == 0 {
 			continue
 		}
@@ -1089,22 +1091,63 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 		}
 		if ratio > bestRatio {
 			bestRatio = ratio
+			bestPlan = cp
 		}
 	}
 
 	// R60r2: cost-reducer bonus. Goblin Electromancer / Helm of Awakening
 	// / Birgi / Jhoira / Will of the Jeskai-class permanents bring combo
-	// payoffs into cast-range a turn earlier. Pre-fix the dimension only
-	// cared about PIECE presence, not whether those pieces were castable
-	// this turn. Add a flat +0.08 to bestRatio when (a) a cost-reducer is
-	// on this seat's battlefield AND (b) we've made meaningful progress
-	// (bestRatio > 0.4) so the bonus doesn't fire when the combo is
-	// still 3+ pieces away. The bonus is intentionally small: the
-	// reducer doesn't supply a missing PIECE, it just compresses the
-	// timeline. Clamps so bestRatio can still reach 1.0 (and trigger the
-	// 2.0 lethal score) without overshooting.
+	// payoffs into cast-range a turn earlier. The base case +0.08 fires
+	// when (a) a cost-reducer is on this seat's battlefield AND (b) we've
+	// made meaningful progress (bestRatio > 0.4) so the bonus doesn't
+	// fire when the combo is still 3+ pieces away.
+	//
+	// R60r3: CMC-after-reduction castable-this-turn tier. Parse the
+	// reduction amount from each reducer's oracle text ("cost {N} less"
+	// → N, default 1) and sum across reducers. For the best plan,
+	// compute the effective cost to deploy its IN-HAND pieces:
+	//   effectiveCost = max(0, sum(face CMC) - reduction × numHandPieces)
+	// Compare to seat's land count. If effectiveCost <= availableLands,
+	// the combo is CASTABLE THIS TURN — upgrade the bonus from +0.08
+	// to +0.15. The pre-r60r3 path treated "Helm of Awakening + 2-mana
+	// combo piece in hand + 2 lands" identically to "Helm of Awakening
+	// + 6-mana combo piece in hand + 2 lands" — both got +0.08, even
+	// though the first is closing this turn and the second isn't.
+	//
+	// Pieces missing from all zones don't contribute to effectiveCost
+	// (we can't know their CMC) — the signal credits castability of
+	// what we ALREADY HAVE; the missing-piece coverage stays a
+	// tutor-credit / graveyard-credit problem.
 	if bestRatio > 0.4 && seatHasComboCostReducer(seat) {
-		bestRatio += 0.08
+		bonus := 0.08
+		if bestPlan != nil {
+			reduction := seatCostReductionAmount(seat)
+			handPieceCMCs := 0
+			handPieceCount := 0
+			for _, c := range seat.Hand {
+				if c == nil {
+					continue
+				}
+				name := c.DisplayName()
+				for _, piece := range bestPlan.Pieces {
+					if piece == name {
+						handPieceCMCs += gameengine.ManaCostOf(c)
+						handPieceCount++
+						break
+					}
+				}
+			}
+			if handPieceCount > 0 {
+				effectiveCost := handPieceCMCs - reduction*handPieceCount
+				if effectiveCost < 0 {
+					effectiveCost = 0
+				}
+				if effectiveCost <= seatAvailableLands(seat) {
+					bonus = 0.15
+				}
+			}
+		}
+		bestRatio += bonus
 		if bestRatio > 1.0 {
 			bestRatio = 1.0
 		}
@@ -1180,6 +1223,105 @@ func seatHasComboGraveyardRecursion(seat *gameengine.Seat) bool {
 // "less" anchored to a cast/spell context is the canonical shape.
 // Defense-in-depth name match for a few canonical cards whose oracle
 // templating doesn't fit the pattern.
+// seatCostReductionAmount returns the total mana reduction this seat's
+// battlefield permanents apply to its spells. Sums each reducer's "{N}
+// less" template across the battlefield. Conservative: defaults to 1
+// per reducer when the oracle text lacks a parseable `{N}` (the
+// canonical cards — Goblin Electromancer / Helm of Awakening / Baral /
+// Curious Homunculus — all read "cost {1} less"). Caps at 4 to prevent
+// theoretical-only stacks (a board with 5+ reducers is a degenerate
+// state where mana cost no longer constrains).
+//
+// Used by scoreCombo to compute effective CMC of combo pieces in hand
+// after reducer effects — turns a 3-mana piece into a 2-mana piece when
+// Helm of Awakening is in play, which then determines whether the combo
+// is castable this turn.
+func seatCostReductionAmount(seat *gameengine.Seat) int {
+	if seat == nil {
+		return 0
+	}
+	total := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		ot := gameengine.OracleTextLower(p.Card)
+		isReducer := strings.Contains(ot, "cost") && strings.Contains(ot, "less") &&
+			(strings.Contains(ot, "you cast") || strings.Contains(ot, "to cast") ||
+				strings.Contains(ot, "spells"))
+		if !isReducer {
+			// Name-anchor fallback for canonical reducers whose oracle
+			// templating may not survive normalization through tests.
+			name := strings.ToLower(p.Card.DisplayName())
+			if strings.Contains(name, "electromancer") || strings.Contains(name, "helm of awakening") ||
+				strings.Contains(name, "birgi") || strings.Contains(name, "jhoira") {
+				total += 1
+			}
+			continue
+		}
+		// Try to extract {N} from "cost {N} less". Walk the oracle text
+		// for "{n} less" patterns; first numeric brace before "less" wins.
+		n := parseReductionN(ot)
+		if n <= 0 {
+			n = 1
+		}
+		total += n
+	}
+	if total > 4 {
+		total = 4
+	}
+	return total
+}
+
+// parseReductionN scans `ot` for the canonical "cost {N} less" template
+// and returns N. Returns 0 if no parseable `{N}` precedes "less". Only
+// matches single-digit reductions (no card prints "cost {10} less").
+func parseReductionN(ot string) int {
+	lessIdx := strings.Index(ot, " less")
+	if lessIdx < 0 {
+		return 0
+	}
+	// Walk backwards from "less" looking for the nearest "{N}" brace.
+	prefix := ot[:lessIdx]
+	close := strings.LastIndex(prefix, "}")
+	if close < 0 {
+		return 0
+	}
+	open := strings.LastIndex(prefix[:close], "{")
+	if open < 0 {
+		return 0
+	}
+	sym := prefix[open+1 : close]
+	if len(sym) == 1 && sym[0] >= '0' && sym[0] <= '9' {
+		return int(sym[0] - '0')
+	}
+	return 0
+}
+
+// seatAvailableLands returns the count of land permanents on this seat's
+// battlefield. Used by scoreCombo as a mana-availability proxy when
+// deciding whether the cost-reducer bonus should upgrade from +0.08
+// (reducer present) to +0.15 (combo castable THIS TURN after reduction).
+//
+// Proxy intentionally simple: counts all lands regardless of tap state
+// (a tapped land will untap next turn, and the signal is forward-looking
+// "how castable is the combo from here"). Mana rocks are not counted —
+// keeping the proxy land-only avoids double-counting reducers that also
+// produce mana (Jhoira) and matches the rough mental model EDH players
+// use when budgeting turns.
+func seatAvailableLands(seat *gameengine.Seat) int {
+	if seat == nil {
+		return 0
+	}
+	n := 0
+	for _, p := range seat.Battlefield {
+		if p != nil && p.IsLand() {
+			n++
+		}
+	}
+	return n
+}
+
 func seatHasComboCostReducer(seat *gameengine.Seat) bool {
 	if seat == nil {
 		return false
