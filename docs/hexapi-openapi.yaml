@@ -2433,6 +2433,46 @@ paths:
                     description: HTTP header name the server expects the token in (always `X-CSRF-Token`).
         "503": { $ref: '#/components/responses/InternalError' }
 
+  /api/health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Process liveness + readiness probe.
+      description: |
+        Always returns 200 with a small JSON body. Intended for
+        orchestrator readiness checks. The `status` field is always
+        `ok` for served requests (a request reached the handler →
+        HTTP server is alive); use the `db_reachable` boolean to
+        distinguish "process up, DB down" from "process down".
+        Carries `Cache-Control: no-store` so intermediate caches
+        can never mask a real outage with a stale "all green".
+      responses:
+        "200":
+          description: Health payload.
+          headers:
+            Cache-Control:
+              description: Always `no-store`.
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, uptime_sec, version, db_reachable]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  uptime_sec:
+                    type: integer
+                    format: int64
+                    description: Wall-clock seconds since process boot (or first /api/health observation).
+                  version:
+                    type: string
+                    description: Build version string; "dev" when not set via -ldflags.
+                  db_reachable:
+                    type: boolean
+                    description: True iff a sub-500ms ping on the SQLite connection succeeded.
+
   /api/feedback:
     post:
       tags: [feedback]
