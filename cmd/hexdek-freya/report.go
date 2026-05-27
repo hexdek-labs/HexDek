@@ -1558,10 +1558,11 @@ type jsonBracketSignal struct {
 }
 
 type jsonWinLines struct {
-	Lines        []jsonWinLine  `json:"lines"`
-	BackupPlans  []string       `json:"backup_plans,omitempty"`
-	SinglePoints []string       `json:"single_points_of_failure,omitempty"`
-	Redundancy   map[string]int `json:"redundancy,omitempty"`
+	Lines              []jsonWinLine  `json:"lines"`
+	BackupPlans        []string       `json:"backup_plans,omitempty"`
+	SinglePoints       []string       `json:"single_points_of_failure,omitempty"`
+	Redundancy         map[string]int `json:"redundancy,omitempty"`
+	TotalWeightedScore int            `json:"total_weighted_score,omitempty"`
 }
 
 type jsonWinLine struct {
@@ -1569,6 +1570,7 @@ type jsonWinLine struct {
 	Type       string                `json:"type"`
 	Class      string                `json:"class,omitempty"`
 	Desc       string                `json:"description,omitempty"`
+	Weight     int                   `json:"weight,omitempty"`
 	TutorPaths []jsonTutorChain      `json:"tutor_paths,omitempty"`
 	Rationale  *jsonWinLineRationale `json:"rationale,omitempty"`
 }
@@ -1899,15 +1901,17 @@ func buildJSONWinLines(wla *WinLineAnalysis) *jsonWinLines {
 			Type:       wl.Type,
 			Class:      wl.Class,
 			Desc:       wl.Desc,
+			Weight:     wl.Weight,
 			TutorPaths: paths,
 			Rationale:  rat,
 		}
 	}
 	return &jsonWinLines{
-		Lines:        lines,
-		BackupPlans:  wla.BackupPlans,
-		SinglePoints: wla.SinglePoints,
-		Redundancy:   wla.RedundancyMap,
+		Lines:              lines,
+		BackupPlans:        wla.BackupPlans,
+		SinglePoints:       wla.SinglePoints,
+		Redundancy:         wla.RedundancyMap,
+		TotalWeightedScore: wla.TotalWeightedScore,
 	}
 }
 
