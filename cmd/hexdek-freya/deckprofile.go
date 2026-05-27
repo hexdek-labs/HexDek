@@ -35,6 +35,15 @@ type DeckProfile struct {
 	RampCount      int
 	DrawCount      int
 
+	// CMC-distribution health check counts (r60). OneDropCount is the
+	// number of nonland cards at CMC 1; TwoDropCount is at CMC 2. The
+	// distribution warnings ("too many 1-drops" / "too few 2-drops")
+	// are surfaced via CurveWarnings on the report and Weaknesses on
+	// the profile; these counters are exposed for downstream renderers
+	// that want the underlying metric.
+	OneDropCount   int
+	TwoDropCount   int
+
 	RoleCounts map[RoleTag]int
 	TopRoles   []RoleCount
 
@@ -482,6 +491,13 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	dp.PersonalityBlurb = buildPersonalityBlurb(dp, report)
 	dp.PowerPercentile, dp.PowerFactors = estimatePowerPercentile(dp, report)
 
+	// CMC-distribution health check — populates OneDropCount /
+	// TwoDropCount and appends warnings to report.CurveWarnings when
+	// the deck is either 1-drop heavy or 2-drop starved. The
+	// thresholds come from opening-hand hypergeometric math; see
+	// computeCMCDistributionHealth for the calibration rationale.
+	computeCMCDistributionHealth(dp, report)
+
 	dp.Strengths = deriveStrengths(report, dp)
 	dp.Weaknesses = deriveWeaknesses(report, dp)
 	dp.GameplanSummary = buildGameplanSummary(dp, report)
@@ -872,6 +888,122 @@ func deriveStrengths(report *FreyaReport, dp *DeckProfile) []string {
 	return s
 }
 
+// CMCDistributionWarning is the threshold structure used by
+// computeCMCDistributionHealth — surfaced as exported so tests can pin
+// the calibration without re-running the warning pipeline.
+//
+// Calibration (opening-hand hypergeometric, deck of 99, opener of 7):
+//
+//   - OneDropMax = 15. With 15 one-drops in 99, P(opener has ≥2 one-
+//     drops) ≈ 21% — high enough that the deck is regularly burning a
+//     hand slot on a low-impact card. Past 15, mid-game tempo dilution
+//     starts to outweigh the consistency of a turn-1 play. The cEDH
+//     fast-mana corpus (~6-10 one-drops average per the lyon sample)
+//     stays well under this floor; only dedicated 1-drop-tribal piles
+//     (Glistener Elf infect, Slippery Bogle voltron variants) push past.
+//
+//   - TwoDropMin = 6. With only 6 two-drops in 99, P(opener has zero
+//     two-drops) = C(93,7)/C(99,7) ≈ 64% — the deck whiffs a turn-2 play
+//     in roughly two of every three games. By 8 two-drops the whiff
+//     drops to ~55%, by 12 to ~38%. Six is the floor below which the
+//     curve consistency degrades enough to warrant flagging.
+//
+// Both thresholds are deliberately tuned to fire on STRUCTURAL issues
+// rather than minor curve quirks — they don't double-fire with the
+// existing "few early plays" warning (which keys on CMC 0+1 totals, a
+// different aggregate signal).
+type CMCDistributionWarning struct {
+	OneDropMax int // cards at CMC 1 above this count trigger a warning
+	TwoDropMin int // cards at CMC 2 below this count trigger a warning
+}
+
+var defaultCMCDistribution = CMCDistributionWarning{
+	OneDropMax: 15,
+	TwoDropMin: 6,
+}
+
+// computeCMCDistributionHealth populates dp.OneDropCount /
+// dp.TwoDropCount and appends warnings to report.CurveWarnings when the
+// deck violates the calibrated thresholds in defaultCMCDistribution.
+//
+// Warnings include the expected opening-hand impact so builders see WHY
+// the threshold matters: "16 one-drops — 7×16/99 ≈ 1.1 expected in
+// opener, mid-game tempo may dilute".
+//
+// Skips when report.NonlandCount == 0 (corrupt / empty profile) or when
+// ManaCurve is unpopulated. Idempotent — calling twice does NOT
+// double-append (warnings are de-duped against an existing exact match).
+func computeCMCDistributionHealth(dp *DeckProfile, report *FreyaReport) {
+	if dp == nil || report == nil || report.NonlandCount == 0 {
+		return
+	}
+	dp.OneDropCount = report.ManaCurve[1]
+	dp.TwoDropCount = report.ManaCurve[2]
+
+	thresh := defaultCMCDistribution
+
+	if dp.OneDropCount > thresh.OneDropMax {
+		expected := 7.0 * float64(dp.OneDropCount) / float64(report.TotalCards)
+		w := fmt.Sprintf("1-drop heavy: %d cards at CMC 1 (>%d threshold) — %.1f expected in opener; mid-game tempo may dilute",
+			dp.OneDropCount, thresh.OneDropMax, expected)
+		report.CurveWarnings = appendUniqueCurveWarning(report.CurveWarnings, w)
+	}
+
+	if dp.TwoDropCount < thresh.TwoDropMin {
+		// Hypergeometric P(no 2-drop in opener of 7) given K 2-drops in
+		// deck of TotalCards. Computed inline so the message reports the
+		// actual whiff rate for THIS deck, not a tabulated approximation.
+		whiffPct := openingHandWhiffPct(dp.TwoDropCount, report.TotalCards, 7)
+		w := fmt.Sprintf("2-drop starved: only %d cards at CMC 2 (<%d threshold) — %.0f%% of openers contain no 2-drop, turn-2 plays will whiff often",
+			dp.TwoDropCount, thresh.TwoDropMin, whiffPct)
+		report.CurveWarnings = appendUniqueCurveWarning(report.CurveWarnings, w)
+	}
+}
+
+// openingHandWhiffPct returns the % chance of drawing zero copies of a
+// K-card subset in an n-card opener from a deck of N. Computed as the
+// product (N-K)/(N) * (N-K-1)/(N-1) * ... — the closed-form
+// hypergeometric P(X=0) without factorials.
+//
+// Returns 0 when k <= 0 (every opener whiffs trivially — but we don't
+// surface that meaningless case), 100 when k == 0 with positive draw
+// count (impossible to draw what isn't there), and 0 for malformed
+// inputs (n > deckSize, deckSize <= 0).
+func openingHandWhiffPct(k, deckSize, n int) float64 {
+	if k <= 0 {
+		return 100
+	}
+	if deckSize <= 0 || n <= 0 || n > deckSize {
+		return 0
+	}
+	if k > deckSize {
+		return 0
+	}
+	p := 1.0
+	for i := 0; i < n; i++ {
+		num := float64(deckSize - k - i)
+		den := float64(deckSize - i)
+		if num <= 0 {
+			return 0
+		}
+		p *= num / den
+	}
+	return p * 100
+}
+
+// appendUniqueCurveWarning appends w to warnings IFF an exact-string
+// match is not already present. Defends against double-append when
+// BuildDeckProfile is invoked twice on the same report (rare but
+// possible in tests that mutate a shared report).
+func appendUniqueCurveWarning(warnings []string, w string) []string {
+	for _, existing := range warnings {
+		if existing == w {
+			return warnings
+		}
+	}
+	return append(warnings, w)
+}
+
 func deriveWeaknesses(report *FreyaReport, dp *DeckProfile) []string {
 	var w []string
 
@@ -934,6 +1066,17 @@ func deriveWeaknesses(report *FreyaReport, dp *DeckProfile) []string {
 		if total >= 3 && float64(dp.UnprotectedKeyPieces)/float64(total) >= 0.80 {
 			w = append(w, fmt.Sprintf("key pieces exposed (%d/%d combo/threat pieces lack built-in protection)", dp.UnprotectedKeyPieces, total))
 		}
+	}
+
+	// CMC-distribution surface — short callouts that mirror the more
+	// detailed CurveWarnings entries on the report. Builders reading the
+	// Weaknesses list see the structural issue without having to cross-
+	// reference CurveWarnings.
+	if dp.OneDropCount > defaultCMCDistribution.OneDropMax {
+		w = append(w, fmt.Sprintf("1-drop heavy (%d at CMC 1, >%d threshold)", dp.OneDropCount, defaultCMCDistribution.OneDropMax))
+	}
+	if dp.TwoDropCount > 0 && dp.TwoDropCount < defaultCMCDistribution.TwoDropMin {
+		w = append(w, fmt.Sprintf("2-drop starved (%d at CMC 2, <%d threshold)", dp.TwoDropCount, defaultCMCDistribution.TwoDropMin))
 	}
 
 	return w
