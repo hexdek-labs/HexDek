@@ -464,11 +464,15 @@ func analyzeDeckFile(path string, oracle *oracleDB, mechDB *MechanicDB) (*FreyaR
 		// Phase 2 role tagging.
 		report.Roles = ComputeRoleAnalysis(qtyProfiles, oracle)
 
-		// Phase 3 archetype classification.
-		report.Archetype = ClassifyArchetype(report, qtyProfiles, oracle)
-
-		// Phase 4 win line mapping.
+		// Phase 3 win line mapping. Runs before archetype classification
+		// so the bracket-scoring and combo-density signals can consult
+		// per-line Confidence (backend-only — filters low-confidence
+		// lines out of finisher count and weights high-confidence lines
+		// 1.5x in archetype combo counting).
 		report.WinLines = ComputeWinLines(report, qtyProfiles, oracle)
+
+		// Phase 4 archetype classification.
+		report.Archetype = ClassifyArchetype(report, qtyProfiles, oracle)
 
 		// Phase 5 unified deck profile.
 		report.Profile = BuildDeckProfile(report, oracle)
