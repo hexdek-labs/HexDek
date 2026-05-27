@@ -930,9 +930,13 @@ func sba704_5m(gs *GameState) bool {
 //	creature, artifact, enchantment, land, planeswalker, battle,
 //	permanent, player
 //
-// Restrictions with multi-word qualifiers ("enchant nonblack creature",
-// "enchant creature you control") are treated as the bare noun match —
-// complex restriction checks belong to a future AST pass.
+// Restrictions with multi-word qualifiers ("enchant nonblack creature")
+// are still treated as the bare noun match — complex AST-side
+// restriction checks remain a future pass. The narrow "you control" /
+// "an opponent controls" qualifier is handled here because control
+// changes are a frequent CR §303.4f trigger (Mind Control / Threaten /
+// Sower of Temptation stealing the enchanted creature) and the SBA
+// gap was silently keeping illegal-controller auras attached.
 func auraTargetMatchesEnchantClause(aura, target *Permanent) bool {
 	if aura == nil || aura.Card == nil || target == nil || target.Card == nil {
 		return true
@@ -941,15 +945,66 @@ func auraTargetMatchesEnchantClause(aura, target *Permanent) bool {
 	if kind == "" {
 		return true
 	}
-	if kind == "player" || kind == "permanent" {
-		return true
-	}
-	for _, t := range target.Card.Types {
-		if strings.EqualFold(t, kind) {
-			return true
+	if kind != "player" && kind != "permanent" {
+		// Type-restriction check.
+		typeOK := false
+		for _, t := range target.Card.Types {
+			if strings.EqualFold(t, kind) {
+				typeOK = true
+				break
+			}
+		}
+		if !typeOK {
+			return false
 		}
 	}
-	return false
+	// Controller-restriction check (CR §303.4c / §303.4f). Auras with
+	// "enchant ... you control" or "enchant ... an opponent controls"
+	// become illegally attached when control of the enchanted permanent
+	// changes; §704.5m then sends them to their owner's graveyard.
+	switch parseEnchantControllerClause(aura.Card) {
+	case "you_control":
+		if target.Controller != aura.Controller {
+			return false
+		}
+	case "opponent_controls":
+		if target.Controller == aura.Controller {
+			return false
+		}
+	}
+	return true
+}
+
+// parseEnchantControllerClause looks at the oracle text of an Aura card
+// and returns "you_control" if the enchant restriction includes "you
+// control", "opponent_controls" if it includes "an opponent controls" /
+// "opponent controls", or "" if no controller qualifier is present.
+//
+// The scan is scoped to the first 100 characters AFTER the "enchant "
+// clause boundary so unrelated later text ("when enchanted creature
+// dies, you control") doesn't false-positive.
+func parseEnchantControllerClause(card *Card) string {
+	text := OracleTextLower(card)
+	if text == "" {
+		return ""
+	}
+	idx := strings.Index(text, "enchant ")
+	if idx < 0 {
+		return ""
+	}
+	rest := text[idx:]
+	// Stop the scan at the next clause boundary — newline or period —
+	// so unrelated body text doesn't bleed into the enchant-clause match.
+	if i := strings.IndexAny(rest, "\n."); i > 0 {
+		rest = rest[:i]
+	}
+	if strings.Contains(rest, "an opponent controls") || strings.Contains(rest, "opponent controls") {
+		return "opponent_controls"
+	}
+	if strings.Contains(rest, "you control") {
+		return "you_control"
+	}
+	return ""
 }
 
 // parseEnchantKind reads the lowercased oracle text and extracts the noun
