@@ -1,0 +1,64 @@
+{
+  "variants": [
+    {
+      "id": "intg-thoracle-consult",
+      "status": "OK",
+      "identity": "UB",
+      "description": "Cast Demonic Consultation naming a card not in your library; exile your entire deck. Thassa's Oracle ETB with library count zero wins immediately.",
+      "uses": [
+        {
+          "card": {
+            "name": "Thassa's Oracle"
+          },
+          "quantity": 1
+        },
+        {
+          "card": {
+            "name": "Demonic Consultation"
+          },
+          "quantity": 1
+        }
+      ],
+      "produces": [
+        {
+          "feature": {
+            "name": "Win the game"
+          }
+        }
+      ]
+    },
+    {
+      "id": "intg-painter-grindstone",
+      "status": "OK",
+      "identity": "C",
+      "description": "Painter's Servant names a color; Grindstone activation pairs every card in target library, milling the entire deck.",
+      "uses": [
+        {
+          "card": {
+            "name": "Painter's Servant"
+          },
+          "quantity": 1
+        },
+        {
+          "card": {
+            "name": "Grindstone"
+          },
+          "quantity": 1
+        }
+      ],
+      "produces": [
+        {
+          "feature": {
+            "name": "Infinite mill"
+          },
+          "produces_state": {}
+        },
+        {
+          "feature": {
+            "name": "Win the game"
+          }
+        }
+      ]
+    }
+  ]
+}
