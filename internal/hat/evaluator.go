@@ -625,6 +625,16 @@ func (e *GameStateEvaluator) scoreMana(gs *gameengine.GameState, seatIdx int) fl
 	// in that case, but the hand-level screw signal still applies).
 	rawScore += handColorScrewPenalty(gs.Seats[seatIdx])
 
+	// r60: ritual-fuel bonus. Dark Ritual / Cabal Ritual / Seething
+	// Song / Pyretic Ritual / Rite of Flame / Infernal Plunge produce
+	// net positive mana for ONE turn but only if there's a spell to
+	// chain into that we couldn't otherwise cast. A ritual in hand
+	// with no chain target is dead this turn — we don't credit it.
+	// This is conditional fast mana: gated on the existence of a
+	// castable target whose CMC exceeds the seat's current untapped
+	// source ceiling but fits inside (ceiling + ritual net).
+	rawScore += ritualFuelBonus(gs.Seats[seatIdx])
+
 	if e.Strategy == nil || e.Strategy.ColorDemand == nil {
 		return rawScore
 	}
@@ -754,6 +764,121 @@ func colorDepthWeight(n int) float64 {
 	}
 	// sqrt-based decay: 0.5 at 1, 0.71 at 2, 0.87 at 3, 1.0 at 4.
 	return math.Sqrt(float64(n)) * 0.5
+}
+
+// ritualNetByName lists the canonical mono-color rituals whose net
+// mana production is positive and unconditional (no graveyard /
+// threshold / X-cost gating). The map value is the net mana the
+// ritual produces standalone: CMC of the cost subtracted from the
+// total mana added to the pool.
+//
+//	Dark Ritual      {B}    → {B}{B}{B}             net +2
+//	Cabal Ritual     {1}{B} → {B}{B}{B}             net +1 (threshold +5 skipped)
+//	Pyretic Ritual   {1}{R} → {R}{R}{R}             net +1
+//	Rite of Flame    {R}    → {R}{R}                net +1 (graveyard scaling skipped)
+//	Seething Song    {2}{R} → {R}{R}{R}{R}{R}       net +2
+//	Infernal Plunge  {R}    → {R}{R}{R} (sac creat) net +2 (sac cost is not mana)
+//
+// Desperate Ritual ({2}{R} → {R}{R}{R}) is intentionally excluded —
+// standalone net is 0; its value lives in Arcane splice chains the
+// eval can't model. Other rituals (Manamorphose, Pulse of the Forge,
+// Rain of Filth, Lotus Petal) are excluded because they're either
+// mana-neutral cantrips or rely on board state (lands you control,
+// X-cost) the eval would need to model separately.
+var ritualNetByName = map[string]int{
+	"dark ritual":     2,
+	"cabal ritual":    1,
+	"pyretic ritual":  1,
+	"rite of flame":   1,
+	"seething song":   2,
+	"infernal plunge": 2,
+}
+
+// ritualNetMana returns the net mana a ritual card in hand provides
+// when cast standalone. 0 for non-rituals or cards we don't model.
+// Lowercase-name lookup so localized printings (foreign-language
+// cards with same English name field) and case variants both match.
+func ritualNetMana(c *gameengine.Card) int {
+	if c == nil {
+		return 0
+	}
+	return ritualNetByName[strings.ToLower(c.DisplayName())]
+}
+
+// ritualFuelBonus returns a small positive eval bonus when the seat
+// holds at least one ritual AND at least one castable spell whose
+// CMC can ONLY be paid by chaining the ritual's burst mana. A ritual
+// in hand with no chain target is dead this turn — we don't credit
+// it (the user can't capitalize on the fast mana, so the eval
+// shouldn't treat it as having tempo value).
+//
+// Chain-target test:
+//   - playableCap = CountUntappedManaSources(seat) (color-agnostic
+//     ceiling on what we can cast right now using only untapped
+//     lands/cheap rocks)
+//   - totalRitualNet = sum of net mana across all rituals in hand
+//   - eligible target = any non-ritual hand spell whose CMC is
+//     strictly GREATER than playableCap (we couldn't cast it without
+//     the ritual) and AT MOST playableCap + totalRitualNet (the
+//     ritual lets us cast it). Lands are skipped (they don't "cast"
+//     in the mana-pool sense).
+//
+// Bonus magnitude: 0.10 per net mana from the rituals, capped at
+// +0.4 so a hand stuffed with rituals doesn't dominate the eval
+// relative to the count delta (~0.25 per source). The 0.10 weight
+// is calibrated symmetrically against the color-screw -0.15 — a
+// ritual is conditionally good (must have chain target) while
+// color screw is unconditionally bad, so the bonus per pip is
+// smaller than the penalty per pip.
+func ritualFuelBonus(seat *gameengine.Seat) float64 {
+	if seat == nil || len(seat.Hand) == 0 {
+		return 0
+	}
+	totalRitualNet := 0
+	for _, c := range seat.Hand {
+		if n := ritualNetMana(c); n > 0 {
+			totalRitualNet += n
+		}
+	}
+	if totalRitualNet == 0 {
+		return 0
+	}
+	playableCap := CountUntappedManaSources(seat)
+	ceiling := playableCap + totalRitualNet
+	// Find any non-ritual hand spell whose CMC needs the ritual mana.
+	hasChainTarget := false
+	for _, c := range seat.Hand {
+		if c == nil {
+			continue
+		}
+		if ritualNetMana(c) > 0 {
+			continue // skip the rituals themselves
+		}
+		// Skip lands — they don't "cast" with mana.
+		isLand := false
+		for _, t := range c.Types {
+			if t == "land" {
+				isLand = true
+				break
+			}
+		}
+		if isLand {
+			continue
+		}
+		cmc := gameengine.ManaCostOf(c)
+		if cmc > playableCap && cmc <= ceiling {
+			hasChainTarget = true
+			break
+		}
+	}
+	if !hasChainTarget {
+		return 0
+	}
+	bonus := 0.10 * float64(totalRitualNet)
+	if bonus > 0.4 {
+		bonus = 0.4
+	}
+	return bonus
 }
 
 // CountUntappedManaSources counts the seat's currently-untapped mana-
