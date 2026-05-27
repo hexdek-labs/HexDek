@@ -283,6 +283,15 @@ type Showmatch struct {
 	gauntletSubsMu sync.Mutex
 	gauntletSubs   map[string]map[*gauntletSubscriber]struct{}
 
+	// MatchBroadcaster fans per-game TournamentMatchEvent deltas to
+	// subscribers of /api/tournament/{id}/stream. Distinct from
+	// gauntletSubs (which is whole-state snapshots keyed by deckKey) —
+	// this is delta-shaped and keyed by run_id so a live-results UI
+	// can subscribe by tournament id. Constructed lazily on first use
+	// so older test setups that bypass StartGauntlet don't need to
+	// pre-init it.
+	MatchBroadcaster *MatchBroadcaster
+
 	// credits is the optional credit-economy gate for paid gauntlet
 	// runs. When nil (e.g. tests, dev runs without main wiring), the
 	// gauntlet handler falls back to "free for everyone" — the
@@ -373,6 +382,7 @@ func NewShowmatch(astPath, oraclePath, decksDir string, database *sql.DB) *Showm
 		spectators:      make(map[*spectatorConn]struct{}),
 		gauntlets:       make(map[string]*GauntletResult),
 		gauntletSubs:    make(map[string]map[*gauntletSubscriber]struct{}),
+		MatchBroadcaster: NewMatchBroadcaster(),
 		rooms:           NewRoomManager(),
 		heimdall:        heimdall.New("data", &huginnAdapter{dataDir: "data"}, muninnSink, newTelemetrySink()),
 		muninnSink:      muninnSink,
@@ -1073,6 +1083,17 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 		sm.gauntletMu.RUnlock()
 		sm.broadcastGauntlet(deckKey, snap)
 
+		// Fan a per-game delta to /api/tournament/{id}/stream
+		// subscribers. Only fires when the run is persisted
+		// (RunID > 0) so the stream key (run_id) is meaningful.
+		if sm.MatchBroadcaster != nil && result.RunID > 0 {
+			sm.MatchBroadcaster.Broadcast(result.RunID, BuildMatchEvent(
+				result.RunID, g+1, numGames, winner,
+				commanders[:], gs.Turn, result.Wins, result.Losses,
+				time.Now(),
+			))
+		}
+
 		if (g+1)%1000 == 0 {
 			sm.gauntletMu.Lock()
 			wr := 0.0
@@ -1121,6 +1142,9 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 	sm.gauntletMu.Unlock()
 	sm.broadcastGauntlet(deckKey, finalSnap)
 	sm.closeGauntletSubs(deckKey)
+	if sm.MatchBroadcaster != nil && result.RunID > 0 {
+		sm.MatchBroadcaster.Close(result.RunID)
+	}
 
 	// Persist snapshot for ELO-history chart. Best-effort — a DB error
 	// here doesn't fail the gauntlet (the in-memory result still serves
