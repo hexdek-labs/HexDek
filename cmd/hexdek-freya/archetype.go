@@ -166,6 +166,22 @@ type classifyContext struct {
 	// Excludes single-target buffs ("target creature gets +1/+1")
 	// because those don't scale with board-wide token presence.
 	anthemCount int
+	// tribalLordCount: subset of anthemCount that names a specific
+	// creature subtype ("Goblin creatures you control get +1/+1",
+	// "Other Elves you control get +1/+1"). A pile of generic-anthem
+	// "creatures you control get +1/+1" doesn't signal tribal — it
+	// signals go-wide or aggro. But 2+ cards whose buff is gated on a
+	// SHARED CREATURE TYPE is the structural signature of a tribal
+	// deck even when the deck's top-creature-type concentration is
+	// only marginally above noise (a deck running 18 elves + 6 utility
+	// non-elf creatures may sit at ~75% elf in the creature slot but
+	// the lord package is the load-bearing signal regardless).
+	//
+	// tribalLordTribe records the most-mentioned tribe across the
+	// detected lords, so the buildSignals output can name it. Empty
+	// when tribalLordCount < 1.
+	tribalLordCount int
+	tribalLordTribe string
 	bannedCount      int
 	gameChangerCount int
 	gameChangerNames []string
@@ -396,7 +412,19 @@ var archetypeFingerprints = []archetypeFingerprint{
 			RoleThreat: 0.12, RoleDraw: 0.08, RoleRamp: 0.08, RoleRemoval: 0.06,
 		},
 		Require: func(ctx *classifyContext) bool {
-			return ctx.creaturePct >= 0.35 && ctx.topCreatureTypePct >= 0.30
+			// Baseline gate — high creature density + a clear top tribe.
+			if ctx.creaturePct >= 0.35 && ctx.topCreatureTypePct >= 0.30 {
+				return true
+			}
+			// Lord-package carveout — 2+ tribal lords (cards whose
+			// anthem is gated on a specific creature subtype) means
+			// the deck is committed to a tribe even if the raw
+			// type-concentration count is below the baseline gate.
+			// Drops the topCreatureTypePct requirement to 0.20.
+			if ctx.tribalLordCount >= 2 && ctx.creaturePct >= 0.30 && ctx.topCreatureTypePct >= 0.20 {
+				return true
+			}
+			return false
 		},
 	},
 	{
@@ -746,6 +774,17 @@ func ClassifyArchetype(report *FreyaReport, qtyProfiles []CardProfileQty, oracle
 			continue
 		}
 		d := euclideanDistance(ctx.roleRatios, fp.Ratios)
+		// Tribal lord-package bonus: a deck running 2+ tribal lords
+		// (cards whose anthem is gated on a specific creature
+		// subtype) gets a 15% Tribal-distance discount. The shrink
+		// edges Tribal ahead of neighbouring archetypes (Aggro,
+		// Midrange, Counters Matter) when the role-ratio signal is
+		// genuinely ambiguous — a lord-heavy elf-go-wide deck would
+		// otherwise sit close to Aggro on the role axis but the lord
+		// commitment is the load-bearing call.
+		if fp.Name == "Tribal" && ctx.tribalLordCount >= 2 {
+			d *= 0.85
+		}
 		results = append(results, scored{name: fp.Name, distance: d})
 	}
 
@@ -817,6 +856,7 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 	creatureCount := 0
 	enchantmentCount := 0
 	creatureTypes := map[string]int{}
+	tribeCounts := map[string]int{}
 
 	for _, qp := range qtyProfiles {
 		if qp.Profile.IsLand {
@@ -1129,6 +1169,29 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 		if cardHasAnthem(ot) {
 			ctx.anthemCount += qp.Qty
 		}
+		// Tribal-lord detection: the subset of anthems that name a
+		// specific creature subtype. Tracked separately because 2+
+		// lords gated on the same tribe is the structural signature
+		// of tribal regardless of whether the deck hits the bare
+		// topCreatureTypePct threshold (a 24-elf-creature deck might
+		// only be 65% elf-type by raw count if half its creatures are
+		// utility role plays, yet the Lord package commits the
+		// archetype unambiguously).
+		if tribe := cardTribalLordTribe(ot); tribe != "" {
+			ctx.tribalLordCount += qp.Qty
+			tribeCounts[tribe] += qp.Qty
+		}
+	}
+	if len(tribeCounts) > 0 {
+		topTribe := ""
+		topCount := 0
+		for tribe, n := range tribeCounts {
+			if n > topCount {
+				topTribe = tribe
+				topCount = n
+			}
+		}
+		ctx.tribalLordTribe = topTribe
 	}
 
 	if nonlandTotal > 0 {
@@ -1331,6 +1394,91 @@ func cardHasAnthem(ot string) bool {
 	return false
 }
 
+// cardTribalLordTribe returns the (lowercased) creature subtype this
+// card "lords for" — i.e. buffs all instances of that tribe under the
+// controller. Returns "" if the card isn't a tribal lord.
+//
+// Detection anchors on two clause shapes:
+//
+//	"<tribe> creatures you control [...] (get|have) +"
+//	"<tribe>s you control [...] (get|have) +"
+//
+// The intervening "[...]" window allows real-card phrasings like
+// Goblin Chieftain's "Goblin creatures you control HAVE HASTE AND
+// GET +1/+1" — "get +" doesn't immediately follow "you control"
+// because the keyword grant ("have haste") lives in the middle of
+// the clause. The window is scoped to the same sentence (up to the
+// next period) so unrelated body text can't bleed in.
+//
+// The "other <tribe>" variant (Goblin King: "Other Goblin creatures
+// you control get +1/+1") flows through the first shape because the
+// "other " prefix doesn't break the substring match. Single-target
+// buffs ("target Goblin you control gets +1/+1") are excluded because
+// the pattern demands plural "creatures" or the "<tribe>s" form.
+//
+// Returns the FIRST matched tribe; if a single card buffs multiple
+// tribes (rare — see Door of Destinies / Coat of Arms which are
+// changeling-style and not tribe-specific so they don't match here),
+// the first tribe in knownCreatureTypes order wins. That's acceptable
+// for the count-based signal — the lord still earns its place in
+// tribalLordCount; the tribe label is just for the human-readable
+// signal string.
+func cardTribalLordTribe(ot string) string {
+	if ot == "" {
+		return ""
+	}
+	for _, tribe := range knownCreatureTypes {
+		if tribe == "" {
+			continue
+		}
+		// Plural-suffix tribal anthems like "Goblins you control get +1/+1".
+		// "Creature"/"creatures" never appears as a tribe in
+		// knownCreatureTypes (defense-in-depth against future list edits).
+		if tribe == "creature" || tribe == "creatures" {
+			continue
+		}
+		if clauseHasBuffAnchor(ot, tribe+" creatures you control") {
+			return tribe
+		}
+		if clauseHasBuffAnchor(ot, tribe+"s you control") {
+			return tribe
+		}
+	}
+	return ""
+}
+
+// clauseHasBuffAnchor returns true if `anchor` appears in `ot` AND
+// the clause that follows (up to the next period or newline) contains
+// "get +" or "have +" — the canonical anthem-shape buff. Used by
+// cardTribalLordTribe to tolerate intervening keyword grants between
+// "<tribe> creatures you control" and the "+" stat bump (Goblin
+// Chieftain's "have haste and get +1/+1" pattern).
+func clauseHasBuffAnchor(ot, anchor string) bool {
+	start := 0
+	for {
+		idx := strings.Index(ot[start:], anchor)
+		if idx < 0 {
+			return false
+		}
+		// Walk the clause starting right after the anchor up to the
+		// next sentence boundary.
+		rest := ot[start+idx+len(anchor):]
+		if end := strings.IndexAny(rest, ".\n"); end >= 0 {
+			rest = rest[:end]
+		}
+		if strings.Contains(rest, "get +") || strings.Contains(rest, "have +") {
+			return true
+		}
+		// No buff anchor in THIS occurrence's clause — keep scanning
+		// further into the oracle text in case the anchor appears
+		// twice (rare, but defensive).
+		start += idx + len(anchor)
+		if start >= len(ot) {
+			return false
+		}
+	}
+}
+
 func euclideanDistance(actual map[RoleTag]float64, template map[RoleTag]float64) float64 {
 	sum := 0.0
 	for role, target := range template {
@@ -1379,6 +1527,14 @@ func buildSignals(ctx *classifyContext, ac *ArchetypeClassification) []string {
 
 	if ctx.topCreatureTypePct >= 0.40 && ctx.creaturePct >= 0.35 {
 		signals = append(signals, "strong tribal core")
+	}
+
+	if ctx.tribalLordCount >= 2 {
+		tribeLabel := ctx.tribalLordTribe
+		if tribeLabel == "" {
+			tribeLabel = "tribal"
+		}
+		signals = append(signals, fmt.Sprintf("tribal lord package (%d %s lords)", ctx.tribalLordCount, tribeLabel))
 	}
 
 	if ctx.freeInteractionCount >= 2 {
