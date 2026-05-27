@@ -142,6 +142,30 @@ type classifyContext struct {
 	cyclingPayoffCount int // cards that trigger on cycling (Astral Drift, Drake Haven, New Perspectives, Fluctuator)
 	toxicInfectCount int // "infect", "toxic N", "poison counter" — distinct from Counters Matter's +1/+1 axis
 	vehicleCount     int // Vehicle (and Spacecraft) typeline + crew-payoff cards
+	// R60 Tokens archetype: distinct from generic "Aggro / Go Wide"
+	// because the structural signature is the SPECIFIC pairing of
+	// token-creation density + anthem-stacking density. A Krenko /
+	// Adeline / Rhys the Redeemed / Ghave-tokens shell wants the
+	// MCTS evaluator to weight BoardPresence heavily and to treat
+	// board wipes as catastrophic (HIGH ThreatExposure) — different
+	// from raw Aggro where any creature-pressure plan triggers the
+	// fingerprint regardless of token-vs-permanent shape.
+	//
+	// tokenCreatorCount: cards whose oracle text creates tokens via
+	// any of the canonical phrasings (see tokenCreationPhrases).
+	// Includes token-doubler replacements (Anointed Procession,
+	// Parallel Lives, Doubling Season) — they CREATE tokens by
+	// replacement so they count as creators for the structural
+	// signal even though they don't generate the first token
+	// themselves; a decklist with 8 token-creator cards that all
+	// double-up is still a tokens deck.
+	tokenCreatorCount int
+	// anthemCount: cards that buff "creatures you control" or
+	// "[subtype] creatures you control" (tribal anthems like Goblin
+	// King apply since they buff every token of the matching tribe).
+	// Excludes single-target buffs ("target creature gets +1/+1")
+	// because those don't scale with board-wide token presence.
+	anthemCount int
 	bannedCount      int
 	gameChangerCount int
 	gameChangerNames []string
@@ -446,6 +470,27 @@ var archetypeFingerprints = []archetypeFingerprint{
 			// from); WITH the payoff the graveyard size is a
 			// resource being measured, which is the Selfmill shape.
 			return ctx.selfMillCount >= 6 && ctx.graveyardSizePayoffCount >= 1
+		},
+	},
+	{
+		// R60 Tokens archetype — structural pairing of token-creation
+		// density + anthem-stacking density. Distinct from generic
+		// Aggro / Aggro / Go Wide because the Require gate is a specific
+		// 8+ creators / 3+ anthems structural shape, not just "low CMC
+		// with a lot of creatures." Canonical example shells: Krenko
+		// Mob Boss (goblin tokens + Goblin King / Goblin Chieftain
+		// anthems), Adeline Resplendent Cathar (human tokens + anthem
+		// support), Rhys the Redeemed (elf tokens + Elvish Champion),
+		// Ghave Guru of Spores (saproling tokens + anthem). RoleThreat
+		// 0.22 nudges this slightly ahead of generic Aggro (0.20) so a
+		// tokens-shape deck that ALSO trips Aggro's avgCMC<3 gate wins
+		// the euclidean-distance tiebreak.
+		Name: "Tokens",
+		Ratios: map[RoleTag]float64{
+			RoleThreat: 0.22, RoleRamp: 0.06, RoleDraw: 0.08, RoleRemoval: 0.05,
+		},
+		Require: func(ctx *classifyContext) bool {
+			return ctx.tokenCreatorCount >= 8 && ctx.anthemCount >= 3
 		},
 	},
 	{
@@ -1066,6 +1111,24 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 				break
 			}
 		}
+
+		// R60 Tokens archetype detection. cardCreatesTokens checks the
+		// canonical oracle phrasings ("create [N] [type] token",
+		// "creates [N] [type] token", "puts [N] [type] tokens onto the
+		// battlefield"), plus token-doubler replacements (Anointed
+		// Procession / Parallel Lives / Doubling Season / Mondrak)
+		// which create tokens by replacement and earn the creator
+		// classification for the structural signal.
+		if cardCreatesTokens(ot, qp.Profile.Name) {
+			ctx.tokenCreatorCount += qp.Qty
+		}
+		// cardHasAnthem checks for "creatures you control get +X/+Y"
+		// patterns plus tribal anthems "[subtype] creatures you
+		// control get +X/+Y". Single-target buffs are excluded — they
+		// don't scale with board-wide token presence.
+		if cardHasAnthem(ot) {
+			ctx.anthemCount += qp.Qty
+		}
 	}
 
 	if nonlandTotal > 0 {
@@ -1157,6 +1220,111 @@ func cardHasExtraTurnGrant(primaryOracle, cardName string, oracle *oracleDB) boo
 	}
 	for _, face := range entry.CardFaces {
 		if containsAny(strings.ToLower(face.OracleText), extraTurnGrantPhrases...) {
+			return true
+		}
+	}
+	return false
+}
+
+// tokenCreationPhrases is the canonical set of oracle text fragments
+// indicating a card creates one or more tokens. Covers the modern
+// printing wording ("create [a/an/N] X token") plus older / template
+// variants ("creates", "puts X tokens onto the battlefield"). The "X"
+// in "puts X tokens" is intentionally not bounded by a digit because
+// many older cards say "puts a [type] token" or "puts the indicated
+// number of [type] tokens" — anchoring on "puts" + "token" + "onto
+// the battlefield" is the safest substring-match shape.
+var tokenCreationPhrases = []string{
+	"create a ", // e.g. "Create a 1/1 white Soldier creature token."
+	"create two ",
+	"create three ",
+	"create four ",
+	"create five ",
+	"create six ",
+	"create seven ",
+	"create eight ",
+	"create x ",
+	"creates a ", // 3rd-person variant
+	"creates two ",
+	"creates three ",
+	"creates x ",
+	"create that many ",   // Selvala's Stampede / many "X tokens" cards
+	"create one ",         // older phrasing
+	"put a ",              // "put a [type] token onto the battlefield"
+	"puts a ",
+	"puts onto the battlefield", // mass-token effects use this combined form
+}
+
+// tokenDoublerNames are token-replacement permanents that don't
+// CREATE the first token themselves but DOUBLE every subsequent
+// token. They count as creators for the structural Tokens-archetype
+// signal because a Krenko / Adeline shell stuffed with 5 actual
+// creators + 3 doublers IS a tokens deck — the deck's gameplan
+// hinges on the doubled output, not the count of source cards alone.
+var tokenDoublerNames = map[string]bool{
+	"anointed procession":         true,
+	"parallel lives":              true,
+	"doubling season":             true,
+	"mondrak, glory dominus":      true,
+	"primal vigor":                true, // doubles tokens AND counters
+	"adrix and nev, twincasters":  true, // doubles tokens (limited to specific token types but still a structural creator signal)
+	"second harvest":              true, // one-shot but still a creator
+}
+
+// cardCreatesTokens returns true if the lowercased oracle text or
+// canonical card name matches a token-creation pattern. False
+// positives like "create a copy of target spell" (Spell Copy) are
+// filtered out by the "token" anchor requirement — every entry in
+// tokenCreationPhrases except the doubler-name fallback requires
+// the literal substring "token" to appear elsewhere in the oracle.
+// "create a copy" / "put a counter" / "puts a card" pass the
+// per-phrase match but fail the "token" anchor.
+func cardCreatesTokens(ot, cardName string) bool {
+	if ot == "" && cardName == "" {
+		return false
+	}
+	if tokenDoublerNames[strings.ToLower(cardName)] {
+		return true
+	}
+	if !strings.Contains(ot, "token") {
+		return false
+	}
+	for _, phrase := range tokenCreationPhrases {
+		if strings.Contains(ot, phrase) {
+			return true
+		}
+	}
+	return false
+}
+
+// anthemPhrases lists oracle-text shapes that buff "creatures you
+// control" (broad anthem like Glorious Anthem / Honor of the Pure)
+// OR "[subtype] creatures you control" (tribal anthem like Goblin
+// King / Elvish Champion). The "+1/+1"-shape is the canonical
+// detection target; "+2/+2" and counter-based +N/+N variants pick
+// up the same archetype role. Single-target buffs ("target creature
+// you control gets +X/+Y") are NOT included — they don't scale with
+// board-wide token presence and would false-positive on every Giant
+// Growth / Boros Charm in the deck.
+var anthemPhrases = []string{
+	"creatures you control get +",
+	"other creatures you control get +",
+	"creatures you control have +",
+	"creature tokens you control get +",
+	"creature tokens you control have +",
+}
+
+// cardHasAnthem returns true if the lowercased oracle text matches
+// an anthem shape. Tribal anthems (Goblin King's "other Goblin
+// creatures you control get +1/+1") flow through the
+// "creatures you control get +" substring match — the subtype prefix
+// is preserved in the matched substring but doesn't break detection.
+func cardHasAnthem(ot string) bool {
+	if ot == "" {
+		return false
+	}
+	for _, phrase := range anthemPhrases {
+		if strings.Contains(ot, phrase) {
 			return true
 		}
 	}
