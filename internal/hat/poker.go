@@ -1915,6 +1915,23 @@ func boardPower(gs *gameengine.GameState, seat *gameengine.Seat) int {
 // the dominant signal (flying is good in MOST matchups; reach is rare
 // outside green) without quadratic cost.
 //
+// r60 sweep — token discount (see tokenDiscount): tokens get a flat
+// 0.7x per body to reflect three structural disadvantages versus a
+// nontoken creature with the same printed power. (1) Wipe-vulnerable
+// with no card-advantage backing — a Wrath that costs the nontoken
+// player one card costs the token player N cards (one per token); the
+// recovery curves diverge sharply. (2) CR §110.5g — tokens cease to
+// exist on ANY zone change away from the battlefield, so bounce / exile
+// / sacrifice / death all permanently delete them (a nontoken creature
+// returns to the graveyard recoverable, to the hand replayable, etc.).
+// (3) Not "cards" per CR §111.1, so reanimator / Sun Titan / Karador /
+// flicker-loop recursion lines that prop up nontoken board states do
+// nothing for token boards. The width bonus in scoreBoard (0.05/body
+// differential) partially offsets this for go-wide builds — 10 1/1
+// tokens read 10 * 0.7 = 7.0 effective vs 1 10/10 nontoken's 10.0,
+// minus +0.45 width diff vs a 1-body opp — landing roughly where
+// matchup intuition puts them.
+//
 // Returns rounded-half-up integer to match boardPower's int signature.
 //
 // Rationale: pre-r60 scoreBoard treated 4 tapped 3/3s = 4 untapped 3/3s
@@ -1942,6 +1959,7 @@ func effectiveBoardPower(gs *gameengine.GameState, seat *gameengine.Seat) int {
 					weight *= 0.8
 				}
 				weight *= evasionMultiplier(p, pw)
+				weight *= tokenDiscount(p)
 				total += float64(pw) * weight
 			}
 		}
@@ -2007,6 +2025,41 @@ func evasionMultiplier(p *gameengine.Permanent, pw int) float64 {
 		bonus = 0.30
 	}
 	return 1.0 + bonus
+}
+
+// tokenDiscount returns a 0.7x multiplier for token creatures and 1.0
+// otherwise. Applied in effectiveBoardPower per-creature alongside the
+// tap/sick discounts and the evasion multiplier.
+//
+// Why 0.7 and not, say, 0.5 or 0.85: tokens still have raw power. They
+// block, they swing, they crew, they sac, they trigger anthems. The
+// discount captures the THREE structural disadvantages versus a
+// nontoken creature with the same printed P/T — wipe blowout amplifies
+// per-body, zone-change deletion (CR §110.5g) erases ALL recovery
+// options, and recursion lines (reanimate / Sun Titan / Karador /
+// flicker) cannot retrieve them (CR §111.1 — tokens aren't cards).
+// The 0.3 penalty is roughly "they're worth ~70% as much as 'real'
+// creatures pound-for-pound", consistent with how a Bitterblossom
+// army feels relative to a same-power Tarmogoyf board.
+//
+// Applied AFTER evasion — a Bitterblossom faerie is 1pw * 1.20 flying
+// * 0.7 token = 0.84 effective, which correctly puts a flying token
+// above a vanilla nontoken 1/1 (1.0) for purely-aggressive valuations
+// but below a flying nontoken 1/1 (1.20).
+//
+// Planeswalkers handled separately in effectiveBoardPower (loyalty
+// contribution, not power); not affected here. The rare planeswalker-
+// token case (Daxos, Returned) is therefore not discounted — its
+// loyalty IS its threat clock and the deletion-on-zone-change concern
+// is moot for a permanent that's already a once-and-done threat.
+func tokenDiscount(p *gameengine.Permanent) float64 {
+	if p == nil {
+		return 1.0
+	}
+	if p.IsToken() {
+		return 0.7
+	}
+	return 1.0
 }
 
 // liveCreatureCount returns the number of creatures on the seat's
