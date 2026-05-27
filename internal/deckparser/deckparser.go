@@ -435,10 +435,23 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		"about": true,
 	}
 
+	// pendingCommanderHeader: set when the previous non-blank line was a
+	// `// COMMANDER` directive-comment. The NEXT card line consumes the
+	// flag and routes its card to commander slots instead of mainboard.
+	// Mirrors the Archidekt category-marker convention.
+	pendingCommanderHeader := false
+
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 0, 1024), 1024*1024)
 	for sc.Scan() {
 		raw := strings.TrimSpace(sc.Text())
+		// `// COMMANDER` / `// CMDR` directive-comment: flag the NEXT card
+		// line as commander. Must run before the generic `//` drop below
+		// or the directive would be silently swallowed.
+		if cmdrHeaderCommentRE.MatchString(raw) {
+			pendingCommanderHeader = true
+			continue
+		}
 		if raw == "" || strings.HasPrefix(raw, "#") || strings.HasPrefix(raw, "//") {
 			continue
 		}
@@ -503,6 +516,15 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			inlineComment = strings.TrimSpace(raw[cm[2]:cm[3]])
 			raw = strings.TrimSpace(raw[:cm[0]])
 		}
+		// Inline `*CMDR*` / `*Commander*` marker: peel + flag this line
+		// as commander. Sibling to the foilMarkerRE strip but with
+		// semantic meaning. Captured here so the marker doesn't leak
+		// into cleanCardName's resolved name.
+		lineIsCommander := false
+		if cmdrInlineMarkerRE.MatchString(raw) {
+			raw = strings.TrimSpace(cmdrInlineMarkerRE.ReplaceAllString(raw, " "))
+			lineIsCommander = true
+		}
 		// Strip "(SET) 123" suffix (set code + collector number + foil flag).
 		if idx := strings.Index(raw, "("); idx > 0 {
 			raw = strings.TrimSpace(raw[:idx])
@@ -522,6 +544,20 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		}
 		name = cleanCardName(name)
 		if name == "" {
+			continue
+		}
+		// A `// COMMANDER` header on the previous line OR an inline
+		// `*CMDR*` marker on this line routes the card to commander
+		// slots regardless of the current Section state. The pending
+		// flag consumes on the first non-blank card line that follows.
+		if pendingCommanderHeader || lineIsCommander {
+			pendingCommanderHeader = false
+			for i := 0; i < qty; i++ {
+				commanderSectionNames = append(commanderSectionNames, name)
+			}
+			td.CardLines = append(td.CardLines, CardLine{
+				Qty: qty, Name: name, Comment: inlineComment, Section: "commander",
+			})
 			continue
 		}
 		if section == "commander" {
@@ -851,6 +887,22 @@ var mtgoMetadataRE = regexp.MustCompile(`(?i)^\s*(deck\s*name|created\s*by|forma
 // `//` comments (line starting with `//`) are still dropped earlier in
 // the loop — this only catches the inline form.
 var inlineCommentRE = regexp.MustCompile(`\s+//\s*(.*)$`)
+
+// cmdrInlineMarkerRE matches an inline commander tag on a card line:
+// `1 Sigarda, Host of Herons *CMDR*` / `*Commander*` / `*COMMANDER*`.
+// Sibling to the foilMarkerRE strip but with semantic meaning: when
+// matched, the line's card is promoted to commander instead of mainboard.
+// The marker is peeled before cleanCardName runs so it doesn't leak
+// into the resolved card name.
+var cmdrInlineMarkerRE = regexp.MustCompile(`(?i)\s*\*(?:CMDR|Commander)\*\s*`)
+
+// cmdrHeaderCommentRE matches a `// COMMANDER` / `// CMDR` directive-
+// comment that flags the NEXT card line as commander. Distinct from the
+// generic whole-line `//` comment drop because we need to peek at this
+// before the comment is silently swallowed at the top of the parse loop.
+// Mirrors the Archidekt category-marker convention where a comment-style
+// header annotates the role of the following card.
+var cmdrHeaderCommentRE = regexp.MustCompile(`(?i)^\s*//\s*(?:COMMANDER|CMDR)\s*$`)
 
 // sbPrefixRE matches MTGA / Aetherhub sideboard line prefix: `SB: 1 Card`.
 // Pre-fix, every `SB:` line dropped into the fallback "qty=1, name=<raw>"
