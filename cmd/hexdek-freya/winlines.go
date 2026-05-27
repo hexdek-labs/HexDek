@@ -47,6 +47,22 @@ type WinLine struct {
 	// of S/A/B/C/D for non-nil WinLine, so consumers can safely
 	// compare against the letter set.
 	Tier string
+
+	// Confidence is a 0.0-1.0 backend-only score measuring how reliably the
+	// deck can actually assemble and resolve this win line. Computed from
+	// three signals: (a) tutor support — share of pieces a deck tutor can
+	// fetch; (b) piece redundancy — alternative cards in the deck that
+	// could substitute for each piece (e.g. Vito subs for Sanguine Bond in
+	// the Bond + Exquisite Blood line); (c) protection density — deck-
+	// level counterspell/hexproof/blink coverage that can defend the
+	// assembly turn. Weighted sum (0.45/0.30/0.25) clamped to [0, 1].
+	//
+	// Used by the downstream search: lines with Confidence < 0.3 are
+	// dropped from the bracket-scoring finisher count; lines with
+	// Confidence >= 0.7 weight 1.5x in the archetype-detection combo
+	// signal. BACKEND-ONLY — intentionally absent from Rationale, JSON
+	// export, and text/markdown reports.
+	Confidence float64
 }
 
 // WinLineRationale explains how this win line is detected and resolves.
@@ -281,7 +297,171 @@ func ComputeWinLines(report *FreyaReport, qtyProfiles []CardProfileQty, oracle *
 	computeRedundancy(wla, report, profileByName)
 	computeSinglePoints(wla, profileByName)
 
+	// Confidence pass — backend-only quality signal feeding archetype
+	// detection (>=0.7 weights 1.5x) and bracket scoring (<0.3 excluded
+	// from finisher count). Must run AFTER TutorPaths population.
+	protection := computeWinLineProtectionDensity(report, profileByName)
+	for i := range wla.WinLines {
+		wla.WinLines[i].Confidence = computeWinLineConfidence(&wla.WinLines[i], profileByName, protection)
+	}
+
 	return wla
+}
+
+// computeWinLineConfidence scores a single WinLine on the [0, 1] interval
+// reflecting how reliably the deck can assemble and resolve it. Weighted
+// sum: 0.45*tutor + 0.30*redundancy + 0.25*protection. See WinLine.Confidence
+// for the contract.
+func computeWinLineConfidence(wl *WinLine, profileByName map[string]CardProfile, protection float64) float64 {
+	if wl == nil {
+		return 0
+	}
+	pieceCount := len(wl.Pieces)
+
+	// Non-combo lines don't model tutor / piece-redundancy in the same
+	// way — pieces are descriptive ("12 threats + 2 pumps") or a single
+	// commander, not card slots a tutor fetches. Use protection alone
+	// plus a neutral 0.5 on the other two axes so these lines land near
+	// the middle of the distribution and the <0.3 / >=0.7 thresholds
+	// don't either uniformly demote or promote them.
+	if wl.Type == "combat" || wl.Type == "commander_damage" {
+		return clamp01(0.45*0.5 + 0.30*0.5 + 0.25*protection)
+	}
+
+	if pieceCount == 0 {
+		return 0
+	}
+
+	// (a) Tutor support — share of pieces with at least one tutor path.
+	covered := map[string]bool{}
+	for _, tp := range wl.TutorPaths {
+		covered[tp.Finds] = true
+	}
+	tutorScore := float64(len(covered)) / float64(pieceCount)
+	if tutorScore > 1 {
+		tutorScore = 1
+	}
+
+	// (b) Piece redundancy — for each piece, how many cards in the deck
+	// share at least one characteristic combo-flag (alternative pieces
+	// that could substitute, like Vito for Sanguine Bond). Saturate at
+	// 2 alternatives per piece.
+	totalRedundancy := 0.0
+	for _, piece := range wl.Pieces {
+		alts := countPieceAlternatives(piece, profileByName)
+		score := float64(alts) / 2.0
+		if score > 1 {
+			score = 1
+		}
+		totalRedundancy += score
+	}
+	redundancyScore := totalRedundancy / float64(pieceCount)
+
+	return clamp01(0.45*tutorScore + 0.30*redundancyScore + 0.25*protection)
+}
+
+// computeWinLineProtectionDensity is a deck-level [0, 1] score: how much defensive
+// coverage (counterspells, hexproof/indestructible grants, blink/flicker as
+// a "save the combo piece" tool) the deck packs. Density saturates at 15%
+// of total cards — at that level the deck is meaningfully protecting its
+// assembly turn.
+func computeWinLineProtectionDensity(report *FreyaReport, profileByName map[string]CardProfile) float64 {
+	if report == nil || report.Roles == nil {
+		return 0
+	}
+	total := report.Roles.TotalCards
+	if total == 0 {
+		return 0
+	}
+	count := report.Roles.RoleCounts[RoleCounterspell] + report.Roles.RoleCounts[RoleProtection]
+	for _, p := range profileByName {
+		if p.IsBlinker {
+			count++
+		}
+	}
+	density := float64(count) / float64(total)
+	score := density / 0.15
+	if score > 1 {
+		score = 1
+	}
+	return score
+}
+
+// countPieceAlternatives returns the count of cards in the deck (excluding
+// the piece itself) that share at least one characteristic combo flag with
+// the named piece. A non-zero result means the deck has functional
+// substitutes — losing the named piece doesn't break the line.
+func countPieceAlternatives(pieceName string, profileByName map[string]CardProfile) int {
+	pp, ok := profileByName[pieceName]
+	if !ok {
+		return 0
+	}
+	alts := 0
+	for n, p := range profileByName {
+		if n == pieceName {
+			continue
+		}
+		if profileFunctionalMatch(pp, p) {
+			alts++
+		}
+	}
+	return alts
+}
+
+// profileFunctionalMatch reports whether two CardProfiles fill the same
+// characteristic combo role — i.e. one could substitute for the other in
+// a win line. Matched on a curated set of combo-piece flags (outlet,
+// wincon, Sanguine/Exquisite drain loops, ETB-damage, mana-payoff, etc.)
+// rather than every CardProfile bool, to avoid false matches on incidental
+// shared properties (e.g. both being creatures).
+func profileFunctionalMatch(a, b CardProfile) bool {
+	switch {
+	case a.IsOutlet && b.IsOutlet:
+		return true
+	case a.IsWinCon && b.IsWinCon:
+		return true
+	case a.LifegainToDrain && b.LifegainToDrain:
+		return true
+	case a.LifelossToPump && b.LifelossToPump:
+		return true
+	case a.CounterToDamage && b.CounterToDamage:
+		return true
+	case a.DamageToCounter && b.DamageToCounter:
+		return true
+	case a.HasDeathDrain && b.HasDeathDrain:
+		return true
+	case a.HasETBDamage && b.HasETBDamage:
+		return true
+	case a.WinsWithEmptyLib && b.WinsWithEmptyLib:
+		return true
+	case a.EmptiesLibrary && b.EmptiesLibrary:
+		return true
+	case a.UntapsAll && b.UntapsAll:
+		return true
+	case a.IsManaPayoff && b.IsManaPayoff:
+		return true
+	case a.MakesInfiniteTokens && b.MakesInfiniteTokens:
+		return true
+	case a.IsBlinker && b.IsBlinker:
+		return true
+	case a.IsExtraCombat && b.IsExtraCombat:
+		return true
+	case a.IsStormFinisher && b.IsStormFinisher:
+		return true
+	case a.IsXBurn && b.IsXBurn:
+		return true
+	}
+	return false
+}
+
+func clamp01(x float64) float64 {
+	if x < 0 {
+		return 0
+	}
+	if x > 1 {
+		return 1
+	}
+	return x
 }
 
 // computeWinLineWeight assigns a tiered numeric quality score to a single
