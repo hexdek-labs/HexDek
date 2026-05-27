@@ -826,8 +826,19 @@ var sbPrefixRE = regexp.MustCompile(`(?i)^\s*SB\s*:\s*`)
 // into Unresolved — destroying the entire library for any deck pasted from
 // MTGO. That was the worst gap surfaced by the audit.
 var (
-	foilMarkerRE     = regexp.MustCompile(`\s*\*[A-Za-z][A-Za-z\-]*\*\s*$`)
-	bracketTagRE     = regexp.MustCompile(`\s*\[[^\]]+\]\s*$`)
+	foilMarkerRE = regexp.MustCompile(`\s*\*[A-Za-z][A-Za-z\-]*\*\s*$`)
+	// bracketTagRE peels a trailing `[Set]` tag, optionally followed by a
+	// TCGplayer-style collector token (`[M11] 146`, `[Modern Masters
+	// 2017] 36`, `[Commander 2014] 263`, `[Zendikar] ★114`). The original
+	// `\s*\[[^\]]+\]\s*$` only matched a bare bracket at end-of-line, so
+	// TCGplayer's documented mass-entry format `{qty} {name} [{set}]
+	// {collector}` left the collector tail in the name → resolver
+	// dropped the card into Unresolved despite the meta lookup being
+	// trivially possible. The `\S+` token form (vs `\d+\S*`) covers
+	// promo prefixes like ★ and ⊕ that some collector numbers use.
+	// Safe because no real Magic card name contains `[...]`, so a
+	// post-bracket token can't be card-name content.
+	bracketTagRE     = regexp.MustCompile(`\s*\[[^\]]+\](?:\s+\S+)?\s*$`)
 	leadBracketTagRE = regexp.MustCompile(`^\[[^\]]+\]\s*`)
 	hashTagRE        = regexp.MustCompile(`\s+#\S+(?:\s+#\S+)*\s*$`)
 )
