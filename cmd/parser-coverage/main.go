@@ -508,7 +508,7 @@ func classify(e oracleEntry, corpus *astload.Corpus) result {
 	}
 	text := strings.TrimSpace(e.OracleText)
 	base.OracleText = text
-	vanilla := text == "" || isBasicLand(e.TypeLine)
+	vanilla := text == "" || isBasicLand(e.TypeLine) || isReminderTextOnly(text)
 	if !card.FullyParsed || len(card.ParseErrors) > 0 {
 		base.Class = classPartial
 		base.ParseErrors = card.ParseErrors
@@ -529,6 +529,44 @@ func classify(e oracleEntry, corpus *astload.Corpus) result {
 func isBasicLand(typeLine string) bool {
 	tl := strings.ToLower(typeLine)
 	return strings.Contains(tl, "basic") && strings.Contains(tl, "land")
+}
+
+// isReminderTextOnly reports whether an oracle body is entirely a single
+// balanced parenthetical group. Per CR 207.2, reminder text is printed in
+// parentheses and is not part of a card's rules — the Python parser
+// correctly drops it. When a card's ENTIRE oracle body is reminder text
+// (the canonical case being the ten ABU dual lands, whose mana ability is
+// intrinsic to their basic-land subtypes per CR 305.6 and is printed only
+// as a reminder), the parser produces zero abilities, which is correct.
+// Without this check those cards classify as EMPTY_AST, falsely accusing
+// the parser of a gap. With it, they classify as OK_VANILLA — same
+// treatment basic lands already get via isBasicLand.
+//
+// Match shape: trimmed text starts with '(', ends with ')', and the
+// outermost parens stay open until the final character (depth-tracked so
+// "Foo (reminder one) bar (reminder two)" does NOT match — the depth
+// closes between the two parentheticals and there's text outside).
+func isReminderTextOnly(oracleText string) bool {
+	t := strings.TrimSpace(oracleText)
+	if t == "" || !strings.HasPrefix(t, "(") || !strings.HasSuffix(t, ")") {
+		return false
+	}
+	depth := 0
+	for i, r := range t {
+		switch r {
+		case '(':
+			depth++
+		case ')':
+			depth--
+			if depth == 0 && i < len(t)-1 {
+				return false
+			}
+			if depth < 0 {
+				return false
+			}
+		}
+	}
+	return depth == 0
 }
 
 // failurePatterns groups EMPTY_AST + MISSING + PARTIAL cards by an
