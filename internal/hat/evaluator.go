@@ -1075,7 +1075,80 @@ func (e *GameStateEvaluator) scoreThreat(gs *gameengine.GameState, seatIdx int) 
 		}
 	}
 
-	return -lethalRatio*0.8 - dangerousPermanents*0.3 - hoserPenalty - poisonPenalty - millPenalty - cmdrPenalty - hardToAnswerPenalty
+	// R60: stack-pending pressure. The dimension previously never read
+	// gs.Stack — a Murder targeting our Atraxa, a Counterspell aimed at
+	// our wincon cast, or a Wrath of God on the stack all contributed
+	// 0.0 to threat. That's the most concretely-missing signal:
+	// information that's about to RESOLVE against us next priority pass.
+	// Walk every stack item NOT controlled by this seat, score by who/
+	// what it targets:
+	//
+	//   - direct seat target (Lightning Bolt at me, Mind Twist at me):
+	//     0.30 per item — the effect lands on me regardless of board.
+	//   - permanent target where the permanent is controlled by us:
+	//     0.20 per item — generic removal; we might still respond.
+	//   - stack-item target where the target stack item is one of OUR
+	//     own spells (counterspell aimed at our cast): 0.35 per item —
+	//     losing a spell mid-cast is more painful than losing a
+	//     permanent because we already paid the mana.
+	//
+	// Cap total stack pressure at 0.80 so a flood of low-value triggers
+	// can't flip the dimension to lethal on its own. Triggered abilities
+	// (Kind=="triggered") still count — a Blood Artist drain triggered
+	// against us is real threat — but copy items (CR §707.10) are
+	// skipped because the original already counted.
+	stackPressure := 0.0
+	if len(gs.Stack) > 0 {
+		for _, item := range gs.Stack {
+			if item == nil || item.IsCopy {
+				continue
+			}
+			if item.Controller == seatIdx {
+				continue
+			}
+			for _, t := range item.Targets {
+				switch t.Kind {
+				case gameengine.TargetKindSeat:
+					if t.Seat == seatIdx {
+						stackPressure += 0.30
+					}
+				case gameengine.TargetKindPermanent:
+					if t.Permanent != nil && t.Permanent.Controller == seatIdx {
+						stackPressure += 0.20
+					}
+				case gameengine.TargetKindStackItem:
+					if t.Stack != nil && t.Stack.Controller == seatIdx {
+						stackPressure += 0.35
+					}
+				}
+			}
+		}
+		if stackPressure > 0.80 {
+			stackPressure = 0.80
+		}
+	}
+
+	// R60: wipe-magnet penalty. lethalRatio (maxOpp/life) is naturally
+	// LOW when we're leading on board — opponents have small boards
+	// because we're dominating. But that exact state is when the table
+	// most wants to wipe us. Compare our effective offensive power to
+	// the strongest opponent's; if we're commanding the board by a
+	// wide margin, surface that as a removal-attractiveness penalty.
+	// Gated on a non-trivial own-board floor (myBoard > 6) so the
+	// early-game tie-state doesn't trigger.
+	wipeMagnet := 0.0
+	myBoard := effectiveOffensivePower(gs, seat)
+	if myBoard > 6 && maxOppPow > 0 {
+		ratio := myBoard / maxOppPow
+		switch {
+		case ratio >= 2.0:
+			wipeMagnet = 0.30
+		case ratio >= 1.5:
+			wipeMagnet = 0.15
+		}
+	}
+
+	return -lethalRatio*0.8 - dangerousPermanents*0.3 - hoserPenalty - poisonPenalty - millPenalty - cmdrPenalty - hardToAnswerPenalty - stackPressure - wipeMagnet
 }
 
 // effectiveOffensivePower returns an evasion-weighted, summoning-sickness-
