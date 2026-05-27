@@ -249,6 +249,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/players/{id}/trends", h.handlePlayerTrends)
 	mux.HandleFunc("GET /api/players/compare", h.handlePlayerCompare)
 	mux.HandleFunc("GET /api/tournament/{id}/stats", h.handleTournamentStats)
+	mux.HandleFunc("GET /api/tournament/{id}/stream", h.handleTournamentStream)
 	mux.HandleFunc("GET /api/games/{id}/summary", h.handleGameSummary)
 	mux.HandleFunc("GET /api/games/{id}/replay", h.handleGameReplay)
 	mux.HandleFunc("GET /api/games/{id}/summary.pdf", h.handleGameSummaryPDF)
