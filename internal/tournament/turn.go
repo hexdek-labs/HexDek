@@ -153,11 +153,19 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 	gameengine.FireCardTrigger(gs, "untap_step", map[string]interface{}{
 		"active_seat": active,
 	})
-	// Per-turn bookkeeping: drain mana pool (§500.4), reset lands-played.
-	seat.ManaPool = 0
-	if seat.Mana != nil {
-		seat.Mana.Clear()
-	}
+	// Per-turn bookkeeping: drain mana pool, reset lands-played.
+	//
+	// Mana drains via the canonical DrainAllPools so the CR §106.4a
+	// exemption set (Upwelling "any" / Omnath-style color retention /
+	// Cabal Coffers-style etc.) is honored. The previous direct
+	// `seat.ManaPool = 0 ; seat.Mana.Clear()` zeroed unconditionally,
+	// wiping mana that Upwelling explicitly says should persist across
+	// the cleanup → untap boundary. The drain is logically the §106.4
+	// firing on the PRIOR turn's cleanup step ending (cleanup is the
+	// last step of the ending phase; per CR §514 it runs to completion
+	// without a priority window, so no DrainAllPools call lives there —
+	// this start-of-untap call is the canonical place to fire it).
+	gameengine.DrainAllPools(gs, "ending", "cleanup")
 	clearPlayedLand(gs, active)
 	gs.PendingExtraCombats = nil
 	gs.CurrentCombatRestriction = ""
@@ -369,10 +377,12 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 		})
 		gs.Phase, gs.Step = "beginning", "untap"
 		gameengine.UntapAll(gs, active)
-		seat.ManaPool = 0
-		if seat.Mana != nil {
-			seat.Mana.Clear()
-		}
+		// Mirror the §106.4a-aware drain used by the primary untap path
+		// above (Upwelling / Omnath-color-retention / per-color exemption
+		// cards). The Sphinx of the Second Sun extra-beginning-phase
+		// shape was previously unconditionally zeroing, defeating the
+		// same exemption set in the rarer extra-untap window.
+		gameengine.DrainAllPools(gs, "ending", "cleanup")
 		tapAllManaSources(gs, seat)
 
 		gs.Phase, gs.Step = "beginning", "upkeep"
