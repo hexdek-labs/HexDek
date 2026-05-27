@@ -213,6 +213,7 @@ type result struct {
 	Class       classification
 	OracleText  string
 	TypeLine    string
+	Layout      string
 	SetName     string
 	ReleasedAt  string
 	ParseErrors []string
@@ -551,6 +552,7 @@ func classify(e oracleEntry, corpus *astload.Corpus) result {
 		Name:       e.Name,
 		OracleText: e.OracleText,
 		TypeLine:   e.TypeLine,
+		Layout:     e.Layout,
 		SetName:    e.SetName,
 		ReleasedAt: e.ReleasedAt,
 	}
