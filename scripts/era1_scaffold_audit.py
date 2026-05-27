@@ -257,6 +257,18 @@ RAW_PATTERNS = [
     ("hand_size_le_n", re.compile(r"(?:you have )?(?:one|two|three|four|five|six|\d+) or fewer cards in.*hand|fewer than (?:one|two|three|four|five|six|seven|eight|\d+) cards in.*hand")),
     ("completed_dungeon", re.compile(r"completed a dungeon|venturing into a dungeon")),
     ("opponent_controls_typed", re.compile(r"opponent controls a creature with \w+|opponent controls a \w+ creature")),
+    # Era 1 r60 batch — top-5 unbucketed clusters from the 2026-05-26 sweep.
+    # Each maps to a structured scaffold in cmd/hexdek-thor/conditional_setup.go
+    # (condScaffoldMonstrousState / condScaffoldIsAttacking / condScaffoldSelfPowerGE
+    # / condScaffoldTopOfLibraryType / condScaffoldPutCounterThisTurn passive
+    # variant). Ordered most-specific first; placed AHEAD of "you_control_raw"
+    # so the broad fallback doesn't eat narrower predicates.
+    ("monstrous_state", re.compile(r"\bis monstrous\b|\bwhile monstrous\b|\bif this creature is monstrous\b")),
+    ("is_attacking_present", re.compile(r"\b(?:this creature|~) is attacking\b|\bwhile this creature is attacking\b|\bwhile it is attacking\b")),
+    ("was_attacking", re.compile(r"\bit was attacking\b|\bif it was attacking\b|\bwhile it was attacking\b")),
+    ("self_power_ge", re.compile(r"(?:this creature'?s|its|~'?s) power is \w+ or (?:more|greater)")),
+    ("top_of_library_type", re.compile(r"\btop card of your library is\b")),
+    ("counter_put_on_perm_turn", re.compile(r"counters? was put on (?:a permanent|target|that creature)|put one or more \+1/\+1 counters on .* this turn|you'?ve put one or more")),
     ("you_control_raw", re.compile(r"you control")),
 ]
 

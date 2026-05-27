@@ -6,15 +6,15 @@
 
 - Era 1 cards: **26932**
 
-- Era 1 Condition nodes: **2499** (bucketed 2297, unbucketed 202, 8.1% gap)
+- Era 1 Condition nodes: **2499** (bucketed 2325, unbucketed 174, 7.0% gap)
 
 - Era 1 Trigger nodes: **11548** (bucketed 11500, unbucketed 48, 0.4% gap)
 
 
 ## Top unbucketed condition Kinds
 
-- `if` × 116
-- `conditional` × 86
+- `if` × 108
+- `conditional` × 66
 
 ## Top unbucketed raw-text fragments (kind in raw/intervening_if/as_long_as)
 
@@ -31,7 +31,6 @@
 - × 1: `at least one other wall creature is blocking that creature and no non-wall creat`  _(e.g. Wall of Caltrops)_
 - × 1: `the gift was promised`  _(e.g. Scrapshooter)_
 - × 1: `they don't have any rad counters`  _(e.g. Vexing Radgull)_
-- × 1: `if it was attacking, create a 1/1 colorless drone artifact creature token with f`  _(e.g. Desculpting Blast)_
 - × 1: `that player attacked you during their last turn`  _(e.g. O-Kagachi, Vengeful Kami)_
 - × 1: `if that library contains exactly the chosen number of cards with the chosen name`  _(e.g. Mindblaze)_
 - × 1: `it isn't a token`  _(e.g. Gruff Triplets)_
@@ -39,14 +38,11 @@
 - × 1: `three or more mana from creatures was spent to cast it`  _(e.g. Inga and Esika)_
 - × 1: `his sneak cost was paid`  _(e.g. Leonardo, Leader in Blue)_
 - × 1: `it's not that player's turn`  _(e.g. Price of Glory)_
-- × 1: `as long as this creature is attacking, it gets +x/+0, where x is the number of l`  _(e.g. Elturel Survivors)_
 - × 1: `another human died under your control this turn`  _(e.g. White Glove Gourmand)_
 - × 1: `it had a -1/-1 counter on it`  _(e.g. Blowfly Infestation)_
 - × 1: `as long as enchanted land is a basic mountain, goblin creatures get +0/+2`  _(e.g. Goblin Caves)_
-- × 1: `a +1/+1 counter was put on a permanent under your control this turn`  _(e.g. Fairgrounds Trumpeter)_
 - × 1: `a player cast two or more spells last turn`  _(e.g. Call of the Full Moon)_
 - × 1: `if that creature is attacking, x is the number of snow lands defending player co`  _(e.g. Snowblind)_
-- × 1: `it was attacking`  _(e.g. Garna, Bloodfist of Keld)_
 - × 1: `if an instant card or a card with flash is exiled this way, they lose 1 life. ot`  _(e.g. Check for Traps)_
 - × 1: `as long as ~ is enchanted, equipped, and has a counter on it, ~ has "whenever ~ `  _(e.g. Kosei, Penitent Warlord)_
 - × 1: `if that card is returned to its owner's hand this way, you may pay {u}{u}{u}. if`  _(e.g. Puppet Master)_
@@ -54,11 +50,9 @@
 - × 1: `it doesn't have an indestructible counter on it`  _(e.g. Risona, Asari Commander)_
 - × 1: `if any of those cards shares a card type with that spell, copy that spell, you m`  _(e.g. Gandalf, Westward Voyager)_
 - × 1: `its power was 3 or greater`  _(e.g. Deathknell Berserker)_
-- × 1: `as long as you've put one or more +1/+1 counters on a creature this turn, this c`  _(e.g. Sigardian Paladin)_
 - × 1: `as long as you've cast two or more noncreature spells this turn, ~ has double st`  _(e.g. Lyse Hext)_
 - × 1: `if they do, exile that card. otherwise, put it into your hand`  _(e.g. Protection Racket)_
 - × 1: `as long as ~ is at the top of your library, you may look at it any time and you `  _(e.g. Chittering Illuminator)_
-- × 1: `as long as the top card of your library is a creature card, you may look at it a`  _(e.g. Chittering Illuminator)_
 - × 1: `you don't control a creature named keeper of ~`  _(e.g. Kookus)_
 - × 1: `this creature is suspected`  _(e.g. Repeat Offender)_
 - × 1: `it has madness`  _(e.g. Anje Falkenrath)_
@@ -68,22 +62,28 @@
 - × 1: `your opponents control no permanents with bounty counters on them`  _(e.g. Chevill, Bane of Monsters)_
 - × 1: `as long as this creature is enchanted, it can attack as though it didn't have de`  _(e.g. Pillar of War)_
 - × 1: `there are three or more dread counters on it`  _(e.g. Grasping Shadows // Shadows' Lair)_
-- × 1: `this creature's power is 1 or more`  _(e.g. Lesser Werewolf)_
 - × 1: `if target creature has toughness 5 or greater, it gets +4/-4 until end of turn. `  _(e.g. Blood Lust)_
-- × 1: `as long as this creature is monstrous, it has flying`  _(e.g. Chillerpillar)_
 - × 1: `this creature doesn't have a +1/+1 counter on it`  _(e.g. Shatterskull Charger)_
-- × 1: `the top card of your library is a nonland card`  _(e.g. Water Weird)_
-- × 1: `as long as you've put one or more +1/+1 counters on a creature this turn, sigard`  _(e.g. A-Sigardian Paladin)_
 - × 1: `the spell's mana value is less than or equal to the amount of life you gained th`  _(e.g. Bre of Clan Stoutarm)_
 - × 1: `you drew two or more cards this turn`  _(e.g. Archmage Ascension)_
 - × 1: `you didn't play a land this turn`  _(e.g. Mercadian Atlas)_
 - × 1: `its power was different from its base power`  _(e.g. Jason Bright, Glowing Prophet)_
+- × 1: `this enchantment has one or more wreck counters on it`  _(e.g. Spectacle of Destruction)_
+- × 1: `there are no arrowhead counters on this artifact`  _(e.g. Serrated Arrows)_
+- × 1: `~ is in the command zone`  _(e.g. Oloro, Ageless Ascetic)_
+- × 1: `it's enchanted`  _(e.g. Krond the Dawn-Clad)_
+- × 1: `this card is exiled`  _(e.g. Uvilda, Dean of Perfection // Nassari, Dean of Expression)_
+- × 1: `it's attacking one of your opponents`  _(e.g. Scriv, the Obligator)_
+- × 1: `~ has power 7 or greater`  _(e.g. Cloud, Ex-SOLDIER)_
+- × 1: `you haven't cast the card`  _(e.g. Psychic Theft)_
+- × 1: `a pirate and a vehicle attacked this combat`  _(e.g. Fearless Swashbuckler)_
+- × 1: `a modified creature died under your control this turn`  _(e.g. Intermediate Chirography)_
 
 ## Bucketed condition Kinds (sanity)
 
-- `if` × 598
+- `if` × 606
 - `paid_optional_cost` × 561
-- `conditional` × 335
+- `conditional` × 355
 - `for_each` × 193
 - `did_prior_action` × 137
 - `etb_tapped_unless` × 97
