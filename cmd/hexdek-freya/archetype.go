@@ -86,6 +86,26 @@ type classifyContext struct {
 	tappedManaCount int
 	tappedManaNames []string
 	instantSorcPct float64
+	// instantSorceryCount is the raw count of instant + sorcery cards
+	// (qty-weighted) in the deck. Paired with spellTriggerPermanentCount
+	// to drive the absolute-count Spellslinger detection arm — a 60%
+	// density gate misses I/S-heavy hybrid builds (Niv-Mizzet Reborn,
+	// Veyran, mid-density Storm) where ramp + creature payoffs pull the
+	// percentage below 60% but the spell-trigger payoff cluster makes
+	// the deck unmistakably Spellslinger-shaped.
+	instantSorceryCount int
+	// spellTriggerPermanentCount counts non-instant-sorcery permanents
+	// whose oracle text triggers on spell casts: "whenever you cast a
+	// spell" (Aetherflux Reservoir, Sentinel Tower), "whenever you cast
+	// an instant or sorcery" (Guttersnipe, Talrand, Young Pyromancer,
+	// Murmuring Mystic, Archmage Emeritus), "magecraft" (Strixhaven
+	// family), Stormwing-style ETB-cast checks ("if you've cast another
+	// instant or sorcery"), and per-cast scaling payoffs ("for each
+	// spell you've cast"). Distinct from spellCopyCount which conflates
+	// copy-effect engines (Thousand-Year Storm, Pyromancer's Goggles)
+	// with cast-trigger creatures — this field is the cleaner "do we
+	// have a spell-trigger payoff cluster" signal.
+	spellTriggerPermanentCount int
 	creaturePct    float64
 	topCreatureTypePct float64
 	sacrificeCount int
@@ -386,8 +406,30 @@ var archetypeFingerprints = []archetypeFingerprint{
 		Ratios: map[RoleTag]float64{
 			RoleDraw: 0.14, RoleRamp: 0.10, RoleCounterspell: 0.04, RoleThreat: 0.05,
 		},
+		// Two-arm detection:
+		//   (1) Density gate: ≥60% instant/sorcery + at least one copy/
+		//       cast-trigger effect. Catches the canonical mono-blue /
+		//       Mizzix / Niv-Mizzet I/S-pile shape.
+		//   (2) Absolute-count gate: ≥25 instant/sorcery cards AND ≥4
+		//       spell-trigger payoff permanents. Picks up Niv-Mizzet
+		//       Reborn / Veyran / Stormwing-style hybrids that pack a
+		//       full I/S+payoff cluster but include enough ramp/creatures
+		//       that the percentage falls below 60. The 25-card floor on
+		//       I/S keeps generic Izzet midrange (which sits in the 15-22
+		//       range) from poaching; the 4-permanent floor on the
+		//       payoff cluster (Aetherflux Reservoir + Guttersnipe +
+		//       Talrand + Young Pyromancer + Stormwing Entity + Archmage
+		//       Emeritus + Murmuring Mystic and similar) ensures we're
+		//       seeing the deliberate "I/S triggers payoffs" structure
+		//       and not just an instant-heavy goodstuff pile.
 		Require: func(ctx *classifyContext) bool {
-			return ctx.instantSorcPct >= 0.60 && ctx.spellCopyCount >= 1
+			if ctx.instantSorcPct >= 0.60 && ctx.spellCopyCount >= 1 {
+				return true
+			}
+			if ctx.instantSorceryCount >= 25 && ctx.spellTriggerPermanentCount >= 4 {
+				return true
+			}
+			return false
 		},
 	},
 	{
@@ -881,6 +923,24 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 			ctx.spellCopyCount += qp.Qty
 		}
 
+		// Spell-trigger permanent detection. Only fires on non-instant-
+		// sorcery cards (a permanent is the trigger BEARER; the I/S spell
+		// is the trigger SOURCE). Captures the Aetherflux / Stormwing /
+		// Guttersnipe / Talrand / Archmage Emeritus payoff cluster used by
+		// the absolute-count Spellslinger detection arm.
+		isInstantOrSorcery := strings.Contains(tl, "instant") || strings.Contains(tl, "sorcery")
+		if !isInstantOrSorcery && containsAny(ot,
+			"whenever you cast a spell",
+			"whenever you cast an instant or sorcery",
+			"magecraft",
+			"if you've cast another instant or sorcery",
+			"if you've cast an instant or sorcery this turn",
+			"for each spell you've cast",
+			"for each instant and sorcery spell you've cast",
+			"whenever you cast your") {
+			ctx.spellTriggerPermanentCount += qp.Qty
+		}
+
 		if qp.Profile.IsOutlet {
 			ctx.sacrificeCount += qp.Qty
 		}
@@ -1131,6 +1191,7 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 		}
 	}
 
+	ctx.instantSorceryCount = instantSorcCount
 	if nonlandTotal > 0 {
 		ctx.instantSorcPct = float64(instantSorcCount) / float64(nonlandTotal)
 		ctx.creaturePct = float64(creatureCount) / float64(nonlandTotal)
