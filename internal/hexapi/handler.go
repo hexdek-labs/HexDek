@@ -1311,7 +1311,14 @@ func (h *Handler) handleDeckEvents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	// CORS is the global corsMiddleware's job (cmd/hexdek-server/main.go).
+	// We deliberately do NOT set Access-Control-Allow-Origin here —
+	// a per-route wildcard would (a) override the middleware's
+	// origin-allowlist echo for legitimate cross-site browser
+	// subscribers, and (b) conflict with the middleware's
+	// Allow-Credentials: true (per CORS spec, browsers reject
+	// `Allow-Origin: *` paired with credentials), making this
+	// stream unreachable from real browsers regardless of origin.
 	flusher.Flush()
 
 	key := owner + "/" + id

@@ -13,12 +13,13 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -487,6 +488,52 @@ var allowedOrigins = map[string]bool{
 	"http://127.0.0.1:5173":               true,
 }
 
+// isOriginAllowed returns true when origin matches the production
+// allowlist OR a dev-environment host (localhost / 127.0.0.1 / the
+// 192.168.1.0/24 LAN range). Uses url.Parse + Hostname() rather
+// than string-prefix matching — a HasPrefix check on
+// "http://localhost:" would also match
+// "http://localhost:5173.evil.example", letting an attacker who
+// controls *.evil.example bypass the allowlist (the literal string
+// DOES start with "http://localhost:"). Parsing decomposes the
+// origin into scheme+host so we compare against the host component
+// only.
+//
+// Returns false on any parse error so a malformed Origin header
+// cannot match.
+func isOriginAllowed(origin string) bool {
+	if origin == "" {
+		return false
+	}
+	if allowedOrigins[origin] {
+		return true
+	}
+	u, err := url.Parse(origin)
+	if err != nil {
+		return false
+	}
+	// Only http/https are valid web Origins. Rejects custom schemes
+	// like "data:" / "file:" / "chrome-extension:" that could be
+	// abused if we left scheme unchecked.
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return false
+	}
+	host := u.Hostname()
+	if host == "localhost" || host == "127.0.0.1" {
+		return true
+	}
+	// LAN dev: any 192.168.1.X address. Parses as IPv4 + checks the
+	// /24 — defends against tricks like "192.168.1.1.evil.example"
+	// (would have Hostname() = "192.168.1.1.evil.example", IP parse
+	// fails, returns false).
+	if ip := net.ParseIP(host); ip != nil {
+		if v4 := ip.To4(); v4 != nil && v4[0] == 192 && v4[1] == 168 && v4[2] == 1 {
+			return true
+		}
+	}
+	return false
+}
+
 func corsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
@@ -495,7 +542,7 @@ func corsMiddleware(next http.Handler) http.Handler {
 		// serve a response cached for one allowed origin to a different
 		// origin, silently breaking CORS or worse.
 		w.Header().Add("Vary", "Origin")
-		if allowedOrigins[origin] || strings.HasPrefix(origin, "http://localhost:") || strings.HasPrefix(origin, "http://192.168.1.") {
+		if isOriginAllowed(origin) {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			// Allow-Credentials lets frontend fetches with
 			// credentials:'include' carry the pincer hexdek_session cookie.
