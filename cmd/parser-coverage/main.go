@@ -62,6 +62,13 @@ var excludedSetTypes = map[string]bool{
 	"token":       true,
 	"minigame":    true,
 	"funny":       true,
+	// Alchemy is the digital-only Arena rebalance format. All 716 alchemy
+	// entries in the current Scryfall corpus carry games == ["arena"] and
+	// legalities.commander == "not_legal". The Alchemy-only mechanics
+	// (intensity, spellbook, perpetual counters, seek) require digital-
+	// engine support HexDek doesn't have. Mirrors scripts/parser.py's
+	// is_real_card filter; kept in sync via TestExcludedSetTypesMatchPython.
+	"alchemy": true,
 }
 
 // excludedTypeLineSubstrings mirrors the type-line filter at
