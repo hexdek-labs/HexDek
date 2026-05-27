@@ -2879,16 +2879,43 @@ func estimatePowerPercentile(dp *DeckProfile, report *FreyaReport) (int, []strin
 		factors = append(factors, "limited win conditions → -10")
 	}
 
-	// Mana base quality
+	// Mana base quality. r60 rebalance: pre-r60 the table was
+	//   A → +10 (logged), B → +5 (SILENT), C → 0, D → -10, F → -10
+	// which had three concrete bugs:
+	//   (1) B-grade silently credited +5 with no factor message —
+	//       users couldn't see that their mana base was contributing,
+	//       since factors[] is the user-facing explanation. Audit on
+	//       data/decks/test (16-deck corpus) showed 4 of 16 decks
+	//       received a silent +5 with zero attribution.
+	//   (2) C-grade ignored — a mediocre mana base (passable but
+	//       not great, score 60-74) was scored identically to a
+	//       perfect-but-not-A one. C represents real signal: usually
+	//       too many taplands or 1-2 color gaps. Worth a small -3
+	//       (between the B credit and the D penalty).
+	//   (3) D and F collapsed at the same -10 — squashed two
+	//       distinct grades together. F represents a catastrophic
+	//       mana base (4+ color gaps, 8+ taplands, no fixing); D is
+	//       "rough but functional." Splitting to D=-8 / F=-15
+	//       preserves the spread and makes the F penalty bite.
+	//
+	// New table (all rungs now log a factor for transparency):
+	//   A → +10, B → +5, C → -3, D → -8, F → -15
 	switch dp.ManaBaseGrade {
 	case "A":
 		score += 10
 		factors = append(factors, "A-grade mana base → +10")
 	case "B":
 		score += 5
-	case "D", "F":
-		score -= 10
-		factors = append(factors, fmt.Sprintf("%s-grade mana base → -10", dp.ManaBaseGrade))
+		factors = append(factors, "B-grade mana base → +5")
+	case "C":
+		score -= 3
+		factors = append(factors, "C-grade mana base → -3")
+	case "D":
+		score -= 8
+		factors = append(factors, "D-grade mana base → -8")
+	case "F":
+		score -= 15
+		factors = append(factors, "F-grade mana base → -15")
 	}
 
 	// Interaction quality
