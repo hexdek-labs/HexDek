@@ -1395,9 +1395,17 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 	}
 
 	// ── Check known combos first (100% confidence) ──
+	//
+	// Lookup is case-insensitive: deck profiles, curated KnownCombos, and
+	// imported Spellbook combos all use the canonical Scryfall spelling in
+	// practice, but minor casing drift between sources (user-typed
+	// decklists, alternate spellbook payloads) shouldn't cause a missed
+	// detection. The dedupe in spellbook_import.go's canonicalComboKey is
+	// already case-insensitive; mirror that here so curated and imported
+	// combos are detected with the same robustness.
 	deckCardNames := map[string]bool{}
 	for _, p := range profiles {
-		deckCardNames[p.Name] = true
+		deckCardNames[strings.ToLower(p.Name)] = true
 	}
 
 	knownComboKeys := map[string]bool{} // track confirmed combos to avoid heuristic dupes
@@ -1405,7 +1413,7 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 	for _, known := range combosForDeck {
 		allPresent := true
 		for _, piece := range known.Pieces {
-			if !deckCardNames[piece] {
+			if !deckCardNames[strings.ToLower(piece)] {
 				allPresent = false
 				break
 			}
@@ -1425,7 +1433,7 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 		// Add outlet info
 		var deckOutlets []string
 		for _, outlet := range known.Outlets {
-			if deckCardNames[outlet] {
+			if deckCardNames[strings.ToLower(outlet)] {
 				deckOutlets = append(deckOutlets, outlet)
 			}
 		}
@@ -1470,7 +1478,7 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 		var presentPieces []string
 		var missingPieces []string
 		for _, piece := range known.Pieces {
-			if deckCardNames[piece] {
+			if deckCardNames[strings.ToLower(piece)] {
 				presentPieces = append(presentPieces, piece)
 			} else {
 				missingPieces = append(missingPieces, piece)
