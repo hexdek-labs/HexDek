@@ -1003,6 +1003,30 @@ func isCounterSpellEffect(e gameast.Effect) bool {
 // After resolution, StateBasedActions fires (CR §117.5 / §704.3). If the
 // stack is still non-empty, the caller is expected to open another priority
 // round — CastSpell loops until empty.
+
+// postStackZoneForOffboard picks the destination zone for a spell card
+// leaving the stack via a non-resolution path (counter, fizzle on all
+// illegal targets). The successful-resolve path in ResolveStackTop calls
+// ShouldExileOnResolve / ShouldReturnToHandOnResolve directly; this
+// helper centralizes the same precedence for the failure paths so a
+// countered or fizzled flashback spell still honors CR §702.33a's
+// "exile this card instead of putting it anywhere else any time it
+// would leave the stack" carveout (same for escape per §702.143b).
+//
+// Buyback is intentionally NOT honored here: CR §702.27b applies only
+// "as it resolves" — a countered or fizzled buyback spell goes to the
+// graveyard as normal.
+//
+// Returns (zone, rule_tag) where rule_tag is the CR clause that pinned
+// the destination, included in the resolve event's "rule" detail.
+func postStackZoneForOffboard(item *StackItem, defaultZone, defaultRule string) (string, string) {
+	if ShouldExileOnResolve(item) {
+		// flashback / escape — exile instead of any other zone.
+		return "exile", "702.33a"
+	}
+	return defaultZone, defaultRule
+}
+
 func ResolveStackTop(gs *GameState) {
 	if gs == nil || len(gs.Stack) == 0 {
 		return
@@ -1066,15 +1090,21 @@ func ResolveStackTop(gs *GameState) {
 		// Abilities aren't cards so the "graveyard move" only applies to
 		// spells (items with Card set and Source unset).
 		if isSpell && item.Card != nil {
-			MoveCard(gs, item.Card, item.Controller, "stack", "graveyard", "countered")
+			// CR §702.33a (flashback) / §702.143b (escape): "exile this
+			// card instead of putting it anywhere else any time it would
+			// leave the stack." A countered flashback/escape spell still
+			// triggers the exile-instead self-replacement — only the
+			// successful-resolve path was honoring it before.
+			toZone, ruleTag := postStackZoneForOffboard(item, "graveyard", "701.5a")
+			MoveCard(gs, item.Card, item.Controller, "stack", toZone, "countered")
 			gs.LogEvent(Event{
 				Kind:   "resolve",
 				Seat:   item.Controller,
 				Source: name,
 				Details: map[string]interface{}{
-					"to":        "graveyard",
+					"to":        toZone,
 					"countered": true,
-					"rule":      "701.5a",
+					"rule":      ruleTag,
 				},
 			})
 		}
@@ -1097,9 +1127,12 @@ func ResolveStackTop(gs *GameState) {
 					"reason": "all_targets_illegal",
 				},
 			})
-			// Countered on resolution — spell goes to graveyard, ability vanishes.
+			// Countered on resolution — spell leaves the stack. Same
+			// CR §702.33a / §702.143b carveout as the explicit-counter
+			// branch above: flashback/escape send to exile, not graveyard.
 			if isSpell && item.Card != nil {
-				MoveCard(gs, item.Card, item.Controller, "stack", "graveyard", "fizzle")
+				toZone, _ := postStackZoneForOffboard(item, "graveyard", "608.2b")
+				MoveCard(gs, item.Card, item.Controller, "stack", toZone, "fizzle")
 			}
 			return
 		}
