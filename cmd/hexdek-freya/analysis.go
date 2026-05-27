@@ -185,6 +185,19 @@ type FreyaReport struct {
 	CurveShape    string   // "aggro", "midrange", "control", "bimodal"
 	CurveWarnings []string // structural warnings about curve shape
 
+	// Mana-hump analysis — the "fat end" of the curve. HumpCMC is the
+	// average CMC of nonland cards in the top quartile of the deck by
+	// CMC (rounded up from N/4). HumpCardCount is the number of cards in
+	// that top quartile. HumpFloorCMC is the lowest CMC included in the
+	// quartile (cards at this CMC are partially included).
+	//
+	// Used to flag decks with too many high-end finishers relative to
+	// ramp support (top-heavy hump that outpaces the deck's ability to
+	// reliably cast its big plays). See computeManaHump.
+	HumpCMC       float64
+	HumpCardCount int
+	HumpFloorCMC  int
+
 	// Color analysis
 	ColorDemand   map[string]int // W/U/B/R/G -> total pips needed
 	ColorSupply   map[string]int // W/U/B/R/G -> total sources available
@@ -1363,8 +1376,13 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 					valleyMin = report.ManaCurve[i]
 				}
 			}
-			peakAvg := (report.ManaCurve[peaks[0]] + report.ManaCurve[peaks[1]]) / 2
-			if peakAvg > 0 && float64(valleyMin)/float64(peakAvg) < 0.4 {
+			// Float average — integer division here used to bias the ratio
+			// slightly toward more bimodal calls (e.g. peaks 3 + 4 floored
+			// to peakAvg=3 instead of 3.5, inflating the valleyMin/peakAvg
+			// ratio). Audit found this is a low-impact correctness bug; fix
+			// it at the same time as the mana-hump addition.
+			peakAvg := float64(report.ManaCurve[peaks[0]]+report.ManaCurve[peaks[1]]) / 2.0
+			if peakAvg > 0 && float64(valleyMin)/peakAvg < 0.4 {
 				report.CurveShape = "bimodal"
 				report.CurveWarnings = append(report.CurveWarnings,
 					fmt.Sprintf("bimodal curve: peaks at CMC %d and %d with valley between — may struggle in the mid-game", peaks[0], peaks[1]))
@@ -1384,6 +1402,19 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 		if report.NonlandCount > 0 && float64(lowEnd)/float64(report.NonlandCount) < 0.15 && report.CurveShape != "aggro" {
 			report.CurveWarnings = append(report.CurveWarnings,
 				fmt.Sprintf("few early plays: only %d cards at CMC 0-1 — may fall behind in early turns", lowEnd))
+		}
+
+		// Mana hump — avg CMC of the top quartile of nonland cards. A
+		// high hump CMC with little ramp support is the canonical "drew
+		// 4 fatties, cast none of them" failure mode. The structural
+		// warning here only inspects curve shape; the ramp-comparison
+		// warning is appended later via AugmentCurveWarningsWithRamp
+		// once Stats has been computed.
+		report.HumpCMC, report.HumpCardCount, report.HumpFloorCMC = computeManaHump(report.ManaCurve, report.NonlandCount)
+		if report.HumpCMC >= 5.5 && report.HumpFloorCMC >= 5 {
+			report.CurveWarnings = append(report.CurveWarnings,
+				fmt.Sprintf("heavy mana hump: top-quartile avg CMC %.1f over %d cards (floor CMC %d) — finisher density is high; verify ramp can keep pace",
+					report.HumpCMC, report.HumpCardCount, report.HumpFloorCMC))
 		}
 	}
 
@@ -3810,6 +3841,97 @@ func containsAny(s string, subs ...string) bool {
 		}
 	}
 	return false
+}
+
+// computeManaHump returns the average CMC of nonland cards in the top
+// quartile of the mana curve — the "fat end" of the deck. Bucketed input:
+// curve[i] is the count of nonland cards at CMC i (with curve[7]
+// representing CMC 7+, which is scored as exactly 7 for averaging).
+//
+// Quartile size is ceil(nonlandCount/4). The algorithm walks from the
+// highest CMC bucket down, accumulating cards until it has at least the
+// quartile count. The last bucket touched is the "hump floor" — cards at
+// that CMC are partially included (only as many as needed to reach the
+// quartile target). The average CMC weights each bucket by the number of
+// cards taken from it.
+//
+// Returns (0, 0, 0) when nonlandCount == 0 — guards downstream consumers
+// against div-by-zero / NaN. Empty curves return zero values cleanly.
+//
+// Example: curve = [0, 4, 6, 8, 5, 3, 2, 1] (29 nonlands). Quartile
+// target = ceil(29/4) = 8. Walking from CMC 7 down: take 1 (CMC 7), 2
+// (CMC 6), 3 (CMC 5) — running total = 6, need 8 more. Take 2 from CMC 4
+// (partial). HumpCMC = (1*7 + 2*6 + 3*5 + 2*4) / 8 = 42/8 = 5.25.
+// HumpCardCount = 8. HumpFloorCMC = 4.
+func computeManaHump(curve [8]int, nonlandCount int) (humpCMC float64, humpCount int, humpFloor int) {
+	if nonlandCount <= 0 {
+		return 0, 0, 0
+	}
+	target := (nonlandCount + 3) / 4 // ceil(N/4)
+	if target == 0 {
+		return 0, 0, 0
+	}
+	totalCMC := 0
+	taken := 0
+	floor := -1
+	for cmc := 7; cmc >= 0; cmc-- {
+		bucketCount := curve[cmc]
+		if bucketCount == 0 {
+			continue
+		}
+		remaining := target - taken
+		if remaining <= 0 {
+			break
+		}
+		take := bucketCount
+		if take > remaining {
+			take = remaining
+		}
+		totalCMC += take * cmc
+		taken += take
+		floor = cmc
+		if taken >= target {
+			break
+		}
+	}
+	if taken == 0 {
+		return 0, 0, 0
+	}
+	return float64(totalCMC) / float64(taken), taken, floor
+}
+
+// AugmentCurveWarningsWithRamp appends a mana-hump-vs-ramp warning to
+// report.CurveWarnings when the top-quartile hump outpaces the deck's
+// ramp + draw support. Called from main.go after ComputeDeckStatistics
+// populates report.Stats — splitting the comparison out of AnalyzeDeck
+// keeps the curve-shape pass dependency-free and lets the audit run on
+// reports built with mocked stats.
+//
+// Trigger: HumpFloorCMC >= 5 AND HumpCMC >= 4.5 AND rampCount < ceil(
+// HumpCardCount * 0.75). The 0.75 multiplier comes from the rule of
+// thumb that you want enough ramp pieces to reliably reach the hump CMC
+// at least once per pair of finishers in the top quartile — not 1:1
+// (you draw a finisher then a ramp piece in a typical turn 4-6 keep)
+// but close to it. A 4-finisher hump with 2 ramp pieces gets flagged;
+// 4 finishers with 4 ramp pieces does not.
+//
+// No-op when report is nil, report.HumpCardCount == 0, or rampCount == 0
+// (heavily-vanilla decks with no ramp at all already trip other warnings;
+// don't double-fire).
+func AugmentCurveWarningsWithRamp(report *FreyaReport, rampCount int) {
+	if report == nil || report.HumpCardCount == 0 || rampCount == 0 {
+		return
+	}
+	if report.HumpFloorCMC < 5 || report.HumpCMC < 4.5 {
+		return
+	}
+	rampFloor := (report.HumpCardCount*3 + 3) / 4 // ceil(HumpCardCount * 0.75)
+	if rampCount >= rampFloor {
+		return
+	}
+	report.CurveWarnings = append(report.CurveWarnings,
+		fmt.Sprintf("hump outpaces ramp: %d cards averaging CMC %.1f (top quartile, floor CMC %d) but only %d ramp pieces — consider trimming the high end or adding %d more ramp",
+			report.HumpCardCount, report.HumpCMC, report.HumpFloorCMC, rampCount, rampFloor-rampCount))
 }
 
 // findCurvePeaks returns indices of local maxima in the mana curve (CMC 0-7+).
