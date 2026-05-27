@@ -1446,6 +1446,25 @@ var defaultWeights = map[string]*jsonEvalWeights{
 		LifeResource: 1.4, ComboProximity: 0.3, ThreatExposure: 1.5,
 		CommanderProgress: 0.4, GraveyardValue: 0.4,
 	},
+
+	// r60 Tokens — Krenko / Adeline / Rhys / Ghave-tokens shells.
+	// Classified by archetypeFingerprints["Tokens"] in archetype.go
+	// when ctx.tokenCreatorCount ≥ 8 AND ctx.anthemCount ≥ 3.
+	// Distinct from "aggro / go wide" in that the eval weights
+	// HEAVILY penalize board wipes (ThreatExposure 1.3 vs 0.5) — a
+	// Wrath of God against a 12-token Adeline / Krenko board is
+	// catastrophic in a way it isn't against a 4-creature Aggro
+	// board (raw aggro rebuilds with the next creature, tokens
+	// can't because the engine commander is the wipe target).
+	// Also lifts CommanderProgress 0.9 vs Aggro / Go Wide's 0.6 —
+	// Krenko's tap doubles your goblins, Adeline's attack trigger
+	// creates tokens; the commander IS the engine, not one threat
+	// among many.
+	"tokens": {
+		BoardPresence: 1.8, CardAdvantage: 0.5, ManaAdvantage: 0.4,
+		LifeResource: 0.7, ComboProximity: 0.2, ThreatExposure: 1.3,
+		CommanderProgress: 0.9, GraveyardValue: 0.2,
+	},
 }
 
 type jsonEvalWeights struct {

@@ -35,6 +35,25 @@ var Archetypes = []ArchetypeDef{
 		Weight:      5,
 	},
 	{
+		// R60 Tokens — structural pairing of token-creation density
+		// (8+ creators per buildClassifyContext) and anthem-stacking
+		// (3+ anthems). The archetypeFingerprints Require gate in
+		// cmd/hexdek-freya/archetype.go is the load-bearing check;
+		// this archetypeDef entry exists so the Keyword/KeyCard
+		// substring matcher (separate code path consumed by the
+		// strategy.json render layer) also recognizes the archetype
+		// name. Different from Aggro / Go Wide in that the SHAPE
+		// (creators + anthems) is the binding test, not the generic
+		// "low CMC + many creatures" Aggro pattern.
+		Name:        "Tokens",
+		Description: "Flood the board with creature tokens then stack anthems to swing for lethal",
+		Keywords:    []string{"create a", "create two", "create three", "creates a", "creature token", "creatures you control get", "creatures you control have", "creature tokens you control"},
+		KeyCards:    []string{"Krenko, Mob Boss", "Adeline, Resplendent Cathar", "Rhys the Redeemed", "Ghave, Guru of Spores", "Anointed Procession", "Parallel Lives", "Doubling Season", "Glorious Anthem", "Intangible Virtue", "Beastmaster Ascension", "Coat of Arms"},
+		Triggers:    []string{"etb", "attacks", "upkeep"},
+		Effects:     []string{"token_create", "anthem"},
+		Weight:      5,
+	},
+	{
 		Name:        "Extra Combats",
 		Description: "Take additional combat phases to multiply damage output",
 		Keywords:    []string{"additional combat", "extra combat", "additional combat phase", "untap all creatures"},
