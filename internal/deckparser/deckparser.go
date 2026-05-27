@@ -465,6 +465,12 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		if sbPrefixRE.MatchString(raw) {
 			continue
 		}
+		// MTGO / Tournament-Ready metadata header lines (`Deck name: ...`,
+		// `Format: Commander`, etc.). Drop entirely; they're informational
+		// and have no card content.
+		if mtgoMetadataRE.MatchString(raw) {
+			continue
+		}
 		// Strip "(SET) 123" suffix (set code + collector number + foil flag).
 		if idx := strings.Index(raw, "("); idx > 0 {
 			raw = strings.TrimSpace(raw[:idx])
@@ -785,6 +791,18 @@ var partnerLineRE = regexp.MustCompile(`(?i)^\s*PARTNER\s*:\s*(.+?)\s*$`)
 // sideboard / companion / token card into the library (see
 // section_count_r60_test.go).
 var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companion|Considering|Deck|Main\s*Deck|Mainboard|Commanders?|Tokens|Signature\s*Spells|Stickers|Attractions|Outside\s*the\s*Game|About)\s*:?\s*(?:\(\s*\d+\s*\))?\s*:?\s*$`)
+
+// mtgoMetadataRE matches MTGO / Tournament-Ready export metadata header
+// lines: `Deck name: <name>`, `Created by: <author>`, `Format: <format>`,
+// `Layout: <layout>`, `Description: <blurb>`, `Tags: <list>`, `Author:
+// <name>`. MTGO's text export emits these before the card list; pre-fix
+// they fell through the fallback as qty=1 cards named e.g. `Deck name:
+// My MTGO Deck` and landed in the Unresolved report. Real Magic cards
+// never contain a colon, so the generic "leading alphanumeric word(s)
+// followed by colon followed by content" pattern is safe — checked
+// AFTER COMMANDER: / PARTNER: / SB: directives (which match earlier and
+// short-circuit) so it doesn't shadow them.
+var mtgoMetadataRE = regexp.MustCompile(`(?i)^\s*(deck\s*name|created\s*by|format|layout|author|description|tags?|source|owner|notes?)\s*:\s*\S`)
 
 // sbPrefixRE matches MTGA / Aetherhub sideboard line prefix: `SB: 1 Card`.
 // Pre-fix, every `SB:` line dropped into the fallback "qty=1, name=<raw>"
