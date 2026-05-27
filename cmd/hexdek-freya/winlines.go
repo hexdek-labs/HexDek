@@ -22,6 +22,48 @@ type WinLine struct {
 	// grindy loops), and (c) tutor coverage of those pieces. Downstream
 	// consumers sum these into WinLineAnalysis.TotalWeightedScore.
 	Weight int
+	// Tier is the S/A/B/C/D letter grade of how this win line wins:
+	//   S = 2-card true-infinite combo (Thoracle + Consultation,
+	//       Heliod + Walking Ballista, Isochron + Dramatic Reversal,
+	//       Splinter Twin + Pestermite, Kiki-Jiki + Felidar Guardian)
+	//   A = 3+-card true-infinite combo (Worldgorger Dragon +
+	//       Animate Dead + sac outlet; persist + sac outlet + Melira;
+	//       any infinite that requires three pieces to close)
+	//   B = 2-card categorical-win combo — deterministic but not
+	//       infinite (Hellkite Charger + Bear Umbra → infinite
+	//       combats, Aggravated Assault + Sword of Feast and Famine,
+	//       any 2-card class in twoCardCategoricalWinClasses)
+	//   C = N-card value-pile finisher (Aetherflux Reservoir + storm
+	//       package, Bolas's Citadel + Sensei's Divining Top, 3+-card
+	//       grindy determined assemblies, single-card finishers like
+	//       Craterhoof Behemoth or Avenger of Zendikar)
+	//   D = incidental finish (commander damage, mass beats / combat
+	//       pressure, alt-wincon enchantments with no combo line)
+	//
+	// Surfaced in WinLineRationale.Resolves as the "Tier X:" prefix
+	// so reports show "Tier S: Thassa's Oracle + Demonic
+	// Consultation" instead of "2-card combo". Empty string for
+	// uncomputed / unknown — classifyWinLineTier always returns one
+	// of S/A/B/C/D for non-nil WinLine, so consumers can safely
+	// compare against the letter set.
+	Tier string
+
+	// Confidence is a 0.0-1.0 backend-only score measuring how reliably the
+	// deck can actually assemble and resolve this win line. Computed from
+	// three signals: (a) tutor support — share of pieces a deck tutor can
+	// fetch; (b) piece redundancy — alternative cards in the deck that
+	// could substitute for each piece (e.g. Vito subs for Sanguine Bond in
+	// the Bond + Exquisite Blood line); (c) protection density — deck-
+	// level counterspell/hexproof/blink coverage that can defend the
+	// assembly turn. Weighted sum (0.45/0.30/0.25) clamped to [0, 1].
+	//
+	// Used by the downstream search: lines with Confidence < 0.3 are
+	// dropped from the bracket-scoring finisher count; lines with
+	// Confidence >= 0.7 weight 1.5x in the archetype-detection combo
+	// signal. BACKEND-ONLY — intentionally absent from Rationale, JSON
+	// export, and text/markdown reports.
+	Confidence float64
+
 	// DefendedBy lists the deck's interaction cards (counterspells +
 	// protection effects) that can defend this win line resolving. The
 	// list is the same union for every line in the deck — different line
@@ -265,7 +307,171 @@ func ComputeWinLines(report *FreyaReport, qtyProfiles []CardProfileQty, oracle *
 	computeRedundancy(wla, report, profileByName)
 	computeSinglePoints(wla, profileByName)
 
+	// Confidence pass — backend-only quality signal feeding archetype
+	// detection (>=0.7 weights 1.5x) and bracket scoring (<0.3 excluded
+	// from finisher count). Must run AFTER TutorPaths population.
+	protection := computeWinLineProtectionDensity(report, profileByName)
+	for i := range wla.WinLines {
+		wla.WinLines[i].Confidence = computeWinLineConfidence(&wla.WinLines[i], profileByName, protection)
+	}
+
 	return wla
+}
+
+// computeWinLineConfidence scores a single WinLine on the [0, 1] interval
+// reflecting how reliably the deck can assemble and resolve it. Weighted
+// sum: 0.45*tutor + 0.30*redundancy + 0.25*protection. See WinLine.Confidence
+// for the contract.
+func computeWinLineConfidence(wl *WinLine, profileByName map[string]CardProfile, protection float64) float64 {
+	if wl == nil {
+		return 0
+	}
+	pieceCount := len(wl.Pieces)
+
+	// Non-combo lines don't model tutor / piece-redundancy in the same
+	// way — pieces are descriptive ("12 threats + 2 pumps") or a single
+	// commander, not card slots a tutor fetches. Use protection alone
+	// plus a neutral 0.5 on the other two axes so these lines land near
+	// the middle of the distribution and the <0.3 / >=0.7 thresholds
+	// don't either uniformly demote or promote them.
+	if wl.Type == "combat" || wl.Type == "commander_damage" {
+		return clamp01(0.45*0.5 + 0.30*0.5 + 0.25*protection)
+	}
+
+	if pieceCount == 0 {
+		return 0
+	}
+
+	// (a) Tutor support — share of pieces with at least one tutor path.
+	covered := map[string]bool{}
+	for _, tp := range wl.TutorPaths {
+		covered[tp.Finds] = true
+	}
+	tutorScore := float64(len(covered)) / float64(pieceCount)
+	if tutorScore > 1 {
+		tutorScore = 1
+	}
+
+	// (b) Piece redundancy — for each piece, how many cards in the deck
+	// share at least one characteristic combo-flag (alternative pieces
+	// that could substitute, like Vito for Sanguine Bond). Saturate at
+	// 2 alternatives per piece.
+	totalRedundancy := 0.0
+	for _, piece := range wl.Pieces {
+		alts := countPieceAlternatives(piece, profileByName)
+		score := float64(alts) / 2.0
+		if score > 1 {
+			score = 1
+		}
+		totalRedundancy += score
+	}
+	redundancyScore := totalRedundancy / float64(pieceCount)
+
+	return clamp01(0.45*tutorScore + 0.30*redundancyScore + 0.25*protection)
+}
+
+// computeWinLineProtectionDensity is a deck-level [0, 1] score: how much defensive
+// coverage (counterspells, hexproof/indestructible grants, blink/flicker as
+// a "save the combo piece" tool) the deck packs. Density saturates at 15%
+// of total cards — at that level the deck is meaningfully protecting its
+// assembly turn.
+func computeWinLineProtectionDensity(report *FreyaReport, profileByName map[string]CardProfile) float64 {
+	if report == nil || report.Roles == nil {
+		return 0
+	}
+	total := report.Roles.TotalCards
+	if total == 0 {
+		return 0
+	}
+	count := report.Roles.RoleCounts[RoleCounterspell] + report.Roles.RoleCounts[RoleProtection]
+	for _, p := range profileByName {
+		if p.IsBlinker {
+			count++
+		}
+	}
+	density := float64(count) / float64(total)
+	score := density / 0.15
+	if score > 1 {
+		score = 1
+	}
+	return score
+}
+
+// countPieceAlternatives returns the count of cards in the deck (excluding
+// the piece itself) that share at least one characteristic combo flag with
+// the named piece. A non-zero result means the deck has functional
+// substitutes — losing the named piece doesn't break the line.
+func countPieceAlternatives(pieceName string, profileByName map[string]CardProfile) int {
+	pp, ok := profileByName[pieceName]
+	if !ok {
+		return 0
+	}
+	alts := 0
+	for n, p := range profileByName {
+		if n == pieceName {
+			continue
+		}
+		if profileFunctionalMatch(pp, p) {
+			alts++
+		}
+	}
+	return alts
+}
+
+// profileFunctionalMatch reports whether two CardProfiles fill the same
+// characteristic combo role — i.e. one could substitute for the other in
+// a win line. Matched on a curated set of combo-piece flags (outlet,
+// wincon, Sanguine/Exquisite drain loops, ETB-damage, mana-payoff, etc.)
+// rather than every CardProfile bool, to avoid false matches on incidental
+// shared properties (e.g. both being creatures).
+func profileFunctionalMatch(a, b CardProfile) bool {
+	switch {
+	case a.IsOutlet && b.IsOutlet:
+		return true
+	case a.IsWinCon && b.IsWinCon:
+		return true
+	case a.LifegainToDrain && b.LifegainToDrain:
+		return true
+	case a.LifelossToPump && b.LifelossToPump:
+		return true
+	case a.CounterToDamage && b.CounterToDamage:
+		return true
+	case a.DamageToCounter && b.DamageToCounter:
+		return true
+	case a.HasDeathDrain && b.HasDeathDrain:
+		return true
+	case a.HasETBDamage && b.HasETBDamage:
+		return true
+	case a.WinsWithEmptyLib && b.WinsWithEmptyLib:
+		return true
+	case a.EmptiesLibrary && b.EmptiesLibrary:
+		return true
+	case a.UntapsAll && b.UntapsAll:
+		return true
+	case a.IsManaPayoff && b.IsManaPayoff:
+		return true
+	case a.MakesInfiniteTokens && b.MakesInfiniteTokens:
+		return true
+	case a.IsBlinker && b.IsBlinker:
+		return true
+	case a.IsExtraCombat && b.IsExtraCombat:
+		return true
+	case a.IsStormFinisher && b.IsStormFinisher:
+		return true
+	case a.IsXBurn && b.IsXBurn:
+		return true
+	}
+	return false
+}
+
+func clamp01(x float64) float64 {
+	if x < 0 {
+		return 0
+	}
+	if x > 1 {
+		return 1
+	}
+	return x
 }
 
 // computeWinLineWeight assigns a tiered numeric quality score to a single
@@ -298,6 +504,98 @@ func ComputeWinLines(report *FreyaReport, qtyProfiles []CardProfileQty, oracle *
 //
 // A 2-card Thoracle line: (10 + 5) * 1.00 + 2 = 17. A 4-card grindy infinite
 // ETB pile with no tutors: round((10 + 2) * 0.70) + 0 = 8. A combat line: 2.
+// classifyWinLineTier assigns an S/A/B/C/D letter grade describing
+// HOW this win line wins. The tier ladder corresponds to assembly
+// difficulty and finality, not raw power:
+//
+//	S = 2-card true-infinite combo. The easiest possible kill —
+//	    once both pieces are on board and untapped, the game
+//	    closes deterministically with no additional setup.
+//	    Examples: Thassa's Oracle + Demonic Consultation
+//	    (library exile win); Heliod, Sun-Crowned + Walking
+//	    Ballista (infinite damage); Isochron Scepter + Dramatic
+//	    Reversal (infinite mana with mana rocks on board);
+//	    Splinter Twin + Pestermite (infinite hasty tokens);
+//	    Kiki-Jiki + Felidar Guardian (infinite hasty tokens).
+//
+//	A = 3+-card true-infinite combo. Requires an additional
+//	    piece (usually a sac outlet, a mana producer, or a
+//	    targeting piece) beyond the 2-card core. Materially
+//	    harder to assemble than S — three cards across three
+//	    zones at the same time. Examples: Worldgorger Dragon +
+//	    Animate Dead + sac outlet; Reveillark + Karmic Guide +
+//	    Viscera Seer; persist creature + Melira + sac outlet.
+//
+//	B = 2-card categorical-win combo — DETERMINED, not
+//	    infinite, but assembling both pieces wins the game.
+//	    Examples: Hellkite Charger + Bear Umbra (infinite
+//	    combats → game over on the next swing); Aggravated
+//	    Assault + Sword of Feast and Famine; any combo in
+//	    twoCardCategoricalWinClasses (InfiniteDamage,
+//	    InfiniteDrain, InfiniteMill, LibraryExileWin,
+//	    CombatFinisher, StormFinisher, InfiniteTokens). Combos
+//	    in this tier are 2-card AND deterministic but route
+//	    through Type=="determined" rather than "infinite"
+//	    because they need a window (combat step, next turn) to
+//	    actually close.
+//
+//	C = N-card value-pile finisher. Multi-piece grindy
+//	    assemblies that DO close the game but need significant
+//	    setup (3+ cards, multiple turns, often a separate
+//	    finisher card). Examples: Aetherflux Reservoir +
+//	    storm package (cast 9 spells in a turn); Bolas's
+//	    Citadel + Sensei's Divining Top + a payoff sink;
+//	    3+-piece determined combos that aren't in the 2-card
+//	    categorical-win class set; single-card "finisher"
+//	    cards like Craterhoof Behemoth or Avenger of Zendikar.
+//
+//	D = incidental finish. The deck's "Plan D" — combat
+//	    damage, commander damage, mass beats, single big
+//	    creature. Doesn't ASSEMBLE a kill; just attacks until
+//	    someone dies. Examples: 21 commander damage from a
+//	    Voltron commander; combat damage from a wide board;
+//	    alt-wincon enchantments without an assembled combo
+//	    line (e.g. Maze's End on its own).
+//
+// Tier S wins on the next priority pass after both pieces are
+// untapped on the battlefield. Tier A typically needs one extra
+// activation. Tier B closes after the next combat step. Tier C
+// needs multiple turns of setup. Tier D needs the longest game
+// runway. The ladder is monotonic — every S deck implicitly has
+// access to its D plan, but the inverse isn't true.
+func classifyWinLineTier(wl *WinLine) string {
+	if wl == nil {
+		return "D"
+	}
+	switch wl.Type {
+	case "infinite":
+		if len(wl.Pieces) <= 2 {
+			return "S"
+		}
+		return "A"
+	case "determined":
+		// 2-card categorical-win combos (Hellkite Charger + Bear
+		// Umbra-class) get B — deterministic kill within one
+		// combat step. 3+-piece determined assemblies fall to C
+		// because they need multi-turn setup even if they
+		// eventually close the same way.
+		if len(wl.Pieces) == 2 && twoCardCategoricalWinClasses[wl.Class] {
+			return "B"
+		}
+		return "C"
+	case "finisher":
+		// Finisher-class win lines are single-card or small-pile
+		// finishers (Craterhoof, Avenger of Zendikar, Approach of
+		// the Second Sun, Aetherflux Reservoir). Conceptually
+		// closer to "Plan C value-pile" than "Plan D incidental"
+		// because they DO end games rather than just chip damage.
+		return "C"
+	case "alt_wincon", "combat", "commander_damage":
+		return "D"
+	}
+	return "D"
+}
+
 func computeWinLineWeight(wl *WinLine) int {
 	if wl == nil {
 		return 0
@@ -919,6 +1217,9 @@ func addComboWinLines(wla *WinLineAnalysis, combos []ComboResult, lineType strin
 			}
 		}
 
+		// Tier MUST be set before buildComboWinLineRationale so the
+		// "Tier X:" prefix lands on the mechanism line.
+		wl.Tier = classifyWinLineTier(&wl)
 		wl.Rationale = buildComboWinLineRationale(&wl)
 		wla.WinLines = append(wla.WinLines, wl)
 	}
@@ -941,6 +1242,16 @@ func buildComboWinLineRationale(wl *WinLine) *WinLineRationale {
 		// are conditions or warnings.
 		mech := strings.TrimSpace(parts[0])
 		if mech != "" {
+			// r60: prepend the tier letter to the mechanism line so
+			// reports show "Tier S: Thassa's Oracle + Demonic
+			// Consultation" instead of just the mechanism. The tier
+			// is the most important at-a-glance signal for a
+			// reader skimming a deck profile — "which tier of
+			// kill does this deck pack?" — and the rationale
+			// Resolves line is the canonical surfacing point.
+			if wl.Tier != "" {
+				mech = fmt.Sprintf("Tier %s: %s", wl.Tier, mech)
+			}
 			r.Resolves = append(r.Resolves, mech)
 		}
 		for _, part := range parts[1:] {
@@ -950,6 +1261,11 @@ func buildComboWinLineRationale(wl *WinLine) *WinLineRationale {
 			}
 			r.Conditions = append(r.Conditions, part)
 		}
+	} else if wl.Tier != "" {
+		// No description but we still want the tier letter so
+		// downstream consumers can pivot on it. Synthesize a
+		// minimal "Tier X: <type>" mechanism line.
+		r.Resolves = append(r.Resolves, fmt.Sprintf("Tier %s: %s win line", wl.Tier, wl.Type))
 	}
 
 	switch wl.Type {
@@ -1014,7 +1330,7 @@ func addNonComboWinLines(wla *WinLineAnalysis, report *FreyaReport, qtyProfiles 
 		}
 
 		if p.IsWinCon && !alreadyInWinLines(wla, p.Name) {
-			wla.WinLines = append(wla.WinLines, WinLine{
+			wl := WinLine{
 				Pieces: []string{p.Name},
 				Type:   "alt_wincon",
 				Desc:   "alternate win condition",
@@ -1023,12 +1339,19 @@ func addNonComboWinLines(wla *WinLineAnalysis, report *FreyaReport, qtyProfiles 
 					Conditions: []string{"Card is in play / castable", "No interaction stops the win-state effect"},
 					Resolves:   []string{altWinconResolves(p.Name, ot)},
 				},
-			})
+			}
+			wl.Tier = classifyWinLineTier(&wl)
+			// Prepend the tier prefix to the first Resolves entry so
+			// the rationale surface matches the combo-line shape.
+			if len(wl.Rationale.Resolves) > 0 {
+				wl.Rationale.Resolves[0] = fmt.Sprintf("Tier %s: %s", wl.Tier, wl.Rationale.Resolves[0])
+			}
+			wla.WinLines = append(wla.WinLines, wl)
 		}
 	}
 
 	if report.Commander != "" {
-		wla.WinLines = append(wla.WinLines, WinLine{
+		wl := WinLine{
 			Pieces: []string{report.Commander},
 			Type:   "commander_damage",
 			Desc:   "21 commander damage",
@@ -1037,7 +1360,12 @@ func addNonComboWinLines(wla *WinLineAnalysis, report *FreyaReport, qtyProfiles 
 				Conditions: []string{"Cast commander from the command zone", "Connect with combat damage repeatedly until target accumulates 21+ commander damage"},
 				Resolves:   []string{"Each opponent loses individually once they reach 21 commander damage from this commander."},
 			},
-		})
+		}
+		wl.Tier = classifyWinLineTier(&wl)
+		if len(wl.Rationale.Resolves) > 0 {
+			wl.Rationale.Resolves[0] = fmt.Sprintf("Tier %s: %s", wl.Tier, wl.Rationale.Resolves[0])
+		}
+		wla.WinLines = append(wla.WinLines, wl)
 	}
 
 	threatCount := 0
@@ -1062,7 +1390,7 @@ func addNonComboWinLines(wla *WinLineAnalysis, report *FreyaReport, qtyProfiles 
 		}
 	}
 	if threatCount >= 10 || pumpCount >= 2 {
-		wla.WinLines = append(wla.WinLines, WinLine{
+		wl := WinLine{
 			Pieces: []string{fmt.Sprintf("%d threats + %d pumps", threatCount, pumpCount)},
 			Type:   "combat",
 			Desc:   "combat damage with creature pressure",
@@ -1077,7 +1405,12 @@ func addNonComboWinLines(wla *WinLineAnalysis, report *FreyaReport, qtyProfiles 
 				},
 				Resolves: []string{"Develop a wide or tall board, alpha-strike with a pump in play, and split combat damage across opponents until they're knocked out."},
 			},
-		})
+		}
+		wl.Tier = classifyWinLineTier(&wl)
+		if len(wl.Rationale.Resolves) > 0 {
+			wl.Rationale.Resolves[0] = fmt.Sprintf("Tier %s: %s", wl.Tier, wl.Rationale.Resolves[0])
+		}
+		wla.WinLines = append(wla.WinLines, wl)
 	}
 }
 

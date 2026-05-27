@@ -2309,7 +2309,7 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 	// Reanimator / Selfmill archetypes the cycle IS the wincon
 	// component, so we add it back; everywhere else it stays
 	// out of the bracket-lifting count.
-	effectiveComboCount := ctx.comboCount
+	effectiveComboCount := weightedComboCount(report, ctx)
 	lcs := len(report.LandCycleSynergies)
 	if lcs > 0 && landCycleSynergyArchetypes[primaryArchetype] {
 		effectiveComboCount += lcs
@@ -2430,8 +2430,12 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 		}
 	}
 
-	// Finisher density — distinct win-condition lines signal tuned optimization.
-	finisherCount := len(report.Finishers)
+	// Finisher density — distinct win-condition lines signal tuned
+	// optimization. WinLine.Confidence < 0.3 lines (no tutor support, no
+	// piece-redundancy, no protection density) are filtered out: a
+	// nominal "finisher" the deck can't actually reach or protect is
+	// not the B4 marker this signal is trying to capture.
+	finisherCount := confidenceFilteredFinisherCount(report)
 	switch {
 	case finisherCount >= 8:
 		addScore("Finisher density", "8+",
@@ -2669,5 +2673,54 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 	rationale.FinalBracket = bracket
 	rationale.FinalLabel = label
 	return bracket, label, rationale
+}
+
+// weightedComboCount returns the effective true-infinite + determined combo
+// count for bracket scoring, applying per-line WinLine.Confidence: lines
+// with Confidence < 0.3 are excluded entirely (deck has no realistic path
+// to assemble them); lines with Confidence >= 0.7 weight 1.5x (deck has
+// tutor support + redundancy + protection to reach them reliably).
+// Falls back to ctx.comboCount when WinLines unavailable.
+func weightedComboCount(report *FreyaReport, ctx *classifyContext) int {
+	if report == nil || report.WinLines == nil || len(report.WinLines.WinLines) == 0 {
+		return ctx.comboCount
+	}
+	weighted := 0.0
+	for _, wl := range report.WinLines.WinLines {
+		if wl.Type != "infinite" && wl.Type != "determined" {
+			continue
+		}
+		if wl.Confidence < 0.3 {
+			continue
+		}
+		if wl.Confidence >= 0.7 {
+			weighted += 1.5
+		} else {
+			weighted += 1.0
+		}
+	}
+	return int(weighted + 0.5)
+}
+
+// confidenceFilteredFinisherCount returns the finisher count for bracket
+// scoring, filtered to exclude WinLine entries with Confidence < 0.3.
+// Falls back to len(report.Finishers) when WinLines unavailable so callers
+// with synthetic FreyaReports (older tests / partial pipelines) keep their
+// original behavior.
+func confidenceFilteredFinisherCount(report *FreyaReport) int {
+	if report == nil || report.WinLines == nil || len(report.WinLines.WinLines) == 0 {
+		return len(report.Finishers)
+	}
+	n := 0
+	for _, wl := range report.WinLines.WinLines {
+		if wl.Type != "finisher" {
+			continue
+		}
+		if wl.Confidence < 0.3 {
+			continue
+		}
+		n++
+	}
+	return n
 }
 
