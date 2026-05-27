@@ -84,6 +84,17 @@ type DeckProfile struct {
 	ProtectedKeyPieces  int     // key pieces with built-in protection
 	UnprotectedKeyPieces int    // key pieces without built-in protection
 
+	// VulnerableComboPieces lists each RoleCombo piece in the deck that
+	// lacks built-in protection (hexproof / shroud / ward / indestructible
+	// / can't-be-countered / phase-out). Combo piece losses are catastrophic
+	// — a single Path / Pongify / Imprisoned in the Moon resets the kill —
+	// where threat losses are recoverable. Surfaced as a per-card callout
+	// (not just the aggregate Unprotected count) so builders see which
+	// specific cards to back up with Lightning Greaves / Heroic Intervention
+	// / Veil of Summer. Sorted CMC-descending (higher CMC = bigger tempo
+	// loss to recast); capped at 8 entries. See computeProtectionDensity.
+	VulnerableComboPieces []VulnerableComboPiece
+
 	// Mana base grading
 	ManaBaseGrade    string // A/B/C/D/F
 	ManaBaseNotes    []string
@@ -496,6 +507,18 @@ func computeInteractionQuality(dp *DeckProfile, report *FreyaReport, oracle *ora
 	}
 }
 
+// VulnerableComboPiece names a single RoleCombo card in the deck that
+// has zero built-in protection — a high-vulnerability slot because a
+// single removal spell resets the combo line. Reason is a short human-
+// readable rationale rendered in the text report.
+type VulnerableComboPiece struct {
+	Name   string
+	CMC    int
+	Reason string
+}
+
+const vulnerableComboPieceCap = 8
+
 func computeProtectionDensity(dp *DeckProfile, report *FreyaReport, oracle *oracleDB) {
 	if report.Roles == nil || oracle == nil {
 		return
@@ -509,12 +532,20 @@ func computeProtectionDensity(dp *DeckProfile, report *FreyaReport, oracle *orac
 		"phase out", "phases out",
 	}
 
+	cmcByName := map[string]int{}
+	for _, p := range report.Profiles {
+		cmcByName[strings.ToLower(p.Name)] = p.CMC
+	}
+
 	for _, a := range report.Roles.Assignments {
 		isKey := false
+		isCombo := false
 		for _, r := range a.Roles {
 			if keyRoles[r] {
 				isKey = true
-				break
+			}
+			if r == RoleCombo {
+				isCombo = true
 			}
 		}
 		if !isKey {
@@ -524,6 +555,13 @@ func computeProtectionDensity(dp *DeckProfile, report *FreyaReport, oracle *orac
 		entry := oracle.lookup(a.Name)
 		if entry == nil {
 			dp.UnprotectedKeyPieces++
+			if isCombo {
+				dp.VulnerableComboPieces = append(dp.VulnerableComboPieces, VulnerableComboPiece{
+					Name:   a.Name,
+					CMC:    cmcByName[strings.ToLower(a.Name)],
+					Reason: "combo piece — no built-in protection (single removal resets the line)",
+				})
+			}
 			continue
 		}
 
@@ -542,9 +580,34 @@ func computeProtectionDensity(dp *DeckProfile, report *FreyaReport, oracle *orac
 
 		if hasProtection {
 			dp.ProtectedKeyPieces++
-		} else {
-			dp.UnprotectedKeyPieces++
+			continue
 		}
+		dp.UnprotectedKeyPieces++
+
+		if !isCombo {
+			continue
+		}
+		cmc := cmcByName[strings.ToLower(a.Name)]
+		if cmc == 0 && entry.CMC > 0 {
+			cmc = int(entry.CMC + 0.5)
+		}
+		dp.VulnerableComboPieces = append(dp.VulnerableComboPieces, VulnerableComboPiece{
+			Name:   a.Name,
+			CMC:    cmc,
+			Reason: "combo piece — no built-in protection (single removal resets the line)",
+		})
+	}
+
+	// Higher CMC first (bigger tempo loss to recast); stable secondary by
+	// name so output is deterministic.
+	sort.SliceStable(dp.VulnerableComboPieces, func(i, j int) bool {
+		if dp.VulnerableComboPieces[i].CMC != dp.VulnerableComboPieces[j].CMC {
+			return dp.VulnerableComboPieces[i].CMC > dp.VulnerableComboPieces[j].CMC
+		}
+		return dp.VulnerableComboPieces[i].Name < dp.VulnerableComboPieces[j].Name
+	})
+	if len(dp.VulnerableComboPieces) > vulnerableComboPieceCap {
+		dp.VulnerableComboPieces = dp.VulnerableComboPieces[:vulnerableComboPieceCap]
 	}
 }
 

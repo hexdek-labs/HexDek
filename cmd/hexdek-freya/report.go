@@ -802,6 +802,13 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		}
 	}
 
+	if len(dp.VulnerableComboPieces) > 0 {
+		fmt.Fprintf(w, "\n  Vulnerable Combo Pieces (no built-in protection — single removal resets the line):\n")
+		for _, v := range dp.VulnerableComboPieces {
+			fmt.Fprintf(w, "    ⚠ [CMC %d] %s — %s\n", v.CMC, v.Name, v.Reason)
+		}
+	}
+
 	if len(dp.MetaMatchups) > 0 {
 		fmt.Fprintf(w, "\n  Meta Positioning:\n")
 		for _, m := range dp.MetaMatchups {
@@ -1342,6 +1349,7 @@ type jsonDeckProfile struct {
 	FetchCount         int               `json:"fetch_count,omitempty"`
 	UtilityLandCount   int               `json:"utility_land_count,omitempty"`
 	VulnerableTo       []string          `json:"vulnerable_to,omitempty"`
+	VulnerableComboPieces []jsonVulnerableComboPiece `json:"vulnerable_combo_pieces,omitempty"`
 	KeepableHandPct         float64       `json:"keepable_hand_pct,omitempty"`
 	AvgTurnToFourMana       float64       `json:"avg_turn_to_four_mana,omitempty"`
 	KeepableHandPctAdjusted float64       `json:"keepable_hand_pct_adjusted,omitempty"`
@@ -1371,6 +1379,12 @@ type jsonDeckProfile struct {
 	PowerPercentile    int               `json:"power_percentile,omitempty"`
 	PowerFactors       []string          `json:"power_factors,omitempty"`
 	CoachingTips       []jsonCoachingTip `json:"coaching_tips,omitempty"`
+}
+
+type jsonVulnerableComboPiece struct {
+	Name   string `json:"name"`
+	CMC    int    `json:"cmc"`
+	Reason string `json:"reason"`
 }
 
 type jsonCoachingTip struct {
@@ -1693,6 +1707,10 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 	for _, t := range dp.CoachingTips {
 		coaching = append(coaching, jsonCoachingTip(t))
 	}
+	var vulnCombo []jsonVulnerableComboPiece
+	for _, v := range dp.VulnerableComboPieces {
+		vulnCombo = append(vulnCombo, jsonVulnerableComboPiece(v))
+	}
 
 	return &jsonDeckProfile{
 		DeckName:           dp.DeckName,
@@ -1729,6 +1747,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		FetchCount:         dp.FetchCount,
 		UtilityLandCount:   dp.UtilityLandCount,
 		VulnerableTo:       dp.VulnerableTo,
+		VulnerableComboPieces: vulnCombo,
 		KeepableHandPct:         dp.KeepableHandPct,
 		AvgTurnToFourMana:       dp.AvgTurnToFourMana,
 		KeepableHandPctAdjusted: dp.KeepableHandPctAdjusted,
