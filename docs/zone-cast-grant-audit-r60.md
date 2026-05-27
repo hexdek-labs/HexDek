@@ -90,6 +90,14 @@ and static permission idioms).
    trigger. Normalised to the canonical `"until_end_of_turn"` value so
    the engine's reaper sees it.
 
+### Follow-up — residual-text SourceTimestamp stamp (1 site)
+
+| Site                                    | Gap                                                      | Fix                                              |
+|-----------------------------------------|----------------------------------------------------------|--------------------------------------------------|
+| `resolve_helpers.go:4823` (resolveResidualByText impulse_play) | `SourceTimestamp` not stamped — only EOT cleanup could reap | Stamp `perm.SourceTimestamp = src.Timestamp` mirroring the structured arm at line 1571 |
+
+Severity: defense-in-depth. The grant still expires via `ExpireZoneCastGrants` at EOT cleanup — but EOT cleanup is skipped on (a) mandatory-loop draw (SBA cap, `sba.go:158-172`), (b) mid-combat game-end before reaching the cleanup step (game-end purge in `CheckEnd` is the safety net but only fires once), and (c) seat elimination mid-priority. Without `SourceTimestamp` the `ExpireSourceGrants` LTB path can't reap on source death pre-EOT. The structured `impulse_play` arm at line 1571 got this stamp in r60 round 2; the residual-text sibling was missed. Regression in `zonecast_residual_source_ltb_r60_test.go`.
+
 ### Out of scope — flagged for future passes
 
 - **Opposition Agent (`tutor_resolve.go:183`)**: oracle reads "you may
