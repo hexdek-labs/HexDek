@@ -1,9 +1,11 @@
 # Thor Goldilocks — R60 Sweep Report
 
-**Date:** 2026-05-25
-**Branch:** `dev/goldilocks-r60-sweep` (built from `origin/main` @ `00bb5bf`)
-**Invocation:** `hexdek-thor -goldilocks --failures-csv /tmp/goldilocks-r60-sweep.csv`
-**Runtime:** 390 ms (effect+keyword), 82,991 cards/s effect phase
+**Latest re-run: 2026-05-26 (still zero)** — third consecutive sterile sweep, absorbing the ~70 additional merges since the May-25 confirmation (precon-vibes R3-R7 wave, PR #530 cycling-loop coalesce, PR #529 bracket-vs-measured refactor, plus all the per_card consumer wiring waves landing this week). Re-ran from a fresh `dev/goldilocks-r60-sweep` branch on `origin/main`; invocation `go run ./cmd/hexdek-thor/ --goldilocks` reports the identical zero shown below — **31,963 tests, 0 fails, 262.4 ms wall time** (~121,794 tests/s). No new failure categories, no changes to the "Top-10 specific card examples per category" section (still N/A), no additions to CLAUDE.md's issue log warranted. The goldilocks-suite chapter is settled at zero.
+
+**Date:** 2026-05-25 (original sweep) / **2026-05-26 (re-run confirmation)**
+**Branch:** `dev/goldilocks-r60-sweep` (built from `origin/main` @ `00bb5bf` on May-25; re-built from current `origin/main` on May-26)
+**Invocation:** `hexdek-thor -goldilocks --failures-csv /tmp/goldilocks-r60-sweep.csv` (May-25) / `go run ./cmd/hexdek-thor/ --goldilocks` (May-26)
+**Runtime:** 390 ms (May-25, effect+keyword, 82,991 cards/s effect phase) / **262.4 ms (May-26, 121,794 tests/s)**
 **Supersedes:** the May 24 baseline previously held in this file (19 invariant
 fails); that baseline is preserved in `goldilocks-r60-post-engine-clean.md`
 and the path to zero is documented in `goldilocks-r60-zero.md`.
@@ -51,11 +53,21 @@ skipped (4,106 vanilla / land / placeholder).
 | R60 baseline (PR #102, prior content of this file) | 2026-05-24 |        19 |           0 |      0 |       0 |    19 |
 | R60 post-engine-clean (PR #218)                    | 2026-05-24 |         1 |           0 |      0 |       0 |     1 |
 | R60 zero-confirm (PR #237)                         | 2026-05-24 |     **0** |       **0** |  **0** |   **0** | **0** |
-| **R60 sweep (this run, post-#443)**                | 2026-05-25 |     **0** |       **0** |  **0** |   **0** | **0** |
+| R60 sweep (post-#443)                              | 2026-05-25 |         0 |           0 |      0 |       0 |     0 |
+| **R60 re-run (this update, post-precon-vibes-R7 + #530 cycling-coalesce)** | 2026-05-26 | **0** | **0** | **0** | **0** | **0** |
 
 **Cumulative delta vs the R36 starting point: 64 → 0 (−100 %).**
 **Delta vs R41: 18 → 0 (−100 %).**
 **Delta vs the R60 baseline previously stored in this file: 19 → 0 (−100 %).**
+
+### Trajectory vs the 2026-05-08 keyword_dead fix
+
+| Date | Goldilocks failures | Δ vs prior | Notes |
+|------|--------------------:|--:|-------|
+| 2026-05-08 (pre-fix) | **1,915** | — | baseline before `makeKeywordGameState` `RetainEvents:true` + combat-scaffold rewrite (CLAUDE.md issue log) |
+| 2026-05-08 (post-fix) | **54** | −1,861 (−97.2%) | keyword_dead specifically 1,795 → 0; 54 long-tail non-keyword paths remained |
+| 2026-05-25 (zero-confirm sweep) | **0** | −54 (−100%) | residual 54 closed via incidental r60 per_card / engine work |
+| **2026-05-26 (this re-run)** | **0** | 0 | three consecutive sterile sweeps; the 1,915 → 0 chapter is settled |
 
 The 24-hour gap between the May 24 zero-confirmation
 (`goldilocks-r60-zero.md`, PR #237) and this sweep absorbed ~30 additional
