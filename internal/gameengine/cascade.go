@@ -150,8 +150,16 @@ func ApplyCascade(gs *GameState, controller int, spellCMC int, spellName string)
 			cascadeItem.Card.Name = fmt.Sprintf("%s (cascade)", found.DisplayName())
 			PushStackItem(gs, cascadeItem)
 
-			// Resolve the cascade spell immediately (it's cast for free,
-			// goes on stack, then resolves).
+			// CR §117.3 / §117.4 — once a spell is on the stack, opponents
+			// receive priority before it resolves. Without this window the
+			// cascaded spell can't be countered (Mindbreak Trap, Counterspell,
+			// Mana Drain, etc.) — a real misplay surface, not just a rules
+			// nicety. PriorityRound polls APNAP and pushes a response on
+			// top if any seat chooses to counter; the guarded ResolveStackTop
+			// below intentionally skips resolution if the stack changed
+			// (a counter is on top instead) so the outer DrainStack can
+			// resolve the response and any chained counterwar.
+			PriorityRound(gs)
 			if len(gs.Stack) > 0 && gs.Stack[len(gs.Stack)-1] == cascadeItem {
 				ResolveStackTop(gs)
 				StateBasedActions(gs)

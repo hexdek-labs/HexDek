@@ -256,7 +256,13 @@ func castOneRippleFree(gs *GameState, casterSeat int, sourceCard, card *Card, n 
 	// CostMeta stamp above is the authoritative marker.)
 	PushStackItem(gs, item)
 
-	// Resolve immediately — same pragmatic shortcut cascade.go takes.
+	// CR §117.3 / §117.4 — opponents receive priority once a spell is
+	// on the stack, BEFORE it resolves. PriorityRound polls APNAP so
+	// counters and instant-speed responses can be cast against the
+	// ripple-cast spell. The guarded ResolveStackTop below intentionally
+	// skips resolution when the stack top changed (a counter is on top)
+	// so the outer DrainStack handles the response.
+	PriorityRound(gs)
 	if len(gs.Stack) > 0 && gs.Stack[len(gs.Stack)-1] == item {
 		ResolveStackTop(gs)
 		StateBasedActions(gs)
