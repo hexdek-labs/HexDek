@@ -331,6 +331,27 @@ type TournamentDeck struct {
 	CommanderCards []*gameengine.Card
 	Library        []*gameengine.Card
 	Unresolved     []string // names that weren't in the MetaDB; dropped
+	// CardLines preserves the per-line view of the deck source: one entry
+	// per source line (with quantity, cleaned name, optional inline `//`
+	// comment, and the section the line was parsed under). Library is
+	// flattened across copies and loses the line annotations; CardLines
+	// is what UI / build-coaching layers consume when they need to
+	// preserve a deckbuilder's intent notes ("// mvp", "// flex slot —
+	// swap for Cyclonic Rift if available"). Order matches source-line
+	// order; commander / partner lines are included with Section set
+	// accordingly. Unresolved lines DO appear here so the UI can still
+	// surface the deckbuilder's note next to the missing card.
+	CardLines []CardLine
+}
+
+// CardLine is the per-source-line view of a parsed deck. Section is one
+// of "main", "commander". Comment is everything after a `//` token on
+// the same line (TrimSpace'd, empty if no inline comment).
+type CardLine struct {
+	Qty     int
+	Name    string
+	Comment string
+	Section string
 }
 
 // CommanderNames returns the display names of every commander in the
@@ -388,8 +409,10 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 	td := &TournamentDeck{}
 
 	type lineEntry struct {
-		qty  int
-		name string
+		qty     int
+		name    string
+		comment string
+		section string
 	}
 	var explicitCommander string
 	var explicitPartner string
@@ -471,6 +494,15 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		if mtgoMetadataRE.MatchString(raw) {
 			continue
 		}
+		// Strip inline `// comment` and capture it for CardLine.Comment.
+		// Runs before the paren strip so a Moxfield-style line with both
+		// a `(SET) 123` tail and a `// comment` (rare but possible)
+		// peels in the right order: comment first, then printing tail.
+		var inlineComment string
+		if cm := inlineCommentRE.FindStringSubmatchIndex(raw); cm != nil {
+			inlineComment = strings.TrimSpace(raw[cm[2]:cm[3]])
+			raw = strings.TrimSpace(raw[:cm[0]])
+		}
 		// Strip "(SET) 123" suffix (set code + collector number + foil flag).
 		if idx := strings.Index(raw, "("); idx > 0 {
 			raw = strings.TrimSpace(raw[:idx])
@@ -499,9 +531,15 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			for i := 0; i < qty; i++ {
 				commanderSectionNames = append(commanderSectionNames, name)
 			}
+			td.CardLines = append(td.CardLines, CardLine{
+				Qty: qty, Name: name, Comment: inlineComment, Section: "commander",
+			})
 			continue
 		}
-		lines = append(lines, lineEntry{qty, name})
+		lines = append(lines, lineEntry{qty: qty, name: name, comment: inlineComment, section: "main"})
+		td.CardLines = append(td.CardLines, CardLine{
+			Qty: qty, Name: name, Comment: inlineComment, Section: "main",
+		})
 	}
 	if err := sc.Err(); err != nil {
 		return nil, fmt.Errorf("deckparser: scan: %w", err)
@@ -803,6 +841,16 @@ var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companio
 // AFTER COMMANDER: / PARTNER: / SB: directives (which match earlier and
 // short-circuit) so it doesn't shadow them.
 var mtgoMetadataRE = regexp.MustCompile(`(?i)^\s*(deck\s*name|created\s*by|format|layout|author|description|tags?|source|owner|notes?)\s*:\s*\S`)
+
+// inlineCommentRE splits a card line on the first `//` token (preceded
+// by whitespace), capturing whatever follows as the line's inline
+// comment. Deckbuilders use this for intent notes: `1 Sol Ring // mvp`,
+// `1 Cyclonic Rift // wincon — never cut`. Pre-fix, every such line
+// landed in Unresolved because cleanCardName had no handler for the
+// `//` token and `Sol Ring // mvp` doesn't match the meta. Whole-line
+// `//` comments (line starting with `//`) are still dropped earlier in
+// the loop — this only catches the inline form.
+var inlineCommentRE = regexp.MustCompile(`\s+//\s*(.*)$`)
 
 // sbPrefixRE matches MTGA / Aetherhub sideboard line prefix: `SB: 1 Card`.
 // Pre-fix, every `SB:` line dropped into the fallback "qty=1, name=<raw>"
