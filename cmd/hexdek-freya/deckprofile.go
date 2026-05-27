@@ -1124,6 +1124,47 @@ var defaultWeights = map[string]*jsonEvalWeights{
 		LifeResource: 0.6, ComboProximity: 0.3, ThreatExposure: 0.5,
 		CommanderProgress: 0.8, GraveyardValue: 0.2,
 	},
+
+	// r60: Pillowfort — defensive deck that deters attacks via tax
+	// effects (Ghostly Prison, Propaganda, Sphere of Safety),
+	// prevention (Story Circle, Aegis of the Gods), and punishment
+	// triggers (No Mercy, Solitary Confinement), then wins slowly via
+	// inevitability rather than board pressure. Classified by the
+	// archetypes.go fingerprint at line 234 (`Pillowfort`) since the
+	// R60 archetype sweep but had no eval-weight entry — fell back to
+	// midrange, which over-weighted BoardPresence (pillowfort
+	// DELIBERATELY underdevelops to avoid painting a target) and
+	// under-weighted LifeResource + ThreatExposure (the entire plan
+	// is "survive the next turn cycle, grind out inevitability"). The
+	// asymmetry is the same magnitude as the Voltron-vs-midrange
+	// divergence (CommanderProgress 2.0 vs 0.7); without it the hat
+	// mis-plays pillowfort decks as if they were midrange, casting
+	// into pressure they should sandbag and ignoring tax-stack
+	// maintenance they should prioritize.
+	//
+	//   - BoardPresence 0.4: don't develop threats that paint a
+	//     target (vs midrange 1.0). Defensive permanents enter as
+	//     non-creature tax stack.
+	//   - CardAdvantage 1.3: grind value over time; outlast the
+	//     fastest opponent (vs midrange 1.0).
+	//   - ManaAdvantage 0.7: moderate; pillowfort needs mana for big
+	//     control plays but isn't ramp-focused (vs midrange 0.8).
+	//   - LifeResource 1.4: SURVIVAL is the plan. Much higher than
+	//     midrange 0.7 — pillowfort decks track life like a clock.
+	//   - ComboProximity 0.3: usually not a combo deck (vs midrange
+	//     0.5). Pillowfort wincon is incremental, not assembly.
+	//   - ThreatExposure 1.5: HIGH threat awareness. Pillowfort gets
+	//     killed by under-respected board states it can't break
+	//     parity with (vs midrange 0.8).
+	//   - CommanderProgress 0.4: usually passive commander (Sram,
+	//     Ghen, Norn-style). Don't tunnel-vision commander damage
+	//     (vs midrange 0.7).
+	//   - GraveyardValue 0.4: not graveyard-focused (vs midrange 0.5).
+	"pillowfort": {
+		BoardPresence: 0.4, CardAdvantage: 1.3, ManaAdvantage: 0.7,
+		LifeResource: 1.4, ComboProximity: 0.3, ThreatExposure: 1.5,
+		CommanderProgress: 0.4, GraveyardValue: 0.4,
+	},
 }
 
 type jsonEvalWeights struct {
