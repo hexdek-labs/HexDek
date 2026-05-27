@@ -1164,12 +1164,31 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 		dp.SynergyClusters = append(dp.SynergyClusters, *cluster)
 	}
 
-	// Sort by score descending
+	finalizeClusters(dp)
+}
+
+// finalizeClusters prunes sub-MinimumClusterMembers entries, stamps the
+// HighDensity flag on clusters at HighDensityClusterFloor (5) or larger,
+// then sorts by score desc and caps at 5. Extracted from
+// computeSynergyClusters so tests can exercise the prune + flag pass in
+// isolation without rebuilding the full theme-tagging pipeline.
+func finalizeClusters(dp *DeckProfile) {
+	pruned := dp.SynergyClusters[:0]
+	for _, sc := range dp.SynergyClusters {
+		if sc.MemberCount < MinimumClusterMembers {
+			continue
+		}
+		if sc.MemberCount >= HighDensityClusterFloor {
+			sc.HighDensity = true
+		}
+		pruned = append(pruned, sc)
+	}
+	dp.SynergyClusters = pruned
+
 	sort.Slice(dp.SynergyClusters, func(i, j int) bool {
 		return dp.SynergyClusters[i].Score > dp.SynergyClusters[j].Score
 	})
 
-	// Cap at 5 clusters
 	if len(dp.SynergyClusters) > 5 {
 		dp.SynergyClusters = dp.SynergyClusters[:5]
 	}

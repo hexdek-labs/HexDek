@@ -57,6 +57,7 @@ type ClusterEntry struct {
 	Name             string                `json:"name"`      // display ("Token Engine")
 	MemberCount      int                   `json:"member_count"`
 	Score            int                   `json:"score"`
+	HighDensity      bool                  `json:"high_density"`       // MemberCount >= HighDensityClusterFloor (5)
 	HasRoleDichotomy bool                  `json:"has_role_dichotomy"` // false for landfall/spellcast/lifegain
 	ChainComplete    bool                  `json:"chain_complete"`     // ≥1 P→A→Pf triangle present
 	ScoreBreakdown   ClusterScoreBreakdown `json:"score_breakdown"`
@@ -172,6 +173,7 @@ func buildClusterEntry(sc SynergyCluster, profileByName map[string]CardProfile) 
 		Name:             sc.Name,
 		MemberCount:      sc.MemberCount,
 		Score:            sc.Score,
+		HighDensity:      sc.HighDensity,
 		HasRoleDichotomy: hasDichotomy,
 		ChainComplete:    chainComplete,
 		ScoreBreakdown:   bd,
