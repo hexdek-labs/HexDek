@@ -24,6 +24,17 @@ const (
 	// hand reanimation). These aren't hard tutors but functionally feed
 	// combo lines, so they deserve a separate tag from RoleTutor.
 	RolePseudoTutor  RoleTag = "PseudoTutor"
+	// RoleSuspendFinisher — cards whose entire identity is "suspend N,
+	// then resolve a board-defining game-swing effect". Living End,
+	// Restore Balance, Hypergenesis (suspend-only printing variants),
+	// Wildfire / Burning of Xinye-style suspend sweepers. Distinct from
+	// the pseudo-tutor flag (which the suspend card ALSO gets, since
+	// the suspend timer functionally tutors the future cast), because
+	// the strategic identity of a suspend-finisher is "the deck is
+	// built around this resolving" — archetype classifiers and the buy-
+	// guide want a separate signal from "Lotus Bloom = pseudo-tutor for
+	// 3 mana on turn 4".
+	RoleSuspendFinisher RoleTag = "SuspendFinisher"
 	RoleThreat       RoleTag = "Threat"
 	RoleCombo        RoleTag = "Combo"
 	RoleProtection   RoleTag = "Protection"
@@ -35,7 +46,7 @@ const (
 
 var AllRoles = []RoleTag{
 	RoleRamp, RoleDraw, RoleRemoval, RoleBoardWipe, RoleCounterspell,
-	RoleTutor, RolePseudoTutor, RoleThreat, RoleCombo, RoleProtection, RoleStax,
+	RoleTutor, RolePseudoTutor, RoleSuspendFinisher, RoleThreat, RoleCombo, RoleProtection, RoleStax,
 	RoleRecursion, RoleUtility, RoleLand,
 }
 
@@ -74,29 +85,34 @@ var defaultTemplate = archetypeTemplate{
 var rolePriority = map[RoleTag]int{
 	RoleCombo:        0,
 	RoleStax:         1,
-	RoleThreat:       2,
-	RoleBoardWipe:    3,
-	RoleCounterspell: 4,
-	RoleTutor:        5,
+	// SuspendFinisher renders above Threat / BoardWipe because a Living
+	// End / Restore Balance card IS the deck's wincon — the suspend-
+	// finisher framing communicates strategic identity better than the
+	// "boardwipe" or "threat" labels would on their own.
+	RoleSuspendFinisher: 2,
+	RoleThreat:       3,
+	RoleBoardWipe:    4,
+	RoleCounterspell: 5,
+	RoleTutor:        6,
 	// PseudoTutor sits just below Tutor in the priority order — when a
 	// card has both (transmute, modal "search library OR cascade"), Tutor
 	// is the stronger characterization and should render first. Pseudo-
 	// tutor still outranks Removal because the consistency engine angle
 	// is the strategically important thing to surface.
-	RolePseudoTutor:  6,
-	RoleRemoval:      7,
+	RolePseudoTutor:  7,
+	RoleRemoval:      8,
 	// Recursion sits between Removal and Protection — it's an
 	// engine/value slot that often pairs with Threat (Sun Titan,
 	// Karmic Guide, Reveillark) or stands alone (Eternal Witness,
 	// Reanimate). Renders before Protection / Draw / Ramp so
 	// multi-role recursion-creatures lead with the role that
 	// explains their strategic purpose.
-	RoleRecursion:    8,
-	RoleProtection:   9,
-	RoleDraw:         10,
-	RoleRamp:         11,
-	RoleUtility:      12,
-	RoleLand:         13,
+	RoleRecursion:    9,
+	RoleProtection:   10,
+	RoleDraw:         11,
+	RoleRamp:         12,
+	RoleUtility:      13,
+	RoleLand:         14,
 }
 
 func TagCardRole(name, oracleText, typeLine, manaCost string, cmc int, profile CardProfile) []RoleTag {
@@ -136,6 +152,10 @@ func TagCardRole(name, oracleText, typeLine, manaCost string, cmc int, profile C
 
 	if isPseudoTutor(oracleText) {
 		roles = append(roles, RolePseudoTutor)
+	}
+
+	if isSuspendFinisher(oracleText) {
+		roles = append(roles, RoleSuspendFinisher)
 	}
 
 	if isThreat(profile, ot, tl, cmc) {
@@ -424,6 +444,16 @@ func isProtection(ot, tl string) bool {
 //     {cost}: Return from graveyard with haste, exile at EOT. Treats
 //     graveyard as an extension of hand for combo-piece access; loops
 //     with Sun Titan / Reanimate / Loam-style recursion.
+//   - Suspend (Lotus Bloom, Search for Tomorrow, Ancestral Vision,
+//     Wheel of Fate): "Suspend N—{cost}" lets you exile the card from
+//     hand for a reduced cost and cast it for free after N upkeeps.
+//     Functionally tutors a future cast of the SAME card on a known
+//     turn — Lotus Bloom on turn 1 is "tutored" mana on turn 4,
+//     Search for Tomorrow on turn 1 is a "tutored" land drop on turn 3.
+//     The Living End / Restore Balance family ALSO trips
+//     isSuspendFinisher (RoleSuspendFinisher); the pseudo-tutor flag
+//     here captures the "the suspend timer is the consistency engine"
+//     angle separately.
 //
 // Detection runs against the raw (case-insensitive, reminder-stripped)
 // oracle text on a per-line basis. The granted-keyword case (Yidris
@@ -452,7 +482,8 @@ func isPseudoTutor(rawOracleText string) bool {
 		if containsAny(line,
 			"has cascade", "have cascade", "with cascade", "gain cascade", "gains cascade",
 			"has transmute", "have transmute", "with transmute",
-			"has unearth", "have unearth", "with unearth", "gain unearth", "gains unearth") {
+			"has unearth", "have unearth", "with unearth", "gain unearth", "gains unearth",
+			"has suspend", "have suspend", "with suspend", "gain suspend", "gains suspend") {
 			continue
 		}
 		// Cascade — bare keyword, no cost ("cascade" or "cascade, cascade"
@@ -477,6 +508,82 @@ func isPseudoTutor(rawOracleText string) bool {
 		if strings.HasPrefix(line, "companion —") || strings.HasPrefix(line, "companion of ") {
 			return true
 		}
+		// Suspend keyword: "suspend N—{cost}". Scryfall uses an em-dash
+		// between the count and the cost; the cost always starts with
+		// '{'. Anchoring at "suspend " plus the digit + dash pattern
+		// rejects prose mentions ("...exile it as if it had suspend").
+		if strings.HasPrefix(line, "suspend ") && strings.Contains(line, "—{") {
+			return true
+		}
+	}
+	return false
+}
+
+// isSuspendFinisher reports whether the card pairs the Suspend keyword with
+// a game-swinging body — the Living End / Restore Balance / Hypergenesis
+// archetype, where the deck's entire identity is "suspend this on turn 1,
+// untap into a free wincon on turn N". Distinct from RolePseudoTutor
+// (which the same card ALSO gets, since the suspend timer is itself a
+// tutor for the future cast), because the finisher framing is what the
+// archetype classifier and buy-guide need to surface as the deck's
+// strategic anchor.
+//
+// Criteria: oracle has the suspend keyword AND the body includes one of
+// the canonical "mass effect" markers:
+//
+//   - "all creature cards from all graveyards" (Living End mass reanimate)
+//   - "exile all creatures" / "destroy all creatures" / "destroy all
+//     permanents" / "exile all permanents" (mass removal)
+//   - "sacrifices the rest" (Restore Balance pattern — equalizing sac)
+//   - "each player sacrifices" + creatures/lands (Wildfire-style)
+//   - "puts all creature cards from their graveyard onto the battlefield"
+//     (Living End secondary phrasing)
+//   - "deals X damage to each" (mass burn / sweep — Hypergenesis-adjacent
+//     suspend wincons like Lava Burst variants would trip this)
+//
+// Vanilla suspend value cards (Lotus Bloom — adds mana; Search for
+// Tomorrow — fetches a single land; Wheel of Fate — discard+draw 7;
+// Ancestral Vision — draw 3) do NOT match because their body is a
+// targeted value effect, not a board-defining swing.
+func isSuspendFinisher(rawOracleText string) bool {
+	if rawOracleText == "" {
+		return false
+	}
+	clean := strings.ToLower(rawOracleText)
+	hasSuspend := false
+	for _, line := range strings.Split(clean, "\n") {
+		line = strings.TrimSpace(line)
+		// Skip granted-suspend prose so an artifact granting suspend to
+		// other cards doesn't auto-promote a non-finisher body.
+		if containsAny(line,
+			"has suspend", "have suspend", "with suspend", "gain suspend", "gains suspend") {
+			continue
+		}
+		if strings.HasPrefix(line, "suspend ") && strings.Contains(line, "—{") {
+			hasSuspend = true
+			break
+		}
+	}
+	if !hasSuspend {
+		return false
+	}
+	// Body-side mass-effect markers. Tested against the full lowercased
+	// text (not per-line) because the relevant clause can span lines or
+	// follow the suspend declaration on a separate paragraph.
+	if containsAny(clean,
+		"all creature cards from all graveyards",
+		"all creature cards from their graveyard",
+		"exile all creatures",
+		"exile all permanents",
+		"exile all nonland",
+		"destroy all creatures",
+		"destroy all permanents",
+		"destroy all nonland",
+		"sacrifices the rest",
+		"deals damage to each creature",
+		"deals damage to each player",
+		"deals damage to each opponent") {
+		return true
 	}
 	return false
 }
