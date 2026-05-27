@@ -795,6 +795,13 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		}
 	}
 
+	if len(dp.CurveArchetypeWarnings) > 0 {
+		fmt.Fprintf(w, "\n  Curve vs. Archetype:\n")
+		for _, s := range dp.CurveArchetypeWarnings {
+			fmt.Fprintf(w, "    ⚠ %s\n", s)
+		}
+	}
+
 	if len(dp.VulnerableTo) > 0 {
 		fmt.Fprintf(w, "\n  Vulnerable To:\n")
 		for _, v := range dp.VulnerableTo {
@@ -1378,7 +1385,8 @@ type jsonDeckProfile struct {
 	CardPowerLevels    []jsonCardPowerLevel `json:"card_power_levels,omitempty"`
 	PowerTierCounts    map[string]int       `json:"power_tier_counts,omitempty"`
 	PetCards           []jsonPetCard        `json:"pet_cards,omitempty"`
-	LandSwapSuggestions []string         `json:"land_swap_suggestions,omitempty"`
+	LandSwapSuggestions    []string      `json:"land_swap_suggestions,omitempty"`
+	CurveArchetypeWarnings []string      `json:"curve_archetype_warnings,omitempty"`
 	CommanderSynergy   float64           `json:"commander_synergy,omitempty"`
 	CommanderThemes    []string          `json:"commander_themes,omitempty"`
 	InteractionQuality float64           `json:"interaction_quality,omitempty"`
@@ -1774,7 +1782,8 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		CardPowerLevels:     powerLevels,
 		PowerTierCounts:     dp.PowerTierCounts,
 		PetCards:            petCards,
-		LandSwapSuggestions: dp.LandSwapSuggestions,
+		LandSwapSuggestions:    dp.LandSwapSuggestions,
+		CurveArchetypeWarnings: dp.CurveArchetypeWarnings,
 		CommanderSynergy:   dp.CommanderSynergy,
 		CommanderThemes:    dp.CommanderThemes,
 		InteractionQuality: dp.InteractionQuality,
