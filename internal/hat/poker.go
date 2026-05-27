@@ -1901,6 +1901,20 @@ func boardPower(gs *gameengine.GameState, seat *gameengine.Seat) int {
 //   - Planeswalkers are unaffected by the discount — loyalty is a
 //     persistent threat clock, not a per-turn availability question.
 //
+// r60 sweep — evasion multiplier (see evasionMultiplier): per-creature
+// power is amplified when the body has evasion keywords. A 3/3 with
+// flying isn't equivalent to a vanilla 3/3 in a pod where most ground
+// boards have multiple chump blockers — the flyer connects, the vanilla
+// trades. Applied AFTER the tap/sick discount so a tapped flyer still
+// gets the 0.7x defensive penalty (its evasion doesn't help on defense)
+// but the residual value reflects "this thing will connect when it
+// untaps". The multiplier is per-creature LOCAL — it deliberately does
+// not check opponent reach/flying density. Pricing in the matchup-
+// specific block coverage would need a per-defender scan inside what is
+// supposed to be a fast scoring helper; the local heuristic captures
+// the dominant signal (flying is good in MOST matchups; reach is rare
+// outside green) without quadratic cost.
+//
 // Returns rounded-half-up integer to match boardPower's int signature.
 //
 // Rationale: pre-r60 scoreBoard treated 4 tapped 3/3s = 4 untapped 3/3s
@@ -1927,6 +1941,7 @@ func effectiveBoardPower(gs *gameengine.GameState, seat *gameengine.Seat) int {
 				if p.SummoningSick && !p.HasKeyword("haste") {
 					weight *= 0.8
 				}
+				weight *= evasionMultiplier(p, pw)
 				total += float64(pw) * weight
 			}
 		}
@@ -1943,6 +1958,55 @@ func effectiveBoardPower(gs *gameengine.GameState, seat *gameengine.Seat) int {
 	}
 	// Round-half-up to int so the public surface matches boardPower.
 	return int(total + 0.5)
+}
+
+// evasionMultiplier returns a 1.00..1.30 amplifier applied to a
+// creature's power in effectiveBoardPower. Captures the "this body
+// will actually connect" component of board presence that raw power
+// misses — a flying 3/3 reads as 3 raw power but reliably delivers
+// damage in pods full of ground bodies; a vanilla 3/3 mostly trades.
+//
+// Two tiers stack additively (capped at +0.30 total):
+//
+//   - Hard evasion (+0.20): flying, unblockable, shadow, horsemanship.
+//     These bypass the typical defender pool entirely (flying defended
+//     only by flying/reach; the other three have no general blocker
+//     coverage outside specific matchups).
+//   - Soft evasion (+0.10): menace, fear, intimidate, skulk. Reduce
+//     the defender pool without fully bypassing it (menace requires
+//     two blockers; skulk gates on power; fear/intimidate gate on
+//     color).
+//   - Trample (+0.10) ONLY when power >= 4. Trample on a 1/1 leaks 0-1
+//     damage past a 1/1 chump; trample on a 4-power swing reliably
+//     delivers chip damage even into gang blocks. The 4-power floor
+//     prevents Llanowar-Elves-with-trample from getting the bonus.
+//
+// Hard + soft don't usually co-occur on the same body (flying excludes
+// menace's "blocked-by-two" rule from mattering in most contexts), but
+// flying + trample does — Skyshroud Elf, Stormtide Leviathan-type
+// designs. The +0.30 cap is the matters-most ceiling.
+//
+// Per-creature local — does NOT scan opponent reach/flying density.
+// See effectiveBoardPower doc for why.
+func evasionMultiplier(p *gameengine.Permanent, pw int) float64 {
+	if p == nil {
+		return 1.0
+	}
+	bonus := 0.0
+	if p.HasKeyword("flying") || p.HasKeyword("unblockable") ||
+		p.HasKeyword("shadow") || p.HasKeyword("horsemanship") {
+		bonus += 0.20
+	} else if p.HasKeyword("menace") || p.HasKeyword("fear") ||
+		p.HasKeyword("intimidate") || p.HasKeyword("skulk") {
+		bonus += 0.10
+	}
+	if p.HasKeyword("trample") && pw >= 4 {
+		bonus += 0.10
+	}
+	if bonus > 0.30 {
+		bonus = 0.30
+	}
+	return 1.0 + bonus
 }
 
 // liveCreatureCount returns the number of creatures on the seat's
