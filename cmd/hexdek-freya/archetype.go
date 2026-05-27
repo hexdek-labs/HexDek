@@ -1569,7 +1569,7 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 			bracket = 2
 			label = "Core"
 			addAdjustment("GC=0 ceiling", "ceiling",
-				fmt.Sprintf("capped at B2: no Game Changers and no true-infinite combo (was B%d on raw score)", preCeilingBracket))
+				fmt.Sprintf("held at Bracket 2 — this deck has no Game Changers and no game-winning infinite combo, so it can't sit at Bracket 3 or higher even though smaller signals added up to a raw score of B%d. Adding a Game Changer or a real 2-card combo would unlock the higher bracket.", preCeilingBracket))
 		}
 	} else if ctx.gameChangerCount <= 3 {
 		// Light GC presence: B3 cap by default; lifts to B4 when a real
@@ -1639,7 +1639,7 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 		bracket = 4
 		label = "Optimized"
 		addAdjustment("Tuned-redundancy floor", "floor",
-			fmt.Sprintf("lifted to B4: %d finishers + %d fast-mana pieces (was B%d)",
+			fmt.Sprintf("lifted to Bracket 4 — %d different ways to close the game backed by %d cheap mana producers (CMC 2 or less) means this deck reliably draws both a finisher and the mana to cast it on the same turn. That \"finisher + mana on curve\" reliability is what makes a deck play at Bracket 4, even without a single standout card (raw score was B%d before this floor).",
 				finisherCount, ctx.fastManaCount, preFloorBracket))
 	}
 

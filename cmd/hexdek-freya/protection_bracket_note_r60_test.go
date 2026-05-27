@@ -47,8 +47,8 @@ func TestAppendVulnerabilityBracketNote_B4WithVulnerableComboFires(t *testing.T)
 	if note.Kind != "note" {
 		t.Errorf("Kind = %q, want %q (must NOT be ceiling/floor/gate — gentle note only)", note.Kind, "note")
 	}
-	if !strings.Contains(note.Note, "B3") {
-		t.Errorf("note should reference felt power closer to B3, got: %q", note.Note)
+	if !strings.Contains(note.Note, "Bracket 3") {
+		t.Errorf("note should reference plays-closer-to-Bracket-3 intent, got: %q", note.Note)
 	}
 	if !strings.Contains(note.Note, "Thassa's Oracle") {
 		t.Errorf("note should name the vulnerable piece, got: %q", note.Note)

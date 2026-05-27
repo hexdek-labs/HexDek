@@ -679,7 +679,7 @@ func appendVulnerabilityBracketNote(dp *DeckProfile) {
 		evidenceStr += fmt.Sprintf(", +%d more", len(dp.VulnerableComboPieces)-len(evidence))
 	}
 	note := fmt.Sprintf(
-		"%d combo %s %s built-in protection (%s) — felt power closer to B3 (single Path / Pongify / Imprisoned in the Moon resets the line). Bracket call unchanged; informational only.",
+		"%d combo %s %s built-in protection (%s) — a single common removal spell can shut the win down, so at the table this deck plays closer to Bracket 3 than its Bracket-4+ label suggests. Adding protection (Lightning Greaves, Heroic Intervention, Veil of Summer) would let the deck reliably reach its full bracket power. The bracket call itself is unchanged; this is a heads-up, not a downgrade.",
 		len(dp.VulnerableComboPieces), piece, verb, evidenceStr,
 	)
 	dp.BracketRationale.Signals = append(dp.BracketRationale.Signals, BracketSignal{
