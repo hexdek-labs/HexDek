@@ -551,6 +551,72 @@ func commanderInCommandZone(seat *gameengine.Seat) bool {
 	return false
 }
 
+// minCommanderCMC returns the lowest CMC across the seat's commanders
+// currently in the command zone. Returns 0 when no commanders are
+// accessible (free-form games, edge tests) so callers can short-circuit
+// the commander-castability check rather than mistreat 0 as a "free
+// commander". For partner decks (multiple commanders) returns the
+// cheaper one — you can cast either to start executing the deck's plan.
+func minCommanderCMC(seat *gameengine.Seat) int {
+	if seat == nil {
+		return 0
+	}
+	minCMC := 0
+	for _, c := range seat.CommandZone {
+		if c == nil {
+			continue
+		}
+		cmc := gameengine.ManaCostOf(c)
+		if cmc <= 0 {
+			continue
+		}
+		if minCMC == 0 || cmc < minCMC {
+			minCMC = cmc
+		}
+	}
+	return minCMC
+}
+
+// projectedManaAtTurn estimates the mana available to cast a single
+// spell at the given turn given an opening hand's land and ramp count.
+// Heuristic — NOT a Monte Carlo simulator. Two components:
+//
+//  1. Land drops: min(turn, landsInHand + (turn-1) * 0.4) — we play one
+//     land per turn (capped at one drop) and draw ~0.4 lands per draw
+//     step (typical Commander deck runs 36-38 lands / 99 ≈ 38% land
+//     density). The cap prevents an opener with 6 lands from reading
+//     as 6 mana on turn 4 — you can only play one a turn.
+//  2. Ramp acceleration: each ramp piece adds ~1 net mana per turn
+//     once active. Typical ramp pieces (Signet, Talisman, Llanowar
+//     Elves, Sol Ring) cost 1-2 and produce 1 starting the turn after
+//     they ETB. Cast turn 2 at the earliest given typical cost, then
+//     productive turn 3 onward — so the bonus only applies when
+//     turn >= 3. Capped at 2 ramp pieces — beyond that you'd run out
+//     of curve windows to cast them all before turn 4.
+//
+// Returns a float so the caller can compare against integer commander
+// CMC with the implicit half-mana margin of error baked in (e.g.
+// projected 5.2 vs CMC 5 reads as castable; 4.8 vs CMC 5 reads as not).
+func projectedManaAtTurn(landsInHand, rampInHand, turn int) float64 {
+	if turn <= 0 {
+		return 0
+	}
+	draws := float64(turn - 1)
+	landsByT := float64(landsInHand) + draws*0.4
+	if landsByT > float64(turn) {
+		landsByT = float64(turn)
+	}
+	rampBonus := 0.0
+	if turn >= 3 {
+		r := rampInHand
+		if r > 2 {
+			r = 2
+		}
+		rampBonus = float64(r)
+	}
+	return landsByT + rampBonus
+}
+
 // sharesCreatureSubtype returns true when commander and other share at
 // least one creature subtype (case-insensitive), using Types as the
 // canonical subtype container per this engine's convention. The base
@@ -3590,6 +3656,29 @@ func (h *YggdrasilHat) ChooseMulligan(gs *gameengine.GameState, seatIdx int, han
 			if minEnablers == 0 && len(hand) >= 7 {
 				// But only mulligan if we also lack star cards / combo pieces.
 				if starCount == 0 && comboCount == 0 {
+					return true
+				}
+			}
+		}
+	}
+
+	// Commander-castability check: the deck's primary plan is usually
+	// "land the commander, then execute its text" — a hand that can't
+	// reach commander CMC by turn 4 throws that plan away unless there's
+	// an alternate engine to fall back on. Only fires on 7-card hands
+	// (partial mulls accept thinner plans) and only when no engine
+	// (star / VE / combo) provides a non-commander game plan. Without
+	// engine backup, a hand stuck on a 6-CMC commander it can't cast
+	// until turn 6+ gets run over by curve-based opponents before the
+	// commander ever hits the board. For partner decks the check uses
+	// the cheaper commander — you can cast either to start executing.
+	// See projectedManaAtTurn for the land+ramp model.
+	if len(hand) >= 7 && gs != nil {
+		if cmdrCMC := minCommanderCMC(gs.Seats[seatIdx]); cmdrCMC > 0 {
+			projected := projectedManaAtTurn(landCount, rampCount, 4)
+			if projected < float64(cmdrCMC) {
+				hasEngine := starCount >= 1 || veCount >= 1 || comboCount >= 1
+				if !hasEngine {
 					return true
 				}
 			}
