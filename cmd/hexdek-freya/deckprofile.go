@@ -187,6 +187,17 @@ type DeckProfile struct {
 	CuttableCards []CardQuality
 	SolidCards    []CardQuality
 	StarCards     []CardQuality
+	// FlexSlots (R60) is the fourth tier between Solid and Cuttable —
+	// cards that are functional (have a tagged role, aren't bleeding
+	// mana cost), but generic enough that the slot is wiggle-room for
+	// meta-specific tech (graveyard hate when GY decks rise, PW hate
+	// when Superfriends rises, etc). Detected by: single generic
+	// utility role (Removal / Draw / Ramp / Protection / Utility), NOT
+	// part of any win line or value chain, low-to-mid score. Disjoint
+	// from SolidCards — a card matching the flex criteria is removed
+	// from solid and listed here instead so builders see the
+	// upgrade-vs-meta-swap distinction explicitly.
+	FlexSlots []CardQuality
 
 	// CardPowerLevels is the full 0-100 power rating for every non-land
 	// card in the deck, sorted high → low. See CardPowerLevel for the
