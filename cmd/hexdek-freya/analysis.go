@@ -368,8 +368,14 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		p.Consumes = append(p.Consumes, ResLife)
 	}
 
-	// Exile from graveyard.
-	if strings.Contains(ot, "exile") && containsAny(ot, "from your graveyard",
+	// Exile from graveyard. Use otClean so flashback / encore / embalm /
+	// eternalize / aftermath reminder text — every printing of which carries
+	// "(You may cast this card from your graveyard ... Then exile it.)" or a
+	// near-equivalent gloss — doesn't false-tag the card as a graveyard
+	// consumer. Pre-fix every flashback card surfaced Consumes=ResGraveyard
+	// from reminder text alone, wrongly closing card↔graveyard resource
+	// cycles in combo detection.
+	if strings.Contains(otClean, "exile") && containsAny(otClean, "from your graveyard",
 		"from a graveyard", "cards from your graveyard") {
 		p.Consumes = append(p.Consumes, ResGraveyard)
 	}

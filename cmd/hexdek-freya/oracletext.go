@@ -419,6 +419,129 @@ func SplitTriggerEffect(clause string) (kind, trigger, ifCond, effect string) {
 	return kind, trigger, ifCond, effect
 }
 
+// -----------------------------------------------------------------------------
+// ScanOracle — unified tokenizing scanner.
+//
+// ScanOracle is the single entry point that prior callers re-implemented
+// piecemeal: lowercase the text, strip reminder parens, split into clauses,
+// AND tag each clause with which modal bullet (if any) it came from. Once a
+// caller has a `*OracleScan` it can run per-clause substring checks without
+// paying for the upstream string surgery on every call site, and gets
+// modal-mode information for free.
+//
+// The scanner is intentionally conservative — no AST, no NLP. The clause
+// splitter is sentence-and-colon based (see SplitClauses); the modal tagger
+// re-uses splitModes (see above). Both have been false-positive-pinned
+// against the Scryfall corpus.
+//
+// Resource cost: ~one allocation per clause; ScanOracle is fine to call
+// per-card. Callers that want to reuse a scan across multiple classifier
+// passes should hold the *OracleScan in a local variable, not call
+// ScanOracle repeatedly.
+// -----------------------------------------------------------------------------
+
+// OracleScan is the structured result of tokenizing one card's oracle text.
+//
+//   - Clean: lowercased, reminder-stripped, whitespace-collapsed. The shape
+//     analysis.go used to compute inline via strings.ToLower(stripReminder(...)).
+//   - Clauses: clause-level splits (paragraph break / sentence period /
+//     activation cost colon), each tagged with Mode (-1 for always-applied
+//     text, 0..N for modal bullet index when the source was a "Choose one/
+//     two/..." modal printing).
+//
+// Modal bullets become independent clauses with Mode >= 0. A non-modal card
+// produces clauses with Mode == -1. A card with a preamble + bullets puts
+// the preamble's clauses at Mode == -1 and each bullet at Mode == 0, 1, …
+//
+// Empty input yields a non-nil *OracleScan with empty fields so callers can
+// `.Clean` and `.Clauses` without nil checks.
+type OracleScan struct {
+	Clean   string
+	Clauses []ScanClause
+}
+
+// ScanClause is a clause + which mode it came from. Mode == -1 means the
+// clause is unconditionally applied (no modal context); Mode >= 0 indexes
+// into the modal bullet list (0 = first bullet, 1 = second, etc.).
+type ScanClause struct {
+	Text string
+	Mode int
+}
+
+// ScanOracle tokenizes a card's raw oracle text. See OracleScan / ScanClause.
+func ScanOracle(raw string) *OracleScan {
+	scan := &OracleScan{}
+	if raw == "" {
+		return scan
+	}
+	scan.Clean = CleanForScan(raw)
+	if scan.Clean == "" {
+		return scan
+	}
+	// Modal detection uses the cleaned text — modeHeaderRE is case-insensitive
+	// and the bullet character survives lowercasing intact.
+	modes := splitModes(scan.Clean)
+	if modes == nil {
+		// Non-modal card — every clause is Mode -1.
+		for _, c := range SplitClauses(scan.Clean) {
+			scan.Clauses = append(scan.Clauses, ScanClause{Text: c, Mode: -1})
+		}
+		return scan
+	}
+	// Modal card: modes[0] is the preamble (always-applied), modes[1:] are
+	// the bullets in declaration order.
+	for _, c := range SplitClauses(modes[0]) {
+		scan.Clauses = append(scan.Clauses, ScanClause{Text: c, Mode: -1})
+	}
+	for i, body := range modes[1:] {
+		for _, c := range SplitClauses(body) {
+			scan.Clauses = append(scan.Clauses, ScanClause{Text: c, Mode: i})
+		}
+	}
+	return scan
+}
+
+// ClauseCoOccurs reports whether some single clause in `scan` contains BOTH
+// substrings. The canonical use case is a paired substring scanner like
+// `strings.Contains(ot, "exile") && strings.Contains(ot, "from your graveyard")`
+// — the raw form fires on Cabal Therapy because "exile" lives in the
+// flashback reminder and "from your graveyard" also lives there, but it
+// also fires on cards where the two substrings live in unrelated clauses
+// across paragraph or modal boundaries. Narrowing the co-occurrence to a
+// single clause kills both classes of leak in one helper.
+//
+// Both substrings are matched as raw substrings (NOT word-boundary) — the
+// caller's job to pick distinctive enough anchors. For word-boundary
+// matching, see HasKeywordIn.
+//
+// Empty `scan` or empty substrings return false.
+func ClauseCoOccurs(scan *OracleScan, a, b string) bool {
+	if scan == nil || a == "" || b == "" {
+		return false
+	}
+	for _, c := range scan.Clauses {
+		if strings.Contains(c.Text, a) && strings.Contains(c.Text, b) {
+			return true
+		}
+	}
+	return false
+}
+
+// ClauseContains reports whether some single clause in `scan` contains the
+// given substring. Cheaper-than-CoOccurs single-substring scan with the
+// same modal/reminder safety properties.
+func ClauseContains(scan *OracleScan, s string) bool {
+	if scan == nil || s == "" {
+		return false
+	}
+	for _, c := range scan.Clauses {
+		if strings.Contains(c.Text, s) {
+			return true
+		}
+	}
+	return false
+}
+
 // HasDependentTrigger returns true when `effect` contains a nested
 // trigger that fires as a CONSEQUENCE of the outer trigger's resolution.
 // The canonical shape is a follow-up sentence whose trigger condition
