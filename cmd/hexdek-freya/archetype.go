@@ -1633,14 +1633,41 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 			fmt.Sprintf("lifted to B4: 2-card categorical-win combo present (was B%d) — WotC carveout",
 				preFloorBracket))
 	}
-	// Tuned-redundancy floor: many distinct finisher lines + fast-mana density
-	// is operationally B4 regardless of GC count.
-	if tunedRedundancy && bracket < 4 {
+	// Tuned-redundancy floor: many distinct finisher lines + fast-mana
+	// density is operationally B4 — but only when corroborated by at
+	// least one of three optimization vehicles: a Game Changer, a true
+	// infinite combo line, OR a meaningful tutor density (>=8% of
+	// nonlands). The bare predicate over-fires on stock B2 precons
+	// (Urza's Iron Alliance / Madison Li / Kalemne / Wilhelt /
+	// Sauron-LTR / Hearthhull / Hosts of Mordor / Hazel / Coven Counters
+	// / Creative Energy / Ixhel / Blame Game / Family Matters / Cabaretti
+	// Cacophony — see docs/precon-shape-scans/group-{a,b,c}.md) because
+	// fastManaCount counts every CMC<=2 mana producer (Sol Ring +
+	// signets + talismans) and stock precons routinely ship with 6+ of
+	// those plus 8+ "finishers" (any 6+ CMC creature or board wipe).
+	// The GC=0 ceiling already caps these at B2; the standalone floor
+	// re-lifted them to B4, contradicting WotC's "no Game Changers =
+	// not B4" framework rule.
+	//
+	// Three-arm OR (vs PR #566's bare GC>=1): a true-infinite combo OR
+	// tutor density >=8% are each independent B4 markers that don't
+	// require an explicit Game Changer to be present. The trueInfCount
+	// arm is defense-in-depth — under current ordering the Winning-combo
+	// floor at line 1629 already lifts true-infinite decks to B4 before
+	// this floor evaluates, but pinning it here keeps the gate honest if
+	// hasWinningCombo's predicate ever narrows. The tutorDensity arm
+	// mirrors the 8%-tutor signal already used in the bracket scoring
+	// table at line 1318 (the "8-11% = 2 pts" band).
+	tunedCorroborated := ctx.gameChangerCount >= 1 ||
+		trueInfCount >= 1 ||
+		ctx.tutorDensity >= 0.08
+	if tunedRedundancy && tunedCorroborated && bracket < 4 {
 		bracket = 4
 		label = "Optimized"
 		addAdjustment("Tuned-redundancy floor", "floor",
-			fmt.Sprintf("lifted to B4: %d finishers + %d fast-mana pieces (was B%d)",
-				finisherCount, ctx.fastManaCount, preFloorBracket))
+			fmt.Sprintf("lifted to B4: %d finishers + %d fast-mana pieces + %d GC + %d true-inf + %.0f%% tutors (was B%d)",
+				finisherCount, ctx.fastManaCount, ctx.gameChangerCount,
+				trueInfCount, ctx.tutorDensity*100, preFloorBracket))
 	}
 
 	rationale.FinalBracket = bracket
