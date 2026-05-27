@@ -188,6 +188,43 @@ func TestDeckHash_MultiplicityCounted(t *testing.T) {
 	}
 }
 
+// TestDeckHash_ShuffledVariantsAllIdentical — 1000 random shuffles of the
+// same canonical 100-card list (1 commander + 99 library) must produce
+// exactly one hash. Extends TestDeckHash_OrderInvariant from 2 orderings
+// to 1000 to stress the sort step under realistic deck size.
+func TestDeckHash_ShuffledVariantsAllIdentical(t *testing.T) {
+	const trials = 1000
+	cmd := []*gameengine.Card{{Name: "Atraxa, Praetors' Voice"}}
+
+	canonical := make([]*gameengine.Card, 0, 99)
+	for i := 0; i < 65; i++ {
+		canonical = append(canonical, &gameengine.Card{Name: fmt.Sprintf("Canonical Card %03d", i)})
+	}
+	basics := basicLandNames()
+	for i := 0; i < 34; i++ {
+		canonical = append(canonical, &gameengine.Card{Name: basics[i%len(basics)]})
+	}
+
+	baseline := ComputeHash(cmd, canonical)
+	rng := rand.New(rand.NewSource(0x5FF1E))
+	seen := map[DeckHash]struct{}{baseline: {}}
+	for i := 0; i < trials; i++ {
+		shuffled := make([]*gameengine.Card, len(canonical))
+		copy(shuffled, canonical)
+		rng.Shuffle(len(shuffled), func(a, b int) { shuffled[a], shuffled[b] = shuffled[b], shuffled[a] })
+		h := ComputeHash(cmd, shuffled)
+		if h != baseline {
+			t.Fatalf("trial %d: shuffle changed hash (%s != %s) — sort step not canonicalizing under realistic deck size",
+				i, string(h)[:16], string(baseline)[:16])
+		}
+		seen[h] = struct{}{}
+	}
+	if len(seen) != 1 {
+		t.Fatalf("expected exactly 1 unique hash across %d shuffles, got %d", trials, len(seen))
+	}
+	t.Logf("shuffle-invariant: %d random shuffles of canonical 100-card list all produced hash %s", trials, string(baseline)[:16])
+}
+
 // TestDeckHash_NearMissCollisionStressed — generate 10K decks that share
 // 95+ of 100 cards (a single staple swap differentiates each one) and
 // verify all hashes are distinct. This stresses the normalization layer
