@@ -15,6 +15,15 @@ const (
 	RoleBoardWipe    RoleTag = "BoardWipe"
 	RoleCounterspell RoleTag = "Counterspell"
 	RoleTutor        RoleTag = "Tutor"
+	// RolePseudoTutor — "soft" library/combo-piece access that consistently
+	// surfaces a specific card via a mechanic other than search-library /
+	// reveal-until. Cascade (Bloodbraid Elf), Transmute (Dimir House
+	// Guard — also IsTutor via its "search your library" clause, so it
+	// double-tags), Companion (Yorion, Lurrus — wish-style access from
+	// outside the game), Unearth (Hellspark Elemental — graveyard-as-
+	// hand reanimation). These aren't hard tutors but functionally feed
+	// combo lines, so they deserve a separate tag from RoleTutor.
+	RolePseudoTutor  RoleTag = "PseudoTutor"
 	RoleThreat       RoleTag = "Threat"
 	RoleCombo        RoleTag = "Combo"
 	RoleProtection   RoleTag = "Protection"
@@ -26,7 +35,7 @@ const (
 
 var AllRoles = []RoleTag{
 	RoleRamp, RoleDraw, RoleRemoval, RoleBoardWipe, RoleCounterspell,
-	RoleTutor, RoleThreat, RoleCombo, RoleProtection, RoleStax,
+	RoleTutor, RolePseudoTutor, RoleThreat, RoleCombo, RoleProtection, RoleStax,
 	RoleRecursion, RoleUtility, RoleLand,
 }
 
@@ -69,19 +78,25 @@ var rolePriority = map[RoleTag]int{
 	RoleBoardWipe:    3,
 	RoleCounterspell: 4,
 	RoleTutor:        5,
-	RoleRemoval:      6,
+	// PseudoTutor sits just below Tutor in the priority order — when a
+	// card has both (transmute, modal "search library OR cascade"), Tutor
+	// is the stronger characterization and should render first. Pseudo-
+	// tutor still outranks Removal because the consistency engine angle
+	// is the strategically important thing to surface.
+	RolePseudoTutor:  6,
+	RoleRemoval:      7,
 	// Recursion sits between Removal and Protection — it's an
 	// engine/value slot that often pairs with Threat (Sun Titan,
 	// Karmic Guide, Reveillark) or stands alone (Eternal Witness,
 	// Reanimate). Renders before Protection / Draw / Ramp so
 	// multi-role recursion-creatures lead with the role that
 	// explains their strategic purpose.
-	RoleRecursion:    7,
-	RoleProtection:   8,
-	RoleDraw:         9,
-	RoleRamp:         10,
-	RoleUtility:      11,
-	RoleLand:         12,
+	RoleRecursion:    8,
+	RoleProtection:   9,
+	RoleDraw:         10,
+	RoleRamp:         11,
+	RoleUtility:      12,
+	RoleLand:         13,
 }
 
 func TagCardRole(name, oracleText, typeLine, manaCost string, cmc int, profile CardProfile) []RoleTag {
@@ -117,6 +132,10 @@ func TagCardRole(name, oracleText, typeLine, manaCost string, cmc int, profile C
 
 	if profile.IsTutor {
 		roles = append(roles, RoleTutor)
+	}
+
+	if isPseudoTutor(oracleText) {
+		roles = append(roles, RolePseudoTutor)
 	}
 
 	if isThreat(profile, ot, tl, cmc) {
@@ -374,6 +393,90 @@ func isProtection(ot, tl string) bool {
 	}
 	if strings.Contains(ot, "phase out") || strings.Contains(ot, "phases out") {
 		return true
+	}
+	return false
+}
+
+// isPseudoTutor returns true when the card carries one of the "soft" tutor
+// mechanics — keyword machinery that consistently surfaces a specific card
+// from library / graveyard / outside-the-game without being a literal
+// "search your library" / "reveal until" tutor.
+//
+// Covered mechanics:
+//   - Cascade (Bloodbraid Elf, Maelstrom Wanderer): exile cards from the
+//     top of your library until you exile a nonland card that costs less,
+//     then cast it for free. Functionally a tutor for cheaper combo
+//     pieces (Bloodbraid → Living End, Maelstrom Wanderer → eot
+//     stack-the-deck combos).
+//   - Transmute (Dimir House Guard, Drift of Phantasms, Muddle the
+//     Mixture): {cost}, Discard this card: Search library for a card
+//     with the same mana value. Note transmute ALSO trips the canonical
+//     "search your library" detector in classifyTutorInto, so these
+//     cards double-tag (Tutor + PseudoTutor) — that's deliberate. The
+//     hard-tutor flag captures the consistency engine angle; the
+//     pseudo-tutor flag captures the mechanic family for downstream
+//     consumers (combo-piece-density analysis, archetype fingerprint).
+//   - Companion (Yorion, Lurrus, Jegantha): the companion mechanic lets
+//     you pay {3} once per game to put the companion from outside the
+//     game into your hand — a guaranteed wish-style tutor for that
+//     specific card.
+//   - Unearth (Hellspark Elemental, Anathemancer, Corpse Connoisseur):
+//     {cost}: Return from graveyard with haste, exile at EOT. Treats
+//     graveyard as an extension of hand for combo-piece access; loops
+//     with Sun Titan / Reanimate / Loam-style recursion.
+//
+// Detection runs against the raw (case-insensitive, reminder-stripped)
+// oracle text on a per-line basis. The granted-keyword case (Yidris
+// "...that spell has cascade", Maraxus-style "Equipped creature has
+// unearth {cost}") is rejected by checking the line for a leading "has"
+// / "have" / "with" / "gain" / "gains" framing before the keyword
+// anchor, mirroring the hasSelfCyclingKeyword pattern in analysis.go.
+func isPseudoTutor(rawOracleText string) bool {
+	if rawOracleText == "" {
+		return false
+	}
+	// NOTE: cannot use CleanForScan here — it collapses newlines to spaces,
+	// which would defeat the per-line "line starts with the keyword" anchor
+	// that distinguishes self-declared keywords from granted ones. Lowercase
+	// directly; the keyword anchors all sit BEFORE any reminder text, so
+	// HasPrefix matching is unaffected by the unstripped parens.
+	clean := strings.ToLower(rawOracleText)
+	for _, line := range strings.Split(clean, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		// Reject granted-keyword framing. "spell has cascade", "creatures
+		// you control have unearth {1}{B}", "with cascade" — line is
+		// granting the mechanic to OTHER cards, not declaring it on self.
+		if containsAny(line,
+			"has cascade", "have cascade", "with cascade", "gain cascade", "gains cascade",
+			"has transmute", "have transmute", "with transmute",
+			"has unearth", "have unearth", "with unearth", "gain unearth", "gains unearth") {
+			continue
+		}
+		// Cascade — bare keyword, no cost ("cascade" or "cascade, cascade"
+		// for Maelstrom Wanderer's double-cascade). Anchor at line start
+		// so prose mentions ("...that spell has cascade") don't false-fire
+		// even when the grant-prefix filter above doesn't catch them.
+		if strings.HasPrefix(line, "cascade") {
+			return true
+		}
+		// Transmute keyword: "transmute {cost}". The keyword always
+		// includes a mana cost.
+		if strings.HasPrefix(line, "transmute {") {
+			return true
+		}
+		// Unearth keyword: "unearth {cost}".
+		if strings.HasPrefix(line, "unearth {") {
+			return true
+		}
+		// Companion clause: "companion — <condition>". Scryfall uses a
+		// Unicode em-dash; the cleaned text preserves it. The companion
+		// mechanic itself is the wish-tutor for the specific card.
+		if strings.HasPrefix(line, "companion —") || strings.HasPrefix(line, "companion of ") {
+			return true
+		}
 	}
 	return false
 }
