@@ -1,6 +1,6 @@
 # Chaos Gauntlet Report
 
-Generated: 2026-05-25T11:59:30-07:00
+Generated: 2026-05-26T19:28:52-07:00
 
 ## Configuration
 
@@ -9,7 +9,7 @@ Generated: 2026-05-25T11:59:30-07:00
 | Oracle Corpus | 36656 cards |
 | Legendary Creatures | 3433 |
 | Total Games | 5000 |
-| Seed | 1337 |
+| Seed | 42 |
 | Permutations | 1 |
 | Seats | 4 |
 | Max Turns | 60 |
@@ -21,8 +21,8 @@ Generated: 2026-05-25T11:59:30-07:00
 
 | Metric | Count |
 |--------|-------|
-| Duration | 1m9.624s |
-| Throughput | 72 games/sec |
+| Duration | 49.002s |
+| Throughput | 102 games/sec |
 | Crashes | 0 (in 0 games) |
 | Invariant Violations | 0 (in 0 games) |
 | Clean Games | 5000 |
@@ -31,8 +31,8 @@ Generated: 2026-05-25T11:59:30-07:00
 
 | Metric | Count |
 |--------|-------|
-| Duration | 747ms |
-| Throughput | 13396 boards/sec |
+| Duration | 615ms |
+| Throughput | 16258 boards/sec |
 | Crashes | 0 |
 | Invariant Violations | 0 |
 | Clean Boards | 10000 |
