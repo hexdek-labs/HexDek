@@ -114,6 +114,16 @@ type YggdrasilHat struct {
 	// strongly suggest they're holding instant-speed answers.
 	opponentHeldMana []int
 
+	// opponentMaxHeldMana is the largest available-mana count we've ever
+	// observed at this opponent's upkeep. The streak counter above is
+	// binary at the 2+ threshold; this is the magnitude signal. A 4+
+	// reading suggests Cryptic Command / Force of Negation / Mystic
+	// Confluence territory — a different counterspell threshold than
+	// a 2-mana Spell Pierce / Mana Leak rep. Read by classifyOpponent
+	// to bump combo/control confidence on the Cryptic-class reading.
+	// Reset to 0 alongside opponentHeldMana on game_start.
+	opponentMaxHeldMana []int
+
 	// opponentTutored records whether each opponent has tutored this game.
 	// After a tutor resolves they almost certainly have a specific answer
 	// or combo piece — near-zero entropy for one hand slot.
@@ -8875,6 +8885,7 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 		h.poisonReceivedFrom = make([]int, h.seatCount)
 		h.opponentHandEntropy = make([]float64, h.seatCount)
 		h.opponentHeldMana = make([]int, h.seatCount)
+		h.opponentMaxHeldMana = make([]int, h.seatCount)
 		h.opponentTutored = make([]bool, h.seatCount)
 		h.opponentLoadedSilentTurns = make([]int, h.seatCount)
 		h.opponentFiredInteractionThisRound = make([]bool, h.seatCount)
@@ -8923,6 +8934,9 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 			}
 			if i < len(h.opponentHeldMana) {
 				h.opponentHeldMana[i] = 0
+			}
+			if i < len(h.opponentMaxHeldMana) {
+				h.opponentMaxHeldMana[i] = 0
 			}
 			if i < len(h.opponentTutored) {
 				h.opponentTutored[i] = false
@@ -9200,6 +9214,19 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 			} else {
 				h.opponentHeldMana[i] = 0
 			}
+			// R60: track the largest open-mana value we've ever observed
+			// at this opponent's upkeep. The streak counter above is
+			// binary at 2+; this captures the magnitude — a 4+ reading
+			// is Cryptic Command / Force of Negation / Mystic Confluence
+			// territory, a different counterspell threshold than a
+			// 2-mana Spell Pierce / Mana Leak rep. Doesn't decay — once
+			// we've seen the opponent hold 4 mana, the deck is capable
+			// of that rep even if they later spend down. (Future work
+			// could add a recency window; magnitude-ever-seen is the
+			// minimal first-pass signal.)
+			if i < len(h.opponentMaxHeldMana) && openMana > h.opponentMaxHeldMana[i] {
+				h.opponentMaxHeldMana[i] = openMana
+			}
 
 			// R60 round 5 — bluff signal tally. If this opponent looked
 			// loaded at the start of the previous round but did NOT
@@ -9311,6 +9338,26 @@ func (h *YggdrasilHat) opponentLikelyHasAnswer(oppSeat int) bool {
 		hasInteractiveColors = h.opponentColors[oppSeat]["U"] || h.opponentColors[oppSeat]["B"]
 	}
 	return tutored && heldMana >= 2 && hasInteractiveColors
+}
+
+// OpponentMaxHeldMana returns the largest open-mana value ever observed
+// at this opponent's upkeep. Read this when callers need the MAGNITUDE
+// of counterspell representation, not just the consecutive-turns streak:
+//
+//   - 0–1: nothing meaningful seen.
+//   - 2:   Spell Pierce / Mana Leak / Force Spike rep — soft counter
+//          territory.
+//   - 3:   Negate / Counterspell-class / Render Silent — hard counter.
+//   - 4+:  Cryptic Command / Force of Negation / Mystic Confluence
+//          territory — the opp has consistently held enough to fire
+//          big-mana interaction, suggesting blue control or cEDH combo.
+//
+// Returns 0 for an unknown seat or before any upkeep has fired.
+func (h *YggdrasilHat) OpponentMaxHeldMana(oppSeat int) int {
+	if oppSeat < 0 || oppSeat >= len(h.opponentMaxHeldMana) {
+		return 0
+	}
+	return h.opponentMaxHeldMana[oppSeat]
 }
 
 // handEntropy returns the heuristic [0,1] entropy estimate for an opponent.

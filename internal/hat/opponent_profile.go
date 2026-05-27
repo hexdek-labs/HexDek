@@ -406,6 +406,14 @@ func (h *YggdrasilHat) classifyOpponent(gs *gameengine.GameState, oppSeat int) *
 	if oppSeat < len(h.opponentHeldMana) {
 		heldMana = h.opponentHeldMana[oppSeat]
 	}
+	// R60: held-mana magnitude. The streak counter above is binary at
+	// 2+; the magnitude tells us WHICH counterspell threshold has been
+	// represented. 4+ is Cryptic Command / Force of Negation territory —
+	// a strong combo/control signal even on a single observation.
+	maxHeldMana := 0
+	if oppSeat < len(h.opponentMaxHeldMana) {
+		maxHeldMana = h.opponentMaxHeldMana[oppSeat]
+	}
 	if prof.TutorsUsed >= 1 && heldMana >= 2 && prof.CreaturesPlayed <= 3 {
 		candidate = "combo"
 		baseConf = 0.7
@@ -416,6 +424,15 @@ func (h *YggdrasilHat) classifyOpponent(gs *gameengine.GameState, oppSeat int) *
 		// Control: removal + counters, light board.
 		candidate = "control"
 		baseConf = 0.6
+	} else if maxHeldMana >= 4 && prof.CreaturesPlayed <= 3 {
+		// R60: Cryptic-class control / cEDH. Pre-r60 a deck that
+		// consistently passed turn with 4 mana up but hadn't yet fired
+		// removal or counters got classified as "unknown" — the
+		// streak-only signal couldn't see the magnitude. With the new
+		// magnitude tracker, sustained 4-mana representation against a
+		// light board is a strong control read on its own.
+		candidate = "control"
+		baseConf = 0.55
 	} else if prof.CreaturesPlayed >= 3 && (turn <= 3 || prof.CreaturesPlayed >= turn) {
 		// Aggro: piling on creatures fast — either early (3 by turn 3)
 		// or sustained (one creature per turn average).
