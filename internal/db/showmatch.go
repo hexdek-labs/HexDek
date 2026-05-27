@@ -467,6 +467,66 @@ func LoadDeckGameOutcomes(ctx context.Context, db *sql.DB, deckKey string) ([]De
 	return out, rows.Err()
 }
 
+// DeckGameHistoryRow is one game-row for a single deck_key, joined
+// with the game metadata (turns, winner, end_reason) and the seat the
+// deck played. Richer than DeckGameOutcome (which is purpose-built for
+// the version-trend bucketer and only needs finished_at + won + draw);
+// surfaced by /api/decks/{owner}/{id}/history so the frontend can plot
+// per-game performance over time.
+type DeckGameHistoryRow struct {
+	GameID     int64  `json:"game_id"`
+	FinishedAt int64  `json:"finished_at"`
+	Turns      int    `json:"turns"`
+	Seat       int    `json:"seat"`
+	Won        bool   `json:"won"`
+	Draw       bool   `json:"draw"`
+	EndReason  string `json:"end_reason,omitempty"`
+}
+
+// LoadDeckGameHistory returns up to limit games (newest first) where
+// deckKey participated. limit==0 returns nothing — the caller is
+// responsible for picking a sane cap since this query grows linearly
+// with deck game-count and the endpoint surface walks every row at
+// aggregation time. Empty deckKey returns an empty slice without
+// hitting the DB.
+func LoadDeckGameHistory(ctx context.Context, sqlDB *sql.DB, deckKey string, limit int) ([]DeckGameHistoryRow, error) {
+	if deckKey == "" || limit <= 0 {
+		return []DeckGameHistoryRow{}, nil
+	}
+	rows, err := sqlDB.QueryContext(ctx,
+		`SELECT g.game_id, g.finished_at, g.turns, g.winner, g.end_reason, me.seat
+		 FROM showmatch_game_seat me
+		 JOIN showmatch_game g ON g.game_id = me.game_id
+		 WHERE me.deck_key = ?
+		 ORDER BY g.finished_at DESC, g.game_id DESC
+		 LIMIT ?`, deckKey, limit)
+	if err != nil {
+		return nil, fmt.Errorf("deck game history query: %w", err)
+	}
+	defer rows.Close()
+	out := []DeckGameHistoryRow{}
+	for rows.Next() {
+		var (
+			gid, fin           int64
+			turns, winner, seat int
+			endReason          string
+		)
+		if err := rows.Scan(&gid, &fin, &turns, &winner, &endReason, &seat); err != nil {
+			return nil, err
+		}
+		out = append(out, DeckGameHistoryRow{
+			GameID:     gid,
+			FinishedAt: fin,
+			Turns:      turns,
+			Seat:       seat,
+			Won:        winner == seat,
+			Draw:       winner < 0,
+			EndReason:  endReason,
+		})
+	}
+	return out, rows.Err()
+}
+
 // GameSeatGrouped is one game's worth of seat outcomes, used by the
 // archetype-vs-archetype matrix builder. Within a single game we need
 // every (this-seat, that-seat) pair to count toward the matrix, so
