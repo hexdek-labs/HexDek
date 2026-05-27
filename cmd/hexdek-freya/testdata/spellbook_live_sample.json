@@ -1,0 +1,142 @@
+{
+  "variants": [
+    {
+      "id": "479-7658",
+      "status": "OK",
+      "identity": "U",
+      "description": "During the end step before your turn, cast Drown in Dreams by paying {15}{U} minus {1} for each card in your hand, causing you to draw cards until you have thirteen cards in hand.\nAt the beginning of your upkeep, Triskaidekaphile triggers, causing you to win the game.",
+      "uses": [
+        {
+          "card": {
+            "name": "Triskaidekaphile"
+          },
+          "quantity": 1
+        },
+        {
+          "card": {
+            "name": "Drown in Dreams"
+          },
+          "quantity": 1
+        }
+      ],
+      "produces": [
+        {
+          "feature": {
+            "name": "Win the game at the beginning of your next upkeep"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3259-5223-7659",
+      "status": "OK",
+      "identity": "RGW",
+      "description": "Declare the creature with Breath of Fury attached and Brimaz as attackers.\nBrimaz triggers, creating a creature token.\nDeal combat damage using the creature that has Breath of Fury attached. \nBreath of Fury triggers, causing you to sacrifice the creature it is attached to, then attach Breath of Fury to the creature token, then causing you to untap all creatures you control and to get an additional combat phase after this one.\nRepeat each combat phase.",
+      "uses": [
+        {
+          "card": {
+            "name": "Breath of Fury"
+          },
+          "quantity": 1
+        },
+        {
+          "card": {
+            "name": "Fires of Yavimaya"
+          },
+          "quantity": 1
+        },
+        {
+          "card": {
+            "name": "Brimaz, King of Oreskos"
+          },
+          "quantity": 1
+        }
+      ],
+      "produces": [
+        {
+          "feature": {
+            "name": "Infinite ETB"
+          }
+        },
+        {
+          "feature": {
+            "name": "Infinite LTB"
+          }
+        },
+        {
+          "feature": {
+            "name": "Infinite combat damage"
+          }
+        },
+        {
+          "feature": {
+            "name": "Infinite combat phases"
+          }
+        },
+        {
+          "feature": {
+            "name": "Infinite death triggers"
+          }
+        },
+        {
+          "feature": {
+            "name": "Infinite mana creatures you control can produce"
+          }
+        },
+        {
+          "feature": {
+            "name": "Infinite sacrifice triggers"
+          }
+        },
+        {
+          "feature": {
+            "name": "Infinite untap of creatures you control"
+          }
+        }
+      ]
+    },
+    {
+      "id": "3903-3958-7666",
+      "status": "OK",
+      "identity": "WU",
+      "description": "Donate Moderation to an opponent.\nCast Knowledge Pool by paying {6}.\nWhenever the opponent that controls Moderation casts a spell from their hand, Knowledge Pool triggers, exiling that spell.\nBecause Moderation prevents the opponent from casting more than one spell each turn, the opponent cannot cast the spell permitted by Knowledge Pool, or any other spell that turn.",
+      "uses": [
+        {
+          "card": {
+            "name": "Knowledge Pool"
+          },
+          "quantity": 1
+        },
+        {
+          "card": {
+            "name": "Moderation"
+          },
+          "quantity": 1
+        },
+        {
+          "card": {
+            "name": "Bilbo, Luckwearer // Burglar's Plot"
+          },
+          "quantity": 1
+        }
+      ],
+      "produces": [
+        {
+          "feature": {
+            "name": "Exile all spells target opponent casts from their hand"
+          }
+        },
+        {
+          "feature": {
+            "name": "Lock"
+          }
+        },
+        {
+          "feature": {
+            "name": "Target opponent can only cast one spell per turn"
+          }
+        }
+      ]
+    }
+  ]
+}

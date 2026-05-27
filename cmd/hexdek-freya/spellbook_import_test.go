@@ -294,6 +294,69 @@ func TestLoadSpellbookCache_RoundTrip(t *testing.T) {
 	}
 }
 
+// TestParseSpellbookJSON_LivePayloadSchemaSmoke is a regression canary that
+// pins the parser against the ACTUAL upstream Spellbook variants payload
+// shape. The fixture at testdata/spellbook_live_sample.json holds 3 real
+// variants pulled from the live JSON (one Win-the-game / one Infinite
+// mana / one plain-feature determined), trimmed to just the fields the
+// parser reads (id / status / uses[].card.name / produces[].feature.name /
+// description / identity — strips the upstream's legalities / prices /
+// popularity / image fields that bloat the cache without affecting parsing).
+//
+// Why a separate test on top of the synthetic-fixture coverage above: the
+// synthetic JSON above is hand-authored to match what we BELIEVE the
+// upstream shape is. If Commander Spellbook ever renames a JSON field
+// (e.g. uses[].card.name → uses[].card.title, or produces[].feature →
+// produces[].produces_feature), every synthetic test still passes but the
+// parser silently emits zero combos against live data. This fixture is
+// the canary: if you refresh it from a future live JSON and it stops
+// parsing, the upstream schema drifted.
+func TestParseSpellbookJSON_LivePayloadSchemaSmoke(t *testing.T) {
+	data, err := os.ReadFile(filepath.Join("testdata", "spellbook_live_sample.json"))
+	if err != nil {
+		t.Fatalf("read fixture: %v", err)
+	}
+	combos, warnings, err := ParseSpellbookJSON(data)
+	if err != nil {
+		t.Fatalf("parse live-shape fixture: %v", err)
+	}
+	if len(combos) != 3 {
+		t.Errorf("expected 3 combos from live-shape fixture, got %d (warnings=%v)", len(combos), warnings)
+	}
+	// At least one combo should land as true_infinite (the Win-the-game
+	// variant) and at least one as determined (the plain-feature variant).
+	var sawTrueInfinite, sawDetermined bool
+	for _, c := range combos {
+		switch c.Type {
+		case "true_infinite":
+			sawTrueInfinite = true
+		case "determined":
+			sawDetermined = true
+		}
+		if len(c.Pieces) < 2 {
+			t.Errorf("live-shape combo %q has %d pieces, want >=2", c.Name, len(c.Pieces))
+		}
+		// Every combo's description must carry the Spellbook import header
+		// so downstream consumers can attribute curated vs imported.
+		if !strings.Contains(c.Description, "Imported from Commander Spellbook") {
+			t.Errorf("combo %q missing Spellbook attribution header: %q", c.Name, c.Description)
+		}
+	}
+	if !sawTrueInfinite {
+		t.Errorf("expected at least one true_infinite combo from live-shape fixture; types=%v",
+			func() []string {
+				out := []string{}
+				for _, c := range combos {
+					out = append(out, c.Type)
+				}
+				return out
+			}())
+	}
+	if !sawDetermined {
+		t.Errorf("expected at least one determined combo from live-shape fixture")
+	}
+}
+
 func TestParseSpellbookJSON_BadJSONErrors(t *testing.T) {
 	if _, _, err := ParseSpellbookJSON([]byte("not json")); err == nil {
 		t.Error("expected error on garbage input")
