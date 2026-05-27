@@ -1880,6 +1880,7 @@ const (
 	condScaffoldColoredManaSpent         // "{R}{R}/{G}{G}/{U}{U}/{R} was spent to cast it"
 	condScaffoldSelfIsSuspended          // "this card is suspended" — exile suspend state
 	condScaffoldLifeAboveStarting        // "life total is greater than your starting life total"
+	condScaffoldLifeBelowHalfStarting    // "life total is less than (or equal to) half your starting life total" — Bhaal/Myrkul/Bane/Anya
 	condScaffoldOpponentMoreLife         // "an opponent has more life than you"
 	condScaffoldWasntBlocking            // "it wasn't blocking" — combat exit predicate
 
@@ -2182,8 +2183,18 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		return out
 	case "self_is_suspended":
 		return conditionScaffold{kind: condScaffoldSelfIsSuspended}
-	case "life_above_starting":
+	case "life_above_starting", "life_delta_threshold":
+		// `life_delta_threshold` is the structured form the parser sometimes
+		// emits for "you have at least N life more than your starting life
+		// total" (Righteous Valkyrie, Leyline of Hope). Same scaffold —
+		// LifeAboveStarting sets seat 0 life to 50, which clears any N≤30
+		// threshold and covers both 20-life and 40-life Commander formats.
 		return conditionScaffold{kind: condScaffoldLifeAboveStarting}
+	case "life_vs_half_starting", "life_below_half_starting":
+		// "your life total is less than (or equal to) half your starting
+		// life total" — Bhaal/Myrkul/Bane indestructible-while-low gates;
+		// Anya's +3/+3 per opponent-below-half gate.
+		return conditionScaffold{kind: condScaffoldLifeBelowHalfStarting}
 	case "opponent_more_life":
 		return conditionScaffold{kind: condScaffoldOpponentMoreLife}
 	case "wasnt_blocking":
@@ -6250,6 +6261,20 @@ func applyConditionScaffolding(gs *gameengine.GameState, cond *gameast.Condition
 		}
 		cs.description = "set seat 0 life=50 (above starting life total)"
 
+	case condScaffoldLifeBelowHalfStarting:
+		// "life total is less than (or equal to) half your starting life
+		// total" — Bhaal / Myrkul / Bane indestructible-while-low gates,
+		// Anya's per-opponent-below-half bonus. Set seat 0 life to 5
+		// (≤ half of 20 or 40) AND set seat 1 (the canonical opponent)
+		// life to 5 too so opponent-side predicates fire too.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			gs.Seats[0].Life = 5
+		}
+		if len(gs.Seats) > 1 && gs.Seats[1] != nil {
+			gs.Seats[1].Life = 5
+		}
+		cs.description = "set seat 0 + seat 1 life=5 (below half starting life total)"
+
 	case condScaffoldOpponentMoreLife:
 		// Mirror of MoreLifeThanOpponent — opponent must have MORE life
 		// than you for the trigger to fire.
@@ -7113,6 +7138,8 @@ func traceConditionScaffolding(cond *gameast.Condition, tr *Tracer) {
 		desc = "placed suspended card in seat 0 exile + suspended flag on srcPerm"
 	case condScaffoldLifeAboveStarting:
 		desc = "set seat 0 life=50 (above starting life total)"
+	case condScaffoldLifeBelowHalfStarting:
+		desc = "set seat 0 + seat 1 life=5 (below half starting life total)"
 	case condScaffoldOpponentMoreLife:
 		desc = "set seat 0 life=5, seat 1 life=40 (opponent has more life)"
 	case condScaffoldWasntBlocking:

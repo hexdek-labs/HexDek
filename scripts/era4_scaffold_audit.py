@@ -95,6 +95,12 @@ BUCKETED_KINDS = {
     "player_no_creatures", "another_typed_etb_this_turn",
     "creature_etb_last_turn", "exiled_with_count_ge",
     "exiled_this_turn", "damaged_creature_died",
+    # Era 4 r60 long-tail close-out (this branch): two structured Kinds that
+    # the original sweep left unbucketed because they're 1-of cards each
+    # (Anya's life_delta_threshold, Bhaal/Myrkul/Bane's life_vs_half_starting).
+    # Wired in conditional_setup.go as aliases to LifeAboveStarting (delta)
+    # and a new LifeBelowHalfStarting scaffold (Bhaal/Myrkul/Bane gate).
+    "life_delta_threshold", "life_vs_half_starting", "life_below_half_starting",
 }
 
 RAW_KINDS = {"intervening_if", "as_long_as", "conditional", "raw", "if"}
