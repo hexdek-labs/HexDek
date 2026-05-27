@@ -442,6 +442,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 
 	computeInteractionQuality(dp, report, oracle)
 	computeProtectionDensity(dp, report, oracle)
+	appendVulnerabilityBracketNote(dp)
 	computeManaBaseGrade(dp, report, oracle)
 	// Opening hand sim runs first so dp.IsCommanderCentric is populated
 	// before threat assessment reads it (commander-centric decks fear
@@ -609,6 +610,61 @@ func computeProtectionDensity(dp *DeckProfile, report *FreyaReport, oracle *orac
 	if len(dp.VulnerableComboPieces) > vulnerableComboPieceCap {
 		dp.VulnerableComboPieces = dp.VulnerableComboPieces[:vulnerableComboPieceCap]
 	}
+}
+
+// appendVulnerabilityBracketNote surfaces a soft "vulnerability cap" note
+// in the bracket rationale when a B4+ deck has unprotected combo pieces.
+// Combo pieces with zero built-in protection mean a single removal spell
+// (Path / Pongify / Imprisoned in the Moon) resets the win line — the
+// deck's FELT power at the table is closer to B3 than its raw signal
+// score suggests, because the kill is fragile.
+//
+// This is deliberately NOT a hard cap: the bracket itself is unchanged
+// (FinalBracket / FinalLabel stay where the score / GC / combo signals
+// placed them). The note is informational only, so builders see that
+// adding Lightning Greaves / Heroic Intervention / Veil of Summer would
+// realize the bracket's nominal power level. Only fires when measured
+// bracket is strictly above 3 — at B3 and below, the cap-toward-B3 push
+// is a no-op, and the per-card VulnerableComboPieces callout already
+// covers the surface for casual decks.
+func appendVulnerabilityBracketNote(dp *DeckProfile) {
+	if dp == nil || dp.BracketRationale == nil {
+		return
+	}
+	if dp.MeasuredBracket <= 3 {
+		return
+	}
+	if len(dp.VulnerableComboPieces) == 0 {
+		return
+	}
+	const evidenceCap = 3
+	evidence := make([]string, 0, evidenceCap)
+	for _, v := range dp.VulnerableComboPieces {
+		if len(evidence) >= evidenceCap {
+			break
+		}
+		evidence = append(evidence, v.Name)
+	}
+	piece := "piece"
+	verb := "lacks"
+	if len(dp.VulnerableComboPieces) != 1 {
+		piece = "pieces"
+		verb = "lack"
+	}
+	evidenceStr := strings.Join(evidence, ", ")
+	if len(dp.VulnerableComboPieces) > len(evidence) {
+		evidenceStr += fmt.Sprintf(", +%d more", len(dp.VulnerableComboPieces)-len(evidence))
+	}
+	note := fmt.Sprintf(
+		"%d combo %s %s built-in protection (%s) — felt power closer to B3 (single Path / Pongify / Imprisoned in the Moon resets the line). Bracket call unchanged; informational only.",
+		len(dp.VulnerableComboPieces), piece, verb, evidenceStr,
+	)
+	dp.BracketRationale.Signals = append(dp.BracketRationale.Signals, BracketSignal{
+		Name:     "Vulnerability cap",
+		Kind:     "note",
+		Evidence: evidence,
+		Note:     note,
+	})
 }
 
 var commanderThemePatterns = []struct {
