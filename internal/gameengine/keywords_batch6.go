@@ -1982,15 +1982,30 @@ func ExchangeLifeTotals(gs *GameState, seat1, seat2 int) {
 }
 
 // ExchangeControl exchanges control of two permanents.
+//
+// Control exchange (CR §701.10) keeps both permanents on the battlefield,
+// so this is NOT a leaves-the-battlefield event: auras/equipment attached
+// to either permanent stay attached (CR §702.6 — control change alone does
+// not detach), and any replacement / continuous effects sourced from the
+// exchanged permanents must keep firing. We therefore avoid
+// removePermanentFromBattlefield (which after the r60 AttachmentConsistency
+// fix runs detachAll + UnregisterReplacementsForPermanent +
+// UnregisterContinuousEffectsForPermanent — correct for LTB-equivalent
+// exits like Craft/Meld/exile-self, wrong for in-place control swap).
+// Removal must also happen BEFORE swapping Controller, so gs.removePermanent
+// finds each perm in its current owner's slice rather than scanning the
+// post-swap slice and silently no-op'ing — the prior order left both
+// permanents duplicated across both battlefields.
 func ExchangeControl(gs *GameState, perm1, perm2 *Permanent) {
-	if gs == nil || perm1 == nil || perm2 == nil {
+	if gs == nil || perm1 == nil || perm2 == nil || perm1 == perm2 {
 		return
 	}
-	perm1.Controller, perm2.Controller = perm2.Controller, perm1.Controller
+	gs.removePermanent(perm1)
+	gs.removePermanent(perm2)
 
-	// Move permanents between seats' battlefields.
-	removePermanentFromBattlefield(gs, perm1)
-	removePermanentFromBattlefield(gs, perm2)
+	perm1.Controller, perm2.Controller = perm2.Controller, perm1.Controller
+	perm1.Timestamp = gs.NextTimestamp()
+	perm2.Timestamp = gs.NextTimestamp()
 
 	if perm1.Controller >= 0 && perm1.Controller < len(gs.Seats) {
 		gs.Seats[perm1.Controller].Battlefield = append(
