@@ -113,6 +113,18 @@ type StrategyProfile struct {
 	// ELOGamesPlayed is how many games this deck's ELO is based on.
 	// Used to scale hat budget: more games = more confidence = deeper search.
 	ELOGamesPlayed int
+
+	// MaxRecursionDepth is the strongest RecursionDepth tag across all
+	// of Freya's detected value chains: "infinite" (a chain whose last
+	// step's To zone == first step's From — a literal loop, e.g.
+	// Eternal Witness + Strip Mine + Crucible of Worlds), "deep" (3+
+	// recursion pieces on a non-looping chain), "shallow" (1-2), or ""
+	// when Freya found no chains. When Weights are nil (legacy
+	// _freya.json fallback path), the hat applies a GraveyardValue
+	// boost from this signal in applyRecursionDepthBoost — when Weights
+	// were provided by Freya, the boost is already baked in and we
+	// don't double-apply.
+	MaxRecursionDepth string
 }
 
 // WeaknessProfile captures patterns from game analytics that indicate

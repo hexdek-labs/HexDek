@@ -45,9 +45,10 @@ type freyaTutorChain struct {
 }
 
 type freyaValueChain struct {
-	Name        string                `json:"name"`
-	Steps       []freyaValueChainStep `json:"steps"`
-	BridgeCards []string              `json:"bridge_cards,omitempty"`
+	Name           string                `json:"name"`
+	Steps          []freyaValueChainStep `json:"steps"`
+	BridgeCards    []string              `json:"bridge_cards,omitempty"`
+	RecursionDepth string                `json:"recursion_depth,omitempty"`
 }
 
 type freyaValueChainStep struct {
@@ -75,6 +76,8 @@ type strategyFileJSON struct {
 	CardRoles       map[string]string   `json:"card_roles,omitempty"`
 	FinisherCards   []string            `json:"finisher_cards,omitempty"`
 	ColorDemand     map[string]int      `json:"color_demand,omitempty"`
+
+	MaxRecursionDepth string              `json:"max_recursion_depth,omitempty"`
 
 	StarCards         []string            `json:"star_cards,omitempty"`
 	CuttableCards     []string            `json:"cuttable_cards,omitempty"`
@@ -173,6 +176,7 @@ func buildFromStrategyJSON(sj *strategyFileJSON) *StrategyProfile {
 		KeepableHandPct:    sj.KeepableHandPct,
 		IsCommanderCentric: sj.IsCommanderCentric,
 		PowerPercentile:    sj.PowerPercentile,
+		MaxRecursionDepth:  sj.MaxRecursionDepth,
 	}
 
 	if len(sj.MetaMatchups) > 0 {
@@ -317,7 +321,12 @@ func buildStrategyProfile(fj *freyaJSON) *StrategyProfile {
 	}
 
 	// Value engine keys: cards from value chains that aren't already
-	// tutor targets.
+	// tutor targets. Also captures the strongest recursion-depth signal
+	// across chains — the _freya.json fallback path can't rely on
+	// Freya's strategy.json max_recursion_depth field, so derive it
+	// here.
+	depthRank := map[string]int{"none": 0, "shallow": 1, "deep": 2, "infinite": 3}
+	bestRank := 0
 	for _, vc := range fj.ValueChains {
 		for _, step := range vc.Steps {
 			for _, card := range step.Cards {
@@ -334,9 +343,45 @@ func buildStrategyProfile(fj *freyaJSON) *StrategyProfile {
 				sp.ValueEngineKeys = append(sp.ValueEngineKeys, card)
 			}
 		}
+		if r, ok := depthRank[vc.RecursionDepth]; ok && r > bestRank {
+			bestRank = r
+			sp.MaxRecursionDepth = vc.RecursionDepth
+		}
 	}
 
+	// Fallback-path GraveyardValue boost: when Freya didn't ship
+	// eval_weights (legacy _freya.json), the strategy.json builder
+	// would have folded recursion depth into Weights already. Apply
+	// the equivalent boost here so the hat still benefits.
+	applyRecursionDepthBoost(sp)
+
 	return sp
+}
+
+// applyRecursionDepthBoost mirrors the GraveyardValue lift that Freya's
+// ComputeEvalWeights applies when value-chain recursion depth is
+// non-trivial. Only runs in the _freya.json fallback path — when
+// strategy.json supplied pre-computed Weights, the boost is already
+// baked in and we don't double-apply.
+func applyRecursionDepthBoost(sp *StrategyProfile) {
+	if sp.MaxRecursionDepth == "" {
+		return
+	}
+	if sp.Weights != nil {
+		return
+	}
+	base := DefaultWeightsForArchetype(sp.Archetype)
+	switch sp.MaxRecursionDepth {
+	case "infinite":
+		base.GraveyardValue += 0.5
+	case "deep":
+		base.GraveyardValue += 0.25
+	case "shallow":
+		base.GraveyardValue += 0.1
+	default:
+		return
+	}
+	sp.Weights = &base
 }
 
 // deriveCastOrder uses tutor path information to determine which combo
