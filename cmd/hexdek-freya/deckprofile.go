@@ -1507,6 +1507,27 @@ var defaultWeights = map[string]*jsonEvalWeights{
 		LifeResource: 0.7, ComboProximity: 0.2, ThreatExposure: 1.3,
 		CommanderProgress: 0.9, GraveyardValue: 0.2,
 	},
+
+	// r60 Landfall — Lotus Cobra / Tireless Tracker / Omnath / Roil
+	// Elemental landfall-payoff shells. Classified by
+	// archetypeFingerprints["Landfall"] in archetype.go when
+	// landfallCount ≥ 4 AND fetchRampLandCount ≥ 3. Distinct from
+	// the broader "lands matter" eval profile (which optimizes for
+	// land-drop value generally, Tatyova/Aesi-style); Landfall
+	// optimizes specifically for the multi-trigger-per-turn chain
+	// the fetch density enables.
+	//
+	// ManaAdvantage 1.6 reflects the ramp-heavy plan but slightly
+	// below "lands matter" (1.8) because Landfall already converts
+	// some ramp into immediate triggers (Lotus Cobra mana boost on
+	// cast). CardAdvantage 0.9 (vs lands matter 0.7) because
+	// landfall draws cards (Tireless Tracker clues, Tatyova
+	// landfall, Roil Elemental steal-into-card-advantage).
+	"landfall": {
+		BoardPresence: 0.8, CardAdvantage: 0.9, ManaAdvantage: 1.6,
+		LifeResource: 0.6, ComboProximity: 0.3, ThreatExposure: 0.6,
+		CommanderProgress: 0.7, GraveyardValue: 0.5,
+	},
 }
 
 type jsonEvalWeights struct {

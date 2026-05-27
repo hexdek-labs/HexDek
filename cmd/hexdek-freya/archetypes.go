@@ -54,6 +54,25 @@ var Archetypes = []ArchetypeDef{
 		Weight:      5,
 	},
 	{
+		// R60 Landfall — narrow subset of the broader "Lands Matter"
+		// archetypeDef immediately above; classified by
+		// archetypeFingerprints["Landfall"] in archetype.go via the
+		// landfallCount ≥ 4 AND fetchRampLandCount ≥ 3 gate. This
+		// archetypeDef entry exists so the Keyword/KeyCard substring
+		// matcher (separate code path consumed by the strategy.json
+		// render layer) recognizes the archetype name. Lots of overlap
+		// with Lands Matter — the structural difference is the fetch/
+		// slow-fetch density that enables multi-landfall-per-turn
+		// chains (Lotus Cobra + fetchland = +3 mana on cast).
+		Name:        "Landfall",
+		Description: "Chain landfall triggers per turn via fetch lands + extra-land-drop ramp; Lotus Cobra / Tireless Tracker / Omnath / Roil Elemental payoffs",
+		Keywords:    []string{"landfall", "whenever a land enters", "whenever a land you control enters", "search your library for a basic land", "search your library for a land card"},
+		KeyCards:    []string{"Lotus Cobra", "Tireless Tracker", "Omnath, Locus of Creation", "Omnath, Locus of Rage", "Roil Elemental", "Avenger of Zendikar", "Felidar Retreat", "Scute Swarm", "Rampaging Baloths", "Azusa, Lost but Seeking", "Oracle of Mul Daya", "Exploration", "Burgeoning", "Wayward Swordtooth"},
+		Triggers:    []string{"landfall"},
+		Effects:     []string{"land_fetch", "land_enter_payoff"},
+		Weight:      4,
+	},
+	{
 		Name:        "Extra Combats",
 		Description: "Take additional combat phases to multiply damage output",
 		Keywords:    []string{"additional combat", "extra combat", "additional combat phase", "untap all creatures"},

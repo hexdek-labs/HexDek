@@ -166,6 +166,25 @@ type classifyContext struct {
 	// Excludes single-target buffs ("target creature gets +1/+1")
 	// because those don't scale with board-wide token presence.
 	anthemCount int
+	// R60 Landfall archetype: distinct from the broader "Lands
+	// Matter" fingerprint because the structural signature is the
+	// SPECIFIC pairing of landfall-trigger density + fetch/ramp-land
+	// density. A Lotus Cobra / Omnath / Tireless Tracker shell wants
+	// the MCTS evaluator to recognize that fetching a basic AT
+	// INSTANT SPEED for the cobra mana boost is materially different
+	// from a Tatyova / Aesi "draw cards on land drops" plan — both
+	// trip landfallCount, but only the fetch-heavy build chains
+	// multiple landfalls per turn.
+	//
+	// fetchRampLandCount: lands whose oracle text searches the
+	// library for another land card. Covers true fetch lands
+	// (Polluted Delta family — "Sacrifice this: Search your library
+	// for a [type] land"), slow-fetches (Evolving Wilds, Terramorphic
+	// Expanse, Myriad Landscape), and shuffler lands (Krosan Verge).
+	// Excludes mana-fix lands (shocklands, duals — they ENTER the
+	// battlefield themselves but don't fetch additional lands and so
+	// don't multiply landfall triggers).
+	fetchRampLandCount int
 	bannedCount      int
 	gameChangerCount int
 	gameChangerNames []string
@@ -500,6 +519,34 @@ var archetypeFingerprints = []archetypeFingerprint{
 		},
 		Require: func(ctx *classifyContext) bool {
 			return ctx.roleRatios[RoleThreat] >= 0.15 && ctx.avgCMC < 3.0
+		},
+	},
+	{
+		// R60 Landfall — narrow subset of "Lands Matter" focused on
+		// the landfall-payoff structural shape (Lotus Cobra, Omnath
+		// Locus of Creation / Locus of Rage, Tireless Tracker, Roil
+		// Elemental, Avenger of Zendikar, Felidar Retreat, Tatyova-
+		// as-landfall, Aesi-as-landfall). Distinct from the broader
+		// Lands Matter (Lord Windgrace land-sacrifice / Crucible
+		// graveyard-replay) because the binding test is HOW the deck
+		// multiplies land drops (fetch + slow-fetch density), not
+		// just total landfall trigger count. Positioned BEFORE Lands
+		// Matter so the more-specific structural match wins the
+		// euclidean tiebreak when both Require gates pass.
+		//
+		// RoleRamp 0.18 (vs Lands Matter 0.15) — landfall decks load
+		// up on extra-land-drop ramp (Azusa, Oracle of Mul Daya,
+		// Exploration, Burgeoning, Wayward Swordtooth) on TOP of the
+		// fetch suite to maximize triggers per turn. RoleDraw 0.10
+		// (vs 0.08) — landfall payoffs draw cards (Tireless Tracker,
+		// Tireless Provisioner-class clue generation, Roil Elemental
+		// steal-into-card-advantage).
+		Name: "Landfall",
+		Ratios: map[RoleTag]float64{
+			RoleRamp: 0.18, RoleThreat: 0.10, RoleDraw: 0.10,
+		},
+		Require: func(ctx *classifyContext) bool {
+			return ctx.landfallCount >= 4 && ctx.fetchRampLandCount >= 3
 		},
 	},
 	{
@@ -1131,6 +1178,31 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 		}
 	}
 
+	// R60 Landfall: second pass over LANDS specifically. The main
+	// loop above skips lands via `if qp.Profile.IsLand { continue }`,
+	// so the fetch/ramp-land detector has to read each land's oracle
+	// text here. Counted via the canonical "Sacrifice X: Search your
+	// library for a [type] land card and put it onto the battlefield"
+	// substring shape — covers true fetches (Polluted Delta family),
+	// slow-fetches (Evolving Wilds, Terramorphic Expanse, Myriad
+	// Landscape), and shufflers (Krosan Verge).
+	for _, qp := range qtyProfiles {
+		if !qp.Profile.IsLand || oracle == nil {
+			continue
+		}
+		entry := oracle.lookup(qp.Profile.Name)
+		if entry == nil {
+			continue
+		}
+		ot := strings.ToLower(entry.OracleText)
+		if ot == "" && len(entry.CardFaces) > 0 {
+			ot = strings.ToLower(entry.CardFaces[0].OracleText)
+		}
+		if landIsFetchOrRamp(ot) {
+			ctx.fetchRampLandCount += qp.Qty
+		}
+	}
+
 	if nonlandTotal > 0 {
 		ctx.instantSorcPct = float64(instantSorcCount) / float64(nonlandTotal)
 		ctx.creaturePct = float64(creatureCount) / float64(nonlandTotal)
@@ -1312,6 +1384,70 @@ var anthemPhrases = []string{
 	"creatures you control have +",
 	"creature tokens you control get +",
 	"creature tokens you control have +",
+}
+
+// landIsFetchOrRamp returns true if a LAND's lowercased oracle text
+// matches the canonical fetch / slow-fetch / shuffler-land shape:
+// a search-your-library clause that finds another LAND card. Covers:
+//
+//   - True fetch lands (Polluted Delta, Flooded Strand, Bloodstained
+//     Mire, Wooded Foothills, Windswept Heath, Marsh Flats, Misty
+//     Rainforest, Scalding Tarn, Verdant Catacombs, Arid Mesa):
+//     "{T}, Pay 1 life, Sacrifice this: Search your library for a
+//     [type] or [type] land card and put it onto the battlefield."
+//   - Slow-fetch lands (Evolving Wilds, Terramorphic Expanse, Fabled
+//     Passage, Prismatic Vista): "{T}, Sacrifice this: Search your
+//     library for a basic land card and put it onto the battlefield."
+//   - Multi-fetch lands (Myriad Landscape, Krosan Verge, Mortuary
+//     Mire-class): "{2}, {T}, Sacrifice this: Search your library
+//     for up to two basic land cards..."
+//
+// Excludes mana-fix lands (shocklands, duals, painlands) — they
+// don't fetch additional lands. The "search your library" anchor
+// combined with "land card" is the binding test; the entry-tapped
+// shocklands say "Land" in typeline but their oracle is "as ~
+// enters, you may pay 2 life. if you don't, it enters tapped" with
+// no search clause.
+func landIsFetchOrRamp(ot string) bool {
+	if ot == "" {
+		return false
+	}
+	if !strings.Contains(ot, "search your library") {
+		return false
+	}
+	// "for a [type] land" / "for a land" / "for up to N basic land"
+	// cover every fetch variant. Anchoring on " land" with leading
+	// space avoids matching "landfall" / "landwalk" / "wasteland"-
+	// in-name fragments.
+	return containsAny(ot,
+		"for a land",
+		"for a basic land",
+		"for a basic plains",
+		"for a basic island",
+		"for a basic swamp",
+		"for a basic mountain",
+		"for a basic forest",
+		"for a forest or",
+		"for a plains or",
+		"for a swamp or",
+		"for a mountain or",
+		"for an island or",
+		"for up to one basic land",
+		"for up to two basic land",
+		"for up to three basic land",
+		"for up to one land",
+		"for up to two land",
+		"for up to three land",
+		// Two-type shuffler lands: Krosan Verge ("search your library
+		// for a forest card and a plains card") and similar dual-fetch
+		// shapes. The "and a [type] card" tail anchors these without
+		// matching the "or" two-type fetch phrasing already covered
+		// above.
+		"and a forest card",
+		"and a plains card",
+		"and a swamp card",
+		"and a mountain card",
+		"and an island card")
 }
 
 // cardHasAnthem returns true if the lowercased oracle text matches
