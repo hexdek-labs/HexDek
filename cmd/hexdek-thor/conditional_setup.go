@@ -1926,6 +1926,16 @@ const (
 	condScaffoldExiledWithCountGE          // "N or more cards have been exiled with this artifact"
 	condScaffoldExiledThisTurn             // "one or more cards were put into exile this turn"
 	condScaffoldDamagedCreatureDied        // "a creature dealt damage by this creature this turn died"
+
+	// Era 1 r60 batch — top-5 unbucketed condition patterns from the
+	// 2026-05-26 era1_scaffold_audit run. Each maps to existing engine
+	// state (Permanent.Flags["monstrous"], Permanent.Flags["attacking"],
+	// Card.BasePower, Seat.Library top, Flags["put_counter_this_turn"]).
+	condScaffoldMonstrousState     // "as long as this creature is monstrous"
+	condScaffoldIsAttacking        // "as long as this creature is attacking" (present-tense)
+	condScaffoldSelfPowerGE        // "this creature's power is N or more" / "its power is N or greater"
+	condScaffoldTopOfLibraryType   // "the top card of your library is a creature/nonland card"
+	condScaffoldCounterPutOnPermTurn // "+1/+1 counter was put on a permanent under your control this turn"
 )
 
 type conditionScaffold struct {
@@ -2706,6 +2716,93 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		strings.Contains(txt, "if it was attacking") ||
 		strings.Contains(txt, "while it was attacking") {
 		cs.kind = condScaffoldWasAttacking
+		return cs
+	}
+
+	// Era 1 r60 — IsAttacking present-tense ("as long as this creature is
+	// attacking, ..."). Adanto Vanguard, Siege Behemoth, Elturel Survivors.
+	// Distinct from WasAttacking (past-tense post-combat) and from seat-
+	// level AttackedThisTurn. Must come AFTER WasAttacking so the past-
+	// tense variants stay routed to their own scaffold.
+	if (strings.Contains(txt, "this creature is attacking") ||
+		strings.Contains(txt, "~ is attacking") ||
+		strings.Contains(txt, "while this creature is attacking") ||
+		strings.Contains(txt, "while it is attacking")) &&
+		!strings.Contains(txt, "while attacking") {
+		cs.kind = condScaffoldIsAttacking
+		return cs
+	}
+
+	// Era 1 r60 — MonstrousState ("as long as this creature is monstrous").
+	// Chillerpillar, Sinuous Vermin, Fleecemane Lion, Skittering Crustacean.
+	// Engine already stamps perm.Flags["monstrous"]=1 via ActivateMonstrosity;
+	// scaffold sets the same flag on the source so the gated continuous
+	// effect's predicate is satisfied at test time.
+	if strings.Contains(txt, "is monstrous") ||
+		strings.Contains(txt, "while monstrous") ||
+		strings.Contains(txt, "if this creature is monstrous") {
+		cs.kind = condScaffoldMonstrousState
+		return cs
+	}
+
+	// Era 1 r60 — SelfPowerGE ("this creature's power is N or more",
+	// "its power is N or greater"). Lesser Werewolf (power 1+),
+	// Angelic Sell-Sword (power 6+), Deathknell Berserker (power 3+).
+	// Distinct from condScaffoldFerocious (seat-wide "you control a
+	// creature with power 4+") — this is per-source self-reference.
+	if (strings.Contains(txt, "this creature's power is") ||
+		strings.Contains(txt, "its power is") ||
+		strings.Contains(txt, "~'s power is")) &&
+		(strings.Contains(txt, "or more") || strings.Contains(txt, "or greater")) {
+		cs.kind = condScaffoldSelfPowerGE
+		cs.count = 3
+		// Pull explicit number ("power is 4 or greater") or spelled word.
+		if m := manaSpentNumRe.FindStringSubmatch(txt); len(m) > 1 {
+			if n, err := strconv.Atoi(m[1]); err == nil && n > 0 {
+				cs.count = n
+			}
+		} else {
+			for w, n := range map[string]int{"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8} {
+				if strings.Contains(txt, w+" or more") || strings.Contains(txt, w+" or greater") {
+					cs.count = n
+					break
+				}
+			}
+		}
+		return cs
+	}
+
+	// Era 1 r60 — TopOfLibraryType ("the top card of your library is a
+	// creature/nonland/<subtype> card"). Chittering Illuminator, Water
+	// Weird, Crown of Convergence. Scaffold tops up library with a
+	// creature (default) or whichever subtype the text names so the
+	// gated effect's library-peek predicate is satisfied.
+	if strings.Contains(txt, "top card of your library is") {
+		cs.kind = condScaffoldTopOfLibraryType
+		cs.subtype = "creature"
+		if strings.Contains(txt, "nonland") {
+			cs.subtype = "nonland"
+		} else if strings.Contains(txt, "land card") {
+			cs.subtype = "land"
+		} else if strings.Contains(txt, "instant") {
+			cs.subtype = "instant"
+		} else if strings.Contains(txt, "sorcery") {
+			cs.subtype = "sorcery"
+		}
+		return cs
+	}
+
+	// Era 1 r60 — CounterPutOnPermTurn passive-voice variant ("a +1/+1
+	// counter was put on a permanent under your control this turn",
+	// "you've put one or more +1/+1 counters on a creature this turn").
+	// Fairgrounds Trumpeter, Sigardian Paladin, A-Sigardian Paladin.
+	// Routes to the existing PutCounterThisTurn scaffold so the flag
+	// the engine reads (Flags["put_counter_this_turn"]) gets set.
+	if (strings.Contains(txt, "counter was put on") ||
+		strings.Contains(txt, "put one or more +1/+1 counters on") ||
+		strings.Contains(txt, "you've put one or more")) &&
+		(strings.Contains(txt, "this turn") || strings.Contains(txt, "under your control")) {
+		cs.kind = condScaffoldPutCounterThisTurn
 		return cs
 	}
 
@@ -6592,6 +6689,74 @@ func applyConditionScaffolding(gs *gameengine.GameState, cond *gameast.Condition
 		}
 		cs.description = "stamped attacking + was_attacking flags on srcPerm"
 
+	case condScaffoldIsAttacking:
+		// Present-tense "this creature is attacking". Stamp the attacking
+		// flag (gameengine.flagAttacking == "attacking" — read by
+		// Permanent.IsAttacking()) on srcPerm so the gated continuous
+		// effect's predicate evaluates true. No seat-level attacked flag
+		// — that's WasAttacking territory.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["attacking"] = 1
+		}
+		cs.description = "stamped attacking flag on srcPerm (present-tense)"
+
+	case condScaffoldMonstrousState:
+		// "as long as this creature is monstrous". Engine reads
+		// perm.Flags["monstrous"] (see ActivateMonstrosity in
+		// internal/gameengine/keywords_misc.go). Set the same flag so
+		// gated keyword grants (Fleecemane Lion's hexproof+indestructible,
+		// Chillerpillar's flying) evaluate true.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["monstrous"] = 1
+		}
+		cs.description = "stamped monstrous flag on srcPerm"
+
+	case condScaffoldSelfPowerGE:
+		// "this creature's power is N or more". Bump srcPerm's BasePower
+		// so layered P/T evaluation clears the threshold. If srcPerm has
+		// no Card or BasePower is already >= count, this is a no-op.
+		threshold := cs.count
+		if threshold < 1 {
+			threshold = 3
+		}
+		if srcPerm != nil && srcPerm.Card != nil {
+			if srcPerm.Card.BasePower < threshold {
+				srcPerm.Card.BasePower = threshold
+			}
+		}
+		cs.description = fmt.Sprintf("set srcPerm BasePower>=%d", threshold)
+
+	case condScaffoldTopOfLibraryType:
+		// "the top card of your library is a creature/nonland card".
+		// Construct a card of the requested type and prepend to seat 0's
+		// library so peek-the-top predicates succeed.
+		sub := cs.subtype
+		if sub == "" {
+			sub = "creature"
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			seat := gs.Seats[0]
+			types := []string{sub}
+			if sub == "nonland" {
+				// "nonland" — pick a concrete nonland type. Creature is
+				// universally legal and exercises BasePower-readers.
+				types = []string{"creature"}
+			}
+			top := &gameengine.Card{
+				Name:  fmt.Sprintf("TopOfLibrary %s", sub),
+				Owner: 0,
+				Types: types,
+			}
+			seat.Library = append([]*gameengine.Card{top}, seat.Library...)
+		}
+		cs.description = fmt.Sprintf("prepended %q card to seat 0 library", sub)
+
 	case condScaffoldPermanentMVLE:
 		// "it's a permanent card with mana value N or less" — Matter Reshaper
 		// reveal-and-route. Seed a low-MV permanent atop seat 0's library so
@@ -7200,6 +7365,18 @@ func traceConditionScaffolding(cond *gameast.Condition, tr *Tracer) {
 		desc = "placed card in seat 0 exile + exiled_this_turn flag"
 	case condScaffoldDamagedCreatureDied:
 		desc = "set srcPerm.Flags[damaged_creature_died]=1 + placed corpse in seat 0 graveyard"
+
+	// Era 1 r60 batch — trace descriptions.
+	case condScaffoldIsAttacking:
+		desc = "stamped attacking flag on srcPerm (present-tense)"
+	case condScaffoldMonstrousState:
+		desc = "stamped monstrous flag on srcPerm"
+	case condScaffoldSelfPowerGE:
+		desc = fmt.Sprintf("set srcPerm BasePower>=%d", maxInt(cs.count, 3))
+	case condScaffoldTopOfLibraryType:
+		desc = fmt.Sprintf("prepended %q card to seat 0 library", nonEmpty(cs.subtype, "creature"))
+	case condScaffoldCounterPutOnPermTurn:
+		desc = "routed to put_counter_this_turn (passive-voice variant)"
 	}
 	tr.Record("CONDITION_SETUP", "%q → %s", cs.rawText, desc)
 }
