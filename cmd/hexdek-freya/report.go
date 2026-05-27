@@ -842,7 +842,12 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 	if len(dp.SynergyClusters) > 0 {
 		fmt.Fprintf(w, "\n  Synergy Clusters:\n")
 		for _, sc := range dp.SynergyClusters {
-			fmt.Fprintf(w, "    [%s] %s (%d pairwise synergies)\n", sc.Name, strings.Join(sc.Cards, ", "), sc.Score)
+			prefix := ""
+			if sc.HighDensity {
+				prefix = "★ high-density — "
+			}
+			fmt.Fprintf(w, "    [%s] %s%s (%d pairwise synergies, %d members)\n",
+				sc.Name, prefix, strings.Join(sc.Cards, ", "), sc.Score, sc.MemberCount)
 		}
 	}
 
@@ -1403,6 +1408,7 @@ type jsonCluster struct {
 	Theme       string   `json:"theme"`
 	Score       int      `json:"synergy_count"`
 	MemberCount int      `json:"member_count,omitempty"`
+	HighDensity bool     `json:"high_density,omitempty"`
 }
 
 type jsonAltBuild struct {
@@ -1658,7 +1664,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 	for _, sc := range dp.SynergyClusters {
 		clusters = append(clusters, jsonCluster{
 			Name: sc.Name, Cards: sc.Cards, Theme: sc.Theme, Score: sc.Score,
-			MemberCount: sc.MemberCount,
+			MemberCount: sc.MemberCount, HighDensity: sc.HighDensity,
 		})
 	}
 	var altBuilds []jsonAltBuild

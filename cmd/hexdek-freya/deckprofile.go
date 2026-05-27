@@ -205,7 +205,30 @@ type SynergyCluster struct {
 	// the complete membership for each theme cluster, not just the
 	// 8-card preview.
 	AllMembers []string
+	// HighDensity flags clusters with MemberCount >= HighDensityClusterFloor
+	// (5). At this size, a theme stops being "the deck happens to enable
+	// X" and becomes "X is a real subsystem of the gameplan" — surfaced
+	// in the report with a ★ prefix and in JSON as high_density so
+	// downstream consumers can highlight the theme without recomputing
+	// the threshold.
+	HighDensity bool
 }
+
+// HighDensityClusterFloor is the MemberCount at which a synergy cluster
+// is flagged as a deliberate subsystem of the deck rather than incidental
+// overlap. Tuned to 5 because 4 (the cluster floor itself) is the
+// minimum-viable theme presence and the discriminator should sit one
+// step above that.
+const HighDensityClusterFloor = 5
+
+// MinimumClusterMembers is the defensive floor below which a "cluster"
+// is just one or two coincidentally-overlapping cards and should not
+// surface as a theme. The pair-scoring math also degrades to noise at
+// that size. Both computeSynergyClusters paths (themed clusters and the
+// separate land_value cluster) already enforce a stricter floor of 4 —
+// this constant pins the absolute lower bound in case either path's
+// floor is ever relaxed.
+const MinimumClusterMembers = 2
 
 // AltBuildSuggestion is a "you could re-focus the deck around X" hint
 // surfaced when the deck has multiple synergy clusters above the
