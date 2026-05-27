@@ -777,10 +777,20 @@ var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companio
 // trailing-suffix patterns mirrored from internal/moxfield/textlist.go so
 // the gauntlet-side parser strips the same Moxfield / Archidekt / TappedOut
 // noise the import-side already handles.
+//
+// foilMarkerRE matches `*F*` / `*Etched*` / `*F-Etched*` — the etched-foil
+// variant carries a hyphen, which the original `[A-Za-z]+` class rejected.
+// The leadBracketTagRE pair handles the MTGO/Deckstats format where the set
+// code appears between the quantity and the name (`4 [LEA] Sol Ring`); the
+// original bracketTagRE only matched trailing brackets, so leading set
+// codes survived through to the meta lookup and silently dropped the card
+// into Unresolved — destroying the entire library for any deck pasted from
+// MTGO. That was the worst gap surfaced by the audit.
 var (
-	foilMarkerRE = regexp.MustCompile(`\s*\*[A-Za-z]+\*\s*$`)
-	bracketTagRE = regexp.MustCompile(`\s*\[[^\]]+\]\s*$`)
-	hashTagRE    = regexp.MustCompile(`\s+#\S+(?:\s+#\S+)*\s*$`)
+	foilMarkerRE     = regexp.MustCompile(`\s*\*[A-Za-z][A-Za-z\-]*\*\s*$`)
+	bracketTagRE     = regexp.MustCompile(`\s*\[[^\]]+\]\s*$`)
+	leadBracketTagRE = regexp.MustCompile(`^\[[^\]]+\]\s*`)
+	hashTagRE        = regexp.MustCompile(`\s+#\S+(?:\s+#\S+)*\s*$`)
 )
 
 // cleanCardName trims a card name of Moxfield-style decoration that real
@@ -792,9 +802,12 @@ var (
 func cleanCardName(name string) string {
 	s := strings.TrimSpace(name)
 	// Repeat-strip because a card may carry several trailing decorations
-	// (e.g. `Sol Ring *F* #ramp`); each pass peels one off.
+	// (e.g. `Sol Ring *F* #ramp`); each pass peels one off. The leading
+	// bracket strip runs in the same loop so a line like
+	// `[LEA] Sol Ring *F*` peels both ends.
 	for i := 0; i < 4; i++ {
 		before := s
+		s = leadBracketTagRE.ReplaceAllString(s, "")
 		s = foilMarkerRE.ReplaceAllString(s, "")
 		s = bracketTagRE.ReplaceAllString(s, "")
 		s = hashTagRE.ReplaceAllString(s, "")
