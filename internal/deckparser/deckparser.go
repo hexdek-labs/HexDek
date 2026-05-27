@@ -883,6 +883,20 @@ func parseTypes(typeLine string) []string {
 // exercise both.
 func NormalizeName(name string) string { return normalizeName(name) }
 
+// CleanCardName strips Moxfield / Archidekt / MTGO printing decoration
+// (set codes, collector numbers, foil markers, hash tags, bracket tags)
+// from a card name. Exported so content-addressing layers like
+// internal/deckid can defensively re-clean Card.Name values that bypass
+// the parser path (DB rows, manual construction, external imports) —
+// otherwise "Forest (THB) 270" and "Forest" hash to different deck IDs.
+func CleanCardName(name string) string {
+	s := strings.TrimSpace(name)
+	if idx := strings.Index(s, "("); idx > 0 {
+		s = strings.TrimSpace(s[:idx])
+	}
+	return cleanCardName(s)
+}
+
 func normalizeName(name string) string {
 	out := make([]rune, 0, len(name))
 	prevSpace := false
