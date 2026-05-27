@@ -112,6 +112,13 @@ type DeckProfile struct {
 	ProtectedKeyPieces  int     // key pieces with built-in protection
 	UnprotectedKeyPieces int    // key pieces without built-in protection
 
+	// InteractionPackage scores how well the deck defends its win lines —
+	// counterspells + opponent-interaction removal + protection effects +
+	// tutor support for protection. Score is 0..1; per-winline defenders
+	// are written back into report.WinLines.WinLines[i].DefendedBy. See
+	// computeInteractionPackage.
+	InteractionPackage InteractionPackage
+
 	// VulnerableComboPieces lists each RoleCombo piece in the deck that
 	// lacks built-in protection (hexproof / shroud / ward / indestructible
 	// / can't-be-countered / phase-out). Combo piece losses are catastrophic
@@ -546,6 +553,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	}
 
 	computeInteractionQuality(dp, report, oracle)
+	computeInteractionPackage(dp, report, oracle)
 	computeProtectionDensity(dp, report, oracle)
 	appendVulnerabilityBracketNote(dp)
 	computeManaBaseGrade(dp, report, oracle)

@@ -22,6 +22,15 @@ type WinLine struct {
 	// grindy loops), and (c) tutor coverage of those pieces. Downstream
 	// consumers sum these into WinLineAnalysis.TotalWeightedScore.
 	Weight int
+	// DefendedBy lists the deck's interaction cards (counterspells +
+	// protection effects) that can defend this win line resolving. The
+	// list is the same union for every line in the deck — different line
+	// types lean on counterspells vs protection to different degrees, but
+	// at the deckbuilding level the same package answers all of them.
+	// Populated by computeInteractionPackage during BuildDeckProfile, so
+	// the field is empty when the package call hasn't run (Profile-less
+	// reports). Capped at defendedByCap entries, alphabetized.
+	DefendedBy []string
 }
 
 // WinLineRationale explains how this win line is detected and resolves.
