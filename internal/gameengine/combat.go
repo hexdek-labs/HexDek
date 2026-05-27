@@ -421,14 +421,33 @@ func DeclareAttackers(gs *GameState, attackerSeat int) []*Permanent {
 	chosen = enforceGoadMustAttack(gs, chosen, legal)
 
 	// Silent Arbiter: max one attacker per combat.
+	//
+	// CR §509.1d: when restrictions and requirements both apply, the
+	// player must choose a legal attacker set that satisfies the maximum
+	// number of restrictions AND the maximum number of requirements that
+	// don't conflict with those restrictions. Naively keeping chosen[0]
+	// drops any goaded creature that enforceGoadMustAttack appended at
+	// the tail — leaving a non-goaded creature as the sole attacker and
+	// silently violating the goad "must attack if able" requirement.
+	// Prefer a goaded entry from `chosen` so the requirement is honored
+	// inside the restriction's 1-attacker budget.
 	if len(chosen) > 1 && silentArbiterOnBattlefield(gs) {
-		chosen = chosen[:1]
+		pick := chosen[0]
+		for _, p := range chosen {
+			if MustAttackIfAble(gs, p) {
+				pick = p
+				break
+			}
+		}
+		chosen = []*Permanent{pick}
 		gs.LogEvent(Event{
 			Kind: "attack_restricted",
 			Seat: attackerSeat,
 			Details: map[string]interface{}{
-				"reason": "silent_arbiter",
-				"max":    1,
+				"reason":     "silent_arbiter",
+				"max":        1,
+				"goad_pref":  MustAttackIfAble(gs, pick),
+				"rule":       "509.1d",
 			},
 		})
 	}
