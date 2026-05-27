@@ -38,15 +38,95 @@ import (
 )
 
 type oracleEntry struct {
-	Name       string `json:"name"`
-	Layout     string `json:"layout"`
-	TypeLine   string `json:"type_line"`
-	SetName    string `json:"set_name"`
-	ReleasedAt string `json:"released_at"`
-	OracleText string `json:"oracle_text"`
-	CardFaces  []struct {
+	Name        string `json:"name"`
+	Layout      string `json:"layout"`
+	TypeLine    string `json:"type_line"`
+	SetName     string `json:"set_name"`
+	SetType     string `json:"set_type"`
+	BorderColor string `json:"border_color"`
+	ReleasedAt  string `json:"released_at"`
+	OracleText  string `json:"oracle_text"`
+	CardFaces   []struct {
 		OracleText string `json:"oracle_text"`
 	} `json:"card_faces"`
+}
+
+// excludedSetTypes mirrors the set-type filter applied by the AST parser
+// at scripts/parser.py:is_real_card. Cards from these set buckets never
+// get ingested into the AST corpus, so counting them in the coverage
+// denominator inflates "MISSING" with cards the parser was never going
+// to handle (Unfinity / Mystery Booster playtest jokes, oversized memorabilia
+// reprints, Mystery Booster minigame stamps).
+var excludedSetTypes = map[string]bool{
+	"memorabilia": true,
+	"token":       true,
+	"minigame":    true,
+	"funny":       true,
+}
+
+// excludedTypeLineSubstrings mirrors the type-line filter at
+// scripts/parser.py:is_real_card. Each of these card types represents a
+// non-Constructed-legal format (Planechase planes/phenomena, Archenemy
+// schemes, Conspiracy draft-only cards, Vanguard avatars, the Dungeon
+// venture token type). The parser drops them; the audit tool must too.
+//
+// "plane" needs a word-boundary check rather than a substring test
+// because the bare substring is also a prefix of "planeswalker" — see
+// the planeTokenMatch helper.
+var excludedTypeLineSubstrings = []string{
+	"token", "scheme", "phenomenon",
+	"vanguard", "conspiracy", "dungeon",
+}
+
+// planeTokenMatch returns true when the type line contains "plane" as a
+// whole token (Planechase cards print as "Plane — Dominaria"). Bare
+// substring matches against "planeswalker" must not trip this filter.
+func planeTokenMatch(typeLine string) bool {
+	lo := strings.ToLower(typeLine)
+	// Split on whitespace and em-/en-/hyphen dashes (subtype separators
+	// in printed type lines) — mirrors scripts/parser.py's tokenization.
+	for _, tok := range strings.FieldsFunc(lo, func(r rune) bool {
+		switch r {
+		case ' ', '\t', '\n', '—', '–', '-':
+			return true
+		}
+		return false
+	}) {
+		if tok == "plane" {
+			return true
+		}
+	}
+	return false
+}
+
+// isRealCard reports whether an oracle entry should be part of the
+// coverage denominator. Mirrors scripts/parser.py:is_real_card so the
+// audit tool counts the same population the parser actually attempts to
+// ingest. Without this filter the report inflates MISSING with
+// definitionally-skipped cards (Unfinity jokes, Planechase planes,
+// Archenemy schemes, oversized memorabilia, etc.) and the per-mechanic
+// percentages tell maintainers to fix handlers that aren't actually
+// broken.
+func isRealCard(e oracleEntry) bool {
+	tl := strings.ToLower(e.TypeLine)
+	for _, sub := range excludedTypeLineSubstrings {
+		if strings.Contains(tl, sub) {
+			return false
+		}
+	}
+	if planeTokenMatch(tl) {
+		return false
+	}
+	if excludedSetTypes[e.SetType] {
+		return false
+	}
+	if e.BorderColor == "silver" {
+		return false
+	}
+	if strings.HasSuffix(e.Name, " Bio") {
+		return false
+	}
+	return true
 }
 
 type classification int
@@ -384,14 +464,24 @@ func loadOracle(path string) ([]oracleEntry, error) {
 	if err := json.NewDecoder(f).Decode(&raw); err != nil {
 		return nil, err
 	}
-	unSets := map[string]bool{
-		"Unstable": true, "Unhinged": true, "Unglued": true,
-		"Unsanctioned": true, "Unfinity": true,
-	}
+	// Filter the oracle corpus to match the AST parser's ingestion
+	// scope (scripts/parser.py:is_real_card). The previous filter only
+	// dropped 5 specific un-set names + layout=token; that missed
+	// Unfinity-adjacent funny sets (Mystery Booster Playtest cmb1/cmb2,
+	// Sunday sunf, Unknown Event unk) plus every non-Constructed type
+	// (planes, schemes, phenomena, vanguards, conspiracies, dungeons)
+	// plus oversized memorabilia reprints. Counting those in the
+	// denominator inflated MISSING with cards the parser was correctly
+	// excluding — choose_modal sat at 93.1% (61 "missing") entirely
+	// because of this denominator skew, even though every legitimately-
+	// templated modal card was parsing fine.
 	out := make([]oracleEntry, 0, len(raw))
 	seen := map[string]bool{}
 	for _, e := range raw {
-		if e.Name == "" || seen[e.Name] || unSets[e.SetName] || e.Layout == "token" {
+		if e.Name == "" || seen[e.Name] {
+			continue
+		}
+		if !isRealCard(e) {
 			continue
 		}
 		seen[e.Name] = true
