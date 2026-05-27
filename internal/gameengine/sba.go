@@ -76,7 +76,24 @@ func StateBasedActions(gs *GameState) bool {
 		if sba704_5g(gs) {
 			changed = true
 		}
-		sba704_5h(gs) // stub — deathtouch tracking not wired.
+		// Per CR §704.3 every SBA that mutates state in this pass must
+		// keep the outer "repeat until quiescent" loop alive. The
+		// `// stub — ...` comments below were authored when these
+		// helpers really were no-ops; the helpers were later wired to
+		// real implementations (sba704_5h deathtouch tracking, sba704_5t
+		// dungeon-completion, sba704_5w battle-protector assignment,
+		// sba704_5x siege protector reset, sba704_5z start-your-engines
+		// speed init) but the call sites still dropped their bool
+		// returns, so a pass in which ONLY one of these helpers mutated
+		// state would terminate the SBA loop early — missing cascading
+		// SBAs that depend on the post-mutation state (e.g. a deathtouch
+		// kill freeing up a same-name legendary, an aura falling off the
+		// destroyed creature, a Saga sacrificing because its chapter
+		// ability finally left the stack). Capture the result of every
+		// helper so the loop matches CR §704.3 semantics.
+		if sba704_5h(gs) {
+			changed = true
+		}
 		if sba704_5i(gs) {
 			changed = true
 		}
@@ -112,17 +129,25 @@ func StateBasedActions(gs *GameState) bool {
 		if sba704_5s(gs) {
 			changed = true
 		}
-		sba704_5t(gs) // stub — dungeons.
-		sba704_5u(gs) // stub — space sculptor / sector designation.
+		if sba704_5t(gs) {
+			changed = true
+		}
+		sba704_5u(gs) // genuine stub — space sculptor / sector designation not modeled, always returns false.
 		if sba704_5v(gs) {
 			changed = true
 		}
-		sba704_5w(gs) // stub — battle protectors.
-		sba704_5x(gs) // stub — siege protector reset.
+		if sba704_5w(gs) {
+			changed = true
+		}
+		if sba704_5x(gs) {
+			changed = true
+		}
 		if sba704_5y(gs) {
 			changed = true
 		}
-		sba704_5z(gs) // stub — Start Your Engines speed init.
+		if sba704_5z(gs) {
+			changed = true
+		}
 
 		// Variant-specific SBAs (§704.6). Commander clauses are gated on
 		// gs.CommanderFormat; non-commander games short-circuit at helper
