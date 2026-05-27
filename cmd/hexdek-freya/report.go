@@ -511,6 +511,9 @@ func printWinLinesText(w io.Writer, wla *WinLineAnalysis) {
 				fmt.Fprintf(w, "       %s → %s (to %s)\n", tp.Tutor, tp.Finds, tp.Delivery)
 			}
 		}
+		if len(wl.DefendedBy) > 0 {
+			fmt.Fprintf(w, "     Defended by: %s\n", strings.Join(wl.DefendedBy, ", "))
+		}
 		fmt.Fprintf(w, "\n")
 	}
 
@@ -765,6 +768,24 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 			for _, d := range dp.InteractionDownsides {
 				fmt.Fprintf(w, "      ↓ [CMC %d] %s — %s\n", d.CMC, d.Name, d.Note)
 			}
+		}
+	}
+
+	if pkg := dp.InteractionPackage; pkg.Score > 0 || len(pkg.Counterspells)+len(pkg.Protection)+len(pkg.OpponentInteraction)+len(pkg.ProtectionTutors) > 0 {
+		fmt.Fprintf(w, "  Interaction Package: %.2f (%d counters / %d opp-int / %d protection / %d prot tutors)\n",
+			pkg.Score, len(pkg.Counterspells), len(pkg.OpponentInteraction),
+			len(pkg.Protection), len(pkg.ProtectionTutors))
+		if len(pkg.Counterspells) > 0 {
+			fmt.Fprintf(w, "    counters:    %s\n", strings.Join(pkg.Counterspells, ", "))
+		}
+		if len(pkg.OpponentInteraction) > 0 {
+			fmt.Fprintf(w, "    opp-int:     %s\n", strings.Join(pkg.OpponentInteraction, ", "))
+		}
+		if len(pkg.Protection) > 0 {
+			fmt.Fprintf(w, "    protection:  %s\n", strings.Join(pkg.Protection, ", "))
+		}
+		if len(pkg.ProtectionTutors) > 0 {
+			fmt.Fprintf(w, "    prot tutors: %s\n", strings.Join(pkg.ProtectionTutors, ", "))
 		}
 	}
 
@@ -1428,6 +1449,7 @@ type jsonDeckProfile struct {
 	InteractionQuality float64           `json:"interaction_quality,omitempty"`
 	AdjustedInteractionQuality float64   `json:"adjusted_interaction_quality,omitempty"`
 	InteractionDownsides []jsonInteractionDownside `json:"interaction_downsides,omitempty"`
+	InteractionPackage *jsonInteractionPackage `json:"interaction_package,omitempty"`
 	PowerPercentile    int               `json:"power_percentile,omitempty"`
 	PowerFactors       []string          `json:"power_factors,omitempty"`
 	CoachingTips       []jsonCoachingTip `json:"coaching_tips,omitempty"`
@@ -1438,6 +1460,14 @@ type jsonInteractionDownside struct {
 	CMC  int    `json:"cmc"`
 	Kind string `json:"kind"`
 	Note string `json:"note"`
+}
+
+type jsonInteractionPackage struct {
+	Counterspells       []string `json:"counterspells,omitempty"`
+	OpponentInteraction []string `json:"opponent_interaction,omitempty"`
+	Protection          []string `json:"protection,omitempty"`
+	ProtectionTutors    []string `json:"protection_tutors,omitempty"`
+	Score               float64  `json:"interaction_package_score"`
 }
 
 type jsonVulnerableComboPiece struct {
@@ -1607,6 +1637,7 @@ type jsonWinLine struct {
 	Weight     int                   `json:"weight,omitempty"`
 	TutorPaths []jsonTutorChain      `json:"tutor_paths,omitempty"`
 	Rationale  *jsonWinLineRationale `json:"rationale,omitempty"`
+	DefendedBy []string              `json:"defended_by,omitempty"`
 }
 
 type jsonWinLineRationale struct {
@@ -1786,6 +1817,16 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 	for _, d := range dp.InteractionDownsides {
 		downsides = append(downsides, jsonInteractionDownside(d))
 	}
+	var intPkg *jsonInteractionPackage
+	if pkg := dp.InteractionPackage; pkg.Score > 0 || len(pkg.Counterspells)+len(pkg.OpponentInteraction)+len(pkg.Protection)+len(pkg.ProtectionTutors) > 0 {
+		intPkg = &jsonInteractionPackage{
+			Counterspells:       pkg.Counterspells,
+			OpponentInteraction: pkg.OpponentInteraction,
+			Protection:          pkg.Protection,
+			ProtectionTutors:    pkg.ProtectionTutors,
+			Score:               pkg.Score,
+		}
+	}
 
 	return &jsonDeckProfile{
 		DeckName:           dp.DeckName,
@@ -1856,6 +1897,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		InteractionQuality: dp.InteractionQuality,
 		AdjustedInteractionQuality: dp.AdjustedInteractionQuality,
 		InteractionDownsides: downsides,
+		InteractionPackage:   intPkg,
 		PowerPercentile:    dp.PowerPercentile,
 		PowerFactors:       dp.PowerFactors,
 		CoachingTips:       coaching,
@@ -1955,6 +1997,7 @@ func buildJSONWinLines(wla *WinLineAnalysis) *jsonWinLines {
 			Weight:     wl.Weight,
 			TutorPaths: paths,
 			Rationale:  rat,
+			DefendedBy: wl.DefendedBy,
 		}
 	}
 	return &jsonWinLines{
