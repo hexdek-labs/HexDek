@@ -1,6 +1,6 @@
 # Chaos Gauntlet Report
 
-Generated: 2026-05-26T19:28:52-07:00
+Generated: 2026-05-26T20:27:31-07:00
 
 ## Configuration
 
@@ -8,8 +8,8 @@ Generated: 2026-05-26T19:28:52-07:00
 |-----------|-------|
 | Oracle Corpus | 36656 cards |
 | Legendary Creatures | 3433 |
-| Total Games | 5000 |
-| Seed | 42 |
+| Total Games | 1000 |
+| Seed | 43 |
 | Permutations | 1 |
 | Seats | 4 |
 | Max Turns | 60 |
@@ -21,22 +21,22 @@ Generated: 2026-05-26T19:28:52-07:00
 
 | Metric | Count |
 |--------|-------|
-| Duration | 49.002s |
-| Throughput | 102 games/sec |
+| Duration | 1m4.269s |
+| Throughput | 16 games/sec |
 | Crashes | 0 (in 0 games) |
 | Invariant Violations | 0 (in 0 games) |
-| Clean Games | 5000 |
+| Clean Games | 1000 |
 
 ### Nightmare Boards
 
 | Metric | Count |
 |--------|-------|
-| Duration | 615ms |
-| Throughput | 16258 boards/sec |
+| Duration | 685ms |
+| Throughput | 14594 boards/sec |
 | Crashes | 0 |
 | Invariant Violations | 0 |
 | Clean Boards | 10000 |
 
 ## Verdict: CLEAN
 
-All 5000 chaos games and 10000 nightmare boards passed all invariant checks with zero crashes.
+All 1000 chaos games and 10000 nightmare boards passed all invariant checks with zero crashes.
