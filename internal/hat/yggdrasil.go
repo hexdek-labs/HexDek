@@ -1449,6 +1449,55 @@ func (h *YggdrasilHat) bestTarget(gs *gameengine.GameState, seatIdx int, attacke
 			score += 8.0
 		}
 
+		// 1b. Commander-damage kill-shot + clock progression
+		// (CR §704.6c — 21 commander damage from a single source loses
+		// the game regardless of life). When OUR attacker is our own
+		// commander, the existing CmdrDmg clock + this swing's damage
+		// is the relevant kill condition, not target.Life. Pre-r60 the
+		// picker was blind to this and would aim our 5-power commander
+		// at the lowest-life opponent even when a 30-life target with
+		// 17 cmdr damage from us would die to a redirect — throwing
+		// away one of Voltron's primary win lines. Mirrors the block-
+		// side check in AssignBlockers so the two sides of combat
+		// reason about the same clock.
+		//
+		// Two bonuses:
+		//   - Kill-shot (clock + swing >= 21): +8, matching the life
+		//     kill-shot magnitude.
+		//   - Closing-clock graded (clock > 0, not lethal): +clock/7,
+		//     so investment we've already made compounds into focus
+		//     on the same target. At clock=14 (one big swing from
+		//     lethal) → +2.0; at clock=7 → +1.0; at clock=20 → +2.86
+		//     (still below the +8 kill-shot bump so adding 1 more
+		//     point of damage flips us into the kill-shot tier
+		//     instead). Capped implicitly at clock=21.
+		//
+		// Honors double strike on the swing projection — DS doubles
+		// the damage delivered in one attack and so doubles the clock
+		// advance.
+		if attacker != nil && attacker.Card != nil &&
+			gameengine.IsCommanderCard(gs, attacker.Controller, attacker.Card) &&
+			def >= 0 && def < len(gs.Seats) && gs.Seats[def] != nil &&
+			gs.Seats[def].CommanderDamage != nil {
+			if byDealer, ok := gs.Seats[def].CommanderDamage[attacker.Controller]; ok {
+				clock := byDealer[attacker.Card.DisplayName()]
+				if clock > 0 {
+					swing := gs.PowerOf(attacker)
+					if attacker.HasKeyword("double strike") || attacker.HasKeyword("double_strike") {
+						swing *= 2
+					}
+					if swing < 0 {
+						swing = 0
+					}
+					if clock+swing >= 21 {
+						score += 8.0
+					} else {
+						score += float64(clock) / 7.0
+					}
+				}
+			}
+		}
+
 		// 2. Scaled low-life bonus — linear ramp as life drops below 20.
 		// At 20 life: +0. At 10 life: +1.5. At 1 life: +3.0.
 		if threat.Life < 20 {
