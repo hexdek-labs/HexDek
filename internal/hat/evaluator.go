@@ -299,19 +299,35 @@ func (e *GameStateEvaluator) scoreBoard(gs *gameengine.GameState, seatIdx int) f
 }
 
 // scoreCards: hand size + library depth + persistent draw engines on
-// battlefield + castable-from-exile cards, all relative to opponent
-// average. The engine + castable-exile terms capture virtual card
-// advantage that pure hand-count misses (a 4-card hand behind a Rhystic
-// Study + Phyrexian Arena is a different game than a 4-card hand
-// behind nothing).
+// battlefield + castable-from-exile cards + opponent-triggered value
+// engines, all relative to opponent average. The engine + castable-
+// exile + opp-trigger-value terms capture virtual card advantage that
+// pure hand-count misses (a 4-card hand behind a Rhystic Study +
+// Phyrexian Arena + Smothering Tithe is a different game than a
+// 4-card hand behind nothing).
+//
+// The opp-trigger-value term — the Rhystic Study / Smothering Tithe
+// class — is the long-tail companion to drawEngineCredit. Where
+// drawEngineCredit captures a flat per-engine rate that assumes a
+// representative pod, this term scales with the actual living-opp
+// count: 0.4 per engine per living opponent. A Smothering Tithe at a
+// 4-player table with 3 live opponents is +1.2 here; the same card
+// when the table has been whittled to a 1v1 is only +0.4. Engines
+// that are also draw engines (Rhystic, Mystic Remora, Esper Sentinel)
+// stack the bonus on top of their flat 1.5 rate-class credit —
+// intentional, since drawEngineCredit is calibrated against a typical
+// pod and this term tunes for the actual count. Treasure / mana
+// engines that are NOT draw engines (Smothering Tithe, Trouble in
+// Pairs) get nonzero credit here for the first time.
 func (e *GameStateEvaluator) scoreCards(gs *gameengine.GameState, seatIdx int) float64 {
 	seat := gs.Seats[seatIdx]
 	myHand := float64(len(seat.Hand))
 	myLib := float64(len(seat.Library))
 	myEngines := drawEngineCredit(seat)
 	myCastExile := float64(castableExileCount(gs, seatIdx))
+	myOppValue := float64(opponentTriggerValueCount(seat))
 
-	var oppHand, oppLib, oppEngines, oppCastExile float64
+	var oppHand, oppLib, oppEngines, oppCastExile, oppOppValue float64
 	var oppN int
 	for i, s := range gs.Seats {
 		if i == seatIdx || s.Lost || s.LeftGame {
@@ -321,6 +337,7 @@ func (e *GameStateEvaluator) scoreCards(gs *gameengine.GameState, seatIdx int) f
 		oppLib += float64(len(s.Library))
 		oppEngines += drawEngineCredit(s)
 		oppCastExile += float64(castableExileCount(gs, i))
+		oppOppValue += float64(opponentTriggerValueCount(s))
 		oppN++
 	}
 	if oppN == 0 {
@@ -330,11 +347,13 @@ func (e *GameStateEvaluator) scoreCards(gs *gameengine.GameState, seatIdx int) f
 	avgLib := oppLib / float64(oppN)
 	avgEngines := oppEngines / float64(oppN)
 	avgCastExile := oppCastExile / float64(oppN)
+	avgOppValue := oppOppValue / float64(oppN)
 
 	return (myHand-avgHand)/4.0 +
 		(myLib-avgLib)/40.0 +
 		(myEngines-avgEngines)*0.4 +
-		(myCastExile-avgCastExile)*0.3
+		(myCastExile-avgCastExile)*0.3 +
+		(myOppValue-avgOppValue)*0.4*float64(oppN)
 }
 
 // drawEngineCredit estimates the seat's virtual cards-per-turn from
@@ -577,6 +596,99 @@ func castableExileCount(gs *gameengine.GameState, seatIdx int) int {
 		}
 	}
 	return n
+}
+
+// opponentTriggerValueCount counts nonland permanents on seat's
+// battlefield that match the Rhystic Study / Smothering Tithe class:
+// passive triggers that fire on an opponent action ("whenever an
+// opponent casts / draws / attacks / cycles / sacrifices...") and
+// produce a free resource for the controller (a card, a treasure, a
+// token, or mana). The count is capped at 4 — mirrors the
+// drawEngineCredit cap so multi-engine stax/value boards don't blow
+// out the dimension.
+//
+// Scoring scales by living-opponent count in scoreCards (0.4 per
+// engine per opp). A Smothering Tithe at a 4-player table with 3
+// live opps is worth +1.2 in CA units; the same card at a 1v1 is
+// only +0.4. Captures the "Rhystic in cEDH vs Rhystic in a duel"
+// asymmetry the flat draw-engine rate-class table can't express.
+func opponentTriggerValueCount(seat *gameengine.Seat) int {
+	if seat == nil {
+		return 0
+	}
+	const cap = 4
+	n := 0
+	for _, p := range seat.Battlefield {
+		if !isOpponentTriggeredValueEngine(p) {
+			continue
+		}
+		n++
+		if n >= cap {
+			return cap
+		}
+	}
+	return n
+}
+
+// isOpponentTriggeredValueEngine returns true when p is a nonland
+// permanent whose oracle text describes a recurring trigger on an
+// opponent action that gives the controller a free resource.
+//
+// Anchor cards in the class:
+//   - Rhystic Study: opp casts → you may draw
+//   - Mystic Remora: opp casts noncreature → you draw
+//   - Esper Sentinel: opp casts first noncreature → you draw
+//   - Smothering Tithe: opp draws → you create a treasure
+//   - Trouble in Pairs: opp's second action → you draw + treasure
+//
+// Excluded by design:
+//   - Lands (skipped — different class)
+//   - Symmetric "each player" effects (Howling Mine — already
+//     discounted in drawEngineRate; not opp-asymmetric)
+//   - Own-upkeep value engines (Phyrexian Arena, Black Market
+//     Connections — fire on YOUR upkeep, not opp action)
+//   - Damage-only opp-triggers (Underworld Dreams — punishes opp
+//     draws without giving you a resource; that's ThreatExposure
+//     not CardAdvantage)
+func isOpponentTriggeredValueEngine(p *gameengine.Permanent) bool {
+	if p == nil || p.Card == nil {
+		return false
+	}
+	// Skip lands. The class is scoped to nonland permanents per
+	// the design — lands don't typically generate per-opp-action
+	// resources at a meaningful rate, and the opp-cast trigger
+	// pattern on a land (Bountiful Promenade etc.) is structurally
+	// different.
+	for _, t := range p.Card.Types {
+		if t == "land" {
+			return false
+		}
+	}
+	ot := gameengine.OracleTextLower(p.Card)
+	if ot == "" {
+		return false
+	}
+	// Recurring opp-action trigger cue. Both phrasings — "whenever
+	// an opponent" and "whenever a player other than you" — are
+	// standard for this class.
+	hasOppTrigger := strings.Contains(ot, "whenever an opponent") ||
+		strings.Contains(ot, "whenever a player other than you")
+	if !hasOppTrigger {
+		return false
+	}
+	// Free-resource consequence. The four resource families that
+	// qualify as long-tail CA: card draw, treasure tokens, generic
+	// token creation, and direct mana addition.
+	if strings.Contains(ot, "you draw a card") ||
+		strings.Contains(ot, "you may draw a card") ||
+		strings.Contains(ot, "you draw a") ||
+		strings.Contains(ot, "create a treasure") ||
+		strings.Contains(ot, "treasure token") ||
+		strings.Contains(ot, "you create a") ||
+		strings.Contains(ot, "add {") {
+		return true
+	}
+	return false
 }
 
 // scoreMana: mana source count relative to average, plus color coverage.
