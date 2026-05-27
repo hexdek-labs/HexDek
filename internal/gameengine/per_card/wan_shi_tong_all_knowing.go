@@ -50,19 +50,41 @@ func wanShiTongETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		return
 	}
 	tuckedName := target.Card.DisplayName()
-	tuckedCard := target.Card
 
-	// Remove from battlefield, place on bottom of owner's library.
-	if !removePermanent(gs, target) {
+	// Route the battlefield-exit through the canonical BouncePermanent API
+	// with dest="library_bottom" rather than removePermanent + manual
+	// append. This was the last unrefactored offender in the §614 bypass
+	// sweep (etrata / abdel / bilbo / thassa already routed through
+	// ExilePermanent / BouncePermanent in earlier r60 PRs). The manual
+	// path was skipping FOUR pieces of canonical battlefield-exit
+	// machinery:
+	//   • UnregisterReplacementsForPermanent — Platinum-Angel-style
+	//     "you can't lose" replacements lingered after tuck, the same
+	//     class of phantom-replacement bug fixed in the 2026-05-25
+	//     SBACompleteness x6 row (the in-pickReplacement backstop now
+	//     catches the symptom, but the proper fix is to unregister at
+	//     LTB).
+	//   • UnregisterContinuousEffectsForPermanent — Glorious Anthem-style
+	//     static buffs survived past their source leaving play.
+	//   • ExpireSourceGrants — Kess / Yawgmoth's Agenda grants on
+	//     graveyard-cast permissions kept ticking after the source got
+	//     tucked (same shape as the 2026-05-24 ZoneCastGrantExpiry x8
+	//     cluster, just via tuck instead of LTB).
+	//   • §903.9b commander redirect — a commander targeted by Wan Shi
+	//     Tong got hard-tucked to the bottom of the owner's library
+	//     with no offer to redirect to the command zone, which is the
+	//     commander player's choice under CR §903.9b. Load-bearing
+	//     because commanders are exactly the kind of high-CMC threat
+	//     the picker prefers (Wan Shi Tong's heuristic adds a +100
+	//     score bonus for commanders).
+	// BouncePermanent also handles detachAll, ExpireSourceBoundPolicies,
+	// FireZoneChange's §614 replacement chain, and FireZoneChangeTriggers
+	// (which now correctly fires "tucked"/"zone_change" observers like
+	// Hullbreaker Horror).
+	if !gameengine.BouncePermanent(gs, target, perm, "library_bottom") {
 		emitFail(gs, slug, perm.Card.DisplayName(), "remove_failed", nil)
 		return
 	}
-	gameengine.DetachAll(gs, target)
-	ownerSeat := gs.Seats[owner]
-	if ownerSeat == nil {
-		return
-	}
-	ownerSeat.Library = append(ownerSeat.Library, tuckedCard)
 
 	gs.LogEvent(gameengine.Event{
 		Kind:   "tuck_to_library",
