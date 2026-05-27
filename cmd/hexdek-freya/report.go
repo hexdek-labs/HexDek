@@ -720,6 +720,12 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		}
 	}
 
+	if dp.DeckCostTier != "" {
+		fmt.Fprintf(w, "  Deck Cost:  %s tier — %s\n", dp.DeckCostTier, dp.DeckCostNote)
+	} else if dp.DeckCostNote != "" {
+		fmt.Fprintf(w, "  Deck Cost:  %s\n", dp.DeckCostNote)
+	}
+
 	if dp.KeepableHandPct > 0 {
 		fmt.Fprintf(w, "  Opening Hands: %.0f%% keepable, avg turn to 4 mana: %.1f\n", dp.KeepableHandPct, dp.AvgTurnToFourMana)
 		if dp.IsCommanderCentric && dp.KeepableHandPctAdjusted > 0 {
@@ -1354,6 +1360,11 @@ type jsonDeckProfile struct {
 	TaplandCount       int               `json:"tapland_count,omitempty"`
 	FetchCount         int               `json:"fetch_count,omitempty"`
 	UtilityLandCount   int               `json:"utility_land_count,omitempty"`
+	DeckCostTier       string            `json:"deck_cost_tier,omitempty"`
+	EstimatedTotalUSD  float64           `json:"estimated_total_usd,omitempty"`
+	PricedCardCount    int               `json:"priced_card_count,omitempty"`
+	UnpricedCardCount  int               `json:"unpriced_card_count,omitempty"`
+	DeckCostNote       string            `json:"deck_cost_note,omitempty"`
 	VulnerableTo       []string          `json:"vulnerable_to,omitempty"`
 	VulnerableComboPieces []jsonVulnerableComboPiece `json:"vulnerable_combo_pieces,omitempty"`
 	KeepableHandPct         float64       `json:"keepable_hand_pct,omitempty"`
@@ -1754,6 +1765,11 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		TaplandCount:       dp.TaplandCount,
 		FetchCount:         dp.FetchCount,
 		UtilityLandCount:   dp.UtilityLandCount,
+		DeckCostTier:       dp.DeckCostTier,
+		EstimatedTotalUSD:  dp.EstimatedTotalUSD,
+		PricedCardCount:    dp.PricedCardCount,
+		UnpricedCardCount:  dp.UnpricedCardCount,
+		DeckCostNote:       dp.DeckCostNote,
 		VulnerableTo:       dp.VulnerableTo,
 		VulnerableComboPieces: vulnCombo,
 		KeepableHandPct:         dp.KeepableHandPct,
