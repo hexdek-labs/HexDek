@@ -89,10 +89,22 @@ func (h *YggdrasilHat) recordConvictionSample(gs *gameengine.GameState, seatIdx 
 
 	relPos := h.relativePosition(gs, seatIdx)
 
+	// R60: graveyard-recursion latent uplift. The raw relativePosition
+	// reads myEval - bestOpponentEval at the STATIC position — it doesn't
+	// credit comeback potential sitting in our own graveyard. A deck
+	// behind on board but holding Worldgorger Dragon in graveyard +
+	// Karador as commander has real recovery equity that the score
+	// window will false-trigger past. Add a conviction-LOCAL uplift to
+	// the windowed sample so the score-window concession trigger sees
+	// the same opportunity our future turns will see. The uplift is
+	// applied only to the conviction window — every other caller of
+	// h.relativePosition continues to see the unadjusted score.
+	convictionRelPos := relPos + h.convictionGraveyardLatent(gs, seatIdx)
+
 	// Score-window candidate trigger — exact match to the removed
 	// implementation: every sample in a 4-turn window below threshold,
 	// only after turn 10.
-	d.relPosWindow = append(d.relPosWindow, relPos)
+	d.relPosWindow = append(d.relPosWindow, convictionRelPos)
 	if len(d.relPosWindow) > convictionScoreWindow {
 		d.relPosWindow = d.relPosWindow[len(d.relPosWindow)-convictionScoreWindow:]
 	}
@@ -135,14 +147,15 @@ func (h *YggdrasilHat) recordConvictionSample(gs *gameengine.GameState, seatIdx 
 		Source: "yggdrasil",
 		Amount: gs.Turn,
 		Details: map[string]interface{}{
-			"turn":             gs.Turn,
+			"turn":              gs.Turn,
 			"relative_position": relPos,
-			"window_samples":   len(d.relPosWindow),
-			"score_triggered":  scoreTriggered,
-			"winline_extinct":  winLineExtinct,
-			"winline_detail":   winLineDetail,
-			"any_triggered":    anyTriggered,
-			"archetype":        archetype,
+			"graveyard_latent":  convictionRelPos - relPos,
+			"window_samples":    len(d.relPosWindow),
+			"score_triggered":   scoreTriggered,
+			"winline_extinct":   winLineExtinct,
+			"winline_detail":    winLineDetail,
+			"any_triggered":     anyTriggered,
+			"archetype":         archetype,
 		},
 	})
 
@@ -158,6 +171,91 @@ func (h *YggdrasilHat) recordConvictionSample(gs *gameengine.GameState, seatIdx 
 		AnyTriggered:     anyTriggered,
 		Archetype:        archetype,
 	})
+}
+
+// convictionGraveyardLatent returns the uplift the conviction score
+// window should add to relativePosition to credit comeback potential
+// sitting in our own graveyard. Returns 0 in the common case; rises
+// monotonically with the number of win-line / finisher cards reachable
+// via recursion. Scope is intentionally conviction-only — it adjusts
+// the score-window trigger that's specifically about "should I
+// concede?", NOT the global relativePosition signal used by attack
+// targeting / cast prioritization / dozens of other call sites.
+//
+// Latent value is gated on having an active recursion path. Without
+// one, a card in graveyard is not recoverable and shouldn't count
+// against the concession trigger. The path can be:
+//   - a graveyard-recursion engine on our battlefield (Underworld
+//     Breach / Yawgmoth's Will / Past in Flames / Karador / Muldrotha
+//     in play — exact same detector used by scoreCombo's graveyard
+//     weight upgrade in #563)
+//   - a recursion-themed commander in the command zone, where the
+//     reanimator detector reads commander name patterns
+//
+// Without a path, latent is 0 regardless of graveyard contents.
+//
+// With a path, score is composed of:
+//   - +0.08 per known winline/finisher piece currently in our graveyard
+//     (the canonical "I can recur my wincon" signal — Cabal Therapy
+//     finding nothing, Necropotence dumping to grave, etc.)
+//   - cap at +0.30 total so a long graveyard of cycling fodder doesn't
+//     blow out the concession suppressor
+//
+// Returns 0 for a nil hat / nil game / lost seat / missing strategy
+// — defensive matches the calling pattern in recordConvictionSample.
+func (h *YggdrasilHat) convictionGraveyardLatent(gs *gameengine.GameState, seatIdx int) float64 {
+	if h == nil || gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return 0
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil || seat.Lost || seat.LeftGame {
+		return 0
+	}
+	if h.Strategy == nil {
+		return 0
+	}
+	if len(seat.Graveyard) == 0 {
+		return 0
+	}
+	// Recursion path required — without one, a card in graveyard is
+	// not recoverable.
+	if !seatHasComboGraveyardRecursion(seat) {
+		return 0
+	}
+	// Build a set of winline / finisher card names from the strategy.
+	winLine := map[string]bool{}
+	for _, cp := range h.Strategy.ComboPieces {
+		for _, name := range cp.Pieces {
+			if name != "" {
+				winLine[name] = true
+			}
+		}
+	}
+	for _, name := range h.Strategy.FinisherCards {
+		if name != "" {
+			winLine[name] = true
+		}
+	}
+	if len(winLine) == 0 {
+		return 0
+	}
+	hits := 0
+	for _, c := range seat.Graveyard {
+		if c == nil {
+			continue
+		}
+		if winLine[c.DisplayName()] {
+			hits++
+		}
+	}
+	if hits == 0 {
+		return 0
+	}
+	uplift := float64(hits) * 0.08
+	if uplift > 0.30 {
+		uplift = 0.30
+	}
+	return uplift
 }
 
 // checkWinLineExtinct returns true if every named win-line card from the
