@@ -636,6 +636,37 @@ func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) fl
 			break
 		}
 	}
+	// R60: pay-life tutors / draw engines in hand also count as life
+	// payoffs, but only when the seat has enough life to actually pay
+	// the activation cost. Vampiric Tutor / Imperial Seal cost 2 life;
+	// Necropotence pays X life for cards; Bargain-style draws pay life.
+	// Threshold of 4 life keeps the payoff valid for back-to-back use
+	// (2 life × 2 tutors) and gates out cases where the card in hand
+	// is functionally unusable. Non-land filter avoids land-side
+	// payoffs (handled separately by the painland tax below).
+	if !hasLifePayoff && seat.Life >= 4 {
+		for _, c := range seat.Hand {
+			if c == nil {
+				continue
+			}
+			isLand := false
+			for _, t := range c.Types {
+				if t == "land" {
+					isLand = true
+					break
+				}
+			}
+			if isLand {
+				continue
+			}
+			ot := gameengine.OracleTextLower(c)
+			if strings.Contains(ot, "pay") && strings.Contains(ot, "life") &&
+				(strings.Contains(ot, "search") || strings.Contains(ot, "draw")) {
+				hasLifePayoff = true
+				break
+			}
+		}
+	}
 
 	// R60r9: convex danger curve. Pre-tune the danger band (life ≤ 10) was
 	// linear in ratio, so life=1 (one shock = death) scored only ~2x worse
@@ -689,6 +720,38 @@ func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) fl
 		}
 		if engines > 0 {
 			base *= 1.0 - 0.1*float64(engines)
+		}
+
+		// R60: painland mana-base tax. City of Brass, Mana Confluence,
+		// Ancient Tomb, original painlands (Karplusan Forest etc.), and
+		// shocklands chip self-damage on tap (or up-front on ETB) and
+		// create an ongoing soft tax on top of opponent pressure. A deck
+		// running 5 painlands at low life is in materially more danger
+		// than a deck on basics at the same life total — every mana
+		// cycle is another shock toward zero. Detect on own battlefield
+		// via the canonical "damage to you" suffix (City of Brass /
+		// Ancient Tomb / painlands) plus the "pay … life" + "add"
+		// activated-cost shape (Mana Confluence). Amplifies the deficit
+		// 5% per painland, capped at 25% (5 painlands). Only fires when
+		// base is already negative — painlands at full life don't
+		// preemptively hurt; they steepen the danger curve as life
+		// drops, which is the actual tactical reality.
+		painlands := 0
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil || !p.IsLand() {
+				continue
+			}
+			ot := gameengine.OracleTextLower(p.Card)
+			if strings.Contains(ot, "damage to you") ||
+				(strings.Contains(ot, "pay") && strings.Contains(ot, "life") && strings.Contains(ot, "add")) {
+				painlands++
+			}
+		}
+		if painlands > 5 {
+			painlands = 5
+		}
+		if painlands > 0 {
+			base *= 1.0 + 0.05*float64(painlands)
 		}
 	}
 
