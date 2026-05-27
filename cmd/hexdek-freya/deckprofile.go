@@ -81,6 +81,20 @@ type DeckProfile struct {
 	InteractionQuality  float64 // avg CMC of interaction spells (lower = faster)
 	CheapInteraction    int     // interaction at CMC 0-2
 	ExpensiveInteraction int    // interaction at CMC 4+
+	// AdjustedInteractionQuality is InteractionQuality with a downside
+	// penalty layered in: each removal piece that grants the opponent a
+	// meaningful resource (Path ramp, Generous Gift 3/3, Oblation card
+	// advantage) costs +0.5 effective CMC. Path-to-Exile feels more like
+	// CMC 1.5 than CMC 1 because the basic-land search is a real cost in
+	// a non-green-opponent meta. See computeInteractionQuality and
+	// interactionDownsides for the curated table.
+	AdjustedInteractionQuality float64
+	// InteractionDownsides is the per-card breakdown of which interaction
+	// spells carry an opponent-advantage downside, and what the downside
+	// is. Surfaced to the report so builders see WHICH pieces to consider
+	// swapping for cleaner replacements (StP, Anguished Unmaking,
+	// Counterspell). Sorted alphabetically for stable rendering.
+	InteractionDownsides []InteractionDownside
 	ProtectedKeyPieces  int     // key pieces with built-in protection
 	UnprotectedKeyPieces int    // key pieces without built-in protection
 
@@ -490,6 +504,52 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	return dp
 }
 
+// InteractionDownside records one removal/counter/wipe in the deck
+// that hands the opponent a meaningful resource: ramp from a basic-land
+// search (Path to Exile), a creature token (Generous Gift / Beast Within
+// / Pongify / Rapid Hybridization / Crib Swap), or pure card advantage
+// (Oblation, Chaos Warp's free play). Self-cost downsides (Anguished
+// Unmaking life payment) are deliberately NOT in scope — they're a
+// tempo tax on the caster, not opponent leverage, and a B3 deck running
+// Unmaking shouldn't be penalized for it.
+type InteractionDownside struct {
+	Name string
+	CMC  int
+	// Kind is the downside category: "ramp" (basic-land search),
+	// "creature_token" (X/X token to opponent), "card_advantage"
+	// (opponent draws / cycles), "free_spell" (opponent gets a free
+	// cast off the top), or "other" for one-offs.
+	Kind string
+	Note string
+}
+
+// interactionDownsides is the curated card-name table of removal that
+// hands the opponent a meaningful resource. Keys are normalized
+// lowercase (matches the oracleDB lookup convention and the per-card
+// match in computeInteractionQuality). Each entry carries the downside
+// Kind for filtering and a short human-readable Note for the report.
+//
+// Curation policy: only cards where the downside is the FIRST-ORDER
+// reason a builder would consider a swap. "Path gives ramp" is the
+// canonical example — turn-defining vs a non-green opponent. Cards
+// whose downside is just life payment to YOU (Anguished Unmaking,
+// Vindicate's color requirement, etc.) are out of scope.
+var interactionDownsides = map[string]struct {
+	Kind string
+	Note string
+}{
+	"path to exile":        {Kind: "ramp", Note: "opponent searches for a basic land — turn-defining ramp vs a non-green deck"},
+	"generous gift":        {Kind: "creature_token", Note: "opponent gets a 3/3 elephant token"},
+	"beast within":         {Kind: "creature_token", Note: "opponent gets a 3/3 beast token"},
+	"pongify":              {Kind: "creature_token", Note: "opponent gets a 3/3 ape token"},
+	"rapid hybridization": {Kind: "creature_token", Note: "opponent gets a 3/3 frog lizard token"},
+	"crib swap":            {Kind: "creature_token", Note: "opponent gets a 1/1 changeling token"},
+	"reality shift":        {Kind: "creature_token", Note: "opponent manifests the top of their library as a 2/2"},
+	"oblation":             {Kind: "card_advantage", Note: "owner draws 2 cards — net positive card swap for the opponent"},
+	"chaos warp":           {Kind: "free_spell", Note: "opponent reveals top of library; could be a free threat"},
+	"swan song":            {Kind: "creature_token", Note: "opponent gets a 2/2 flying bird token"},
+}
+
 func computeInteractionQuality(dp *DeckProfile, report *FreyaReport, oracle *oracleDB) {
 	if report.Roles == nil {
 		return
@@ -497,6 +557,7 @@ func computeInteractionQuality(dp *DeckProfile, report *FreyaReport, oracle *ora
 
 	totalCMC := 0
 	count := 0
+	downsideCount := 0
 	for _, a := range report.Roles.Assignments {
 		isInteraction := false
 		for _, r := range a.Roles {
@@ -524,11 +585,27 @@ func computeInteractionQuality(dp *DeckProfile, report *FreyaReport, oracle *ora
 		} else if cmc >= 4 {
 			dp.ExpensiveInteraction++
 		}
+
+		if d, ok := interactionDownsides[strings.ToLower(a.Name)]; ok {
+			downsideCount++
+			dp.InteractionDownsides = append(dp.InteractionDownsides, InteractionDownside{
+				Name: a.Name, CMC: cmc, Kind: d.Kind, Note: d.Note,
+			})
+		}
 	}
 
 	if count > 0 {
 		dp.InteractionQuality = float64(totalCMC) / float64(count)
+		// Effective-CMC penalty: each downside-bearing piece adds 0.5 to
+		// the numerator before averaging. A piece that hands the opponent
+		// ramp / a 3/3 / a free spell "feels" slower than its mana cost
+		// suggests because the swing in board state offsets the tempo
+		// gain from removing the original threat.
+		dp.AdjustedInteractionQuality = (float64(totalCMC) + 0.5*float64(downsideCount)) / float64(count)
 	}
+	sort.SliceStable(dp.InteractionDownsides, func(i, j int) bool {
+		return dp.InteractionDownsides[i].Name < dp.InteractionDownsides[j].Name
+	})
 }
 
 // VulnerableComboPiece names a single RoleCombo card in the deck that
