@@ -102,6 +102,19 @@ type DeckProfile struct {
 	FetchCount       int
 	UtilityLandCount int
 
+	// Deck cost tier — "Budget" (<$100), "Mid" ($100-$500),
+	// "High-end" (>$500). Empty when fewer than 80% of the deck's
+	// cards have resolvable USD prices (insufficient data for a
+	// meaningful classification — would mislead more than inform).
+	// EstimatedTotalUSD is the sum of resolved card prices; the
+	// real total may be higher when unpriced cards include
+	// reserved-list / out-of-print premiums. See computeDeckCostTier.
+	DeckCostTier      string
+	EstimatedTotalUSD float64
+	PricedCardCount   int
+	UnpricedCardCount int
+	DeckCostNote      string // human-readable summary or coverage warning
+
 	// Threat assessment
 	VulnerableTo []string // specific hosers this deck fears
 
@@ -467,6 +480,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	computeProtectionDensity(dp, report, oracle)
 	appendVulnerabilityBracketNote(dp)
 	computeManaBaseGrade(dp, report, oracle)
+	computeDeckCostTier(dp, report, oracle)
 	// Opening hand sim runs first so dp.IsCommanderCentric is populated
 	// before threat assessment reads it (commander-centric decks fear
 	// commander-targeting hosers like Imprisoned in the Moon).

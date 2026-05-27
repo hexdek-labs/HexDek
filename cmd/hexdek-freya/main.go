@@ -47,6 +47,36 @@ type oracleEntry struct {
 		TypeLine   string `json:"type_line"`
 		ManaCost   string `json:"mana_cost"`
 	} `json:"card_faces"`
+	// Prices block from Scryfall bulk. Observed keys: usd,
+	// usd_foil, usd_etched, eur, eur_foil, tix. Values are
+	// strings (or null when no marketplace data); decoded as
+	// strings so we can distinguish "no listing" from "$0.00".
+	Prices map[string]string `json:"prices,omitempty"`
+}
+
+// USDPrice returns the parsed non-foil USD price for this entry. The
+// "usd" key in the Scryfall prices block is the canonical retail
+// reference; usd_foil and usd_etched intentionally aren't consulted
+// here — deck-cost tier classification works off the cheapest
+// playable printing, and foil/etched premiums distort that.
+//
+// Returns ok=false when the entry has no prices block at all, when
+// the usd key is absent, when the value is empty / null, or when it
+// fails to parse as a float. Callers treat ok=false as "unpriced" —
+// distinct from $0, which would be a real (free) card.
+func (e *oracleEntry) USDPrice() (float64, bool) {
+	if e == nil || e.Prices == nil {
+		return 0, false
+	}
+	raw := strings.TrimSpace(e.Prices["usd"])
+	if raw == "" {
+		return 0, false
+	}
+	v, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return 0, false
+	}
+	return v, true
 }
 
 // oracleDB maps normalized card names to oracle entries.
