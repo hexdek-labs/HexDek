@@ -163,6 +163,19 @@ type classifyContext struct {
 	spellCopyCount int
 	landfallCount  int
 	counterCount   int // +1/+1 counter / proliferate cards
+	// proliferateCount counts cards that specifically PROLIFERATE — a
+	// narrower signal than counterCount (which also includes +1/+1
+	// counter anthems and "number of counters" payoffs). Drives the
+	// Atraxa-style Superfriends detection arm where a 4-6 planeswalker
+	// shell leans on proliferate engines (Atraxa Praetors' Voice as
+	// commander, Karn's Bastion, Inexorable Tide, Tezzeret's Gambit,
+	// Contagion Engine / Clasp, Flux Channeler, Evolution Sage,
+	// Plaguemaw Beast) to make even a smaller walker cluster
+	// threatening. Distinguishing this from counters-matter (Hardened
+	// Scales / Marchesa) requires gating on BOTH proliferate density
+	// AND a planeswalker floor — counters-matter decks pack lots of
+	// +1/+1 payoffs but typically run 0-2 planeswalkers.
+	proliferateCount int
 	enchantmentPct float64
 	lifegainCount  int
 	blinkCount     int
@@ -734,8 +747,35 @@ var archetypeFingerprints = []archetypeFingerprint{
 		Ratios: map[RoleTag]float64{
 			RoleThreat: 0.10, RoleRemoval: 0.08, RoleDraw: 0.08, RoleBoardWipe: 0.04,
 		},
+		// Two-arm detection:
+		//   (1) PW-dense shell: ≥8 planeswalkers. Catches dedicated
+		//       walker-tribal Estrid / Sliver Overlord-as-walker /
+		//       cEDH Tezzeret stax-walker piles where the deck is
+		//       structurally walker-heavy regardless of proliferate
+		//       support.
+		//   (2) Atraxa-style proliferate shell: ≥4 planeswalkers AND
+		//       ≥3 proliferate effects. The proliferate cluster makes
+		//       even a smaller 4-7 walker count threatening because
+		//       every walker ticks up each upkeep / each combat /
+		//       each spell cast. The 3-proliferate floor distinguishes
+		//       a real Atraxa shell (Atraxa as commander + Karn's
+		//       Bastion + Tezzeret's Gambit + Contagion Engine +
+		//       Evolution Sage + Flux Channeler + Inexorable Tide)
+		//       from generic counters-matter decks (Hardened Scales /
+		//       Marchesa / Animar) that pack +1/+1 payoffs but few
+		//       proliferate engines. The 4-walker floor distinguishes
+		//       it from generic proliferate-matters decks (Skullbriar,
+		//       Pir Imaginative Rascal, Ezuri Renegade Leader) that
+		//       proliferate +1/+1 counters on creatures rather than
+		//       loyalty.
 		Require: func(ctx *classifyContext) bool {
-			return ctx.planeswalkerCount >= 8
+			if ctx.planeswalkerCount >= 8 {
+				return true
+			}
+			if ctx.planeswalkerCount >= 4 && ctx.proliferateCount >= 3 {
+				return true
+			}
+			return false
 		},
 	},
 	{
@@ -1139,6 +1179,16 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 		}
 		if containsAny(ot, "+1/+1 counter", "proliferate", "number of counters", "modified") {
 			ctx.counterCount += qp.Qty
+		}
+		// Narrower proliferate signal: only count cards whose oracle text
+		// names the proliferate keyword/action directly. Excludes generic
+		// "+1/+1 counter" anthems and "number of counters" payoffs that
+		// counterCount conflates. Counters-matter decks (Hardened Scales,
+		// Marchesa the Black Rose, Animar) will bump counterCount but not
+		// proliferateCount — that's the precision lever the Superfriends
+		// disjunctive arm uses to avoid poaching them.
+		if containsAny(ot, "proliferate") {
+			ctx.proliferateCount += qp.Qty
 		}
 		if containsAny(ot, "gain life", "whenever you gain life", "lifelink") {
 			ctx.lifegainCount += qp.Qty
