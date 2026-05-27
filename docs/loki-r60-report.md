@@ -1,154 +1,107 @@
-# Loki r60 — Chaos Gauntlet Report
+# Loki r60 Fuzz Report — 5000 games / seed 42
 
-**Date:** 2026-05-24
-**Branch:** `dev/loki-r60-fuzz` (cut from `origin/main` @ 6eabfd0)
-**Binary:** `cmd/hexdek-loki`
-**Command:** `go run ./cmd/hexdek-loki --games 5000 --seed 42 --nightmare-boards 0 --report data/rules/CHAOS_REPORT_R60_FUZZ.md`
-**Raw artifacts:** `data/rules/CHAOS_REPORT_R60_FUZZ.md`, `data/rules/loki-r60-fuzz.log` (gitignored under the `data/` rule).
+**Date:** 2026-05-26
+**Branch:** `dev/loki-r60-fuzz` (cut from `origin/main`)
+**Command:** `go run ./cmd/hexdek-loki --games 5000 --seed 42`
+**Worktree:** `.claude/worktrees/r60-11-feyd-slot`
+**Raw log:** `/tmp/loki-r60-raw.log`
+**Auto-generated report:** `data/rules/CHAOS_REPORT.md`
 
 ## Headline
 
-| Phase            | Volume      | Crashes | Invariant Hits | Clean   |
-|------------------|-------------|---------|----------------|---------|
-| Chaos games      | 5000 games  | **0**   | 52 (26 games)  | 4974    |
-| Nightmare boards | skipped     | —       | —              | —       |
+**0 crashes / 0 invariant violations across 5000 chaos games + 10000 nightmare boards.**
 
-Throughput: 70 games/s. Wall time: 1m11s. **Zero panics, zero recovers.**
+The engine is bit-stable clean on seed 42 at r60. This supersedes both the round-1 r60 report previously at this path (52 violations, 2026-05-24) and the round-2 report (10 violations, also 2026-05-24). It is the first fully-clean 5000-game run on the canonical seed since the Loki invariant suite was introduced.
 
-## Invariant breakdown — chaos games
+## Run Output
 
-| Invariant              | r41 (seed 41) | r44 (seed 42) | **r60 (seed 42)** | Δ vs r44 |
-|------------------------|---------------|---------------|-------------------|----------|
-| CardIdentity           | 832           | 260           | **2**             | **−258 / −99%** |
-| ZoneConservation       | 790           | 124           | **0**             | **−124 / −100%** |
-| ZoneCastGrantExpiry    | 8             | 4             | **42**            | **+38 / +950%** ⚠️ |
-| TriggerCompleteness    | 8             | 4             | **6**             | +2 / +50% |
-| AttachmentConsistency  | 14            | 8             | **0**             | **−8 / −100%** |
-| CombatLegality         | —             | 2             | **2**             | flat |
-| **Total**              | **1652**      | **402**       | **52**            | **−350 / −87%** |
+```
+=== CHAOS GAMES COMPLETE ===
+  games:           5000
+  duration:        49.002s
+  throughput:      102 games/sec
+  crashes:         0 (in 0 games)
+  violations:      0 (in 0 games)
+  clean games:     5000
 
-r60's accumulated zone-conservation work (Adric, Pitmage, Krark, Oketra,
-Bontu, Dread, the §614 / commander-redirect cleanups, plus the r60
-attachment-consistency fix that landed on this same worktree as PR #84
-yesterday) has driven the historical dominant cluster — CardIdentity +
-ZoneConservation, 384 of r44's 402 hits — down to **2 of 52**. The two
-remaining CardIdentity hits are a single signature: `"Abuelo, Ancestral
-Echo" appears in both seat 1 command_zone and seat 3 exile` (game 1173,
-×2). That's a §903.9b commander-redirect path on a card with a §704.5d
-exile-redirect interaction — same shape as the Oketra and Bontu fixes
-from r48 / r56, but on a card whose owner+controller diverge at the
-moment the §614 chain runs. Low priority next.
+=== NIGHTMARE BOARDS COMPLETE ===
+  boards:          10000
+  duration:        615ms
+  throughput:      16258 boards/sec
+  crashes:         0
+  violations:      0
+  clean boards:    10000
 
-## Worst NEW regression — ZoneCastGrantExpiry 4 → 42 (+950%)
+Verdict: CLEAN
+```
 
-ZoneCastGrantExpiry is now **81 % of all remaining violations** and is
-the only invariant that moved meaningfully in the wrong direction since
-r44. The seed-42 r41/r44 baselines both sat at 4–8 hits; the r60
-breakdown shows three distinct grant shapes failing cleanup:
+## Top Invariant Clusters (by frequency)
 
-| ×N | Card (grant) | Zone | Duration | Source | grantTurn |
-|----|--------------|------|----------|--------|-----------|
-| 2 | Commander's Plate | exile | `until_end_of_turn` | The Infamous Cruelclaw | 58 |
-| 2 | Huatli's Final Strike | graveyard | `while_source_on_bf` | Yawgmoth's Agenda | 34 |
-| 1 | Case of the Shifting Visage | exile | `until_end_of_turn` | Narset, Enlightened Master | 56 |
+No invariant clusters observed. Every tracked category — `CardIdentity`, `ZoneConservation`, `ZoneCastGrantExpiry`, `TriggerCompleteness`, `SBACompleteness`, `LifeConsistency`, `AttachmentConsistency`, `CombatLegality`, `ResourceConservation`, `ReplacementCompleteness`, `StackIntegrity` — reported 0 violations across 0 games.
 
-Two of these are exactly the *family* the `dev/zonecast-grant-expiry-r60`
-PR (#83, merged 2026-05-23) was supposed to close — `until_end_of_turn`
-heist / Narset-style exile-cast grants whose EOT cleanup was missed
-because the per-call-site `Duration` field wasn't stamped on the
-permission. The fact that Commander's Plate (heist via Cruelclaw) and
-Case of the Shifting Visage (Narset cast-from-exile) still appear
-points at a third arm of `resolveModificationEffect` / `resolveResidualByText`
-that builds a `FreeCastFromExilePermission` and forgets the duration
-stamp, OR an `ExpireZoneCastGrants` call site that the EOT phase walker
-isn't reaching for high-turn games (turn 58 / 56 — both well past
-typical EOT cleanup ticks).
+## Trajectory vs. CLAUDE.md Baselines (seed 42, 5000 games)
 
-The Huatli's Final Strike row is a different shape: `while_source_on_bf`
-with `source=Yawgmoth's Agenda`. The invariant fires only when the
-grant has expired, so Agenda must have *left* the battlefield without
-the grant being torn down. The new r60 `play_from_graveyard` primitive
-that powers Yawgmoth's Will / Past in Flames / Recoup / Will of the
-Jeskai routes through this `while_source_on_bf` shape; the
-LTB-cleanup hook for that permission family is the suspect.
+| Milestone | Total Violations | Δ vs Previous | Δ vs r41 Baseline |
+|-----------|-----------------:|--------------:|------------------:|
+| **r41** (baseline)            | 1652 | — | — |
+| **r44** (post Cerulean Sphinx + Krark paradigm + Adric / Oketra) | 402  | −1250 / −76% | −76% |
+| **r60 round 1**               | 52   | −350  / −87% | −96.9% |
+| **r60 round 2** (PR #106 ZoneCastGrantExpiry + #110 batchH + #124 AttachmentConsistency + trigger-cap) | 10   | −42   / −81% | −99.4% |
+| **r60 round 3 — THIS RUN**    | **0**  | **−10 / −100%** | **−100%** |
 
-**Most likely root cause:** the r60 ZoneCastGrant work added new
-grant-construction sites (Cruelclaw heist arm, Yawgmoth's Agenda
-play-from-graveyard, Narset exile-cast) on top of the surface that
-PR #83 fixed, but the corresponding cleanup wiring missed those new
-sites. Bias toward auditing every `NewFreeCastFromExilePermission`
-caller for both `Duration` stamping AND an unregister hook on either
-EOT (`until_end_of_turn`) or source-LTB (`while_source_on_bf`).
+### Per-cluster comparison
 
-## Other small clusters
+| Invariant              | r41 | r44 | r60 r1 | r60 r2 | **r60 r3 (this run)** |
+|------------------------|----:|----:|-------:|-------:|----------------------:|
+| CardIdentity           | 832 | 260 |    2   |    —   | **0** |
+| ZoneConservation       | 790 | 124 |    0   |    —   | **0** |
+| ZoneCastGrantExpiry    |   8 |   4 |   42   |    4   | **0** |
+| TriggerCompleteness    |   8 |   4 |    6   |    2   | **0** |
+| AttachmentConsistency  |  14 |   8 |    0   |    0   | **0** |
+| CombatLegality         |   — |   2 |    2   |    2   | **0** |
+| SBACompleteness        |   — |   — |    —   |    1   | **0** |
+| LifeConsistency        |   — |   — |    —   |    1   | **0** |
+| **Total**              |1652 | 402 |   52   |   10   | **0** |
 
-- **TriggerCompleteness (6)** — three signatures, none new: `Bhaal,
-  Lord of Murder` on `death event "sacrifice"` (×2), `Urza, Prince of
-  Kroog` on `sba_704_5g` (×2), `Gerrard, Weatherlight Hero` on
-  `sba_704_5g` (×1, +1). All three were called out as latent
-  signatures in r57's "Marchesa / Gisa / Jenova" honorable-mention
-  cluster — death-trigger dispatchers gated on `dies`/`sba_704_5g`
-  but not `sacrifice` as a die-kind variant. Volume +2 vs r44 is
-  inside fuzz noise.
-- **CombatLegality (2)** — `"Behemoth of Vault 0" attacking with
-  summoning sickness and no haste`. Same row as r44 — bit-stable
-  signature, unfixed background.
-- **CardIdentity (2)** — Abuelo / commander-redirect, see above.
-- **AttachmentConsistency (0)**, **ZoneConservation (0)** — both
-  closed for this seed at this volume. The r41/r44 dominant cluster
-  is gone.
+### What closed the residual 10 (round 2 → round 3)
 
-## Top correlated commanders
+Cross-referenced from the CLAUDE.md Resolved Issue Log:
 
-| Rank | Commander | Dirty games | Clean games | Correlation |
-|------|-----------|-------------|-------------|-------------|
-| 1 | Shrouded Shepherd // Cleave Shadows | 2 | 3 | 0.40 |
-| 2 | Calix, Destiny's Hand | 2 | 4 | 0.33 |
-| 3 | Boartusk Liege | 2 | 4 | 0.33 |
+- **SBA cap-draw seat-loss** (seed 1337 g465, 2026-05-24) — CR §704.3 mandatory-loop draw now marks every non-Lost seat Lost with reason "mandatory loop draw (CR 104.4b via SBA cap)" so `CheckEnd` actually terminates and SBAs aren't permanently muted. Closed the seat-0-alive-at-life-0 LifeConsistency / SBACompleteness pair.
+- **Athreos cross-seat reanimate race** (seed 2024 g2798, 2026-05-24) — `athreosShroudDies` now scans owner's graveyard before delegating to `enterBattlefieldWithETB`, mirroring the Gisa §704.6d race-loser pattern. Closed 24× CardIdentity.
+- **Charix `ended`-skip mirror in SBA completeness check** (seed 2025 g3180, 2026-05-24) — invariant false-positive: three stacked +8/-8 mods resolved post-game-end, §704.5f never re-ran. Toughness check now skips at `ended=1`; life check still fires (preserves cap-draw counterfactual).
+- **Necrogen Communion ability log-label** (seeds 31415 + 271828 nightmare, 2026-05-24) — `checkCardIdentity` now skips stack items with `item.Source != nil` OR `item.Kind ∈ {triggered, activated}`. Closed 4× nightmare CardIdentity false-positive.
+- **Gisa opp-only trigger filter** (seed 31415 g237, 2026-05-24) — `opponentOnlyCreatureDiesTriggers` map gates 6 bearers (Gisa, Reaper King No More, Toxrill, Yahenni, Grave Pact, Grave Betrayal). Closed 2× TriggerCompleteness false-positive.
+- **District Mascot Static `etb_with_counters`** (seed 43 g1003, 2026-05-24) — new `ApplyStaticETBCounters` wired into `resolvePermanentSpellETB` + `FirePermanentETBTriggers`. Closed the lone 0/0-creature SBACompleteness residual.
+- **Zidane Tantalus Thief EOT control-return** (seed 1337 g8921, 2026-05-25) — EOT closure now battlefield-scans before re-adding; per CR §611.3c the duration's expiry no-ops if the perm isn't on the battlefield. Closed the 40× CardIdentity deep-leak signature, the largest single residual of the 10K-depth sweep.
+- **Seat-elimination ExpireSourceGrants** (seeds 42 + 31415 + 271828, 2026-05-24) — `HandleSeatElimination` was the lone LTB-equivalent path missing `ExpireSourceGrants(gs, p.Timestamp)`. Adding it closed 8× ZoneCastGrantExpiry across 3 seeds, including the seed-42 round-2 residual (Kess + Compound Fracture).
 
-All correlations sit at or below 0.40 — there is no single dominant
-commander driving the residual, unlike r41's Cerulean Sphinx
-(game 137) or r44's Adric. The residual is a multi-source long tail
-of zonecast-grant cleanup misses across the r60 grant-construction
-surface area.
+## Worst NEW Regression
+
+**None.** This run is a strict superset-clean of every prior r60 round. No invariant category, no signature, no commander correlation regressed — every category that previously fired is now at 0.
+
+The CLAUDE.md open Issue Log contains 3 entries on other seeds (ReplacementCompleteness ×1 on seed 271828 g4773, ResourceConservation ×2 on seed 99 g9804, SBACompleteness ×6 on seed 31415) — none of those seeds were exercised by this run, so the open log is unchanged.
+
+## Caveats
+
+- This run exercises **seed 42 only**. The CLAUDE.md open issues are seed-specific (271828, 99, 31415) and remain unverified against the latest engine state by this run.
+- Run is **AST + oracle backed** via symlinks into the main checkout's `data/rules/` (the worktree's `data/rules/` had the directory but the two large gitignored corpora were absent before this run — symlinks point at `/Users/joshuawiedeman/Documents/GitHub/HexDek/data/rules/{ast_dataset.jsonl,oracle-cards.json}`).
+- Performance: 102 g/s chaos throughput, 16258 b/s nightmare — both in line with recent r60 runs.
+- Throughput improved markedly vs round 1 (70 g/s → 102 g/s, +46%) without any explicit perf work — consistent with the elimination of failure-path observation overhead (no violation paths means no detail-capture allocations).
 
 ## Reproduction
 
 ```
 git fetch origin main
 git checkout -B dev/loki-r60-fuzz origin/main
-go run ./cmd/hexdek-loki --games 5000 --seed 42 --nightmare-boards 0 \
-  --report data/rules/CHAOS_REPORT_R60_FUZZ.md
+# (worktree only) symlink AST + oracle from main checkout if missing:
+#   ln -sf <main>/data/rules/ast_dataset.jsonl data/rules/ast_dataset.jsonl
+#   ln -sf <main>/data/rules/oracle-cards.json data/rules/oracle-cards.json
+go run ./cmd/hexdek-loki --games 5000 --seed 42
 ```
-
-Raw report and progress log are gitignored under the existing `data/`
-rule.
 
 ## Recommended next moves
 
-1. **Audit `NewFreeCastFromExilePermission` callers** for missing
-   `Duration` stamp + missing unregister hook. The PR #83 fix was
-   per-call-site; the residual suggests at least one more site
-   (Cruelclaw, Case of Shifting Visage variant of the Narset arm).
-2. **Audit `while_source_on_bf` grant family** — specifically the new
-   r60 `play_from_graveyard` primitive (Yawgmoth's Agenda) — for
-   LTB-cleanup wiring.
-3. **TriggerCompleteness `sacrifice` dispatch widening** — single
-   dispatcher fix would clear the Bhaal / Marchesa / Gisa / Jenova
-   family (per r57 plan). 6 hits across 5000 games is low priority
-   but the fix is cheap.
-4. CombatLegality + Abuelo CardIdentity stay in the open table —
-   too small to prioritize.
-
-## Caveats
-
-- Single seed (42). Per-game seeds are stable, so signatures map
-  cleanly across r44 / r57 / r60 at the same seed.
-- Nightmare boards skipped (`--nightmare-boards 0`) to keep the
-  run inside the wall-clock budget; r41 found 6 board-only
-  CardIdentity hits in 10000 boards and r57 found none, so the
-  signal-to-cost is poor at this stage.
-- "Shown details" caps at 5 per invariant kind. With only 42
-  ZoneCastGrantExpiry hits in total and 5 shown details split
-  across 3 signatures, the tail is small enough that the breakdown
-  is likely representative.
+1. **Wide-seed gauntlet** (`--seed 43,99,1337,2024,2025,31415,271828`) — verify the round-2/round-3 fixes don't leave seed-specific residuals on the seeds where they were originally surfaced.
+2. **Depth bump on seed 42** (50000+ games) — Zidane was 1 leak across 10K games of seed 1337; there may be similar long-tail signatures hiding past the 5K horizon on seed 42 too.
+3. **Close the 3 open Issue Log entries** (seeds 271828 / 99 / 31415) — these are the next concrete fix targets and are decoupled from seed 42 entirely.
