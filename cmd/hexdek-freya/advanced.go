@@ -1557,6 +1557,7 @@ var metaMatchupDB = map[string][]matchupEntry{
 		{vsArchetype: "Storm", rating: "favored", reason: "counterspells dismantle the storm chain mid-cast; one Counterspell breaks the whole turn"},
 		{vsArchetype: "Reanimator", rating: "neutral", reason: "counterspells stop the reanimation spell but recursive enablers (Unburial Rites, Yawgmoth's Will) reset the line"},
 		{vsArchetype: "Aristocrats", rating: "neutral", reason: "recursive threats are hard to answer one-at-a-time, but the clock is slow enough that wipes catch up"},
+		{vsArchetype: "Enchantress", rating: "favored", reason: "counterspells dismantle the enchantment engine before Argothian Enchantress / Sythis stack triggers, and enchantments can't be answered post-resolution as cheaply as Disenchant lets a control deck pick them apart"},
 	},
 	"aristocrats": {
 		{vsArchetype: "Aggro", rating: "favored", reason: "resilient to removal, drain math bypasses combat damage"},
@@ -1567,6 +1568,7 @@ var metaMatchupDB = map[string][]matchupEntry{
 		{vsArchetype: "Stax", rating: "unfavored", reason: "Drannith Magistrate denies recursion casts; Cursed Totem disables creature sac outlets"},
 		{vsArchetype: "Storm", rating: "unfavored", reason: "storm kill lands before incremental drain closes the game"},
 		{vsArchetype: "Midrange", rating: "favored", reason: "recursive drain out-grinds midrange value over 10+ turns"},
+		{vsArchetype: "Enchantress", rating: "favored", reason: "Blood Artist / Zulaport Cutthroat drain math bypasses Ghostly Prison / Propaganda entirely — pillow fort doesn't stop death triggers, and the aristocrat clock closes before the enchantment engine reaches lethal value"},
 		{vsArchetype: "Graveyard Hate", rating: "unfavored", reason: "Rest in Peace / Leyline of the Void exile the recursion before it loops"},
 	},
 	"voltron": {
@@ -1614,6 +1616,7 @@ var metaMatchupDB = map[string][]matchupEntry{
 		{vsArchetype: "Reanimator", rating: "favored", reason: "storm kill lands before fatty reanimation stabilizes"},
 		{vsArchetype: "Enchantress", rating: "favored", reason: "storm kill lands before enchantment engine pays off"},
 		{vsArchetype: "Voltron", rating: "favored", reason: "storm kill lands before commander damage assembles"},
+		{vsArchetype: "Graveyard Hate", rating: "unfavored", reason: "Underworld Breach / Past in Flames / Yawgmoth's Will storm variants are crippled by Rest in Peace / Leyline of the Void — graveyard-pivoting kill chains lose their pivot, and Bojuka Bog one-shots the recursion piece"},
 	},
 	"enchantress": {
 		{vsArchetype: "Aggro", rating: "neutral", reason: "pillow fort effects (Ghostly Prison, Propaganda) can stabilize if drawn early"},
@@ -1623,6 +1626,8 @@ var metaMatchupDB = map[string][]matchupEntry{
 		{vsArchetype: "Reanimator", rating: "unfavored", reason: "reanimator fatties end the game before pillow fort stabilizes"},
 		{vsArchetype: "Voltron", rating: "favored", reason: "pillow fort effects deflect the commander-damage plan"},
 		{vsArchetype: "Storm", rating: "unfavored", reason: "storm kill lands before enchantment engine pays off"},
+		{vsArchetype: "Control", rating: "unfavored", reason: "counterspells dismantle the enchantment engine before Argothian Enchantress / Sythis can stack triggers; control's Disenchant-style answers pick off the engine pieces faster than the engine pays for replacements"},
+		{vsArchetype: "Aristocrats", rating: "unfavored", reason: "Blood Artist / Zulaport drain bypasses pillow fort entirely — Ghostly Prison only deflects combat, and the death-trigger clock closes before the enchantment engine reaches lethal value"},
 		{vsArchetype: "Midrange", rating: "neutral", reason: "both grind for value, draw-dependent"},
 	},
 	"midrange": {
