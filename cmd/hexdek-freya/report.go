@@ -751,6 +751,13 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 	if dp.InteractionQuality > 0 {
 		fmt.Fprintf(w, "  Interaction Speed: avg CMC %.1f (%d cheap, %d expensive)\n",
 			dp.InteractionQuality, dp.CheapInteraction, dp.ExpensiveInteraction)
+		if len(dp.InteractionDownsides) > 0 {
+			fmt.Fprintf(w, "    adjusted CMC %.1f after downsides (%d piece(s) grant opponent resources):\n",
+				dp.AdjustedInteractionQuality, len(dp.InteractionDownsides))
+			for _, d := range dp.InteractionDownsides {
+				fmt.Fprintf(w, "      ↓ [CMC %d] %s — %s\n", d.CMC, d.Name, d.Note)
+			}
+		}
 	}
 
 	if len(dp.PowerTierCounts) > 0 {
@@ -1401,9 +1408,18 @@ type jsonDeckProfile struct {
 	CommanderSynergy   float64           `json:"commander_synergy,omitempty"`
 	CommanderThemes    []string          `json:"commander_themes,omitempty"`
 	InteractionQuality float64           `json:"interaction_quality,omitempty"`
+	AdjustedInteractionQuality float64   `json:"adjusted_interaction_quality,omitempty"`
+	InteractionDownsides []jsonInteractionDownside `json:"interaction_downsides,omitempty"`
 	PowerPercentile    int               `json:"power_percentile,omitempty"`
 	PowerFactors       []string          `json:"power_factors,omitempty"`
 	CoachingTips       []jsonCoachingTip `json:"coaching_tips,omitempty"`
+}
+
+type jsonInteractionDownside struct {
+	Name string `json:"name"`
+	CMC  int    `json:"cmc"`
+	Kind string `json:"kind"`
+	Note string `json:"note"`
 }
 
 type jsonVulnerableComboPiece struct {
@@ -1740,6 +1756,10 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 	for _, v := range dp.VulnerableComboPieces {
 		vulnCombo = append(vulnCombo, jsonVulnerableComboPiece(v))
 	}
+	var downsides []jsonInteractionDownside
+	for _, d := range dp.InteractionDownsides {
+		downsides = append(downsides, jsonInteractionDownside(d))
+	}
 
 	return &jsonDeckProfile{
 		DeckName:           dp.DeckName,
@@ -1805,6 +1825,8 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		CommanderSynergy:   dp.CommanderSynergy,
 		CommanderThemes:    dp.CommanderThemes,
 		InteractionQuality: dp.InteractionQuality,
+		AdjustedInteractionQuality: dp.AdjustedInteractionQuality,
+		InteractionDownsides: downsides,
 		PowerPercentile:    dp.PowerPercentile,
 		PowerFactors:       dp.PowerFactors,
 		CoachingTips:       coaching,
