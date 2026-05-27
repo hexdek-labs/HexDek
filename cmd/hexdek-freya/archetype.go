@@ -112,6 +112,14 @@ type classifyContext struct {
 	enchantmentPct float64
 	lifegainCount  int
 	blinkCount     int
+	// etbValueCreatureCount counts CREATURE cards whose ETB produces
+	// something worth blinking for (HasValueETB && type-line contains
+	// "creature"). The Blink/Flicker archetype fingerprint requires
+	// this in addition to a meaningful blink-effect count — a control
+	// deck happens to run Ghostly Flicker + Cyclonic Rift, but isn't
+	// a Blink deck unless it ALSO packs enough Mulldrifter / Reclamation
+	// Sage / Eternal Witness-class ETB payoffs to justify the engine.
+	etbValueCreatureCount int
 	artifactCount  int
 	extraCombatCount int
 	// extraTurnCount counts cards that grant a literal extra TURN
@@ -552,8 +560,19 @@ var archetypeFingerprints = []archetypeFingerprint{
 		Ratios: map[RoleTag]float64{
 			RoleThreat: 0.10, RoleDraw: 0.10, RoleRamp: 0.08, RoleRemoval: 0.06,
 		},
+		// r60 Blink gate — two-pronged: 5+ blink-effect cards
+		// (Conjurer's Closet, Cloudshift, Ghostly Flicker, Eldrazi
+		// Displacer, Restoration Angel, Brago, Aminatou, Yorion,
+		// Deadeye Navigator, Thassa Deep-Dwelling, etc.) AND 8+
+		// creatures whose ETB is worth re-triggering (Mulldrifter,
+		// Reclamation Sage, Eternal Witness, Wood Elves, Sun Titan,
+		// Cavalier of Gales, Solemn Simulacrum, ...). Pre-r60 the gate
+		// was just blinkCount>=6, which over-classified control decks
+		// that ran a handful of bounce/exile-and-return effects without
+		// the ETB-payoff density that makes blink actually function as
+		// a strategy.
 		Require: func(ctx *classifyContext) bool {
-			return ctx.blinkCount >= 6
+			return ctx.blinkCount >= 5 && ctx.etbValueCreatureCount >= 8
 		},
 	},
 	{
@@ -935,6 +954,16 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 		}
 		if qp.Profile.IsBlinker || containsAny(ot, "exile, then return", "flicker", "exile target creature you control, then return") {
 			ctx.blinkCount += qp.Qty
+		}
+		// ETB-value creature counter — the second prong of the Blink
+		// archetype gate. Restricted to creatures because non-creature
+		// ETB triggers (artifacts like Solemn Simulacrum, enchantments
+		// like Smothering Tithe) are typically one-shots that don't
+		// benefit from blink. Brago / Yorion / Aminatou decks live on
+		// Mulldrifter / Reclamation Sage / Eternal Witness / Wood Elves
+		// / Sun Titan / Cavalier of Gales — all creatures.
+		if qp.Profile.HasValueETB && strings.Contains(tl, "creature") {
+			ctx.etbValueCreatureCount += qp.Qty
 		}
 		if qp.Profile.IsExtraCombat || containsAny(ot, "additional combat", "extra combat") {
 			ctx.extraCombatCount += qp.Qty

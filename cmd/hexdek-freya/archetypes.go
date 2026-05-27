@@ -207,7 +207,7 @@ var Archetypes = []ArchetypeDef{
 		Name:        "Blink / Flicker",
 		Description: "Exile and return permanents to re-trigger ETB abilities",
 		Keywords:    []string{"exile, then return", "flicker", "blink", "exile target creature you control", "enters the battlefield"},
-		KeyCards:    []string{"Deadeye Navigator", "Thassa, Deep-Dwelling", "Conjurer's Closet", "Restoration Angel", "Panharmonicon", "Yarok, the Desecrated", "Ghostly Flicker", "Ephemerate"},
+		KeyCards:    []string{"Brago, King Eternal", "Yorion, Sky Nomad", "Aminatou, the Fateshifter", "Eldrazi Displacer", "Cloudshift", "Deadeye Navigator", "Thassa, Deep-Dwelling", "Conjurer's Closet", "Restoration Angel", "Panharmonicon", "Yarok, the Desecrated", "Ghostly Flicker", "Ephemerate"},
 		Triggers:    []string{"etb"},
 		Effects:     []string{"exile_return", "draw", "token_create"},
 		Weight:      4,
