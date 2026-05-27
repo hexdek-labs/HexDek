@@ -898,38 +898,56 @@ func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) fl
 		if engines > 0 {
 			base *= 1.0 - 0.1*float64(engines)
 		}
+	}
 
-		// R60: painland mana-base tax. City of Brass, Mana Confluence,
-		// Ancient Tomb, original painlands (Karplusan Forest etc.), and
-		// shocklands chip self-damage on tap (or up-front on ETB) and
-		// create an ongoing soft tax on top of opponent pressure. A deck
-		// running 5 painlands at low life is in materially more danger
-		// than a deck on basics at the same life total — every mana
-		// cycle is another shock toward zero. Detect on own battlefield
-		// via the canonical "damage to you" suffix (City of Brass /
-		// Ancient Tomb / painlands) plus the "pay … life" + "add"
-		// activated-cost shape (Mana Confluence). Amplifies the deficit
-		// 5% per painland, capped at 25% (5 painlands). Only fires when
-		// base is already negative — painlands at full life don't
-		// preemptively hurt; they steepen the danger curve as life
-		// drops, which is the actual tactical reality.
-		painlands := 0
-		for _, p := range seat.Battlefield {
-			if p == nil || p.Card == nil || !p.IsLand() {
-				continue
-			}
-			ot := gameengine.OracleTextLower(p.Card)
-			if strings.Contains(ot, "damage to you") ||
-				(strings.Contains(ot, "pay") && strings.Contains(ot, "life") && strings.Contains(ot, "add")) {
-				painlands++
-			}
+	// R60: painland mana-base tax. City of Brass, Mana Confluence,
+	// Ancient Tomb, original painlands (Karplusan Forest etc.), and
+	// shocklands chip self-damage on tap (or up-front on ETB) and
+	// create an ongoing soft tax on top of opponent pressure. Detect on
+	// own battlefield via the canonical "damage to you" suffix (City of
+	// Brass / Ancient Tomb / painlands) plus the "pay … life" + "add"
+	// activated-cost shape (Mana Confluence). Two penalties stack:
+	//
+	//   (1) low-life amplifier: when base is already negative, each
+	//       painland multiplies the deficit by 5% (capped at 5 = 25%).
+	//       The mana base is materially more dangerous in the shock
+	//       range — every tap is another step toward zero.
+	//
+	//   (2) compounding-turn erosion (R60 follow-up to #560): even at
+	//       healthy life, a painland in play is a debt that accrues
+	//       every turn. By turn 30 with 4 painlands the seat has
+	//       structurally taken roughly 12+ damage from its own lands
+	//       and its forward life buffer is more fragile than a basics
+	//       deck at the same total. Modeled as painlands * turn / 400,
+	//       clamped at -0.15. At turn 30 with 4 painlands: 4*30/400 =
+	//       0.30 → clamped to -0.15. At turn 5 with 2 painlands:
+	//       2*5/400 = 0.025. Fires regardless of base sign so the
+	//       hat treats painlands as a deck-quality deficit, not just
+	//       a shock-range hazard.
+	painlands := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil || !p.IsLand() {
+			continue
 		}
-		if painlands > 5 {
-			painlands = 5
+		ot := gameengine.OracleTextLower(p.Card)
+		if strings.Contains(ot, "damage to you") ||
+			(strings.Contains(ot, "pay") && strings.Contains(ot, "life") && strings.Contains(ot, "add")) {
+			painlands++
 		}
-		if painlands > 0 {
-			base *= 1.0 + 0.05*float64(painlands)
+	}
+	cappedPainlands := painlands
+	if cappedPainlands > 5 {
+		cappedPainlands = 5
+	}
+	if base < 0 && cappedPainlands > 0 {
+		base *= 1.0 + 0.05*float64(cappedPainlands)
+	}
+	if cappedPainlands > 0 && gs.Turn > 0 {
+		erosion := float64(cappedPainlands) * float64(gs.Turn) / 400.0
+		if erosion > 0.15 {
+			erosion = 0.15
 		}
+		base -= erosion
 	}
 
 	// R60 round 5: fold an opponent-pressure component into LifeResource so
