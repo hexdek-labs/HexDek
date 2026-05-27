@@ -1184,6 +1184,11 @@ func (e *GameStateEvaluator) scoreCommander(gs *gameengine.GameState, seatIdx in
 	if e.Strategy != nil && e.Strategy.CommanderSynergy > 0.5 {
 		synergyBonus = 0.3 + e.Strategy.CommanderSynergy*0.3
 	}
+	// commanderPerms: pointers to every commander permanent on this seat's
+	// battlefield. Captured during the cmdOnField scan so the voltron
+	// signal below can read counters / Modifications / attachment chain
+	// without re-walking the battlefield.
+	var commanderPerms []*gameengine.Permanent
 	for _, p := range seat.Battlefield {
 		if p == nil || p.Card == nil {
 			continue
@@ -1192,8 +1197,95 @@ func (e *GameStateEvaluator) scoreCommander(gs *gameengine.GameState, seatIdx in
 			if p.Card.DisplayName() == cn {
 				cmdOnField = true
 				score += synergyBonus
+				commanderPerms = append(commanderPerms, p)
 			}
 		}
+	}
+	// R60: voltron setup signal. Pre-r60 the dimension treated a vanilla
+	// commander on field identically to a commander with 3 equipment + 2
+	// auras + 4 +1/+1 counters attached — every voltron-shape investment
+	// was invisible until the commander damage actually landed. Two
+	// additive signals close that gap WITHOUT double-counting the
+	// concentrated-damage signal below (which credits damage DEALT, not
+	// the setup that produces it):
+	//
+	//   1. Equipment/Aura attachments — count the equipment + aura
+	//      permanents AttachedTo the commander. Per-piece bonus tuned so
+	//      a fully-decked commander (Sword of Fire and Ice + Embercleave
+	//      + Sword of Light and Shadow, attached) reads ~+0.36 and a
+	//      Uril-style aura pile (Ethereal Armor + Daybreak Coronet +
+	//      Eldrazi Conscription) reads ~+0.30. Equipment > aura because
+	//      auras die with the commander (CR §704.5n) so they're a
+	//      riskier investment; the lower per-piece weight reflects that.
+	//      Both signals saturate at 4 pieces — past 4 the commander is
+	//      already a wincon and additional pieces are noise.
+	//
+	//   2. Power-above-base — commander.Power() folds +1/+1 counters AND
+	//      Modifications AND attached-equipment buffs. We credit the
+	//      DELTA against BasePower (so a 2/2 Sram with +6 power from
+	//      equipment reads +0.40) at 0.05 per point, capped at 8 points
+	//      = +0.40. This captures counter-voltron (Sek'Kuar / Animar /
+	//      Hamza) which the attachment-count signal misses entirely, and
+	//      catches modal-aura buffs (Eldrazi Conscription's +10/+10) that
+	//      the per-piece count would underweight.
+	//
+	// Voltron archetype gets the standard 1.5x synergy multiplier on the
+	// combined voltron block — for an archetype whose entire gameplan is
+	// "make the commander unblockable / lethal," the signal needs the
+	// same weight ramp the existing CommanderSynergy path already applies
+	// to commander-on-field.
+	if cmdOnField {
+		var equipCount, auraCount int
+		for _, p := range seat.Battlefield {
+			if p == nil || p.AttachedTo == nil {
+				continue
+			}
+			attached := false
+			for _, cp := range commanderPerms {
+				if p.AttachedTo == cp {
+					attached = true
+					break
+				}
+			}
+			if !attached {
+				continue
+			}
+			switch {
+			case p.IsEquipment():
+				equipCount++
+			case p.IsAura():
+				auraCount++
+			}
+		}
+		voltron := 0.0
+		if equipCount > 4 {
+			equipCount = 4
+		}
+		if auraCount > 4 {
+			auraCount = 4
+		}
+		voltron += float64(equipCount) * 0.12
+		voltron += float64(auraCount) * 0.10
+		// Power-above-base, summed across all commander permanents (Krenko
+		// + Goblin Lackey edge-case partner pairs, etc.).
+		powerDelta := 0
+		for _, cp := range commanderPerms {
+			if cp.Card == nil {
+				continue
+			}
+			d := cp.Power() - cp.Card.BasePower
+			if d > 0 {
+				powerDelta += d
+			}
+		}
+		if powerDelta > 8 {
+			powerDelta = 8
+		}
+		voltron += float64(powerDelta) * 0.05
+		if e.Strategy != nil && e.Strategy.Archetype == ArchetypeVoltron {
+			voltron *= 1.5
+		}
+		score += voltron
 	}
 	if !cmdOnField && len(seat.CommandZone) > 0 {
 		tax := 0
