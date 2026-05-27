@@ -668,6 +668,24 @@ func renderValueChainsMarkdown(chains []ValueChain) string {
 	return sb.String()
 }
 
+// MaxValueChainRecursionDepth returns the strongest RecursionDepth tag
+// across all chains, ordered infinite > deep > shallow > none. Used by
+// ComputeEvalWeights (GraveyardValue boost) and surfaced in strategyJSON
+// so the hat can see the chain-depth signal without re-deriving it from
+// per-step From/To pairs.
+func MaxValueChainRecursionDepth(chains []ValueChain) string {
+	rank := map[string]int{"none": 0, "shallow": 1, "deep": 2, "infinite": 3}
+	bestRank := 0
+	best := "none"
+	for _, c := range chains {
+		if r, ok := rank[c.RecursionDepth]; ok && r > bestRank {
+			bestRank = r
+			best = c.RecursionDepth
+		}
+	}
+	return best
+}
+
 // ---------------------------------------------------------------------------
 // JSON types for value chains.
 // ---------------------------------------------------------------------------

@@ -821,7 +821,15 @@ func ComputeEvalWeights(dp *DeckProfile, report *FreyaReport) *jsonEvalWeights {
 		w.ComboProximity += 0.15
 	}
 
-	// Recursion-heavy decks get graveyard value boost.
+	// Recursion-heavy decks get graveyard value boost. Raw IsRecursion
+	// count is the floor signal — a deck with 5 reanimation bodies wants
+	// graveyard play even with no detected loop. Value-chain recursion
+	// depth (computed in classifyValueChains) is the ceiling signal — a
+	// chain whose last step's To==first step's From forms a literal
+	// graveyard loop (Eternal Witness + Strip Mine + Crucible style),
+	// which is structurally stronger than 5 unrelated recursion cards.
+	// Both stack so a loop-bearing deck with deep recursion bench gets
+	// the full boost.
 	recursionCount := 0
 	for _, p := range report.Profiles {
 		if p.IsRecursion {
@@ -832,6 +840,14 @@ func ComputeEvalWeights(dp *DeckProfile, report *FreyaReport) *jsonEvalWeights {
 		w.GraveyardValue += 0.4
 	} else if recursionCount >= 3 {
 		w.GraveyardValue += 0.2
+	}
+	switch MaxValueChainRecursionDepth(report.ValueChains) {
+	case "infinite":
+		w.GraveyardValue += 0.5
+	case "deep":
+		w.GraveyardValue += 0.25
+	case "shallow":
+		w.GraveyardValue += 0.1
 	}
 
 	// Heavy ramp package boosts mana advantage weight.

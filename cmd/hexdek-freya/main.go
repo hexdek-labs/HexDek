@@ -750,6 +750,8 @@ type strategyJSON struct {
 	FinisherCards    []string          `json:"finisher_cards,omitempty"`
 	ColorDemand      map[string]int    `json:"color_demand,omitempty"`
 
+	MaxRecursionDepth       string                    `json:"max_recursion_depth,omitempty"`
+
 	StarCards               []string                  `json:"star_cards,omitempty"`
 	CuttableCards           []string                  `json:"cuttable_cards,omitempty"`
 	CuttableCardRationale   []jsonCardQuality         `json:"cuttable_card_rationale,omitempty"`
@@ -869,6 +871,14 @@ func saveStrategyJSON(path string, report *FreyaReport) {
 
 	// Full value-chain payloads with rationale, for the deck-drilldown UI.
 	sj.ValueChains = buildJSONValueChains(report.ValueChains)
+
+	// Max recursion depth across chains — surfaced to the hat so it can
+	// see "this deck has a literal graveyard loop" without re-deriving
+	// it from per-step From/To pairs. Suppressed when there are no chains
+	// (would otherwise emit "none" for every Aggro deck).
+	if len(report.ValueChains) > 0 {
+		sj.MaxRecursionDepth = MaxValueChainRecursionDepth(report.ValueChains)
+	}
 
 	// Tutor targets: all win line pieces (ordered by win line priority).
 	seenTargets := map[string]bool{}
