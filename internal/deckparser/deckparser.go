@@ -405,6 +405,11 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		"sideboard": true, "maybeboard": true, "considering": true,
 		"companion": true, "tokens": true, "signature spells": true,
 		"stickers": true, "attractions": true, "outside the game": true,
+		// Aetherhub preamble — `About` precedes a `Name <DeckName>` line
+		// (and sometimes a `Format Commander` / `Description ...` block)
+		// before the real `Commander` / `Deck` section headers. Drop the
+		// whole block until a recognized section header reasserts state.
+		"about": true,
 	}
 
 	sc := bufio.NewScanner(r)
@@ -451,6 +456,13 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			continue
 		}
 		if section == "drop" {
+			continue
+		}
+		// MTGA / Aetherhub sideboard line prefix. These appear interleaved
+		// with mainboard lines instead of under a Sideboard header, so the
+		// section-based drop above doesn't catch them. Drop the line; the
+		// rest of the file may still be mainboard.
+		if sbPrefixRE.MatchString(raw) {
 			continue
 		}
 		// Strip "(SET) 123" suffix (set code + collector number + foil flag).
@@ -772,7 +784,16 @@ var partnerLineRE = regexp.MustCompile(`(?i)^\s*PARTNER\s*:\s*(.+?)\s*$`)
 // the parenthesized count, and a missed match here silently leaks every
 // sideboard / companion / token card into the library (see
 // section_count_r60_test.go).
-var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companion|Considering|Deck|Main\s*Deck|Mainboard|Commanders?|Tokens|Signature\s*Spells|Stickers|Attractions|Outside\s*the\s*Game)\s*:?\s*(?:\(\s*\d+\s*\))?\s*:?\s*$`)
+var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companion|Considering|Deck|Main\s*Deck|Mainboard|Commanders?|Tokens|Signature\s*Spells|Stickers|Attractions|Outside\s*the\s*Game|About)\s*:?\s*(?:\(\s*\d+\s*\))?\s*:?\s*$`)
+
+// sbPrefixRE matches MTGA / Aetherhub sideboard line prefix: `SB: 1 Card`.
+// Pre-fix, every `SB:` line dropped into the fallback "qty=1, name=<raw>"
+// path — most became Unresolved noise, but the surface bug is that an
+// `SB:` line whose suffix happened to match a known card (e.g.
+// `SB: 1 Sol Ring`) silently duplicated the card into the mainboard.
+// Aetherhub's text export uses this form interleaved with mainboard
+// lines instead of a Sideboard section header.
+var sbPrefixRE = regexp.MustCompile(`(?i)^\s*SB\s*:\s*`)
 
 // trailing-suffix patterns mirrored from internal/moxfield/textlist.go so
 // the gauntlet-side parser strips the same Moxfield / Archidekt / TappedOut
