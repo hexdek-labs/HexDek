@@ -2618,6 +2618,37 @@ func suggestCuttableSwaps(dp *DeckProfile, report *FreyaReport) []string {
 // 8. Color weight optimization — suggest specific land swaps.
 // ---------------------------------------------------------------------------
 
+// dualLandRecommendations: a representative dual land per 2-color pair,
+// used as the recommended swap-IN target when both colors are in the
+// deck's identity. Picked from the Battlebond / "Crowded" cycle (Sea
+// of Clouds / Bountiful Promenade / etc.) because those lands are
+// budget-friendly, untapped in multiplayer, and don't punish basic-
+// land budgets the way fetch / shock / OG dual cycles do. Key is the
+// alphabetically-sorted 2-letter pair (e.g. "GW", not "WG") so a
+// single lookup serves either argument order.
+var dualLandRecommendations = map[string]string{
+	"UW": "Sea of Clouds",
+	"BW": "Vault of Champions",
+	"RW": "Spectator Seating",
+	"GW": "Bountiful Promenade",
+	"BU": "Morphic Pool",
+	"RU": "Training Center",
+	"GU": "Rejuvenating Springs",
+	"BR": "Luxury Suite",
+	"BG": "Undergrowth Stadium",
+	"GR": "Spire Garden",
+}
+
+// colorPairKey returns the alphabetically-sorted 2-letter key for a
+// color pair (e.g. colorPairKey("G", "W") == "GW"). Used to look up
+// dualLandRecommendations regardless of argument order.
+func colorPairKey(a, b string) string {
+	if a <= b {
+		return a + b
+	}
+	return b + a
+}
+
 func computeLandSwapSuggestions(dp *DeckProfile, report *FreyaReport) {
 	if report.Stats == nil {
 		return
@@ -2663,32 +2694,170 @@ func computeLandSwapSuggestions(dp *DeckProfile, report *FreyaReport) {
 		}
 	}
 
-	// Sort: biggest undersupply first
+	// Sort: biggest undersupply first.
 	sort.Slice(imbalances, func(i, j int) bool {
 		return imbalances[i].gap > imbalances[j].gap
 	})
 
-	colorNames := map[string]string{"W": "Plains", "U": "Island", "B": "Swamp", "R": "Mountain", "G": "Forest"}
+	basicNames := map[string]string{"W": "Plains", "U": "Island", "B": "Swamp", "R": "Mountain", "G": "Forest"}
 
-	for _, ib := range imbalances {
-		if ib.gap > 0.05 {
-			// Undersupplied — find oversupplied color to swap from
-			for _, other := range imbalances {
-				if other.gap < -0.05 {
-					dp.LandSwapSuggestions = append(dp.LandSwapSuggestions,
-						fmt.Sprintf("Replace 1 %s with 1 %s: %s has %.0f%% demand but only %.0f%% sources",
-							colorNames[other.color], colorNames[ib.color],
-							ib.color, ib.demandPct*100, ib.supplyPct*100))
-					break
-				}
-			}
+	// Collect the deck's actual colors (any color with non-zero demand
+	// OR non-zero supply). Used to pick a dual replacement whose second
+	// color is something the deck actually wants.
+	deckColors := map[string]bool{}
+	for _, c := range []string{"W", "U", "B", "R", "G"} {
+		if demand[c] > 0 || supply[c] > 0 {
+			deckColors[c] = true
 		}
 	}
 
-	// Cap suggestions
+	// Names of cards already in the deck (lowercased) — used to avoid
+	// recommending a dual the player already runs.
+	inDeck := map[string]bool{}
+	for _, p := range report.Profiles {
+		inDeck[strings.ToLower(p.Name)] = true
+	}
+
+	for _, ib := range imbalances {
+		if ib.gap <= 0.05 {
+			continue
+		}
+		// Find an oversupplied color to swap from.
+		var over *colorImbalance
+		for i := range imbalances {
+			if imbalances[i].gap < -0.05 {
+				over = &imbalances[i]
+				break
+			}
+		}
+		if over == nil {
+			continue
+		}
+
+		// Find a specific nonbasic land in the deck that produces the
+		// oversupplied color but does NOT also produce the undersupplied
+		// color (those duals are already pulling their weight). Prefer
+		// lands that produce ONLY the oversupplied color (single-color
+		// nonbasics, e.g. Mishra's Factory in a R deck) over lands that
+		// produce the oversupplied color alongside other healthy colors —
+		// the more "stranded" the land is on the wrong color, the more
+		// actionable the swap.
+		swapOut := pickLandSwapCandidate(report, over.color, ib.color)
+
+		// Pick a replacement: dual covering the undersupplied color +
+		// any other in-deck color (preferring the most-demanded peer),
+		// falling back to the basic of the undersupplied color when no
+		// curated dual matches the deck's color identity.
+		swapIn := pickReplacementDual(ib.color, deckColors, demand, inDeck)
+		if swapIn == "" {
+			swapIn = basicNames[ib.color]
+		}
+
+		if swapOut != "" {
+			dp.LandSwapSuggestions = append(dp.LandSwapSuggestions,
+				fmt.Sprintf("Recommend swap: %s → %s (%s demand high, %s demand low)",
+					swapOut, swapIn, ib.color, over.color))
+		} else {
+			// Fall back to the legacy generic suggestion — useful when
+			// the deck's only oversupplied source is its basics (which
+			// aren't in report.Profiles), since the player can act on
+			// "Replace 1 Mountain with 1 Forest" themselves.
+			dp.LandSwapSuggestions = append(dp.LandSwapSuggestions,
+				fmt.Sprintf("Replace 1 %s with 1 %s: %s has %.0f%% demand but only %.0f%% sources",
+					basicNames[over.color], swapIn,
+					ib.color, ib.demandPct*100, ib.supplyPct*100))
+		}
+	}
+
 	if len(dp.LandSwapSuggestions) > 3 {
 		dp.LandSwapSuggestions = dp.LandSwapSuggestions[:3]
 	}
+}
+
+// pickLandSwapCandidate scans the deck's nonbasic lands for one that
+// produces overColor but NOT underColor. Returns the most-actionable
+// candidate name (single-color nonbasics first, then multi-color lands
+// that don't include underColor), or "" if no candidate exists.
+func pickLandSwapCandidate(report *FreyaReport, overColor, underColor string) string {
+	type cand struct {
+		name        string
+		colorsCount int
+	}
+	var cands []cand
+	for _, p := range report.Profiles {
+		if !p.IsLand {
+			continue
+		}
+		hasOver := false
+		hasUnder := false
+		for _, c := range p.LandColors {
+			if c == overColor {
+				hasOver = true
+			}
+			if c == underColor {
+				hasUnder = true
+			}
+		}
+		if !hasOver || hasUnder {
+			continue
+		}
+		cands = append(cands, cand{name: p.Name, colorsCount: len(p.LandColors)})
+	}
+	if len(cands) == 0 {
+		return ""
+	}
+	// Prefer the most-stranded candidate (fewest colors produced — a
+	// mono-color nonbasic like Mishra's Factory is more swap-worthy
+	// than a 3-color rainbow land that just happens not to make the
+	// undersupplied color). Stable-sort by colorsCount asc, then name
+	// asc to keep output deterministic.
+	sort.Slice(cands, func(i, j int) bool {
+		if cands[i].colorsCount != cands[j].colorsCount {
+			return cands[i].colorsCount < cands[j].colorsCount
+		}
+		return cands[i].name < cands[j].name
+	})
+	return cands[0].name
+}
+
+// pickReplacementDual picks a curated dual land that produces
+// underColor + the in-deck color with the highest demand (excluding
+// underColor itself, since the second-color slot already produces it).
+// Skips duals the deck already runs. Returns "" if no suitable dual
+// exists (mono-color deck, or every viable dual is already in-deck).
+func pickReplacementDual(underColor string, deckColors map[string]bool, demand map[string]int, inDeck map[string]bool) string {
+	// Order peer colors by demand desc so we recommend a dual whose
+	// second color the deck actually wants. WUBRG iteration with a
+	// stable demand-desc sort.
+	type peer struct {
+		color  string
+		demand int
+	}
+	var peers []peer
+	for _, c := range []string{"W", "U", "B", "R", "G"} {
+		if c == underColor || !deckColors[c] {
+			continue
+		}
+		peers = append(peers, peer{color: c, demand: demand[c]})
+	}
+	sort.SliceStable(peers, func(i, j int) bool {
+		if peers[i].demand != peers[j].demand {
+			return peers[i].demand > peers[j].demand
+		}
+		return peers[i].color < peers[j].color
+	})
+	for _, p := range peers {
+		key := colorPairKey(underColor, p.color)
+		name, ok := dualLandRecommendations[key]
+		if !ok {
+			continue
+		}
+		if inDeck[strings.ToLower(name)] {
+			continue
+		}
+		return name
+	}
+	return ""
 }
 
 // ---------------------------------------------------------------------------
