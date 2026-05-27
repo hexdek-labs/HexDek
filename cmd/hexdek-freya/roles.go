@@ -109,10 +109,30 @@ var rolePriority = map[RoleTag]int{
 	// explains their strategic purpose.
 	RoleRecursion:    9,
 	RoleProtection:   10,
+	// Draw and Ramp are intentionally tied at priority 11 — both are
+	// "resource engine" roles. Whether a dual-tagged card (Selvala
+	// Heart of the Wilds, Augur of Autumn, Kydele Chosen of Kruphix —
+	// creatures whose triggers produce BOTH a card and mana) should
+	// lead with Draw or Ramp depends on what the commander's themes
+	// reward. The tie is broken by RefineRolesByCommanderThemes after
+	// dp.CommanderThemes is populated; without theme data the tie
+	// falls back to "Draw first" via roleTieBreakOrder, preserving
+	// pre-r60 behavior.
 	RoleDraw:         11,
-	RoleRamp:         12,
+	RoleRamp:         11,
 	RoleUtility:      13,
 	RoleLand:         14,
+}
+
+// roleTieBreakOrder gives a deterministic secondary key for roles
+// that share a rolePriority value. Used as the last-resort fallback
+// inside RefineRolesByCommanderThemes when neither commander-theme
+// alignment nor static priority differentiates two roles. Roles
+// absent from this map fall through to alphabetical comparison on
+// the RoleTag string.
+var roleTieBreakOrder = map[RoleTag]int{
+	RoleDraw: 0, // Draw first when no theme signal — matches pre-r60 default
+	RoleRamp: 1,
 }
 
 func TagCardRole(name, oracleText, typeLine, manaCost string, cmc int, profile CardProfile) []RoleTag {
@@ -182,8 +202,29 @@ func TagCardRole(name, oracleText, typeLine, manaCost string, cmc int, profile C
 		roles = append(roles, RoleUtility)
 	}
 
-	sort.Slice(roles, func(i, j int) bool {
-		return rolePriority[roles[i]] < rolePriority[roles[j]]
+	sort.SliceStable(roles, func(i, j int) bool {
+		pi, pj := rolePriority[roles[i]], rolePriority[roles[j]]
+		if pi != pj {
+			return pi < pj
+		}
+		// Tie band: fall back to roleTieBreakOrder for deterministic
+		// default ordering when no commander-theme context is available.
+		// RefineRolesByCommanderThemes (called from BuildDeckProfile)
+		// re-sorts with theme awareness when themes are known.
+		ti, tOk := roleTieBreakOrder[roles[i]]
+		tj, uOk := roleTieBreakOrder[roles[j]]
+		if tOk && uOk {
+			return ti < tj
+		}
+		// One side has explicit order, the other doesn't — explicit wins.
+		if tOk {
+			return true
+		}
+		if uOk {
+			return false
+		}
+		// Both unordered — alphabetical for stability.
+		return string(roles[i]) < string(roles[j])
 	})
 
 	return roles

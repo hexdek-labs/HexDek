@@ -461,6 +461,11 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 
 	if oracle != nil && report.Commander != "" {
 		computeCommanderSynergy(dp, report, oracle)
+		// Now that commander themes are known, re-sort each card's
+		// multi-tag role list so theme-aligned roles bubble up to the
+		// primary (Roles[0]) position. Tie-breaks only roles sharing a
+		// rolePriority value — never reorders across priority bands.
+		RefineRolesByCommanderThemes(report.Roles, dp.CommanderThemes)
 	}
 
 	computeInteractionQuality(dp, report, oracle)
