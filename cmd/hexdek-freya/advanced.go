@@ -2888,6 +2888,113 @@ func pickReplacementDual(underColor string, deckColors map[string]bool, demand m
 // 9. Deck personality blurb — 2-3 sentence flavor description.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Curve vs. archetype fit — warn when AvgCMC doesn't match the
+// archetype's expected curve band.
+// ---------------------------------------------------------------------------
+
+// archetypeCurveExpectation pairs each archetype with the avg-CMC band
+// that the archetype's gameplan demands. Values are drawn from
+// observed corpus distributions + archetype theory:
+//
+//   - Fast / cheap-cost shells (Combo / Storm / Aggro / Stax / Spellslinger
+//     / Cycling / Toxic / Vehicles / Group Slug / Voltron / Discard)
+//     need to assemble or pressure on turns 3-5; high CMC means the
+//     deck telegraphs without the cheap-piece density to back it up.
+//   - Midweight grinders (Tribal / Aristocrats / Lifegain / Enchantress
+//     / Counters Matter / Selfmill / Blink / Mill / Damage Redirect /
+//     Theft) sit in the 2.4-3.5 sweet spot — too lean misses payoffs,
+//     too heavy stalls.
+//   - Top-end shells (Reanimator / Lands Matter / Control / Pillowfort
+//     / Group Hug / Extra Combats / Artifacts / Superfriends) want
+//     2.8-5.0; under-curved versions look like midrange shells without
+//     finishers, over-curved versions can't cast anything pre-ramp.
+//
+// Midrange has no expectation entry — it's the "anything" fallback,
+// and the existing curve-warning pass in analysis.go already covers
+// shape signals (bimodal / top-heavy / bottom-light) independent of
+// archetype. Toleranced by ±0.2 in computeCurveArchetypeFit so
+// borderline curves don't trip false warnings.
+var archetypeCurveExpectation = map[string]struct {
+	MinAvgCMC float64
+	MaxAvgCMC float64
+	// Band is a human-readable shorthand ("lean" / "midweight" /
+	// "top-heavy") used in the warning text so builders see the
+	// expected curve flavor at a glance.
+	Band string
+}{
+	"Combo":           {0.0, 2.7, "lean"},
+	"Storm":           {0.0, 2.5, "lean"},
+	"Aggro":           {0.0, 2.8, "lean"},
+	"Voltron":         {0.0, 3.0, "lean"},
+	"Spellslinger":    {0.0, 2.8, "lean"},
+	"Cycling":         {0.0, 2.8, "lean"},
+	"Toxic":           {0.0, 2.8, "lean"},
+	"Vehicles":        {0.0, 3.0, "lean"},
+	"Group Slug":      {0.0, 2.8, "lean"},
+	"Stax":            {0.0, 2.8, "lean"},
+	"Discard":         {2.0, 3.2, "midweight"},
+	"Tribal":          {2.0, 3.5, "midweight"},
+	"Aristocrats":     {2.0, 3.2, "midweight"},
+	"Lifegain":        {2.5, 3.5, "midweight"},
+	"Enchantress":     {2.5, 3.5, "midweight"},
+	"Selfmill":        {2.5, 3.5, "midweight"},
+	"Counters Matter": {2.2, 3.4, "midweight"},
+	"Blink":           {2.5, 3.5, "midweight"},
+	"Damage Redirect": {2.5, 3.5, "midweight"},
+	"Mill":            {2.5, 3.5, "midweight"},
+	"Theft / Clone":   {2.5, 3.8, "midweight"},
+	"Reanimator":      {2.8, 4.2, "top-heavy"},
+	"Lands Matter":    {2.8, 4.0, "top-heavy"},
+	"Control":         {3.0, 5.0, "top-heavy"},
+	"Pillowfort":      {2.8, 4.0, "top-heavy"},
+	"Group Hug":       {2.8, 4.0, "top-heavy"},
+	"Extra Combats":   {2.8, 4.0, "top-heavy"},
+	"Artifacts":       {2.5, 4.0, "top-heavy"},
+	"Superfriends":    {3.0, 5.0, "top-heavy"},
+}
+
+// curveArchetypeTolerance is the slack we allow before flagging an
+// AvgCMC as outside the archetype's expected band. 0.2 lets a Combo
+// deck with avgCMC 2.85 (slightly over the 2.7 max) pass without a
+// warning — most decks have at least one finisher that bumps the
+// average, and we don't want to false-positive borderline shells.
+const curveArchetypeTolerance = 0.2
+
+// computeCurveArchetypeFit checks whether dp.AvgCMC falls within the
+// expected curve band for dp.PrimaryArchetype. Mismatches that exceed
+// the ±0.2 tolerance produce a one-line warning in
+// dp.CurveArchetypeWarnings. Archetypes not in the expectation map
+// (notably Midrange, the generic fallback) are skipped — the existing
+// shape-based curve warnings in report.CurveWarnings cover those
+// independently of archetype.
+func computeCurveArchetypeFit(dp *DeckProfile, report *FreyaReport) {
+	if dp == nil || dp.PrimaryArchetype == "" {
+		return
+	}
+	exp, ok := archetypeCurveExpectation[dp.PrimaryArchetype]
+	if !ok {
+		return
+	}
+	// Avoid false-firing on tiny decks where AvgCMC is unstable
+	// (commander-only test fixtures, partial parses).
+	if report == nil || report.NonlandCount < 20 {
+		return
+	}
+	avg := dp.AvgCMC
+	if avg < exp.MinAvgCMC-curveArchetypeTolerance {
+		dp.CurveArchetypeWarnings = append(dp.CurveArchetypeWarnings,
+			fmt.Sprintf("%s archetype expects a %s curve (avg %.1f-%.1f) but deck avg CMC is %.2f — curve plays faster than the archetype gameplan needs; consider adding heavier payoffs",
+				dp.PrimaryArchetype, exp.Band, exp.MinAvgCMC, exp.MaxAvgCMC, avg))
+		return
+	}
+	if avg > exp.MaxAvgCMC+curveArchetypeTolerance {
+		dp.CurveArchetypeWarnings = append(dp.CurveArchetypeWarnings,
+			fmt.Sprintf("%s archetype expects a %s curve (avg %.1f-%.1f) but deck avg CMC is %.2f — curve is too heavy for the archetype's tempo; consider cutting top-end cards or adding ramp",
+				dp.PrimaryArchetype, exp.Band, exp.MinAvgCMC, exp.MaxAvgCMC, avg))
+	}
+}
+
 func buildPersonalityBlurb(dp *DeckProfile, report *FreyaReport) string {
 	speed := describeSpeed(dp)
 	approach := describeApproach(dp, report)

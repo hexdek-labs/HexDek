@@ -195,6 +195,18 @@ type DeckProfile struct {
 	// Color weight suggestions
 	LandSwapSuggestions []string
 
+	// CurveArchetypeWarnings flag mismatches between the deck's
+	// PrimaryArchetype and its average CMC. Each archetype has an
+	// expected curve band (Combo decks want <2.7 to assemble fast,
+	// Control wants >3.0 to support late-game inevitability, etc).
+	// When AvgCMC sits more than 0.2 outside the archetype's band,
+	// we emit a warning so builders see "you classified as Combo but
+	// your curve plays like Midrange — consider cutting top-end
+	// cards" without having to derive the mismatch themselves. Empty
+	// when the curve fits the archetype, or when the archetype has
+	// no firm curve expectation (Midrange / generic fallbacks).
+	CurveArchetypeWarnings []string
+
 	// Deck personality
 	PersonalityBlurb string
 
@@ -502,6 +514,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	computeCardQualityTiers(dp, report, oracle)
 	computePetCards(dp, report)
 	computeLandSwapSuggestions(dp, report)
+	computeCurveArchetypeFit(dp, report)
 	dp.PersonalityBlurb = buildPersonalityBlurb(dp, report)
 	dp.PowerPercentile, dp.PowerFactors = estimatePowerPercentile(dp, report)
 
