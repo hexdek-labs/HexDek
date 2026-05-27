@@ -914,6 +914,21 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 	// zero: a Worldgorger Dragon in the graveyard with no Animate Dead
 	// in hand is still strictly more reachable than a Worldgorger
 	// Dragon in the library.
+	//
+	// R60r2: when a graveyard-recursion ENGINE is actually in play
+	// (Underworld Breach / Yawgmoth's Will / Past in Flames / Muldrotha
+	// / Karador / Sun Titan / Snapcaster), graveyard pieces aren't
+	// "theoretically reachable" — they're at-hand reach this turn or
+	// next. Upgrade the graveyard weight to 0.9 (just under 1.0 because
+	// the recursion still costs mana / a card-slot). The pre-r60r2
+	// 0.5 flat regardless of recursion-engine presence was the deeper
+	// gap surfaced by the survey — a Worldgorger Dragon in graveyard
+	// with Animate Dead ALREADY IN PLAY scored identically to one with
+	// no animate effect anywhere.
+	graveyardWeight := 0.5
+	if seatHasComboGraveyardRecursion(seat) {
+		graveyardWeight = 0.9
+	}
 	available := make(map[string]float64, len(seat.Hand)+len(seat.Battlefield)+len(seat.Graveyard))
 	for _, c := range seat.Hand {
 		if c != nil {
@@ -932,8 +947,8 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 		// Don't downgrade a hand/battlefield piece if it ALSO appears
 		// in graveyard (rare — copy effects / token returns); keep the
 		// strictly stronger zone's weight.
-		if available[c.DisplayName()] < 0.5 {
-			available[c.DisplayName()] = 0.5
+		if available[c.DisplayName()] < graveyardWeight {
+			available[c.DisplayName()] = graveyardWeight
 		}
 	}
 
@@ -987,10 +1002,120 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 		}
 	}
 
+	// R60r2: cost-reducer bonus. Goblin Electromancer / Helm of Awakening
+	// / Birgi / Jhoira / Will of the Jeskai-class permanents bring combo
+	// payoffs into cast-range a turn earlier. Pre-fix the dimension only
+	// cared about PIECE presence, not whether those pieces were castable
+	// this turn. Add a flat +0.08 to bestRatio when (a) a cost-reducer is
+	// on this seat's battlefield AND (b) we've made meaningful progress
+	// (bestRatio > 0.4) so the bonus doesn't fire when the combo is
+	// still 3+ pieces away. The bonus is intentionally small: the
+	// reducer doesn't supply a missing PIECE, it just compresses the
+	// timeline. Clamps so bestRatio can still reach 1.0 (and trigger the
+	// 2.0 lethal score) without overshooting.
+	if bestRatio > 0.4 && seatHasComboCostReducer(seat) {
+		bestRatio += 0.08
+		if bestRatio > 1.0 {
+			bestRatio = 1.0
+		}
+	}
+
 	if bestRatio >= 1.0 {
 		return 2.0
 	}
 	return bestRatio * 1.5
+}
+
+// seatHasComboGraveyardRecursion reports whether the seat has an active
+// graveyard-recursion engine that lets combo pieces in graveyard be
+// effectively at-hand reach. Broader than seatHasReanimatorEngine which
+// only covers creature reanimators (Meren / Muldrotha / Karador
+// commanders + battlefield "return target creature card") — combo decks
+// frequently care about INSTANT/SORCERY recursion (Underworld Breach,
+// Past in Flames, Yawgmoth's Will, Mizzix's Mastery) which the
+// creature-only check misses.
+//
+// Detection covers three shapes:
+//   - existing creature-recursion path (delegate to seatHasReanimatorEngine)
+//   - battlefield permanents whose oracle text says "may cast" /
+//     "may play" + "graveyard" — Underworld Breach, Yawgmoth's Will,
+//     Past in Flames, Lurrus, Codie, Mizzix's Mastery (foretell), etc.
+//   - battlefield permanents with "snapcaster" / "anchor" / "snapping"
+//     patterns — for now, name-anchored to keep the heuristic tight.
+func seatHasComboGraveyardRecursion(seat *gameengine.Seat) bool {
+	if seat == nil {
+		return false
+	}
+	if seatHasReanimatorEngine(seat) {
+		return true
+	}
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		ot := gameengine.OracleTextLower(p.Card)
+		// "may cast a card from your graveyard" / "may play cards
+		// from your graveyard" — Underworld Breach, Yawgmoth's Will,
+		// Bolas's Citadel-style. Conservative: requires BOTH "graveyard"
+		// AND a cast/play verb so we don't false-fire on exile/discard
+		// effects.
+		if strings.Contains(ot, "graveyard") &&
+			(strings.Contains(ot, "may cast") || strings.Contains(ot, "may play") ||
+				strings.Contains(ot, "you may cast") || strings.Contains(ot, "you may play") ||
+				strings.Contains(ot, "have flashback") || strings.Contains(ot, "gain flashback")) {
+			return true
+		}
+		// Snapcaster-style: "target instant or sorcery card in your
+		// graveyard gains flashback" — already covered by "have/gain
+		// flashback" above; name-anchor as defense in depth.
+		name := strings.ToLower(p.Card.DisplayName())
+		if strings.Contains(name, "snapcaster") || strings.Contains(name, "underworld breach") ||
+			strings.Contains(name, "yawgmoth's will") || strings.Contains(name, "past in flames") {
+			return true
+		}
+	}
+	return false
+}
+
+// seatHasComboCostReducer reports whether the seat controls a battlefield
+// permanent that reduces spell costs. Targets the canonical EDH cost-
+// reducer set: Goblin Electromancer (instant/sorcery -1), Will of the
+// Jeskai-style global reducers, Helm of Awakening (-1 all), Birgi (treasure
+// on noncreature cast), Jhoira (free draw on historic), Heartless
+// Hidetsugu-class.
+//
+// Oracle-text detection: "cost {N} less to cast" / "spells you cast cost
+// {N} less" / "noncreature spells you cast cost {N} less" / "instant and
+// sorcery spells you cast cost {N} less". Substring match on "cost" +
+// "less" anchored to a cast/spell context is the canonical shape.
+// Defense-in-depth name match for a few canonical cards whose oracle
+// templating doesn't fit the pattern.
+func seatHasComboCostReducer(seat *gameengine.Seat) bool {
+	if seat == nil {
+		return false
+	}
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		ot := gameengine.OracleTextLower(p.Card)
+		// Canonical "X cost {N} less" template — Goblin Electromancer,
+		// Helm of Awakening, Will of the Jeskai (delayed), Curious
+		// Homunculus, Baral Chief of Compliance, etc.
+		if strings.Contains(ot, "cost") && strings.Contains(ot, "less") &&
+			(strings.Contains(ot, "you cast") || strings.Contains(ot, "to cast") ||
+				strings.Contains(ot, "spells")) {
+			return true
+		}
+		// Name-anchored defense in depth for templating outliers.
+		name := strings.ToLower(p.Card.DisplayName())
+		if strings.Contains(name, "electromancer") || strings.Contains(name, "helm of awakening") ||
+			strings.Contains(name, "birgi") || strings.Contains(name, "jhoira") ||
+			strings.Contains(name, "urza, lord high artificer") {
+			return true
+		}
+	}
+	return false
 }
 
 // seatTutorsInHand counts the number of unconditional or library-search
