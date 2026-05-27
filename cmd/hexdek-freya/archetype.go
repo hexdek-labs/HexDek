@@ -85,6 +85,22 @@ type classifyContext struct {
 	// isTappedETBRock + the Fast mana note in estimateMeasuredBracket.
 	tappedManaCount int
 	tappedManaNames []string
+	// creatureCount is the raw qty-weighted count of creatures in the
+	// deck (paired with creaturePct as its proportional companion).
+	// Drives the absolute-count Control detection arm where a
+	// creature-light deck (<15 creatures) loaded with interaction
+	// reliably signals the Control archetype shape regardless of the
+	// proportional role-ratio gate.
+	creatureCount int
+	// interactionCount sums the qty-weighted role counts for Removal +
+	// BoardWipe + Counterspell — the three "stop opponents from
+	// winning" role buckets. Distinct from the per-role roleRatios
+	// (proportional, sums to 1.0 across all roles) because the
+	// absolute count is the signal: a deck with 15+ interaction
+	// cards is meaningfully Control-shaped even when the proportional
+	// gate is diluted by a deep draw/ramp package pushing each
+	// individual role ratio down.
+	interactionCount int
 	instantSorcPct float64
 	// instantSorceryCount is the raw count of instant + sorcery cards
 	// (qty-weighted) in the deck. Paired with spellTriggerPermanentCount
@@ -345,9 +361,32 @@ var archetypeFingerprints = []archetypeFingerprint{
 			RoleRemoval: 0.15, RoleDraw: 0.14, RoleCounterspell: 0.08, RoleThreat: 0.06,
 			RoleBoardWipe: 0.04, RoleRamp: 0.08,
 		},
+		// Two-arm detection:
+		//   (1) Proportional gate: interaction roles (Removal +
+		//       BoardWipe + Counterspell) total ≥15% AND draw ≥10%.
+		//       Catches the canonical UW / UBx control shape where
+		//       the deck is structurally proportional-heavy on
+		//       interaction.
+		//   (2) Absolute-count gate: ≥15 interaction cards AND <15
+		//       creatures. Picks up creature-light Talrand /
+		//       Baral / Kess / Sen Triplets-style control builds where
+		//       a deep draw + ramp package dilutes each individual
+		//       role ratio below 15% even though the deck packs
+		//       Counterspell + Swan Song + Negate + Path + Swords +
+		//       Cyclonic Rift + Toxic Deluge + Wrath of God + …
+		//       The <15 creature ceiling keeps generic Bant /
+		//       Esper goodstuff midrange (which routinely runs 15
+		//       interaction cards alongside 18+ creatures) from
+		//       poaching into Control.
 		Require: func(ctx *classifyContext) bool {
-			return ctx.roleRatios[RoleRemoval]+ctx.roleRatios[RoleBoardWipe]+ctx.roleRatios[RoleCounterspell] >= 0.15 &&
-				ctx.roleRatios[RoleDraw] >= 0.10
+			if ctx.roleRatios[RoleRemoval]+ctx.roleRatios[RoleBoardWipe]+ctx.roleRatios[RoleCounterspell] >= 0.15 &&
+				ctx.roleRatios[RoleDraw] >= 0.10 {
+				return true
+			}
+			if ctx.interactionCount >= 15 && ctx.creatureCount < 15 {
+				return true
+			}
+			return false
 		},
 	},
 	{
@@ -892,6 +931,7 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 		ctx.roleRatios[role] = float64(ra.RoleCounts[role]) / total
 	}
 	ctx.tutorDensity = ctx.roleRatios[RoleTutor]
+	ctx.interactionCount = ra.RoleCounts[RoleRemoval] + ra.RoleCounts[RoleBoardWipe] + ra.RoleCounts[RoleCounterspell]
 
 	nonlandTotal := 0
 	instantSorcCount := 0
@@ -1255,6 +1295,7 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 	}
 
 	ctx.instantSorceryCount = instantSorcCount
+	ctx.creatureCount = creatureCount
 	if nonlandTotal > 0 {
 		ctx.instantSorcPct = float64(instantSorcCount) / float64(nonlandTotal)
 		ctx.creaturePct = float64(creatureCount) / float64(nonlandTotal)
