@@ -2513,6 +2513,67 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 		starCount++
 	}
 
+	// Flex Slot tier (R60): the FOURTH tier sitting between Solid and
+	// Cuttable. Cards that have a single generic utility role tag, are
+	// not part of any win line or value chain, and score in the
+	// lower-positive band. These are the slots builders swap for
+	// metagame tech (Grafdigger's Cage when GY decks rise, Pithing
+	// Needle when planeswalker decks rise, etc) — the role they fill
+	// is replaceable by another card serving the same generic purpose.
+	//
+	// Disjoint from Solid: flex picks are removed from the Solid
+	// candidate pool below (via flexNames) so a card never appears in
+	// both lists. Disjoint from Star/Cuttable via score bands.
+	//
+	// Criteria (all required):
+	//   - score in (0.0, 2.0) — strictly positive so cuttable retains
+	//     ownership of score==0 cards (typically Utility-only at CMC>=4
+	//     where the CMC penalty zeroed the role bonus — those are
+	//     genuine cuts, not flex slots)
+	//   - exactly one role tag, and that role is in genericFlexRoles
+	//   - not a win-line piece, value-chain piece, or bridge
+	//   - not already starred
+	// Cap at 5 to mirror the other tiers.
+	genericFlexRoles := map[RoleTag]bool{
+		RoleRemoval:    true,
+		RoleDraw:       true,
+		RoleRamp:       true,
+		RoleProtection: true,
+		RoleUtility:    true,
+	}
+	const flexMin, flexMax = 0.0, 2.0
+	flexNames := map[string]bool{}
+	flexCount := 0
+	for i := 0; i < len(scores) && flexCount < 5; i++ {
+		s := scores[i]
+		if starredNames[s.name] {
+			continue
+		}
+		if s.score <= flexMin || s.score >= flexMax {
+			continue
+		}
+		if winLinePieces[s.name] || chainPieces[s.name] || bridgePieces[s.name] {
+			continue
+		}
+		if len(s.roles) != 1 || !genericFlexRoles[s.roles[0]] {
+			continue
+		}
+		roleStr := string(s.roles[0])
+		reason := fmt.Sprintf("generic %s at CMC %d — flex slot, swap for situational meta tech (graveyard hate, PW hate, etc) without breaking the gameplan",
+			strings.ToLower(roleStr), s.cmc)
+		power := powerByName[s.name]
+		dp.FlexSlots = append(dp.FlexSlots, CardQuality{
+			Name:             s.name,
+			Tier:             "flex",
+			Reason:           reason,
+			Power:            power,
+			PowerTier:        PowerTierFor(power),
+			PowerExplanation: explanationByName[s.name],
+		})
+		flexNames[s.name] = true
+		flexCount++
+	}
+
 	// Solid Pick tier (R60): the middle slice — cards that scored above
 	// the cut floor but below star threshold. Surfaces "okay-but-
 	// replaceable" cards so builders shopping upgrades know which slots
@@ -2528,6 +2589,11 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 	for i := 0; i < len(scores) && solidCount < 5; i++ {
 		s := scores[i]
 		if starredNames[s.name] {
+			continue
+		}
+		// R60: flex picks are listed in dp.FlexSlots; skip them here so
+		// the same card never appears in both Solid and Flex.
+		if flexNames[s.name] {
 			continue
 		}
 		if s.score < solidMin || s.score >= solidMax {

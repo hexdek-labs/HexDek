@@ -787,6 +787,12 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 			renderTierCard("●", c)
 		}
 	}
+	if len(dp.FlexSlots) > 0 {
+		fmt.Fprintf(w, "  Flex Slots (could swap for situational meta tech):\n")
+		for _, c := range dp.FlexSlots {
+			renderTierCard("⇄", c)
+		}
+	}
 	if len(dp.CuttableCards) > 0 {
 		fmt.Fprintf(w, "  Consider Cutting:\n")
 		for _, c := range dp.CuttableCards {
@@ -1399,6 +1405,7 @@ type jsonDeckProfile struct {
 	StrongAgainst      []jsonStrongAgainst `json:"strong_against,omitempty"`
 	StarCards          []jsonCardQuality    `json:"star_cards,omitempty"`
 	SolidCards         []jsonCardQuality    `json:"solid_cards,omitempty"`
+	FlexSlots          []jsonCardQuality    `json:"flex_slots,omitempty"`
 	CuttableCards      []jsonCardQuality    `json:"cuttable_cards,omitempty"`
 	CardPowerLevels    []jsonCardPowerLevel `json:"card_power_levels,omitempty"`
 	PowerTierCounts    map[string]int       `json:"power_tier_counts,omitempty"`
@@ -1718,7 +1725,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 	for _, a := range dp.StrongAgainst {
 		strongAgainst = append(strongAgainst, jsonStrongAgainst(a))
 	}
-	var stars, solid, cuttable []jsonCardQuality
+	var stars, solid, flex, cuttable []jsonCardQuality
 	for _, c := range dp.StarCards {
 		// Stars/solid intentionally omit the cuttable-tier rationale
 		// fields (Detected/WhyCut/Effect/Suggested) — kept as literal
@@ -1732,6 +1739,13 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 	}
 	for _, c := range dp.SolidCards {
 		solid = append(solid, jsonCardQuality{
+			Name: c.Name, Tier: c.Tier, Reason: c.Reason,
+			Power: c.Power, PowerTier: c.PowerTier,
+			PowerExplanation: c.PowerExplanation,
+		})
+	}
+	for _, c := range dp.FlexSlots {
+		flex = append(flex, jsonCardQuality{
 			Name: c.Name, Tier: c.Tier, Reason: c.Reason,
 			Power: c.Power, PowerTier: c.PowerTier,
 			PowerExplanation: c.PowerExplanation,
@@ -1816,6 +1830,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		StrongAgainst:      strongAgainst,
 		StarCards:           stars,
 		SolidCards:          solid,
+		FlexSlots:           flex,
 		CuttableCards:       cuttable,
 		CardPowerLevels:     powerLevels,
 		PowerTierCounts:     dp.PowerTierCounts,
