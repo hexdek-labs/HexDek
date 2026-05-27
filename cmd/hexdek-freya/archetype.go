@@ -1429,14 +1429,27 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 			fmt.Sprintf("lifted to B4: 2-card categorical-win combo present (was B%d) — WotC carveout",
 				preFloorBracket))
 	}
-	// Tuned-redundancy floor: many distinct finisher lines + fast-mana density
-	// is operationally B4 regardless of GC count.
-	if tunedRedundancy && bracket < 4 {
+	// Tuned-redundancy floor: many distinct finisher lines + fast-mana
+	// density is operationally B4 — but only when corroborated by at
+	// least one Game Changer. The bare predicate over-fires on stock B2
+	// precons (Urza's Iron Alliance / Madison Li / Kalemne / Wilhelt /
+	// Sauron-LTR / Hearthhull / Hosts of Mordor / Hazel / Coven Counters
+	// / Creative Energy / Ixhel / Blame Game / Family Matters / Cabaretti
+	// Cacophony — see docs/precon-shape-scans/group-{a,b,c}.md) because
+	// fastManaCount counts every CMC<=2 mana producer (Sol Ring +
+	// signets + talismans), and stock precons routinely ship with 6+ of
+	// those plus 8+ "finishers" (any 6+ CMC creature or board wipe).
+	// The GC=0 ceiling already caps these at B2; the standalone floor
+	// re-lifted them to B4, contradicting WotC's "no Game Changers =
+	// not B4" framework rule. Voja-style tuned decks that genuinely
+	// belong at B4 carry at least one GC (Smothering Tithe / Esper
+	// Sentinel / fetch-style tutor) so the GC>=1 gate doesn't lose them.
+	if tunedRedundancy && ctx.gameChangerCount >= 1 && bracket < 4 {
 		bracket = 4
 		label = "Optimized"
 		addAdjustment("Tuned-redundancy floor", "floor",
-			fmt.Sprintf("lifted to B4: %d finishers + %d fast-mana pieces (was B%d)",
-				finisherCount, ctx.fastManaCount, preFloorBracket))
+			fmt.Sprintf("lifted to B4: %d finishers + %d fast-mana pieces + %d GC (was B%d)",
+				finisherCount, ctx.fastManaCount, ctx.gameChangerCount, preFloorBracket))
 	}
 
 	rationale.FinalBracket = bracket
