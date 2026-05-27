@@ -9,7 +9,7 @@ audit verifies its output is loadable and non-empty for every real card.
 
 | Metric | Value |
 |---|---:|
-| Oracle cards examined (post-dedup, non-token, non-Un) | 31963 |
+| Oracle cards examined (post-dedup, non-token, non-Un) | 31247 |
 | AST corpus size | 31963 |
 | Astload parse warnings | 104 |
 | Parse success rate (OK + OK_VANILLA) | **100.00%** |
@@ -19,11 +19,11 @@ audit verifies its output is loadable and non-empty for every real card.
 
 | Class | Count | Share |
 |---|---:|---:|
-| OK | 31601 | 98.87% |
-| OK_VANILLA | 361 | 1.13% |
+| OK | 30886 | 98.84% |
+| OK_VANILLA | 361 | 1.16% |
 | MISSING | 0 | 0.00% |
 | EMPTY_AST | 0 | 0.00% |
-| PARTIAL | 1 | 0.00% |
+| PARTIAL | 0 | 0.00% |
 
 ### What each class means
 
@@ -35,25 +35,7 @@ audit verifies its output is loadable and non-empty for every real card.
 
 ## Top 10 failure patterns
 
-| Pattern | Count | Sample cards |
-|---|---:|---|
-| `long_text` | 1 | Teysa of the Ghost Council (PARTIAL) |
-
-## PARTIAL parse details
-
-- **Teysa of the Ghost Council** — parse_errors: [teysa intensifies by 1]
-
-## Uncovered card sample (random 1, seed=42)
-
-Random reservoir-sample of cards whose AST is missing, empty, or only partially parsed.
-Each entry is a concrete scaffold target — pick one, read its oracle text,
-and either add the missing parser handler or extend the existing one until
-this card lands in the OK class. Re-running with the same `--sample-seed`
-yields the same set, so a follow-up audit can confirm a specific card moved.
-
-| # | Card | Class | Oracle text (truncated) |
-|---:|---|---|---|
-| 1 | Teysa of the Ghost Council | PARTIAL | Starting intensity 0 When Teysa enters, create a 1/1 white and black Spirit creature token with flying. Teysa intensifi… |
+_No failures detected._
 
 ## Astload corpus warnings (first 20)
 
