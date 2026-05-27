@@ -128,6 +128,21 @@ type classifyContext struct {
 	deathTriggers  int
 	graveyardCount int
 	selfMillCount  int
+	// discardOutletCount: cards that ENABLE discard as a cost or
+	// trigger — Faithless Looting / Wild Mongrel / Putrid Imp /
+	// Bone Miser / Liliana of the Veil / Burning Inquiry. Distinct
+	// from random opponent-discard cards (Mind Rot, Hymn to Tourach)
+	// because those don't fill YOUR graveyard. Paired with
+	// selfMillCount as the "fill your graveyard" combined signal.
+	discardOutletCount int
+	// reanimationCount: cards that put a creature card from a
+	// graveyard onto the battlefield — the LOAD-BEARING signal that
+	// distinguishes Reanimator (cheat fatties from grave) from
+	// generic recursion (Eternal Witness returns to HAND, not
+	// battlefield). Detected via curated names AND oracle-text
+	// pattern + the existing IsRecursion + RecursionDest=battlefield
+	// classification.
+	reanimationCount int
 	// graveyardSizePayoffCount: cards that scale a measured value with
 	// the size or contents of YOUR graveyard. Distinct from
 	// graveyardCount (which conflates recursion + self-mill enablers)
@@ -574,17 +589,46 @@ var archetypeFingerprints = []archetypeFingerprint{
 			RoleThreat:    0.08,
 			RoleRamp:      0.08,
 		},
-		// Require gate strengthened: pre-r60 a Bruvac-style pure-mill
-		// deck (8+ mill payoffs, 0 reanimate spells) would pass the
-		// graveyardCount + selfMillCount gates and false-positive into
-		// Reanimator. Adding a 5% RoleRecursion floor (≈5 recursion
-		// pieces in a 99-card deck) makes the gate genuinely
-		// reanimator-shape-aware. Mill decks without recursion bodies
-		// now fall through to Selfmill / Midrange.
+		// Require gate has TWO qualifying branches:
+		//
+		// (1) Legacy gate (pre-r60): graveyardCount + selfMillCount
+		//     + RoleRecursion floor. The graveyardCount counter is
+		//     conflated (IsRecursion + self_mill effects + mass_
+		//     reanimate effects), which over-fires on broad-graveyard
+		//     value decks (Muldrotha goodstuff) but also under-fires
+		//     on tight Animate-Dead-style shells.
+		//
+		// (2) Refined gate (r60 reanimator audit): the canonical
+		//     "6+ self-mill/discard enablers + 4+ reanimation
+		//     effects" shape. Reanimation effects are counted via
+		//     curated name list (Animate Dead, Reanimate, Necromancy,
+		//     Persist creatures, etc.) + RecursionDest=="battlefield"
+		//     classification + oracle-text pattern scan. Discard
+		//     outlets supplement self-mill so Faithless Looting /
+		//     Wild Mongrel / Putrid Imp shells aren't penalized for
+		//     filling the graveyard via discard rather than mill.
+		//
+		// EITHER branch qualifies a deck as Reanimator. The refined
+		// gate catches tight Animate-Dead / Reanimate / Unburial Rites
+		// shells that the legacy graveyardCount gate underestimates;
+		// the legacy gate catches broader Muldrotha / Karador value
+		// piles whose reanimation count is below 4 but graveyard
+		// presence is otherwise unmistakable.
 		Require: func(ctx *classifyContext) bool {
-			return ctx.graveyardCount >= 6 &&
+			legacy := ctx.graveyardCount >= 6 &&
 				ctx.selfMillCount >= 2 &&
 				ctx.roleRatios[RoleRecursion] >= 0.05
+			// Refined branch intentionally OMITS the RoleRecursion
+			// floor: the explicit count gates (6+ fill + 4+
+			// reanimation) are already a tighter structural signal
+			// than the role-density floor. A deck running only 4-5
+			// reanimation cards in a 99-card list necessarily has
+			// RoleRecursion below 5% but is still unmistakably
+			// Reanimator-shaped (tight Animate-Dead shells often
+			// look this way — small reanimation core + big targets).
+			refined := (ctx.selfMillCount+ctx.discardOutletCount) >= 6 &&
+				ctx.reanimationCount >= 4
+			return legacy || refined
 		},
 	},
 	{
@@ -1360,6 +1404,15 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 		if cardIsEquipPayoff(qp.Profile.Name, ot) {
 			ctx.equipTriggerPayoffCount += qp.Qty
 		}
+		// Reanimator-archetype refinement: split "fill graveyard"
+		// from "reanimate from graveyard" so the Reanimator gate can
+		// require BOTH signals in load-bearing density.
+		if cardIsDiscardOutlet(qp.Profile.Name, ot) {
+			ctx.discardOutletCount += qp.Qty
+		}
+		if cardIsReanimationEffect(qp.Profile.Name, ot, qp.Profile.IsRecursion, qp.Profile.RecursionDest) {
+			ctx.reanimationCount += qp.Qty
+		}
 	}
 	if len(tribeCounts) > 0 {
 		topTribe := ""
@@ -1556,6 +1609,192 @@ var anthemPhrases = []string{
 	"creatures you control have +",
 	"creature tokens you control get +",
 	"creature tokens you control have +",
+}
+
+// reanimationEffectNames is the curated list of canonical
+// reanimation cards — spells / permanents that put a creature card
+// from a graveyard onto the battlefield. Includes the Animate Dead
+// Aura family, single-target reanimate sorceries, mass reanimation,
+// and the persist / undying mechanics (which read as in-place
+// reanimation when a creature dies).
+//
+// Cards that return to HAND (Eternal Witness, Regrowth, Phyrexian
+// Reclamation) are NOT reanimation — they're recursion. The
+// distinction is load-bearing: Reanimator uses "from graveyard
+// directly onto battlefield" cheats; pure recursion plays the card
+// at full cost from hand on a subsequent turn.
+var reanimationEffectNames = map[string]bool{
+	// Single-target Auras.
+	"animate dead":         true,
+	"dance of the dead":    true,
+	"necromancy":           true,
+	"dread return":         true, // not aura but single-target
+	"reanimate":            true,
+	"exhume":               true,
+	"unburial rites":       true,
+	"footsteps of the goryo": true,
+	"goryo's vengeance":    true,
+	"shallow grave":        true,
+	"corpse dance":         true,
+	"victimize":            true,
+	"beacon of unrest":     true,
+	"chainer's edict":      true, // not reanim, removing
+	"bring back":           true,
+	"sevinne's reclamation": true,
+	"phantasmagorian":      true,
+	// Mass reanimation.
+	"living death":          true,
+	"twilight's call":       true,
+	"patriarch's bidding":   true,
+	"rise of the dark realms": true,
+	"balthor the defiled":   true,
+	"living end":            true,
+	"command the dreadhorde": true,
+	"finale of devastation": true,
+	// Persist creatures (return to battlefield via persist trigger).
+	"woodfall primus":         true,
+	"murderous redcap":        true,
+	"kitchen finks":            true,
+	"puppeteer clique":         true,
+	"twilight shepherd":        true,
+	// Reanimator-recursion creatures (return TO BATTLEFIELD).
+	"karmic guide":             true,
+	"sun titan":                true,
+	"reveillark":               true,
+	"angel of glory's rise":    true,
+	"apprentice necromancer":   true,
+	"corpse connoisseur":       true,
+	"doomed necromancer":       true,
+	"hell's caretaker":         true,
+	"lord of extinction":       true, // not reanim
+	"meren of clan nel toth":   true,
+	"karador, ghost chieftain": true,
+	"chainer, nightmare adept": true,
+	"chainer, dementia master": true,
+	"the scarab god":           true,
+	"alesha, who smiles at death": true,
+	"sun-stained scrap":        true, // placeholder, not real
+	"recurring nightmare":      true,
+	"oversold cemetery":        true,
+}
+
+// discardOutletPhrases recognises oracle-text shapes for cards that
+// enable discard as a cost or trigger — the engine pieces of the
+// Reanimator self-discard pile. Patterns are scoped to phrases that
+// signal active discard control (cost-position or looter-style draw-
+// then-discard); random opponent-discard effects (Mind Rot, Hymn to
+// Tourach) are excluded because those don't fill the controller's
+// graveyard.
+var discardOutletPhrases = []string{
+	"discard a card:",              // activated-ability cost
+	"discard a card, then",         // looter pattern (Faithless Looting "draw two, then discard two")
+	"discard two cards",            // multi-discard outlets
+	"discard your hand",            // Burning Inquiry / Wheel of Fortune family
+	"discard the rest",             // looter clauses
+	", then discard a card",        // suffix variant
+	", then discard two cards",     // suffix variant
+	"draw a card, then discard",    // explicit looter
+	"draw two cards, then discard", // wheel-light
+	"as an additional cost",        // Reanimate-style "exile X from your graveyard" isn't discard but covers cards with discard additional costs
+	"discard target",               // self-discard-target shells (Buried Alive variants)
+}
+
+// curated discard-outlet names (oracle-pattern misses on some printings).
+var discardOutletNames = map[string]bool{
+	"faithless looting":   true,
+	"wild mongrel":        true,
+	"putrid imp":          true,
+	"olivia's wrath":      true,
+	"frantic search":      true,
+	"compulsive research": true,
+	"merfolk looter":      true,
+	"looter il-kor":       true,
+	"key to the city":     true,
+	"bone miser":          true,
+	"tortured existence":  true,
+	"oblivion crown":      true,
+	"squee, dubious monarch": true,
+	"liliana of the veil": true,
+	"liliana vess":        true,
+	"burning inquiry":     true,
+	"wheel of fortune":    true,
+	"windfall":            true,
+	"jace, vryn's prodigy": true,
+	"smuggler's copter":   true,
+	"thrill of possibility": true,
+	"cathartic reunion":   true,
+}
+
+// cardIsReanimationEffect returns true if the card is a reanimation
+// effect — either by curated name OR by matching the "return target
+// creature card from [...] graveyard to/onto the battlefield" oracle
+// pattern. The pattern matches the canonical Animate Dead / Reanimate
+// / Sevinne's Reclamation phrasing.
+//
+// Also catches cards where IsRecursion is set AND RecursionDest is
+// "battlefield" — defense-in-depth for cards the curated list and
+// oracle pattern miss (parser-tagged via IsRecursion but with a non-
+// canonical printed phrasing).
+func cardIsReanimationEffect(name, ot string, isRecursion bool, recursionDest string) bool {
+	if reanimationEffectNames[strings.ToLower(strings.TrimSpace(name))] {
+		return true
+	}
+	if isRecursion && recursionDest == "battlefield" {
+		return true
+	}
+	if ot == "" {
+		return false
+	}
+	// Canonical printed shapes.
+	if strings.Contains(ot, "return target creature card") &&
+		strings.Contains(ot, "graveyard") &&
+		(strings.Contains(ot, "to the battlefield") || strings.Contains(ot, "onto the battlefield")) {
+		return true
+	}
+	if strings.Contains(ot, "put target creature card") &&
+		strings.Contains(ot, "graveyard") &&
+		(strings.Contains(ot, "onto the battlefield") || strings.Contains(ot, "into play")) {
+		return true
+	}
+	// Mass reanimation: "return all creature cards from [...] graveyard[s]"
+	if strings.Contains(ot, "return all creature cards") &&
+		strings.Contains(ot, "graveyard") &&
+		(strings.Contains(ot, "to the battlefield") || strings.Contains(ot, "onto the battlefield")) {
+		return true
+	}
+	// Persist / undying — in-place reanimation on death.
+	if strings.Contains(ot, "persist (when this creature dies") ||
+		strings.Contains(ot, "undying (when this creature dies") ||
+		(strings.Contains(ot, "persist") && strings.Contains(ot, "-1/-1 counter")) ||
+		(strings.Contains(ot, "undying") && strings.Contains(ot, "+1/+1 counter")) {
+		return true
+	}
+	return false
+}
+
+// cardIsDiscardOutlet returns true if the card is a discard outlet —
+// either by curated name OR by an oracle-text phrase scan. Random
+// opponent-discard cards (Mind Rot, Hymn to Tourach) are excluded
+// because they don't fill the controller's graveyard.
+func cardIsDiscardOutlet(name, ot string) bool {
+	if discardOutletNames[strings.ToLower(strings.TrimSpace(name))] {
+		return true
+	}
+	if ot == "" {
+		return false
+	}
+	// Exclude opponent-targeted discard.
+	if strings.Contains(ot, "target opponent discards") ||
+		strings.Contains(ot, "each opponent discards") ||
+		strings.Contains(ot, "target player discards") {
+		return false
+	}
+	for _, phrase := range discardOutletPhrases {
+		if strings.Contains(ot, phrase) {
+			return true
+		}
+	}
+	return false
 }
 
 // equipmentTriggerPayoffNames is the curated list of canonical
@@ -1806,6 +2045,11 @@ func buildSignals(ctx *classifyContext, ac *ArchetypeClassification) []string {
 	if ctx.equipmentCount >= 8 && ctx.equipTriggerPayoffCount >= 3 {
 		signals = append(signals, fmt.Sprintf("equipment engine (%d equipment + %d payoffs)",
 			ctx.equipmentCount, ctx.equipTriggerPayoffCount))
+	}
+
+	if (ctx.selfMillCount+ctx.discardOutletCount) >= 6 && ctx.reanimationCount >= 4 {
+		signals = append(signals, fmt.Sprintf("reanimation engine (%d fill + %d reanimate)",
+			ctx.selfMillCount+ctx.discardOutletCount, ctx.reanimationCount))
 	}
 
 	if ctx.freeInteractionCount >= 2 {
