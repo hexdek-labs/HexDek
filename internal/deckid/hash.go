@@ -96,4 +96,12 @@ func CardDelta(parentList, childList []string) int {
 // imports deckparser, so there's no cycle to avoid — the old
 // "duplicated to avoid circular imports" comment on the prior copy
 // was stale.
-func normalizeName(name string) string { return deckparser.NormalizeName(name) }
+//
+// The CleanCardName pre-pass defends against Card values that bypassed
+// the parser and still carry printing decoration ("Forest (THB) 270",
+// "[MID] Forest", "Forest *F-Etched*"). Without it, the same logical
+// content hashes to different deck IDs depending on which import path
+// produced the Card — defeating the content-addressing guarantee.
+func normalizeName(name string) string {
+	return deckparser.NormalizeName(deckparser.CleanCardName(name))
+}
