@@ -436,29 +436,56 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 
 	// §514 Cleanup step with §514.3a looping.
 	// CR §514.3a: "If any state-based actions are performed as a result
-	// of a step [514.1-514.2], or if any triggered abilities are waiting
+	// of a step [514.1-514.2], OR if any triggered abilities are waiting
 	// to be put on the stack, players receive priority. Once the stack
 	// is empty and all players pass in succession, another cleanup step
 	// begins."
+	//
+	// Both disjuncts matter. The prior implementation only re-looped on
+	// sbaChanged, silently skipping the trigger arm — so when a §514.1
+	// discard fired a "card_discarded" trigger (Madness, Megrim, Mayhem,
+	// Containment Priest-style "you may cast" cleanup-step interactions)
+	// the trigger landed on the stack but the cleanup step ended without
+	// granting priority. The Madness "may cast for madness cost" choice
+	// requires a priority window after the trigger resolves; without it
+	// the cast opportunity is silently lost. The invariants.go cleanup
+	// comment (§379-383) was already documenting this contract — the
+	// engine just wasn't honoring it.
 	const maxCleanupLoops = 8 // safety cap
 	for cleanupLoop := 0; cleanupLoop < maxCleanupLoops; cleanupLoop++ {
 		gs.Phase, gs.Step = "ending", "cleanup"
+		preHand := len(seat.Hand)
 		// §514.1 discard to hand size.
 		gameengine.CleanupHandSize(gs, active, 7)
 		// §514.2 expirations — clears until-EOT continuous effects, mods, damage.
 		gameengine.ScanExpiredDurations(gs, gs.Phase, gs.Step)
 		gs.InvalidateCharacteristicsCache() // ensure SBAs see post-expiry P/T
 		sbaChanged := gameengine.StateBasedActions(gs)
-		if !sbaChanged {
-			break // no SBAs performed, cleanup is done
+		// §514.3a "triggered abilities" arm: we approximate "any trigger
+		// fired during the step" by (a) discards actually happened in
+		// §514.1 (every common cleanup-step trigger — Madness, Megrim,
+		// Mayhem, etc. — keys off card_discarded), and (b) the stack is
+		// non-empty (a triggered ability is waiting to resolve). Either
+		// condition obligates priority + another cleanup pass per the rule.
+		discardsHappened := len(seat.Hand) < preHand
+		triggersWaiting := len(gs.Stack) > 0
+		if !sbaChanged && !discardsHappened && !triggersWaiting {
+			break // no SBAs, no discards, no waiting triggers — cleanup done
 		}
-		// §514.3a: SBAs happened — players get priority, then loop.
+		reason := "sba"
+		switch {
+		case triggersWaiting:
+			reason = "triggers_waiting"
+		case discardsHappened:
+			reason = "discard_triggers"
+		}
 		gs.LogEvent(gameengine.Event{
 			Kind: "cleanup_loop",
 			Seat: active,
 			Details: map[string]interface{}{
 				"iteration": cleanupLoop + 1,
 				"rule":      "514.3a",
+				"reason":    reason,
 			},
 		})
 		gameengine.PriorityRound(gs)
