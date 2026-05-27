@@ -126,6 +126,14 @@ type classifyContext struct {
 	pillowfortCount     int // attack-tax / damage-prevention cards (Propaganda, Sphere of Safety, Solitary Confinement)
 	groupSlugCount      int // passive damage-to-opponents triggers (Manabarbs, Pyrostatic Pillar, Underworld Dreams)
 	damageRedirectCount int // "dealt damage, it deals" reflectors + redirect effects (Stuffy Doll, Boros Reckoner, Pariah)
+	// R60 (post-precon-corpus-audit) — 4 new archetype counters surfaced
+	// by docs/precon-shape-scans/group-{a,b,c}.md where stock precons
+	// fell through to Midrange/Artifacts because no fingerprint matched.
+	groupHugCount    int // "each player draws/gains/searches", Phelddagrif/Kynaios shells, Howling Mine cluster
+	cyclingCount     int // cards with the cycling keyword cost ("cycling {")
+	cyclingPayoffCount int // cards that trigger on cycling (Astral Drift, Drake Haven, New Perspectives, Fluctuator)
+	toxicInfectCount int // "infect", "toxic N", "poison counter" — distinct from Counters Matter's +1/+1 axis
+	vehicleCount     int // Vehicle (and Spacecraft) typeline + crew-payoff cards
 	bannedCount      int
 	gameChangerCount int
 	gameChangerNames []string
@@ -548,6 +556,75 @@ var archetypeFingerprints = []archetypeFingerprint{
 			return ctx.damageRedirectCount >= 4
 		},
 	},
+	// ── R60 (post-precon-audit): four archetypes surfaced by
+	// docs/precon-shape-scans/group-{a,b,c}.md where stock precons fell
+	// through to Midrange/Artifacts because no fingerprint matched. ──
+	{
+		// Group Hug: gives cards/life/lands to all players, expects to
+		// pivot to a win via Triskaidekaphile / Approach of the Second
+		// Sun / Smothering Tithe-style asymmetric payoff. Distinct from
+		// Pillowfort (no attack-tax shell required) and Group Slug
+		// (gives, doesn't punish). Threshold 5 keeps a stray Howling
+		// Mine in a draw-engine deck from poaching the classification.
+		Name: "Group Hug",
+		Ratios: map[RoleTag]float64{
+			RoleDraw: 0.16, RoleRamp: 0.12, RoleProtection: 0.08,
+			RoleRemoval: 0.06, RoleThreat: 0.04,
+		},
+		Require: func(ctx *classifyContext) bool {
+			return ctx.groupHugCount >= 5
+		},
+	},
+	{
+		// Cycling: both cycling-cost density AND a real payoff are
+		// required. A deck with 15 Lonely Sandbar-style cycling lands
+		// but no Astral Drift / Drake Haven is just a midrange deck
+		// with cycling utility lands, not the cycling-matters
+		// archetype. Gates: >=2 payoff cards AND >=10 cycling-cost
+		// cards. Gavi Nest Warden C20 hits ~3 payoffs + 18 cyclers.
+		Name: "Cycling",
+		Ratios: map[RoleTag]float64{
+			RoleDraw: 0.16, RoleRamp: 0.08, RoleRemoval: 0.08,
+			RoleThreat: 0.08,
+		},
+		Require: func(ctx *classifyContext) bool {
+			return ctx.cyclingPayoffCount >= 2 && ctx.cyclingCount >= 10
+		},
+	},
+	{
+		// Toxic / Infect: poison-axis win condition (CR 704.5c). The
+		// poison counters are an alt-win in the same way Approach of
+		// the Second Sun is for control. Distinct from Counters
+		// Matter — those decks scale +1/+1 counters; this one drips
+		// poison. Threshold 6 keeps a Triumph of the Hordes splash
+		// from poaching a generic Naya tokens deck.
+		Name: "Toxic",
+		Ratios: map[RoleTag]float64{
+			RoleThreat: 0.14, RoleRemoval: 0.08, RoleDraw: 0.08,
+			RoleRamp: 0.08,
+		},
+		Require: func(ctx *classifyContext) bool {
+			return ctx.toxicInfectCount >= 6
+		},
+	},
+	{
+		// Vehicles: the Vehicle (or Spacecraft) typeline plus crew
+		// payoffs. Kotori Buckle Up and Inspirit Counter Intelligence
+		// both currently misclassify as Artifacts despite shipping
+		// 10+ vehicles each; this fingerprint pulls them into the
+		// right bucket. Threshold 6 — typical vehicle precon ships
+		// 10-15 vehicles, so 6 is a comfortable floor while still
+		// excluding decks with a few utility vehicles (Smuggler's
+		// Copter splash).
+		Name: "Vehicles",
+		Ratios: map[RoleTag]float64{
+			RoleThreat: 0.16, RoleRamp: 0.10, RoleDraw: 0.08,
+			RoleRemoval: 0.06,
+		},
+		Require: func(ctx *classifyContext) bool {
+			return ctx.vehicleCount >= 6
+		},
+	},
 	{
 		Name: "Midrange",
 		Ratios: map[RoleTag]float64{
@@ -836,6 +913,89 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 			ctx.damageRedirectCount += qp.Qty
 		}
 
+		// R60 (post-precon-audit) detectors. Group Hug, Cycling, Toxic,
+		// Vehicles — added after the group-{a,b,c} precon shape-scan
+		// pass showed these archetypes had no fingerprint and fell
+		// through to Midrange/Artifacts/Tribal incorrectly.
+		//
+		// Group Hug: give cards/lands/life to ALL players (not just
+		// yourself). Canonical signatures are Phelddagrif / Kynaios
+		// and Tiro / Howling Mine / Font of Mythos / Heartbeat of
+		// Spring / Veteran Explorer / Tempting Wurm. The phrasing
+		// pattern is "each player [verb]" or "each opponent [verb]"
+		// where the verb is a beneficial action (draw / search / gain
+		// life / put a land). Distinct from Group Slug ("each
+		// opponent LOSES") and from generic symmetric effects.
+		if containsAny(ot,
+			"each player draws", "each opponent draws",
+			"target opponent draws",
+			"each player gains", "each opponent gains",
+			"each player may search", "each opponent may search",
+			"each player puts the top",
+			"each player may put a land",
+			"each player creates",
+			"all players draw") {
+			ctx.groupHugCount += qp.Qty
+		}
+		// Cycling: TWO counters — the keyword density (how many cards
+		// have the cycling cost) and the payoff density (cards that
+		// trigger when you cycle). A real cycling deck needs BOTH —
+		// 15 cycling lands without Astral Drift / Drake Haven is just
+		// a deck full of cycling lands, not a cycling-MATTERS deck.
+		// "cycling {" catches the keyword-cost text (cycling {2}, etc.).
+		if strings.Contains(ot, "cycling {") || strings.Contains(ot, "cycling—") {
+			ctx.cyclingCount += qp.Qty
+		}
+		if containsAny(ot,
+			"whenever you cycle", "when you cycle",
+			"whenever you discard or cycle",
+			"cards with cycling", "spells with cycling",
+			"if you've cycled",
+			"cycling abilities you activate cost") {
+			ctx.cyclingPayoffCount += qp.Qty
+		}
+		// Toxic / Infect: "infect" keyword text, "toxic N" keyword,
+		// "poison counter" payoffs. Distinct from Counters Matter
+		// (that's the +1/+1 axis); poison is a separate counter type
+		// and an alt-win condition (CR 704.5c — 10 poison = loss).
+		// "infect" as a substring also catches "infectious"-type false
+		// positives — so we anchor against more specific phrasings.
+		if containsAny(ot,
+			"deal damage in the form of poison",
+			"poison counter", "poisoned opponent",
+			"gets infect", "has infect",
+			"toxic 1", "toxic 2", "toxic 3", "toxic 4",
+			"creatures you control have infect",
+			"creatures you control have toxic") ||
+			// Standalone "infect" creature ability — appears as a
+			// reminder-textless keyword on most modern printings, so
+			// we match the word in the keywords list rather than the
+			// oracle text body. CardProfile doesn't expose Keywords
+			// directly, but oracle text for older infect creatures
+			// includes "infect (this creature deals damage to..."
+			strings.Contains(ot, "infect (this creature deals damage") {
+			ctx.toxicInfectCount += qp.Qty
+		}
+		// Vehicles: Vehicle subtype on the typeline (modern vehicles)
+		// or Spacecraft subtype (EOE). Crew payoffs (Depala / Veteran
+		// Motorist) ALSO count via the oracle-text "crew" phrasing
+		// because some non-vehicle artifacts/creatures care about
+		// crewing. Important: we don't count crew triggers from
+		// vehicle-INTERIOR text against this counter (a vehicle's own
+		// "Crew 3" line is the cost, not a payoff). The vehicle
+		// typeline alone is enough — actual vehicles are the bulk of
+		// a vehicle deck.
+		if strings.Contains(tl, "vehicle") || strings.Contains(tl, "spacecraft") {
+			ctx.vehicleCount += qp.Qty
+		} else if containsAny(ot,
+			"whenever a vehicle", "whenever a crewed vehicle",
+			"vehicles you control",
+			"crew costs you pay cost",
+			"vehicle creature tokens",
+			"crewed by") {
+			ctx.vehicleCount += qp.Qty
+		}
+
 		if qp.Profile.CMC <= 2 {
 			for _, r := range qp.Profile.Produces {
 				if r == ResMana {
@@ -1073,6 +1233,14 @@ func buildIntent(ac *ArchetypeClassification, report *FreyaReport, ctx *classify
 		gameplan = "punish opponents passively — every spell, draw, and untap chips away at their life total"
 	case "Damage Redirect":
 		gameplan = "absorb damage onto a Stuffy Doll-style redirector and reflect it back at opponents"
+	case "Group Hug":
+		gameplan = "give every player resources to keep the table happy, then pivot to an asymmetric payoff that only rewards you"
+	case "Cycling":
+		gameplan = "cycle the library to fuel triggered payoffs and assemble a tokens/burn finish from the graveyard"
+	case "Toxic":
+		gameplan = "drip poison counters onto opponents until they hit ten and lose to the alt-win condition"
+	case "Vehicles":
+		gameplan = "crew vehicles into the red zone and chain pilot triggers for resilient combat pressure"
 	default:
 		gameplan = "execute its game plan through incremental advantage"
 	}
