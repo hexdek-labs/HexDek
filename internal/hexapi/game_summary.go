@@ -1,6 +1,7 @@
 package hexapi
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -55,6 +56,13 @@ func (h *Handler) handleGameSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Load the per-seat scoreboard once and stamp it onto whichever
+	// path wins below. A missing-rows / error case is non-fatal — the
+	// summary still returns with an empty Seats slice rather than
+	// 500ing the whole endpoint when one historical game is missing
+	// its seat persistence.
+	seats := loadSeatFinalStates(ctx, h.db, id)
+
 	// Rich path: try the cached parsed snapshot first. Cache lookup
 	// skips both the payload SELECT and the JSON unmarshal on a hit
 	// (~125μs/op savings vs the un-cached path).
@@ -72,6 +80,7 @@ func (h *Handler) handleGameSummary(w http.ResponseWriter, r *http.Request) {
 		if game.Turns > summary.Turns {
 			summary.Turns = game.Turns
 		}
+		summary.Seats = seats
 		writeJSON(w, summary)
 		return
 	}
@@ -91,7 +100,40 @@ func (h *Handler) handleGameSummary(w http.ResponseWriter, r *http.Request) {
 
 	// Fallback: db_only summary built from GameRecord metadata alone.
 	summary := buildDBOnlyGameSummary(game)
+	summary.Seats = seats
 	writeJSON(w, summary)
+}
+
+// loadSeatFinalStates fetches the per-seat scoreboard rows for gameID
+// and projects them into the public heimdall.SeatFinalState shape used
+// in GameSummary.Seats. Soft-fails to an empty slice on any error so
+// the summary endpoint never hard-fails when the seat persistence is
+// missing for a single game — the rest of the summary still serves.
+// A real DB-connection failure here is shadowed by the same error
+// happening on the LoadGameByID call above, so logging is sufficient.
+func loadSeatFinalStates(ctx context.Context, sqlDB *sql.DB, gameID int64) []heimdall.SeatFinalState {
+	rows, err := db.LoadGameSeats(ctx, sqlDB, gameID)
+	if err != nil {
+		log.Printf("game_summary: load seats for game %d: %v", gameID, err)
+		return nil
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	out := make([]heimdall.SeatFinalState, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, heimdall.SeatFinalState{
+			Seat:            r.Seat,
+			Commander:       r.Commander,
+			Life:            r.Life,
+			HandSize:        r.HandSize,
+			LibrarySize:     r.LibrarySize,
+			GraveyardSize:   r.GYSize,
+			BattlefieldSize: r.BFSize,
+			Lost:            r.Lost,
+		})
+	}
+	return out
 }
 
 // buildDBOnlyGameSummary constructs a heimdall.GameSummary from a
