@@ -710,18 +710,25 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		p.IsStormFinisher = true
 	}
 
-	// Commander damage threat: legendary creature, high power + evasion
+	// Commander damage threat: legendary creature, high power + a real
+	// evasion-or-protection signal. Pre-r60 the gate accepted trample
+	// alone (a 6/6 trampler gets chumped for 1 in 4-player politics —
+	// not a commander-damage clock) and any pwr≥10 creature
+	// unconditionally (vanilla 10/10s die to Path / Pongify / Imprisoned
+	// in the Moon before connecting). R60 tightens to require a
+	// FinisherEvasionOrProtection signal: either true evasion (flying /
+	// unblockable / menace / fear / shadow / horsemanship / intimidate /
+	// skulk — chump-resistant) or built-in protection (hexproof / shroud /
+	// indestructible / ward / protection-from — removal-resistant). One
+	// or the other is enough; trample alone is not. See
+	// finisher_gate.go for the curated keyword sets and the rationale.
 	typeLower := strings.ToLower(typeLine)
 	if strings.Contains(typeLower, "legendary") && strings.Contains(typeLower, "creature") {
 		pwr := 0
 		if pw, err := strconv.Atoi(power); err == nil {
 			pwr = pw
 		}
-		if pwr >= 6 && containsAny(ot, "trample", "double strike", "flying",
-			"can't be blocked", "unblockable", "menace", "fear", "shadow") {
-			p.IsCmdDamageThreat = true
-		}
-		if pwr >= 10 {
+		if pwr >= 6 && hasFinisherEvasionOrProtection(ot) {
 			p.IsCmdDamageThreat = true
 		}
 	}
