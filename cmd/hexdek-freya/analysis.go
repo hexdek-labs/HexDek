@@ -153,6 +153,19 @@ type FreyaReport struct {
 	// gated bracket-lift contribution.
 	LandCycleSynergies []ComboResult
 
+	// GraveyardLoops holds synthetic finisher entries that pair a
+	// detected 2-card combo (from TrueInfinites or Determined) with a
+	// deck-level graveyard-recursion enabler (Sun Titan / Muldrotha /
+	// Karador / Meren / Sheoldred / Reya / Karmic Guide) when at least
+	// one combo piece is recurable by the enabler AND would naturally
+	// hit the graveyard during the combo's play sequence (creature
+	// piece, sacrifice-cost piece, dies-on-resolve permanent). Each
+	// entry's Cards list is [combo piece A, combo piece B, enabler];
+	// Class is ComboClassGraveyardLoop; LoopType is "synergy". Surfaced
+	// as a B3-tier finisher in bracket scoring (softer than categorical-
+	// win combos that lift to B4). Detected by detectGraveyardLoopCombos.
+	GraveyardLoops []ComboResult
+
 	ComboNotes []string // partial combo piece warnings
 
 	// Legality validation (runs before all other phases)
@@ -1596,6 +1609,15 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 
 	// Value chain detection.
 	report.ValueChains = DetectValueChains(profiles)
+
+	// Graveyard-loop synergy detection — runs AFTER the dual-cycle
+	// land reclassification so we never pair a Karador with a
+	// LandCycleSynergy as a "graveyard loop." Both TrueInfinites and
+	// Determined feed the scan; the helper dedups across the pair.
+	combinedCombos := make([]ComboResult, 0, len(report.TrueInfinites)+len(report.Determined))
+	combinedCombos = append(combinedCombos, report.TrueInfinites...)
+	combinedCombos = append(combinedCombos, report.Determined...)
+	report.GraveyardLoops = detectGraveyardLoopCombos(profiles, combinedCombos)
 
 	return report
 }

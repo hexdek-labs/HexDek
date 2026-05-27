@@ -1264,6 +1264,7 @@ type jsonReport struct {
 	Finishers          []jsonCombo `json:"finishers"`
 	Synergies          []jsonCombo `json:"synergies"`
 	LandCycleSynergies []jsonCombo `json:"land_cycle_synergies,omitempty"`
+	GraveyardLoops     []jsonCombo `json:"graveyard_loops,omitempty"`
 	ComboNotes    []string      `json:"combo_notes,omitempty"`
 	ManaCurve     jsonManaCurve `json:"mana_curve"`
 	ColorBalance  jsonColors    `json:"color_balance"`
@@ -1579,6 +1580,7 @@ func printJSON(w io.Writer, r *FreyaReport) {
 		Finishers:          comboSlice(r.Finishers),
 		Synergies:          comboSlice(r.Synergies),
 		LandCycleSynergies: comboSlice(r.LandCycleSynergies),
+		GraveyardLoops:     comboSlice(r.GraveyardLoops),
 		ComboNotes:    r.ComboNotes,
 		ManaCurve: jsonManaCurve{
 			Distribution: r.ManaCurve,

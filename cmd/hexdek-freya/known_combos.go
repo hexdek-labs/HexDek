@@ -24,6 +24,7 @@ const (
 	ComboClassCombatFinisher  = "combat_finisher"   // pump/anthem-driven lethal swing (Craterhoof package)
 	ComboClassLockdown        = "lockdown"          // prison/lock loops that don't kill but prevent opponents from playing (Stasis, Knowledge Pool, Helm of Obedience + RIP, Eternity Vessel + clones)
 	ComboClassLandCycleSynergy = "land_cycle_synergy" // dual-cycle land pair (Scattered Groves + Irrigated Farmland) — real value, but only a deliberate wincon component in LandsMatter/Reanimator/Selfmill shells; in everything else it's incidental fixing
+	ComboClassGraveyardLoop   = "graveyard_loop"    // 2-card combo whose play sequence buries a piece, paired with a deck-level recursion enabler (Sun Titan / Muldrotha / Karador) that can rebuy it — softer than a categorical-win combo, harder than raw recursion; a B3-tier finisher per WotC bracket framework (Bracket 3 explicitly allows "value engines that can loop with a graveyard enabler" without crossing into B4 "winning 2-card infinites")
 	ComboClassUnknown         = "unknown"           // unclassified — fallback for unmatched imports
 )
 
@@ -64,6 +65,8 @@ func ComboClassLabel(class string) string {
 		return "Lockdown"
 	case ComboClassLandCycleSynergy:
 		return "Land Cycle Synergy"
+	case ComboClassGraveyardLoop:
+		return "Graveyard Loop"
 	}
 	return ""
 }

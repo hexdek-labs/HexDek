@@ -1231,6 +1231,42 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 			fmt.Sprintf("%d extra-turn spells", ctx.extraTurnCount), nil, 2)
 	}
 
+	// Graveyard-loop combos — per WotC bracket framework, "value
+	// engines that can loop with a graveyard enabler" are a B3-tier
+	// marker (softer than a 2-card categorical-win infinite, which is
+	// B4). Detected as a 2-card combo whose play sequence buries a
+	// piece, paired with a deck-level recursion enabler (Sun Titan /
+	// Muldrotha / Karador / Meren / Sheoldred / Reya / Karmic Guide).
+	// Single detection contributes +2 (B3 marker on its own); 2+
+	// distinct (combo × enabler) pairs signal a deliberately redundant
+	// graveyard-loop deck, contributing +3 to reflect the
+	// commitment. Evidence cards are the three-card tuple per entry,
+	// flattened and deduplicated for display.
+	gyLoopCount := len(report.GraveyardLoops)
+	if gyLoopCount > 0 {
+		var evidence []string
+		seenEv := map[string]bool{}
+		for _, gl := range report.GraveyardLoops {
+			for _, name := range gl.Cards {
+				if seenEv[name] {
+					continue
+				}
+				seenEv[name] = true
+				evidence = append(evidence, name)
+			}
+		}
+		switch {
+		case gyLoopCount >= 2:
+			addScore("Graveyard loop combo", "2+ pairs",
+				fmt.Sprintf("%d (combo × enabler) loops with graveyard backup", gyLoopCount),
+				evidence, 3)
+		default:
+			addScore("Graveyard loop combo", "1 pair",
+				fmt.Sprintf("%d (combo × enabler) loop with graveyard backup", gyLoopCount),
+				evidence, 2)
+		}
+	}
+
 	// Finisher density — distinct win-condition lines signal tuned optimization.
 	finisherCount := len(report.Finishers)
 	switch {
