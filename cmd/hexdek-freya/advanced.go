@@ -3072,6 +3072,23 @@ func estimatePowerPercentile(dp *DeckProfile, report *FreyaReport) (int, []strin
 		factors = append(factors, "limited win conditions → -10")
 	}
 
+	// Win line QUALITY — separate signal from raw count. A deck with one
+	// 2-card Thoracle line (Weight ~17) scores above a deck with three
+	// 5-card grindy assemblies (~24 total but each piece is fragile + slow
+	// to assemble). Bands tuned against representative decks: cEDH
+	// Thassa's Oracle pile lands ~30-50 weighted, Bracket-4 combo decks
+	// ~15-25, midrange goodstuff ~5-12, casual battlecruiser ~2-6.
+	if dp.WeightedWinLineScore >= 30 {
+		score += 8
+		factors = append(factors, fmt.Sprintf("elite win-line quality (weighted %d) → +8", dp.WeightedWinLineScore))
+	} else if dp.WeightedWinLineScore >= 15 {
+		score += 4
+		factors = append(factors, fmt.Sprintf("strong win-line quality (weighted %d) → +4", dp.WeightedWinLineScore))
+	} else if dp.WeightedWinLineScore > 0 && dp.WeightedWinLineScore < 5 {
+		score -= 4
+		factors = append(factors, fmt.Sprintf("low win-line quality (weighted %d) → -4", dp.WeightedWinLineScore))
+	}
+
 	// Mana base quality. r60 rebalance: pre-r60 the table was
 	//   A → +10 (logged), B → +5 (SILENT), C → 0, D → -10, F → -10
 	// which had three concrete bugs:

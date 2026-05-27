@@ -69,6 +69,11 @@ type DeckProfile struct {
 	BackupCount       int
 	HasTutorAccess    bool
 	SinglePointCount  int
+	// WeightedWinLineScore sums per-line WinLine.Weight values so the
+	// power-percentile scorer can reward win-line QUALITY (2-card true
+	// infinite scores high, 4-card grindy lines score modestly) rather
+	// than just counting raw line presence.
+	WeightedWinLineScore int
 
 	Strengths       []string
 	Weaknesses      []string
@@ -452,6 +457,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 		dp.WinLineCount = len(report.WinLines.WinLines)
 		dp.BackupCount = len(report.WinLines.BackupPlans)
 		dp.SinglePointCount = len(report.WinLines.SinglePoints)
+		dp.WeightedWinLineScore = report.WinLines.TotalWeightedScore
 		if len(report.WinLines.WinLines) > 0 {
 			wl := report.WinLines.WinLines[0]
 			dp.PrimaryWinLine = strings.Join(wl.Pieces, " + ")
