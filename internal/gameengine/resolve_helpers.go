@@ -4836,6 +4836,15 @@ func resolveResidualByText(gs *GameState, src *Permanent, raw string) bool {
 					perm.Duration = "until_end_of_turn"
 					perm.GrantTurn = gs.Turn
 				}
+				// Stamp SourceTimestamp so ExpireSourceGrants can reap on
+				// source-LTB pre-EOT. Mirrors the structured impulse_play
+				// arm at line 1571. Without this, the grant's only cleanup
+				// path is EOT — which is skipped on mandatory-loop draw,
+				// mid-combat game-end, and the SBA-cap path. See
+				// docs/zone-cast-grant-audit-r60.md.
+				if src != nil {
+					perm.SourceTimestamp = src.Timestamp
+				}
 				RegisterZoneCastGrant(gs, top, perm)
 			}
 		}
