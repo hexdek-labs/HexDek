@@ -78,6 +78,49 @@ var excludedTypeLineSubstrings = []string{
 	"vanguard", "conspiracy", "dungeon",
 }
 
+// rejectedCardNames mirrors scripts/parser.py:_REJECTED_CARDS — the
+// hand-curated exclusion list of 16 cards the Python parser drops at
+// input. Two buckets:
+//
+//   1. Ante cards (9): wager-a-card mechanic, banned in every sanctioned
+//      format and explicitly disallowed in Commander. Each one prints
+//      "Remove this card from your deck before playing if you're not
+//      playing for ante" as its leading sentence.
+//   2. WotC 2020 official removals (7): cards retired by Wizards for
+//      offensive imagery / hate-speech content. Removed from Oracle in
+//      the December 2020 update; still appear in Scryfall bulk data
+//      because Scryfall archives historical printings.
+//
+// All 16 are name-keyed (case-insensitive). Without this filter they
+// classify MISSING in the audit and bloat the denominator the same way
+// the funny-set / scheme / vanguard cluster did pre-#549. They are NOT
+// parser-handler gaps — the parser is deliberately not ingesting them.
+//
+// Sync invariant: this list MUST stay byte-for-byte equal to
+// _REJECTED_CARDS at scripts/parser.py:2826. The
+// TestRejectedCardNamesMirrorsPython test pins the count + canonical
+// anchors so a drift on either side is caught.
+var rejectedCardNames = map[string]bool{
+	// Ante (9)
+	"amulet of quoz":      true,
+	"bronze tablet":       true,
+	"contract from below": true,
+	"darkpact":            true,
+	"demonic attorney":    true,
+	"jeweled bird":        true,
+	"rebirth":             true,
+	"tempest efreet":      true,
+	"timmerian fiends":    true,
+	// WotC 2020 official removal (7)
+	"cleanse":               true,
+	"crusade":               true,
+	"imprison":              true,
+	"invoke prejudice":      true,
+	"jihad":                 true,
+	"pradesh gypsies":       true,
+	"stone-throwing devils": true,
+}
+
 // planeTokenMatch returns true when the type line contains "plane" as a
 // whole token (Planechase cards print as "Plane — Dominaria"). Bare
 // substring matches against "planeswalker" must not trip this filter.
@@ -124,6 +167,9 @@ func isRealCard(e oracleEntry) bool {
 		return false
 	}
 	if strings.HasSuffix(e.Name, " Bio") {
+		return false
+	}
+	if rejectedCardNames[strings.ToLower(e.Name)] {
 		return false
 	}
 	return true
