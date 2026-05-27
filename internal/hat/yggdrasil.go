@@ -2922,6 +2922,20 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 		base += 0.30
 	}
 
+	// Political "deal" heuristic — goad-effect cards become MUCH more
+	// valuable when an opponent's creature could lethal another opponent
+	// if redirected AND is also a threat to us. The hat trades a slot
+	// in hand for letting the table eliminate a player on our behalf,
+	// keeping our removal in reserve and preserving political capital
+	// (we're not the one casting the kill spell). See goadDealOpportunity
+	// for the trigger conditions and magnitude (0 to +0.45). Sized so
+	// the bonus outweighs the typical -0.10 reactive penalty applied to
+	// non-strategic cards under stax / control / combo archetypes — a
+	// goad redirect against a winning swing is good in every archetype.
+	if cardIsGoad(c) {
+		base += h.goadDealOpportunity(gs, seatIdx)
+	}
+
 	return base
 }
 
@@ -3297,6 +3311,110 @@ func cardPrefersMain1(c *gameengine.Card) bool {
 		return true
 	}
 	return false
+}
+
+// cardIsGoad detects spell or activated-ability oracle text that
+// applies the Goad effect (CR §701.39). Matches the literal "goad"
+// keyword which the parser uses uniformly for Magic's modern Goad
+// implementations (Coastal Piracy of Smoke, Lure of the Wilds, Disrupt
+// Decorum, Agitator Ant, Cleavemaul Knight, Maelstrom Wanderer's
+// triggered grant, etc.). Cards whose oracle text only contains "goad"
+// as part of a longer word (e.g. "goading" doesn't appear in any
+// printed card — the literal verb match is safe). Used by cardHeuristic
+// to elevate goad spells when a political "deal" redirect is available.
+func cardIsGoad(c *gameengine.Card) bool {
+	if c == nil {
+		return false
+	}
+	ot := gameengine.OracleTextLower(c)
+	if ot == "" {
+		return false
+	}
+	return strings.Contains(ot, "goad")
+}
+
+// goadDealOpportunity scores the political "deal" value of casting a
+// goad effect from our seat. Returns 0 when no opponent creature
+// presents a useful redirect target; returns up to +0.45 when:
+//
+//   - Some other opponent (not the threat's controller) is at low
+//     enough life to die to a redirected swing.
+//   - The largest non-defender creature owned by a non-low-life-opp
+//     opponent has power >= that lowest-life-opp's life AND is also
+//     a meaningful threat to us (>= myLife/3 or >= 6 absolute).
+//
+// The "deal" framing: instead of casting removal that kills the
+// threat (consuming our removal AND making us the table's answer-
+// spender — both political costs), we redirect the threat at someone
+// who can't survive it. The threat-holder still trades their creature
+// in combat against the goaded target's defenses, we kept our removal
+// in reserve, and the table eliminates an opponent for us.
+//
+// Three additive contributors, capped at +0.45:
+//
+//   - Lethal redirect available: +0.20 baseline.
+//   - Threat also fast-clocks us (power*2 >= myLife): +0.15.
+//   - We're behind on board (relPos < 0): +0.10 — goad is most useful
+//     when we lack the resources to handle threats directly.
+//
+// Defenders are excluded — defender + goad is a no-op (CR §702.3b:
+// defenders can't attack regardless of "must attack" riders).
+// Hexproof / shroud creatures are not pre-filtered here; the engine's
+// target legality check handles that at cast time.
+func (h *YggdrasilHat) goadDealOpportunity(gs *gameengine.GameState, seatIdx int) float64 {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) || gs.Seats[seatIdx] == nil {
+		return 0
+	}
+	myLife := gs.Seats[seatIdx].Life
+	if myLife <= 0 {
+		return 0
+	}
+	threatThreshold := myLife / 3
+	if threatThreshold < 6 {
+		threatThreshold = 6
+	}
+
+	lowestLifeOpp := -1
+	lowestLife := 9999
+	for i, s := range gs.Seats {
+		if i == seatIdx || s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		if s.Life > 0 && s.Life < lowestLife {
+			lowestLife = s.Life
+			lowestLifeOpp = i
+		}
+	}
+	if lowestLifeOpp < 0 {
+		return 0
+	}
+
+	for i, s := range gs.Seats {
+		if i == seatIdx || i == lowestLifeOpp || s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		for _, p := range s.Battlefield {
+			if p == nil || !p.IsCreature() || p.HasKeyword("defender") {
+				continue
+			}
+			pow := gs.PowerOf(p)
+			if pow < lowestLife || pow < threatThreshold {
+				continue
+			}
+			bonus := 0.20
+			if pow*2 >= myLife {
+				bonus += 0.15
+			}
+			if h.relativePosition(gs, seatIdx) < 0 {
+				bonus += 0.10
+			}
+			if bonus > 0.45 {
+				bonus = 0.45
+			}
+			return bonus
+		}
+	}
+	return 0
 }
 
 // -- UCB1 machinery (shared across all decision types) --
