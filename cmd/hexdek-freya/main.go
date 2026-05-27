@@ -425,6 +425,12 @@ func analyzeDeckFile(path string, oracle *oracleDB, mechDB *MechanicDB) (*FreyaR
 		// Phase 1 statistics module.
 		report.Stats = ComputeDeckStatistics(qtyProfiles)
 
+		// Mana-hump vs ramp comparison — requires Stats. The structural
+		// hump warning (heavy hump at the top quartile) was already
+		// emitted inside AnalyzeDeck; this appends the ramp-comparison
+		// warning when the hump outpaces the deck's ramp package.
+		AugmentCurveWarningsWithRamp(report, report.Stats.RampCount)
+
 		// Phase 2 role tagging.
 		report.Roles = ComputeRoleAnalysis(qtyProfiles, oracle)
 
