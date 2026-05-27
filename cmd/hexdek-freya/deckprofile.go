@@ -1179,6 +1179,25 @@ func deriveWeaknesses(report *FreyaReport, dp *DeckProfile) []string {
 		w = append(w, "no board wipes")
 	}
 
+	// Removal-density bands. Distinct from the "low interaction" warning
+	// above (which combines removal + counterspells at <5): this is the
+	// single-target removal axis specifically — Swords to Plowshares /
+	// Path to Exile / Beast Within / Generous Gift / Pongify / etc.
+	// Commander rule-of-thumb is ~8-12 single-target answers; below 8
+	// the deck struggles to answer opposing commanders and combo pieces
+	// surgically (board wipes alone are too coarse). Above 18, the deck
+	// is built as a removal-pile control deck — not a warning so much
+	// as a heads-up that the deck wants to play long games.
+	if report.SingleTargetRemovalCount > 0 && report.SingleTargetRemovalCount < 8 {
+		w = append(w, fmt.Sprintf(
+			"thin single-target removal (%d pieces) — typical Commander deck wants 8+ answers to commanders and combo pieces",
+			report.SingleTargetRemovalCount))
+	} else if report.SingleTargetRemovalCount > 18 {
+		w = append(w, fmt.Sprintf(
+			"control-heavy removal (%d single-target pieces) — this deck plays as the answer-archive; expect long games",
+			report.SingleTargetRemovalCount))
+	}
+
 	if dp.CommanderSynergy > 0 && dp.CommanderSynergy < 0.25 {
 		w = append(w, fmt.Sprintf("low commander synergy (%.0f%%) — many cards don't align with commander themes", dp.CommanderSynergy*100))
 	}

@@ -176,8 +176,18 @@ type FreyaReport struct {
 	LandTutorCount    int // land/ramp tutors (Cultivate, Rampant Growth, fetchlands)
 	WishTutorCount    int // tutors that fetch from outside the game / sideboard
 	RemovalCount      int
-	OutletCount       int
-	WinConCount       int
+	// SingleTargetRemovalCount excludes mass wipes — counts only spells
+	// that answer one threat at a time (Swords to Plowshares, Path to
+	// Exile, Beast Within, Generous Gift, Pongify, etc.). This is the
+	// "interaction density" signal Commander deckbuilders care about:
+	// you need enough single-target removal to answer opposing combo
+	// pieces and commanders, separately from your sweeper count. Mass
+	// wipes are tracked via report.Roles.RoleCounts[RoleBoardWipe] (and
+	// p.IsMassWipe per-card) and serve a different purpose (board reset
+	// vs. surgical answer).
+	SingleTargetRemovalCount int
+	OutletCount              int
+	WinConCount              int
 
 	// Mana curve
 	ManaCurve     [8]int // index 0-6 = CMC 0-6, index 7 = CMC 7+
@@ -1309,6 +1319,9 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 		}
 		if p.IsRemoval {
 			report.RemovalCount++
+			if !p.IsMassWipe {
+				report.SingleTargetRemovalCount++
+			}
 		}
 		if p.IsOutlet {
 			report.OutletCount++
