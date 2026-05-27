@@ -161,6 +161,18 @@ type DeckProfile struct {
 	AvgTurnToCommander       float64
 	CommanderCMC             int
 
+	// Vancouver free-mulligan variants — Commander's house rule that the
+	// first mulligan is free (re-draw 7 with no card penalty). Counts a
+	// trial as keepable if EITHER the initial hand OR the free-mulligan
+	// hand passes the keepability check. Always computed alongside the
+	// no-mulligan baseline so consumers can compare; the no-mulligan
+	// variant remains canonical for power-percentile scoring (matches
+	// pre-r60 calibration) and the mulligan variant surfaces the real-
+	// table accept rate. Invariant: FreeMull >= no-mulligan baseline
+	// (1 - (1-p)^2 >= p for all p in [0,1], with equality only at p=1).
+	KeepableHandPctFreeMull         float64
+	KeepableHandPctAdjustedFreeMull float64
+
 	// Synergy clusters
 	SynergyClusters []SynergyCluster
 

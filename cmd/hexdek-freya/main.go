@@ -798,8 +798,10 @@ type strategyJSON struct {
 	InteractionAvgCMC       float64                   `json:"interaction_avg_cmc,omitempty"`
 	CheapInteraction        int                       `json:"cheap_interaction,omitempty"`
 	ManaBaseGrade           string                    `json:"mana_base_grade,omitempty"`
-	KeepableHandPct         float64                   `json:"keepable_hand_pct,omitempty"`
-	KeepableHandPctAdjusted float64                   `json:"keepable_hand_pct_adjusted,omitempty"`
+	KeepableHandPct                 float64           `json:"keepable_hand_pct,omitempty"`
+	KeepableHandPctAdjusted         float64           `json:"keepable_hand_pct_adjusted,omitempty"`
+	KeepableHandPctFreeMull         float64           `json:"keepable_hand_pct_free_mull,omitempty"`
+	KeepableHandPctAdjustedFreeMull float64           `json:"keepable_hand_pct_adjusted_free_mull,omitempty"`
 	IsCommanderCentric      bool                      `json:"is_commander_centric,omitempty"`
 	PowerPercentile         int                       `json:"power_percentile,omitempty"`
 	MetaMatchups            []strategyMatchup         `json:"meta_matchups,omitempty"`
@@ -989,6 +991,8 @@ func saveStrategyJSON(path string, report *FreyaReport) {
 		sj.ManaBaseGrade = dp.ManaBaseGrade
 		sj.KeepableHandPct = dp.KeepableHandPct
 		sj.KeepableHandPctAdjusted = dp.KeepableHandPctAdjusted
+		sj.KeepableHandPctFreeMull = dp.KeepableHandPctFreeMull
+		sj.KeepableHandPctAdjustedFreeMull = dp.KeepableHandPctAdjustedFreeMull
 		sj.IsCommanderCentric = dp.IsCommanderCentric
 		sj.PowerPercentile = dp.PowerPercentile
 		for _, mm := range dp.MetaMatchups {

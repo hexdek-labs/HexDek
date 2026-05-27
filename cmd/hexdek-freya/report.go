@@ -728,12 +728,20 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 
 	if dp.KeepableHandPct > 0 {
 		fmt.Fprintf(w, "  Opening Hands: %.0f%% keepable, avg turn to 4 mana: %.1f\n", dp.KeepableHandPct, dp.AvgTurnToFourMana)
+		if dp.KeepableHandPctFreeMull > 0 {
+			fmt.Fprintf(w, "    With Vancouver free mulligan: %.0f%% keepable (+%.0f%%)\n",
+				dp.KeepableHandPctFreeMull, dp.KeepableHandPctFreeMull-dp.KeepableHandPct)
+		}
 		if dp.IsCommanderCentric && dp.KeepableHandPctAdjusted > 0 {
 			extra := ""
 			if dp.AvgTurnToCommander > 0 {
 				extra = fmt.Sprintf(", avg turn to commander (CMC %d): %.1f", dp.CommanderCMC, dp.AvgTurnToCommander)
 			}
 			fmt.Fprintf(w, "    Commander-adjusted: %.0f%% keepable%s\n", dp.KeepableHandPctAdjusted, extra)
+			if dp.KeepableHandPctAdjustedFreeMull > 0 {
+				fmt.Fprintf(w, "    Commander-adjusted with free mulligan: %.0f%% keepable (+%.0f%%)\n",
+					dp.KeepableHandPctAdjustedFreeMull, dp.KeepableHandPctAdjustedFreeMull-dp.KeepableHandPctAdjusted)
+			}
 			fmt.Fprintf(w, "    (commander-centric: %s)\n", dp.CommanderCentricReason)
 		}
 	}
@@ -1388,10 +1396,12 @@ type jsonDeckProfile struct {
 	DeckCostNote       string            `json:"deck_cost_note,omitempty"`
 	VulnerableTo       []string          `json:"vulnerable_to,omitempty"`
 	VulnerableComboPieces []jsonVulnerableComboPiece `json:"vulnerable_combo_pieces,omitempty"`
-	KeepableHandPct         float64       `json:"keepable_hand_pct,omitempty"`
-	AvgTurnToFourMana       float64       `json:"avg_turn_to_four_mana,omitempty"`
-	KeepableHandPctAdjusted float64       `json:"keepable_hand_pct_adjusted,omitempty"`
-	AvgTurnToCommander      float64       `json:"avg_turn_to_commander,omitempty"`
+	KeepableHandPct                 float64 `json:"keepable_hand_pct,omitempty"`
+	AvgTurnToFourMana               float64 `json:"avg_turn_to_four_mana,omitempty"`
+	KeepableHandPctAdjusted         float64 `json:"keepable_hand_pct_adjusted,omitempty"`
+	AvgTurnToCommander              float64 `json:"avg_turn_to_commander,omitempty"`
+	KeepableHandPctFreeMull         float64 `json:"keepable_hand_pct_free_mull,omitempty"`
+	KeepableHandPctAdjustedFreeMull float64 `json:"keepable_hand_pct_adjusted_free_mull,omitempty"`
 	IsCommanderCentric      bool          `json:"is_commander_centric,omitempty"`
 	CommanderCentricReason  string        `json:"commander_centric_reason,omitempty"`
 	CommanderCMC            int           `json:"commander_cmc,omitempty"`
@@ -1818,10 +1828,12 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		DeckCostNote:       dp.DeckCostNote,
 		VulnerableTo:       dp.VulnerableTo,
 		VulnerableComboPieces: vulnCombo,
-		KeepableHandPct:         dp.KeepableHandPct,
-		AvgTurnToFourMana:       dp.AvgTurnToFourMana,
-		KeepableHandPctAdjusted: dp.KeepableHandPctAdjusted,
-		AvgTurnToCommander:      dp.AvgTurnToCommander,
+		KeepableHandPct:                 dp.KeepableHandPct,
+		AvgTurnToFourMana:               dp.AvgTurnToFourMana,
+		KeepableHandPctAdjusted:         dp.KeepableHandPctAdjusted,
+		AvgTurnToCommander:              dp.AvgTurnToCommander,
+		KeepableHandPctFreeMull:         dp.KeepableHandPctFreeMull,
+		KeepableHandPctAdjustedFreeMull: dp.KeepableHandPctAdjustedFreeMull,
 		IsCommanderCentric:      dp.IsCommanderCentric,
 		CommanderCentricReason:  dp.CommanderCentricReason,
 		CommanderCMC:            dp.CommanderCMC,

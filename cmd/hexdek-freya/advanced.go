@@ -478,9 +478,22 @@ func computeOpeningHandSim(dp *DeckProfile, report *FreyaReport, oracle *oracleD
 	detectCommanderCentric(dp, report, oracle)
 
 	rng := rand.New(rand.NewSource(42))
+	// mullRng is a separate, independently-seeded RNG used ONLY for
+	// the Vancouver free-mulligan re-shuffles. Keeping the mulligan
+	// stream isolated from `rng` preserves bit-stability of the
+	// no-mulligan KeepableHandPct / AvgTurnToFourMana metrics — the
+	// first-hand and turns-to-N draws still consume `rng` in the
+	// same sequence as pre-r60, regardless of how often the
+	// conditional re-shuffle fires. The mulligan seed is offset from
+	// the primary so the two streams don't correlate (which would
+	// bias the per-trial pair toward identical hands and depress
+	// the observed mulligan uplift below the 1-(1-p)^2 expectation).
+	mullRng := rand.New(rand.NewSource(43))
 	trials := 10000
 	keepable := 0
 	keepableAdjusted := 0
+	keepableFreeMull := 0
+	keepableAdjustedFreeMull := 0
 	totalTurnsToFour := 0.0
 	totalTurnsToCmdr := 0.0
 	validTrials := 0
@@ -541,19 +554,33 @@ func computeOpeningHandSim(dp *DeckProfile, report *FreyaReport, oracle *oracleD
 		cmdrCMC = 4
 	}
 
-	for t := 0; t < trials; t++ {
-		// Shuffle the flag deck in place.
-		for i := len(deckFlags) - 1; i > 0; i-- {
-			j := rng.Intn(i + 1)
-			deckFlags[i], deckFlags[j] = deckFlags[j], deckFlags[i]
-		}
+	// Separate slice for the mulligan re-shuffles so the primary
+	// deckFlags slice's permutation trajectory across trials stays
+	// identical to pre-r60. Fisher-Yates produces a state-dependent
+	// permutation given a fixed swap sequence — if the mulligan
+	// helper mutated the shared slice, the NEXT trial's first-hand
+	// shuffle would start from a different permutation and produce
+	// a different keepability outcome, drifting KeepableHandPct
+	// away from its pre-r60 value. Copy once up front.
+	mullDeckFlags := make([]uint8, len(deckFlags))
 
-		landsInHand := 0
-		rampInHand := 0
-		synergyInHand := 0
-		actionInHand := 0
+	// shuffleAndEvalHand shuffles the supplied slice using the
+	// supplied RNG, inspects the top 7, and returns
+	// (standardKeepable, adjustedKeepable) plus the landsInHand +
+	// rampInHand counts. The counts are returned so the downstream
+	// turns-to-N estimation can use the first-hand state from the
+	// FIRST call without re-counting; the helper is invoked up to
+	// twice per trial for the Vancouver free-mulligan path with
+	// separate RNGs AND separate slices to keep the no-mulligan
+	// stream bit-stable.
+	shuffleAndEvalHand := func(slice []uint8, r *rand.Rand) (stdKeep, adjKeep bool, landsInHand, rampInHand int) {
+		for i := len(slice) - 1; i > 0; i-- {
+			j := r.Intn(i + 1)
+			slice[i], slice[j] = slice[j], slice[i]
+		}
+		var synergyInHand, actionInHand int
 		for i := 0; i < 7; i++ {
-			f := deckFlags[i]
+			f := slice[i]
 			if f&flagLand != 0 {
 				landsInHand++
 			}
@@ -567,28 +594,75 @@ func computeOpeningHandSim(dp *DeckProfile, report *FreyaReport, oracle *oracleD
 				actionInHand++
 			}
 		}
-
-		// Standard keepable: 2-5 lands AND at least one threat / interaction /
-		// draw / combo piece — the classic "do something with this turn 2-3"
-		// criterion.
 		landsOK := landsInHand >= 2 && landsInHand <= 5
-		if landsOK && actionInHand >= 1 {
-			keepable++
-		}
-
-		// Commander-adjusted keepable: when the commander itself is the
-		// engine, an opener is keepable as long as it can deploy or feed the
-		// commander. Accept 2-5 lands plus EITHER an action card, a ramp
-		// piece, a commander-synergy enabler, or enough lands to hit
-		// commander CMC purely by land drops.
+		// Standard keepable: 2-5 lands AND at least one threat /
+		// interaction / draw / combo piece.
+		stdKeep = landsOK && actionInHand >= 1
+		// Commander-adjusted keepable: 2-5 lands plus EITHER an
+		// action card, a ramp piece, a commander-synergy enabler,
+		// or enough lands to hit commander CMC purely by land
+		// drops.
 		if landsOK {
 			naturalReach := landsInHand >= cmdrCMC
-			if actionInHand >= 1 || rampInHand >= 1 || synergyInHand >= 1 || naturalReach {
-				keepableAdjusted++
+			adjKeep = actionInHand >= 1 || rampInHand >= 1 || synergyInHand >= 1 || naturalReach
+		}
+		return
+	}
+
+	for t := 0; t < trials; t++ {
+		stdKeep1, adjKeep1, landsInHand, rampInHand := shuffleAndEvalHand(deckFlags, rng)
+
+		if stdKeep1 {
+			keepable++
+		}
+		if adjKeep1 {
+			keepableAdjusted++
+		}
+
+		// Vancouver free-mulligan: if the first hand isn't keepable,
+		// Commander rules allow a single penalty-free re-draw of 7.
+		// The trial counts as keepable under the free-mulligan
+		// variant if EITHER the initial hand OR the free-mulligan
+		// hand passes. We only re-shuffle when the first hand fails,
+		// matching real-table behavior (a player who's keeping the
+		// first hand doesn't burn the free mulligan).
+		//
+		// IMPORTANT: the post-mulligan hand reuses the same RNG
+		// stream so the simulation stays seed-deterministic. The
+		// re-shuffle advances the RNG state past the initial draw's
+		// state, so KeepableHandPct (which only cares about the
+		// first-shuffle hand) remains bit-stable — the first-hand
+		// classification is captured BEFORE the conditional
+		// re-shuffle below. Tested in TestOpeningHandSim_NoMulligan
+		// FieldIsBitStable.
+		stdKeepMull := stdKeep1
+		adjKeepMull := adjKeep1
+		if !stdKeep1 || !adjKeep1 {
+			// Sync the mulligan slice from the primary slice's
+			// post-first-shuffle state. The mulligan helper then
+			// re-shuffles its own copy, leaving the primary slice
+			// untouched for the next trial's first-hand shuffle.
+			copy(mullDeckFlags, deckFlags)
+			stdKeep2, adjKeep2, _, _ := shuffleAndEvalHand(mullDeckFlags, mullRng)
+			if !stdKeepMull && stdKeep2 {
+				stdKeepMull = true
 			}
+			if !adjKeepMull && adjKeep2 {
+				adjKeepMull = true
+			}
+		}
+		if stdKeepMull {
+			keepableFreeMull++
+		}
+		if adjKeepMull {
+			keepableAdjustedFreeMull++
 		}
 
 		// Estimate turns to 4 mana and turns to commander CMC.
+		// Always uses the FIRST hand's lands/ramp counts so the
+		// estimation reflects the typical accept-or-mulligan
+		// player's starting curve, independent of the free-mulligan
+		// keepability tracking above.
 		if landsInHand >= 2 {
 			validTrials++
 			mana := 0
@@ -642,6 +716,8 @@ func computeOpeningHandSim(dp *DeckProfile, report *FreyaReport, oracle *oracleD
 
 	dp.KeepableHandPct = float64(keepable) / float64(trials) * 100
 	dp.KeepableHandPctAdjusted = float64(keepableAdjusted) / float64(trials) * 100
+	dp.KeepableHandPctFreeMull = float64(keepableFreeMull) / float64(trials) * 100
+	dp.KeepableHandPctAdjustedFreeMull = float64(keepableAdjustedFreeMull) / float64(trials) * 100
 	if validTrials > 0 {
 		dp.AvgTurnToFourMana = totalTurnsToFour / float64(validTrials)
 	}
