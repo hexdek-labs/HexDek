@@ -640,6 +640,22 @@ var failurePatterns = []struct {
 		return strings.Contains(t, "Adventure") || strings.Contains(t, "—") && strings.Contains(strings.ToLower(t), "exile this card")
 	}},
 	{"saga_or_class", func(t, tl string) bool {
+		// Type-line subtype is the canonical signal: every Saga prints
+		// as "... — Saga" (the subtype line) and every Class as
+		// "Enchantment — Class". The pre-fix check only inspected
+		// oracle text for capitalized "Saga" / "Class" or the chapter
+		// markers ("I —", "II —"), so a Saga that empty-ASTs BEFORE
+		// its chapter abilities parse would fall through to "other"
+		// because the surviving oracle text might not include any of
+		// those tokens. Adding the type-line subtype check makes the
+		// bucket robust to parse failures upstream of the chapter
+		// section. Case-insensitive on tl since subtype rendering is
+		// typically capitalized but the lowercase fallback is cheap
+		// and defends against future Scryfall normalization.
+		ltl := strings.ToLower(tl)
+		if strings.Contains(ltl, "saga") || strings.Contains(ltl, "class") {
+			return true
+		}
 		return strings.Contains(t, "Saga") || strings.Contains(t, "Class") || strings.Contains(t, "I —") || strings.Contains(t, "II —")
 	}},
 	{"battle", func(t, tl string) bool {
@@ -671,9 +687,15 @@ var failurePatterns = []struct {
 }
 
 func classifyPattern(r result) string {
-	tl := ""
+	// Pre-fix bug: tl was initialized to "" instead of r.TypeLine. The
+	// "battle" and "emblem_or_planeswalker" failure-pattern buckets
+	// match only on tl, so both silently never fired regardless of
+	// input. The saga_or_class bucket was also strictly weaker than
+	// intended — it could only detect Sagas via oracle text, not the
+	// canonical "— Saga" subtype line. Both buckets now receive the
+	// real type line.
 	for _, p := range failurePatterns {
-		if p.match(r.OracleText, tl) {
+		if p.match(r.OracleText, r.TypeLine) {
 			return p.name
 		}
 	}
