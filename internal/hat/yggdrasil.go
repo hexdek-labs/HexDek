@@ -10136,3 +10136,35 @@ func fieldColorSources(seat *gameengine.Seat, color string) int {
 	return count
 }
 
+// untappedFieldColorSources mirrors fieldColorSources but only counts
+// UNTAPPED lands producing the color. Used by the in-hand color-screw
+// detector (handColorScrewPenalty) — a tapped Island can't help cast
+// the {UU} spell in your hand THIS turn, so the binding constraint on
+// playability is untapped-only count, not total count.
+func untappedFieldColorSources(seat *gameengine.Seat, color string) int {
+	bit := colorSymBit(color)
+	if bit == 0 || seat == nil {
+		return 0
+	}
+	count := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil || p.Tapped {
+			continue
+		}
+		isLand := false
+		for _, t := range p.Card.Types {
+			if t == "land" {
+				isLand = true
+				break
+			}
+		}
+		if !isLand {
+			continue
+		}
+		if landProducesColorsMask(p.Card)&bit != 0 {
+			count++
+		}
+	}
+	return count
+}
+

@@ -527,6 +527,17 @@ func (e *GameStateEvaluator) scoreMana(gs *gameengine.GameState, seatIdx int) fl
 		rawScore += 0.25 * (untapped / mySources)
 	}
 
+	// r60: in-hand color-screw penalty. Distinct from the deck-level
+	// ColorDemand coverage check below — that measures STRATEGIC need
+	// (what the deck wants across a game), this measures TACTICAL
+	// playability of cards in our hand right now. A mono-blue deck
+	// whose hand holds a {UU} spell with 0 untapped Islands is screwed
+	// even though its strategic color demand is fully covered. The
+	// penalty runs BEFORE the early-return below so it fires even when
+	// no Strategy is loaded (the deck-level coverage check is a no-op
+	// in that case, but the hand-level screw signal still applies).
+	rawScore += handColorScrewPenalty(gs.Seats[seatIdx])
+
 	if e.Strategy == nil || e.Strategy.ColorDemand == nil {
 		return rawScore
 	}
@@ -554,6 +565,85 @@ func (e *GameStateEvaluator) scoreMana(gs *gameengine.GameState, seatIdx int) fl
 	}
 
 	return rawScore
+}
+
+// handColorScrewPenalty returns a non-positive penalty when the seat's
+// hand contains spells with colored-pip requirements that the seat's
+// UNTAPPED battlefield can't satisfy this turn.
+//
+// Demand model: for each playable hand card (skip lands and cards with
+// no ManaCostString), parse the Pure pip array and accumulate the MAX
+// per-color requirement across all hand cards. Max-per-color (rather
+// than sum) is the right binding constraint because spells cast
+// serially — one stuck {UUU} Cryptic Command is the binding case, not
+// three different {U}-cost spells (which can be cast across turns).
+//
+// Hybrid pips are intentionally ignored ({R/G} can be paid by either
+// color; counting them as binding double-counts a flexible requirement).
+//
+// Penalty: -0.15 per shortfall pip per color, summed across colors,
+// clamped at -1.0. The -0.15 magnitude is calibrated below the
+// count-delta weight ((mySources - oppAvg)/4 = ~0.25 per source) so
+// color screw is felt but not catastrophic — a one-pip shortfall on
+// one color is roughly equivalent to having half a source fewer.
+func handColorScrewPenalty(seat *gameengine.Seat) float64 {
+	if seat == nil || len(seat.Hand) == 0 {
+		return 0
+	}
+	// handDemand[colorBit] = max pure-pip requirement of that color
+	// across any single playable hand card. Indexed by W/U/B/R/G slots.
+	var handDemand [6]int
+	const (
+		slotW = 0 // matches gameengine.manaSlot* layout
+		slotU = 1
+		slotB = 2
+		slotR = 3
+		slotG = 4
+		// slotC (colorless requirement, Eldrazi) intentionally skipped —
+		// untapped lands of any color satisfy generic mana, and true {C}
+		// requirements are rare enough that adding the special case
+		// inflates the penalty surface for a tiny minority of cards.
+	)
+	for _, card := range seat.Hand {
+		if card == nil || card.ManaCostString == "" {
+			continue
+		}
+		// Skip lands: they don't cast.
+		isLand := false
+		for _, t := range card.Types {
+			if t == "land" {
+				isLand = true
+				break
+			}
+		}
+		if isLand {
+			continue
+		}
+		req := gameengine.ParseCostRequirements(card.ManaCostString)
+		for slot := 0; slot < 5; slot++ {
+			if req.Pure[slot] > handDemand[slot] {
+				handDemand[slot] = req.Pure[slot]
+			}
+		}
+	}
+	// Map each demanded color slot to its untapped source count.
+	slotColor := [5]string{"W", "U", "B", "R", "G"}
+	penalty := 0.0
+	for slot := 0; slot < 5; slot++ {
+		demand := handDemand[slot]
+		if demand <= 0 {
+			continue
+		}
+		untapped := untappedFieldColorSources(seat, slotColor[slot])
+		if untapped < demand {
+			shortfall := demand - untapped
+			penalty -= 0.15 * float64(shortfall)
+		}
+	}
+	if penalty < -1.0 {
+		penalty = -1.0
+	}
+	return penalty
 }
 
 // colorDepthWeight maps a per-color source count to a [0..1] credit
