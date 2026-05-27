@@ -34,7 +34,30 @@ type GameSummary struct {
 	MulliganStats       []MulliganStat       `json:"mulligan_stats,omitempty"`
 	TurningPoints       []TurningPoint       `json:"turning_points"`
 	HatDecisions        []HatDecision        `json:"hat_decisions,omitempty"`
-	DataSource          string               `json:"data_source"`
+	// Seats is the per-seat end-of-game scoreboard (life, library /
+	// hand / graveyard / battlefield sizes, lost flag, commander) for
+	// each seat in the game. Sourced from showmatch_game_seat in both
+	// rich and db_only paths so clients always have the post-game
+	// scoreboard without a second round-trip; empty when the row set
+	// is absent (very old games predating the seat-persistence path).
+	Seats      []SeatFinalState `json:"seats,omitempty"`
+	DataSource string           `json:"data_source"`
+}
+
+// SeatFinalState is one seat's end-of-game scoreboard row. Mirrors the
+// shape of db.GameSeatRecord minus persistence-only fields (GameID is
+// implicit from the enclosing GameSummary; BattlefieldCards is the raw
+// JSON blob used by the per-card analytics path and is omitted here to
+// keep the summary payload focused on the scoreboard view).
+type SeatFinalState struct {
+	Seat            int    `json:"seat"`
+	Commander       string `json:"commander,omitempty"`
+	Life            int    `json:"life"`
+	HandSize        int    `json:"hand_size"`
+	LibrarySize     int    `json:"library_size"`
+	GraveyardSize   int    `json:"graveyard_size"`
+	BattlefieldSize int    `json:"battlefield_size"`
+	Lost            bool   `json:"lost"`
 }
 
 // HatDecision is one row of the "why did hat do X?" log surfaced in

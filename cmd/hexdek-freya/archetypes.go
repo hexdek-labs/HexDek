@@ -26,12 +26,47 @@ var Archetypes = []ArchetypeDef{
 		Weight:      5,
 	},
 	{
+		// R60 — Equipment-Voltron sub-archetype. Distinct from generic
+		// Voltron in deck-shape commitment and gameplay rhythm:
+		// equipment carries an extra mana-tax per turn but survives
+		// single-target bounce, and the engine requires payoff pieces
+		// (Puresteel Paladin / Sigarda's Aid / Sram / Stoneforge) to
+		// be tractable. The structural fingerprint in archetype.go
+		// gates on 8+ Equipment + 3+ equip-trigger payoffs.
+		Name:        "Equipment-Voltron",
+		Description: "Tutor and stack Equipment on a single threat (commander), leverage equip-payoff triggers for tempo, close through commander damage",
+		Keywords:    []string{"equip", "equipped creature", "whenever an equipment", "equipment you control", "for each equipment", "search your library for an equipment"},
+		KeyCards:    []string{"Puresteel Paladin", "Sigarda's Aid", "Sram, Senior Edificer", "Stoneforge Mystic", "Stonehewer Giant", "Kemba, Kha Regent", "Akiri, Line-Slinger", "Halvar, God of Battle", "Nahiri, Forged in Fury", "Bruenor Battlehammer", "Ardenn, Intrepid Archaeologist", "Hammer of Nazahn", "Colossus Hammer", "Shadowspear", "Sword of Feast and Famine", "Sword of Fire and Ice"},
+		Triggers:    []string{"attacks", "etb", "cast_equipment"},
+		Effects:     []string{"equip", "attach", "tutor_equipment"},
+		Weight:      5,
+	},
+	{
 		Name:        "Aggro / Go Wide",
 		Description: "Create many tokens, buff them, swing for lethal",
 		Keywords:    []string{"create", "token", "all creatures you control get", "anthem", "overrun", "go wide"},
 		KeyCards:    []string{"Craterhoof Behemoth", "Coat of Arms", "Beastmaster Ascension", "Triumph of the Hordes", "Shared Animosity", "Finale of Devastation"},
 		Triggers:    []string{"etb", "attacks"},
 		Effects:     []string{"token_create", "buff"},
+		Weight:      5,
+	},
+	{
+		// R60 Tokens — structural pairing of token-creation density
+		// (8+ creators per buildClassifyContext) and anthem-stacking
+		// (3+ anthems). The archetypeFingerprints Require gate in
+		// cmd/hexdek-freya/archetype.go is the load-bearing check;
+		// this archetypeDef entry exists so the Keyword/KeyCard
+		// substring matcher (separate code path consumed by the
+		// strategy.json render layer) also recognizes the archetype
+		// name. Different from Aggro / Go Wide in that the SHAPE
+		// (creators + anthems) is the binding test, not the generic
+		// "low CMC + many creatures" Aggro pattern.
+		Name:        "Tokens",
+		Description: "Flood the board with creature tokens then stack anthems to swing for lethal",
+		Keywords:    []string{"create a", "create two", "create three", "creates a", "creature token", "creatures you control get", "creatures you control have", "creature tokens you control"},
+		KeyCards:    []string{"Krenko, Mob Boss", "Adeline, Resplendent Cathar", "Rhys the Redeemed", "Ghave, Guru of Spores", "Anointed Procession", "Parallel Lives", "Doubling Season", "Glorious Anthem", "Intangible Virtue", "Beastmaster Ascension", "Coat of Arms"},
+		Triggers:    []string{"etb", "attacks", "upkeep"},
+		Effects:     []string{"token_create", "anthem"},
 		Weight:      5,
 	},
 	{
@@ -188,7 +223,7 @@ var Archetypes = []ArchetypeDef{
 		Name:        "Blink / Flicker",
 		Description: "Exile and return permanents to re-trigger ETB abilities",
 		Keywords:    []string{"exile, then return", "flicker", "blink", "exile target creature you control", "enters the battlefield"},
-		KeyCards:    []string{"Deadeye Navigator", "Thassa, Deep-Dwelling", "Conjurer's Closet", "Restoration Angel", "Panharmonicon", "Yarok, the Desecrated", "Ghostly Flicker", "Ephemerate"},
+		KeyCards:    []string{"Brago, King Eternal", "Yorion, Sky Nomad", "Aminatou, the Fateshifter", "Eldrazi Displacer", "Cloudshift", "Deadeye Navigator", "Thassa, Deep-Dwelling", "Conjurer's Closet", "Restoration Angel", "Panharmonicon", "Yarok, the Desecrated", "Ghostly Flicker", "Ephemerate"},
 		Triggers:    []string{"etb"},
 		Effects:     []string{"exile_return", "draw", "token_create"},
 		Weight:      4,

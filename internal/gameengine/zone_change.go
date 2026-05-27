@@ -813,7 +813,7 @@ func CheckTargetLegality(gs *GameState, item *StackItem) (allIllegal bool, legal
 
 	anyLegal := false
 	for _, t := range item.Targets {
-		if isTargetStillLegal(gs, t) {
+		if isTargetStillLegal(gs, item, t) {
 			legalTargets = append(legalTargets, t)
 			anyLegal = true
 		}
@@ -825,8 +825,35 @@ func CheckTargetLegality(gs *GameState, item *StackItem) (allIllegal bool, legal
 	return false, legalTargets
 }
 
-// isTargetStillLegal checks if a single target is still valid at resolution.
-func isTargetStillLegal(gs *GameState, t Target) bool {
+// stackItemSourceCard returns the spell/ability source card to use for
+// CR §608.2b protection / hexproof / hexproof-from-color resolution
+// checks. For spells the card IS the source; for triggered or activated
+// abilities the source is the controller's permanent (whose card prints
+// the colors / quality the protection check reads).
+func stackItemSourceCard(item *StackItem) *Card {
+	if item == nil {
+		return nil
+	}
+	if item.Source != nil && item.Source.Card != nil {
+		return item.Source.Card
+	}
+	return item.Card
+}
+
+// isTargetStillLegal checks if a single target is still valid at
+// resolution per CR §608.2b. For permanent targets this means both
+// (a) the permanent must still be on the battlefield AND (b) it must
+// still pass the same source-aware targeting check the announcement
+// step ran via ValidateTargetsAtAnnouncement → CanBeTargetedByCombat
+// (shroud, hexproof, hexproof-from-color, protection-from-color). The
+// pre-r60 implementation only checked battlefield presence — so a
+// creature that acquired hexproof / shroud / protection AFTER being
+// targeted but BEFORE the spell resolved silently kept its illegally-
+// late-protected status off the resolution. Lightning Bolt at Grizzly
+// Bears, then Bears gets Mother of Runes-bestowed protection from red
+// in response: pre-fix Bolt resolved anyway; post-fix it fizzles per
+// §608.2b.
+func isTargetStillLegal(gs *GameState, item *StackItem, t Target) bool {
 	switch t.Kind {
 	case TargetKindSeat:
 		// Player targets: valid if the player is still alive.
@@ -836,11 +863,24 @@ func isTargetStillLegal(gs *GameState, t Target) bool {
 		s := gs.Seats[t.Seat]
 		return s != nil && !s.Lost && !s.LeftGame
 	case TargetKindPermanent:
-		// Permanent targets: valid if still on the battlefield.
+		// Permanent targets: valid if still on the battlefield AND still
+		// passing the source-aware targeting check. The latter catches
+		// hexproof / shroud / protection acquired AFTER announcement but
+		// BEFORE resolution — exactly the §608.2b "still legal at
+		// resolution" requirement.
 		if t.Permanent == nil {
 			return false
 		}
-		return permanentOnBattlefield(gs, t.Permanent)
+		if !permanentOnBattlefield(gs, t.Permanent) {
+			return false
+		}
+		if item != nil {
+			src := stackItemSourceCard(item)
+			if src != nil && !CanBeTargetedByCombat(t.Permanent, item.Controller, src) {
+				return false
+			}
+		}
+		return true
 	case TargetKindStackItem:
 		// Stack targets: valid if the item is still on the stack.
 		if t.Stack == nil {

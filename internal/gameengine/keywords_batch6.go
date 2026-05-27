@@ -302,6 +302,23 @@ func ApplyMutate(gs *GameState, mutatingPerm *Permanent, targetPerm *Permanent, 
 		targetPerm.GrantedAbilities = append(targetPerm.GrantedAbilities, getKeywordNames(mutatingPerm)...)
 		// Also absorb mutating perm's already-granted abilities.
 		targetPerm.GrantedAbilities = append(targetPerm.GrantedAbilities, mutatingPerm.GrantedAbilities...)
+		// Inherit the dying component's counters. Per CR §702.140 the
+		// merged creature is a single object — counters live on the
+		// permanent, so any +1/+1, loyalty, charge, etc. counters on
+		// the mutating perm must transfer to the survivor or the merge
+		// silently strips them. Symmetric to the onTop=true branch
+		// above; the prior implementation only copied counters in one
+		// direction, so a mutating creature sliding under (Brokkos
+		// reanimating onto a +1/+1-stacked Pollywog Symbiote, etc.)
+		// lost its accumulated counters.
+		if mutatingPerm.Counters != nil {
+			if targetPerm.Counters == nil {
+				targetPerm.Counters = map[string]int{}
+			}
+			for k, v := range mutatingPerm.Counters {
+				targetPerm.Counters[k] += v
+			}
+		}
 		// Remove mutating perm from battlefield.
 		gs.removePermanent(mutatingPerm)
 		detachAll(gs, mutatingPerm)

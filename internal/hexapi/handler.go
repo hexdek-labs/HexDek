@@ -173,18 +173,21 @@ func (h *Handler) handleResolveOwner(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/decks", h.handleListDecks)
-	mux.HandleFunc("POST /api/decks", h.handleImportDeck)
+	mux.HandleFunc("POST /api/decks", RequireCSRF(h.CSRFStore, h.handleImportDeck))
 	// Alias for the explicit "import a deck list" flow (Import.jsx page).
 	// Same payload + handler as POST /api/decks; the dedicated path lets
 	// the dashboard quick-import (modal) and the full-page import flow
 	// be tracked separately if we ever split metrics.
-	mux.HandleFunc("POST /api/decks/import", h.handleImportDeck)
+	mux.HandleFunc("POST /api/decks/import", RequireCSRF(h.CSRFStore, h.handleImportDeck))
 	mux.HandleFunc("GET /api/decks/{owner}/{id}", h.handleGetDeck)
-	mux.HandleFunc("PUT /api/decks/{owner}/{id}", h.handleUpdateDeck)
-	mux.HandleFunc("PATCH /api/decks/{owner}/{id}", h.handlePatchDeck)
-	// CSRF-gated when h.CSRFStore != nil; pass-through otherwise. Both
-	// endpoints below are destructive / state-creating with no second
-	// chance, so they're the natural first wave for token enforcement.
+	mux.HandleFunc("PUT /api/decks/{owner}/{id}", RequireCSRF(h.CSRFStore, h.handleUpdateDeck))
+	mux.HandleFunc("PATCH /api/decks/{owner}/{id}", RequireCSRF(h.CSRFStore, h.handlePatchDeck))
+	// CSRF-gated when h.CSRFStore != nil; pass-through otherwise. The
+	// gated set covers every owner-scoped state-mutation: PUT/PATCH
+	// (deck edit), DELETE, POST import (creates owner-scoped deck),
+	// POST clone/fork (creates derived owner-scoped deck), POST
+	// analyze (triggers expensive Freya run that mutates analysis
+	// state), POST archetype-feedback (writes to feedback log).
 	mux.HandleFunc("DELETE /api/decks/{owner}/{id}", RequireCSRF(h.CSRFStore, h.handleDeleteDeck))
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/versions", h.handleListVersions)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/versions/{version}", h.handleGetVersion)
@@ -194,14 +197,16 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/analysis", h.handleGetAnalysis)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/matchups", h.handleDeckMatchups)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/elo-history", h.handleDeckEloHistory)
+	mux.HandleFunc("GET /api/decks/{owner}/{id}/history", h.handleDeckHistory)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/upgrade", h.handleDeckUpgrade)
-	mux.HandleFunc("POST /api/decks/{owner}/{id}/analyze", h.handleRunAnalysis)
+	mux.HandleFunc("POST /api/decks/{owner}/{id}/analyze", RequireCSRF(h.CSRFStore, h.handleRunAnalysis))
 	mux.HandleFunc("POST /api/decks/{owner}/{id}/clone", RequireCSRF(h.CSRFStore, h.handleCloneDeck))
 	mux.HandleFunc("POST /api/decks/{owner}/{id}/fork", RequireCSRF(h.CSRFStore, h.handleForkDeck))
 	mux.HandleFunc("POST /api/decks/{owner}/{id}/archetype-feedback", RequireCSRF(h.CSRFStore, h.handleArchetypeFeedback))
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/archetype-history", h.handleArchetypeHistory)
 	mux.HandleFunc("GET /api/freya/training-signal", h.handleArchetypeTrainingSignal)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/freya-export", h.handleFreyaExport)
+	mux.HandleFunc("GET /api/decks/{owner}/{id}/snapshot", h.handleDeckSnapshot)
 	// SPA share page with OG meta injection — Caddy can route /decks/{owner}/{id}
 	// here for crawler User-Agents (or unconditionally) so Discord/Twitter unfurls
 	// pick up per-deck previews.
@@ -227,8 +232,8 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/leaderboard", h.handleLeaderboard)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/lineage", h.handleDeckLineage)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/similar", h.handleSimilarDecks)
-	mux.HandleFunc("POST /api/import/moxfield", h.handleMoxfieldImport)
-	mux.HandleFunc("POST /api/import/archidekt", h.handleArchidektImport)
+	mux.HandleFunc("POST /api/import/moxfield", RequireCSRF(h.CSRFStore, h.handleMoxfieldImport))
+	mux.HandleFunc("POST /api/import/archidekt", RequireCSRF(h.CSRFStore, h.handleArchidektImport))
 	mux.HandleFunc("GET /api/imports/{owner}", h.handleListImports)
 	mux.HandleFunc("GET /api/imports/source/moxfield", h.handleMoxfieldSources)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/events", h.handleDeckEvents)
@@ -249,6 +254,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/players/{id}/trends", h.handlePlayerTrends)
 	mux.HandleFunc("GET /api/players/compare", h.handlePlayerCompare)
 	mux.HandleFunc("GET /api/tournament/{id}/stats", h.handleTournamentStats)
+	mux.HandleFunc("GET /api/tournament/{id}/stream", h.handleTournamentStream)
 	mux.HandleFunc("GET /api/games/{id}/summary", h.handleGameSummary)
 	mux.HandleFunc("GET /api/games/{id}/replay", h.handleGameReplay)
 	mux.HandleFunc("GET /api/games/{id}/summary.pdf", h.handleGameSummaryPDF)
@@ -260,6 +266,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	// participating in token-based CSRF and fall back to the existing
 	// custom-header-only protection.
 	mux.HandleFunc("GET /api/csrf", HandleIssueCSRF(h.CSRFStore))
+	mux.HandleFunc("GET /api/health", h.handleHealth)
 	// Webhook subscriptions — owner-registered HTTP callbacks for
 	// engine events (currently just game.end). Returns 503 when h.db
 	// is nil so the registry can detect that no SQLite is wired.
@@ -1308,7 +1315,14 @@ func (h *Handler) handleDeckEvents(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	// CORS is the global corsMiddleware's job (cmd/hexdek-server/main.go).
+	// We deliberately do NOT set Access-Control-Allow-Origin here —
+	// a per-route wildcard would (a) override the middleware's
+	// origin-allowlist echo for legitimate cross-site browser
+	// subscribers, and (b) conflict with the middleware's
+	// Allow-Credentials: true (per CORS spec, browsers reject
+	// `Allow-Origin: *` paired with credentials), making this
+	// stream unreachable from real browsers regardless of origin.
 	flusher.Flush()
 
 	key := owner + "/" + id

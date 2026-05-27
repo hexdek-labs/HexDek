@@ -19,7 +19,16 @@ import (
 //	     CMC>=5 penalty above for a total of -3.0 at CMC>=5)
 //
 // Stars: score >= 3.0 (cap 5)
-// Solid: 0.5 <= score < 3.0 (cap 5)
+// Solid: 0.5 <= score < 3.0 AND (multi-role OR non-generic role OR
+//
+//	win-line/chain member) (cap 5)
+//
+// Flex: 0.0 <= score < 2.0 AND exactly one generic utility role
+//
+//	(Removal/Draw/Ramp/Protection/Utility) AND NOT win-line/chain
+//	(cap 5). Disjoint from Solid — a single-generic-role card lands
+//	here, not in Solid.
+//
 // Cuttable: bottom 5 with score <= 0
 func makeTierTestReport(profiles []CardProfile, assignments []CardRoleAssignment) *FreyaReport {
 	return &FreyaReport{
@@ -81,11 +90,15 @@ func TestComputeCardQualityTiers_SolidTierWindow(t *testing.T) {
 	if !hasName(dp.SolidCards, "Solid Two") {
 		t.Errorf("Solid Two missing from SolidCards: %v", dp.SolidCards)
 	}
-	if !hasName(dp.SolidCards, "Solid One") {
-		t.Errorf("Solid One missing from SolidCards: %v", dp.SolidCards)
+	// R60: single-generic-role cards land in FlexSlots, not SolidCards.
+	// "Solid One" (single RoleRamp) and "Solid Edge" (single RoleRemoval)
+	// were pre-r60 in Solid; the disjoint flex/solid partition now
+	// routes them to Flex.
+	if !hasName(dp.FlexSlots, "Solid One") {
+		t.Errorf("Solid One (single RoleRamp at CMC 3) should be in FlexSlots: solid=%v flex=%v", dp.SolidCards, dp.FlexSlots)
 	}
-	if !hasName(dp.SolidCards, "Solid Edge") {
-		t.Errorf("Solid Edge missing from SolidCards: %v", dp.SolidCards)
+	if !hasName(dp.FlexSlots, "Solid Edge") {
+		t.Errorf("Solid Edge (single RoleRemoval at CMC 3) should be in FlexSlots: solid=%v flex=%v", dp.SolidCards, dp.FlexSlots)
 	}
 	if !hasName(dp.CuttableCards, "Cut Heavy") {
 		t.Errorf("Cut Heavy missing from CuttableCards: %v", dp.CuttableCards)
@@ -96,13 +109,24 @@ func TestComputeCardQualityTiers_SolidTierWindow(t *testing.T) {
 		if hasName(dp.SolidCards, sc.Name) {
 			t.Errorf("%q appeared in both Star and Solid", sc.Name)
 		}
+		if hasName(dp.FlexSlots, sc.Name) {
+			t.Errorf("%q appeared in both Star and Flex", sc.Name)
+		}
 		if hasName(dp.CuttableCards, sc.Name) {
 			t.Errorf("%q appeared in both Star and Cuttable", sc.Name)
 		}
 	}
 	for _, sc := range dp.SolidCards {
+		if hasName(dp.FlexSlots, sc.Name) {
+			t.Errorf("%q appeared in both Solid and Flex (disjoint invariant)", sc.Name)
+		}
 		if hasName(dp.CuttableCards, sc.Name) {
 			t.Errorf("%q appeared in both Solid and Cuttable", sc.Name)
+		}
+	}
+	for _, fs := range dp.FlexSlots {
+		if hasName(dp.CuttableCards, fs.Name) {
+			t.Errorf("%q appeared in both Flex and Cuttable", fs.Name)
 		}
 	}
 }
@@ -221,7 +245,9 @@ func TestComputeCardQualityTiers_SolidDefaultReason(t *testing.T) {
 	dp := &DeckProfile{}
 	computeCardQualityTiers(dp, report, nil)
 
-	findReason := func(name string) string {
+	// Dual-role card stays in SolidCards (multi-role exits the flex
+	// criteria), reason mentions both roles + CMC.
+	solidReason := func(name string) string {
 		for _, c := range dp.SolidCards {
 			if c.Name == name {
 				return c.Reason
@@ -229,8 +255,16 @@ func TestComputeCardQualityTiers_SolidDefaultReason(t *testing.T) {
 		}
 		return ""
 	}
+	flexReason := func(name string) string {
+		for _, c := range dp.FlexSlots {
+			if c.Name == name {
+				return c.Reason
+			}
+		}
+		return ""
+	}
 
-	dualReason := findReason("Dual Role")
+	dualReason := solidReason("Dual Role")
 	if !strings.Contains(dualReason, "Ramp") || !strings.Contains(dualReason, "Draw") {
 		t.Errorf("Dual Role reason should mention both roles, got %q", dualReason)
 	}
@@ -238,11 +272,13 @@ func TestComputeCardQualityTiers_SolidDefaultReason(t *testing.T) {
 		t.Errorf("Dual Role reason should mention CMC, got %q", dualReason)
 	}
 
-	singleReason := findReason("Single Role")
-	if !strings.Contains(singleReason, "Ramp") {
-		t.Errorf("Single Role reason should mention role, got %q", singleReason)
+	// Single-generic-role card now lands in FlexSlots (R60); its reason
+	// must mention the role name and frame the slot as meta-tech-swap.
+	singleReason := flexReason("Single Role")
+	if !strings.Contains(strings.ToLower(singleReason), "ramp") {
+		t.Errorf("Single Role flex reason should mention role, got %q", singleReason)
 	}
-	if !strings.Contains(singleReason, "flex") {
-		t.Errorf("Single Role reason should flag flex-slot framing, got %q", singleReason)
+	if !strings.Contains(singleReason, "flex slot") {
+		t.Errorf("Single Role flex reason should flag flex-slot framing, got %q", singleReason)
 	}
 }

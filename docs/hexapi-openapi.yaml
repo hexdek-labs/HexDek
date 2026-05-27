@@ -1259,6 +1259,39 @@ paths:
         "404": { $ref: '#/components/responses/NotFound' }
         "503": { $ref: '#/components/responses/InternalError' }
 
+  /api/tournament/{id}/stream:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: integer, format: int64 }
+        description: Gauntlet run id (gauntlet_runs.run_id).
+    get:
+      tags: [tournaments]
+      operationId: tournamentMatchStreamSSE
+      summary: Server-Sent Events stream of per-match completions for a tournament.
+      description: |
+        Keyed by run_id (same id accepted by /api/tournament/{id}/stats),
+        in contrast to /api/tournaments/{owner}/{id}/events which is
+        keyed by deck. Emits one `status` event immediately, then a
+        `match` event per completed game with the just-finished game's
+        winner / opponents / turns + running W-L / win-rate, then a
+        terminal `complete` event when the run finishes. Heartbeat
+        comments every 15s keep idle proxies from dropping the
+        connection. When the run is already complete at subscribe
+        time, the `status` event reports `complete` and the stream
+        closes immediately — clients should fall back to
+        /api/tournament/{id}/stats for the full breakdown.
+      responses:
+        "200":
+          description: "SSE stream. `status` / `match` / `complete` frames carry JSON payloads."
+          content:
+            text/event-stream:
+              schema: { type: string }
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "404": { $ref: '#/components/responses/NotFound' }
+        "503": { $ref: '#/components/responses/InternalError' }
+
   /api/tournaments/{owner}/{id}/events:
     parameters:
       - $ref: '#/components/parameters/OwnerParam'
@@ -2399,6 +2432,46 @@ paths:
                     type: string
                     description: HTTP header name the server expects the token in (always `X-CSRF-Token`).
         "503": { $ref: '#/components/responses/InternalError' }
+
+  /api/health:
+    get:
+      tags: [health]
+      operationId: getHealth
+      summary: Process liveness + readiness probe.
+      description: |
+        Always returns 200 with a small JSON body. Intended for
+        orchestrator readiness checks. The `status` field is always
+        `ok` for served requests (a request reached the handler →
+        HTTP server is alive); use the `db_reachable` boolean to
+        distinguish "process up, DB down" from "process down".
+        Carries `Cache-Control: no-store` so intermediate caches
+        can never mask a real outage with a stale "all green".
+      responses:
+        "200":
+          description: Health payload.
+          headers:
+            Cache-Control:
+              description: Always `no-store`.
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, uptime_sec, version, db_reachable]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  uptime_sec:
+                    type: integer
+                    format: int64
+                    description: Wall-clock seconds since process boot (or first /api/health observation).
+                  version:
+                    type: string
+                    description: Build version string; "dev" when not set via -ldflags.
+                  db_reachable:
+                    type: boolean
+                    description: True iff a sub-500ms ping on the SQLite connection succeeded.
 
   /api/feedback:
     post:

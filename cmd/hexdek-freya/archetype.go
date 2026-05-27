@@ -77,13 +77,72 @@ type classifyContext struct {
 	comboCount     int
 	tutorDensity   float64
 	fastManaCount  int
+	// tappedManaCount holds CMC-≤2 mana sources that ETB tapped
+	// (Coldsteel Heart, Diamond cycle, Star Compass, Coalition Relic).
+	// They're real ramp but a turn slower than untapped rocks of the same
+	// CMC, so they're excluded from fastManaCount (which feeds the B4
+	// bracket signal) and surfaced separately in the rationale. See
+	// isTappedETBRock + the Fast mana note in estimateMeasuredBracket.
+	tappedManaCount int
+	tappedManaNames []string
+	// creatureCount is the raw qty-weighted count of creatures in the
+	// deck (paired with creaturePct as its proportional companion).
+	// Drives the absolute-count Control detection arm where a
+	// creature-light deck (<15 creatures) loaded with interaction
+	// reliably signals the Control archetype shape regardless of the
+	// proportional role-ratio gate.
+	creatureCount int
+	// interactionCount sums the qty-weighted role counts for Removal +
+	// BoardWipe + Counterspell — the three "stop opponents from
+	// winning" role buckets. Distinct from the per-role roleRatios
+	// (proportional, sums to 1.0 across all roles) because the
+	// absolute count is the signal: a deck with 15+ interaction
+	// cards is meaningfully Control-shaped even when the proportional
+	// gate is diluted by a deep draw/ramp package pushing each
+	// individual role ratio down.
+	interactionCount int
 	instantSorcPct float64
+	// instantSorceryCount is the raw count of instant + sorcery cards
+	// (qty-weighted) in the deck. Paired with spellTriggerPermanentCount
+	// to drive the absolute-count Spellslinger detection arm — a 60%
+	// density gate misses I/S-heavy hybrid builds (Niv-Mizzet Reborn,
+	// Veyran, mid-density Storm) where ramp + creature payoffs pull the
+	// percentage below 60% but the spell-trigger payoff cluster makes
+	// the deck unmistakably Spellslinger-shaped.
+	instantSorceryCount int
+	// spellTriggerPermanentCount counts non-instant-sorcery permanents
+	// whose oracle text triggers on spell casts: "whenever you cast a
+	// spell" (Aetherflux Reservoir, Sentinel Tower), "whenever you cast
+	// an instant or sorcery" (Guttersnipe, Talrand, Young Pyromancer,
+	// Murmuring Mystic, Archmage Emeritus), "magecraft" (Strixhaven
+	// family), Stormwing-style ETB-cast checks ("if you've cast another
+	// instant or sorcery"), and per-cast scaling payoffs ("for each
+	// spell you've cast"). Distinct from spellCopyCount which conflates
+	// copy-effect engines (Thousand-Year Storm, Pyromancer's Goggles)
+	// with cast-trigger creatures — this field is the cleaner "do we
+	// have a spell-trigger payoff cluster" signal.
+	spellTriggerPermanentCount int
 	creaturePct    float64
 	topCreatureTypePct float64
 	sacrificeCount int
 	deathTriggers  int
 	graveyardCount int
 	selfMillCount  int
+	// discardOutletCount: cards that ENABLE discard as a cost or
+	// trigger — Faithless Looting / Wild Mongrel / Putrid Imp /
+	// Bone Miser / Liliana of the Veil / Burning Inquiry. Distinct
+	// from random opponent-discard cards (Mind Rot, Hymn to Tourach)
+	// because those don't fill YOUR graveyard. Paired with
+	// selfMillCount as the "fill your graveyard" combined signal.
+	discardOutletCount int
+	// reanimationCount: cards that put a creature card from a
+	// graveyard onto the battlefield — the LOAD-BEARING signal that
+	// distinguishes Reanimator (cheat fatties from grave) from
+	// generic recursion (Eternal Witness returns to HAND, not
+	// battlefield). Detected via curated names AND oracle-text
+	// pattern + the existing IsRecursion + RecursionDest=battlefield
+	// classification.
+	reanimationCount int
 	// graveyardSizePayoffCount: cards that scale a measured value with
 	// the size or contents of YOUR graveyard. Distinct from
 	// graveyardCount (which conflates recursion + self-mill enablers)
@@ -98,12 +157,51 @@ type classifyContext struct {
 	// engines.
 	graveyardSizePayoffCount int
 	equipAuraCount int
+	// equipmentCount and auraCount split equipAuraCount by subtype so
+	// Equipment-Voltron and Aura-Voltron can be distinguished from
+	// generic suit-up Voltron. The sub-archetypes diverge sharply in
+	// gameplay shape (Equipment carries an extra deck-building tax for
+	// equip costs but survives bounce, while Aura-Voltron is faster but
+	// vulnerable to single-target removal) so the strategy bridge needs
+	// the distinction to weight protection vs board-wipe risk.
+	equipmentCount int
+	auraCount      int
+	// equipTriggerPayoffCount tracks cards that BOOST the equipment
+	// engine itself — Puresteel Paladin's "Whenever an Equipment enters,
+	// draw a card", Sigarda's Aid's "Auras and Equipment you control
+	// have flash + attach on ETB", Sram's "Whenever you cast an Aura,
+	// Equipment, or Vehicle, draw a card", Stoneforge Mystic's tutor +
+	// free-cast trigger. A pile of 10 equipment with zero payoffs is a
+	// midrange-with-toolbox shape; 8 equipment + 3 payoffs is the
+	// committed Equipment-Voltron archetype.
+	equipTriggerPayoffCount int
 	spellCopyCount int
 	landfallCount  int
 	counterCount   int // +1/+1 counter / proliferate cards
+	// proliferateCount counts cards that specifically PROLIFERATE — a
+	// narrower signal than counterCount (which also includes +1/+1
+	// counter anthems and "number of counters" payoffs). Drives the
+	// Atraxa-style Superfriends detection arm where a 4-6 planeswalker
+	// shell leans on proliferate engines (Atraxa Praetors' Voice as
+	// commander, Karn's Bastion, Inexorable Tide, Tezzeret's Gambit,
+	// Contagion Engine / Clasp, Flux Channeler, Evolution Sage,
+	// Plaguemaw Beast) to make even a smaller walker cluster
+	// threatening. Distinguishing this from counters-matter (Hardened
+	// Scales / Marchesa) requires gating on BOTH proliferate density
+	// AND a planeswalker floor — counters-matter decks pack lots of
+	// +1/+1 payoffs but typically run 0-2 planeswalkers.
+	proliferateCount int
 	enchantmentPct float64
 	lifegainCount  int
 	blinkCount     int
+	// etbValueCreatureCount counts CREATURE cards whose ETB produces
+	// something worth blinking for (HasValueETB && type-line contains
+	// "creature"). The Blink/Flicker archetype fingerprint requires
+	// this in addition to a meaningful blink-effect count — a control
+	// deck happens to run Ghostly Flicker + Cyclonic Rift, but isn't
+	// a Blink deck unless it ALSO packs enough Mulldrifter / Reclamation
+	// Sage / Eternal Witness-class ETB payoffs to justify the engine.
+	etbValueCreatureCount int
 	artifactCount  int
 	extraCombatCount int
 	// extraTurnCount counts cards that grant a literal extra TURN
@@ -134,6 +232,46 @@ type classifyContext struct {
 	cyclingPayoffCount int // cards that trigger on cycling (Astral Drift, Drake Haven, New Perspectives, Fluctuator)
 	toxicInfectCount int // "infect", "toxic N", "poison counter" — distinct from Counters Matter's +1/+1 axis
 	vehicleCount     int // Vehicle (and Spacecraft) typeline + crew-payoff cards
+	// R60 Tokens archetype: distinct from generic "Aggro / Go Wide"
+	// because the structural signature is the SPECIFIC pairing of
+	// token-creation density + anthem-stacking density. A Krenko /
+	// Adeline / Rhys the Redeemed / Ghave-tokens shell wants the
+	// MCTS evaluator to weight BoardPresence heavily and to treat
+	// board wipes as catastrophic (HIGH ThreatExposure) — different
+	// from raw Aggro where any creature-pressure plan triggers the
+	// fingerprint regardless of token-vs-permanent shape.
+	//
+	// tokenCreatorCount: cards whose oracle text creates tokens via
+	// any of the canonical phrasings (see tokenCreationPhrases).
+	// Includes token-doubler replacements (Anointed Procession,
+	// Parallel Lives, Doubling Season) — they CREATE tokens by
+	// replacement so they count as creators for the structural
+	// signal even though they don't generate the first token
+	// themselves; a decklist with 8 token-creator cards that all
+	// double-up is still a tokens deck.
+	tokenCreatorCount int
+	// anthemCount: cards that buff "creatures you control" or
+	// "[subtype] creatures you control" (tribal anthems like Goblin
+	// King apply since they buff every token of the matching tribe).
+	// Excludes single-target buffs ("target creature gets +1/+1")
+	// because those don't scale with board-wide token presence.
+	anthemCount int
+	// tribalLordCount: subset of anthemCount that names a specific
+	// creature subtype ("Goblin creatures you control get +1/+1",
+	// "Other Elves you control get +1/+1"). A pile of generic-anthem
+	// "creatures you control get +1/+1" doesn't signal tribal — it
+	// signals go-wide or aggro. But 2+ cards whose buff is gated on a
+	// SHARED CREATURE TYPE is the structural signature of a tribal
+	// deck even when the deck's top-creature-type concentration is
+	// only marginally above noise (a deck running 18 elves + 6 utility
+	// non-elf creatures may sit at ~75% elf in the creature slot but
+	// the lord package is the load-bearing signal regardless).
+	//
+	// tribalLordTribe records the most-mentioned tribe across the
+	// detected lords, so the buildSignals output can name it. Empty
+	// when tribalLordCount < 1.
+	tribalLordCount int
+	tribalLordTribe string
 	bannedCount      int
 	gameChangerCount int
 	gameChangerNames []string
@@ -177,6 +315,47 @@ var cedhFreeInteractionList = map[string]bool{
 	"subtlety": true, "endurance": true, "solitude": true, "grief": true, "fury": true,
 	// Other 0-mana / free alternative-cost interaction
 	"snapback": true, "unmask": true, "chain of vapor": true,
+}
+
+// tappedETBRocks is the curated set of CMC-≤2 artifact ramp pieces that
+// enter the battlefield tapped, so they don't tap-for-mana on the turn
+// they're cast. They're a turn slower than untapped CMC-equivalent
+// rocks (Sol Ring, Arcane Signet, signet/talisman cycles), which is the
+// material difference for the B4 bracket signal — "T1 fast rock → T2
+// 4-drop wincon" tempo doesn't exist with these. Used as a backup
+// against the oracle-text check in isTappedETBRock so detection still
+// fires on cards whose oracle data is missing from the local cache.
+var tappedETBRocks = map[string]bool{
+	"coldsteel heart":  true,
+	"charcoal diamond": true,
+	"marble diamond":   true,
+	"sky diamond":      true,
+	"fire diamond":     true,
+	"moss diamond":     true,
+	"star compass":     true,
+	"guardian idol":    true,
+}
+
+// isTappedETBRock reports whether a CMC-≤2 mana producer enters tapped
+// and should therefore be excluded from fastManaCount. Two-pronged
+// detection: the curated tappedETBRocks set handles cards whose oracle
+// text isn't available (offline classify runs); the oracle-text scan
+// catches anything else printed with the universal "enters tapped" /
+// "enters the battlefield tapped" phrasing. Matches the lowercased
+// name + lowercased oracle text the caller already has.
+func isTappedETBRock(name, ot string) bool {
+	if tappedETBRocks[strings.ToLower(name)] {
+		return true
+	}
+	// Scryfall's modern simplified oracle uses "enters tapped"; legacy
+	// printings use "enters the battlefield tapped". Substring match
+	// covers both since the shorter form is a strict prefix of the
+	// longer one when split by the same anchor word "enters".
+	if strings.Contains(ot, "enters tapped") ||
+		strings.Contains(ot, "enters the battlefield tapped") {
+		return true
+	}
+	return false
 }
 
 // WotC Commander Game Changers list (53 cards, Feb 2026 update).
@@ -236,9 +415,60 @@ var archetypeFingerprints = []archetypeFingerprint{
 			RoleRemoval: 0.15, RoleDraw: 0.14, RoleCounterspell: 0.08, RoleThreat: 0.06,
 			RoleBoardWipe: 0.04, RoleRamp: 0.08,
 		},
+		// Two-arm detection:
+		//   (1) Proportional gate: interaction roles (Removal +
+		//       BoardWipe + Counterspell) total ≥15% AND draw ≥10%.
+		//       Catches the canonical UW / UBx control shape where
+		//       the deck is structurally proportional-heavy on
+		//       interaction.
+		//   (2) Absolute-count gate: ≥15 interaction cards AND <15
+		//       creatures. Picks up creature-light Talrand /
+		//       Baral / Kess / Sen Triplets-style control builds where
+		//       a deep draw + ramp package dilutes each individual
+		//       role ratio below 15% even though the deck packs
+		//       Counterspell + Swan Song + Negate + Path + Swords +
+		//       Cyclonic Rift + Toxic Deluge + Wrath of God + …
+		//       The <15 creature ceiling keeps generic Bant /
+		//       Esper goodstuff midrange (which routinely runs 15
+		//       interaction cards alongside 18+ creatures) from
+		//       poaching into Control.
 		Require: func(ctx *classifyContext) bool {
-			return ctx.roleRatios[RoleRemoval]+ctx.roleRatios[RoleBoardWipe]+ctx.roleRatios[RoleCounterspell] >= 0.15 &&
-				ctx.roleRatios[RoleDraw] >= 0.10
+			if ctx.roleRatios[RoleRemoval]+ctx.roleRatios[RoleBoardWipe]+ctx.roleRatios[RoleCounterspell] >= 0.15 &&
+				ctx.roleRatios[RoleDraw] >= 0.10 {
+				return true
+			}
+			if ctx.interactionCount >= 15 && ctx.creatureCount < 15 {
+				return true
+			}
+			return false
+		},
+	},
+	{
+		// R60: Equipment-Voltron sub-archetype. Distinct from generic
+		// Voltron in gameplay shape:
+		//   - Equipment carries an extra deck-building tax (equip
+		//     cost mana per turn) but survives single-target bounce
+		//     since the Equipment stays on the battlefield.
+		//   - The engine REQUIRES at least one equip-payoff piece
+		//     (Puresteel Paladin / Sigarda's Aid / Stoneforge Mystic
+		//     / Sram / Halvar) to be tractable; without payoffs the
+		//     equip-cost tax stalls the clock past commander-tax
+		//     escalation. 3+ payoffs is the load-bearing signal.
+		//
+		// Gates: 8+ Equipment cards AND 3+ equip-trigger payoffs.
+		// Falls through to generic Voltron if either gate fails.
+		// Listed BEFORE generic Voltron in the fingerprint slice so
+		// the Euclidean-distance sort sees both candidates and the
+		// sub-archetype's tighter template (RoleArtifact-heavy) edges
+		// it ahead when the deck shape matches.
+		Name: "Equipment-Voltron",
+		Ratios: map[RoleTag]float64{
+			RoleProtection: 0.12, RoleThreat: 0.10, RoleRamp: 0.10, RoleRemoval: 0.05,
+		},
+		Require: func(ctx *classifyContext) bool {
+			return ctx.equipmentCount >= 8 &&
+				ctx.equipTriggerPayoffCount >= 3 &&
+				ctx.roleRatios[RoleProtection] >= 0.06
 		},
 	},
 	{
@@ -313,8 +543,30 @@ var archetypeFingerprints = []archetypeFingerprint{
 		Ratios: map[RoleTag]float64{
 			RoleDraw: 0.14, RoleRamp: 0.10, RoleCounterspell: 0.04, RoleThreat: 0.05,
 		},
+		// Two-arm detection:
+		//   (1) Density gate: ≥60% instant/sorcery + at least one copy/
+		//       cast-trigger effect. Catches the canonical mono-blue /
+		//       Mizzix / Niv-Mizzet I/S-pile shape.
+		//   (2) Absolute-count gate: ≥25 instant/sorcery cards AND ≥4
+		//       spell-trigger payoff permanents. Picks up Niv-Mizzet
+		//       Reborn / Veyran / Stormwing-style hybrids that pack a
+		//       full I/S+payoff cluster but include enough ramp/creatures
+		//       that the percentage falls below 60. The 25-card floor on
+		//       I/S keeps generic Izzet midrange (which sits in the 15-22
+		//       range) from poaching; the 4-permanent floor on the
+		//       payoff cluster (Aetherflux Reservoir + Guttersnipe +
+		//       Talrand + Young Pyromancer + Stormwing Entity + Archmage
+		//       Emeritus + Murmuring Mystic and similar) ensures we're
+		//       seeing the deliberate "I/S triggers payoffs" structure
+		//       and not just an instant-heavy goodstuff pile.
 		Require: func(ctx *classifyContext) bool {
-			return ctx.instantSorcPct >= 0.60 && ctx.spellCopyCount >= 1
+			if ctx.instantSorcPct >= 0.60 && ctx.spellCopyCount >= 1 {
+				return true
+			}
+			if ctx.instantSorceryCount >= 25 && ctx.spellTriggerPermanentCount >= 4 {
+				return true
+			}
+			return false
 		},
 	},
 	{
@@ -323,7 +575,19 @@ var archetypeFingerprints = []archetypeFingerprint{
 			RoleThreat: 0.12, RoleDraw: 0.08, RoleRamp: 0.08, RoleRemoval: 0.06,
 		},
 		Require: func(ctx *classifyContext) bool {
-			return ctx.creaturePct >= 0.35 && ctx.topCreatureTypePct >= 0.30
+			// Baseline gate — high creature density + a clear top tribe.
+			if ctx.creaturePct >= 0.35 && ctx.topCreatureTypePct >= 0.30 {
+				return true
+			}
+			// Lord-package carveout — 2+ tribal lords (cards whose
+			// anthem is gated on a specific creature subtype) means
+			// the deck is committed to a tribe even if the raw
+			// type-concentration count is below the baseline gate.
+			// Drops the topCreatureTypePct requirement to 0.20.
+			if ctx.tribalLordCount >= 2 && ctx.creaturePct >= 0.30 && ctx.topCreatureTypePct >= 0.20 {
+				return true
+			}
+			return false
 		},
 	},
 	{
@@ -346,17 +610,46 @@ var archetypeFingerprints = []archetypeFingerprint{
 			RoleThreat:    0.08,
 			RoleRamp:      0.08,
 		},
-		// Require gate strengthened: pre-r60 a Bruvac-style pure-mill
-		// deck (8+ mill payoffs, 0 reanimate spells) would pass the
-		// graveyardCount + selfMillCount gates and false-positive into
-		// Reanimator. Adding a 5% RoleRecursion floor (≈5 recursion
-		// pieces in a 99-card deck) makes the gate genuinely
-		// reanimator-shape-aware. Mill decks without recursion bodies
-		// now fall through to Selfmill / Midrange.
+		// Require gate has TWO qualifying branches:
+		//
+		// (1) Legacy gate (pre-r60): graveyardCount + selfMillCount
+		//     + RoleRecursion floor. The graveyardCount counter is
+		//     conflated (IsRecursion + self_mill effects + mass_
+		//     reanimate effects), which over-fires on broad-graveyard
+		//     value decks (Muldrotha goodstuff) but also under-fires
+		//     on tight Animate-Dead-style shells.
+		//
+		// (2) Refined gate (r60 reanimator audit): the canonical
+		//     "6+ self-mill/discard enablers + 4+ reanimation
+		//     effects" shape. Reanimation effects are counted via
+		//     curated name list (Animate Dead, Reanimate, Necromancy,
+		//     Persist creatures, etc.) + RecursionDest=="battlefield"
+		//     classification + oracle-text pattern scan. Discard
+		//     outlets supplement self-mill so Faithless Looting /
+		//     Wild Mongrel / Putrid Imp shells aren't penalized for
+		//     filling the graveyard via discard rather than mill.
+		//
+		// EITHER branch qualifies a deck as Reanimator. The refined
+		// gate catches tight Animate-Dead / Reanimate / Unburial Rites
+		// shells that the legacy graveyardCount gate underestimates;
+		// the legacy gate catches broader Muldrotha / Karador value
+		// piles whose reanimation count is below 4 but graveyard
+		// presence is otherwise unmistakable.
 		Require: func(ctx *classifyContext) bool {
-			return ctx.graveyardCount >= 6 &&
+			legacy := ctx.graveyardCount >= 6 &&
 				ctx.selfMillCount >= 2 &&
 				ctx.roleRatios[RoleRecursion] >= 0.05
+			// Refined branch intentionally OMITS the RoleRecursion
+			// floor: the explicit count gates (6+ fill + 4+
+			// reanimation) are already a tighter structural signal
+			// than the role-density floor. A deck running only 4-5
+			// reanimation cards in a 99-card list necessarily has
+			// RoleRecursion below 5% but is still unmistakably
+			// Reanimator-shaped (tight Animate-Dead shells often
+			// look this way — small reanimation core + big targets).
+			refined := (ctx.selfMillCount+ctx.discardOutletCount) >= 6 &&
+				ctx.reanimationCount >= 4
+			return legacy || refined
 		},
 	},
 	{
@@ -397,6 +690,27 @@ var archetypeFingerprints = []archetypeFingerprint{
 			// from); WITH the payoff the graveyard size is a
 			// resource being measured, which is the Selfmill shape.
 			return ctx.selfMillCount >= 6 && ctx.graveyardSizePayoffCount >= 1
+		},
+	},
+	{
+		// R60 Tokens archetype — structural pairing of token-creation
+		// density + anthem-stacking density. Distinct from generic
+		// Aggro / Aggro / Go Wide because the Require gate is a specific
+		// 8+ creators / 3+ anthems structural shape, not just "low CMC
+		// with a lot of creatures." Canonical example shells: Krenko
+		// Mob Boss (goblin tokens + Goblin King / Goblin Chieftain
+		// anthems), Adeline Resplendent Cathar (human tokens + anthem
+		// support), Rhys the Redeemed (elf tokens + Elvish Champion),
+		// Ghave Guru of Spores (saproling tokens + anthem). RoleThreat
+		// 0.22 nudges this slightly ahead of generic Aggro (0.20) so a
+		// tokens-shape deck that ALSO trips Aggro's avgCMC<3 gate wins
+		// the euclidean-distance tiebreak.
+		Name: "Tokens",
+		Ratios: map[RoleTag]float64{
+			RoleThreat: 0.22, RoleRamp: 0.06, RoleDraw: 0.08, RoleRemoval: 0.05,
+		},
+		Require: func(ctx *classifyContext) bool {
+			return ctx.tokenCreatorCount >= 8 && ctx.anthemCount >= 3
 		},
 	},
 	{
@@ -458,8 +772,19 @@ var archetypeFingerprints = []archetypeFingerprint{
 		Ratios: map[RoleTag]float64{
 			RoleThreat: 0.10, RoleDraw: 0.10, RoleRamp: 0.08, RoleRemoval: 0.06,
 		},
+		// r60 Blink gate — two-pronged: 5+ blink-effect cards
+		// (Conjurer's Closet, Cloudshift, Ghostly Flicker, Eldrazi
+		// Displacer, Restoration Angel, Brago, Aminatou, Yorion,
+		// Deadeye Navigator, Thassa Deep-Dwelling, etc.) AND 8+
+		// creatures whose ETB is worth re-triggering (Mulldrifter,
+		// Reclamation Sage, Eternal Witness, Wood Elves, Sun Titan,
+		// Cavalier of Gales, Solemn Simulacrum, ...). Pre-r60 the gate
+		// was just blinkCount>=6, which over-classified control decks
+		// that ran a handful of bounce/exile-and-return effects without
+		// the ETB-payoff density that makes blink actually function as
+		// a strategy.
 		Require: func(ctx *classifyContext) bool {
-			return ctx.blinkCount >= 6
+			return ctx.blinkCount >= 5 && ctx.etbValueCreatureCount >= 8
 		},
 	},
 	{
@@ -485,8 +810,35 @@ var archetypeFingerprints = []archetypeFingerprint{
 		Ratios: map[RoleTag]float64{
 			RoleThreat: 0.10, RoleRemoval: 0.08, RoleDraw: 0.08, RoleBoardWipe: 0.04,
 		},
+		// Two-arm detection:
+		//   (1) PW-dense shell: ≥8 planeswalkers. Catches dedicated
+		//       walker-tribal Estrid / Sliver Overlord-as-walker /
+		//       cEDH Tezzeret stax-walker piles where the deck is
+		//       structurally walker-heavy regardless of proliferate
+		//       support.
+		//   (2) Atraxa-style proliferate shell: ≥4 planeswalkers AND
+		//       ≥3 proliferate effects. The proliferate cluster makes
+		//       even a smaller 4-7 walker count threatening because
+		//       every walker ticks up each upkeep / each combat /
+		//       each spell cast. The 3-proliferate floor distinguishes
+		//       a real Atraxa shell (Atraxa as commander + Karn's
+		//       Bastion + Tezzeret's Gambit + Contagion Engine +
+		//       Evolution Sage + Flux Channeler + Inexorable Tide)
+		//       from generic counters-matter decks (Hardened Scales /
+		//       Marchesa / Animar) that pack +1/+1 payoffs but few
+		//       proliferate engines. The 4-walker floor distinguishes
+		//       it from generic proliferate-matters decks (Skullbriar,
+		//       Pir Imaginative Rascal, Ezuri Renegade Leader) that
+		//       proliferate +1/+1 counters on creatures rather than
+		//       loyalty.
 		Require: func(ctx *classifyContext) bool {
-			return ctx.planeswalkerCount >= 8
+			if ctx.planeswalkerCount >= 8 {
+				return true
+			}
+			if ctx.planeswalkerCount >= 4 && ctx.proliferateCount >= 3 {
+				return true
+			}
+			return false
 		},
 	},
 	{
@@ -652,6 +1004,28 @@ func ClassifyArchetype(report *FreyaReport, qtyProfiles []CardProfileQty, oracle
 			continue
 		}
 		d := euclideanDistance(ctx.roleRatios, fp.Ratios)
+		// Tribal lord-package bonus: a deck running 2+ tribal lords
+		// (cards whose anthem is gated on a specific creature
+		// subtype) gets a 15% Tribal-distance discount. The shrink
+		// edges Tribal ahead of neighbouring archetypes (Aggro,
+		// Midrange, Counters Matter) when the role-ratio signal is
+		// genuinely ambiguous — a lord-heavy elf-go-wide deck would
+		// otherwise sit close to Aggro on the role axis but the lord
+		// commitment is the load-bearing call.
+		if fp.Name == "Tribal" && ctx.tribalLordCount >= 2 {
+			d *= 0.85
+		}
+		// Equipment-Voltron sub-archetype tie-break: generic Voltron and
+		// Equipment-Voltron share an identical role-ratio template, so
+		// with both gates passing they would land at the same Euclidean
+		// distance and the unstable sort.Slice ordering would
+		// non-deterministically pick the winner. Apply a small 5%
+		// discount to Equipment-Voltron when it qualifies so the more
+		// specific sub-archetype wins deterministically.
+		if fp.Name == "Equipment-Voltron" &&
+			ctx.equipmentCount >= 8 && ctx.equipTriggerPayoffCount >= 3 {
+			d *= 0.95
+		}
 		results = append(results, scored{name: fp.Name, distance: d})
 	}
 
@@ -717,12 +1091,14 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 		ctx.roleRatios[role] = float64(ra.RoleCounts[role]) / total
 	}
 	ctx.tutorDensity = ctx.roleRatios[RoleTutor]
+	ctx.interactionCount = ra.RoleCounts[RoleRemoval] + ra.RoleCounts[RoleBoardWipe] + ra.RoleCounts[RoleCounterspell]
 
 	nonlandTotal := 0
 	instantSorcCount := 0
 	creatureCount := 0
 	enchantmentCount := 0
 	creatureTypes := map[string]int{}
+	tribeCounts := map[string]int{}
 
 	for _, qp := range qtyProfiles {
 		if qp.Profile.IsLand {
@@ -757,6 +1133,19 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 		if strings.Contains(tl, "equipment") || strings.Contains(tl, "aura") {
 			ctx.equipAuraCount += qp.Qty
 		}
+		// Subtype split for the Equipment-Voltron / Aura-Voltron
+		// distinction. "Equipment" and "Aura" are subtypes of
+		// artifact and enchantment respectively; the TypeLine
+		// substring check is reliable because Scryfall normalizes
+		// the printed line ("Artifact — Equipment" / "Enchantment —
+		// Aura"). MDFC and split cards have their front-face
+		// TypeLine here, which is the equip-relevant face anyway.
+		if strings.Contains(tl, "equipment") {
+			ctx.equipmentCount += qp.Qty
+		}
+		if strings.Contains(tl, "aura") {
+			ctx.auraCount += qp.Qty
+		}
 		if strings.Contains(tl, "enchantment") {
 			enchantmentCount += qp.Qty
 		}
@@ -785,6 +1174,24 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 			"whenever you cast an instant or sorcery",
 			"whenever you cast or copy") {
 			ctx.spellCopyCount += qp.Qty
+		}
+
+		// Spell-trigger permanent detection. Only fires on non-instant-
+		// sorcery cards (a permanent is the trigger BEARER; the I/S spell
+		// is the trigger SOURCE). Captures the Aetherflux / Stormwing /
+		// Guttersnipe / Talrand / Archmage Emeritus payoff cluster used by
+		// the absolute-count Spellslinger detection arm.
+		isInstantOrSorcery := strings.Contains(tl, "instant") || strings.Contains(tl, "sorcery")
+		if !isInstantOrSorcery && containsAny(ot,
+			"whenever you cast a spell",
+			"whenever you cast an instant or sorcery",
+			"magecraft",
+			"if you've cast another instant or sorcery",
+			"if you've cast an instant or sorcery this turn",
+			"for each spell you've cast",
+			"for each instant and sorcery spell you've cast",
+			"whenever you cast your") {
+			ctx.spellTriggerPermanentCount += qp.Qty
 		}
 
 		if qp.Profile.IsOutlet {
@@ -836,11 +1243,31 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 		if containsAny(ot, "+1/+1 counter", "proliferate", "number of counters", "modified") {
 			ctx.counterCount += qp.Qty
 		}
+		// Narrower proliferate signal: only count cards whose oracle text
+		// names the proliferate keyword/action directly. Excludes generic
+		// "+1/+1 counter" anthems and "number of counters" payoffs that
+		// counterCount conflates. Counters-matter decks (Hardened Scales,
+		// Marchesa the Black Rose, Animar) will bump counterCount but not
+		// proliferateCount — that's the precision lever the Superfriends
+		// disjunctive arm uses to avoid poaching them.
+		if containsAny(ot, "proliferate") {
+			ctx.proliferateCount += qp.Qty
+		}
 		if containsAny(ot, "gain life", "whenever you gain life", "lifelink") {
 			ctx.lifegainCount += qp.Qty
 		}
 		if qp.Profile.IsBlinker || containsAny(ot, "exile, then return", "flicker", "exile target creature you control, then return") {
 			ctx.blinkCount += qp.Qty
+		}
+		// ETB-value creature counter — the second prong of the Blink
+		// archetype gate. Restricted to creatures because non-creature
+		// ETB triggers (artifacts like Solemn Simulacrum, enchantments
+		// like Smothering Tithe) are typically one-shots that don't
+		// benefit from blink. Brago / Yorion / Aminatou decks live on
+		// Mulldrifter / Reclamation Sage / Eternal Witness / Wood Elves
+		// / Sun Titan / Cavalier of Gales — all creatures.
+		if qp.Profile.HasValueETB && strings.Contains(tl, "creature") {
+			ctx.etbValueCreatureCount += qp.Qty
 		}
 		if qp.Profile.IsExtraCombat || containsAny(ot, "additional combat", "extra combat") {
 			ctx.extraCombatCount += qp.Qty
@@ -998,14 +1425,88 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 
 		if qp.Profile.CMC <= 2 {
 			for _, r := range qp.Profile.Produces {
-				if r == ResMana {
-					ctx.fastManaCount += qp.Qty
-					break
+				if r != ResMana {
+					continue
 				}
+				// Tapped-ETB rocks (Coldsteel Heart, Diamond cycle, Star
+				// Compass, Coalition Relic) produce mana but don't tap-
+				// for-mana the turn they're cast — they're a turn slower
+				// than untapped rocks of the same CMC. The B4 bracket
+				// signal cares about "T1 Sol Ring → T2 4-drop" tempo, not
+				// raw mana-source count, so these are split into a
+				// separate counter and surfaced in the rationale.
+				if isTappedETBRock(qp.Profile.Name, ot) {
+					ctx.tappedManaCount += qp.Qty
+					ctx.tappedManaNames = append(ctx.tappedManaNames, qp.Profile.Name)
+				} else {
+					ctx.fastManaCount += qp.Qty
+				}
+				break
 			}
 		}
+
+		// R60 Tokens archetype detection. cardCreatesTokens checks the
+		// canonical oracle phrasings ("create [N] [type] token",
+		// "creates [N] [type] token", "puts [N] [type] tokens onto the
+		// battlefield"), plus token-doubler replacements (Anointed
+		// Procession / Parallel Lives / Doubling Season / Mondrak)
+		// which create tokens by replacement and earn the creator
+		// classification for the structural signal.
+		if cardCreatesTokens(ot, qp.Profile.Name) {
+			ctx.tokenCreatorCount += qp.Qty
+		}
+		// cardHasAnthem checks for "creatures you control get +X/+Y"
+		// patterns plus tribal anthems "[subtype] creatures you
+		// control get +X/+Y". Single-target buffs are excluded — they
+		// don't scale with board-wide token presence.
+		if cardHasAnthem(ot) {
+			ctx.anthemCount += qp.Qty
+		}
+		// Tribal-lord detection: the subset of anthems that name a
+		// specific creature subtype. Tracked separately because 2+
+		// lords gated on the same tribe is the structural signature
+		// of tribal regardless of whether the deck hits the bare
+		// topCreatureTypePct threshold (a 24-elf-creature deck might
+		// only be 65% elf-type by raw count if half its creatures are
+		// utility role plays, yet the Lord package commits the
+		// archetype unambiguously).
+		if tribe := cardTribalLordTribe(ot); tribe != "" {
+			ctx.tribalLordCount += qp.Qty
+			tribeCounts[tribe] += qp.Qty
+		}
+		// Equipment-trigger payoff detection — cards that boost the
+		// equipment engine rather than just being an Equipment piece.
+		// Counted separately so the Equipment-Voltron fingerprint can
+		// gate on payoff density (3+ payoffs is the load-bearing
+		// signal that distinguishes a committed Equipment archetype
+		// from a midrange shell with a few equipment in the toolbox).
+		if cardIsEquipPayoff(qp.Profile.Name, ot) {
+			ctx.equipTriggerPayoffCount += qp.Qty
+		}
+		// Reanimator-archetype refinement: split "fill graveyard"
+		// from "reanimate from graveyard" so the Reanimator gate can
+		// require BOTH signals in load-bearing density.
+		if cardIsDiscardOutlet(qp.Profile.Name, ot) {
+			ctx.discardOutletCount += qp.Qty
+		}
+		if cardIsReanimationEffect(qp.Profile.Name, ot, qp.Profile.IsRecursion, qp.Profile.RecursionDest) {
+			ctx.reanimationCount += qp.Qty
+		}
+	}
+	if len(tribeCounts) > 0 {
+		topTribe := ""
+		topCount := 0
+		for tribe, n := range tribeCounts {
+			if n > topCount {
+				topTribe = tribe
+				topCount = n
+			}
+		}
+		ctx.tribalLordTribe = topTribe
 	}
 
+	ctx.instantSorceryCount = instantSorcCount
+	ctx.creatureCount = creatureCount
 	if nonlandTotal > 0 {
 		ctx.instantSorcPct = float64(instantSorcCount) / float64(nonlandTotal)
 		ctx.creaturePct = float64(creatureCount) / float64(nonlandTotal)
@@ -1101,6 +1602,467 @@ func cardHasExtraTurnGrant(primaryOracle, cardName string, oracle *oracleDB) boo
 	return false
 }
 
+// tokenCreationPhrases is the canonical set of oracle text fragments
+// indicating a card creates one or more tokens. Covers the modern
+// printing wording ("create [a/an/N] X token") plus older / template
+// variants ("creates", "puts X tokens onto the battlefield"). The "X"
+// in "puts X tokens" is intentionally not bounded by a digit because
+// many older cards say "puts a [type] token" or "puts the indicated
+// number of [type] tokens" — anchoring on "puts" + "token" + "onto
+// the battlefield" is the safest substring-match shape.
+var tokenCreationPhrases = []string{
+	"create a ", // e.g. "Create a 1/1 white Soldier creature token."
+	"create two ",
+	"create three ",
+	"create four ",
+	"create five ",
+	"create six ",
+	"create seven ",
+	"create eight ",
+	"create x ",
+	"creates a ", // 3rd-person variant
+	"creates two ",
+	"creates three ",
+	"creates x ",
+	"create that many ",   // Selvala's Stampede / many "X tokens" cards
+	"create one ",         // older phrasing
+	"put a ",              // "put a [type] token onto the battlefield"
+	"puts a ",
+	"puts onto the battlefield", // mass-token effects use this combined form
+}
+
+// tokenDoublerNames are token-replacement permanents that don't
+// CREATE the first token themselves but DOUBLE every subsequent
+// token. They count as creators for the structural Tokens-archetype
+// signal because a Krenko / Adeline shell stuffed with 5 actual
+// creators + 3 doublers IS a tokens deck — the deck's gameplan
+// hinges on the doubled output, not the count of source cards alone.
+var tokenDoublerNames = map[string]bool{
+	"anointed procession":         true,
+	"parallel lives":              true,
+	"doubling season":             true,
+	"mondrak, glory dominus":      true,
+	"primal vigor":                true, // doubles tokens AND counters
+	"adrix and nev, twincasters":  true, // doubles tokens (limited to specific token types but still a structural creator signal)
+	"second harvest":              true, // one-shot but still a creator
+}
+
+// cardCreatesTokens returns true if the lowercased oracle text or
+// canonical card name matches a token-creation pattern. False
+// positives like "create a copy of target spell" (Spell Copy) are
+// filtered out by the "token" anchor requirement — every entry in
+// tokenCreationPhrases except the doubler-name fallback requires
+// the literal substring "token" to appear elsewhere in the oracle.
+// "create a copy" / "put a counter" / "puts a card" pass the
+// per-phrase match but fail the "token" anchor.
+func cardCreatesTokens(ot, cardName string) bool {
+	if ot == "" && cardName == "" {
+		return false
+	}
+	if tokenDoublerNames[strings.ToLower(cardName)] {
+		return true
+	}
+	if !strings.Contains(ot, "token") {
+		return false
+	}
+	for _, phrase := range tokenCreationPhrases {
+		if strings.Contains(ot, phrase) {
+			return true
+		}
+	}
+	return false
+}
+
+// anthemPhrases lists oracle-text shapes that buff "creatures you
+// control" (broad anthem like Glorious Anthem / Honor of the Pure)
+// OR "[subtype] creatures you control" (tribal anthem like Goblin
+// King / Elvish Champion). The "+1/+1"-shape is the canonical
+// detection target; "+2/+2" and counter-based +N/+N variants pick
+// up the same archetype role. Single-target buffs ("target creature
+// you control gets +X/+Y") are NOT included — they don't scale with
+// board-wide token presence and would false-positive on every Giant
+// Growth / Boros Charm in the deck.
+var anthemPhrases = []string{
+	"creatures you control get +",
+	"other creatures you control get +",
+	"creatures you control have +",
+	"creature tokens you control get +",
+	"creature tokens you control have +",
+}
+
+// reanimationEffectNames is the curated list of canonical
+// reanimation cards — spells / permanents that put a creature card
+// from a graveyard onto the battlefield. Includes the Animate Dead
+// Aura family, single-target reanimate sorceries, mass reanimation,
+// and the persist / undying mechanics (which read as in-place
+// reanimation when a creature dies).
+//
+// Cards that return to HAND (Eternal Witness, Regrowth, Phyrexian
+// Reclamation) are NOT reanimation — they're recursion. The
+// distinction is load-bearing: Reanimator uses "from graveyard
+// directly onto battlefield" cheats; pure recursion plays the card
+// at full cost from hand on a subsequent turn.
+var reanimationEffectNames = map[string]bool{
+	// Single-target Auras.
+	"animate dead":         true,
+	"dance of the dead":    true,
+	"necromancy":           true,
+	"dread return":         true, // not aura but single-target
+	"reanimate":            true,
+	"exhume":               true,
+	"unburial rites":       true,
+	"footsteps of the goryo": true,
+	"goryo's vengeance":    true,
+	"shallow grave":        true,
+	"corpse dance":         true,
+	"victimize":            true,
+	"beacon of unrest":     true,
+	"chainer's edict":      true, // not reanim, removing
+	"bring back":           true,
+	"sevinne's reclamation": true,
+	"phantasmagorian":      true,
+	// Mass reanimation.
+	"living death":          true,
+	"twilight's call":       true,
+	"patriarch's bidding":   true,
+	"rise of the dark realms": true,
+	"balthor the defiled":   true,
+	"living end":            true,
+	"command the dreadhorde": true,
+	"finale of devastation": true,
+	// Persist creatures (return to battlefield via persist trigger).
+	"woodfall primus":         true,
+	"murderous redcap":        true,
+	"kitchen finks":            true,
+	"puppeteer clique":         true,
+	"twilight shepherd":        true,
+	// Reanimator-recursion creatures (return TO BATTLEFIELD).
+	"karmic guide":             true,
+	"sun titan":                true,
+	"reveillark":               true,
+	"angel of glory's rise":    true,
+	"apprentice necromancer":   true,
+	"corpse connoisseur":       true,
+	"doomed necromancer":       true,
+	"hell's caretaker":         true,
+	"lord of extinction":       true, // not reanim
+	"meren of clan nel toth":   true,
+	"karador, ghost chieftain": true,
+	"chainer, nightmare adept": true,
+	"chainer, dementia master": true,
+	"the scarab god":           true,
+	"alesha, who smiles at death": true,
+	"sun-stained scrap":        true, // placeholder, not real
+	"recurring nightmare":      true,
+	"oversold cemetery":        true,
+}
+
+// discardOutletPhrases recognises oracle-text shapes for cards that
+// enable discard as a cost or trigger — the engine pieces of the
+// Reanimator self-discard pile. Patterns are scoped to phrases that
+// signal active discard control (cost-position or looter-style draw-
+// then-discard); random opponent-discard effects (Mind Rot, Hymn to
+// Tourach) are excluded because those don't fill the controller's
+// graveyard.
+var discardOutletPhrases = []string{
+	"discard a card:",              // activated-ability cost
+	"discard a card, then",         // looter pattern (Faithless Looting "draw two, then discard two")
+	"discard two cards",            // multi-discard outlets
+	"discard your hand",            // Burning Inquiry / Wheel of Fortune family
+	"discard the rest",             // looter clauses
+	", then discard a card",        // suffix variant
+	", then discard two cards",     // suffix variant
+	"draw a card, then discard",    // explicit looter
+	"draw two cards, then discard", // wheel-light
+	"as an additional cost",        // Reanimate-style "exile X from your graveyard" isn't discard but covers cards with discard additional costs
+	"discard target",               // self-discard-target shells (Buried Alive variants)
+}
+
+// curated discard-outlet names (oracle-pattern misses on some printings).
+var discardOutletNames = map[string]bool{
+	"faithless looting":   true,
+	"wild mongrel":        true,
+	"putrid imp":          true,
+	"olivia's wrath":      true,
+	"frantic search":      true,
+	"compulsive research": true,
+	"merfolk looter":      true,
+	"looter il-kor":       true,
+	"key to the city":     true,
+	"bone miser":          true,
+	"tortured existence":  true,
+	"oblivion crown":      true,
+	"squee, dubious monarch": true,
+	"liliana of the veil": true,
+	"liliana vess":        true,
+	"burning inquiry":     true,
+	"wheel of fortune":    true,
+	"windfall":            true,
+	"jace, vryn's prodigy": true,
+	"smuggler's copter":   true,
+	"thrill of possibility": true,
+	"cathartic reunion":   true,
+}
+
+// cardIsReanimationEffect returns true if the card is a reanimation
+// effect — either by curated name OR by matching the "return target
+// creature card from [...] graveyard to/onto the battlefield" oracle
+// pattern. The pattern matches the canonical Animate Dead / Reanimate
+// / Sevinne's Reclamation phrasing.
+//
+// Also catches cards where IsRecursion is set AND RecursionDest is
+// "battlefield" — defense-in-depth for cards the curated list and
+// oracle pattern miss (parser-tagged via IsRecursion but with a non-
+// canonical printed phrasing).
+func cardIsReanimationEffect(name, ot string, isRecursion bool, recursionDest string) bool {
+	if reanimationEffectNames[strings.ToLower(strings.TrimSpace(name))] {
+		return true
+	}
+	if isRecursion && recursionDest == "battlefield" {
+		return true
+	}
+	if ot == "" {
+		return false
+	}
+	// Canonical printed shapes.
+	if strings.Contains(ot, "return target creature card") &&
+		strings.Contains(ot, "graveyard") &&
+		(strings.Contains(ot, "to the battlefield") || strings.Contains(ot, "onto the battlefield")) {
+		return true
+	}
+	if strings.Contains(ot, "put target creature card") &&
+		strings.Contains(ot, "graveyard") &&
+		(strings.Contains(ot, "onto the battlefield") || strings.Contains(ot, "into play")) {
+		return true
+	}
+	// Mass reanimation: "return all creature cards from [...] graveyard[s]"
+	if strings.Contains(ot, "return all creature cards") &&
+		strings.Contains(ot, "graveyard") &&
+		(strings.Contains(ot, "to the battlefield") || strings.Contains(ot, "onto the battlefield")) {
+		return true
+	}
+	// Persist / undying — in-place reanimation on death.
+	if strings.Contains(ot, "persist (when this creature dies") ||
+		strings.Contains(ot, "undying (when this creature dies") ||
+		(strings.Contains(ot, "persist") && strings.Contains(ot, "-1/-1 counter")) ||
+		(strings.Contains(ot, "undying") && strings.Contains(ot, "+1/+1 counter")) {
+		return true
+	}
+	return false
+}
+
+// cardIsDiscardOutlet returns true if the card is a discard outlet —
+// either by curated name OR by an oracle-text phrase scan. Random
+// opponent-discard cards (Mind Rot, Hymn to Tourach) are excluded
+// because they don't fill the controller's graveyard.
+func cardIsDiscardOutlet(name, ot string) bool {
+	if discardOutletNames[strings.ToLower(strings.TrimSpace(name))] {
+		return true
+	}
+	if ot == "" {
+		return false
+	}
+	// Exclude opponent-targeted discard.
+	if strings.Contains(ot, "target opponent discards") ||
+		strings.Contains(ot, "each opponent discards") ||
+		strings.Contains(ot, "target player discards") {
+		return false
+	}
+	for _, phrase := range discardOutletPhrases {
+		if strings.Contains(ot, phrase) {
+			return true
+		}
+	}
+	return false
+}
+
+// equipmentTriggerPayoffNames is the curated list of canonical
+// equipment-trigger payoff cards. A card matches as an
+// equipTriggerPayoff if it's in this list OR its oracle text contains
+// one of the equipmentTriggerPayoffPhrases below.
+//
+// Curated entries cover the cards whose payoff text is parser-
+// resilient but rarely catches via the substring scan (Stoneforge
+// Mystic's two-step tutor-then-free-cast doesn't read as "equipment
+// enters" / "cast an equipment"; Halvar's static buff lives behind a
+// double-faced front-back layout).
+var equipmentTriggerPayoffNames = map[string]bool{
+	"puresteel paladin":              true,
+	"sigarda's aid":                  true,
+	"sram, senior edificer":          true,
+	"stoneforge mystic":              true,
+	"stonehewer giant":               true,
+	"kemba, kha regent":              true,
+	"kemba, kha enduring":            true,
+	"akiri, line-slinger":            true,
+	"akiri, fearless voyager":        true,
+	"halvar, god of battle":          true,
+	"nahiri, forged in fury":         true,
+	"bruenor battlehammer":           true,
+	"valduk, keeper of the flame":    true,
+	"tiana, ship's caretaker":        true,
+	"toggo, goblin weaponsmith":      true,
+	"auriok steelshaper":             true,
+	"stone haven outfitter":          true,
+	"open the armory":                true,
+	"steelshaper's gift":             true,
+	"steelshaper apprentice":         true,
+	"ardenn, intrepid archaeologist": true,
+	"hammer of nazahn":               true,
+	"nazahn, revered bladesmith":     true,
+	"danitha capashen, paragon":      true,
+	"balan, wandering knight":        true,
+	"forging the tyrite sword":       true,
+}
+
+// equipmentTriggerPayoffPhrases recognises oracle-text shapes for
+// equip-payoff cards that aren't in the curated list. Patterns are
+// scoped to phrases that ONLY appear on equip-archetype payoffs —
+// generic "creatures you control" anthems are excluded, and the
+// bare-Equipment template "equipped creature gets +X/+Y" is
+// deliberately NOT included because every Equipment piece carries
+// that shape in its own buff text (Hammer of Nazahn, Bonesplitter,
+// Whispersilk Cloak all match "equipped creature gets/has..." for
+// their OWN buff — those are pieces, not payoffs). The phrases below
+// are the engine-buffing shapes: plural "equipped creatures you
+// control", board-wide "equipment you control have/get", count-up
+// "for each equipment", and the ETB / cast / attach trigger shapes.
+var equipmentTriggerPayoffPhrases = []string{
+	"whenever an equipment enters",
+	"whenever you cast an equipment",
+	"whenever you attach",
+	"equipment spells you cast cost",
+	"equipped creatures you control",
+	"equipment you control have ",
+	"equipment you control get ",
+	"for each equipment you control",
+	"equipment abilities you activate cost",
+	"search your library for an equipment",
+}
+
+// cardIsEquipPayoff returns true if the card buffs the equipment
+// engine itself — either by name (curated list) or by oracle-text
+// shape. A bare Equipment with no oracle-text payoff (Bonesplitter,
+// Whispersilk Cloak) is NOT a payoff — it's a piece. The distinction
+// is the LOAD-BEARING signal that separates Equipment-Voltron from a
+// midrange-with-equipment-toolbox shape.
+func cardIsEquipPayoff(name, ot string) bool {
+	if equipmentTriggerPayoffNames[strings.ToLower(strings.TrimSpace(name))] {
+		return true
+	}
+	if ot == "" {
+		return false
+	}
+	for _, phrase := range equipmentTriggerPayoffPhrases {
+		if strings.Contains(ot, phrase) {
+			return true
+		}
+	}
+	return false
+}
+
+// cardHasAnthem returns true if the lowercased oracle text matches
+// an anthem shape. Tribal anthems (Goblin King's "other Goblin
+// creatures you control get +1/+1") flow through the
+// "creatures you control get +" substring match — the subtype prefix
+// is preserved in the matched substring but doesn't break detection.
+func cardHasAnthem(ot string) bool {
+	if ot == "" {
+		return false
+	}
+	for _, phrase := range anthemPhrases {
+		if strings.Contains(ot, phrase) {
+			return true
+		}
+	}
+	return false
+}
+
+// cardTribalLordTribe returns the (lowercased) creature subtype this
+// card "lords for" — i.e. buffs all instances of that tribe under the
+// controller. Returns "" if the card isn't a tribal lord.
+//
+// Detection anchors on two clause shapes:
+//
+//	"<tribe> creatures you control [...] (get|have) +"
+//	"<tribe>s you control [...] (get|have) +"
+//
+// The intervening "[...]" window allows real-card phrasings like
+// Goblin Chieftain's "Goblin creatures you control HAVE HASTE AND
+// GET +1/+1" — "get +" doesn't immediately follow "you control"
+// because the keyword grant ("have haste") lives in the middle of
+// the clause. The window is scoped to the same sentence (up to the
+// next period) so unrelated body text can't bleed in.
+//
+// The "other <tribe>" variant (Goblin King: "Other Goblin creatures
+// you control get +1/+1") flows through the first shape because the
+// "other " prefix doesn't break the substring match. Single-target
+// buffs ("target Goblin you control gets +1/+1") are excluded because
+// the pattern demands plural "creatures" or the "<tribe>s" form.
+//
+// Returns the FIRST matched tribe; if a single card buffs multiple
+// tribes (rare — see Door of Destinies / Coat of Arms which are
+// changeling-style and not tribe-specific so they don't match here),
+// the first tribe in knownCreatureTypes order wins. That's acceptable
+// for the count-based signal — the lord still earns its place in
+// tribalLordCount; the tribe label is just for the human-readable
+// signal string.
+func cardTribalLordTribe(ot string) string {
+	if ot == "" {
+		return ""
+	}
+	for _, tribe := range knownCreatureTypes {
+		if tribe == "" {
+			continue
+		}
+		// Plural-suffix tribal anthems like "Goblins you control get +1/+1".
+		// "Creature"/"creatures" never appears as a tribe in
+		// knownCreatureTypes (defense-in-depth against future list edits).
+		if tribe == "creature" || tribe == "creatures" {
+			continue
+		}
+		if clauseHasBuffAnchor(ot, tribe+" creatures you control") {
+			return tribe
+		}
+		if clauseHasBuffAnchor(ot, tribe+"s you control") {
+			return tribe
+		}
+	}
+	return ""
+}
+
+// clauseHasBuffAnchor returns true if `anchor` appears in `ot` AND
+// the clause that follows (up to the next period or newline) contains
+// "get +" or "have +" — the canonical anthem-shape buff. Used by
+// cardTribalLordTribe to tolerate intervening keyword grants between
+// "<tribe> creatures you control" and the "+" stat bump (Goblin
+// Chieftain's "have haste and get +1/+1" pattern).
+func clauseHasBuffAnchor(ot, anchor string) bool {
+	start := 0
+	for {
+		idx := strings.Index(ot[start:], anchor)
+		if idx < 0 {
+			return false
+		}
+		// Walk the clause starting right after the anchor up to the
+		// next sentence boundary.
+		rest := ot[start+idx+len(anchor):]
+		if end := strings.IndexAny(rest, ".\n"); end >= 0 {
+			rest = rest[:end]
+		}
+		if strings.Contains(rest, "get +") || strings.Contains(rest, "have +") {
+			return true
+		}
+		// No buff anchor in THIS occurrence's clause — keep scanning
+		// further into the oracle text in case the anchor appears
+		// twice (rare, but defensive).
+		start += idx + len(anchor)
+		if start >= len(ot) {
+			return false
+		}
+	}
+}
+
 func euclideanDistance(actual map[RoleTag]float64, template map[RoleTag]float64) float64 {
 	sum := 0.0
 	for role, target := range template {
@@ -1151,6 +2113,24 @@ func buildSignals(ctx *classifyContext, ac *ArchetypeClassification) []string {
 		signals = append(signals, "strong tribal core")
 	}
 
+	if ctx.tribalLordCount >= 2 {
+		tribeLabel := ctx.tribalLordTribe
+		if tribeLabel == "" {
+			tribeLabel = "tribal"
+		}
+		signals = append(signals, fmt.Sprintf("tribal lord package (%d %s lords)", ctx.tribalLordCount, tribeLabel))
+	}
+
+	if ctx.equipmentCount >= 8 && ctx.equipTriggerPayoffCount >= 3 {
+		signals = append(signals, fmt.Sprintf("equipment engine (%d equipment + %d payoffs)",
+			ctx.equipmentCount, ctx.equipTriggerPayoffCount))
+	}
+
+	if (ctx.selfMillCount+ctx.discardOutletCount) >= 6 && ctx.reanimationCount >= 4 {
+		signals = append(signals, fmt.Sprintf("reanimation engine (%d fill + %d reanimate)",
+			ctx.selfMillCount+ctx.discardOutletCount, ctx.reanimationCount))
+	}
+
 	if ctx.freeInteractionCount >= 2 {
 		signals = append(signals, fmt.Sprintf("free interaction suite (%d pieces)", ctx.freeInteractionCount))
 	}
@@ -1195,6 +2175,8 @@ func buildIntent(ac *ArchetypeClassification, report *FreyaReport, ctx *classify
 		gameplan = "trade efficiently and grind value until it can close"
 	case "Voltron":
 		gameplan = "suit up the commander and eliminate players through commander damage"
+	case "Equipment-Voltron":
+		gameplan = "tutor and stack equipment on a single threat (commander), leverage equip-payoff triggers (free attaches, card draw on equipment ETB) for tempo, and close through commander damage"
 	case "Aristocrats":
 		gameplan = "sacrifice creatures for incremental drain and value"
 	case "Spellslinger":
@@ -1369,6 +2351,19 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 		addScore("Fast mana", "6-9", fmt.Sprintf("%d sub-2-CMC mana producers", ctx.fastManaCount), nil, 2)
 	case ctx.fastManaCount >= 3:
 		addScore("Fast mana", "3-5", fmt.Sprintf("%d sub-2-CMC mana producers", ctx.fastManaCount), nil, 1)
+	}
+	if ctx.tappedManaCount > 0 {
+		names := ctx.tappedManaNames
+		if len(names) > 4 {
+			names = append([]string{}, names[:4]...)
+			names = append(names, fmt.Sprintf("+%d more", len(ctx.tappedManaNames)-4))
+		}
+		rationale.Signals = append(rationale.Signals, BracketSignal{
+			Name: "Fast mana",
+			Kind: "note",
+			Note: fmt.Sprintf("%d tapped-ETB rock(s) excluded from fast-mana count (%s) — they don't tap-for-mana the turn cast, so they don't drive the T2/T3 wincon tempo the B4 signal measures",
+				ctx.tappedManaCount, strings.Join(names, ", ")),
+		})
 	}
 
 	if ctx.roleRatios[RoleCounterspell] >= 0.06 {
@@ -1569,7 +2564,7 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 			bracket = 2
 			label = "Core"
 			addAdjustment("GC=0 ceiling", "ceiling",
-				fmt.Sprintf("capped at B2: no Game Changers and no true-infinite combo (was B%d on raw score)", preCeilingBracket))
+				fmt.Sprintf("held at Bracket 2 — this deck has no Game Changers and no game-winning infinite combo, so it can't sit at Bracket 3 or higher even though smaller signals added up to a raw score of B%d. Adding a Game Changer or a real 2-card combo would unlock the higher bracket.", preCeilingBracket))
 		}
 	} else if ctx.gameChangerCount <= 3 {
 		// Light GC presence: B3 cap by default; lifts to B4 when a real
@@ -1665,9 +2660,10 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 		bracket = 4
 		label = "Optimized"
 		addAdjustment("Tuned-redundancy floor", "floor",
-			fmt.Sprintf("lifted to B4: %d finishers + %d fast-mana pieces + %d GC + %d true-inf + %.0f%% tutors (was B%d)",
-				finisherCount, ctx.fastManaCount, ctx.gameChangerCount,
-				trueInfCount, ctx.tutorDensity*100, preFloorBracket))
+			fmt.Sprintf("lifted to Bracket 4 — %d different ways to close the game backed by %d cheap mana producers (CMC 2 or less) means this deck reliably draws both a finisher and the mana to cast it on the same turn. That \"finisher + mana on curve\" reliability is what makes a deck play at Bracket 4, even without a single standout card. Corroborating signals: %d Game Changer(s), %d true-infinite combo(s), %.0f%% tutor density. Raw score was B%d before this floor.",
+				finisherCount, ctx.fastManaCount,
+				ctx.gameChangerCount, trueInfCount, ctx.tutorDensity*100,
+				preFloorBracket))
 	}
 
 	rationale.FinalBracket = bracket

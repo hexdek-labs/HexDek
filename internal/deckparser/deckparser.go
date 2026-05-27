@@ -331,6 +331,27 @@ type TournamentDeck struct {
 	CommanderCards []*gameengine.Card
 	Library        []*gameengine.Card
 	Unresolved     []string // names that weren't in the MetaDB; dropped
+	// CardLines preserves the per-line view of the deck source: one entry
+	// per source line (with quantity, cleaned name, optional inline `//`
+	// comment, and the section the line was parsed under). Library is
+	// flattened across copies and loses the line annotations; CardLines
+	// is what UI / build-coaching layers consume when they need to
+	// preserve a deckbuilder's intent notes ("// mvp", "// flex slot —
+	// swap for Cyclonic Rift if available"). Order matches source-line
+	// order; commander / partner lines are included with Section set
+	// accordingly. Unresolved lines DO appear here so the UI can still
+	// surface the deckbuilder's note next to the missing card.
+	CardLines []CardLine
+}
+
+// CardLine is the per-source-line view of a parsed deck. Section is one
+// of "main", "commander". Comment is everything after a `//` token on
+// the same line (TrimSpace'd, empty if no inline comment).
+type CardLine struct {
+	Qty     int
+	Name    string
+	Comment string
+	Section string
 }
 
 // CommanderNames returns the display names of every commander in the
@@ -388,8 +409,10 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 	td := &TournamentDeck{}
 
 	type lineEntry struct {
-		qty  int
-		name string
+		qty     int
+		name    string
+		comment string
+		section string
 	}
 	var explicitCommander string
 	var explicitPartner string
@@ -405,12 +428,30 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		"sideboard": true, "maybeboard": true, "considering": true,
 		"companion": true, "tokens": true, "signature spells": true,
 		"stickers": true, "attractions": true, "outside the game": true,
+		// Aetherhub preamble — `About` precedes a `Name <DeckName>` line
+		// (and sometimes a `Format Commander` / `Description ...` block)
+		// before the real `Commander` / `Deck` section headers. Drop the
+		// whole block until a recognized section header reasserts state.
+		"about": true,
 	}
+
+	// pendingCommanderHeader: set when the previous non-blank line was a
+	// `// COMMANDER` directive-comment. The NEXT card line consumes the
+	// flag and routes its card to commander slots instead of mainboard.
+	// Mirrors the Archidekt category-marker convention.
+	pendingCommanderHeader := false
 
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 0, 1024), 1024*1024)
 	for sc.Scan() {
 		raw := strings.TrimSpace(sc.Text())
+		// `// COMMANDER` / `// CMDR` directive-comment: flag the NEXT card
+		// line as commander. Must run before the generic `//` drop below
+		// or the directive would be silently swallowed.
+		if cmdrHeaderCommentRE.MatchString(raw) {
+			pendingCommanderHeader = true
+			continue
+		}
 		if raw == "" || strings.HasPrefix(raw, "#") || strings.HasPrefix(raw, "//") {
 			continue
 		}
@@ -418,7 +459,7 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		// COMMANDER: lines for partners. Distinct from the section-header
 		// path below.
 		if m := commanderLineRE.FindStringSubmatch(raw); m != nil {
-			name := strings.TrimSpace(m[1])
+			name := cleanCardName(strings.TrimSpace(m[1]))
 			if explicitCommander == "" {
 				explicitCommander = name
 			} else if explicitPartner == "" {
@@ -428,7 +469,7 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		}
 		// PARTNER: <name>
 		if m := partnerLineRE.FindStringSubmatch(raw); m != nil {
-			explicitPartner = strings.TrimSpace(m[1])
+			explicitPartner = cleanCardName(strings.TrimSpace(m[1]))
 			continue
 		}
 		// Section headers: Sideboard, Maybeboard, Companion, Commander,
@@ -453,6 +494,37 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		if section == "drop" {
 			continue
 		}
+		// MTGA / Aetherhub sideboard line prefix. These appear interleaved
+		// with mainboard lines instead of under a Sideboard header, so the
+		// section-based drop above doesn't catch them. Drop the line; the
+		// rest of the file may still be mainboard.
+		if sbPrefixRE.MatchString(raw) {
+			continue
+		}
+		// MTGO / Tournament-Ready metadata header lines (`Deck name: ...`,
+		// `Format: Commander`, etc.). Drop entirely; they're informational
+		// and have no card content.
+		if mtgoMetadataRE.MatchString(raw) {
+			continue
+		}
+		// Strip inline `// comment` and capture it for CardLine.Comment.
+		// Runs before the paren strip so a Moxfield-style line with both
+		// a `(SET) 123` tail and a `// comment` (rare but possible)
+		// peels in the right order: comment first, then printing tail.
+		var inlineComment string
+		if cm := inlineCommentRE.FindStringSubmatchIndex(raw); cm != nil {
+			inlineComment = strings.TrimSpace(raw[cm[2]:cm[3]])
+			raw = strings.TrimSpace(raw[:cm[0]])
+		}
+		// Inline `*CMDR*` / `*Commander*` marker: peel + flag this line
+		// as commander. Sibling to the foilMarkerRE strip but with
+		// semantic meaning. Captured here so the marker doesn't leak
+		// into cleanCardName's resolved name.
+		lineIsCommander := false
+		if cmdrInlineMarkerRE.MatchString(raw) {
+			raw = strings.TrimSpace(cmdrInlineMarkerRE.ReplaceAllString(raw, " "))
+			lineIsCommander = true
+		}
 		// Strip "(SET) 123" suffix (set code + collector number + foil flag).
 		if idx := strings.Index(raw, "("); idx > 0 {
 			raw = strings.TrimSpace(raw[:idx])
@@ -474,6 +546,20 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		if name == "" {
 			continue
 		}
+		// A `// COMMANDER` header on the previous line OR an inline
+		// `*CMDR*` marker on this line routes the card to commander
+		// slots regardless of the current Section state. The pending
+		// flag consumes on the first non-blank card line that follows.
+		if pendingCommanderHeader || lineIsCommander {
+			pendingCommanderHeader = false
+			for i := 0; i < qty; i++ {
+				commanderSectionNames = append(commanderSectionNames, name)
+			}
+			td.CardLines = append(td.CardLines, CardLine{
+				Qty: qty, Name: name, Comment: inlineComment, Section: "commander",
+			})
+			continue
+		}
 		if section == "commander" {
 			// Each card under a Commander section becomes a commander slot
 			// (up to 2 for partner pairs). Extras are silently dropped per
@@ -481,9 +567,15 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			for i := 0; i < qty; i++ {
 				commanderSectionNames = append(commanderSectionNames, name)
 			}
+			td.CardLines = append(td.CardLines, CardLine{
+				Qty: qty, Name: name, Comment: inlineComment, Section: "commander",
+			})
 			continue
 		}
-		lines = append(lines, lineEntry{qty, name})
+		lines = append(lines, lineEntry{qty: qty, name: name, comment: inlineComment, section: "main"})
+		td.CardLines = append(td.CardLines, CardLine{
+			Qty: qty, Name: name, Comment: inlineComment, Section: "main",
+		})
 	}
 	if err := sc.Err(); err != nil {
 		return nil, fmt.Errorf("deckparser: scan: %w", err)
@@ -772,7 +864,54 @@ var partnerLineRE = regexp.MustCompile(`(?i)^\s*PARTNER\s*:\s*(.+?)\s*$`)
 // the parenthesized count, and a missed match here silently leaks every
 // sideboard / companion / token card into the library (see
 // section_count_r60_test.go).
-var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companion|Considering|Deck|Main\s*Deck|Mainboard|Commanders?|Tokens|Signature\s*Spells|Stickers|Attractions|Outside\s*the\s*Game)\s*:?\s*(?:\(\s*\d+\s*\))?\s*:?\s*$`)
+var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companion|Considering|Deck|Main\s*Deck|Mainboard|Commanders?|Tokens|Signature\s*Spells|Stickers|Attractions|Outside\s*the\s*Game|About)\s*:?\s*(?:\(\s*\d+\s*\))?\s*:?\s*$`)
+
+// mtgoMetadataRE matches MTGO / Tournament-Ready export metadata header
+// lines: `Deck name: <name>`, `Created by: <author>`, `Format: <format>`,
+// `Layout: <layout>`, `Description: <blurb>`, `Tags: <list>`, `Author:
+// <name>`. MTGO's text export emits these before the card list; pre-fix
+// they fell through the fallback as qty=1 cards named e.g. `Deck name:
+// My MTGO Deck` and landed in the Unresolved report. Real Magic cards
+// never contain a colon, so the generic "leading alphanumeric word(s)
+// followed by colon followed by content" pattern is safe — checked
+// AFTER COMMANDER: / PARTNER: / SB: directives (which match earlier and
+// short-circuit) so it doesn't shadow them.
+var mtgoMetadataRE = regexp.MustCompile(`(?i)^\s*(deck\s*name|created\s*by|format|layout|author|description|tags?|source|owner|notes?)\s*:\s*\S`)
+
+// inlineCommentRE splits a card line on the first `//` token (preceded
+// by whitespace), capturing whatever follows as the line's inline
+// comment. Deckbuilders use this for intent notes: `1 Sol Ring // mvp`,
+// `1 Cyclonic Rift // wincon — never cut`. Pre-fix, every such line
+// landed in Unresolved because cleanCardName had no handler for the
+// `//` token and `Sol Ring // mvp` doesn't match the meta. Whole-line
+// `//` comments (line starting with `//`) are still dropped earlier in
+// the loop — this only catches the inline form.
+var inlineCommentRE = regexp.MustCompile(`\s+//\s*(.*)$`)
+
+// cmdrInlineMarkerRE matches an inline commander tag on a card line:
+// `1 Sigarda, Host of Herons *CMDR*` / `*Commander*` / `*COMMANDER*`.
+// Sibling to the foilMarkerRE strip but with semantic meaning: when
+// matched, the line's card is promoted to commander instead of mainboard.
+// The marker is peeled before cleanCardName runs so it doesn't leak
+// into the resolved card name.
+var cmdrInlineMarkerRE = regexp.MustCompile(`(?i)\s*\*(?:CMDR|Commander)\*\s*`)
+
+// cmdrHeaderCommentRE matches a `// COMMANDER` / `// CMDR` directive-
+// comment that flags the NEXT card line as commander. Distinct from the
+// generic whole-line `//` comment drop because we need to peek at this
+// before the comment is silently swallowed at the top of the parse loop.
+// Mirrors the Archidekt category-marker convention where a comment-style
+// header annotates the role of the following card.
+var cmdrHeaderCommentRE = regexp.MustCompile(`(?i)^\s*//\s*(?:COMMANDER|CMDR)\s*$`)
+
+// sbPrefixRE matches MTGA / Aetherhub sideboard line prefix: `SB: 1 Card`.
+// Pre-fix, every `SB:` line dropped into the fallback "qty=1, name=<raw>"
+// path — most became Unresolved noise, but the surface bug is that an
+// `SB:` line whose suffix happened to match a known card (e.g.
+// `SB: 1 Sol Ring`) silently duplicated the card into the mainboard.
+// Aetherhub's text export uses this form interleaved with mainboard
+// lines instead of a Sideboard section header.
+var sbPrefixRE = regexp.MustCompile(`(?i)^\s*SB\s*:\s*`)
 
 // trailing-suffix patterns mirrored from internal/moxfield/textlist.go so
 // the gauntlet-side parser strips the same Moxfield / Archidekt / TappedOut
@@ -786,9 +925,48 @@ var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companio
 // codes survived through to the meta lookup and silently dropped the card
 // into Unresolved — destroying the entire library for any deck pasted from
 // MTGO. That was the worst gap surfaced by the audit.
+// emojiTrimRE peels leading-or-trailing runs of emoji + whitespace from
+// a card name. Moxfield deck tags sometimes carry pictographic markers
+// like 🔥 / ⚔️ / 💀 as a visual annotation (similar in spirit to the
+// `*F*` foil marker but without the asterisk wrapping). Pre-fix, every
+// such line landed in Unresolved because the emoji bled into the meta
+// lookup name (e.g. `1 Sol Ring 🔥` resolved as `Sol Ring 🔥`, miss).
+//
+// Strip is conservative: leading + trailing runs only, never interior
+// characters. No real Magic card name contains emoji, but card names
+// DO contain non-ASCII letters (Lim-Dûl's Vault, Jötun Grunt) so the
+// strip targets symbol/format categories only:
+//
+//   - \p{So} — Symbol, Other (most pictographic emoji)
+//   - \p{Sk} — Symbol, Modifier (skin-tone modifiers)
+//   - \p{Cf} — Format (ZWJ, BOM, etc.)
+//   - U+FE00-U+FE0F — variation selectors (the second codepoint in
+//     two-codepoint emoji like ⚔️ = U+2694 + U+FE0F). These are
+//     categorized as \p{Mn} (Mark, Nonspacing) which would over-match
+//     combining accents on letter chars; the explicit hex range
+//     targets ONLY the VS block.
+//   - U+200D — Zero-Width Joiner used in emoji sequences like
+//     👨‍👩‍👧 (man + ZWJ + woman + ZWJ + girl). Already covered by
+//     \p{Cf} but listed for clarity.
+//
+// Letter-category chars (\p{L}) are intentionally left alone, so
+// Lim-Dûl / Jötun / Æther / Séance survive.
+var emojiTrimRE = regexp.MustCompile(`(?:^[\s\p{So}\p{Sk}\p{Cf}\x{FE00}-\x{FE0F}\x{200D}]+|[\s\p{So}\p{Sk}\p{Cf}\x{FE00}-\x{FE0F}\x{200D}]+$)`)
+
 var (
-	foilMarkerRE     = regexp.MustCompile(`\s*\*[A-Za-z][A-Za-z\-]*\*\s*$`)
-	bracketTagRE     = regexp.MustCompile(`\s*\[[^\]]+\]\s*$`)
+	foilMarkerRE = regexp.MustCompile(`\s*\*[A-Za-z][A-Za-z\-]*\*\s*$`)
+	// bracketTagRE peels a trailing `[Set]` tag, optionally followed by a
+	// TCGplayer-style collector token (`[M11] 146`, `[Modern Masters
+	// 2017] 36`, `[Commander 2014] 263`, `[Zendikar] ★114`). The original
+	// `\s*\[[^\]]+\]\s*$` only matched a bare bracket at end-of-line, so
+	// TCGplayer's documented mass-entry format `{qty} {name} [{set}]
+	// {collector}` left the collector tail in the name → resolver
+	// dropped the card into Unresolved despite the meta lookup being
+	// trivially possible. The `\S+` token form (vs `\d+\S*`) covers
+	// promo prefixes like ★ and ⊕ that some collector numbers use.
+	// Safe because no real Magic card name contains `[...]`, so a
+	// post-bracket token can't be card-name content.
+	bracketTagRE     = regexp.MustCompile(`\s*\[[^\]]+\](?:\s+\S+)?\s*$`)
 	leadBracketTagRE = regexp.MustCompile(`^\[[^\]]+\]\s*`)
 	hashTagRE        = regexp.MustCompile(`\s+#\S+(?:\s+#\S+)*\s*$`)
 )
@@ -811,6 +989,7 @@ func cleanCardName(name string) string {
 		s = foilMarkerRE.ReplaceAllString(s, "")
 		s = bracketTagRE.ReplaceAllString(s, "")
 		s = hashTagRE.ReplaceAllString(s, "")
+		s = emojiTrimRE.ReplaceAllString(s, "")
 		s = strings.TrimSpace(s)
 		if s == before {
 			break

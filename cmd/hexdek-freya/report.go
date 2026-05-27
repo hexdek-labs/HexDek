@@ -654,7 +654,7 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		fmt.Fprintf(w, "DECK PROFILE\n")
 		fmt.Fprintf(w, "  Tutors:    %d cards (%d real, %d land/ramp)\n",
 			r.TutorCount, r.NonLandTutorCount, r.LandTutorCount)
-		fmt.Fprintf(w, "  Removal:   %d cards\n", r.RemovalCount)
+		fmt.Fprintf(w, "  Removal:   %d cards (%d single-target)\n", r.RemovalCount, r.SingleTargetRemovalCount)
 		fmt.Fprintf(w, "  Outlets:   %d sacrifice outlets\n", r.OutletCount)
 		fmt.Fprintf(w, "  Win Cons:  %d win conditions\n", r.WinConCount)
 		fmt.Fprintf(w, "\n")
@@ -720,14 +720,28 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		}
 	}
 
+	if dp.DeckCostTier != "" {
+		fmt.Fprintf(w, "  Deck Cost:  %s tier — %s\n", dp.DeckCostTier, dp.DeckCostNote)
+	} else if dp.DeckCostNote != "" {
+		fmt.Fprintf(w, "  Deck Cost:  %s\n", dp.DeckCostNote)
+	}
+
 	if dp.KeepableHandPct > 0 {
 		fmt.Fprintf(w, "  Opening Hands: %.0f%% keepable, avg turn to 4 mana: %.1f\n", dp.KeepableHandPct, dp.AvgTurnToFourMana)
+		if dp.KeepableHandPctFreeMull > 0 {
+			fmt.Fprintf(w, "    With Vancouver free mulligan: %.0f%% keepable (+%.0f%%)\n",
+				dp.KeepableHandPctFreeMull, dp.KeepableHandPctFreeMull-dp.KeepableHandPct)
+		}
 		if dp.IsCommanderCentric && dp.KeepableHandPctAdjusted > 0 {
 			extra := ""
 			if dp.AvgTurnToCommander > 0 {
 				extra = fmt.Sprintf(", avg turn to commander (CMC %d): %.1f", dp.CommanderCMC, dp.AvgTurnToCommander)
 			}
 			fmt.Fprintf(w, "    Commander-adjusted: %.0f%% keepable%s\n", dp.KeepableHandPctAdjusted, extra)
+			if dp.KeepableHandPctAdjustedFreeMull > 0 {
+				fmt.Fprintf(w, "    Commander-adjusted with free mulligan: %.0f%% keepable (+%.0f%%)\n",
+					dp.KeepableHandPctAdjustedFreeMull, dp.KeepableHandPctAdjustedFreeMull-dp.KeepableHandPctAdjusted)
+			}
 			fmt.Fprintf(w, "    (commander-centric: %s)\n", dp.CommanderCentricReason)
 		}
 	}
@@ -745,6 +759,13 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 	if dp.InteractionQuality > 0 {
 		fmt.Fprintf(w, "  Interaction Speed: avg CMC %.1f (%d cheap, %d expensive)\n",
 			dp.InteractionQuality, dp.CheapInteraction, dp.ExpensiveInteraction)
+		if len(dp.InteractionDownsides) > 0 {
+			fmt.Fprintf(w, "    adjusted CMC %.1f after downsides (%d piece(s) grant opponent resources):\n",
+				dp.AdjustedInteractionQuality, len(dp.InteractionDownsides))
+			for _, d := range dp.InteractionDownsides {
+				fmt.Fprintf(w, "      ↓ [CMC %d] %s — %s\n", d.CMC, d.Name, d.Note)
+			}
+		}
 	}
 
 	if len(dp.PowerTierCounts) > 0 {
@@ -774,6 +795,12 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 			renderTierCard("●", c)
 		}
 	}
+	if len(dp.FlexSlots) > 0 {
+		fmt.Fprintf(w, "  Flex Slots (could swap for situational meta tech):\n")
+		for _, c := range dp.FlexSlots {
+			renderTierCard("⇄", c)
+		}
+	}
 	if len(dp.CuttableCards) > 0 {
 		fmt.Fprintf(w, "  Consider Cutting:\n")
 		for _, c := range dp.CuttableCards {
@@ -792,6 +819,13 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		fmt.Fprintf(w, "\n  Land Swaps:\n")
 		for _, s := range dp.LandSwapSuggestions {
 			fmt.Fprintf(w, "    → %s\n", s)
+		}
+	}
+
+	if len(dp.CurveArchetypeWarnings) > 0 {
+		fmt.Fprintf(w, "\n  Curve vs. Archetype:\n")
+		for _, s := range dp.CurveArchetypeWarnings {
+			fmt.Fprintf(w, "    ⚠ %s\n", s)
 		}
 	}
 
@@ -842,7 +876,12 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 	if len(dp.SynergyClusters) > 0 {
 		fmt.Fprintf(w, "\n  Synergy Clusters:\n")
 		for _, sc := range dp.SynergyClusters {
-			fmt.Fprintf(w, "    [%s] %s (%d pairwise synergies)\n", sc.Name, strings.Join(sc.Cards, ", "), sc.Score)
+			prefix := ""
+			if sc.HighDensity {
+				prefix = "★ high-density — "
+			}
+			fmt.Fprintf(w, "    [%s] %s%s (%d pairwise synergies, %d members)\n",
+				sc.Name, prefix, strings.Join(sc.Cards, ", "), sc.Score, sc.MemberCount)
 		}
 	}
 
@@ -1307,9 +1346,10 @@ type jsonProfile struct {
 	NonLandTutors int `json:"non_land_tutors"`
 	LandTutors    int `json:"land_tutors"`
 	WishTutors    int `json:"wish_tutors,omitempty"`
-	Removal       int `json:"removal"`
-	Outlets       int `json:"sacrifice_outlets"`
-	WinCons       int `json:"win_conditions"`
+	Removal             int `json:"removal"`
+	SingleTargetRemoval int `json:"single_target_removal"`
+	Outlets             int `json:"sacrifice_outlets"`
+	WinCons             int `json:"win_conditions"`
 }
 
 type jsonDeckProfile struct {
@@ -1349,12 +1389,19 @@ type jsonDeckProfile struct {
 	TaplandCount       int               `json:"tapland_count,omitempty"`
 	FetchCount         int               `json:"fetch_count,omitempty"`
 	UtilityLandCount   int               `json:"utility_land_count,omitempty"`
+	DeckCostTier       string            `json:"deck_cost_tier,omitempty"`
+	EstimatedTotalUSD  float64           `json:"estimated_total_usd,omitempty"`
+	PricedCardCount    int               `json:"priced_card_count,omitempty"`
+	UnpricedCardCount  int               `json:"unpriced_card_count,omitempty"`
+	DeckCostNote       string            `json:"deck_cost_note,omitempty"`
 	VulnerableTo       []string          `json:"vulnerable_to,omitempty"`
 	VulnerableComboPieces []jsonVulnerableComboPiece `json:"vulnerable_combo_pieces,omitempty"`
-	KeepableHandPct         float64       `json:"keepable_hand_pct,omitempty"`
-	AvgTurnToFourMana       float64       `json:"avg_turn_to_four_mana,omitempty"`
-	KeepableHandPctAdjusted float64       `json:"keepable_hand_pct_adjusted,omitempty"`
-	AvgTurnToCommander      float64       `json:"avg_turn_to_commander,omitempty"`
+	KeepableHandPct                 float64 `json:"keepable_hand_pct,omitempty"`
+	AvgTurnToFourMana               float64 `json:"avg_turn_to_four_mana,omitempty"`
+	KeepableHandPctAdjusted         float64 `json:"keepable_hand_pct_adjusted,omitempty"`
+	AvgTurnToCommander              float64 `json:"avg_turn_to_commander,omitempty"`
+	KeepableHandPctFreeMull         float64 `json:"keepable_hand_pct_free_mull,omitempty"`
+	KeepableHandPctAdjustedFreeMull float64 `json:"keepable_hand_pct_adjusted_free_mull,omitempty"`
 	IsCommanderCentric      bool          `json:"is_commander_centric,omitempty"`
 	CommanderCentricReason  string        `json:"commander_centric_reason,omitempty"`
 	CommanderCMC            int           `json:"commander_cmc,omitempty"`
@@ -1369,17 +1416,28 @@ type jsonDeckProfile struct {
 	StrongAgainst      []jsonStrongAgainst `json:"strong_against,omitempty"`
 	StarCards          []jsonCardQuality    `json:"star_cards,omitempty"`
 	SolidCards         []jsonCardQuality    `json:"solid_cards,omitempty"`
+	FlexSlots          []jsonCardQuality    `json:"flex_slots,omitempty"`
 	CuttableCards      []jsonCardQuality    `json:"cuttable_cards,omitempty"`
 	CardPowerLevels    []jsonCardPowerLevel `json:"card_power_levels,omitempty"`
 	PowerTierCounts    map[string]int       `json:"power_tier_counts,omitempty"`
 	PetCards           []jsonPetCard        `json:"pet_cards,omitempty"`
-	LandSwapSuggestions []string         `json:"land_swap_suggestions,omitempty"`
+	LandSwapSuggestions    []string      `json:"land_swap_suggestions,omitempty"`
+	CurveArchetypeWarnings []string      `json:"curve_archetype_warnings,omitempty"`
 	CommanderSynergy   float64           `json:"commander_synergy,omitempty"`
 	CommanderThemes    []string          `json:"commander_themes,omitempty"`
 	InteractionQuality float64           `json:"interaction_quality,omitempty"`
+	AdjustedInteractionQuality float64   `json:"adjusted_interaction_quality,omitempty"`
+	InteractionDownsides []jsonInteractionDownside `json:"interaction_downsides,omitempty"`
 	PowerPercentile    int               `json:"power_percentile,omitempty"`
 	PowerFactors       []string          `json:"power_factors,omitempty"`
 	CoachingTips       []jsonCoachingTip `json:"coaching_tips,omitempty"`
+}
+
+type jsonInteractionDownside struct {
+	Name string `json:"name"`
+	CMC  int    `json:"cmc"`
+	Kind string `json:"kind"`
+	Note string `json:"note"`
 }
 
 type jsonVulnerableComboPiece struct {
@@ -1403,6 +1461,7 @@ type jsonCluster struct {
 	Theme       string   `json:"theme"`
 	Score       int      `json:"synergy_count"`
 	MemberCount int      `json:"member_count,omitempty"`
+	HighDensity bool     `json:"high_density,omitempty"`
 }
 
 type jsonAltBuild struct {
@@ -1533,10 +1592,11 @@ type jsonBracketSignal struct {
 }
 
 type jsonWinLines struct {
-	Lines        []jsonWinLine  `json:"lines"`
-	BackupPlans  []string       `json:"backup_plans,omitempty"`
-	SinglePoints []string       `json:"single_points_of_failure,omitempty"`
-	Redundancy   map[string]int `json:"redundancy,omitempty"`
+	Lines              []jsonWinLine  `json:"lines"`
+	BackupPlans        []string       `json:"backup_plans,omitempty"`
+	SinglePoints       []string       `json:"single_points_of_failure,omitempty"`
+	Redundancy         map[string]int `json:"redundancy,omitempty"`
+	TotalWeightedScore int            `json:"total_weighted_score,omitempty"`
 }
 
 type jsonWinLine struct {
@@ -1544,6 +1604,7 @@ type jsonWinLine struct {
 	Type       string                `json:"type"`
 	Class      string                `json:"class,omitempty"`
 	Desc       string                `json:"description,omitempty"`
+	Weight     int                   `json:"weight,omitempty"`
 	TutorPaths []jsonTutorChain      `json:"tutor_paths,omitempty"`
 	Rationale  *jsonWinLineRationale `json:"rationale,omitempty"`
 }
@@ -1596,13 +1657,14 @@ func printJSON(w io.Writer, r *FreyaReport) {
 			Warnings: r.ColorMismatch,
 		},
 		Profile: jsonProfile{
-			Tutors:        r.TutorCount,
-			NonLandTutors: r.NonLandTutorCount,
-			LandTutors:    r.LandTutorCount,
-			WishTutors:    r.WishTutorCount,
-			Removal:       r.RemovalCount,
-			Outlets:       r.OutletCount,
-			WinCons:       r.WinConCount,
+			Tutors:              r.TutorCount,
+			NonLandTutors:       r.NonLandTutorCount,
+			LandTutors:          r.LandTutorCount,
+			WishTutors:          r.WishTutorCount,
+			Removal:             r.RemovalCount,
+			SingleTargetRemoval: r.SingleTargetRemovalCount,
+			Outlets:             r.OutletCount,
+			WinCons:             r.WinConCount,
 		},
 		FullProfile: buildJSONDeckProfile(r.Profile, r),
 		Statistics:  buildJSONStats(r.Stats),
@@ -1658,7 +1720,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 	for _, sc := range dp.SynergyClusters {
 		clusters = append(clusters, jsonCluster{
 			Name: sc.Name, Cards: sc.Cards, Theme: sc.Theme, Score: sc.Score,
-			MemberCount: sc.MemberCount,
+			MemberCount: sc.MemberCount, HighDensity: sc.HighDensity,
 		})
 	}
 	var altBuilds []jsonAltBuild
@@ -1675,7 +1737,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 	for _, a := range dp.StrongAgainst {
 		strongAgainst = append(strongAgainst, jsonStrongAgainst(a))
 	}
-	var stars, solid, cuttable []jsonCardQuality
+	var stars, solid, flex, cuttable []jsonCardQuality
 	for _, c := range dp.StarCards {
 		// Stars/solid intentionally omit the cuttable-tier rationale
 		// fields (Detected/WhyCut/Effect/Suggested) — kept as literal
@@ -1689,6 +1751,13 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 	}
 	for _, c := range dp.SolidCards {
 		solid = append(solid, jsonCardQuality{
+			Name: c.Name, Tier: c.Tier, Reason: c.Reason,
+			Power: c.Power, PowerTier: c.PowerTier,
+			PowerExplanation: c.PowerExplanation,
+		})
+	}
+	for _, c := range dp.FlexSlots {
+		flex = append(flex, jsonCardQuality{
 			Name: c.Name, Tier: c.Tier, Reason: c.Reason,
 			Power: c.Power, PowerTier: c.PowerTier,
 			PowerExplanation: c.PowerExplanation,
@@ -1712,6 +1781,10 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 	var vulnCombo []jsonVulnerableComboPiece
 	for _, v := range dp.VulnerableComboPieces {
 		vulnCombo = append(vulnCombo, jsonVulnerableComboPiece(v))
+	}
+	var downsides []jsonInteractionDownside
+	for _, d := range dp.InteractionDownsides {
+		downsides = append(downsides, jsonInteractionDownside(d))
 	}
 
 	return &jsonDeckProfile{
@@ -1748,12 +1821,19 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		TaplandCount:       dp.TaplandCount,
 		FetchCount:         dp.FetchCount,
 		UtilityLandCount:   dp.UtilityLandCount,
+		DeckCostTier:       dp.DeckCostTier,
+		EstimatedTotalUSD:  dp.EstimatedTotalUSD,
+		PricedCardCount:    dp.PricedCardCount,
+		UnpricedCardCount:  dp.UnpricedCardCount,
+		DeckCostNote:       dp.DeckCostNote,
 		VulnerableTo:       dp.VulnerableTo,
 		VulnerableComboPieces: vulnCombo,
-		KeepableHandPct:         dp.KeepableHandPct,
-		AvgTurnToFourMana:       dp.AvgTurnToFourMana,
-		KeepableHandPctAdjusted: dp.KeepableHandPctAdjusted,
-		AvgTurnToCommander:      dp.AvgTurnToCommander,
+		KeepableHandPct:                 dp.KeepableHandPct,
+		AvgTurnToFourMana:               dp.AvgTurnToFourMana,
+		KeepableHandPctAdjusted:         dp.KeepableHandPctAdjusted,
+		AvgTurnToCommander:              dp.AvgTurnToCommander,
+		KeepableHandPctFreeMull:         dp.KeepableHandPctFreeMull,
+		KeepableHandPctAdjustedFreeMull: dp.KeepableHandPctAdjustedFreeMull,
 		IsCommanderCentric:      dp.IsCommanderCentric,
 		CommanderCentricReason:  dp.CommanderCentricReason,
 		CommanderCMC:            dp.CommanderCMC,
@@ -1764,14 +1844,18 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		StrongAgainst:      strongAgainst,
 		StarCards:           stars,
 		SolidCards:          solid,
+		FlexSlots:           flex,
 		CuttableCards:       cuttable,
 		CardPowerLevels:     powerLevels,
 		PowerTierCounts:     dp.PowerTierCounts,
 		PetCards:            petCards,
-		LandSwapSuggestions: dp.LandSwapSuggestions,
+		LandSwapSuggestions:    dp.LandSwapSuggestions,
+		CurveArchetypeWarnings: dp.CurveArchetypeWarnings,
 		CommanderSynergy:   dp.CommanderSynergy,
 		CommanderThemes:    dp.CommanderThemes,
 		InteractionQuality: dp.InteractionQuality,
+		AdjustedInteractionQuality: dp.AdjustedInteractionQuality,
+		InteractionDownsides: downsides,
 		PowerPercentile:    dp.PowerPercentile,
 		PowerFactors:       dp.PowerFactors,
 		CoachingTips:       coaching,
@@ -1868,15 +1952,17 @@ func buildJSONWinLines(wla *WinLineAnalysis) *jsonWinLines {
 			Type:       wl.Type,
 			Class:      wl.Class,
 			Desc:       wl.Desc,
+			Weight:     wl.Weight,
 			TutorPaths: paths,
 			Rationale:  rat,
 		}
 	}
 	return &jsonWinLines{
-		Lines:        lines,
-		BackupPlans:  wla.BackupPlans,
-		SinglePoints: wla.SinglePoints,
-		Redundancy:   wla.RedundancyMap,
+		Lines:              lines,
+		BackupPlans:        wla.BackupPlans,
+		SinglePoints:       wla.SinglePoints,
+		Redundancy:         wla.RedundancyMap,
+		TotalWeightedScore: wla.TotalWeightedScore,
 	}
 }
 

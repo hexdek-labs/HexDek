@@ -93,11 +93,35 @@ var mechanicDefs = []struct {
 		return strings.Contains(o, "melds with")
 	}},
 	{"modal_dfc_transform", func(r result) bool {
+		// MDFCs and DFCs are layout-keyed in Scryfall:
+		//   - layout=modal_dfc  → Zendikar Rising-style MDFCs
+		//                          (spell/creature front, land back)
+		//   - layout=transform  → Innistrad-style DFCs (werewolves,
+		//                          Garruk/Liliana DFC planeswalkers,
+		//                          Eldritch Moon meld pairs, etc.)
+		// Both layouts print front/back faces, store oracle_text=""
+		// at the top level, and put per-face text in card_faces[i].
+		// The previous heuristic checked r.OracleText for "transform"
+		// or "//", but loadOracle's substitution only loads
+		// card_faces[0].oracle_text — which never contains "//" and
+		// only contains "transform" for the subset of DFCs that print
+		// the keyword on the front face. Result: 90 of 96 MDFCs
+		// silently missed the bucket entirely, and the report claimed
+		// "100% coverage" on a population that excluded most actual
+		// MDFCs.
+		//
+		// Layout-keyed detection is exact: Scryfall's layout field is
+		// authoritative for these card kinds (we already filter
+		// art_series / double_faced_token via set_type elsewhere).
+		// Falls back to the legacy oracle-text "transform" check so
+		// any future card that uses the keyword without one of the
+		// canonical layouts (e.g. one-shot transform effects on
+		// single-face cards) is still captured.
+		if r.Layout == "modal_dfc" || r.Layout == "transform" {
+			return true
+		}
 		o := strings.ToLower(r.OracleText)
-		// Heuristic: transform keyword OR explicit "//" in oracle text
-		// (modal DFCs print front/back faces). False positives are low
-		// because "//" rarely appears in single-face card text.
-		return strings.Contains(o, "transform") || strings.Contains(r.OracleText, "//")
+		return strings.Contains(o, "transform")
 	}},
 	{"monstrosity", oracleMatcher("monstrosity")},
 	{"mutate", oracleMatcher("mutate ")},

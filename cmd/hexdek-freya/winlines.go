@@ -14,6 +14,14 @@ type WinLine struct {
 	Desc       string
 	TutorPaths []TutorChain
 	Rationale  *WinLineRationale
+	// Weight is a tiered quality score (~1-17 typical range, higher is
+	// better) computed by computeWinLineWeight. It captures three things a
+	// flat per-deck WinLineCount blurs together: (a) what the line wins
+	// with (true infinite > determined > combat), (b) how many pieces it
+	// needs (2-card combos are dramatically easier to assemble than 4-card
+	// grindy loops), and (c) tutor coverage of those pieces. Downstream
+	// consumers sum these into WinLineAnalysis.TotalWeightedScore.
+	Weight int
 }
 
 // WinLineRationale explains how this win line is detected and resolves.
@@ -36,6 +44,12 @@ type WinLineAnalysis struct {
 	BackupPlans          []string
 	SinglePoints         []string
 	RedundancyMap        map[string]int
+	// TotalWeightedScore is the sum of WinLine.Weight across every win
+	// line in this analysis. Surfaces a single deck-level signal that
+	// distinguishes "one 2-card Thoracle line" from "three 5-card grindy
+	// assemblies" — both report WinLineCount=1 vs 3 respectively, but the
+	// weighted score puts the Thoracle deck ahead.
+	TotalWeightedScore   int
 }
 
 type TutorInfo struct {
@@ -231,11 +245,121 @@ func ComputeWinLines(report *FreyaReport, qtyProfiles []CardProfileQty, oracle *
 		return winLinePriority(wla.WinLines[i].Type) < winLinePriority(wla.WinLines[j].Type)
 	})
 
+	// Tiered weight pass — must run after TutorPaths are populated so the
+	// tutor-coverage bonus reflects the post-Compute state.
+	for i := range wla.WinLines {
+		wla.WinLines[i].Weight = computeWinLineWeight(&wla.WinLines[i])
+		wla.TotalWeightedScore += wla.WinLines[i].Weight
+	}
+
 	computeBackupPlans(wla)
 	computeRedundancy(wla, report, profileByName)
 	computeSinglePoints(wla, profileByName)
 
 	return wla
+}
+
+// computeWinLineWeight assigns a tiered numeric quality score to a single
+// WinLine. The factors a flat WinLineCount blurs together:
+//
+//   - WHAT the line wins with: a true infinite kills the table the turn it
+//     assembles, while a combat-damage line needs another rotation of
+//     interaction to fail before it resolves.
+//   - HOW MANY pieces: a 2-card combo is dramatically easier to find, keep
+//     alive, and protect than a 4-card grindy loop.
+//   - TUTOR COVERAGE: a tutored line is reliably reachable; an untutored
+//     one waits on raw draw.
+//
+// Formula:
+//
+//	weight = round( (typeBase + classBonus) * pieceMultiplier ) + tutorBonus
+//
+// Ranges:
+//
+//	typeBase: 10 infinite | 7 determined | 5 finisher | 3 alt_wincon |
+//	          2 combat | 1 commander_damage
+//	classBonus: +5 library_exile_win / infinite_drain / infinite_damage
+//	            +4 infinite_mana / infinite_mill / lockdown
+//	            +3 storm_finisher / mana_sink
+//	            +2 infinite_etb / infinite_tokens / etb_payoff / etb_doubler
+//	            +1 blink_engine / combat_finisher / graveyard_loop
+//	            +0 unknown / land_cycle_synergy / empty
+//	pieceMultiplier: 1.00 (≤2 pieces) | 0.85 (3) | 0.70 (4) | 0.55 (≥5)
+//	tutorBonus: 0..2 — proportion of pieces with at least one tutor path × 2.
+//
+// A 2-card Thoracle line: (10 + 5) * 1.00 + 2 = 17. A 4-card grindy infinite
+// ETB pile with no tutors: round((10 + 2) * 0.70) + 0 = 8. A combat line: 2.
+func computeWinLineWeight(wl *WinLine) int {
+	if wl == nil {
+		return 0
+	}
+
+	typeBase := 0
+	switch wl.Type {
+	case "infinite":
+		typeBase = 10
+	case "determined":
+		typeBase = 7
+	case "finisher":
+		typeBase = 5
+	case "alt_wincon":
+		typeBase = 3
+	case "combat":
+		typeBase = 2
+	case "commander_damage":
+		typeBase = 1
+	}
+
+	classBonus := 0
+	switch wl.Class {
+	case ComboClassLibraryExileWin, ComboClassInfiniteDrain, ComboClassInfiniteDamage:
+		classBonus = 5
+	case ComboClassInfiniteMana, ComboClassInfiniteMill, ComboClassLockdown:
+		classBonus = 4
+	case ComboClassStormFinisher, ComboClassManaSink:
+		classBonus = 3
+	case ComboClassInfiniteETB, ComboClassInfiniteTokens, ComboClassETBPayoff, ComboClassETBDoubler:
+		classBonus = 2
+	case ComboClassBlinkEngine, ComboClassCombatFinisher, ComboClassGraveyardLoop:
+		classBonus = 1
+	}
+
+	pieceCount := len(wl.Pieces)
+	var pieceMult float64
+	switch {
+	case pieceCount <= 2:
+		pieceMult = 1.00
+	case pieceCount == 3:
+		pieceMult = 0.85
+	case pieceCount == 4:
+		pieceMult = 0.70
+	default:
+		pieceMult = 0.55
+	}
+
+	weighted := float64(typeBase+classBonus) * pieceMult
+	// round half-up
+	rounded := int(weighted + 0.5)
+
+	tutorBonus := 0
+	if pieceCount > 0 && len(wl.TutorPaths) > 0 {
+		coveredPieces := map[string]bool{}
+		for _, tp := range wl.TutorPaths {
+			coveredPieces[tp.Finds] = true
+		}
+		// Coverage is the share of declared pieces with at least one tutor
+		// path; multiply by 2 and round so the bonus tops out at +2 when
+		// every piece is tutorable. Non-combo lines (combat,
+		// commander_damage) carry no TutorPaths, so this branch is skipped
+		// for them — their pieces aren't card names a tutor could find.
+		coverage := float64(len(coveredPieces)) / float64(pieceCount)
+		if coverage > 1.0 {
+			coverage = 1.0
+		}
+		tutorBonus = int(coverage*2.0 + 0.5)
+	}
+
+	return rounded + tutorBonus
 }
 
 func winLinePriority(t string) int {

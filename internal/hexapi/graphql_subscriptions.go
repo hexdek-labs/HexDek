@@ -12,6 +12,7 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/graphql-go/graphql"
+	"github.com/graphql-go/graphql/gqlerrors"
 )
 
 // graphql_subscriptions.go — WebSocket transport for GraphQL
@@ -337,7 +338,7 @@ func (s *subscriptionSession) handleSubscribe(ctx context.Context, msg gqlwsMess
 
 	var payload gqlwsSubscribePayload
 	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
-		s.emitError(ctx, msg.ID, "invalid Subscribe payload: "+err.Error())
+		s.emitError(ctx, msg.ID, errCodeBadRequest, "invalid Subscribe payload: "+err.Error())
 		s.removeSub(msg.ID)
 		cancel()
 		close(op.donec)
@@ -423,15 +424,18 @@ func (s *subscriptionSession) runSubscription(ctx context.Context, opID string, 
 		}
 		if len(result.Errors) > 0 && result.Data == nil {
 			// Pre-execution validation / parse failure — single
-			// terminal Error frame, then end the op.
-			body, _ := json.Marshal(result.Errors)
+			// terminal Error frame, then end the op. Re-stamp each
+			// graphql FormattedError with extensions.code so the
+			// wire shape matches the emitError-built envelope and
+			// downstream consumers never see a code-less error.
+			body, _ := json.Marshal(stampErrorCodes(result.Errors, errCodeGraphQLValidation))
 			s.writeMessage(ctx, gqlwsMessage{ID: opID, Type: gqlwsError, Payload: body})
 			return
 		}
 		body, err := json.Marshal(result)
 		if err != nil {
 			s.h.logf("graphql subscriptions %s: marshal: %v", opID, err)
-			s.emitError(ctx, opID, "internal marshal error")
+			s.emitError(ctx, opID, errCodeInternal, "internal marshal error")
 			return
 		}
 		if err := s.writeMessage(ctx, gqlwsMessage{ID: opID, Type: gqlwsNext, Payload: body}); err != nil {
@@ -444,9 +448,59 @@ func (s *subscriptionSession) runSubscription(ctx context.Context, opID string, 
 	_ = s.writeMessage(ctx, gqlwsMessage{ID: opID, Type: gqlwsComplete})
 }
 
-func (s *subscriptionSession) emitError(ctx context.Context, opID, message string) {
-	body, _ := json.Marshal([]map[string]any{{"message": message}})
+// Structured error codes carried in the `extensions.code` field of
+// every emitted Error-frame payload entry. Apollo / urql clients
+// surface these via `error.extensions.code`; consumers should branch
+// on these constants, not on the free-text message (which is for logs
+// and humans, not protocol). Mirrors the Apollo-Server convention.
+const (
+	errCodeBadRequest        = "BAD_REQUEST"
+	errCodeInternal          = "INTERNAL"
+	errCodeGraphQLValidation = "GRAPHQL_VALIDATION"
+)
+
+// emitError sends a single terminal Error frame for opID with one
+// formatted-error entry. Wraps the message into a gqlerrors.FormattedError
+// so the wire shape is byte-identical to the graphql-go validation-error
+// path — every Error frame's payload is `[{message, locations?, path?,
+// extensions: {code}}]` regardless of whether the failure originated
+// inside the GraphQL executor or in our own wrapping code.
+func (s *subscriptionSession) emitError(ctx context.Context, opID, code, message string) {
+	fe := gqlerrors.FormattedError{
+		Message:    message,
+		Extensions: map[string]interface{}{"code": code},
+	}
+	body, _ := json.Marshal([]gqlerrors.FormattedError{fe})
 	_ = s.writeMessage(ctx, gqlwsMessage{ID: opID, Type: gqlwsError, Payload: body})
+}
+
+// stampErrorCodes ensures every FormattedError in errs carries an
+// extensions.code field, defaulting to fallback when missing. graphql-go
+// emits validation/parse errors with no extensions, so unified
+// downstream handling needs a stamping pass before serialisation.
+// Existing codes are preserved — a resolver-supplied "code" in
+// extensions wins over the fallback.
+func stampErrorCodes(errs []gqlerrors.FormattedError, fallback string) []gqlerrors.FormattedError {
+	out := make([]gqlerrors.FormattedError, len(errs))
+	for i, e := range errs {
+		ext := e.Extensions
+		if ext == nil {
+			ext = map[string]interface{}{}
+		} else {
+			// Copy so we don't mutate the caller's map.
+			cp := make(map[string]interface{}, len(ext)+1)
+			for k, v := range ext {
+				cp[k] = v
+			}
+			ext = cp
+		}
+		if _, ok := ext["code"]; !ok {
+			ext["code"] = fallback
+		}
+		e.Extensions = ext
+		out[i] = e
+	}
+	return out
 }
 
 // writeMessage serialises + sends one envelope. Mutex-guards

@@ -24,6 +24,18 @@ type DeckEntry struct {
 // AssembleBracketPod selects nSeats decks from the pool, preferring
 // decks within ±1 bracket of the seed. Uses soft bracket weighting:
 // same-bracket gets full score, ±1 gets 50%, ±2+ gets 10%.
+//
+// Seed selection is bracket-density-aware (see seedDensityScore): a
+// deck whose bracket has at least nSeats-1 other same-bracket peers
+// in the pool gets full seed weight; sparser brackets get
+// proportionally less. This stops a high-σ outlier (e.g. one B1 deck
+// in a B5-cEDH-heavy pool) from seeding a pod that the 0.1
+// cross-bracket floor would then fill with B5s — the historical
+// failure mode where a casual B1 player got 3 cEDH opponents because
+// no other B1s existed in the pool. Bracketless decks (Bracket == 0)
+// skip the density check and keep their raw info-gain weight, so the
+// signal is purely additive — never disadvantages decks that lack
+// bracket metadata.
 func AssembleBracketPod(rng *rand.Rand, pool []DeckEntry, nSeats int) []int {
 	if len(pool) <= nSeats {
 		indices := make([]int, len(pool))
@@ -38,7 +50,12 @@ func AssembleBracketPod(rng *rand.Rand, pool []DeckEntry, nSeats int) []int {
 		scores[i] = infoGainScore(d)
 	}
 
-	seedIdx := weightedPick(rng, scores)
+	seedScores := make([]float64, len(pool))
+	for i, d := range pool {
+		seedScores[i] = scores[i] * seedDensityScore(pool, d.Bracket, nSeats)
+	}
+
+	seedIdx := weightedPick(rng, seedScores)
 	seed := pool[seedIdx]
 
 	type candidate struct {
@@ -102,6 +119,43 @@ func AssembleBracketPod(rng *rand.Rand, pool []DeckEntry, nSeats int) []int {
 	}
 
 	return result
+}
+
+// seedDensityScore returns a [0,1] multiplier applied to a candidate
+// seed's info-gain score in AssembleBracketPod. The score is the
+// fraction of nSeats-1 same-bracket peers the candidate has in the
+// pool, clamped to 1.0 — a seed with enough same-bracket peers to
+// fill the entire pod gets full weight; sparser brackets get
+// linearly less. Bracketless seeds (bracket == 0) return 1.0
+// unconditionally so unbracketed decks are not penalized — the new
+// signal is strictly additive over the prior behavior.
+//
+// Example with nSeats=4 (so 3 peers needed):
+//   - 5 B3 decks in pool, candidate is B3: peers=4, score=1.0
+//   - 3 B3 decks in pool, candidate is B3: peers=2, score=0.67
+//   - 1 B3 deck in pool, candidate is B3: peers=0, score=0.0
+//     (candidate cannot seed a pure-bracket pod — depreferred so a
+//     denser bracket's seed wins the weighted pick instead)
+func seedDensityScore(pool []DeckEntry, bracket, nSeats int) float64 {
+	if bracket == 0 || nSeats <= 1 {
+		return 1.0
+	}
+	peers := 0
+	for _, d := range pool {
+		if d.Bracket == bracket {
+			peers++
+		}
+	}
+	// Subtract the candidate itself from the peer count.
+	peers--
+	if peers < 0 {
+		peers = 0
+	}
+	needed := nSeats - 1
+	if peers >= needed {
+		return 1.0
+	}
+	return float64(peers) / float64(needed)
 }
 
 func bracketWeight(seedBracket, deckBracket int) float64 {

@@ -13,10 +13,36 @@ import "github.com/hexdek/hexdek/internal/gameast"
 //
 // The permanent must already be on the battlefield and replacement effects
 // registered before calling this function.
+//
+// CR §603.3b batching — the entire cascade above represents simultaneous
+// triggers from a single ETB event: the entering permanent's self-AST
+// triggers fire AT THE SAME TIME as every observer's ETB trigger watching
+// for "a creature enters" etc. They must be collected, ordered APNAP +
+// controller-choice, then pushed together. Without the batch wrapper each
+// PushTriggeredAbility inside the cascade pushed and resolved inline in
+// AST-iteration order — bypassing OrderTriggersAPNAP entirely and
+// silently violating the §603.3b ordering rule for every token-mint /
+// mass-mint / per_card-flicker code path (resolve.go has 5 callers,
+// resolve_helpers.go has 7, keywords_batch4.go has 1, plus the 4
+// per_card flicker handlers: Brago / Deadeye Navigator / Displacer
+// Kitten / Emiel). The stack-cast path in stack.go:resolvePermanentSpellETB
+// happened to wrap its OWN cascade in a batch — but it doesn't call
+// FirePermanentETBTriggers, it inlines the equivalent logic. So the
+// engine's two ETB cascade paths had divergent §603.3b conformance.
+//
+// Opening the batch HERE means re-entrant calls from inside the cascade
+// (per_card snowflake handlers firing token_created → FireCardTrigger
+// → MaybePushTriggeredAbility) collapse into the same frame, and
+// EndTriggerBatch on the outermost call does the single APNAP-ordered
+// push + drain. BeginTriggerBatch is explicitly re-entrant per its
+// docstring; the existing stack.go:resolvePermanentSpellETB wrapper
+// will become a nested no-op frame for the rare paths that route
+// through both.
 func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
+	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
 
 	// CR §708.4: face-down permanents have no abilities — skip self-triggers.
 	faceDown := perm.Flags != nil && perm.Flags["face_down"] != 0

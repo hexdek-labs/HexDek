@@ -478,9 +478,22 @@ func computeOpeningHandSim(dp *DeckProfile, report *FreyaReport, oracle *oracleD
 	detectCommanderCentric(dp, report, oracle)
 
 	rng := rand.New(rand.NewSource(42))
+	// mullRng is a separate, independently-seeded RNG used ONLY for
+	// the Vancouver free-mulligan re-shuffles. Keeping the mulligan
+	// stream isolated from `rng` preserves bit-stability of the
+	// no-mulligan KeepableHandPct / AvgTurnToFourMana metrics — the
+	// first-hand and turns-to-N draws still consume `rng` in the
+	// same sequence as pre-r60, regardless of how often the
+	// conditional re-shuffle fires. The mulligan seed is offset from
+	// the primary so the two streams don't correlate (which would
+	// bias the per-trial pair toward identical hands and depress
+	// the observed mulligan uplift below the 1-(1-p)^2 expectation).
+	mullRng := rand.New(rand.NewSource(43))
 	trials := 10000
 	keepable := 0
 	keepableAdjusted := 0
+	keepableFreeMull := 0
+	keepableAdjustedFreeMull := 0
 	totalTurnsToFour := 0.0
 	totalTurnsToCmdr := 0.0
 	validTrials := 0
@@ -541,19 +554,33 @@ func computeOpeningHandSim(dp *DeckProfile, report *FreyaReport, oracle *oracleD
 		cmdrCMC = 4
 	}
 
-	for t := 0; t < trials; t++ {
-		// Shuffle the flag deck in place.
-		for i := len(deckFlags) - 1; i > 0; i-- {
-			j := rng.Intn(i + 1)
-			deckFlags[i], deckFlags[j] = deckFlags[j], deckFlags[i]
-		}
+	// Separate slice for the mulligan re-shuffles so the primary
+	// deckFlags slice's permutation trajectory across trials stays
+	// identical to pre-r60. Fisher-Yates produces a state-dependent
+	// permutation given a fixed swap sequence — if the mulligan
+	// helper mutated the shared slice, the NEXT trial's first-hand
+	// shuffle would start from a different permutation and produce
+	// a different keepability outcome, drifting KeepableHandPct
+	// away from its pre-r60 value. Copy once up front.
+	mullDeckFlags := make([]uint8, len(deckFlags))
 
-		landsInHand := 0
-		rampInHand := 0
-		synergyInHand := 0
-		actionInHand := 0
+	// shuffleAndEvalHand shuffles the supplied slice using the
+	// supplied RNG, inspects the top 7, and returns
+	// (standardKeepable, adjustedKeepable) plus the landsInHand +
+	// rampInHand counts. The counts are returned so the downstream
+	// turns-to-N estimation can use the first-hand state from the
+	// FIRST call without re-counting; the helper is invoked up to
+	// twice per trial for the Vancouver free-mulligan path with
+	// separate RNGs AND separate slices to keep the no-mulligan
+	// stream bit-stable.
+	shuffleAndEvalHand := func(slice []uint8, r *rand.Rand) (stdKeep, adjKeep bool, landsInHand, rampInHand int) {
+		for i := len(slice) - 1; i > 0; i-- {
+			j := r.Intn(i + 1)
+			slice[i], slice[j] = slice[j], slice[i]
+		}
+		var synergyInHand, actionInHand int
 		for i := 0; i < 7; i++ {
-			f := deckFlags[i]
+			f := slice[i]
 			if f&flagLand != 0 {
 				landsInHand++
 			}
@@ -567,28 +594,75 @@ func computeOpeningHandSim(dp *DeckProfile, report *FreyaReport, oracle *oracleD
 				actionInHand++
 			}
 		}
-
-		// Standard keepable: 2-5 lands AND at least one threat / interaction /
-		// draw / combo piece — the classic "do something with this turn 2-3"
-		// criterion.
 		landsOK := landsInHand >= 2 && landsInHand <= 5
-		if landsOK && actionInHand >= 1 {
-			keepable++
-		}
-
-		// Commander-adjusted keepable: when the commander itself is the
-		// engine, an opener is keepable as long as it can deploy or feed the
-		// commander. Accept 2-5 lands plus EITHER an action card, a ramp
-		// piece, a commander-synergy enabler, or enough lands to hit
-		// commander CMC purely by land drops.
+		// Standard keepable: 2-5 lands AND at least one threat /
+		// interaction / draw / combo piece.
+		stdKeep = landsOK && actionInHand >= 1
+		// Commander-adjusted keepable: 2-5 lands plus EITHER an
+		// action card, a ramp piece, a commander-synergy enabler,
+		// or enough lands to hit commander CMC purely by land
+		// drops.
 		if landsOK {
 			naturalReach := landsInHand >= cmdrCMC
-			if actionInHand >= 1 || rampInHand >= 1 || synergyInHand >= 1 || naturalReach {
-				keepableAdjusted++
+			adjKeep = actionInHand >= 1 || rampInHand >= 1 || synergyInHand >= 1 || naturalReach
+		}
+		return
+	}
+
+	for t := 0; t < trials; t++ {
+		stdKeep1, adjKeep1, landsInHand, rampInHand := shuffleAndEvalHand(deckFlags, rng)
+
+		if stdKeep1 {
+			keepable++
+		}
+		if adjKeep1 {
+			keepableAdjusted++
+		}
+
+		// Vancouver free-mulligan: if the first hand isn't keepable,
+		// Commander rules allow a single penalty-free re-draw of 7.
+		// The trial counts as keepable under the free-mulligan
+		// variant if EITHER the initial hand OR the free-mulligan
+		// hand passes. We only re-shuffle when the first hand fails,
+		// matching real-table behavior (a player who's keeping the
+		// first hand doesn't burn the free mulligan).
+		//
+		// IMPORTANT: the post-mulligan hand reuses the same RNG
+		// stream so the simulation stays seed-deterministic. The
+		// re-shuffle advances the RNG state past the initial draw's
+		// state, so KeepableHandPct (which only cares about the
+		// first-shuffle hand) remains bit-stable — the first-hand
+		// classification is captured BEFORE the conditional
+		// re-shuffle below. Tested in TestOpeningHandSim_NoMulligan
+		// FieldIsBitStable.
+		stdKeepMull := stdKeep1
+		adjKeepMull := adjKeep1
+		if !stdKeep1 || !adjKeep1 {
+			// Sync the mulligan slice from the primary slice's
+			// post-first-shuffle state. The mulligan helper then
+			// re-shuffles its own copy, leaving the primary slice
+			// untouched for the next trial's first-hand shuffle.
+			copy(mullDeckFlags, deckFlags)
+			stdKeep2, adjKeep2, _, _ := shuffleAndEvalHand(mullDeckFlags, mullRng)
+			if !stdKeepMull && stdKeep2 {
+				stdKeepMull = true
 			}
+			if !adjKeepMull && adjKeep2 {
+				adjKeepMull = true
+			}
+		}
+		if stdKeepMull {
+			keepableFreeMull++
+		}
+		if adjKeepMull {
+			keepableAdjustedFreeMull++
 		}
 
 		// Estimate turns to 4 mana and turns to commander CMC.
+		// Always uses the FIRST hand's lands/ramp counts so the
+		// estimation reflects the typical accept-or-mulligan
+		// player's starting curve, independent of the free-mulligan
+		// keepability tracking above.
 		if landsInHand >= 2 {
 			validTrials++
 			mana := 0
@@ -642,6 +716,8 @@ func computeOpeningHandSim(dp *DeckProfile, report *FreyaReport, oracle *oracleD
 
 	dp.KeepableHandPct = float64(keepable) / float64(trials) * 100
 	dp.KeepableHandPctAdjusted = float64(keepableAdjusted) / float64(trials) * 100
+	dp.KeepableHandPctFreeMull = float64(keepableFreeMull) / float64(trials) * 100
+	dp.KeepableHandPctAdjustedFreeMull = float64(keepableAdjustedFreeMull) / float64(trials) * 100
 	if validTrials > 0 {
 		dp.AvgTurnToFourMana = totalTurnsToFour / float64(validTrials)
 	}
@@ -1164,12 +1240,31 @@ func computeSynergyClusters(dp *DeckProfile, report *FreyaReport, oracle *oracle
 		dp.SynergyClusters = append(dp.SynergyClusters, *cluster)
 	}
 
-	// Sort by score descending
+	finalizeClusters(dp)
+}
+
+// finalizeClusters prunes sub-MinimumClusterMembers entries, stamps the
+// HighDensity flag on clusters at HighDensityClusterFloor (5) or larger,
+// then sorts by score desc and caps at 5. Extracted from
+// computeSynergyClusters so tests can exercise the prune + flag pass in
+// isolation without rebuilding the full theme-tagging pipeline.
+func finalizeClusters(dp *DeckProfile) {
+	pruned := dp.SynergyClusters[:0]
+	for _, sc := range dp.SynergyClusters {
+		if sc.MemberCount < MinimumClusterMembers {
+			continue
+		}
+		if sc.MemberCount >= HighDensityClusterFloor {
+			sc.HighDensity = true
+		}
+		pruned = append(pruned, sc)
+	}
+	dp.SynergyClusters = pruned
+
 	sort.Slice(dp.SynergyClusters, func(i, j int) bool {
 		return dp.SynergyClusters[i].Score > dp.SynergyClusters[j].Score
 	})
 
-	// Cap at 5 clusters
 	if len(dp.SynergyClusters) > 5 {
 		dp.SynergyClusters = dp.SynergyClusters[:5]
 	}
@@ -1557,6 +1652,7 @@ var metaMatchupDB = map[string][]matchupEntry{
 		{vsArchetype: "Storm", rating: "favored", reason: "counterspells dismantle the storm chain mid-cast; one Counterspell breaks the whole turn"},
 		{vsArchetype: "Reanimator", rating: "neutral", reason: "counterspells stop the reanimation spell but recursive enablers (Unburial Rites, Yawgmoth's Will) reset the line"},
 		{vsArchetype: "Aristocrats", rating: "neutral", reason: "recursive threats are hard to answer one-at-a-time, but the clock is slow enough that wipes catch up"},
+		{vsArchetype: "Enchantress", rating: "favored", reason: "counterspells dismantle the enchantment engine before Argothian Enchantress / Sythis stack triggers, and enchantments can't be answered post-resolution as cheaply as Disenchant lets a control deck pick them apart"},
 	},
 	"aristocrats": {
 		{vsArchetype: "Aggro", rating: "favored", reason: "resilient to removal, drain math bypasses combat damage"},
@@ -1567,6 +1663,7 @@ var metaMatchupDB = map[string][]matchupEntry{
 		{vsArchetype: "Stax", rating: "unfavored", reason: "Drannith Magistrate denies recursion casts; Cursed Totem disables creature sac outlets"},
 		{vsArchetype: "Storm", rating: "unfavored", reason: "storm kill lands before incremental drain closes the game"},
 		{vsArchetype: "Midrange", rating: "favored", reason: "recursive drain out-grinds midrange value over 10+ turns"},
+		{vsArchetype: "Enchantress", rating: "favored", reason: "Blood Artist / Zulaport Cutthroat drain math bypasses Ghostly Prison / Propaganda entirely — pillow fort doesn't stop death triggers, and the aristocrat clock closes before the enchantment engine reaches lethal value"},
 		{vsArchetype: "Graveyard Hate", rating: "unfavored", reason: "Rest in Peace / Leyline of the Void exile the recursion before it loops"},
 	},
 	"voltron": {
@@ -1614,6 +1711,7 @@ var metaMatchupDB = map[string][]matchupEntry{
 		{vsArchetype: "Reanimator", rating: "favored", reason: "storm kill lands before fatty reanimation stabilizes"},
 		{vsArchetype: "Enchantress", rating: "favored", reason: "storm kill lands before enchantment engine pays off"},
 		{vsArchetype: "Voltron", rating: "favored", reason: "storm kill lands before commander damage assembles"},
+		{vsArchetype: "Graveyard Hate", rating: "unfavored", reason: "Underworld Breach / Past in Flames / Yawgmoth's Will storm variants are crippled by Rest in Peace / Leyline of the Void — graveyard-pivoting kill chains lose their pivot, and Bojuka Bog one-shots the recursion piece"},
 	},
 	"enchantress": {
 		{vsArchetype: "Aggro", rating: "neutral", reason: "pillow fort effects (Ghostly Prison, Propaganda) can stabilize if drawn early"},
@@ -1623,6 +1721,8 @@ var metaMatchupDB = map[string][]matchupEntry{
 		{vsArchetype: "Reanimator", rating: "unfavored", reason: "reanimator fatties end the game before pillow fort stabilizes"},
 		{vsArchetype: "Voltron", rating: "favored", reason: "pillow fort effects deflect the commander-damage plan"},
 		{vsArchetype: "Storm", rating: "unfavored", reason: "storm kill lands before enchantment engine pays off"},
+		{vsArchetype: "Control", rating: "unfavored", reason: "counterspells dismantle the enchantment engine before Argothian Enchantress / Sythis can stack triggers; control's Disenchant-style answers pick off the engine pieces faster than the engine pays for replacements"},
+		{vsArchetype: "Aristocrats", rating: "unfavored", reason: "Blood Artist / Zulaport drain bypasses pillow fort entirely — Ghostly Prison only deflects combat, and the death-trigger clock closes before the enchantment engine reaches lethal value"},
 		{vsArchetype: "Midrange", rating: "neutral", reason: "both grind for value, draw-dependent"},
 	},
 	"midrange": {
@@ -2489,6 +2589,67 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 		starCount++
 	}
 
+	// Flex Slot tier (R60): the FOURTH tier sitting between Solid and
+	// Cuttable. Cards that have a single generic utility role tag, are
+	// not part of any win line or value chain, and score in the
+	// lower-positive band. These are the slots builders swap for
+	// metagame tech (Grafdigger's Cage when GY decks rise, Pithing
+	// Needle when planeswalker decks rise, etc) — the role they fill
+	// is replaceable by another card serving the same generic purpose.
+	//
+	// Disjoint from Solid: flex picks are removed from the Solid
+	// candidate pool below (via flexNames) so a card never appears in
+	// both lists. Disjoint from Star/Cuttable via score bands.
+	//
+	// Criteria (all required):
+	//   - score in (0.0, 2.0) — strictly positive so cuttable retains
+	//     ownership of score==0 cards (typically Utility-only at CMC>=4
+	//     where the CMC penalty zeroed the role bonus — those are
+	//     genuine cuts, not flex slots)
+	//   - exactly one role tag, and that role is in genericFlexRoles
+	//   - not a win-line piece, value-chain piece, or bridge
+	//   - not already starred
+	// Cap at 5 to mirror the other tiers.
+	genericFlexRoles := map[RoleTag]bool{
+		RoleRemoval:    true,
+		RoleDraw:       true,
+		RoleRamp:       true,
+		RoleProtection: true,
+		RoleUtility:    true,
+	}
+	const flexMin, flexMax = 0.0, 2.0
+	flexNames := map[string]bool{}
+	flexCount := 0
+	for i := 0; i < len(scores) && flexCount < 5; i++ {
+		s := scores[i]
+		if starredNames[s.name] {
+			continue
+		}
+		if s.score <= flexMin || s.score >= flexMax {
+			continue
+		}
+		if winLinePieces[s.name] || chainPieces[s.name] || bridgePieces[s.name] {
+			continue
+		}
+		if len(s.roles) != 1 || !genericFlexRoles[s.roles[0]] {
+			continue
+		}
+		roleStr := string(s.roles[0])
+		reason := fmt.Sprintf("generic %s at CMC %d — flex slot, swap for situational meta tech (graveyard hate, PW hate, etc) without breaking the gameplan",
+			strings.ToLower(roleStr), s.cmc)
+		power := powerByName[s.name]
+		dp.FlexSlots = append(dp.FlexSlots, CardQuality{
+			Name:             s.name,
+			Tier:             "flex",
+			Reason:           reason,
+			Power:            power,
+			PowerTier:        PowerTierFor(power),
+			PowerExplanation: explanationByName[s.name],
+		})
+		flexNames[s.name] = true
+		flexCount++
+	}
+
 	// Solid Pick tier (R60): the middle slice — cards that scored above
 	// the cut floor but below star threshold. Surfaces "okay-but-
 	// replaceable" cards so builders shopping upgrades know which slots
@@ -2504,6 +2665,11 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 	for i := 0; i < len(scores) && solidCount < 5; i++ {
 		s := scores[i]
 		if starredNames[s.name] {
+			continue
+		}
+		// R60: flex picks are listed in dp.FlexSlots; skip them here so
+		// the same card never appears in both Solid and Flex.
+		if flexNames[s.name] {
 			continue
 		}
 		if s.score < solidMin || s.score >= solidMax {
@@ -2618,6 +2784,37 @@ func suggestCuttableSwaps(dp *DeckProfile, report *FreyaReport) []string {
 // 8. Color weight optimization — suggest specific land swaps.
 // ---------------------------------------------------------------------------
 
+// dualLandRecommendations: a representative dual land per 2-color pair,
+// used as the recommended swap-IN target when both colors are in the
+// deck's identity. Picked from the Battlebond / "Crowded" cycle (Sea
+// of Clouds / Bountiful Promenade / etc.) because those lands are
+// budget-friendly, untapped in multiplayer, and don't punish basic-
+// land budgets the way fetch / shock / OG dual cycles do. Key is the
+// alphabetically-sorted 2-letter pair (e.g. "GW", not "WG") so a
+// single lookup serves either argument order.
+var dualLandRecommendations = map[string]string{
+	"UW": "Sea of Clouds",
+	"BW": "Vault of Champions",
+	"RW": "Spectator Seating",
+	"GW": "Bountiful Promenade",
+	"BU": "Morphic Pool",
+	"RU": "Training Center",
+	"GU": "Rejuvenating Springs",
+	"BR": "Luxury Suite",
+	"BG": "Undergrowth Stadium",
+	"GR": "Spire Garden",
+}
+
+// colorPairKey returns the alphabetically-sorted 2-letter key for a
+// color pair (e.g. colorPairKey("G", "W") == "GW"). Used to look up
+// dualLandRecommendations regardless of argument order.
+func colorPairKey(a, b string) string {
+	if a <= b {
+		return a + b
+	}
+	return b + a
+}
+
 func computeLandSwapSuggestions(dp *DeckProfile, report *FreyaReport) {
 	if report.Stats == nil {
 		return
@@ -2663,37 +2860,282 @@ func computeLandSwapSuggestions(dp *DeckProfile, report *FreyaReport) {
 		}
 	}
 
-	// Sort: biggest undersupply first
+	// Sort: biggest undersupply first.
 	sort.Slice(imbalances, func(i, j int) bool {
 		return imbalances[i].gap > imbalances[j].gap
 	})
 
-	colorNames := map[string]string{"W": "Plains", "U": "Island", "B": "Swamp", "R": "Mountain", "G": "Forest"}
+	basicNames := map[string]string{"W": "Plains", "U": "Island", "B": "Swamp", "R": "Mountain", "G": "Forest"}
 
-	for _, ib := range imbalances {
-		if ib.gap > 0.05 {
-			// Undersupplied — find oversupplied color to swap from
-			for _, other := range imbalances {
-				if other.gap < -0.05 {
-					dp.LandSwapSuggestions = append(dp.LandSwapSuggestions,
-						fmt.Sprintf("Replace 1 %s with 1 %s: %s has %.0f%% demand but only %.0f%% sources",
-							colorNames[other.color], colorNames[ib.color],
-							ib.color, ib.demandPct*100, ib.supplyPct*100))
-					break
-				}
-			}
+	// Collect the deck's actual colors (any color with non-zero demand
+	// OR non-zero supply). Used to pick a dual replacement whose second
+	// color is something the deck actually wants.
+	deckColors := map[string]bool{}
+	for _, c := range []string{"W", "U", "B", "R", "G"} {
+		if demand[c] > 0 || supply[c] > 0 {
+			deckColors[c] = true
 		}
 	}
 
-	// Cap suggestions
+	// Names of cards already in the deck (lowercased) — used to avoid
+	// recommending a dual the player already runs.
+	inDeck := map[string]bool{}
+	for _, p := range report.Profiles {
+		inDeck[strings.ToLower(p.Name)] = true
+	}
+
+	for _, ib := range imbalances {
+		if ib.gap <= 0.05 {
+			continue
+		}
+		// Find an oversupplied color to swap from.
+		var over *colorImbalance
+		for i := range imbalances {
+			if imbalances[i].gap < -0.05 {
+				over = &imbalances[i]
+				break
+			}
+		}
+		if over == nil {
+			continue
+		}
+
+		// Find a specific nonbasic land in the deck that produces the
+		// oversupplied color but does NOT also produce the undersupplied
+		// color (those duals are already pulling their weight). Prefer
+		// lands that produce ONLY the oversupplied color (single-color
+		// nonbasics, e.g. Mishra's Factory in a R deck) over lands that
+		// produce the oversupplied color alongside other healthy colors —
+		// the more "stranded" the land is on the wrong color, the more
+		// actionable the swap.
+		swapOut := pickLandSwapCandidate(report, over.color, ib.color)
+
+		// Pick a replacement: dual covering the undersupplied color +
+		// any other in-deck color (preferring the most-demanded peer),
+		// falling back to the basic of the undersupplied color when no
+		// curated dual matches the deck's color identity.
+		swapIn := pickReplacementDual(ib.color, deckColors, demand, inDeck)
+		if swapIn == "" {
+			swapIn = basicNames[ib.color]
+		}
+
+		if swapOut != "" {
+			dp.LandSwapSuggestions = append(dp.LandSwapSuggestions,
+				fmt.Sprintf("Recommend swap: %s → %s (%s demand high, %s demand low)",
+					swapOut, swapIn, ib.color, over.color))
+		} else {
+			// Fall back to the legacy generic suggestion — useful when
+			// the deck's only oversupplied source is its basics (which
+			// aren't in report.Profiles), since the player can act on
+			// "Replace 1 Mountain with 1 Forest" themselves.
+			dp.LandSwapSuggestions = append(dp.LandSwapSuggestions,
+				fmt.Sprintf("Replace 1 %s with 1 %s: %s has %.0f%% demand but only %.0f%% sources",
+					basicNames[over.color], swapIn,
+					ib.color, ib.demandPct*100, ib.supplyPct*100))
+		}
+	}
+
 	if len(dp.LandSwapSuggestions) > 3 {
 		dp.LandSwapSuggestions = dp.LandSwapSuggestions[:3]
 	}
 }
 
+// pickLandSwapCandidate scans the deck's nonbasic lands for one that
+// produces overColor but NOT underColor. Returns the most-actionable
+// candidate name (single-color nonbasics first, then multi-color lands
+// that don't include underColor), or "" if no candidate exists.
+func pickLandSwapCandidate(report *FreyaReport, overColor, underColor string) string {
+	type cand struct {
+		name        string
+		colorsCount int
+	}
+	var cands []cand
+	for _, p := range report.Profiles {
+		if !p.IsLand {
+			continue
+		}
+		hasOver := false
+		hasUnder := false
+		for _, c := range p.LandColors {
+			if c == overColor {
+				hasOver = true
+			}
+			if c == underColor {
+				hasUnder = true
+			}
+		}
+		if !hasOver || hasUnder {
+			continue
+		}
+		cands = append(cands, cand{name: p.Name, colorsCount: len(p.LandColors)})
+	}
+	if len(cands) == 0 {
+		return ""
+	}
+	// Prefer the most-stranded candidate (fewest colors produced — a
+	// mono-color nonbasic like Mishra's Factory is more swap-worthy
+	// than a 3-color rainbow land that just happens not to make the
+	// undersupplied color). Stable-sort by colorsCount asc, then name
+	// asc to keep output deterministic.
+	sort.Slice(cands, func(i, j int) bool {
+		if cands[i].colorsCount != cands[j].colorsCount {
+			return cands[i].colorsCount < cands[j].colorsCount
+		}
+		return cands[i].name < cands[j].name
+	})
+	return cands[0].name
+}
+
+// pickReplacementDual picks a curated dual land that produces
+// underColor + the in-deck color with the highest demand (excluding
+// underColor itself, since the second-color slot already produces it).
+// Skips duals the deck already runs. Returns "" if no suitable dual
+// exists (mono-color deck, or every viable dual is already in-deck).
+func pickReplacementDual(underColor string, deckColors map[string]bool, demand map[string]int, inDeck map[string]bool) string {
+	// Order peer colors by demand desc so we recommend a dual whose
+	// second color the deck actually wants. WUBRG iteration with a
+	// stable demand-desc sort.
+	type peer struct {
+		color  string
+		demand int
+	}
+	var peers []peer
+	for _, c := range []string{"W", "U", "B", "R", "G"} {
+		if c == underColor || !deckColors[c] {
+			continue
+		}
+		peers = append(peers, peer{color: c, demand: demand[c]})
+	}
+	sort.SliceStable(peers, func(i, j int) bool {
+		if peers[i].demand != peers[j].demand {
+			return peers[i].demand > peers[j].demand
+		}
+		return peers[i].color < peers[j].color
+	})
+	for _, p := range peers {
+		key := colorPairKey(underColor, p.color)
+		name, ok := dualLandRecommendations[key]
+		if !ok {
+			continue
+		}
+		if inDeck[strings.ToLower(name)] {
+			continue
+		}
+		return name
+	}
+	return ""
+}
+
 // ---------------------------------------------------------------------------
 // 9. Deck personality blurb — 2-3 sentence flavor description.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// Curve vs. archetype fit — warn when AvgCMC doesn't match the
+// archetype's expected curve band.
+// ---------------------------------------------------------------------------
+
+// archetypeCurveExpectation pairs each archetype with the avg-CMC band
+// that the archetype's gameplan demands. Values are drawn from
+// observed corpus distributions + archetype theory:
+//
+//   - Fast / cheap-cost shells (Combo / Storm / Aggro / Stax / Spellslinger
+//     / Cycling / Toxic / Vehicles / Group Slug / Voltron / Discard)
+//     need to assemble or pressure on turns 3-5; high CMC means the
+//     deck telegraphs without the cheap-piece density to back it up.
+//   - Midweight grinders (Tribal / Aristocrats / Lifegain / Enchantress
+//     / Counters Matter / Selfmill / Blink / Mill / Damage Redirect /
+//     Theft) sit in the 2.4-3.5 sweet spot — too lean misses payoffs,
+//     too heavy stalls.
+//   - Top-end shells (Reanimator / Lands Matter / Control / Pillowfort
+//     / Group Hug / Extra Combats / Artifacts / Superfriends) want
+//     2.8-5.0; under-curved versions look like midrange shells without
+//     finishers, over-curved versions can't cast anything pre-ramp.
+//
+// Midrange has no expectation entry — it's the "anything" fallback,
+// and the existing curve-warning pass in analysis.go already covers
+// shape signals (bimodal / top-heavy / bottom-light) independent of
+// archetype. Toleranced by ±0.2 in computeCurveArchetypeFit so
+// borderline curves don't trip false warnings.
+var archetypeCurveExpectation = map[string]struct {
+	MinAvgCMC float64
+	MaxAvgCMC float64
+	// Band is a human-readable shorthand ("lean" / "midweight" /
+	// "top-heavy") used in the warning text so builders see the
+	// expected curve flavor at a glance.
+	Band string
+}{
+	"Combo":           {0.0, 2.7, "lean"},
+	"Storm":           {0.0, 2.5, "lean"},
+	"Aggro":           {0.0, 2.8, "lean"},
+	"Voltron":         {0.0, 3.0, "lean"},
+	"Spellslinger":    {0.0, 2.8, "lean"},
+	"Cycling":         {0.0, 2.8, "lean"},
+	"Toxic":           {0.0, 2.8, "lean"},
+	"Vehicles":        {0.0, 3.0, "lean"},
+	"Group Slug":      {0.0, 2.8, "lean"},
+	"Stax":            {0.0, 2.8, "lean"},
+	"Discard":         {2.0, 3.2, "midweight"},
+	"Tribal":          {2.0, 3.5, "midweight"},
+	"Aristocrats":     {2.0, 3.2, "midweight"},
+	"Lifegain":        {2.5, 3.5, "midweight"},
+	"Enchantress":     {2.5, 3.5, "midweight"},
+	"Selfmill":        {2.5, 3.5, "midweight"},
+	"Counters Matter": {2.2, 3.4, "midweight"},
+	"Blink":           {2.5, 3.5, "midweight"},
+	"Damage Redirect": {2.5, 3.5, "midweight"},
+	"Mill":            {2.5, 3.5, "midweight"},
+	"Theft / Clone":   {2.5, 3.8, "midweight"},
+	"Reanimator":      {2.8, 4.2, "top-heavy"},
+	"Lands Matter":    {2.8, 4.0, "top-heavy"},
+	"Control":         {3.0, 5.0, "top-heavy"},
+	"Pillowfort":      {2.8, 4.0, "top-heavy"},
+	"Group Hug":       {2.8, 4.0, "top-heavy"},
+	"Extra Combats":   {2.8, 4.0, "top-heavy"},
+	"Artifacts":       {2.5, 4.0, "top-heavy"},
+	"Superfriends":    {3.0, 5.0, "top-heavy"},
+}
+
+// curveArchetypeTolerance is the slack we allow before flagging an
+// AvgCMC as outside the archetype's expected band. 0.2 lets a Combo
+// deck with avgCMC 2.85 (slightly over the 2.7 max) pass without a
+// warning — most decks have at least one finisher that bumps the
+// average, and we don't want to false-positive borderline shells.
+const curveArchetypeTolerance = 0.2
+
+// computeCurveArchetypeFit checks whether dp.AvgCMC falls within the
+// expected curve band for dp.PrimaryArchetype. Mismatches that exceed
+// the ±0.2 tolerance produce a one-line warning in
+// dp.CurveArchetypeWarnings. Archetypes not in the expectation map
+// (notably Midrange, the generic fallback) are skipped — the existing
+// shape-based curve warnings in report.CurveWarnings cover those
+// independently of archetype.
+func computeCurveArchetypeFit(dp *DeckProfile, report *FreyaReport) {
+	if dp == nil || dp.PrimaryArchetype == "" {
+		return
+	}
+	exp, ok := archetypeCurveExpectation[dp.PrimaryArchetype]
+	if !ok {
+		return
+	}
+	// Avoid false-firing on tiny decks where AvgCMC is unstable
+	// (commander-only test fixtures, partial parses).
+	if report == nil || report.NonlandCount < 20 {
+		return
+	}
+	avg := dp.AvgCMC
+	if avg < exp.MinAvgCMC-curveArchetypeTolerance {
+		dp.CurveArchetypeWarnings = append(dp.CurveArchetypeWarnings,
+			fmt.Sprintf("%s archetype expects a %s curve (avg %.1f-%.1f) but deck avg CMC is %.2f — curve plays faster than the archetype gameplan needs; consider adding heavier payoffs",
+				dp.PrimaryArchetype, exp.Band, exp.MinAvgCMC, exp.MaxAvgCMC, avg))
+		return
+	}
+	if avg > exp.MaxAvgCMC+curveArchetypeTolerance {
+		dp.CurveArchetypeWarnings = append(dp.CurveArchetypeWarnings,
+			fmt.Sprintf("%s archetype expects a %s curve (avg %.1f-%.1f) but deck avg CMC is %.2f — curve is too heavy for the archetype's tempo; consider cutting top-end cards or adding ramp",
+				dp.PrimaryArchetype, exp.Band, exp.MinAvgCMC, exp.MaxAvgCMC, avg))
+	}
+}
 
 func buildPersonalityBlurb(dp *DeckProfile, report *FreyaReport) string {
 	speed := describeSpeed(dp)
@@ -2879,16 +3321,60 @@ func estimatePowerPercentile(dp *DeckProfile, report *FreyaReport) (int, []strin
 		factors = append(factors, "limited win conditions → -10")
 	}
 
-	// Mana base quality
+	// Win line QUALITY — separate signal from raw count. A deck with one
+	// 2-card Thoracle line (Weight ~17) scores above a deck with three
+	// 5-card grindy assemblies (~24 total but each piece is fragile + slow
+	// to assemble). Bands tuned against representative decks: cEDH
+	// Thassa's Oracle pile lands ~30-50 weighted, Bracket-4 combo decks
+	// ~15-25, midrange goodstuff ~5-12, casual battlecruiser ~2-6.
+	if dp.WeightedWinLineScore >= 30 {
+		score += 8
+		factors = append(factors, fmt.Sprintf("elite win-line quality (weighted %d) → +8", dp.WeightedWinLineScore))
+	} else if dp.WeightedWinLineScore >= 15 {
+		score += 4
+		factors = append(factors, fmt.Sprintf("strong win-line quality (weighted %d) → +4", dp.WeightedWinLineScore))
+	} else if dp.WeightedWinLineScore > 0 && dp.WeightedWinLineScore < 5 {
+		score -= 4
+		factors = append(factors, fmt.Sprintf("low win-line quality (weighted %d) → -4", dp.WeightedWinLineScore))
+	}
+
+	// Mana base quality. r60 rebalance: pre-r60 the table was
+	//   A → +10 (logged), B → +5 (SILENT), C → 0, D → -10, F → -10
+	// which had three concrete bugs:
+	//   (1) B-grade silently credited +5 with no factor message —
+	//       users couldn't see that their mana base was contributing,
+	//       since factors[] is the user-facing explanation. Audit on
+	//       data/decks/test (16-deck corpus) showed 4 of 16 decks
+	//       received a silent +5 with zero attribution.
+	//   (2) C-grade ignored — a mediocre mana base (passable but
+	//       not great, score 60-74) was scored identically to a
+	//       perfect-but-not-A one. C represents real signal: usually
+	//       too many taplands or 1-2 color gaps. Worth a small -3
+	//       (between the B credit and the D penalty).
+	//   (3) D and F collapsed at the same -10 — squashed two
+	//       distinct grades together. F represents a catastrophic
+	//       mana base (4+ color gaps, 8+ taplands, no fixing); D is
+	//       "rough but functional." Splitting to D=-8 / F=-15
+	//       preserves the spread and makes the F penalty bite.
+	//
+	// New table (all rungs now log a factor for transparency):
+	//   A → +10, B → +5, C → -3, D → -8, F → -15
 	switch dp.ManaBaseGrade {
 	case "A":
 		score += 10
 		factors = append(factors, "A-grade mana base → +10")
 	case "B":
 		score += 5
-	case "D", "F":
-		score -= 10
-		factors = append(factors, fmt.Sprintf("%s-grade mana base → -10", dp.ManaBaseGrade))
+		factors = append(factors, "B-grade mana base → +5")
+	case "C":
+		score -= 3
+		factors = append(factors, "C-grade mana base → -3")
+	case "D":
+		score -= 8
+		factors = append(factors, "D-grade mana base → -8")
+	case "F":
+		score -= 15
+		factors = append(factors, "F-grade mana base → -15")
 	}
 
 	// Interaction quality

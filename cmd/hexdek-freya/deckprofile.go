@@ -35,6 +35,15 @@ type DeckProfile struct {
 	RampCount      int
 	DrawCount      int
 
+	// CMC-distribution health check counts (r60). OneDropCount is the
+	// number of nonland cards at CMC 1; TwoDropCount is at CMC 2. The
+	// distribution warnings ("too many 1-drops" / "too few 2-drops")
+	// are surfaced via CurveWarnings on the report and Weaknesses on
+	// the profile; these counters are exposed for downstream renderers
+	// that want the underlying metric.
+	OneDropCount   int
+	TwoDropCount   int
+
 	RoleCounts map[RoleTag]int
 	TopRoles   []RoleCount
 
@@ -69,6 +78,11 @@ type DeckProfile struct {
 	BackupCount       int
 	HasTutorAccess    bool
 	SinglePointCount  int
+	// WeightedWinLineScore sums per-line WinLine.Weight values so the
+	// power-percentile scorer can reward win-line QUALITY (2-card true
+	// infinite scores high, 4-card grindy lines score modestly) rather
+	// than just counting raw line presence.
+	WeightedWinLineScore int
 
 	Strengths       []string
 	Weaknesses      []string
@@ -81,6 +95,20 @@ type DeckProfile struct {
 	InteractionQuality  float64 // avg CMC of interaction spells (lower = faster)
 	CheapInteraction    int     // interaction at CMC 0-2
 	ExpensiveInteraction int    // interaction at CMC 4+
+	// AdjustedInteractionQuality is InteractionQuality with a downside
+	// penalty layered in: each removal piece that grants the opponent a
+	// meaningful resource (Path ramp, Generous Gift 3/3, Oblation card
+	// advantage) costs +0.5 effective CMC. Path-to-Exile feels more like
+	// CMC 1.5 than CMC 1 because the basic-land search is a real cost in
+	// a non-green-opponent meta. See computeInteractionQuality and
+	// interactionDownsides for the curated table.
+	AdjustedInteractionQuality float64
+	// InteractionDownsides is the per-card breakdown of which interaction
+	// spells carry an opponent-advantage downside, and what the downside
+	// is. Surfaced to the report so builders see WHICH pieces to consider
+	// swapping for cleaner replacements (StP, Anguished Unmaking,
+	// Counterspell). Sorted alphabetically for stable rendering.
+	InteractionDownsides []InteractionDownside
 	ProtectedKeyPieces  int     // key pieces with built-in protection
 	UnprotectedKeyPieces int    // key pieces without built-in protection
 
@@ -102,6 +130,19 @@ type DeckProfile struct {
 	FetchCount       int
 	UtilityLandCount int
 
+	// Deck cost tier — "Budget" (<$100), "Mid" ($100-$500),
+	// "High-end" (>$500). Empty when fewer than 80% of the deck's
+	// cards have resolvable USD prices (insufficient data for a
+	// meaningful classification — would mislead more than inform).
+	// EstimatedTotalUSD is the sum of resolved card prices; the
+	// real total may be higher when unpriced cards include
+	// reserved-list / out-of-print premiums. See computeDeckCostTier.
+	DeckCostTier      string
+	EstimatedTotalUSD float64
+	PricedCardCount   int
+	UnpricedCardCount int
+	DeckCostNote      string // human-readable summary or coverage warning
+
 	// Threat assessment
 	VulnerableTo []string // specific hosers this deck fears
 
@@ -119,6 +160,18 @@ type DeckProfile struct {
 	KeepableHandPctAdjusted  float64
 	AvgTurnToCommander       float64
 	CommanderCMC             int
+
+	// Vancouver free-mulligan variants — Commander's house rule that the
+	// first mulligan is free (re-draw 7 with no card penalty). Counts a
+	// trial as keepable if EITHER the initial hand OR the free-mulligan
+	// hand passes the keepability check. Always computed alongside the
+	// no-mulligan baseline so consumers can compare; the no-mulligan
+	// variant remains canonical for power-percentile scoring (matches
+	// pre-r60 calibration) and the mulligan variant surfaces the real-
+	// table accept rate. Invariant: FreeMull >= no-mulligan baseline
+	// (1 - (1-p)^2 >= p for all p in [0,1], with equality only at p=1).
+	KeepableHandPctFreeMull         float64
+	KeepableHandPctAdjustedFreeMull float64
 
 	// Synergy clusters
 	SynergyClusters []SynergyCluster
@@ -146,6 +199,17 @@ type DeckProfile struct {
 	CuttableCards []CardQuality
 	SolidCards    []CardQuality
 	StarCards     []CardQuality
+	// FlexSlots (R60) is the fourth tier between Solid and Cuttable —
+	// cards that are functional (have a tagged role, aren't bleeding
+	// mana cost), but generic enough that the slot is wiggle-room for
+	// meta-specific tech (graveyard hate when GY decks rise, PW hate
+	// when Superfriends rises, etc). Detected by: single generic
+	// utility role (Removal / Draw / Ramp / Protection / Utility), NOT
+	// part of any win line or value chain, low-to-mid score. Disjoint
+	// from SolidCards — a card matching the flex criteria is removed
+	// from solid and listed here instead so builders see the
+	// upgrade-vs-meta-swap distinction explicitly.
+	FlexSlots []CardQuality
 
 	// CardPowerLevels is the full 0-100 power rating for every non-land
 	// card in the deck, sorted high → low. See CardPowerLevel for the
@@ -172,6 +236,18 @@ type DeckProfile struct {
 
 	// Color weight suggestions
 	LandSwapSuggestions []string
+
+	// CurveArchetypeWarnings flag mismatches between the deck's
+	// PrimaryArchetype and its average CMC. Each archetype has an
+	// expected curve band (Combo decks want <2.7 to assemble fast,
+	// Control wants >3.0 to support late-game inevitability, etc).
+	// When AvgCMC sits more than 0.2 outside the archetype's band,
+	// we emit a warning so builders see "you classified as Combo but
+	// your curve plays like Midrange — consider cutting top-end
+	// cards" without having to derive the mismatch themselves. Empty
+	// when the curve fits the archetype, or when the archetype has
+	// no firm curve expectation (Midrange / generic fallbacks).
+	CurveArchetypeWarnings []string
 
 	// Deck personality
 	PersonalityBlurb string
@@ -205,7 +281,30 @@ type SynergyCluster struct {
 	// the complete membership for each theme cluster, not just the
 	// 8-card preview.
 	AllMembers []string
+	// HighDensity flags clusters with MemberCount >= HighDensityClusterFloor
+	// (5). At this size, a theme stops being "the deck happens to enable
+	// X" and becomes "X is a real subsystem of the gameplan" — surfaced
+	// in the report with a ★ prefix and in JSON as high_density so
+	// downstream consumers can highlight the theme without recomputing
+	// the threshold.
+	HighDensity bool
 }
+
+// HighDensityClusterFloor is the MemberCount at which a synergy cluster
+// is flagged as a deliberate subsystem of the deck rather than incidental
+// overlap. Tuned to 5 because 4 (the cluster floor itself) is the
+// minimum-viable theme presence and the discriminator should sit one
+// step above that.
+const HighDensityClusterFloor = 5
+
+// MinimumClusterMembers is the defensive floor below which a "cluster"
+// is just one or two coincidentally-overlapping cards and should not
+// surface as a theme. The pair-scoring math also degrades to noise at
+// that size. Both computeSynergyClusters paths (themed clusters and the
+// separate land_value cluster) already enforce a stricter floor of 4 —
+// this constant pins the absolute lower bound in case either path's
+// floor is ever relaxed.
+const MinimumClusterMembers = 2
 
 // AltBuildSuggestion is a "you could re-focus the deck around X" hint
 // surfaced when the deck has multiple synergy clusters above the
@@ -429,6 +528,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 		dp.WinLineCount = len(report.WinLines.WinLines)
 		dp.BackupCount = len(report.WinLines.BackupPlans)
 		dp.SinglePointCount = len(report.WinLines.SinglePoints)
+		dp.WeightedWinLineScore = report.WinLines.TotalWeightedScore
 		if len(report.WinLines.WinLines) > 0 {
 			wl := report.WinLines.WinLines[0]
 			dp.PrimaryWinLine = strings.Join(wl.Pieces, " + ")
@@ -438,12 +538,18 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 
 	if oracle != nil && report.Commander != "" {
 		computeCommanderSynergy(dp, report, oracle)
+		// Now that commander themes are known, re-sort each card's
+		// multi-tag role list so theme-aligned roles bubble up to the
+		// primary (Roles[0]) position. Tie-breaks only roles sharing a
+		// rolePriority value — never reorders across priority bands.
+		RefineRolesByCommanderThemes(report.Roles, dp.CommanderThemes)
 	}
 
 	computeInteractionQuality(dp, report, oracle)
 	computeProtectionDensity(dp, report, oracle)
 	appendVulnerabilityBracketNote(dp)
 	computeManaBaseGrade(dp, report, oracle)
+	computeDeckCostTier(dp, report, oracle)
 	// Opening hand sim runs first so dp.IsCommanderCentric is populated
 	// before threat assessment reads it (commander-centric decks fear
 	// commander-targeting hosers like Imprisoned in the Moon).
@@ -456,8 +562,16 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	computeCardQualityTiers(dp, report, oracle)
 	computePetCards(dp, report)
 	computeLandSwapSuggestions(dp, report)
+	computeCurveArchetypeFit(dp, report)
 	dp.PersonalityBlurb = buildPersonalityBlurb(dp, report)
 	dp.PowerPercentile, dp.PowerFactors = estimatePowerPercentile(dp, report)
+
+	// CMC-distribution health check — populates OneDropCount /
+	// TwoDropCount and appends warnings to report.CurveWarnings when
+	// the deck is either 1-drop heavy or 2-drop starved. The
+	// thresholds come from opening-hand hypergeometric math; see
+	// computeCMCDistributionHealth for the calibration rationale.
+	computeCMCDistributionHealth(dp, report)
 
 	dp.Strengths = deriveStrengths(report, dp)
 	dp.Weaknesses = deriveWeaknesses(report, dp)
@@ -467,6 +581,52 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	return dp
 }
 
+// InteractionDownside records one removal/counter/wipe in the deck
+// that hands the opponent a meaningful resource: ramp from a basic-land
+// search (Path to Exile), a creature token (Generous Gift / Beast Within
+// / Pongify / Rapid Hybridization / Crib Swap), or pure card advantage
+// (Oblation, Chaos Warp's free play). Self-cost downsides (Anguished
+// Unmaking life payment) are deliberately NOT in scope — they're a
+// tempo tax on the caster, not opponent leverage, and a B3 deck running
+// Unmaking shouldn't be penalized for it.
+type InteractionDownside struct {
+	Name string
+	CMC  int
+	// Kind is the downside category: "ramp" (basic-land search),
+	// "creature_token" (X/X token to opponent), "card_advantage"
+	// (opponent draws / cycles), "free_spell" (opponent gets a free
+	// cast off the top), or "other" for one-offs.
+	Kind string
+	Note string
+}
+
+// interactionDownsides is the curated card-name table of removal that
+// hands the opponent a meaningful resource. Keys are normalized
+// lowercase (matches the oracleDB lookup convention and the per-card
+// match in computeInteractionQuality). Each entry carries the downside
+// Kind for filtering and a short human-readable Note for the report.
+//
+// Curation policy: only cards where the downside is the FIRST-ORDER
+// reason a builder would consider a swap. "Path gives ramp" is the
+// canonical example — turn-defining vs a non-green opponent. Cards
+// whose downside is just life payment to YOU (Anguished Unmaking,
+// Vindicate's color requirement, etc.) are out of scope.
+var interactionDownsides = map[string]struct {
+	Kind string
+	Note string
+}{
+	"path to exile":        {Kind: "ramp", Note: "opponent searches for a basic land — turn-defining ramp vs a non-green deck"},
+	"generous gift":        {Kind: "creature_token", Note: "opponent gets a 3/3 elephant token"},
+	"beast within":         {Kind: "creature_token", Note: "opponent gets a 3/3 beast token"},
+	"pongify":              {Kind: "creature_token", Note: "opponent gets a 3/3 ape token"},
+	"rapid hybridization": {Kind: "creature_token", Note: "opponent gets a 3/3 frog lizard token"},
+	"crib swap":            {Kind: "creature_token", Note: "opponent gets a 1/1 changeling token"},
+	"reality shift":        {Kind: "creature_token", Note: "opponent manifests the top of their library as a 2/2"},
+	"oblation":             {Kind: "card_advantage", Note: "owner draws 2 cards — net positive card swap for the opponent"},
+	"chaos warp":           {Kind: "free_spell", Note: "opponent reveals top of library; could be a free threat"},
+	"swan song":            {Kind: "creature_token", Note: "opponent gets a 2/2 flying bird token"},
+}
+
 func computeInteractionQuality(dp *DeckProfile, report *FreyaReport, oracle *oracleDB) {
 	if report.Roles == nil {
 		return
@@ -474,6 +634,7 @@ func computeInteractionQuality(dp *DeckProfile, report *FreyaReport, oracle *ora
 
 	totalCMC := 0
 	count := 0
+	downsideCount := 0
 	for _, a := range report.Roles.Assignments {
 		isInteraction := false
 		for _, r := range a.Roles {
@@ -501,11 +662,27 @@ func computeInteractionQuality(dp *DeckProfile, report *FreyaReport, oracle *ora
 		} else if cmc >= 4 {
 			dp.ExpensiveInteraction++
 		}
+
+		if d, ok := interactionDownsides[strings.ToLower(a.Name)]; ok {
+			downsideCount++
+			dp.InteractionDownsides = append(dp.InteractionDownsides, InteractionDownside{
+				Name: a.Name, CMC: cmc, Kind: d.Kind, Note: d.Note,
+			})
+		}
 	}
 
 	if count > 0 {
 		dp.InteractionQuality = float64(totalCMC) / float64(count)
+		// Effective-CMC penalty: each downside-bearing piece adds 0.5 to
+		// the numerator before averaging. A piece that hands the opponent
+		// ramp / a 3/3 / a free spell "feels" slower than its mana cost
+		// suggests because the swing in board state offsets the tempo
+		// gain from removing the original threat.
+		dp.AdjustedInteractionQuality = (float64(totalCMC) + 0.5*float64(downsideCount)) / float64(count)
 	}
+	sort.SliceStable(dp.InteractionDownsides, func(i, j int) bool {
+		return dp.InteractionDownsides[i].Name < dp.InteractionDownsides[j].Name
+	})
 }
 
 // VulnerableComboPiece names a single RoleCombo card in the deck that
@@ -656,7 +833,7 @@ func appendVulnerabilityBracketNote(dp *DeckProfile) {
 		evidenceStr += fmt.Sprintf(", +%d more", len(dp.VulnerableComboPieces)-len(evidence))
 	}
 	note := fmt.Sprintf(
-		"%d combo %s %s built-in protection (%s) — felt power closer to B3 (single Path / Pongify / Imprisoned in the Moon resets the line). Bracket call unchanged; informational only.",
+		"%d combo %s %s built-in protection (%s) — a single common removal spell can shut the win down, so at the table this deck plays closer to Bracket 3 than its Bracket-4+ label suggests. Adding protection (Lightning Greaves, Heroic Intervention, Veil of Summer) would let the deck reliably reach its full bracket power. The bracket call itself is unchanged; this is a heads-up, not a downgrade.",
 		len(dp.VulnerableComboPieces), piece, verb, evidenceStr,
 	)
 	dp.BracketRationale.Signals = append(dp.BracketRationale.Signals, BracketSignal{
@@ -849,6 +1026,122 @@ func deriveStrengths(report *FreyaReport, dp *DeckProfile) []string {
 	return s
 }
 
+// CMCDistributionWarning is the threshold structure used by
+// computeCMCDistributionHealth — surfaced as exported so tests can pin
+// the calibration without re-running the warning pipeline.
+//
+// Calibration (opening-hand hypergeometric, deck of 99, opener of 7):
+//
+//   - OneDropMax = 15. With 15 one-drops in 99, P(opener has ≥2 one-
+//     drops) ≈ 21% — high enough that the deck is regularly burning a
+//     hand slot on a low-impact card. Past 15, mid-game tempo dilution
+//     starts to outweigh the consistency of a turn-1 play. The cEDH
+//     fast-mana corpus (~6-10 one-drops average per the lyon sample)
+//     stays well under this floor; only dedicated 1-drop-tribal piles
+//     (Glistener Elf infect, Slippery Bogle voltron variants) push past.
+//
+//   - TwoDropMin = 6. With only 6 two-drops in 99, P(opener has zero
+//     two-drops) = C(93,7)/C(99,7) ≈ 64% — the deck whiffs a turn-2 play
+//     in roughly two of every three games. By 8 two-drops the whiff
+//     drops to ~55%, by 12 to ~38%. Six is the floor below which the
+//     curve consistency degrades enough to warrant flagging.
+//
+// Both thresholds are deliberately tuned to fire on STRUCTURAL issues
+// rather than minor curve quirks — they don't double-fire with the
+// existing "few early plays" warning (which keys on CMC 0+1 totals, a
+// different aggregate signal).
+type CMCDistributionWarning struct {
+	OneDropMax int // cards at CMC 1 above this count trigger a warning
+	TwoDropMin int // cards at CMC 2 below this count trigger a warning
+}
+
+var defaultCMCDistribution = CMCDistributionWarning{
+	OneDropMax: 15,
+	TwoDropMin: 6,
+}
+
+// computeCMCDistributionHealth populates dp.OneDropCount /
+// dp.TwoDropCount and appends warnings to report.CurveWarnings when the
+// deck violates the calibrated thresholds in defaultCMCDistribution.
+//
+// Warnings include the expected opening-hand impact so builders see WHY
+// the threshold matters: "16 one-drops — 7×16/99 ≈ 1.1 expected in
+// opener, mid-game tempo may dilute".
+//
+// Skips when report.NonlandCount == 0 (corrupt / empty profile) or when
+// ManaCurve is unpopulated. Idempotent — calling twice does NOT
+// double-append (warnings are de-duped against an existing exact match).
+func computeCMCDistributionHealth(dp *DeckProfile, report *FreyaReport) {
+	if dp == nil || report == nil || report.NonlandCount == 0 {
+		return
+	}
+	dp.OneDropCount = report.ManaCurve[1]
+	dp.TwoDropCount = report.ManaCurve[2]
+
+	thresh := defaultCMCDistribution
+
+	if dp.OneDropCount > thresh.OneDropMax {
+		expected := 7.0 * float64(dp.OneDropCount) / float64(report.TotalCards)
+		w := fmt.Sprintf("1-drop heavy: %d cards at CMC 1 (>%d threshold) — %.1f expected in opener; mid-game tempo may dilute",
+			dp.OneDropCount, thresh.OneDropMax, expected)
+		report.CurveWarnings = appendUniqueCurveWarning(report.CurveWarnings, w)
+	}
+
+	if dp.TwoDropCount < thresh.TwoDropMin {
+		// Hypergeometric P(no 2-drop in opener of 7) given K 2-drops in
+		// deck of TotalCards. Computed inline so the message reports the
+		// actual whiff rate for THIS deck, not a tabulated approximation.
+		whiffPct := openingHandWhiffPct(dp.TwoDropCount, report.TotalCards, 7)
+		w := fmt.Sprintf("2-drop starved: only %d cards at CMC 2 (<%d threshold) — %.0f%% of openers contain no 2-drop, turn-2 plays will whiff often",
+			dp.TwoDropCount, thresh.TwoDropMin, whiffPct)
+		report.CurveWarnings = appendUniqueCurveWarning(report.CurveWarnings, w)
+	}
+}
+
+// openingHandWhiffPct returns the % chance of drawing zero copies of a
+// K-card subset in an n-card opener from a deck of N. Computed as the
+// product (N-K)/(N) * (N-K-1)/(N-1) * ... — the closed-form
+// hypergeometric P(X=0) without factorials.
+//
+// Returns 0 when k <= 0 (every opener whiffs trivially — but we don't
+// surface that meaningless case), 100 when k == 0 with positive draw
+// count (impossible to draw what isn't there), and 0 for malformed
+// inputs (n > deckSize, deckSize <= 0).
+func openingHandWhiffPct(k, deckSize, n int) float64 {
+	if k <= 0 {
+		return 100
+	}
+	if deckSize <= 0 || n <= 0 || n > deckSize {
+		return 0
+	}
+	if k > deckSize {
+		return 0
+	}
+	p := 1.0
+	for i := 0; i < n; i++ {
+		num := float64(deckSize - k - i)
+		den := float64(deckSize - i)
+		if num <= 0 {
+			return 0
+		}
+		p *= num / den
+	}
+	return p * 100
+}
+
+// appendUniqueCurveWarning appends w to warnings IFF an exact-string
+// match is not already present. Defends against double-append when
+// BuildDeckProfile is invoked twice on the same report (rare but
+// possible in tests that mutate a shared report).
+func appendUniqueCurveWarning(warnings []string, w string) []string {
+	for _, existing := range warnings {
+		if existing == w {
+			return warnings
+		}
+	}
+	return append(warnings, w)
+}
+
 func deriveWeaknesses(report *FreyaReport, dp *DeckProfile) []string {
 	var w []string
 
@@ -898,6 +1191,25 @@ func deriveWeaknesses(report *FreyaReport, dp *DeckProfile) []string {
 		w = append(w, "no board wipes")
 	}
 
+	// Removal-density bands. Distinct from the "low interaction" warning
+	// above (which combines removal + counterspells at <5): this is the
+	// single-target removal axis specifically — Swords to Plowshares /
+	// Path to Exile / Beast Within / Generous Gift / Pongify / etc.
+	// Commander rule-of-thumb is ~8-12 single-target answers; below 8
+	// the deck struggles to answer opposing commanders and combo pieces
+	// surgically (board wipes alone are too coarse). Above 18, the deck
+	// is built as a removal-pile control deck — not a warning so much
+	// as a heads-up that the deck wants to play long games.
+	if report.SingleTargetRemovalCount > 0 && report.SingleTargetRemovalCount < 8 {
+		w = append(w, fmt.Sprintf(
+			"thin single-target removal (%d pieces) — typical Commander deck wants 8+ answers to commanders and combo pieces",
+			report.SingleTargetRemovalCount))
+	} else if report.SingleTargetRemovalCount > 18 {
+		w = append(w, fmt.Sprintf(
+			"control-heavy removal (%d single-target pieces) — this deck plays as the answer-archive; expect long games",
+			report.SingleTargetRemovalCount))
+	}
+
 	if dp.CommanderSynergy > 0 && dp.CommanderSynergy < 0.25 {
 		w = append(w, fmt.Sprintf("low commander synergy (%.0f%%) — many cards don't align with commander themes", dp.CommanderSynergy*100))
 	}
@@ -911,6 +1223,17 @@ func deriveWeaknesses(report *FreyaReport, dp *DeckProfile) []string {
 		if total >= 3 && float64(dp.UnprotectedKeyPieces)/float64(total) >= 0.80 {
 			w = append(w, fmt.Sprintf("key pieces exposed (%d/%d combo/threat pieces lack built-in protection)", dp.UnprotectedKeyPieces, total))
 		}
+	}
+
+	// CMC-distribution surface — short callouts that mirror the more
+	// detailed CurveWarnings entries on the report. Builders reading the
+	// Weaknesses list see the structural issue without having to cross-
+	// reference CurveWarnings.
+	if dp.OneDropCount > defaultCMCDistribution.OneDropMax {
+		w = append(w, fmt.Sprintf("1-drop heavy (%d at CMC 1, >%d threshold)", dp.OneDropCount, defaultCMCDistribution.OneDropMax))
+	}
+	if dp.TwoDropCount > 0 && dp.TwoDropCount < defaultCMCDistribution.TwoDropMin {
+		w = append(w, fmt.Sprintf("2-drop starved (%d at CMC 2, <%d threshold)", dp.TwoDropCount, defaultCMCDistribution.TwoDropMin))
 	}
 
 	return w
@@ -1123,6 +1446,66 @@ var defaultWeights = map[string]*jsonEvalWeights{
 		BoardPresence: 1.0, CardAdvantage: 1.2, ManaAdvantage: 0.5,
 		LifeResource: 0.6, ComboProximity: 0.3, ThreatExposure: 0.5,
 		CommanderProgress: 0.8, GraveyardValue: 0.2,
+	},
+
+	// r60: Pillowfort — defensive deck that deters attacks via tax
+	// effects (Ghostly Prison, Propaganda, Sphere of Safety),
+	// prevention (Story Circle, Aegis of the Gods), and punishment
+	// triggers (No Mercy, Solitary Confinement), then wins slowly via
+	// inevitability rather than board pressure. Classified by the
+	// archetypes.go fingerprint at line 234 (`Pillowfort`) since the
+	// R60 archetype sweep but had no eval-weight entry — fell back to
+	// midrange, which over-weighted BoardPresence (pillowfort
+	// DELIBERATELY underdevelops to avoid painting a target) and
+	// under-weighted LifeResource + ThreatExposure (the entire plan
+	// is "survive the next turn cycle, grind out inevitability"). The
+	// asymmetry is the same magnitude as the Voltron-vs-midrange
+	// divergence (CommanderProgress 2.0 vs 0.7); without it the hat
+	// mis-plays pillowfort decks as if they were midrange, casting
+	// into pressure they should sandbag and ignoring tax-stack
+	// maintenance they should prioritize.
+	//
+	//   - BoardPresence 0.4: don't develop threats that paint a
+	//     target (vs midrange 1.0). Defensive permanents enter as
+	//     non-creature tax stack.
+	//   - CardAdvantage 1.3: grind value over time; outlast the
+	//     fastest opponent (vs midrange 1.0).
+	//   - ManaAdvantage 0.7: moderate; pillowfort needs mana for big
+	//     control plays but isn't ramp-focused (vs midrange 0.8).
+	//   - LifeResource 1.4: SURVIVAL is the plan. Much higher than
+	//     midrange 0.7 — pillowfort decks track life like a clock.
+	//   - ComboProximity 0.3: usually not a combo deck (vs midrange
+	//     0.5). Pillowfort wincon is incremental, not assembly.
+	//   - ThreatExposure 1.5: HIGH threat awareness. Pillowfort gets
+	//     killed by under-respected board states it can't break
+	//     parity with (vs midrange 0.8).
+	//   - CommanderProgress 0.4: usually passive commander (Sram,
+	//     Ghen, Norn-style). Don't tunnel-vision commander damage
+	//     (vs midrange 0.7).
+	//   - GraveyardValue 0.4: not graveyard-focused (vs midrange 0.5).
+	"pillowfort": {
+		BoardPresence: 0.4, CardAdvantage: 1.3, ManaAdvantage: 0.7,
+		LifeResource: 1.4, ComboProximity: 0.3, ThreatExposure: 1.5,
+		CommanderProgress: 0.4, GraveyardValue: 0.4,
+	},
+
+	// r60 Tokens — Krenko / Adeline / Rhys / Ghave-tokens shells.
+	// Classified by archetypeFingerprints["Tokens"] in archetype.go
+	// when ctx.tokenCreatorCount ≥ 8 AND ctx.anthemCount ≥ 3.
+	// Distinct from "aggro / go wide" in that the eval weights
+	// HEAVILY penalize board wipes (ThreatExposure 1.3 vs 0.5) — a
+	// Wrath of God against a 12-token Adeline / Krenko board is
+	// catastrophic in a way it isn't against a 4-creature Aggro
+	// board (raw aggro rebuilds with the next creature, tokens
+	// can't because the engine commander is the wipe target).
+	// Also lifts CommanderProgress 0.9 vs Aggro / Go Wide's 0.6 —
+	// Krenko's tap doubles your goblins, Adeline's attack trigger
+	// creates tokens; the commander IS the engine, not one threat
+	// among many.
+	"tokens": {
+		BoardPresence: 1.8, CardAdvantage: 0.5, ManaAdvantage: 0.4,
+		LifeResource: 0.7, ComboProximity: 0.2, ThreatExposure: 1.3,
+		CommanderProgress: 0.9, GraveyardValue: 0.2,
 	},
 }
 

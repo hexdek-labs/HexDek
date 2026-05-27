@@ -153,11 +153,19 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 	gameengine.FireCardTrigger(gs, "untap_step", map[string]interface{}{
 		"active_seat": active,
 	})
-	// Per-turn bookkeeping: drain mana pool (§500.4), reset lands-played.
-	seat.ManaPool = 0
-	if seat.Mana != nil {
-		seat.Mana.Clear()
-	}
+	// Per-turn bookkeeping: drain mana pool, reset lands-played.
+	//
+	// Mana drains via the canonical DrainAllPools so the CR §106.4a
+	// exemption set (Upwelling "any" / Omnath-style color retention /
+	// Cabal Coffers-style etc.) is honored. The previous direct
+	// `seat.ManaPool = 0 ; seat.Mana.Clear()` zeroed unconditionally,
+	// wiping mana that Upwelling explicitly says should persist across
+	// the cleanup → untap boundary. The drain is logically the §106.4
+	// firing on the PRIOR turn's cleanup step ending (cleanup is the
+	// last step of the ending phase; per CR §514 it runs to completion
+	// without a priority window, so no DrainAllPools call lives there —
+	// this start-of-untap call is the canonical place to fire it).
+	gameengine.DrainAllPools(gs, "ending", "cleanup")
 	clearPlayedLand(gs, active)
 	gs.PendingExtraCombats = nil
 	gs.CurrentCombatRestriction = ""
@@ -369,10 +377,12 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 		})
 		gs.Phase, gs.Step = "beginning", "untap"
 		gameengine.UntapAll(gs, active)
-		seat.ManaPool = 0
-		if seat.Mana != nil {
-			seat.Mana.Clear()
-		}
+		// Mirror the §106.4a-aware drain used by the primary untap path
+		// above (Upwelling / Omnath-color-retention / per-color exemption
+		// cards). The Sphinx of the Second Sun extra-beginning-phase
+		// shape was previously unconditionally zeroing, defeating the
+		// same exemption set in the rarer extra-untap window.
+		gameengine.DrainAllPools(gs, "ending", "cleanup")
 		tapAllManaSources(gs, seat)
 
 		gs.Phase, gs.Step = "beginning", "upkeep"
@@ -436,29 +446,56 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 
 	// §514 Cleanup step with §514.3a looping.
 	// CR §514.3a: "If any state-based actions are performed as a result
-	// of a step [514.1-514.2], or if any triggered abilities are waiting
+	// of a step [514.1-514.2], OR if any triggered abilities are waiting
 	// to be put on the stack, players receive priority. Once the stack
 	// is empty and all players pass in succession, another cleanup step
 	// begins."
+	//
+	// Both disjuncts matter. The prior implementation only re-looped on
+	// sbaChanged, silently skipping the trigger arm — so when a §514.1
+	// discard fired a "card_discarded" trigger (Madness, Megrim, Mayhem,
+	// Containment Priest-style "you may cast" cleanup-step interactions)
+	// the trigger landed on the stack but the cleanup step ended without
+	// granting priority. The Madness "may cast for madness cost" choice
+	// requires a priority window after the trigger resolves; without it
+	// the cast opportunity is silently lost. The invariants.go cleanup
+	// comment (§379-383) was already documenting this contract — the
+	// engine just wasn't honoring it.
 	const maxCleanupLoops = 8 // safety cap
 	for cleanupLoop := 0; cleanupLoop < maxCleanupLoops; cleanupLoop++ {
 		gs.Phase, gs.Step = "ending", "cleanup"
+		preHand := len(seat.Hand)
 		// §514.1 discard to hand size.
 		gameengine.CleanupHandSize(gs, active, 7)
 		// §514.2 expirations — clears until-EOT continuous effects, mods, damage.
 		gameengine.ScanExpiredDurations(gs, gs.Phase, gs.Step)
 		gs.InvalidateCharacteristicsCache() // ensure SBAs see post-expiry P/T
 		sbaChanged := gameengine.StateBasedActions(gs)
-		if !sbaChanged {
-			break // no SBAs performed, cleanup is done
+		// §514.3a "triggered abilities" arm: we approximate "any trigger
+		// fired during the step" by (a) discards actually happened in
+		// §514.1 (every common cleanup-step trigger — Madness, Megrim,
+		// Mayhem, etc. — keys off card_discarded), and (b) the stack is
+		// non-empty (a triggered ability is waiting to resolve). Either
+		// condition obligates priority + another cleanup pass per the rule.
+		discardsHappened := len(seat.Hand) < preHand
+		triggersWaiting := len(gs.Stack) > 0
+		if !sbaChanged && !discardsHappened && !triggersWaiting {
+			break // no SBAs, no discards, no waiting triggers — cleanup done
 		}
-		// §514.3a: SBAs happened — players get priority, then loop.
+		reason := "sba"
+		switch {
+		case triggersWaiting:
+			reason = "triggers_waiting"
+		case discardsHappened:
+			reason = "discard_triggers"
+		}
 		gs.LogEvent(gameengine.Event{
 			Kind: "cleanup_loop",
 			Seat: active,
 			Details: map[string]interface{}{
 				"iteration": cleanupLoop + 1,
 				"rule":      "514.3a",
+				"reason":    reason,
 			},
 		})
 		gameengine.PriorityRound(gs)

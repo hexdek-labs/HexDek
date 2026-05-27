@@ -2849,7 +2849,15 @@ def is_real_card(c: dict) -> bool:
     tokens = re.split(r"[\s\u2014\u2013-]+", types)
     if "plane" in tokens:
         return False
-    if c.get("set_type") in {"memorabilia", "token", "minigame", "funny"}:
+    # Alchemy is Wizards' Arena-exclusive rebalance format: every card is
+    # digital-only (games == ["arena"]) and explicitly not Commander-legal
+    # (legalities.commander == "not_legal" across all 716 alchemy entries
+    # in the current Scryfall corpus). The Alchemy-only mechanics
+    # ("intensity", "spellbook", "perpetual"-counter shapes, "seek")
+    # require digital-engine support HexDek doesn't have and don't
+    # appear in any paper Commander deck, so ingesting them only
+    # pollutes the AST corpus with cards the engine will never see.
+    if c.get("set_type") in {"memorabilia", "token", "minigame", "funny", "alchemy"}:
         return False
     if c.get("border_color") == "silver":
         return False

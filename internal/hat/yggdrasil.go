@@ -114,6 +114,16 @@ type YggdrasilHat struct {
 	// strongly suggest they're holding instant-speed answers.
 	opponentHeldMana []int
 
+	// opponentMaxHeldMana is the largest available-mana count we've ever
+	// observed at this opponent's upkeep. The streak counter above is
+	// binary at the 2+ threshold; this is the magnitude signal. A 4+
+	// reading suggests Cryptic Command / Force of Negation / Mystic
+	// Confluence territory — a different counterspell threshold than
+	// a 2-mana Spell Pierce / Mana Leak rep. Read by classifyOpponent
+	// to bump combo/control confidence on the Cryptic-class reading.
+	// Reset to 0 alongside opponentHeldMana on game_start.
+	opponentMaxHeldMana []int
+
 	// opponentTutored records whether each opponent has tutored this game.
 	// After a tutor resolves they almost certainly have a specific answer
 	// or combo piece — near-zero entropy for one hand slot.
@@ -539,6 +549,72 @@ func commanderInCommandZone(seat *gameengine.Seat) bool {
 		}
 	}
 	return false
+}
+
+// minCommanderCMC returns the lowest CMC across the seat's commanders
+// currently in the command zone. Returns 0 when no commanders are
+// accessible (free-form games, edge tests) so callers can short-circuit
+// the commander-castability check rather than mistreat 0 as a "free
+// commander". For partner decks (multiple commanders) returns the
+// cheaper one — you can cast either to start executing the deck's plan.
+func minCommanderCMC(seat *gameengine.Seat) int {
+	if seat == nil {
+		return 0
+	}
+	minCMC := 0
+	for _, c := range seat.CommandZone {
+		if c == nil {
+			continue
+		}
+		cmc := gameengine.ManaCostOf(c)
+		if cmc <= 0 {
+			continue
+		}
+		if minCMC == 0 || cmc < minCMC {
+			minCMC = cmc
+		}
+	}
+	return minCMC
+}
+
+// projectedManaAtTurn estimates the mana available to cast a single
+// spell at the given turn given an opening hand's land and ramp count.
+// Heuristic — NOT a Monte Carlo simulator. Two components:
+//
+//  1. Land drops: min(turn, landsInHand + (turn-1) * 0.4) — we play one
+//     land per turn (capped at one drop) and draw ~0.4 lands per draw
+//     step (typical Commander deck runs 36-38 lands / 99 ≈ 38% land
+//     density). The cap prevents an opener with 6 lands from reading
+//     as 6 mana on turn 4 — you can only play one a turn.
+//  2. Ramp acceleration: each ramp piece adds ~1 net mana per turn
+//     once active. Typical ramp pieces (Signet, Talisman, Llanowar
+//     Elves, Sol Ring) cost 1-2 and produce 1 starting the turn after
+//     they ETB. Cast turn 2 at the earliest given typical cost, then
+//     productive turn 3 onward — so the bonus only applies when
+//     turn >= 3. Capped at 2 ramp pieces — beyond that you'd run out
+//     of curve windows to cast them all before turn 4.
+//
+// Returns a float so the caller can compare against integer commander
+// CMC with the implicit half-mana margin of error baked in (e.g.
+// projected 5.2 vs CMC 5 reads as castable; 4.8 vs CMC 5 reads as not).
+func projectedManaAtTurn(landsInHand, rampInHand, turn int) float64 {
+	if turn <= 0 {
+		return 0
+	}
+	draws := float64(turn - 1)
+	landsByT := float64(landsInHand) + draws*0.4
+	if landsByT > float64(turn) {
+		landsByT = float64(turn)
+	}
+	rampBonus := 0.0
+	if turn >= 3 {
+		r := rampInHand
+		if r > 2 {
+			r = 2
+		}
+		rampBonus = float64(r)
+	}
+	return landsByT + rampBonus
 }
 
 // sharesCreatureSubtype returns true when commander and other share at
@@ -1371,6 +1447,55 @@ func (h *YggdrasilHat) bestTarget(gs *gameengine.GameState, seatIdx int, attacke
 		// 1. Kill-shot detection: always prioritize lethal attacks.
 		if attacker != nil && gs.PowerOf(attacker) >= threat.Life && threat.Life > 0 {
 			score += 8.0
+		}
+
+		// 1b. Commander-damage kill-shot + clock progression
+		// (CR §704.6c — 21 commander damage from a single source loses
+		// the game regardless of life). When OUR attacker is our own
+		// commander, the existing CmdrDmg clock + this swing's damage
+		// is the relevant kill condition, not target.Life. Pre-r60 the
+		// picker was blind to this and would aim our 5-power commander
+		// at the lowest-life opponent even when a 30-life target with
+		// 17 cmdr damage from us would die to a redirect — throwing
+		// away one of Voltron's primary win lines. Mirrors the block-
+		// side check in AssignBlockers so the two sides of combat
+		// reason about the same clock.
+		//
+		// Two bonuses:
+		//   - Kill-shot (clock + swing >= 21): +8, matching the life
+		//     kill-shot magnitude.
+		//   - Closing-clock graded (clock > 0, not lethal): +clock/7,
+		//     so investment we've already made compounds into focus
+		//     on the same target. At clock=14 (one big swing from
+		//     lethal) → +2.0; at clock=7 → +1.0; at clock=20 → +2.86
+		//     (still below the +8 kill-shot bump so adding 1 more
+		//     point of damage flips us into the kill-shot tier
+		//     instead). Capped implicitly at clock=21.
+		//
+		// Honors double strike on the swing projection — DS doubles
+		// the damage delivered in one attack and so doubles the clock
+		// advance.
+		if attacker != nil && attacker.Card != nil &&
+			gameengine.IsCommanderCard(gs, attacker.Controller, attacker.Card) &&
+			def >= 0 && def < len(gs.Seats) && gs.Seats[def] != nil &&
+			gs.Seats[def].CommanderDamage != nil {
+			if byDealer, ok := gs.Seats[def].CommanderDamage[attacker.Controller]; ok {
+				clock := byDealer[attacker.Card.DisplayName()]
+				if clock > 0 {
+					swing := gs.PowerOf(attacker)
+					if attacker.HasKeyword("double strike") || attacker.HasKeyword("double_strike") {
+						swing *= 2
+					}
+					if swing < 0 {
+						swing = 0
+					}
+					if clock+swing >= 21 {
+						score += 8.0
+					} else {
+						score += float64(clock) / 7.0
+					}
+				}
+			}
 		}
 
 		// 2. Scaled low-life bonus — linear ramp as life drops below 20.
@@ -2797,6 +2922,20 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 		base += 0.30
 	}
 
+	// Political "deal" heuristic — goad-effect cards become MUCH more
+	// valuable when an opponent's creature could lethal another opponent
+	// if redirected AND is also a threat to us. The hat trades a slot
+	// in hand for letting the table eliminate a player on our behalf,
+	// keeping our removal in reserve and preserving political capital
+	// (we're not the one casting the kill spell). See goadDealOpportunity
+	// for the trigger conditions and magnitude (0 to +0.45). Sized so
+	// the bonus outweighs the typical -0.10 reactive penalty applied to
+	// non-strategic cards under stax / control / combo archetypes — a
+	// goad redirect against a winning swing is good in every archetype.
+	if cardIsGoad(c) {
+		base += h.goadDealOpportunity(gs, seatIdx)
+	}
+
 	return base
 }
 
@@ -3172,6 +3311,110 @@ func cardPrefersMain1(c *gameengine.Card) bool {
 		return true
 	}
 	return false
+}
+
+// cardIsGoad detects spell or activated-ability oracle text that
+// applies the Goad effect (CR §701.39). Matches the literal "goad"
+// keyword which the parser uses uniformly for Magic's modern Goad
+// implementations (Coastal Piracy of Smoke, Lure of the Wilds, Disrupt
+// Decorum, Agitator Ant, Cleavemaul Knight, Maelstrom Wanderer's
+// triggered grant, etc.). Cards whose oracle text only contains "goad"
+// as part of a longer word (e.g. "goading" doesn't appear in any
+// printed card — the literal verb match is safe). Used by cardHeuristic
+// to elevate goad spells when a political "deal" redirect is available.
+func cardIsGoad(c *gameengine.Card) bool {
+	if c == nil {
+		return false
+	}
+	ot := gameengine.OracleTextLower(c)
+	if ot == "" {
+		return false
+	}
+	return strings.Contains(ot, "goad")
+}
+
+// goadDealOpportunity scores the political "deal" value of casting a
+// goad effect from our seat. Returns 0 when no opponent creature
+// presents a useful redirect target; returns up to +0.45 when:
+//
+//   - Some other opponent (not the threat's controller) is at low
+//     enough life to die to a redirected swing.
+//   - The largest non-defender creature owned by a non-low-life-opp
+//     opponent has power >= that lowest-life-opp's life AND is also
+//     a meaningful threat to us (>= myLife/3 or >= 6 absolute).
+//
+// The "deal" framing: instead of casting removal that kills the
+// threat (consuming our removal AND making us the table's answer-
+// spender — both political costs), we redirect the threat at someone
+// who can't survive it. The threat-holder still trades their creature
+// in combat against the goaded target's defenses, we kept our removal
+// in reserve, and the table eliminates an opponent for us.
+//
+// Three additive contributors, capped at +0.45:
+//
+//   - Lethal redirect available: +0.20 baseline.
+//   - Threat also fast-clocks us (power*2 >= myLife): +0.15.
+//   - We're behind on board (relPos < 0): +0.10 — goad is most useful
+//     when we lack the resources to handle threats directly.
+//
+// Defenders are excluded — defender + goad is a no-op (CR §702.3b:
+// defenders can't attack regardless of "must attack" riders).
+// Hexproof / shroud creatures are not pre-filtered here; the engine's
+// target legality check handles that at cast time.
+func (h *YggdrasilHat) goadDealOpportunity(gs *gameengine.GameState, seatIdx int) float64 {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) || gs.Seats[seatIdx] == nil {
+		return 0
+	}
+	myLife := gs.Seats[seatIdx].Life
+	if myLife <= 0 {
+		return 0
+	}
+	threatThreshold := myLife / 3
+	if threatThreshold < 6 {
+		threatThreshold = 6
+	}
+
+	lowestLifeOpp := -1
+	lowestLife := 9999
+	for i, s := range gs.Seats {
+		if i == seatIdx || s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		if s.Life > 0 && s.Life < lowestLife {
+			lowestLife = s.Life
+			lowestLifeOpp = i
+		}
+	}
+	if lowestLifeOpp < 0 {
+		return 0
+	}
+
+	for i, s := range gs.Seats {
+		if i == seatIdx || i == lowestLifeOpp || s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		for _, p := range s.Battlefield {
+			if p == nil || !p.IsCreature() || p.HasKeyword("defender") {
+				continue
+			}
+			pow := gs.PowerOf(p)
+			if pow < lowestLife || pow < threatThreshold {
+				continue
+			}
+			bonus := 0.20
+			if pow*2 >= myLife {
+				bonus += 0.15
+			}
+			if h.relativePosition(gs, seatIdx) < 0 {
+				bonus += 0.10
+			}
+			if bonus > 0.45 {
+				bonus = 0.45
+			}
+			return bonus
+		}
+	}
+	return 0
 }
 
 // -- UCB1 machinery (shared across all decision types) --
@@ -3580,6 +3823,29 @@ func (h *YggdrasilHat) ChooseMulligan(gs *gameengine.GameState, seatIdx int, han
 			if minEnablers == 0 && len(hand) >= 7 {
 				// But only mulligan if we also lack star cards / combo pieces.
 				if starCount == 0 && comboCount == 0 {
+					return true
+				}
+			}
+		}
+	}
+
+	// Commander-castability check: the deck's primary plan is usually
+	// "land the commander, then execute its text" — a hand that can't
+	// reach commander CMC by turn 4 throws that plan away unless there's
+	// an alternate engine to fall back on. Only fires on 7-card hands
+	// (partial mulls accept thinner plans) and only when no engine
+	// (star / VE / combo) provides a non-commander game plan. Without
+	// engine backup, a hand stuck on a 6-CMC commander it can't cast
+	// until turn 6+ gets run over by curve-based opponents before the
+	// commander ever hits the board. For partner decks the check uses
+	// the cheaper commander — you can cast either to start executing.
+	// See projectedManaAtTurn for the land+ramp model.
+	if len(hand) >= 7 && gs != nil {
+		if cmdrCMC := minCommanderCMC(gs.Seats[seatIdx]); cmdrCMC > 0 {
+			projected := projectedManaAtTurn(landCount, rampCount, 4)
+			if projected < float64(cmdrCMC) {
+				hasEngine := starCount >= 1 || veCount >= 1 || comboCount >= 1
+				if !hasEngine {
 					return true
 				}
 			}
@@ -8875,6 +9141,7 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 		h.poisonReceivedFrom = make([]int, h.seatCount)
 		h.opponentHandEntropy = make([]float64, h.seatCount)
 		h.opponentHeldMana = make([]int, h.seatCount)
+		h.opponentMaxHeldMana = make([]int, h.seatCount)
 		h.opponentTutored = make([]bool, h.seatCount)
 		h.opponentLoadedSilentTurns = make([]int, h.seatCount)
 		h.opponentFiredInteractionThisRound = make([]bool, h.seatCount)
@@ -8923,6 +9190,9 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 			}
 			if i < len(h.opponentHeldMana) {
 				h.opponentHeldMana[i] = 0
+			}
+			if i < len(h.opponentMaxHeldMana) {
+				h.opponentMaxHeldMana[i] = 0
 			}
 			if i < len(h.opponentTutored) {
 				h.opponentTutored[i] = false
@@ -9200,6 +9470,19 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 			} else {
 				h.opponentHeldMana[i] = 0
 			}
+			// R60: track the largest open-mana value we've ever observed
+			// at this opponent's upkeep. The streak counter above is
+			// binary at 2+; this captures the magnitude — a 4+ reading
+			// is Cryptic Command / Force of Negation / Mystic Confluence
+			// territory, a different counterspell threshold than a
+			// 2-mana Spell Pierce / Mana Leak rep. Doesn't decay — once
+			// we've seen the opponent hold 4 mana, the deck is capable
+			// of that rep even if they later spend down. (Future work
+			// could add a recency window; magnitude-ever-seen is the
+			// minimal first-pass signal.)
+			if i < len(h.opponentMaxHeldMana) && openMana > h.opponentMaxHeldMana[i] {
+				h.opponentMaxHeldMana[i] = openMana
+			}
 
 			// R60 round 5 — bluff signal tally. If this opponent looked
 			// loaded at the start of the previous round but did NOT
@@ -9311,6 +9594,26 @@ func (h *YggdrasilHat) opponentLikelyHasAnswer(oppSeat int) bool {
 		hasInteractiveColors = h.opponentColors[oppSeat]["U"] || h.opponentColors[oppSeat]["B"]
 	}
 	return tutored && heldMana >= 2 && hasInteractiveColors
+}
+
+// OpponentMaxHeldMana returns the largest open-mana value ever observed
+// at this opponent's upkeep. Read this when callers need the MAGNITUDE
+// of counterspell representation, not just the consecutive-turns streak:
+//
+//   - 0–1: nothing meaningful seen.
+//   - 2:   Spell Pierce / Mana Leak / Force Spike rep — soft counter
+//          territory.
+//   - 3:   Negate / Counterspell-class / Render Silent — hard counter.
+//   - 4+:  Cryptic Command / Force of Negation / Mystic Confluence
+//          territory — the opp has consistently held enough to fire
+//          big-mana interaction, suggesting blue control or cEDH combo.
+//
+// Returns 0 for an unknown seat or before any upkeep has fired.
+func (h *YggdrasilHat) OpponentMaxHeldMana(oppSeat int) int {
+	if oppSeat < 0 || oppSeat >= len(h.opponentMaxHeldMana) {
+		return 0
+	}
+	return h.opponentMaxHeldMana[oppSeat]
 }
 
 // handEntropy returns the heuristic [0,1] entropy estimate for an opponent.

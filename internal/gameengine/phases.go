@@ -119,6 +119,38 @@ func FirePhaseTriggers(gs *GameState, phase, step string) {
 	}
 	switch step {
 	case "upkeep":
+		// CR §702.24a — Cumulative upkeep is a triggered ability that
+		// fires "at the beginning of your upkeep": put an age counter
+		// on this permanent, then may pay [cost] for each age counter
+		// or sacrifice. ApplyCumulativeUpkeep was wired but never called
+		// from the upkeep step, so every cumulative-upkeep permanent
+		// (Tombstone Stairwell, Glacial Chasm, Drought, Phyrexian
+		// Marauder, etc.) accumulated zero age counters and was never
+		// asked to pay — i.e. the cumulative-upkeep keyword was inert.
+		//
+		// Iterate only the ACTIVE seat's battlefield: "your upkeep"
+		// scopes the trigger to the turn player per CR §702.24a. Snapshot
+		// the slice first so a sacrifice path (unpaid upkeep) mid-iteration
+		// doesn't invalidate the range.
+		if gs.Active >= 0 && gs.Active < len(gs.Seats) && gs.Seats[gs.Active] != nil {
+			snapshot := make([]*Permanent, len(gs.Seats[gs.Active].Battlefield))
+			copy(snapshot, gs.Seats[gs.Active].Battlefield)
+			for _, p := range snapshot {
+				if p == nil || p.Flags == nil {
+					continue
+				}
+				if p.Flags["cumulative_upkeep_cost"] <= 0 {
+					continue
+				}
+				// Defensive: skip if the permanent has already left the
+				// battlefield (a sibling cumulative-upkeep sacrifice
+				// earlier in this pass might have cascaded via SBAs).
+				if !permanentOnBattlefield(gs, p) {
+					continue
+				}
+				ApplyCumulativeUpkeep(gs, p)
+			}
+		}
 		FireCardTrigger(gs, "upkeep", ctx)
 	case "draw":
 		FireCardTrigger(gs, "draw_step", ctx)

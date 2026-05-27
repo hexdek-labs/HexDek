@@ -47,6 +47,36 @@ type oracleEntry struct {
 		TypeLine   string `json:"type_line"`
 		ManaCost   string `json:"mana_cost"`
 	} `json:"card_faces"`
+	// Prices block from Scryfall bulk. Observed keys: usd,
+	// usd_foil, usd_etched, eur, eur_foil, tix. Values are
+	// strings (or null when no marketplace data); decoded as
+	// strings so we can distinguish "no listing" from "$0.00".
+	Prices map[string]string `json:"prices,omitempty"`
+}
+
+// USDPrice returns the parsed non-foil USD price for this entry. The
+// "usd" key in the Scryfall prices block is the canonical retail
+// reference; usd_foil and usd_etched intentionally aren't consulted
+// here — deck-cost tier classification works off the cheapest
+// playable printing, and foil/etched premiums distort that.
+//
+// Returns ok=false when the entry has no prices block at all, when
+// the usd key is absent, when the value is empty / null, or when it
+// fails to parse as a float. Callers treat ok=false as "unpriced" —
+// distinct from $0, which would be a real (free) card.
+func (e *oracleEntry) USDPrice() (float64, bool) {
+	if e == nil || e.Prices == nil {
+		return 0, false
+	}
+	raw := strings.TrimSpace(e.Prices["usd"])
+	if raw == "" {
+		return 0, false
+	}
+	v, err := strconv.ParseFloat(raw, 64)
+	if err != nil {
+		return 0, false
+	}
+	return v, true
 }
 
 // oracleDB maps normalized card names to oracle entries.
@@ -425,6 +455,12 @@ func analyzeDeckFile(path string, oracle *oracleDB, mechDB *MechanicDB) (*FreyaR
 		// Phase 1 statistics module.
 		report.Stats = ComputeDeckStatistics(qtyProfiles)
 
+		// Mana-hump vs ramp comparison — requires Stats. The structural
+		// hump warning (heavy hump at the top quartile) was already
+		// emitted inside AnalyzeDeck; this appends the ramp-comparison
+		// warning when the hump outpaces the deck's ramp package.
+		AugmentCurveWarningsWithRamp(report, report.Stats.RampCount)
+
 		// Phase 2 role tagging.
 		report.Roles = ComputeRoleAnalysis(qtyProfiles, oracle)
 
@@ -762,8 +798,10 @@ type strategyJSON struct {
 	InteractionAvgCMC       float64                   `json:"interaction_avg_cmc,omitempty"`
 	CheapInteraction        int                       `json:"cheap_interaction,omitempty"`
 	ManaBaseGrade           string                    `json:"mana_base_grade,omitempty"`
-	KeepableHandPct         float64                   `json:"keepable_hand_pct,omitempty"`
-	KeepableHandPctAdjusted float64                   `json:"keepable_hand_pct_adjusted,omitempty"`
+	KeepableHandPct                 float64           `json:"keepable_hand_pct,omitempty"`
+	KeepableHandPctAdjusted         float64           `json:"keepable_hand_pct_adjusted,omitempty"`
+	KeepableHandPctFreeMull         float64           `json:"keepable_hand_pct_free_mull,omitempty"`
+	KeepableHandPctAdjustedFreeMull float64           `json:"keepable_hand_pct_adjusted_free_mull,omitempty"`
 	IsCommanderCentric      bool                      `json:"is_commander_centric,omitempty"`
 	PowerPercentile         int                       `json:"power_percentile,omitempty"`
 	MetaMatchups            []strategyMatchup         `json:"meta_matchups,omitempty"`
@@ -953,6 +991,8 @@ func saveStrategyJSON(path string, report *FreyaReport) {
 		sj.ManaBaseGrade = dp.ManaBaseGrade
 		sj.KeepableHandPct = dp.KeepableHandPct
 		sj.KeepableHandPctAdjusted = dp.KeepableHandPctAdjusted
+		sj.KeepableHandPctFreeMull = dp.KeepableHandPctFreeMull
+		sj.KeepableHandPctAdjustedFreeMull = dp.KeepableHandPctAdjustedFreeMull
 		sj.IsCommanderCentric = dp.IsCommanderCentric
 		sj.PowerPercentile = dp.PowerPercentile
 		for _, mm := range dp.MetaMatchups {

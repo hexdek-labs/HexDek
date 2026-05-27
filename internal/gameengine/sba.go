@@ -76,7 +76,24 @@ func StateBasedActions(gs *GameState) bool {
 		if sba704_5g(gs) {
 			changed = true
 		}
-		sba704_5h(gs) // stub — deathtouch tracking not wired.
+		// Per CR §704.3 every SBA that mutates state in this pass must
+		// keep the outer "repeat until quiescent" loop alive. The
+		// `// stub — ...` comments below were authored when these
+		// helpers really were no-ops; the helpers were later wired to
+		// real implementations (sba704_5h deathtouch tracking, sba704_5t
+		// dungeon-completion, sba704_5w battle-protector assignment,
+		// sba704_5x siege protector reset, sba704_5z start-your-engines
+		// speed init) but the call sites still dropped their bool
+		// returns, so a pass in which ONLY one of these helpers mutated
+		// state would terminate the SBA loop early — missing cascading
+		// SBAs that depend on the post-mutation state (e.g. a deathtouch
+		// kill freeing up a same-name legendary, an aura falling off the
+		// destroyed creature, a Saga sacrificing because its chapter
+		// ability finally left the stack). Capture the result of every
+		// helper so the loop matches CR §704.3 semantics.
+		if sba704_5h(gs) {
+			changed = true
+		}
 		if sba704_5i(gs) {
 			changed = true
 		}
@@ -112,17 +129,25 @@ func StateBasedActions(gs *GameState) bool {
 		if sba704_5s(gs) {
 			changed = true
 		}
-		sba704_5t(gs) // stub — dungeons.
-		sba704_5u(gs) // stub — space sculptor / sector designation.
+		if sba704_5t(gs) {
+			changed = true
+		}
+		sba704_5u(gs) // genuine stub — space sculptor / sector designation not modeled, always returns false.
 		if sba704_5v(gs) {
 			changed = true
 		}
-		sba704_5w(gs) // stub — battle protectors.
-		sba704_5x(gs) // stub — siege protector reset.
+		if sba704_5w(gs) {
+			changed = true
+		}
+		if sba704_5x(gs) {
+			changed = true
+		}
 		if sba704_5y(gs) {
 			changed = true
 		}
-		sba704_5z(gs) // stub — Start Your Engines speed init.
+		if sba704_5z(gs) {
+			changed = true
+		}
 
 		// Variant-specific SBAs (§704.6). Commander clauses are gated on
 		// gs.CommanderFormat; non-commander games short-circuit at helper
@@ -905,9 +930,13 @@ func sba704_5m(gs *GameState) bool {
 //	creature, artifact, enchantment, land, planeswalker, battle,
 //	permanent, player
 //
-// Restrictions with multi-word qualifiers ("enchant nonblack creature",
-// "enchant creature you control") are treated as the bare noun match —
-// complex restriction checks belong to a future AST pass.
+// Restrictions with multi-word qualifiers ("enchant nonblack creature")
+// are still treated as the bare noun match — complex AST-side
+// restriction checks remain a future pass. The narrow "you control" /
+// "an opponent controls" qualifier is handled here because control
+// changes are a frequent CR §303.4f trigger (Mind Control / Threaten /
+// Sower of Temptation stealing the enchanted creature) and the SBA
+// gap was silently keeping illegal-controller auras attached.
 func auraTargetMatchesEnchantClause(aura, target *Permanent) bool {
 	if aura == nil || aura.Card == nil || target == nil || target.Card == nil {
 		return true
@@ -916,15 +945,66 @@ func auraTargetMatchesEnchantClause(aura, target *Permanent) bool {
 	if kind == "" {
 		return true
 	}
-	if kind == "player" || kind == "permanent" {
-		return true
-	}
-	for _, t := range target.Card.Types {
-		if strings.EqualFold(t, kind) {
-			return true
+	if kind != "player" && kind != "permanent" {
+		// Type-restriction check.
+		typeOK := false
+		for _, t := range target.Card.Types {
+			if strings.EqualFold(t, kind) {
+				typeOK = true
+				break
+			}
+		}
+		if !typeOK {
+			return false
 		}
 	}
-	return false
+	// Controller-restriction check (CR §303.4c / §303.4f). Auras with
+	// "enchant ... you control" or "enchant ... an opponent controls"
+	// become illegally attached when control of the enchanted permanent
+	// changes; §704.5m then sends them to their owner's graveyard.
+	switch parseEnchantControllerClause(aura.Card) {
+	case "you_control":
+		if target.Controller != aura.Controller {
+			return false
+		}
+	case "opponent_controls":
+		if target.Controller == aura.Controller {
+			return false
+		}
+	}
+	return true
+}
+
+// parseEnchantControllerClause looks at the oracle text of an Aura card
+// and returns "you_control" if the enchant restriction includes "you
+// control", "opponent_controls" if it includes "an opponent controls" /
+// "opponent controls", or "" if no controller qualifier is present.
+//
+// The scan is scoped to the first 100 characters AFTER the "enchant "
+// clause boundary so unrelated later text ("when enchanted creature
+// dies, you control") doesn't false-positive.
+func parseEnchantControllerClause(card *Card) string {
+	text := OracleTextLower(card)
+	if text == "" {
+		return ""
+	}
+	idx := strings.Index(text, "enchant ")
+	if idx < 0 {
+		return ""
+	}
+	rest := text[idx:]
+	// Stop the scan at the next clause boundary — newline or period —
+	// so unrelated body text doesn't bleed into the enchant-clause match.
+	if i := strings.IndexAny(rest, "\n."); i > 0 {
+		rest = rest[:i]
+	}
+	if strings.Contains(rest, "an opponent controls") || strings.Contains(rest, "opponent controls") {
+		return "opponent_controls"
+	}
+	if strings.Contains(rest, "you control") {
+		return "you_control"
+	}
+	return ""
 }
 
 // parseEnchantKind reads the lowercased oracle text and extracts the noun

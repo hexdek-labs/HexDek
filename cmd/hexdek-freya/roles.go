@@ -109,10 +109,30 @@ var rolePriority = map[RoleTag]int{
 	// explains their strategic purpose.
 	RoleRecursion:    9,
 	RoleProtection:   10,
+	// Draw and Ramp are intentionally tied at priority 11 — both are
+	// "resource engine" roles. Whether a dual-tagged card (Selvala
+	// Heart of the Wilds, Augur of Autumn, Kydele Chosen of Kruphix —
+	// creatures whose triggers produce BOTH a card and mana) should
+	// lead with Draw or Ramp depends on what the commander's themes
+	// reward. The tie is broken by RefineRolesByCommanderThemes after
+	// dp.CommanderThemes is populated; without theme data the tie
+	// falls back to "Draw first" via roleTieBreakOrder, preserving
+	// pre-r60 behavior.
 	RoleDraw:         11,
-	RoleRamp:         12,
+	RoleRamp:         11,
 	RoleUtility:      13,
 	RoleLand:         14,
+}
+
+// roleTieBreakOrder gives a deterministic secondary key for roles
+// that share a rolePriority value. Used as the last-resort fallback
+// inside RefineRolesByCommanderThemes when neither commander-theme
+// alignment nor static priority differentiates two roles. Roles
+// absent from this map fall through to alphabetical comparison on
+// the RoleTag string.
+var roleTieBreakOrder = map[RoleTag]int{
+	RoleDraw: 0, // Draw first when no theme signal — matches pre-r60 default
+	RoleRamp: 1,
 }
 
 func TagCardRole(name, oracleText, typeLine, manaCost string, cmc int, profile CardProfile) []RoleTag {
@@ -182,8 +202,29 @@ func TagCardRole(name, oracleText, typeLine, manaCost string, cmc int, profile C
 		roles = append(roles, RoleUtility)
 	}
 
-	sort.Slice(roles, func(i, j int) bool {
-		return rolePriority[roles[i]] < rolePriority[roles[j]]
+	sort.SliceStable(roles, func(i, j int) bool {
+		pi, pj := rolePriority[roles[i]], rolePriority[roles[j]]
+		if pi != pj {
+			return pi < pj
+		}
+		// Tie band: fall back to roleTieBreakOrder for deterministic
+		// default ordering when no commander-theme context is available.
+		// RefineRolesByCommanderThemes (called from BuildDeckProfile)
+		// re-sorts with theme awareness when themes are known.
+		ti, tOk := roleTieBreakOrder[roles[i]]
+		tj, uOk := roleTieBreakOrder[roles[j]]
+		if tOk && uOk {
+			return ti < tj
+		}
+		// One side has explicit order, the other doesn't — explicit wins.
+		if tOk {
+			return true
+		}
+		if uOk {
+			return false
+		}
+		// Both unordered — alphabetical for stability.
+		return string(roles[i]) < string(roles[j])
 	})
 
 	return roles
@@ -597,12 +638,89 @@ func isStax(p CardProfile, ot string) bool {
 			return true
 		}
 	}
+	// r60 audit: catches Winter Orb / Static Orb / Stasis / Rule of Law /
+	// Spirit of the Labyrinth via these patterns. Drannith Magistrate /
+	// Grand Abolisher / Ethersworn Canonist trip the p.Effects "lock"
+	// path above via "can't cast". Remaining gaps surfaced by the audit
+	// are handled in the dedicated arms below.
 	if containsAny(ot,
 		"can't untap", "don't untap",
 		"skip", "can't draw",
 		"can't search", "can't cast noncreature",
 		"each player can't",
 		"players can't") {
+		return true
+	}
+	// Opponent-targeting lock variants the p.Effects path doesn't cover
+	// (Archon of Emeria's "each opponent can't cast more than one spell"
+	// IS caught via the lock path, but the broader "opponents can't
+	// [attack | activate | search]" family needs explicit anchors).
+	if containsAny(ot,
+		"your opponents can't",
+		"each opponent can't",
+		"opponents can't") {
+		return true
+	}
+	// Activated-ability lock — Null Rod, Cursed Totem, Stony Silence,
+	// Linvala Keeper of Silence, Pithing Needle, Phyrexian Revoker,
+	// Collector Ouphe. These target activated abilities, not casting,
+	// so they don't trip the "can't cast" → "lock" parser path.
+	if strings.Contains(ot, "can't be activated") {
+		return true
+	}
+	// Tax-cost wording the analysis.go parser misses. The parser checks
+	// `Contains(ot, "costs")` (plural-s), but the canonical "Spells cost
+	// {1} more to cast" wording on Sphere of Resistance, Thalia Guardian
+	// of Thraben, and Lodestone Golem uses singular "cost". Trinisphere
+	// uses an entirely different shape: "would cost less than three mana
+	// to cast costs three mana to cast" — minimum-cost form. Both
+	// surfaced via direct anchors here so the role tagger doesn't
+	// depend on the parser being exhaustive.
+	if containsAny(ot,
+		"cost {1} more to cast",
+		"cost {2} more to cast",
+		"cost {3} more to cast",
+		"would cost less than") {
+		return true
+	}
+	// Land-type lock — Blood Moon, Magus of the Moon, Ruination-adjacent
+	// effects. "Nonbasic lands are [Mountains / Forests / ...]" is the
+	// canonical wording.
+	if strings.Contains(ot, "nonbasic lands are") ||
+		strings.Contains(ot, "nonbasic land is") {
+		return true
+	}
+	// ETB-exile lock (Containment Priest, Yixlid Jailer-class): "if a
+	// [creature] would enter the battlefield [...] exile it instead".
+	// Both clauses required so doubling effects / replacement-counter
+	// ETBs ("enters with N counters") don't false-fire.
+	if strings.Contains(ot, "would enter the battlefield") &&
+		strings.Contains(ot, "exile it instead") {
+		return true
+	}
+	// Search-intercept (Aven Mindcensor, Leonin Arbiter, Opposition
+	// Agent): "if [an opponent / a player] would search". Guarded by
+	// requiring the would-search framing so self-tutor cards ("search
+	// your library") don't false-fire.
+	if strings.Contains(ot, "would search") &&
+		(strings.Contains(ot, "opponent") || strings.Contains(ot, "player")) {
+		return true
+	}
+	// ETB-trigger lock — Hushwing Gryff, Tocatli Honor Guard, Torpor Orb:
+	// "creature abilities that trigger when a creature enters [...] don't
+	// trigger". Both clauses required.
+	if strings.Contains(ot, "trigger when") &&
+		strings.Contains(ot, "don't trigger") {
+		return true
+	}
+	// Periodic each-player tax — Smokestack ("at the beginning of each
+	// player's upkeep, that player sacrifices a permanent for each soot
+	// counter"), Tangle Wire ("at the beginning of each player's upkeep,
+	// that player taps an untapped artifact, creature, or land they
+	// control for each fade counter"), Sands of Time-style time-tax
+	// effects. Anchor: "each player's upkeep" + sacrifice/tap forcing.
+	if strings.Contains(ot, "each player's upkeep") &&
+		containsAny(ot, "sacrifices", "taps an untapped") {
 		return true
 	}
 	return false
