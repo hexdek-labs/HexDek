@@ -3634,6 +3634,35 @@ func classifyTutorInto(p *CardProfile, ot, tl, name string) {
 		}
 	}
 
+	// 1b. Reveal-until tutors: "Reveal cards from the top of your library
+	// until you reveal a [X]. Put it into your hand / onto the battlefield."
+	// This is the Worldly Tutor / Madcap Experiment / Jalira / Riptide
+	// Shapeshifter / Reality Scramble / Mass Polymorph family — functionally
+	// a tutor because it consistently finds a card of the specified type,
+	// even though the wording is "reveal until" rather than "search". 39
+	// cards in the 2026-05-26 oracle dump use this pattern WITHOUT also
+	// using "search your library", and they all behave as tutors for
+	// combo-piece-finding purposes (Madcap Experiment + Platinum Angel,
+	// Jalira → Blightsteel Colossus, etc.).
+	//
+	// The land-restricted reveal-until family (Avenging Druid, Recross the
+	// Paths, The Ring Goes South, The Regalia, Clifftop Lookout) is split
+	// off into IsLandTutor so it routes to the ramp bucket, matching the
+	// existing search-your-library convention.
+	if strings.Contains(ot, "reveal cards from the top of your library until") &&
+		containsAny(ot,
+			"put it into your hand",
+			"put that card into your hand",
+			"put that card onto the battlefield",
+			"put those cards onto the battlefield",
+			"put those land cards onto the battlefield",
+			"put all creature cards revealed this way onto the battlefield") {
+		p.IsTutor = true
+		if isLandRestrictedRevealUntil(ot) {
+			p.IsLandTutor = true
+		}
+	}
+
 	// 2. Wish-style tutors: fetch from outside the game / sideboard. The
 	// wording variants are deliberately enumerated rather than collapsed to
 	// "outside the game" alone, because "you own from outside the game"
@@ -3651,6 +3680,41 @@ func classifyTutorInto(p *CardProfile, ot, tl, name string) {
 			p.IsWishTutor = true
 		}
 	}
+}
+
+// isLandRestrictedRevealUntil returns true when the reveal-until clause can
+// only find a land. Anchors: "reveal a land card" / "reveal X land cards"
+// — same intent as isLandRestrictedSearch but for the reveal-until family
+// (Avenging Druid, Recross the Paths, The Ring Goes South, The Regalia,
+// Clifftop Lookout, Skyserpent Seeker). Cards that say "until you reveal
+// a creature card OR a land card" stay non-land because the creature mode
+// is the consistency-relevant one.
+func isLandRestrictedRevealUntil(ot string) bool {
+	// Hard exclusion: any non-land target keeps this in the consistency bucket.
+	if containsAny(ot,
+		"until you reveal a creature",
+		"until you reveal a nonland",
+		"until you reveal a nonlegendary creature",
+		"until you reveal an artifact",
+		"until you reveal an enchantment",
+		"until you reveal an instant",
+		"until you reveal a sorcery",
+		"until you reveal a planeswalker",
+		"until you reveal an aura",
+		"until you reveal an equipment",
+		"until you reveal a shrine",
+		"until you reveal a time lord",
+		"until you reveal a card",
+		"until you reveal that many creature",
+		"until you reveal a number of") {
+		return false
+	}
+	return containsAny(ot,
+		"until you reveal a land card",
+		"until you reveal a basic land card",
+		"until you reveal two land cards",
+		"until you reveal three land cards",
+		"until you reveal x land cards")
 }
 
 // isLandRestrictedSearch returns true when the only thing the "search your
