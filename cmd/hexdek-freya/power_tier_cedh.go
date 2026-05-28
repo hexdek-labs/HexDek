@@ -91,6 +91,40 @@ func ClassifyCEDHPowerTier(dp *DeckProfile, report *FreyaReport) *CEDHPowerTier 
 
 	tier, score := cedhMedianTier(signals)
 
+	// T4+ floor gate — to reach High Power (T4) or cEDH (T5), a deck
+	// must show at least 2 of {GameChangers ≥ 1, NonLandTutors ≥ 3,
+	// InteractionPackage ≥ 0.30}. These three signals are the cEDH-
+	// shape DISCRIMINATORS — a deck without any GCs, tutor depth, or
+	// interaction can't meaningfully race regardless of how clean its
+	// mana base / curve / win-line confidence looks.
+	//
+	// Surfaced by the 2026-05-28 precon verification (PR #715): the
+	// silverquill_influence_secrets_of_strixhaven precon was lifted
+	// to T4 by upper-mid median of votes 1/1/2/4/4/4 (GC=T1, Mana=T4,
+	// Tutors=T2, WinLine=T4, Interaction=T1, CMC=T4) despite having
+	// 0 GCs, 1 tutor, and 0 interaction. Without this gate, an
+	// unedited WotC precon classifies as "High Power" — which is
+	// structurally wrong per the WotC bracket framework (precons are
+	// B2-B3 by design). The gate caps such decks at T3.
+	//
+	// Gate skipped at tier ≤ 3 — only fires when the median otherwise
+	// would have landed at T4 or T5.
+	if tier >= 4 {
+		discriminators := 0
+		if dp.GameChangerCount >= 1 {
+			discriminators++
+		}
+		if report.NonLandTutorCount >= 3 {
+			discriminators++
+		}
+		if dp.InteractionPackage.Score >= 0.30 {
+			discriminators++
+		}
+		if discriminators < 2 {
+			tier = 3
+		}
+	}
+
 	// B5 confirmation gate — median 5 only sticks when the deck shows
 	// at least 2 of the cEDH-shape markers. Pre-gate, a midrange B4
 	// pile that happens to score T5 across enough signals would mis-
