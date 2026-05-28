@@ -147,6 +147,7 @@ CREATE TABLE IF NOT EXISTS game_player (
     mana_pool_c        INTEGER NOT NULL DEFAULT 0,
     lands_played_turn  INTEGER NOT NULL DEFAULT 0, -- reset to 0 at untap step
     attempted_empty_draw INTEGER NOT NULL DEFAULT 0, -- CR §119.5: set when player draws from empty library; CheckGameEnd eliminates flagged seats
+    win_effect_triggered INTEGER NOT NULL DEFAULT 0, -- CR §104.2c: set when a "you win the game" effect (Approach, Felidar, Maze's End) resolves; CheckGameEnd grants the win
     PRIMARY KEY (game_id, seat_position)
 );
 

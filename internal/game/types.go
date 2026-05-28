@@ -110,6 +110,81 @@ type Player struct {
 	// stays set for the rest of the game (the loss is permanent per CR
 	// §704.5b — there is no "undo your empty-library attempt" effect).
 	AttemptedEmptyDraw bool `json:"attempted_empty_draw,omitempty"`
+	// WinEffectTriggered — CR §104.2c hook. Set when a "you win the game"
+	// effect resolves (Approach of the Second Sun's second cast, Felidar
+	// Sovereign / Test of Endurance upkeep, Maze's End at 10 gates,
+	// Hellkite Tyrant at 7+ stolen artifacts, Mayael's Aria, etc.). Read
+	// by CheckGameEnd before evaluating loss conditions — a triggered
+	// win effect overrides simultaneous loss conditions on the same seat
+	// (CR §104.3a: if a win effect and a loss effect would both apply at
+	// the same time to the same player, the win effect wins). Not wired
+	// into card resolution yet in the MVP layer — the flag is the
+	// architectural seam that card handlers will flip when the live
+	// game gains those card implementations.
+	WinEffectTriggered bool `json:"win_effect_triggered,omitempty"`
+}
+
+// LossCause identifies which CR §704.5 clause eliminated a seat. Returned
+// by Player.CheckLossConditions so the engine-level aggregator can log
+// the cause and downstream analytics (Heimdall, Loki invariants) can
+// classify the elimination. The string values are stable — referenced
+// in action-log payloads.
+type LossCause string
+
+const (
+	// LossNone — the seat has met no CR §704.5 loss condition.
+	LossNone LossCause = ""
+	// LossLife — CR §704.5a: zero or less life.
+	LossLife LossCause = "life_zero_or_less"
+	// LossEmptyLibrary — CR §704.5b / §119.5: attempted to draw from an
+	// empty library since the last SBA check.
+	LossEmptyLibrary LossCause = "attempted_empty_library_draw"
+	// LossPoison — CR §704.5c: ten or more poison counters.
+	LossPoison LossCause = "ten_or_more_poison_counters"
+	// LossCommanderDamage — CR §903.10a: 21+ combat damage from a single
+	// commander. Reserved — the MVP layer doesn't track per-commander
+	// damage yet; the constant is the architectural seam.
+	LossCommanderDamage LossCause = "twenty_one_commander_damage"
+	// LossEffect — CR §704.5g: "you lose the game" effects (Door to
+	// Nothingness, Phage the Untouchable damage, Lich's Mirror, Demonic
+	// Pact, Near-Death Experience, etc.). Reserved — not wired yet.
+	LossEffect LossCause = "you_lose_the_game_effect"
+)
+
+// CheckLossConditions evaluates this seat's CR §704.5 loss clauses in
+// isolation. Returns the FIRST matched cause (clauses are independent —
+// a seat at -5 life with 10 poison loses to both, but only one cause is
+// reported; the seat is still removed from play either way). Returns
+// (LossNone, false) when the seat survives.
+//
+// This is a PURE method: no DB access, no game-state lookups. Callers
+// (CheckGameEnd, future SBA pipeline) read whatever fields they want
+// onto the Player and let this method classify.
+//
+// CR §704.5 ordering is "simultaneous" — the §704.5 pass evaluates all
+// applicable clauses at once and removes every matching player. The
+// engine-level aggregator (CheckGameEnd) is responsible for the
+// simultaneous-removal semantics; this method just answers "is this
+// one seat lost?".
+func (p *Player) CheckLossConditions() (LossCause, bool) {
+	if p == nil {
+		return LossNone, false
+	}
+	// §704.5a — life total of 0 or less.
+	if p.Life <= 0 {
+		return LossLife, true
+	}
+	// §704.5b — empty-library draw flag (§119.5 mechanism).
+	if p.AttemptedEmptyDraw {
+		return LossEmptyLibrary, true
+	}
+	// §704.5c — ten or more poison counters.
+	if p.PoisonCounters >= 10 {
+		return LossPoison, true
+	}
+	// §903.10a (commander damage) and §704.5g (effect-loss) hooks land
+	// here when their backing fields exist on Player.
+	return LossNone, false
 }
 
 // TurnState describes the active turn.
