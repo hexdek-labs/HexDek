@@ -61,34 +61,64 @@ func TestCreatePermanent_NoDedupForDifferentCards(t *testing.T) {
 	}
 }
 
-// TestCreatePermanent_CrossSeatAllowed verifies that the dedup guard only
-// checks the TARGET seat. A card on seat 1's battlefield should NOT block
-// createPermanent on seat 0 — this is the control-change pattern (Etali,
-// Bribery, etc.) where MoveCard places on owner's seat then ETB fires
-// under the controller.
-func TestCreatePermanent_CrossSeatAllowed(t *testing.T) {
+// TestCreatePermanent_CrossSeatImplementsControlChange verifies
+// the corrected cross-seat dedup contract: when the *Card is
+// already wrapped in a Permanent on a DIFFERENT seat's
+// battlefield, createPermanent IMPLEMENTS CONTROL-CHANGE
+// SEMANTICS — the existing wrapper is dropped from the other
+// seat's battlefield, and a new wrapper is created on the target
+// seat with the caller's requested controller. The *Card pointer
+// ends up on EXACTLY ONE battlefield (the target seat's), per
+// CR §400.7c's "exactly one zone at a time" invariant.
+//
+// CONTRACT CHANGE: pre-r60-X, this test asserted that BOTH
+// wrappers coexisted (the existing on seat 1 PLUS a new one on
+// seat 0). That permissive behavior was the root cause of the
+// dominant CardIdentity violation cluster (Cluster A in
+// docs/loki-r60-250k-analysis.md, PR #713): "*Card appears in
+// both seat X battlefield and seat Y battlefield." Per CR
+// §400.7c an object exists in exactly one zone at a time; the
+// same *Card pointer on two battlefields is invalid by
+// construction. Control-change patterns (Bribery, Etali) work
+// via Owner/Controller fields on a SINGLE Permanent — the OLD
+// engine path placed an intermediate wrapper on the original
+// seat first, then created a duplicate on the controller's seat.
+// The fix drops the intermediate.
+//
+// Layer-stress sweep verification post-fix: 1000 games seed 42
+// went from 114 violations in 6 games to 0 violations.
+func TestCreatePermanent_CrossSeatImplementsControlChange(t *testing.T) {
 	gs := newGame(t, 2)
 	card := addCard(gs, 0, "Stolen Creature", "creature")
 
 	// Place on seat 1's battlefield directly (simulating MoveCard to owner).
-	gs.Seats[1].Battlefield = append(gs.Seats[1].Battlefield, &gameengine.Permanent{
+	stale := &gameengine.Permanent{
 		Card:       card,
 		Controller: 1,
 		Owner:      0,
 		Counters:   map[string]int{},
 		Flags:      map[string]int{},
-	})
+	}
+	gs.Seats[1].Battlefield = append(gs.Seats[1].Battlefield, stale)
 
-	// Seat 0 tries createPermanent — should create a new perm (not dedup)
-	// because the card is on a DIFFERENT seat.
+	// Seat 0 calls createPermanent on the same *Card — must
+	// implement control-change: drop the stale wrapper from seat
+	// 1's battlefield, create a new wrapper on seat 0.
 	perm := createPermanent(gs, 0, card, false)
 	if perm == nil {
-		t.Fatal("cross-seat createPermanent should not be blocked by dedup")
+		t.Fatal("cross-seat createPermanent: want new Permanent on target seat (control-change), got nil")
+	}
+	if perm == stale {
+		t.Errorf("cross-seat createPermanent: want a NEW wrapper on seat 0 with Controller=0, got the stale seat-1 wrapper (would have wrong controller)")
 	}
 	if perm.Controller != 0 {
-		t.Errorf("new perm should have controller=0, got %d", perm.Controller)
+		t.Errorf("new wrapper Controller: want 0 (target seat), got %d", perm.Controller)
 	}
 	if len(gs.Seats[0].Battlefield) != 1 {
-		t.Errorf("seat 0 should have 1 perm, got %d", len(gs.Seats[0].Battlefield))
+		t.Errorf("seat 0 should have 1 perm (the new wrapper), got %d", len(gs.Seats[0].Battlefield))
+	}
+	if len(gs.Seats[1].Battlefield) != 0 {
+		t.Errorf("seat 1 should have 0 perms (stale wrapper dropped per §400.7c exactly-one-zone), got %d — would produce CardIdentity violation",
+			len(gs.Seats[1].Battlefield))
 	}
 }
