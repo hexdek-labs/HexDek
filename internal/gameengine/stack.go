@@ -1413,6 +1413,25 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 		return nil
 	}
 
+	// r60 / Naru Meha + Panharmonicon copy-cascade fix
+	// (post-#692 verification residual): CR §707.10f — "If a copy of a
+	// permanent spell resolves, it becomes a token; it's still a copy
+	// of the spell it was a copy of." Stamp "token" onto the resolving
+	// Card.Types so (a) Permanent.IsToken() / cardIsTokenForInv return
+	// true (zone-conservation invariant stops counting cascade copies
+	// as real cards), (b) the existing token-cleanup SBA correctly
+	// makes the copy cease to exist when it leaves the battlefield.
+	//
+	// Done HERE (resolve-time) rather than at copy_spell creation in
+	// resolve.go because copies-of-permanent-spells aren't tokens
+	// WHILE ON THE STACK — only after resolution per §707.10f. The
+	// stack item still answers !IsToken() until this point, which
+	// matters for stack-targeting filters and the magecraft trigger
+	// fan-out in resolveCopySpell.
+	if item.IsCopy && !cardHasType(card, "token") {
+		card.Types = append(card.Types, "token")
+	}
+
 	// Summoning sickness: only creatures care (§302.1 / §212.3f). A creature
 	// with haste ignores it.
 	isCreature := cardHasType(card, "creature")
