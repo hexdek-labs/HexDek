@@ -726,6 +726,15 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		fmt.Fprintf(w, "  Deck Cost:  %s\n", dp.DeckCostNote)
 	}
 
+	if dp.CountersMatterTheme {
+		strength := "present"
+		if dp.CountersMatterStrong {
+			strength = "primary engine"
+		}
+		fmt.Fprintf(w, "  Counters Matter: %d producers + %d payoffs (%s)\n",
+			len(dp.CounterProducers), len(dp.CounterPayoffs), strength)
+	}
+
 	if dp.KeepableHandPct > 0 {
 		fmt.Fprintf(w, "  Opening Hands: %.0f%% keepable, avg turn to 4 mana: %.1f\n", dp.KeepableHandPct, dp.AvgTurnToFourMana)
 		if dp.KeepableHandPctFreeMull > 0 {
@@ -1393,6 +1402,10 @@ type jsonDeckProfile struct {
 	EstimatedTotalUSD  float64           `json:"estimated_total_usd,omitempty"`
 	PricedCardCount    int               `json:"priced_card_count,omitempty"`
 	UnpricedCardCount  int               `json:"unpriced_card_count,omitempty"`
+	CounterProducers     []string        `json:"counter_producers,omitempty"`
+	CounterPayoffs       []string        `json:"counter_payoffs,omitempty"`
+	CountersMatterTheme  bool            `json:"counters_matter_theme,omitempty"`
+	CountersMatterStrong bool            `json:"counters_matter_strong,omitempty"`
 	DeckCostNote       string            `json:"deck_cost_note,omitempty"`
 	VulnerableTo       []string          `json:"vulnerable_to,omitempty"`
 	VulnerableComboPieces []jsonVulnerableComboPiece `json:"vulnerable_combo_pieces,omitempty"`
@@ -1826,6 +1839,10 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		PricedCardCount:    dp.PricedCardCount,
 		UnpricedCardCount:  dp.UnpricedCardCount,
 		DeckCostNote:       dp.DeckCostNote,
+		CounterProducers:     dp.CounterProducers,
+		CounterPayoffs:       dp.CounterPayoffs,
+		CountersMatterTheme:  dp.CountersMatterTheme,
+		CountersMatterStrong: dp.CountersMatterStrong,
 		VulnerableTo:       dp.VulnerableTo,
 		VulnerableComboPieces: vulnCombo,
 		KeepableHandPct:                 dp.KeepableHandPct,
