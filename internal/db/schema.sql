@@ -220,7 +220,21 @@ CREATE TABLE IF NOT EXISTS card_oracle (
     image_uri_art    TEXT,                    -- art-crop image URL
     set_code         TEXT,
     cached_at        INTEGER NOT NULL,
-    legalities       TEXT NOT NULL DEFAULT '' -- JSON {format: "legal|not_legal|banned|restricted"}
+    legalities       TEXT NOT NULL DEFAULT '', -- JSON {format: "legal|not_legal|banned|restricted"}
+    -- Scryfall returns power/toughness as strings ("*", "X", "1+*") so we
+    -- keep the raw string here and parse to int at read time. Empty = no
+    -- P/T (instants, sorceries, lands) or pre-r60 cache row (treat as
+    -- "needs refresh"; the live-game CreateGameCard hydration path
+    -- gracefully falls back when missing).
+    power            TEXT NOT NULL DEFAULT '',
+    toughness        TEXT NOT NULL DEFAULT '',
+    -- card_faces is a JSON array of {name, power, toughness, type_line,
+    -- mana_cost, oracle_text} entries for DFC/MDFC/split/adventure cards.
+    -- The live-game P/T hydration picks face[0] (the front face) for
+    -- combat purposes — back-face creatures (Delver of Secrets // Insectile
+    -- Aberration) only matter on transformation, which the MVP doesn't
+    -- model yet. Empty = single-faced card.
+    card_faces       TEXT NOT NULL DEFAULT ''
 );
 
 CREATE INDEX IF NOT EXISTS idx_card_oracle_name ON card_oracle(name);

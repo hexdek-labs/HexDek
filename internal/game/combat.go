@@ -167,6 +167,14 @@ func ResolveCombat(ctx context.Context, database *sql.DB, gameID string) (*Damag
 		YurikoTriggers: []YurikoHit{},
 	}
 
+	// Snapshot the battlefield + oracle-text once for the resolve pass.
+	// Layered P/T reads (combatPower / combatToughness) apply anthem-style
+	// continuous effects on top of the base oracle P/T. Per CR §613 this
+	// snapshot is conceptually re-evaluated on each individual P/T query
+	// — but within a single combat resolution the battlefield doesn't
+	// change, so the snapshot is consistent.
+	layerCtx, _ := BuildLayerContext(ctx, database, gameID)
+
 	// Fetch all attackers
 	rows, err := database.QueryContext(ctx,
 		`SELECT instance_id, target_seat FROM combat_attacker WHERE game_id = ?`, gameID)
@@ -204,8 +212,8 @@ func ResolveCombat(ctx context.Context, database *sql.DB, gameID string) (*Damag
 		}
 		blockerRows.Close()
 
-		attackerPower := creaturePower(card)
-		attackerToughness := creatureToughness(card)
+		attackerPower := combatPower(card, layerCtx)
+		attackerToughness := combatToughness(card, layerCtx)
 
 		if len(blockerIDs) == 0 {
 			// Unblocked: damage to defending player
@@ -240,8 +248,8 @@ func ResolveCombat(ctx context.Context, database *sql.DB, gameID string) (*Damag
 			if err != nil {
 				continue
 			}
-			bp := creaturePower(b)
-			bt := creatureToughness(b)
+			bp := combatPower(b, layerCtx)
+			bt := combatToughness(b, layerCtx)
 			blockerTotalPower += bp
 			blockerTotalToughness += bt
 			// Attacker deals damage to first blocker that can absorb it; then
@@ -334,20 +342,24 @@ func CheckGameEnd(ctx context.Context, database *sql.DB, gameID string) error {
 	return nil
 }
 
-// creaturePower returns the creature's combat power.
+// creaturePower returns the creature's base (CR §613 layer 7a) power.
 //
-// Reads Card.Power directly (populated by CreateGameCard from the deck
-// JSON's `power` field, hydrated via marshalCardData / hydrateCardData).
-// Falls back to 1 when both Power and Toughness are zero — that's the
-// "deck JSON omitted P/T metadata" case, where the 1/1 default
-// preserves the pre-r60 MVP behavior. A legitimate 0/0 creature
-// (Tarmogoyf with no types, Spellskite-as-printed) is indistinguishable
-// from "missing" in the current schema and will also receive the 1/1
-// fallback — acceptable for the MVP since the live-game test
-// endpoints don't run those cards. Full §613 layers (counters,
-// until-EOT modifications, anthems) are NOT modeled here — that's the
-// gameengine package; if/when those land in the live game, this is
-// the function that needs to consume them.
+// Reads Card.Power directly — hydrated by CreateGameCard from the
+// cached oracle row at insert time (canonical CR base, with DFC
+// front-face selection). Falls back to 1 when both Power and Toughness
+// are zero — that's the "no oracle cache hit AND no caller-supplied
+// P/T" case, where the 1/1 default preserves the pre-r60 MVP behavior.
+// A legitimate 0/0 creature (Tarmogoyf with no types) is
+// indistinguishable from "missing" in the current schema and will also
+// receive the 1/1 fallback — acceptable for the MVP since the live-
+// game test endpoints don't run those cards.
+//
+// Combat damage resolution uses combatPower / combatToughness in
+// layers.go, which adds anthem-style continuous effects (CR §613 layer
+// 7e) on top of this base. Direct callers of creaturePower (the
+// pre-r60 tests) read base-only — that's fine, the layered version is
+// reserved for the resolve-time path where battlefield context is
+// available.
 func creaturePower(card *Card) int {
 	if card == nil {
 		return 0
