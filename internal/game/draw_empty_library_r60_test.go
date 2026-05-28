@@ -259,7 +259,92 @@ func TestDrawCardsThenCheckGameEnd_EliminatesEmptyLibrarySeat(t *testing.T) {
 }
 
 // -----------------------------------------------------------------------
-// 7. Round-trip: flag persists through storage layer.
+// 7. Replacement-prevented draw: when n is reduced to 0 before DrawCards
+//    is reached (e.g. "if you would draw a card, instead..."), the §119.5
+//    flag must NOT fire — the player was never instructed-to-draw at all.
+//    The MVP engine has no replacement layer yet, so this is modeled by
+//    calling DrawCards with n=0 against an empty library, which is the
+//    state any replacement effect would normalize the call to.
+// -----------------------------------------------------------------------
+
+func TestDrawCards_ReplacementPreventedDrawDoesNotSetFlag(t *testing.T) {
+	ctx := context.Background()
+	d, gameID, _ := setupTwoSeatGame(t, ctx)
+	defer d.Close()
+
+	if _, err := DrawCards(ctx, d, gameID, 0, 0, false); err != nil {
+		t.Fatalf("replacement-prevented draw: %v", err)
+	}
+	p, err := GetGamePlayer(ctx, d, gameID, 0)
+	if err != nil {
+		t.Fatalf("get player: %v", err)
+	}
+	if p.AttemptedEmptyDraw {
+		t.Fatalf("a replacement-reduced n=0 draw should not trigger §119.5; got AttemptedEmptyDraw=true")
+	}
+	if err := CheckGameEnd(ctx, d, gameID); err != nil {
+		t.Fatalf("check game end: %v", err)
+	}
+	g, err := GetGame(ctx, d, gameID)
+	if err != nil {
+		t.Fatalf("get game: %v", err)
+	}
+	if g.FinishedAt != 0 {
+		t.Errorf("game should still be active after a replacement-prevented draw; FinishedAt=%d", g.FinishedAt)
+	}
+}
+
+// -----------------------------------------------------------------------
+// 8. Two empty-draws in the same SBA round → both seats lose
+//    simultaneously. CR §704.5b is checked all-at-once; if every alive
+//    seat is flagged, the game ends in a draw (no winner).
+// -----------------------------------------------------------------------
+
+func TestCheckGameEnd_SimultaneousEmptyDrawDrawsTheGame(t *testing.T) {
+	ctx := context.Background()
+	d, gameID, _ := setupTwoSeatGame(t, ctx)
+	defer d.Close()
+
+	if _, err := DrawCards(ctx, d, gameID, 0, 1, false); err != nil {
+		t.Fatalf("seat 0 draw: %v", err)
+	}
+	turn, err := GetTurnState(ctx, d, gameID)
+	if err != nil {
+		t.Fatalf("get turn: %v", err)
+	}
+	turn.ActiveSeat = 1
+	if err := UpdateTurnState(ctx, d, turn); err != nil {
+		t.Fatalf("update turn: %v", err)
+	}
+	if _, err := DrawCards(ctx, d, gameID, 1, 1, false); err != nil {
+		t.Fatalf("seat 1 draw: %v", err)
+	}
+
+	if err := CheckGameEnd(ctx, d, gameID); err != nil {
+		t.Fatalf("check game end: %v", err)
+	}
+	g, err := GetGame(ctx, d, gameID)
+	if err != nil {
+		t.Fatalf("get game: %v", err)
+	}
+	if g.FinishedAt == 0 {
+		t.Errorf("game should be finished after both seats hit §704.5b; FinishedAt=0")
+	}
+	if g.Winner != "" {
+		t.Errorf("simultaneous empty-draw should end as a draw (Winner=\"\"); got %q", g.Winner)
+	}
+	p0, _ := GetGamePlayer(ctx, d, gameID, 0)
+	p1, _ := GetGamePlayer(ctx, d, gameID, 1)
+	if p0 == nil || !p0.AttemptedEmptyDraw {
+		t.Errorf("seat 0 should remain flagged AttemptedEmptyDraw=true post-CheckGameEnd")
+	}
+	if p1 == nil || !p1.AttemptedEmptyDraw {
+		t.Errorf("seat 1 should remain flagged AttemptedEmptyDraw=true post-CheckGameEnd")
+	}
+}
+
+// -----------------------------------------------------------------------
+// 9. Round-trip: flag persists through storage layer.
 // -----------------------------------------------------------------------
 
 func TestAttemptedEmptyDraw_PersistsThroughStorage(t *testing.T) {
