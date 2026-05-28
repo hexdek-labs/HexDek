@@ -11,18 +11,19 @@ import (
 // signals into a single [0, 1] score plus a one-line user-facing
 // summary suitable for Decks-screen rendering.
 //
-// Current components (PR #730):
+// Current components:
 //   - ManaCurveTierFit (PR #728): avg CMC matches tier expectation
 //   - TutorDensityTierFit (PR #729): tutor count matches tier
 //     consistency expectation
+//   - InteractionTierFit (PR #731): interaction package count
+//     matches tier defensive expectation
 //
-// Designed for extension: when InteractionTierFit and
-// RemovalTierFit ship, they slot in via the same Components slice
-// and the weighted aggregation picks them up automatically. The
-// composite Score weighting each component equally (1.0 weight
-// per component) is the default; the function accepts an
-// explicit weights override for callers that want to emphasize
-// one axis over another.
+// Designed for extension: when RemovalTierFit ships, it slots in
+// via the same Components slice and the weighted aggregation
+// picks it up automatically. The composite Score weighting each
+// component equally (1.0 weight per component) is the default;
+// the function accepts an explicit weights override for callers
+// that want to emphasize one axis over another.
 //
 // Semantic anchors:
 //
@@ -113,7 +114,7 @@ type TierFitnessComponent struct {
 // (both components share the input tier in practice — they're
 // computed for the same deck). If they disagree, the first non-nil
 // wins, which is the curve fit in the canonical call order.
-func BuildTierFitnessScore(curve *ManaCurveTierFit, tutors *TutorDensityTierFit) *TierFitnessScore {
+func BuildTierFitnessScore(curve *ManaCurveTierFit, tutors *TutorDensityTierFit, interaction *InteractionTierFit) *TierFitnessScore {
 	out := &TierFitnessScore{}
 	if curve != nil {
 		out.Tier = curve.Tier
@@ -137,6 +138,19 @@ func BuildTierFitnessScore(curve *ManaCurveTierFit, tutors *TutorDensityTierFit)
 			Weight:    1.0,
 			Direction: tutors.Direction,
 			Note:      tutorComponentNote(tutors.Direction),
+		})
+	}
+	if interaction != nil {
+		if out.Tier == 0 {
+			out.Tier = interaction.Tier
+			out.TierLabel = interaction.TierLabel
+		}
+		out.Components = append(out.Components, TierFitnessComponent{
+			Axis:      "Interaction",
+			Fit:       interaction.Fit,
+			Weight:    1.0,
+			Direction: interaction.Direction,
+			Note:      interactionComponentNote(interaction.Direction),
 		})
 	}
 	if len(out.Components) == 0 {
@@ -194,6 +208,21 @@ func tutorComponentNote(direction string) string {
 		return "tutor density too dense"
 	case "in_band":
 		return "tutor density aligned"
+	default:
+		return ""
+	}
+}
+
+// interactionComponentNote translates the interaction fit's
+// Direction into a summary-ready phrase.
+func interactionComponentNote(direction string) string {
+	switch direction {
+	case "too_sparse":
+		return "interaction too sparse"
+	case "too_dense":
+		return "interaction too dense"
+	case "in_band":
+		return "interaction aligned"
 	default:
 		return ""
 	}
