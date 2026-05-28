@@ -72,15 +72,13 @@ func etaliPrimalStormAttack(gs *gameengine.GameState, perm *gameengine.Permanent
 		if top == nil {
 			continue
 		}
-		// Move from this seat's library to Etali's controller's exile.
-		moveCardBetweenZones(gs, seatIdx, top, "library", "library_remove", "etali_exile")
-		// Append to Etali's controller's exile zone explicitly — we
-		// can't use MoveCard's exile arm for a cross-seat move (the
-		// exile zone is per-seat in this engine; Etali's clause keeps
-		// the exiled cards visible to the owner Hat, but for the cast-
-		// from-exile grant we need them on Etali's controller's exile
-		// pile so RequireController matches).
-		gs.Seats[perm.Controller].Exile = append(gs.Seats[perm.Controller].Exile, top)
+		// CR §400.7c: the exiled card goes to its OWNER's exile zone
+		// (= seatIdx, since `top` was on seat seatIdx's library). The
+		// ZoneCastGrant below uses RequireController = Etali's controller
+		// so the cast-from-exile pipeline grants permission regardless
+		// of which seat's exile pile the card sits in — no need to
+		// cross-route the card into Etali's controller's exile.
+		gameengine.MoveCard(gs, top, seatIdx, "library", "exile", "etali_exile")
 		exiled = append(exiled, top.DisplayName())
 		gs.LogEvent(gameengine.Event{
 			Kind:   "etali_exile",
@@ -90,7 +88,7 @@ func etaliPrimalStormAttack(gs *gameengine.GameState, perm *gameengine.Permanent
 			Details: map[string]interface{}{
 				"card":         top.DisplayName(),
 				"from_library": seatIdx,
-				"to_exile":     perm.Controller,
+				"to_exile":     seatIdx,
 			},
 		})
 		// Register the free-cast grant for nonlands only.

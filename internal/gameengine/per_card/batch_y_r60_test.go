@@ -270,10 +270,16 @@ func TestEtali_AttackExilesTopOfEachLibrary(t *testing.T) {
 		"attacker_seat": 0,
 	})
 
-	// All 3 cards should be in Etali's controller's exile pile.
-	if len(gs.Seats[0].Exile) != 3 {
-		t.Errorf("expected 3 cards in Etali's controller's exile, got %d (events: %d)",
-			len(gs.Seats[0].Exile), hasEvent(gs, "etali_exile"))
+	// CR §400.7c — each exiled card goes to its OWNER's exile zone
+	// (the seat the library belonged to), not Etali's controller's
+	// exile. Etali's free-cast grant references the cards by pointer,
+	// so the cast pipeline still finds them regardless of which seat
+	// holds the exile pile.
+	for seat := 0; seat < 3; seat++ {
+		if len(gs.Seats[seat].Exile) != 1 {
+			t.Errorf("seat %d should hold its own exiled library top (CR §400.7c), got %d (events: %d)",
+				seat, len(gs.Seats[seat].Exile), hasEvent(gs, "etali_exile"))
+		}
 	}
 	// Each seat's library should have lost its top card.
 	if len(gs.Seats[0].Library) != 1 {
@@ -305,9 +311,13 @@ func TestEtali_RegistersGrantsOnNonlandsOnly(t *testing.T) {
 		"attacker_seat": 0,
 	})
 
-	// Both cards should be in Etali's exile.
-	if len(gs.Seats[0].Exile) != 2 {
-		t.Errorf("expected 2 exiled cards (nonland + land), got %d", len(gs.Seats[0].Exile))
+	// CR §400.7c — each card lands in its OWNER's exile: seat 0's
+	// nonland → seat 0 exile; seat 1's land → seat 1 exile.
+	if len(gs.Seats[0].Exile) != 1 {
+		t.Errorf("seat 0 owner-exile should hold the nonland, got %d cards", len(gs.Seats[0].Exile))
+	}
+	if len(gs.Seats[1].Exile) != 1 {
+		t.Errorf("seat 1 owner-exile should hold the land, got %d cards", len(gs.Seats[1].Exile))
 	}
 	// Only the nonland should have a ZoneCastGrant.
 	if grant, ok := gs.ZoneCastGrants[nonland]; !ok || grant == nil {
