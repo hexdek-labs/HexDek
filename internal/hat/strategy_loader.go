@@ -59,6 +59,11 @@ type freyaDeckProfile struct {
 	PrimaryArchetype string `json:"primary_archetype"`
 	Bracket          int    `json:"bracket"`
 	GameplanSummary  string `json:"gameplan_summary"`
+	// PowerTier carries the 5-tier cEDH classification from Freya's
+	// ClassifyCEDHPowerTier (PRs #714/#715). 1-2 = Casual, 3 =
+	// Upgraded Precon, 4 = High Power, 5 = cEDH. Drives
+	// ApplyPowerTierRouting in the hat strategy loader.
+	PowerTier        int    `json:"cedh_power_tier,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -68,6 +73,9 @@ type freyaDeckProfile struct {
 type strategyFileJSON struct {
 	Archetype       string              `json:"archetype"`
 	Bracket         int                 `json:"bracket"`
+	// PowerTier — 5-tier cEDH classification from Freya
+	// ClassifyCEDHPowerTier (PRs #714/#715). 1-5; 0 = unset.
+	PowerTier       int                 `json:"cedh_power_tier,omitempty"`
 	GameplanSummary string              `json:"gameplan_summary"`
 	WinLines        []freyaWinLine      `json:"win_lines,omitempty"`
 	ValueEngineKeys []string            `json:"value_engine_keys,omitempty"`
@@ -159,6 +167,7 @@ func buildFromStrategyJSON(sj *strategyFileJSON) *StrategyProfile {
 	sp := &StrategyProfile{
 		Archetype:         sj.Archetype,
 		Bracket:           sj.Bracket,
+		PowerTier:         sj.PowerTier,
 		GameplanSummary:   sj.GameplanSummary,
 		TutorTargets:      sj.TutorTargets,
 		ValueEngineKeys:   sj.ValueEngineKeys,
@@ -231,6 +240,10 @@ func buildFromStrategyJSON(sj *strategyFileJSON) *StrategyProfile {
 		})
 	}
 	applyEmergentSynergyBoost(sp)
+	// Power-tier routing runs AFTER emergent-synergy boost so the cEDH
+	// ComboProximity multiplier amplifies any Huginn-discovered synergy
+	// bump rather than getting masked by it.
+	ApplyPowerTierRouting(sp)
 
 	return sp
 }
@@ -279,6 +292,9 @@ func buildStrategyProfile(fj *freyaJSON) *StrategyProfile {
 		}
 		if fj.FullProfile.Bracket > 0 {
 			sp.Bracket = fj.FullProfile.Bracket
+		}
+		if fj.FullProfile.PowerTier > 0 {
+			sp.PowerTier = fj.FullProfile.PowerTier
 		}
 		sp.GameplanSummary = fj.FullProfile.GameplanSummary
 	}
@@ -354,6 +370,12 @@ func buildStrategyProfile(fj *freyaJSON) *StrategyProfile {
 	// would have folded recursion depth into Weights already. Apply
 	// the equivalent boost here so the hat still benefits.
 	applyRecursionDepthBoost(sp)
+	// Power-tier routing on the _freya.json fallback path. Runs after
+	// applyRecursionDepthBoost so the cEDH ComboProximity multiplier
+	// applies on top of any GraveyardValue lift the legacy path
+	// installed. No-op when PowerTier == 0 (legacy reports predating
+	// the cEDH classifier).
+	ApplyPowerTierRouting(sp)
 
 	return sp
 }
