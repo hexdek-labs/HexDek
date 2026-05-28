@@ -66,6 +66,14 @@ const (
 	// Terror of the Peaks. Dispatched via ApplyWardCostDamage from
 	// per_card handlers, not via CheckWardOnTargeting.
 	WardCostDamage WardCostType = 5
+
+	// WardCostMana — the legacy generic ward {N} variant. Permanent-
+	// scope mana ward is still tracked inline in CheckWardOnTargeting
+	// via Flags["ward_cost"]; this constant is used by the seat-scope
+	// ward registry so anthem-style "creatures you control have ward N"
+	// effects can specify a mana cost without going through the alt-
+	// payment dispatch table.
+	WardCostMana WardCostType = 6
 )
 
 // WardCost is the unified specification for an alternative ward

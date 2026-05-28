@@ -83,13 +83,17 @@ func StartGame(ctx context.Context, database *sql.DB, in StartGameInput) (*Game,
 			OwnerSeat:  sp.SeatPosition,
 			Zone:       ZoneCommand,
 		}
-		// Try to populate commander mana cost from mainboard listing
+		// Populate commander gameplay metadata from the Moxfield mainboard
+		// listing — EXCEPT Power/Toughness, which are sourced from the
+		// cached oracle row by CreateGameCard (per 7174n1c r60 split:
+		// Moxfield is printing-data, oracle is gameplay-data; the printing's
+		// P/T can drift from the canonical CR base on alt-art reprints, and
+		// Moxfield's per-printing data is not guaranteed to match Scryfall's
+		// oracle authority).
 		for _, m := range deckJSON.Mainboard {
 			if m.Name == deckJSON.Commander {
 				commanderCard.ManaCost = m.ManaCost
 				commanderCard.CMC = m.CMC
-				commanderCard.Power = m.Power
-				commanderCard.Toughness = m.Toughness
 				commanderCard.Types = m.Types
 				commanderCard.Subtypes = m.Subtypes
 				break
@@ -129,8 +133,10 @@ func StartGame(ctx context.Context, database *sql.DB, in StartGameInput) (*Game,
 				Name:         libCard.Name,
 				ManaCost:     libCard.ManaCost,
 				CMC:          libCard.CMC,
-				Power:        libCard.Power,
-				Toughness:    libCard.Toughness,
+				// Power / Toughness intentionally NOT set from Moxfield —
+				// CreateGameCard hydrates them from the cached oracle row
+				// (canonical CR base + DFC front-face selection). See
+				// hydratePTFromOracle in storage.go.
 				Types:        libCard.Types,
 				Subtypes:     libCard.Subtypes,
 				OwnerSeat:    sp.SeatPosition,

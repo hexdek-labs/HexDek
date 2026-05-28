@@ -127,6 +127,7 @@ func (gs *GameState) CloneForRollout(rng *rand.Rand) *GameState {
 			SBA704_5a_emitted:   s.SBA704_5a_emitted,
 			CommanderDamageNextSeq: s.CommanderDamageNextSeq,
 			AttemptedEmptyDraw:  s.AttemptedEmptyDraw,
+			LostByEffect:        s.LostByEffect,
 			SpellsCastThisTurn:  s.SpellsCastThisTurn,
 			SpellsCastLastTurn:  s.SpellsCastLastTurn,
 			DescendedThisTurn:   s.DescendedThisTurn,

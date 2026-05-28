@@ -2899,8 +2899,12 @@ func resolveLoseGame(gs *GameState, src *Permanent, e *gameast.LoseGame) {
 		// Stamp LossReason BEFORE Lost — invariants.go's TurnStructure
 		// check flags Lost+Life>0 with empty LossReason. Ordering
 		// matters defensively even though Go memory model makes the
-		// pair appear atomic to single-goroutine readers.
+		// pair appear atomic to single-goroutine readers. LostByEffect
+		// fires alongside so CheckLossConditions can classify the
+		// cause as LossEffect (CR §104.3e) without parsing the
+		// LossReason string.
 		s.LossReason = reason
+		s.LostByEffect = true
 		s.Lost = true
 		gs.LogEvent(Event{
 			Kind:   "lose_game",
@@ -2909,7 +2913,7 @@ func resolveLoseGame(gs *GameState, src *Permanent, e *gameast.LoseGame) {
 			Source: srcName,
 			Details: map[string]interface{}{
 				"reason": reason,
-				"rule":   "card_effect",
+				"rule":   "104.3e",
 			},
 		})
 	}

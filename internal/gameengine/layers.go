@@ -235,25 +235,35 @@ func (gs *GameState) RegisterContinuousEffect(ce *ContinuousEffect) *ContinuousE
 // continuous effect whose SourcePerm == p. Called on LTB (§603.10).
 // Returns the number of effects removed.
 func (gs *GameState) UnregisterContinuousEffectsForPermanent(p *Permanent) int {
-	if gs == nil || p == nil || len(gs.ContinuousEffects) == 0 {
+	if gs == nil || p == nil {
 		return 0
 	}
-	before := len(gs.ContinuousEffects)
-	kept := gs.ContinuousEffects[:0]
-	for _, ce := range gs.ContinuousEffects {
-		if ce == nil {
-			continue
+	removed := 0
+	if len(gs.ContinuousEffects) > 0 {
+		before := len(gs.ContinuousEffects)
+		kept := gs.ContinuousEffects[:0]
+		for _, ce := range gs.ContinuousEffects {
+			if ce == nil {
+				continue
+			}
+			if ce.SourcePerm == p {
+				continue
+			}
+			kept = append(kept, ce)
 		}
-		if ce.SourcePerm == p {
-			continue
+		gs.ContinuousEffects = kept
+		removed = before - len(gs.ContinuousEffects)
+		if removed > 0 {
+			gs.InvalidateCharacteristicsCache()
 		}
-		kept = append(kept, ce)
 	}
-	gs.ContinuousEffects = kept
-	removed := before - len(gs.ContinuousEffects)
-	if removed > 0 {
-		gs.InvalidateCharacteristicsCache()
-	}
+	// r60 — sweep seat-scope ward effects sourced by the same permanent.
+	// Co-located here so every LTB path that already calls Unregister-
+	// ContinuousEffectsForPermanent automatically cleans up the
+	// anthem-style ward registry too — no need to touch destroy /
+	// exile / sacrifice / bounce / SBA / seat-elimination paths
+	// individually. Runs even when ContinuousEffects is empty.
+	RemoveSeatWardCostsForSource(gs, p)
 	return removed
 }
 

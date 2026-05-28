@@ -3,7 +3,10 @@ package game
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/hexdek/hexdek/internal/db"
 )
@@ -135,12 +138,91 @@ func UpdateGamePlayer(ctx context.Context, database *sql.DB, p *Player) error {
 
 // ---------- GameCard ----------
 
+// CreateGameCard inserts a card row. When the caller hasn't supplied
+// Power/Toughness (both zero, the "no gameplay-data provided" signal),
+// the canonical CR-compliant base stats are hydrated from the cached
+// oracle row — this is the "Moxfield is printing-data, oracle is
+// gameplay-data" split per 7174n1c's r60 architecture call. Front-face
+// selection picks CardFaces[0] for DFC/MDFC (Delver of Secrets // Insectile
+// Aberration enters as 1/1, not 3/2). Cache miss leaves the card at 0/0
+// and the combat fallback (1/1) applies.
+//
+// Hydration is cache-only (no Scryfall round-trip) so test setups that
+// don't seed card_oracle aren't slowed down by network requests; explicit
+// P/T on `c` always wins (token creation, mid-game stat overrides, test
+// fixtures with hand-picked values).
 func CreateGameCard(ctx context.Context, database *sql.DB, c *Card) error {
+	if c.Power == 0 && c.Toughness == 0 {
+		hydratePTFromOracle(ctx, database, c)
+	}
 	_, err := database.ExecContext(ctx,
 		`INSERT INTO game_card (game_id, instance_id, card_name, card_data, owner_seat, zone, zone_position, tapped, revealed_to)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		c.GameID, c.InstanceID, c.Name, marshalCardData(c), c.OwnerSeat, string(c.Zone), c.ZonePosition, boolToInt(c.Tapped), c.RevealedTo)
 	return err
+}
+
+// hydratePTFromOracle looks up the card by name in card_oracle and fills
+// in c.Power / c.Toughness from the cache. For DFC/MDFC/split cards the
+// top-level power/toughness columns are empty and the data lives under
+// card_faces[0] (Scryfall convention) — we parse the JSON blob and pick
+// the front face.
+//
+// Best-effort: any error (missing oracle row, malformed JSON, non-integer
+// "*"/"X" P/T) silently leaves c.Power / c.Toughness at zero so the
+// combat fallback path stands.
+func hydratePTFromOracle(ctx context.Context, database *sql.DB, c *Card) {
+	if database == nil || c == nil || c.Name == "" {
+		return
+	}
+	key := strings.ToLower(strings.TrimSpace(c.Name))
+	if key == "" {
+		return
+	}
+	var powerStr, toughnessStr, cardFacesJSON string
+	err := database.QueryRowContext(ctx,
+		`SELECT power, toughness, card_faces FROM card_oracle WHERE name = ?`, key,
+	).Scan(&powerStr, &toughnessStr, &cardFacesJSON)
+	if err != nil {
+		return
+	}
+	if powerStr != "" || toughnessStr != "" {
+		c.Power = parsePTString(powerStr)
+		c.Toughness = parsePTString(toughnessStr)
+		return
+	}
+	// DFC / MDFC / split — front face lives at card_faces[0].
+	if cardFacesJSON == "" {
+		return
+	}
+	var faces []struct {
+		Power     string `json:"power"`
+		Toughness string `json:"toughness"`
+	}
+	if jerr := json.Unmarshal([]byte(cardFacesJSON), &faces); jerr != nil {
+		return
+	}
+	if len(faces) == 0 {
+		return
+	}
+	c.Power = parsePTString(faces[0].Power)
+	c.Toughness = parsePTString(faces[0].Toughness)
+}
+
+// parsePTString collapses Scryfall's string P/T into an int. Empty,
+// non-integer ("*", "X", "1+*"), and negative values all return 0 — the
+// MVP combat layer treats 0/0 as missing and applies the 1/1 fallback,
+// matching the documented contract.
+func parsePTString(s string) int {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil || n < 0 {
+		return 0
+	}
+	return n
 }
 
 func MoveCard(ctx context.Context, database *sql.DB, gameID, instanceID string, newZone Zone, newPos int) error {

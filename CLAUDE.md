@@ -210,6 +210,7 @@ Fetch oracle data: `scripts/fetch-oracle.sh`
 
 | Date | Source | Issue | Severity | Notes |
 |------|--------|-------|----------|-------|
+| 2026-05-28 | Manual audit during CR §104.3e wiring | **9 per_card direct-Lost setters bypass the canonical `resolveLoseGame` pipeline** — `angel_of_destiny.go:143`, `atemsis_all_seeing.go:70`, `demonic_pact.go:95`, `etrata_the_silencer.go:68`, `frodo_saurons_bane.go:144`, `pact_cycle.go:259`, `pact_of_negation.go:96`, `sanguine_exquisite.go:38`, plus the `emitWin` opponent-lockstep at `helpers.go:84` (the last is intentional — §104.2c win path, NOT a card-effect loss). Each calls `seat.Lost = true` directly without firing the §614 `would_lose_game` replacement → **Platinum Angel + Angel's Grace do not cancel the loss** for any of those cards. Also miss `LossReason` stamp + the new `LostByEffect` flag added in CR §104.3e wiring. Severity: correctness gap (engine + cards work; replacement-cancellation is broken for these specific effects). Recommended fix: extract a `gameengine.MarkSeatLostByEffect(gs, seat, srcName)` helper from `resolveLoseGame`'s body and refactor each site to use it. Each card has its own log Kind ("seat_lost", custom shapes) — a follow-up sweep should normalize to the canonical `lose_game` event. |
 
 ### Resolved
 

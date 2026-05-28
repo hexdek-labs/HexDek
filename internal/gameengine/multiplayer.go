@@ -200,17 +200,34 @@ func NextLivingSeat(gs *GameState) int {
 // CheckEnd — CR §104.2a last-seat-standing + §800.4 elimination sweep
 // -----------------------------------------------------------------------------
 
-// CheckEnd flips gs.Flags["ended"] = 1 when at most one seat remains in
-// the game. Also runs §800.4a cleanup on any seat whose Lost flag flipped
-// true since the previous call (idempotent via Seat.LeftGame).
+// CheckEnd is the engine-level master aggregator for CR §104.2 / §104.3.
+// Flips gs.Flags["ended"] = 1 when the game has resolved. Also runs
+// §800.4a cleanup on any seat whose Lost flag flipped true since the
+// previous call (idempotent via Seat.LeftGame).
 //
-// Contract (mirrors Python Game.check_end):
+// Resolution order:
 //
-//   - ≥2 living seats → game continues, returns false.
-//   - 1  living seat  → game ends, that seat is the winner.
-//     gs.Flags["winner"] = seat_idx.
-//   - 0  living seats → simultaneous elimination draw. gs.Flags["winner"]
-//     unset (absent = draw).
+//   - §800.4a cleanup pass on newly-Lost seats (eliminate first, then
+//     evaluate end conditions).
+//   - §104.2c — "you win the game" effects. Any seat with Won=true AND
+//     Lost=false (the §104.3a "loss beats win when simultaneous on the
+//     same player" gate) wins immediately. Multiple such seats in the
+//     same window → simultaneous-win draw per §104.3b. The canonical
+//     path for win-effects is resolveWinGame in resolve.go (sets Won
+//     on the controller of a gameast.WinGame node) plus the alt-win
+//     replacement handlers (Lab Maniac, Jace Wielder); Thassa's Oracle
+//     also goes through here via emitWin.
+//   - §104.2a — last seat standing wins. gs.Flags["winner"] = seat_idx.
+//   - §104.3b — zero living seats → draw. gs.Flags["winner"] unset.
+//
+// Contract:
+//
+//   - ≥2 living seats AND no §104.2c winner → returns false (game
+//     continues).
+//   - exactly 1 §104.2c winner OR exactly 1 living seat → returns true
+//     with gs.Flags["winner"] set + Won flag on the winner.
+//   - ≥2 §104.2c winners OR 0 living seats → returns true with no
+//     winner flag (draw).
 //
 // Always safe to call multiple times per SBA pass. Callers receive the
 // returned bool as "is the game over?" and should stop turn/phase
@@ -220,14 +237,34 @@ func (gs *GameState) CheckEnd() bool {
 		return false
 	}
 	// §800.4a — run leave-the-game cleanup for newly-Lost seats. Order
-	// matches Python: eliminate first, THEN count alive.
+	// matches Python: eliminate first, THEN evaluate end conditions.
 	for _, s := range gs.Seats {
 		if s != nil && s.Lost && !s.LeftGame {
 			HandleSeatElimination(gs, s.Idx)
 		}
 	}
+	// §104.2c — "you win the game" effects, gated by §104.3a (a seat
+	// also marked Lost in the same SBA window loses; the win doesn't
+	// apply). Scan first so alt-win effects (Lab Maniac, Approach,
+	// Maze's End) that didn't mark every opponent Lost still end the
+	// game promptly. Multiple simultaneous Wons → draw per §104.3b.
+	// endRule, winnerIdx, and drawReason capture the result for the
+	// shared cleanup-and-event block at the bottom of the function;
+	// winnerIdx = -1 signals a draw.
+	endRule, winnerIdx, drawReason := "", -1, ""
+	winners := make([]int, 0, len(gs.Seats))
+	for i, s := range gs.Seats {
+		if s != nil && s.Won && !s.Lost {
+			winners = append(winners, i)
+		}
+	}
+	if len(winners) == 1 {
+		endRule, winnerIdx = "104.2c", winners[0]
+	} else if len(winners) >= 2 {
+		endRule, drawReason = "104.3b", "simultaneous_win_effects_draw"
+	}
 	alive := gs.LivingSeats()
-	if len(alive) > 1 {
+	if endRule == "" && len(alive) > 1 {
 		return false
 	}
 	if gs.Flags == nil {
@@ -259,25 +296,42 @@ func (gs *GameState) CheckEnd() bool {
 			delete(gs.ZoneCastGrants, card)
 		}
 	}
-	if len(alive) == 1 {
-		gs.Flags["winner"] = alive[0]
-		gs.Seats[alive[0]].Won = true
+	// Determine the §104.2a / §104.3b outcome only if §104.2c didn't
+	// already claim the end-rule above.
+	if endRule == "" {
+		if len(alive) == 1 {
+			endRule, winnerIdx = "104.2a", alive[0]
+		} else {
+			endRule, drawReason = "104.3b", "simultaneous_elimination_draw"
+		}
+	}
+	if winnerIdx >= 0 {
+		gs.Flags["winner"] = winnerIdx
+		gs.Seats[winnerIdx].Won = true
+		reason := "last_seat_standing"
+		if endRule == "104.2c" {
+			reason = "you_win_the_game_effect"
+		}
 		gs.LogEvent(Event{
-			Kind: "game_end", Seat: alive[0], Target: -1,
+			Kind: "game_end", Seat: winnerIdx, Target: -1,
 			Details: map[string]interface{}{
-				"rule":   "104.2a",
-				"winner": alive[0],
-				"reason": "last_seat_standing",
+				"rule":   endRule,
+				"winner": winnerIdx,
+				"reason": reason,
 			},
 		})
 	} else {
+		details := map[string]interface{}{
+			"rule":   endRule,
+			"winner": -1,
+			"reason": drawReason,
+		}
+		if endRule == "104.3b" && len(winners) >= 2 {
+			details["winners"] = winners
+		}
 		gs.LogEvent(Event{
 			Kind: "game_end", Seat: -1, Target: -1,
-			Details: map[string]interface{}{
-				"rule":   "104.3b",
-				"winner": -1,
-				"reason": "simultaneous_elimination_draw",
-			},
+			Details: details,
 		})
 	}
 	return true

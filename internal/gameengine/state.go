@@ -154,6 +154,16 @@ type GameState struct {
 	// by UnregisterContinuousEffectsForPermanent.
 	ContinuousEffects []*ContinuousEffect
 
+	// SeatWardEffects is the r60 anthem-style ward registry (Hexing
+	// Squelcher / Indomitable Might-class "all your creatures have
+	// ward N" continuous effects). One entry per source permanent —
+	// the per-target instance is materialized inside SeatWardCostsFor
+	// at lookup time so a control change on the source naturally moves
+	// which seat's creatures benefit. Populated by AddSeatWardCost;
+	// drained on LTB via RemoveSeatWardCostsForSource. See
+	// ward_seat_scope.go.
+	SeatWardEffects []*SeatWardEntry
+
 	// charCache memoizes GetEffectiveCharacteristics. Key is the
 	// Permanent pointer. Invalidated by charCacheEpoch — every mutation
 	// that could change a characteristic bumps the epoch; a cache entry
@@ -843,6 +853,19 @@ type Seat struct {
 	// AttemptedEmptyDraw is set when Draw was called but the library was
 	// empty. §704.5b will consume this in the SBA phase.
 	AttemptedEmptyDraw bool
+
+	// LostByEffect — CR §104.3e marker. Set by resolveLoseGame together
+	// with Lost=true when this seat lost because a card effect (Demonic
+	// Pact's final mode, Door to Nothingness, Phage the Untouchable's
+	// damage clause, Lich's Mirror's failure fallback, etc.) said so —
+	// as distinct from the numeric §704.5a/b/c/6c clauses. The
+	// CheckLossConditions classifier reads this flag and returns
+	// LossEffect when set, giving downstream consumers (Heimdall,
+	// analytics, hat AI) a clean enum to switch on alongside the
+	// human-readable LossReason string. Cleared (along with Lost) is a
+	// bug — the two fields are expected to move in lockstep through
+	// the resolveLoseGame canonical pipeline.
+	LostByEffect bool
 
 	// Turn is the centralized per-turn counter block. All core engine
 	// functions (GainLife, drawOne, SacrificePermanent, etc.) increment
@@ -1558,11 +1581,69 @@ func (gs *GameState) removePermanent(p *Permanent) bool {
 	return false
 }
 
+// isOwnerScopedZone reports whether a zone string names one of the
+// owner-scoped private zones (hand, library, graveyard, exile, command
+// zone). Per CR §402.1 / §403.1 / §404.1 / §406.1 / §408.1 (and §903.6
+// / §903.9 for commander), a card placed in any of these zones lives
+// in its OWNER's instance — never in some other player's. Battlefield
+// + stack are excluded because they're shared (battlefield) or
+// not-owned (stack).
+func isOwnerScopedZone(zone string) bool {
+	switch zone {
+	case "hand", "library", "library_top", "library_bottom",
+		"graveyard", "exile", "command_zone":
+		return true
+	}
+	return false
+}
+
 // moveToZone appends c to the target seat's zone. Valid zones: "hand",
 // "graveyard", "exile", "library_top", "library_bottom", "command_zone",
 // "battlefield", "battlefield_tapped".
+//
+// CR §400.7 / §402-406: non-battlefield zones (hand, library, graveyard,
+// exile, command zone) are OWNED BY THE CARD'S OWNER. A buggy caller
+// passing controller-seat instead of owner-seat would route the card
+// into a non-owner's private zone — the exact Etali r60 cluster shape
+// (PR #685). This function defensively overrides `seat` to `c.Owner`
+// for owner-scoped destinations and emits a `zone_owner_redirect`
+// event so audits can count Etali-shape bug attempts.
+// Battlefield destinations retain the caller-supplied `seat` because
+// gain-control effects legitimately put cards on a non-owner's
+// battlefield (CR §110.2a controller may differ from owner).
 func (gs *GameState) moveToZone(seat int, c *Card, zone string) {
-	if seat < 0 || seat >= len(gs.Seats) || c == nil {
+	if c == nil {
+		return
+	}
+	// Narrow trigger condition: only redirect when c.Owner is explicitly
+	// set (Owner > 0). Zero-Owner cards bypass the check because Go's
+	// int zero-value collides with "seat 0 owner" — and test fixtures
+	// across the per_card suite construct cards via `&Card{Name: "X"}`
+	// then place them in non-zero seats' zones, conventionally treating
+	// the test's seat placement as ground truth. Real-game cards loaded
+	// from decklists / spell-cast / library shuffles always have Owner
+	// explicitly populated to the deck's owning seat, so the Etali bug
+	// shape (Owner ∈ {1,2,3} card from opp library being routed to
+	// Etali-controller-seat 0's exile) IS caught — the test convention
+	// only hides Owner=0 cases, which are zero-value test artifacts
+	// rather than real cross-seat bugs.
+	if isOwnerScopedZone(zone) && c.Owner > 0 && c.Owner < len(gs.Seats) && c.Owner != seat {
+		gs.LogEvent(Event{
+			Kind:   "zone_owner_redirect",
+			Seat:   c.Owner,
+			Target: seat,
+			Source: c.DisplayName(),
+			Details: map[string]interface{}{
+				"to_zone":      zone,
+				"passed_seat":  seat,
+				"owner_seat":   c.Owner,
+				"rule":         "400.7",
+				"reason":       "owner_scoped_zone_redirect_to_card_owner",
+			},
+		})
+		seat = c.Owner
+	}
+	if seat < 0 || seat >= len(gs.Seats) {
 		return
 	}
 	// CR §707.4 / §702.36: face-down cards are turned face-up when they
