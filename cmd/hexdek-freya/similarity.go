@@ -45,6 +45,13 @@ type DeckFingerprint struct {
 	BracketLabel       string   // display label for the bracket number (e.g. "Optimized")
 	ColorIdentity      []string // W/U/B/R/G
 	CommanderThemes    []string // for tiebreaker / future weighting
+	// IsPrecon is true when this fingerprint was extracted from a deck
+	// file under data/decks/wizards/ — i.e. an unedited WotC precon.
+	// Drives the canonical-precon-overlap pass (FindCanonicalPreconOverlap)
+	// which scans the corpus for a precon matching the target's
+	// commander and reports the shared-card count as a "this looks
+	// like a precon with N upgrades" signal.
+	IsPrecon bool
 }
 
 // BuildDeckFingerprint extracts the similarity-relevant fields from a
@@ -69,8 +76,107 @@ func BuildDeckFingerprint(dp *DeckProfile, report *FreyaReport) *DeckFingerprint
 			}
 			fp.NonlandCards[strings.ToLower(strings.TrimSpace(p.Name))] = true
 		}
+		fp.IsPrecon = isWizardsPrecon(report.DeckPath)
 	}
 	return fp
+}
+
+// PreconOverlap is the result of comparing a user deck against the
+// canonical WotC precon that ships the same commander. Surfaces as
+// "this Sigarda shares 23 cards with the canonical Sigarda Heron's
+// Grace precon" — telling the user how many upgrades they've made
+// (or how close they still are to stock product).
+type PreconOverlap struct {
+	// PreconName is the deck name of the matched WotC precon (e.g.
+	// "coven_counters_innistrad_midnight_hunt_commander_2021_precon_decklist").
+	PreconName string
+	// PreconCommander is the commander of the matched precon — usually
+	// identical to the target's commander since that's the match
+	// criterion, surfaced redundantly so consumers can render the
+	// commander name without a separate lookup.
+	PreconCommander string
+	// SharedCount is the count of nonland cards in BOTH the target
+	// deck and the precon (Jaccard intersection size, nonlands only).
+	SharedCount int
+	// TargetNonland is |A| — the total nonland cards in the user's
+	// deck, used to compute the "you've upgraded N cards" framing.
+	TargetNonland int
+	// PreconNonland is |B| — total nonland cards in the canonical
+	// precon (always ~63 for a 99-card precon).
+	PreconNonland int
+	// SharedPercent is shared / target nonland, expressed as 0-100.
+	// Reads as "your deck is 76% precon-stock" — the higher the
+	// number, the fewer upgrades have been made.
+	SharedPercent float64
+}
+
+// FindCanonicalPreconOverlap scans `precons` for the entry whose
+// commander matches `target.Commander` and returns the overlap
+// summary. Skips the target itself (so calling this on a precon
+// fingerprint with the precon-subset corpus doesn't trivially
+// return self-match at 100%). Returns nil when no precon ships
+// the target's commander.
+//
+// When multiple precons share a commander (Atraxa appears in
+// Commander 2016 Breed Lethality AND Phyrexia: All Will Be One's
+// Corrupting Influence variant), the entry with the HIGHEST
+// shared count wins — that's the precon the user's deck most
+// resembles, which is the useful signal even if it's not the
+// "first" precon by name order.
+func FindCanonicalPreconOverlap(target *DeckFingerprint, precons []*DeckFingerprint) *PreconOverlap {
+	if target == nil || target.Commander == "" {
+		return nil
+	}
+	cmdrLower := strings.ToLower(strings.TrimSpace(target.Commander))
+	if cmdrLower == "" {
+		return nil
+	}
+
+	var best *PreconOverlap
+	for _, p := range precons {
+		if p == nil || !p.IsPrecon {
+			continue
+		}
+		if p.Name != "" && p.Name == target.Name {
+			continue
+		}
+		if strings.ToLower(strings.TrimSpace(p.Commander)) != cmdrLower {
+			continue
+		}
+		shared := 0
+		for name := range target.NonlandCards {
+			if p.NonlandCards[name] {
+				shared++
+			}
+		}
+		pct := 0.0
+		if len(target.NonlandCards) > 0 {
+			pct = float64(shared) / float64(len(target.NonlandCards)) * 100.0
+		}
+		cand := &PreconOverlap{
+			PreconName:      p.Name,
+			PreconCommander: p.Commander,
+			SharedCount:     shared,
+			TargetNonland:   len(target.NonlandCards),
+			PreconNonland:   len(p.NonlandCards),
+			SharedPercent:   pct,
+		}
+		if best == nil || cand.SharedCount > best.SharedCount {
+			best = cand
+		}
+	}
+	return best
+}
+
+// FormatPreconOverlap renders a single PreconOverlap as the
+// user-facing one-liner: "this {commander} shares 23 cards with
+// the canonical {precon name} precon (37% stock)".
+func FormatPreconOverlap(o *PreconOverlap) string {
+	if o == nil || o.SharedCount == 0 {
+		return ""
+	}
+	return fmt.Sprintf("shares %d cards with the canonical %s precon (%.0f%% stock)",
+		o.SharedCount, o.PreconName, o.SharedPercent)
 }
 
 // SimilarityScore is the per-pair output. Component fields are exposed

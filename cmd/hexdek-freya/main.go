@@ -186,19 +186,59 @@ func main() {
 		}
 		log.Printf("found %d deck files in %s", len(files), deckDir)
 
-		var reports []*FreyaReport
+		type reportWithPath struct {
+			path   string
+			report *FreyaReport
+		}
+		var pairs []reportWithPath
 		for _, f := range files {
 			report, err := analyzeDeckFile(f, oracle, mechDB)
 			if err != nil {
 				log.Printf("  SKIP %s: %v", filepath.Base(f), err)
 				continue
 			}
-			reports = append(reports, report)
-			if format != "json" {
-				PrintReport(os.Stdout, report, format)
+			pairs = append(pairs, reportWithPath{path: f, report: report})
+		}
+
+		// Canonical-precon-overlap pass (R60): with every analyzed deck
+		// in hand, build fingerprints, gather the precon subset, and
+		// stamp each non-precon deck's profile with the
+		// overlap-vs-canonical-precon result. Done before rendering so
+		// PrintReport / saveFreyaData see the populated field. No-op when
+		// no wizards/ precons are in the corpus (e.g. running --all-decks
+		// against a non-wizards dir).
+		fingerprints := make([]*DeckFingerprint, len(pairs))
+		for i, pr := range pairs {
+			fingerprints[i] = BuildDeckFingerprint(pr.report.Profile, pr.report)
+		}
+		var precons []*DeckFingerprint
+		for _, fp := range fingerprints {
+			if fp.IsPrecon {
+				precons = append(precons, fp)
 			}
-			// Auto-save to freya/ subfolder.
-			saveFreyaData(f, report)
+		}
+		if len(precons) > 0 {
+			for i, pr := range pairs {
+				if pr.report == nil || pr.report.Profile == nil {
+					continue
+				}
+				// FindCanonicalPreconOverlap skips self-match by name,
+				// so a precon scanning the precon corpus surfaces the
+				// OTHER precon sharing its commander when one exists
+				// (rare — e.g. Atraxa appears in two precons).
+				if overlap := FindCanonicalPreconOverlap(fingerprints[i], precons); overlap != nil && overlap.SharedCount > 0 {
+					pr.report.Profile.CanonicalPreconOverlap = overlap
+				}
+			}
+		}
+
+		reports := make([]*FreyaReport, len(pairs))
+		for i, pr := range pairs {
+			reports[i] = pr.report
+			if format != "json" {
+				PrintReport(os.Stdout, pr.report, format)
+			}
+			saveFreyaData(pr.path, pr.report)
 		}
 
 		if format == "json" {
