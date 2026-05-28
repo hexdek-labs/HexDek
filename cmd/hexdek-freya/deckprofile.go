@@ -151,6 +151,28 @@ type DeckProfile struct {
 	FetchCount       int
 	UtilityLandCount int
 
+	// Counter density — Counters Matter theme rollup. Counts only
+	// PERMANENT cards (creature / artifact / enchantment /
+	// planeswalker / battle) that either produce +1/+1 counters or
+	// scale with them; instants / sorceries are excluded because the
+	// "theme" framing is about persistent board presence (Hardened
+	// Scales, Doubling Season, Master Biomancer) not one-shot pumps
+	// (Berserk, Inspiring Call). A card can be in both lists when it
+	// produces AND scales (Hangarback Walker, Walking Ballista).
+	//
+	// CountersMatterTheme is true when producers + payoffs >= 5 —
+	// the floor at which the theme is structurally present rather
+	// than an incidental Llanowar Reborn one-off. CountersMatterStrong
+	// piles on at >=10: the deck's primary engine. The thresholds
+	// align with the existing "Counters Matter" archetype fingerprint
+	// (counterCount >= 8) but are scoped strictly to permanents so
+	// proliferate-instant-heavy decks don't trip the theme flag
+	// without on-board counter producers.
+	CounterProducers      []string
+	CounterPayoffs        []string
+	CountersMatterTheme   bool
+	CountersMatterStrong  bool
+
 	// Deck cost tier — "Budget" (<$100), "Mid" ($100-$500),
 	// "High-end" (>$500). Empty when fewer than 80% of the deck's
 	// cards have resolvable USD prices (insufficient data for a
@@ -575,6 +597,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	appendVulnerabilityBracketNote(dp)
 	computeManaBaseGrade(dp, report, oracle)
 	computeDeckCostTier(dp, report, oracle)
+	computeCounterDensity(dp, report, oracle)
 	// Opening hand sim runs first so dp.IsCommanderCentric is populated
 	// before threat assessment reads it (commander-centric decks fear
 	// commander-targeting hosers like Imprisoned in the Moon).
