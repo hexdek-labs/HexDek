@@ -34,18 +34,14 @@ func sarumanOfManyColorsETB(gs *gameengine.GameState, perm *gameengine.Permanent
 	if gs == nil || perm == nil {
 		return
 	}
-	if perm.Flags == nil {
-		perm.Flags = map[string]int{}
-	}
-	perm.Flags["kw:ward"] = 1
-	// R60 closure of half-finished-features-r48 #4: route the discard
-	// alt-payment ward through ward_alt_payment.go's canonical handler.
-	// Replaces the prior
-	// "ward_discard_enchantment_instant_sorcery_alt_payment_unimplemented"
-	// emitPartial. The engine's caster-side handler discards the highest-
-	// CMC matching card (instant/sorcery/enchantment) from the opponent's
-	// hand; if none, the targeting spell is countered per CR §702.21c.
-	perm.Flags["ward_alt_kind"] = gameengine.WardAltKindDiscardInstSorcEnch
+	// r60 — migrated 2026-05-27 to unified WardCost primitive. Filter
+	// "instant or sorcery or enchantment" matches Saruman's literal
+	// printed wording; payWardByDiscard routes accordingly.
+	gameengine.SetWardCost(perm, gameengine.WardCost{
+		Type:   gameengine.WardCostDiscard,
+		Amount: 1,
+		Filter: "instant or sorcery or enchantment",
+	})
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":          perm.Controller,
 		"ward_alt_kind": "discard_inst_sorc_ench",

@@ -1060,6 +1060,12 @@ func registerDefaults() {
 	registerBlech(Global())
 	registerAuntieOol(Global())
 
+	// r60 — unified WardCost test cards (ward_alt_payment.go refactor,
+	// 2026-05-27). Charging War Boar covers Ward—Pay N life; Terror of
+	// the Peaks covers the non-keyword damage-on-target structural shape.
+	registerChargingWarBoar(Global())
+	registerTerrorOfThePeaks(Global())
+
 	// Batch #27 — staple commanders: attack-trigger cheat-in,
 	// counter-scaling cost reduction, global P/T swap.
 	registerKaaliaOfTheVast(Global())

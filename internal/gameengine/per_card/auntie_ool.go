@@ -45,12 +45,13 @@ func auntieOolETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	// emitPartial. The engine puts 2 -1/-1 counters on the targeting
 	// opponent's lowest-toughness creature; if they have no creatures
 	// the targeting spell is countered per CR §702.21c.
-	if perm.Flags == nil {
-		perm.Flags = map[string]int{}
-	}
-	perm.Flags["kw:ward"] = 1
-	perm.Flags["ward_alt_kind"] = gameengine.WardAltKindBlight
-	perm.Flags["ward_alt_filter"] = 2 // Blight 2
+	// r60 — migrated 2026-05-27 to unified WardCost primitive. Amount=2
+	// is the Blight value (counters placed); payWardByBlight routes
+	// accordingly.
+	gameengine.SetWardCost(perm, gameengine.WardCost{
+		Type:   gameengine.WardCostBlight,
+		Amount: 2,
+	})
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":          perm.Controller,
 		"ward_alt_kind": "blight",

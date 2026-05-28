@@ -49,11 +49,14 @@ func sauronETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	// canonical sacrifice-a-legendary handler (ward_alt_payment.go).
 	// Replaces the previous "ward_sacrifice_legendary_alt_payment_
 	// unimplemented" emitPartial.
-	if perm.Flags == nil {
-		perm.Flags = map[string]int{}
-	}
-	perm.Flags["kw:ward"] = 1
-	perm.Flags["ward_alt_kind"] = gameengine.WardAltKindSacrificeLegendary
+	// r60 — migrated 2026-05-27 to unified WardCost primitive. Filter
+	// "legendary artifact or creature" matches Sauron's literal printed
+	// wording; payWardBySacrifice routes accordingly.
+	gameengine.SetWardCost(perm, gameengine.WardCost{
+		Type:   gameengine.WardCostSacrifice,
+		Amount: 1,
+		Filter: "legendary artifact or creature",
+	})
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":          perm.Controller,
 		"ward_alt_kind": "sacrifice_legendary",
