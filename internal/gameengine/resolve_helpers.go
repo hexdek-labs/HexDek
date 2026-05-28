@@ -3935,6 +3935,18 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			if removed {
 				gs.UnregisterReplacementsForPermanent(src)
 				gs.UnregisterContinuousEffectsForPermanent(src)
+				// r60 AttachmentConsistency fix: detach any auras /
+				// equipment pointing at src. The shuffle-self-into-
+				// library trigger (Dread, Sparkhunter Masticore,
+				// Vigor, Worldspine Wurm, etc.) removes src from
+				// the battlefield without going through the
+				// canonical Destroy/Sacrifice/Exile/Bounce paths
+				// that detachAll at the end. Without this call, an
+				// aura attached to src (Prison Term, Pacifism, etc.)
+				// retains its AttachedTo pointer at a carrier no
+				// longer on any battlefield — checkAttachmentConsistency
+				// catches that on the next SBA pass.
+				detachAll(gs, src)
 			} else if src.Card != nil {
 				for seatIdx := range gs.Seats {
 					seat := gs.Seats[seatIdx]
