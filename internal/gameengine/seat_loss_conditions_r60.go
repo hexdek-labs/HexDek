@@ -50,6 +50,14 @@ const (
 	// from a single commander. Only meaningful when
 	// GameState.CommanderFormat == true.
 	LossCommanderDamage LossCause = "twenty_one_commander_damage"
+	// LossEffect — CR §104.3e: a spell or ability said this player
+	// loses. Set by resolveLoseGame (Demonic Pact's final mode, Door
+	// to Nothingness, Phage the Untouchable's damage clause, Lich's
+	// Mirror's failure fallback, Near-Death Experience's failure
+	// fallback, Mark of Eternity, etc.). Distinct from §704.5a/b/c/6c
+	// because no numeric field captures the cause — the LostByEffect
+	// flag is the canonical signal.
+	LossEffect LossCause = "you_lose_the_game_effect"
 )
 
 // CheckLossConditions evaluates this seat against its own §704.5 /
@@ -70,12 +78,25 @@ const (
 // commander-damage (CR §704.6c only applies in Commander). Passing nil
 // is safe — the commander-damage clause is silently skipped.
 //
-// Clause ordering (first match wins): Life → EmptyLibrary → Poison →
-// CommanderDamage. Stable — referenced by tests pinning multi-clause
-// behavior.
+// Clause ordering (first match wins): Effect → Life → EmptyLibrary →
+// Poison → CommanderDamage. Effect comes first because a card effect
+// that says "you lose" (CR §104.3e) overrides the numeric cause that
+// would have applied — e.g. Phage the Untouchable's "if a creature
+// would die, exile it instead, and that creature's controller loses
+// the game" sets LostByEffect even if the same seat is also at life=0
+// from the combat damage that triggered it. Ordering is stable —
+// referenced by tests pinning multi-clause behavior.
 func (s *Seat) CheckLossConditions(gs *GameState) (LossCause, bool) {
 	if s == nil {
 		return LossNone, false
+	}
+	// §104.3e — card effect said this player loses. Routed through
+	// resolveLoseGame which already fires the §614 would_lose_game
+	// replacement (Platinum Angel cancellation) before stamping the
+	// flag, so by the time this classifier sees LostByEffect=true the
+	// loss is canonical.
+	if s.LostByEffect {
+		return LossEffect, true
 	}
 	// §704.5a — life total of 0 or less.
 	if s.Life <= 0 {
