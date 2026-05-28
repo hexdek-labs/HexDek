@@ -1934,80 +1934,125 @@ func CheckWardOnTargeting(gs *GameState, item *StackItem) {
 		if perm.Controller == item.Controller {
 			continue
 		}
-		if !perm.HasKeyword("ward") {
-			continue
-		}
-		// R60: alternative-payment ward (CR §702.21d — "Ward—Sacrifice...",
-		// "Ward—Discard...", "Ward—Blight N"). When the source permanent
-		// stamps a non-mana ward kind, route to the alt-payment handler
-		// instead of the mana-only path below. The handler decides whether
-		// the caster can pay (e.g. controls a legendary they can sac, has
-		// a discardable card of the required type, controls a creature to
-		// blight). If unaffordable, the spell is countered the same way as
-		// an unpaid mana ward (CR §702.21c).
-		if perm.Flags != nil && perm.Flags["ward_alt_kind"] != 0 {
-			tryPayAltWardCost(gs, item, perm)
+
+		// Permanent-scope ward (printed on the target itself). Only
+		// fires when the target literally has the "ward" keyword.
+		if perm.HasKeyword("ward") {
+			payPermanentWard(gs, item, perm)
 			if item.Countered {
 				return
 			}
-			continue
 		}
-		// Determine ward cost. Check Flags["ward_cost"] first, else default 1.
-		wardCost := 1
-		if perm.Flags != nil {
-			if v, ok := perm.Flags["ward_cost"]; ok && v > 0 {
-				wardCost = v
+
+		// r60 — seat-scope wards. Per CR §702.21e each ward instance is
+		// a separate triggered ability, so anthem-granted wards fire
+		// IN ADDITION to any printed ward on the target. Each entry is
+		// dispatched as its own payment; if any one can't be paid, the
+		// spell is countered.
+		for _, entry := range SeatWardCostsFor(gs, perm) {
+			paySeatScopeWard(gs, item, perm, entry)
+			if item.Countered {
+				return
 			}
-		}
-		// Check if the caster can and will pay.
-		casterSeat := gs.Seats[item.Controller]
-		if casterSeat == nil {
-			continue
-		}
-		// CR §702.21c is a "may" — give the controller's Hat the chance
-		// to decline payment even when the mana is available (e.g. to
-		// save mana for a counterspell, or to deliberately fizzle into
-		// a graveyard recursion line). Hats that don't implement
-		// WardPayer fall back to the historical "pay if affordable" policy.
-		willPay := casterSeat.ManaPool >= wardCost
-		if willPay && casterSeat.Hat != nil {
-			if wp, ok := casterSeat.Hat.(WardPayer); ok {
-				willPay = wp.ShouldPayWard(gs, item.Controller, item, perm, wardCost)
-			}
-		}
-		if willPay {
-			// Pay the ward cost.
-			casterSeat.ManaPool -= wardCost
-			SyncManaAfterSpend(casterSeat)
-			gs.LogEvent(Event{
-				Kind:   "ward_paid",
-				Seat:   item.Controller,
-				Source: perm.Card.DisplayName(),
-				Amount: wardCost,
-				Details: map[string]interface{}{
-					"rule":        "702.21",
-					"ward_target": perm.Card.DisplayName(),
-					"spell":       itemName(item),
-				},
-			})
-		} else {
-			// Can't pay — counter the spell.
-			item.Countered = true
-			gs.LogEvent(Event{
-				Kind:   "ward_counter",
-				Seat:   perm.Controller,
-				Source: perm.Card.DisplayName(),
-				Amount: wardCost,
-				Details: map[string]interface{}{
-					"rule":        "702.21c",
-					"ward_target": perm.Card.DisplayName(),
-					"spell":       itemName(item),
-					"caster_seat": item.Controller,
-				},
-			})
-			return // spell is countered, no more ward checks needed
 		}
 	}
+}
+
+// payPermanentWard dispatches a single per-target ward payment for a
+// permanent-scope ward (printed on the target). Extracted from the old
+// monolithic CheckWardOnTargeting so seat-scope wards can reuse the
+// same alt-payment vs mana-cost branching via paySeatScopeWard.
+func payPermanentWard(gs *GameState, item *StackItem, perm *Permanent) {
+	// Alternative-payment ward (CR §702.21d) — Sauron, Saruman,
+	// Auntie Ool, Charging War Boar etc. routed through the unified
+	// WardCost dispatch.
+	if perm.Flags != nil && perm.Flags["ward_alt_kind"] != 0 {
+		tryPayAltWardCost(gs, item, perm)
+		return
+	}
+	// Mana ward.
+	wardCost := 1
+	if perm.Flags != nil {
+		if v, ok := perm.Flags["ward_cost"]; ok && v > 0 {
+			wardCost = v
+		}
+	}
+	payManaWard(gs, item, perm, wardCost)
+}
+
+// paySeatScopeWard dispatches a single seat-scope ward payment.
+// Bridges the SeatWardEntry struct to the same mana / alt-payment
+// resolution paths used for permanent-scope ward, so the dispatcher
+// is unified (the user's 2026-05-27 architecture lock requirement).
+func paySeatScopeWard(gs *GameState, item *StackItem, target *Permanent, entry SeatWardEntry) {
+	cost := entry.Cost
+	if cost.Type == WardCostNone {
+		// Empty cost — treat as mana 1 default.
+		cost.Type = WardCostMana
+		if cost.Amount <= 0 {
+			cost.Amount = 1
+		}
+	}
+	if cost.Type == WardCostMana {
+		n := cost.Amount
+		if n <= 0 {
+			n = 1
+		}
+		payManaWard(gs, item, target, n)
+		return
+	}
+	// Alt-payment path — synthesize a temporary stamping of the cost
+	// on a dummy permanent so tryPayAltWardCost can read the existing
+	// Flags-based ward kind. Cleaner than threading WardCost through
+	// the legacy alt-payment signature.
+	tmp := &Permanent{Card: target.Card, Controller: target.Controller}
+	SetWardCost(tmp, cost)
+	tryPayAltWardCost(gs, item, tmp)
+}
+
+// payManaWard — historical mana-ward branch extracted so both per-perm
+// and seat-scope dispatchers share the WardPayer hat hook + the
+// pay/decline → counter logic.
+func payManaWard(gs *GameState, item *StackItem, perm *Permanent, wardCost int) {
+	casterSeat := gs.Seats[item.Controller]
+	if casterSeat == nil {
+		return
+	}
+	willPay := casterSeat.ManaPool >= wardCost
+	if willPay && casterSeat.Hat != nil {
+		if wp, ok := casterSeat.Hat.(WardPayer); ok {
+			willPay = wp.ShouldPayWard(gs, item.Controller, item, perm, wardCost)
+		}
+	}
+	if willPay {
+		casterSeat.ManaPool -= wardCost
+		SyncManaAfterSpend(casterSeat)
+		gs.LogEvent(Event{
+			Kind:   "ward_paid",
+			Seat:   item.Controller,
+			Source: perm.Card.DisplayName(),
+			Amount: wardCost,
+			Details: map[string]interface{}{
+				"rule":        "702.21",
+				"ward_target": perm.Card.DisplayName(),
+				"spell":       itemName(item),
+			},
+		})
+		return
+	}
+	item.Countered = true
+	gs.LogEvent(Event{
+		Kind:   "ward_counter",
+		Seat:   perm.Controller,
+		Source: perm.Card.DisplayName(),
+		Amount: wardCost,
+		Details: map[string]interface{}{
+			"rule":        "702.21c",
+			"ward_target": perm.Card.DisplayName(),
+			"spell":       itemName(item),
+			"caster_seat": item.Controller,
+		},
+	})
 }
 
 // itemName returns the display name of a stack item for logging.
