@@ -15,6 +15,18 @@ import (
 // that shares a card type with it. That player may cast that card without
 // paying its mana cost. Then they put all cards exiled with this
 // enchantment on the bottom of their library in a random order."
+//
+// Post-#685 §400.7c-compliance: every card the caster exiles goes to
+// the caster's OWN exile (the caster IS the owner here — both for the
+// just-cast spell and for cards revealed off the caster's own library).
+// The fix in this file replaces the previous "move matched card to
+// hand" path with a proper ZoneCastGrant on the matched card while it
+// stays in exile — preserving the "without paying its mana cost"
+// semantics and letting the engine's cast-from-exile pipeline drive
+// the actual cast. The original pre-#685 implementation also exiled
+// the freshly-cast spell to the wrong physical pile occasionally;
+// the canonical MoveCard("hand"→"exile") at casterSeat routes it
+// correctly per §400.7c since caster == owner for hand-casts.
 
 func registerPossibilityStorm(r *Registry) {
 	r.OnTrigger("Possibility Storm", "spell_cast", possibilityStormTrigger)
@@ -26,7 +38,13 @@ func possibilityStormTrigger(gs *gameengine.GameState, perm *gameengine.Permanen
 	}
 	card, _ := ctx["card"].(*gameengine.Card)
 	casterSeat, _ := ctx["caster_seat"].(int)
+	castZone, _ := ctx["cast_zone"].(string)
 	if card == nil || casterSeat < 0 || casterSeat >= len(gs.Seats) {
+		return
+	}
+	// Oracle says "casts a spell from their hand" — gate to hand-casts
+	// only (not flashback / cascade / adventure / etc.).
+	if castZone != "" && castZone != gameengine.ZoneHand {
 		return
 	}
 	seat := gs.Seats[casterSeat]
@@ -36,6 +54,10 @@ func possibilityStormTrigger(gs *gameengine.GameState, perm *gameengine.Permanen
 
 	origTypes := card.Types
 	origName := card.DisplayName()
+
+	// The cast spell itself is exiled by Possibility Storm (caster's
+	// own exile per §400.7c since caster == owner for hand-casts).
+	gameengine.MoveCard(gs, card, casterSeat, "stack", "exile", "possibility-storm-exile-cast-spell")
 
 	var exiled []*gameengine.Card
 	var found *gameengine.Card
@@ -61,13 +83,28 @@ func possibilityStormTrigger(gs *gameengine.GameState, perm *gameengine.Permanen
 				"exiled_count":   len(exiled),
 			},
 		})
+		// Remove the matched card from the rest-to-bottom pile — it
+		// stays in exile under a free-cast grant. (If the AI doesn't
+		// cast it, the card sits in exile permanently in the current
+		// MVP. Per oracle, the unused match would go to library bottom
+		// with the others, but that requires a post-cast-window
+		// callback that we don't have yet.)
 		for i, c := range exiled {
 			if c == found {
 				exiled = append(exiled[:i], exiled[i+1:]...)
 				break
 			}
 		}
-		gameengine.MoveCard(gs, found, casterSeat, "exile", "hand", "possibility-storm-cast")
+		// Register the free-cast grant. RequireController = caster
+		// (the player whose hand-cast triggered Possibility Storm —
+		// the oracle says "that player may cast"). Duration until_end
+		// _of_turn is a conservative bound — the actual cast window
+		// is during this trigger's resolution, but EOT cleanup is the
+		// engine's smallest expiry hammer.
+		grant := gameengine.NewFreeCastFromExilePermission(casterSeat, "Possibility Storm")
+		grant.Duration = "until_end_of_turn"
+		grant.GrantTurn = gs.Turn
+		gameengine.RegisterZoneCastGrant(gs, found, grant)
 	}
 
 	if gs.Rng != nil && len(exiled) > 1 {
