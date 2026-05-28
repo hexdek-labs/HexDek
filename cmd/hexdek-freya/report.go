@@ -672,6 +672,10 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		fmt.Fprintf(w, " / %s", dp.SecondaryArchetype)
 	}
 	fmt.Fprintf(w, "\n")
+	if dp.IsBlend {
+		fmt.Fprintf(w, "  Blend:      %s (primary confidence %.0f%%, secondary fit %.0f%%)\n",
+			dp.BlendLabel, dp.ArchetypeConfidence*100, dp.SecondaryFit*100)
+	}
 	fmt.Fprintf(w, "  Bracket:    %d/5 (%s)\n", dp.Bracket, dp.BracketLabel)
 	fmt.Fprintf(w, "\n")
 	fmt.Fprintf(w, "  Gameplan:   %s\n", dp.GameplanSummary)
@@ -1367,6 +1371,9 @@ type jsonDeckProfile struct {
 	PrimaryArchetype   string            `json:"primary_archetype"`
 	SecondaryArchetype string            `json:"secondary_archetype,omitempty"`
 	Confidence         float64           `json:"archetype_confidence"`
+	SecondaryFit       float64           `json:"secondary_fit,omitempty"`
+	IsBlend            bool              `json:"is_blend,omitempty"`
+	BlendLabel         string            `json:"blend_label,omitempty"`
 	// Bracket is the declared / rubber-stamp value (see DeckProfile.Bracket).
 	// MeasuredBracket is Freya's signal-computed bracket; they diverge
 	// for wizards/ precons (declared B2, may measure hotter).
@@ -1802,6 +1809,9 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		PrimaryArchetype:   dp.PrimaryArchetype,
 		SecondaryArchetype: dp.SecondaryArchetype,
 		Confidence:         dp.ArchetypeConfidence,
+		SecondaryFit:       dp.SecondaryFit,
+		IsBlend:            dp.IsBlend,
+		BlendLabel:         dp.BlendLabel,
 		Bracket:               dp.Bracket,
 		BracketLabel:          dp.BracketLabel,
 		MeasuredBracket:       dp.MeasuredBracket,
