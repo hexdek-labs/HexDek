@@ -26,11 +26,20 @@ func CreateGame(ctx context.Context, database *sql.DB, partyID, shuffleSeedHash 
 	return g, nil
 }
 
-// FinishGame marks a game finished and records the winner.
+// FinishGame marks a game finished and records the winner. A blank
+// winnerDeviceID records a draw (CR §104.4 — e.g. simultaneous §704.5b
+// empty-library losses); persisted as NULL to satisfy the
+// winner_device_id → device(id) FK constraint.
 func FinishGame(ctx context.Context, database *sql.DB, gameID string, winnerDeviceID string) error {
+	var winner any
+	if winnerDeviceID == "" {
+		winner = nil
+	} else {
+		winner = winnerDeviceID
+	}
 	_, err := database.ExecContext(ctx,
 		`UPDATE game SET finished_at = ?, winner_device_id = ? WHERE id = ?`,
-		db.Now(), winnerDeviceID, gameID)
+		db.Now(), winner, gameID)
 	return err
 }
 
