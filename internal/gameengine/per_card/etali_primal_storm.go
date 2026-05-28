@@ -17,23 +17,50 @@ import (
 // table and lets Etali's controller free-cast any nonlands among them.
 // High-variance, archetype-defining for impulse-cascade / chaos shells.
 //
-// Implementation:
+// Implementation (CR §400.7c-compliant after PR #683):
 //
 //   - OnTrigger("creature_attacks"). Filter: attacker_perm == self.
 //
 //   - For each LIVING seat (including Etali's controller), pop the
 //     top card of their library (last index — engine's library
 //     convention: top is len-1, verified against Hermit Druid in
-//     per_card_test.go:587-600) and move it to Etali's controller's
-//     exile zone via MoveCard with from_zone="library" → "exile".
+//     per_card_test.go:587-600) and move it to THAT SEAT'S
+//     (the OWNER's) exile zone via MoveCard with from="library" →
+//     to="exile". Per CR §400.7c, "If an effect causes a player to
+//     put a card into a zone, that card moves to the corresponding
+//     zone owned by that player" — so the exile destination is the
+//     OWNER's exile, not Etali's controller's exile.
 //
 //   - For each exiled card that is NOT a land, register a
-//     ZoneCastGrant via NewFreeCastFromExilePermission with Duration
-//     "until_end_of_turn" + GrantTurn = gs.Turn, so the grant expires
-//     at end of turn per CR §608.2g and the r60 ZoneCastGrantExpiry
-//     plumbing (see CLAUDE.md 2026-05-27 closure row + PR #554 /
-//     commit 72b95136 ExpireSourceGrants paths). The Hat / AI may then
-//     greedy-cast during the trigger's resolution window.
+//     ZoneCastGrant via NewFreeCastFromExilePermission with
+//     RequireController = Etali's controller seat (only Etali's
+//     controller may free-cast), Duration "until_end_of_turn",
+//     GrantTurn = gs.Turn so the grant expires at EOT per CR §608.2g
+//     and the r60 ZoneCastGrantExpiry plumbing. The grant is keyed
+//     on the *Card pointer (gs.ZoneCastGrants[*Card]), so the cast-
+//     from-exile lookup doesn't care WHICH seat's exile pile the
+//     card physically lives in — only the RequireController gate
+//     matters for who can cast.
+//
+//   - Pre-PR-#683 bug: the handler wrote `gs.Seats[perm.Controller]
+//     .Exile = append(..., top)` to cross-seat-route every exiled
+//     card into Etali's controller's exile pile (the comment in
+//     the old handler claimed "the exile zone is per-seat... we
+//     need them on Etali's controller's pile so RequireController
+//     matches" — but RequireController is a SEAT FIELD on the grant,
+//     not a zone-location requirement, so the routing was unneeded).
+//     That cross-seat routing caused:
+//       (a) ZoneConservation false-positives: seat 0's per-seat card
+//           census counted the foreign cards as "extra real cards
+//           appeared" because the cards belonged to seats 1/2/3 but
+//           were physically in seat 0's exile.
+//       (b) CardIdentity false-positives: when seat 0 later refilled
+//           library / drew / shuffled, the engine could surface the
+//           same *Card pointer in two zones (owner's graveyard AND
+//           Etali-controller's exile) because the EOT grant cleanup
+//           only reclaimed the grant, not the *Card residue.
+//     Surfaced as the 828-violation cluster in the Loki r60 25K
+//     sweep PR #682 (docs/loki-r60-25k-report.md).
 //
 //   - The actual "you may cast" choice is deferred to the AI layer
 //     (the grant is REGISTERED, not auto-cast). This matches how
@@ -72,15 +99,19 @@ func etaliPrimalStormAttack(gs *gameengine.GameState, perm *gameengine.Permanent
 		if top == nil {
 			continue
 		}
-		// Move from this seat's library to Etali's controller's exile.
-		moveCardBetweenZones(gs, seatIdx, top, "library", "library_remove", "etali_exile")
-		// Append to Etali's controller's exile zone explicitly — we
-		// can't use MoveCard's exile arm for a cross-seat move (the
-		// exile zone is per-seat in this engine; Etali's clause keeps
-		// the exiled cards visible to the owner Hat, but for the cast-
-		// from-exile grant we need them on Etali's controller's exile
-		// pile so RequireController matches).
-		gs.Seats[perm.Controller].Exile = append(gs.Seats[perm.Controller].Exile, top)
+		// PR #683: route to the OWNER's exile, not Etali-controller's,
+		// per CR §400.7c. The grant lookup keys on the *Card pointer
+		// (gs.ZoneCastGrants[*Card]), so which seat's exile pile the
+		// card lives in doesn't affect the cast-from-exile permission
+		// path — only the RequireController gate on the grant matters
+		// for who's allowed to cast. Using MoveCard with the canonical
+		// "library" → "exile" zones lets the engine fire
+		// FireZoneChangeTriggers + card_exiled + zone_change cleanup
+		// hooks (which the old buggy moveCardBetweenZones(..., "library
+		// _remove", ...) + manual append bypassed entirely — the
+		// "library_remove" string wasn't a real zone, so MoveCard's
+		// destination branch returned "" and skipped every cleanup).
+		moveCardBetweenZones(gs, seatIdx, top, "library", "exile", "etali_exile")
 		exiled = append(exiled, top.DisplayName())
 		gs.LogEvent(gameengine.Event{
 			Kind:   "etali_exile",
@@ -90,7 +121,8 @@ func etaliPrimalStormAttack(gs *gameengine.GameState, perm *gameengine.Permanent
 			Details: map[string]interface{}{
 				"card":         top.DisplayName(),
 				"from_library": seatIdx,
-				"to_exile":     perm.Controller,
+				"to_exile":     seatIdx, // PR #683: owner's exile, not Etali-controller's
+				"cast_grant":   perm.Controller, // RequireController for any free-cast
 			},
 		})
 		// Register the free-cast grant for nonlands only.
