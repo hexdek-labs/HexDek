@@ -12,6 +12,23 @@ type ArchetypeClassification struct {
 	PrimaryConfidence float64
 	Secondary         string
 	SecondaryDistance  float64
+	// SecondaryFit is the [0,1] goodness-of-fit of the runner-up
+	// archetype (1 - SecondaryDistance, clamped). 0 means the secondary
+	// fingerprint matched nothing; 1 means a perfect ratio match. Used
+	// by the blend detector — a "splash" signal requires both that the
+	// primary call is genuinely uncertain (PrimaryConfidence below the
+	// blend ceiling) AND that the secondary is itself a substantively
+	// good fit (not just "second-best of two bad calls").
+	SecondaryFit float64
+	// IsBlend / BlendLabel surface decks that classify as a primary
+	// archetype but with a meaningful contribution from a secondary
+	// theme — Aristocrats + Reanimator, Lifegain + Tokens, etc. Only set
+	// when both PrimaryConfidence < BlendConfidenceCeiling (0.7) AND
+	// SecondaryFit > BlendSecondaryFitFloor (0.5). The label format is
+	// "{Primary} with {Secondary} splash" so the UI can surface the
+	// blend without restructuring the per-archetype display.
+	IsBlend     bool
+	BlendLabel  string
 	Intent            string
 	// Bracket is the rubber-stamp / declared bracket — the value the
 	// deck identifies AS (precons claim B2, user-built decks claim
@@ -986,6 +1003,45 @@ var archetypeFingerprints = []archetypeFingerprint{
 	},
 }
 
+// applyBlendDetection stamps SecondaryFit + IsBlend + BlendLabel on
+// the classification. Extracted from ClassifyArchetype so tests can
+// exercise the blend gates (PrimaryConfidence < ceiling AND
+// SecondaryFit > floor) directly against a hand-built classification
+// without needing to construct a fingerprint-matching deck fixture.
+func applyBlendDetection(ac *ArchetypeClassification) {
+	if ac == nil || ac.Secondary == "" {
+		return
+	}
+	fit := 1.0 - ac.SecondaryDistance
+	if fit < 0 {
+		fit = 0
+	} else if fit > 1 {
+		fit = 1
+	}
+	ac.SecondaryFit = fit
+	if ac.PrimaryConfidence < BlendConfidenceCeiling && fit > BlendSecondaryFitFloor {
+		ac.IsBlend = true
+		ac.BlendLabel = fmt.Sprintf("%s with %s splash", ac.Primary, ac.Secondary)
+	}
+}
+
+// BlendConfidenceCeiling caps the primary-archetype confidence below
+// which a blend label is eligible to fire. At 0.7 the primary call is
+// genuinely uncertain — the runner-up archetype is close enough in
+// fingerprint distance that the deck reads as straddling two themes
+// rather than committing to one. Above this ceiling the primary is
+// strong enough that splash framing would be misleading.
+const BlendConfidenceCeiling = 0.7
+
+// BlendSecondaryFitFloor is the minimum SecondaryFit required for a
+// blend label to fire. Guards against the "both archetypes are bad
+// fits but close to each other" failure mode — without this floor, a
+// confused 5-color goodstuff deck would get a "Combo with Aggro splash"
+// label just because both fingerprints scored poorly within 25% of
+// each other. Fit must be substantively good (>0.5 = secondary distance
+// <0.5) for the splash to be meaningful.
+const BlendSecondaryFitFloor = 0.5
+
 func ClassifyArchetype(report *FreyaReport, qtyProfiles []CardProfileQty, oracle *oracleDB) *ArchetypeClassification {
 	if report.Roles == nil || report.Roles.TotalCards == 0 {
 		return nil
@@ -1060,6 +1116,8 @@ func ClassifyArchetype(report *FreyaReport, qtyProfiles []CardProfileQty, oracle
 	} else {
 		ac.PrimaryConfidence = 1.0
 	}
+
+	applyBlendDetection(ac)
 
 	ac.Signals = buildSignals(ctx, ac)
 	ac.Intent = buildIntent(ac, report, ctx)

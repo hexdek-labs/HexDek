@@ -50,6 +50,20 @@ type DeckProfile struct {
 	PrimaryArchetype    string
 	SecondaryArchetype  string
 	ArchetypeConfidence float64
+	// SecondaryFit is the [0,1] goodness-of-fit of the secondary
+	// archetype fingerprint (mirrors ArchetypeClassification.SecondaryFit).
+	// Surfaced so downstream consumers can decide "is the runner-up
+	// substantive, or just the nearest miss?"
+	SecondaryFit float64
+	// IsBlend / BlendLabel flag decks where the primary call is genuinely
+	// uncertain (confidence < 0.7) AND the secondary archetype is itself
+	// a meaningful fit (>0.5). Surfaced as "{Primary} with {Secondary}
+	// splash" so the report can convey blended themes like
+	// "Aristocrats with Reanimator splash" without restructuring the
+	// per-archetype display. See BlendConfidenceCeiling /
+	// BlendSecondaryFitFloor in archetype.go.
+	IsBlend    bool
+	BlendLabel string
 	// Bracket is the rubber-stamp / declared bracket: what the deck
 	// identifies as. Defaults to MeasuredBracket; overridden to 2 for
 	// any deck under data/decks/wizards/ (unedited WotC precons whose
@@ -505,6 +519,9 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 		dp.PrimaryArchetype = report.Archetype.Primary
 		dp.SecondaryArchetype = report.Archetype.Secondary
 		dp.ArchetypeConfidence = report.Archetype.PrimaryConfidence
+		dp.SecondaryFit = report.Archetype.SecondaryFit
+		dp.IsBlend = report.Archetype.IsBlend
+		dp.BlendLabel = report.Archetype.BlendLabel
 		dp.MeasuredBracket = report.Archetype.MeasuredBracket
 		dp.MeasuredBracketLabel = report.Archetype.MeasuredBracketLabel
 		// Declared bracket defaults to the measured value; the wizards/
