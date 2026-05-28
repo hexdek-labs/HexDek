@@ -154,6 +154,16 @@ type GameState struct {
 	// by UnregisterContinuousEffectsForPermanent.
 	ContinuousEffects []*ContinuousEffect
 
+	// SeatWardEffects is the r60 anthem-style ward registry (Hexing
+	// Squelcher / Indomitable Might-class "all your creatures have
+	// ward N" continuous effects). One entry per source permanent —
+	// the per-target instance is materialized inside SeatWardCostsFor
+	// at lookup time so a control change on the source naturally moves
+	// which seat's creatures benefit. Populated by AddSeatWardCost;
+	// drained on LTB via RemoveSeatWardCostsForSource. See
+	// ward_seat_scope.go.
+	SeatWardEffects []*SeatWardEntry
+
 	// charCache memoizes GetEffectiveCharacteristics. Key is the
 	// Permanent pointer. Invalidated by charCacheEpoch — every mutation
 	// that could change a characteristic bumps the epoch; a cache entry
