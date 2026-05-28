@@ -43,14 +43,52 @@ func ApplyPowerTierRouting(sp *StrategyProfile) {
 	if m == nil {
 		return
 	}
+	c := effectiveConfidence(sp.PowerTierConfidence)
 	w := sp.Weights
-	w.ComboProximity *= m.ComboProximity
-	w.StackInteraction *= m.StackInteraction
-	w.ActivationTempo *= m.ActivationTempo
-	w.ToolboxBreadth *= m.ToolboxBreadth
-	w.BoardPresence *= m.BoardPresence
-	w.CommanderProgress *= m.CommanderProgress
-	w.LifeResource *= m.LifeResource
+	w.ComboProximity *= blendMultiplier(m.ComboProximity, c)
+	w.StackInteraction *= blendMultiplier(m.StackInteraction, c)
+	w.ActivationTempo *= blendMultiplier(m.ActivationTempo, c)
+	w.ToolboxBreadth *= blendMultiplier(m.ToolboxBreadth, c)
+	w.BoardPresence *= blendMultiplier(m.BoardPresence, c)
+	w.CommanderProgress *= blendMultiplier(m.CommanderProgress, c)
+	w.LifeResource *= blendMultiplier(m.LifeResource, c)
+}
+
+// blendMultiplier interpolates a per-tier multiplier toward neutral
+// (1.0) by the confidence weight:
+//
+//	effective = 1.0 + confidence * (rawMult - 1.0)
+//
+// At confidence=1.0 the full multiplier applies; at confidence=0.5
+// the tilt is halved (deck treated as 50% tier-X / 50% neutral); at
+// confidence=0 the multiplier collapses to 1.0 (no tilt — equivalent
+// to T3 neutral behavior). This implements the "boundary-confidence
+// decks could blend strategies" intent from the cEDH classifier
+// confidence work (PR #717).
+//
+// Symmetric in both directions: a race-shape mult of 1.6 at
+// confidence=0.5 becomes 1.3 (halfway to neutral); a board-shape
+// mult of 0.6 at confidence=0.5 becomes 0.8 (halfway to neutral).
+func blendMultiplier(rawMult, confidence float64) float64 {
+	return 1.0 + confidence*(rawMult-1.0)
+}
+
+// effectiveConfidence clamps the input confidence to [0, 1] and
+// applies the legacy default: a 0 value (the Go zero) means "no
+// confidence was supplied" rather than "0% confidence" — for legacy
+// strategy.json reports predating the confidence field, the routing
+// should behave as if confidence=1.0 (preserving the pre-#717 full-
+// tilt behavior). Real confidence scores from Freya are always > 0
+// — even a clear-cut T5 deck produces ~0.65+ on the worst case, so
+// using 0 as a "missing" sentinel is safe.
+func effectiveConfidence(c float64) float64 {
+	if c <= 0 {
+		return 1.0
+	}
+	if c > 1 {
+		return 1.0
+	}
+	return c
 }
 
 // powerTierMultipliers returns the per-dimension multiplier table for

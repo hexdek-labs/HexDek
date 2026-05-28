@@ -63,7 +63,10 @@ type freyaDeckProfile struct {
 	// ClassifyCEDHPowerTier (PRs #714/#715). 1-2 = Casual, 3 =
 	// Upgraded Precon, 4 = High Power, 5 = cEDH. Drives
 	// ApplyPowerTierRouting in the hat strategy loader.
-	PowerTier        int    `json:"cedh_power_tier,omitempty"`
+	PowerTier        int     `json:"cedh_power_tier,omitempty"`
+	// PowerTierConfidence — see CEDHPowerTier.Confidence in
+	// cmd/hexdek-freya/power_tier_cedh.go. [0, 1].
+	PowerTierConfidence float64 `json:"cedh_power_tier_confidence,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -76,6 +79,8 @@ type strategyFileJSON struct {
 	// PowerTier — 5-tier cEDH classification from Freya
 	// ClassifyCEDHPowerTier (PRs #714/#715). 1-5; 0 = unset.
 	PowerTier       int                 `json:"cedh_power_tier,omitempty"`
+	// PowerTierConfidence — see CEDHPowerTier.Confidence (PR #717).
+	PowerTierConfidence float64 `json:"cedh_power_tier_confidence,omitempty"`
 	GameplanSummary string              `json:"gameplan_summary"`
 	WinLines        []freyaWinLine      `json:"win_lines,omitempty"`
 	ValueEngineKeys []string            `json:"value_engine_keys,omitempty"`
@@ -168,6 +173,7 @@ func buildFromStrategyJSON(sj *strategyFileJSON) *StrategyProfile {
 		Archetype:         sj.Archetype,
 		Bracket:           sj.Bracket,
 		PowerTier:         sj.PowerTier,
+		PowerTierConfidence: sj.PowerTierConfidence,
 		GameplanSummary:   sj.GameplanSummary,
 		TutorTargets:      sj.TutorTargets,
 		ValueEngineKeys:   sj.ValueEngineKeys,
@@ -295,6 +301,9 @@ func buildStrategyProfile(fj *freyaJSON) *StrategyProfile {
 		}
 		if fj.FullProfile.PowerTier > 0 {
 			sp.PowerTier = fj.FullProfile.PowerTier
+		}
+		if fj.FullProfile.PowerTierConfidence > 0 {
+			sp.PowerTierConfidence = fj.FullProfile.PowerTierConfidence
 		}
 		sp.GameplanSummary = fj.FullProfile.GameplanSummary
 	}
