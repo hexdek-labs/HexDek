@@ -20,7 +20,7 @@ func TestBuildTierFitnessScore_BothComponentsAlignedHighFit(t *testing.T) {
 	// T3 Upgraded Precon with ideal CMC + ideal tutor density.
 	curve := BuildManaCurveTierFit(3.2, 3)
 	tutors := BuildTutorDensityTierFit(4, 99, 3)
-	got := BuildTierFitnessScore(curve, tutors, nil, nil)
+	got := BuildTierFitnessScore(curve, tutors, nil, nil, nil)
 	if got == nil {
 		t.Fatal("nil result")
 	}
@@ -49,7 +49,7 @@ func TestBuildTierFitnessScore_SingleMismatchSurfacesAxis(t *testing.T) {
 	// (0.5 sigma below T3 min of 3, fit ~0.32). Composite avg ~0.66.
 	curve := BuildManaCurveTierFit(3.2, 3)
 	tutors := BuildTutorDensityTierFit(1, 99, 3)
-	got := BuildTierFitnessScore(curve, tutors, nil, nil)
+	got := BuildTierFitnessScore(curve, tutors, nil, nil, nil)
 	if got.Band == "well_tuned" {
 		t.Errorf("single-mismatch deck shouldn't be well_tuned, got Band=%s Score=%.3f",
 			got.Band, got.Score)
@@ -70,7 +70,7 @@ func TestBuildTierFitnessScore_BothComponentsDriftedPoorlyTuned(t *testing.T) {
 	// T5 declared but curve=3.6 (B2 curve) and tutors=2 (B1-typical)
 	curve := BuildManaCurveTierFit(3.6, 5)
 	tutors := BuildTutorDensityTierFit(2, 99, 5)
-	got := BuildTierFitnessScore(curve, tutors, nil, nil)
+	got := BuildTierFitnessScore(curve, tutors, nil, nil, nil)
 	if got.Score >= 0.5 {
 		t.Errorf("dual-drift cEDH-claim: want Score < 0.5, got %.4f", got.Score)
 	}
@@ -89,7 +89,7 @@ func TestBuildTierFitnessScore_ComponentsSortedByFitAsc(t *testing.T) {
 	// Curve perfect, tutors very sparse → tutors should be first.
 	curve := BuildManaCurveTierFit(3.2, 3)
 	tutors := BuildTutorDensityTierFit(0, 99, 3)
-	got := BuildTierFitnessScore(curve, tutors, nil, nil)
+	got := BuildTierFitnessScore(curve, tutors, nil, nil, nil)
 	if len(got.Components) != 2 {
 		t.Fatalf("want 2 components, got %d", len(got.Components))
 	}
@@ -105,7 +105,7 @@ func TestBuildTierFitnessScore_ComponentsSortedByFitAsc(t *testing.T) {
 // defensive paths: nil curve, nil tutors, both nil.
 func TestBuildTierFitnessScore_NilComponentsHandled(t *testing.T) {
 	// Both nil
-	got := BuildTierFitnessScore(nil, nil, nil, nil)
+	got := BuildTierFitnessScore(nil, nil, nil, nil, nil)
 	if got == nil {
 		t.Fatal("want non-nil result")
 	}
@@ -118,7 +118,7 @@ func TestBuildTierFitnessScore_NilComponentsHandled(t *testing.T) {
 
 	// Only curve
 	curve := BuildManaCurveTierFit(3.2, 3)
-	got = BuildTierFitnessScore(curve, nil, nil, nil)
+	got = BuildTierFitnessScore(curve, nil, nil, nil, nil)
 	if got.Score < 0.99 {
 		t.Errorf("curve-only at ideal: want Score >= 0.99, got %.4f", got.Score)
 	}
@@ -131,7 +131,7 @@ func TestBuildTierFitnessScore_NilComponentsHandled(t *testing.T) {
 
 	// Only tutors
 	tutors := BuildTutorDensityTierFit(4, 99, 3)
-	got = BuildTierFitnessScore(nil, tutors, nil, nil)
+	got = BuildTierFitnessScore(nil, tutors, nil, nil, nil)
 	if got.Score < 0.99 {
 		t.Errorf("tutors-only at ideal: want Score >= 0.99, got %.4f", got.Score)
 	}
@@ -146,7 +146,7 @@ func TestBuildTierFitnessScore_NilComponentsHandled(t *testing.T) {
 func TestBuildTierFitnessScore_WeightedAverageMath(t *testing.T) {
 	curve := BuildManaCurveTierFit(3.2, 3)   // fit ~1.0
 	tutors := BuildTutorDensityTierFit(0, 99, 3) // fit ~0.6
-	got := BuildTierFitnessScore(curve, tutors, nil, nil)
+	got := BuildTierFitnessScore(curve, tutors, nil, nil, nil)
 	wantMean := (curve.Fit + tutors.Fit) / 2
 	if !almostEqualTF(got.Score, wantMean) {
 		t.Errorf("composite score: want %.6f (mean of components), got %.6f",
@@ -184,7 +184,7 @@ func TestTierFitnessBandFor_Thresholds(t *testing.T) {
 func TestBuildTierFitnessScore_SummaryFormat(t *testing.T) {
 	curve := BuildManaCurveTierFit(3.2, 3)
 	tutors := BuildTutorDensityTierFit(4, 99, 3)
-	got := BuildTierFitnessScore(curve, tutors, nil, nil)
+	got := BuildTierFitnessScore(curve, tutors, nil, nil, nil)
 	if !strings.Contains(got.Summary, "T3") {
 		t.Errorf("summary missing tier number: %q", got.Summary)
 	}
@@ -204,7 +204,7 @@ func TestBuildTierFitnessScore_WeakNotesCappedAtTwo(t *testing.T) {
 	// with both notes (≤2 cap).
 	curve := BuildManaCurveTierFit(4.5, 5)  // way too expensive for T5
 	tutors := BuildTutorDensityTierFit(0, 99, 5) // way too sparse
-	got := BuildTierFitnessScore(curve, tutors, nil, nil)
+	got := BuildTierFitnessScore(curve, tutors, nil, nil, nil)
 	// Count " and " (the join separator) — should appear ≤1 time
 	// (joining at most 2 notes).
 	if strings.Count(got.Summary, " and ") > 1 {
@@ -244,7 +244,7 @@ func TestBuildTierFitnessScore_RealCorpusCalibration(t *testing.T) {
 		curve := BuildManaCurveTierFit(dp.AvgCMC, tier.Tier)
 		tutors := BuildTutorDensityTierFit(
 			report.NonLandTutorCount, report.TotalCards, tier.Tier)
-		got := BuildTierFitnessScore(curve, tutors, nil, nil)
+		got := BuildTierFitnessScore(curve, tutors, nil, nil, nil)
 		t.Logf("%s: T%d score=%.3f band=%s — %s",
 			base, tier.Tier, got.Score, got.Band, got.Summary)
 		if got.Score >= 0.70 {
