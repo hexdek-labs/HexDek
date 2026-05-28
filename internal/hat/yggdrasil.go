@@ -6570,7 +6570,20 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 			strings.Contains(ot, "extra turn after this one") {
 			mustCounter = true
 		}
-		if strings.Contains(ot, "search your library") && score >= 2 {
+		// r60 — combo-tutor classifier supersedes the score-gated
+		// "search your library" path. Cheap 1-CMC tutors (Vampiric,
+		// Mystical, Imperial Seal, Worldly) scored 1 under the legacy
+		// `score >= 2` gate and slipped past despite being the highest-
+		// leverage combo enablers in Commander. isComboTutorOracle
+		// matches the canonical non-land search clauses and mustCounters
+		// regardless of CMC; ramp tutors (Cultivate, Three Visits, Crop
+		// Rotation) fall through to the original score gate so an
+		// expensive ramp tutor (e.g. 4-mana Skyshroud Claim) can still
+		// trip the threshold via its CMC but a cheap one stays off the
+		// mustCounter list.
+		if isComboTutorOracle(ot) {
+			mustCounter = true
+		} else if strings.Contains(ot, "search your library") && score >= 2 {
 			mustCounter = true
 		}
 		// R60 priority-window audit — high-value trigger payloads. When

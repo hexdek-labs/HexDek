@@ -2575,6 +2575,57 @@ func isLowImpactCantripSpell(card *gameengine.Card) bool {
 	return false
 }
 
+// isComboTutorOracle returns true when an oracle text describes a
+// non-ramp library tutor — a "search your library for a [card type
+// that could be a combo piece or wincon]" effect. Used by the
+// ChooseResponse mustCounter gate to elevate cheap tutors (Vampiric /
+// Mystical / Imperial Seal / Worldly / Enlightened) above the score-
+// based threshold that would otherwise let them slip past.
+//
+// The combo-tutor signal: a tutor materially advances the caster's
+// win line by converting "we'll probably draw it eventually" into
+// "we have it next turn". Removal is local in scope (clears one
+// permanent) and replaces itself with nothing; a tutor compounds
+// across turns and BECOMES the wincon it fetched. Countering the
+// tutor is strictly better than countering a removal spell of
+// equivalent CMC — the tutor's effect is the fetched card, not the
+// spell itself.
+//
+// Conservative on the search-target side: matches the canonical
+// non-land target types (creature, instant, sorcery, enchantment,
+// artifact, aura, planeswalker, "for a card" open tutors). Ramp
+// tutors (Cultivate, Nature's Lore, Three Visits, Skyshroud Claim,
+// Crop Rotation) search for lands or land cards and intentionally
+// don't match — they're mana fixing, not combo enablers. A few
+// false-negatives are acceptable (Eladamri's Call already matches
+// via "for a creature card"; Once Upon a Time's modal isn't worth
+// special-casing — the standard score gate still catches it at
+// expensive copies).
+func isComboTutorOracle(ot string) bool {
+	if ot == "" || !strings.Contains(ot, "search your library for") {
+		return false
+	}
+	patterns := [...]string{
+		"for a card",            // Demonic Tutor, Diabolic Intent, Imperial Seal, Vampiric Tutor
+		"for an instant",        // Mystical Tutor, Merchant Scroll
+		"for a sorcery",         // Mystical Tutor (alt clause)
+		"for a creature card",   // Worldly Tutor, Eladamri's Call, Chord of Calling
+		"for an enchantment",    // Idyllic Tutor, Enchantress's Presence-fetchers
+		"for an artifact",       // Fabricate, Whir of Invention
+		"for an artifact card",  // Enlightened Tutor partial
+		"for an artifact or",    // Enlightened Tutor "for an artifact or enchantment card"
+		"for an aura",           // Heliod's Pilgrim
+		"for a planeswalker",    // Call the Gatewatch
+		"for any card",          // alternate phrasing
+	}
+	for _, p := range patterns {
+		if strings.Contains(ot, p) {
+			return true
+		}
+	}
+	return false
+}
+
 // stackItemScore — cheap proxy for _stack_item_threat_score. CMC +
 // kind-specific bonus. Full scoring lives in the engine; this is only
 // the mode-threshold gate.
