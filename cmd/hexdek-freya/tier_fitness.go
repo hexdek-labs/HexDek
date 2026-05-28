@@ -114,7 +114,7 @@ type TierFitnessComponent struct {
 // (both components share the input tier in practice — they're
 // computed for the same deck). If they disagree, the first non-nil
 // wins, which is the curve fit in the canonical call order.
-func BuildTierFitnessScore(curve *ManaCurveTierFit, tutors *TutorDensityTierFit, interaction *InteractionTierFit, removal *RemovalTierFit) *TierFitnessScore {
+func BuildTierFitnessScore(curve *ManaCurveTierFit, tutors *TutorDensityTierFit, interaction *InteractionTierFit, removal *RemovalTierFit, manaBase *ManaBaseTierFit) *TierFitnessScore {
 	out := &TierFitnessScore{}
 	if curve != nil {
 		out.Tier = curve.Tier
@@ -164,6 +164,19 @@ func BuildTierFitnessScore(curve *ManaCurveTierFit, tutors *TutorDensityTierFit,
 			Weight:    1.0,
 			Direction: removal.Direction,
 			Note:      removalComponentNote(removal.Direction),
+		})
+	}
+	if manaBase != nil {
+		if out.Tier == 0 {
+			out.Tier = manaBase.Tier
+			out.TierLabel = manaBase.TierLabel
+		}
+		out.Components = append(out.Components, TierFitnessComponent{
+			Axis:      "Mana Base",
+			Fit:       manaBase.Fit,
+			Weight:    1.0,
+			Direction: manaBase.Direction,
+			Note:      manaBaseComponentNote(manaBase.Direction),
 		})
 	}
 	if len(out.Components) == 0 {
@@ -251,6 +264,21 @@ func removalComponentNote(direction string) string {
 		return "removal too dense"
 	case "in_band":
 		return "removal aligned"
+	default:
+		return ""
+	}
+}
+
+// manaBaseComponentNote translates the mana-base fit's Direction
+// into a summary-ready phrase.
+func manaBaseComponentNote(direction string) string {
+	switch direction {
+	case "too_weak":
+		return "mana base too weak"
+	case "too_strong":
+		return "mana base too strong"
+	case "in_band":
+		return "mana base aligned"
 	default:
 		return ""
 	}

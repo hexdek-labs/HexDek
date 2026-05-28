@@ -189,7 +189,7 @@ func TestBuildRemovalTierFit_TierFitnessAggregateIntegration(t *testing.T) {
 	tutors := BuildTutorDensityTierFit(4, 99, 3)
 	interaction := BuildInteractionTierFit(mkInteractionReport(11), 3)
 	removal := BuildRemovalTierFit(mkRemovalReport(8, 0), 3)
-	got := BuildTierFitnessScore(curve, tutors, interaction, removal)
+	got := BuildTierFitnessScore(curve, tutors, interaction, removal, nil)
 	if len(got.Components) != 4 {
 		t.Errorf("want 4 components, got %d", len(got.Components))
 	}
@@ -199,7 +199,7 @@ func TestBuildRemovalTierFit_TierFitnessAggregateIntegration(t *testing.T) {
 
 	// Drift removal → should surface in summary
 	removal = BuildRemovalTierFit(mkRemovalReport(2, 0), 3)
-	got = BuildTierFitnessScore(curve, tutors, interaction, removal)
+	got = BuildTierFitnessScore(curve, tutors, interaction, removal, nil)
 	if got.Band == "well_tuned" {
 		t.Errorf("removal-drift deck shouldn't be well_tuned, got %s", got.Band)
 	}
