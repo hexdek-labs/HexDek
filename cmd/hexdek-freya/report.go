@@ -702,6 +702,10 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		fmt.Fprintf(w, "  %s\n\n", dp.PersonalityBlurb)
 	}
 
+	if dp.CanonicalPreconOverlap != nil && dp.CanonicalPreconOverlap.SharedCount > 0 {
+		fmt.Fprintf(w, "  Precon overlap: %s\n\n", FormatPreconOverlap(dp.CanonicalPreconOverlap))
+	}
+
 	if len(dp.CoachingTips) > 0 {
 		fmt.Fprintf(w, "  Coaching (bracket %d, %s):\n", dp.Bracket, dp.PrimaryArchetype)
 		for _, t := range dp.CoachingTips {
@@ -1462,8 +1466,9 @@ type jsonDeckProfile struct {
 	CardPowerLevels    []jsonCardPowerLevel `json:"card_power_levels,omitempty"`
 	PowerTierCounts    map[string]int       `json:"power_tier_counts,omitempty"`
 	PetCards           []jsonPetCard        `json:"pet_cards,omitempty"`
-	LandSwapSuggestions    []string      `json:"land_swap_suggestions,omitempty"`
-	CurveArchetypeWarnings []string      `json:"curve_archetype_warnings,omitempty"`
+	LandSwapSuggestions    []string       `json:"land_swap_suggestions,omitempty"`
+	CurveArchetypeWarnings []string       `json:"curve_archetype_warnings,omitempty"`
+	CanonicalPreconOverlap *PreconOverlap `json:"canonical_precon_overlap,omitempty"`
 	CommanderSynergy   float64           `json:"commander_synergy,omitempty"`
 	CommanderThemes    []string          `json:"commander_themes,omitempty"`
 	InteractionQuality float64           `json:"interaction_quality,omitempty"`
@@ -1919,6 +1924,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		PetCards:            petCards,
 		LandSwapSuggestions:    dp.LandSwapSuggestions,
 		CurveArchetypeWarnings: dp.CurveArchetypeWarnings,
+		CanonicalPreconOverlap: dp.CanonicalPreconOverlap,
 		CommanderSynergy:   dp.CommanderSynergy,
 		CommanderThemes:    dp.CommanderThemes,
 		InteractionQuality: dp.InteractionQuality,

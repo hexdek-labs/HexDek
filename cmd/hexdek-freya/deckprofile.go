@@ -277,6 +277,14 @@ type DeckProfile struct {
 	// this." See computePetCards for the exact detection signals.
 	PetCards []PetCard
 
+	// CanonicalPreconOverlap (R60) is populated by the --all-decks
+	// corpus pass when a WotC precon ships the same commander as this
+	// deck. Surfaces as "shares 23 cards with the canonical Sigarda
+	// precon" so builders see how far from stock product they've
+	// drifted. nil when no matching precon exists or the corpus pass
+	// didn't run (single-deck mode).
+	CanonicalPreconOverlap *PreconOverlap
+
 	// Color weight suggestions
 	LandSwapSuggestions []string
 
