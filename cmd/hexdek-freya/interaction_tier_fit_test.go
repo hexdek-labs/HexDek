@@ -210,7 +210,7 @@ func TestBuildInteractionTierFit_TierFitnessAggregateIntegration(t *testing.T) {
 	curve := BuildManaCurveTierFit(3.2, 3)
 	tutors := BuildTutorDensityTierFit(4, 99, 3)
 	interaction := BuildInteractionTierFit(mkInteractionReport(11), 3)
-	got := BuildTierFitnessScore(curve, tutors, interaction)
+	got := BuildTierFitnessScore(curve, tutors, interaction, nil)
 	if len(got.Components) != 3 {
 		t.Errorf("want 3 components, got %d", len(got.Components))
 	}
@@ -220,7 +220,7 @@ func TestBuildInteractionTierFit_TierFitnessAggregateIntegration(t *testing.T) {
 
 	// Now drift interaction to test it surfaces in the summary
 	interaction = BuildInteractionTierFit(mkInteractionReport(3), 3)
-	got = BuildTierFitnessScore(curve, tutors, interaction)
+	got = BuildTierFitnessScore(curve, tutors, interaction, nil)
 	if got.Band == "well_tuned" {
 		t.Errorf("interaction-drift deck shouldn't be well_tuned, got %s", got.Band)
 	}

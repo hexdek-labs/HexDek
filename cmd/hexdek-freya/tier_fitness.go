@@ -114,7 +114,7 @@ type TierFitnessComponent struct {
 // (both components share the input tier in practice — they're
 // computed for the same deck). If they disagree, the first non-nil
 // wins, which is the curve fit in the canonical call order.
-func BuildTierFitnessScore(curve *ManaCurveTierFit, tutors *TutorDensityTierFit, interaction *InteractionTierFit) *TierFitnessScore {
+func BuildTierFitnessScore(curve *ManaCurveTierFit, tutors *TutorDensityTierFit, interaction *InteractionTierFit, removal *RemovalTierFit) *TierFitnessScore {
 	out := &TierFitnessScore{}
 	if curve != nil {
 		out.Tier = curve.Tier
@@ -151,6 +151,19 @@ func BuildTierFitnessScore(curve *ManaCurveTierFit, tutors *TutorDensityTierFit,
 			Weight:    1.0,
 			Direction: interaction.Direction,
 			Note:      interactionComponentNote(interaction.Direction),
+		})
+	}
+	if removal != nil {
+		if out.Tier == 0 {
+			out.Tier = removal.Tier
+			out.TierLabel = removal.TierLabel
+		}
+		out.Components = append(out.Components, TierFitnessComponent{
+			Axis:      "Removal",
+			Fit:       removal.Fit,
+			Weight:    1.0,
+			Direction: removal.Direction,
+			Note:      removalComponentNote(removal.Direction),
 		})
 	}
 	if len(out.Components) == 0 {
@@ -223,6 +236,21 @@ func interactionComponentNote(direction string) string {
 		return "interaction too dense"
 	case "in_band":
 		return "interaction aligned"
+	default:
+		return ""
+	}
+}
+
+// removalComponentNote translates the removal fit's Direction
+// into a summary-ready phrase.
+func removalComponentNote(direction string) string {
+	switch direction {
+	case "too_sparse":
+		return "removal too sparse"
+	case "too_dense":
+		return "removal too dense"
+	case "in_band":
+		return "removal aligned"
 	default:
 		return ""
 	}
