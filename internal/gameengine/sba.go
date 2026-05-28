@@ -759,10 +759,21 @@ func sba704_5j(gs *GameState) bool {
 			if p.PhasedOut {
 				continue
 			}
-			if !p.IsLegendary() {
+			// r60 layer-aware legend rule: read the effective supertype
+			// via gs.HasSupertypeOf rather than the printed
+			// p.IsLegendary. legendary is a §205.4b supertype, so the
+			// query reads Characteristics.Supertypes (post-partition).
+			// HasSupertypeOf catches layer-induced legendary cases
+			// (Layer 1 copy effects copying a legendary's printed
+			// characteristics onto a non-legendary host, hypothetical
+			// future Layer 4 supertype-add effects) that the printed
+			// p.IsLegendary misses. Also brings sba704_5j in line with
+			// sba704_5f / 5g / 5n / checkSBACompleteness, which already
+			// use layer-aware predicates.
+			if !gs.HasSupertypeOf(p, "legendary") {
 				continue
 			}
-			if masterActive && p.IsToken() && p.IsCreature() {
+			if masterActive && p.IsToken() && gs.IsCreatureOf(p) {
 				continue
 			}
 			name := p.Card.DisplayName()

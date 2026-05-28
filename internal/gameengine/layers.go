@@ -802,6 +802,25 @@ func (gs *GameState) HasTypeOf(p *Permanent, want string) bool {
 	return false
 }
 
+// HasSupertypeOf returns true if p has supertype `want` (legendary,
+// basic, snow, world, etc.) after layer 4 application. Distinct
+// from HasTypeOf which reads Characteristics.Types post-partition;
+// supertypes live on Characteristics.Supertypes (see
+// BaseCharacteristics.partitionTypes — §205.4 supertypes are
+// separated from card types). Used by sba704_5j (legend rule).
+func (gs *GameState) HasSupertypeOf(p *Permanent, want string) bool {
+	if gs == nil || p == nil {
+		return false
+	}
+	want = strings.ToLower(strings.TrimSpace(want))
+	for _, t := range GetEffectiveCharacteristics(gs, p).Supertypes {
+		if strings.ToLower(t) == want {
+			return true
+		}
+	}
+	return false
+}
+
 // HasSubtypeOf returns true if p has subtype `want` after layer 4.
 func (gs *GameState) HasSubtypeOf(p *Permanent, want string) bool {
 	if gs == nil || p == nil {
