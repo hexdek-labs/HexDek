@@ -854,6 +854,19 @@ type Seat struct {
 	// empty. §704.5b will consume this in the SBA phase.
 	AttemptedEmptyDraw bool
 
+	// LostByEffect — CR §104.3e marker. Set by resolveLoseGame together
+	// with Lost=true when this seat lost because a card effect (Demonic
+	// Pact's final mode, Door to Nothingness, Phage the Untouchable's
+	// damage clause, Lich's Mirror's failure fallback, etc.) said so —
+	// as distinct from the numeric §704.5a/b/c/6c clauses. The
+	// CheckLossConditions classifier reads this flag and returns
+	// LossEffect when set, giving downstream consumers (Heimdall,
+	// analytics, hat AI) a clean enum to switch on alongside the
+	// human-readable LossReason string. Cleared (along with Lost) is a
+	// bug — the two fields are expected to move in lockstep through
+	// the resolveLoseGame canonical pipeline.
+	LostByEffect bool
+
 	// Turn is the centralized per-turn counter block. All core engine
 	// functions (GainLife, drawOne, SacrificePermanent, etc.) increment
 	// these counters directly. Per_card handlers read them instead of
