@@ -1286,7 +1286,11 @@ func ResolveStackTop(gs *GameState) {
 			// CR §702.33: "If the flashback cost was paid, exile this
 			// card instead of putting it anywhere else any time it would
 			// leave the stack."
-			MoveCard(gs, item.Card, item.Controller, "stack", "exile", "flashback-exile")
+			// CR §400.7c: the card moves to the OWNER's exile, not the
+			// caster's. Pass item.Card.Owner explicitly so the call is
+			// structurally correct and doesn't rely on the moveToZone
+			// owner-redirect backstop (state.go:1614-1645).
+			MoveCard(gs, item.Card, item.Card.Owner, "stack", "exile", "flashback-exile")
 			gs.LogEvent(Event{
 				Kind:   "resolve",
 				Seat:   item.Controller,
@@ -1300,8 +1304,11 @@ func ResolveStackTop(gs *GameState) {
 			})
 		} else if ShouldReturnToHandOnResolve(item) {
 			// CR §702.27b: if the buyback cost was paid, the spell
-			// returns to its owner's hand instead of the graveyard.
-			MoveCard(gs, item.Card, item.Controller, "stack", "hand", "buyback")
+			// returns to its OWNER's hand instead of the graveyard.
+			// Pass item.Card.Owner explicitly — the §702.27b wording
+			// is explicit ("its owner's hand") and structurally
+			// correct without relying on the moveToZone backstop.
+			MoveCard(gs, item.Card, item.Card.Owner, "stack", "hand", "buyback")
 			gs.LogEvent(Event{
 				Kind:   "resolve",
 				Seat:   item.Controller,
@@ -1313,9 +1320,20 @@ func ResolveStackTop(gs *GameState) {
 				},
 			})
 		} else {
-			// CR §608.2g: non-permanent spells go to the graveyard on
-			// resolution.
-			MoveCard(gs, item.Card, item.Controller, "stack", "graveyard", "resolve")
+			// CR §608.2g: non-permanent spells go to the OWNER's
+			// graveyard on resolution ("the graveyard of its owner",
+			// explicit in the rule). Pass item.Card.Owner instead of
+			// item.Controller so cross-control casts (Bribery /
+			// Hostage Taker / Possibility Storm / Knowledge Pool /
+			// Etali / Praetor's Grasp / Dauthi Voidwalker / Release
+			// to the Wind / Mind's Desire / chaos cascade family)
+			// route correctly without relying on the moveToZone
+			// owner-redirect backstop (state.go:1614-1645). The
+			// pre-fix call passed item.Controller and depended on
+			// the backstop to silently re-route — structurally
+			// wrong and a sibling of the Etali §400.7c cluster
+			// closed in PR #685.
+			MoveCard(gs, item.Card, item.Card.Owner, "stack", "graveyard", "resolve")
 			gs.LogEvent(Event{
 				Kind:   "resolve",
 				Seat:   item.Controller,
