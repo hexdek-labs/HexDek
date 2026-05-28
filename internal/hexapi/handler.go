@@ -195,6 +195,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/version-trends", h.handleDeckVersionTrends)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/archive", h.handleDeckArchive)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/analysis", h.handleGetAnalysis)
+	mux.HandleFunc("GET /api/decks/{owner}/{id}/suggestions", h.handleDeckSuggestions)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/matchups", h.handleDeckMatchups)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/elo-history", h.handleDeckEloHistory)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/history", h.handleDeckHistory)
