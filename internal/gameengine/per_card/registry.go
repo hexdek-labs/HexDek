@@ -505,6 +505,43 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 	}
 
 	if len(hitsBySeat) == 0 {
+		// r60 TriggerCompleteness fix: emit a synthetic
+		// trigger_evaluated marker before the zero-hits early
+		// return. Sister to the trigger_depth / trigger_total
+		// cap-path synthetic emissions above (lines 442-452,
+		// 457-467) and the per-permanent emission below (lines
+		// 521-525) — all OTHER return paths in fireTrigger emit
+		// trigger_evaluated; this one was the silent gap.
+		//
+		// The invariant checkTriggerCompleteness consults
+		// HasTriggerHook to identify trigger-bearer presence on
+		// the battlefield, then looks for a follow-up trigger
+		// event. When HasTriggerHook reports the bearer has the
+		// hook but fireTrigger finds zero registered handlers
+		// (handler registered against a different event alias,
+		// per_card handler de-registered between Begin and
+		// dispatch, name-canonicalisation mismatch between
+		// HasTriggerHook's lookup keys and the registry's
+		// onTrigger keys), the invariant fires the
+		// "death event but no subsequent trigger event found"
+		// false-positive. The synthetic emit closes that gap.
+		//
+		// Surfaced by the layer-stress 1000-game seed-42 sweep
+		// (PR #735): game 467 turn 47, Daxos Blessed by the Sun
+		// on the battlefield, sba_704_5f death event at index
+		// 2537, no trigger-evaluated emission — TriggerCompleteness
+		// false-positive against an SBA mass-death cascade.
+		gs.LogEvent(gameengine.Event{
+			Kind:   "trigger_evaluated",
+			Seat:   -1,
+			Target: -1,
+			Source: event,
+			Details: map[string]interface{}{
+				"event":  event,
+				"capped": "no_handlers",
+				"rule":   "603.3",
+			},
+		})
 		return
 	}
 
