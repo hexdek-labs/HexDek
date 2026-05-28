@@ -459,9 +459,38 @@ func reanimateResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 		emitFail(gs, slug, "Reanimate", "no_creature_in_any_graveyard", nil)
 		return
 	}
-	// Move from graveyard to battlefield under controller's control.
-	// MoveCard already creates the permanent and fires ETB triggers.
+	// Move from owner's graveyard to battlefield. MoveCard's destination
+	// path runs FireZoneChange → moveToZone(ownerSeat, card, "battlefield"),
+	// which wraps the Card in a Permanent on the OWNER's battlefield.
+	// We then reparent to the caster's seat per "under your control"
+	// (CR §110.2a — controller may differ from owner). The §400.7
+	// owner-redirect at moveToZone (PR #693) intentionally excludes
+	// battlefield from owner-routing for exactly this case. Pre-r60
+	// this reparenting step was missing — the reanimated creature
+	// stayed on the opp's battlefield, which was both a rules-bug
+	// (Reanimate text is unambiguous: "under your control") AND a
+	// gameplay disaster (free creature for the opp).
 	gameengine.MoveCard(gs, bestCard, bestSeat, "graveyard", "battlefield", "reanimate")
+
+	reparented := false
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, p := range s.Battlefield {
+			if p == nil || p.Card != bestCard {
+				continue
+			}
+			if p.Controller != seat {
+				removePermanent(gs, p)
+				p.Controller = seat
+				gs.Seats[seat].Battlefield = append(gs.Seats[seat].Battlefield, p)
+				reparented = true
+			}
+			break
+		}
+	}
+
 	// Lose life equal to CMC.
 	lifeLost := cardCMC(bestCard)
 	gameengine.LoseLife(gs, seat, lifeLost, "Reanimate")
@@ -470,6 +499,7 @@ func reanimateResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 		"reanimated": bestCard.DisplayName(),
 		"life_lost":  lifeLost,
 		"from_seat":  bestSeat,
+		"reparented": reparented,
 	})
 	_ = gs.CheckEnd()
 }
