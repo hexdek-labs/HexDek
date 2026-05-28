@@ -2171,6 +2171,10 @@ func registerDefaults() {
 	// surface. See docs/loki-r60-round2-report.md.
 	registerChitinousCrawler(Global())
 	registerIllusionaryMask(Global())
+
+	// Batch AL — copy / clone family stress-tested by the Loki 100K
+	// Naru Meha + Panharmonicon residual. Shares cloneVariantETB.
+	registerBatchALClonesR60(Global())
 }
 
 func init() {
