@@ -417,24 +417,31 @@ func TestOppositionAgent_ControlsOpponentSearch(t *testing.T) {
 	}
 }
 
-func TestOppositionAgent_ExilesSearchResultToControllerExile(t *testing.T) {
+func TestOppositionAgent_ExilesSearchResultToOwnerExile(t *testing.T) {
+	// Updated r60 per CR §400.7 / §406.1 + Scryfall ruling 2020-09-25:
+	// "The exiled cards are exiled into THAT PLAYER'S exile zone."
+	// The searched library's owner's exile is the destination; Agent's
+	// controller picks WHICH card to exile and retains the right to
+	// cast it (via ZoneCastGrant — separate from zone-of-residence).
+	// Pre-r60 the test pinned a rules-violating "controller exile"
+	// behavior that the §400.7 owner-redirect in moveToZone (PR #693)
+	// now correctly catches.
 	gs := newGame(t, 2)
 	_ = addPerm(gs, 0, "Opposition Agent", "creature")
 	gameengine.InvokeETBHook(gs, findPermanentByName(gs, "Opposition Agent"))
 
-	// Simulate seat 1 searching for a card; Agent's controller (seat 0)
-	// gets to exile it.
 	tutoredCard := &gameengine.Card{Name: "Demonic Tutor", Owner: 1, Types: []string{"sorcery"}}
 	ExileSearchResult(gs, 0, tutoredCard)
 
-	foundInSeat0Exile := false
-	for _, c := range gs.Seats[0].Exile {
+	foundInOwnerExile := false
+	for _, c := range gs.Seats[1].Exile {
 		if c == tutoredCard {
-			foundInSeat0Exile = true
+			foundInOwnerExile = true
 		}
 	}
-	if !foundInSeat0Exile {
-		t.Errorf("tutored card should be in Agent-controller's exile")
+	if !foundInOwnerExile {
+		t.Errorf("tutored card should be in OWNER's (seat 1) exile per CR §400.7; seat0_exile=%v seat1_exile=%v",
+			cardNames(gs.Seats[0].Exile), cardNames(gs.Seats[1].Exile))
 	}
 }
 
