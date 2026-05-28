@@ -1367,6 +1367,7 @@ type jsonDeckProfile struct {
 	PrimaryArchetype   string            `json:"primary_archetype"`
 	SecondaryArchetype string            `json:"secondary_archetype,omitempty"`
 	Confidence         float64           `json:"archetype_confidence"`
+	FingerprintMatch   float64           `json:"archetype_fingerprint_match"`
 	// Bracket is the declared / rubber-stamp value (see DeckProfile.Bracket).
 	// MeasuredBracket is Freya's signal-computed bracket; they diverge
 	// for wizards/ precons (declared B2, may measure hotter).
@@ -1561,7 +1562,12 @@ type jsonRoleAssignment struct {
 
 type jsonArchetype struct {
 	Primary    string             `json:"primary"`
-	Confidence float64            `json:"confidence"`
+	// Confidence is the RELATIVE confidence (winner vs runner-up
+	// gap); FingerprintMatch is the ABSOLUTE match (deck's signals
+	// vs winning fingerprint, independent of runner-up). See
+	// ArchetypeClassification field docs for the distinction.
+	Confidence       float64      `json:"confidence"`
+	FingerprintMatch float64      `json:"fingerprint_match"`
 	Secondary  string             `json:"secondary,omitempty"`
 	// Bracket is the declared / rubber-stamp bracket; MeasuredBracket is
 	// Freya's signal-computed value. They diverge for wizards/ precons.
@@ -1802,6 +1808,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		PrimaryArchetype:   dp.PrimaryArchetype,
 		SecondaryArchetype: dp.SecondaryArchetype,
 		Confidence:         dp.ArchetypeConfidence,
+		FingerprintMatch:   dp.ArchetypeFingerprintMatch,
 		Bracket:               dp.Bracket,
 		BracketLabel:          dp.BracketLabel,
 		MeasuredBracket:       dp.MeasuredBracket,
@@ -1890,9 +1897,10 @@ func buildJSONArchetype(ac *ArchetypeClassification) *jsonArchetype {
 		return nil
 	}
 	return &jsonArchetype{
-		Primary:    ac.Primary,
-		Confidence: ac.PrimaryConfidence,
-		Secondary:  ac.Secondary,
+		Primary:          ac.Primary,
+		Confidence:       ac.PrimaryConfidence,
+		FingerprintMatch: ac.FingerprintMatch,
+		Secondary:        ac.Secondary,
 		Bracket:              ac.Bracket,
 		BracketLbl:           ac.BracketLabel,
 		MeasuredBracket:      ac.MeasuredBracket,

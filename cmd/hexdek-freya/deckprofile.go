@@ -49,7 +49,20 @@ type DeckProfile struct {
 
 	PrimaryArchetype    string
 	SecondaryArchetype  string
+	// ArchetypeConfidence is the RELATIVE confidence: how decisively
+	// the winning fingerprint beats the runner-up (1 - best/second).
+	// Already used by buildIntent's "deck looks like X or Y" framing.
 	ArchetypeConfidence float64
+	// ArchetypeFingerprintMatch is the ABSOLUTE match score: how
+	// well the deck's role-ratio signals match the winning
+	// fingerprint, independent of the runner-up. A deck with a clear
+	// "winning" classification but signals far from any fingerprint
+	// (forced match because something has to win) gets a high
+	// ArchetypeConfidence but a low ArchetypeFingerprintMatch — the
+	// pair together communicates "we picked X confidently, but the
+	// deck doesn't actually look much like X." See
+	// ArchetypeClassification.FingerprintMatch for the calibration.
+	ArchetypeFingerprintMatch float64
 	// Bracket is the rubber-stamp / declared bracket: what the deck
 	// identifies as. Defaults to MeasuredBracket; overridden to 2 for
 	// any deck under data/decks/wizards/ (unedited WotC precons whose
@@ -498,6 +511,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 		dp.PrimaryArchetype = report.Archetype.Primary
 		dp.SecondaryArchetype = report.Archetype.Secondary
 		dp.ArchetypeConfidence = report.Archetype.PrimaryConfidence
+		dp.ArchetypeFingerprintMatch = report.Archetype.FingerprintMatch
 		dp.MeasuredBracket = report.Archetype.MeasuredBracket
 		dp.MeasuredBracketLabel = report.Archetype.MeasuredBracketLabel
 		// Declared bracket defaults to the measured value; the wizards/

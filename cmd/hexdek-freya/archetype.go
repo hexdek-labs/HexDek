@@ -9,7 +9,29 @@ import (
 
 type ArchetypeClassification struct {
 	Primary           string
+	// PrimaryConfidence is the RELATIVE confidence score: how much
+	// better the winning fingerprint matches than the runner-up.
+	// Computed as max(0, min(1, 1 - best/second)). High when the
+	// winner is decisively closer than the second-place archetype;
+	// low when the call is a coin flip. Already used by buildIntent
+	// to gate "deck looks like X or Y" framing.
 	PrimaryConfidence float64
+	// FingerprintMatch is the ABSOLUTE match score (0-1) — how
+	// strongly the deck's role-ratio signals match the WINNING
+	// archetype's expected fingerprint, independent of how close
+	// the runner-up was. Computed as max(0, 1 - 2*distance) where
+	// distance is the Euclidean distance over the fingerprint's
+	// role-ratio template. A deck that's far from EVERY fingerprint
+	// (forced into the closest one by the classifier) gets a low
+	// FingerprintMatch even when PrimaryConfidence is high (clear
+	// winner, but no archetype is a real fit). Surfaced separately
+	// so downstream consumers can distinguish "we're confident this
+	// is Combo" from "this deck actually looks like a Combo deck."
+	// Calibration: 2x multiplier on distance — a perfect template
+	// match (distance 0) yields 1.0; a typical strong match
+	// (distance ~0.15) yields ~0.70; a weak match (distance ~0.35)
+	// yields ~0.30; distance ≥ 0.5 floors to 0.
+	FingerprintMatch  float64
 	Secondary         string
 	SecondaryDistance  float64
 	Intent            string
@@ -761,6 +783,10 @@ func ClassifyArchetype(report *FreyaReport, qtyProfiles []CardProfileQty, oracle
 		Primary: results[0].name,
 	}
 
+	// FingerprintMatch is computed from the winner's raw distance to its
+	// own fingerprint, regardless of how close the runner-up is.
+	ac.FingerprintMatch = fingerprintMatchFromDistance(results[0].distance)
+
 	if len(results) >= 2 {
 		best := results[0].distance
 		second := results[1].distance
@@ -1329,6 +1355,25 @@ func cardHasAnthem(ot string) bool {
 		}
 	}
 	return false
+}
+
+// fingerprintMatchFromDistance maps a winning-fingerprint Euclidean
+// distance to a 0-1 absolute match score. The 2x multiplier is the
+// calibration constant: archetype role-ratio templates typically
+// reach ~0.15 distance for a strong match, ~0.35 for a weak one, and
+// 0.5+ for "this deck doesn't actually fit this archetype." Multiplying
+// by 2 puts those landmarks at match scores 0.70 / 0.30 / 0 — a useful
+// 0-1 readable contract. See ArchetypeClassification.FingerprintMatch
+// doc for the relative-vs-absolute distinction.
+func fingerprintMatchFromDistance(distance float64) float64 {
+	m := 1 - 2*distance
+	if m < 0 {
+		return 0
+	}
+	if m > 1 {
+		return 1
+	}
+	return m
 }
 
 func euclideanDistance(actual map[RoleTag]float64, template map[RoleTag]float64) float64 {
