@@ -91,6 +91,19 @@ func applyMigrations(db *sql.DB) error {
 		// fetch so older cache hits fill in their prices on first
 		// budget request.
 		{"card_oracle", "prices", "TEXT NOT NULL DEFAULT ''"},
+		// Scryfall P/T cache (strings, since "*" and "X" are valid values).
+		// Empty on rows cached before this migration — live-game
+		// CreateGameCard hydration treats empty as "no P/T data" and
+		// leaves the card's Power/Toughness at whatever the caller
+		// supplied (typically 0/0 → combat falls back to 1/1 per the
+		// pre-r60 MVP behavior). Populated on next Scryfall fetch.
+		{"card_oracle", "power", "TEXT NOT NULL DEFAULT ''"},
+		{"card_oracle", "toughness", "TEXT NOT NULL DEFAULT ''"},
+		// JSON array of card-face descriptors for DFC/MDFC/split/adventure
+		// cards. Front face lives at index 0; live-game P/T hydration
+		// picks face[0] when the top-level power/toughness is empty
+		// (the DFC convention Scryfall uses).
+		{"card_oracle", "card_faces", "TEXT NOT NULL DEFAULT ''"},
 	}
 	// Migrate showmatch_elo from commander-keyed to deck_key-keyed.
 	// Both Execs were previously unchecked — a DROP failure (e.g., FK

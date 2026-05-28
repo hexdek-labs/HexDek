@@ -97,6 +97,82 @@ type Card struct {
 	// budget endpoint treats nil/empty as "needs refresh" and triggers
 	// a fresh Scryfall fetch.
 	Prices map[string]string `json:"prices,omitempty"`
+
+	// Power / Toughness are stored as strings to preserve Scryfall's
+	// non-integer values ("*" for Tarmogoyf, "X" for Crackleburr, "1+*"
+	// for Lhurgoyf). Live-game P/T hydration parses these to int and
+	// falls back to 0 for non-integer values (the 1/1 MVP fallback then
+	// applies). Empty for non-creature cards or pre-r60 cache rows.
+	Power     string `json:"power,omitempty"`
+	Toughness string `json:"toughness,omitempty"`
+
+	// CardFaces holds the per-face descriptors for DFC/MDFC/split/adventure
+	// cards. Front face is index 0 per Scryfall convention; the live-game
+	// P/T hydration picks face[0] when the top-level Power is empty.
+	// Empty/nil for single-faced cards.
+	CardFaces []CardFace `json:"card_faces,omitempty"`
+}
+
+// CardFace is a single face of a multi-face card. Scryfall populates these
+// for DFC (Delver of Secrets), MDFC (Sea Gate Restoration), split (Fire //
+// Ice), adventure (Bonecrusher Giant // Stomp), and meld card layouts.
+type CardFace struct {
+	Name       string `json:"name"`
+	ManaCost   string `json:"mana_cost,omitempty"`
+	TypeLine   string `json:"type_line,omitempty"`
+	OracleText string `json:"oracle_text,omitempty"`
+	Power      string `json:"power,omitempty"`
+	Toughness  string `json:"toughness,omitempty"`
+}
+
+// FrontFacePower returns the integer power for the front face, with a
+// non-integer-fallback of 0 (the "*"/"X"/"1+*" case — combat layer treats
+// 0/0 as "missing" and applies the 1/1 fallback). For single-faced cards
+// reads the top-level Power; for multi-face cards reads CardFaces[0].
+func (c *Card) FrontFacePower() int {
+	if c == nil {
+		return 0
+	}
+	if c.Power != "" {
+		return parsePT(c.Power)
+	}
+	if len(c.CardFaces) > 0 {
+		return parsePT(c.CardFaces[0].Power)
+	}
+	return 0
+}
+
+// FrontFaceToughness mirrors FrontFacePower for toughness.
+func (c *Card) FrontFaceToughness() int {
+	if c == nil {
+		return 0
+	}
+	if c.Toughness != "" {
+		return parsePT(c.Toughness)
+	}
+	if len(c.CardFaces) > 0 {
+		return parsePT(c.CardFaces[0].Toughness)
+	}
+	return 0
+}
+
+// parsePT converts Scryfall's string P/T to int. Non-integer values
+// ("*", "X", "1+*") collapse to 0 — the live-game layer treats 0/0 as
+// missing and applies the 1/1 MVP fallback. Negative integers (Death's
+// Shadow base -1/-1? not actually printed; defensive) are clamped to 0
+// since combat power of a negative integer doesn't kill anything.
+func parsePT(s string) int {
+	if s == "" {
+		return 0
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(s))
+	if err != nil {
+		return 0
+	}
+	if n < 0 {
+		return 0
+	}
+	return n
 }
 
 // HasPrices reports whether the card carries at least one non-empty
@@ -502,6 +578,9 @@ func fetchScryfallCollection(ctx context.Context, names []string) (map[string]*C
 			CachedAt:       db.Now(),
 			Legalities:     sr.Legalities,
 			Prices:         filterEmptyPrices(sr.Prices),
+			Power:          sr.Power,
+			Toughness:      sr.Toughness,
+			CardFaces:      faceRespsToCardFaces(sr.CardFaces),
 		}
 	}
 	return out, nil
@@ -518,21 +597,56 @@ type scryfallNamedResp struct {
 	TypeLine   string `json:"type_line"`
 	OracleText string `json:"oracle_text"`
 	Set        string `json:"set"`
+	Power      string `json:"power"`
+	Toughness  string `json:"toughness"`
 	ImageURIs  struct {
 		Normal  string `json:"normal"`
 		ArtCrop string `json:"art_crop"`
 	} `json:"image_uris"`
-	CardFaces []struct {
-		ImageURIs struct {
-			Normal  string `json:"normal"`
-			ArtCrop string `json:"art_crop"`
-		} `json:"image_uris"`
-	} `json:"card_faces"`
+	CardFaces []scryfallFaceResp `json:"card_faces"`
 	Legalities map[string]string `json:"legalities"`
 	// Scryfall serializes per-currency prices as a string-keyed object;
 	// entries may be JSON null (omitted from this map after decode) or
 	// strings like "0.50" / "12.34" / "1289.99".
 	Prices map[string]string `json:"prices"`
+}
+
+// scryfallFaceResp covers both the image-only face shape used by the
+// previous code path AND the gameplay-relevant fields (name, P/T, oracle
+// text) needed for DFC face selection.
+type scryfallFaceResp struct {
+	Name       string `json:"name"`
+	ManaCost   string `json:"mana_cost"`
+	TypeLine   string `json:"type_line"`
+	OracleText string `json:"oracle_text"`
+	Power      string `json:"power"`
+	Toughness  string `json:"toughness"`
+	ImageURIs  struct {
+		Normal  string `json:"normal"`
+		ArtCrop string `json:"art_crop"`
+	} `json:"image_uris"`
+}
+
+// faceRespsToCardFaces drops the wire-level image data to produce the
+// gameplay-only CardFace slice cached in card_oracle.card_faces. Returns
+// nil when the input is empty so single-faced cards don't write an empty
+// JSON array.
+func faceRespsToCardFaces(in []scryfallFaceResp) []CardFace {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make([]CardFace, 0, len(in))
+	for _, f := range in {
+		out = append(out, CardFace{
+			Name:       f.Name,
+			ManaCost:   f.ManaCost,
+			TypeLine:   f.TypeLine,
+			OracleText: f.OracleText,
+			Power:      f.Power,
+			Toughness:  f.Toughness,
+		})
+	}
+	return out
 }
 
 // ErrNotFound is returned when Scryfall has no match for the queried name.
@@ -601,6 +715,9 @@ func fetchScryfall(ctx context.Context, name string) (*Card, error) {
 		CachedAt:       db.Now(),
 		Legalities:     sr.Legalities,
 		Prices:         filterEmptyPrices(sr.Prices),
+		Power:          sr.Power,
+		Toughness:      sr.Toughness,
+		CardFaces:      faceRespsToCardFaces(sr.CardFaces),
 	}, nil
 }
 
@@ -625,15 +742,23 @@ func filterEmptyPrices(in map[string]string) map[string]string {
 
 func getCached(ctx context.Context, database *sql.DB, key string) (*Card, error) {
 	c := &Card{}
-	var legalitiesJSON, pricesJSON string
+	var legalitiesJSON, pricesJSON, cardFacesJSON string
 	err := database.QueryRowContext(ctx,
 		`SELECT display_name, scryfall_id, mana_cost, cmc, type_line, oracle_text,
-		        image_uri_normal, image_uri_art, set_code, cached_at, legalities, prices
+		        image_uri_normal, image_uri_art, set_code, cached_at, legalities, prices,
+		        power, toughness, card_faces
 		 FROM card_oracle WHERE name = ?`, key,
 	).Scan(&c.Name, &c.ScryfallID, &c.ManaCost, &c.CMC, &c.TypeLine, &c.OracleText,
-		&c.ImageURINormal, &c.ImageURIArt, &c.SetCode, &c.CachedAt, &legalitiesJSON, &pricesJSON)
+		&c.ImageURINormal, &c.ImageURIArt, &c.SetCode, &c.CachedAt, &legalitiesJSON, &pricesJSON,
+		&c.Power, &c.Toughness, &cardFacesJSON)
 	if err != nil {
 		return c, err
+	}
+	if cardFacesJSON != "" {
+		var faces []CardFace
+		if jerr := json.Unmarshal([]byte(cardFacesJSON), &faces); jerr == nil {
+			c.CardFaces = faces
+		}
 	}
 	// Empty string is the pre-migration default; treat it as "no
 	// legality data" without erroring. Malformed JSON also degrades to
@@ -670,12 +795,20 @@ func saveToCache(ctx context.Context, database *sql.DB, key string, c *Card) err
 			pricesJSON = string(b)
 		}
 	}
+	cardFacesJSON := ""
+	if len(c.CardFaces) > 0 {
+		if b, jerr := json.Marshal(c.CardFaces); jerr == nil {
+			cardFacesJSON = string(b)
+		}
+	}
 	_, err := database.ExecContext(ctx,
 		`INSERT OR REPLACE INTO card_oracle
 		 (name, display_name, scryfall_id, mana_cost, cmc, type_line, oracle_text,
-		  image_uri_normal, image_uri_art, set_code, cached_at, legalities, prices)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		  image_uri_normal, image_uri_art, set_code, cached_at, legalities, prices,
+		  power, toughness, card_faces)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		key, c.Name, c.ScryfallID, c.ManaCost, c.CMC, c.TypeLine, c.OracleText,
-		c.ImageURINormal, c.ImageURIArt, c.SetCode, c.CachedAt, legalitiesJSON, pricesJSON)
+		c.ImageURINormal, c.ImageURIArt, c.SetCode, c.CachedAt, legalitiesJSON, pricesJSON,
+		c.Power, c.Toughness, cardFacesJSON)
 	return err
 }
