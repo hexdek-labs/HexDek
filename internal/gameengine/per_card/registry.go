@@ -970,6 +970,14 @@ func registerDefaults() {
 	registerAzorsElocutors(Global())
 	registerQuestForUlasTemple(Global())
 
+	// r60 batch AJ — 5 high-impact win-the-game / lose-the-game cards
+	// wired through the §704.5c master-check pattern (#687).
+	registerApproachOfTheSecondSun(Global())
+	registerFelidarSovereign(Global())
+	registerTestOfEndurance(Global())
+	registerMayaelsAria(Global())
+	registerTriskaidekaphobia(Global())
+
 	// Batch #17 — token-creation triggers and aristocrat payoffs.
 	// Anointed Procession's token_created trigger is upgraded in
 	// batch17_sweep.go (registered via its own init()).
