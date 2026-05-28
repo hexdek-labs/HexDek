@@ -783,6 +783,43 @@ func saveFreyaData(deckPath string, report *FreyaReport) {
 	// satisfy the analytics layer.
 	profilePath := filepath.Join(freyaDir, base+".profile.json")
 	saveProfileJSON(profilePath, report)
+
+	// Deck-builder suggestions sidecar: prioritized adds/cuts/swaps
+	// for the Decks-screen upgrade flow. Read back by hexapi's
+	// handleDeckSuggestions endpoint at GET /api/decks/{owner}/{id}/suggestions.
+	// Kept as a separate sidecar (rather than embedded in strategy.json
+	// or profile.json) because the hat doesn't consume it — only the
+	// frontend builder UI does, and the schema may evolve faster than
+	// either of the other two artifacts.
+	suggestionsPath := filepath.Join(freyaDir, base+".suggestions.json")
+	saveSuggestionsJSON(suggestionsPath, report)
+}
+
+// saveSuggestionsJSON writes BuildSuggestedChanges output as a
+// machine-readable artifact alongside strategy.json / profile.json.
+// Errors are logged at warning level — the suggestions sidecar is
+// optional; the primary report still ships if this fails.
+func saveSuggestionsJSON(path string, report *FreyaReport) {
+	if report == nil || report.Profile == nil {
+		return
+	}
+	suggestions := BuildSuggestedChanges(report.Profile, report)
+	if suggestions == nil {
+		return
+	}
+	f, err := os.Create(path)
+	if err != nil {
+		log.Printf("  [freya] failed to save %s: %v", path, err)
+		return
+	}
+	defer f.Close()
+	enc := json.NewEncoder(f)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(suggestions); err != nil {
+		log.Printf("  [freya] failed to encode %s: %v", path, err)
+		return
+	}
+	log.Printf("  [freya] saved %s", path)
 }
 
 // saveProfileJSON writes the full jsonDeckProfile (the same payload

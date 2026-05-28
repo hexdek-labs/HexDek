@@ -38,47 +38,47 @@ type SuggestedChanges struct {
 	// Adds: cards to add to the deck, grouped by category. Sorted
 	// descending by Priority. Excludes cards already in the deck
 	// (owned-card filter), filtered by deck color identity.
-	Adds []SuggestedAdd
+	Adds []SuggestedAdd `json:"adds"`
 
 	// Cuts: cards already in the deck that Freya recommends
 	// removing. Sourced from dp.CuttableCards (the synergy-tier
 	// cuttable list). Sorted descending by Priority (= 100 - Power,
 	// so D-tier cuts rank above C-tier).
-	Cuts []SuggestedCut
+	Cuts []SuggestedCut `json:"cuts"`
 
 	// Swaps: paired add+cut recommendations where the gap can be
 	// closed by a specific 1-for-1 swap (most common: tap-land
 	// upgrades like Tranquil Cove -> Bountiful Promenade). Sorted
 	// descending by Priority.
-	Swaps []SuggestedSwap
+	Swaps []SuggestedSwap `json:"swaps"`
 
 	// Summary: 1-2 sentence overview of the change set
 	// ("3 adds, 2 cuts, 1 swap suggested. Highest priority: add
 	// Counterspell — current 4 vs target 6 for Control archetype.")
-	Summary string
+	Summary string `json:"summary"`
 
 	// TotalChanges is len(Adds) + len(Cuts) + len(Swaps). Surfaced
 	// so UIs can short-circuit ("no suggestions") without iterating.
-	TotalChanges int
+	TotalChanges int `json:"total_changes"`
 }
 
 // SuggestedAdd is one card recommendation. CardName references the
 // buyGuideStaples catalog (cmd/hexdek-freya/buy_guide.go).
 type SuggestedAdd struct {
-	CardName string
-	Category string // "interaction" / "ramp" / "draw" / "wipes" / "tutors" / "manabase"
-	Priority int    // 1-10
-	Reason   string // "current 4 counterspells, target 6 for Control archetype"
-	GapSize  int    // current vs target gap that motivated this add
+	CardName string `json:"card_name"`
+	Category string `json:"category"` // "interaction" / "ramp" / "draw" / "wipes" / "tutors" / "manabase"
+	Priority int    `json:"priority"` // 1-10
+	Reason   string `json:"reason"`   // "current 4 counterspells, target 6 for Control archetype"
+	GapSize  int    `json:"gap_size"` // current vs target gap that motivated this add
 }
 
 // SuggestedCut is one card to remove. CardName comes from the
 // deck's existing CuttableCards (or off-archetype creature list).
 type SuggestedCut struct {
-	CardName string
-	Category string // "cuttable" / "off_archetype" / "redundant_tutor"
-	Priority int    // 1-10
-	Reason   string
+	CardName string `json:"card_name"`
+	Category string `json:"category"` // "cuttable" / "off_archetype" / "redundant_tutor"
+	Priority int    `json:"priority"` // 1-10
+	Reason   string `json:"reason"`
 }
 
 // SuggestedSwap pairs a specific add with a specific cut — the
@@ -86,11 +86,11 @@ type SuggestedCut struct {
 // mana base case where "upgrade your tap-lands" is more actionable
 // when the upgrade names a specific replacement.
 type SuggestedSwap struct {
-	AddCardName string
-	CutCardName string
-	Category    string // "manabase" / "interaction_upgrade" / "ramp_upgrade"
-	Priority    int    // 1-10
-	Reason      string // "Swap Tranquil Cove for Bountiful Promenade — same WU identity, enters untapped after early game"
+	AddCardName string `json:"add_card_name"`
+	CutCardName string `json:"cut_card_name"`
+	Category    string `json:"category"` // "manabase" / "interaction_upgrade" / "ramp_upgrade"
+	Priority    int    `json:"priority"` // 1-10
+	Reason      string `json:"reason"`   // "Swap Tranquil Cove for Bountiful Promenade — same WU identity, enters untapped after early game"
 }
 
 // taplandUpgradeMap is the curated tap-land → untapped-dual upgrade
