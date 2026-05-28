@@ -2683,7 +2683,32 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 	// the combo carveout itself so a precon-shape deck with zero
 	// game-changers and no real combo support doesn't get lifted on
 	// a false-positive curated-combo match.
-	if hasWinningCombo && bracket < 4 {
+	// hasReliableWinningCombo gates the Winning-combo floor's lift on
+	// the SOURCE of the winning-combo detection (PR #724). Real
+	// engine-detected winning combos (trueInfCount ≥ 1, or a 2-card
+	// categorical win on the TrueInfinites list) are reliable: when
+	// the deck has a Thassa's Oracle + Demonic Consultation pair or
+	// a Hellkite Charger + Bear Umbra detected as a true infinite,
+	// the lift is correct.
+	//
+	// The heuristic categorical-win match on the Determined list,
+	// however, is false-positive-prone — generates B4 lifts on stock
+	// WotC precons that have an incidental 2-card "categorical win"
+	// match without any real cEDH optimization. The MeasuredBracket /
+	// PowerTier consistency audit (PR #724 docs) surfaced 7 of 87
+	// precons over-classified to B4 via this path.
+	//
+	// Resolution: GC=0 decks lift only on the reliable arm
+	// (trueInfinites). With at least one Game Changer the deck has
+	// SOMETHING signaling deliberate optimization, so the heuristic
+	// arm is allowed to lift.
+	hasReliableWinningCombo := trueInfCount >= 1 ||
+		hasTwoCardCategoricalWin(report.TrueInfinites)
+	heuristicWinningCombo := hasWinningCombo && !hasReliableWinningCombo
+
+	canApplyWinningComboFloor := hasReliableWinningCombo ||
+		(heuristicWinningCombo && ctx.gameChangerCount >= 1)
+	if canApplyWinningComboFloor && bracket < 4 {
 		bracket = 4
 		label = "Optimized"
 		addAdjustment("Winning-combo floor", "floor",
@@ -2727,6 +2752,17 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 				ctx.gameChangerCount, trueInfCount, ctx.tutorDensity*100,
 				preFloorBracket))
 	}
+
+	// The MeasuredBracket / PowerTier consistency bridge (PR #724) is
+	// enforced via the Winning-combo floor gating above
+	// (canApplyWinningComboFloor) — GC=0 decks only lift on real
+	// engine-detected winning combos, not on heuristic categorical-
+	// win matches. This closes 7 of 7 over-classification cases in
+	// the WotC precon corpus while leaving real cEDH winning-combo
+	// decks (Thassa's Oracle + Demonic Consultation, Hellkite Charger
+	// + Bear Umbra, etc.) lifting correctly. See
+	// TestPowerTierBridge_NoContradictionOnCalibration for the
+	// regression pin.
 
 	rationale.FinalBracket = bracket
 	rationale.FinalLabel = label
