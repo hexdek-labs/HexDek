@@ -50,6 +50,27 @@ type StrategyProfile struct {
 	// neutral. Skipped entirely when PowerTier == 0 (unset).
 	PowerTier int
 
+	// PowerTierConfidence in [0, 1] — how decisively the deck fits
+	// PowerTier (vs. how close to the boundary it sits). 1.0 = every
+	// classifier signal agreed on the tier (clear-cut); ~0.75 = a
+	// 3/3 split between adjacent tiers (boundary case); lower = gate
+	// demotion or substantial signal disagreement.
+	//
+	// Used by ApplyPowerTierRouting to BLEND the per-tier multipliers
+	// toward neutral at low confidence:
+	//   effective_mult = 1.0 + confidence * (tier_mult - 1.0)
+	// At confidence=1.0 the full tier tilt applies; at confidence=0.5
+	// the tilt is halved (the deck is treated as 50% tier-X, 50%
+	// neutral); at confidence=0 no tilt applies. This lets boundary-
+	// confidence decks (e.g. a deck right at the T4/T5 line) get a
+	// softer race-shape tilt so MCTS samples both race and board nodes
+	// more evenly, rather than committing fully to cEDH heuristics.
+	//
+	// Defaults to 1.0 when zero (preserves the pre-confidence routing
+	// behavior on legacy reports that don't ship the field — see the
+	// effectiveConfidence helper in power_tier_routing.go).
+	PowerTierConfidence float64
+
 	// Weights are the MCTS evaluator weights for this deck. Computed by
 	// Freya from deck analysis or defaulted per archetype. When nil, the
 	// evaluator uses DefaultWeightsForArchetype(Archetype).

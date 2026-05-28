@@ -29,6 +29,33 @@ type CEDHPowerTier struct {
 	Tier    int    // 1-5
 	Label   string // "Casual" / "Upgraded Precon" / "High Power" / "cEDH"
 	Score   int    // Composite raw score (sum of signal votes, 6..30)
+	// Confidence in [0, 1] — how decisively the deck fits its tier.
+	// 1.0 = every signal voted for the chosen tier (clear-cut); ~0.5 =
+	// signal votes spread across multiple adjacent tiers (boundary
+	// case); lower = forced gate demotion or substantial signal
+	// disagreement.
+	//
+	// Computed from two pieces:
+	//  1. Signal-agreement score: for each signal, contribute
+	//     max(0, 1 - 0.5*|vote - finalTier|) — exact agreement = 1.0,
+	//     ±1 tier = 0.5, ±2 = 0.0. Sum over 6 signals / 6 normalizes
+	//     to [0, 1].
+	//  2. Gate penalty: when the T4+ floor gate OR the B5 confirmation
+	//     gate fires (forcing the tier down from where the median
+	//     would have placed it), multiply the base agreement by 0.80.
+	//     A gate firing means the structural discriminator check
+	//     disagreed with the aggregate median — the deck "wants" to
+	//     be at a higher tier but lacks the markers, which is exactly
+	//     the boundary-confidence case.
+	//
+	// Backend-only field — surfaced through StrategyProfile.PowerTierConfidence
+	// and consumed by hat's ApplyPowerTierRouting to BLEND tier-multipliers
+	// toward neutral at low confidence (effective_mult = lerp(1.0,
+	// tier_mult, confidence)). A high-confidence cEDH deck gets the
+	// full +60% ComboProximity tilt; a boundary T5/T4 deck gets a
+	// softer tilt — letting MCTS sample race-shape AND board-shape
+	// nodes more evenly.
+	Confidence float64
 	Signals []CEDHTierSignal
 	Verdict string // 1-2 sentence rationale assembled from contributing signals
 }
@@ -109,6 +136,7 @@ func ClassifyCEDHPowerTier(dp *DeckProfile, report *FreyaReport) *CEDHPowerTier 
 	//
 	// Gate skipped at tier ≤ 3 — only fires when the median otherwise
 	// would have landed at T4 or T5.
+	gateFired := false
 	if tier >= 4 {
 		discriminators := 0
 		if dp.GameChangerCount >= 1 {
@@ -122,6 +150,7 @@ func ClassifyCEDHPowerTier(dp *DeckProfile, report *FreyaReport) *CEDHPowerTier 
 		}
 		if discriminators < 2 {
 			tier = 3
+			gateFired = true
 		}
 	}
 
@@ -157,6 +186,7 @@ func ClassifyCEDHPowerTier(dp *DeckProfile, report *FreyaReport) *CEDHPowerTier 
 		}
 		if markers < 2 {
 			tier = 4
+			gateFired = true
 			gateVerdict = fmt.Sprintf("median voted 5 but only %d/5 cEDH markers tripped (need ≥2) — demoted to 4", markers)
 		} else {
 			gateVerdict = fmt.Sprintf("cEDH gate confirmed: %d/5 markers (%s)", markers, joinCommaList(markerNotes))
@@ -164,10 +194,11 @@ func ClassifyCEDHPowerTier(dp *DeckProfile, report *FreyaReport) *CEDHPowerTier 
 	}
 
 	out := &CEDHPowerTier{
-		Tier:    tier,
-		Label:   cedhTierLabel(tier),
-		Score:   score,
-		Signals: signals,
+		Tier:       tier,
+		Label:      cedhTierLabel(tier),
+		Score:      score,
+		Confidence: computeCEDHTierConfidence(signals, tier, gateFired),
+		Signals:    signals,
 	}
 	out.Verdict = buildCEDHTierVerdict(out, gateVerdict)
 	return out
@@ -385,6 +416,50 @@ func cedhMedianTier(signals []CEDHTierSignal) (int, int) {
 	sort.Ints(votes)
 	mid := len(votes) / 2
 	return votes[mid], sum
+}
+
+// computeCEDHTierConfidence scores how decisively the deck fits its
+// final tier in [0, 1]. See CEDHPowerTier.Confidence for the full
+// derivation; in brief:
+//
+//	per-signal contribution = max(0, 1 - 0.5*|vote - finalTier|)
+//	base = sum(contributions) / 6
+//	confidence = base * (0.80 if a gate fired, else 1.00)
+//
+// At the boundary, a 3-3 vote split between adjacent tiers yields
+// base ≈ 0.75. A clear-cut tier (all 6 signals agree) yields 1.00.
+// A gate-demoted deck yields ≤ 0.80 (and often much less when the
+// pre-gate signal distribution was already mixed).
+//
+// Floor at 0.0, ceiling at 1.0 — both defensive against future
+// changes to the scoring scale.
+func computeCEDHTierConfidence(signals []CEDHTierSignal, finalTier int, gateFired bool) float64 {
+	if len(signals) == 0 {
+		return 0.0
+	}
+	sum := 0.0
+	for _, s := range signals {
+		diff := s.TierVote - finalTier
+		if diff < 0 {
+			diff = -diff
+		}
+		c := 1.0 - 0.5*float64(diff)
+		if c < 0 {
+			c = 0
+		}
+		sum += c
+	}
+	conf := sum / float64(len(signals))
+	if gateFired {
+		conf *= 0.80
+	}
+	if conf < 0 {
+		conf = 0
+	}
+	if conf > 1 {
+		conf = 1
+	}
+	return conf
 }
 
 // buildCEDHTierVerdict assembles the human-readable 1-2 sentence
