@@ -67,6 +67,7 @@ func sakashimaCopyETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		"copy_of": target.Card.DisplayName(),
 		"power":  perm.Power(),
 	})
-	emitPartial(gs, "sakashima_full_copy", perm.Card.DisplayName(),
-		"abilities/types from copied creature need full clone path; only P/T copied")
+	// Batch AL upgrade: delegate to full DeepCopy + legend-rule-suppression
+	// rider so Sakashima copies abilities/types, not just P/T. CR §706.2.
+	sakashimaFullCopyUpgrade(gs, perm, target)
 }
