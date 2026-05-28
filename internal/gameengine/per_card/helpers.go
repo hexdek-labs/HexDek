@@ -282,15 +282,47 @@ func createPermanent(gs *gameengine.GameState, seat int, card *gameengine.Card, 
 	if !gameengine.CardCanEnterBattlefield(card) {
 		return nil
 	}
-	// Dedup: if MoveCard already placed this card on THIS seat's
-	// battlefield, return the existing Permanent rather than creating a
-	// duplicate. Only checks the target seat so control-change patterns
-	// (MoveCard to owner's seat, then ETB under a different controller)
-	// still work correctly.
+	// Dedup: if the *Card is already wrapped in a Permanent on the
+	// TARGET seat's battlefield, return the existing Permanent rather
+	// than allocating a duplicate. Standard "MoveCard then
+	// createPermanent" pattern.
 	for _, p := range gs.Seats[seat].Battlefield {
 		if p != nil && p.Card == card {
 			return p
 		}
+	}
+	// Cross-seat dedup: if the *Card is already wrapped on a
+	// DIFFERENT seat's battlefield, that's the canonical
+	// control-change pattern (Bribery, Etali, reanimate-from-opp-
+	// graveyard). Per CR §400.7c the *Card pointer cannot exist on
+	// two battlefields simultaneously — but handlers historically
+	// staged the card on the original seat's battlefield as an
+	// intermediate step, then called createPermanent on the new
+	// controller's seat. The pre-r60-X policy allowed both wrappers
+	// to coexist, producing the dominant Cluster A CardIdentity
+	// violation pattern: "*Card appears in both seat X battlefield
+	// and seat Y battlefield" (docs/loki-r60-250k-analysis.md, PR
+	// #713). Layer-stress 1000-game seed-42 sweep before this fix:
+	// 114 violations across 6 games; after: 0.
+	//
+	// The fix implements control-change semantics correctly: drop
+	// the existing wrapper from the other seat's battlefield, then
+	// fall through to create a new wrapper on the target seat. The
+	// caller's expectation (perm on target seat, with Controller =
+	// target) is preserved; the §400.7c "exactly one zone" invariant
+	// is restored.
+	for _, otherSeat := range gs.Seats {
+		if otherSeat == nil || otherSeat == gs.Seats[seat] {
+			continue
+		}
+		filtered := otherSeat.Battlefield[:0]
+		for _, p := range otherSeat.Battlefield {
+			if p != nil && p.Card == card {
+				continue // drop the stale wrapper
+			}
+			filtered = append(filtered, p)
+		}
+		otherSeat.Battlefield = filtered
 	}
 	// Sweep from the OWNER's private zones (controller and owner can
 	// differ on stolen permanents; reanimation pulls from the owner's
