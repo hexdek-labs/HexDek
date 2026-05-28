@@ -357,6 +357,17 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 					perm := NewFreeCastFromExilePermission(seat, sourceName(src))
 					perm.Duration = "until_end_of_turn"
 					perm.GrantTurn = gs.Turn
+					// r60 ZoneCastGrantExpiry fix: stamp SourceTimestamp
+					// so ExpireSourceGrants can reap on source-LTB before
+					// EOT. Mirrors the structured impulse_play arms at
+					// lines 1571 + 4857. Without this the grant has
+					// SourceTimestamp=0 and ExpireSourceGrants short-
+					// circuits, leaving the only cleanup path as EOT —
+					// which is skipped on mandatory-loop draw, mid-combat
+					// game-end, and the SBA-cap path.
+					if src != nil {
+						perm.SourceTimestamp = src.Timestamp
+					}
 					RegisterZoneCastGrant(gs, card, perm)
 					heisted = true
 				}
@@ -560,6 +571,12 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 				perm := NewFreeCastFromExilePermission(seat, sourceName(src))
 				perm.Duration = "until_end_of_turn"
 				perm.GrantTurn = gs.Turn
+				// r60 ZoneCastGrantExpiry fix: stamp SourceTimestamp
+				// so ExpireSourceGrants can reap on source-LTB before
+				// EOT. Sister fix to the heist arm above.
+				if src != nil {
+					perm.SourceTimestamp = src.Timestamp
+				}
 				RegisterZoneCastGrant(gs, top, perm)
 			}
 		}
