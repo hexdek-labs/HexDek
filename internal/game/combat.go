@@ -273,21 +273,44 @@ func ResolveCombat(ctx context.Context, database *sql.DB, gameID string) (*Damag
 	return report, nil
 }
 
-// CheckGameEnd evaluates win conditions: any player at life <= 0 is out,
-// any player at 10+ poison is out, any player flagged for attempted-
-// empty-library draw is out (CR §119.5 — set by DrawCards). If exactly
-// one player remains, finish the game with that winner. If zero remain,
-// finish as a draw.
+// CheckGameEnd is the engine-level master aggregator across CR §104.2.
+// Two-level structure:
 //
-// Note: having zero cards in the library is NOT itself a loss condition
-// per CR §119.5 — only the NEXT draw attempt from an empty library
-// triggers the loss. That trigger lives in DrawCards (which sets
-// Player.AttemptedEmptyDraw); CheckGameEnd just reads the resulting
-// flag.
+//  1. Per-seat: Player.CheckLossConditions() classifies each seat against
+//     its own §704.5 clauses (life, empty-library, poison, …) in
+//     isolation. Pure method — no DB access, easy to unit-test.
+//  2. Engine-level (here): collect every seat's loss result, then apply
+//     the multiplayer-resolution clauses.
+//
+// Resolution order:
+//
+//   - §104.2c (FIRST): any seat with WinEffectTriggered=true wins
+//     immediately, even if that same seat would otherwise meet a §704.5
+//     loss condition (CR §104.3a — win effects take precedence over
+//     simultaneous loss effects on the same player). When multiple seats
+//     trigger a win effect in the same window, the lowest seat index
+//     wins (deterministic tie-break; matches turn-order priority).
+//   - §104.2a: all-but-one seat lost → the surviving seat wins.
+//   - §104.2b: all remaining seats lost simultaneously → the game ends
+//     as a draw (Winner="").
+//
+// A no-op return (nil with no FinishGame call) means the game is still
+// in progress. Callers must invoke this after any state change that
+// could resolve a loss/win condition (combat damage, spell resolution,
+// SBA pass, priority pass).
 func CheckGameEnd(ctx context.Context, database *sql.DB, gameID string) error {
 	players, err := ListGamePlayers(ctx, database, gameID)
 	if err != nil {
 		return err
+	}
+	// §104.2c — "you win the game" effects override loss effects on the
+	// same seat (CR §104.3a). Scan first, in seat order, so a triggered
+	// winner is finalized before any §704.5 elimination is applied.
+	for _, p := range players {
+		if p == nil || !p.WinEffectTriggered {
+			continue
+		}
+		return FinishGame(ctx, database, gameID, p.DeviceID)
 	}
 	type alive struct {
 		seat     int
@@ -295,26 +318,17 @@ func CheckGameEnd(ctx context.Context, database *sql.DB, gameID string) error {
 	}
 	var aliveList []alive
 	for _, p := range players {
-		if p.Life <= 0 {
-			continue
-		}
-		if p.PoisonCounters >= 10 {
-			continue
-		}
-		if p.AttemptedEmptyDraw {
-			// CR §119.5 — the seat was instructed to draw from an
-			// empty library on a prior DrawCards call. The "next time
-			// a player would receive priority" is now (CheckGameEnd
-			// runs after combat damage / spell resolution); eliminate.
+		if _, lost := p.CheckLossConditions(); lost {
 			continue
 		}
 		aliveList = append(aliveList, alive{seat: p.SeatPosition, deviceID: p.DeviceID})
 	}
 	if len(aliveList) == 1 {
+		// §104.2a — last seat standing wins.
 		return FinishGame(ctx, database, gameID, aliveList[0].deviceID)
 	}
 	if len(aliveList) == 0 {
-		// Draw — no winner
+		// §104.2b — simultaneous elimination → draw.
 		return FinishGame(ctx, database, gameID, "")
 	}
 	return nil

@@ -75,19 +75,20 @@ func CreateGamePlayer(ctx context.Context, database *sql.DB, p *Player) error {
 
 func GetGamePlayer(ctx context.Context, database *sql.DB, gameID string, seat int) (*Player, error) {
 	p := &Player{}
-	var attemptedEmptyDraw int
+	var attemptedEmptyDraw, winEffectTriggered int
 	err := database.QueryRowContext(ctx,
 		`SELECT game_id, seat_position, device_id, deck_id, life, poison_counters,
 		        mana_pool_w, mana_pool_u, mana_pool_b, mana_pool_r, mana_pool_g, mana_pool_c,
-		        lands_played_turn, attempted_empty_draw
+		        lands_played_turn, attempted_empty_draw, win_effect_triggered
 		 FROM game_player WHERE game_id = ? AND seat_position = ?`, gameID, seat,
 	).Scan(&p.GameID, &p.SeatPosition, &p.DeviceID, &p.DeckID, &p.Life, &p.PoisonCounters,
 		&p.ManaPoolW, &p.ManaPoolU, &p.ManaPoolB, &p.ManaPoolR, &p.ManaPoolG, &p.ManaPoolC,
-		&p.LandsPlayedTurn, &attemptedEmptyDraw)
+		&p.LandsPlayedTurn, &attemptedEmptyDraw, &winEffectTriggered)
 	if err != nil {
 		return nil, err
 	}
 	p.AttemptedEmptyDraw = attemptedEmptyDraw != 0
+	p.WinEffectTriggered = winEffectTriggered != 0
 	return p, nil
 }
 
@@ -95,7 +96,7 @@ func ListGamePlayers(ctx context.Context, database *sql.DB, gameID string) ([]*P
 	rows, err := database.QueryContext(ctx,
 		`SELECT game_id, seat_position, device_id, deck_id, life, poison_counters,
 		        mana_pool_w, mana_pool_u, mana_pool_b, mana_pool_r, mana_pool_g, mana_pool_c,
-		        lands_played_turn, attempted_empty_draw
+		        lands_played_turn, attempted_empty_draw, win_effect_triggered
 		 FROM game_player WHERE game_id = ? ORDER BY seat_position`, gameID)
 	if err != nil {
 		return nil, err
@@ -104,13 +105,14 @@ func ListGamePlayers(ctx context.Context, database *sql.DB, gameID string) ([]*P
 	var out []*Player
 	for rows.Next() {
 		p := &Player{}
-		var attemptedEmptyDraw int
+		var attemptedEmptyDraw, winEffectTriggered int
 		if err := rows.Scan(&p.GameID, &p.SeatPosition, &p.DeviceID, &p.DeckID, &p.Life, &p.PoisonCounters,
 			&p.ManaPoolW, &p.ManaPoolU, &p.ManaPoolB, &p.ManaPoolR, &p.ManaPoolG, &p.ManaPoolC,
-			&p.LandsPlayedTurn, &attemptedEmptyDraw); err != nil {
+			&p.LandsPlayedTurn, &attemptedEmptyDraw, &winEffectTriggered); err != nil {
 			return nil, err
 		}
 		p.AttemptedEmptyDraw = attemptedEmptyDraw != 0
+		p.WinEffectTriggered = winEffectTriggered != 0
 		out = append(out, p)
 	}
 	return out, rows.Err()
@@ -121,12 +123,12 @@ func UpdateGamePlayer(ctx context.Context, database *sql.DB, p *Player) error {
 		`UPDATE game_player SET life = ?, poison_counters = ?,
 		   mana_pool_w = ?, mana_pool_u = ?, mana_pool_b = ?,
 		   mana_pool_r = ?, mana_pool_g = ?, mana_pool_c = ?,
-		   lands_played_turn = ?, attempted_empty_draw = ?
+		   lands_played_turn = ?, attempted_empty_draw = ?, win_effect_triggered = ?
 		 WHERE game_id = ? AND seat_position = ?`,
 		p.Life, p.PoisonCounters,
 		p.ManaPoolW, p.ManaPoolU, p.ManaPoolB,
 		p.ManaPoolR, p.ManaPoolG, p.ManaPoolC,
-		p.LandsPlayedTurn, boolToInt(p.AttemptedEmptyDraw),
+		p.LandsPlayedTurn, boolToInt(p.AttemptedEmptyDraw), boolToInt(p.WinEffectTriggered),
 		p.GameID, p.SeatPosition)
 	return err
 }
