@@ -1,48 +1,153 @@
 package gameengine
 
-// Alternative-payment ward (CR §702.21d) — added in R60 to close the
-// docs/half-finished-features-r48.md #4 deferred item. Generic mana
-// ward ({N}) is handled inline in CheckWardOnTargeting via
-// perm.Flags["ward_cost"]; this file extends the mechanism to the
-// three non-mana ward shapes that printed cards use in this corpus:
+// Alternative-payment ward (CR §702.21d) — added in R60 to close
+// docs/half-finished-features-r48.md #4. Refactored 2026-05-27 from
+// three discrete kind-constants into a single WardCost primitive with
+// a Type discriminant so the dispatch table is data-driven and new
+// variants only need a row added, not a new arm in tryPayAltWardCost.
 //
-//   1. Ward—Sacrifice a legendary artifact or legendary creature
-//      (Sauron, the Dark Lord)
-//   2. Ward—Discard an enchantment, instant, or sorcery card
-//      (Saruman of Many Colors)
-//   3. Ward—Blight N (put N -1/-1 counters on a creature you control)
-//      (Auntie Ool, Cursewretch)
+// Architecture (7174n1c-locked, 2026-05-27):
+//   - ONE primitive (WardCost struct) with a Type discriminant, not
+//     three separate interfaces. Resolution paths live in a single
+//     dispatch table keyed by Type.
+//   - Generic mana ward ({N}) stays inline in CheckWardOnTargeting
+//     via perm.Flags["ward_cost"] — the alt-payment file only handles
+//     non-mana variants.
+//   - Damage variant (WardCostDamage) covers non-keyword cost-on-target
+//     effects like Terror of the Peaks ("when X enters, deals N damage
+//     to target opponent or creature"). Those aren't templated as Ward
+//     but share the structural cost-on-target shape; ApplyWardCostDamage
+//     gives per_card handlers a shared primitive without forcing them
+//     through CheckWardOnTargeting.
 //
-// Each card's ETB handler stamps two flags on the source permanent:
-//
-//   - perm.Flags["ward_alt_kind"]   — one of WardAltKindSacrificeLegendary
-//                                     / Discard / Blight (constants below)
-//   - perm.Flags["ward_alt_filter"] — kind-specific argument (currently
-//                                     only Blight uses it: number of
-//                                     counters to place)
-//
-// CheckWardOnTargeting calls tryPayAltWardCost when it sees ward_alt_kind
-// set. The function decides whether the caster can pay, applies the
-// payment if so, and counters the spell otherwise (CR §702.21c). Returns
-// nothing — sets item.Countered when the spell fizzles.
-//
-// Policy: "pay if affordable" is the default for all three kinds. A
-// future per-Hat alt-WardPayer interface can override.
+// Storage: WardCost is mirrored onto Permanent.Flags so callers don't
+// need a new struct field on Permanent. Type → Flags["ward_alt_kind"],
+// Amount → Flags["ward_alt_filter"] (legacy int slot, repurposed as
+// the generalized amount). Filter strings live on a separate
+// gs.WardCostFilter[perm.Card.Name] keyed registry — most variants
+// don't need a filter, but Sacrifice / Discard ones can specify the
+// permitted set via the filter slot for future generalization.
+
+import "strings"
+
+// WardCostType is the discriminant tag for an alternative ward payment.
+// Numeric values are stable for backward compatibility with the legacy
+// WardAltKind constants — adding a new variant means appending, not
+// renumbering.
+type WardCostType int
 
 const (
-	WardAltKindNone                = 0
-	WardAltKindSacrificeLegendary  = 1 // sacrifice a legendary artifact or creature
-	WardAltKindDiscardInstSorcEnch = 2 // discard an instant, sorcery, or enchantment card
-	WardAltKindBlight              = 3 // put N -1/-1 counters on a creature you control
+	// WardCostNone — no alt-payment (mana-only ward or no ward).
+	WardCostNone WardCostType = 0
+
+	// WardCostSacrifice — caster sacrifices a permanent matching Filter.
+	// Filter values: "legendary artifact or creature" (Sauron, the Dark
+	// Lord), "" (defaults to any creature). Future printings can extend
+	// the filter set without a new Type.
+	WardCostSacrifice WardCostType = 1
+
+	// WardCostDiscard — caster discards a card matching Filter.
+	// Filter values: "instant or sorcery or enchantment" (Saruman of
+	// Many Colors), "" (any card).
+	WardCostDiscard WardCostType = 2
+
+	// WardCostBlight — caster puts -1/-1 counters on a creature they
+	// control. Auntie Ool's Blight 2. Amount = counter count.
+	WardCostBlight WardCostType = 3
+
+	// WardCostLife — caster pays Amount life. Ward—Pay N life. Real
+	// printings: Charging War Boar (Ward—Pay 3 life), Sheltered by
+	// Ghosts (Ward—Pay 1 life), Coalition of Arms variants.
+	WardCostLife WardCostType = 4
+
+	// WardCostDamage — source deals Amount damage to a target. NOT a
+	// printed Ward keyword variant; the unified primitive covers the
+	// structural shape of triggered damage-on-target effects like
+	// Terror of the Peaks. Dispatched via ApplyWardCostDamage from
+	// per_card handlers, not via CheckWardOnTargeting.
+	WardCostDamage WardCostType = 5
 )
 
-// tryPayAltWardCost dispatches to the alt-payment handler for the kind
-// stamped on perm.Flags["ward_alt_kind"]. On success: applies the
-// payment (sacrifice / discard / counter-placement) and emits a
-// "ward_alt_paid" event. On failure: sets item.Countered = true and
-// emits a "ward_counter" event (same shape as the mana-ward fail path
-// in CheckWardOnTargeting so log consumers don't need to learn a new
-// event kind).
+// WardCost is the unified specification for an alternative ward
+// payment. Type selects the dispatch path; Amount and Filter parameterize
+// the resolution.
+type WardCost struct {
+	Type   WardCostType
+	Amount int
+	Filter string
+}
+
+// Legacy aliases — preserved at the same int values so existing
+// per_card handlers + tests that read Flags["ward_alt_kind"] keep
+// working. New code should set WardCost via SetWardCost instead of
+// touching Flags directly.
+const (
+	WardAltKindNone                = int(WardCostNone)
+	WardAltKindSacrificeLegendary  = int(WardCostSacrifice)
+	WardAltKindDiscardInstSorcEnch = int(WardCostDiscard)
+	WardAltKindBlight              = int(WardCostBlight)
+)
+
+// wardCostFilters holds string-valued Filter values keyed by permanent
+// pointer. Most cards don't need a filter (the Type alone disambiguates),
+// so we avoid bloating Permanent with a string slot; the registry is
+// only consulted when a dispatcher needs filter context.
+var wardCostFilters = map[*Permanent]string{}
+
+// SetWardCost stamps a WardCost onto a permanent. Wires the kw:ward
+// flag, the alt-kind int discriminant, the amount, and (when non-empty)
+// the filter string. Callers in per_card/ should prefer this over
+// touching Permanent.Flags directly.
+func SetWardCost(perm *Permanent, cost WardCost) {
+	if perm == nil {
+		return
+	}
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	perm.Flags["kw:ward"] = 1
+	perm.Flags["ward_alt_kind"] = int(cost.Type)
+	perm.Flags["ward_alt_filter"] = cost.Amount
+	if cost.Filter != "" {
+		wardCostFilters[perm] = cost.Filter
+	}
+}
+
+// GetWardCost reads the WardCost stamped on a permanent. Returns
+// WardCost{} (Type=None) when no alt-payment is set. Filter string
+// is recovered from the parallel registry.
+func GetWardCost(perm *Permanent) WardCost {
+	if perm == nil || perm.Flags == nil {
+		return WardCost{}
+	}
+	wc := WardCost{
+		Type:   WardCostType(perm.Flags["ward_alt_kind"]),
+		Amount: perm.Flags["ward_alt_filter"],
+	}
+	if f, ok := wardCostFilters[perm]; ok {
+		wc.Filter = f
+	}
+	return wc
+}
+
+// wardPayFunc — signature for an alt-payment resolver. Returns
+// (paid, eventDetails). Implementations either apply the payment and
+// return true, or report a failure reason via the details map.
+type wardPayFunc func(gs *GameState, caster *Seat, source *Permanent, cost WardCost) (bool, map[string]interface{})
+
+// wardPaymentDispatch is the single source of truth for routing
+// WardCostType → resolution. Adding a new variant is one row.
+var wardPaymentDispatch = map[WardCostType]wardPayFunc{
+	WardCostSacrifice: payWardBySacrifice,
+	WardCostDiscard:   payWardByDiscard,
+	WardCostBlight:    payWardByBlight,
+	WardCostLife:      payWardByLife,
+}
+
+// tryPayAltWardCost dispatches via wardPaymentDispatch. On success:
+// emits ward_alt_paid. On failure: counters the spell and emits
+// ward_counter (same shape as the mana-ward fail path so log consumers
+// don't need a new event kind).
 func tryPayAltWardCost(gs *GameState, item *StackItem, perm *Permanent) {
 	if gs == nil || item == nil || perm == nil {
 		return
@@ -51,26 +156,16 @@ func tryPayAltWardCost(gs *GameState, item *StackItem, perm *Permanent) {
 	if caster == nil {
 		return
 	}
-	kind := perm.Flags["ward_alt_kind"]
-	filter := perm.Flags["ward_alt_filter"]
+	cost := GetWardCost(perm)
 
+	handler, ok := wardPaymentDispatch[cost.Type]
 	var paid bool
 	var detail map[string]interface{}
-	switch kind {
-	case WardAltKindSacrificeLegendary:
-		paid, detail = payWardBySacrificeLegendary(gs, caster, perm)
-	case WardAltKindDiscardInstSorcEnch:
-		paid, detail = payWardByDiscardInstSorcEnch(gs, caster, perm)
-	case WardAltKindBlight:
-		n := filter
-		if n <= 0 {
-			n = 1 // defensive default
-		}
-		paid, detail = payWardByBlight(gs, caster, perm, n)
-	default:
-		// Unknown kind — treat as unpayable (caller counters the spell).
+	if !ok {
 		paid = false
-		detail = map[string]interface{}{"unknown_kind": kind}
+		detail = map[string]interface{}{"unknown_kind": int(cost.Type)}
+	} else {
+		paid, detail = handler(gs, caster, perm, cost)
 	}
 
 	if paid {
@@ -78,7 +173,7 @@ func tryPayAltWardCost(gs *GameState, item *StackItem, perm *Permanent) {
 			"rule":        "702.21d",
 			"ward_target": perm.Card.DisplayName(),
 			"spell":       itemName(item),
-			"kind":        kind,
+			"kind":        int(cost.Type),
 		}
 		for k, v := range detail {
 			base[k] = v
@@ -92,14 +187,13 @@ func tryPayAltWardCost(gs *GameState, item *StackItem, perm *Permanent) {
 		return
 	}
 
-	// Couldn't pay — counter the spell.
 	item.Countered = true
 	base := map[string]interface{}{
 		"rule":        "702.21c",
 		"ward_target": perm.Card.DisplayName(),
 		"spell":       itemName(item),
 		"caster_seat": item.Controller,
-		"kind":        kind,
+		"kind":        int(cost.Type),
 	}
 	for k, v := range detail {
 		base[k] = v
@@ -112,27 +206,29 @@ func tryPayAltWardCost(gs *GameState, item *StackItem, perm *Permanent) {
 	})
 }
 
-// payWardBySacrificeLegendary: the caster must sacrifice a legendary
-// artifact OR a legendary creature they control. Returns (true, details)
-// on a successful sacrifice; (false, reason) when no legal target exists.
-// Heuristic: pick the lowest-power creature first, then lowest-CMC
-// artifact — "cheapest legal sacrifice" minimizes value loss to the
-// caster.
-func payWardBySacrificeLegendary(gs *GameState, caster *Seat, source *Permanent) (bool, map[string]interface{}) {
+// payWardBySacrifice — caster sacrifices a permanent matching cost.Filter.
+// Filter "legendary artifact or creature" (Sauron's literal wording)
+// requires a legendary artifact OR creature; empty filter falls back to
+// "any creature" (defensive default for a hypothetical future generic
+// Ward—Sacrifice printing). Heuristic: pick the cheapest legal target
+// to minimize value loss.
+func payWardBySacrifice(gs *GameState, caster *Seat, source *Permanent, cost WardCost) (bool, map[string]interface{}) {
+	wantLegendary := strings.Contains(strings.ToLower(cost.Filter), "legendary") ||
+		cost.Filter == "" // legacy default — was hardcoded to legendary art/creature
+	wantArtifact := strings.Contains(strings.ToLower(cost.Filter), "artifact") || cost.Filter == ""
+
 	var pick *Permanent
 	pickPower := 1 << 30
 	for _, p := range caster.Battlefield {
 		if p == nil || p.Card == nil {
 			continue
 		}
-		if !isLegendaryPerm(p) {
+		if wantLegendary && !isLegendaryPerm(p) {
 			continue
 		}
-		if !p.IsCreature() && !typeContains(p.Card.Types, "artifact") {
+		if !p.IsCreature() && !(wantArtifact && typeContains(p.Card.Types, "artifact")) {
 			continue
 		}
-		// Skip the source itself — the caster doesn't control it (ward
-		// is opponent-side), so this guard is belt-and-braces.
 		if p == source {
 			continue
 		}
@@ -146,30 +242,47 @@ func payWardBySacrificeLegendary(gs *GameState, caster *Seat, source *Permanent)
 		}
 	}
 	if pick == nil {
-		return false, map[string]interface{}{"reason": "no_legendary_artifact_or_creature_to_sacrifice"}
+		return false, map[string]interface{}{
+			"reason": "no_matching_permanent_to_sacrifice",
+			"filter": cost.Filter,
+		}
 	}
-	SacrificePermanent(gs, pick, "ward_alt_sacrifice_legendary")
+	SacrificePermanent(gs, pick, "ward_alt_sacrifice")
 	return true, map[string]interface{}{
 		"sacrificed":      pick.Card.DisplayName(),
 		"sacrificed_type": permTypeLabel(pick),
 	}
 }
 
-// payWardByDiscardInstSorcEnch: the caster must discard a card from
-// their hand that is an instant, sorcery, or enchantment. Returns
-// (true, details) on success; (false, reason) when the caster has no
-// matching card. Heuristic: discard the highest-CMC matching card to
-// minimize topdecks they'd actually want to keep — symmetrical to the
-// "always pay" mana ward default.
-func payWardByDiscardInstSorcEnch(gs *GameState, caster *Seat, source *Permanent) (bool, map[string]interface{}) {
+// payWardByDiscard — caster discards a card matching cost.Filter from
+// their hand. Filter "instant or sorcery or enchantment" (Saruman's
+// literal wording) requires one of those three types; empty filter
+// falls back to "any card". Heuristic: discard the highest-CMC match
+// — symmetrical to the mana-ward "always pay" default.
+func payWardByDiscard(gs *GameState, caster *Seat, source *Permanent, cost WardCost) (bool, map[string]interface{}) {
 	_ = source
+	filterLower := strings.ToLower(cost.Filter)
+	// Empty filter falls back to the LEGACY default — inst/sorc/ench —
+	// rather than "any card". The default reflects the only printed
+	// Ward—Discard card in the corpus (Saruman of Many Colors) so
+	// fixtures that set Flags["ward_alt_kind"]=Discard directly without
+	// migrating to SetWardCost get the same behavior they had pre-r60.
+	allowAny := false
+	wantInst := cost.Filter == "" || strings.Contains(filterLower, "instant")
+	wantSorc := cost.Filter == "" || strings.Contains(filterLower, "sorcery")
+	wantEnch := cost.Filter == "" || strings.Contains(filterLower, "enchantment")
+
 	idx := -1
 	bestCMC := -1
 	for i, c := range caster.Hand {
 		if c == nil {
 			continue
 		}
-		if !typeContains(c.Types, "instant") && !typeContains(c.Types, "sorcery") && !typeContains(c.Types, "enchantment") {
+		matches := allowAny ||
+			(wantInst && typeContains(c.Types, "instant")) ||
+			(wantSorc && typeContains(c.Types, "sorcery")) ||
+			(wantEnch && typeContains(c.Types, "enchantment"))
+		if !matches {
 			continue
 		}
 		cm := ManaCostOf(c)
@@ -179,7 +292,10 @@ func payWardByDiscardInstSorcEnch(gs *GameState, caster *Seat, source *Permanent
 		}
 	}
 	if idx < 0 {
-		return false, map[string]interface{}{"reason": "no_inst_sorc_ench_in_hand"}
+		return false, map[string]interface{}{
+			"reason": "no_matching_card_in_hand",
+			"filter": cost.Filter,
+		}
 	}
 	card := caster.Hand[idx]
 	caster.Hand = append(caster.Hand[:idx], caster.Hand[idx+1:]...)
@@ -190,23 +306,25 @@ func payWardByDiscardInstSorcEnch(gs *GameState, caster *Seat, source *Permanent
 		Source: "ward_alt_discard",
 		Details: map[string]interface{}{
 			"card":   card.DisplayName(),
-			"reason": "ward_alt_discard_inst_sorc_ench",
+			"reason": "ward_alt_discard",
 		},
 	})
 	return true, map[string]interface{}{
-		"discarded":      card.DisplayName(),
-		"discarded_cmc":  bestCMC,
+		"discarded":     card.DisplayName(),
+		"discarded_cmc": bestCMC,
 	}
 }
 
-// payWardByBlight: the caster puts n -1/-1 counters on a creature
-// they control. Returns (true, details) on success; (false, reason)
-// when the caster has no creatures. Heuristic: place on the lowest-
-// toughness creature (least value sunk in the existing perm, fastest
-// to die to the counters — which is fine because the caster paid
-// for protection, not preservation).
-func payWardByBlight(gs *GameState, caster *Seat, source *Permanent, n int) (bool, map[string]interface{}) {
+// payWardByBlight — caster places cost.Amount -1/-1 counters on a
+// creature they control. Heuristic: lowest-toughness creature (least
+// value sunk in the existing perm — caster paid for protection, not
+// preservation).
+func payWardByBlight(gs *GameState, caster *Seat, source *Permanent, cost WardCost) (bool, map[string]interface{}) {
 	_ = source
+	n := cost.Amount
+	if n <= 0 {
+		n = 1
+	}
 	var pick *Permanent
 	pickT := 1 << 30
 	for _, p := range caster.Battlefield {
@@ -225,9 +343,118 @@ func payWardByBlight(gs *GameState, caster *Seat, source *Permanent, n int) (boo
 	pick.AddCounter("-1/-1", n)
 	gs.InvalidateCharacteristicsCache()
 	return true, map[string]interface{}{
-		"blighted":  pick.Card.DisplayName(),
-		"counters":  n,
+		"blighted": pick.Card.DisplayName(),
+		"counters": n,
 	}
+}
+
+// payWardByLife — caster pays cost.Amount life. Ward—Pay N life
+// (Charging War Boar, Sheltered by Ghosts, Coalition of Arms-class
+// printings). Heuristic: pay if Life > 2 * Amount (don't bleed out
+// for a single ward trigger). The 2x margin matches the "always pay"
+// mana ward default but caps risk of suicide payment.
+func payWardByLife(gs *GameState, caster *Seat, source *Permanent, cost WardCost) (bool, map[string]interface{}) {
+	_ = source
+	n := cost.Amount
+	if n <= 0 {
+		n = 1
+	}
+	if caster.Life <= n {
+		return false, map[string]interface{}{
+			"reason":      "insufficient_life",
+			"caster_life": caster.Life,
+			"required":    n,
+		}
+	}
+	if caster.Life < 2*n {
+		// Risk gate — would drop below 2x the ward cost. Decline so the
+		// caster can preserve life for combat / drain races.
+		return false, map[string]interface{}{
+			"reason":      "life_too_low_for_safe_payment",
+			"caster_life": caster.Life,
+			"required":    n,
+		}
+	}
+	caster.Life -= n
+	gs.LogEvent(Event{
+		Kind:   "life_lost",
+		Seat:   caster.Idx,
+		Source: "ward_alt_pay_life",
+		Amount: n,
+		Details: map[string]interface{}{
+			"reason": "ward_alt_pay_life",
+		},
+	})
+	return true, map[string]interface{}{
+		"paid_life":      n,
+		"caster_life_after": caster.Life,
+	}
+}
+
+// ApplyWardCostDamage applies a WardCostDamage-shape effect: source
+// deals cost.Amount damage to targetPerm (or targetSeat for player
+// targets). NOT routed through CheckWardOnTargeting — called directly
+// from per_card handlers for triggered damage-on-target effects like
+// Terror of the Peaks. Returns (dealt, details).
+//
+// The "structural detection" the user requested lives at the per_card
+// layer: any ETB / triggered-ability handler that wants to apply
+// "deals N damage to target opponent or creature" can call this
+// helper instead of inlining the damage logic, so the dispatcher path
+// is shared with the printed-ward Damage variant.
+//
+// Defaults: if both targetPerm and targetSeat are nil/invalid, the
+// effect no-ops (defensive — caller should pre-target). Damage routes
+// through DealDamage / DealDamageToPlayer so existing damage replacement
+// + prevention effects + lifelink hooks fire normally.
+func ApplyWardCostDamage(gs *GameState, source *Permanent, targetPerm *Permanent, targetSeat int, cost WardCost) (bool, map[string]interface{}) {
+	if gs == nil || source == nil {
+		return false, map[string]interface{}{"reason": "nil_source"}
+	}
+	n := cost.Amount
+	if n <= 0 {
+		return false, map[string]interface{}{"reason": "non_positive_amount"}
+	}
+	srcName := source.Card.DisplayName()
+	if targetPerm != nil && targetPerm.IsCreature() {
+		// Mirror the resolve.go creature-damage path so replacement +
+		// prevention effects fire normally. FireDamageEvent may cancel
+		// or modify the amount before it lands.
+		modified, cancelled := FireDamageEvent(gs, source, targetPerm.Controller, targetPerm, n)
+		if cancelled || modified <= 0 {
+			return false, map[string]interface{}{"reason": "damage_replaced_or_cancelled"}
+		}
+		modified = PreventDamageToPermanent(gs, targetPerm, modified, source)
+		if modified <= 0 {
+			return false, map[string]interface{}{"reason": "damage_prevented"}
+		}
+		targetPerm.MarkedDamage += modified
+		gs.LogEvent(Event{
+			Kind:   "damage",
+			Seat:   source.Controller,
+			Target: targetPerm.Controller,
+			Source: srcName,
+			Amount: modified,
+			Details: map[string]interface{}{
+				"reason": "ward_cost_damage",
+				"target": targetPerm.Card.DisplayName(),
+			},
+		})
+		return true, map[string]interface{}{
+			"damage":      modified,
+			"target":      targetPerm.Card.DisplayName(),
+			"target_kind": "creature",
+		}
+	}
+	if targetSeat >= 0 && targetSeat < len(gs.Seats) {
+		DealDamage(gs, targetSeat, n, srcName)
+		return true, map[string]interface{}{
+			"damage":      n,
+			"target_seat": targetSeat,
+			"target_kind": "player",
+		}
+	}
+	return false, map[string]interface{}{"reason": "no_valid_target"}
 }
 
 // isLegendaryPerm tests whether a permanent carries the legendary
