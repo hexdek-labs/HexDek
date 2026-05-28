@@ -325,6 +325,7 @@ func main() {
 		oraclePath     = flag.String("oracle", "data/rules/oracle-cards.json", "Scryfall oracle-cards.json path")
 		nightmareFlag  = flag.Int("nightmare-boards", 10000, "number of nightmare board tests")
 		seedCardsFlag  = flag.String("seed-cards", "", "comma-separated card names to force into seat 0's deck every chaos game (handler-focused fuzz)")
+		seedCardsAllSeatsFlag = flag.String("seed-cards-all-seats", "", "comma-separated card names to distribute round-robin across ALL seats' decks every chaos game (cross-seat interaction fuzz; complements --seed-cards which is seat-0-only)")
 		seedCmdrFlag   = flag.String("seed-cmdr", "", "force seat 0's commander to this name (must be a legendary creature in oracle corpus)")
 		invariantFlag  = flag.String("invariant", "", "filter violations to a single invariant kind (case-insensitive, accepts CamelCase or kebab-case; empty = all). Example: --invariant zone-conservation")
 		listInvFlag    = flag.Bool("list-invariants", false, "print the full set of known invariant names and exit")
@@ -349,6 +350,14 @@ func main() {
 		for _, s := range strings.Split(*seedCardsFlag, ",") {
 			if t := strings.TrimSpace(s); t != "" {
 				seedCards = append(seedCards, t)
+			}
+		}
+	}
+	var seedCardsAllSeats []string
+	if strings.TrimSpace(*seedCardsAllSeatsFlag) != "" {
+		for _, s := range strings.Split(*seedCardsAllSeatsFlag, ",") {
+			if t := strings.TrimSpace(s); t != "" {
+				seedCardsAllSeats = append(seedCardsAllSeats, t)
 			}
 		}
 	}
@@ -434,7 +443,7 @@ func main() {
 					job.gameIdx, job.permutation,
 					chaosCorpus, corpus, meta,
 					*seatsFlag, *seedFlag, *maxTurnsFlag,
-					seedCards, *seedCmdrFlag,
+					seedCards, *seedCmdrFlag, seedCardsAllSeats,
 				)
 				gameResults <- result
 				done := atomic.AddInt64(&completed, 1)
@@ -676,7 +685,7 @@ func runChaosGame(gameIdx, permutation int,
 	corpus *astload.Corpus,
 	meta *deckparser.MetaDB,
 	nSeats int, masterSeed int64, maxTurns int,
-	seedCards []string, seedCmdr string,
+	seedCards []string, seedCmdr string, seedCardsAllSeats []string,
 ) (result chaosGameResult) {
 
 	result.GameIdx = gameIdx
@@ -729,6 +738,39 @@ func runChaosGame(gameIdx, permutation int,
 				swapIdx--
 			}
 			present[name] = true
+		}
+	}
+	// --seed-cards-all-seats distributes the named cards round-robin
+	// across every seat's deck. Useful for surfacing CROSS-SEAT
+	// interactions (Hostage Taker + Bribery in different seats both
+	// exile cards that need §400.7c owner-routing; --seed-cards alone
+	// only stresses seat 0's handlers). Each seat gets ceil(len/nSeats)
+	// cards from the list, rotating through. Conflicts with the seat's
+	// commander or existing cards are skipped (mirrors the
+	// --seed-cards branch above).
+	if len(seedCardsAllSeats) > 0 {
+		// Track per-seat presence + swap cursor.
+		seatPresent := make([]map[string]bool, nSeats)
+		seatSwapIdx := make([]int, nSeats)
+		for i := 0; i < nSeats; i++ {
+			seatPresent[i] = make(map[string]bool, len(chaosDecks[i].Cards))
+			for _, n := range chaosDecks[i].Cards {
+				seatPresent[i][n] = true
+			}
+			seatSwapIdx[i] = len(chaosDecks[i].Cards) - 1
+		}
+		for idx, name := range seedCardsAllSeats {
+			seat := idx % nSeats
+			if name == chaosDecks[seat].Commander.Name || seatPresent[seat][name] {
+				continue
+			}
+			if seatSwapIdx[seat] < 0 {
+				chaosDecks[seat].Cards = append(chaosDecks[seat].Cards, name)
+			} else {
+				chaosDecks[seat].Cards[seatSwapIdx[seat]] = name
+				seatSwapIdx[seat]--
+			}
+			seatPresent[seat][name] = true
 		}
 	}
 
@@ -1341,14 +1383,30 @@ func writeReport(path string, d reportData) {
 		}
 		fmt.Fprintf(f, "\n")
 
-		// Show up to 5 violation details PER invariant kind so the
+		// Show up to 30 violation details PER invariant kind so the
 		// report surfaces every cluster (CardIdentity / ZoneConservation /
 		// AttachmentConsistency / etc.) instead of just whichever name
 		// happens to win the iteration race at the top of the slice.
-		const perKind = 5
+		// Bumped from 5 → 30 in r60 for the seeded-sweep analyses where
+		// each invariant has 10K+ hits with potentially diverse
+		// signatures.
+		//
+		// r60: dedup by (GameIdx, Message) — a single game that emits
+		// the same violation on N cleanup passes contributes only ONE
+		// detail. Without this, all 30 details for CardIdentity end up
+		// being the same Kalitas-in-2-zones leak from game 7 because
+		// it fires on every turn 22-50 cleanup pass.
+		const perKind = 30
 		idxByName := map[string][]int{}
+		seenSig := map[string]bool{}
 		for vi := range d.Violations {
-			idxByName[d.Violations[vi].InvariantName] = append(idxByName[d.Violations[vi].InvariantName], vi)
+			v := &d.Violations[vi]
+			sig := fmt.Sprintf("g%d|%s", v.GameIdx, v.Message)
+			if seenSig[sig] {
+				continue
+			}
+			seenSig[sig] = true
+			idxByName[v.InvariantName] = append(idxByName[v.InvariantName], vi)
 		}
 		var details []int
 		for _, idxs := range idxByName {
