@@ -177,16 +177,37 @@ func TestChooseResponse_R60_EagerCountersTutorAtScoreTwo(t *testing.T) {
 	}
 }
 
-func TestChooseResponse_R60_OneManaTutorBelowScoreGate(t *testing.T) {
-	// 1-mana tutor scores 1 (below the score>=2 gate for the new
-	// search-your-library mustCounter clause). Falls back through to
-	// the regular minScore comparison; midrange minScore is 3, so the
-	// hat passes — verifying the score gate isn't accidentally too loose.
+func TestChooseResponse_R60_OneManaComboTutorMustCounter(t *testing.T) {
+	// Updated r60 — combo tutors (open "search your library for a card"
+	// shape, plus typed variants for creature/instant/sorcery/artifact/
+	// enchantment/aura/planeswalker) now mustCounter regardless of CMC.
+	// Pre-r60 the score >= 2 gate let 1-CMC tutors slip past — Vampiric /
+	// Mystical / Imperial Seal / Worldly Tutor scored 1, fell below the
+	// gate, and resolved. Tutors are the highest-leverage combo enablers
+	// in Commander (they convert "we'll draw it eventually" into "we
+	// have it next turn") and warrant a hard counter at any cost.
 	h, gs, top := setupResponder(t,
 		spellWithOracle("Vampiric Tutor", 1,
 			"Search your library for a card."))
+	if got := h.ChooseResponse(gs, 0, top); got == nil {
+		t.Fatal("1-mana combo tutor (Vampiric) should mustCounter under the r60 isComboTutorOracle classifier")
+	}
+}
+
+func TestChooseResponse_R60_OneManaRampTutorFallsThroughGate(t *testing.T) {
+	// Ramp tutors (Crop Rotation: "Search your library for a land card,
+	// put it onto the battlefield, then shuffle") DON'T match the combo-
+	// tutor classifier — search target is a land, not a card-type-anything.
+	// They fall through to the legacy `search && score>=2` gate; at score=1
+	// (Crop Rotation is 1cmc with no destroy/win-the-game bonus) the gate
+	// fails, and midrange minScore=3 means the hat passes. Verifies the
+	// classifier is narrow enough that ramp tutors don't burn counters.
+	h, gs, top := setupResponder(t,
+		spellWithOracle("Crop Rotation", 1,
+			"As an additional cost to cast this spell, sacrifice a land. "+
+				"Search your library for a land card, put that card onto the battlefield, then shuffle."))
 	if got := h.ChooseResponse(gs, 0, top); got != nil {
-		t.Fatalf("1-mana tutor should fall through gate, not mustCounter; got %v",
+		t.Fatalf("1-mana ramp tutor (Crop Rotation) should fall through; got %v",
 			got.Card.DisplayName())
 	}
 }
