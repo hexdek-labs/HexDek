@@ -257,33 +257,48 @@ func TestPiaNalaar_IgnoresTokenDeath(t *testing.T) {
 // Etali, Primal Storm
 // -----------------------------------------------------------------------------
 
-func TestEtali_AttackExilesTopOfEachLibrary(t *testing.T) {
+func TestEtali_AttackExilesTopOfEachLibraryIntoOwnersExile(t *testing.T) {
+	// PR #683: post-fix Etali routes each exiled card to its OWNER's
+	// exile, NOT to Etali-controller's exile. Pre-PR-#683 this test
+	// expected all 3 cards in seat 0's exile; the new contract per
+	// CR §400.7c is that each opponent's card lands in that
+	// opponent's exile pile.
 	gs := newGame(t, 3)
 	etali := addPerm(gs, 0, "Etali, Primal Storm", "creature", "legendary")
-	// Library "top" = last index in this engine. Seed each seat.
-	addLibrary(gs, 0, "Bottom0", "Top0")
-	addLibrary(gs, 1, "Bottom1", "Top1")
-	addLibrary(gs, 2, "Bottom2", "Top2")
+	// Library "top" = last index in this engine. Seed each seat with
+	// owner-tagged cards so the OWNER's exile assertion is meaningful.
+	bot0 := &gameengine.Card{Name: "Bottom0", Owner: 0}
+	top0 := &gameengine.Card{Name: "Top0", Owner: 0, Types: []string{"instant"}}
+	bot1 := &gameengine.Card{Name: "Bottom1", Owner: 1}
+	top1 := &gameengine.Card{Name: "Top1", Owner: 1, Types: []string{"sorcery"}}
+	bot2 := &gameengine.Card{Name: "Bottom2", Owner: 2}
+	top2 := &gameengine.Card{Name: "Top2", Owner: 2, Types: []string{"creature"}}
+	gs.Seats[0].Library = []*gameengine.Card{bot0, top0}
+	gs.Seats[1].Library = []*gameengine.Card{bot1, top1}
+	gs.Seats[2].Library = []*gameengine.Card{bot2, top2}
 
 	gameengine.FireCardTrigger(gs, "creature_attacks", map[string]interface{}{
 		"attacker_perm": etali,
 		"attacker_seat": 0,
 	})
 
-	// All 3 cards should be in Etali's controller's exile pile.
-	if len(gs.Seats[0].Exile) != 3 {
-		t.Errorf("expected 3 cards in Etali's controller's exile, got %d (events: %d)",
-			len(gs.Seats[0].Exile), hasEvent(gs, "etali_exile"))
+	// Each seat's exile holds exactly its own top card (CR §400.7c).
+	for seatIdx, wantCard := range map[int]*gameengine.Card{0: top0, 1: top1, 2: top2} {
+		ex := gs.Seats[seatIdx].Exile
+		if len(ex) != 1 {
+			t.Errorf("seat %d exile should be 1, got %d", seatIdx, len(ex))
+			continue
+		}
+		if ex[0] != wantCard {
+			t.Errorf("seat %d exile[0] = %q, want %q (CR §400.7c: card moves to owner's exile)",
+				seatIdx, ex[0].DisplayName(), wantCard.DisplayName())
+		}
 	}
 	// Each seat's library should have lost its top card.
-	if len(gs.Seats[0].Library) != 1 {
-		t.Errorf("seat 0 library should be 1, got %d", len(gs.Seats[0].Library))
-	}
-	if len(gs.Seats[1].Library) != 1 {
-		t.Errorf("seat 1 library should be 1, got %d", len(gs.Seats[1].Library))
-	}
-	if len(gs.Seats[2].Library) != 1 {
-		t.Errorf("seat 2 library should be 1, got %d", len(gs.Seats[2].Library))
+	for seatIdx := 0; seatIdx < 3; seatIdx++ {
+		if len(gs.Seats[seatIdx].Library) != 1 {
+			t.Errorf("seat %d library should be 1, got %d", seatIdx, len(gs.Seats[seatIdx].Library))
+		}
 	}
 	if hasEvent(gs, "etali_exile") != 3 {
 		t.Errorf("expected 3 etali_exile events, got %d", hasEvent(gs, "etali_exile"))
@@ -291,6 +306,12 @@ func TestEtali_AttackExilesTopOfEachLibrary(t *testing.T) {
 }
 
 func TestEtali_RegistersGrantsOnNonlandsOnly(t *testing.T) {
+	// PR #683: nonland exiled cards still get a ZoneCastGrant with
+	// RequireController = Etali's controller, regardless of which
+	// seat's exile pile the card now physically lives in. The grant
+	// lookup is keyed on the *Card pointer (gs.ZoneCastGrants[*Card]),
+	// so the exile-pile location doesn't affect the cast-from-exile
+	// permission path.
 	gs := newGame(t, 2)
 	etali := addPerm(gs, 0, "Etali, Primal Storm", "creature", "legendary")
 
@@ -305,13 +326,21 @@ func TestEtali_RegistersGrantsOnNonlandsOnly(t *testing.T) {
 		"attacker_seat": 0,
 	})
 
-	// Both cards should be in Etali's exile.
-	if len(gs.Seats[0].Exile) != 2 {
-		t.Errorf("expected 2 exiled cards (nonland + land), got %d", len(gs.Seats[0].Exile))
+	// Each card lands in its OWNER's exile per CR §400.7c — NOT
+	// in Etali-controller's exile (pre-PR-#683 behavior).
+	if len(gs.Seats[0].Exile) != 1 || gs.Seats[0].Exile[0] != nonland {
+		t.Errorf("seat 0 (nonland owner) exile = %v, want [Counterspell]",
+			func() []string { out := []string{}; for _, c := range gs.Seats[0].Exile { out = append(out, c.DisplayName()) }; return out }())
+	}
+	if len(gs.Seats[1].Exile) != 1 || gs.Seats[1].Exile[0] != land {
+		t.Errorf("seat 1 (land owner) exile = %v, want [Mountain]",
+			func() []string { out := []string{}; for _, c := range gs.Seats[1].Exile { out = append(out, c.DisplayName()) }; return out }())
 	}
 	// Only the nonland should have a ZoneCastGrant.
 	if grant, ok := gs.ZoneCastGrants[nonland]; !ok || grant == nil {
 		t.Errorf("expected free-cast grant on nonland Counterspell, got nil")
+	} else if grant.RequireController != 0 {
+		t.Errorf("nonland grant RequireController = %d, want 0 (Etali controller)", grant.RequireController)
 	}
 	if grant, ok := gs.ZoneCastGrants[land]; ok && grant != nil {
 		t.Errorf("must not register cast grant on land card, got %+v", grant)
