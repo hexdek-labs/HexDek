@@ -90,17 +90,29 @@ func OppositionAgentControlsSearch(gs *gameengine.GameState, searchingSeat int) 
 // OppositionAgentControlsSearch first; if it returns a non-(-1) seat,
 // they pass the found card here.
 //
-// The exiled card is tagged on the controller's seat in exile; a
-// future "play-from-exile" primitive will consult that tag to know
-// Agent's controller can cast it.
+// The exiled card lands in its OWNER's exile zone per CR §400.7 /
+// §406.1 and Wizards' 2020-09-25 Scryfall ruling on Opposition Agent:
+// "When you search an opponent's library, you exile any of the cards
+// that were found. The exiled cards are exiled into THAT PLAYER'S
+// exile zone." Agent's controller chooses what to exile, but the
+// destination zone is the searcher's (owner's) exile. Pre-r60 this
+// function and the §400.7 audit (PR #693) caught the same Etali-shape
+// cross-seat exile bug surfaced in PR #685. The Agent's right to
+// CAST the exiled card is preserved via the ZoneCastGrant registered
+// by future work; cast permission is independent of zone-of-residence.
 func ExileSearchResult(gs *gameengine.GameState, controllerSeat int, card *gameengine.Card) {
 	const slug = "opposition_agent_exile_search_result"
 	if gs == nil || card == nil || controllerSeat < 0 || controllerSeat >= len(gs.Seats) {
 		return
 	}
-	// Move to Agent-controller's exile zone (NOT the searcher's).
-	// Card's owner is used for zone routing; the controller's exile holds it.
-	gameengine.MoveCard(gs, card, controllerSeat, "library", "exile", "opposition-agent-exile")
+	// Route to OWNER's exile per CR §400.7. MoveCard normalises the
+	// destination through moveToZone, which (since PR #693) now also
+	// enforces this redirect defensively at the API boundary.
+	ownerSeat := card.Owner
+	if ownerSeat < 0 || ownerSeat >= len(gs.Seats) {
+		ownerSeat = controllerSeat
+	}
+	gameengine.MoveCard(gs, card, ownerSeat, "library", "exile", "opposition-agent-exile")
 	gs.LogEvent(gameengine.Event{
 		Kind:   "opposition_agent_exile",
 		Seat:   controllerSeat,
@@ -108,11 +120,13 @@ func ExileSearchResult(gs *gameengine.GameState, controllerSeat int, card *gamee
 		Details: map[string]interface{}{
 			"exiled_card":     card.DisplayName(),
 			"controller_seat": controllerSeat,
+			"owner_seat":      ownerSeat,
 			"rule":            "701.19",
 		},
 	})
 	emit(gs, slug, "Opposition Agent", map[string]interface{}{
 		"exiled_card":     card.DisplayName(),
 		"controller_seat": controllerSeat,
+		"owner_seat":      ownerSeat,
 	})
 }
