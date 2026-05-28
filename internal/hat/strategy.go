@@ -32,6 +32,24 @@ type StrategyProfile struct {
 	// Bracket is the power bracket (1-5) from Freya's classification.
 	Bracket int
 
+	// PowerTier is the 5-tier cEDH power classification from Freya's
+	// ClassifyCEDHPowerTier (PRs #714/#715): 1-2 = Casual, 3 =
+	// Upgraded Precon, 4 = High Power, 5 = cEDH. Independent of
+	// Bracket — the bracket call integrates many signals (some not on
+	// the strategy.json wire), while PowerTier is computed strictly
+	// from {GC, ManaBaseGrade, NonLandTutors, WinLineConfidence,
+	// InteractionPackageScore, AvgCMC} so it surfaces a cleaner
+	// "what does this deck FEEL like at the table" signal.
+	//
+	// Drives ApplyPowerTierRouting which adjusts eval weights:
+	// cEDH-tier decks get ComboProximity / StackInteraction /
+	// ActivationTempo / ToolboxBreadth multiplied up and BoardPresence
+	// / CommanderProgress / LifeResource multiplied down (race-shape
+	// MCTS priorities); casual-tier decks get the inverse (board-
+	// development / commander-damage MCTS priorities). Tier 3
+	// neutral. Skipped entirely when PowerTier == 0 (unset).
+	PowerTier int
+
 	// Weights are the MCTS evaluator weights for this deck. Computed by
 	// Freya from deck analysis or defaulted per archetype. When nil, the
 	// evaluator uses DefaultWeightsForArchetype(Archetype).
