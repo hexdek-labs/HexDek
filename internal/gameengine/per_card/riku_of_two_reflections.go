@@ -64,19 +64,16 @@ func rikuTwoReflectionsCreatureCast(gs *gameengine.GameState, perm *gameengine.P
 	}
 	seat.ManaPool -= rikuTwoReflectionsCost
 
-	tokenCard := card.DeepCopy()
+	// InstanceID Phase 5: token-as-copy chokepoint — mints fresh TK ID
+	// linking SourceInstanceID to the original card being copied.
+	tokenCard := gameengine.MintTokenAsCopyOf(gs, card, perm.Controller, "")
+	if tokenCard == nil {
+		emitFail(gs, slug, perm.Card.DisplayName(), "token_mint_failed", map[string]interface{}{
+			"spell": card.DisplayName(),
+		})
+		return
+	}
 	tokenCard.IsCopy = true
-	tokenCard.Owner = perm.Controller
-	hasToken := false
-	for _, t := range tokenCard.Types {
-		if t == "token" {
-			hasToken = true
-			break
-		}
-	}
-	if !hasToken {
-		tokenCard.Types = append([]string{"token"}, tokenCard.Types...)
-	}
 
 	newPerm := enterBattlefieldWithETB(gs, perm.Controller, tokenCard, false)
 	if newPerm == nil {
@@ -148,7 +145,12 @@ func rikuTwoReflectionsSpellCast(gs *gameengine.GameState, perm *gameengine.Perm
 
 	seat.ManaPool -= rikuTwoReflectionsCost
 
+	// InstanceID Phase 5: spell-copy chokepoint — mints fresh CP ID
+	// per §4 mint path 1. Per CR §707.10 the copy ceases on resolution;
+	// the CeasedInstanceIDs sweep at stack-resolve handles that.
 	copyCard := card.DeepCopy()
+	copyCard.InstanceID = ""
+	gameengine.MintCopyInstanceID(gs, copyCard, card.InstanceID, gameengine.CurrentMintEnablerID(gs))
 	copyCard.IsCopy = true
 	copyItem := &gameengine.StackItem{
 		Controller: perm.Controller,

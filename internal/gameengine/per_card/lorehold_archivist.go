@@ -117,10 +117,12 @@ func loreholdArchivistUpkeep(gs *gameengine.GameState, perm *gameengine.Permanen
 		return
 	}
 	gameengine.MoveCard(gs, pick, perm.Controller, "graveyard", "exile", slug)
-	token := pick.DeepCopy()
-	token.Owner = perm.Controller
+	// InstanceID Phase 5: token-as-copy chokepoint.
+	token := gameengine.MintTokenAsCopyOf(gs, pick, perm.Controller, "")
+	if token == nil {
+		return
+	}
 	token.Name = pick.DisplayName() + " (Restore-Relic token)"
-	token.Types = append(token.Types, "token")
 	enterBattlefieldWithETB(gs, perm.Controller, token, false)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":      perm.Controller,

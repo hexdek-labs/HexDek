@@ -52,10 +52,12 @@ func lifeOfThePartyETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		if s == nil || s.Lost {
 			continue
 		}
-		token := src.DeepCopy()
-		token.Owner = opp
+		// InstanceID Phase 5: token-as-copy chokepoint.
+		token := gameengine.MintTokenAsCopyOf(gs, src, opp, "")
+		if token == nil {
+			continue
+		}
 		token.Name = src.DisplayName() + " (Life-of-the-Party token)"
-		token.Types = append(token.Types, "token")
 		tok := enterBattlefieldWithETB(gs, opp, token, false)
 		if tok != nil {
 			if tok.Flags == nil {

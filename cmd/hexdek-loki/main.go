@@ -329,8 +329,12 @@ func main() {
 		seedCmdrFlag   = flag.String("seed-cmdr", "", "force seat 0's commander to this name (must be a legendary creature in oracle corpus)")
 		invariantFlag  = flag.String("invariant", "", "filter violations to a single invariant kind (case-insensitive, accepts CamelCase or kebab-case; empty = all). Example: --invariant zone-conservation")
 		listInvFlag    = flag.Bool("list-invariants", false, "print the full set of known invariant names and exit")
+		strictCensus   = flag.Bool("instanceid-strict-census", false, "enable InstanceID Phase 4+ strict ZoneConservation disappearance check (per docs/instanceid-system-v2-r60.md §13). Default off — flips gs.Flags[\"instanceid_strict_census\"]=1 on every game.")
 	)
 	flag.Parse()
+	if *strictCensus {
+		gameengine.SetStrictCensusDefault(true)
+	}
 
 	knownInvariants := invariantNames(gameengine.AllInvariants())
 	if *listInvFlag {

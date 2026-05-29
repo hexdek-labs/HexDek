@@ -99,6 +99,14 @@ type ReplEvent struct {
 	// ReplacementEffect.HandlerID values; a handler in this set is
 	// skipped on subsequent iterations of the same event chain.
 	AppliedIDs map[string]bool
+
+	// AppliedChain is the Phase 5 ordered audit trail per
+	// docs/instanceid-system-v2-r60.md §6. Each iteration of FireEvent
+	// appends one ReplacementRef recording (handler, source, op,
+	// count-before/after, tick). Surfaces the §616 application order to
+	// consumers (TokenMintEvent, Heimdall lineage trees, Loki
+	// invariants) without making them re-walk gs.Replacements.
+	AppliedChain []ReplacementRef
 }
 
 // NewReplEvent constructs a fresh event with initialized maps.
@@ -320,7 +328,28 @@ func FireEvent(gs *GameState, ev *ReplEvent) *ReplEvent {
 		// §614.5: record applied-once BEFORE calling ApplyFn so a handler
 		// that re-fires the same event (nested) doesn't re-hit itself.
 		ev.AppliedIDs[candidate.HandlerID] = true
+		before := ev.Count()
 		candidate.ApplyFn(gs, ev)
+		after := ev.Count()
+		// Phase 5 §616 audit trail — record the ordered application of
+		// each replacement so TokenMintEvent + Heimdall + Loki can read
+		// the §616 chain without re-walking gs.Replacements.
+		op := ReplacementOpDouble
+		switch {
+		case ev.Cancelled:
+			op = ReplacementOpSkip
+		case after < before:
+			op = ReplacementOpHalve
+		case after == before:
+			op = ReplacementOpRedirect
+		}
+		sourceName := ""
+		if candidate.SourcePerm != nil && candidate.SourcePerm.Card != nil {
+			sourceName = candidate.SourcePerm.Card.DisplayName()
+		}
+		RecordReplacementApplied(gs, &ev.AppliedChain,
+			candidate.SourcePerm, candidate.HandlerID, sourceName,
+			op, before, after)
 	}
 	// Hit safety cap — log and return so the caller can continue.
 	gs.LogEvent(Event{
@@ -483,6 +512,11 @@ func FireCreateTokenEvent(gs *GameState, seat, count int, src *Permanent) (int, 
 	ev.Source = src
 	ev.SetCount(count)
 	FireEvent(gs, ev)
+	// Phase 5 audit trail — stash the chain on gs.Flags-style sidecar so
+	// resolveCreateToken can fold it into the TokenMintEvent without
+	// changing FireCreateTokenEvent's return signature (which would
+	// ripple through many callers).
+	gs.PendingTokenMintChain = ev.AppliedChain
 	return ev.Count(), ev.Cancelled
 }
 

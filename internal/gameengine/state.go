@@ -132,6 +132,23 @@ type GameState struct {
 	// Used in conjunction with MintedInstanceIDs by checkZoneConservation.
 	CeasedInstanceIDs map[string]struct{}
 
+	// TokenMintEvents is the Phase 5 audit-trail buffer per
+	// docs/instanceid-system-v2-r60.md §6. Each FireCreateTokenEvent
+	// resolution appends one TokenMintEvent recording the §616
+	// replacement chain (Mondrak / Anointed / Doubling Season order),
+	// the base-vs-final count, and every minted token's InstanceID.
+	// Capped at 256 entries (oldest half dropped on overflow) so long
+	// games + fuzzers don't accumulate unbounded memory.
+	TokenMintEvents []TokenMintEvent
+
+	// PendingTokenMintChain is a single-event sidecar populated by
+	// FireCreateTokenEvent and consumed by resolveCreateToken /
+	// resolveCreateTokenCopy when assembling the TokenMintEvent. Keeping
+	// it on gs avoids changing FireCreateTokenEvent's return signature
+	// (which has many callers). Cleared after every resolveCreateToken*
+	// finishes folding it in.
+	PendingTokenMintChain []ReplacementRef
+
 	// Flags is an open-ended map for one-off game-wide flags ("extra_turn
 	// pending", "replacement effect seen", "eldrazi spawned this turn").
 	// Resolvers write here when there isn't a dedicated field yet.
@@ -575,6 +592,21 @@ func NewGameStateSeeded(seatCount int, seed int64, corpus *astload.Corpus) *Game
 	return gs
 }
 
+// strictCensusDefault flips the InstanceID Phase 4+ ZoneConservation
+// strict-census disappearance check on/off for every newly-created
+// GameState. Set via SetStrictCensusDefault — Loki + integration
+// harnesses opt into it for sweep runs.
+var strictCensusDefault bool
+
+// SetStrictCensusDefault toggles whether NewGameState stamps
+// gs.Flags["instanceid_strict_census"] = 1 on every freshly-built
+// state. Default false; flipping to true enables the InstanceID Phase
+// 4+ "card disappeared" check per docs/instanceid-system-v2-r60.md §13.
+// Intended for Loki/CI sweep runs that want the strict view.
+func SetStrictCensusDefault(on bool) {
+	strictCensusDefault = on
+}
+
 // NewGameState builds a fresh two-seat game. Caller is expected to
 // populate libraries/hands/battlefields before calling ResolveEffect.
 func NewGameState(seatCount int, rng *rand.Rand, corpus *astload.Corpus) *GameState {
@@ -585,6 +617,10 @@ func NewGameState(seatCount int, rng *rand.Rand, corpus *astload.Corpus) *GameSt
 	for i := 0; i < seatCount; i++ {
 		seats[i] = newSeat(i)
 	}
+	flags := map[string]int{}
+	if strictCensusDefault {
+		flags["instanceid_strict_census"] = 1
+	}
 	return &GameState{
 		Seats:             seats,
 		Rng:               rng,
@@ -593,7 +629,7 @@ func NewGameState(seatCount int, rng *rand.Rand, corpus *astload.Corpus) *GameSt
 		Step:              "untap",
 		Active:            0,
 		Cards:             corpus,
-		Flags:             map[string]int{},
+		Flags:             flags,
 		EventLog:          make([]Event, 0, 64),
 		RetainEvents:      true,
 		DayNight:          DayNightNeither,
@@ -1363,6 +1399,49 @@ type Permanent struct {
 	// While true, the controller may cast a copy of the card's spell face
 	// (the back face). Casting the copy sets Prepared back to false.
 	Prepared bool
+
+	// -----------------------------------------------------------------
+	// InstanceID Phase 5 (docs/instanceid-system-v2-r60.md §4.2 + §5).
+	// Copy mechanism registry + provided-replacement audit fields.
+	// All slices nil by default; presence-based opt-in per permanent.
+	// -----------------------------------------------------------------
+
+	// CopyMechanisms is the list of independently-triggered copy
+	// capabilities on this permanent. Per Probe A, cards like Mirage
+	// Mirror carry two entries (one upkeep-permanent, one activated-
+	// temporary); Sakashima carries one with BypassesLegendRule = true.
+	CopyMechanisms []CopyMechanism
+
+	// CopiedTargetInstanceID is the InstanceID of the permanent this
+	// permanent is currently a copy of (when CopiableSnapshot != nil).
+	// Empty when this permanent is not currently copying anything.
+	CopiedTargetInstanceID string
+
+	// CopiableSnapshot is the §706.2 frozen-at-copy-moment snapshot of
+	// the source's printed values. nil unless this permanent is acting
+	// as a copy.
+	CopiableSnapshot *CopiableCharacteristics
+
+	// CopyHistory is an append-only audit log of every CopyMechanism
+	// firing on this permanent. Replay tooling consumes this.
+	CopyHistory []CopyEvent
+
+	// BypassesLegendRule exempts this permanent from CR §704.5j legend-
+	// rule SBA. Set by Sakashima at ETB ("Legend rule doesn't apply to
+	// other permanents you control"). Per-card override per Probe A.
+	BypassesLegendRule bool
+
+	// AttachedTokenIDs tracks tokens this permanent has spawned as
+	// attached copies (Helm of the Host's "create a token that's a copy
+	// of equipped creature... attached to it"). Helm-style chain audit.
+	AttachedTokenIDs []string
+
+	// ProvidesReplacements lists the §614 replacement effects this
+	// permanent registers when it's on the battlefield (Doubling Season,
+	// Mondrak, Anointed Procession, Panharmonicon, etc.). Phase 5 audit
+	// surface — the actual ReplacementEffect entries live on
+	// gs.Replacements; this slice mirrors them for static introspection.
+	ProvidesReplacements []ReplacementSpec
 }
 
 // LinkageKind enumerates the three exile-linkage shapes per
