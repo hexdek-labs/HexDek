@@ -55,8 +55,8 @@ through each of the four exit primitives, and assert the carrier `*Card`
 ended up in seat 1's destination zone. Catches any handler that snags
 the leaving card off the wire into the wrong seat's zone.
 
-- Handlers exercised (cards subscribed to an exit event): **98**
-- Primitives × handlers attempted: **392**
+- Handlers exercised (cards subscribed to an exit event): **103**
+- Primitives × handlers attempted: **412**
 - Owner-routing violations: **0**
 
 **The permanent-lifetime ownership invariant holds across the
@@ -77,6 +77,7 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 - `archelos lagoon mystic`
 - `ashling flame dancer`
 - `azors elocutors`
+- `banisher priest`
 - `bloodchief ascension`
 - `carmen cruel skymarcher`
 - `cecily haunted mage`
@@ -85,7 +86,9 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 - `curse of bloodletting`
 - `cynette jelly drover`
 - `darksteel reactor`
+- `detention sphere`
 - `dictate of the twin gods`
+- `faceless butcher`
 - `fire lord zuko`
 - `furnace of rath`
 - `gisa the hellraiser`
@@ -109,6 +112,7 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 - `lara croft tomb raider`
 - `lier disciple of the drowned`
 - `lightning army of one`
+- `lurrus of the dreamden`
 - `mabel heir to cragflame`
 - `maestros ascendancy`
 - `mazirek kraul death priest`
@@ -120,6 +124,7 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 - `necrotic ooze`
 - `neriv heart of the storm`
 - `noctis prince of lucis`
+- `oblivion ring`
 - `old one eye`
 - `omnath locus of mana`
 - `ozai the phoenix king`
