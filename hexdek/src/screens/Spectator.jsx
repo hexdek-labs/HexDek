@@ -251,6 +251,24 @@ const permStat = (p) => {
   return ''
 }
 
+// InstanceID Phase 9 — build the hover tooltip showing lineage for a
+// single permanent (only meaningful when count === 1; stacked tiles
+// represent multiple distinct instances and aren't lineage-friendly).
+// Returns the base title when no InstanceID lineage is present
+// (legacy / pre-Phase-1 games).
+const lineageTitle = (p) => {
+  const base = `${p.name}${p.count > 1 ? ` ×${p.count}` : ''}`
+  if (!p.instance_id || p.count > 1) return base
+  const lines = [base, `id: ${p.instance_id}`]
+  if (p.provenance) lines.push(`provenance: ${p.provenance}`)
+  if (p.source_instance_id) lines.push(`source: ${p.source_instance_id}`)
+  if (p.enabler_instance_id) lines.push(`enabler: ${p.enabler_instance_id}`)
+  if (p.merged_card_ids && p.merged_card_ids.length > 0) {
+    lines.push(`merged: ${p.merged_card_ids.join(', ')}`)
+  }
+  return lines.join('\n')
+}
+
 const stackPerms = (perms) => {
   const groups = {}
   const commanders = []
@@ -888,7 +906,7 @@ export default function Spectator() {
                         return stacked.slice(0, 12).map((p, j) => (
                           <div
                             key={j}
-                            title={`${p.name}${p.count > 1 ? ` ×${p.count}` : ''}`}
+                            title={lineageTitle(p)}
                             className="perm-tile"
                             data-stack={p.count >= 6 ? '3' : p.count >= 3 ? '2' : p.count >= 2 ? '1' : undefined}
                             style={{

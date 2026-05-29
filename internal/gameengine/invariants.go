@@ -2074,6 +2074,14 @@ func GameStateSummary(gs *GameState) string {
 
 // RecentEvents returns the last N events from the event log as
 // human-readable lines.
+//
+// InstanceID Phase 9: each line is stamped with the relevant
+// InstanceID(s) carried by the event's Details map. Forensic replay:
+// `grep "h2CPR1" loki.log` then surfaces every event ever touching a
+// red 1-CMC seat-2 copy. Stamped fields (in priority order, all
+// optional) — instance_id, source_instance_id, enabler_instance_id,
+// ability_instance_id. The keys are appended after the existing
+// kind/seat/source columns so legacy parsers still read fine.
 func RecentEvents(gs *GameState, n int) []string {
 	if gs == nil || n <= 0 {
 		return nil
@@ -2093,7 +2101,27 @@ func RecentEvents(gs *GameState, n int) []string {
 		if ev.Target >= 0 {
 			line += fmt.Sprintf(" target=seat%d", ev.Target)
 		}
+		// Stamp InstanceID lineage from Details (Phase 9).
+		for _, key := range eventInstanceIDKeys {
+			if v, ok := ev.Details[key]; ok {
+				if s, ok := v.(string); ok && s != "" {
+					line += fmt.Sprintf(" %s=%s", key, s)
+				}
+			}
+		}
 		lines = append(lines, line)
 	}
 	return lines
+}
+
+// eventInstanceIDKeys enumerates the canonical InstanceID lineage keys
+// that engine writers stamp into Event.Details. Order is the priority
+// of relevance when grepping logs — primary subject first, lineage
+// pointers after.
+var eventInstanceIDKeys = []string{
+	"instance_id",
+	"card_instance_id",
+	"source_instance_id",
+	"enabler_instance_id",
+	"ability_instance_id",
 }
