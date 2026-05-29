@@ -56,6 +56,15 @@ func Proliferate(gs *GameState, controller int, targets []ProliferateTarget) (in
 		if (t.Permanent == nil) == (t.Player == nil) {
 			continue
 		}
+		// Phase 8 carveout: skip kinds that aren't proliferate-eligible
+		// (energy per CR §106.11, experience per the Seat-resource
+		// carveout). The underlying primitive short-circuits on the first
+		// unknown kind, so pre-filtering here keeps mixed-target
+		// per_card calls (e.g. Atraxa picking +1/+1 alongside poison)
+		// from losing their valid choices to a stray ineligible entry.
+		if !counters.IsProliferateEligibleType(t.CounterType) {
+			continue
+		}
 		if t.Permanent != nil {
 			canon := counters.CanonicalName(t.CounterType)
 			// Legacy-map gate: skip choices whose kind isn't actually
@@ -191,11 +200,13 @@ func flushPermCounterView(p *Permanent) {
 //   - For each permanent on the battlefield with counters: one choice
 //     per counter kind. Opponent-controlled permanents skip "+1/+1"
 //     (don't help opponents).
-//   - For the controller: experience counters proliferated.
 //   - For opponents: poison + rad counters proliferated.
 //
 // Energy is intentionally excluded (CR §106.11 resource pool, not a
 // §122 counter — IsProliferateEligibleType("energy")=false).
+// Experience is intentionally excluded as of Counter DB Phase 8 — XP
+// is treated as a Seat-resource analog of energy (Seat.XPCounters
+// bypasses the proliferate pipeline).
 func BuildGreedyProliferateTargets(gs *GameState, controller int) []ProliferateTarget {
 	if gs == nil {
 		return nil
@@ -226,16 +237,13 @@ func BuildGreedyProliferateTargets(gs *GameState, controller int) []ProliferateT
 			continue
 		}
 		if i == controller {
-			if s.Flags != nil && s.Flags["experience_counters"] > 0 {
-				out = append(out, ProliferateTarget{Player: s, CounterType: "experience"})
-			}
-		} else {
-			if s.PoisonCounters > 0 {
-				out = append(out, ProliferateTarget{Player: s, CounterType: "poison"})
-			}
-			if s.Flags != nil && s.Flags["rad_counters"] > 0 {
-				out = append(out, ProliferateTarget{Player: s, CounterType: "rad"})
-			}
+			continue
+		}
+		if s.PoisonCounters > 0 {
+			out = append(out, ProliferateTarget{Player: s, CounterType: "poison"})
+		}
+		if s.Flags != nil && s.Flags["rad_counters"] > 0 {
+			out = append(out, ProliferateTarget{Player: s, CounterType: "rad"})
 		}
 	}
 	return out

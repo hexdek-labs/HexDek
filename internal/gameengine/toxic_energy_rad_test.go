@@ -174,9 +174,10 @@ func TestProliferate_AllPlayerCounterTypes(t *testing.T) {
 	if gs.Seats[0].Flags["energy_counters"] != 3 {
 		t.Errorf("expected energy 3 (excluded from proliferate per §106.11), got %d", gs.Seats[0].Flags["energy_counters"])
 	}
-	// Seat 0's experience should be 3 (2 + 1 proliferated).
-	if gs.Seats[0].Flags["experience_counters"] != 3 {
-		t.Errorf("expected experience 3, got %d", gs.Seats[0].Flags["experience_counters"])
+	// Counter DB Phase 8: experience is treated as a Seat-resource analog
+	// of energy. Proliferate does NOT add XP. Experience stays at 2.
+	if gs.Seats[0].Flags["experience_counters"] != 2 {
+		t.Errorf("expected experience 2 (Phase 8 Seat-resource carveout — proliferate excluded), got %d", gs.Seats[0].Flags["experience_counters"])
 	}
 	// Seat 1's poison should be 6 (5 + 1 proliferated).
 	if gs.Seats[1].PoisonCounters != 6 {
