@@ -27,6 +27,7 @@ import (
 
 	"github.com/hexdek/hexdek/internal/astload"
 	"github.com/hexdek/hexdek/internal/gameast"
+	"github.com/hexdek/hexdek/internal/gameengine/instanceid"
 )
 
 // -----------------------------------------------------------------------------
@@ -90,6 +91,14 @@ type GameState struct {
 	// permanents as they enter the battlefield. §613 layer application
 	// uses it to break ordering ties between effects of the same layer.
 	EffectTimestamp int
+
+	// IIDMinter owns the deterministic per-(game, seat) sequence
+	// counters that drive InstanceID.seq5. Initialized in NewGameState;
+	// callers that build a GameState by struct literal (older tests)
+	// will see this nil — Mint helpers guard nil and produce empty IDs
+	// in that case (legacy-mode backwards compat).
+	// See docs/instanceid-system-v2-r60.md §3.
+	IIDMinter *instanceid.Minter
 
 	// Flags is an open-ended map for one-off game-wide flags ("extra_turn
 	// pending", "replacement effect seen", "eldrazi spawned this turn").
@@ -556,6 +565,7 @@ func NewGameState(seatCount int, rng *rand.Rand, corpus *astload.Corpus) *GameSt
 		EventLog:     make([]Event, 0, 64),
 		RetainEvents: true,
 		DayNight:     DayNightNeither,
+		IIDMinter:    instanceid.NewMinter(seatCount),
 	}
 }
 
@@ -1069,6 +1079,53 @@ type Card struct {
 	//     your library") can identify them.
 	// nil for cards built outside of any tagged provenance.
 	Meta map[string]any
+
+	// -----------------------------------------------------------------
+	// InstanceID Phase 1 (docs/instanceid-system-v2-r60.md §4.1).
+	// All zero-valued by default — backwards-compatible legacy mode
+	// (empty InstanceID = not yet minted, treat per the v1 *Card path).
+	// -----------------------------------------------------------------
+
+	// InstanceID is the per-instance identity string. Format:
+	// <prefix><seat><provenance><visibility><color><cmc><seq5>. Set at
+	// mint time (deck-load for OG; token/copy/ability sites in Phase 2+).
+	// Persists across zone changes per CR §400.7.
+	InstanceID string
+
+	// Provenance encodes WHAT this Card object is — OG (original print),
+	// TK (token), CP (spell/perm copy), AB (ability instance). The
+	// zero value is instanceid.ProvUnknown, which the engine treats as
+	// "legacy / unminted" for backwards compatibility.
+	Provenance instanceid.Provenance
+
+	// Visibility is Visible by default; Hidden for face-down cards
+	// (manifested 2/2, cloaked, morph, foretold pre-cast). Spectator
+	// API uses this to gate characteristic leaks.
+	Visibility instanceid.Visibility
+
+	// SourceInstanceID is the InstanceID of the object this Card is a
+	// copy of. Empty for OG. Required for CP. Optional for TK.
+	SourceInstanceID string
+
+	// EnablerInstanceID is the InstanceID of the ability or effect that
+	// caused this Card to come into existence (Sai's thopter-mint ability
+	// instance, Riku's copy-trigger instance, etc.). Empty for OG;
+	// required for TK / CP / triggered-AB.
+	EnablerInstanceID string
+
+	// EnablerHistory is an append-only log of enabler IDs for re-copy
+	// chains (Vesuvan Shapeshifter rewriting its copy target,
+	// Lazav-shape "becomes a copy of" chains, Volrath rotational copy
+	// stacks). The current EnablerInstanceID is the most recent entry;
+	// EnablerHistory records the full lineage for replay / Heimdall
+	// rendering.
+	EnablerHistory []string
+
+	// ActiveFace selects which face of a DFC / MDFC is currently active.
+	// Default Front matches CR §712.6c (non-battlefield DFCs default to
+	// front). Transform-style cards flip this; cast-as-back stamps Back
+	// at cast time.
+	ActiveFace instanceid.FaceIndex
 }
 
 func (c *Card) DeepCopy() *Card {
@@ -1079,6 +1136,7 @@ func (c *Card) DeepCopy() *Card {
 	cp.Types = append([]string(nil), c.Types...)
 	cp.Colors = append([]string(nil), c.Colors...)
 	cp.BackFaceTypes = append([]string(nil), c.BackFaceTypes...)
+	cp.EnablerHistory = append([]string(nil), c.EnablerHistory...)
 	if c.Meta != nil {
 		cp.Meta = make(map[string]any, len(c.Meta))
 		for k, v := range c.Meta {
