@@ -149,6 +149,17 @@ type GameState struct {
 	// finishes folding it in.
 	PendingTokenMintChain []ReplacementRef
 
+	// SubsystemHooks is the InstanceID Phase 6 dormant-hook registry
+	// per docs/instanceid-system-v2-r60.md §4.4 / §9. Populated by
+	// RegisterSubsystemHooks at game-start with ten entries, one per
+	// optional MTG subsystem (Day/Night, Monarch, Initiative, Ascend,
+	// Dungeon, RingTempts, Energy, Experience, Foretell, CityBlessing).
+	// Each hook stays Active=false until a card-zone-change event
+	// matches its predicate, at which point CheckSubsystemActivation
+	// flips Active=true and runs OnActivate. Once active, the subsystem
+	// remains active for the rest of the game (sticky per CR).
+	SubsystemHooks []*DormantHook
+
 	// Flags is an open-ended map for one-off game-wide flags ("extra_turn
 	// pending", "replacement effect seen", "eldrazi spawned this turn").
 	// Resolvers write here when there isn't a dedicated field yet.
@@ -621,7 +632,7 @@ func NewGameState(seatCount int, rng *rand.Rand, corpus *astload.Corpus) *GameSt
 	if strictCensusDefault {
 		flags["instanceid_strict_census"] = 1
 	}
-	return &GameState{
+	gs := &GameState{
 		Seats:             seats,
 		Rng:               rng,
 		Turn:              1,
@@ -637,6 +648,8 @@ func NewGameState(seatCount int, rng *rand.Rand, corpus *astload.Corpus) *GameSt
 		MintedInstanceIDs: map[string]struct{}{},
 		CeasedInstanceIDs: map[string]struct{}{},
 	}
+	RegisterSubsystemHooks(gs)
+	return gs
 }
 
 // NextTimestamp issues the next §613 layer timestamp and advances the
@@ -1026,6 +1039,77 @@ type Seat struct {
 	// "protection from everything" (Teferi's Protection) or "your life
 	// total can't change." Nil until first write.
 	Flags map[string]int
+
+	// -----------------------------------------------------------------
+	// InstanceID Phase 6 — lazy-init subsystem state (per
+	// docs/instanceid-system-v2-r60.md §4.4 + Probe D audit at
+	// docs/subsystem-activation-audit-r60.md). All zero/false by default;
+	// flipped by CheckSubsystemActivation when the dormant hook for the
+	// corresponding subsystem fires for the first time. Per-card
+	// handlers read these typed fields for cheap hot-path checks rather
+	// than re-scanning oracle text.
+	// -----------------------------------------------------------------
+
+	// DayNightActive is true once any card has caused the day/night
+	// designation to exist for the game. Game-wide flag mirrored across
+	// every seat at activation time (CR §726.3 persistence).
+	DayNightActive bool
+
+	// MonarchActive is true once any "become the monarch" effect has
+	// resolved on this seat. Distinct from gs.Flags["monarch_seat"]
+	// (the current holder) — MonarchActive is a per-seat sticky marker
+	// that the monarch subsystem has been touched at least once by this
+	// seat's permanents.
+	MonarchActive bool
+
+	// InitiativeHolder is true while this seat holds the initiative
+	// (CR §702.156 / Initiative rules). Set on activation of any "take
+	// the initiative" effect controlled by this seat; passed off via
+	// combat-damage-to-player per the same rules.
+	InitiativeHolder bool
+
+	// AscendActive is true once any Ascend-keyword card under this
+	// seat's control has entered any zone. Gates per-seat permanent
+	// counting toward the city's blessing threshold.
+	AscendActive bool
+
+	// CurrentDungeon is the dungeon this seat is currently venturing
+	// in (CR §309 Dungeons). Nil when the seat is between ventures.
+	// The Phase 6 hook only seeds the dormant subsystem; per_card
+	// venture handlers continue to populate this pointer when their
+	// effect resolves.
+	CurrentDungeon *Dungeon
+
+	// RingTempts is the number of times the Ring has tempted this seat
+	// (CR §702 / LTR Ring rules). 0 = the Ring has never tempted this
+	// seat. Incremented by per_card temptation handlers; the Phase 6
+	// hook only marks the subsystem live.
+	RingTempts int
+
+	// EnergyCounters mirrors the §106.11 energy pool. NOT a §122
+	// counter — proliferate cannot add {E}. Mirrors the legacy
+	// Flags["energy_counters"] storage so hot-path readers can use the
+	// typed field. Helpers in energy.go remain the canonical add/spend
+	// path; this field is read-side only for the activation registry.
+	EnergyCounters int
+
+	// XPCounters is the seat's experience-counter pool. Like
+	// EnergyCounters, NOT a §122 counter — proliferate cannot grant XP
+	// per CR. Read-side mirror for the activation registry.
+	XPCounters int
+
+	// ForetellExile is the per-seat foretell-exile bucket (CR §702.143).
+	// Cards exiled via the foretell cost live here so the cast-from-
+	// foretell path can find them without searching the general exile
+	// zone. Populated lazily on first foretell activation; nil before
+	// the subsystem wakes.
+	ForetellExile []*Card
+
+	// HasCityBlessing is the §702.131 city's-blessing flag. Once true,
+	// stays true for the rest of the game. Set by the CityBlessing
+	// activation hook when the seat reaches 10+ permanents with an
+	// Ascend card present.
+	HasCityBlessing bool
 
 	// Hat is the pluggable decision protocol for this seat (Phase 10).
 	// Nil is valid — callers that want hat-driven decisions should set

@@ -428,6 +428,27 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 		return
 	}
 
+	// InstanceID Phase 6 — subsystem activation registry per
+	// docs/instanceid-system-v2-r60.md §9. Fired before the observer
+	// trigger chain so per_card handlers that read MonarchActive /
+	// DayNightActive / etc. observe the awakened state on the same
+	// tick. Derive the activating seat from the permanent's controller
+	// or the card's owner.
+	if card != nil {
+		seat := -1
+		if perm != nil {
+			seat = perm.Controller
+		} else if card.Owner >= 0 {
+			seat = card.Owner
+		}
+		CheckSubsystemActivation(gs, SubsystemEvent{
+			Card:     card,
+			Seat:     seat,
+			FromZone: fromZone,
+			ToZone:   toZone,
+		})
+	}
+
 	// Determine which trigger events match this zone change.
 	events := zoneChangeToTriggerEvents(fromZone, toZone)
 	if len(events) == 0 {
