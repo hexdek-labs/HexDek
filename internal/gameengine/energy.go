@@ -1,17 +1,28 @@
 package gameengine
 
-// Energy counter payment system — CR §122.1b (Kaladesh block, MH3).
+// Energy counter payment system — CR §106.11 (Kaladesh block, MH3).
 //
-// Energy is a player resource stored as Seat.Flags["energy_counters"].
-// Unlike mana, energy persists across turns and phases. Players gain
-// energy from effects (e.g. "you get {E}{E}{E}") and pay energy as
-// costs (e.g. "Pay {E}{E}: do something").
+// Per CR §106.11, energy is a RESOURCE POOL, not a §122 counter. The
+// distinction is load-bearing for the Phase 8 carveout:
 //
-// 136 cards reference energy counters across Kaladesh block and MH3.
+//  - Energy is NOT a §122 counter, so proliferate (CR §701.27) does
+//    NOT add {E} — the counters package registry intentionally has no
+//    "energy" entry; IsProliferateEligibleType("energy") = false.
+//  - Doubling Season (CR §122.1g) does NOT double energy gain because
+//    "If a player would get a number of counters" references §122
+//    counters; energy is a resource. See ApplyDoublers' short-circuit
+//    for the unregistered-type case (returns identity).
+//
+// Storage lives at Seat.Flags["energy_counters"] (legacy, hot-path
+// reads) and is mirrored to Seat.EnergyCounters (typed field for the
+// activation registry and per_card readers). Both helpers below keep
+// the two in sync on every mutation. 136+ cards reference {E} across
+// Kaladesh block and MH3.
 
 // PayEnergy deducts `amount` energy counters from the given seat.
 // Returns true if payment succeeded, false if insufficient energy.
-// Does NOT modify state on failure (atomic check-and-deduct).
+// Does NOT modify state on failure (atomic check-and-deduct). Keeps
+// Seat.EnergyCounters in sync with Seat.Flags["energy_counters"].
 func PayEnergy(gs *GameState, seat, amount int) bool {
 	if gs == nil || seat < 0 || seat >= len(gs.Seats) || amount <= 0 {
 		return false
@@ -24,6 +35,7 @@ func PayEnergy(gs *GameState, seat, amount int) bool {
 		return false
 	}
 	s.Flags["energy_counters"] -= amount
+	s.EnergyCounters = s.Flags["energy_counters"]
 	gs.LogEvent(Event{
 		Kind:   "energy_paid",
 		Seat:   seat,
@@ -35,8 +47,11 @@ func PayEnergy(gs *GameState, seat, amount int) bool {
 	return true
 }
 
-// GainEnergy adds `amount` energy counters to the given seat.
-// Initializes the Flags map if nil.
+// GainEnergy adds `amount` energy counters to the given seat. Per CR
+// §106.11 this bypasses the §122 counter pipeline — no doubling,
+// no proliferate, no §122.1g replacement-effect walk. Initializes
+// the Flags map if nil and keeps the typed Seat.EnergyCounters
+// mirror in sync.
 func GainEnergy(gs *GameState, seat, amount int) {
 	if gs == nil || seat < 0 || seat >= len(gs.Seats) || amount <= 0 {
 		return
@@ -49,6 +64,7 @@ func GainEnergy(gs *GameState, seat, amount int) {
 		s.Flags = map[string]int{}
 	}
 	s.Flags["energy_counters"] += amount
+	s.EnergyCounters = s.Flags["energy_counters"]
 	gs.LogEvent(Event{
 		Kind:   "energy_gained",
 		Seat:   seat,

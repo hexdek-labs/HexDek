@@ -131,23 +131,20 @@ func TestProliferate_RadCountersEligible(t *testing.T) {
 	}
 }
 
-// TestProliferate_ExperienceEligible mirrors the rad case for the
-// experience-counter family (Daretti, Mizzix, Ezuri-style trackers).
-func TestProliferate_ExperienceEligible(t *testing.T) {
-	if !IsProliferateEligibleType("experience") {
-		t.Fatalf("experience reported NOT proliferate-eligible")
-	}
+// TestProliferate_ExperienceExcluded pins the Phase 8 carveout per
+// Probe F: experience is treated as a Seat resource (Seat.XPCounters),
+// NOT a §122 player counter. Proliferate cannot grant XP. Mirrors the
+// §106.11 energy exclusion. Daxos / Mizzix / Daretti / Ezuri-style
+// trackers route through the seat field, not the §122 registry.
+func TestProliferate_ExperienceExcluded(t *testing.T) {
 	p := newPlayerMock()
-	seedStack(p, "experience", 1)
-	applied, err := Proliferate([]ProliferateChoice{{Target: p, CounterType: "experience"}}, "mizzix-of-the-izmagnus", 11)
-	if err != nil {
-		t.Fatalf("Proliferate: %v", err)
+	seedStack(p, "experience", 1) // CanonicalName passthrough; no registry entry
+	if IsProliferateEligibleType("experience") {
+		t.Fatalf("experience reported proliferate-eligible; want excluded (Phase 8 Seat-resource carveout)")
 	}
-	if applied != 1 {
-		t.Errorf("applied = %d, want 1", applied)
-	}
-	if got := CounterCount(p, "experience"); got != 2 {
-		t.Errorf("experience after = %d, want 2", got)
+	_, err := Proliferate([]ProliferateChoice{{Target: p, CounterType: "experience"}}, "mizzix-of-the-izmagnus", 11)
+	if !errors.Is(err, ErrUnknownCounterType) {
+		t.Errorf("err = %v, want ErrUnknownCounterType (experience not registered as §122 counter — Phase 8)", err)
 	}
 }
 

@@ -417,10 +417,12 @@ func TestAltWinCountersAreProliferateEligible(t *testing.T) {
 }
 
 // TestPlayerCountersNoDoubling pins the §122.1g + engine ruling: player
-// counters (poison/experience/rad) are NOT modified by Doubling Season
-// because "permanent you control" excludes the player.
+// counters (poison/rad) are NOT modified by Doubling Season because
+// "permanent you control" excludes the player. Experience was removed
+// from this list in Phase 8 — see TestPhase8ExperienceStillExcluded for
+// the Seat-resource carveout.
 func TestPlayerCountersNoDoubling(t *testing.T) {
-	for _, name := range []string{"poison", "experience", "rad"} {
+	for _, name := range []string{"poison", "rad"} {
 		def := Lookup(name)
 		if def == nil {
 			t.Errorf("player counter %q not registered", name)

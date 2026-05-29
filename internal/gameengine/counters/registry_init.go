@@ -268,12 +268,29 @@ func init() {
 		Notes:            "CR §701.58 (shield counters); intercepts destruction/damage as a replacement effect (Phase 6 wiring)",
 	})
 
-	// Counter DB Phase 4 — player counter types (CR §122 + §810).
-	// Poison (§122.1d / §810), experience (§122 generic player counter),
-	// and rad (§122 generic, March of the Machine mechanic) are all
-	// §122 counters placed on PLAYERS. Proliferate-eligible per CR §701.23.
-	// Energy is intentionally absent — CR §106.11 classifies energy as a
-	// resource pool, NOT a counter, so it is never proliferated.
+	// Counter DB Phase 4 + Phase 8 — player counter types (CR §122 + §810).
+	// Poison (§122.1d / §810) and rad (§122 generic, March of the Machine
+	// mechanic) are §122 counters placed on PLAYERS, proliferate-eligible
+	// per CR §701.23.
+	//
+	// Energy (CR §106.11) is intentionally absent — energy is a RESOURCE
+	// POOL, not a §122 counter, so proliferate cannot grant {E} and
+	// Doubling Season (§122.1g) does not amplify energy gain. Energy
+	// pools live on Seat.EnergyCounters; see internal/gameengine/energy.go
+	// for the canonical add/spend path.
+	//
+	// Experience (Phase 8 carveout per Probe F) is also intentionally
+	// absent. While experience counters technically satisfy the §122
+	// counter shape, HexDek treats them as a Seat-resource analog of
+	// energy: Daxos / Mizzix / Daretti / Ezuri trackers live on
+	// Seat.XPCounters, bypassing the proliferate pipeline and the
+	// §122.1g doubling replacement walk. Proliferating an experience-
+	// holder no longer adds a counter; Doubling Season no longer doubles
+	// XP gain. Rationale: the seat-resource framing keeps the player-
+	// counter registry to exactly the proliferate/§122.1g-eligible set
+	// (poison + rad), making AI target pickers and per_card handlers'
+	// registry probes load-bearing for legality rather than a filter
+	// that has to special-case experience.
 	registerDefinition(&CounterTypeDef{
 		Name:             "poison",
 		Category:         OtherTracker,
@@ -283,16 +300,6 @@ func init() {
 		Proliferate:      true,
 		StackingBehavior: NoPair,
 		Notes:            "CR §122 player counter; §704.5c lose at 10+ poison; infect / toxic / proliferate sources",
-	})
-	registerDefinition(&CounterTypeDef{
-		Name:             "experience",
-		Category:         OtherTracker,
-		ValidTargets:     []TargetType{TargetPlayer},
-		Placement:        PlaceAbilityCounter | PlaceProliferateOnly,
-		DoublingApplies:  false,
-		Proliferate:      true,
-		StackingBehavior: NoPair,
-		Notes:            "CR §122 player counter; Daretti/Mizzix/Ezuri-style cumulative resource",
 	})
 	registerDefinition(&CounterTypeDef{
 		Name:             "rad",
