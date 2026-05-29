@@ -885,92 +885,18 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		})
 
 	case "proliferate":
-		// CR §701.27 — "Choose any number of permanents and/or players,
-		// then give each another counter of each kind already there."
-		// GreedyHat policy: proliferate everything you control that has
-		// counters, plus opponent poison counters. Skip opponent +1/+1
-		// counters (don't help opponents).
+		// CR §701.23 — "Choose any number of permanents and/or players
+		// that have a counter, then give each another counter of a kind
+		// already there." Counter DB Phase 4: GreedyHat target builder
+		// + canonical Proliferate primitive. Wires every AST-detected
+		// proliferate effect (Inexorable Tide, Contagion Engine /
+		// Clasp, Throne of Geth, Steady Progress, Karn's Bastion,
+		// Tezzeret Cruel Machinist emblem, Tekuthal Inquiry Dominus,
+		// Vraska Betrayal's Sting -3, Tamiyo Compleated Sage -3,
+		// Plague Myr ETB, etc.) through the §122 registry and the
+		// InstanceID lineage path. Energy is excluded per §106.11.
 		seat := controllerSeat(src)
-		proliferatedCount := 0
-
-		// 1. Walk all permanents on the battlefield.
-		for _, s := range gs.Seats {
-			if s == nil {
-				continue
-			}
-			for _, p := range s.Battlefield {
-				if p == nil || len(p.Counters) == 0 {
-					continue
-				}
-				// GreedyHat: proliferate our own permanents' counters.
-				// For opponents, skip beneficial counters (+1/+1).
-				isOurs := p.Controller == seat
-				for kind, count := range p.Counters {
-					if count <= 0 {
-						continue
-					}
-					if !isOurs && kind == "+1/+1" {
-						continue // don't help opponents
-					}
-					p.AddCounter(kind, 1)
-					proliferatedCount++
-				}
-			}
-		}
-
-		// 2. Walk all players — proliferate ALL counter types on players
-		// (poison, energy, experience, rad). GreedyHat policy: proliferate
-		// beneficial counters on self (energy, experience) and harmful
-		// counters on opponents (poison, rad).
-		for i, s := range gs.Seats {
-			if s == nil {
-				continue
-			}
-			isUs := i == seat
-			if isUs {
-				// Proliferate our own beneficial counters.
-				if s.Flags != nil {
-					if s.Flags["energy_counters"] > 0 {
-						s.Flags["energy_counters"]++
-						proliferatedCount++
-					}
-					if s.Flags["experience_counters"] > 0 {
-						s.Flags["experience_counters"]++
-						proliferatedCount++
-					}
-				}
-			} else {
-				// Proliferate opponents' harmful counters.
-				if s.PoisonCounters > 0 {
-					s.PoisonCounters++
-					proliferatedCount++
-				}
-				if s.Flags != nil && s.Flags["rad_counters"] > 0 {
-					s.Flags["rad_counters"]++
-					proliferatedCount++
-				}
-			}
-		}
-
-		if proliferatedCount > 0 {
-			gs.InvalidateCharacteristicsCache()
-		}
-		gs.LogEvent(Event{
-			Kind:   "proliferate",
-			Seat:   seat,
-			Source: sourceName(src),
-			Amount: proliferatedCount,
-			Details: map[string]interface{}{
-				"rule": "701.27",
-			},
-		})
-
-		// Dispatch per-card trigger so cards like Venser, Corpse Puppet
-		// can react to proliferate events.
-		FireCardTrigger(gs, "proliferate", map[string]interface{}{
-			"seat":   seat,
-			"amount": proliferatedCount,
-		})
+		_, _ = Proliferate(gs, seat, BuildGreedyProliferateTargets(gs, seat))
 
 	case "populate":
 		// CR §701.30 — "Create a token that's a copy of a creature
