@@ -46,6 +46,129 @@ func init() {
 		GrantedAbility:   &AbilityRef{Keyword: "lifelink"},
 		Notes:            "CR §122.1c keyword counter; grants while present, persists through type changes per §122.6",
 	})
+	registerDefinition(&CounterTypeDef{
+		Name:             "deathtouch",
+		Category:         KeywordGrant,
+		ValidTargets:     []TargetType{TargetCreature},
+		Placement:        PlaceAbilityCounter | PlaceProliferateOnly,
+		DoublingApplies:  true,
+		Proliferate:      true,
+		StackingBehavior: NoPair,
+		GrantedAbility:   &AbilityRef{Keyword: "deathtouch"},
+		Notes:            "CR §122.1c keyword counter; CR §702.2 deathtouch grant",
+	})
+	registerDefinition(&CounterTypeDef{
+		Name:             "flying",
+		Category:         KeywordGrant,
+		ValidTargets:     []TargetType{TargetCreature},
+		Placement:        PlaceAbilityCounter | PlaceProliferateOnly,
+		DoublingApplies:  true,
+		Proliferate:      true,
+		StackingBehavior: NoPair,
+		GrantedAbility:   &AbilityRef{Keyword: "flying"},
+		Notes:            "CR §122.1c keyword counter; CR §702.9 flying grant",
+	})
+	registerDefinition(&CounterTypeDef{
+		Name:             "first strike",
+		Aliases:          []string{"first-strike", "first_strike"},
+		Category:         KeywordGrant,
+		ValidTargets:     []TargetType{TargetCreature},
+		Placement:        PlaceAbilityCounter | PlaceProliferateOnly,
+		DoublingApplies:  true,
+		Proliferate:      true,
+		StackingBehavior: NoPair,
+		GrantedAbility:   &AbilityRef{Keyword: "first strike"},
+		Notes:            "CR §122.1c keyword counter; CR §702.7 first strike grant",
+	})
+	registerDefinition(&CounterTypeDef{
+		Name:             "double strike",
+		Aliases:          []string{"double-strike", "double_strike"},
+		Category:         KeywordGrant,
+		ValidTargets:     []TargetType{TargetCreature},
+		Placement:        PlaceAbilityCounter | PlaceProliferateOnly,
+		DoublingApplies:  true,
+		Proliferate:      true,
+		StackingBehavior: NoPair,
+		GrantedAbility:   &AbilityRef{Keyword: "double strike"},
+		Notes:            "CR §122.1c keyword counter; CR §702.4 double strike grant",
+	})
+	registerDefinition(&CounterTypeDef{
+		Name:             "hexproof",
+		Category:         KeywordGrant,
+		ValidTargets:     []TargetType{TargetCreature},
+		Placement:        PlaceAbilityCounter | PlaceProliferateOnly,
+		DoublingApplies:  true,
+		Proliferate:      true,
+		StackingBehavior: NoPair,
+		GrantedAbility:   &AbilityRef{Keyword: "hexproof"},
+		Notes:            "CR §122.1c keyword counter; CR §702.11 hexproof grant",
+	})
+	registerDefinition(&CounterTypeDef{
+		Name:             "indestructible",
+		Category:         KeywordGrant,
+		ValidTargets:     []TargetType{TargetCreature},
+		Placement:        PlaceAbilityCounter | PlaceProliferateOnly,
+		DoublingApplies:  true,
+		Proliferate:      true,
+		StackingBehavior: NoPair,
+		GrantedAbility:   &AbilityRef{Keyword: "indestructible"},
+		Notes:            "CR §122.1c keyword counter; CR §702.12 indestructible grant",
+	})
+	registerDefinition(&CounterTypeDef{
+		Name:             "menace",
+		Category:         KeywordGrant,
+		ValidTargets:     []TargetType{TargetCreature},
+		Placement:        PlaceAbilityCounter | PlaceProliferateOnly,
+		DoublingApplies:  true,
+		Proliferate:      true,
+		StackingBehavior: NoPair,
+		GrantedAbility:   &AbilityRef{Keyword: "menace"},
+		Notes:            "CR §122.1c keyword counter; CR §702.110 menace grant",
+	})
+	registerDefinition(&CounterTypeDef{
+		Name:             "reach",
+		Category:         KeywordGrant,
+		ValidTargets:     []TargetType{TargetCreature},
+		Placement:        PlaceAbilityCounter | PlaceProliferateOnly,
+		DoublingApplies:  true,
+		Proliferate:      true,
+		StackingBehavior: NoPair,
+		GrantedAbility:   &AbilityRef{Keyword: "reach"},
+		Notes:            "CR §122.1c keyword counter; CR §702.17 reach grant",
+	})
+	registerDefinition(&CounterTypeDef{
+		Name:             "trample",
+		Category:         KeywordGrant,
+		ValidTargets:     []TargetType{TargetCreature},
+		Placement:        PlaceAbilityCounter | PlaceProliferateOnly,
+		DoublingApplies:  true,
+		Proliferate:      true,
+		StackingBehavior: NoPair,
+		GrantedAbility:   &AbilityRef{Keyword: "trample"},
+		Notes:            "CR §122.1c keyword counter; CR §702.19 trample grant",
+	})
+	registerDefinition(&CounterTypeDef{
+		Name:             "vigilance",
+		Category:         KeywordGrant,
+		ValidTargets:     []TargetType{TargetCreature},
+		Placement:        PlaceAbilityCounter | PlaceProliferateOnly,
+		DoublingApplies:  true,
+		Proliferate:      true,
+		StackingBehavior: NoPair,
+		GrantedAbility:   &AbilityRef{Keyword: "vigilance"},
+		Notes:            "CR §122.1c keyword counter; CR §702.20 vigilance grant",
+	})
+	registerDefinition(&CounterTypeDef{
+		Name:             "ward",
+		Category:         KeywordGrant,
+		ValidTargets:     []TargetType{TargetCreature},
+		Placement:        PlaceAbilityCounter | PlaceProliferateOnly,
+		DoublingApplies:  true,
+		Proliferate:      true,
+		StackingBehavior: NoPair,
+		GrantedAbility:   &AbilityRef{Keyword: "ward"},
+		Notes:            "CR §122.1c keyword counter; CR §702.21 ward grant (cost defaults to printed value)",
+	})
 
 	// CR §122 charge counters — the broadest "other tracker" family. Many
 	// artifacts (Aetherflux Reservoir, Coalition Relic, Coretapper) and the

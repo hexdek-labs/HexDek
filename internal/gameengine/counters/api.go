@@ -144,6 +144,37 @@ func CounterCount(target Target, counterType string) int {
 	return total
 }
 
+// HasKeywordCounter reports whether the target has at least one counter
+// whose registered type is a KeywordGrant for the named keyword (CR
+// §122.1c). The query accepts either the canonical name ("first strike")
+// or any registered alias ("first-strike"), or the bare keyword string
+// for keyword counters whose canonical name equals the keyword.
+//
+// Returns false for unregistered names, non-KeywordGrant types (e.g.
+// "+1/+1" is not a keyword counter even though it modifies stats), and
+// nil targets. The KeywordGrant gate is what makes this safe to call
+// from HasKeyword without false-positiving on stat counters.
+//
+// §122.6: the predicate reads CounterStacks only, never card type. A
+// type-stripped creature with a flying counter still returns true for
+// HasKeywordCounter(target, "flying").
+func HasKeywordCounter(target Target, keyword string) bool {
+	if target == nil || keyword == "" {
+		return false
+	}
+	def := Lookup(keyword)
+	if def == nil || def.Category != KeywordGrant {
+		return false
+	}
+	canonical := def.Name
+	for _, s := range target.CounterStacks() {
+		if s.Type == canonical && s.Count > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // ApplyDoublingPipeline is the §122.1g placeholder. Phase 1 returns the
 // baseCount unchanged for every type — the full replacement-effect walk
 // (Doubling Season, Hardened Scales, Primal Vigor, Branching Evolution,

@@ -372,12 +372,11 @@ func TestCategoryStringEnumeration(t *testing.T) {
 
 // TestAllReturnsAllRegistered pins the iteration surface used by future
 // registry validators (Loki invariant: every counter type referenced by
-// an oracle text has a registry entry).
+// an oracle text has a registry entry). The Phase 1 set is asserted by
+// name; Phase 2+ extensions are tracked in their own per-phase tests
+// (see keyword_grants_test.go's TestAllReturnsPhase2Count).
 func TestAllReturnsAllRegistered(t *testing.T) {
 	all := All()
-	if len(all) != 10 {
-		t.Errorf("All() returned %d entries, want 10 (Phase 1 set)", len(all))
-	}
 	names := map[string]bool{}
 	for _, def := range all {
 		names[def.Name] = true

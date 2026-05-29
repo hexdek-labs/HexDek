@@ -1434,7 +1434,9 @@ func (p *Permanent) IsToken() bool { return p.hasType("token") }
 
 // IsIndestructible — §702.12 indestructible keyword. The Phase 3 runtime
 // represents keyword grants via Permanent.Flags["indestructible"] > 0 or
-// a matching entry in GrantedAbilities. We conservatively check both.
+// a matching entry in GrantedAbilities. We conservatively check all
+// surfaces, including the §122.1c keyword-counter grant via the Counter
+// DB's CounterStacks lineage (Phase 2 wiring).
 func (p *Permanent) IsIndestructible() bool {
 	if p == nil {
 		return false
@@ -1446,6 +1448,12 @@ func (p *Permanent) IsIndestructible() bool {
 		if a == "indestructible" {
 			return true
 		}
+	}
+	if p.Counters["indestructible"] > 0 {
+		return true
+	}
+	if p.HasKeywordCounter("indestructible") {
+		return true
 	}
 	return false
 }
