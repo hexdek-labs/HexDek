@@ -170,14 +170,16 @@ func TestKeywordCounterPersistsThroughTypeStrip(t *testing.T) {
 	}
 }
 
-// TestAllReturnsPhase2Count pins the registry-size invariant after
-// Phase 4. Phase 1 was 10 entries; Phase 2 added 11 keyword counters
-// (lifelink was Phase 1); Phase 4 added 3 player-counter types
-// (poison, experience, rad). Total 24.
+// TestAllReturnsPhase2Count pins the registry-size invariant: Phase 1
+// (10) + Phase 2 (11 keyword counters; lifelink was Phase 1) + Phase 4
+// (3 player-counter types) = 24 baseline entries. Phase 5 added the
+// long-tail (~230 types from the Probe F catalog), so the assertion is
+// a floor — the spot-check below pins the Phase 2 keyword counters
+// remain present after subsequent phases extend the registry.
 func TestAllReturnsPhase2Count(t *testing.T) {
 	all := All()
-	if len(all) != 24 {
-		t.Errorf("All() returned %d entries, want 24 (10 Phase 1 + 11 Phase 2 keyword counters + 3 Phase 4 player counters)", len(all))
+	if len(all) < 24 {
+		t.Errorf("All() returned %d entries, want at least 24 (10 Phase 1 + 11 Phase 2 keyword counters + 3 Phase 4 player counters)", len(all))
 	}
 	// Spot-check every Phase 2 addition is present.
 	names := map[string]bool{}
