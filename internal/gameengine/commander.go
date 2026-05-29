@@ -133,6 +133,7 @@ func SetupCommanderGame(gs *GameState, decks []*CommanderDeck) {
 				continue
 			}
 			cmdr.Owner = i
+			MintOGInstanceID(gs, cmdr)
 			name := cmdr.DisplayName()
 			seat.CommanderNames = append(seat.CommanderNames, name)
 			seat.CommandZone = append(seat.CommandZone, cmdr)
@@ -140,9 +141,21 @@ func SetupCommanderGame(gs *GameState, decks []*CommanderDeck) {
 			// §903.9b replacement keyed to OWNER.
 			registerCommanderZoneReplacement(gs, i, name)
 		}
-		// Populate library.
+		// Populate library + mint OG IDs for every library card.
 		if len(deck.Library) > 0 {
 			seat.Library = append(seat.Library[:0], deck.Library...)
+			for _, c := range seat.Library {
+				if c == nil {
+					continue
+				}
+				if c.Owner == 0 && i != 0 {
+					// Caller may have left Owner unset on synthetic
+					// library cards (older tests). Default to seat
+					// index so the InstanceID's seat byte is correct.
+					c.Owner = i
+				}
+				MintOGInstanceID(gs, c)
+			}
 		}
 	}
 	// Build a per-seat snapshot for the audit stream. Partner seats
