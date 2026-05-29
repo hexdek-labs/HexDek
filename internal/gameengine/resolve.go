@@ -2924,10 +2924,6 @@ func resolveLoseGame(gs *GameState, src *Permanent, e *gameast.LoseGame) {
 	}
 	targets := PickTarget(gs, src, e.Target)
 	srcName := sourceName(src)
-	reason := "card_effect"
-	if srcName != "" {
-		reason = "card_effect: " + srcName
-	}
 	for _, t := range targets {
 		seat, ok := seatFromTarget(t)
 		if !ok {
@@ -2940,42 +2936,86 @@ func resolveLoseGame(gs *GameState, src *Permanent, e *gameast.LoseGame) {
 		if s == nil {
 			continue
 		}
-		// CR §614: would_lose_game replacement. Platinum Angel and
-		// kin cancel the loss outright.
-		if FireLoseGameEvent(gs, seat) {
-			gs.LogEvent(Event{
-				Kind:   "lose_game_replaced",
-				Seat:   seat,
-				Target: seat,
-				Source: srcName,
-				Details: map[string]interface{}{
-					"reason": "would_lose_game_replaced",
-					"rule":   "614",
-				},
-			})
-			continue
-		}
-		// Stamp LossReason BEFORE Lost — invariants.go's TurnStructure
-		// check flags Lost+Life>0 with empty LossReason. Ordering
-		// matters defensively even though Go memory model makes the
-		// pair appear atomic to single-goroutine readers. LostByEffect
-		// fires alongside so CheckLossConditions can classify the
-		// cause as LossEffect (CR §104.3e) without parsing the
-		// LossReason string.
-		s.LossReason = reason
-		s.LostByEffect = true
-		s.Lost = true
+		MarkSeatLostByEffect(gs, seat, srcName)
+	}
+}
+
+// MarkSeatLostByEffect is the canonical "this seat loses the game from a
+// card effect" chokepoint per CR §104.3e. Consults the §614
+// would_lose_game replacement chain FIRST (so Platinum Angel / Angel's
+// Grace can cancel), then stamps LossReason + LostByEffect + Lost in
+// that order so invariants observing the partial transition see a
+// consistent state. Emits the standard `lose_game` (or
+// `lose_game_replaced`) audit event.
+//
+// Refactored out of resolveLoseGame so the 9 per_card sites that were
+// previously writing `seat.Lost = true` directly (Angel of Destiny,
+// Atemsis All-Seeing, Demonic Pact, Etrata the Silencer, Frodo Sauron's
+// Bane, Pact cycle, Pact of Negation, Sanguine Exquisite, and the
+// emit_helpers opponent-lockstep path) can route through one shared
+// implementation. Pre-refactor those sites bypassed §614 entirely,
+// breaking Platinum Angel + Angel's Grace cancellation for their losses.
+//
+// srcSourceName is the human-readable label for the card causing the
+// loss (e.g. "Demonic Pact", "Etrata, the Silencer"). Empty string is
+// permitted — falls back to "card_effect" without a colon-suffix.
+//
+// Returns true if the loss was applied (Lost flipped), false if §614
+// cancelled it. Callers that need to short-circuit further follow-up
+// effects (Demonic Pact's "lose the game" mode, etc.) can read the
+// return.
+func MarkSeatLostByEffect(gs *GameState, seat int, srcSourceName string) bool {
+	if gs == nil || seat < 0 || seat >= len(gs.Seats) {
+		return false
+	}
+	s := gs.Seats[seat]
+	if s == nil {
+		return false
+	}
+	if s.Lost {
+		// Already lost via some other path — don't double-stamp; don't
+		// re-fire the replacement chain (already consumed).
+		return false
+	}
+	reason := "card_effect"
+	if srcSourceName != "" {
+		reason = "card_effect: " + srcSourceName
+	}
+	// CR §614: would_lose_game replacement. Platinum Angel + Angel's
+	// Grace cancel the loss outright.
+	if FireLoseGameEvent(gs, seat) {
 		gs.LogEvent(Event{
-			Kind:   "lose_game",
+			Kind:   "lose_game_replaced",
 			Seat:   seat,
 			Target: seat,
-			Source: srcName,
+			Source: srcSourceName,
 			Details: map[string]interface{}{
-				"reason": reason,
-				"rule":   "104.3e",
+				"reason": "would_lose_game_replaced",
+				"rule":   "614",
 			},
 		})
+		return false
 	}
+	// Stamp LossReason BEFORE Lost — invariants.go's TurnStructure
+	// check flags Lost+Life>0 with empty LossReason. Ordering matters
+	// defensively even though single-goroutine reads collapse the
+	// pair. LostByEffect fires alongside so CheckLossConditions can
+	// classify cause as LossEffect (CR §104.3e) without LossReason
+	// string parsing.
+	s.LossReason = reason
+	s.LostByEffect = true
+	s.Lost = true
+	gs.LogEvent(Event{
+		Kind:   "lose_game",
+		Seat:   seat,
+		Target: seat,
+		Source: srcSourceName,
+		Details: map[string]interface{}{
+			"reason": reason,
+			"rule":   "104.3e",
+		},
+	})
+	return true
 }
 
 // -----------------------------------------------------------------------------

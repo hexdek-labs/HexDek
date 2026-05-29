@@ -141,8 +141,9 @@ func frodoSauronsBaneCombatDamage(gs *gameengine.GameState, perm *gameengine.Per
 		if s == nil || s.Lost {
 			return
 		}
-		s.Lost = true
-		s.LossReason = perm.Card.DisplayName() + " — Rogue combat damage with Ring level 4"
+		// CR §104.3e: route through canonical helper so §614
+		// would_lose_game (Platinum Angel / Angel's Grace) can cancel.
+		gameengine.MarkSeatLostByEffect(gs, target, perm.Card.DisplayName()+" — Rogue combat damage with Ring level 4")
 		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 			"seat":   perm.Controller,
 			"target": target,

@@ -65,12 +65,9 @@ func etrataSilencerCombat(gs *gameengine.GameState, perm *gameengine.Permanent, 
 			}
 			def.Flags["etrata_hits"]++
 			if def.Flags["etrata_hits"] >= 3 {
-				def.Lost = true
-				gs.LogEvent(gameengine.Event{
-					Kind:   "lose_game",
-					Seat:   defenderSeat,
-					Source: perm.Card.DisplayName(),
-				})
+				// CR §104.3e: route through canonical helper so §614
+				// would_lose_game (Platinum Angel / Angel's Grace) can cancel.
+				gameengine.MarkSeatLostByEffect(gs, defenderSeat, perm.Card.DisplayName())
 			}
 			emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 				"seat":        perm.Controller,

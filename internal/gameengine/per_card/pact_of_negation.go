@@ -92,18 +92,9 @@ func pactOfNegationOnCast(gs *gameengine.GameState, item *gameengine.StackItem) 
 			}
 
 			if !paid {
-				// Lose the game.
-				seat.Lost = true
-				seat.LossReason = "failed_to_pay_pact_of_negation"
-				gs.LogEvent(gameengine.Event{
-					Kind:   "lose_game",
-					Seat:   casterSeat,
-					Source: "Pact of Negation",
-					Details: map[string]interface{}{
-						"reason": "failed_to_pay_3UU",
-						"rule":   "pact_trigger",
-					},
-				})
+				// CR §104.3e: route through canonical helper so §614
+				// would_lose_game (Platinum Angel / Angel's Grace) can cancel.
+				gameengine.MarkSeatLostByEffect(gs, casterSeat, "Pact of Negation (failed to pay 3UU)")
 			} else {
 				gs.LogEvent(gameengine.Event{
 					Kind:   "mana_paid",

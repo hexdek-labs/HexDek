@@ -92,7 +92,9 @@ func demonicPactUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 		drawOne(gs, seat, "Demonic Pact")
 		drawOne(gs, seat, "Demonic Pact")
 	case "lose":
-		gs.Seats[seat].Lost = true
+		// CR §104.3e: route through canonical helper so §614
+		// would_lose_game (Platinum Angel / Angel's Grace) can cancel.
+		gameengine.MarkSeatLostByEffect(gs, seat, "Demonic Pact")
 		gs.LogEvent(gameengine.Event{
 			Kind:   "seat_lost",
 			Seat:   seat,

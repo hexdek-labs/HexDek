@@ -67,7 +67,9 @@ func atemsisCombatDamage(gs *gameengine.GameState, perm *gameengine.Permanent, c
 	if distinct >= 6 {
 		emitWin(gs, perm.Controller, slug, perm.Card.DisplayName(),
 			"opponent_loses_atemsis_six_distinct_mana_values")
-		gs.Seats[defenderSeat].Lost = true
+		// CR §104.3e: route through canonical helper so §614
+		// would_lose_game (Platinum Angel / Angel's Grace) can cancel.
+		gameengine.MarkSeatLostByEffect(gs, defenderSeat, perm.Card.DisplayName())
 		gs.LogEvent(gameengine.Event{
 			Kind:   "player_loses",
 			Seat:   defenderSeat,

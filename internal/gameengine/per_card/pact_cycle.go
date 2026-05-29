@@ -256,17 +256,9 @@ func pactUpkeepPayOrLose(casterSeat int, pactName string, totalCost, colorCount 
 		}
 
 		if !paid {
-			seat.Lost = true
-			seat.LossReason = "failed_to_pay_" + normalizeName(pactName)
-			gs.LogEvent(gameengine.Event{
-				Kind:   "lose_game",
-				Seat:   casterSeat,
-				Source: pactName,
-				Details: map[string]interface{}{
-					"reason": "failed_to_pay_pact",
-					"rule":   "pact_trigger",
-				},
-			})
+			// CR §104.3e: route through canonical helper so §614
+			// would_lose_game (Platinum Angel / Angel's Grace) can cancel.
+			gameengine.MarkSeatLostByEffect(gs, casterSeat, pactName+" (failed to pay)")
 		} else {
 			gs.LogEvent(gameengine.Event{
 				Kind:   "mana_paid",
