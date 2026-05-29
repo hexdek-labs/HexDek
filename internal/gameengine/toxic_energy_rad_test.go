@@ -169,9 +169,10 @@ func TestProliferate_AllPlayerCounterTypes(t *testing.T) {
 	// Call proliferate via ResolveEffect with a ModificationEffect.
 	ResolveEffect(gs, src, &gameast.ModificationEffect{ModKind: "proliferate"})
 
-	// Seat 0's energy should be 4 (3 + 1 proliferated).
-	if gs.Seats[0].Flags["energy_counters"] != 4 {
-		t.Errorf("expected energy 4, got %d", gs.Seats[0].Flags["energy_counters"])
+	// Counter DB Phase 4: energy is a §106.11 resource pool, NOT a §122
+	// counter, so proliferate must NOT touch it. Energy stays at 3.
+	if gs.Seats[0].Flags["energy_counters"] != 3 {
+		t.Errorf("expected energy 3 (excluded from proliferate per §106.11), got %d", gs.Seats[0].Flags["energy_counters"])
 	}
 	// Seat 0's experience should be 3 (2 + 1 proliferated).
 	if gs.Seats[0].Flags["experience_counters"] != 3 {

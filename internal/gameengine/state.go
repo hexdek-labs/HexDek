@@ -23,6 +23,7 @@
 package gameengine
 
 import (
+	"fmt"
 	"math/rand"
 
 	"github.com/hexdek/hexdek/internal/astload"
@@ -767,6 +768,24 @@ func (tc *TurnCounters) MaxManaValue() int {
 type Seat struct {
 	Idx int // seat index, 0-based
 
+	// PlayerInstanceID is the Counter DB Phase 4 player identity stamp,
+	// minted at seat construction as "p<idx>" (e.g. "p0", "p1"). Immutable
+	// across the game — matches the InstanceID Phase 3 source-held linkage
+	// convention so per-player counter placements carry a stable lineage
+	// label distinct from object-level Permanent.InstanceID stamps.
+	PlayerInstanceID string
+
+	// Counters is the Phase 4 §122 player counter slice, mirroring
+	// Permanent.CounterStacks. Holds non-legacy §122 player counter kinds
+	// (e.g. shards, surveillance). Phase 4 keeps the high-volume poison /
+	// experience / rad kinds on their legacy fields (PoisonCounters,
+	// Flags["experience_counters"], Flags["rad_counters"]) and the seat
+	// counters.Target adapter synthesizes a unified stack view across
+	// both stores. Energy lives on its own §106.11 resource pool
+	// (Flags["energy_counters"]) and is NOT a §122 counter — proliferate
+	// never affects it.
+	Counters []counters.CounterStack
+
 	// Life total / lose flags. Life starts at 20; commander format callers
 	// should set it to 40 before the first ResolveEffect.
 	Life           int
@@ -970,6 +989,7 @@ func newSeat(idx int) *Seat {
 	castCounts := map[string]int{}
 	return &Seat{
 		Idx:                 idx,
+		PlayerInstanceID:    fmt.Sprintf("p%d", idx),
 		Life:                20,
 		StartingLife:        20,
 		ControlledBy:        -1,

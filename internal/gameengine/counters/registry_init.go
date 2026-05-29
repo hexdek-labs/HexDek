@@ -267,4 +267,41 @@ func init() {
 		StackingBehavior: NoPair,
 		Notes:            "CR §701.58 (shield counters); intercepts destruction/damage as a replacement effect (Phase 6 wiring)",
 	})
+
+	// Counter DB Phase 4 — player counter types (CR §122 + §810).
+	// Poison (§122.1d / §810), experience (§122 generic player counter),
+	// and rad (§122 generic, March of the Machine mechanic) are all
+	// §122 counters placed on PLAYERS. Proliferate-eligible per CR §701.23.
+	// Energy is intentionally absent — CR §106.11 classifies energy as a
+	// resource pool, NOT a counter, so it is never proliferated.
+	registerDefinition(&CounterTypeDef{
+		Name:             "poison",
+		Category:         OtherTracker,
+		ValidTargets:     []TargetType{TargetPlayer},
+		Placement:        PlaceAbilityCounter | PlaceProliferateOnly,
+		DoublingApplies:  false,
+		Proliferate:      true,
+		StackingBehavior: NoPair,
+		Notes:            "CR §122 player counter; §704.5c lose at 10+ poison; infect / toxic / proliferate sources",
+	})
+	registerDefinition(&CounterTypeDef{
+		Name:             "experience",
+		Category:         OtherTracker,
+		ValidTargets:     []TargetType{TargetPlayer},
+		Placement:        PlaceAbilityCounter | PlaceProliferateOnly,
+		DoublingApplies:  false,
+		Proliferate:      true,
+		StackingBehavior: NoPair,
+		Notes:            "CR §122 player counter; Daretti/Mizzix/Ezuri-style cumulative resource",
+	})
+	registerDefinition(&CounterTypeDef{
+		Name:             "rad",
+		Category:         OtherTracker,
+		ValidTargets:     []TargetType{TargetPlayer},
+		Placement:        PlaceAbilityCounter | PlaceProliferateOnly,
+		DoublingApplies:  false,
+		Proliferate:      true,
+		StackingBehavior: NoPair,
+		Notes:            "CR §122 player counter; March of the Machine rad mechanic (mill + life-loss upkeep tick)",
+	})
 }

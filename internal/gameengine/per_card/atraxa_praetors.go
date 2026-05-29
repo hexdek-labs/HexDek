@@ -41,71 +41,13 @@ func atraxaPraetorsEndStep(gs *gameengine.GameState, perm *gameengine.Permanent,
 		return
 	}
 
-	proliferated := 0
-
-	// Permanents.
-	for _, s := range gs.Seats {
-		if s == nil {
-			continue
-		}
-		for _, p := range s.Battlefield {
-			if p == nil || len(p.Counters) == 0 {
-				continue
-			}
-			isOurs := p.Controller == seat
-			for kind, count := range p.Counters {
-				if count <= 0 {
-					continue
-				}
-				if !isOurs && kind == "+1/+1" {
-					continue
-				}
-				p.AddCounter(kind, 1)
-				proliferated++
-			}
-		}
-	}
-
-	// Players.
-	for i, s := range gs.Seats {
-		if s == nil || s.Lost {
-			continue
-		}
-		if i == seat {
-			if s.Flags != nil {
-				if s.Flags["energy_counters"] > 0 {
-					s.Flags["energy_counters"]++
-					proliferated++
-				}
-				if s.Flags["experience_counters"] > 0 {
-					s.Flags["experience_counters"]++
-					proliferated++
-				}
-			}
-		} else {
-			if s.PoisonCounters > 0 {
-				s.PoisonCounters++
-				proliferated++
-			}
-			if s.Flags != nil && s.Flags["rad_counters"] > 0 {
-				s.Flags["rad_counters"]++
-				proliferated++
-			}
-		}
-	}
-
-	if proliferated > 0 {
-		gs.InvalidateCharacteristicsCache()
-	}
-	gs.LogEvent(gameengine.Event{
-		Kind:   "proliferate",
-		Seat:   seat,
-		Source: perm.Card.DisplayName(),
-		Amount: proliferated,
-		Details: map[string]interface{}{
-			"rule": "701.27",
-		},
-	})
+	// Counter DB Phase 4 — delegate to the canonical Proliferate
+	// primitive. BuildGreedyProliferateTargets applies the same
+	// GreedyHat policy (skip opponent +1/+1, proliferate own
+	// experience, proliferate opponent poison + rad) the inline
+	// resolver case uses, so observable behavior is unchanged but the
+	// path now flows through the §122 registry and InstanceID lineage.
+	proliferated, _ := gameengine.Proliferate(gs, seat, gameengine.BuildGreedyProliferateTargets(gs, seat))
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":         seat,
 		"proliferated": proliferated,
