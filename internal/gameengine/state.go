@@ -1294,10 +1294,72 @@ type Permanent struct {
 	// ExiledByTimestamp set to this permanent's Timestamp.
 	LinkedExile []*Card
 
+	// -----------------------------------------------------------------
+	// InstanceID Phase 3 (docs/instanceid-system-v2-r60.md §4.2 + §7).
+	// Source-held exile linkage by InstanceID. Coexists with LinkedExile
+	// (pointer-based) during the migration window — Phase 4 invariant
+	// rewrite consumes both shapes. Zero-valued slice + LinkageNone tag
+	// = legacy mode (LinkedExile / ExiledByTimestamp still authoritative).
+	// -----------------------------------------------------------------
+
+	// ExiledByMe is the InstanceID list of cards this permanent is
+	// currently exiling under a source-held linkage. Per design v2 §7
+	// and CR §400.7e, the source Permanent owns the linkage record —
+	// no global table. LTB triggers walk this slice on any zone change
+	// out of the battlefield (death, bounce, exile, commander-zone).
+	ExiledByMe []string
+
+	// LinkageKind tags how this permanent's exile linkage is to be
+	// interpreted. LTBReturn = Banisher Priest / Oblivion Ring shape;
+	// CastGrant = Etali / Mind's Desire (lifetime bound to AbilityInstance,
+	// not to this Permanent); PermanentExile = Settle the Wreckage shape
+	// (no return mechanism). LinkageNone for permanents not participating
+	// in any exile linkage. Per design v2 §4.2.
+	LinkageKind LinkageKind
+
 	// Prepared is the §702.168 prepared state for Strixhaven DFCs.
 	// While true, the controller may cast a copy of the card's spell face
 	// (the back face). Casting the copy sets Prepared back to false.
 	Prepared bool
+}
+
+// LinkageKind enumerates the three exile-linkage shapes per
+// docs/instanceid-system-v2-r60.md §4.2 + §7. Stored on Permanent to
+// tell the two-pronged ExileLinkageIntegrity invariant which validation
+// path to apply.
+//
+//   - LinkageNone — this permanent isn't exiling anything (the default).
+//   - LTBReturn — source Permanent owns the exile; LTB returns the cards.
+//     Banisher Priest, Oblivion Ring, Detention Sphere, Faceless Butcher.
+//     ExiledByMe MUST list the exile contents while the source is alive.
+//   - CastGrant — cast-permission window bound to the AbilityInstance
+//     lifetime, NOT the source Permanent's battlefield-lifetime. Etali,
+//     Mind's Desire, Bolas's Citadel. The exiled cards remain in exile
+//     after the cast window closes; the linkage is tracked on the
+//     ZoneCastPermission's AbilityInstanceID, not on the source Permanent.
+//   - PermanentExile — no return mechanism. Settle the Wreckage, disturb-
+//     cast originals, foretold cards that never get cast. No back-reference
+//     required; state is "in exile, indefinitely".
+type LinkageKind int
+
+const (
+	LinkageNone LinkageKind = iota
+	LTBReturn
+	CastGrant
+	PermanentExile
+)
+
+// String renders LinkageKind for logs / invariant errors.
+func (k LinkageKind) String() string {
+	switch k {
+	case LTBReturn:
+		return "LTBReturn"
+	case CastGrant:
+		return "CastGrant"
+	case PermanentExile:
+		return "PermanentExile"
+	}
+	return "LinkageNone"
 }
 
 // Modification is a runtime +X/+Y style buff with a duration tag.
@@ -1466,12 +1528,24 @@ func (p *Permanent) AddCounter(kind string, n int) {
 // the exiling permanent (CR §406.7). When the permanent later leaves
 // the battlefield, callers should use ReturnLinkedExile to return all
 // linked cards. The card's ExiledByTimestamp is set to perm.Timestamp.
+//
+// Phase 3 (docs/instanceid-system-v2-r60.md §7): also stamps source-
+// held InstanceID linkage. perm.ExiledByMe gains the card's InstanceID
+// (when minted) and perm.LinkageKind is promoted to LTBReturn if it
+// was LinkageNone. Permanents already tagged CastGrant/PermanentExile
+// retain their tag — those callers route through their own primitives.
 func ExileLinked(gs *GameState, perm *Permanent, card *Card, ownerSeat int, fromZone string) {
 	if gs == nil || perm == nil || card == nil {
 		return
 	}
 	card.ExiledByTimestamp = perm.Timestamp
 	perm.LinkedExile = append(perm.LinkedExile, card)
+	if card.InstanceID != "" {
+		perm.ExiledByMe = append(perm.ExiledByMe, card.InstanceID)
+	}
+	if perm.LinkageKind == LinkageNone {
+		perm.LinkageKind = LTBReturn
+	}
 	MoveCard(gs, card, ownerSeat, fromZone, "exile", perm.Card.DisplayName()+"_exile_linked")
 	gs.LogEvent(Event{
 		Kind:   "exile_linked_created",
@@ -1515,6 +1589,13 @@ func ReturnLinkedExile(gs *GameState, perm *Permanent, toZone string) {
 		},
 	})
 	perm.LinkedExile = nil
+	perm.ExiledByMe = nil
+	// LinkageKind intentionally retained for forensic clarity — the
+	// permanent has left play (or its slice was drained intentionally),
+	// so the kind tag describes "what shape this permanent had" not
+	// "what's currently exiled". Phase 4 invariants look at LinkageKind
+	// + ExiledByMe length jointly, so an empty slice with a stale tag
+	// is a valid "drained" state.
 }
 
 // -----------------------------------------------------------------------------

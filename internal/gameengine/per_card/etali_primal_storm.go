@@ -84,6 +84,19 @@ func etaliPrimalStormAttack(gs *gameengine.GameState, perm *gameengine.Permanent
 		return
 	}
 
+	// Phase 3 (docs/instanceid-system-v2-r60.md §4.2 + §7): mint an
+	// AbilityInstance for this attack trigger and stamp its InstanceID
+	// on every cast-grant registered below. Per CR §112.7a the ability
+	// is independent of its source on the stack — the grant lifetime
+	// binds to the AbilityInstance, not to Etali's battlefield-lifetime.
+	// Etali leaving play after the trigger resolves does NOT reclaim
+	// the until-EOT grant; the exiled cards stay in exile per design.
+	abilityInst := gameengine.NewAbilityInstance(gs, perm, perm.Controller, "trig:creature_attacks", "", nil)
+	abilityInstID := ""
+	if abilityInst != nil {
+		abilityInstID = abilityInst.InstanceID
+	}
+
 	exiled := []string{}
 	nonLandGrants := 0
 
@@ -125,11 +138,21 @@ func etaliPrimalStormAttack(gs *gameengine.GameState, perm *gameengine.Permanent
 				"cast_grant":   perm.Controller, // RequireController for any free-cast
 			},
 		})
-		// Register the free-cast grant for nonlands only.
+		// Register the free-cast grant for nonlands only. Phase 3
+		// (design v2 §4.2 + §7): stamp AbilityInstanceID and
+		// LinkageKind=CastGrant so the grant's forensic lineage points
+		// back to this attack trigger's AbilityInstance, and the
+		// two-pronged ExileLinkageIntegrity invariant routes through
+		// the self-managed (cast-window state machine) check rather
+		// than the source-held (LTBReturn) check. The until-EOT
+		// Duration is retained — the AI cast window for impulse-cast
+		// is deferred past the trigger's immediate resolution.
 		if !cardHasType(top, "land") {
 			grant := gameengine.NewFreeCastFromExilePermission(perm.Controller, perm.Card.DisplayName())
 			grant.Duration = "until_end_of_turn"
 			grant.GrantTurn = gs.Turn
+			grant.AbilityInstanceID = abilityInstID
+			grant.LinkageKind = gameengine.CastGrant
 			gameengine.RegisterZoneCastGrant(gs, top, grant)
 			nonLandGrants++
 		}
@@ -145,9 +168,10 @@ func etaliPrimalStormAttack(gs *gameengine.GameState, perm *gameengine.Permanent
 	}
 
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":            perm.Controller,
-		"exiled_count":    len(exiled),
-		"nonland_grants":  nonLandGrants,
-		"exiled":          exiled,
+		"seat":              perm.Controller,
+		"exiled_count":      len(exiled),
+		"nonland_grants":    nonLandGrants,
+		"exiled":            exiled,
+		"ability_instance":  abilityInstID,
 	})
 }

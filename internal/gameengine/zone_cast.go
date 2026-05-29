@@ -122,6 +122,25 @@ type ZoneCastPermission struct {
 	// source leaves the battlefield.
 	SourceTimestamp int
 
+	// AbilityInstanceID is the InstanceID of the AbilityInstance that
+	// granted this permission (Phase 3, docs/instanceid-system-v2-r60.md
+	// §4.2 + §7). For CastGrant-shape effects (Etali's attack trigger,
+	// Mind's Desire, Bolas's Citadel's static), the grant's lifetime is
+	// bound to the AbilityInstance per CR §112.7a — the ability lives
+	// independently of the source Permanent on the stack. When the
+	// AbilityInstance resolves and the cast window closes, callers
+	// invoke ExpireGrantsForAbilityInstance to reclaim the grants.
+	// Empty for grants that don't trace to a discrete AbilityInstance
+	// (legacy paths, while_source_on_bf statics with no ability mint).
+	AbilityInstanceID string
+
+	// LinkageKind tags how this grant should be interpreted by the
+	// Phase 4 ExileLinkageIntegrity invariant. Mirrors the Permanent-
+	// side enum: CastGrant for cast-window grants whose exiled cards
+	// stay exiled; PermanentExile for no-return effects. LinkageNone
+	// for grants that pre-date Phase 3 (legacy compatibility).
+	LinkageKind LinkageKind
+
 	// SpendAnyColor: if true, the caster may spend mana as though it were
 	// any color to pay for this spell (CR §106.11 — Gonti, Fallen Shinobi,
 	// Sen Triplets, Hostage Taker).
@@ -694,6 +713,34 @@ func ExpireSourceGrants(gs *GameState, sourceTimestamp int) {
 	for card, p := range gs.ZoneCastGrants {
 		if p.SourceTimestamp == sourceTimestamp {
 			emitGrantExpired(gs, card, p, "source_left_battlefield")
+			delete(gs.ZoneCastGrants, card)
+		}
+	}
+}
+
+// ExpireGrantsForAbilityInstance reclaims any ZoneCastGrants whose
+// AbilityInstanceID matches the given ID. Per design v2 §4.2 + §7,
+// CastGrant-shape effects bind grant lifetime to the AbilityInstance
+// (CR §112.7a — ability is independent of source on the stack), not to
+// the source Permanent's battlefield-lifetime. Callers invoke this
+// when the AbilityInstance resolves (or is countered) and the cast
+// window closes. The exiled cards remain in exile; only the cast
+// permission is reclaimed.
+//
+// Per-card example — Etali's attack trigger:
+//
+//  1. Trigger resolves: mints AbilityInstance(AB-x), exiles top of each
+//     library, RegisterZoneCastGrant(card, grant{AbilityInstanceID: AB-x}).
+//  2. Etali's controller exercises any free-casts during resolution.
+//  3. Trigger resolution completes: ExpireGrantsForAbilityInstance(gs, AB-x)
+//     reclaims any unused grants. Exiled cards stay in their owners' exiles.
+func ExpireGrantsForAbilityInstance(gs *GameState, abilityInstanceID string) {
+	if gs == nil || len(gs.ZoneCastGrants) == 0 || abilityInstanceID == "" {
+		return
+	}
+	for card, p := range gs.ZoneCastGrants {
+		if p != nil && p.AbilityInstanceID == abilityInstanceID {
+			emitGrantExpired(gs, card, p, "ability_instance_resolved")
 			delete(gs.ZoneCastGrants, card)
 		}
 	}

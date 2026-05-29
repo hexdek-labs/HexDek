@@ -1705,30 +1705,81 @@ func checkStackOrderCorrectness(gs *GameState) error {
 // ExileLinkageIntegrity
 // ---------------------------------------------------------------------------
 
-// checkExileLinkageIntegrity verifies §406.7 linked-exile bookkeeping.
-// When a card is exiled "until [permanent] leaves the battlefield" via
-// ExileLinked, it gets ExiledByTimestamp set to the source permanent's
-// Timestamp. When that permanent leaves, ReturnLinkedExile resets the
-// timestamp and pulls the card out of exile. If we still see a card in
-// exile with a non-zero ExiledByTimestamp whose source is no longer on
-// any battlefield, the LTB return path was missed — those cards are
-// orphans and would never be returned.
+// checkExileLinkageIntegrity verifies §406.7 linked-exile bookkeeping
+// using the Phase 3 two-pronged check (docs/instanceid-system-v2-r60.md
+// §7):
+//
+//  1. Source-held (LTBReturn) — cards in exile with a non-zero
+//     ExiledByTimestamp must trace back to a live source Permanent on
+//     some battlefield. If the source has left play without firing its
+//     LTB return path, the card is orphaned and would never be returned.
+//     This is the legacy pointer-based check, preserved unchanged from
+//     pre-Phase-3 behavior so existing handlers (Hostage Taker, Fiend
+//     Hunter, Knowledge Pool, ~50 cards using ExileLinked) keep working.
+//
+//  2. Source-held (Phase 3 InstanceID) — for any battlefield permanent
+//     tagged LinkageKind=LTBReturn with a non-empty ExiledByMe slice,
+//     verify every listed InstanceID actually points to a card in some
+//     seat's exile. Missing entries indicate the source's ExiledByMe
+//     was populated but the card moved out of exile through some path
+//     that didn't update the slice — a Phase 3 bookkeeping bug.
+//
+//  3. Self-managed (CastGrant / PermanentExile) — these linkage kinds
+//     deliberately do NOT keep a live source-Permanent back-reference.
+//     Per design v2 §7 the state machine (cast-window-open /
+//     cast-window-closed / permanently-exiled) is sufficient; the
+//     invariant skips back-reference checks for these.
+//
+// The §7 design rationale: collapsing 736 hits from the 25k sweep into
+// "LTBReturn handler bugs" + "invariant-logic false positives" — two
+// cleanly separable repair tasks. CastGrant grants tracked by
+// AbilityInstanceID on the ZoneCastPermission, not by source-Permanent
+// timestamp, so a CastGrant whose source died doesn't false-positive.
 func checkExileLinkageIntegrity(gs *GameState) error {
 	if gs == nil {
 		return nil
 	}
-	// Build the set of live source timestamps on any battlefield.
-	live := map[int]bool{}
+	// Build the set of live source timestamps + the set of
+	// live battlefield Permanents tagged for source-held linkage
+	// inspection in a single pass.
+	liveTS := map[int]bool{}
+	var ltbReturnSources []*Permanent
 	for _, s := range gs.Seats {
 		if s == nil {
 			continue
 		}
 		for _, p := range s.Battlefield {
-			if p != nil && p.Timestamp != 0 {
-				live[p.Timestamp] = true
+			if p == nil {
+				continue
+			}
+			if p.Timestamp != 0 {
+				liveTS[p.Timestamp] = true
+			}
+			if p.LinkageKind == LTBReturn && len(p.ExiledByMe) > 0 {
+				ltbReturnSources = append(ltbReturnSources, p)
 			}
 		}
 	}
+
+	// Index every card in any seat's exile by InstanceID for the
+	// Phase 3 source-held check. Empty-ID cards (legacy / pre-Phase-1
+	// mode) are silently skipped — they're covered by the
+	// ExiledByTimestamp check below.
+	exileByIID := map[string]*Card{}
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, c := range s.Exile {
+			if c == nil || c.InstanceID == "" {
+				continue
+			}
+			exileByIID[c.InstanceID] = c
+		}
+	}
+
+	// (1) Legacy pointer-based check via ExiledByTimestamp. Phase 3
+	// preserves this so existing handlers continue to work unchanged.
 	for _, s := range gs.Seats {
 		if s == nil {
 			continue
@@ -1737,13 +1788,41 @@ func checkExileLinkageIntegrity(gs *GameState) error {
 			if c == nil || c.ExiledByTimestamp == 0 {
 				continue
 			}
-			if !live[c.ExiledByTimestamp] {
+			if !liveTS[c.ExiledByTimestamp] {
 				name := c.DisplayName()
 				return fmt.Errorf("ExileLinkageIntegrity: card %q in seat %d exile is linked to source timestamp %d which is no longer on any battlefield — LTB return missed (orphaned linked exile)",
 					name, s.Idx, c.ExiledByTimestamp)
 			}
 		}
 	}
+
+	// (2) Phase 3 source-held InstanceID check on LTBReturn sources.
+	// Every entry in ExiledByMe must point to a card actually in some
+	// seat's exile. A missing entry indicates the source's slice was
+	// populated but the card moved out of exile through a path that
+	// didn't update perm.ExiledByMe (a bookkeeping bug — the slice and
+	// the actual exile zone diverged).
+	for _, src := range ltbReturnSources {
+		srcName := "<unknown>"
+		if src.Card != nil {
+			srcName = src.Card.DisplayName()
+		}
+		for _, iid := range src.ExiledByMe {
+			if iid == "" {
+				continue
+			}
+			if _, ok := exileByIID[iid]; !ok {
+				return fmt.Errorf("ExileLinkageIntegrity: source %q (timestamp %d) has InstanceID %q in ExiledByMe but the card is not present in any seat's exile — LTBReturn linkage broken (Phase 3 source-held check)",
+					srcName, src.Timestamp, iid)
+			}
+		}
+	}
+
+	// (3) Self-managed kinds intentionally skip back-reference checks.
+	// CastGrant grants are tracked by AbilityInstanceID on the
+	// ZoneCastPermission (lifetime via ExpireGrantsForAbilityInstance
+	// or the existing Duration expiry); PermanentExile has no return
+	// mechanism. Either way the invariant has nothing to enforce here.
 	return nil
 }
 
