@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
+	"github.com/hexdek/hexdek/internal/gameengine/counters"
 )
 
 // Phase 6 — State-based actions (CR §704).
@@ -69,6 +70,18 @@ func StateBasedActions(gs *GameState) bool {
 			changed = true
 		}
 
+		// Counter DB Phase 3 — pair-removal (§704.5q) MUST run before the
+		// §704.5f / §704.5g death SBAs within a pass so that a creature
+		// stacked with N +1/+1 and N -1/-1 cancels cleanly instead of
+		// momentarily reading as toughness ≤ 0 (CR §704.3 simultaneity is
+		// preserved by the outer 40-pass loop, but ordering within a pass
+		// makes the canonical "counters cancel, creature survives" outcome
+		// visible in a single pass — and matches the spec ordering at
+		// docs/counter-db-implementation-plan-r60.md §6).
+		if sba704_5q(gs) {
+			changed = true
+		}
+
 		// Creature / planeswalker death SBAs (§704.5f–§704.5i).
 		if sba704_5f(gs) {
 			changed = true
@@ -117,10 +130,8 @@ func StateBasedActions(gs *GameState) bool {
 			changed = true
 		}
 
-		// Counter SBAs (§704.5q–§704.5r).
-		if sba704_5q(gs) {
-			changed = true
-		}
+		// Counter SBAs (§704.5r). §704.5q is hoisted above §704.5f — see
+		// the comment block before sba704_5f's first call site.
 		if sba704_5r(gs) {
 			changed = true
 		}
@@ -1156,6 +1167,14 @@ func sba704_5p(gs *GameState) bool {
 // it, N +1/+1 and N -1/-1 counters are removed from it, where N is the
 // smaller of the number of +1/+1 and -1/-1 counters on it." (CR §704.5q,
 // rules file line 5481.)
+//
+// Counter DB Phase 3: drives the CounterStacks path through
+// counters.PairRemoveSBA and dual-writes against the legacy Counters map
+// so existing callers that touch p.Counters["+1/+1"] / p.Counters["-1/-1"]
+// directly (AddCounter, per_card handlers predating the Counter DB
+// migration) keep observing post-cancellation state. Whichever side has
+// the larger pair count wins the log amount; both representations are
+// fully drained.
 func sba704_5q(gs *GameState) bool {
 	changed := false
 	for _, s := range gs.Seats {
@@ -1163,42 +1182,61 @@ func sba704_5q(gs *GameState) bool {
 			continue
 		}
 		for _, p := range s.Battlefield {
-			if p.PhasedOut {
+			if p == nil || p.PhasedOut {
 				continue // §702.26
 			}
-			if p.Counters == nil {
+
+			// Counter DB Phase 3 — CounterStacks path.
+			stackN, stackFired := counters.PairRemoveSBA(p.AsCounterTarget())
+
+			// Legacy Counters map path. Required while per_card handlers
+			// still write through AddCounter (which doesn't sync to
+			// CounterStacks).
+			var legacyN int
+			legacyFired := false
+			if p.Counters != nil {
+				plus := p.Counters["+1/+1"]
+				minus := p.Counters["-1/-1"]
+				if plus > 0 && minus > 0 {
+					legacyN = plus
+					if minus < legacyN {
+						legacyN = minus
+					}
+					p.Counters["+1/+1"] = plus - legacyN
+					p.Counters["-1/-1"] = minus - legacyN
+					if p.Counters["+1/+1"] == 0 {
+						delete(p.Counters, "+1/+1")
+					}
+					if p.Counters["-1/-1"] == 0 {
+						delete(p.Counters, "-1/-1")
+					}
+					legacyFired = true
+				}
+			}
+
+			if !stackFired && !legacyFired {
 				continue
 			}
-			plus := p.Counters["+1/+1"]
-			minus := p.Counters["-1/-1"]
-			if plus > 0 && minus > 0 {
-				n := plus
-				if minus < n {
-					n = minus
-				}
-				p.Counters["+1/+1"] = plus - n
-				p.Counters["-1/-1"] = minus - n
-				if p.Counters["+1/+1"] == 0 {
-					delete(p.Counters, "+1/+1")
-				}
-				if p.Counters["-1/-1"] == 0 {
-					delete(p.Counters, "-1/-1")
-				}
-				changed = true
-				gs.LogEvent(Event{
-					Kind:   "sba_704_5q",
-					Seat:   p.Controller,
-					Target: -1,
-					Source: p.Card.DisplayName(),
-					Amount: n,
-					Details: map[string]interface{}{
-						"rule":          "704.5q",
-						"card":          p.Card.DisplayName(),
-						"removed_plus":  n,
-						"removed_minus": n,
-					},
-				})
+			changed = true
+			n := legacyN
+			if stackN > n {
+				n = stackN
 			}
+			gs.LogEvent(Event{
+				Kind:   "sba_704_5q",
+				Seat:   p.Controller,
+				Target: -1,
+				Source: p.Card.DisplayName(),
+				Amount: n,
+				Details: map[string]interface{}{
+					"rule":          "704.5q",
+					"card":          p.Card.DisplayName(),
+					"removed_plus":  n,
+					"removed_minus": n,
+					"stack_removed": stackN,
+					"map_removed":   legacyN,
+				},
+			})
 		}
 	}
 	return changed

@@ -144,6 +144,48 @@ func CounterCount(target Target, counterType string) int {
 	return total
 }
 
+// PairRemoveSBA implements the per-target portion of the §704.5q
+// state-based action ("If a permanent has both a +1/+1 counter and a
+// -1/-1 counter on it, N +1/+1 and N -1/-1 counters are removed from it,
+// where N is the smaller of the number of +1/+1 and -1/-1 counters on
+// it"). Returns the number of pairs removed and whether any state
+// changed.
+//
+// Counter DB Phase 3 — this is the canonical, InstanceID-aware path that
+// SBAs should run during the §704.3 priority pump. It operates purely
+// against the Target interface so callers in different packages (the
+// gameengine SBA loop, fuzz harnesses, isolated Loki property checks)
+// share one implementation.
+//
+// nil target is a silent no-op returning (0, false). A target with only
+// +1/+1 OR only -1/-1 counters returns (0, false) — neither side has a
+// pair to cancel against. §122.6 persistence is preserved: only the two
+// targeted stacks are touched; other counter kinds on the target are
+// untouched.
+//
+// Doubling does NOT apply to removal (CR §122.1g speaks only to
+// placement); pair-removal is straight subtraction.
+func PairRemoveSBA(target Target) (int, bool) {
+	if target == nil {
+		return 0, false
+	}
+	plus := CounterCount(target, "+1/+1")
+	if plus <= 0 {
+		return 0, false
+	}
+	minus := CounterCount(target, "-1/-1")
+	if minus <= 0 {
+		return 0, false
+	}
+	n := plus
+	if minus < n {
+		n = minus
+	}
+	RemoveCounters(target, "+1/+1", n)
+	RemoveCounters(target, "-1/-1", n)
+	return n, true
+}
+
 // HasKeywordCounter reports whether the target has at least one counter
 // whose registered type is a KeywordGrant for the named keyword (CR
 // §122.1c). The query accepts either the canonical name ("first strike")
