@@ -111,6 +111,26 @@ type GameState struct {
 	// empty enabler — that's the OG path, which doesn't require one).
 	IIDEnablerStack []string
 
+	// MintedInstanceIDs is the master set of every InstanceID ever minted
+	// during this game (OG deck-load + TK token + CP copy + AB ability).
+	// Populated by MintOG/Token/Copy + NewAbilityInstance. Used by the
+	// Phase 4 ZoneConservation invariant per
+	// docs/instanceid-system-v2-r60.md §13: the census of present IDs at
+	// each game tick must equal (Minted) - (Ceased) - (RemovedFromGame).
+	// Initialized in NewGameState; nil-safe (Phase 4 helpers lazy-init).
+	MintedInstanceIDs map[string]struct{}
+
+	// CeasedInstanceIDs marks IDs no longer expected to appear in any
+	// zone census. Populated at:
+	//   - §707.10 — spell-copy cease at resolution (stack.go IsCopy arm)
+	//   - §704.5d / §111.8 — token cessation on LTB (zone_change.go,
+	//     destroyPermSBA, sacrificePermSBA, BouncePermanent, ExilePermanent)
+	//   - §800.4a — owned-object removal when a seat leaves (multiplayer.go
+	//     HandleSeatElimination)
+	//   - §720.4 — Karn restart (rare)
+	// Used in conjunction with MintedInstanceIDs by checkZoneConservation.
+	CeasedInstanceIDs map[string]struct{}
+
 	// Flags is an open-ended map for one-off game-wide flags ("extra_turn
 	// pending", "replacement effect seen", "eldrazi spawned this turn").
 	// Resolvers write here when there isn't a dedicated field yet.
@@ -565,18 +585,20 @@ func NewGameState(seatCount int, rng *rand.Rand, corpus *astload.Corpus) *GameSt
 		seats[i] = newSeat(i)
 	}
 	return &GameState{
-		Seats:        seats,
-		Rng:          rng,
-		Turn:         1,
-		Phase:        "beginning",
-		Step:         "untap",
-		Active:       0,
-		Cards:        corpus,
-		Flags:        map[string]int{},
-		EventLog:     make([]Event, 0, 64),
-		RetainEvents: true,
-		DayNight:     DayNightNeither,
-		IIDMinter:    instanceid.NewMinter(seatCount),
+		Seats:             seats,
+		Rng:               rng,
+		Turn:              1,
+		Phase:             "beginning",
+		Step:              "untap",
+		Active:            0,
+		Cards:             corpus,
+		Flags:             map[string]int{},
+		EventLog:          make([]Event, 0, 64),
+		RetainEvents:      true,
+		DayNight:          DayNightNeither,
+		IIDMinter:         instanceid.NewMinter(seatCount),
+		MintedInstanceIDs: map[string]struct{}{},
+		CeasedInstanceIDs: map[string]struct{}{},
 	}
 }
 

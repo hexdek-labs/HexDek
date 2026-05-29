@@ -4,6 +4,68 @@ import (
 	"github.com/hexdek/hexdek/internal/gameengine/instanceid"
 )
 
+// RecordMintedInstanceID adds id to gs.MintedInstanceIDs. Empty ids are
+// ignored (legacy / nil-minter mode). Phase 4 census per
+// docs/instanceid-system-v2-r60.md §13.
+func RecordMintedInstanceID(gs *GameState, id string) {
+	if gs == nil || id == "" {
+		return
+	}
+	if gs.MintedInstanceIDs == nil {
+		gs.MintedInstanceIDs = map[string]struct{}{}
+	}
+	gs.MintedInstanceIDs[id] = struct{}{}
+}
+
+// MarkInstanceIDCeased adds id to gs.CeasedInstanceIDs. Fires from:
+//   - §707.10 spell-copy cease (stack.go)
+//   - §704.5d / §111.8 token cessation on LTB (zone_change.go LTB sites)
+//   - §800.4a owned-object removal (multiplayer.go HandleSeatElimination)
+//
+// Empty / unknown ids are silently dropped.
+func MarkInstanceIDCeased(gs *GameState, id string) {
+	if gs == nil || id == "" {
+		return
+	}
+	if gs.CeasedInstanceIDs == nil {
+		gs.CeasedInstanceIDs = map[string]struct{}{}
+	}
+	gs.CeasedInstanceIDs[id] = struct{}{}
+}
+
+// markPermanentCeaseIfToken is the centralized §704.5d / §111.8 token
+// cessation hook for the Phase 4 ZoneConservation census. Tokens leaving
+// the battlefield cease to exist; their InstanceID drops out of the
+// expected census (Minted - Ceased) so the invariant doesn't flag the
+// missing entry as "card disappeared". Non-tokens are left alone — their
+// InstanceID lives on in graveyard / exile / hand / library.
+//
+// IMPORTANT — only marks IDs with TK provenance ceased. Token-as-copy
+// paths (Phantasmal Image, Helm of the Host, Spark Double, etc.) wrap
+// the token Permanent around a *Card whose InstanceID was DeepCopy'd
+// from the OG source; ceasing that OG ID would falsely retire the
+// original card while it's still in play. The TK provenance check on
+// the InstanceID format (positions 2-3 == "TK") guarantees we only
+// cease IDs that were actually minted as tokens.
+//
+// Called from every LTB termination site that has a "tokens cease" arm:
+// DestroyPermanent / ExilePermanent / sacrificePermanentImpl /
+// BouncePermanent in zone_change.go, destroyPermSBA / sacrificePermSBA in
+// sba.go.
+func markPermanentCeaseIfToken(gs *GameState, perm *Permanent) {
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	if !perm.IsToken() {
+		return
+	}
+	id := perm.Card.InstanceID
+	if len(id) < 4 || id[2:4] != "TK" {
+		return
+	}
+	MarkInstanceIDCeased(gs, id)
+}
+
 // MintOGInstanceID stamps an OG-provenance InstanceID on c if it
 // doesn't already have one. Used by SetupCommanderGame to mint IDs at
 // deck-construction time for every library + commander card per
@@ -50,6 +112,7 @@ func MintOGInstanceID(gs *GameState, c *Card) {
 	c.ActiveFace = instanceid.Front
 	// SourceInstanceID, EnablerInstanceID, EnablerHistory stay zero —
 	// OG cards have no lineage by §4.1.
+	RecordMintedInstanceID(gs, id)
 }
 
 // currentMintEnablerID returns the top frame of gs.IIDEnablerStack — the
@@ -138,6 +201,7 @@ func MintTokenInstanceID(gs *GameState, c *Card, sourceID, enablerID string) {
 	if enablerID != "" {
 		c.EnablerHistory = append(c.EnablerHistory, enablerID)
 	}
+	RecordMintedInstanceID(gs, id)
 }
 
 // EnsureTokenInstanceID is the defensive auto-stamp catch-all: when a
@@ -209,4 +273,5 @@ func MintCopyInstanceID(gs *GameState, c *Card, sourceID, enablerID string) {
 	if enablerID != "" {
 		c.EnablerHistory = append(c.EnablerHistory, enablerID)
 	}
+	RecordMintedInstanceID(gs, id)
 }

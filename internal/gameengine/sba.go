@@ -2020,6 +2020,7 @@ func destroyPermSBA(gs *GameState, p *Permanent, reason, rule string) {
 	gs.UnregisterContinuousEffectsForPermanent(p)
 	// Tokens cease to exist — don't add them to graveyard (§704.5d would
 	// clean them up anyway, but skipping the zone write is tidier).
+	markPermanentCeaseIfToken(gs, p)
 	if !p.IsToken() {
 		finalZone := FireZoneChange(gs, p, p.Card, p.Card.Owner, "battlefield", destZone)
 		// Fire dies/LTB triggers — §603.6 / §603.10.
@@ -2072,6 +2073,7 @@ func sacrificePermSBA(gs *GameState, p *Permanent, reason, rule string, extra ma
 		Source:  p.Card.DisplayName(),
 		Details: details,
 	})
+	markPermanentCeaseIfToken(gs, p)
 	if !p.IsToken() {
 		finalZone := FireZoneChange(gs, p, p.Card, p.Card.Owner, "battlefield", destZone)
 		FireZoneChangeTriggers(gs, p, p.Card, "battlefield", finalZone)

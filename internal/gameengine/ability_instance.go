@@ -107,6 +107,7 @@ func NewAbilityInstance(
 	id := gs.IIDMinter.Mint(seat, instanceid.ProvAB, instanceid.Visible, color, cmc)
 	if id != "" {
 		ab.InstanceID = id
+		RecordMintedInstanceID(gs, id)
 	}
 	return ab
 }

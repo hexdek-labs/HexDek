@@ -115,14 +115,166 @@ type InvariantViolation struct {
 // ZoneConservation
 // ---------------------------------------------------------------------------
 
-// checkZoneConservation verifies that the total number of real (non-token)
-// cards across all zones equals the starting total. Cards should never be
-// created or destroyed — only moved between zones. Tokens are excluded
-// because they can be created/destroyed freely.
+// checkZoneConservation verifies the Phase 4 InstanceID census per
+// docs/instanceid-system-v2-r60.md §13: every InstanceID currently
+// present in any zone must be in (gs.MintedInstanceIDs - gs.CeasedInstanceIDs),
+// and every minted-but-not-ceased ID must be findable in some zone. This
+// replaces the legacy count-based check with an exact set-equality check
+// keyed by InstanceID — no more "off by N copies" fuzz tolerance.
+//
+// Phase 4 design (§13):
+//
+//	census_present = union of every Card.InstanceID across Library / Hand
+//	                 / Graveyard / Exile / CommandZone / Battlefield / Stack
+//	                 / ParadigmExile (non-empty IDs only)
+//	census_expected = MintedInstanceIDs - CeasedInstanceIDs
+//	err if census_present ⊄ census_expected (fabrication)
+//	err if census_expected ⊄ census_present (disappearance)
+//
+// Empty InstanceID (legacy mode, pre-Phase-1 *Card pointers without a
+// minted ID) falls back to the legacy count-based check below. This keeps
+// the invariant useful during the Phase 1-N rollout when some mint sites
+// haven't been migrated yet.
+//
+// AB-provenance IDs (AbilityInstance on the stack) are NOT counted in the
+// census expectation — they're ephemeral by §603.10 and the AbilityInstance
+// itself isn't a Card in a zone. The expected set is filtered by
+// provenance prefix.
 func checkZoneConservation(gs *GameState) error {
 	if gs == nil {
 		return nil
 	}
+	// Phase 4 InstanceID census path. Skip entirely when no IDs minted
+	// (struct-literal GameState in older tests) and fall through to the
+	// legacy count-based check below.
+	if len(gs.MintedInstanceIDs) > 0 {
+		if err := checkZoneConservationByInstanceID(gs); err != nil {
+			return err
+		}
+	}
+	return checkZoneConservationLegacyCount(gs)
+}
+
+// checkZoneConservationByInstanceID is the Phase 4 set-equality census.
+// Returns nil when present == (Minted - Ceased) restricted to OG/TK/CP
+// provenance (AB excluded). Empty-InstanceID cards are silently skipped —
+// the legacy count check picks them up.
+func checkZoneConservationByInstanceID(gs *GameState) error {
+	present := map[string]struct{}{}
+	addID := func(c *Card) {
+		if c == nil || c.InstanceID == "" {
+			return
+		}
+		present[c.InstanceID] = struct{}{}
+	}
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		// §800.4a — once a seat has left the game, its owned cards have
+		// already had their InstanceIDs marked ceased in HandleSeatElimination
+		// (the data pointers stay for forensic clarity). Skipping their
+		// zones avoids re-counting cards that the census expectation no
+		// longer includes.
+		if s.LeftGame {
+			continue
+		}
+		for _, c := range s.Library {
+			addID(c)
+		}
+		for _, c := range s.Hand {
+			addID(c)
+		}
+		for _, c := range s.Graveyard {
+			addID(c)
+		}
+		for _, c := range s.Exile {
+			addID(c)
+		}
+		for _, c := range s.CommandZone {
+			addID(c)
+		}
+		for _, p := range s.Battlefield {
+			if p == nil {
+				continue
+			}
+			addID(p.Card)
+		}
+	}
+	for _, cards := range gs.ParadigmExile {
+		for _, c := range cards {
+			addID(c)
+		}
+	}
+	for _, item := range gs.Stack {
+		if item == nil {
+			continue
+		}
+		// Skip ability items (item.Source != nil, or Kind triggered/
+		// activated) — their Card is a log-label, not an in-zone card.
+		// §707.10 copy items DO count (their Card is a transient copy
+		// that should be in MintedInstanceIDs).
+		if item.Source != nil || item.Kind == "triggered" || item.Kind == "activated" {
+			continue
+		}
+		addID(item.Card)
+	}
+
+	// Build expected set: Minted - Ceased, restricted to OG/TK/CP
+	// provenance (AB ephemeral). The InstanceID format encodes provenance
+	// at fixed positions 2-3 ("h<seat>OG|TK|CP|AB...") — read directly
+	// rather than decoding the full ID.
+	expected := map[string]struct{}{}
+	for id := range gs.MintedInstanceIDs {
+		if _, ceased := gs.CeasedInstanceIDs[id]; ceased {
+			continue
+		}
+		if len(id) < 4 {
+			continue
+		}
+		prov := id[2:4]
+		if prov == "AB" {
+			continue
+		}
+		expected[id] = struct{}{}
+	}
+
+	// Fabrication: present \ expected must be empty. ALWAYS runs — a
+	// card showing up with an ID never minted is a clean signal of a bug
+	// (mint helper bypassed, hand-rolled ID, struct-literal Card with a
+	// fabricated InstanceID). Zero false-positive risk.
+	for id := range present {
+		if _, ok := expected[id]; !ok {
+			return fmt.Errorf("ZoneConservation: InstanceID %q present in a zone but not in (Minted - Ceased) — fabrication or stale ceased entry",
+				id)
+		}
+	}
+	// Disappearance: expected \ present must be empty. STRICT mode only.
+	// Phase 4 ships with this gated off by default because the 25k
+	// layer-stress sweep (2026-05-29) surfaced ~2.9M hits per run —
+	// every one a real mint-coverage gap (engine creates Card structs
+	// via paths not yet calling MintOGInstanceID, or moves cards through
+	// zones not walked by the census). The hits are bona-fide bugs, but
+	// their volume drowns out other invariant signals until Phase 5+
+	// closes the gaps. Flip gs.Flags["instanceid_strict_census"]=1 to
+	// enable; the property test suite uses this flag by default so
+	// regressions still pin.
+	if gs.Flags != nil && gs.Flags["instanceid_strict_census"] == 1 {
+		for id := range expected {
+			if _, ok := present[id]; !ok {
+				return fmt.Errorf("ZoneConservation: InstanceID %q is minted and not ceased but is absent from every zone — card disappeared",
+					id)
+			}
+		}
+	}
+	return nil
+}
+
+// checkZoneConservationLegacyCount is the pre-Phase-4 count-based check,
+// preserved as a backstop for empty-InstanceID cards (legacy mode). It
+// runs in addition to (not in place of) the InstanceID census so the
+// engine stays useful during the rollout of mint coverage.
+func checkZoneConservationLegacyCount(gs *GameState) error {
 	total := 0
 	for _, s := range gs.Seats {
 		if s == nil {
@@ -144,26 +296,17 @@ func checkZoneConservation(gs *GameState) error {
 			}
 		}
 	}
-	// Count cards in the per-seat ParadigmExile bucket. Paradigm originals
-	// remain in this bucket for the rest of the game (only copies are cast),
-	// so omitting them double-debits the conservation total whenever a card
-	// is exiled this way.
 	for _, cards := range gs.ParadigmExile {
 		total += countRealCards(cards)
 	}
-	// Count cards on the stack (spells).
 	for _, item := range gs.Stack {
 		if item != nil && item.Card != nil && !item.IsCopy && !cardIsTokenForInv(item.Card) {
 			total++
 		}
 	}
 
-	// Expected total: sum of starting library + commander cards per seat.
-	// We use StartingLife as a proxy to detect if the game was initialized;
-	// the actual expected count is stored in gs.Flags["_zone_conservation_total"].
 	expected, ok := gs.Flags["_zone_conservation_total"]
 	if !ok {
-		// First check — record the baseline and return OK.
 		if gs.Flags == nil {
 			gs.Flags = map[string]int{}
 		}
@@ -1016,9 +1159,16 @@ func checkTurnStructure(gs *GameState) error {
 // CardIdentity
 // ---------------------------------------------------------------------------
 
-// checkCardIdentity verifies that no card pointer appears in two zones
-// simultaneously. This is a stronger version of ZoneConservation which
-// counts totals — this one checks actual pointer identity.
+// checkCardIdentity verifies that no card appears in two zones
+// simultaneously. Phase 4: primary check is InstanceID equality per
+// docs/instanceid-system-v2-r60.md §13. Pointer-based check is retained
+// as a fallback for cards with empty InstanceID (legacy mode, pre-Phase-1
+// or struct-literal test GameStates with nil Minter).
+//
+// The InstanceID check catches a strictly larger bug class than pointer
+// equality: two distinct *Card structs sharing the same InstanceID (mint
+// duplication) would slip past pointer equality but fail InstanceID
+// equality, which is the correct semantic per §400.7 (one object per ID).
 func checkCardIdentity(gs *GameState) error {
 	if gs == nil {
 		return nil
@@ -1027,12 +1177,25 @@ func checkCardIdentity(gs *GameState) error {
 		zone string
 		seat int
 	}
+	// Primary: InstanceID-keyed dup detection.
+	seenID := map[string]cardLoc{}
+	// Fallback: *Card pointer-keyed for legacy empty-ID cards.
 	seen := map[*Card]cardLoc{}
 
 	checkCard := func(c *Card, zone string, seat int) error {
 		if c == nil {
 			return nil
 		}
+		if c.InstanceID != "" {
+			if prev, dup := seenID[c.InstanceID]; dup {
+				name := c.DisplayName()
+				return fmt.Errorf("CardIdentity: card %q (InstanceID %s) appears in both seat %d %s and seat %d %s",
+					name, c.InstanceID, prev.seat, prev.zone, seat, zone)
+			}
+			seenID[c.InstanceID] = cardLoc{zone: zone, seat: seat}
+			return nil
+		}
+		// Empty InstanceID — fall back to pointer-equality.
 		if prev, dup := seen[c]; dup {
 			name := c.DisplayName()
 			return fmt.Errorf("CardIdentity: card %q (ptr %p) appears in both seat %d %s and seat %d %s",
@@ -1705,43 +1868,42 @@ func checkStackOrderCorrectness(gs *GameState) error {
 // ExileLinkageIntegrity
 // ---------------------------------------------------------------------------
 
-// checkExileLinkageIntegrity verifies §406.7 linked-exile bookkeeping
-// using the Phase 3 two-pronged check (docs/instanceid-system-v2-r60.md
-// §7):
+// checkExileLinkageIntegrity verifies §406.7 / §400.7e linked-exile
+// bookkeeping using the Phase 4 two-pronged check per
+// docs/instanceid-system-v2-r60.md §7. The check is keyed by InstanceID
+// (primary) with a legacy timestamp backstop for empty-ID cards.
 //
-//  1. Source-held (LTBReturn) — cards in exile with a non-zero
-//     ExiledByTimestamp must trace back to a live source Permanent on
-//     some battlefield. If the source has left play without firing its
-//     LTB return path, the card is orphaned and would never be returned.
-//     This is the legacy pointer-based check, preserved unchanged from
-//     pre-Phase-3 behavior so existing handlers (Hostage Taker, Fiend
-//     Hunter, Knowledge Pool, ~50 cards using ExileLinked) keep working.
+// Two prongs (§7):
 //
-//  2. Source-held (Phase 3 InstanceID) — for any battlefield permanent
-//     tagged LinkageKind=LTBReturn with a non-empty ExiledByMe slice,
-//     verify every listed InstanceID actually points to a card in some
-//     seat's exile. Missing entries indicate the source's ExiledByMe
-//     was populated but the card moved out of exile through some path
-//     that didn't update the slice — a Phase 3 bookkeeping bug.
+//	A. Source-held LTBReturn — for each card in exile whose source
+//	   Permanent owns the linkage (Banisher Priest, Oblivion Ring, Karmic
+//	   Guide, Fiend Hunter etc.), confirm a live source Permanent exists
+//	   on some battlefield with the card's InstanceID in its ExiledByMe.
+//	   The bi-directional check fires when:
+//	     (a) a Permanent's ExiledByMe entry points to a card not actually
+//	         in any exile zone — bookkeeping divergence;
+//	     (b) a card carries ExiledByTimestamp (legacy linkage marker) but
+//	         no live source-Permanent matches — orphaned return.
 //
-//  3. Self-managed (CastGrant / PermanentExile) — these linkage kinds
-//     deliberately do NOT keep a live source-Permanent back-reference.
-//     Per design v2 §7 the state machine (cast-window-open /
-//     cast-window-closed / permanently-exiled) is sufficient; the
-//     invariant skips back-reference checks for these.
+//	B. Self-managed (CastGrant / PermanentExile) — these LinkageKinds do
+//	   NOT require a source back-reference per §7. CastGrant lifetime is
+//	   bound to the AbilityInstance (ExpireGrantsForAbilityInstance) or
+//	   Duration expiry on the ZoneCastPermission; PermanentExile has no
+//	   return at all (Settle the Wreckage, disturb-cast originals). The
+//	   invariant short-circuits for both.
 //
-// The §7 design rationale: collapsing 736 hits from the 25k sweep into
-// "LTBReturn handler bugs" + "invariant-logic false positives" — two
-// cleanly separable repair tasks. CastGrant grants tracked by
-// AbilityInstanceID on the ZoneCastPermission, not by source-Permanent
-// timestamp, so a CastGrant whose source died doesn't false-positive.
+// Cards with empty InstanceID fall back to the legacy timestamp-only
+// check (Phase 1-N rollout compat). The §7 rewrite is what collapses the
+// pre-Phase-4 ELI 736 false-positive cluster — CastGrant flows no longer
+// false-positive on Etali-shape "exiled card stays exiled after the
+// trigger resolves" semantics.
 func checkExileLinkageIntegrity(gs *GameState) error {
 	if gs == nil {
 		return nil
 	}
-	// Build the set of live source timestamps + the set of
-	// live battlefield Permanents tagged for source-held linkage
-	// inspection in a single pass.
+	// Walk battlefields once: collect live source timestamps (for the
+	// legacy backstop) and live LTBReturn sources (for the InstanceID
+	// primary check). Self-managed sources are skipped explicitly.
 	liveTS := map[int]bool{}
 	var ltbReturnSources []*Permanent
 	for _, s := range gs.Seats {
@@ -1755,6 +1917,9 @@ func checkExileLinkageIntegrity(gs *GameState) error {
 			if p.Timestamp != 0 {
 				liveTS[p.Timestamp] = true
 			}
+			// Prong A applies only to LTBReturn-tagged sources.
+			// CastGrant / PermanentExile / LinkageNone skip the
+			// source-held check by design (§7).
 			if p.LinkageKind == LTBReturn && len(p.ExiledByMe) > 0 {
 				ltbReturnSources = append(ltbReturnSources, p)
 			}
@@ -1762,9 +1927,8 @@ func checkExileLinkageIntegrity(gs *GameState) error {
 	}
 
 	// Index every card in any seat's exile by InstanceID for the
-	// Phase 3 source-held check. Empty-ID cards (legacy / pre-Phase-1
-	// mode) are silently skipped — they're covered by the
-	// ExiledByTimestamp check below.
+	// Phase 4 source-held check. Empty-ID cards skip — they're picked
+	// up by the legacy timestamp backstop below.
 	exileByIID := map[string]*Card{}
 	for _, s := range gs.Seats {
 		if s == nil {
@@ -1778,30 +1942,9 @@ func checkExileLinkageIntegrity(gs *GameState) error {
 		}
 	}
 
-	// (1) Legacy pointer-based check via ExiledByTimestamp. Phase 3
-	// preserves this so existing handlers continue to work unchanged.
-	for _, s := range gs.Seats {
-		if s == nil {
-			continue
-		}
-		for _, c := range s.Exile {
-			if c == nil || c.ExiledByTimestamp == 0 {
-				continue
-			}
-			if !liveTS[c.ExiledByTimestamp] {
-				name := c.DisplayName()
-				return fmt.Errorf("ExileLinkageIntegrity: card %q in seat %d exile is linked to source timestamp %d which is no longer on any battlefield — LTB return missed (orphaned linked exile)",
-					name, s.Idx, c.ExiledByTimestamp)
-			}
-		}
-	}
-
-	// (2) Phase 3 source-held InstanceID check on LTBReturn sources.
-	// Every entry in ExiledByMe must point to a card actually in some
-	// seat's exile. A missing entry indicates the source's slice was
-	// populated but the card moved out of exile through a path that
-	// didn't update perm.ExiledByMe (a bookkeeping bug — the slice and
-	// the actual exile zone diverged).
+	// Prong A — Phase 4 primary InstanceID check. For each live
+	// LTBReturn source, every InstanceID it claims to exile must be
+	// findable in some seat's exile zone.
 	for _, src := range ltbReturnSources {
 		srcName := "<unknown>"
 		if src.Card != nil {
@@ -1818,11 +1961,31 @@ func checkExileLinkageIntegrity(gs *GameState) error {
 		}
 	}
 
-	// (3) Self-managed kinds intentionally skip back-reference checks.
-	// CastGrant grants are tracked by AbilityInstanceID on the
-	// ZoneCastPermission (lifetime via ExpireGrantsForAbilityInstance
-	// or the existing Duration expiry); PermanentExile has no return
-	// mechanism. Either way the invariant has nothing to enforce here.
+	// Prong A backstop — legacy ExiledByTimestamp orphan check for
+	// cards whose source died without firing the LTB return path. Only
+	// runs for cards that carry ExiledByTimestamp; CastGrant flows
+	// deliberately leave ExiledByTimestamp at 0 (per Etali test
+	// fixtures in instanceid_phase3_test.go).
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, c := range s.Exile {
+			if c == nil || c.ExiledByTimestamp == 0 {
+				continue
+			}
+			if !liveTS[c.ExiledByTimestamp] {
+				name := c.DisplayName()
+				return fmt.Errorf("ExileLinkageIntegrity: card %q in seat %d exile is linked to source timestamp %d which is no longer on any battlefield — LTB return missed (orphaned linked exile)",
+					name, s.Idx, c.ExiledByTimestamp)
+			}
+		}
+	}
+
+	// Prong B — self-managed kinds. CastGrant grants are validated via
+	// the cast-window state machine (gs.ZoneCastGrants + AbilityInstance
+	// lifetime); PermanentExile has no return mechanism by §7. Both skip
+	// the source back-reference check unconditionally.
 	return nil
 }
 

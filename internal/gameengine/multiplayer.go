@@ -413,6 +413,13 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 				continue
 			}
 			if p.Controller == seatIdx || p.Owner == seatIdx {
+				// Phase 4 census: §800.4a says objects owned by the
+				// leaving player cease to exist. Mark this permanent's
+				// InstanceID ceased so checkZoneConservation drops it
+				// from the expected (Minted - Ceased) set.
+				if p.Card != nil && p.Owner == seatIdx {
+					MarkInstanceIDCeased(gs, p.Card.InstanceID)
+				}
 				// Unregister any §614 / §613 hooks tied to this permanent.
 				gs.UnregisterReplacementsForPermanent(p)
 				gs.UnregisterContinuousEffectsForPermanent(p)
@@ -457,6 +464,11 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 				// Count real cards on the stack that are leaving.
 				if item.Card != nil && !cardIsTokenForElim(item.Card) {
 					realCardsLeaving++
+				}
+				// Phase 4 census: purged stack items belong to the
+				// leaving seat and cease.
+				if item.Card != nil && item.Card.Owner == seatIdx {
+					MarkInstanceIDCeased(gs, item.Card.InstanceID)
 				}
 				purged++
 				continue
@@ -534,6 +546,38 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 			seat.Flags = map[string]int{}
 		}
 		seat.Flags["cards_left_game"] = realCardsLeaving
+	}
+
+	// Phase 4 census: §800.4a — every card owned by the leaving seat
+	// ceases to exist. Walk all private zones (hand, library, graveyard,
+	// exile, command zone) and mark each owned card's InstanceID ceased.
+	// The card pointers stay in the slices for forensic clarity (we
+	// don't nil them out); the cessation marking is what drops them
+	// from the (Minted - Ceased) census expectation.
+	for _, c := range seat.Library {
+		if c != nil && c.Owner == seatIdx {
+			MarkInstanceIDCeased(gs, c.InstanceID)
+		}
+	}
+	for _, c := range seat.Hand {
+		if c != nil && c.Owner == seatIdx {
+			MarkInstanceIDCeased(gs, c.InstanceID)
+		}
+	}
+	for _, c := range seat.Graveyard {
+		if c != nil && c.Owner == seatIdx {
+			MarkInstanceIDCeased(gs, c.InstanceID)
+		}
+	}
+	for _, c := range seat.Exile {
+		if c != nil && c.Owner == seatIdx {
+			MarkInstanceIDCeased(gs, c.InstanceID)
+		}
+	}
+	for _, c := range seat.CommandZone {
+		if c != nil && c.Owner == seatIdx {
+			MarkInstanceIDCeased(gs, c.InstanceID)
+		}
 	}
 
 	// Step 3: drop §613 continuous effects controlled by this seat
