@@ -48,12 +48,40 @@ type AbilityInstance struct {
 	DelayedExpiresAt int
 }
 
-// DelayedCondition is a Phase 8 stub — the full schema lives in the
-// design v2 §11. Phase 2 only needs the type to exist so AbilityInstance
-// compiles; the pool walker is not wired in this phase.
+// DelayedCondition describes when an AbilityInstance sitting in
+// gs.DelayedAbilityInstances becomes eligible to fire, per CR §603.7c
+// and docs/instanceid-system-v2-r60.md §11.
+//
+// Phase 8 schema:
+//
+//   - EventType   — canonical event slug ("begin_upkeep", "begin_end_step",
+//     "creature_dies", "spell_cast", "turn_end", "untap"). The pool walker
+//     dispatches on this first; entries with EventType=="" never match.
+//   - EventFilter — optional predicate evaluated against the firing event's
+//     payload. Returning true allows the trigger to fire. Nil = no extra
+//     filter beyond EventType.
+//   - OneShot     — true (the common case) means the entry is removed from
+//     the pool after the first firing. False = stays in pool until
+//     DelayedExpiresAt or removed by other cleanup.
+//   - Recurring   — non-nil for repeating delayed triggers (e.g. Suspend's
+//     "at the beginning of upkeep, remove a time counter"). The walker uses
+//     this to decide whether to keep the entry in the pool after firing,
+//     and to advance the schedule for any next-only matchers.
 type DelayedCondition struct {
-	EventType string
-	OneShot   bool
+	EventType   string
+	EventFilter func(ev *Event) bool
+	OneShot     bool
+	Recurring   *Recurrence
+}
+
+// Recurrence describes how often a recurring delayed trigger fires. Per
+// design v2 §11 the typical patterns are "every upkeep until a counter
+// goes to zero" (Suspend) and "until your next upkeep" (madness-shape
+// pending costs). Until is the predicate that decides when the recurrence
+// ends — when Until returns true after a firing, the entry is removed
+// from the pool.
+type Recurrence struct {
+	Until func(gs *GameState, ab *AbilityInstance) bool
 }
 
 // NewAbilityInstance constructs an AbilityInstance with a freshly minted

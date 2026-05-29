@@ -157,6 +157,10 @@ func DestroyPermanent(gs *GameState, perm *Permanent, source *Permanent) bool {
 		FireZoneChangeTriggers(gs, perm, perm.Card, "battlefield", destZone)
 	}
 
+	// Phase 8: dissolve any Mutate / Meld merge — each constituent card
+	// routes individually to destZone per CR §702.139d / §712.3.
+	UnmergeOnLeavePlay(gs, perm, destZone)
+
 	return true
 }
 
@@ -217,6 +221,10 @@ func ExilePermanent(gs *GameState, perm *Permanent, source *Permanent) bool {
 	} else {
 		FireZoneChangeTriggers(gs, perm, perm.Card, "battlefield", destZone)
 	}
+
+	// Phase 8: dissolve any Mutate / Meld merge — each constituent card
+	// routes individually to destZone per CR §702.139d / §712.3.
+	UnmergeOnLeavePlay(gs, perm, destZone)
 
 	return true
 }
@@ -350,6 +358,10 @@ func sacrificePermanentImpl(gs *GameState, perm *Permanent, source *Permanent, r
 		FireCardTrigger(gs, "permanent_sacrificed", sacCtx)
 	}
 
+	// Phase 8: dissolve any Mutate / Meld merge — each constituent card
+	// routes individually to destZone per CR §702.139d / §712.3.
+	UnmergeOnLeavePlay(gs, perm, destZone)
+
 	return true
 }
 
@@ -402,6 +414,11 @@ func BouncePermanent(gs *GameState, perm *Permanent, source *Permanent, dest str
 	} else {
 		FireZoneChangeTriggers(gs, perm, perm.Card, "battlefield", dest)
 	}
+
+	// Phase 8: dissolve any Mutate / Meld merge — each constituent card
+	// routes individually to the bounce destination per CR §702.139d /
+	// §712.3.
+	UnmergeOnLeavePlay(gs, perm, dest)
 
 	return true
 }

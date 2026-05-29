@@ -250,6 +250,19 @@ type GameState struct {
 	// FireDelayedTriggers (turn.go). Mirrors Python game.delayed_triggers.
 	DelayedTriggers []*DelayedTrigger
 
+	// DelayedAbilityInstances is the InstanceID Phase 8 delayed-trigger
+	// pool per docs/instanceid-system-v2-r60.md §11. Parallel to
+	// DelayedTriggers (callback-based legacy surface): this pool holds
+	// *AbilityInstance entries with DelayedUntil populated, preserving
+	// SourceInstanceID lineage across the trigger's lifetime. The pool
+	// walker is FireDelayedAbilityPool — called from event-emission
+	// sites and phase boundaries — which matches each entry's
+	// DelayedCondition against the current event and moves matching
+	// abilities pool→stack. Source-independence per §112.7a: an
+	// AbilityInstance in this pool keeps firing even after its source
+	// permanent leaves play.
+	DelayedAbilityInstances []*AbilityInstance
+
 	// PendingExtraCombats is a FIFO queue of extra combat phases waiting
 	// to be played out, in the order they were granted. Aggravated
 	// Assault / Najeela / Seize the Day push vanilla entries (no
@@ -1526,6 +1539,60 @@ type Permanent struct {
 	// surface — the actual ReplacementEffect entries live on
 	// gs.Replacements; this slice mirrors them for static introspection.
 	ProvidesReplacements []ReplacementSpec
+
+	// -----------------------------------------------------------------
+	// InstanceID Phase 8 (docs/instanceid-system-v2-r60.md §8).
+	// Unified Mutate + Meld merge shape. Empty / MergeNone when this
+	// permanent is not a merged object.
+	// -----------------------------------------------------------------
+
+	// MergedCards is the ordered list of InstanceIDs of every card
+	// currently merged into this permanent. For Mutate (§702.139) the
+	// order is top-of-stack-first; for Meld (§712) it is exactly two
+	// IDs. Unmerge on leave-play walks this slice to route each card
+	// individually to its destination zone with its InstanceID preserved.
+	MergedCards []string
+
+	// MergeKind tags how this permanent was assembled. MergeNone for
+	// ordinary permanents.
+	MergeKind MergeKind
+
+	// TopCard tracks the top of a mutate stack (§702.139a) — the
+	// permanent's name, characteristics, and type line are taken from
+	// this card while abilities accumulate from every MergedCards entry.
+	// Unused for Meld (a melded result has its own combined card).
+	TopCard *Card
+
+	// MergedCardPtrs is the impl-side InstanceID → *Card resolution
+	// table for cards currently merged into this permanent. Mutate +
+	// Meld absorb their constituents from the battlefield without
+	// routing them to any zone — without this map the unmerge walker
+	// has no way to recover the *Card pointers for the non-surviving
+	// stack members on leave-play. Keys are InstanceIDs; values are
+	// the absorbed *Card. Populated by RecordMutateMerge /
+	// RecordMeldMerge; drained by UnmergeOnLeavePlay.
+	MergedCardPtrs map[string]*Card
+}
+
+// MergeKind enumerates the merged-card shapes per §8 of the InstanceID
+// design v2.
+type MergeKind int
+
+const (
+	MergeNone MergeKind = iota
+	MergeMutate
+	MergeMeld
+)
+
+// String renders MergeKind for logs / invariant errors.
+func (k MergeKind) String() string {
+	switch k {
+	case MergeMutate:
+		return "Mutate"
+	case MergeMeld:
+		return "Meld"
+	}
+	return "None"
 }
 
 // LinkageKind enumerates the three exile-linkage shapes per

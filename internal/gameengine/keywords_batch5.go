@@ -326,6 +326,18 @@ func Meld(gs *GameState, perm1, perm2 *Permanent) *Permanent {
 			melded.Flags = map[string]int{}
 		}
 		melded.Flags["melded"] = 1
+		// Phase 8: stamp MergedCards / MergeKind for InstanceID lineage
+		// so the leave-play unmerge walker can route both components
+		// individually to exile per CR §712.3.
+		id1 := ""
+		id2 := ""
+		if perm1.Card != nil {
+			id1 = perm1.Card.InstanceID
+		}
+		if perm2.Card != nil {
+			id2 = perm2.Card.InstanceID
+		}
+		RecordMeldMergeWithCards(gs, melded, id1, id2, perm1.Card, perm2.Card)
 	}
 
 	gs.LogEvent(Event{
