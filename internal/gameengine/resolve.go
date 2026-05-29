@@ -2628,6 +2628,11 @@ func resolveCopySpell(gs *GameState, src *Permanent, e *gameast.CopySpell) {
 	// "cast" — it was "created" directly on the stack (CR §707.10).
 	copyCard := target.Card.DeepCopy()
 	copyCard.IsCopy = true // CR §704.5e — ceases to exist outside stack/battlefield
+	// DeepCopy carries forward the source's InstanceID; clear it so the
+	// fresh CP mint stamps a unique copy ID + lineage to the source.
+	copyCard.InstanceID = ""
+	copyCard.EnablerHistory = nil
+	MintCopyInstanceID(gs, copyCard, target.Card.InstanceID, currentMintEnablerID(gs))
 	copyItem := &StackItem{
 		Controller: controller,
 		Card:       copyCard,

@@ -881,6 +881,7 @@ func ApplyGravestorm(gs *GameState, item *StackItem) {
 		if item.Card.AST != nil {
 			copyCard.AST = item.Card.AST
 		}
+		MintCopyInstanceID(gs, copyCard, item.Card.InstanceID, currentMintEnablerID(gs))
 		copyItem := &StackItem{
 			Controller: seatIdx,
 			Card:       copyCard,

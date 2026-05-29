@@ -100,6 +100,16 @@ type GameState struct {
 	// See docs/instanceid-system-v2-r60.md §3.
 	IIDMinter *instanceid.Minter
 
+	// IIDEnablerStack is the resolve-time stack of AbilityInstance
+	// InstanceIDs for the currently-resolving spell/ability frames. Push
+	// at ResolveStackTop / activation-resolve entry, pop on exit. Token
+	// and copy mints during resolution call currentMintEnablerID(gs) to
+	// stamp the top frame's ID as their EnablerInstanceID per
+	// docs/instanceid-system-v2-r60.md §4 mint-path lineage requirement.
+	// Empty when nothing is resolving (deck-load / setup-time mints get
+	// empty enabler — that's the OG path, which doesn't require one).
+	IIDEnablerStack []string
+
 	// Flags is an open-ended map for one-off game-wide flags ("extra_turn
 	// pending", "replacement effect seen", "eldrazi spawned this turn").
 	// Resolvers write here when there isn't a dedicated field yet.
@@ -1558,6 +1568,13 @@ type StackItem struct {
 	// resolution can reference it (Walking Ballista ETB, Fireball damage,
 	// etc.). Zero when the spell has no X in its cost.
 	ChosenX int
+
+	// Ability is the AbilityInstance attached to this stack item when
+	// Kind is "triggered" or "activated" — nil for spells. Carries the
+	// AB-provenance InstanceID, source/enabler lineage, and TriggerMetadata
+	// captured at push time. See docs/instanceid-system-v2-r60.md §4.3.
+	// Empty (nil) is treated as legacy mode (Phase 1 backwards-compat).
+	Ability *AbilityInstance
 
 	// CleaveActive is true when the spell was cast for its cleave cost
 	// (CR §702.158). Effect-resolution paths that need to distinguish

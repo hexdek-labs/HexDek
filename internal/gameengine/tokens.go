@@ -90,6 +90,7 @@ func createSimpleArtifactToken(gs *GameState, seatIdx int,
 		Types:    []string{"token", "artifact", subtypeTag},
 		TypeLine: "Token Artifact — " + capitalize(subtypeTag),
 	}
+	MintTokenInstanceID(gs, token, "", currentMintEnablerID(gs))
 	perm := &Permanent{
 		Card:          token,
 		Controller:    seatIdx,
@@ -148,6 +149,7 @@ func CreateCreatureToken(gs *GameState, seatIdx int, name string, types []string
 		BasePower:     power,
 		BaseToughness: toughness,
 	}
+	MintTokenInstanceID(gs, token, "", currentMintEnablerID(gs))
 	perm := &Permanent{
 		Card:          token,
 		Controller:    seatIdx,

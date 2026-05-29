@@ -165,6 +165,7 @@ func ApplyStormCopy(gs *GameState, original *StackItem, count int) int {
 			ManaCostString: "",
 			IsCopy:         true,
 		}
+		MintCopyInstanceID(gs, copyCard, original.Card.InstanceID, currentMintEnablerID(gs))
 		copyItem := &StackItem{
 			Controller: controller,
 			Card:       copyCard,

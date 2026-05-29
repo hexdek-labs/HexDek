@@ -212,6 +212,7 @@ func pushDemonstrateCopy(gs *GameState, spell *StackItem, seat int, role string)
 		TypeLine:      spell.Card.TypeLine,
 		IsCopy:        true,
 	}
+	MintCopyInstanceID(gs, copyCard, spell.Card.InstanceID, currentMintEnablerID(gs))
 
 	copyItem := &StackItem{
 		Controller: seat,

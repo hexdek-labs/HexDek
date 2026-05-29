@@ -927,6 +927,9 @@ func ResolveParadigmCopies(gs *GameState, active int) {
 
 		copyCard := card.DeepCopy()
 		copyCard.IsCopy = true
+		copyCard.InstanceID = ""
+		copyCard.EnablerHistory = nil
+		MintCopyInstanceID(gs, copyCard, card.InstanceID, currentMintEnablerID(gs))
 		eff := collectSpellEffect(copyCard)
 		item := &StackItem{
 			Controller: active,
