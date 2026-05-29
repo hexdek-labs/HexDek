@@ -156,3 +156,68 @@ func TestSBA_704_5g_ProtectionAfterDamageMarkedStillDestroys(t *testing.T) {
 		t.Fatalf("expected bear in graveyard, got %d", got)
 	}
 }
+
+// -----------------------------------------------------------------------------
+// Counter DB Phase 3 — §704.5q pair-removal MUST run before §704.5f / 5g
+// death-from-toughness within a single SBA pass.
+//
+// A creature with N +1/+1 + N -1/-1 cancels cleanly per §704.5q; if a
+// dispatch ordering bug ran §704.5f first against the raw stat
+// (base toughness minus N from the -1/-1 stack), a small-toughness
+// creature would die before the cancellation got its chance.
+//
+// Setup: 1/1 base + 3 +1/+1 + 3 -1/-1 — should survive at 1/1 after the
+// pair-removal SBA, with both stacks fully drained.
+// -----------------------------------------------------------------------------
+
+func TestSBA_704_5q_BeforeToughnessSBA_CreatureSurvives(t *testing.T) {
+	gs := newFixtureGame(t)
+	c := addBattlefield(gs, 0, "Llanowar Elves", 1, 1, "creature")
+	c.AddCounter("+1/+1", 3)
+	c.AddCounter("-1/-1", 3)
+
+	StateBasedActions(gs)
+
+	if len(gs.Seats[0].Battlefield) != 1 {
+		t.Fatalf("creature should survive when 3 +1/+1 + 3 -1/-1 cancel; battlefield has %d",
+			len(gs.Seats[0].Battlefield))
+	}
+	if _, has := c.Counters["+1/+1"]; has {
+		t.Errorf("+1/+1 must drain to zero (key removed), got %+v", c.Counters)
+	}
+	if _, has := c.Counters["-1/-1"]; has {
+		t.Errorf("-1/-1 must drain to zero (key removed), got %+v", c.Counters)
+	}
+	if countEvents(gs, "sba_704_5q") == 0 {
+		t.Fatal("missing sba_704_5q event — pair-removal must log every fire for CR audit")
+	}
+	if countEvents(gs, "sba_704_5g") > 0 {
+		t.Fatal("creature must NOT die at §704.5g; counters cancel before death-from-toughness")
+	}
+}
+
+// Counter DB Phase 3 — base-0 toughness still dies after counters cancel.
+//
+// A creature with base 0/0 + 5 +1/+1 + 5 -1/-1 cancels to 0/0; §704.5f
+// then sends it to the graveyard the same pass. Pins that the pair-
+// removal hoist hasn't broken the §704.5f path for genuinely toughness-0
+// creatures — the death must still fire once the +1/+1 buff is gone.
+func TestSBA_704_5q_BaseZeroToughnessDiesAfterCancel(t *testing.T) {
+	gs := newFixtureGame(t)
+	c := addBattlefield(gs, 0, "Zero Toughness Token", 0, 0, "creature")
+	c.AddCounter("+1/+1", 5)
+	c.AddCounter("-1/-1", 5)
+
+	StateBasedActions(gs)
+
+	if len(gs.Seats[0].Battlefield) != 0 {
+		t.Fatalf("base-0 toughness creature must die after counters cancel; battlefield has %d",
+			len(gs.Seats[0].Battlefield))
+	}
+	if countEvents(gs, "sba_704_5q") == 0 {
+		t.Fatal("missing sba_704_5q event — pair-removal must fire before §704.5f")
+	}
+	if countEvents(gs, "sba_704_5f") == 0 {
+		t.Fatal("missing sba_704_5f event — toughness-0 death must still fire post-cancellation")
+	}
+}
