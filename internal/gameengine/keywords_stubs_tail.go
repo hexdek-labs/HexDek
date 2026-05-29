@@ -237,6 +237,7 @@ func ApplyTiered(gs *GameState, item *StackItem, modes []int, tiers int) int {
 			AST:           item.Card.AST,
 			IsCopy:        true,
 		}
+		MintCopyInstanceID(gs, copyCard, item.Card.InstanceID, currentMintEnablerID(gs))
 		copyItem := &StackItem{
 			Controller: seatIdx, // §707.10
 			Card:       copyCard,

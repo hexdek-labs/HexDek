@@ -202,6 +202,19 @@ func PushTriggeredAbility(gs *GameState, src *Permanent, effect gameast.Effect) 
 		// at the source card so logs show the right name.
 		item.Card = src.Card
 	}
+	// Mint an AB AbilityInstance for this triggered ability. The enabler
+	// is the InstanceID of the currently-resolving frame (the spell or
+	// ability whose resolution / event caused this trigger to fire) —
+	// captured by walking gs.IIDEnablerStack. For self-triggers (ETB on
+	// the trigger source itself), the enabler is whoever caused the ETB;
+	// for observer triggers, it's the ability that produced the observed
+	// event. Empty when no resolving frame exists (turn-edge triggers).
+	abilityID := "trig"
+	if effect != nil {
+		abilityID = "trig:" + effect.Kind()
+	}
+	item.Ability = NewAbilityInstance(gs, src, src.Controller,
+		abilityID, currentMintEnablerID(gs), nil)
 
 	// CR §603.2: "the ability automatically triggers." Log the trigger
 	// formation now — before the batch/push fork — so TriggerCompleteness
@@ -1052,6 +1065,18 @@ func ResolveStackTop(gs *GameState) {
 	}()
 	item := gs.Stack[len(gs.Stack)-1]
 	gs.Stack = gs.Stack[:len(gs.Stack)-1]
+
+	// InstanceID enabler context: child objects (token mints, copy mints)
+	// created during this resolution stamp the resolving frame's
+	// AbilityInstance ID as their EnablerInstanceID per
+	// docs/instanceid-system-v2-r60.md §4 lineage. For spell items
+	// (no Ability) push an empty string so the pop stays balanced.
+	enablerID := ""
+	if item.Ability != nil {
+		enablerID = item.Ability.InstanceID
+	}
+	pushIIDEnabler(gs, enablerID)
+	defer popIIDEnabler(gs)
 
 	// Log the resolution regardless of outcome so counterspell test fixtures
 	// can observe ordering.

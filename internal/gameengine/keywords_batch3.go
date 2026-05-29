@@ -204,6 +204,7 @@ func ApplyReplicate(gs *GameState, item *StackItem, copies int) int {
 			CMC:           item.Card.CMC,
 			AST:           item.Card.AST,
 		}
+		MintCopyInstanceID(gs, copyCard, item.Card.InstanceID, currentMintEnablerID(gs))
 		copyItem := &StackItem{
 			Controller: seatIdx, // CR §707.10 — controller is the player who put the copy on the stack.
 			Card:       copyCard,

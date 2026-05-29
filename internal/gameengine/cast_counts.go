@@ -538,6 +538,7 @@ func createTreasureToken(gs *GameState, seatIdx int) {
 		Owner: seatIdx,
 		Types: []string{"token", "artifact", "treasure"},
 	}
+	MintTokenInstanceID(gs, token, "", currentMintEnablerID(gs))
 	perm := &Permanent{
 		Card:          token,
 		Controller:    seatIdx,
@@ -706,6 +707,8 @@ func createSimpleCreatureToken(gs *GameState, seatIdx int, name string,
 		BaseToughness: toughness,
 		Types:         types,
 	}
+	_ = colors // out-of-scope: preserving original behavior; Mint stamps "C"
+	MintTokenInstanceID(gs, token, "", currentMintEnablerID(gs))
 	perm := &Permanent{
 		Card:          token,
 		Controller:    seatIdx,

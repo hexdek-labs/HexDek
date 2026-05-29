@@ -45,6 +45,7 @@ package gameengine
 //   - PushActivatedAbility(gs, seatIdx, perm, abilityIdx, effect, targets)
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
@@ -462,6 +463,13 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 				"rule":        "605.3a",
 			},
 		})
+		// Mana abilities still mint an AB AbilityInstance for lineage
+		// (any token / copy mints inside the effect resolution stamp it
+		// as their EnablerInstanceID). EnablerInstanceID stays empty —
+		// activated mana abilities have no triggering event.
+		manaAB := NewAbilityInstance(gs, perm, seatIdx,
+			fmt.Sprintf("act:%d", abilityIdx), "", nil)
+		pushIIDEnabler(gs, manaAB.InstanceID)
 		// Try per_card hook first; fall back to AST effect.
 		InvokeActivatedHook(gs, perm, abilityIdx, map[string]interface{}{
 			"controller": seatIdx,
@@ -470,6 +478,7 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		if eff != nil {
 			ResolveEffect(gs, perm, eff)
 		}
+		popIIDEnabler(gs)
 		// Exhaust: mark used after inline resolution (mana-ability path).
 		if IsExhaustAbility(perm, abilityIdx) {
 			MarkExhausted(perm, abilityIdx)
@@ -497,6 +506,12 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		Targets:    targets,
 		AbilityIdx: abilityIdx,
 	}
+	// Mint an AB AbilityInstance for this stack item. Activated abilities
+	// have no triggering event so EnablerInstanceID stays empty per the
+	// §4.3 schema. TriggerMetadata stays nil; AbilityID encodes the
+	// activated-ability index.
+	item.Ability = NewAbilityInstance(gs, perm, seatIdx,
+		fmt.Sprintf("act:%d", abilityIdx), "", nil)
 	PushStackItem(gs, item)
 
 	// CR §702.21 — Ward triggers on abilities too, not just spells.

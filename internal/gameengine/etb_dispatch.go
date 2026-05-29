@@ -42,6 +42,12 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
+	// Defensive auto-stamp: per_card token mints that haven't migrated to
+	// MintTokenInstanceID yet still arrive at the ETB dispatcher without
+	// an InstanceID. Catch them here so observer triggers + invariants
+	// see a stamped Card regardless of which mint site brought it. The
+	// helper no-ops for non-tokens and for cards already stamped.
+	EnsureTokenInstanceID(gs, perm)
 	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
 
 	// CR §708.4: face-down permanents have no abilities — skip self-triggers.
