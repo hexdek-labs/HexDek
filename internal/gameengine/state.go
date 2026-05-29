@@ -27,6 +27,7 @@ import (
 
 	"github.com/hexdek/hexdek/internal/astload"
 	"github.com/hexdek/hexdek/internal/gameast"
+	"github.com/hexdek/hexdek/internal/gameengine/counters"
 	"github.com/hexdek/hexdek/internal/gameengine/instanceid"
 )
 
@@ -1218,6 +1219,16 @@ type Permanent struct {
 	// Counters: "+1/+1" -> N, "-1/-1" -> N, "loyalty" -> N, "charge" -> N.
 	// Empty map if no counters; callers may nil-check and lazy-init.
 	Counters map[string]int
+
+	// CounterStacks is the InstanceID-aware counter representation
+	// introduced by Counter DB Phase 1 (docs/counter-db-implementation-plan-r60.md
+	// §3 + §4.1). Each stack carries the PlacedByInstanceID lineage of the
+	// ability/effect that placed the counters and a PlacedAtTick game-clock
+	// for forensic ordering. Phase 1 keeps this parallel to the existing
+	// Counters map — Phase 2+ migrates consumers off the map and onto the
+	// stack list. The §122.6 persistence invariant (counters survive Layer-4
+	// type changes) pins on this field being immutable across type-strips.
+	CounterStacks []counters.CounterStack
 
 	// AttachedTo: for Auras/Equipment, the permanent this is attached to.
 	// nil for unattached permanents.
