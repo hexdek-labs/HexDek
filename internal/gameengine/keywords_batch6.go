@@ -338,9 +338,19 @@ func ApplyMutate(gs *GameState, mutatingPerm *Permanent, targetPerm *Permanent, 
 	// target). The single surviving permanent carries Flags["mutated"]
 	// = 1 in both branches.
 	mergedPerm := mutatingPerm
+	dyingPerm := targetPerm
 	if !onTop {
 		mergedPerm = targetPerm
+		dyingPerm = mutatingPerm
 	}
+
+	// Phase 8: stamp MergedCards / MergeKind / TopCard for InstanceID
+	// lineage tracking per design v2 §8. The surviving Permanent's own
+	// card is seeded into MergedCards on first invocation; subsequent
+	// mutates onto the same Permanent inherit the dying Permanent's
+	// prior merge stack so the unmerge walker can route every
+	// constituent card individually on leave-play.
+	RecordMutateMerge(gs, mergedPerm, dyingPerm, onTop)
 	FireCardTrigger(gs, "creature_mutated", map[string]interface{}{
 		"controller_seat": seat,
 		"mutated_perm":    mergedPerm,
