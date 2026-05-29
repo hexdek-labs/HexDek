@@ -592,6 +592,21 @@ func NewGameStateSeeded(seatCount int, seed int64, corpus *astload.Corpus) *Game
 	return gs
 }
 
+// strictCensusDefault flips the InstanceID Phase 4+ ZoneConservation
+// strict-census disappearance check on/off for every newly-created
+// GameState. Set via SetStrictCensusDefault — Loki + integration
+// harnesses opt into it for sweep runs.
+var strictCensusDefault bool
+
+// SetStrictCensusDefault toggles whether NewGameState stamps
+// gs.Flags["instanceid_strict_census"] = 1 on every freshly-built
+// state. Default false; flipping to true enables the InstanceID Phase
+// 4+ "card disappeared" check per docs/instanceid-system-v2-r60.md §13.
+// Intended for Loki/CI sweep runs that want the strict view.
+func SetStrictCensusDefault(on bool) {
+	strictCensusDefault = on
+}
+
 // NewGameState builds a fresh two-seat game. Caller is expected to
 // populate libraries/hands/battlefields before calling ResolveEffect.
 func NewGameState(seatCount int, rng *rand.Rand, corpus *astload.Corpus) *GameState {
@@ -602,6 +617,10 @@ func NewGameState(seatCount int, rng *rand.Rand, corpus *astload.Corpus) *GameSt
 	for i := 0; i < seatCount; i++ {
 		seats[i] = newSeat(i)
 	}
+	flags := map[string]int{}
+	if strictCensusDefault {
+		flags["instanceid_strict_census"] = 1
+	}
 	return &GameState{
 		Seats:             seats,
 		Rng:               rng,
@@ -610,7 +629,7 @@ func NewGameState(seatCount int, rng *rand.Rand, corpus *astload.Corpus) *GameSt
 		Step:              "untap",
 		Active:            0,
 		Cards:             corpus,
-		Flags:             map[string]int{},
+		Flags:             flags,
 		EventLog:          make([]Event, 0, 64),
 		RetainEvents:      true,
 		DayNight:          DayNightNeither,
