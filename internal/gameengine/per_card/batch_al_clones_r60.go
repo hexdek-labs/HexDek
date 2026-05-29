@@ -65,7 +65,11 @@ func cloneVariantETB(gs *gameengine.GameState, perm *gameengine.Permanent, slug 
 		return
 	}
 	perm.OriginalCard = perm.Card
-	perm.Card = target.Card.DeepCopy()
+	// InstanceID Phase 5: preserve perm's InstanceID across the in-place
+	// copy so identity doesn't duplicate with target.Card. Per §706.2.
+	if cp := gameengine.BecomeCopyOfCard(gs, perm, target.Card); cp != nil {
+		perm.Card = cp
+	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":   perm.Controller,
 		"copied": target.Card.DisplayName(),
@@ -221,21 +225,18 @@ func spittingImageResolve(gs *gameengine.GameState, item *gameengine.StackItem) 
 		})
 		return
 	}
-	card := src.Card.DeepCopy()
-	hasToken := false
-	for _, ty := range card.Types {
-		if ty == "token" {
-			hasToken = true
-			break
-		}
+	// InstanceID Phase 5: token-as-copy chokepoint — clears the
+	// inherited InstanceID + mints a fresh TK ID. Without this the
+	// token would carry src.Card.InstanceID and the CardIdentity
+	// invariant would fire (same ID in two zones).
+	card := gameengine.MintTokenAsCopyOf(gs, src.Card, controller, "")
+	if card == nil {
+		return
 	}
-	if !hasToken {
-		card.Types = append([]string{"token"}, card.Types...)
-	}
-	card.Owner = controller
 	token := &gameengine.Permanent{
-		Card:          card,
-		Controller:    controller,
+		Card:                   card,
+		Controller:             controller,
+		CopiedTargetInstanceID: src.Card.InstanceID,
 		Owner:         controller,
 		SummoningSick: true,
 		Timestamp:     gs.NextTimestamp(),
@@ -283,8 +284,12 @@ func sakashimaFullCopyUpgrade(gs *gameengine.GameState, perm *gameengine.Permane
 		perm.Flags = map[string]int{}
 	}
 	// Full DeepCopy preserves abilities/types/subtypes, not just P/T.
+	// InstanceID Phase 5: BecomeCopyOfCard preserves perm.Card.InstanceID
+	// across the copy + stamps CopiedTargetInstanceID + CopiableSnapshot.
 	perm.OriginalCard = perm.Card
-	perm.Card = target.Card.DeepCopy()
+	if cp := gameengine.BecomeCopyOfCard(gs, perm, target.Card); cp != nil {
+		perm.Card = cp
+	}
 	// Legend-rule suppression: "The 'legend rule' doesn't apply to
 	// permanents you control." Sakashima-controller can have two of any
 	// legendary. We stamp the flag; the SBA 704.5j pass consults it via

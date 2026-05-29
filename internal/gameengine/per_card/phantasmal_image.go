@@ -123,7 +123,14 @@ func phantasmalImageETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	// would merge "Illusion" into the copied types, but the Flags
 	// sentinel suffices for the trigger handler.
 	perm.OriginalCard = perm.Card
-	perm.Card = target.Card.DeepCopy()
+	// InstanceID Phase 5: preserve perm.Card.InstanceID across the copy
+	// so identity doesn't duplicate with target.Card. Per §706.2 the
+	// copying permanent retains its own identity; only printed
+	// characteristics flip.
+	perm.Card = gameengine.BecomeCopyOfCard(gs, perm, target.Card)
+	if perm.Card == nil {
+		perm.Card = perm.OriginalCard
+	}
 	// Copy +1/+1 counters that are "part of the copy" per §706.2 —
 	// actually, counters on the COPY SOURCE are NOT copied (they're
 	// per-permanent state). We leave perm.Counters empty; this matches

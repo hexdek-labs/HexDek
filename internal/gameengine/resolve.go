@@ -1888,11 +1888,29 @@ func resolveCreateToken(gs *GameState, src *Permanent, e *gameast.CreateToken) {
 		types = append([]string{"creature"}, types...)
 	}
 	// §614: would_create_token replacement chain.
+	baseCount := count
 	if modified, cancelled := FireCreateTokenEvent(gs, controller, count, src); cancelled {
 		count = 0
 	} else if modified > 0 {
 		count = modified
 	}
+	enablerID := currentMintEnablerID(gs)
+	mintEvent := TokenMintEvent{
+		SourceInstanceID: enablerID,
+		SourceName:       sourceName(src),
+		TargetSeat:       controller,
+		BaseCharacteristics: CopiableCharacteristics{
+			Name:      tokenName(types, pow, tough),
+			Types:     append([]string(nil), types...),
+			Power:     pow,
+			Toughness: tough,
+		},
+		BaseCount:      baseCount,
+		FinalCount:     count,
+		AtGameTick:     gs.EffectTimestamp,
+		EffectsApplied: gs.PendingTokenMintChain,
+	}
+	gs.PendingTokenMintChain = nil
 	for i := 0; i < count; i++ {
 		card := &Card{
 			Name:          tokenName(types, pow, tough),
@@ -1900,6 +1918,14 @@ func resolveCreateToken(gs *GameState, src *Permanent, e *gameast.CreateToken) {
 			BasePower:     pow,
 			BaseToughness: tough,
 			Types:         types,
+		}
+		// InstanceID Phase 5: every minted token gets a fresh TK ID with
+		// EnablerInstanceID = the resolving ability's AB instance. Same
+		// chain → all 8 Sai+doubler tokens share enabler; each has its
+		// own unique TK seq5.
+		MintTokenInstanceID(gs, card, "", enablerID)
+		if card.InstanceID != "" {
+			mintEvent.MintedTokenIDs = append(mintEvent.MintedTokenIDs, card.InstanceID)
 		}
 		isCreature := false
 		for _, t := range types {
@@ -1920,6 +1946,9 @@ func resolveCreateToken(gs *GameState, src *Permanent, e *gameast.CreateToken) {
 		gs.Seats[controller].Battlefield = append(gs.Seats[controller].Battlefield, p)
 		RegisterReplacementsForPermanent(gs, p)
 		FirePermanentETBTriggers(gs, p)
+	}
+	if count > 0 || len(mintEvent.MintedTokenIDs) > 0 {
+		RecordTokenMintEvent(gs, mintEvent)
 	}
 	// Fire token_created trigger for cards like Chatterfang that care about
 	// token creation events. Re-entrancy guard prevents infinite loops when
@@ -1992,24 +2021,43 @@ func resolveCreateTokenCopy(gs *GameState, src *Permanent, e *gameast.CreateToke
 		})
 		return
 	}
+	baseCount := count
 	if modified, cancelled := FireCreateTokenEvent(gs, controller, count, src); cancelled {
 		count = 0
 	} else if modified > 0 {
 		count = modified
 	}
+	enablerID := currentMintEnablerID(gs)
+	mintEvent := TokenMintEvent{
+		SourceInstanceID: enablerID,
+		SourceName:       sourceName(src),
+		TargetSeat:       controller,
+		BaseCount:        baseCount,
+		FinalCount:       count,
+		AtGameTick:       gs.EffectTimestamp,
+		EffectsApplied:   gs.PendingTokenMintChain,
+	}
+	gs.PendingTokenMintChain = nil
+	if copySource.Card != nil {
+		mintEvent.BaseCharacteristics = CopiableCharacteristics{
+			Name:             copySource.Card.DisplayName(),
+			Types:            append([]string(nil), copySource.Card.Types...),
+			Colors:           append([]string(nil), copySource.Card.Colors...),
+			SourceInstanceID: copySource.Card.InstanceID,
+		}
+	}
 	for i := 0; i < count; i++ {
-		card := copySource.Card.DeepCopy()
-		hasToken := false
-		for _, t := range card.Types {
-			if t == "token" {
-				hasToken = true
-				break
-			}
+		// InstanceID Phase 5: MintTokenAsCopyOf DeepCopys + clears the
+		// inherited InstanceID + mints a fresh TK ID. Closes the same-
+		// InstanceID duplication leak that drove fabrication detection
+		// in PR #755's gated 25k strict-census run.
+		card := MintTokenAsCopyOf(gs, copySource.Card, controller, enablerID)
+		if card == nil {
+			continue
 		}
-		if !hasToken {
-			card.Types = append([]string{"token"}, card.Types...)
+		if card.InstanceID != "" {
+			mintEvent.MintedTokenIDs = append(mintEvent.MintedTokenIDs, card.InstanceID)
 		}
-		card.Owner = controller
 		p := &Permanent{
 			Card:          card,
 			Controller:    controller,
@@ -2018,10 +2066,16 @@ func resolveCreateTokenCopy(gs *GameState, src *Permanent, e *gameast.CreateToke
 			Timestamp:     gs.NextTimestamp(),
 			Counters:      map[string]int{},
 			Flags:         map[string]int{},
+			// Phase 5: stamp the source the token is a copy of so audits
+			// + invariant checks can walk the lineage.
+			CopiedTargetInstanceID: mintEvent.BaseCharacteristics.SourceInstanceID,
 		}
 		gs.Seats[controller].Battlefield = append(gs.Seats[controller].Battlefield, p)
 		RegisterReplacementsForPermanent(gs, p)
 		FirePermanentETBTriggers(gs, p)
+	}
+	if count > 0 || len(mintEvent.MintedTokenIDs) > 0 {
+		RecordTokenMintEvent(gs, mintEvent)
 	}
 	// Fire token_created trigger for token copies too (same re-entrancy guard).
 	if count > 0 && (gs.Flags == nil || gs.Flags["in_token_trigger"] == 0) {

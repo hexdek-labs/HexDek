@@ -55,18 +55,11 @@ func gruffTripletsETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	}
 	tokens := 0
 	for i := 0; i < 2; i++ {
-		card := perm.Card.DeepCopy()
-		hasToken := false
-		for _, t := range card.Types {
-			if strings.EqualFold(t, "token") {
-				hasToken = true
-				break
-			}
+		// InstanceID Phase 5: token-as-copy chokepoint.
+		card := gameengine.MintTokenAsCopyOf(gs, perm.Card, seat, "")
+		if card == nil {
+			continue
 		}
-		if !hasToken {
-			card.Types = append([]string{"token"}, card.Types...)
-		}
-		card.Owner = seat
 		if enterBattlefieldWithETB(gs, seat, card, false) != nil {
 			tokens++
 		}

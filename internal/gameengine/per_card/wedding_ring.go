@@ -68,18 +68,11 @@ func weddingRingETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		return
 	}
 	ts := gs.Seats[target]
-	card := perm.Card.DeepCopy()
-	hasToken := false
-	for _, t := range card.Types {
-		if t == "token" {
-			hasToken = true
-			break
-		}
+	// InstanceID Phase 5: token-as-copy chokepoint.
+	card := gameengine.MintTokenAsCopyOf(gs, perm.Card, target, "")
+	if card == nil {
+		return
 	}
-	if !hasToken {
-		card.Types = append([]string{"token"}, card.Types...)
-	}
-	card.Owner = target
 	tokenPerm := &gameengine.Permanent{
 		Card:       card,
 		Controller: target,

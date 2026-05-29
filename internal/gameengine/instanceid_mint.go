@@ -115,6 +115,14 @@ func MintOGInstanceID(gs *GameState, c *Card) {
 	RecordMintedInstanceID(gs, id)
 }
 
+// CurrentMintEnablerID is the exported alias for per_card callers that
+// need to stamp EnablerInstanceID on tokens/copies they mint outside of
+// the resolveCreateToken path (Riku spell-copy, scion-of-resurrection
+// reanimate-as-copy, etc.). Returns "" when nothing is resolving.
+func CurrentMintEnablerID(gs *GameState) string {
+	return currentMintEnablerID(gs)
+}
+
 // currentMintEnablerID returns the top frame of gs.IIDEnablerStack — the
 // InstanceID of the AbilityInstance whose resolution is currently
 // minting child objects (tokens, copies). Returns "" when nothing is
