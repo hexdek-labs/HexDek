@@ -149,6 +149,7 @@ func DestroyPermanent(gs *GameState, perm *Permanent, source *Permanent) bool {
 	gs.ExpireSourceBoundPolicies(perm)
 
 	// Tokens cease to exist — skip zone write (§704.5d cleanup).
+	markPermanentCeaseIfToken(gs, perm)
 	if !perm.IsToken() {
 		finalZone := FireZoneChange(gs, perm, perm.Card, perm.Card.Owner, "battlefield", destZone)
 		FireZoneChangeTriggers(gs, perm, perm.Card, "battlefield", finalZone)
@@ -209,6 +210,7 @@ func ExilePermanent(gs *GameState, perm *Permanent, source *Permanent) bool {
 	ExpireSourceGrants(gs, perm.Timestamp)
 	gs.ExpireSourceBoundPolicies(perm)
 
+	markPermanentCeaseIfToken(gs, perm)
 	if !perm.IsToken() {
 		finalZone := FireZoneChange(gs, perm, perm.Card, perm.Card.Owner, "battlefield", destZone)
 		FireZoneChangeTriggers(gs, perm, perm.Card, "battlefield", finalZone)
@@ -315,6 +317,7 @@ func sacrificePermanentImpl(gs *GameState, perm *Permanent, source *Permanent, r
 	ExpireSourceGrants(gs, perm.Timestamp)
 	gs.ExpireSourceBoundPolicies(perm)
 
+	markPermanentCeaseIfToken(gs, perm)
 	if !perm.IsToken() {
 		finalZone := FireZoneChange(gs, perm, perm.Card, perm.Card.Owner, "battlefield", destZone)
 		FireZoneChangeTriggers(gs, perm, perm.Card, "battlefield", finalZone)
@@ -392,6 +395,7 @@ func BouncePermanent(gs *GameState, perm *Permanent, source *Permanent, dest str
 	ExpireSourceGrants(gs, perm.Timestamp)
 	gs.ExpireSourceBoundPolicies(perm)
 
+	markPermanentCeaseIfToken(gs, perm)
 	if !perm.IsToken() {
 		finalZone := FireZoneChange(gs, perm, perm.Card, perm.Card.Owner, "battlefield", dest)
 		FireZoneChangeTriggers(gs, perm, perm.Card, "battlefield", finalZone)

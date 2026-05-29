@@ -1306,6 +1306,11 @@ func ResolveStackTop(gs *GameState) {
 					"rule": "706.10",
 				},
 			})
+			// Phase 4 census drop: §707.10 spell-copy InstanceID exits
+			// the (Minted - Ceased) expected set.
+			if item.Card != nil {
+				MarkInstanceIDCeased(gs, item.Card.InstanceID)
+			}
 		} else if ShouldExileOnResolve(item) {
 			// Wave 2: flashback / escape — exile instead of graveyard.
 			// CR §702.33: "If the flashback cost was paid, exile this
