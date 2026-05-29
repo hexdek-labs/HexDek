@@ -92,6 +92,16 @@ type PermanentSnapshot struct {
 	IsCmdr  bool   `json:"is_commander,omitempty"`
 	IsLand  bool   `json:"is_land,omitempty"`
 	Type    string `json:"type,omitempty"`
+
+	// InstanceID Phase 9 lineage fields (per docs/instanceid-system-v2-r60.md §13).
+	// Spectator + Heimdall consume these to render lineage trees on hover.
+	// Empty when the permanent's Card has no minted InstanceID (legacy mode).
+	InstanceID        string   `json:"instance_id,omitempty"`
+	Provenance        string   `json:"provenance,omitempty"`
+	SourceInstanceID  string   `json:"source_instance_id,omitempty"`
+	EnablerInstanceID string   `json:"enabler_instance_id,omitempty"`
+	EnablerHistory    []string `json:"enabler_history,omitempty"`
+	MergedCardIDs     []string `json:"merged_card_ids,omitempty"`
 }
 
 type LogEntry struct {
@@ -104,6 +114,13 @@ type LogEntry struct {
 	Targets []string `json:"targets,omitempty"`
 	Amount  int      `json:"amount,omitempty"`
 	Count   int      `json:"count,omitempty"`
+
+	// InstanceID Phase 9 — InstanceID of the primary object referenced by
+	// this event line (the spell card, the dying permanent, the ability
+	// instance pushed onto the stack). Empty when no InstanceID lineage
+	// is available for the event. Useful for forensic replay: filter the
+	// spectator log to every event touching a specific InstanceID.
+	InstanceID string `json:"instance_id,omitempty"`
 }
 
 type GameSnapshot struct {
@@ -118,6 +135,14 @@ type GameSnapshot struct {
 	Winner     int            `json:"winner"`
 	EndReason  string         `json:"end_reason,omitempty"`
 	Log        []LogEntry     `json:"log,omitempty"`
+
+	// Lineage is the InstanceID Phase 9 index — every Card across every
+	// zone (battlefield, hand, graveyard, exile, library, command zone,
+	// merged-card pointers) with a minted InstanceID gets one entry.
+	// Keyed by InstanceID. Spectator + Heimdall consume this to render
+	// lineage trees on demand. Empty when no IDs were minted (legacy
+	// games).
+	Lineage map[string]heimdall.LineageRecord `json:"lineage,omitempty"`
 }
 
 type ELOEntry struct {
@@ -2350,6 +2375,21 @@ func (sm *Showmatch) captureSnapshot(gs *gameengine.GameState, commanders []stri
 				Tough:  p.Toughness(),
 				IsLand: p.IsLand(),
 			}
+			// Phase 9 lineage: pull from the Card (per-instance identity
+			// lives on Card, not Permanent — copy/mutate swaps Card while
+			// keeping the Permanent slot alive).
+			if p.Card.InstanceID != "" {
+				ps.InstanceID = p.Card.InstanceID
+				ps.Provenance = p.Card.Provenance.String()
+				ps.SourceInstanceID = p.Card.SourceInstanceID
+				ps.EnablerInstanceID = p.Card.EnablerInstanceID
+				if len(p.Card.EnablerHistory) > 0 {
+					ps.EnablerHistory = append([]string(nil), p.Card.EnablerHistory...)
+				}
+				if len(p.MergedCards) > 0 {
+					ps.MergedCardIDs = append([]string(nil), p.MergedCards...)
+				}
+			}
 			// Check if this is a commander.
 			for _, cn := range s.CommanderNames {
 				if cn == p.Card.DisplayName() {
@@ -2393,7 +2433,98 @@ func (sm *Showmatch) captureSnapshot(gs *gameengine.GameState, commanders []stri
 		}
 		snap.Seats[i] = ss
 	}
+	// Phase 9: build the lineage index covering every card in every zone
+	// that has a minted InstanceID. The endpoint /api/spectator/lineage/:id
+	// reads this map; Heimdall walks it via BuildLineageTree.
+	snap.Lineage = buildLineageIndex(gs)
 	return snap
+}
+
+// buildLineageIndex scans every zone on every seat (and the unified
+// Mutate/Meld merged-card pointers on each Permanent) and records a
+// heimdall.LineageRecord for each Card with a minted InstanceID. The
+// resulting map is empty when no IDs have been minted yet (legacy
+// games) — that's the backwards-compat path.
+func buildLineageIndex(gs *gameengine.GameState) map[string]heimdall.LineageRecord {
+	if gs == nil {
+		return nil
+	}
+	out := map[string]heimdall.LineageRecord{}
+	add := func(c *gameengine.Card) {
+		if c == nil || c.InstanceID == "" {
+			return
+		}
+		if _, ok := out[c.InstanceID]; ok {
+			return
+		}
+		out[c.InstanceID] = heimdall.LineageRecord{
+			InstanceID:        c.InstanceID,
+			Name:              c.DisplayName(),
+			Provenance:        c.Provenance.String(),
+			SourceInstanceID:  c.SourceInstanceID,
+			EnablerInstanceID: c.EnablerInstanceID,
+			EnablerHistory:    append([]string(nil), c.EnablerHistory...),
+		}
+	}
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, c := range s.Hand {
+			add(c)
+		}
+		for _, c := range s.Library {
+			add(c)
+		}
+		for _, c := range s.Graveyard {
+			add(c)
+		}
+		for _, c := range s.Exile {
+			add(c)
+		}
+		for _, c := range s.CommandZone {
+			add(c)
+		}
+		for _, p := range s.Battlefield {
+			if p == nil {
+				continue
+			}
+			add(p.Card)
+			// Mutate / Meld absorbed cards live in MergedCardPtrs.
+			for _, mc := range p.MergedCardPtrs {
+				add(mc)
+			}
+			// Attach merged-card lineage onto the top card's record so
+			// the tree walker can recurse via MergedCardIDs.
+			if p.Card != nil && p.Card.InstanceID != "" && len(p.MergedCards) > 0 {
+				rec := out[p.Card.InstanceID]
+				rec.MergedCardIDs = append([]string(nil), p.MergedCards...)
+				out[p.Card.InstanceID] = rec
+			}
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// instanceIDFromDetails extracts the most-relevant InstanceID from an
+// engine event's Details map. Phase 8/5 writers stamp under either
+// "instance_id" (canonical) or one of the lineage-specific keys.
+// Returns the empty string when none are present.
+func instanceIDFromDetails(details map[string]interface{}) string {
+	if len(details) == 0 {
+		return ""
+	}
+	for _, key := range []string{"instance_id", "card_instance_id", "source_instance_id", "ability_instance_id"} {
+		if v, ok := details[key]; ok {
+			if s, ok := v.(string); ok && s != "" {
+				return s
+			}
+		}
+	}
+	return ""
 }
 
 // buildTurnSnapshot converts the per-seat data from a fully-captured
@@ -3083,6 +3214,9 @@ func (sm *Showmatch) RegisterShowmatch(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/spectate/rooms", sm.handleListSpectateRooms)
 	mux.HandleFunc("GET /api/spectate/rooms/{room_id}", sm.handleGetSpectateRoom)
 	mux.HandleFunc("GET /ws/spectate/{room_id}", sm.handleSpectateRoomWS)
+	// InstanceID Phase 9 — lineage tree endpoint. Returns the walked
+	// LineageNode JSON for any InstanceID currently in any live room.
+	mux.HandleFunc("GET /api/spectator/lineage/{instance_id}", sm.handleSpectatorLineage)
 
 	RegisterAdminAnomalies(mux, sm.auditor)
 }
@@ -3770,6 +3904,13 @@ func (sm *Showmatch) extractEvents(gs *gameengine.GameState, fromIdx int, comman
 		ev := gs.EventLog[i]
 		entry, ok := formatEvent(ev, commanders, turn)
 		if ok {
+			// Phase 9: stamp InstanceID from event Details when present.
+			// Engine writers store the affected object's ID under one of
+			// "instance_id", "card_instance_id", or "source_instance_id"
+			// depending on event kind — read in priority order.
+			if id := instanceIDFromDetails(ev.Details); id != "" {
+				entry.InstanceID = id
+			}
 			entries = append(entries, entry)
 		}
 	}
