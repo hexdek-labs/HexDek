@@ -33,10 +33,11 @@ func sanguineBondTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, c
 	gs.Flags["sanguine_exquisite_loop"]++
 	if gs.Flags["sanguine_exquisite_loop"] > 100 {
 		// Infinite loop detected — all opponents lose.
+		// CR §104.3e: route through canonical helper so §614
+		// would_lose_game (Platinum Angel / Angel's Grace) can cancel.
 		for _, opp := range gs.Opponents(perm.Controller) {
 			if gs.Seats[opp] != nil && !gs.Seats[opp].Lost {
-				gs.Seats[opp].Lost = true
-				gs.Seats[opp].LossReason = "sanguine_bond_exquisite_blood_infinite_drain"
+				gameengine.MarkSeatLostByEffect(gs, opp, "Sanguine Bond + Exquisite Blood infinite drain")
 			}
 		}
 		gs.LogEvent(gameengine.Event{

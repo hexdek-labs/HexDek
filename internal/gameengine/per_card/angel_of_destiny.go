@@ -140,9 +140,11 @@ func angelOfDestinyEndStep(gs *gameengine.GameState, perm *gameengine.Permanent,
 		if s == nil || s.Lost {
 			continue
 		}
-		s.Lost = true
-		s.LossReason = "angel_of_destiny_alt_win"
-		losers = append(losers, i)
+		// CR §104.3e: route through canonical helper so §614
+		// would_lose_game (Platinum Angel / Angel's Grace) can cancel.
+		if gameengine.MarkSeatLostByEffect(gs, i, "Angel of Destiny") {
+			losers = append(losers, i)
+		}
 	}
 
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
