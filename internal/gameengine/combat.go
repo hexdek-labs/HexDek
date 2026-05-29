@@ -78,10 +78,19 @@ func (p *Permanent) HasKeyword(name string) bool {
 	}
 	// 4) Keyword counters — CR §122.1c: a keyword counter grants that
 	// keyword to the permanent it's on. Flying counter = has flying, etc.
+	// Two surfaces are checked: the legacy Permanent.Counters map (still
+	// the dominant path until the Counter DB migration completes) and the
+	// InstanceID-aware CounterStacks introduced by the Counter DB Phase 2
+	// keyword-grant wiring. HasKeywordCounter additionally enforces that
+	// the named counter type is registered as KeywordGrant — so a "+1/+1"
+	// stack here will never satisfy a HasKeyword("+1/+1") lookup.
 	if p.Counters != nil {
 		if p.Counters[want] > 0 {
 			return true
 		}
+	}
+	if p.HasKeywordCounter(want) {
+		return true
 	}
 	return false
 }
