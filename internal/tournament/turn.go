@@ -275,6 +275,12 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 	gs.Phase, gs.Step = "main", "precombat_main"
 	// Rad counter trigger fires at the beginning of precombat main phase.
 	gameengine.FireRadCounterTriggers(gs)
+	// CR §714.2b: "As your precombat main phase begins, you put a lore
+	// counter on each Saga you control." Saga chapter abilities fire via
+	// the lore_counter_added trigger dispatched inside AdvanceSagaChapter;
+	// SBA §704.5s sacrifices the saga once the lore total reaches its
+	// final chapter (handled on the next StateBasedActions pass below).
+	gameengine.TickSagaChapters(gs, active)
 	if gs.CheckEnd() || seat.Lost {
 		return
 	}

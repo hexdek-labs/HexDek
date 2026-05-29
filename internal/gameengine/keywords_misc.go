@@ -1837,6 +1837,48 @@ func GetSagaChapter(perm *Permanent) int {
 	return perm.Counters["lore"]
 }
 
+// TickSagaChapters places a lore counter on each Saga the active seat
+// controls per CR §714.2b ("As your precombat main phase begins, you
+// put a lore counter on each Saga you control"). Iterates over a
+// snapshot so chapter abilities that modify the battlefield during
+// dispatch don't reorder mid-loop. Skips phased-out and already-
+// defeated sagas (lore counter past final_chapter — SBA §704.5s will
+// sacrifice them on the next pass; ticking would just double-fire the
+// final chapter).
+//
+// Called from internal/tournament/turn.go at the start of the
+// precombat main phase, mirroring FireRadCounterTriggers.
+func TickSagaChapters(gs *GameState, activeSeat int) int {
+	if gs == nil || activeSeat < 0 || activeSeat >= len(gs.Seats) {
+		return 0
+	}
+	seat := gs.Seats[activeSeat]
+	if seat == nil || seat.Lost {
+		return 0
+	}
+	ticked := 0
+	for _, p := range snapshotBattlefield(seat) {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		if !p.IsSaga() {
+			continue
+		}
+		if p.PhasedOut {
+			continue
+		}
+		if p.Counters != nil {
+			final, has := p.Counters["saga_final_chapter"]
+			if has && final > 0 && p.Counters["lore"] >= final {
+				continue
+			}
+		}
+		AdvanceSagaChapter(gs, p)
+		ticked++
+	}
+	return ticked
+}
+
 // ===========================================================================
 // CONDITION-CHECK HELPERS (ability words)
 // ===========================================================================
