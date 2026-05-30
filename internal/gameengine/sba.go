@@ -453,6 +453,16 @@ func sba704_5d(gs *GameState) bool {
 			src := *zone
 			for _, c := range src {
 				if cardIsToken(c) {
+					// §704.5d — the token ceases to exist. Cease its
+					// InstanceID so the Phase 4 census doesn't flag the
+					// ID as "minted-but-disappeared". This covers both
+					// TK-provenance tokens (the normal mint path) AND
+					// OG-provenance token-typed cards that may exist in
+					// libraries / hands when the chaos corpus seeds
+					// Scryfall token entries as deck cards.
+					if c != nil && c.InstanceID != "" {
+						MarkInstanceIDCeased(gs, c.InstanceID)
+					}
 					removed++
 					continue
 				}
@@ -511,7 +521,7 @@ func sba704_5e(gs *GameState) bool {
 			continue
 		}
 		// Sweep hand.
-		if n := removeCopiesFromZone(&s.Hand); n > 0 {
+		if n := removeCopiesFromZone(gs, &s.Hand); n > 0 {
 			gs.LogEvent(Event{
 				Kind: "sba_704_5e", Seat: s.Idx,
 				Amount: n,
@@ -522,7 +532,7 @@ func sba704_5e(gs *GameState) bool {
 			changed = true
 		}
 		// Sweep graveyard.
-		if n := removeCopiesFromZone(&s.Graveyard); n > 0 {
+		if n := removeCopiesFromZone(gs, &s.Graveyard); n > 0 {
 			gs.LogEvent(Event{
 				Kind: "sba_704_5e", Seat: s.Idx,
 				Amount: n,
@@ -533,7 +543,7 @@ func sba704_5e(gs *GameState) bool {
 			changed = true
 		}
 		// Sweep exile.
-		if n := removeCopiesFromZone(&s.Exile); n > 0 {
+		if n := removeCopiesFromZone(gs, &s.Exile); n > 0 {
 			gs.LogEvent(Event{
 				Kind: "sba_704_5e", Seat: s.Idx,
 				Amount: n,
@@ -544,7 +554,7 @@ func sba704_5e(gs *GameState) bool {
 			changed = true
 		}
 		// Sweep library.
-		if n := removeCopiesFromZone(&s.Library); n > 0 {
+		if n := removeCopiesFromZone(gs, &s.Library); n > 0 {
 			gs.LogEvent(Event{
 				Kind: "sba_704_5e", Seat: s.Idx,
 				Amount: n,
@@ -560,7 +570,10 @@ func sba704_5e(gs *GameState) bool {
 
 // removeCopiesFromZone removes all Card entries with IsCopy==true from the
 // given zone slice in-place. Returns the count removed. Used by sba704_5e.
-func removeCopiesFromZone(zone *[]*Card) int {
+// Per §707.10, copies cease to exist when removed — we cease their
+// InstanceIDs so the Phase 4 census doesn't flag the IDs as
+// "minted-but-disappeared".
+func removeCopiesFromZone(gs *GameState, zone *[]*Card) int {
 	if zone == nil || len(*zone) == 0 {
 		return 0
 	}
@@ -568,6 +581,9 @@ func removeCopiesFromZone(zone *[]*Card) int {
 	kept := (*zone)[:0]
 	for _, c := range *zone {
 		if c != nil && c.IsCopy {
+			if c.InstanceID != "" {
+				MarkInstanceIDCeased(gs, c.InstanceID)
+			}
 			removed++
 			continue
 		}

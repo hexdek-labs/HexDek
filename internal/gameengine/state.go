@@ -121,6 +121,16 @@ type GameState struct {
 	// Initialized in NewGameState; nil-safe (Phase 4 helpers lazy-init).
 	MintedInstanceIDs map[string]struct{}
 
+	// MintedInstanceIDNames is a Phase D diagnostic side-map: every
+	// minted InstanceID maps to the Card.DisplayName at mint time.
+	// Used by the ZoneConservation disappearance arm to include the
+	// card name in violation messages so root-cause walks can identify
+	// the offending engine path without re-running with diagnostic
+	// instrumentation. Populated by RecordMintedInstanceID; never
+	// cleared even on cease (cessation doesn't invalidate the name —
+	// the post-mortem still needs to know what was minted).
+	MintedInstanceIDNames map[string]string
+
 	// CeasedInstanceIDs marks IDs no longer expected to appear in any
 	// zone census. Populated at:
 	//   - §707.10 — spell-copy cease at resolution (stack.go IsCopy arm)
@@ -2019,6 +2029,25 @@ func (t Target) SeatTarget() (int, bool) {
 
 // removePermanent removes p from its controller's battlefield, returning true
 // if found. Caller is responsible for placing p's Card in a destination zone.
+//
+// Phase D — universal token cessation chokepoint (CR §704.5d). When the
+// removed perm is a TOKEN, its InstanceID is ceased and the *Card's
+// InstanceID field cleared. This catches every token-removal path —
+// canonical (Destroy / Exile / Sacrifice / Bounce already call
+// markPermanentCeaseIfToken redundantly, which is idempotent) AND
+// non-canonical (mutate-eats-other, gain-control swap, per_card raw
+// removePermanent, etc.). Non-token perms are untouched: their *Card
+// keeps its InstanceID stamped so graveyard/exile/hand references in
+// the destination zone retain identity. Clearing the *Card.InstanceID
+// on tokens lets re-add paths (blink, control-swap-with-re-wrap) pick
+// up a fresh TK mint via EnsureTokenInstanceID when the perm re-enters
+// — modeling §704.5d's "ceases to exist" + new-token-on-re-entry
+// semantics correctly.
+//
+// Token-as-copy paths (Phantasmal Image, Spark Double, etc.) are
+// already protected: the gap-walk's EnforceBattlefieldUniqueInstanceID
+// re-mints those *Cards as TK before they hit the battlefield, so by
+// the time this site sees them their ID is TK, not the original OG.
 func (gs *GameState) removePermanent(p *Permanent) bool {
 	if p == nil || p.Controller < 0 || p.Controller >= len(gs.Seats) {
 		return false
@@ -2027,6 +2056,10 @@ func (gs *GameState) removePermanent(p *Permanent) bool {
 	for i, q := range bf {
 		if q == p {
 			gs.Seats[p.Controller].Battlefield = append(bf[:i], bf[i+1:]...)
+			if p.Card != nil && p.IsToken() && p.Card.InstanceID != "" {
+				MarkInstanceIDCeased(gs, p.Card.InstanceID)
+				p.Card.InstanceID = ""
+			}
 			return true
 		}
 	}

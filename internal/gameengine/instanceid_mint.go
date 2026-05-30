@@ -17,6 +17,23 @@ func RecordMintedInstanceID(gs *GameState, id string) {
 	gs.MintedInstanceIDs[id] = struct{}{}
 }
 
+// RecordMintedInstanceIDName attaches a display-name tag to a minted
+// InstanceID for Phase D disappearance-diagnostic. Idempotent — first
+// non-empty name wins (subsequent re-stamps are ignored so face-down /
+// type-changing effects don't overwrite the original identity). Nil-safe.
+func RecordMintedInstanceIDName(gs *GameState, id, name string) {
+	if gs == nil || id == "" || name == "" {
+		return
+	}
+	if gs.MintedInstanceIDNames == nil {
+		gs.MintedInstanceIDNames = map[string]string{}
+	}
+	if _, ok := gs.MintedInstanceIDNames[id]; ok {
+		return
+	}
+	gs.MintedInstanceIDNames[id] = name
+}
+
 // MarkInstanceIDCeased adds id to gs.CeasedInstanceIDs. Fires from:
 //   - §707.10 spell-copy cease (stack.go)
 //   - §704.5d / §111.8 token cessation on LTB (zone_change.go LTB sites)
@@ -113,6 +130,7 @@ func MintOGInstanceID(gs *GameState, c *Card) {
 	// SourceInstanceID, EnablerInstanceID, EnablerHistory stay zero —
 	// OG cards have no lineage by §4.1.
 	RecordMintedInstanceID(gs, id)
+	RecordMintedInstanceIDName(gs, id, c.DisplayName())
 }
 
 // CurrentMintEnablerID is the exported alias for per_card callers that
@@ -210,6 +228,7 @@ func MintTokenInstanceID(gs *GameState, c *Card, sourceID, enablerID string) {
 		c.EnablerHistory = append(c.EnablerHistory, enablerID)
 	}
 	RecordMintedInstanceID(gs, id)
+	RecordMintedInstanceIDName(gs, id, c.DisplayName())
 }
 
 // EnsureTokenInstanceID is the defensive auto-stamp catch-all: when a
@@ -282,4 +301,5 @@ func MintCopyInstanceID(gs *GameState, c *Card, sourceID, enablerID string) {
 		c.EnablerHistory = append(c.EnablerHistory, enablerID)
 	}
 	RecordMintedInstanceID(gs, id)
+	RecordMintedInstanceIDName(gs, id, c.DisplayName())
 }

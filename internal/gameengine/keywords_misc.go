@@ -2893,6 +2893,15 @@ func removePermanentFromBattlefield(gs *GameState, p *Permanent) {
 	gs.UnregisterReplacementsForPermanent(p)
 	gs.UnregisterContinuousEffectsForPermanent(p)
 	detachAll(gs, p)
+	// Phase D — token cessation (CR §704.5d). A token leaving the
+	// battlefield via this non-trigger path (Craft / Meld / Aura swap /
+	// activation-cost ExileSelf) still ceases to exist. Clear the *Card's
+	// InstanceID so any re-add via enterBattlefieldWithETB picks up a
+	// fresh TK mint from EnsureTokenInstanceID.
+	if p.Card != nil && p.IsToken() && p.Card.InstanceID != "" {
+		MarkInstanceIDCeased(gs, p.Card.InstanceID)
+		p.Card.InstanceID = ""
+	}
 }
 
 // permHasTriggerEvent checks if a permanent's AST has a triggered ability
