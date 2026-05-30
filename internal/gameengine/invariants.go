@@ -146,11 +146,16 @@ func checkZoneConservation(gs *GameState) error {
 	}
 	// Phase 4 InstanceID census path. Skip entirely when no IDs minted
 	// (struct-literal GameState in older tests) and fall through to the
-	// legacy count-based check below.
+	// legacy count-based check below. When the census IS in use, it is
+	// strictly more sensitive than the count-based check — fabrication
+	// detects the same shapes a count drop would, plus more. The
+	// gap-walk's same-pointer purge (instanceid_gap_walk.go) corrects
+	// CR §400.7c violations by removing stale references; the legacy
+	// count then sees a "drop" on the corrected count even though no
+	// real card disappeared. Skip the legacy backstop when InstanceID
+	// census is authoritative.
 	if len(gs.MintedInstanceIDs) > 0 {
-		if err := checkZoneConservationByInstanceID(gs); err != nil {
-			return err
-		}
+		return checkZoneConservationByInstanceID(gs)
 	}
 	return checkZoneConservationLegacyCount(gs)
 }
@@ -199,7 +204,48 @@ func checkZoneConservationByInstanceID(gs *GameState) error {
 				continue
 			}
 			addID(p.Card)
+			// Phase 8 merged-card lineage: Mutate + Meld absorb other
+			// Cards into the surviving Permanent. The absorbed *Cards
+			// retain their InstanceIDs (per §702.139c) so the census
+			// must see them via MergedCardPtrs — they're "in the
+			// battlefield zone" via the merged stack, just not in any
+			// seat's Battlefield slice directly.
+			for _, mc := range p.MergedCardPtrs {
+				addID(mc)
+			}
+			// OriginalCard is the pre-§706.2-clone identity preserved
+			// when CopyPermanentLayered did the in-place swap. Its ID
+			// is the perm's ORIGINAL ID (BecomeCopyOfCard preserves it
+			// onto p.Card.InstanceID), so OriginalCard's InstanceID
+			// equals p.Card.InstanceID — already counted. No extra add.
 		}
+		// Sideband zones that hold *Card pointers outside the standard
+		// 6 (Library / Hand / Graveyard / Exile / CommandZone /
+		// Battlefield). Strict-census mode otherwise sees these cards
+		// as "disappeared" since their IDs are minted but their *Card
+		// is not in a counted zone.
+		for _, c := range s.ForetellExile {
+			addID(c)
+		}
+		if s.Companion != nil {
+			addID(s.Companion)
+		}
+	}
+	// Cross-game sideband state — keyed by *Card pointer, the Card
+	// itself is in some zone the seat-walk already covered, but for
+	// transient cast-permission grants the engine may stash the *Card
+	// here pre-resolution. Be thorough: walk the key set.
+	for c := range gs.ZoneCastGrants {
+		addID(c)
+	}
+	for c := range gs.MadnessExile {
+		addID(c)
+	}
+	for c := range gs.PlotExile {
+		addID(c)
+	}
+	for c := range gs.MayhemDiscards {
+		addID(c)
 	}
 	for _, cards := range gs.ParadigmExile {
 		for _, c := range cards {

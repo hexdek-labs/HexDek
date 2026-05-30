@@ -2474,6 +2474,10 @@ func placeTutoredCard(gs *GameState, seat int, c *Card, dest string) {
 			gs.moveToZone(seat, c, "hand")
 			return
 		}
+		// InstanceID gap-walk: tutor placement may race a non-mint
+		// duplicate of the same *Card if an upstream handler already
+		// staged a copy.
+		EnforceBattlefieldUniqueInstanceID(gs, c, seat)
 		p := &Permanent{
 			Card:          c,
 			Controller:    seat,
@@ -2537,6 +2541,9 @@ func resolveReanimate(gs *GameState, src *Permanent, e *gameast.Reanimate) {
 		})
 		return
 	}
+	// InstanceID gap-walk: reanimate path may race a per_card handler
+	// that already staged a duplicate.
+	EnforceBattlefieldUniqueInstanceID(gs, c, seat)
 	p := &Permanent{
 		Card:          c,
 		Controller:    seat,
@@ -2753,9 +2760,18 @@ func resolveCopyPermanent(gs *GameState, src *Permanent, e *gameast.CopyPermanen
 		// §707.10f — create a token that's a copy of the target.
 		// The token enters as a new permanent; src is NOT modified.
 		controller := src.Controller
-		card := copySource.Card.DeepCopy()
-		// Ensure "token" type so IsToken() works and zone conservation
-		// doesn't count it as a real card.
+		// InstanceID gap-walk: route through MintTokenAsCopyOf so the
+		// token gets a fresh TK-provenance ID with the source ID
+		// recorded as SourceInstanceID. Bare DeepCopy carries the
+		// source's ID forward and trips the CardIdentity invariant the
+		// instant Loki sees both perms on a battlefield.
+		card := MintTokenAsCopyOf(gs, copySource.Card, controller, currentMintEnablerID(gs))
+		if card == nil {
+			card = copySource.Card.DeepCopy()
+			card.Owner = controller
+		}
+		// MintTokenAsCopyOf already stamps "token"; the bare-DeepCopy
+		// fallback path needs it too.
 		hasToken := false
 		for _, t := range card.Types {
 			if t == "token" {
@@ -2766,7 +2782,6 @@ func resolveCopyPermanent(gs *GameState, src *Permanent, e *gameast.CopyPermanen
 		if !hasToken {
 			card.Types = append([]string{"token"}, card.Types...)
 		}
-		card.Owner = controller
 		p := &Permanent{
 			Card:          card,
 			Controller:    controller,

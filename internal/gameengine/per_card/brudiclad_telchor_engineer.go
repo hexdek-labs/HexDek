@@ -131,10 +131,18 @@ func brudicladCombatBegin(gs *gameengine.GameState, perm *gameengine.Permanent, 
 		// CR §706.2: a copy of a permanent has the same copiable values
 		// (name, mana cost, color, type, rules text, P/T) but does NOT
 		// inherit counters or continuous effects that have been applied.
-		newCard := chosen.Card.DeepCopy()
+		// InstanceID Phase 5: route through BecomeCopyOfCard so the
+		// token keeps its OWN InstanceID — bare DeepCopy would put
+		// chosen's ID on every Brudiclad-copied token, tripping the
+		// CardIdentity invariant (gap-walk seed 42 game 261 surfaced
+		// seven Spinerock Tyrants on seat 2's battlefield).
+		newCard := gameengine.BecomeCopyOfCard(gs, p, chosen.Card)
+		if newCard == nil {
+			newCard = chosen.Card.DeepCopy()
+		}
 		newCard.Owner = seat
-		// Ensure "token" tag is present — DeepCopy preserves Types slice
-		// which already has it from chosen, but be explicit.
+		// Ensure "token" tag is present — BecomeCopyOfCard preserves
+		// Types slice which already has it from chosen, but be explicit.
 		if !hasType(newCard.Types, "token") {
 			newCard.Types = append([]string{"token"}, newCard.Types...)
 		}

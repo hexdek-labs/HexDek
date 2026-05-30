@@ -1516,6 +1516,11 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 		perm.Counters["defense"] = n
 	}
 
+	// InstanceID gap-walk: backstop for paradigm copies / cascade copies
+	// / Riku-style stack copies whose *Card still carries the original
+	// spell's ID when it lands on the battlefield. See
+	// instanceid_gap_walk.go.
+	EnforceBattlefieldUniqueInstanceID(gs, perm.Card, seatIdx)
 	seat.Battlefield = append(seat.Battlefield, perm)
 
 	// §702.146b — Disturb cast: a card cast for its disturb cost enters

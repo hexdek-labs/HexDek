@@ -144,17 +144,39 @@ func TestPhase4_ZoneConservationFlagsDisappearance(t *testing.T) {
 	}
 }
 
-// TestPhase4_ZoneConservationDisappearanceGatedByDefault pins that the
-// disappearance check is OPT-IN — without gs.Flags["instanceid_strict_census"]=1
-// a missing minted ID does not trip the invariant. Lets Loki stay quiet
-// during the Phase 1-N rollout while mint-coverage closes.
-func TestPhase4_ZoneConservationDisappearanceGatedByDefault(t *testing.T) {
+// TestPhase4_ZoneConservationDisappearanceOnByDefault pins the post-
+// gap-walk policy: strict-census is now ON by default (the 2.9M-hit
+// disappearance cluster from PR #755 has been closed by the gap-walk
+// re-mint + zone-purge backstops, so the strict arm produces a clean
+// signal at production-grade depths). Callers can opt OUT via
+// SetStrictCensusDefault(false) for legacy struct-literal tests.
+func TestPhase4_ZoneConservationDisappearanceOnByDefault(t *testing.T) {
 	gs := newPhase4GameState(t)
-	// No strict flag set.
+	// Confirm the default flag is set.
+	if gs.Flags["instanceid_strict_census"] != 1 {
+		t.Fatalf("expected strict-census ON by default post-gap-walk; got flag=%d", gs.Flags["instanceid_strict_census"])
+	}
+	ghost := &Card{Name: "Ghost", Owner: 0, CMC: 2, Colors: []string{"B"}}
+	MintOGInstanceID(gs, ghost)
+	if err := checkZoneConservation(gs); err == nil {
+		t.Fatal("expected disappearance detection in default (strict) mode")
+	}
+}
+
+// TestPhase4_SetStrictCensusDefault_OptOut pins the legacy escape hatch
+// — SetStrictCensusDefault(false) reverts to the pre-gap-walk gated
+// behavior so struct-literal tests can stay quiet.
+func TestPhase4_SetStrictCensusDefault_OptOut(t *testing.T) {
+	SetStrictCensusDefault(false)
+	defer SetStrictCensusDefault(true)
+	gs := newPhase4GameState(t)
+	if gs.Flags["instanceid_strict_census"] == 1 {
+		t.Fatalf("expected strict-census OFF after opt-out; got flag=1")
+	}
 	ghost := &Card{Name: "Ghost", Owner: 0, CMC: 2, Colors: []string{"B"}}
 	MintOGInstanceID(gs, ghost)
 	if err := checkZoneConservation(gs); err != nil {
-		t.Fatalf("default mode must NOT flag disappearance: %v", err)
+		t.Fatalf("opt-out mode must NOT flag disappearance: %v", err)
 	}
 }
 

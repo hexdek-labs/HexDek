@@ -618,9 +618,14 @@ func NewGameStateSeeded(seatCount int, seed int64, corpus *astload.Corpus) *Game
 
 // strictCensusDefault flips the InstanceID Phase 4+ ZoneConservation
 // strict-census disappearance check on/off for every newly-created
-// GameState. Set via SetStrictCensusDefault — Loki + integration
-// harnesses opt into it for sweep runs.
-var strictCensusDefault bool
+// GameState. Defaults to true post-gap-walk (PR — this branch): the
+// 2.9M-hit disappearance arm surfaced by PR #755's first 25k sweep
+// has been closed by the gap-walk's zone-purge + re-mint backstops
+// (instanceid_gap_walk.go), so the strict arm now produces a clean
+// signal at production-grade depths. Callers (mainly tests on
+// struct-literal GameStates) can still flip back to off via
+// SetStrictCensusDefault(false) if they want pre-Phase-4 behavior.
+var strictCensusDefault = true
 
 // SetStrictCensusDefault toggles whether NewGameState stamps
 // gs.Flags["instanceid_strict_census"] = 1 on every freshly-built
@@ -2099,6 +2104,13 @@ func (gs *GameState) moveToZone(seat int, c *Card, zone string) {
 	if c.FaceDown && zone != "battlefield" && zone != "battlefield_tapped" {
 		c.FaceDown = false
 	}
+	// InstanceID gap-walk: any zone transition is a chance to detect
+	// stale references to this card in OTHER zones (a previous move
+	// that didn't sweep) or a DeepCopy-without-remint sibling sharing
+	// this candidate's InstanceID. The helper purges same-pointer
+	// occurrences (CR §400.7c — one zone at a time) and re-mints
+	// different-pointer collisions (CR §706.10 — distinct minted IDs).
+	EnforceBattlefieldUniqueInstanceID(gs, c, seat)
 	s := gs.Seats[seat]
 	inSlice := func(slice []*Card) bool {
 		for _, existing := range slice {

@@ -941,7 +941,17 @@ func CopyPermanentLayered(gs *GameState, target, source *Permanent, duration str
 		if target.OriginalCard == nil {
 			target.OriginalCard = target.Card
 		}
-		target.Card = source.Card.DeepCopy()
+		// InstanceID Phase 5: route through BecomeCopyOfCard so the
+		// target keeps its OWN InstanceID (per CR §706.2 — the copying
+		// permanent retains its identity; only printed characteristics
+		// flip). Bare DeepCopy puts the SOURCE's ID into target.Card,
+		// which collides with the source perm's wrapper and trips
+		// CardIdentity.
+		if cp := BecomeCopyOfCard(gs, target, source.Card); cp != nil {
+			target.Card = cp
+		} else {
+			target.Card = source.Card.DeepCopy()
+		}
 	}
 	gs.InvalidateCharacteristicsCache()
 	gs.LogEvent(Event{
