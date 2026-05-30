@@ -2099,6 +2099,13 @@ func (gs *GameState) moveToZone(seat int, c *Card, zone string) {
 	if c.FaceDown && zone != "battlefield" && zone != "battlefield_tapped" {
 		c.FaceDown = false
 	}
+	// InstanceID gap-walk: any zone transition is a chance to detect
+	// stale references to this card in OTHER zones (a previous move
+	// that didn't sweep) or a DeepCopy-without-remint sibling sharing
+	// this candidate's InstanceID. The helper purges same-pointer
+	// occurrences (CR §400.7c — one zone at a time) and re-mints
+	// different-pointer collisions (CR §706.10 — distinct minted IDs).
+	EnforceBattlefieldUniqueInstanceID(gs, c, seat)
 	s := gs.Seats[seat]
 	inSlice := func(slice []*Card) bool {
 		for _, existing := range slice {

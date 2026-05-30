@@ -335,6 +335,12 @@ func createPermanent(gs *gameengine.GameState, seat int, card *gameengine.Card, 
 	if owner != seat {
 		gameengine.RemoveCardFromAllPrivateZones(gs, seat, card)
 	}
+	// InstanceID gap-walk: catch the DeepCopy-without-remint shape
+	// (Calix, Brudiclad, Riku and friends) before it tripping the
+	// CardIdentity invariant. See instanceid_gap_walk.go for the
+	// rationale. No-op when card carries a unique InstanceID, an empty
+	// InstanceID (legacy mode), or the Minter is unwired.
+	gameengine.EnforceBattlefieldUniqueInstanceID(gs, card, seat)
 	sick := false
 	if cardHasType(card, "creature") {
 		sick = !cardHasKeyword(card, "haste")

@@ -146,11 +146,16 @@ func checkZoneConservation(gs *GameState) error {
 	}
 	// Phase 4 InstanceID census path. Skip entirely when no IDs minted
 	// (struct-literal GameState in older tests) and fall through to the
-	// legacy count-based check below.
+	// legacy count-based check below. When the census IS in use, it is
+	// strictly more sensitive than the count-based check — fabrication
+	// detects the same shapes a count drop would, plus more. The
+	// gap-walk's same-pointer purge (instanceid_gap_walk.go) corrects
+	// CR §400.7c violations by removing stale references; the legacy
+	// count then sees a "drop" on the corrected count even though no
+	// real card disappeared. Skip the legacy backstop when InstanceID
+	// census is authoritative.
 	if len(gs.MintedInstanceIDs) > 0 {
-		if err := checkZoneConservationByInstanceID(gs); err != nil {
-			return err
-		}
+		return checkZoneConservationByInstanceID(gs)
 	}
 	return checkZoneConservationLegacyCount(gs)
 }
