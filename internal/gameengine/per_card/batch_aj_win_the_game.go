@@ -341,9 +341,14 @@ func triskaidekaphobiaUpkeep(gs *gameengine.GameState, perm *gameengine.Permanen
 			continue
 		}
 		if s.Life == 13 {
-			s.Lost = true
-			s.LossReason = "Triskaidekaphobia — exactly 13 life"
-			losers = append(losers, i)
+			// Route through the canonical CR §104.3e chokepoint so the
+			// §614 would_lose_game replacement chain fires (Platinum
+			// Angel + Angel's Grace cancel), LostByEffect is stamped,
+			// and the `lose_game` audit event matches every other
+			// card-effect loss path.
+			if gameengine.MarkSeatLostByEffect(gs, i, "Triskaidekaphobia — exactly 13 life") {
+				losers = append(losers, i)
+			}
 		}
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
