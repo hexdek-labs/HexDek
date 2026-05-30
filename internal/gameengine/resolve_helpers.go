@@ -9,6 +9,48 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
+// manifestTopOfLibrary implements one CR §701.34 manifest: pops the
+// top card of seatIdx's library, sets it face-down, wraps it in a 2/2
+// face-down Creature permanent with FrontFaceAST / FrontFaceName
+// preserved for later turn-up, appends to battlefield, and fires the
+// standard ETB cascade. Returns true if a card was manifested. Shared
+// by the "manifest" and "manifest_dread" resolveModificationEffect
+// arms — the only difference between them is iteration count.
+func manifestTopOfLibrary(gs *GameState, seatIdx int) bool {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return false
+	}
+	s := gs.Seats[seatIdx]
+	if s == nil || len(s.Library) == 0 {
+		return false
+	}
+	card := s.Library[0]
+	s.Library = s.Library[1:]
+	card.FaceDown = true
+	perm := &Permanent{
+		Card: &Card{
+			Name:          "Face-Down Creature",
+			Owner:         seatIdx,
+			BasePower:     2,
+			BaseToughness: 2,
+			Types:         []string{"creature"},
+			FaceDown:      true,
+		},
+		Controller:    seatIdx,
+		Owner:         seatIdx,
+		Timestamp:     gs.NextTimestamp(),
+		Counters:      map[string]int{},
+		Flags:         map[string]int{"manifested": 1},
+		SummoningSick: true,
+	}
+	perm.FrontFaceAST = card.AST
+	perm.FrontFaceName = card.DisplayName()
+	s.Battlefield = append(s.Battlefield, perm)
+	RegisterReplacementsForPermanent(gs, perm)
+	FirePermanentETBTriggers(gs, perm)
+	return true
+}
+
 func containsIgnoreCase(s, substr string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
@@ -3821,35 +3863,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		// onto the battlefield face down as a 2/2 creature. If it's a
 		// creature card, it can be turned face up for its mana cost.
 		seat := controllerSeat(src)
-		if seat >= 0 && seat < len(gs.Seats) {
-			s := gs.Seats[seat]
-			if len(s.Library) > 0 {
-				card := s.Library[0]
-				s.Library = s.Library[1:]
-				card.FaceDown = true
-				perm := &Permanent{
-					Card: &Card{
-						Name:          "Face-Down Creature",
-						Owner:         seat,
-						BasePower:     2,
-						BaseToughness: 2,
-						Types:         []string{"creature"},
-						FaceDown:      true,
-					},
-					Controller:    seat,
-					Owner:         seat,
-					Timestamp:     gs.NextTimestamp(),
-					Counters:      map[string]int{},
-					Flags:         map[string]int{"manifested": 1},
-					SummoningSick: true,
-				}
-				perm.FrontFaceAST = card.AST
-				perm.FrontFaceName = card.DisplayName()
-				s.Battlefield = append(s.Battlefield, perm)
-				RegisterReplacementsForPermanent(gs, perm)
-				FirePermanentETBTriggers(gs, perm)
-			}
-		}
+		manifestTopOfLibrary(gs, seat)
 		gs.LogEvent(Event{
 			Kind:   "manifest",
 			Seat:   seat,
@@ -4486,35 +4500,11 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		}
 		seat := controllerSeat(src)
 		manifested := 0
-		if seat >= 0 && seat < len(gs.Seats) {
-			s := gs.Seats[seat]
-			for i := 0; i < count && len(s.Library) > 0; i++ {
-				card := s.Library[0]
-				s.Library = s.Library[1:]
-				card.FaceDown = true
-				perm := &Permanent{
-					Card: &Card{
-						Name:          "Face-Down Creature",
-						Owner:         seat,
-						BasePower:     2,
-						BaseToughness: 2,
-						Types:         []string{"creature"},
-						FaceDown:      true,
-					},
-					Controller:    seat,
-					Owner:         seat,
-					Timestamp:     gs.NextTimestamp(),
-					Counters:      map[string]int{},
-					Flags:         map[string]int{"manifested": 1},
-					SummoningSick: true,
-				}
-				perm.FrontFaceAST = card.AST
-				perm.FrontFaceName = card.DisplayName()
-				s.Battlefield = append(s.Battlefield, perm)
-				RegisterReplacementsForPermanent(gs, perm)
-				FirePermanentETBTriggers(gs, perm)
-				manifested++
+		for i := 0; i < count; i++ {
+			if !manifestTopOfLibrary(gs, seat) {
+				break
 			}
+			manifested++
 		}
 		gs.LogEvent(Event{
 			Kind:   "manifest",
