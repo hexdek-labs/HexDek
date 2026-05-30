@@ -271,7 +271,17 @@ func evacuateStackSpellsToGraveyard(gs *GameState) {
 		return
 	}
 	for _, item := range gs.Stack {
-		if item == nil || item.IsCopy {
+		if item == nil {
+			continue
+		}
+		if item.IsCopy {
+			// §707.10 — a copy of a spell ceases to exist when it leaves
+			// the stack without resolving. Cease its InstanceID so the
+			// Phase 4 census doesn't flag it as "minted-but-disappeared"
+			// after projectAndApply truncates gs.Stack.
+			if item.Card != nil && item.Card.InstanceID != "" {
+				MarkInstanceIDCeased(gs, item.Card.InstanceID)
+			}
 			continue
 		}
 		if item.Source != nil || item.Card == nil {

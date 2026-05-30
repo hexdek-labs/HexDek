@@ -308,6 +308,14 @@ func checkZoneConservationByInstanceID(gs *GameState) error {
 	if gs.Flags != nil && gs.Flags["instanceid_strict_census"] == 1 {
 		for id := range expected {
 			if _, ok := present[id]; !ok {
+				name := ""
+				if gs.MintedInstanceIDNames != nil {
+					name = gs.MintedInstanceIDNames[id]
+				}
+				if name != "" {
+					return fmt.Errorf("ZoneConservation: InstanceID %q (%s) is minted and not ceased but is absent from every zone — card disappeared",
+						id, name)
+				}
 				return fmt.Errorf("ZoneConservation: InstanceID %q is minted and not ceased but is absent from every zone — card disappeared",
 					id)
 			}

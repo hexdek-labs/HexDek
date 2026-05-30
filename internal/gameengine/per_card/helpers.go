@@ -237,6 +237,14 @@ func moveCardBetweenZones(gs *gameengine.GameState, seat int, card *gameengine.C
 
 // removePermanent detaches a permanent from its controller's battlefield.
 // Returns true if it was found and removed.
+//
+// Phase D — token cessation: when the removed perm is a token, cease its
+// InstanceID per CR §704.5d ("if a token is in a zone other than the
+// battlefield, it ceases to exist") AND clear the *Card's InstanceID
+// so blink-and-re-add paths get a fresh TK mint from EnsureTokenInstanceID
+// when the perm re-enters via enterBattlefieldWithETB. Non-token perms
+// are unaffected (their Card.InstanceID stays put so graveyard/exile
+// references keep their identity).
 func removePermanent(gs *gameengine.GameState, p *gameengine.Permanent) bool {
 	if gs == nil || p == nil {
 		return false
@@ -248,6 +256,12 @@ func removePermanent(gs *gameengine.GameState, p *gameengine.Permanent) bool {
 	for i, q := range seat.Battlefield {
 		if q == p {
 			seat.Battlefield = append(seat.Battlefield[:i], seat.Battlefield[i+1:]...)
+			if p.Card != nil && p.IsToken() {
+				if p.Card.InstanceID != "" {
+					gameengine.MarkInstanceIDCeased(gs, p.Card.InstanceID)
+					p.Card.InstanceID = ""
+				}
+			}
 			return true
 		}
 	}

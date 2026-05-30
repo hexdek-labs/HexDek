@@ -177,6 +177,17 @@ func loadOracleCorpus(path string) (*gameengine.ChaosCorpus, error) {
 		tlLower := strings.ToLower(typeLine)
 		types := parseTypesSimple(typeLine)
 
+		// Scryfall token entries are not deck cards — they're battlefield
+		// instances minted by resolveCreateToken. Excluding them keeps the
+		// chaos deck generator from seeding them as library/hand cards,
+		// which would let SBA 704.5d sweep them (correctly per CR §704.5d)
+		// but also flag the disappearance against the InstanceID census
+		// for cards that should never have been minted as OG. Filtering
+		// at the corpus level prevents the noise at the source.
+		if strings.Contains(tlLower, "token") {
+			continue
+		}
+
 		isLegendary := strings.Contains(tlLower, "legendary")
 		isCreature := strings.Contains(tlLower, "creature")
 		isLand := strings.Contains(tlLower, "land")
