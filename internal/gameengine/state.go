@@ -618,9 +618,14 @@ func NewGameStateSeeded(seatCount int, seed int64, corpus *astload.Corpus) *Game
 
 // strictCensusDefault flips the InstanceID Phase 4+ ZoneConservation
 // strict-census disappearance check on/off for every newly-created
-// GameState. Set via SetStrictCensusDefault — Loki + integration
-// harnesses opt into it for sweep runs.
-var strictCensusDefault bool
+// GameState. Defaults to true post-gap-walk (PR — this branch): the
+// 2.9M-hit disappearance arm surfaced by PR #755's first 25k sweep
+// has been closed by the gap-walk's zone-purge + re-mint backstops
+// (instanceid_gap_walk.go), so the strict arm now produces a clean
+// signal at production-grade depths. Callers (mainly tests on
+// struct-literal GameStates) can still flip back to off via
+// SetStrictCensusDefault(false) if they want pre-Phase-4 behavior.
+var strictCensusDefault = true
 
 // SetStrictCensusDefault toggles whether NewGameState stamps
 // gs.Flags["instanceid_strict_census"] = 1 on every freshly-built
