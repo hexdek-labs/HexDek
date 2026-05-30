@@ -84,14 +84,7 @@ func theGhoulGunslingerDies(gs *gameengine.GameState, perm *gameengine.Permanent
 
 	madeTreasure := false
 	if target == perm.Controller {
-		treasure := &gameengine.Card{
-			Name:     "Treasure Token",
-			Owner:    perm.Controller,
-			Types:    []string{"token", "artifact", "treasure"},
-			Colors:   []string{},
-			TypeLine: "Token Artifact — Treasure",
-		}
-		enterBattlefieldWithETB(gs, perm.Controller, treasure, false)
+		gameengine.CreateTreasureToken(gs, perm.Controller)
 		madeTreasure = true
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

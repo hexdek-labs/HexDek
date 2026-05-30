@@ -57,21 +57,7 @@ func grimHirelingCombatDamage(gs *gameengine.GameState, perm *gameengine.Permane
 		return
 	}
 
-	token := &gameengine.Card{
-		Name:  "Treasure Token",
-		Owner: perm.Controller,
-		Types: []string{"token", "artifact", "treasure"},
-	}
-	enterBattlefieldWithETB(gs, perm.Controller, token, false)
-	gs.LogEvent(gameengine.Event{
-		Kind:   "create_token",
-		Seat:   perm.Controller,
-		Source: perm.Card.DisplayName(),
-		Details: map[string]interface{}{
-			"token":  "Treasure Token",
-			"reason": "grim_hireling_combat_damage",
-		},
-	})
+	gameengine.CreateTreasureToken(gs, perm.Controller)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":          perm.Controller,
 		"treasure_made": 1,

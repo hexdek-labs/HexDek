@@ -53,21 +53,7 @@ func malcolmTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 		return
 	}
 
-	token := &gameengine.Card{
-		Name:  "Treasure Token",
-		Owner: perm.Controller,
-		Types: []string{"token", "artifact", "treasure"},
-	}
-	enterBattlefieldWithETB(gs, perm.Controller, token, false)
-	gs.LogEvent(gameengine.Event{
-		Kind:   "create_token",
-		Seat:   perm.Controller,
-		Source: perm.Card.DisplayName(),
-		Details: map[string]interface{}{
-			"token":  "Treasure Token",
-			"reason": "malcolm_pirate_damage",
-		},
-	})
+	gameengine.CreateTreasureToken(gs, perm.Controller)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":        perm.Controller,
 		"source_card": sourceName,

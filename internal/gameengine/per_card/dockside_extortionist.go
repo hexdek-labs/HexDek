@@ -52,26 +52,12 @@ func docksideExtortionistETB(gs *gameengine.GameState, perm *gameengine.Permanen
 			}
 		}
 	}
-	// Create X Treasure tokens via the engine's existing token generator.
-	// We don't have createTreasureToken exported from gameengine — it's
-	// package-private. Instead we build treasure cards inline using the
-	// same shape (types: token, artifact, treasure).
+	// Create X Treasure tokens via the canonical engine helper. Routes
+	// through MintTokenInstanceID + bumps Turn.TreasuresCreated /
+	// Turn.TokensCreated / Turn.ArtifactsEntered for downstream
+	// observers (treasure-payoff cards, artifact-ETB counters).
 	for i := 0; i < x; i++ {
-		token := &gameengine.Card{
-			Name:  "Treasure Token",
-			Owner: seat,
-			Types: []string{"token", "artifact", "treasure"},
-		}
-		enterBattlefieldWithETB(gs, seat, token, false)
-		gs.LogEvent(gameengine.Event{
-			Kind:   "create_token",
-			Seat:   seat,
-			Source: perm.Card.DisplayName(),
-			Details: map[string]interface{}{
-				"token":  "Treasure Token",
-				"reason": "dockside_extortionist_etb",
-			},
-		})
+		gameengine.CreateTreasureToken(gs, seat)
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":            seat,

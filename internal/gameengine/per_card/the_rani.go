@@ -135,14 +135,7 @@ func theRaniInvestigate(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 	if defenderSeat == perm.Controller {
 		return
 	}
-	clue := &gameengine.Card{
-		Name:     "Clue Token",
-		Owner:    perm.Controller,
-		Types:    []string{"token", "artifact", "clue"},
-		Colors:   []string{},
-		TypeLine: "Token Artifact — Clue",
-	}
-	enterBattlefieldWithETB(gs, perm.Controller, clue, false)
+	gameengine.CreateClueToken(gs, perm.Controller)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
