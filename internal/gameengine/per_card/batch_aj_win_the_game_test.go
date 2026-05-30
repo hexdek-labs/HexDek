@@ -289,8 +289,38 @@ func TestTriskaidekaphobia_Upkeep_OppositeMode_PicksLose1WhenOppAt14(t *testing.
 	if !gs.Seats[1].Lost {
 		t.Errorf("seat 1 must be marked Lost — life went from 14 to 13 after lose-1-life mode")
 	}
-	if gs.Seats[1].LossReason != "Triskaidekaphobia — exactly 13 life" {
-		t.Errorf("LossReason = %q, want canonical Triskaidekaphobia reason", gs.Seats[1].LossReason)
+	if gs.Seats[1].LossReason != "card_effect: Triskaidekaphobia — exactly 13 life" {
+		t.Errorf("LossReason = %q, want canonical card_effect-prefixed Triskaidekaphobia reason (via MarkSeatLostByEffect)", gs.Seats[1].LossReason)
+	}
+	if !gs.Seats[1].LostByEffect {
+		t.Error("LostByEffect flag not set — Triskaidekaphobia should route through MarkSeatLostByEffect")
+	}
+}
+
+// TestTriskaidekaphobia_PlatinumAngelCancelsLoss pins the structural-wave1
+// PR #5 fix: routing through MarkSeatLostByEffect means a seat under
+// Platinum Angel does NOT lose to the §704 / Triskaidekaphobia state check
+// at exactly 13 life. Pre-fix the direct seat.Lost = true write bypassed
+// §614 and Platinum Angel was inert here.
+func TestTriskaidekaphobia_PlatinumAngelCancelsLoss(t *testing.T) {
+	gs := newGame(t, 2)
+	gs.Seats[0].Life = 20
+	gs.Seats[1].Life = 14
+	tris := addPerm(gs, 0, "Triskaidekaphobia", "enchantment")
+	// Drop a Platinum Angel on seat 1 + register its §614 cancel handler.
+	pa := addPerm(gs, 1, "Platinum Angel", "creature")
+	gameengine.RegisterPlatinumAngel(gs, pa)
+
+	gameengine.FireCardTrigger(gs, "upkeep_controller", map[string]interface{}{
+		"active_seat": 0,
+		"perm":        tris,
+	})
+
+	if gs.Seats[1].Lost {
+		t.Error("seat 1 must NOT be Lost — Platinum Angel cancels the would_lose_game via §614")
+	}
+	if gs.Seats[1].LossReason != "" {
+		t.Errorf("LossReason must stay empty when §614 cancels, got %q", gs.Seats[1].LossReason)
 	}
 }
 
