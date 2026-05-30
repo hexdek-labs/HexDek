@@ -62,21 +62,7 @@ func edwardEndStepTreasure(gs *gameengine.GameState, perm *gameengine.Permanent,
 	}
 
 	for i := 0; i < count; i++ {
-		token := &gameengine.Card{
-			Name:  "Treasure Token",
-			Owner: perm.Controller,
-			Types: []string{"token", "artifact", "treasure"},
-		}
-		enterBattlefieldWithETB(gs, perm.Controller, token, false)
-		gs.LogEvent(gameengine.Event{
-			Kind:   "create_token",
-			Seat:   perm.Controller,
-			Source: perm.Card.DisplayName(),
-			Details: map[string]interface{}{
-				"token":  "Treasure Token",
-				"reason": "edward_kenway_endstep",
-			},
-		})
+		gameengine.CreateTreasureToken(gs, perm.Controller)
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":      perm.Controller,
