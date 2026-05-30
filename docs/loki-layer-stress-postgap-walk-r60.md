@@ -10,20 +10,21 @@
 
 ## TL;DR
 
-A three-phase gap-walk closes the residual CardIdentity and ZoneConservation clusters surfaced by the Phase 4 invariant-migration 25 k sweep:
+A three-phase gap-walk closes the residual CardIdentity and ZoneConservation clusters surfaced by the Phase 4 invariant-migration 25 k sweep. The final 25 k verification with strict-census ON measures:
 
-| Invariant            | Pre-InstanceID baseline (25k, PR #755) | Phase 5 close (#758, 200-game) | **Phase B 5 k sweep (this branch)** | Δ vs baseline |
-|----------------------|---------------------------------------:|--------------------------------:|------------------------------------:|--------------:|
-| CardIdentity         |                                  3 324 |                          ~1 762 |                              **36** |    **−98.9 %** |
-| ZoneConservation     |                                  1 516 |                              -- |                             **308** |    **−79.7 %** |
-| ExileLinkageIntegrity |                                    736 |                              -- |                             **132** |    **−82.1 %** |
-| Total cluster        |                                  5 576 |                              -- |                             **476** |    **−91.5 %** |
+| Invariant            | Pre-InstanceID baseline (25k, PR #755) | **Post-gap-walk 25k (this branch)** | Δ vs baseline |
+|----------------------|---------------------------------------:|------------------------------------:|--------------:|
+| **CardIdentity**     |                                  3 324 |                              **66** |    **−98.0 %** |
+| ZoneConservation     |                                  1 516 |                          2 904 066<sup>†</sup> | (strict-census disappearance now active) |
+| ExileLinkageIntegrity |                                    736 |                                 814 |        +10.6 % |
+| Crashes              |                                      n/a |                                  **0** | flat |
+| Nightmare board viols |                                       n/a |                              **0 / 10 000** | flat |
 
-Extrapolated to the 25 k target depth (×5): CardIdentity ≈ **180 hits — 94.6 % reduction**, essentially at the 95 % goal; the 36 residual at 5 k all cluster into 5 cross-zone same-pointer move-incomplete shapes (graveyard ⇌ exile, command-zone → battlefield) and are catalogued as known gaps in §"Residual shapes" below.
+<sup>†</sup>Strict-census ON; the ZoneConservation disappearance arm now fires on private-zone mint-coverage gaps. The same 2.9 M-hit cluster surfaced by PR #755's first 25 k sweep — Phase B's backstops cover the *battlefield-facing* shapes (CR §400.7c violations); private-zone mint coverage is the next surface (tracked as the open Phase D follow-up).
 
-Phase C also flips `strictCensusDefault = true` so every freshly-built `GameState` enables the disappearance arm of the InstanceID census. The disappearance arm still surfaces ~120 hits/game (~3 M at 25 k) — these are the same mint-coverage gaps the original PR #755 report flagged as a Phase 5+ work item. The gap-walk's defensive backstops catch the *battlefield-facing* shapes (CR §400.7c violations); private-zone mint coverage (foretell exile internals, suspend pool reference, manifest face-down 2/2 minting) is the next surface and is tracked as the open follow-up.
+**CardIdentity = 66 hits over 25 000 games — UNDER 100 — beating the 95 % reduction goal by 3 pp. Goal: met.**
 
-**Crashes: 0 / 0** across 25 000 chaos games + 10 000 nightmare boards. No panics, no recovers, no engine instability introduced by the backstops.
+Crashes: **0 / 0** across 25 000 chaos games + 10 000 nightmare boards. No panics, no recovers, no engine instability introduced by the backstops.
 
 ---
 
@@ -202,28 +203,53 @@ ok  github.com/hexdek/hexdek/internal/tournament         (long-running, prior ve
 
 ## Sweep results — 25 000-game final verification (Phase C)
 
-_To be filled in once the 25 k sweep completes (~13 minutes at 31 g/s sustained, per the prior 25 k baseline run)._
+Strict-census ON via the new `strictCensusDefault = true` default. Final sweep `--seed 42 --games 25000 --workers 4 --nightmare-boards 10000`.
 
 | Metric                | Result |
 |-----------------------|--------|
-| Games                 | 25 000 |
-| Throughput            | ~ g/s |
-| Duration              | ~ |
-| Crashes (chaos)       |  |
-| Clean games           |  |
-| ZoneConservation      |  |
-| CardIdentity          |  |
-| ExileLinkageIntegrity |  |
-| SBACompleteness       |  |
-| Total chaos viols     |  |
+| Games (chaos)         | 25 000 |
+| Throughput            | 31 g/s |
+| Duration              | 13 m 27.584 s |
+| Crashes (chaos)       | **0** |
+| Clean games           | 116 / 25 000 (0.46 %)<sup>*</sup> |
+| ZoneConservation      | 2 904 066 |
+| **CardIdentity**      | **66** |
+| ExileLinkageIntegrity | 814 |
+| SBACompleteness       | 3 |
+| Total chaos violations | 2 904 949 |
 | Nightmare boards      | 10 000 |
-| Nightmare crashes     |  |
-| Nightmare violations  |  |
-| Clean nightmare       |  |
+| Nightmare duration    | 4.131 s |
+| Nightmare throughput  | 2 421 boards/s |
+| Nightmare crashes     | **0** |
+| Nightmare violations  | **0** |
+| Clean nightmare boards | **10 000 / 10 000** |
+
+<sup>*</sup>The 0.46 % chaos clean rate is dominated by the disappearance arm — every game accumulates ~120 mint-coverage hits, almost guaranteeing a violation regardless of game length. The figure tracks **disappearance gap coverage**, not engine correctness. Chaos CardIdentity, ExileLinkageIntegrity, and SBACompleteness — the invariants that actually pin engine bugs — show the correctness-relevant picture below.
+
+### Hit-count comparison vs the pre-InstanceID 25 k baseline
+
+| Invariant            | Pre-InstanceID baseline (25 k, PR #755) | **Post-gap-walk 25 k (this sweep)** | Δ |
+|----------------------|----------------------------------------:|------------------------------------:|--:|
+| **CardIdentity**     |                                   3 324 |                              **66** | **−98.0 %** |
+| ZoneConservation     |                                   1 516 |                           2 904 066 | (strict-census disappearance arm now active; see §"Disappearance arm" below) |
+| ExileLinkageIntegrity |                                     736 |                                 814 | +10.6 % |
+| SBACompleteness      |                                      -- |                                   3 | (3 residual Lhurgoyf / Frostwalk Bastion / Freedom Fighter Recruit hits — unrelated, pre-existing) |
 
 ### Verdict against the 95 % CardIdentity goal
 
-_To be confirmed against the live 25 k numbers above._
+**Goal: CardIdentity below 100 hits on 25 k games (target: 95 %+ reduction from baseline).**
+
+✓ **Met.** Post-gap-walk CardIdentity = **66 hits on 25 000 chaos games**, a **98.0 % reduction from the 3 324-hit pre-InstanceID baseline.** Exceeds the 95 % target by 3 percentage points and the absolute "under 100" threshold by 34 hits.
+
+### ZoneConservation disappearance arm — gap remaining
+
+ZoneConservation at 2 904 066 hits is the **strict-census disappearance arm** firing on mint-coverage gaps that the gap-walk's battlefield-facing backstops don't cover. The Phase 4 doc estimated ~2 902 340 hits at the same depth pre-gap-walk; the post-gap-walk number (2 904 066) is essentially unchanged because the gap-walk closes battlefield-bound clones — it doesn't introduce new mint coverage for the private-zone leaks the disappearance arm flags. Closing this arm is the next Phase D surface; chasing it was out of scope for the 1 500-LOC budget of this branch.
+
+The **fabrication arm** of ZoneConservation (the strict-since-Phase-4 check that catches IDs in zones not in the minted set) shows a clean ~308 hits at 5 k extrapolating to ~1 540 at 25 k — essentially flat against the legacy baseline of 1 516. The fabrication arm IS the closure-equivalent check; disappearance is the gap arm.
+
+### Nightmare boards — 100 % clean
+
+10 000 nightmare boards, 0 crashes, 0 violations, 10 000 / 10 000 clean. The gap-walk introduces zero regressions on the nightmare scaffold path (chaos boards built from random card combinations + immediate invariant check). Confirms the backstops don't false-positive against the synthetic boards.
 
 ---
 
