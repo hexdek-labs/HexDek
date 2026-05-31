@@ -18,6 +18,7 @@ import {
 } from '../utils/spectatorKeybindings'
 import { isNotableAction, explainAction } from '../utils/actionExplain'
 import { computeTooltipPlacement, MIN_VIEWPORT_MARGIN } from '../utils/mobileLayout'
+import PhaseRibbon from '../components/PhaseRibbon'
 
 // ActionExplainBadge — small ⓘ pill rendered next to a notable log
 // entry. Tap / hover / focus opens a tooltip showing what the hat's
@@ -959,6 +960,20 @@ export default function Spectator() {
             })
             })()}
           </div>
+
+          {/* Phase ribbon — visual 5-phase track + next-up seat preview.
+              Sits above the turn-bar so spectators can scan "where in
+              the turn are we?" at a glance. Suppressed when the game
+              is finished (no current phase to highlight). */}
+          {!game.finished && (
+            <PhaseRibbon
+              phase={game.phase}
+              step={game.step}
+              seats={seats}
+              activeSeat={game.active_seat}
+              finished={game.finished}
+            />
+          )}
 
           {/* Turn status — single compact line */}
           <div className={`turn-bar${activeGameChanger ? ' gc-card' : ''}`}>
