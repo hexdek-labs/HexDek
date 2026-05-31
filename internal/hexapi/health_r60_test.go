@@ -63,7 +63,7 @@ func TestHealth_JSONFieldNames(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &raw); err != nil {
 		t.Fatalf("body not valid JSON: %v", err)
 	}
-	wantKeys := []string{"status", "uptime_sec", "version", "db_reachable"}
+	wantKeys := []string{"status", "uptime_sec", "version", "db_reachable", "dependencies"}
 	for _, k := range wantKeys {
 		if _, ok := raw[k]; !ok {
 			t.Errorf("missing key %q (have %v)", k, mapKeys(raw))

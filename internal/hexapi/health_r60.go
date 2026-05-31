@@ -3,6 +3,8 @@ package hexapi
 import (
 	"context"
 	"net/http"
+	"os"
+	"os/exec"
 	"time"
 )
 
@@ -33,14 +35,28 @@ const healthDBPingTimeout = 500 * time.Millisecond
 // process is healthy enough to serve requests — the DB-unreachable
 // case still returns 200 so a transient DB blip doesn't fail the
 // healthcheck and trigger a restart loop; orchestrators that need
-// strict DB readiness should look at db_reachable instead of HTTP
-// status.
+// strict DB readiness should look at db_reachable / dependencies.scylla
+// instead of HTTP status.
+//
+// Dependencies is the k8s-style per-component sub-status (added r60).
+// Each value is "ok" or "fail" — operators can parse the object
+// without converting Go-specific JSON shapes. db_reachable is kept
+// alongside dependencies.scylla for backwards-compat: existing
+// monitors that read the top-level boolean keep working.
 type healthResponse struct {
-	Status      string `json:"status"`
-	UptimeSec   int64  `json:"uptime_sec"`
-	Version     string `json:"version"`
-	DBReachable bool   `json:"db_reachable"`
+	Status       string            `json:"status"`
+	UptimeSec    int64             `json:"uptime_sec"`
+	Version      string            `json:"version"`
+	DBReachable  bool              `json:"db_reachable"`
+	Dependencies map[string]string `json:"dependencies"`
 }
+
+// Dependency status values. Exported so monitors importing the
+// package can switch on them rather than string-comparing literals.
+const (
+	HealthOK   = "ok"
+	HealthFail = "fail"
+)
 
 // handleHealth implements GET /api/health.
 //
@@ -52,14 +68,60 @@ type healthResponse struct {
 // clock seconds since first observation (Register or first request,
 // whichever happened first).
 func (h *Handler) handleHealth(w http.ResponseWriter, r *http.Request) {
+	dbOK := h.pingDB(r.Context())
 	resp := healthResponse{
 		Status:      "ok",
 		UptimeSec:   int64(time.Since(startedAt).Seconds()),
 		Version:     Version,
-		DBReachable: h.pingDB(r.Context()),
+		DBReachable: dbOK,
+		Dependencies: map[string]string{
+			"scylla": healthBool(dbOK),
+			"freya":  healthBool(freyaBinaryAvailable()),
+			"hat":    healthBool(h.hatReady()),
+		},
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, resp)
+}
+
+// healthBool maps a bounded liveness probe result to the wire string.
+func healthBool(ok bool) string {
+	if ok {
+		return HealthOK
+	}
+	return HealthFail
+}
+
+// freyaBinaryAvailable reports whether the hexdek-freya analysis
+// subprocess is reachable. Mirrors the discovery path runFreya uses
+// in handler.go: PATH first, then ./hexdek-freya relative to the
+// current working directory. We don't try to invoke it (the cold-
+// start cost would dwarf a healthcheck budget); presence on disk is
+// the cheapest meaningful signal.
+//
+// Test/dev binaries that don't ship the freya binary report fail —
+// the dashboard surfaces it; the server itself still serves requests.
+func freyaBinaryAvailable() bool {
+	if _, err := exec.LookPath("hexdek-freya"); err == nil {
+		return true
+	}
+	if _, err := os.Stat("./hexdek-freya"); err == nil {
+		return true
+	}
+	return false
+}
+
+// hatReady reports whether the in-process YggdrasilHat AI player is
+// usable. HAT is not a separate binary — it's the AI package that
+// drives Showmatch games. It needs the AST corpus + MetaDB loaded,
+// both of which the Showmatch background loader populates at startup.
+// "fail" here means either Showmatch wasn't constructed (test/dev
+// binary) OR the corpus load hasn't finished yet (still warming).
+func (h *Handler) hatReady() bool {
+	if h.Showmatch == nil {
+		return false
+	}
+	return h.Showmatch.DeckParserMeta() != nil
 }
 
 // pingDB performs a bounded liveness probe on the configured DB.
