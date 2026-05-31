@@ -36,24 +36,19 @@ func dramaticReversalResolve(gs *gameengine.GameState, item *gameengine.StackIte
 	s := gs.Seats[seat]
 	untapped := 0
 	for _, p := range s.Battlefield {
-		if p == nil || p.IsLand() {
+		if p == nil || p.IsLand() || !p.Tapped {
 			continue
 		}
-		if !p.Tapped {
-			continue
+		// Route through canonical UntapPermanent — emits the canonical
+		// `untap_done` event with reason="dramatic_reversal" AND fires
+		// §702.124 Inspired on any tapped→untapped creature. Pre-r60-
+		// normalize this path direct-set Tapped=false and Inspired was
+		// silently inert against Dramatic Reversal even though it
+		// untaps creatures. Returns false if §122.4 stun consumed the
+		// would-untap; only increment on success.
+		if gameengine.UntapPermanent(gs, p, "dramatic_reversal") {
+			untapped++
 		}
-		p.Tapped = false
-		untapped++
-		gs.LogEvent(gameengine.Event{
-			Kind:   "untap",
-			Seat:   seat,
-			Target: seat,
-			Source: item.Card.DisplayName(),
-			Details: map[string]interface{}{
-				"target_card": p.Card.DisplayName(),
-				"reason":      "dramatic_reversal",
-			},
-		})
 	}
 	emit(gs, slug, item.Card.DisplayName(), map[string]interface{}{
 		"seat":     seat,

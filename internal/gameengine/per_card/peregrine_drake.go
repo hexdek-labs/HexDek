@@ -45,24 +45,16 @@ func peregrineDrakeETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		if untapped >= limit {
 			break
 		}
-		if p == nil || !p.IsLand() {
+		if p == nil || !p.IsLand() || !p.Tapped {
 			continue
 		}
-		if !p.Tapped {
-			continue
+		// Route through canonical UntapPermanent — see Palinchron's
+		// equivalent block for the rationale. Returns false if §122.4
+		// stun counters consume the would-untap; only increment on
+		// success.
+		if gameengine.UntapPermanent(gs, p, "peregrine_drake_etb") {
+			untapped++
 		}
-		p.Tapped = false
-		untapped++
-		gs.LogEvent(gameengine.Event{
-			Kind:   "untap",
-			Seat:   seat,
-			Target: seat,
-			Source: perm.Card.DisplayName(),
-			Details: map[string]interface{}{
-				"target_card": p.Card.DisplayName(),
-				"reason":      "peregrine_drake_etb",
-			},
-		})
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":     seat,

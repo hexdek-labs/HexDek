@@ -45,24 +45,19 @@ func palinchronETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		if untapped >= limit {
 			break
 		}
-		if p == nil || !p.IsLand() {
+		if p == nil || !p.IsLand() || !p.Tapped {
 			continue
 		}
-		if !p.Tapped {
-			continue
+		// Route through canonical UntapPermanent — emits the canonical
+		// `untap_done` event with reason="palinchron_etb" and respects
+		// §122.4 stun counters. Lands won't trigger Inspired (creature
+		// keyword), but the canonical path is mandatory regardless so
+		// invariants and Heimdall observers see a single consistent
+		// Kind across all untap surfaces. UntapPermanent returns false
+		// if stun consumed the would-untap; only increment on success.
+		if gameengine.UntapPermanent(gs, p, "palinchron_etb") {
+			untapped++
 		}
-		p.Tapped = false
-		untapped++
-		gs.LogEvent(gameengine.Event{
-			Kind:   "untap",
-			Seat:   seat,
-			Target: seat,
-			Source: perm.Card.DisplayName(),
-			Details: map[string]interface{}{
-				"target_card": p.Card.DisplayName(),
-				"reason":      "palinchron_etb",
-			},
-		})
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":     seat,
