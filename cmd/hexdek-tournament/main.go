@@ -89,14 +89,13 @@ func main() {
 		lazyPool    = flag.Bool("lazy-pool", false, "lazy pool: like --pool but loads decks on demand (low memory for large pools)")
 		pprofFlag     = flag.Bool("pprof", false, "enable pprof profiling (HTTP :6060 + heap dump after first game)")
 		progressEvery = flag.Int("progress-every", 0, "log progress every N games (0 = auto)")
-		applyFeedback = flag.String("apply-feedback", "",
-			"path to a Heimdall feedback JSON file (hat.HeimdallFeedback) to apply at startup. "+
-				"Each loaded deck's StrategyProfile.Weights gets per-dimension nudges per the attribution. "+
-				"Hard caps prevent any single feedback file from dramatically rewriting eval weights: "+
-				"±0.15 per-dimension Δ cap, 0.5 total magnitude budget, "+
-				"weights floored at 0.05 (regression safety — no dimension can be zeroed by feedback), "+
-				"and Δ scaled by sqrt(SampleSize/30) so small-sample feedback applies less aggressively. "+
-				"See internal/hat/heimdall_feedback.go for the full contract.")
+		// NOTE: a second --apply-feedback declaration with proposed
+		// guardrail safeguards (±0.15 cap, sqrt-scaling, 0.05 floor) was
+		// removed here as merge residue. Those guardrails are NOT
+		// implemented in internal/analytics/heimdall_feedback.go
+		// (which still uses MaxDimensionDelta=2.0 and zero floor); when
+		// that PR lands it should update the existing applyFeedback
+		// description above rather than re-declare the flag.
 	)
 	flag.Parse()
 
