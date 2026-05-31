@@ -2016,8 +2016,21 @@ func (e *GameStateEvaluator) scoreCommander(gs *gameengine.GameState, seatIdx in
 
 	cmdOnField := false
 	synergyBonus := 0.3
-	if e.Strategy != nil && e.Strategy.CommanderSynergy > 0.5 {
-		synergyBonus = 0.3 + e.Strategy.CommanderSynergy*0.3
+	if e.Strategy != nil {
+		switch {
+		case e.Strategy.IsCommanderCentric:
+			// R60: Freya-flagged commander-centric decks (Voltron / engine
+			// commanders / ≥45% commander synergy / ≥2 commander engine
+			// phrases) — floor the on-field bonus at 0.55 so an
+			// engine-commander deck with CommanderSynergy < 0.5 (where the
+			// raw-synergy gate below would not fire) still registers the
+			// commander resolving as load-bearing. Matches the way
+			// commanderUrgency already routes around the same flag in
+			// the cast-loop retry path (yggdrasil.go:7933).
+			synergyBonus = 0.55 + e.Strategy.CommanderSynergy*0.3
+		case e.Strategy.CommanderSynergy > 0.5:
+			synergyBonus = 0.3 + e.Strategy.CommanderSynergy*0.3
+		}
 	}
 	// commanderPerms: pointers to every commander permanent on this seat's
 	// battlefield. Captured during the cmdOnField scan so the voltron
@@ -2128,8 +2141,19 @@ func (e *GameStateEvaluator) scoreCommander(gs *gameengine.GameState, seatIdx in
 			tax += seat.CommanderCastCounts[cn]
 		}
 		taxPenalty := 0.15
-		if e.Strategy != nil && e.Strategy.CommanderSynergy > 0.5 {
-			taxPenalty = 0.20
+		if e.Strategy != nil {
+			switch {
+			case e.Strategy.IsCommanderCentric:
+				// R60: commander-centric decks NEED to land the commander —
+				// every additional tax point is a turn of stalled gameplan,
+				// so the per-tax penalty escalates further than the
+				// synergy>0.5 path. Caps at 0.28 per tax point pre-
+				// castability scalar (so 4 tax + uncastable amplifies to
+				// 0.28 * 4 * 1.6 = 1.79 vs the pre-r60 0.15 * 4 = 0.60).
+				taxPenalty = 0.28
+			case e.Strategy.CommanderSynergy > 0.5:
+				taxPenalty = 0.20
+			}
 		}
 
 		// R60r10: castability-weighted tax. The naive linear -tax * 0.15
@@ -2218,6 +2242,29 @@ func (e *GameStateEvaluator) scoreCommander(gs *gameengine.GameState, seatIdx in
 		// Ambient pressure — "I'm on everyone's commander-damage clock"
 		// is a real signal but not a wincon by itself.
 		score += float64(spread) / 21.0 * 0.15
+	}
+
+	// R60: discrete partial-Voltron thresholds on the max-per-opponent
+	// commander damage. The convex p² + 0.2p curve above produces a
+	// smooth ramp, but human Voltron play treats commander-damage clocks
+	// as discrete signposts: 7 (first knock — opp is now aware of the
+	// commander as a damage threat), 14 (two-thirds — opp must answer
+	// the commander or die in two combats), 18 (one normal swing
+	// from §704.6c lethal). Adding a flat bonus per threshold crossed
+	// sharpens the dimension's response to "concentrate damage on the
+	// closest-to-dead opponent" — pre-r60, the delta from 13 to 14
+	// commander damage was the same shape as 4 to 5, so MCTS couldn't
+	// distinguish a strategic threshold cross from incremental progress.
+	// Bonuses stack additively (18 fires all three) so the saturation
+	// from 0.91 (convex curve at 18) → 1.0+ encodes the qualitative
+	// "I am one swing from a win" jump.
+	switch {
+	case maxDmg >= 18:
+		score += 0.08 + 0.12 + 0.15 // 7-floor + 14-floor + 18-floor = 0.35
+	case maxDmg >= 14:
+		score += 0.08 + 0.12 // 7-floor + 14-floor = 0.20
+	case maxDmg >= 7:
+		score += 0.08
 	}
 
 	return score
