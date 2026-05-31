@@ -35,7 +35,12 @@ func theWarDoctorOnExile(gs *gameengine.GameState, perm *gameengine.Permanent, c
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	// Skip self-exile.
+	// Engine writes card_exiled ctx with "card" as a string (display name).
+	// The legacy *Card read was always nil, so the self-skip gate never
+	// fired and War Doctor wrongly got a time counter on her own exile.
+	if name, ok := ctx["card"].(string); ok && perm.Card != nil && name == perm.Card.DisplayName() {
+		return
+	}
 	if c, ok := ctx["card"].(*gameengine.Card); ok && c == perm.Card {
 		return
 	}
@@ -45,6 +50,12 @@ func theWarDoctorOnExile(gs *gameengine.GameState, perm *gameengine.Permanent, c
 func theWarDoctorOnPhaseOut(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
 	const slug = "the_war_doctor_time_counter_phaseout"
 	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	// permanent_phased_out ctx writes "seat" + "card" (string), NOT "perm".
+	// Self-skip via name comparison; legacy ctx["perm"] read kept as a
+	// fallback for callers that thread the perm explicitly.
+	if name, ok := ctx["card"].(string); ok && perm.Card != nil && name == perm.Card.DisplayName() {
 		return
 	}
 	if p, ok := ctx["perm"].(*gameengine.Permanent); ok && p == perm {
