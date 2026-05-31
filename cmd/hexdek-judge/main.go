@@ -95,7 +95,13 @@ func main() {
 		// state-construction REPL: this surface is read-only over a
 		// pre-loaded context.
 		interactive = flag.Bool("interactive", false, "interactive Q&A REPL — load --snapshot or --replay then accept free-form questions answered with CR citations + §704 probe")
-		deckPath    = flag.String("deck", "", "deck text file path for --check-commander / --check-deck-construction / --report-parse")
+		// Comprehensive CR citation index — consolidates the per-probe
+		// rule citations + invariant→CR map + cross-references into a
+		// single queryable JSON. Tournament-judge debug surface; doc
+		// generation; CI gates verifying a specific sub-section is
+		// implemented before release.
+		citationIndex = flag.Bool("citation-index", false, "dump the comprehensive CR citation index (every rule we check, with cross-references to engine invariants + probe coverage + related rules) as JSON")
+		deckPath      = flag.String("deck", "", "deck text file path for --check-commander / --check-deck-construction / --report-parse")
 		checkOut   = flag.String("check-out", "", "output path for the --check-* JSON report (default: stdout)")
 		// Parse coverage report — surfaces the deckparser's structured
 		// per-line resolution status (resolved / fallback-resolved /
@@ -166,6 +172,13 @@ func main() {
 			// Mirror other probes: non-zero exit when any line failed
 			// to resolve so CI hooks can gate on parse coverage.
 			os.Exit(1)
+		}
+		return
+	}
+
+	if *citationIndex {
+		if _, err := runCitationIndexDump(*checkOut); err != nil {
+			log.Fatalf("citation-index: %v", err)
 		}
 		return
 	}
