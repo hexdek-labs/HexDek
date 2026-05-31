@@ -288,9 +288,34 @@ func applyAdversarialSetup(gs *gameengine.GameState, oc *oracleCard, needs oppon
 			Colors: []string{"R"},
 			CMC:    1,
 		}
-		gs.Seats[1].Hand = append(gs.Seats[1].Hand, spellCard)
+		// Mimic the live cast pipeline (CR §601.2a–i): the spell moves
+		// hand → stack, THEN cast-trigger fanout fires. Per-card
+		// spell_cast handlers (Possibility Storm, Knowledge Pool) exile
+		// the cast spell via MoveCard("stack" → "exile"), which
+		// intentionally no-ops on the stack-side removal
+		// (removeCardFromZone leaves stack management to the caller).
+		// In live play ResolveStackTop later pops the stale StackItem;
+		// the scaffold mimics that cleanup explicitly below so
+		// CardIdentity doesn't see the probe card in both stack and
+		// the handler-chosen destination.
+		item := &gameengine.StackItem{
+			Kind:       "spell",
+			Controller: 1,
+			Card:       spellCard,
+		}
+		gameengine.PushStackItem(gs, item)
 		tr.Record("OPPONENT_ACTION", "cast spell %q from seat 1", spellCard.Name)
 		gameengine.FireCastTriggers(gs, 1, spellCard)
+		// Pop the probe StackItem if still present — handlers that
+		// exiled the spell leave it on gs.Stack as a stale reference
+		// (the canonical post-resolution pop never runs in scaffold
+		// land).
+		for i := len(gs.Stack) - 1; i >= 0; i-- {
+			if gs.Stack[i] == item {
+				gs.Stack = append(gs.Stack[:i], gs.Stack[i+1:]...)
+				break
+			}
+		}
 	}
 
 	if needs.attack {
