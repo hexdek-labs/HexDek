@@ -134,4 +134,52 @@ one. Handlers that resolve copies via `InvokeResolveHook` directly
 (Isochron Scepter, Panoptic Mirror) are exempt — they don't push the
 item to the stack so §707.10 cease never fires.
 
-— Loki r60 / Phase G / Aziza closure
+## Engine-side sweep (this PR, post-Aziza)
+
+A follow-up audit (`grep "IsCopy:\s*true"` across all of
+`internal/gameengine/`, not just `per_card/`) surfaced two ENGINE-level
+bypasses with the same shape as Aziza, plus two inline-mint sites that
+worked but skipped part of MintSpellCopy's lineage cleanup. All four
+now route through the canonical chokepoint:
+
+| Site | File | Shape |
+|------|------|-------|
+| Conspire (CR §702.78) | `internal/gameengine/keywords_batch4.go::ApplyConspire` | Aliased `item.Card` pointer outright (Aziza-equivalent bypass) |
+| Epic (CR §702.50) | `internal/gameengine/keywords_batch6.go::ApplyEpic` (delayed-trigger closure) | Captured `epicCard := item.Card`, aliased in upkeep copy push |
+| copy_spell handler (CR §707.2) | `internal/gameengine/resolve.go::resolveCopy` | Inline `DeepCopy + clear InstanceID + EnablerHistory + MintCopyInstanceID` — missed `SourceInstanceID` + `EnablerInstanceID` cleanup that `MintSpellCopy` does |
+| Paradigm copy | `internal/gameengine/phases.go::ResolveParadigmCopies` | Same inline pattern as resolve.go — same missing-lineage-cleanup gap |
+
+Conspire and Epic are the load-bearing class — both push aliased
+copies to the stack so the §707.10 cease at resolve retires the
+source's InstanceID, exact same fabrication leak Aziza demonstrated.
+The copy_spell + paradigm inline-mint sites are subtle: the cease was
+correct (distinct copy ID), but residual `SourceInstanceID` /
+`EnablerInstanceID` leaked from the source onto the copy, polluting
+the lineage trail Phase 4 census walks ride on.
+
+Three regression tests in `internal/gameengine/instanceid_phase_g_sweep_test.go`:
+
+- `TestPhaseG_Conspire_RoutesThroughMintSpellCopy` — pushes a colored
+  spell, fires `ApplyConspire` with two cost-payable creatures, asserts
+  the copy's `*Card` is freshly minted with a distinct InstanceID, then
+  drives the §707.10 cease and asserts the source ID survives.
+- `TestPhaseG_Epic_RoutesThroughMintSpellCopy` — registers Epic, drives
+  the delayed-trigger closure directly (TriggerAt="upkeep" isn't yet
+  wired into `delayedTriggerMatches`, out of Phase G scope), asserts
+  the same shape on the upkeep copy.
+- `TestPhaseG_MintSpellCopy_ClearsFullLineage` — pins the
+  `MintSpellCopy` chokepoint contract: stamped source lineage fields
+  (`SourceInstanceID`, `EnablerInstanceID`, pre-existing
+  `EnablerHistory` entries) are all zeroed on the returned copy.
+  Closes the subtle resolve.go + phases.go inline-mint gap from
+  inside the helper.
+
+Audit-rule scope extends: any future `IsCopy=true` StackItem push from
+ENGINE code (not just per_card) must route through `MintSpellCopy`.
+The remaining safe inline-mint sites (Storm Rider / Replicate /
+Demonstrate / Tiered Pay / Gravestorm) build fresh Card structs with
+explicit name munging ("Lightning Bolt (storm copy 3)" etc.) and call
+`MintCopyInstanceID` directly — they're correct, just verbose; refactor
+to `MintSpellCopy` is a cosmetic follow-up, not load-bearing.
+
+— Loki r60 / Phase G / Aziza closure + engine-side sweep

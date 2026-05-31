@@ -557,9 +557,17 @@ func ApplyConspire(gs *GameState, seatIdx int, item *StackItem) bool {
 	tapped[0].Tapped = true
 	tapped[1].Tapped = true
 
-	// Push a copy of the spell.
+	// Push a copy of the spell. Route through MintSpellCopy so the copy
+	// carries a fresh CP-provenance InstanceID with lineage to the source,
+	// rather than aliasing the source *Card pointer. Without this,
+	// stack.go's §707.10 cease branch would retire the SOURCE's InstanceID
+	// when the conspire copy resolves — the source card living in the
+	// graveyard / hand / wherever post-cast would then be flagged as
+	// fabrication by checkZoneConservation (Phase G sibling-site closure,
+	// same shape as Aziza per `docs/zonecons-phase-g-aziza-r60.md`).
+	copyCard := MintSpellCopy(gs, item.Card)
 	copyItem := &StackItem{
-		Card:       item.Card,
+		Card:       copyCard,
 		Controller: seatIdx,
 		Effect:     item.Effect,
 		IsCopy:     true,

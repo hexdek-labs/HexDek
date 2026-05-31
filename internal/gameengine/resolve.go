@@ -2693,13 +2693,11 @@ func resolveCopySpell(gs *GameState, src *Permanent, e *gameast.CopySpell) {
 	}
 	// §707.2: create a copy of the spell on the stack. The copy is not
 	// "cast" — it was "created" directly on the stack (CR §707.10).
-	copyCard := target.Card.DeepCopy()
-	copyCard.IsCopy = true // CR §704.5e — ceases to exist outside stack/battlefield
-	// DeepCopy carries forward the source's InstanceID; clear it so the
-	// fresh CP mint stamps a unique copy ID + lineage to the source.
-	copyCard.InstanceID = ""
-	copyCard.EnablerHistory = nil
-	MintCopyInstanceID(gs, copyCard, target.Card.InstanceID, currentMintEnablerID(gs))
+	// Route through MintSpellCopy so the inherited SourceInstanceID and
+	// EnablerInstanceID are also cleared (the inline DeepCopy+clear here
+	// only zeroed InstanceID + EnablerHistory pre-Phase G, leaking the
+	// other two lineage fields onto the copy).
+	copyCard := MintSpellCopy(gs, target.Card)
 	copyItem := &StackItem{
 		Controller: controller,
 		Card:       copyCard,

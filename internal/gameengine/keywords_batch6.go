@@ -681,8 +681,16 @@ func ApplyEpic(gs *GameState, seatIdx int, item *StackItem) {
 			if gs.Active != seatIdx {
 				return
 			}
+			// Route the epic copy through MintSpellCopy so it carries a
+			// fresh CP-provenance InstanceID rather than aliasing the
+			// captured epicCard pointer. Without this, stack.go's §707.10
+			// cease branch retires the SOURCE's InstanceID each upkeep —
+			// the source card living in the graveyard (epic spells go
+			// there once cast) would then be flagged as fabrication
+			// (Phase G sibling-site closure, Aziza-shape bypass).
+			copyCard := MintSpellCopy(gs, epicCard)
 			copyItem := &StackItem{
-				Card:       epicCard,
+				Card:       copyCard,
 				Controller: seatIdx,
 				Effect:     epicEffect,
 				IsCopy:     true,
