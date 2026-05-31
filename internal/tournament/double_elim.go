@@ -145,6 +145,7 @@ func RunDoubleElimination(cfg DoubleEliminationConfig) (*TournamentResult, error
 	state := make([]deckState, nDecks)
 
 	r := newSwissAggResult(commanderNames, cfg.NSeats)
+	r.Mode = ModeDoubleElim
 	elo := NewELORatings(commanderNames)
 	ts := trueskill.NewTrueSkillRatings(commanderNames)
 	winTurnSum := make(map[string]int)

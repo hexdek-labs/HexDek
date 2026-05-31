@@ -248,6 +248,7 @@ func RunBalancedPool(cfg BalancedPoolConfig) (*TournamentResult, error) {
 		nDecks, len(pods), cfg.GamesPerPod, totalGames)
 
 	r := newSwissAggResult(commanderNames, cfg.NSeats)
+	r.Mode = ModeBalancedPool
 	elo := NewELORatings(commanderNames)
 	ts := trueskill.NewTrueSkillRatings(commanderNames)
 
