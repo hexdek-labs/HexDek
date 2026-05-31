@@ -2936,6 +2936,44 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 		base += h.goadDealOpportunity(gs, seatIdx)
 	}
 
+	// r60-cedh-sequencer: combo-priority cast-order bias. PlanAssemble
+	// and PlanExecute already boost the ComboProximity *evaluator*
+	// weight at the MCTS leaves (see PlanWeightMultipliers in
+	// gameplan.go), but the priors that decide WHICH spell to cast
+	// first this turn run through cardHeuristic — and that path
+	// previously treated combo pieces and value engines as roughly
+	// interchangeable. The cEDH gauntlet rerun (docs/cedh-gauntlet-
+	// rerun-r60.md, PR #808) confirmed this gap: PR #793's multi-tutor
+	// leaf-eval lift fired (5-7× throughput drop proves the MCTS
+	// expanded combo subtrees deeper) but didn't change the actual
+	// cast-order outcome, so avg game length stayed at 47-50 turns.
+	//
+	// When the plan is PlanAssemble or PlanExecute, push combo pieces
+	// and tutors strictly ahead of generic value engines so the cast
+	// queue tries to assemble the wincon before re-investing in mid-
+	// board state. Sizes (+0.40 combo / +0.35 tutor / -0.15 value
+	// engine) are tuned so a combo piece outranks a same-CMC value
+	// engine by ~0.55 — larger than any single archetype/category
+	// bonus above, so the bias is decisive when combo decks have a
+	// reach line in hand.
+	if h.planState.Current == PlanAssemble || h.planState.Current == PlanExecute {
+		cName := c.DisplayName()
+		switch {
+		case h.comboPieceSet[cName]:
+			base += 0.40
+		case isTutor(c) || strings.Contains(gameengine.OracleTextLower(c), "search your library"):
+			// Mirror hasTutorInHand's detection: AST effect-kind OR
+			// the canonical "search your library" oracle phrase. The
+			// AST-only check misses Static-raw-text tutors (Demonic
+			// Tutor parses as Activated with a Tutor effect node when
+			// the parser succeeds, but some cards and the test corpus
+			// reach cardHeuristic with only Static.Raw populated).
+			base += 0.35
+		case h.isValueEngineKey(c):
+			base -= 0.15
+		}
+	}
+
 	return base
 }
 

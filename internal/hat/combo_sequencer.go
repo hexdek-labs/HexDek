@@ -131,9 +131,23 @@ func (cs *ComboSequencer) Evaluate(gs *gameengine.GameState, seatIdx int) ComboA
 	if best.executable {
 		result.Executable = true
 		result.NextAction = best.nextAction
-	} else if best.missing == 1 && hasTutorInHand(seat) {
-		result.Assembling = true
-		result.MissingPiece = best.missingPiece
+	} else if best.found >= 1 && best.missing >= 1 {
+		// r60-cedh-sequencer: broaden the Assembling gate to cover the
+		// canonical cEDH multi-tutor reach pattern. The pre-tuning gate
+		// required missing==1 AND any tutor in hand, which captured only
+		// the "one missing piece, one tutor" boundary case. The cEDH
+		// signal we want to surface is broader: when the hand contains
+		// >=1 anchoring real piece AND tutorsInHand >= missing, the
+		// combo is functionally one cast-tutor-then-cast-piece sequence
+		// from complete, regardless of how many slots remain. PlanState
+		// switches into PlanAssemble on that signal, which then biases
+		// the cast queue toward tutors and combo pieces (see
+		// cardHeuristic combo-priority block in yggdrasil.go).
+		tutors := seatTutorsInHand(seat)
+		if tutors >= best.missing {
+			result.Assembling = true
+			result.MissingPiece = best.missingPiece
+		}
 	}
 
 	return result
