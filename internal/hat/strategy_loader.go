@@ -184,6 +184,22 @@ type strategyFileJSON struct {
 	// synergyClusterCohesionBoost helper which boosts cardHeuristic
 	// for cards from already-active clusters (≥2 members on battlefield).
 	SynergyClusters []freyaSynergyCluster  `json:"synergy_clusters,omitempty"`
+	// HuginnPredictions carry dev-19's --predict CLI output:
+	// speculative combo predictions Huginn generates from tier-3
+	// patterns against the target deck. Each prediction has a unique
+	// InstanceID so the post-game feedback loop
+	// (huginn.ComputePredictionOutcomes + RecordPredictionOutcomes)
+	// can route per-prediction confidence adjustments back to the
+	// pattern catalog. Hat consumes via huginnPredictionBoost in
+	// cardHeuristic. Worker D — Huginn 2.0 (2026-05-31).
+	HuginnPredictions []freyaHuginnPrediction `json:"huginn_predictions,omitempty"`
+}
+
+type freyaHuginnPrediction struct {
+	InstanceID string   `json:"instance_id"`
+	Cards      []string `json:"cards"`
+	Pattern    string   `json:"pattern,omitempty"`
+	Confidence float64  `json:"confidence"`
 }
 
 type freyaSynergyCluster struct {
@@ -327,6 +343,18 @@ func buildFromStrategyJSON(sj *strategyFileJSON) *StrategyProfile {
 			Theme:       c.Theme,
 			Members:     c.Members,
 			HighDensity: c.HighDensity,
+		})
+	}
+
+	for _, p := range sj.HuginnPredictions {
+		if p.InstanceID == "" || len(p.Cards) == 0 {
+			continue
+		}
+		sp.HuginnPredictions = append(sp.HuginnPredictions, HuginnPrediction{
+			InstanceID: p.InstanceID,
+			Cards:      p.Cards,
+			Pattern:    p.Pattern,
+			Confidence: p.Confidence,
 		})
 	}
 

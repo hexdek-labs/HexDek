@@ -1025,6 +1025,18 @@ type strategyJSON struct {
 	// Wave-4 freya-hat integration audit (2026-05-30) — see
 	// strategySynergyCluster docstring.
 	SynergyClusters         []strategySynergyCluster  `json:"synergy_clusters,omitempty"`
+	// HuginnPredictions ship dev-19's --predict CLI output: speculative
+	// combo predictions Huginn generates by matching tier-3 confirmed
+	// patterns against the target deck. Each prediction has a unique
+	// InstanceID so the post-game feedback loop
+	// (huginn.ComputePredictionOutcomes + huginn.RecordPredictionOutcomes)
+	// can route per-prediction confidence adjustments back to the
+	// pattern catalog. Hat consumes via StrategyProfile.HuginnPredictions
+	// + huginnPredictionBoost (cardHeuristic). Freya emits the field
+	// empty by default — populated only when --predict has been run
+	// against the deck. Worker D — Huginn 2.0 freya integration
+	// (2026-05-31).
+	HuginnPredictions       []strategyHuginnPrediction `json:"huginn_predictions,omitempty"`
 	ManaCurve               *jsonManaCurve            `json:"mana_curve,omitempty"`
 	ColorBalance            *jsonColors               `json:"color_balance,omitempty"`
 
@@ -1040,6 +1052,20 @@ type strategyEmergentSynergy struct {
 	Tier             int      `json:"tier"`
 	ObservationCount int      `json:"observation_count"`
 	AvgImpact        float64  `json:"avg_impact"`
+}
+
+// strategyHuginnPrediction is the on-wire shape of a Huginn-generated
+// combo prediction. Mirrors huginn.Prediction (internal/huginn/
+// predictions.go) but kept hat-local on the JSON wire so cmd/
+// hexdek-freya doesn't import huginn just for the type definition.
+// Field names are normative — both ends of the wire (this struct in
+// Freya and freyaHuginnPrediction in internal/hat/strategy_loader.go)
+// must keep the same JSON tags. Worker D — Huginn 2.0 (2026-05-31).
+type strategyHuginnPrediction struct {
+	InstanceID string   `json:"instance_id"`
+	Cards      []string `json:"cards"`
+	Pattern    string   `json:"pattern,omitempty"`
+	Confidence float64  `json:"confidence"`
 }
 
 // strategySynergyCluster is the hat-consumable view of Freya's

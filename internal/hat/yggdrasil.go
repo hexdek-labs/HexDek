@@ -2975,6 +2975,16 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 	// (2026-05-30) — see synergyClusterCohesionBoost docstring.
 	base += h.synergyClusterCohesionBoost(gs, seatIdx, c)
 
+	// Huginn prediction boost: cards appearing in a Huginn-generated
+	// combo prediction (dev-19's --predict output) get a small bonus
+	// scaled by the prediction's confidence. Biases the hat toward
+	// drawing / casting predicted combo pieces while the prediction is
+	// fresh, which produces a stronger predicted-vs-actual fire signal
+	// for the post-game feedback loop
+	// (huginn.ComputePredictionOutcomes). Worker D — Huginn 2.0 freya
+	// integration (2026-05-31) — see huginnPredictionBoost docstring.
+	base += huginnPredictionBoost(h.Strategy, c)
+
 	// Interaction speed: decks with cheap interaction can afford to hold mana.
 	// Expensive interaction decks should cast proactively instead.
 	if h.Strategy != nil && h.Strategy.InteractionAvgCMC > 3.0 && cat == CatRemoval {
@@ -3362,6 +3372,60 @@ func cheapInteractionPassAdjust(sp *StrategyProfile) float64 {
 // Returns 0 for nil Strategy, empty SynergyClusters, nil gs, or when
 // the card is not a member of any active cluster. Tested in
 // synergy_cluster_cohesion_r60_test.go.
+// huginnPredictionBoost returns a small additive cardHeuristic bonus
+// when the candidate card appears in any Huginn-generated combo
+// prediction on the deck's StrategyProfile.HuginnPredictions.
+// Worker D — Huginn 2.0 freya integration (2026-05-31).
+//
+// Per-prediction contribution: 0.10 × Confidence (so a 0.8-confidence
+// prediction contributes +0.08; a 0.3-confidence prediction
+// contributes +0.03). A card that appears in multiple predictions
+// sums all contributions. Cumulative cap +0.20 keeps the boost in
+// the same magnitude as the SynergyCluster cohesion boost (+0.25
+// cap) and the star-card bonus (+0.15) so prediction signal refines
+// rather than dominates.
+//
+// Composes additively with the existing ComboPieces scoring path —
+// a card that's in BOTH a confirmed ComboPlan AND a high-confidence
+// Huginn prediction correctly gets both boosts. The two paths
+// measure different things: ComboPieces is a hard win-line plan,
+// HuginnPredictions is a speculative prior that wants to be
+// validated.
+//
+// Returns 0 for nil sp, empty predictions, or candidates not
+// appearing in any prediction. Case-insensitive name matching
+// mirrors the synergyClusterCohesionBoost convention. Tested in
+// huginn_prediction_boost_r60_test.go.
+func huginnPredictionBoost(sp *StrategyProfile, c *gameengine.Card) float64 {
+	if sp == nil || len(sp.HuginnPredictions) == 0 || c == nil {
+		return 0
+	}
+	candidateLower := strings.ToLower(c.DisplayName())
+	boost := 0.0
+	for _, p := range sp.HuginnPredictions {
+		for _, name := range p.Cards {
+			if strings.ToLower(name) == candidateLower {
+				boost += 0.10 * p.Confidence
+				break
+			}
+		}
+	}
+	if boost > 0.20 {
+		boost = 0.20
+	}
+	if boost < 0 {
+		// Defensive: a negative Confidence value (out of [0, 1])
+		// shouldn't produce a negative cardHeuristic boost — that
+		// would actively deprioritize a predicted piece. Normalize
+		// to 0 instead. The normalizeStrategyProfile clamp (wave-5)
+		// would catch negative Confidence at load time, but this
+		// defends against direct StrategyProfile construction in
+		// tests / future call sites that bypass load.
+		boost = 0
+	}
+	return boost
+}
+
 func (h *YggdrasilHat) synergyClusterCohesionBoost(gs *gameengine.GameState, seatIdx int, c *gameengine.Card) float64 {
 	if h == nil || h.Strategy == nil || len(h.Strategy.SynergyClusters) == 0 ||
 		gs == nil || c == nil {
