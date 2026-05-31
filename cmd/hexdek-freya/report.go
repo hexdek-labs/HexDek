@@ -1405,13 +1405,22 @@ type jsonColors struct {
 }
 
 type jsonCombo struct {
-	Cards            []string `json:"cards"`
-	LoopType         string   `json:"loop_type"`
-	Class            string   `json:"class,omitempty"`
-	Resources        string   `json:"resources,omitempty"`
-	Description      string   `json:"description"`
-	Confirmed        bool     `json:"confirmed,omitempty"`
-	NonDeterministic bool     `json:"non_deterministic,omitempty"`
+	Cards            []string            `json:"cards"`
+	LoopType         string              `json:"loop_type"`
+	Class            string              `json:"class,omitempty"`
+	Resources        string              `json:"resources,omitempty"`
+	Description      string              `json:"description"`
+	Confirmed        bool                `json:"confirmed,omitempty"`
+	NonDeterministic bool                `json:"non_deterministic,omitempty"`
+	Annotation       *jsonLoopAnnotation `json:"annotation,omitempty"`
+}
+
+type jsonLoopAnnotation struct {
+	PrimaryOutput   string         `json:"primary_output"`
+	NetProduces     []ResourceType `json:"net_produces,omitempty"`
+	ExternalEffects []string       `json:"external_effects,omitempty"`
+	Classification  string         `json:"classification"`
+	Summary         string         `json:"summary"`
 }
 
 type jsonProfile struct {
@@ -2107,7 +2116,25 @@ func comboSlice(combos []ComboResult) []jsonCombo {
 	}
 	out := make([]jsonCombo, len(combos))
 	for i, c := range combos {
-		out[i] = jsonCombo(c)
+		jc := jsonCombo{
+			Cards:            c.Cards,
+			LoopType:         c.LoopType,
+			Class:            c.Class,
+			Resources:        c.Resources,
+			Description:      c.Description,
+			Confirmed:        c.Confirmed,
+			NonDeterministic: c.NonDeterministic,
+		}
+		if c.Annotation != nil {
+			jc.Annotation = &jsonLoopAnnotation{
+				PrimaryOutput:   c.Annotation.PrimaryOutput,
+				NetProduces:     c.Annotation.NetProduces,
+				ExternalEffects: c.Annotation.ExternalEffects,
+				Classification:  c.Annotation.Classification,
+				Summary:         c.Annotation.Summary,
+			}
+		}
+		out[i] = jc
 	}
 	return out
 }

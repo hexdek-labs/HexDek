@@ -283,7 +283,9 @@ func walkCycles(candidates []CardProfile,
 
 // buildCycleCombo turns a closed cycle into a ComboResult, threading the
 // per-edge resource overlap into the description so downstream consumers
-// see the same shape as the pair/triple/quad output.
+// see the same shape as the pair/triple/quad output. Populates a
+// LoopAnnotation with the primary output category, reliability class,
+// and a one-sentence human-readable summary (see annotateLongLoop).
 //
 // LoopType: long cycles (5+ cards) are intentionally floored at "synergy"
 // regardless of what classifyLoop would emit. The 2-card / 3-card / 4-card
@@ -297,6 +299,11 @@ func walkCycles(candidates []CardProfile,
 // only; see archetype.go:1142, 2595). Real long-cycle combos still
 // surface in the deck profile under Synergies — they're just not treated
 // as B4-grade categorical wins.
+//
+// The annotation's Classification field surfaces the TRUE reliability
+// (infinite / determined / probabilistic / synergy) even when LoopType
+// is floored — this lets UI consumers display "infinite mana via 5-card
+// loop" without the floor affecting bracket math.
 func buildCycleCombo(cards []CardProfile, path []int,
 	edgeRes map[[2]int][]ResourceType) ComboResult {
 
@@ -311,12 +318,15 @@ func buildCycleCombo(cards []CardProfile, path []int,
 		flowParts[i] = resourceNames(edgeRes[[2]int{from, to}])
 	}
 
+	ann := annotateLongLoop(cards, path, edgeRes)
+
 	combo := ComboResult{
-		Cards:    names,
-		LoopType: "synergy",
-		Resources: strings.Join(flowParts, " -> ") + " -> loop",
-		Description: fmt.Sprintf("%s -> %d-card resource loop (%s)",
-			strings.Join(names, " -> "), len(cards), strings.Join(flowParts, " -> ")),
+		Cards:       names,
+		LoopType:    "synergy",
+		Class:       comboClassForOutput(ann.PrimaryOutput),
+		Resources:   strings.Join(flowParts, " -> ") + " -> loop",
+		Description: ann.Summary,
+		Annotation:  ann,
 	}
 	for _, c := range cards {
 		if c.HasRandomSelection {
@@ -325,6 +335,332 @@ func buildCycleCombo(cards []CardProfile, path []int,
 		}
 	}
 	return combo
+}
+
+// ---------------------------------------------------------------------------
+// Loop annotation -- surfaceable metadata for graph-walked cycles.
+//
+// Long cycles (5..7 cards) emitted by FindLongLoops carry raw resource
+// flow but no human-readable summary. The annotation produced here is
+// what the UI / JSON consumer renders directly: a primary output
+// category, a reliability classification, and a one-sentence summary.
+//
+// Survey of existing surfaces (informing the design):
+//   - KnownCombo.Description (known_combos.go) — hand-written 1-sentence
+//     "Polyraptor ETB → Marauding Raptor deals 2 → Enrage creates copy
+//     → copy ETBs → infinite loop." This is the format the annotation
+//     emulates structurally: arrow chain + production tail.
+//   - ComboClass* taxonomy (known_combos.go) — what the combo PRODUCES.
+//     The annotation picks the closest match to populate ComboResult.Class
+//     so downstream consumers (hat affinity weighting, JSON readers,
+//     filter UIs) don't have to re-classify graph-walked loops.
+//   - LoopType (analysis.go) — reliability axis (true_infinite /
+//     determined / synergy). Long cycles floor to "synergy" for bracket
+//     safety, but the annotation's Classification preserves the real
+//     verdict for display.
+// ---------------------------------------------------------------------------
+
+// LoopAnnotation is the surfaceable metadata for a detected combo cycle:
+// what the loop produces, how reliable it is, and a one-sentence
+// human-readable summary suitable for direct UI display.
+type LoopAnnotation struct {
+	// PrimaryOutput is the dominant resource the loop produces to the
+	// outside world per iteration. One of: "mana", "tokens", "damage",
+	// "drain", "mill", "cards", "untap", "graveyard_value",
+	// "etb_value", "value_loop" (fallback).
+	PrimaryOutput string
+
+	// NetProduces lists every distinct resource type that flows along
+	// at least one edge in the cycle. Order-stable; used by UI filters.
+	NetProduces []ResourceType
+
+	// ExternalEffects lists distinct node-level Effects strings across
+	// the cycle (damage / drain / mill / draw / etc.) — the side
+	// outputs beyond the self-sustaining edge resources.
+	ExternalEffects []string
+
+	// Classification names the reliability class: "infinite" (mandatory
+	// triggers, no exit), "determined" (controllable, has kill output),
+	// "probabilistic" (involves random selection), or "synergy" (value
+	// engine, no categorical win).
+	Classification string
+
+	// Summary is a single sentence safe for direct UI display.
+	Summary string
+}
+
+// annotateLongLoop produces the surfaceable annotation for a closed
+// cycle. The function is deterministic — same input cards/path/edges
+// always yield the same annotation, regardless of starting node.
+func annotateLongLoop(cards []CardProfile, path []int,
+	edgeRes map[[2]int][]ResourceType) *LoopAnnotation {
+
+	ann := &LoopAnnotation{}
+
+	// Collect distinct edge resources (preserving first-seen order so
+	// the output is deterministic across rotations).
+	seenRes := map[ResourceType]bool{}
+	for i := 0; i < len(path); i++ {
+		from := path[i]
+		to := path[(i+1)%len(path)]
+		for _, r := range edgeRes[[2]int{from, to}] {
+			if !seenRes[r] {
+				seenRes[r] = true
+				ann.NetProduces = append(ann.NetProduces, r)
+			}
+		}
+	}
+
+	// Collect distinct node-level external effects.
+	seenEff := map[string]bool{}
+	for _, c := range cards {
+		for _, e := range c.Effects {
+			if !seenEff[e] {
+				seenEff[e] = true
+				ann.ExternalEffects = append(ann.ExternalEffects, e)
+			}
+		}
+	}
+
+	ann.PrimaryOutput = pickPrimaryOutput(cards, seenRes, seenEff)
+	ann.Classification = classifyLoopReliability(cards, ann.PrimaryOutput)
+	ann.Summary = renderLoopSummary(cards, ann)
+	return ann
+}
+
+// pickPrimaryOutput selects the dominant output category for a cycle.
+// Order is priority — explicit kill primitives (damage / drain / mill)
+// win over self-sustaining resources (mana / tokens / cards) because
+// the kill primitive is what the combo OUTPUTS to opponents per
+// iteration, while the edge resources merely sustain the loop.
+func pickPrimaryOutput(cards []CardProfile,
+	edges map[ResourceType]bool, effects map[string]bool) string {
+	// Kill primitives — what the loop actually does to opponents.
+	// Order mirrors ClassifyComboHeuristic (combo_class.go): drain is
+	// the most-specific kill class (Exquisite Blood family), then damage
+	// (Walking Ballista family), then mill (Altar of Dementia family).
+	// A combo that fires both damage AND drain (e.g. Heliod pinging +
+	// Vito draining) classes as drain — the drain is the headline
+	// kill primitive.
+	if effects["drain"] {
+		return "drain"
+	}
+	if effects["damage"] {
+		return "damage"
+	}
+	if effects["mill"] {
+		return "mill"
+	}
+	// Self-sustaining production — what the loop generates that the
+	// player accumulates. Mana and tokens beat cards/untap because
+	// they're the most-common combo win-vehicles (mana sinks, swarm
+	// finishers); cards/untap are typically engines, not finishers.
+	if edges[ResMana] {
+		return "mana"
+	}
+	if edges[ResToken] {
+		return "tokens"
+	}
+	if edges[ResUntap] {
+		return "untap"
+	}
+	if edges[ResCard] {
+		return "cards"
+	}
+	// Recursion / blink — value engines, not direct wins.
+	if edges[ResReanimate] || edges[ResGraveyard] || edges[ResGraveyardFill] {
+		return "graveyard_value"
+	}
+	for _, c := range cards {
+		if c.IsBlinker || c.HasValueETB {
+			return "etb_value"
+		}
+	}
+	return "value_loop"
+}
+
+// classifyLoopReliability returns the reliability bucket for the loop:
+// "infinite" (mandatory triggers + would-be infinite resource),
+// "probabilistic" (any random selection), "determined" (kill output OR
+// optional triggers — player controls iteration count), or "synergy"
+// (value engine, no categorical win).
+func classifyLoopReliability(cards []CardProfile, primary string) string {
+	// Probabilistic dominates — any random selection makes the loop
+	// non-deterministic regardless of other properties.
+	for _, c := range cards {
+		if c.HasRandomSelection {
+			return "probabilistic"
+		}
+	}
+
+	allMandatory := true
+	for _, c := range cards {
+		if !c.MandatoryTriggers {
+			allMandatory = false
+			break
+		}
+	}
+
+	hasKillOutput := false
+	for _, c := range cards {
+		for _, e := range c.Effects {
+			if e == "damage" || e == "drain" || e == "mill" {
+				hasKillOutput = true
+				break
+			}
+		}
+		if hasKillOutput {
+			break
+		}
+	}
+
+	// Combat-dependent: any piece requiring combat caps iteration at
+	// 1/turn — synergy at best, never categorical.
+	for _, c := range cards {
+		if c.RequiresCombat {
+			return "synergy"
+		}
+	}
+
+	// Self-exile / hand-only recursion breakers — same gates classifyLoop
+	// uses in analysis.go. Mirroring them here keeps the long-loop
+	// reliability verdict consistent with the pair/triple/quad detector.
+	for _, c := range cards {
+		if c.SelfExilesOnDeath {
+			return "synergy"
+		}
+	}
+
+	// "Determined" requires either a kill output OR an open-ended
+	// resource the player can iterate at will. "Infinite" requires
+	// every trigger be mandatory AND no kill output (so the loop
+	// genuinely doesn't terminate without an outside intervention).
+	switch primary {
+	case "damage", "drain", "mill":
+		// Has a kill output by definition.
+		if allMandatory {
+			return "infinite"
+		}
+		return "determined"
+	case "mana", "tokens", "cards", "untap":
+		if allMandatory && !hasKillOutput {
+			return "infinite"
+		}
+		if hasKillOutput || allMandatory {
+			return "determined"
+		}
+		return "synergy"
+	}
+	return "synergy"
+}
+
+// renderLoopSummary builds the one-sentence human description. Format
+// mirrors KnownCombo.Description shape: "<N>-card <category> loop:
+// <name1> → <name2> → ... — <classification> <output-tail>."
+func renderLoopSummary(cards []CardProfile, ann *LoopAnnotation) string {
+	names := make([]string, len(cards))
+	for i, c := range cards {
+		names[i] = c.Name
+	}
+	chain := strings.Join(names, " → ")
+
+	categoryLabel := outputCategoryLabel(ann.PrimaryOutput)
+	classLabel := classificationLabel(ann.Classification)
+
+	tail := outputTail(ann.PrimaryOutput, ann.Classification)
+	return fmt.Sprintf("%d-card %s loop: %s — %s %s",
+		len(cards), categoryLabel, chain, classLabel, tail)
+}
+
+func outputCategoryLabel(primary string) string {
+	switch primary {
+	case "mana":
+		return "mana"
+	case "tokens":
+		return "token"
+	case "damage":
+		return "damage"
+	case "drain":
+		return "drain"
+	case "mill":
+		return "mill"
+	case "cards":
+		return "card-draw"
+	case "untap":
+		return "untap"
+	case "graveyard_value":
+		return "graveyard-value"
+	case "etb_value":
+		return "ETB-value"
+	}
+	return "value"
+}
+
+func classificationLabel(class string) string {
+	switch class {
+	case "infinite":
+		return "infinite"
+	case "determined":
+		return "determined"
+	case "probabilistic":
+		return "probabilistic"
+	}
+	return "value-engine"
+}
+
+func outputTail(primary, class string) string {
+	switch primary {
+	case "mana":
+		return "(loop generates mana every iteration; needs a mana sink to win)."
+	case "tokens":
+		return "(loop spawns tokens every iteration; pair with ETB damage / sac outlet to win)."
+	case "damage":
+		if class == "infinite" {
+			return "(loop pings damage every iteration with no exit — kills the table)."
+		}
+		return "(loop pings damage every iteration; player chooses when to stop)."
+	case "drain":
+		if class == "infinite" {
+			return "(loop drains every iteration with no exit — kills the table)."
+		}
+		return "(loop drains every iteration; player controls when to stop)."
+	case "mill":
+		if class == "infinite" {
+			return "(loop mills every iteration with no exit — decks opponents)."
+		}
+		return "(loop mills every iteration; player controls iteration count)."
+	case "cards":
+		return "(loop draws cards every iteration; engine, not direct win)."
+	case "untap":
+		return "(loop untaps permanents every iteration; pair with a mana-positive activation to go infinite mana)."
+	case "graveyard_value":
+		return "(loop recurs cards via the graveyard; value engine, not a direct win)."
+	case "etb_value":
+		return "(loop generates ETB triggers every iteration; pair with an ETB payoff to win)."
+	}
+	return "(value-engine resource loop)."
+}
+
+// comboClassForOutput maps PrimaryOutput to the closest ComboClass*
+// constant. Used to backfill ComboResult.Class on graph-walked cycles
+// so downstream consumers (hat affinity weighting, JSON readers, filter
+// UIs) don't have to re-classify long loops.
+func comboClassForOutput(primary string) string {
+	switch primary {
+	case "mana":
+		return ComboClassInfiniteMana
+	case "tokens":
+		return ComboClassInfiniteTokens
+	case "damage":
+		return ComboClassInfiniteDamage
+	case "drain":
+		return ComboClassInfiniteDrain
+	case "mill":
+		return ComboClassInfiniteMill
+	case "etb_value":
+		return ComboClassInfiniteETB
+	}
+	return ComboClassUnknown
 }
 
 // canonicalCycleKey returns a stable identifier for a directed cycle that
