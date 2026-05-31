@@ -73,6 +73,72 @@ type freyaDeckProfile struct {
 // Strategy JSON mirror types (compact machine format from Freya)
 // ---------------------------------------------------------------------------
 
+// strategyFileJSON is the on-wire schema Freya emits to .strategy.json.
+//
+// Field-by-field contract (audited in the freya-hat integration final
+// polish, 2026-05-30 — wave-5):
+//
+//   - archetype: lowercase string, expected to be a known archetype
+//     constant (see archetypes.go). Empty string / unknown values fall
+//     through to DefaultWeightsForArchetype's default branch.
+//   - bracket: int, expected [1, 5] (0 = unset). Clamped to [0, 5]
+//     by normalizeStrategyProfile; consumers handle 0 as "unknown
+//     bracket, use archetype defaults".
+//   - cedh_power_tier: int, expected [1, 5] (0 = unset). Clamped to
+//     [0, 5]. ApplyPowerTierRouting no-ops on tier=0 or out-of-band.
+//   - cedh_power_tier_confidence: float in [0, 1]. The
+//     effectiveConfidence helper already clamps and treats 0 as "no
+//     confidence supplied" (legacy default of 1.0); normalizeStrategyProfile
+//     clamps before that to keep the invariant explicit.
+//   - gameplan_summary: free-text string (debug field, no decision impact).
+//   - win_lines: array of {pieces, type, class, tutor_paths}. Empty
+//     piece arrays skipped at load time. Type/class strings are
+//     compared by exact match by downstream consumers.
+//   - value_engine_keys / tutor_targets / finisher_cards / star_cards /
+//     cuttable_cards / commander_themes / vulnerable_to: card-name
+//     string arrays. Nil/empty treated as "no entries", consumers
+//     gate on len()>0 before iterating.
+//   - eval_weights: pointer to 8-dimension weight struct. nil → hat
+//     uses DefaultWeightsForArchetype. When present, 12 secondary
+//     dimensions (StaxLockProgress, DrainEngine, ArtifactSynergy, …)
+//     fill in from archetype defaults so partial weights stay coherent.
+//   - card_roles: map[card_name → role_tag]. Empty map / nil treated
+//     as "no role info"; consumers fall back to oracle-text inference.
+//   - color_demand: map[color → pip_count]. Nil tolerable.
+//   - max_recursion_depth: string in {"", "shallow", "deep", "infinite"}.
+//     Unknown values fall through to no-op.
+//   - commander_synergy: float in [0, 1]. Clamped by
+//     normalizeStrategyProfile; consumers multiply directly so an
+//     out-of-range value would distort scoring.
+//   - interaction_avg_cmc: float >= 0. Clamped at 0; an avg CMC
+//     of 3.0+ triggers the cast-proactively branch in cardHeuristic.
+//   - cheap_interaction: int >= 0. Clamped at 0; thresholds at 0 / 4+
+//     drive cheapInteractionPassAdjust.
+//   - mana_base_grade: string in {"", "A", "B", "C", "D", "F"}.
+//     Empty / unknown falls through to default 1.5x color-fixing mult.
+//   - keepable_hand_pct: float in [0, 100]. Clamped. Mulligan logic
+//     gates on >0 and <60 so out-of-range values would mis-trigger.
+//   - is_commander_centric: bool, no validation needed.
+//   - protected_key_pieces / unprotected_key_pieces: int >= 0.
+//     Clamped at 0. ProtectionRatio() handles sum<3 as -1 sentinel
+//     (insufficient signal).
+//   - power_percentile: int in [0, 100]. Clamped. BudgetForPower
+//     scales at percentile thresholds 60 / 80.
+//   - meta_matchups: array of {archetype, rating}. Rating expected
+//     in {"favored", "neutral", "unfavored"}; unknown ratings fall
+//     through to no-op in the chooseAttacker meta lookup.
+//   - emergent_synergies: array of {cards, effect_pattern, tier,
+//     avg_impact}. Tier in [1, 3]. applyEmergentSynergyBoost and
+//     emergentSynergyBump both have explicit switch arms for tier
+//     2 and 3 only — tier 1 / 0 / out-of-range falls through to no-op.
+//   - synergy_clusters: array of {name, theme, members, high_density}.
+//     Empty members skipped at load. Member matching is case-
+//     insensitive in synergyClusterCohesionBoost.
+//
+// All scalar fields default to Go zero on missing JSON keys (per
+// encoding/json semantics). normalizeStrategyProfile is called after
+// both build paths (buildFromStrategyJSON and buildStrategyProfile) so
+// every consumer sees clamped values regardless of source.
 type strategyFileJSON struct {
 	Archetype       string              `json:"archetype"`
 	Bracket         int                 `json:"bracket"`
@@ -314,7 +380,73 @@ func buildFromStrategyJSON(sj *strategyFileJSON) *StrategyProfile {
 	// bump rather than getting masked by it.
 	ApplyPowerTierRouting(sp)
 
+	normalizeStrategyProfile(sp)
 	return sp
+}
+
+// normalizeStrategyProfile clamps numeric fields to their documented
+// valid ranges so downstream consumers see safe defaults regardless of
+// what Freya emitted on the wire. Added in the freya-hat integration
+// final-polish wave (2026-05-30) to formalize the implicit contracts
+// between Freya output and hat consumption.
+//
+// Per the strategyFileJSON schema docstring:
+//   - Bracket / PowerTier: clamped to [0, 5] (0 = unset sentinel)
+//   - PowerTierConfidence / CommanderSynergy: clamped to [0, 1]
+//   - InteractionAvgCMC: clamped >= 0
+//   - CheapInteraction / ProtectedKeyPieces / UnprotectedKeyPieces:
+//     clamped >= 0
+//   - KeepableHandPct / PowerPercentile: clamped to [0, 100]
+//
+// Strings (Archetype, ManaBaseGrade, MaxRecursionDepth, MetaMatchups
+// ratings, SynergyClusters Name/Theme) and string arrays are left
+// untouched — invalid string values fall through to no-op in their
+// consumers (validated case by case in the field's consumer site).
+//
+// No-op on nil sp (defensive). Idempotent — calling twice produces the
+// same result as calling once (every operation is a clamp).
+func normalizeStrategyProfile(sp *StrategyProfile) {
+	if sp == nil {
+		return
+	}
+	sp.Bracket = clampInt(sp.Bracket, 0, 5)
+	sp.PowerTier = clampInt(sp.PowerTier, 0, 5)
+	sp.PowerTierConfidence = clampFloat(sp.PowerTierConfidence, 0, 1)
+	sp.CommanderSynergy = clampFloat(sp.CommanderSynergy, 0, 1)
+	if sp.InteractionAvgCMC < 0 {
+		sp.InteractionAvgCMC = 0
+	}
+	if sp.CheapInteraction < 0 {
+		sp.CheapInteraction = 0
+	}
+	if sp.ProtectedKeyPieces < 0 {
+		sp.ProtectedKeyPieces = 0
+	}
+	if sp.UnprotectedKeyPieces < 0 {
+		sp.UnprotectedKeyPieces = 0
+	}
+	sp.KeepableHandPct = clampFloat(sp.KeepableHandPct, 0, 100)
+	sp.PowerPercentile = clampInt(sp.PowerPercentile, 0, 100)
+}
+
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+func clampFloat(v, lo, hi float64) float64 {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
 }
 
 // applyEmergentSynergyBoost applies small ComboProximity weight bumps
@@ -449,6 +581,7 @@ func buildStrategyProfile(fj *freyaJSON) *StrategyProfile {
 	// the cEDH classifier).
 	ApplyPowerTierRouting(sp)
 
+	normalizeStrategyProfile(sp)
 	return sp
 }
 
