@@ -22,6 +22,7 @@ import PhaseRibbon from '../components/PhaseRibbon'
 import ManaPoolPips from '../components/ManaPoolPips'
 import StackPanel from '../components/StackPanel'
 import CounterBadge from '../components/CounterBadge'
+import useTurnAnnouncer from '../hooks/useTurnAnnouncer'
 import CommandZoneStrip from '../components/CommandZoneStrip'
 import ReplaySlider from '../components/ReplaySlider'
 import { pushSnapshot, effectiveGame, clampScrubIndex } from '../components/replayHelpers.js'
@@ -428,6 +429,20 @@ export default function Spectator() {
   const game = effectiveGame(liveGame, snapshotHistory, scrubIndex)
   const isScrubbing = scrubIndex >= 0
 
+  // R60 a11y: screen-reader announcer for turn / phase / active-
+  // commander transitions. Returns a visually-hidden aria-live
+  // region that the layout renders below; the hook handles dedup
+  // so the SR doesn't fire on every WS payload (same step can
+  // replay 5-10× during stack resolution). Drives off the
+  // EFFECTIVE game (so scrubbing back also speaks the historical
+  // state) — debatable design, but lets SR users scrub the slider
+  // and hear what they're looking at.
+  const { liveRegion: turnAnnouncerRegion } = useTurnAnnouncer(
+    game,
+    game?.seats,
+    game?.seats?.length || 4,
+  )
+
   const logContainerRef = useRef(null)
   const userScrolledRef = useRef(false)
   // Last observed scrollHeight of the log container, captured at the
@@ -766,6 +781,29 @@ export default function Spectator() {
 
   return (
     <div className="spectator-page">
+      {/* R60 a11y: screen-reader-only live region for turn / phase /
+          active-commander announcements. Visually hidden but
+          present in the accessibility tree; aria-live=polite so SR
+          queues rather than interrupts. */}
+      {turnAnnouncerRegion}
+
+      {/* R60 a11y: focus-visible outlines for keyboard navigation.
+          Inline <style> rather than a CSS file so the rule lands
+          alongside the component lifecycle (no global stylesheet
+          dependency). Scoped to .spectator-page so it doesn't
+          leak into other screens. Uses :focus-visible (not :focus)
+          so mouse clicks don't flash the outline — matches modern
+          a11y guidance. */}
+      <style>{`
+        .spectator-page :focus-visible {
+          outline: 2px solid var(--accent, var(--ok));
+          outline-offset: 2px;
+          /* Make the outline visible against light AND dark
+             backgrounds without relying on a single color token. */
+          box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.4);
+        }
+      `}</style>
+
       {heatmapTip && (
         <div className="heatmap-tooltip" style={{ left: heatmapTip.left, top: heatmapTip.top }}>
           {heatmapTip.label}: {heatmapTip.value}
@@ -875,15 +913,30 @@ export default function Spectator() {
               const elimTurn = elimTurnBySeat[i]
 
               return (
-                <div key={i} className={`seat-panel${isWinner ? ' seat-panel--winner' : isActive ? ' seat-panel--active' : ''}`}>
+                <div
+                  key={i}
+                  className={`seat-panel${isWinner ? ' seat-panel--winner' : isActive ? ' seat-panel--active' : ''}`}
+                  role="group"
+                  aria-label={
+                    // R60 a11y: roll up the seat's status into one
+                    // aria-label so SR users hear "Seat 1, Atraxa,
+                    // 38 life, active turn" instead of a stream of
+                    // disjoint pips.
+                    `Seat ${i + 1}, ${s.commander || 'unknown commander'}` +
+                    `, ${s.life} life` +
+                    (isActive ? ', active turn' : '') +
+                    (isWinner ? ', winner' : '') +
+                    (s.lost ? `, eliminated${s.loss_reason ? ` (${s.loss_reason})` : ''}` : '')
+                  }
+                >
                   <div className="seat-hd">
                     <span className="seat-name">
                       {s.commander?.toUpperCase() || 'UNKNOWN'}
-                      {isActive && <span style={{ color: 'var(--warn)' }}> ●</span>}
-                      {isWinner && <span style={{ color: 'var(--ok)' }}> ★</span>}
-                      {s.lost && !isWinner && <span style={{ color: 'var(--danger)' }}> ✕</span>}
+                      {isActive && <span style={{ color: 'var(--warn)' }} aria-hidden="true"> ●</span>}
+                      {isWinner && <span style={{ color: 'var(--ok)' }} aria-hidden="true"> ★</span>}
+                      {s.lost && !isWinner && <span style={{ color: 'var(--danger)' }} aria-hidden="true"> ✕</span>}
                     </span>
-                    <span className="seat-stats">
+                    <span className="seat-stats" aria-hidden="true">
                       <span
                         className={`life-pip ${s.life <= 5 ? 'life-pip--crit' : s.life <= 10 ? 'life-pip--low' : ''}`}
                         title={s.life <= 5 ? 'Lethal range' : s.life <= 10 ? 'Low life' : `${s.life} life`}
@@ -939,20 +992,46 @@ export default function Spectator() {
                         className="seat-eval-map"
                         width={80}
                         height={80}
+                        role="img"
+                        aria-label={`${s.commander || 'Seat'} evaluation heatmap`}
                         onMouseMove={e => handleHeatmapHover(e, i)}
                         onMouseLeave={clearHeatmapTip}
                       />
                     </div>
-                    <div className="seat-perms">
+                    <div
+                      className="seat-perms"
+                      role="list"
+                      aria-label={`${s.commander || 'Seat'} battlefield (${perms.length} permanents)`}
+                    >
                       {perms.length === 0 ? (
                         <span className="t-xs muted-2">—</span>
                       ) : (() => {
                         const stacked = stackPerms(perms)
-                        return stacked.slice(0, 12).map((p, j) => (
+                        return stacked.slice(0, 12).map((p, j) => {
+                          // R60 a11y: build a richer aria-label for
+                          // each perm tile so SR users hear the type,
+                          // tapped state, count, and counter load
+                          // without having to parse the visual chrome.
+                          const countersList = p.counters && Object.keys(p.counters).length > 0
+                            ? Object.entries(p.counters)
+                                .filter(([, n]) => n !== 0)
+                                .map(([k, n]) => `${n} ${k}`)
+                                .join(', ')
+                            : ''
+                          const ariaLabel =
+                            (p.name || 'unknown card') +
+                            (p.is_commander ? ' (commander)' : '') +
+                            (p.tapped ? ', tapped' : '') +
+                            (p.count > 1 ? `, ×${p.count}` : '') +
+                            (permStat(p) ? `, ${permStat(p)}` : '') +
+                            (countersList ? `, counters: ${countersList}` : '')
+                          return (
                           <div
                             key={j}
                             title={lineageTitle(p)}
                             className="perm-tile"
+                            role="listitem"
+                            aria-label={ariaLabel}
                             data-stack={p.count >= 6 ? '3' : p.count >= 3 ? '2' : p.count >= 2 ? '1' : undefined}
                             style={{
                               borderColor: p.is_commander ? 'var(--warn)' : 'var(--rule-2)',
@@ -962,13 +1041,14 @@ export default function Spectator() {
                               position: 'relative',
                             }}
                           >
-                            <span className="perm-tag">{typeTag(p)}{p.count > 1 ? `×${p.count}` : ''}</span>
-                            {permStat(p) && <span className="perm-stat">{permStat(p)}</span>}
+                            <span className="perm-tag" aria-hidden="true">{typeTag(p)}{p.count > 1 ? `×${p.count}` : ''}</span>
+                            {permStat(p) && <span className="perm-stat" aria-hidden="true">{permStat(p)}</span>}
                             {/* Counter overlay — only renders when the
                                 permanent carries non-zero counters. */}
                             <CounterBadge counters={p.counters} />
                           </div>
-                        ))
+                          )
+                        })
                       })()}
                       {(() => {
                         const stacked = stackPerms(perms)
