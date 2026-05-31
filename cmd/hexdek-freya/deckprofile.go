@@ -145,6 +145,15 @@ type DeckProfile struct {
 	// loss to recast); capped at 8 entries. See computeProtectionDensity.
 	VulnerableComboPieces []VulnerableComboPiece
 
+	// ComboMetaInteraction is the per-combo exposure profile across the
+	// three canonical disruption axes (stax / graveyard hate / spot
+	// removal), plus a deck-level worst-case rollup ("which single
+	// hoser breaks the most combos", "how many combos survive RIP").
+	// Nil when the deck has no detected combos in the categorical-win
+	// bucket. Surfaced under `combo_meta_interaction` in JSON and as a
+	// short "[CYA] COMBO vs META" text section. See combo_meta_interaction.go.
+	ComboMetaInteraction *ComboMetaInteraction
+
 	// Mana base grading
 	ManaBaseGrade    string // A/B/C/D/F
 	ManaBaseNotes    []string
@@ -669,6 +678,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	computeInteractionQuality(dp, report, oracle)
 	computeInteractionPackage(dp, report, oracle)
 	computeProtectionDensity(dp, report, oracle)
+	dp.ComboMetaInteraction = BuildComboMetaInteraction(report, oracle)
 	appendVulnerabilityBracketNote(dp)
 	computeManaBaseGrade(dp, report, oracle)
 	computeDeckCostTier(dp, report, oracle)

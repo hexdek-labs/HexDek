@@ -903,6 +903,12 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		}
 	}
 
+	// Per-combo meta vulnerability — stax / graveyard / removal exposure.
+	if dp.ComboMetaInteraction != nil && len(dp.ComboMetaInteraction.PerCombo) > 0 {
+		fmt.Fprintf(w, "\n")
+		printComboMetaInteraction(w, dp.ComboMetaInteraction)
+	}
+
 	if len(dp.MetaMatchups) > 0 {
 		fmt.Fprintf(w, "\n  Meta Positioning:\n")
 		for _, m := range dp.MetaMatchups {
@@ -1466,6 +1472,36 @@ type jsonPieceFragility struct {
 	ComboIndices []int  `json:"combo_indices"`
 }
 
+type jsonComboMetaInteraction struct {
+	PerCombo              []jsonComboMetaVuln `json:"per_combo"`
+	WorstStaxHoser        string              `json:"worst_stax_hoser,omitempty"`
+	WorstStaxCount        int                 `json:"worst_stax_count,omitempty"`
+	WorstGraveyardHoser   string              `json:"worst_graveyard_hoser,omitempty"`
+	WorstGraveyardCount   int                 `json:"worst_graveyard_count,omitempty"`
+	SurviveStaxCount      int                 `json:"survive_stax_count"`
+	SurviveGraveyardCount int                 `json:"survive_graveyard_count"`
+	FragileComboCount     int                 `json:"fragile_combo_count"`
+}
+
+type jsonComboMetaVuln struct {
+	ComboIndex             int      `json:"combo_index"`
+	Label                  string   `json:"label"`
+	Source                 string   `json:"source"`
+	Cards                  []string `json:"cards"`
+	StaxScore              int      `json:"stax_score"`
+	StaxHosers             []string `json:"stax_hosers,omitempty"`
+	StaxReasons            []string `json:"stax_reasons,omitempty"`
+	GraveyardScore         int      `json:"graveyard_score"`
+	GraveyardHosers        []string `json:"graveyard_hosers,omitempty"`
+	GraveyardReasons       []string `json:"graveyard_reasons,omitempty"`
+	PermanentPieces        int      `json:"permanent_pieces"`
+	ProtectedPieces        int      `json:"protected_pieces"`
+	UnprotectedPieceNames  []string `json:"unprotected_piece_names,omitempty"`
+	ProtectedPieceNames    []string `json:"protected_piece_names,omitempty"`
+	RemovalRequiredToBreak int      `json:"removal_required_to_break"`
+	DominantThreat         string   `json:"dominant_threat"`
+}
+
 type jsonProfile struct {
 	Tutors        int `json:"tutors"`
 	NonLandTutors int `json:"non_land_tutors"`
@@ -1529,6 +1565,7 @@ type jsonDeckProfile struct {
 	DeckCostNote       string            `json:"deck_cost_note,omitempty"`
 	VulnerableTo       []string          `json:"vulnerable_to,omitempty"`
 	VulnerableComboPieces []jsonVulnerableComboPiece `json:"vulnerable_combo_pieces,omitempty"`
+	ComboMetaInteraction  *jsonComboMetaInteraction  `json:"combo_meta_interaction,omitempty"`
 	KeepableHandPct                 float64 `json:"keepable_hand_pct,omitempty"`
 	AvgTurnToFourMana               float64 `json:"avg_turn_to_four_mana,omitempty"`
 	KeepableHandPctAdjusted         float64 `json:"keepable_hand_pct_adjusted,omitempty"`
@@ -2011,6 +2048,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		CountersMatterStrong: dp.CountersMatterStrong,
 		VulnerableTo:       dp.VulnerableTo,
 		VulnerableComboPieces: vulnCombo,
+		ComboMetaInteraction:  comboMetaInteractionToJSON(dp.ComboMetaInteraction),
 		KeepableHandPct:                 dp.KeepableHandPct,
 		AvgTurnToFourMana:               dp.AvgTurnToFourMana,
 		KeepableHandPctAdjusted:         dp.KeepableHandPctAdjusted,
