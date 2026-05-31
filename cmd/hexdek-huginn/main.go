@@ -41,18 +41,25 @@ func main() {
 		extend     = flag.String("extend", "", "path to a deck JSON; recommends cards to add for interaction density")
 		minTier    = flag.Int("min-tier", huginn.TierRecurring, "min tier for --partners / --extend (1=observed, 2=recurring, 3=confirmed)")
 		jsonOut    = flag.Bool("json", false, "emit JSON instead of human-readable text for --partners / --extend")
+		predictDeck = flag.String("predict", "", "path to a deck JSON ({deck_name, commander, cards[], tutor_targets[]?}); walks Huginn Tier 3 interactions and emits a possibility-space report (direct pairs, indirect chains, cross-tier exposure, tutor reach). Mutually exclusive with other modes.")
+		predictFormat = flag.String("predict-format", "text", "predict output format: text (default, human-readable) or json")
 	)
 	flag.Parse()
 
-	// --partners and --extend short-circuit the other subcommands: they're
-	// query-only and the default-flag fallback below would otherwise run
-	// --stats + --list under their feet on every invocation.
+	// --partners, --extend, and --predict short-circuit the other
+	// subcommands: they're query-only and the default-flag fallback
+	// below would otherwise run --stats + --list under their feet on
+	// every invocation.
 	if *partners != "" {
 		runPartners(*dir, *partners, *minTier, *top, *jsonOut)
 		return
 	}
 	if *extend != "" {
 		runExtend(*dir, *extend, *minTier, *top, *jsonOut)
+		return
+	}
+	if *predictDeck != "" {
+		runPredict(*predictDeck, *dir, *predictFormat)
 		return
 	}
 
