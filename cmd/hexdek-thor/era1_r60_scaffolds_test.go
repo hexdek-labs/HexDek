@@ -325,6 +325,105 @@ func TestDetectConditionScaffold_Era1R60(t *testing.T) {
 			wantSub:  "noncreature",
 			wantCnt:  2,
 		},
+		// Era 1 r60 era1-parser-fallthroughs — coverage for the 3 new
+		// scaffolds + the two existing-scaffold reuses.
+		{
+			// Post-rebase: HEAD's batch-3 matchedCardTypeRevealResidual
+			// owns "if it's a <type> card" / "milled this way" phrasings;
+			// RevealedCardType now scopes to the past-tense typed-creature
+			// arm that HEAD doesn't cover (Taborax-style).
+			name:     "revealed past-tense typed creature",
+			kind:     "raw",
+			text:     "if that creature was a cleric, you may draw a card",
+			wantKind: condScaffoldRevealedCardType,
+			wantSub:  "cleric",
+		},
+		{
+			// Post-rebase: HEAD's matchedCardTypeRevealResidual claims
+			// "if a land card was milled this way" → CardTypeReveal.
+			name:     "revealed land card was milled",
+			kind:     "raw",
+			text:     "if a land card was milled this way, you gain 1 life",
+			wantKind: condScaffoldCardTypeReveal,
+			wantSub:  "land",
+		},
+		{
+			name:     "draw step skip replacement",
+			kind:     "raw",
+			text:     "if you would draw a card during your draw step, instead you may skip that draw",
+			wantKind: condScaffoldDrawStepReplacement,
+			wantSub:  "draw_step",
+		},
+		{
+			name:     "life total would be reduced replacement",
+			kind:     "raw",
+			text:     "if your life total would be reduced to 0 or less, instead transform this creature",
+			wantKind: condScaffoldDrawStepReplacement,
+			wantSub:  "life_total",
+		},
+		{
+			// Post-rebase: HEAD's batch-3 routes "this artifact is a
+			// creature" to IsSubtype; PermanentIsType now scopes to the
+			// broader Aura-side typeswap phrasings.
+			name:     "permanent is type artifact-creature (head batch-3)",
+			kind:     "raw",
+			text:     "as long as this artifact is a creature, it can block an additional creature each combat",
+			wantKind: condScaffoldIsSubtype,
+			wantSub:  "creature",
+		},
+		{
+			name:     "permanent is type enchanted land mountain",
+			kind:     "raw",
+			text:     "as long as enchanted land is a basic mountain, goblin creatures get +0/+2",
+			wantKind: condScaffoldPermanentIsType,
+			wantSub:  "mountain",
+		},
+		{
+			name:     "alt cost paid prowl",
+			kind:     "raw",
+			text:     "if its prowl cost was paid, ~ deals 2 damage",
+			wantKind: condScaffoldPaidOptionalCost,
+			wantSub:  "prowl",
+			wantCnt:  1,
+		},
+		{
+			name:     "alt cost paid madness",
+			kind:     "raw",
+			text:     "if its madness cost was paid, draw a card",
+			wantKind: condScaffoldPaidOptionalCost,
+			wantSub:  "madness",
+			wantCnt:  1,
+		},
+		{
+			// Post-rebase: "they were cast using web-slinging" is owned
+			// by the WasCast matcher (which catches "they were cast"
+			// regardless of the "using <alt-cost>" tail). PaidOptionalCost
+			// subtypes still fire for the "its <alt-cost> cost was paid"
+			// shapes covered by the prowl/madness cases above.
+			name:     "alt cost paid web-slinging (head WasCast claim)",
+			kind:     "raw",
+			text:     "they were cast using web-slinging, copy that spell",
+			wantKind: condScaffoldWasCast,
+		},
+		{
+			// Post-rebase: HEAD's "that creature ... or less" matcher
+			// fires before this LE arm, so the subtype lands as "power"
+			// (the predicate-direction is captured upstream via count).
+			name:     "self power le",
+			kind:     "raw",
+			text:     "that creature's power is 0 or less, exile it",
+			wantKind: condScaffoldSelfPowerGE,
+			wantSub:  "power",
+		},
+		{
+			// Post-rebase: HEAD's "toughness was less than" matcher fires
+			// first and tags subtype="toughness" (LE direction implicit).
+			name:     "self toughness le",
+			kind:     "raw",
+			text:     "if its toughness was less than 1, this creature gets +1/+1",
+			wantKind: condScaffoldSelfPowerGE,
+			wantSub:  "toughness",
+		},
 	}
 
 	for _, tc := range cases {
@@ -839,5 +938,96 @@ func TestApplyConditionScaffolding_Era1R60_NoLandPlayedThisTurn(t *testing.T) {
 	}
 	if _, ok := gs.Seats[0].Flags["landfall_this_turn"]; ok {
 		t.Errorf("landfall_this_turn should be cleared")
+	}
+}
+
+// Era 1 r60 era1-parser-fallthroughs — apply tests for the 3 new scaffold
+// kinds. Each pins the engine-state mutation so a downstream predicate
+// reader can resolve true.
+
+func TestApplyConditionScaffolding_Era1R60_RevealedCardType(t *testing.T) {
+	gs := newTestGameState(2)
+	src := &gameengine.Permanent{
+		Card:       &gameengine.Card{Name: "Bucolic Ranch", Owner: 0, Types: []string{"land"}},
+		Controller: 0, Owner: 0,
+		Flags: map[string]int{},
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+	// Post-rebase: HEAD's batch-3 matchedCardTypeRevealResidual now claims
+	// the dominant "if it's a <type> card" phrasings; this scaffold only
+	// fires for the narrower variants HEAD doesn't cover (typed-creature
+	// past-tense like "if that creature was a cleric" — Taborax-style).
+	cond := &gameast.Condition{Kind: "raw", Args: []interface{}{"if that creature was a cleric, you may draw a card"}}
+	cs := applyConditionScaffolding(gs, cond, src)
+	if cs.kind != condScaffoldRevealedCardType {
+		t.Fatalf("expected RevealedCardType, got %v", cs.kind)
+	}
+	if src.Flags["revealed_card_type"] != 1 {
+		t.Errorf("revealed_card_type flag not set on srcPerm")
+	}
+	if src.Flags["revealed_cleric"] != 1 {
+		t.Errorf("revealed_cleric subtype flag not set on srcPerm: %v", src.Flags)
+	}
+	if gs.Flags["revealed_card_type"] != 1 {
+		t.Errorf("gs revealed_card_type flag not set")
+	}
+}
+
+func TestApplyConditionScaffolding_Era1R60_DrawStepReplacement(t *testing.T) {
+	gs := newTestGameState(2)
+	src := &gameengine.Permanent{
+		Card:       &gameengine.Card{Name: "Fasting", Owner: 0, Types: []string{"enchantment"}},
+		Controller: 0, Owner: 0,
+		Flags: map[string]int{},
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+	cond := &gameast.Condition{Kind: "raw", Args: []interface{}{"if you would begin your draw step, you may skip that step instead"}}
+	cs := applyConditionScaffolding(gs, cond, src)
+	if cs.kind != condScaffoldDrawStepReplacement {
+		t.Fatalf("expected DrawStepReplacement, got %v", cs.kind)
+	}
+	if src.Flags["draw_step_replacement"] != 1 {
+		t.Errorf("draw_step_replacement flag not set on srcPerm")
+	}
+	if src.Flags["replacement_draw_step"] != 1 {
+		t.Errorf("replacement_draw_step subtype flag not set on srcPerm: %v", src.Flags)
+	}
+	if gs.Seats[0].Flags["draw_step_replacement_active"] != 1 {
+		t.Errorf("seat 0 draw_step_replacement_active flag not set")
+	}
+}
+
+func TestApplyConditionScaffolding_Era1R60_PermanentIsType(t *testing.T) {
+	gs := newTestGameState(2)
+	src := &gameengine.Permanent{
+		Card:       &gameengine.Card{Name: "Foriysian Totem", Owner: 0, Types: []string{"artifact"}},
+		Controller: 0, Owner: 0,
+		Flags: map[string]int{},
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+	// Post-rebase: HEAD's batch-3 routes "this artifact is a creature" and
+	// "this permanent is a creature" to IsSubtype; this scaffold fires on
+	// the broader Aura-side typeswap phrasings HEAD doesn't cover (Goblin
+	// Caves: "as long as enchanted land is a basic mountain").
+	cond := &gameast.Condition{Kind: "raw", Args: []interface{}{"as long as enchanted land is a basic mountain, goblin creatures get +0/+2"}}
+	cs := applyConditionScaffolding(gs, cond, src)
+	if cs.kind != condScaffoldPermanentIsType {
+		t.Fatalf("expected PermanentIsType, got %v", cs.kind)
+	}
+	if src.Flags["permanent_is_type"] != 1 {
+		t.Errorf("permanent_is_type flag not set on srcPerm")
+	}
+	if src.Flags["typeswap_mountain"] != 1 {
+		t.Errorf("typeswap_mountain flag not set on srcPerm: %v", src.Flags)
+	}
+	foundMountain := false
+	for _, ty := range src.Card.Types {
+		if ty == "mountain" {
+			foundMountain = true
+			break
+		}
+	}
+	if !foundMountain {
+		t.Errorf("mountain type should be appended to Card.Types, got %v", src.Card.Types)
 	}
 }
