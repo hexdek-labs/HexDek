@@ -16,6 +16,13 @@ type AnalyticsReport struct {
 	CommanderNames []string
 	TotalGames     int
 	Duration       time.Duration
+
+	// KeystoneImpacts ranks cards by their cast-vs-not-cast win-rate
+	// shift across the analyzed games. Populated by the analytics CLI
+	// via ComputeKeystoneImpacts(r.Analyses) before WriteMarkdown.
+	// Nil is the empty / opt-out state; the report renderer is
+	// nil-safe.
+	KeystoneImpacts []CardKeystoneImpact
 }
 
 // WriteMarkdown renders the analytics report as a markdown file.
@@ -51,6 +58,12 @@ func (r *AnalyticsReport) WriteMarkdown(path string) error {
 
 	// Curve Realization (per-deck cast-CMC distribution per turn).
 	r.writeCurveRealization(&b)
+
+	// Keystone Impact (per-card cast-vs-not-cast win-rate shift).
+	r.writeKeystoneImpacts(&b, 15)
+
+	// Life Trajectory per game (per-seat line-chart data).
+	r.writeLifeTrajectories(&b)
 
 	// Tempo Analysis.
 	r.writeTempoAnalysis(&b)
@@ -971,5 +984,150 @@ func (r *AnalyticsReport) writeCurveRealization(b *strings.Builder) {
 		render(name)
 	}
 	b.WriteString("\n")
+}
+
+// writeKeystoneImpacts renders the top-N cards by absolute win-rate
+// shift between games where the card was cast vs. games where it was
+// in deck but not cast. See CardKeystoneImpact for the metric.
+//
+// Sort is delegated to ComputeKeystoneImpacts (most impactful first,
+// no-signal rows last). The renderer here applies the top-N cap and
+// a confidence filter — "low" confidence rows are dropped from the
+// top-N to keep dashboard signal:noise high; a separate footnote
+// reports how many low-confidence rows were filtered.
+func (r *AnalyticsReport) writeKeystoneImpacts(b *strings.Builder, n int) {
+	b.WriteString("## Keystone Impact (Win-Rate Shift When Cast)\n\n")
+	b.WriteString("_For each card: win rate when CAST in a game vs. win rate when present in deck but NOT cast that game._ ")
+	b.WriteString("_Positive shift = casting correlates with above-baseline winning (the card is load-bearing). Negative shift = casting correlates with losing (bait / removal magnet / overcommit)._\n\n")
+
+	if len(r.KeystoneImpacts) == 0 {
+		b.WriteString("_No keystone data — call ComputeKeystoneImpacts before WriteMarkdown._\n\n")
+		return
+	}
+
+	// Filter to medium+high confidence; count what was dropped for the
+	// footnote.
+	filtered := make([]CardKeystoneImpact, 0)
+	lowDropped := 0
+	noSignalDropped := 0
+	for _, k := range r.KeystoneImpacts {
+		switch k.Confidence {
+		case "high", "medium":
+			filtered = append(filtered, k)
+		case "low":
+			lowDropped++
+		case "":
+			noSignalDropped++
+		}
+	}
+
+	if len(filtered) == 0 {
+		fmt.Fprintf(b, "_No cards reached medium-confidence sample (need ≥5 games in BOTH cast and not-cast buckets). %d low-confidence + %d no-signal rows filtered._\n\n",
+			lowDropped, noSignalDropped)
+		return
+	}
+
+	b.WriteString("| Rank | Card | Shift | Win % Cast | Win % Not Cast | Games Cast | Games Not Cast | Confidence |\n")
+	b.WriteString("|---:|---|---:|---:|---:|---:|---:|---|\n")
+
+	limit := n
+	if limit > len(filtered) {
+		limit = len(filtered)
+	}
+	for i := 0; i < limit; i++ {
+		k := &filtered[i]
+		sign := ""
+		if k.Shift > 0 {
+			sign = "+"
+		}
+		fmt.Fprintf(b, "| %d | %s | %s%.0fpp | %.0f%% | %.0f%% | %d | %d | %s |\n",
+			i+1, k.Name, sign, k.Shift*100,
+			k.WinRateWhenCast*100, k.WinRateWhenNotCast*100,
+			k.GamesCast, k.GamesNotCast, k.Confidence)
+	}
+	fmt.Fprintf(b, "\n_Filtered: %d low-confidence + %d no-signal rows (need ≥5 games in each bucket for medium, ≥20 for high)._\n\n",
+		lowDropped, noSignalDropped)
+}
+
+// writeLifeTrajectories renders a per-game per-seat life-by-turn line
+// chart, ready to feed an analytics dashboard. The markdown form is a
+// compact table per game; the dashboard-side rendering can read the
+// raw `PlayerAnalysis.LifeByTurn` slice for proper SVG line charts.
+//
+// To keep the markdown report scannable, only the FIRST 5 games are
+// rendered. A footnote reports the remaining-game count so users know
+// the data is available; dashboards consuming the structured slice
+// don't have this cap.
+func (r *AnalyticsReport) writeLifeTrajectories(b *strings.Builder) {
+	b.WriteString("## Life Trajectory (Per-Seat Per-Turn)\n\n")
+	b.WriteString("_Each row: seat's life total at the END of turn N. Index 0 is starting life (40 for commander format)._ ")
+	b.WriteString("_Markdown render is capped at the first 5 games for readability; the structured `PlayerAnalysis.LifeByTurn` slice is dashboard-ready for line-chart rendering across all analyzed games._\n\n")
+
+	if len(r.Analyses) == 0 {
+		b.WriteString("_No game data._\n\n")
+		return
+	}
+
+	const renderCap = 5
+	for i, ga := range r.Analyses {
+		if i >= renderCap {
+			break
+		}
+		if ga == nil || len(ga.Players) == 0 {
+			continue
+		}
+		fmt.Fprintf(b, "### Game %d (turns: %d)\n\n", i+1, ga.TotalTurns)
+
+		// Find the max trajectory length so we can emit a header row
+		// that aligns columns across seats with different end-turns.
+		maxLen := 0
+		for j := range ga.Players {
+			if l := len(ga.Players[j].LifeByTurn); l > maxLen {
+				maxLen = l
+			}
+		}
+		if maxLen == 0 {
+			b.WriteString("_No life trajectory recorded._\n\n")
+			continue
+		}
+
+		// Header: T0 | T1 | T2 | ...
+		b.WriteString("| Seat |")
+		for t := 0; t < maxLen; t++ {
+			fmt.Fprintf(b, " T%d |", t)
+		}
+		b.WriteString("\n|---|")
+		for t := 0; t < maxLen; t++ {
+			b.WriteString("---:|")
+		}
+		b.WriteString("\n")
+
+		for j := range ga.Players {
+			pa := &ga.Players[j]
+			label := pa.CommanderName
+			if label == "" {
+				label = fmt.Sprintf("seat %d", pa.Seat)
+			}
+			if pa.Won {
+				label += " (W)"
+			}
+			fmt.Fprintf(b, "| %s |", label)
+			for t := 0; t < maxLen; t++ {
+				if t < len(pa.LifeByTurn) {
+					fmt.Fprintf(b, " %d |", pa.LifeByTurn[t])
+				} else {
+					// Seat eliminated earlier or trajectory shorter —
+					// blank cell signals "out of game".
+					b.WriteString(" — |")
+				}
+			}
+			b.WriteString("\n")
+		}
+		b.WriteString("\n")
+	}
+	if len(r.Analyses) > renderCap {
+		fmt.Fprintf(b, "_(+%d more games — structured data available via `Analyses[i].Players[j].LifeByTurn`)_\n\n",
+			len(r.Analyses)-renderCap)
+	}
 }
 
