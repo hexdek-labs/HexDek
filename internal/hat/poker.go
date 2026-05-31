@@ -1960,6 +1960,8 @@ func effectiveBoardPower(gs *gameengine.GameState, seat *gameengine.Seat) int {
 				}
 				weight *= evasionMultiplier(p, pw)
 				weight *= tokenDiscount(p)
+				weight *= survivabilityMultiplier(p)
+				weight *= infectToxicMultiplier(p)
 				total += float64(pw) * weight
 			}
 		}
@@ -2058,6 +2060,84 @@ func tokenDiscount(p *gameengine.Permanent) float64 {
 	}
 	if p.IsToken() {
 		return 0.7
+	}
+	return 1.0
+}
+
+// survivabilityMultiplier amplifies a creature's effective power by
+// how hard it is to REMOVE. evasionMultiplier captures "this body
+// will connect" (offense-side quality); this captures "this body
+// will still be here next turn" (defense-side quality). Pre-r60 a
+// 12/12 Blightsteel and a 12/12 vanilla scored identically — the
+// dimension treated removal cost as invisible, so 1 Blightsteel and
+// 4 Goblin tokens at equal total power got the same threat read.
+//
+// Tiers (additive, capped at +0.40 so this never doubles a creature):
+//   - indestructible (+0.20): survives destroy + most damage-based
+//     removal; only exile / sac / -X/-X / bounce answer it
+//   - protection from <something> (+0.15): typed protection survives
+//     all removal of that color/type — major durability lift on the
+//     creatures that actually run it
+//   - hexproof / shroud (+0.10): untargetable for spot removal but
+//     dies to wipes and edicts; the lower weight reflects partial
+//     coverage relative to indestructible's broader survival
+//   - ward (+0.05): tax on targeting, not full immunity
+//
+// Applied AFTER evasion + token discount so a Blightsteel reads
+// (12 raw * 1.30 evasion-cap * 1.0 nontoken * 1.40 survivability =
+// ~21.8 effective) vs a Goblin token's (1 raw * 1.0 * 0.7 token *
+// 1.0 = 0.7), correctly separating the indestructible-infect-trample
+// threat from the same-power token swarm in the count delta.
+func survivabilityMultiplier(p *gameengine.Permanent) float64 {
+	if p == nil {
+		return 1.0
+	}
+	bonus := 0.0
+	if p.HasKeyword("indestructible") {
+		bonus += 0.20
+	}
+	if p.HasKeyword("hexproof") || p.HasKeyword("shroud") {
+		bonus += 0.10
+	}
+	if p.HasKeyword("ward") {
+		bonus += 0.05
+	}
+	if p.Card != nil && strings.Contains(gameengine.OracleTextLower(p.Card), "protection from") {
+		bonus += 0.15
+	}
+	if bonus > 0.40 {
+		bonus = 0.40
+	}
+	return 1.0 + bonus
+}
+
+// infectToxicMultiplier amplifies creatures threatening the alternate
+// poison-counter clock (CR §704.5c — 10 poison counters = lethal). A
+// 2-power infect creature has the same lethal-pace threat as a
+// 4-power vanilla against a fresh 40-life opp, since each poison
+// counter is worth 4 life on the relative-to-lethal scale.
+//
+//   - infect (+0.40): every point of combat damage becomes a poison
+//     counter; halves the lethal clock vs life-based damage.
+//   - toxic (+0.15): adds N poison counters on combat damage,
+//     parallel-clock additive but doesn't replace damage.
+//
+// Conservative below the threat-equivalence ratio (theoretical 2x for
+// infect, 1.5x for toxic-2) because (a) poison clocks compete
+// asymmetrically with life clocks — gaining life doesn't reset
+// poison, but proliferate / counter-removal does, and (b) infect
+// creatures are typically smaller bodies so the BoardPresence
+// dimension already partially folds the threat into "low raw power
+// but real clock" via the per-power multiply.
+func infectToxicMultiplier(p *gameengine.Permanent) float64 {
+	if p == nil {
+		return 1.0
+	}
+	if p.HasKeyword("infect") {
+		return 1.40
+	}
+	if p.HasKeyword("toxic") {
+		return 1.15
 	}
 	return 1.0
 }
