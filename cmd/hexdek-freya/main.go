@@ -95,6 +95,7 @@ func main() {
 	var powerAggregateOut string
 	var corpusStatsOut string
 	var tierListOut string
+	var tierListIn string
 	var eloHistoryPath string
 	var comparePath string
 	var noCache bool
@@ -120,6 +121,8 @@ func main() {
 		"--all-decks only: write the corpus-wide rollup (average bracket / archetype / curve / density signals, distributions, presence percentages) as JSON to this path.")
 	flag.StringVar(&tierListOut, "tier-list-out", "",
 		"--all-decks only: write the per-archetype card tier-list (InclusionRate × WinImpact ranking, top 50 cards per archetype with cohort size ≥ 5) as JSON to this path. Suitable for \"what should I auto-include in a Voltron deck\" lookups, hat archetype-prior training signals, and CommanderBracket-style auto-include surfaces.")
+	flag.StringVar(&tierListIn, "tier-list", "",
+		"--format html only: path to a pre-computed tier-list export JSON (produced by --tier-list-out). When set, the HTML report renders a collapsible \"Auto-includes for <archetype>\" section listing the corpus-derived top cards for the analyzed deck's primary archetype. Silent skip when the archetype isn't in the export.")
 	flag.StringVar(&eloHistoryPath, "elo-history", "",
 		"path to archetype-pair ELO/win-rate history JSON (loaded if present; blended into meta-positioning expected-win-% and tilt detection). Schema: {\"archetype_pairs\": {\"combo|stax\": {\"games\": N, \"wins_for_first\": K}, ...}}.")
 	flag.StringVar(&comparePath, "compare", "",
@@ -155,6 +158,15 @@ func main() {
 		} else if LoadedMatchupHistory != nil {
 			log.Printf("loaded %d archetype-pair history records from %s",
 				len(LoadedMatchupHistory.Pairs), eloHistoryPath)
+		}
+	}
+
+	if tierListIn != "" {
+		if err := LoadTierList(tierListIn); err != nil {
+			log.Printf("tier-list load: %v (HTML report continues without the section)", err)
+		} else if LoadedTierList != nil {
+			log.Printf("loaded tier list from %s (%d archetypes across %d decks)",
+				tierListIn, LoadedTierList.ArchetypeCount, LoadedTierList.CorpusSize)
 		}
 	}
 
