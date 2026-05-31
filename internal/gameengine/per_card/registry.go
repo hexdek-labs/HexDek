@@ -413,6 +413,26 @@ func isManaAbilityEvent(event string) bool {
 	return false
 }
 
+// isLeavingPermEvent reports whether the event semantically carries a
+// "leaving permanent" via ctx["perm"] — i.e. the bearer has already left
+// the battlefield by the time the trigger fires. fireTrigger uses this to
+// also dispatch against ctx["perm"], since the standard battlefield walk
+// would miss the leaving perm's own self-trigger handlers (Banisher
+// Priest's ltbReturnLinkedExile, Hostage Taker's LTB-return, etc.).
+func isLeavingPermEvent(event string) bool {
+	switch event {
+	case "permanent_ltb",
+		"creature_dies",
+		"permanent_sacrificed",
+		"creature_sacrificed",
+		"artifact_sacrificed",
+		"food_sacrificed",
+		"card_exiled":
+		return true
+	}
+	return false
+}
+
 // fireTrigger walks every permanent on the battlefield and fires
 // matching (name, event) handlers. Used for Rhystic Study, Mystic Remora,
 // Aetherflux Reservoir, Displacer Kitten, Hullbreaker Horror, Cloudstone
@@ -477,30 +497,63 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 	hitsBySeat := map[int][]hit{}
 
 	reg := Global()
+	scanned := map[*gameengine.Permanent]bool{}
+	collect := func(seatIdx int, perm *gameengine.Permanent) {
+		if perm == nil || perm.Card == nil || scanned[perm] {
+			return
+		}
+		scanned[perm] = true
+		reg.mu.RLock()
+		var byEvent map[string][]TriggerHandler
+		for _, k := range lookupCandidates(perm.Card.DisplayName()) {
+			if m := reg.onTrigger[k]; m != nil {
+				byEvent = m
+				break
+			}
+		}
+		var handlers []TriggerHandler
+		if byEvent != nil {
+			handlers = append([]TriggerHandler(nil), byEvent[canonical]...)
+		}
+		reg.mu.RUnlock()
+		if len(handlers) > 0 {
+			hitsBySeat[seatIdx] = append(hitsBySeat[seatIdx], hit{perm: perm, hs: handlers})
+		}
+	}
 	for _, seat := range gs.Seats {
 		if seat == nil {
 			continue
 		}
 		for _, perm := range seat.Battlefield {
-			if perm == nil || perm.Card == nil {
-				continue
+			collect(seat.Idx, perm)
+		}
+	}
+	// LTB-shape events fire AFTER the leaving perm has been removed from
+	// the battlefield (zone_change.go calls removePermanent before
+	// FireZoneChangeTriggers → FireCardTrigger). Without this fallback,
+	// self-trigger handlers on the leaving perm (Banisher Priest's
+	// ltbReturnLinkedExile, Hostage Taker's LTB-return, Oblivion Ring,
+	// Detention Sphere, Faceless Butcher — every LTBReturn-shape card)
+	// never fire, leaving their LinkedExile slice + ExiledByMe + the
+	// exiled card's ExiledByTimestamp permanently orphaned. The new
+	// ExileLinkageIntegrity invariant (Loki r60 fresh main 2026-05-30)
+	// surfaced this as 72 hits across Prison Barricade / Leonardo, Sewer
+	// Samurai / Myr Prototype / Great Hall of the Biblioplex — all of
+	// which were the EXILED TARGETS of legitimate Banisher-Priest-family
+	// sources that died without their LTB cleanup ever running.
+	//
+	// Include the leaving perm from ctx so its own handlers dispatch.
+	// Scoped to events that carry a leaving-perm semantically (LTB,
+	// dies, sacrificed, exiled). Deduped via scanned[] so a perm still
+	// on the battlefield (some LTB-shape callers detach AFTER firing)
+	// doesn't get double-handled.
+	if isLeavingPermEvent(event) {
+		if cp, ok := ctx["perm"].(*gameengine.Permanent); ok && cp != nil {
+			seatIdx := cp.Controller
+			if seatIdx < 0 || seatIdx >= len(gs.Seats) {
+				seatIdx = 0
 			}
-			reg.mu.RLock()
-			var byEvent map[string][]TriggerHandler
-			for _, k := range lookupCandidates(perm.Card.DisplayName()) {
-				if m := reg.onTrigger[k]; m != nil {
-					byEvent = m
-					break
-				}
-			}
-			var handlers []TriggerHandler
-			if byEvent != nil {
-				handlers = append([]TriggerHandler(nil), byEvent[canonical]...)
-			}
-			reg.mu.RUnlock()
-			if len(handlers) > 0 {
-				hitsBySeat[seat.Idx] = append(hitsBySeat[seat.Idx], hit{perm: perm, hs: handlers})
-			}
+			collect(seatIdx, cp)
 		}
 	}
 
