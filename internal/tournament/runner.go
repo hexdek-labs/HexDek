@@ -1083,6 +1083,8 @@ func runPool(cfg TournamentConfig, workers, maxTurns int, gameTimeout time.Durat
 		}
 	}
 	result := &TournamentResult{
+		SchemaVersion:          SchemaVersion,
+		Mode:                   ModePool,
 		Games:                  totalGames,
 		Crashes:                crashes,
 		Duration:               elapsed,
@@ -1379,6 +1381,8 @@ func runLazyPool(cfg TournamentConfig, workers, maxTurns int, gameTimeout time.D
 		}
 	}
 	result := &TournamentResult{
+		SchemaVersion:          SchemaVersion,
+		Mode:                   ModeLazyPool,
 		Games:                  totalGames,
 		Duration:               elapsed,
 		CrashLogs:              crashLogs,

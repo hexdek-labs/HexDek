@@ -15,6 +15,8 @@ import (
 // has N wins".
 func aggregate(outcomes <-chan GameOutcome, nGames, nSeats int, commanderNames []string) *TournamentResult {
 	r := &TournamentResult{
+		SchemaVersion:                SchemaVersion,
+		Mode:                         ModeRotate,
 		NSeats:                       nSeats,
 		CommanderNames:               append([]string(nil), commanderNames...),
 		WinsByCommander:              make(map[string]int, nSeats),

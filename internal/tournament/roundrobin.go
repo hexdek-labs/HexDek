@@ -202,6 +202,8 @@ func RunRoundRobin(cfg RoundRobinConfig) (*TournamentResult, error) {
 
 func aggregateRoundRobin(outcomes <-chan rrOutcome, totalGames, nSeats int, commanderNames []string) *TournamentResult {
 	r := &TournamentResult{
+		SchemaVersion:                SchemaVersion,
+		Mode:                         ModeRoundRobin,
 		NSeats:                       nSeats,
 		CommanderNames:               append([]string(nil), commanderNames...),
 		WinsByCommander:              make(map[string]int, len(commanderNames)),

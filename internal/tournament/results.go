@@ -105,23 +105,57 @@ type SeatStats struct {
 	Conceded      bool
 }
 
-// TournamentResult is the aggregated result returned from Run.
+// SchemaVersion identifies the canonical TournamentResult JSON
+// schema. Bumped on breaking shape changes (field removed, semantic
+// flipped, type changed). Consumers should refuse outputs from a
+// version they don't recognize. See docs/tournament-output-schema.md
+// for the per-mode field-population matrix and the bump policy.
+const SchemaVersion = "1.0.0"
+
+// Mode identifies which tournament entry point produced a result.
+// Surfaced on TournamentResult.Mode so downstream code can switch
+// on the producing path explicitly instead of guessing from which
+// populated-field side effects fired. See ValidateSchema for the
+// per-mode field-population invariants.
+const (
+	ModeRotate       = "rotate"
+	ModePool         = "pool"
+	ModeLazyPool     = "lazy_pool"
+	ModeSwiss        = "swiss"
+	ModeDoubleElim   = "double_elim"
+	ModeBalancedPool = "balanced_pool"
+	ModeRoundRobin   = "round_robin"
+)
+
+// TournamentResult is the aggregated result returned from every
+// Run* entry point in this package. The JSON shape is canonical and
+// pinned by docs/tournament-output-schema.md plus ValidateSchema.
 //
 // All counters are ORIGINAL-commander-indexed — the runner un-rotates
 // winners/eliminations back to their deck index before aggregating.
 type TournamentResult struct {
-	Games     int
-	Crashes   int
-	CrashLogs []string
-	Draws     int
-	AvgTurns float64
+	// SchemaVersion identifies the JSON shape (semver, see
+	// SchemaVersion const). Always set by the canonical constructors;
+	// hand-built test fixtures may leave it empty and ValidateSchema
+	// will surface the gap.
+	SchemaVersion string `json:"schema_version"`
+
+	// Mode identifies which entry point produced this result. One of
+	// the Mode* constants. Always set by the canonical constructors.
+	Mode string `json:"mode"`
+
+	Games     int      `json:"games"`
+	Crashes   int      `json:"crashes"`
+	CrashLogs []string `json:"crash_logs,omitempty"`
+	Draws     int      `json:"draws"`
+	AvgTurns  float64  `json:"avg_turns"`
 
 	// CommanderNames is parallel to deck index.
-	CommanderNames []string
+	CommanderNames []string `json:"commander_names"`
 
 	// WinsByCommander keyed by commander name -> win count. Mirrors
 	// Python gauntlet_poker's `seat_wins` after un-rotation.
-	WinsByCommander map[string]int
+	WinsByCommander map[string]int `json:"wins_by_commander"`
 
 	// WinsBySeat[seatIdx] = count of games won by seat position
 	// AFTER rotation (i.e., play order, not deck identity). With
@@ -129,107 +163,107 @@ type TournamentResult struct {
 	// seat; deviations measure structural seat-position bias.
 	// Added 2026-05-24 per 7174n1c proposal — see
 	// docs/seat-bias-measurement-r60.md.
-	WinsBySeat []int
+	WinsBySeat []int `json:"wins_by_seat,omitempty"`
 
 	// WinsByCommanderBySeat[commanderName][seatIdx] = win count for
 	// that commander when played from that seat position. Used to
 	// derive the archetype × seat penalty matrix without re-running
 	// the tournament. Sums across seatIdx equal WinsByCommander[name].
-	WinsByCommanderBySeat map[string][]int
+	WinsByCommanderBySeat map[string][]int `json:"wins_by_commander_by_seat,omitempty"`
 
 	// GamesByCommanderBySeat[commanderName][seatIdx] = total games
 	// played by that commander in that seat position. Needed because
 	// fair rotation only holds in expectation — short runs have noise.
 	// Divide WinsByCommanderBySeat by GamesByCommanderBySeat to get
 	// per-(commander, seat) winrate.
-	GamesByCommanderBySeat map[string][]int
+	GamesByCommanderBySeat map[string][]int `json:"games_by_commander_by_seat,omitempty"`
 
 	// EliminationByCommanderBySlot[commanderName][slot] = count of
 	// times that commander was eliminated in that order slot. Slot 0
 	// = first out, slot NSeats-1 = winner.
-	EliminationByCommanderBySlot map[string][]int
+	EliminationByCommanderBySlot map[string][]int `json:"elimination_by_commander_by_slot,omitempty"`
 
 	// TotalModeChanges sums `player_mode_change` events across all
 	// games. PokerHat analytics signal.
-	TotalModeChanges int
+	TotalModeChanges int `json:"total_mode_changes,omitempty"`
 
 	// TotalConcessions sums conviction concession events across all games.
-	TotalConcessions int
+	TotalConcessions int `json:"total_concessions"`
 
 	// AuditViolations is the post-run rule-auditor count. Only non-zero
 	// when AuditEnabled.
-	AuditViolations int
+	AuditViolations int `json:"audit_violations,omitempty"`
 
 	// ParserGapSnippets aggregated across all games (empty unless
 	// AuditEnabled).
-	ParserGapSnippets map[string]int
+	ParserGapSnippets map[string]int `json:"parser_gap_snippets,omitempty"`
 
 	// Duration is wall-clock for the Run() call.
-	Duration time.Duration
+	Duration time.Duration `json:"duration_ns"`
 
 	// GamesPerSecond = successful games / Duration.
-	GamesPerSecond float64
+	GamesPerSecond float64 `json:"games_per_second"`
 
 	// NSeats is the seat count the tournament used.
-	NSeats int
+	NSeats int `json:"n_seats"`
 
 	// --- Winrate Dashboard fields ---
 
 	// AvgTurnToWin maps commander name to the average turn count of
 	// games that commander won. Only populated for commanders with wins.
-	AvgTurnToWin map[string]float64
+	AvgTurnToWin map[string]float64 `json:"avg_turn_to_win,omitempty"`
 
 	// TurnDistribution buckets game lengths: [0]=turns 1-5, [1]=6-10,
 	// [2]=11-20, [3]=21+. Values are game counts.
-	TurnDistribution [4]int
+	TurnDistribution [4]int `json:"turn_distribution"`
 
 	// MatchupMatrix tracks pairwise head-to-head records.
 	// MatchupMatrix[A][B] = number of games A won when both A and B
 	// were in the same game. Use with MatchupGames for percentages.
-	MatchupMatrix map[string]map[string]int
+	MatchupMatrix map[string]map[string]int `json:"matchup_matrix,omitempty"`
 
 	// MatchupGames[A][B] = total games where both A and B participated.
-	MatchupGames map[string]map[string]int
+	MatchupGames map[string]map[string]int `json:"matchup_games,omitempty"`
 
 	// GamesPlayedByCommander tracks per-commander game count. In round-
 	// robin tournaments, each commander only plays in a subset of games.
 	// When non-nil, reports use this for per-commander winrate instead of
 	// dividing by total games.
-	GamesPlayedByCommander map[string]int
+	GamesPlayedByCommander map[string]int `json:"games_played_by_commander,omitempty"`
 
 	// --- ELO ratings ---
 
 	// ELO tracks per-commander ELO ratings computed across the tournament.
 	// Always populated (zero overhead — one float64 update per game per pair).
-	ELO []ELOEntry
+	ELO []ELOEntry `json:"elo,omitempty"`
 
 	// --- TrueSkill ratings ---
 
 	// TrueSkill tracks per-commander Bayesian ratings. Always populated.
-	TrueSkill []trueskill.TrueSkillEntry
+	TrueSkill []trueskill.TrueSkillEntry `json:"trueskill,omitempty"`
 
 	// --- Analytics fields (populated when AnalyticsEnabled) ---
 
 	// Analyses holds per-game deep analytics. Only populated when
 	// AnalyticsEnabled is true in the TournamentConfig.
-	Analyses []*analytics.GameAnalysis
+	Analyses []*analytics.GameAnalysis `json:"analyses,omitempty"`
 
 	// CardRankings aggregates card performance across all analyzed games,
 	// sorted by win contribution. Only populated when AnalyticsEnabled.
-	CardRankings []analytics.CardRanking
+	CardRankings []analytics.CardRanking `json:"card_rankings,omitempty"`
 
 	// MatchupDetails provides deep per-matchup stats. Only populated
 	// when AnalyticsEnabled.
-	MatchupDetails []analytics.MatchupDetail
+	MatchupDetails []analytics.MatchupDetail `json:"matchup_details,omitempty"`
 
 	// KillRecords aggregates all kill events across games. Only
 	// populated when AuditEnabled (needs event log for inference).
-	KillRecords []analytics.KillRecord
+	KillRecords []analytics.KillRecord `json:"kill_records,omitempty"`
 
 	// ConcessionRecords tracks board state at the moment of each
 	// conviction concession. Populated regardless of audit/analytics
 	// flags (lightweight — only one record per conceding seat).
-	ConcessionRecords []muninn.ConcessionRecord
+	ConcessionRecords []muninn.ConcessionRecord `json:"concession_records,omitempty"`
 
 	// SwissStandings is populated by RunSwiss with the cumulative
 	// per-deck points + win/loss/draw + bye counts across all rounds,

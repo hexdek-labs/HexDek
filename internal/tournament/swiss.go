@@ -187,6 +187,7 @@ func RunSwiss(cfg SwissConfig) (*TournamentResult, error) {
 	// Aggregate result accumulators (shared across rounds so the final
 	// TournamentResult reflects ALL games, not just the last round).
 	r := newSwissAggResult(commanderNames, cfg.NSeats)
+	r.Mode = ModeSwiss
 	elo := NewELORatings(commanderNames)
 	ts := trueskill.NewTrueSkillRatings(commanderNames)
 
@@ -615,8 +616,14 @@ func applySwissOutcome(p swissRoundParams, rr rrOutcome) {
 	}
 }
 
+// newSwissAggResult builds the shared aggregator skeleton used by
+// Swiss, double-elimination, and balanced-pool runs. It stamps
+// SchemaVersion but leaves Mode empty — the caller (RunSwiss /
+// RunDoubleElimination / RunBalancedPool) is responsible for setting
+// the per-mode marker post-construction.
 func newSwissAggResult(commanderNames []string, nSeats int) *TournamentResult {
 	r := &TournamentResult{
+		SchemaVersion:                SchemaVersion,
 		NSeats:                       nSeats,
 		CommanderNames:               append([]string(nil), commanderNames...),
 		WinsByCommander:              make(map[string]int, len(commanderNames)),

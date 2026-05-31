@@ -77,9 +77,9 @@ func expectedScore(ratingA, ratingB float64) float64 {
 
 // Snapshot returns a copy of current ratings sorted by rating descending.
 type ELOEntry struct {
-	Commander string
-	Rating    float64
-	Games     int
+	Commander string  `json:"commander"`
+	Rating    float64 `json:"rating"`
+	Games     int     `json:"games"`
 }
 
 func (e *ELORatings) Snapshot() []ELOEntry {
