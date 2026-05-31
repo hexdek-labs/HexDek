@@ -2379,6 +2379,55 @@ func (e *GameStateEvaluator) scoreGraveyard(gs *gameengine.GameState, seatIdx in
 		value += float64(creatureCount) * 0.06
 	}
 
+	// R60: spell-recursion enabler bonus. seatHasReanimatorEngine above
+	// catches the creature-reanimation surface (Meren / Muldrotha /
+	// Animate Dead family) but ignores the parallel spell-recursion
+	// surface — Snapcaster Mage / Past in Flames / Underworld Breach /
+	// Mizzix's Mastery / Yawgmoth's Will / Lurrus / Sun Titan — which
+	// makes non-keyword instants/sorceries in graveyard into recurring
+	// resources. Add a per-card bonus for graveyard cards that DIDN'T
+	// already score via the recursion-keyword path so we don't double-
+	// count printed-flashback cards. Capped so a 30-card graveyard with
+	// one enabler doesn't dominate the dimension.
+	if seatHasSpellRecursionEnabler(seat) {
+		instSorcCount := 0
+		for _, c := range seat.Graveyard {
+			if c == nil {
+				continue
+			}
+			ot := gameengine.OracleTextLower(c)
+			if hasGraveyardCastKeyword(ot) {
+				continue
+			}
+			for _, t := range c.Types {
+				if t == "instant" || t == "sorcery" {
+					instSorcCount++
+					break
+				}
+			}
+		}
+		bonus := float64(instSorcCount) * 0.10
+		if bonus > 0.50 {
+			bonus = 0.50
+		}
+		value += bonus
+	}
+
+	// R60: land-recursion enabler bonus. Crucible of Worlds / Ramunap
+	// Excavator / Lord Windgrace / The Gitrog Monster make lands in the
+	// graveyard into playable tempo. Pre-r60, lands only scored under
+	// selfMillPayoff (+0.05 each), but a Tron or Lands deck running
+	// Crucible isn't necessarily self-mill — fetchlands fuel the
+	// graveyard organically. Gated on !selfMillPayoff so we don't
+	// double-credit the Gitrog overlap case.
+	if !selfMillPayoff && seatHasLandRecursionEnabler(seat) {
+		landBonus := float64(landCount) * 0.08
+		if landBonus > 0.50 {
+			landBonus = 0.50
+		}
+		value += landBonus
+	}
+
 	if e.Strategy != nil && (e.Strategy.Archetype == ArchetypeSelfmill || e.Strategy.Archetype == ArchetypeReanimator) {
 		value *= 1.3
 	}
@@ -2461,6 +2510,78 @@ func seatHasReanimatorEngine(seat *gameengine.Seat) bool {
 			(strings.Contains(ot, "return") || strings.Contains(ot, "put")) &&
 			(strings.Contains(ot, "creature card") || strings.Contains(ot, "creature from") ||
 				strings.Contains(ot, "target creature")) {
+			return true
+		}
+	}
+	return false
+}
+
+// seatHasSpellRecursionEnabler reports whether the seat has a
+// battlefield permanent that recurs noncreature cards (typically
+// instants/sorceries) from its graveyard. Distinct from
+// seatHasReanimatorEngine (creature-side) — this is the parallel
+// instant/sorcery surface that makes non-keyword spells in graveyard
+// real recurring resources. Matches:
+//   - Snapcaster Mage shape: "instant or sorcery card" + "your graveyard"
+//   - Past in Flames / Underworld Breach / Yawgmoth's Will / Mizzix's
+//     Mastery shape: "(cast|play) ... from your graveyard" + a non-land
+//     scoping word
+//   - Lurrus / Sun Titan shape: "return ... permanent ... from your
+//     graveyard ... to the battlefield"
+func seatHasSpellRecursionEnabler(seat *gameengine.Seat) bool {
+	if seat == nil {
+		return false
+	}
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		ot := gameengine.OracleTextLower(p.Card)
+		if !strings.Contains(ot, "graveyard") {
+			continue
+		}
+		if (strings.Contains(ot, "instant or sorcery card") ||
+			strings.Contains(ot, "instant and sorcery card")) &&
+			(strings.Contains(ot, "from your graveyard") || strings.Contains(ot, "in your graveyard")) {
+			return true
+		}
+		if (strings.Contains(ot, "cast") || strings.Contains(ot, "play")) &&
+			strings.Contains(ot, "from your graveyard") &&
+			(strings.Contains(ot, "instant") || strings.Contains(ot, "sorcery") ||
+				strings.Contains(ot, "nonland") || strings.Contains(ot, "noncreature") ||
+				strings.Contains(ot, "permanent")) {
+			return true
+		}
+		if strings.Contains(ot, "return") &&
+			(strings.Contains(ot, "permanent card") || strings.Contains(ot, "permanent from")) &&
+			strings.Contains(ot, "from your graveyard") &&
+			strings.Contains(ot, "battlefield") {
+			return true
+		}
+	}
+	return false
+}
+
+// seatHasLandRecursionEnabler reports whether the seat has a battlefield
+// permanent that lets it play lands from its graveyard. Matches
+// Crucible of Worlds, Ramunap Excavator, Lord Windgrace, The Gitrog
+// Monster's lands-matter clause, etc. Drives the r60 land-from-
+// graveyard bonus so a Tron / Lands shell running Crucible without a
+// self-mill engine still values its graveyard lands.
+func seatHasLandRecursionEnabler(seat *gameengine.Seat) bool {
+	if seat == nil {
+		return false
+	}
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		ot := gameengine.OracleTextLower(p.Card)
+		if strings.Contains(ot, "play lands from your graveyard") {
+			return true
+		}
+		if strings.Contains(ot, "land cards from your graveyard") &&
+			(strings.Contains(ot, "play") || strings.Contains(ot, "to the battlefield")) {
 			return true
 		}
 	}
