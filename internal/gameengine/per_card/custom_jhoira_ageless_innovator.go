@@ -48,9 +48,8 @@ func jhoiraIngenuityActivate(gs *gameengine.GameState, src *gameengine.Permanent
 	// (we get the biggest free play); tiebreak by hand index for
 	// determinism.
 	var pick *gameengine.Card
-	pickIdx := -1
 	bestCMC := -1
-	for i, c := range seat.Hand {
+	for _, c := range seat.Hand {
 		if c == nil {
 			continue
 		}
@@ -63,7 +62,6 @@ func jhoiraIngenuityActivate(gs *gameengine.GameState, src *gameengine.Permanent
 		}
 		if cmc > bestCMC {
 			pick = c
-			pickIdx = i
 			bestCMC = cmc
 		}
 	}
@@ -80,7 +78,9 @@ func jhoiraIngenuityActivate(gs *gameengine.GameState, src *gameengine.Permanent
 		return
 	}
 
-	seat.Hand = append(seat.Hand[:pickIdx], seat.Hand[pickIdx+1:]...)
+	// createPermanent (called via enterBattlefieldWithETB) sweeps the
+	// source from every private zone, so the manual hand splice is
+	// redundant (Wave 2 final-audit cleanup).
 	enterBattlefieldWithETB(gs, src.Controller, pick, false)
 
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{

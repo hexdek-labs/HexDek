@@ -110,7 +110,9 @@ func theUrDragonAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 	cheatedName := ""
 	if bestIdx >= 0 {
 		card := seat.Hand[bestIdx]
-		seat.Hand = append(seat.Hand[:bestIdx], seat.Hand[bestIdx+1:]...)
+		// createPermanent (called via enterBattlefieldWithETB) sweeps the
+		// source from every private zone, so the manual hand splice is
+		// redundant (Wave 2 final-audit cleanup).
 		enterBattlefieldWithETB(gs, perm.Controller, card, false)
 		cheatedName = card.DisplayName()
 	}

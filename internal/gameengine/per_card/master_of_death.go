@@ -42,8 +42,12 @@ func masterOfDeathETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 			break
 		}
 		top := seat.Library[0]
-		seat.Library = seat.Library[1:]
-		seat.Graveyard = append(seat.Graveyard, top)
+		// Route through MoveCard so §614 replacements, §903.9b commander
+		// redirect, descend-counter, and the canonical zone_change /
+		// graveyard_leave triggers all fire correctly (Wave 2 final-audit
+		// cleanup — was bypassing the chokepoint with a manual splice +
+		// append pair).
+		gameengine.MoveCard(gs, top, perm.Controller, "library", "graveyard", "master_of_death_mill")
 		seat.Turn.Milled++
 		milled++
 	}

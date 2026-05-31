@@ -56,7 +56,9 @@ func xuIfitOsteoharmonistActivate(gs *gameengine.GameState, src *gameengine.Perm
 		return
 	}
 	card := seat.Graveyard[bestIdx]
-	seat.Graveyard = append(seat.Graveyard[:bestIdx], seat.Graveyard[bestIdx+1:]...)
+	// createPermanent (called via enterBattlefieldWithETB below) sweeps
+	// the source from every private zone, so the manual graveyard splice
+	// is redundant (Wave 2 final-audit cleanup).
 	// "no abilities" — we can't strip AST keywords cleanly here, so the
 	// card retains its triggered/static abilities. emitPartial below flags it.
 	hasSkeleton := false

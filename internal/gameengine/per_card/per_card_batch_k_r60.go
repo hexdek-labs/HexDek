@@ -304,8 +304,12 @@ func veronicaDissidentScribeAttack(gs *gameengine.GameState, perm *gameengine.Pe
 		return
 	}
 	card := seat.Hand[0]
-	seat.Hand = seat.Hand[1:]
-	seat.Graveyard = append(seat.Graveyard, card)
+	// Route through DiscardCard so Madness / Mayhem / Necropotence /
+	// card_discarded triggers / Turn.Discarded stats all fire. Matches
+	// the april_reporter_on_damage pattern higher in this file. Wave 2
+	// final-audit cleanup — pre-fix this was a manual hand splice +
+	// Graveyard append that silently bypassed all of the above.
+	gameengine.DiscardCard(gs, card, perm.Controller)
 	gs.LogEvent(gameengine.Event{
 		Kind:   "discard",
 		Seat:   perm.Controller,
