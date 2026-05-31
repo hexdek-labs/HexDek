@@ -22,6 +22,7 @@ import PhaseRibbon from '../components/PhaseRibbon'
 import ManaPoolPips from '../components/ManaPoolPips'
 import StackPanel from '../components/StackPanel'
 import CounterBadge from '../components/CounterBadge'
+import useComboNotifications from '../hooks/useComboNotifications'
 import CommandZoneStrip from '../components/CommandZoneStrip'
 import ReplaySlider from '../components/ReplaySlider'
 import { pushSnapshot, effectiveGame, clampScrubIndex } from '../components/replayHelpers.js'
@@ -427,6 +428,13 @@ export default function Spectator() {
   // reads `game` as before so no other call sites need to change.
   const game = effectiveGame(liveGame, snapshotHistory, scrubIndex)
   const isScrubbing = scrubIndex >= 0
+
+  // R60 spectator UX: bridge the per-game SSE event stream to the
+  // toast host so Huginn cycle-detection (#936) fires surface as
+  // celebratory combo toasts during live play. We pass the LIVE
+  // game_id (not the scrubbed one) — scrubbing back through history
+  // shouldn't replay historical combo toasts.
+  useComboNotifications(liveGame?.game_id)
 
   const logContainerRef = useRef(null)
   const userScrolledRef = useRef(false)

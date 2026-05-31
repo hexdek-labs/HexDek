@@ -112,13 +112,13 @@ type EvalSnapshot struct {
 }
 
 type PermanentSnapshot struct {
-	Name    string `json:"name"`
-	Tapped  bool   `json:"tapped"`
-	Power   int    `json:"power,omitempty"`
-	Tough   int    `json:"toughness,omitempty"`
-	IsCmdr  bool   `json:"is_commander,omitempty"`
-	IsLand  bool   `json:"is_land,omitempty"`
-	Type    string `json:"type,omitempty"`
+	Name   string `json:"name"`
+	Tapped bool   `json:"tapped"`
+	Power  int    `json:"power,omitempty"`
+	Tough  int    `json:"toughness,omitempty"`
+	IsCmdr bool   `json:"is_commander,omitempty"`
+	IsLand bool   `json:"is_land,omitempty"`
+	Type   string `json:"type,omitempty"`
 
 	// Counters is the per-kind counter map on this permanent. Common
 	// keys: "+1/+1", "-1/-1", "loyalty", "charge", "fade", "time",
@@ -230,8 +230,8 @@ type SessionStats struct {
 
 type CompletedGame struct {
 	GameID     int            `json:"game_id"`
-	Commanders []string      `json:"commanders"`
-	DeckKeys   []string      `json:"deck_keys"`
+	Commanders []string       `json:"commanders"`
+	DeckKeys   []string       `json:"deck_keys"`
 	Winner     int            `json:"winner"`
 	WinnerName string         `json:"winner_name"`
 	Turns      int            `json:"turns"`
@@ -274,8 +274,8 @@ type SeatTurnSnapshot struct {
 }
 
 type persistJob struct {
-	game        CompletedGame
-	perfDeltas  []db.CardPerformanceDelta
+	game       CompletedGame
+	perfDeltas []db.CardPerformanceDelta
 }
 
 type GauntletResult struct {
@@ -301,7 +301,7 @@ type GauntletResult struct {
 	// surviving to top-2 a lot but not closing" pattern that the binary
 	// W/L view obscures. By definition Wins == Placements[0] and Losses
 	// == Placements[1] + Placements[2] + Placements[3].
-	Placements [4]int    `json:"placements,omitempty"`
+	Placements [4]int `json:"placements,omitempty"`
 
 	// RunID is the gauntlet_runs.run_id reserved at gauntlet start.
 	// Used by the replay-archive path to link this run's per-game
@@ -336,9 +336,9 @@ type Showmatch struct {
 	cursePool map[string]*hat.CursePool // deck key → genetic population
 	curseDir  string
 
-	trainingDir string             // neural evaluator training data output
-	neuralEval  *hat.NeuralEvaluator // shared neural model (nil = not trained yet)
-	selfPlay    *hat.SelfPlayManager // Level 6 self-play training loop
+	trainingDir string                          // neural evaluator training data output
+	neuralEval  *hat.NeuralEvaluator            // shared neural model (nil = not trained yet)
+	selfPlay    *hat.SelfPlayManager            // Level 6 self-play training loop
 	strategies  map[string]*hat.StrategyProfile // deck key → Freya strategy profile
 
 	// compositionPrior is the R60 archetype-pod-conditioned TrueSkill
@@ -395,6 +395,15 @@ type Showmatch struct {
 	// game-end tail no-ops the Publish call. cmd/hexdek-server
 	// constructs the bus + handler at startup when wiring is on.
 	Events *EventBus
+
+	// lastComboCursor tracks the highest gs.EventLog index that
+	// has already been scanned for `infinite_cycle` events, keyed
+	// by gameNum so a new game resets the cursor. Guarded by mu.
+	// Used by publishNewCombos to dedupe — the cycle detector can
+	// emit the same observation across multiple snapshot ticks
+	// while the engine resolves a long stack, so we publish to
+	// the event bus exactly once per event-log entry.
+	lastComboCursor map[int]int
 
 	// GauntletLimiter rate-limits POST /api/gauntlet/{owner}/{id} per
 	// client IP. The endpoint is already protected by a global
@@ -501,31 +510,31 @@ type eloState struct {
 }
 
 type sessionState struct {
-	gamesPlayed    int // current session only (grinder + showmatch)
-	historicGames  int // loaded from DB on startup (all prior sessions)
-	historicTurns  int
-	totalTurns     int
+	gamesPlayed   int // current session only (grinder + showmatch)
+	historicGames int // loaded from DB on startup (all prior sessions)
+	historicTurns int
+	totalTurns    int
 }
 
 func NewShowmatch(astPath, oraclePath, decksDir string, database *sql.DB) *Showmatch {
 	muninnSink := newMuninnAdapter("data/muninn")
 	sm := &Showmatch{
-		elo:             make(map[string]*eloState),
-		bracketCache:    make(map[string]int),
-		start:           time.Now(),
-		speedMultiplier: 1.0,
-		sqlDB:           database,
-		persistCh:       make(chan persistJob, 512),
-		spectators:      make(map[*spectatorConn]struct{}),
-		gauntlets:       make(map[string]*GauntletResult),
-		gauntletSubs:    make(map[string]map[*gauntletSubscriber]struct{}),
+		elo:              make(map[string]*eloState),
+		bracketCache:     make(map[string]int),
+		start:            time.Now(),
+		speedMultiplier:  1.0,
+		sqlDB:            database,
+		persistCh:        make(chan persistJob, 512),
+		spectators:       make(map[*spectatorConn]struct{}),
+		gauntlets:        make(map[string]*GauntletResult),
+		gauntletSubs:     make(map[string]map[*gauntletSubscriber]struct{}),
 		MatchBroadcaster: NewMatchBroadcaster(),
-		rooms:           NewRoomManager(),
-		heimdall:        heimdall.New("data", &huginnAdapter{dataDir: "data"}, muninnSink, newTelemetrySink()),
-		muninnSink:      muninnSink,
-		cursePool:      make(map[string]*hat.CursePool),
-		curseDir:       "data/curse",
-		trainingDir:     "data/training",
+		rooms:            NewRoomManager(),
+		heimdall:         heimdall.New("data", &huginnAdapter{dataDir: "data"}, muninnSink, newTelemetrySink()),
+		muninnSink:       muninnSink,
+		cursePool:        make(map[string]*hat.CursePool),
+		curseDir:         "data/curse",
+		trainingDir:      "data/training",
 	}
 	// R60 composition prior — initialized empty; ObserveGame in
 	// updateELO populates it as games complete, and after the prior
@@ -2579,7 +2588,83 @@ func (sm *Showmatch) captureSnapshot(gs *gameengine.GameState, commanders []stri
 	// R60 spectator UX: surface the resolution stack so the UI can
 	// show what's mid-cast / pending response.
 	snap.Stack = buildStackSnapshot(gs.Stack)
+	// R60 spectator UX: scan the event log for new `infinite_cycle`
+	// entries since the last tick and fan them out as combo_fired
+	// events on the bus so the spectator UI can render a toast.
+	sm.publishNewCombos(gs, gameNum, commanders)
 	return snap
+}
+
+// publishNewCombos scans gs.EventLog for `infinite_cycle` events
+// past the per-game scan cursor and publishes one `game.combo_fired`
+// event to the EventBus for each. The cursor is keyed by gameNum so
+// a new game resets the scan position to 0; within a game, repeat
+// snapshot ticks (which can fire as the engine resolves a long
+// stack containing the same cycle) skip already-seen events.
+//
+// No-ops when sm.Events is nil (feature disabled / test path),
+// gs is nil, or the engine emits no infinite_cycle events. Safe
+// to call from any captureSnapshot caller — the bus drops
+// publishes when subscribers' buffers are full so a slow
+// spectator can't backpressure the engine.
+func (sm *Showmatch) publishNewCombos(gs *gameengine.GameState, gameNum int, commanders []string) {
+	if sm == nil || sm.Events == nil || gs == nil {
+		return
+	}
+	sm.mu.Lock()
+	if sm.lastComboCursor == nil {
+		sm.lastComboCursor = make(map[int]int)
+	}
+	cursor := sm.lastComboCursor[gameNum]
+	logLen := len(gs.EventLog)
+	if cursor > logLen {
+		// Defensive: event log was truncated (shouldn't happen mid-game
+		// but if it does, restart the scan from 0 for this game).
+		cursor = 0
+	}
+	sm.mu.Unlock()
+
+	for i := cursor; i < logLen; i++ {
+		ev := gs.EventLog[i]
+		if ev.Kind != "infinite_cycle" {
+			continue
+		}
+		data := map[string]any{
+			"game_id": gameNum,
+			"turn":    gs.Turn,
+		}
+		if ev.Seat >= 0 {
+			data["seat"] = ev.Seat
+			if ev.Seat < len(commanders) {
+				data["controller_commander"] = commanders[ev.Seat]
+			}
+		}
+		if ev.Details != nil {
+			if v, ok := ev.Details["cycle_length"].(int); ok {
+				data["cycle_length"] = v
+			} else if ev.Amount > 0 {
+				data["cycle_length"] = ev.Amount
+			}
+			if v, ok := ev.Details["participating_names"].([]string); ok && len(v) > 0 {
+				data["participating_cards"] = append([]string(nil), v...)
+			}
+			if v, ok := ev.Details["participating_iids"].([]string); ok && len(v) > 0 {
+				data["participating_iids"] = append([]string(nil), v...)
+			}
+			if v, ok := ev.Details["detected_by"].(string); ok && v != "" {
+				data["detected_by"] = v
+			}
+		}
+		sm.Events.Publish(Event{
+			Type:      EventComboFired,
+			Data:      data,
+			Timestamp: time.Now().UTC(),
+		})
+	}
+
+	sm.mu.Lock()
+	sm.lastComboCursor[gameNum] = logLen
+	sm.mu.Unlock()
 }
 
 // buildManaPoolByColor flattens a ColoredManaPool into the
@@ -3756,9 +3841,9 @@ func writeSSE(w http.ResponseWriter, flusher http.Flusher, event string, data an
 
 // CurseResponse is the JSON payload for GET /api/decks/{owner}/{id}/curse.
 type CurseResponse struct {
-	DeckKey    string            `json:"deck_key"`
-	GameCount  int               `json:"game_count"`
-	TotalGames int               `json:"total_games"`
+	DeckKey    string           `json:"deck_key"`
+	GameCount  int              `json:"game_count"`
+	TotalGames int              `json:"total_games"`
 	Population []CurseMemberDTO `json:"population"`
 
 	// DimStatsN is the number of games observed by the dimension-stats
@@ -3799,13 +3884,13 @@ type CurseMemberDTO struct {
 // hat.DimensionStats.WeightCorrections(). Kept in sync with
 // internal/hat/eval_weights.go.
 var curseDimLabels = []string{
-	"BOARD",     "CARDS",      "MANA",
-	"LIFE",      "COMBO",      "THREAT",
-	"COMMANDER", "GRAVEYARD",  "DRAIN",
-	"ARTIFACT",  "ENCHANT",    "OPP GY",
-	"PARTNER",   "TEMPO",      "TOOLBOX",
-	"THR TRAJ",  "STACK",      "PLANESWALKER",
-	"EXILE",     "STAX",
+	"BOARD", "CARDS", "MANA",
+	"LIFE", "COMBO", "THREAT",
+	"COMMANDER", "GRAVEYARD", "DRAIN",
+	"ARTIFACT", "ENCHANT", "OPP GY",
+	"PARTNER", "TEMPO", "TOOLBOX",
+	"THR TRAJ", "STACK", "PLANESWALKER",
+	"EXILE", "STAX",
 }
 
 func (sm *Showmatch) handleDeckCurse(w http.ResponseWriter, r *http.Request) {
@@ -4556,7 +4641,9 @@ func (sm *Showmatch) handleSpectatorWS(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
-		var env struct{ Type string `json:"type"` }
+		var env struct {
+			Type string `json:"type"`
+		}
 		if json.Unmarshal(data, &env) == nil && env.Type == "ping" {
 			sc.send(wsEnvelope{Type: "pong", Payload: map[string]int64{"server_time": time.Now().Unix()}})
 		}

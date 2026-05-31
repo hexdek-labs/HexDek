@@ -19,6 +19,10 @@ export function toast(message, kind = 'info', ttl = DEFAULT_TTL) {
 toast.success = (msg, ttl) => toast(msg, 'success', ttl)
 toast.error   = (msg, ttl) => toast(msg, 'error', ttl)
 toast.info    = (msg, ttl) => toast(msg, 'info', ttl)
+// Combo toasts default to a longer 5s TTL — they carry more
+// content than a one-line info / success / error message and
+// spectators need time to read the participating cards.
+toast.combo   = (msg, ttl) => toast(msg, 'combo', ttl ?? 5000)
 
 export function useToast() {
   return toast
@@ -28,12 +32,17 @@ const KIND_BORDER = {
   success: 'var(--ok)',
   error:   'var(--danger)',
   info:    'var(--ink)',
+  // R60 spectator UX: combo toasts use the accent (gold) token so
+  // they read as "celebratory" vs the green/red/neutral palette of
+  // the other kinds. Falls back to --ok when --accent isn't loaded.
+  combo:   'var(--accent, var(--ok))',
 }
 
 const KIND_LABEL = {
   success: 'OK',
   error:   'ERR',
   info:    'INFO',
+  combo:   '🎯',
 }
 
 export function ToastHost() {
@@ -90,7 +99,11 @@ export function ToastHost() {
             letterSpacing: '0.06em',
             textTransform: 'uppercase',
             boxShadow: '3px 3px 0 var(--rule-2)',
-            animation: 'hexdek-toast-in 140ms ease-out',
+            // Combo toasts get a heavier emphasis animation: a brief
+            // scale-up + glow on top of the standard slide-in.
+            animation: item.kind === 'combo'
+              ? 'hexdek-toast-in 140ms ease-out, hexdek-combo-pulse 600ms ease-out'
+              : 'hexdek-toast-in 140ms ease-out',
           }}
         >
           <span style={{
@@ -112,6 +125,11 @@ export function ToastHost() {
         @keyframes hexdek-toast-in {
           from { opacity: 0; transform: translateX(8px); }
           to   { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes hexdek-combo-pulse {
+          0%   { box-shadow: 3px 3px 0 var(--rule-2), 0 0 0 0 rgba(200, 162, 107, 0);   }
+          30%  { box-shadow: 3px 3px 0 var(--rule-2), 0 0 16px 4px rgba(200, 162, 107, 0.55); }
+          100% { box-shadow: 3px 3px 0 var(--rule-2), 0 0 0 0 rgba(200, 162, 107, 0);   }
         }
       `}</style>
     </div>,
