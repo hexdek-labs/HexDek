@@ -120,6 +120,12 @@ func main() {
 	crossrefDir := flag.String("crossref-dir", "data/muninn", "directory containing Muninn JSON files")
 	crossrefReport := flag.String("crossref-report", "data/crossref-report.md", "path for cross-reference report")
 
+	// Confidence explorer — surfaces the lowest-confidence cards + their
+	// problematic AST nodes for targeted scaffold improvement.
+	confidenceExplorer := flag.Bool("confidence-explorer", false, "list the lowest-confidence cards in the AST corpus + their problematic AST nodes (exits after report)")
+	confidenceExplorerLimit := flag.Int("confidence-explorer-limit", 50, "how many worst-confidence cards to surface (--confidence-explorer)")
+	confidenceExplorerOut := flag.String("confidence-explorer-out", "", "markdown output path for --confidence-explorer (default: stdout)")
+
 	flag.Parse()
 
 	// Aggregate the Thor 2.0 feature flags into one value passed down
@@ -178,6 +184,15 @@ func main() {
 		log.Fatalf("load corpus: %v", err)
 	}
 	log.Printf("  %d cards in %s", corpus.CardCount, time.Since(t0))
+
+	// Confidence explorer — surface low-confidence cards then exit. Runs
+	// directly off the freshly-loaded AST corpus; no further setup needed.
+	if *confidenceExplorer {
+		if err := runConfidenceExplorer(corpus, *confidenceExplorerLimit, *confidenceExplorerOut); err != nil {
+			log.Fatalf("confidence-explorer: %v", err)
+		}
+		return
+	}
 
 	// Load oracle corpus for card metadata.
 	log.Println("loading oracle corpus from data/rules/oracle-cards.json ...")
