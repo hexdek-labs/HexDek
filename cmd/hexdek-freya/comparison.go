@@ -88,8 +88,24 @@ type DeckComparison struct {
 	UniqueToA          []string // up to 10 standout cards in A but not B (star tier leads)
 	UniqueToB          []string // up to 10 standout cards in B but not A
 
-	// Verdict is the narrative paragraph synthesizing the diff.
+	// Verdict is the short one-line synthesis. NarrativeSummary
+	// (populated by ApplyComparisonPresentation) is the longer
+	// "Deck A is more X than B because of Y, Z, W" paragraph that
+	// names specific cards driving the identity gap.
 	Verdict string
+
+	// Presentation layer (see comparison_presentation.go). Populated
+	// automatically by CompareDecks once the structured diff is built.
+	RankedDiffsA     []ImpactfulCardDiff // top-impact unique-to-A cards
+	RankedDiffsB     []ImpactfulCardDiff // top-impact unique-to-B cards
+	NarrativeSummary string              // multi-sentence identity-gap paragraph
+	RecommendedSwaps []RecommendedSwap   // cross-deck tech-card recommendations for the shared worst matchup
+
+	// SharedWorstMatchup is the canonical opponent-archetype label
+	// when both decks face the same matchup as their worst. Empty
+	// when WorstMatchups differ (or either is unset). Drives the
+	// RecommendedSwaps section and the "both face X" framing.
+	SharedWorstMatchup string
 }
 
 // Comparison output sizing constants. Tuned for terminal side-by-side
@@ -171,6 +187,10 @@ func CompareDecks(a, b *DeckProfile, repA, repB *FreyaReport) *DeckComparison {
 	}
 
 	cmp.Verdict = buildComparisonVerdict(cmp)
+	if a.WorstMatchup != "" && strings.EqualFold(a.WorstMatchup, b.WorstMatchup) {
+		cmp.SharedWorstMatchup = a.WorstMatchup
+	}
+	ApplyComparisonPresentation(cmp, a, b, repA, repB)
 	return cmp
 }
 
@@ -512,6 +532,45 @@ func FormatDeckComparison(cmp *DeckComparison) string {
 		if len(cmp.UniqueToB) > 0 {
 			sb.WriteString(fmt.Sprintf("    standouts in %s: %s\n", cmp.deckLabelB(),
 				strings.Join(cmp.UniqueToB, ", ")))
+		}
+		sb.WriteString("\n")
+	}
+
+	if len(cmp.RankedDiffsA) > 0 || len(cmp.RankedDiffsB) > 0 {
+		sb.WriteString("  Impact-Ranked Differences\n")
+		if len(cmp.RankedDiffsA) > 0 {
+			sb.WriteString(fmt.Sprintf("    %s identity drivers:\n", cmp.deckLabelA()))
+			for _, d := range cmp.RankedDiffsA {
+				sb.WriteString(fmt.Sprintf("      [%3d] %s — %s\n", d.Impact, d.Card, strings.Join(d.Reasons, " • ")))
+			}
+		}
+		if len(cmp.RankedDiffsB) > 0 {
+			sb.WriteString(fmt.Sprintf("    %s identity drivers:\n", cmp.deckLabelB()))
+			for _, d := range cmp.RankedDiffsB {
+				sb.WriteString(fmt.Sprintf("      [%3d] %s — %s\n", d.Impact, d.Card, strings.Join(d.Reasons, " • ")))
+			}
+		}
+		sb.WriteString("\n")
+	}
+
+	if cmp.NarrativeSummary != "" {
+		sb.WriteString("  Narrative Summary\n")
+		sb.WriteString(fmt.Sprintf("    %s\n", cmp.NarrativeSummary))
+		sb.WriteString("\n")
+	}
+
+	if len(cmp.RecommendedSwaps) > 0 {
+		sb.WriteString(fmt.Sprintf("  Recommended Tech Swaps (both face %s)\n", cmp.SharedWorstMatchup))
+		for _, s := range cmp.RecommendedSwaps {
+			sev := "minor"
+			switch s.Severity {
+			case 2:
+				sev = "major"
+			case 3:
+				sev = "critical"
+			}
+			sb.WriteString(fmt.Sprintf("    %s → %s: add %s [%s] — %s\n",
+				s.SourceDeck, s.TargetDeck, s.Card, sev, s.Reason))
 		}
 	}
 
