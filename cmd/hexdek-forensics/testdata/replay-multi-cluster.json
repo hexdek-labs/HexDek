@@ -1,0 +1,26 @@
+{
+  "game_idx": 2762,
+  "seed": 42,
+  "deck_seed": 27620043,
+  "commanders": ["Eruth, Tormented Prophet", "Atraxa, Praetors' Voice", "Krenko, Mob Boss", "Lathril, Blade of the Elves"],
+  "events": [
+    {"Kind": "game_setup", "Seat": -1, "Target": -1, "Source": "", "Amount": 0, "Details": {"rule": "103.1"}},
+    {"Kind": "enter_battlefield", "Seat": 1, "Target": -1, "Source": "Lava Spike", "Amount": 0, "Details": {"instance_id": "h1OGVR200056"}},
+    {"Kind": "enter_battlefield", "Seat": 1, "Target": -1, "Source": "Fireblast", "Amount": 0, "Details": {"instance_id": "h1OGVR200099"}},
+    {"Kind": "creature_attacks", "Seat": 2, "Target": 0, "Source": "Mystery Goblin", "Amount": 0, "Details": {}},
+    {"Kind": "combat_damage", "Seat": 0, "Target": 3, "Source": "Shock", "Amount": 1, "Details": {}}
+  ],
+  "violations": [
+    {"turn": 17, "phase": "main", "step": "precombat_main", "invariant": "ZoneConservation", "message": "ZoneConservation: InstanceID \"h1OGVR200056\" present in a zone but not in (Minted - Ceased) — fabrication or stale ceased entry"},
+    {"turn": 18, "phase": "main", "step": "precombat_main", "invariant": "ZoneConservation", "message": "ZoneConservation: InstanceID \"h1OGVR200056\" present in a zone but not in (Minted - Ceased) — fabrication or stale ceased entry"},
+    {"turn": 19, "phase": "main", "step": "precombat_main", "invariant": "ZoneConservation", "message": "ZoneConservation: InstanceID \"h1OGVR200099\" present in a zone but not in (Minted - Ceased) — fabrication or stale ceased entry"},
+    {"turn": 20, "phase": "main", "step": "precombat_main", "invariant": "ZoneConservation", "message": "ZoneConservation: InstanceID \"h2TKVC000077\" present in a zone but not in (Minted - Ceased) — fabrication or stale ceased entry"},
+    {"turn": 21, "phase": "main", "step": "precombat_main", "invariant": "ZoneConservation", "message": "ZoneConservation: InstanceID \"h3OGVG500041\" present in a zone but not in (Minted - Ceased) — fabrication or stale ceased entry"}
+  ],
+  "card_index": {
+    "h1OGVR200056": "Lava Spike",
+    "h1OGVR200099": "Fireblast",
+    "h2TKVC000077": "Mystery Goblin",
+    "h3OGVG500041": "Bayou Dragonfly"
+  }
+}
