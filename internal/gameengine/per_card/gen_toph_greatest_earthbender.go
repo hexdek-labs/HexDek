@@ -44,8 +44,8 @@ func tophETBEarthbendAndAnthem(gs *gameengine.GameState, perm *gameengine.Perman
 	if x > len(seat.Library) {
 		x = len(seat.Library)
 	}
-	// Look at top X.
-	top := seat.Library[:x]
+	// Snapshot top X (Wave 2 multi-step migration — no pre-splice).
+	top := append([]*gameengine.Card(nil), seat.Library[:x]...)
 	var pick *gameengine.Card
 	pickIdx := -1
 	for i, c := range top {
@@ -66,19 +66,24 @@ func tophETBEarthbendAndAnthem(gs *gameengine.GameState, perm *gameengine.Perman
 			pickIdx = i
 		}
 	}
-	bottoms := make([]*gameengine.Card, 0, x-1)
-	for i, c := range top {
-		if i == pickIdx {
-			continue
-		}
-		bottoms = append(bottoms, c)
-	}
-	// Drop the consumed top X off the front.
-	seat.Library = seat.Library[x:]
+	// enterBattlefieldWithETB → createPermanent sweeps the picked card
+	// from library (RemoveCardFromAllPrivateZones). No pre-splice needed.
 	if pick != nil {
 		enterBattlefieldWithETB(gs, perm.Controller, pick, false)
 	}
-	// Random order to bottom.
+	// Non-picked top cards stay in library; rotate them to the bottom in
+	// random order (within-zone reorder — no zone change).
+	bottoms := make([]*gameengine.Card, 0, x-1)
+	for i, c := range top {
+		if i == pickIdx || c == nil {
+			continue
+		}
+		if len(seat.Library) == 0 || seat.Library[0] != c {
+			continue
+		}
+		seat.Library = seat.Library[1:]
+		bottoms = append(bottoms, c)
+	}
 	if len(bottoms) > 1 && gs.Rng != nil {
 		gs.Rng.Shuffle(len(bottoms), func(i, j int) {
 			bottoms[i], bottoms[j] = bottoms[j], bottoms[i]

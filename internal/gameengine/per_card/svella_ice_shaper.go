@@ -65,7 +65,11 @@ func svellaTopFour(gs *gameengine.GameState, src *gameengine.Permanent) {
 	if n > len(seat.Library) {
 		n = len(seat.Library)
 	}
-	top := seat.Library[:n]
+	// Snapshot top N (no library modification yet — Wave 2 multi-step
+	// migration). Pre-r60 shape spliced top n off first, then MoveCard'd
+	// the picked card, which silently no-op'd source-zone removal because
+	// the card was no longer in library.
+	top := append([]*gameengine.Card(nil), seat.Library[:n]...)
 	// Choose best non-land highest-CMC for free cast.
 	bestIdx := -1
 	bestCMC := -1
@@ -79,24 +83,24 @@ func svellaTopFour(gs *gameengine.GameState, src *gameengine.Permanent) {
 		}
 	}
 	chosen := ""
+	var picked *gameengine.Card
 	if bestIdx >= 0 {
-		chosen = top[bestIdx].DisplayName()
+		picked = top[bestIdx]
+		chosen = picked.DisplayName()
+		// MoveCard handles library removal + §614 + zone-change triggers.
+		gameengine.MoveCard(gs, picked, src.Controller, "library", "exile", "svella_free_cast")
 	}
-	// Bottom the rest. Move them out of the top slice in order.
-	rest := []*gameengine.Card{}
-	for i, c := range top {
-		if i == bestIdx {
+	// Non-picked top cards stay in library; rotate them to the bottom in
+	// the order they were peeked. (Within-zone reorder — no zone change.)
+	for _, c := range top {
+		if c == nil || c == picked {
 			continue
 		}
-		rest = append(rest, c)
-	}
-	// Remove top n.
-	seat.Library = seat.Library[n:]
-	// Append rest to bottom.
-	seat.Library = append(seat.Library, rest...)
-	// If we picked a card, send it to exile to flag the free-cast handoff.
-	if bestIdx >= 0 {
-		gameengine.MoveCard(gs, top[bestIdx], src.Controller, "library", "exile", "svella_free_cast")
+		if len(seat.Library) == 0 || seat.Library[0] != c {
+			continue
+		}
+		seat.Library = seat.Library[1:]
+		seat.Library = append(seat.Library, c)
 	}
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"seat":     src.Controller,

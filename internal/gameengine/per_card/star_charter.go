@@ -83,20 +83,33 @@ func starCharterEndStep(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 			bestIdx = i
 		}
 	}
-	seat.Library = seat.Library[n:]
+	// Wave 2 multi-step migration: keep the picked card in library until
+	// MoveCard does its work (source-zone removal + §614 replacements +
+	// commander redirect + zone-change triggers all rely on the card
+	// still being in library at call time). Pre-r60 shape spliced top n
+	// off first, which silently no-op'd MoveCard's source removal and
+	// bypassed §614 / zone_change triggers for the picked card.
 	var picked *gameengine.Card
 	if bestIdx >= 0 {
 		picked = top[bestIdx]
 		gameengine.MoveCard(gs, picked, perm.Controller, "library", "hand", slug)
 	}
+	// The non-picked top cards stay in library; we just reorder them to
+	// the bottom in random order (within-zone reorder, no zone change).
+	// After MoveCard above, library starts with the original top-N minus
+	// any picked card, preserved in order. Pull each off the top and
+	// drop them into a `rest` slice to shuffle, then re-append to bottom.
 	rest := make([]*gameengine.Card, 0, n-1)
-	for i, c := range top {
-		if i == bestIdx {
+	for _, c := range top {
+		if c == nil || c == picked {
 			continue
 		}
-		if c == nil {
+		// Defensive: the card should be at library[0]; if not (some
+		// upstream trigger snatched it), skip the rotation.
+		if len(seat.Library) == 0 || seat.Library[0] != c {
 			continue
 		}
+		seat.Library = seat.Library[1:]
 		rest = append(rest, c)
 	}
 	// "in a random order" — shuffle the bottom batch via the engine's

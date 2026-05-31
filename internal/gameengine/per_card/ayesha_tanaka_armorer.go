@@ -37,22 +37,28 @@ func ayeshaAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 	if look > len(seat.Library) {
 		look = len(seat.Library)
 	}
+	// Snapshot top N (Wave 2 multi-step migration — no pre-splice per
+	// iteration). Walk the snapshot; for played cards let
+	// enterBattlefieldWithETB → createPermanent sweep them from library
+	// + fire ETB cascade (cleaner than MoveCard("library"→"battlefield"),
+	// which races with createPermanent's dedup). For passed cards, rotate
+	// top→bottom (within-zone reorder, no zone change).
+	top := append([]*gameengine.Card(nil), seat.Library[:look]...)
 	playedCount := 0
-	rest := []*gameengine.Card{}
-	for i := 0; i < look; i++ {
-		c := seat.Library[0]
-		seat.Library = seat.Library[1:]
+	for _, c := range top {
 		if c == nil {
 			continue
 		}
 		if cardHasType(c, "artifact") && gameengine.ManaCostOf(c) <= power {
-			gameengine.MoveCard(gs, c, perm.Controller, "library", "battlefield", "ayesha_tanaka")
+			enterBattlefieldWithETB(gs, perm.Controller, c, true)
 			playedCount++
-		} else {
-			rest = append(rest, c)
+			continue
+		}
+		if len(seat.Library) > 0 && seat.Library[0] == c {
+			seat.Library = seat.Library[1:]
+			seat.Library = append(seat.Library, c)
 		}
 	}
-	seat.Library = append(seat.Library, rest...)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":      perm.Controller,
 		"looked":    look,
