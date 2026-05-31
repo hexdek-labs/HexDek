@@ -1913,6 +1913,112 @@ func (e *GameStateEvaluator) scoreThreat(gs *gameengine.GameState, seatIdx int) 
 		}
 	}
 
+	// R60: single-removal concentration penalty. wipeMagnet (below) is
+	// the OVER-committed side ("a sweeper takes my whole army") — its
+	// mirror is the UNDER-committed side: a single keystone creature
+	// carrying most of our offensive power is one Murder away from
+	// collapsing the position. Walk own creatures, compute max-power
+	// share of total power; if the top creature owns ≥50% of our
+	// offense AND total offense is non-trivial (>4 to gate out the 1/1
+	// token early game), credit the share above 0.5 at 1.0 per unit,
+	// capped at 0.50 so a one-creature board (share=1.0) reads exactly
+	// the cap. Distinct from hardestToAnswer (THEIR scary creature
+	// surviving OUR removal) — this is OUR keystone exposure to THEIR
+	// spot removal.
+	removalConcentration := 0.0
+	{
+		var totalPow, maxPow float64
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil || p.PhasedOut || !p.IsCreature() {
+				continue
+			}
+			pow := float64(p.Power())
+			if pow <= 0 {
+				continue
+			}
+			totalPow += pow
+			if pow > maxPow {
+				maxPow = pow
+			}
+		}
+		if totalPow > 4 && maxPow > 0 {
+			share := maxPow / totalPow
+			if share >= 0.5 {
+				removalConcentration = share - 0.5
+				if removalConcentration > 0.50 {
+					removalConcentration = 0.50
+				}
+			}
+		}
+	}
+
+	// R60: untap-step window — defensive-shell exposure. When the
+	// active player isn't us, our tapped creatures can't block. If our
+	// best-toughness creature is tapped AND noticeably bigger than the
+	// best untapped one, the defensive shell is compromised for this
+	// priority window. Gated on a non-trivial opponent offensive power
+	// (>=4) so the signal doesn't fire over a single 2/2 we can ignore.
+	// Reads gs.Active (the seat whose turn it is) — pre-r60 the
+	// dimension was completely turn-agnostic, so a tapped Avenger of
+	// Zendikar in opponent's combat step scored identically to the
+	// same creature untapped on our own turn.
+	untapWindow := 0.0
+	if gs.Active != seatIdx && maxOppPow >= 4 {
+		var bestUntappedTough, bestTappedTough int
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil || p.PhasedOut || !p.IsCreature() {
+				continue
+			}
+			t := p.Toughness()
+			if t <= 0 {
+				continue
+			}
+			if p.Tapped {
+				if t > bestTappedTough {
+					bestTappedTough = t
+				}
+			} else {
+				if t > bestUntappedTough {
+					bestUntappedTough = t
+				}
+			}
+		}
+		if bestTappedTough > bestUntappedTough+2 {
+			diff := bestTappedTough - bestUntappedTough
+			untapWindow = float64(diff) * 0.05
+			if untapWindow > 0.30 {
+				untapWindow = 0.30
+			}
+		}
+	}
+
+	// R60: interaction-mana starvation during opponent priority. With
+	// no untapped lands during an opponent's turn, every spell they
+	// cast resolves unopposed — we can't pay for a Counterspell, a
+	// Swords to Plowshares, a Heroic Intervention, etc. Hand contents
+	// are unknown post-determinization, so we score on the WINDOW
+	// (untapped-mana availability) regardless of what we hold. Gated
+	// on opponent threat (>=4 max opp pow) so a peaceful early opp
+	// turn doesn't trigger.
+	interactionStarvation := 0.0
+	if gs.Active != seatIdx && maxOppPow >= 4 {
+		untappedLands := 0
+		for _, p := range seat.Battlefield {
+			if p == nil || p.PhasedOut || !p.IsLand() {
+				continue
+			}
+			if !p.Tapped {
+				untappedLands++
+			}
+		}
+		switch untappedLands {
+		case 0:
+			interactionStarvation = 0.20
+		case 1:
+			interactionStarvation = 0.08
+		}
+	}
+
 	// R60: wipe-magnet penalty. lethalRatio (maxOpp/life) is naturally
 	// LOW when we're leading on board — opponents have small boards
 	// because we're dominating. But that exact state is when the table
@@ -1933,7 +2039,7 @@ func (e *GameStateEvaluator) scoreThreat(gs *gameengine.GameState, seatIdx int) 
 		}
 	}
 
-	return -lethalRatio*0.8 - dangerousPermanents*0.3 - hoserPenalty - poisonPenalty - millPenalty - cmdrPenalty - hardToAnswerPenalty - stackPressure - wipeMagnet
+	return -lethalRatio*0.8 - dangerousPermanents*0.3 - hoserPenalty - poisonPenalty - millPenalty - cmdrPenalty - hardToAnswerPenalty - stackPressure - wipeMagnet - removalConcentration - untapWindow - interactionStarvation
 }
 
 // effectiveOffensivePower returns an evasion-weighted, summoning-sickness-
