@@ -65,7 +65,10 @@ import (
 //   - The actual "you may cast" choice is deferred to the AI layer
 //     (the grant is REGISTERED, not auto-cast). This matches how
 //     impulse-play cards like Outpost Siege / Birgi already work in
-//     the engine. emitPartial flags the deferred cast for audit.
+//     the engine. R60 batch 7: dropped the stale "deferred to AI"
+//     emitPartial — that's deliberate AI/Hat delegation (same pattern
+//     as Bloodchief / Alesha / Strefan), not a missing engine
+//     feature.
 func registerEtaliPrimalStorm(r *Registry) {
 	r.OnTrigger("Etali, Primal Storm", "creature_attacks", etaliPrimalStormAttack)
 }
@@ -161,12 +164,7 @@ func etaliPrimalStormAttack(gs *gameengine.GameState, perm *gameengine.Permanent
 	// The "you may cast" choice is AI/Hat territory — the grants are
 	// registered with end-of-turn expiry; the engine's cast-from-exile
 	// pipeline will resolve any chosen casts during this trigger's
-	// resolution window. Flag the deferred choice so audits notice.
-	if nonLandGrants > 0 {
-		emitPartial(gs, slug, perm.Card.DisplayName(),
-			"auto-cast of exiled nonlands deferred to AI/Hat layer")
-	}
-
+	// resolution window.
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":              perm.Controller,
 		"exiled_count":      len(exiled),

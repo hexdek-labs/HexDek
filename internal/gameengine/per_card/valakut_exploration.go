@@ -18,9 +18,15 @@ import (
 // Implementation:
 //   - permanent_etb gated on entering land controlled by us: exile the
 //     top of our library; tag with "valakut_exiled" so the end-step
-//     sweeper can find it. The "may play that card" half is a
-//     play-from-exile hook gap (same as Ixhel / Bre / Urabrask) —
-//     flagged once on first ETB via emitPartial.
+//     sweeper can find it. R60 batch 7: wired the "may play that
+//     card for as long as it remains exiled" half via
+//     NewFreeCastFromExilePermission with Duration="while_source_on_bf"
+//     + SourceTimestamp pointing at Valakut. ManaCost=-1 (normal cost;
+//     oracle says "may play" — not "without paying its mana cost").
+//     When Valakut LTBs, ExpireSourceGrants reaps the grants. When the
+//     end-step sweeper moves the cards from exile to graveyard, the
+//     grants implicitly invalidate (the *Card pointer no longer
+//     resides in exile, and the AI cast-from-exile path checks zone).
 //   - end_step (controller's): scan controller's exile for tagged
 //     cards, move them to graveyard, then deal that many damage to
 //     each opponent via LoseLife (engine treats non-combat damage to
@@ -28,17 +34,8 @@ import (
 const valakutExplorationTag = "valakut_exiled"
 
 func registerValakutExploration(r *Registry) {
-	r.OnETB("Valakut Exploration", valakutExplorationETB)
 	r.OnTrigger("Valakut Exploration", "permanent_etb", valakutExplorationLandfall)
 	r.OnTrigger("Valakut Exploration", "end_step", valakutExplorationEndStep)
-}
-
-func valakutExplorationETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	if gs == nil || perm == nil {
-		return
-	}
-	emitPartial(gs, "valakut_exploration_play_from_exile", perm.Card.DisplayName(),
-		"\"may play that card for as long as it remains exiled\" requires play-from-exile hook; tag set on each exiled card")
 }
 
 func valakutExplorationLandfall(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -63,17 +60,26 @@ func valakutExplorationLandfall(gs *gameengine.GameState, perm *gameengine.Perma
 	}
 	top := seat.Library[0]
 	gameengine.MoveCard(gs, top, perm.Controller, "library", "exile", "valakut_exploration_exile")
+	exiledName := ""
+	grantKind := "none"
 	if top != nil {
 		top.Types = append(top.Types, valakutExplorationTag)
-	}
-	exiledName := ""
-	if top != nil {
 		exiledName = top.DisplayName()
+		// Register the play-from-exile grant tied to Valakut's
+		// timestamp so ExpireSourceGrants reaps it on Valakut's LTB.
+		grant := gameengine.NewFreeCastFromExilePermission(perm.Controller, perm.Card.DisplayName())
+		grant.ManaCost = -1 // "may play" — pay normal cost
+		grant.Duration = "while_source_on_bf"
+		grant.GrantTurn = gs.Turn
+		grant.SourceTimestamp = perm.Timestamp
+		gameengine.RegisterZoneCastGrant(gs, top, grant)
+		grantKind = "play_for_normal_cost_while_valakut_in_play"
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":   perm.Controller,
-		"land":   entering.Card.DisplayName(),
-		"exiled": exiledName,
+		"seat":       perm.Controller,
+		"land":       entering.Card.DisplayName(),
+		"exiled":     exiledName,
+		"grant_kind": grantKind,
 	})
 }
 

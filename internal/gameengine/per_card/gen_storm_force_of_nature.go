@@ -19,7 +19,11 @@ import (
 //   - Cleanup: cleared at end of turn via a delayed trigger so an
 //     unused grant doesn't bleed into the next turn.
 //   - The actual "copy for each spell cast before it" mechanic lives
-//     in the cast pipeline; we surface a partial.
+//     in the cast pipeline (ApplyStormCopies from costs.go fires
+//     when stormForceOfNatureConsumeGrant marks the spell with
+//     storm). R60 batch 7: dropped the stale "consumption handled by
+//     cast pipeline" emitPartial — that's deliberate engine
+//     delegation, not a gap.
 func registerStormForceOfNature(r *Registry) {
 	r.OnTrigger("Storm, Force of Nature", "combat_damage_to_player", stormForceOfNatureCombatDamage)
 	// R51 batch I: defensive LTB clear of the storm_grant_pending seat
@@ -119,6 +123,4 @@ func stormForceOfNatureCombatDamage(gs *gameengine.GameState, perm *gameengine.P
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"storm_keyword_grant_consumption_handled_by_cast_pipeline_at_resolve")
 }

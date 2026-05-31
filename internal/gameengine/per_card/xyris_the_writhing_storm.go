@@ -26,10 +26,14 @@ import (
 //   - On each qualifying draw, one 1/1 green Snake creature token is
 //     created under Xyris's controller via gameengine.CreateCreatureToken.
 //
-// Coverage gap: draws that bypass FireDrawTriggerObservers entirely
-// (e.g. direct library→hand moves not routed through the standard draw
-// path) will not fire player_would_draw and therefore will not trigger
-// this handler. emitPartial flags the gap on ETB.
+// Coverage gap (engine-side, NOT per-ETB actionable): draws that
+// bypass FireDrawTriggerObservers entirely (e.g. direct library→hand
+// moves not routed through the standard draw path) will not fire
+// player_would_draw and therefore will not trigger this handler.
+// R60 batch 7: dropped the per-ETB emitPartial — firing the same
+// "coverage gap" callout on every Xyris ETB was audit noise. The
+// gap is real but documented here as a doc-comment, not a runtime
+// emit.
 //
 // CR note: "the first one they draw in each of their draw steps" means
 // the mandatory turn-draw in the active player's draw step. Additional
@@ -37,17 +41,7 @@ import (
 // is_draw_step_draw is true only for that single first draw-step draw,
 // which exactly matches the oracle wording.
 func registerXyrisTheWrithingStorm(r *Registry) {
-	r.OnETB("Xyris, the Writhing Storm", xyrisTheWrithingStormETB)
 	r.OnTrigger("Xyris, the Writhing Storm", "player_would_draw", xyrisTheWrithingStormDraw)
-}
-
-func xyrisTheWrithingStormETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "xyris_writhing_storm_coverage_gap"
-	if gs == nil || perm == nil {
-		return
-	}
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"draws_not_routed_through_fire_draw_trigger_observers_not_tracked")
 }
 
 func xyrisTheWrithingStormDraw(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
