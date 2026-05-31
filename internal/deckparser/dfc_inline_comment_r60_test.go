@@ -114,10 +114,8 @@ func TestParseDeckReader_DFCAndRealCommentCoexist(t *testing.T) {
 	}
 	for i, w := range want {
 		got := td.CardLines[i]
-		got.Status = 0
-		got.LineNumber = 0
-		if got != w {
-			t.Errorf("CardLines[%d] = %+v, want %+v", i, got, w)
+		if got.Qty != w.Qty || got.Name != w.Name || got.Comment != w.Comment || got.Section != w.Section {
+			t.Errorf("CardLines[%d] = %+v, want %+v (Qty/Name/Comment/Section compared; Status/LineNumber/HashTags ignored)", i, got, w)
 		}
 	}
 }
@@ -181,10 +179,8 @@ func TestParseDeckReader_DFCFrontFaceOnlyStillCommentable(t *testing.T) {
 	}
 	for i, w := range want {
 		got := td.CardLines[i]
-		got.Status = 0
-		got.LineNumber = 0
-		if got != w {
-			t.Errorf("CardLines[%d] = %+v, want %+v", i, got, w)
+		if got.Qty != w.Qty || got.Name != w.Name || got.Comment != w.Comment || got.Section != w.Section {
+			t.Errorf("CardLines[%d] = %+v, want %+v (Qty/Name/Comment/Section compared; Status/LineNumber/HashTags ignored)", i, got, w)
 		}
 	}
 	// The cards should still resolve — buildCard's face-match catches
@@ -223,10 +219,8 @@ func TestParseDeckReader_DFCUnknownToMetaFallsBackToComment(t *testing.T) {
 	}
 	for i, w := range want {
 		got := td.CardLines[i]
-		got.Status = 0
-		got.LineNumber = 0
-		if got != w {
-			t.Errorf("CardLines[%d] = %+v, want %+v", i, got, w)
+		if got.Qty != w.Qty || got.Name != w.Name || got.Comment != w.Comment || got.Section != w.Section {
+			t.Errorf("CardLines[%d] = %+v, want %+v (Qty/Name/Comment/Section compared; Status/LineNumber/HashTags ignored)", i, got, w)
 		}
 	}
 }
