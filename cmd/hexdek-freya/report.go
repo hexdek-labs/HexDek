@@ -77,7 +77,9 @@ func printText(w io.Writer, r *FreyaReport) {
 		}
 		fmt.Fprintf(w, "  %s %s -- mandatory trigger loop%s\n", prefix, strings.Join(c.Cards, " + "), classTag)
 		// Split description on " | " to show outlets on a separate line.
-		parts := strings.SplitN(c.Description, " | ", 2)
+		// Mana symbols inside the description (`{R}`, `{1}{U}`, etc.) are
+		// rendered as emoji color discs for the text renderer.
+		parts := strings.SplitN(RenderMana(c.Description, ManaText), " | ", 2)
 		fmt.Fprintf(w, "    %s\n", parts[0])
 		if len(parts) > 1 {
 			if strings.HasPrefix(parts[1], "OUTLETS IN DECK:") {
@@ -113,7 +115,7 @@ func printText(w io.Writer, r *FreyaReport) {
 		}
 		fmt.Fprintf(w, "  %s %s%s\n", prefix, strings.Join(c.Cards, " + "), classTag)
 		// Split description on " | " to show outlets on a separate line.
-		parts := strings.SplitN(c.Description, " | ", 2)
+		parts := strings.SplitN(RenderMana(c.Description, ManaText), " | ", 2)
 		fmt.Fprintf(w, "    %s\n", parts[0])
 		if len(parts) > 1 {
 			fmt.Fprintf(w, "    %s\n", parts[1])
@@ -161,7 +163,7 @@ func printText(w io.Writer, r *FreyaReport) {
 		if label := ComboClassLabel(c.Class); label != "" {
 			classTag = " [" + label + "]"
 		}
-		fmt.Fprintf(w, "  * %s%s -- %s\n", strings.Join(c.Cards, " + "), classTag, c.Description)
+		fmt.Fprintf(w, "  * %s%s -- %s\n", strings.Join(c.Cards, " + "), classTag, RenderMana(c.Description, ManaText))
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -172,7 +174,7 @@ func printText(w io.Writer, r *FreyaReport) {
 	}
 	for _, c := range r.Synergies {
 		fmt.Fprintf(w, "  * %s\n", strings.Join(c.Cards, " + "))
-		fmt.Fprintf(w, "    %s\n", c.Description)
+		fmt.Fprintf(w, "    %s\n", RenderMana(c.Description, ManaText))
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -1042,7 +1044,10 @@ func printMarkdown(w io.Writer, r *FreyaReport) {
 			classTag = " _[" + label + "]_"
 		}
 		fmt.Fprintf(w, "- %s %s -- mandatory trigger loop%s\n", prefix, scryfallLinks(c.Cards, " + "), classTag)
-		parts := strings.SplitN(c.Description, " | ", 2)
+		// Mana symbols inside the description render as emoji color discs
+		// (Markdown viewers — Discord, GitHub, Reddit — render Unicode
+		// emoji natively).
+		parts := strings.SplitN(RenderMana(c.Description, ManaMarkdown), " | ", 2)
 		fmt.Fprintf(w, "  - %s\n", parts[0])
 		if len(parts) > 1 {
 			if strings.HasPrefix(parts[1], "OUTLETS IN DECK:") {
@@ -1076,7 +1081,7 @@ func printMarkdown(w io.Writer, r *FreyaReport) {
 			classTag = " _[" + label + "]_"
 		}
 		fmt.Fprintf(w, "- %s %s%s\n", prefix, scryfallLinks(c.Cards, " + "), classTag)
-		parts := strings.SplitN(c.Description, " | ", 2)
+		parts := strings.SplitN(RenderMana(c.Description, ManaMarkdown), " | ", 2)
 		fmt.Fprintf(w, "  - %s\n", parts[0])
 		if len(parts) > 1 {
 			fmt.Fprintf(w, "  - **%s**\n", parts[1])
@@ -1099,7 +1104,7 @@ func printMarkdown(w io.Writer, r *FreyaReport) {
 		if label := ComboClassLabel(c.Class); label != "" {
 			classTag = " _[" + label + "]_"
 		}
-		fmt.Fprintf(w, "- %s%s -- %s\n", scryfallLinks(c.Cards, " + "), classTag, c.Description)
+		fmt.Fprintf(w, "- %s%s -- %s\n", scryfallLinks(c.Cards, " + "), classTag, RenderMana(c.Description, ManaMarkdown))
 	}
 	if len(r.Finishers) == 0 {
 		fmt.Fprintf(w, "_None detected._\n")
@@ -1108,7 +1113,7 @@ func printMarkdown(w io.Writer, r *FreyaReport) {
 
 	fmt.Fprintf(w, "## Synergies (%d)\n\n", len(r.Synergies))
 	for _, c := range r.Synergies {
-		fmt.Fprintf(w, "- %s -- %s\n", scryfallLinks(c.Cards, " + "), c.Description)
+		fmt.Fprintf(w, "- %s -- %s\n", scryfallLinks(c.Cards, " + "), RenderMana(c.Description, ManaMarkdown))
 	}
 	if len(r.Synergies) == 0 {
 		fmt.Fprintf(w, "_None detected._\n")

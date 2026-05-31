@@ -210,11 +210,14 @@ func renderHTMLCombo(w io.Writer, c ComboResult) {
 	}
 	fmt.Fprintf(w, "</div>\n")
 	if c.Description != "" {
-		parts := strings.SplitN(c.Description, " | ", 2)
-		fmt.Fprintf(w, "    <div class=\"combo-desc\">%s</div>\n", html.EscapeString(parts[0]))
+		// Mana symbols ({W}{U}{B}{R}{G}{C}) render as inline SVG via
+		// RenderManaHTMLSafe — text chunks get HTML-escaped, SVG
+		// chunks emit raw. The split-on-" | " has to happen on the
+		// rendered output so the SVG fragments end up in the right half.
+		parts := strings.SplitN(RenderManaHTMLSafe(c.Description), " | ", 2)
+		fmt.Fprintf(w, "    <div class=\"combo-desc\">%s</div>\n", parts[0])
 		if len(parts) > 1 {
-			fmt.Fprintf(w, "    <div class=\"combo-outlets\"><strong>%s</strong></div>\n",
-				html.EscapeString(parts[1]))
+			fmt.Fprintf(w, "    <div class=\"combo-outlets\"><strong>%s</strong></div>\n", parts[1])
 		}
 	}
 	if c.NonDeterministic {
@@ -245,7 +248,7 @@ func renderHTMLSynergiesSection(w io.Writer, r *FreyaReport) {
 	for _, c := range r.Synergies {
 		fmt.Fprintf(w, "  <li><strong>%s</strong>", cardLinksHTML(c.Cards, " + "))
 		if c.Description != "" {
-			fmt.Fprintf(w, " — %s", html.EscapeString(c.Description))
+			fmt.Fprintf(w, " — %s", RenderManaHTMLSafe(c.Description))
 		}
 		fmt.Fprintf(w, "</li>\n")
 	}
