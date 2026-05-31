@@ -1627,7 +1627,7 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 	if seatHasComboGraveyardRecursion(seat) {
 		graveyardWeight = 0.9
 	}
-	available := make(map[string]float64, len(seat.Hand)+len(seat.Battlefield)+len(seat.Graveyard))
+	available := make(map[string]float64, len(seat.Hand)+len(seat.Battlefield)+len(seat.Graveyard)+len(seat.CommandZone))
 	for _, c := range seat.Hand {
 		if c != nil {
 			available[c.DisplayName()] = 1.0
@@ -1647,6 +1647,24 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 		// strictly stronger zone's weight.
 		if available[c.DisplayName()] < graveyardWeight {
 			available[c.DisplayName()] = graveyardWeight
+		}
+	}
+	// R60: command-zone combo-piece credit. When a combo plan lists a
+	// commander as a piece (Kiki-Jiki, Niv-Mizzet Parun, Thrasios) and
+	// the commander is currently in the command zone, the piece is
+	// GUARANTEED accessible — pay the commander tax and cast. Pre-r60
+	// the dimension ignored CommandZone entirely, so a commander-piece
+	// in command zone scored identically to one in the library (zero
+	// availability), masking a real reach signal. 0.8 weight reflects
+	// the tax cost: cheaper than hand (1.0) but stronger than graveyard
+	// without recursion engine (0.5), since there's no random/shuffle/
+	// loss risk on the command-zone route.
+	for _, c := range seat.CommandZone {
+		if c == nil {
+			continue
+		}
+		if available[c.DisplayName()] < 0.8 {
+			available[c.DisplayName()] = 0.8
 		}
 	}
 
@@ -1781,6 +1799,78 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 		bestRatio += bonus
 		if bestRatio > 1.0 {
 			bestRatio = 1.0
+		}
+	}
+
+	// R60: protected-combo-piece-on-battlefield bonus. When a combo
+	// piece IS on our battlefield AND has protection (hexproof / shroud
+	// / indestructible / ward / protection-from oracle), it's secured
+	// against the targeted-removal attack lane — opponents can't break
+	// the line with a Path / Pongify / Lightning Bolt. Adds +0.04 per
+	// protected piece, capped at +0.12, only contributing to plans
+	// where we've made non-trivial progress (bestRatio > 0.2). The
+	// per-piece weight is conservative — survival doesn't replace
+	// progress, but a Sylvan-Safekept Kiki on board is meaningfully
+	// closer to closing than a vanilla one because the disruption
+	// window is narrower. Pre-r60 the dimension treated all on-field
+	// combo pieces identically regardless of survivability.
+	if bestRatio > 0.2 && bestPlan != nil {
+		protectedCount := 0
+		pieceSet := make(map[string]bool, len(bestPlan.Pieces))
+		for _, n := range bestPlan.Pieces {
+			pieceSet[n] = true
+		}
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil || !pieceSet[p.Card.DisplayName()] {
+				continue
+			}
+			if p.HasKeyword("hexproof") || p.HasKeyword("shroud") ||
+				p.HasKeyword("indestructible") || p.HasKeyword("ward") ||
+				strings.Contains(gameengine.OracleTextLower(p.Card), "protection from") {
+				protectedCount++
+			}
+		}
+		protBonus := 0.04 * float64(protectedCount)
+		if protBonus > 0.12 {
+			protBonus = 0.12
+		}
+		bestRatio += protBonus
+		if bestRatio > 1.0 {
+			bestRatio = 1.0
+		}
+	}
+
+	// R60: stack-window interruption penalty. When we're close to
+	// closing (bestRatio > 0.7) and opponents have meaningful untapped
+	// mana, our combo cast lines are exposed to counterspells / instant-
+	// speed removal mid-resolution. The penalty only fires near closing
+	// because mid-game proximity (ratio < 0.7) is more about assembly
+	// than execution; at the close-out window, the cast-and-respond
+	// math is what matters. Scales with total opp untapped sources
+	// across living opponents — more open mana = more interaction
+	// budget for the table. Capped at -0.10 so a fully-open opp pod
+	// doesn't deflate a near-complete combo to zero — there's still
+	// real value in BEING close even with interaction up.
+	if bestRatio > 0.7 {
+		oppUntapped := 0
+		for i, s := range gs.Seats {
+			if i == seatIdx || s == nil || s.Lost || s.LeftGame {
+				continue
+			}
+			oppUntapped += CountUntappedManaSources(s)
+		}
+		// 4 total opp untapped sources across the pod is a meaningful
+		// floor — typical 4p pod with one opp holding 3 lands up.
+		if oppUntapped >= 4 {
+			over := oppUntapped - 3 // first 3 forgiven as ambient
+			penalty := 0.02 * float64(over)
+			if penalty > 0.10 {
+				penalty = 0.10
+			}
+			bestRatio -= penalty
+			if bestRatio < 0 {
+				bestRatio = 0
+			}
 		}
 	}
 
