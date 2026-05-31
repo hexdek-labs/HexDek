@@ -109,10 +109,13 @@ func featherExileAndReturn(gs *gameengine.GameState, perm *gameengine.Permanent,
 				return
 			}
 			// Pull from exile if the engine's exile-on-resolve fired.
-			for i, c := range seat.Exile {
+			// Wave 2 multi-step migration: route through MoveCard so
+			// §614 replacements + §903.9b commander redirect +
+			// zone_change observers fire. Pre-r60 spliced + manual
+			// append, bypassing all of the above.
+			for _, c := range seat.Exile {
 				if c == captured {
-					seat.Exile = append(seat.Exile[:i], seat.Exile[i+1:]...)
-					seat.Hand = append(seat.Hand, captured)
+					gameengine.MoveCard(gs, captured, owner, "exile", "hand", "feather_return_to_hand")
 					gs.LogEvent(gameengine.Event{
 						Kind:   "feather_return_to_hand",
 						Seat:   owner,
