@@ -8,7 +8,7 @@
 
 - Era 4 Condition nodes: **514** (bucketed 505, unbucketed 9, 1.8% gap)
 
-- Era 4 Trigger nodes: **2515** (bucketed 2439, unbucketed 76, 3.0% gap)
+- Era 4 Trigger nodes: **2515** (bucketed 2515, unbucketed 0, 0.0% gap)
 
 
 ## Top unbucketed condition Kinds
@@ -53,55 +53,7 @@
 
 ## Top unbucketed trigger events
 
-- `self_deals_damage_player` × 5
-- `another_creature_or_artifact_event` × 5
-- `this_card_event` × 3
-- `tap_for_mana` × 3
-- `ally_typed_etb` × 3
-- `creature_etb_any` × 3
-- `upkeep` × 3
-- `land_etb_any` × 2
-- `block_creature` × 2
-- `exiled_event` × 2
-- `self_blocks` × 2
-- `one_or_more_other_ally_event` × 2
-- `self_or_typed_event` × 2
-- `lose_control_of` × 2
-- `creature_cards_to_zone` × 2
-- `one_or_more_lands` × 2
-- `opp_activate` × 1
-- `you_surveil` × 1
-- `you_proliferate` × 1
-- `one_or_more_other_creatures` × 1
-- `you_put_counters_on_any` × 1
-- `creature_cards_leave_gy` × 1
-- `another_typed_etb` × 1
-- `compound_tribe_die_or_leave` × 1
-- `you_dealt_damage` × 1
-- `put_onto_bf` × 1
-- `legend_ally_event` × 1
-- `self_phase_inout` × 1
-- `targets_chosen` × 1
-- `any_player_sacs` × 1
-- `opp_landfall` × 1
-- `saga_final_chapter` × 1
-- `nonland_tapped_for_mana` × 1
-- `you_scry` × 1
-- `you_exert_creature` × 1
-- `artifact_etb_yours` × 1
-- `merfolk_etb_any` × 1
-- `one_or_more_ally_with_x_enter` × 1
-- `creature_or_land_to_gy` × 1
-- `other_nontoken_perm` × 1
-- `discover` × 1
-- `counter_threshold` × 1
-- `compound_bounce_shuffle_event` × 1
-- `any_type_to_gy_from_bf` × 1
-- `becomes_untapped_once` × 1
-- `paid_cumulative_upkeep` × 1
-- `becomes_blocked_by` × 1
-- `self_card_zone_to_zone` × 1
-- `you_put_counters_on` × 1
+_(none — every Era 4 trigger event maps to a scaffold slug)_
 
 ## Top trigger events (bucketed + unbucketed)
 

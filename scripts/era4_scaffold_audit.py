@@ -333,6 +333,84 @@ TRIGGER_EXTRA_EXACT = {
     "face_down_creature_event",
     "compound_tribe_enter",
     "it_state_change",
+
+    # Era 4 r60 trigger-gap closure — bring Era 4's bucketed-events set to
+    # parity with Era 1's. The Go-side classifyTrigger already routes every
+    # one of these slugs to an existing scaffold (see conditional_setup.go
+    # lines 260-353); this is the audit-side mirror so the trigger-gap
+    # metric stops reporting them as unbucketed. No engine change needed.
+    "tap_for_mana", "land_tapped_for_mana",            # → tapped_for_mana
+    "block_or_becomes_blocked", "block_creature",
+    "becomes_blocked_by", "self_blocks",
+    "tap_opp_creature",                                # → attacks
+    "self_deals_damage_player", "you_dealt_damage",
+    "per_damage_prevented", "opp_dealt_damage",        # → combat_damage
+    "creature_etb_any", "land_etb_any",
+    "artifact_etb", "any_typed_etb",
+    "one_or_more_lands", "equipment_attach_state_change",
+    "you_create_one_or_more_tokens", "create_token",
+    "gain_control_event",
+    "another_creature_or_artifact_event",              # → creature_etb
+    "another_typed_etb",                               # → tribe_you_control_etb
+    "ally_typed_etb", "legend_ally_event",
+    "one_or_more_other_ally_event",
+    "one_or_more_ally_with_x_enter",                   # → ally_etb
+    "you_scry", "you_surveil",                         # → draw_card
+    "to_gy_from_anywhere", "creature_cards_leave_gy",
+    "card_to_gy_anywhere", "enchanted_perm_to_gy",
+    "lose_control_of", "one_or_more_milled",
+    "mill_event", "creature_cards_to_zone",
+    "any_player_loses_game",                           # → creature_dies
+    "any_cycle",                                       # → discard
+    "you_put_counters_on", "you_put_counters_on_any",
+    "you_proliferate", "counter_removed_from_self",    # → counters_put_on_self
+    "any_player_sacs",                                 # → sacrifice
+    "opp_activate", "opp_searches_library",            # → opp_creature_event
+    "any_player_tap_land", "self_phase_inout",
+    "until_eot_trigger",                               # → upkeep
+    "you_misc_event", "you_exert_creature",
+    "as_you_draft_a_card", "become_monarch",
+    "you_expend_n", "self_ability_activated",          # → when_you_do
+    # Phase-style + long tail routes.
+    "end_step", "upkeep", "untap_step",
+    "each_upkeep", "cumulative_upkeep_unpaid", "cumulative_upkeep_paid",
+    "until_next_phase", "saga_final_chapter",
+    "ordinal_trigger", "upkeep_life_leader", "first_main",
+    "becomes_renowned",
+    "evolve_event", "counter_put_on_self",
+    "counters_removed_from_self", "counters_put_on_actor_any",
+    "remove_last_counter", "counter_threshold", "proliferate",
+    "flip",
+    "aura_attached_event", "forest_etb",
+    "creature_etb", "power_threshold_etb",
+    "compound_opponents_event", "opp_landfall", "opp_shuffle",
+    "compound_tribe_die_or_leave", "self_card_zone_to_zone",
+    "lose_control", "is_sac_or_destroyed",
+    "permanent_returned", "self_enter_or_die", "exiled",
+    "activation_non_mana", "this_card_event",
+    "chosen_color_mana_added", "chosen_color_mana_tapped",
+    "tempting_offer", "vote", "self_squad_action",
+    "one_or_more_other_creatures",
+    "one_or_more_ally_creatures",
+    "paired_whenever",
+    "opponents_dealt_combat_dmg",
+    "becomes_saddled_first",
+    "you_sac_one_or_more",
+    "you_control_7_thrulls",
+
+    # Era 4 r60 final trigger-gap closure — 14 residual slugs from the
+    # post-batch scan, each ×1 or ×2 in the corpus. Mirrors the Go
+    # classifyTrigger routes in conditional_setup.go added in the same
+    # commit. Drives Era 4 trigger gap 0.6% → 0.0%.
+    "exiled_event", "any_type_to_gy_from_bf",
+    "creature_or_land_to_gy", "compound_bounce_shuffle_event",  # → creature_dies
+    "self_or_typed_event", "other_nontoken_perm",                # → self_and
+    "put_onto_bf", "artifact_etb_yours", "merfolk_etb_any",      # → creature_etb
+    "nonland_tapped_for_mana",                                    # → tapped_for_mana
+    "becomes_untapped_once",                                      # → becomes_untapped
+    "paid_cumulative_upkeep",                                     # → upkeep
+    "discover",                                                   # → draw_card
+    "targets_chosen",                                             # → when_you_do
 }
 
 

@@ -8,7 +8,7 @@
 
 - Era 1 Condition nodes: **2499** (bucketed 2470, unbucketed 29, 1.2% gap)
 
-- Era 1 Trigger nodes: **11548** (bucketed 11501, unbucketed 47, 0.4% gap)
+- Era 1 Trigger nodes: **11548** (bucketed 11548, unbucketed 0, 0.0% gap)
 
 
 ## Top unbucketed condition Kinds
@@ -73,53 +73,7 @@
 
 ## Top unbucketed trigger events
 
-- `investigate` × 1
-- `opp_tokens_event` × 1
-- `desert_etb` × 1
-- `condition_fails` × 1
-- `self_and_or_others_event` × 1
-- `tap_for_c` × 1
-- `sac_nontoken_elemental` × 1
-- `next_end_step` × 1
-- `self_becomes_tapped` × 1
-- `self_becomes_untapped` × 1
-- `state_check` × 1
-- `damage_to_x_prevented` × 1
-- `place_counter` × 1
-- `transform_into_phyrexian` × 1
-- `all_trigger` × 1
-- `each_player_upkeep` × 1
-- `any_card_to_gy_anywhere` × 1
-- `leave_gy_single` × 1
-- `self_or_enchantment_etb_or_room_unlock` × 1
-- `you_put_counter_on_any` × 1
-- `opp_commits_crime` × 1
-- `named_creature_etb` × 1
-- `colored_damage_prevented` × 1
-- `three_or_more` × 1
-- `opponent_pays_tax` × 1
-- `surveil_first_time` × 1
-- `landfall` × 1
-- `elf_etb` × 1
-- `exiled_event` × 1
-- `self_dealt_damage` × 1
-- `becomes_target_by_opp` × 1
-- `counter_threshold_reached` × 1
-- `damage_to_chosen_player` × 1
-- `graveyard_empty` × 1
-- `any_block` × 1
-- `self_or_typed_event` × 1
-- `on_card_advantage` × 1
-- `phaseout_or_exile` × 1
-- `damage_prevented` × 1
-- `you_put_counter_on` × 1
-- `typed_combat_dmg` × 1
-- `enchanted_end_step` × 1
-- `play_land` × 1
-- `search_library` × 1
-- `transform_as` × 1
-- `card_to_gy_anywhere_once` × 1
-- `this_turn_whenever` × 1
+_(none — every Era 1 trigger event maps to a scaffold slug)_
 
 ## Top trigger events (bucketed + unbucketed)
 
