@@ -2020,6 +2020,12 @@ const (
 	condScaffoldRevealedCardType      // "if [that|it] is a <type> card" / "if a card was milled this way" — stamp revealed_card_type + subtype
 	condScaffoldDrawStepReplacement   // "if you would draw a card during your draw step, you may skip" — stamp draw_step_replacement
 	condScaffoldPermanentIsType       // "as long as this artifact is a creature" / "enchanted land is a basic mountain" — typeswap state
+
+	// Era 4 r60 condition longtail — net-new scaffolds covering clusters
+	// the dev-10 sweep flagged at 11.1% gap.
+	condScaffoldCountTypedOnBattlefield // "there are N or more <type> on the battlefield" (Portcullis / Planar Collapse / Impending Disaster / Sarcomancy negative)
+	condScaffoldCardExiledWithCounter   // "this card is exiled with a <type> counter on it" (Darigaaz Reincarnated / All Hallow's Eve)
+	condScaffoldEnchantedPermanentIs    // "enchanted permanent is a <type>" / "enchanted land is a basic mountain" (Historian's Wisdom / Gift of Wrath / Goblin Shrine) — kept distinct from PermanentIsType (#813); the latter handles "this artifact is a creature" self-state, the former handles Aura-target predicates
 )
 
 type conditionScaffold struct {
@@ -4316,7 +4322,11 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 	// (12) In-zone predicate — "this card is exiled" / "at the top of
 	// your library". The "in the command zone" branch already routes to
 	// condScaffoldEminenceCommandZone above; we cover the other zones.
-	if strings.Contains(txt, "this card is exiled") || strings.Contains(txt, "while exiled") {
+	// Era 4 r60: exclude "exiled with <counter>" — that's the more-specific
+	// CardExiledWithCounter scaffold (Darigaaz Reincarnated / All Hallow's
+	// Eve), which is checked further down the chain.
+	if (strings.Contains(txt, "this card is exiled") || strings.Contains(txt, "while exiled")) &&
+		!strings.Contains(txt, "exiled with") {
 		cs.kind = condScaffoldSelfInZone
 		cs.subtype = "exile"
 		return cs
@@ -4746,6 +4756,49 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		return cs
 	}
 
+	// ----------------------------------------------------------------------
+	// Era 4 r60 condition-longtail sweep. Each branch covers a fragment
+	// flagged by scripts/era4_unbucketed_dump.py at the 11.1% gap baseline.
+	// Ordered most-specific first; placed BEFORE the catch-all tribal sweep.
+	// ----------------------------------------------------------------------
+
+	// Battlefield-count thresholds — "there are N or more <type> on the
+	// battlefield" (Portcullis, Planar Collapse, Impending Disaster,
+	// Sarcomancy negative, Pious Kitsune named-creature, Disorienting
+	// Choice "still on the battlefield", Kari Zev "that card is on the
+	// battlefield"). Net-new scaffold. Applied state seeds the right number
+	// of typed permanents onto seat 0 (or clears them for negative form).
+	if strings.Contains(txt, "on the battlefield") &&
+		(strings.Contains(txt, "or more") || strings.Contains(txt, "there are no") ||
+			strings.Contains(txt, "still on the battlefield") ||
+			strings.Contains(txt, "is on the battlefield") ||
+			strings.Contains(txt, "are on the battlefield")) &&
+		// Exclude self-state predicates already handled above.
+		!strings.Contains(txt, "~ is on the battlefield") &&
+		!strings.Contains(txt, "this card is on the battlefield") {
+		cs.kind = condScaffoldCountTypedOnBattlefield
+		cs.subtype = "creature"
+		cs.count = 2
+		// Subtype detection — pick the most specific noun.
+		for _, sub := range []string{"zombies", "creatures", "lands",
+			"artifacts", "enchantments", "planeswalkers", "permanents"} {
+			if strings.Contains(txt, sub+" on the battlefield") ||
+				strings.Contains(txt, sub+" still on the battlefield") {
+				cs.subtype = strings.TrimSuffix(sub, "s")
+				break
+			}
+		}
+		// Numeric threshold.
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		// Negative form ("there are no X") sets count=0.
+		if strings.Contains(txt, "there are no ") {
+			cs.count = 0
+		}
+		return cs
+	}
+
 	// (21) PermanentIsType — "as long as this artifact/creature/permanent is
 	// a creature/land/artifact" or "as long as enchanted land/creature is a
 	// basic mountain/creature/forest". Distinct from condScaffoldEnchanted-
@@ -4904,6 +4957,307 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		return cs
 	}
 
+	// "Card exiled with a <type> counter on it" — Darigaaz Reincarnated
+	// (egg counter), All Hallow's Eve (scream counter). Net-new scaffold:
+	// the card is in exile AND has a counter — both conditions must hold.
+	// (Era 4 r60 condition longtail addition; placed after the #813 batch
+	// so the more-specific exile+counter combo wins over generic exile.)
+	if strings.Contains(txt, "this card is exiled with") &&
+		strings.Contains(txt, "counter on it") {
+		cs.kind = condScaffoldCardExiledWithCounter
+		cs.subtype = "egg"
+		for _, k := range []string{"egg", "scream", "time", "shield",
+			"oil", "charge", "loyalty", "luck"} {
+			if strings.Contains(txt, "with a "+k+" counter") ||
+				strings.Contains(txt, "with an "+k+" counter") {
+				cs.subtype = k
+				break
+			}
+		}
+		return cs
+	}
+
+	// "Enchanted permanent is a <type>" / "enchanted land is a basic
+	// mountain" (Historian's Wisdom, Gift of Wrath, Goblin Shrine,
+	// Hot Pursuit). Net-new scaffold so the predicate on the enchanted
+	// target's type stays distinct from the bare EnchantedCreature aura-
+	// attachment scaffold. Distinct from #813's PermanentIsType (which
+	// handles "this artifact is a creature" self-state); kept here as a
+	// dedicated Aura-target predicate.
+	if (strings.Contains(txt, "enchanted permanent is a ") ||
+		strings.Contains(txt, "enchanted land is a ") ||
+		strings.Contains(txt, "enchanted creature is a ") ||
+		strings.Contains(txt, "enchanted permanent is a creature with")) {
+		cs.kind = condScaffoldEnchantedPermanentIs
+		cs.subtype = "creature"
+		for _, sub := range []string{"basic mountain", "basic island",
+			"basic forest", "basic swamp", "basic plains", "mountain",
+			"island", "forest", "swamp", "plains", "creature", "artifact",
+			"enchantment", "land", "planeswalker"} {
+			if strings.Contains(txt, "is a "+sub) || strings.Contains(txt, "is an "+sub) {
+				cs.subtype = strings.ReplaceAll(sub, " ", "_")
+				break
+			}
+		}
+		return cs
+	}
+	// "As long as this enchantment remains on the battlefield" (Hot Pursuit)
+	// — Aura that grants goaded while it remains attached. Route to
+	// EnchantedCreature (the existing Aura-attachment scaffold).
+	if strings.Contains(txt, "this enchantment remains on the battlefield") {
+		cs.kind = condScaffoldEnchantedCreature
+		cs.subtype = "still_attached"
+		return cs
+	}
+
+	// Card-type-reveal broadening — Era 4 cluster of "if it's a creature
+	// card, put it onto the battlefield" + "if it's an artifact card" +
+	// "if it's a permanent card" + tribal/typeline-specific forms
+	// (Search for Survivors, Lurking Predators, Treasure Chest, Primal
+	// Surge, Kenessos kraken/leviathan/octopus/serpent, Systems Override
+	// spacecraft, Deadbridge Chant, Hans Eriksson, Aid from the Cowl,
+	// Fishing Gear). The existing CardTypeReveal matcher catches some of
+	// these but the "if it's a kraken, leviathan, octopus, or serpent
+	// creature card" / "if it's a spacecraft" / "if you searched for a
+	// creature card that doesn't have that name" / "if you reveal a card
+	// named X" variants slip through.
+	if strings.Contains(txt, "put it onto the battlefield") &&
+		(strings.Contains(txt, "if it's a") || strings.Contains(txt, "if it's an") ||
+			strings.Contains(txt, "if you reveal a card named") ||
+			strings.Contains(txt, "if you searched for a") ||
+			strings.Contains(txt, "if that card") ||
+			strings.Contains(txt, "if a ") && strings.Contains(txt, "card was")) {
+		cs.kind = condScaffoldCardTypeReveal
+		cs.subtype = "creature"
+		// Type detection — pick the most specific that matches.
+		for _, t := range []string{"spacecraft", "kraken", "leviathan",
+			"octopus", "serpent", "land", "creature", "artifact", "enchantment",
+			"instant", "sorcery", "planeswalker", "permanent"} {
+			if strings.Contains(txt, "if it's a "+t) ||
+				strings.Contains(txt, "if it's an "+t) ||
+				strings.Contains(txt, "if that card is a "+t) ||
+				strings.Contains(txt, "if a "+t+" card") {
+				cs.subtype = t
+				break
+			}
+		}
+		return cs
+	}
+	// "If it has mana value N or less, you may put it onto the battlefield"
+	// (Cosmic Rebirth). Routes to CardTypeReveal with subtype="permanent"
+	// — the reveal-and-route apply state is the same shape.
+	if strings.Contains(txt, "if it has mana value") &&
+		(strings.Contains(txt, "or less") || strings.Contains(txt, "or fewer")) &&
+		strings.Contains(txt, "put it onto the battlefield") {
+		cs.kind = condScaffoldCardTypeReveal
+		cs.subtype = "low_mv_permanent"
+		cs.count = 3
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// "If that card's mana value is less than or equal to the number of
+	// experience counters" (Meren of Clan Nel Toth) — mana-value-vs-state
+	// comparison. Route to ManaValueLE with subtype.
+	if strings.Contains(txt, "mana value is less than or equal to") {
+		cs.kind = condScaffoldManaValueLE
+		cs.subtype = "vs_experience"
+		cs.count = 4
+		return cs
+	}
+	// "Its mana value is N or less" (Guidelight Pathmaker). Existing
+	// ManaValueLE matcher targets "its mana value is N or less" inside the
+	// manaValueLERe regex; covered already but adding explicit fallback
+	// here so the audit's bare phrasing also routes.
+	if strings.Contains(txt, "mana value is 2 or less") ||
+		strings.Contains(txt, "mana value is 1 or less") ||
+		strings.Contains(txt, "mana value is 3 or less") {
+		cs.kind = condScaffoldManaValueLE
+		cs.count = 3
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+
+	// Past-turn this-turn action history (Era 4 phrasings):
+	// "you've cast three or more instant and sorcery spells this turn"
+	// (Arclight Phoenix) — typed-spell count variant.
+	if strings.Contains(txt, "you've cast") && strings.Contains(txt, "this turn") &&
+		strings.Contains(txt, "or more") &&
+		(strings.Contains(txt, "instant and sorcery") ||
+			strings.Contains(txt, "instant or sorcery")) {
+		cs.kind = condScaffoldCastNSpellsThisTurn
+		cs.subtype = "instant_or_sorcery"
+		cs.count = 3
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// "You had another creature enter the battlefield under your control
+	// this turn" (Bellowing Elk). Routes to AnotherTypedETBThisTurn.
+	if strings.Contains(txt, "had another creature enter the battlefield") &&
+		strings.Contains(txt, "this turn") {
+		cs.kind = condScaffoldAnotherTypedETBThisTurn
+		cs.subtype = "creature"
+		return cs
+	}
+	// "Two or more creatures entered the battlefield under your control
+	// this turn" (Spider-UK). Routes to AnotherTypedETBThisTurn with count.
+	if (strings.Contains(txt, "creatures entered the battlefield") ||
+		strings.Contains(txt, "creatures enter the battlefield")) &&
+		strings.Contains(txt, "this turn") &&
+		strings.Contains(txt, "or more") {
+		cs.kind = condScaffoldAnotherTypedETBThisTurn
+		cs.subtype = "creature"
+		cs.count = 2
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// "A permanent was put into your hand from the battlefield this turn"
+	// (Barrin, Tolarian Archmage). Routes to DidPriorAction with subtype.
+	if strings.Contains(txt, "permanent was put into your hand from the battlefield") {
+		cs.kind = condScaffoldDidPriorAction
+		cs.subtype = "bounced_to_hand_this_turn"
+		return cs
+	}
+	// "~ and at least two other creatures attacked this combat" (Kytheon).
+	// Routes to AttackedThisTurn with subtype.
+	if strings.Contains(txt, "at least") && strings.Contains(txt, "creatures attacked") {
+		cs.kind = condScaffoldAttackedThisTurn
+		cs.subtype = "with_friends"
+		return cs
+	}
+
+	// Self-state Era 4 — "~ entered this turn" (Hixus). The existing
+	// SelfDidntETBThisTurn covers the negative; we mirror the positive.
+	if strings.Contains(txt, "~ entered this turn") ||
+		(strings.Contains(txt, "entered this turn") && strings.HasPrefix(txt, "~")) {
+		cs.kind = condScaffoldSelfDidntETBThisTurn
+		cs.subtype = "did_etb"
+		return cs
+	}
+	// "As long as ~ isn't on the battlefield" (Grist). Routes to SelfInZone
+	// with subtype="not_battlefield" — engine equates this to the source
+	// living in hand/library/graveyard/exile.
+	if strings.Contains(txt, "~ isn't on the battlefield") ||
+		strings.Contains(txt, "this card isn't on the battlefield") {
+		cs.kind = condScaffoldSelfInZone
+		cs.subtype = "not_battlefield"
+		return cs
+	}
+	// "As long as ~ hasn't dealt damage yet" (Ratonhnhaké꞉ton). Route to
+	// AttackedOrBlockedCombat with subtype clearing the damage flag.
+	if strings.Contains(txt, "~ hasn't dealt damage yet") ||
+		strings.Contains(txt, "hasn't dealt damage yet") {
+		cs.kind = condScaffoldAttackedOrBlockedCombat
+		cs.subtype = "no_damage_yet"
+		return cs
+	}
+	// "As long as ~ is paired with another creature" (Breathkeeper Seraph).
+	// Routes to PairedSoulbond.
+	if strings.Contains(txt, "~ is paired with") ||
+		strings.Contains(txt, "is paired with another creature") {
+		cs.kind = condScaffoldPairedSoulbond
+		return cs
+	}
+	// "As long as this card is the top card of your library" (Pearl Lake
+	// Warden). Routes to SelfInZone with subtype.
+	if strings.Contains(txt, "this card is the top card of your library") {
+		cs.kind = condScaffoldSelfInZone
+		cs.subtype = "library_top"
+		return cs
+	}
+	// "This card is exiled" / "this card is exiled with X counter" handled
+	// above; the bare form (Darigaaz, Shivan Champion) routes here.
+	if strings.Contains(txt, "this card is exiled") &&
+		!strings.Contains(txt, "this card is exiled with") {
+		cs.kind = condScaffoldSelfInZone
+		cs.subtype = "exile"
+		return cs
+	}
+	// "As long as ~'s power is N or greater" — Ichor Aberration. Existing
+	// SelfPowerGE handles "is N or more" / "or greater" but not the
+	// possessive "as long as ~'s power is" without "is X or" surrounding.
+	if strings.Contains(txt, "~'s power is") &&
+		(strings.Contains(txt, "or greater") || strings.Contains(txt, "or more")) {
+		cs.kind = condScaffoldSelfPowerGE
+		cs.count = 7
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// "As long as ~ is attacking" — Gaea's Liege. Routes to IsAttacking
+	// (existing present-tense scaffold).
+	if strings.Contains(txt, "~ is attacking") ||
+		strings.Contains(txt, "as long as ~ is attacking") {
+		cs.kind = condScaffoldIsAttacking
+		return cs
+	}
+
+	// Counter-state — "as long as there is exactly one tide counter on
+	// this enchantment" / "exactly three tide counters" (Tidal Influence).
+	// Existing CountersOnSelfGE handles "or more"; exactly form remains.
+	if (strings.Contains(txt, "exactly one") || strings.Contains(txt, "exactly two") ||
+		strings.Contains(txt, "exactly three") || strings.Contains(txt, "exactly four")) &&
+		strings.Contains(txt, "counter") &&
+		(strings.Contains(txt, "on this enchantment") ||
+			strings.Contains(txt, "on this artifact") ||
+			strings.Contains(txt, "on this creature")) {
+		cs.kind = condScaffoldSelfHasCounter
+		cs.subtype = "+1/+1"
+		cs.count = 1
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		// Detect named counter type.
+		for _, k := range []string{"tide", "egg", "scream", "luck", "shield",
+			"oil", "charge", "stash", "stun"} {
+			if strings.Contains(txt, k+" counter") {
+				cs.subtype = k
+				break
+			}
+		}
+		return cs
+	}
+
+	// Phase predicates (Era 4):
+	// "It's the first end step of the turn" (Y'shtola Rhul). Routes to
+	// BeginningOfOrdinalStep with subtype.
+	if strings.Contains(txt, "first end step of the turn") ||
+		strings.Contains(txt, "first end step") {
+		cs.kind = condScaffoldBeginningOfOrdinalStep
+		cs.subtype = "end_step"
+		return cs
+	}
+	// "It isn't your main phase" (Dose of Dawnglow). Route to
+	// MainPhaseOrFirstCombat with subtype inverting.
+	if strings.Contains(txt, "isn't your main phase") ||
+		strings.Contains(txt, "not your main phase") {
+		cs.kind = condScaffoldMainPhaseOrFirstCombat
+		cs.subtype = "not_main_phase"
+		return cs
+	}
+	// "If this card is in your opening hand and you're not the starting
+	// player" (Gemstone Caverns). Routes to StartingPlayer with subtype.
+	if strings.Contains(txt, "in your opening hand") &&
+		strings.Contains(txt, "not the starting player") {
+		cs.kind = condScaffoldStartingPlayer
+		cs.subtype = "opening_hand_not_starting"
+		return cs
+	}
+
+	// Misc — "it was historic" (Curator's Ward). Routes to IsSubtype.
+	if strings.Contains(txt, "it was historic") || strings.Contains(txt, "is historic") {
+		cs.kind = condScaffoldIsSubtype
+		cs.subtype = "historic"
+		return cs
+	}
 
 	// Tribal: "if you control another <subtype>" / "if you control a <subtype>".
 	// Run last because it's the most permissive matcher.
@@ -8271,6 +8625,130 @@ func applyConditionScaffolding(gs *gameengine.GameState, cond *gameast.Condition
 			}
 		}
 		cs.description = fmt.Sprintf("stamped permanent_is_type + typeswap_%s on srcPerm", sub)
+
+	// Era 4 r60 condition-longtail — apply cases for the 3 net-new scaffolds.
+	case condScaffoldCountTypedOnBattlefield:
+		// "There are N or more <type> on the battlefield" / "there are no
+		// <type>" (Portcullis, Planar Collapse, Sarcomancy, Impending
+		// Disaster). Seed (or clear) typed permanents on seat 0 so the
+		// predicate resolves true. Positive form seeds count+1; negative
+		// form clears every existing permanent of that type.
+		subtype := cs.subtype
+		if subtype == "" {
+			subtype = "creature"
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			seat := gs.Seats[0]
+			if cs.count == 0 {
+				// "there are no <type>" — drop every matching permanent.
+				out := seat.Battlefield[:0]
+				for _, p := range seat.Battlefield {
+					if p != nil && p.Card != nil {
+						isMatch := false
+						for _, t := range p.Card.Types {
+							if strings.EqualFold(t, subtype) {
+								isMatch = true
+								break
+							}
+						}
+						if isMatch {
+							continue
+						}
+					}
+					out = append(out, p)
+				}
+				seat.Battlefield = out
+			} else {
+				want := cs.count + 1
+				existing := 0
+				for _, p := range seat.Battlefield {
+					if p != nil && p.Card != nil {
+						for _, t := range p.Card.Types {
+							if strings.EqualFold(t, subtype) {
+								existing++
+								break
+							}
+						}
+					}
+				}
+				for existing < want {
+					seat.Battlefield = append(seat.Battlefield, &gameengine.Permanent{
+						Card: &gameengine.Card{
+							Name:          fmt.Sprintf("BoardCount %s %d", subtype, existing),
+							Owner:         0,
+							Types:         []string{subtype},
+							BasePower:     1,
+							BaseToughness: 1,
+						},
+						Controller: 0,
+						Owner:      0,
+					})
+					existing++
+				}
+			}
+		}
+		cs.description = fmt.Sprintf("seeded seat 0 board to count_typed (%s, count=%d)", subtype, cs.count)
+
+	case condScaffoldCardExiledWithCounter:
+		// "This card is exiled with a <type> counter on it" (Darigaaz
+		// Reincarnated, All Hallow's Eve). Move srcPerm.Card to seat 0
+		// exile and stamp the counter on srcPerm so post-exile state checks
+		// see both.
+		kind := cs.subtype
+		if kind == "" {
+			kind = "egg"
+		}
+		if srcPerm != nil {
+			if srcPerm.Counters == nil {
+				srcPerm.Counters = map[string]int{}
+			}
+			srcPerm.Counters[kind] = 1
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["zone_exile"] = 1
+			srcPerm.Flags["exiled_with_"+kind+"_counter"] = 1
+			if srcPerm.Card != nil && len(gs.Seats) > 0 && gs.Seats[0] != nil {
+				gs.Seats[0].Exile = append(gs.Seats[0].Exile, srcPerm.Card)
+			}
+		}
+		cs.description = fmt.Sprintf("moved srcPerm.Card to seat 0 exile + stamped %q counter", kind)
+
+	case condScaffoldEnchantedPermanentIs:
+		// "Enchanted permanent is a <type>" (Historian's Wisdom, Gift of
+		// Wrath, Goblin Shrine). Place a permanent of the requested type on
+		// seat 0 and attach srcPerm (Aura) to it via AttachedTo.
+		subtype := cs.subtype
+		if subtype == "" {
+			subtype = "creature"
+		}
+		canonical := strings.ReplaceAll(subtype, "_", " ")
+		types := []string{canonical}
+		// Basic-land subtypes also need the "land" supertype.
+		if strings.HasPrefix(canonical, "basic ") {
+			parts := strings.Fields(canonical)
+			if len(parts) >= 2 {
+				types = []string{"land", parts[len(parts)-1]}
+			}
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			target := &gameengine.Permanent{
+				Card: &gameengine.Card{
+					Name:          fmt.Sprintf("Enchanted %s Target", subtype),
+					Owner:         0,
+					Types:         types,
+					BasePower:     2,
+					BaseToughness: 2,
+				},
+				Controller: 0,
+				Owner:      0,
+			}
+			gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, target)
+			if srcPerm != nil {
+				srcPerm.AttachedTo = target
+			}
+		}
+		cs.description = fmt.Sprintf("placed %s target on seat 0 + attached srcPerm Aura", subtype)
 	}
 	return cs
 }
@@ -8613,6 +9091,14 @@ func traceConditionScaffolding(cond *gameast.Condition, tr *Tracer) {
 		desc = fmt.Sprintf("stamped draw_step_replacement + replacement_%s on srcPerm/seat0", nonEmpty(cs.subtype, "draw"))
 	case condScaffoldPermanentIsType:
 		desc = fmt.Sprintf("stamped permanent_is_type + typeswap_%s on srcPerm", nonEmpty(cs.subtype, "type"))
+
+	// Era 4 r60 condition-longtail — trace descriptions.
+	case condScaffoldCountTypedOnBattlefield:
+		desc = fmt.Sprintf("seeded seat 0 board (%s, count=%d)", nonEmpty(cs.subtype, "creature"), cs.count)
+	case condScaffoldCardExiledWithCounter:
+		desc = fmt.Sprintf("moved srcPerm to exile + %q counter", nonEmpty(cs.subtype, "egg"))
+	case condScaffoldEnchantedPermanentIs:
+		desc = fmt.Sprintf("placed enchanted target (%s) + attached srcPerm", nonEmpty(cs.subtype, "creature"))
 	}
 	tr.Record("CONDITION_SETUP", "%q → %s", cs.rawText, desc)
 }
