@@ -37,15 +37,11 @@ import (
 //   the " + " split to extract individual cards.
 // ---------------------------------------------------------------------------
 
-// ReverseIndex is the stub interface that Worker A's reverse-index loader
-// (dev-4) will populate. Partners / Extend will eventually consult this for
-// O(1) card→pattern lookup instead of scanning the full LearnedInteraction
-// list. Until Worker A lands, the recommender uses the linear scan path.
-type ReverseIndex interface {
-	// InteractionsForCard returns every learned interaction the card
-	// participates in. Empty slice when the card has never been observed.
-	InteractionsForCard(cardName string) []LearnedInteraction
-}
+// Worker A's reverse-index loader (dev-4) shipped as the package-level
+// function `ReverseIndex(oracleID) []string` in reverse_index.go. The
+// recommender's anticipatory interface stub from PR #927 was retired
+// to resolve the name collision; Partners / Extend will swap in
+// reverse-index lookups when the integration PR lands.
 
 // PartnerHit is a single partner candidate returned by Partners().
 type PartnerHit struct {
