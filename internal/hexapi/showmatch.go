@@ -388,6 +388,36 @@ type Showmatch struct {
 	// see enforceRateLimitDual for the per-IP-vs-per-owner rationale.
 	// Nil = per-owner axis disabled.
 	LineageOwnerLimiter *RateLimiter
+
+	// CSRFStore mints / verifies the same HMAC-signed tokens used by
+	// Handler.CSRFStore (the two fields point at the SAME store —
+	// cmd/hexdek-server constructs one store at startup and stamps it
+	// onto both). Needed here so the Showmatch-owned mutating routes
+	// (gauntlet start, live-speed override, spectate-room spawn,
+	// per-deck curse PATCH) can wrap themselves in RequireCSRF without
+	// having to thread the handler-side store through every constructor.
+	// Nil = no enforcement (backwards-compat with binaries that don't
+	// construct a store yet) — matches Handler.CSRFStore's nil-safe
+	// semantics so an upgrade can land in either order.
+	CSRFStore *CSRFStore
+}
+
+// requireCSRFLate is the late-binding form of RequireCSRF for
+// Showmatch-owned routes. The Handler-side store is constructed AFTER
+// sm.RegisterShowmatch runs in cmd/hexdek-server/main.go (the
+// registration block fires before the CSRF-secret env-var resolution
+// later in main), so capturing sm.CSRFStore at registration time
+// would always see nil. Resolving the store at request time picks up
+// whatever main() later stamps onto sm — and a nil store at request
+// time is a pass-through, matching RequireCSRF(nil, ...) semantics.
+//
+// Per-request overhead is one closure construction (two captured words)
+// for the inner RequireCSRF call — negligible for these low-volume
+// mutating routes.
+func (sm *Showmatch) requireCSRFLate(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		RequireCSRF(sm.CSRFStore, next)(w, r)
+	}
 }
 
 // SetCreditStore attaches a credits.Store to the Showmatch. Called
@@ -3228,18 +3258,18 @@ func (sm *Showmatch) RegisterShowmatch(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/games/{id}", sm.handleGameByID)
 	mux.HandleFunc("GET /api/games/{id}/report", sm.handleGameReport)
 	mux.HandleFunc("GET /api/live/speed", sm.handleGetSpeed)
-	mux.HandleFunc("POST /api/live/speed", sm.handleSetSpeed)
+	mux.HandleFunc("POST /api/live/speed", sm.requireCSRFLate(sm.handleSetSpeed))
 	mux.HandleFunc("GET /ws/live", sm.handleSpectatorWS)
-	mux.HandleFunc("POST /api/gauntlet/{owner}/{id}", sm.handleStartGauntlet)
+	mux.HandleFunc("POST /api/gauntlet/{owner}/{id}", sm.requireCSRFLate(sm.handleStartGauntlet))
 	mux.HandleFunc("GET /api/gauntlet/{owner}/{id}", sm.handleGetGauntlet)
 	mux.HandleFunc("GET /api/tournaments/{owner}/{id}/events", sm.handleTournamentEvents)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/curse", sm.handleDeckCurse)
-	mux.HandleFunc("PATCH /api/decks/{owner}/{id}/curse", sm.handlePatchCurse)
+	mux.HandleFunc("PATCH /api/decks/{owner}/{id}/curse", sm.requireCSRFLate(sm.handlePatchCurse))
 	mux.HandleFunc("GET /api/achievements/{owner}", sm.handleAchievements)
 	mux.HandleFunc("GET /api/owner/{owner}/stats", sm.handleOwnerStats)
 	mux.HandleFunc("GET /api/owner/{owner}/games", sm.handleOwnerGames)
 
-	mux.HandleFunc("POST /api/spectate/spawn", sm.handleSpawnSpectateRoom)
+	mux.HandleFunc("POST /api/spectate/spawn", sm.requireCSRFLate(sm.handleSpawnSpectateRoom))
 	mux.HandleFunc("GET /api/spectate/rooms", sm.handleListSpectateRooms)
 	mux.HandleFunc("GET /api/spectate/rooms/{room_id}", sm.handleGetSpectateRoom)
 	mux.HandleFunc("GET /ws/spectate/{room_id}", sm.handleSpectateRoomWS)
