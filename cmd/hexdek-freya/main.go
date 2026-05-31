@@ -104,7 +104,7 @@ func main() {
 
 	flag.StringVar(&deckPath, "deck", "", "path to decklist file")
 	flag.StringVar(&deckDir, "all-decks", "", "analyze all decks in directory")
-	flag.StringVar(&format, "format", "text", "output format: text, markdown, json")
+	flag.StringVar(&format, "format", "text", "output format: text, markdown, json, html (single-file HTML report with inline CSS + Scryfall hyperlinks + collapsible sections, suitable for browser viewing or hexdek.dev/deck/{id} hosting)")
 	flag.StringVar(&FocusMode, "mode", "full",
 		"text-format display mode: full (default — complete fixed-order report), focus (under-25-line prioritized summary — picks the 3 most insight-bearing sections for the archetype), or metrics (Freya output-quality scorecard + Freya-vs-Freya consistency probe; single-deck only). --format json on metrics emits the FreyaMetrics struct directly.")
 	flag.StringVar(&spellbookCache, "spellbook", DefaultSpellbookCache,
