@@ -319,6 +319,145 @@ func manaDrainResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 }
 
 // ============================================================================
+// R60 stub sweep batch 11 — CMC-filtered counters + uncounterable rider
+// ============================================================================
+
+// --- Mental Misstep ---
+//
+// Oracle text:
+//   You may pay 2 life rather than pay this spell's mana cost.
+//   Counter target spell with mana value 1.
+//
+// {U/P} (Phyrexian blue) instant. cEDH staple — counters Demonic Tutor,
+// Vampiric Tutor, Sol Ring activations… and itself.
+func registerMentalMisstep(r *Registry) {
+	r.OnResolve("Mental Misstep", mentalMisstepResolve)
+}
+
+func mentalMisstepResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
+	const slug = "mental_misstep"
+	if gs == nil || item == nil {
+		return
+	}
+	target := findCounterableSpell(gs, item.Controller, func(si *gameengine.StackItem) bool {
+		if si == nil || si.Card == nil {
+			return false
+		}
+		return gameengine.ManaCostOf(si.Card) == 1
+	})
+	if target == nil {
+		emitFail(gs, slug, "Mental Misstep", "no_mv1_spell_on_stack", nil)
+		return
+	}
+	target.Countered = true
+	emitCounter(gs, slug, "Mental Misstep", item.Controller, target)
+}
+
+// --- Spell Snare ---
+//
+// Oracle text:
+//   Counter target spell with mana value 2.
+//
+// {U} instant.
+func registerSpellSnare(r *Registry) {
+	r.OnResolve("Spell Snare", spellSnareResolve)
+}
+
+func spellSnareResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
+	const slug = "spell_snare"
+	if gs == nil || item == nil {
+		return
+	}
+	target := findCounterableSpell(gs, item.Controller, func(si *gameengine.StackItem) bool {
+		if si == nil || si.Card == nil {
+			return false
+		}
+		return gameengine.ManaCostOf(si.Card) == 2
+	})
+	if target == nil {
+		emitFail(gs, slug, "Spell Snare", "no_mv2_spell_on_stack", nil)
+		return
+	}
+	target.Countered = true
+	emitCounter(gs, slug, "Spell Snare", item.Controller, target)
+}
+
+// --- Mindbreak Trap ---
+//
+// Oracle text:
+//   If an opponent cast three or more spells this turn, you may pay {0}
+//   rather than pay this spell's mana cost.
+//   Exile any number of target spells.
+//
+// {2}{U}{U} instant. The alt-cost gate is enforced by the cast pipeline
+// (when present); resolve simply exiles the top opponent spell on the
+// stack. "Any number" is reduced to "the top one" for AI simplicity —
+// the storm-shutdown use case typically only needs one decisive counter.
+func registerMindbreakTrap(r *Registry) {
+	r.OnResolve("Mindbreak Trap", mindbreakTrapResolve)
+}
+
+func mindbreakTrapResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
+	const slug = "mindbreak_trap"
+	if gs == nil || item == nil {
+		return
+	}
+	target := findCounterableSpell(gs, item.Controller, nil)
+	if target == nil {
+		emitFail(gs, slug, "Mindbreak Trap", "no_spell_on_stack", nil)
+		return
+	}
+	target.Countered = true
+	// "Exile" instead of countering-to-graveyard — use CostMeta same as
+	// Force of Negation.
+	if target.CostMeta == nil {
+		target.CostMeta = map[string]interface{}{}
+	}
+	target.CostMeta["exile_on_resolve"] = true
+	emitCounter(gs, slug, "Mindbreak Trap", item.Controller, target)
+}
+
+// --- Counterflux ---
+//
+// Oracle text:
+//   This spell can't be countered.
+//   Counter target spell.
+//   Overload {3}{U}{R}{R}. (You may cast this spell for its overload
+//   cost. If you do, change "target" in its text to "each.")
+//
+// {U}{U}{R} instant. Premium counter — also uncounterable. The overload
+// mode (counter all spells on stack) requires cost-pipeline mode
+// dispatch; resolve handles the basic mode (counter top opponent spell).
+func registerCounterflux(r *Registry) {
+	r.OnCast("Counterflux", counterfluxCast)
+	r.OnResolve("Counterflux", counterfluxResolve)
+}
+
+func counterfluxCast(gs *gameengine.GameState, item *gameengine.StackItem) {
+	if item == nil {
+		return
+	}
+	if item.CostMeta == nil {
+		item.CostMeta = map[string]interface{}{}
+	}
+	item.CostMeta["cannot_be_countered"] = true
+}
+
+func counterfluxResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
+	const slug = "counterflux"
+	if gs == nil || item == nil {
+		return
+	}
+	target := findCounterableSpell(gs, item.Controller, nil)
+	if target == nil {
+		emitFail(gs, slug, "Counterflux", "no_spell_on_stack", nil)
+		return
+	}
+	target.Countered = true
+	emitCounter(gs, slug, "Counterflux", item.Controller, target)
+}
+
+// ============================================================================
 // Shared counterspell helpers
 // ============================================================================
 
