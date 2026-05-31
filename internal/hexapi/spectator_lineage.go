@@ -39,11 +39,11 @@ type lineageResponse struct {
 func (sm *Showmatch) handleSpectatorLineage(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("instance_id")
 	if id == "" || !lineageInstanceIDPattern.MatchString(id) {
-		http.Error(w, "invalid instance_id", http.StatusBadRequest)
+		writeError(w, http.StatusBadRequest, "invalid instance_id")
 		return
 	}
 	if sm == nil || sm.rooms == nil {
-		http.Error(w, "spectator rooms unavailable", http.StatusServiceUnavailable)
+		writeError(w, http.StatusServiceUnavailable, "spectator rooms unavailable")
 		return
 	}
 
@@ -53,7 +53,7 @@ func (sm *Showmatch) handleSpectatorLineage(w http.ResponseWriter, r *http.Reque
 	// never cross-walk records between rooms.
 	tree, found := sm.findLineageInRooms(id)
 	if !found {
-		http.Error(w, "instance_id not found", http.StatusNotFound)
+		writeError(w, http.StatusNotFound, "instance_id not found")
 		return
 	}
 
