@@ -491,6 +491,25 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			}
 			continue
 		}
+		// Type-category headers from Moxfield's "Card View" copy-paste and
+		// Archidekt's "By Type" export: `Creatures (24)`, `Sorceries (5)`,
+		// `Lands (38)`, etc. These are NOT alternate boards — they're
+		// mainboard sub-categorizations. Pre-fix they fell through to the
+		// fallback as qty=1 fake cards, AND (worse) they stayed glued to
+		// the prior `Commander` section so the next 23 creature lines all
+		// routed to commander slots (second one becoming a bogus partner)
+		// and the entire library landed empty. Drop the line, and if we
+		// were still in the commander section, transition to mainboard —
+		// these headers reliably mark the end of the commander block.
+		// Don't touch `section == "drop"` (we might be sub-categorizing
+		// inside a sideboard that has its own type buckets — staying
+		// dropped is safer than re-promoting cards into main).
+		if typeCategoryHeaderRE.MatchString(raw) {
+			if section == "commander" {
+				section = "main"
+			}
+			continue
+		}
 		if section == "drop" {
 			continue
 		}
@@ -890,6 +909,28 @@ var partnerLineRE = regexp.MustCompile(`(?i)^\s*PARTNER\s*:\s*(.+?)\s*$`)
 // sideboard / companion / token card into the library (see
 // section_count_r60_test.go).
 var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companion|Considering|Deck|Main\s*Deck|Mainboard|Commanders?|Tokens|Signature\s*Spells|Stickers|Attractions|Outside\s*the\s*Game|About)\s*:?\s*(?:\(\s*\d+\s*\))?\s*:?\s*$`)
+
+// typeCategoryHeaderRE matches Moxfield's "Card View" copy-paste and
+// Archidekt's "By Type" export sub-section headers: the type-line
+// category names with optional trailing count. Distinct from
+// `sectionHeaderRE` (which whitelists ALTERNATE-BOARD labels like
+// Sideboard/Maybeboard/Companion); these are MAINBOARD subdivisions
+// that the parser was treating as garbage card lines.
+//
+// Coverage of the canonical Magic permanent + spell types plus the
+// occasional "Tribal" / "Other" buckets some exports use. Plurals are
+// authoritative because both Moxfield and Archidekt emit plurals;
+// singulars added for safety against hand-edited / TappedOut variants.
+// The `(N)` count is optional so a bare `Lands` line (no count) also
+// matches.
+//
+// Safety: no real Magic card is named exactly any of these labels
+// (`Lands`, `Sorceries`, etc. would be invalid card names by Magic's
+// naming convention) so a positive match is unambiguously a header,
+// not a card line — and the parser already requires a leading qty for
+// card lines anyway, so even a typo card-by-this-name wouldn't reach
+// this regex (it has no digit prefix).
+var typeCategoryHeaderRE = regexp.MustCompile(`(?i)^\s*(Creatures?|Planeswalkers?|Battles?|Sorceries|Sorcery|Instants?|Artifacts?|Enchantments?|Lands?|Tribal|Other|Spells?)\s*:?\s*(?:\(\s*\d+\s*\))?\s*:?\s*$`)
 
 // mtgoMetadataRE matches MTGO / Tournament-Ready export metadata header
 // lines: `Deck name: <name>`, `Created by: <author>`, `Format: <format>`,
