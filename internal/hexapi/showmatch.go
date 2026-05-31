@@ -396,6 +396,15 @@ type Showmatch struct {
 	// constructs the bus + handler at startup when wiring is on.
 	Events *EventBus
 
+	// lastComboCursor tracks the highest gs.EventLog index that
+	// has already been scanned for `infinite_cycle` events, keyed
+	// by gameNum so a new game resets the cursor. Guarded by mu.
+	// Used by publishNewCombos to dedupe — the cycle detector can
+	// emit the same observation across multiple snapshot ticks
+	// while the engine resolves a long stack, so we publish to
+	// the event bus exactly once per event-log entry.
+	lastComboCursor map[int]int
+
 	// GauntletLimiter rate-limits POST /api/gauntlet/{owner}/{id} per
 	// client IP. The endpoint is already protected by a global
 	// concurrency semaphore (gauntletSem, cap 2) and a credit-economy
@@ -2592,6 +2601,10 @@ func (sm *Showmatch) captureSnapshot(gs *gameengine.GameState, commanders []stri
 	// R60 spectator UX: surface the resolution stack so the UI can
 	// show what's mid-cast / pending response.
 	snap.Stack = buildStackSnapshot(gs.Stack)
+	// R60 spectator UX: scan the event log for new `infinite_cycle`
+	// entries since the last tick and fan them out as combo_fired
+	// events on the bus so the spectator UI can render a toast.
+	sm.publishNewCombos(gs, gameNum, commanders)
 	return snap
 }
 
@@ -2695,6 +2708,79 @@ func buildStackSnapshot(stack []*gameengine.StackItem) []StackItemSnapshot {
 	}
 	return out
 }
+
+// publishNewCombos scans gs.EventLog for `infinite_cycle` events
+// past the per-game scan cursor and publishes one `game.combo_fired`
+// event to the EventBus for each. The cursor is keyed by gameNum so
+// a new game resets the scan position to 0; within a game, repeat
+// snapshot ticks (which can fire as the engine resolves a long
+// stack containing the same cycle) skip already-seen events.
+//
+// No-ops when sm.Events is nil (feature disabled / test path),
+// gs is nil, or the engine emits no infinite_cycle events. Safe
+// to call from any captureSnapshot caller — the bus drops
+// publishes when subscribers' buffers are full so a slow
+// spectator can't backpressure the engine.
+func (sm *Showmatch) publishNewCombos(gs *gameengine.GameState, gameNum int, commanders []string) {
+	if sm == nil || sm.Events == nil || gs == nil {
+		return
+	}
+	sm.mu.Lock()
+	if sm.lastComboCursor == nil {
+		sm.lastComboCursor = make(map[int]int)
+	}
+	cursor := sm.lastComboCursor[gameNum]
+	logLen := len(gs.EventLog)
+	if cursor > logLen {
+		// Defensive: event log was truncated (shouldn't happen mid-game
+		// but if it does, restart the scan from 0 for this game).
+		cursor = 0
+	}
+	sm.mu.Unlock()
+
+	for i := cursor; i < logLen; i++ {
+		ev := gs.EventLog[i]
+		if ev.Kind != "infinite_cycle" {
+			continue
+		}
+		data := map[string]any{
+			"game_id": gameNum,
+			"turn":    gs.Turn,
+		}
+		if ev.Seat >= 0 {
+			data["seat"] = ev.Seat
+			if ev.Seat < len(commanders) {
+				data["controller_commander"] = commanders[ev.Seat]
+			}
+		}
+		if ev.Details != nil {
+			if v, ok := ev.Details["cycle_length"].(int); ok {
+				data["cycle_length"] = v
+			} else if ev.Amount > 0 {
+				data["cycle_length"] = ev.Amount
+			}
+			if v, ok := ev.Details["participating_names"].([]string); ok && len(v) > 0 {
+				data["participating_cards"] = append([]string(nil), v...)
+			}
+			if v, ok := ev.Details["participating_iids"].([]string); ok && len(v) > 0 {
+				data["participating_iids"] = append([]string(nil), v...)
+			}
+			if v, ok := ev.Details["detected_by"].(string); ok && v != "" {
+				data["detected_by"] = v
+			}
+		}
+		sm.Events.Publish(Event{
+			Type:      EventComboFired,
+			Data:      data,
+			Timestamp: time.Now().UTC(),
+		})
+	}
+
+	sm.mu.Lock()
+	sm.lastComboCursor[gameNum] = logLen
+	sm.mu.Unlock()
+}
+
 
 // buildLineageIndex scans every zone on every seat (and the unified
 // Mutate/Meld merged-card pointers on each Permanent) and records a
