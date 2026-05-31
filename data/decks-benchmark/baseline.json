@@ -10,8 +10,8 @@
       "fallback_resolved": 0,
       "unresolved_lines": 0,
       "coverage_pct": 100,
-      "avg_parse_time_micros": 293,
-      "p95_parse_time_micros": 470
+      "avg_parse_time_micros": 504,
+      "p95_parse_time_micros": 1023
     },
     "deckbox": {
       "format": "deckbox",
@@ -21,8 +21,8 @@
       "fallback_resolved": 0,
       "unresolved_lines": 0,
       "coverage_pct": 100,
-      "avg_parse_time_micros": 314,
-      "p95_parse_time_micros": 633
+      "avg_parse_time_micros": 661,
+      "p95_parse_time_micros": 953
     },
     "moxfield": {
       "format": "moxfield",
@@ -32,8 +32,8 @@
       "fallback_resolved": 0,
       "unresolved_lines": 0,
       "coverage_pct": 100,
-      "avg_parse_time_micros": 288,
-      "p95_parse_time_micros": 399
+      "avg_parse_time_micros": 507,
+      "p95_parse_time_micros": 860
     },
     "mtggoldfish": {
       "format": "mtggoldfish",
@@ -43,8 +43,8 @@
       "fallback_resolved": 0,
       "unresolved_lines": 0,
       "coverage_pct": 100,
-      "avg_parse_time_micros": 271,
-      "p95_parse_time_micros": 475
+      "avg_parse_time_micros": 473,
+      "p95_parse_time_micros": 709
     },
     "plaintext": {
       "format": "plaintext",
@@ -54,8 +54,8 @@
       "fallback_resolved": 0,
       "unresolved_lines": 0,
       "coverage_pct": 100,
-      "avg_parse_time_micros": 261,
-      "p95_parse_time_micros": 427
+      "avg_parse_time_micros": 345,
+      "p95_parse_time_micros": 501
     }
   }
 }
