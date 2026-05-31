@@ -267,6 +267,9 @@ func runAnalytics(decksPath, astPath, oraclePath string, seed int64, seats, maxT
 		// Same map-aggregation pass for the commander threat
 		// resolution shift. Cheap; ride alongside the keystone roll.
 		ar.ThreatResolutions = analytics.ComputeThreatResolutions(result.Analyses)
+		// Per-commander deck fingerprints — hat-consumable via
+		// LookupFingerprint(commanderName, ar.DeckFingerprints).
+		ar.DeckFingerprints = analytics.BuildDeckFingerprints(result.Analyses)
 		if err := ar.WriteMarkdown(reportPath); err != nil {
 			log.Fatalf("write report: %v", err)
 		}

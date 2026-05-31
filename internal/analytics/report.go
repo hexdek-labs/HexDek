@@ -29,6 +29,12 @@ type AnalyticsReport struct {
 	// analytics CLI via ComputeThreatResolutions(r.Analyses) before
 	// WriteMarkdown. Nil is the empty / opt-out state.
 	ThreatResolutions []ThreatResolution
+
+	// DeckFingerprints is the per-commander multi-game profile used
+	// by hat 3rd Eye to recognize opponents on game start (LookupFingerprint).
+	// Populated by the analytics CLI via BuildDeckFingerprints(r.Analyses).
+	// Nil is the empty / opt-out state.
+	DeckFingerprints []DeckFingerprint
 }
 
 // WriteMarkdown renders the analytics report as a markdown file.
@@ -76,6 +82,9 @@ func (r *AnalyticsReport) WriteMarkdown(path string) error {
 
 	// Threat-Resolution attribution per commander (per_card_win shift).
 	r.writeThreatResolutions(&b, 15)
+
+	// Deck Fingerprints (3rd Eye reference).
+	r.writeDeckFingerprints(&b, 10)
 
 	// Tempo Analysis.
 	r.writeTempoAnalysis(&b)
@@ -1281,5 +1290,89 @@ func (r *AnalyticsReport) writeThreatResolutions(b *strings.Builder, n int) {
 	}
 	fmt.Fprintf(b, "\n_Filtered: %d low-confidence + %d no-signal rows (need ≥5 games in each bucket for medium, ≥20 for high)._\n\n",
 		lowDropped, noSignalDropped)
+}
+
+// writeDeckFingerprints renders the per-commander multi-game profile.
+// For each fingerprint: a one-line summary row (commander, games,
+// archetype + confidence, win conditions, timing benchmarks) plus a
+// top-cardFreqLimit table of the most-frequently cast non-land
+// non-token cards. The structured `DeckFingerprints` slice is
+// dashboard-ready and hat-consumable via LookupFingerprint.
+//
+// Markdown cap: top-N fingerprints (by GamesObserved desc, the same
+// order as BuildDeckFingerprints emits).
+func (r *AnalyticsReport) writeDeckFingerprints(b *strings.Builder, n int) {
+	b.WriteString("## Deck Fingerprints (3rd Eye Reference)\n\n")
+	b.WriteString("_Per-commander multi-game profile: card frequency, threat timing, win conditions, archetype hint. Designed for hat 3rd Eye to recognize known opponents on game start via `LookupFingerprint(commanderName, fingerprints)`._\n\n")
+
+	if len(r.DeckFingerprints) == 0 {
+		b.WriteString("_No fingerprint data — call BuildDeckFingerprints before WriteMarkdown._\n\n")
+		return
+	}
+
+	const cardFreqLimit = 8
+
+	limit := n
+	if limit > len(r.DeckFingerprints) {
+		limit = len(r.DeckFingerprints)
+	}
+	for i := 0; i < limit; i++ {
+		fp := &r.DeckFingerprints[i]
+		fmt.Fprintf(b, "### %s — %d games observed\n\n", fp.CommanderName, fp.GamesObserved)
+
+		archLabel := fp.Archetype
+		if archLabel == "unknown" {
+			archLabel = "_unknown_"
+		} else {
+			archLabel = fmt.Sprintf("**%s** (conf %.2f)", fp.Archetype, fp.ArchetypeConfidence)
+		}
+		fmt.Fprintf(b, "- Archetype: %s\n", archLabel)
+		fmt.Fprintf(b, "- Wins: %d (%.0f%%) — avg game length %.1f turns\n",
+			fp.GamesWon,
+			float64(fp.GamesWon)/float64(maxInt(fp.GamesObserved, 1))*100,
+			fp.AvgGameLength)
+		fmt.Fprintf(b, "- Threat timing: first commander resolution T%.1f, first combo signal T%.1f, first blood T%.1f\n",
+			fp.AvgTurnToFirstResolution, fp.AvgTurnToFirstCombo, fp.AvgFirstBlood)
+
+		if len(fp.WinConditionMix) > 0 {
+			b.WriteString("- Win mix: ")
+			conds := make([]string, 0, len(fp.WinConditionMix))
+			for c := range fp.WinConditionMix {
+				conds = append(conds, c)
+			}
+			sort.SliceStable(conds, func(i, j int) bool {
+				return fp.WinConditionMix[conds[i]] > fp.WinConditionMix[conds[j]]
+			})
+			parts := make([]string, 0, len(conds))
+			for _, c := range conds {
+				parts = append(parts, fmt.Sprintf("%s %.0f%%", c, fp.WinConditionMix[c]*100))
+			}
+			b.WriteString(strings.Join(parts, ", "))
+			b.WriteString("\n")
+		}
+
+		if len(fp.CardFrequency) > 0 {
+			b.WriteString("\n| Card | Frequency | Games Cast |\n|---|---:|---:|\n")
+			cardLimit := cardFreqLimit
+			if cardLimit > len(fp.CardFrequency) {
+				cardLimit = len(fp.CardFrequency)
+			}
+			for j := 0; j < cardLimit; j++ {
+				e := &fp.CardFrequency[j]
+				fmt.Fprintf(b, "| %s | %.0f%% | %d |\n", e.Name, e.Frequency*100, e.GamesCast)
+			}
+		}
+		b.WriteString("\n")
+	}
+	if remaining := len(r.DeckFingerprints) - limit; remaining > 0 {
+		fmt.Fprintf(b, "_(+%d more commanders — structured data available via `DeckFingerprints`)_\n\n", remaining)
+	}
+}
+
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
 
