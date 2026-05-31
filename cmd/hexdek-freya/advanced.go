@@ -3027,7 +3027,9 @@ func pickReplacementDual(underColor string, deckColors map[string]bool, demand m
 }
 
 // ---------------------------------------------------------------------------
-// 9. Deck personality blurb — 2-3 sentence flavor description.
+// 9. Deck personality blurb — 4-6 sentence narrative paragraph that names
+//    specific cards driving the personality call (commander, marquee star
+//    cards, finisher pieces, pet picks), plus a flavor-text-style tagline.
 // ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
@@ -3137,11 +3139,456 @@ func computeCurveArchetypeFit(dp *DeckProfile, report *FreyaReport) {
 	}
 }
 
+// buildPersonalityBlurb produces the 4-6 sentence narrative paragraph.
+// Structure:
+//
+//	1. Opening — speed + archetype + commander framing (always emits)
+//	2. Approach — what the deck does in play (existing describeApproach)
+//	3. Engine — names 2-3 specific star/power-tier cards anchoring the plan
+//	4. Closer — names finisher pieces from primary win line (existing
+//	            describeCloser already does the naming for combo/finisher/
+//	            commander_damage/alt_wincon types)
+//	5. Texture — pet picks if present, else mana base / protection /
+//	             bracket-flavored signature line
+//	6. (Optional) Final tag — bracket-aware closing thought, only when
+//	            distinct from sentences 1-5 to keep us inside the 6-cap
+//
+// Every sentence has a fallback so the function always emits at least
+// 4 sentences on a minimally-populated DeckProfile.
 func buildPersonalityBlurb(dp *DeckProfile, report *FreyaReport) string {
+	// Sections are ordered by importance. The first four (opening,
+	// approach, engine, closer) always emit — they form the 4-sentence
+	// floor. The last two (texture, final tag) are optional and get
+	// trimmed if the closer used its backup-line bonus sentence and we
+	// would otherwise blow past the 6-sentence ceiling. describeCloser
+	// can return 1-2 sentences depending on the presence of backup win
+	// lines, which is why we count after each append rather than just
+	// taking the first N.
+	core := []string{
+		openingSentence(dp),
+		describeApproach(dp, report),
+		engineSentence(dp, report),
+		describeCloser(dp, report),
+	}
+	optional := []string{
+		textureSentence(dp, report),
+		finalTagSentence(dp, report, core),
+	}
+
+	emit := func(out []string, s string) []string {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			return out
+		}
+		if !endsInSentencePunctuation(s) {
+			s += "."
+		}
+		return append(out, s)
+	}
+
+	out := make([]string, 0, len(core)+len(optional))
+	for _, s := range core {
+		out = emit(out, s)
+	}
+	// Append optional sections only while we stay within the 6-sentence
+	// ceiling. A section that itself contains multiple sentences (like
+	// describeCloser with a backup line) counts toward the cap as a
+	// single appended string, but countSentences inspects punctuation
+	// across the joined blurb so the trim decision is correct.
+	for _, s := range optional {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		if !endsInSentencePunctuation(s) {
+			s += "."
+		}
+		candidate := append(out, s)
+		if blurbSentenceCount(strings.Join(candidate, " ")) > 6 {
+			continue
+		}
+		out = candidate
+	}
+	return strings.Join(out, " ")
+}
+
+// blurbSentenceCount counts how many `[.!?] ` (final-punct + space)
+// boundaries the blurb contains, plus 1 if the string ends with
+// sentence punctuation. MTG card names contain commas and apostrophes
+// but NOT internal periods, so the heuristic does not false-fire on
+// embedded card names. Local to advanced.go so the production trim
+// path doesn't depend on a test helper.
+func blurbSentenceCount(s string) int {
+	n := 0
+	for i := 0; i < len(s)-1; i++ {
+		c := s[i]
+		if (c == '.' || c == '!' || c == '?') && s[i+1] == ' ' {
+			n++
+		}
+	}
+	if s != "" {
+		last := s[len(s)-1]
+		if last == '.' || last == '!' || last == '?' {
+			n++
+		}
+	}
+	return n
+}
+
+// openingSentence names the commander whenever one is set; the commander
+// is the deck's flagship reference point and naming it grounds the rest
+// of the blurb. Falls back to a commanderless opener for partial deck
+// fixtures so the function stays robust.
+func openingSentence(dp *DeckProfile) string {
 	speed := describeSpeed(dp)
-	approach := describeApproach(dp, report)
-	closer := describeCloser(dp, report)
-	return fmt.Sprintf("This is a %s %s deck. %s %s", speed, dp.PrimaryArchetype, approach, closer)
+	arch := dp.PrimaryArchetype
+	if arch == "" {
+		arch = "Commander"
+	}
+	if dp.Commander != "" {
+		return fmt.Sprintf("This is a %s %s deck led by %s.", speed, arch, dp.Commander)
+	}
+	return fmt.Sprintf("This is a %s %s deck.", speed, arch)
+}
+
+// engineSentence names 2-3 marquee cards that anchor the deck's engine,
+// drawn from StarCards (the synergy-tier classifier) and falling back
+// through CardPowerLevels (top-power sort) and GameChangerCards. Every
+// branch produces a sentence — readers should always learn at least one
+// card name beyond the commander.
+func engineSentence(dp *DeckProfile, report *FreyaReport) string {
+	commander := dp.Commander
+	named := topNamedCards(dp, 3, commander)
+	if len(named) == 0 {
+		return engineSentenceFallback(dp, report)
+	}
+	role := dominantEngineRole(dp)
+	joined := joinWithSerialAnd(named)
+	switch {
+	case len(named) >= 3:
+		return fmt.Sprintf("%s anchor the %s package, each pulling double duty across the gameplan.", joined, role)
+	case len(named) == 2:
+		return fmt.Sprintf("%s carry the %s package between them, shaping how every turn unfolds.", joined, role)
+	default:
+		return fmt.Sprintf("%s is the marquee piece — when it lands, the %s package starts firing.", joined, role)
+	}
+}
+
+// engineSentenceFallback runs when no star cards survived the synergy
+// classifier (very low-power decks, partial parses). Falls back to
+// commander-synergy framing or a generic gameplan note so the blurb
+// still gets a third sentence.
+func engineSentenceFallback(dp *DeckProfile, report *FreyaReport) string {
+	if dp.CommanderSynergy >= 0.40 && dp.Commander != "" {
+		pct := int(dp.CommanderSynergy * 100)
+		return fmt.Sprintf("Roughly %d%% of the deck synergizes directly with %s — the engine IS the commander.", pct, dp.Commander)
+	}
+	if report != nil && report.NonLandTutorCount >= 5 {
+		return fmt.Sprintf("A deep tutor package (%d searchers) keeps the right card in hand at the right moment.", report.NonLandTutorCount)
+	}
+	if dp.WinLineCount >= 3 {
+		return fmt.Sprintf("With %d distinct win lines, the deck stays flexible against whatever the table presents.", dp.WinLineCount)
+	}
+	return "The engine runs on synergy more than marquee pieces — each card pulls a small share of the load."
+}
+
+// textureSentence is the 5th-sentence "personality texture" line.
+// Pet cards (flavor picks the deckbuilder kept despite off-archetype
+// fit) are the highest-signal texture; we always lead with them when
+// they exist. Otherwise we fall through to mana-base / protection /
+// bracket signatures.
+func textureSentence(dp *DeckProfile, report *FreyaReport) string {
+	if pets := selectPetNames(dp, 2); len(pets) > 0 {
+		joined := joinWithSerialAnd(pets)
+		if len(pets) == 1 {
+			return fmt.Sprintf("%s is the builder's flavor pick — kept on the list despite the optimization cost.", joined)
+		}
+		return fmt.Sprintf("%s are the builder's flavor picks, kept on the list despite the optimization cost — personality earns its slot here.", joined)
+	}
+	if dp.ProtectedKeyPieces >= 4 && dp.UnprotectedKeyPieces <= dp.ProtectedKeyPieces/2 {
+		return fmt.Sprintf("%d key pieces carry their own protection — the plan is built to survive interaction, not just to outpace it.", dp.ProtectedKeyPieces)
+	}
+	if dp.ManaBaseGrade == "A" {
+		return fmt.Sprintf("The mana base is grade A — the deck rarely stumbles on color, and every land drop is intentional.")
+	}
+	if dp.ManaBaseGrade == "D" || dp.ManaBaseGrade == "F" {
+		return fmt.Sprintf("The mana base is the weakest link (grade %s) — color screw and tapland tempo loss are the real opponents here.", dp.ManaBaseGrade)
+	}
+	if report != nil && report.NonlandCount > 0 && dp.RampCount >= 12 {
+		return fmt.Sprintf("Ramp-heavy at %d ramp pieces — the deck wants to be two turns ahead before the real plan starts.", dp.RampCount)
+	}
+	if dp.CommanderSynergy >= 0.55 {
+		return fmt.Sprintf("Commander synergy is unusually tight at %d%% — the deck has one voice, not many.", int(dp.CommanderSynergy*100))
+	}
+	return "The texture is balanced — no marquee weaknesses, no signature flourishes, just a deck that knows what it wants to do."
+}
+
+// finalTagSentence is the optional 6th sentence. Only emits when it adds
+// something distinct from sentences 1-5 (avoid restating bracket if the
+// closer already named the bracket). Keeps the blurb inside the 6-cap.
+func finalTagSentence(dp *DeckProfile, report *FreyaReport, prior []string) string {
+	priorText := strings.Join(prior, " ")
+	mentionedBracket := strings.Contains(priorText, "bracket") || strings.Contains(priorText, "Bracket")
+	if !mentionedBracket && dp.Bracket >= 4 {
+		return fmt.Sprintf("Built at bracket %d (%s) — this is a deck that demands respect from turn one.", dp.Bracket, dp.BracketLabel)
+	}
+	if !mentionedBracket && dp.Bracket == 1 {
+		return fmt.Sprintf("A bracket 1 (%s) build — casual, social, and built to enjoy the long game.", dp.BracketLabel)
+	}
+	if dp.PowerPercentile >= 85 {
+		return fmt.Sprintf("Power lands in the %dth percentile of its archetype — the deck plays above its weight class.", dp.PowerPercentile)
+	}
+	return ""
+}
+
+// topNamedCards returns up to `max` star-card names (CardQuality at
+// "star" tier), falling back through CardPowerLevels and
+// GameChangerCards, deduped and excluding the commander (we already
+// name it in sentence 1).
+func topNamedCards(dp *DeckProfile, max int, excludeCommander string) []string {
+	seen := map[string]bool{}
+	if excludeCommander != "" {
+		seen[strings.ToLower(excludeCommander)] = true
+	}
+	out := []string{}
+	push := func(name string) {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			return
+		}
+		key := strings.ToLower(name)
+		if seen[key] {
+			return
+		}
+		seen[key] = true
+		out = append(out, name)
+	}
+	for _, c := range dp.StarCards {
+		if len(out) >= max {
+			break
+		}
+		push(c.Name)
+	}
+	for _, c := range dp.CardPowerLevels {
+		if len(out) >= max {
+			break
+		}
+		if c.PowerTier == "S" || c.PowerTier == "A" {
+			push(c.Name)
+		}
+	}
+	for _, name := range dp.GameChangerCards {
+		if len(out) >= max {
+			break
+		}
+		push(name)
+	}
+	return out
+}
+
+// selectPetNames returns up to `max` pet-card names. Legendaries first
+// (the signature-flavor reason carries the strongest personality
+// signal), then nonlegendaries in detection order.
+func selectPetNames(dp *DeckProfile, max int) []string {
+	if max <= 0 || len(dp.PetCards) == 0 {
+		return nil
+	}
+	legendaries := []string{}
+	others := []string{}
+	for _, p := range dp.PetCards {
+		if strings.Contains(strings.ToLower(p.Reason), "signature flavor") {
+			legendaries = append(legendaries, p.Name)
+		} else {
+			others = append(others, p.Name)
+		}
+	}
+	out := append(legendaries, others...)
+	if len(out) > max {
+		out = out[:max]
+	}
+	return out
+}
+
+// dominantEngineRole names what kind of package the engine cards
+// anchor. Archetype-keyed so the blurb's vocabulary matches the
+// deck's identity — Combo decks anchor a "kill package", Aristocrats
+// anchor a "drain engine", and so on.
+func dominantEngineRole(dp *DeckProfile) string {
+	switch strings.ToLower(dp.PrimaryArchetype) {
+	case "combo":
+		return "kill"
+	case "storm":
+		return "burst"
+	case "aristocrats":
+		return "drain"
+	case "reanimator":
+		return "graveyard"
+	case "control":
+		return "answer"
+	case "stax":
+		return "lock"
+	case "voltron":
+		return "commander"
+	case "tribal":
+		return "tribal"
+	case "lifegain":
+		return "lifegain"
+	case "enchantress":
+		return "enchantment"
+	case "artifacts":
+		return "artifact"
+	case "lands matter":
+		return "landfall"
+	case "blink", "flicker":
+		return "ETB"
+	case "mill":
+		return "mill"
+	case "spellslinger":
+		return "spellslinger"
+	case "counters matter":
+		return "counters"
+	case "superfriends":
+		return "planeswalker"
+	case "aggro", "go wide":
+		return "pressure"
+	case "extra combats":
+		return "combat"
+	case "pillowfort":
+		return "defensive"
+	case "group hug":
+		return "value"
+	case "group slug":
+		return "burn"
+	case "toxic":
+		return "toxic"
+	default:
+		return "value"
+	}
+}
+
+// joinWithSerialAnd renders a slice as "A", "A and B", or
+// "A, B, and C" — the Oxford-comma form, picked because the blurb
+// register leans literary.
+func joinWithSerialAnd(names []string) string {
+	switch len(names) {
+	case 0:
+		return ""
+	case 1:
+		return names[0]
+	case 2:
+		return names[0] + " and " + names[1]
+	default:
+		return strings.Join(names[:len(names)-1], ", ") + ", and " + names[len(names)-1]
+	}
+}
+
+func endsInSentencePunctuation(s string) bool {
+	if s == "" {
+		return false
+	}
+	last := s[len(s)-1]
+	return last == '.' || last == '!' || last == '?'
+}
+
+// buildPersonalityTagline produces the flavor-text-style one-liner.
+// Templates are archetype-keyed; each leaves a single optional slot
+// for a deck-specific noun (top star card, finisher piece, or
+// commander) so the same archetype on two different decks reads
+// differently. Always non-empty — the default falls back to a
+// generic "play to win" register.
+func buildPersonalityTagline(dp *DeckProfile, report *FreyaReport) string {
+	piece := taglineSlotCard(dp, report)
+	commander := dp.Commander
+	arch := strings.ToLower(dp.PrimaryArchetype)
+	switch {
+	case strings.Contains(arch, "storm"):
+		return "One spell. Then ten. Then the silence between them."
+	case strings.Contains(arch, "combo"):
+		if piece != "" {
+			return fmt.Sprintf("All the time in the world — and only %s left to draw.", piece)
+		}
+		return "All the time in the world. All the answers already on the table."
+	case strings.Contains(arch, "aristocrats"):
+		return "Death is the engine. Sacrifice is the fuel."
+	case strings.Contains(arch, "reanimator"):
+		if commander != "" {
+			return fmt.Sprintf("%s remembers what was buried.", commander)
+		}
+		return "The grave does not forget what it was given."
+	case strings.Contains(arch, "voltron"):
+		if commander != "" {
+			return fmt.Sprintf("Hand %s the blade — the rest is arithmetic.", commander)
+		}
+		return "One sword. One swing. One winner."
+	case strings.Contains(arch, "stax"):
+		return "Take a turn. Try a spell. Discover what is permitted."
+	case strings.Contains(arch, "control"):
+		return "Every threat answered. Every door closed. Every game ours."
+	case strings.Contains(arch, "tribal"):
+		return "The tribe gathers. The tribe remembers. The tribe wins."
+	case strings.Contains(arch, "lifegain"):
+		return "The body endures. The body remembers. The body collects."
+	case strings.Contains(arch, "lands"):
+		return "Every land a door. Every door a doom."
+	case strings.Contains(arch, "enchantress"):
+		return "Each parchment a small geometry. Together — gravity."
+	case strings.Contains(arch, "artifact"):
+		return "The forge speaks last. The forge speaks loudest."
+	case strings.Contains(arch, "counters matter"):
+		return "One counter at a time. Then ten thousand."
+	case strings.Contains(arch, "toxic"):
+		return "The wound is small. The wound is final."
+	case strings.Contains(arch, "blink"), strings.Contains(arch, "flicker"):
+		return "Step out of the world. Step back. Profit."
+	case strings.Contains(arch, "mill"):
+		return "Twenty cards. Then twenty more. Then nothing."
+	case strings.Contains(arch, "spellslinger"):
+		return "The page burns. The ink burns. The reader endures."
+	case strings.Contains(arch, "extra combats"):
+		return "Once more, with feeling — and again, until it ends."
+	case strings.Contains(arch, "superfriends"):
+		return "Each loyalty tick a verdict the table cannot appeal."
+	case strings.Contains(arch, "pillowfort"):
+		return "The walls remember every wound they refused."
+	case strings.Contains(arch, "group hug"):
+		return "Take the gifts. Take the cards. Take the loss."
+	case strings.Contains(arch, "aggro"), strings.Contains(arch, "go wide"):
+		return "Faster than fear. Louder than warning."
+	case strings.Contains(arch, "theft"), strings.Contains(arch, "clone"):
+		return "Your threat. My turn. Same outcome."
+	case strings.Contains(arch, "discard"):
+		return "Empty their hand. Then empty the table."
+	case strings.Contains(arch, "ramp"):
+		return "Two turns ahead. One conversation behind."
+	default:
+		if piece != "" {
+			return fmt.Sprintf("Played carefully. Played patiently. Played until %s lands.", piece)
+		}
+		return "Played carefully. Played patiently. Played to win."
+	}
+}
+
+// taglineSlotCard picks a deck-specific noun for the tagline templates
+// that accept one. Prefers the primary win-line's first piece (the
+// actual finisher reader most wants named), then the top star card.
+// Returns empty when no card name is available.
+func taglineSlotCard(dp *DeckProfile, report *FreyaReport) string {
+	if report != nil && report.WinLines != nil && len(report.WinLines.WinLines) > 0 {
+		wl := report.WinLines.WinLines[0]
+		if len(wl.Pieces) > 0 {
+			name := strings.TrimSpace(wl.Pieces[0])
+			if name != "" && !strings.EqualFold(name, dp.Commander) {
+				return name
+			}
+		}
+	}
+	for _, c := range dp.StarCards {
+		name := strings.TrimSpace(c.Name)
+		if name != "" && !strings.EqualFold(name, dp.Commander) {
+			return name
+		}
+	}
+	return ""
 }
 
 // describeSpeed factors in both curve and ramp density. A 4.0 avg CMC with
