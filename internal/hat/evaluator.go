@@ -293,9 +293,42 @@ func (e *GameStateEvaluator) scoreBoard(gs *gameengine.GameState, seatIdx int) f
 		}
 	}
 
+	// R60: commander-centric commander-on-field bonus. When Freya flags
+	// the deck as commander-centric (Voltron / engine commander / >=45%
+	// commander synergy / commander oracle text with >=2 engine phrases)
+	// AND our commander is on the battlefield, the commander's
+	// strategic value EXCEEDS its raw power: it carries the gameplan,
+	// it carries commander damage toward §704.6c lethal, and its
+	// removal collapses the position. Pre-r60 scoreBoard ignored
+	// Strategy entirely — a Voltron Sram on board scored identically
+	// to a vanilla 2/2. Mirrors the synergyBonus floor in scoreCommander
+	// for the BoardPresence axis. +0.30 per commander permanent, capped
+	// at 0.60 (partner pair); gated on CommanderFormat so non-EDH
+	// games (where Strategy can still be set) don't fire.
+	commanderBonus := 0.0
+	if e.Strategy != nil && e.Strategy.IsCommanderCentric && gs.CommanderFormat {
+		cmdrCount := 0
+		for _, p := range mySeat.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			for _, cn := range mySeat.CommanderNames {
+				if p.Card.DisplayName() == cn {
+					cmdrCount++
+					break
+				}
+			}
+		}
+		commanderBonus = float64(cmdrCount) * 0.30
+		if commanderBonus > 0.60 {
+			commanderBonus = 0.60
+		}
+	}
+
 	return (myPow-oppAvg)/10.0 +
 		float64(noncreatures)*0.1 +
-		(myCreatures-oppCreaturesAvg)*0.05
+		(myCreatures-oppCreaturesAvg)*0.05 +
+		commanderBonus
 }
 
 // scoreCards: hand size + library depth + persistent draw engines on
