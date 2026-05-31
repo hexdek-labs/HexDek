@@ -1034,12 +1034,21 @@ var LegacyMidrangeOnly bool
 
 // DefaultWeightsForArchetype returns the tuned weight profile for the
 // given archetype string. Unknown archetypes get the midrange profile.
+//
+// When a Heimdall feedback overlay has been installed via
+// SetActiveFeedback, the base weights are overlaid with the per-
+// archetype per-dimension deltas BEFORE return. Without an active
+// overlay (the common case) the call is a pure map lookup, same as
+// pre-r60. The overlay path is bounded + clamped + zero-floored by
+// applyFeedbackOverlay so a corrupt or adversarial feedback can never
+// push a weight negative or unbounded.
 func DefaultWeightsForArchetype(archetype string) EvalWeights {
 	if LegacyMidrangeOnly {
 		return archetypeWeights[ArchetypeMidrange]
 	}
-	if w, ok := archetypeWeights[archetype]; ok {
-		return w
+	base, ok := archetypeWeights[archetype]
+	if !ok {
+		base = archetypeWeights[ArchetypeMidrange]
 	}
-	return archetypeWeights[ArchetypeMidrange]
+	return applyFeedbackOverlay(archetype, base)
 }
