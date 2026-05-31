@@ -47,9 +47,17 @@ func angelOfDestinyDamage(gs *gameengine.GameState, perm *gameengine.Permanent, 
 	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
 		return
 	}
-	// ctx fields: damager_seat (int), target_seat (int), amount (int).
-	dmgSeat, _ := ctx["damager_seat"].(int)
-	tgtSeat, _ := ctx["target_seat"].(int)
+	// Engine fires combat_damage_player with source_seat + defender_seat +
+	// amount. Legacy ctx keys (damager_seat, target_seat) are read as
+	// fallbacks for callers that haven't migrated.
+	dmgSeat, ok := ctx["source_seat"].(int)
+	if !ok {
+		dmgSeat, _ = ctx["damager_seat"].(int)
+	}
+	tgtSeat, ok := ctx["defender_seat"].(int)
+	if !ok {
+		tgtSeat, _ = ctx["target_seat"].(int)
+	}
 	amount, _ := ctx["amount"].(int)
 	if amount <= 0 || dmgSeat != perm.Controller {
 		return

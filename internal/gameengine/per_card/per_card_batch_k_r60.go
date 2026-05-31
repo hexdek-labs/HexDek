@@ -147,11 +147,19 @@ func aprilReporterOnDamage(gs *gameengine.GameState, perm *gameengine.Permanent,
 	if dmgPerm != nil && dmgPerm != perm {
 		return
 	}
-	// Fallback when damager_perm wasn't threaded: trust damager_seat ==
-	// controller as a weaker gate so the trigger isn't silent.
+	// Fallback when damager_perm wasn't threaded: the engine populates
+	// source_seat + source_card on combat_damage_player. Gate on those so
+	// "April deals" matches name + controller (not "any of my creatures
+	// deals"). Legacy damager_seat is a secondary fallback.
 	if dmgPerm == nil {
-		dmgSeat, ok := ctx["damager_seat"].(int)
-		if !ok || dmgSeat != perm.Controller {
+		srcSeat, ok := ctx["source_seat"].(int)
+		if !ok {
+			srcSeat, ok = ctx["damager_seat"].(int)
+		}
+		if !ok || srcSeat != perm.Controller {
+			return
+		}
+		if srcName, hasName := ctx["source_card"].(string); hasName && srcName != perm.Card.DisplayName() {
 			return
 		}
 	}
