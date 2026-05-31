@@ -83,9 +83,10 @@ func hopeEstheimEndStep(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 		if n <= 0 {
 			continue
 		}
-		milled := s.Library[:n]
-		s.Library = s.Library[n:]
-		s.Graveyard = append(s.Graveyard, milled...)
+		milled := append([]*gameengine.Card(nil), s.Library[:n]...)
+		for _, c := range milled {
+			gameengine.MoveCard(gs, c, i, "library", "graveyard", "hope_estheim_mill")
+		}
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,

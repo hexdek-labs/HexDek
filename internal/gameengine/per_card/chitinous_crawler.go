@@ -71,8 +71,7 @@ func chitinousCrawlerActivated(gs *gameengine.GameState, src *gameengine.Permane
 	// (highest-impact reanimate target); fall back to the first
 	// permanent we find.
 	var picked *gameengine.Card
-	var pickedIdx int
-	for i, c := range seat.Graveyard {
+	for _, c := range seat.Graveyard {
 		if c == nil {
 			continue
 		}
@@ -81,7 +80,6 @@ func chitinousCrawlerActivated(gs *gameengine.GameState, src *gameengine.Permane
 		}
 		if picked == nil || (cardHasType(c, "creature") && !cardHasType(picked, "creature")) {
 			picked = c
-			pickedIdx = i
 			if cardHasType(c, "creature") {
 				break
 			}
@@ -93,8 +91,7 @@ func chitinousCrawlerActivated(gs *gameengine.GameState, src *gameengine.Permane
 	}
 
 	// Pay the cost: move the chosen card from graveyard to exile.
-	seat.Graveyard = append(seat.Graveyard[:pickedIdx], seat.Graveyard[pickedIdx+1:]...)
-	seat.Exile = append(seat.Exile, picked)
+	gameengine.MoveCard(gs, picked, src.Controller, "graveyard", "exile", "chitinous_crawler_cost")
 
 	// Register a properly-stamped exile-cast grant for THIS card.
 	perm := &gameengine.ZoneCastPermission{

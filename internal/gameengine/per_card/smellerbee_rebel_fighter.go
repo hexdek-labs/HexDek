@@ -56,22 +56,12 @@ func smellerbeeAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 		})
 		return
 	}
-	hand := seat.Hand
-	seat.Hand = nil
+	hand := append([]*gameengine.Card(nil), seat.Hand...)
 	for _, c := range hand {
 		if c == nil {
 			continue
 		}
-		seat.Graveyard = append(seat.Graveyard, c)
-		gs.LogEvent(gameengine.Event{
-			Kind:   "discard",
-			Seat:   perm.Controller,
-			Source: perm.Card.DisplayName(),
-			Details: map[string]interface{}{
-				"card":   c.DisplayName(),
-				"reason": "smellerbee_attack",
-			},
-		})
+		gameengine.DiscardCard(gs, c, perm.Controller)
 	}
 	drawn := 0
 	for i := 0; i < attackers; i++ {

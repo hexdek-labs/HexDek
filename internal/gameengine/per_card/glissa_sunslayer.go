@@ -39,11 +39,7 @@ func glissaSunslayerCombatDamage(gs *gameengine.GameState, perm *gameengine.Perm
 	if seat == nil || seat.Lost {
 		return
 	}
-	if len(seat.Library) > 0 {
-		card := seat.Library[0]
-		seat.Library = seat.Library[1:]
-		seat.Hand = append(seat.Hand, card)
-	}
+	drawOne(gs, perm.Controller, perm.Card.DisplayName())
 	gameengine.LoseLife(gs, perm.Controller, 1, perm.Card.DisplayName())
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,

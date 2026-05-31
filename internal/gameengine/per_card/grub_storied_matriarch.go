@@ -68,8 +68,7 @@ func grubStoriedMatriarchETB(gs *gameengine.GameState, perm *gameengine.Permanen
 		return
 	}
 	card := seat.Graveyard[bestIdx]
-	seat.Graveyard = append(seat.Graveyard[:bestIdx], seat.Graveyard[bestIdx+1:]...)
-	seat.Hand = append(seat.Hand, card)
+	gameengine.MoveCard(gs, card, seatIdx, "graveyard", "hand", "grub_recover")
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":      seatIdx,
 		"recovered": true,

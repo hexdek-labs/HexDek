@@ -65,17 +65,15 @@ func kataraAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 		return
 	}
 	drawn := 0
-	for i := 0; i < xp && len(seat.Library) > 0; i++ {
-		card := seat.Library[0]
-		seat.Library = seat.Library[1:]
-		seat.Hand = append(seat.Hand, card)
-		drawn++
+	for i := 0; i < xp; i++ {
+		if drawOne(gs, perm.Controller, perm.Card.DisplayName()) != nil {
+			drawn++
+		}
 	}
 	if drawn > 0 && len(seat.Hand) > 0 {
 		discardIdx := len(seat.Hand) - 1
 		card := seat.Hand[discardIdx]
-		seat.Hand = seat.Hand[:discardIdx]
-		seat.Graveyard = append(seat.Graveyard, card)
+		gameengine.DiscardCard(gs, card, perm.Controller)
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":  perm.Controller,

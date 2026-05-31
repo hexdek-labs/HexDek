@@ -142,7 +142,6 @@ func dihadaMinusThree(gs *gameengine.GameState, src *gameengine.Permanent) {
 
 	revealed := make([]*gameengine.Card, n)
 	copy(revealed, s.Library[:n])
-	s.Library = s.Library[n:]
 
 	var toHand []string
 	var toGrave []string
@@ -151,31 +150,11 @@ func dihadaMinusThree(gs *gameengine.GameState, src *gameengine.Permanent) {
 			continue
 		}
 		if cardHasType(c, "legendary") {
-			s.Hand = append(s.Hand, c)
+			gameengine.MoveCard(gs, c, seat, "library", "hand", "dihada_legendary_pick")
 			toHand = append(toHand, c.DisplayName())
-			gs.LogEvent(gameengine.Event{
-				Kind:   "draw",
-				Seat:   seat,
-				Source: src.Card.DisplayName(),
-				Details: map[string]interface{}{
-					"slug":   slug,
-					"reason": "dihada_legendary_pick",
-					"card":   c.DisplayName(),
-				},
-			})
 		} else {
-			s.Graveyard = append(s.Graveyard, c)
+			gameengine.MoveCard(gs, c, seat, "library", "graveyard", "dihada_non_legendary_dump")
 			toGrave = append(toGrave, c.DisplayName())
-			gs.LogEvent(gameengine.Event{
-				Kind:   "mill",
-				Seat:   seat,
-				Source: src.Card.DisplayName(),
-				Details: map[string]interface{}{
-					"slug":   slug,
-					"reason": "dihada_non_legendary_dump",
-					"card":   c.DisplayName(),
-				},
-			})
 		}
 	}
 

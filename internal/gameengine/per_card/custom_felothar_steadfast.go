@@ -106,8 +106,7 @@ func felotharSacDrawDiscard(gs *gameengine.GameState, src *gameengine.Permanent,
 			}
 		}
 		c := seat.Hand[pickIdx]
-		seat.Hand = append(seat.Hand[:pickIdx], seat.Hand[pickIdx+1:]...)
-		seat.Graveyard = append(seat.Graveyard, c)
+		gameengine.DiscardCard(gs, c, src.Controller)
 		discarded++
 	}
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{

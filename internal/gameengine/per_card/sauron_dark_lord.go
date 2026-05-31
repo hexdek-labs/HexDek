@@ -133,23 +133,12 @@ func sauronDiscardHandDrawFour(gs *gameengine.GameState, perm *gameengine.Perman
 		return
 	}
 	discarded := len(s.Hand)
-	hand := s.Hand
-	s.Hand = nil
+	hand := append([]*gameengine.Card(nil), s.Hand...)
 	for _, c := range hand {
 		if c == nil {
 			continue
 		}
-		s.Graveyard = append(s.Graveyard, c)
-		gs.LogEvent(gameengine.Event{
-			Kind:   "discard",
-			Seat:   seat,
-			Source: perm.Card.DisplayName(),
-			Details: map[string]interface{}{
-				"slug":   slug,
-				"card":   c.DisplayName(),
-				"reason": "sauron_ring_tempt_discard",
-			},
-		})
+		gameengine.DiscardCard(gs, c, seat)
 	}
 	drawn := 0
 	for i := 0; i < 4; i++ {

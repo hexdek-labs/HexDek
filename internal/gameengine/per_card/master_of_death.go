@@ -42,8 +42,7 @@ func masterOfDeathETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 			break
 		}
 		top := seat.Library[0]
-		seat.Library = seat.Library[1:]
-		seat.Graveyard = append(seat.Graveyard, top)
+		gameengine.MoveCard(gs, top, perm.Controller, "library", "graveyard", "master_of_death_surveil")
 		seat.Turn.Milled++
 		milled++
 	}

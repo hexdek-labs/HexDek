@@ -45,9 +45,8 @@ func sliverGravemotherEncore(gs *gameengine.GameState, src *gameengine.Permanent
 	// Pick the highest-power Sliver creature card in graveyard whose
 	// encore cost we can afford from the current mana pool.
 	var pick *gameengine.Card
-	pickIdx := -1
 	bestPower := -1
-	for i, c := range seat.Graveyard {
+	for _, c := range seat.Graveyard {
 		if c == nil {
 			continue
 		}
@@ -66,7 +65,6 @@ func sliverGravemotherEncore(gs *gameengine.GameState, src *gameengine.Permanent
 		}
 		if c.BasePower > bestPower {
 			pick = c
-			pickIdx = i
 			bestPower = c.BasePower
 		}
 	}
@@ -82,8 +80,7 @@ func sliverGravemotherEncore(gs *gameengine.GameState, src *gameengine.Permanent
 	}
 	// Pay the encore cost and exile the Sliver.
 	seat.ManaPool -= cost
-	seat.Graveyard = append(seat.Graveyard[:pickIdx], seat.Graveyard[pickIdx+1:]...)
-	seat.Exile = append(seat.Exile, pick)
+	gameengine.MoveCard(gs, pick, src.Controller, "graveyard", "exile", "sliver_gravemother_encore")
 	opps := gs.Opponents(src.Controller)
 	tokensSpawned := 0
 	for _, oppSeat := range opps {

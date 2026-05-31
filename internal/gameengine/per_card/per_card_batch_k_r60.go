@@ -174,17 +174,7 @@ func aprilReporterOnDamage(gs *gameengine.GameState, perm *gameengine.Permanent,
 		// Discard the first card in hand (engine's broader policy is
 		// random-ish; per_card layer doesn't pick a "best" discard).
 		card := seat.Hand[0]
-		seat.Hand = seat.Hand[1:]
-		seat.Graveyard = append(seat.Graveyard, card)
-		gs.LogEvent(gameengine.Event{
-			Kind:   "discard",
-			Seat:   perm.Controller,
-			Source: perm.Card.DisplayName(),
-			Details: map[string]interface{}{
-				"slug": slug,
-				"card": card.DisplayName(),
-			},
-		})
+		gameengine.DiscardCard(gs, card, perm.Controller)
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":     perm.Controller,
@@ -293,17 +283,7 @@ func veronicaDissidentScribeAttack(gs *gameengine.GameState, perm *gameengine.Pe
 		return
 	}
 	card := seat.Hand[0]
-	seat.Hand = seat.Hand[1:]
-	seat.Graveyard = append(seat.Graveyard, card)
-	gs.LogEvent(gameengine.Event{
-		Kind:   "discard",
-		Seat:   perm.Controller,
-		Source: perm.Card.DisplayName(),
-		Details: map[string]interface{}{
-			"slug": slug,
-			"card": card.DisplayName(),
-		},
-	})
+	gameengine.DiscardCard(gs, card, perm.Controller)
 	drawOne(gs, perm.Controller, perm.Card.DisplayName())
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":      perm.Controller,
