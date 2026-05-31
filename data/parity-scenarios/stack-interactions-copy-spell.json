@@ -1,0 +1,21 @@
+{
+  "name": "stack-interactions-copy-spell",
+  "description": "Ral copy-spell mirror. Spell copies cascade through Riku-style doublers. Tests §707.10 copy cease after resolution + MintSpellCopy InstanceID lineage.",
+  "mode": "deck_seed",
+  "deck_pool": [
+    "data/decks/test/cedh_stormoff_b5_ral.txt",
+    "data/decks/test/modal_nightmare_b4_riku.txt",
+    "data/decks/test/cedh_control_b5_yshtola.txt",
+    "data/decks/test/cedh_mullie_b5_muldrotha.txt"
+  ],
+  "n_seats": 4,
+  "seed": 602,
+  "max_turns": 30,
+  "expected_outcome": {
+    "winner_seat_in": [0, 1, 2, 3, -1],
+    "min_turns": 3,
+    "max_turns": 30,
+    "end_reason_in": ["life_zero", "commander_damage", "concede", "library_empty", "mandatory_loop_draw", "loss_effect", "poison"]
+  },
+  "tags": ["stack-interactions", "phase4-bootstrap"]
+}

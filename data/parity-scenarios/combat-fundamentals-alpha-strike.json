@@ -1,0 +1,21 @@
+{
+  "name": "combat-fundamentals-alpha-strike",
+  "description": "Pure aggro mirror. Voja wolf/elf tribal vs Nazgul control vs werewolf vs facedown. Exercises combat damage resolution, lethal-from-life-zero termination, and §704.5a/§702.5j SBA passes.",
+  "mode": "deck_seed",
+  "deck_pool": [
+    "data/decks/test/voja_wolf_elf_tribal_b4_jaws_of_the_conclave.txt",
+    "data/decks/test/nazgul_tribal_control_b3_lord_of_the_nazgul.txt",
+    "data/decks/test/werewolf_daynight_flip_b3_ulrich.txt",
+    "data/decks/test/facedown_nightmare_b4_yarus.txt"
+  ],
+  "n_seats": 4,
+  "seed": 101,
+  "max_turns": 30,
+  "expected_outcome": {
+    "winner_seat_in": [0, 1, 2, 3, -1],
+    "min_turns": 4,
+    "max_turns": 30,
+    "end_reason_in": ["life_zero", "commander_damage", "concede", "library_empty", "mandatory_loop_draw", "loss_effect"]
+  },
+  "tags": ["combat-fundamentals", "phase4-bootstrap"]
+}

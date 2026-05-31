@@ -1,0 +1,21 @@
+{
+  "name": "combo-wincons-thassas-oracle",
+  "description": "Muldrotha lab-man line through Thassa's Oracle. Tests Tainted-Pact-style library empty + Oracle wincon §104.2c. Categorical-win bracket lift.",
+  "mode": "deck_seed",
+  "deck_pool": [
+    "data/decks/test/cedh_mullie_b5_muldrotha.txt",
+    "data/decks/test/cedh_control_b5_yshtola.txt",
+    "data/decks/test/cedh_combo_partner_b5_kraum_tymna.txt",
+    "data/decks/test/cedh_blink_b5_yarok.txt"
+  ],
+  "n_seats": 4,
+  "seed": 401,
+  "max_turns": 25,
+  "expected_outcome": {
+    "winner_seat_in": [0, 1, 2, 3, -1],
+    "min_turns": 3,
+    "max_turns": 25,
+    "end_reason_in": ["life_zero", "commander_damage", "concede", "library_empty", "mandatory_loop_draw", "loss_effect", "poison"]
+  },
+  "tags": ["combo-wincons", "phase4-bootstrap"]
+}
