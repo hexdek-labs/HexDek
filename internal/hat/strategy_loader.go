@@ -112,6 +112,19 @@ type strategyFileJSON struct {
 	PowerPercentile    int                 `json:"power_percentile,omitempty"`
 	MetaMatchups      []freyaMetaMatchup      `json:"meta_matchups,omitempty"`
 	EmergentSynergies []freyaEmergentSynergy  `json:"emergent_synergies,omitempty"`
+	// SynergyClusters carry Freya's themed cluster analysis (wave-4
+	// freya-hat integration audit, 2026-05-30). Consumed via
+	// StrategyProfile.SynergyClusters + the yggdrasil's
+	// synergyClusterCohesionBoost helper which boosts cardHeuristic
+	// for cards from already-active clusters (≥2 members on battlefield).
+	SynergyClusters []freyaSynergyCluster  `json:"synergy_clusters,omitempty"`
+}
+
+type freyaSynergyCluster struct {
+	Name        string   `json:"name"`
+	Theme       string   `json:"theme,omitempty"`
+	Members     []string `json:"members"`
+	HighDensity bool     `json:"high_density,omitempty"`
 }
 
 type freyaEmergentSynergy struct {
@@ -237,6 +250,18 @@ func buildFromStrategyJSON(sj *strategyFileJSON) *StrategyProfile {
 		for _, mm := range sj.MetaMatchups {
 			sp.MetaMatchups[mm.Archetype] = mm.Rating
 		}
+	}
+
+	for _, c := range sj.SynergyClusters {
+		if len(c.Members) == 0 {
+			continue
+		}
+		sp.SynergyClusters = append(sp.SynergyClusters, SynergyCluster{
+			Name:        c.Name,
+			Theme:       c.Theme,
+			Members:     c.Members,
+			HighDensity: c.HighDensity,
+		})
 	}
 
 	for _, wl := range sj.WinLines {

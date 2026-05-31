@@ -155,6 +155,27 @@ type StrategyProfile struct {
 	ProtectedKeyPieces   int
 	UnprotectedKeyPieces int
 
+	// SynergyClusters carry Freya's themed cluster analysis (Tokens,
+	// Recursion, Lifegain, +1/+1 Counters, etc.). Each cluster is a
+	// deduped list of card names that share a synergy theme, plus
+	// Freya's HighDensity flag marking clusters with MemberCount ≥ 5
+	// (the threshold at which the theme is a "real subsystem of the
+	// gameplan" per computeSynergyClusters annotation).
+	//
+	// Consumed by synergyClusterCohesionBoost in yggdrasil.go: when a
+	// candidate card is a cluster member AND ≥2 other members of the
+	// same cluster are already on the seat's battlefield, the
+	// cardHeuristic gets a small priority boost so the hat sequences
+	// cluster cards together (e.g. play Anointed Procession before
+	// the second token-maker; cast Cathars' Crusade alongside the
+	// other +1/+1 counter payoffs). HighDensity clusters boost 2x
+	// because they're load-bearing engines, not incidental overlap.
+	//
+	// Added in the wave-4 freya-hat integration audit (2026-05-30).
+	// Wire spans Freya strategyJSON → strategyFileJSON → here →
+	// cardHeuristic. Tests in synergy_cluster_cohesion_r60_test.go.
+	SynergyClusters []SynergyCluster
+
 	// PowerPercentile is this deck's estimated power level within its archetype (0-100).
 	// Scales hat budget: stronger decks warrant deeper search.
 	PowerPercentile int
@@ -207,6 +228,20 @@ type EmergentSynergy struct {
 	EffectPattern string
 	Tier          int
 	AvgImpact     float64
+}
+
+// SynergyCluster is the hat-side mirror of Freya's themed cluster
+// analysis. Members is the complete deduped member list (NOT the
+// display-capped Cards subset); HighDensity flags clusters that
+// Freya marks as deliberate subsystems of the gameplan (MemberCount
+// ≥ 5 / HighDensityClusterFloor). Consumed by
+// synergyClusterCohesionBoost — see strategy.go SynergyClusters
+// docstring for the integration design.
+type SynergyCluster struct {
+	Name        string
+	Theme       string
+	Members     []string
+	HighDensity bool
 }
 
 // ComboPlan describes a single win line or combo the deck can assemble.
