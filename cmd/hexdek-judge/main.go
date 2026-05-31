@@ -101,7 +101,16 @@ func main() {
 		// generation; CI gates verifying a specific sub-section is
 		// implemented before release.
 		citationIndex = flag.Bool("citation-index", false, "dump the comprehensive CR citation index (every rule we check, with cross-references to engine invariants + probe coverage + related rules) as JSON")
-		deckPath      = flag.String("deck", "", "deck text file path for --check-commander / --check-deck-construction / --report-parse")
+		// CR rule explanation — single-helper batch report consolidating
+		// CR text + codebase checks (probes + engine invariants) +
+		// related-rules cross-references + CLAUDE.md Resolved-issue
+		// history into a man-page-style text dump for a specific rule.
+		// Builds on the citation index from #934 + #948; distinct from
+		// --interactive's compact `index <rule>` view in that this is a
+		// one-shot pipeable full report. Exit 1 when the rule isn't
+		// known so CI can gate on "is this CR sub-section implemented?"
+		explainRule = flag.String("explain", "", "batch mode: render a man-page-style report for a CR sub-section (consolidates CR text + codebase checks + related rules + CLAUDE.md historical fixes). Exit 1 if rule isn't in the index.")
+		deckPath    = flag.String("deck", "", "deck text file path for --check-commander / --check-deck-construction / --report-parse")
 		checkOut   = flag.String("check-out", "", "output path for the --check-* JSON report (default: stdout)")
 		// Parse coverage report — surfaces the deckparser's structured
 		// per-line resolution status (resolved / fallback-resolved /
@@ -179,6 +188,17 @@ func main() {
 	if *citationIndex {
 		if _, err := runCitationIndexDump(*checkOut); err != nil {
 			log.Fatalf("citation-index: %v", err)
+		}
+		return
+	}
+
+	if *explainRule != "" {
+		known, err := runExplain(*explainRule, *checkOut)
+		if err != nil {
+			log.Fatalf("explain: %v", err)
+		}
+		if !known {
+			os.Exit(1)
 		}
 		return
 	}

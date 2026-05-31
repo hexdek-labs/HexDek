@@ -289,7 +289,19 @@ func BuildCitationIndex() *CitationIndex {
 	}
 
 	// Step 1: walk invariant → citation map.
-	for invName, cites := range invariantCRCitations {
+	// Sort invariant names before walking so the "first citation wins"
+	// description merge is deterministic across runs — two invariants
+	// citing the same rule with different descriptions (e.g.
+	// LifeConsistency vs WinCondition both cite §704.5a) would
+	// otherwise produce different first-wins picks across map-iteration
+	// orders, breaking output stability.
+	invNames := make([]string, 0, len(invariantCRCitations))
+	for n := range invariantCRCitations {
+		invNames = append(invNames, n)
+	}
+	sort.Strings(invNames)
+	for _, invName := range invNames {
+		cites := invariantCRCitations[invName]
 		for _, c := range cites {
 			e := idx.Entries[c.Rule]
 			if e == nil {
@@ -309,8 +321,18 @@ func BuildCitationIndex() *CitationIndex {
 		}
 	}
 
-	// Step 2: walk probe → rule map.
-	for probe, rules := range probeRules {
+	// Step 2: walk probe → rule map. Same determinism story — a rule
+	// first-cited via probeRules gets a description from
+	// defaultDescription, and the order in which probes get visited
+	// determines which probe registers first in CheckedBy before the
+	// step-5 sort. (After sort it doesn't matter, but defensive.)
+	probeNames := make([]string, 0, len(probeRules))
+	for p := range probeRules {
+		probeNames = append(probeNames, p)
+	}
+	sort.Strings(probeNames)
+	for _, probe := range probeNames {
+		rules := probeRules[probe]
 		for _, rule := range rules {
 			e := idx.Entries[rule]
 			if e == nil {
