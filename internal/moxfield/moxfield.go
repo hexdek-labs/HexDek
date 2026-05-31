@@ -217,14 +217,45 @@ type apiResponse struct {
 		// into the candidate pool (e.g., to suggest swaps).
 		Maybeboard  apiBoard `json:"maybeboard"`
 		Considering apiBoard `json:"considering"`
+		// Format-specific gameplay zones. Moxfield exposes these as
+		// distinct boards alongside mainboard/sideboard for any deck
+		// whose format uses them, regardless of the deck's *declared*
+		// format — Planechase precons (Doctor Who, March of the Machine)
+		// populate `planes`; Archenemy precons (Duskmourn) populate
+		// `schemes`; Oathbreaker decks populate `signatureSpells`;
+		// Un-set (Unfinity, Unstable, Acorn-supported sets) populate
+		// `attractions` / `stickers` / `contraptions`. Pre-fix the
+		// importer dropped all six on the floor — a real-corpus sample
+		// of 50 cached precons lost 80 cards across 8 decks (10
+		// planes/schemes each, 16% of the sample). Now emitted as
+		// `// Plane:` / `// Scheme:` / `// SignatureSpell:` /
+		// `// Attraction:` / `// Sticker:` / `// Contraption:` comment
+		// lines — the downstream deckparser (textlist.go) silently
+		// skips unknown `//` comments so these never pollute the
+		// playable Commander 99, but they survive in the .txt file so
+		// a Planechase / Archenemy / Oathbreaker / Un-set re-export
+		// round-trips intact instead of losing the format-defining
+		// component.
+		SignatureSpells apiBoard `json:"signatureSpells"`
+		Planes          apiBoard `json:"planes"`
+		Schemes         apiBoard `json:"schemes"`
+		Attractions     apiBoard `json:"attractions"`
+		Stickers        apiBoard `json:"stickers"`
+		Contraptions    apiBoard `json:"contraptions"`
 	} `json:"boards"`
 	// Legacy top-level fields (pre-v3 boards wrapper).
-	Mainboard   map[string]apiCardEntry `json:"mainboard"`
-	Commanders  map[string]apiCardEntry `json:"commanders"`
-	Sideboard   map[string]apiCardEntry `json:"sideboard"`
-	Companions  map[string]apiCardEntry `json:"companions"`
-	Maybeboard  map[string]apiCardEntry `json:"maybeboard"`
-	Considering map[string]apiCardEntry `json:"considering"`
+	Mainboard       map[string]apiCardEntry `json:"mainboard"`
+	Commanders      map[string]apiCardEntry `json:"commanders"`
+	Sideboard       map[string]apiCardEntry `json:"sideboard"`
+	Companions      map[string]apiCardEntry `json:"companions"`
+	Maybeboard      map[string]apiCardEntry `json:"maybeboard"`
+	Considering     map[string]apiCardEntry `json:"considering"`
+	SignatureSpells map[string]apiCardEntry `json:"signatureSpells"`
+	Planes          map[string]apiCardEntry `json:"planes"`
+	Schemes         map[string]apiCardEntry `json:"schemes"`
+	Attractions     map[string]apiCardEntry `json:"attractions"`
+	Stickers        map[string]apiCardEntry `json:"stickers"`
+	Contraptions    map[string]apiCardEntry `json:"contraptions"`
 
 	// User-applied tags. Moxfield exposes two parallel tagging surfaces:
 	//   - Hubs:  community-curated canonical labels (Combo, Token, Stax,
@@ -292,6 +323,48 @@ func (r *apiResponse) considering() map[string]apiCardEntry {
 		return r.Boards.Considering.Cards
 	}
 	return r.Considering
+}
+
+func (r *apiResponse) signatureSpells() map[string]apiCardEntry {
+	if len(r.Boards.SignatureSpells.Cards) > 0 {
+		return r.Boards.SignatureSpells.Cards
+	}
+	return r.SignatureSpells
+}
+
+func (r *apiResponse) planes() map[string]apiCardEntry {
+	if len(r.Boards.Planes.Cards) > 0 {
+		return r.Boards.Planes.Cards
+	}
+	return r.Planes
+}
+
+func (r *apiResponse) schemes() map[string]apiCardEntry {
+	if len(r.Boards.Schemes.Cards) > 0 {
+		return r.Boards.Schemes.Cards
+	}
+	return r.Schemes
+}
+
+func (r *apiResponse) attractions() map[string]apiCardEntry {
+	if len(r.Boards.Attractions.Cards) > 0 {
+		return r.Boards.Attractions.Cards
+	}
+	return r.Attractions
+}
+
+func (r *apiResponse) stickers() map[string]apiCardEntry {
+	if len(r.Boards.Stickers.Cards) > 0 {
+		return r.Boards.Stickers.Cards
+	}
+	return r.Stickers
+}
+
+func (r *apiResponse) contraptions() map[string]apiCardEntry {
+	if len(r.Boards.Contraptions.Cards) > 0 {
+		return r.Boards.Contraptions.Cards
+	}
+	return r.Contraptions
 }
 
 // deckTags returns the merged Hubs + Tags list, deduped
@@ -533,6 +606,46 @@ func formatDecklist(data *apiResponse) (string, error) {
 			return ""
 		}
 		return fmt.Sprintf("// Considering: %d %s\n", e.Quantity, e.Card.Name)
+	})
+	// Format-specific gameplay zones — emitted as comment lines so the
+	// downstream Commander deckparser skips them but the import round-
+	// trips intact. Order is stable (deterministic) and mirrors the
+	// emit order of the maybeboard/considering rows above.
+	writeEntries(data.signatureSpells(), func(e apiCardEntry) string {
+		if e.Card.Name == "" || e.Quantity <= 0 {
+			return ""
+		}
+		return fmt.Sprintf("// SignatureSpell: %d %s\n", e.Quantity, e.Card.Name)
+	})
+	writeEntries(data.planes(), func(e apiCardEntry) string {
+		if e.Card.Name == "" || e.Quantity <= 0 {
+			return ""
+		}
+		return fmt.Sprintf("// Plane: %d %s\n", e.Quantity, e.Card.Name)
+	})
+	writeEntries(data.schemes(), func(e apiCardEntry) string {
+		if e.Card.Name == "" || e.Quantity <= 0 {
+			return ""
+		}
+		return fmt.Sprintf("// Scheme: %d %s\n", e.Quantity, e.Card.Name)
+	})
+	writeEntries(data.attractions(), func(e apiCardEntry) string {
+		if e.Card.Name == "" || e.Quantity <= 0 {
+			return ""
+		}
+		return fmt.Sprintf("// Attraction: %d %s\n", e.Quantity, e.Card.Name)
+	})
+	writeEntries(data.stickers(), func(e apiCardEntry) string {
+		if e.Card.Name == "" || e.Quantity <= 0 {
+			return ""
+		}
+		return fmt.Sprintf("// Sticker: %d %s\n", e.Quantity, e.Card.Name)
+	})
+	writeEntries(data.contraptions(), func(e apiCardEntry) string {
+		if e.Card.Name == "" || e.Quantity <= 0 {
+			return ""
+		}
+		return fmt.Sprintf("// Contraption: %d %s\n", e.Quantity, e.Card.Name)
 	})
 
 	cards := cardsBuf.String()
