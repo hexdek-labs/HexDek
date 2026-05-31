@@ -17,13 +17,26 @@
 // listener calls preventDefault when it resolves an action.
 
 export const SPECTATOR_KEYBINDINGS = [
-  { keys: ['Space'],      action: 'togglePause', label: 'Pause / resume playback' },
-  { keys: ['←'],          action: 'prevTurn',    label: 'Scroll log to previous turn' },
-  { keys: ['→'],          action: 'nextTurn',    label: 'Scroll log to next turn' },
-  { keys: ['↓', '['],     action: 'speedDown',   label: 'Decrease playback speed' },
-  { keys: ['↑', ']'],     action: 'speedUp',     label: 'Increase playback speed' },
-  { keys: ['?'],          action: 'toggleHelp',  label: 'Show keyboard shortcut help' },
+  { keys: ['Space'], action: 'togglePause', label: 'Pause / resume playback' },
+  { keys: ['←'],     action: 'prevTurn',    label: 'Scroll log to previous turn' },
+  { keys: ['→'],     action: 'nextTurn',    label: 'Scroll log to next turn' },
+  { keys: ['↓'],     action: 'speedDown',   label: 'Decrease playback speed' },
+  { keys: ['↑'],     action: 'speedUp',     label: 'Increase playback speed' },
+  // R60: brackets repurposed from speed-aliases to zoom controls so
+  // spectators can scale up the seats grid on a 4K display or shrink
+  // it on a phone. Arrow keys retain the speed semantics — bracket
+  // and arrow are no longer aliased.
+  { keys: ['['],     action: 'zoomOut',     label: 'Zoom out' },
+  { keys: [']'],     action: 'zoomIn',      label: 'Zoom in' },
+  { keys: ['?'],     action: 'toggleHelp',  label: 'Show keyboard shortcut help' },
 ]
+
+// ZOOM_MARKS is the discrete zoom-level ladder used by the zoom-in/
+// zoom-out shortcuts. 1.0 is the layout's design baseline; 0.7 / 0.85
+// shrink toward phone-viewport-friendly density; 1.15 / 1.3 expand
+// for 4K spectator displays. Tighter steps near 1.0 (where users
+// spend most of their time) than at the extremes.
+export const ZOOM_MARKS = [0.7, 0.85, 1.0, 1.15, 1.3]
 
 export function isEditableTarget(el) {
   if (!el) return false
@@ -55,16 +68,39 @@ export function resolveSpectatorKeyAction(event) {
     case 'ArrowRight':
       return 'nextTurn'
     case 'ArrowDown':
-    case '[':
       return 'speedDown'
     case 'ArrowUp':
-    case ']':
       return 'speedUp'
+    case '[':
+      return 'zoomOut'
+    case ']':
+      return 'zoomIn'
     case '?':
       return 'toggleHelp'
     default:
       return null
   }
+}
+
+// clampZoom steps `currentZoom` to the next mark in `marks` in the
+// given direction (+1 = larger, -1 = smaller). Clamps at both ends.
+// Snaps to nearest mark first when current is off-grid (e.g. a
+// stale CSS var or hand-set zoom) so the next press lands somewhere
+// deterministic. Mirrors nextSpeedMark exactly so a future
+// "discrete-ladder UI control" abstraction can absorb both helpers.
+export function clampZoom(currentZoom, marks, direction) {
+  if (!Array.isArray(marks) || marks.length === 0) return currentZoom
+  let idx = marks.indexOf(currentZoom)
+  if (idx < 0) {
+    idx = 0
+    let best = Math.abs(marks[0] - currentZoom)
+    for (let i = 1; i < marks.length; i++) {
+      const d = Math.abs(marks[i] - currentZoom)
+      if (d < best) { best = d; idx = i }
+    }
+  }
+  const newIdx = Math.min(marks.length - 1, Math.max(0, idx + direction))
+  return marks[newIdx]
 }
 
 // nextSpeedMark steps through a discrete list of speed multipliers.

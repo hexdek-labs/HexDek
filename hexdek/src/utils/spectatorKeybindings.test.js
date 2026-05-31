@@ -15,11 +15,13 @@ import assert from 'node:assert/strict'
 
 import {
   SPECTATOR_KEYBINDINGS,
+  ZOOM_MARKS,
   isEditableTarget,
   resolveSpectatorKeyAction,
   nextSpeedMark,
   computePauseToggle,
   pickNeighboringTurnHeader,
+  clampZoom,
 } from './spectatorKeybindings.js'
 
 const SPEED_MARKS = [0.1, 0.2, 0.3, 0.5, 0.75, 1, 1.5, 2]
@@ -51,9 +53,16 @@ test('Arrow keys resolve to the expected actions', () => {
   assert.equal(resolveSpectatorKeyAction(ev({ key: 'ArrowUp' })),    'speedUp')
 })
 
-test('Bracket aliases mirror Up/Down', () => {
-  assert.equal(resolveSpectatorKeyAction(ev({ key: '[' })), 'speedDown')
-  assert.equal(resolveSpectatorKeyAction(ev({ key: ']' })), 'speedUp')
+test('Brackets resolve to zoom actions (R60: repurposed from speed aliases)', () => {
+  assert.equal(resolveSpectatorKeyAction(ev({ key: '[' })), 'zoomOut')
+  assert.equal(resolveSpectatorKeyAction(ev({ key: ']' })), 'zoomIn')
+})
+
+test('Arrow keys are no longer aliased to brackets', () => {
+  // Defensive — confirms the refactor didn't leave a vestigial
+  // alias that would cause double-fire on bracket press.
+  assert.notEqual(resolveSpectatorKeyAction(ev({ key: '[' })), 'speedDown')
+  assert.notEqual(resolveSpectatorKeyAction(ev({ key: ']' })), 'speedUp')
 })
 
 test('Question mark resolves to toggleHelp (Shift allowed)', () => {
@@ -223,6 +232,81 @@ test('SPECTATOR_KEYBINDINGS has no symbol conflicts (only intentional aliases)',
       }
       seen.set(k, entry.action)
     }
+  }
+})
+
+// -----------------------------------------------------------------------------
+// Zoom marks (R60: bracket-key zoom controls)
+// -----------------------------------------------------------------------------
+
+test('ZOOM_MARKS includes 1.0 as the design baseline', () => {
+  assert.ok(ZOOM_MARKS.includes(1.0), 'design baseline must be a stop on the ladder')
+})
+
+test('ZOOM_MARKS is monotonically ascending', () => {
+  for (let i = 1; i < ZOOM_MARKS.length; i++) {
+    assert.ok(ZOOM_MARKS[i] > ZOOM_MARKS[i - 1],
+      `ZOOM_MARKS must ascend: ${ZOOM_MARKS[i - 1]} → ${ZOOM_MARKS[i]}`)
+  }
+})
+
+test('clampZoom steps to the next mark', () => {
+  assert.equal(clampZoom(1.0, ZOOM_MARKS, +1), 1.15)
+  assert.equal(clampZoom(1.0, ZOOM_MARKS, -1), 0.85)
+  assert.equal(clampZoom(0.85, ZOOM_MARKS, +1), 1.0)
+})
+
+test('clampZoom clamps at both ends', () => {
+  assert.equal(clampZoom(ZOOM_MARKS[0], ZOOM_MARKS, -1), ZOOM_MARKS[0],
+    'cannot zoom below the smallest mark')
+  assert.equal(clampZoom(ZOOM_MARKS[ZOOM_MARKS.length - 1], ZOOM_MARKS, +1),
+    ZOOM_MARKS[ZOOM_MARKS.length - 1],
+    'cannot zoom above the largest mark')
+})
+
+test('clampZoom snaps to nearest when current is off-grid', () => {
+  // 0.92 is between 0.85 and 1.0 — closer to 0.85 (Δ=0.07) than 1.0
+  // (Δ=0.08), so snap lands at 0.85, then +1 step → 1.0 / -1 → 0.7.
+  assert.equal(clampZoom(0.92, ZOOM_MARKS, +1), 1.0)
+  assert.equal(clampZoom(0.92, ZOOM_MARKS, -1), 0.7)
+  // 1.07 is closer to 1.0 (Δ=0.07) than 1.15 (Δ=0.08), so snap
+  // again lands at 1.0, then +1 → 1.15 / -1 → 0.85.
+  assert.equal(clampZoom(1.07, ZOOM_MARKS, +1), 1.15)
+  assert.equal(clampZoom(1.07, ZOOM_MARKS, -1), 0.85)
+})
+
+test('clampZoom with empty marks returns current', () => {
+  assert.equal(clampZoom(1.0, [], +1), 1.0)
+  assert.equal(clampZoom(1.0, null, +1), 1.0)
+})
+
+// -----------------------------------------------------------------------------
+// Help overlay row coverage (R60: keep the in-app docs honest)
+// -----------------------------------------------------------------------------
+
+test('SPECTATOR_KEYBINDINGS surfaces every resolvable action as a help row', () => {
+  // Every action that resolveSpectatorKeyAction can return must
+  // appear in the user-facing help table — otherwise the spectator
+  // discovers a "secret" shortcut. Build the inverse map and assert
+  // every action key is documented.
+  const documented = new Set(SPECTATOR_KEYBINDINGS.map(b => b.action))
+  const resolvable = [
+    'togglePause', 'prevTurn', 'nextTurn',
+    'speedDown', 'speedUp',
+    'zoomOut', 'zoomIn',
+    'toggleHelp',
+  ]
+  for (const a of resolvable) {
+    assert.ok(documented.has(a), `action ${a} must appear in SPECTATOR_KEYBINDINGS`)
+  }
+})
+
+test('SPECTATOR_KEYBINDINGS rows all have non-empty labels', () => {
+  // Help overlay reads .label per row; an empty label would render
+  // a confusing blank cell. Pin defensively.
+  for (const b of SPECTATOR_KEYBINDINGS) {
+    assert.ok(typeof b.label === 'string' && b.label.length > 0,
+      `row ${b.action} missing label`)
   }
 })
 

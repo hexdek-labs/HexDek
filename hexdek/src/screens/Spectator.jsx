@@ -11,10 +11,12 @@ import ContextBox from '../components/ContextBox'
 import ArtAmbience from '../components/ArtAmbience'
 import {
   SPECTATOR_KEYBINDINGS,
+  ZOOM_MARKS,
   resolveSpectatorKeyAction,
   nextSpeedMark,
   computePauseToggle,
   pickNeighboringTurnHeader,
+  clampZoom,
 } from '../utils/spectatorKeybindings'
 import { isNotableAction, explainAction } from '../utils/actionExplain'
 import { computeTooltipPlacement, MIN_VIEWPORT_MARGIN } from '../utils/mobileLayout'
@@ -447,6 +449,12 @@ export default function Spectator() {
   const heatmapDrawnRef = useRef([])
   const [heatmapTip, setHeatmapTip] = useState(null)
   const [helpOpen, setHelpOpen] = useState(false)
+  // R60: zoom factor for the seats grid + lower-pane area. Stepped
+  // via the `[` / `]` shortcuts through ZOOM_MARKS. Applied as a CSS
+  // transform: scale() on the spectator-content wrapper so layout
+  // ribbons (top tape, phase ribbon, replay slider) stay at their
+  // baseline size while the densest panels scale together.
+  const [zoom, setZoom] = useState(1.0)
   // Pre-pause speed memory. Null while playing; holds the multiplier
   // to restore when the user presses Space to resume. Lives in a ref
   // so the keydown listener can read the latest value without being
@@ -553,6 +561,12 @@ export default function Spectator() {
           break
         case 'nextTurn':
           scrollLogByTurn('next')
+          break
+        case 'zoomOut':
+          setZoom((z) => clampZoom(z, ZOOM_MARKS, -1))
+          break
+        case 'zoomIn':
+          setZoom((z) => clampZoom(z, ZOOM_MARKS, +1))
           break
         case 'toggleHelp':
           setHelpOpen((v) => !v)
@@ -841,7 +855,22 @@ export default function Spectator() {
         right={`GAME ${game.game_id} / ${rt(game.turn)}`}
       />
 
-      <div className="spectator-layout">
+      <div
+        className="spectator-layout"
+        style={{
+          // R60: bracket-key zoom. Scale + transform-origin top so the
+          // grid stretches downward instead of jumping out of the
+          // viewport. Width compensates for the scale so the layout
+          // doesn't leave horizontal whitespace at z<1 / clip at z>1.
+          // Skip the inline styles entirely at the design baseline so
+          // the un-zoomed path stays byte-identical to pre-R60.
+          ...(zoom !== 1.0 ? {
+            transform: `scale(${zoom})`,
+            transformOrigin: 'top center',
+            width: `${100 / zoom}%`,
+          } : null),
+        }}
+      >
         {/* Ambient blurred-art background — uses the active (or seat 0)
             commander's art_crop. Blur + brightness handled by .art-ambience.
             Crossfades between commanders so the color-identity bleed
