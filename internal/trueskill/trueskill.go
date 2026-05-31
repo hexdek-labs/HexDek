@@ -201,6 +201,16 @@ func Update2Player(cfg Config, winner, loser Rating) (Rating, Rating) {
 func UpdateDraw(cfg Config, a, b Rating) (Rating, Rating) {
 	sigmaA2 := a.Sigma*a.Sigma + cfg.Tau*cfg.Tau
 	sigmaB2 := b.Sigma*b.Sigma + cfg.Tau*cfg.Tau
+	inflatedA := Rating{Mu: a.Mu, Sigma: math.Sqrt(sigmaA2)}
+	inflatedB := Rating{Mu: b.Mu, Sigma: math.Sqrt(sigmaB2)}
+	return updateDrawRaw(cfg, inflatedA, inflatedB)
+}
+
+// updateDrawRaw is the core 2-player draw update without dynamics factor
+// (caller pre-inflates sigma). Used internally by UpdateMultiplayer.
+func updateDrawRaw(cfg Config, a, b Rating) (Rating, Rating) {
+	sigmaA2 := a.Sigma * a.Sigma
+	sigmaB2 := b.Sigma * b.Sigma
 
 	c := math.Sqrt(2*cfg.Beta*cfg.Beta + sigmaA2 + sigmaB2)
 	t := (a.Mu - b.Mu) / c
@@ -230,8 +240,42 @@ func UpdateDraw(cfg Config, a, b Rating) (Rating, Rating) {
 }
 
 // UpdateMultiplayer processes a multiplayer free-for-all game result using
-// pairwise decomposition. ranks[i] is the finishing position of player i
-// (0 = winner, 1 = second, etc). Returns updated ratings in the same order.
+// ALL-PAIRS pairwise decomposition. ranks[i] is the finishing position of
+// player i (0 = winner, 1 = second, ...; ties allowed). Returns updated
+// ratings in the same order.
+//
+// Rationale (R60 fix): the previous implementation walked the rank-sorted
+// adjacency chain — n-1 pairwise updates between consecutive ranks. That
+// shape under-credits the winner in tied-loser FFA outcomes. For a 4-
+// player Commander pod with ranks [0, 1, 1, 1] (one winner, three tied
+// losers — by far the dominant outcome shape since seat eliminations
+// rarely play out to a strict 4-way ordering once the game ends), the
+// adjacency chain produced:
+//
+//   - (winner vs loser1): decisive — winner +Δ, loser1 -Δ
+//   - (loser1 vs loser2): draw — small adjustments
+//   - (loser2 vs loser3): draw — small adjustments
+//
+// i.e. the winner only received credit for beating ONE of the three
+// losers, and the other two losers received no decisive-loss signal at
+// all. The showmatch updateELO path papered over the missing-winner-
+// credit half by calling Update2Player three times pairwise; this
+// triple-counted the loser side (each loser saw a full 1v1 decisive
+// loss against a winner whose signal was already inflated by the chain).
+// Net effect: losers' μ collapsed ~3× faster than 4P FFA's 25% win-
+// expectation justified, badly miscalibrating the rating ladder.
+//
+// All-pairs decomposition is the standard fix and matches the Microsoft
+// 2007 paper's factor-graph interpretation for FFA: each pair (i, j)
+// contributes one rank-consistent comparison — decisive when ranks
+// differ, draw when ranks tie. For [0, 1, 1, 1] this becomes:
+//
+//   - (winner, L1) decisive, (winner, L2) decisive, (winner, L3) decisive
+//   - (L1, L2) draw, (L1, L3) draw, (L2, L3) draw
+//
+// Conservation: winner gains ~3·Δ; each loser loses ~Δ (the draws among
+// equal-μ losers wash out to ~0). Total signal mass is preserved at
+// roughly zero, matching FFA's 1-in-n win expectation per seat.
 func UpdateMultiplayer(cfg Config, ratings []Rating, ranks []int) []Rating {
 	n := len(ratings)
 	if n < 2 || len(ranks) != n {
@@ -240,52 +284,80 @@ func UpdateMultiplayer(cfg Config, ratings []Rating, ranks []int) []Rating {
 		return out
 	}
 
-	// Build sorted order by rank (best to worst).
-	type indexed struct {
-		origIdx int
-		rank    int
-		rating  Rating
+	// Pre-inflate σ² by dynamics noise (τ²) once per player. Pairwise
+	// updates use this starting state for BOTH players in every pair —
+	// updates are decoupled (order-independent) so the [0, 1, 1, 1]
+	// rank shape gives every tied loser an identical update.
+	sigma2 := make([]float64, n)
+	for i, r := range ratings {
+		sigma2[i] = r.Sigma*r.Sigma + cfg.Tau*cfg.Tau
 	}
-	sorted := make([]indexed, n)
-	for i := range ratings {
-		sorted[i] = indexed{origIdx: i, rank: ranks[i], rating: ratings[i]}
-	}
-	sort.SliceStable(sorted, func(i, j int) bool {
-		return sorted[i].rank < sorted[j].rank
-	})
 
-	// Accumulate mu/sigma deltas from pairwise updates.
+	// All-pairs decomposition with DECOUPLED updates: each pair (i, j)
+	// computes its v/w from the starting (τ-inflated) state. μ-deltas
+	// accumulate additively; σ² shrinks multiplicatively (the factor-
+	// graph precision-update is multiplicative across independent pair-
+	// constraints). For n=4 that's 6 pairs — negligible cost.
 	muDelta := make([]float64, n)
-	sigmaNew := make([]float64, n)
-	for i := range sigmaNew {
-		sigmaNew[i] = math.Sqrt(ratings[i].Sigma*ratings[i].Sigma + cfg.Tau*cfg.Tau)
-	}
+	sigma2New := make([]float64, n)
+	copy(sigma2New, sigma2)
+	epsilon := drawMargin(cfg.DrawProbability, cfg.Beta)
 
-	for k := 0; k < len(sorted)-1; k++ {
-		wi := sorted[k].origIdx
-		li := sorted[k+1].origIdx
+	for i := 0; i < n-1; i++ {
+		for j := i + 1; j < n; j++ {
+			si2, sj2 := sigma2[i], sigma2[j]
+			c := math.Sqrt(2*cfg.Beta*cfg.Beta + si2 + sj2)
+			epsC := epsilon / c
 
-		w := Rating{Mu: ratings[wi].Mu + muDelta[wi], Sigma: sigmaNew[wi]}
-		l := Rating{Mu: ratings[li].Mu + muDelta[li], Sigma: sigmaNew[li]}
+			// Identify winner perspective for the v/w call. Lower rank
+			// is better (rank 0 = winner). Ties use the draw v/w.
+			var v, w float64
+			var winnerIdx, loserIdx int
+			var winnerS2, loserS2 float64
+			switch {
+			case ranks[i] == ranks[j]:
+				t := (ratings[i].Mu - ratings[j].Mu) / c
+				absT := math.Abs(t)
+				denom := normCDF(epsC-absT) - normCDF(-epsC-absT)
+				if denom < 1e-15 {
+					continue
+				}
+				v = (normPDF(absT-epsC) - normPDF(absT+epsC)) / denom
+				if t < 0 {
+					v = -v
+				}
+				w = (normPDF(absT-epsC)*(absT-epsC) + normPDF(absT+epsC)*(absT+epsC)) / denom
+				// Draw: convention — treat i as "winner side" for the
+				// μ-delta sign; v already carries the sign of (μ_i - μ_j).
+				winnerIdx, loserIdx = i, j
+				winnerS2, loserS2 = si2, sj2
+			case ranks[i] < ranks[j]:
+				winnerIdx, loserIdx = i, j
+				winnerS2, loserS2 = si2, sj2
+				t := (ratings[i].Mu - ratings[j].Mu) / c
+				v = vWin(t, epsC)
+				w = wWin(t, epsC)
+			default:
+				winnerIdx, loserIdx = j, i
+				winnerS2, loserS2 = sj2, si2
+				t := (ratings[j].Mu - ratings[i].Mu) / c
+				v = vWin(t, epsC)
+				w = wWin(t, epsC)
+			}
 
-		var wNew, lNew Rating
-		if sorted[k].rank == sorted[k+1].rank {
-			wNew, lNew = UpdateDraw(cfg, w, l)
-		} else {
-			wNew, lNew = update2PlayerRaw(cfg, w, l)
+			muDelta[winnerIdx] += (winnerS2 / c) * v
+			muDelta[loserIdx] -= (loserS2 / c) * v
+			sigma2New[winnerIdx] *= 1 - (winnerS2/(c*c))*w
+			sigma2New[loserIdx] *= 1 - (loserS2/(c*c))*w
 		}
-
-		muDelta[wi] += wNew.Mu - w.Mu
-		muDelta[li] += lNew.Mu - l.Mu
-		sigmaNew[wi] = wNew.Sigma
-		sigmaNew[li] = lNew.Sigma
 	}
 
 	out := make([]Rating, n)
 	for i := range ratings {
+		s2 := math.Max(sigma2New[i], 1e-6)
 		out[i] = Rating{
 			Mu:    ratings[i].Mu + muDelta[i],
-			Sigma: sigmaNew[i],
+			Sigma: math.Sqrt(s2),
 		}
 	}
 	return out

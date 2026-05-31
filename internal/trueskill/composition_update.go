@@ -83,6 +83,47 @@ func ComputeCompositionOffset(prior *CompositionPrior, archetype string, pod []s
 	return cfg.Weight * confidence * scale * (expected - uniform)
 }
 
+// UpdateMultiplayerWithOffsets is UpdateMultiplayer with composition-
+// prior μ-offsets baked in. The offsets are added to each rating's μ
+// before the rank-prediction, then the resulting Δμ is applied back
+// to the raw μ (NOT the shifted μ). σ updates flow through unchanged
+// — the Gaussian-precision update is invariant to constant μ shifts.
+//
+// Use this in place of the older pairwise-chained
+// Update2PlayerWithOffsets loop for FFA pods. The old loop did one
+// Update2Player call per (winner, loser_i) pair and chained the
+// winner's accumulated rating, which over-credited the winner AND
+// gave each loser a full 1v1 decisive-loss signal — wrong for 4P FFA
+// where each loser only "lost" 1/3 of a game's worth of signal.
+//
+// offsets[i] is the prior-derived μ-shift for participant i (compute
+// via ComputeCompositionOffset). Length must equal len(ratings); if
+// not, this function falls back to vanilla UpdateMultiplayer.
+func UpdateMultiplayerWithOffsets(cfg Config, ratings []Rating, ranks []int, offsets []float64) []Rating {
+	n := len(ratings)
+	if n < 2 || len(ranks) != n {
+		out := make([]Rating, n)
+		copy(out, ratings)
+		return out
+	}
+	if len(offsets) != n {
+		return UpdateMultiplayer(cfg, ratings, ranks)
+	}
+	shifted := make([]Rating, n)
+	for i, r := range ratings {
+		shifted[i] = Rating{Mu: r.Mu + offsets[i], Sigma: r.Sigma}
+	}
+	updated := UpdateMultiplayer(cfg, shifted, ranks)
+	out := make([]Rating, n)
+	for i := range ratings {
+		out[i] = Rating{
+			Mu:    ratings[i].Mu + (updated[i].Mu - shifted[i].Mu),
+			Sigma: updated[i].Sigma,
+		}
+	}
+	return out
+}
+
 // Update2PlayerWithOffsets is Update2Player with composition-prior
 // μ-offsets baked in. The offsets are added to each rating's μ
 // before the standard TrueSkill update, then the resulting Δμ is

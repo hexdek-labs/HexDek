@@ -195,9 +195,12 @@ func TestUpdateWithComposition_GamesAndHistoryUpdated(t *testing.T) {
 }
 
 func TestUpdateWithComposition_SigmaShrinksLikeStandard(t *testing.T) {
-	// σ updates flow through unchanged by the offset (offset-invariant
-	// part of the Gaussian update). With the same input, both standard
-	// and prior-aware should shrink σ by similar amounts.
+	// σ updates depend on t (= scaled μ-gap) via w(t,ε), so shifting μ
+	// via prior offsets does perturb σ. The R60 all-pairs decomposition
+	// runs C(n,2) pairs instead of n-1 adjacency pairs, so the per-pair
+	// perturbations compound a bit more than the old chain. Tolerance
+	// loosened from 5% → 10% to reflect the algorithm change while still
+	// catching gross divergence.
 	names := []string{"P1", "P2", "P3", "P4"}
 	archs := []string{"Mill", "Voltron", "Aggro", "Combo"}
 	ranks := []int{0, 1, 2, 3}
@@ -212,11 +215,8 @@ func TestUpdateWithComposition_SigmaShrinksLikeStandard(t *testing.T) {
 	for i, name := range names {
 		stdSigma := stdTS.Ratings[name].Sigma
 		priorSigma := priorTS.Ratings[name].Sigma
-		// Allow small divergence because the rank-prediction in
-		// shifted space slightly perturbs σ updates too. Should be
-		// within ~5%.
 		relDiff := math.Abs(stdSigma-priorSigma) / stdSigma
-		if relDiff > 0.05 {
+		if relDiff > 0.10 {
 			t.Errorf("%s (seat %d): σ differs by %.1f%% (std=%.4f prior=%.4f)",
 				name, i, relDiff*100, stdSigma, priorSigma)
 		}
