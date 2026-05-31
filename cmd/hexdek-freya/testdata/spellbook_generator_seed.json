@@ -1,0 +1,245 @@
+{
+  "variants": [
+    {
+      "id": "spbk-devoted-vizier",
+      "status": "OK",
+      "identity": "G",
+      "description": "Devoted Druid taps for G then puts a -1/-1 counter on itself to untap. Vizier of Remedies prevents the -1/-1 counter, enabling infinite green mana.",
+      "uses": [
+        {"card": {"name": "Devoted Druid"}, "quantity": 1},
+        {"card": {"name": "Vizier of Remedies"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Infinite green mana"}}]
+    },
+    {
+      "id": "spbk-bloom-freed",
+      "status": "OK",
+      "identity": "GU",
+      "description": "Bloom Tender taps for one mana of each color you control. Freed from the Real lets you pay U to untap. With 2+ colors including U, this is infinite mana.",
+      "uses": [
+        {"card": {"name": "Bloom Tender"}, "quantity": 1},
+        {"card": {"name": "Freed from the Real"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Infinite colored mana"}}]
+    },
+    {
+      "id": "spbk-bloom-pemmins",
+      "status": "OK",
+      "identity": "GU",
+      "description": "Bloom Tender taps for one mana of each color. Pemmin's Aura lets you pay U to untap. Infinite colored mana.",
+      "uses": [
+        {"card": {"name": "Bloom Tender"}, "quantity": 1},
+        {"card": {"name": "Pemmin's Aura"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Infinite colored mana"}}]
+    },
+    {
+      "id": "spbk-pestermite-twin",
+      "status": "OK",
+      "identity": "UR",
+      "description": "Splinter Twin on Pestermite. Tap to make a hasty copy that untaps Pestermite. Repeat for infinite hasty fliers.",
+      "uses": [
+        {"card": {"name": "Pestermite"}, "quantity": 1},
+        {"card": {"name": "Splinter Twin"}, "quantity": 1}
+      ],
+      "produces": [
+        {"feature": {"name": "Infinite hasty creature tokens"}},
+        {"feature": {"name": "Win the game"}}
+      ]
+    },
+    {
+      "id": "spbk-pestermite-kiki",
+      "status": "OK",
+      "identity": "UR",
+      "description": "Kiki-Jiki copies Pestermite, copy untaps Kiki-Jiki, repeat for infinite hasty creature tokens.",
+      "uses": [
+        {"card": {"name": "Pestermite"}, "quantity": 1},
+        {"card": {"name": "Kiki-Jiki, Mirror Breaker"}, "quantity": 1}
+      ],
+      "produces": [
+        {"feature": {"name": "Infinite hasty creature tokens"}},
+        {"feature": {"name": "Win the game"}}
+      ]
+    },
+    {
+      "id": "spbk-vizkopa-sang",
+      "status": "OK",
+      "identity": "WB",
+      "description": "Vizkopa Guildmage activated: whenever you gain life this turn each opponent loses that much life. Sanguine Bond: when an opponent loses life you gain that much. Infinite drain.",
+      "uses": [
+        {"card": {"name": "Vizkopa Guildmage"}, "quantity": 1},
+        {"card": {"name": "Sanguine Bond"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Win the game"}}]
+    },
+    {
+      "id": "spbk-heliod-feeder",
+      "status": "OK",
+      "identity": "W",
+      "description": "Spike Feeder gains 2 life, Heliod puts a +1/+1 counter on Spike Feeder (lifelink trigger). Remove two counters from Spike Feeder to gain 2 life. Infinite life.",
+      "uses": [
+        {"card": {"name": "Spike Feeder"}, "quantity": 1},
+        {"card": {"name": "Heliod, Sun-Crowned"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Infinite life"}}]
+    },
+    {
+      "id": "spbk-helm-rip",
+      "status": "OK",
+      "identity": "W",
+      "description": "Activate Helm of Obedience for X=0 with Rest in Peace on the battlefield. Each card milled is exiled, never satisfying the X creatures condition, milling the entire library.",
+      "uses": [
+        {"card": {"name": "Helm of Obedience"}, "quantity": 1},
+        {"card": {"name": "Rest in Peace"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Win the game"}}]
+    },
+    {
+      "id": "spbk-helm-leyline",
+      "status": "OK",
+      "identity": "B",
+      "description": "Same as Helm + Rest in Peace, using Leyline of the Void as the graveyard-replacement.",
+      "uses": [
+        {"card": {"name": "Helm of Obedience"}, "quantity": 1},
+        {"card": {"name": "Leyline of the Void"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Win the game"}}]
+    },
+    {
+      "id": "spbk-power-basalt",
+      "status": "OK",
+      "identity": "U",
+      "description": "Basalt Monolith costs {3} to untap with Power Artifact reducing the cost by {2}. Net 1 mana per untap, generating infinite colorless mana.",
+      "uses": [
+        {"card": {"name": "Power Artifact"}, "quantity": 1},
+        {"card": {"name": "Basalt Monolith"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Infinite colorless mana"}}]
+    },
+    {
+      "id": "spbk-pili-grand",
+      "status": "OK",
+      "identity": "UR",
+      "description": "Grand Architect makes Pili-Pala blue and pumps it. Tap Pili-Pala for two of any color, spend two to untap. Infinite colored mana.",
+      "uses": [
+        {"card": {"name": "Pili-Pala"}, "quantity": 1},
+        {"card": {"name": "Grand Architect"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Infinite colored mana"}}]
+    },
+    {
+      "id": "spbk-time-sieve",
+      "status": "OK",
+      "identity": "UB",
+      "description": "Thopter Assembly returns to hand at upkeep if you control no Thopter tokens, then ETBs creating 5 Thopters. Time Sieve sacrifices five artifacts for an extra turn. Infinite turns.",
+      "uses": [
+        {"card": {"name": "Time Sieve"}, "quantity": 1},
+        {"card": {"name": "Thopter Assembly"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Infinite turns"}}]
+    },
+    {
+      "id": "spbk-mindcrank-bloodchief",
+      "status": "OK",
+      "identity": "UB",
+      "description": "Activate Bloodchief Ascension's quest to start draining. Any 1 damage triggers Mindcrank for a mill, which counts as life loss for Bloodchief, which mills again. Infinite drain.",
+      "uses": [
+        {"card": {"name": "Mindcrank"}, "quantity": 1},
+        {"card": {"name": "Bloodchief Ascension"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Win the game"}}]
+    },
+    {
+      "id": "spbk-nivparun-curiosity",
+      "status": "OK",
+      "identity": "UR",
+      "description": "Niv-Mizzet, Parun deals 1 damage when you draw, Curiosity makes you draw when Niv deals damage. Loop until opponents are dead.",
+      "uses": [
+        {"card": {"name": "Niv-Mizzet, Parun"}, "quantity": 1},
+        {"card": {"name": "Curiosity"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Win the game"}}]
+    },
+    {
+      "id": "spbk-nivfire-curiosity",
+      "status": "OK",
+      "identity": "UR",
+      "description": "Niv-Mizzet, the Firemind + Curiosity: same loop as Parun variant.",
+      "uses": [
+        {"card": {"name": "Niv-Mizzet, the Firemind"}, "quantity": 1},
+        {"card": {"name": "Curiosity"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Win the game"}}]
+    },
+    {
+      "id": "spbk-nivparun-ophidian",
+      "status": "OK",
+      "identity": "UR",
+      "description": "Niv-Mizzet damage triggers draw via Ophidian Eye (same draw-on-combat-damage shape adapted for Niv's noncombat ping).",
+      "uses": [
+        {"card": {"name": "Niv-Mizzet, Parun"}, "quantity": 1},
+        {"card": {"name": "Ophidian Eye"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Win the game"}}]
+    },
+    {
+      "id": "spbk-selvala-umbral",
+      "status": "OK",
+      "identity": "G",
+      "description": "Selvala, Heart of the Wilds: tap for mana equal to greatest power on battlefield. Umbral Mantle untaps for 3 mana if creature has power >= 4. With Selvala's power >= 4 (counter/anthem) this is infinite mana.",
+      "uses": [
+        {"card": {"name": "Selvala, Heart of the Wilds"}, "quantity": 1},
+        {"card": {"name": "Umbral Mantle"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Infinite mana"}}]
+    },
+    {
+      "id": "spbk-bloom-umbral",
+      "status": "OK",
+      "identity": "GU",
+      "description": "Bloom Tender + Umbral Mantle requires Bloom Tender to be power >= 4 (anthem). When met, generates infinite colored mana per color you control.",
+      "uses": [
+        {"card": {"name": "Bloom Tender"}, "quantity": 1},
+        {"card": {"name": "Umbral Mantle"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Infinite colored mana"}}]
+    },
+    {
+      "id": "spbk-cloud-earthcraft",
+      "status": "OK",
+      "identity": "GU",
+      "description": "Cloud of Faeries untaps two lands; Earthcraft taps a creature to untap a land. Plus a sac outlet token engine, infinite ETBs.",
+      "uses": [
+        {"card": {"name": "Cloud of Faeries"}, "quantity": 1},
+        {"card": {"name": "Earthcraft"}, "quantity": 1},
+        {"card": {"name": "Squirrel Nest"}, "quantity": 1}
+      ],
+      "produces": [
+        {"feature": {"name": "Infinite creature tokens"}},
+        {"feature": {"name": "Win the game"}}
+      ]
+    },
+    {
+      "id": "spbk-mikaeus-triskelion",
+      "status": "OK",
+      "identity": "B",
+      "description": "Curated duplicate: Mikaeus + Triskelion (already in Freya's hand-curated set). Should be dropped at merge time.",
+      "uses": [
+        {"card": {"name": "Mikaeus, the Unhallowed"}, "quantity": 1},
+        {"card": {"name": "Triskelion"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Win the game"}}]
+    },
+    {
+      "id": "spbk-heliod-ballista",
+      "status": "OK",
+      "identity": "W",
+      "description": "Curated duplicate: Heliod + Walking Ballista (already in Freya's hand-curated set).",
+      "uses": [
+        {"card": {"name": "Walking Ballista"}, "quantity": 1},
+        {"card": {"name": "Heliod, Sun-Crowned"}, "quantity": 1}
+      ],
+      "produces": [{"feature": {"name": "Win the game"}}]
+    }
+  ]
+}
