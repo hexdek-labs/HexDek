@@ -99,7 +99,7 @@ func main() {
 	flag.StringVar(&deckDir, "all-decks", "", "analyze all decks in directory")
 	flag.StringVar(&format, "format", "text", "output format: text, markdown, json")
 	flag.StringVar(&FocusMode, "mode", "full",
-		"text-format display mode: full (default — complete fixed-order report) or focus (under-25-line prioritized summary — picks the 3 most insight-bearing sections for the archetype)")
+		"text-format display mode: full (default — complete fixed-order report), focus (under-25-line prioritized summary — picks the 3 most insight-bearing sections for the archetype), or metrics (Freya output-quality scorecard + Freya-vs-Freya consistency probe; single-deck only). --format json on metrics emits the FreyaMetrics struct directly.")
 	flag.StringVar(&spellbookCache, "spellbook", DefaultSpellbookCache,
 		"path to Commander Spellbook variants JSON cache (loaded if present)")
 	flag.StringVar(&spellbookFetchURL, "spellbook-fetch", "",
@@ -175,6 +175,22 @@ func main() {
 		report, err := analyzeDeckFile(deckPath, oracle, mechDB)
 		if err != nil {
 			log.Fatalf("analyze deck: %v", err)
+		}
+		// --mode metrics short-circuits the normal report renderer: emit
+		// the output-quality scorecard (and a Freya-vs-Freya consistency
+		// probe) instead. Used by CI dashboards to catch quality
+		// regressions across PRs without diffing the full freeform
+		// report.
+		if FocusMode == "metrics" {
+			metrics := ComputeMetrics(report)
+			probe, err := RunConsistencyProbe(deckPath, oracle, mechDB)
+			if err != nil {
+				log.Printf("consistency probe: %v (continuing with metrics-only output)", err)
+			} else {
+				metrics.Consistency = probe
+			}
+			PrintMetricsReport(os.Stdout, metrics, format)
+			return
 		}
 		PrintReport(os.Stdout, report, format)
 		// Auto-save to freya/ subfolder alongside the deck file.
