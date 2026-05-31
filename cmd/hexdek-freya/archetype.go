@@ -298,6 +298,19 @@ type classifyContext struct {
 	// from merely-optimized B4.
 	freeInteractionCount int
 	freeInteractionNames []string
+	// mldCount tracks mass-land-destruction effects (Armageddon, Wildfire,
+	// Catastrophe, Ravages of War, Jokulhaups, Obliterate, etc.). MLD is
+	// an explicit B4 marker per the official CommanderBracket.com rubric
+	// ("Mass land destruction allowed at Bracket 4, NOT at Bracket 3"),
+	// so a single MLD piece warrants both a raw-score contribution AND a
+	// ceiling lift past B3 even without a Game Changer or winning combo
+	// being present. Curated against a name list (mldList) rather than
+	// oracle-text scanning because the MLD phrase is varied ("destroy all
+	// lands", "each player sacrifices N lands", "exile all permanents")
+	// and the false-positive surface of pattern-matching is too wide
+	// (single-target Stone Rain / Strip Mine effects would noise-match).
+	mldCount int
+	mldNames []string
 	profiles       []CardProfile
 	qtyProfiles    []CardProfileQty
 	oracle         *oracleDB
@@ -332,6 +345,59 @@ var cedhFreeInteractionList = map[string]bool{
 	"subtlety": true, "endurance": true, "solitude": true, "grief": true, "fury": true,
 	// Other 0-mana / free alternative-cost interaction
 	"snapback": true, "unmask": true, "chain of vapor": true,
+}
+
+// mldList is the curated set of mass-land-destruction effects that are
+// an explicit B4 marker per the official CommanderBracket.com rubric.
+// "Mass" here means symmetric multi-land kill or per-player land
+// sacrifice — single-target Stone Rain / Strip Mine / Wasteland are NOT
+// MLD even though they kill lands. The bracket framework treats MLD as
+// the deck-shape signal that a deck is willing to reset boards
+// asymmetrically (the MLD player's mana is usually ramp-faster, so they
+// recover first); B3 explicitly disallows it, B4 explicitly allows it.
+//
+// Pattern coverage:
+//   - "Destroy all lands" effects: Armageddon, Catastrophe, Ravages of War,
+//     Devastation, Wildfire, Burning of Xinye, Decree of Annihilation,
+//     Obliterate, Jokulhaups, Apocalypse, Worldfire, Boom // Bust
+//   - Mass-sacrifice / "each player sacrifices N lands": Cataclysm,
+//     Cleansing, Impending Disaster, Sunder, Boil-equivalents at scale
+//   - Asymmetric "you destroy lands" Edicts at the mass scale:
+//     Pestilence-style? — intentionally excluded; the gate is multi-land
+//     kill, not single-land asymmetric removal.
+//
+// Edge cases intentionally EXCLUDED:
+//   - Land-tax / cumulative-upkeep slow-attrition (Magus of the Tabernacle):
+//     drains lands over many turns but doesn't reset the board.
+//   - Acid Rain / Boil / Choke (color-hate single-color land kill): too
+//     narrow to be the symmetric reset signal — these are sideboard cards,
+//     not deck-shape signals.
+//   - Strip Mine / Wasteland / Tectonic Edge (single-target): a B3 deck
+//     can run 4-5 of these without being B4.
+var mldList = map[string]bool{
+	"armageddon":             true,
+	"ravages of war":         true,
+	"catastrophe":            true,
+	"devastation":            true,
+	"wildfire":               true,
+	"burning of xinye":       true,
+	"decree of annihilation": true,
+	"obliterate":             true,
+	"jokulhaups":             true,
+	"apocalypse":             true,
+	"worldfire":              true,
+	"boom // bust":           true,
+	"cataclysm":              true,
+	"cleansing":              true,
+	"impending disaster":     true,
+	"sunder":                 true,
+	"global ruin":            true,
+	"epicenter":              true,
+	"keldon firebombers":     true,
+	"myojin of infinite rage": true,
+	"avatar of fury":         true,
+	"argothian wurm":         true,
+	"plague of vermin":       true,
 }
 
 // tappedETBRocks is the curated set of CMC-≤2 artifact ramp pieces that
@@ -1175,6 +1241,10 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 			ctx.freeInteractionCount += qp.Qty
 			ctx.freeInteractionNames = append(ctx.freeInteractionNames, qp.Profile.Name)
 		}
+		if mldList[nameLower] {
+			ctx.mldCount += qp.Qty
+			ctx.mldNames = append(ctx.mldNames, qp.Profile.Name)
+		}
 		nonlandTotal += qp.Qty
 		tl := strings.ToLower(qp.Profile.TypeLine)
 
@@ -1611,6 +1681,26 @@ var twoCardCategoricalWinClasses = map[string]bool{
 func hasTwoCardCategoricalWin(combos []ComboResult) bool {
 	for _, c := range combos {
 		if len(c.Cards) == 2 && twoCardCategoricalWinClasses[c.Class] {
+			return true
+		}
+	}
+	return false
+}
+
+// hasCategoricalWinClassInList returns true if any combo in the list has
+// a Class in twoCardCategoricalWinClasses, regardless of card count.
+// Companion to hasTwoCardCategoricalWin — that function gates on the
+// 2-card carveout from WotC's bracket framework ("winning 2-card combo
+// is a B4 marker"), while this one is the broader class-gate used by
+// hasReliableWinningCombo to exclude Class=="unknown" /
+// ComboClassLockdown / ComboClassManaSink / ComboClassBlinkEngine /
+// ComboClassETBPayoff / ComboClassETBDoubler true_infinites from the
+// "reliable winning combo" predicate (those classes don't categorically
+// win the game on their own — they require an outlet the deck may or
+// may not have, or they loop to a draw without a kill piece).
+func hasCategoricalWinClassInList(combos []ComboResult) bool {
+	for _, c := range combos {
+		if twoCardCategoricalWinClasses[c.Class] {
 			return true
 		}
 	}
@@ -2520,6 +2610,23 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 			fmt.Sprintf("%d pitch/phyrexian/commander-free piece", ctx.freeInteractionCount),
 			ctx.freeInteractionNames, 1)
 	}
+
+	// Mass land destruction — explicit B4 marker per CommanderBracket.com
+	// ("MLD allowed at Bracket 4, NOT at Bracket 3"). 1 piece earns +1
+	// raw and qualifies for the MLD ceiling lift; 2+ pieces earns +2
+	// because deliberately running multiple MLD effects is a deck-shape
+	// statement, not an incidental include.
+	switch {
+	case ctx.mldCount >= 2:
+		addScore("Mass land destruction", "2+",
+			fmt.Sprintf("%d MLD effect(s)", ctx.mldCount),
+			ctx.mldNames, 2)
+	case ctx.mldCount >= 1:
+		addScore("Mass land destruction", "1",
+			fmt.Sprintf("%d MLD effect", ctx.mldCount),
+			ctx.mldNames, 1)
+	}
+
 	score := rationale.RawScore
 
 	var bracket int
@@ -2604,7 +2711,22 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 	// win shape (damage/drain/mill/library-exile/combat/storm/tokens).
 	// Mana-into-win combos are intentionally NOT in the win-class set
 	// — infinite mana without a sink is just acceleration, not a win.
-	hasWinningCombo := trueInfCount >= 1 ||
+	// hasWinningCombo is the broad "any winning-combo evidence" predicate
+	// used by the GC=1-3 ceiling carveout and as the union side of the
+	// heuristicWinningCombo split below. The bare `trueInfCount >= 1`
+	// arm was previously over-permissive: a true_infinite with
+	// Class=="unknown" / ComboClassLockdown / ComboClassManaSink /
+	// ComboClassBlinkEngine / ComboClassETBPayoff / ComboClassETBDoubler
+	// doesn't actually win the game — it loops to a draw, locks the
+	// table, or generates value without a kill piece. The nazgul B3 →
+	// B4 false-positive was a Cremate + Unearth loop classed as
+	// "unknown" with NO OUTLET (engine annotation: "draws the game")
+	// that this predicate lifted into the B4 carveout. Class-gate the
+	// true_infinite arm via hasCategoricalWinClassInList so the
+	// "unknown / lockdown / value-engine" classes are excluded
+	// consistently with the 2-card carveout's hasTwoCardCategoricalWin
+	// gate.
+	hasWinningCombo := hasCategoricalWinClassInList(report.TrueInfinites) ||
 		hasTwoCardCategoricalWin(report.TrueInfinites) ||
 		hasTwoCardCategoricalWin(report.Determined)
 	// Finisher-density override: many distinct closer lines + accelerator
@@ -2630,13 +2752,19 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 		}
 	} else if ctx.gameChangerCount <= 3 {
 		// Light GC presence: B3 cap by default; lifts to B4 when a real
-		// winning combo or tuned-redundancy signal is present.
-		if hasWinningCombo || tunedRedundancy {
+		// winning combo, tuned-redundancy signal, or mass-land-destruction
+		// piece is present. MLD is in the carveout list because the
+		// official CommanderBracket.com rubric makes it an explicit B4
+		// marker ("MLD allowed at B4, NOT at B3") regardless of GC density
+		// — a deck willing to symmetrically reset lands has accepted the
+		// asymmetric tempo advantage MLD provides to the caster, which is
+		// the deck-shape statement B3 doesn't allow.
+		if hasWinningCombo || tunedRedundancy || ctx.mldCount >= 1 {
 			if bracket > 4 {
 				bracket = 4
 				label = "Optimized"
 				addAdjustment("GC=1-3 ceiling", "ceiling",
-					"capped at B4: winning combo or tuned-redundancy signal present")
+					"capped at B4: winning combo, tuned-redundancy, or MLD signal present")
 			}
 		} else if bracket > 3 {
 			bracket = 3
@@ -2702,7 +2830,19 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 	// (trueInfinites). With at least one Game Changer the deck has
 	// SOMETHING signaling deliberate optimization, so the heuristic
 	// arm is allowed to lift.
-	hasReliableWinningCombo := trueInfCount >= 1 ||
+	// hasReliableWinningCombo gates the Winning-combo floor. The bare
+	// `trueInfCount >= 1` arm in the prior implementation was too
+	// permissive: a true_infinite with Class=="unknown" or
+	// Class==ComboClassLockdown/ManaSink/BlinkEngine/ETBPayoff/ETBDoubler
+	// doesn't actually win the game — it loops to a draw, locks the
+	// table, or generates value without a kill piece. The nazgul B3
+	// false-positive (PR #X) was a Cremate+Unearth loop classed as
+	// "unknown" with NO OUTLET that the prior arm lifted to B4. The
+	// fix: count true_infinites only if their Class is in the
+	// categorical-win set (the same set hasTwoCardCategoricalWin uses
+	// for 2-card combos), so the class-gating semantics are uniform
+	// across the 2-card and 3-card-plus arms.
+	hasReliableWinningCombo := hasCategoricalWinClassInList(report.TrueInfinites) ||
 		hasTwoCardCategoricalWin(report.TrueInfinites)
 	heuristicWinningCombo := hasWinningCombo && !hasReliableWinningCombo
 
@@ -2750,6 +2890,62 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 			fmt.Sprintf("lifted to Bracket 4 — %d different ways to close the game backed by %d cheap mana producers (CMC 2 or less) means this deck reliably draws both a finisher and the mana to cast it on the same turn. That \"finisher + mana on curve\" reliability is what makes a deck play at Bracket 4, even without a single standout card. Corroborating signals: %d Game Changer(s), %d true-infinite combo(s), %.0f%% tutor density. Raw score was B%d before this floor.",
 				finisherCount, ctx.fastManaCount,
 				ctx.gameChangerCount, trueInfCount, ctx.tutorDensity*100,
+				preFloorBracket))
+	}
+
+	// Mass-land-destruction floor. MLD is an explicit B4 marker per the
+	// official CommanderBracket.com rubric ("MLD allowed at Bracket 4,
+	// NOT at Bracket 3"). Even a single Armageddon / Ravages of War /
+	// Wildfire / Jokulhaups / Obliterate is enough to disqualify a deck
+	// from the B3 ceiling — the deck has chosen the asymmetric tempo
+	// gambit of symmetrically resetting lands, which is the deck-shape
+	// statement B3 explicitly disallows. Unlike the Tuned-redundancy
+	// floor this floor needs no GC / tutor / combo corroboration: the
+	// MLD piece IS the corroborating signal per official guidance. The
+	// floor lifts to B4 regardless of GC count (a no-GC MLD deck is
+	// still a B4 play pattern — the MLD-caster typically ramped to play
+	// the wipe and recovers fastest on the rebuild).
+	if ctx.mldCount >= 1 && bracket < 4 {
+		bracket = 4
+		label = "Optimized"
+		evidence := strings.Join(ctx.mldNames, ", ")
+		addAdjustment("MLD floor", "floor",
+			fmt.Sprintf("lifted to Bracket 4 — %d mass-land-destruction piece(s) present (%s). The official CommanderBracket.com rubric makes MLD an explicit B4 marker (allowed at B4, disallowed at B3): a deck willing to symmetrically reset lands has accepted the asymmetric tempo advantage that the MLD caster gains, which is the deck-shape statement B3 doesn't allow. Raw score was B%d before this floor.",
+				ctx.mldCount, evidence, preFloorBracket))
+	}
+
+	// Fast-mana-density floor. 8+ sub-2-CMC mana producers is the
+	// deck-shape signal of a deliberate T2-T3 acceleration plan: the
+	// deck is engineered to land Sol Ring / signets / mana-dorks every
+	// opening hand so the commander or wincon hits on turn 3-4. That
+	// tempo pattern is operationally B4 even without an explicit
+	// winning combo or Game Changer flood. The floor requires:
+	//   - fastManaCount >= 8 (the high-density threshold; B3 precons
+	//     typically run 3-5 fast-mana pieces, never 8+);
+	//   - finisherCount >= 4 (deck has multiple ways to close, so the
+	//     fast mana actually converts to wins);
+	//   - GC >= 1 OR tutorDensity >= 0.06 (corroborating optimization
+	//     vehicle, either a single Game Changer or 6%+ tutor density —
+	//     this is the "deliberate optimization" gate that prevents the
+	//     floor from lifting random ramp piles that happen to ship 8+
+	//     cheap rocks without any other optimization signal).
+	// Built to catch the Voja-Jaws-tribal-B4 class of deck (8 fast
+	// mana, 4 finishers, 1 GC, 5% tutor) that current scoring caps at
+	// B3 even though it plays as B4. NOT redundant with the Tuned-
+	// redundancy floor (which requires 8+ finishers AND 6+ fast mana):
+	// this floor takes the opposite tradeoff — lower finisher count is
+	// fine if the fast mana density is HIGH enough to make every
+	// finisher land on curve.
+	fastManaDensityFloor := ctx.fastManaCount >= 8 &&
+		finisherCount >= 4 &&
+		(ctx.gameChangerCount >= 1 || ctx.tutorDensity >= 0.06)
+	if fastManaDensityFloor && bracket < 4 {
+		bracket = 4
+		label = "Optimized"
+		addAdjustment("Fast-mana-density floor", "floor",
+			fmt.Sprintf("lifted to Bracket 4 — %d cheap mana producers (CMC 2 or less) combined with %d distinct finisher lines and a corroborating optimization signal (%d Game Changer(s) and %.0f%% tutor density) means the deck reliably accelerates a wincon onto curve by turn 4-5. That tempo pattern is the deck-shape signal of B4-level optimization regardless of whether a 2-card infinite is assembled. Raw score was B%d before this floor.",
+				ctx.fastManaCount, finisherCount,
+				ctx.gameChangerCount, ctx.tutorDensity*100,
 				preFloorBracket))
 	}
 

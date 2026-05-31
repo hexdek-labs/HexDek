@@ -76,7 +76,7 @@ func TestBracketCalibration(t *testing.T) {
 	}
 
 	// Overall accuracy floor — re-tune if scoring changes.
-	const minExact = 14
+	const minExact = 16
 	if exact < minExact {
 		t.Errorf("calibration regression: %d/%d exact matches, need at least %d", exact, len(results), minExact)
 	}
