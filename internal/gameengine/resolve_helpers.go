@@ -86,7 +86,20 @@ func parseLifeChange(raw string) (int, bool) {
 // (phase-out, stun, goad, investigate, keyword grants, etc.) and log
 // the long tail as "modification_effect" events (which are NOT unknown_
 // effect — they carry the structured kind label for downstream analysis).
+//
+// Confidence gate (PR #946): before the switch, intercept effects whose
+// parse confidence is below the engine's LowConfidenceFallbackThreshold.
+// These are effects where the parser identified a fallback ModKind AND
+// gave us essentially no structured args — the dispatch's default branch
+// would land in the "log + flag parser_gap" path anyway; the gate just
+// tags it with a structured `low_confidence_fallback` reason so Heimdall
+// can distinguish "engine declined to route" from "engine routed and
+// found an unknown kind".
 func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.ModificationEffect) {
+	if IsLowConfidenceModificationEffect(e) {
+		LogLowConfidenceModificationEffect(gs, src, e, "resolveModificationEffect")
+		return
+	}
 	switch e.ModKind {
 
 	// -----------------------------------------------------------------
