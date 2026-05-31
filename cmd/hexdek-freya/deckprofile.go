@@ -154,6 +154,14 @@ type DeckProfile struct {
 	// short "[CYA] COMBO vs META" text section. See combo_meta_interaction.go.
 	ComboMetaInteraction *ComboMetaInteraction
 
+	// InteractionFloor is the per-combo + deck-level interaction-needed
+	// estimate — how many interaction cards the opposing pod must
+	// resolve to shut each combo down, accounting for the deck's own
+	// counterspell + protection layer. Nil for combo-less decks.
+	// Surfaced under `interaction_floor` in JSON and as a short text
+	// section. See combo_interaction_floor.go.
+	InteractionFloor *ComboInteractionFloorReport
+
 	// Mana base grading
 	ManaBaseGrade    string // A/B/C/D/F
 	ManaBaseNotes    []string
@@ -679,6 +687,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	computeInteractionPackage(dp, report, oracle)
 	computeProtectionDensity(dp, report, oracle)
 	dp.ComboMetaInteraction = BuildComboMetaInteraction(report, oracle)
+	dp.InteractionFloor = BuildComboInteractionFloor(dp.ComboMetaInteraction, dp.InteractionPackage)
 	appendVulnerabilityBracketNote(dp)
 	computeManaBaseGrade(dp, report, oracle)
 	computeDeckCostTier(dp, report, oracle)

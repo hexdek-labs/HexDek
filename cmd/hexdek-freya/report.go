@@ -909,6 +909,12 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		printComboMetaInteraction(w, dp.ComboMetaInteraction)
 	}
 
+	// Interaction floor — minimum interaction the opposing pod must
+	// resolve to shut each combo down, accounting for deck defense.
+	if dp.InteractionFloor != nil && len(dp.InteractionFloor.PerCombo) > 0 {
+		printComboInteractionFloor(w, dp.InteractionFloor)
+	}
+
 	if len(dp.MetaMatchups) > 0 {
 		fmt.Fprintf(w, "\n  Meta Positioning:\n")
 		for _, m := range dp.MetaMatchups {
@@ -1483,6 +1489,36 @@ type jsonComboMetaInteraction struct {
 	FragileComboCount     int                 `json:"fragile_combo_count"`
 }
 
+type jsonComboInteractionFloor struct {
+	PerCombo           []jsonComboInteractionFloorEntry `json:"per_combo"`
+	MinFloor           int                              `json:"min_floor"`
+	MaxFloor           int                              `json:"max_floor"`
+	MedianFloor        int                              `json:"median_floor"`
+	CounterspellCount  int                              `json:"counterspell_count"`
+	ProtectionCount    int                              `json:"protection_count"`
+	CheapestComboLabel string                           `json:"cheapest_combo_label"`
+	CheapestComboIndex int                              `json:"cheapest_combo_index"`
+	CheapestFloor      int                              `json:"cheapest_floor"`
+	HardestComboLabel  string                           `json:"hardest_combo_label"`
+	HardestComboIndex  int                              `json:"hardest_combo_index"`
+	HardestFloor       int                              `json:"hardest_floor"`
+	DeckbuildAdvice    string                           `json:"deckbuild_advice"`
+}
+
+type jsonComboInteractionFloorEntry struct {
+	ComboIndex             int    `json:"combo_index"`
+	Label                  string `json:"label"`
+	Source                 string `json:"source"`
+	RemovalAnswerCost      int    `json:"removal_answer_cost"`
+	StaxAnswerCost         int    `json:"stax_answer_cost"`
+	GraveyardAnswerCost    int    `json:"graveyard_answer_cost"`
+	CounterspellAnswerCost int    `json:"counterspell_answer_cost"`
+	CheapestAxis           string `json:"cheapest_axis"`
+	CheapestAnswerCost     int    `json:"cheapest_answer_cost"`
+	DefensiveLayerTax      int    `json:"defensive_layer_tax"`
+	InteractionFloor       int    `json:"interaction_floor"`
+}
+
 type jsonComboMetaVuln struct {
 	ComboIndex             int      `json:"combo_index"`
 	Label                  string   `json:"label"`
@@ -1566,6 +1602,7 @@ type jsonDeckProfile struct {
 	VulnerableTo       []string          `json:"vulnerable_to,omitempty"`
 	VulnerableComboPieces []jsonVulnerableComboPiece `json:"vulnerable_combo_pieces,omitempty"`
 	ComboMetaInteraction  *jsonComboMetaInteraction  `json:"combo_meta_interaction,omitempty"`
+	InteractionFloor      *jsonComboInteractionFloor `json:"interaction_floor,omitempty"`
 	KeepableHandPct                 float64 `json:"keepable_hand_pct,omitempty"`
 	AvgTurnToFourMana               float64 `json:"avg_turn_to_four_mana,omitempty"`
 	KeepableHandPctAdjusted         float64 `json:"keepable_hand_pct_adjusted,omitempty"`
@@ -2049,6 +2086,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		VulnerableTo:       dp.VulnerableTo,
 		VulnerableComboPieces: vulnCombo,
 		ComboMetaInteraction:  comboMetaInteractionToJSON(dp.ComboMetaInteraction),
+		InteractionFloor:      comboInteractionFloorToJSON(dp.InteractionFloor),
 		KeepableHandPct:                 dp.KeepableHandPct,
 		AvgTurnToFourMana:               dp.AvgTurnToFourMana,
 		KeepableHandPctAdjusted:         dp.KeepableHandPctAdjusted,
