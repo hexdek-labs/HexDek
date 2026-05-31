@@ -176,6 +176,27 @@ type StrategyProfile struct {
 	// cardHeuristic. Tests in synergy_cluster_cohesion_r60_test.go.
 	SynergyClusters []SynergyCluster
 
+	// HuginnPredictions carry dev-19's --predict CLI output:
+	// speculative combo predictions Huginn generates by matching
+	// tier-3 confirmed patterns against this deck. Each prediction
+	// carries a unique InstanceID so the post-game
+	// huginn.ComputePredictionOutcomes feedback loop can route per-
+	// prediction confidence adjustments back to the pattern catalog.
+	//
+	// Consumed by huginnPredictionBoost in yggdrasil.go:
+	// cardHeuristic adds a small bonus (0.10 × Confidence, capped at
+	// +0.20 across all predictions a card appears in) for cards
+	// that show up in any prediction, biasing the hat toward drawing
+	// /casting the predicted pieces while the prediction is fresh.
+	// Composes additively with the existing ComboPieces path; a card
+	// in BOTH a detected combo AND a high-confidence prediction
+	// correctly gets both boosts.
+	//
+	// Worker D — Huginn 2.0 freya integration (2026-05-31). Wire
+	// spans cmd/hexdek-freya/main.go → strategy_loader.go → here →
+	// yggdrasil cardHeuristic.
+	HuginnPredictions []HuginnPrediction
+
 	// PowerPercentile is this deck's estimated power level within its archetype (0-100).
 	// Scales hat budget: stronger decks warrant deeper search.
 	PowerPercentile int
@@ -228,6 +249,19 @@ type EmergentSynergy struct {
 	EffectPattern string
 	Tier          int
 	AvgImpact     float64
+}
+
+// HuginnPrediction is the hat-side mirror of huginn.Prediction (kept
+// hat-local so internal/hat doesn't import internal/huginn just for
+// the type definition). Field shape and JSON wire format must stay in
+// sync with strategyHuginnPrediction in cmd/hexdek-freya/main.go and
+// freyaHuginnPrediction in strategy_loader.go. Worker D — Huginn 2.0
+// (2026-05-31).
+type HuginnPrediction struct {
+	InstanceID string
+	Cards      []string
+	Pattern    string
+	Confidence float64
 }
 
 // SynergyCluster is the hat-side mirror of Freya's themed cluster
