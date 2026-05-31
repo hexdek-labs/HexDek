@@ -42,7 +42,12 @@ func rielleDiscarded(gs *gameengine.GameState, perm *gameengine.Permanent, ctx m
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	discarderSeat, _ := ctx["seat"].(int)
+	// Engine fires card_discarded with discarder_seat (resolve.go:1034).
+	// Legacy "seat" kept as fallback.
+	discarderSeat, ok := ctx["discarder_seat"].(int)
+	if !ok {
+		discarderSeat, _ = ctx["seat"].(int)
+	}
 	if discarderSeat != perm.Controller {
 		return
 	}

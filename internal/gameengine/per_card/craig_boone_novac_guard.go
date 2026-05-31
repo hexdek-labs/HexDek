@@ -26,14 +26,46 @@ func craigBooneAttack(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	attackerSeat, _ := ctx["seat"].(int)
+	// Engine fires creature_attacks (canonical = "attack" after alias
+	// normalization) with attacker_perm + attacker_seat + attacker_card —
+	// no "count" key, since the trigger fires once per attacker. Legacy
+	// "seat" + "count" reads kept as fallbacks for callers that batch them.
+	attackerSeat, ok := ctx["attacker_seat"].(int)
+	if !ok {
+		attackerSeat, _ = ctx["seat"].(int)
+	}
 	if attackerSeat != perm.Controller {
 		return
 	}
-	count, _ := ctx["count"].(int)
-	if count < 2 {
+	// "Whenever you attack with two or more creatures" — once per combat
+	// per controller. Gate via a per-turn flag stamped with gs.Turn+1
+	// (the +1 keeps it distinct from default zero on turn 0). Count
+	// attackers by scanning the controller's battlefield rather than
+	// relying on a non-existent ctx["count"].
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	if perm.Flags["craig_boone_fired_turn"] == gs.Turn+1 {
 		return
 	}
+	count := 0
+	if seat := gs.Seats[perm.Controller]; seat != nil {
+		for _, p := range seat.Battlefield {
+			if p != nil && p.IsCreature() && p.IsAttacking() {
+				count++
+			}
+		}
+	}
+	if count < 2 {
+		// Fallback to ctx-supplied count if a batched caller threaded it
+		// (compat with synthetic fire-sites that pre-aggregate the count).
+		if v, ok := ctx["count"].(int); ok && v >= 2 {
+			count = v
+		} else {
+			return
+		}
+	}
+	perm.Flags["craig_boone_fired_turn"] = gs.Turn + 1
 	perm.AddCounter("quest", 2)
 	dmg := perm.Counters["quest"]
 	// Damage to best opposing creature; planar choice = creature.

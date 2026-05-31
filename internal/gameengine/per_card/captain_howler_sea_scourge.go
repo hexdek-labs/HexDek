@@ -39,7 +39,13 @@ func captainHowlerDiscard(gs *gameengine.GameState, perm *gameengine.Permanent, 
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	discarderSeat, _ := ctx["seat"].(int)
+	// Engine fires card_discarded with discarder_seat (resolve.go:1034) and
+	// does NOT populate a count (the trigger fires per-card). Legacy "seat"
+	// + "count" reads kept as fallbacks for batched/synthetic callers.
+	discarderSeat, ok := ctx["discarder_seat"].(int)
+	if !ok {
+		discarderSeat, _ = ctx["seat"].(int)
+	}
 	if discarderSeat != perm.Controller {
 		return
 	}
@@ -87,7 +93,28 @@ func captainHowlerDamageDraw(gs *gameengine.GameState, perm *gameengine.Permanen
 	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
 		return
 	}
-	srcPerm, _ := ctx["source_perm"].(*gameengine.Permanent)
+	// Engine fires combat_damage_player with source_seat (int) + source_card
+	// (string) — there is no source_perm. Resolve the pumped creature by
+	// scanning the controller's battlefield for the captain_howler_drawer
+	// flag, then matching by name against ctx["source_card"]. Legacy
+	// ctx["source_perm"] kept as a fast-path fallback for Hat callers.
+	var srcPerm *gameengine.Permanent
+	if p, ok := ctx["source_perm"].(*gameengine.Permanent); ok && p != nil {
+		srcPerm = p
+	} else {
+		srcSeat, _ := ctx["source_seat"].(int)
+		srcName, _ := ctx["source_card"].(string)
+		if srcSeat == perm.Controller && srcName != "" {
+			if seat := gs.Seats[perm.Controller]; seat != nil {
+				for _, bp := range seat.Battlefield {
+					if bp != nil && bp.Card != nil && bp.Card.DisplayName() == srcName {
+						srcPerm = bp
+						break
+					}
+				}
+			}
+		}
+	}
 	if srcPerm == nil || srcPerm.Flags == nil {
 		return
 	}

@@ -55,7 +55,12 @@ func vrondissRollDice(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	rollerSeat, _ := ctx["controller_seat"].(int)
+	// Engine fires roll_dice with "seat" (resolve_helpers.go:1216 + :3086).
+	// Legacy "controller_seat" kept as a fallback.
+	rollerSeat, ok := ctx["seat"].(int)
+	if !ok {
+		rollerSeat, _ = ctx["controller_seat"].(int)
+	}
 	if rollerSeat != perm.Controller {
 		return
 	}
