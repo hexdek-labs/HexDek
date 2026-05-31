@@ -1017,15 +1017,13 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 // ---------------------------------------------------------------------------
 
 func printMarkdown(w io.Writer, r *FreyaReport) {
-	fmt.Fprintf(w, "# FREYA -- Combo & Synergy Analysis\n\n")
+	// Compact summary header (TL;DR) — designed for Discord previews
+	// where readers see the first 8-12 lines without scrolling.
+	// Archetype + bracket + win method + the gameplan one-liner land
+	// in the visible part of the preview.
+	printMarkdownSummaryHeader(w, r)
 	if r.DeckPath != "" {
-		fmt.Fprintf(w, "**Deck:** `%s`\n\n", r.DeckPath)
-	} else {
-		fmt.Fprintf(w, "**Deck:** %s\n\n", r.DeckName)
-	}
-	fmt.Fprintf(w, "**Cards:** %d\n\n", r.TotalCards)
-	if r.Commander != "" {
-		fmt.Fprintf(w, "**Commander:** %s\n\n", r.Commander)
+		fmt.Fprintf(w, "_Source: `%s`_\n\n", r.DeckPath)
 	}
 
 	// Legality validation (always first).
@@ -1041,7 +1039,7 @@ func printMarkdown(w io.Writer, r *FreyaReport) {
 		if label := ComboClassLabel(c.Class); label != "" {
 			classTag = " _[" + label + "]_"
 		}
-		fmt.Fprintf(w, "- %s **%s** -- mandatory trigger loop%s\n", prefix, strings.Join(c.Cards, " + "), classTag)
+		fmt.Fprintf(w, "- %s %s -- mandatory trigger loop%s\n", prefix, scryfallLinks(c.Cards, " + "), classTag)
 		parts := strings.SplitN(c.Description, " | ", 2)
 		fmt.Fprintf(w, "  - %s\n", parts[0])
 		if len(parts) > 1 {
@@ -1075,7 +1073,7 @@ func printMarkdown(w io.Writer, r *FreyaReport) {
 		if label := ComboClassLabel(c.Class); label != "" {
 			classTag = " _[" + label + "]_"
 		}
-		fmt.Fprintf(w, "- %s **%s**%s\n", prefix, strings.Join(c.Cards, " + "), classTag)
+		fmt.Fprintf(w, "- %s %s%s\n", prefix, scryfallLinks(c.Cards, " + "), classTag)
 		parts := strings.SplitN(c.Description, " | ", 2)
 		fmt.Fprintf(w, "  - %s\n", parts[0])
 		if len(parts) > 1 {
@@ -1099,7 +1097,7 @@ func printMarkdown(w io.Writer, r *FreyaReport) {
 		if label := ComboClassLabel(c.Class); label != "" {
 			classTag = " _[" + label + "]_"
 		}
-		fmt.Fprintf(w, "- **%s**%s -- %s\n", strings.Join(c.Cards, " + "), classTag, c.Description)
+		fmt.Fprintf(w, "- %s%s -- %s\n", scryfallLinks(c.Cards, " + "), classTag, c.Description)
 	}
 	if len(r.Finishers) == 0 {
 		fmt.Fprintf(w, "_None detected._\n")
@@ -1108,7 +1106,7 @@ func printMarkdown(w io.Writer, r *FreyaReport) {
 
 	fmt.Fprintf(w, "## Synergies (%d)\n\n", len(r.Synergies))
 	for _, c := range r.Synergies {
-		fmt.Fprintf(w, "- **%s** -- %s\n", strings.Join(c.Cards, " + "), c.Description)
+		fmt.Fprintf(w, "- %s -- %s\n", scryfallLinks(c.Cards, " + "), c.Description)
 	}
 	if len(r.Synergies) == 0 {
 		fmt.Fprintf(w, "_None detected._\n")
@@ -1202,7 +1200,7 @@ func printDeckProfileMarkdown(w io.Writer, r *FreyaReport) {
 	}
 
 	fmt.Fprintf(w, "## Deck Profile\n\n")
-	fmt.Fprintf(w, "**Commander:** %s", dp.Commander)
+	fmt.Fprintf(w, "**Commander:** %s", scryfallLink(dp.Commander))
 	if len(dp.ColorIdentity) > 0 {
 		fmt.Fprintf(w, " (%s)", strings.Join(dp.ColorIdentity, ""))
 	}
@@ -1214,6 +1212,12 @@ func printDeckProfileMarkdown(w io.Writer, r *FreyaReport) {
 	fmt.Fprintf(w, "  \n")
 	fmt.Fprintf(w, "**Bracket:** %d/5 (%s)\n\n", dp.Bracket, dp.BracketLabel)
 	fmt.Fprintf(w, "> %s\n\n", dp.GameplanSummary)
+
+	// Structured turn-by-turn gameplan (PR #902). Sits inside the
+	// Deck Profile section as a play-guide subsection — the
+	// archetype-driven script reads naturally after the one-sentence
+	// summary. Nil-safe for archetype-less decks.
+	printGameplanScriptMarkdown(w, dp.GameplanScript)
 
 	if len(dp.Strengths) > 0 {
 		fmt.Fprintf(w, "**Strengths:**\n")
