@@ -14,6 +14,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -99,6 +100,7 @@ func main() {
 	var showVersion bool
 	var showSchema bool
 	var tournamentPath string
+	var validateOutput bool
 
 	flag.StringVar(&deckPath, "deck", "", "path to decklist file")
 	flag.StringVar(&deckDir, "all-decks", "", "analyze all decks in directory")
@@ -127,6 +129,8 @@ func main() {
 		"print the freya version banner (cache schema + go runtime) and exit.")
 	flag.BoolVar(&showSchema, "json-schema", false,
 		"print a concise human-readable summary of the JSON output schema (FreyaReport top-level fields + ComboResult + cache envelope) and exit. For full struct contracts, generate JSON-schema bindings from analysis.go directly.")
+	flag.BoolVar(&validateOutput, "validate-output", false,
+		"single-deck + --format json only: after rendering the JSON output, validate it against the canonical schema (cmd/hexdek-freya/freya_output.schema.json, embedded). Failures print to stderr and exit non-zero. Drift detector — catches dropped/renamed required fields between code and schema.")
 	flag.Usage = func() { PrintUsage(os.Stderr, flag.CommandLine) }
 	flag.Parse()
 
@@ -243,7 +247,29 @@ func main() {
 			PrintMetricsReport(os.Stdout, metrics, format)
 			return
 		}
-		PrintReport(os.Stdout, report, format)
+		if validateOutput && format == "json" {
+			// Render into a buffer first so the schema check sees the
+			// same bytes the user does. On validation failure: write
+			// the JSON anyway (callers piping into jq still need
+			// output) then print errors to stderr + exit non-zero.
+			var buf bytes.Buffer
+			PrintReport(&buf, report, format)
+			os.Stdout.Write(buf.Bytes())
+			errs, parseErr := ValidateFreyaJSON(buf.Bytes())
+			if parseErr != nil {
+				fmt.Fprintf(os.Stderr, "validate-output: %v\n", parseErr)
+				os.Exit(1)
+			}
+			if len(errs) > 0 {
+				fmt.Fprintln(os.Stderr, "validate-output: schema check FAILED:")
+				for _, e := range errs {
+					fmt.Fprintln(os.Stderr, "  "+e)
+				}
+				os.Exit(1)
+			}
+		} else {
+			PrintReport(os.Stdout, report, format)
+		}
 		// Auto-save to freya/ subfolder alongside the deck file.
 		saveFreyaData(deckPath, report)
 		if comparePath != "" {

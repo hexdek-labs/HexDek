@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hexdek.dev/schemas/freya_output.schema.json",
+  "title": "Freya JSON Output",
+  "description": "Canonical schema for the JSON emitted by `hexdek-freya --format json`. Pins the stable top-level invariants downstream consumers (Decks-screen panel, hat strategy bridge, BlueFrog deck-import, archetype-correction training-log, composition-prior validation) depend on. `additionalProperties: true` is intentional throughout — Freya routinely grows new fields and the schema's job is to catch DROPPED or RENAMED required fields, not to forbid additions. Validate with `freya --validate-output` after a `--format json` run. The shape mirrors the jsonReport struct in cmd/hexdek-freya/report.go (snake_case via json tags), NOT the raw FreyaReport struct (PascalCase Go field names).",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "deck_name",
+    "total_cards",
+    "true_infinites",
+    "determined_loops",
+    "finishers",
+    "synergies",
+    "mana_curve",
+    "color_balance"
+  ],
+  "properties": {
+    "deck_name": {
+      "type": "string",
+      "description": "Basename of the deck file."
+    },
+    "deck_path": {
+      "type": "string",
+      "description": "Absolute path of the source deck file. Omitted (omitempty) for in-memory analyses."
+    },
+    "commander": {
+      "type": "string",
+      "description": "Detected commander card name. Omitted when no commander could be identified."
+    },
+    "total_cards": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Card count after deck list parsing (sum of quantities, includes the commander)."
+    },
+    "legality": {
+      "anyOf": [ { "type": "object" }, { "type": "null" } ]
+    },
+    "true_infinites": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Combo" },
+      "description": "Mandatory-loop combos. The deck cannot avoid the loop firing once pieces are present and untapped — game draws or ends."
+    },
+    "determined_loops": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Combo" },
+      "description": "Player-choice loop combos. The pilot decides whether to iterate; loops are bounded by intent."
+    },
+    "finishers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Combo" },
+      "description": "Single-card or small-package finishers without a closing loop."
+    },
+    "synergies": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Combo" },
+      "description": "Non-winning value pairs/triples — engine pieces that don't close on their own."
+    },
+    "land_cycle_synergies": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Combo" }
+    },
+    "graveyard_loops": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/Combo" }
+    },
+    "combo_interaction": {
+      "anyOf": [ { "type": "object" }, { "type": "null" } ]
+    },
+    "combo_notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "mana_curve": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["distribution", "avg_cmc"],
+      "properties": {
+        "distribution": {
+          "type": "array",
+          "minItems": 8,
+          "maxItems": 8,
+          "items": { "type": "integer", "minimum": 0 },
+          "description": "Fixed-length [8]int. Index 0-6 = CMC 0-6; index 7 = CMC 7+."
+        },
+        "avg_cmc": {
+          "type": "number",
+          "minimum": 0
+        },
+        "curve_shape": {
+          "type": "string",
+          "enum": ["", "aggro", "midrange", "control", "bimodal"]
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "land_count": { "type": "integer", "minimum": 0 },
+        "nonland_count": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "color_balance": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["demand", "supply"],
+      "properties": {
+        "demand": {
+          "type": "object",
+          "description": "Map of W/U/B/R/G → pip count."
+        },
+        "supply": {
+          "type": "object",
+          "description": "Map of W/U/B/R/G → source count."
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "deck_profile": {
+      "anyOf": [ { "type": "object" }, { "type": "null" } ]
+    },
+    "unified_profile": {
+      "anyOf": [ { "type": "object" }, { "type": "null" } ]
+    },
+    "statistics": {
+      "anyOf": [ { "type": "object" }, { "type": "null" } ]
+    },
+    "roles": {
+      "anyOf": [ { "type": "object" }, { "type": "null" } ]
+    },
+    "archetype": {
+      "anyOf": [ { "type": "object" }, { "type": "null" } ]
+    },
+    "win_lines": {
+      "anyOf": [ { "type": "object" }, { "type": "null" } ]
+    },
+    "value_chains": {
+      "type": "array"
+    }
+  },
+  "$defs": {
+    "Combo": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["cards", "loop_type"],
+      "properties": {
+        "cards": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Piece names. Every combo carries at least one card name."
+        },
+        "loop_type": {
+          "type": "string",
+          "enum": ["determined", "true_infinite", "finisher", "synergy"],
+          "description": "Loop semantics — gates how the bracket scorer + win-line analyzer treat the entry."
+        },
+        "class": {
+          "type": "string",
+          "description": "What the combo produces (infinite_mana / infinite_drain / library_exile_win / etc.). May be empty until ClassifyComboHeuristic runs."
+        },
+        "resources": { "type": "string" },
+        "description": { "type": "string" },
+        "confirmed": { "type": "boolean" },
+        "non_deterministic": { "type": "boolean" },
+        "annotation": {
+          "anyOf": [ { "type": "object" }, { "type": "null" } ]
+        }
+      }
+    }
+  }
+}
