@@ -46,7 +46,7 @@ func TestPairDoubleElim_TiersSeparateWhenPossible(t *testing.T) {
 	// in pod 2 — tiers must not mix when both have ≥ NSeats.
 	state := newDEStates(0, 0, 0, 0, 1, 1, 1, 1)
 	eligible := []int{0, 1, 2, 3, 4, 5, 6, 7}
-	pods := pairDoubleElimRound(eligible, state, 4, 42)
+	pods := pairDoubleElimRound(eligible, state, nil, 4, 42)
 	if len(pods) != 2 {
 		t.Fatalf("expected 2 pods, got %d", len(pods))
 	}
@@ -68,7 +68,7 @@ func TestPairDoubleElim_TiersMixWhenTooFew(t *testing.T) {
 	// because tiers don't divide cleanly.
 	state := newDEStates(0, 0, 1, 1)
 	eligible := []int{0, 1, 2, 3}
-	pods := pairDoubleElimRound(eligible, state, 4, 1)
+	pods := pairDoubleElimRound(eligible, state, nil, 4, 1)
 	if len(pods) != 1 {
 		t.Fatalf("expected 1 mixed pod, got %d", len(pods))
 	}
@@ -82,7 +82,7 @@ func TestPairDoubleElim_BelowNSeatsReturnsEmpty(t *testing.T) {
 	// tournament).
 	state := newDEStates(0, 0, 1)
 	eligible := []int{0, 1, 2}
-	pods := pairDoubleElimRound(eligible, state, 4, 9)
+	pods := pairDoubleElimRound(eligible, state, nil, 4, 9)
 	if len(pods) != 0 {
 		t.Errorf("expected empty pod list when eligible < NSeats, got %d", len(pods))
 	}
@@ -91,8 +91,8 @@ func TestPairDoubleElim_BelowNSeatsReturnsEmpty(t *testing.T) {
 func TestPairDoubleElim_Deterministic(t *testing.T) {
 	state := newDEStates(0, 0, 0, 0, 1, 1, 1, 1)
 	eligible := []int{0, 1, 2, 3, 4, 5, 6, 7}
-	a := pairDoubleElimRound(eligible, state, 4, 31337)
-	b := pairDoubleElimRound(eligible, state, 4, 31337)
+	a := pairDoubleElimRound(eligible, state, nil, 4, 31337)
+	b := pairDoubleElimRound(eligible, state, nil, 4, 31337)
 	if len(a) != len(b) {
 		t.Fatalf("pod count differs: %d vs %d", len(a), len(b))
 	}
