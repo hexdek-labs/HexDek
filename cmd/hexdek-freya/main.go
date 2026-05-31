@@ -94,6 +94,7 @@ func main() {
 	var powerAggregateOut string
 	var corpusStatsOut string
 	var eloHistoryPath string
+	var comparePath string
 
 	flag.StringVar(&deckPath, "deck", "", "path to decklist file")
 	flag.StringVar(&deckDir, "all-decks", "", "analyze all decks in directory")
@@ -112,6 +113,8 @@ func main() {
 		"--all-decks only: write the corpus-wide rollup (average bracket / archetype / curve / density signals, distributions, presence percentages) as JSON to this path.")
 	flag.StringVar(&eloHistoryPath, "elo-history", "",
 		"path to archetype-pair ELO/win-rate history JSON (loaded if present; blended into meta-positioning expected-win-% and tilt detection). Schema: {\"archetype_pairs\": {\"combo|stax\": {\"games\": N, \"wins_for_first\": K}, ...}}.")
+	flag.StringVar(&comparePath, "compare", "",
+		"single-deck mode only: path to a second deck list. After analyzing --deck, also analyzes --compare and prints a side-by-side comparison (power tier mix, win conditions, mana base, tech-card differences, card overlap with star-tier standouts).")
 	flag.Parse()
 
 	if eloHistoryPath != "" {
@@ -195,6 +198,15 @@ func main() {
 		PrintReport(os.Stdout, report, format)
 		// Auto-save to freya/ subfolder alongside the deck file.
 		saveFreyaData(deckPath, report)
+		if comparePath != "" {
+			otherReport, err := analyzeDeckFile(comparePath, oracle, mechDB)
+			if err != nil {
+				log.Fatalf("analyze compare deck: %v", err)
+			}
+			cmp := CompareDecks(report.Profile, otherReport.Profile, report, otherReport)
+			fmt.Fprintln(os.Stdout, "")
+			fmt.Fprintln(os.Stdout, FormatDeckComparison(cmp))
+		}
 		// Optional standalone cluster export — designed for downstream
 		// deck-builder integrations that want JUST the structured
 		// cluster data without parsing the full Freya JSON blob.
