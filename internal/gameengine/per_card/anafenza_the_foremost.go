@@ -21,13 +21,13 @@ import (
 //     AddCounter and fire counter_placed so proliferate observers and
 //     Shalai/Hallar-style triggers see the event.
 //   - Replacement effect ("nontoken creature an opponent controls would die
-//     → exile instead"): this is a static replacement effect, not a
-//     triggered ability. Replacement effects are not dispatched through the
-//     per-card trigger path. emitPartial flags the gap; the AST engine or
-//     a future replacement-effect framework would need to handle it.
+//     → exile instead"): wired in the engine's replacement framework via
+//     RegisterAnafenzaTheForemost (replacement.go:857), dispatched from
+//     RegisterReplacementsForPermanent on ETB through the canonical
+//     resolve.go paths. No per_card emitPartial needed.
 //
-// emitPartial: death-replacement (nontoken opp-creature exile instead)
-// not implemented — requires replacement-effect framework.
+// R60 stub sweep batch 3: dropped the stale "death_replacement... not
+// implemented" emitPartial since the framework wiring shipped earlier.
 func registerAnafenzaTheForemost(r *Registry) {
 	r.OnTrigger("Anafenza, the Foremost", "creature_attacks", anafenzaTheForemost)
 }
@@ -69,12 +69,9 @@ func anafenzaTheForemost(gs *gameengine.GameState, perm *gameengine.Permanent, c
 
 	if best == nil {
 		// No valid target — Anafenza's trigger fizzles (no other tapped
-		// creature you control). Log and emit the partial for the
-		// death-replacement clause.
+		// creature you control).
 		emitFail(gs, slug, perm.Card.DisplayName(),
 			"no_other_tapped_creature_you_control", nil)
-		emitPartial(gs, slug, perm.Card.DisplayName(),
-			"death_replacement_exile_nontoken_opp_creature_not_implemented")
 		return
 	}
 
@@ -106,7 +103,5 @@ func anafenzaTheForemost(gs *gameengine.GameState, perm *gameengine.Permanent, c
 		"total":        best.Counters["+1/+1"],
 	})
 
-	// The exile-instead-of-die replacement effect is not implemented here.
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"death_replacement_exile_nontoken_opp_creature_not_implemented")
+	// Replacement effect handled in replacement.go RegisterAnafenzaTheForemost.
 }

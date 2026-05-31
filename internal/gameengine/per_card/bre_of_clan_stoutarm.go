@@ -21,9 +21,93 @@ import (
 // Implementation: track life gained per turn; at end step exile down to
 // a nonland; if its CMC <= life gained, drop it onto the battlefield (if
 // permanent) or send it to hand (instants/sorceries).
+//
+// R60 stub sweep batch 3: wired the {1}{W}, {T} activated ability —
+// tap, pick the highest-power OTHER creature we control as the target,
+// stamp Flags["kw:flying"] + Flags["kw:lifelink"] until end of turn
+// via a next_end_step delayed-trigger cleanup. Pattern mirrors K-9
+// Mark I's unblockable_until_eot grant from batch 1.
 func registerBreOfClanStoutarm(r *Registry) {
 	r.OnTrigger("Bre of Clan Stoutarm", "life_gained", breTrackLifeGained)
 	r.OnTrigger("Bre of Clan Stoutarm", "end_step", breEndStep)
+	r.OnActivated("Bre of Clan Stoutarm", breActivate)
+}
+
+func breActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
+	const slug = "bre_clan_stoutarm_pump"
+	if gs == nil || src == nil || src.Card == nil {
+		return
+	}
+	if src.Tapped {
+		emitFail(gs, slug, src.Card.DisplayName(), "already_tapped", nil)
+		return
+	}
+	target, _ := ctx["target_perm"].(*gameengine.Permanent)
+	if target == nil {
+		// AI fallback: best other creature we control.
+		seat := gs.Seats[src.Controller]
+		if seat == nil {
+			emitFail(gs, slug, src.Card.DisplayName(), "no_seat", nil)
+			return
+		}
+		bestPower := -1
+		for _, p := range seat.Battlefield {
+			if p == nil || p == src || p.Card == nil || !p.IsCreature() {
+				continue
+			}
+			if p.Power() > bestPower {
+				bestPower = p.Power()
+				target = p
+			}
+		}
+	}
+	if target == nil || target.Card == nil {
+		emitFail(gs, slug, src.Card.DisplayName(), "no_target", nil)
+		return
+	}
+	if target == src {
+		emitFail(gs, slug, src.Card.DisplayName(), "target_is_self_must_be_another", nil)
+		return
+	}
+	if !target.IsCreature() {
+		emitFail(gs, slug, src.Card.DisplayName(), "target_not_creature", nil)
+		return
+	}
+	src.Tapped = true
+	if target.Flags == nil {
+		target.Flags = map[string]int{}
+	}
+	prevFlying := target.Flags["kw:flying"]
+	prevLifelink := target.Flags["kw:lifelink"]
+	target.Flags["kw:flying"] = 1
+	target.Flags["kw:lifelink"] = 1
+	gs.InvalidateCharacteristicsCache()
+	captured := target
+	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
+		TriggerAt:      "next_end_step",
+		ControllerSeat: src.Controller,
+		SourceCardName: src.Card.DisplayName(),
+		EffectFn: func(gs *gameengine.GameState) {
+			if captured == nil || captured.Flags == nil {
+				return
+			}
+			// Only strip the flags WE set — preserve native AST keywords
+			// or other granted flags (same per-flag-discipline as
+			// Vihaan from batch 2).
+			if prevFlying == 0 {
+				delete(captured.Flags, "kw:flying")
+			}
+			if prevLifelink == 0 {
+				delete(captured.Flags, "kw:lifelink")
+			}
+			gs.InvalidateCharacteristicsCache()
+		},
+	})
+	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
+		"seat":   src.Controller,
+		"target": target.Card.DisplayName(),
+		"effect": "flying_lifelink_until_eot",
+	})
 }
 
 func breGainKey(turn int) string { return "bre_gained_t" + strconv.Itoa(turn+1) }
