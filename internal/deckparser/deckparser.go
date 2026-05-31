@@ -423,6 +423,17 @@ type CardLine struct {
 	Section    string
 	Status     LineStatus
 	LineNumber int
+
+	// HashTags preserves trailing `#tag1 #tag2 ...` annotations from
+	// the source line. Pre-fix these were stripped by hashTagRE
+	// during cleanCardName and the tag content was lost entirely —
+	// the parser resolved the card correctly but UIs trying to round-
+	// trip the deck (and any tooling consuming deckbuilder intent
+	// like "#wincon", "#ramp", "#flex") had no way to recover them.
+	// Stored without the leading `#` (so `#wincon` → "wincon") and
+	// in source order. Drives the WriteText round-trip path: hashtags
+	// re-emit verbatim with their leading `#` restored.
+	HashTags []string
 }
 
 // LineStatus is the resolution verdict for a CardLine. Drives the
@@ -920,6 +931,14 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		// canonical `4 Card` path stays a no-op and the existing
 		// deckLineRE keeps owning the primary qty extraction.
 		raw = normalizeFuzzyQuantity(raw)
+		// Extract trailing `#tag1 #tag2 ...` hashtags into a per-line
+		// list before set-parens strip eats them. Pre-fix hashTagRE
+		// inside cleanCardName silently dropped the tags; round-trip
+		// tooling (UI build-coaching, deck-export) had no way to
+		// recover deckbuilder intent like "#ramp", "#wincon", "#flex".
+		// Stored on CardLine.HashTags without the leading `#`.
+		var lineHashTags []string
+		raw, lineHashTags = extractHashTags(raw)
 		// Strip "(SET) 123" suffix (set code + collector number + foil flag).
 		if idx := strings.Index(raw, "("); idx > 0 {
 			raw = strings.TrimSpace(raw[:idx])
@@ -977,7 +996,7 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			}
 			td.CardLines = append(td.CardLines, CardLine{
 				Qty: qty, Name: name, Comment: inlineComment, Section: "commander",
-				LineNumber: lineNum,
+				LineNumber: lineNum, HashTags: lineHashTags,
 			})
 			continue
 		}
@@ -990,7 +1009,7 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			}
 			td.CardLines = append(td.CardLines, CardLine{
 				Qty: qty, Name: name, Comment: inlineComment, Section: "commander",
-				LineNumber: lineNum,
+				LineNumber: lineNum, HashTags: lineHashTags,
 			})
 			hasExplicitCommanderSignal = true
 			continue
@@ -1001,7 +1020,7 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		})
 		td.CardLines = append(td.CardLines, CardLine{
 			Qty: qty, Name: name, Comment: inlineComment, Section: "main",
-			LineNumber: lineNum,
+			LineNumber: lineNum, HashTags: lineHashTags,
 		})
 	}
 	if err := sc.Err(); err != nil {
@@ -1548,6 +1567,101 @@ var partnerLineRE = regexp.MustCompile(`(?i)^\s*PARTNER\s*:\s*(.+?)\s*$`)
 // sideboard / companion / token card into the library (see
 // section_count_r60_test.go).
 var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companion|Considering|Deck|Main\s*Deck|Mainboard|Commanders?|Tokens|Signature\s*Spells|Stickers|Attractions|Outside\s*the\s*Game|About)\s*:?\s*(?:\(\s*\d+\s*\))?\s*:?\s*$`)
+
+// hashTagExtractRE matches the trailing `#tag1 #tag2 ...` block on a
+// card line. Tighter than the cleanCardName-internal hashTagRE: each
+// tag must start with `#` followed by a letter and then word chars
+// (`-` allowed for hyphenated tags like `#turn-1-ramp`), so URL
+// fragments (`https://...#anchor` — no real card line has a URL but
+// defensive) and standalone `#` chars are left alone. Anchored to
+// end-of-line. Captures the entire tag block in group 1 for
+// per-token splitting in extractHashTags.
+var hashTagExtractRE = regexp.MustCompile(`\s+(#[A-Za-z][\w\-]*(?:\s+#[A-Za-z][\w\-]*)*)\s*$`)
+
+// extractHashTags pulls trailing `#tag1 #tag2 ...` annotations off the
+// raw line and returns the stripped line + a slice of tag strings
+// (without leading `#`, in source order). Drives CardLine.HashTags
+// for round-trip preservation: pre-fix cleanCardName's hashTagRE
+// silently dropped the tags so any tooling consuming deckbuilder
+// intent ("#wincon", "#ramp", "#flex") had no way to recover them.
+//
+// No-op when no trailing hashtag block is present. Inner-line `#`
+// chars (defensive — no real card name has them, but URLs in
+// comments could) stay untouched because the regex anchors to `$`.
+func extractHashTags(raw string) (string, []string) {
+	m := hashTagExtractRE.FindStringSubmatchIndex(raw)
+	if m == nil {
+		return raw, nil
+	}
+	block := raw[m[2]:m[3]]
+	var tags []string
+	for _, tok := range strings.Fields(block) {
+		if strings.HasPrefix(tok, "#") {
+			tags = append(tags, strings.TrimPrefix(tok, "#"))
+		}
+	}
+	return strings.TrimSpace(raw[:m[0]]), tags
+}
+
+// WriteText emits the deck as a Moxfield-format text decklist back to
+// w, preserving Comment + HashTags from each CardLine so users can
+// round-trip annotated decks (parse → modify → write → re-parse).
+// Output format:
+//
+//	COMMANDER: <commander name>
+//	[PARTNER: <partner name>]
+//
+//	<qty> <name> [// comment] [#tag1 #tag2 ...]
+//	...
+//
+// Commander lines flow through the directive form (not the
+// `Commander` section header form) because the directive resolves
+// unambiguously regardless of meta-DB presence. Sections other than
+// "commander" / "main" (legacy "drop" entries — there shouldn't be
+// any in a freshly-parsed deck since drops bypass CardLines) are
+// silently elided. Round-trip identity is verified by
+// TestWriteText_RoundTripPreservesCommentsAndTags.
+func (td *TournamentDeck) WriteText(w io.Writer) error {
+	if td == nil {
+		return nil
+	}
+	for i, c := range td.CommanderCards {
+		var label string
+		if i == 0 {
+			label = "COMMANDER"
+		} else {
+			label = "PARTNER"
+		}
+		if _, err := fmt.Fprintf(w, "%s: %s\n", label, c.DisplayName()); err != nil {
+			return err
+		}
+	}
+	if len(td.CommanderCards) > 0 {
+		if _, err := fmt.Fprintln(w); err != nil {
+			return err
+		}
+	}
+	for _, cl := range td.CardLines {
+		if cl.Section != "main" {
+			continue
+		}
+		var b strings.Builder
+		fmt.Fprintf(&b, "%d %s", cl.Qty, cl.Name)
+		if cl.Comment != "" {
+			b.WriteString(" // ")
+			b.WriteString(cl.Comment)
+		}
+		for _, tag := range cl.HashTags {
+			b.WriteString(" #")
+			b.WriteString(tag)
+		}
+		b.WriteByte('\n')
+		if _, err := io.WriteString(w, b.String()); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // fuzzyLeadingXQtyRE matches the leading-x quantity form `x4 Card` /
 // `X4 Card`. Captures (qty, name). Distinct from the canonical
