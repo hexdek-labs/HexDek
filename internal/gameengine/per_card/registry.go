@@ -293,6 +293,36 @@ func (r *Registry) OnActivated(cardName string, h ActivatedHandler) {
 	r.activated[k] = append(r.activated[k], h)
 }
 
+// EnumerateOnTriggerRegistrations returns every (normalizedCardName,
+// canonicalEvent, handlerCount) tuple registered in the trigger map.
+// Used exclusively by the engine-event integration test in this
+// package to walk the full handler base for cross-handler regression
+// detection. Returns a snapshot — callers can mutate the result
+// without affecting registry state.
+func (r *Registry) EnumerateOnTriggerRegistrations() []struct {
+	CardName     string
+	Event        string
+	HandlerCount int
+} {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var out []struct {
+		CardName     string
+		Event        string
+		HandlerCount int
+	}
+	for cardName, byEvent := range r.onTrigger {
+		for event, handlers := range byEvent {
+			out = append(out, struct {
+				CardName     string
+				Event        string
+				HandlerCount int
+			}{cardName, event, len(handlers)})
+		}
+	}
+	return out
+}
+
 // OnTrigger registers a custom-event trigger handler.
 func (r *Registry) OnTrigger(cardName, event string, h TriggerHandler) {
 	if h == nil {
