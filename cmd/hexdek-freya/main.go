@@ -93,6 +93,7 @@ func main() {
 	var clustersOut string
 	var powerAggregateOut string
 	var corpusStatsOut string
+	var eloHistoryPath string
 
 	flag.StringVar(&deckPath, "deck", "", "path to decklist file")
 	flag.StringVar(&deckDir, "all-decks", "", "analyze all decks in directory")
@@ -107,7 +108,18 @@ func main() {
 		"--all-decks only: write the S/A/B/C/D power-tier distribution rollup (overall mix, per-bracket and per-archetype breakdown, 5-point score histogram) as JSON to this path. Designed for calibrating PowerTierFor thresholds against a real-world corpus.")
 	flag.StringVar(&corpusStatsOut, "corpus-stats-out", "",
 		"--all-decks only: write the corpus-wide rollup (average bracket / archetype / curve / density signals, distributions, presence percentages) as JSON to this path.")
+	flag.StringVar(&eloHistoryPath, "elo-history", "",
+		"path to archetype-pair ELO/win-rate history JSON (loaded if present; blended into meta-positioning expected-win-% and tilt detection). Schema: {\"archetype_pairs\": {\"combo|stax\": {\"games\": N, \"wins_for_first\": K}, ...}}.")
 	flag.Parse()
+
+	if eloHistoryPath != "" {
+		if err := LoadMetaMatchupHistory(eloHistoryPath); err != nil {
+			log.Printf("elo-history load: %v (continuing with ELO baseline only)", err)
+		} else if LoadedMatchupHistory != nil {
+			log.Printf("loaded %d archetype-pair history records from %s",
+				len(LoadedMatchupHistory.Pairs), eloHistoryPath)
+		}
+	}
 
 	if spellbookFetchURL != "" {
 		log.Printf("fetching Commander Spellbook from %s ...", spellbookFetchURL)

@@ -1903,6 +1903,17 @@ func MetaStrongAgainst(archetype string) []MetaAdvantage {
 }
 
 func computeMetaPositioning(dp *DeckProfile) {
+	computeMetaPositioningWithReport(dp, nil)
+}
+
+// computeMetaPositioningWithReport is the deepened entry point used by
+// BuildDeckProfile. It populates the per-matchup ELO-based ExpectedWinPct,
+// blends in empirical history when LoadedMatchupHistory is set, flags
+// tilted matchups, and generates tech-card suggestions for the deck's
+// worst matchup. The shallow computeMetaPositioning wrapper preserves
+// the old signature for callers that don't need report-aware tech
+// suggestions (tests that only care about the matchup matrix).
+func computeMetaPositioningWithReport(dp *DeckProfile, report *FreyaReport) {
 	arch := canonicaliseMetaArchetypeKey(dp.PrimaryArchetype)
 
 	matchups, ok := metaMatchupDB[arch]
@@ -1911,12 +1922,29 @@ func computeMetaPositioning(dp *DeckProfile) {
 	}
 
 	for _, m := range matchups {
-		dp.MetaMatchups = append(dp.MetaMatchups, MetaMatchup{
-			Archetype: m.vsArchetype,
-			Rating:    m.rating,
-			Reason:    m.reason,
-			Strength:  metaMatchupStrengthOrDefault(m),
-		})
+		strength := metaMatchupStrengthOrDefault(m)
+		baseline := expectedWinPctForMatchup(m.rating, strength)
+		blended, games, empirical := blendEmpirical(baseline, dp.PrimaryArchetype, m.vsArchetype, LoadedMatchupHistory)
+		tilted, dir, delta := detectTilt(baseline, empirical, games)
+		entry := MetaMatchup{
+			Archetype:       m.vsArchetype,
+			Rating:          m.rating,
+			Reason:          m.reason,
+			Strength:        strength,
+			ExpectedWinPct:  blended,
+			BaselineWinPct:  baseline,
+			EmpiricalGames:  games,
+			EmpiricalWinPct: empirical,
+			Tilted:          tilted,
+			TiltDirection:   dir,
+			TiltDelta:       delta,
+		}
+		dp.MetaMatchups = append(dp.MetaMatchups, entry)
+	}
+
+	if worst := worstMatchupArchetype(dp.MetaMatchups); worst != "" {
+		dp.WorstMatchup = worst
+		dp.TechSuggestions = suggestTechCardsForArchetype(worst, report)
 	}
 
 	dp.StrongAgainst = MetaStrongAgainst(dp.PrimaryArchetype)

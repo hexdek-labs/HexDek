@@ -229,6 +229,19 @@ type DeckProfile struct {
 	// Meta positioning
 	MetaMatchups []MetaMatchup
 
+	// TechSuggestions are concrete card adds Freya recommends to shift
+	// the deck's single WORST matchup (lowest ExpectedWinPct). Sourced
+	// from the hoserDB, scoped to the opponent archetype. Capped at
+	// techSuggestionCap entries (typically 3-5) so the report doesn't
+	// flood the builder with hate-pieces.
+	TechSuggestions []TechCardSuggestion
+
+	// WorstMatchup names the opponent archetype tied to TechSuggestions
+	// — the matchup the recommendations are trying to fix. Empty when
+	// the deck has no matchup data (unknown archetype) or no entry
+	// scored badly enough to warrant tech advice.
+	WorstMatchup string
+
 	// "Favored against" reverse-lookup — archetypes this deck reliably
 	// beats, combined from both forward (X's own favored matchups) and
 	// reverse (other archetypes that list themselves unfavored vs X)
@@ -388,6 +401,54 @@ type MetaMatchup struct {
 	// Surfaces in JSON as "strength" so Decks-screen consumers can
 	// down-weight "slight" entries vs amplifying "strong" ones.
 	Strength string `json:"strength,omitempty"`
+
+	// ExpectedWinPct is the matchup's projected win rate (0-100),
+	// derived from the static (Rating, Strength) pair via ELO math
+	// (see expectedWinPctForMatchup) and optionally blended with
+	// empirical history loaded via --elo-history. Always populated.
+	ExpectedWinPct int `json:"expected_win_pct"`
+
+	// BaselineWinPct is the ELO-derived win rate before any empirical
+	// blend — kept separate so callers can see the static prior even
+	// when EmpiricalGames > 0 caused the headline ExpectedWinPct to
+	// shift toward observed results.
+	BaselineWinPct int `json:"baseline_win_pct,omitempty"`
+
+	// EmpiricalGames + EmpiricalWinPct capture observed history from
+	// the loaded archetype-pair history JSON, when present. Zero when
+	// no history was loaded for this matchup.
+	EmpiricalGames  int `json:"empirical_games,omitempty"`
+	EmpiricalWinPct int `json:"empirical_win_pct,omitempty"`
+
+	// Tilted matchups are those where the empirical win rate diverges
+	// from the ELO baseline by more than tiltThresholdPP percentage
+	// points (default 20pp). TiltDirection is "over" / "under" and
+	// TiltDelta is the empirical-minus-baseline gap in pp (signed —
+	// positive means over-performing). Only meaningful when
+	// EmpiricalGames >= tiltMinSampleSize.
+	Tilted        bool   `json:"tilted,omitempty"`
+	TiltDirection string `json:"tilt_direction,omitempty"`
+	TiltDelta     int    `json:"tilt_delta_pp,omitempty"`
+}
+
+// TechCardSuggestion is one recommended sideboard / inclusion card
+// targeting a specific opponent archetype. Surfaced for the deck's
+// single worst matchup (lowest ExpectedWinPct) so builders see one
+// concrete, actionable add per analysis run rather than a wall of
+// "consider these 40 hosers." Sourced from the existing hoserDB —
+// the same condition tags already used by VulnerableTo, but read
+// in the opposite direction (cards I can ADD to hose THEM, vs
+// cards I FEAR being played against me).
+type TechCardSuggestion struct {
+	Card              string `json:"card"`
+	Reason            string `json:"reason"`
+	OpponentArchetype string `json:"opponent_archetype"`
+	Severity          int    `json:"severity"` // 1=minor, 2=major, 3=critical
+	// AlreadyInDeck flags suggestions the deck already runs. The
+	// recommender keeps these in the output (caller can filter them
+	// or render them as "confirmed picks") so the JSON consumer can
+	// see both the gap analysis and what's already covered.
+	AlreadyInDeck bool `json:"already_in_deck,omitempty"`
 }
 
 // MetaAdvantage is the per-entry shape of the "favored against" list
@@ -619,7 +680,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	computeThreatAssessment(dp, report)
 	computeSynergyClusters(dp, report, oracle)
 	computeAltBuildSuggestions(dp)
-	computeMetaPositioning(dp)
+	computeMetaPositioningWithReport(dp, report)
 	computeCardPower(dp, report)
 	computeCardQualityTiers(dp, report, oracle)
 	computePetCards(dp, report)
