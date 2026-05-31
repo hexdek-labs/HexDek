@@ -124,6 +124,14 @@ type ComboResult struct {
 	Description      string
 	Confirmed        bool // true if matched from KnownCombos database
 	NonDeterministic bool // loop depends on random selection
+
+	// Annotation, when non-nil, carries structured loop metadata for
+	// surfaceable display: primary output category, reliability
+	// classification, and a one-sentence human summary. Populated by
+	// FindLongLoops for graph-walked 5..7 card cycles. Pair/triple/quad
+	// detectors leave it nil — those paths already build curated
+	// per-shape descriptions via classifyLoop + KnownCombos.
+	Annotation *LoopAnnotation
 }
 
 // ---------------------------------------------------------------------------
