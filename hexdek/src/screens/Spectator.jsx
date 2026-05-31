@@ -21,6 +21,10 @@ import { computeTooltipPlacement, MIN_VIEWPORT_MARGIN } from '../utils/mobileLay
 import PhaseRibbon from '../components/PhaseRibbon'
 import ManaPoolPips from '../components/ManaPoolPips'
 import StackPanel from '../components/StackPanel'
+import CounterBadge from '../components/CounterBadge'
+import CommandZoneStrip from '../components/CommandZoneStrip'
+import ReplaySlider from '../components/ReplaySlider'
+import { pushSnapshot, effectiveGame, clampScrubIndex } from '../components/replayHelpers.js'
 
 // ActionExplainBadge — small ⓘ pill rendered next to a notable log
 // entry. Tap / hover / focus opens a tooltip showing what the hat's
@@ -395,7 +399,35 @@ function linkifyNarrated(text, source, targets) {
 
 export default function Spectator() {
   const navigate = useNavigate()
-  const { game, elo, stats, speed, status, history } = useLiveSocket()
+  const { game: liveGame, elo, stats, speed, status, history } = useLiveSocket()
+
+  // R60 spectator UX batch 3: per-session snapshot ring + scrub
+  // slider. snapshotHistory holds up to 120 deduped GameSnapshots
+  // keyed by (turn, phase, step, active_seat). scrubIndex === -1
+  // means "live"; >= 0 means render the historical snapshot. Resets
+  // whenever the live game_id changes (new game = new history).
+  const [snapshotHistory, setSnapshotHistory] = useState([])
+  const [scrubIndex, setScrubIndex] = useState(-1)
+  const lastGameIdRef = useRef(null)
+
+  useEffect(() => {
+    if (!liveGame) return
+    // Reset history when a new game starts.
+    if (liveGame.game_id != null && liveGame.game_id !== lastGameIdRef.current) {
+      lastGameIdRef.current = liveGame.game_id
+      setSnapshotHistory([liveGame])
+      setScrubIndex(-1)
+      return
+    }
+    setSnapshotHistory(prev => pushSnapshot(prev, liveGame))
+  }, [liveGame])
+
+  // game is the EFFECTIVE rendered snapshot — live when scrubIndex
+  // is -1, otherwise the scrubbed history entry. Everything below
+  // reads `game` as before so no other call sites need to change.
+  const game = effectiveGame(liveGame, snapshotHistory, scrubIndex)
+  const isScrubbing = scrubIndex >= 0
+
   const logContainerRef = useRef(null)
   const userScrolledRef = useRef(false)
   // Last observed scrollHeight of the log container, captured at the
@@ -864,6 +896,16 @@ export default function Spectator() {
                       </span>
                     </span>
                   </div>
+                  {/* Command zone strip — renders only when commanders are
+                      sitting in the zone (early game pre-cast, or after
+                      a §903.9 commander kill that's been zone-returned).
+                      Stays hidden once the commander hits the
+                      battlefield. */}
+                  {Array.isArray(s.command_zone) && s.command_zone.length > 0 && (
+                    <div style={{ padding: '2px 6px' }}>
+                      <CommandZoneStrip zone={s.command_zone} />
+                    </div>
+                  )}
                   <div className="seat-body" style={{ position: 'relative' }}>
                     {s.lost && !isWinner && (
                       <div style={{
@@ -917,10 +959,14 @@ export default function Spectator() {
                               opacity: p.tapped ? 0.4 : 1,
                               transform: p.tapped ? 'rotate(6deg)' : 'none',
                               backgroundImage: p.name ? `url(${cardArtUrl(p.name)})` : undefined,
+                              position: 'relative',
                             }}
                           >
                             <span className="perm-tag">{typeTag(p)}{p.count > 1 ? `×${p.count}` : ''}</span>
                             {permStat(p) && <span className="perm-stat">{permStat(p)}</span>}
+                            {/* Counter overlay — only renders when the
+                                permanent carries non-zero counters. */}
+                            <CounterBadge counters={p.counters} />
                           </div>
                         ))
                       })()}
@@ -985,6 +1031,18 @@ export default function Spectator() {
             })
             })()}
           </div>
+
+          {/* Replay slider — scrubs backwards through the in-session
+              snapshot ring. Hidden until at least 2 snapshots have
+              been captured so the live-only session doesn't carry
+              visual noise. */}
+          <ReplaySlider
+            history={snapshotHistory}
+            scrubIndex={scrubIndex}
+            onChange={(idx) => setScrubIndex(clampScrubIndex(idx, snapshotHistory.length))}
+            onLive={() => setScrubIndex(-1)}
+            nSeats={numSeats}
+          />
 
           {/* Stack mini-display — renders only when the resolution stack
               is non-empty so the layout stays quiet during the

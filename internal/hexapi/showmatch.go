@@ -77,6 +77,23 @@ type SeatSnapshot struct {
 	// when every bucket is zero (the common state during priority
 	// passes / between turns).
 	ManaPoolByColor map[string]int `json:"mana_pool_by_color,omitempty"`
+
+	// CommandZone is the per-seat list of commanders currently sitting
+	// in the command zone (CR §903.6). Each entry carries the
+	// commander name and the §903.8 cast-count surcharge — the count
+	// of prior command-zone casts of THAT commander (next cast costs
+	// base_cmc + 2 * CastCount). Omitted when the zone is empty (the
+	// common state once the commander has been cast and is on the
+	// battlefield).
+	CommandZone []CommandZoneEntry `json:"command_zone,omitempty"`
+}
+
+// CommandZoneEntry is one commander sitting in the command zone, as
+// exposed to the spectator UI. CastCount tracks the §903.8 tax: a
+// commander with CastCount=2 will cost base_cmc + 4 to cast again.
+type CommandZoneEntry struct {
+	Name      string `json:"name"`
+	CastCount int    `json:"cast_count,omitempty"`
 }
 
 type EvalSnapshot struct {
@@ -102,6 +119,12 @@ type PermanentSnapshot struct {
 	IsCmdr  bool   `json:"is_commander,omitempty"`
 	IsLand  bool   `json:"is_land,omitempty"`
 	Type    string `json:"type,omitempty"`
+
+	// Counters is the per-kind counter map on this permanent. Common
+	// keys: "+1/+1", "-1/-1", "loyalty", "charge", "fade", "time",
+	// "stun". Omitted when no counters are present (the common state
+	// for non-creature non-planeswalker permanents).
+	Counters map[string]int `json:"counters,omitempty"`
 
 	// InstanceID Phase 9 lineage fields (per docs/instanceid-system-v2-r60.md §13).
 	// Spectator + Heimdall consume these to render lineage trees on hover.
@@ -2460,6 +2483,11 @@ func (sm *Showmatch) captureSnapshot(gs *gameengine.GameState, commanders []stri
 		if mp := buildManaPoolByColor(s.Mana); len(mp) > 0 {
 			ss.ManaPoolByColor = mp
 		}
+		// R60 spectator UX: surface the command zone so the UI can
+		// render per-seat commander cards + the §903.8 cast-tax count.
+		if cz := buildCommandZone(s.CommandZone, s.CommanderCastCounts); len(cz) > 0 {
+			ss.CommandZone = cz
+		}
 		for _, p := range s.Battlefield {
 			if p == nil || p.Card == nil {
 				continue
@@ -2470,6 +2498,21 @@ func (sm *Showmatch) captureSnapshot(gs *gameengine.GameState, commanders []stri
 				Power:  p.Power(),
 				Tough:  p.Toughness(),
 				IsLand: p.IsLand(),
+			}
+			// R60 spectator UX: surface counter-on-permanent state so the
+			// UI can overlay +1/+1, loyalty, charge, etc. on perm tiles.
+			// Only carry non-zero counters across the wire to keep
+			// payloads small (most permanents have zero counters).
+			if len(p.Counters) > 0 {
+				cs := map[string]int{}
+				for k, v := range p.Counters {
+					if v != 0 {
+						cs[k] = v
+					}
+				}
+				if len(cs) > 0 {
+					ps.Counters = cs
+				}
 			}
 			// Phase 9 lineage: pull from the Card (per-instance identity
 			// lives on Card, not Permanent — copy/mutate swaps Card while
@@ -2573,6 +2616,33 @@ func buildManaPoolByColor(p *gameengine.ColoredManaPool) map[string]int {
 	}
 	if anySum > 0 {
 		out["Any"] = anySum
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// buildCommandZone flattens a seat's command-zone card slice + the
+// §903.8 cast-count map into the JSON-serializable shape the
+// spectator UI consumes. Returns nil when the zone is empty so the
+// SeatSnapshot's omitempty tag elides the field during the
+// commander-on-battlefield steady state.
+func buildCommandZone(zone []*gameengine.Card, castCounts map[string]int) []CommandZoneEntry {
+	if len(zone) == 0 {
+		return nil
+	}
+	out := make([]CommandZoneEntry, 0, len(zone))
+	for _, c := range zone {
+		if c == nil {
+			continue
+		}
+		name := c.DisplayName()
+		entry := CommandZoneEntry{Name: name}
+		if castCounts != nil {
+			entry.CastCount = castCounts[name]
+		}
+		out = append(out, entry)
 	}
 	if len(out) == 0 {
 		return nil
