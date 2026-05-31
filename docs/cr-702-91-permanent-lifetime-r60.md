@@ -55,8 +55,8 @@ through each of the four exit primitives, and assert the carrier `*Card`
 ended up in seat 1's destination zone. Catches any handler that snags
 the leaving card off the wire into the wrong seat's zone.
 
-- Handlers exercised (cards subscribed to an exit event): **106**
-- Primitives × handlers attempted: **424**
+- Handlers exercised (cards subscribed to an exit event): **107**
+- Primitives × handlers attempted: **428**
 - Owner-routing violations: **0**
 
 **The permanent-lifetime ownership invariant holds across the
@@ -79,6 +79,7 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 - `azors elocutors`
 - `banisher priest`
 - `bloodchief ascension`
+- `brudiclad telchor engineer`
 - `carmen cruel skymarcher`
 - `cecily haunted mage`
 - `cloud midgar mercenary`
