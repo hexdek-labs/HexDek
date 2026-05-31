@@ -85,7 +85,13 @@ func emetSelchLoot(gs *gameengine.GameState, perm *gameengine.Permanent, reason 
 		}
 		card := s.Hand[idx]
 		discardName = card.DisplayName()
-		gameengine.MoveCard(gs, card, seat, "hand", "graveyard", "emet_selch_discard")
+		// Route through DiscardCard for §702.34a Madness / §702.187
+		// Mayhem / Necropotence reroute / card_discarded trigger /
+		// Turn.Discarded stat. Pre-r60-normalize Emet-Selch direct-
+		// MoveCarded the highest-CMC card to graveyard, silently
+		// bypassing every one of those — a Madness card discarded by
+		// Emet-Selch should be Madness-cast, not graveyarded.
+		gameengine.DiscardCard(gs, card, seat)
 		gs.LogEvent(gameengine.Event{
 			Kind:   "discard",
 			Seat:   seat,

@@ -306,8 +306,12 @@ func payWardByDiscard(gs *GameState, caster *Seat, source *Permanent, cost WardC
 		}
 	}
 	card := caster.Hand[idx]
-	caster.Hand = append(caster.Hand[:idx], caster.Hand[idx+1:]...)
-	caster.Graveyard = append(caster.Graveyard, card)
+	// Route through DiscardCard for §702.34a Madness / §702.187 Mayhem /
+	// Necropotence reroute / card_discarded trigger / Turn.Discarded
+	// stat. Pre-r60-normalize the ward alt-payment path direct-spliced
+	// caster.Hand and silently bypassed every one of those — a ward-
+	// alt-paid card with madness should be Madness-cast, not graveyarded.
+	DiscardCard(gs, card, caster.Idx)
 	gs.LogEvent(Event{
 		Kind:   "discard",
 		Seat:   caster.Idx,

@@ -181,9 +181,12 @@ func aprilReporterOnDamage(gs *gameengine.GameState, perm *gameengine.Permanent,
 	if drawn > 0 && len(seat.Hand) > 0 {
 		// Discard the first card in hand (engine's broader policy is
 		// random-ish; per_card layer doesn't pick a "best" discard).
+		// Route through DiscardCard for §702.34a Madness / §702.187
+		// Mayhem / Necropotence reroute / card_discarded trigger /
+		// Turn.Discarded stat. Pre-r60-normalize this path direct-
+		// spliced seat.Hand and silently bypassed every one of those.
 		card := seat.Hand[0]
-		seat.Hand = seat.Hand[1:]
-		seat.Graveyard = append(seat.Graveyard, card)
+		gameengine.DiscardCard(gs, card, perm.Controller)
 		gs.LogEvent(gameengine.Event{
 			Kind:   "discard",
 			Seat:   perm.Controller,
