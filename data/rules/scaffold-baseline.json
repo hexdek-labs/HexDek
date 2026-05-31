@@ -1,0 +1,53 @@
+{
+  "eras": {
+    "1": {
+      "conditions": {
+        "gap_pct": 1.2,
+        "total": 2499,
+        "unbucketed": 29
+      },
+      "triggers": {
+        "gap_pct": 0.0,
+        "total": 11548,
+        "unbucketed": 0
+      }
+    },
+    "2": {
+      "conditions": {
+        "gap_pct": 0.0,
+        "total": 75,
+        "unbucketed": 0
+      },
+      "triggers": {
+        "gap_pct": 0.0,
+        "total": 408,
+        "unbucketed": 0
+      }
+    },
+    "3": {
+      "conditions": {
+        "gap_pct": 1.8,
+        "total": 55,
+        "unbucketed": 1
+      },
+      "triggers": {
+        "gap_pct": 0.0,
+        "total": 538,
+        "unbucketed": 0
+      }
+    },
+    "4": {
+      "conditions": {
+        "gap_pct": 1.8,
+        "total": 514,
+        "unbucketed": 9
+      },
+      "triggers": {
+        "gap_pct": 0.0,
+        "total": 2515,
+        "unbucketed": 0
+      }
+    }
+  },
+  "regression_tolerance_pct": 0.5
+}
