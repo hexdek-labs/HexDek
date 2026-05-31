@@ -89,14 +89,15 @@ func main() {
 		lazyPool    = flag.Bool("lazy-pool", false, "lazy pool: like --pool but loads decks on demand (low memory for large pools)")
 		pprofFlag     = flag.Bool("pprof", false, "enable pprof profiling (HTTP :6060 + heap dump after first game)")
 		progressEvery = flag.Int("progress-every", 0, "log progress every N games (0 = auto)")
-		applyFeedback = flag.String("apply-feedback", "",
-			"path to a Heimdall feedback JSON file (hat.HeimdallFeedback) to apply at startup. "+
-				"Each loaded deck's StrategyProfile.Weights gets per-dimension nudges per the attribution. "+
-				"Hard caps prevent any single feedback file from dramatically rewriting eval weights: "+
-				"±0.15 per-dimension Δ cap, 0.5 total magnitude budget, "+
-				"weights floored at 0.05 (regression safety — no dimension can be zeroed by feedback), "+
-				"and Δ scaled by sqrt(SampleSize/30) so small-sample feedback applies less aggressively. "+
-				"See internal/hat/heimdall_feedback.go for the full contract.")
+		// Rollback safety net for --apply-feedback (PR #965's closed-loop
+		// integration). Captures pre-feedback win rate, compares against
+		// post-gauntlet observed rate; if the drop exceeds the threshold
+		// the feedback is auto-marked as rejected (sidecar at
+		// <feedbackPath>.rejected) so the NEXT --apply-feedback invocation
+		// with the same path skips the bad attribution. See internal/hat/
+		// heimdall_feedback.go ShouldRollback / MarkFeedbackRejected.
+		baselineWinRate    = flag.Float64("baseline-winrate", 0, "baseline win rate (fraction in [0,1]) for the rollback safety net. When supplied alongside --apply-feedback, the runner compares post-gauntlet aggregate win rate against this baseline; if dropped > --rollback-threshold, the feedback is auto-rejected via a sidecar marker and the active overlay is reset. 0 disables the rollback gate.")
+		rollbackThreshold  = flag.Float64("rollback-threshold", 0.05, "max allowed win-rate drop in fractional points before --apply-feedback is rolled back. Default 0.05 (5pp). 0 disables the gate even when --baseline-winrate is supplied.")
 	)
 	flag.Parse()
 
@@ -111,7 +112,23 @@ func main() {
 	// overlay via hat.SetActiveFeedback BEFORE any evaluator is built.
 	// Tests: internal/hat/heimdall_feedback_apply_test.go pin the
 	// overlay semantics; this is the gauntlet-side ingress wiring.
-	if *applyFeedback != "" {
+	// feedbackApplied tracks whether SetActiveFeedback succeeded so the
+	// post-gauntlet rollback gate knows whether there's anything to
+	// roll back. Stays false on rejected/missing/empty feedback paths.
+	feedbackApplied := false
+	if *applyFeedback != "" && hat.IsFeedbackRejected(*applyFeedback) {
+		// Rollback-safety check: a prior gauntlet auto-rejected this
+		// feedback path (sidecar marker at <feedbackPath>.rejected).
+		// Skip application this run; operator can delete the sidecar
+		// manually to re-enable after investigation.
+		rej, _ := hat.LoadFeedbackRejection(*applyFeedback)
+		if rej != nil {
+			log.Printf("  apply-feedback: SKIPPED — feedback %s was auto-rejected at %s (baseline=%.3f, observed=%.3f, threshold=%.3f, note=%q). Delete %s.rejected to re-enable.",
+				*applyFeedback, rej.RejectedAt, rej.BaselineWinRate, rej.CurrentWinRate, rej.Threshold, rej.Note, *applyFeedback)
+		} else {
+			log.Printf("  apply-feedback: SKIPPED — feedback %s has a .rejected sidecar (delete to re-enable)", *applyFeedback)
+		}
+	} else if *applyFeedback != "" {
 		dir := *applyFeedback
 		// Accept either a directory or a direct JSON path.
 		if info, err := os.Stat(dir); err == nil && !info.IsDir() {
@@ -140,6 +157,7 @@ func main() {
 			if err := hat.SetActiveFeedback(fb, policy); err != nil {
 				log.Fatalf("--apply-feedback: SetActiveFeedback: %v", err)
 			}
+			feedbackApplied = true
 			log.Printf("  apply-feedback: ON — %d archetypes, %d gauntlet games, provenance=%q, policy=%s",
 				len(fb.Archetypes), fb.GauntletGames, fb.Provenance, *feedbackPolicy)
 		}
@@ -295,23 +313,15 @@ func main() {
 		}
 	}
 
-	// Heimdall feedback applier (--apply-feedback). Loaded once at
-	// startup and applied to every loaded StrategyProfile so the
-	// hat's weights ride the previous run's attribution signal into
-	// the next tournament. Load failure is non-fatal — we log and
-	// continue with un-nudged weights rather than abort the run on
-	// a missing or malformed feedback file.
-	var feedback *hat.HeimdallFeedback
-	if *applyFeedback != "" {
-		fb, err := hat.LoadHeimdallFeedback(*applyFeedback)
-		if err != nil {
-			log.Printf("  [apply-feedback] load failed (%v) — continuing without feedback", err)
-		} else if fb != nil {
-			feedback = fb
-			log.Printf("  [apply-feedback] loaded feedback from %s (source=%q, sample_size=%d, attributions=%d)",
-				*applyFeedback, fb.Source, fb.SampleSize, len(fb.Attributions))
-		}
-	}
+	// PR #949's per-deck applier ran here originally; PR #965 ships
+	// the higher-level closed-loop integration via SetActiveFeedback
+	// at the top of main (around line 105). The per-deck apply blocks
+	// were removed in dev/hat-feedback-rollback-r60 (2026-05-31) since
+	// the active-overlay path supersedes them — the per-deck hat.
+	// ApplyHeimdallFeedback / hat.LoadHeimdallFeedback primitives stay
+	// available in internal/hat/heimdall_feedback.go for callers that
+	// want byte-level per-StrategyProfile control, but the tournament
+	// runner now uses the closed-loop active-overlay path only.
 
 	// Hat factory — per-seat when poker hats need Freya strategy data.
 	var hatFactories []tournament.HatFactory
@@ -327,11 +337,6 @@ func main() {
 		for i, p := range deckPaths {
 			profile := hat.LoadStrategyFromFreya(p) // may be nil
 			if profile != nil {
-				if feedback != nil {
-					n := hat.ApplyHeimdallFeedback(profile, feedback)
-					log.Printf("  deck %s: applied Heimdall feedback (%d dimensions nudged)",
-						filepath.Base(p), n)
-				}
 				log.Printf("  deck %s: loaded Freya strategy (archetype=%s, combos=%d, tutor_targets=%d)",
 					filepath.Base(p), profile.Archetype, len(profile.ComboPieces), len(profile.TutorTargets))
 			}
@@ -353,11 +358,6 @@ func main() {
 		for i, p := range deckPaths {
 			profile := hat.LoadStrategyFromFreya(p)
 			if profile != nil {
-				if feedback != nil {
-					n := hat.ApplyHeimdallFeedback(profile, feedback)
-					log.Printf("  deck %s: applied Heimdall feedback (%d dimensions nudged)",
-						filepath.Base(p), n)
-				}
 				log.Printf("  deck %s: loaded Freya strategy (archetype=%s, combos=%d, tutor_targets=%d)",
 					filepath.Base(p), profile.Archetype, len(profile.ComboPieces), len(profile.TutorTargets))
 			}
@@ -451,6 +451,34 @@ func main() {
 		fmt.Printf("\nSELF-TRIGGER-COUNTER fires: %d\n", hat.SelfTriggerCounterFires())
 		if *reportPath != "" {
 			fmt.Printf("\nReport written to %s\n", *reportPath)
+		}
+	}
+
+	// Rollback safety gate. When --apply-feedback was applied AND
+	// --baseline-winrate + --rollback-threshold are set, compare the
+	// observed mean per-commander win rate against the baseline.
+	// If the drop exceeds the threshold, mark the feedback as rejected
+	// (sidecar at <feedbackPath>.rejected) and reset the active overlay.
+	// The next --apply-feedback invocation with the same path will
+	// detect the marker and skip application until an operator clears
+	// it. Guards against bad attribution propagating across gauntlets.
+	if feedbackApplied && *baselineWinRate > 0 && *rollbackThreshold > 0 {
+		currentWinRate := meanPerCommanderWinRate(result)
+		if hat.ShouldRollback(*baselineWinRate, currentWinRate, *rollbackThreshold) {
+			drop := *baselineWinRate - currentWinRate
+			note := fmt.Sprintf("auto-rollback after %d-game gauntlet (mode=%s)", result.Games, result.Mode)
+			if err := hat.MarkFeedbackRejected(*applyFeedback, *baselineWinRate, currentWinRate, *rollbackThreshold, note); err != nil {
+				log.Printf("  rollback: mark-rejected failed: %v", err)
+			}
+			// Reset the active overlay so any in-process callers
+			// after this point (analytics passes, --feedback-out
+			// recomputation) see un-nudged baseline weights.
+			_ = hat.SetActiveFeedback(nil, hat.PolicyDirect)
+			log.Printf("  rollback: TRIPPED — observed %.3f vs baseline %.3f (drop %.3f > threshold %.3f). Feedback %s marked as rejected; reset active overlay. Next --apply-feedback run will skip until %s.rejected is removed.",
+				currentWinRate, *baselineWinRate, drop, *rollbackThreshold, *applyFeedback, *applyFeedback)
+		} else {
+			log.Printf("  rollback: CLEAN — observed %.3f vs baseline %.3f (within threshold %.3f). Feedback retained.",
+				currentWinRate, *baselineWinRate, *rollbackThreshold)
 		}
 	}
 
@@ -548,6 +576,40 @@ func resolveDeckPaths(arg string) ([]string, error) {
 
 // scanDeckDir finds all .txt files in dir (recursively) and returns
 // them sorted alphabetically.
+// meanPerCommanderWinRate computes the average win rate across all
+// commanders in the tournament result. Per-commander win rate =
+// wins / total-games-played-by-that-commander; the mean averages
+// across commanders so commanders that played more games don't
+// dominate. Returns 0 when the result has no commander data (e.g.
+// crashed early) — the caller's rollback gate handles 0 as "no
+// signal, don't roll back".
+//
+// Used by the rollback safety gate: --apply-feedback's --baseline-
+// winrate is compared against this metric to decide whether the
+// applied feedback HARMED the next gauntlet's outcome.
+func meanPerCommanderWinRate(r *tournament.TournamentResult) float64 {
+	if r == nil || len(r.WinsByCommander) == 0 || r.GamesByCommanderBySeat == nil {
+		return 0
+	}
+	sumRate := 0.0
+	count := 0
+	for name, wins := range r.WinsByCommander {
+		games := 0
+		for _, g := range r.GamesByCommanderBySeat[name] {
+			games += g
+		}
+		if games <= 0 {
+			continue
+		}
+		sumRate += float64(wins) / float64(games)
+		count++
+	}
+	if count == 0 {
+		return 0
+	}
+	return sumRate / float64(count)
+}
+
 func scanDeckDir(dir string) ([]string, error) {
 	var paths []string
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
