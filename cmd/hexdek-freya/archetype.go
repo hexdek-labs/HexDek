@@ -1351,10 +1351,15 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 		// scaling verb. Excludes "opponent's graveyard" (graveyard-
 		// hate from the other side) and excludes the "from your
 		// graveyard" recursion phrasing which is already counted via
-		// IsRecursion. Sidisi/Bruvac-class self-mill commanders also
-		// register via a name match below.
-		hasGYSizeScale := (strings.Contains(ot, "equal to") || strings.Contains(ot, "for each")) &&
-			strings.Contains(ot, "in your graveyard")
+		// IsRecursion.
+		//
+		// r60 wave 3 extends the predicate beyond "in your graveyard"
+		// to also catch "in all graveyards" / "in any graveyard" — the
+		// Lhurgoyf family (Tarmogoyf, Lhurgoyf, Mortivore) scales off
+		// ALL graveyards, not just yours. Pre-fix these load-bearing
+		// Selfmill payoffs were missed because the substring required
+		// "your" graveyard specifically.
+		hasGYSizeScale := hasGraveyardSizeScalePattern(ot)
 		isCanonicalSelfMillCommander := containsAny(strings.ToLower(qp.Profile.Name),
 			"sidisi", "bruvac", "phenax", "splinterfright", "lhurgoyf",
 			"tasigur", "jarad", "mortivore", "sutured ghoul")
@@ -1972,24 +1977,34 @@ func cardIsReanimationEffect(name, ot string, isRecursion bool, recursionDest st
 	if ot == "" {
 		return false
 	}
-	// Canonical printed shapes.
-	if strings.Contains(ot, "return target creature card") &&
-		strings.Contains(ot, "graveyard") &&
-		(strings.Contains(ot, "to the battlefield") || strings.Contains(ot, "onto the battlefield")) {
+	// r60 wave 3: canonical shapes operate on otClean so keyword reminders
+	// can't false-fire reanimation classification. Unearth reminder ("Return
+	// this card from your graveyard to the battlefield") used to leak via
+	// the "return target creature card" pattern when a card had unearth
+	// AND another graveyard clause; embalm / encore / disturb reminders
+	// have similar return-from-graveyard language that the substring trio
+	// could pick up across clauses.
+	otClean := stripReminder(ot)
+	if strings.Contains(otClean, "return target creature card") &&
+		strings.Contains(otClean, "graveyard") &&
+		(strings.Contains(otClean, "to the battlefield") || strings.Contains(otClean, "onto the battlefield")) {
 		return true
 	}
-	if strings.Contains(ot, "put target creature card") &&
-		strings.Contains(ot, "graveyard") &&
-		(strings.Contains(ot, "onto the battlefield") || strings.Contains(ot, "into play")) {
+	if strings.Contains(otClean, "put target creature card") &&
+		strings.Contains(otClean, "graveyard") &&
+		(strings.Contains(otClean, "onto the battlefield") || strings.Contains(otClean, "into play")) {
 		return true
 	}
 	// Mass reanimation: "return all creature cards from [...] graveyard[s]"
-	if strings.Contains(ot, "return all creature cards") &&
-		strings.Contains(ot, "graveyard") &&
-		(strings.Contains(ot, "to the battlefield") || strings.Contains(ot, "onto the battlefield")) {
+	if strings.Contains(otClean, "return all creature cards") &&
+		strings.Contains(otClean, "graveyard") &&
+		(strings.Contains(otClean, "to the battlefield") || strings.Contains(otClean, "onto the battlefield")) {
 		return true
 	}
-	// Persist / undying — in-place reanimation on death.
+	// Persist / undying — in-place reanimation on death. The keyword name
+	// itself is in the body (not reminder), so we deliberately read `ot`
+	// here, not otClean — keyword-reminder gloss tells us this IS persist
+	// / undying, and stripping the reminder loses the diagnostic.
 	if strings.Contains(ot, "persist (when this creature dies") ||
 		strings.Contains(ot, "undying (when this creature dies") ||
 		(strings.Contains(ot, "persist") && strings.Contains(ot, "-1/-1 counter")) ||
@@ -2209,6 +2224,27 @@ func clauseHasBuffAnchor(ot, anchor string) bool {
 			return false
 		}
 	}
+}
+
+// hasGraveyardSizeScalePattern returns true if oracle text describes a
+// stat or count that scales with graveyard contents. The two-anchor
+// shape ("equal to" / "for each") combined with one of four graveyard-
+// scope phrasings ("in your graveyard" / "in all graveyards" / "in any
+// graveyard" / "in graveyards") covers the Lhurgoyf family — Tarmogoyf,
+// Lhurgoyf, Mortivore, Splinterfright, Nighthowler, Sutured Ghoul —
+// without bleeding into the "from your graveyard" recursion phrasing
+// (which is already counted as IsRecursion upstream).
+//
+// Extracted from the inline detector in classifyContext so the r60
+// wave 3 broadening (yours → any-zone graveyards) stays unit-testable.
+func hasGraveyardSizeScalePattern(ot string) bool {
+	if !(strings.Contains(ot, "equal to") || strings.Contains(ot, "for each")) {
+		return false
+	}
+	return strings.Contains(ot, "in your graveyard") ||
+		strings.Contains(ot, "in all graveyards") ||
+		strings.Contains(ot, "in any graveyard") ||
+		strings.Contains(ot, "in graveyards")
 }
 
 func euclideanDistance(actual map[RoleTag]float64, template map[RoleTag]float64) float64 {

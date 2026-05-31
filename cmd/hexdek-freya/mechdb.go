@@ -163,6 +163,18 @@ func BuildMechanicDB(oraclePath string) (*MechanicDB, error) {
 		ot := strings.ToLower(oracleText)
 		tl := strings.ToLower(typeLine)
 
+		// otClean = reminder-stripped lowercased oracle. The mechanic
+		// phrase scan below operates on otClean to avoid keyword-
+		// reminder bleed: Infect reminder text "(This creature deals
+		// damage to creatures in the form of -1/-1 counters and to
+		// players as poison counters.)" used to tag every Infect
+		// creature as BOTH infect AND poison mechanics, double-counting
+		// poison cards from the Infect side and inflating the Mechanics
+		// histogram. After otClean, only cards whose BODY mentions
+		// poison counters (Leeches, Skithiryx, Melira) register as
+		// poison.
+		otClean := stripReminder(ot)
+
 		// ── Extract creature types from type_line ──
 		extractMechDBCreatureTypes(tl, db)
 
@@ -174,7 +186,7 @@ func BuildMechanicDB(oraclePath string) (*MechanicDB, error) {
 		// ── Scan oracle text for mechanic phrases ──
 		cardMechs := make(map[string]bool)
 		for phrase, category := range mechanicPhrases {
-			if strings.Contains(ot, phrase) {
+			if strings.Contains(otClean, phrase) {
 				if !cardMechs[category] {
 					cardMechs[category] = true
 					db.Mechanics[category]++

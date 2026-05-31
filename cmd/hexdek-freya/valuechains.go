@@ -165,8 +165,16 @@ func classifyZoneFlows(ot, tl string, p *CardProfile) []ZoneFlow {
 		flows = append(flows, ZoneFlow{From: "hand", To: "battlefield", Resource: "any"})
 	}
 
-	// Exile play: exile -> hand/battlefield
-	if strings.Contains(ot, "exile") && containsAny(ot, "you may cast", "you may play") {
+	// Exile play: exile -> hand/battlefield. Operates on otClean so the
+	// cascade reminder "(... You may cast it without paying its mana
+	// cost. ...)" and the suspend / foretell glosses don't fabricate an
+	// exile->hand value-chain bridge on every keyword card. This mirrors
+	// the wave-2 fix to the analysis.go cast-from-exile detector — the
+	// same reminder shape was leaking into both the per-card classifier
+	// and the zone-flow detector, surfacing every cascade card as both a
+	// cast-from-exile effect AND a value-chain bridge.
+	if strings.Contains(otClean, "exile") &&
+		containsAny(otClean, "you may cast", "you may play") {
 		flows = append(flows, ZoneFlow{From: "exile", To: "hand", Resource: "card"})
 	}
 
