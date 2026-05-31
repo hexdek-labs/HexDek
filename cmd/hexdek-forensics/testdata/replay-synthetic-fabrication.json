@@ -1,0 +1,25 @@
+{
+  "game_idx": 411,
+  "seed": 42,
+  "deck_seed": 4110043,
+  "commanders": ["Eruth, Tormented Prophet", "Atraxa, Praetors' Voice", "Krenko, Mob Boss", "Lathril, Blade of the Elves"],
+  "events": [
+    {"Kind": "game_setup", "Seat": -1, "Target": -1, "Source": "", "Amount": 0, "Details": {"rule": "103.1"}},
+    {"Kind": "mint_og_iid", "Seat": 0, "Target": -1, "Source": "Lightning Bolt", "Amount": 0, "Details": {"instance_id": "h0OGVR100001"}},
+    {"Kind": "mint_og_iid", "Seat": 1, "Target": -1, "Source": "Counterspell", "Amount": 0, "Details": {"instance_id": "h1OGVU200002"}},
+    {"Kind": "card_drawn", "Seat": 1, "Target": -1, "Source": "Lightning Bolt", "Amount": 1, "Details": {}},
+    {"Kind": "enter_battlefield", "Seat": 1, "Target": -1, "Source": "Goblin Bushwhacker", "Amount": 0, "Details": {"instance_id": "h1OGVR200096"}},
+    {"Kind": "creature_attacks", "Seat": 1, "Target": 0, "Source": "Goblin Bushwhacker", "Amount": 0, "Details": {}},
+    {"Kind": "combat_damage", "Seat": 1, "Target": 0, "Source": "Goblin Bushwhacker", "Amount": 2, "Details": {}}
+  ],
+  "violations": [
+    {"turn": 23, "phase": "beginning", "step": "upkeep", "invariant": "ZoneConservation", "message": "ZoneConservation: InstanceID \"h1OGVR200096\" present in a zone but not in (Minted - Ceased) — fabrication or stale ceased entry"},
+    {"turn": 24, "phase": "beginning", "step": "upkeep", "invariant": "ZoneConservation", "message": "ZoneConservation: InstanceID \"h1OGVR200096\" present in a zone but not in (Minted - Ceased) — fabrication or stale ceased entry"},
+    {"turn": 25, "phase": "main", "step": "precombat_main", "invariant": "ZoneConservation", "message": "ZoneConservation: InstanceID \"h1TKVC000110\" (creature token zombie Token) is minted and not ceased but is absent from every zone — card disappeared"}
+  ],
+  "card_index": {
+    "h0OGVR100001": "Lightning Bolt",
+    "h1OGVU200002": "Counterspell",
+    "h1OGVR200096": "Goblin Bushwhacker"
+  }
+}
