@@ -37,9 +37,22 @@ func carmenAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	attackerSeat, _ := ctx["seat"].(int)
-	if attackerSeat != perm.Controller {
-		return
+	// Engine fires creature_attacks with attacker_perm + attacker_seat +
+	// attacker_card. Legacy "seat" key kept as a fallback. Carmen's printed
+	// trigger is "Whenever Carmen attacks" so gate on attacker_perm == perm
+	// when available; fall back to the seat-only filter otherwise.
+	if atk, ok := ctx["attacker_perm"].(*gameengine.Permanent); ok && atk != nil {
+		if atk != perm {
+			return
+		}
+	} else {
+		attackerSeat, ok := ctx["attacker_seat"].(int)
+		if !ok {
+			attackerSeat, _ = ctx["seat"].(int)
+		}
+		if attackerSeat != perm.Controller {
+			return
+		}
 	}
 	seat := gs.Seats[perm.Controller]
 	if seat == nil {

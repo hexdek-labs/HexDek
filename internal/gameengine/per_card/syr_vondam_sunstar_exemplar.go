@@ -36,7 +36,54 @@ func syrVondamSunstarOtherDies(gs *gameengine.GameState, perm *gameengine.Perman
 }
 
 func syrVondamSunstarOtherExiled(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
-	syrVondamSunstarOtherCreatureLeft(gs, perm, ctx, "syr_vondam_sunstar_other_exiled")
+	// card_exiled ctx differs from creature_dies: engine writes
+	// {seat, card (string), from_zone, source}. Translate to the shape
+	// the shared helper expects ({controller_seat, card (*Card)}) by
+	// resolving the card-by-name on the owning seat's graveyard/exile
+	// after-the-fact. Only fire when the exited card was on a battlefield
+	// our controller owns (per oracle "another creature you control").
+	if gs == nil || perm == nil || ctx == nil {
+		return
+	}
+	exitSeat, ok := ctx["seat"].(int)
+	if !ok || exitSeat != perm.Controller {
+		return
+	}
+	cardName, _ := ctx["card"].(string)
+	if cardName == "" || cardName == perm.Card.DisplayName() {
+		return
+	}
+	// Resolve the named card to a *Card by scanning the owning seat's
+	// graveyard + exile (card_exiled fires after the move, so the *Card
+	// is in exile; from-zone could also be graveyard for stack-resolve
+	// → exile paths).
+	var card *gameengine.Card
+	s := gs.Seats[exitSeat]
+	if s != nil {
+		for _, c := range s.Exile {
+			if c != nil && c.DisplayName() == cardName {
+				card = c
+				break
+			}
+		}
+		if card == nil {
+			for _, c := range s.Graveyard {
+				if c != nil && c.DisplayName() == cardName {
+					card = c
+					break
+				}
+			}
+		}
+	}
+	if card == nil || !cardHasType(card, "creature") {
+		return
+	}
+	perm.AddCounter("+1/+1", 1)
+	gameengine.GainLife(gs, perm.Controller, 1, perm.Card.DisplayName())
+	emit(gs, "syr_vondam_sunstar_other_exiled", perm.Card.DisplayName(), map[string]interface{}{
+		"seat":  perm.Controller,
+		"other": cardName,
+	})
 }
 
 func syrVondamSunstarOtherCreatureLeft(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}, slug string) {
