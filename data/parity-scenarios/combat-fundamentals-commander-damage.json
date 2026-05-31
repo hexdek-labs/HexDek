@@ -1,0 +1,21 @@
+{
+  "name": "combat-fundamentals-commander-damage",
+  "description": "Voltron via Voja commander damage. Single-creature swing accumulates 21 commander damage past the §704.5j threshold. Tests commander-damage tracking across multiple hits.",
+  "mode": "deck_seed",
+  "deck_pool": [
+    "data/decks/test/voja_wolf_elf_tribal_b4_jaws_of_the_conclave.txt",
+    "data/decks/test/nazgul_tribal_control_b3_lord_of_the_nazgul.txt",
+    "data/decks/test/werewolf_daynight_flip_b3_ulrich.txt",
+    "data/decks/test/disguise_precon_b2_kaust.txt"
+  ],
+  "n_seats": 4,
+  "seed": 102,
+  "max_turns": 30,
+  "expected_outcome": {
+    "winner_seat_in": [0, 1, 2, 3, -1],
+    "min_turns": 4,
+    "max_turns": 30,
+    "end_reason_in": ["life_zero", "commander_damage", "concede", "library_empty", "mandatory_loop_draw", "loss_effect", "poison"]
+  },
+  "tags": ["combat-fundamentals", "phase4-bootstrap"]
+}

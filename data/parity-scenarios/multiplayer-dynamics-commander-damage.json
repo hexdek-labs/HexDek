@@ -1,0 +1,21 @@
+{
+  "name": "multiplayer-dynamics-commander-damage",
+  "description": "Voja distributes commander damage across 3 opponents. Tests per-source commander-damage tracking + multi-seat §704.5j termination.",
+  "mode": "deck_seed",
+  "deck_pool": [
+    "data/decks/test/voja_wolf_elf_tribal_b4_jaws_of_the_conclave.txt",
+    "data/decks/test/nazgul_tribal_control_b3_lord_of_the_nazgul.txt",
+    "data/decks/test/werewolf_daynight_flip_b3_ulrich.txt",
+    "data/decks/test/cedh_combat_cast_combo_b5_azula.txt"
+  ],
+  "n_seats": 4,
+  "seed": 701,
+  "max_turns": 30,
+  "expected_outcome": {
+    "winner_seat_in": [0, 1, 2, 3, -1],
+    "min_turns": 5,
+    "max_turns": 30,
+    "end_reason_in": ["life_zero", "commander_damage", "concede", "library_empty", "mandatory_loop_draw", "loss_effect", "poison"]
+  },
+  "tags": ["multiplayer-dynamics", "phase4-bootstrap"]
+}

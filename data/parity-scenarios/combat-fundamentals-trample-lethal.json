@@ -1,0 +1,21 @@
+{
+  "name": "combat-fundamentals-trample-lethal",
+  "description": "Stompy aggro: Lumra lands-matter pumps creatures past blocker P/T. Tests trample damage assignment + lethal carryover to defending player.",
+  "mode": "deck_seed",
+  "deck_pool": [
+    "data/decks/test/cedh_good_luck_b5_lumra.txt",
+    "data/decks/test/disguise_precon_b2_kaust.txt",
+    "data/decks/test/werewolf_daynight_flip_b3_ulrich.txt",
+    "data/decks/test/nazgul_tribal_control_b3_lord_of_the_nazgul.txt"
+  ],
+  "n_seats": 4,
+  "seed": 103,
+  "max_turns": 30,
+  "expected_outcome": {
+    "winner_seat_in": [0, 1, 2, 3, -1],
+    "min_turns": 4,
+    "max_turns": 30,
+    "end_reason_in": ["life_zero", "commander_damage", "concede", "library_empty", "mandatory_loop_draw", "loss_effect", "poison"]
+  },
+  "tags": ["combat-fundamentals", "phase4-bootstrap"]
+}

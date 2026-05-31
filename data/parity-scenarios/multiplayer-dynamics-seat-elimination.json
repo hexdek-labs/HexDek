@@ -1,0 +1,21 @@
+{
+  "name": "multiplayer-dynamics-seat-elimination",
+  "description": "Ardenn+Rograkh aggro-combo eliminates seats turn-by-turn. Tests §800.4a seat cleanup + pending-trigger purge + commander-redirect of leaving seat.",
+  "mode": "deck_seed",
+  "deck_pool": [
+    "data/decks/test/cedh_big_stick_b5_ardenn_rograkh.txt",
+    "data/decks/test/disguise_precon_b2_kaust.txt",
+    "data/decks/test/werewolf_daynight_flip_b3_ulrich.txt",
+    "data/decks/test/nazgul_tribal_control_b3_lord_of_the_nazgul.txt"
+  ],
+  "n_seats": 4,
+  "seed": 702,
+  "max_turns": 30,
+  "expected_outcome": {
+    "winner_seat_in": [0, 1, 2, 3, -1],
+    "min_turns": 4,
+    "max_turns": 30,
+    "end_reason_in": ["life_zero", "commander_damage", "concede", "library_empty", "mandatory_loop_draw", "loss_effect", "poison"]
+  },
+  "tags": ["multiplayer-dynamics", "phase4-bootstrap"]
+}

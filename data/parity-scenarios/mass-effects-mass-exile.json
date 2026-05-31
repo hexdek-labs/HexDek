@@ -1,0 +1,21 @@
+{
+  "name": "mass-effects-mass-exile",
+  "description": "Yshtola + Narset control mirror. Mass exile (Cyclonic Rift, Farewell, Toxic Deluge variants) exercises §614 would-be-exiled replacement chains + commander zone redirect.",
+  "mode": "deck_seed",
+  "deck_pool": [
+    "data/decks/test/cedh_control_b5_yshtola.txt",
+    "data/decks/test/storm_prowess_nightmare_b4_narset.txt",
+    "data/decks/test/cedh_blink_b5_yarok.txt",
+    "data/decks/test/cedh_combo_partner_b5_kraum_tymna.txt"
+  ],
+  "n_seats": 4,
+  "seed": 202,
+  "max_turns": 40,
+  "expected_outcome": {
+    "winner_seat_in": [0, 1, 2, 3, -1],
+    "min_turns": 4,
+    "max_turns": 40,
+    "end_reason_in": ["life_zero", "commander_damage", "concede", "library_empty", "mandatory_loop_draw", "loss_effect", "poison"]
+  },
+  "tags": ["mass-effects", "phase4-bootstrap"]
+}

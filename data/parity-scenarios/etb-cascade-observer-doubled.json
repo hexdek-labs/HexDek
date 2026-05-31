@@ -1,0 +1,21 @@
+{
+  "name": "etb-cascade-observer-doubled",
+  "description": "Yarok mirror — both Yarok decks deduplicate via legend rule (§704.5k) then ETB-double on every creature. Tests legend-rule application + observer registration.",
+  "mode": "deck_seed",
+  "deck_pool": [
+    "data/decks/test/cedh_blink_b5_yarok.txt",
+    "data/decks/test/cedh_blink_b5_yarok.txt",
+    "data/decks/test/cedh_control_b5_yshtola.txt",
+    "data/decks/test/cedh_mullie_b5_muldrotha.txt"
+  ],
+  "n_seats": 4,
+  "seed": 302,
+  "max_turns": 40,
+  "expected_outcome": {
+    "winner_seat_in": [0, 1, 2, 3, -1],
+    "min_turns": 4,
+    "max_turns": 40,
+    "end_reason_in": ["life_zero", "commander_damage", "concede", "library_empty", "mandatory_loop_draw", "loss_effect", "poison"]
+  },
+  "tags": ["etb-cascade", "phase4-bootstrap"]
+}
