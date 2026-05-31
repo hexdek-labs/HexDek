@@ -3744,6 +3744,28 @@ func classifyTutorInto(p *CardProfile, ot, tl, name string) {
 		}
 	}
 
+	// 1c. Exile-until-unique tutors: Tainted Pact, Demonic Consultation
+	// (consultation also has "reveal until" wording so is double-covered).
+	// Tainted Pact's printed body says "Exile the top card of your library.
+	// You may put that card into your hand unless it has the same name as
+	// another card exiled this way. Repeat this process until you put a
+	// card into your hand or you exile two cards with the same name" — no
+	// "search" or "reveal until" anchor, so the substring family missed it
+	// even though the card is the cEDH-defining black tutor for Thassa's
+	// Oracle lines. The triple-anchor (exile-top + put-into-hand + repeat /
+	// same-name guard) intentionally excludes "Exile the top X cards"
+	// preambles like Demonic Bargain that are followed by a real search.
+	if containsAny(ot, "exile the top card of your library",
+		"exile cards from the top of your library") &&
+		containsAny(ot, "put that card into your hand",
+			"put a card into your hand",
+			"may put that card into your hand") &&
+		containsAny(ot, "repeat this process",
+			"same name as another card exiled this way",
+			"with the chosen name", "with that name") {
+		p.IsTutor = true
+	}
+
 	// 2. Wish-style tutors: fetch from outside the game / sideboard. The
 	// wording variants are deliberately enumerated rather than collapsed to
 	// "outside the game" alone, because "you own from outside the game"
