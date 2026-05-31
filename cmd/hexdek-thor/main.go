@@ -126,6 +126,14 @@ func main() {
 	confidenceExplorerLimit := flag.Int("confidence-explorer-limit", 50, "how many worst-confidence cards to surface (--confidence-explorer)")
 	confidenceExplorerOut := flag.String("confidence-explorer-out", "", "markdown output path for --confidence-explorer (default: stdout)")
 
+	// Confidence trend — capture or diff per-card confidence snapshots.
+	confidenceSnapshotOut := flag.String("confidence-snapshot-out", "", "write a JSON snapshot of current corpus confidence to this path and exit")
+	confidenceTrend := flag.Bool("confidence-trend", false, "diff two confidence snapshots and report per-card drift (exits after report)")
+	confidenceTrendFrom := flag.String("confidence-trend-from", "", "baseline snapshot path (required with --confidence-trend)")
+	confidenceTrendTo := flag.String("confidence-trend-to", "", "target snapshot path (default: snapshot the current corpus)")
+	confidenceTrendOut := flag.String("confidence-trend-out", "", "markdown output path for --confidence-trend (default: stdout)")
+	confidenceTrendLimit := flag.Int("confidence-trend-limit", 50, "max entries per regressed/improved section in --confidence-trend (0 = unlimited)")
+
 	flag.Parse()
 
 	// Aggregate the Thor 2.0 feature flags into one value passed down
@@ -190,6 +198,30 @@ func main() {
 	if *confidenceExplorer {
 		if err := runConfidenceExplorer(corpus, *confidenceExplorerLimit, *confidenceExplorerOut); err != nil {
 			log.Fatalf("confidence-explorer: %v", err)
+		}
+		return
+	}
+
+	// Confidence snapshot — capture current corpus confidence to JSON
+	// for future trend comparisons, then exit.
+	if *confidenceSnapshotOut != "" && !*confidenceTrend {
+		if err := runConfidenceSnapshot(corpus, *confidenceSnapshotOut); err != nil {
+			log.Fatalf("confidence-snapshot: %v", err)
+		}
+		return
+	}
+
+	// Confidence trend — diff a baseline snapshot against either a
+	// second snapshot or the current corpus, then exit. Required:
+	// --confidence-trend-from. Optional: --confidence-trend-to (else
+	// snapshot the current corpus).
+	if *confidenceTrend {
+		if *confidenceTrendFrom == "" {
+			log.Fatalf("confidence-trend: --confidence-trend-from is required")
+		}
+		if err := runConfidenceTrend(corpus, *confidenceTrendFrom, *confidenceTrendTo,
+			*confidenceTrendOut, *confidenceTrendLimit); err != nil {
+			log.Fatalf("confidence-trend: %v", err)
 		}
 		return
 	}
