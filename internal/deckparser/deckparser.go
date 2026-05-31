@@ -643,18 +643,78 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		if raw == "" {
 			continue
 		}
+		// Tappedout `#!<section>` directive — sets the current section
+		// the same way a `Sideboard` / `Commander` header line does, but
+		// uses Tappedout's hash-bang convention instead of a bare label.
+		// Must run BEFORE the generic `#` comment drop below or the
+		// directive would be silently swallowed. Recognized sections:
+		// Commander, Mainboard / Maindeck / Deck, Sideboard, Maybeboard,
+		// Companion. Anything else routes to drop with subtype "other".
+		if m := tappedoutDirectiveRE.FindStringSubmatch(raw); m != nil {
+			label := strings.ToLower(strings.TrimSpace(m[1]))
+			switch label {
+			case "commander", "commanders":
+				section = "commander"
+				dropSubtype = ""
+			case "mainboard", "maindeck", "deck", "main":
+				section = "main"
+				dropSubtype = ""
+			case "sideboard":
+				section = "drop"
+				dropSubtype = "sideboard"
+			case "signature spells", "signaturespells":
+				section = "drop"
+				dropSubtype = "signature_spells"
+			default:
+				section = "drop"
+				dropSubtype = "other"
+			}
+			continue
+		}
 		if strings.HasPrefix(raw, "#") || strings.HasPrefix(raw, "//") {
 			// Leading `#` comments (before any card content) become
 			// SourceHints — detectFormat scans them for "precon" markers
 			// and UIs can surface them as provenance. Mid-deck comments
-			// are still dropped silently.
-			if !sawAnyCardContent && strings.HasPrefix(raw, "#") {
-				hint := strings.TrimSpace(strings.TrimLeft(raw, "#"))
-				if hint != "" {
-					td.SourceHints = append(td.SourceHints, hint)
+			// are still dropped silently. MTGTop8 / MWS exports use
+			// `// NAME:` / `// FORMAT:` / `// CREATOR:` / `// DATE:`
+			// preamble lines; capture those into hints too so the
+			// format-detector can pick up format hints (`// FORMAT:
+			// Legacy` could later refine FormatConstructed → Legacy when
+			// a legality DB is wired in).
+			if !sawAnyCardContent {
+				if strings.HasPrefix(raw, "#") {
+					hint := strings.TrimSpace(strings.TrimLeft(raw, "#"))
+					if hint != "" {
+						td.SourceHints = append(td.SourceHints, hint)
+					}
+				} else if mtgtop8MetaCommentRE.MatchString(raw) {
+					// `// NAME: Storm`, `// FORMAT: Legacy`, etc.
+					hint := strings.TrimSpace(strings.TrimLeft(raw, "/"))
+					if hint != "" {
+						td.SourceHints = append(td.SourceHints, hint)
+					}
 				}
 			}
 			continue
+		}
+		// Tappedout `**Markdown Bold**` section header wrapper —
+		// `**Commanders (1):**` / `**Lands (38):**`. Strip the `**` so
+		// sectionHeaderRE / typeCategoryHeaderRE see the bare label.
+		if m := markdownBoldHeaderRE.FindStringSubmatch(raw); m != nil {
+			raw = strings.TrimSpace(m[1])
+		}
+		// Tappedout bullet-list line prefix — `* 1 Lightning Bolt`,
+		// `- 1 Sol Ring`, `• 1 Forest`. Strip the bullet so the
+		// downstream qty + name extraction sees a normal `1 Card` line.
+		if loc := bulletPrefixRE.FindStringIndex(raw); loc != nil {
+			raw = strings.TrimSpace(raw[loc[1]:])
+		}
+		// Trailing price tag strip — `$1.50` / `€1,50` / `£2.00` /
+		// `$0.50 USD`. Tappedout and some Aetherhub exports append
+		// per-card prices to the line tail. No real card name contains
+		// these patterns so the strip is safe.
+		if loc := priceTagRE.FindStringIndex(raw); loc != nil {
+			raw = strings.TrimSpace(raw[:loc[0]])
 		}
 		// COMMANDER: <name> — Moxfield's directive-style export uses two
 		// COMMANDER: lines for partners. Distinct from the section-header
@@ -1481,6 +1541,43 @@ var partnerLineRE = regexp.MustCompile(`(?i)^\s*PARTNER\s*:\s*(.+?)\s*$`)
 // sideboard / companion / token card into the library (see
 // section_count_r60_test.go).
 var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companion|Considering|Deck|Main\s*Deck|Mainboard|Commanders?|Tokens|Signature\s*Spells|Stickers|Attractions|Outside\s*the\s*Game|About)\s*:?\s*(?:\(\s*\d+\s*\))?\s*:?\s*$`)
+
+// tappedoutDirectiveRE matches Tappedout's `#!<section>` directive
+// shape: `#!Commander`, `#!Mainboard`, `#!Sideboard`, `#!Maybeboard`,
+// `#!Companion`. Routes the following lines to the named section the
+// same way a bare-label section header would. Must be matched BEFORE
+// the generic `#` comment drop or the directive is silently swallowed.
+// Case-insensitive; tolerant of surrounding whitespace.
+var tappedoutDirectiveRE = regexp.MustCompile(`(?i)^\s*#!\s*(Commander|Commanders|Mainboard|Maindeck|Main|Deck|Sideboard|Maybeboard|Companion|Signature\s*Spells|Tokens)\s*$`)
+
+// markdownBoldHeaderRE matches Tappedout's markdown-style section
+// header wrapping: `**Commanders (1):**` / `**Lands (38):**`. Captures
+// the un-wrapped label (group 1) so sectionHeaderRE /
+// typeCategoryHeaderRE can match the bare form.
+var markdownBoldHeaderRE = regexp.MustCompile(`^\*\*\s*(.+?)\s*\*\*\s*$`)
+
+// bulletPrefixRE matches a leading bullet character (`* `, `- `, `• `)
+// that Tappedout's text export prepends to every card line. Strips
+// only when the bullet is followed by whitespace — `*CMDR*` and
+// similar inline markers are NOT bulleted (no trailing space) and
+// stay intact for cmdrInlineMarkerRE to handle later.
+var bulletPrefixRE = regexp.MustCompile(`^\s*[*\-\x{2022}]\s+`)
+
+// priceTagRE matches a trailing per-card price annotation that some
+// Tappedout / Aetherhub exports append: `$1.50`, `€1,50`, `£2.00`,
+// `$0.50 USD`. Anchored to end-of-line with a leading whitespace
+// requirement so card names containing `$` (none in real Magic, but
+// defensive) aren't truncated mid-name. Currency symbols restricted
+// to $ / € / £ — the three Tappedout actually emits.
+var priceTagRE = regexp.MustCompile(`\s+[\$€£][0-9]+(?:[.,][0-9]+)?(?:\s+(?:USD|EUR|GBP))?\s*$`)
+
+// mtgtop8MetaCommentRE matches MTGTop8 / MWS / Apprentice export
+// preamble lines: `// NAME: ...`, `// CREATOR: ...`, `// FORMAT: ...`,
+// `// DATE: ...`. These appear before any card content and carry
+// useful provenance — captured into SourceHints. Distinct from
+// cmdrHeaderCommentRE (which steals `// COMMANDER`) and from the
+// generic `//` comment drop (which loses the information).
+var mtgtop8MetaCommentRE = regexp.MustCompile(`(?i)^\s*//\s*(NAME|CREATOR|FORMAT|DATE|AUTHOR|DESCRIPTION|SOURCE|URL)\s*:\s*\S`)
 
 // htmlTagRE matches any HTML tag like `<br>`, `</p>`, `<div class="x">`,
 // or `<td>`. MTGGoldfish's "Save as HTML" export and various browser
