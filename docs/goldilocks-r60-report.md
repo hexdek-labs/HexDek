@@ -1,157 +1,114 @@
 # Thor Goldilocks — R60 Sweep Report
 
-**Latest re-run: 2026-05-26 (still zero)** — third consecutive sterile sweep, absorbing the ~70 additional merges since the May-25 confirmation (precon-vibes R3-R7 wave, PR #530 cycling-loop coalesce, PR #529 bracket-vs-measured refactor, plus all the per_card consumer wiring waves landing this week). Re-ran from a fresh `dev/goldilocks-r60-sweep` branch on `origin/main`; invocation `go run ./cmd/hexdek-thor/ --goldilocks` reports the identical zero shown below — **31,963 tests, 0 fails, 262.4 ms wall time** (~121,794 tests/s). No new failure categories, no changes to the "Top-10 specific card examples per category" section (still N/A), no additions to CLAUDE.md's issue log warranted. The goldilocks-suite chapter is settled at zero.
-
-**Date:** 2026-05-25 (original sweep) / **2026-05-26 (re-run confirmation)**
-**Branch:** `dev/goldilocks-r60-sweep` (built from `origin/main` @ `00bb5bf` on May-25; re-built from current `origin/main` on May-26)
-**Invocation:** `hexdek-thor -goldilocks --failures-csv /tmp/goldilocks-r60-sweep.csv` (May-25) / `go run ./cmd/hexdek-thor/ --goldilocks` (May-26)
-**Runtime:** 390 ms (May-25, effect+keyword, 82,991 cards/s effect phase) / **262.4 ms (May-26, 121,794 tests/s)**
-**Supersedes:** the May 24 baseline previously held in this file (19 invariant
-fails); that baseline is preserved in `goldilocks-r60-post-engine-clean.md`
-and the path to zero is documented in `goldilocks-r60-zero.md`.
+**Date:** 2026-05-30
+**Branch:** `dev/goldilocks-r60-sweep` (built from `origin/main` HEAD `b3ae63bd`)
+**Invocation:** `go run ./cmd/hexdek-thor/ --goldilocks --report /tmp/goldilocks-r60-report.md`
+**Runtime:** 1.25 s (effect + keyword phases)
 
 ## Headline
 
 ```
-ZERO FAILURES — fully sterile.
+3 invariant failures / 31,963 tests — REGRESSION vs the 2026-05-26 zero baseline.
 ```
 
-| metric                  |       count |
-| ----------------------- | ----------: |
-| cards loaded (oracle)   |      35,708 |
-| cards w/ testable AST   |      31,963 |
-| effect tests run        |      30,341 |
-| effect passes           |  **30,341** |
-| effect dead-effects     |           0 |
-| effect panics           |           0 |
-| **effect invariants**   |       **0** |
-| effect unverified       |           0 |
-| skipped (no abilities)  |       4,106 |
-| keyword tests           |       2,013 |
-| keyword passes          |   **2,013** |
-| keyword failures        |           0 |
-| keyword panics          |           0 |
-| failures.csv rows       |  0 (header only) |
+The goldilocks suite was at zero through 3 consecutive sweeps (PR #237 / 2026-05-24, PR #443 follow-up / 2026-05-25, in-place re-run / 2026-05-26). Three new invariant violations have appeared since, all attributable to the PR #694 "batch AI — 5 §400.7c exile-then-cast staples" wave merged 2026-05-27 (`a5d8e530`) and its sibling work.
 
-## Failures by invariant
+| metric                  |   count |
+| ----------------------- | ------: |
+| cards loaded (oracle)   |  35,708 |
+| cards w/ testable AST   |  31,963 |
+| effect tests run        |  30,341 |
+| effect passes           |  30,338 |
+| **effect invariants**   |   **3** |
+| effect dead-effects     |       0 |
+| effect panics           |       0 |
+| skipped (no abilities)  |   4,106 |
+| keyword tests           |   2,013 |
+| keyword passes          |   2,013 |
+| keyword failures        |       0 |
 
-None. The `/tmp/goldilocks-r60-sweep.csv` artifact contains only its header row.
+## Failures (per-card)
 
-## Top-10 specific card examples per category
+| # | Card              | Interaction              | Invariant            | Message |
+|---|-------------------|--------------------------|----------------------|---------|
+| 1 | Possibility Storm | `untyped_effect`         | CardIdentity         | `card "Thor Probe Bolt" appears in both seat 0 hand and seat 0 exile` |
+| 2 | Knowledge Pool    | `ability_word`           | CardIdentity         | `card "Thor Probe Bolt" appears in both seat 0 hand and seat 0 exile` |
+| 3 | Hostage Taker     | `parsed_effect_residual` | ZoneCastGrantExpiry  | `grant for "Opponent Creature" (zone=exile duration=while_source_on_bf) has expired but is still in ZoneCastGrants` |
 
-Not applicable — there are no failing cards in any category. All 35,708
-oracle entries either passed (31,963 with abilities) or were intentionally
-skipped (4,106 vanilla / land / placeholder).
+## Categorization
 
-## Deltas vs prior reports
+### Category A — `spell_cast` trigger exiles the cast spell but scaffold leaves it in hand (2 of 3)
 
-| run                                                | date       | invariant | dead-effect | panics | keyword | total |
-| -------------------------------------------------- | ---------- | --------: | ----------: | -----: | ------: | ----: |
-| R36 baseline (`goldilocks-r36-report.md`)          | 2026-05-17 |         2 |          61 |      0 |       0 |    64 |
-| R37 rider rebuild (in-report)                      | 2026-05-17 |         2 |          16 |      0 |       0 |    19 |
-| R41 (`goldilocks-r41-report.md`)                   | 2026-05-19 |         1 |          16 |      0 |       0 |    18 |
-| R60 baseline (PR #102, prior content of this file) | 2026-05-24 |        19 |           0 |      0 |       0 |    19 |
-| R60 post-engine-clean (PR #218)                    | 2026-05-24 |         1 |           0 |      0 |       0 |     1 |
-| R60 zero-confirm (PR #237)                         | 2026-05-24 |     **0** |       **0** |  **0** |   **0** | **0** |
-| R60 sweep (post-#443)                              | 2026-05-25 |         0 |           0 |      0 |       0 |     0 |
-| **R60 re-run (this update, post-precon-vibes-R7 + #530 cycling-coalesce)** | 2026-05-26 | **0** | **0** | **0** | **0** | **0** |
+Possibility Storm and Knowledge Pool both register an `OnTrigger("...", "spell_cast", ...)` handler whose body exiles the cast spell via `MoveCard(gs, card, casterSeat, "stack", "exile", ...)`:
 
-**Cumulative delta vs the R36 starting point: 64 → 0 (−100 %).**
-**Delta vs R41: 18 → 0 (−100 %).**
-**Delta vs the R60 baseline previously stored in this file: 19 → 0 (−100 %).**
+- `internal/gameengine/per_card/chaos_cascade.go:60` (Possibility Storm)
+- `internal/gameengine/per_card/per_card_batch_ai_r60.go:336` (Knowledge Pool, `knowledgePoolOnSpellCast`)
 
-### Trajectory vs the 2026-05-08 keyword_dead fix
+In live gameplay the cast spell is on the stack when the trigger resolves, so the `from=stack → to=exile` move is correct. The goldilocks adversarial-cast scaffold (`cmd/hexdek-thor/opponent_autodetect.go:283-294`) instead places "Thor Probe Bolt" in the caster's HAND and calls `FireCastTriggers(gs, 1, spellCard)` without pushing it through the stack first. The on-cast handler then runs `MoveCard` against a card whose actual zone is "hand", not "stack" — depending on `MoveCard`'s tolerance the card ends up represented in both `Seat.Hand` and `Seat.Exile`, tripping `checkCardIdentity`.
 
-| Date | Goldilocks failures | Δ vs prior | Notes |
-|------|--------------------:|--:|-------|
-| 2026-05-08 (pre-fix) | **1,915** | — | baseline before `makeKeywordGameState` `RetainEvents:true` + combat-scaffold rewrite (CLAUDE.md issue log) |
-| 2026-05-08 (post-fix) | **54** | −1,861 (−97.2%) | keyword_dead specifically 1,795 → 0; 54 long-tail non-keyword paths remained |
-| 2026-05-25 (zero-confirm sweep) | **0** | −54 (−100%) | residual 54 closed via incidental r60 per_card / engine work |
-| **2026-05-26 (this re-run)** | **0** | 0 | three consecutive sterile sweeps; the 1,915 → 0 chapter is settled |
+**Two valid framings:**
+- **Engine-truth framing:** `MoveCard` should refuse / repair when `from` zone doesn't match the card's actual zone, instead of silently double-registering. That defends every future per_card handler that calls `MoveCard` with a hardcoded `from` zone.
+- **Scaffold-truth framing:** `applyAdversarialSetup` should push the synthetic cast onto `gs.Stack` (matching the real cast pipeline) before firing `FireCastTriggers`, so on-cast handlers see the canonical "card on stack, not in hand" precondition.
 
-The 24-hour gap between the May 24 zero-confirmation
-(`goldilocks-r60-zero.md`, PR #237) and this sweep absorbed ~30 additional
-merges (latest landed: #443 Freya NLP oracle, #442 spellbook import, #441
-Loki r60 follow-up fuzz, #440 cEDH seat-bias gauntlet, #436 Playwright e2e
-suite, and the composition-prior / archetype-tag / hat self-trigger
-sub-waves listed in CLAUDE.md "Done 2026-05-25"). None of those merges
-re-introduced any goldilocks failure.
+Recommend doing the scaffold fix first (low-risk, narrow blast radius — `opponent_autodetect.go` only) so the goldilocks signal goes back to zero, then revisit the `MoveCard` precondition guard as a separate defensive-engineering pass.
 
-## New failure categories vs CLAUDE.md history
+### Category B — `while_source_on_bf` grant flagged before its source's LTB ever fires (1 of 3)
 
-**None.** The R36/R41 historical buckets and the R60 invariant clusters
-that were live earlier in r60 are all listed below for completeness;
-every one of them now reads zero against the current corpus:
+Hostage Taker's ETB handler (`per_card_batch_ai_r60.go:189-234`) registers a `NewFreeCastFromExilePermission` grant with `Duration = "while_source_on_bf"` and `SourceTimestamp = perm.Timestamp` against the exiled target. `grantIsLeaked` in `internal/gameengine/zone_cast.go:773-786` then walks the battlefield looking for any permanent whose `Timestamp` matches `SourceTimestamp` — if none, the grant is flagged.
 
-| historical bucket                                      | source              | r60 sweep |
-| ------------------------------------------------------ | ------------------- | --------: |
-| `ability_word` dead static (Threshold / Metalcraft / Coven / Heroic / Magecraft / Spell Mastery / Constellation / Domain / Revolt / Delirium / Raid / Valiant / ...) | R36 §1 (45 hits)    |         0 |
-| `sacrifice` triggered on EOT/upkeep, scaffold misses controller/turn (Pestilence / Pyrohemia / Withering Wisps / Task Mage Assembly / Planar Engineering) | R36 §2, R41 (5)     |         0 |
-| `modification_effect` triggered, P/T modify unobserved (Lord of Tresserhorn / Scourge of Numai / Reaver Drone / Fathom Fleet Boarder) | R36 §3, R41 (4)     |         0 |
-| `exile` triggered, graveyard not seeded (Soul-Guide Lantern / Fishing Gear) | R36 §4, R41 (2)     |         0 |
-| `lose_life` static recurring/global (Fraying Omnipotence / Pox Plague) | R36 §5, R41 (2)     |         0 |
-| `create_token` triggered, controller condition unmet (Nightsquad Commando / Trynn) | R36 §6, R41 (2)     |         0 |
-| `destroy` activated, target type missing (Demonic Hordes) | R36 §7, R41 (1)     |         0 |
-| `sacrifice` activated (Roving Actuator) | R36 §8, R41 (1)     |         0 |
-| `TurnStructure` — Lost-without-LossReason (Phage the Untouchable) | R36 §9, R60 baseline (2) |         0 |
-| `CardIdentity` — DFC duplicate pointer (Etali, Primal Conqueror // Etali, Primal Sickness) | R36 §10, R41 (1)    |         0 |
-| `ZoneCastGrantExpiry` — graveyard/exile cast grant outlived source | R60 baseline (17), Loki r41 (8) |         0 |
-| `ResourceConservation` — Lost seat retained ManaPool | R60 post-engine-clean residual (1) |         0 |
+The goldilocks scaffold for `parsed_effect_residual` (`cmd/hexdek-thor/goldilocks.go:1035-1077`) places Hostage Taker via `placeSourceCard`, which currently does not stamp `Timestamp` (or stamps it as 0). The grant is registered with `SourceTimestamp = 0`, and `permanentWithTimestampExists(gs, 0)` returns nil because no battlefield permanent has the zero-sentinel timestamp — yet Hostage Taker IS sitting on the battlefield. The invariant therefore false-positives.
 
-No new failure category (not previously listed in r36/r41/r60 reports or
-the CLAUDE.md issue log) surfaced in this sweep. The sweep finds zero
-candidates of any kind.
+Recommend fixing `placeSourceCard` to assign a real `Timestamp` (mirror the canonical `nextTimestamp` flow the resolve pipeline uses) so any per_card handler that captures `perm.Timestamp` at ETB time gets a non-zero, lookup-able value. This is also the smallest-blast-radius fix and will subsume any future per_card handler that registers a `while_source_on_bf` grant during goldilocks.
 
-## Recommendations
+## Root-cause attribution
 
-1. **Do not gate further engine work on goldilocks signal.** The
-   deterministic per-card surface has been sterile for two consecutive
-   sweeps (PR #237 zero-confirm and this run) across ~30 intervening
-   merges. The signal has saturated; new bug categories will surface from
-   the multi-card / multi-turn surface, not from single-card scaffolds.
+Bisection by commit date narrows the regression window to 2026-05-26 → 2026-05-30 (4 days, ~60 merges). The smoking-gun PR is **#694 / `a5d8e530` (2026-05-27) — feat(per_card): batch AI — 5 §400.7c exile-then-cast staples**, which wired the Hostage Taker handler that produces failure #3 and which sits in the same code family as the Possibility Storm / Knowledge Pool handlers producing failures #1 + #2. The on-cast `MoveCard` pattern in Possibility Storm pre-dates PR #694 (`chaos_cascade.go` registration is older), but it was not surfaced by goldilocks until the scaffolding for `untyped_effect` / `ability_word` started exercising the adversarial-cast path on the right corpus subset.
 
-2. **Lean on Loki for the live signal.** The CLAUDE.md Resolved table
-   shows the productive r60 bug discoveries (CardIdentity, SBA-cap draw,
-   TriggerCompleteness, ZoneCastGrant LTB) all came from Loki fuzz, not
-   goldilocks. Continue investing in extended-seed Loki sweeps and the
-   nightmare-board phase added in the 2026-05-24 cluster. The most recent
-   3-seed × 5K verification (PR #441, 2026-05-25) is clean — the next
-   useful step is wider-seed depth (10K+ games × 10+ canonical seeds),
-   which has already been kicked off per the "Loki r60 canonical-final"
-   entry showing 0/0/0 across 100K chaos + 100K nightmare.
+These are real per_card / scaffold-interaction bugs, not new engine bugs. None of them reproduce in Loki (live multi-turn fuzz) because the actual cast pipeline routes the spell through the stack and fires proper LTB cleanup — both preconditions the goldilocks scaffold currently violates.
 
-3. **Keep goldilocks in the regression matrix, not the discovery loop.**
-   Run it post-merge as a tripwire (fast: 390 ms) to catch accidental
-   re-introduction of dead effects / per-card invariant breaks during
-   future per_card handler work. Don't expect it to produce new findings
-   on its own at this point.
+## Recommended next-fix targets
 
-4. **The condition/trigger unbucketed-node corpus audit (Resolved
-   2026-05-24, all 4 eras swept) remains the standing followup for
-   coverage expansion** — that work is in scaffold land, not invariant
-   land, and is unaffected by this goldilocks zero.
+In priority order (smallest blast radius first):
 
-5. **No new entries needed in CLAUDE.md Issue Log Open table.** This
-   sweep produced no bugs. The Resolved table already documents the
-   complete 19 → 0 path that closed earlier r60 sweeps.
+1. **`placeSourceCard` timestamp stamping** — `cmd/hexdek-thor/goldilocks.go` (look for the helper that constructs `*Permanent` for the source card under test). Assign `Timestamp = gameengine.NextTimestamp(gs)` or equivalent before returning. Closes failure #3 (Hostage Taker) and pre-empts every future per_card `while_source_on_bf` grant exposure under goldilocks.
+
+2. **Adversarial-cast scaffold pushes to stack** — `cmd/hexdek-thor/opponent_autodetect.go:283-294`. Before `FireCastTriggers`, build a `StackItem{Kind: "spell", Controller: 1, Card: spellCard}` and call `PushStackItem(gs, item)`. Closes failures #1 + #2 (Possibility Storm + Knowledge Pool) by giving the on-cast handlers the canonical "card is on stack" precondition. As a sibling change, the post-scaffold cleanup should pop the stack item if the handler didn't consume it.
+
+3. **Defensive `MoveCard` `from`-zone validation** — engine-side, lower priority. Have `MoveCard` log a `move_card_zone_mismatch` event (and optionally repair by clearing the card from its actual zone first) when the named `from` zone doesn't match where the card actually lives. This is defense-in-depth for future per_card handlers and does not block #1 + #2.
+
+None of the three failures need a CLAUDE.md Issue Log Open entry as standalone engine bugs — they are goldilocks scaffold gaps surfaced by recently-wired per_card work. Document them in this report and in the PR description; close them with the fixes above.
+
+## Trajectory
+
+| Date              | Goldilocks failures | Δ vs prior | Notes |
+|-------------------|--------------------:|--:|-------|
+| 2026-05-08 (pre-fix)        | **1,915** | — | baseline before `RetainEvents:true` + combat-scaffold rewrite |
+| 2026-05-08 (post-fix)       | **54**    | −1,861 (−97.2%) | keyword_dead 1,795 → 0; 54 long-tail remained |
+| 2026-05-25 (zero-confirm)   | **0**     | −54 (−100%)     | r60 per_card / engine work absorbed the long-tail |
+| 2026-05-26 (re-run)         | **0**     | 0               | three consecutive sterile sweeps |
+| **2026-05-30 (this sweep)** | **3**     | **+3** | regression introduced by PR #694 batch AI exile-then-cast wave |
+
+Cumulative delta vs the 2026-05-08 pre-fix baseline remains **1,915 → 3 (−99.84 %)**. The 0 → 3 step is the first goldilocks regression in r60 and should land back at zero within one fix pass per the recommendations above.
 
 ## Run details
 
-- AST corpus: `data/rules/ast_dataset.jsonl` (47 MB, 31,963 cards)
-- Oracle corpus: `data/rules/oracle-cards.json` (165 MB, 35,708 cards)
-- Workers: 10 (`runtime.NumCPU()` on this host)
+- AST corpus: `data/rules/ast_dataset.jsonl` (symlinked from main repo)
+- Oracle corpus: `data/rules/oracle-cards.json` (symlinked from main repo)
+- Workers: 10 (`runtime.NumCPU()`)
 - Phases: off (default)
-- Scaffold flag: off (default)
-- CSV: `/tmp/goldilocks-r60-sweep.csv` (header row only, 0 failure rows)
-- Binary: `/tmp/hexdek-thor-r60-sweep` built from `origin/main` @ `00bb5bf`
+- Report: `/tmp/goldilocks-r60-report.md`
+- Top failing cards: 3 unique (1 fail each)
+- Failures by interaction: 3 × `goldilocks_invariant`
+- Failures by invariant: 2 × CardIdentity, 1 × ZoneCastGrantExpiry
+- Panics: 0
 
 ## Reproduction
 
 ```bash
-git checkout origin/main
-go build -o /tmp/hexdek-thor ./cmd/hexdek-thor/
-/tmp/hexdek-thor -goldilocks --failures-csv /tmp/goldilocks.csv
+git checkout dev/goldilocks-r60-sweep      # or: git fetch origin && git checkout origin/main
+ln -sf $(pwd)/../../../../data/rules/ast_dataset.jsonl data/rules/ast_dataset.jsonl
+ln -sf $(pwd)/../../../../data/rules/oracle-cards.json data/rules/oracle-cards.json
+go run ./cmd/hexdek-thor/ --goldilocks --report /tmp/goldilocks-r60-report.md
 ```
 
-Expected: `ZERO FAILURES — fully sterile.`, 0 rows in
-`/tmp/goldilocks.csv` beyond the CSV header.
+Expected on current `origin/main`: 3 failures (Possibility Storm, Hostage Taker, Knowledge Pool) as listed above. Expected after the three recommended fixes ship: back to 0.
