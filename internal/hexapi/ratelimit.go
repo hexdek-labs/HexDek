@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -34,6 +35,7 @@ type RateLimiter struct {
 	capacity        float64
 	refillPerSecond float64
 	now             func() time.Time // injectable for tests
+	denials         uint64           // process-lifetime over-limit count, for /api/admin/ratelimit
 }
 
 type rlBucket struct {
@@ -84,12 +86,76 @@ func (rl *RateLimiter) Allow(key string) (bool, time.Duration) {
 		return true, 0
 	}
 	// Over-budget: tell the caller how long to wait for a whole token.
+	// Bump the lifetime denial counter so /api/admin/ratelimit can
+	// surface "how loud has this limiter been" without sampling.
+	rl.denials++
 	deficit := 1.0 - b.tokens
 	if rl.refillPerSecond <= 0 {
 		return false, time.Hour // misconfigured: don't divide by zero
 	}
 	secs := deficit / rl.refillPerSecond
 	return false, time.Duration(secs * float64(time.Second))
+}
+
+// Snapshot is the read-only view of a single RateLimiter exposed by
+// /api/admin/ratelimit. Captured under the limiter's mutex so the
+// returned state is internally consistent (capacity / refill_per_sec
+// pair with buckets observed at the same instant).
+type Snapshot struct {
+	Capacity        float64          `json:"capacity"`
+	RefillPerSecond float64          `json:"refill_per_sec"`
+	Denials         uint64           `json:"denials"`
+	BucketCount     int              `json:"bucket_count"`
+	Buckets         []BucketSnapshot `json:"buckets"`
+}
+
+// BucketSnapshot is one row in Snapshot.Buckets. Key is whatever the
+// caller bucketed by — "ip:1.2.3.4" / "owner:alice" / bare IP — so
+// operators can see which user / IP is hot without grepping logs.
+type BucketSnapshot struct {
+	Key             string  `json:"key"`
+	Tokens          float64 `json:"tokens"`
+	LastRefillUnix  int64   `json:"last_refill_unix"`
+}
+
+// SnapshotState returns the current bucket states + lifetime denial
+// count. Used by /api/admin/ratelimit. Caller controls cardinality
+// via maxBuckets — pass <= 0 for unbounded. When the limit is hit
+// the returned slice is the lexicographically-first maxBuckets keys
+// (so output is deterministic across calls).
+func (rl *RateLimiter) SnapshotState(maxBuckets int) Snapshot {
+	if rl == nil {
+		return Snapshot{}
+	}
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	keys := make([]string, 0, len(rl.buckets))
+	for k := range rl.buckets {
+		keys = append(keys, k)
+	}
+	// Sort so output is stable across calls and so the trim window
+	// is deterministic (alphabetical-first maxBuckets keys).
+	sort.Strings(keys)
+	trim := len(keys)
+	if maxBuckets > 0 && trim > maxBuckets {
+		trim = maxBuckets
+	}
+	out := make([]BucketSnapshot, 0, trim)
+	for i := 0; i < trim; i++ {
+		b := rl.buckets[keys[i]]
+		out = append(out, BucketSnapshot{
+			Key:            keys[i],
+			Tokens:         b.tokens,
+			LastRefillUnix: b.lastRefill.Unix(),
+		})
+	}
+	return Snapshot{
+		Capacity:        rl.capacity,
+		RefillPerSecond: rl.refillPerSecond,
+		Denials:         rl.denials,
+		BucketCount:     len(rl.buckets),
+		Buckets:         out,
+	}
 }
 
 // enforceRateLimit wraps the "per-IP token-bucket gate" pattern used by

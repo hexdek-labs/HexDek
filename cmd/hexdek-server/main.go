@@ -257,6 +257,24 @@ func main() {
 		log.Fatalf("deck_meta schema: %v", err)
 	}
 
+	// r60 ops dashboard: register every wired limiter into a single
+	// inspector reachable at GET /api/admin/ratelimit (admin-only).
+	// Operators can see bucket states + denial counts in real time
+	// without grepping logs — debug "is X getting throttled" in one
+	// curl. Nil limiters are silently dropped, so registering an
+	// optional field that wasn't wired in this binary is a no-op.
+	ratelimitDashboard := &hexapi.RateLimitDashboard{}
+	ratelimitDashboard.Register("feedback", hexAPI.FeedbackLimiter)
+	ratelimitDashboard.Register("deck import", hexAPI.DeckImportLimiter)
+	ratelimitDashboard.Register("deck analyze (per-owner)", hexAPI.DeckAnalyzeOwnerLimiter)
+	ratelimitDashboard.Register("deck mutation (per-owner)", hexAPI.DeckMutationLimiter)
+	ratelimitDashboard.Register("gauntlet start", sm.GauntletLimiter)
+	ratelimitDashboard.Register("gauntlet start (per-owner)", sm.GauntletOwnerLimiter)
+	ratelimitDashboard.Register("spectate spawn", sm.SpectateSpawnLimiter)
+	ratelimitDashboard.Register("spectator lineage", sm.LineageLimiter)
+	ratelimitDashboard.Register("spectator lineage (per-owner)", sm.LineageOwnerLimiter)
+	hexapi.RegisterRateLimitDashboard(mux, ratelimitDashboard)
+
 	// Credit economy: tracks per-owner balance + ledger; gates
 	// gauntlet runs past the free-tier daily quota. Wired into the
 	// Showmatch gauntlet handler so a paid run automatically debits

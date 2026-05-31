@@ -25,7 +25,7 @@ import (
 //
 // Both queries are pure reads over learned_interactions.json. They do
 // NOT depend on the Worker A reverse index (dev-4) — when that lands,
-// the lookup path can be swapped in via the ReverseIndex interface
+// the lookup path can be swapped in via the ReverseIndexer interface
 // below. Until then, the queries scan the full corpus linearly (O(N)
 // over ~few-thousand entries — well under 10ms for realistic corpora).
 //
@@ -37,11 +37,17 @@ import (
 //   the " + " split to extract individual cards.
 // ---------------------------------------------------------------------------
 
-// ReverseIndex is the stub interface that Worker A's reverse-index loader
-// (dev-4) will populate. Partners / Extend will eventually consult this for
-// O(1) card→pattern lookup instead of scanning the full LearnedInteraction
-// list. Until Worker A lands, the recommender uses the linear scan path.
-type ReverseIndex interface {
+// ReverseIndexer is the stub interface that Worker A's reverse-index
+// loader (dev-4) will populate. Partners / Extend will eventually consult
+// this for O(1) card→pattern lookup instead of scanning the full
+// LearnedInteraction list. Until Worker A lands, the recommender uses the
+// linear scan path.
+//
+// Renamed from `ReverseIndex` (PR #933 collided with the concrete
+// `ReverseIndex` function added in reverse_index.go); the `-er` suffix
+// is the Go convention for single-method interfaces. No external callers
+// — both symbols were package-local stubs.
+type ReverseIndexer interface {
 	// InteractionsForCard returns every learned interaction the card
 	// participates in. Empty slice when the card has never been observed.
 	InteractionsForCard(cardName string) []LearnedInteraction
