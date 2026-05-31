@@ -334,6 +334,16 @@ func (gs *GameState) CheckEnd() bool {
 			Details: details,
 		})
 	}
+	// Phase E — game-end orphan sweep mirrors the per-turn cleanup-step
+	// sweep (see phases.go ScanExpiredDurations / ending+cleanup branch).
+	// When the game ends MID-TURN (combat-phase lethal damage, alt-win
+	// effect, mandatory-loop draw), TakeTurn returns before reaching the
+	// §514.2 cleanup step — so the per-turn sweep doesn't fire. The
+	// post-game invariant check (loki cmd line 937) would then see all
+	// the turn's accumulated orphans. One final sweep here closes that
+	// window. Idempotent: if cleanup already ran this turn, this call
+	// is a no-op.
+	SweepOrphanedInstanceIDs(gs)
 	return true
 }
 
@@ -578,6 +588,119 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 		if c != nil && c.Owner == seatIdx {
 			MarkInstanceIDCeased(gs, c.InstanceID)
 		}
+	}
+
+	// Phase E — §400.7c duplicate-pointer reconciliation. When a card
+	// owned by the leaving seat has somehow been duplicated into a
+	// surviving seat's zone (an upstream zone-leak bug — Phase F class),
+	// the cease above retires the ID while the surviving seat's *Card
+	// reference stays put. The post-elimination invariant pass then
+	// sees the ID present in a non-LeftGame zone but not in expected
+	// (Minted - Ceased) → fabrication false-positive.
+	//
+	// Fix: walk every NON-LeftGame seat's zones; for any *Card whose
+	// InstanceID is now in CeasedInstanceIDs AND was owned by the
+	// leaving seat, purge the duplicate reference. This is a structural
+	// reconciliation, not a §400.7c repair (the underlying duplication
+	// bug remains in whatever code path produced it); the audit event
+	// captures the purged shape so Phase F can hunt the source.
+	if len(gs.CeasedInstanceIDs) > 0 {
+		purgeCount := 0
+		purgeFromSlice := func(zone []*Card) []*Card {
+			w := 0
+			for r := 0; r < len(zone); r++ {
+				c := zone[r]
+				if c != nil && c.Owner == seatIdx {
+					if _, ceased := gs.CeasedInstanceIDs[c.InstanceID]; ceased {
+						purgeCount++
+						continue
+					}
+				}
+				zone[w] = zone[r]
+				w++
+			}
+			return zone[:w]
+		}
+		for _, other := range gs.Seats {
+			if other == nil || other == seat || other.LeftGame {
+				continue
+			}
+			other.Library = purgeFromSlice(other.Library)
+			other.Hand = purgeFromSlice(other.Hand)
+			other.Graveyard = purgeFromSlice(other.Graveyard)
+			other.Exile = purgeFromSlice(other.Exile)
+			other.CommandZone = purgeFromSlice(other.CommandZone)
+			other.ForetellExile = purgeFromSlice(other.ForetellExile)
+			if other.Companion != nil && other.Companion.Owner == seatIdx {
+				if _, ceased := gs.CeasedInstanceIDs[other.Companion.InstanceID]; ceased {
+					other.Companion = nil
+					purgeCount++
+				}
+			}
+		}
+		if purgeCount > 0 {
+			gs.LogEvent(Event{
+				Kind:   "iid_seat_elim_duplicate_purge",
+				Seat:   seatIdx,
+				Target: -1,
+				Amount: purgeCount,
+				Details: map[string]interface{}{
+					"rule":   "800.4a_phase_e",
+					"reason": "duplicate_owned_card_pointer_in_surviving_seat_zone",
+				},
+			})
+		}
+	}
+
+	// Phase E — sideband-zone reconciliation. Cross-game maps
+	// (gs.ZoneCastGrants, gs.MadnessExile, gs.PlotExile, gs.MayhemDiscards,
+	// gs.ParadigmExile) hold *Card pointers outside the standard six
+	// zones. checkZoneConservationByInstanceID walks these maps in its
+	// `present` set (invariants.go:238-254); HandleSeatElimination
+	// previously skipped them, so a card owned by the leaving seat that
+	// lived in one of these maps would have its ID ceased (private-zone
+	// loop above caught the *Card-in-private-zone reference) but the
+	// sideband map entry survived — fabrication false-positive.
+	//
+	// Drop any sideband entry whose *Card was owned by the leaving seat.
+	// The sideband state is per-card-pointer (not zone semantics); the
+	// leaving seat's "may-cast" grants are voided per §800.4a.
+	if len(gs.ZoneCastGrants) > 0 {
+		for card := range gs.ZoneCastGrants {
+			if card != nil && card.Owner == seatIdx {
+				delete(gs.ZoneCastGrants, card)
+			}
+		}
+	}
+	if len(gs.MadnessExile) > 0 {
+		for card := range gs.MadnessExile {
+			if card != nil && card.Owner == seatIdx {
+				delete(gs.MadnessExile, card)
+			}
+		}
+	}
+	if len(gs.PlotExile) > 0 {
+		for card := range gs.PlotExile {
+			if card != nil && card.Owner == seatIdx {
+				delete(gs.PlotExile, card)
+			}
+		}
+	}
+	if len(gs.MayhemDiscards) > 0 {
+		for card := range gs.MayhemDiscards {
+			if card != nil && card.Owner == seatIdx {
+				delete(gs.MayhemDiscards, card)
+			}
+		}
+	}
+	if cards, ok := gs.ParadigmExile[seatIdx]; ok && len(cards) > 0 {
+		// Cease per-card before dropping the seat's bucket.
+		for _, c := range cards {
+			if c != nil {
+				MarkInstanceIDCeased(gs, c.InstanceID)
+			}
+		}
+		delete(gs.ParadigmExile, seatIdx)
 	}
 
 	// Step 3: drop §613 continuous effects controlled by this seat

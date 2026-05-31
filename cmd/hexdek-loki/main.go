@@ -341,6 +341,7 @@ func main() {
 		invariantFlag  = flag.String("invariant", "", "filter violations to a single invariant kind (case-insensitive, accepts CamelCase or kebab-case; empty = all). Example: --invariant zone-conservation")
 		listInvFlag    = flag.Bool("list-invariants", false, "print the full set of known invariant names and exit")
 		strictCensus   = flag.Bool("instanceid-strict-census", false, "enable InstanceID Phase 4+ strict ZoneConservation disappearance check (per docs/instanceid-system-v2-r60.md §13). Default off — flips gs.Flags[\"instanceid_strict_census\"]=1 on every game.")
+		violationsDumpPath = flag.String("violations-dump", "", "if set, write every chaos violation message (one per line, tab-separated: game-idx<TAB>turn<TAB>invariant<TAB>message) to this path for offline histogram analysis. Bypasses the report's 30-detail cap.")
 	)
 	flag.Parse()
 	if *strictCensus {
@@ -652,6 +653,9 @@ func main() {
 	// =====================================================================
 	// Write Report
 	// =====================================================================
+	if *violationsDumpPath != "" {
+		writeViolationsDump(*violationsDumpPath, allViolations)
+	}
 	if *reportFlag != "" {
 		writeReport(*reportFlag, reportData{
 			TotalGames:           totalGames,
@@ -1315,6 +1319,22 @@ type reportData struct {
 	NightmareCrashCards map[string]int
 	CorpusSize          int
 	LegendaryCreatures  int
+}
+
+// writeViolationsDump writes every chaos violation, one per line,
+// tab-separated as game-idx<TAB>turn<TAB>invariant<TAB>message. Phase E
+// diagnostic — bypasses the report's per-kind dedup so card-name
+// histograms see the full population, not just 30 representatives.
+func writeViolationsDump(path string, vs []chaosViolation) {
+	f, err := os.Create(path)
+	if err != nil {
+		log.Printf("violations-dump: %v", err)
+		return
+	}
+	defer f.Close()
+	for _, v := range vs {
+		fmt.Fprintf(f, "%d\t%d\t%s\t%s\n", v.GameIdx, v.Turn, v.InvariantName, v.Message)
+	}
 }
 
 func writeReport(path string, d reportData) {
