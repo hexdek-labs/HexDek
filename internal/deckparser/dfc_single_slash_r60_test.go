@@ -210,8 +210,11 @@ func TestParseDeckReader_SingleSlashAndDoubleSlashCoexist(t *testing.T) {
 		t.Fatalf("CardLines: want %d, got %d (%+v)", len(want), len(td.CardLines), td.CardLines)
 	}
 	for i, w := range want {
-		if td.CardLines[i] != w {
-			t.Errorf("CardLines[%d] = %+v, want %+v", i, td.CardLines[i], w)
+		got := td.CardLines[i]
+		got.Status = 0
+		got.LineNumber = 0
+		if got != w {
+			t.Errorf("CardLines[%d] = %+v, want %+v", i, got, w)
 		}
 	}
 	if len(td.Unresolved) != 0 {

@@ -369,6 +369,15 @@ type TournamentDeck struct {
 	// `# Precon Decklist`). Used by detectFormat for precon recognition;
 	// also useful for UI provenance display.
 	SourceHints []string
+
+	// ParseReport is the structured per-line resolution coverage report.
+	// Populated at the end of every successful ParseDeckReader call (not
+	// populated on parse error). Drives the hexdek-judge --report-parse
+	// output and any UI that wants to surface "X / N lines resolved" to
+	// the deckbuilder so they can spot typos, renamed cards, and meta
+	// gaps. CardLines carries the per-line status; this struct is the
+	// roll-up + unresolved-detail summary.
+	ParseReport ParseReport
 }
 
 // DetectedFormat is the format-detector's verdict for a parsed deck.
@@ -396,11 +405,85 @@ const (
 // CardLine is the per-source-line view of a parsed deck. Section is one
 // of "main", "commander". Comment is everything after a `//` token on
 // the same line (TrimSpace'd, empty if no inline comment).
+//
+// Status is the parser's verdict on the line: LineStatusResolved when
+// the name hit meta on the first lookup, LineStatusFallbackResolved
+// when buildCard had to walk the face-match / DFC-canonicalize
+// fallback (the card is still in Library but the source name was
+// non-canonical), LineStatusUnresolved when buildCard returned nil
+// (card dropped from Library, name surfaced in Unresolved). Drives the
+// --report output in hexdek-judge.
+//
+// LineNumber is the 1-based source line in the original file; used by
+// the report renderer to point the user at the broken line.
 type CardLine struct {
-	Qty     int
-	Name    string
-	Comment string
-	Section string
+	Qty        int
+	Name       string
+	Comment    string
+	Section    string
+	Status     LineStatus
+	LineNumber int
+}
+
+// LineStatus is the resolution verdict for a CardLine. Drives the
+// per-line status column of the --report output.
+type LineStatus int
+
+const (
+	LineStatusUnknown          LineStatus = iota // not yet resolved (commander section lines before final assembly)
+	LineStatusResolved                           // meta direct hit
+	LineStatusFallbackResolved                   // resolved via face-match / DFC canonicalization / corpus-only path
+	LineStatusUnresolved                         // buildCard returned nil; card dropped from Library
+)
+
+// String returns a stable short label per status, used as the report's
+// per-line status column.
+func (s LineStatus) String() string {
+	switch s {
+	case LineStatusResolved:
+		return "resolved"
+	case LineStatusFallbackResolved:
+		return "fallback"
+	case LineStatusUnresolved:
+		return "unresolved"
+	default:
+		return "unknown"
+	}
+}
+
+// ParseReport is the parser's structured coverage report — every
+// CardLine's resolution status rolled up, plus per-failure detail for
+// the unresolved set. Populated in TournamentDeck.ParseReport at the
+// end of every successful ParseDeckReader call. Empty / zero on parse
+// error.
+type ParseReport struct {
+	TotalLines        int               // total card-shaped source lines (commander + main + dropped card lines)
+	ResolvedLines     int               // direct-meta-hit count
+	FallbackResolved  int               // face-match / DFC-canonicalize / corpus-only path count
+	UnresolvedLines   int               // buildCard returned nil
+	DroppedLines      int               // sideboard / signature-spells / etc. (counted but not resolved)
+	UnresolvedDetails []UnresolvedLine  // per-failure detail (LineNumber + raw context + reason)
+}
+
+// CoveragePercent returns the percentage of card-shaped lines (excl.
+// intentionally-dropped sections) that resolved cleanly. 100% means
+// every mainboard / commander line resolved. Returns 0 when there are
+// no resolvable lines (defensive — avoids divide-by-zero).
+func (r ParseReport) CoveragePercent() float64 {
+	resolvable := r.ResolvedLines + r.FallbackResolved + r.UnresolvedLines
+	if resolvable == 0 {
+		return 0
+	}
+	return float64(r.ResolvedLines+r.FallbackResolved) * 100.0 / float64(resolvable)
+}
+
+// UnresolvedLine is the per-failure detail row in a ParseReport.
+type UnresolvedLine struct {
+	LineNumber int    // 1-based source line in the original file
+	Raw        string // the original raw line (TrimSpace'd, post-HTML-strip)
+	Name       string // best-effort extracted name (post-clean, post-DFC-normalize)
+	Section    string // "commander" / "main" — where the line was routed
+	Reason     string // human-readable failure reason
 }
 
 // CommanderNames returns the display names of every commander in the
@@ -462,6 +545,8 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		name    string
 		comment string
 		section string
+		lineNum int    // 1-based source line — used by ParseReport
+		raw     string // post-HTML-strip raw line, for unresolved detail
 	}
 	var explicitCommander string
 	var explicitPartner string
@@ -494,6 +579,16 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 	// are mid-deck annotations and shouldn't pollute the precon hint
 	// scan. Flipped true on the first real content line.
 	sawAnyCardContent := false
+	// otherDropCardLines counts card-shaped lines dropped under sections
+	// OTHER than Sideboard / Signature Spells (Maybeboard, Companion,
+	// Tokens, Stickers, Attractions, etc.). Sums into ParseReport.DroppedLines
+	// alongside SideboardCount / SignatureSpellCount.
+	otherDropCardLines := 0
+	// unresolvedDetails accumulates per-failure context for the ParseReport.
+	// Each entry records the source line number, raw text, extracted name,
+	// section, and a human-readable reason — the data the --report-parse
+	// CLI surfaces so the deckbuilder can find the broken line.
+	var unresolvedDetails []UnresolvedLine
 	// hasExplicitCommanderSignal: true when the deck shipped any of the
 	// explicit "this is a Commander-format deck" markers — COMMANDER: /
 	// PARTNER: directive, a `Commander[s]` section header that ate at
@@ -513,8 +608,11 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 
 	sc := bufio.NewScanner(r)
 	sc.Buffer(make([]byte, 0, 1024), 1024*1024)
+	lineNum := 0
 	for sc.Scan() {
+		lineNum++
 		raw := strings.TrimSpace(sc.Text())
+		rawOriginal := raw // preserved for ParseReport.UnresolvedDetails
 		// MTGGoldfish HTML strip — `<br>`, `<td>`, `<div class="...">`,
 		// `</p>`, etc. leak in from "Save as HTML" exports and browser
 		// drag-drop pastes. Replace every well-formed `<...>` tag with
@@ -626,7 +724,9 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			// drops so the format detector can distinguish Constructed
 			// (sideboard) and Oathbreaker (signature spell) from the
 			// commander / casual variants. Card pointer stays dropped;
-			// only the count is tracked.
+			// only the count is tracked. Other drop sub-sections
+			// (Maybeboard, Companion, Tokens, etc.) feed
+			// otherDropCardLines for the report's DroppedLines roll-up.
 			if dm := deckLineRE.FindStringSubmatch(raw); dm != nil {
 				if q, err := strconv.Atoi(dm[1]); err == nil && q > 0 {
 					switch dropSubtype {
@@ -634,6 +734,8 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 						td.SideboardCount += q
 					case "signature_spells":
 						td.SignatureSpellCount += q
+					default:
+						otherDropCardLines += q
 					}
 				}
 			}
@@ -779,6 +881,8 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 				td.SideboardCount += qty
 			case "signature_spells":
 				td.SignatureSpellCount += qty
+			default:
+				otherDropCardLines += qty
 			}
 			sawAnyCardContent = true
 			continue
@@ -799,6 +903,7 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			}
 			td.CardLines = append(td.CardLines, CardLine{
 				Qty: qty, Name: name, Comment: inlineComment, Section: "commander",
+				LineNumber: lineNum,
 			})
 			continue
 		}
@@ -811,13 +916,18 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			}
 			td.CardLines = append(td.CardLines, CardLine{
 				Qty: qty, Name: name, Comment: inlineComment, Section: "commander",
+				LineNumber: lineNum,
 			})
 			hasExplicitCommanderSignal = true
 			continue
 		}
-		lines = append(lines, lineEntry{qty: qty, name: name, comment: inlineComment, section: "main"})
+		lines = append(lines, lineEntry{
+			qty: qty, name: name, comment: inlineComment, section: "main",
+			lineNum: lineNum, raw: rawOriginal,
+		})
 		td.CardLines = append(td.CardLines, CardLine{
 			Qty: qty, Name: name, Comment: inlineComment, Section: "main",
+			LineNumber: lineNum,
 		})
 	}
 	if err := sc.Err(); err != nil {
@@ -900,6 +1010,10 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		}
 	}
 
+	// lineStatusByNum records the resolution verdict per source line so
+	// the post-loop CardLines update can stamp CardLine.Status without
+	// re-running buildCard. Keyed by source line number (1-based).
+	lineStatusByNum := map[int]LineStatus{}
 	for i := range lines {
 		le := &lines[i]
 		if le.qty < 1 {
@@ -925,12 +1039,40 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 				le.qty--
 			}
 		}
-		for j := 0; j < le.qty; j++ {
+		// If commander/partner extraction took the only copy, le.qty has
+		// dropped to 0 — stamp Resolved (the commander resolved cleanly)
+		// and skip the library probe. Pre-fix this branch was unreachable
+		// because the original loop's `j := 0; j < le.qty` short-circuited
+		// at qty=0; the new refactor pulled the probe out of the loop and
+		// has to re-check.
+		if le.qty < 1 {
+			lineStatusByNum[le.lineNum] = LineStatusResolved
+			continue
+		}
+		// First-copy resolution probes whether the name builds AT ALL and
+		// captures the resolution path (Resolved / FallbackResolved /
+		// Unresolved). Subsequent copies in the qty loop just re-call
+		// buildCard for fresh Card pointers; status is identical for all
+		// copies of the same name.
+		probe, probeStatus := buildCardWithStatus(name, corpus, meta)
+		lineStatusByNum[le.lineNum] = probeStatus
+		if probe == nil {
+			td.Unresolved = append(td.Unresolved, name)
+			unresolvedDetails = append(unresolvedDetails, UnresolvedLine{
+				LineNumber: le.lineNum,
+				Raw:        le.raw,
+				Name:       name,
+				Section:    le.section,
+				Reason:     "name not found in meta (corpus + DFC face-match all missed)",
+			})
+			continue
+		}
+		td.Library = append(td.Library, probe)
+		for j := 1; j < le.qty; j++ {
 			c := buildCard(name, corpus, meta)
 			if c == nil {
-				if j == 0 {
-					td.Unresolved = append(td.Unresolved, name)
-				}
+				// Defensive — probe succeeded but a subsequent build
+				// failed (shouldn't happen for a deterministic builder).
 				continue
 			}
 			td.Library = append(td.Library, c)
@@ -982,7 +1124,122 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		td.Unresolved = append(td.Unresolved, partnerName)
 	}
 	td.DetectedFormat = detectFormat(td, hasExplicitCommanderSignal)
+	// Build the ParseReport — stamp per-line status on each CardLine
+	// (mainboard via lineStatusByNum; commander/partner sections via
+	// final commanderTaken/partnerTaken state) and roll up the counts.
+	commanderResolved := commanderTaken
+	partnerResolved := partnerName != "" && partnerTaken
+	partnerExpected := partnerName != ""
+	for i := range td.CardLines {
+		cl := &td.CardLines[i]
+		switch cl.Section {
+		case "main":
+			if st, ok := lineStatusByNum[cl.LineNumber]; ok {
+				cl.Status = st
+			} else {
+				// Mainboard line not in lineStatusByNum means the loop
+				// drained it (commanderMatch / partnerMatch took the
+				// only copy, qty dropped to zero pre-probe). That copy
+				// resolved cleanly into the commander slot.
+				cl.Status = LineStatusResolved
+			}
+		case "commander":
+			// Commander-section lines: status reflects whether final
+			// commander resolution succeeded. For partner-pair decks
+			// where both lines route to the commander section, the first
+			// line corresponds to the primary commander and subsequent
+			// lines to the partner — assume the first commander-section
+			// line maps to commanderResolved, the second to partnerResolved.
+			// Conservative: any commander-section line gets Resolved if
+			// commanderTaken (the parser succeeded in resolving at least
+			// the primary); Unresolved otherwise.
+			switch {
+			case commanderResolved && (!partnerExpected || partnerResolved):
+				cl.Status = LineStatusResolved
+			case commanderResolved:
+				// Primary resolved but partner directive failed.
+				cl.Status = LineStatusFallbackResolved
+			default:
+				cl.Status = LineStatusUnresolved
+			}
+		}
+	}
+	report := ParseReport{
+		DroppedLines:      td.SideboardCount + td.SignatureSpellCount + otherDropCardLines,
+		UnresolvedDetails: unresolvedDetails,
+	}
+	for _, cl := range td.CardLines {
+		report.TotalLines += cl.Qty
+		switch cl.Status {
+		case LineStatusResolved:
+			report.ResolvedLines += cl.Qty
+		case LineStatusFallbackResolved:
+			report.FallbackResolved += cl.Qty
+		case LineStatusUnresolved:
+			report.UnresolvedLines += cl.Qty
+		}
+	}
+	report.TotalLines += report.DroppedLines
+	td.ParseReport = report
 	return td, nil
+}
+
+// PrintReport writes a human-readable parse coverage report to w.
+// Surfaces the per-line resolution roll-up, format detection verdict,
+// and the unresolved-detail list pointing at the broken source lines.
+// Driven by hexdek-judge's --report-parse flag; safe to call from any
+// caller that wants the textual report (UI build-coaching, CI deck-
+// audit, etc.).
+//
+// Format:
+//
+//	==== Parse coverage report ====
+//	Source:    <td.Path>
+//	Format:    <DetectedFormat>
+//	Total lines:       N
+//	Resolved (clean):  X
+//	Resolved (fallback): Y
+//	Unresolved:        Z
+//	Dropped (SB/SS):   D
+//	Coverage:          PP.P% (Y/X resolved / unresolved)
+//
+//	Unresolved details:
+//	  line N: <name> [<section>] — <reason>
+//	    raw: <raw line>
+//	  ...
+func (td *TournamentDeck) PrintReport(w io.Writer) error {
+	if td == nil {
+		_, err := fmt.Fprintln(w, "==== Parse coverage report ==== (no deck)")
+		return err
+	}
+	r := td.ParseReport
+	pathLine := td.Path
+	if pathLine == "" {
+		pathLine = "(stream)"
+	}
+	fmt.Fprintln(w, "==== Parse coverage report ====")
+	fmt.Fprintf(w, "Source:              %s\n", pathLine)
+	fmt.Fprintf(w, "Format:              %s\n", td.DetectedFormat)
+	if td.CommanderName != "" {
+		fmt.Fprintf(w, "Commander:           %s\n", td.CommanderName)
+	}
+	fmt.Fprintf(w, "Total lines:         %d\n", r.TotalLines)
+	fmt.Fprintf(w, "Resolved (clean):    %d\n", r.ResolvedLines)
+	fmt.Fprintf(w, "Resolved (fallback): %d\n", r.FallbackResolved)
+	fmt.Fprintf(w, "Unresolved:          %d\n", r.UnresolvedLines)
+	fmt.Fprintf(w, "Dropped (SB/SS/etc): %d\n", r.DroppedLines)
+	fmt.Fprintf(w, "Coverage:            %.1f%%\n", r.CoveragePercent())
+	if len(r.UnresolvedDetails) > 0 {
+		fmt.Fprintln(w)
+		fmt.Fprintf(w, "Unresolved details (%d):\n", len(r.UnresolvedDetails))
+		for _, u := range r.UnresolvedDetails {
+			fmt.Fprintf(w, "  line %d: %q [%s] — %s\n", u.LineNumber, u.Name, u.Section, u.Reason)
+			if u.Raw != "" && u.Raw != u.Name {
+				fmt.Fprintf(w, "    raw: %s\n", u.Raw)
+			}
+		}
+	}
+	return nil
 }
 
 // detectFormat is the deck shape → format heuristic. Pure structural
@@ -1055,6 +1312,25 @@ func detectFormat(td *TournamentDeck, hasCommanderSignal bool) DetectedFormat {
 // face, we also try `name // ...` and `... // name` to catch both
 // halves of modal double-faced cards where Scryfall stores the full
 // "A // B" under a single entry.
+// buildCardWithStatus is the report-instrumented wrapper around
+// buildCard. Returns the resolution path taken: LineStatusResolved when
+// meta.Get(name) is the direct hit, LineStatusFallbackResolved when
+// the card came back via face-match / DFC-canonicalize / corpus-only,
+// LineStatusUnresolved on a nil card. Used by ParseDeckReader so each
+// CardLine carries an accurate Status without buildCard having to
+// thread a status return value through every caller.
+func buildCardWithStatus(name string, corpus *astload.Corpus, meta *MetaDB) (*gameengine.Card, LineStatus) {
+	directHit := meta != nil && meta.Get(name) != nil
+	c := buildCard(name, corpus, meta)
+	if c == nil {
+		return nil, LineStatusUnresolved
+	}
+	if directHit {
+		return c, LineStatusResolved
+	}
+	return c, LineStatusFallbackResolved
+}
+
 func buildCard(name string, corpus *astload.Corpus, meta *MetaDB) *gameengine.Card {
 	var ast *gameast.CardAST
 	if corpus != nil {
