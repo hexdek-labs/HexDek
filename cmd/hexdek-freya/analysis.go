@@ -370,9 +370,15 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		p.Produces = append(p.Produces, ResLife)
 	}
 
-	// Counter placement.
+	// Counter placement. The "gets +1/+1" needle was dropped in r60 wave 2:
+	// "gets +1/+1 until end of turn" is a temporary stat boost (Giant Growth,
+	// prowess trigger, anthem effects) — NOT a +1/+1 counter producer. Cards
+	// that genuinely produce counters say "put a +1/+1 counter", "puts a
+	// charge counter on it", etc.; the "gets +1/+1" framing was a misnomer
+	// that tagged Giant Growth, Shu Yun's prowess trigger, and every anthem
+	// as a counter producer.
 	if containsAny(ot, "put a +1/+1 counter", "put two +1/+1", "put a charge counter",
-		"put a -1/-1 counter", "gets +1/+1") {
+		"put a -1/-1 counter") {
 		p.Produces = append(p.Produces, ResCounter)
 	}
 
@@ -1097,12 +1103,20 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	// ---------------------------------------------------------------
 	// ARCHETYPE 2: +1/+1 COUNTER SYNERGIES
 	// ---------------------------------------------------------------
-	if strings.Contains(ot, "+1/+1 counter") {
-		if strings.Contains(ot, "put") || strings.Contains(ot, "enter") {
+	// +1/+1 counter detection. Operates on otClean so the riot reminder
+	// "(This creature enters with your choice of a +1/+1 counter or haste.)"
+	// — and the modular / graft / outlast / mentor reminders that all
+	// describe the keyword's counter behavior — don't double-tag every
+	// keyword card as both a counter-engine AND its primary archetype.
+	// Burning-Tree Vandal pre-fix surfaced Effects=[counter_add] and
+	// Produces=ResCounter from the riot reminder alone, distorting the
+	// counters-matter archetype detection in counter-heavy decks.
+	if strings.Contains(otClean, "+1/+1 counter") {
+		if strings.Contains(otClean, "put") || strings.Contains(otClean, "enter") {
 			p.Effects = append(p.Effects, "counter_add")
 			p.Produces = append(p.Produces, ResCounter)
 		}
-		if strings.Contains(ot, "remove") || strings.Contains(ot, "move") {
+		if strings.Contains(otClean, "remove") || strings.Contains(otClean, "move") {
 			p.Effects = append(p.Effects, "counter_move")
 		}
 	}
@@ -1138,15 +1152,26 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	// ---------------------------------------------------------------
 	// ARCHETYPE 4: EXILE MATTERS
 	// ---------------------------------------------------------------
-	if strings.Contains(ot, "exile") && (strings.Contains(ot, "you may cast") || strings.Contains(ot, "you may play")) {
+	// All three detectors operate on otClean: the cascade reminder
+	// "(... You may cast it without paying its mana cost. Put the exiled
+	// cards on the bottom in a random order.)" used to tag every cascade
+	// printing (Bloodbraid Elf, Maelstrom Wanderer, Imperial Recruiter
+	// reprint) with exile_cast + impulse_draw + ResCard, plus the foretell
+	// and suspend glosses ("you may cast it without paying its mana cost")
+	// triggered the same flags. After otClean, only cards whose BODY text
+	// actually describes a cast-from-exile effect (Hostage Taker, Etali,
+	// Coward's Path, Sen Triplets) retain the classification.
+	if strings.Contains(otClean, "exile") &&
+		(strings.Contains(otClean, "you may cast") || strings.Contains(otClean, "you may play")) {
 		p.Produces = append(p.Produces, ResCard)
 		p.Effects = append(p.Effects, "exile_cast")
 	}
-	if strings.Contains(ot, "exiled") && strings.Contains(ot, "return") {
+	if strings.Contains(otClean, "exiled") && strings.Contains(otClean, "return") {
 		p.Effects = append(p.Effects, "exile_return")
 	}
-	// Impulsive draw (exile top, may play this turn)
-	if strings.Contains(ot, "exile the top") && (strings.Contains(ot, "may play") || strings.Contains(ot, "may cast")) {
+	// Impulsive draw (exile top, may play this turn).
+	if strings.Contains(otClean, "exile the top") &&
+		(strings.Contains(otClean, "may play") || strings.Contains(otClean, "may cast")) {
 		p.Effects = append(p.Effects, "impulse_draw")
 		p.Produces = append(p.Produces, ResCard)
 	}
@@ -1201,11 +1226,18 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	// ---------------------------------------------------------------
 	// ARCHETYPE 6: TOP-OF-LIBRARY MATTERS
 	// ---------------------------------------------------------------
-	if strings.Contains(ot, "top of") && strings.Contains(ot, "library") {
-		if strings.Contains(ot, "reveal") || strings.Contains(ot, "look at") {
+	// Operates on otClean so the cascade reminder "exile cards from the
+	// top of your library" doesn't tag every cascade card as a top-deck-
+	// manipulation effect. The same reminder also matches the "put ... on
+	// the bottom" half ("Put the exiled cards on the bottom of your
+	// library in a random order"), but the detector only triggers on top
+	// manipulation, so the bottom-pile language is a non-issue.
+	if strings.Contains(otClean, "top of") && strings.Contains(otClean, "library") {
+		if strings.Contains(otClean, "reveal") || strings.Contains(otClean, "look at") {
 			p.Effects = append(p.Effects, "topdeck_reveal")
 		}
-		if strings.Contains(ot, "put") && (strings.Contains(ot, "on top") || strings.Contains(ot, "top of your library")) {
+		if strings.Contains(otClean, "put") &&
+			(strings.Contains(otClean, "on top") || strings.Contains(otClean, "top of your library")) {
 			p.Effects = append(p.Effects, "topdeck_manipulate")
 		}
 	}

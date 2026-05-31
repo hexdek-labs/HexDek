@@ -51,6 +51,17 @@ type ValueChainRationale struct {
 func classifyZoneFlows(ot, tl string, p *CardProfile) []ZoneFlow {
 	var flows []ZoneFlow
 
+	// otClean = reminder-stripped lowercased oracle. Used by the
+	// graveyard-return zone flows below (lines marked "graveyard ->")
+	// because the dredge / recover / unearth reminders all carry "return
+	// this card from your graveyard" wording that pre-r60-wave-2 leaked
+	// into the value-chain detector and falsely surfaced graveyard->hand
+	// or graveyard->battlefield engine bridges on every keyword card.
+	// The rest of the function intentionally stays on raw ot: keyword
+	// glosses for cycling / dredge / surveil ARE the structural cue for
+	// those detectors and stripping would lose true positives.
+	otClean := stripReminder(ot)
+
 	// Self-mill: library -> graveyard
 	if strings.Contains(ot, "mill") && !strings.Contains(ot, "target opponent") &&
 		!strings.Contains(ot, "target player") {
@@ -70,21 +81,28 @@ func classifyZoneFlows(ot, tl string, p *CardProfile) []ZoneFlow {
 		flows = append(flows, ZoneFlow{From: "hand", To: "graveyard", Resource: "card"})
 	}
 
-	// Reanimate: graveyard -> battlefield
-	if strings.Contains(ot, "return") && strings.Contains(ot, "graveyard") &&
-		strings.Contains(ot, "battlefield") {
+	// Reanimate: graveyard -> battlefield. Operates on otClean so the
+	// unearth reminder "({2}: Return this card from your graveyard to the
+	// battlefield. It gains haste. Exile it at the beginning of the next
+	// end step ...)" doesn't tag every unearth creature as a generic
+	// graveyard->battlefield reanimator bridge.
+	if strings.Contains(otClean, "return") && strings.Contains(otClean, "graveyard") &&
+		strings.Contains(otClean, "battlefield") {
 		resource := "creature"
-		if strings.Contains(ot, "land") {
+		if strings.Contains(otClean, "land") {
 			resource = "land"
-		} else if strings.Contains(ot, "permanent") || strings.Contains(ot, "card") {
+		} else if strings.Contains(otClean, "permanent") || strings.Contains(otClean, "card") {
 			resource = "any"
 		}
 		flows = append(flows, ZoneFlow{From: "graveyard", To: "battlefield", Resource: resource})
 	}
 
-	// Recursion to hand: graveyard -> hand
-	if strings.Contains(ot, "return") && strings.Contains(ot, "graveyard") &&
-		(strings.Contains(ot, "to your hand") || strings.Contains(ot, "to its owner's hand")) {
+	// Recursion to hand: graveyard -> hand. Operates on otClean so the
+	// dredge / recover reminder "If you do, return this card from your
+	// graveyard to your hand." doesn't tag every keyword card as a
+	// graveyard->hand recursion bridge (Stinkweed Imp et al).
+	if strings.Contains(otClean, "return") && strings.Contains(otClean, "graveyard") &&
+		(strings.Contains(otClean, "to your hand") || strings.Contains(otClean, "to its owner's hand")) {
 		flows = append(flows, ZoneFlow{From: "graveyard", To: "hand", Resource: "card"})
 	}
 
