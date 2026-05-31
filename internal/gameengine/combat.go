@@ -131,6 +131,20 @@ const (
 	// a defending player or planeswalker it attacks. Multiplayer
 	// extension: each attacker may choose a different defender.
 	flagDefenderSeat = "defender_seat_p1"
+	// flagEnteredAttacking tags a permanent that was placed onto the
+	// battlefield IN AN ATTACKING STATE by an effect (CR §508.1g — an
+	// effect that "puts a creature onto the battlefield attacking"
+	// bypasses the §508.1a-§508.1f declare-attackers restrictions,
+	// including defender, summoning sickness, and tapped status). The
+	// creature is attacking but was not declared via §508. The
+	// CombatLegality invariant honors this tag and skips its
+	// defender / summoning-sickness checks for the duration of the
+	// combat phase. Set by per_card handlers that mint or pull a
+	// creature onto the battlefield attacking: Raph & Mikey
+	// (library-dig), Brimaz, Sauron, Najeela, Kaalia, Caesar, Altair,
+	// Pakal, Satya, Strefan, Winota, Geist of Saint Traft, etc.
+	// Cleared by EndOfCombatStep alongside flagAttacking.
+	flagEnteredAttacking = "entered_battlefield_attacking"
 )
 
 // AttackerDefender returns the seat the attacker is currently attacking.
@@ -152,6 +166,39 @@ func AttackerDefender(p *Permanent) (int, bool) {
 // (CR §506.3 token-creation effects).
 func SetAttackerDefender(p *Permanent, seatIdx int) {
 	setAttackerDefender(p, seatIdx)
+}
+
+// MarkEnteredAttacking is the canonical chokepoint for per_card
+// handlers that place a creature onto the battlefield in an attacking
+// state via a CR §508.1g effect. Sets both flagAttacking and
+// flagEnteredAttacking so the CombatLegality invariant correctly
+// skips its §508.1a-§508.1f restriction checks (defender,
+// summoning sickness, tapped) for the duration of the combat phase.
+//
+// The §508.1g carve-out: per the comprehensive rules, an effect that
+// puts a creature onto the battlefield attacking does NOT route
+// through §508 declare-attackers, so the creature is exempt from
+// defender / summoning-sickness checks. The invariant honors this
+// via flagEnteredAttacking; the per_card handler MUST set the flag
+// (preferably via this helper) for the carve-out to apply.
+//
+// Use sites: Raph & Mikey (library-dig), Brimaz / Sauron / Najeela /
+// Kaalia / Caesar / Strefan / Winota / Altair / Pakal / Satya / Geist
+// of Saint Traft (minted attacking tokens). Live bug fix: Raph &
+// Mikey (PR #950 docs/loki-pathological-r60.md / game 1317 Wall of
+// Tanglecord); the other sites mint defender-free tokens but should
+// migrate to this helper for forward-correctness (defense-in-depth
+// against future per_card enhancements that copy stats from arbitrary
+// permanents).
+func MarkEnteredAttacking(p *Permanent) {
+	if p == nil {
+		return
+	}
+	if p.Flags == nil {
+		p.Flags = map[string]int{}
+	}
+	p.Flags[flagAttacking] = 1
+	p.Flags[flagEnteredAttacking] = 1
 }
 
 // setAttackerDefender records the defender for an attacker (§506.1).
@@ -2003,6 +2050,7 @@ func EndOfCombatStep(gs *GameState) {
 			setPermFlag(p, flagDeclaredAttacker, false)
 			setPermFlag(p, flagBlocking, false)
 			setPermFlag(p, flagAttackedThisCombat, false)
+			setPermFlag(p, flagEnteredAttacking, false)
 		}
 	}
 

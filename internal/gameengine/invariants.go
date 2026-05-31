@@ -1104,6 +1104,22 @@ func checkCombatLegality(gs *GameState) error {
 			}
 			attacking := permFlag(p, flagAttacking)
 			blocking := permFlag(p, flagBlocking)
+			// CR §508.1g: a creature placed onto the battlefield in an
+			// attacking state by an effect (Raph & Mikey library-dig,
+			// Brimaz / Sauron / Najeela / Kaalia / Caesar / Strefan /
+			// Winota / Altair / Pakal / Satya / Geist of Saint Traft
+			// minted tokens) was NOT declared via §508 — the §508.1a-f
+			// restrictions (defender, summoning sickness, tapped) do
+			// not apply. The flag is set by the per_card handler and
+			// cleared by EndOfCombatStep alongside flagAttacking.
+			//
+			// Loki r60 pathological-gauntlet (PR #950 docs/loki-
+			// pathological-r60.md) surfaced this with Raph & Mikey
+			// digging up Wall of Tanglecord (Defender) on seat 3,
+			// game 1317 turn 36 — the wall is legitimately attacking
+			// per §508.1g, so the bare-fact "defender && attacking"
+			// check was a rule-correctness false-positive.
+			enteredAttacking := permFlag(p, flagEnteredAttacking)
 
 			// No creature can be both attacking and blocking.
 			if attacking && blocking {
@@ -1115,13 +1131,15 @@ func checkCombatLegality(gs *GameState) error {
 				return fmt.Errorf("CombatLegality: %q (seat %d) is blocking while tapped",
 					name, s.Idx)
 			}
-			// Creatures with defender can't attack.
-			if attacking && p.HasKeyword("defender") {
+			// Creatures with defender can't attack — UNLESS placed onto
+			// the battlefield attacking by a §508.1g effect.
+			if attacking && p.HasKeyword("defender") && !enteredAttacking {
 				return fmt.Errorf("CombatLegality: %q (seat %d) is attacking but has defender",
 					name, s.Idx)
 			}
-			// Summoning-sick creatures without haste can't attack.
-			if attacking && p.SummoningSick && !p.HasKeyword("haste") {
+			// Summoning-sick creatures without haste can't attack —
+			// same §508.1g carve-out.
+			if attacking && p.SummoningSick && !p.HasKeyword("haste") && !enteredAttacking {
 				return fmt.Errorf("CombatLegality: %q (seat %d) is attacking with summoning sickness and no haste",
 					name, s.Idx)
 			}
