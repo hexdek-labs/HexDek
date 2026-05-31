@@ -103,12 +103,10 @@ func karadorCastFromGY(gs *gameengine.GameState, src *gameengine.Permanent, abil
 		emitFail(gs, slug, src.Card.DisplayName(), "no_creature_in_graveyard", nil)
 		return
 	}
-	for i, c := range seat.Graveyard {
-		if c == best {
-			seat.Graveyard = append(seat.Graveyard[:i], seat.Graveyard[i+1:]...)
-			break
-		}
-	}
+	// enterBattlefieldWithETB → createPermanent sweeps `best` from every
+	// private zone (graveyard included); the manual graveyard splice
+	// pre-r60 was redundant (Wave 2 multi-step migration — same shape as
+	// the Cluster 2 cleanups in PR #924).
 	enterBattlefieldWithETB(gs, src.Controller, best, false)
 	src.Flags["karador_used_this_turn"] = 1
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{

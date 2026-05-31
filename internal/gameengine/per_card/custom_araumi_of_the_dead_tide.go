@@ -88,27 +88,28 @@ func araumiEncore(gs *gameengine.GameState, src *gameengine.Permanent, abilityId
 		})
 		return
 	}
-	// Build new graveyard slice excluding the encore target and the
-	// exiled cost cards. Move exiled to seat.Exile.
-	skip := map[int]bool{bestCreatureIdx: true}
+	// Wave 2 multi-step migration: collect the *Card pointers first
+	// (encore target + cost cards), then route each graveyard→exile
+	// move through MoveCard so §614 replacements (Rest in Peace,
+	// Leyline of the Void) + §903.9b commander redirect + card_exiled
+	// observers (The War Doctor, Syr Vondam) all fire correctly.
+	// Pre-r60 shape rebuilt the graveyard slice in place and manually
+	// appended to exile, bypassing every one of the above.
+	costCards := make([]*gameengine.Card, 0, len(exileCandidates))
 	for _, idx := range exileCandidates {
-		skip[idx] = true
+		if idx >= 0 && idx < len(seat.Graveyard) {
+			costCards = append(costCards, seat.Graveyard[idx])
+		}
 	}
-	newGY := seat.Graveyard[:0]
-	for i, c := range seat.Graveyard {
-		if !skip[i] {
-			newGY = append(newGY, c)
+	// Encore exiles the target itself (cost-AND-effect).
+	gameengine.MoveCard(gs, bestCreature, src.Controller, "graveyard", "exile", "araumi_encore_target")
+	for _, c := range costCards {
+		if c == nil {
 			continue
 		}
-		if i == bestCreatureIdx {
-			// Encore exiles the target itself.
-			seat.Exile = append(seat.Exile, c)
-			continue
-		}
-		seat.Exile = append(seat.Exile, c)
+		gameengine.MoveCard(gs, c, src.Controller, "graveyard", "exile", "araumi_encore_cost")
 		exiledCount++
 	}
-	seat.Graveyard = newGY
 	// Spawn a token copy per opponent with haste; schedule sacrifice.
 	tokens := []*gameengine.Permanent{}
 	for i, s := range gs.Seats {

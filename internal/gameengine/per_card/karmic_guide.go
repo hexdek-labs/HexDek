@@ -101,10 +101,11 @@ func pickKarmicGuideTarget(graveyard []*gameengine.Card) *gameengine.Card {
 }
 
 // enterFromGraveyardOrFallback materializes a graveyard card as a fresh
-// permanent on the named seat's battlefield. Preferred path is the
-// canonical reanimation helper if present; otherwise drops a synthetic
-// Permanent and fires ETB triggers manually so observers
-// (Reveillark, Athreos, dies/etb chains) still see the event.
+// permanent on the named seat's battlefield. Wave 2 multi-step migration
+// routes through enterBattlefieldWithETB → createPermanent →
+// RemoveCardFromAllPrivateZones (the canonical reanimate path); pre-r60
+// shape manually spliced the graveyard slice and built a *Permanent
+// directly, bypassing the canonical zone-removal chokepoint.
 func enterFromGraveyardOrFallback(gs *gameengine.GameState, c *gameengine.Card, seatIdx int, slug string) bool {
 	if gs == nil || c == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
 		return false
@@ -113,25 +114,16 @@ func enterFromGraveyardOrFallback(gs *gameengine.GameState, c *gameengine.Card, 
 	if seat == nil {
 		return false
 	}
-	// Remove from graveyard.
-	for i, g := range seat.Graveyard {
-		if g == c {
-			seat.Graveyard = append(seat.Graveyard[:i], seat.Graveyard[i+1:]...)
-			break
-		}
+	// enterBattlefieldWithETB → createPermanent sweeps `c` from every
+	// private zone (graveyard included), builds the Permanent wrapper,
+	// registers §614 replacements, and fires the full ETB cascade
+	// (per-card hook + observer triggers). Karmic Guide → Reveillark
+	// → Karmic Guide loop depends on the returned Reveillark's ETB
+	// firing — enterBattlefieldWithETB is precisely that path.
+	perm := enterBattlefieldWithETB(gs, seatIdx, c, false)
+	if perm == nil {
+		return false
 	}
-	perm := &gameengine.Permanent{
-		Card:          c,
-		Controller:    seatIdx,
-		Owner:         c.Owner,
-		SummoningSick: true,
-		Timestamp:     gs.NextTimestamp(),
-		Counters:      map[string]int{},
-		Flags:         map[string]int{},
-	}
-	seat.Battlefield = append(seat.Battlefield, perm)
-	gameengine.RegisterReplacementsForPermanent(gs, perm)
-	gameengine.FirePermanentETBTriggers(gs, perm)
 	gs.LogEvent(gameengine.Event{
 		Kind:   "reanimate",
 		Seat:   seatIdx,

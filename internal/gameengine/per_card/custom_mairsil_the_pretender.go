@@ -87,16 +87,19 @@ func mairsilETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		})
 		return
 	}
-	if source == "hand" {
-		seat.Hand = append(seat.Hand[:idx], seat.Hand[idx+1:]...)
-	} else {
-		seat.Graveyard = append(seat.Graveyard[:idx], seat.Graveyard[idx+1:]...)
-	}
-	// Mark as caged so observers can identify it. Append a "cage_counter"
-	// type token; when the engine-side activation copy hooks land, they
-	// can scan exile for cards bearing this marker.
+	// Mark as caged so observers can identify it. Append the cage_counter
+	// type tag BEFORE the zone move so card_exiled observers (Wave 2
+	// MoveCard fires FireCardTrigger("card_exiled", ...)) see the caged
+	// state.
 	pick.Types = append(pick.Types, "cage_counter")
-	seat.Exile = append(seat.Exile, pick)
+	_ = idx
+	// Wave 2 multi-step migration: route through MoveCard so §614
+	// replacements (Rest in Peace / Leyline of the Void on graveyard
+	// source; redirection effects on hand source) + §903.9b commander
+	// redirect + card_exiled / zone_change observers all fire. Pre-r60
+	// shape direct-spliced + manual exile append, bypassing all of the
+	// above.
+	gameengine.MoveCard(gs, pick, perm.Controller, source, "exile", "mairsil_cage")
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":   perm.Controller,
 		"caged":  pick.DisplayName(),

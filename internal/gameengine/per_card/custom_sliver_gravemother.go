@@ -80,10 +80,15 @@ func sliverGravemotherEncore(gs *gameengine.GameState, src *gameengine.Permanent
 	if cost <= 0 {
 		cost = 1
 	}
-	// Pay the encore cost and exile the Sliver.
+	// Pay the encore cost and exile the Sliver. Route the zone change
+	// through MoveCard so §614 replacements (Rest in Peace, Leyline of
+	// the Void) + §903.9b commander redirect + card_exiled / zone_change
+	// observers fire correctly. Pre-r60 shape spliced graveyard + manual
+	// exile append, bypassing every one of the above (Wave 2 multi-step
+	// migration).
+	_ = pickIdx
 	seat.ManaPool -= cost
-	seat.Graveyard = append(seat.Graveyard[:pickIdx], seat.Graveyard[pickIdx+1:]...)
-	seat.Exile = append(seat.Exile, pick)
+	gameengine.MoveCard(gs, pick, src.Controller, "graveyard", "exile", "sliver_gravemother_encore_cost")
 	opps := gs.Opponents(src.Controller)
 	tokensSpawned := 0
 	for _, oppSeat := range opps {

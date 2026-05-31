@@ -82,7 +82,9 @@ func alaundoTheSeerActivate(gs *gameengine.GameState, src *gameengine.Permanent,
 	suspended := ""
 	if suspendIdx >= 0 {
 		card := seat.Hand[suspendIdx]
-		seat.Hand = append(seat.Hand[:suspendIdx], seat.Hand[suspendIdx+1:]...)
+		// MoveCard handles the hand removal. The manual splice before
+		// this call was redundant (Wave 2 multi-step migration — same
+		// shape as Cluster 1 in PR #924).
 		gameengine.MoveCard(gs, card, seatIdx, "hand", "exile", "alaundo_suspend")
 		suspended = card.DisplayName()
 		if seat.Flags == nil {
@@ -106,7 +108,8 @@ func alaundoTheSeerActivate(gs *gameengine.GameState, src *gameengine.Permanent,
 			if ex == nil || !isPermanentCard(ex) {
 				continue
 			}
-			seat.Exile = append(seat.Exile[:i], seat.Exile[i+1:]...)
+			// MoveCard handles the exile removal + battlefield placement;
+			// the manual splice was redundant (Wave 2 multi-step migration).
 			ex.Owner = seatIdx
 			gameengine.MoveCard(gs, ex, seatIdx, "exile", "battlefield", "alaundo_release")
 			released = ex.DisplayName()
