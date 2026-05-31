@@ -732,6 +732,12 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	dp.GameplanSummary = buildGameplanSummary(dp, report)
 	dp.CoachingTips = computeCoachingTips(dp, report)
 
+	// Timing+floor B5 gate runs LAST so it sees the final dp.ComboTiming +
+	// dp.InteractionFloor and can demote a card-list-only "cEDH" to B4
+	// when no combo meets the cEDH timing+floor profile. See
+	// combo_bracket_refinement.go.
+	applyTimingFloorB5Gate(dp)
+
 	return dp
 }
 
