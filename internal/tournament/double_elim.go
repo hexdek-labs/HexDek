@@ -2,6 +2,7 @@ package tournament
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"runtime"
 	"sort"
@@ -189,7 +190,17 @@ func RunDoubleElimination(cfg DoubleEliminationConfig) (*TournamentResult, error
 			break
 		}
 
-		pods := pairDoubleElimRound(eligible, state, cfg.NSeats, cfg.Seed+int64(round)*1_000_003)
+		// Snapshot per-deck TrueSkill sigma before this round so the
+		// pairing function can group similar-sigma decks together for
+		// max info-gain per match. See pairDoubleElimRound's comment.
+		sigmaSnapshot := make([]float64, nDecks)
+		for i, name := range commanderNames {
+			if rating, ok := ts.Ratings[name]; ok {
+				sigmaSnapshot[i] = rating.Sigma
+			}
+		}
+
+		pods := pairDoubleElimRound(eligible, state, sigmaSnapshot, cfg.NSeats, cfg.Seed+int64(round)*1_000_003)
 		if len(pods) == 0 {
 			break
 		}
@@ -277,16 +288,42 @@ type deckState struct {
 	eliminatedRound int // 0 = still in the running
 }
 
+// sigmaPairingEpsilon is the σ-difference threshold above which two
+// decks are treated as having "meaningfully different" uncertainty
+// for pairing purposes. Sub-epsilon differences fall through to the
+// existing shuffle tiebreak so round-1 (every deck at the default
+// σ ≈ 8.33) doesn't degenerate to a fixed-order pairing.
+const sigmaPairingEpsilon = 0.05
+
 // pairDoubleElimRound forms pods from the eligible deck pool.
-// Sorting key: losses asc (winners-tier first), pods desc as a
-// freshness signal (decks that have played fewer games this
-// tournament sort later so the high-volume decks pair up first
-// when tier sizes are equal), then deterministic shuffle.
+//
+// Sort keys (in order):
+//   1. losses asc — winners-tier pairs together, losers-tier pairs
+//      together. The DE bracket discipline.
+//   2. pods asc — freshness signal: decks that have played fewer
+//      games this tournament sort EARLIER so they get matched first
+//      when tier sizes are equal. Keeps every deck's game count
+//      tight across the bracket.
+//   3. σ desc (sigma-weighted matchmaking, NEW r60) — within a
+//      losses+pods tier, decks with HIGHER TrueSkill σ pair up
+//      first. The Bayesian intuition: a high-σ deck is one whose
+//      rating is still uncertain — additional games against
+//      similar-σ opponents extract the most information per match.
+//      Pairing a high-σ deck with low-σ opponents means the
+//      low-σ deck's tight posterior barely updates (info wasted)
+//      while only the high-σ deck moves. Pairing high-σ with high-σ
+//      maximizes mutual info gain. Round 1 (every deck at default
+//      σ) the differences are sub-epsilon so this layer is a no-op,
+//      preserving the existing first-round shuffle.
+//   4. deterministic shuffle — final tiebreak, varies per round so
+//      tied decks don't always land in the same pod.
 //
 // Greedy top-down: walk the sorted list and take NSeats at a time.
 // Decks at the same loss tier pair together; tiers mix only at the
-// boundary when one tier has < NSeats remaining decks.
-func pairDoubleElimRound(eligible []int, state []deckState, nSeats int, roundSeed int64) [][]int {
+// boundary when one tier has < NSeats remaining decks. Sigma
+// snapshot is read at the START of each round, so updates from this
+// round's outcomes feed the NEXT round's pairing.
+func pairDoubleElimRound(eligible []int, state []deckState, sigmas []float64, nSeats int, roundSeed int64) [][]int {
 	type entry struct {
 		idx     int
 		shuffle uint64
@@ -305,6 +342,13 @@ func pairDoubleElimRound(eligible []int, state []deckState, nSeats int, roundSee
 		}
 		if ai.pods != aj.pods {
 			return ai.pods < aj.pods
+		}
+		// Sigma-weighted: high σ pairs together, low σ pairs together.
+		if order[i].idx < len(sigmas) && order[j].idx < len(sigmas) {
+			si, sj := sigmas[order[i].idx], sigmas[order[j].idx]
+			if math.Abs(si-sj) > sigmaPairingEpsilon {
+				return si > sj
+			}
 		}
 		return order[i].shuffle < order[j].shuffle
 	})
