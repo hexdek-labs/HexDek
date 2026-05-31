@@ -148,13 +148,21 @@ func aggregate(outcomes <-chan GameOutcome, nGames, nSeats int, commanderNames [
 		// TrueSkill update: convert elimination order to ranks.
 		// EliminationOrder: slot 0 = first out, slot N-1 = winner.
 		// TrueSkill ranks: 0 = winner (best), N-1 = last (worst).
+		//
+		// EliminationOrder is DECK-indexed (set in runner.go via
+		// originalIdxForSeat[i]) — slot of deck `d` is
+		// EliminationOrder[d]. Use the participant's deck index (`idx`)
+		// to look up its slot, NOT the loop seat index (`i`). They
+		// differ whenever Rot != 0, which is 75% of games in standard
+		// 4-seat rotate mode; pre-fix the wrong-deck slot was being
+		// attributed to each TrueSkill rating, scrambling ranks.
 		if len(participants) >= 2 && len(outcome.EliminationOrder) == len(participants) {
 			tsNames := make([]string, 0, len(participants))
 			tsRanks := make([]int, 0, len(participants))
-			for i, idx := range participants {
+			for _, idx := range participants {
 				if idx >= 0 && idx < len(commanderNames) {
 					tsNames = append(tsNames, commanderNames[idx])
-					slot := outcome.EliminationOrder[i]
+					slot := outcome.EliminationOrder[idx]
 					tsRanks = append(tsRanks, (nSeats-1)-slot)
 				}
 			}
