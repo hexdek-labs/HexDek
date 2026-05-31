@@ -78,7 +78,11 @@ func minnIllusionDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 		if cardCMC(c) > power {
 			continue
 		}
-		seat.Hand = append(seat.Hand[:i], seat.Hand[i+1:]...)
+		// enterBattlefieldWithETB → createPermanent sweeps `c` from every
+		// private zone (hand included); manual splice was redundant
+		// (Wave 2 multi-step migration — same shape as Cluster 2 in
+		// PR #924).
+		_ = i
 		enterBattlefieldWithETB(gs, perm.Controller, c, false)
 		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 			"seat":   perm.Controller,

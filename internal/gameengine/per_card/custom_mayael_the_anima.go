@@ -69,16 +69,23 @@ func mayaelLookFive(gs *gameengine.GameState, src *gameengine.Permanent, ability
 		}
 	}
 	if pick != nil {
-		// Remove from library at pickIdx; the rest of `top` go to the bottom.
-		seat.Library = seat.Library[n:]
-		// Bottom the unpicked top cards in original order.
-		for i, c := range top {
-			if i == pickIdx {
+		// Wave 2 multi-step migration: enterBattlefieldWithETB →
+		// createPermanent sweeps `pick` from library canonically;
+		// pre-r60 spliced library[n:] first, which silently no-op'd the
+		// chokepoint's source removal. The non-picked top cards are now
+		// rotated to the bottom as a within-zone reorder (no zone change).
+		_ = pickIdx
+		enterBattlefieldWithETB(gs, src.Controller, pick, false)
+		for _, c := range top {
+			if c == nil || c == pick {
 				continue
 			}
+			if len(seat.Library) == 0 || seat.Library[0] != c {
+				continue
+			}
+			seat.Library = seat.Library[1:]
 			seat.Library = append(seat.Library, c)
 		}
-		enterBattlefieldWithETB(gs, src.Controller, pick, false)
 		emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 			"seat":  src.Controller,
 			"into_play": pick.DisplayName(),
@@ -86,8 +93,18 @@ func mayaelLookFive(gs *gameengine.GameState, src *gameengine.Permanent, ability
 		})
 		return
 	}
-	// Nothing qualifies — bottom all five.
-	seat.Library = append(seat.Library[n:], top...)
+	// Nothing qualifies — rotate all five to the bottom as a within-zone
+	// reorder (no zone-change triggers for library reordering).
+	for _, c := range top {
+		if c == nil {
+			continue
+		}
+		if len(seat.Library) == 0 || seat.Library[0] != c {
+			continue
+		}
+		seat.Library = seat.Library[1:]
+		seat.Library = append(seat.Library, c)
+	}
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"seat":      src.Controller,
 		"into_play": "",

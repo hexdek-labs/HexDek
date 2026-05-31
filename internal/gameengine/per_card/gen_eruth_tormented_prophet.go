@@ -58,11 +58,16 @@ func eruthRegisterDrawReplacement(gs *gameengine.GameState, perm *gameengine.Per
 			exiled := 0
 			for i := 0; i < 2 && len(seat.Library) > 0; i++ {
 				top := seat.Library[0]
-				seat.Library = seat.Library[1:]
 				if top == nil {
+					seat.Library = seat.Library[1:]
 					continue
 				}
-				seat.Exile = append(seat.Exile, top)
+				// Wave 2 multi-step migration: route through MoveCard so
+				// §614 replacements (Rest in Peace, Leyline of the Void)
+				// + §903.9b commander redirect + card_exiled / zone_change
+				// observers fire. Pre-r60 spliced library + manual exile
+				// append, bypassing all of the above.
+				gameengine.MoveCard(gs, top, controller, "library", "exile", "eruth_replace_draw")
 				gameengine.RegisterZoneCastGrant(gs, top, &gameengine.ZoneCastPermission{
 					Zone:              gameengine.ZoneExile,
 					Keyword:           "eruth_play_this_turn",

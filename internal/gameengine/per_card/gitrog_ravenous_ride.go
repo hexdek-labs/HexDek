@@ -137,8 +137,10 @@ func gitrogRideCombatDamage(gs *gameengine.GameState, perm *gameengine.Permanent
 		if idx < 0 {
 			break
 		}
+		// enterBattlefieldWithETB → createPermanent sweeps the land from
+		// hand; manual splice was redundant (Wave 2 multi-step migration).
 		landCard := seat.Hand[idx]
-		seat.Hand = append(seat.Hand[:idx], seat.Hand[idx+1:]...)
+		_ = idx
 		enterBattlefieldWithETB(gs, perm.Controller, landCard, true)
 		landsPlayed++
 	}
