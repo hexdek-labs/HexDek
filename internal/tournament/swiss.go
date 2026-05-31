@@ -76,16 +76,37 @@ type SwissConfig struct {
 // tournament. Surfaced on TournamentResult.SwissStandings so the
 // final ranking can be sorted by points without re-deriving from
 // the matchup matrix.
+//
+// OpponentMatchWinPct is the strength-of-schedule tiebreaker
+// (MTG Comprehensive Tournament Rules §16.3.2): the mean of each
+// opponent's WinRate over every pod the deck participated in, with
+// a per-opponent floor of 0.33 so a single 0-win opponent doesn't
+// tank the SoS. Used by sortedStandings as the third sort key
+// (after Points and Wins) so two decks tied on Points + Wins are
+// ranked by which one faced the harder schedule. Zero for decks
+// that played no opponents (round-1 byes before any games).
 type SwissStanding struct {
-	CommanderName string  `json:"commander_name"`
-	Points        int     `json:"points"`
-	Games         int     `json:"games"`
-	Wins          int     `json:"wins"`
-	Losses        int     `json:"losses"`
-	Draws         int     `json:"draws"`
-	Byes          int     `json:"byes"`
-	WinRate       float64 `json:"win_rate"`
+	CommanderName        string  `json:"commander_name"`
+	Points               int     `json:"points"`
+	Games                int     `json:"games"`
+	Wins                 int     `json:"wins"`
+	Losses               int     `json:"losses"`
+	Draws                int     `json:"draws"`
+	Byes                 int     `json:"byes"`
+	WinRate              float64 `json:"win_rate"`
+	OpponentMatchWinPct  float64 `json:"opponent_match_win_pct"`
 }
+
+// SwissOMWFloor is the per-opponent floor applied when computing
+// OpponentMatchWinPct. Matches MTG CR §16.3.2: an opponent's
+// match-win percentage is treated as max(actual, 0.33) so a single
+// blow-out loss against a winless opponent doesn't tank the deck's
+// strength-of-schedule disproportionately. The 0.33 figure is the
+// MTG-standard for 2-player matches; for multiplayer pods (where
+// the expected per-game winrate is 1/NSeats = 0.25 in 4-seat) the
+// floor is a slightly generous compensator but matches Magic
+// convention so external consumers' mental models hold.
+const SwissOMWFloor = 0.33
 
 // RunSwiss executes a Swiss-style pod tournament. See SwissConfig
 // for the pairing/scoring rules.
@@ -260,6 +281,11 @@ func RunSwiss(cfg SwissConfig) (*TournamentResult, error) {
 			standings[i].WinRate = float64(standings[i].Wins) / float64(standings[i].Games)
 		}
 	}
+	// OMW% is computed AFTER every deck has its final WinRate so the
+	// strength-of-schedule reflects the whole tournament, not a per-
+	// round snapshot. pastPairings is the source of truth for "who
+	// did D play against."
+	computeSwissOMW(standings, pastPairings)
 	r.SwissStandings = sortedStandings(standings)
 	r.Duration = time.Since(start)
 	if r.Duration.Seconds() > 0 {
@@ -394,6 +420,64 @@ func splitmix64(x uint64) uint64 {
 	return x ^ (x >> 31)
 }
 
+// computeSwissOMW fills standings[i].OpponentMatchWinPct from the
+// pastPairings adjacency map and each deck's WinRate. Per MTG CR
+// §16.3.2 every opponent's match-win % is floored at SwissOMWFloor
+// (0.33) before being averaged so a single blow-out loss against a
+// winless opponent doesn't tank the strength-of-schedule.
+//
+// Returns the (mutated) standings for chaining convenience. Decks
+// with no recorded opponents (e.g. round-1 byes before any games
+// played) get OMW = 0 — sortedStandings then ranks them BELOW any
+// peer with real opponents at the same Points + Wins, which is the
+// correct outcome since a deck that hasn't faced anyone has no
+// strength-of-schedule signal.
+func computeSwissOMW(standings []SwissStanding, pastPairings []map[int]struct{}) []SwissStanding {
+	for i := range standings {
+		opps := pastPairings[i]
+		if len(opps) == 0 {
+			continue
+		}
+		sum := 0.0
+		count := 0
+		for oppIdx := range opps {
+			if oppIdx < 0 || oppIdx >= len(standings) {
+				continue
+			}
+			oppRate := standings[oppIdx].WinRate
+			if oppRate < SwissOMWFloor {
+				oppRate = SwissOMWFloor
+			}
+			sum += oppRate
+			count++
+		}
+		if count > 0 {
+			standings[i].OpponentMatchWinPct = sum / float64(count)
+		}
+	}
+	return standings
+}
+
+// sortedStandings ranks Swiss participants for the final standings
+// table. Sort keys, in MTG CR §16.3 order:
+//
+//   1. Points desc — the primary score.
+//   2. Wins desc — secondary tiebreaker; surfaces the deck that
+//      actually won games over one that scored via byes.
+//   3. OpponentMatchWinPct desc — strength-of-schedule. The
+//      canonical Magic Swiss tiebreaker. Without it, a deck with a
+//      lucky pod draw outranks one that beat tougher opponents at
+//      the same Points + Wins. This is the entire reason Swiss as a
+//      format exists; falling back to alphabetical was an explicit
+//      fairness gap, closed in the r60 pool-fairness pass.
+//   4. WinRate desc — game-win % fallback (analogous to MTG's GW%
+//      third tiebreaker; collapses to a no-op for our model where
+//      WinRate == Wins/Games already correlates with Wins, but
+//      preserves the right behavior if Games differ across decks
+//      due to byes / forfeits).
+//   5. CommanderName asc — deterministic final tiebreak. Real
+//      ties past four levels are statistically near-zero, but a
+//      stable last-resort keeps output reproducible across runs.
 func sortedStandings(s []SwissStanding) []SwissStanding {
 	out := make([]SwissStanding, len(s))
 	copy(out, s)
@@ -403,6 +487,12 @@ func sortedStandings(s []SwissStanding) []SwissStanding {
 		}
 		if out[i].Wins != out[j].Wins {
 			return out[i].Wins > out[j].Wins
+		}
+		if out[i].OpponentMatchWinPct != out[j].OpponentMatchWinPct {
+			return out[i].OpponentMatchWinPct > out[j].OpponentMatchWinPct
+		}
+		if out[i].WinRate != out[j].WinRate {
+			return out[i].WinRate > out[j].WinRate
 		}
 		return out[i].CommanderName < out[j].CommanderName
 	})
