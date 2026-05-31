@@ -371,7 +371,15 @@ func main() {
 	}
 	var seedCardsAllSeats []string
 	if strings.TrimSpace(*seedCardsAllSeatsFlag) != "" {
-		for _, s := range strings.Split(*seedCardsAllSeatsFlag, ",") {
+		// `;` is the preferred separator since several card names contain
+		// commas (e.g. "Adrix and Nev, Twincasters"). Comma still works
+		// when no `;` is present so older invocations keep parsing.
+		raw := *seedCardsAllSeatsFlag
+		sep := ","
+		if strings.Contains(raw, ";") {
+			sep = ";"
+		}
+		for _, s := range strings.Split(raw, sep) {
 			if t := strings.TrimSpace(s); t != "" {
 				seedCardsAllSeats = append(seedCardsAllSeats, t)
 			}
