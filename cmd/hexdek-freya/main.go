@@ -98,6 +98,7 @@ func main() {
 	var noCache bool
 	var showVersion bool
 	var showSchema bool
+	var tournamentPath string
 
 	flag.StringVar(&deckPath, "deck", "", "path to decklist file")
 	flag.StringVar(&deckDir, "all-decks", "", "analyze all decks in directory")
@@ -118,6 +119,8 @@ func main() {
 		"path to archetype-pair ELO/win-rate history JSON (loaded if present; blended into meta-positioning expected-win-% and tilt detection). Schema: {\"archetype_pairs\": {\"combo|stax\": {\"games\": N, \"wins_for_first\": K}, ...}}.")
 	flag.StringVar(&comparePath, "compare", "",
 		"single-deck mode only: path to a second deck list. After analyzing --deck, also analyzes --compare and prints a side-by-side comparison (power tier mix, win conditions, mana base, tech-card differences, card overlap with star-tier standouts).")
+	flag.StringVar(&tournamentPath, "tournament", "",
+		"path to a TournamentResult JSON (produced by cmd/hexdek-tournament/). Loads the tournament and emits a Freya summary report: performance tiers, archetype meta breakdown, surprise upsets, OMW%% leaders (Swiss), win-condition analysis. --format json emits the structured TournamentSummary; default text format renders the side-by-side report. Mutually exclusive with --deck / --all-decks.")
 	flag.BoolVar(&noCache, "no-cache", false,
 		"bypass the content-addressed Freya report cache at "+DefaultCacheDir+". Cache hits short-circuit analysis to a JSON decode (~5ms vs ~1-3s); cache key is SHA256 over (commander + sorted Nx normalized card list), invalidated by FreyaVersion bumps. --mode metrics implies --no-cache so the consistency probe always sees fresh output.")
 	flag.BoolVar(&showVersion, "version", false,
@@ -169,8 +172,25 @@ func main() {
 		}
 	}
 
+	// Tournament-summary mode short-circuits before oracle loading
+	// since it operates entirely on a pre-computed TournamentResult JSON.
+	// No deck files involved → no oracle / mechanic DB needed.
+	if tournamentPath != "" {
+		if deckPath != "" || deckDir != "" {
+			fmt.Fprintf(os.Stderr, "--tournament is mutually exclusive with --deck / --all-decks\n")
+			os.Exit(1)
+		}
+		result, err := LoadTournamentResult(tournamentPath)
+		if err != nil {
+			log.Fatalf("load tournament: %v", err)
+		}
+		summary := BuildTournamentSummary(result)
+		PrintTournamentSummary(os.Stdout, summary, format)
+		return
+	}
+
 	if deckPath == "" && deckDir == "" {
-		fmt.Fprintln(os.Stderr, "error: one of --deck <file> or --all-decks <dir> is required.")
+		fmt.Fprintln(os.Stderr, "error: one of --deck <file>, --all-decks <dir>, or --tournament <path> is required.")
 		fmt.Fprintln(os.Stderr, "")
 		PrintUsage(os.Stderr, flag.CommandLine)
 		os.Exit(1)
