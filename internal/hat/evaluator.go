@@ -1297,12 +1297,22 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 		}
 	}
 
-	// r60: tutors in hand count as "soft pieces" — 1 tutor fills 1
-	// missing slot per plan, mirroring the actual EDH reality that
+	// r60: tutors in hand count as "soft pieces" — each tutor fills
+	// one missing slot per plan, mirroring the actual EDH reality that
 	// holding Demonic Tutor + 1 piece is functionally similar to
 	// holding 2 pieces (cast the tutor, fetch the missing piece, play
-	// next turn). Capped at 1 soft-piece per plan so a tutor-flooded
-	// hand doesn't claim multi-piece completion via tutors alone.
+	// next turn).
+	//
+	// r60-cedh-tuning: the tutor credit is capped at (realPiecesFound +
+	// 1) rather than the original flat cap of 1. The flat cap missed
+	// the canonical cEDH reach pattern — 1 anchoring piece in hand
+	// plus 2 tutors functionally closes a 3-piece combo (turn N cast
+	// tutor 1 for piece 2, turn N+1 cast tutor 2 for piece 3, deploy
+	// piece 1 along the way). The +1 anchor floor preserves the
+	// existing guard: a tutor-only hand with no real pieces still
+	// claims at most 1 soft-piece, so the score stays well under
+	// completion. See TestScoreCombo_TutorCappedAtOnePerPlan +
+	// TestScoreCombo_MultiTutorMultipleMissingSlots.
 	tutorsInHand := seatTutorsInHand(seat)
 
 	primaryClass := e.Strategy.PrimaryComboClass()
@@ -1317,19 +1327,32 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 		}
 		foundWeight := 0.0
 		missing := 0
+		realPiecesFound := 0
 		for _, piece := range cp.Pieces {
 			if w := available[piece]; w > 0 {
 				foundWeight += w
+				realPiecesFound++
 			} else {
 				missing++
 			}
 		}
-		// Tutor credit: if we have at least 1 tutor in hand AND there's
-		// a missing piece, count 1 tutor as a soft-piece. Capped at 1
-		// per plan + capped by the number of missing slots (a tutor
-		// can't fill a slot that's already found).
+		// Tutor credit: each tutor in hand fills one missing slot, capped
+		// by the number of missing slots AND by (realPiecesFound + 1).
+		// The realPiecesFound+1 cap is the no-real-piece guard — a
+		// tutor-only hand can never claim more than 1 soft-piece, so a
+		// hand of 3 tutors in a 2-piece combo still scores 0.75 (the
+		// pre-tuning contract). One real piece anchors the cap up to 2;
+		// two real pieces anchor it up to 3, etc. — letting the multi-
+		// tutor reach scale with the hand's actual progress.
 		if tutorsInHand > 0 && missing > 0 {
-			foundWeight += 1.0
+			tutorCredit := tutorsInHand
+			if tutorCredit > missing {
+				tutorCredit = missing
+			}
+			if cap := realPiecesFound + 1; tutorCredit > cap {
+				tutorCredit = cap
+			}
+			foundWeight += float64(tutorCredit)
 		}
 		// foundWeight can exceed len(pieces) when graveyard + hand +
 		// tutor stack up (shouldn't happen in practice but defensive).
