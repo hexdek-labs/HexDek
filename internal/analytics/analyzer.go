@@ -96,6 +96,12 @@ func AnalyzeGame(
 					if currentBoardSize[i] > ga.Players[i].PeakBoardSize {
 						ga.Players[i].PeakBoardSize = currentBoardSize[i]
 					}
+					// Snapshot life trajectory at the turn boundary:
+					// at the moment turn T begins, currentLife[i]
+					// reflects the END of turn T-1. snapshotLifeForTurn
+					// fills any gaps from the last recorded turn so a
+					// flat-life span between samples renders correctly.
+					snapshotLifeForTurn(&ga.Players[i], currentTurn, currentLife[i])
 				}
 				creaturesDestroyedThisTurn = 0
 				currentTurn = t
@@ -332,6 +338,10 @@ func AnalyzeGame(
 		// (report renderer + AggregateDecks) can read them without
 		// re-walking the CastsByTurn slice.
 		finalizeCurveRealization(&ga.Players[i])
+		// Final life-trajectory snapshot — fills the last turn's
+		// bucket (the loop only records on turn_start of the NEXT
+		// turn, so without this the trailing turn would be missing).
+		snapshotLifeForTurn(&ga.Players[i], currentTurn, currentLife[i])
 	}
 
 	// Flatten card performances into player analyses.
@@ -738,6 +748,40 @@ func appendCMCThisTurn(pa *PlayerAnalysis, turn, cmc int) {
 	}
 	pa.CastsByTurn[turn] = append(pa.CastsByTurn[turn], cmc)
 	pa.TotalSpellCMC += cmc
+}
+
+// snapshotLifeForTurn records the seat's life total at the end of
+// `turn`. The trajectory slice index 0 is always the starting life
+// (commander default 40); index N is life at the END of turn N. If
+// `turn` is ahead of the last recorded index by more than 1 (the
+// seat saw no life-changing event for multiple turns), the gap is
+// back-filled with the most recent value so the time series stays
+// dense — a flat span renders correctly as a horizontal segment in
+// dashboards.
+//
+// Idempotent: calling with the same `turn` overwrites the slot with
+// the latest life total (matters when both the boundary snapshot and
+// the final post-loop snapshot fire on the same final turn).
+func snapshotLifeForTurn(pa *PlayerAnalysis, turn, life int) {
+	if pa == nil || turn < 0 {
+		return
+	}
+	// Lazy-initialize with starting life at index 0. We use 40 as the
+	// commander default; the trajectory may then update index 0 if a
+	// life_change fires before the first turn_start (rare, but
+	// surveyable). The caller's first snapshotLifeForTurn for turn 1
+	// happens at turn 2's turn_start event, so by then index 1 gets
+	// the actual end-of-turn-1 value.
+	if len(pa.LifeByTurn) == 0 {
+		pa.LifeByTurn = append(pa.LifeByTurn, 40)
+	}
+	// Back-fill any intervening turns with the last known value so
+	// the series is contiguous (flat span between samples).
+	for len(pa.LifeByTurn) <= turn {
+		last := pa.LifeByTurn[len(pa.LifeByTurn)-1]
+		pa.LifeByTurn = append(pa.LifeByTurn, last)
+	}
+	pa.LifeByTurn[turn] = life
 }
 
 // finalizeCurveRealization computes AvgCMCCast across all recorded

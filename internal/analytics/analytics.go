@@ -134,6 +134,23 @@ type PlayerAnalysis struct {
 	CastsByTurn  [][]int
 	AvgCMCCast   float64
 	TotalSpellCMC int // sum across CastsByTurn; redundant with sum but cheap to track
+
+	// LifeByTurn snapshots this seat's life total at each turn
+	// boundary. Index 0 = starting life (40 for commander), index N =
+	// life total at the END of turn N (i.e., immediately before the
+	// next turn begins). The slice extends through the game's final
+	// turn so reports can render a per-seat line chart with no missing
+	// samples.
+	//
+	// Population: snapshotted at every `turn_start` event for the
+	// PREVIOUS turn (so the value already reflects all damage / drain
+	// / gain that happened during that turn), plus one final snap at
+	// AnalyzeGame return time so games that end mid-turn still have a
+	// trailing sample.
+	//
+	// Dashboard-ready: the slice can be fed straight into a line chart
+	// component as the y-axis series, with index as the x-axis.
+	LifeByTurn []int
 }
 
 // CardPerformance tracks how a single card performed in a game.
@@ -185,6 +202,46 @@ type CardRanking struct {
 	// 0 when GamesCast == 0 (never cast → no signal); the report
 	// should hide / footnote that case rather than rendering 0.0%.
 	WinRateWhenCast float64
+}
+
+// CardKeystoneImpact answers the question "when this card hit play,
+// did the win rate shift?" Across all games containing this card in
+// some seat's CardsPlayed list:
+//
+//   - WinRateWhenCast    = wins / games where the card was actually cast
+//   - WinRateWhenNotCast = wins / games where the card was in the deck
+//                          but the controller never cast it (stuck in
+//                          hand / library, or countered)
+//   - Shift = WinRateWhenCast - WinRateWhenNotCast
+//
+// A POSITIVE shift means: in this card's host deck, the deck wins MORE
+// when the card hits play than when it doesn't. That's the keystone
+// signal — the card is load-bearing rather than coincidentally present
+// in winning games.
+//
+// A NEGATIVE shift is a red flag: casting the card correlates with
+// LOSING more often than the deck's baseline. Common cause: bait /
+// removal magnet / overcommit.
+//
+// Zero or N/A shift (insufficient sample in either bucket) is the
+// neutral default. The Confidence field surfaces sample quality —
+// reports should footnote / dim low-confidence rows so deckbuilders
+// don't act on noise.
+type CardKeystoneImpact struct {
+	Name string
+
+	GamesCast       int     // games where the card was cast at least once
+	GamesNotCast    int     // games where the card was in CardsPlayed but TurnCast == 0
+	WinsCast        int     // wins among GamesCast
+	WinsNotCast     int     // wins among GamesNotCast
+	WinRateWhenCast    float64
+	WinRateWhenNotCast float64
+	Shift              float64 // WinRateWhenCast - WinRateWhenNotCast
+
+	// Confidence is "high" when min(GamesCast, GamesNotCast) >= 20,
+	// "medium" when >= 5, "low" otherwise. Empty when either bucket
+	// is zero (no signal at all).
+	Confidence string
 }
 
 // MatchupDetail provides deep stats for a specific commander pairing.

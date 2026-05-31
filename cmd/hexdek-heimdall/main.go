@@ -260,6 +260,10 @@ func runAnalytics(decksPath, astPath, oraclePath string, seed int64, seats, maxT
 			TotalGames:     result.Games,
 			Duration:       result.Duration,
 		}
+		// Roll up the per-card keystone impact across the analyzed
+		// games. Free with respect to the existing analyses pass —
+		// pure walk + map aggregation, no extra game runs.
+		ar.KeystoneImpacts = analytics.ComputeKeystoneImpacts(result.Analyses)
 		if err := ar.WriteMarkdown(reportPath); err != nil {
 			log.Fatalf("write report: %v", err)
 		}
