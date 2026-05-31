@@ -395,9 +395,21 @@ var mldList = map[string]bool{
 	"epicenter":              true,
 	"keldon firebombers":     true,
 	"myojin of infinite rage": true,
-	"avatar of fury":         true,
-	"argothian wurm":         true,
-	"plague of vermin":       true,
+	// Entries removed in the power-tier vs bracket reconciliation audit
+	// (2026-05-30): three cards in the original PR #803 list were not
+	// actually MLD. Removing them closed the mirror_mastery_2011 bridge
+	// contradiction (was B4/T2 by spurious MLD-floor lift on Avatar of
+	// Fury). Audit logic:
+	//   - "avatar of fury": 8/8 flying creature with red-spell-damage
+	//     trigger. NOT MLD — no land-destruction text.
+	//   - "argothian wurm": ETB lets target player sac ONE land instead
+	//     of taking the trampler. Single-land asymmetric edict, NOT
+	//     mass-reset — same shape as Strip Mine, already excluded.
+	//   - "plague of vermin": "Each player pays X life, creates X 1/1
+	//     Rats." Token creation, NOT land destruction.
+	// If a future entry is added, the test
+	// TestMLDList_RejectsKnownNonMLDCards must accept it explicitly to
+	// prevent re-introducing the same false-positive shape.
 }
 
 // tappedETBRocks is the curated set of CMC-≤2 artifact ramp pieces that

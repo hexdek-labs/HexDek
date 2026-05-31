@@ -45,6 +45,41 @@ func TestMLDList_BasicShape(t *testing.T) {
 	}
 }
 
+// TestMLDList_RejectsKnownNonMLDCards is a regression pin from the
+// 2026-05-30 power-tier vs bracket reconciliation audit. The initial
+// PR #803 MLD list erroneously included three cards that read as MLD
+// at a glance but aren't:
+//
+//   - "avatar of fury": 8/8 flying creature with a red-spell-damage
+//     trigger ("Whenever a player casts a red spell, ~ deals damage
+//     equal to its power"). No land-destruction text.
+//   - "argothian wurm": 6/6 trampler whose ETB lets target player
+//     sacrifice ONE land instead of taking the trampler. Single-land
+//     asymmetric edict — same shape as Strip Mine, NOT mass-reset.
+//   - "plague of vermin": "Beginning with you, each player pays X
+//     life; that player creates X 1/1 black Rat tokens." Token
+//     creation that incidentally costs life, NOT land destruction.
+//
+// The false-positive lifted mirror_mastery_2011 to B4 via the MLD
+// floor (raw 2 → B4 because Avatar of Fury was counted as MLD),
+// creating a B4/T2 contradiction in the PowerTier bridge test.
+// Removing the three entries closed the contradiction. This test
+// pins the rejection so a future "let's add Avatar of Fury back" PR
+// fails fast with a named card to investigate.
+func TestMLDList_RejectsKnownNonMLDCards(t *testing.T) {
+	knownNonMLD := map[string]string{
+		"avatar of fury":   "8/8 flying creature with red-spell-damage trigger; no land destruction text",
+		"argothian wurm":   "single-land asymmetric ETB edict; not mass-reset",
+		"plague of vermin": "token creation that costs life; not land destruction",
+	}
+	for name, why := range knownNonMLD {
+		if mldList[name] {
+			t.Errorf("MLD list re-introduced non-MLD card %q (%s) — removing this card was the fix for the mirror_mastery bridge contradiction in the 2026-05-30 reconciliation audit",
+				name, why)
+		}
+	}
+}
+
 // TestEstimateBracket_MLDFloorLifts_GC0 verifies a GC=0 deck with a
 // single MLD piece lifts to B4 via the MLD floor. This is the cleanest
 // expression of the official rubric: "MLD allowed at Bracket 4, NOT at
