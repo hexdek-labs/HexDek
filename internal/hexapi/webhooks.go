@@ -432,9 +432,9 @@ func (d *WebhookDispatcher) FireGameEnd(ctx context.Context, g CompletedGame) {
 // hexapi endpoints. The Handler must have its DB field set; without
 // a DB the handlers return 503.
 func (h *Handler) RegisterWebhookRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /api/webhooks", h.handleRegisterWebhook)
+	mux.HandleFunc("POST /api/webhooks", RequireCSRF(h.CSRFStore, h.handleRegisterWebhook))
 	mux.HandleFunc("GET /api/webhooks", h.handleListWebhooks)
-	mux.HandleFunc("DELETE /api/webhooks/{id}", h.handleDeleteWebhook)
+	mux.HandleFunc("DELETE /api/webhooks/{id}", RequireCSRF(h.CSRFStore, h.handleDeleteWebhook))
 	mux.HandleFunc("GET /api/webhooks/{id}/dead-letters", h.handleListWebhookDeadLetters)
 }
 

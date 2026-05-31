@@ -205,6 +205,11 @@ func main() {
 			log.Printf("csrf: HEXDEK_CSRF_SECRET unset, using per-boot random secret (tokens won't survive restart)")
 		}
 		hexAPI.CSRFStore = hexapi.NewCSRFStore(csrfSecret, 0) // default 1-hour TTL
+		// Share the same store with the Showmatch routes so the
+		// late-binding requireCSRFLate wrapper picks it up on the
+		// gauntlet / live-speed / curse-PATCH / spectate-spawn paths.
+		// (sm.RegisterShowmatch ran earlier — see requireCSRFLate doc.)
+		sm.CSRFStore = hexAPI.CSRFStore
 		log.Printf("csrf: enforcement ENABLED on DELETE + clone endpoints")
 	} else {
 		log.Printf("csrf: disabled (set HEXDEK_CSRF_ENFORCE=1 to enable token issuance + enforcement)")

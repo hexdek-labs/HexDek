@@ -141,16 +141,56 @@ func (s *CSRFStore) VerifyToken(tok string) error {
 // We deliberately do NOT accept the token from a query parameter or
 // form field — both would defeat the protection (an attacker who can
 // forge a URL can forge the parameter).
+//
+// OPTIONS preflights bypass the gate. Browsers issuing a CORS preflight
+// for a custom-headered cross-origin write send OPTIONS WITHOUT the
+// X-CSRF-Token (preflight only carries Access-Control-Request-Headers,
+// not the actual request headers). A 403 here would prevent the real
+// request from ever firing — the preflight failure short-circuits the
+// browser. The actual write that follows the preflight DOES carry the
+// token and is gated normally. CORS-policy enforcement (origin
+// allowlisting, etc.) is a separate middleware layer; this gate only
+// covers the token-presence half.
+//
+// Safe-method requests (GET/HEAD) are not gated here. The mux dispatch
+// pattern already routes those to different handlers (RequireCSRF is
+// only mounted on mutating-method routes), but the explicit check
+// belongs in this function so a misroute can't bypass enforcement on a
+// real mutation arriving via the wrong verb.
 func RequireCSRF(store *CSRFStore, next http.HandlerFunc) http.HandlerFunc {
 	if store == nil {
 		return next
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			next(w, r)
+			return
+		}
 		if err := store.VerifyToken(r.Header.Get(CSRFHeader)); err != nil {
-			writeError(w, http.StatusForbidden, "csrf: invalid or missing token")
+			writeErrorCode(w, http.StatusForbidden, csrfErrorCode(err), "csrf: invalid or missing token")
 			return
 		}
 		next(w, r)
+	}
+}
+
+// csrfErrorCode maps a VerifyToken sentinel to the stable machine-
+// readable slug stamped into ErrorResponse.error.code. All four
+// sentinels collapse to a single "csrf_invalid" slug — the wire
+// response must not distinguish "missing" from "expired" from "bad
+// signature" because an attacker probing the gate could otherwise
+// enumerate which half of the contract their fake token tripped (e.g.
+// "I got 'expired' so the format was right; let me grind the HMAC
+// next"). Server-side audit keeps the granular sentinel.
+func csrfErrorCode(err error) string {
+	switch {
+	case errors.Is(err, ErrCSRFMissing),
+		errors.Is(err, ErrCSRFMalformed),
+		errors.Is(err, ErrCSRFExpired),
+		errors.Is(err, ErrCSRFBadSignature):
+		return "csrf_invalid"
+	default:
+		return "csrf_invalid"
 	}
 }
 
