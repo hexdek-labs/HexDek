@@ -1119,8 +1119,16 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	// Burning-Tree Vandal pre-fix surfaced Effects=[counter_add] and
 	// Produces=ResCounter from the riot reminder alone, distorting the
 	// counters-matter archetype detection in counter-heavy decks.
+	// "enters with" replaces the bare "enter" needle in r60 wave 3. Bare
+	// "enter" leaked counter_add onto cards whose ETB trigger fires near
+	// a +1/+1 counter clause that isn't an ADD operation. Aetherborn
+	// Marauder's "When this creature enters, MOVE any number of +1/+1
+	// counters from other permanents..." used to surface counter_add
+	// (FP) alongside the correct counter_move tag. "enters with" is the
+	// canonical ETB-with-counters phrasing (Hangarback Walker, Walking
+	// Ballista, Cauldron Familiar etc. all use it).
 	if strings.Contains(otClean, "+1/+1 counter") {
-		if strings.Contains(otClean, "put") || strings.Contains(otClean, "enter") {
+		if strings.Contains(otClean, "put") || strings.Contains(otClean, "enters with") {
 			p.Effects = append(p.Effects, "counter_add")
 			p.Produces = append(p.Produces, ResCounter)
 		}
