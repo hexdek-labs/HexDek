@@ -388,7 +388,16 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 			}
 			SacrificePermanent(gs, victim, "activation_cost")
 		}
-		// Discard cost — discard N cards from hand.
+		// Discard cost — discard N cards from hand. Routes through
+		// DiscardCard so CR §702.34a Madness replacement, §702.187
+		// Mayhem tracking, Necropotence skip-draw rerouting, the
+		// card_discarded trigger (Liliana's Caress / Waste Not /
+		// Tergrid), and Turn.Discarded stat all see the discard. Pre-
+		// r60-normalize this path direct-spliced seat.Hand and
+		// silently bypassed every one of those rules — every
+		// activated ability with "discard a card" in its cost
+		// (Compulsive Research-style activations, exhume-cost
+		// abilities, etc.) was broken.
 		if ab.Cost.Discard != nil && *ab.Cost.Discard > 0 {
 			n := *ab.Cost.Discard
 			if len(seat.Hand) < n {
@@ -403,8 +412,7 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 				}
 				idx := len(seat.Hand) - 1
 				card := seat.Hand[idx]
-				seat.Hand = seat.Hand[:idx]
-				seat.Graveyard = append(seat.Graveyard, card)
+				DiscardCard(gs, card, seatIdx)
 				gs.LogEvent(Event{
 					Kind:   "discard",
 					Seat:   seatIdx,

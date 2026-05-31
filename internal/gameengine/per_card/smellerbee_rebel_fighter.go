@@ -56,13 +56,21 @@ func smellerbeeAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 		})
 		return
 	}
-	hand := seat.Hand
-	seat.Hand = nil
+	// Route through DiscardCard per-card so §702.34a Madness /
+	// §702.187 Mayhem / Necropotence reroute / card_discarded trigger
+	// (Liliana's Caress / Waste Not / Tergrid) / Turn.Discarded all
+	// see the discards. Pre-r60-normalize this path bulk-spliced
+	// seat.Hand=nil + raw seat.Graveyard appends, silently bypassing
+	// every one of those — discarding an entire hand of Madness
+	// cards via Smellerbee should Madness-cast each one, not
+	// graveyard-dump them. Snapshot the hand BEFORE the loop because
+	// DiscardCard mutates seat.Hand via MoveCard.
+	hand := append([]*gameengine.Card(nil), seat.Hand...)
 	for _, c := range hand {
 		if c == nil {
 			continue
 		}
-		seat.Graveyard = append(seat.Graveyard, c)
+		gameengine.DiscardCard(gs, c, perm.Controller)
 		gs.LogEvent(gameengine.Event{
 			Kind:   "discard",
 			Seat:   perm.Controller,

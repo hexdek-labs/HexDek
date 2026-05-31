@@ -61,8 +61,15 @@ func moxDiamondETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	}
 
 	card := s.Hand[landIdx]
-	gameengine.MoveCard(gs, card, seat, "hand", "graveyard", "discard")
-
+	// Route through DiscardCard for §702.34a Madness / §702.187 Mayhem /
+	// Necropotence reroute / card_discarded trigger / Turn.Discarded
+	// stat. Pre-r60-normalize Mox Diamond's "discard a land" cost direct-
+	// MoveCarded the land to graveyard and bypassed each one — Liliana's
+	// Caress / Waste Not / Tergrid did NOT see the discard. (The land
+	// can't have Madness in practice, but Mayhem-bearing lands like
+	// Furycalm Snarl do exist, and the canonical helper is mandatory
+	// regardless so the audit surface stays consistent.)
+	gameengine.DiscardCard(gs, card, seat)
 	gs.LogEvent(gameengine.Event{
 		Kind:   "discard",
 		Seat:   seat,
