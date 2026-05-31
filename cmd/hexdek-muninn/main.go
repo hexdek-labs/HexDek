@@ -47,8 +47,37 @@ func main() {
 		reconcileFixed  = flag.Bool("reconcile-fixed", false, "archive dead-trigger entries for fixed handlers")
 		reconcileCause  = flag.String("reconcile-cause", "era unification 2026-05-09", "cause string written into the archive")
 		reconcileFrom   = flag.String("reconcile-from", "", "file with card names (one per line) overriding the embedded list")
+		// Silent-inert audit surface — automates the Genesis Chamber
+		// detection pattern (Muninn parser-gap #41, 22,662 hits per
+		// PR #815). Reads persisted dead-trigger records (handlers
+		// that fired with TriggeredCount > 0 but produced no measurable
+		// game state change), ranks by hit count + games seen, applies
+		// severity tiers, and emits candidates for pipeline consumption.
+		silentInertAudit       = flag.Bool("silent-inert-audit", false, "scan recent dead-trigger observation data and output silent-inert handler candidates ranked by severity")
+		auditFormat            = flag.String("audit-format", "text", "output format for --silent-inert-audit: text / json / tsv")
+		auditThresholdCritical = flag.Int("audit-threshold-critical", 1000, "hit-count floor for the 'critical' severity tier (Genesis Chamber was 22,662)")
+		auditThresholdModerate = flag.Int("audit-threshold-moderate", 100, "hit-count floor for the 'moderate' severity tier")
+		auditThresholdWatch    = flag.Int("audit-threshold-watch", 10, "hit-count floor for the 'watch' severity tier (below = 'trivial')")
+		auditFailOnCritical    = flag.Bool("audit-fail-on-critical", false, "exit non-zero if any critical-tier candidates surface (for CI use)")
 	)
 	flag.Parse()
+
+	if *silentInertAudit {
+		opts := SilentInertAuditOpts{
+			Dir:               *dir,
+			Format:            *auditFormat,
+			CriticalThreshold: *auditThresholdCritical,
+			ModerateThreshold: *auditThresholdModerate,
+			WatchThreshold:    *auditThresholdWatch,
+			FailOnCritical:    *auditFailOnCritical,
+		}
+		exitCode, err := runSilentInertAudit(os.Stdout, opts)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "silent-inert-audit: %v\n", err)
+			os.Exit(1)
+		}
+		os.Exit(exitCode)
+	}
 
 	if *reconcileFixed {
 		if err := runReconcile(*dir, *reconcileFrom, *reconcileCause); err != nil {
