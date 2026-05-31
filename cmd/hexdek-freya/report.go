@@ -111,6 +111,10 @@ func printText(w io.Writer, r *FreyaReport) {
 	}
 	fmt.Fprintf(w, "\n")
 
+	// Combo interaction matrix — piece overlap, fragility, redundancy.
+	// Only renders when >= 2 combos exist (matrix is nil otherwise).
+	printComboInteraction(w, r.ComboInteraction)
+
 	// Land-cycle synergies. These are dual-cycle land pairs (Scattered
 	// Groves + Irrigated Farmland, etc.) that the heuristic detector
 	// flagged as determined loops via the cycling discard-cost +
@@ -1375,8 +1379,9 @@ type jsonReport struct {
 	Determined         []jsonCombo `json:"determined_loops"`
 	Finishers          []jsonCombo `json:"finishers"`
 	Synergies          []jsonCombo `json:"synergies"`
-	LandCycleSynergies []jsonCombo `json:"land_cycle_synergies,omitempty"`
-	GraveyardLoops     []jsonCombo `json:"graveyard_loops,omitempty"`
+	LandCycleSynergies []jsonCombo             `json:"land_cycle_synergies,omitempty"`
+	GraveyardLoops     []jsonCombo             `json:"graveyard_loops,omitempty"`
+	ComboInteraction   *jsonComboInteraction   `json:"combo_interaction,omitempty"`
 	ComboNotes    []string      `json:"combo_notes,omitempty"`
 	ManaCurve     jsonManaCurve `json:"mana_curve"`
 	ColorBalance  jsonColors    `json:"color_balance"`
@@ -1421,6 +1426,30 @@ type jsonLoopAnnotation struct {
 	ExternalEffects []string       `json:"external_effects,omitempty"`
 	Classification  string         `json:"classification"`
 	Summary         string         `json:"summary"`
+}
+
+type jsonComboInteraction struct {
+	Combos                    []jsonComboMatrixEntry `json:"combos"`
+	Overlap                   [][]int                `json:"overlap"`
+	PieceFragility            []jsonPieceFragility   `json:"piece_fragility"`
+	RedundancyOneCardRemoved  int                    `json:"redundancy_one_card_removed"`
+	MostFragileComboIndex     int                    `json:"most_fragile_combo_index"`
+	MostIndependentComboIndex int                    `json:"most_independent_combo_index"`
+	IndependentComboCount     int                    `json:"independent_combo_count"`
+}
+
+type jsonComboMatrixEntry struct {
+	Label    string   `json:"label"`
+	Cards    []string `json:"cards"`
+	LoopType string   `json:"loop_type"`
+	Class    string   `json:"class,omitempty"`
+	Source   string   `json:"source"`
+}
+
+type jsonPieceFragility struct {
+	Card         string `json:"card"`
+	ComboCount   int    `json:"combo_count"`
+	ComboIndices []int  `json:"combo_indices"`
 }
 
 type jsonProfile struct {
@@ -1753,6 +1782,7 @@ func printJSON(w io.Writer, r *FreyaReport) {
 		Synergies:          comboSlice(r.Synergies),
 		LandCycleSynergies: comboSlice(r.LandCycleSynergies),
 		GraveyardLoops:     comboSlice(r.GraveyardLoops),
+		ComboInteraction:   comboInteractionToJSON(r.ComboInteraction),
 		ComboNotes:    r.ComboNotes,
 		ManaCurve: jsonManaCurve{
 			Distribution: r.ManaCurve,
