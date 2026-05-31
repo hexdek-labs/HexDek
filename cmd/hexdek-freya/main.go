@@ -973,6 +973,11 @@ type strategyJSON struct {
 	PowerPercentile         int                       `json:"power_percentile,omitempty"`
 	MetaMatchups            []strategyMatchup         `json:"meta_matchups,omitempty"`
 	EmergentSynergies       []strategyEmergentSynergy `json:"emergent_synergies,omitempty"`
+	// SynergyClusters ship Freya's themed cluster analysis so the hat
+	// can prefer sequencing cards from already-active clusters.
+	// Wave-4 freya-hat integration audit (2026-05-30) — see
+	// strategySynergyCluster docstring.
+	SynergyClusters         []strategySynergyCluster  `json:"synergy_clusters,omitempty"`
 	ManaCurve               *jsonManaCurve            `json:"mana_curve,omitempty"`
 	ColorBalance            *jsonColors               `json:"color_balance,omitempty"`
 
@@ -988,6 +993,26 @@ type strategyEmergentSynergy struct {
 	Tier             int      `json:"tier"`
 	ObservationCount int      `json:"observation_count"`
 	AvgImpact        float64  `json:"avg_impact"`
+}
+
+// strategySynergyCluster is the hat-consumable view of Freya's
+// SynergyCluster (deckprofile.go:366). Carries the full deduped
+// member list (so the hat can check membership efficiently), the
+// theme key, and the HighDensity flag — Freya's marker that the
+// cluster is a "real subsystem of the gameplan" rather than
+// incidental overlap (MemberCount >= HighDensityClusterFloor / 5).
+//
+// Consumed by the hat's synergyClusterCohesionBoost in cardHeuristic:
+// when ≥2 cluster members are already on the seat's battlefield, a
+// candidate card that's also a member gets a small priority boost so
+// the hat sequences cluster cards together. HighDensity clusters
+// boost 2x because Freya already determined they're load-bearing.
+// Added in the wave-4 freya-hat integration audit (2026-05-30).
+type strategySynergyCluster struct {
+	Name        string   `json:"name"`
+	Theme       string   `json:"theme,omitempty"`
+	Members     []string `json:"members"`
+	HighDensity bool     `json:"high_density,omitempty"`
 }
 
 type strategyMatchup struct {
@@ -1169,6 +1194,26 @@ func saveStrategyJSON(path string, report *FreyaReport) {
 				Archetype: mm.Archetype,
 				Rating:    mm.Rating,
 				Reason:    mm.Reason,
+			})
+		}
+		// SynergyClusters: ship the full deduped member lists so the
+		// hat can do exact-name cluster-membership checks at decision
+		// time. We send Cluster.AllMembers (not the display-capped
+		// Cards) — the hat needs the complete membership, not the
+		// 8-card preview the text report uses.
+		for _, cluster := range dp.SynergyClusters {
+			members := cluster.AllMembers
+			if len(members) == 0 {
+				members = cluster.Cards
+			}
+			if len(members) == 0 {
+				continue
+			}
+			sj.SynergyClusters = append(sj.SynergyClusters, strategySynergyCluster{
+				Name:        cluster.Name,
+				Theme:       cluster.Theme,
+				Members:     members,
+				HighDensity: cluster.HighDensity,
 			})
 		}
 	}

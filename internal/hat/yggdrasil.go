@@ -2845,6 +2845,16 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 		base -= 0.10
 	}
 
+	// Synergy cluster cohesion: when a cluster (Freya themed grouping —
+	// Tokens / Recursion / +1/+1 Counters / etc.) already has ≥2 members
+	// on the seat's battlefield, prioritize playing other members of
+	// the same cluster so the engine compounds. HighDensity clusters
+	// (Freya's marker for "real subsystem of the gameplan", member
+	// count ≥5) boost 2x because they're load-bearing engines, not
+	// incidental overlap. Wave-4 freya-hat integration audit
+	// (2026-05-30) — see synergyClusterCohesionBoost docstring.
+	base += h.synergyClusterCohesionBoost(gs, seatIdx, c)
+
 	// Interaction speed: decks with cheap interaction can afford to hold mana.
 	// Expensive interaction decks should cast proactively instead.
 	if h.Strategy != nil && h.Strategy.InteractionAvgCMC > 3.0 && cat == CatRemoval {
@@ -3203,6 +3213,84 @@ func cheapInteractionPassAdjust(sp *StrategyProfile) float64 {
 		return -0.15
 	}
 	return 0
+}
+
+// synergyClusterCohesionBoost returns a small additive cardHeuristic
+// bonus when the candidate card is a member of a Freya synergy cluster
+// that has already activated (≥2 OTHER cluster members on the seat's
+// battlefield). Closes the wave-4 freya-hat integration audit gap
+// (2026-05-30): Freya's themed SynergyClusters (Tokens, Recursion,
+// Lifegain, +1/+1 Counters, Spellslinger, etc.) tracked the deck's
+// engine groupings but never reached the strategy.json wire — the hat
+// couldn't sequence "play the second token-maker because Anointed
+// Procession is already out" or "cast the +1/+1 anthem now because
+// Hardened Scales + Cathars' Crusade are already in play".
+//
+// Per-cluster contribution:
+//   - HighDensity cluster (Freya marks MemberCount ≥ 5 as a real
+//     subsystem of the gameplan, not incidental overlap): +0.10
+//   - Regular cluster: +0.05
+// Cumulative cap +0.25 so multi-cluster decks don't stack the boost
+// past the magnitude of star/cuttable adjustments.
+//
+// Cluster "activation" requires ≥2 OTHER members already on battlefield
+// (i.e. the candidate is the third or later member). The "OTHER"
+// guard prevents the candidate itself from counting toward
+// activation — a creature about to be cast shouldn't be its own
+// cohesion partner.
+//
+// Returns 0 for nil Strategy, empty SynergyClusters, nil gs, or when
+// the card is not a member of any active cluster. Tested in
+// synergy_cluster_cohesion_r60_test.go.
+func (h *YggdrasilHat) synergyClusterCohesionBoost(gs *gameengine.GameState, seatIdx int, c *gameengine.Card) float64 {
+	if h == nil || h.Strategy == nil || len(h.Strategy.SynergyClusters) == 0 ||
+		gs == nil || c == nil {
+		return 0
+	}
+	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return 0
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return 0
+	}
+
+	candidateLower := strings.ToLower(c.DisplayName())
+	bfNames := make(map[string]bool, len(seat.Battlefield))
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		bfNames[strings.ToLower(p.Card.DisplayName())] = true
+	}
+
+	boost := 0.0
+	for _, cluster := range h.Strategy.SynergyClusters {
+		isMember := false
+		activeOthers := 0
+		for _, m := range cluster.Members {
+			ml := strings.ToLower(m)
+			if ml == candidateLower {
+				isMember = true
+				continue
+			}
+			if bfNames[ml] {
+				activeOthers++
+			}
+		}
+		if !isMember || activeOthers < 2 {
+			continue
+		}
+		if cluster.HighDensity {
+			boost += 0.10
+		} else {
+			boost += 0.05
+		}
+	}
+	if boost > 0.25 {
+		boost = 0.25
+	}
+	return boost
 }
 
 // isTempoCombo returns true when the deck's combo pieces heavily overlap
