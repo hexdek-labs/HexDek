@@ -1,0 +1,72 @@
+{
+  "schema_version": "1.0.0",
+  "mode": "swiss",
+  "games": 12,
+  "crashes": 0,
+  "draws": 0,
+  "avg_turns": 14.5,
+  "commander_names": ["Atraxa", "Krenko", "Yuriko", "Edric"],
+  "wins_by_commander": {"Atraxa": 6, "Krenko": 3, "Yuriko": 2, "Edric": 1},
+  "total_concessions": 2,
+  "duration_ns": 90000000000,
+  "games_per_second": 0.133,
+  "n_seats": 4,
+  "turn_distribution": [0, 2, 8, 2],
+  "games_played_by_commander": {"Atraxa": 12, "Krenko": 12, "Yuriko": 12, "Edric": 12},
+  "elo": [
+    {"commander": "Atraxa", "rating": 1620.0, "games": 12},
+    {"commander": "Krenko", "rating": 1510.0, "games": 12},
+    {"commander": "Yuriko", "rating": 1470.0, "games": 12},
+    {"commander": "Edric",  "rating": 1400.0, "games": 12}
+  ],
+  "trueskill": [
+    {"Commander": "Atraxa", "Mu": 30.5, "Sigma": 3.8, "Conservative": 19.1, "Games": 12},
+    {"Commander": "Krenko", "Mu": 26.0, "Sigma": 4.0, "Conservative": 14.0, "Games": 12},
+    {"Commander": "Yuriko", "Mu": 24.0, "Sigma": 4.1, "Conservative": 11.7, "Games": 12},
+    {"Commander": "Edric",  "Mu": 19.5, "Sigma": 4.2, "Conservative":  6.9, "Games": 12}
+  ],
+  "swiss_standings": [
+    {"commander_name": "Atraxa", "points": 18, "games": 12, "wins": 6, "losses": 6, "draws": 0, "byes": 0, "win_rate": 0.5, "opponent_match_win_pct": 0.25},
+    {"commander_name": "Krenko", "points": 9,  "games": 12, "wins": 3, "losses": 9, "draws": 0, "byes": 0, "win_rate": 0.25, "opponent_match_win_pct": 0.30},
+    {"commander_name": "Yuriko", "points": 6,  "games": 12, "wins": 2, "losses": 10, "draws": 0, "byes": 0, "win_rate": 0.167, "opponent_match_win_pct": 0.33},
+    {"commander_name": "Edric",  "points": 3,  "games": 12, "wins": 1, "losses": 11, "draws": 0, "byes": 0, "win_rate": 0.083, "opponent_match_win_pct": 0.35}
+  ],
+  "round_snapshots": [
+    {
+      "round": 1,
+      "ratings": {
+        "Atraxa": {"elo": 1525, "trueskill_mu": 27.0, "trueskill_sigma": 6.5},
+        "Krenko": {"elo": 1490, "trueskill_mu": 24.0, "trueskill_sigma": 6.7},
+        "Yuriko": {"elo": 1495, "trueskill_mu": 24.5, "trueskill_sigma": 6.7},
+        "Edric":  {"elo": 1490, "trueskill_mu": 24.0, "trueskill_sigma": 6.8}
+      },
+      "cumulative_wins": {"Atraxa": 1, "Krenko": 0, "Yuriko": 0, "Edric": 0},
+      "cumulative_games": {"Atraxa": 1, "Krenko": 1, "Yuriko": 1, "Edric": 1},
+      "omw": {"Atraxa": 0.0, "Krenko": 0.33, "Yuriko": 0.33, "Edric": 0.33}
+    },
+    {
+      "round": 2,
+      "ratings": {
+        "Atraxa": {"elo": 1560, "trueskill_mu": 28.0, "trueskill_sigma": 5.5},
+        "Krenko": {"elo": 1500, "trueskill_mu": 25.0, "trueskill_sigma": 5.7},
+        "Yuriko": {"elo": 1480, "trueskill_mu": 24.5, "trueskill_sigma": 5.7},
+        "Edric":  {"elo": 1460, "trueskill_mu": 22.5, "trueskill_sigma": 5.9}
+      },
+      "cumulative_wins": {"Atraxa": 2, "Krenko": 1, "Yuriko": 0, "Edric": 0},
+      "cumulative_games": {"Atraxa": 2, "Krenko": 2, "Yuriko": 2, "Edric": 2},
+      "omw": {"Atraxa": 0.20, "Krenko": 0.25, "Yuriko": 0.50, "Edric": 0.50}
+    },
+    {
+      "round": 3,
+      "ratings": {
+        "Atraxa": {"elo": 1620, "trueskill_mu": 30.5, "trueskill_sigma": 3.8},
+        "Krenko": {"elo": 1510, "trueskill_mu": 26.0, "trueskill_sigma": 4.0},
+        "Yuriko": {"elo": 1470, "trueskill_mu": 24.0, "trueskill_sigma": 4.1},
+        "Edric":  {"elo": 1400, "trueskill_mu": 19.5, "trueskill_sigma": 4.2}
+      },
+      "cumulative_wins": {"Atraxa": 6, "Krenko": 3, "Yuriko": 2, "Edric": 1},
+      "cumulative_games": {"Atraxa": 12, "Krenko": 12, "Yuriko": 12, "Edric": 12},
+      "omw": {"Atraxa": 0.25, "Krenko": 0.30, "Yuriko": 0.33, "Edric": 0.35}
+    }
+  ]
+}

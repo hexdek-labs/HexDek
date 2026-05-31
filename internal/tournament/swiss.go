@@ -258,6 +258,15 @@ func RunSwiss(cfg SwissConfig) (*TournamentResult, error) {
 			totalGames:    totalGames,
 			progressEvery: progressEvery,
 		})
+
+		// Per-round telemetry capture. We snapshot AFTER the round's
+		// games have updated elo/ts and AFTER standings have absorbed
+		// wins/losses + byes. OMW% is computed from the partial
+		// standings + pastPairings so the trajectory reflects each
+		// round's state independently. See docs/tournament-telemetry-
+		// schema.md.
+		snap := captureSwissRoundSnapshot(round+1, commanderNames, standings, pastPairings, elo, ts)
+		r.RoundSnapshots = append(r.RoundSnapshots, snap)
 	}
 
 	// Finalize.
@@ -418,6 +427,50 @@ func splitmix64(x uint64) uint64 {
 	x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9
 	x = (x ^ (x >> 27)) * 0x94D049BB133111EB
 	return x ^ (x >> 31)
+}
+
+// captureSwissRoundSnapshot freezes the per-round state needed by
+// ComputeTelemetry's trajectory plotting. Called at end-of-round
+// AFTER elo + ts have absorbed the round's outcomes, so the
+// snapshot reflects "where ratings stood after round N completed."
+// OMW% is computed against the partial standings + pastPairings
+// for the running trajectory.
+func captureSwissRoundSnapshot(round int, commanderNames []string, standings []SwissStanding, pastPairings []map[int]struct{}, elo *ELORatings, ts *trueskill.TrueSkillRatings) RoundSnapshot {
+	snap := RoundSnapshot{
+		Round:           round,
+		Ratings:         make(map[string]RatingSnapshot, len(commanderNames)),
+		CumulativeWins:  make(map[string]int, len(commanderNames)),
+		CumulativeGames: make(map[string]int, len(commanderNames)),
+		OMW:             make(map[string]float64, len(commanderNames)),
+	}
+	// Pre-update WinRate from current standings.Wins/Games for OMW%
+	// computation against the partial state. Don't mutate standings —
+	// take a copy that mirrors finalize-time computeSwissOMW.
+	working := make([]SwissStanding, len(standings))
+	copy(working, standings)
+	for i := range working {
+		if working[i].Games > 0 {
+			working[i].WinRate = float64(working[i].Wins) / float64(working[i].Games)
+		}
+	}
+	computeSwissOMW(working, pastPairings)
+	for i, name := range commanderNames {
+		snap.CumulativeWins[name] = working[i].Wins
+		snap.CumulativeGames[name] = working[i].Games
+		snap.OMW[name] = working[i].OpponentMatchWinPct
+		rs := RatingSnapshot{}
+		if elo != nil {
+			rs.ELO = elo.Rating[name]
+		}
+		if ts != nil {
+			if r, ok := ts.Ratings[name]; ok {
+				rs.Mu = r.Mu
+				rs.Sigma = r.Sigma
+			}
+		}
+		snap.Ratings[name] = rs
+	}
+	return snap
 }
 
 // computeSwissOMW fills standings[i].OpponentMatchWinPct from the
