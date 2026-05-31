@@ -35,6 +35,38 @@ func TestEventAlias_ETBFamily_RoutesToPermanentETB(t *testing.T) {
 	}
 }
 
+// TestEventAlias_DeadHandlerClosure_PhaseStepAliases pins the r60
+// dead-handler closure from docs/engine-event-registry.md §3.1. Two
+// per_card author conventions registered handlers on names the
+// engine never fired:
+//
+//   - "untap_step"           — Seedborn Muse, Rasputin Dreamweaver
+//   - "draw_step_controller" — Sylvan Library, Nekusar the Mindrazer
+//
+// The engine fires "untap" + "draw_step" respectively from
+// phases.go:FirePhaseTriggers. Adding the aliases routes the
+// handlers via NormalizeEvent / EventEquals so existing per_card
+// OnTrigger registrations now actually fire.
+func TestEventAlias_DeadHandlerClosure_PhaseStepAliases(t *testing.T) {
+	cases := []struct {
+		alias     string
+		canonical string
+		cards     string
+	}{
+		{"untap_step", "untap", "Seedborn Muse, Rasputin Dreamweaver"},
+		{"draw_step_controller", "draw_step", "Sylvan Library, Nekusar the Mindrazer"},
+	}
+	for _, tc := range cases {
+		got := NormalizeEventSingle(tc.alias)
+		if got != tc.canonical {
+			t.Errorf("NormalizeEventSingle(%q) = %q, want %q (closure for %s)", tc.alias, got, tc.canonical, tc.cards)
+		}
+		if !EventEquals(tc.alias, tc.canonical) {
+			t.Errorf("EventEquals(%q, %q) = false, want true (closure for %s)", tc.alias, tc.canonical, tc.cards)
+		}
+	}
+}
+
 // TestEventAlias_ASTObserverETB_StillMatches confirms the AST observer ETB
 // aliases (parser-emitted Triggered.Event strings) still normalize to "etb"
 // so observer_triggers.go's EventEquals(trig.Trigger.Event, "etb") match
