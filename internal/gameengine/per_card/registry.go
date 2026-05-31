@@ -192,7 +192,31 @@ func normalizeNameSlow(name string) string {
 // (cascade), Phoenix Fleet Airship (Urza copy), Tiamat (Miirym Token), etc.
 // This helper centralizes the fallback chain so all five fire* dispatchers
 // use the same rules.
+// lookupCandidatesCache memoizes lookupCandidates by raw display name.
+// fireTrigger / fireETB / fireCast / fireResolve / fireActivated each call
+// lookupCandidates once per dispatched permanent and the returned slice is
+// strictly read-only at every call site (`for _, k := range lookupCandidates(...)`).
+// The card-name surface is bounded (~32K oracle entries × ~handful of
+// runtime-rename variants) so a process-wide sync.Map eliminates the
+// inner-loop slice + map churn that the dispatch_bench_r60 baseline showed
+// dominating the dispatcher's allocation profile (~390 B / 3 allocs per
+// FireCardTrigger drop to ~0 B / 0 allocs after caching).
+//
+// CONTRACT: the cached slice MUST NOT be mutated by callers. All current
+// callers iterate it as a read-only range; any future caller that needs
+// to mutate must copy first.
+var lookupCandidatesCache sync.Map // map[string][]string
+
 func lookupCandidates(displayName string) []string {
+	if v, ok := lookupCandidatesCache.Load(displayName); ok {
+		return v.([]string)
+	}
+	out := lookupCandidatesSlow(displayName)
+	lookupCandidatesCache.Store(displayName, out)
+	return out
+}
+
+func lookupCandidatesSlow(displayName string) []string {
 	nk := normalizeName(displayName)
 	out := []string{nk}
 	seen := map[string]bool{nk: true}
