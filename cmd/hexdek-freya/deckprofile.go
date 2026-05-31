@@ -102,6 +102,16 @@ type DeckProfile struct {
 	Weaknesses      []string
 	GameplanSummary string
 
+	// GameplanScript is the structured turn-by-turn play guide:
+	// per-archetype ideal sequence (T1-T5+), branching decision points
+	// ("if opp has counterspell ..."), and graceful degradation paths
+	// ("commander removed twice → ..."). Sibling to GameplanSummary —
+	// the summary answers "what does this deck do?", the script answers
+	// "how does it actually play, turn by turn?" Nil for decks where
+	// the primary archetype is empty (defensive — buildGameplanScript
+	// returns nil to signal "no template to apply").
+	GameplanScript *GameplanScript
+
 	CommanderSynergy    float64  // 0.0-1.0 ratio of cards synergizing with commander
 	CommanderThemes     []string // detected themes from commander oracle text
 	CommanderTribes     []string // detected tribal creature types (sorted)
@@ -730,6 +740,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	dp.Strengths = deriveStrengths(report, dp)
 	dp.Weaknesses = deriveWeaknesses(report, dp)
 	dp.GameplanSummary = buildGameplanSummary(dp, report)
+	dp.GameplanScript = buildGameplanScript(dp, report)
 	dp.CoachingTips = computeCoachingTips(dp, report)
 
 	return dp

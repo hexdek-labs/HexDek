@@ -702,6 +702,14 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 	fmt.Fprintf(w, "  Gameplan:   %s\n", dp.GameplanSummary)
 	fmt.Fprintf(w, "\n")
 
+	// Turn-by-turn script + branching decisions + degradation paths.
+	// Empty for archetype-less decks (defensive — buildGameplanScript
+	// returns nil); skipped silently in that case.
+	if dp.GameplanScript != nil {
+		renderGameplanScript(func(s string) { fmt.Fprint(w, s) }, dp.GameplanScript)
+		fmt.Fprintf(w, "\n")
+	}
+
 	if len(dp.Strengths) > 0 {
 		fmt.Fprintf(w, "  Strengths:\n")
 		for _, s := range dp.Strengths {
@@ -1616,6 +1624,7 @@ type jsonDeckProfile struct {
 	Strengths          []string          `json:"strengths,omitempty"`
 	Weaknesses         []string          `json:"weaknesses,omitempty"`
 	GameplanSummary    string            `json:"gameplan_summary"`
+	GameplanScript     *GameplanScript   `json:"gameplan_script,omitempty"`
 	PersonalityBlurb   string            `json:"personality_blurb,omitempty"`
 	PersonalityTagline string            `json:"personality_tagline,omitempty"`
 	ManaBaseGrade      string            `json:"mana_base_grade,omitempty"`
@@ -2101,6 +2110,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		Strengths:          dp.Strengths,
 		Weaknesses:         dp.Weaknesses,
 		GameplanSummary:    dp.GameplanSummary,
+		GameplanScript:     dp.GameplanScript,
 		PersonalityBlurb:   dp.PersonalityBlurb,
 		PersonalityTagline: dp.PersonalityTagline,
 		ManaBaseGrade:      dp.ManaBaseGrade,

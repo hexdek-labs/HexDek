@@ -950,6 +950,7 @@ type strategyJSON struct {
 	GameChangerCount int               `json:"game_changer_count"`
 	GameChangerCards []string          `json:"game_changer_cards,omitempty"`
 	GameplanSummary  string            `json:"gameplan_summary"`
+	GameplanScript   *GameplanScript   `json:"gameplan_script,omitempty"`
 	WinLines         []strategyWinLine `json:"win_lines"`
 	ValueEngineKeys  []string          `json:"value_engine_keys,omitempty"`
 	TutorTargets     []string          `json:"tutor_targets,omitempty"`
@@ -1035,6 +1036,7 @@ func saveStrategyJSON(path string, report *FreyaReport) {
 		sj.GameChangerCount = report.Profile.GameChangerCount
 		sj.GameChangerCards = report.Profile.GameChangerCards
 		sj.GameplanSummary = report.Profile.GameplanSummary
+		sj.GameplanScript = report.Profile.GameplanScript
 	} else if report.Archetype != nil {
 		sj.Archetype = strings.ToLower(report.Archetype.Primary)
 		sj.Bracket = report.Archetype.Bracket
