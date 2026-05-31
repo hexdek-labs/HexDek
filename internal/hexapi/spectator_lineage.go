@@ -46,6 +46,13 @@ func (sm *Showmatch) handleSpectatorLineage(w http.ResponseWriter, r *http.Reque
 		writeError(w, http.StatusServiceUnavailable, "spectator rooms unavailable")
 		return
 	}
+	// Rate-limit gate. The full-rooms-scan cost is paid before the
+	// lineage map lookup (the 404 path scans every room first), so
+	// format-valid-but-unknown IDs are just as expensive as hits —
+	// throttle both axes before doing any work. Limiter is nil-safe.
+	if enforceRateLimitDual(sm.LineageLimiter, sm.LineageOwnerLimiter, w, r, "spectator lineage") {
+		return
+	}
 
 	// Search every live room's most-recent snapshot. The InstanceID
 	// system is per-game, so once the matching room is identified the

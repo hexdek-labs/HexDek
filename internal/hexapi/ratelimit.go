@@ -126,6 +126,54 @@ func enforceRateLimitByOwner(rl *RateLimiter, w http.ResponseWriter, r *http.Req
 	return enforceRateLimitByKey(rl, w, r, ownerOrIPKey(r), label)
 }
 
+// enforceRateLimitDual gates a request through BOTH a per-IP and a
+// per-owner token bucket — first denial wins. Use for expensive
+// endpoints that need defense across two failure modes simultaneously:
+//   - shared IP, many owners (NAT / coffeeshop / botnet exit node)
+//     abusing the per-owner budget en masse → per-IP bucket throttles
+//   - one owner across many IPs (stolen session, distributed scraper)
+//     evading the per-IP bucket by churning source addresses → per-owner
+//     bucket throttles
+//
+// Either limiter may be nil for backwards compatibility — a nil limiter
+// is a no-op for that axis (so a binary that constructs only the per-IP
+// limiter keeps working unchanged). When both are nil this whole call
+// is a no-op, matching the existing single-limiter behavior.
+//
+// The per-IP gate reuses enforceRateLimit verbatim so its bucket-key
+// shape (bare clientIP, no namespace prefix) stays bit-identical to
+// every other per-IP call site — keeping the existing shared-budget
+// contract (the import endpoints and the analyze endpoint share one
+// DeckImportLimiter bucket per IP). The per-owner gate uses the
+// ownerOrIPKey helper directly (NOT enforceRateLimitByOwner) so we
+// can skip the IP-fallback when no owner header was sent — otherwise
+// the per-owner axis would re-throttle the per-IP bucket on the same
+// request, double-debiting tokens.
+//
+// X-RateLimit-By tags which axis denied (`ip` or `owner`) so
+// operators tailing logs can tell them apart at a glance.
+func enforceRateLimitDual(perIP, perOwner *RateLimiter, w http.ResponseWriter, r *http.Request, label string) bool {
+	if perIP != nil {
+		if enforceRateLimit(perIP, w, r, label) {
+			w.Header().Set("X-RateLimit-By", "ip")
+			return true
+		}
+	}
+	if perOwner != nil {
+		// Only key by owner when the header is actually present —
+		// otherwise the owner bucket would re-throttle on the same IP
+		// key the perIP bucket just charged, double-debiting a single
+		// request. Per-IP-only callers stay on the per-IP-only path.
+		if owner := strings.ToLower(strings.TrimSpace(r.Header.Get("X-HexDek-Owner"))); owner != "" {
+			if enforceRateLimitByKey(perOwner, w, r, "owner:"+owner, label) {
+				w.Header().Set("X-RateLimit-By", "owner")
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // enforceRateLimitByKey is the shared core. Callers compute the
 // bucket key (per-IP, per-owner, per-API-token, ...) and hand it in.
 // Centralizing the over-limit response shape (429 + Retry-After +

@@ -52,6 +52,19 @@ type Handler struct {
 	// default (10-burst, 1 per 30s refill) at startup.
 	DeckImportLimiter *RateLimiter
 
+	// DeckAnalyzeOwnerLimiter pairs with DeckImportLimiter on the
+	// freya-analyze endpoint (POST /api/decks/{owner}/{id}/analyze) to
+	// add the per-owner axis on top of the existing per-IP axis. Each
+	// analyze call kicks off a Freya subprocess serialized behind
+	// freyaMu — a single owner driving many devices through a CDN can
+	// rotate source IPs to evade DeckImportLimiter and pin the Freya
+	// worker indefinitely. enforceRateLimitDual gates both axes; first
+	// denial wins. Nil = per-owner axis disabled (per-IP axis still
+	// enforced via DeckImportLimiter). cmd/hexdek-server sets a default
+	// (looser than the per-IP cap — owners legitimately re-analyze
+	// after each deck edit) at startup.
+	DeckAnalyzeOwnerLimiter *RateLimiter
+
 	// CSRFStore mints and verifies stateless CSRF tokens. When non-nil
 	// the destructive endpoints (DELETE deck, POST clone) require a
 	// valid X-CSRF-Token header sourced from GET /api/csrf. When nil
@@ -1137,7 +1150,7 @@ func (h *Handler) handleRunAnalysis(w http.ResponseWriter, r *http.Request) {
 	// this endpoint pins a worker indefinitely). Shares DeckImportLimiter
 	// with the other deck-write endpoints so a burst across them sums
 	// against the same budget.
-	if enforceRateLimit(h.DeckImportLimiter, w, r, "deck analyze") {
+	if enforceRateLimitDual(h.DeckImportLimiter, h.DeckAnalyzeOwnerLimiter, w, r, "deck analyze") {
 		return
 	}
 	owner := r.PathValue("owner")
