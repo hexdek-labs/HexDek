@@ -239,6 +239,14 @@ var archetypeWeights = map[string]EvalWeights{
 		//   - StackInteraction: lock pieces eat removal and counters
 		//     constantly — protecting the soft-lock is the difference
 		//     between winning a long game and losing a few turns later.
+		//
+		// r60-archetype-amplification (PR #923 followup): the dispatch
+		// works mechanically (Tayam loaded with StaxLockProgress=2.0 vs
+		// midrange's 0.2 in the legacy-weights ablation) but the per-
+		// archetype differentiation was below the n=500 noise floor.
+		// Boost the three most Stax-distinctive dims by ~50% so the
+		// signal clears noise. StaxLockProgress 2.0 → 3.0, ArtifactSynergy
+		// 1.2 → 1.8, StackInteraction 1.1 → 1.6. Other dims unchanged.
 		BoardPresence:          0.7,
 		CardAdvantage:          1.2,
 		ManaAdvantage:          1.0,
@@ -248,17 +256,17 @@ var archetypeWeights = map[string]EvalWeights{
 		CommanderProgress:      0.8,
 		GraveyardValue:         0.4,
 		DrainEngine:            0.2,
-		ArtifactSynergy:        1.2, // was 0.6 — Winter Orb / Static Orb / Stasis
+		ArtifactSynergy:        1.8, // r60-amp: was 1.2 — Stax pieces are mostly artifacts
 		EnchantmentSynergy:     0.5,
 		OpponentGraveyardThreat: 0.8,
 		PartnerSynergy:         0.3,
 		ActivationTempo:        0.5,
 		ToolboxBreadth:         0.4,
 		ThreatTrajectory:       0.7,
-		StackInteraction:       1.1, // was 0.8 — protect lock pieces
+		StackInteraction:       1.6, // r60-amp: was 1.1 — protecting the lock IS the gameplan
 		PlaneswalkerProgress:   0.5,
 		ExileZoneAssets:        0.2,
-		StaxLockProgress:       2.0,
+		StaxLockProgress:       3.0, // r60-amp: was 2.0 — defining dim, amplified to clear noise
 	},
 	ArchetypeReanimator: {
 		// R60 round 3 audit retune. GraveyardValue=1.8 correctly highest,
@@ -769,11 +777,19 @@ var archetypeWeights = map[string]EvalWeights{
 		// underweighted protection: the spell chain dies to a single
 		// resolved counter mid-storm. GraveyardValue at 0.3 ignored
 		// Past in Flames / Yawgmoth's Will second-storm lines.
+		//
+		// r60-archetype-amplification (PR #923 followup): same rationale
+		// as the Stax amplification above — the dispatch works but the
+		// differentiation was below the n=500 noise floor. Boost the two
+		// most Storm-distinctive dims by ~50%: ActivationTempo 1.2 → 1.8
+		// (storm chain runs on rituals + Aetherflux activations) and
+		// StackInteraction 1.4 → 2.0 (counter war over the chain decides
+		// the game). Other dims unchanged.
 		BoardPresence:          0.2,
 		CardAdvantage:          1.3,
 		ManaAdvantage:          1.3, // was 1.5 — rituals matter more than raw lands
 		LifeResource:           0.2,
-		ComboProximity:         1.8,
+		ComboProximity:         2.2, // r60-amp: was 1.8 — Storm's defining dial, kept strictly highest
 		ThreatExposure:         0.3,
 		CommanderProgress:      0.4,
 		GraveyardValue:         0.6, // was 0.3 — Past in Flames lines
@@ -782,10 +798,10 @@ var archetypeWeights = map[string]EvalWeights{
 		EnchantmentSynergy:     0.2,
 		OpponentGraveyardThreat: 0.3,
 		PartnerSynergy:         0.2,
-		ActivationTempo:        1.2, // was 0.3 — rituals, Aetherflux, LED
+		ActivationTempo:        1.8, // r60-amp: was 1.2 — defining ritual/Aetherflux/LED dial
 		ToolboxBreadth:         0.5,
 		ThreatTrajectory:       0.3,
-		StackInteraction:       1.4, // was 0.8 — counter war over the chain
+		StackInteraction:       2.0, // r60-amp: was 1.4 — counter war IS the chain
 		PlaneswalkerProgress:   0.2,
 		ExileZoneAssets:        0.3,
 		StaxLockProgress:       0.1,
