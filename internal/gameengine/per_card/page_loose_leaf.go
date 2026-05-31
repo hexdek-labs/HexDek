@@ -90,9 +90,6 @@ func pageLooseLeafGrandeur(gs *gameengine.GameState, src *gameengine.Permanent, 
 		// After the found card, the rest stays on top.
 		newLibrary = append(newLibrary, c)
 	}
-	if found != nil {
-		seat.Hand = append(seat.Hand, found)
-	}
 	// R60 batch 9: shuffle the bottom pile per oracle ("put the rest
 	// on the bottom of your library in a random order"). Closes the
 	// "bottom_pile_random_order_not_shuffled_per_oracle" partial.
@@ -101,8 +98,19 @@ func pageLooseLeafGrandeur(gs *gameengine.GameState, src *gameengine.Permanent, 
 			bottomPile[i], bottomPile[j] = bottomPile[j], bottomPile[i]
 		})
 	}
-	// New library: remaining top + bottomPile at the bottom.
-	seat.Library = append(newLibrary, bottomPile...)
+	// Wave 2 multi-step migration: rebuild the library WITH `found`
+	// still at the top, then route the library→hand transition through
+	// MoveCard so §614 / §903.9b / card_drawn-equivalent zone_change
+	// observers all fire. Pre-r60 pulled `found` out during the rebuild
+	// and manually appended to hand, bypassing every one of the above.
+	rebuilt := newLibrary
+	if found != nil {
+		rebuilt = append([]*gameengine.Card{found}, rebuilt...)
+	}
+	seat.Library = append(rebuilt, bottomPile...)
+	if found != nil {
+		gameengine.MoveCard(gs, found, src.Controller, "library", "hand", "page_loose_leaf_tutor")
+	}
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"seat":      src.Controller,
 		"discarded": discardVictim.DisplayName(),

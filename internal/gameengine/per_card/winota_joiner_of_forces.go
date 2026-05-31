@@ -105,17 +105,11 @@ func winotaAttackTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, c
 	cheated := ""
 	if humanIdx >= 0 {
 		human := top[humanIdx]
-		// Remove the chosen card from the library by pointer.
-		for i, c := range seat.Library {
-			if c == human {
-				seat.Library = append(seat.Library[:i], seat.Library[i+1:]...)
-				break
-			}
-		}
-		// One fewer card to put on the bottom; the snapshot itself isn't
-		// read again, so just track the new count.
+		// Wave 2 multi-step migration: enterBattlefieldWithETB →
+		// createPermanent sweeps `human` from every private zone (library
+		// included). Pre-r60 manually spliced library first, which was
+		// redundant.
 		look--
-
 		newPerm := enterBattlefieldWithETB(gs, perm.Controller, human, true)
 		if newPerm != nil {
 			newPerm.SummoningSick = false

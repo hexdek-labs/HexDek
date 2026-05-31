@@ -64,18 +64,21 @@ func kataraAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 	if seat == nil {
 		return
 	}
+	// Wave 2 multi-step migration: route draws + discard through the
+	// canonical helpers so §614 + observer triggers fire (no card_drawn,
+	// no card_discarded otherwise — both are commander-deck-staple
+	// trigger sources). Pre-r60 direct-spliced library/hand and manual
+	// appended; the chokepoints handle source removal + ETB-equivalents.
 	drawn := 0
 	for i := 0; i < xp && len(seat.Library) > 0; i++ {
 		card := seat.Library[0]
-		seat.Library = seat.Library[1:]
-		seat.Hand = append(seat.Hand, card)
+		gameengine.MoveCard(gs, card, perm.Controller, "library", "hand", "katara_draw")
 		drawn++
 	}
 	if drawn > 0 && len(seat.Hand) > 0 {
 		discardIdx := len(seat.Hand) - 1
 		card := seat.Hand[discardIdx]
-		seat.Hand = seat.Hand[:discardIdx]
-		seat.Graveyard = append(seat.Graveyard, card)
+		gameengine.DiscardCard(gs, card, perm.Controller)
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":  perm.Controller,

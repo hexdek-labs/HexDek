@@ -92,9 +92,13 @@ func chitinousCrawlerActivated(gs *gameengine.GameState, src *gameengine.Permane
 		return
 	}
 
-	// Pay the cost: move the chosen card from graveyard to exile.
-	seat.Graveyard = append(seat.Graveyard[:pickedIdx], seat.Graveyard[pickedIdx+1:]...)
-	seat.Exile = append(seat.Exile, picked)
+	// Pay the cost: route the graveyard→exile move through MoveCard so
+	// §614 replacements (Rest in Peace, Leyline of the Void) + §903.9b
+	// commander redirect + card_exiled / zone_change observers all fire.
+	// Pre-r60 spliced + manual append, bypassing every one of the above
+	// (Wave 2 multi-step migration).
+	_ = pickedIdx
+	gameengine.MoveCard(gs, picked, src.Controller, "graveyard", "exile", "chitinous_crawler_cost")
 
 	// Register a properly-stamped exile-cast grant for THIS card.
 	perm := &gameengine.ZoneCastPermission{
