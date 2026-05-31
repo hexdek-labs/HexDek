@@ -48,6 +48,7 @@ func printHTML(w io.Writer, r *FreyaReport) {
 	renderHTMLWinLinesSection(w, r)
 	renderHTMLColorSection(w, r)
 	renderHTMLManaCurveSection(w, r)
+	renderHTMLTierListSection(w, r, LoadedTierList)
 	renderHTMLFooter(w, r)
 
 	fmt.Fprintf(w, "</main>\n")
