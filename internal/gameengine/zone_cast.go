@@ -718,6 +718,47 @@ func ExpireSourceGrants(gs *GameState, sourceTimestamp int) {
 	}
 }
 
+// ClearLinkedExileTagsForSource walks every seat's exile zone and
+// resets each Card.ExiledByTimestamp that matches sourceTimestamp.
+// Called when a permanent that stamped its timestamp on exiled cards
+// (Knowledge Pool, River Song's Diary, Smirking Spelljacker,
+// Transcendent Dragon, etc.) leaves play via a path that bypasses
+// the canonical permanent_ltb dispatch — specifically seat
+// elimination (HandleSeatElimination per CR §800.4a), which removes
+// permanents directly without running per_card LTB handlers.
+//
+// Mirrors ExpireSourceGrants: cleans up the stale linkage marker
+// that the ExileLinkageIntegrity invariant would otherwise flag as
+// "card linked to source timestamp N which is no longer on any
+// battlefield — LTB return missed". The exiled cards stay in
+// exile — only the linkage tag is reset, since per CR §800.4a
+// effects of the leaving player end without applying their normal
+// return semantics.
+//
+// Loki r60 (2026-05-30): closed the 2 residual Myr Prototype hits
+// in game 1044 where Knowledge Pool's controller (seat 1) was
+// eliminated before KP died; HandleSeatElimination called
+// ExpireSourceGrants but had no analogous cleanup for the
+// ExiledByTimestamp tags KP had stamped on its imprinted cards.
+func ClearLinkedExileTagsForSource(gs *GameState, sourceTimestamp int) {
+	if gs == nil || sourceTimestamp == 0 {
+		return
+	}
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, c := range s.Exile {
+			if c == nil {
+				continue
+			}
+			if c.ExiledByTimestamp == sourceTimestamp {
+				c.ExiledByTimestamp = 0
+			}
+		}
+	}
+}
+
 // ExpireGrantsForAbilityInstance reclaims any ZoneCastGrants whose
 // AbilityInstanceID matches the given ID. Per design v2 §4.2 + §7,
 // CastGrant-shape effects bind grant lifetime to the AbilityInstance
