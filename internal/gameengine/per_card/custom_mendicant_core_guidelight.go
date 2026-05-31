@@ -74,8 +74,7 @@ func mendicantMaxSpeedCopy(gs *gameengine.GameState, perm *gameengine.Permanent,
 		return
 	}
 
-	copyCard := target.Card.DeepCopy()
-	copyCard.IsCopy = true
+	copyCard := gameengine.MintSpellCopy(gs, target.Card)
 	copyItem := &gameengine.StackItem{
 		Controller: target.Controller,
 		Card:       copyCard,

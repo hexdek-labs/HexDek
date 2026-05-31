@@ -109,8 +109,7 @@ func kalamaxFirstInstantCopy(gs *gameengine.GameState, perm *gameengine.Permanen
 	}
 	copied := false
 	if stackItem != nil {
-		copyCard := stackItem.Card.DeepCopy()
-		copyCard.IsCopy = true
+		copyCard := gameengine.MintSpellCopy(gs, stackItem.Card)
 		copyItem := &gameengine.StackItem{
 			Controller: perm.Controller,
 			Card:       copyCard,

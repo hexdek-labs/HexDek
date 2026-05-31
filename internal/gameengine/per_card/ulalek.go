@@ -88,8 +88,7 @@ func ulalekCastTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 		},
 	})
 
-	copyCard := card.DeepCopy()
-	copyCard.IsCopy = true
+	copyCard := gameengine.MintSpellCopy(gs, card)
 	copyItem := &gameengine.StackItem{
 		Controller: perm.Controller,
 		Card:       copyCard,

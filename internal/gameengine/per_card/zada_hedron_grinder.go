@@ -79,8 +79,7 @@ func zadaSpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 	emitPartial(gs, slug, perm.Card.DisplayName(), "could_target_predicate_approximated_as_any_creature_we_control")
 
 	for _, t := range others {
-		copyCard := card.DeepCopy()
-		copyCard.IsCopy = true
+		copyCard := gameengine.MintSpellCopy(gs, card)
 		copyItem := &gameengine.StackItem{
 			Controller: perm.Controller,
 			Card:       copyCard,

@@ -303,3 +303,47 @@ func MintCopyInstanceID(gs *GameState, c *Card, sourceID, enablerID string) {
 	RecordMintedInstanceID(gs, id)
 	RecordMintedInstanceIDName(gs, id, c.DisplayName())
 }
+
+// MintSpellCopy is the canonical per_card chokepoint for "create a copy
+// of a spell on the stack" — Phase F closure for the §400.7c
+// duplicate-pointer fabrication class surfaced by Loki r60 (Phase E
+// successor work). It DeepCopys the source *Card, clears the inherited
+// InstanceID (preventing the source-cease leak below), stamps
+// IsCopy = true (so §704.5e SBA sweeps the copy out of any non-stack
+// zone it reaches), and mints a fresh CP-provenance InstanceID with
+// lineage pointing at the source.
+//
+// Closure rationale — the leak before this helper:
+//
+//	copyCard := card.DeepCopy()         // inherits source InstanceID
+//	copyCard.IsCopy = true
+//	... PushStackItem(copyItem) ...
+//	// later, when the copy resolves, stack.go:1312 fires
+//	// MarkInstanceIDCeased(gs, item.Card.InstanceID) → CEASES THE
+//	// SOURCE'S InstanceID because the copy shares it. The original
+//	// card is then flagged as fabricated by checkZoneConservation on
+//	// every subsequent invariant tick.
+//
+// 46 of 52 Loki r60 seed-42 fabrications (game 411 alone, single
+// replaying source ID) traced to this shape across 8 per_card handlers
+// (Alania / Zada / Krark / Mica / Mendicant Core / Rootha / Kalamax /
+// Ivy Gleeful Spellthief). Riku was the lone correct handler.
+//
+// Returns the fresh copy *Card; nil when sourceCard is nil.
+func MintSpellCopy(gs *GameState, sourceCard *Card) *Card {
+	if sourceCard == nil {
+		return nil
+	}
+	cp := sourceCard.DeepCopy()
+	if cp == nil {
+		return nil
+	}
+	srcID := sourceCard.InstanceID
+	cp.InstanceID = ""
+	cp.SourceInstanceID = ""
+	cp.EnablerInstanceID = ""
+	cp.EnablerHistory = nil
+	cp.IsCopy = true
+	MintCopyInstanceID(gs, cp, srcID, currentMintEnablerID(gs))
+	return cp
+}

@@ -145,13 +145,12 @@ func rikuTwoReflectionsSpellCast(gs *gameengine.GameState, perm *gameengine.Perm
 
 	seat.ManaPool -= rikuTwoReflectionsCost
 
-	// InstanceID Phase 5: spell-copy chokepoint — mints fresh CP ID
-	// per §4 mint path 1. Per CR §707.10 the copy ceases on resolution;
-	// the CeasedInstanceIDs sweep at stack-resolve handles that.
-	copyCard := card.DeepCopy()
-	copyCard.InstanceID = ""
-	gameengine.MintCopyInstanceID(gs, copyCard, card.InstanceID, gameengine.CurrentMintEnablerID(gs))
-	copyCard.IsCopy = true
+	// InstanceID Phase F: route through the canonical MintSpellCopy
+	// chokepoint (DeepCopy + InstanceID clear + IsCopy=true + fresh CP
+	// mint with source lineage). Per CR §707.10 the copy ceases on
+	// resolution; the CeasedInstanceIDs sweep at stack-resolve handles
+	// that.
+	copyCard := gameengine.MintSpellCopy(gs, card)
 	copyItem := &gameengine.StackItem{
 		Controller: perm.Controller,
 		Card:       copyCard,

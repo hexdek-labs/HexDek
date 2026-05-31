@@ -871,6 +871,22 @@ func CleanupHandSize(gs *GameState, seatIdx, maxSize int) {
 	if seat == nil {
 		return
 	}
+	// CR §800.4a — objects of a player who has left the game cease to
+	// exist; the §514.1 hand-size discard does not apply. Skipping here
+	// closes the Phase F §400.7c fabrication class: without it, a
+	// leaving-seat hand still gets force-discarded at the same turn's
+	// cleanup step, the discard fires Madness / Mayhem / "card_discarded"
+	// observers, and those observers register fresh state (e.g.
+	// MadnessExile + ZoneCastGrant) keyed on a *Card whose InstanceID was
+	// already ceased by HandleSeatElimination. The next invariant tick
+	// then walks gs.ZoneCastGrants (sideband zone in the census present
+	// set) sees the *Card, expected (Minted - Ceased) lacks the ID, and
+	// flags it as fabricated. Loki r60 seed-42 game 411: 46 of 52
+	// fabrications were Distemper of the Blood owned by seat 1, ceased
+	// at seat-1 elim, re-registered via this exact path.
+	if seat.LeftGame {
+		return
+	}
 	if maxSize <= 0 {
 		maxSize = 7
 	}
