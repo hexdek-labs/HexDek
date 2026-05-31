@@ -82,8 +82,14 @@ func main() {
 		// game-replay frames) and CI gates against a replay corpus.
 		checkSBA     = flag.Bool("check-sba", false, "batch mode: scan a game-state snapshot for §704.5 / §704.6 SBA conditions that should have fired but didn't. Requires --snapshot.")
 		snapshotPath = flag.String("snapshot", "", "game-state snapshot JSON path for --check-sba")
-		deckPath     = flag.String("deck", "", "deck text file path for --check-commander / --check-deck-construction / --report-parse")
-		checkOut     = flag.String("check-out", "", "output path for the --check-* JSON report (default: stdout)")
+		// Judge ↔ Loki replay integration. Load a Loki replay JSON,
+		// walk each invariant violation event, run the §704 SBA probe
+		// against the embedded game-state snapshot, and emit per-event
+		// CR-citation explanations. Bridges Loki's free-text invariant
+		// names to mechanical Comprehensive Rules sub-sections.
+		replayPath = flag.String("replay", "", "batch mode: load a Loki replay JSON, walk each invariant violation event, and emit a per-event CR-citation analysis with SBA probe findings")
+		deckPath   = flag.String("deck", "", "deck text file path for --check-commander / --check-deck-construction / --report-parse")
+		checkOut   = flag.String("check-out", "", "output path for the --check-* JSON report (default: stdout)")
 		// Parse coverage report — surfaces the deckparser's structured
 		// per-line resolution status (resolved / fallback-resolved /
 		// unresolved) + roll-up counts + per-failure source-line detail.
@@ -153,6 +159,16 @@ func main() {
 			// Mirror other probes: non-zero exit when any line failed
 			// to resolve so CI hooks can gate on parse coverage.
 			os.Exit(1)
+		}
+		return
+	}
+
+	if *replayPath != "" {
+		// Replay analysis is informational — exit 0 even when the
+		// replay contains violations (the violations ARE the artifact;
+		// the file parsing is what "valid" tracks).
+		if _, err := runReplayAnalysis(*replayPath, *checkOut); err != nil {
+			log.Fatalf("replay: %v", err)
 		}
 		return
 	}
