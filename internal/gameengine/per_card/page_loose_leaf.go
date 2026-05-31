@@ -93,6 +93,14 @@ func pageLooseLeafGrandeur(gs *gameengine.GameState, src *gameengine.Permanent, 
 	if found != nil {
 		seat.Hand = append(seat.Hand, found)
 	}
+	// R60 batch 9: shuffle the bottom pile per oracle ("put the rest
+	// on the bottom of your library in a random order"). Closes the
+	// "bottom_pile_random_order_not_shuffled_per_oracle" partial.
+	if gs.Rng != nil && len(bottomPile) > 1 {
+		gs.Rng.Shuffle(len(bottomPile), func(i, j int) {
+			bottomPile[i], bottomPile[j] = bottomPile[j], bottomPile[i]
+		})
+	}
 	// New library: remaining top + bottomPile at the bottom.
 	seat.Library = append(newLibrary, bottomPile...)
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
@@ -101,8 +109,6 @@ func pageLooseLeafGrandeur(gs *gameengine.GameState, src *gameengine.Permanent, 
 		"tutored":   foundOrEmpty(found),
 		"to_bottom": len(bottomPile),
 	})
-	emitPartial(gs, slug, src.Card.DisplayName(),
-		"bottom_pile_random_order_not_shuffled_per_oracle")
 }
 
 func foundOrEmpty(c *gameengine.Card) string {

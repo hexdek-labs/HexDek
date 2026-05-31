@@ -17,10 +17,63 @@ import (
 //     pick: highest-CMC Equipment first, else highest-CMC Aura. Put it
 //     into our hand. (Library shuffle is implicit — we don't reorder
 //     post-removal.)
-//   - "During your turn, has flying" handled at static-effect layer —
-//     emitPartial.
+//   - "During your turn, has flying" (R60 batch 9): wired via
+//     upkeep_controller (stamp Flags["kw:flying"]=1 on own upkeep) +
+//     end_step (own end step strips it). Per-flag marker
+//     "sun_spider_self_flying" so the strip only removes flags we
+//     granted (native AST flying from any future reprint stays).
 func registerSunSpiderNimbleWebber(r *Registry) {
 	r.OnETB("Sun-Spider, Nimble Webber", sunSpiderETB)
+	r.OnTrigger("Sun-Spider, Nimble Webber", "upkeep_controller", sunSpiderUpkeepStampFlying)
+	r.OnTrigger("Sun-Spider, Nimble Webber", "end_step", sunSpiderEndStepStripFlying)
+}
+
+func sunSpiderUpkeepStampFlying(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "sun_spider_upkeep_grant_flying"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
+		return
+	}
+	activeSeat, _ := ctx["active_seat"].(int)
+	if activeSeat != perm.Controller {
+		return
+	}
+	if perm.HasKeyword("flying") {
+		// Already has flying via AST or some other grant — don't stamp
+		// our marker (we'd strip a native keyword on end_step).
+		return
+	}
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	if perm.Flags["sun_spider_self_flying"] == 1 {
+		return
+	}
+	perm.Flags["kw:flying"] = 1
+	perm.Flags["sun_spider_self_flying"] = 1
+	gs.InvalidateCharacteristicsCache()
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller,
+	})
+}
+
+func sunSpiderEndStepStripFlying(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "sun_spider_end_step_strip_flying"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
+		return
+	}
+	activeSeat, _ := ctx["active_seat"].(int)
+	if activeSeat != perm.Controller {
+		return
+	}
+	if perm.Flags == nil || perm.Flags["sun_spider_self_flying"] != 1 {
+		return
+	}
+	delete(perm.Flags, "kw:flying")
+	delete(perm.Flags, "sun_spider_self_flying")
+	gs.InvalidateCharacteristicsCache()
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller,
+	})
 }
 
 func sunSpiderETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -63,6 +116,4 @@ func sunSpiderETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		"seat":  perm.Controller,
 		"found": pick.DisplayName(),
 	})
-	emitPartial(gs, "sun_spider_static_flying", perm.Card.DisplayName(),
-		"during_your_turn_flying_continuous_static_not_modeled")
 }
