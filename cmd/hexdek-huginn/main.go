@@ -7,14 +7,17 @@
 //
 // Usage:
 //
-//	hexdek-huginn --ingest              # process new observations
-//	hexdek-huginn --list                # show all interactions by tier
-//	hexdek-huginn --candidates          # show tier 3 promotion candidates
-//	hexdek-huginn --stats               # summary counts per tier
-//	hexdek-huginn --prune               # garbage collect tier 1-2
+//	hexdek-huginn --ingest                   # process new observations
+//	hexdek-huginn --list                     # show all interactions by tier
+//	hexdek-huginn --candidates               # show tier 3 promotion candidates
+//	hexdek-huginn --stats                    # summary counts per tier
+//	hexdek-huginn --prune                    # garbage collect tier 1-2
+//	hexdek-huginn --partners "<card name>"   # partners for a card, ranked
+//	hexdek-huginn --extend <deck.json>       # cards to add for interaction density
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -34,8 +37,24 @@ func main() {
 		doPrune    = flag.Bool("prune", false, "garbage collect stale tier 1-2 entries")
 		gamesSince = flag.Int("games-since", 0, "games played since last ingest (for aging)")
 		top        = flag.Int("top", 30, "max entries to display per section")
+		partners   = flag.String("partners", "", "show Tier 2+ interaction partners for the named card")
+		extend     = flag.String("extend", "", "path to a deck JSON; recommends cards to add for interaction density")
+		minTier    = flag.Int("min-tier", huginn.TierRecurring, "min tier for --partners / --extend (1=observed, 2=recurring, 3=confirmed)")
+		jsonOut    = flag.Bool("json", false, "emit JSON instead of human-readable text for --partners / --extend")
 	)
 	flag.Parse()
+
+	// --partners and --extend short-circuit the other subcommands: they're
+	// query-only and the default-flag fallback below would otherwise run
+	// --stats + --list under their feet on every invocation.
+	if *partners != "" {
+		runPartners(*dir, *partners, *minTier, *top, *jsonOut)
+		return
+	}
+	if *extend != "" {
+		runExtend(*dir, *extend, *minTier, *top, *jsonOut)
+		return
+	}
 
 	noFlag := !*doIngest && !*doList && !*doCandidates && !*doStats && !*doPrune
 	if noFlag {
@@ -58,6 +77,106 @@ func main() {
 	if *doList {
 		runList(*dir, *top)
 	}
+}
+
+func runPartners(dir, query string, minTier, top int, jsonOut bool) {
+	hits, err := huginn.Partners(dir, query, minTier)
+	if err != nil {
+		log.Fatalf("partners: %v", err)
+	}
+	if jsonOut {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(map[string]interface{}{
+			"query":    query,
+			"min_tier": minTier,
+			"hits":     hits,
+		}); err != nil {
+			log.Fatalf("encode: %v", err)
+		}
+		return
+	}
+	fmt.Printf("=== PARTNERS for %q (min-tier %d) ===\n", query, minTier)
+	if len(hits) == 0 {
+		fmt.Println("  (no partners found at this tier)")
+		return
+	}
+	limit := top
+	if limit > len(hits) {
+		limit = len(hits)
+	}
+	for i := 0; i < limit; i++ {
+		h := hits[i]
+		fmt.Printf("  %2d. [T%d] %-40s  score=%6.2f  patterns=%d\n",
+			i+1, h.Tier, h.Partner, h.Score, h.PairCount)
+		for j, p := range h.Patterns {
+			if j >= 3 {
+				fmt.Printf("       … and %d more pattern(s)\n", len(h.Patterns)-3)
+				break
+			}
+			fmt.Printf("       → %s\n", p)
+		}
+	}
+	if len(hits) > limit {
+		fmt.Printf("  ... and %d more\n", len(hits)-limit)
+	}
+	fmt.Println()
+}
+
+func runExtend(dir, deckPath string, minTier, top int, jsonOut bool) {
+	deck, names, err := huginn.LoadDeckJSON(deckPath)
+	if err != nil {
+		log.Fatalf("extend: %v", err)
+	}
+	hits, err := huginn.Extend(dir, names, minTier)
+	if err != nil {
+		log.Fatalf("extend: %v", err)
+	}
+	if jsonOut {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		if err := enc.Encode(map[string]interface{}{
+			"deck":     deckPath,
+			"name":     deck.Name,
+			"size":     len(names),
+			"min_tier": minTier,
+			"hits":     hits,
+		}); err != nil {
+			log.Fatalf("encode: %v", err)
+		}
+		return
+	}
+	label := deck.Name
+	if label == "" {
+		label = deckPath
+	}
+	fmt.Printf("=== EXTEND %q (%d cards, min-tier %d) ===\n", label, len(names), minTier)
+	if len(hits) == 0 {
+		fmt.Println("  (no candidates found at this tier — the corpus has no observed partners for any deck card)")
+		return
+	}
+	limit := top
+	if limit > len(hits) {
+		limit = len(hits)
+	}
+	for i := 0; i < limit; i++ {
+		h := hits[i]
+		fmt.Printf("  %2d. [T%d] %-40s  score=%6.2f  pairs=%d\n",
+			i+1, h.Tier, h.Card, h.Score, h.Pairs)
+		if len(h.WithCards) > 0 {
+			fmt.Printf("       with: %s\n", strings.Join(h.WithCards, ", "))
+		}
+		for j, p := range h.Patterns {
+			if j >= 2 {
+				break
+			}
+			fmt.Printf("       → %s\n", p)
+		}
+	}
+	if len(hits) > limit {
+		fmt.Printf("  ... and %d more\n", len(hits)-limit)
+	}
+	fmt.Println()
 }
 
 func runIngest(dir string, gamesSince int) {
