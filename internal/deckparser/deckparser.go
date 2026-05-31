@@ -478,12 +478,19 @@ func (r ParseReport) CoveragePercent() float64 {
 }
 
 // UnresolvedLine is the per-failure detail row in a ParseReport.
+//
+// Suggestions carries the autosuggest output from MetaDB.SuggestSimilarNames
+// (up to 3 closest matches by Levenshtein distance). Empty when no
+// candidate is within the per-input distance threshold or when the
+// parser ran without a usable meta. Drives the "Did you mean X?" line
+// in PrintReport's per-failure block.
 type UnresolvedLine struct {
-	LineNumber int    // 1-based source line in the original file
-	Raw        string // the original raw line (TrimSpace'd, post-HTML-strip)
-	Name       string // best-effort extracted name (post-clean, post-DFC-normalize)
-	Section    string // "commander" / "main" — where the line was routed
-	Reason     string // human-readable failure reason
+	LineNumber  int              // 1-based source line in the original file
+	Raw         string           // the original raw line (TrimSpace'd, post-HTML-strip)
+	Name        string           // best-effort extracted name (post-clean, post-DFC-normalize)
+	Section     string           // "commander" / "main" — where the line was routed
+	Reason      string           // human-readable failure reason
+	Suggestions []NameSuggestion // top-N closest meta names by Levenshtein (empty when none qualify)
 }
 
 // CommanderNames returns the display names of every commander in the
@@ -1059,11 +1066,12 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		if probe == nil {
 			td.Unresolved = append(td.Unresolved, name)
 			unresolvedDetails = append(unresolvedDetails, UnresolvedLine{
-				LineNumber: le.lineNum,
-				Raw:        le.raw,
-				Name:       name,
-				Section:    le.section,
-				Reason:     "name not found in meta (corpus + DFC face-match all missed)",
+				LineNumber:  le.lineNum,
+				Raw:         le.raw,
+				Name:        name,
+				Section:     le.section,
+				Reason:      "name not found in meta (corpus + DFC face-match all missed)",
+				Suggestions: meta.SuggestSimilarNames(name, 3),
 			})
 			continue
 		}
@@ -1236,6 +1244,9 @@ func (td *TournamentDeck) PrintReport(w io.Writer) error {
 			fmt.Fprintf(w, "  line %d: %q [%s] — %s\n", u.LineNumber, u.Name, u.Section, u.Reason)
 			if u.Raw != "" && u.Raw != u.Name {
 				fmt.Fprintf(w, "    raw: %s\n", u.Raw)
+			}
+			for _, s := range u.Suggestions {
+				fmt.Fprintf(w, "    %s\n", suggestionPhrase(s, u.Name))
 			}
 		}
 	}
