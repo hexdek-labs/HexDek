@@ -22,9 +22,11 @@ import (
 //     greatest power among ALL attacking artifact creatures we
 //     control at the moment the trigger fires.
 //
-// emitPartial: discover X (exile-until-nonland-of-≤cost, cast-or-hand,
-// shuffle rest random to bottom) is not yet wired through per_card.
-// We emit the X value so callers/tests observe the trigger landed.
+// R60 stub sweep batch 6: dropped the stale "discover X not yet wired
+// through per_card" doc claim — the handler does call
+// gameengine.ApplyDiscover with the computed X, which wraps the full
+// §702.165 mechanic (exile-until-nonland-of-≤cost, cast-or-hand,
+// shuffle rest random to bottom). Emit the X value alongside.
 func registerAloySaviorOfMeridian(r *Registry) {
 	r.OnTrigger("Aloy, Savior of Meridian", "creature_attacks", aloyAttacks)
 }

@@ -55,8 +55,8 @@ through each of the four exit primitives, and assert the carrier `*Card`
 ended up in seat 1's destination zone. Catches any handler that snags
 the leaving card off the wire into the wrong seat's zone.
 
-- Handlers exercised (cards subscribed to an exit event): **107**
-- Primitives × handlers attempted: **428**
+- Handlers exercised (cards subscribed to an exit event): **108**
+- Primitives × handlers attempted: **432**
 - Owner-routing violations: **0**
 
 **The permanent-lifetime ownership invariant holds across the
@@ -169,6 +169,7 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 - `vihaan goldwaker`
 - `vishgraz the doomhive`
 - `yawgmoths agenda`
+- `yeva natures herald`
 - `ygra eater of all`
 - `yuna grand summoner`
 - `zaffai and the tempests`
