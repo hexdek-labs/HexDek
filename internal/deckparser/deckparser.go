@@ -515,6 +515,18 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 	sc.Buffer(make([]byte, 0, 1024), 1024*1024)
 	for sc.Scan() {
 		raw := strings.TrimSpace(sc.Text())
+		// MTGGoldfish HTML strip — `<br>`, `<td>`, `<div class="...">`,
+		// `</p>`, etc. leak in from "Save as HTML" exports and browser
+		// drag-drop pastes. Replace every well-formed `<...>` tag with
+		// a SPACE (not empty) so adjacent words don't collide:
+		// `<td>4</td><td>Lightning Bolt</td>` must become `4 Lightning
+		// Bolt`, not `4Lightning Bolt`. The Fields/Join pass collapses
+		// the resulting runs of whitespace back to single spaces. Lines
+		// that were ENTIRELY HTML (e.g. `<div class="deck">`) collapse
+		// to empty and short-circuit at the blank check below.
+		if strings.ContainsRune(raw, '<') {
+			raw = strings.Join(strings.Fields(htmlTagRE.ReplaceAllString(raw, " ")), " ")
+		}
 		// `// COMMANDER` / `// CMDR` directive-comment: flag the NEXT card
 		// line as commander. Must run before the generic `//` drop below
 		// or the directive would be silently swallowed.
@@ -693,6 +705,45 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			lineIsCommander = true
 			hasExplicitCommanderSignal = true
 		}
+		// Archidekt per-line category bracket — `1 Atraxa (CMR) 222 [Commander{top}]`,
+		// `1 Sol Ring [Ramp]`, `1 Counterspell [Sideboard]`. Each line carries
+		// its own category annotation. Distinguished from MTGO-style set-code
+		// brackets (`[LEA]`, `[KHM]`) by the case heuristic in
+		// isArchidektCategoryLabel — Archidekt categories always contain at
+		// least one lowercase letter (Commander / Sideboard / Ramp / Wincons
+		// / etc.); all-uppercase content is left for bracketTagRE's set-code
+		// strip. Must run before the set-parens strip below: set-parens
+		// always come BEFORE the bracket in real Archidekt exports
+		// (`...(CMR) 222 [Cat]`), so peeling the trailing bracket first
+		// lets the set-parens strip fire normally afterward.
+		lineRouteDrop := false
+		lineRouteDropSubtype := ""
+		if am := archidektCategoryRE.FindStringSubmatch(raw); am != nil {
+			label := strings.TrimSpace(am[1])
+			if isArchidektCategoryLabel(label) {
+				cat := strings.ToLower(label)
+				cat = strings.Join(strings.Fields(cat), " ")
+				switch {
+				case cat == "commander" || cat == "commanders":
+					lineIsCommander = true
+					hasExplicitCommanderSignal = true
+				case cat == "sideboard":
+					lineRouteDrop = true
+					lineRouteDropSubtype = "sideboard"
+				case cat == "signature spells":
+					lineRouteDrop = true
+					lineRouteDropSubtype = "signature_spells"
+				case sectionDrops[cat]:
+					lineRouteDrop = true
+					lineRouteDropSubtype = "other"
+				}
+				// Strip the bracket regardless of routing: mainboard sub-
+				// categories (Ramp / Removal / Wincons / Creatures / Lands)
+				// fall through with the bracket peeled so name resolution
+				// sees a clean line.
+				raw = strings.TrimSpace(archidektCategoryRE.ReplaceAllString(raw, ""))
+			}
+		}
 		// Strip "(SET) 123" suffix (set code + collector number + foil flag).
 		if idx := strings.Index(raw, "("); idx > 0 {
 			raw = strings.TrimSpace(raw[:idx])
@@ -706,9 +757,31 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 				continue
 			}
 			name = m[2]
+			// Deckbox multi-tab metadata strip — Deckbox's full-inventory
+			// CSV/TSV export appends edition / condition / language / foil
+			// fields after the name on the same line, tab-separated. The
+			// first tab-separated field after qty IS the name; everything
+			// from the second tab onward is metadata that pollutes meta
+			// lookups. `\s+` in deckLineRE already collapses the qty-name
+			// tab boundary, so this strip only removes the second-and-
+			// beyond tabs. No real card name contains tabs.
+			name = deckboxTabExtraRE.ReplaceAllString(name, "")
 		} else {
 			qty = 1
 			name = raw
+		}
+		// Per-line Archidekt drop (sideboard / signature spells / other):
+		// count and continue. Cards still dropped from Library; the count
+		// is what the format detector needs.
+		if lineRouteDrop {
+			switch lineRouteDropSubtype {
+			case "sideboard":
+				td.SideboardCount += qty
+			case "signature_spells":
+				td.SignatureSpellCount += qty
+			}
+			sawAnyCardContent = true
+			continue
 		}
 		name = normalizeDFCSeparator(cleanCardName(name), meta)
 		if name == "" {
@@ -1121,6 +1194,54 @@ var partnerLineRE = regexp.MustCompile(`(?i)^\s*PARTNER\s*:\s*(.+?)\s*$`)
 // sideboard / companion / token card into the library (see
 // section_count_r60_test.go).
 var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companion|Considering|Deck|Main\s*Deck|Mainboard|Commanders?|Tokens|Signature\s*Spells|Stickers|Attractions|Outside\s*the\s*Game|About)\s*:?\s*(?:\(\s*\d+\s*\))?\s*:?\s*$`)
+
+// htmlTagRE matches any HTML tag like `<br>`, `</p>`, `<div class="x">`,
+// or `<td>`. MTGGoldfish's "Save as HTML" export and various browser
+// drag-drop pastes leak these inline with card lines. Pre-fix every
+// HTML-bearing line landed in Unresolved because `Lightning Bolt<br>`
+// doesn't match any meta entry. Stripped inline at the top of the
+// per-line loop before any other tokenization runs. Conservative —
+// only strips well-formed `<...>` tags; never touches `<` or `>`
+// inside otherwise-valid card content (no real card name has them).
+var htmlTagRE = regexp.MustCompile(`<[^>]*>`)
+
+// deckboxTabExtraRE matches the second-and-beyond tab-separated fields
+// that Deckbox's full-inventory CSV/TSV export appends after the card
+// name (`4\tLightning Bolt\tM11\tNM\tEN\tEnglish\t...`). The first
+// tab-separated field IS the name; everything from the second tab
+// onward is metadata (edition, condition, language, foil flag, etc.)
+// that pollutes meta lookups when it leaks into the name. Pre-fix
+// `Lightning Bolt\tM11` failed to resolve. Stripped after deckLineRE
+// has matched (so the qty-name tab boundary is preserved); never
+// applied to the qty-name boundary itself, which `deckLineRE`'s
+// `\s+` already handles.
+var deckboxTabExtraRE = regexp.MustCompile(`\t.*$`)
+
+// archidektCategoryRE matches Archidekt's per-line trailing
+// `[Category]` or `[Category{modifier}]` annotation. Captures the
+// category name in group 1 (sans modifier). Distinguished from
+// generic `[SET]` set-code tags by the routing helper
+// `isArchidektCategoryLabel`: any bracket content with a lowercase
+// letter is a category word (Commander, Sideboard, Ramp, Wincons);
+// all-uppercase is a set code and falls through to bracketTagRE.
+// Anchored to end-of-line because Archidekt always emits the category
+// last on the line (after any `(SET) NUM` printing tail).
+var archidektCategoryRE = regexp.MustCompile(`\s*\[([A-Za-z][A-Za-z ]*?)(?:\{[^}]*\})?\]\s*$`)
+
+// isArchidektCategoryLabel returns true when a bracket-captured label
+// looks like an Archidekt category name (Commander / Sideboard / Ramp
+// / user-defined like "Wincons") rather than a Magic set code (LEA /
+// KHM / MM3). Heuristic: any lowercase letter implies a category
+// word, since real set codes are always all-uppercase. All-uppercase
+// content falls through to bracketTagRE's existing set-code strip.
+func isArchidektCategoryLabel(label string) bool {
+	for _, r := range label {
+		if r >= 'a' && r <= 'z' {
+			return true
+		}
+	}
+	return false
+}
 
 // typeCategoryHeaderRE matches Moxfield's "Card View" copy-paste and
 // Archidekt's "By Type" export sub-section headers: the type-line
