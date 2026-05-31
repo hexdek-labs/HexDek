@@ -19,15 +19,16 @@ import (
 //	Prowess
 //	Instant and sorcery spells you cast cost {1} less to cast.
 //
-// Implementation:
+// Implementation (R60 stub sweep batch 3):
 //   - The mana ability ({T}: Add {C}, "spend only to cast I/S") is an
 //     engine concern (mana_restriction), not a per-card handler.
 //   - upkeep_controller: if controller has ≥3 instant/sorcery cards in
-//     graveyard, emit a transform-eligible event. Actual DFC transform
-//     requires gameengine.TransformPermanent (or equivalent) wired with
-//     a back-face Card load — emitPartial flags the missing engine call.
+//     graveyard, call gameengine.TransformPermanent to flip Curious
+//     Homunculus to Voracious Reader. The transform primitive handles
+//     §712 face swap, ETB triggers on the back face, and back-face
+//     keyword cache invalidation.
 //   - Static cost reduction on Voracious Reader side is layered cost
-//     math — partial.
+//     math — engine-side AST layer concern, not wired at per_card.
 func registerCuriousHomunculus(r *Registry) {
 	r.OnTrigger("Curious Homunculus", "upkeep_controller", curiousHomunculusUpkeep)
 }
@@ -63,11 +64,11 @@ func curiousHomunculusUpkeep(gs *gameengine.GameState, perm *gameengine.Permanen
 		})
 		return
 	}
+	transformed := gameengine.TransformPermanent(gs, perm, "curious_homunculus_three_is_in_graveyard")
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":      perm.Controller,
-		"triggered": true,
-		"is_count":  n,
+		"seat":        perm.Controller,
+		"triggered":   true,
+		"is_count":    n,
+		"transformed": transformed,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"transform_to_voracious_reader_engine_call_unimplemented")
 }

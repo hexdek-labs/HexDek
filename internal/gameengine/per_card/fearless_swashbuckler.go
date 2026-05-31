@@ -18,8 +18,12 @@ import (
 //
 // Implementation:
 //   - Haste (self) is AST-side.
-//   - "Vehicles you control have haste" is a §613 static anthem — needs
-//     the layer system. emitPartial.
+//   - "Vehicles you control have haste" §613 static anthem (R60 stub
+//     sweep batch 3): Abzan-Falconer-style flag sweep on ETB and
+//     permanent_etb stamps Flags["kw:haste"] on every Vehicle the
+//     controller owns. permanent_ltb on Fearless Swashbuckler strips
+//     only flags we granted (separate marker so native AST haste on
+//     Vehicles isn't clobbered when Swashbuckler leaves).
 //   - "Whenever you attack" — fires once per combat per controller, not
 //     once per attacker. We use the "creature_attacks" trigger as a
 //     proxy and dedup via a per-turn flag so multi-attacker combats only
@@ -31,7 +35,94 @@ import (
 //   - Effect: draw 3, then discard 2. Discard policy: drop the two
 //     highest-CMC lands if any, else the two highest-CMC cards.
 func registerFearlessSwashbuckler(r *Registry) {
+	r.OnETB("Fearless Swashbuckler", fearlessSwashbucklerETB)
+	r.OnTrigger("Fearless Swashbuckler", "permanent_etb", fearlessSwashbucklerPermETB)
+	r.OnTrigger("Fearless Swashbuckler", "permanent_ltb", fearlessSwashbucklerOwnLTB)
 	r.OnTrigger("Fearless Swashbuckler", "creature_attacks", fearlessSwashbucklerOnAttack)
+}
+
+func fearlessSwashbucklerETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	fearlessSwashbucklerHasteSweep(gs, perm)
+}
+
+func fearlessSwashbucklerPermETB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil {
+		return
+	}
+	fearlessSwashbucklerHasteSweep(gs, perm)
+}
+
+func fearlessSwashbucklerOwnLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "fearless_swashbuckler_haste_strip"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	stripped := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p == perm || p.Flags == nil {
+			continue
+		}
+		if p.Flags["fearless_swashbuckler_haste_grant"] != 1 {
+			continue
+		}
+		delete(p.Flags, "kw:haste")
+		delete(p.Flags, "fearless_swashbuckler_haste_grant")
+		stripped++
+	}
+	if stripped > 0 {
+		gs.InvalidateCharacteristicsCache()
+	}
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":     perm.Controller,
+		"stripped": stripped,
+	})
+}
+
+func fearlessSwashbucklerHasteSweep(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	const slug = "fearless_swashbuckler_vehicles_haste"
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	granted := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p == perm || p.Card == nil {
+			continue
+		}
+		if !cardHasType(p.Card, "vehicle") {
+			continue
+		}
+		if p.Flags == nil {
+			p.Flags = map[string]int{}
+		}
+		if p.Flags["fearless_swashbuckler_haste_grant"] == 1 {
+			continue
+		}
+		if p.HasKeyword("haste") {
+			continue
+		}
+		p.Flags["kw:haste"] = 1
+		p.Flags["fearless_swashbuckler_haste_grant"] = 1
+		granted++
+	}
+	if granted > 0 {
+		gs.InvalidateCharacteristicsCache()
+		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+			"seat":    perm.Controller,
+			"granted": granted,
+		})
+	}
 }
 
 func fearlessSwashbucklerOnAttack(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -94,8 +185,6 @@ func fearlessSwashbucklerOnAttack(gs *gameengine.GameState, perm *gameengine.Per
 		"drew":      3,
 		"discarded": discarded,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"vehicles_you_control_have_haste_static_unimplemented")
 }
 
 func fearlessSwashbucklerFlagKey(turn int) string {
