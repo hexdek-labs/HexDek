@@ -1,0 +1,7 @@
+COMMANDER: Atraxa, Praetors' Voice
+4	Sol Ring
+4	Command Tower
+4	Lightning Bolt
+4	Counterspell
+4	Forest
+4	Mountain

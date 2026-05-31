@@ -1,0 +1,8 @@
+COMMANDER: Atraxa, Praetors' Voice
+4	Lightning Bolt	M11	NM	EN
+4	Goblin Guide	ZEN	NM	EN	foil
+1	Snapcaster Mage	ISD	NM	EN
+4	Force of Will	EMA	LP	EN	foil
+4	Brainstorm	EMA	NM	EN
+4	Ponder	M12	NM	EN
+20	Mountain	M11	NM	EN

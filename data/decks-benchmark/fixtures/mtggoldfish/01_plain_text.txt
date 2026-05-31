@@ -1,0 +1,17 @@
+4 Lightning Bolt
+4 Goblin Guide
+4 Searing Blaze
+4 Lava Spike
+4 Snapcaster Mage
+4 Brainstorm
+4 Ponder
+4 Preordain
+4 Force of Will
+4 Path to Exile
+20 Mountain
+
+Sideboard
+4 Counterspell
+4 Daze
+4 Mulldrifter
+3 Tarmogoyf
