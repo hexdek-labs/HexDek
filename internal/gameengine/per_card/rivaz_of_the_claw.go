@@ -232,7 +232,10 @@ func rivazPermETB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 	if controllerSeat != perm.Controller {
 		return
 	}
-	enteringPerm, _ := ctx["permanent"].(*gameengine.Permanent)
+	enteringPerm, _ := ctx["perm"].(*gameengine.Permanent)
+	if enteringPerm == nil {
+		enteringPerm, _ = ctx["permanent"].(*gameengine.Permanent)
+	}
 	if enteringPerm == nil || enteringPerm.Card == nil {
 		return
 	}

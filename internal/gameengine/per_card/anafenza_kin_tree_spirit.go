@@ -29,7 +29,10 @@ func anafenzaKinTreeBolster(gs *gameengine.GameState, perm *gameengine.Permanent
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	enteringPerm, _ := ctx["permanent"].(*gameengine.Permanent)
+	enteringPerm, _ := ctx["perm"].(*gameengine.Permanent)
+	if enteringPerm == nil {
+		enteringPerm, _ = ctx["permanent"].(*gameengine.Permanent)
+	}
 	if enteringPerm == nil || enteringPerm == perm || enteringPerm.Card == nil {
 		return
 	}

@@ -30,7 +30,10 @@ func genesisChamberPermETB(gs *gameengine.GameState, perm *gameengine.Permanent,
 	if perm.Tapped {
 		return
 	}
-	entering, _ := ctx["permanent"].(*gameengine.Permanent)
+	entering, _ := ctx["perm"].(*gameengine.Permanent)
+	if entering == nil {
+		entering, _ = ctx["permanent"].(*gameengine.Permanent)
+	}
 	if entering == nil || entering == perm || entering.Card == nil {
 		return
 	}
