@@ -61,13 +61,10 @@ func eddieBrockETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 			"transform to Venom + Venom attack trigger require engine DFC + sacrifice-on-attack support")
 		return
 	}
-	// Remove from graveyard and place on battlefield.
-	for i, c := range seat.Graveyard {
-		if c == best {
-			seat.Graveyard = append(seat.Graveyard[:i], seat.Graveyard[i+1:]...)
-			break
-		}
-	}
+	// Place on battlefield — createPermanent (called via
+	// enterBattlefieldWithETB) sweeps the source from every private
+	// zone, so the manual graveyard splice that used to precede this
+	// call is redundant (Wave 2 final-audit cleanup).
 	enterBattlefieldWithETB(gs, perm.Controller, best, false)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":       perm.Controller,

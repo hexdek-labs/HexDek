@@ -50,8 +50,10 @@ func glissaSunslayerCombatDamage(gs *gameengine.GameState, perm *gameengine.Perm
 	// Mode 1: draw a card and lose 1 life — preferred when library has cards.
 	if len(seat.Library) > 0 {
 		card := seat.Library[0]
-		seat.Library = seat.Library[1:]
-		seat.Hand = append(seat.Hand, card)
+		// Route the draw through MoveCard so the canonical zone-change
+		// chain fires (replacements, observer triggers, descend-counter
+		// updates). Wave 2 final-audit cleanup.
+		gameengine.MoveCard(gs, card, perm.Controller, "library", "hand", "glissa_sunslayer_draw")
 		gameengine.LoseLife(gs, perm.Controller, 1, perm.Card.DisplayName())
 		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 			"seat": perm.Controller,

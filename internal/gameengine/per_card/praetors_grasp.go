@@ -82,7 +82,8 @@ func praetorsGraspResolve(gs *gameengine.GameState, item *gameengine.StackItem) 
 	picked := oppLib[pickIdx]
 
 	// Remove from opp's library, append to controller's exile.
-	gs.Seats[targetOpp].Library = append(oppLib[:pickIdx], oppLib[pickIdx+1:]...)
+	// MoveCard handles the library removal. Prior manual splice before
+	// this call was redundant (Wave 2 final-audit cleanup).
 	gameengine.MoveCard(gs, picked, targetOpp, "library", "exile", "praetors_grasp_exile")
 
 	// Shuffle target opponent's library per §701.18b.

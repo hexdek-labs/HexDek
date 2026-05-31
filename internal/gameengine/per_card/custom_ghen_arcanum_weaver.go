@@ -76,9 +76,8 @@ func ghenEnchantmentRecursion(gs *gameengine.GameState, src *gameengine.Permanen
 
 	// Pick best enchantment in graveyard (highest CMC).
 	var pick *gameengine.Card
-	pickIdx := -1
 	bestCMC := -1
-	for i, c := range seat.Graveyard {
+	for _, c := range seat.Graveyard {
 		if c == nil {
 			continue
 		}
@@ -87,7 +86,6 @@ func ghenEnchantmentRecursion(gs *gameengine.GameState, src *gameengine.Permanen
 		}
 		if cmc := cardCMC(c); cmc > bestCMC {
 			pick = c
-			pickIdx = i
 			bestCMC = cmc
 		}
 	}
@@ -103,8 +101,10 @@ func ghenEnchantmentRecursion(gs *gameengine.GameState, src *gameengine.Permanen
 	sacName := sacPerm.Card.DisplayName()
 	gameengine.SacrificePermanent(gs, sacPerm, "ghen_sac_cost")
 
-	// Effect: return enchantment from GY → battlefield.
-	seat.Graveyard = append(seat.Graveyard[:pickIdx], seat.Graveyard[pickIdx+1:]...)
+	// Effect: return enchantment from GY → battlefield. createPermanent
+	// (called via enterBattlefieldWithETB) sweeps the source from every
+	// private zone, so the manual splice is redundant (Wave 2 final-audit
+	// cleanup).
 	enterBattlefieldWithETB(gs, src.Controller, pick, false)
 
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{

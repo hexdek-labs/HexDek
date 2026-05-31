@@ -86,7 +86,8 @@ func sinSpirasPunishmentApply(gs *gameengine.GameState, perm *gameengine.Permane
 		}
 		card := seat.Graveyard[bestIdx]
 		isLand := cardHasType(card, "land")
-		seat.Graveyard = append(seat.Graveyard[:bestIdx], seat.Graveyard[bestIdx+1:]...)
+		// MoveCard handles the graveyard removal. Prior manual splice
+		// before this call was redundant (Wave 2 final-audit cleanup).
 		gameengine.MoveCard(gs, card, perm.Controller, "graveyard", "exile", "sin_spiras_punishment")
 		token := &gameengine.Card{
 			Name:          card.DisplayName() + " Token",

@@ -88,7 +88,9 @@ func varolzTheScarStripedActivate(gs *gameengine.GameState, src *gameengine.Perm
 		return
 	}
 	scavenged := seat.Graveyard[bestIdx]
-	seat.Graveyard = append(seat.Graveyard[:bestIdx], seat.Graveyard[bestIdx+1:]...)
+	// MoveCard handles the graveyard removal + §614 replacement chain +
+	// commander redirect + zone-change trigger fan-out. Prior manual splice
+	// before this call was redundant (Wave 2 final-audit cleanup).
 	gameengine.MoveCard(gs, scavenged, src.Controller, "graveyard", "exile", "varolz_scavenge")
 	power := int(scavenged.BasePower)
 	src.AddCounter("+1/+1", power)
