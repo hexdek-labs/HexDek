@@ -118,6 +118,22 @@ type PlayerAnalysis struct {
 	PeakBoardSize int // max battlefield permanent count at any turn end
 	PeakLife      int // highest life total reached
 	FinalLife     int // life at game end
+
+	// CurveRealization tracks how the player actually executed their
+	// mana curve in this game: for each turn `t` (1-indexed), the slice
+	// of CMC values for spells the player cast on that turn. Empty
+	// inner slices mean the player cast nothing that turn (mana
+	// flooded, mana screwed, stax-locked, didn't see castables).
+	// Populated from `cast` events whose Details carry a "cmc" key
+	// (the engine attaches CMC to every cast event); cards without a
+	// recorded CMC are skipped rather than zero-bucketed.
+	//
+	// AvgCMCCast = sum of all CMCs cast / count of casts. CastsByTurn
+	// length is TotalTurns + 1 (index 0 unused so turn N maps to
+	// CastsByTurn[N]); reports should iterate from index 1.
+	CastsByTurn  [][]int
+	AvgCMCCast   float64
+	TotalSpellCMC int // sum across CastsByTurn; redundant with sum but cheap to track
 }
 
 // CardPerformance tracks how a single card performed in a game.
@@ -148,6 +164,27 @@ type CardRanking struct {
 	DeadInHandRate  float64 // fraction of games where card was never cast
 	CounteredRate   float64 // fraction of cast attempts that were countered
 	KillShotRate    float64 // fraction of wins where this was the kill card
+
+	// GamesCast is the count of distinct games where this card was
+	// successfully cast at least once (TurnCast > 0). Mirror of
+	// TimesCast but de-duplicated per-game: a card cast 3 times in one
+	// game counts once here.
+	GamesCast int
+
+	// GamesCastAndWon counts games where this card was cast at least
+	// once AND its controller won. Subset of GamesCast.
+	GamesCastAndWon int
+
+	// WinRateWhenCast = GamesCastAndWon / GamesCast. Answers the
+	// deckbuilding question "when I drew and cast this card, did I
+	// actually win?" Distinct from WinContribution (a card can have
+	// high WinContribution by virtue of being in every winning game
+	// without correlating to whether casting it was load-bearing) and
+	// from KillShotRate (which is about the killing blow only).
+	//
+	// 0 when GamesCast == 0 (never cast → no signal); the report
+	// should hide / footnote that case rather than rendering 0.0%.
+	WinRateWhenCast float64
 }
 
 // MatchupDetail provides deep stats for a specific commander pairing.

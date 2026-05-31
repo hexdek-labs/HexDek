@@ -43,8 +43,14 @@ func (r *AnalyticsReport) WriteMarkdown(path string) error {
 	// Kill Shot Cards.
 	r.writeKillShotCards(&b, 10)
 
+	// Win Rate When Cast (per-card correlation with winning).
+	r.writeWinRateWhenCast(&b, 15)
+
 	// Mana Efficiency.
 	r.writeManaEfficiency(&b)
+
+	// Curve Realization (per-deck cast-CMC distribution per turn).
+	r.writeCurveRealization(&b)
 
 	// Tempo Analysis.
 	r.writeTempoAnalysis(&b)
@@ -778,6 +784,191 @@ func (r *AnalyticsReport) writeStallWarnings(b *strings.Builder, commanderNames 
 		}
 		b.WriteString(fmt.Sprintf("%s=%d", cause, count))
 		first = false
+	}
+	b.WriteString("\n")
+}
+
+// writeWinRateWhenCast surfaces the top-N cards whose presence in a
+// game correlates most strongly with winning, gated on a meaningful
+// cast-sample size. Distinct from MVP Cards (which sorts by absolute
+// GamesWon) and Kill Shot Cards (which scores the killing blow only).
+//
+// Sort key: WinRateWhenCast desc, tiebreak by GamesCast desc so a card
+// at 100% on 50 games ranks above a card at 100% on 3. Filter:
+// GamesCast >= max(TotalGames/10, 5) so single-game flukes don't crowd
+// out the signal.
+//
+// Reports "%w / sample N" so the reader sees the sample backing the
+// rate. A 67% rate on 3 games is barely-signal; the renderer surfaces
+// the denominator so deckbuilders can apply their own confidence
+// threshold without re-running with a higher game count.
+func (r *AnalyticsReport) writeWinRateWhenCast(b *strings.Builder, n int) {
+	b.WriteString("## Win Rate When Cast (Per-Card Correlation)\n\n")
+	b.WriteString("_Top cards by win % in games where they were actually cast._ ")
+	b.WriteString("_Distinct from MVP (absolute wins) and Kill Shot Rate (final blow only) — this metric asks \"when I drew and cast this card, did I win?\"_\n\n")
+
+	if len(r.CardRankings) == 0 {
+		b.WriteString("_No card data._\n\n")
+		return
+	}
+
+	minSample := r.TotalGames / 10
+	if minSample < 5 {
+		minSample = 5
+	}
+
+	eligible := make([]CardRanking, 0)
+	for _, cr := range r.CardRankings {
+		if cr.GamesCast >= minSample {
+			eligible = append(eligible, cr)
+		}
+	}
+	sort.SliceStable(eligible, func(i, j int) bool {
+		if eligible[i].WinRateWhenCast != eligible[j].WinRateWhenCast {
+			return eligible[i].WinRateWhenCast > eligible[j].WinRateWhenCast
+		}
+		return eligible[i].GamesCast > eligible[j].GamesCast
+	})
+
+	if len(eligible) == 0 {
+		fmt.Fprintf(b, "_No cards reached the minimum sample size of %d games cast._\n\n", minSample)
+		return
+	}
+
+	b.WriteString("| Rank | Card | Win % When Cast | Games Cast | Games Won When Cast | Avg Turn Cast |\n")
+	b.WriteString("|---:|---|---:|---:|---:|---:|\n")
+
+	limit := n
+	if limit > len(eligible) {
+		limit = len(eligible)
+	}
+	for i := 0; i < limit; i++ {
+		cr := &eligible[i]
+		fmt.Fprintf(b, "| %d | %s | %.0f%% | %d | %d | %.1f |\n",
+			i+1, cr.Name, cr.WinRateWhenCast*100, cr.GamesCast, cr.GamesCastAndWon, cr.AvgTurnCast)
+	}
+	fmt.Fprintf(b, "\n_Minimum sample: %d games cast._\n\n", minSample)
+}
+
+// writeCurveRealization surfaces, per commander, how their actual cast
+// curve breaks down across turns. Answers "did you cast the curve you
+// built?" — surfaces deckbuilding-vs-execution gap. The table shows
+// average CMC cast on each of the first 10 turns (aggregated across
+// all games the deck played). A column showing "0.0" means the deck
+// cast nothing that turn on average (mana flood, mana screw, etc.).
+//
+// Sample size and total cast count per commander are shown alongside
+// so readers can gate on the underlying sample. Tail turns (11+) are
+// folded into a single AvgT11+ bucket — the late-game distribution
+// is rarely curve-shaped and showing 60+ columns is noise.
+func (r *AnalyticsReport) writeCurveRealization(b *strings.Builder) {
+	b.WriteString("## Curve Realization (Did You Cast the Curve You Built?)\n\n")
+	b.WriteString("_Per-commander average CMC cast per turn, aggregated across all games. Tail turns folded into T11+._\n\n")
+
+	if len(r.Analyses) == 0 {
+		b.WriteString("_No game data._\n\n")
+		return
+	}
+
+	const earlyTurns = 10
+
+	type curveAcc struct {
+		gameCount int
+		// Sum and count per turn bucket (1..earlyTurns). Bucket 0 is
+		// unused; bucket earlyTurns+1 is "tail" (T11+).
+		sumByTurn   []int
+		countByTurn []int
+		totalSpells int
+		totalCMC    int
+	}
+	byCmdr := make(map[string]*curveAcc)
+
+	for _, ga := range r.Analyses {
+		if ga == nil {
+			continue
+		}
+		for i := range ga.Players {
+			pa := &ga.Players[i]
+			if pa.CommanderName == "" {
+				continue
+			}
+			acc, ok := byCmdr[pa.CommanderName]
+			if !ok {
+				acc = &curveAcc{
+					sumByTurn:   make([]int, earlyTurns+2),
+					countByTurn: make([]int, earlyTurns+2),
+				}
+				byCmdr[pa.CommanderName] = acc
+			}
+			acc.gameCount++
+			for turn, casts := range pa.CastsByTurn {
+				if turn == 0 || len(casts) == 0 {
+					continue
+				}
+				bucket := turn
+				if bucket > earlyTurns {
+					bucket = earlyTurns + 1
+				}
+				for _, c := range casts {
+					acc.sumByTurn[bucket] += c
+					acc.countByTurn[bucket]++
+					acc.totalSpells++
+					acc.totalCMC += c
+				}
+			}
+		}
+	}
+
+	if len(byCmdr) == 0 {
+		b.WriteString("_No curve data._\n\n")
+		return
+	}
+
+	// Header. T1..T10 + T11+ + AvgAll + Casts.
+	b.WriteString("| Commander |")
+	for t := 1; t <= earlyTurns; t++ {
+		fmt.Fprintf(b, " T%d |", t)
+	}
+	b.WriteString(" T11+ | AvgAll | Casts |\n")
+	b.WriteString("|---|")
+	for t := 0; t < earlyTurns+1; t++ {
+		b.WriteString("---:|")
+	}
+	b.WriteString("---:|---:|\n")
+
+	// Render rows in CommanderNames order, then any leftover alphabetically.
+	rendered := make(map[string]bool)
+	render := func(name string) {
+		acc, ok := byCmdr[name]
+		if !ok || acc.totalSpells == 0 {
+			return
+		}
+		rendered[name] = true
+		fmt.Fprintf(b, "| %s |", name)
+		for t := 1; t <= earlyTurns+1; t++ {
+			if acc.countByTurn[t] == 0 {
+				b.WriteString(" 0.0 |")
+				continue
+			}
+			avg := float64(acc.sumByTurn[t]) / float64(acc.countByTurn[t])
+			fmt.Fprintf(b, " %.1f |", avg)
+		}
+		avgAll := float64(acc.totalCMC) / float64(acc.totalSpells)
+		fmt.Fprintf(b, " %.2f | %d |\n", avgAll, acc.totalSpells)
+	}
+
+	for _, name := range r.CommanderNames {
+		render(name)
+	}
+	leftover := make([]string, 0)
+	for name := range byCmdr {
+		if !rendered[name] {
+			leftover = append(leftover, name)
+		}
+	}
+	sort.Strings(leftover)
+	for _, name := range leftover {
+		render(name)
 	}
 	b.WriteString("\n")
 }
