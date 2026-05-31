@@ -28,11 +28,28 @@ func RankCards(analyses []*GameAnalysis) []CardRanking {
 		counteredCount int // total times countered
 		castAttempts   int // total times cast (for countered rate)
 		killShots      int // wins where this card was the WinningCard
+		// Per-game-deduped tallies for WinRateWhenCast: each (game,
+		// card) where the card was cast at least once counts once.
+		// Mirror-seat games (same deck in two seats both casting the
+		// card) are intentionally counted once per game — the metric
+		// is "did the card correlate with winning this game?"
+		gamesCast       int
+		gamesCastAndWon int
 	}
 
 	cards := make(map[string]*cardAccum)
 
-	for _, ga := range analyses {
+	// Track per-game which cards were already counted in gamesCast so
+	// we don't double-count when the same card appears in multiple
+	// seats (mirrors) or for some reason in multiple CardPerformance
+	// entries within one seat.
+	type gameCastKey struct {
+		gameIdx int
+		card    string
+	}
+	gameCastSeen := make(map[gameCastKey]bool)
+
+	for gameIdx, ga := range analyses {
 		if ga == nil {
 			continue
 		}
@@ -57,6 +74,19 @@ func RankCards(analyses []*GameAnalysis) []CardRanking {
 					acc.turnCastSum += float64(cp.TurnCast)
 					acc.turnCastCount++
 					acc.castAttempts++
+					// gamesCast / gamesCastAndWon dedupe by (gameIdx,
+					// cardName). Lands and tokens are excluded —
+					// neither represents "casting" the card.
+					if !cp.IsLand && !cp.IsToken && !isTokenByName(cp.Name) {
+						key := gameCastKey{gameIdx: gameIdx, card: cp.Name}
+						if !gameCastSeen[key] {
+							gameCastSeen[key] = true
+							acc.gamesCast++
+							if won {
+								acc.gamesCastAndWon++
+							}
+						}
+					}
 				} else if cp.WasCountered {
 					// Was cast but countered -- still a cast attempt.
 					acc.castAttempts++
@@ -115,6 +145,12 @@ func RankCards(analyses []*GameAnalysis) []CardRanking {
 		}
 		if acc.gamesWon > 0 {
 			cr.KillShotRate = float64(acc.killShots) / float64(acc.gamesWon)
+		}
+
+		cr.GamesCast = acc.gamesCast
+		cr.GamesCastAndWon = acc.gamesCastAndWon
+		if acc.gamesCast > 0 {
+			cr.WinRateWhenCast = float64(acc.gamesCastAndWon) / float64(acc.gamesCast)
 		}
 
 		rankings = append(rankings, cr)

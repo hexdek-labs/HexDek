@@ -117,6 +117,16 @@ func AnalyzeGame(
 			if cp.TurnCast == 0 {
 				cp.TurnCast = currentTurn
 			}
+			// Curve realization: record this cast's CMC bucket on the
+			// per-turn list for this seat. Only emit sites that
+			// attached `Amount` are scored; zone_cast.go path doesn't
+			// attach cost so its casts are silently skipped (an
+			// underestimate of total CMC, not a wrong-bucket error).
+			// Commander tax inflates the bucket for repeated commander
+			// casts — informative, not a bug.
+			if ev.Amount > 0 {
+				appendCMCThisTurn(&ga.Players[seat], currentTurn, ev.Amount)
+			}
 
 		case "play_land":
 			if seat < 0 {
@@ -318,6 +328,10 @@ func AnalyzeGame(
 		if currentBoardSize[i] > ga.Players[i].PeakBoardSize {
 			ga.Players[i].PeakBoardSize = currentBoardSize[i]
 		}
+		// Finalize the per-player curve realization stats so callers
+		// (report renderer + AggregateDecks) can read them without
+		// re-walking the CastsByTurn slice.
+		finalizeCurveRealization(&ga.Players[i])
 	}
 
 	// Flatten card performances into player analyses.
@@ -708,6 +722,39 @@ func DetectMissedFinishers(gs *gameengine.GameState, finisherSets map[int]map[st
 }
 
 // getOrCreateCardPerf retrieves or creates a CardPerformance entry.
+// appendCMCThisTurn grows the per-player CastsByTurn slice as needed
+// and records the cast's CMC on the right turn bucket. Index 0 is
+// unused so turn N → CastsByTurn[N]. Also updates the running sum used
+// by the post-loop AvgCMCCast finalization.
+func appendCMCThisTurn(pa *PlayerAnalysis, turn, cmc int) {
+	if pa == nil || turn < 1 || cmc < 0 {
+		return
+	}
+	// Grow slice on demand. We don't preallocate because totalTurns
+	// upstream isn't always trustworthy mid-game (mid-turn analyzer
+	// runs in tests).
+	for len(pa.CastsByTurn) <= turn {
+		pa.CastsByTurn = append(pa.CastsByTurn, nil)
+	}
+	pa.CastsByTurn[turn] = append(pa.CastsByTurn[turn], cmc)
+	pa.TotalSpellCMC += cmc
+}
+
+// finalizeCurveRealization computes AvgCMCCast across all recorded
+// cast CMCs. Idempotent — safe to call multiple times.
+func finalizeCurveRealization(pa *PlayerAnalysis) {
+	if pa == nil {
+		return
+	}
+	count := 0
+	for _, turnCasts := range pa.CastsByTurn {
+		count += len(turnCasts)
+	}
+	if count > 0 {
+		pa.AvgCMCCast = float64(pa.TotalSpellCMC) / float64(count)
+	}
+}
+
 func getOrCreateCardPerf(m map[string]*CardPerformance, name string) *CardPerformance {
 	if cp, ok := m[name]; ok {
 		return cp
