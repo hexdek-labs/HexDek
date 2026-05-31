@@ -72,8 +72,22 @@ func TestAziza_R51_CopiesSpellOnInstantCast(t *testing.T) {
 	if !top.IsCopy {
 		t.Errorf("expected copy StackItem to have IsCopy=true")
 	}
-	if top.Card != castCard {
-		t.Errorf("expected copy to reference the same Card pointer")
+	// Post-Phase-G the copy MUST be a distinct *Card (via MintSpellCopy)
+	// so §707.10 cease on resolve retires the copy's CP-provenance ID,
+	// not the source's OG ID. Aliasing the source pointer is the leak
+	// shape that drove the 34-hit Lash Out fabrication in Loki seed-42
+	// game 2762.
+	if top.Card == castCard {
+		t.Errorf("expected copy to be a DISTINCT *Card pointer (Phase G fix); got source alias")
+	}
+	if top.Card == nil {
+		t.Fatalf("MintSpellCopy returned nil; spell-copy chokepoint regression")
+	}
+	if top.Card.Name != castCard.Name {
+		t.Errorf("expected copy to preserve Name %q; got %q", castCard.Name, top.Card.Name)
+	}
+	if !top.Card.IsCopy {
+		t.Errorf("expected copy.IsCopy=true (MintSpellCopy contract)")
 	}
 	// All three cost-creatures should be tapped.
 	if !c1.Tapped || !c2.Tapped || !c3.Tapped {

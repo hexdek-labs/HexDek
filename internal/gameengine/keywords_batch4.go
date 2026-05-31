@@ -557,9 +557,13 @@ func ApplyConspire(gs *GameState, seatIdx int, item *StackItem) bool {
 	tapped[0].Tapped = true
 	tapped[1].Tapped = true
 
-	// Push a copy of the spell.
+	// Push a copy of the spell. Route through MintSpellCopy so the copy
+	// gets a fresh CP-provenance InstanceID; aliasing item.Card directly
+	// (the pre-fix shape) would cease the SOURCE's ID at §707.10 resolve
+	// — same anti-pattern as Aziza, Mage Tower Captain (Phase G closure).
+	copyCard := MintSpellCopy(gs, item.Card)
 	copyItem := &StackItem{
-		Card:       item.Card,
+		Card:       copyCard,
 		Controller: seatIdx,
 		Effect:     item.Effect,
 		IsCopy:     true,

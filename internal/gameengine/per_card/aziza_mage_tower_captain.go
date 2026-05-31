@@ -89,11 +89,20 @@ func azizaSpellCopy(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 		}
 	}
 
-	// Push the copy. IsCopy=true so CR §707.10 ceases the spell post-
-	// resolution and so the engine knows to skip a re-cast pipeline.
+	// Push the copy. Route through MintSpellCopy so the copy gets a
+	// fresh CP-provenance InstanceID with the source ID recorded as
+	// SourceInstanceID. The pre-r60 shape aliased `castCard` directly
+	// into the StackItem; on §707.10 cease at resolve, stack.go:1312
+	// fired MarkInstanceIDCeased(item.Card.InstanceID) which retired the
+	// ORIGINAL's ID because the StackItem.Card pointer WAS the original.
+	// Every invariant tick thereafter walked seat 1's hand/graveyard,
+	// found the original *Card present, and flagged it as fabricated —
+	// the dominant ZoneConservation residual on the post-#851 5K seed-42
+	// sweep (34 hits on Lash Out / game 2762 / Aziza pod; closed here).
+	copyCard := gameengine.MintSpellCopy(gs, castCard)
 	copyItem := &gameengine.StackItem{
 		Controller: casterSeat,
-		Card:       castCard,
+		Card:       copyCard,
 		IsCopy:     true,
 		Targets:    originatingTargets,
 		CostMeta:   map[string]interface{}{},
