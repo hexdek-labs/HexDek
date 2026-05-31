@@ -915,6 +915,11 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 		printComboInteractionFloor(w, dp.InteractionFloor)
 	}
 
+	// Combo timing — earliest reasonable turn each combo can assemble.
+	if dp.ComboTiming != nil && len(dp.ComboTiming.PerCombo) > 0 {
+		printComboTiming(w, dp.ComboTiming)
+	}
+
 	if len(dp.MetaMatchups) > 0 {
 		fmt.Fprintf(w, "\n  Meta Positioning:\n")
 		for _, m := range dp.MetaMatchups {
@@ -1489,6 +1494,34 @@ type jsonComboMetaInteraction struct {
 	FragileComboCount     int                 `json:"fragile_combo_count"`
 }
 
+type jsonComboTimingReport struct {
+	PerCombo          []jsonComboTimingEntry `json:"per_combo"`
+	MinTurn           int                    `json:"min_turn"`
+	MaxTurn           int                    `json:"max_turn"`
+	MedianTurn        int                    `json:"median_turn"`
+	FastestComboIndex int                    `json:"fastest_combo_index"`
+	FastestComboLabel string                 `json:"fastest_combo_label"`
+	FastestTurn       int                    `json:"fastest_turn"`
+	SlowestComboIndex int                    `json:"slowest_combo_index"`
+	SlowestComboLabel string                 `json:"slowest_combo_label"`
+	SlowestTurn       int                    `json:"slowest_turn"`
+	BracketHint       string                 `json:"bracket_hint"`
+}
+
+type jsonComboTimingEntry struct {
+	ComboIndex       int    `json:"combo_index"`
+	Label            string `json:"label"`
+	Source           string `json:"source"`
+	TotalCMC         int    `json:"total_cmc"`
+	MaxPieceCMC      int    `json:"max_piece_cmc"`
+	NaturalTurn      int    `json:"natural_turn"`
+	RampCompression  int    `json:"ramp_compression"`
+	TutorCompression int    `json:"tutor_compression"`
+	HandPenalty      int    `json:"hand_penalty"`
+	EarliestTurn     int    `json:"earliest_turn"`
+	Pacing           string `json:"pacing"`
+}
+
 type jsonComboInteractionFloor struct {
 	PerCombo           []jsonComboInteractionFloorEntry `json:"per_combo"`
 	MinFloor           int                              `json:"min_floor"`
@@ -1603,6 +1636,7 @@ type jsonDeckProfile struct {
 	VulnerableComboPieces []jsonVulnerableComboPiece `json:"vulnerable_combo_pieces,omitempty"`
 	ComboMetaInteraction  *jsonComboMetaInteraction  `json:"combo_meta_interaction,omitempty"`
 	InteractionFloor      *jsonComboInteractionFloor `json:"interaction_floor,omitempty"`
+	ComboTiming           *jsonComboTimingReport     `json:"combo_timing,omitempty"`
 	KeepableHandPct                 float64 `json:"keepable_hand_pct,omitempty"`
 	AvgTurnToFourMana               float64 `json:"avg_turn_to_four_mana,omitempty"`
 	KeepableHandPctAdjusted         float64 `json:"keepable_hand_pct_adjusted,omitempty"`
@@ -2087,6 +2121,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		VulnerableComboPieces: vulnCombo,
 		ComboMetaInteraction:  comboMetaInteractionToJSON(dp.ComboMetaInteraction),
 		InteractionFloor:      comboInteractionFloorToJSON(dp.InteractionFloor),
+		ComboTiming:           comboTimingToJSON(dp.ComboTiming),
 		KeepableHandPct:                 dp.KeepableHandPct,
 		AvgTurnToFourMana:               dp.AvgTurnToFourMana,
 		KeepableHandPctAdjusted:         dp.KeepableHandPctAdjusted,

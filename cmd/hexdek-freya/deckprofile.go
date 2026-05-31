@@ -162,6 +162,13 @@ type DeckProfile struct {
 	// section. See combo_interaction_floor.go.
 	InteractionFloor *ComboInteractionFloorReport
 
+	// ComboTiming is the per-combo earliest-turn estimate combined with
+	// a deck-level bracket hint. Critical input for B5 cEDH calibration
+	// (turn-3 assembly forces B5 regardless of card-list signals).
+	// Nil for combo-less decks. Surfaced under `combo_timing` in JSON
+	// and as a short text section. See combo_timing.go.
+	ComboTiming *ComboTimingReport
+
 	// Mana base grading
 	ManaBaseGrade    string // A/B/C/D/F
 	ManaBaseNotes    []string
@@ -696,6 +703,10 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	// before threat assessment reads it (commander-centric decks fear
 	// commander-targeting hosers like Imprisoned in the Moon).
 	computeOpeningHandSim(dp, report, oracle)
+	// ComboTiming reads dp.KeepableHandPct for the hand-quality penalty,
+	// so it runs after computeOpeningHandSim. dp.RampCount and
+	// report.NonLandTutorCount are populated earlier in the flow.
+	dp.ComboTiming = BuildComboTimingReport(report, dp)
 	computeThreatAssessment(dp, report)
 	computeSynergyClusters(dp, report, oracle)
 	computeAltBuildSuggestions(dp)
