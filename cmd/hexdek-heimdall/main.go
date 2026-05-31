@@ -264,6 +264,9 @@ func runAnalytics(decksPath, astPath, oraclePath string, seed int64, seats, maxT
 		// games. Free with respect to the existing analyses pass —
 		// pure walk + map aggregation, no extra game runs.
 		ar.KeystoneImpacts = analytics.ComputeKeystoneImpacts(result.Analyses)
+		// Same map-aggregation pass for the commander threat
+		// resolution shift. Cheap; ride alongside the keystone roll.
+		ar.ThreatResolutions = analytics.ComputeThreatResolutions(result.Analyses)
 		if err := ar.WriteMarkdown(reportPath); err != nil {
 			log.Fatalf("write report: %v", err)
 		}

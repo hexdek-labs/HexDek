@@ -23,6 +23,12 @@ type AnalyticsReport struct {
 	// Nil is the empty / opt-out state; the report renderer is
 	// nil-safe.
 	KeystoneImpacts []CardKeystoneImpact
+
+	// ThreatResolutions ranks commanders by their
+	// resolution-vs-no-resolution win-rate shift. Populated by the
+	// analytics CLI via ComputeThreatResolutions(r.Analyses) before
+	// WriteMarkdown. Nil is the empty / opt-out state.
+	ThreatResolutions []ThreatResolution
 }
 
 // WriteMarkdown renders the analytics report as a markdown file.
@@ -64,6 +70,12 @@ func (r *AnalyticsReport) WriteMarkdown(path string) error {
 
 	// Life Trajectory per game (per-seat line-chart data).
 	r.writeLifeTrajectories(&b)
+
+	// Per-seat-pair Interaction Matrix per game (heatmap data).
+	r.writeInteractionMatrices(&b)
+
+	// Threat-Resolution attribution per commander (per_card_win shift).
+	r.writeThreatResolutions(&b, 15)
 
 	// Tempo Analysis.
 	r.writeTempoAnalysis(&b)
@@ -1129,5 +1141,145 @@ func (r *AnalyticsReport) writeLifeTrajectories(b *strings.Builder) {
 		fmt.Fprintf(b, "_(+%d more games — structured data available via `Analyses[i].Players[j].LifeByTurn`)_\n\n",
 			len(r.Analyses)-renderCap)
 	}
+}
+
+// writeInteractionMatrices renders the per-game per-seat-pair
+// interaction grid. One table per game: rows = attacker seat,
+// columns = defender seat, cells = "A×N D×N B×N C×N" (Attacks /
+// player-Damage / Blocks-of-this-attacker / Counters). The
+// structured `Interactions.Cells[i][j]` slice on each GameAnalysis
+// is dashboard-ready as a heatmap / chord-diagram input.
+//
+// Markdown render capped at the first 5 games (same as
+// writeLifeTrajectories) to keep the report scannable; the slice is
+// available for all games.
+func (r *AnalyticsReport) writeInteractionMatrices(b *strings.Builder) {
+	b.WriteString("## Interaction Matrix (Per-Seat-Pair Combat + Counters)\n\n")
+	b.WriteString("_Each cell: A=Attacks (declared attackers from this row's seat at the column's seat), D=combat Damage dealt to the player, B=times attacker's creature was Blocked by the column seat, C=Counters cast by the row seat against the column seat's spells._ ")
+	b.WriteString("_The structured `Interactions.Cells[i][j]` slice on each GameAnalysis is dashboard-ready as a heatmap / chord-diagram input across all analyzed games._\n\n")
+
+	if len(r.Analyses) == 0 {
+		b.WriteString("_No game data._\n\n")
+		return
+	}
+
+	const renderCap = 5
+	rendered := 0
+	for i, ga := range r.Analyses {
+		if rendered >= renderCap {
+			break
+		}
+		if ga == nil || ga.Interactions == nil || ga.Interactions.Seats == 0 {
+			continue
+		}
+		rendered++
+		fmt.Fprintf(b, "### Game %d\n\n", i+1)
+
+		im := ga.Interactions
+		// Header row.
+		b.WriteString("| From \\ To |")
+		for j := 0; j < im.Seats; j++ {
+			fmt.Fprintf(b, " %s |", seatColumnLabel(im, j))
+		}
+		b.WriteString("\n|---|")
+		for j := 0; j < im.Seats; j++ {
+			b.WriteString("---|")
+		}
+		b.WriteString("\n")
+
+		// Body rows.
+		for from := 0; from < im.Seats; from++ {
+			fmt.Fprintf(b, "| %s |", seatRowLabel(im, from))
+			for to := 0; to < im.Seats; to++ {
+				if from == to {
+					b.WriteString(" — |")
+					continue
+				}
+				c := im.Cells[from][to]
+				if c.Attacks == 0 && c.PlayerDamage == 0 && c.Blocks == 0 && c.Counters == 0 {
+					b.WriteString(" · |")
+					continue
+				}
+				fmt.Fprintf(b, " A%d D%d B%d C%d |", c.Attacks, c.PlayerDamage, c.Blocks, c.Counters)
+			}
+			b.WriteString("\n")
+		}
+		b.WriteString("\n")
+	}
+	if remaining := len(r.Analyses) - rendered; remaining > 0 {
+		fmt.Fprintf(b, "_(+%d more games — structured data available via `Analyses[i].Interactions`)_\n\n", remaining)
+	}
+}
+
+func seatColumnLabel(im *InteractionMatrix, seat int) string {
+	if im == nil || seat < 0 || seat >= len(im.SeatCommanders) || im.SeatCommanders[seat] == "" {
+		return fmt.Sprintf("S%d", seat)
+	}
+	return im.SeatCommanders[seat]
+}
+
+func seatRowLabel(im *InteractionMatrix, seat int) string {
+	return seatColumnLabel(im, seat)
+}
+
+// writeThreatResolutions renders the top-N commanders by absolute
+// resolution-vs-no-resolution win-rate shift. Same shape as the
+// keystone-impact section (filtered to medium+high confidence, no-
+// signal footnoted) so dashboards can drop in either dataset without
+// reskinning the table.
+//
+// Sort delegated to ComputeThreatResolutions (most-shifted first,
+// no-signal alphabetical at the tail).
+func (r *AnalyticsReport) writeThreatResolutions(b *strings.Builder, n int) {
+	b.WriteString("## Threat Resolution Attribution (Commander Resolution Win-Rate Shift)\n\n")
+	b.WriteString("_For each commander: win rate when the commander resolved at least once vs. win rate when it never resolved._ ")
+	b.WriteString("_Positive shift = the commander is load-bearing for the deck (it wins more when the threat hits play). Negative shift = the deck wins more WITHOUT the commander resolving (signal of a brittle, removal-magnet commander or one whose cost overcommits the controller)._\n\n")
+
+	if len(r.ThreatResolutions) == 0 {
+		b.WriteString("_No threat-resolution data — call ComputeThreatResolutions before WriteMarkdown._\n\n")
+		return
+	}
+
+	filtered := make([]ThreatResolution, 0)
+	lowDropped := 0
+	noSignalDropped := 0
+	for _, tr := range r.ThreatResolutions {
+		switch tr.Confidence {
+		case "high", "medium":
+			filtered = append(filtered, tr)
+		case "low":
+			lowDropped++
+		case "":
+			noSignalDropped++
+		}
+	}
+
+	if len(filtered) == 0 {
+		fmt.Fprintf(b, "_No commanders reached medium-confidence sample (need ≥5 games in BOTH resolved and unresolved buckets). %d low-confidence + %d no-signal rows filtered._\n\n",
+			lowDropped, noSignalDropped)
+		return
+	}
+
+	b.WriteString("| Rank | Commander | Shift | Win % Resolved | Win % Unresolved | Games Resolved | Games Unresolved | Avg Turn 1st Res. | Confidence |\n")
+	b.WriteString("|---:|---|---:|---:|---:|---:|---:|---:|---|\n")
+
+	limit := n
+	if limit > len(filtered) {
+		limit = len(filtered)
+	}
+	for i := 0; i < limit; i++ {
+		tr := &filtered[i]
+		sign := ""
+		if tr.Shift > 0 {
+			sign = "+"
+		}
+		fmt.Fprintf(b, "| %d | %s | %s%.0fpp | %.0f%% | %.0f%% | %d | %d | %.1f | %s |\n",
+			i+1, tr.CommanderName, sign, tr.Shift*100,
+			tr.WinRateResolved*100, tr.WinRateUnresolved*100,
+			tr.GamesResolved, tr.GamesUnresolved,
+			tr.AvgTurnToFirstResolution, tr.Confidence)
+	}
+	fmt.Fprintf(b, "\n_Filtered: %d low-confidence + %d no-signal rows (need ≥5 games in each bucket for medium, ≥20 for high)._\n\n",
+		lowDropped, noSignalDropped)
 }
 

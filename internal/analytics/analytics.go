@@ -59,6 +59,56 @@ type GameAnalysis struct {
 	// the players choose to repeat it. Populated by DetectEngineCycles +
 	// DetectGraphCycles.
 	CycleObservations []CycleObservation
+
+	// Interactions is the per-seat-pair interaction matrix for this
+	// game: who attacked whom, who blocked whom, who countered whose
+	// spells, with player-damage attribution. Built during the event
+	// walk in AnalyzeGame; nil for analyses run before the v3 batch.
+	Interactions *InteractionMatrix
+}
+
+// InteractionMatrix is the NxN per-seat-pair interaction record. Cell
+// [i][j] reflects actions ORIGINATING from seat i targeting seat j.
+// The diagonal is zero (a seat does not act on itself for the metrics
+// tracked here). Dashboard-ready as a heatmap or chord-diagram input.
+type InteractionMatrix struct {
+	Seats int
+
+	// SeatCommanders names the commander in each seat (index = seat).
+	// Used as the row/column label in the report; identical to the
+	// per-seat CommanderName already on PlayerAnalysis but materialized
+	// here for self-contained dashboard rendering.
+	SeatCommanders []string
+
+	// Cells is row-major [from][to]. Length == Seats; each inner slice
+	// length == Seats.
+	Cells [][]InteractionCell
+}
+
+// InteractionCell records one directed pair (from → to) of game-action
+// counts. All four fields are pure counts / sums — no ratios — so the
+// dashboard can derive whatever ratio it wants.
+type InteractionCell struct {
+	// Attacks = number of attack DECLARATIONS where `from` declared
+	// at least one attacker targeting `to`. Counts each declared
+	// attacker as one attack (one declare_attackers event per
+	// attacker pair); aggregations roll up naturally.
+	Attacks int
+
+	// PlayerDamage = total combat damage dealt by `from`'s creatures
+	// to `to` as a player (not a creature). Sums every `damage`
+	// event with combat=true and target_kind=player.
+	PlayerDamage int
+
+	// Blocks = number of times `to`'s creatures were declared as
+	// blockers against `from`'s attackers. One increment per attacker
+	// blocked, NOT per blocker assigned (a 2-blocker assignment to
+	// one attacker counts as 1 Block of `from`'s attacker by `to`).
+	Blocks int
+
+	// Counters = number of times `from` countered `to`'s spells.
+	// One increment per counter_spell event.
+	Counters int
 }
 
 // StallReport describes a game that stalled — no decisive winner emerged
@@ -252,6 +302,58 @@ type CardKeystoneImpact struct {
 	// Confidence is "high" when min(GamesCast, GamesNotCast) >= 20,
 	// "medium" when >= 5, "low" otherwise. Empty when either bucket
 	// is zero (no signal at all).
+	Confidence string
+}
+
+// ThreatResolution attributes the "win-prob shift" of a commander
+// hitting play. Mirrors the CardKeystoneImpact shape but specifically
+// keyed on commander resolutions (commander_cast_from_command_zone
+// events). Answers the deck-builder question: "when this commander
+// resolved, did the controller actually win more often than when it
+// didn't?"
+//
+//   - WinRateResolved   = wins / games where commander cast at least
+//     once from the command zone
+//   - WinRateUnresolved = wins / games where commander played but
+//     never resolved (stuck under tax, countered every time, or
+//     deck just didn't see enough mana)
+//   - Shift = WinRateResolved - WinRateUnresolved
+//
+// Positive shift = the commander is the deck's wincon / load-bearing
+// engine. Negative shift = the commander is a removal magnet / bait
+// that hurts more than it helps when it hits play. Zero or N/A shift
+// (one bucket empty) = no signal.
+//
+// AvgTurnToFirstResolution: mean turn of the FIRST resolution event
+// per game (where resolved). Captures how late the deck typically
+// lands its commander — surfaces curve-realization at the threat
+// layer specifically.
+//
+// Confidence label gates dashboard trust (same thresholds as
+// CardKeystoneImpact): high (≥20 in each bucket), medium (≥5), low
+// (<5), or "" (one bucket is zero).
+type ThreatResolution struct {
+	CommanderName string
+
+	GamesPlayed       int
+	GamesResolved     int
+	GamesUnresolved   int
+	WinsResolved      int
+	WinsUnresolved    int
+	WinRateResolved   float64
+	WinRateUnresolved float64
+	Shift             float64
+
+	// AvgTurnToFirstResolution is the mean of the first-resolution
+	// turn across all games where commander resolved at least once.
+	// 0.0 when GamesResolved == 0.
+	AvgTurnToFirstResolution float64
+
+	// TotalResolutions sums the resolution count across all games
+	// (commanders can hit play multiple times under taxing). Useful
+	// as a recast-frequency proxy.
+	TotalResolutions int
+
 	Confidence string
 }
 
