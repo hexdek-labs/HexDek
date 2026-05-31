@@ -1707,6 +1707,7 @@ func placeSourceCard(gs *gameengine.GameState, oc *oracleCard) *gameengine.Perma
 		Card:       card,
 		Controller: 0,
 		Owner:      0,
+		Timestamp:  gs.NextTimestamp(),
 		Flags:      map[string]int{},
 	}
 	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, perm)
