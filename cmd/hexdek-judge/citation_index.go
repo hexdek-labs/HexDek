@@ -61,12 +61,13 @@ import (
 
 // CitationIndexEntry is one CR sub-section with all its cross-references.
 type CitationIndexEntry struct {
-	Rule              string   `json:"rule"`                          // "704.5a"
-	Description       string   `json:"description"`                   // canonical description
-	SectionTitle      string   `json:"section_title"`                 // "State-Based Actions"
-	CheckedBy         []string `json:"checked_by,omitempty"`          // ["sba_probe", "interactive_what_sbas"]
-	RelatedInvariants []string `json:"related_invariants,omitempty"`  // ["LifeConsistency", "WinCondition"]
-	RelatedRules      []string `json:"related_rules,omitempty"`       // ["704.5b", "104.2"]
+	Rule              string         `json:"rule"`                          // "704.5a"
+	Description       string         `json:"description"`                   // canonical description
+	SectionTitle      string         `json:"section_title"`                 // "State-Based Actions"
+	CheckedBy         []string       `json:"checked_by,omitempty"`          // ["sba_probe", "interactive_what_sbas"]
+	RelatedInvariants []string       `json:"related_invariants,omitempty"`  // ["LifeConsistency", "WinCondition"]
+	RelatedRules      []string       `json:"related_rules,omitempty"`       // ["704.5b", "104.2"]
+	HistoricalFixes   []ClaudemdFix  `json:"historical_fixes,omitempty"`    // CLAUDE.md Resolved-table rows citing this rule
 }
 
 // CitationIndex is the comprehensive cross-referenced view of every
@@ -75,6 +76,7 @@ type CitationIndex struct {
 	Entries          map[string]*CitationIndexEntry `json:"entries"`          // keyed by rule slug
 	ProbeToRules     map[string][]string            `json:"probe_to_rules"`   // probe name → list of rule slugs
 	InvariantToRules map[string][]string            `json:"invariant_to_rules"` // engine invariant → list of rule slugs (mirror of invariantCRCitations)
+	UnmappedClaudemd []string                       `json:"unmapped_claudemd,omitempty"` // CLAUDE.md cited rule slugs the judge doesn't know about
 	Counts           CitationIndexCounts            `json:"counts"`
 }
 
@@ -83,6 +85,8 @@ type CitationIndexCounts struct {
 	TotalRules      int `json:"total_rules"`
 	TotalProbes     int `json:"total_probes"`
 	TotalInvariants int `json:"total_invariants"`
+	TotalFixes      int `json:"total_fixes"`      // sum of HistoricalFixes across all entries
+	RulesWithFixes  int `json:"rules_with_fixes"` // count of entries with non-empty HistoricalFixes
 }
 
 // sectionTitles classifies each CR sub-rule to its broader section.
@@ -358,10 +362,25 @@ func BuildCitationIndex() *CitationIndex {
 		sort.Strings(idx.InvariantToRules[k])
 	}
 
+	// Step 6: cross-reference CLAUDE.md Resolved-table historical
+	// fixes. Best-effort — if CLAUDE.md is missing (running outside
+	// the repo) the index still builds without the historical surface.
+	// Errors silently skipped so `judge --citation-index` never fails
+	// on a missing or malformed doc.
+	if fixes, err := parseClaudemdResolvedFixes(claudemdPath()); err == nil {
+		idx.UnmappedClaudemd = MergeClaudemdFixesIntoIndex(idx, fixes)
+	}
+
 	idx.Counts = CitationIndexCounts{
 		TotalRules:      len(idx.Entries),
 		TotalProbes:     len(idx.ProbeToRules),
 		TotalInvariants: len(idx.InvariantToRules),
+	}
+	for _, e := range idx.Entries {
+		if n := len(e.HistoricalFixes); n > 0 {
+			idx.Counts.TotalFixes += n
+			idx.Counts.RulesWithFixes++
+		}
 	}
 	return idx
 }
