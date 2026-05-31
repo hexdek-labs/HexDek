@@ -26,6 +26,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -39,6 +40,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hexdek/hexdek/internal/analytics"
 	"github.com/hexdek/hexdek/internal/astload"
 	"github.com/hexdek/hexdek/internal/deckparser"
 	"github.com/hexdek/hexdek/internal/gameengine"
@@ -70,6 +72,10 @@ func main() {
 		hatTurnBudget = flag.Int("turn-budget", 0, "per-turn eval budget (0=legacy per-action, 100=recommended). Hat allocates evals across decisions within a turn.")
 		hatNoise      = flag.Float64("hat-noise", 0.2, "gaussian σ on targeting scores (0=deterministic, 0.2=default human-scale fuzz)")
 		legacyWeights = flag.Bool("legacy-hat-weights", false, "force midrange eval weights for every archetype (pre-b0b6db4 baseline for A/B winrate comparisons)")
+		applyFeedback = flag.String("apply-feedback", "", "path to a Heimdall feedback JSON (or directory containing heimdall_feedback.json); loaded via hat.SetActiveFeedback before games begin. Closes the Heimdall → hat learning loop. See docs/heimdall-hat-self-tune-r60.md.")
+		feedbackOut   = flag.String("feedback-out", "", "directory to write heimdall_feedback.json after the gauntlet completes; computed from result.Analyses via analytics.ComputeWeightDeltas. Feeds the NEXT gauntlet's --apply-feedback.")
+		feedbackPolicy = flag.String("feedback-policy", "direct", "policy when consuming --apply-feedback: direct | confidence-weighted | advisory | skip")
+		resultJSON    = flag.String("result-json", "", "write the canonical TournamentResult JSON to this path (used by scripts/self-tune-loop.sh to diff gauntlets)")
 		matchup     = flag.Bool("matchup", false, "show full matchup matrix in output")
 		audit       = flag.Bool("audit", false, "capture full event stream")
 		reportPath  = flag.String("report", "data/rules/go_tournament_report.md", "markdown report output path")
@@ -97,6 +103,46 @@ func main() {
 	if *legacyWeights {
 		hat.LegacyMidrangeOnly = true
 		log.Printf("  legacy-hat-weights: ON — all archetypes forced to midrange profile")
+	}
+
+	// Heimdall → hat closed-loop integration. When --apply-feedback is
+	// set, load the feedback JSON (file or directory containing the
+	// canonical heimdall_feedback.json) and install it as the active
+	// overlay via hat.SetActiveFeedback BEFORE any evaluator is built.
+	// Tests: internal/hat/heimdall_feedback_apply_test.go pin the
+	// overlay semantics; this is the gauntlet-side ingress wiring.
+	if *applyFeedback != "" {
+		dir := *applyFeedback
+		// Accept either a directory or a direct JSON path.
+		if info, err := os.Stat(dir); err == nil && !info.IsDir() {
+			dir = filepath.Dir(dir)
+		}
+		fb, err := analytics.LoadHeimdallFeedback(dir)
+		if err != nil {
+			log.Fatalf("--apply-feedback: %v", err)
+		}
+		if fb == nil {
+			log.Printf("  apply-feedback: no feedback file at %s — running baseline weights", dir)
+		} else {
+			policy := hat.PolicyDirect
+			switch *feedbackPolicy {
+			case "direct":
+				policy = hat.PolicyDirect
+			case "confidence-weighted":
+				policy = hat.PolicyConfidenceWeighted
+			case "advisory":
+				policy = hat.PolicyAdvisoryOnly
+			case "skip":
+				policy = hat.PolicySkip
+			default:
+				log.Fatalf("--feedback-policy: unknown policy %q (want direct|confidence-weighted|advisory|skip)", *feedbackPolicy)
+			}
+			if err := hat.SetActiveFeedback(fb, policy); err != nil {
+				log.Fatalf("--apply-feedback: SetActiveFeedback: %v", err)
+			}
+			log.Printf("  apply-feedback: ON — %d archetypes, %d gauntlet games, provenance=%q, policy=%s",
+				len(fb.Archetypes), fb.GauntletGames, fb.Provenance, *feedbackPolicy)
+		}
 	}
 
 	// Start pprof HTTP server if enabled.
@@ -405,6 +451,38 @@ func main() {
 		fmt.Printf("\nSELF-TRIGGER-COUNTER fires: %d\n", hat.SelfTriggerCounterFires())
 		if *reportPath != "" {
 			fmt.Printf("\nReport written to %s\n", *reportPath)
+		}
+	}
+
+	// Heimdall → hat closed-loop egress: after the gauntlet completes,
+	// compute the per-archetype feedback delta from result.Analyses and
+	// persist it for the NEXT gauntlet's --apply-feedback to consume.
+	// While analytics.ComputeWeightDeltas is still a stub (PR #955
+	// rebasing), this emits an empty-but-valid feedback file — the
+	// self-tune loop still runs end-to-end; the apply path will no-op
+	// until the real attribution lands. See docs/heimdall-hat-self-tune-r60.md.
+	if *feedbackOut != "" {
+		provenance := fmt.Sprintf("tournament:%s:games=%d", filepath.Base(*reportPath), result.Games)
+		fb := analytics.ComputeWeightDeltas(result.Analyses, provenance)
+		if err := analytics.SaveHeimdallFeedback(*feedbackOut, fb); err != nil {
+			log.Printf("--feedback-out: save failed: %v", err)
+		} else {
+			fmt.Printf("Heimdall feedback written to %s/heimdall_feedback.json (%d archetypes, provenance=%q)\n",
+				*feedbackOut, len(fb.Archetypes), fb.Provenance)
+		}
+	}
+
+	// --result-json emits the canonical structured TournamentResult so
+	// scripts/self-tune-loop.sh can diff gauntlet outcomes without
+	// scraping the markdown report.
+	if *resultJSON != "" {
+		data, err := json.MarshalIndent(result, "", "  ")
+		if err != nil {
+			log.Printf("--result-json: marshal failed: %v", err)
+		} else if err := os.WriteFile(*resultJSON, data, 0o644); err != nil {
+			log.Printf("--result-json: write failed: %v", err)
+		} else {
+			fmt.Printf("Result JSON written to %s\n", *resultJSON)
 		}
 	}
 	if *pprofFlag {
