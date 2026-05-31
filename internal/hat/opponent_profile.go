@@ -262,6 +262,39 @@ const (
 // isRemovalText (which bundles single-target and mass under one flag)
 // so the archetype-contradiction detector can rule combo decks out
 // without flagging single-target removal.
+// isCounterspellText reports whether the lower-cased oracle text
+// describes a counterspell — "counter target spell", "counter target
+// activated/triggered", or "counter that spell". Sibling of
+// isMassRemovalText / isTutorText for the 3rd Eye opp-tracking
+// signals (opponentCounterspellsCast). Deliberately narrow: the
+// counter-target-creature-spell family (Essence Scatter) IS still
+// counted because "counter target ... spell" matches the prefix.
+// Cards like Annul ("counter target artifact or enchantment spell")
+// also match. Permission spells with non-standard wording like
+// Spell Snare ("counter target spell with mana value 2") also match.
+func isCounterspellText(ot string) bool {
+	if ot == "" {
+		return false
+	}
+	// "counter target" is the canonical permission shape — catches the
+	// full family including narrower variants ("counter target
+	// noncreature spell" / "counter target artifact or enchantment
+	// spell" / "counter target activated ability"). False positives
+	// would require "counter target" oracle without permission intent,
+	// which doesn't appear on real Magic cards (counter-style abilities
+	// always begin with that exact prefix per CR §701.5).
+	if strings.Contains(ot, "counter target") {
+		return true
+	}
+	// Cascade / linked-spell shapes ("counter that spell" — Cancel-like
+	// in modal contexts) and table sweepers.
+	if strings.Contains(ot, "counter that spell") ||
+		strings.Contains(ot, "counter all spells") {
+		return true
+	}
+	return false
+}
+
 func isMassRemovalText(ot string) bool {
 	if ot == "" {
 		return false
