@@ -57,8 +57,28 @@ func main() {
 	var (
 		astPath    = flag.String("ast", "data/rules/ast_dataset.jsonl", "AST dataset JSONL path")
 		oraclePath = flag.String("oracle", "data/rules/oracle-cards.json", "Scryfall oracle-cards.json path")
+		// Batch-mode rules-compliance probes. When any of these are set,
+		// the binary skips the REPL and runs the probe to completion. Exit
+		// status is 0 on a clean scan, 1 when violations are found — so
+		// CI hooks can gate on a probe directly without parsing the JSON.
+		checkManaCosts = flag.Bool("check-mana-costs", false, "batch mode: validate every Scryfall oracle entry's printed mana_cost against the CR §202.2 mana symbol grammar and emit a JSON report")
+		checkOut       = flag.String("check-out", "", "output path for the --check-mana-costs JSON report (default: stdout)")
 	)
 	flag.Parse()
+
+	if *checkManaCosts {
+		rep, err := runManaCostCheck(*oraclePath, *checkOut)
+		if err != nil {
+			log.Fatalf("check-mana-costs: %v", err)
+		}
+		if !rep.Valid {
+			// Mirror gofmt / go vet's exit-code convention: non-zero
+			// when any check reports a finding so a Make / GitHub
+			// Actions hook can gate without parsing the JSON.
+			os.Exit(1)
+		}
+		return
+	}
 
 	// Load corpus.
 	fmt.Println("hexdek-judge — Interactive MTG Rules Engine REPL")
