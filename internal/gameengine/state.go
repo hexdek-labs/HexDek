@@ -1855,6 +1855,59 @@ func ExileLinked(gs *GameState, perm *Permanent, card *Card, ownerSeat int, from
 	})
 }
 
+// ReleaseSourceLinkedExiles clears all §406.7 linked-exile bookkeeping
+// for a permanent that is leaving via a path which can't safely route
+// the exiled cards back to the battlefield — currently just
+// HandleSeatElimination (CR §800.4a), which sweeps every leaving
+// permanent in a single pass and would race with MoveCard if we tried
+// to add returned cards to (still-being-cleared) battlefields.
+//
+// The exiled cards stay in their owners' exile zones, but their
+// ExiledByTimestamp is reset and the source's LinkedExile / ExiledByMe
+// slices are cleared. This satisfies the ExileLinkageIntegrity invariant
+// (the dangling timestamp pointer goes away) at the cost of NOT routing
+// the cards back to the battlefield per §406.7. Per §800.4a the
+// leaving player's "until ~ leaves" effects end when the player leaves
+// the game; the cards stuck in exile is a milder rules violation than
+// the dangling-pointer leak.
+//
+// Engine-correctness TODO: route to owner's battlefield (or graveyard
+// when owner is also leaving) via a deferred queue processed after the
+// seat-elimination sweep completes. See ExileLinkageIntegrity Loki
+// cluster (2026-05-30 r60 fresh-main).
+func ReleaseSourceLinkedExiles(gs *GameState, perm *Permanent) {
+	if gs == nil || perm == nil {
+		return
+	}
+	if len(perm.LinkedExile) == 0 && len(perm.ExiledByMe) == 0 {
+		return
+	}
+	releasedNames := make([]string, 0, len(perm.LinkedExile))
+	for _, card := range perm.LinkedExile {
+		if card == nil {
+			continue
+		}
+		card.ExiledByTimestamp = 0
+		releasedNames = append(releasedNames, card.DisplayName())
+	}
+	srcName := "<unknown>"
+	if perm.Card != nil {
+		srcName = perm.Card.DisplayName()
+	}
+	gs.LogEvent(Event{
+		Kind:   "exile_linked_released_on_leave",
+		Source: srcName,
+		Amount: len(releasedNames),
+		Details: map[string]interface{}{
+			"cards":            releasedNames,
+			"source_timestamp": perm.Timestamp,
+			"rule":             "800.4a+406.7",
+		},
+	})
+	perm.LinkedExile = nil
+	perm.ExiledByMe = nil
+}
+
 // ReturnLinkedExile returns all cards linked to a permanent back to
 // their owner's zone (typically "battlefield" for O-Ring effects or
 // "hand" for bounce-exile effects). Clears the permanent's LinkedExile

@@ -445,15 +445,27 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 				// as PR #106's LTB plumbing — extending the same hook to
 				// the §800.4a seat-elimination path.
 				ExpireSourceGrants(gs, p.Timestamp)
-				// Same shape as ExpireSourceGrants but for the
-				// ExiledByTimestamp linkage tag. Knowledge Pool (and
-				// sibling cards using ExiledByTimestamp as an exile-
-				// discovery key) stamps this on every imprinted card;
-				// if the controller is eliminated before KP itself
-				// dies, the per_card permanent_ltb handler never runs
-				// and the tag stays stale, tripping the
-				// ExileLinkageIntegrity invariant. (Loki r60 game 1044
-				// Myr Prototype × 2, closed 2026-05-30.)
+				// r60 Loki fresh-main 2026-05-30 ExileLinkageIntegrity
+				// cluster — two complementary cleanup paths, both wired
+				// here because the §800.4a seat-elimination sweep
+				// bypasses the canonical zone_change.go LTB dispatch
+				// that the dispatch fix f374f26b uses.
+				//
+				// ReleaseSourceLinkedExiles handles the Banisher Priest
+				// / Hostage Taker / Oblivion Ring family — sources with
+				// populated LinkedExile + ExiledByMe slices that need
+				// the source-held bookkeeping cleared and each linked
+				// card's ExiledByTimestamp reset. Routes nothing back
+				// to the battlefield (mid-sweep MoveCard would race);
+				// engine-correctness §406.7 return is a deferred-queue
+				// TODO in the helper docstring.
+				ReleaseSourceLinkedExiles(gs, p)
+				// ClearLinkedExileTagsForSource handles the Knowledge
+				// Pool / Myr Prototype / River Song's Diary family
+				// (stamp ExiledByTimestamp as an exile-discovery key
+				// without populating the source-held LinkedExile —
+				// missed by ReleaseSourceLinkedExiles by construction).
+				// Sweeps every seat's exile zone for stale tag matches.
 				ClearLinkedExileTagsForSource(gs, p.Timestamp)
 				// Count real cards for zone conservation tracking.
 				if p.Card != nil && !p.IsToken() {
