@@ -338,23 +338,35 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	// "draw a card" substring inside the trigger condition must not register
 	// as ResCard production. Only actual draw effects on the card's own
 	// text should mark Produces = ResCard.
-	otNoDrawTrig := stripDrawTriggerClauses(ot)
+	//
+	// Operates on otClean (reminder-stripped) so keyword reminders like the
+	// Clue token gloss "{2}, Sacrifice this token: Draw a card." don't tag
+	// Bygone Bishop or every investigate-payoff as a card-producer.
+	otNoDrawTrig := stripDrawTriggerClauses(otClean)
 	if containsAny(otNoDrawTrig, "draw a card", "draw two", "draw three", "draw cards",
 		"draws a card", "draw x") && !strings.Contains(otNoDrawTrig, "withdraw") {
 		p.Produces = append(p.Produces, ResCard)
 	}
 
-	// Graveyard recursion: return from graveyard.
-	if strings.Contains(ot, "return") && strings.Contains(ot, "from") &&
-		strings.Contains(ot, "graveyard") &&
-		(strings.Contains(ot, "battlefield") || strings.Contains(ot, "to your hand") ||
-			strings.Contains(ot, "to its owner")) {
+	// Graveyard recursion: return from graveyard. Operates on otClean so the
+	// dredge / recover reminder text ("If you do, return this card from your
+	// graveyard to your hand.") doesn't tag the keyword card itself as a
+	// generic recursion engine — dredge SELF-return isn't the same value
+	// shape as Eternal Witness / Sun Titan style recursion.
+	if strings.Contains(otClean, "return") && strings.Contains(otClean, "from") &&
+		strings.Contains(otClean, "graveyard") &&
+		(strings.Contains(otClean, "battlefield") || strings.Contains(otClean, "to your hand") ||
+			strings.Contains(otClean, "to its owner")) {
 		p.Produces = append(p.Produces, ResGraveyard)
 		p.IsRecursion = true
 	}
 
-	// Life gain.
-	if strings.Contains(ot, "gain") && strings.Contains(ot, "life") {
+	// Life gain. Operates on otClean so the lifelink reminder text "Damage
+	// dealt by this creature also causes you to gain that much life." and
+	// the extort reminder don't tag every keyword card as a life-producer.
+	// Lifelink is a passive combat keyword; it doesn't belong in a card's
+	// active resource cycle.
+	if strings.Contains(otClean, "gain") && strings.Contains(otClean, "life") {
 		p.Produces = append(p.Produces, ResLife)
 	}
 
@@ -416,8 +428,12 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 		p.Consumes = append(p.Consumes, ResGraveyard)
 	}
 
-	// Counter removal.
-	if strings.Contains(ot, "remove") && strings.Contains(ot, "counter") {
+	// Counter removal. Operates on otClean so the vanishing / fading /
+	// suspend reminder text "At the beginning of your upkeep, remove a time
+	// counter from it." doesn't tag every keyword card as a counter consumer.
+	// Those reminders describe the keyword's mechanics, not a separate
+	// counter-engine on the card.
+	if strings.Contains(otClean, "remove") && strings.Contains(otClean, "counter") {
 		p.Consumes = append(p.Consumes, ResCounter)
 	}
 
@@ -746,7 +762,13 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	// ---------------------------------------------------------------
 	// EFFECTS -- what this card does to the game state
 	// ---------------------------------------------------------------
-	if strings.Contains(ot, "deals") && strings.Contains(ot, "damage") {
+	// Damage effect. Operates on otClean so the deathtouch reminder text
+	// "(Any amount of damage this deals to a creature is enough to destroy
+	// it.)" and the trample / infect / wither glosses (all of which embed
+	// "deals damage") don't tag vanilla keyword creatures as damage-dealing
+	// effects. The keyword damage is governed by combat, not by the card's
+	// own active effect.
+	if strings.Contains(otClean, "deals") && strings.Contains(otClean, "damage") {
 		p.Effects = append(p.Effects, "damage")
 	}
 	if containsAny(ot, "destroy target", "destroy all", "destroy each") {
