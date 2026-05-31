@@ -55,8 +55,8 @@ through each of the four exit primitives, and assert the carrier `*Card`
 ended up in seat 1's destination zone. Catches any handler that snags
 the leaving card off the wire into the wrong seat's zone.
 
-- Handlers exercised (cards subscribed to an exit event): **103**
-- Primitives × handlers attempted: **412**
+- Handlers exercised (cards subscribed to an exit event): **105**
+- Primitives × handlers attempted: **420**
 - Owner-routing violations: **0**
 
 **The permanent-lifetime ownership invariant holds across the
@@ -104,6 +104,7 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 - `kess dissident mage`
 - `ketramose the new dawn`
 - `kibo uktabi prince`
+- `knowledge pool`
 - `kolodin triumph caster`
 - `korvold faecursed king`
 - `kruphix god of horizons`
@@ -163,6 +164,7 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 - `underworld breach`
 - `upwelling`
 - `uril the miststalker`
+- `vihaan goldwaker`
 - `vishgraz the doomhive`
 - `yawgmoths agenda`
 - `ygra eater of all`
