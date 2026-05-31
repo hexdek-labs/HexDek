@@ -370,6 +370,14 @@ var eventAliasTable = map[string][]string{
 	"upkeep_start":               {"upkeep_controller"},
 	"begin_combat_controller":    {"combat_begin"},
 	"begin_combat":               {"combat_begin"},
+	// r60 dead-handler closure (engine-event-registry §3.1): the engine
+	// fires "untap" and "draw_step" from phases.go but per_card authors
+	// registered on "untap_step" / "draw_step_controller" thinking those
+	// were canonical. Without these aliases Seedborn Muse + Rasputin
+	// Dreamweaver (untap_step) and Sylvan Library + Nekusar
+	// (draw_step_controller) silently never fired their triggers.
+	"untap_step":          {"untap"},
+	"draw_step_controller": {"draw_step"},
 
 	// -----------------------------------------------------------------------
 	// Catch-all parser fallbacks
