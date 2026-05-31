@@ -62,20 +62,17 @@ func hazelRootbloomEndStep(gs *gameengine.GameState, perm *gameengine.Permanent,
 	if cardSubtypeMatches(target.Card, "squirrel") {
 		count = 2
 	}
+	enablerID := gameengine.CurrentMintEnablerID(gs)
 	for i := 0; i < count; i++ {
-		cp := target.Card.DeepCopy()
-		cp.Owner = perm.Controller
+		// Phase 5 chokepoint: MintTokenAsCopyOf clears the inherited
+		// InstanceID before stamping a fresh TK ID, preventing the
+		// same-ID-in-two-perms duplication shape (PR #853 / Drafna fix).
+		cp := gameengine.MintTokenAsCopyOf(gs, target.Card, perm.Controller, enablerID)
+		if cp == nil {
+			emitFail(gs, slug, perm.Card.DisplayName(), "mint_token_returned_nil", nil)
+			continue
+		}
 		cp.IsCopy = true
-		hasToken := false
-		for _, t := range cp.Types {
-			if t == "token" {
-				hasToken = true
-				break
-			}
-		}
-		if !hasToken {
-			cp.Types = append(cp.Types, "token")
-		}
 		enterBattlefieldWithETB(gs, perm.Controller, cp, false)
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

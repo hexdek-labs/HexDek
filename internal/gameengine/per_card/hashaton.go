@@ -63,8 +63,15 @@ func hashatonDiscardTrigger(gs *gameengine.GameState, perm *gameengine.Permanent
 	seat.ManaPool -= cost
 
 	// Build the token: copy of that card, except 4/4 black Zombie.
-	token := card.DeepCopy()
-	token.Owner = perm.Controller
+	// Phase 5 chokepoint: route through MintTokenAsCopyOf so the token's
+	// InstanceID is freshly minted (TK provenance) instead of inheriting
+	// the discarded card's OG ID. Template overrides (force creature +
+	// zombie subtype, mono-black, 4/4) are applied AFTER the mint.
+	token := gameengine.MintTokenAsCopyOf(gs, card, perm.Controller, gameengine.CurrentMintEnablerID(gs))
+	if token == nil {
+		emitFail(gs, slug, perm.Card.DisplayName(), "mint_token_returned_nil", nil)
+		return
+	}
 	token.IsCopy = true
 	// Force creature/token/zombie typing and a black color pip while
 	// keeping any non-conflicting subtypes (the original creature types

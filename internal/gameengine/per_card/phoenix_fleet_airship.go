@@ -113,18 +113,14 @@ func phoenixFleetAirshipEndStep(gs *gameengine.GameState, perm *gameengine.Perma
 		})
 		return
 	}
-	card := perm.Card.DeepCopy()
-	hasToken := false
-	for _, t := range card.Types {
-		if strings.EqualFold(t, "token") {
-			hasToken = true
-			break
-		}
+	// Phase 5 chokepoint: route through MintTokenAsCopyOf — the token's
+	// InstanceID is freshly minted (TK provenance) rather than inheriting
+	// the original Airship's OG ID (mirror of PR #853 / Drafna fix).
+	card := gameengine.MintTokenAsCopyOf(gs, perm.Card, seatIdx, gameengine.CurrentMintEnablerID(gs))
+	if card == nil {
+		emitFail(gs, slug, perm.Card.DisplayName(), "mint_token_returned_nil", nil)
+		return
 	}
-	if !hasToken {
-		card.Types = append([]string{"token"}, card.Types...)
-	}
-	card.Owner = seatIdx
 	token := enterBattlefieldWithETB(gs, seatIdx, card, false)
 	if token == nil {
 		emitFail(gs, slug, perm.Card.DisplayName(), "token_creation_failed", nil)

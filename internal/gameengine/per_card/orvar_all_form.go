@@ -76,19 +76,15 @@ func orvarDiscarded(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 	if pick == nil {
 		return
 	}
-	cp := pick.Card.DeepCopy()
-	cp.Owner = perm.Controller
+	// Phase 5 chokepoint: route through MintTokenAsCopyOf so the token's
+	// InstanceID is freshly minted (TK provenance) rather than inheriting
+	// the source's OG ID — same fix shape as PR #853 (Drafna).
+	cp := gameengine.MintTokenAsCopyOf(gs, pick.Card, perm.Controller, gameengine.CurrentMintEnablerID(gs))
+	if cp == nil {
+		emitFail(gs, slug, perm.Card.DisplayName(), "mint_token_returned_nil", nil)
+		return
+	}
 	cp.IsCopy = true
-	hasToken := false
-	for _, t := range cp.Types {
-		if t == "token" {
-			hasToken = true
-			break
-		}
-	}
-	if !hasToken {
-		cp.Types = append(cp.Types, "token")
-	}
 	enterBattlefieldWithETB(gs, perm.Controller, cp, false)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":   perm.Controller,

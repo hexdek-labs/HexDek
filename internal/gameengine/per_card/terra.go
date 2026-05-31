@@ -174,9 +174,17 @@ func terraSagaChapter(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 			})
 			return
 		}
-		copyCard := target.Card.DeepCopy()
+		// Phase 5 chokepoint: MintTokenAsCopyOf clears the inherited
+		// InstanceID and mints a fresh TK ID (mirror of PR #853 / Drafna).
+		copyCard := gameengine.MintTokenAsCopyOf(gs, target.Card, perm.Controller, gameengine.CurrentMintEnablerID(gs))
+		if copyCard == nil {
+			emitFail(gs, slug, perm.Card.DisplayName(), "mint_token_returned_nil", map[string]interface{}{
+				"seat":    perm.Controller,
+				"chapter": chapter,
+			})
+			return
+		}
 		copyCard.IsCopy = true
-		copyCard.Owner = perm.Controller
 		tokenPerm := enterBattlefieldWithETB(gs, perm.Controller, copyCard, false)
 		if tokenPerm != nil {
 			if tokenPerm.Flags == nil {

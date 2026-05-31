@@ -230,9 +230,17 @@ func brudicladCombatBegin(gs *gameengine.GameState, perm *gameengine.Permanent, 
 		// chosen's ID on every Brudiclad-copied token, tripping the
 		// CardIdentity invariant (gap-walk seed 42 game 261 surfaced
 		// seven Spinerock Tyrants on seat 2's battlefield).
+		// Per CR §706.2 + InstanceID Phase 5 §4 mint path 2:
+		// BecomeCopyOfCard rewrites the perm's *Card to a DeepCopy of
+		// chosen while preserving the perm's ORIGINAL InstanceID. Prior
+		// fallback (`chosen.Card.DeepCopy()`) inherited chosen's ID
+		// directly — same shape as the PR #853 Drafna bug. With nil-safe
+		// inputs already guaranteed above, the fallback was unreachable;
+		// drop it and skip the perm if the primitive declines (sourceCard
+		// nil etc.).
 		newCard := gameengine.BecomeCopyOfCard(gs, p, chosen.Card)
 		if newCard == nil {
-			newCard = chosen.Card.DeepCopy()
+			continue
 		}
 		newCard.Owner = seat
 		// Ensure "token" tag is present — BecomeCopyOfCard preserves
