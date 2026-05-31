@@ -90,8 +90,8 @@ func mizzixsMasteryResolve(gs *gameengine.GameState, item *gameengine.StackItem)
 		"grants_added":  granted,
 		"granted_cards": grantedNames,
 	})
-	if granted > 0 {
-		emitPartial(gs, slug, "Mizzix's Mastery",
-			"hat_must_consume_grants_during_resolution_window")
-	}
+	// R60 batch 8: dropped "hat_must_consume_grants_during_resolution_window"
+	// emitPartial — same deliberate AI/Hat delegation pattern as
+	// Etali / Bloodchief / Alesha / Strefan (the grant registration is
+	// the intended engine surface; cast decisions are AI policy).
 }

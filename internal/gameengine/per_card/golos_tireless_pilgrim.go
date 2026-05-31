@@ -17,10 +17,14 @@ import (
 //   - ETB: search library for the most-color-fixing land available
 //     (prefer non-basic duals/shocks/triomes by color count, then basics
 //     of the most-needed color), put onto battlefield tapped, shuffle.
-//   - Activated 5-color exile-and-cast is mana-prohibitive in simulation
-//     and the cast-from-exile machinery would need a free-cast hook —
-//     emitPartial flags this; the activated handler is a no-op stub so
-//     the registration exists for AI eligibility checks.
+//   - Activated 5-color exile-and-cast (R60 batch 8): exile the top
+//     three cards of controller's library, then register a
+//     free-cast permission per card via NewFreeCastFromExilePermission
+//     (ManaCost=0 — "without paying their mana costs"), with
+//     Duration=until_end_of_turn + SourceTimestamp tied to Golos so
+//     ExpireZoneCastGrants / ExpireSourceGrants reap them at cleanup
+//     or on Golos LTB. The {2}{W}{U}{B}{R}{G} mana cost is enforced
+//     upstream by the activation cost pipeline.
 func registerGolosTirelessPilgrim(r *Registry) {
 	r.OnETB("Golos, Tireless Pilgrim", golosTirelessPilgrimETB)
 	r.OnActivated("Golos, Tireless Pilgrim", golosTirelessPilgrimActivate)
@@ -76,9 +80,38 @@ func golosTirelessPilgrimETB(gs *gameengine.GameState, perm *gameengine.Permanen
 }
 
 func golosTirelessPilgrimActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
-	if gs == nil || src == nil {
+	const slug = "golos_tireless_pilgrim_activated"
+	if gs == nil || src == nil || src.Card == nil {
 		return
 	}
-	emitPartial(gs, "golos_tireless_pilgrim_activated", src.Card.DisplayName(),
-		"five_color_exile_top_three_play_without_paying_not_implemented")
+	seatIdx := src.Controller
+	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		emitFail(gs, slug, src.Card.DisplayName(), "no_seat", nil)
+		return
+	}
+	exiled := []string{}
+	for i := 0; i < 3 && len(seat.Library) > 0; i++ {
+		top := seat.Library[0]
+		if top == nil {
+			seat.Library = seat.Library[1:]
+			continue
+		}
+		gameengine.MoveCard(gs, top, seatIdx, "library", "exile", "golos_exile")
+		grant := gameengine.NewFreeCastFromExilePermission(seatIdx, src.Card.DisplayName())
+		grant.ManaCost = 0
+		grant.Duration = "until_end_of_turn"
+		grant.GrantTurn = gs.Turn
+		grant.SourceTimestamp = src.Timestamp
+		gameengine.RegisterZoneCastGrant(gs, top, grant)
+		exiled = append(exiled, top.DisplayName())
+	}
+	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
+		"seat":         seatIdx,
+		"exiled_count": len(exiled),
+		"exiled":       exiled,
+	})
 }

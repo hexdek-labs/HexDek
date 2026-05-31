@@ -21,19 +21,55 @@ import (
 //     has type "myr": create a 1/1 colorless Myr artifact creature token.
 //   - "begin_combat_controller" trigger gated to active_seat ==
 //     controller: untap each Myr the controller controls.
-//   - Activated WUBRG ability: emitPartial.
+//   - Activated WUBRG ability (R60 batch 8): tap Urtet, put 3 +1/+1
+//     counters on each Myr we control. Mana cost ({W}{U}{B}{R}{G}) is
+//     enforced upstream by the activation cost pipeline; tap cost is
+//     enforced inline. Gates on gs.Active == src.Controller per
+//     "Activate only during your turn."
 func registerUrtetRemnantOfMemnarch(r *Registry) {
 	r.OnTrigger("Urtet, Remnant of Memnarch", "spell_cast", urtetMyrCast)
 	r.OnTrigger("Urtet, Remnant of Memnarch", "begin_combat_controller", urtetBeginCombat)
-	r.OnETB("Urtet, Remnant of Memnarch", urtetETB)
+	r.OnActivated("Urtet, Remnant of Memnarch", urtetActivate)
 }
 
-func urtetETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	if gs == nil || perm == nil {
+func urtetActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
+	const slug = "urtet_wubrg_myr_counters"
+	if gs == nil || src == nil || src.Card == nil {
 		return
 	}
-	emitPartial(gs, "urtet_etb", perm.Card.DisplayName(),
-		"activated_wubrg_tap_three_plus1plus1_counters_on_each_myr_partial")
+	if gs.Active != src.Controller {
+		emitFail(gs, slug, src.Card.DisplayName(), "not_your_turn", map[string]interface{}{
+			"active_seat":     gs.Active,
+			"controller_seat": src.Controller,
+		})
+		return
+	}
+	if src.Tapped {
+		emitFail(gs, slug, src.Card.DisplayName(), "already_tapped", nil)
+		return
+	}
+	src.Tapped = true
+	seat := gs.Seats[src.Controller]
+	if seat == nil {
+		return
+	}
+	stamped := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		if !cardHasType(p.Card, "myr") {
+			continue
+		}
+		p.AddCounter("+1/+1", 3)
+		stamped++
+	}
+	gs.InvalidateCharacteristicsCache()
+	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
+		"seat":            src.Controller,
+		"myrs_buffed":     stamped,
+		"counters_per":    3,
+	})
 }
 
 func urtetMyrCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
