@@ -342,7 +342,56 @@ type TournamentDeck struct {
 	// accordingly. Unresolved lines DO appear here so the UI can still
 	// surface the deckbuilder's note next to the missing card.
 	CardLines []CardLine
+
+	// DetectedFormat is the format autodetector's best categorization.
+	// Set at the end of ParseDeckReader from the deck's shape (commander
+	// count, mainboard count, sideboard count, signature-spell presence,
+	// source-comment hints). Empty (FormatUnknown) only when the deck
+	// shipped no usable signal. See detectFormat for the full decision
+	// tree.
+	DetectedFormat DetectedFormat
+
+	// SideboardCount counts cards seen under a Sideboard section header.
+	// The cards themselves are still dropped from Library (preserving
+	// the existing single-zone tournament-runner contract); this just
+	// tracks the count so the format detector can distinguish Constructed
+	// (sideboard ≥ ~5) from Casual.
+	SideboardCount int
+
+	// SignatureSpellCount counts cards seen under a "Signature Spells"
+	// section header — the Oathbreaker format's instant/sorcery slot
+	// (1 per deck). Cards still dropped from Library, count tracked for
+	// format detection.
+	SignatureSpellCount int
+
+	// SourceHints captures leading `#` comments before any card content
+	// (e.g. `# Source: https://moxfield.com/decks/...` or
+	// `# Precon Decklist`). Used by detectFormat for precon recognition;
+	// also useful for UI provenance display.
+	SourceHints []string
 }
+
+// DetectedFormat is the format-detector's verdict for a parsed deck.
+// Detection is structural / count-based, not legality-aware — Standard /
+// Modern / Pioneer / Legacy / Vintage / Pauper all share the same shape
+// (60+ mainboard, ≤15 sideboard, multiples allowed) and collapse to a
+// single FormatConstructed bucket; refining further requires a card-
+// legality database that the deckparser package deliberately does not
+// own. FormatPrecon shadows the rules-format when a source comment
+// flags the deck as a published preconstructed product — most precons
+// are Commander, but distinguishing "literal precon decklist" from
+// "user-built Commander deck" is high-signal for UI / build-coaching.
+type DetectedFormat string
+
+const (
+	FormatUnknown     DetectedFormat = ""
+	FormatCommander   DetectedFormat = "commander"
+	FormatBrawl       DetectedFormat = "brawl"
+	FormatOathbreaker DetectedFormat = "oathbreaker"
+	FormatConstructed DetectedFormat = "constructed"
+	FormatPrecon      DetectedFormat = "precon"
+	FormatCasual      DetectedFormat = "casual"
+)
 
 // CardLine is the per-source-line view of a parsed deck. Section is one
 // of "main", "commander". Comment is everything after a `//` token on
@@ -424,6 +473,12 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 	// both commanders under "Commanders" with no footer at all.
 	var commanderSectionNames []string
 	section := "main"
+	// dropSubtype tracks WHICH dropped section we're inside: "sideboard"
+	// / "signature_spells" / "other". Used by the format detector — a
+	// 15-card sideboard distinguishes Constructed from Casual, and the
+	// presence of any signature spells flags Oathbreaker. Cards
+	// themselves are still dropped from Library; only counts are kept.
+	dropSubtype := ""
 	sectionDrops := map[string]bool{
 		"sideboard": true, "maybeboard": true, "considering": true,
 		"companion": true, "tokens": true, "signature spells": true,
@@ -434,6 +489,21 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		// whole block until a recognized section header reasserts state.
 		"about": true,
 	}
+	// sawAnyCardContent: SourceHints captures leading `#` comments only
+	// — once a card line / directive has been seen, subsequent `#` lines
+	// are mid-deck annotations and shouldn't pollute the precon hint
+	// scan. Flipped true on the first real content line.
+	sawAnyCardContent := false
+	// hasExplicitCommanderSignal: true when the deck shipped any of the
+	// explicit "this is a Commander-format deck" markers — COMMANDER: /
+	// PARTNER: directive, a `Commander[s]` section header that ate at
+	// least one card, a `// COMMANDER` directive comment, or an inline
+	// `*CMDR*` marker. The format detector uses this to distinguish a
+	// genuine Commander deck (commander signal + total ≈ 100) from a
+	// 60-card Constructed deck where the legacy auto-pick fallback
+	// pulled the first card into the commander slot. Auto-pick alone
+	// does NOT flip this flag.
+	hasExplicitCommanderSignal := false
 
 	// pendingCommanderHeader: set when the previous non-blank line was a
 	// `// COMMANDER` directive-comment. The NEXT card line consumes the
@@ -450,9 +520,23 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		// or the directive would be silently swallowed.
 		if cmdrHeaderCommentRE.MatchString(raw) {
 			pendingCommanderHeader = true
+			hasExplicitCommanderSignal = true
 			continue
 		}
-		if raw == "" || strings.HasPrefix(raw, "#") || strings.HasPrefix(raw, "//") {
+		if raw == "" {
+			continue
+		}
+		if strings.HasPrefix(raw, "#") || strings.HasPrefix(raw, "//") {
+			// Leading `#` comments (before any card content) become
+			// SourceHints — detectFormat scans them for "precon" markers
+			// and UIs can surface them as provenance. Mid-deck comments
+			// are still dropped silently.
+			if !sawAnyCardContent && strings.HasPrefix(raw, "#") {
+				hint := strings.TrimSpace(strings.TrimLeft(raw, "#"))
+				if hint != "" {
+					td.SourceHints = append(td.SourceHints, hint)
+				}
+			}
 			continue
 		}
 		// COMMANDER: <name> — Moxfield's directive-style export uses two
@@ -465,11 +549,15 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			} else if explicitPartner == "" {
 				explicitPartner = name
 			}
+			sawAnyCardContent = true
+			hasExplicitCommanderSignal = true
 			continue
 		}
 		// PARTNER: <name>
 		if m := partnerLineRE.FindStringSubmatch(raw); m != nil {
 			explicitPartner = normalizeDFCSeparator(cleanCardName(strings.TrimSpace(m[1])), meta)
+			sawAnyCardContent = true
+			hasExplicitCommanderSignal = true
 			continue
 		}
 		// Section headers: Sideboard, Maybeboard, Companion, Commander,
@@ -482,12 +570,23 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			switch {
 			case label == "commander" || label == "commanders":
 				section = "commander"
+				dropSubtype = ""
 			case label == "deck" || label == "mainboard" || strings.HasPrefix(label, "main"):
 				section = "main"
+				dropSubtype = ""
 			case sectionDrops[label]:
 				section = "drop"
+				switch label {
+				case "sideboard":
+					dropSubtype = "sideboard"
+				case "signature spells":
+					dropSubtype = "signature_spells"
+				default:
+					dropSubtype = "other"
+				}
 			default:
 				section = "drop"
+				dropSubtype = "other"
 			}
 			continue
 		}
@@ -511,13 +610,37 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			continue
 		}
 		if section == "drop" {
+			// Count card-shaped lines inside Sideboard / Signature Spells
+			// drops so the format detector can distinguish Constructed
+			// (sideboard) and Oathbreaker (signature spell) from the
+			// commander / casual variants. Card pointer stays dropped;
+			// only the count is tracked.
+			if dm := deckLineRE.FindStringSubmatch(raw); dm != nil {
+				if q, err := strconv.Atoi(dm[1]); err == nil && q > 0 {
+					switch dropSubtype {
+					case "sideboard":
+						td.SideboardCount += q
+					case "signature_spells":
+						td.SignatureSpellCount += q
+					}
+				}
+			}
+			sawAnyCardContent = true
 			continue
 		}
 		// MTGA / Aetherhub sideboard line prefix. These appear interleaved
 		// with mainboard lines instead of under a Sideboard header, so the
 		// section-based drop above doesn't catch them. Drop the line; the
-		// rest of the file may still be mainboard.
-		if sbPrefixRE.MatchString(raw) {
+		// rest of the file may still be mainboard. Count the line against
+		// SideboardCount so the format detector still sees a sideboard.
+		if loc := sbPrefixRE.FindStringIndex(raw); loc != nil {
+			tail := strings.TrimSpace(raw[loc[1]:])
+			if dm := deckLineRE.FindStringSubmatch(tail); dm != nil {
+				if q, err := strconv.Atoi(dm[1]); err == nil && q > 0 {
+					td.SideboardCount += q
+				}
+			}
+			sawAnyCardContent = true
 			continue
 		}
 		// MTGO / Tournament-Ready metadata header lines (`Deck name: ...`,
@@ -568,6 +691,7 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		if cmdrInlineMarkerRE.MatchString(raw) {
 			raw = strings.TrimSpace(cmdrInlineMarkerRE.ReplaceAllString(raw, " "))
 			lineIsCommander = true
+			hasExplicitCommanderSignal = true
 		}
 		// Strip "(SET) 123" suffix (set code + collector number + foil flag).
 		if idx := strings.Index(raw, "("); idx > 0 {
@@ -590,6 +714,7 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		if name == "" {
 			continue
 		}
+		sawAnyCardContent = true
 		// A `// COMMANDER` header on the previous line OR an inline
 		// `*CMDR*` marker on this line routes the card to commander
 		// slots regardless of the current Section state. The pending
@@ -614,6 +739,7 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			td.CardLines = append(td.CardLines, CardLine{
 				Qty: qty, Name: name, Comment: inlineComment, Section: "commander",
 			})
+			hasExplicitCommanderSignal = true
 			continue
 		}
 		lines = append(lines, lineEntry{qty: qty, name: name, comment: inlineComment, section: "main"})
@@ -676,7 +802,19 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 	// Pass 1: if no explicit commander, take the first resolvable entry
 	// as the commander. Partner requires the explicit directive — we
 	// won't guess partner from the main list.
-	if commanderName == "" {
+	//
+	// Gated on mainboard size: the legacy auto-pick fallback is the
+	// right thing for small / hand-edited decks (and the existing test
+	// corpus relies on it) but WRONG for 60+ Constructed-shape decks
+	// where stealing the first card into the commander slot misclassifies
+	// the deck. Skip auto-pick when the mainboard has ≥ 60 cards AND no
+	// explicit commander signal — let detectFormat surface FormatConstructed
+	// with CommanderCards empty.
+	mainboardQty := 0
+	for _, le := range lines {
+		mainboardQty += le.qty
+	}
+	if commanderName == "" && (mainboardQty < 60 || hasExplicitCommanderSignal) {
 		for i, le := range lines {
 			if c := buildCard(le.name, corpus, meta); c != nil {
 				commanderName = c.DisplayName()
@@ -743,15 +881,26 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 	}
 
 	if !commanderTaken {
-		return nil, fmt.Errorf("deckparser: no commander found (directive=%q)", explicitCommander)
-	}
-	// Final assembly — commander first, then partner. CommanderName stays
-	// as the primary (commander) name for back-compat single-commander
-	// consumers.
-	td.CommanderName = commanderCard.DisplayName()
-	td.CommanderCards = append(td.CommanderCards, commanderCard)
-	if partnerCard != nil {
-		td.CommanderCards = append(td.CommanderCards, partnerCard)
+		// Only error out when the deck SHIPPED an explicit commander
+		// signal but the card couldn't be resolved — that's a real bug
+		// the caller wants to know about. For 60-card Constructed-shape
+		// decks with no commander signal at all (no COMMANDER: directive,
+		// no Commander section header, no `// COMMANDER` / `*CMDR*` marker)
+		// just leave CommanderCards empty and let detectFormat surface
+		// FormatConstructed / FormatCasual. Pre-fix this errored out
+		// on every non-Commander deck.
+		if hasExplicitCommanderSignal || len(td.Library) < 60 {
+			return nil, fmt.Errorf("deckparser: no commander found (directive=%q)", explicitCommander)
+		}
+	} else {
+		// Final assembly — commander first, then partner. CommanderName
+		// stays as the primary (commander) name for back-compat
+		// single-commander consumers.
+		td.CommanderName = commanderCard.DisplayName()
+		td.CommanderCards = append(td.CommanderCards, commanderCard)
+		if partnerCard != nil {
+			td.CommanderCards = append(td.CommanderCards, partnerCard)
+		}
 	}
 	if partnerName != "" && !partnerTaken {
 		// Partner directive given but the card couldn't be resolved.
@@ -759,7 +908,70 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		// the deck.
 		td.Unresolved = append(td.Unresolved, partnerName)
 	}
+	td.DetectedFormat = detectFormat(td, hasExplicitCommanderSignal)
 	return td, nil
+}
+
+// detectFormat is the deck shape → format heuristic. Pure structural
+// classification; no card-legality lookups. Standard / Modern / Pioneer
+// / Legacy / Vintage / Pauper all share the 60+ mainboard + ≤15
+// sideboard + multiples-allowed shape and collapse to FormatConstructed
+// — refining further requires a legality database that this package
+// deliberately doesn't own. Decision tree (priority order):
+//
+//  1. Source hint contains "precon" / "preconstructed" → FormatPrecon
+//     (shadows the rules-format; precons are usually Commander but
+//     distinguishing literal-precon from user-built is high-signal).
+//  2. Commander signal + ≥1 signature spell → FormatOathbreaker.
+//  3. Commander signal + total cards in [95, 101] → FormatCommander.
+//  4. Commander signal + total cards in [58, 61] → FormatBrawl.
+//  5. Commander signal + count off-spec → FormatCasual (commander deck
+//     with non-standard size).
+//  6. No commander signal + total ≥ 58 + sideboard ≥ 5 → FormatConstructed.
+//  7. No commander signal + total ≥ 60 → FormatConstructed (some users
+//     don't paste a sideboard with the maindeck).
+//  8. Anything else → FormatCasual.
+//
+// hasCommanderSignal is true iff the parser saw at least one explicit
+// commander marker (COMMANDER:/PARTNER: directive, Commander[s] section
+// header that ate ≥1 card, `// COMMANDER` directive comment, or `*CMDR*`
+// inline marker). The legacy "auto-pick first resolvable card as
+// commander" fallback does NOT count — without it a 60-card Constructed
+// deck (where the legacy fallback would steal the first card into the
+// commander slot) gets correctly classified as Constructed instead of
+// Casual.
+func detectFormat(td *TournamentDeck, hasCommanderSignal bool) DetectedFormat {
+	if td == nil {
+		return FormatUnknown
+	}
+	for _, h := range td.SourceHints {
+		lh := strings.ToLower(h)
+		if strings.Contains(lh, "precon") || strings.Contains(lh, "preconstructed") {
+			return FormatPrecon
+		}
+	}
+	cmdrCount := len(td.CommanderCards)
+	total := cmdrCount + len(td.Library)
+	if hasCommanderSignal && cmdrCount >= 1 {
+		if td.SignatureSpellCount >= 1 {
+			return FormatOathbreaker
+		}
+		switch {
+		case total >= 95 && total <= 101:
+			return FormatCommander
+		case total >= 58 && total <= 61:
+			return FormatBrawl
+		default:
+			return FormatCasual
+		}
+	}
+	if total >= 58 && td.SideboardCount >= 5 {
+		return FormatConstructed
+	}
+	if total >= 60 {
+		return FormatConstructed
+	}
+	return FormatCasual
 }
 
 // buildCard returns a fresh *gameengine.Card populated with AST + types
