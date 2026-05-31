@@ -1686,10 +1686,74 @@ func (e *GameStateEvaluator) scoreCombo(gs *gameengine.GameState, seatIdx int) f
 		}
 	}
 
+	// Per-state emergent-synergy bump (wave-2 freya-hat integration audit,
+	// 2026-05-30). Companion to applyEmergentSynergyBoost in
+	// strategy_loader.go — that pass adds a global Weights.ComboProximity
+	// multiplier to ALL game states whenever the deck has Huginn-discovered
+	// synergies, regardless of whether the synergy pieces are actually
+	// visible right now. This per-state pass targets the lift to states
+	// where the synergy pieces are currently in hand / battlefield (or
+	// graveyard when a recursion engine is in play, via the same
+	// `available` map the combo-piece loop already populated) so the
+	// evaluator differentiates "synergy pieces in hand, combo about to
+	// land" from "synergy pieces still in deck, combo theoretical".
+	//
+	// Magnitudes (+0.04 / +0.08, cap +0.20) deliberately smaller than
+	// the load-time bump (+0.10 / +0.20, cap +0.50): the load-time bump
+	// is a static prior on the whole deck, while this bump is a state-
+	// specific reward, so summing both produces a meaningful spread
+	// between visible-synergy and theoretical-synergy states without
+	// double-counting the prior. See TestEmergentSynergyBump in
+	// emergent_synergy_state_r60_test.go.
+	bestRatio += emergentSynergyBump(e.Strategy, available)
+	if bestRatio > 1.0 {
+		bestRatio = 1.0
+	}
+
 	if bestRatio >= 1.0 {
 		return 2.0
 	}
 	return bestRatio * 1.5
+}
+
+// emergentSynergyBump returns a small additive ratio bump for each
+// EmergentSynergy whose `Cards` are all visible in the `available`
+// map (the hand/battlefield/recursable-graveyard view scoreCombo
+// computes). Tier-2 contributes +0.04, Tier-3 contributes +0.08, sum
+// capped at +0.20. Returns 0 when sp / available is nil, when there
+// are no synergies, or when no synergy has all its pieces visible.
+// Tested via TestEmergentSynergyBump in
+// emergent_synergy_state_r60_test.go.
+func emergentSynergyBump(sp *StrategyProfile, available map[string]float64) float64 {
+	if sp == nil || len(sp.EmergentSynergies) == 0 || available == nil {
+		return 0
+	}
+	bump := 0.0
+	for _, es := range sp.EmergentSynergies {
+		if len(es.Cards) == 0 {
+			continue
+		}
+		allVisible := true
+		for _, name := range es.Cards {
+			if available[name] <= 0 {
+				allVisible = false
+				break
+			}
+		}
+		if !allVisible {
+			continue
+		}
+		switch es.Tier {
+		case 2:
+			bump += 0.04
+		case 3:
+			bump += 0.08
+		}
+	}
+	if bump > 0.20 {
+		bump = 0.20
+	}
+	return bump
 }
 
 // seatHasComboGraveyardRecursion reports whether the seat has an active
