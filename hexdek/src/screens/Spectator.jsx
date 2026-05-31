@@ -19,6 +19,8 @@ import {
 import { isNotableAction, explainAction } from '../utils/actionExplain'
 import { computeTooltipPlacement, MIN_VIEWPORT_MARGIN } from '../utils/mobileLayout'
 import PhaseRibbon from '../components/PhaseRibbon'
+import ManaPoolPips from '../components/ManaPoolPips'
+import StackPanel from '../components/StackPanel'
 
 // ActionExplainBadge — small ⓘ pill rendered next to a notable log
 // entry. Tap / hover / focus opens a tooltip showing what the hat's
@@ -940,18 +942,41 @@ export default function Spectator() {
                   </div>
                   <div className="seat-ft">
                     <span>
-                      H{s.hand_size}{' '}
+                      <span
+                        className="hand-size-badge"
+                        title={`${s.hand_size} cards in hand`}
+                        style={{
+                          display: 'inline-flex', alignItems: 'center',
+                          gap: 2,
+                          padding: '1px 5px',
+                          borderRadius: 3,
+                          background: 'var(--rule-2)',
+                          color: 'var(--ink)',
+                          fontWeight: 700,
+                          fontSize: 10,
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        <span aria-hidden="true">✋</span>
+                        {s.hand_size}
+                      </span>{' '}
                       <span
                         className={s.library_size <= 3 ? 'lib-pip--crit' : s.library_size <= 7 ? 'lib-pip--low' : ''}
                         title={s.library_size <= 3 ? 'Mill danger' : s.library_size <= 7 ? 'Low library' : `${s.library_size} cards left`}
                       >L{s.library_size}</span>{' '}
                       G{s.gy_size} B{perms.length}
-                      {s.mana_pool > 0 && (
+                      {/* Mana pool: prefer the new per-color pips when
+                          ManaPoolByColor is populated; fall back to the
+                          legacy single-int "◊N" rendering for snapshots
+                          from older backends. */}
+                      {s.mana_pool_by_color && Object.keys(s.mana_pool_by_color).length > 0 ? (
+                        <>{' '}<ManaPoolPips pool={s.mana_pool_by_color} /></>
+                      ) : s.mana_pool > 0 ? (
                         <>
                           {' '}
                           <span className="mana-pip" title={`${s.mana_pool} floating mana`}>◊{s.mana_pool}</span>
                         </>
-                      )}
+                      ) : null}
                     </span>
                     {isActive && <span style={{ color: 'var(--ok)' }}>● PRI</span>}
                   </div>
@@ -960,6 +985,14 @@ export default function Spectator() {
             })
             })()}
           </div>
+
+          {/* Stack mini-display — renders only when the resolution stack
+              is non-empty so the layout stays quiet during the
+              no-spell-pending steady state. Engine-backed via the new
+              GameSnapshot.Stack field. */}
+          {!game.finished && game.stack && game.stack.length > 0 && (
+            <StackPanel stack={game.stack} seats={seats} />
+          )}
 
           {/* Phase ribbon — visual 5-phase track + next-up seat preview.
               Sits above the turn-bar so spectators can scan "where in

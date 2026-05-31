@@ -67,6 +67,16 @@ type SeatSnapshot struct {
 	LossReason  string              `json:"loss_reason,omitempty"`
 	Battlefield []PermanentSnapshot `json:"battlefield"`
 	Eval        *EvalSnapshot       `json:"eval,omitempty"`
+
+	// ManaPoolByColor breaks the float-mana total into WUBRG / C / Any
+	// buckets so the spectator UI can render per-color pips instead of
+	// the legacy single-int total. Keys: "W", "U", "B", "R", "G", "C"
+	// (colorless), "Any" (generic / colorless-flex). Restricted mana
+	// rolls up into the "Any" bucket — spectators don't need to see
+	// the spend-time restriction, just the spendable count. Omitted
+	// when every bucket is zero (the common state during priority
+	// passes / between turns).
+	ManaPoolByColor map[string]int `json:"mana_pool_by_color,omitempty"`
 }
 
 type EvalSnapshot struct {
@@ -123,6 +133,19 @@ type LogEntry struct {
 	InstanceID string `json:"instance_id,omitempty"`
 }
 
+// StackItemSnapshot is one entry on the resolution stack, as exposed
+// to the spectator UI. Mirrors a subset of gameengine.StackItem with
+// the names resolved for display. The Source field holds the spell or
+// ability source (for activated/triggered abilities, the source
+// permanent name; for spells, the card name).
+type StackItemSnapshot struct {
+	Source     string `json:"source"`     // resolved card / permanent name
+	Controller int    `json:"controller"` // seat index
+	Kind       string `json:"kind"`       // "spell" | "activated" | "triggered" | "" (legacy)
+	IsCopy     bool   `json:"is_copy,omitempty"`
+	Countered  bool   `json:"countered,omitempty"`
+}
+
 type GameSnapshot struct {
 	GameID     int            `json:"game_id"`
 	Turn       int            `json:"turn"`
@@ -135,6 +158,13 @@ type GameSnapshot struct {
 	Winner     int            `json:"winner"`
 	EndReason  string         `json:"end_reason,omitempty"`
 	Log        []LogEntry     `json:"log,omitempty"`
+
+	// Stack is the engine's resolution stack at the moment the snapshot
+	// was captured. Order matches the engine's bottom-to-top order:
+	// Stack[0] is the bottom (oldest item), Stack[len-1] is the top
+	// (resolves first). Omitted when the stack is empty (the common
+	// state outside of cast/response windows).
+	Stack []StackItemSnapshot `json:"stack,omitempty"`
 
 	// Lineage is the InstanceID Phase 9 index — every Card across every
 	// zone (battlefield, hand, graveyard, exile, library, command zone,
@@ -2423,6 +2453,13 @@ func (sm *Showmatch) captureSnapshot(gs *gameengine.GameState, commanders []stri
 			Lost:        s.Lost,
 			LossReason:  s.LossReason,
 		}
+		// R60 spectator UX: surface per-color mana so the UI can render
+		// WUBRG pips instead of the legacy single-int total. Skip when
+		// every bucket is zero so the omitempty tag elides the field
+		// during the no-floating-mana steady state.
+		if mp := buildManaPoolByColor(s.Mana); len(mp) > 0 {
+			ss.ManaPoolByColor = mp
+		}
 		for _, p := range s.Battlefield {
 			if p == nil || p.Card == nil {
 				continue
@@ -2496,7 +2533,84 @@ func (sm *Showmatch) captureSnapshot(gs *gameengine.GameState, commanders []stri
 	// that has a minted InstanceID. The endpoint /api/spectator/lineage/:id
 	// reads this map; Heimdall walks it via BuildLineageTree.
 	snap.Lineage = buildLineageIndex(gs)
+	// R60 spectator UX: surface the resolution stack so the UI can
+	// show what's mid-cast / pending response.
+	snap.Stack = buildStackSnapshot(gs.Stack)
 	return snap
+}
+
+// buildManaPoolByColor flattens a ColoredManaPool into the
+// JSON-serializable map<color,count> shape the spectator UI consumes.
+// Restricted mana rolls into the "Any" bucket — spectators don't need
+// the spend-time restriction surfaced. Returns nil when every bucket
+// is zero so the SeatSnapshot's omitempty tag elides the field.
+func buildManaPoolByColor(p *gameengine.ColoredManaPool) map[string]int {
+	if p == nil {
+		return nil
+	}
+	out := map[string]int{}
+	if p.W > 0 {
+		out["W"] = p.W
+	}
+	if p.U > 0 {
+		out["U"] = p.U
+	}
+	if p.B > 0 {
+		out["B"] = p.B
+	}
+	if p.R > 0 {
+		out["R"] = p.R
+	}
+	if p.G > 0 {
+		out["G"] = p.G
+	}
+	if p.C > 0 {
+		out["C"] = p.C
+	}
+	anySum := p.Any
+	for _, r := range p.Restricted {
+		anySum += r.Amount
+	}
+	if anySum > 0 {
+		out["Any"] = anySum
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
+}
+
+// buildStackSnapshot resolves engine StackItems into display-ready
+// snapshots: surfaces the source name (card for spells, source
+// permanent for activated/triggered abilities), controller seat,
+// stack-item kind, and copy/countered flags. Empty input → nil so
+// the GameSnapshot's omitempty tag elides the field during the
+// no-stack steady state (between resolutions / outside cast
+// windows).
+func buildStackSnapshot(stack []*gameengine.StackItem) []StackItemSnapshot {
+	if len(stack) == 0 {
+		return nil
+	}
+	out := make([]StackItemSnapshot, 0, len(stack))
+	for _, item := range stack {
+		if item == nil {
+			continue
+		}
+		name := ""
+		if item.Card != nil {
+			name = item.Card.DisplayName()
+		} else if item.Source != nil && item.Source.Card != nil {
+			name = item.Source.Card.DisplayName()
+		}
+		out = append(out, StackItemSnapshot{
+			Source:     name,
+			Controller: item.Controller,
+			Kind:       item.Kind,
+			IsCopy:     item.IsCopy,
+			Countered:  item.Countered,
+		})
+	}
+	return out
 }
 
 // buildLineageIndex scans every zone on every seat (and the unified
