@@ -62,28 +62,31 @@ func drafnaActivated(gs *gameengine.GameState, src *gameengine.Permanent, abilit
 		return
 	}
 
-	card := best.Card.DeepCopy()
-	hasToken := false
-	for _, t := range card.Types {
-		if t == "token" {
-			hasToken = true
-			break
-		}
+	// Phase 5 chokepoint: MintTokenAsCopyOf DeepCopys the source AND
+	// clears the inherited InstanceID before stamping a fresh TK ID. The
+	// hand-rolled DeepCopy path that previously lived here inherited
+	// Spikeshell Harrier's OG ID onto the token, producing the
+	// "h1OGVU500020 appears in both seat 1 battlefield and seat 1
+	// battlefield" CardIdentity violation surfaced by Loki r60 game 4635.
+	// MintTokenAsCopyOf also handles the "token" type prepend and the
+	// Owner reassignment, so the manual splice below is no longer needed.
+	enablerID := gameengine.CurrentMintEnablerID(gs)
+	card := gameengine.MintTokenAsCopyOf(gs, best.Card, seat, enablerID)
+	if card == nil {
+		emitFail(gs, slug, src.Card.DisplayName(), "mint_token_returned_nil", nil)
+		return
 	}
-	if !hasToken {
-		card.Types = append([]string{"token"}, card.Types...)
-	}
-	card.Owner = seat
 
 	perm := &gameengine.Permanent{
-		Card:          card,
-		Controller:    seat,
-		Owner:         seat,
-		Tapped:        false,
-		SummoningSick: true,
-		Timestamp:     gs.NextTimestamp(),
-		Counters:      map[string]int{},
-		Flags:         map[string]int{},
+		Card:                   card,
+		Controller:             seat,
+		Owner:                  seat,
+		Tapped:                 false,
+		SummoningSick:          true,
+		Timestamp:              gs.NextTimestamp(),
+		Counters:               map[string]int{},
+		Flags:                  map[string]int{},
+		CopiedTargetInstanceID: best.Card.InstanceID,
 	}
 	s.Battlefield = append(s.Battlefield, perm)
 	gameengine.RegisterReplacementsForPermanent(gs, perm)
