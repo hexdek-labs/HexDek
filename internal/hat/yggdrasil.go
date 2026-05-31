@@ -3109,6 +3109,47 @@ func (h *YggdrasilHat) isValueEngineKey(c *gameengine.Card) bool {
 	return h.valueEngineSet[c.DisplayName()]
 }
 
+// cheapInteractionPassAdjust returns the passBoost delta driven by the
+// deck's cheap-interaction density (StrategyProfile.CheapInteraction,
+// count of CMC 0-2 interaction spells). Refines the archetype-based
+// passBoost with per-deck-shape signal:
+//
+//   - 4+ cheap interaction pieces (a "stocked interaction package"
+//     by Freya's RoleCounterspell threshold): +0.10 to passBoost.
+//     The deck has meaningful instant-speed plays on opp turns that
+//     the archetype switch alone doesn't credit (e.g. a Midrange
+//     deck with 8 cheap interaction won't get any hold-mana boost
+//     from the archetype lookup since Midrange isn't in the switch).
+//   - 0 cheap interaction pieces (deck cannot interact at all):
+//     -0.15 to passBoost. A Control archetype labeled deck with no
+//     cheap interaction shouldn't get the +0.30 hold-mana boost
+//     because there's literally nothing to hold mana for — the
+//     archetype stance encodes intent, the count encodes capability,
+//     and capability vetoes.
+//   - 1-3 cheap interaction: 0 (neutral middle).
+//
+// Magnitudes deliberately small relative to the archetype-stance
+// boosts above so this signal refines rather than replaces. Returns
+// 0 when sp is nil (legacy / no-strategy hat).
+//
+// Closes the freya-hat integration audit gap (2026-05-30):
+// CheapInteraction was loaded by strategy_loader.go but never read
+// by any decision code despite the field docstring claiming it
+// drives hold-mana behavior. Tested via
+// TestCheapInteractionPassAdjust in cheap_interaction_pass_r60_test.go.
+func cheapInteractionPassAdjust(sp *StrategyProfile) float64 {
+	if sp == nil {
+		return 0
+	}
+	switch {
+	case sp.CheapInteraction >= 4:
+		return 0.10
+	case sp.CheapInteraction == 0:
+		return -0.15
+	}
+	return 0
+}
+
 // isTempoCombo returns true when the deck's combo pieces heavily overlap
 // with value engine keys — meaning the pieces provide value on their own
 // and should be cast aggressively rather than held for assembly.
@@ -4414,6 +4455,30 @@ func (h *YggdrasilHat) ChooseCastFromHand(gs *gameengine.GameState, seatIdx int,
 	case ArchetypeSelfmill:
 		passBoost -= 0.10
 	}
+	// CheapInteraction-driven adjustment per StrategyProfile.
+	// CheapInteraction / InteractionAvgCMC docstring: "lower avg CMC =
+	// faster interaction = can afford to hold mana more often". The
+	// archetype switch above encodes a static stance; the deck's actual
+	// cheap-interaction density should modulate it. A Control deck shipped
+	// with 0 cheap interaction (rare but possible — minimally-rebuilt
+	// precons) shouldn't get the full +0.30 hold-mana boost because there
+	// is literally nothing to hold mana for. A Midrange / Tribal /
+	// Ramp / Aggro deck with 4+ cheap interaction SHOULD lean toward
+	// passing — the deck has meaningful instant-speed plays on opp turns
+	// that the archetype switch doesn't credit.
+	//
+	// Thresholds chosen to match Freya's existing cheap-interaction
+	// reporting: 4+ pieces is the canonical "stocked interaction package"
+	// mark (mirrors RoleCounterspell density gate, line 2427 in
+	// archetype.go); 0 pieces is the absolute floor (deck cannot interact
+	// at all). Magnitudes (+0.10 / -0.15) are deliberately small — the
+	// archetype stance stays load-bearing, this is a refinement.
+	//
+	// Closes the gap surfaced by the freya-hat integration audit
+	// (2026-05-30): CheapInteraction was loaded by strategy_loader.go
+	// but never consumed by any decision code despite the field's
+	// docstring claiming it drives hold-mana behavior.
+	passBoost += cheapInteractionPassAdjust(h.Strategy)
 	// Game clock pressure: reduce pass incentive as the game drags past
 	// the archetype's comfort zone. Aggro at turn 20 shouldn't be patient.
 	if gs != nil {
