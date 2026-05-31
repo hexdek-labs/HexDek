@@ -557,6 +557,27 @@ func showIndexEntry(rule string, w io.Writer) {
 		}
 		fmt.Fprintf(w, "    related rules:      %s\n", strings.Join(slugs, ", "))
 	}
+	if len(e.HistoricalFixes) > 0 {
+		// Cap at 5 so a heavily-cited rule like §704.5a doesn't flood
+		// the transcript; user can run --citation-index for the full
+		// JSON dump.
+		shown := e.HistoricalFixes
+		if len(shown) > 5 {
+			shown = shown[:5]
+		}
+		fmt.Fprintf(w, "    historical fixes (%d):\n", len(e.HistoricalFixes))
+		for _, fx := range shown {
+			summary := fx.IssueSummary
+			if len(summary) > 90 {
+				summary = summary[:90] + "…"
+			}
+			fmt.Fprintf(w, "      %s [%s] %s\n", fx.Date, fx.Source, summary)
+		}
+		if len(e.HistoricalFixes) > len(shown) {
+			fmt.Fprintf(w, "      … and %d more (run --citation-index for the full list)\n",
+				len(e.HistoricalFixes)-len(shown))
+		}
+	}
 	fmt.Fprintln(w)
 }
 
