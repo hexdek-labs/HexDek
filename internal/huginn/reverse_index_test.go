@@ -24,7 +24,7 @@ func TestBuildReverseIndex_EmptyDir(t *testing.T) {
 	if err := BuildReverseIndex(dir); err != nil {
 		t.Fatalf("BuildReverseIndex on empty dir: %v", err)
 	}
-	if got := ReverseIndex("orc-x"); got != nil {
+	if got := LookupReverseIndex("orc-x"); got != nil {
 		t.Fatalf("expected nil for unseen oracle, got %v", got)
 	}
 	if got := ProvenanceOf("hX"); got != ProvUnknown {
@@ -57,18 +57,18 @@ func TestAppendAndRead_RoundTripWithDedup(t *testing.T) {
 		t.Fatalf("BuildReverseIndex: %v", err)
 	}
 
-	bolt := ReverseIndex("orc-bolt")
+	bolt := LookupReverseIndex("orc-bolt")
 	sort.Strings(bolt)
 	want := []string{"h0CPVR300002", "h0OGVR300001"}
 	if !reflect.DeepEqual(bolt, want) {
-		t.Fatalf("ReverseIndex(bolt) = %v, want %v (dedup of duplicate OG obs)", bolt, want)
+		t.Fatalf("LookupReverseIndex(bolt) = %v, want %v (dedup of duplicate OG obs)", bolt, want)
 	}
 
-	bop := ReverseIndex("orc-bop")
+	bop := LookupReverseIndex("orc-bop")
 	sort.Strings(bop)
 	wantBop := []string{"h1OGVG100003", "h1TKVG100004"}
 	if !reflect.DeepEqual(bop, wantBop) {
-		t.Fatalf("ReverseIndex(bop) = %v, want %v", bop, wantBop)
+		t.Fatalf("LookupReverseIndex(bop) = %v, want %v", bop, wantBop)
 	}
 }
 
@@ -102,8 +102,8 @@ func TestProvenanceOf_KnownAndUnknown(t *testing.T) {
 	}
 	// AB observation has empty OracleID so it should NOT appear in any
 	// reverse-index bucket.
-	if got := ReverseIndex(""); got != nil {
-		t.Errorf("ReverseIndex(\"\") = %v, want nil (empty OracleID is dropped)", got)
+	if got := LookupReverseIndex(""); got != nil {
+		t.Errorf("LookupReverseIndex(\"\") = %v, want nil (empty OracleID is dropped)", got)
 	}
 }
 
@@ -153,7 +153,7 @@ func TestResetAndLazyRebuild(t *testing.T) {
 	if err := BuildReverseIndex(dir); err != nil {
 		t.Fatalf("build: %v", err)
 	}
-	if got := ReverseIndex("orcA"); len(got) != 1 {
+	if got := LookupReverseIndex("orcA"); len(got) != 1 {
 		t.Fatalf("pre-reset ReverseIndex = %v, want one entry", got)
 	}
 
@@ -164,7 +164,7 @@ func TestResetAndLazyRebuild(t *testing.T) {
 	if err := BuildReverseIndex(dir); err != nil {
 		t.Fatalf("rebuild after reset: %v", err)
 	}
-	if got := ReverseIndex("orcA"); len(got) != 1 || got[0] != "iid1" {
+	if got := LookupReverseIndex("orcA"); len(got) != 1 || got[0] != "iid1" {
 		t.Fatalf("post-rebuild ReverseIndex = %v, want [iid1]", got)
 	}
 	if got := ProvenanceOf("iid1"); got != ProvOG {
@@ -194,8 +194,8 @@ func TestConcurrentReads_NoDataRace(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			for i := 0; i < iters; i++ {
-				_ = ReverseIndex("orcA")
-				_ = ReverseIndex("orcB")
+				_ = LookupReverseIndex("orcA")
+				_ = LookupReverseIndex("orcB")
 				_ = ProvenanceOf("iid1")
 				_ = ProvenanceOf("iid2")
 				_ = ProvenanceOf("missing")
@@ -233,7 +233,7 @@ func TestJSONLStreaming_OneThousandObservations(t *testing.T) {
 	if err := BuildReverseIndex(dir); err != nil {
 		t.Fatalf("build: %v", err)
 	}
-	got := ReverseIndex("orc-bulk")
+	got := LookupReverseIndex("orc-bulk")
 	if len(got) != n {
 		t.Fatalf("ReverseIndex returned %d unique IIDs, want %d (one per row, all distinct)", len(got), n)
 	}

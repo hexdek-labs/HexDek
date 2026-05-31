@@ -320,13 +320,17 @@ func BuildReverseIndex(dir string) error {
 	return nil
 }
 
-// ReverseIndex returns every InstanceID currently observed for the
-// given oracle ID. Returns nil for an unseen oracle ID. Result is a
-// copy — callers may mutate it freely.
+// LookupReverseIndex returns every InstanceID currently observed for
+// the given oracle ID. Returns nil for an unseen oracle ID. Result
+// is a copy — callers may mutate it freely.
 //
 // O(1) lookup after the index has been built; lazily-builds on first
 // call from defaultHuginnDir if not already built. Thread-safe.
-func ReverseIndex(oracleID string) []string {
+//
+// Renamed from ReverseIndex to disambiguate from the ReverseIndex
+// interface type in recommender.go (collision blocked the entire
+// huginn package from compiling — see PR #946 trace).
+func LookupReverseIndex(oracleID string) []string {
 	ensureBuilt()
 	reverseIdx.mu.RLock()
 	defer reverseIdx.mu.RUnlock()
