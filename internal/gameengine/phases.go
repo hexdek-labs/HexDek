@@ -959,11 +959,10 @@ func ResolveParadigmCopies(gs *GameState, active int) {
 			continue
 		}
 
-		copyCard := card.DeepCopy()
-		copyCard.IsCopy = true
-		copyCard.InstanceID = ""
-		copyCard.EnablerHistory = nil
-		MintCopyInstanceID(gs, copyCard, card.InstanceID, currentMintEnablerID(gs))
+		// Route through MintSpellCopy chokepoint so SourceInstanceID +
+		// EnablerInstanceID are also cleared (the inline pattern here
+		// only zeroed InstanceID + EnablerHistory pre-Phase G).
+		copyCard := MintSpellCopy(gs, card)
 		eff := collectSpellEffect(copyCard)
 		item := &StackItem{
 			Controller: active,
