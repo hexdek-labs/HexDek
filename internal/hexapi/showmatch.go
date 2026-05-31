@@ -480,6 +480,19 @@ func (sm *Showmatch) SetCreditStore(c *credits.Store) {
 	sm.credits = c
 }
 
+// DeckParserMeta exposes the card-meta DB the Showmatch loads at
+// startup so handlers outside this file (currently /api/health for
+// the hat-readiness probe; the parse-preview endpoint in flight will
+// also consume it) can read it without duplicating the load. Returns
+// nil while the background load is in progress (sm.ready) or when
+// meta loading failed — callers MUST nil-check and surface the
+// "not configured" state instead of dereferencing.
+//
+// Read-only accessor; the underlying meta is populated once at
+// startup and never mutated, so no locking is needed for the pointer
+// read.
+func (sm *Showmatch) DeckParserMeta() *deckparser.MetaDB { return sm.meta }
+
 type spectatorConn struct {
 	conn *websocket.Conn
 	mu   sync.Mutex
