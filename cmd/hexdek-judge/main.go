@@ -110,6 +110,15 @@ func main() {
 		// one-shot pipeable full report. Exit 1 when the rule isn't
 		// known so CI can gate on "is this CR sub-section implemented?"
 		explainRule = flag.String("explain", "", "batch mode: render a man-page-style report for a CR sub-section (consolidates CR text + codebase checks + related rules + CLAUDE.md historical fixes). Exit 1 if rule isn't in the index.")
+		// Batch SBA probe — walk every .json file in a directory and
+		// run the §704 SBA probe against each. Single JSON summary
+		// report with per-file violation tallies + aggregated rule
+		// histogram + top-offenders ranking. Useful for sweeping a
+		// directory of Loki crash snapshots / manual game-state dumps
+		// in one pass. Exit 1 if any snapshot has §704 violations
+		// (parse failures alone do NOT trigger non-zero — they're
+		// input noise, not rules-correctness gaps).
+		batchDir = flag.String("batch", "", "batch mode: scan every .json in this directory as a game-state snapshot, run the §704 SBA probe against each, emit a summary report")
 		deckPath    = flag.String("deck", "", "deck text file path for --check-commander / --check-deck-construction / --report-parse")
 		checkOut   = flag.String("check-out", "", "output path for the --check-* JSON report (default: stdout)")
 		// Parse coverage report — surfaces the deckparser's structured
@@ -198,6 +207,17 @@ func main() {
 			log.Fatalf("explain: %v", err)
 		}
 		if !known {
+			os.Exit(1)
+		}
+		return
+	}
+
+	if *batchDir != "" {
+		rep, err := runBatch(*batchDir, *checkOut)
+		if err != nil {
+			log.Fatalf("batch: %v", err)
+		}
+		if !rep.Valid {
 			os.Exit(1)
 		}
 		return
