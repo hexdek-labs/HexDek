@@ -59,6 +59,21 @@ func AnalyzeGame(
 		cardPerf[i] = make(map[string]*CardPerformance)
 	}
 
+	// Allocate the per-seat-pair interaction matrix for this game.
+	// Cells[from][to] holds the directed (from → to) interaction
+	// counts. We allocate eagerly so the matrix is never nil even
+	// for games with no recorded interactions — dashboards rendering
+	// a heatmap can iterate the empty grid without nil-checking each
+	// row.
+	ga.Interactions = &InteractionMatrix{
+		Seats:          nSeats,
+		SeatCommanders: append([]string(nil), commanderNames...),
+		Cells:          make([][]InteractionCell, nSeats),
+	}
+	for i := 0; i < nSeats; i++ {
+		ga.Interactions.Cells[i] = make([]InteractionCell, nSeats)
+	}
+
 	// Track which card names are tokens (created by create_token events)
 	// so they can be excluded from dead-card analysis.
 	tokenNames := make(map[string]bool)
@@ -167,6 +182,15 @@ func AnalyzeGame(
 				}
 				ga.Players[seat].DamageDealt += amount
 
+				// Per-seat-pair player damage attribution (combat
+				// only — non-combat damage like Lightning Bolt is
+				// tracked separately by source card, not by attacker
+				// seat). Skip self-damage (e.g., damage to own
+				// player from own spell — rare but possible).
+				if isCombat && targetSeat >= 0 && targetSeat < nSeats && targetSeat != seat {
+					ga.Interactions.Cells[seat][targetSeat].PlayerDamage += amount
+				}
+
 				// First blood tracking.
 				if ga.FirstBlood == 0 && amount > 0 {
 					ga.FirstBlood = currentTurn
@@ -261,12 +285,99 @@ func AnalyzeGame(
 			targetSeat := ev.Target
 			if targetSeat >= 0 && targetSeat < nSeats {
 				ga.Players[targetSeat].SpellsCountered++
+				// Interaction matrix: seat countered targetSeat's
+				// spell. Skip self-counters (e.g., per_card
+				// self-trigger counter, very rare).
+				if targetSeat != seat {
+					ga.Interactions.Cells[seat][targetSeat].Counters++
+				}
 			}
 			// Mark the countered card.
 			targetCard, _ := detailString(ev, "target_card")
 			if targetCard != "" && targetSeat >= 0 && targetSeat < nSeats {
 				cp := getOrCreateCardPerf(cardPerf[targetSeat], targetCard)
 				cp.WasCountered = true
+			}
+
+		case "declare_attackers":
+			// Per-seat-pair attack count. Combat.go emits this with
+			// Seat = attackerSeat and Details["attackers"] holding a
+			// list of {attacker, defender_seat} maps (one per attacker
+			// declared). Each attacker counts as one Attack against
+			// the targeted defender.
+			if seat < 0 {
+				continue
+			}
+			attackers, ok := ev.Details["attackers"].([]map[string]interface{})
+			if !ok {
+				// Fallback when the event was serialized through JSON
+				// and the inner slice came back as []interface{}.
+				if raw, rok := ev.Details["attackers"].([]interface{}); rok {
+					for _, item := range raw {
+						pair, _ := item.(map[string]interface{})
+						if pair == nil {
+							continue
+						}
+						defenderSeat, _ := pair["defender_seat"].(int)
+						if defenderSeat >= 0 && defenderSeat < nSeats && defenderSeat != seat {
+							ga.Interactions.Cells[seat][defenderSeat].Attacks++
+						}
+					}
+				}
+				continue
+			}
+			for _, pair := range attackers {
+				defenderSeat, _ := pair["defender_seat"].(int)
+				if defenderSeat >= 0 && defenderSeat < nSeats && defenderSeat != seat {
+					ga.Interactions.Cells[seat][defenderSeat].Attacks++
+				}
+			}
+
+		case "blockers":
+			// Per-seat-pair block count. Combat.go emits this with
+			// Seat = defenderSeat and Details["pairs"] holding a list
+			// of {attacker, blockers[]} maps. One Block is recorded
+			// per attacker blocked (NOT per blocker assigned — a
+			// 2-blocker stack against one attacker is still one Block
+			// event from the defender's side). Attacker SEAT is
+			// resolved from the most recent declare_attackers event;
+			// we don't try to re-derive it here, instead we walk back
+			// briefly to find the matching attacker name.
+			if seat < 0 {
+				continue
+			}
+			defenderSeat := seat
+			pairs, ok := ev.Details["pairs"].([]map[string]interface{})
+			if !ok {
+				if raw, rok := ev.Details["pairs"].([]interface{}); rok {
+					pairs = make([]map[string]interface{}, 0, len(raw))
+					for _, item := range raw {
+						if pair, pok := item.(map[string]interface{}); pok {
+							pairs = append(pairs, pair)
+						}
+					}
+				}
+			}
+			for _, pair := range pairs {
+				blockers, _ := pair["blockers"].([]string)
+				if blockers == nil {
+					// JSON deserialization fallback.
+					if raw, rok := pair["blockers"].([]interface{}); rok {
+						for _, b := range raw {
+							if s, sok := b.(string); sok {
+								blockers = append(blockers, s)
+							}
+						}
+					}
+				}
+				if len(blockers) == 0 {
+					continue
+				}
+				attackerName, _ := pair["attacker"].(string)
+				attackerSeat := lookupAttackerSeat(events, idx, attackerName)
+				if attackerSeat >= 0 && attackerSeat < nSeats && attackerSeat != defenderSeat {
+					ga.Interactions.Cells[attackerSeat][defenderSeat].Blocks++
+				}
 			}
 
 		case "create_token":
@@ -755,6 +866,52 @@ func appendCMCThisTurn(pa *PlayerAnalysis, turn, cmc int) {
 	}
 	pa.CastsByTurn[turn] = append(pa.CastsByTurn[turn], cmc)
 	pa.TotalSpellCMC += cmc
+}
+
+// lookupAttackerSeat walks back from `endIdx` through the event log
+// looking for the most recent declare_attackers event whose
+// attackers list includes `attackerName`. Returns the attacker seat
+// or -1 if not found. Used by the blockers event handler to attribute
+// a Block back to the (attackerSeat → defenderSeat) cell.
+//
+// The walk is bounded — only the most recent ~32 events are scanned
+// since the matching declare_attackers should fire within the same
+// combat phase as the blockers event.
+func lookupAttackerSeat(events []gameengine.Event, endIdx int, attackerName string) int {
+	if attackerName == "" {
+		return -1
+	}
+	const lookback = 32
+	start := endIdx - lookback
+	if start < 0 {
+		start = 0
+	}
+	for i := endIdx - 1; i >= start; i-- {
+		ev := &events[i]
+		if ev.Kind != "declare_attackers" {
+			continue
+		}
+		// Two shapes — either typed []map[string]interface{} (in-process)
+		// or []interface{} (post-JSON deserialization).
+		if raw, ok := ev.Details["attackers"].([]map[string]interface{}); ok {
+			for _, pair := range raw {
+				if name, _ := pair["attacker"].(string); name == attackerName {
+					return ev.Seat
+				}
+			}
+		} else if raw, ok := ev.Details["attackers"].([]interface{}); ok {
+			for _, item := range raw {
+				pair, pok := item.(map[string]interface{})
+				if !pok {
+					continue
+				}
+				if name, _ := pair["attacker"].(string); name == attackerName {
+					return ev.Seat
+				}
+			}
+		}
+	}
+	return -1
 }
 
 // snapshotLifeForTurn records the seat's life total at the end of
