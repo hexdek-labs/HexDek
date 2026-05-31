@@ -94,16 +94,11 @@ func demonicPactUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	case "lose":
 		// CR §104.3e: route through canonical helper so §614
 		// would_lose_game (Platinum Angel / Angel's Grace) can cancel.
-		gameengine.MarkSeatLostByEffect(gs, seat, "Demonic Pact")
-		gs.LogEvent(gameengine.Event{
-			Kind:   "seat_lost",
-			Seat:   seat,
-			Source: "Demonic Pact",
-			Details: map[string]interface{}{
-				"reason": "demonic_pact_final_mode",
-				"rule":   "104.2",
-			},
-		})
+		// Helper emits the canonical `lose_game` Event with the
+		// source-name suffix preserving the mode detail — no
+		// separate `seat_lost` Event needed (normalized r60).
+		gameengine.MarkSeatLostByEffect(gs, seat,
+			"Demonic Pact (final mode — all three other modes exhausted)")
 		_ = gs.CheckEnd()
 	}
 
