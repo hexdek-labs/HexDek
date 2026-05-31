@@ -74,6 +74,14 @@ func esikaBridgeUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 		return
 	}
 
+	// Wave 2 multi-step migration: read top card from live library, keep
+	// it there if it's a creature/planeswalker (so enterBattlefieldWithETB
+	// → createPermanent can sweep it canonically) or rotate it into the
+	// revealed slice (within-zone reorder). Pre-r60 shape manually spliced
+	// each card off the front and then "detached" the hit — but the hit
+	// then went through enterBattlefieldWithETB anyway, whose createPermanent
+	// would re-attempt a sweep from now-empty zones. Cleaner: leave the
+	// hit in library, let createPermanent sweep it.
 	var revealed []*gameengine.Card
 	var hit *gameengine.Card
 	for len(seat.Library) > 0 {
@@ -83,18 +91,20 @@ func esikaBridgeUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 			continue
 		}
 		if cardHasType(top, "creature") || cardHasType(top, "planeswalker") {
-			seat.Library = seat.Library[1:]
 			hit = top
 			break
 		}
+		// Within-zone rotation: pull this non-hit off the top into the
+		// revealed batch (will be shuffled back in after the cheat).
 		seat.Library = seat.Library[1:]
 		revealed = append(revealed, top)
 	}
 
 	entered := ""
 	if hit != nil {
-		// Bypass library/zone bookkeeping (we already detached above) and
-		// drop the card on the battlefield with full ETB semantics.
+		// enterBattlefieldWithETB → createPermanent sweeps `hit` from
+		// library (RemoveCardFromAllPrivateZones) + fires the full ETB
+		// cascade.
 		hit.Owner = perm.Controller
 		ent := enterBattlefieldWithETB(gs, perm.Controller, hit, false)
 		if ent != nil {

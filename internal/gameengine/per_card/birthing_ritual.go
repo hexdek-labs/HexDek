@@ -79,15 +79,30 @@ func birthingRitualEndStep(gs *gameengine.GameState, perm *gameengine.Permanent,
 		gameengine.SacrificePermanent(gs, sacVictim, "birthing_ritual_cost")
 	}
 
-	seat.Library = seat.Library[n:]
+	// Wave 2 multi-step migration: drop the pre-splice + double-place.
+	// Pre-r60 shape spliced top n off, then called MoveCard("library"→
+	// "battlefield") AND enterBattlefieldWithETB on the same card — the
+	// former placed a Permanent (via moveToZone's battlefield arm) and
+	// the latter's createPermanent then deduped, but the redundancy
+	// muddied which trigger chain owned the ETB fan-out. The clean
+	// shape: leave the picked card in library and let
+	// enterBattlefieldWithETB → createPermanent sweep the source via
+	// RemoveCardFromAllPrivateZones (CR §400.7 owner-zone tracking).
 	if cheated != nil {
-		gameengine.MoveCard(gs, cheated, perm.Controller, "library", "battlefield", "birthing_ritual_cheat")
 		enterBattlefieldWithETB(gs, perm.Controller, cheated, false)
 	}
+	// Non-picked top cards stay in library; rotate them to the bottom.
+	// After enterBattlefieldWithETB sweeps the picked card from library,
+	// the remaining top-N are still on top in their original order.
 	for i, c := range top {
-		if i == cheatIdx {
+		if i == cheatIdx || c == nil {
 			continue
 		}
+		// Defensive: card should be at library[0]; if not, skip rotation.
+		if len(seat.Library) == 0 || seat.Library[0] != c {
+			continue
+		}
+		seat.Library = seat.Library[1:]
 		seat.Library = append(seat.Library, c)
 	}
 
