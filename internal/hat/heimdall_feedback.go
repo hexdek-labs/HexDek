@@ -7,7 +7,13 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"time"
 )
+
+// realTimeNow is the production timestamp source used by MarkFeedbackRejected
+// when timeNow hasn't been overridden for tests. Aliased through a
+// package-level var so the injection-point pattern stays one line.
+func realTimeNow() time.Time { return time.Now().UTC() }
 
 // HeimdallFeedback is the on-disk shape Heimdall emits when it
 // attributes wins/losses to specific EvalWeights dimensions across a
@@ -306,3 +312,245 @@ func clampFloorMin(v, floor float64) float64 {
 	return v
 }
 
+// ---------------------------------------------------------------------
+// Rollback safety net (2026-05-31)
+//
+// The applier above can nudge the deck's eval weights based on
+// Heimdall attribution, but the attribution itself can be noisy or
+// misleading (small sample, biased opponent pool, regression in the
+// Heimdall analysis itself). If applying a feedback file actively
+// HARMS the deck's next gauntlet, we want a way to undo it
+// automatically rather than waiting for a human to notice the win-rate
+// drop and roll back by hand.
+//
+// The pipeline:
+//
+//   1. Before apply: caller captures FeedbackSnapshot via
+//      ApplyHeimdallFeedbackWithSnapshot. Snapshot holds a value-copy
+//      of the pre-mutation Weights plus audit metadata.
+//
+//   2. After apply: caller runs the gauntlet, computes the observed
+//      win rate.
+//
+//   3. Decision: caller passes baselineWinRate (pre-feedback) and
+//      currentWinRate (post-feedback) to ShouldRollback with the
+//      configured threshold (typically 0.05 = 5pp drop). Returns
+//      true when current < baseline - threshold.
+//
+//   4. Rollback: caller invokes RollbackFromSnapshot to restore
+//      Weights, then MarkFeedbackRejected to write a sentinel
+//      sidecar (<feedbackPath>.rejected) so the NEXT --apply-feedback
+//      invocation with the same path detects the rejection and
+//      skips application (via IsFeedbackRejected).
+//
+// The sidecar persists the rejection across runs — without it, the
+// next tournament would re-apply the same bad feedback and the cycle
+// would repeat. Sidecars are JSON for human-readable audit
+// (timestamp, baseline/current/threshold).
+
+// FeedbackSnapshot captures the state of a StrategyProfile's eval
+// weights BEFORE a HeimdallFeedback application, plus audit metadata
+// (source file path, dimensions modified) for the rollback decision.
+// Created by ApplyHeimdallFeedbackWithSnapshot; consumed by
+// RollbackFromSnapshot. Always a value-copy — restoring the snapshot
+// gives the caller a byte-for-byte restoration of the pre-application
+// state.
+type FeedbackSnapshot struct {
+	// PreApplicationWeights is a value-copy of sp.Weights taken
+	// immediately before the applier ran. RollbackFromSnapshot
+	// writes this back to sp.Weights to undo the mutation. Stored
+	// by value (not pointer) so future mutations to sp.Weights
+	// don't corrupt the snapshot.
+	PreApplicationWeights EvalWeights
+
+	// FeedbackSource mirrors HeimdallFeedback.Source for audit /
+	// log output. Empty when the feedback file didn't supply one.
+	FeedbackSource string
+
+	// DimensionsModified is the count of dimensions actually
+	// changed by the apply call (same value the original
+	// ApplyHeimdallFeedback returned). 0 indicates a no-op apply
+	// — snapshot is still valid but rollback would be a no-op.
+	DimensionsModified int
+}
+
+// ApplyHeimdallFeedbackWithSnapshot is the snapshot-capable variant
+// of ApplyHeimdallFeedback for callers that want rollback capability.
+// Captures a value-copy of sp.Weights BEFORE the apply, runs the
+// existing apply pipeline, and returns the modification count plus
+// the snapshot. Snapshot is nil only when sp itself is nil (the
+// caller can't meaningfully roll back anything without a profile).
+//
+// Snapshot materializes the archetype defaults when sp.Weights was
+// nil at call time, mirroring ApplyHeimdallFeedback's own
+// materialization — so rollback restores to the materialized
+// baseline, not to a nil pointer.
+func ApplyHeimdallFeedbackWithSnapshot(sp *StrategyProfile, fb *HeimdallFeedback) (int, *FeedbackSnapshot) {
+	if sp == nil {
+		return 0, nil
+	}
+	// Pre-materialize so the snapshot captures the same baseline
+	// that the applier would have used. Mirrors the applier's own
+	// nil-Weights handling.
+	if sp.Weights == nil {
+		base := DefaultWeightsForArchetype(sp.Archetype)
+		sp.Weights = &base
+	}
+	snap := &FeedbackSnapshot{
+		PreApplicationWeights: *sp.Weights, // value-copy
+	}
+	if fb != nil {
+		snap.FeedbackSource = fb.Source
+	}
+	n := ApplyHeimdallFeedback(sp, fb)
+	snap.DimensionsModified = n
+	return n, snap
+}
+
+// RollbackFromSnapshot restores sp.Weights to the pre-application
+// state captured in snapshot. No-op when either sp or snapshot is
+// nil. Idempotent: rolling back to the same snapshot twice produces
+// the same result as rolling back once.
+//
+// Materializes sp.Weights as a fresh pointer (rather than mutating
+// in place) so any other references to the old *EvalWeights see
+// neither the post-feedback nor the rolled-back state mid-rollback —
+// the rollback is atomic from the consumer's perspective.
+func RollbackFromSnapshot(sp *StrategyProfile, snapshot *FeedbackSnapshot) {
+	if sp == nil || snapshot == nil {
+		return
+	}
+	restored := snapshot.PreApplicationWeights // value-copy out
+	sp.Weights = &restored
+}
+
+// ShouldRollback returns true when the observed post-feedback win
+// rate dropped more than `threshold` below the pre-feedback baseline.
+// Rates and threshold are fractions in [0, 1] (so 0.05 = 5 percentage
+// points). Returns false (do not roll back) on degenerate inputs:
+//
+//   - baselineWinRate <= 0 (no baseline supplied — can't compute drop)
+//   - threshold <= 0 (rollback gate disabled by configuration)
+//   - currentWinRate >= baselineWinRate - threshold (no regression
+//     significant enough to revert)
+//
+// The asymmetric "<= 0 = disabled" semantic for both baseline and
+// threshold lets callers wire a single rollback flag pair and have it
+// short-circuit cleanly when either side is missing — no need for a
+// separate "rollback enabled" boolean.
+func ShouldRollback(baselineWinRate, currentWinRate, threshold float64) bool {
+	if baselineWinRate <= 0 || threshold <= 0 {
+		return false
+	}
+	drop := baselineWinRate - currentWinRate
+	return drop > threshold
+}
+
+// rejectionSidecarSuffix is appended to a feedback file path to form
+// the rejection-sentinel path: feedback.json → feedback.json.rejected.
+// Suffix rather than a separate directory so the marker travels with
+// the feedback file across copies / moves.
+const rejectionSidecarSuffix = ".rejected"
+
+// FeedbackRejection is the on-disk shape of the rejection sidecar.
+// Human-readable JSON so an operator inspecting the file gets the
+// full context (which gauntlet, what baseline vs observed rate,
+// what threshold tripped). Loaded by IsFeedbackRejectedDetail when
+// callers want the rejection record beyond the boolean.
+type FeedbackRejection struct {
+	FeedbackPath    string  `json:"feedback_path"`
+	BaselineWinRate float64 `json:"baseline_win_rate"`
+	CurrentWinRate  float64 `json:"current_win_rate"`
+	Threshold       float64 `json:"threshold"`
+	RejectedAt      string  `json:"rejected_at"`
+	Note            string  `json:"note,omitempty"`
+}
+
+// MarkFeedbackRejected writes a FeedbackRejection sidecar at
+// <feedbackPath>.rejected so the NEXT --apply-feedback invocation
+// with the same path can detect the rejection and skip application
+// (via IsFeedbackRejected). Idempotent: calling twice overwrites
+// with the latest rejection metadata.
+//
+// Caller-supplied note is optional human-readable context (e.g.
+// "rollback after 100-game gauntlet on dev/foo-bar"). Empty path is
+// a no-op — defensive for the "rollback decided but feedback was
+// loaded from an empty-path fallback" case.
+func MarkFeedbackRejected(feedbackPath string, baselineWinRate, currentWinRate, threshold float64, note string) error {
+	if feedbackPath == "" {
+		return nil
+	}
+	rej := FeedbackRejection{
+		FeedbackPath:    feedbackPath,
+		BaselineWinRate: baselineWinRate,
+		CurrentWinRate:  currentWinRate,
+		Threshold:       threshold,
+		RejectedAt:      timeNow().Format("2006-01-02T15:04:05Z07:00"),
+		Note:            note,
+	}
+	data, err := json.MarshalIndent(rej, "", "  ")
+	if err != nil {
+		return fmt.Errorf("hat: marshal rejection sidecar: %w", err)
+	}
+	sidecar := feedbackPath + rejectionSidecarSuffix
+	if err := os.WriteFile(sidecar, data, 0o644); err != nil {
+		return fmt.Errorf("hat: write rejection sidecar %s: %w", sidecar, err)
+	}
+	return nil
+}
+
+// IsFeedbackRejected returns true when a rejection sidecar exists at
+// <feedbackPath>.rejected. Cheap stat-only check; callers that need
+// the rejection metadata (timestamp, baseline, etc.) should call
+// LoadFeedbackRejection instead. Empty path returns false (defensive).
+func IsFeedbackRejected(feedbackPath string) bool {
+	if feedbackPath == "" {
+		return false
+	}
+	_, err := os.Stat(feedbackPath + rejectionSidecarSuffix)
+	return err == nil
+}
+
+// LoadFeedbackRejection returns the rejection sidecar record for the
+// given feedback path, or (nil, nil) when no sidecar exists. Returns
+// an error only on read / parse failure of an existing sidecar.
+func LoadFeedbackRejection(feedbackPath string) (*FeedbackRejection, error) {
+	if feedbackPath == "" {
+		return nil, nil
+	}
+	sidecar := feedbackPath + rejectionSidecarSuffix
+	data, err := os.ReadFile(sidecar)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("hat: read rejection sidecar %s: %w", sidecar, err)
+	}
+	var rej FeedbackRejection
+	if err := json.Unmarshal(data, &rej); err != nil {
+		return nil, fmt.Errorf("hat: parse rejection sidecar %s: %w", sidecar, err)
+	}
+	return &rej, nil
+}
+
+// ClearFeedbackRejection deletes the rejection sidecar at
+// <feedbackPath>.rejected, re-enabling application of the feedback
+// file on subsequent runs. Used by operators who want to retry a
+// previously-rejected feedback file (e.g. after re-running Heimdall
+// with a larger sample size). No-op when no sidecar exists.
+func ClearFeedbackRejection(feedbackPath string) error {
+	if feedbackPath == "" {
+		return nil
+	}
+	sidecar := feedbackPath + rejectionSidecarSuffix
+	if err := os.Remove(sidecar); err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("hat: remove rejection sidecar %s: %w", sidecar, err)
+	}
+	return nil
+}
+
+// timeNow is a package-level injection point for time.Now() so tests
+// can pin a deterministic timestamp in MarkFeedbackRejected output.
+// Defaults to the real time.Now. Tests swap in a fixed-time function
+// then restore.
+var timeNow = realTimeNow
