@@ -1030,7 +1030,35 @@ func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) fl
 	if starting <= 0 {
 		starting = 40
 	}
-	ratio := float64(seat.Life) / starting
+
+	// R60: effective-clock awareness via commander damage. Pre-r60 the
+	// dimension read seat.Life only, but in commander our practical
+	// clock is min(seat.Life, 21 - max_cmdr_dmg_taken). At life=12
+	// with 14 commander damage from one source, we have only 7
+	// commander-damage-points to live — that's a much shorter clock
+	// than the raw life suggests. Only narrows the clock when commander
+	// damage is in the relevant band (>=14, matching the Voltron-side
+	// "two-thirds" threshold from scoreCommander), and only when the
+	// derived clock is actually shorter than raw life — a commander
+	// damage of 5 doesn't shorten a life=12 clock.
+	effectiveLife := seat.Life
+	if gs.CommanderFormat && seat.CommanderDamage != nil {
+		maxCmdrDmg := 0
+		for _, cmdMap := range seat.CommanderDamage {
+			for _, dmg := range cmdMap {
+				if dmg > maxCmdrDmg {
+					maxCmdrDmg = dmg
+				}
+			}
+		}
+		if maxCmdrDmg >= 14 {
+			cmdrClock := 21 - maxCmdrDmg
+			if cmdrClock < effectiveLife {
+				effectiveLife = cmdrClock
+			}
+		}
+	}
+	ratio := float64(effectiveLife) / starting
 
 	if seat.Life <= 0 {
 		return -1
@@ -1044,8 +1072,7 @@ func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) fl
 			continue
 		}
 		ot := gameengine.OracleTextLower(p.Card)
-		if strings.Contains(ot, "pay") && strings.Contains(ot, "life") &&
-			(strings.Contains(ot, "draw") || strings.Contains(ot, "cast") || strings.Contains(ot, "search")) {
+		if isLifeAsResourcePayoff(ot) {
 			hasLifePayoff = true
 			break
 		}
@@ -1074,8 +1101,7 @@ func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) fl
 				continue
 			}
 			ot := gameengine.OracleTextLower(c)
-			if strings.Contains(ot, "pay") && strings.Contains(ot, "life") &&
-				(strings.Contains(ot, "search") || strings.Contains(ot, "draw")) {
+			if isLifeAsResourcePayoff(ot) {
 				hasLifePayoff = true
 				break
 			}
@@ -1090,16 +1116,20 @@ func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) fl
 	// established "calm zone" semantics; the convexity is targeted at
 	// shock-range death proximity.
 	var base float64
-	if seat.Life <= 10 {
+	// R60: use effectiveLife (clock-aware: min of raw life and 21-max-cmdr-dmg)
+	// for the band check too — pre-r60 a seat at life=20 with 18 commander
+	// damage from one source had effectiveLife=3 but went to the mid-band
+	// because seat.Life > 10, missing the convex shock penalty entirely.
+	if effectiveLife <= 10 {
 		base = ratio - 0.5
-		danger := float64(10-seat.Life) / 10.0 // 0..1
+		danger := float64(10-effectiveLife) / 10.0 // 0..1
 		base -= danger * danger * 0.5
 		if hasLifePayoff {
 			base *= 0.5
 		}
 	} else {
 		base = (ratio - 0.5) * 0.5
-		if hasLifePayoff && seat.Life > 20 {
+		if hasLifePayoff && effectiveLife > 20 {
 			base += 0.1
 		}
 	}
@@ -1185,6 +1215,44 @@ func (e *GameStateEvaluator) scoreLife(gs *gameengine.GameState, seatIdx int) fl
 			erosion = 0.15
 		}
 		base -= erosion
+	}
+
+	// R60: inevitability amplifier. Low-life states are dramatically more
+	// dangerous when an opponent is also winning the BOARD — they have
+	// the resources to convert our low-life position into a kill (alpha
+	// strike, drain trigger flood, follow-up burn). Conversely, low life
+	// vs a stalled-out table is just a soft clock. Pre-r60 the dimension
+	// scored seat.Life=4 identically regardless of whether opponents had
+	// 20-power boards or 2-power boards. Fires only in the shock band
+	// (effectiveLife <= 10) so it doesn't inflate mid-band life into
+	// false danger; scales with the gap between our defensive presence
+	// and the strongest opponent's effective offense. Capped at 0.30
+	// so a single huge-board opponent doesn't flip the dimension to
+	// lethal on top of the existing convex curve.
+	if effectiveLife <= 10 && !hasLifePayoff {
+		var maxOppPow float64
+		for i, s := range gs.Seats {
+			if i == seatIdx || s == nil || s.Lost || s.LeftGame {
+				continue
+			}
+			if bp := effectiveOffensivePower(gs, s); bp > maxOppPow {
+				maxOppPow = bp
+			}
+		}
+		myPow := effectiveOffensivePower(gs, seat)
+		if maxOppPow >= 4 && maxOppPow > myPow*1.5 {
+			gap := maxOppPow - myPow
+			// Scale by gap and by how deep into the shock band we are.
+			depthFactor := float64(10-effectiveLife) / 10.0
+			if depthFactor < 0 {
+				depthFactor = 0
+			}
+			inevitability := gap * 0.02 * (0.5 + depthFactor)
+			if inevitability > 0.30 {
+				inevitability = 0.30
+			}
+			base -= inevitability
+		}
 	}
 
 	// R60 round 5: fold an opponent-pressure component into LifeResource so
@@ -2633,6 +2701,74 @@ func (e *GameStateEvaluator) scoreGraveyard(gs *gameengine.GameState, seatIdx in
 // graveyard cast), embalm / eternalize (AMN — token-creature
 // graveyard activations), encore (CMR — triple token attack), and
 // jump-start (GRN — discard-a-card-and-cast).
+// isLifeAsResourcePayoff reports whether the lower-cased oracle text
+// describes a card that USES the controller's life as a strategic
+// resource — i.e. the deck WANTS to be at low life because the card
+// converts life to value or removes the mana-cost gate. Drives
+// scoreLife's hasLifePayoff dampener: when one of these is present,
+// the shock-range life penalty is halved because the position
+// represents intentional life-spending, not impending death.
+//
+// Recognized shapes:
+//   - "pay" + "life" + value verb (draw / cast / search / exile / put /
+//     destroy) — Necropotence (exile cards via pay-life), Greed (pay 2:
+//     draw), Vampiric/Imperial tutors (pay 2: search), Yawgmoth (pay 2:
+//     put -1/-1 counter), Vilis (draw triggers off life loss with pay
+//     activations). Pre-r60 the gate was draw/cast/search only — missed
+//     Yawgmoth and the broader exile/destroy/put utility shapes.
+//   - "cost" + "life" + "more" — K'rrik shape ("spells you cast cost
+//     2 life more to cast"). Mana → life conversion makes raw life
+//     the real mana pool, so low life = no spells.
+//   - "rather than pay" + "mana cost" — Bolas's Citadel ("pay life
+//     equal to its mana value rather than pay its mana cost"). Same
+//     mana → life conversion shape with different oracle wording.
+//   - "ad nauseam" / "lose life equal to" — Ad Nauseam / Dark
+//     Confidant family. These are passive life-drain engines that
+//     ALSO count as life-as-resource cards: the deck CHOSE to run
+//     them knowing the trade. The dimension dampens the penalty
+//     because the life loss is bought for cards.
+//
+// Deliberately EXCLUDES "you may pay X life: that player/target loses"
+// style cards (drain-on-opponent that requires paying life) — those
+// aren't deck-side life-as-resource engines; they're attack lines.
+func isLifeAsResourcePayoff(oracleLower string) bool {
+	if !strings.Contains(oracleLower, "life") {
+		return false
+	}
+	// K'rrik shape — mana cost converted to life cost.
+	if strings.Contains(oracleLower, "cost") && strings.Contains(oracleLower, "life") &&
+		strings.Contains(oracleLower, "more") {
+		return true
+	}
+	// Bolas's Citadel shape — pay life equal to MV instead of mana.
+	if strings.Contains(oracleLower, "rather than pay") &&
+		(strings.Contains(oracleLower, "mana cost") || strings.Contains(oracleLower, "mana value")) {
+		return true
+	}
+	// Ad Nauseam family — explicit "life equal to" + reveal/draw access.
+	if strings.Contains(oracleLower, "lose life equal to") &&
+		(strings.Contains(oracleLower, "reveal") || strings.Contains(oracleLower, "into your hand")) {
+		return true
+	}
+	// Broad pay-life-for-value: pay + life + a value verb.
+	if strings.Contains(oracleLower, "pay") &&
+		(strings.Contains(oracleLower, "draw") || strings.Contains(oracleLower, "cast") ||
+			strings.Contains(oracleLower, "search") || strings.Contains(oracleLower, "exile") ||
+			strings.Contains(oracleLower, "destroy") || strings.Contains(oracleLower, "put")) {
+		// Defensive exclude: "pay X life: target player/opponent loses Y life"
+		// (drain attack lines, not self-resource engines).
+		if strings.Contains(oracleLower, "target player") || strings.Contains(oracleLower, "each opponent") {
+			// Only exclude if there's no self-value verb adjacent — drain
+			// effects don't draw/search for the controller.
+			if !strings.Contains(oracleLower, "draw a card") && !strings.Contains(oracleLower, "search your library") {
+				return false
+			}
+		}
+		return true
+	}
+	return false
+}
+
 func hasGraveyardCastKeyword(oracleLower string) bool {
 	return strings.Contains(oracleLower, "flashback") ||
 		strings.Contains(oracleLower, "escape") ||
