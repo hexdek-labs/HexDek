@@ -68,8 +68,15 @@ func main() {
 		// Operates on a deck text file (canonical hexdek-import format)
 		// rather than the corpus.
 		checkCommander = flag.Bool("check-commander", false, "batch mode: validate a deck against CR §903 (commander legality, format-legal, color identity, banned list) and emit a JSON report. Requires --deck.")
-		deckPath       = flag.String("deck", "", "deck text file path for --check-commander")
-		checkOut       = flag.String("check-out", "", "output path for the --check-* JSON report (default: stdout)")
+		// CR §903.5 / §903.5b / §903.4 deck construction probe — card
+		// count (100 / 98+2 partners), singleton (no duplicates except
+		// basic lands + "any number of" exempt cards), color identity.
+		// Optional bracket-shape advisory layer (WotC 2024 framework
+		// land-count expectations) when --bracket N (1-5) is set.
+		checkDeckConstruction = flag.Bool("check-deck-construction", false, "batch mode: validate a deck against CR §903.5 (count, singleton, color identity) and emit a JSON report. Requires --deck.")
+		bracket               = flag.Int("bracket", 0, "optional bracket (1-5) for --check-deck-construction — adds an advisory land-count shape check against the WotC 2024 Commander bracket framework")
+		deckPath              = flag.String("deck", "", "deck text file path for --check-commander / --check-deck-construction")
+		checkOut              = flag.String("check-out", "", "output path for the --check-* JSON report (default: stdout)")
 	)
 	flag.Parse()
 
@@ -91,6 +98,17 @@ func main() {
 		rep, err := runCommanderCheck(*deckPath, *oraclePath, *checkOut)
 		if err != nil {
 			log.Fatalf("check-commander: %v", err)
+		}
+		if !rep.Valid {
+			os.Exit(1)
+		}
+		return
+	}
+
+	if *checkDeckConstruction {
+		rep, err := runDeckConstructionCheck(*deckPath, *oraclePath, *checkOut, *bracket)
+		if err != nil {
+			log.Fatalf("check-deck-construction: %v", err)
 		}
 		if !rep.Valid {
 			os.Exit(1)
