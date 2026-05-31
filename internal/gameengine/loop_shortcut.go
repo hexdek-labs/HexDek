@@ -20,6 +20,15 @@ type loopFingerprint uint64
 type loopSnapshot struct {
 	life  []int
 	perms []int
+	// stackTopIID is the InstanceID of the card driving the stack-top
+	// at this snapshot point. Captured so projectAndApply can emit the
+	// participating InstanceIDs in the "infinite_cycle" / no-op-loop
+	// event payload — Huginn ingests these as cycle observations and
+	// surfaces them to the combo learner. Empty when the stack-top is
+	// a triggered/activated ability whose source has no minted IID
+	// (legacy mode) or when the stack is empty at capture time.
+	stackTopIID  string
+	stackTopName string
 }
 
 type loopDetector struct {
@@ -51,7 +60,54 @@ func captureSnapshot(gs *GameState) loopSnapshot {
 		snap.life[i] = s.Life
 		snap.perms[i] = len(s.Battlefield)
 	}
+	// Capture stack-top card identity for cycle InstanceID extraction.
+	// Triggered/activated ability items reference their source card as
+	// a log label — that's still the right anchor for "what card is
+	// driving this cycle iteration", so we read through item.Source
+	// when item.Card is nil.
+	if len(gs.Stack) > 0 {
+		item := gs.Stack[len(gs.Stack)-1]
+		if item != nil {
+			switch {
+			case item.Card != nil:
+				snap.stackTopIID = item.Card.InstanceID
+				snap.stackTopName = item.Card.DisplayName()
+			case item.Source != nil && item.Source.Card != nil:
+				snap.stackTopIID = item.Source.Card.InstanceID
+				snap.stackTopName = item.Source.Card.DisplayName()
+			}
+		}
+	}
 	return snap
+}
+
+// extractCycleIIDs walks the last `period` snapshots and returns the
+// distinct InstanceIDs participating in the cycle, paired with their
+// display names. Empty strings are filtered (legacy / unminted refs);
+// duplicates collapse via the first-seen order so the result is a
+// stable ordered set of [iid, name] pairs.
+//
+// Used by projectAndApply to enrich loop_shortcut events with the
+// participating InstanceIDs so Huginn's cycle ingestion can tag the
+// observation with cycle_length + participating_iids.
+func extractCycleIIDs(snapshots []loopSnapshot, period int) (iids, names []string) {
+	if period <= 0 || len(snapshots) < period {
+		return nil, nil
+	}
+	seen := map[string]bool{}
+	tail := snapshots[len(snapshots)-period:]
+	for _, s := range tail {
+		if s.stackTopIID == "" {
+			continue
+		}
+		if seen[s.stackTopIID] {
+			continue
+		}
+		seen[s.stackTopIID] = true
+		iids = append(iids, s.stackTopIID)
+		names = append(names, s.stackTopName)
+	}
+	return iids, names
 }
 
 func stackTopFingerprint(gs *GameState) loopFingerprint {
@@ -165,13 +221,33 @@ func (ld *loopDetector) projectAndApply(gs *GameState) bool {
 	if allZero {
 		evacuateStackSpellsToGraveyard(gs)
 		gs.Stack = gs.Stack[:0]
+		cycleIIDs, cycleNames := extractCycleIIDs(ld.snapshots, period)
 		gs.LogEvent(Event{
 			Kind:   "loop_shortcut",
 			Source: "no_op_loop",
 			Details: map[string]interface{}{
-				"period": period,
-				"action": "break_no_op",
-				"rule":   "727",
+				"period":             period,
+				"action":             "break_no_op",
+				"rule":               "727",
+				"cycle_length":       period,
+				"participating_iids": cycleIIDs,
+				"participating_names": cycleNames,
+			},
+		})
+		// Sibling structured event for Huginn cycle ingestion. The
+		// "infinite_cycle" kind is the canonical hook the analytics
+		// layer scans for; emitted alongside loop_shortcut so existing
+		// loop_shortcut consumers stay backward-compat.
+		gs.LogEvent(Event{
+			Kind:   "infinite_cycle",
+			Source: "no_op_loop",
+			Amount: period,
+			Details: map[string]interface{}{
+				"cycle_length":        period,
+				"participating_iids":  cycleIIDs,
+				"participating_names": cycleNames,
+				"detected_by":         "engine_no_op_loop",
+				"rule":                "727",
 			},
 		})
 		return true
@@ -254,15 +330,33 @@ func (ld *loopDetector) projectAndApply(gs *GameState) bool {
 	evacuateStackSpellsToGraveyard(gs)
 	gs.Stack = gs.Stack[:0]
 
+	cycleIIDs, cycleNames := extractCycleIIDs(ld.snapshots, period)
 	gs.LogEvent(Event{
 		Kind:   "loop_shortcut",
 		Source: "cr_727",
 		Details: map[string]interface{}{
-			"period":     period,
-			"cycles":     maxCycles,
-			"delta_life": deltaLife,
-			"delta_perm": deltaPerms,
-			"rule":       "727",
+			"period":              period,
+			"cycles":              maxCycles,
+			"delta_life":          deltaLife,
+			"delta_perm":          deltaPerms,
+			"rule":                "727",
+			"cycle_length":        period,
+			"participating_iids":  cycleIIDs,
+			"participating_names": cycleNames,
+		},
+	})
+	// Sibling structured event for Huginn cycle ingestion.
+	gs.LogEvent(Event{
+		Kind:   "infinite_cycle",
+		Source: "cr_727",
+		Amount: period,
+		Details: map[string]interface{}{
+			"cycle_length":        period,
+			"participating_iids":  cycleIIDs,
+			"participating_names": cycleNames,
+			"projected_cycles":    maxCycles,
+			"detected_by":         "engine_cr_727",
+			"rule":                "727",
 		},
 	})
 

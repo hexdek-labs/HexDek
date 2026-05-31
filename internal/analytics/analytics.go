@@ -48,6 +48,17 @@ type GameAnalysis struct {
 	// no causal-link filter is required (Huginn promotes through tiers based
 	// on cross-deck recurrence). Populated by DetectCoTriggerNTuples.
 	CoTriggerNTuples []CoTriggerNTuple
+
+	// CycleObservations records resolution cycles surfaced in this game —
+	// engine-detected mandatory loops (the §727 no_op_loop / cr_727
+	// detector breaking out of an infinite resolution chain) PLUS
+	// post-game graph-walker hits (2-card mutual and 3-card directed
+	// cycles in the causal-link graph). Each engine-detected cycle IS an
+	// infinite combo by construction. Graph-walker cycles are combo
+	// SHAPES — resolved finitely this game but the shape is a combo if
+	// the players choose to repeat it. Populated by DetectEngineCycles +
+	// DetectGraphCycles.
+	CycleObservations []CycleObservation
 }
 
 // StallReport describes a game that stalled — no decisive winner emerged
