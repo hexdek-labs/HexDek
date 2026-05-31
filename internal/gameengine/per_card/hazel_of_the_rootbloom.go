@@ -6,7 +6,8 @@ import (
 
 // registerHazelOfTheRootbloom wires Hazel of the Rootbloom.
 //
-// Oracle text:
+// Oracle text (Scryfall, verified 2026-05-30, {2}{B}{G}, 3/5
+// Legendary Creature — Squirrel Druid):
 //
 //	{T}, Pay 2 life, Tap X untapped tokens you control: Add X mana
 //	in any combination of colors.
@@ -14,17 +15,74 @@ import (
 //	of target token you control. If that token is a Squirrel, instead
 //	create two tokens that are copies of it.
 //
-// Token-copy creation and the X-tokens-tap activated mana ability are
-// non-trivial — emitPartial.
+// Implementation (R60 stub sweep):
+//   - end_step (controller's own end step): find first token controlled
+//     by Hazel's controller, build a token copy via Card.DeepCopy + IsCopy
+//     stamp, mint via enterBattlefieldWithETB. If the chosen token has
+//     "squirrel" in its types, mint TWO copies instead of one.
+//   - The {T}, Pay 2 life, Tap X tokens activated mana ability is a
+//     cost-pipeline gap — emitPartial. Mana sources that consume X
+//     tokens as cost aren't expressed at the per_card layer.
 func registerHazelOfTheRootbloom(r *Registry) {
-	r.OnETB("Hazel of the Rootbloom", hazelRootbloomETB)
+	r.OnTrigger("Hazel of the Rootbloom", "end_step", hazelRootbloomEndStep)
 }
 
-func hazelRootbloomETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "hazel_rootbloom_partial"
-	if gs == nil || perm == nil {
+func hazelRootbloomEndStep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "hazel_rootbloom_end_step_copy_token"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
 		return
 	}
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"end_step_token_copy_and_x_token_mana_ability_unimplemented")
+	activeSeat, _ := ctx["active_seat"].(int)
+	if activeSeat != perm.Controller {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil || seat.Lost {
+		return
+	}
+
+	// Pick first token controlled by Hazel's controller.
+	var target *gameengine.Permanent
+	for _, p := range seat.Battlefield {
+		if p == nil || p == perm || p.Card == nil {
+			continue
+		}
+		if !cardHasType(p.Card, "token") {
+			continue
+		}
+		target = p
+		break
+	}
+	if target == nil {
+		emitFail(gs, slug, perm.Card.DisplayName(), "no_token_to_copy", nil)
+		return
+	}
+
+	count := 1
+	if cardSubtypeMatches(target.Card, "squirrel") {
+		count = 2
+	}
+	for i := 0; i < count; i++ {
+		cp := target.Card.DeepCopy()
+		cp.Owner = perm.Controller
+		cp.IsCopy = true
+		hasToken := false
+		for _, t := range cp.Types {
+			if t == "token" {
+				hasToken = true
+				break
+			}
+		}
+		if !hasToken {
+			cp.Types = append(cp.Types, "token")
+		}
+		enterBattlefieldWithETB(gs, perm.Controller, cp, false)
+	}
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":   perm.Controller,
+		"copied": target.Card.DisplayName(),
+		"count":  count,
+	})
+	emitPartial(gs, "hazel_rootbloom_activated_mana", perm.Card.DisplayName(),
+		"tap_x_tokens_for_x_mana_activated_cost_pipeline_unwired_at_per_card_layer")
 }
