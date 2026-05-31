@@ -22,7 +22,7 @@ trades), and §400.7c only governs zone-to-zone movement.
 
 ## Sweep summary
 
-- Registered cards scanned: **1468**
+- Registered cards scanned: **1478**
 - Unique (card, handler) violations: **0**
 - Skipped invocations (panic / fixture mismatch): **0**
 

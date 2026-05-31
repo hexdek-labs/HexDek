@@ -886,6 +886,11 @@ func registerDefaults() {
 	registerMysticalTutor(Global())
 	registerEnlightenedTutor(Global())
 	registerWorldlyTutor(Global())
+	// R60 batch 10: green ramp staples (sorcery-speed land tutors).
+	registerRampantGrowth(Global())
+	registerCultivate(Global())
+	registerThreeVisits(Global())
+	registerFarseek(Global())
 	registerRagavan(Global())
 	registerTheOneRing(Global())
 	registerEternalWitness(Global())
