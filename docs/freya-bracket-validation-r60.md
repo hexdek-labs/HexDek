@@ -36,10 +36,20 @@ precon-only" bracket is sparsely tagged in user uploads).
 
 ## Aggregate accuracy
 
-- **Exact match**: 23/35 (65.7%)
-- **Within ±1 bracket**: 35/35 (100.0%)
-- **Mean signed error**: +0.00 (net zero — no overall over/under bias)
-- **Mean absolute error**: 0.34 brackets
+| Metric              | Baseline (PR #925) | After B2/B1 threshold tune | Δ      |
+|---------------------|---------------------|----------------------------|--------|
+| Exact match         | 23/35 (65.7%)       | 25/35 (71.4%)              | +5.7pp |
+| Within ±1 bracket   | 35/35 (100.0%)      | 35/35 (100.0%)             | —      |
+| Mean signed error   | +0.00               | +0.06                      | +0.06  |
+| Mean absolute error | 0.34                | 0.29                       | -15%   |
+| B2 F1               | 0.44                | 0.60                       | +36%   |
+| B2 recall           | 0.57                | 0.86                       | +0.29  |
+
+Tune shipped in this PR's calibration follow-up: B2/B1 score
+threshold lowered from `score >= 2` to `score >= 1` in
+`estimateMeasuredBracket`. Catches the under-rate at the B2/B1
+boundary; B1→B2 over-rate cases unchanged (same-score-range
+ambiguity remains).
 
 Within-±1 at 100% means Freya never produces a 2-bracket-off
 prediction on this corpus. Exact-match at 65.7% is the dominant
@@ -50,6 +60,18 @@ quality signal; the gap is concentrated in the B1 / B2 boundary
 
 Row = expected (community label). Column = Freya predicted.
 
+**Post-tune** (current state):
+
+|         | pred B1 | pred B2 | pred B3 | pred B4 | pred B5 |
+|---------|---------|---------|---------|---------|---------|
+| exp B1  | **0**   | 5       | 0       | 0       | 0       |
+| exp B2  | 1       | **6**   | 0       | 0       | 0       |
+| exp B3  | 0       | 2       | **5**   | 1       | 0       |
+| exp B4  | 0       | 0       | 0       | **8**   | 0       |
+| exp B5  | 0       | 0       | 0       | 1       | **6**   |
+
+**Baseline** (pre-tune, PR #925):
+
 |         | pred B1 | pred B2 | pred B3 | pred B4 | pred B5 |
 |---------|---------|---------|---------|---------|---------|
 | exp B1  | **0**   | 5       | 0       | 0       | 0       |
@@ -58,9 +80,24 @@ Row = expected (community label). Column = Freya predicted.
 | exp B4  | 0       | 0       | 0       | **8**   | 0       |
 | exp B5  | 0       | 0       | 0       | 1       | **6**   |
 
-Diagonal = exact matches (boldface).
+Diagonal = exact matches (boldface). Tune lifts 2 of 3 exp-B2-pred-B1
+under-rates to correct B2. The remaining one
+(`abigale_poet_laureate_heroic_stanza_b2_sweetsw0rd`) still scores 0
+even at the new threshold and stays at B1.
 
 ## Per-bracket precision / recall / F1
+
+Post-tune (current):
+
+| Bracket | Support | Precision | Recall | F1   |
+|---------|---------|-----------|--------|------|
+| B1      | 5       | 0.00      | 0.00   | 0.00 |
+| B2      | 7       | 0.46      | 0.86   | 0.60 |
+| B3      | 8       | 1.00      | 0.62   | 0.77 |
+| B4      | 8       | 0.80      | 1.00   | 0.89 |
+| B5      | 7       | 1.00      | 0.86   | 0.92 |
+
+Baseline (PR #925):
 
 | Bracket | Support | Precision | Recall | F1   |
 |---------|---------|-----------|--------|------|

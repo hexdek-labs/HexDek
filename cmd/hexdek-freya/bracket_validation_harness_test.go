@@ -289,8 +289,9 @@ func TestBracketValidationHarness(t *testing.T) {
 	}
 
 	// Loose assertions:
-	//   1. Mean abs error ≤ 0.60 across the whole corpus (current
-	//      observed: 0.34 — leaves headroom for natural variance).
+	//   1. Mean abs error ≤ 0.40 across the whole corpus (current
+	//      observed: 0.29 post-tune — was 0.34 pre-tune at PR #925).
+	//      Tightened in the calibration tune PR to lock the gain in.
 	//   2. At least 3 brackets (out of 5) hit precision OR recall ≥
 	//      0.50 — catches regressions that collapse multiple brackets.
 	//   3. Within-±1 rate ≥ 0.90 (current observed: 100%).
@@ -299,8 +300,8 @@ func TestBracketValidationHarness(t *testing.T) {
 	// architectural recall=0 (Freya's estimator floors at B2 for any
 	// deck with non-trivial signal); documented in
 	// docs/freya-bracket-validation-r60.md as a known bias.
-	if absMean > 0.60 {
-		t.Errorf("mean abs error: got %.2f, want ≤ 0.60", absMean)
+	if absMean > 0.40 {
+		t.Errorf("mean abs error: got %.2f, want ≤ 0.40", absMean)
 	}
 	if withinOnePct < 90.0 {
 		t.Errorf("within-±1 rate: got %.1f%%, want ≥ 90%%", withinOnePct)

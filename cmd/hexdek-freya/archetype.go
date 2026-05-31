@@ -2689,7 +2689,14 @@ func estimateMeasuredBracket(ctx *classifyContext, report *FreyaReport, primaryA
 	case score >= 5:
 		bracket = 3
 		label = "Upgraded"
-	case score >= 2:
+	case score >= 1:
+		// B2/B1 boundary lowered from score>=2 to score>=1 per the r60
+		// bracket validation harness (docs/freya-bracket-validation-r60.md).
+		// Empirical: 3/35 corpus decks were community-labeled B2 but
+		// scored 1 → previously classified B1. The B2/B1 cleavage is
+		// effectively "deck has any optimization signal at all" rather
+		// than the original "deck has 2+ signal points"; community
+		// labels treat single-tutor / single-fast-mana decks as B2.
 		bracket = 2
 		label = "Core"
 	default:
