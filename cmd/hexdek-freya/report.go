@@ -699,7 +699,11 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 	fmt.Fprintf(w, "\n")
 
 	if dp.PersonalityBlurb != "" {
-		fmt.Fprintf(w, "  %s\n\n", dp.PersonalityBlurb)
+		fmt.Fprintf(w, "  %s\n", dp.PersonalityBlurb)
+		if dp.PersonalityTagline != "" {
+			fmt.Fprintf(w, "    — %s\n", dp.PersonalityTagline)
+		}
+		fmt.Fprintf(w, "\n")
 	}
 
 	if dp.CanonicalPreconOverlap != nil && dp.CanonicalPreconOverlap.SharedCount > 0 {
@@ -1425,6 +1429,7 @@ type jsonDeckProfile struct {
 	Weaknesses         []string          `json:"weaknesses,omitempty"`
 	GameplanSummary    string            `json:"gameplan_summary"`
 	PersonalityBlurb   string            `json:"personality_blurb,omitempty"`
+	PersonalityTagline string            `json:"personality_tagline,omitempty"`
 	ManaBaseGrade      string            `json:"mana_base_grade,omitempty"`
 	ManaBaseNotes      []string          `json:"mana_base_notes,omitempty"`
 	TaplandCount       int               `json:"tapland_count,omitempty"`
@@ -1885,6 +1890,7 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		Weaknesses:         dp.Weaknesses,
 		GameplanSummary:    dp.GameplanSummary,
 		PersonalityBlurb:   dp.PersonalityBlurb,
+		PersonalityTagline: dp.PersonalityTagline,
 		ManaBaseGrade:      dp.ManaBaseGrade,
 		ManaBaseNotes:      dp.ManaBaseNotes,
 		TaplandCount:       dp.TaplandCount,

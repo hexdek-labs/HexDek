@@ -300,8 +300,13 @@ type DeckProfile struct {
 	// no firm curve expectation (Midrange / generic fallbacks).
 	CurveArchetypeWarnings []string
 
-	// Deck personality
-	PersonalityBlurb string
+	// Deck personality. PersonalityBlurb is a 4-6 sentence narrative
+	// paragraph that names specific cards driving the personality call
+	// (commander, marquee star cards, finisher pieces, pet/flavor picks).
+	// PersonalityTagline is a flavor-text-style one-liner — short, in
+	// register, suitable for a deck-header subtitle or social card.
+	PersonalityBlurb   string
+	PersonalityTagline string
 
 	// Deck coaching — 3-5 prioritized actionable suggestions synthesized
 	// across mana base, interaction, ramp/draw, win-line redundancy,
@@ -620,6 +625,7 @@ func BuildDeckProfile(report *FreyaReport, oracle *oracleDB) *DeckProfile {
 	computeLandSwapSuggestions(dp, report)
 	computeCurveArchetypeFit(dp, report)
 	dp.PersonalityBlurb = buildPersonalityBlurb(dp, report)
+	dp.PersonalityTagline = buildPersonalityTagline(dp, report)
 	dp.PowerPercentile, dp.PowerFactors = estimatePowerPercentile(dp, report)
 
 	// CMC-distribution health check — populates OneDropCount /
