@@ -29,6 +29,37 @@ import (
 func registerEccentricPestfinder(r *Registry) {
 	r.OnTrigger("Eccentric Pestfinder", "end_step", eccentricPestfinderEndStep)
 	r.OnResolve("Turn Stones", turnStonesResolve)
+	// R60 batch 8: wire the printed-on-token "When this token dies,
+	// you gain 1 life" trigger. Pest tokens minted via Turn Stones
+	// carry Flags["pestfinder_die_lifegain"]=1 stamped at mint so the
+	// generic "Pest Token" creature_dies handler only fires for
+	// Turn-Stones-spawned Pests (not Lluwen-spawned Pests, which use
+	// pest_attack_lifegain from batch 5).
+	r.OnTrigger("Pest Token", "creature_dies", pestfinderPestDiesLifegain)
+}
+
+func pestfinderPestDiesLifegain(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "pestfinder_pest_dies_lifegain"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
+		return
+	}
+	// creature_dies handler fires once per battlefield Pest; only act
+	// when the dying perm IS this Pest, not when SOME OTHER Pest dies
+	// (avoids double-trigger on simultaneous deaths).
+	dying, _ := ctx["perm"].(*gameengine.Permanent)
+	if dying != perm {
+		return
+	}
+	if perm.Flags == nil || perm.Flags["pestfinder_die_lifegain"] != 1 {
+		// Not a Pestfinder-spawned Pest (e.g. Lluwen's Pest, or some
+		// other source) — the printed-on-token trigger doesn't apply.
+		return
+	}
+	gameengine.GainLife(gs, perm.Controller, 1, perm.Card.DisplayName())
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":   perm.Controller,
+		"gained": 1,
+	})
 }
 
 func eccentricPestfinderEndStep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -75,8 +106,14 @@ func turnStonesResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 	for range opps {
 		tok := gameengine.CreateCreatureToken(gs, seat, "Pest Token",
 			[]string{"creature", "pest"}, 1, 1)
-		if tok != nil && tok.Card != nil {
-			tok.Card.Colors = []string{"B", "G"}
+		if tok != nil {
+			if tok.Card != nil {
+				tok.Card.Colors = []string{"B", "G"}
+			}
+			if tok.Flags == nil {
+				tok.Flags = map[string]int{}
+			}
+			tok.Flags["pestfinder_die_lifegain"] = 1
 		}
 	}
 	emit(gs, slug, "Turn Stones", map[string]interface{}{
@@ -84,6 +121,4 @@ func turnStonesResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 		"opponent": len(opps),
 		"tokens":   len(opps),
 	})
-	emitPartial(gs, slug, "Turn Stones",
-		"pest_token_self_dies_gain_1_life_trigger_requires_token_death_observer")
 }
