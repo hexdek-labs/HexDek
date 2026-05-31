@@ -67,6 +67,7 @@ __pycache__/
 
 # Deck data (user-specific)
 /data/decks/*/freya/
+/data/freya-cache/
 /data/cache/art
 
 # Test fixtures (generated)

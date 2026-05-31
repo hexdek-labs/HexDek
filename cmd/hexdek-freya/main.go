@@ -95,6 +95,7 @@ func main() {
 	var corpusStatsOut string
 	var eloHistoryPath string
 	var comparePath string
+	var noCache bool
 
 	flag.StringVar(&deckPath, "deck", "", "path to decklist file")
 	flag.StringVar(&deckDir, "all-decks", "", "analyze all decks in directory")
@@ -115,6 +116,8 @@ func main() {
 		"path to archetype-pair ELO/win-rate history JSON (loaded if present; blended into meta-positioning expected-win-% and tilt detection). Schema: {\"archetype_pairs\": {\"combo|stax\": {\"games\": N, \"wins_for_first\": K}, ...}}.")
 	flag.StringVar(&comparePath, "compare", "",
 		"single-deck mode only: path to a second deck list. After analyzing --deck, also analyzes --compare and prints a side-by-side comparison (power tier mix, win conditions, mana base, tech-card differences, card overlap with star-tier standouts).")
+	flag.BoolVar(&noCache, "no-cache", false,
+		"bypass the content-addressed Freya report cache at "+DefaultCacheDir+". Cache hits short-circuit analysis to a JSON decode (~5ms vs ~1-3s); cache key is SHA256 over (commander + sorted Nx normalized card list), invalidated by FreyaVersion bumps. --mode metrics implies --no-cache so the consistency probe always sees fresh output.")
 	flag.Parse()
 
 	if eloHistoryPath != "" {
@@ -173,9 +176,14 @@ func main() {
 	log.Printf("  mechanic DB built in %s", time.Since(t1))
 	mechDB.LogStats()
 
+	// --mode metrics implies --no-cache so the consistency probe sees
+	// fresh computation on both runs (the whole point of the probe is to
+	// catch non-determinism, which a cache hit would mask).
+	useCache := !noCache && FocusMode != "metrics"
+
 	if deckPath != "" {
 		// Single deck mode.
-		report, err := analyzeDeckFile(deckPath, oracle, mechDB)
+		report, err := analyzeDeckFileCached(deckPath, oracle, mechDB, DefaultCacheDir, useCache)
 		if err != nil {
 			log.Fatalf("analyze deck: %v", err)
 		}
@@ -199,7 +207,7 @@ func main() {
 		// Auto-save to freya/ subfolder alongside the deck file.
 		saveFreyaData(deckPath, report)
 		if comparePath != "" {
-			otherReport, err := analyzeDeckFile(comparePath, oracle, mechDB)
+			otherReport, err := analyzeDeckFileCached(comparePath, oracle, mechDB, DefaultCacheDir, useCache)
 			if err != nil {
 				log.Fatalf("analyze compare deck: %v", err)
 			}
@@ -234,7 +242,7 @@ func main() {
 		}
 		var pairs []reportWithPath
 		for _, f := range files {
-			report, err := analyzeDeckFile(f, oracle, mechDB)
+			report, err := analyzeDeckFileCached(f, oracle, mechDB, DefaultCacheDir, useCache)
 			if err != nil {
 				log.Printf("  SKIP %s: %v", filepath.Base(f), err)
 				continue
