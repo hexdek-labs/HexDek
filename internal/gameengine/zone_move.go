@@ -162,6 +162,14 @@ func MoveCard(gs *GameState, card *Card, ownerSeat int, fromZone, toZone, reason
 	return MoveResult{FinalZone: dest, Permanent: perm}
 }
 
+// MoveCardToZone is the canonical name documented in the structural-analysis
+// report (docs/structural-analysis-r60.md §2). Delegates to MoveCard verbatim;
+// kept as a thin alias so the sweep call sites match the report's vocabulary
+// and future readers grep-find both names.
+func MoveCardToZone(gs *GameState, card *Card, ownerSeat int, fromZone, toZone, reason string) MoveResult {
+	return MoveCard(gs, card, ownerSeat, fromZone, toZone, reason)
+}
+
 // RemoveCardFromAllPrivateZones sweeps a card pointer out of every
 // non-battlefield, non-stack zone on the given seat (hand, library,
 // graveyard, exile, command zone). Returns the count of zones from
