@@ -119,7 +119,11 @@ func winotaAttackTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, c
 			// Grant indestructible until end of turn.
 			newPerm.Flags["kw:indestructible"] = 1
 			if defenderSeat >= 0 {
-				newPerm.Flags["attacking"] = 1
+				// CR §508.1g — Winota puts the Human onto the
+				// battlefield tapped and attacking. MarkEnteredAttacking
+				// stamps both flagAttacking and the §508.1g carve-out
+				// tag so the legality invariant honors the bypass.
+				gameengine.MarkEnteredAttacking(newPerm)
 				gameengine.SetAttackerDefender(newPerm, defenderSeat)
 			}
 			// Register a next_end_step delayed trigger to revoke

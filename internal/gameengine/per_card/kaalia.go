@@ -76,15 +76,14 @@ func kaaliaOfTheVastAttack(gs *gameengine.GameState, perm *gameengine.Permanent,
 	if cheated == nil {
 		return
 	}
-	if cheated.Flags == nil {
-		cheated.Flags = map[string]int{}
-	}
-	cheated.Flags["attacking"] = 1
-	// R60: CR §506.3 — the creature is legally attacking despite §302.1
-	// summoning sickness. Clear SS so checkCombatLegality doesn't trip
-	// after EndOfCombatStep / on a mid-combat game end. The combat.go
-	// scoop-in only runs during DeclareAttackers; this handler fires on
-	// an attack trigger so its new permanent never goes through that path.
+	// CR §508.1g — Kaalia cheats an Angel/Demon/Dragon onto the
+	// battlefield in an attacking state. MarkEnteredAttacking stamps
+	// both flagAttacking and the §508.1g carve-out tag so
+	// checkCombatLegality bypasses §508.1a-f restrictions for this
+	// attacker (defender / summoning sickness / tapped). The handler
+	// fires on an attack trigger so the new permanent never goes
+	// through DeclareAttackers' scoop-in path.
+	gameengine.MarkEnteredAttacking(cheated)
 	cheated.SummoningSick = false
 
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

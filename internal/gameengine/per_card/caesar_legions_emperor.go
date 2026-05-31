@@ -87,8 +87,12 @@ func caesarAttackToken(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 		SummoningSick: false,
 		Timestamp:     gs.NextTimestamp(),
 		Counters:      map[string]int{},
-		Flags:         map[string]int{"attacking": 1, "caesar_attack_token": 1},
+		Flags:         map[string]int{"caesar_attack_token": 1},
 	}
+	// CR §508.1g — Caesar creates the Soldier token attacking.
+	// MarkEnteredAttacking stamps both flagAttacking and the
+	// §508.1g carve-out tag.
+	gameengine.MarkEnteredAttacking(token)
 	gs.Seats[perm.Controller].Battlefield = append(gs.Seats[perm.Controller].Battlefield, token)
 	gameengine.SetAttackerDefender(token, defenderSeat)
 	gameengine.RegisterReplacementsForPermanent(gs, token)

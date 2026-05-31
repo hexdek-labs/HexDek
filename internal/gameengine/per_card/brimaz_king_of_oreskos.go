@@ -51,9 +51,10 @@ func brimazAttack(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 	if token == nil {
 		return
 	}
-	// Set the token to attacking. CR §509.1: the token enters tapped and
-	// attacking the same defender Brimaz is attacking.
-	token.Flags["attacking"] = 1
+	// CR §508.1g / §509.1 — the token enters tapped and attacking
+	// the same defender Brimaz is attacking. MarkEnteredAttacking
+	// stamps both flagAttacking and the §508.1g carve-out tag.
+	gameengine.MarkEnteredAttacking(token)
 	token.SummoningSick = false
 	// Mirror Brimaz's defender if surfaceable from ctx.
 	if defenderSeat, ok := ctx["defender_seat"].(int); ok {

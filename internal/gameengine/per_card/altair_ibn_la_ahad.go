@@ -106,8 +106,14 @@ func altairAttackCopySwarm(gs *gameengine.GameState, perm *gameengine.Permanent,
 			SummoningSick: false,
 			Timestamp:     gs.NextTimestamp(),
 			Counters:      map[string]int{},
-			Flags:         map[string]int{"attacking": 1, "altair_copy_token": 1},
+			Flags:         map[string]int{"altair_copy_token": 1},
 		}
+		// CR §508.1g — Altair copies an attacker as a new token
+		// attacking. MarkEnteredAttacking stamps both flagAttacking
+		// and the §508.1g carve-out tag (Altair copies inherit oracle
+		// abilities; if the source had defender, the copy would too
+		// — the bypass keeps that legal).
+		gameengine.MarkEnteredAttacking(tok)
 		seat.Battlefield = append(seat.Battlefield, tok)
 		gameengine.SetAttackerDefender(tok, defenderSeat)
 		gameengine.RegisterReplacementsForPermanent(gs, tok)

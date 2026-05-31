@@ -59,7 +59,10 @@ func animPakalAttackers(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 			break
 		}
 		token.Tapped = true
-		token.Flags["attacking"] = 1
+		// CR §508.1g — Pakal creates the Gnome token attacking.
+		// MarkEnteredAttacking stamps both flagAttacking and the
+		// §508.1g carve-out tag.
+		gameengine.MarkEnteredAttacking(token)
 		token.SummoningSick = false
 		if defenderSeat, ok := ctx["defender_seat"].(int); ok {
 			token.Flags["attacking_defender_seat"] = defenderSeat + 1

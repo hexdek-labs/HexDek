@@ -195,10 +195,10 @@ func strefanAttackTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, 
 	newPerm := enterBattlefieldWithETB(gs, perm.Controller, vampCard, true)
 	if newPerm != nil {
 		newPerm.SummoningSick = false
-		if newPerm.Flags == nil {
-			newPerm.Flags = map[string]int{}
-		}
-		newPerm.Flags["attacking"] = 1
+		// CR §508.1g — Strefan puts a Vampire from hand onto the
+		// battlefield tapped and attacking. MarkEnteredAttacking
+		// stamps both flagAttacking and the §508.1g carve-out tag.
+		gameengine.MarkEnteredAttacking(newPerm)
 		if defenderSeat >= 0 {
 			gameengine.SetAttackerDefender(newPerm, defenderSeat)
 		}
