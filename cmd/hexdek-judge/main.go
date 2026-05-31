@@ -82,8 +82,15 @@ func main() {
 		// game-replay frames) and CI gates against a replay corpus.
 		checkSBA     = flag.Bool("check-sba", false, "batch mode: scan a game-state snapshot for §704.5 / §704.6 SBA conditions that should have fired but didn't. Requires --snapshot.")
 		snapshotPath = flag.String("snapshot", "", "game-state snapshot JSON path for --check-sba")
-		deckPath     = flag.String("deck", "", "deck text file path for --check-commander / --check-deck-construction")
+		deckPath     = flag.String("deck", "", "deck text file path for --check-commander / --check-deck-construction / --report-parse")
 		checkOut     = flag.String("check-out", "", "output path for the --check-* JSON report (default: stdout)")
+		// Parse coverage report — surfaces the deckparser's structured
+		// per-line resolution status (resolved / fallback-resolved /
+		// unresolved) + roll-up counts + per-failure source-line detail.
+		// Used by deckbuilders to find typos, renamed cards, and meta
+		// gaps. Exit status mirrors the other --check-* probes: 0 on a
+		// 100%-coverage deck, 1 when any line failed to resolve.
+		reportParse = flag.Bool("report-parse", false, "batch mode: parse --deck and print the structured per-line resolution coverage report (resolved / fallback / unresolved). Exit 1 if any line failed to resolve.")
 	)
 	flag.Parse()
 
@@ -129,6 +136,22 @@ func main() {
 			log.Fatalf("check-sba: %v", err)
 		}
 		if !rep.Valid {
+			os.Exit(1)
+		}
+		return
+	}
+
+	if *reportParse {
+		if *deckPath == "" {
+			log.Fatalf("--report-parse requires --deck <path>")
+		}
+		ok, err := runParseReport(*deckPath, *astPath, *oraclePath)
+		if err != nil {
+			log.Fatalf("report-parse: %v", err)
+		}
+		if !ok {
+			// Mirror other probes: non-zero exit when any line failed
+			// to resolve so CI hooks can gate on parse coverage.
 			os.Exit(1)
 		}
 		return
