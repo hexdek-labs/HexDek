@@ -164,6 +164,29 @@ func main() {
 	// production server.
 	sm.GauntletLimiter = hexapi.NewRateLimiter(3, 1.0/60.0)      // 3-burst, 1/min
 	sm.SpectateSpawnLimiter = hexapi.NewRateLimiter(5, 1.0/30.0) // 5-burst, 1 per 30s
+
+	// r60 realtime events: in-process pub/sub bus paired with two
+	// transports — /ws/events (existing, bidirectional, global) and
+	// /api/events/{game_id}/stream (new SSE, one-way, per-game). The
+	// Showmatch publish at game-end (showmatch.go:2105) feeds both.
+	// Stamping the bus onto sm activates the publish path that was
+	// dormant pre-r60 (sm.Events was nil-checked + no constructor).
+	eventBus := hexapi.NewEventBus()
+	sm.Events = eventBus
+	if eventsWS, err := hexapi.NewEventsWSHandler(eventBus); err == nil {
+		eventsWS.RegisterEventsWS(mux)
+	} else {
+		log.Printf("events ws: %v", err)
+	}
+	(&hexapi.EventStreamHandler{
+		Bus: eventBus,
+		// Per-IP gate on the SSE upgrade. Each connection holds a
+		// subscriber slot + a goroutine; reconnect-storms would
+		// otherwise exhaust both. 5-burst + 1 per 30s mirrors the
+		// SpectateSpawnLimiter shape — same scale of cost per accept.
+		Limiter: hexapi.NewRateLimiter(5, 1.0/30.0),
+	}).RegisterEventStream(mux)
+
 	sm.RegisterShowmatch(mux)
 
 	// HexDek API: deck listing, Freya analysis, live stats
