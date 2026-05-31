@@ -776,6 +776,16 @@ func inferTutorRestriction(ot, tl string) (string, string) {
 		return "wish", inferTutorDelivery(ot)
 	}
 
+	// Normalize dual-zone search phrasings down to "search your library
+	// for" so the type-bucket lookups below still bite. Finale of
+	// Devastation reads "search your library and/or graveyard for a
+	// creature card with mana value X or less" — without this rewrite the
+	// "for a creature" check below misses and the restriction falls all
+	// the way to "any", losing both the type and the variable-CMC signal.
+	ot = strings.ReplaceAll(ot, "search your library and/or graveyard for", "search your library for")
+	ot = strings.ReplaceAll(ot, "search your library and graveyard for", "search your library for")
+	ot = strings.ReplaceAll(ot, "search your library and your graveyard for", "search your library for")
+
 	// Transmute / pure CMC-equal tutors.
 	if strings.Contains(ot, "transmute") {
 		for cmc := 0; cmc <= 9; cmc++ {
@@ -860,18 +870,43 @@ func inferTutorRestriction(ot, tl string) (string, string) {
 }
 
 func inferTutorDelivery(ot string) string {
+	// Strip parenthetical reminder text first. MTG reminder text often
+	// contains words ("exile", "you may cast", "onto the battlefield")
+	// that would false-trigger the delivery branches below. Profane Tutor
+	// is the canonical victim: its Suspend reminder text says "exile it
+	// with two time counters on it" + "you may cast it without paying its
+	// mana cost", which pre-strip steered delivery to "exile" even though
+	// the printed body delivers to hand.
+	ot = stripReminderText(ot)
+
+	// Modal scoping. For "Choose one — • ... • ..." oracles, restrict the
+	// delivery scan to the bullet(s) that contain the library-search /
+	// reveal-until anchor. Tooth and Nail's second bullet ("put up to two
+	// creature cards from your hand onto the battlefield") used to leak
+	// "onto the battlefield" into a card whose search-mode actually
+	// delivers to hand.
+	ot = scopeToSearchSegment(ot)
+
 	// "on top" in oracle text overwhelmingly refers to library top in a
 	// tutor context. Vampiric Tutor says "shuffle and put that card on top
 	// of it" — "of it" refers back to the library. Cover the common
 	// phrasings explicitly so a stray "on top of each creature" elsewhere
-	// in the oracle text doesn't false-trigger.
+	// in the oracle text doesn't false-trigger. "Nth from the top" / "near
+	// the top" cover Long-Term Plans (third from the top) and Insidious
+	// Dreams ("put those cards on top in any order"), which both land on
+	// the library rather than in the pilot's hand.
 	if containsAny(ot,
 		"on top of your library",
 		"on top of their library",
 		"put it on top",
 		"put that card on top",
 		"puts it on top",
-		"put them on top") {
+		"put them on top",
+		"put those cards on top",
+		"near the top of your library",
+		"second from the top",
+		"third from the top",
+		"fourth from the top") {
 		return "top"
 	}
 	if strings.Contains(ot, "onto the battlefield") ||
@@ -887,6 +922,59 @@ func inferTutorDelivery(ot string) string {
 		return "exile"
 	}
 	return "hand"
+}
+
+// stripReminderText removes balanced parenthetical content from oracle
+// text. MTG reminder text is conventionally enclosed in parentheses,
+// sometimes spanning multiple sentences (Suspend, Cascade, keyword
+// definitions). Cycling reminder text in particular embeds "search your
+// library for a basic [type] card" — but the upstream cycling-exclusion
+// in classifyTutorInto runs against the raw oracle, so this helper is
+// only safe to use for delivery / variable-CMC / exile-until inference
+// where the reminder text reliably misleads.
+func stripReminderText(ot string) string {
+	var b strings.Builder
+	depth := 0
+	for _, r := range ot {
+		switch r {
+		case '(':
+			depth++
+		case ')':
+			if depth > 0 {
+				depth--
+				continue
+			}
+			b.WriteRune(r)
+		default:
+			if depth == 0 {
+				b.WriteRune(r)
+			}
+		}
+	}
+	return b.String()
+}
+
+// scopeToSearchSegment narrows a modal oracle to just the bullet(s) that
+// contain a library-search or reveal-until-library anchor. Returns the
+// original string unchanged when there are no bullets or no bullet
+// contains a search anchor. Joins multiple search-bearing bullets with a
+// space so existing single-string substring matches still bite.
+func scopeToSearchSegment(ot string) string {
+	if !strings.Contains(ot, "•") {
+		return ot
+	}
+	parts := strings.Split(ot, "•")
+	var hits []string
+	for _, seg := range parts {
+		if strings.Contains(seg, "search your library") ||
+			strings.Contains(seg, "reveal cards from the top of your library until") {
+			hits = append(hits, seg)
+		}
+	}
+	if len(hits) == 0 {
+		return ot
+	}
+	return strings.Join(hits, " ")
 }
 
 // isLandSearch covers any land tutor — basic, nonbasic, or unrestricted.
@@ -1049,7 +1137,13 @@ func detectVariableCmcSearch(ot string) bool {
 		"with converted mana cost equal to",
 		"equal to or less than",
 		"mana value of the sacrificed",
-		"converted mana cost of the sacrificed")
+		"converted mana cost of the sacrificed",
+		// New Bring to Light: "with mana value less than or equal to the
+		// number of colors of mana spent to cast this spell". The bound
+		// is game-state-dependent (convoke / color spread / X spent) just
+		// like the cmc_variable family.
+		"mana value less than or equal to the number",
+		"converted mana cost less than or equal to the number")
 }
 
 
