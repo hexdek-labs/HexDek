@@ -59,3 +59,55 @@ count, so the cap is the load-bearing knob.
 - `cmd/hexdek-freya/quad_cycle_test.go` — 4 tests + 1 benchmark
 - `cmd/hexdek-freya/triple_cycle_test.go` — r59 precedent for the
   permutation-coverage discipline
+
+## 5..7 card cycles — graph-walk (r60)
+
+The 5+ extension cannot use C(n,k) enumeration: at the 70-candidate cap
+C(70,5)×120 ≈ 13B perms is roughly 14× the quad worst case (which already
+costs ~3s). `FindLongLoops` in `cmd/hexdek-freya/graphwalk.go` replaces
+the exhaustive enumeration with depth-bounded DFS:
+
+1. **Aggressive node prefilter.** Drop cards without `Produces` AND
+   `Consumes`, cap cycling cards at 1 representative, AND require
+   membership in at least one interaction theme (`mana_positive`,
+   `untap`, `token_chain`, `damage_chain`, `etb_blink`,
+   `graveyard_loop`, `card_draw`). Themeless flow-active cards can't
+   anchor a 5+ card combo without bridging themes, and the fingerprint
+   gate trims the candidate pool below the global cap.
+
+2. **Global candidate cap at 30.** Pools larger than this are skipped
+   silently — at that density depth-7 DFS wall time is unreasonable and
+   pair/triple/quad results already cover the dominant interactions.
+
+3. **Depth-bounded DFS with the Johnson prune.** Each cycle is
+   enumerated only when its lex-minimum node is the start (`next >=
+   start` during walk), so the same cycle isn't visited once per
+   rotation. Walk depth bounded to `[5..7]`.
+
+4. **Cycle-level interesting-resource gate** (mirrors the pair
+   detector's OR-over-edges semantics): at least one edge in the cycle
+   must run through `mana`, `token`, `card`, `graveyard`, `untap`,
+   `land`, `graveyard_fill`, or `reanimate`. Loops made entirely of
+   life / counter / damage / landfall edges aren't real combos.
+
+5. **Canonical dedup.** Each closed cycle's key is the lex-min rotation
+   across both directions, so a 5-cycle visited as `[A,B,C,D,E]` and
+   `[E,D,C,B,A]` collapses to one result.
+
+6. **Hard cap on emitted combos** (`graphWalkMaxCombos = 50`) to avoid
+   runaway in pathological constructions.
+
+Worst-case wall time at the 30-candidate cap with full edge density is
+well under 100ms (`BenchmarkFindLongLoops_WorstCase`). The Johnson
+prune cuts the naïve `n!` walk by a factor of `(k!)` per length, and
+real EDH adjacency density is sparse (most card pairs have no resource
+overlap), so production runtimes are typically a few milliseconds.
+
+## Files added in r60 graph-walk
+
+- `cmd/hexdek-freya/graphwalk.go` — `FindLongLoops`, `themeBucketsFor`,
+  `walkCycles`, `canonicalCycleKey`
+- `cmd/hexdek-freya/graphwalk_test.go` — 11 tests + 1 benchmark
+  (Heliod/Ballista, Niv-Mizzet cantrip, Twinflame combat chain, dedup,
+  cycling coalesce, candidate cap, depth bound, fingerprint gate,
+  rotation/reversal invariance, theme-bucket coverage spot-check)

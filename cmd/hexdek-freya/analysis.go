@@ -1958,6 +1958,16 @@ func FindLoops(profiles []CardProfile) []ComboResult {
 		}
 	}
 
+	// 5-7 card cycles via theme-bucketed graph walk. The brute-force
+	// pattern used for pairs/triples/quads doesn't extend — C(70,5)*120
+	// perms is two orders of magnitude worse than the quad worst case.
+	// FindLongLoops uses depth-bounded DFS within per-theme buckets with
+	// the Johnson cycle-enumeration prune. See graphwalk.go for the
+	// design rationale.
+	if len(profiles) <= 120 {
+		results = append(results, FindLongLoops(profiles)...)
+	}
+
 	return results
 }
 
