@@ -937,6 +937,11 @@ func registerDefaults() {
 	registerArcaneDenial(Global())
 	registerDispel(Global())
 	registerManaDrain(Global())
+	// R60 batch 11: CMC-filtered + uncounterable counters.
+	registerMentalMisstep(Global())
+	registerSpellSnare(Global())
+	registerMindbreakTrap(Global())
+	registerCounterflux(Global())
 	// Cantrips:
 	registerBrainstorm(Global())
 	registerPonder(Global())

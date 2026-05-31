@@ -55,8 +55,8 @@ through each of the four exit primitives, and assert the carrier `*Card`
 ended up in seat 1's destination zone. Catches any handler that snags
 the leaving card off the wire into the wrong seat's zone.
 
-- Handlers exercised (cards subscribed to an exit event): **108**
-- Primitives × handlers attempted: **432**
+- Handlers exercised (cards subscribed to an exit event): **109**
+- Primitives × handlers attempted: **436**
 - Owner-routing violations: **0**
 
 **The permanent-lifetime ownership invariant holds across the
@@ -118,6 +118,7 @@ regressions in the §108.3 / §400.7 / §400.7c invariant chain.
 - `lurrus of the dreamden`
 - `mabel heir to cragflame`
 - `maestros ascendancy`
+- `marisi breaker of the coil`
 - `mazirek kraul death priest`
 - `minthara merciless soul`
 - `momo playful pet`
