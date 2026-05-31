@@ -219,8 +219,24 @@ func (ld *loopDetector) projectAndApply(gs *GameState) bool {
 		if deltaPerms[i] > 0 {
 			tokensToCreate := deltaPerms[i] * maxCycles
 			for t := 0; t < tokensToCreate; t++ {
+				// r60 InstanceID source audit: this path collapses N
+				// loop cycles to a single state mutation per CR §727
+				// so doesn't dispatch through FirePermanentETBTriggers
+				// (which would fire observer triggers we're explicitly
+				// skipping). That bypasses the defensive
+				// EnsureTokenInstanceID stamp — and the original Card
+				// also lacked Types:["token"] so even a manual ensure
+				// call would have no-op'd. Mint explicitly here so the
+				// projected tokens enter the InstanceID census cleanly.
+				tokenCard := &Card{
+					Name:     "Loop Token",
+					Owner:    i,
+					Types:    []string{"token", "creature"},
+					TypeLine: "Token Creature",
+				}
+				MintTokenInstanceID(gs, tokenCard, "", currentMintEnablerID(gs))
 				token := &Permanent{
-					Card:       &Card{Name: "Loop Token", TypeLine: "Token Creature"},
+					Card:       tokenCard,
 					Controller: i,
 					Owner:      i,
 				}
