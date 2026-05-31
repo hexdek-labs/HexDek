@@ -10,58 +10,74 @@ import (
 
 // TestPowerTierBridge_NoContradictionOnCalibration is the
 // consistency regression test for the MeasuredBracket /
-// CEDHPowerTier bridge. PR #724 added the B4 confirmation gate to
-// estimateMeasuredBracket that mirrors the T4+ floor gate in
-// ClassifyCEDHPowerTier (PR #715), aligning both surfaces on the
-// same cEDH-shape discriminator check.
+// CEDHPowerTier bridge. The bridge tests use a Δ≥2 contradiction
+// heuristic to catch tuning regressions where one surface drifts
+// significantly from the other.
 //
-// Pre-fix audit on the 16-deck calibration corpus + 87 imported
-// WotC precons surfaced 7 contradictions (Δ≥2), all of the same
-// shape: WotC precons reading MeasuredBracket=B4 via the
-// Winning-combo floor lift while PowerTier read T1-T2 Casual.
-// Post-fix:
+// Post-r60-power-bracket-reconciliation (2026-05-30):
 //
-//	calibration test corpus: 0 / 16 contradictions
-//	WotC precons:            7 / 87 contradictions (8.0%)
+//	calibration test corpus: 1 / 16 contradictions (6.3%) — voja
+//	WotC precon corpus:      3 / 87 contradictions (3.4%)
 //
-// The 6→7 ratchet on 2026-05-30 absorbed one new contradiction
-// introduced by the commander-synergy-deepen wave (this turn):
-// adding the new `tribal` axis detection lifted CommanderSynergy
-// on tribal preconns (e.g. The Hosts of Mordor — Sauron tribal at
-// 48% post-fix vs ~20% pre-fix), which feeds
-// RefineRolesByCommanderThemes' `tribal`→RoleThreat promotion at
-// the tie-break layer, slightly shifting role counts that flow
-// into bracket estimation. The synergy lift is genuinely correct
-// (these ARE tribal commanders), so the bridge-disagreement is
-// the same WotC-vs-cEDH framework split the rest of this
-// docstring already documents — not a regression.
+// Per-deck verdict from the audit. Each was triaged as bracket
+// wrong / power-tier wrong / threshold wrong:
 //
-// The fix (PR #724) gates the Winning-combo floor: GC=0 decks
-// only lift to B4 via the heuristic categorical-win path when
-// they have at least one Game Changer present. This closed
-// 1 of 7 contradictions (the_hosts_of_mordor, GC=1 path-changed
-// from B4→B3).
+//  1. voja_wolf_elf_tribal_b4 (calibration, Δ=2 B4/T2) —
+//     THRESHOLD wrong for this case. Voja is correctly B4 by
+//     MeasuredBracket (tribal-voltron tempo: 8 fast mana + 4
+//     finishers + 1 GC + 5% tutor) AND correctly T2 by
+//     CEDHPowerTier (no free interaction, no 12% tutor density,
+//     no GC density — not cEDH-shaped). Both surfaces are
+//     correct on their own axes; the Δ≥2 heuristic doesn't
+//     hold for legitimate high-tempo non-cEDH builds.
 //
-// The remaining 6 are precons where the engine's TrueInfinites
-// detector identified 1+ "winning combos" that the floor lifts to
-// B4 (per WotC's "winning 2-card combo = B4 marker" carveout).
-// These are likely false-positive TrueInfinites entries — land-
-// recursion precons (world_shaper, family_matters), creature-
-// recursion precons (coven_counters, undead_unleashed), etc.
-// hitting heuristic combo patterns. The fix surface for the
-// remaining contradictions is upstream in the TrueInfinites
-// classifier itself (file under "Open" issue log) — not in the
-// bracket bridge logic.
+//  2. eternal_bargain_2013 (Δ=3 B4/T1) — THRESHOLD wrong.
+//     Vizkopa Guildmage + Sanguine Bond is a real
+//     ComboClassInfiniteDrain categorical-win combo, so B4 per
+//     WotC carveout ("winning 2-card combo IS a B4 marker
+//     regardless of other signals"). T1 also correct: precon
+//     shell with 0 GCs, no tutoring, no interaction. Framework
+//     split — bracket measures slot-table fit, PowerTier
+//     measures cEDH race-readiness; they naturally diverge for
+//     combo precons.
 //
-// Both frameworks legitimately disagree on these decks: WotC's
-// bracket framework says "if the deck has a 2-card winning combo
-// it's B4 regardless of other signals"; cEDH-shape framework says
-// "without tutors / interaction / GCs to ENABLE the combo, the
-// deck plays as casual." Both are defensible. The test pins the
-// regression floor at ≤6 contradictions to catch any new bracket
-// or PowerTier tuning that REINTRODUCES the bug; if a future PR
-// fixes the upstream TrueInfinites false-positive rate, this
-// floor can be ratcheted down.
+//  3. desert_bloom_OOT (Δ=2 B4/T2) — THRESHOLD wrong. Titania,
+//     Protector of Argoth + Sand Scout is a real
+//     ComboClassInfiniteTokens combo with named outlets in the
+//     deck (Turntimber Sower, Ramunap Ruins, etc.), so B4 per
+//     carveout. T2 also correct: precon shell with 0 GCs, 8%
+//     tutors (the Outlaws precon's natural baseline, not cEDH
+//     density). Same framework split as eternal_bargain.
+//
+//  4. family_matters_BLB (Δ=2 B3/T1) — THRESHOLD wrong.
+//     Restoration Angel + Junk Winder is a heuristic-detected
+//     graveyard-loop pair (2 such pairs total → +3 raw score).
+//     B3 raw 5 reflects the genuine "upgraded precon" shape
+//     (8 fast mana + heuristic combo lines + 4% tutor). T1
+//     correct because the deck has no GC / interaction package
+//     / tutor depth to ENABLE the combo lines. Same framework
+//     split — graveyard-loop signal credits combo PRESENCE,
+//     PowerTier requires combo SUPPORT.
+//
+//  CLOSED in this audit (was on the contradiction list pre-fix):
+//
+//  - mirror_mastery_2011 (was Δ=2 B4/T2) — BRACKET WRONG. MLD
+//    floor was firing on Avatar of Fury (an 8/8 flying creature
+//    with a red-spell-damage trigger, NOT mass land destruction).
+//    Two sibling false-positives also pruned: "argothian wurm"
+//    (single-land ETB edict, not mass-reset) and "plague of
+//    vermin" (token creation, not land destruction). All three
+//    entries removed from mldList in archetype.go; mirror_mastery
+//    now correctly reads B2 and the contradiction closes.
+//
+// Frameworks disagree LEGITIMATELY on the remaining 4 (1
+// calibration + 3 precons): WotC's bracket framework says "if
+// the deck has a winning combo it's B4 regardless of support";
+// cEDH-shape framework says "without tutors / interaction / GCs
+// to ENABLE the combo, the deck plays as casual." Both are
+// defensible. The test floor pins ≤1 on calibration + ≤3 on
+// precons to catch tuning regressions while accepting the
+// framework split.
 //
 // Skipped when oracle data absent.
 func TestPowerTierBridge_NoContradictionOnCalibration(t *testing.T) {
@@ -72,38 +88,30 @@ func TestPowerTierBridge_NoContradictionOnCalibration(t *testing.T) {
 	oracle, _ := loadOracle(oraclePath)
 	mechDB, _ := BuildMechanicDB(oraclePath)
 
-	// Calibration test corpus — pins ≤1 contradiction (PR for bracket
-	// refinement r60). The lone allowed contradiction is voja_wolf_elf_
-	// tribal_b4 (B4 / T2 split): voja is correctly classified as B4 by
-	// MeasuredBracket via the new Fast-mana-density floor (8 fast mana +
-	// 4 finishers + 1 GC + 5% tutor = the tempo signature of a tribal-
-	// voltron build) AND correctly classified as T2 Casual by the cEDH
-	// PowerTier (the deck is not cEDH-shaped — no free interaction, no
-	// 12% tutor density). Both classifications are correct on their own
-	// axes; the Δ≥2 contradiction heuristic was over-tuned to catch
-	// false-positive B4 lifts from the TrueInfinites classifier, not
-	// legitimate high-tempo B4 builds that aren't cEDH. Future bracket
-	// or PowerTier tuning that lifts ANOTHER calibration deck would
-	// trip this floor — keep the threshold at 1 unless adding new
-	// legitimate B4-but-not-cEDH calibration entries.
+	// Calibration test corpus — pins ≤1 contradiction. See per-deck
+	// triage in the function docstring above for the voja B4/T2 split
+	// rationale. Future bracket or PowerTier tuning that lifts ANOTHER
+	// calibration deck would trip this floor — keep the threshold at 1
+	// unless adding new legitimate B4-but-not-cEDH calibration entries.
 	testMatches, _ := filepath.Glob("../../data/decks/test/*.txt")
 	testContradictions := countTierBridgeContradictions(t, oracle, mechDB, testMatches)
 	if testContradictions > 1 {
 		t.Errorf("calibration corpus regression: want ≤1 contradiction (voja B4/T2 split), got %d", testContradictions)
 	}
 
-	// WotC precon corpus — pins ≤6 (documented edge cases). Post-r60
-	// bracket-refinement: 4 contradictions remain, all of the same
-	// shape (precon TrueInfinites flagged as 2-card categorical-win
-	// combos that lift the bracket via the WotC carveout while
-	// PowerTier reads T1-T2 because no GCs / tutors back the line).
-	// Real fix is upstream in the TrueInfinites classifier — left as
-	// known false-positive surface, tracked under the Open issue log
-	// "TrueInfinites false-positive on heuristic combo patterns".
+	// WotC precon corpus — pins ≤3 contradictions after the r60
+	// power-bracket reconciliation. The mirror_mastery_2011 case was
+	// the only true bug in the residual list (MLD floor false-positive
+	// on Avatar of Fury); fixing the mldList closed it. The remaining
+	// 3 (eternal_bargain_2013, desert_bloom_OOT, family_matters_BLB)
+	// are all WotC-vs-cEDH framework splits — see per-deck triage in
+	// the function docstring above. Ratchet down further only if a
+	// future PR adds real PowerTier credit for combo presence (would
+	// lift T1-T2 precons to T2-T3, narrowing Δ below 2).
 	wizMatches, _ := filepath.Glob("../../data/decks/wizards/*.txt")
 	wizContradictions := countTierBridgeContradictions(t, oracle, mechDB, wizMatches)
-	if wizContradictions > 7 {
-		t.Errorf("precon corpus regression: want ≤7 contradictions, got %d", wizContradictions)
+	if wizContradictions > 3 {
+		t.Errorf("precon corpus regression: want ≤3 contradictions, got %d", wizContradictions)
 	}
 
 	t.Logf("MeasuredBracket / PowerTier consistency:")
