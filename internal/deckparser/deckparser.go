@@ -459,7 +459,7 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		// COMMANDER: lines for partners. Distinct from the section-header
 		// path below.
 		if m := commanderLineRE.FindStringSubmatch(raw); m != nil {
-			name := cleanCardName(strings.TrimSpace(m[1]))
+			name := normalizeDFCSeparator(cleanCardName(strings.TrimSpace(m[1])), meta)
 			if explicitCommander == "" {
 				explicitCommander = name
 			} else if explicitPartner == "" {
@@ -469,7 +469,7 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		}
 		// PARTNER: <name>
 		if m := partnerLineRE.FindStringSubmatch(raw); m != nil {
-			explicitPartner = cleanCardName(strings.TrimSpace(m[1]))
+			explicitPartner = normalizeDFCSeparator(cleanCardName(strings.TrimSpace(m[1])), meta)
 			continue
 		}
 		// Section headers: Sideboard, Maybeboard, Companion, Commander,
@@ -567,7 +567,7 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			qty = 1
 			name = raw
 		}
-		name = cleanCardName(name)
+		name = normalizeDFCSeparator(cleanCardName(name), meta)
 		if name == "" {
 			continue
 		}
@@ -1021,6 +1021,55 @@ func cleanCardName(name string) string {
 		}
 	}
 	return s
+}
+
+// singleSlashDFCRE matches a single ` / ` separator (with surrounding
+// whitespace) when it is NOT part of an existing ` // ` double-slash
+// pair. Used by normalizeDFCSeparator to detect the Aetherhub /
+// TappedOut / legacy-Moxfield DFC export shape `Eirdu, Carrier of Dawn
+// / Isilu, Carrier of Twilight` and canonicalize to the ` // ` form
+// that meta lookups expect. No real Magic card name contains a single
+// `/`, so a positive match is unambiguously a DFC face separator.
+var singleSlashDFCRE = regexp.MustCompile(`\s+/\s+`)
+
+// normalizeDFCSeparator canonicalizes single-slash DFC face separators
+// (` / `) to the meta-canonical double-slash (` // `) form when the
+// substituted name resolves in meta. Handles the Aetherhub /
+// TappedOut export quirk where DFC / split / adventure / meld cards
+// are rendered with a single slash instead of Moxfield's canonical
+// ` // ` — e.g. `Eirdu, Carrier of Dawn / Isilu, Carrier of Twilight`
+// (Edge of Eternities Commander) vs the meta entry
+// `Eirdu, Carrier of Dawn // Isilu, Carrier of Twilight`. Without
+// canonicalization the buildCard face-match would miss (it scans for
+// ` // ` entries and tests each face against the input string, but
+// the input here contains ` / ` so neither half ever matches a single
+// face name on its own).
+//
+// Sibling to PR #785's ` // ` vs ` // comment` disambiguation: that
+// fix runs only when inlineCommentRE (double-slash) matches; this one
+// runs only when a single ` / ` is present AND ` // ` is NOT, so the
+// two paths never overlap.
+//
+// Returns the input unchanged when: (1) name already contains ` // `
+// (canonical form, no work needed); (2) meta is nil (no probe
+// possible — caller's face-match in buildCard is the only remaining
+// fallback); (3) the substituted ` // ` form misses meta (input wasn't
+// a DFC after all — leave the original alone rather than mangling).
+func normalizeDFCSeparator(name string, meta *MetaDB) string {
+	if name == "" || meta == nil {
+		return name
+	}
+	if strings.Contains(name, " // ") {
+		return name
+	}
+	if !singleSlashDFCRE.MatchString(name) {
+		return name
+	}
+	candidate := singleSlashDFCRE.ReplaceAllString(name, " // ")
+	if meta.Get(candidate) != nil {
+		return candidate
+	}
+	return name
 }
 
 // parseTypes splits a Scryfall type_line into the engine's lower-case
