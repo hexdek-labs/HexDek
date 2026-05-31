@@ -359,8 +359,9 @@ func (e *GameStateEvaluator) scoreCards(gs *gameengine.GameState, seatIdx int) f
 	myEngines := drawEngineCredit(seat)
 	myCastExile := float64(castableExileCount(gs, seatIdx))
 	myOppValue := float64(opponentTriggerValueCount(seat))
+	myQuality := handQualityBonus(seat)
 
-	var oppHand, oppLib, oppEngines, oppCastExile, oppOppValue float64
+	var oppHand, oppLib, oppEngines, oppCastExile, oppOppValue, oppQuality float64
 	var oppN int
 	for i, s := range gs.Seats {
 		if i == seatIdx || s.Lost || s.LeftGame {
@@ -371,22 +372,119 @@ func (e *GameStateEvaluator) scoreCards(gs *gameengine.GameState, seatIdx int) f
 		oppEngines += drawEngineCredit(s)
 		oppCastExile += float64(castableExileCount(gs, i))
 		oppOppValue += float64(opponentTriggerValueCount(s))
+		oppQuality += handQualityBonus(s)
 		oppN++
 	}
 	if oppN == 0 {
-		return myHand/7.0 + myEngines*0.4 + myCastExile*0.3
+		return myHand/7.0 + myEngines*0.4 + myCastExile*0.3 + myQuality
 	}
 	avgHand := oppHand / float64(oppN)
 	avgLib := oppLib / float64(oppN)
 	avgEngines := oppEngines / float64(oppN)
 	avgCastExile := oppCastExile / float64(oppN)
 	avgOppValue := oppOppValue / float64(oppN)
+	avgQuality := oppQuality / float64(oppN)
 
 	return (myHand-avgHand)/4.0 +
 		(myLib-avgLib)/40.0 +
 		(myEngines-avgEngines)*0.4 +
 		(myCastExile-avgCastExile)*0.3 +
-		(myOppValue-avgOppValue)*0.4*float64(oppN)
+		(myOppValue-avgOppValue)*0.4*float64(oppN) +
+		(myQuality - avgQuality)
+}
+
+// handQualityBonus collapses three hand-quality signals into a single
+// delta that scoreCards applies symmetrically (my - opp avg). Pre-r60
+// scoreCards was hand-COUNT only — a 5-card hand of dead high-CMC
+// spells scored identically to a 5-card hand with 2 cantrips + 1
+// tutor + 2 castable threats. The signals:
+//
+//   - Tutor-in-hand quality bonus (+0.15 per tutor, cap +0.45). A
+//     tutor is a virtual draw of the BEST card in the deck for the
+//     current state — the existing scoreCombo path already gives
+//     them combo-piece credit, but scoreCards was blind. 3-tutor
+//     saturation mirrors the combo-side cap.
+//   - Cantrip-in-hand quality bonus (+0.08 per cantrip, cap +0.32).
+//     Brainstorm / Ponder / Preordain / Opt / Sleight of Hand —
+//     cheap (CMC <= 2) instants/sorceries with "draw a card" oracle.
+//     Replaces-itself + filters, so each is roughly 0.4 of a real
+//     card; the cap caps at 4 cantrips saturated.
+//   - Hand-flood dead-card penalty (-0.08 per dead, cap -0.40). A
+//     card whose CMC > current lands + 3 won't cast for 3+ turns,
+//     so it's marginally usable at best; treat it as <1 card.
+//     Captures the "I have 6 cards but 4 are 8-drops on a 3-land
+//     board" flooded scenario the raw count credited at full value.
+//
+// Symmetrically applied to opp hands too — in determinized rollouts
+// opp hands are randomized but still walkable, and the dimension
+// scoring already trusts that opp hand contents are visible to the
+// evaluator (myHand vs oppHand delta needs both to be readable).
+func handQualityBonus(seat *gameengine.Seat) float64 {
+	if seat == nil || len(seat.Hand) == 0 {
+		return 0
+	}
+	// Land count drives the dead-card threshold.
+	lands := 0
+	for _, p := range seat.Battlefield {
+		if p != nil && p.IsLand() && !p.PhasedOut {
+			lands++
+		}
+	}
+	deadThreshold := lands + 3
+
+	tutorCount := 0
+	cantripCount := 0
+	deadCount := 0
+	for _, c := range seat.Hand {
+		if c == nil {
+			continue
+		}
+		isLand := false
+		for _, t := range c.Types {
+			if t == "land" {
+				isLand = true
+				break
+			}
+		}
+		if isLand {
+			// Lands count as "dead" beyond a buffer when the seat is
+			// flooded — 2+ lands in hand AND 5+ on field is real flood.
+			if lands >= 5 {
+				deadCount++
+			}
+			continue
+		}
+		cmc := gameengine.ManaCostOf(c)
+		if cmc > deadThreshold {
+			deadCount++
+		}
+		ot := gameengine.OracleTextLower(c)
+		// Cantrip: CMC <= 2 instant/sorcery with "draw a card".
+		if cmc <= 2 && (typeLineContains(c, "instant") || typeLineContains(c, "sorcery")) &&
+			strings.Contains(ot, "draw a card") {
+			cantripCount++
+			continue // a cantrip-tutor would double-count; cantrip wins
+		}
+		// Tutor: "search your library for" OR name contains "tutor".
+		if strings.Contains(ot, "search your library for") ||
+			strings.Contains(strings.ToLower(c.DisplayName()), "tutor") {
+			tutorCount++
+		}
+	}
+
+	tutorBonus := 0.15 * float64(tutorCount)
+	if tutorBonus > 0.45 {
+		tutorBonus = 0.45
+	}
+	cantripBonus := 0.08 * float64(cantripCount)
+	if cantripBonus > 0.32 {
+		cantripBonus = 0.32
+	}
+	deadPenalty := 0.08 * float64(deadCount)
+	if deadPenalty > 0.40 {
+		deadPenalty = 0.40
+	}
+	return tutorBonus + cantripBonus - deadPenalty
 }
 
 // drawEngineCredit estimates the seat's virtual cards-per-turn from
