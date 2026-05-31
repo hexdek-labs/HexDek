@@ -368,8 +368,13 @@ func TestParseSpellbookJSON_BadJSONErrors(t *testing.T) {
 
 func TestAllKnownCombos_FallsBackToCuratedWhenNoImport(t *testing.T) {
 	saved := ImportedCombos
+	savedGen := generatedSpellbookCombos
 	ImportedCombos = nil
-	defer func() { ImportedCombos = saved }()
+	generatedSpellbookCombos = nil
+	defer func() {
+		ImportedCombos = saved
+		generatedSpellbookCombos = savedGen
+	}()
 
 	got := allKnownCombos()
 	if len(got) != len(KnownCombos) {
@@ -379,7 +384,12 @@ func TestAllKnownCombos_FallsBackToCuratedWhenNoImport(t *testing.T) {
 
 func TestAllKnownCombos_MergesImportedAndDedupes(t *testing.T) {
 	saved := ImportedCombos
-	defer func() { ImportedCombos = saved }()
+	savedGen := generatedSpellbookCombos
+	generatedSpellbookCombos = nil
+	defer func() {
+		ImportedCombos = saved
+		generatedSpellbookCombos = savedGen
+	}()
 
 	// Import one duplicate and one new combo.
 	ImportedCombos = []KnownCombo{

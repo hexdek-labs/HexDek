@@ -295,14 +295,22 @@ func FetchSpellbook(url, cachePath string) (int, error) {
 // allKnownCombos returns the merged set of curated + imported combos.
 // analysis.go uses this in place of KnownCombos directly so the dedupe
 // happens once per call rather than scattered across the file.
+//
+// Three layers are merged, in priority order (earlier wins on key collision):
+//  1. KnownCombos              — hand-curated, source of truth for outlets/stops
+//  2. ImportedCombos           — runtime --spellbook cache (gitignored bulk dump)
+//  3. generatedSpellbookCombos — committed compile-time baseline from
+//     gen_spellbook (the deduped Commander Spellbook seed)
 func allKnownCombos() []KnownCombo {
-	if len(ImportedCombos) == 0 {
+	if len(ImportedCombos) == 0 && len(generatedSpellbookCombos) == 0 {
 		return KnownCombos
 	}
-	// ImportedCombos arrive from Commander Spellbook without a curated
+	// Imported entries arrive from Commander Spellbook without a curated
 	// Class; backfill via the heuristic classifier before the merge so
 	// downstream consumers see a uniformly-classified set.
 	ClassifySpellbookImported(ImportedCombos)
+	ClassifySpellbookImported(generatedSpellbookCombos)
 	merged, _ := MergeKnownCombos(KnownCombos, ImportedCombos)
+	merged, _ = MergeKnownCombos(merged, generatedSpellbookCombos)
 	return merged
 }
