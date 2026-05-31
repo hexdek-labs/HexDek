@@ -167,6 +167,164 @@ func TestDetectConditionScaffold_Era1R60(t *testing.T) {
 			text:     "as long as your life total is greater than your starting life total, this creature has flying",
 			wantKind: condScaffoldLifeAboveStarting,
 		},
+
+		// Era 1 r60 era1-scaffold-sweep — detection cases for the 19 new
+		// raw-text patterns landed in this sweep.
+		{
+			name: "past-tense self power threshold",
+			kind: "raw",
+			text: "if its power was 3 or greater, draw a card",
+			wantKind: condScaffoldSelfPowerGE,
+			wantCnt: 3,
+		},
+		{
+			name: "toughness threshold",
+			kind: "raw",
+			text: "if that creature has toughness 6 or greater, destroy it",
+			wantKind: condScaffoldSelfPowerGE,
+			wantSub: "toughness",
+			wantCnt: 6,
+		},
+		{
+			name: "typed dread counter threshold",
+			kind: "raw",
+			text: "if there are three or more dread counters on it, sacrifice it",
+			wantKind: condScaffoldCountersOnSelfGE,
+			wantSub:  "dread",
+			wantCnt:  3,
+		},
+		{
+			name: "counter parity odd",
+			kind: "raw",
+			text: "as long as ~ has an odd number of counters, draw a card",
+			wantKind: condScaffoldSelfHasCounter,
+			wantSub:  "any_parity",
+			wantCnt:  1,
+		},
+		{
+			name: "counter negation indestructible",
+			kind: "raw",
+			text: "if it doesn't have an indestructible counter on it, sacrifice it",
+			wantKind: condScaffoldSelfHasNoCounter,
+			wantSub:  "indestructible",
+		},
+		{
+			name: "no arrowhead counters on artifact",
+			kind: "raw",
+			text: "if there are no arrowhead counters on this artifact, sacrifice it",
+			wantKind: condScaffoldSelfHasNoCounter,
+			wantSub:  "arrowhead",
+		},
+		{
+			name: "past-tense typed counter -1/-1",
+			kind: "raw",
+			text: "when this creature dies, if it had a -1/-1 counter on it, return it",
+			wantKind: condScaffoldHadCountersOnIt,
+			wantSub:  "-1/-1",
+		},
+		{
+			name: "life less than N",
+			kind: "raw",
+			text: "as long as your life total is less than 7, prevent all damage",
+			wantKind: condScaffoldLifeBelowThreshold,
+		},
+		{
+			name: "opponent has 10 or less life",
+			kind: "raw",
+			text: "as long as an opponent has 10 or less life, this creature gets +2/+1",
+			wantKind: condScaffoldLifeBelowThreshold,
+			wantSub:  "opponent",
+		},
+		{
+			name: "defending player more cards",
+			kind: "raw",
+			text: "if defending player has more cards in hand than you, this creature gets +2/+0",
+			wantKind: condScaffoldMoreCardsThanOpponents,
+			wantSub:  "opponent_more",
+		},
+		{
+			name: "creature has madness",
+			kind: "raw",
+			text: "as long as it has madness, this creature has haste",
+			wantKind: condScaffoldCreatureHasKeyword,
+			wantSub:  "madness",
+		},
+		{
+			name: "creature has first strike",
+			kind: "raw",
+			text: "if it has first strike, draw a card",
+			wantKind: condScaffoldCreatureHasKeyword,
+			wantSub:  "first_strike",
+		},
+		{
+			name: "isn't a token",
+			kind: "raw",
+			text: "when ~ dies, if it isn't a token, return it to its owner's hand",
+			wantKind: condScaffoldIsToken,
+			wantSub:  "non_token",
+		},
+		{
+			name: "this card is exiled",
+			kind: "raw",
+			text: "as long as this card is exiled, you may play it",
+			wantKind: condScaffoldSelfInZone,
+			wantSub:  "exile",
+		},
+		{
+			name: "at the top of your library",
+			kind: "raw",
+			text: "as long as ~ is at the top of your library, you may look at it",
+			wantKind: condScaffoldSelfInZone,
+			wantSub:  "library_top",
+		},
+		{
+			name: "self is enchanted krond",
+			kind: "raw",
+			text: "whenever ~ attacks, if it's enchanted, destroy target nonland permanent",
+			wantKind: condScaffoldSelfIsEnchanted,
+		},
+		{
+			name: "self is suspected",
+			kind: "raw",
+			text: "as long as this creature is suspected, deal 1 damage to each opponent",
+			wantKind: condScaffoldSelfIsSuspected,
+		},
+		{
+			name: "no land played this turn",
+			kind: "raw",
+			text: "if you didn't play a land this turn, you may search your library",
+			wantKind: condScaffoldNoLandPlayedThisTurn,
+		},
+		{
+			name: "typed creature died this turn",
+			kind: "raw",
+			text: "if another human died under your control this turn, this creature gets +1/+1",
+			wantKind: condScaffoldCreatureDiedThisTurn,
+			wantSub:  "typed",
+		},
+		{
+			name: "sneak cost paid",
+			kind: "raw",
+			text: "if his sneak cost was paid, ~ can't be blocked this turn",
+			wantKind: condScaffoldPaidOptionalCost,
+			wantCnt:  1,
+		},
+		{
+			name: "mana from creatures spent",
+			kind: "raw",
+			text: "if three or more mana from creatures was spent to cast it, draw three cards",
+			wantKind: condScaffoldManaSpentThreshold,
+			wantSub:  "from_creatures",
+			wantCnt:  3,
+		},
+		{
+			name: "noncreature spell count this turn",
+			kind: "raw",
+			text: "as long as you've cast two or more noncreature spells this turn, ~ has double strike",
+			wantKind: condScaffoldCastNSpellsThisTurn,
+			wantSub:  "noncreature",
+			wantCnt:  2,
+		},
 	}
 
 	for _, tc := range cases {
@@ -541,5 +699,145 @@ func TestApplyConditionScaffolding_Era1R60_SharesCreatureType(t *testing.T) {
 	}
 	if !hasCreature {
 		t.Errorf("top-of-library reveal should be a creature, got %v", top.Types)
+	}
+}
+
+// Era 1 r60 era1-scaffold-sweep — apply tests for the 6 new scaffold kinds.
+// Each pins the engine-state mutation the scaffold makes so a downstream
+// predicate reader can resolve true at scaffold time.
+
+func TestApplyConditionScaffolding_Era1R60_CreatureHasKeyword(t *testing.T) {
+	gs := newTestGameState(2)
+	src := &gameengine.Permanent{
+		Card:       &gameengine.Card{Name: "Anje Falkenrath", Owner: 0, Types: []string{"creature"}},
+		Controller: 0, Owner: 0,
+		Flags: map[string]int{},
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+	cond := &gameast.Condition{Kind: "raw", Args: []interface{}{"if it has madness, draw a card"}}
+	cs := applyConditionScaffolding(gs, cond, src)
+	if cs.kind != condScaffoldCreatureHasKeyword {
+		t.Fatalf("expected CreatureHasKeyword, got %v", cs.kind)
+	}
+	if src.Flags["madness"] != 1 {
+		t.Errorf("madness flag not set on srcPerm")
+	}
+	found := false
+	for _, g := range src.GrantedAbilities {
+		if g == "madness" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Errorf("madness not present in GrantedAbilities, got %v", src.GrantedAbilities)
+	}
+}
+
+func TestApplyConditionScaffolding_Era1R60_IsToken_NonToken(t *testing.T) {
+	gs := newTestGameState(2)
+	src := &gameengine.Permanent{
+		Card:       &gameengine.Card{Name: "Gruff Triplets", Owner: 0, Types: []string{"creature"}},
+		Controller: 0, Owner: 0,
+		Flags: map[string]int{"token": 1},
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+	cond := &gameast.Condition{Kind: "raw", Args: []interface{}{"when ~ dies, if it isn't a token, return it"}}
+	cs := applyConditionScaffolding(gs, cond, src)
+	if cs.kind != condScaffoldIsToken {
+		t.Fatalf("expected IsToken, got %v", cs.kind)
+	}
+	if _, ok := src.Flags["token"]; ok {
+		t.Errorf("token flag should be cleared for non_token subtype")
+	}
+	if src.Flags["non_token"] != 1 {
+		t.Errorf("non_token flag not set")
+	}
+}
+
+func TestApplyConditionScaffolding_Era1R60_SelfInZone_Exile(t *testing.T) {
+	gs := newTestGameState(2)
+	src := &gameengine.Permanent{
+		Card:       &gameengine.Card{Name: "Uvilda, Dean of Perfection", Owner: 0, Types: []string{"creature"}},
+		Controller: 0, Owner: 0,
+		Flags: map[string]int{},
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+	cond := &gameast.Condition{Kind: "raw", Args: []interface{}{"as long as this card is exiled, you may cast it"}}
+	cs := applyConditionScaffolding(gs, cond, src)
+	if cs.kind != condScaffoldSelfInZone {
+		t.Fatalf("expected SelfInZone, got %v", cs.kind)
+	}
+	if cs.subtype != "exile" {
+		t.Errorf("expected subtype=exile, got %q", cs.subtype)
+	}
+	if src.Flags["in_exile_zone"] != 1 {
+		t.Errorf("in_exile_zone flag not set")
+	}
+}
+
+func TestApplyConditionScaffolding_Era1R60_SelfIsEnchanted(t *testing.T) {
+	gs := newTestGameState(2)
+	src := &gameengine.Permanent{
+		Card:       &gameengine.Card{Name: "Krond the Dawn-Clad", Owner: 0, Types: []string{"creature"}},
+		Controller: 0, Owner: 0,
+		Flags: map[string]int{},
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+	cond := &gameast.Condition{Kind: "raw", Args: []interface{}{"whenever ~ attacks, if it's enchanted, destroy target nonland permanent"}}
+	cs := applyConditionScaffolding(gs, cond, src)
+	if cs.kind != condScaffoldSelfIsEnchanted {
+		t.Fatalf("expected SelfIsEnchanted, got %v", cs.kind)
+	}
+	if src.Flags["enchanted"] != 1 {
+		t.Errorf("enchanted flag not set")
+	}
+	foundAura := false
+	for _, p := range gs.Seats[0].Battlefield {
+		if p != nil && p.AttachedTo == src {
+			foundAura = true
+			break
+		}
+	}
+	if !foundAura {
+		t.Errorf("expected an Aura permanent attached to srcPerm")
+	}
+}
+
+func TestApplyConditionScaffolding_Era1R60_SelfIsSuspected(t *testing.T) {
+	gs := newTestGameState(2)
+	src := &gameengine.Permanent{
+		Card:       &gameengine.Card{Name: "Repeat Offender", Owner: 0, Types: []string{"creature"}},
+		Controller: 0, Owner: 0,
+		Flags: map[string]int{},
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+	cond := &gameast.Condition{Kind: "raw", Args: []interface{}{"as long as this creature is suspected, opponents lose 1 life"}}
+	cs := applyConditionScaffolding(gs, cond, src)
+	if cs.kind != condScaffoldSelfIsSuspected {
+		t.Fatalf("expected SelfIsSuspected, got %v", cs.kind)
+	}
+	if src.Flags["suspected"] != 1 {
+		t.Errorf("suspected flag not set")
+	}
+}
+
+func TestApplyConditionScaffolding_Era1R60_NoLandPlayedThisTurn(t *testing.T) {
+	gs := newTestGameState(2)
+	gs.Seats[0].Turn.LandsPlayed = 1
+	gs.Seats[0].Flags["landfall_this_turn"] = 1
+	cond := &gameast.Condition{Kind: "raw", Args: []interface{}{"if you didn't play a land this turn, you may search your library"}}
+	cs := applyConditionScaffolding(gs, cond, nil)
+	if cs.kind != condScaffoldNoLandPlayedThisTurn {
+		t.Fatalf("expected NoLandPlayedThisTurn, got %v", cs.kind)
+	}
+	if gs.Seats[0].Turn.LandsPlayed != 0 {
+		t.Errorf("LandsPlayed should be 0, got %d", gs.Seats[0].Turn.LandsPlayed)
+	}
+	if gs.Seats[0].Flags["no_land_played"] != 1 {
+		t.Errorf("no_land_played flag not set")
+	}
+	if _, ok := gs.Seats[0].Flags["landfall_this_turn"]; ok {
+		t.Errorf("landfall_this_turn should be cleared")
 	}
 }

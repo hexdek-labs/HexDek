@@ -216,7 +216,7 @@ RAW_PATTERNS = [
     ("creature_died_under_your_control", re.compile(r"a creature died under your control this turn")),
     ("equipped_creature_is", re.compile(r"as long as (?:equipped|enchanted) (?:creature|permanent) is (?:an? |the )")),
     ("aura_attached_property", re.compile(r"as long as enchanted permanent is")),
-    ("hand_size_ge_seven", re.compile(r"(?:you have )?(?:seven|7) or more cards in.*hand")),
+    ("hand_size_ge_n", re.compile(r"(?:you have )?(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+) or more cards in.*hand")),
     ("put_counter_on_creature_turn", re.compile(r"you put a counter on a creature this turn")),
     ("quest_counters", re.compile(r"quest counter")),
     ("life_lost_n_or_more", re.compile(r"a player lost \d+ or more life this turn|opponent lost \d+ or more life this turn")),
@@ -269,17 +269,69 @@ RAW_PATTERNS = [
     ("self_power_ge", re.compile(r"(?:this creature'?s|its|~'?s) power is \w+ or (?:more|greater)")),
     ("top_of_library_type", re.compile(r"\btop card of your library is\b")),
     ("counter_put_on_perm_turn", re.compile(r"counters? was put on (?:a permanent|target|that creature)|put one or more \+1/\+1 counters on .* this turn|you'?ve put one or more")),
-    # Parser-coverage R60 batch — named-counter threshold on self:
-    # "<N> or more <named> counter[s] on it / this artifact / this
-    # enchantment", or "there are <N> or more <named> counters on it".
-    # The engine-side condScaffoldCountersOnSelfGE matcher already
-    # catches the same shape (see conditional_setup.go:2573) and the
-    # subtype list now includes release/dread/wreck/luck/arrowhead/echo/
-    # bounty/rad/phyresis. Audit-side pattern keeps the gap metric in
-    # sync with that engine coverage. Placed BEFORE the broad
-    # "you_control_raw" sweep so the broader fallback doesn't eat it.
+    # Parser-coverage R60 batch — named-counter threshold on self ("N or
+    # more <named> counters on it / this artifact / this enchantment").
+    # Engine-side condScaffoldCountersOnSelfGE catches the same shape and
+    # its subtype list includes release/dread/wreck/luck/arrowhead/echo/
+    # bounty/rad/phyresis. Audit-side keeps the gap metric in sync.
     ("named_counter_threshold_on_perm",
      re.compile(r"(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|thirteen|twenty) or more \w+ counters? on (?:it|this artifact|this enchantment|this creature|this permanent|them|that)|there are (?:\d+|one|two|three|four|five|six|seven|eight|nine|ten) or more \w+ counters? on (?:it|this)")),
+    # Era 1 r60 era1-scaffold-sweep — 19 new patterns covering the residual
+    # raw-text fragments surfaced by the 2026-05-30 audit. Ordered most-
+    # specific first so generic life/hand/keyword catches don't eat them.
+    ("past_tense_power_ge", re.compile(r"(?:its power was|this creature'?s power was|~ has power|had power) [\w'\-]+ or (?:greater|more)|its power was different from")),
+    ("toughness_ge", re.compile(r"(?:has toughness|with toughness) [\w'\-]+ or (?:greater|more)")),
+    ("typed_counter_threshold", re.compile(r"(?:one|two|three|four|five|six|seven|eight|nine|ten|thirteen|\d+) or more (?:dread|release|wreck|bounty|rad|arrowhead|landmark|ribbon|judgment|velocity|phyresis|quest|charge|ki|luck|echo|fade|spore|level|time|conqueror|\+1/\+1) counters?")),
+    ("typed_counter_explicit_has", re.compile(r"has (?:one|two|three|four|five|six|seven|eight|nine|ten|thirteen|\d+) or more (?:dread|release|wreck|bounty|rad|arrowhead|landmark|ribbon|judgment|velocity|phyresis|quest|charge|ki|luck|echo|fade|spore|level|time|conqueror) counters?")),
+    ("counter_parity", re.compile(r"(?:odd|even) number of counters")),
+    ("counter_negation_no_kind", re.compile(r"doesn'?t have (?:a|an|any) \S+ counter|there are no \S+ counters on (?:this|it)|they don'?t have any \S+ counters?")),
+    ("past_tense_typed_counter", re.compile(r"it had a (?:\+1/\+1|-1/-1|death|charge|loyalty|fade|stun|shield|verse|wage|wish|gold|spore|brain|coin|ki|quest|level|rad|oil|time|hatchling|hourglass|magnet|paralyzation|petrification|delay|tide|trade|wind) counter on it")),
+    ("life_lt_n", re.compile(r"(?:your life total is|life total is) less than \d+")),
+    ("opponent_le_n_life", re.compile(r"(?:an|any) opponent has \d+ or (?:less|fewer) life")),
+    ("defending_player_more_cards", re.compile(r"(?:defending player|that player) has more cards in (?:\w+ )?hand than you")),
+    ("creature_has_keyword", re.compile(r"(?:^|, |\bit |this creature |~ )(?:has|gets) (madness|flying|first strike|double strike|deathtouch|lifelink|trample|haste|menace|reach|vigilance|hexproof|indestructible|defender|protection|infect|shroud)\b")),
+    ("is_or_isnt_token", re.compile(r"(?:isn'?t|is not) a token|it'?s a token")),
+    ("in_zone", re.compile(r"in the command zone|this card is exiled|while exiled|at the top of your library|~ is at the top of")),
+    ("source_is_enchanted", re.compile(r"(?<!enchanted creature )(?:it'?s enchanted\b|this creature is enchanted\b|~ is enchanted\b|as long as this creature is enchanted)")),
+    ("suspected_creature", re.compile(r"this creature is suspected|is suspected\b")),
+    ("no_land_played_turn", re.compile(r"you (?:didn'?t|haven'?t) play(?:ed)? a land this turn")),
+    ("typed_creature_died_turn", re.compile(r"(?:another \w+|a modified creature|a non-?token \w+) died (?:under your control )?this turn")),
+    ("optional_cost_variants", re.compile(r"sneak cost was paid|gift was promised|(?:his|her|their) \w+ cost was paid")),
+    ("mana_from_source_spent", re.compile(r"mana from (?:creatures|treasures|nonbasic lands|noncreature) (?:was|were) spent to cast")),
+    ("typed_spell_count_turn", re.compile(r"(?:two|three|four|\d+) or more noncreature spells this turn")),
+    # Era 1 r60 era1-scaffold-sweep — second-pass tail covering the residual
+    # raw-text fragments not caught by the 19 main patterns. Each maps to an
+    # existing scaffold; placed AHEAD of you_control_raw so the broad fallback
+    # doesn't eat narrower predicates.
+    ("named_power_ge", re.compile(r"[a-z]+(?:'s| has) power (?:is|of) \w+ or (?:greater|more)|power 4 or greater|jor kadeen'?s power")),
+    ("was_blocked_turn", re.compile(r"it was blocked this turn|was blocked this turn")),
+    ("you_drew_n_cards_turn", re.compile(r"you drew \w+ or more cards this turn|drew \w+ or more cards this turn")),
+    ("any_player_pays", re.compile(r"any player pays \{")),
+    ("haven_t_cast", re.compile(r"you haven'?t cast (?:it|the card)|haven'?t cast")),
+    ("attacking_an_opponent", re.compile(r"it'?s attacking (?:one of |an? )?(?:your )?opponents?|it'?s attacking a player")),
+    ("attached_to_creature", re.compile(r"as long as ~ is attached to a creature|while attached")),
+    ("spell_cast_from_anywhere", re.compile(r"cast from anywhere other than your hand|this spell was cast from")),
+    ("creature_power_compare", re.compile(r"that creature is \d+/\d+|that creature has \w+ or more \+1/\+1 counters")),
+    ("you_committed_crime", re.compile(r"you'?ve committed a crime this turn|committed a crime")),
+    ("away_behind", re.compile(r"as long as you are way behind|you'?re way behind")),
+    ("library_card_count_ge", re.compile(r"you have \d+ or more cards in your library|\d+ or more cards in your library")),
+    ("library_no_nonbasic", re.compile(r"no nonbasic land cards in your library|there are no nonbasic")),
+    ("opponents_no_typed_perm", re.compile(r"your opponents control no permanents with \w+ counters|opponents control no permanents with")),
+    ("attacked_you_last_turn", re.compile(r"attacked you (?:during their last|that) turn|they didn'?t attack you that turn")),
+    ("if_creature_was_typed", re.compile(r"if (?:that|it was) (?:a|an) \w+ (?:creature )?card|if it was a creature card")),
+    ("power_parity", re.compile(r"~'?s power is (?:even|odd)|power is (?:even|odd)")),
+    ("cast_two_or_more_last_turn", re.compile(r"cast two or more spells last turn|a player cast (?:two|three) or more spells last turn")),
+    ("madness_cost", re.compile(r"madness cost was paid|its madness cost")),
+    ("its_night", re.compile(r"\bit'?s night\b|it'?s daytime")),
+    ("renowned", re.compile(r"it'?s renowned|is renowned")),
+    ("you_have_card_in_hand", re.compile(r"you have a card in hand|you have at least one card in")),
+    ("opponents_turn", re.compile(r"it'?s an opponent'?s turn|on an opponent'?s turn")),
+    ("typed_died_turn_broad", re.compile(r"a (?:phyrexian|cleric|wizard|elf|goblin|knight|warrior|soldier|merfolk|vampire|zombie|human|dragon) died (?:under your control )?this turn")),
+    ("devotion_to_color", re.compile(r"your devotion to (?:white|blue|black|red|green|\w+ and \w+) is")),
+    ("tower_counter_threshold", re.compile(r"\d+ or more tower counters")),
+    ("you_drawn_more_than_one", re.compile(r"you'?ve drawn more than (?:one|two|\d+) cards? this turn")),
+    ("second_resolution", re.compile(r"second time this ability has resolved|the second time you")),
+    ("creature_was_destroyed", re.compile(r"that creature was destroyed this way|was destroyed this way")),
     ("you_control_raw", re.compile(r"you control")),
 ]
 

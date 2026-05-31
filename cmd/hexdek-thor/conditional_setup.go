@@ -1995,6 +1995,16 @@ const (
 	condScaffoldSelfPowerGE        // "this creature's power is N or more" / "its power is N or greater"
 	condScaffoldTopOfLibraryType   // "the top card of your library is a creature/nonland card"
 	condScaffoldCounterPutOnPermTurn // "+1/+1 counter was put on a permanent under your control this turn"
+
+	// Era 1 r60 era1-scaffold-sweep — 6 new condition kinds covering the
+	// long-tail raw-text fragments from the 2026-05-30 audit. Each maps to
+	// existing engine state (Permanent.Flags / Counters, Seat.Turn).
+	condScaffoldCreatureHasKeyword  // "it has madness/flying/first strike/…" — stamp keyword flag on srcPerm
+	condScaffoldIsToken             // "is a token" / "isn't a token" — flip token flag
+	condScaffoldSelfInZone          // "in the command zone" / "this card is exiled" / "at the top of your library"
+	condScaffoldSelfIsEnchanted     // "it's enchanted" — ensure an Aura is attached to srcPerm
+	condScaffoldSelfIsSuspected     // "this creature is suspected" — stamp suspected flag
+	condScaffoldNoLandPlayedThisTurn // "you didn't play a land this turn" — clear LandsPlayed counter
 )
 
 type conditionScaffold struct {
@@ -2647,14 +2657,15 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 			"charge", "quest", "fade", "vanishing", "shield", "ki", "blood",
 			"divinity", "time", "verse", "wage", "wish", "bloodline", "ice",
 			"experience", "indestructibility", "page", "bore",
-			// Parser-coverage R60 batch — named counters surfaced by the
-			// era1 audit's "<N> or more <named> counters on it" cluster.
-			// Each one was previously falling back to the +1/+1 default
-			// even though the source card prints a distinct counter type;
-			// adding them here lets the scaffold name the right counter
-			// so per_card handlers reading cs.subtype get accurate prep.
+			// Named counters surfaced across the parser-coverage and
+			// era1-scaffold sweeps: release, dread, luck, rad, wreck,
+			// bounty, arrowhead, phyresis, plus the pre-Modern long-tail
+			// (spore/level/conqueror/tower). Lets the scaffold name the
+			// right counter so per_card handlers reading cs.subtype get
+			// accurate prep instead of the +1/+1 default.
 			"release", "dread", "wreck", "luck", "arrowhead", "echo",
-			"bounty", "rad", "phyresis"} {
+			"bounty", "rad", "phyresis", "spore", "level", "conqueror",
+			"tower"} {
 			if strings.Contains(txt, k+" counter") {
 				cs.subtype = k
 				break
@@ -2665,7 +2676,7 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 				cs.count = n
 			}
 		} else {
-			for w, n := range map[string]int{"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "ten": 10} {
+			for w, n := range map[string]int{"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "ten": 10, "thirteen": 13} {
 				if strings.Contains(txt, w+" or more") {
 					cs.count = n
 					break
@@ -3978,6 +3989,9 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		(strings.Contains(txt, "or more") || strings.Contains(txt, "at least")) {
 		cs.kind = condScaffoldCastNSpellsThisTurn
 		cs.count = 2
+		if strings.Contains(txt, "noncreature spells") {
+			cs.subtype = "noncreature"
+		}
 		if n := parseFirstSpelledInt(txt); n > 0 {
 			cs.count = n
 		}
@@ -4099,6 +4113,290 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 	if strings.Contains(txt, "dragon was beheld") ||
 		strings.Contains(txt, "was beheld") {
 		cs.kind = condScaffoldDragonBeheld
+		return cs
+	}
+
+	// Era 1 r60 era1-scaffold-sweep — 19 detection patterns for the long-
+	// tail of unbucketed pre-Modern raw-text. Ordered most-specific first.
+	// All placed immediately above the tribal "you control" fallback so it
+	// doesn't eat narrower predicates. Numbers reflect the audit row count.
+
+	// (1) Past-tense self-power threshold — "its power was N or greater",
+	// "this creature's power was N or more". Distinct from present-tense
+	// self_power_ge above; routes to the same scaffold (BasePower bump).
+	if (strings.Contains(txt, "its power was") ||
+		strings.Contains(txt, "this creature's power was") ||
+		strings.Contains(txt, "had power")) &&
+		(strings.Contains(txt, "or greater") || strings.Contains(txt, "or more")) {
+		cs.kind = condScaffoldSelfPowerGE
+		cs.count = 3
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+
+	// (2) Toughness threshold — "has toughness N or greater" / "with
+	// toughness N or more". Mirrors SelfPowerGE; subtype="toughness" so the
+	// apply path bumps BaseToughness instead.
+	if (strings.Contains(txt, "has toughness") || strings.Contains(txt, "with toughness")) &&
+		(strings.Contains(txt, "or greater") || strings.Contains(txt, "or more")) {
+		cs.kind = condScaffoldSelfPowerGE
+		cs.subtype = "toughness"
+		cs.count = 3
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+
+	// (3) Typed counter threshold ("three or more dread counters on it",
+	// "thirteen or more release counters", "ten or more luck counters").
+	if strings.Contains(txt, "counters on it") && strings.Contains(txt, "or more") {
+		for _, k := range []string{"dread", "release", "wreck", "bounty", "rad",
+			"arrowhead", "landmark", "ribbon", "judgment", "velocity", "phyresis",
+			"quest", "charge", "ki", "luck", "echo", "fade", "spore", "level"} {
+			if strings.Contains(txt, k+" counter") {
+				cs.kind = condScaffoldSelfHasCounter
+				cs.subtype = k
+				cs.count = 3
+				if n := parseFirstSpelledInt(txt); n > 0 {
+					cs.count = n
+				}
+				return cs
+			}
+		}
+	}
+
+	// (4) Counter parity — "odd/even number of counters on it" (Sab-Sunen).
+	// Generic SelfHasCounter with subtype="any_parity" so the apply path
+	// places a single +1/+1 counter (gives an odd count of 1).
+	if (strings.Contains(txt, "odd number of counters") ||
+		strings.Contains(txt, "even number of counters")) {
+		cs.kind = condScaffoldSelfHasCounter
+		cs.subtype = "any_parity"
+		cs.count = 1
+		return cs
+	}
+
+	// (5) Counter negation — "doesn't have a/an <kind> counter" / "there
+	// are no <kind> counters on this artifact/enchantment/permanent".
+	// Routes to SelfHasNoCounter; tries to lift the kind from surrounding
+	// text so the apply path clears the right counter.
+	if (strings.Contains(txt, "doesn't have a") || strings.Contains(txt, "doesn't have an")) &&
+		strings.Contains(txt, "counter") {
+		cs.kind = condScaffoldSelfHasNoCounter
+		cs.subtype = "+1/+1"
+		for _, k := range []string{"indestructible", "+1/+1", "-1/-1", "oil",
+			"stun", "shield", "charge", "loyalty", "rad", "echo"} {
+			if strings.Contains(txt, k+" counter") {
+				cs.subtype = k
+				break
+			}
+		}
+		return cs
+	}
+	if strings.Contains(txt, "there are no") && strings.Contains(txt, "counters on this") {
+		cs.kind = condScaffoldSelfHasNoCounter
+		cs.subtype = "arrowhead"
+		for _, k := range []string{"arrowhead", "+1/+1", "-1/-1", "oil",
+			"stun", "shield", "charge", "echo", "rad", "bounty"} {
+			if strings.Contains(txt, k+" counter") {
+				cs.subtype = k
+				break
+			}
+		}
+		return cs
+	}
+
+	// (6) Past-tense typed counter ("it had a -1/-1 counter on it",
+	// "it had a death counter on it"). Routes to HadCountersOnIt; the
+	// apply path stamps a +1/+1 by default — we widen by stamping the
+	// detected subtype so callers can read either.
+	if strings.Contains(txt, "it had a") && strings.Contains(txt, "counter on it") {
+		cs.kind = condScaffoldHadCountersOnIt
+		for _, k := range []string{"+1/+1", "-1/-1", "death", "charge", "loyalty",
+			"fade", "stun", "shield", "verse", "wage"} {
+			if strings.Contains(txt, "had a "+k+" counter") {
+				cs.subtype = k
+				break
+			}
+		}
+		return cs
+	}
+
+	// (7) Less-than-N life — "your life total is less than N". Distinct
+	// from LifeAboveThreshold's ≥N form; routes to LifeBelowThreshold
+	// (apply sets seat 0 life to threshold-1 so the predicate holds).
+	if (strings.Contains(txt, "your life total is less than") ||
+		strings.Contains(txt, "life total is less than")) &&
+		!strings.Contains(txt, "opponent") {
+		cs.kind = condScaffoldLifeBelowThreshold
+		cs.threshold = 5
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.threshold = n - 1
+		}
+		return cs
+	}
+
+	// (8) Opponent has N or less life — "any opponent has 10 or less life"
+	// (Guul Draz Vampire). Routes to LifeBelowThreshold with subtype so
+	// apply can target seat 1 instead of seat 0.
+	if (strings.Contains(txt, "opponent has") || strings.Contains(txt, "any opponent has")) &&
+		(strings.Contains(txt, "or less life") || strings.Contains(txt, "or fewer life")) {
+		cs.kind = condScaffoldLifeBelowThreshold
+		cs.subtype = "opponent"
+		cs.threshold = 10
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.threshold = n
+		}
+		return cs
+	}
+
+	// (9) Defending-player hand-size — "defending player has more cards
+	// in hand than you" (Robber of the Rich, Pulse of the Grid). Inverse
+	// of the existing MoreCardsThanOpponents predicate.
+	if (strings.Contains(txt, "defending player") || strings.Contains(txt, "that player")) &&
+		strings.Contains(txt, "more cards in") && strings.Contains(txt, "than you") {
+		cs.kind = condScaffoldMoreCardsThanOpponents
+		cs.subtype = "opponent_more"
+		return cs
+	}
+	if strings.Contains(txt, "an opponent has more cards in hand than you") {
+		cs.kind = condScaffoldMoreCardsThanOpponents
+		cs.subtype = "opponent_more"
+		return cs
+	}
+
+	// (10) Creature has keyword — "it has madness/flying/first strike/…".
+	// Distinct from blanket "has flying" effect grants (which are Static
+	// abilities, not Conditions). Anchor on the cond-shape phrasings.
+	for _, kw := range []string{"madness", "flying", "first strike", "double strike",
+		"deathtouch", "lifelink", "trample", "haste", "menace", "reach",
+		"vigilance", "hexproof", "indestructible", "defender", "protection",
+		"infect", "shroud"} {
+		if (strings.Contains(txt, "it has "+kw) ||
+			strings.Contains(txt, "this creature has "+kw) ||
+			strings.Contains(txt, "~ has "+kw)) &&
+			!strings.Contains(txt, "doesn't have "+kw) {
+			cs.kind = condScaffoldCreatureHasKeyword
+			cs.subtype = strings.ReplaceAll(kw, " ", "_")
+			return cs
+		}
+	}
+
+	// (11) Is / isn't a token — "isn't a token", "is not a token", "it's
+	// a token" (Gruff Triplets etc).
+	if strings.Contains(txt, "isn't a token") || strings.Contains(txt, "is not a token") {
+		cs.kind = condScaffoldIsToken
+		cs.subtype = "non_token"
+		return cs
+	}
+	if strings.Contains(txt, "it's a token") || strings.Contains(txt, "is a token") {
+		cs.kind = condScaffoldIsToken
+		cs.subtype = "token"
+		return cs
+	}
+
+	// (12) In-zone predicate — "this card is exiled" / "at the top of
+	// your library". The "in the command zone" branch already routes to
+	// condScaffoldEminenceCommandZone above; we cover the other zones.
+	if strings.Contains(txt, "this card is exiled") || strings.Contains(txt, "while exiled") {
+		cs.kind = condScaffoldSelfInZone
+		cs.subtype = "exile"
+		return cs
+	}
+	if strings.Contains(txt, "at the top of your library") ||
+		strings.Contains(txt, "~ is at the top of") {
+		cs.kind = condScaffoldSelfInZone
+		cs.subtype = "library_top"
+		return cs
+	}
+
+	// (13) Source is enchanted — Krond the Dawn-Clad, Pillar of War. Reads
+	// "it's enchanted" / "this creature is enchanted" / "as long as this
+	// creature is enchanted". Must NOT match "enchanted creature ..." —
+	// that's an EnchantedCreature scaffold, already handled above.
+	if (strings.Contains(txt, "it's enchanted") ||
+		strings.Contains(txt, "this creature is enchanted") ||
+		strings.Contains(txt, "~ is enchanted") ||
+		strings.Contains(txt, "as long as this creature is enchanted")) &&
+		!strings.Contains(txt, "enchanted creature") {
+		cs.kind = condScaffoldSelfIsEnchanted
+		return cs
+	}
+
+	// (14) Suspected creature — "this creature is suspected" / "is
+	// suspected" (Repeat Offender, MKM suspect mechanic).
+	if strings.Contains(txt, "this creature is suspected") ||
+		strings.Contains(txt, "is suspected") ||
+		strings.Contains(txt, "it is suspected") {
+		cs.kind = condScaffoldSelfIsSuspected
+		return cs
+	}
+
+	// (15) No land played this turn — "you didn't play a land this turn"
+	// (Mercadian Atlas). Inverse-flag — clears Turn.LandsPlayed.
+	if strings.Contains(txt, "didn't play a land this turn") ||
+		strings.Contains(txt, "haven't played a land this turn") {
+		cs.kind = condScaffoldNoLandPlayedThisTurn
+		return cs
+	}
+
+	// (16) Typed creature died this turn — "another human died under your
+	// control this turn", "a modified creature died", "a nontoken creature
+	// died". Routes to CreatureDiedThisTurn with subtype="typed" so apply
+	// stamps the right creature in graveyard.
+	if (strings.Contains(txt, "died under your control this turn") ||
+		strings.Contains(txt, "died this turn")) &&
+		(strings.Contains(txt, "another ") || strings.Contains(txt, "modified creature") ||
+			strings.Contains(txt, "nontoken")) {
+		cs.kind = condScaffoldCreatureDiedThisTurn
+		cs.subtype = "typed"
+		return cs
+	}
+
+	// (17) Optional-cost wording variants — "sneak cost was paid" (Leonardo),
+	// "gift was promised" (Scrapshooter), generic "<X> cost was paid".
+	// Routes to PaidOptionalCost.
+	if strings.Contains(txt, "sneak cost was paid") ||
+		strings.Contains(txt, "gift was promised") ||
+		strings.Contains(txt, "prowl cost was paid") {
+		cs.kind = condScaffoldPaidOptionalCost
+		cs.count = 1
+		return cs
+	}
+
+	// (18) Mana from source spent — "three or more mana from creatures was
+	// spent to cast" (Inga and Esika), "mana from treasures was spent". Adds
+	// a subtype so the existing ManaSpentThreshold scaffold can stamp the
+	// per-source flag.
+	if strings.Contains(txt, "mana from") && strings.Contains(txt, "spent to cast") {
+		cs.kind = condScaffoldManaSpentThreshold
+		cs.count = 3
+		if strings.Contains(txt, "creatures") {
+			cs.subtype = "from_creatures"
+		} else if strings.Contains(txt, "treasures") {
+			cs.subtype = "from_treasures"
+		} else if strings.Contains(txt, "nonbasic") {
+			cs.subtype = "from_nonbasic"
+		}
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+
+	// (19) Typed-spell count this turn — "two or more noncreature spells
+	// this turn" (Lyse Hext). Routes to CastNSpellsThisTurn with subtype.
+	if strings.Contains(txt, "noncreature spells this turn") &&
+		strings.Contains(txt, "or more") {
+		cs.kind = condScaffoldCastNSpellsThisTurn
+		cs.subtype = "noncreature"
+		cs.count = 2
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
 		return cs
 	}
 
@@ -7140,6 +7438,122 @@ func applyConditionScaffolding(gs *gameengine.GameState, cond *gameast.Condition
 			gs.Seats[0].Turn.CreaturesDied++
 		}
 		cs.description = "set srcPerm.Flags[damaged_creature_died]=1 + placed corpse in seat 0 graveyard"
+
+	// Era 1 r60 era1-scaffold-sweep — apply cases for the 6 new condition
+	// kinds. Each stamps a single per-permanent or per-seat flag/state so
+	// downstream predicates evaluate true at scaffold time.
+
+	case condScaffoldCreatureHasKeyword:
+		// "it has madness" / "has flying" / etc. Stamp the keyword flag on
+		// srcPerm under the canonical name the engine reads. Several engine
+		// readers use both the lowercase keyword and the keyword as a
+		// granted-ability string — stamp both for breadth.
+		kw := cs.subtype
+		if kw == "" {
+			kw = "flying"
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags[kw] = 1
+			// GrantedAbilities is the canonical until-EOT keyword bag.
+			// Append the human-readable form so reflection-style lookups
+			// see it too.
+			human := strings.ReplaceAll(kw, "_", " ")
+			srcPerm.GrantedAbilities = append(srcPerm.GrantedAbilities, human)
+		}
+		cs.description = fmt.Sprintf("stamped %q keyword on srcPerm", kw)
+
+	case condScaffoldIsToken:
+		// "is a token" / "isn't a token". Flip srcPerm.Flags["token"].
+		// Per CR §111.6 token-ness rides on the permanent, not the card.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			if cs.subtype == "non_token" {
+				delete(srcPerm.Flags, "token")
+				srcPerm.Flags["non_token"] = 1
+			} else {
+				srcPerm.Flags["token"] = 1
+				delete(srcPerm.Flags, "non_token")
+			}
+		}
+		cs.description = fmt.Sprintf("set srcPerm.Flags[%s] (is-token check)", nonEmpty(cs.subtype, "token"))
+
+	case condScaffoldSelfInZone:
+		// "in the command zone" / "this card is exiled" / "at the top of
+		// your library". Stamp a flag rather than moving the permanent —
+		// moving srcPerm out of the battlefield mid-scaffold would unwind
+		// other priming work. The flag is the conservative signal
+		// downstream predicate-readers can consult.
+		zone := cs.subtype
+		if zone == "" {
+			zone = "command"
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["in_"+zone+"_zone"] = 1
+		}
+		if zone == "library_top" && srcPerm != nil && srcPerm.Card != nil &&
+			len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			// For top-of-library specifically, also seed the card pointer
+			// atop the library so peek-the-top readers succeed.
+			gs.Seats[0].Library = append([]*gameengine.Card{srcPerm.Card}, gs.Seats[0].Library...)
+		}
+		cs.description = fmt.Sprintf("set srcPerm.Flags[in_%s_zone]=1", zone)
+
+	case condScaffoldSelfIsEnchanted:
+		// "it's enchanted" — Krond the Dawn-Clad, Pillar of War. Stamp the
+		// flag and attach an Aura permanent to srcPerm so any
+		// AttachedTo-walking predicate also resolves true.
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["enchanted"] = 1
+		}
+		if srcPerm != nil && len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			aura := &gameengine.Permanent{
+				Card: &gameengine.Card{
+					Name:  "Enchanted-Source Aura Setup",
+					Owner: 0,
+					Types: []string{"enchantment", "aura"},
+				},
+				Controller: 0, Owner: 0,
+				AttachedTo: srcPerm,
+			}
+			gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, aura)
+		}
+		cs.description = "set srcPerm.Flags[enchanted]=1 + attached Aura permanent"
+
+	case condScaffoldSelfIsSuspected:
+		// "this creature is suspected" — MKM suspect mechanic. Stamp the
+		// flag the engine reads (mirror of suspect-mechanic primitives).
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["suspected"] = 1
+		}
+		cs.description = "set srcPerm.Flags[suspected]=1"
+
+	case condScaffoldNoLandPlayedThisTurn:
+		// "you didn't play a land this turn" (Mercadian Atlas, Island
+		// Sanctuary). Clear LandsPlayed counter + set the inverse flag.
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			seat := gs.Seats[0]
+			seat.Turn.LandsPlayed = 0
+			if seat.Flags == nil {
+				seat.Flags = map[string]int{}
+			}
+			seat.Flags["no_land_played"] = 1
+			delete(seat.Flags, "landfall_this_turn")
+		}
+		cs.description = "cleared seat 0 Turn.LandsPlayed + set no_land_played flag"
 	}
 	return cs
 }
@@ -7450,6 +7864,21 @@ func traceConditionScaffolding(cond *gameast.Condition, tr *Tracer) {
 		desc = fmt.Sprintf("prepended %q card to seat 0 library", nonEmpty(cs.subtype, "creature"))
 	case condScaffoldCounterPutOnPermTurn:
 		desc = "routed to put_counter_this_turn (passive-voice variant)"
+
+	// Era 1 r60 era1-scaffold-sweep — trace descriptions for the 6 new
+	// scaffolds.
+	case condScaffoldCreatureHasKeyword:
+		desc = fmt.Sprintf("stamped %q keyword on srcPerm", nonEmpty(cs.subtype, "flying"))
+	case condScaffoldIsToken:
+		desc = fmt.Sprintf("set srcPerm.Flags[%s] (is-token check)", nonEmpty(cs.subtype, "token"))
+	case condScaffoldSelfInZone:
+		desc = fmt.Sprintf("set srcPerm.Flags[in_%s_zone]=1", nonEmpty(cs.subtype, "command"))
+	case condScaffoldSelfIsEnchanted:
+		desc = "set srcPerm.Flags[enchanted]=1 + attached Aura permanent"
+	case condScaffoldSelfIsSuspected:
+		desc = "set srcPerm.Flags[suspected]=1"
+	case condScaffoldNoLandPlayedThisTurn:
+		desc = "cleared seat 0 Turn.LandsPlayed + set no_land_played flag"
 	}
 	tr.Record("CONDITION_SETUP", "%q → %s", cs.rawText, desc)
 }
