@@ -1,107 +1,149 @@
-# Loki r60 Fuzz Report — 5000 games / seed 42
+# Loki r60 Fuzz Report — 5000 games / seed 42 (Fresh main)
 
-**Date:** 2026-05-26
-**Branch:** `dev/loki-r60-fuzz` (cut from `origin/main`)
+**Date:** 2026-05-30
+**Branch:** `dev/loki-r60-fuzz-fresh` (cut from `origin/main` @ `b3ae63bd`)
 **Command:** `go run ./cmd/hexdek-loki --games 5000 --seed 42`
 **Worktree:** `.claude/worktrees/r60-11-feyd-slot`
-**Raw log:** `/tmp/loki-r60-raw.log`
-**Auto-generated report:** `data/rules/CHAOS_REPORT.md`
+**Raw log:** `/tmp/loki-r60/run.log`
+**Auto-generated report:** `/tmp/loki-r60/CHAOS_REPORT.md`
+**Violation dump:** `/tmp/loki-r60/violations.tsv` (268 entries, one per line, tab-separated `game<TAB>turn<TAB>invariant<TAB>message`)
 
 ## Headline
 
-**0 crashes / 0 invariant violations across 5000 chaos games + 10000 nightmare boards.**
+**0 crashes / 268 violations across 45 games (out of 5000) — REGRESSION vs the 2026-05-26 0/0 baseline.**
 
-The engine is bit-stable clean on seed 42 at r60. This supersedes both the round-1 r60 report previously at this path (52 violations, 2026-05-24) and the round-2 report (10 violations, also 2026-05-24). It is the first fully-clean 5000-game run on the canonical seed since the Loki invariant suite was introduced.
+The clean-on-seed-42 r60-round-3 status documented in this file's prior revision and in `docs/loki-r60-canonical-final.md` (2026-05-25, "engine officially clean") has been broken by the InstanceID Phase 5-9 / A-E rollout that shipped 2026-05-27..2026-05-30 (commits `e3cd053a`, `b76b5357`, `48a56c97`, `1643f9e4`, `b8ffdefb`, `5ead6140`, `117a95c8`, `ae55f16e`). The new symptoms are NOT pre-existing engine bugs — they are bugs newly **observable** because two previously off-by-default census-style invariants are now on by default:
+
+1. **`ZoneConservation` strict-census disappearance check** — flipped from gated → default-on by `5ead6140` (`SetStrictCensusDefault(true)` in `internal/gameengine/state.go:638`). The 25k Phase C verification reported clean, but the 5k seed-42 chaos surface still has residual mint-coverage gaps.
+2. **`ExileLinkageIntegrity` invariant** — registered in `invariants.go:87`, introduced in the InstanceID Phase 3 / Phase 4 work. Did not exist as a tracked invariant in r41-r60-round3 baselines.
+
+Nightmare phase is still bit-stable clean: 0 violations / 0 crashes across 10000 boards.
 
 ## Run Output
 
 ```
 === CHAOS GAMES COMPLETE ===
   games:           5000
-  duration:        49.002s
-  throughput:      102 games/sec
+  duration:        2m12.424s
+  throughput:      38 games/sec
   crashes:         0 (in 0 games)
-  violations:      0 (in 0 games)
-  clean games:     5000
+  violations:      268 (in 45 games)
+  clean games:     4955
 
 === NIGHTMARE BOARDS COMPLETE ===
   boards:          10000
-  duration:        615ms
-  throughput:      16258 boards/sec
+  duration:        779ms
+  throughput:      12834 boards/sec
   crashes:         0
   violations:      0
   clean boards:    10000
 
-Verdict: CLEAN
+Verdict: 268 invariant violations and 0 crashes across 45 problematic games (out of 5000 total).
 ```
 
 ## Top Invariant Clusters (by frequency)
 
-No invariant clusters observed. Every tracked category — `CardIdentity`, `ZoneConservation`, `ZoneCastGrantExpiry`, `TriggerCompleteness`, `SBACompleteness`, `LifeConsistency`, `AttachmentConsistency`, `CombatLegality`, `ResourceConservation`, `ReplacementCompleteness`, `StackIntegrity` — reported 0 violations across 0 games.
+| Invariant | Hits | Games | Notes |
+|-----------|-----:|------:|-------|
+| `ZoneConservation` (fabrication arm) | 120 | 5 | InstanceID present in a zone but not in `(Minted − Ceased)` — fabricated ID or stale ceased entry. 6 distinct fabricated IDs, all `OG` provenance (oracle-card mint). Dominated by 2 IDs across 2 games. |
+| `ZoneConservation` (disappearance arm) | 72 | 37 | InstanceID minted and not ceased but absent from every zone — strict-census "card disappeared". Token-heavy: food / treasure / soldier / zombie / mite / clue / phyrexian-mite. |
+| `ExileLinkageIntegrity` | 72 | 4 | Card in exile linked to a source timestamp no longer on any battlefield → LTB-return missed (orphaned linked exile). 4 distinct sources; 2 dominate. |
+| `CardIdentity` | 4 | 1 | Spikeshell Harrier present twice on the same battlefield, single game. |
+| `TriggerCompleteness`, `SBACompleteness`, `LifeConsistency`, `AttachmentConsistency`, `CombatLegality`, `ResourceConservation`, `ReplacementCompleteness`, `StackIntegrity`, `ZoneCastGrantExpiry`, `WinCondition`, `LayerOrdering` | 0 | — | Clean. |
+
+### Top Offending Cards / IDs
+
+**Fabrication arm — top fabricated InstanceIDs**:
+
+| InstanceID | Hits | Provenance | Game |
+|------------|-----:|-----------|-----:|
+| `h1OGVR200096` | 46 | seat-1 OG / role R2 | 411 |
+| `h1OGVR200056` | 34 | seat-1 OG / role R2 | 2762 |
+| `h2OGVU100098` | 13 | seat-2 OG / role U1 | 3589 |
+| `h0OGVU100070` | 10 | seat-0 OG / role U1 | 3688 |
+| `h2OGVC000097` | 9 | seat-2 OG / role C0 | 3589 |
+| `h0OGVC000094` | 8 | seat-0 OG / role C0 | 3688 |
+
+Pattern: the same fabricated ID repeats every invariant tick in a single game (game 411 alone contributes 46 of 120 fabrication hits). Suggests a single mint-bypass site per game replaying through the priority loop — a hand-rolled `*Card` or a mint helper missing from one of the InstanceID-v2 phase wires.
+
+**Disappearance arm — top disappeared card kinds (per-name aggregation)**:
+
+| Card | Hits |
+|------|-----:|
+| food artifact token | 7 |
+| treasure artifact token | 6 |
+| creature token colorless soldier artifact | 5 |
+| creature token zombie | 4 |
+| creature token phyrexian mite | 4 |
+| Tolarian Sentinel | 2 |
+| token treasure | 2 |
+| token clue | 2 |
+| Saprazzan Legate | 2 |
+| Rushwood Grove | 2 |
+| Queen's Bay Soldier | 2 |
+| Mountain | 2 |
+| Harbin, Vanguard Aviator | 2 |
+
+Tokens dominate the disappearance arm — exactly the surface called out in `internal/gameengine/state.go:631-635` as the gap-walk target. Some genuine non-token cards leak too (Saprazzan Legate, Rushwood Grove, Harbin Vanguard Aviator, Tolarian Sentinel), so this isn't strictly a token-bookkeeping problem.
+
+**`ExileLinkageIntegrity` — top orphaned-linked-exile sources**:
+
+| Card | Hits | Game |
+|------|-----:|-----:|
+| Prison Barricade | 42 | 2164 |
+| Leonardo, Sewer Samurai // Leonardo, Sewer Samurai | 26 | 2029 |
+| Myr Prototype | 2 | 1044 |
+| Great Hall of the Biblioplex | 2 | 149 |
+
+Pattern: a permanent with a linked-exile effect (Prison Barricade exiles a creature until it leaves; Leonardo similar) leaves the battlefield without firing its LTBReturn → exiled card is now orphaned, the source's `ExiledByMe` set still claims the linkage. Re-runs every invariant tick on the same game (game 2164 = 42 hits) so total volume amplifies one missed LTB-cleanup site.
 
 ## Trajectory vs. CLAUDE.md Baselines (seed 42, 5000 games)
 
-| Milestone | Total Violations | Δ vs Previous | Δ vs r41 Baseline |
-|-----------|-----------------:|--------------:|------------------:|
-| **r41** (baseline)            | 1652 | — | — |
-| **r44** (post Cerulean Sphinx + Krark paradigm + Adric / Oketra) | 402  | −1250 / −76% | −76% |
-| **r60 round 1**               | 52   | −350  / −87% | −96.9% |
-| **r60 round 2** (PR #106 ZoneCastGrantExpiry + #110 batchH + #124 AttachmentConsistency + trigger-cap) | 10   | −42   / −81% | −99.4% |
-| **r60 round 3 — THIS RUN**    | **0**  | **−10 / −100%** | **−100%** |
+| Milestone | Date | Total | Clusters | Δ vs Prev | Note |
+|-----------|------|------:|----------|----------:|------|
+| **r41** baseline | 2026-05-19 | 1652 | mostly `CardIdentity` (Cerulean Sphinx zone-leak) | — | Cerulean Sphinx + paradigm-copy era |
+| **r44** | 2026-05-19 | 402 | `CardIdentity` (Adric/Oketra), `ZoneConservation` (Krark paradigm) | −1250 / −76% | Cerulean Sphinx closed |
+| **r60 round 1** | 2026-05-24 | 52 | `ZoneCastGrantExpiry`, `TriggerCompleteness`, `CardIdentity`, `CombatLegality` | −350 / −87% | Round-1 cleanups landed |
+| **r60 round 2** | 2026-05-24 | 10 | `ZoneCastGrantExpiry` (4), `TriggerCompleteness` (2), `CardIdentity` (2), `CombatLegality` (2) | −42 / −81% | PR #106 / #110 / #124 + trigger-cap |
+| **r60 round 3** | 2026-05-26 | 0 | — | −10 / −100% | First fully-clean 5k seed-42 run; pre-strict-census |
+| **r60 fresh (THIS RUN)** | 2026-05-30 | **268** | `ZoneConservation` strict-census (192) + `ExileLinkageIntegrity` (72) + `CardIdentity` (4) | **+268 NEW signal** | Strict-census flipped on; InstanceID v2 Phases 5-E shipped |
 
-### Per-cluster comparison
+**Δ vs r41 baseline: −1384 / −83.8%.** The absolute regression vs the 2026-05-26 zero is real, but it's mostly visibility expansion rather than re-introduced bugs: the engine's behavior shifted only modestly while the invariant suite's coverage expanded substantially.
 
-| Invariant              | r41 | r44 | r60 r1 | r60 r2 | **r60 r3 (this run)** |
-|------------------------|----:|----:|-------:|-------:|----------------------:|
-| CardIdentity           | 832 | 260 |    2   |    —   | **0** |
-| ZoneConservation       | 790 | 124 |    0   |    —   | **0** |
-| ZoneCastGrantExpiry    |   8 |   4 |   42   |    4   | **0** |
-| TriggerCompleteness    |   8 |   4 |    6   |    2   | **0** |
-| AttachmentConsistency  |  14 |   8 |    0   |    0   | **0** |
-| CombatLegality         |   — |   2 |    2   |    2   | **0** |
-| SBACompleteness        |   — |   — |    —   |    1   | **0** |
-| LifeConsistency        |   — |   — |    —   |    1   | **0** |
-| **Total**              |1652 | 402 |   52   |   10   | **0** |
+## Worst New Regression Cluster
 
-### What closed the residual 10 (round 2 → round 3)
+**`ZoneConservation` strict-census** is the worst NEW regression cluster — 192 hits, 39 unique games, did not exist as an observable signal before `5ead6140` (2026-05-29). It splits into two failure modes:
 
-Cross-referenced from the CLAUDE.md Resolved Issue Log:
+1. **Fabrication arm (120 hits)** — observable since Phase 4 (`invariants.go:288-297`, always-on). The 5 affected games each have a *persistent* fabricated ID (replays every invariant tick), indicating a small number of hand-rolled-`*Card` or mint-bypass sites in the per_card / resolve corpus. High-leverage fix: bisect `h1OGVR200096` in game 411 → find the one mint site that's emitting a `Card` without `MintOGInstanceID` / `MintTKInstanceID`.
+2. **Disappearance arm (72 hits)** — newly observable since `5ead6140`. Token-heavy. The Phase D / Phase E private-zone + tail-edge sweeps closed the bulk surface (per `docs/instanceid-phase-c-verification.md`), but residual leakage remains around token destruction / sac-outlet / cleanup paths that don't always call the cease-helper.
 
-- **SBA cap-draw seat-loss** (seed 1337 g465, 2026-05-24) — CR §704.3 mandatory-loop draw now marks every non-Lost seat Lost with reason "mandatory loop draw (CR 104.4b via SBA cap)" so `CheckEnd` actually terminates and SBAs aren't permanently muted. Closed the seat-0-alive-at-life-0 LifeConsistency / SBACompleteness pair.
-- **Athreos cross-seat reanimate race** (seed 2024 g2798, 2026-05-24) — `athreosShroudDies` now scans owner's graveyard before delegating to `enterBattlefieldWithETB`, mirroring the Gisa §704.6d race-loser pattern. Closed 24× CardIdentity.
-- **Charix `ended`-skip mirror in SBA completeness check** (seed 2025 g3180, 2026-05-24) — invariant false-positive: three stacked +8/-8 mods resolved post-game-end, §704.5f never re-ran. Toughness check now skips at `ended=1`; life check still fires (preserves cap-draw counterfactual).
-- **Necrogen Communion ability log-label** (seeds 31415 + 271828 nightmare, 2026-05-24) — `checkCardIdentity` now skips stack items with `item.Source != nil` OR `item.Kind ∈ {triggered, activated}`. Closed 4× nightmare CardIdentity false-positive.
-- **Gisa opp-only trigger filter** (seed 31415 g237, 2026-05-24) — `opponentOnlyCreatureDiesTriggers` map gates 6 bearers (Gisa, Reaper King No More, Toxrill, Yahenni, Grave Pact, Grave Betrayal). Closed 2× TriggerCompleteness false-positive.
-- **District Mascot Static `etb_with_counters`** (seed 43 g1003, 2026-05-24) — new `ApplyStaticETBCounters` wired into `resolvePermanentSpellETB` + `FirePermanentETBTriggers`. Closed the lone 0/0-creature SBACompleteness residual.
-- **Zidane Tantalus Thief EOT control-return** (seed 1337 g8921, 2026-05-25) — EOT closure now battlefield-scans before re-adding; per CR §611.3c the duration's expiry no-ops if the perm isn't on the battlefield. Closed the 40× CardIdentity deep-leak signature, the largest single residual of the 10K-depth sweep.
-- **Seat-elimination ExpireSourceGrants** (seeds 42 + 31415 + 271828, 2026-05-24) — `HandleSeatElimination` was the lone LTB-equivalent path missing `ExpireSourceGrants(gs, p.Timestamp)`. Adding it closed 8× ZoneCastGrantExpiry across 3 seeds, including the seed-42 round-2 residual (Kess + Compound Fracture).
+**`ExileLinkageIntegrity` (72 hits, 4 games)** is the worst genuinely-new ENGINE regression cluster (not just a new check):
+- Prison Barricade and Leonardo, Sewer Samurai exile-on-ETB → return-on-LTB Auras / permanents have a real LTB-cleanup gap. The source's `gs.ExiledByMe[srcTimestamp]` linkage entry is not being torn down when the source leaves the battlefield, so the exiled card stays orphaned.
+- Same anti-pattern as the 2026-05-27 closure for r41-era ZoneCastGrantExpiry / Yawgmoth's Agenda (PR #106) — LTB plumbing exists, but not all leave-play paths call it. Likely needs an analogous sweep across `DestroyPermanent` / `ExilePermanent` / `sacrificePermanentImpl` / `BouncePermanent` / `destroyPermSBA` / `sacrificePermSBA` / `HandleSeatElimination` to call a `ReleaseLinkedExiles(gs, perm.Timestamp)` helper (mirror of `ExpireSourceGrants`).
 
-## Worst NEW Regression
+## Recommended Next Fix Targets
 
-**None.** This run is a strict superset-clean of every prior r60 round. No invariant category, no signature, no commander correlation regressed — every category that previously fired is now at 0.
+In priority order:
 
-The CLAUDE.md open Issue Log contains 3 entries on other seeds (ReplacementCompleteness ×1 on seed 271828 g4773, ResourceConservation ×2 on seed 99 g9804, SBACompleteness ×6 on seed 31415) — none of those seeds were exercised by this run, so the open log is unchanged.
+1. **Prison Barricade + Leonardo, Sewer Samurai LTB-linkage sweep** (`ExileLinkageIntegrity`, 68/72 hits). High-leverage — 2 cards account for 94% of the cluster. Locate the per_card handlers for both; verify whether they call `ReturnLinkedExile` / `ReleaseLinkedExiles` on every LTB path. If the helper doesn't exist in the LTB pipeline, follow the `ExpireSourceGrants` pattern and add it to all 7 leave-play sites. Retain a regression in `internal/gameengine/exile_linkage_ltb_r60_test.go`.
+2. **Persistent-fabricated-ID bisect for game 411 / `h1OGVR200096`** (`ZoneConservation` fabrication, 46 hits — single largest signature in the run). Reproducer: `--games 412 --seed 42 --invariant zone-conservation`. Walk the event log for the fabricated ID's first appearance; the preceding `*Card` construction is the mint-bypass site. Likely a struct-literal `Card{}` or a `copyCard` / `cloneCard` helper that doesn't run the mint helper.
+3. **Token disappearance sweep** (`ZoneConservation` strict-census, 72 hits, token-heavy). Audit the 4 token kinds with the highest counts (food, treasure, colorless-soldier-artifact, zombie) for a destroy / sac / cleanup path that doesn't call `CeaseInstanceID`. The Phase E tail-edge sweep (`ae55f16e`) closed several but not all; expect another small batch here.
+4. **Spikeshell Harrier dup investigation** (`CardIdentity`, 4 hits, single game). Likely same anti-pattern as the closed Adric / Oketra / Dread / Athreos races — a per_card handler reading a `*Card` that's already moved zones. Low-priority (1 game) but worth a 30-minute look.
 
-## Caveats
+## Comparison Notes
 
-- This run exercises **seed 42 only**. The CLAUDE.md open issues are seed-specific (271828, 99, 31415) and remain unverified against the latest engine state by this run.
-- Run is **AST + oracle backed** via symlinks into the main checkout's `data/rules/` (the worktree's `data/rules/` had the directory but the two large gitignored corpora were absent before this run — symlinks point at `/Users/joshuawiedeman/Documents/GitHub/HexDek/data/rules/{ast_dataset.jsonl,oracle-cards.json}`).
-- Performance: 102 g/s chaos throughput, 16258 b/s nightmare — both in line with recent r60 runs.
-- Throughput improved markedly vs round 1 (70 g/s → 102 g/s, +46%) without any explicit perf work — consistent with the elimination of failure-path observation overhead (no violation paths means no detail-capture allocations).
+The CLAUDE.md issue-log already records the `removePermanent` API-misuse sweep (2026-05-25 row, etrata / bilbo / thassa still standing with 4 call sites) — none of those sites are surfacing here because they don't bypass the InstanceID mint flow. Both new clusters in this report are mint-coverage / linkage gaps, not the legacy `removePermanent` family. Wave-1 LOC cleanup (`cc01309f`) did not regress invariants — its `−74 LOC` touched Platinum Angel + structural surface, not LTB plumbing.
 
-## Reproduction
+## How to Reproduce
 
-```
-git fetch origin main
-git checkout -B dev/loki-r60-fuzz origin/main
-# (worktree only) symlink AST + oracle from main checkout if missing:
-#   ln -sf <main>/data/rules/ast_dataset.jsonl data/rules/ast_dataset.jsonl
-#   ln -sf <main>/data/rules/oracle-cards.json data/rules/oracle-cards.json
+```bash
+git fetch origin main && git checkout -B repro origin/main
 go run ./cmd/hexdek-loki --games 5000 --seed 42
+# Same command focused on a single invariant family:
+go run ./cmd/hexdek-loki --games 5000 --seed 42 --invariant exile-linkage-integrity
+go run ./cmd/hexdek-loki --games 5000 --seed 42 --invariant zone-conservation
+# Single-game reproducers for the dominant signatures:
+go run ./cmd/hexdek-loki --games 412  --seed 42 --invariant zone-conservation       # game 411  → h1OGVR200096 fabrication
+go run ./cmd/hexdek-loki --games 2165 --seed 42 --invariant exile-linkage-integrity # game 2164 → Prison Barricade orphan
+go run ./cmd/hexdek-loki --games 2030 --seed 42 --invariant exile-linkage-integrity # game 2029 → Leonardo, Sewer Samurai orphan
 ```
-
-## Recommended next moves
-
-1. **Wide-seed gauntlet** (`--seed 43,99,1337,2024,2025,31415,271828`) — verify the round-2/round-3 fixes don't leave seed-specific residuals on the seeds where they were originally surfaced.
-2. **Depth bump on seed 42** (50000+ games) — Zidane was 1 leak across 10K games of seed 1337; there may be similar long-tail signatures hiding past the 5K horizon on seed 42 too.
-3. **Close the 3 open Issue Log entries** (seeds 271828 / 99 / 31415) — these are the next concrete fix targets and are decoupled from seed 42 entirely.
