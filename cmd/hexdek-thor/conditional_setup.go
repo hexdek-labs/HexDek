@@ -370,6 +370,65 @@ func classifyTrigger(t *gameast.Trigger) string {
 	case event == "you_control_7_thrulls":
 		return "tribe_you_control_etb"
 
+	// Parser-coverage R60 batch — `*_to_gy_from_bf` underscore family
+	// (zone-change wrappers for "battlefield → graveyard"). The parser
+	// emits these as distinct slugs from the prose "dies" / "is put into
+	// a graveyard" forms; without exact-match routing they fell through
+	// to the empty bucket. All share the canonical "creature_dies"
+	// priming world — a friendly creature whose battlefield→graveyard
+	// transition triggers the listener.
+	//
+	// `self_put_into_graveyard_from_bf` is the dominant (27) variant —
+	// the parser's self-source LTB wrapper. The typed/ally/opp variants
+	// add the same wrapper for a typed permanent the listener cares
+	// about; the creature_dies scaffold's setup-victim is friendly by
+	// default, which satisfies the ally case and is close enough for
+	// type/opp variants (the listener still observes the LTB event).
+	case event == "self_put_into_graveyard_from_bf" ||
+		event == "ally_type_to_gy_from_bf" || event == "type_to_gy_from_bf" ||
+		event == "to_gy_from_bf" || event == "opp_type_to_gy_from_bf" ||
+		event == "ally_typed_to_gy" || event == "tribal_to_gy_from_bf" ||
+		event == "nontoken_type_to_gy" || event == "opp_creature_to_gy" ||
+		event == "self_to_gy" || event == "self_die_or_ally_gy":
+		return "creature_dies"
+
+	// Parser-coverage R60 batch — Era 4 long-tail trigger slugs.
+	// Each routes to the existing scaffold whose primed world matches:
+	//
+	//   - specialize_from_zone     → specialize_creature (D&D specialize
+	//                                 transform; existing scaffold primes
+	//                                 the front face + class choice)
+	//   - ring_tempts_you          → when_you_do (LOTR Ring tempts is a
+	//                                 reflexive flag carrier; the priming
+	//                                 world is "you took the action")
+	//   - train                    → creature_etb (Saga-adjacent training
+	//                                 trigger fires on a partner ETB)
+	//   - modified_creature_event  → counters_put_on_self ("a modified
+	//                                 creature" — the +1/+1 priming is the
+	//                                 strongest discriminator)
+	//   - face_down_creature_event → turned_face_up (face-down state-change
+	//                                 listeners share the morph/disguise
+	//                                 priming world)
+	//   - compound_tribe_enter     → tribe_you_control_etb (compound is
+	//                                 a parser packaging for multi-arm
+	//                                 typed-ETB; the wizard-token prime fits)
+	//   - it_state_change          → becomes_tapped_trigger (the parser's
+	//                                 catch-all reflexive state-change
+	//                                 wrapper; tap state is the strongest
+	//                                 single-source signal)
+	case event == "specialize_from_zone":
+		return "specialize_creature"
+	case event == "ring_tempts_you" || event == "train":
+		return "when_you_do"
+	case event == "modified_creature_event":
+		return "counters_put_on_self"
+	case event == "face_down_creature_event":
+		return "turned_face_up"
+	case event == "compound_tribe_enter":
+		return "tribe_you_control_etb"
+	case event == "it_state_change":
+		return "becomes_tapped_trigger"
+
 	case event == "dies" || strings.Contains(event, "dies") ||
 		strings.Contains(event, "is put into a graveyard"):
 		return "creature_dies"
@@ -2571,9 +2630,15 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 	// MUST come early so it doesn't get eaten by the generic "has no <kind>
 	// counters" later or by HadCountersOnIt.
 	if (strings.Contains(txt, "or more") || strings.Contains(txt, "or greater")) &&
-		strings.Contains(txt, "counters on it") &&
+		(strings.Contains(txt, "counters on it") ||
+			strings.Contains(txt, "counters on this artifact") ||
+			strings.Contains(txt, "counters on this enchantment") ||
+			strings.Contains(txt, "counters on this creature") ||
+			strings.Contains(txt, "counters on this permanent")) &&
 		(strings.Contains(txt, "it has") || strings.Contains(txt, "this creature has") ||
-			strings.Contains(txt, "this permanent has") || strings.Contains(txt, "~ has") ||
+			strings.Contains(txt, "this permanent has") ||
+			strings.Contains(txt, "this enchantment has") ||
+			strings.Contains(txt, "this artifact has") || strings.Contains(txt, "~ has") ||
 			strings.Contains(txt, "there are")) {
 		cs.kind = condScaffoldCountersOnSelfGE
 		cs.subtype = "+1/+1"
@@ -2581,7 +2646,15 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		for _, k := range []string{"+1/+1", "-1/-1", "oil", "loyalty", "stun",
 			"charge", "quest", "fade", "vanishing", "shield", "ki", "blood",
 			"divinity", "time", "verse", "wage", "wish", "bloodline", "ice",
-			"experience", "indestructibility", "page", "bore"} {
+			"experience", "indestructibility", "page", "bore",
+			// Parser-coverage R60 batch — named counters surfaced by the
+			// era1 audit's "<N> or more <named> counters on it" cluster.
+			// Each one was previously falling back to the +1/+1 default
+			// even though the source card prints a distinct counter type;
+			// adding them here lets the scaffold name the right counter
+			// so per_card handlers reading cs.subtype get accurate prep.
+			"release", "dread", "wreck", "luck", "arrowhead", "echo",
+			"bounty", "rad", "phyresis"} {
 			if strings.Contains(txt, k+" counter") {
 				cs.subtype = k
 				break

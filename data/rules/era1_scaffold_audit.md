@@ -6,14 +6,14 @@
 
 - Era 1 cards: **26932**
 
-- Era 1 Condition nodes: **2499** (bucketed 2325, unbucketed 174, 7.0% gap)
+- Era 1 Condition nodes: **2499** (bucketed 2332, unbucketed 167, 6.7% gap)
 
-- Era 1 Trigger nodes: **11548** (bucketed 11500, unbucketed 48, 0.4% gap)
+- Era 1 Trigger nodes: **11548** (bucketed 11501, unbucketed 47, 0.4% gap)
 
 
 ## Top unbucketed condition Kinds
 
-- `if` × 108
+- `if` × 101
 - `conditional` × 66
 
 ## Top unbucketed raw-text fragments (kind in raw/intervening_if/as_long_as)
@@ -57,18 +57,15 @@
 - × 1: `this creature is suspected`  _(e.g. Repeat Offender)_
 - × 1: `it has madness`  _(e.g. Anje Falkenrath)_
 - × 1: `defending player has more cards in hand than you`  _(e.g. Robber of the Rich)_
-- × 1: `it has thirteen or more release counters on it`  _(e.g. The Heron Moon)_
 - × 1: `it has first strike`  _(e.g. Momentum Rumbler)_
 - × 1: `your opponents control no permanents with bounty counters on them`  _(e.g. Chevill, Bane of Monsters)_
 - × 1: `as long as this creature is enchanted, it can attack as though it didn't have de`  _(e.g. Pillar of War)_
-- × 1: `there are three or more dread counters on it`  _(e.g. Grasping Shadows // Shadows' Lair)_
 - × 1: `if target creature has toughness 5 or greater, it gets +4/-4 until end of turn. `  _(e.g. Blood Lust)_
 - × 1: `this creature doesn't have a +1/+1 counter on it`  _(e.g. Shatterskull Charger)_
 - × 1: `the spell's mana value is less than or equal to the amount of life you gained th`  _(e.g. Bre of Clan Stoutarm)_
 - × 1: `you drew two or more cards this turn`  _(e.g. Archmage Ascension)_
 - × 1: `you didn't play a land this turn`  _(e.g. Mercadian Atlas)_
 - × 1: `its power was different from its base power`  _(e.g. Jason Bright, Glowing Prophet)_
-- × 1: `this enchantment has one or more wreck counters on it`  _(e.g. Spectacle of Destruction)_
 - × 1: `there are no arrowhead counters on this artifact`  _(e.g. Serrated Arrows)_
 - × 1: `~ is in the command zone`  _(e.g. Oloro, Ageless Ascetic)_
 - × 1: `it's enchanted`  _(e.g. Krond the Dawn-Clad)_
@@ -78,10 +75,13 @@
 - × 1: `you haven't cast the card`  _(e.g. Psychic Theft)_
 - × 1: `a pirate and a vehicle attacked this combat`  _(e.g. Fearless Swashbuckler)_
 - × 1: `a modified creature died under your control this turn`  _(e.g. Intermediate Chirography)_
+- × 1: `as long as this card is face up during the draft, you can't look at booster pack`  _(e.g. Archdemon of Paliano)_
+- × 1: `that creature is 1/1`  _(e.g. Sigil Captain)_
+- × 1: `if a card with the chosen name was milled this way, you draw two cards. otherwis`  _(e.g. Predict)_
 
 ## Bucketed condition Kinds (sanity)
 
-- `if` × 606
+- `if` × 613
 - `paid_optional_cost` × 561
 - `conditional` × 355
 - `for_each` × 193
@@ -149,7 +149,6 @@
 - `play_land` × 1
 - `search_library` × 1
 - `transform_as` × 1
-- `compound_tribe_enter` × 1
 - `card_to_gy_anywhere_once` × 1
 - `this_turn_whenever` × 1
 

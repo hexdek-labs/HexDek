@@ -269,6 +269,17 @@ RAW_PATTERNS = [
     ("self_power_ge", re.compile(r"(?:this creature'?s|its|~'?s) power is \w+ or (?:more|greater)")),
     ("top_of_library_type", re.compile(r"\btop card of your library is\b")),
     ("counter_put_on_perm_turn", re.compile(r"counters? was put on (?:a permanent|target|that creature)|put one or more \+1/\+1 counters on .* this turn|you'?ve put one or more")),
+    # Parser-coverage R60 batch — named-counter threshold on self:
+    # "<N> or more <named> counter[s] on it / this artifact / this
+    # enchantment", or "there are <N> or more <named> counters on it".
+    # The engine-side condScaffoldCountersOnSelfGE matcher already
+    # catches the same shape (see conditional_setup.go:2573) and the
+    # subtype list now includes release/dread/wreck/luck/arrowhead/echo/
+    # bounty/rad/phyresis. Audit-side pattern keeps the gap metric in
+    # sync with that engine coverage. Placed BEFORE the broad
+    # "you_control_raw" sweep so the broader fallback doesn't eat it.
+    ("named_counter_threshold_on_perm",
+     re.compile(r"(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|thirteen|twenty) or more \w+ counters? on (?:it|this artifact|this enchantment|this creature|this permanent|them|that)|there are (?:\d+|one|two|three|four|five|six|seven|eight|nine|ten) or more \w+ counters? on (?:it|this)")),
     ("you_control_raw", re.compile(r"you control")),
 ]
 
@@ -376,6 +387,20 @@ TRIGGER_EXTRA_EXACT = {
     "you_misc_event", "you_exert_creature",
     "as_you_draft_a_card", "become_monarch",
     "you_expend_n", "self_ability_activated",     # → when_you_do
+    # Parser-coverage R60 batch — `*_to_gy_from_bf` underscore family
+    # (zone-change wrappers for battlefield → graveyard). Mirrors the
+    # classifyTrigger additions in conditional_setup.go — all route to
+    # the `creature_dies` scaffold. Dominant Era-1 residual at the time
+    # of the sweep: self_put_into_graveyard_from_bf × 27, ally_type ×
+    # 12, type × 8, opp_type × 5, ally_typed × 5, tribal × 2, nontoken
+    # × 2, plus the to_gy_from_bf / opp_creature_to_gy / self_to_gy /
+    # self_die_or_ally_gy tail.
+    "self_put_into_graveyard_from_bf",
+    "ally_type_to_gy_from_bf", "type_to_gy_from_bf",
+    "to_gy_from_bf", "opp_type_to_gy_from_bf",
+    "ally_typed_to_gy", "tribal_to_gy_from_bf",
+    "nontoken_type_to_gy", "opp_creature_to_gy",
+    "self_to_gy", "self_die_or_ally_gy",
     # Era 1 r60 second pass — phase-style + long tail routes.
     "end_step", "upkeep", "untap_step",
     "each_upkeep", "cumulative_upkeep_unpaid", "cumulative_upkeep_paid",
@@ -402,6 +427,21 @@ TRIGGER_EXTRA_EXACT = {
     "becomes_saddled_first",                                # → self_saddles_mount
     "you_sac_one_or_more",                                  # → sacrifice
     "you_control_7_thrulls",                                # → tribe_you_control_etb
+    # Parser-coverage R60 batch — Era-4 long-tail slugs that surfaced
+    # in the cross-era scan. Mirrors the new classifyTrigger routes:
+    #
+    #   - specialize_from_zone     → specialize_creature
+    #   - ring_tempts_you / train  → when_you_do
+    #   - modified_creature_event  → counters_put_on_self
+    #   - face_down_creature_event → turned_face_up
+    #   - compound_tribe_enter     → tribe_you_control_etb
+    #   - it_state_change          → becomes_tapped_trigger
+    "specialize_from_zone",
+    "ring_tempts_you", "train",
+    "modified_creature_event",
+    "face_down_creature_event",
+    "compound_tribe_enter",
+    "it_state_change",
 }
 
 

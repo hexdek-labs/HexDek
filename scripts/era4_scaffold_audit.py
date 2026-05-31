@@ -218,6 +218,11 @@ RAW_PATTERNS = [
     ("becomes_tapped", re.compile(r"becomes tapped|is tapped")),
     ("becomes_target", re.compile(r"becomes (?:the|a) target")),
     ("tokens_created", re.compile(r"tokens.*created this turn")),
+    # Parser-coverage R60 batch — named-counter threshold cluster.
+    # Mirror of the era1 RAW_PATTERNS addition; same engine coverage
+    # (condScaffoldCountersOnSelfGE at conditional_setup.go:2573).
+    ("named_counter_threshold_on_perm",
+     re.compile(r"(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|thirteen|twenty) or more \w+ counters? on (?:it|this artifact|this enchantment|this creature|this permanent|them|that)|there are (?:\d+|one|two|three|four|five|six|seven|eight|nine|ten) or more \w+ counters? on (?:it|this)")),
     ("you_control_raw", re.compile(r"you control")),
 ]
 
@@ -228,6 +233,94 @@ def match_raw(text: str) -> str | None:
         if rx.search(t):
             return name
     return None
+
+
+# Parser-coverage R60 batch — Trigger-side bucketing for Era 4.
+# Era 4 historically only counted total trigger nodes and never split
+# bucketed/unbucketed (Era 1/2/3 do). Adding parity so the cross-era
+# gap metric reflects the engine's classifyTrigger coverage of the
+# 2023+ slug surface (specialize_from_zone, ring_tempts_you, the
+# *_to_gy_from_bf family, etc.). Sets mirror the era1 audit's
+# TRIGGER_EVENT_EXACT / TRIGGER_EXTRA_EXACT / TRIGGER_SUBSTRING_CATCHES.
+TRIGGER_EVENT_EXACT = {
+    "when_you_do", "counters_put_on_self", "tribe_you_control_etb",
+    "self_crews_vehicle", "you_whenever", "ally_etb", "ally_typed_etb_a",
+    "ally_subtype_deal_damage", "self_and", "etb_or_another",
+    "opp_creature_event", "self_saddles_mount", "becomes_tapped",
+    "you_get_energy", "player_wins_coin_flip", "you_action",
+    "becomes_crewed", "becomes_crewed_first", "opp_draw_card",
+    "etb", "attacks", "deal_combat_damage", "deals_combat_damage", "phase",
+    "mutates", "turned_face_up", "exploits_creature",
+    "specialize_creature", "unlock_door",
+    "becomes_untapped", "becomes_monstrous", "tapped_for_mana", "you_roll_dice",
+}
+
+TRIGGER_SUBSTRING_CATCHES = [
+    "dies", "is put into a graveyard",
+    "enters", "attack", "combat damage", "combat_damage",
+    "cast", "spell", "gain", "lose",
+    "draw", "discard", "leaves", "ltb", "sacrific",
+]
+
+TRIGGER_EXTRA_EXACT = {
+    "die", "to_graveyard", "etb_as", "cycle", "block",
+    "coin_flip_result", "lose_game",
+    "beginning_of_ordinal_step", "token_event",
+    "nontoken_ally_event", "nontoken_creature_event",
+    "compound_opp_tribe_event", "one_or_more_typed_event",
+    "ally_explore", "self_and_another",
+    "conditional_state", "misc_when", "spend_this_mana",
+    "face_up_as", "as_transform", "ally_exploits", "fully_unlock_room",
+    "ally_targeted_by_opp", "becomes_blocked",
+    "dealt_damage", "deals_damage",
+    "damage_prevented_this_way", "ally_source_damage",
+    "remove_counter", "counter_put_on_actor",
+    "counters_put_on_self_any", "counters_put_on_actor",
+    "creature_modified_event",
+    "card_put_into_zone", "permanent_to_gy",
+    "card_milled_via", "compound_card_zone_event",
+    "foretell_card", "attached_as", "equipped_trigger",
+    "day_night_flip", "transforms",
+    "next_time_one_or_more_enter",
+    "cycle_card",
+    "you_commit_crime", "commit_crime",
+    "pay_cost_multiple", "misc_whenever_a",
+    "you_conjure_one_or_more", "you_mechanic",
+    "self_or_another_when", "becomes_state",
+    "becomes_target", "player_land_play",
+    # Parser-coverage R60 batch — the *_to_gy_from_bf family and the
+    # Era-4 long-tail slugs the new classifyTrigger cases route to
+    # existing scaffolds. Same set as era1/2/3 audits.
+    "self_put_into_graveyard_from_bf",
+    "ally_type_to_gy_from_bf", "type_to_gy_from_bf",
+    "to_gy_from_bf", "opp_type_to_gy_from_bf",
+    "ally_typed_to_gy", "tribal_to_gy_from_bf",
+    "nontoken_type_to_gy", "opp_creature_to_gy",
+    "self_to_gy", "self_die_or_ally_gy",
+    "specialize_from_zone",
+    "ring_tempts_you", "train",
+    "modified_creature_event",
+    "face_down_creature_event",
+    "compound_tribe_enter",
+    "it_state_change",
+}
+
+
+def classify_trigger_event(event: str, phase: str) -> bool:
+    e = (event or "").lower().strip()
+    p = (phase or "").lower().strip()
+    if not e and not p:
+        return False
+    if e in TRIGGER_EVENT_EXACT or e in TRIGGER_EXTRA_EXACT:
+        return True
+    for kw in TRIGGER_SUBSTRING_CATCHES:
+        if kw in e:
+            if kw in ("gain", "lose") and "life" not in e:
+                continue
+            return True
+    if p:
+        return True
+    return False
 
 
 def walk(node, conds, trigs):
@@ -249,6 +342,8 @@ def main():
     cond_kinds_bucketed = Counter()
     cond_kinds_unbucketed = Counter()
     trig_events = Counter()
+    trig_events_bucketed = Counter()
+    trig_events_unbucketed = Counter()
     raw_buckets = Counter()
     raw_unbucketed_text = Counter()
     raw_unbucketed_examples = defaultdict(list)
@@ -298,7 +393,12 @@ def main():
                     cond_kinds_unbucketed[k] += 1
             for tg in trigs:
                 ev = (tg.get("event") or "").lower()
+                ph = (tg.get("phase") or "").lower()
                 trig_events[ev] += 1
+                if classify_trigger_event(ev, ph):
+                    trig_events_bucketed[ev] += 1
+                else:
+                    trig_events_unbucketed[ev] += 1
 
     total_conds = sum(cond_kinds.values())
     total_bucket = sum(cond_kinds_bucketed.values())
@@ -313,7 +413,12 @@ def main():
     lines.append(f"- Era {TARGET_ERA} Condition nodes: **{total_conds}** "
                  f"(bucketed {total_bucket}, unbucketed {total_unbucket}, "
                  f"{100.0*total_unbucket/max(1,total_conds):.1f}% gap)\n")
-    lines.append(f"- Era {TARGET_ERA} Trigger nodes: **{sum(trig_events.values())}**\n")
+    total_trigs = sum(trig_events.values())
+    total_trig_bucket = sum(trig_events_bucketed.values())
+    total_trig_unbucket = sum(trig_events_unbucketed.values())
+    lines.append(f"- Era {TARGET_ERA} Trigger nodes: **{total_trigs}** "
+                 f"(bucketed {total_trig_bucket}, unbucketed {total_trig_unbucket}, "
+                 f"{100.0*total_trig_unbucket/max(1,total_trigs):.1f}% gap)\n")
 
     lines.append("\n## Top unbucketed condition Kinds\n")
     for k, n in cond_kinds_unbucketed.most_common(60):
@@ -328,9 +433,16 @@ def main():
     for k, n in cond_kinds_bucketed.most_common(20):
         lines.append(f"- `{k}` × {n}")
 
-    lines.append("\n## Top trigger events\n")
-    for ev, n in trig_events.most_common(40):
+    lines.append("\n## Top unbucketed trigger events\n")
+    if not trig_events_unbucketed:
+        lines.append("_(none — every Era 4 trigger event maps to a scaffold slug)_")
+    for ev, n in trig_events_unbucketed.most_common(60):
         lines.append(f"- `{ev or '<empty>'}` × {n}")
+
+    lines.append("\n## Top trigger events (bucketed + unbucketed)\n")
+    for ev, n in trig_events.most_common(40):
+        marker = "" if ev in trig_events_bucketed else " _(unbucketed)_"
+        lines.append(f"- `{ev or '<empty>'}` × {n}{marker}")
 
     OUT.write_text("\n".join(lines))
     print("\n".join(lines))

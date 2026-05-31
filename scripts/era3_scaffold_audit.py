@@ -202,6 +202,10 @@ RAW_PATTERNS = [
     ("didnt_have_keyword", re.compile(r"(?:didn't|did not) have (?:decayed|deathtouch|flying|haste|hexproof|reach|trample|vigilance)")),
     ("you_cast_it", re.compile(r"\byou cast it\b")),
     ("cast_creature_and_noncreature", re.compile(r"(?:cast (?:both )?a creature spell and a noncreature spell)")),
+    # Parser-coverage R60 batch — named-counter threshold cluster.
+    # Mirror of the era1 RAW_PATTERNS addition.
+    ("named_counter_threshold_on_perm",
+     re.compile(r"(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|thirteen|twenty) or more \w+ counters? on (?:it|this artifact|this enchantment|this creature|this permanent|them|that)|there are (?:\d+|one|two|three|four|five|six|seven|eight|nine|ten) or more \w+ counters? on (?:it|this)")),
     ("you_control_raw", re.compile(r"you control")),
 ]
 
@@ -287,6 +291,20 @@ TRIGGER_EXTRA_EXACT = {
     "becomes_state",                            # → becomes_tapped_trigger
     "becomes_target",                           # → attacks
     "player_land_play",                         # → upkeep (landfall-style)
+    # Parser-coverage R60 batch — `*_to_gy_from_bf` + Era-4 long-tail
+    # slugs. Mirrors the classifyTrigger additions in conditional_setup.go.
+    "self_put_into_graveyard_from_bf",
+    "ally_type_to_gy_from_bf", "type_to_gy_from_bf",
+    "to_gy_from_bf", "opp_type_to_gy_from_bf",
+    "ally_typed_to_gy", "tribal_to_gy_from_bf",
+    "nontoken_type_to_gy", "opp_creature_to_gy",
+    "self_to_gy", "self_die_or_ally_gy",
+    "specialize_from_zone",
+    "ring_tempts_you", "train",
+    "modified_creature_event",
+    "face_down_creature_event",
+    "compound_tribe_enter",
+    "it_state_change",
 }
 
 

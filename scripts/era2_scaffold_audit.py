@@ -156,6 +156,10 @@ RAW_PATTERNS = [
     ("becomes_tapped", re.compile(r"becomes tapped|is tapped")),
     ("becomes_target", re.compile(r"becomes (?:the|a) target")),
     ("tokens_created", re.compile(r"tokens.*created this turn")),
+    # Parser-coverage R60 batch — named-counter threshold cluster.
+    # Mirror of the era1 RAW_PATTERNS addition.
+    ("named_counter_threshold_on_perm",
+     re.compile(r"(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|thirteen|twenty) or more \w+ counters? on (?:it|this artifact|this enchantment|this creature|this permanent|them|that)|there are (?:\d+|one|two|three|four|five|six|seven|eight|nine|ten) or more \w+ counters? on (?:it|this)")),
     ("you_control_raw", re.compile(r"you control")),
 ]
 
@@ -228,6 +232,20 @@ TRIGGER_EXTRA_EXACT = {
     "conditional_state",          # → when_you_do
     "misc_when",                  # → when_you_do
     "spend_this_mana",            # → you_get_energy
+    # Parser-coverage R60 batch — `*_to_gy_from_bf` + Era-4 long-tail
+    # slugs. Mirrors the classifyTrigger additions in conditional_setup.go.
+    "self_put_into_graveyard_from_bf",
+    "ally_type_to_gy_from_bf", "type_to_gy_from_bf",
+    "to_gy_from_bf", "opp_type_to_gy_from_bf",
+    "ally_typed_to_gy", "tribal_to_gy_from_bf",
+    "nontoken_type_to_gy", "opp_creature_to_gy",
+    "self_to_gy", "self_die_or_ally_gy",
+    "specialize_from_zone",
+    "ring_tempts_you", "train",
+    "modified_creature_event",
+    "face_down_creature_event",
+    "compound_tribe_enter",
+    "it_state_change",
 }
 
 

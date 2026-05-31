@@ -6,17 +6,15 @@
 
 - Era 4 cards: **3696**
 
-- Era 4 Condition nodes: **514** (bucketed 455, unbucketed 59, 11.5% gap)
+- Era 4 Condition nodes: **514** (bucketed 457, unbucketed 57, 11.1% gap)
 
-- Era 4 Trigger nodes: **2515**
+- Era 4 Trigger nodes: **2515** (bucketed 2439, unbucketed 76, 3.0% gap)
 
 
 ## Top unbucketed condition Kinds
 
 - `conditional` × 33
 - `if` × 24
-- `life_delta_threshold` × 1
-- `life_vs_half_starting` × 1
 
 ## Top unbucketed raw-text fragments (kind in raw/intervening_if/as_long_as)
 
@@ -97,10 +95,63 @@
 - `ferocious` × 1
 - `raid` × 1
 - `domain` × 1
+- `life_delta_threshold` × 1
+- `life_vs_half_starting` × 1
 - `no_mana_spent_to_cast` × 1
-- `etb_tapped_unless` × 1
 
-## Top trigger events
+## Top unbucketed trigger events
+
+- `self_deals_damage_player` × 5
+- `another_creature_or_artifact_event` × 5
+- `this_card_event` × 3
+- `tap_for_mana` × 3
+- `ally_typed_etb` × 3
+- `creature_etb_any` × 3
+- `upkeep` × 3
+- `land_etb_any` × 2
+- `block_creature` × 2
+- `exiled_event` × 2
+- `self_blocks` × 2
+- `one_or_more_other_ally_event` × 2
+- `self_or_typed_event` × 2
+- `lose_control_of` × 2
+- `creature_cards_to_zone` × 2
+- `one_or_more_lands` × 2
+- `opp_activate` × 1
+- `you_surveil` × 1
+- `you_proliferate` × 1
+- `one_or_more_other_creatures` × 1
+- `you_put_counters_on_any` × 1
+- `creature_cards_leave_gy` × 1
+- `another_typed_etb` × 1
+- `compound_tribe_die_or_leave` × 1
+- `you_dealt_damage` × 1
+- `put_onto_bf` × 1
+- `legend_ally_event` × 1
+- `self_phase_inout` × 1
+- `targets_chosen` × 1
+- `any_player_sacs` × 1
+- `opp_landfall` × 1
+- `saga_final_chapter` × 1
+- `nonland_tapped_for_mana` × 1
+- `you_scry` × 1
+- `you_exert_creature` × 1
+- `artifact_etb_yours` × 1
+- `merfolk_etb_any` × 1
+- `one_or_more_ally_with_x_enter` × 1
+- `creature_or_land_to_gy` × 1
+- `other_nontoken_perm` × 1
+- `discover` × 1
+- `counter_threshold` × 1
+- `compound_bounce_shuffle_event` × 1
+- `any_type_to_gy_from_bf` × 1
+- `becomes_untapped_once` × 1
+- `paid_cumulative_upkeep` × 1
+- `becomes_blocked_by` × 1
+- `self_card_zone_to_zone` × 1
+- `you_put_counters_on` × 1
+
+## Top trigger events (bucketed + unbucketed)
 
 - `etb` × 753
 - `phase` × 286
