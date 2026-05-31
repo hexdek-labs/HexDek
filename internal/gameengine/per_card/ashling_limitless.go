@@ -22,8 +22,13 @@ import (
 //     where N = damage dealt, then register a ZoneCastPermission per
 //     card so the AI/Hat treats them as castable from exile at normal
 //     mana cost. Mirrors ob_nixilis_captive.go's impulse pattern.
-//   - The "until end of turn" bound is not time-tracked (no end-step
-//     cleanup); we emitPartial mirroring ob_nixilis_captive.
+//   - The "until end of turn" bound IS time-tracked via the grant's
+//     Duration="until_end_of_turn" + GrantTurn fields, which
+//     ExpireZoneCastGrants reaps during end-of-turn cleanup
+//     (zone_cast.go:790 shouldExpireGrant). R60 batch 4 dropped the
+//     stale "play_window... not time bounded" emitPartial — the grant
+//     lifecycle has handled this since the r60 ZoneCastGrantExpiry
+//     hygiene pass.
 func registerAshlingTheLimitless(r *Registry) {
 	r.OnTrigger("Ashling the Limitless", "combat_damage_player", ashlingTheLimitlessTrigger)
 }
@@ -77,8 +82,4 @@ func ashlingTheLimitlessTrigger(gs *gameengine.GameState, perm *gameengine.Perma
 		"exiled_count": len(exiled),
 		"exiled":       exiled,
 	})
-	if len(exiled) > 0 {
-		emitPartial(gs, slug, perm.Card.DisplayName(),
-			"play_window_until_end_of_turn_not_time_bounded")
-	}
 }

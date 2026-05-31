@@ -18,9 +18,11 @@ import (
 //   - "combat_damage_player": gate on damage_seat == perm.Controller and
 //     source_perm == perm. Count distinct mana values in controller's
 //     hand; if >= 6, mark the damaged opponent as Lost.
-//   - {2}{U},{T} draw-two-discard-one is documented via emitPartial; the
-//     activation pipeline doesn't yet route through here for activated
-//     loot effects.
+//   - {2}{U},{T} loot (R60 stub sweep batch 4): tap, drawOne twice,
+//     then DiscardCard one card from hand (pick the highest-CMC card
+//     to mirror standard loot AI policy — keep cheap cards, dump
+//     expensive ones we can't cast yet). Mana cost {2}{U} is enforced
+//     by the activation cost pipeline upstream of this hook.
 //   - Flying handled by AST keyword pipeline.
 func registerAtemsisAllSeeing(r *Registry) {
 	r.OnTrigger("Atemsis, All-Seeing", "combat_damage_player", atemsisCombatDamage)
@@ -87,13 +89,48 @@ func atemsisCombatDamage(gs *gameengine.GameState, perm *gameengine.Permanent, c
 }
 
 func atemsisActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
-	if gs == nil || src == nil {
+	const slug = "atemsis_loot_ability"
+	if gs == nil || src == nil || src.Card == nil {
 		return
 	}
 	if src.Tapped {
+		emitFail(gs, slug, src.Card.DisplayName(), "already_tapped", nil)
+		return
+	}
+	seat := gs.Seats[src.Controller]
+	if seat == nil {
+		emitFail(gs, slug, src.Card.DisplayName(), "no_seat", nil)
 		return
 	}
 	src.Tapped = true
-	emitPartial(gs, "atemsis_loot_ability", src.Card.DisplayName(),
-		"draw_two_discard_one_activation_not_routed_through_per_card")
+	drewBefore := len(seat.Hand)
+	drawOne(gs, src.Controller, src.Card.DisplayName())
+	drawOne(gs, src.Controller, src.Card.DisplayName())
+	drew := len(seat.Hand) - drewBefore
+
+	// Pick highest-CMC card from hand to discard. Standard loot AI:
+	// dump expensive uncastables, keep cheap cards.
+	var pick *gameengine.Card
+	bestCMC := -1
+	for _, c := range seat.Hand {
+		if c == nil {
+			continue
+		}
+		cmc := gameengine.ManaCostOf(c)
+		if cmc > bestCMC {
+			bestCMC = cmc
+			pick = c
+		}
+	}
+	discarded := ""
+	if pick != nil {
+		discardName := pick.DisplayName()
+		gameengine.DiscardCard(gs, pick, src.Controller)
+		discarded = discardName
+	}
+	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
+		"seat":      src.Controller,
+		"drew":      drew,
+		"discarded": discarded,
+	})
 }

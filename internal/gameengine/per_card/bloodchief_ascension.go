@@ -24,8 +24,11 @@ import (
 //     graveyard and the enchantment carries 3+ quest counters, drain 2
 //     life from that opponent and gain 2 for the controller. AI policy
 //     always opts in — the upside is monotone and the cost is zero.
-//   - "you may" choice is auto-accepted both halves (engine doesn't
-//     surface that intent yet); flagged via emitPartial.
+//   - "you may" choice is auto-accepted both halves — this is a
+//     deliberate AI policy choice (quest counter is strictly upside;
+//     drain is monotone life-swing), NOT a missing engine feature.
+//     R60 batch 4: dropped the stale "may_choice_auto_accepted"
+//     emitPartials that read as gaps in audit tooling.
 func registerBloodchiefAscension(r *Registry) {
 	r.OnTrigger("Bloodchief Ascension", "end_step", bloodchiefAscensionEndStep)
 	r.OnTrigger("Bloodchief Ascension", "zone_change", bloodchiefAscensionDrain)
@@ -73,9 +76,6 @@ func bloodchiefAscensionEndStep(gs *gameengine.GameState, perm *gameengine.Perma
 		"quest_counters": perm.Counters["quest"],
 		"active_seat":    ctx["active_seat"],
 	})
-
-	emitPartial(gs, slug, "Bloodchief Ascension",
-		"may_choice_auto_accepted_for_quest_counter")
 }
 
 func bloodchiefAscensionDrain(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -114,7 +114,4 @@ func bloodchiefAscensionDrain(gs *gameengine.GameState, perm *gameengine.Permane
 		"life_drained": 2,
 		"from_zone":    ctx["from_zone"],
 	})
-
-	emitPartial(gs, slug, "Bloodchief Ascension",
-		"may_choice_auto_accepted_for_drain")
 }

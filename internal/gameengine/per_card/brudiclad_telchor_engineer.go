@@ -16,9 +16,16 @@ import (
 //	If you do, each other token you control becomes a copy of that token.
 //
 // Implementation:
-//   - "Creature tokens you control have haste" is a continuous grant-keyword
-//     effect (CR §613). The engine's AST/layers pipeline handles blanket
-//     keyword grants; we emit a partial so the coverage gap is tracked.
+//   - "Creature tokens you control have haste" §613 continuous keyword
+//     grant (R60 stub sweep batch 4): Abzan-Falconer / Fearless-
+//     Swashbuckler-pattern flag sweep. ETB + permanent_etb stamp
+//     Flags["kw:haste"] on every creature token the controller owns.
+//     permanent_ltb on Brudiclad himself strips only flags we granted
+//     (separate marker so native AST haste survives Brudiclad leaving).
+//     Combat_begin handler also calls the sweep AFTER token mint +
+//     copy-target re-identification so the freshly-created Myr and any
+//     re-copied tokens pick up haste immediately on their first
+//     attack opportunity.
 //   - OnTrigger("combat_begin"): fires at the beginning of combat on
 //     Brudiclad's controller's active turn. Steps:
 //     1. Create one 1/1 blue Phyrexian Myr artifact creature token via
@@ -37,11 +44,95 @@ import (
 //     4. emitPartial for the blanket haste clause (handled by layers
 //        pipeline, not per-card enforcement).
 //
-// emitPartial: haste-grant is a continuous blanket keyword effect; the
-// engine's layer-6 stack handles it via the card's AST — per-card enforcement
-// is not needed, but the gap is flagged for Heimdall/Muninn tracking.
 func registerBrudicladTelchorEngineer(r *Registry) {
+	r.OnETB("Brudiclad, Telchor Engineer", brudicladETB)
+	r.OnTrigger("Brudiclad, Telchor Engineer", "permanent_etb", brudicladPermETB)
+	r.OnTrigger("Brudiclad, Telchor Engineer", "permanent_ltb", brudicladOwnLTB)
 	r.OnTrigger("Brudiclad, Telchor Engineer", "combat_begin", brudicladCombatBegin)
+}
+
+func brudicladETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	brudicladTokenHasteSweep(gs, perm)
+}
+
+func brudicladPermETB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil {
+		return
+	}
+	brudicladTokenHasteSweep(gs, perm)
+}
+
+func brudicladOwnLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "brudiclad_token_haste_strip"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
+		return
+	}
+	leaving, _ := ctx["perm"].(*gameengine.Permanent)
+	if leaving != perm {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	stripped := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p == perm || p.Flags == nil {
+			continue
+		}
+		if p.Flags["brudiclad_haste_grant"] != 1 {
+			continue
+		}
+		delete(p.Flags, "kw:haste")
+		delete(p.Flags, "brudiclad_haste_grant")
+		stripped++
+	}
+	if stripped > 0 {
+		gs.InvalidateCharacteristicsCache()
+	}
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":     perm.Controller,
+		"stripped": stripped,
+	})
+}
+
+func brudicladTokenHasteSweep(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	const slug = "brudiclad_token_haste_anthem"
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	seat := gs.Seats[perm.Controller]
+	if seat == nil {
+		return
+	}
+	granted := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p == perm || p.Card == nil {
+			continue
+		}
+		if !p.IsToken() || !p.IsCreature() {
+			continue
+		}
+		if p.Flags == nil {
+			p.Flags = map[string]int{}
+		}
+		if p.Flags["brudiclad_haste_grant"] == 1 {
+			continue
+		}
+		if p.HasKeyword("haste") {
+			continue
+		}
+		p.Flags["kw:haste"] = 1
+		p.Flags["brudiclad_haste_grant"] = 1
+		granted++
+	}
+	if granted > 0 {
+		gs.InvalidateCharacteristicsCache()
+		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+			"seat":    perm.Controller,
+			"granted": granted,
+		})
+	}
 }
 
 func brudicladCombatBegin(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -90,8 +181,11 @@ func brudicladCombatBegin(gs *gameengine.GameState, perm *gameengine.Permanent, 
 		myrToken.Card.TypeLine = "Token Artifact Creature — Phyrexian Myr"
 	}
 
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"haste_grant_to_creature_tokens_is_continuous_effect_handled_by_layers")
+	// Sweep haste onto the freshly-minted Myr before we get to the copy
+	// re-identification step below — newly-created tokens didn't trigger
+	// a permanent_etb event for our handler in time (we ARE the handler,
+	// and the token-creation path may not re-enter).
+	brudicladTokenHasteSweep(gs, perm)
 
 	// Step 2: Choose the "best" token — highest (power + toughness),
 	// tiebreak by lowest Timestamp (most-established on the battlefield,
