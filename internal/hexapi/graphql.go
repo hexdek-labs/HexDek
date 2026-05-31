@@ -49,10 +49,27 @@ import (
 // GraphQLHandler wraps a Showmatch + decksDir + a compiled GraphQL
 // schema. The schema is built once per process at construction;
 // serving a query just calls graphql.Do against it.
+//
+// CSRFStore + Limiter are optional protection layers. Both are
+// nil-safe — leaving them unset is backwards-compatible with the
+// pre-r60 POC wiring. cmd/hexdek-server should stamp the same
+// CSRFStore it uses on Handler.CSRFStore and a per-IP RateLimiter
+// when constructing the handler for production. Why both:
+//   - CSRFStore closes the mutation-bypass gap. Pre-r60 POST /graphql
+//     was the only mutation surface NOT wrapped in RequireCSRF — an
+//     XSS-derived request could issue `mutation { deleteDeck(...) }`
+//     and the CSRF gate that fires on REST DELETE wouldn't see it.
+//   - Limiter defends against GraphQL's query-complexity multiplier:
+//     one POST can fan out to N resolver calls (game{decks{...}}
+//     across 100 games = 100 deck lookups in one request), so a per-
+//     request limit at the REST layer underprices the actual work.
 type GraphQLHandler struct {
 	sm       *Showmatch
 	decksDir string
 	schema   graphql.Schema
+
+	CSRFStore *CSRFStore
+	Limiter   *RateLimiter
 }
 
 // NewGraphQLHandler compiles the schema against sm and decksDir.
@@ -78,8 +95,16 @@ func NewGraphQLHandler(sm *Showmatch, decksDir string) (*GraphQLHandler, error) 
 // default Handler.Register chain so callers opt into the surface
 // explicitly (GraphQL is currently a POC, not a production
 // dependency).
+//
+// POST is wrapped in RequireCSRF — mutations on /graphql are
+// indistinguishable from queries at the URL layer, so the gate has to
+// cover both to defend importDeck / deleteDeck. RequireCSRF is nil-
+// safe (pass-through when h.CSRFStore is unset), bypasses OPTIONS for
+// CORS preflight, and emits the unified envelope on 403. GET is left
+// ungated — only queries can travel over GET per the GraphQL HTTP
+// recommendation, and read queries are not the CSRF threat model.
 func (h *GraphQLHandler) RegisterGraphQL(mux *http.ServeMux) {
-	mux.HandleFunc("POST /graphql", h.serve)
+	mux.HandleFunc("POST /graphql", RequireCSRF(h.CSRFStore, h.serve))
 	mux.HandleFunc("GET /graphql", h.serve)
 }
 
@@ -92,6 +117,16 @@ type graphqlRequest struct {
 }
 
 func (h *GraphQLHandler) serve(w http.ResponseWriter, r *http.Request) {
+	// Per-IP rate-limit gate FIRST. A single GraphQL request can fan
+	// out to N resolver calls (a deep query with cross-references) —
+	// limiting at the request boundary undercharges that work but is
+	// still strictly better than no limit. The Showmatch deck-list /
+	// game-list resolvers each hit disk + the snapshot cache, so an
+	// unthrottled `query { games(limit: 100) { decks { ... } } }`
+	// blast can pin those caches. Limiter is nil-safe.
+	if enforceRateLimit(h.Limiter, w, r, "graphql") {
+		return
+	}
 	var req graphqlRequest
 	switch r.Method {
 	case http.MethodGet:
