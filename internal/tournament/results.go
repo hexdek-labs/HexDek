@@ -282,4 +282,17 @@ type TournamentResult struct {
 	// scores. One BalancedPod per pod, in the order pods were
 	// scheduled. Nil for non-balanced-pool runs.
 	BalancedPodPlan []BalancedPod `json:"balanced_pod_plan,omitempty"`
+
+	// RoundSnapshots is the per-round raw capture for round-
+	// structured modes (currently emitted by Swiss; DE / round-robin
+	// / balanced-pool may opt-in later). One entry per round, in
+	// chronological order. Consumed by ComputeTelemetry to derive
+	// the per-round convergence + winrate + OMW trajectories. Nil
+	// for rotate / pool / lazy-pool modes that don't have rounds.
+	RoundSnapshots []RoundSnapshot `json:"round_snapshots,omitempty"`
+
+	// Telemetry is the derived analytics layer over this result.
+	// Computed lazily by ComputeTelemetry; nil until populated.
+	// See docs/tournament-telemetry-schema.md for the shape.
+	Telemetry *Telemetry `json:"telemetry,omitempty"`
 }
