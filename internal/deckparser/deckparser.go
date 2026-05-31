@@ -511,10 +511,35 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 		// Runs before the paren strip so a Moxfield-style line with both
 		// a `(SET) 123` tail and a `// comment` (rare but possible)
 		// peels in the right order: comment first, then printing tail.
+		//
+		// CRITICAL: DFC / split / adventure card names also use ` // ` as
+		// the face separator (Moxfield's canonical export format —
+		// `1 Aang, Swift Savior // Aang and La, Ocean's Fury`). The naive
+		// strip would treat the back-face name as a "comment", losing
+		// the DFC suffix from CardLine.Name and polluting CardLine.Comment
+		// with a fake user note. ~3K lines across the curated corpus hit
+		// this shape. Disambiguate by reconstructing the full DFC name
+		// (LHS + " // " + RHS, each with qty / set-parens trimmed) and
+		// probing meta: a known card means the ` // ` is the DFC face
+		// separator and the strip is skipped.
 		var inlineComment string
 		if cm := inlineCommentRE.FindStringSubmatchIndex(raw); cm != nil {
-			inlineComment = strings.TrimSpace(raw[cm[2]:cm[3]])
-			raw = strings.TrimSpace(raw[:cm[0]])
+			lhs := raw[:cm[0]]
+			if dm := deckLineRE.FindStringSubmatch(lhs); dm != nil {
+				lhs = strings.TrimSpace(dm[2])
+			}
+			if pi := strings.Index(lhs, "("); pi > 0 {
+				lhs = strings.TrimSpace(lhs[:pi])
+			}
+			rhs := strings.TrimSpace(raw[cm[2]:cm[3]])
+			if pi := strings.Index(rhs, "("); pi > 0 {
+				rhs = strings.TrimSpace(rhs[:pi])
+			}
+			fullDFCProbe := cleanCardName(lhs + " // " + rhs)
+			if meta == nil || meta.Get(fullDFCProbe) == nil {
+				inlineComment = strings.TrimSpace(raw[cm[2]:cm[3]])
+				raw = strings.TrimSpace(raw[:cm[0]])
+			}
 		}
 		// Inline `*CMDR*` / `*Commander*` marker: peel + flag this line
 		// as commander. Sibling to the foilMarkerRE strip but with
