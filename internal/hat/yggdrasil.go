@@ -2946,6 +2946,25 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 		base += 0.10
 	}
 
+	// R60: WinConPursuit aggressive-tutoring bonus. At high pursuit
+	// (>= 0.7 — combo is materially close, mana to deploy is up),
+	// boost tutors and combo pieces by an additional pursuit-scaled
+	// bonus so the hat picks them over safer plays. Pure additive on
+	// top of the comboUrgency / tutorTargetSet bonuses above; no
+	// dampening of non-combo cards (would destabilize early-game),
+	// relying instead on the relative ranking to push safer plays
+	// down naturally.
+	if pursuit := h.WinConPursuit(gs, seatIdx); pursuit >= 0.7 {
+		ot := gameengine.OracleTextLower(c)
+		isTutorCard := strings.Contains(ot, "search your library for") ||
+			strings.Contains(strings.ToLower(c.DisplayName()), "tutor")
+		if isTutorCard {
+			base += pursuit * 0.30 // +0.21 at gate, +0.30 at saturation
+		} else if h.isComboRelevant(c) {
+			base += pursuit * 0.20
+		}
+	}
+
 	// Finisher awareness: finisher cards get a bonus, scaled by board
 	// readiness. A mass pump spell is much better when we have creatures.
 	if h.isFinisher(c) {
@@ -3186,6 +3205,129 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 
 func (h *YggdrasilHat) isComboRelevant(c *gameengine.Card) bool {
 	return h.comboPieceSet[c.DisplayName()]
+}
+
+// WinConPursuit returns a 0.0..1.0 score quantifying how aggressively
+// the hat should pursue win-condition assembly given current game state.
+// Built from the same availability map scoreCombo uses (hand=1.0,
+// battlefield=1.0, graveyard=0.5 OR 0.9 with recursion engine,
+// command zone=0.8), folding in tutor reach in hand and a mana-
+// availability bonus when the combo is genuinely close to deploying.
+//
+// Returns 0 when no Strategy / no combo plans are loaded — the
+// signal is undefined for non-combo decks and downstream callers
+// must gate on > 0.
+//
+// Calibration:
+//
+//	0.0..0.4  — early/no progress; no pursuit signal
+//	0.4..0.7  — assembling but not close; cardHeuristic priors don't fire
+//	>= 0.7    — high pursuit: cardHeuristic boosts tutors (+pursuit*0.30)
+//	            and combo pieces (+pursuit*0.20), pushing safer plays
+//	            down the ranking
+//	~1.0      — single-cast-from-winning; tutors maximally promoted
+//
+// The 0.7 threshold matches the close-to-closing gate in scoreCombo's
+// stack-window penalty (PR #893) so the same "we're close" framing
+// drives both signals consistently.
+func (h *YggdrasilHat) WinConPursuit(gs *gameengine.GameState, seatIdx int) float64 {
+	if h == nil || h.Strategy == nil || len(h.Strategy.ComboPieces) == 0 {
+		return 0
+	}
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return 0
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return 0
+	}
+
+	graveyardWeight := 0.5
+	if seatHasComboGraveyardRecursion(seat) {
+		graveyardWeight = 0.9
+	}
+	available := make(map[string]float64, len(seat.Hand)+len(seat.Battlefield)+len(seat.Graveyard)+len(seat.CommandZone))
+	for _, c := range seat.Hand {
+		if c != nil {
+			available[c.DisplayName()] = 1.0
+		}
+	}
+	for _, p := range seat.Battlefield {
+		if p != nil && p.Card != nil {
+			available[p.Card.DisplayName()] = 1.0
+		}
+	}
+	for _, c := range seat.Graveyard {
+		if c == nil {
+			continue
+		}
+		if available[c.DisplayName()] < graveyardWeight {
+			available[c.DisplayName()] = graveyardWeight
+		}
+	}
+	for _, c := range seat.CommandZone {
+		if c == nil {
+			continue
+		}
+		if available[c.DisplayName()] < 0.8 {
+			available[c.DisplayName()] = 0.8
+		}
+	}
+
+	tutors := seatTutorsInHand(seat)
+	bestRatio := 0.0
+	for _, cp := range h.Strategy.ComboPieces {
+		if len(cp.Pieces) == 0 {
+			continue
+		}
+		foundWeight := 0.0
+		realPieces := 0
+		missing := 0
+		for _, piece := range cp.Pieces {
+			if w := available[piece]; w > 0 {
+				foundWeight += w
+				realPieces++
+			} else {
+				missing++
+			}
+		}
+		// Tutor credit mirrors scoreCombo: capped at realPieces+1 so a
+		// tutor-only hand (no real anchor) never claims more than 1
+		// soft-piece; one real anchor lets credit grow to 2, etc.
+		if tutors > 0 && missing > 0 {
+			credit := tutors
+			if credit > missing {
+				credit = missing
+			}
+			if cap := realPieces + 1; credit > cap {
+				credit = cap
+			}
+			foundWeight += float64(credit)
+		}
+		if foundWeight > float64(len(cp.Pieces)) {
+			foundWeight = float64(len(cp.Pieces))
+		}
+		ratio := foundWeight / float64(len(cp.Pieces))
+		if ratio > bestRatio {
+			bestRatio = ratio
+		}
+	}
+
+	pursuit := bestRatio
+
+	// Mana-availability bonus: combo is close AND mana to deploy is up.
+	// Only fires when bestRatio is already meaningful (>= 0.5) so an
+	// empty board with 10 lands doesn't claim pursuit.
+	if bestRatio >= 0.5 {
+		if CountUntappedManaSources(seat) >= 3 {
+			pursuit += 0.10
+		}
+	}
+
+	if pursuit > 1.0 {
+		pursuit = 1.0
+	}
+	return pursuit
 }
 
 // comboUrgency checks how close the seat is to completing any combo.
