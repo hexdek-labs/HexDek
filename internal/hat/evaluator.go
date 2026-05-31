@@ -693,7 +693,15 @@ func isOpponentTriggeredValueEngine(p *gameengine.Permanent) bool {
 
 // scoreMana: mana source count relative to average, plus color coverage.
 func (e *GameStateEvaluator) scoreMana(gs *gameengine.GameState, seatIdx int) float64 {
-	mySources := float64(CountManaRocksAndLands(gs.Seats[seatIdx]))
+	// R60: fold fast-mana extra-yield into both my and opp source totals.
+	// CountManaRocksAndLands credits each mana permanent at 1; that flat
+	// rate treats Sol Ring (taps for {2}) and Mana Vault (taps for {3})
+	// identically to a Plains. fastManaExtraYield returns ONLY the extra
+	// mana above that baseline so the existing count semantics survive
+	// while the asymmetric yield surfaces in the count delta. Applied
+	// symmetrically to opp totals so a Sol Ring on each side of the
+	// table reads neutral, not us-down.
+	mySources := float64(CountManaRocksAndLands(gs.Seats[seatIdx]) + fastManaExtraYield(gs.Seats[seatIdx]))
 
 	var oppSum float64
 	var oppN int
@@ -701,7 +709,7 @@ func (e *GameStateEvaluator) scoreMana(gs *gameengine.GameState, seatIdx int) fl
 		if i == seatIdx || s.Lost || s.LeftGame {
 			continue
 		}
-		oppSum += float64(CountManaRocksAndLands(s))
+		oppSum += float64(CountManaRocksAndLands(s) + fastManaExtraYield(s))
 		oppN++
 	}
 
@@ -711,6 +719,16 @@ func (e *GameStateEvaluator) scoreMana(gs *gameengine.GameState, seatIdx int) fl
 	} else {
 		rawScore = (mySources - oppSum/float64(oppN)) / 4.0
 	}
+
+	// R60: ramp-in-hand future-source preview. Pre-r60 a hand with 3
+	// Cultivates scored identically to a hand with 3 vanilla 3-drops on
+	// the mana axis — the future-source pipeline was invisible. Credit
+	// each land-search ramp spell, mana dork in hand, and mana rock in
+	// hand at 0.5 fractional sources, capped at +2.0 (4 ramp pieces is
+	// the bottleneck before land-drop saturation matters more than
+	// ramp). Divided by 4 to match the per-source weighting on the raw
+	// count delta above.
+	rawScore += rampInHandFutureSources(gs.Seats[seatIdx]) / 4.0
 
 	// r60: response-mana bonus on opponent turns. When it's NOT our turn,
 	// only untapped sources are usable for instants / counters / activated
@@ -997,6 +1015,142 @@ func ritualFuelBonus(seat *gameengine.Seat) float64 {
 // producing permanents — used by scoreMana to weight response mana on
 // opponent turns. Mirrors CountManaRocksAndLands (lands + cheap mana
 // artifacts) but only counts sources with `Tapped == false`.
+// fastManaExtraYieldByName lists fast-mana permanents whose per-tap
+// yield exceeds a basic land's 1 mana. The map value is the EXTRA
+// mana per turn above the baseline 1 that CountManaRocksAndLands
+// already credits — so Sol Ring (taps for {2}) returns 1, Mana Vault
+// (taps for {3}) returns 2. Drives the asymmetric fast-mana bonus
+// in scoreMana — pre-r60 a Sol Ring counted identically to a Plain.
+//
+// Mana Vault / Grim Monolith / Basalt Monolith all produce {3} per
+// activation; even with the don't-untap drawback they cycle once per
+// game-turn-pair in practice. Conservative +2 credit reflects this.
+//
+// Moxen intentionally excluded — they tap for 1 mana like a land;
+// their timing advantage (zero-cost, no land drop) is already
+// captured by raw battlefield count on early turns.
+//
+// Black Lotus excluded — one-shot sac for +3 burst is a different
+// shape (one-time tempo spike, not steady mana), covered separately
+// by the existing ritualFuelBonus model when chained.
+var fastManaExtraYieldByName = map[string]int{
+	"sol ring":         1,
+	"mana crypt":       1,
+	"mana vault":       2,
+	"grim monolith":    2,
+	"basalt monolith":  2,
+	"thran dynamo":     1, // {4} cost, taps for {3} → +2 yield but high cost; conservative +1
+	"worn powerstone":  1, // ETB tapped, then taps for {2}; net +1
+	"gilded lotus":     2, // {5}, taps for {3} of any one color; +2 yield
+}
+
+// fastManaExtraYield returns the sum of per-turn extra mana above
+// baseline-1 contributed by fast-mana permanents on this seat's
+// battlefield. Uses the curated name map; phased-out permanents and
+// permanents that don't untap on the next upkeep (e.g. Winter Orb
+// targets) are skipped at the call site by reading the seat directly.
+// CountManaRocksAndLands already credits each of these at 1; this
+// helper returns ONLY the extra above that 1.
+func fastManaExtraYield(seat *gameengine.Seat) int {
+	if seat == nil {
+		return 0
+	}
+	total := 0
+	for _, p := range seat.Battlefield {
+		if p == nil || p.Card == nil || p.PhasedOut {
+			continue
+		}
+		if extra, ok := fastManaExtraYieldByName[strings.ToLower(p.Card.DisplayName())]; ok {
+			total += extra
+		}
+	}
+	return total
+}
+
+// rampInHandFutureSources estimates fractional future mana sources
+// based on cards in hand. Ramp spells (land-search-and-put or direct-
+// add) and mana rocks in hand will deploy next turn or two, so they
+// represent real future mana advantage the raw battlefield count
+// misses. Pre-r60, a hand with 3 Cultivates scored identically to a
+// hand with 3 dead non-ramp cards.
+//
+// Scoring: 0.5 per ramp spell or in-hand mana rock, capped at 2.0
+// (4 ramp pieces in hand is the saturation point — past that the
+// extra cards are bottlenecked by land drops, not future-source
+// potential). The 0.5 fractional weight accounts for the cast cost
+// (we have to spend a turn casting the ramp) and the asymmetric
+// timing relative to deployed sources.
+//
+// Recognized shapes:
+//   - "search your library for a/two land" + ("battlefield" / "into
+//     your hand") → Cultivate, Kodama's Reach, Rampant Growth, Three
+//     Visits, Farseek, Skyshroud Claim, Nature's Lore, Wood Elves
+//     (creature with ETB ramp)
+//   - "add" + "mana" creature/instant ramp shapes (Llanowar Elves,
+//     Birds of Paradise, Arbor Elf — these are dorks waiting in hand)
+//   - mana rocks in hand: CMC <= 3 artifact + (mana | {t}) oracle
+//     pattern (matches CountManaRocksAndLands's battlefield rule)
+func rampInHandFutureSources(seat *gameengine.Seat) float64 {
+	if seat == nil || len(seat.Hand) == 0 {
+		return 0
+	}
+	rampCount := 0
+	for _, c := range seat.Hand {
+		if c == nil {
+			continue
+		}
+		// Skip lands — they're already in the "next land drop" pipeline,
+		// not ramp.
+		isLand := false
+		for _, t := range c.Types {
+			if t == "land" {
+				isLand = true
+				break
+			}
+		}
+		if isLand {
+			continue
+		}
+		ot := gameengine.OracleTextLower(c)
+		// Land-search ramp.
+		if strings.Contains(ot, "search your library") &&
+			(strings.Contains(ot, "land card") || strings.Contains(ot, "basic land") ||
+				strings.Contains(ot, "forest") || strings.Contains(ot, "plains") ||
+				strings.Contains(ot, "island") || strings.Contains(ot, "swamp") ||
+				strings.Contains(ot, "mountain")) &&
+			(strings.Contains(ot, "battlefield") || strings.Contains(ot, "onto the battlefield")) {
+			rampCount++
+			continue
+		}
+		// Mana dork / instant ramp ("add ... mana" oracle).
+		if strings.Contains(ot, "add") &&
+			(strings.Contains(ot, "{w}") || strings.Contains(ot, "{u}") ||
+				strings.Contains(ot, "{b}") || strings.Contains(ot, "{r}") ||
+				strings.Contains(ot, "{g}") || strings.Contains(ot, "{c}") ||
+				strings.Contains(ot, "mana of any color")) {
+			rampCount++
+			continue
+		}
+		// Mana rock in hand (artifact, low CMC, mana-producing).
+		isArtifact := false
+		for _, t := range c.Types {
+			if t == "artifact" {
+				isArtifact = true
+				break
+			}
+		}
+		if isArtifact && gameengine.ManaCostOf(c) <= 3 &&
+			(strings.Contains(ot, "mana") || strings.Contains(ot, "{t}")) {
+			rampCount++
+		}
+	}
+	bonus := 0.5 * float64(rampCount)
+	if bonus > 2.0 {
+		bonus = 2.0
+	}
+	return bonus
+}
+
 func CountUntappedManaSources(seat *gameengine.Seat) int {
 	if seat == nil {
 		return 0
