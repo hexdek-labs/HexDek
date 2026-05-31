@@ -3121,69 +3121,62 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 
 	// --- R60 monitoring (PR #418): per-seat μ-before snapshot + a
 	// shadow vanilla update for the "what would have happened without
-	// the prior" baseline. Cheap (~one extra round of pairwise
-	// updates, ~12 floating-point ops per seat) and gives Heimdall the
-	// MuDeltaVsBaseline signal without doing it offline.
+	// the prior" baseline. Cheap (~one extra UpdateMultiplayer call)
+	// and gives Heimdall the MuDeltaVsBaseline signal without doing
+	// it offline. Uses the SAME algorithm as the real update below
+	// (all-pairs decomposition) so the delta isolates the prior's
+	// effect rather than mixing in any algorithm-shape difference.
 	muBefore := make([]float64, n)
 	for i, key := range deckKeys {
 		muBefore[i] = sm.elo[key].tsMu
 	}
 	vanillaAfter := make([]float64, n)
 	{
-		// Shadow vanilla update: same input as the real update below
-		// but without composition offsets. Don't mutate any state.
 		shadowRatings := make([]trueskill.Rating, n)
+		ranks := make([]int, n)
 		for i, key := range deckKeys {
 			shadowRatings[i] = trueskill.Rating{Mu: sm.elo[key].tsMu, Sigma: sm.elo[key].tsSigma}
-		}
-		if winner >= 0 && winner < n {
-			wR := shadowRatings[winner]
-			for i := range deckKeys {
+			if winner >= 0 && winner < n {
 				if i == winner {
-					continue
+					ranks[i] = 0
+				} else {
+					ranks[i] = 1
 				}
-				wNew, lNew := trueskill.Update2Player(tsConfig, wR, shadowRatings[i])
-				wR = wNew
-				shadowRatings[i] = lNew
 			}
-			shadowRatings[winner] = wR
-		} else {
-			ranks := make([]int, n)
-			shadowRatings = trueskill.UpdateMultiplayer(tsConfig, shadowRatings, ranks)
 		}
+		shadowRatings = trueskill.UpdateMultiplayer(tsConfig, shadowRatings, ranks)
 		for i := range deckKeys {
 			vanillaAfter[i] = shadowRatings[i].Mu
 		}
 	}
 
 	// --- TrueSkill update (primary rating) ---
-	// Pairwise decomposition: winner vs each loser independently.
-	// UpdateMultiplayer's adjacent-pair chain doesn't properly propagate
-	// the winner signal to all losers when ranks are [0,1,1,1].
+	// All-pairs decomposition via UpdateMultiplayerWithOffsets — winner
+	// gets credit for beating EACH loser (not chained-and-double-counted),
+	// and each loser eats roughly Δ_winner/3 of the signal mass (the
+	// three losers tie among themselves, washing out as ~zero draws).
+	// This replaces the pre-R60 pairwise Update2Player loop that gave
+	// each loser a FULL 1v1 decisive-loss against a chained winner —
+	// triple-penalizing losers vs the actual 25% per-seat win expectation.
 	if winner >= 0 && winner < n {
-		winKey := deckKeys[winner]
-		wRating := trueskill.Rating{Mu: sm.elo[winKey].tsMu, Sigma: sm.elo[winKey].tsSigma}
-		wOffset := offsets[winner]
+		tsRatings := make([]trueskill.Rating, n)
+		ranks := make([]int, n)
 		for i, key := range deckKeys {
+			tsRatings[i] = trueskill.Rating{Mu: sm.elo[key].tsMu, Sigma: sm.elo[key].tsSigma}
 			if i == winner {
-				continue
+				ranks[i] = 0
+			} else {
+				ranks[i] = 1
 			}
-			lRating := trueskill.Rating{Mu: sm.elo[key].tsMu, Sigma: sm.elo[key].tsSigma}
-			wNew, lNew := trueskill.Update2PlayerWithOffsets(
-				tsConfig, wRating, lRating, wOffset, offsets[i])
-			// Accumulate winner's gains across all pairwise comparisons.
-			wRating = wNew
-			oldLR := sm.elo[key].rating
-			sm.elo[key].tsMu = lNew.Mu
-			sm.elo[key].tsSigma = lNew.Sigma
-			sm.elo[key].rating = lNew.Conservative()
-			sm.elo[key].delta = sm.elo[key].rating - oldLR
 		}
-		oldWR := sm.elo[winKey].rating
-		sm.elo[winKey].tsMu = wRating.Mu
-		sm.elo[winKey].tsSigma = wRating.Sigma
-		sm.elo[winKey].rating = wRating.Conservative()
-		sm.elo[winKey].delta = sm.elo[winKey].rating - oldWR
+		updated := trueskill.UpdateMultiplayerWithOffsets(tsConfig, tsRatings, ranks, offsets)
+		for i, key := range deckKeys {
+			oldRating := sm.elo[key].rating
+			sm.elo[key].tsMu = updated[i].Mu
+			sm.elo[key].tsSigma = updated[i].Sigma
+			sm.elo[key].rating = updated[i].Conservative()
+			sm.elo[key].delta = sm.elo[key].rating - oldRating
+		}
 	} else {
 		// No winner (draw/timeout) — all players draw pairwise.
 		tsRatings := make([]trueskill.Rating, n)
