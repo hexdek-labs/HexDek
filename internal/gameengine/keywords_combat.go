@@ -447,10 +447,17 @@ func ApplyMyriad(gs *GameState, attacker *Permanent, attackerSeat int) {
 			Owner:         attackerSeat,
 			Timestamp:     gs.NextTimestamp(),
 			Counters:      map[string]int{},
-			Flags:         map[string]int{"attacking": 1, "myriad_token": 1},
+			Flags:         map[string]int{"myriad_token": 1},
 			Tapped:        true,
 			SummoningSick: false,
 		}
+		// CR §508.1g — myriad creates token copies onto the
+		// battlefield attacking. MarkEnteredAttacking stamps both
+		// flagAttacking and the carve-out tag so checkCombatLegality
+		// honors §508.1g if a myriad copy happens to carry the
+		// defender keyword (rare — myriad copies inherit oracle
+		// abilities; if the source had defender, the copy would too).
+		MarkEnteredAttacking(token)
 		setAttackerDefender(token, oppSeat)
 		gs.Seats[attackerSeat].Battlefield = append(gs.Seats[attackerSeat].Battlefield, token)
 		RegisterReplacementsForPermanent(gs, token)

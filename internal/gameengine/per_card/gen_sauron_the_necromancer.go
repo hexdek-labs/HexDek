@@ -81,10 +81,11 @@ func sauronTheNecromancerAttack(gs *gameengine.GameState, perm *gameengine.Perma
 	if tokenPerm.Flags == nil {
 		tokenPerm.Flags = map[string]int{}
 	}
-	tokenPerm.Flags["attacking"] = 1
+	// CR §508.1g — Sauron creates the Nazgûl token attacking.
+	// MarkEnteredAttacking stamps both flagAttacking and the carve-out
+	// tag so the legality invariant honors the bypass.
+	gameengine.MarkEnteredAttacking(tokenPerm)
 	tokenPerm.Flags["kw:menace"] = 1
-	// R60: CR §506.3 — the token is legally attacking despite §302.1
-	// summoning sickness. Clear SS so checkCombatLegality doesn't trip.
 	tokenPerm.SummoningSick = false
 	if def, ok := gameengine.AttackerDefender(perm); ok {
 		gameengine.SetAttackerDefender(tokenPerm, def)

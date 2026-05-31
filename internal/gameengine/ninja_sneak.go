@@ -232,8 +232,13 @@ func tryNinjutsuFromZone(gs *GameState, seatIdx int, zone []*Card, zoneName stri
 			Counters:      map[string]int{},
 			Flags:         map[string]int{},
 		}
-		setPermFlag(perm, flagAttacking, true)
-		// Do NOT set flagDeclaredAttacker — CR 702.49b.
+		// CR §508.1g — ninjutsu puts a ninja onto the battlefield
+		// in an attacking state. MarkEnteredAttacking stamps the
+		// carve-out tag so checkCombatLegality skips defender /
+		// summoning-sickness checks for this attacker. Per CR
+		// §702.49b ninjutsu doesn't go through declare-attackers
+		// (flagDeclaredAttacker stays off).
+		MarkEnteredAttacking(perm)
 		if defSeat >= 0 {
 			setAttackerDefender(perm, defSeat)
 		}
@@ -471,12 +476,14 @@ func CheckSneak(gs *GameState, attackerSeat int, attackers []*Permanent, blocker
 		sneakPerm := findPermanentByCard(gs, attackerSeat, c)
 		if sneakPerm != nil {
 			sneakPerm.Tapped = true
-			setPermFlag(sneakPerm, flagAttacking, true)
-			// R60: CR §506.3 — the sneak'd creature is legally attacking
-			// despite §302.1 summoning sickness. Sneak Attack grants
-			// haste on the card text, but defensive: clear SS too so
-			// checkCombatLegality doesn't trip on mid-combat game end
-			// if a path bypasses the haste grant.
+			// CR §508.1g — sneak-cast puts the creature onto the
+			// battlefield in an attacking state. MarkEnteredAttacking
+			// stamps both flagAttacking and the §508.1g carve-out
+			// tag so checkCombatLegality honors the bypass.
+			MarkEnteredAttacking(sneakPerm)
+			// Sneak Attack grants haste on the card text, but
+			// defensive: clear SS too so the haste-grant timing
+			// doesn't matter for any post-resolution state check.
 			sneakPerm.SummoningSick = false
 			// Like ninjutsu, do NOT set flagDeclaredAttacker.
 			if defSeat >= 0 {

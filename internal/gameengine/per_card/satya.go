@@ -79,13 +79,10 @@ func satyaOnAttack(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 		gameengine.GainEnergy(gs, seat, 2)
 		return
 	}
-	// Mark as attacking (entered "tapped and attacking").
-	if tokenPerm.Flags == nil {
-		tokenPerm.Flags = map[string]int{}
-	}
-	tokenPerm.Flags["attacking"] = 1
-	// R60: CR §506.3 — the token is legally attacking despite §302.1
-	// summoning sickness. Clear SS so checkCombatLegality doesn't trip.
+	// CR §508.1g — Satya creates the token attacking.
+	// MarkEnteredAttacking stamps both flagAttacking and the
+	// §508.1g carve-out tag.
+	gameengine.MarkEnteredAttacking(tokenPerm)
 	tokenPerm.SummoningSick = false
 
 	// Grant {E}{E}.
