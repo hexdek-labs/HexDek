@@ -83,6 +83,14 @@ func main() {
 		lazyPool    = flag.Bool("lazy-pool", false, "lazy pool: like --pool but loads decks on demand (low memory for large pools)")
 		pprofFlag     = flag.Bool("pprof", false, "enable pprof profiling (HTTP :6060 + heap dump after first game)")
 		progressEvery = flag.Int("progress-every", 0, "log progress every N games (0 = auto)")
+		applyFeedback = flag.String("apply-feedback", "",
+			"path to a Heimdall feedback JSON file (hat.HeimdallFeedback) to apply at startup. "+
+				"Each loaded deck's StrategyProfile.Weights gets per-dimension nudges per the attribution. "+
+				"Hard caps prevent any single feedback file from dramatically rewriting eval weights: "+
+				"±0.15 per-dimension Δ cap, 0.5 total magnitude budget, "+
+				"weights floored at 0.05 (regression safety — no dimension can be zeroed by feedback), "+
+				"and Δ scaled by sqrt(SampleSize/30) so small-sample feedback applies less aggressively. "+
+				"See internal/hat/heimdall_feedback.go for the full contract.")
 	)
 	flag.Parse()
 
@@ -241,6 +249,24 @@ func main() {
 		}
 	}
 
+	// Heimdall feedback applier (--apply-feedback). Loaded once at
+	// startup and applied to every loaded StrategyProfile so the
+	// hat's weights ride the previous run's attribution signal into
+	// the next tournament. Load failure is non-fatal — we log and
+	// continue with un-nudged weights rather than abort the run on
+	// a missing or malformed feedback file.
+	var feedback *hat.HeimdallFeedback
+	if *applyFeedback != "" {
+		fb, err := hat.LoadHeimdallFeedback(*applyFeedback)
+		if err != nil {
+			log.Printf("  [apply-feedback] load failed (%v) — continuing without feedback", err)
+		} else if fb != nil {
+			feedback = fb
+			log.Printf("  [apply-feedback] loaded feedback from %s (source=%q, sample_size=%d, attributions=%d)",
+				*applyFeedback, fb.Source, fb.SampleSize, len(fb.Attributions))
+		}
+	}
+
 	// Hat factory — per-seat when poker hats need Freya strategy data.
 	var hatFactories []tournament.HatFactory
 	switch strings.ToLower(*hatKind) {
@@ -255,6 +281,11 @@ func main() {
 		for i, p := range deckPaths {
 			profile := hat.LoadStrategyFromFreya(p) // may be nil
 			if profile != nil {
+				if feedback != nil {
+					n := hat.ApplyHeimdallFeedback(profile, feedback)
+					log.Printf("  deck %s: applied Heimdall feedback (%d dimensions nudged)",
+						filepath.Base(p), n)
+				}
 				log.Printf("  deck %s: loaded Freya strategy (archetype=%s, combos=%d, tutor_targets=%d)",
 					filepath.Base(p), profile.Archetype, len(profile.ComboPieces), len(profile.TutorTargets))
 			}
@@ -276,6 +307,11 @@ func main() {
 		for i, p := range deckPaths {
 			profile := hat.LoadStrategyFromFreya(p)
 			if profile != nil {
+				if feedback != nil {
+					n := hat.ApplyHeimdallFeedback(profile, feedback)
+					log.Printf("  deck %s: applied Heimdall feedback (%d dimensions nudged)",
+						filepath.Base(p), n)
+				}
 				log.Printf("  deck %s: loaded Freya strategy (archetype=%s, combos=%d, tutor_targets=%d)",
 					filepath.Base(p), profile.Archetype, len(profile.ComboPieces), len(profile.TutorTargets))
 			}
