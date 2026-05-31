@@ -2012,6 +2012,14 @@ const (
 	condScaffoldSelfPowerParity     // "as long as ~'s power is even/odd" (Kianne, Corrupted Memory)
 	condScaffoldNoLoyaltyActivated  // "you didn't activate a loyalty ability of a planeswalker this turn" (The Chain Veil)
 	condScaffoldLostNLifeThisTurn   // "you lost 2 or more life this turn" (The Book of Vile Darkness)
+
+	// Era 1 r60 era1-parser-fallthroughs — 3 new condition kinds covering
+	// the residual raw-text fragments from the 2026-05-30 audit. Each maps
+	// to existing engine state (Permanent.Flags / Seat.Flags) — scaffold-
+	// only stubs, no engine code changes.
+	condScaffoldRevealedCardType      // "if [that|it] is a <type> card" / "if a card was milled this way" — stamp revealed_card_type + subtype
+	condScaffoldDrawStepReplacement   // "if you would draw a card during your draw step, you may skip" — stamp draw_step_replacement
+	condScaffoldPermanentIsType       // "as long as this artifact is a creature" / "enchanted land is a basic mountain" — typeswap state
 )
 
 type conditionScaffold struct {
@@ -4371,6 +4379,14 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		strings.Contains(txt, "prowl cost was paid") {
 		cs.kind = condScaffoldPaidOptionalCost
 		cs.count = 1
+		switch {
+		case strings.Contains(txt, "sneak"):
+			cs.subtype = "sneak"
+		case strings.Contains(txt, "gift"):
+			cs.subtype = "gift"
+		case strings.Contains(txt, "prowl"):
+			cs.subtype = "prowl"
+		}
 		return cs
 	}
 
@@ -4700,6 +4716,194 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		cs.subtype = "revealed_or_controlled"
 		return cs
 	}
+
+
+	// Era 1 r60 era1-parser-fallthroughs — 5 new pattern clusters covering
+	// residual raw-text fragments from the 2026-05-30 audit. Each is anchored
+	// narrowly enough to avoid eating existing detectors; ordered
+	// most-specific FIRST. See `data/rules/era1_scaffold_audit.md` for the
+	// card-text fragments these match.
+
+	// (20) DrawStepReplacement — "if you would draw a card during your draw
+	// step, you may skip", "if a player would draw a card, they reveal it
+	// instead", "if your life total would be reduced to 0 or less, instead
+	// transform". Narrow "if X would Y" replacement clauses anchored on
+	// draw-step / library / life-total. Fasting, Island Sanctuary,
+	// Zur's Weirding, Enduring Angel.
+	if (strings.Contains(txt, "if you would draw a card during your draw step") ||
+		strings.Contains(txt, "if you would begin your draw step") ||
+		strings.Contains(txt, "if a player would draw a card") ||
+		strings.Contains(txt, "if your life total would be reduced to 0 or less")) {
+		cs.kind = condScaffoldDrawStepReplacement
+		switch {
+		case strings.Contains(txt, "draw step"):
+			cs.subtype = "draw_step"
+		case strings.Contains(txt, "draw a card"):
+			cs.subtype = "draw"
+		case strings.Contains(txt, "life total"):
+			cs.subtype = "life_total"
+		}
+		return cs
+	}
+
+	// (21) PermanentIsType — "as long as this artifact/creature/permanent is
+	// a creature/land/artifact" or "as long as enchanted land/creature is a
+	// basic mountain/creature/forest". Distinct from condScaffoldEnchanted-
+	// Creature (which matches "enchanted creature" generically). This is the
+	// TYPE-CONVERSION state check. Foriysian Totem, Triton Wavebreaker,
+	// Goblin Caves, Artificer's Hex.
+	if strings.Contains(txt, "as long as") && strings.Contains(txt, " is a ") &&
+		(strings.Contains(txt, "this artifact is a") ||
+			strings.Contains(txt, "this permanent is a") ||
+			strings.Contains(txt, "this creature is a") ||
+			strings.Contains(txt, "this enchantment is a") ||
+			strings.Contains(txt, "enchanted land is a") ||
+			strings.Contains(txt, "enchanted creature is a") ||
+			strings.Contains(txt, "enchanted permanent is a") ||
+			strings.Contains(txt, "enchanted equipment is attached to a creature")) {
+		cs.kind = condScaffoldPermanentIsType
+		switch {
+		case strings.Contains(txt, "is a creature"):
+			cs.subtype = "creature"
+		case strings.Contains(txt, "is a land"):
+			cs.subtype = "land"
+		case strings.Contains(txt, "is an artifact"):
+			cs.subtype = "artifact"
+		case strings.Contains(txt, "is a basic mountain"):
+			cs.subtype = "mountain"
+		case strings.Contains(txt, "is a forest"):
+			cs.subtype = "forest"
+		case strings.Contains(txt, "attached to a creature"):
+			cs.subtype = "attached"
+		default:
+			cs.subtype = "type"
+		}
+		return cs
+	}
+
+	// (22) RevealedCardType — "if [a|that|the|it's a] card (was|is) [a|an]
+	// <cardtype> card", "if a card with the chosen name was milled this
+	// way", "if that permanent is a chandra planeswalker". Catches the
+	// subtype/typeswap variants the existing condScaffoldCardTypeReveal
+	// matcher leaves on the floor (mount, forest, chandra planeswalker,
+	// "was milled this way" framing). Lorehold Excavation, Predict, Bucolic
+	// Ranch, Tibalt Wicked, Feral Appetite, Land's Edge, Chandra's Defeat,
+	// Lost in the Woods, Chaos Harlequin, Taborax, Instrument of the Bards.
+	if (strings.Contains(txt, "if it's a mount card") ||
+		strings.Contains(txt, "if it's a forest card") ||
+		strings.Contains(txt, "if that permanent is a chandra planeswalker") ||
+		strings.Contains(txt, "if that card is legendary") ||
+		strings.Contains(txt, "if that creature was a cleric") ||
+		strings.Contains(txt, "if it was a creature card") ||
+		strings.Contains(txt, "the discarded card was a land card") ||
+		(strings.Contains(txt, "was milled this way") &&
+			(strings.Contains(txt, "a land card") || strings.Contains(txt, "a creature card") ||
+				strings.Contains(txt, "an instant card") || strings.Contains(txt, "card with the chosen name"))) ||
+		(strings.Contains(txt, "is exiled this way") &&
+			(strings.Contains(txt, "a creature card") || strings.Contains(txt, "an instant card") ||
+				strings.Contains(txt, "a card with flash"))) ||
+		(strings.Contains(txt, "if that card is a") && strings.Contains(txt, "card"))) {
+		cs.kind = condScaffoldRevealedCardType
+		switch {
+		case strings.Contains(txt, "mount card") || strings.Contains(txt, "mount "):
+			cs.subtype = "mount"
+		case strings.Contains(txt, "forest card") || strings.Contains(txt, "is a forest"):
+			cs.subtype = "forest"
+		case strings.Contains(txt, "chandra planeswalker"):
+			cs.subtype = "chandra"
+		case strings.Contains(txt, "legendary"):
+			cs.subtype = "legendary"
+		case strings.Contains(txt, "cleric"):
+			cs.subtype = "cleric"
+		case strings.Contains(txt, "land card"):
+			cs.subtype = "land"
+		case strings.Contains(txt, "creature card"):
+			cs.subtype = "creature"
+		case strings.Contains(txt, "instant card"):
+			cs.subtype = "instant"
+		case strings.Contains(txt, "chosen name"):
+			cs.subtype = "named"
+		default:
+			cs.subtype = "card"
+		}
+		return cs
+	}
+
+	// (23) Optional-cost alt-pay variants — "its prowl/madness/web-slinging/
+	// surge/emerge/jump-start/escape/flashback/dash/bestow/spectacle/cleave/
+	// prototype cost was paid" / "they were cast using web-slinging" /
+	// "madness cost was paid". Route to PaidOptionalCost with subtype hint
+	// so downstream apply stamps the appropriate flag. Latchkey Faerie,
+	// Spiders-Man, plus other madness/web-slinging callouts.
+	if strings.Contains(txt, "cost was paid") &&
+		(strings.Contains(txt, "madness") || strings.Contains(txt, "web-slinging") ||
+			strings.Contains(txt, "surge") || strings.Contains(txt, "emerge") ||
+			strings.Contains(txt, "jump-start") || strings.Contains(txt, "escape") ||
+			strings.Contains(txt, "flashback") || strings.Contains(txt, "dash") ||
+			strings.Contains(txt, "bestow") || strings.Contains(txt, "spectacle") ||
+			strings.Contains(txt, "cleave") || strings.Contains(txt, "prototype")) {
+		cs.kind = condScaffoldPaidOptionalCost
+		cs.count = 1
+		switch {
+		case strings.Contains(txt, "madness"):
+			cs.subtype = "madness"
+		case strings.Contains(txt, "web-slinging"):
+			cs.subtype = "web_slinging"
+		case strings.Contains(txt, "surge"):
+			cs.subtype = "surge"
+		case strings.Contains(txt, "emerge"):
+			cs.subtype = "emerge"
+		case strings.Contains(txt, "jump-start"):
+			cs.subtype = "jump_start"
+		case strings.Contains(txt, "escape"):
+			cs.subtype = "escape"
+		case strings.Contains(txt, "flashback"):
+			cs.subtype = "flashback"
+		case strings.Contains(txt, "dash"):
+			cs.subtype = "dash"
+		case strings.Contains(txt, "bestow"):
+			cs.subtype = "bestow"
+		case strings.Contains(txt, "spectacle"):
+			cs.subtype = "spectacle"
+		case strings.Contains(txt, "cleave"):
+			cs.subtype = "cleave"
+		case strings.Contains(txt, "prototype"):
+			cs.subtype = "prototype"
+		}
+		return cs
+	}
+	// Note: "cast using web-slinging" is intentionally NOT handled here —
+	// batch 3's later "web-slinging" arm routes it to YouCastFromHand
+	// subtype="web_slinging" (the canonical bucket for that mechanic).
+
+	// (24) SelfPower/Toughness LE (inverse of SelfPowerGE) — "its power is
+	// less than ~'s power" / "its toughness was less than N" / "that
+	// creature's power is N or less" / "power 0 or less". Route to
+	// condScaffoldSelfPowerGE with subtype="power_le" / "toughness_le" so
+	// the existing apply case can branch on direction. Massacre Girl
+	// (toughness<1), Shelinda (power<~power), Depressurize (power≤0).
+	if (strings.Contains(txt, "power is less than") ||
+		strings.Contains(txt, "power was less than") ||
+		strings.Contains(txt, "toughness is less than") ||
+		strings.Contains(txt, "toughness was less than") ||
+		strings.Contains(txt, "power 0 or less") ||
+		(strings.Contains(txt, "power is") && strings.Contains(txt, "or less")) ||
+		(strings.Contains(txt, "toughness is") && strings.Contains(txt, "or less"))) {
+		cs.kind = condScaffoldSelfPowerGE
+		if strings.Contains(txt, "toughness") {
+			cs.subtype = "toughness_le"
+		} else {
+			cs.subtype = "power_le"
+		}
+		cs.count = 0
+		if m := manaSpentNumRe.FindStringSubmatch(txt); len(m) > 1 {
+			if n, err := strconv.Atoi(m[1]); err == nil {
+				cs.count = n
+			}
+		}
+		return cs
+	}
+
 
 	// Tribal: "if you control another <subtype>" / "if you control a <subtype>".
 	// Run last because it's the most permissive matcher.
@@ -7444,16 +7648,41 @@ func applyConditionScaffolding(gs *gameengine.GameState, cond *gameast.Condition
 		// "this creature's power is N or more". Bump srcPerm's BasePower
 		// so layered P/T evaluation clears the threshold. If srcPerm has
 		// no Card or BasePower is already >= count, this is a no-op.
+		//
+		// Era 1 r60 era1-parser-fallthroughs: subtype="power_le" /
+		// "toughness_le" inverts the direction — drive the stat DOWN to (or
+		// below) cs.count so the LE predicate resolves true.
 		threshold := cs.count
-		if threshold < 1 {
-			threshold = 3
-		}
-		if srcPerm != nil && srcPerm.Card != nil {
-			if srcPerm.Card.BasePower < threshold {
-				srcPerm.Card.BasePower = threshold
+		switch cs.subtype {
+		case "power_le":
+			if srcPerm != nil && srcPerm.Card != nil {
+				if srcPerm.Card.BasePower > threshold {
+					srcPerm.Card.BasePower = threshold
+				}
 			}
+			cs.description = fmt.Sprintf("set srcPerm BasePower<=%d (power_le)", threshold)
+		case "toughness_le":
+			t := threshold
+			if t < 1 {
+				t = 0
+			}
+			if srcPerm != nil && srcPerm.Card != nil {
+				if srcPerm.Card.BaseToughness > t {
+					srcPerm.Card.BaseToughness = t
+				}
+			}
+			cs.description = fmt.Sprintf("set srcPerm BaseToughness<=%d (toughness_le)", t)
+		default:
+			if threshold < 1 {
+				threshold = 3
+			}
+			if srcPerm != nil && srcPerm.Card != nil {
+				if srcPerm.Card.BasePower < threshold {
+					srcPerm.Card.BasePower = threshold
+				}
+			}
+			cs.description = fmt.Sprintf("set srcPerm BasePower>=%d", threshold)
 		}
-		cs.description = fmt.Sprintf("set srcPerm BasePower>=%d", threshold)
 
 	case condScaffoldTopOfLibraryType:
 		// "the top card of your library is a creature/nonland card".
@@ -7960,6 +8189,88 @@ func applyConditionScaffolding(gs *gameengine.GameState, cond *gameast.Condition
 			seat.Flags["lost_life_this_turn"] = threshold
 		}
 		cs.description = fmt.Sprintf("set seat 0 Turn.LifeLost=%d", threshold)
+
+	case condScaffoldRevealedCardType:
+		// "if [that|it] is a <type> card" / "if a card was milled this
+		// way". Stamp the revealed-type flag on srcPerm plus a subtype-
+		// specific marker (revealed_<sub>) so downstream readers can
+		// check the captured type. Scaffold-only: no actual card is
+		// drawn/exiled — the flag is the signal the gated effect's
+		// branch resolved true.
+		sub := cs.subtype
+		if sub == "" {
+			sub = "card"
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["revealed_card_type"] = 1
+			srcPerm.Flags["revealed_"+sub] = 1
+		}
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["revealed_card_type"] = 1
+		cs.description = fmt.Sprintf("stamped revealed_card_type + revealed_%s on srcPerm", sub)
+
+	case condScaffoldDrawStepReplacement:
+		// "if you would draw a card during your draw step, you may
+		// skip" / "if a player would draw a card, they reveal it
+		// instead" / "if your life total would be reduced to 0 or less,
+		// instead transform". Stamp a replacement-active flag on srcPerm
+		// + seat 0 so gated continuous-effect readers see the
+		// replacement is registered. Scaffold-only: the replacement
+		// itself is engine-side and isn't installed here.
+		sub := cs.subtype
+		if sub == "" {
+			sub = "draw"
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["draw_step_replacement"] = 1
+			srcPerm.Flags["replacement_"+sub] = 1
+		}
+		if len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			if gs.Seats[0].Flags == nil {
+				gs.Seats[0].Flags = map[string]int{}
+			}
+			gs.Seats[0].Flags["draw_step_replacement_active"] = 1
+		}
+		cs.description = fmt.Sprintf("stamped draw_step_replacement + replacement_%s on srcPerm/seat0", sub)
+
+	case condScaffoldPermanentIsType:
+		// "as long as this artifact is a creature" / "enchanted land is
+		// a basic mountain" — type-conversion state check. Stamp the
+		// typeswap flag on srcPerm + append the target type to its
+		// Card.Types so the gated continuous effect's type-line
+		// predicate resolves true.
+		sub := cs.subtype
+		if sub == "" {
+			sub = "type"
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["permanent_is_type"] = 1
+			srcPerm.Flags["typeswap_"+sub] = 1
+			if srcPerm.Card != nil && sub != "type" && sub != "attached" {
+				already := false
+				for _, t := range srcPerm.Card.Types {
+					if t == sub {
+						already = true
+						break
+					}
+				}
+				if !already {
+					srcPerm.Card.Types = append(srcPerm.Card.Types, sub)
+				}
+			}
+		}
+		cs.description = fmt.Sprintf("stamped permanent_is_type + typeswap_%s on srcPerm", sub)
 	}
 	return cs
 }
@@ -8293,6 +8604,15 @@ func traceConditionScaffolding(cond *gameast.Condition, tr *Tracer) {
 		desc = "set seat 0 no_loyalty_activated_this_turn flag"
 	case condScaffoldLostNLifeThisTurn:
 		desc = fmt.Sprintf("set seat 0 Turn.LifeLost=%d", maxInt(cs.count, 2))
+
+	// Era 1 r60 era1-parser-fallthroughs — trace descriptions for the 3
+	// new scaffolds.
+	case condScaffoldRevealedCardType:
+		desc = fmt.Sprintf("stamped revealed_card_type + revealed_%s on srcPerm", nonEmpty(cs.subtype, "card"))
+	case condScaffoldDrawStepReplacement:
+		desc = fmt.Sprintf("stamped draw_step_replacement + replacement_%s on srcPerm/seat0", nonEmpty(cs.subtype, "draw"))
+	case condScaffoldPermanentIsType:
+		desc = fmt.Sprintf("stamped permanent_is_type + typeswap_%s on srcPerm", nonEmpty(cs.subtype, "type"))
 	}
 	tr.Record("CONDITION_SETUP", "%q → %s", cs.rawText, desc)
 }

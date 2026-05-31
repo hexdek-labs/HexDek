@@ -360,6 +360,65 @@ RAW_PATTERNS = [
     ("you_dont_control_typed", re.compile(r"you don'?t control an? \w+(?: named)?")),
     ("no_land_cards_in_hand", re.compile(r"no land cards in your hand")),
     ("revealed_or_controlled_as_cast", re.compile(r"you revealed an? \w+ card or controlled an? \w+ as you cast")),
+    # Era 1 r60 era1-parser-fallthroughs — 5 new pattern clusters covering
+    # the residual raw-text fragments from the 2026-05-30 audit. Placed
+    # AHEAD of you_control_raw so the broad fallback doesn't eat them.
+    ("revealed_card_type", re.compile(
+        r"if it'?s a (?:mount|forest|land|creature|instant|sorcery|enchantment|artifact|planeswalker|cleric|chandra planeswalker) card"
+        r"|if a (?:land|creature|instant|sorcery|enchantment|artifact) card (?:was|is) (?:milled|exiled) this way"
+        r"|if a card with the chosen name was milled this way"
+        r"|if that card is (?:a |an )?(?:land|creature|instant|sorcery|enchantment|artifact|planeswalker|legendary|cleric|mount|forest)(?: card)?"
+        r"|if it was a (?:land|creature|instant) card"
+        r"|if that permanent is a chandra planeswalker"
+        r"|if that creature was a (?:cleric|wizard|warrior|soldier|elf|goblin|knight|merfolk|vampire|zombie|human|dragon|mount)"
+        r"|the discarded card was a land card"
+    )),
+    ("draw_step_replacement", re.compile(
+        r"if you would (?:draw a card during your draw step|begin your draw step|skip)"
+        r"|if a player would draw a card, they reveal it instead"
+        r"|if your life total would be reduced to 0 or less"
+    )),
+    ("permanent_is_type", re.compile(
+        r"as long as (?:this artifact|this permanent|this creature|this enchantment) is a (?:creature|land|artifact)"
+        r"|as long as enchanted (?:land|creature|permanent) is a (?:basic mountain|creature|forest|artifact|land)"
+        r"|enchanted equipment is attached to a creature"
+    )),
+    ("alt_cost_paid_variants", re.compile(
+        r"its (?:prowl|madness|web-slinging|surge|emerge|jump-start|escape|flashback|dash|bestow|spectacle|cleave|prototype) cost was paid"
+        r"|(?:they were |was )cast using web-slinging"
+        r"|madness cost was paid"
+    )),
+    ("self_power_toughness_le", re.compile(
+        r"its (?:power|toughness) (?:was|is) less than \d+"
+        r"|that creature'?s power is \d+ or less"
+        r"|its power is less than ~'?s power"
+        r"|\bpower 0 or less\b"
+        r"|its toughness was less than \d+"
+    )),
+    # Era 1 r60 era1-parser-fallthroughs tail — additional audit-only
+    # patterns covering raw fragments whose runtime detector already exists
+    # (or which are pure log-side classifications). Placed AHEAD of
+    # you_control_raw so the broad fallback doesn't claim them.
+    ("target_power_toughness_ge", re.compile(
+        r"that creature has power \w+ or (?:greater|more)"
+        r"|that creature'?s (?:power|toughness) is \w+ or (?:greater|more)"
+        r"|it had power greater than \w+'?s power"
+        r"|that creature has greater power or toughness"
+    )),
+    ("counter_on_self_named", re.compile(
+        r"as long as ~ has a \w+ counter on (?:him|her|it)"
+        r"|has fewer than \w+ \+1/\+1 counters on it"
+        r"|has exactly \w+ \+1/\+1 counters on it"
+        r"|this creature has fewer than \w+ \+1/\+1 counters"
+    )),
+    ("is_not_token", re.compile(r"it'?s not a token\b|isn'?t a token\b")),
+    ("self_was_enchanted_equipped", re.compile(r"it was enchanted\b|it was equipped\b|as long as it'?s legendary")),
+    ("dont_control_typed", re.compile(r"you don'?t control a \w+\b")),
+    ("opponent_more_cards_in_hand", re.compile(r"an opponent has more cards in hand than you|opponent has more cards in hand")),
+    ("self_dealt_damage_turn", re.compile(r"this creature was dealt damage this turn|was dealt damage this turn")),
+    ("opponent_creature_died_turn", re.compile(r"a creature died under an opponent'?s control this turn")),
+    ("you_lost_life_turn", re.compile(r"you lost \w+ or more life this turn")),
+    ("not_their_turn_broad", re.compile(r"it'?s not that player'?s turn")),
     ("you_control_raw", re.compile(r"you control")),
 ]
 
