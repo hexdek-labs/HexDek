@@ -1854,6 +1854,47 @@ func emergentSynergyBump(sp *StrategyProfile, available map[string]float64) floa
 	return bump
 }
 
+// protectionThreatScalar returns the multiplier to apply to the
+// ThreatExposure weight based on the deck's protection density —
+// the ratio of RoleCombo / RoleThreat pieces with built-in protection
+// (hexproof, shroud, indestructible, ward, "protection from", "can't
+// be the target", "can't be countered", "can't be destroyed", phase
+// out) to total key pieces. Mapping:
+//
+//   - ProtectionRatio == -1 (deck has fewer than 3 key pieces, ratio is
+//     noise): 1.0 (no adjustment) — midrange decks shouldn't get
+//     threat-weight scaling from a non-combo-shape signal.
+//   - ProtectionRatio >= 0.50 (half or more key pieces protected):
+//     0.85 — combo piece survives the average removal spell, eval
+//     shouldn't over-react to incoming threats.
+//   - ProtectionRatio <= 0.25 (mostly unprotected combo shell):
+//     1.15 — single Path / Pongify resets the line, eval SHOULD
+//     react to incoming threats (prioritize protection + disruption).
+//   - 0.25 < ratio < 0.50 (middle band): 1.0 — no adjustment, the
+//     deck has neither robust protection nor critical fragility.
+//
+// Magnitudes (±15%) deliberately smaller than stage/position scaling
+// (±20-40%) so this signal refines rather than dominates. Returns 1.0
+// for nil sp (legacy / no-strategy evaluator).
+//
+// Added in wave-3 freya-hat integration audit (2026-05-30). Tested
+// in protection_threat_scalar_r60_test.go.
+func protectionThreatScalar(sp *StrategyProfile) float64 {
+	if sp == nil {
+		return 1.0
+	}
+	ratio := sp.ProtectionRatio()
+	switch {
+	case ratio < 0: // -1 sentinel: too few key pieces, no signal
+		return 1.0
+	case ratio >= 0.50:
+		return 0.85
+	case ratio <= 0.25:
+		return 1.15
+	}
+	return 1.0
+}
+
 // seatHasComboGraveyardRecursion reports whether the seat has an active
 // graveyard-recursion engine that lets combo pieces in graveyard be
 // effectively at-hand reach. Broader than seatHasReanimatorEngine which
@@ -4001,6 +4042,20 @@ func (e *GameStateEvaluator) scoreStaxLock(gs *gameengine.GameState, seatIdx int
 // game stage (early/mid/late) and relative board position (ahead/behind).
 func (e *GameStateEvaluator) rescaleWeights(gs *gameengine.GameState, seatIdx int) EvalWeights {
 	w := e.Weights
+
+	// Deck-shape constants apply first so stage/position scaling rides
+	// on top of the protection-adjusted baseline. ProtectionThreatScalar
+	// reads StrategyProfile.ProtectedKeyPieces / UnprotectedKeyPieces
+	// (wave-3 freya-hat integration audit, 2026-05-30) and adjusts the
+	// ThreatExposure weight: high-protection decks (≥50% of key pieces
+	// shrouded / wardable / indestructible) get the weight downscaled
+	// 0.85x — the combo piece survives the average removal spell, so
+	// the eval shouldn't panic at incoming threats; low-protection
+	// decks (≤25%) get the weight upscaled 1.15x — a single Path or
+	// Pongify resets the line, so the eval SHOULD panic and prioritize
+	// protection / disruption. No-op when the deck has fewer than 3
+	// key pieces (non-combo midrange — protection ratio is noise).
+	w.ThreatExposure *= protectionThreatScalar(e.Strategy)
 
 	turn := 1
 	if gs != nil {

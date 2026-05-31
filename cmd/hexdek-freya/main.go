@@ -955,6 +955,21 @@ type strategyJSON struct {
 	KeepableHandPctFreeMull         float64           `json:"keepable_hand_pct_free_mull,omitempty"`
 	KeepableHandPctAdjustedFreeMull float64           `json:"keepable_hand_pct_adjusted_free_mull,omitempty"`
 	IsCommanderCentric      bool                      `json:"is_commander_centric,omitempty"`
+	// ProtectedKeyPieces / UnprotectedKeyPieces ship the count of
+	// RoleCombo / RoleThreat cards with and without built-in protection
+	// (hexproof, shroud, indestructible, ward, "protection from", "can't
+	// be the target", "can't be countered", "can't be destroyed", phase
+	// out). Populated from DeckProfile.ProtectedKeyPieces /
+	// UnprotectedKeyPieces by computeProtectionDensity in deckprofile.go.
+	// Consumed by the hat at load time (StrategyProfile.ProtectionRatio
+	// helper) and at evaluator time (protectionThreatScalar adjusts the
+	// ThreatExposure weight: high-protection decks worry less about
+	// incoming removal; low-protection combo shells worry more). Added
+	// in the wave-3 freya-hat integration audit (2026-05-30) — the
+	// underlying Freya analytic existed since the protection-density
+	// work but never reached the strategy.json wire.
+	ProtectedKeyPieces      int                       `json:"protected_key_pieces,omitempty"`
+	UnprotectedKeyPieces    int                       `json:"unprotected_key_pieces,omitempty"`
 	PowerPercentile         int                       `json:"power_percentile,omitempty"`
 	MetaMatchups            []strategyMatchup         `json:"meta_matchups,omitempty"`
 	EmergentSynergies       []strategyEmergentSynergy `json:"emergent_synergies,omitempty"`
@@ -1146,6 +1161,8 @@ func saveStrategyJSON(path string, report *FreyaReport) {
 		sj.KeepableHandPctFreeMull = dp.KeepableHandPctFreeMull
 		sj.KeepableHandPctAdjustedFreeMull = dp.KeepableHandPctAdjustedFreeMull
 		sj.IsCommanderCentric = dp.IsCommanderCentric
+		sj.ProtectedKeyPieces = dp.ProtectedKeyPieces
+		sj.UnprotectedKeyPieces = dp.UnprotectedKeyPieces
 		sj.PowerPercentile = dp.PowerPercentile
 		for _, mm := range dp.MetaMatchups {
 			sj.MetaMatchups = append(sj.MetaMatchups, strategyMatchup{
