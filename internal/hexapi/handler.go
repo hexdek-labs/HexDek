@@ -271,6 +271,12 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/tournament/{id}/stream", h.handleTournamentStream)
 	mux.HandleFunc("GET /api/games/{id}/summary", h.handleGameSummary)
 	mux.HandleFunc("GET /api/games/{id}/replay", h.handleGameReplay)
+	// r60 replay endpoints — single-document JSON variants of /replay
+	// (vs NDJSON), plus turn-state projection and forensics bundle.
+	// All three share the snapshot-cache used by /games/{id}/replay.
+	mux.HandleFunc("GET /api/replay/{game_id}", h.handleReplayFull)
+	mux.HandleFunc("GET /api/replay/{game_id}/turn/{n}", h.handleReplayTurn)
+	mux.HandleFunc("GET /api/replay/{game_id}/forensics", h.handleReplayForensics)
 	mux.HandleFunc("GET /api/games/{id}/summary.pdf", h.handleGameSummaryPDF)
 	mux.HandleFunc("GET /api/games/summaries", h.handleGameSummaryArchive)
 	mux.HandleFunc("GET /api/games/search", h.handleGameSearch)
