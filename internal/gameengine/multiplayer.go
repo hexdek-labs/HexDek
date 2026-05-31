@@ -675,9 +675,16 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 	// Drop any sideband entry whose *Card was owned by the leaving seat.
 	// The sideband state is per-card-pointer (not zone semantics); the
 	// leaving seat's "may-cast" grants are voided per §800.4a.
+	// Sideband cleanup: cease the InstanceID before dropping the map
+	// entry, mirroring ParadigmExile's pattern below. Without the cease,
+	// any card whose ONLY zone reference is the sideband map (no longer
+	// in seat.Exile after a transient drop) leaks as "minted but absent
+	// from every zone" once the map entry is deleted. (Loki r60
+	// disappearance cluster, 2026-05-30.)
 	if len(gs.ZoneCastGrants) > 0 {
 		for card := range gs.ZoneCastGrants {
 			if card != nil && card.Owner == seatIdx {
+				MarkInstanceIDCeased(gs, card.InstanceID)
 				delete(gs.ZoneCastGrants, card)
 			}
 		}
@@ -685,6 +692,7 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 	if len(gs.MadnessExile) > 0 {
 		for card := range gs.MadnessExile {
 			if card != nil && card.Owner == seatIdx {
+				MarkInstanceIDCeased(gs, card.InstanceID)
 				delete(gs.MadnessExile, card)
 			}
 		}
@@ -692,6 +700,7 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 	if len(gs.PlotExile) > 0 {
 		for card := range gs.PlotExile {
 			if card != nil && card.Owner == seatIdx {
+				MarkInstanceIDCeased(gs, card.InstanceID)
 				delete(gs.PlotExile, card)
 			}
 		}
@@ -699,6 +708,7 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 	if len(gs.MayhemDiscards) > 0 {
 		for card := range gs.MayhemDiscards {
 			if card != nil && card.Owner == seatIdx {
+				MarkInstanceIDCeased(gs, card.InstanceID)
 				delete(gs.MayhemDiscards, card)
 			}
 		}
@@ -748,6 +758,29 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 		}
 		gs.Replacements = kept
 	}
+
+	// Phase F backstop — orphan sweep AFTER all explicit cleanup steps.
+	// Catches any remaining minted-but-absent InstanceID created during
+	// the mid-turn window between the last EOT cleanup's
+	// SweepOrphanedInstanceIDs and this elimination. Common shapes:
+	//   - Tokens that left the battlefield via a non-canonical path
+	//     during the seat's pre-elim turn (combat damage cleanup race,
+	//     §704.5d window mid-SBA).
+	//   - Cards whose only zone reference was a sideband map already
+	//     dropped above without ceasing (defense in depth — the
+	//     ZoneCastGrants/MadnessExile/PlotExile/MayhemDiscards cleanups
+	//     now cease explicitly, but other future sideband zones default
+	//     to the right behavior via this sweep).
+	//   - Mid-turn zone movements that didn't route through
+	//     gs.removePermanent (per_card splice paths in handler edge cases).
+	//
+	// LeftGame=true is set above (line 391), so SweepOrphanedInstanceIDs
+	// skips the eliminated seat's zones — that's the correct semantic per
+	// CR §800.4a (their objects cease). Any owned-card *Card still in a
+	// surviving seat's zone is found via the surviving-seat walk and
+	// stays present (no over-cease). (Loki r60 ZoneConservation
+	// disappearance cluster, closed 2026-05-30.)
+	SweepOrphanedInstanceIDs(gs)
 
 	// Step 5: emit observation event.
 	gs.LogEvent(Event{
