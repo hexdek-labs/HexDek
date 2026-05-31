@@ -91,7 +91,13 @@ func roxanneArtifactTapped(gs *gameengine.GameState, perm *gameengine.Permanent,
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	tapperSeat, _ := ctx["seat"].(int)
+	// Engine fires artifact_tapped_for_mana with controller_seat + perm +
+	// card + pips + artifact_name (mana_artifacts.go:125). Legacy "seat"
+	// + "mana_type" reads kept as fallbacks.
+	tapperSeat, ok := ctx["controller_seat"].(int)
+	if !ok {
+		tapperSeat, _ = ctx["seat"].(int)
+	}
 	if tapperSeat != perm.Controller {
 		return
 	}
@@ -102,11 +108,11 @@ func roxanneArtifactTapped(gs *gameengine.GameState, perm *gameengine.Permanent,
 	if !cardHasType(tappedPerm.Card, "token") || !cardHasType(tappedPerm.Card, "artifact") {
 		return
 	}
-	manaType, _ := ctx["mana_type"].(string)
+	pips, _ := ctx["pips"].(int)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":      perm.Controller,
-		"token":     tappedPerm.Card.DisplayName(),
-		"mana_type": manaType,
+		"seat":  perm.Controller,
+		"token": tappedPerm.Card.DisplayName(),
+		"pips":  pips,
 	})
 	emitPartial(gs, slug, perm.Card.DisplayName(),
 		"doubled_mana_payload_not_added_to_pool_directly_by_handler")

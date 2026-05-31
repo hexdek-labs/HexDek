@@ -29,7 +29,12 @@ func elrondScry(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[st
 	if scryerSeat != perm.Controller {
 		return
 	}
-	x, _ := ctx["count"].(int)
+	// Engine fires scry with "amount" (scry.go:75). Legacy "count" kept
+	// as a fallback for callers that thread it explicitly.
+	x, ok := ctx["amount"].(int)
+	if !ok {
+		x, _ = ctx["count"].(int)
+	}
 	if x <= 0 {
 		x = 1
 	}
