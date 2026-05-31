@@ -6,7 +6,8 @@ import (
 
 // registerCaptainHowlerSeaScourge wires Captain Howler, Sea Scourge.
 //
-// Oracle text:
+// Oracle text (Scryfall, verified 2026-05-30, {2}{U}{R}, 5/4
+// Legendary Creature — Shark Pirate):
 //
 //	Ward—{2}, Pay 2 life.
 //	Whenever you discard one or more cards, target creature gets +2/+0
@@ -14,11 +15,23 @@ import (
 //	creature deals combat damage to a player this turn, you draw a
 //	card.
 //
-// Cards-discarded count is tracked via the engine's discard event. We
-// pump the controller's best creature for each card discarded; the
-// "draw on damage" bookkeeping is non-trivial and emitPartial'd.
+// Implementation (R60 stub sweep):
+//   - card_discarded trigger: pump the controller's biggest creature
+//     by +2N/+0 UEOT (N = card count). Then stamp
+//     Flags["captain_howler_drawer_until_turn"] = gs.Turn+1 on the
+//     pumped creature so the combat-damage trigger below can identify
+//     it as the "that creature" referent.
+//   - combat_damage_player trigger: when ANY combat damage is dealt to
+//     a player, scan our controller's battlefield for the perm with
+//     the captain_howler_drawer_until_turn flag set to gs.Turn+1 and
+//     matching ctx.source_perm. If found, drawOne for the controller.
+//     "this turn" gating: the flag is stamped as gs.Turn+1 and we
+//     check it matches gs.Turn+1 — at turn rollover the comparison
+//     stops matching and the trigger goes silent without explicit
+//     cleanup.
 func registerCaptainHowlerSeaScourge(r *Registry) {
 	r.OnTrigger("Captain Howler, Sea Scourge", "card_discarded", captainHowlerDiscard)
+	r.OnTrigger("Captain Howler, Sea Scourge", "combat_damage_player", captainHowlerDamageDraw)
 }
 
 func captainHowlerDiscard(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -53,16 +66,41 @@ func captainHowlerDiscard(gs *gameengine.GameState, perm *gameengine.Permanent, 
 		return
 	}
 	best.Modifications = append(best.Modifications, gameengine.Modification{
-		Power:    2 * count,
-		Duration: "until_end_of_turn",
+		Power:     2 * count,
+		Duration:  "until_end_of_turn",
 		Timestamp: gs.NextTimestamp(),
 	})
+	if best.Flags == nil {
+		best.Flags = map[string]int{}
+	}
+	best.Flags["captain_howler_drawer_until_turn"] = gs.Turn + 1
 	gs.InvalidateCharacteristicsCache()
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":   perm.Controller,
 		"target": best.Card.DisplayName(),
 		"buff":   2 * count,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"draw_on_combat_damage_followup_unimplemented")
+}
+
+func captainHowlerDamageDraw(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "captain_howler_combat_damage_draw"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
+		return
+	}
+	srcPerm, _ := ctx["source_perm"].(*gameengine.Permanent)
+	if srcPerm == nil || srcPerm.Flags == nil {
+		return
+	}
+	if srcPerm.Controller != perm.Controller {
+		return
+	}
+	if srcPerm.Flags["captain_howler_drawer_until_turn"] != gs.Turn+1 {
+		return
+	}
+	drew := drawOne(gs, perm.Controller, perm.Card.DisplayName())
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":   perm.Controller,
+		"source": srcPerm.Card.DisplayName(),
+		"drew":   drew != nil,
+	})
 }
