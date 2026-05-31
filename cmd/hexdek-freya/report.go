@@ -21,6 +21,8 @@ func PrintReport(w io.Writer, report *FreyaReport, format string) {
 		printJSON(w, report)
 	case "markdown":
 		printMarkdown(w, report)
+	case "html":
+		printHTML(w, report)
 	default:
 		if FocusMode == "focus" {
 			printFocusText(w, report)
