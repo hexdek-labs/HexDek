@@ -305,12 +305,28 @@ func main() {
 	contribDispatcher.SpotCheck = hexapi.NewSpotCheckRunner(contribAST, contribAST, contribOracle).Run
 	contribDispatcher.Register(mux)
 
+	// r60 observability: in-process Prometheus metrics + structured
+	// per-request log lines. Registry is constructed before route
+	// registration so the /metrics endpoint always serves an
+	// initialized registry (the metrics_endpoint.go handler returns
+	// 503 on nil). Stdout logger writes greppable key=value lines —
+	// journald / file redirect picks them up at deploy time.
+	metricsRegistry := hexapi.NewMetricsRegistry(nil)
+	mux.HandleFunc("GET /metrics", hexapi.HandleMetrics(metricsRegistry))
+
 	log.Printf("listening on %s", *addr)
 	log.Printf("Ship 1: curl http://%s/game/test/library/top/3", *addr)
 	log.Printf("Ship 2: curl -XPOST http://%s/api/device/register -d '{\"display_name\":\"Hex\"}'", *addr)
 	log.Printf("Ship 3: ws://%s/ws/party/{id}?token={token}", *addr)
 
-	handler := hexapi.RequestIDMiddleware(corsMiddleware(pincerTracker.Middleware(userprofile.LocaleMiddleware(mux))))
+	// Observability middleware sits OUTSIDE RequestIDMiddleware so
+	// each log line can pull the request ID via RequestIDFromContext
+	// (the ID is stamped before the wrapped handler runs). Metrics
+	// recording uses r.Pattern as the endpoint label, so cardinality
+	// stays bounded by route count.
+	handler := hexapi.RequestIDMiddleware(
+		hexapi.ObservabilityMiddleware(metricsRegistry, hexapi.StdoutLogger(os.Stdout),
+			corsMiddleware(pincerTracker.Middleware(userprofile.LocaleMiddleware(mux)))))
 	httpSrv := &http.Server{
 		Addr:    *addr,
 		Handler: handler,
