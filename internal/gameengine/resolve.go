@@ -1587,8 +1587,14 @@ func resolveUntap(gs *GameState, src *Permanent, e *gameast.UntapEffect) {
 	}
 	for _, t := range targets {
 		if t.Kind == TargetKindPermanent && t.Permanent != nil {
-			t.Permanent.Tapped = false
-			gs.LogEvent(Event{Kind: "untap", Source: sourceName(src)})
+			// Route through canonical UntapPermanent so the §702.124
+			// Inspired trigger fires on tapped→untapped transition, and
+			// §122.4 stun counters are consumed instead of untapping.
+			// Pre-r60-normalize this path direct-set Tapped=false and
+			// emitted a non-canonical `untap` event, silently bypassing
+			// both rules. The helper emits the canonical `untap_done`
+			// event when the transition lands (carries Source + reason).
+			UntapPermanent(gs, t.Permanent, "untap_target_effect")
 		}
 	}
 }
