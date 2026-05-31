@@ -129,6 +129,18 @@ type YggdrasilHat struct {
 	// or combo piece — near-zero entropy for one hand slot.
 	opponentTutored []bool
 
+	// R60: per-opponent magnitude counters for the three "what they've
+	// cast so far" 3rd Eye signals. The existing opponentTutored bool
+	// captures whether they've EVER tutored — these counts capture HOW
+	// MANY TIMES, so the hat can predict "they've already cast 3 of
+	// their ~10 counters; the next bluff is materially more likely to
+	// be empty" and similar. Symmetrically populated for each cast
+	// event in ObserveEvent via the isCounterspellText / isMassRemovalText
+	// / isTutorText classifiers. Reset on game_start.
+	opponentCounterspellsCast []int
+	opponentMassRemovalCast   []int
+	opponentTutorsCast        []int
+
 	// opponentKnownCards tracks cards we know are in an opponent's hand
 	// (from reveal effects). These are zero-entropy slots.
 	opponentKnownCards []map[string]bool
@@ -9532,6 +9544,9 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 		h.opponentHeldMana = make([]int, h.seatCount)
 		h.opponentMaxHeldMana = make([]int, h.seatCount)
 		h.opponentTutored = make([]bool, h.seatCount)
+		h.opponentCounterspellsCast = make([]int, h.seatCount)
+		h.opponentMassRemovalCast = make([]int, h.seatCount)
+		h.opponentTutorsCast = make([]int, h.seatCount)
 		h.opponentLoadedSilentTurns = make([]int, h.seatCount)
 		h.opponentFiredInteractionThisRound = make([]bool, h.seatCount)
 		h.opponentKnownCards = make([]map[string]bool, h.seatCount)
@@ -9585,6 +9600,15 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 			}
 			if i < len(h.opponentTutored) {
 				h.opponentTutored[i] = false
+			}
+			if i < len(h.opponentCounterspellsCast) {
+				h.opponentCounterspellsCast[i] = 0
+			}
+			if i < len(h.opponentMassRemovalCast) {
+				h.opponentMassRemovalCast[i] = 0
+			}
+			if i < len(h.opponentTutorsCast) {
+				h.opponentTutorsCast[i] = 0
 			}
 			if i < len(h.opponentLoadedSilentTurns) {
 				h.opponentLoadedSilentTurns[i] = 0
@@ -9657,6 +9681,29 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 			// piece detection).
 			card := findCardByName(gs, event.Seat, event.Source)
 			h.recordOpponentPlay("cast", event.Source, event.Seat, card, gs.Turn)
+			// R60: classify the cast against the three 3rd Eye
+			// magnitude signals — counterspells / mass removal /
+			// tutors. Lookups against the card's lower-cased oracle
+			// via the shared isCounterspellText / isMassRemovalText /
+			// isTutorText helpers. Counts feed downstream
+			// "they ran out of counter mana" / "they have no wraths
+			// left" / "they tutored AGAIN" predictions.
+			if card != nil {
+				ot := gameengine.OracleTextLower(card)
+				if isCounterspellText(ot) && event.Seat < len(h.opponentCounterspellsCast) {
+					h.opponentCounterspellsCast[event.Seat]++
+				}
+				if isMassRemovalText(ot) && event.Seat < len(h.opponentMassRemovalCast) {
+					h.opponentMassRemovalCast[event.Seat]++
+				}
+				// NOTE: tutor increment lives in the explicit
+				// tutor/search_library handler below, NOT here. Spell
+				// tutors (Demonic Tutor) emit BOTH a cast event and a
+				// resolve-side tutor event; counting in the explicit
+				// handler avoids the double-count while also covering
+				// activated/triggered tutors (Survival of the Fittest,
+				// fetchland cracks) that don't emit a cast event.
+			}
 		}
 	}
 
@@ -9688,6 +9735,15 @@ func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event
 		event.Seat >= 0 && event.Seat < h.seatCount && event.Seat != seatIdx {
 		if event.Seat < len(h.opponentTutored) {
 			h.opponentTutored[event.Seat] = true
+		}
+		// R60: increment the tutor magnitude counter. The cast-side
+		// handler above also fires for tutors-as-spells, so this
+		// branch is the catch-all for direct tutor/search_library
+		// events that don't pass through the cast pipeline (e.g.,
+		// activated abilities like Fetchland cracks, Survival of the
+		// Fittest, Eladamri's Call from a permanent).
+		if event.Seat < len(h.opponentTutorsCast) {
+			h.opponentTutorsCast[event.Seat]++
 		}
 		h.recordOpponentPlay(event.Kind, event.Source, event.Seat, nil, gs.Turn)
 		// Reduce entropy: they now hold a known-purpose card.
@@ -10253,6 +10309,83 @@ func (h *YggdrasilHat) threatMomentum(oppSeat int) float64 {
 	recent := traj[len(traj)-1]
 	prev := traj[len(traj)-3]
 	return float64(recent-prev) / 3.0
+}
+
+// OpponentCounterspellsCast returns the running count of
+// counterspell-shaped casts observed from oppSeat this game. Used by
+// callers to estimate "have they run out of counter mana / counters in
+// hand?" — typical EDH lists run 8-12 counters; a count of 4-5 means
+// the remaining-deck counter density is meaningfully diminished.
+// Returns 0 for an out-of-range seat or pre-game state.
+func (h *YggdrasilHat) OpponentCounterspellsCast(oppSeat int) int {
+	if oppSeat < 0 || oppSeat >= len(h.opponentCounterspellsCast) {
+		return 0
+	}
+	return h.opponentCounterspellsCast[oppSeat]
+}
+
+// OpponentMassRemovalCast returns the running count of board-wipe
+// casts observed from oppSeat. Typical 100-card decks run 2-4
+// wraths; a count of 3 means the remaining sweep budget is near zero
+// and an overextended board is less likely to get punished.
+func (h *YggdrasilHat) OpponentMassRemovalCast(oppSeat int) int {
+	if oppSeat < 0 || oppSeat >= len(h.opponentMassRemovalCast) {
+		return 0
+	}
+	return h.opponentMassRemovalCast[oppSeat]
+}
+
+// OpponentTutorsCast returns the running count of tutor activations
+// observed from oppSeat. Magnitude companion to the existing
+// opponentTutored bool — multi-tutor reads strongly suggest the
+// opponent is assembling a combo (cEDH-style) and the next windows
+// are the critical disruption points.
+func (h *YggdrasilHat) OpponentTutorsCast(oppSeat int) int {
+	if oppSeat < 0 || oppSeat >= len(h.opponentTutorsCast) {
+		return 0
+	}
+	return h.opponentTutorsCast[oppSeat]
+}
+
+// PredictedTutorTargetClass returns a coarse classification of what
+// oppSeat most likely fetched with their last tutor, based on
+// perceivedArchetype. Returns one of:
+//
+//	"combo_piece"  — opp archetype reads as combo (likely fetched a
+//	                 missing piece)
+//	"interaction"  — opp archetype reads as control (likely fetched a
+//	                 counter / targeted removal)
+//	"haste_threat" — opp archetype reads as aggro (likely fetched a
+//	                 finisher or board-pressure body)
+//	"value"        — opp archetype reads as midrange (likely fetched
+//	                 a flexible engine or ramp piece)
+//	""             — opp hasn't tutored yet, or archetype unknown.
+//
+// The signal lets callers (combo timing, response priority, blocker
+// allocation) adjust their next decision based on what the opp is
+// projecting onto their hand. Returns empty string if no tutor
+// observed or perceived archetype is unknown.
+func (h *YggdrasilHat) PredictedTutorTargetClass(oppSeat int) string {
+	if oppSeat < 0 || oppSeat >= len(h.opponentTutorsCast) {
+		return ""
+	}
+	if h.opponentTutorsCast[oppSeat] == 0 {
+		return ""
+	}
+	if oppSeat >= len(h.perceivedArchetype) {
+		return ""
+	}
+	switch h.perceivedArchetype[oppSeat] {
+	case "combo":
+		return "combo_piece"
+	case "control":
+		return "interaction"
+	case "aggro":
+		return "haste_threat"
+	case "midrange":
+		return "value"
+	}
+	return ""
 }
 
 // isKingmaker returns true if seat has been flagged as dangerously ahead.
