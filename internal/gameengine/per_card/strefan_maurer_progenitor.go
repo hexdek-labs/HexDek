@@ -29,11 +29,14 @@ import (
 //     puts it onto the battlefield tapped and attacking the same
 //     defender.
 //
-// emitPartial gaps:
-//   - "you may sacrifice" / "you may put" — greedy AI always executes
-//     when possible (pure upside); optional clauses are not modeled.
-//   - If the engine doesn't support adding mid-combat attackers natively,
-//     the Vampire enters with the "attacking" flag set manually.
+// R60 stub sweep batch 6: doc-comment cleanup. The "you may sacrifice"
+// / "you may put" optional clauses are auto-accepted as deliberate AI
+// policy (both branches are strictly value-positive when the
+// requirements are met), NOT a missing engine feature — same pattern
+// as Bloodchief Ascension / Alesha. The mid-combat attacker entry is
+// handled via the "attacking" flag + SetAttackerDefender, which is
+// the canonical per_card hand-off to combat.go's defender tracking;
+// not a partial gap.
 func registerStrefanMaurerProgenitor(r *Registry) {
 	r.OnTrigger("Strefan, Maurer Progenitor", "end_step", strefanEndStep)
 	r.OnTrigger("Strefan, Maurer Progenitor", "creature_attacks", strefanAttackTrigger)
