@@ -132,6 +132,29 @@ type StrategyProfile struct {
 	// or commander oracle text containing ≥2 engine phrases).
 	IsCommanderCentric bool
 
+	// ProtectedKeyPieces / UnprotectedKeyPieces are the counts of
+	// RoleCombo / RoleThreat cards with and without built-in protection
+	// (hexproof, shroud, indestructible, ward, "protection from", "can't
+	// be the target", "can't be countered", "can't be destroyed", phase
+	// out). Populated from Freya's computeProtectionDensity by way of
+	// strategy.json (wave-3 freya-hat integration audit, 2026-05-30).
+	//
+	// Drives protectionThreatScalar in evaluator.go which adjusts the
+	// ThreatExposure weight at the top of rescaleWeights: decks with
+	// high protection ratio (>=50% of key pieces protected) get
+	// ThreatExposure * 0.85 (less worry about incoming removal — the
+	// combo piece is robust); decks with low protection ratio (<=25%
+	// protected) get ThreatExposure * 1.15 (worry more — a single
+	// removal resets the line). Middle band leaves the weight unchanged.
+	// Gated on min 3 key pieces total to avoid noisy ratios on
+	// non-combo decks.
+	//
+	// Helper: ProtectionRatio() returns protected/(protected+unprotected)
+	// with the min-count guard built in (returns -1 below the gate so
+	// callers can distinguish "low protection" from "non-combo deck").
+	ProtectedKeyPieces   int
+	UnprotectedKeyPieces int
+
 	// PowerPercentile is this deck's estimated power level within its archetype (0-100).
 	// Scales hat budget: stronger decks warrant deeper search.
 	PowerPercentile int
@@ -241,6 +264,38 @@ func (sp *StrategyProfile) PrimaryComboClass() string {
 		return ""
 	}
 	return bestClass
+}
+
+// protectionRatioMinKeyPieces is the gate for ProtectionRatio: a deck
+// with fewer total key pieces (RoleCombo + RoleThreat) than this floor
+// produces a denominator too noisy to drive a meaningful threat-weight
+// adjustment. Set at 3 — below that, even a single protected piece
+// would tip the ratio above 0.33 and trigger the high-protection branch
+// for what is effectively a vanilla midrange deck.
+const protectionRatioMinKeyPieces = 3
+
+// ProtectionRatio returns the fraction of the deck's key pieces (RoleCombo
+// + RoleThreat) with built-in protection, in [0.0, 1.0]. Returns -1 when
+// the deck has fewer than protectionRatioMinKeyPieces total key pieces —
+// callers should treat -1 as "not enough signal to drive protection-
+// aware decisions" rather than "zero protection".
+//
+// The distinguishing return value is the design: a -1 return tells
+// protectionThreatScalar to fall through to no-adjustment, while a 0.0
+// return is "real signal, deck has 3+ key pieces and none are
+// protected" — a legitimate worry-about-removal flag.
+//
+// Added in wave-3 freya-hat integration audit (2026-05-30). Tested in
+// strategy_protection_ratio_r60_test.go.
+func (sp *StrategyProfile) ProtectionRatio() float64 {
+	if sp == nil {
+		return -1
+	}
+	total := sp.ProtectedKeyPieces + sp.UnprotectedKeyPieces
+	if total < protectionRatioMinKeyPieces {
+		return -1
+	}
+	return float64(sp.ProtectedKeyPieces) / float64(total)
 }
 
 // comboPlansToKnownCombos converts ComboPlan entries into comboPair format

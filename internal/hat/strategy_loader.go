@@ -102,6 +102,13 @@ type strategyFileJSON struct {
 	ManaBaseGrade     string              `json:"mana_base_grade,omitempty"`
 	KeepableHandPct    float64             `json:"keepable_hand_pct,omitempty"`
 	IsCommanderCentric bool                `json:"is_commander_centric,omitempty"`
+	// ProtectedKeyPieces / UnprotectedKeyPieces are the count of
+	// RoleCombo / RoleThreat cards with and without built-in protection.
+	// Added in the wave-3 freya-hat integration audit (2026-05-30).
+	// Consumed via StrategyProfile.ProtectionRatio() + the evaluator's
+	// protectionThreatScalar helper which adjusts ThreatExposure weight.
+	ProtectedKeyPieces   int                `json:"protected_key_pieces,omitempty"`
+	UnprotectedKeyPieces int                `json:"unprotected_key_pieces,omitempty"`
 	PowerPercentile    int                 `json:"power_percentile,omitempty"`
 	MetaMatchups      []freyaMetaMatchup      `json:"meta_matchups,omitempty"`
 	EmergentSynergies []freyaEmergentSynergy  `json:"emergent_synergies,omitempty"`
@@ -190,6 +197,8 @@ func buildFromStrategyJSON(sj *strategyFileJSON) *StrategyProfile {
 		ManaBaseGrade:      sj.ManaBaseGrade,
 		KeepableHandPct:    sj.KeepableHandPct,
 		IsCommanderCentric: sj.IsCommanderCentric,
+		ProtectedKeyPieces:   sj.ProtectedKeyPieces,
+		UnprotectedKeyPieces: sj.UnprotectedKeyPieces,
 		PowerPercentile:    sj.PowerPercentile,
 		MaxRecursionDepth:  sj.MaxRecursionDepth,
 	}
