@@ -894,7 +894,38 @@ func printDeckProfileText(w io.Writer, r *FreyaReport) {
 			} else if m.Rating == "unfavored" {
 				icon = "▼"
 			}
-			fmt.Fprintf(w, "    %s vs %s: %s — %s\n", icon, m.Archetype, m.Rating, m.Reason)
+			fmt.Fprintf(w, "    %s vs %s: %s (%d%% expected) — %s\n",
+				icon, m.Archetype, m.Rating, m.ExpectedWinPct, m.Reason)
+			if m.EmpiricalGames > 0 {
+				suffix := ""
+				if m.Tilted {
+					delta := m.TiltDelta
+					if delta < 0 {
+						delta = -delta
+					}
+					suffix = fmt.Sprintf(" — TILTED %s-performing by %d pp", m.TiltDirection, delta)
+				}
+				fmt.Fprintf(w, "        history: %d games, %d%% empirical vs %d%% baseline%s\n",
+					m.EmpiricalGames, m.EmpiricalWinPct, m.BaselineWinPct, suffix)
+			}
+		}
+	}
+
+	if len(dp.TechSuggestions) > 0 && dp.WorstMatchup != "" {
+		fmt.Fprintf(w, "\n  Tech Cards for worst matchup (vs %s):\n", dp.WorstMatchup)
+		for _, s := range dp.TechSuggestions {
+			tag := ""
+			if s.AlreadyInDeck {
+				tag = " ✓"
+			}
+			sev := "minor"
+			switch s.Severity {
+			case 2:
+				sev = "major"
+			case 3:
+				sev = "critical"
+			}
+			fmt.Fprintf(w, "    %s%s [%s] — %s\n", s.Card, tag, sev, s.Reason)
 		}
 	}
 
@@ -1464,6 +1495,8 @@ type jsonDeckProfile struct {
 	AltBuildSuggestions []jsonAltBuild   `json:"alt_build_suggestions,omitempty"`
 	MetaMatchups       []jsonMatchup     `json:"meta_matchups,omitempty"`
 	StrongAgainst      []jsonStrongAgainst `json:"strong_against,omitempty"`
+	WorstMatchup       string            `json:"worst_matchup,omitempty"`
+	TechSuggestions    []TechCardSuggestion `json:"tech_suggestions,omitempty"`
 	StarCards          []jsonCardQuality    `json:"star_cards,omitempty"`
 	SolidCards         []jsonCardQuality    `json:"solid_cards,omitempty"`
 	FlexSlots          []jsonCardQuality    `json:"flex_slots,omitempty"`
@@ -1534,9 +1567,17 @@ type jsonAltBuild struct {
 }
 
 type jsonMatchup struct {
-	Archetype string `json:"vs_archetype"`
-	Rating    string `json:"rating"`
-	Reason    string `json:"reason"`
+	Archetype       string `json:"vs_archetype"`
+	Rating          string `json:"rating"`
+	Reason          string `json:"reason"`
+	Strength        string `json:"strength,omitempty"`
+	ExpectedWinPct  int    `json:"expected_win_pct"`
+	BaselineWinPct  int    `json:"baseline_win_pct,omitempty"`
+	EmpiricalGames  int    `json:"empirical_games,omitempty"`
+	EmpiricalWinPct int    `json:"empirical_win_pct,omitempty"`
+	Tilted          bool   `json:"tilted,omitempty"`
+	TiltDirection   string `json:"tilt_direction,omitempty"`
+	TiltDelta       int    `json:"tilt_delta_pp,omitempty"`
 }
 
 type jsonStrongAgainst struct {
@@ -1791,7 +1832,17 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 	var matchups []jsonMatchup
 	for _, m := range dp.MetaMatchups {
 		matchups = append(matchups, jsonMatchup{
-			Archetype: m.Archetype, Rating: m.Rating, Reason: m.Reason,
+			Archetype:       m.Archetype,
+			Rating:          m.Rating,
+			Reason:          m.Reason,
+			Strength:        m.Strength,
+			ExpectedWinPct:  m.ExpectedWinPct,
+			BaselineWinPct:  m.BaselineWinPct,
+			EmpiricalGames:  m.EmpiricalGames,
+			EmpiricalWinPct: m.EmpiricalWinPct,
+			Tilted:          m.Tilted,
+			TiltDirection:   m.TiltDirection,
+			TiltDelta:       m.TiltDelta,
 		})
 	}
 	var strongAgainst []jsonStrongAgainst
@@ -1921,6 +1972,8 @@ func buildJSONDeckProfile(dp *DeckProfile, report *FreyaReport) *jsonDeckProfile
 		AltBuildSuggestions: altBuilds,
 		MetaMatchups:       matchups,
 		StrongAgainst:      strongAgainst,
+		WorstMatchup:       dp.WorstMatchup,
+		TechSuggestions:    dp.TechSuggestions,
 		StarCards:           stars,
 		SolidCards:          solid,
 		FlexSlots:           flex,
