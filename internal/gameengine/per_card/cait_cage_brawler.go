@@ -27,11 +27,26 @@ func caitAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[s
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	attackerSeat, _ := ctx["seat"].(int)
+	// Engine fires creature_attacks with attacker_perm + attacker_seat;
+	// defender is stored on the attacker via setAttackerDefender. Legacy
+	// "seat" / "defender_seat" reads kept as fallbacks for callers that
+	// thread them explicitly.
+	attackerSeat, ok := ctx["attacker_seat"].(int)
+	if !ok {
+		attackerSeat, _ = ctx["seat"].(int)
+	}
 	if attackerSeat != perm.Controller {
 		return
 	}
-	defenderSeat, _ := ctx["defender_seat"].(int)
+	defenderSeat := -1
+	if atk, ok := ctx["attacker_perm"].(*gameengine.Permanent); ok && atk != nil {
+		if d, found := gameengine.AttackerDefender(atk); found {
+			defenderSeat = d
+		}
+	}
+	if defenderSeat < 0 {
+		defenderSeat, _ = ctx["defender_seat"].(int)
+	}
 	if defenderSeat < 0 || defenderSeat >= len(gs.Seats) {
 		return
 	}

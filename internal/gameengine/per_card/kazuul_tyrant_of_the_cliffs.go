@@ -26,17 +26,30 @@ func kazuulAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	attackerSeat, _ := ctx["seat"].(int)
+	// Engine fires creature_attacks with attacker_perm + attacker_seat +
+	// attacker_card. Defender is on the attacker permanent, not in ctx —
+	// look it up via AttackerDefender. Legacy keys read as fallbacks.
+	attackerSeat, ok := ctx["attacker_seat"].(int)
+	if !ok {
+		attackerSeat, _ = ctx["seat"].(int)
+	}
 	if attackerSeat == perm.Controller {
 		return
 	}
 	defenderSeat := -1
-	if v, ok := ctx["defender_seat"].(int); ok {
-		defenderSeat = v
-	} else if v, ok := ctx["defending_seat"].(int); ok {
-		defenderSeat = v
-	} else if v, ok := ctx["target"].(int); ok {
-		defenderSeat = v
+	if atk, ok := ctx["attacker_perm"].(*gameengine.Permanent); ok && atk != nil {
+		if d, found := gameengine.AttackerDefender(atk); found {
+			defenderSeat = d
+		}
+	}
+	if defenderSeat < 0 {
+		if v, ok := ctx["defender_seat"].(int); ok {
+			defenderSeat = v
+		} else if v, ok := ctx["defending_seat"].(int); ok {
+			defenderSeat = v
+		} else if v, ok := ctx["target"].(int); ok {
+			defenderSeat = v
+		}
 	}
 	if defenderSeat != perm.Controller {
 		return
