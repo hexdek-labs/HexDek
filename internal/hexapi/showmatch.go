@@ -480,6 +480,20 @@ func (sm *Showmatch) SetCreditStore(c *credits.Store) {
 	sm.credits = c
 }
 
+// DeckParserCorpus + DeckParserMeta expose the AST corpus + card-meta
+// DB the Showmatch loads at startup so hexapi handlers OUTSIDE this
+// package layer can drive deckparser.ParseDeckReader without
+// duplicating the load. Returns nil while the background load is still
+// in progress (see sm.ready) or when meta loading failed — callers
+// MUST nil-check and surface a "deck parser not configured" 503 to
+// the client rather than dereferencing.
+//
+// Read-only accessors; the underlying corpus / meta are populated once
+// at startup and never mutated, so no locking is needed for the
+// pointer read.
+func (sm *Showmatch) DeckParserCorpus() *astload.Corpus { return sm.corpus }
+func (sm *Showmatch) DeckParserMeta() *deckparser.MetaDB { return sm.meta }
+
 type spectatorConn struct {
 	conn *websocket.Conn
 	mu   sync.Mutex

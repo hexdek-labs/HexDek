@@ -248,6 +248,11 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/similar", h.handleSimilarDecks)
 	mux.HandleFunc("POST /api/import/moxfield", RequireCSRF(h.CSRFStore, h.handleMoxfieldImport))
 	mux.HandleFunc("POST /api/import/archidekt", RequireCSRF(h.CSRFStore, h.handleArchidektImport))
+	// r60: parse-only preview endpoint — accepts deck text in any
+	// supported format (see deck_import_endpoint_r60.go), returns
+	// parsed JSON + a cheap freya-style quick-analyze summary, never
+	// touches disk. No CSRF wrap by design (read-only / idempotent).
+	mux.HandleFunc("POST /api/deck/import", h.handleDeckImportPreview)
 	mux.HandleFunc("GET /api/imports/{owner}", h.handleListImports)
 	mux.HandleFunc("GET /api/imports/source/moxfield", h.handleMoxfieldSources)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/events", h.handleDeckEvents)
