@@ -96,6 +96,8 @@ func main() {
 	var eloHistoryPath string
 	var comparePath string
 	var noCache bool
+	var showVersion bool
+	var showSchema bool
 
 	flag.StringVar(&deckPath, "deck", "", "path to decklist file")
 	flag.StringVar(&deckDir, "all-decks", "", "analyze all decks in directory")
@@ -118,7 +120,24 @@ func main() {
 		"single-deck mode only: path to a second deck list. After analyzing --deck, also analyzes --compare and prints a side-by-side comparison (power tier mix, win conditions, mana base, tech-card differences, card overlap with star-tier standouts).")
 	flag.BoolVar(&noCache, "no-cache", false,
 		"bypass the content-addressed Freya report cache at "+DefaultCacheDir+". Cache hits short-circuit analysis to a JSON decode (~5ms vs ~1-3s); cache key is SHA256 over (commander + sorted Nx normalized card list), invalidated by FreyaVersion bumps. --mode metrics implies --no-cache so the consistency probe always sees fresh output.")
+	flag.BoolVar(&showVersion, "version", false,
+		"print the freya version banner (cache schema + go runtime) and exit.")
+	flag.BoolVar(&showSchema, "json-schema", false,
+		"print a concise human-readable summary of the JSON output schema (FreyaReport top-level fields + ComboResult + cache envelope) and exit. For full struct contracts, generate JSON-schema bindings from analysis.go directly.")
+	flag.Usage = func() { PrintUsage(os.Stderr, flag.CommandLine) }
 	flag.Parse()
+
+	// --version and --json-schema short-circuit before the required-flag
+	// gate so users can discover the schema / check the build without
+	// having to pass --deck or --all-decks first.
+	if showVersion {
+		fmt.Print(VersionString())
+		return
+	}
+	if showSchema {
+		fmt.Print(JSONSchemaDoc())
+		return
+	}
 
 	if eloHistoryPath != "" {
 		if err := LoadMetaMatchupHistory(eloHistoryPath); err != nil {
@@ -151,8 +170,9 @@ func main() {
 	}
 
 	if deckPath == "" && deckDir == "" {
-		fmt.Fprintf(os.Stderr, "Usage: hexdek-freya --deck <path> | --all-decks <dir>\n")
-		flag.PrintDefaults()
+		fmt.Fprintln(os.Stderr, "error: one of --deck <file> or --all-decks <dir> is required.")
+		fmt.Fprintln(os.Stderr, "")
+		PrintUsage(os.Stderr, flag.CommandLine)
 		os.Exit(1)
 	}
 
@@ -241,7 +261,8 @@ func main() {
 			report *FreyaReport
 		}
 		var pairs []reportWithPath
-		for _, f := range files {
+		for i, f := range files {
+			log.Printf("%s", ProgressLine(i+1, len(files), filepath.Base(f)))
 			report, err := analyzeDeckFileCached(f, oracle, mechDB, DefaultCacheDir, useCache)
 			if err != nil {
 				log.Printf("  SKIP %s: %v", filepath.Base(f), err)
