@@ -359,6 +359,35 @@ type Showmatch struct {
 	// room runs a game-driver goroutine. Nil = no limiting. cmd/hexdek-
 	// server sets a default at startup.
 	SpectateSpawnLimiter *RateLimiter
+
+	// GauntletOwnerLimiter pairs with GauntletLimiter on the
+	// tournament-run endpoint (POST /api/gauntlet/{owner}/{id}) to add
+	// the per-owner axis on top of the existing per-IP axis. Without
+	// this, an authenticated owner can rotate IPs (mobile + laptop +
+	// VPN) to multiplex bursts past the per-IP cap and saturate the
+	// gauntletSem concurrency cap (2). enforceRateLimitDual gates
+	// both axes. Nil = per-owner axis disabled (per-IP axis still
+	// enforced via GauntletLimiter). cmd/hexdek-server sets a default
+	// at startup.
+	GauntletOwnerLimiter *RateLimiter
+
+	// LineageLimiter rate-limits GET /api/spectator/lineage/{instance_id}
+	// per client IP. Each call walks every live spectate room's most-
+	// recent snapshot (O(rooms × lineage-entries-per-room) — the
+	// snapshots can each hold thousands of lineage records on long
+	// games) and renders a tree, so unbounded calls let an attacker
+	// pin the GC + serialization budget by spamming format-valid
+	// InstanceIDs that miss every room (404 path is just as expensive
+	// as the hit path because it scans every room first). Pre-r60 the
+	// endpoint had NO rate limit at all — surfaced during the r60
+	// rate-limit-coverage audit. Nil = no limiting (backwards-compat);
+	// cmd/hexdek-server sets a default at startup.
+	LineageLimiter *RateLimiter
+
+	// LineageOwnerLimiter is the per-owner sibling to LineageLimiter —
+	// see enforceRateLimitDual for the per-IP-vs-per-owner rationale.
+	// Nil = per-owner axis disabled.
+	LineageOwnerLimiter *RateLimiter
 }
 
 // SetCreditStore attaches a credits.Store to the Showmatch. Called
@@ -3229,7 +3258,7 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 	// gauntlets; the limiter prevents an attacker from rapidly cycling
 	// through the cap (start-fail-start-fail) or burning deck-pool
 	// lookups across many invalid deck ids. Limiter is nil-safe.
-	if enforceRateLimit(sm.GauntletLimiter, w, r, "gauntlet start") {
+	if enforceRateLimitDual(sm.GauntletLimiter, sm.GauntletOwnerLimiter, w, r, "gauntlet start") {
 		return
 	}
 	owner := r.PathValue("owner")
