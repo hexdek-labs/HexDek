@@ -1,0 +1,7 @@
+COMMANDER: Atraxa, Praetors' Voice
+8 Forest
+8 Island
+8 Plains
+8 Swamp
+2 Command Tower
+2 Sol Ring

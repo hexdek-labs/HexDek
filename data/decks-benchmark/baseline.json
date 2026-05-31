@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "captured_at": "2026-05-31",
+  "formats": {
+    "archidekt": {
+      "format": "archidekt",
+      "deck_count": 5,
+      "total_card_lines": 61,
+      "resolved_lines": 56,
+      "fallback_resolved": 0,
+      "unresolved_lines": 0,
+      "coverage_pct": 100,
+      "avg_parse_time_micros": 293,
+      "p95_parse_time_micros": 470
+    },
+    "deckbox": {
+      "format": "deckbox",
+      "deck_count": 5,
+      "total_card_lines": 259,
+      "resolved_lines": 244,
+      "fallback_resolved": 0,
+      "unresolved_lines": 0,
+      "coverage_pct": 100,
+      "avg_parse_time_micros": 314,
+      "p95_parse_time_micros": 633
+    },
+    "moxfield": {
+      "format": "moxfield",
+      "deck_count": 5,
+      "total_card_lines": 75,
+      "resolved_lines": 75,
+      "fallback_resolved": 0,
+      "unresolved_lines": 0,
+      "coverage_pct": 100,
+      "avg_parse_time_micros": 288,
+      "p95_parse_time_micros": 399
+    },
+    "mtggoldfish": {
+      "format": "mtggoldfish",
+      "deck_count": 5,
+      "total_card_lines": 304,
+      "resolved_lines": 259,
+      "fallback_resolved": 0,
+      "unresolved_lines": 0,
+      "coverage_pct": 100,
+      "avg_parse_time_micros": 271,
+      "p95_parse_time_micros": 475
+    },
+    "plaintext": {
+      "format": "plaintext",
+      "deck_count": 5,
+      "total_card_lines": 204,
+      "resolved_lines": 204,
+      "fallback_resolved": 0,
+      "unresolved_lines": 0,
+      "coverage_pct": 100,
+      "avg_parse_time_micros": 261,
+      "p95_parse_time_micros": 427
+    }
+  }
+}

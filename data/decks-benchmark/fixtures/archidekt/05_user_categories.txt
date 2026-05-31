@@ -1,0 +1,13 @@
+COMMANDER: Urza, Lord High Artificer
+1 Sol Ring [Wincons]
+1 Black Lotus [Wincons]
+1 Mox Sapphire [Wincons]
+1 Mox Ruby [Wincons]
+1 Force of Will [Flex]
+1 Counterspell [Flex]
+1 Brainstorm [Cantrips]
+1 Ponder [Cantrips]
+1 Preordain [Cantrips]
+1 Demonic Tutor [Tutors]
+1 Vampiric Tutor [Tutors]
+1 Mystical Tutor [Tutors]
