@@ -104,6 +104,7 @@ type DeckProfile struct {
 
 	CommanderSynergy    float64  // 0.0-1.0 ratio of cards synergizing with commander
 	CommanderThemes     []string // detected themes from commander oracle text
+	CommanderTribes     []string // detected tribal creature types (sorted)
 	SynergyCount        int      // cards in 99 that match commander themes
 
 	InteractionQuality  float64 // avg CMC of interaction spells (lower = faster)
@@ -918,6 +919,119 @@ var commanderThemePatterns = []struct {
 	{"discard", []string{"discard", "each opponent discards", "madness"}},
 	{"tribal", []string{"creature type", "all creatures of the chosen type", "creatures you control get"}},
 	{"drawing", []string{"draw", "draws a card", "whenever you draw"}},
+	// R60-deepen wave (2026-05-30): 6 new themes to close the
+	// most-misread commander pool. Surfaced when surveying 9 real
+	// decks: Ur-Dragon (6%), Krenko (9%), Atraxa (17%), Kaalia
+	// (23%), Marrow-Gnawer (20%), Yuriko (37%), Voja (48%), Edgar
+	// Markov (51%). The tribal matcher above is also augmented at
+	// the call site with commander-tribe detection (see
+	// detectCommanderTribes + the TypeLine pass in
+	// computeCommanderSynergy) — the new entries here cover the
+	// non-tribal gaps.
+	{"damage", []string{"deals damage", "deal damage", "damage to any target", "damage to each opponent", "damage equal to"}},
+	{"cheat_into_play", []string{"onto the battlefield from your hand", "without paying its mana cost", "onto the battlefield from your library", "put a creature card", "put it onto the battlefield"}},
+	{"top_of_library", []string{"top of your library", "reveal the top", "look at the top", "play the top card", "play with the top card", "from the top of your library"}},
+	{"cost_reduction", []string{"costs {", "spells you cast cost", "less to cast", "affinity for"}},
+	{"power_matters", []string{"power 4 or greater", "power 3 or greater", "power 5 or greater", "greatest power", "with power"}},
+	{"life_loss", []string{"loses life", "lose life", "each opponent loses", "loses 1 life"}},
+}
+
+// commanderTribalTypes is a curated set of common Magic creature
+// subtypes used by detectCommanderTribes. Limited to types that
+// (a) appear as TitleCase tokens in commander oracle text often
+// enough to drive a tribal axis, and (b) have a meaningful pool of
+// cards sharing the type in TypeLine. Not exhaustive — adding a
+// tribe here is cheap if a new commander surfaces a gap. Names are
+// TitleCase singular; the detector checks for both singular and
+// "+s" plural forms.
+var commanderTribalTypes = []string{
+	"Angel", "Demon", "Dragon", "Vampire", "Goblin", "Elf", "Wolf",
+	"Knight", "Soldier", "Zombie", "Spirit", "Ninja", "Rat",
+	"Wizard", "Druid", "Cleric", "Warrior", "Rogue", "Beast", "Cat",
+	"Dog", "Bird", "Snake", "Sliver", "Merfolk", "Faerie", "Treefolk",
+	"Elemental", "Giant", "Eldrazi", "Phyrexian", "Hydra", "Dinosaur",
+	"Pirate", "Samurai", "Dwarf", "Spider", "Insect", "Fish",
+	"Sphinx", "Skeleton", "Saproling", "Squirrel", "Centaur",
+	"Minotaur", "Orc", "Ogre", "Specter", "Drake", "Wurm", "Horror",
+	"Devil", "Imp", "Construct", "Golem", "Myr", "Thopter", "Servo",
+	"Werewolf", "Cleric", "Plant", "Shaman", "Berserker",
+}
+
+// detectCommanderTribes scans the commander's oracle text (in its
+// original case) for TitleCase tribe tokens drawn from
+// commanderTribalTypes. Singular and "+s" plural forms both count
+// (e.g. "Goblin" or "Goblins"). The result is the deduped set of
+// hits, sorted alphabetically for stable rendering and stable JSON
+// output. Intentionally does NOT fold in the commander's own
+// subtypes from TypeLine — empirically every real tribal commander
+// (Voja, Edgar Markov, Krenko, Ur-Dragon, Marrow-Gnawer, Kaalia,
+// Yuriko) mentions its tribal axis by name in oracle text, while
+// non-tribal commanders that happen to share a creature type
+// (Atraxa Praetors' Voice is Phyrexian/Angel/Horror but is a
+// proliferate-counters commander) would false-positive `tribal` if
+// their subtypes auto-counted. cmdrTypeLine is currently unused but
+// retained in the signature for future tribal-fold-in heuristics
+// (e.g. eminence commanders where the oracle text bridges into a
+// type via reminder text only).
+func detectCommanderTribes(cmdrOT, cmdrTypeLine string) []string {
+	_ = cmdrTypeLine
+	if cmdrOT == "" {
+		return nil
+	}
+	seen := map[string]bool{}
+	for _, t := range commanderTribalTypes {
+		// boundary-checked substring: leading non-letter, trailing
+		// non-letter or 's' + non-letter. Plain Contains
+		// false-positives on "Dragonfly" / "Treefolkish" / etc.
+		if hasTribeToken(cmdrOT, t) {
+			seen[t] = true
+		}
+	}
+	out := make([]string, 0, len(seen))
+	for t := range seen {
+		out = append(out, t)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// hasTribeToken returns true if `text` contains `tribe` (or any of
+// its plural forms) as a standalone TitleCase token — i.e. bounded
+// by a non-letter character (or string edge) on both sides. The
+// check is case-sensitive on the tribe stem to avoid lowercase-noun
+// collisions ("rat" appears in many oracle texts as part of
+// "berate"-like words; "Rat" only as the creature type). Pluralization
+// covers the regular "+s" case AND the f→ves irregular needed for
+// Elf/Wolf/Dwarf/Werewolf — without this, "for each Elves you control"
+// (Voja, Marwyn) and "Wolves you control" (Tovolar) would silently
+// fail to register the tribal axis.
+func hasTribeToken(text, tribe string) bool {
+	forms := []string{tribe, tribe + "s"}
+	if strings.HasSuffix(tribe, "f") {
+		forms = append(forms, tribe[:len(tribe)-1]+"ves")
+	}
+	for _, form := range forms {
+		idx := 0
+		for {
+			pos := strings.Index(text[idx:], form)
+			if pos < 0 {
+				break
+			}
+			abs := idx + pos
+			leftOK := abs == 0 || !isLetter(text[abs-1])
+			rightPos := abs + len(form)
+			rightOK := rightPos >= len(text) || !isLetter(text[rightPos])
+			if leftOK && rightOK {
+				return true
+			}
+			idx = abs + 1
+		}
+	}
+	return false
+}
+
+func isLetter(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z')
 }
 
 func computeCommanderSynergy(dp *DeckProfile, report *FreyaReport, oracle *oracleDB) {
@@ -933,6 +1047,15 @@ func computeCommanderSynergy(dp *DeckProfile, report *FreyaReport, oracle *oracl
 			cmdrOT += " " + strings.ToLower(cmdrEntry.CardFaces[1].OracleText)
 		}
 	}
+	// Raw-case copy for tribe detection — tribe scanning needs
+	// TitleCase tokens, but theme-pattern matching is lowercased.
+	cmdrOTRaw := cmdrEntry.OracleText
+	if cmdrOTRaw == "" && len(cmdrEntry.CardFaces) > 0 {
+		cmdrOTRaw = cmdrEntry.CardFaces[0].OracleText
+		if len(cmdrEntry.CardFaces) > 1 {
+			cmdrOTRaw += " " + cmdrEntry.CardFaces[1].OracleText
+		}
+	}
 
 	var themes []string
 	for _, tp := range commanderThemePatterns {
@@ -943,10 +1066,30 @@ func computeCommanderSynergy(dp *DeckProfile, report *FreyaReport, oracle *oracl
 			}
 		}
 	}
+
+	tribes := detectCommanderTribes(cmdrOTRaw, cmdrEntry.TypeLine)
+	dp.CommanderTribes = tribes
+	if len(tribes) > 0 {
+		hasTribal := false
+		for _, t := range themes {
+			if t == "tribal" {
+				hasTribal = true
+				break
+			}
+		}
+		if !hasTribal {
+			themes = append(themes, "tribal")
+		}
+	}
 	dp.CommanderThemes = themes
 
 	if len(themes) == 0 {
 		return
+	}
+
+	tribesLower := make([]string, len(tribes))
+	for i, t := range tribes {
+		tribesLower[i] = strings.ToLower(t)
 	}
 
 	synergyCount := 0
@@ -967,8 +1110,19 @@ func computeCommanderSynergy(dp *DeckProfile, report *FreyaReport, oracle *oracl
 		}
 		tl := strings.ToLower(p.TypeLine)
 
+		matched := false
 		for _, theme := range themes {
-			matched := false
+			if theme == "tribal" && len(tribesLower) > 0 {
+				for _, tr := range tribesLower {
+					if strings.Contains(tl, tr) {
+						matched = true
+						break
+					}
+				}
+				if matched {
+					break
+				}
+			}
 			for _, tp := range commanderThemePatterns {
 				if tp.Theme != theme {
 					continue
@@ -982,9 +1136,11 @@ func computeCommanderSynergy(dp *DeckProfile, report *FreyaReport, oracle *oracl
 				break
 			}
 			if matched {
-				synergyCount++
 				break
 			}
+		}
+		if matched {
+			synergyCount++
 		}
 	}
 
