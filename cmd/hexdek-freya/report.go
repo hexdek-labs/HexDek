@@ -11,7 +11,10 @@ import (
 // Report rendering
 // ---------------------------------------------------------------------------
 
-// PrintReport writes the Freya report in the specified format.
+// PrintReport writes the Freya report in the specified format. The
+// text format respects the FocusMode package variable — when set to
+// "focus", the under-25-line prioritized summary is emitted instead
+// of the fixed-order full report. JSON and markdown ignore FocusMode.
 func PrintReport(w io.Writer, report *FreyaReport, format string) {
 	switch format {
 	case "json":
@@ -19,9 +22,20 @@ func PrintReport(w io.Writer, report *FreyaReport, format string) {
 	case "markdown":
 		printMarkdown(w, report)
 	default:
+		if FocusMode == "focus" {
+			printFocusText(w, report)
+			return
+		}
 		printText(w, report)
 	}
 }
+
+// FocusMode toggles the text renderer between "full" (default — fixed-
+// order full report) and "focus" (under-25-line prioritized summary).
+// Set once from main() based on the --mode flag; package-level rather
+// than threading through every PrintReport call site since the existing
+// 3-arg signature is the public surface used by tests and integrations.
+var FocusMode = "full"
 
 // ---------------------------------------------------------------------------
 // Text output (default, with color indicators)

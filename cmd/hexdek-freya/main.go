@@ -98,6 +98,8 @@ func main() {
 	flag.StringVar(&deckPath, "deck", "", "path to decklist file")
 	flag.StringVar(&deckDir, "all-decks", "", "analyze all decks in directory")
 	flag.StringVar(&format, "format", "text", "output format: text, markdown, json")
+	flag.StringVar(&FocusMode, "mode", "full",
+		"text-format display mode: full (default — complete fixed-order report) or focus (under-25-line prioritized summary — picks the 3 most insight-bearing sections for the archetype)")
 	flag.StringVar(&spellbookCache, "spellbook", DefaultSpellbookCache,
 		"path to Commander Spellbook variants JSON cache (loaded if present)")
 	flag.StringVar(&spellbookFetchURL, "spellbook-fetch", "",
