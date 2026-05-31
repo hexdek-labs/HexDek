@@ -361,6 +361,24 @@ func ScanExpiredDurations(gs *GameState, phase, step string) {
 		// later death event (Loki r41 cluster, dominantly seen at turn
 		// 40+ when the counter exceeds 2000).
 		delete(gs.Flags, "trigger_total")
+
+		// Phase E — InstanceID orphan sweep. Runs ONCE per turn at the
+		// §514.2 cleanup step, after every "until end of turn" mod has
+		// dropped and every until-EOT grant has expired — i.e., the most
+		// stable point in the turn cycle. Closes residual TK / OG leak
+		// shapes Phase D's chokepoints cannot reach (sideband-zone
+		// purges, control-change transients, basic-land *Card drops). See
+		// instanceid_orphan_sweep.go for design rationale.
+		//
+		// Mid-turn placement (e.g., inside StateBasedActions) was tried
+		// first but over-ceased: spells transitioning between stack and
+		// graveyard are briefly absent from every zone, and SBA fires
+		// many times per turn. The cleanup-step placement gives effects
+		// a chance to settle, eliminating the false-cease window. The
+		// post-turn loki invariant check (cmd/hexdek-loki/main.go:937)
+		// runs AFTER cleanup, so the sweep takes effect before any
+		// observation.
+		SweepOrphanedInstanceIDs(gs)
 	}
 
 	// 3) Delayed triggers — we don't expire them here; they consume
