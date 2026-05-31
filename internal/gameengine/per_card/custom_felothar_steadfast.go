@@ -106,8 +106,13 @@ func felotharSacDrawDiscard(gs *gameengine.GameState, src *gameengine.Permanent,
 			}
 		}
 		c := seat.Hand[pickIdx]
-		seat.Hand = append(seat.Hand[:pickIdx], seat.Hand[pickIdx+1:]...)
-		seat.Graveyard = append(seat.Graveyard, c)
+		// Route through DiscardCard so Madness / Mayhem / Necropotence
+		// reroute / card_discarded triggers / Turn.Discarded stats all
+		// fire. Pre-r60 shape direct-spliced hand + manual graveyard
+		// append, bypassing every one of the above (Wave 2 multi-step
+		// migration — same pattern as the per_card_batch_k cleanup in
+		// PR #924).
+		gameengine.DiscardCard(gs, c, src.Controller)
 		discarded++
 	}
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
