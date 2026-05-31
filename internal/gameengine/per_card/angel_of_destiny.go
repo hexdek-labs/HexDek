@@ -90,7 +90,16 @@ func angelOfDestinyAttacks(gs *gameengine.GameState, perm *gameengine.Permanent,
 	if atk != perm {
 		return
 	}
-	dseat, ok := ctx["defender_seat"].(int)
+	// Engine fires creature_attacks without a defender_seat in ctx; the
+	// defender is on the attacker permanent (CR §506.1). Look it up via
+	// AttackerDefender; legacy ctx["defender_seat"] kept as a fallback.
+	dseat, ok := -1, false
+	if d, found := gameengine.AttackerDefender(atk); found {
+		dseat, ok = d, true
+	}
+	if !ok {
+		dseat, ok = ctx["defender_seat"].(int)
+	}
 	if !ok || dseat < 0 || dseat >= len(gs.Seats) {
 		return
 	}

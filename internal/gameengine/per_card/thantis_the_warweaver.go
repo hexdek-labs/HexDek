@@ -50,10 +50,21 @@ func thantisAttackedTrigger(gs *gameengine.GameState, perm *gameengine.Permanent
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	defenderSeat, hasDef := ctx["defender_seat"].(int)
+	// Engine fires creature_attacks with attacker_perm; the defender is
+	// stored on the attacker via setAttackerDefender (CR §506.1). The
+	// legacy defender_seat / defender_perm keys aren't populated for this
+	// event, so do the AttackerDefender lookup; keep the legacy ctx reads
+	// as fallbacks for Hat/tests that thread them explicitly.
 	matched := false
-	if hasDef && defenderSeat == perm.Controller {
-		matched = true
+	if atk, ok := ctx["attacker_perm"].(*gameengine.Permanent); ok && atk != nil {
+		if d, found := gameengine.AttackerDefender(atk); found && d == perm.Controller {
+			matched = true
+		}
+	}
+	if !matched {
+		if defenderSeat, hasDef := ctx["defender_seat"].(int); hasDef && defenderSeat == perm.Controller {
+			matched = true
+		}
 	}
 	if !matched {
 		// Try defender_perm — attacking a planeswalker you control.
