@@ -269,6 +269,89 @@ RAW_PATTERNS = [
     ("self_power_ge", re.compile(r"(?:this creature'?s|its|~'?s) power is \w+ or (?:more|greater)")),
     ("top_of_library_type", re.compile(r"\btop card of your library is\b")),
     ("counter_put_on_perm_turn", re.compile(r"counters? was put on (?:a permanent|target|that creature)|put one or more \+1/\+1 counters on .* this turn|you'?ve put one or more")),
+    # Era 1 r60 batch 2 — 18 additional raw-text patterns matching the
+    # residual unbucketed clusters from scripts/era1_unbucketed_dump.py.
+    # Each mirrors a text-form branch in cmd/hexdek-thor/conditional_setup.go's
+    # detectConditionScaffold so audit + parser stay in sync. Ordered
+    # most-specific first; placed ABOVE the broad you_control sweep below.
+    ("hand_size_exact_n", re.compile(r"exactly (?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|\d+) cards? in (?:your |their |a player'?s )?hand")),
+    ("hand_size_ge_n_words", re.compile(r"(?:you have |as long as you have )(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|\d+) or more cards? in (?:your |their |a player'?s )?hand")),
+    ("hand_size_has_a_card", re.compile(r"you have a card in (?:your )?hand")),
+    ("opp_more_cards_in_hand", re.compile(r"(?:defending player|an opponent|that player) has more cards in (?:their |a |the )?hand than you")),
+    ("drew_n_or_more_past", re.compile(r"you drew (?:two|three|four|five|six|seven|eight|\d+) or more cards? this turn|drawn more than (?:one|two|three|\d+) cards? this turn|you'?ve drawn more than (?:one|two|\d+) cards? this turn")),
+    ("cast_n_typed_spells_turn", re.compile(r"(?:you'?ve|you have) cast (?:two|three|four|five|\d+) or more (?:noncreature|creature|instant|sorcery|artifact|enchantment) spells? this turn")),
+    ("power_state_ge_broader", re.compile(r"(?:power was|has power|power is) (?:one|two|three|four|five|six|seven|eight|nine|\d+) or (?:more|greater)|'s power is (?:one|two|three|four|five|six|seven|eight|nine|\d+) or (?:more|greater)")),
+    ("self_power_parity", re.compile(r"\bpower is (?:even|odd)\b")),
+    ("toughness_state_ge", re.compile(r"toughness (?:one|two|three|four|five|six|seven|eight|nine|\d+) or (?:more|greater)|toughness is (?:one|two|three|four|five|six|seven|eight|nine|\d+) or (?:more|greater)|toughness is 1 or greater")),
+    ("power_or_toughness_compare", re.compile(r"greater power or toughness than|power greater than (?:this creature'?s|that creature'?s|\w+'s) power|'s power is less than (?:this creature'?s|~'?s) power|toughness was less than (?:one|\d+)")),
+    ("self_has_keyword_state", re.compile(r"(?:it has|this creature has|~ has) (?:flying|trample|first strike|double strike|deathtouch|lifelink|hexproof|menace|vigilance|reach|defender|haste|madness|prowess|shroud|indestructible|horsemanship|fear|intimidate|skulk|infect|toxic|unblockable|annihilator)(?:\s|,|\.|;|$)")),
+    ("self_is_token_state", re.compile(r"(?:it )?isn'?t a token|(?:it )?is not a token|it'?s not a token|\bis a token\b")),
+    ("renowned_state", re.compile(r"\bis renowned\b|\bit'?s renowned\b")),
+    ("suspected_state", re.compile(r"\bis suspected\b")),
+    ("self_is_enchanted", re.compile(r"is enchanted(?: or equipped)?|it'?s enchanted|was enchanted|was equipped|enchanted equipment is attached")),
+    ("self_zone_state_stack", re.compile(r"(?:as long as|while) (?:~|this card|this spell|it) is on the stack")),
+    ("self_zone_state_library_top", re.compile(r"(?:as long as|while) (?:~|this card|it) is at the top of your library|while it'?s at the top of your library")),
+    ("self_zone_state_exile", re.compile(r"this card is exiled|~ is exiled(?! with)")),
+    ("self_zone_state_command", re.compile(r"~ is in the command zone")),
+    ("tribal_died_under_control", re.compile(r"\bdied under (?:your|an opponent'?s) control(?: this turn)?|another \w+ died|a (?:phyrexian|modified creature|creature) died under")),
+    ("counters_threshold_passive", re.compile(r"(?:there are|this enchantment has|this artifact has|this permanent has) (?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|\d+) or more \S+ counters? on")),
+    ("no_counter_doesnt_have", re.compile(r"(?:doesn'?t have an? |don'?t have any )\S+ counter")),
+    ("life_total_less_than", re.compile(r"life total is less than (?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)|you have less than (?:one|two|three|\d+).*life")),
+    ("opp_n_or_less_life", re.compile(r"opponent has (?:one|two|three|four|five|six|seven|eight|nine|ten|\d+) or less life")),
+    ("mana_from_creatures_spent", re.compile(r"mana from creatures was (?:spent|paid)")),
+    ("alt_cost_was_paid", re.compile(r"(?:sneak|madness|prowl|evoke|dash|spectacle|surge) cost was paid")),
+    ("cast_not_from_hand", re.compile(r"cast from anywhere other than your hand|cast from a graveyard|wasn'?t cast from (?:your )?hand")),
+    ("cast_web_slinging", re.compile(r"web-slinging|cast using web-slinging")),
+    ("you_havent_cast", re.compile(r"you haven'?t cast")),
+    # Era 1 r60 batch 3 — residual cluster sweep (post-batch-2 dump).
+    # Card-type reveal-and-route broadening — "if it was an? X card" /
+    # "if a/an X card was milled/exiled/discarded this way" / "the exiled
+    # card is a snow land". The existing `it's a … card` matcher covers the
+    # present-tense reveal form only.
+    ("reveal_card_type_was", re.compile(r"if it was an? (?:land|creature|artifact|enchantment|instant|sorcery|planeswalker|forest|mountain|island|swamp|plains|legendary|mount) card")),
+    ("reveal_card_type_milled", re.compile(r"if an? (?:land|creature|artifact|enchantment|instant|sorcery|planeswalker|nonland) card was (?:milled|exiled|discarded) this way|if a card with the chosen name was milled")),
+    ("reveal_card_type_is", re.compile(r"if it'?s an? (?:land|creature|artifact|enchantment|instant|sorcery|planeswalker|forest|mountain|island|swamp|plains|mount|legendary) card|if that card is an? (?:land|creature|artifact|enchantment|instant|sorcery|planeswalker|legendary) card|if that permanent is a \w+ planeswalker")),
+    ("the_exiled_card_property", re.compile(r"the exiled card (?:is|doesn'?t have|has)|the discarded card was an?")),
+    # Counter-state — broaden negation/threshold to catch the "it has N or
+    # more X counters", "it has fewer than N X counters", "it has exactly N
+    # X counters", "has a counter on it" (bare-existence), "there are no X
+    # counters on it" forms.
+    ("counters_self_or_more", re.compile(r"(?:it|this card|~) has (?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|\d+) or more \S+ counters? on (?:it|this)")),
+    ("counters_self_fewer_than", re.compile(r"(?:it|this creature|~) has fewer than (?:one|two|three|four|five|six|seven|eight|nine|\d+) \S+ counters?")),
+    ("counters_self_exactly", re.compile(r"(?:it|this creature|~) has exactly (?:one|two|three|four|five|six|seven|eight|nine|\d+) \S+ counters?")),
+    ("counters_self_bare_exists", re.compile(r"(?:as long as|while) (?:this creature|~|it) has a counter on it|(?:as long as|while) ~ has an? \S+ counter on")),
+    ("counters_self_had_negative", re.compile(r"it had an? \S+ counter on it|it had no \S+ counters? on it")),
+    ("counters_passive_none", re.compile(r"there are no \S+ counters on (?:it|this artifact|this enchantment|this permanent|this creature)")),
+    ("counters_odd_number", re.compile(r"has an odd number of \S+ counters?")),
+    ("opp_controls_no_counter_perms", re.compile(r"opponents? controls? no permanents with \S+ counters")),
+    ("intensity_threshold", re.compile(r"intensity is \d+ or more|intensity is (?:one|two|three|four|five|six|\d+)")),
+    # Combat-state broader.
+    ("it_is_attacking_player", re.compile(r"it'?s attacking (?:one of |your )?(?:opponents|opponent|a player|that player)")),
+    ("was_blocked_this_turn", re.compile(r"\bit was blocked this turn\b|\bthis creature was blocked\b")),
+    ("creature_was_dealt_damage_turn", re.compile(r"this creature was dealt damage this turn|it was dealt damage this turn")),
+    ("they_didnt_attack_that_turn", re.compile(r"they didn'?t attack you that turn|didn'?t attack you (?:that|this|last) turn")),
+    ("tribal_combat_attacked", re.compile(r"an? \w+ and an? \w+ attacked this combat")),
+    ("not_declared_attacker_raw", re.compile(r"isn'?t being declared as an attacker|is not being declared as an attacker|not declared as an attacker")),
+    # Turn/phase predicates.
+    ("opp_or_named_turn", re.compile(r"\bit'?s an opponent'?s turn\b|\bit'?s not that player'?s turn\b|\bit'?s the active player'?s turn\b")),
+    ("night_state", re.compile(r"\bit'?s night\b|\bit is night\b|\bit becomes night\b")),
+    ("nth_time_resolved_turn", re.compile(r"this is the (?:second|third|fourth|\d+\w*) time this ability has resolved this turn|this is the (?:first|\d+) time")),
+    # Past-turn negative actions.
+    ("you_didnt_play_land_turn", re.compile(r"you didn'?t play a land this turn")),
+    ("you_didnt_activate_loyalty", re.compile(r"didn'?t activate a loyalty ability")),
+    ("a_player_cast_n_last_turn", re.compile(r"a player cast (?:two|three|\d+) or more spells last turn|opponent cast (?:two|three|\d+) or more spells last turn")),
+    ("opp_cast_typed_spell_turn", re.compile(r"an opponent cast an? \w+(?: and/or \w+)? spell this turn")),
+    ("you_lost_n_life_turn", re.compile(r"you lost (?:two|three|four|\d+) or more life this turn")),
+    ("you_committed_crime_turn", re.compile(r"if you'?ve committed a crime this turn|you committed a crime this turn")),
+    # Misc.
+    ("is_attached_to_creature", re.compile(r"is attached to a creature|while attached to a creature")),
+    ("devotion_compound_ge", re.compile(r"your devotion to (?:white|blue|black|red|green)(?: and (?:white|blue|black|red|green))? is (?:one|two|three|four|five|six|seven|eight|nine|\d+) or (?:greater|more)")),
+    ("library_size_ge", re.compile(r"you have (?:one hundred|two hundred|\d+) or more cards in your library|there are no nonbasic land cards in your library|if you have no land cards in your hand")),
+    ("you_dont_control_named_or_typed", re.compile(r"you don'?t control an? \w+|you don'?t control a creature named")),
+    ("revealed_x_or_controlled_x", re.compile(r"you revealed a \w+ card or controlled a \w+ as you cast this spell")),
+    ("defending_player_is_poisoned", re.compile(r"defending player is poisoned")),
+    ("compare_exact_pt", re.compile(r"that creature is \d+/\d+|that creature'?s power is \d+ or (?:less|fewer)")),
+    ("its_power_differs_base", re.compile(r"its power was different from its base power")),
     ("you_control_raw", re.compile(r"you control")),
 ]
 

@@ -1936,6 +1936,13 @@ const (
 	condScaffoldSelfPowerGE        // "this creature's power is N or more" / "its power is N or greater"
 	condScaffoldTopOfLibraryType   // "the top card of your library is a creature/nonland card"
 	condScaffoldCounterPutOnPermTurn // "+1/+1 counter was put on a permanent under your control this turn"
+
+	// Era 1 r60 batch 2 — 4 net-new scaffolds covering the residual
+	// unbucketed clusters (parity / keyword / token / zone-state).
+	condScaffoldSelfPowerParity // "as long as ~'s power is even/odd" (Kianne)
+	condScaffoldSelfHasKeyword  // "it has flying", "it has first strike", … (printed-keyword self-state check)
+	condScaffoldSelfIsToken     // "it isn't a token" / "it's not a token" (Gruff Triplets, Vaultborn Tyrant)
+	condScaffoldSelfZoneState   // "as long as ~ is on the stack" / "at the top of your library" / "this card is exiled" / "~ is in the command zone"
 )
 
 type conditionScaffold struct {
@@ -2581,7 +2588,13 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		for _, k := range []string{"+1/+1", "-1/-1", "oil", "loyalty", "stun",
 			"charge", "quest", "fade", "vanishing", "shield", "ki", "blood",
 			"divinity", "time", "verse", "wage", "wish", "bloodline", "ice",
-			"experience", "indestructibility", "page", "bore"} {
+			"experience", "indestructibility", "page", "bore",
+			// Era 1 r60 batch 2 — named counter types from the unbucketed
+			// fragment dump. Each appears on a single legacy card so we keep
+			// the list flat rather than introducing a separate counters map.
+			"release", "dread", "wreck", "luck", "tower", "omen", "conqueror",
+			"echo", "arrowhead", "bounty", "rad", "intensity", "spite",
+			"stash", "loot", "ribbon"} {
 			if strings.Contains(txt, k+" counter") {
 				cs.subtype = k
 				break
@@ -2592,7 +2605,7 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 				cs.count = n
 			}
 		} else {
-			for w, n := range map[string]int{"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "ten": 10} {
+			for w, n := range map[string]int{"two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "ten": 10, "thirteen": 13, "hundred": 100} {
 				if strings.Contains(txt, w+" or more") {
 					cs.count = n
 					break
@@ -4029,6 +4042,664 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 		return cs
 	}
 
+	// Era 1 r60 batch 2 — text-form matchers for the residual unbucketed
+	// fragments found by scripts/era1_unbucketed_dump.py. Each routes to an
+	// existing condScaffold where possible (the apply state is already
+	// correct); 4 net-new scaffolds (SelfPowerParity / SelfHasKeyword /
+	// SelfIsToken / SelfZoneState) cover patterns no existing scaffold fits.
+	// Ordered most-specific first so the broad "you control" sweep below
+	// doesn't eat narrower predicates.
+
+	// Hand-size N-or-more / exactly-N — broaden the audit's hand_size_ge_seven
+	// (which only catches 7+) to any spelled or numeric N. Catches Kiyomaro
+	// (4+), Thumbscrews (5+), Wiretapping (9+), Triskaidekaphile (exactly 13).
+	// MUST come before the hand-size threshold block at line ~3870 in test
+	// chain order — placed here because that block uses "or more" + "cards in
+	// … hand" and would NOT catch "exactly thirteen cards" or bare
+	// "you have a card in hand".
+	if strings.Contains(txt, "cards in your hand") || strings.Contains(txt, "cards in hand") ||
+		strings.Contains(txt, "card in your hand") {
+		if strings.Contains(txt, "exactly") {
+			cs.kind = condScaffoldHandSizeThreshold
+			cs.subtype = "hand_size_eq"
+			cs.count = 13
+			if n := parseFirstSpelledInt(txt); n > 0 {
+				cs.count = n
+			}
+			return cs
+		}
+		if strings.Contains(txt, "you have a card in") {
+			cs.kind = condScaffoldHandSizeThreshold
+			cs.subtype = "hand_size_ge"
+			cs.count = 1
+			return cs
+		}
+	}
+
+	// Opp/defending/that-player has more cards in hand — broaden the audit's
+	// more_cards_than_opponents (which only matches "each opponent" / "any").
+	// Catches Robber of the Rich, Pulse of the Grid, Pulse of the Dross.
+	if (strings.Contains(txt, "defending player has more cards in") ||
+		strings.Contains(txt, "an opponent has more cards in") ||
+		strings.Contains(txt, "that player has more cards in")) &&
+		strings.Contains(txt, "than you") {
+		cs.kind = condScaffoldMoreCardsThanOpponents
+		cs.subtype = "inverse"
+		return cs
+	}
+
+	// Drew/drawn N or more this turn — broaden audit's drew_n_cards_this_turn
+	// (which only matches "drawn") to also catch past-tense "drew" and
+	// "drawn more than one card". Catches Archmage Ascension, Proft's
+	// Eidetic Memory.
+	if (strings.Contains(txt, "you drew") || strings.Contains(txt, "you've drawn") ||
+		strings.Contains(txt, "drawn more than")) &&
+		(strings.Contains(txt, "or more cards") || strings.Contains(txt, "more than one card")) &&
+		strings.Contains(txt, "this turn") {
+		cs.kind = condScaffoldDrawnNCardsThisTurn
+		cs.count = 2
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+
+	// Cast N or more <typed> spells this turn — broaden CastNSpellsThisTurn
+	// to allow intervening type qualifier ("noncreature spells", "instant
+	// spells"). Catches Lyse Hext ("cast two or more noncreature spells").
+	if (strings.Contains(txt, "you've cast") || strings.Contains(txt, "you have cast")) &&
+		strings.Contains(txt, "this turn") &&
+		strings.Contains(txt, "or more") &&
+		(strings.Contains(txt, "noncreature spell") || strings.Contains(txt, "creature spell") ||
+			strings.Contains(txt, "instant spell") || strings.Contains(txt, "sorcery spell") ||
+			strings.Contains(txt, "artifact spell") || strings.Contains(txt, "enchantment spell")) {
+		cs.kind = condScaffoldCastNSpellsThisTurn
+		cs.count = 2
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+
+	// Power state — broaden audit's self_power_ge to catch past-tense
+	// "was N or greater", "has power N or greater" (no "is"), and proper-noun
+	// possessive ("Jor Kadeen's power"). Catches Cloud, Deathknell Berserker,
+	// Yavimaya Bloomsage, Jor Kadeen. Excludes "less than" (a different
+	// scaffold) and "even/odd" (parity scaffold below).
+	if !strings.Contains(txt, "less than") && !strings.Contains(txt, "is even") &&
+		!strings.Contains(txt, "is odd") &&
+		(strings.Contains(txt, "power was") ||
+			strings.Contains(txt, "has power") ||
+			strings.Contains(txt, "'s power is")) &&
+		(strings.Contains(txt, "or more") || strings.Contains(txt, "or greater")) {
+		cs.kind = condScaffoldSelfPowerGE
+		cs.count = 3
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+
+	// Power parity — "as long as ~'s power is even" / "is odd" (Kianne,
+	// Corrupted Memory). Net-new scaffold: existing SelfPowerGE doesn't
+	// fit because the predicate isn't a numeric threshold.
+	if strings.Contains(txt, "power is even") || strings.Contains(txt, "power is odd") {
+		cs.kind = condScaffoldSelfPowerParity
+		cs.subtype = "even"
+		if strings.Contains(txt, "is odd") {
+			cs.subtype = "odd"
+		}
+		return cs
+	}
+
+	// Toughness state — mirror of power state. Catches Dormant Grove (6+),
+	// Blood Lust (5+), Gore Vassal (1+), Massacre Girl (< 1). Routes to
+	// SelfPowerGE with subtype="toughness" so the existing apply (which sets
+	// power AND toughness via a fresh creature template) still works.
+	if (strings.Contains(txt, "toughness") &&
+		(strings.Contains(txt, "or greater") || strings.Contains(txt, "or more"))) ||
+		strings.Contains(txt, "toughness is 1 or greater") {
+		cs.kind = condScaffoldSelfPowerGE
+		cs.subtype = "toughness"
+		cs.count = 5
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+
+	// Power/toughness comparative — "greater power or toughness than this
+	// creature" / "its power is less than ~'s power". Catches Evolving
+	// Adaptive, Drizzt, Shelinda. Routes to SelfPowerGE with subtype=
+	// "compare" so the verifier knows the predicate is relational.
+	if (strings.Contains(txt, "greater power or toughness than") ||
+		strings.Contains(txt, "power greater than") ||
+		(strings.Contains(txt, "'s power") && strings.Contains(txt, "less than"))) {
+		cs.kind = condScaffoldSelfPowerGE
+		cs.subtype = "compare"
+		cs.count = 4
+		return cs
+	}
+
+	// (SelfHasKeyword moved to end of batch 2/3 block — the unconstrained
+	// "it has <keyword>" match eats fragments whose continuation clauses
+	// contain a keyword grant, so we keep it as the LAST batch-2 matcher.)
+
+	// Self is / isn't a token — "it isn't a token" (Gruff Triplets),
+	// "it's not a token" (Vaultborn Tyrant). Net-new scaffold so the parser
+	// stops bucketing token-existence predicates as bare "if".
+	if strings.Contains(txt, "isn't a token") || strings.Contains(txt, "is not a token") ||
+		strings.Contains(txt, "it's not a token") || strings.Contains(txt, "is a token") {
+		cs.kind = condScaffoldSelfIsToken
+		cs.subtype = "not_token"
+		if strings.Contains(txt, " is a token") && !strings.Contains(txt, "isn't") &&
+			!strings.Contains(txt, "is not") {
+			cs.subtype = "token"
+		}
+		return cs
+	}
+
+	// Renowned / suspected state — predicate on the source's keyword-tag
+	// state (CR §702.110 renown, MH3 §702.150 suspect). Catches Consul's
+	// Lieutenant, Scab-Clan Berserker, Goblin Glory Chaser, Repeat Offender.
+	// Routes to IsSubtype with subtype=renowned/suspected because the
+	// existing apply already sets perm.Flags[subtype]=1.
+	if strings.Contains(txt, "is renowned") || strings.Contains(txt, "it's renowned") {
+		cs.kind = condScaffoldIsSubtype
+		cs.subtype = "renowned"
+		return cs
+	}
+	if strings.Contains(txt, "is suspected") {
+		cs.kind = condScaffoldIsSubtype
+		cs.subtype = "suspected"
+		return cs
+	}
+
+	// Self is enchanted — Krond, Pillar of War, Novice Knight, Dreampod
+	// Druid, Thran Golem. Audit's existing EquipmentAttached only fires on
+	// "is equipped" / "equipped creature". Broaden to also catch the
+	// enchant-only and combined forms.
+	if (strings.Contains(txt, "is enchanted") ||
+		strings.Contains(txt, "it's enchanted") ||
+		strings.Contains(txt, " enchanted or equipped") ||
+		strings.Contains(txt, "is enchanted or equipped") ||
+		strings.Contains(txt, "was enchanted") ||
+		strings.Contains(txt, "was equipped") ||
+		strings.Contains(txt, "enchanted equipment is attached")) &&
+		!strings.Contains(txt, "enchanted creature") {
+		cs.kind = condScaffoldEquipmentAttached
+		cs.subtype = "enchanted_or_equipped"
+		return cs
+	}
+
+	// Self in command zone / on stack / at top of library / exiled. Net-new
+	// scaffold: zone-state predicate on the source card. Routes through one
+	// switch that flags the appropriate seat zone so the verifier can find
+	// the source in the right list. Catches Oloro, Kaervek's Torch,
+	// Chittering Illuminator, Uvilda. (Command-zone case already partially
+	// handled by EminenceCommandZone; this catches the "~ is in the command
+	// zone" cast-static variant that the existing matcher requires the
+	// literal "from the command zone" for.)
+	if strings.Contains(txt, "as long as ~ is on the stack") ||
+		strings.Contains(txt, "while ~ is on the stack") ||
+		strings.Contains(txt, "while it's on the stack") {
+		cs.kind = condScaffoldSelfZoneState
+		cs.subtype = "stack"
+		return cs
+	}
+	if strings.Contains(txt, "as long as ~ is at the top of your library") ||
+		strings.Contains(txt, "while ~ is at the top of your library") ||
+		strings.Contains(txt, "while it's at the top of your library") {
+		cs.kind = condScaffoldSelfZoneState
+		cs.subtype = "library_top"
+		return cs
+	}
+	if strings.Contains(txt, "this card is exiled") ||
+		(strings.Contains(txt, "~ is exiled") && !strings.Contains(txt, "exiled with")) {
+		cs.kind = condScaffoldSelfZoneState
+		cs.subtype = "exile"
+		return cs
+	}
+	// "~ is in the command zone" — variant for static checks that don't use
+	// "from the command zone" phrasing.
+	if strings.Contains(txt, "~ is in the command zone") {
+		cs.kind = condScaffoldSelfZoneState
+		cs.subtype = "command"
+		return cs
+	}
+
+	// Tribal-died-this-turn — broaden the audit's died_this_turn (which
+	// requires the literal phrase) to catch intervening descriptors:
+	// "another human died under your control this turn", "a phyrexian died
+	// under your control this turn", "a modified creature died under your
+	// control this turn", "a creature died under an opponent's control this
+	// turn". Routes to CreatureDiedThisTurn (existing morbid scaffold).
+	if (strings.Contains(txt, " died under your control this turn") ||
+		strings.Contains(txt, " died under an opponent's control this turn") ||
+		strings.Contains(txt, " died under an opponent's control") ||
+		strings.Contains(txt, "another human died") ||
+		strings.Contains(txt, "a modified creature died") ||
+		strings.Contains(txt, "a phyrexian died") ||
+		strings.Contains(txt, "a creature died under")) {
+		cs.kind = condScaffoldCreatureDiedThisTurn
+		return cs
+	}
+
+	// Counter-state passive / negative variants:
+	//   "there are three or more dread counters on it" (passive count GE)
+	//   "this enchantment has one or more wreck counters on it"
+	//   "it has thirteen or more release counters on it"
+	//   "this artifact is at N+ … counters" (passive on non-creature subjects)
+	// The earlier CountersOnSelfGE matcher requires "it has" / "this creature
+	// has" — these miss the non-creature subjects ("this enchantment has",
+	// "this artifact has", "there are N or more"). Route to the same scaffold.
+	if (strings.Contains(txt, "or more") || strings.Contains(txt, "or greater")) &&
+		strings.Contains(txt, " counters on") &&
+		(strings.Contains(txt, "there are") ||
+			strings.Contains(txt, "this enchantment has") ||
+			strings.Contains(txt, "this artifact has") ||
+			strings.Contains(txt, "this permanent has")) {
+		cs.kind = condScaffoldCountersOnSelfGE
+		cs.subtype = "+1/+1"
+		cs.count = 3
+		for _, k := range []string{"+1/+1", "-1/-1", "release", "dread", "wreck",
+			"luck", "tower", "omen", "conqueror", "echo", "arrowhead", "bounty",
+			"rad", "stash", "spite", "loot", "ribbon", "judgment"} {
+			if strings.Contains(txt, k+" counter") {
+				cs.subtype = k
+				break
+			}
+		}
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	// No-counter negation — "doesn't have a/an <kind> counter on it",
+	// "they don't have any rad counters". Existing SelfHasNoCounter only
+	// fires on "has no <kind> counters" / "had no". Broaden.
+	if (strings.Contains(txt, "doesn't have") || strings.Contains(txt, "don't have any")) &&
+		strings.Contains(txt, " counter") {
+		cs.kind = condScaffoldSelfHasNoCounter
+		cs.subtype = "+1/+1"
+		for _, k := range []string{"indestructible", "+1/+1", "-1/-1", "rad",
+			"oil", "loyalty", "stun", "charge", "shield", "echo", "ki", "blood"} {
+			if strings.Contains(txt, k+" counter") {
+				cs.subtype = k
+				break
+			}
+		}
+		return cs
+	}
+
+	// Life total less than N — broaden audit's life_below (which requires "or
+	// less" / "or fewer") to match "less than N". Catches Elderscale Wurm.
+	if (strings.Contains(txt, "life total is less than") ||
+		strings.Contains(txt, "you have less than") && strings.Contains(txt, "life")) {
+		cs.kind = condScaffoldLifeBelowThreshold
+		cs.threshold = 7
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.threshold = n
+		}
+		return cs
+	}
+	// Opponent has N or less life — Guul Draz Vampire. Routes to
+	// OpponentMoreLife inverse: set seat-1 life low.
+	if strings.Contains(txt, "opponent has") && strings.Contains(txt, "or less life") {
+		cs.kind = condScaffoldLifeBelowThreshold
+		cs.subtype = "opponent"
+		cs.threshold = 10
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.threshold = n
+		}
+		return cs
+	}
+
+	// Mana spent from creatures / specific source — broaden ManaSpentThreshold
+	// to catch "N or more mana from creatures was spent to cast it" (Inga
+	// and Esika) and the per-source alt-cost cluster ("his sneak cost was
+	// paid" / Latchkey Faerie prowl / Grave Scrabbler madness). Routes to
+	// PaidOptionalCost since these are all alt-cost-paid predicates.
+	if strings.Contains(txt, "mana from creatures was spent") ||
+		strings.Contains(txt, "mana from creatures was paid") {
+		cs.kind = condScaffoldManaSpentThreshold
+		cs.count = 3
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	if strings.Contains(txt, "sneak cost was paid") ||
+		strings.Contains(txt, "madness cost was paid") ||
+		strings.Contains(txt, "prowl cost was paid") ||
+		strings.Contains(txt, "evoke cost was paid") ||
+		strings.Contains(txt, "dash cost was paid") ||
+		strings.Contains(txt, "spectacle cost was paid") {
+		cs.kind = condScaffoldPaidOptionalCost
+		cs.count = 1
+		return cs
+	}
+
+	// Cast-source predicates — "this spell was cast from anywhere other than
+	// your hand", "they were cast using web-slinging". Route to YouCastFromHand
+	// with subtype="not_from_hand"/"web_slinging".
+	if strings.Contains(txt, "cast from anywhere other than your hand") ||
+		strings.Contains(txt, "cast from a graveyard") ||
+		strings.Contains(txt, "wasn't cast from your hand") {
+		cs.kind = condScaffoldYouCastFromHand
+		cs.subtype = "not_from_hand"
+		return cs
+	}
+	if strings.Contains(txt, "cast using web-slinging") ||
+		strings.Contains(txt, "web-slinging") {
+		cs.kind = condScaffoldYouCastFromHand
+		cs.subtype = "web_slinging"
+		return cs
+	}
+
+	// You-haven't-cast predicate — "you haven't cast the card" / "you haven't
+	// cast it" (Psychic Theft, Planeswalker's Mischief). Inverse of
+	// YouCastFromHand; routes to WasntCast with subtype="you_havent".
+	if strings.Contains(txt, "you haven't cast") {
+		cs.kind = condScaffoldWasntCast
+		cs.subtype = "you_havent"
+		return cs
+	}
+
+	// Era 1 r60 batch 3 — Go-side mirrors for audit batch 3 regexes. Each
+	// routes to an existing scaffold; no new enums introduced. Ordered
+	// most-specific first.
+
+	// Card-type-reveal broadened — past tense ("if it was a creature card"),
+	// milled-this-way ("if a land card was milled this way"), "the exiled
+	// card is a snow land", "if that permanent is a chandra planeswalker".
+	// The existing matcher requires literal "it's a … card"; this catches
+	// the variants. Routes to CardTypeReveal with detected subtype.
+	if matchedCardTypeRevealBroad(txt) {
+		cs.kind = condScaffoldCardTypeReveal
+		cs.subtype = inferCardTypeRevealSubtype(txt)
+		return cs
+	}
+
+	// Counter-state broadened — bare-existence ("has a counter on it"),
+	// passive-none ("there are no X counters on it"), fewer-than threshold,
+	// exactly-N, odd-number-of, past-tense "it had a X counter on it",
+	// "your opponents control no permanents with bounty counters". Each
+	// routes to the closest-fit existing scaffold:
+	//   - "has a counter on it" / "has an X counter on it" → SelfHasCounter
+	//   - "has fewer than N" / "exactly N" / "had a -1/-1" / "no X counters" → SelfHasNoCounter or CountersOnSelfGE
+	// Falls back to bare flag-stamp via SelfHasNoCounter when no count parses.
+	if (strings.Contains(txt, "has a counter on it") ||
+		strings.Contains(txt, "has an indestructible counter") ||
+		strings.Contains(txt, "has an? \\S+ counter")) &&
+		!strings.Contains(txt, "doesn't have") {
+		cs.kind = condScaffoldSelfHasCounter
+		cs.subtype = "+1/+1"
+		cs.count = 1
+		for _, k := range []string{"indestructible", "+1/+1", "-1/-1", "oil",
+			"loyalty", "stun", "charge", "shield", "echo", "conqueror", "ki",
+			"blood", "release", "dread", "wreck", "luck", "tower", "omen",
+			"bounty", "rad", "arrowhead"} {
+			if strings.Contains(txt, "a "+k+" counter") || strings.Contains(txt, "an "+k+" counter") {
+				cs.subtype = k
+				break
+			}
+		}
+		return cs
+	}
+	if strings.Contains(txt, "has fewer than") && strings.Contains(txt, "counters") {
+		cs.kind = condScaffoldSelfHasNoCounter
+		cs.subtype = "+1/+1"
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	if strings.Contains(txt, "has exactly") && strings.Contains(txt, "counters") {
+		cs.kind = condScaffoldSelfHasCounter
+		cs.subtype = "+1/+1"
+		cs.count = 4
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+	if strings.Contains(txt, "odd number of") && strings.Contains(txt, "counters") {
+		cs.kind = condScaffoldSelfHasCounter
+		cs.subtype = "+1/+1"
+		cs.count = 1
+		return cs
+	}
+	if strings.Contains(txt, "had a -1/-1 counter") || strings.Contains(txt, "had an indestructible counter") {
+		cs.kind = condScaffoldSelfHasNoCounter
+		cs.subtype = "-1/-1"
+		if strings.Contains(txt, "indestructible") {
+			cs.subtype = "indestructible"
+		}
+		return cs
+	}
+	if strings.Contains(txt, "there are no") && strings.Contains(txt, "counters on") {
+		cs.kind = condScaffoldSelfHasNoCounter
+		cs.subtype = "+1/+1"
+		for _, k := range []string{"echo", "arrowhead", "release", "dread",
+			"wreck", "luck", "tower", "omen", "bounty", "rad"} {
+			if strings.Contains(txt, "no "+k+" counter") {
+				cs.subtype = k
+				break
+			}
+		}
+		return cs
+	}
+	if strings.Contains(txt, "control no permanents with") && strings.Contains(txt, "counter") {
+		cs.kind = condScaffoldSelfHasNoCounter
+		cs.subtype = "bounty"
+		for _, k := range []string{"bounty", "oil", "rad"} {
+			if strings.Contains(txt, k+" counter") {
+				cs.subtype = k
+				break
+			}
+		}
+		return cs
+	}
+	if strings.Contains(txt, "intensity is") &&
+		(strings.Contains(txt, "or more") || strings.Contains(txt, "or greater")) {
+		cs.kind = condScaffoldSelfHasCounter
+		cs.subtype = "intensity"
+		cs.count = 3
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+
+	// Combat-state broadening — "it's attacking one of your opponents"
+	// (present-tense, generic phrasing), "it was blocked this turn",
+	// "this creature was dealt damage this turn", "they didn't attack you
+	// that turn", "a pirate and a vehicle attacked this combat". Routes
+	// to AttackedOrBlockedCombat (covers blocked/attacked) or
+	// AttackedThisTurn for the tribal-combat case.
+	if strings.Contains(txt, "it's attacking") &&
+		(strings.Contains(txt, "your opponents") || strings.Contains(txt, "one of your")) {
+		cs.kind = condScaffoldIsAttacking
+		return cs
+	}
+	if strings.Contains(txt, "was blocked this turn") ||
+		strings.Contains(txt, "was dealt damage this turn") {
+		cs.kind = condScaffoldAttackedOrBlockedCombat
+		return cs
+	}
+	if (strings.Contains(txt, "didn't attack you that turn") ||
+		strings.Contains(txt, "didn't attack you this turn")) {
+		cs.kind = condScaffoldDidntAttackThisTurn
+		return cs
+	}
+	if strings.Contains(txt, "attacked this combat") {
+		cs.kind = condScaffoldAttackedThisTurn
+		return cs
+	}
+
+	// Turn/phase — "it's an opponent's turn" / "it's not that player's turn"
+	// (mirror of not_their_turn), "it's night" (MID nightbound trigger).
+	if strings.Contains(txt, "it's an opponent's turn") ||
+		strings.Contains(txt, "it's not that player's turn") {
+		cs.kind = condScaffoldNotTheirTurn
+		cs.subtype = "opp_turn"
+		return cs
+	}
+	if strings.Contains(txt, "it's night") || strings.Contains(txt, "it becomes night") {
+		cs.kind = condScaffoldBeginningOfOrdinalStep
+		cs.subtype = "night"
+		return cs
+	}
+	if strings.Contains(txt, "second time this ability has resolved") ||
+		strings.Contains(txt, "third time this ability has resolved") {
+		cs.kind = condScaffoldFirstTimeResolvedThisTurn
+		cs.subtype = "nth"
+		return cs
+	}
+
+	// Past-turn negative actions — generic flag-clearing scaffolds. Each
+	// routes to DidPriorAction with subtype encoding the verb so the
+	// existing apply-case knows to leave the matching Turn counter at 0.
+	if strings.Contains(txt, "didn't play a land this turn") {
+		cs.kind = condScaffoldDidPriorAction
+		cs.subtype = "didnt_play_land"
+		return cs
+	}
+	if strings.Contains(txt, "didn't activate a loyalty ability") {
+		cs.kind = condScaffoldDidPriorAction
+		cs.subtype = "didnt_activate_loyalty"
+		return cs
+	}
+	if strings.Contains(txt, "cast two or more spells last turn") ||
+		strings.Contains(txt, "cast three or more spells last turn") {
+		cs.kind = condScaffoldPriorTurnSpellCount
+		cs.count = 2
+		return cs
+	}
+	if strings.Contains(txt, "opponent cast") && strings.Contains(txt, "spell this turn") {
+		cs.kind = condScaffoldDidPriorAction
+		cs.subtype = "opp_cast_typed"
+		return cs
+	}
+	if strings.Contains(txt, "lost") && strings.Contains(txt, "or more life this turn") {
+		cs.kind = condScaffoldLostLifeLastTurn
+		cs.subtype = "this_turn"
+		return cs
+	}
+	if strings.Contains(txt, "committed a crime this turn") {
+		cs.kind = condScaffoldDidPriorAction
+		cs.subtype = "committed_crime"
+		return cs
+	}
+
+	// Is attached to a creature — The Reality Chip equipment-style aura
+	// gate. Routes to EquipmentAttached.
+	if strings.Contains(txt, "is attached to a creature") ||
+		strings.Contains(txt, "while attached to a creature") {
+		cs.kind = condScaffoldEquipmentAttached
+		cs.subtype = "attached"
+		return cs
+	}
+
+	// Devotion compound — "your devotion to white and black is seven or
+	// greater". No condScaffoldDevotion enum (devotion arrives as a typed
+	// AST Kind, not raw text), but covering here so the audit's
+	// devotion_compound_ge regex stays in sync with parser coverage. Route
+	// to Domain as a close-enough proxy (both are "count-distinct-pip-types"
+	// scaffolds that the verifier reads via PermanentColors).
+	if strings.Contains(txt, "your devotion to") &&
+		(strings.Contains(txt, "or more") || strings.Contains(txt, "or greater")) {
+		cs.kind = condScaffoldDomain
+		cs.subtype = "devotion"
+		cs.count = 7
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+
+	// "you don't control a <subtype>" tribal-negation. Routes to
+	// YouControlSubtype with subtype="not_<name>" so the apply branch can
+	// CLEAR that subtype from the seat rather than placing one.
+	if strings.Contains(txt, "you don't control a") || strings.Contains(txt, "you don't control an ") {
+		// Strip the negation prefix and reuse the tribal extractor.
+		for _, head := range []string{"you don't control a ", "you don't control an "} {
+			idx := strings.Index(txt, head)
+			if idx < 0 {
+				continue
+			}
+			rest := txt[idx+len(head):]
+			end := len(rest)
+			for j, r := range rest {
+				if r == ' ' || r == ',' || r == '.' || r == ';' {
+					end = j
+					break
+				}
+			}
+			if end > 0 && !isGenericWord(rest[:end]) {
+				cs.kind = condScaffoldYouControlSubtype
+				cs.subtype = "not_" + rest[:end]
+				return cs
+			}
+		}
+	}
+
+	// Library size threshold — "you have N or more cards in your library"
+	// (Battle of Wits), "there are no nonbasic land cards in your library"
+	// (Magmatic Scorchwing), "if you have no land cards in your hand"
+	// (Bounty of the Deep). Routes to HandSizeThreshold (library/hand size
+	// both gate-checks) with subtype distinguishing the zone.
+	if (strings.Contains(txt, "cards in your library") || strings.Contains(txt, "land cards in your hand")) &&
+		(strings.Contains(txt, "or more") || strings.Contains(txt, "no ") || strings.Contains(txt, "if you have no")) {
+		cs.kind = condScaffoldHandSizeThreshold
+		cs.subtype = "library_or_hand_lookup"
+		cs.count = 1
+		if n := parseFirstSpelledInt(txt); n > 0 {
+			cs.count = n
+		}
+		return cs
+	}
+
+	// Defending player is poisoned — Septic Rats / infect-state predicate.
+	// Routes to NotDeclaredAttacker as the closest combat-state scaffold
+	// (the apply flags defending player's state).
+	if strings.Contains(txt, "defending player is poisoned") {
+		cs.kind = condScaffoldNotDeclaredAttacker
+		cs.subtype = "poisoned"
+		return cs
+	}
+
+	// Power differs from base — "its power was different from its base
+	// power" (Jason Bright). Routes to SelfPowerGE with subtype="differs".
+	// Applied state: bump BasePower so layered eval makes it differ.
+	if strings.Contains(txt, "different from its base power") {
+		cs.kind = condScaffoldSelfPowerGE
+		cs.subtype = "differs"
+		cs.count = 3
+		return cs
+	}
+
+	// Exact P/T match — "that creature is 1/1" (Sigil Captain).
+	if matchExactPTRe(txt) {
+		cs.kind = condScaffoldSelfPowerGE
+		cs.subtype = "exact"
+		cs.count = 1
+		return cs
+	}
+
+	// Self has keyword — "it has flying", "it has first strike". Placed at
+	// the END of the batch 2/3 block because keyword-self-state matches
+	// promiscuously on continuation clauses ("…, ~ has indestructible" /
+	// "…, ~ has menace"). Running last lets the more-specific batch 2/3
+	// matchers (token, renowned, suspected, zone-state, life, combat) return
+	// first; this branch handles the genuine "it has <kw>" predicates.
+	if hasKeywordSelfStateMatch(txt) {
+		cs.kind = condScaffoldSelfHasKeyword
+		cs.subtype = parseKeywordFromSelfState(txt)
+		return cs
+	}
+
 	// Tribal: "if you control another <subtype>" / "if you control a <subtype>".
 	// Run last because it's the most permissive matcher.
 	if strings.Contains(txt, "you control") {
@@ -4047,6 +4718,150 @@ func detectConditionScaffold(cond *gameast.Condition) conditionScaffold {
 	}
 
 	return conditionScaffold{}
+}
+
+// hasKeywordSelfStateMatch checks for "it has <keyword>" / "this creature has
+// <keyword>" / "~ has <keyword>" predicates where the keyword is a printed
+// ability word. Used by detectConditionScaffold's SelfHasKeyword branch.
+func hasKeywordSelfStateMatch(txt string) bool {
+	heads := []string{"it has ", "this creature has ", "~ has "}
+	keywords := []string{"flying", "trample", "first strike", "double strike",
+		"deathtouch", "lifelink", "hexproof", "menace", "vigilance", "reach",
+		"defender", "haste", "madness", "prowess", "shroud", "indestructible",
+		"horsemanship", "fear", "intimidate", "skulk", "infect", "toxic",
+		"unblockable", "annihilator"}
+	for _, head := range heads {
+		idx := strings.Index(txt, head)
+		if idx < 0 {
+			continue
+		}
+		rest := txt[idx+len(head):]
+		for _, k := range keywords {
+			if strings.HasPrefix(rest, k) {
+				// Anchor at word boundary so "deathtouch" doesn't match
+				// "deathtouch counters" — followup char must be space, comma,
+				// period, or end-of-string.
+				after := rest[len(k):]
+				if after == "" || after[0] == ' ' || after[0] == ',' || after[0] == '.' || after[0] == ';' {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// matchedCardTypeRevealBroad covers the past-tense / milled-this-way / exiled-
+// card / discarded-card / specific-planeswalker subtype phrasings the existing
+// CardTypeReveal matcher (which requires "it's a … card") misses.
+func matchedCardTypeRevealBroad(txt string) bool {
+	cardTypes := []string{"land", "creature", "artifact", "enchantment",
+		"instant", "sorcery", "planeswalker", "forest", "mountain", "island",
+		"swamp", "plains", "legendary", "mount", "nonland"}
+	for _, t := range cardTypes {
+		if strings.Contains(txt, "if it was a "+t+" card") ||
+			strings.Contains(txt, "if it was an "+t+" card") ||
+			strings.Contains(txt, "if a "+t+" card was milled") ||
+			strings.Contains(txt, "if an "+t+" card was milled") ||
+			strings.Contains(txt, "if a "+t+" card was exiled") ||
+			strings.Contains(txt, "if a "+t+" card is exiled") ||
+			strings.Contains(txt, "if that card is a "+t) ||
+			strings.Contains(txt, "if that card is an "+t) ||
+			strings.Contains(txt, "the exiled card is a "+t) ||
+			strings.Contains(txt, "the discarded card was a "+t) ||
+			strings.Contains(txt, "if it's a "+t+" card") {
+			return true
+		}
+	}
+	// "if that permanent is a chandra planeswalker" — proper-noun + type.
+	if strings.Contains(txt, "if that permanent is a") && strings.Contains(txt, "planeswalker") {
+		return true
+	}
+	if strings.Contains(txt, "if a card with the chosen name was milled") {
+		return true
+	}
+	if strings.Contains(txt, "the exiled card doesn't have suspend") {
+		return true
+	}
+	return false
+}
+
+// inferCardTypeRevealSubtype scans for the first matching card-type keyword
+// and returns it as the scaffold subtype. Used by the broad CardTypeReveal
+// branch above.
+func inferCardTypeRevealSubtype(txt string) string {
+	for _, t := range []string{"forest", "mountain", "island", "swamp", "plains",
+		"creature", "land", "artifact", "enchantment", "instant", "sorcery",
+		"planeswalker", "mount", "legendary", "nonland"} {
+		if strings.Contains(txt, " "+t+" card") ||
+			strings.Contains(txt, "is a "+t) ||
+			strings.Contains(txt, "is an "+t) {
+			return t
+		}
+	}
+	return "creature"
+}
+
+// matchExactPTRe matches "that creature is N/N" (Sigil Captain). We avoid
+// regexp.MustCompile at package init time and keep this hand-rolled because
+// the pattern is tiny.
+func matchExactPTRe(txt string) bool {
+	idx := strings.Index(txt, "that creature is ")
+	if idx < 0 {
+		return false
+	}
+	rest := txt[idx+len("that creature is "):]
+	// Need at least "N/N" — digit, slash, digit.
+	if len(rest) < 3 {
+		return false
+	}
+	if rest[0] < '0' || rest[0] > '9' {
+		return false
+	}
+	for i := 1; i < len(rest) && i < 6; i++ {
+		if rest[i] == '/' && i+1 < len(rest) && rest[i+1] >= '0' && rest[i+1] <= '9' {
+			return true
+		}
+		if rest[i] < '0' || rest[i] > '9' {
+			break
+		}
+	}
+	return false
+}
+
+// parseKeywordFromSelfState extracts the keyword that follows the FIRST
+// "it has " / "this creature has " / "~ has " head — i.e. the keyword that
+// the self-state predicate is testing for, not whatever keyword appears in
+// the granted continuation clause. Falls back to "flying" if no match.
+func parseKeywordFromSelfState(txt string) string {
+	heads := []string{"it has ", "this creature has ", "~ has "}
+	keywords := []string{"first strike", "double strike", "deathtouch", "lifelink",
+		"hexproof", "menace", "vigilance", "reach", "defender", "haste",
+		"madness", "prowess", "shroud", "indestructible", "horsemanship", "fear",
+		"intimidate", "skulk", "infect", "toxic", "unblockable", "annihilator",
+		"trample", "flying"}
+	bestIdx := -1
+	bestHead := ""
+	for _, h := range heads {
+		idx := strings.Index(txt, h)
+		if idx >= 0 && (bestIdx < 0 || idx < bestIdx) {
+			bestIdx = idx
+			bestHead = h
+		}
+	}
+	if bestIdx < 0 {
+		return "flying"
+	}
+	rest := txt[bestIdx+len(bestHead):]
+	for _, k := range keywords {
+		if strings.HasPrefix(rest, k) {
+			after := rest[len(k):]
+			if after == "" || after[0] == ' ' || after[0] == ',' || after[0] == '.' || after[0] == ';' {
+				return k
+			}
+		}
+	}
+	return "flying"
 }
 
 func maxInt(a, b int) int {
@@ -6721,16 +7536,32 @@ func applyConditionScaffolding(gs *gameengine.GameState, cond *gameast.Condition
 		// "this creature's power is N or more". Bump srcPerm's BasePower
 		// so layered P/T evaluation clears the threshold. If srcPerm has
 		// no Card or BasePower is already >= count, this is a no-op.
+		// Era 1 r60 batch 2: subtype="toughness" bumps BaseToughness instead;
+		// subtype="compare" bumps both so per-creature comparisons resolve.
 		threshold := cs.count
 		if threshold < 1 {
 			threshold = 3
 		}
 		if srcPerm != nil && srcPerm.Card != nil {
-			if srcPerm.Card.BasePower < threshold {
-				srcPerm.Card.BasePower = threshold
+			switch cs.subtype {
+			case "toughness":
+				if srcPerm.Card.BaseToughness < threshold {
+					srcPerm.Card.BaseToughness = threshold
+				}
+			case "compare":
+				if srcPerm.Card.BasePower < threshold {
+					srcPerm.Card.BasePower = threshold
+				}
+				if srcPerm.Card.BaseToughness < threshold {
+					srcPerm.Card.BaseToughness = threshold
+				}
+			default:
+				if srcPerm.Card.BasePower < threshold {
+					srcPerm.Card.BasePower = threshold
+				}
 			}
 		}
-		cs.description = fmt.Sprintf("set srcPerm BasePower>=%d", threshold)
+		cs.description = fmt.Sprintf("set srcPerm %s>=%d", nonEmpty(cs.subtype, "BasePower"), threshold)
 
 	case condScaffoldTopOfLibraryType:
 		// "the top card of your library is a creature/nonland card".
@@ -6756,6 +7587,145 @@ func applyConditionScaffolding(gs *gameengine.GameState, cond *gameast.Condition
 			seat.Library = append([]*gameengine.Card{top}, seat.Library...)
 		}
 		cs.description = fmt.Sprintf("prepended %q card to seat 0 library", sub)
+
+	case condScaffoldSelfPowerParity:
+		// "as long as ~'s power is even/odd" (Kianne, Corrupted Memory).
+		// Set BasePower to a value with the requested parity so the gated
+		// continuous effect's predicate evaluates true at test time.
+		parity := cs.subtype
+		if parity != "odd" {
+			parity = "even"
+		}
+		target := 4 // even default
+		if parity == "odd" {
+			target = 3
+		}
+		if srcPerm != nil && srcPerm.Card != nil {
+			srcPerm.Card.BasePower = target
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["power_parity_"+parity] = 1
+		}
+		cs.description = fmt.Sprintf("set srcPerm BasePower=%d (parity=%s)", target, parity)
+
+	case condScaffoldSelfHasKeyword:
+		// "it has flying" / "it has first strike" / "it has madness". The
+		// engine reads keyword status via Permanent.HasKeyword (combat
+		// eligibility) and via per-flag bits set by the layer system. Since
+		// Card has no plain []string keyword field, we route through
+		// srcPerm.Flags so predicates that check Flags["has_<kw>"] succeed.
+		kw := cs.subtype
+		if kw == "" {
+			kw = "flying"
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["has_"+strings.ReplaceAll(kw, " ", "_")] = 1
+			// Canonical engine flag names where they differ from "has_<kw>".
+			switch kw {
+			case "flying":
+				srcPerm.Flags["flying"] = 1
+			case "trample":
+				srcPerm.Flags["trample"] = 1
+			case "deathtouch":
+				srcPerm.Flags["deathtouch"] = 1
+			case "lifelink":
+				srcPerm.Flags["lifelink"] = 1
+			case "first strike":
+				srcPerm.Flags["first_strike"] = 1
+			case "double strike":
+				srcPerm.Flags["double_strike"] = 1
+			case "vigilance":
+				srcPerm.Flags["vigilance"] = 1
+			case "haste":
+				srcPerm.Flags["haste"] = 1
+			case "indestructible":
+				srcPerm.Flags["indestructible"] = 1
+			case "hexproof":
+				srcPerm.Flags["hexproof"] = 1
+			case "menace":
+				srcPerm.Flags["menace"] = 1
+			case "reach":
+				srcPerm.Flags["reach"] = 1
+			case "defender":
+				srcPerm.Flags["defender"] = 1
+			case "madness":
+				srcPerm.Flags["madness"] = 1
+			}
+		}
+		cs.description = fmt.Sprintf("set has_<%s> + canonical-keyword flag on srcPerm", kw)
+
+	case condScaffoldSelfIsToken:
+		// "it isn't a token" / "it's not a token" / "is a token". Token
+		// status is computed via Permanent.IsToken() reading Card.Types for
+		// "token". Mutate Types accordingly so the runtime answer matches the
+		// scaffold's intent. Default subtype is "not_token" (more common
+		// phrasing — see Vaultborn Tyrant, Gruff Triplets); "token" inverts.
+		wantNonToken := cs.subtype != "token"
+		if srcPerm != nil && srcPerm.Card != nil {
+			out := srcPerm.Card.Types[:0]
+			for _, t := range srcPerm.Card.Types {
+				if strings.EqualFold(t, "token") {
+					continue
+				}
+				out = append(out, t)
+			}
+			srcPerm.Card.Types = out
+			if !wantNonToken {
+				srcPerm.Card.Types = append(srcPerm.Card.Types, "token")
+			}
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			if wantNonToken {
+				srcPerm.Flags["not_token"] = 1
+				delete(srcPerm.Flags, "is_token")
+			} else {
+				srcPerm.Flags["is_token"] = 1
+				delete(srcPerm.Flags, "not_token")
+			}
+		}
+		cs.description = fmt.Sprintf("set srcPerm.Card.Types[token]=%v + flag", !wantNonToken)
+
+	case condScaffoldSelfZoneState:
+		// "as long as ~ is on the stack" / "at the top of your library" /
+		// "this card is exiled" / "~ is in the command zone". Flag the
+		// source's zone state on srcPerm and (where it matters) move the
+		// underlying Card to the named seat-zone so the verifier sees the
+		// card in the right list.
+		zone := cs.subtype
+		if zone == "" {
+			zone = "stack"
+		}
+		if srcPerm != nil {
+			if srcPerm.Flags == nil {
+				srcPerm.Flags = map[string]int{}
+			}
+			srcPerm.Flags["zone_"+zone] = 1
+		}
+		// Move srcPerm.Card to the named zone if seats are wired and the
+		// card exists. Battlefield is preserved (the source must still be
+		// visible to the scaffold's verifier).
+		if srcPerm != nil && srcPerm.Card != nil && len(gs.Seats) > 0 && gs.Seats[0] != nil {
+			seat := gs.Seats[0]
+			switch zone {
+			case "library_top":
+				seat.Library = append([]*gameengine.Card{srcPerm.Card}, seat.Library...)
+			case "exile":
+				seat.Exile = append(seat.Exile, srcPerm.Card)
+			case "command":
+				seat.CommandZone = append(seat.CommandZone, srcPerm.Card)
+			case "stack":
+				// Stack residence is StackItem-level — we just flag it. The
+				// scaffold's verifier checks Flags["zone_stack"].
+			}
+		}
+		cs.description = fmt.Sprintf("stamped zone_%s flag (+ zone replication)", zone)
 
 	case condScaffoldPermanentMVLE:
 		// "it's a permanent card with mana value N or less" — Matter Reshaper
@@ -7377,6 +8347,16 @@ func traceConditionScaffolding(cond *gameast.Condition, tr *Tracer) {
 		desc = fmt.Sprintf("prepended %q card to seat 0 library", nonEmpty(cs.subtype, "creature"))
 	case condScaffoldCounterPutOnPermTurn:
 		desc = "routed to put_counter_this_turn (passive-voice variant)"
+
+	// Era 1 r60 batch 2 — trace descriptions for the 4 net-new scaffolds.
+	case condScaffoldSelfPowerParity:
+		desc = fmt.Sprintf("set srcPerm BasePower with parity=%s", nonEmpty(cs.subtype, "even"))
+	case condScaffoldSelfHasKeyword:
+		desc = fmt.Sprintf("stamped has_<%s> + canonical-keyword flag on srcPerm", nonEmpty(cs.subtype, "flying"))
+	case condScaffoldSelfIsToken:
+		desc = fmt.Sprintf("set srcPerm.Card.Types[token] to match %q + flag", nonEmpty(cs.subtype, "not_token"))
+	case condScaffoldSelfZoneState:
+		desc = fmt.Sprintf("stamped zone_%s flag (+ zone replication)", nonEmpty(cs.subtype, "stack"))
 	}
 	tr.Record("CONDITION_SETUP", "%q → %s", cs.rawText, desc)
 }
