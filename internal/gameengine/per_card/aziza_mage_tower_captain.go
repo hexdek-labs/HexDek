@@ -89,16 +89,23 @@ func azizaSpellCopy(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 		}
 	}
 
-	// Push the copy. IsCopy=true so CR §707.10 ceases the spell post-
-	// resolution and so the engine knows to skip a re-cast pipeline.
+	// Route the copy through MintSpellCopy so the copy carries a fresh
+	// CP-provenance InstanceID rather than aliasing the source *Card
+	// pointer. Without this, stack.go:1312's §707.10 cease path fires on
+	// the SOURCE's InstanceID when the copy resolves — the source is then
+	// flagged as fabricated by checkZoneConservation on every subsequent
+	// invariant tick (Loki r60 seed-42 game 2762 / Lash Out / 34 hits;
+	// Phase G closure for the dominant residual after Phase F's
+	// MintSpellCopy chokepoint closed 10 sibling sites).
+	copyCard := gameengine.MintSpellCopy(gs, castCard)
 	copyItem := &gameengine.StackItem{
 		Controller: casterSeat,
-		Card:       castCard,
+		Card:       copyCard,
 		IsCopy:     true,
 		Targets:    originatingTargets,
 		CostMeta:   map[string]interface{}{},
 	}
-	gs.Stack = append(gs.Stack, copyItem)
+	gameengine.PushStackItem(gs, copyItem)
 
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":       casterSeat,

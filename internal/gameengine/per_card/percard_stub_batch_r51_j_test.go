@@ -72,8 +72,17 @@ func TestAziza_R51_CopiesSpellOnInstantCast(t *testing.T) {
 	if !top.IsCopy {
 		t.Errorf("expected copy StackItem to have IsCopy=true")
 	}
-	if top.Card != castCard {
-		t.Errorf("expected copy to reference the same Card pointer")
+	// Phase G (r60): the copy must be a freshly-minted *Card with its
+	// own InstanceID, NOT an alias of the source pointer. Aliasing the
+	// source caused stack.go:1312's §707.10 cease path to retire the
+	// source's InstanceID when the copy resolved (Loki r60 seed-42
+	// game 2762 / Lash Out — 34 ZoneConservation hits, dominant
+	// residual at 5K depth). Phase G routes Aziza through MintSpellCopy.
+	if top.Card == castCard {
+		t.Errorf("expected copy to be a fresh *Card from MintSpellCopy, not aliasing source pointer")
+	}
+	if top.Card == nil || top.Card.Name != castCard.Name {
+		t.Errorf("expected copy to share Name with source; got %v", top.Card)
 	}
 	// All three cost-creatures should be tapped.
 	if !c1.Tapped || !c2.Tapped || !c3.Tapped {
