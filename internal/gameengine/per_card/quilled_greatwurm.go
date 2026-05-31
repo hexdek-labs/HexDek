@@ -52,7 +52,13 @@ func quilledGreatwurmCombatDamage(gs *gameengine.GameState, perm *gameengine.Per
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	dmgSeat, _ := ctx["damager_seat"].(int)
+	// Engine fires combat_damage_player with source_seat + source_card +
+	// defender_seat + amount. Legacy ctx["damager_seat"]/["damager_perm"]
+	// are read as fallbacks.
+	dmgSeat, ok := ctx["source_seat"].(int)
+	if !ok {
+		dmgSeat, _ = ctx["damager_seat"].(int)
+	}
 	if dmgSeat != perm.Controller {
 		return
 	}
@@ -65,6 +71,24 @@ func quilledGreatwurmCombatDamage(gs *gameengine.GameState, perm *gameengine.Per
 		return
 	}
 	damager, _ := ctx["damager_perm"].(*gameengine.Permanent)
+	// Engine doesn't thread damager_perm; look up the damaging creature on
+	// the source seat's battlefield by source_card name when missing.
+	if damager == nil {
+		srcName, _ := ctx["source_card"].(string)
+		if srcName == "" {
+			return
+		}
+		seat := gs.Seats[dmgSeat]
+		if seat == nil {
+			return
+		}
+		for _, p := range seat.Battlefield {
+			if p != nil && p.Card != nil && p.Card.DisplayName() == srcName {
+				damager = p
+				break
+			}
+		}
+	}
 	if damager == nil || damager.Card == nil || !damager.IsCreature() {
 		return
 	}

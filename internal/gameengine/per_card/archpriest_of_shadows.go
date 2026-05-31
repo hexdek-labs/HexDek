@@ -107,8 +107,17 @@ func archpriestOfShadowsCombatDamage(gs *gameengine.GameState, perm *gameengine.
 	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
 		return
 	}
+	// Engine fires combat_damage_player with source_seat + source_card (name).
+	// Legacy ctx["damager_perm"] (a *Permanent) is supported as a fallback for
+	// callers that thread it explicitly.
 	damager, _ := ctx["damager_perm"].(*gameengine.Permanent)
-	if damager != perm {
+	if damager == nil {
+		srcSeat, hasSeat := ctx["source_seat"].(int)
+		srcName, _ := ctx["source_card"].(string)
+		if !hasSeat || srcSeat != perm.Controller || srcName != perm.Card.DisplayName() {
+			return
+		}
+	} else if damager != perm {
 		return
 	}
 	amount, _ := ctx["amount"].(int)
