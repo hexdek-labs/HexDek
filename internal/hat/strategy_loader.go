@@ -139,33 +139,62 @@ type freyaEvalWeights struct {
 // a StrategyProfile. Prefers the compact .strategy.json format; falls back
 // to the full _freya.json. Returns nil if neither exists or can't be
 // parsed (graceful degradation — hat runs without strategy).
+//
+// Search order for each format: <deckdir>/freya/<base>.strategy.json,
+// then <deckdir>/../freya/<base>.strategy.json (parent-dir fallback).
+//
+// r60-cedh-bottleneck fix (docs/hat-bottleneck-r60.md): the parent-dir
+// fallback covers the common gauntlet layout
+//
+//   /tmp/cedh-seat-bias/
+//     freya/<deck>.strategy.json      ← analysis here
+//     batch_a/<deck>.txt              ← deck staged here
+//     batch_b/<deck>.txt
+//
+// where the analysis is staged once at the root and decks are partitioned
+// into batch dirs. The pre-fix loader only checked the deck's immediate
+// parent's freya/ subdir, so batch-staged decks silently got profile=nil
+// and the hat played without any strategy intelligence. This drove the
+// false-null result chain in PRs #793 + #826 + #848 — every architectural
+// change in those PRs depended on Strategy.ComboPieces being populated,
+// which it never was for these gauntlet runs.
 func LoadStrategyFromFreya(deckPath string) *StrategyProfile {
 	dir := filepath.Dir(deckPath)
 	base := filepath.Base(deckPath)
 	base = strings.TrimSuffix(base, filepath.Ext(base))
 
-	// Prefer compact strategy format.
-	stratPath := filepath.Join(dir, "freya", base+".strategy.json")
-	if data, err := os.ReadFile(stratPath); err == nil {
-		var sj strategyFileJSON
-		if err := json.Unmarshal(data, &sj); err == nil {
-			return buildFromStrategyJSON(&sj)
+	// Candidate roots: deck's immediate parent, then deck's grandparent.
+	// Grandparent covers the staged-pool gauntlet layout above.
+	roots := []string{dir, filepath.Dir(dir)}
+
+	// Prefer compact strategy format across all roots before falling
+	// back to the full Freya JSON — a parent-dir strategy.json should
+	// still beat a deck-local _freya.json when both exist.
+	for _, root := range roots {
+		stratPath := filepath.Join(root, "freya", base+".strategy.json")
+		if data, err := os.ReadFile(stratPath); err == nil {
+			var sj strategyFileJSON
+			if err := json.Unmarshal(data, &sj); err == nil {
+				return buildFromStrategyJSON(&sj)
+			}
 		}
 	}
 
 	// Fallback to full Freya JSON.
-	freyaPath := filepath.Join(dir, "freya", base+"_freya.json")
-	data, err := os.ReadFile(freyaPath)
-	if err != nil {
-		return nil
+	for _, root := range roots {
+		freyaPath := filepath.Join(root, "freya", base+"_freya.json")
+		data, err := os.ReadFile(freyaPath)
+		if err != nil {
+			continue
+		}
+		var fj freyaJSON
+		if err := json.Unmarshal(data, &fj); err != nil {
+			continue
+		}
+		return buildStrategyProfile(&fj)
 	}
 
-	var fj freyaJSON
-	if err := json.Unmarshal(data, &fj); err != nil {
-		return nil
-	}
-
-	return buildStrategyProfile(&fj)
+	return nil
 }
 
 func buildFromStrategyJSON(sj *strategyFileJSON) *StrategyProfile {
