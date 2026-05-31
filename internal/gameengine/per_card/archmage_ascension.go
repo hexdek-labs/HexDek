@@ -18,10 +18,12 @@ import (
 //   - OnTrigger("end_step"): "each end step" — fires for every player's
 //     end step, gated on the controller having drawn 2+ this turn. AI
 //     policy auto-accepts the "may" (monotone upside).
-//   - The 6+ counter draw-replacement is a §614 replacement effect that
-//     requires registering against the controller's draw event. The
-//     engine's per-card replacement registration is limited to the
-//     built-in table; emitPartial.
+//   - The 6+ counter draw-replacement is wired via
+//     archmageAscensionTutorOnDraw — uses the player_would_draw
+//     trigger (same precedent as Chains of Mephistopheles) to replace
+//     the draw with a library tutor when Ascension has ≥6 quest
+//     counters. R60 batch 9: dropped the stale "emitPartial" doc
+//     mention — the replacement shipped in R52 batchM.
 func registerArchmageAscension(r *Registry) {
 	r.OnTrigger("Archmage Ascension", "end_step", archmageAscensionEndStep)
 	// R52 batchM: 6+ quest counters → "draw a card" becomes "search

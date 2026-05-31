@@ -23,7 +23,10 @@ import (
 // Implementation:
 //   - Partner with Frodo: declarative deck-building mechanic. Same shape
 //     as registerFrodoAdventurousHobbit — the partner ETB tutor lives in
-//     party/lobby code, not in per-card runtime.
+//     party/lobby code, not in per-card runtime. R60 batch 9: dropped
+//     the stale "partner_with_etb_search_for_frodo_declarative_only"
+//     emitPartial; the partner-with semantics are handled in the party
+//     layer, not by a missing per_card hook.
 //   - "combat_begin" trigger gated on active_seat == controller: drop a
 //     Food token via gameengine.CreateFoodToken. De-duped per turn via a
 //     per-permanent flag so any extra-combat phases that ever land won't
@@ -40,12 +43,11 @@ func registerSamLoyalAttendant(r *Registry) {
 }
 
 func samLoyalAttendantETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "sam_loyal_attendant_partner_with_frodo"
-	if gs == nil || perm == nil || perm.Card == nil {
-		return
-	}
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"partner_with_etb_search_for_frodo_declarative_only")
+	// R60 batch 9: partner-with is handled at the party/lobby layer; no
+	// per_card ETB hook needed. Body kept for future per_card expansion
+	// (e.g., a fast-path mood emit for analytics if desired).
+	_ = gs
+	_ = perm
 }
 
 func samLoyalAttendantCombatBegin(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
