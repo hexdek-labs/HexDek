@@ -913,6 +913,13 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 				raw = strings.TrimSpace(archidektCategoryRE.ReplaceAllString(raw, ""))
 			}
 		}
+		// Fuzzy quantity normalization — transform alternate qty syntaxes
+		// (`x4 Card`, `Card x4`, `Card (4)`) into the canonical
+		// `<qty> Card` form before set-parens stripping eats `(4)`. Only
+		// fires when the line doesn't already start with a digit so the
+		// canonical `4 Card` path stays a no-op and the existing
+		// deckLineRE keeps owning the primary qty extraction.
+		raw = normalizeFuzzyQuantity(raw)
 		// Strip "(SET) 123" suffix (set code + collector number + foil flag).
 		if idx := strings.Index(raw, "("); idx > 0 {
 			raw = strings.TrimSpace(raw[:idx])
@@ -1541,6 +1548,60 @@ var partnerLineRE = regexp.MustCompile(`(?i)^\s*PARTNER\s*:\s*(.+?)\s*$`)
 // sideboard / companion / token card into the library (see
 // section_count_r60_test.go).
 var sectionHeaderRE = regexp.MustCompile(`(?i)^\s*(Sideboard|Maybeboard|Companion|Considering|Deck|Main\s*Deck|Mainboard|Commanders?|Tokens|Signature\s*Spells|Stickers|Attractions|Outside\s*the\s*Game|About)\s*:?\s*(?:\(\s*\d+\s*\))?\s*:?\s*$`)
+
+// fuzzyLeadingXQtyRE matches the leading-x quantity form `x4 Card` /
+// `X4 Card`. Captures (qty, name). Distinct from the canonical
+// leading-digit `4 Card` form that deckLineRE already handles —
+// fuzzy normalization only fires when the line lacks a leading digit.
+var fuzzyLeadingXQtyRE = regexp.MustCompile(`^\s*[xX](\d+)\s+(.+?)\s*$`)
+
+// fuzzyTrailingXQtyRE matches the trailing-x form `Card x4` /
+// `Card X4`. Captures (name, qty). The `\s+` before `[xX]` requires
+// whitespace separation so card names containing inner `x` chars
+// (e.g. "Xanthic Statue", "Naya Hexproof") don't accidentally match;
+// only an isolated `x<digits>` token at end-of-line qualifies.
+var fuzzyTrailingXQtyRE = regexp.MustCompile(`^\s*(.+?)\s+[xX](\d+)\s*$`)
+
+// fuzzyTrailingParenQtyRE matches the trailing parens-qty form
+// `Card (4)`. Captures (name, qty). Anchored to end-of-line with
+// digit-only parens content — `(M11)` (set code) and `(SET) 123`
+// (printing tail) have non-digit content and won't match, preserving
+// the existing set-parens strip path. Defensive against real Magic
+// card names: no card contains `(<digits>)` literal in its name, so
+// a positive match is unambiguously a quantity annotation.
+var fuzzyTrailingParenQtyRE = regexp.MustCompile(`^\s*(.+?)\s+\((\d+)\)\s*$`)
+
+// normalizeFuzzyQuantity converts alternate quantity syntaxes to the
+// canonical leading `<qty> <name>` form that deckLineRE expects. The
+// three supported alternate shapes:
+//
+//   - `x4 Lightning Bolt`        → `4 Lightning Bolt`  (leading x)
+//   - `Lightning Bolt x4`        → `4 Lightning Bolt`  (trailing x)
+//   - `Lightning Bolt (4)`       → `4 Lightning Bolt`  (trailing parens)
+//
+// No-op when the line already starts with a digit (`4 Card` /
+// `4x Card` — deckLineRE already handles those). Each alternate is
+// tried in order; the first match wins.
+//
+// Trailing-parens form must run BEFORE the set-parens strip in the
+// caller (the `(4)` would otherwise be eaten as a "(SET) 123" tail
+// and the quantity lost).
+func normalizeFuzzyQuantity(raw string) string {
+	trimmed := strings.TrimLeft(raw, " \t")
+	if len(trimmed) > 0 && trimmed[0] >= '0' && trimmed[0] <= '9' {
+		return raw
+	}
+	if m := fuzzyLeadingXQtyRE.FindStringSubmatch(raw); m != nil {
+		return m[1] + " " + m[2]
+	}
+	if m := fuzzyTrailingXQtyRE.FindStringSubmatch(raw); m != nil {
+		return m[2] + " " + m[1]
+	}
+	if m := fuzzyTrailingParenQtyRE.FindStringSubmatch(raw); m != nil {
+		return m[2] + " " + m[1]
+	}
+	return raw
+}
 
 // tappedoutDirectiveRE matches Tappedout's `#!<section>` directive
 // shape: `#!Commander`, `#!Mainboard`, `#!Sideboard`, `#!Maybeboard`,
