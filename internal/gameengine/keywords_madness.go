@@ -142,6 +142,14 @@ func OnDiscardMadness(gs *GameState, seatIdx int, card *Card) bool {
 	if seat == nil {
 		return false
 	}
+	// CR §800.4a — a player who has left the game can't activate replacement
+	// effects on their objects. The Madness "replace discard with exile"
+	// chain is moot once the owner has left; skip so no MadnessExile +
+	// ZoneCastGrant entry is registered for an already-ceased InstanceID
+	// (Phase F §400.7c fabrication closure).
+	if seat.LeftGame {
+		return false
+	}
 	// Card must still be in hand when this is called — DiscardCard
 	// invokes us before performing the hand→graveyard move.
 	if !cardInZone(seat, card, ZoneHand) {

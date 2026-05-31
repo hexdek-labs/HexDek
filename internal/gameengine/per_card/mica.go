@@ -77,8 +77,7 @@ func micaSpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 	victimName := victim.Card.DisplayName()
 	gameengine.SacrificePermanent(gs, victim, "mica_reader_of_ruins_cost")
 
-	copyCard := card.DeepCopy()
-	copyCard.IsCopy = true
+	copyCard := gameengine.MintSpellCopy(gs, card)
 	copyItem := &gameengine.StackItem{
 		Controller: perm.Controller,
 		Card:       copyCard,

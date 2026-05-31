@@ -291,6 +291,14 @@ func checkZoneConservationByInstanceID(gs *GameState) error {
 	// fabricated InstanceID). Zero false-positive risk.
 	for id := range present {
 		if _, ok := expected[id]; !ok {
+			name := ""
+			if gs.MintedInstanceIDNames != nil {
+				name = gs.MintedInstanceIDNames[id]
+			}
+			if name != "" {
+				return fmt.Errorf("ZoneConservation: InstanceID %q (%s) present in a zone but not in (Minted - Ceased) — fabrication or stale ceased entry",
+					id, name)
+			}
 			return fmt.Errorf("ZoneConservation: InstanceID %q present in a zone but not in (Minted - Ceased) — fabrication or stale ceased entry",
 				id)
 		}
@@ -2179,3 +2187,4 @@ var eventInstanceIDKeys = []string{
 	"enabler_instance_id",
 	"ability_instance_id",
 }
+

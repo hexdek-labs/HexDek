@@ -108,8 +108,7 @@ func azulaSpellCopy(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 		return
 	}
 
-	copyCard := card.DeepCopy()
-	copyCard.IsCopy = true
+	copyCard := gameengine.MintSpellCopy(gs, card)
 	copyItem := &gameengine.StackItem{
 		Controller: perm.Controller,
 		Card:       copyCard,

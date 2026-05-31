@@ -74,8 +74,7 @@ func roothaActivated(gs *gameengine.GameState, src *gameengine.Permanent, abilit
 
 	copied := false
 	if stackItem != nil && stackItem.Card != nil {
-		copyCard := stackItem.Card.DeepCopy()
-		copyCard.IsCopy = true
+		copyCard := gameengine.MintSpellCopy(gs, stackItem.Card)
 		copyItem := &gameengine.StackItem{
 			Controller: src.Controller,
 			Card:       copyCard,

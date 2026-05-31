@@ -75,8 +75,7 @@ func ivySpellCast(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 		})
 		return
 	}
-	copyCard := originItem.Card.DeepCopy()
-	copyCard.IsCopy = true
+	copyCard := gameengine.MintSpellCopy(gs, originItem.Card)
 	copyItem := &gameengine.StackItem{
 		Controller: perm.Controller,
 		Card:       copyCard,
