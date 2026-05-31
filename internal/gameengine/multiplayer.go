@@ -445,6 +445,16 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 				// as PR #106's LTB plumbing — extending the same hook to
 				// the §800.4a seat-elimination path.
 				ExpireSourceGrants(gs, p.Timestamp)
+				// Same shape as ExpireSourceGrants but for the
+				// ExiledByTimestamp linkage tag. Knowledge Pool (and
+				// sibling cards using ExiledByTimestamp as an exile-
+				// discovery key) stamps this on every imprinted card;
+				// if the controller is eliminated before KP itself
+				// dies, the per_card permanent_ltb handler never runs
+				// and the tag stays stale, tripping the
+				// ExileLinkageIntegrity invariant. (Loki r60 game 1044
+				// Myr Prototype × 2, closed 2026-05-30.)
+				ClearLinkedExileTagsForSource(gs, p.Timestamp)
 				// Count real cards for zone conservation tracking.
 				if p.Card != nil && !p.IsToken() {
 					realCardsLeaving++

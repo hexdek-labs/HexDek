@@ -334,6 +334,58 @@ func pickHostageTakerTarget(gs *gameengine.GameState, caster int, source *gameen
 func registerKnowledgePool(r *Registry) {
 	r.OnETB("Knowledge Pool", knowledgePoolETB)
 	r.OnTrigger("Knowledge Pool", "spell_cast", knowledgePoolOnSpellCast)
+	// permanent_ltb: clear the ExiledByTimestamp tag on KP-imprinted
+	// cards when KP leaves play. Knowledge Pool's exile semantics is
+	// CastGrant (per docs/instanceid-system-v2-r60.md §7), NOT LTBReturn
+	// — the cards STAY in exile when KP dies (per Magic rules, no
+	// return clause). But the engine reuses ExiledByTimestamp as the
+	// internal tagging key so the cast-trigger can discover imprinted
+	// cards (see knowledgePoolOnSpellCast line 412). When the source
+	// dies, the tag becomes a stale LTBReturn marker that the
+	// ExileLinkageIntegrity invariant correctly flags as "linked to
+	// source timestamp N which is no longer on any battlefield".
+	//
+	// Loki r60 (PR #800 follow-up, 2026-05-30): 30 of 30 remaining ELI
+	// hits trace to this — Leonardo Sewer Samurai (26 in game 2029),
+	// Myr Prototype (2 in game 1044), Great Hall of the Biblioplex
+	// (2 in game 149) — all surface as "card X exiled by KP timestamp,
+	// KP died, stale tag flags". Now that PR #800's fireTrigger
+	// ctx-fallback dispatches permanent_ltb against the leaving perm,
+	// this handler runs even after KP has been removed from the
+	// battlefield.
+	r.OnTrigger("Knowledge Pool", "permanent_ltb", knowledgePoolOnLTB)
+}
+
+// knowledgePoolOnLTB clears the ExiledByTimestamp tag on every card
+// Knowledge Pool imprinted. The cards stay in exile (no return per
+// oracle); only the now-orphaned LTBReturn-flavored marker is reset.
+// ExiledByMe is cleared too for completeness (Knowledge Pool's exile
+// path doesn't currently populate ExiledByMe, but defensive cleanup
+// keeps the invariant's Prong A clean if future plumbing adds it).
+func knowledgePoolOnLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	if gs == nil || perm == nil {
+		return
+	}
+	cleared := 0
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, c := range s.Exile {
+			if c == nil {
+				continue
+			}
+			if c.ExiledByTimestamp == perm.Timestamp {
+				c.ExiledByTimestamp = 0
+				cleared++
+			}
+		}
+	}
+	perm.ExiledByMe = nil
+	emit(gs, "knowledge_pool_ltb_clear_tags", perm.Card.DisplayName(), map[string]interface{}{
+		"cleared_count":    cleared,
+		"source_timestamp": perm.Timestamp,
+	})
 }
 
 func knowledgePoolETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
