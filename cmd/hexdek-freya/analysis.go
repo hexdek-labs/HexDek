@@ -174,6 +174,14 @@ type FreyaReport struct {
 	// win combos that lift to B4). Detected by detectGraveyardLoopCombos.
 	GraveyardLoops []ComboResult
 
+	// ComboInteraction is the pairwise combo-vs-combo analysis: piece
+	// overlap matrix, per-piece fragility scoring, and worst-case
+	// deck redundancy after any single card is removed. Nil when the
+	// deck has fewer than 2 combos (no interaction to analyze).
+	// Surfaced under `combo_interaction` in JSON and as a short text
+	// report section. See combo_interaction.go.
+	ComboInteraction *ComboInteractionMatrix
+
 	ComboNotes []string // partial combo piece warnings
 
 	// Legality validation (runs before all other phases)
@@ -1739,6 +1747,12 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 	combinedCombos = append(combinedCombos, report.TrueInfinites...)
 	combinedCombos = append(combinedCombos, report.Determined...)
 	report.GraveyardLoops = detectGraveyardLoopCombos(profiles, combinedCombos)
+
+	// Combo-vs-combo interaction matrix: piece-overlap graph, per-piece
+	// fragility, deck redundancy after any-1-card-removed. Runs LAST in
+	// the report assembly so it sees the post-reclassification (Land
+	// Cycle / Graveyard Loop) combo buckets. Nil when < 2 combos.
+	report.ComboInteraction = BuildComboInteractionMatrix(report)
 
 	return report
 }
