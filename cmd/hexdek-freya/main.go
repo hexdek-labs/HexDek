@@ -94,6 +94,7 @@ func main() {
 	var clustersOut string
 	var powerAggregateOut string
 	var corpusStatsOut string
+	var tierListOut string
 	var eloHistoryPath string
 	var comparePath string
 	var noCache bool
@@ -117,6 +118,8 @@ func main() {
 		"--all-decks only: write the S/A/B/C/D power-tier distribution rollup (overall mix, per-bracket and per-archetype breakdown, 5-point score histogram) as JSON to this path. Designed for calibrating PowerTierFor thresholds against a real-world corpus.")
 	flag.StringVar(&corpusStatsOut, "corpus-stats-out", "",
 		"--all-decks only: write the corpus-wide rollup (average bracket / archetype / curve / density signals, distributions, presence percentages) as JSON to this path.")
+	flag.StringVar(&tierListOut, "tier-list-out", "",
+		"--all-decks only: write the per-archetype card tier-list (InclusionRate × WinImpact ranking, top 50 cards per archetype with cohort size ≥ 5) as JSON to this path. Suitable for \"what should I auto-include in a Voltron deck\" lookups, hat archetype-prior training signals, and CommanderBracket-style auto-include surfaces.")
 	flag.StringVar(&eloHistoryPath, "elo-history", "",
 		"path to archetype-pair ELO/win-rate history JSON (loaded if present; blended into meta-positioning expected-win-% and tilt detection). Schema: {\"archetype_pairs\": {\"combo|stax\": {\"games\": N, \"wins_for_first\": K}, ...}}.")
 	flag.StringVar(&comparePath, "compare", "",
@@ -399,6 +402,23 @@ func main() {
 			f.Close()
 			log.Printf("wrote corpus stats → %s (%d decks, avg B%.1f, most common %s)",
 				corpusStatsOut, cs.DeckCount, cs.AvgBracket, cs.MostCommonArchetype)
+		}
+
+		if tierListOut != "" {
+			tl := ComputeTierListExport(reports)
+			f, err := os.Create(tierListOut)
+			if err != nil {
+				log.Fatalf("create tier-list-out: %v", err)
+			}
+			enc := json.NewEncoder(f)
+			enc.SetIndent("", "  ")
+			if err := enc.Encode(tl); err != nil {
+				f.Close()
+				log.Fatalf("encode tier list: %v", err)
+			}
+			f.Close()
+			log.Printf("wrote tier list → %s (%d archetypes ranked across %d decks)",
+				tierListOut, tl.ArchetypeCount, tl.CorpusSize)
 		}
 	}
 }
