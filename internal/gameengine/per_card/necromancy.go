@@ -28,12 +28,14 @@ import (
 //     battlefield, attach this Necromancy to the new permanent, and
 //     record the pair in necromancyTargets for the LTB-sacrifice half.
 //   - Flash and "sac at next cleanup if cast off-curve" are upstream
-//     concerns (cast-time gates, cleanup-step delayed triggers) that the
-//     general engine doesn't model granularly enough yet — emitPartial.
-//   - LTB-sacrifice: matches the Animate Dead status quo (also
-//     unimplemented for self-LTB because fireTrigger iterates the
-//     current battlefield, not the leaving permanent). emitPartial so
-//     Muninn tracks the residual gap.
+//     concerns (cast-time gates, cleanup-step delayed triggers) that
+//     the general engine doesn't model granularly enough yet —
+//     documented but no emitPartial fires (cast-time gates aren't a
+//     per_card trigger surface).
+//   - LTB-sacrifice: wired via necromancyLTBSacBondedCreature (R52
+//     batchM) using necromancyTargets sync.Map to track the bonded
+//     creature. R60 batch 5 dropped the stale "unimplemented for
+//     self-LTB" doc comment — the LTB-sac shipped as PR R52 batchM.
 func registerNecromancy(r *Registry) {
 	r.OnETB("Necromancy", necromancyETB)
 	// R52 batchM: "When this enchantment leaves the battlefield, that

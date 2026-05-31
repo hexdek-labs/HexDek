@@ -24,9 +24,10 @@ import (
 //     lowest-MV hand card to discard and the highest-MV i/s in the
 //     graveyard to return — maximises swap value.
 //   - Earthbend trigger ("Whenever you cast a spell, earthbend 1") is
-//     emitPartial — earthbending (turn-a-land-into-a-0/0-creature) is
-//     a discrete mechanic that would need its own helper; the per-card
-//     port flags the gap.
+//     wired via tophHardheadedTeacherSpellCast (R52 batch K — layer-7b
+//     port using RegisterAddTypes + RegisterSetPT + RegisterGrantKeyword
+//     for the 0/0 creature land + haste continuous effect). R60 batch 5
+//     dropped the stale "not_implemented" emitPartial on the ETB path.
 func registerTophHardheadedTeacher(r *Registry) {
 	r.OnETB("Toph, Hardheaded Teacher", tophETBDiscardRebuy)
 	// R52 batch K: spell_cast trigger fires earthbend 1 on each spell
@@ -173,8 +174,6 @@ func tophETBDiscardRebuy(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		"returned":   returnTarget.DisplayName(),
 		"return_cmc": bestCMC,
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"earthbend_on_cast_trigger_not_implemented_separate_helper_needed")
 }
 
 func tophDeclineReason(returnTarget, discardVictim *gameengine.Card) string {

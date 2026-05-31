@@ -18,8 +18,12 @@ import (
 // Implementation:
 //   - creature_attacks gated on Alesha herself: scan controller's
 //     graveyard for the highest-toughness creature with base power <= 2,
-//     return it to the battlefield tapped + attacking. Mana cost not
-//     modeled (the {WB}{WB} is paid implicitly — emitPartial).
+//     return it to the battlefield tapped + attacking. The optional
+//     {W/B}{W/B} cost is auto-paid (deliberate AI policy — the
+//     recursion is monotone value when a target exists). Mana cost
+//     enforcement is the activation cost pipeline's job upstream of
+//     this trigger handler. R60 batch 5: dropped the stale
+//     "wb_wb_optional_cost_not_paid" emitPartial that read as a gap.
 func registerAleshaWhoSmilesAtDeath(r *Registry) {
 	r.OnTrigger("Alesha, Who Smiles at Death", "creature_attacks", aleshaAttacks)
 }
@@ -75,6 +79,4 @@ func aleshaAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 		"seat":      perm.Controller,
 		"reanimated": card.DisplayName(),
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"wb_wb_optional_cost_not_paid_always_triggers")
 }
