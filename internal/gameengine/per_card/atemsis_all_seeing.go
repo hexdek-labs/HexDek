@@ -65,21 +65,24 @@ func atemsisCombatDamage(gs *gameengine.GameState, perm *gameengine.Permanent, c
 	})
 
 	if distinct >= 6 {
-		emitWin(gs, perm.Controller, slug, perm.Card.DisplayName(),
-			"opponent_loses_atemsis_six_distinct_mana_values")
-		// CR §104.3e: route through canonical helper so §614
-		// would_lose_game (Platinum Angel / Angel's Grace) can cancel.
-		gameengine.MarkSeatLostByEffect(gs, defenderSeat, perm.Card.DisplayName())
-		gs.LogEvent(gameengine.Event{
-			Kind:   "player_loses",
-			Seat:   defenderSeat,
-			Source: perm.Card.DisplayName(),
-			Details: map[string]interface{}{
-				"slug":   slug,
-				"reason": "atemsis_six_mana_values",
-			},
-		})
-		_ = gs.CheckEnd()
+		// CR §104.3e: route the loss through the canonical helper
+		// FIRST so §614 would_lose_game (Platinum Angel / Angel's
+		// Grace) can cancel. Pre-r60-normalization the ordering was
+		// inverted — emitWin direct-set s.Lost=true on all opp seats
+		// before the helper ran, which made the helper short-circuit
+		// at its `if s.Lost { return false }` guard and silently
+		// bypass the §614 replacement chain. Helper-first preserves
+		// §614 semantics; emitWin only fires if the loss wasn't
+		// cancelled. Helper emits the canonical `lose_game` Event
+		// with the source-name suffix preserving the mechanism
+		// detail — no separate `player_loses` Event needed.
+		applied := gameengine.MarkSeatLostByEffect(gs, defenderSeat,
+			perm.Card.DisplayName()+" — six distinct mana values among cards in hand")
+		if applied {
+			emitWin(gs, perm.Controller, slug, perm.Card.DisplayName(),
+				"opponent_loses_atemsis_six_distinct_mana_values")
+			_ = gs.CheckEnd()
+		}
 	}
 }
 
