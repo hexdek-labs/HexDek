@@ -159,6 +159,20 @@ func answerQuestion(q string, ctx *InteractiveContext, w io.Writer) {
 		topic := strings.TrimSpace(strings.TrimPrefix(lo, "cite "))
 		citeTopic(topic, w)
 
+	// "index <rule>" — direct lookup against the comprehensive citation index.
+	case strings.HasPrefix(lo, "index "):
+		rule := strings.TrimSpace(strings.TrimPrefix(lo, "index "))
+		showIndexEntry(rule, w)
+
+	// "coverage <probe>" — inverse lookup: which rules does the named probe check?
+	case strings.HasPrefix(lo, "coverage "):
+		probe := strings.TrimSpace(strings.TrimPrefix(lo, "coverage "))
+		showProbeCoverage(probe, w)
+
+	// "list probes" — enumerate the probes registered in the index.
+	case lo == "list probes":
+		listProbes(w)
+
 	// "show state" / "show seat N"
 	case lo == "show state" || lo == "state":
 		showState(ctx, w)
@@ -194,8 +208,11 @@ func printInteractiveHelp(w io.Writer) {
 	fmt.Fprintln(w, "    what SBAs are pending        — run the §704 SBA probe against the loaded snapshot")
 	fmt.Fprintln(w, "    explain <invariant>          — show CR citations for an engine invariant")
 	fmt.Fprintln(w, "    cite <topic>                 — fuzzy-search CR citations for a topic word")
+	fmt.Fprintln(w, "    index <rule>                 — show full citation-index entry for a rule slug")
+	fmt.Fprintln(w, "    coverage <probe>             — list rules the named probe checks")
 	fmt.Fprintln(w, "    show state / show seat N     — inspect the loaded snapshot")
 	fmt.Fprintln(w, "    list invariants / list rules — full citation catalog")
+	fmt.Fprintln(w, "    list probes                  — probes registered in the citation index")
 	fmt.Fprintln(w, "    list violations              — Loki replay violation summary")
 	fmt.Fprintln(w, "    exit                         — leave Q&A mode")
 	fmt.Fprintln(w)
@@ -506,6 +523,83 @@ func answerWhy(q string, ctx *InteractiveContext, w io.Writer) {
 	}
 	if ctx.Snapshot != nil {
 		fmt.Fprintf(w, "  Snapshot is loaded; run 'what SBAs are pending' to see if §704 conditions apply.\n")
+	}
+	fmt.Fprintln(w)
+}
+
+// showIndexEntry prints the full citation-index entry for a rule slug.
+// "index 704.5a" surfaces description, section title, probes that
+// check it, related invariants, and related CR sub-sections — the
+// most-complete single-line answer the judge can give about a rule.
+func showIndexEntry(rule string, w io.Writer) {
+	if rule == "" {
+		fmt.Fprintf(w, "  usage: index <rule-slug>  (e.g. index 704.5a)\n\n")
+		return
+	}
+	idx := BuildCitationIndex()
+	e := idx.LookupByRule(rule)
+	if e == nil {
+		fmt.Fprintf(w, "  no index entry for §%s. Try 'list rules' or 'cite <topic>'.\n\n", rule)
+		return
+	}
+	fmt.Fprintf(w, "  §%s — %s\n", e.Rule, e.Description)
+	fmt.Fprintf(w, "    section:            %s\n", e.SectionTitle)
+	if len(e.CheckedBy) > 0 {
+		fmt.Fprintf(w, "    checked by:         %s\n", strings.Join(e.CheckedBy, ", "))
+	}
+	if len(e.RelatedInvariants) > 0 {
+		fmt.Fprintf(w, "    related invariants: %s\n", strings.Join(e.RelatedInvariants, ", "))
+	}
+	if len(e.RelatedRules) > 0 {
+		slugs := make([]string, 0, len(e.RelatedRules))
+		for _, r := range e.RelatedRules {
+			slugs = append(slugs, "§"+r)
+		}
+		fmt.Fprintf(w, "    related rules:      %s\n", strings.Join(slugs, ", "))
+	}
+	fmt.Fprintln(w)
+}
+
+// showProbeCoverage prints the rules a probe checks. Inverse of
+// showIndexEntry — "coverage sba_probe" answers "which CR sub-sections
+// does the SBA probe implement?" in one line.
+func showProbeCoverage(probe string, w io.Writer) {
+	if probe == "" {
+		fmt.Fprintf(w, "  usage: coverage <probe-name>  (e.g. coverage sba_probe, coverage commander_check)\n")
+		fmt.Fprintf(w, "         try 'list probes' for the full list\n\n")
+		return
+	}
+	idx := BuildCitationIndex()
+	rules := idx.LookupByProbe(probe)
+	if len(rules) == 0 {
+		fmt.Fprintf(w, "  no probe named %q in the citation index. Try 'list probes'.\n\n", probe)
+		return
+	}
+	fmt.Fprintf(w, "  %s checks %d CR sub-section(s):\n", probe, len(rules))
+	for _, r := range rules {
+		e := idx.LookupByRule(r)
+		if e != nil {
+			fmt.Fprintf(w, "    §%-8s — %s\n", r, e.Description)
+		} else {
+			fmt.Fprintf(w, "    §%s\n", r)
+		}
+	}
+	fmt.Fprintln(w)
+}
+
+// listProbes prints every probe registered in the citation index,
+// with the count of rules it covers. Use case: a maintainer wants to
+// see the inverse coverage map at a glance.
+func listProbes(w io.Writer) {
+	idx := BuildCitationIndex()
+	names := make([]string, 0, len(idx.ProbeToRules))
+	for n := range idx.ProbeToRules {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	fmt.Fprintf(w, "  %d probe(s) registered in the citation index:\n", len(names))
+	for _, n := range names {
+		fmt.Fprintf(w, "    %-30s → %d CR sub-section(s)\n", n, len(idx.ProbeToRules[n]))
 	}
 	fmt.Fprintln(w)
 }
