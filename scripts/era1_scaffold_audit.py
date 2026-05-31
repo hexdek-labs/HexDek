@@ -581,6 +581,36 @@ TRIGGER_EXTRA_EXACT = {
     "face_down_creature_event",
     "compound_tribe_enter",
     "it_state_change",
+
+    # Era 1 r60 final trigger-gap closure — 47 residual ×1 slugs from the
+    # 2026-05-30 cross-era trigger sweep. Each mirrors a classifyTrigger
+    # route added in the same commit; no new scaffold enums, pure dispatch.
+    "investigate", "condition_fails", "state_check", "all_trigger",
+    "three_or_more", "graveyard_empty", "on_card_advantage",
+    "search_library", "this_turn_whenever",                       # → when_you_do
+    "opp_tokens_event", "opp_commits_crime", "opponent_pays_tax", # → opp_creature_event
+    "desert_etb", "play_land", "landfall",
+    "self_or_enchantment_etb_or_room_unlock",                     # → creature_etb
+    "named_creature_etb", "elf_etb",                              # → tribe_you_control_etb
+    "self_and_or_others_event",                                   # → self_and
+    "tap_for_c",                                                  # → tapped_for_mana
+    "sac_nontoken_elemental",                                     # → sacrifice
+    "next_end_step", "each_player_upkeep", "enchanted_end_step",  # → upkeep
+    "self_becomes_tapped",                                        # → becomes_tapped_trigger
+    "self_becomes_untapped",                                      # → becomes_untapped
+    "damage_to_x_prevented", "colored_damage_prevented",
+    "damage_to_chosen_player", "damage_prevented",
+    "typed_combat_dmg", "self_dealt_damage",                      # → combat_damage
+    "place_counter", "you_put_counter_on_any",
+    "counter_threshold_reached", "you_put_counter_on",            # → counters_put_on_self
+    "transform_into_phyrexian", "transform_as",                   # → turned_face_up
+    "any_card_to_gy_anywhere", "leave_gy_single",
+    "phaseout_or_exile", "card_to_gy_anywhere_once",
+    "exiled_event",                                               # → creature_dies
+    "surveil_first_time",                                         # → draw_card
+    "becomes_target_by_opp",                                      # → becomes_target
+    "any_block",                                                  # → attacks
+    "self_or_typed_event",                                        # → self_and (shared w/ Era 4)
 }
 
 

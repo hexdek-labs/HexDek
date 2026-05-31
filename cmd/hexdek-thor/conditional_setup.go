@@ -429,6 +429,117 @@ func classifyTrigger(t *gameast.Trigger) string {
 	case event == "it_state_change":
 		return "becomes_tapped_trigger"
 
+	// Era 4 r60 final trigger-gap closure — residual slugs from the
+	// post-batch scan (each ×1 or ×2 in the Era 4 corpus). Routes each to
+	// the existing scaffold whose primed world matches the listener's
+	// observation shape. No new scaffold enums; pure dispatch additions.
+	case event == "exiled_event" || event == "any_type_to_gy_from_bf" ||
+		event == "creature_or_land_to_gy" || event == "compound_bounce_shuffle_event":
+		// Zone-change listeners — exile / multi-type to-graveyard / compound
+		// bounce-shuffle all observe the same battlefield-leaves world.
+		return "creature_dies"
+	case event == "self_or_typed_event" || event == "other_nontoken_perm":
+		// Reflexive multi-arm event-carrier — self_and primes the right
+		// "you + a typed friend" world.
+		return "self_and"
+	case event == "put_onto_bf" || event == "artifact_etb_yours" ||
+		event == "merfolk_etb_any":
+		// ETB-family variants — generic put-onto-battlefield + typed/tribal
+		// ETB listeners share the creature_etb primed world (a friendly
+		// permanent of the requested type entering).
+		return "creature_etb"
+	case event == "nonland_tapped_for_mana":
+		// Mana-tap variant — same priming world as tap_for_mana (a
+		// nonland source tapped for mana payment).
+		return "tapped_for_mana"
+	case event == "becomes_untapped_once":
+		// One-shot becomes-untapped listener — same priming world as the
+		// repeating becomes_untapped scaffold.
+		return "becomes_untapped"
+	case event == "paid_cumulative_upkeep":
+		// Cumulative-upkeep paid listener — phase-style trigger; the
+		// upkeep priming world (advance to upkeep step) covers it.
+		return "upkeep"
+	case event == "discover":
+		// Discover (LCI mechanic) — exile-from-library + cast-or-stash
+		// listener. The existing draw_card priming world (library top-up)
+		// matches what the listener observes.
+		return "draw_card"
+	case event == "targets_chosen":
+		// "When you cast this spell, choose ..." reflexive flag-carrier;
+		// when_you_do primes the right world.
+		return "when_you_do"
+
+	// Era 1 r60 final trigger-gap closure — 47 residual ×1 slugs from the
+	// 2026-05-30 cross-era trigger sweep. Each routes to the existing
+	// scaffold whose primed world matches the listener's observation; no
+	// new enums or engine changes. Same closure pattern as the Era 4 batch
+	// above, just covering the wider 1993-2014 single-card mechanic surface.
+	case event == "investigate" || event == "condition_fails" ||
+		event == "state_check" || event == "all_trigger" ||
+		event == "three_or_more" || event == "graveyard_empty" ||
+		event == "on_card_advantage" || event == "search_library" ||
+		event == "this_turn_whenever":
+		// Reflexive / count-gate / library-search flag-carriers.
+		return "when_you_do"
+	case event == "opp_tokens_event" || event == "opp_commits_crime" ||
+		event == "opponent_pays_tax":
+		// Opponent-side observation listeners — opp_creature_event primes
+		// an opposing-board world.
+		return "opp_creature_event"
+	case event == "desert_etb" || event == "landfall" ||
+		event == "play_land" || event == "self_or_enchantment_etb_or_room_unlock" ||
+		event == "landfall_trigger":
+		// Land / desert / room-unlock ETB listeners → generic ETB world.
+		// `landfall` and `landfall_trigger` aliases route here too — the
+		// substring-catch later would also match "land", but the explicit
+		// route makes the audit's TRIGGER_EXTRA_EXACT mirror correct.
+		return "creature_etb"
+	case event == "named_creature_etb" || event == "elf_etb":
+		// Tribal-typed ETB listeners → wizard-token tribal prime.
+		return "tribe_you_control_etb"
+	case event == "self_and_or_others_event":
+		// Reflexive multi-arm carrier; mirrors Era 4's self_or_typed_event.
+		return "self_and"
+	case event == "tap_for_c":
+		// Colorless mana-tap variant of tap_for_mana.
+		return "tapped_for_mana"
+	case event == "sac_nontoken_elemental":
+		// Tribal sacrifice listener.
+		return "sacrifice"
+	case event == "next_end_step" || event == "each_player_upkeep" ||
+		event == "enchanted_end_step":
+		// Phase-style listeners — same priming world as the upkeep scaffold
+		// (advance to the matching step).
+		return "upkeep"
+	case event == "self_becomes_tapped":
+		return "becomes_tapped_trigger"
+	case event == "self_becomes_untapped":
+		return "becomes_untapped"
+	case event == "damage_to_x_prevented" || event == "colored_damage_prevented" ||
+		event == "damage_to_chosen_player" || event == "damage_prevented" ||
+		event == "typed_combat_dmg" || event == "self_dealt_damage":
+		// Damage-event listeners — combat_damage priming world fits each.
+		return "combat_damage"
+	case event == "place_counter" || event == "you_put_counter_on_any" ||
+		event == "counter_threshold_reached" || event == "you_put_counter_on":
+		// Counter-placement listeners → counters_put_on_self prime.
+		return "counters_put_on_self"
+	case event == "transform_into_phyrexian" || event == "transform_as":
+		// Transform listeners share the turned_face_up priming world.
+		return "turned_face_up"
+	case event == "any_card_to_gy_anywhere" || event == "leave_gy_single" ||
+		event == "phaseout_or_exile" || event == "card_to_gy_anywhere_once":
+		// Zone-leave listeners → creature_dies prime.
+		return "creature_dies"
+	case event == "surveil_first_time":
+		// Topdeck-manipulation listener.
+		return "draw_card"
+	case event == "becomes_target_by_opp":
+		return "becomes_target"
+	case event == "any_block":
+		return "attacks"
+
 	case event == "dies" || strings.Contains(event, "dies") ||
 		strings.Contains(event, "is put into a graveyard"):
 		return "creature_dies"
