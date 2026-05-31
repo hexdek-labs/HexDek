@@ -25,9 +25,38 @@ import (
 )
 
 // Handler exposes the WebSocket endpoint and message router.
+//
+// Throttling fields below are all nil-safe / zero-value-safe:
+// leaving them at defaults gives pre-r60 behavior (no rate limit).
+// cmd/hexdek-server sets sensible defaults at startup. See
+// internal/ws/throttle.go for the layered-defense rationale.
 type Handler struct {
 	DB  *sql.DB
 	Hub *hub.Hub
+
+	// MessageBurst caps how many inbound messages a single live
+	// WebSocket connection can dispatch back-to-back; subsequent
+	// messages are throttled at MessageRefillPerSec. Each message
+	// triggers DB work + a broadcast that fans out to every party
+	// member, so unthrottled inbound is an N×M amplification
+	// vector. 0 = no limit (matches pre-r60 behavior).
+	MessageBurst        int
+	MessageRefillPerSec float64
+
+	// UpgradeBurst + UpgradeRefillPerSec gate the WebSocket upgrade
+	// handshake per client IP. Without it, an attacker can
+	// reconnect-storm to burn auth.ValidateSession + ListPartyMembers
+	// DB lookups indefinitely (both run BEFORE the upgrade decision).
+	// 0 = no limit.
+	UpgradeBurst        int
+	UpgradeRefillPerSec float64
+
+	// upgradeLimiterOnce lazy-initializes upgradeLimiter on first
+	// upgrade after Handler is constructed, so callers can set the
+	// burst/refill fields any time before serving traffic without
+	// having to call an explicit constructor.
+	upgradeLimiterOnce sync.Once
+	upgradeLimiter     *upgradeLimiter
 }
 
 // Register adds the WS routes to a mux.
@@ -49,6 +78,12 @@ type connection struct {
 	wsConn   *websocket.Conn
 	deviceID string
 	mu       sync.Mutex // serializes writes
+
+	// inbound throttles dispatch — nil when MessageBurst is 0. The
+	// bucket is owned by this connection (per-conn isolation), so a
+	// noisy attacker on one socket can't lock out a polite client on
+	// another even when they share the same authenticated device.
+	inbound *tokenBucket
 }
 
 func (c *connection) Send(ctx context.Context, payload []byte) error {
@@ -70,7 +105,24 @@ func (c *connection) DeviceID() string { return c.deviceID }
 func (h *Handler) handleWS(w http.ResponseWriter, r *http.Request) {
 	partyID := r.PathValue("id")
 	if partyID == "" {
-		http.Error(w, "missing party id", http.StatusBadRequest)
+		writeWSError(w, http.StatusBadRequest, "bad_request", "missing party id")
+		return
+	}
+
+	// Per-IP upgrade rate limit. Sits BEFORE the auth + membership
+	// queries so a reconnect-storm doesn't burn DB lookups. Limiter
+	// is nil-safe — when UpgradeBurst is 0 this is a no-op.
+	h.upgradeLimiterOnce.Do(func() {
+		h.upgradeLimiter = newUpgradeLimiter(h.UpgradeBurst, h.UpgradeRefillPerSec)
+	})
+	if ok, retryAfter := h.upgradeLimiter.allow(clientIP(r)); !ok {
+		secs := int(retryAfter.Seconds())
+		if secs < 1 {
+			secs = 1
+		}
+		w.Header().Set("Retry-After", fmt.Sprintf("%d", secs))
+		writeWSError(w, http.StatusTooManyRequests, "too_many_requests",
+			"ws upgrade rate limit exceeded — too many requests")
 		return
 	}
 
@@ -78,13 +130,13 @@ func (h *Handler) handleWS(w http.ResponseWriter, r *http.Request) {
 	token := extractToken(r)
 	session, err := auth.ValidateSession(r.Context(), h.DB, token)
 	if err != nil {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		writeWSError(w, http.StatusUnauthorized, "unauthorized", "unauthorized")
 		return
 	}
 
 	// Verify the device is a member of this party
 	if err := h.verifyMembership(r.Context(), partyID, session.DeviceID); err != nil {
-		http.Error(w, "not a member of this party", http.StatusForbidden)
+		writeWSError(w, http.StatusForbidden, "forbidden", "not a member of this party")
 		return
 	}
 
@@ -97,7 +149,11 @@ func (h *Handler) handleWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	wsConn.SetReadLimit(8192)
-	conn := &connection{wsConn: wsConn, deviceID: session.DeviceID}
+	conn := &connection{
+		wsConn:   wsConn,
+		deviceID: session.DeviceID,
+		inbound:  newTokenBucket(h.MessageBurst, h.MessageRefillPerSec),
+	}
 
 	h.Hub.Register(partyID, conn)
 	defer h.Hub.Unregister(partyID, conn)
@@ -139,6 +195,22 @@ func (h *Handler) handleWS(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) dispatch(ctx context.Context, partyID string, conn *connection, data []byte) {
+	// Per-connection inbound rate gate. Every message past the cap
+	// gets a single "rate limited" frame back; we deliberately do NOT
+	// disconnect — a noisy client should self-correct, and the cost
+	// of the throttle reply is bounded (one Send per over-limit
+	// message, no DB / broadcast work). Nil bucket = no limit.
+	if ok, _ := conn.inbound.allow(); !ok {
+		errMsg, _ := json.Marshal(envelope{
+			Type: "error",
+			Payload: mustJSON(map[string]string{
+				"code":    "rate_limited",
+				"message": "ws message rate limit exceeded",
+			}),
+		})
+		_ = conn.Send(ctx, errMsg)
+		return
+	}
 	var env envelope
 	if err := json.Unmarshal(data, &env); err != nil {
 		errMsg, _ := json.Marshal(envelope{

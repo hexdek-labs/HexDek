@@ -113,7 +113,22 @@ func main() {
 
 	// Ship 3: WebSocket transport + connection hub
 	connHub := hub.New()
-	wsHandler := &ws.Handler{DB: database, Hub: connHub}
+	wsHandler := &ws.Handler{
+		DB:  database,
+		Hub: connHub,
+		// r60 throttle defaults. MessageBurst caps inbound dispatch
+		// per live connection — a typical 4-player party averages
+		// well under 1 action/sec/seat so 20-burst + 5/sec refill is
+		// loose for legit play, tight for an attacker spamming
+		// game.advance_phase. UpgradeBurst caps reconnect-storm per
+		// client IP at 5-burst + 1 per 30s refill. Both layers are
+		// nil-safe at zero, so a future test/dev binary that wants to
+		// disable them just drops the field assignments.
+		MessageBurst:        20,
+		MessageRefillPerSec: 5.0,
+		UpgradeBurst:        5,
+		UpgradeRefillPerSec: 1.0 / 30.0,
+	}
 
 	// Wire AI autopilot: when a game starts, spin up the autopilot goroutine
 	// if any seats are AI-controlled. Broadcasting is done through the WS
