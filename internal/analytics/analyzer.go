@@ -390,6 +390,13 @@ func AnalyzeGame(
 	// can graduate these without relying on transitive chain inference.
 	ga.CoTriggerNTuples = DetectCoTriggerNTuples(events, nSeats, 0, 3, 5)
 
+	// Cycle detection: engine-emitted infinite_cycle events first, then
+	// post-game graph walk for non-engine-detected combo shapes
+	// (graph_walker dedupes against engine cycles).
+	engineCycles := DetectEngineCycles(events, 0)
+	graphCycles := DetectGraphCycles(events, nSeats, 0, engineCycles)
+	ga.CycleObservations = append(engineCycles, graphCycles...)
+
 	return ga
 }
 

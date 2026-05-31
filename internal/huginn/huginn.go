@@ -78,6 +78,81 @@ type Tier3Export struct {
 	Chains []FreyaChain       `json:"chains"`
 }
 
+// RawCycleObservation is a single cycle observation persisted from a
+// tournament run — engine-detected mandatory loops (§727) plus
+// post-game graph-walker hits (combo shapes that resolved finitely).
+// Mirrors analytics.CycleObservation with deck context, matching the
+// RawObservation shape pattern used for co-trigger pairs.
+//
+// Append-only on-disk, written to data/huginn/raw_cycles.json by
+// PersistRawCycles. The Huginn ingestion pipeline can promote
+// recurring cycles to confirmed combo lines using the same tier
+// progression as ordinary observations.
+type RawCycleObservation struct {
+	CycleLength        int      `json:"cycle_length"`
+	ParticipatingIIDs  []string `json:"participating_iids"`
+	ParticipatingCards []string `json:"participating_cards"`
+	TurnWindow         int      `json:"turn_window"`
+	DetectedBy         string   `json:"detected_by"` // "engine_no_op_loop" / "engine_cr_727" / "graph_walker"
+	GameID             string   `json:"game_id"`
+	DeckNames          []string `json:"deck_names"`
+	Timestamp          string   `json:"timestamp"`
+}
+
+// rawCyclesFile is the on-disk filename for cycle observations.
+// Sibling to rawObsFile in the same data/huginn/ directory.
+const rawCyclesFile = "raw_cycles.json"
+
+// PersistRawCycles appends cycle observations from a tournament run
+// to data/huginn/raw_cycles.json. Append-only, mirroring
+// PersistRawObservations. Skips when there's nothing to write.
+func PersistRawCycles(dir string, analyses []*analytics.GameAnalysis, commanderNames []string) error {
+	var all []analytics.CycleObservation
+	for _, ga := range analyses {
+		if ga == nil {
+			continue
+		}
+		all = append(all, ga.CycleObservations...)
+	}
+	if len(all) == 0 {
+		return nil
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return fmt.Errorf("huginn: mkdir %s: %w", dir, err)
+	}
+	existing, err := ReadRawCycles(dir)
+	if err != nil {
+		return err
+	}
+	now := time.Now().UTC().Format(time.RFC3339)
+	for _, c := range all {
+		existing = append(existing, RawCycleObservation{
+			CycleLength:        c.CycleLength,
+			ParticipatingIIDs:  append([]string(nil), c.ParticipatingIIDs...),
+			ParticipatingCards: append([]string(nil), c.ParticipatingCards...),
+			TurnWindow:         c.TurnWindow,
+			DetectedBy:         c.DetectedBy,
+			GameID:             c.GameID,
+			DeckNames:          append([]string(nil), commanderNames...),
+			Timestamp:          now,
+		})
+	}
+	return atomicWriteJSON(filepath.Join(dir, rawCyclesFile), existing)
+}
+
+// ReadRawCycles reads the raw cycles file. Empty file / missing
+// path returns an empty slice (no error) — matches ReadRawObservations.
+func ReadRawCycles(dir string) ([]RawCycleObservation, error) {
+	var out []RawCycleObservation
+	if err := readJSON(filepath.Join(dir, rawCyclesFile), &out); err != nil {
+		return nil, err
+	}
+	if out == nil {
+		out = []RawCycleObservation{}
+	}
+	return out, nil
+}
+
 // RawObservation is a single co-trigger observation persisted from a
 // tournament run. Mirrors analytics.CoTriggerObservation with deck context.
 type RawObservation struct {
