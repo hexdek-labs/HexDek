@@ -92,6 +92,26 @@ var archetypeWeights = map[string]EvalWeights{
 		StaxLockProgress:       0.1,
 	},
 	ArchetypeCombo: {
+		// r60-archetype-fingerprint (PR #943 followup): the Combo profile
+		// was the LEAST distinct from Midrange across the 8 customized
+		// archetypes — L1=4.5 vs Voltron 7.6 / Aggro 5.9 / Reanimator 5.5.
+		// ComboProximity=2.0 anchored a strong peak, but every secondary
+		// dim was within 0.1 of Midrange. The hat played Combo as
+		// "Midrange with one big dial" rather than as a distinct archetype.
+		//
+		// Amplification picked DEFENSIVE / REACH dims to avoid the
+		// over-commitment pattern PR #943's Storm amp produced at
+		// TierGungnir (Vial Smasher −1.80pp). Both improve combo execution
+		// WITHOUT pushing the hat to commit to combo lines before it can
+		// close them:
+		//   - ToolboxBreadth 0.6 → 1.0 — tutors and toolbox are how
+		//     combo decks ASSEMBLE wins; valuing them higher expands the
+		//     hand's options before committing.
+		//   - StackInteraction 0.6 → 1.0 — Force of Will / Pact of
+		//     Negation / Veil of Summer protect the combo from being
+		//     countered mid-resolution.
+		// ComboProximity stays at 2.0 (regression test pins it as peak;
+		// further amp would push the over-commit pattern).
 		BoardPresence:          0.4,
 		CardAdvantage:          0.8,
 		ManaAdvantage:          0.7,
@@ -106,9 +126,9 @@ var archetypeWeights = map[string]EvalWeights{
 		OpponentGraveyardThreat: 0.5,
 		PartnerSynergy:         0.2,
 		ActivationTempo:        0.3,
-		ToolboxBreadth:         0.6,
+		ToolboxBreadth:         1.0, // r60-amp: was 0.6 — tutor/toolbox is the assembly path
 		ThreatTrajectory:       0.5,
-		StackInteraction:       0.6,
+		StackInteraction:       1.0, // r60-amp: was 0.6 — protect the combo from being countered
 		PlaneswalkerProgress:   0.3,
 		ExileZoneAssets:        0.4,
 		StaxLockProgress:       0.3,
@@ -138,6 +158,18 @@ var archetypeWeights = map[string]EvalWeights{
 		// CardAdvantage 1.6 keeps it the dominant dial (above
 		// StackInteraction 1.5 and ThreatExposure 1.5) — Control's
 		// long-game win condition is to outdraw the table.
+		// r60-archetype-fingerprint (PR #943 followup): Control was at
+		// L1=5.0 from Midrange — already moderately distinct on its
+		// primary dials (CardAdvantage 1.6, StackInteraction 1.5) but
+		// the deck's evaluative core — "rank opposing threats and
+		// dismantle the biggest one" — was under-amplified:
+		//   - OpponentGraveyardThreat 1.0 → 1.3 — Control reads the
+		//     long game by tracking what opponents have spent and what
+		//     they still hold; the graveyard is half that signal.
+		//   - ThreatTrajectory 0.8 → 1.1 — "is THIS the threat I answer
+		//     this turn vs save the counter for a bigger one in 2 turns"
+		//     IS Control. The dial was below midrange — wrong direction.
+		// CardAdvantage 1.6 stays highest (regression test).
 		BoardPresence:          1.0, // was 0.5 — neutral, not deprioritized
 		CardAdvantage:          1.6, // was 1.5 — remains the highest dial
 		ManaAdvantage:          1.3, // was 0.8 — hold-up mana for instants
@@ -149,11 +181,11 @@ var archetypeWeights = map[string]EvalWeights{
 		DrainEngine:            0.2,
 		ArtifactSynergy:        0.3,
 		EnchantmentSynergy:     0.3,
-		OpponentGraveyardThreat: 1.0,
+		OpponentGraveyardThreat: 1.3, // r60-amp: was 1.0 — opp yard reads the long game
 		PartnerSynergy:         0.4,
 		ActivationTempo:        0.7,
 		ToolboxBreadth:         0.7,
-		ThreatTrajectory:       0.8,
+		ThreatTrajectory:       1.1, // r60-amp: was 0.8 — rank-the-threat IS Control
 		StackInteraction:       1.5,
 		PlaneswalkerProgress:   0.8,
 		ExileZoneAssets:        0.4,
@@ -293,9 +325,9 @@ var archetypeWeights = map[string]EvalWeights{
 		DrainEngine:            0.4,
 		ArtifactSynergy:        0.2,
 		EnchantmentSynergy:     0.2,
-		OpponentGraveyardThreat: 0.8,
+		OpponentGraveyardThreat: 1.1, // r60-amp: was 0.8 — opp yards = fuel for reanimate / Bojuka Bog timing
 		PartnerSynergy:         0.3,
-		ActivationTempo:        0.6, // was 0.3
+		ActivationTempo:        0.9, // r60-amp: was 0.6 — Volrath / Karador / Sheoldred / Windgrace activations
 		ToolboxBreadth:         0.4,
 		ThreatTrajectory:       0.5,
 		StackInteraction:       0.4,
