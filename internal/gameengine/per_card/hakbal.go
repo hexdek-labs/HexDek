@@ -100,8 +100,10 @@ func hakbalAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 	}
 
 	if landIdx >= 0 {
+		// enterBattlefieldWithETB → createPermanent sweeps the land from
+		// hand; manual splice was redundant (Wave 2 multi-step migration).
 		landCard := seat.Hand[landIdx]
-		seat.Hand = append(seat.Hand[:landIdx], seat.Hand[landIdx+1:]...)
+		_ = landIdx
 		enterBattlefieldWithETB(gs, perm.Controller, landCard, false)
 		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 			"seat":      perm.Controller,

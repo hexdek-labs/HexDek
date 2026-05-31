@@ -188,9 +188,10 @@ func strefanAttackTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, 
 	}
 
 	// Put the Vampire from hand onto the battlefield tapped and attacking.
+	// enterBattlefieldWithETB → createPermanent sweeps the source from
+	// every private zone; manual hand splice was redundant (Wave 2
+	// multi-step migration).
 	vampCard := seat.Hand[vampIdx]
-	seat.Hand = append(seat.Hand[:vampIdx], seat.Hand[vampIdx+1:]...)
-
 	newPerm := enterBattlefieldWithETB(gs, perm.Controller, vampCard, true)
 	if newPerm != nil {
 		newPerm.SummoningSick = false
