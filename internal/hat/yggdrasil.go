@@ -2072,7 +2072,30 @@ func (h *YggdrasilHat) effectiveBudget(gs *gameengine.GameState) int {
 	if h.TurnBudget > 0 && h.turnRemaining(gs) <= 0 && !highStakes {
 		return 0
 	}
-	return h.Budget
+
+	// r60-cedh-planstate: budget lift when actively assembling/executing
+	// a combo. PR #826's null result diagnosed that the cast-order
+	// priors steer MCTS toward combo branches but the default
+	// h.Budget=50 can't reach terminal wincon visibility on those
+	// branches — search prunes before convergence to a win state. The
+	// lift trades wall-clock for actually finding the wincon when the
+	// plan says we should be looking for it. PlanAssemble (one or more
+	// missing pieces, tutors in hand) gets +50%; PlanExecute (combo
+	// resolves THIS turn, no missing pieces) gets +100% because the
+	// stakes are highest and the branch we want is the literal cast-
+	// resolve-win sequence. PlanDevelop / Disrupt / Pivot / Defend are
+	// unchanged. Lift is applied last so it stacks cleanly on the
+	// high-stakes complexity bypass above (a combo-assembly turn on a
+	// 60+ permanent board now gets BOTH the complexity bypass AND the
+	// budget lift).
+	budget := h.Budget
+	switch h.planState.Current {
+	case PlanAssemble:
+		budget = budget * 3 / 2
+	case PlanExecute:
+		budget = budget * 2
+	}
+	return budget
 }
 
 // isHighStakesDecision returns true when the current game state is one
@@ -2189,6 +2212,38 @@ func (h *YggdrasilHat) comboAssembling(gs *gameengine.GameState) bool {
 	}
 	a := h.comboSeq.Evaluate(gs, seat)
 	return a.Executable || a.Assembling
+}
+
+// refreshPlanState re-evaluates the combo sequencer + threat assessment
+// and lets PlanState transition mid-turn. Pre-r60-cedh-planstate this
+// was only called at upkeep (see the trigger block around line 9590),
+// which meant that when a tutor resolves in main phase and the
+// Assembling gate flips, the next cast decision THIS turn still ran
+// under the old plan. That defeats the cast-order bias on the exact
+// turn the reach pattern arrives — a fast-cEDH-critical loss.
+//
+// Now called from cast-decision entry points (ChooseCastFromHand) so a
+// mid-turn state change is visible to the next decision. The refresh
+// is cheap: comboSeq.Evaluate is O(plans × pieces) and assessAllThreats
+// is the same call the upkeep block already makes. Safe to call when
+// comboSeq is nil (no-op) or planState was never seeded.
+func (h *YggdrasilHat) refreshPlanState(gs *gameengine.GameState, seatIdx int) {
+	if h == nil || gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return
+	}
+	if h.comboSeq == nil {
+		return
+	}
+	ca := h.comboSeq.Evaluate(gs, seatIdx)
+	maxThreat := 0.0
+	for _, t := range h.assessAllThreats(gs, seatIdx) {
+		if t.EvalScore > maxThreat {
+			maxThreat = t.EvalScore
+		}
+	}
+	h.planState.Evaluate(&ca, maxThreat)
+	pm := h.planState.PlanWeightMultipliers()
+	h.Evaluator.PlanMultiplier = &pm
 }
 
 // recordDecisionTier increments the per-tier counter. Safe to call from
@@ -4267,6 +4322,16 @@ func (h *YggdrasilHat) ChooseLandToPlay(gs *gameengine.GameState, seatIdx int, l
 // -- Interface: ChooseCastFromHand --
 
 func (h *YggdrasilHat) ChooseCastFromHand(gs *gameengine.GameState, seatIdx int, castable []*gameengine.Card) *gameengine.Card {
+	// r60-cedh-planstate: refresh plan state at the cast-decision entry
+	// so a mid-turn tutor resolve / draw / recursion / gameengine event
+	// that flipped the Assembling gate this turn is visible to this
+	// decision (cardHeuristic combo-priority bias + effectiveBudget
+	// lift). Without this hook, PlanState only re-evaluates on upkeep,
+	// so the first cast decision in a fast-cEDH "draw tutor → cast →
+	// fetch piece → cast" turn ran under the previous plan and the
+	// bias never fired on the critical turn.
+	h.refreshPlanState(gs, seatIdx)
+
 	h.recordParentTier(h.classifyDecision(gs), gs.Turn)
 	h.explorationFactor(gs, seatIdx)
 
