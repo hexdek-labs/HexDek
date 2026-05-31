@@ -62,7 +62,14 @@ func main() {
 		// status is 0 on a clean scan, 1 when violations are found — so
 		// CI hooks can gate on a probe directly without parsing the JSON.
 		checkManaCosts = flag.Bool("check-mana-costs", false, "batch mode: validate every Scryfall oracle entry's printed mana_cost against the CR §202.2 mana symbol grammar and emit a JSON report")
-		checkOut       = flag.String("check-out", "", "output path for the --check-mana-costs JSON report (default: stdout)")
+		// CR §903 commander legality probe — combines §903.5a/§903.5b
+		// (commander eligibility), §903.6 (format-legal), §903.4
+		// (color identity), and the Commander banned list scan.
+		// Operates on a deck text file (canonical hexdek-import format)
+		// rather than the corpus.
+		checkCommander = flag.Bool("check-commander", false, "batch mode: validate a deck against CR §903 (commander legality, format-legal, color identity, banned list) and emit a JSON report. Requires --deck.")
+		deckPath       = flag.String("deck", "", "deck text file path for --check-commander")
+		checkOut       = flag.String("check-out", "", "output path for the --check-* JSON report (default: stdout)")
 	)
 	flag.Parse()
 
@@ -75,6 +82,17 @@ func main() {
 			// Mirror gofmt / go vet's exit-code convention: non-zero
 			// when any check reports a finding so a Make / GitHub
 			// Actions hook can gate without parsing the JSON.
+			os.Exit(1)
+		}
+		return
+	}
+
+	if *checkCommander {
+		rep, err := runCommanderCheck(*deckPath, *oraclePath, *checkOut)
+		if err != nil {
+			log.Fatalf("check-commander: %v", err)
+		}
+		if !rep.Valid {
 			os.Exit(1)
 		}
 		return
