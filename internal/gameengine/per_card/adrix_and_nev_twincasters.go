@@ -1,6 +1,8 @@
 package per_card
 
 import (
+	"strings"
+
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -33,7 +35,10 @@ func adrixAndNevDouble(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	enteringPerm, _ := ctx["permanent"].(*gameengine.Permanent)
+	enteringPerm, _ := ctx["perm"].(*gameengine.Permanent)
+	if enteringPerm == nil {
+		enteringPerm, _ = ctx["permanent"].(*gameengine.Permanent)
+	}
 	if enteringPerm == nil || enteringPerm.Card == nil {
 		return
 	}
@@ -44,6 +49,14 @@ func adrixAndNevDouble(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 		return
 	}
 	if enteringPerm.Flags != nil && enteringPerm.Flags["adrix_copy"] == 1 {
+		return
+	}
+	// Recursion guard: the doubled copy's Card.Name carries a " (Adrix copy)"
+	// suffix. The Flags["adrix_copy"]=1 stamp lands AFTER enterBattlefieldWithETB
+	// returns, but the inner ETB cascade re-fires permanent_etb for the copy
+	// BEFORE that stamp lands — so the Flags-only gate above doesn't break the
+	// loop on its own. Name-suffix check catches the copy mid-cascade.
+	if strings.HasSuffix(enteringPerm.Card.Name, " (Adrix copy)") {
 		return
 	}
 	src := enteringPerm.Card
