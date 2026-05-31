@@ -223,6 +223,36 @@ RAW_PATTERNS = [
     # (condScaffoldCountersOnSelfGE at conditional_setup.go:2573).
     ("named_counter_threshold_on_perm",
      re.compile(r"(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten|thirteen|twenty) or more \w+ counters? on (?:it|this artifact|this enchantment|this creature|this permanent|them|that)|there are (?:\d+|one|two|three|four|five|six|seven|eight|nine|ten) or more \w+ counters? on (?:it|this)")),
+    # Era 4 r60 condition-longtail — mirror the detectConditionScaffold
+    # batch in cmd/hexdek-thor/conditional_setup.go. Ordered most-specific
+    # first; placed AHEAD of you_control_raw so the broad fallback doesn't
+    # eat narrower predicates.
+    ("battlefield_count_typed", re.compile(r"there are (?:\d+|two|three|four|five|six|seven|eight|nine|ten) or more (?:other )?(?:creatures|lands|artifacts|enchantments|planeswalkers|permanents|zombies) (?:on|still on) the battlefield|there are no (?:zombies|creatures|lands|artifacts|enchantments|planeswalkers) on the battlefield|a creature named [\w\-' ]+ is on the battlefield")),
+    ("chosen_permanent_still_on_bf", re.compile(r"one or more of the chosen permanents are still on the battlefield")),
+    ("that_card_on_battlefield", re.compile(r"^that card is on the battlefield|, that card is on the battlefield")),
+    ("card_exiled_with_counter", re.compile(r"this card is exiled with (?:a|an) \w+ counter on it")),
+    ("enchanted_target_is_type", re.compile(r"enchanted permanent is a (?:creature|artifact|enchantment|land|planeswalker)|enchanted land is a (?:basic )?(?:mountain|island|forest|swamp|plains)|enchanted permanent is a creature with the greatest power")),
+    ("enchantment_remains_on_bf", re.compile(r"this enchantment remains on the battlefield")),
+    ("card_type_reveal_route_broad", re.compile(r"(?:if it's a|if it's an|if that card is a|if that card is an|if a card with the chosen name was|if you reveal a card named) [\w\-]+(?: card)?.*(?:put it onto the battlefield|put that card)|if you searched for a creature card that doesn't")),
+    ("mana_value_vs_state", re.compile(r"mana value is less than or equal to the number of|if it has mana value \w+ or (?:less|fewer)|its mana value is \w+ or (?:less|fewer)")),
+    ("cast_n_instant_or_sorcery_turn", re.compile(r"(?:you've|you have) cast (?:\d+|two|three|four|five) or more (?:instant (?:and|or) sorcery|instant or sorcery) spells this turn")),
+    ("another_creature_etb_turn", re.compile(r"had another creature enter the battlefield (?:under your control )?this turn|(?:\d+|two|three|four|five) or more creatures (?:entered|enter) the battlefield (?:under your control )?this turn")),
+    ("permanent_to_hand_turn", re.compile(r"a permanent was put into your hand from the battlefield this turn")),
+    ("creature_attacked_with_friends", re.compile(r"at least (?:\d+|one|two|three|four|five) other creatures? attacked")),
+    ("self_entered_this_turn", re.compile(r"^~ entered this turn|, ~ entered this turn")),
+    ("self_not_on_battlefield", re.compile(r"~ isn'?t on the battlefield|this card isn'?t on the battlefield")),
+    ("self_hasnt_dealt_damage", re.compile(r"hasn'?t dealt damage yet")),
+    ("self_paired_with", re.compile(r"~ is paired with|is paired with another creature")),
+    ("self_top_of_library_state", re.compile(r"this card is the top card of your library")),
+    ("self_card_exiled_bare", re.compile(r"^this card is exiled$|^this card is exiled[,.]|, this card is exiled[,.]")),
+    ("self_power_ge_possessive", re.compile(r"as long as ~'s power is \w+ or (?:greater|more)")),
+    ("self_is_attacking_era4", re.compile(r"as long as ~ is attacking")),
+    ("counters_exactly_n_on_self", re.compile(r"exactly (?:one|two|three|four|five|\d+) \w+ counters? on (?:this enchantment|this artifact|this creature|this permanent|it)")),
+    ("first_end_step_turn", re.compile(r"first end step of the turn|first end step")),
+    ("not_main_phase", re.compile(r"isn'?t your main phase|not your main phase")),
+    ("opening_hand_not_starting", re.compile(r"in your opening hand and you'?re not the starting player")),
+    ("is_historic", re.compile(r"\bit was historic\b|\bis historic\b")),
+    ("a_creature_died_under_control", re.compile(r"a creature died under your control this turn")),
     ("you_control_raw", re.compile(r"you control")),
 ]
 
