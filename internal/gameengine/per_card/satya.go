@@ -63,11 +63,13 @@ func satyaOnAttack(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 		return
 	}
 
-	// Create a token copy of the target creature.
-	tokenCard := best.Card.DeepCopy()
-	tokenCard.Owner = seat
-	if !hasType(tokenCard.Types, "token") {
-		tokenCard.Types = append([]string{"token"}, tokenCard.Types...)
+	// Create a token copy of the target creature via the Phase 5 mint
+	// chokepoint — clears the inherited InstanceID and stamps a fresh
+	// TK ID (mirror of PR #853 / Drafna).
+	tokenCard := gameengine.MintTokenAsCopyOf(gs, best.Card, seat, gameengine.CurrentMintEnablerID(gs))
+	if tokenCard == nil {
+		gameengine.GainEnergy(gs, seat, 2)
+		return
 	}
 
 	// Enter tapped and attacking — CR §508. Use enterBattlefieldWithETB

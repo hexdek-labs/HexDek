@@ -101,22 +101,16 @@ func shikoETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		return
 	}
 
-	// Permanent: a copy of a permanent spell becomes a token. Build a
-	// token clone of the exiled card and run it through the full ETB
-	// cascade. The original stays in exile.
-	token := target.DeepCopy()
-	token.Owner = controller
+	// Permanent: a copy of a permanent spell becomes a token. Phase 5
+	// chokepoint: MintTokenAsCopyOf clears the inherited InstanceID and
+	// stamps a fresh TK ID. The original stays in exile (per_card has
+	// already kept `target` separate).
+	token := gameengine.MintTokenAsCopyOf(gs, target, controller, gameengine.CurrentMintEnablerID(gs))
+	if token == nil {
+		emitFail(gs, slug, perm.Card.DisplayName(), "mint_token_returned_nil", nil)
+		return
+	}
 	token.IsCopy = true
-	hasToken := false
-	for _, t := range token.Types {
-		if t == "token" {
-			hasToken = true
-			break
-		}
-	}
-	if !hasToken {
-		token.Types = append(token.Types, "token")
-	}
 	enterBattlefieldWithETB(gs, controller, token, false)
 
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

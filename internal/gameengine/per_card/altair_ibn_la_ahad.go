@@ -94,7 +94,10 @@ func altairAttackCopySwarm(gs *gameengine.GameState, perm *gameengine.Permanent,
 		if c.Owner != perm.Controller {
 			continue
 		}
-		token := altairBuildCopyToken(c, perm.Controller)
+		token := altairBuildCopyToken(gs, c, perm.Controller)
+		if token == nil {
+			continue
+		}
 		tok := &gameengine.Permanent{
 			Card:          token,
 			Controller:    perm.Controller,
@@ -213,20 +216,16 @@ func altairHasMemoryTag(c *gameengine.Card) bool {
 // altairBuildCopyToken deep-copies a card and stamps it as a token. The
 // copy keeps the original's types, P/T, colors, and name (with a
 // (token copy) suffix for log clarity).
-func altairBuildCopyToken(src *gameengine.Card, owner int) *gameengine.Card {
-	cp := src.DeepCopy()
-	cp.Owner = owner
+//
+// Phase 5 chokepoint: routes through MintTokenAsCopyOf so the token's
+// InstanceID is freshly minted (TK provenance) instead of inheriting
+// the source's ID. Name override + IsCopy rider applied after the mint.
+func altairBuildCopyToken(gs *gameengine.GameState, src *gameengine.Card, owner int) *gameengine.Card {
+	cp := gameengine.MintTokenAsCopyOf(gs, src, owner, gameengine.CurrentMintEnablerID(gs))
+	if cp == nil {
+		return nil
+	}
 	cp.IsCopy = true
 	cp.Name = src.DisplayName() + " (altair copy)"
-	hasToken := false
-	for _, t := range cp.Types {
-		if t == "token" {
-			hasToken = true
-			break
-		}
-	}
-	if !hasToken {
-		cp.Types = append(cp.Types, "token")
-	}
 	return cp
 }

@@ -644,23 +644,27 @@ func urzaPrinceEra3Activate(gs *gameengine.GameState, src *gameengine.Permanent,
 		emitFail(gs, slug, src.Card.DisplayName(), "no_artifact_to_copy", nil)
 		return
 	}
-	tokenCard := target.Card.DeepCopy()
-	tokenCard.Owner = src.Controller
+	// Phase 5 chokepoint: MintTokenAsCopyOf clears the inherited
+	// InstanceID before stamping a fresh TK ID. Template overrides
+	// (name suffix, forced 1/1 P/T, soldier subtype) are applied AFTER
+	// the mint per the Urza-Construct shape (mirror of PR #853 / Drafna).
+	tokenCard := gameengine.MintTokenAsCopyOf(gs, target.Card, src.Controller, gameengine.CurrentMintEnablerID(gs))
+	if tokenCard == nil {
+		emitFail(gs, slug, src.Card.DisplayName(), "mint_token_returned_nil", nil)
+		return
+	}
 	tokenCard.IsCopy = true
 	tokenCard.Name = target.Card.DisplayName() + " (Urza copy)"
 	tokenCard.BasePower = 1
 	tokenCard.BaseToughness = 1
 	hasCreature := false
 	hasSoldier := false
-	hasToken := false
 	for _, t := range tokenCard.Types {
 		switch t {
 		case "creature":
 			hasCreature = true
 		case "soldier":
 			hasSoldier = true
-		case "token":
-			hasToken = true
 		}
 	}
 	if !hasCreature {
@@ -668,9 +672,6 @@ func urzaPrinceEra3Activate(gs *gameengine.GameState, src *gameengine.Permanent,
 	}
 	if !hasSoldier {
 		tokenCard.Types = append(tokenCard.Types, "soldier")
-	}
-	if !hasToken {
-		tokenCard.Types = append(tokenCard.Types, "token")
 	}
 	enterBattlefieldWithETB(gs, src.Controller, tokenCard, false)
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{

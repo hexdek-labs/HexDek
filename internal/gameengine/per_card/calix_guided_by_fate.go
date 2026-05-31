@@ -153,11 +153,17 @@ func calixCombatCopy(gs *gameengine.GameState, perm *gameengine.Permanent, ctx m
 		emitFail(gs, slug, perm.Card.DisplayName(), "no_nonlegendary_enchantment_to_copy", nil)
 		return
 	}
-	copyCard := target.Card.DeepCopy()
+	// Phase 5 chokepoint: MintTokenAsCopyOf handles DeepCopy + ID clear +
+	// fresh TK mint + token-type tag. Mirror of PR #853 / Drafna.
+	copyCard := gameengine.MintTokenAsCopyOf(gs, target.Card, perm.Controller, gameengine.CurrentMintEnablerID(gs))
+	if copyCard == nil {
+		emitFail(gs, slug, perm.Card.DisplayName(), "mint_token_returned_nil", nil)
+		return
+	}
 	copyCard.IsCopy = true
-	copyCard.Owner = perm.Controller
-	// Drop the legendary supertype on the copy if any leaked in (shouldn't,
-	// since we filtered) — defense in depth.
+	// Drop the legendary supertype — defense in depth (the source filter
+	// already excludes legendary enchantments, but a stray Legendary tag
+	// surviving DeepCopy would trip §704.5j on the new token).
 	filtered := copyCard.Types[:0]
 	for _, t := range copyCard.Types {
 		if t == "legendary" || t == "Legendary" {
@@ -165,7 +171,7 @@ func calixCombatCopy(gs *gameengine.GameState, perm *gameengine.Permanent, ctx m
 		}
 		filtered = append(filtered, t)
 	}
-	copyCard.Types = append(filtered, "token")
+	copyCard.Types = filtered
 	enterBattlefieldWithETB(gs, perm.Controller, copyCard, false)
 	perm.Flags["calix_combat_copy_turn"] = gs.Turn + 1
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

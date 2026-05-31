@@ -58,21 +58,17 @@ func echocastingSymposiumResolve(gs *gameengine.GameState, item *gameengine.Stac
 		return
 	}
 
-	// Create a token copy via DeepCopy.
-	tokenCard := bestPerm.Card.DeepCopy()
+	// Create a token copy via the Phase 5 mint chokepoint — clears the
+	// inherited InstanceID and stamps a fresh TK ID. The " Token" name
+	// suffix and IsCopy=true rider are applied AFTER the mint so the
+	// canonical mint path is preserved (mirror of PR #853 / Drafna).
+	tokenCard := gameengine.MintTokenAsCopyOf(gs, bestPerm.Card, seat, gameengine.CurrentMintEnablerID(gs))
+	if tokenCard == nil {
+		emitFail(gs, slug, cardName, "mint_token_returned_nil", nil)
+		paradigmExileItem(gs, item, seat, slug, cardName)
+		return
+	}
 	tokenCard.Name = bestPerm.Card.DisplayName() + " Token"
-	tokenCard.Owner = seat
-	// Ensure token type is present.
-	hasToken := false
-	for _, t := range tokenCard.Types {
-		if t == "token" {
-			hasToken = true
-			break
-		}
-	}
-	if !hasToken {
-		tokenCard.Types = append(tokenCard.Types, "token")
-	}
 	tokenCard.IsCopy = true
 
 	perm := enterBattlefieldWithETB(gs, seat, tokenCard, false)
