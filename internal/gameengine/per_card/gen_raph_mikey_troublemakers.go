@@ -66,17 +66,24 @@ func raphMikeyTroublemakersAttack(gs *gameengine.GameState, perm *gameengine.Per
 	if newPerm != nil {
 		gameengine.RegisterReplacementsForPermanent(gs, newPerm)
 		gameengine.FirePermanentETBTriggers(gs, newPerm)
-		if newPerm.Flags == nil {
-			newPerm.Flags = map[string]int{}
-		}
-		newPerm.Flags["attacking"] = 1
-		// R60: CR §506.3 — the creature is legally attacking despite
-		// §302.1 summoning sickness. Clear SS so checkCombatLegality
-		// doesn't trip on a mid-combat game end. This is the dominant
-		// fuzz repro for the "Behemoth of Vault 0" signature
-		// (Raph & Mikey's chaos-game commander deck includes Behemoth
-		// of Vault 0 as the pick target in the bit-stable seed-42 game
-		// 1611). See docs/loki-r60-round2-report.md.
+		// CR §508.1g — the creature is placed onto the battlefield
+		// in an attacking state by an effect, bypassing §508.1a-f
+		// restrictions (defender, summoning sickness, tapped). The
+		// MarkEnteredAttacking helper stamps both flagAttacking and
+		// flagEnteredAttacking so the CombatLegality invariant
+		// honors the §508.1g carve-out for the duration of combat.
+		//
+		// Live bug fix per PR #950 / Loki r60 pathological-gauntlet
+		// game 1317: Raph & Mikey dug up Wall of Tanglecord
+		// (Defender), tripping the bare-fact "defender && attacking"
+		// invariant. Per rules the Wall is legitimately attacking;
+		// per engine, the flag now tells the invariant so.
+		gameengine.MarkEnteredAttacking(newPerm)
+		// CR §302.1 summoning sickness — same §508.1g carve-out
+		// rationale. The dominant prior repro was "Behemoth of Vault
+		// 0" on seat-42 game 1611 (docs/loki-r60-round2-report.md);
+		// clearing SS was the pre-MarkEnteredAttacking workaround,
+		// preserved for double-defense.
 		newPerm.SummoningSick = false
 		if def, ok := gameengine.AttackerDefender(perm); ok {
 			gameengine.SetAttackerDefender(newPerm, def)
