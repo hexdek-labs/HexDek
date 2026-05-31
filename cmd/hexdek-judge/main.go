@@ -75,8 +75,15 @@ func main() {
 		// land-count expectations) when --bracket N (1-5) is set.
 		checkDeckConstruction = flag.Bool("check-deck-construction", false, "batch mode: validate a deck against CR §903.5 (count, singleton, color identity) and emit a JSON report. Requires --deck.")
 		bracket               = flag.Int("bracket", 0, "optional bracket (1-5) for --check-deck-construction — adds an advisory land-count shape check against the WotC 2024 Commander bracket framework")
-		deckPath              = flag.String("deck", "", "deck text file path for --check-commander / --check-deck-construction")
-		checkOut              = flag.String("check-out", "", "output path for the --check-* JSON report (default: stdout)")
+		// CR §704 State-Based Action probe — walks a saved game-state
+		// snapshot and reports every §704.5 / §704.6 condition that
+		// exists in the state but should have already been resolved.
+		// Useful for judge-mode replay analysis (Loki crash snapshots,
+		// game-replay frames) and CI gates against a replay corpus.
+		checkSBA     = flag.Bool("check-sba", false, "batch mode: scan a game-state snapshot for §704.5 / §704.6 SBA conditions that should have fired but didn't. Requires --snapshot.")
+		snapshotPath = flag.String("snapshot", "", "game-state snapshot JSON path for --check-sba")
+		deckPath     = flag.String("deck", "", "deck text file path for --check-commander / --check-deck-construction")
+		checkOut     = flag.String("check-out", "", "output path for the --check-* JSON report (default: stdout)")
 	)
 	flag.Parse()
 
@@ -109,6 +116,17 @@ func main() {
 		rep, err := runDeckConstructionCheck(*deckPath, *oraclePath, *checkOut, *bracket)
 		if err != nil {
 			log.Fatalf("check-deck-construction: %v", err)
+		}
+		if !rep.Valid {
+			os.Exit(1)
+		}
+		return
+	}
+
+	if *checkSBA {
+		rep, err := runSBAProbe(*snapshotPath, *checkOut)
+		if err != nil {
+			log.Fatalf("check-sba: %v", err)
 		}
 		if !rep.Valid {
 			os.Exit(1)
