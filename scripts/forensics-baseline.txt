@@ -1,0 +1,16 @@
+# scripts/forensics-baseline.txt — known-good PatternKeys.
+# One PatternKey per line, format: prov=X first=Y match=Z.
+# Regenerate with: scripts/run-forensics.sh --update-baseline
+# Lines starting with "#" and blank lines are ignored.
+#
+# Seeded EMPTY (no known-acceptable fabrication clusters).
+#
+# Per CLAUDE.md (Loki r60 canonical-final, 2026-05-25): the engine is
+# bit-stable clean — 10K games x 10 canonical seeds = 0 violations.
+# A 50-game / seed=42 Loki run on current main therefore surfaces no
+# ZoneConservation fabrications, so the baseline IS the empty set, and
+# any cluster appearing in CI is a regression.
+#
+# If a known-NEW cluster is intentional (rare — typically only during
+# a deliberate engine refactor): review by hand, then regenerate via
+# `scripts/run-forensics.sh --update-baseline`. Otherwise: fix the bug.
