@@ -2066,7 +2066,7 @@ func (h *YggdrasilHat) effectiveBudget(gs *gameengine.GameState) int {
 		}
 		total += len(s.Battlefield)
 	}
-	if total >= adaptiveBudgetComplexityThreshold && !highStakes {
+	if total >= adaptiveComplexityThreshold(gs) && !highStakes {
 		return 0
 	}
 	if h.TurnBudget > 0 && h.turnRemaining(gs) <= 0 && !highStakes {
@@ -2095,7 +2095,115 @@ func (h *YggdrasilHat) effectiveBudget(gs *gameengine.GameState) int {
 	case PlanExecute:
 		budget = budget * 2
 	}
+
+	// R60: graduated game-state pressure lift on the non-high-stakes
+	// path. With all 8 hat eval dimensions r60-tuned and Freya
+	// integration solid, mid-pressure states (turn 8+ life 15 vs an
+	// opp with 12 board power — none of the binary high-stakes
+	// signals fire, but the position is real) deserve more compute
+	// than the flat baseline Budget. Skipped on the high-stakes path
+	// because that path already returns the unmodified Budget (the
+	// existing test contract pins exact == Budget values); the lift
+	// graduates the MIDDLE ground between "low pressure: base Budget"
+	// and "high stakes: bypass degrade, full Budget." Up to +50% at
+	// saturated pressure (combined turn + low-life + opp-board signals).
+	if !highStakes {
+		if pressure := gameStatePressure(gs); pressure > 0 {
+			budget = int(float64(budget) * (1.0 + pressure*0.5))
+		}
+	}
 	return budget
+}
+
+// adaptiveComplexityThreshold returns the per-turn-scaled board
+// complexity threshold above which the budget degrades to heuristic.
+// Pre-r60 a flat 60 was applied regardless of turn; late-game boards
+// naturally grow past 60 (multiple seats with 15+ permanents each),
+// so the static threshold over-degraded T15+ states where decisions
+// genuinely matter. Scales +3 permanents per turn past 10 (so T15
+// reads as 75, T20 reads as 90). Capped to prevent the threshold
+// from sliding past observable game-state complexity ceilings.
+func adaptiveComplexityThreshold(gs *gameengine.GameState) int {
+	threshold := adaptiveBudgetComplexityThreshold
+	if gs == nil || gs.Turn <= 10 {
+		return threshold
+	}
+	scaled := threshold + (gs.Turn-10)*3
+	if scaled > 120 {
+		scaled = 120
+	}
+	return scaled
+}
+
+// gameStatePressure returns a 0.0..1.0 estimate of overall game-state
+// pressure. Three additive components, each capped at ~0.35 so any
+// single saturated signal contributes meaningfully but no single
+// signal can saturate the total alone:
+//
+//   - Turn pressure: late game = compounding stakes. 0 below turn 6,
+//     ramps linearly to 0.35 at turn 12 (game-defining mid-late
+//     window — combos online, mana plentiful, threats deployed).
+//   - Life pressure: minimum live-seat life ratio inverted. Any
+//     seat at 20/40 contributes ~0.18; any seat at 4/40 contributes
+//     ~0.32. The "any seat" framing matches isHighStakesDecision's
+//     existing rationale — whether they're about to die or we are,
+//     the next decisions are game-deciding.
+//   - Board pressure: max effective board power across live seats,
+//     normalized so 20 power ≈ 0.30, capped at 0.30. A large board
+//     on the table compresses the answer-or-die window for whoever
+//     it's pointed at.
+//
+// Used by effectiveBudget's non-high-stakes lift and by
+// isHighStakesDecision's pressure-bridge (pressure >= 0.6 → high
+// stakes even when no individual binary signal fires).
+func gameStatePressure(gs *gameengine.GameState) float64 {
+	if gs == nil {
+		return 0
+	}
+	pressure := 0.0
+	switch {
+	case gs.Turn >= 12:
+		pressure += 0.35
+	case gs.Turn >= 6:
+		pressure += 0.05 * float64(gs.Turn-6)
+	}
+	minLifeRatio := 1.0
+	for _, s := range gs.Seats {
+		if s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		starting := float64(s.StartingLife)
+		if starting <= 0 {
+			starting = 40
+		}
+		r := float64(s.Life) / starting
+		if r < 0 {
+			r = 0
+		}
+		if r < minLifeRatio {
+			minLifeRatio = r
+		}
+	}
+	pressure += (1.0 - minLifeRatio) * 0.35
+	var maxBoardPow float64
+	for _, s := range gs.Seats {
+		if s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		bp := float64(effectiveBoardPower(gs, s))
+		if bp > maxBoardPow {
+			maxBoardPow = bp
+		}
+	}
+	boardPressure := maxBoardPow / 70.0
+	if boardPressure > 0.30 {
+		boardPressure = 0.30
+	}
+	pressure += boardPressure
+	if pressure > 1.0 {
+		pressure = 1.0
+	}
+	return pressure
 }
 
 // isHighStakesDecision returns true when the current game state is one
@@ -2127,6 +2235,18 @@ func (h *YggdrasilHat) isHighStakesDecision(gs *gameengine.GameState) bool {
 		}
 	}
 	if len(gs.Stack) >= highStakesStackDepth {
+		return true
+	}
+	// R60: pressure bridge. When combined game-state pressure (turn +
+	// life + board) crosses 0.6 without any individual binary signal
+	// firing, the position is genuinely high-stakes — a turn-12 board
+	// with one opp at 14 life and 12 board power is the canonical case
+	// (turn 0.30 + life 0.23 + board 0.17 = 0.70). Pre-r60 such a
+	// state degraded silently to heuristic on complex boards because
+	// no single signal tripped. The 0.6 floor is calibrated to NOT
+	// trigger on baseline-stacked states (e.g., life 9 alone gives
+	// 0.27 — below the floor).
+	if gameStatePressure(gs) >= 0.6 {
 		return true
 	}
 	return false
@@ -2182,7 +2302,7 @@ func (h *YggdrasilHat) classifyDecision(gs *gameengine.GameState) DecisionTier {
 			total += len(s.Battlefield)
 		}
 	}
-	if total >= adaptiveBudgetComplexityThreshold && !highStakes {
+	if total >= adaptiveComplexityThreshold(gs) && !highStakes {
 		return TierMjolnir
 	}
 	if h.TurnBudget > 0 && h.turnRemaining(gs) <= 0 && !highStakes {
