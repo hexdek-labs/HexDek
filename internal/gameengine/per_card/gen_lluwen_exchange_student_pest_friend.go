@@ -35,6 +35,34 @@ func registerLluwenExchangeStudentPestFriend(r *Registry) {
 	r.OnETB("Lluwen, Exchange Student", lluwenETB)
 	r.OnActivated("Lluwen, Exchange Student // Pest Friend", lluwenActivated)
 	r.OnActivated("Lluwen, Exchange Student", lluwenActivated)
+	// R60 batch 5: wire the Pest Token's "Whenever this token attacks,
+	// you gain 1 life" printed-on-token trigger. The token has
+	// Flags["pest_attack_lifegain"] = 1 stamped at mint, which gates
+	// the GainLife so handlers registered to the generic "Pest Token"
+	// name don't fire for unrelated Pest tokens minted by other cards.
+	r.OnTrigger("Pest Token", "creature_attacks", lluwenPestAttackLifegain)
+}
+
+func lluwenPestAttackLifegain(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	const slug = "lluwen_pest_attack_lifegain"
+	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
+		return
+	}
+	atk, _ := ctx["attacker_perm"].(*gameengine.Permanent)
+	if atk != perm {
+		return
+	}
+	if perm.Flags == nil || perm.Flags["pest_attack_lifegain"] != 1 {
+		// Not a Lluwen-minted Pest — some other card created this
+		// "Pest Token" without the flag, so the printed-on-token
+		// trigger doesn't apply.
+		return
+	}
+	gameengine.GainLife(gs, perm.Controller, 1, perm.Card.DisplayName())
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat":   perm.Controller,
+		"gained": 1,
+	})
 }
 
 // lluwenETB fires when Lluwen enters the battlefield. "Lluwen enters
@@ -160,6 +188,4 @@ func lluwenCreatePestToken(gs *gameengine.GameState, src *gameengine.Permanent) 
 			"reason": "pest_friend_copy",
 		},
 	})
-	emitPartial(gs, "lluwen_pest_token", src.Card.DisplayName(),
-		"pest_attack_lifegain_trigger_not_wired_to_combat_dispatch")
 }

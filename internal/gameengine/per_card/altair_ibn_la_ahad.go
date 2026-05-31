@@ -155,8 +155,13 @@ func altairAttackCopySwarm(gs *gameengine.GameState, perm *gameengine.Permanent,
 		"tokens":        len(createdTokens),
 	})
 	if pickedName == "" {
-		emitPartial(gs, slug, perm.Card.DisplayName(),
-			"no_assassin_in_graveyard_at_attack_time")
+		// "Up to one target" — zero is legal. R60 batch 5: this was
+		// previously emitPartial which incorrectly read as a gap;
+		// reclassified as emitFail to reflect the real fizzle path
+		// (no eligible Assassin → no exile target, "up to" makes
+		// this legal, not partial).
+		emitFail(gs, slug, perm.Card.DisplayName(),
+			"no_assassin_in_graveyard_at_attack_time", nil)
 	}
 	emitPartial(gs, slug, perm.Card.DisplayName(),
 		"memory_counter_modeled_via_card_types_tag_only_for_altair_pool")
