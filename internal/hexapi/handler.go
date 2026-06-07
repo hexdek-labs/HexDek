@@ -30,7 +30,7 @@ type Handler struct {
 	Showmatch     *Showmatch
 	IndexHTMLPath string
 	cardDB        map[string]oracleCard
-	db            *sql.DB // optional — used for deck_meta (custom name, etc.)
+	db            *sql.DB           // optional — used for deck_meta (custom name, etc.)
 	ownerAliases  map[string]string // email prefix → owner slug
 
 	// FeedbackLimiter rate-limits POST /api/feedback per client IP. The
@@ -367,8 +367,8 @@ func (h *Handler) handleListDecks(w http.ResponseWriter, r *http.Request) {
 				CommanderCard: cmdrCard,
 				CardCount:     cards,
 				Bracket:       bracket,
-				Color:      color,
-				ImportedAt: modTime,
+				Color:         color,
+				ImportedAt:    modTime,
 			})
 		}
 	}
@@ -853,15 +853,15 @@ func (h *Handler) handleCloneDeck(w http.ResponseWriter, r *http.Request) {
 // with explicit attribution preserved via `forked_from`. Distinct from
 // clone (handleCloneDeck above) in three ways:
 //
-//   1. Intent — fork is the loud-attribution "branch from someone else's
-//      deck" flow, surfaced in the UI as "Forked from <owner>/<deck>".
-//      Clone is the quieter "(CLONE)" copy with no expectation that
-//      the original owner is collaborating.
-//   2. Storage — fork meta lives in `deck_meta.forked_from` (not
-//      `cloned_from`), and fork events log to `fork_log` (not
-//      `clone_log`), so the rate-limit budgets are independent.
-//   3. Naming — the destination file is `<srcID>_fork[N]` and the
-//      display name appends " (FORK)" rather than " (CLONE)".
+//  1. Intent — fork is the loud-attribution "branch from someone else's
+//     deck" flow, surfaced in the UI as "Forked from <owner>/<deck>".
+//     Clone is the quieter "(CLONE)" copy with no expectation that
+//     the original owner is collaborating.
+//  2. Storage — fork meta lives in `deck_meta.forked_from` (not
+//     `cloned_from`), and fork events log to `fork_log` (not
+//     `clone_log`), so the rate-limit budgets are independent.
+//  3. Naming — the destination file is `<srcID>_fork[N]` and the
+//     display name appends " (FORK)" rather than " (CLONE)".
 //
 // Everything else (CSRF, auth header, self-fork rejection, deck file
 // copy, freya snapshot copy, fresh Freya re-run kick-off, version
@@ -1053,9 +1053,9 @@ func (h *Handler) handleListVersions(w http.ResponseWriter, r *http.Request) {
 			modTime = info.ModTime()
 		}
 		versions = append(versions, map[string]any{
-			"version":   vNum,
-			"filename":  name,
-			"saved_at":  modTime,
+			"version":  vNum,
+			"filename": name,
+			"saved_at": modTime,
 		})
 	}
 
@@ -1182,13 +1182,10 @@ func (h *Handler) runFreya(deckPath string) {
 	freyaMu.Lock()
 	defer freyaMu.Unlock()
 
-	freyaBin := "hexdek-freya"
-	if _, err := exec.LookPath(freyaBin); err != nil {
-		freyaBin = "./hexdek-freya"
-		if _, err := os.Stat(freyaBin); err != nil {
-			log.Printf("freya: binary not found")
-			return
-		}
+	freyaBin, ok := findFreyaBinary()
+	if !ok {
+		log.Printf("freya: binary not found")
+		return
 	}
 
 	log.Printf("freya: analyzing %s", deckPath)
@@ -2415,19 +2412,19 @@ func parseDeckList(content string) []map[string]any {
 		cardNameSet[strings.ToLower(stripped)] = true
 		cards = append(cards, map[string]any{
 			"quantity": qty,
-			"name":    name,
+			"name":     name,
 		})
 	}
 	if cmdrName != "" && !cardNameSet[strings.ToLower(cmdrName)] {
 		cards = append(cards, map[string]any{
 			"quantity": 1,
-			"name":    cmdrName,
+			"name":     cmdrName,
 		})
 	}
 	if partnerName != "" && !cardNameSet[strings.ToLower(partnerName)] {
 		cards = append(cards, map[string]any{
 			"quantity": 1,
-			"name":    partnerName,
+			"name":     partnerName,
 		})
 	}
 	return cards
@@ -2483,6 +2480,7 @@ func warmArtCache() {
 	}
 	log.Printf("art cache: warmed %d images from disk", loaded)
 }
+
 var artHTTPClient = &http.Client{
 	Timeout: 15 * time.Second,
 	CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -2789,20 +2787,20 @@ func (h *Handler) handleKofiWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var payload struct {
-		VerificationToken        string  `json:"verification_token"`
-		MessageID                string  `json:"message_id"`
-		Timestamp                string  `json:"timestamp"`
-		Type                     string  `json:"type"`
-		IsPublic                 bool    `json:"is_public"`
-		FromName                 string  `json:"from_name"`
-		Message                  string  `json:"message"`
-		Amount                   string  `json:"amount"`
-		URL                      string  `json:"url"`
-		Email                    string  `json:"email"`
-		Currency                 string  `json:"currency"`
-		IsSubscriptionPayment    bool    `json:"is_subscription_payment"`
-		IsFirstSubscriptionPayment bool  `json:"is_first_subscription_payment"`
-		TierName                 *string `json:"tier_name"`
+		VerificationToken          string  `json:"verification_token"`
+		MessageID                  string  `json:"message_id"`
+		Timestamp                  string  `json:"timestamp"`
+		Type                       string  `json:"type"`
+		IsPublic                   bool    `json:"is_public"`
+		FromName                   string  `json:"from_name"`
+		Message                    string  `json:"message"`
+		Amount                     string  `json:"amount"`
+		URL                        string  `json:"url"`
+		Email                      string  `json:"email"`
+		Currency                   string  `json:"currency"`
+		IsSubscriptionPayment      bool    `json:"is_subscription_payment"`
+		IsFirstSubscriptionPayment bool    `json:"is_first_subscription_payment"`
+		TierName                   *string `json:"tier_name"`
 	}
 	if err := json.Unmarshal([]byte(dataStr), &payload); err != nil {
 		log.Printf("kofi webhook: bad JSON: %v", err)
@@ -2821,17 +2819,17 @@ func (h *Handler) handleKofiWebhook(w http.ResponseWriter, r *http.Request) {
 	os.MkdirAll(donationsDir, 0755)
 
 	entry := map[string]any{
-		"message_id":    payload.MessageID,
-		"timestamp":     payload.Timestamp,
-		"type":          payload.Type,
-		"is_public":     payload.IsPublic,
-		"from_name":     payload.FromName,
-		"message":       payload.Message,
-		"amount":        payload.Amount,
-		"currency":      payload.Currency,
+		"message_id":      payload.MessageID,
+		"timestamp":       payload.Timestamp,
+		"type":            payload.Type,
+		"is_public":       payload.IsPublic,
+		"from_name":       payload.FromName,
+		"message":         payload.Message,
+		"amount":          payload.Amount,
+		"currency":        payload.Currency,
 		"is_subscription": payload.IsSubscriptionPayment,
-		"tier_name":     payload.TierName,
-		"received_at":   time.Now().UTC().Format(time.RFC3339),
+		"tier_name":       payload.TierName,
+		"received_at":     time.Now().UTC().Format(time.RFC3339),
 	}
 
 	data, _ := json.MarshalIndent(entry, "", "  ")

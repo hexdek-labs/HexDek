@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"time"
 )
 
@@ -92,23 +94,62 @@ func healthBool(ok bool) string {
 	return HealthFail
 }
 
+// freyaBinaryName is the platform-specific filename of the Freya
+// analysis binary — hexdek-freya, plus the .exe suffix on Windows.
+func freyaBinaryName() string {
+	if runtime.GOOS == "windows" {
+		return "hexdek-freya.exe"
+	}
+	return "hexdek-freya"
+}
+
+// findFreyaBinary locates the hexdek-freya analysis binary, returning
+// an exec-ready path and whether it was found. Discovery order, most
+// specific first:
+//
+//  1. alongside the running server executable (the canonical deploy
+//     shape — server + freya are built into the same directory), using
+//     the platform extension. This is the ONLY branch that works on
+//     Windows: the binary is hexdek-freya.exe, which neither a
+//     bare-name os.Stat("./hexdek-freya") nor (since Go 1.19) a cwd
+//     LookPath would resolve.
+//  2. on PATH — LookPath applies PATHEXT, so the bare name resolves
+//     hexdek-freya.exe on Windows / hexdek-freya elsewhere.
+//  3. in the current working directory, returned with a leading "./"
+//     so exec.Command treats it as a relative path rather than re-
+//     triggering a PATH search (Go 1.19+ refuses to run a cwd match
+//     found via a separator-less name).
+//
+// Both runFreya and freyaBinaryAvailable route through this so the
+// health probe can never disagree with the path runFreya will execute.
+func findFreyaBinary() (string, bool) {
+	name := freyaBinaryName()
+	if exe, err := os.Executable(); err == nil {
+		cand := filepath.Join(filepath.Dir(exe), name)
+		if _, err := os.Stat(cand); err == nil {
+			return cand, true
+		}
+	}
+	if p, err := exec.LookPath("hexdek-freya"); err == nil {
+		return p, true
+	}
+	if _, err := os.Stat(name); err == nil {
+		return "." + string(os.PathSeparator) + name, true
+	}
+	return "", false
+}
+
 // freyaBinaryAvailable reports whether the hexdek-freya analysis
-// subprocess is reachable. Mirrors the discovery path runFreya uses
-// in handler.go: PATH first, then ./hexdek-freya relative to the
-// current working directory. We don't try to invoke it (the cold-
-// start cost would dwarf a healthcheck budget); presence on disk is
-// the cheapest meaningful signal.
+// subprocess is reachable. Delegates to findFreyaBinary so the health
+// probe matches runFreya's discovery exactly. We don't invoke the
+// binary (the cold-start cost would dwarf a healthcheck budget);
+// presence on disk is the cheapest meaningful signal.
 //
 // Test/dev binaries that don't ship the freya binary report fail —
 // the dashboard surfaces it; the server itself still serves requests.
 func freyaBinaryAvailable() bool {
-	if _, err := exec.LookPath("hexdek-freya"); err == nil {
-		return true
-	}
-	if _, err := os.Stat("./hexdek-freya"); err == nil {
-		return true
-	}
-	return false
+	_, ok := findFreyaBinary()
+	return ok
 }
 
 // hatReady reports whether the in-process YggdrasilHat AI player is
