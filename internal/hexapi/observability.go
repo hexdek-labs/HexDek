@@ -1,9 +1,12 @@
 package hexapi
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -23,9 +26,9 @@ import (
 // SSE) need Hijack and Flush respectively.
 type observabilityResponseWriter struct {
 	http.ResponseWriter
-	status     int
-	bodyPeek   bytes.Buffer
-	peekCap    int
+	status      int
+	bodyPeek    bytes.Buffer
+	peekCap     int
 	wroteHeader bool
 }
 
@@ -67,6 +70,34 @@ func (o *observabilityResponseWriter) Flush() {
 	if f, ok := o.ResponseWriter.(http.Flusher); ok {
 		f.Flush()
 	}
+}
+
+// Hijack threads through to the underlying writer when supported.
+// WebSocket upgrades (/ws/live, /ws/spectate/{room}, /ws/party/...)
+// hijack the raw connection; without this passthrough the WS library
+// sees a non-Hijacker ResponseWriter and the upgrade fails with
+// "http.ResponseWriter does not implement http.Hijacker" (HTTP 501).
+//
+// Because observabilityResponseWriter embeds the http.ResponseWriter
+// *interface*, a concrete Hijack method on the wrapped value is NOT
+// promoted — the embedded interface's method set has no Hijack. This
+// explicit method restores the capability the wrapper's doc comment
+// always claimed to preserve.
+func (o *observabilityResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hj, ok := o.ResponseWriter.(http.Hijacker); ok {
+		return hj.Hijack()
+	}
+	return nil, nil, fmt.Errorf("observability: underlying ResponseWriter does not implement http.Hijacker")
+}
+
+// Push threads through to the underlying writer when it supports
+// HTTP/2 server push. Same promotion gap as Hijack — the embedded
+// interface doesn't carry Push.
+func (o *observabilityResponseWriter) Push(target string, opts *http.PushOptions) error {
+	if p, ok := o.ResponseWriter.(http.Pusher); ok {
+		return p.Push(target, opts)
+	}
+	return http.ErrNotSupported
 }
 
 // extractErrorSlug parses the captured body peek as the unified
@@ -238,4 +269,3 @@ func ObservabilityMiddleware(registry *MetricsRegistry, logger StructuredLogger,
 		}
 	})
 }
-
