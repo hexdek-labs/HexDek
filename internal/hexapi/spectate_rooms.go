@@ -54,9 +54,9 @@ type SpectateRoom struct {
 }
 
 type RoomManager struct {
-	mu    sync.RWMutex
-	rooms map[string]*SpectateRoom // room_id → room
-	byDeck map[string]string       // deck_key → room_id (for reuse)
+	mu     sync.RWMutex
+	rooms  map[string]*SpectateRoom // room_id → room
+	byDeck map[string]string        // deck_key → room_id (for reuse)
 }
 
 func NewRoomManager() *RoomManager {
@@ -67,11 +67,11 @@ func NewRoomManager() *RoomManager {
 }
 
 type SpectateRoomInfo struct {
-	ID        string `json:"id"`
-	DeckKey   string `json:"deck_key"`
-	Commander string `json:"commander"`
-	Viewers   int    `json:"viewers"`
-	Game      int    `json:"game_number"`
+	ID        string  `json:"id"`
+	DeckKey   string  `json:"deck_key"`
+	Commander string  `json:"commander"`
+	Viewers   int     `json:"viewers"`
+	Game      int     `json:"game_number"`
 	Speed     float64 `json:"speed"`
 }
 
@@ -724,6 +724,21 @@ func shortHash(s string) string {
 
 // --- HTTP handlers ---
 
+// handleReloadPool re-scans the deck directory and atomically swaps the
+// engine pool, so decks imported since startup become gauntlet/spectate
+// eligible without a server restart. CSRF-gated POST. Returns the new
+// pool size. The re-scan re-parses every deck (seconds at ~1.4k decks)
+// but runs off the request goroutine's caller — the grinder keeps
+// running against the old pool until the atomic swap lands.
+func (sm *Showmatch) handleReloadPool(w http.ResponseWriter, r *http.Request) {
+	n, err := sm.reloadDeckPool()
+	if err != nil {
+		writeError(w, http.StatusServiceUnavailable, "pool reload failed: "+err.Error())
+		return
+	}
+	writeJSON(w, map[string]any{"status": "ok", "decks": n})
+}
+
 func (sm *Showmatch) handleSpawnSpectateRoom(w http.ResponseWriter, r *http.Request) {
 	// Per-IP rate-limit. SpawnOrReuse de-dupes per deck-key, but a single
 	// caller can still spawn one room per unique deck id they probe;
@@ -825,7 +840,7 @@ func (sm *Showmatch) handleSpectateRoomWS(w http.ResponseWriter, r *http.Request
 			break
 		}
 		var env struct {
-			Type    string  `json:"type"`
+			Type    string          `json:"type"`
 			Payload json.RawMessage `json:"payload"`
 		}
 		if json.Unmarshal(data, &env) != nil {

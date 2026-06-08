@@ -468,12 +468,12 @@ func (s LineStatus) String() string {
 // end of every successful ParseDeckReader call. Empty / zero on parse
 // error.
 type ParseReport struct {
-	TotalLines        int               // total card-shaped source lines (commander + main + dropped card lines)
-	ResolvedLines     int               // direct-meta-hit count
-	FallbackResolved  int               // face-match / DFC-canonicalize / corpus-only path count
-	UnresolvedLines   int               // buildCard returned nil
-	DroppedLines      int               // sideboard / signature-spells / etc. (counted but not resolved)
-	UnresolvedDetails []UnresolvedLine  // per-failure detail (LineNumber + raw context + reason)
+	TotalLines        int              // total card-shaped source lines (commander + main + dropped card lines)
+	ResolvedLines     int              // direct-meta-hit count
+	FallbackResolved  int              // face-match / DFC-canonicalize / corpus-only path count
+	UnresolvedLines   int              // buildCard returned nil
+	DroppedLines      int              // sideboard / signature-spells / etc. (counted but not resolved)
+	UnresolvedDetails []UnresolvedLine // per-failure detail (LineNumber + raw context + reason)
 }
 
 // CoveragePercent returns the percentage of card-shaped lines (excl.
@@ -529,17 +529,85 @@ func (td *TournamentDeck) CommanderNames() []string {
 // The deck is stored by-value so callers can rebuild per-game libraries
 // (deep-copying cards) without disturbing the parse result.
 func ParseDeckFile(path string, corpus *astload.Corpus, meta *MetaDB) (*TournamentDeck, error) {
-	f, err := os.Open(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("deckparser: open %s: %w", path, err)
 	}
-	defer f.Close()
-	deck, err := ParseDeckReader(f, corpus, meta)
+	// Structured .json decks (the UI/import-served format) are converted
+	// to the plaintext decklist the text parser consumes, so JSON and
+	// plaintext share one parse path + corpus resolution. Detection is by
+	// content, not extension, so a mislabeled file still parses correctly.
+	text := string(data)
+	if looksLikeJSONDeck(data) {
+		list, jerr := jsonDeckToDecklist(data)
+		if jerr != nil {
+			return nil, fmt.Errorf("deckparser: parse json deck %s: %w", path, jerr)
+		}
+		text = list
+	}
+	deck, err := ParseDeckReader(strings.NewReader(text), corpus, meta)
 	if err != nil {
 		return nil, err
 	}
 	deck.Path = path
 	return deck, nil
+}
+
+// looksLikeJSONDeck reports whether data is a JSON object (first
+// non-whitespace byte is '{') — the structured deck format. Plaintext
+// decklists start with a quantity digit or a card name.
+func looksLikeJSONDeck(data []byte) bool {
+	for _, b := range data {
+		switch b {
+		case ' ', '\t', '\r', '\n':
+			continue
+		case '{':
+			return true
+		default:
+			return false
+		}
+	}
+	return false
+}
+
+// jsonDeckToDecklist converts the structured deck JSON
+// ({"commander":..., "mainboard":[{"name","quantity"}...]}) into the
+// `<qty> <name>` lines + trailing `COMMANDER:` directive that
+// ParseDeckReader consumes. Reusing the text path means JSON decks get
+// identical corpus resolution, commander stripping, and metadata
+// enrichment as plaintext decks — one source of truth.
+func jsonDeckToDecklist(data []byte) (string, error) {
+	var d struct {
+		Commander string `json:"commander"`
+		Mainboard []struct {
+			Name     string `json:"name"`
+			Quantity int    `json:"quantity"`
+		} `json:"mainboard"`
+	}
+	if err := json.Unmarshal(data, &d); err != nil {
+		return "", err
+	}
+	if len(d.Mainboard) == 0 {
+		return "", fmt.Errorf("json deck has empty mainboard")
+	}
+	var b strings.Builder
+	for _, c := range d.Mainboard {
+		name := strings.TrimSpace(c.Name)
+		if name == "" {
+			continue
+		}
+		q := c.Quantity
+		if q < 1 {
+			q = 1
+		}
+		fmt.Fprintf(&b, "%d %s\n", q, name)
+	}
+	// COMMANDER: directive last (footer form). ParseDeckReader strips the
+	// matching card from the library when it also appears in the mainboard.
+	if cmd := strings.TrimSpace(d.Commander); cmd != "" {
+		fmt.Fprintf(&b, "COMMANDER: %s\n", cmd)
+	}
+	return b.String(), nil
 }
 
 // ParseDeckReader is the stream version of ParseDeckFile.

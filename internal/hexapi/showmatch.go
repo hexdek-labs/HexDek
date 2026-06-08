@@ -112,13 +112,13 @@ type EvalSnapshot struct {
 }
 
 type PermanentSnapshot struct {
-	Name    string `json:"name"`
-	Tapped  bool   `json:"tapped"`
-	Power   int    `json:"power,omitempty"`
-	Tough   int    `json:"toughness,omitempty"`
-	IsCmdr  bool   `json:"is_commander,omitempty"`
-	IsLand  bool   `json:"is_land,omitempty"`
-	Type    string `json:"type,omitempty"`
+	Name   string `json:"name"`
+	Tapped bool   `json:"tapped"`
+	Power  int    `json:"power,omitempty"`
+	Tough  int    `json:"toughness,omitempty"`
+	IsCmdr bool   `json:"is_commander,omitempty"`
+	IsLand bool   `json:"is_land,omitempty"`
+	Type   string `json:"type,omitempty"`
 
 	// Counters is the per-kind counter map on this permanent. Common
 	// keys: "+1/+1", "-1/-1", "loyalty", "charge", "fade", "time",
@@ -230,8 +230,8 @@ type SessionStats struct {
 
 type CompletedGame struct {
 	GameID     int            `json:"game_id"`
-	Commanders []string      `json:"commanders"`
-	DeckKeys   []string      `json:"deck_keys"`
+	Commanders []string       `json:"commanders"`
+	DeckKeys   []string       `json:"deck_keys"`
 	Winner     int            `json:"winner"`
 	WinnerName string         `json:"winner_name"`
 	Turns      int            `json:"turns"`
@@ -274,8 +274,8 @@ type SeatTurnSnapshot struct {
 }
 
 type persistJob struct {
-	game        CompletedGame
-	perfDeltas  []db.CardPerformanceDelta
+	game       CompletedGame
+	perfDeltas []db.CardPerformanceDelta
 }
 
 type GauntletResult struct {
@@ -301,7 +301,7 @@ type GauntletResult struct {
 	// surviving to top-2 a lot but not closing" pattern that the binary
 	// W/L view obscures. By definition Wins == Placements[0] and Losses
 	// == Placements[1] + Placements[2] + Placements[3].
-	Placements [4]int    `json:"placements,omitempty"`
+	Placements [4]int `json:"placements,omitempty"`
 
 	// RunID is the gauntlet_runs.run_id reserved at gauntlet start.
 	// Used by the replay-archive path to link this run's per-game
@@ -336,9 +336,11 @@ type Showmatch struct {
 	cursePool map[string]*hat.CursePool // deck key → genetic population
 	curseDir  string
 
-	trainingDir string             // neural evaluator training data output
-	neuralEval  *hat.NeuralEvaluator // shared neural model (nil = not trained yet)
-	selfPlay    *hat.SelfPlayManager // Level 6 self-play training loop
+	decksDir string // deck source dir, retained so reloadDeckPool can re-scan it live
+
+	trainingDir string                          // neural evaluator training data output
+	neuralEval  *hat.NeuralEvaluator            // shared neural model (nil = not trained yet)
+	selfPlay    *hat.SelfPlayManager            // Level 6 self-play training loop
 	strategies  map[string]*hat.StrategyProfile // deck key → Freya strategy profile
 
 	// compositionPrior is the R60 archetype-pod-conditioned TrueSkill
@@ -523,31 +525,32 @@ type eloState struct {
 }
 
 type sessionState struct {
-	gamesPlayed    int // current session only (grinder + showmatch)
-	historicGames  int // loaded from DB on startup (all prior sessions)
-	historicTurns  int
-	totalTurns     int
+	gamesPlayed   int // current session only (grinder + showmatch)
+	historicGames int // loaded from DB on startup (all prior sessions)
+	historicTurns int
+	totalTurns    int
 }
 
 func NewShowmatch(astPath, oraclePath, decksDir string, database *sql.DB) *Showmatch {
 	muninnSink := newMuninnAdapter("data/muninn")
 	sm := &Showmatch{
-		elo:             make(map[string]*eloState),
-		bracketCache:    make(map[string]int),
-		start:           time.Now(),
-		speedMultiplier: 1.0,
-		sqlDB:           database,
-		persistCh:       make(chan persistJob, 512),
-		spectators:      make(map[*spectatorConn]struct{}),
-		gauntlets:       make(map[string]*GauntletResult),
-		gauntletSubs:    make(map[string]map[*gauntletSubscriber]struct{}),
+		elo:              make(map[string]*eloState),
+		bracketCache:     make(map[string]int),
+		start:            time.Now(),
+		speedMultiplier:  1.0,
+		sqlDB:            database,
+		persistCh:        make(chan persistJob, 512),
+		spectators:       make(map[*spectatorConn]struct{}),
+		gauntlets:        make(map[string]*GauntletResult),
+		gauntletSubs:     make(map[string]map[*gauntletSubscriber]struct{}),
 		MatchBroadcaster: NewMatchBroadcaster(),
-		rooms:           NewRoomManager(),
-		heimdall:        heimdall.New("data", &huginnAdapter{dataDir: "data"}, muninnSink, newTelemetrySink()),
-		muninnSink:      muninnSink,
-		cursePool:      make(map[string]*hat.CursePool),
-		curseDir:       "data/curse",
-		trainingDir:     "data/training",
+		rooms:            NewRoomManager(),
+		heimdall:         heimdall.New("data", &huginnAdapter{dataDir: "data"}, muninnSink, newTelemetrySink()),
+		muninnSink:       muninnSink,
+		cursePool:        make(map[string]*hat.CursePool),
+		curseDir:         "data/curse",
+		decksDir:         decksDir,
+		trainingDir:      "data/training",
 	}
 	// R60 composition prior — initialized empty; ObserveGame in
 	// updateELO populates it as games complete, and after the prior
@@ -736,47 +739,14 @@ func (sm *Showmatch) loadAndRun(astPath, oraclePath, decksDir string) {
 		}
 	}
 
-	deckPaths, err := findDeckFiles(decksDir)
+	decks, bracketMap, stratMap, err := buildDeckPool(decksDir, corpus, meta)
 	if err != nil {
-		log.Printf("showmatch: find decks failed: %v", err)
+		log.Printf("showmatch: %v", err)
 		sm.mu.Lock()
 		sm.loadErr = "failed to load deck files"
 		sm.mu.Unlock()
 		return
 	}
-
-	var decks []*deckparser.TournamentDeck
-	var bannedSkipped, parseSkipped, tooSmallSkipped, noCmdrSkipped int
-	for _, p := range deckPaths {
-		d, perr := deckparser.ParseDeckFile(p, corpus, meta)
-		if perr != nil {
-			parseSkipped++
-			log.Printf("showmatch: parse skip %s: %v", filepath.Base(p), perr)
-			continue
-		}
-		totalCards := len(d.Library) + len(d.CommanderCards)
-		if len(d.CommanderCards) == 0 {
-			noCmdrSkipped++
-			log.Printf("showmatch: no commander %s (%d cards)", deckKeyFromPath(p), totalCards)
-			continue
-		}
-		if totalCards < 80 {
-			tooSmallSkipped++
-			log.Printf("showmatch: too small %s (%d cards)", deckKeyFromPath(p), totalCards)
-			continue
-		}
-		if commanderBanned(d.CommanderName) {
-			bannedSkipped++
-			continue
-		}
-		decks = append(decks, d)
-	}
-	if parseSkipped+tooSmallSkipped+noCmdrSkipped+bannedSkipped > 0 {
-		log.Printf("showmatch: filtered %d decks (parse=%d noCmd=%d small=%d banned=%d)",
-			parseSkipped+tooSmallSkipped+noCmdrSkipped+bannedSkipped,
-			parseSkipped, noCmdrSkipped, tooSmallSkipped, bannedSkipped)
-	}
-	log.Printf("showmatch: %d decks parsed successfully (from %d files)", len(decks), len(deckPaths))
 
 	if len(decks) < showmatchSeats {
 		log.Printf("showmatch: only %d valid decks, need %d", len(decks), showmatchSeats)
@@ -785,27 +755,6 @@ func (sm *Showmatch) loadAndRun(astPath, oraclePath, decksDir string) {
 		sm.mu.Unlock()
 		return
 	}
-
-	bracketMap := make(map[string]int, len(decks))
-	stratMap := make(map[string]*hat.StrategyProfile, len(decks))
-	bracketCounts := [6]int{}
-	stratLoaded := 0
-	for _, d := range decks {
-		key := deckKeyFromPath(d.Path)
-		sp := hat.LoadStrategyFromFreya(d.Path)
-		if sp != nil {
-			stratMap[key] = sp
-			stratLoaded++
-			if sp.Bracket >= 1 && sp.Bracket <= 5 {
-				bracketMap[key] = sp.Bracket
-				bracketCounts[sp.Bracket]++
-			}
-		}
-	}
-	log.Printf("showmatch: loaded %d/%d Freya strategy profiles", stratLoaded, len(decks))
-	log.Printf("showmatch: HexELO bracket cache: B1=%d B2=%d B3=%d B4=%d B5=%d (%d unclassified)",
-		bracketCounts[1], bracketCounts[2], bracketCounts[3], bracketCounts[4], bracketCounts[5],
-		len(decks)-bracketCounts[1]-bracketCounts[2]-bracketCounts[3]-bracketCounts[4]-bracketCounts[5])
 
 	sm.mu.Lock()
 	sm.corpus = corpus
@@ -2781,7 +2730,6 @@ func (sm *Showmatch) publishNewCombos(gs *gameengine.GameState, gameNum int, com
 	sm.mu.Unlock()
 }
 
-
 // buildLineageIndex scans every zone on every seat (and the unified
 // Mutate/Meld merged-card pointers on each Permanent) and records a
 // heimdall.LineageRecord for each Card with a minted InstanceID. The
@@ -3546,6 +3494,7 @@ func (sm *Showmatch) RegisterShowmatch(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/owner/{owner}/games", sm.handleOwnerGames)
 
 	mux.HandleFunc("POST /api/spectate/spawn", sm.requireCSRFLate(sm.handleSpawnSpectateRoom))
+	mux.HandleFunc("POST /api/showmatch/reload-pool", sm.requireCSRFLate(sm.handleReloadPool))
 	mux.HandleFunc("GET /api/spectate/rooms", sm.handleListSpectateRooms)
 	mux.HandleFunc("GET /api/spectate/rooms/{room_id}", sm.handleGetSpectateRoom)
 	mux.HandleFunc("GET /ws/spectate/{room_id}", sm.handleSpectateRoomWS)
@@ -3848,9 +3797,9 @@ func writeSSE(w http.ResponseWriter, flusher http.Flusher, event string, data an
 
 // CurseResponse is the JSON payload for GET /api/decks/{owner}/{id}/curse.
 type CurseResponse struct {
-	DeckKey    string            `json:"deck_key"`
-	GameCount  int               `json:"game_count"`
-	TotalGames int               `json:"total_games"`
+	DeckKey    string           `json:"deck_key"`
+	GameCount  int              `json:"game_count"`
+	TotalGames int              `json:"total_games"`
 	Population []CurseMemberDTO `json:"population"`
 
 	// DimStatsN is the number of games observed by the dimension-stats
@@ -3891,13 +3840,13 @@ type CurseMemberDTO struct {
 // hat.DimensionStats.WeightCorrections(). Kept in sync with
 // internal/hat/eval_weights.go.
 var curseDimLabels = []string{
-	"BOARD",     "CARDS",      "MANA",
-	"LIFE",      "COMBO",      "THREAT",
-	"COMMANDER", "GRAVEYARD",  "DRAIN",
-	"ARTIFACT",  "ENCHANT",    "OPP GY",
-	"PARTNER",   "TEMPO",      "TOOLBOX",
-	"THR TRAJ",  "STACK",      "PLANESWALKER",
-	"EXILE",     "STAX",
+	"BOARD", "CARDS", "MANA",
+	"LIFE", "COMBO", "THREAT",
+	"COMMANDER", "GRAVEYARD", "DRAIN",
+	"ARTIFACT", "ENCHANT", "OPP GY",
+	"PARTNER", "TEMPO", "TOOLBOX",
+	"THR TRAJ", "STACK", "PLANESWALKER",
+	"EXILE", "STAX",
 }
 
 func (sm *Showmatch) handleDeckCurse(w http.ResponseWriter, r *http.Request) {
@@ -4578,6 +4527,105 @@ func commanderBanned(name string) bool {
 	return bannedCommanders[strings.ToLower(strings.TrimSpace(name))]
 }
 
+// buildDeckPool discovers and parses every deck under decksDir using
+// the supplied corpus + meta, returning the valid pool plus the Freya
+// strategy and bracket caches. Pure (no Showmatch state mutation), so
+// startup (loadAndRun) and live reload (reloadDeckPool) share one
+// implementation and can't drift in their filtering/keying rules.
+func buildDeckPool(decksDir string, corpus *astload.Corpus, meta *deckparser.MetaDB) ([]*deckparser.TournamentDeck, map[string]int, map[string]*hat.StrategyProfile, error) {
+	deckPaths, err := findDeckFiles(decksDir)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("find decks failed: %w", err)
+	}
+
+	var decks []*deckparser.TournamentDeck
+	var bannedSkipped, parseSkipped, tooSmallSkipped, noCmdrSkipped int
+	for _, p := range deckPaths {
+		d, perr := deckparser.ParseDeckFile(p, corpus, meta)
+		if perr != nil {
+			parseSkipped++
+			log.Printf("showmatch: parse skip %s: %v", filepath.Base(p), perr)
+			continue
+		}
+		totalCards := len(d.Library) + len(d.CommanderCards)
+		if len(d.CommanderCards) == 0 {
+			noCmdrSkipped++
+			log.Printf("showmatch: no commander %s (%d cards)", deckKeyFromPath(p), totalCards)
+			continue
+		}
+		if totalCards < 80 {
+			tooSmallSkipped++
+			log.Printf("showmatch: too small %s (%d cards)", deckKeyFromPath(p), totalCards)
+			continue
+		}
+		if commanderBanned(d.CommanderName) {
+			bannedSkipped++
+			continue
+		}
+		decks = append(decks, d)
+	}
+	if parseSkipped+tooSmallSkipped+noCmdrSkipped+bannedSkipped > 0 {
+		log.Printf("showmatch: filtered %d decks (parse=%d noCmd=%d small=%d banned=%d)",
+			parseSkipped+tooSmallSkipped+noCmdrSkipped+bannedSkipped,
+			parseSkipped, noCmdrSkipped, tooSmallSkipped, bannedSkipped)
+	}
+	log.Printf("showmatch: %d decks parsed successfully (from %d files)", len(decks), len(deckPaths))
+
+	bracketMap := make(map[string]int, len(decks))
+	stratMap := make(map[string]*hat.StrategyProfile, len(decks))
+	bracketCounts := [6]int{}
+	stratLoaded := 0
+	for _, d := range decks {
+		key := deckKeyFromPath(d.Path)
+		sp := hat.LoadStrategyFromFreya(d.Path)
+		if sp != nil {
+			stratMap[key] = sp
+			stratLoaded++
+			if sp.Bracket >= 1 && sp.Bracket <= 5 {
+				bracketMap[key] = sp.Bracket
+				bracketCounts[sp.Bracket]++
+			}
+		}
+	}
+	log.Printf("showmatch: loaded %d/%d Freya strategy profiles", stratLoaded, len(decks))
+	log.Printf("showmatch: HexELO bracket cache: B1=%d B2=%d B3=%d B4=%d B5=%d (%d unclassified)",
+		bracketCounts[1], bracketCounts[2], bracketCounts[3], bracketCounts[4], bracketCounts[5],
+		len(decks)-bracketCounts[1]-bracketCounts[2]-bracketCounts[3]-bracketCounts[4]-bracketCounts[5])
+
+	return decks, bracketMap, stratMap, nil
+}
+
+// reloadDeckPool re-discovers and re-parses the deck pool from sm.decksDir
+// using the already-loaded corpus + meta, then atomically swaps the pool,
+// bracket, and strategy caches. Safe to call while the grinder runs —
+// every deckPool reader takes sm.mu.RLock and this swaps under Lock.
+// Lets newly imported decks enter the pool without a server restart.
+func (sm *Showmatch) reloadDeckPool() (int, error) {
+	sm.mu.RLock()
+	corpus, meta, decksDir := sm.corpus, sm.meta, sm.decksDir
+	sm.mu.RUnlock()
+	if corpus == nil || meta == nil {
+		return 0, fmt.Errorf("corpus/meta not loaded yet")
+	}
+	if decksDir == "" {
+		return 0, fmt.Errorf("decks directory not configured")
+	}
+	decks, bracketMap, stratMap, err := buildDeckPool(decksDir, corpus, meta)
+	if err != nil {
+		return 0, err
+	}
+	if len(decks) < showmatchSeats {
+		return 0, fmt.Errorf("only %d valid decks (need %d)", len(decks), showmatchSeats)
+	}
+	sm.mu.Lock()
+	sm.deckPool = decks
+	sm.bracketCache = bracketMap
+	sm.strategies = stratMap
+	sm.mu.Unlock()
+	log.Printf("showmatch: pool reloaded — %d decks", len(decks))
+	return len(decks), nil
+}
+
 func findDeckFiles(dir string) ([]string, error) {
 	var paths []string
 	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
@@ -4586,12 +4634,21 @@ func findDeckFiles(dir string) ([]string, error) {
 		}
 		if info.IsDir() {
 			base := filepath.Base(path)
-			if base == "freya" || base == "benched" || base == "test" || base == "moxfield_300" {
+			if base == "freya" || base == "benched" || base == "test" || base == "moxfield_300" || base == ".versions" {
 				return filepath.SkipDir
 			}
 			return nil
 		}
-		if strings.HasSuffix(strings.ToLower(info.Name()), ".txt") {
+		name := strings.ToLower(info.Name())
+		switch {
+		case strings.HasSuffix(name, ".txt"):
+			paths = append(paths, path)
+		case strings.HasSuffix(name, ".strategy.json"), strings.HasSuffix(name, ".profile.json"):
+			// Freya/import sidecars, not decks — skip.
+		case strings.HasSuffix(name, ".json"):
+			// Structured deck format (UI/import-served). ParseDeckFile
+			// detects + converts these so the pool, deck list, and deck
+			// read all share one source of truth.
 			paths = append(paths, path)
 		}
 		return nil
@@ -4648,7 +4705,9 @@ func (sm *Showmatch) handleSpectatorWS(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
-		var env struct{ Type string `json:"type"` }
+		var env struct {
+			Type string `json:"type"`
+		}
 		if json.Unmarshal(data, &env) == nil && env.Type == "ping" {
 			sc.send(wsEnvelope{Type: "pong", Payload: map[string]int64{"server_time": time.Now().Unix()}})
 		}
