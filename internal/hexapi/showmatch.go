@@ -311,6 +311,12 @@ type GauntletResult struct {
 	RunID int64 `json:"run_id,omitempty"`
 }
 
+// maintenanceMessage is returned (HTTP 503) by the gauntlet + spectate
+// endpoints when HEXDEK_MAINTENANCE=1, while r61 engine-correctness fixes
+// are in progress (missed-clause / */* CDA bugs). The grinder is also
+// disabled in that mode so no further games corrupt rating/analytics data.
+const maintenanceMessage = "Gauntlets & live games are paused for maintenance — engine fixes in progress. Back soon. 🔧"
+
 type Showmatch struct {
 	mu              sync.RWMutex
 	snap            *GameSnapshot
@@ -318,6 +324,7 @@ type Showmatch struct {
 	bracketCache    map[string]int // deck key → Freya bracket (1-5)
 	stats           sessionState
 	start           time.Time
+	maintenance     bool // HEXDEK_MAINTENANCE=1 → grinder off + 503 gauntlet/spectate
 	corpus          *astload.Corpus
 	meta            *deckparser.MetaDB
 	deckPool        []*deckparser.TournamentDeck
@@ -606,6 +613,10 @@ func NewShowmatch(astPath, oraclePath, decksDir string, database *sql.DB) *Showm
 	} else {
 		sm.achievements = tr
 	}
+	sm.maintenance = os.Getenv("HEXDEK_MAINTENANCE") == "1"
+	if sm.maintenance {
+		log.Printf("MAINTENANCE MODE ON (HEXDEK_MAINTENANCE=1): grinder disabled; gauntlet + spectate return 503")
+	}
 	go sm.loadAndRun(astPath, oraclePath, decksDir)
 	return sm
 }
@@ -795,7 +806,11 @@ func (sm *Showmatch) loadAndRun(astPath, oraclePath, decksDir string) {
 	sm.mu.Unlock()
 
 	log.Printf("showmatch: ready — %d decks in pool, starting fishtank + background grinder", len(decks))
-	go sm.runGrinder()
+	if sm.maintenance {
+		log.Printf("grinder: NOT starting — maintenance mode (HEXDEK_MAINTENANCE=1)")
+	} else {
+		go sm.runGrinder()
+	}
 	go sm.runStatsBroadcaster()
 	go sm.runHealthPulse()
 	sm.runLoop()
@@ -3569,6 +3584,10 @@ func (sm *Showmatch) RegisterShowmatch(mux *http.ServeMux) {
 var gauntletSem = make(chan struct{}, 2)
 
 func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request) {
+	if sm.maintenance {
+		writeError(w, http.StatusServiceUnavailable, maintenanceMessage)
+		return
+	}
 	// Per-IP rate-limit gate, layered in FRONT of the global semaphore +
 	// credit-economy checks. The sem cap already throttles concurrent
 	// gauntlets; the limiter prevents an attacker from rapidly cycling

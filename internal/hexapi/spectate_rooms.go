@@ -740,6 +740,10 @@ func (sm *Showmatch) handleReloadPool(w http.ResponseWriter, r *http.Request) {
 }
 
 func (sm *Showmatch) handleSpawnSpectateRoom(w http.ResponseWriter, r *http.Request) {
+	if sm.maintenance {
+		writeError(w, http.StatusServiceUnavailable, maintenanceMessage)
+		return
+	}
 	// Per-IP rate-limit. SpawnOrReuse de-dupes per deck-key, but a single
 	// caller can still spawn one room per unique deck id they probe;
 	// each room runs a game-driver goroutine. Limiter is nil-safe.
