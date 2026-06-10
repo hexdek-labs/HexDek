@@ -639,10 +639,26 @@ func (sm *Showmatch) loadPersistedState() {
 		log.Printf("showmatch: load persisted ELO: %v", err)
 		return
 	}
+	resetCount := 0
 	for _, r := range records {
+		// Band-aid reset (r60): tsMu/tsSigma were never persisted (so they
+		// reset to 0 every boot → degenerate σ=0 updates), and the pre-clamp
+		// runaway left some persisted ratings far out of band (±100M). Re-seed
+		// any out-of-band / NaN rating to its bracket start, and reconstruct
+		// μ/σ from the conservative rating so the next update runs on a sane
+		// prior (σ=σ₀) instead of σ=0.
+		rating := r.Rating
+		if rating != rating || rating < eloRatingMin || rating > eloRatingMax {
+			rating = trueSkillStartRating(r.Bracket).Conservative()
+			resetCount++
+		}
+		sigma := tsDefaultSigma
+		mu := clampF(rating+3*sigma, tsMuFloor, tsMuCeil)
 		sm.elo[r.DeckKey] = &eloState{
-			rating:    r.Rating,
+			rating:    clampF(rating, eloRatingMin, eloRatingMax),
 			hexRating: r.HexRating,
+			tsMu:      mu,
+			tsSigma:   sigma,
 			games:     r.Games,
 			wins:      r.Wins,
 			delta:     r.Delta,
@@ -651,6 +667,9 @@ func (sm *Showmatch) loadPersistedState() {
 			owner:     r.Owner,
 			bracket:   r.Bracket,
 		}
+	}
+	if resetCount > 0 {
+		log.Printf("showmatch: ELO band-aid re-seeded %d out-of-band rating(s) on load", resetCount)
 	}
 
 	if affected, err := db.BackfillDeckKeys(ctx, sm.sqlDB); err != nil {
@@ -3007,6 +3026,46 @@ func hexELOStreakBreakBonus(lossStreak int) float64 {
 	return math.Min(float64(lossStreak)*3.0, 30.0)
 }
 
+// --- ELO corruption band-aid (r60, 2026-06-10) ---------------------------
+// The TrueSkill update path had no bound on μ/σ, so over millions of grinder
+// games the conservative rating (μ−3σ) drifted into the ±100M range seen in
+// the 2026-06-10 gauntlet reports (-483M start / +471M delta). Two compounding
+// causes: (1) μ/σ accumulate with no clamp, and (2) tsMu/tsSigma are NOT
+// persisted, so every restart reset them to 0 and the next updates ran on a
+// degenerate σ=0 rating. These constants + clampedTS bound the rating to a
+// sane band on every update and on load; loadPersistedState re-seeds entries
+// whose persisted rating is already out of band. Reversible safety bound — the
+// proper 4-player-FFA rating model fix lives on dev/trueskill-4p-ffa-fix-r60.
+const (
+	tsMuFloor    = 0.0
+	tsMuCeil     = 6000.0 // headroom so a reconstructed μ (rating+3σ) isn't clipped
+	tsSigmaFloor = 40.0   // ~σ₀/10: prevents pathological over-certainty / σ→0
+	eloRatingMin = 0.0
+	eloRatingMax = 4000.0
+)
+
+func clampF(v, lo, hi float64) float64 {
+	switch {
+	case v != v: // NaN
+		return lo
+	case v < lo:
+		return lo
+	case v > hi:
+		return hi
+	default:
+		return v
+	}
+}
+
+// clampedTS bounds a freshly-updated TrueSkill rating and returns the clamped
+// (μ, σ) plus the clamped conservative rating (μ−3σ) to store.
+func clampedTS(r trueskill.Rating) (mu, sigma, rating float64) {
+	mu = clampF(r.Mu, tsMuFloor, tsMuCeil)
+	sigma = clampF(r.Sigma, tsSigmaFloor, tsDefaultSigma)
+	rating = clampF(mu-3*sigma, eloRatingMin, eloRatingMax)
+	return
+}
+
 func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparser.TournamentDeck, winner int, turns int) []heimdall.CompositionPriorEffect {
 	const baseK = 32.0
 	n := len(deckKeys)
@@ -3120,9 +3179,10 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 		updated := trueskill.UpdateMultiplayerWithOffsets(tsConfig, tsRatings, ranks, offsets)
 		for i, key := range deckKeys {
 			oldRating := sm.elo[key].rating
-			sm.elo[key].tsMu = updated[i].Mu
-			sm.elo[key].tsSigma = updated[i].Sigma
-			sm.elo[key].rating = updated[i].Conservative()
+			mu, sigma, rating := clampedTS(updated[i])
+			sm.elo[key].tsMu = mu
+			sm.elo[key].tsSigma = sigma
+			sm.elo[key].rating = rating
 			sm.elo[key].delta = sm.elo[key].rating - oldRating
 		}
 	} else {
@@ -3135,9 +3195,10 @@ func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparse
 		updated := trueskill.UpdateMultiplayer(tsConfig, tsRatings, ranks)
 		for i, key := range deckKeys {
 			oldRating := sm.elo[key].rating
-			sm.elo[key].tsMu = updated[i].Mu
-			sm.elo[key].tsSigma = updated[i].Sigma
-			sm.elo[key].rating = updated[i].Conservative()
+			mu, sigma, rating := clampedTS(updated[i])
+			sm.elo[key].tsMu = mu
+			sm.elo[key].tsSigma = sigma
+			sm.elo[key].rating = rating
 			sm.elo[key].delta = sm.elo[key].rating - oldRating
 		}
 	}
