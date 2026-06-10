@@ -87,7 +87,6 @@ var commanderBannedList = map[string]bool{
 	"falling star":                  true,
 	"fastbond":                      true,
 	"flash":                         true,
-	"gifts ungiven":                 true,
 	"golos, tireless pilgrim":       true,
 	"griselbrand":                   true,
 	"hullbreacher":                  true,
