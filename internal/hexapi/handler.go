@@ -1566,13 +1566,20 @@ func (h *Handler) handleMoxfieldImport(w http.ResponseWriter, r *http.Request) {
 	}
 
 	parsed, err := url.Parse(req.URL)
-	if err != nil || parsed.Host != "www.moxfield.com" {
+	host := ""
+	if parsed != nil {
+		host = strings.ToLower(parsed.Hostname())
+	}
+	// Accept both bare and www hosts — Moxfield's own share button emits
+	// `moxfield.com/...` (no www), and the frontend regex makes `www.`
+	// optional, so requiring www here silently rejected valid links.
+	if err != nil || (host != "www.moxfield.com" && host != "moxfield.com") {
 		writeError(w, http.StatusBadRequest, "invalid Moxfield URL")
 		return
 	}
 	parts := strings.Split(strings.Trim(parsed.Path, "/"), "/")
 	if len(parts) < 2 || parts[0] != "decks" {
-		writeError(w, http.StatusBadRequest, "URL must be https://www.moxfield.com/decks/{id}")
+		writeError(w, http.StatusBadRequest, "URL must be https://www.moxfield.com/decks/{id} (www optional)")
 		return
 	}
 	moxID := parts[1]
