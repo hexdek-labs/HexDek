@@ -36,6 +36,17 @@ type FormatReport struct {
 	SkippedUnknown []string
 }
 
+// unbannedOverrides lists cards whose cached Scryfall legality may still read
+// "banned" but which have since been unbanned in that format. Keyed by format
+// slug → lowercased card name. Temporary band-aid (r60, 2026-06-10) pending a
+// full oracle legality-cache refresh — Gifts Ungiven was unbanned in Commander
+// in 2024 but our cache still flags it. Delete this once legality is re-fetched.
+var unbannedOverrides = map[string]map[string]bool{
+	"commander": {
+		"gifts ungiven": true,
+	},
+}
+
 // IsClean returns true when zero violations were found. Unknown-skip
 // entries don't count as clean — they're a different signal.
 func (r *FormatReport) IsClean() bool { return len(r.Violations) == 0 }
@@ -85,6 +96,13 @@ func ValidateFormat(format string, cards []*oracle.Card) *FormatReport {
 		status, present := c.Legalities[f]
 		if !present {
 			r.SkippedUnknown = append(r.SkippedUnknown, c.Name)
+			continue
+		}
+		// Stale-legality override (r60): some cached Scryfall entries predate
+		// recent Commander unbans (e.g. Gifts Ungiven) and still read "banned".
+		// Treat known-unbanned cards as legal until the oracle legality cache
+		// is refreshed. Temporary — delete after the refresh.
+		if unbannedOverrides[f][strings.ToLower(strings.TrimSpace(c.Name))] {
 			continue
 		}
 		switch status {
