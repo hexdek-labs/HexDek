@@ -308,6 +308,7 @@ CREATE TABLE IF NOT EXISTS showmatch_game (
     winner       INTEGER NOT NULL DEFAULT -1,
     winner_name  TEXT NOT NULL DEFAULT 'DRAW',
     end_reason   TEXT NOT NULL DEFAULT 'unknown',
+    win_reason   TEXT NOT NULL DEFAULT '',   -- HOW the winner won (ClassifyKill); orthogonal to end_reason
     rng_seed     INTEGER NOT NULL DEFAULT 0  -- engine RNG seed; 0 = unknown
 );
 

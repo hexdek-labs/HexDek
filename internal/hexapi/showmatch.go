@@ -236,6 +236,10 @@ type CompletedGame struct {
 	WinnerName string         `json:"winner_name"`
 	Turns      int            `json:"turns"`
 	EndReason  string         `json:"end_reason"`
+	// WinReason captures HOW the winner won (heimdall.ClassifyKill,
+	// prefixed "win_"). Orthogonal to EndReason (the game-end TYPE).
+	// Empty for draws / unclassified games.
+	WinReason  string         `json:"win_reason,omitempty"`
 	FinishedAt time.Time      `json:"finished_at"`
 	FinalSeats []SeatSnapshot `json:"final_seats"`
 	// RngSeed is the engine seed for this game. Surfaced for replay /
@@ -2025,6 +2029,14 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 		}
 	}
 
+	// win_reason captures HOW the winner won (orthogonal to endReason,
+	// the game-end TYPE). Plain ClassifyKill so it's always a kill
+	// method; the turn-cap case is already captured by endReason.
+	winReason := ""
+	if winner >= 0 {
+		winReason = "win_" + heimdall.ClassifyKill(gs, winner)
+	}
+
 	// Curse: record results + dimension stats for showmatch seats.
 	sm.curseMu.Lock()
 	var showEvolved []*hat.CursePool
@@ -2066,6 +2078,7 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 		WinnerName: safeCommander(commanders, winner),
 		Turns:      gs.Turn,
 		EndReason:  endReason,
+		WinReason:  winReason,
 		FinishedAt: time.Now(),
 		FinalSeats: finalSnap.Seats,
 		RngSeed:    gs.Seed,
@@ -2214,6 +2227,10 @@ func (sm *Showmatch) persistGauntletGame(
 			}
 		}
 	}
+	winReason := ""
+	if winner >= 0 {
+		winReason = "win_" + heimdall.ClassifyKill(gs, winner)
+	}
 	gameRec := db.GameRecord{
 		StartedAt:  now.Add(-time.Duration(gs.Turn) * 3600 * time.Millisecond).Unix(),
 		FinishedAt: now.Unix(),
@@ -2221,6 +2238,7 @@ func (sm *Showmatch) persistGauntletGame(
 		Winner:     winner,
 		WinnerName: winnerName,
 		EndReason:  endReason,
+		WinReason:  winReason,
 		Seed:       gameSeed,
 	}
 	seats := make([]db.GameSeatRecord, 0, len(gs.Seats))
@@ -2272,6 +2290,7 @@ func (sm *Showmatch) persistGame(g CompletedGame) {
 		Winner:     g.Winner,
 		WinnerName: g.WinnerName,
 		EndReason:  g.EndReason,
+		WinReason:  g.WinReason,
 		Seed:       g.RngSeed,
 	}
 	seats := make([]db.GameSeatRecord, 0, len(g.FinalSeats))
