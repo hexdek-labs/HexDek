@@ -73,6 +73,9 @@ func applyMigrations(db *sql.DB) error {
 		{"showmatch_elo", "hex_rating", "REAL NOT NULL DEFAULT 0.0"},
 		{"showmatch_elo", "hex_delta", "REAL NOT NULL DEFAULT 0.0"},
 		{"showmatch_game", "rng_seed", "INTEGER NOT NULL DEFAULT 0"},
+		// HOW the winner won (heimdall.ClassifyKill); orthogonal to
+		// end_reason (the game-end TYPE). '' = not classified / draw.
+		{"showmatch_game", "win_reason", "TEXT NOT NULL DEFAULT ''"},
 		// Phase 2 anti-cheat: a per-game verification flag set by the
 		// verification worker. 0 = unchecked (default), 1 = spot-check
 		// passed, -1 = spot-check failed OR quarantined by cauterize.

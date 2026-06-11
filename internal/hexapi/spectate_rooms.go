@@ -506,6 +506,14 @@ func (room *SpectateRoom) runOneSpectateGame() {
 		}
 	}
 
+	// win_reason captures HOW the winner won (orthogonal to endReason,
+	// the game-end TYPE). Plain ClassifyKill so it's always a kill
+	// method; the turn-cap case is already captured by endReason.
+	winReason := ""
+	if winner >= 0 {
+		winReason = "win_" + heimdall.ClassifyKill(gs, winner)
+	}
+
 	// Curse: record results.
 	sm.curseMu.Lock()
 	var roomEvolved []*hat.CursePool
@@ -550,6 +558,7 @@ func (room *SpectateRoom) runOneSpectateGame() {
 		WinnerName: safeCommander(commanders, winner),
 		Turns:      gs.Turn,
 		EndReason:  endReason,
+		WinReason:  winReason,
 		FinishedAt: time.Now(),
 		FinalSeats: finalSnap.Seats,
 		RngSeed:    gs.Seed,
