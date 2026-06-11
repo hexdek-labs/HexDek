@@ -236,26 +236,46 @@ func checkZoneAccounting(gs *gameengine.GameState, r *OracleResult) {
 
 // Exactly one winner: at game end, exactly N-1 seats should be lost.
 func checkExactlyOneWinner(gs *gameengine.GameState, r *OracleResult) {
-	lost := 0
+	lost, alive := 0, 0
 	for _, s := range gs.Seats {
-		if s != nil && s.Lost {
+		if s == nil {
+			continue
+		}
+		if s.Lost {
 			lost++
+		} else {
+			alive++
 		}
 	}
+	// The "exactly N-1 seats Lost" invariant ONLY applies to a CR §104.2a
+	// last-seat-standing win: the game ended (Flags["ended"]==1), a winner was
+	// set (Flags["winner"]), and that win was by ELIMINATION — exactly one seat
+	// still alive. It does NOT hold for the other legitimate terminal states,
+	// which the old unconditional check flagged as ~8,764 false positives across
+	// the fishtank:
+	//   - turn-cap-leader finish: the showmatch loop hits showmatchMaxTurn and
+	//     exits WITHOUT CheckEnd flipping Flags["ended"]; the leader wins on life
+	//     but the other seats are alive, not Lost.
+	//   - §104.2c "you win the game" effects (Thassa's Oracle / Approach of the
+	//     Second Sun / Laboratory Maniac): a winner is set without every opponent
+	//     dying, so alive > 1.
+	//   - §104.3b/§104.4a simultaneous-death draws: no winner flag; all/none Lost.
+	// Real loser-marking bugs (a seat at <=0 life not marked Lost) are caught by
+	// checkLifeSBA, so narrowing this check loses no genuine coverage.
+	ended := gs.Flags != nil && gs.Flags["ended"] == 1
+	_, hasWinner := gs.Flags["winner"]
+	if !ended || !hasWinner || alive != 1 {
+		return
+	}
+	// ended + winner + exactly one seat alive => CR §104.2a. N-1 Lost must hold;
+	// anything else is a genuine loser-marking bug.
 	expected := len(gs.Seats) - 1
 	if lost != expected {
-		severity := "warning"
-		if lost == 0 || lost == len(gs.Seats) {
-			severity = "critical"
-		}
-
-		// Turn-cap games now resolve a winner via seat-order tiebreak,
-		// so they should always satisfy N-1 Lost. No downgrade needed.
 		r.Violations = append(r.Violations, OracleViolation{
 			Rule:        "game_end",
-			Description: fmt.Sprintf("%d of %d seats lost (expected %d)", lost, len(gs.Seats), expected),
+			Description: fmt.Sprintf("last-seat-standing win but %d of %d seats lost (expected %d)", lost, len(gs.Seats), expected),
 			Seat:        -1,
-			Severity:    severity,
+			Severity:    "critical",
 			Details:     map[string]interface{}{"lost": lost, "total": len(gs.Seats)},
 		})
 	}
