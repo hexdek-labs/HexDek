@@ -613,6 +613,12 @@ func (room *SpectateRoom) runOneSpectateGame() {
 
 	// Feynman: post-game invariant check.
 	roomOracle := hat.CheckGame(gs)
+	// Authoritative InstanceID census (control-transfer-robust ZoneConservation).
+	if invs := gameengine.RunAllInvariants(gs); len(invs) > 0 {
+		for _, v := range invs {
+			log.Printf("invariant[%s]: %s", v.Name, v.Message)
+		}
+	}
 	if !roomOracle.Clean() {
 		log.Printf("feynman: spectate-room %s game %d violations: %s",
 			room.ID, gameNum, hat.FormatViolations(roomOracle.Violations))

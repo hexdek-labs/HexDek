@@ -212,6 +212,48 @@ func TestFeynman_ZoneAccounting_NegativeDiffStillFlags(t *testing.T) {
 	}
 }
 
+func TestFeynman_ZoneAccounting_OwnerReconciled(t *testing.T) {
+	// A card OWNED by seat 1 but physically on seat 0's battlefield (stolen
+	// via Control Magic / Gilded Drake) must count toward seat 1, so neither
+	// seat false-flags. Pre-r61 this read seat 1 "short" and seat 0 "long".
+	gs := newFeynmanGame(t, 4)
+	gs.Seats[1].Lost = true
+	gs.Seats[2].Lost = true
+	gs.Seats[3].Lost = true
+	gs.Turn = 15
+
+	// Move one of seat 1's library cards onto seat 0's battlefield, retaining
+	// seat 1 as Owner (control change keeps Owner per resolve.go).
+	stolen := gs.Seats[1].Library[len(gs.Seats[1].Library)-1]
+	gs.Seats[1].Library = gs.Seats[1].Library[:len(gs.Seats[1].Library)-1]
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield,
+		&gameengine.Permanent{
+			Card:       stolen, // Owner == 1
+			Controller: 0,
+			Owner:      1, // Permanent.Owner survives the control change
+			Flags:      map[string]int{},
+		})
+
+	result := CheckGame(gs)
+	for _, v := range result.Violations {
+		if v.Rule == "zone_accounting" {
+			t.Errorf("owner-reconciled accounting should not flag a stolen card "+
+				"(seat 0 host nor seat 1 owner), got: %v", v)
+		}
+	}
+
+	// Sanity: seat 1 owns exactly 100 (99 in library + 1 stolen on seat 0's bf).
+	libCount := 0
+	for _, c := range gs.Seats[1].Library {
+		if c.Owner == 1 {
+			libCount++
+		}
+	}
+	if libCount != 99 {
+		t.Fatalf("expected seat 1 to have 99 owned library cards after the steal, got %d", libCount)
+	}
+}
+
 func TestFeynman_PermanentTypes_Clean(t *testing.T) {
 	gs := newFeynmanGame(t, 2)
 	creature := &gameengine.Card{
