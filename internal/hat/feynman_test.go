@@ -94,63 +94,73 @@ func TestFeynman_TurnBounds(t *testing.T) {
 	}
 }
 
-func TestFeynman_NoWinner(t *testing.T) {
-	gs := newFeynmanGame(t, 4)
-	// Nobody lost — game ended prematurely.
-	gs.Turn = 10
-
-	result := CheckGame(gs)
-	found := false
-	for _, v := range result.Violations {
+// hasGameEndViolation reports whether CheckGame flagged a game_end violation.
+func hasGameEndViolation(gs *gameengine.GameState) bool {
+	for _, v := range CheckGame(gs).Violations {
 		if v.Rule == "game_end" {
-			found = true
+			return true
 		}
 	}
-	if !found {
-		t.Error("expected game_end violation when nobody lost")
+	return false
+}
+
+// r61 correction: the "exactly N-1 lost" invariant only applies to a CR §104.2a
+// last-seat-standing win (Flags ended+winner, one seat alive). The cases below
+// are LEGITIMATE non-§104.2a terminal/incomplete states that the old check
+// flagged as ~8,764 false positives across the fishtank — they must NOT flag.
+
+func TestFeynman_IncompleteGame_NotFlagged(t *testing.T) {
+	gs := newFeynmanGame(t, 4)
+	// No ended flag, nobody lost — an in-progress / prematurely-snapshotted
+	// game, not a §104.2a win. Must not flag game_end.
+	gs.Turn = 10
+	if hasGameEndViolation(gs) {
+		t.Error("incomplete game (no ended/winner flag) should NOT flag game_end")
 	}
 }
 
-func TestFeynman_TurnCapped_PartialLosersIsWarning(t *testing.T) {
+func TestFeynman_TurnCapped_PartialLosers_NotFlagged(t *testing.T) {
 	gs := newFeynmanGame(t, 4)
-	// Turn-capped game with only 2 of 3 expected seats lost is now a real
-	// bug (runner always resolves N-1 losers). Should be flagged as warning.
+	// Turn-cap finish: the loop exits without CheckEnd setting ended; the
+	// leader wins on life but the other living seats are NOT marked Lost.
+	// 2 of 3 lost is legitimate here, not a bug.
 	gs.Seats[1].Lost = true
 	gs.Seats[2].Lost = true
 	gs.Turn = 80
-
-	result := CheckGame(gs)
-	found := false
-	for _, v := range result.Violations {
-		if v.Rule == "game_end" {
-			found = true
-			if v.Severity != "warning" {
-				t.Errorf("turn-capped partial losers should be warning, got %s", v.Severity)
-			}
-		}
-	}
-	if !found {
-		t.Error("expected game_end violation for turn-capped game with partial losers")
+	if hasGameEndViolation(gs) {
+		t.Error("turn-capped game with partial losers (no ended flag) should NOT flag game_end")
 	}
 }
 
-func TestFeynman_TurnCapped_StillCriticalIfNobodyLost(t *testing.T) {
+func TestFeynman_TurnCapped_NobodyLost_NotFlagged(t *testing.T) {
 	gs := newFeynmanGame(t, 4)
-	// Turn-capped but nobody lost at all — still critical.
-	gs.Turn = 80
-
-	result := CheckGame(gs)
-	found := false
-	for _, v := range result.Violations {
-		if v.Rule == "game_end" {
-			found = true
-			if v.Severity != "critical" {
-				t.Errorf("turn-capped with 0 losers should remain critical, got %s", v.Severity)
-			}
-		}
+	gs.Turn = 80 // turn cap, nobody eliminated, no ended/winner flag
+	if hasGameEndViolation(gs) {
+		t.Error("turn-capped game with 0 losers (no ended flag) should NOT flag game_end")
 	}
-	if !found {
-		t.Error("expected game_end violation for turn-capped game with no losers")
+}
+
+func TestFeynman_WinEffect_OpponentsAlive_NotFlagged(t *testing.T) {
+	gs := newFeynmanGame(t, 4)
+	// CR §104.2c "you win the game" effect (Thassa's Oracle etc.): a winner is
+	// set without every opponent dying. ended + winner but >1 seat alive.
+	gs.Flags = map[string]int{"ended": 1, "winner": 0}
+	gs.Seats[1].Lost = true // only one opponent dead; seats 2,3 alive
+	if hasGameEndViolation(gs) {
+		t.Error("win-effect win with living opponents should NOT flag game_end")
+	}
+}
+
+func TestFeynman_LastSeatStanding_CleanWin_NotFlagged(t *testing.T) {
+	gs := newFeynmanGame(t, 4)
+	// CR §104.2a clean elimination win: ended + winner + exactly one alive +
+	// N-1 lost. Must NOT flag.
+	gs.Flags = map[string]int{"ended": 1, "winner": 0}
+	gs.Seats[1].Lost = true
+	gs.Seats[2].Lost = true
+	gs.Seats[3].Lost = true
+	if hasGameEndViolation(gs) {
+		t.Error("clean last-seat-standing win should NOT flag game_end")
 	}
 }
 
