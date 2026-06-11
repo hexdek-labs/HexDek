@@ -63,6 +63,22 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 		ApplyStaticETBCounters(gs, perm)
 	}
 
+	// CR §613 — register the entering permanent's continuous effects: named
+	// layer handlers (Doran, Blood Moon, Humility, Opalescence, …) AND the
+	// generic AST anthem / keyword-grant statics via registerASTStaticEffects.
+	// The stack-cast path (resolvePermanentSpellETB) does this inline; EVERY
+	// non-cast entry — reanimate, token-mint, blink, manifest/disguise flip —
+	// routes through here, and pre-r61 none of them registered continuous
+	// effects, so reanimated/tokened/blinked permanents silently lost all
+	// static abilities (a reanimated Doran assigned damage by power, a
+	// tokened anthem buffed nobody). Face-down permanents have no abilities
+	// (CR §708.2), so skip until they turn face up. RegisterContinuousEffect
+	// dedupes by HandlerID, so this is idempotent if a caller already wired
+	// effects, and the cast path doesn't route here so it can't double-fire.
+	if !faceDown {
+		RegisterContinuousEffectsForPermanent(gs, perm)
+	}
+
 	if !faceDown && perm.Card.AST != nil {
 		for _, ab := range perm.Card.AST.Abilities {
 			trig, ok := ab.(*gameast.Triggered)
