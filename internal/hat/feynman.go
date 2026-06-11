@@ -170,29 +170,79 @@ func checkCommanderDamageSBA(gs *gameengine.GameState, r *OracleResult) {
 }
 
 // Zone accounting: every card should be in exactly one zone.
-// Total cards per seat should equal starting deck size (99 + commanders).
+// Total cards per OWNER should equal starting deck size (99 + commanders).
+//
+// Owner-reconciled accounting (r61): cards are counted by their owner
+// (Card.Owner / Permanent.Owner) across EVERY seat's zones, not by the
+// location of the zone they currently sit in. A card owned by seat N but
+// physically on another seat's battlefield (stolen via Control Magic,
+// Gilded Drake, etc.) still counts toward seat N's tally — eliminating the
+// ~1,594 false "card vanishing" warnings where a control-transferred card
+// made its owner read "short" and its thief read "long". Permanent.Owner
+// survives control change (resolve.go keeps Owner), so this is the correct
+// conservation key.
 func checkZoneAccounting(gs *gameengine.GameState, r *OracleResult) {
+	n := len(gs.Seats)
+	if n == 0 {
+		return
+	}
+
+	owned := make([]int, n)
+	tokensBySeat := make([]int, n)
+
+	// bump attributes a card to its owner; out-of-range / zero-value owners
+	// fall back to seat 0 to preserve legacy behavior.
+	bump := func(c *gameengine.Card) {
+		if c == nil {
+			return
+		}
+		o := c.Owner
+		if o < 0 || o >= n {
+			o = 0
+		}
+		owned[o]++
+	}
+
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, c := range s.Hand {
+			bump(c)
+		}
+		for _, c := range s.Library {
+			bump(c)
+		}
+		for _, c := range s.Graveyard {
+			bump(c)
+		}
+		for _, c := range s.Exile {
+			bump(c)
+		}
+		for _, c := range s.CommandZone {
+			bump(c)
+		}
+		for _, p := range s.Battlefield {
+			if p == nil {
+				continue
+			}
+			if p.IsToken() {
+				o := p.Owner
+				if o < 0 || o >= n {
+					o = 0
+				}
+				tokensBySeat[o]++
+				continue
+			}
+			bump(p.Card)
+		}
+	}
+
 	for i, s := range gs.Seats {
 		if s == nil {
 			continue
 		}
-		total := len(s.Hand) + len(s.Library) + len(s.Graveyard) + len(s.Exile)
-		for _, p := range s.Battlefield {
-			if p != nil {
-				total++
-			}
-		}
-		// Commander zone cards.
-		total += len(s.CommandZone)
-
-		// Tokens on battlefield don't count toward the deck total.
-		tokens := 0
-		for _, p := range s.Battlefield {
-			if p != nil && p.IsToken() {
-				tokens++
-			}
-		}
-		total -= tokens
+		total := owned[i]
 
 		// Expected: 99-card deck + 1-2 commanders = 100-101.
 		// Allow some tolerance for edge cases (partner commanders, companion).
@@ -217,17 +267,15 @@ func checkZoneAccounting(gs *gameengine.GameState, r *OracleResult) {
 		if diff < -3 || diff > 20 {
 			r.Violations = append(r.Violations, OracleViolation{
 				Rule: "zone_accounting",
-				Description: fmt.Sprintf("seat %d has %d cards (expected ~%d, diff=%d) [hand=%d lib=%d gy=%d exile=%d bf=%d tok=%d cmd=%d]",
-					i, total, expected, diff,
-					len(s.Hand), len(s.Library), len(s.Graveyard), len(s.Exile),
-					len(s.Battlefield)-tokens, tokens, len(s.CommandZone)),
+				Description: fmt.Sprintf("seat %d owns %d cards (owner-reconciled; expected ~%d, diff=%d) [tokens owned=%d]",
+					i, total, expected, diff, tokensBySeat[i]),
 				Seat:     i,
 				Severity: "warning",
 				Details: map[string]interface{}{
-					"hand": len(s.Hand), "library": len(s.Library),
-					"graveyard": len(s.Graveyard), "exile": len(s.Exile),
-					"battlefield": len(s.Battlefield) - tokens,
-					"tokens": tokens, "command_zone": len(s.CommandZone),
+					"owned_cards":  total,
+					"owned_tokens": tokensBySeat[i],
+					"expected":     expected,
+					"diff":         diff,
 				},
 			})
 		}

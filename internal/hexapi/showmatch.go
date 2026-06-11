@@ -1186,6 +1186,12 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 
 		// Feynman: post-game invariant check.
 		oracleResult := hat.CheckGame(gs)
+		// Authoritative InstanceID census (control-transfer-robust ZoneConservation).
+		if invs := gameengine.RunAllInvariants(gs); len(invs) > 0 {
+			for _, v := range invs {
+				log.Printf("invariant[%s]: %s", v.Name, v.Message)
+			}
+		}
 		if !oracleResult.Clean() {
 			log.Printf("feynman: grinder game violations: %s",
 				hat.FormatViolations(oracleResult.Violations))
@@ -1787,6 +1793,12 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 
 	// Feynman: post-game invariant check.
 	bracketOracle := hat.CheckGame(gs)
+	// Authoritative InstanceID census (control-transfer-robust ZoneConservation).
+	if invs := gameengine.RunAllInvariants(gs); len(invs) > 0 {
+		for _, v := range invs {
+			log.Printf("invariant[%s]: %s", v.Name, v.Message)
+		}
+	}
 	if !bracketOracle.Clean() {
 		log.Printf("feynman: bracket game violations: %s",
 			hat.FormatViolations(bracketOracle.Violations))
@@ -2099,6 +2111,12 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 
 	// Feynman: post-game invariant check.
 	showOracle := hat.CheckGame(gs)
+	// Authoritative InstanceID census (control-transfer-robust ZoneConservation).
+	if invs := gameengine.RunAllInvariants(gs); len(invs) > 0 {
+		for _, v := range invs {
+			log.Printf("invariant[%s]: %s", v.Name, v.Message)
+		}
+	}
 	if !showOracle.Clean() {
 		log.Printf("feynman: showmatch game %d violations: %s",
 			gameNum, hat.FormatViolations(showOracle.Violations))
