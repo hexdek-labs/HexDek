@@ -52,6 +52,7 @@ func mysticRemoraOnCast(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 	if opp.ManaPool >= 4 {
 		opp.ManaPool -= 4
 		gameengine.SyncManaAfterSpend(opp)
+		gs.Legality.NoteManaSpend(caster, 4) // aux payment, not spell cost
 		gs.LogEvent(gameengine.Event{
 			Kind:   "pay_mana",
 			Seat:   caster,

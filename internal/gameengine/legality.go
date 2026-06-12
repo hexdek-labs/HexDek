@@ -93,6 +93,16 @@ type LegalityObservation struct {
 	Item                  *StackItem // nil for inline mana abilities
 	PoolAfter             int
 	ManaAddedDuringWindow int // pool additions credited to Seat between Begin and Finish
+	// Auxiliary (non-cost) pool deductions during the window: optional
+	// trigger payments the seat legitimately makes mid-cast — extort
+	// {W/B}, Rhystic Study {1}, Mystic Remora {4}, Smothering Tithe {2}
+	// on an in-window draw, ward costs on targeting. These leave the
+	// pool inside Begin..Finish but are NOT part of the spell's
+	// announced total (CR 601.2f covers the spell's own cost only), so
+	// the cost check must exclude them or every extort cast reads as a
+	// +1 over-pay (judge r62 finding: seed 840043 seat 2 x8, extort
+	// commander Sorin of House Markov).
+	AuxManaSpentDuringWindow int
 }
 
 // ActionLabel renders the canonical Action string for violations.
@@ -270,6 +280,23 @@ func (v *LegalityValidator) NoteManaAdd(seatIdx, amount int) {
 	for _, obs := range v.active {
 		if obs != nil && obs.Seat == seatIdx {
 			obs.ManaAddedDuringWindow += amount
+		}
+	}
+}
+
+// NoteManaSpend credits an auxiliary (non-cost) pool deduction to every
+// in-flight observation for that seat — the spend-side mirror of
+// NoteManaAdd. Called from the optional-trigger-payment sites (extort,
+// Rhystic Study, Mystic Remora, Smothering Tithe, ward) behind the same
+// nil guard, so a legitimate mid-cast payment doesn't read as the spell
+// over-paying its announced total.
+func (v *LegalityValidator) NoteManaSpend(seatIdx, amount int) {
+	if v == nil || amount <= 0 {
+		return
+	}
+	for _, obs := range v.active {
+		if obs != nil && obs.Seat == seatIdx {
+			obs.AuxManaSpentDuringWindow += amount
 		}
 	}
 }
@@ -457,7 +484,7 @@ func checkLegalityTargets(gs *GameState, obs *LegalityObservation) []LegalityVio
 // INDEPENDENT reconstruction, so a double-deduction (the Chalice
 // multikicker class) or an un-deducted announcement both flag.
 func checkLegalityCostPaid(_ *GameState, obs *LegalityObservation) []LegalityViolation {
-	spent := obs.PoolBefore + obs.ManaAddedDuringWindow - obs.PoolAfter
+	spent := obs.PoolBefore + obs.ManaAddedDuringWindow - obs.AuxManaSpentDuringWindow - obs.PoolAfter
 
 	expected := 0
 	switch obs.Kind {
@@ -502,7 +529,7 @@ func checkLegalityCostPaid(_ *GameState, obs *LegalityObservation) []LegalityVio
 	}
 	return []LegalityViolation{{
 		Turn: obs.TurnAtAnnounce, Seat: obs.Seat, Action: obs.ActionLabel(), Rule: "601.2f-h",
-		Detail: fmt.Sprintf("%s: announced total %d but pool delta shows %d spent (before=%d after=%d added-in-window=%d)",
-			kind, expected, spent, obs.PoolBefore, obs.PoolAfter, obs.ManaAddedDuringWindow),
+		Detail: fmt.Sprintf("%s: announced total %d but pool delta shows %d spent (before=%d after=%d added-in-window=%d aux-spent-in-window=%d)",
+			kind, expected, spent, obs.PoolBefore, obs.PoolAfter, obs.ManaAddedDuringWindow, obs.AuxManaSpentDuringWindow),
 	}}
 }

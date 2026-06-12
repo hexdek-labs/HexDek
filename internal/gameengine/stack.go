@@ -2565,6 +2565,7 @@ func payManaWard(gs *GameState, item *StackItem, perm *Permanent, wardCost int) 
 	if willPay {
 		casterSeat.ManaPool -= wardCost
 		SyncManaAfterSpend(casterSeat)
+		gs.Legality.NoteManaSpend(item.Controller, wardCost) // aux payment, not spell cost
 		gs.LogEvent(Event{
 			Kind:   "ward_paid",
 			Seat:   item.Controller,
