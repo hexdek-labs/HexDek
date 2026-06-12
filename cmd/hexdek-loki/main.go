@@ -1165,6 +1165,27 @@ func buildCardFromName(name string, corpus *astload.Corpus, meta *deckparser.Met
 	md := meta.Get(name)
 
 	if cardAST == nil && md == nil {
+		// DFC fallback (legality sweep round 3, set-aside #2): the corpus
+		// and meta key some double-faced cards by single-face name while
+		// the chaos deck generator carries the full "Front // Back"
+		// oracle name. Pre-fix the miss fell through to the caller's
+		// bare-bones path — a CMC-0 typeless card the chaos games then
+		// "cast" for announced-0, weakening DFC coverage in every sweep
+		// and polluting the 117.1a non-active sub-shape with typeless
+		// cards riding odd cast paths. Retry per face — front first (the
+		// castable face), then back — before giving up. Recursion is
+		// bounded: face names contain no " // ".
+		if strings.Contains(name, " // ") {
+			for _, face := range strings.Split(name, " // ") {
+				face = strings.TrimSpace(face)
+				if face == "" || face == name {
+					continue
+				}
+				if got := buildCardFromName(face, corpus, meta); got != nil {
+					return got
+				}
+			}
+		}
 		return nil
 	}
 
