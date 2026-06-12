@@ -88,6 +88,7 @@ func sliverGravemotherEncore(gs *gameengine.GameState, src *gameengine.Permanent
 	// migration).
 	_ = pickIdx
 	seat.ManaPool -= cost
+	gameengine.SyncManaAfterSpend(seat)
 	gameengine.MoveCard(gs, pick, src.Controller, "graveyard", "exile", "sliver_gravemother_encore_cost")
 	opps := gs.Opponents(src.Controller)
 	tokensSpawned := 0

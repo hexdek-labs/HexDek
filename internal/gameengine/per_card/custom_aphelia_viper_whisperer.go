@@ -41,6 +41,7 @@ func apheliaActivateTribalHalving(gs *gameengine.GameState, src *gameengine.Perm
 	// dispatcher usually pre-deducts; only deduct if pool covers it.
 	if seat.ManaPool >= 5 {
 		seat.ManaPool -= 5
+		gameengine.SyncManaAfterSpend(seat)
 	} else if seat.Mana != nil && (seat.Mana.W+seat.Mana.U+seat.Mana.B+seat.Mana.R+seat.Mana.G+seat.Mana.C+seat.Mana.Any) < 5 {
 		emitFail(gs, slug, src.Card.DisplayName(), "insufficient_mana", nil)
 		return

@@ -100,6 +100,7 @@ func emielActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityI
 			ctrl := gs.Seats[newPerm.Controller]
 			if ctrl != nil && ctrl.ManaPool >= 2 {
 				ctrl.ManaPool -= 2
+				gameengine.SyncManaAfterSpend(ctrl)
 				gameengine.CreateCreatureToken(gs, newPerm.Controller, "Beast Token",
 					[]string{"creature", "beast"}, 3, 3)
 				emit(gs, "emiel_beast_token_rider", src.Card.DisplayName(), map[string]interface{}{

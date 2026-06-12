@@ -56,6 +56,7 @@ func inallaEminenceCopy(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 		return
 	}
 	seat.ManaPool -= 1
+	gameengine.SyncManaAfterSpend(seat)
 	tokenCard := &gameengine.Card{
 		Name:          entered.Card.DisplayName() + " (Inalla token)",
 		Owner:         perm.Controller,

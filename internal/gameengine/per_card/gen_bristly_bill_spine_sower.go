@@ -94,7 +94,7 @@ func bristlyBillSpineSowerDouble(gs *gameengine.GameState, src *gameengine.Perma
 		return
 	}
 	// {3}{G}{G} mana cost — defensive gate for non-engine callers.
-	if !payManaFromPool(seat, 5) {
+	if !payDefensiveManaCost(src, seat, abilityIdx, 5) {
 		emitFail(gs, slug, src.Card.DisplayName(), "insufficient_mana", map[string]interface{}{
 			"required":  5,
 			"mana_pool": seat.ManaPool,

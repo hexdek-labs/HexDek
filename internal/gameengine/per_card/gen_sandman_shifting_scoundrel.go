@@ -65,6 +65,7 @@ func sandmanShiftingActivate(gs *gameengine.GameState, src *gameengine.Permanent
 	// usually has already deducted; only deduct if the pool covers it.
 	if seat.ManaPool >= 5 {
 		seat.ManaPool -= 5
+		gameengine.SyncManaAfterSpend(seat)
 	}
 
 	// Pick best land in graveyard: highest-MV (proxies for utility lands

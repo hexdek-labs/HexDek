@@ -122,6 +122,7 @@ func joshuaPhoenixsActivate(gs *gameengine.GameState, src *gameengine.Permanent,
 		return
 	}
 	seat.ManaPool -= 5
+	gameengine.SyncManaAfterSpend(seat)
 	src.Tapped = true
 	gameengine.TransformPermanent(gs, src, "joshua_phoenixs_trance")
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{

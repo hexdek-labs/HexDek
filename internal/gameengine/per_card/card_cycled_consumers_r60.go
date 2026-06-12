@@ -75,6 +75,7 @@ func payOneMana(gs *gameengine.GameState, seat int) bool {
 		return false
 	}
 	s.ManaPool--
+	gameengine.SyncManaAfterSpend(s)
 	return true
 }
 

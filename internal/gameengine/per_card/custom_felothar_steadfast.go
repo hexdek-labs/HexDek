@@ -80,6 +80,7 @@ func felotharSacDrawDiscard(gs *gameengine.GameState, src *gameengine.Permanent,
 		power = 0
 	}
 	seat.ManaPool -= 3
+	gameengine.SyncManaAfterSpend(seat)
 	src.Tapped = true
 	// Sacrifice → graveyard.
 	gameengine.MoveCard(gs, sacrifice.Card, sacrifice.Controller, "battlefield", "graveyard", "felothar_sacrifice")

@@ -151,6 +151,7 @@ func terraHeraldOfHopeCombatDamage(gs *gameengine.GameState, perm *gameengine.Pe
 		return
 	}
 	seat.ManaPool -= terraHeraldOfHopePaymentCost
+	gameengine.SyncManaAfterSpend(seat)
 
 	gameengine.MoveCard(gs, best, perm.Controller, "graveyard", "battlefield", "terra_herald_reanimate")
 

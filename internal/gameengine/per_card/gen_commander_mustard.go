@@ -85,7 +85,7 @@ func commanderMustardActivate(gs *gameengine.GameState, src *gameengine.Permanen
 		return
 	}
 	seat := gs.Seats[seatIdx]
-	if !payManaFromPool(seat, 4) {
+	if !payDefensiveManaCost(src, seat, abilityIdx, 4) {
 		emitFail(gs, slug, src.Card.DisplayName(), "insufficient_mana", map[string]interface{}{
 			"required":  4,
 			"mana_pool": seat.ManaPool,

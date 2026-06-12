@@ -106,6 +106,7 @@ func bilboBirthdayCelebrantActivate(gs *gameengine.GameState, src *gameengine.Pe
 	// covers it.
 	if seat.ManaPool >= 5 {
 		seat.ManaPool -= 5
+		gameengine.SyncManaAfterSpend(seat)
 	}
 	src.Tapped = true
 	// Exile Bilbo from the battlefield through the canonical exit API so

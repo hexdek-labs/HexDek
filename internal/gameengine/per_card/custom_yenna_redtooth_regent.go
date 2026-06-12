@@ -85,6 +85,7 @@ func yennaCopyEnchantment(gs *gameengine.GameState, src *gameengine.Permanent, a
 	}
 	// Pay the cost now that the target check has passed.
 	seat.ManaPool -= 2
+	gameengine.SyncManaAfterSpend(seat)
 	src.Tapped = true
 	// Create a token copy. Strip "legendary" by ensuring the type list
 	// excludes it; we add "token" and copy other types.
