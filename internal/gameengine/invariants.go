@@ -51,6 +51,7 @@ import (
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
+	"github.com/hexdek/hexdek/internal/validation"
 )
 
 // Invariant is a named correctness check over a GameState.
@@ -96,20 +97,26 @@ func RunAllInvariants(gs *GameState) []InvariantViolation {
 	var violations []InvariantViolation
 	for _, inv := range invs {
 		if err := inv.Check(gs); err != nil {
-			violations = append(violations, InvariantViolation{
-				Name:    inv.Name,
-				Message: err.Error(),
-			})
+			v := InvariantViolation{
+				Surface:  validation.SurfaceInvariants,
+				Name:     inv.Name,
+				Severity: validation.SeverityCritical,
+				Message:  err.Error(),
+			}
+			// Consolidation step 4: every violation also flows through
+			// the unified router — the Hex Judge observation seam.
+			validation.LogViolation(v)
+			violations = append(violations, v)
 		}
 	}
 	return violations
 }
 
-// InvariantViolation pairs an invariant name with its error message.
-type InvariantViolation struct {
-	Name    string
-	Message string
-}
+// InvariantViolation is the canonical violation type (consolidation
+// step 4 collapsed the per-surface struct into validation's one
+// vocabulary; the alias keeps every existing constructor and field
+// read compiling — Name/Message are canonical fields).
+type InvariantViolation = validation.ValidationViolation
 
 // ---------------------------------------------------------------------------
 // ZoneConservation
@@ -973,12 +980,12 @@ func sliceEqual(a, b []string) bool {
 // early-return on `controllerSeat == perm.Controller`. New handlers
 // with the same shape should be added here.
 var opponentOnlyCreatureDiesTriggers = map[string]bool{
-	"Gisa, Glorious Resurrector":  true,
-	"The Reaper, King No More":    true,
-	"Toxrill, the Corrosive":      true,
-	"Yahenni, Undying Partisan":   true,
-	"Grave Pact":                  true,
-	"Grave Betrayal":              true,
+	"Gisa, Glorious Resurrector": true,
+	"The Reaper, King No More":   true,
+	"Toxrill, the Corrosive":     true,
+	"Yahenni, Undying Partisan":  true,
+	"Grave Pact":                 true,
+	"Grave Betrayal":             true,
 }
 
 // checkTriggerCompleteness scans the last 10 events for patterns that should
@@ -1246,15 +1253,15 @@ func checkTurnStructure(gs *GameState) error {
 	}
 	// Validate phase.
 	validPhases := map[string]bool{
-		"":                  true,
-		"beginning":         true,
-		"precombat_main":    true,
-		"combat":            true,
-		"postcombat_main":   true,
-		"ending":            true,
-		"main":              true, // legacy alias
-		"precombat_main1":   true, // alternate naming
-		"postcombat_main2":  true, // alternate naming
+		"":                 true,
+		"beginning":        true,
+		"precombat_main":   true,
+		"combat":           true,
+		"postcombat_main":  true,
+		"ending":           true,
+		"main":             true, // legacy alias
+		"precombat_main1":  true, // alternate naming
+		"postcombat_main2": true, // alternate naming
 	}
 	if !validPhases[gs.Phase] {
 		return fmt.Errorf("TurnStructure: invalid phase %q", gs.Phase)
@@ -1272,7 +1279,7 @@ func checkTurnStructure(gs *GameState) error {
 		},
 		"combat": {
 			"begin_of_combat": true, "beginning_of_combat": true,
-			"combat_start": true,
+			"combat_start":      true,
 			"declare_attackers": true, "attackers": true,
 			"declare_blockers": true, "blockers": true,
 			"first_strike_damage": true, "combat_damage": true,
@@ -2287,4 +2294,3 @@ var eventInstanceIDKeys = []string{
 	"enabler_instance_id",
 	"ability_instance_id",
 }
-

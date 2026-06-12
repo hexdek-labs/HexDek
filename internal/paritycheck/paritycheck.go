@@ -66,45 +66,78 @@ type Event = validation.Event
 // with divergent streams is a much weaker divergence (probably policy
 // drift) than a divergent outcome (probably engine semantics bug).
 type Outcome struct {
-	Winner      int    `json:"winner"`       // -1 for draw
-	WinnerName  string `json:"winner_name"`  // commander name
-	Turns       int    `json:"turns"`        // final turn count
-	EndReason   string `json:"end_reason"`   // "last_seat_standing" / "draw" / "turn_cap_leader" / etc.
-	LifeTotals  []int  `json:"life_totals"`  // final life per seat
-	LostBySeat  []bool `json:"lost_by_seat"` // per-seat elimination flag
+	Winner     int    `json:"winner"`       // -1 for draw
+	WinnerName string `json:"winner_name"`  // commander name
+	Turns      int    `json:"turns"`        // final turn count
+	EndReason  string `json:"end_reason"`   // "last_seat_standing" / "draw" / "turn_cap_leader" / etc.
+	LifeTotals []int  `json:"life_totals"`  // final life per seat
+	LostBySeat []bool `json:"lost_by_seat"` // per-seat elimination flag
 }
 
 // ReplayData is one game's full record.
 type ReplayData struct {
-	GameIdx int       `json:"game_idx"`
-	Seed    int64     `json:"seed"`
-	Events  []Event   `json:"events"`
-	Outcome Outcome   `json:"outcome"`
+	GameIdx int     `json:"game_idx"`
+	Seed    int64   `json:"seed"`
+	Events  []Event `json:"events"`
+	Outcome Outcome `json:"outcome"`
 }
 
 // Divergence is one reported difference between the Go and Python
 // streams for a single game.
 type Divergence struct {
-	GameIdx    int    `json:"game_idx"`
-	Category   string `json:"category"`   // "outcome" / "event_missing_go" / "event_missing_py" / "event_field" / "event_count"
-	Detail     string `json:"detail"`     // free-form description
-	AtSeq      int    `json:"at_seq,omitempty"`
-	GoEvent    *Event `json:"go_event,omitempty"`
-	PyEvent    *Event `json:"py_event,omitempty"`
+	GameIdx  int    `json:"game_idx"`
+	Category string `json:"category"` // "outcome" / "event_missing_go" / "event_missing_py" / "event_field" / "event_count"
+	Detail   string `json:"detail"`   // free-form description
+	AtSeq    int    `json:"at_seq,omitempty"`
+	GoEvent  *Event `json:"go_event,omitempty"`
+	PyEvent  *Event `json:"py_event,omitempty"`
+}
+
+// Canonical maps a divergence onto the canonical violation vocabulary
+// (consolidation step 4). The Divergence struct itself stays: it is the
+// persisted parity-report row schema (paired Go/Py events are
+// load-bearing for diffing); the canonical view is what flows through
+// validation.LogViolation at origin.
+func (d Divergence) Canonical() validation.ValidationViolation {
+	ctx := map[string]interface{}{"game_idx": d.GameIdx}
+	if d.AtSeq != 0 {
+		ctx["at_seq"] = d.AtSeq
+	}
+	if d.GoEvent != nil {
+		ctx["go_event"] = d.GoEvent
+	}
+	if d.PyEvent != nil {
+		ctx["py_event"] = d.PyEvent
+	}
+	return validation.ValidationViolation{
+		Surface:  validation.SurfaceParity,
+		Name:     d.Category,
+		Severity: validation.SeverityCritical,
+		Message:  d.Detail,
+		Context:  ctx,
+	}
+}
+
+// logDivergences routes freshly-created divergences through the unified
+// router (origin tap — aggregation sites must not re-log).
+func logDivergences(divs []Divergence) {
+	for _, d := range divs {
+		validation.LogViolation(d.Canonical())
+	}
 }
 
 // ParityReport summarizes a parity run across N games.
 type ParityReport struct {
-	Games              int          `json:"games"`
-	OutcomeMatches     int          `json:"outcome_matches"`
-	EventStreamMatches int          `json:"event_stream_matches"`
-	Divergences        []Divergence `json:"divergences"`
+	Games              int            `json:"games"`
+	OutcomeMatches     int            `json:"outcome_matches"`
+	EventStreamMatches int            `json:"event_stream_matches"`
+	Divergences        []Divergence   `json:"divergences"`
 	CategoryCounts     map[string]int `json:"category_counts"`
-	GeneratedAt        time.Time    `json:"generated_at"`
-	DeckPaths          []string     `json:"deck_paths"`
-	NSeats             int          `json:"n_seats"`
-	BaseSeed           int64        `json:"base_seed"`
-	PythonAvailable    bool         `json:"python_available"`
+	GeneratedAt        time.Time      `json:"generated_at"`
+	DeckPaths          []string       `json:"deck_paths"`
+	NSeats             int            `json:"n_seats"`
+	BaseSeed           int64          `json:"base_seed"`
+	PythonAvailable    bool           `json:"python_available"`
 }
 
 // Config controls one parity run.
@@ -205,11 +238,13 @@ func Run(cfg Config) (*ParityReport, error) {
 
 		pyReplay, err := RunPython(cfg, idx, seed)
 		if err != nil {
-			report.Divergences = append(report.Divergences, Divergence{
+			pyErr := Divergence{
 				GameIdx:  idx,
 				Category: "python_error",
 				Detail:   err.Error(),
-			})
+			}
+			logDivergences([]Divergence{pyErr})
+			report.Divergences = append(report.Divergences, pyErr)
 			report.CategoryCounts["python_error"]++
 			continue
 		}
@@ -224,6 +259,7 @@ func Run(cfg Config) (*ParityReport, error) {
 		for _, d := range divs {
 			report.CategoryCounts[d.Category]++
 		}
+		logDivergences(divs) // origin tap — Diff() freshly created these
 		report.Divergences = append(report.Divergences, divs...)
 	}
 
@@ -317,7 +353,7 @@ func RecordGoGame(nSeats int, decks []*deckparser.TournamentDeck, seed int64, ga
 // RunPython shells out to the configured Python harness and parses the
 // JSONL it emits. Expected harness contract:
 //
-//   python3 <harness> --decks p1,p2,... --seed S --game-idx I --output /tmp/py.jsonl
+//	python3 <harness> --decks p1,p2,... --seed S --game-idx I --output /tmp/py.jsonl
 //
 // The harness writes one event per JSONL line plus a final line with
 // `{"_outcome": {...}}` carrying the outcome summary.

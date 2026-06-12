@@ -49,7 +49,7 @@ func TestFeynman_LifeSBA(t *testing.T) {
 	result := CheckGame(gs)
 	found := false
 	for _, v := range result.Violations {
-		if v.Rule == "704.5a" {
+		if v.Name == "704.5a" {
 			found = true
 		}
 	}
@@ -68,7 +68,7 @@ func TestFeynman_PoisonSBA(t *testing.T) {
 	result := CheckGame(gs)
 	found := false
 	for _, v := range result.Violations {
-		if v.Rule == "704.5c" {
+		if v.Name == "704.5c" {
 			found = true
 		}
 	}
@@ -85,7 +85,7 @@ func TestFeynman_TurnBounds(t *testing.T) {
 	result := CheckGame(gs)
 	found := false
 	for _, v := range result.Violations {
-		if v.Rule == "turn_bound" {
+		if v.Name == "turn_bound" {
 			found = true
 		}
 	}
@@ -97,7 +97,7 @@ func TestFeynman_TurnBounds(t *testing.T) {
 // hasGameEndViolation reports whether CheckGame flagged a game_end violation.
 func hasGameEndViolation(gs *gameengine.GameState) bool {
 	for _, v := range CheckGame(gs).Violations {
-		if v.Rule == "game_end" {
+		if v.Name == "game_end" {
 			return true
 		}
 	}
@@ -184,7 +184,7 @@ func TestFeynman_ZoneAccounting_CopyTolerance(t *testing.T) {
 
 	result := CheckGame(gs)
 	for _, v := range result.Violations {
-		if v.Rule == "zone_accounting" && v.Seat == 0 {
+		if v.Name == "zone_accounting" && v.Seat == 0 {
 			t.Errorf("15 copy-created cards should not trigger zone_accounting (positive tolerance is 20), got: %v", v)
 		}
 	}
@@ -203,7 +203,7 @@ func TestFeynman_ZoneAccounting_NegativeDiffStillFlags(t *testing.T) {
 	result := CheckGame(gs)
 	found := false
 	for _, v := range result.Violations {
-		if v.Rule == "zone_accounting" && v.Seat == 0 {
+		if v.Name == "zone_accounting" && v.Seat == 0 {
 			found = true
 		}
 	}
@@ -236,7 +236,7 @@ func TestFeynman_ZoneAccounting_OwnerReconciled(t *testing.T) {
 
 	result := CheckGame(gs)
 	for _, v := range result.Violations {
-		if v.Rule == "zone_accounting" {
+		if v.Name == "zone_accounting" {
 			t.Errorf("owner-reconciled accounting should not flag a stolen card "+
 				"(seat 0 host nor seat 1 owner), got: %v", v)
 		}
@@ -278,7 +278,7 @@ func TestFeynman_PermanentTypes_Clean(t *testing.T) {
 
 	result := CheckGame(gs)
 	for _, v := range result.Violations {
-		if v.Rule == "permanent_types" {
+		if v.Name == "permanent_types" {
 			t.Errorf("clean board should not have permanent_types violation: %v", v)
 		}
 	}
@@ -299,16 +299,16 @@ func TestFeynman_PermanentTypes_InstantOnBattlefield(t *testing.T) {
 	result := CheckGame(gs)
 	foundType, foundTypeLine := false, false
 	for _, v := range result.Violations {
-		if v.Rule != "permanent_types" {
+		if v.Name != "permanent_types" {
 			continue
 		}
 		if v.Severity != "critical" {
 			t.Errorf("expected critical severity, got %s", v.Severity)
 		}
-		if got, _ := v.Details["type"].(string); got == "instant" {
+		if got, _ := v.Context["type"].(string); got == "instant" {
 			foundType = true
 		}
-		if got, _ := v.Details["type_line"].(string); got == "Instant" {
+		if got, _ := v.Context["type_line"].(string); got == "Instant" {
 			foundTypeLine = true
 		}
 	}
@@ -337,7 +337,7 @@ func TestFeynman_PermanentTypes_HumilityToleratesStrippedCreatureType(t *testing
 
 	result := CheckGame(gs)
 	for _, v := range result.Violations {
-		if v.Rule == "permanent_types" {
+		if v.Name == "permanent_types" {
 			t.Errorf("type-stripped creature should not be flagged: %v", v)
 		}
 	}
@@ -357,7 +357,7 @@ func TestFeynman_PermanentTypes_TokenSkipped(t *testing.T) {
 
 	result := CheckGame(gs)
 	for _, v := range result.Violations {
-		if v.Rule == "permanent_types" {
+		if v.Name == "permanent_types" {
 			t.Errorf("token should be skipped, got: %v", v)
 		}
 	}
@@ -365,7 +365,7 @@ func TestFeynman_PermanentTypes_TokenSkipped(t *testing.T) {
 
 func TestFeynman_FormatViolations(t *testing.T) {
 	violations := []OracleViolation{
-		{Rule: "704.5a", Description: "test", Seat: 0, Severity: "critical"},
+		{Name: "704.5a", Message: "test", Seat: 0, Severity: "critical"},
 	}
 	s := FormatViolations(violations)
 	if s == "" {

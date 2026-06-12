@@ -54,6 +54,12 @@ import (
 // ---------------------------------------------------------------------------
 
 // chaosViolation records a single invariant violation in a chaos game.
+//
+// Consolidation step 4 note: this is Loki's flattened REPORT-ROW schema
+// (run metadata + violation), not a violation vocabulary. Everything it
+// aggregates (RunAllInvariants, gs.Legality, gs.SeatOutcome) was already
+// routed through validation.LogViolation at origin — do not re-log at
+// these drain sites, and do not grow this struct into a vocabulary.
 type chaosViolation struct {
 	GameIdx       int
 	GameSeed      int64

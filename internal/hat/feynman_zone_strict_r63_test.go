@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
+	"github.com/hexdek/hexdek/internal/validation"
 )
 
 // r63 — zone_accounting false-positive flood fix.
@@ -39,7 +40,7 @@ func mintFeynmanGame(t *testing.T, nSeats int) *gameengine.GameState {
 func zoneViolations(result OracleResult) []OracleViolation {
 	var out []OracleViolation
 	for _, v := range result.Violations {
-		if v.Rule == "zone_accounting" || v.Rule == "zone_conservation" {
+		if v.Name == "zone_accounting" || v.Name == "zone_conservation" {
 			out = append(out, v)
 		}
 	}
@@ -97,7 +98,7 @@ func TestFeynman_StrictCensus_RealDisappearanceFlagged(t *testing.T) {
 	result := CheckGame(gs)
 	found := false
 	for _, v := range result.Violations {
-		if v.Rule == "zone_conservation" && v.Severity == "critical" {
+		if v.Name == "zone_conservation" && v.Severity == "critical" {
 			found = true
 		}
 	}
@@ -119,7 +120,7 @@ func TestFeynman_StrictCensus_FabricationFlagged(t *testing.T) {
 	result := CheckGame(gs)
 	found := false
 	for _, v := range result.Violations {
-		if v.Rule == "zone_conservation" && v.Severity == "critical" {
+		if v.Name == "zone_conservation" && v.Severity == "critical" {
 			found = true
 		}
 	}
@@ -146,8 +147,38 @@ func TestFeynman_StrictCensus_HeuristicSuppressedWhenAuthoritative(t *testing.T)
 
 	result := CheckGame(gs)
 	for _, v := range result.Violations {
-		if v.Rule == "zone_accounting" {
+		if v.Name == "zone_accounting" {
 			t.Errorf("count heuristic must not run when the census is authoritative; got %v", v)
 		}
+	}
+}
+
+// TestCheckGame_RoutesThroughLogViolation (consolidation step 4) — the
+// Feynman surface reports through the unified router with the feynman
+// surface tag.
+func TestCheckGame_RoutesThroughLogViolation(t *testing.T) {
+	var got []validation.ValidationViolation
+	done := validation.RegisterSink(func(v validation.ValidationViolation) {
+		got = append(got, v)
+	})
+	defer done()
+
+	gs := newFeynmanGame(t, 2)
+	gs.Turn = 10
+	gs.Seats[1].Lost = true
+	gs.Seats[0].Life = -4 // life<=0 but not Lost → 704.5a violation
+
+	result := CheckGame(gs)
+	if len(result.Violations) == 0 {
+		t.Fatal("fixture must produce at least one Feynman violation")
+	}
+	found := false
+	for _, v := range got {
+		if v.Surface == "feynman" && v.Name == "704.5a" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("router must observe the feynman 704.5a violation; saw %d routed", len(got))
 	}
 }

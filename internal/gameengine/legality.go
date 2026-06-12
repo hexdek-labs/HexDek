@@ -50,6 +50,7 @@ import (
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
+	"github.com/hexdek/hexdek/internal/validation"
 )
 
 // LegalityViolation is one observed-illegal action, with enough context
@@ -66,6 +67,25 @@ type LegalityViolation struct {
 func (v LegalityViolation) String() string {
 	return fmt.Sprintf("[legality %s] seed=%d turn=%d seat=%d %s: %s",
 		v.Rule, v.Seed, v.Turn, v.Seat, v.Action, v.Detail)
+}
+
+// Canonical maps the repro-context-rich legality violation onto the one
+// canonical vocabulary (consolidation step 4). The struct itself stays:
+// it is the observation record (seed/turn/action are load-bearing for
+// repro), and the canonical view is what flows through LogViolation.
+func (v LegalityViolation) Canonical() validation.ValidationViolation {
+	return validation.ValidationViolation{
+		Surface:  validation.SurfaceLegality,
+		Name:     v.Rule,
+		Severity: validation.SeverityCritical,
+		Message:  v.Action + ": " + v.Detail,
+		Seat:     v.Seat,
+		Context: map[string]interface{}{
+			"seed":   v.Seed,
+			"turn":   v.Turn,
+			"action": v.Action,
+		},
+	}
 }
 
 // LegalityObservation captures one announced action: state snapshotted at
@@ -242,6 +262,10 @@ func (v *LegalityValidator) record(gs *GameState, viol LegalityViolation) {
 	if len(v.Violations) < v.MaxViolations {
 		v.Violations = append(v.Violations, viol)
 	}
+	// Consolidation step 4: every legality violation also flows through
+	// the unified router at record time (origin) — drains/aggregators
+	// (Loki) must NOT re-log.
+	validation.LogViolation(viol.Canonical())
 	if gs != nil {
 		gs.LogEvent(Event{
 			Kind:   "legality_violation",
@@ -1094,7 +1118,7 @@ func checkLegalityReplacementETB(gs *GameState, obs *LegalityObservation) []Lega
 		if got < want {
 			out = append(out, LegalityViolation{
 				Turn: obs.TurnAtAnnounce, Seat: obs.Seat, Action: "etb:" + p.Card.DisplayName(),
-				Rule: "614.1c",
+				Rule:   "614.1c",
 				Detail: fmt.Sprintf("enters-with-counters self-replacement not applied: want >=%d %q counter(s), have %d", want, kind, got),
 			})
 		}

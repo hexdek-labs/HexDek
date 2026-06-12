@@ -72,6 +72,12 @@ type ConcessionRecord struct {
 // InvariantViolation records a Feynman/Odin-detected invariant violation
 // during a game. The seed + deck keys make the offending game replayable
 // from the regression runner.
+//
+// Consolidation step 4 note: this is a PERSISTED JSON row schema
+// (invariant_violations.json), not a violation vocabulary — the
+// violations it archives were already routed through
+// validation.LogViolation at their origin (RunAllInvariants / Feynman
+// CheckGame). Do not re-log here; do not grow this into a vocabulary.
 type InvariantViolation struct {
 	GameSeed      int64     `json:"game_seed"`
 	DeckKeys      [4]string `json:"deck_keys"`

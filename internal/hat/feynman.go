@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
+	"github.com/hexdek/hexdek/internal/validation"
 )
 
 // Feynman Oracle — provably-correct invariant checker.
@@ -17,17 +18,12 @@ import (
 // the main engine plays forward fast; the oracle checks backward slow.
 
 // OracleViolation describes a single rules invariant that was broken.
-type OracleViolation struct {
-	Rule        string // CR section (e.g., "704.5f")
-	Description string
-	Seat        int
-	Severity    string // "critical", "warning", "info"
-	Details     map[string]interface{}
-}
-
-func (v OracleViolation) String() string {
-	return fmt.Sprintf("[%s] %s (seat %d): %s", v.Severity, v.Rule, v.Seat, v.Description)
-}
+// OracleViolation is the canonical violation type (consolidation step 4
+// collapsed the Feynman-local struct into validation's one vocabulary;
+// field mapping was Rule→Name, Description→Message, Details→Context.
+// String() now renders the canonical "[sev] surface/name [seat N]: msg"
+// shape).
+type OracleViolation = validation.ValidationViolation
 
 // OracleResult is the output of a Feynman check on one completed game.
 type OracleResult struct {
@@ -57,6 +53,16 @@ func CheckGame(gs *gameengine.GameState) OracleResult {
 		check(gs, &result)
 		result.Checked++
 	}
+	// Consolidation step 4: stamp the surface tag and route every
+	// violation through the unified LogViolation sink (the Hex Judge
+	// observation seam). Emitters in this file don't set Surface
+	// individually; this is the single normalization point.
+	for i := range result.Violations {
+		if result.Violations[i].Surface == "" {
+			result.Violations[i].Surface = validation.SurfaceFeynman
+		}
+		validation.LogViolation(result.Violations[i])
+	}
 	return result
 }
 
@@ -77,11 +83,11 @@ func checkLifeSBA(gs *gameengine.GameState, r *OracleResult) {
 				severity = "info"
 			}
 			r.Violations = append(r.Violations, OracleViolation{
-				Rule:        "704.5a",
-				Description: fmt.Sprintf("seat %d has %d life but is not marked lost", i, s.Life),
-				Seat:        i,
-				Severity:    severity,
-				Details:     map[string]interface{}{"life": s.Life},
+				Name:     "704.5a",
+				Message:  fmt.Sprintf("seat %d has %d life but is not marked lost", i, s.Life),
+				Seat:     i,
+				Severity: severity,
+				Context:  map[string]interface{}{"life": s.Life},
 			})
 		}
 	}
@@ -115,12 +121,12 @@ func checkToughnessSBA(gs *gameengine.GameState, r *OracleResult) {
 			t := gs.ToughnessOf(p)
 			if t <= 0 {
 				r.Violations = append(r.Violations, OracleViolation{
-					Rule: "704.5f",
-					Description: fmt.Sprintf("creature %q has toughness %d on battlefield",
+					Name: "704.5f",
+					Message: fmt.Sprintf("creature %q has toughness %d on battlefield",
 						p.Card.DisplayName(), t),
 					Seat:     i,
 					Severity: "critical",
-					Details:  map[string]interface{}{"card": p.Card.DisplayName(), "toughness": t},
+					Context:  map[string]interface{}{"card": p.Card.DisplayName(), "toughness": t},
 				})
 			}
 		}
@@ -135,11 +141,11 @@ func checkPoisonSBA(gs *gameengine.GameState, r *OracleResult) {
 		}
 		if s.PoisonCounters >= 10 && !s.Lost {
 			r.Violations = append(r.Violations, OracleViolation{
-				Rule:        "704.5c",
-				Description: fmt.Sprintf("seat %d has %d poison but is not lost", i, s.PoisonCounters),
-				Seat:        i,
-				Severity:    "critical",
-				Details:     map[string]interface{}{"poison": s.PoisonCounters},
+				Name:     "704.5c",
+				Message:  fmt.Sprintf("seat %d has %d poison but is not lost", i, s.PoisonCounters),
+				Seat:     i,
+				Severity: "critical",
+				Context:  map[string]interface{}{"poison": s.PoisonCounters},
 			})
 		}
 	}
@@ -156,12 +162,12 @@ func checkCommanderDamageSBA(gs *gameengine.GameState, r *OracleResult) {
 			for cmdrName, dmg := range cmdrMap {
 				if dmg >= 21 && !s.Lost {
 					r.Violations = append(r.Violations, OracleViolation{
-						Rule: "704.5v",
-						Description: fmt.Sprintf("seat %d has %d commander damage from %s but is not lost",
+						Name: "704.5v",
+						Message: fmt.Sprintf("seat %d has %d commander damage from %s but is not lost",
 							i, dmg, cmdrName),
 						Seat:     i,
 						Severity: "critical",
-						Details:  map[string]interface{}{"commander": cmdrName, "damage": dmg},
+						Context:  map[string]interface{}{"commander": cmdrName, "damage": dmg},
 					})
 				}
 			}
@@ -195,11 +201,11 @@ func checkZoneAccounting(gs *gameengine.GameState, r *OracleResult) {
 	if err, authoritative := gameengine.ZoneConservationStrict(gs); authoritative {
 		if err != nil {
 			r.Violations = append(r.Violations, OracleViolation{
-				Rule:        "zone_conservation",
-				Description: err.Error(),
-				Seat:        -1,
-				Severity:    "critical",
-				Details: map[string]interface{}{
+				Name:     "zone_conservation",
+				Message:  err.Error(),
+				Seat:     -1,
+				Severity: "critical",
+				Context: map[string]interface{}{
 					"check": "instanceid_strict_census",
 				},
 			})
@@ -298,12 +304,12 @@ func checkZoneAccountingCountHeuristic(gs *gameengine.GameState, r *OracleResult
 		// easily produce +15 or more extra cards.
 		if diff < -3 || diff > 20 {
 			r.Violations = append(r.Violations, OracleViolation{
-				Rule: "zone_accounting",
-				Description: fmt.Sprintf("seat %d owns %d cards (owner-reconciled; expected ~%d, diff=%d) [tokens owned=%d]",
+				Name: "zone_accounting",
+				Message: fmt.Sprintf("seat %d owns %d cards (owner-reconciled; expected ~%d, diff=%d) [tokens owned=%d]",
 					i, total, expected, diff, tokensBySeat[i]),
 				Seat:     i,
 				Severity: "warning",
-				Details: map[string]interface{}{
+				Context: map[string]interface{}{
 					"owned_cards":  total,
 					"owned_tokens": tokensBySeat[i],
 					"expected":     expected,
@@ -352,11 +358,11 @@ func checkExactlyOneWinner(gs *gameengine.GameState, r *OracleResult) {
 	expected := len(gs.Seats) - 1
 	if lost != expected {
 		r.Violations = append(r.Violations, OracleViolation{
-			Rule:        "game_end",
-			Description: fmt.Sprintf("last-seat-standing win but %d of %d seats lost (expected %d)", lost, len(gs.Seats), expected),
-			Seat:        -1,
-			Severity:    "critical",
-			Details:     map[string]interface{}{"lost": lost, "total": len(gs.Seats)},
+			Name:     "game_end",
+			Message:  fmt.Sprintf("last-seat-standing win but %d of %d seats lost (expected %d)", lost, len(gs.Seats), expected),
+			Seat:     -1,
+			Severity: "critical",
+			Context:  map[string]interface{}{"lost": lost, "total": len(gs.Seats)},
 		})
 	}
 }
@@ -365,11 +371,11 @@ func checkExactlyOneWinner(gs *gameengine.GameState, r *OracleResult) {
 func checkTurnBounds(gs *gameengine.GameState, r *OracleResult) {
 	if gs.Turn > 200 {
 		r.Violations = append(r.Violations, OracleViolation{
-			Rule:        "turn_bound",
-			Description: fmt.Sprintf("game ran %d turns (possible infinite loop)", gs.Turn),
-			Seat:        -1,
-			Severity:    "warning",
-			Details:     map[string]interface{}{"turns": gs.Turn},
+			Name:     "turn_bound",
+			Message:  fmt.Sprintf("game ran %d turns (possible infinite loop)", gs.Turn),
+			Seat:     -1,
+			Severity: "warning",
+			Context:  map[string]interface{}{"turns": gs.Turn},
 		})
 	}
 }
@@ -387,12 +393,12 @@ func checkNoNegativeCounters(gs *gameengine.GameState, r *OracleResult) {
 			for kind, count := range p.Counters {
 				if count < 0 {
 					r.Violations = append(r.Violations, OracleViolation{
-						Rule: "counter_negative",
-						Description: fmt.Sprintf("%q has %d %s counters",
+						Name: "counter_negative",
+						Message: fmt.Sprintf("%q has %d %s counters",
 							p.Card.DisplayName(), count, kind),
 						Seat:     i,
 						Severity: "warning",
-						Details: map[string]interface{}{
+						Context: map[string]interface{}{
 							"card":    p.Card.DisplayName(),
 							"counter": kind, "count": count,
 						},
@@ -429,12 +435,12 @@ func checkPermanentTypes(gs *gameengine.GameState, r *OracleResult) {
 				lower := strings.ToLower(t)
 				if lower == "instant" || lower == "sorcery" {
 					r.Violations = append(r.Violations, OracleViolation{
-						Rule: "permanent_types",
-						Description: fmt.Sprintf("permanent %q has type %q (instants and sorceries cannot be permanents)",
+						Name: "permanent_types",
+						Message: fmt.Sprintf("permanent %q has type %q (instants and sorceries cannot be permanents)",
 							p.Card.DisplayName(), t),
 						Seat:     i,
 						Severity: "critical",
-						Details: map[string]interface{}{
+						Context: map[string]interface{}{
 							"card": p.Card.DisplayName(), "type": t,
 						},
 					})
@@ -442,12 +448,12 @@ func checkPermanentTypes(gs *gameengine.GameState, r *OracleResult) {
 			}
 			if tl := p.Card.TypeLine; tl != "" && !typeLineHasPermanentType(tl) {
 				r.Violations = append(r.Violations, OracleViolation{
-					Rule: "permanent_types",
-					Description: fmt.Sprintf("permanent %q has printed type line %q which has no permanent type",
+					Name: "permanent_types",
+					Message: fmt.Sprintf("permanent %q has printed type line %q which has no permanent type",
 						p.Card.DisplayName(), tl),
 					Seat:     i,
 					Severity: "critical",
-					Details: map[string]interface{}{
+					Context: map[string]interface{}{
 						"card": p.Card.DisplayName(), "type_line": tl,
 					},
 				})

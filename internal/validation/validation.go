@@ -38,12 +38,13 @@ const (
 // constant per emitting surface; offline drivers and inline checks share
 // the same namespace so reports can group cross-surface.
 const (
-	SurfaceInvariants = "invariants" // gameengine.RunAllInvariants inline checks
-	SurfaceLegality   = "legality"   // ride-along legality detector
-	SurfaceFeynman    = "feynman"    // hat/feynman.go post-game oracle
-	SurfaceLoki       = "loki"       // cmd/hexdek-loki chaos fuzzer
-	SurfaceParity     = "parity"     // internal/paritycheck cross-engine diff
-	SurfaceGoldilocks = "goldilocks" // cmd/hexdek-thor effect verification
+	SurfaceInvariants  = "invariants"   // gameengine.RunAllInvariants inline checks
+	SurfaceLegality    = "legality"     // ride-along legality detector
+	SurfaceFeynman     = "feynman"      // hat/feynman.go post-game oracle
+	SurfaceLoki        = "loki"         // cmd/hexdek-loki chaos fuzzer
+	SurfaceParity      = "parity"       // internal/paritycheck cross-engine diff
+	SurfaceGoldilocks  = "goldilocks"   // cmd/hexdek-thor effect verification
+	SurfaceSeatOutcome = "seat_outcome" // gameengine seat-outcome ride-along checker
 )
 
 // ValidationViolation is the canonical violation record. Every
@@ -79,9 +80,16 @@ type ValidationViolation struct {
 	// Message is the human-readable description.
 	Message string `json:"message"`
 
-	// Context carries surface-specific structured detail (seat, turn,
-	// seed, game index, instance IDs, …). Keys are snake_case by
-	// convention. Nil when the surface has nothing to add.
+	// Seat is the seat the violation attributes to: >= 1 for a specific
+	// seat, -1 for explicitly game-global, 0 when unattributed (also
+	// covers seat 0 — disambiguate via Context["seat"] when it matters).
+	// Added in step 4: every engine surface (Feynman, legality,
+	// seat-outcome) is seat-scoped, so the vocabulary carries it.
+	Seat int `json:"seat,omitempty"`
+
+	// Context carries surface-specific structured detail (turn, seed,
+	// game index, instance IDs, …). Keys are snake_case by convention.
+	// Nil when the surface has nothing to add.
 	Context map[string]interface{} `json:"context,omitempty"`
 }
 
@@ -89,6 +97,9 @@ type ValidationViolation struct {
 //
 //	[severity] surface/Name: message
 func (v ValidationViolation) String() string {
+	if v.Seat > 0 {
+		return fmt.Sprintf("[%s] %s/%s [seat %d]: %s", v.Severity, v.Surface, v.Name, v.Seat, v.Message)
+	}
 	return fmt.Sprintf("[%s] %s/%s: %s", v.Severity, v.Surface, v.Name, v.Message)
 }
 
