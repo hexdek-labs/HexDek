@@ -570,6 +570,16 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 				if p.Card != nil && !p.IsToken() && cardOwner == seatIdx {
 					realCardsLeaving++
 				}
+				// §800.4a merged-limbo drain (r63 CONSERVATION residual
+				// class): a swept MERGED permanent (Mutate §702.140 /
+				// Meld §712) carries constituent *Cards in merge limbo
+				// — in no zone, censused only through this permanent's
+				// MergedCardPtrs. Drain the stack or every constituent
+				// is stranded: leaver-owned cards never cease and
+				// survivor-owned cards vanish from all zone accounting
+				// (the orphan sweep then lossily retires a LIVING
+				// player's card).
+				realCardsLeaving += drainMergedLimboOnElimination(gs, p, seatIdx)
 				detached = append(detached, p)
 				removed++
 				continue
@@ -580,6 +590,44 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 	}
 	for _, p := range detached {
 		detachAll(gs, p)
+	}
+
+	// Step 1b (r63 CONSERVATION residual class): leaver-owned
+	// constituents inside SURVIVING merged permanents. CR §702.140e
+	// makes mixed-owner mutate stacks rare, but theft + owner-corruption
+	// shapes reach them. The card leaves the game like every other
+	// leaver-owned object (§800.4a): cease it and strip it from the
+	// merge bookkeeping so a later UnmergeOnLeavePlay can't materialize
+	// it into the departed seat's zones — the census skips those, and
+	// the resulting minted-not-ceased-absent window is the strict-census
+	// "card disappeared" residual.
+	for _, other := range gs.Seats {
+		if other == nil || other.LeftGame {
+			continue
+		}
+		for _, p := range other.Battlefield {
+			if p == nil || p.MergeKind == MergeNone || len(p.MergedCards) == 0 {
+				continue
+			}
+			keptIDs := p.MergedCards[:0]
+			for _, mergedID := range p.MergedCards {
+				isBase := p.Card != nil && p.Card.InstanceID == mergedID
+				c := p.MergedCardPtrs[mergedID]
+				if !isBase && c != nil && c.Owner == seatIdx {
+					MarkInstanceIDCeased(gs, mergedID)
+					delete(p.MergedCardPtrs, mergedID)
+					if p.TopCard == c {
+						p.TopCard = p.Card
+					}
+					if !cardIsTokenForElim(c) {
+						realCardsLeaving++
+					}
+					continue
+				}
+				keptIDs = append(keptIDs, mergedID)
+			}
+			p.MergedCards = keptIDs
+		}
 	}
 
 	// Step 2: purge stack items sourced from this seat. §800.4a:

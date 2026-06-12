@@ -223,6 +223,28 @@ func UnmergeOnLeavePlay(gs *GameState, perm *Permanent, destZone string) int {
 			continue
 		}
 		seat := gs.Seats[ownerSeat]
+		// §800.4a (r63 CONSERVATION residual class): a departed seat's
+		// zones are outside the game — the census skips them, so
+		// materializing the constituent there makes it vanish from all
+		// accounting until the next orphan sweep lossily retires it.
+		// The owner left: the card leaves the game with them.
+		if seat.LeftGame {
+			MarkInstanceIDCeased(gs, mergedID)
+			gs.LogEvent(Event{
+				Kind:   "merge_unmerge_route",
+				Seat:   ownerSeat,
+				Source: perm.Card.DisplayName(),
+				Details: map[string]interface{}{
+					"unmerged_card": c.DisplayName(),
+					"unmerged_id":   mergedID,
+					"to_zone":       "ceased",
+					"merge_kind":    perm.MergeKind.String(),
+					"rule":          "800.4a",
+					"reason":        "owner_left_game",
+				},
+			})
+			continue
+		}
 		// Route per destZone. The cards live in a "merged limbo" — they
 		// don't have a current zone since they were absorbed into the
 		// surviving Permanent. Append directly to the destination zone.
@@ -259,6 +281,65 @@ func UnmergeOnLeavePlay(gs *GameState, perm *Permanent, destZone string) int {
 	perm.MergeKind = MergeNone
 	perm.TopCard = nil
 	return moved
+}
+
+// drainMergedLimboOnElimination empties a merged permanent's limbo stack
+// as part of the §800.4a elimination sweep (r63 CONSERVATION residual
+// class). The sweep removes the permanent from the battlefield by direct
+// slice rewrite — bypassing the zone_change.go LTB paths that call
+// UnmergeOnLeavePlay — so without this drain every limbo constituent is
+// stranded: visible to the census only through MergedCardPtrs of a
+// battlefield-resident permanent, it drops out of all zone accounting
+// the moment the host is swept. Mirror the sweep's base-card policy:
+// constituents owned by the leaver (or any departed seat) cease per
+// §800.4a; constituents owned by a surviving player route to their
+// owner's exile (the §800.4c arm the base card takes).
+//
+// Returns the number of non-token leaver-owned constituent cards that
+// left the game — the caller adds them to realCardsLeaving.
+func drainMergedLimboOnElimination(gs *GameState, perm *Permanent, leaverIdx int) int {
+	if gs == nil || perm == nil || perm.MergeKind == MergeNone || len(perm.MergedCards) == 0 {
+		return 0
+	}
+	left := 0
+	for _, mergedID := range perm.MergedCards {
+		// The base card is routed by the sweep itself.
+		if perm.Card != nil && perm.Card.InstanceID == mergedID {
+			continue
+		}
+		c := perm.MergedCardPtrs[mergedID]
+		if c == nil {
+			// Not in limbo — a zone-resident pointer is already
+			// censused wherever it actually lives.
+			continue
+		}
+		ownerSeat := c.Owner
+		ownerInGame := ownerSeat >= 0 && ownerSeat < len(gs.Seats) &&
+			gs.Seats[ownerSeat] != nil && !gs.Seats[ownerSeat].LeftGame
+		if !ownerInGame {
+			MarkInstanceIDCeased(gs, mergedID)
+			if ownerSeat == leaverIdx && !cardIsTokenForElim(c) {
+				left++
+			}
+			continue
+		}
+		gs.Seats[ownerSeat].Exile = append(gs.Seats[ownerSeat].Exile, c)
+		gs.LogEvent(Event{
+			Kind: "zone_change", Seat: ownerSeat, Target: -1,
+			Source: c.DisplayName(),
+			Details: map[string]interface{}{
+				"from_zone": "merged_limbo",
+				"to_zone":   "exile",
+				"rule":      "800.4c",
+				"reason":    "merged_host_left_game",
+			},
+		})
+	}
+	perm.MergedCards = nil
+	perm.MergedCardPtrs = nil
+	perm.MergeKind = MergeNone
+	perm.TopCard = nil
+	return left
 }
 
 // unmergeRuleFor returns the citation for the unmerge step depending on
