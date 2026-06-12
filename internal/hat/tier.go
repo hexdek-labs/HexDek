@@ -83,8 +83,14 @@ func (h *YggdrasilHat) Route(gs *gameengine.GameState, confidence float64) Decis
 	if confidence < confidenceForceRagnarokFloor && final == TierGungnir {
 		// Gungnir → Ragnarok requires the rollout precondition (budget
 		// ≥ rolloutBudgetGe + TurnRunner set) and enough turn budget
-		// for at least one rollout's eval cost.
-		if h.Budget >= rolloutBudgetGe && h.TurnRunner != nil {
+		// for at least one rollout's eval cost. r61 PR-8: a complex non-
+		// high-stakes board now base-classifies as Gungnir (graceful
+		// degrade) rather than Mjolnir, so guard the rollout promotion
+		// with the same complexity gate — we must NOT re-enable expensive
+		// rollouts on a huge board via the low-confidence promotion path,
+		// or the budget taper's perf bound is defeated.
+		if h.Budget >= rolloutBudgetGe && h.TurnRunner != nil &&
+			!h.boardComplexityForcesMjolnir(gs) {
 			if h.TurnBudget <= 0 || h.turnRemaining(gs) >= rolloutEvalCost {
 				final = TierRagnarok
 			}

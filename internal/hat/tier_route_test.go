@@ -55,49 +55,46 @@ func TestRoute_NoConfidenceMatchesClassify(t *testing.T) {
 }
 
 // Low confidence + budget that allows promotion should bump
-// Mjolnir → Gungnir.
+// Mjolnir → Gungnir — but a budget-0 (permanent-Mjolnir) hat must NOT.
 func TestRoute_LowConfidencePromotesMjolnirToGungnir(t *testing.T) {
-	gs := newTierTestGame(t, 4)
-	// Budget=100 without TurnRunner: structurally Gungnir-capable, but
-	// classifyDecision returns Gungnir directly. To test the promotion
-	// path, we need a hat that base-classifies as Mjolnir despite
-	// budget>0. classifyDecision only forces Mjolnir on budget=0,
-	// complex-board, or turn-budget-exhausted. Make budget>0 + complex.
-	h := newTierHat(100)
-	per := adaptiveBudgetComplexityThreshold/len(gs.Seats) + 2
-	for _, s := range gs.Seats {
+	// r61 PR-8: a complex board no longer base-classifies as Mjolnir
+	// (graceful degrade → Gungnir), so the permanent-Mjolnir base used
+	// here is the budget-0 path. Budget=0 is permanent, so even at low
+	// confidence the Mjolnir → Gungnir promotion must NOT fire (the guard
+	// `h.Budget > 0` blocks it).
+	h0 := newTierHat(0)
+	gs2 := newTierTestGame(t, 4)
+	if base := h0.classifyDecision(gs2); base != TierMjolnir {
+		t.Fatalf("test setup: budget-0 hat should base-classify as Mjolnir; got %s", base)
+	}
+	if got := h0.Route(gs2, 0.1); got != TierMjolnir {
+		t.Fatalf("low conf on budget-0 hat: got %s, want Mjolnir (budget guards)", got)
+	}
+
+	// A complex non-high-stakes board now degrades to Gungnir (not
+	// Mjolnir). Low confidence must NOT promote it further to Ragnarok —
+	// the budget taper's perf bound must hold even under the promotion
+	// path (Route guards Gungnir → Ragnarok with the complexity gate).
+	hC := newTierHat(rolloutBudgetGe)
+	hC.TurnRunner = func(*gameengine.GameState) {}
+	gsC := newTierTestGame(t, 4)
+	per := adaptiveBudgetComplexityThreshold/len(gsC.Seats) + 2
+	for _, s := range gsC.Seats {
 		for i := 0; i < per; i++ {
 			s.Battlefield = append(s.Battlefield, &gameengine.Permanent{
 				Card: &gameengine.Card{Name: "filler"}, Owner: s.Idx, Controller: s.Idx,
 			})
 		}
 	}
-	if h.classifyDecision(gs) != TierMjolnir {
-		t.Fatalf("test setup: classify should be Mjolnir on complex board")
+	if base := hC.classifyDecision(gsC); base != TierGungnir {
+		t.Fatalf("test setup: complex board should degrade to Gungnir; got %s", base)
+	}
+	if got := hC.Route(gsC, 0.1); got != TierGungnir {
+		t.Fatalf("low conf on complex board: got %s, want Gungnir (rollout perf-gated)", got)
 	}
 
-	// Even with low confidence we should NOT promote — the structural
-	// gate (board complexity) tells us we can't afford Gungnir. This is
-	// the contract: confidence promotes only when budget allows.
-	if got := h.Route(gs, 0.1); got != TierMjolnir {
-		t.Fatalf("low conf on complex board: got %s, want Mjolnir (budget guards)", got)
-	}
-
-	// Now strip the complexity gate — same Mjolnir base, but via a
-	// budget-0 path. Budget=0 is permanent so promotion still must not
-	// happen.
-	h0 := newTierHat(0)
-	gs2 := newTierTestGame(t, 4)
-	if got := h0.Route(gs2, 0.1); got != TierMjolnir {
-		t.Fatalf("low conf on budget-0 hat: got %s, want Mjolnir", got)
-	}
-
-	// Finally: a non-complex, budget>0 hat would already classify as
-	// Gungnir, so the "promote Mjolnir → Gungnir" branch isn't
-	// reachable via this hat shape — the promotion path exists for a
-	// future call site that returns Mjolnir on grounds outside
-	// classifyDecision's view (e.g. a custom Mjolnir-only fast-path).
-	// We cover the inverse below — confidence=1 must NOT promote.
+	// A non-complex, budget>0 hat already classifies as Gungnir; no-conf
+	// must NOT promote it.
 	hG := newTierHat(100)
 	gs3 := newTierTestGame(t, 4)
 	if got := hG.Route(gs3, confidenceNone); got != TierGungnir {

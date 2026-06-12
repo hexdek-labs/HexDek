@@ -318,6 +318,30 @@ const (
 	//     decisions materially change the outcome.
 	highStakesLifeThreshold = 8
 	highStakesStackDepth    = 3
+
+	// r61 PR-8 graceful budget degradation. Replaces the pre-r61 hard
+	// `return 0` cliff at adaptiveComplexityThreshold with a linear taper
+	// so the hat keeps doing SOME evaluation on big boards instead of
+	// dropping to pure heuristic the moment the table crosses ~60
+	// permanents (a routine turn-8+ 4-player Commander board).
+	//
+	//   degradedBudgetTaperPerPerm: each permanent past the complexity
+	//     threshold shaves this fraction off the budget multiplier. At
+	//     0.02, the budget hits the floor factor ~42 permanents over the
+	//     threshold (e.g. threshold 60 → floor at ~102 permanents).
+	//   degradedBudgetFloorFactor: the multiplier never falls below this,
+	//     so even a pathological 120-permanent board still spends ~15% of
+	//     base budget on evaluation. With base Budget=50 that is ~7
+	//     (evaluator-guided, NOT rollout); with base Budget=200 (rollout)
+	//     the taper drops effective budget below rolloutBudgetGe well
+	//     before the floor, so rollouts cut out first and only the cheaper
+	//     evaluator path runs on huge boards — bounding per-decision cost.
+	//   degradedBudgetAbsoluteFloor: hard minimum so the degraded budget
+	//     is always >= this (never 0). Keeps the hat off the pure-
+	//     heuristic Mjolnir path on complex boards.
+	degradedBudgetTaperPerPerm  = 0.02
+	degradedBudgetFloorFactor   = 0.15
+	degradedBudgetAbsoluteFloor = 5
 )
 
 // DecisionTier names the compute path a decision takes. The hat already
@@ -2081,6 +2105,21 @@ func (h *YggdrasilHat) effectiveBudget(gs *gameengine.GameState) int {
 		return 0
 	}
 	highStakes := h.isHighStakesDecision(gs)
+
+	// r61 PR-8 combo carve-out, made explicit in the real gate. The
+	// advisory classifyDecision already keeps full compute on a combo-
+	// assembly/execution turn via isHighStakesDecision → comboAssembling,
+	// but the live budget gate previously only got the carve-out implicitly
+	// through `highStakes`. Naming it here guarantees the hat NEVER degrades
+	// to a reduced budget on a turn it is assembling or executing its own
+	// combo — the most decision-sensitive turn in the game. comboAssembling
+	// reports Executable (resolves THIS turn) or Assembling (one tutor away),
+	// matching the comboPriority condition classifyDecision keys on.
+	comboTurn := h.comboAssembling(gs)
+	if comboTurn {
+		highStakes = true
+	}
+
 	total := 0
 	for _, s := range gs.Seats {
 		if s == nil {
@@ -2088,9 +2127,18 @@ func (h *YggdrasilHat) effectiveBudget(gs *gameengine.GameState) int {
 		}
 		total += len(s.Battlefield)
 	}
-	if total >= adaptiveComplexityThreshold(gs) && !highStakes {
-		return 0
-	}
+
+	// r61 PR-8 graceful degradation. Pre-r61 this was a hard `return 0`
+	// cliff: the instant the table crossed adaptiveComplexityThreshold
+	// (~60 permanents — a routine turn-8+ 4-player Commander board) the
+	// hat went brain-dead (pure heuristic, no evaluator, no rollout)
+	// exactly when decisions are hardest. Now we taper the budget down as
+	// complexity rises (applied last, below) so the hat keeps thinking
+	// SOME, with a sensible floor. High-stakes turns (combo / low life /
+	// deep stack / pressure-bridge) still bypass the degrade entirely.
+	thresh := adaptiveComplexityThreshold(gs)
+	degraded := total >= thresh && !highStakes
+
 	if h.TurnBudget > 0 && h.turnRemaining(gs) <= 0 && !highStakes {
 		return 0
 	}
@@ -2132,6 +2180,27 @@ func (h *YggdrasilHat) effectiveBudget(gs *gameengine.GameState) int {
 	if !highStakes {
 		if pressure := gameStatePressure(gs); pressure > 0 {
 			budget = int(float64(budget) * (1.0 + pressure*0.5))
+		}
+	}
+
+	// r61 PR-8 graceful complexity taper (applied last). When the board is
+	// past the complexity threshold on a non-high-stakes turn, scale the
+	// budget down linearly with the permanent overage instead of cliffing
+	// to 0. The floor factor keeps a minimum fraction of base budget, and
+	// the absolute floor guarantees a non-zero result so the hat always
+	// does SOME evaluation. For a base rollout budget (>=200) the taper
+	// drops the effective budget below rolloutBudgetGe long before the
+	// floor, so rollouts cut out first and only the cheaper evaluator runs
+	// on huge boards — keeping per-decision cost bounded.
+	if degraded {
+		over := total - thresh
+		factor := 1.0 - float64(over)*degradedBudgetTaperPerPerm
+		if factor < degradedBudgetFloorFactor {
+			factor = degradedBudgetFloorFactor
+		}
+		budget = int(float64(budget) * factor)
+		if budget < degradedBudgetAbsoluteFloor {
+			budget = degradedBudgetAbsoluteFloor
 		}
 	}
 	return budget
@@ -2324,8 +2393,15 @@ func (h *YggdrasilHat) classifyDecision(gs *gameengine.GameState) DecisionTier {
 			total += len(s.Battlefield)
 		}
 	}
+	// r61 PR-8: the complexity branch no longer cliffs to Mjolnir (pure
+	// heuristic). effectiveBudget now tapers to a degraded-but-non-zero
+	// evaluator budget on complex non-high-stakes boards, so the tier
+	// report degrades to Gungnir (evaluator-guided) here instead of
+	// drifting to Mjolnir. Rollout (Ragnarok) is intentionally not offered
+	// on a degraded board: the budget taper drops effective budget below
+	// rolloutBudgetGe well before its floor, so rollouts cut out first.
 	if total >= adaptiveComplexityThreshold(gs) && !highStakes {
-		return TierMjolnir
+		return TierGungnir
 	}
 	if h.TurnBudget > 0 && h.turnRemaining(gs) <= 0 && !highStakes {
 		return TierMjolnir
@@ -7926,7 +8002,7 @@ func (h *YggdrasilHat) ChooseTarget(gs *gameengine.GameState, seatIdx int, filte
 		}
 	}
 
-	// For permanent-targeting effects (removal), score each target.
+	// For permanent-targeting effects, score each target.
 	hasPermanentTargets := false
 	for _, t := range legal {
 		if t.Kind == gameengine.TargetKindPermanent && t.Permanent != nil {
@@ -7934,6 +8010,32 @@ func (h *YggdrasilHat) ChooseTarget(gs *gameengine.GameState, seatIdx int, filte
 			break
 		}
 	}
+
+	// r61 PR-8 Fix B — beneficial-effect branch (strictly additional).
+	// When the resolving effect is a single-target BENEFICIAL effect (pump
+	// / +1/+1 / regen / protective keyword grant / damage prevention /
+	// untap) whose filter admits both own and opponent creatures, point it
+	// at the AI's OWN best creature instead of the strongest enemy. This
+	// fires ONLY for genuinely-beneficial intent; for HARMFUL or UNKNOWN
+	// intent the function falls through to the existing removal-scoring
+	// loop below with byte-identical behavior — so the PR-7 reactive-
+	// removal reliance on best-enemy targeting is completely untouched.
+	if hasPermanentTargets && h.resolvingTargetIntent(gs, seatIdx, filter) == intentBeneficial {
+		if own, ok := h.bestBeneficialOwnTarget(gs, seatIdx, legal); ok {
+			ownName := "<creature>"
+			if own.Permanent != nil && own.Permanent.Card != nil {
+				ownName = own.Permanent.Card.DisplayName()
+			}
+			h.logf("%s BENEFICIAL-TARGET seat=%d → %s (own creature; buff/protect)",
+				roundTag(gs, seatIdx), seatIdx, ownName)
+			return own
+		}
+		// No own creature among the legal targets (e.g. the buff can only
+		// hit an opponent's board). Fall through to the existing scorer —
+		// targeting an enemy with a buff is bad, but it's a degenerate
+		// legal-target set and we keep the conservative status-quo path.
+	}
+
 	if hasPermanentTargets {
 		type scoredTarget struct {
 			target gameengine.Target
