@@ -416,6 +416,65 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 	}
 	seat.ManaPool -= cost
 	SyncManaAfterSpend(seat)
+
+	// CR §702.33 — cast-time optional additional cost (kicker / multikicker).
+	// AFTER the base + X cost is settled, the caster may choose to pay the
+	// kicker cost (0+ times). We compute the max affordable kicks from the
+	// remaining mana, ask the Hat, then charge that many × kicker cost as a
+	// further mana payment. The decision is stamped onto CostMeta below
+	// (one canonical key) and mirrored onto the permanent at ETB. Cards with
+	// no kicker keyword skip this entirely — zero behavior change for the
+	// 99% of cards. See keywords_batch.go for the helper family.
+	kickCount := 0
+	if kc := KickerCost(card); kc > 0 && HasKickerKeyword(card) {
+		remaining := EnsureTypedPool(seat).Total()
+		maxKicks := remaining / kc
+		if !IsMultikicker(card) && maxKicks > 1 {
+			maxKicks = 1 // single kicker: at most once (CR §702.33c)
+		}
+		if maxKicks > 0 {
+			chosen := maxKicks
+			if seat.Hat != nil {
+				chosen = seat.Hat.ChooseKickCount(gs, seatIdx, card, kc, maxKicks)
+			} else {
+				chosen = 0 // no hat — default to NOT kicking (conservative)
+			}
+			if chosen < 0 {
+				chosen = 0
+			}
+			if chosen > maxKicks {
+				chosen = maxKicks
+			}
+			if chosen > 0 {
+				kickCost := chosen * kc
+				seat.ManaPool -= kickCost
+				SyncManaAfterSpend(seat)
+				kickCount = chosen
+				gs.LogEvent(Event{
+					Kind:   "pay_mana",
+					Seat:   seatIdx,
+					Amount: kickCost,
+					Source: card.DisplayName(),
+					Details: map[string]interface{}{
+						"reason":          "kicker",
+						"rule":            "702.33",
+						"multikick_count": chosen,
+						"kicker_cost":     kc,
+					},
+				})
+				gs.LogEvent(Event{
+					Kind:   "kicker",
+					Seat:   seatIdx,
+					Source: card.DisplayName(),
+					Details: map[string]interface{}{
+						"rule":            "702.33",
+						"multikick_count": chosen,
+					},
+				})
+			}
+		}
+	}
+
 	if cost > 0 {
 		details := map[string]interface{}{
 			"reason": "cast",
@@ -479,6 +538,13 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		Effect:     eff,
 		Targets:    targets,
 		ChosenX:    chosenX,
+	}
+	// CR §702.33 — stamp the kicker decision in the single canonical place
+	// (CostMeta["kicked"] / CostMeta["multikick_count"]) so the ETB mirror
+	// and every downstream consumer (Grunn, Zethi, Everflowing Chalice) read
+	// the same value. Only the card carries a kicker keyword stamps a result.
+	if HasKickerKeyword(card) {
+		StampKickResult(item, kickCount)
 	}
 	PushStackItem(gs, item)
 
@@ -1646,6 +1712,14 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 			perm.Flags["cast_from_hand"] = 1
 		}
 	}
+
+	// CR §702.33 — mirror the cast-time kicker decision from CostMeta onto
+	// the permanent's Flags BEFORE ApplyStaticETBCounters runs, so "if
+	// kicked → enters with N counters" statics (Grunn) and the "for each
+	// time kicked" variable counter reader (Everflowing Chalice) see the
+	// kick count. Mirrors the ChosenX → gs.Flags pattern. No-op for copies
+	// (no CostMeta) and unkicked cards (flags left unset).
+	MirrorKickFlagsToPermanent(item, perm)
 	// §306.5b planeswalker loyalty counter initialization. We don't carry
 	// starting_loyalty on Card today — fall back to CMC-ish heuristic so
 	// planeswalkers at least start with a positive counter.

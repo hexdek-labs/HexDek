@@ -63,6 +63,107 @@ func ApplyKicker(gs *GameState, item *StackItem) {
 	})
 }
 
+// HasKickerKeyword reports whether the card carries a "kicker" or
+// "multikicker" keyword (CR §702.33). Detection is AST-driven via the
+// Keyword node Name so it works regardless of whether the parser stashed
+// the cost as a numeric arg or raw text.
+func HasKickerKeyword(card *Card) bool {
+	return cardHasKeywordByName(card, "kicker") ||
+		cardHasKeywordByName(card, "multikicker")
+}
+
+// IsMultikicker reports whether the card's kicker keyword is the
+// "multikicker" variant — the cost may be paid any number of times
+// (CR §702.33d) rather than at most once.
+func IsMultikicker(card *Card) bool {
+	return cardHasKeywordByName(card, "multikicker")
+}
+
+// KickerCost returns the generic mana cost of ONE kick for the card's
+// kicker / multikicker keyword. Reads the numeric arg off the keyword
+// node (via keywordArgCost). Returns 0 if the card has no kicker or the
+// parser couldn't recover a numeric cost — callers treat 0 as "no
+// affordable kicker" so a parser miss can never silently double-charge.
+func KickerCost(card *Card) int {
+	if card == nil {
+		return 0
+	}
+	if cardHasKeywordByName(card, "multikicker") {
+		if c := keywordArgCost(card, "multikicker"); c > 0 {
+			return c
+		}
+	}
+	if cardHasKeywordByName(card, "kicker") {
+		if c := keywordArgCost(card, "kicker"); c > 0 {
+			return c
+		}
+	}
+	return 0
+}
+
+// StampKickResult records the chosen kick count onto the StackItem's
+// CostMeta in the single canonical shape every downstream consumer reads:
+//
+//   - CostMeta["kicked"]          bool  — was the spell kicked at all
+//   - CostMeta["multikick_count"] int   — how many times (1 for single kicker)
+//
+// This mirrors the ChosenX → gs.Flags mirroring pattern. The matching
+// permanent-side mirror happens at ETB (see MirrorKickFlagsToPermanent).
+func StampKickResult(item *StackItem, kicks int) {
+	if item == nil {
+		return
+	}
+	if item.CostMeta == nil {
+		item.CostMeta = map[string]interface{}{}
+	}
+	if kicks <= 0 {
+		item.CostMeta["kicked"] = false
+		item.CostMeta["multikick_count"] = 0
+		return
+	}
+	item.CostMeta["kicked"] = true
+	item.CostMeta["multikick_count"] = kicks
+}
+
+// MirrorKickFlagsToPermanent copies the canonical kick metadata from the
+// resolving StackItem's CostMeta onto the entering permanent's Flags, so
+// "if kicked" ETB statics (Grunn), multikick-count consumers (Zethi,
+// Everflowing Chalice), and the evalCondition "kicked" predicate all see
+// the same value. Mirrors the ChosenX → gs.Flags["_cast_chosen_x"]
+// pattern. Sets:
+//
+//   - perm.Flags["kicked"]          N (the kick count; 0 when unkicked)
+//   - perm.Flags["multikick_count"] N
+//
+// Both keys carry the kick count: resolve.go's evalCondition "kicked" case
+// reads perm.Flags["kicked"] as a count and compares it against the
+// condition's needed-times arg (so "was kicked" = >=1 and "was kicked
+// twice" = >=2 both work), while Zethi / Chalice read multikick_count.
+func MirrorKickFlagsToPermanent(item *StackItem, perm *Permanent) {
+	if item == nil || perm == nil || item.CostMeta == nil {
+		return
+	}
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	kicked := false
+	if v, ok := item.CostMeta["kicked"]; ok {
+		kicked, _ = v.(bool)
+	}
+	count := 0
+	if v, ok := item.CostMeta["multikick_count"]; ok {
+		if n, ok2 := asInt(v); ok2 {
+			count = n
+		}
+	}
+	if !kicked && count == 0 {
+		// Card was not kicked (or carries no kicker) — leave flags unset.
+		return
+	}
+	perm.Flags["kicked"] = count
+	perm.Flags["multikick_count"] = count
+}
+
 // CR §702.79 — Persist
 func CheckPersist(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil {

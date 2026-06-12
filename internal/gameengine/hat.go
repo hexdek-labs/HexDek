@@ -829,6 +829,27 @@ type Hat interface {
 	// portion of the cost. The Hat must return a value in [0, availableMana].
 	ChooseX(gs *GameState, seatIdx int, card *Card, availableMana int) int
 
+	// -- Cast-time optional / additional costs ----------------------------
+
+	// ChooseKickCount returns how many times the caster pays the kicker /
+	// multikicker cost (CR §702.33 / §702.33d) when casting `card`.
+	//
+	//   - 0  → don't kick (the base spell is cast unkicked)
+	//   - 1  → pay a single kicker cost ("Kicker {X}")
+	//   - N  → pay the multikicker cost N times ("Multikicker {X}")
+	//
+	// Called by CastSpell AFTER the base + X cost has been settled and only
+	// when the card actually carries a kicker / multikicker keyword.
+	// `kickerCost` is the generic mana cost of ONE kick (already resolved
+	// from the keyword's printed cost). `maxKicks` is the most kicks the
+	// caster can currently afford with leftover mana (1 for single kicker).
+	// The Hat must return a value in [0, maxKicks].
+	//
+	// This is the first member of the cast-time optional-cost family; PR-5
+	// will add siblings (additional-cost discards, "you may pay {X}" riders,
+	// etc.) following the same shape.
+	ChooseKickCount(gs *GameState, seatIdx int, card *Card, kickerCost, maxKicks int) int
+
 	// -- London mulligan bottom-card selection ----------------------------
 
 	// ChooseBottomCards returns which N cards from hand to put on the

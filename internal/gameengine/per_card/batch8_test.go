@@ -879,6 +879,9 @@ func (*testHat) OrderTriggers(gs *gameengine.GameState, seatIdx int, triggers []
 func (*testHat) ChooseX(gs *gameengine.GameState, seatIdx int, card *gameengine.Card, availableMana int) int {
 	return availableMana
 }
+func (*testHat) ChooseKickCount(gs *gameengine.GameState, seatIdx int, card *gameengine.Card, kickerCost, maxKicks int) int {
+	return 0
+}
 func (*testHat) ChooseBottomCards(gs *gameengine.GameState, seatIdx int, hand []*gameengine.Card, count int) []*gameengine.Card {
 	return nil
 }
