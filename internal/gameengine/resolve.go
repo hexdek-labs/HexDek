@@ -2418,6 +2418,10 @@ func resolveAddMana(gs *GameState, src *Permanent, e *gameast.AddMana) {
 	}
 	gs.Seats[src.Controller].ManaPool += count
 	SyncManaAfterAdd(gs.Seats[src.Controller], count)
+	// Ride-along legality validator: inline mana abilities resolve inside
+	// the activation announcement window — credit the add so the cost
+	// check doesn't read produced mana as a negative spend. nil-safe.
+	gs.Legality.NoteManaAdd(src.Controller, count)
 	gs.LogEvent(Event{
 		Kind:   "add_mana",
 		Seat:   src.Controller,

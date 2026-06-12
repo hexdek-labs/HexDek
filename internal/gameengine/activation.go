@@ -350,6 +350,10 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		return &CastError{Reason: "suppressed:" + supp.Reason}
 	}
 
+	// Ride-along legality validator (legality.go): snapshot announcement-
+	// time state BEFORE any cost is paid. nil-receiver no-op when off.
+	legalityObs := gs.Legality.BeginActivation(gs, seatIdx, perm, abilityIdx, ab)
+
 	// 2. Pay activation cost (MVP: tap cost + mana cost).
 	seat := gs.Seats[seatIdx]
 
@@ -563,6 +567,9 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		if IsExhaustAbility(perm, abilityIdx) {
 			MarkExhausted(perm, abilityIdx)
 		}
+		// Ride-along legality validator: inline mana ability complete
+		// (no stack item per CR §605.3a). nil-receiver no-op when off.
+		gs.Legality.FinishActivation(gs, legalityObs, nil)
 		return nil
 	}
 
@@ -593,6 +600,10 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 	item.Ability = NewAbilityInstance(gs, perm, seatIdx,
 		fmt.Sprintf("act:%d", abilityIdx), "", nil)
 	PushStackItem(gs, item)
+
+	// Ride-along legality validator: the activation is announced and on
+	// the stack with its costs paid. nil-receiver no-op when off.
+	gs.Legality.FinishActivation(gs, legalityObs, item)
 
 	// CR §702.21 — Ward triggers on abilities too, not just spells.
 	CheckWardOnTargeting(gs, item)

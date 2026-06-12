@@ -381,6 +381,10 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		return &CastError{Reason: "not_in_hand"}
 	}
 
+	// Ride-along legality validator (legality.go): snapshot announcement-
+	// time state BEFORE any cost is paid. nil-receiver no-op when off.
+	legalityObs := gs.Legality.BeginCast(gs, seatIdx, card)
+
 	// Pay mana cost per CR §601.2f. CalculateTotalCost walks the battlefield
 	// for static cost modifiers (Thalia, Trinisphere, Helm of Awakening,
 	// medallions, etc.) and applies increases → reductions → minimums.
@@ -704,6 +708,13 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 			item.Targets = AnnounceTargets(gs, announceSrc, seatIdx, f)
 		}
 	}
+
+	// Ride-along legality validator: the announcement is complete — the
+	// spell is on the stack with its targets and CostMeta stamped, and
+	// base + X + kicker + buyback have been paid (replicate/conspire/
+	// casualty additional costs below are out of phase-1 scope). Runs
+	// the registered checks. nil-receiver no-op when off.
+	gs.Legality.FinishCast(gs, legalityObs, item)
 
 	// CR §702.56 / §702.78 / §702.153 — cast-time ADDITIONAL costs that COPY
 	// the spell (replicate / conspire / casualty). These act on the StackItem

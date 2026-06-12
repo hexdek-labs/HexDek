@@ -323,6 +323,12 @@ func atoiSafe(s string) (int, bool) {
 // checkNightmareInvariants. Empty = match-all (legacy behavior).
 var invariantFilter string
 
+// legalityEnabled mirrors the -legality flag: attach the ride-along
+// rules-legality validator (gameengine/legality.go) to every chaos game
+// and surface its violations alongside the invariant census. Default
+// off — zero behavior change in the engine when unset.
+var legalityEnabled bool
+
 func main() {
 	var (
 		gamesFlag      = flag.Int("games", 1000, "number of chaos games to run")
@@ -342,8 +348,10 @@ func main() {
 		listInvFlag    = flag.Bool("list-invariants", false, "print the full set of known invariant names and exit")
 		strictCensus   = flag.Bool("instanceid-strict-census", false, "enable InstanceID Phase 4+ strict ZoneConservation disappearance check (per docs/instanceid-system-v2-r60.md §13). Default off — flips gs.Flags[\"instanceid_strict_census\"]=1 on every game.")
 		violationsDumpPath = flag.String("violations-dump", "", "if set, write every chaos violation message (one per line, tab-separated: game-idx<TAB>turn<TAB>invariant<TAB>message) to this path for offline histogram analysis. Bypasses the report's 30-detail cap.")
+		legalityFlag       = flag.Bool("legality", false, "attach the ride-along rules-legality validator to every chaos game (live CR 307.1/608.2c/601.2f auditing of each cast/activation as it happens). Default off — zero engine behavior change when unset.")
 	)
 	flag.Parse()
+	legalityEnabled = *legalityFlag
 	if *strictCensus {
 		gameengine.SetStrictCensusDefault(true)
 	}
@@ -835,6 +843,9 @@ func runChaosGame(gameIdx, permutation int,
 	}()
 
 	gs := gameengine.NewGameState(nSeats, gameRng, corpus)
+	if legalityEnabled {
+		gs.Legality = gameengine.NewLegalityValidator(deckSeed)
+	}
 
 	commanderDecks := make([]*gameengine.CommanderDeck, nSeats)
 	for i, cd := range chaosDecks {
@@ -972,6 +983,25 @@ func runChaosGame(gameIdx, permutation int,
 		// Safety: if too many crashes in one game, bail.
 		if len(result.Crashes) > 10 {
 			break
+		}
+	}
+
+	// Drain ride-along legality violations into the same report stream as
+	// the invariant census, namespaced "Legality:<rule>" so histograms
+	// separate the live-action audit from the post-hoc state audit.
+	if gs.Legality != nil {
+		for _, lv := range gs.Legality.Violations {
+			result.Violations = append(result.Violations, chaosViolation{
+				GameIdx:       gameIdx,
+				GameSeed:      deckSeed,
+				Permutation:   permutation,
+				InvariantName: "Legality:" + lv.Rule,
+				Message:       lv.String(),
+				Turn:          lv.Turn,
+				Phase:         gs.Phase,
+				Step:          gs.Step,
+				Commanders:    result.Commanders,
+			})
 		}
 	}
 
