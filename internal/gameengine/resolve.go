@@ -688,7 +688,7 @@ func resolveDamage(gs *GameState, src *Permanent, e *gameast.Damage) {
 	if amount <= 0 {
 		return
 	}
-	targets := PickTarget(gs, src, e.Target)
+	targets := PickTargetHarmful(gs, src, e.Target)
 	// A REQUIRED "target X" damage effect with no legal target fizzles at the
 	// §608.2b resolution gate (stack.go ResolveStackTop) before reaching here,
 	// so it never manufactures a target. Untargeted damage shapes that found
@@ -1318,7 +1318,7 @@ func resolveSetLife(gs *GameState, src *Permanent, e *gameast.SetLife) {
 // -----------------------------------------------------------------------------
 
 func resolveDestroy(gs *GameState, src *Permanent, e *gameast.Destroy) {
-	targets := PickTarget(gs, src, e.Target)
+	targets := PickTargetHarmful(gs, src, e.Target)
 	maybeFireCrime(gs, src, targets)
 	for _, t := range targets {
 		if t.Kind != TargetKindPermanent || t.Permanent == nil {
@@ -1358,7 +1358,7 @@ func resolveExile(gs *GameState, src *Permanent, e *gameast.Exile) {
 		}
 	}
 
-	targets := PickTarget(gs, src, e.Target)
+	targets := PickTargetHarmful(gs, src, e.Target)
 	maybeFireCrime(gs, src, targets)
 	for _, t := range targets {
 		switch t.Kind {

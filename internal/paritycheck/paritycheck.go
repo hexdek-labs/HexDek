@@ -54,7 +54,7 @@ import (
 // state) are intentionally omitted.
 //
 // Consolidation step 1: the struct definition was promoted VERBATIM to
-// internal/validation (the canonical event schema) so gameengine and the
+// internal/judge (the canonical event schema) so gameengine and the
 // other validation surfaces can reference it without importing this
 // package (a cycle — paritycheck imports gameengine). The alias keeps
 // every existing caller and the JSON wire format byte-identical; field

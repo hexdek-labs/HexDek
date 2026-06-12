@@ -25,6 +25,22 @@ import (
 // Returns nil on no-valid-target. Caller emits a "target illegal" event
 // and the effect fizzles (§608.2b).
 func PickTarget(gs *GameState, src *Permanent, f gameast.Filter) []Target {
+	return pickTargetIntent(gs, src, f, false)
+}
+
+// PickTargetHarmful is PickTarget for HARMFUL effects (destroy / exile /
+// damage). The only behavioral difference is the up_to_n multi-target
+// pick: an optional harmful pick never turns the gun on the caster's own
+// permanents. r63 OUTCOME-dimension finding: "destroy up to three target
+// creatures" (Armaggon, Finale of Eternity, Liliana the Necromancer -7,
+// Sorin Lord of Innistrad -6) filled the count with the controller's OWN
+// creatures — including the source itself — once opponent candidates ran
+// out.
+func PickTargetHarmful(gs *GameState, src *Permanent, f gameast.Filter) []Target {
+	return pickTargetIntent(gs, src, f, true)
+}
+
+func pickTargetIntent(gs *GameState, src *Permanent, f gameast.Filter, harmful bool) []Target {
 	srcSeat := 0
 	if src != nil {
 		srcSeat = src.Controller
@@ -84,7 +100,7 @@ func PickTarget(gs *GameState, src *Permanent, f gameast.Filter) []Target {
 		if isPlayerFilter(f) {
 			return pickNPlayerTargets(gs, f, srcSeat, n, allowFewer)
 		}
-		return pickNPermanentTargets(gs, f, srcSeat, src, n, allowFewer)
+		return pickNPermanentTargets(gs, f, srcSeat, src, n, allowFewer, harmful)
 	}
 
 	// Equipped/enchanted creature — resolve to the attached-to permanent,
@@ -441,7 +457,7 @@ func isAnyTargetShape(f gameast.Filter) bool {
 // is true, the caller may receive an empty slice — that's CR §115.6
 // ("may target none"). Distinctness per §115.3 is enforced by pointer
 // identity on the candidate permanent.
-func pickNPermanentTargets(gs *GameState, f gameast.Filter, srcSeat int, src *Permanent, n int, allowFewer bool) []Target {
+func pickNPermanentTargets(gs *GameState, f gameast.Filter, srcSeat int, src *Permanent, n int, allowFewer bool, harmful bool) []Target {
 	if n <= 0 {
 		if allowFewer {
 			return []Target{}
@@ -466,6 +482,13 @@ func pickNPermanentTargets(gs *GameState, f gameast.Filter, srcSeat int, src *Pe
 		}
 		for _, p := range s.Battlefield {
 			if excludeSrc && p == src {
+				continue
+			}
+			// Optional ("up to N") harmful picks stop at the opponent
+			// boundary — choosing to destroy/exile/damage your own
+			// permanents is never the greedy play. Mandatory-N keeps
+			// own permanents as a last resort for targeting legality.
+			if harmful && allowFewer && i == srcSeat && !f.YouControl {
 				continue
 			}
 			if !matchesPermanent(f, p) {
