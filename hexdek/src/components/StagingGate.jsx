@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { stagingAllows, stagingRouteExempt } from '../lib/stagingGate'
+import {
+  stagingAllows, stagingRouteExempt,
+  passphraseEnabled, passphraseMatches, STAGING_PASS_STORAGE_KEY,
+} from '../lib/stagingGate'
 
 // StagingGate — the staging-review whitelist (r63, owner direction:
 // sweeping UX ships to a whitelisted staging build for human review
@@ -33,11 +36,29 @@ export default function StagingGate({ children }) {
   return <StagingGateInner>{children}</StagingGateInner>
 }
 
+// The shared reviewer passphrase, baked in at build time. Empty/unset
+// (including every prod build) disables the bypass entirely.
+const EXPECTED_PASS = import.meta.env.VITE_STAGING_PASSPHRASE || ''
+
+function hasStoredPassGrant() {
+  try {
+    // The stored value must equal the CURRENT build's passphrase, so a
+    // passphrase rotation at the next deploy invalidates old grants.
+    return passphraseMatches(localStorage.getItem(STAGING_PASS_STORAGE_KEY), EXPECTED_PASS)
+  } catch {
+    return false // storage blocked (private mode) — fall back to prompting
+  }
+}
+
 function StagingGateInner({ children }) {
   const { user, loading } = useAuth()
   const location = useLocation()
+  const [passGranted, setPassGranted] = useState(hasStoredPassGrant)
 
   if (stagingRouteExempt(location.pathname)) {
+    return children
+  }
+  if (passGranted) {
     return children
   }
   if (loading) {
@@ -50,17 +71,39 @@ function StagingGateInner({ children }) {
   if (user && stagingAllows(user.email)) {
     return children
   }
-  return <LostPage />
+  return (
+    <LostPage
+      onPassGranted={() => {
+        try { localStorage.setItem(STAGING_PASS_STORAGE_KEY, EXPECTED_PASS) } catch { /* private mode: grant lasts this load only */ }
+        setPassGranted(true)
+      }}
+    />
+  )
 }
 
-function LostPage() {
+function LostPage({ onPassGranted }) {
   const [secondsLeft, setSecondsLeft] = useState(REDIRECT_AFTER_MS / 1000)
+  // Once the reviewer touches the passphrase field, the auto-redirect
+  // is cancelled — nothing worse than being yanked to prod mid-typing.
+  const [redirectPaused, setRedirectPaused] = useState(false)
+  const [passInput, setPassInput] = useState('')
+  const [passError, setPassError] = useState(false)
 
   useEffect(() => {
+    if (redirectPaused) return undefined
     const tick = setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000)
     const go = setTimeout(() => { window.location.href = PROD_URL }, REDIRECT_AFTER_MS)
     return () => { clearInterval(tick); clearTimeout(go) }
-  }, [])
+  }, [redirectPaused])
+
+  const submitPass = (e) => {
+    e.preventDefault()
+    if (passphraseMatches(passInput, EXPECTED_PASS)) {
+      onPassGranted()
+    } else {
+      setPassError(true)
+    }
+  }
 
   return (
     <div style={wrapStyle}>
@@ -81,9 +124,45 @@ function LostPage() {
         >
           TAKE ME TO HEXDEK.DEV ▶
         </a>
-        <div className="t-xs muted" style={{ marginTop: 18 }}>
-          redirecting automatically in {secondsLeft}s…
-        </div>
+        {!redirectPaused && (
+          <div className="t-xs muted" style={{ marginTop: 18 }}>
+            redirecting automatically in {secondsLeft}s…
+          </div>
+        )}
+        {passphraseEnabled(EXPECTED_PASS) && (
+          <form onSubmit={submitPass} style={{ marginTop: 30 }}>
+            <div className="t-xs muted" style={{ marginBottom: 8 }}>
+              reviewer? enter the staging passphrase:
+            </div>
+            <input
+              type="password"
+              value={passInput}
+              autoComplete="off"
+              onFocus={() => setRedirectPaused(true)}
+              onChange={(e) => { setPassInput(e.target.value); setPassError(false); setRedirectPaused(true) }}
+              style={{
+                padding: '10px 12px', width: 220,
+                border: passError ? '1px solid #c0392b' : '1px solid var(--ink)',
+                background: 'transparent', color: 'var(--ink)',
+              }}
+            />
+            <button
+              type="submit"
+              style={{
+                marginLeft: 8, padding: '10px 16px',
+                border: '1px solid var(--ink)', background: 'transparent',
+                color: 'var(--ink)', fontWeight: 700, cursor: 'pointer',
+              }}
+            >
+              ENTER
+            </button>
+            {passError && (
+              <div className="t-xs" style={{ color: '#c0392b', marginTop: 8 }}>
+                that's not it — check with Josh or 7174n1c
+              </div>
+            )}
+          </form>
+        )}
       </div>
     </div>
   )
