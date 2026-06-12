@@ -178,6 +178,45 @@ func KillMethodFromEndReason(endReason string) string {
 	}
 }
 
+// CanonicalKillMethod normalizes every kill-method vocabulary in the
+// codebase onto the canonical enum {combat, commander, poison, mill,
+// combo, timeout, draw, crash, concession} (r62, reports 06/08).
+// Sources normalized:
+//   - heimdall.ClassifyKill output (already canonical — passthrough);
+//   - analytics.KillRecord.Method (per-victim, finer-grained:
+//     combat_damage / noncombat_damage / life_drain collapse to the
+//     life-zero bucket "combat"; commander_damage -> commander;
+//     decking -> mill);
+//   - runner EndReason shapes (via KillMethodFromEndReason).
+//
+// Use this when COMPARING classifications across subsystems (the
+// analytics threat graph vs the stored win_reason) — it is not meant
+// to rewrite the finer-grained stored analytics values.
+func CanonicalKillMethod(method string) string {
+	switch KillMethodFromEndReason(method) {
+	case "combat_damage", "noncombat_damage", "life_drain", "combat":
+		return "combat"
+	case "commander_damage", "commander":
+		return "commander"
+	case "decking", "mill":
+		return "mill"
+	case "poison":
+		return "poison"
+	case "combo":
+		return "combo"
+	case "timeout":
+		return "timeout"
+	case "draw":
+		return "draw"
+	case "crash":
+		return "crash"
+	case "concession":
+		return "concession"
+	default:
+		return method
+	}
+}
+
 // Sign HMAC-SHA256s the (input_digest || outcome_digest) pair with the
 // supplied key and stores the hex-encoded result on the contract.
 // Calling Sign before Seal produces a signature over only the input

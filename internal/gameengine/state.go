@@ -1002,6 +1002,17 @@ type Seat struct {
 	// SBA that caused the loss; empty when Lost==false.
 	LossReason string
 
+	// LostOrder is the 1-based elimination sequence: 1 = first player
+	// eliminated, 2 = second, etc. Stamped by HandleSeatElimination
+	// (which CheckEnd runs exactly once per newly-Lost seat, in
+	// elimination order) — so it is populated regardless of
+	// RetainEvents. 0 = never eliminated (or a fixture that bypassed
+	// the §800.4a pipeline). heimdall.ClassifyKill keys the winner's
+	// kill method off the opponent with the HIGHEST LostOrder — the
+	// final elimination is how the winner closed the game (r62,
+	// win_reason direction fix, reports 06/08).
+	LostOrder int
+
 	// SBA704_5a_emitted is the per-drop log-spam guard for §704.5a. Set
 	// when the SBA either marks the player Lost or logs a loss_prevented
 	// (Platinum Angel etc.) event. Cleared by sba704_5a once life is
