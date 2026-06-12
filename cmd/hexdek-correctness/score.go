@@ -108,7 +108,19 @@ func assembleScore(generatedAt string, config map[string]string, dims []Dimensio
 	for _, name := range dimensionOrder {
 		if d, ok := byName[name]; ok {
 			ordered = append(ordered, d)
+			delete(byName, name)
 		}
+	}
+	// Variant rows (e.g. the r63 "<dimension>_tuned" tuned-deck sweep)
+	// follow the canonical five in stable order — dropping unknown
+	// labels silently is how the tuned table vanished on first wiring.
+	var rest []string
+	for name := range byName {
+		rest = append(rest, name)
+	}
+	sort.Strings(rest)
+	for _, name := range rest {
+		ordered = append(ordered, byName[name])
 	}
 	return &Score{
 		SchemaVersion: scoreSchemaVersion,
