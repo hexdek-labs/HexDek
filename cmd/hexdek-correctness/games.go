@@ -124,6 +124,9 @@ func runGamePass(chaosCorpus *gameengine.ChaosCorpus, corpus *astload.Corpus, me
 			return
 		}
 		cur.names[v.Surface+"/"+v.Name]++
+		if os.Getenv("CORRECTNESS_DEBUG_VIOLATIONS") != "" {
+			fmt.Fprintf(os.Stderr, "  VIOLATION %s\n", v.String())
+		}
 		if v.Severity == judge.SeverityInfo {
 			return
 		}
