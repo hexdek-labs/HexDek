@@ -136,6 +136,19 @@ func athreosShroudDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	if owner < 0 || owner >= len(gs.Seats) {
 		return
 	}
+	// CR §800.4a (r63, seed-42 game 283): an eliminated player's cards
+	// left the game with them — the dead seat's graveyard keeps the
+	// pointers (and ceased InstanceIDs) for forensic clarity, so without
+	// this check Athreos "returns" a card that no longer exists and the
+	// census flags a ceased ID on a live battlefield. createPermanent
+	// also refuses at the chokepoint; this keeps the trigger from
+	// claiming a dead card at all.
+	if gs.Seats[owner] != nil && gs.Seats[owner].LeftGame {
+		emitFail(gs, slug, perm.Card.DisplayName(), "owner_left_game", map[string]interface{}{
+			"creature": dyingCard.DisplayName(),
+		})
+		return
+	}
 	// Defensive: validate the card is still in the owner's graveyard
 	// before claiming it. When TWO Athreos, Shroud-Veiled handlers fire
 	// on the same creature_dies event (both controllers placed coin
