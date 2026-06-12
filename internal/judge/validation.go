@@ -1,4 +1,4 @@
-// Package validation holds the canonical types for HexDek's unified
+// Package judge holds the canonical types for HexDek's unified
 // validation/debug layer — consolidation step 1 of
 // /tmp/fable-review/VALIDATION-CONSOLIDATION.md (greenlit 2026-06-12).
 //
@@ -18,7 +18,7 @@
 // This package is intentionally a LEAF: stdlib imports only, so
 // gameengine, hat, paritycheck, heimdall, analytics, tournament, and
 // the cmd/ tools can all import it without cycles.
-package validation
+package judge
 
 import "fmt"
 
@@ -32,6 +32,18 @@ const (
 	SeverityCritical = "critical"
 	SeverityWarning  = "warning"
 	SeverityInfo     = "info"
+)
+
+// Correctness dimensions (HEX-JUDGE.md): every Judge check answers one
+// of five questions. Violations carry the dimension so reports and
+// sinks can slice the stream by what KIND of wrongness occurred,
+// orthogonally to which surface caught it.
+const (
+	DimensionLegality       = "legality"        // was each action allowed?
+	DimensionConservation   = "conservation"    // objects conserved by identity?
+	DimensionStateIntegrity = "state_integrity" // is state internally consistent?
+	DimensionProgression    = "progression"     // does the game advance correctly?
+	DimensionOutcome        = "outcome"         // did each effect produce the RIGHT result?
 )
 
 // Canonical Surface tags — which validator emitted the violation. One
@@ -79,6 +91,11 @@ type ValidationViolation struct {
 
 	// Message is the human-readable description.
 	Message string `json:"message"`
+
+	// Dimension is the correctness dimension this violation belongs to
+	// (Dimension* constants). Empty on legacy emissions that predate the
+	// Judge fold; new checks must set it.
+	Dimension string `json:"dimension,omitempty"`
 
 	// Seat is the seat the violation attributes to: >= 1 for a specific
 	// seat, -1 for explicitly game-global, 0 when unattributed (also

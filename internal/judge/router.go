@@ -1,4 +1,4 @@
-package validation
+package judge
 
 import "sync"
 
