@@ -178,6 +178,16 @@ type YggdrasilHat struct {
 	threatCache     []seatThreat
 	threatCacheTurn int
 
+	// Reactive-removal one-shot guard (r61 PR-7). Keyed by the *incoming*
+	// opponent stack item's ID; records that we already fired a reactive
+	// non-counter instant-speed play in response to it. Loop-safety: the
+	// AI never responds to its OWN stack item (PriorityRound's
+	// top.Controller==seat guard) AND fires at most one reactive removal
+	// per distinct opponent stack item, so a priority round can't chain
+	// the AI's own responses indefinitely. Cleared each turn.
+	reactiveFiredAgainst    map[int]bool
+	reactiveFiredAgainstTrn int
+
 	// Pooled map for comboUrgency to avoid per-call allocation.
 	availablePool map[string]bool
 
@@ -7078,6 +7088,19 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 		}
 	}
 	if bestCounter == nil {
+		// No counter available, but we may still have an instant-speed
+		// removal answer for a genuine threat an opponent just deployed or
+		// is attacking with (r61 PR-7). This is the proactive reactive game
+		// the non-active seat was previously blind to — its only reactive
+		// window is this response priority, so a removal instant fired here
+		// is the least-invasive way to give the AI instant-speed interaction
+		// on opponents' turns. Counters take priority (handled above); this
+		// only fires when no counter is in hand. Loop-safe: see
+		// maybeCastReactiveRemoval's one-shot guard + the top.Controller==seat
+		// gate at the top of ChooseResponse.
+		if rmResp := h.maybeCastReactiveRemoval(gs, seatIdx, top); rmResp != nil {
+			return rmResp
+		}
 		return nil
 	}
 
@@ -7728,6 +7751,121 @@ func isDefensiveInstantSpell(card *gameengine.Card) bool {
 		return true
 	}
 	return false
+}
+
+// maybeCastReactiveRemoval offers an instant-speed targeted-removal spell
+// from hand in response to an opponent's stack item, but ONLY when there's
+// a clearly-good target on an opponent's battlefield (a genuine threat:
+// big creature, planeswalker, value engine, combo piece, commander).
+//
+// This is the conservative reactive-interaction win (r61 PR-7). The
+// non-active seat's only reactive priority window is this ChooseResponse
+// hook; before PR-7 it could ONLY return counterspells, so its entire
+// instant-speed removal game on opponents' turns was dead. The cast itself
+// is driven by the existing PriorityRound machinery (it pays manaCostOf,
+// removes from hand, pushes the StackItem); the removal's target is chosen
+// at resolution by ChooseTarget, which already scores permanent targets.
+//
+// LOOP SAFETY (the whole reason this is gated tightly):
+//   - The AI never responds to its OWN stack item (top.Controller==seat
+//     guard at the top of ChooseResponse). So a removal we cast can't
+//     trigger another reactive removal in the same chain.
+//   - One-shot per incoming stack item: we record top.ID and never offer
+//     a second reactive non-counter play against the same item. Combined
+//     with the per-cast mana/card depletion and PriorityRound's maxDepth=8,
+//     a priority round terminates.
+//   - Cleared each turn so the map can't grow unbounded.
+//
+// PERF: cheap filters first (turn guard → one-shot guard → "is there a
+// real threat at all" via bestOpponentRemovalScore) BEFORE the hand scan;
+// no rollout/MCTS work on this path.
+//
+// CONSERVATIVE: when uncertain, we pass (return nil). A missed reactive
+// removal is status-quo; a bad/looping one is a regression.
+func (h *YggdrasilHat) maybeCastReactiveRemoval(gs *gameengine.GameState, seatIdx int, top *gameengine.StackItem) *gameengine.StackItem {
+	if gs == nil || top == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return nil
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil || seat.Lost {
+		return nil
+	}
+
+	// Per-turn reset of the one-shot guard.
+	if h.reactiveFiredAgainst == nil || h.reactiveFiredAgainstTrn != gs.Turn {
+		h.reactiveFiredAgainst = make(map[int]bool)
+		h.reactiveFiredAgainstTrn = gs.Turn
+	}
+	// One-shot guard: at most one reactive non-counter play per distinct
+	// opponent stack item. top.ID is assigned by PushStackItem; a 0 ID
+	// means an un-pushed/synthetic item — treat as "don't track" but still
+	// allow exactly one fire (the guard below keys on 0 then, which is
+	// fine because ChooseResponse is called per real stack push).
+	if h.reactiveFiredAgainst[top.ID] {
+		return nil
+	}
+
+	// Cheap threat gate: only bother scanning hand when a genuinely
+	// threatening permanent exists to target. bestOpponentRemovalScore
+	// returns >= 0.60 for a big creature / planeswalker / value engine /
+	// combo piece / commander — a clearly-good removal target. Anything
+	// lower (vanilla creatures, chaff) isn't worth a reactive removal.
+	if h.bestOpponentRemovalScore(gs, seatIdx) < 0.60 {
+		return nil
+	}
+
+	// Color-aware affordability against currently-available mana, same gate
+	// the counterspell path and the active-player cast path use.
+	colored := gameengine.AvailableColoredManaEstimate(gs, seat)
+	for _, c := range seat.Hand {
+		if c == nil {
+			continue
+		}
+		// Instant-speed only: an actual instant. We intentionally do NOT
+		// offer flash permanents here (a flash creature isn't removal) —
+		// this keeps the reactive surface to the single clear-win case.
+		if !typeLineContains(c, "instant") {
+			continue
+		}
+		// Targeted-removal shape: destroy/exile/bounce/damage at a
+		// creature / planeswalker / nonland permanent / any-target. Reuses
+		// the poker.go classifier (same package), which scans the parsed
+		// spell-body Activated node — the AST shape instants resolve through.
+		if !isTargetedRemoval(c) {
+			continue
+		}
+		if !gameengine.CanPayColoredCost(colored, c) {
+			continue
+		}
+		// Fire it. Record the one-shot guard so this incoming item can't
+		// trigger a second reactive removal even if it remains top across
+		// further priority passes in this round.
+		h.reactiveFiredAgainst[top.ID] = true
+		topName := "<spell>"
+		if top.Card != nil {
+			topName = top.Card.DisplayName()
+		} else if top.Source != nil && top.Source.Card != nil {
+			topName = top.Source.Card.DisplayName()
+		}
+		h.logf("REACTIVE-REMOVAL seat=%d → %s (in response to %s, threat=%.2f)",
+			seatIdx, c.DisplayName(), topName, h.bestOpponentRemovalScore(gs, seatIdx))
+		h.emitDecisionEvent(gs, seatIdx, "reactive_removal", map[string]interface{}{
+			"card":           c.DisplayName(),
+			"in_response_to": topName,
+		})
+		// Set Effect explicitly so ResolveStackTop resolves the removal
+		// body (it gates effect resolution on item.Effect != nil). The
+		// counterspell path can leave Effect nil because counters are
+		// dispatched specially, but a Destroy/Exile/Bounce/Damage instant
+		// must carry its spell body to do anything on resolution — its
+		// target is then chosen by ChooseTarget at resolve time.
+		return &gameengine.StackItem{
+			Card:       c,
+			Controller: seatIdx,
+			Effect:     gameengine.CollectSpellEffectOf(c),
+		}
+	}
+	return nil
 }
 
 // -- Interface: ChooseTarget --
