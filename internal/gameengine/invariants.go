@@ -364,6 +364,41 @@ func checkZoneConservationByInstanceID(gs *GameState) error {
 	return nil
 }
 
+// ZoneConservationStrict is the exported post-game conservation check —
+// the single production authority for "did any card appear or vanish"
+// (r63: replaces hat/feynman's owner-count heuristic at the prod
+// CheckGame sites, which false-warned on nearly every game with a CR
+// §800.4 elimination because counts can't model cards that legally left
+// the game; the InstanceID census can — ceased IDs are subtracted from
+// the expectation by construction).
+//
+// Runs the full set-equality census INCLUDING the disappearance half
+// (temporarily enabling the strict flag), which is safe at end-of-game:
+// the 2026-06 strict-census run measured 499/500 production games clean,
+// so a hit here is a real finding, not mint-coverage noise.
+//
+// Returns (err, authoritative). authoritative=false means no InstanceIDs
+// were ever minted (struct-literal fixtures, legacy replays) — the
+// caller should fall back to its own heuristic; the census has nothing
+// to say.
+func ZoneConservationStrict(gs *GameState) (error, bool) {
+	if gs == nil || len(gs.MintedInstanceIDs) == 0 {
+		return nil, false
+	}
+	if gs.Flags == nil {
+		gs.Flags = map[string]int{}
+	}
+	prev, had := gs.Flags["instanceid_strict_census"]
+	gs.Flags["instanceid_strict_census"] = 1
+	err := checkZoneConservationByInstanceID(gs)
+	if had {
+		gs.Flags["instanceid_strict_census"] = prev
+	} else {
+		delete(gs.Flags, "instanceid_strict_census")
+	}
+	return err, true
+}
+
 // checkZoneConservationLegacyCount is the pre-Phase-4 count-based check,
 // preserved as a backstop for empty-InstanceID cards (legacy mode). It
 // runs in addition to (not in place of) the InstanceID census so the

@@ -182,6 +182,38 @@ func checkCommanderDamageSBA(gs *gameengine.GameState, r *OracleResult) {
 // survives control change (resolve.go keeps Owner), so this is the correct
 // conservation key.
 func checkZoneAccounting(gs *gameengine.GameState, r *OracleResult) {
+	// r63 — the InstanceID strict census is the single production
+	// authority for zone conservation. The owner-count heuristic below
+	// false-warned on nearly every game with a CR §800.4 elimination
+	// (production flood, -5..-20 "cards-light" on games a strict-census
+	// run proved 499/500 CLEAN by identity): counts cannot model the
+	// §800.4 flows (eliminated owners' cards ceasing across every zone,
+	// survivor-owned cards in the leaver's zones, exile-outside-game),
+	// while the census subtracts ceased IDs by construction. The
+	// heuristic remains ONLY as a fallback for states with no minted
+	// InstanceIDs (legacy fixtures/replays).
+	if err, authoritative := gameengine.ZoneConservationStrict(gs); authoritative {
+		if err != nil {
+			r.Violations = append(r.Violations, OracleViolation{
+				Rule:        "zone_conservation",
+				Description: err.Error(),
+				Seat:        -1,
+				Severity:    "critical",
+				Details: map[string]interface{}{
+					"check": "instanceid_strict_census",
+				},
+			})
+		}
+		return
+	}
+	checkZoneAccountingCountHeuristic(gs, r)
+}
+
+// checkZoneAccountingCountHeuristic is the legacy owner-reconciled count
+// check, demoted (r63) to fallback-only for game states without
+// InstanceID minting. Do not extend — the strict census above is the
+// authority; mint-coverage gaps are the thing to fix instead.
+func checkZoneAccountingCountHeuristic(gs *gameengine.GameState, r *OracleResult) {
 	n := len(gs.Seats)
 	if n == 0 {
 		return
@@ -361,7 +393,7 @@ func checkNoNegativeCounters(gs *gameengine.GameState, r *OracleResult) {
 						Seat:     i,
 						Severity: "warning",
 						Details: map[string]interface{}{
-							"card": p.Card.DisplayName(),
+							"card":    p.Card.DisplayName(),
 							"counter": kind, "count": count,
 						},
 					})
