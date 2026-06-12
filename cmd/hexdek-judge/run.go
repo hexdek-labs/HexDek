@@ -172,11 +172,7 @@ func runScenarioAudits(corpus *astload.Corpus, got map[string]int) int {
 			if tr, ok := ab.(*gameast.Triggered); ok {
 				var findings []*progression.Finding
 				var ran bool
-				if findings, ran = progression.CheckTrigger(name, tr); !ran {
-					if findings, ran = progression.CheckPhaseTrigger(name, tr); !ran {
-						findings, ran = progression.CheckLTBTrigger(name, tr)
-					}
-				}
+				findings, ran = progression.CheckAny(name, tr)
 				if ran {
 					inScope++
 					for _, fd := range findings {

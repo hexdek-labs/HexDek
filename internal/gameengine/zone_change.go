@@ -769,6 +769,16 @@ func fireObserverZoneChangeTriggers(gs *GameState, dyingPerm *Permanent, dyingCa
 // / "this" reference).
 func isSelfTrigger(trig *gameast.Triggered) bool {
 	if trig.Trigger.Actor == nil {
+		// Observer-class event NAMES carry their semantics even though
+		// the parser drops the actor phrase (r63 observer dispatch fix —
+		// see observer_raw_dispatch.go): "tribe_you_control_etb",
+		// "cast_filtered", etc. are never self-triggers. Dual events
+		// ("etb_or_another") keep self-trigger status — their ally half
+		// fires from the observer walks.
+		e := strings.ToLower(strings.TrimSpace(trig.Trigger.Event))
+		if observerOnlyEvents[e] {
+			return false
+		}
 		// No actor filter → self-trigger by convention (e.g. "When this
 		// creature dies").
 		return true

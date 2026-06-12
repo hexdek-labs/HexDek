@@ -150,16 +150,28 @@ func TestProgression_CorpusAudit(t *testing.T) {
 			if !ok {
 				continue
 			}
-			var findings []*Finding
+	var findings []*Finding
 			var ran bool
-			var evName string
-			if findings, ran = CheckTrigger(name, tr); ran {
-				evName, _ = InScopeTrigger(tr)
-			} else if findings, ran = CheckPhaseTrigger(name, tr); ran {
-				step, scope, _ := InScopePhaseTrigger(tr)
-				evName = step + "/" + scope
-			} else if findings, ran = CheckLTBTrigger(name, tr); ran {
-				evName = "ltb"
+			evName := "?"
+			if findings, ran = CheckAny(name, tr); ran {
+				// Event labels for the by-event histogram.
+				if ev, ok := InScopeTrigger(tr); ok {
+					evName = ev
+				} else if step, scope, ok := InScopePhaseTrigger(tr); ok {
+					evName = step + "/" + scope
+				} else if InScopeLTBTrigger(tr) {
+					evName = "ltb"
+				} else if InScopeCombatDamageTrigger(tr) {
+					evName = "combat_damage_player"
+				} else if cs, ok := InScopeCastTrigger(tr); ok {
+					evName = "cast/" + cs.Who + "/" + cs.Filter
+				} else if InScopeYouAttackTrigger(tr) {
+					evName = "you_attack"
+				} else if scope, ok := InScopeCombatBeginTrigger(tr); ok {
+					evName = "combat_begin/" + scope
+				} else if _, ok := InScopeAllyETBTrigger(tr); ok {
+					evName = "ally_etb"
+				}
 			}
 			if !ran {
 				continue

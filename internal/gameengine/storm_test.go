@@ -240,7 +240,21 @@ func TestStorm_YoungPyromancerTokens(t *testing.T) {
 	gs := newFixtureGame(t)
 	gs.Active = 0
 	gs.Seats[0].ManaPool = 100
-	addObserverPermanent(gs, 0, "Young Pyromancer", []string{"R"})
+	pyro := addObserverPermanent(gs, 0, "Young Pyromancer", []string{"R"})
+	// r63 observer-dispatch fold: the inline cast_counts arm is deleted;
+	// the token source is the card's printed AST trigger, as in the
+	// corpus.
+	pyro.Card.AST = &gameast.CardAST{Name: "Young Pyromancer", Abilities: []gameast.Ability{
+		&gameast.Triggered{
+			Trigger: gameast.Trigger{Event: "cast_filtered"},
+			Effect: &gameast.CreateToken{
+				Count: gameast.NumberOrRef{IsInt: true, Int: 1},
+				PT:    &[2]int{1, 1},
+				Types: []string{"elemental"},
+			},
+			Raw: "whenever you cast an instant or sorcery spell, create a 1/1 red elemental creature token",
+		},
+	}}
 
 	before := len(gs.Seats[0].Battlefield)
 	for i := 0; i < 3; i++ {
@@ -257,7 +271,7 @@ func TestStorm_YoungPyromancerTokens(t *testing.T) {
 	// Validate the new tokens are Elementals
 	elementalCount := 0
 	for _, p := range gs.Seats[0].Battlefield[before:] {
-		if p.Card.DisplayName() == "Elemental Token" {
+		if cardHasSubtype(p.Card, "elemental") {
 			elementalCount++
 		}
 	}
@@ -302,7 +316,21 @@ func TestStorm_CopiesNoObserverTrigger(t *testing.T) {
 	gs := newFixtureGame(t)
 	gs.Active = 0
 	gs.Seats[0].ManaPool = 100
-	addObserverPermanent(gs, 0, "Young Pyromancer", []string{"R"})
+	pyro := addObserverPermanent(gs, 0, "Young Pyromancer", []string{"R"})
+	// r63 observer-dispatch fold: the inline cast_counts arm is deleted;
+	// the token source is the card's printed AST trigger, as in the
+	// corpus.
+	pyro.Card.AST = &gameast.CardAST{Name: "Young Pyromancer", Abilities: []gameast.Ability{
+		&gameast.Triggered{
+			Trigger: gameast.Trigger{Event: "cast_filtered"},
+			Effect: &gameast.CreateToken{
+				Count: gameast.NumberOrRef{IsInt: true, Int: 1},
+				PT:    &[2]int{1, 1},
+				Types: []string{"elemental"},
+			},
+			Raw: "whenever you cast an instant or sorcery spell, create a 1/1 red elemental creature token",
+		},
+	}}
 
 	before := len(gs.Seats[0].Battlefield)
 

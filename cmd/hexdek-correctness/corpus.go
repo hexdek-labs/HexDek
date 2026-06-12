@@ -182,17 +182,31 @@ func safeCheckAnyTrigger(name string, tr *gameast.Triggered) (findings []*progre
 			}
 		}
 	}()
-	if findings, ran = progression.CheckTrigger(name, tr); ran {
-		evName, _ = progression.InScopeTrigger(tr)
+	if findings, ran = progression.CheckAny(name, tr); ran {
+		switch {
+		case func() bool { _, ok := progression.InScopeTrigger(tr); return ok }():
+			evName, _ = progression.InScopeTrigger(tr)
+		case func() bool { _, _, ok := progression.InScopePhaseTrigger(tr); return ok }():
+			step, scope, _ := progression.InScopePhaseTrigger(tr)
+			evName = fmt.Sprintf("%s/%s", step, scope)
+		case progression.InScopeLTBTrigger(tr):
+			evName = "ltb"
+		case progression.InScopeCombatDamageTrigger(tr):
+			evName = "combat_damage_player"
+		case progression.InScopeYouAttackTrigger(tr):
+			evName = "you_attack"
+		default:
+			if cs, ok := progression.InScopeCastTrigger(tr); ok {
+				evName = "cast/" + cs.Who + "/" + cs.Filter
+			} else if scope, ok := progression.InScopeCombatBeginTrigger(tr); ok {
+				evName = "combat_begin/" + scope
+			} else if _, ok := progression.InScopeAllyETBTrigger(tr); ok {
+				evName = "ally_etb"
+			} else {
+				evName = "widened"
+			}
+		}
 		return findings, true, evName, false
-	}
-	if findings, ran = progression.CheckPhaseTrigger(name, tr); ran {
-		step, scope, _ := progression.InScopePhaseTrigger(tr)
-		evName = fmt.Sprintf("%s/%s", step, scope)
-		return findings, true, evName, false
-	}
-	if findings, ran = progression.CheckLTBTrigger(name, tr); ran {
-		return findings, true, "ltb", false
 	}
 	return nil, false, "", false
 }

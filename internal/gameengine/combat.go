@@ -376,14 +376,37 @@ func CombatPhase(gs *GameState) {
 	PriorityRound(gs)
 }
 
+// FireBeginCombatTriggersForTest is the exported seam the PROGRESSION
+// checker drives as its begin-combat stimulus (the same dispatch
+// CombatPhase runs at §603.6a).
+func FireBeginCombatTriggersForTest(gs *GameState, activeSeat int) {
+	fireBeginningOfCombatTriggers(gs, activeSeat)
+}
+
 // fireBeginningOfCombatTriggers fires "at the beginning of combat"
-// Triggered abilities on the active player's permanents. CR §603.6a.
+// Triggered abilities. CR §603.6a.
+//
+// Scope semantics (r63 PROGRESSION widening): the parser emits the
+// corpus's begin-combat triggers as Phase "combat_start_yours" (206
+// cards, "at the beginning of combat on your turn") and
+// "combat_start_each" (22, "at the beginning of each combat") — neither
+// matched the old isCombatBeginTrigger (it knew only the bare
+// "combat_start"/"begin_of_combat" spellings), so ALL of them were
+// silent. "your"-scoped triggers fire only when the bearer's controller
+// is the active player; "each"-scoped triggers fire on every combat, so
+// the walk now covers every seat's battlefield.
 func fireBeginningOfCombatTriggers(gs *GameState, activeSeat int) {
 	if activeSeat < 0 || activeSeat >= len(gs.Seats) {
 		return
 	}
 	// Snapshot — effects may spawn tokens while we iterate.
-	perms := append([]*Permanent{}, gs.Seats[activeSeat].Battlefield...)
+	var perms []*Permanent
+	for _, seat := range gs.Seats {
+		if seat == nil {
+			continue
+		}
+		perms = append(perms, seat.Battlefield...)
+	}
 	for _, p := range perms {
 		if p == nil || p.Card == nil || p.Card.AST == nil {
 			continue
@@ -393,7 +416,11 @@ func fireBeginningOfCombatTriggers(gs *GameState, activeSeat int) {
 			if !ok {
 				continue
 			}
-			if !isCombatBeginTrigger(&t.Trigger) {
+			scope := combatBeginTriggerScope(&t.Trigger)
+			if scope == "" {
+				continue
+			}
+			if scope == "your" && p.Controller != activeSeat {
 				continue
 			}
 			gs.LogEvent(Event{
@@ -414,17 +441,28 @@ func fireBeginningOfCombatTriggers(gs *GameState, activeSeat int) {
 	}
 }
 
-func isCombatBeginTrigger(tr *gameast.Trigger) bool {
+// combatBeginTriggerScope classifies a begin-combat trigger: "" (not
+// one), "your" (controller-gated — fires only on the bearer
+// controller's combat), or "each" (every combat). The bare
+// "combat_start"/"begin_of_combat" spellings keep their historical
+// active-player-only behavior ("your").
+func combatBeginTriggerScope(tr *gameast.Trigger) string {
 	if tr == nil {
-		return false
+		return ""
 	}
-	if tr.Event == "phase" && (tr.Phase == "combat_start" || tr.Phase == "begin_of_combat") {
-		return true
+	if tr.Event == "phase" {
+		switch tr.Phase {
+		case "combat_start", "begin_of_combat", "combat_start_yours":
+			return "your"
+		case "combat_start_each":
+			return "each"
+		}
+		return ""
 	}
 	if tr.Event == "combat_start" || tr.Event == "begin_of_combat" {
-		return true
+		return "your"
 	}
-	return false
+	return ""
 }
 
 // -----------------------------------------------------------------------------
