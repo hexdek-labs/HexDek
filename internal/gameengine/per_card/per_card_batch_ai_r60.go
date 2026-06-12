@@ -454,7 +454,13 @@ func knowledgePoolOnSpellCast(gs *gameengine.GameState, perm *gameengine.Permane
 	// *Card pointer; physical exile location doesn't matter.
 	grants := 0
 	for _, s := range gs.Seats {
-		if s == nil {
+		// CR §800.4a (r63, seed-777 game 703): an eliminated player's
+		// exiled cards left the game with them — the slice keeps the
+		// pointers for forensic clarity, so without this check the Pool
+		// offers a free cast of a dead player's ceased card (Serenity).
+		// RegisterZoneCastGrant also refuses at the chokepoint; this
+		// keeps the SELECTOR from offering the dead card at all.
+		if s == nil || s.LeftGame {
 			continue
 		}
 		for _, exiled := range s.Exile {
