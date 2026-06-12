@@ -604,6 +604,10 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		}
 		// Ride-along legality validator: inline mana ability complete
 		// (no stack item per CR §605.3a). nil-receiver no-op when off.
+		// The reason tag lets the phase-3 mana-ability check re-derive
+		// CR 605.1a independently and flag inline resolutions of
+		// abilities that are NOT mana abilities.
+		legalityObs.SetNoStackReason("mana_ability")
 		gs.Legality.FinishActivation(gs, legalityObs, nil)
 		return nil
 	}
@@ -640,6 +644,7 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 					"rule":        "608.2b",
 				},
 			})
+			legalityObs.SetNoStackReason("fizzled_608.2b")
 			gs.Legality.FinishActivation(gs, legalityObs, nil)
 			return nil
 		}

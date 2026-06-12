@@ -2192,6 +2192,11 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 		fireObserverETBTriggers(gs, perm)
 	}()
 
+	// Ride-along legality validator (phase 3): cast-path ETB cascade has
+	// settled — self-replacement counters are final. Mirrors the hook at
+	// the end of FirePermanentETBTriggers. nil-receiver no-op when off.
+	gs.Legality.ObserveETB(gs, perm)
+
 	return perm
 }
 

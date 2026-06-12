@@ -155,6 +155,10 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 	OnConstellationETB(gs, perm)
 
 	fireObserverETBTriggers(gs, perm)
+
+	// Ride-along legality validator (phase 3): the ETB cascade has
+	// settled — self-replacement counters are final. nil-receiver no-op.
+	gs.Legality.ObserveETB(gs, perm)
 }
 
 var romanToInt = map[string]int{

@@ -445,6 +445,11 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 		return
 	}
 
+	// Ride-along legality validator (phase 3): observe every
+	// mover-routed zone change (replacement-application sanity reads
+	// battlefield->graveyard arrivals). nil-receiver no-op when off.
+	gs.Legality.ObserveZoneChange(gs, perm, card, fromZone, toZone)
+
 	// InstanceID Phase 6 — subsystem activation registry per
 	// docs/instanceid-system-v2-r60.md §9. Fired before the observer
 	// trigger chain so per_card handlers that read MonarchActive /

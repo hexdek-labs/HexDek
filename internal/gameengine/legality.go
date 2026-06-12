@@ -73,7 +73,7 @@ func (v LegalityViolation) String() string {
 // read this instead of re-deriving "what just happened" from the live
 // state, which by Finish time already reflects the action.
 type LegalityObservation struct {
-	Kind       string // "cast" | "activate" | "attack" | "block"
+	Kind       string // "cast" | "activate" | "attack" | "block" | "etb" | "zone_change"
 	Seat       int
 	Card       *Card
 	Perm       *Permanent // activation source / declared attacker / blocker's attacker target
@@ -82,6 +82,18 @@ type LegalityObservation struct {
 	// Ability is the announced Activated AST node (activations only) —
 	// phase-2 checks read its TimingRestriction and loyalty cost.
 	Ability *gameast.Activated
+
+	// NoStackReason explains an activation that completed WITHOUT a
+	// stack item (phase 3): "mana_ability" (CR 605.3a inline resolution)
+	// or "fizzled_608.2b" (all targets illegal after costs — the
+	// activation was countered by game rules). Set by the engine call
+	// sites via SetNoStackReason; empty means the engine completed an
+	// activation inline without declaring why.
+	NoStackReason string
+
+	// Zone-change observations (phase 3, Kind "zone_change").
+	FromZone string
+	ToZone   string
 
 	// Combat declarations (phase 2). For Kind "attack", Perm is the
 	// declared attacker. For Kind "block", Attacker is the attacked
@@ -154,7 +166,22 @@ func (o *LegalityObservation) ActionLabel() string {
 		}
 		return "block:" + atk
 	}
+	if o.Kind == "etb" {
+		return "etb:" + name
+	}
+	if o.Kind == "zone_change" {
+		return fmt.Sprintf("zone_change:%s(%s->%s)", name, o.FromZone, o.ToZone)
+	}
 	return "cast:" + name
+}
+
+// SetNoStackReason annotates why an activation completed without a
+// stack item. Nil-safe so engine call sites can tag unconditionally.
+func (o *LegalityObservation) SetNoStackReason(r string) {
+	if o == nil {
+		return
+	}
+	o.NoStackReason = r
 }
 
 // LegalityCheck is one registered rule check.
@@ -189,6 +216,11 @@ func NewLegalityValidator(seed int64) *LegalityValidator {
 	v.Register(LegalityCheck{Name: "attack-decl", Fn: checkLegalityAttackDecl})
 	v.Register(LegalityCheck{Name: "block-decl", Fn: checkLegalityBlockDecl})
 	v.Register(LegalityCheck{Name: "ability-timing", Fn: checkLegalityAbilityTiming})
+	// Phase-3 set (r62 follow-up): mana-ability discipline + replacement
+	// application sanity.
+	v.Register(LegalityCheck{Name: "mana-ability", Fn: checkLegalityManaAbility})
+	v.Register(LegalityCheck{Name: "replacement-etb", Fn: checkLegalityReplacementETB})
+	v.Register(LegalityCheck{Name: "replacement-graveyard", Fn: checkLegalityReplacementGraveyard})
 	return v
 }
 
@@ -838,6 +870,239 @@ func checkLegalityAbilityTiming(_ *GameState, obs *LegalityObservation) []Legali
 	if obs.StackDepthAtAnnounce > 0 {
 		add(fmt.Sprintf("sorcery-speed ability activated with %d item(s) on the stack (top=%q)",
 			obs.StackDepthAtAnnounce, obs.StackTopAtAnnounce))
+	}
+	return out
+}
+
+// ---------------------------------------------------------------------------
+// Phase-3 hooks
+// ---------------------------------------------------------------------------
+
+// ObserveETB is called at the end of both ETB cascades (the stack-cast
+// inline cascade and FirePermanentETBTriggers) once the entering
+// permanent's self-replacements have been applied — counters from
+// "enters with N counters" statics are final here. nil-receiver no-op.
+func (v *LegalityValidator) ObserveETB(gs *GameState, perm *Permanent) {
+	if v == nil || gs == nil || perm == nil {
+		return
+	}
+	obs := &LegalityObservation{
+		Kind:                 "etb",
+		Seat:                 perm.Controller,
+		Perm:                 perm,
+		Card:                 perm.Card,
+		TurnAtAnnounce:       gs.Turn,
+		PhaseAtAnnounce:      gs.Phase,
+		ActiveAtAnnounce:     gs.Active,
+		StackDepthAtAnnounce: len(gs.Stack),
+	}
+	v.runChecks(gs, obs)
+}
+
+// ObserveZoneChange is called from FireZoneChangeTriggers — the canonical
+// post-move chokepoint — for every mover-routed zone change. Paths that
+// append to zones directly without the mover are invisible here (a known
+// engine fragmentation; this observes what routes through the front door).
+// nil-receiver no-op.
+func (v *LegalityValidator) ObserveZoneChange(gs *GameState, perm *Permanent, card *Card, fromZone, toZone string) {
+	if v == nil || gs == nil {
+		return
+	}
+	seat := -1
+	if perm != nil {
+		seat = perm.Controller
+	} else if card != nil && card.Owner >= 0 {
+		seat = card.Owner
+	}
+	obs := &LegalityObservation{
+		Kind:                 "zone_change",
+		Seat:                 seat,
+		Perm:                 perm,
+		Card:                 card,
+		FromZone:             fromZone,
+		ToZone:               toZone,
+		TurnAtAnnounce:       gs.Turn,
+		PhaseAtAnnounce:      gs.Phase,
+		ActiveAtAnnounce:     gs.Active,
+		StackDepthAtAnnounce: len(gs.Stack),
+	}
+	v.runChecks(gs, obs)
+}
+
+// ---------------------------------------------------------------------------
+// Phase-3 checks
+// ---------------------------------------------------------------------------
+
+// checkLegalityManaAbility — CR §605.1a / §605.3a discipline. Mana
+// abilities (produce mana, don't target, not loyalty) resolve inline and
+// never use the stack; everything else MUST use the stack so opponents
+// get responses. The check re-derives mana-ability-ness independently
+// via IsManaAbility and compares it against what the engine actually did
+// (stack item vs. none), using NoStackReason to distinguish legitimate
+// no-item completions (608.2b fizzles) from inline resolutions.
+func checkLegalityManaAbility(_ *GameState, obs *LegalityObservation) []LegalityViolation {
+	if obs.Kind != "activate" || obs.Perm == nil {
+		return nil
+	}
+	isMana := IsManaAbility(obs.Perm, obs.AbilityIdx)
+	var out []LegalityViolation
+	add := func(rule, detail string) {
+		out = append(out, LegalityViolation{
+			Turn: obs.TurnAtAnnounce, Seat: obs.Seat, Action: obs.ActionLabel(),
+			Rule: rule, Detail: detail,
+		})
+	}
+	if obs.Item == nil {
+		switch obs.NoStackReason {
+		case "fizzled_608.2b":
+			// Countered by game rules — legitimately no stack item.
+		case "mana_ability":
+			if !isMana {
+				// The engine resolved this inline claiming it's a mana
+				// ability; independent re-derivation disagrees. Name the
+				// disqualifier for the repro.
+				reason := "produces no mana"
+				if obs.Ability != nil && obs.Ability.Effect != nil {
+					if effectProducesMana(obs.Ability.Effect) && effectTargets(obs.Ability.Effect) {
+						reason = "it targets (CR 605.1a)"
+					}
+				}
+				add("605.1a", "ability resolved inline as a mana ability but is not one ("+reason+") — opponents were denied responses")
+			}
+		default:
+			// Unknown inline completion. Only flag when we positively
+			// know the AST ability is not a mana ability — per_card-only
+			// activations (obs.Ability == nil) are exempt until their
+			// call sites declare a reason.
+			if obs.Ability != nil && !isMana {
+				add("605.3a", "non-mana activated ability completed without a stack item (no fizzle declared) — opponents were denied responses")
+			}
+		}
+		return out
+	}
+	// Item present: a true mana ability must never be put on the stack.
+	if isMana {
+		add("605.3a", "mana ability was put on the stack (mana abilities don't use the stack)")
+	}
+	return out
+}
+
+// checkLegalityReplacementETB — CR §614.1c / §122.1g: a permanent whose
+// own AST carries an "enters with N counters" self-replacement must
+// actually have those counters once the ETB cascade settles. Conditional
+// statics ("if kicked") are honored via evalCondition; variable counts
+// route through resolveETBCounterCount (0 when unkicked — not a
+// violation).
+func checkLegalityReplacementETB(gs *GameState, obs *LegalityObservation) []LegalityViolation {
+	if obs.Kind != "etb" || obs.Perm == nil || obs.Perm.Card == nil || obs.Perm.Card.AST == nil {
+		return nil
+	}
+	p := obs.Perm
+	// Face-down permanents have no abilities (CR §708.4).
+	if p.Flags != nil && p.Flags["face_down"] != 0 {
+		return nil
+	}
+	var out []LegalityViolation
+	for _, ab := range p.Card.AST.Abilities {
+		st, ok := ab.(*gameast.Static)
+		if !ok || st.Modification == nil || st.Modification.ModKind != "etb_with_counters" {
+			continue
+		}
+		if st.Condition != nil && !evalCondition(gs, p, st.Condition) {
+			continue
+		}
+		want := resolveETBCounterCount(p, st.Modification.Args)
+		if want <= 0 {
+			continue
+		}
+		kind := "+1/+1"
+		if len(st.Modification.Args) > 1 {
+			if k, ok := st.Modification.Args[1].(string); ok && k != "" {
+				kind = k
+			}
+		}
+		got := 0
+		if p.Counters != nil {
+			got = p.Counters[kind]
+		}
+		if got < want {
+			out = append(out, LegalityViolation{
+				Turn: obs.TurnAtAnnounce, Seat: obs.Seat, Action: "etb:" + p.Card.DisplayName(),
+				Rule: "614.1c",
+				Detail: fmt.Sprintf("enters-with-counters self-replacement not applied: want >=%d %q counter(s), have %d", want, kind, got),
+			})
+		}
+	}
+	return out
+}
+
+// checkLegalityReplacementGraveyard — CR §614.1a: a card arriving in a
+// graveyard from the battlefield while a REGISTERED, APPLICABLE
+// graveyard-redirect replacement exists (Rest in Peace, Leyline of the
+// Void, Anafenza) means the §614 chain was bypassed — redirect-class
+// effects change the destination, so an application would have prevented
+// this arrival. The check re-derives applicability through the actual
+// registry's Applies predicates (no name lists), probed with the same
+// event shape FireDieEvent constructs. Replacements SOURCED by the
+// arriving permanent itself are skipped (self-replacements often
+// legitimately allow the graveyard leg of their effect).
+func checkLegalityReplacementGraveyard(gs *GameState, obs *LegalityObservation) []LegalityViolation {
+	if obs.Kind != "zone_change" || obs.FromZone != "battlefield" || obs.ToZone != "graveyard" {
+		return nil
+	}
+	if obs.Perm == nil || len(gs.Replacements) == 0 {
+		return nil
+	}
+	// Tokens cease to exist on zone change — their graveyard visit is
+	// transient bookkeeping, not a §614 surface.
+	if obs.Perm.IsToken() {
+		return nil
+	}
+	probe := NewReplEvent("would_die")
+	probe.TargetPerm = obs.Perm
+	probe.TargetSeat = obs.Perm.Controller
+	probe.Payload["to_zone"] = "graveyard"
+	probeGY := NewReplEvent("would_be_put_into_graveyard")
+	probeGY.TargetPerm = obs.Perm
+	probeGY.TargetSeat = obs.Perm.Controller
+	probeGY.Payload["to_zone"] = "graveyard"
+
+	var out []LegalityViolation
+	for _, re := range gs.Replacements {
+		if re == nil || re.Applies == nil {
+			continue
+		}
+		if re.SourcePerm == obs.Perm {
+			continue // self-replacement
+		}
+		var ev *ReplEvent
+		switch re.EventType {
+		case "would_die":
+			ev = probe
+		case "would_be_put_into_graveyard":
+			ev = probeGY
+		default:
+			continue
+		}
+		applies := false
+		func() {
+			defer func() { _ = recover() }()
+			applies = re.Applies(gs, ev)
+		}()
+		if applies {
+			name := "<unknown>"
+			if obs.Card != nil {
+				name = obs.Card.DisplayName()
+			}
+			out = append(out, LegalityViolation{
+				Turn: obs.TurnAtAnnounce, Seat: obs.Seat, Action: "zone_change:" + name,
+				Rule: "614.1a",
+				Detail: fmt.Sprintf("card reached the graveyard from the battlefield while replacement %q (event %s) was registered and applicable — §614 chain bypassed",
+					re.HandlerID, re.EventType),
+			})
+			// One violation per arrival is enough signal.
+			break
+		}
 	}
 	return out
 }

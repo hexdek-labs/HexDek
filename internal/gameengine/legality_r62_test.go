@@ -345,9 +345,15 @@ func TestLegality_Activation_ManaAbility_Clean(t *testing.T) {
 
 func TestLegality_RegisterCustomCheck(t *testing.T) {
 	gs := legalityFixture(t)
+	// Phase 3 widened the observation stream (zone_change / etb), so a
+	// kind-agnostic check legitimately fires on more than just the cast.
+	// Pin the Register contract precisely: exactly one CAST observation.
 	gs.Legality.Register(LegalityCheck{
 		Name: "always-fires",
 		Fn: func(_ *GameState, obs *LegalityObservation) []LegalityViolation {
+			if obs.Kind != "cast" {
+				return nil
+			}
 			return []LegalityViolation{{
 				Turn: obs.TurnAtAnnounce, Seat: obs.Seat,
 				Action: obs.ActionLabel(), Rule: "custom-1", Detail: "tripwire",
