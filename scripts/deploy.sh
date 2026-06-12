@@ -77,7 +77,15 @@ deploy_frontend_dev() {
     local branch
     branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
     echo "=== Building React frontend — STAGING GATE ON (branch: $branch) ==="
-    cd hexdek && VITE_STAGING=1 npm run build && cd ..
+    # Reviewer passphrase bypass (r63): the gate also accepts a shared
+    # passphrase because the Firebase email-link sender lands in spam for
+    # the reviewers. The secret comes from the DEPLOYER'S environment —
+    # set HEXDEK_STAGING_PASSPHRASE before running; never hardcode it
+    # here. Unset → passphrase path disabled, email whitelist only.
+    if [ -z "${HEXDEK_STAGING_PASSPHRASE:-}" ]; then
+        echo "    (HEXDEK_STAGING_PASSPHRASE unset — passphrase bypass DISABLED in this build)"
+    fi
+    cd hexdek && VITE_STAGING=1 VITE_STAGING_PASSPHRASE="${HEXDEK_STAGING_PASSPHRASE:-}" npm run build && cd ..
 
     echo "=== Deploying to MISTY (~/sites/hexdek-dev/) ==="
     rsync -avz --delete hexdek/dist/ "$MISTY:~/sites/hexdek-dev/"
