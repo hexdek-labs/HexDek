@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { onAuthChange, signOutUser } from '../lib/firebase'
 import { stitchSession } from '../hooks/useAnalytics'
+import { reportError } from '../lib/errorTelemetry'
 
 const AuthContext = createContext(null)
 
@@ -43,12 +44,34 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     if (isLocalhost) return
+    // Watchdog (r63 works-only-in-private incident): a wedged Firebase
+    // persistence layer (corrupt/locked IndexedDB from a prior session)
+    // can keep onAuthStateChanged from EVER firing — loading stays true
+    // and RequireAuth renders a permanent blank page that reads as
+    // "login is broken". After 8s, stop blocking the UI: the user is
+    // treated as signed out (functional app, can re-auth) instead of
+    // staring at nothing. Telemetry records the wedge.
+    let authResolved = false
+    const watchdog = setTimeout(() => {
+      if (authResolved) return
+      reportError({
+        message: 'auth init watchdog: onAuthStateChanged never fired within 8s (wedged persistence?)',
+        kind: 'auth',
+        source: 'window',
+      })
+      setLoading(false)
+    }, 8000)
     const unsub = onAuthChange((u) => {
+      authResolved = true
+      clearTimeout(watchdog)
       if (u?.email) resolveAndStoreOwner(u.email)
       setUser(u)
       setLoading(false)
     })
-    return unsub
+    return () => {
+      clearTimeout(watchdog)
+      unsub()
+    }
   }, [])
 
   // Temporal Pincer — stitch the anonymous browser id to the owner the

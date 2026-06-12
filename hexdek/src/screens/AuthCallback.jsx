@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Panel, Tape } from '../components/chrome'
-import { completeMagicLinkSignIn } from '../lib/firebase'
+import { Panel, Tape, Btn } from '../components/chrome'
+import { completeMagicLinkSignIn, resetAuthClientState } from '../lib/firebase'
 import { broadcastAuth, AUTH_EVENT } from '../lib/authBroadcast'
+import { reportError } from '../lib/errorTelemetry'
 
 // AuthCallback — magic-link landing page. Most email clients open
 // links in a new tab, so the typical flow is:
@@ -18,10 +19,20 @@ import { broadcastAuth, AUTH_EVENT } from '../lib/authBroadcast'
 // either succeeds (and (4) never runs because the tab is gone) or
 // silently no-ops. The brief "AUTHENTICATED — CLOSING…" state covers
 // the gap so the page never looks frozen.
+//
+// Failure path (r63, the works-only-in-private incident): verification
+// failures surface the Firebase error code, report to telemetry, and
+// offer RESET & RETRY — which wipes this origin's auth client state
+// (stale stored email, firebase:* localStorage, IndexedDB persistence)
+// and re-attempts the same link. Email-link action codes are only
+// consumed on SUCCESS, so retrying an unexpired link after a reset is
+// valid.
 
 export default function AuthCallback() {
   const [status, setStatus] = useState('VERIFYING...')
   const [error, setError] = useState(null)
+  const [resetting, setResetting] = useState(false)
+  const [attempt, setAttempt] = useState(0)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -42,20 +53,42 @@ export default function AuthCallback() {
         // (window.open), close() succeeds. From an email-client tab
         // it usually doesn't, so we fall through to a redirect.
         setTimeout(() => {
-          try { window.close() } catch {}
+          try { window.close() } catch { /* not script-opened */ }
           if (!cancelled && !window.closed) {
             navigate('/operator', { replace: true })
           }
         }, 350)
       })
-      .catch(() => {
+      .catch((err) => {
         if (cancelled) return
-        setError('AUTH VERIFICATION FAILED.')
-        broadcastAuth({ type: AUTH_EVENT.FAILED, reason: 'exception' })
+        const code = err?.code || 'unknown'
+        setError(`AUTH VERIFICATION FAILED (${code}).`)
+        reportError({
+          message: `magic-link verification failed: ${code}`,
+          stack: err?.stack || '',
+          kind: 'auth',
+          source: 'window',
+        })
+        broadcastAuth({ type: AUTH_EVENT.FAILED, reason: code })
       })
 
     return () => { cancelled = true }
-  }, [navigate])
+  }, [navigate, attempt])
+
+  // RESET & RETRY — wipe this origin's auth client state and re-run the
+  // verification effect against the same link URL.
+  const handleReset = useCallback(async () => {
+    if (resetting) return
+    setResetting(true)
+    try {
+      await resetAuthClientState()
+    } finally {
+      setResetting(false)
+      setError(null)
+      setStatus('VERIFYING (CLEAN STATE)...')
+      setAttempt((n) => n + 1)
+    }
+  }, [resetting])
 
   return (
     <>
@@ -65,7 +98,15 @@ export default function AuthCallback() {
           {error ? (
             <div>
               <div className="t-xl" style={{ fontWeight: 700, color: 'var(--danger)' }}>{error}</div>
-              <div className="t-xs muted" style={{ marginTop: 8 }}>&gt; TRY REQUESTING A NEW LINK.</div>
+              <div className="t-xs muted" style={{ marginTop: 8 }}>
+                &gt; STALE BROWSER STATE CAN WEDGE SIGN-IN. RESET CLEARS IT — NO DATA LOSS.
+              </div>
+              <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+                <Btn solid arrow="↺" onClick={handleReset}>
+                  {resetting ? 'RESETTING…' : 'RESET & RETRY'}
+                </Btn>
+                <Btn ghost arrow="←" onClick={() => navigate('/login')}>NEW LINK</Btn>
+              </div>
             </div>
           ) : (
             <div>
