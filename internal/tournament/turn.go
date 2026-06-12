@@ -1559,6 +1559,17 @@ func runInstantPriority(gs *gameengine.GameState, seatIdx int) {
 		return
 	}
 
+	// Lazy mana-tap: only tap the whole mana base if the hat plausibly has
+	// an instant-speed play. Without this gate, tapAllManaSources floats all
+	// the seat's mana at every priority window (upkeep/draw/end-step/etc.);
+	// when the hat has nothing to do the lands stay tapped through every
+	// opponent's turn, so the AI can never hold up instant-speed interaction.
+	// A false "yes" merely taps as before (status quo); we lean toward true
+	// when uncertain, so we never skip a window the hat actually wanted.
+	if !hasAffordableInstantPlay(gs, seatIdx) {
+		return
+	}
+
 	tapAllManaSources(gs, seat)
 
 	const maxUpkeepActions = 3
@@ -1606,6 +1617,84 @@ func runInstantPriority(gs *gameengine.GameState, seatIdx int) {
 			break
 		}
 	}
+}
+
+// hasAffordableInstantPlay reports whether the seat plausibly has an
+// instant-speed play available right now, computed from POTENTIAL (untapped)
+// mana via AvailableManaEstimate — which counts untapped lands + mana rocks
+// WITHOUT tapping anything. It returns true if the seat could afford at least
+// one instant-speed spell in hand from that potential, OR has at least one
+// legal instant-speed activated ability.
+//
+// This is the gate that keeps runInstantPriority from eagerly tapping out the
+// whole mana base when the hat has nothing to do. It is intentionally
+// optimistic: a false positive just taps as before (status quo, harmless),
+// while a false negative would skip a window the hat wanted — so when uncertain
+// we lean toward returning true.
+func hasAffordableInstantPlay(gs *gameengine.GameState, seatIdx int) bool {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return false
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil || seat.Hat == nil {
+		return false
+	}
+
+	// Potential (untapped) mana, computed WITHOUT tapping anything.
+	potential := gameengine.AvailableManaEstimate(gs, seat)
+
+	// 1) Any instant-speed spell in hand affordable from potential mana?
+	for _, c := range seat.Hand {
+		if c == nil || isLand(c) {
+			continue
+		}
+		if hasNoManaCost(c) {
+			continue
+		}
+		if !isInstantSpeed(c) {
+			continue
+		}
+		if gameengine.CalculateTotalCost(gs, c, seatIdx) <= potential {
+			return true
+		}
+	}
+
+	// 2) Any legal instant-speed activated ability? buildActivationOptions
+	// already filters by timing legality (sorcery-speed excluded) and by
+	// affordability — but it gates affordability off seat.Mana.Total()
+	// (already-floated mana), which is empty before the tap. To avoid a
+	// false negative for an ability that's only payable once we tap, float
+	// the potential mana into a throwaway copy of the seat's pool first,
+	// probe, then restore. We never mutate the real battlefield tap state.
+	if probeActivationOptionsWithPotential(gs, seat, seatIdx) {
+		return true
+	}
+
+	return false
+}
+
+// probeActivationOptionsWithPotential reports whether the seat has at least
+// one legal instant-speed activated ability once its POTENTIAL mana is taken
+// into account. It temporarily inflates the seat's typed mana pool by the
+// untapped-source potential, runs buildActivationOptions, then restores the
+// pool exactly. No battlefield permanent is tapped and no real mana is spent.
+func probeActivationOptionsWithPotential(gs *gameengine.GameState, seat *gameengine.Seat, seatIdx int) bool {
+	gameengine.EnsureTypedPool(seat)
+	floated := seat.Mana.Total()
+	potential := gameengine.AvailableManaEstimate(gs, seat)
+	// AvailableManaEstimate already includes the floated pool; the extra
+	// untapped-source mana is the difference.
+	extra := potential - floated
+	if seat.Mana == nil {
+		return len(buildActivationOptions(gs, seatIdx, gs.Phase)) > 0
+	}
+	saved := seat.Mana.Any
+	if extra > 0 {
+		seat.Mana.Any += extra
+	}
+	has := len(buildActivationOptions(gs, seatIdx, gs.Phase)) > 0
+	seat.Mana.Any = saved
+	return has
 }
 
 // buildInstantCastableList returns cards from hand that can be cast at
