@@ -81,6 +81,7 @@ func esperSentinelOnCast(gs *gameengine.GameState, perm *gameengine.Permanent, c
 	if x > 0 && opp.ManaPool >= x {
 		opp.ManaPool -= x
 		gameengine.SyncManaAfterSpend(opp)
+		gs.Legality.NoteManaSpend(caster, x) // aux payment, not spell cost
 		gs.LogEvent(gameengine.Event{
 			Kind:   "pay_mana",
 			Seat:   caster,
