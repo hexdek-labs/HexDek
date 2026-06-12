@@ -69,10 +69,14 @@ func (d *Delta) clone() *Delta {
 	for k, v := range d.CountersByKind {
 		c.CountersByKind[k] = v
 	}
+	for k, v := range d.PoolBySeat {
+		c.PoolBySeat[k] = v
+	}
 	c.MarkedDamage = d.MarkedDamage
 	c.Tapped = d.Tapped
 	c.PowerSum = d.PowerSum
 	c.ToughSum = d.ToughSum
+	c.LiveStack = d.LiveStack
 	return c
 }
 
@@ -160,6 +164,15 @@ func expand(spec BoardSpec, eff gameast.Effect, prefixes []*Delta) ([]*Delta, bo
 		return out, true
 	}
 
+	// Set-valued leaves (any-target damage, surveil splits, optional
+	// tutors) branch the prefix set rather than folding into it.
+	if out, handled, ok := expandSetValuedLeaf(spec, eff, prefixes); handled {
+		if !ok {
+			return nil, false
+		}
+		return out, true
+	}
+
 	// Leaf effects: apply to every prefix in place.
 	for _, d := range prefixes {
 		if !leaf(spec, eff, d) {
@@ -181,6 +194,9 @@ func cloneAll(ds []*Delta) []*Delta {
 // accumulate, plus the part-2 widened kinds; phase-3 kinds first).
 func leaf(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 	if handled, ok := leafPhase3(spec, eff, d); handled {
+		return ok
+	}
+	if handled, ok := leafPhase4(spec, eff, d); handled {
 		return ok
 	}
 	switch e := eff.(type) {
