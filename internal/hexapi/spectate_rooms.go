@@ -218,6 +218,13 @@ func (room *SpectateRoom) gameLoop() {
 			return
 		default:
 		}
+		// Rooms are rated-game loops (runOneSpectateGame ends in updateELO
+		// + persist) — park instead of starting the next game while the
+		// server is in maintenance. The room and its spectator connections
+		// stay alive; play resumes if the flag clears.
+		if room.sm.pauseForMaintenance() {
+			continue
+		}
 		room.runOneSpectateGame()
 
 		room.mu.RLock()
@@ -755,7 +762,7 @@ func (sm *Showmatch) handleReloadPool(w http.ResponseWriter, r *http.Request) {
 }
 
 func (sm *Showmatch) handleSpawnSpectateRoom(w http.ResponseWriter, r *http.Request) {
-	if sm.maintenance {
+	if sm.maintenance.Load() {
 		writeError(w, http.StatusServiceUnavailable, maintenanceMessage)
 		return
 	}

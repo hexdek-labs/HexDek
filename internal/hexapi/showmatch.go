@@ -328,7 +328,11 @@ type Showmatch struct {
 	bracketCache    map[string]int // deck key → Freya bracket (1-5)
 	stats           sessionState
 	start           time.Time
-	maintenance     bool // HEXDEK_MAINTENANCE=1 → grinder off + 503 gauntlet/spectate
+	// maintenance: HEXDEK_MAINTENANCE=1 → grinder off + 503 gauntlet/spectate
+	// + all rated-game loops paused (see pauseForMaintenance). atomic.Bool
+	// because the running fishtank / grinder / spectate-room loops re-check
+	// it on every iteration, concurrently with any future runtime toggle.
+	maintenance atomic.Bool
 	corpus          *astload.Corpus
 	meta            *deckparser.MetaDB
 	deckPool        []*deckparser.TournamentDeck
@@ -617,8 +621,8 @@ func NewShowmatch(astPath, oraclePath, decksDir string, database *sql.DB) *Showm
 	} else {
 		sm.achievements = tr
 	}
-	sm.maintenance = os.Getenv("HEXDEK_MAINTENANCE") == "1"
-	if sm.maintenance {
+	sm.maintenance.Store(os.Getenv("HEXDEK_MAINTENANCE") == "1")
+	if sm.maintenance.Load() {
 		log.Printf("MAINTENANCE MODE ON (HEXDEK_MAINTENANCE=1): grinder disabled; gauntlet + spectate return 503")
 	}
 	go sm.loadAndRun(astPath, oraclePath, decksDir)
@@ -655,20 +659,33 @@ func (sm *Showmatch) loadPersistedState() {
 		return
 	}
 	resetCount := 0
+	reconstructedCount := 0
 	for _, r := range records {
-		// Band-aid reset (r60): tsMu/tsSigma were never persisted (so they
-		// reset to 0 every boot → degenerate σ=0 updates), and the pre-clamp
-		// runaway left some persisted ratings far out of band (±100M). Re-seed
-		// any out-of-band / NaN rating to its bracket start, and reconstruct
-		// μ/σ from the conservative rating so the next update runs on a sane
-		// prior (σ=σ₀) instead of σ=0.
+		// Band-aid reset (r60): the pre-clamp runaway left some persisted
+		// ratings far out of band (±100M). Re-seed any out-of-band / NaN
+		// rating to its bracket start.
 		rating := r.Rating
+		ratingReset := false
 		if rating != rating || rating < eloRatingMin || rating > eloRatingMax {
 			rating = trueSkillStartRating(r.Bracket).Conservative()
+			ratingReset = true
 			resetCount++
 		}
-		sigma := tsDefaultSigma
-		mu := clampF(rating+3*sigma, tsMuFloor, tsMuCeil)
+		// r62: prefer the persisted μ/σ (flushELO now writes ts_mu/ts_sigma)
+		// so a restart no longer resets every deck to maximum uncertainty.
+		// Fall back to the r60 band-aid reconstruction (σ=σ₀, μ derived
+		// from the conservative rating) for legacy rows (0/0 from before
+		// the columns existed), values outside the clampedTS band, or any
+		// row whose rating itself had to be reset — out-of-band rating
+		// means the whole row's TS state is untrustworthy.
+		mu, sigma := r.TSMu, r.TSSigma
+		if ratingReset || mu != mu || sigma != sigma ||
+			sigma < tsSigmaFloor || sigma > tsDefaultSigma ||
+			mu < tsMuFloor || mu > tsMuCeil {
+			sigma = tsDefaultSigma
+			mu = clampF(rating+3*sigma, tsMuFloor, tsMuCeil)
+			reconstructedCount++
+		}
 		sm.elo[r.DeckKey] = &eloState{
 			rating:    clampF(rating, eloRatingMin, eloRatingMax),
 			hexRating: r.HexRating,
@@ -685,6 +702,9 @@ func (sm *Showmatch) loadPersistedState() {
 	}
 	if resetCount > 0 {
 		log.Printf("showmatch: ELO band-aid re-seeded %d out-of-band rating(s) on load", resetCount)
+	}
+	if reconstructedCount > 0 {
+		log.Printf("showmatch: reconstructed μ/σ for %d ELO record(s) without persisted TrueSkill state (legacy/invalid ts_mu/ts_sigma)", reconstructedCount)
 	}
 
 	if affected, err := db.BackfillDeckKeys(ctx, sm.sqlDB); err != nil {
@@ -810,7 +830,7 @@ func (sm *Showmatch) loadAndRun(astPath, oraclePath, decksDir string) {
 	sm.mu.Unlock()
 
 	log.Printf("showmatch: ready — %d decks in pool, starting fishtank + background grinder", len(decks))
-	if sm.maintenance {
+	if sm.maintenance.Load() {
 		log.Printf("grinder: NOT starting — maintenance mode (HEXDEK_MAINTENANCE=1)")
 	} else {
 		go sm.runGrinder()
@@ -820,9 +840,37 @@ func (sm *Showmatch) loadAndRun(astPath, oraclePath, decksDir string) {
 	sm.runLoop()
 }
 
+// maintenancePollInterval is how often a rated-game loop parked by
+// pauseForMaintenance re-checks the maintenance flag. A var (not a const)
+// so tests can shorten it.
+var maintenancePollInterval = 5 * time.Second
+
+// pauseForMaintenance reports whether the server is in maintenance mode,
+// sleeping one poll interval when it is. Every rated-game loop — the
+// fishtank runLoop, each grinder worker, and each spectate room's
+// gameLoop — calls this at the top of every iteration, so maintenance
+// stops NEW rated games from starting even in loops that were already
+// running when the flag came up. Previously only the grinder *start* and
+// the gauntlet/spectate-spawn endpoints honored the flag: a live fishtank
+// or an already-spawned spectate room kept self-playing, rating
+// (updateELO), and persisting games — mutating exactly the data
+// maintenance exists to protect (review r62, report 06 C3). A game
+// already in flight when the flag flips finishes and rates once; the gap
+// this closes is the loop starting the NEXT game.
+func (sm *Showmatch) pauseForMaintenance() bool {
+	if !sm.maintenance.Load() {
+		return false
+	}
+	time.Sleep(maintenancePollInterval)
+	return true
+}
+
 func (sm *Showmatch) runLoop() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for {
+		if sm.pauseForMaintenance() {
+			continue
+		}
 		sm.runOneGame(rng)
 		sm.mu.RLock()
 		mult := sm.speedMultiplier
@@ -855,6 +903,9 @@ func (sm *Showmatch) runGrinder() {
 		go func(id int) {
 			rng := rand.New(rand.NewSource(time.Now().UnixNano() + int64(id)*31))
 			for {
+				if sm.pauseForMaintenance() {
+					continue
+				}
 				sm.runOneGameFast(rng)
 				totalGames.Add(1)
 			}
@@ -1380,6 +1431,8 @@ func (sm *Showmatch) flushELO() {
 			Delta:     e.delta,
 			HexDelta:  e.hexDelta,
 			Bracket:   e.bracket,
+			TSMu:      e.tsMu,
+			TSSigma:   e.tsSigma,
 		})
 	}
 	if err := db.BatchUpsertELO(context.Background(), sm.sqlDB, records); err != nil {
@@ -3621,7 +3674,7 @@ func (sm *Showmatch) RegisterShowmatch(mux *http.ServeMux) {
 var gauntletSem = make(chan struct{}, 2)
 
 func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request) {
-	if sm.maintenance {
+	if sm.maintenance.Load() {
 		writeError(w, http.StatusServiceUnavailable, maintenanceMessage)
 		return
 	}

@@ -72,6 +72,14 @@ func applyMigrations(db *sql.DB) error {
 		{"showmatch_elo", "measured_bracket", "INTEGER NOT NULL DEFAULT 0"},
 		{"showmatch_elo", "hex_rating", "REAL NOT NULL DEFAULT 0.0"},
 		{"showmatch_elo", "hex_delta", "REAL NOT NULL DEFAULT 0.0"},
+		// r62: full TrueSkill state (μ/σ). Before these columns the
+		// conservative rating (μ−3σ) was the only persisted TS state, so
+		// every restart reconstructed σ=σ₀(400) for all decks (the PR
+		// #996 band-aid) and the ladder's learned certainty was erased
+		// on every deploy/crash. 0/0 = legacy row, signals
+		// loadPersistedState to fall back to the band-aid reconstruction.
+		{"showmatch_elo", "ts_mu", "REAL NOT NULL DEFAULT 0.0"},
+		{"showmatch_elo", "ts_sigma", "REAL NOT NULL DEFAULT 0.0"},
 		{"showmatch_game", "rng_seed", "INTEGER NOT NULL DEFAULT 0"},
 		// HOW the winner won (heimdall.ClassifyKill); orthogonal to
 		// end_reason (the game-end TYPE). '' = not classified / draw.

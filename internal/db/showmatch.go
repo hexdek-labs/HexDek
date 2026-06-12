@@ -19,6 +19,12 @@ type ELORecord struct {
 	Delta     float64
 	HexDelta  float64
 	Bracket   int
+	// TSMu / TSSigma are the full TrueSkill state behind Rating (the
+	// conservative μ−3σ estimate). 0/0 means the row predates the r62
+	// ts_mu/ts_sigma columns — loaders must reconstruct (σ=σ₀) rather
+	// than trust a literal σ=0, which would make every update degenerate.
+	TSMu    float64
+	TSSigma float64
 }
 
 type GameRecord struct {
@@ -66,7 +72,7 @@ type CardWinStat struct {
 
 func LoadAllELO(ctx context.Context, db *sql.DB) ([]ELORecord, error) {
 	rows, err := db.QueryContext(ctx,
-		`SELECT deck_key, commander, owner, rating, hex_rating, games, wins, losses, delta, hex_delta, bracket FROM showmatch_elo ORDER BY rating DESC`)
+		`SELECT deck_key, commander, owner, rating, hex_rating, games, wins, losses, delta, hex_delta, bracket, ts_mu, ts_sigma FROM showmatch_elo ORDER BY rating DESC`)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +80,7 @@ func LoadAllELO(ctx context.Context, db *sql.DB) ([]ELORecord, error) {
 	var out []ELORecord
 	for rows.Next() {
 		var r ELORecord
-		if err := rows.Scan(&r.DeckKey, &r.Commander, &r.Owner, &r.Rating, &r.HexRating, &r.Games, &r.Wins, &r.Losses, &r.Delta, &r.HexDelta, &r.Bracket); err != nil {
+		if err := rows.Scan(&r.DeckKey, &r.Commander, &r.Owner, &r.Rating, &r.HexRating, &r.Games, &r.Wins, &r.Losses, &r.Delta, &r.HexDelta, &r.Bracket, &r.TSMu, &r.TSSigma); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
@@ -84,15 +90,16 @@ func LoadAllELO(ctx context.Context, db *sql.DB) ([]ELORecord, error) {
 
 func UpsertELO(ctx context.Context, db *sql.DB, r ELORecord) error {
 	_, err := db.ExecContext(ctx,
-		`INSERT INTO showmatch_elo (deck_key, commander, owner, rating, hex_rating, games, wins, losses, delta, hex_delta, bracket, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+		`INSERT INTO showmatch_elo (deck_key, commander, owner, rating, hex_rating, games, wins, losses, delta, hex_delta, bracket, ts_mu, ts_sigma, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
 		 ON CONFLICT(deck_key) DO UPDATE SET
 		   commander=excluded.commander, owner=excluded.owner,
 		   rating=excluded.rating, hex_rating=excluded.hex_rating,
 		   games=excluded.games, wins=excluded.wins,
 		   losses=excluded.losses, delta=excluded.delta, hex_delta=excluded.hex_delta,
-		   bracket=excluded.bracket, updated_at=excluded.updated_at`,
-		r.DeckKey, r.Commander, r.Owner, r.Rating, r.HexRating, r.Games, r.Wins, r.Losses, r.Delta, r.HexDelta, r.Bracket)
+		   bracket=excluded.bracket, ts_mu=excluded.ts_mu, ts_sigma=excluded.ts_sigma,
+		   updated_at=excluded.updated_at`,
+		r.DeckKey, r.Commander, r.Owner, r.Rating, r.HexRating, r.Games, r.Wins, r.Losses, r.Delta, r.HexDelta, r.Bracket, r.TSMu, r.TSSigma)
 	return err
 }
 
@@ -102,21 +109,22 @@ func BatchUpsertELO(ctx context.Context, sqlDB *sql.DB, records []ELORecord) err
 		return err
 	}
 	stmt, err := tx.PrepareContext(ctx,
-		`INSERT INTO showmatch_elo (deck_key, commander, owner, rating, hex_rating, games, wins, losses, delta, hex_delta, bracket, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
+		`INSERT INTO showmatch_elo (deck_key, commander, owner, rating, hex_rating, games, wins, losses, delta, hex_delta, bracket, ts_mu, ts_sigma, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, unixepoch())
 		 ON CONFLICT(deck_key) DO UPDATE SET
 		   commander=excluded.commander, owner=excluded.owner,
 		   rating=excluded.rating, hex_rating=excluded.hex_rating,
 		   games=excluded.games, wins=excluded.wins,
 		   losses=excluded.losses, delta=excluded.delta, hex_delta=excluded.hex_delta,
-		   bracket=excluded.bracket, updated_at=excluded.updated_at`)
+		   bracket=excluded.bracket, ts_mu=excluded.ts_mu, ts_sigma=excluded.ts_sigma,
+		   updated_at=excluded.updated_at`)
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 	defer stmt.Close()
 	for _, r := range records {
-		if _, err := stmt.ExecContext(ctx, r.DeckKey, r.Commander, r.Owner, r.Rating, r.HexRating, r.Games, r.Wins, r.Losses, r.Delta, r.HexDelta, r.Bracket); err != nil {
+		if _, err := stmt.ExecContext(ctx, r.DeckKey, r.Commander, r.Owner, r.Rating, r.HexRating, r.Games, r.Wins, r.Losses, r.Delta, r.HexDelta, r.Bracket, r.TSMu, r.TSSigma); err != nil {
 			tx.Rollback()
 			return err
 		}
