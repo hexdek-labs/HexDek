@@ -1,6 +1,10 @@
 package gameengine
 
-import "github.com/hexdek/hexdek/internal/gameast"
+import (
+	"strings"
+
+	"github.com/hexdek/hexdek/internal/gameast"
+)
 
 // FirePermanentETBTriggers fires the complete ETB trigger cascade for a
 // permanent that has already been added to the battlefield. Handles:
@@ -96,6 +100,17 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 				continue
 			}
 			if !EventEquals(trig.Trigger.Event, "etb") {
+				continue
+			}
+			// r63 observer-dispatch fix: observer-class events
+			// ("another_typed_enters", "tribe_you_control_etb", …) alias
+			// to "etb" but are NOT self-triggers — they fire from
+			// fireObserverETBTriggers when an ALLY enters, never from the
+			// bearer's own ETB ("whenever ANOTHER creature you control
+			// enters" must stay silent here). Dual events
+			// ("etb_or_another") DO self-fire.
+			if isObserverClassEvent(trig.Trigger.Event) &&
+				!dualSelfObserverEvents[strings.ToLower(strings.TrimSpace(trig.Trigger.Event))] {
 				continue
 			}
 			// Judge r63 double-fire gate: per_card owns this card's

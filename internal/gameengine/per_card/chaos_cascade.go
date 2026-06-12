@@ -63,8 +63,12 @@ func possibilityStormTrigger(gs *gameengine.GameState, perm *gameengine.Permanen
 	var found *gameengine.Card
 
 	for len(seat.Library) > 0 {
+		before := len(seat.Library)
 		top := seat.Library[0]
 		gameengine.MoveCard(gs, top, casterSeat, "library", "exile", "possibility-storm-reveal")
+		if len(seat.Library) >= before {
+			break // no progress (replacement bounce / §800.4a no-op) — never spin
+		}
 		exiled = append(exiled, top)
 		if top != nil && sharesCardType(top, origTypes) {
 			found = top
@@ -181,9 +185,16 @@ func chaosWandActivated(gs *gameengine.GameState, src *gameengine.Permanent, abi
 	var exiled []*gameengine.Card
 	var found *gameengine.Card
 
+	if os := gs.Seats[targetSeat]; os == nil || os.Lost || os.LeftGame {
+		return // eliminated target: retained zones are forensic, not real (CR §800.4a)
+	}
 	for len(oppSeat.Library) > 0 {
+		before := len(oppSeat.Library)
 		top := oppSeat.Library[0]
 		gameengine.MoveCard(gs, top, targetSeat, "library", "exile", "chaos-wand-reveal")
+		if len(oppSeat.Library) >= before {
+			break // no progress (replacement bounce / §800.4a no-op) — never spin
+		}
 		exiled = append(exiled, top)
 		if top != nil && isInstantOrSorceryCard(top) {
 			found = top

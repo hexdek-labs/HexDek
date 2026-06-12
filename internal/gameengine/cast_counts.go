@@ -102,10 +102,9 @@ func FireCastTriggerObservers(gs *GameState, cast *Card, controller int, fromCop
 	if strings.Contains(typeLine, "creature") {
 		lowerTypes["creature"] = true
 	}
-	isInstant := lowerTypes["instant"]
-	isSorcery := lowerTypes["sorcery"]
 	isCreature := lowerTypes["creature"]
-	isInstantOrSorcery := isInstant || isSorcery
+	// isInstant/isSorcery consumers folded with the r63 inline-arm
+	// deletion (observer dispatch owns those triggers now).
 	isNoncreature := !isCreature
 	// Color — check Card.Colors (populated by corpus loader / token
 	// creation). For Runaway Steam-Kin's "whenever you cast a red spell".
@@ -209,10 +208,10 @@ func FireCastTriggerObservers(gs *GameState, cast *Card, controller int, fromCop
 					Source: name,
 					Amount: totalDrained,
 					Details: map[string]interface{}{
-						"cast":     castName,
-						"drained":  totalDrained,
+						"cast":      castName,
+						"drained":   totalDrained,
 						"mana_paid": 1,
-						"rule":     "702.101",
+						"rule":      "702.101",
 					},
 				})
 			}
@@ -227,48 +226,12 @@ func FireCastTriggerObservers(gs *GameState, cast *Card, controller int, fromCop
 		// handler draws; both firing drew two cards per spell). See
 		// /tmp/fable-review/wave1b-doubletax-audit.md for the full audit.
 		switch name {
-		case "Young Pyromancer":
-			if perm.Controller == controller && isInstantOrSorcery {
-				createSimpleCreatureToken(gs, perm.Controller,
-					"Elemental Token", 1, 1, []string{"R"})
-				gs.LogEvent(Event{
-					Kind:   "cast_trigger_observer",
-					Seat:   perm.Controller,
-					Source: name,
-					Details: map[string]interface{}{
-						"cast":   castName,
-						"effect": "elemental_token",
-					},
-				})
-			}
-		case "Third Path Iconoclast":
-			if perm.Controller == controller && isNoncreature {
-				createSimpleCreatureToken(gs, perm.Controller,
-					"Soldier Artifact Token", 1, 1, nil)
-				gs.LogEvent(Event{
-					Kind:   "cast_trigger_observer",
-					Seat:   perm.Controller,
-					Source: name,
-					Details: map[string]interface{}{
-						"cast":   castName,
-						"effect": "soldier_token",
-					},
-				})
-			}
-		case "Monastery Mentor":
-			if perm.Controller == controller && isNoncreature {
-				createSimpleCreatureToken(gs, perm.Controller,
-					"Monk Token", 1, 1, []string{"W"})
-				gs.LogEvent(Event{
-					Kind:   "cast_trigger_observer",
-					Seat:   perm.Controller,
-					Source: name,
-					Details: map[string]interface{}{
-						"cast":   castName,
-						"effect": "monk_token",
-					},
-				})
-			}
+		// r63 observer-dispatch fold: the Young Pyromancer / Third Path
+		// Iconoclast / Monastery Mentor inline arms are DELETED — the
+		// raw-aware AST observer-cast dispatch (observer_raw_dispatch.go)
+		// fires their printed triggers generically now; both firing
+		// minted two tokens per spell (PROGRESSION widening audit).
+		// Same Wave-1b inline-arm fold as Storm-Kiln / Niv-Mizzet above.
 		case "Runaway Steam-Kin":
 			if perm.Controller == controller && isRed {
 				cur := 0
