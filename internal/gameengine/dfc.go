@@ -610,17 +610,96 @@ func StripAdventureHalfTypes(c *Card) bool {
 	return true
 }
 
+// StripToBackHalfTypes is the metadata-free complement of
+// StripAdventureHalfTypes for the FORWARD spell//permanent shape
+// (mdfc-backface r63). A Card whose combined "Front // Back" type_line
+// parsed to Types like ["sorcery", "//", "land", ...] but whose
+// BackFace* fields were never populated (chaos-harness builders,
+// un-supplemented MetaDBs) gets no help from the MDFC swap — IsMDFC()
+// is false without BackFaceName — and StripAdventureHalfTypes refuses
+// because the front half has no permanent type. Yet if such a card is
+// entering the battlefield, the BACK half is the only face that can
+// legally be there (the front face is an instant/sorcery and CR
+// §304.4/§307.1 bar it from being a permanent), so the back-half types
+// are the correct permanent identity: spell//land MDFCs played as
+// lands (Agadeem's Awakening, Malakir Rebirth, …) and spell//creature
+// DFCs resolving as the creature (Visitor from Planet Q).
+//
+// Gates (mirror StripAdventureHalfTypes, inverted halves):
+//   - card is non-nil and not a token
+//   - Types contains the "//" pseudo-token
+//   - the front half (before "//") has NO permanent type — when it
+//     does, the front face is the battlefield identity and
+//     StripAdventureHalfTypes owns the cleanup
+//   - the back half (after "//") HAS a permanent type — a pure
+//     spell//spell split card is refused so the §205 violation
+//     surfaces instead of being silently scrubbed
+//
+// Name and CMC are intentionally left alone: without face metadata
+// there is no authoritative back-face name/cost, and handlers key off
+// the combined oracle name. Idempotent — the "//" marker is gone from
+// Types after the first call.
+//
+// Returns true if Types was modified, false otherwise.
+func StripToBackHalfTypes(c *Card) bool {
+	if c == nil || cardIsToken(c) {
+		return false
+	}
+	splitIdx := -1
+	for i, t := range c.Types {
+		if t == "//" {
+			splitIdx = i
+			break
+		}
+	}
+	if splitIdx < 0 {
+		return false
+	}
+	if typesHavePermanentType(c.Types[:splitIdx]) {
+		return false
+	}
+	if !typesHavePermanentType(c.Types[splitIdx+1:]) {
+		return false
+	}
+	c.Types = append([]string(nil), c.Types[splitIdx+1:]...)
+	if i := strings.Index(c.TypeLine, "//"); i >= 0 {
+		c.TypeLine = strings.TrimSpace(c.TypeLine[i+len("//"):])
+	}
+	return true
+}
+
+// typesHavePermanentType reports whether the slice carries at least one
+// CR §205.2 permanent card type.
+func typesHavePermanentType(types []string) bool {
+	for _, t := range types {
+		switch t {
+		case "creature", "artifact", "enchantment", "planeswalker",
+			"land", "battle":
+			return true
+		}
+	}
+	return false
+}
+
 // EnsureBattlefieldFrontFace is the canonical "card is about to enter
 // the battlefield via any path" hook for face-cleanup. Composes the
-// MDFC back-face swap and the adventure-half-type stripper in the
-// right order:
+// MDFC back-face swap and the half-type strippers in the right order:
 //
 //  1. EnsureMDFCBackFaceForBattlefield — if the card is an MDFC whose
-//     back face is a land, swap Types wholesale to the back-face values.
-//     No-op for non-MDFCs.
-//  2. StripAdventureHalfTypes — if Types still carries a "//" leak from
-//     the deckparser's combined type_line, drop everything from "//"
-//     onward. No-op when SwapToBackFace already replaced Types.
+//     back face is a land (per its BackFace* metadata), swap Types
+//     wholesale to the back-face values. No-op for non-MDFCs and for
+//     cards whose back-face metadata was never populated.
+//  2. StripAdventureHalfTypes — if Types still carries a "//" leak and
+//     the FRONT half has a permanent type (adventure / split / reverse
+//     MDFC), drop everything from "//" onward. No-op when
+//     SwapToBackFace already replaced Types.
+//  3. StripToBackHalfTypes — if Types still carries the leak and only
+//     the BACK half has a permanent type (metadata-less spell//land
+//     MDFC, spell//creature DFC), keep the back-half types instead.
+//
+// The two strippers gate on mutually exclusive front-half shapes, so
+// at most one fires; a spell//spell split card passes through all
+// three untouched and surfaces its §205 violation downstream.
 //
 // Call sites that previously invoked EnsureMDFCBackFaceForBattlefield
 // can switch to this function to pick up the adventure handling for
@@ -631,4 +710,5 @@ func StripAdventureHalfTypes(c *Card) bool {
 func EnsureBattlefieldFrontFace(c *Card) {
 	EnsureMDFCBackFaceForBattlefield(c)
 	StripAdventureHalfTypes(c)
+	StripToBackHalfTypes(c)
 }

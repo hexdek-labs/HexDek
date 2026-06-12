@@ -179,6 +179,16 @@ func loadOracleCorpus(path string) (*gameengine.ChaosCorpus, error) {
 		if unSets[e.SetName] {
 			continue
 		}
+		// Mystery Booster playtest cards are excluded for the same
+		// reason as the un-sets: deliberately rules-breaking designs
+		// (e.g. Visitor from Planet Q's printed type line is "Instant
+		// Creature") that no format legalizes and the engine cannot
+		// represent — 121 cards, 0 Commander-legal, and the one that
+		// reached a chaos battlefield was the r63 correctness baseline's
+		// last permanent_types hit.
+		if strings.HasPrefix(e.SetName, "Mystery Booster Playtest Cards") {
+			continue
+		}
 		typeLine := e.TypeLine
 		if typeLine == "" && len(e.CardFaces) > 0 {
 			typeLine = e.CardFaces[0].TypeLine
@@ -1267,6 +1277,20 @@ func buildCardFromName(name string, corpus *astload.Corpus, meta *deckparser.Met
 		}
 		c.CMC = md.CMC
 		c.TypeLine = md.TypeLine
+		// MDFC back-face metadata (mdfc-backface r63): without these,
+		// IsMDFC() is false and every battlefield-entry face-cleanup
+		// hook (EnsureBattlefieldFrontFace / SwapToBackFace) is blind,
+		// so spell//land MDFCs played as lands kept their front-face
+		// instant/sorcery Types and tripped the permanent_types
+		// invariant. Mirrors deckparser's own buildCard.
+		if md.BackFaceName != "" {
+			c.BackFaceName = md.BackFaceName
+			c.BackFaceCMC = md.BackFaceCMC
+			c.BackFaceTypeLine = strings.ToLower(md.BackFaceTypeLine)
+			if len(md.BackFaceTypes) > 0 {
+				c.BackFaceTypes = append([]string(nil), md.BackFaceTypes...)
+			}
+		}
 	}
 
 	// ETB-choice P/T fix: if this is a creature with 0/0 base P/T and

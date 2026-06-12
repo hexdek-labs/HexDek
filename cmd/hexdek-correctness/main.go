@@ -87,6 +87,12 @@ func main() {
 		if err != nil {
 			log.Fatalf("meta %s: %v", *astPath, err)
 		}
+		// P/T + MDFC back-face enrichment from the oracle corpus, same
+		// as loki — without it the MetaDB carries no BackFace* data and
+		// MDFC face-cleanup at battlefield entry is blind.
+		if err := meta.SupplementWithOracleJSON(*oraclePath); err != nil {
+			log.Fatalf("meta oracle supplement %s: %v", *oraclePath, err)
+		}
 		chaosCorpus, err := loadOracleCorpus(*oraclePath)
 		if err != nil {
 			log.Fatalf("oracle: %v", err)

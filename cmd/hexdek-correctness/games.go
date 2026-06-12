@@ -445,6 +445,20 @@ func buildCardFromName(name string, corpus *astload.Corpus, meta *deckparser.Met
 		}
 		c.CMC = md.CMC
 		c.TypeLine = md.TypeLine
+		// MDFC back-face metadata (mdfc-backface r63): without these,
+		// IsMDFC() is false and every battlefield-entry face-cleanup
+		// hook (EnsureBattlefieldFrontFace / SwapToBackFace) is blind,
+		// so spell//land MDFCs played as lands kept their front-face
+		// instant/sorcery Types and tripped the permanent_types
+		// invariant. Mirrors deckparser's own buildCard.
+		if md.BackFaceName != "" {
+			c.BackFaceName = md.BackFaceName
+			c.BackFaceCMC = md.BackFaceCMC
+			c.BackFaceTypeLine = strings.ToLower(md.BackFaceTypeLine)
+			if len(md.BackFaceTypes) > 0 {
+				c.BackFaceTypes = append([]string(nil), md.BackFaceTypes...)
+			}
+		}
 	}
 
 	// ETB-choice P/T default so 0/0 "as ~ enters, choose" creatures

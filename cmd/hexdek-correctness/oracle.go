@@ -64,6 +64,16 @@ func loadOracleCorpus(path string) (*gameengine.ChaosCorpus, error) {
 		if unSets[e.SetName] {
 			continue
 		}
+		// Mystery Booster playtest cards are excluded for the same
+		// reason as the un-sets: deliberately rules-breaking designs
+		// (e.g. Visitor from Planet Q's printed type line is "Instant
+		// Creature") that no format legalizes and the engine cannot
+		// represent — 121 cards, 0 Commander-legal, and the one that
+		// reached a chaos battlefield was the r63 correctness baseline's
+		// last permanent_types hit.
+		if strings.HasPrefix(e.SetName, "Mystery Booster Playtest Cards") {
+			continue
+		}
 		typeLine := e.TypeLine
 		if typeLine == "" && len(e.CardFaces) > 0 {
 			typeLine = e.CardFaces[0].TypeLine
