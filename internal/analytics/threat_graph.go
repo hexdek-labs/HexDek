@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
+	"github.com/hexdek/hexdek/internal/seedcontract"
+	"github.com/hexdek/hexdek/internal/validation"
 )
 
 // KillRecord captures a single elimination event: who killed whom,
@@ -19,6 +21,13 @@ type KillRecord struct {
 	KillerSeat      int    `json:"killer_seat"`
 	VictimSeat      int    `json:"victim_seat"`
 	Method          string `json:"method"`
+	// MethodCanonical is Method normalized through
+	// seedcontract.CanonicalKillMethod (consolidation step 2) so
+	// cross-subsystem consumers compare against win_reason without
+	// re-mapping. Method keeps the finer-grained analytics vocabulary
+	// (combat_damage / noncombat_damage / life_drain / decking…) that
+	// the persisted threat graph and method breakdowns rely on.
+	MethodCanonical string `json:"method_canonical,omitempty"`
 	LethalCard      string `json:"lethal_card,omitempty"`
 	Turn            int    `json:"turn"`
 	GameID          string `json:"game_id,omitempty"`
@@ -74,13 +83,25 @@ func ExtractKillRecords(events []gameengine.Event, nSeats int, commanderNames []
 		victimSeat := ev.Seat
 		victimName := safeCommanderName(commanderNames, victimSeat)
 		reason := ""
+		lossCategory := ""
+		lossSourceCard := ""
 		if ev.Details != nil {
 			if r, ok := ev.Details["reason"].(string); ok {
 				reason = r
 			}
+			// Structured loss cause (consolidation step 2) — stamped on
+			// the elimination event by HandleSeatElimination when the
+			// engine wrote Seat.LossDetail. Preferred over substring-
+			// parsing the freeform reason.
+			if c, ok := ev.Details["loss_category"].(string); ok {
+				lossCategory = c
+			}
+			if sc, ok := ev.Details["loss_source_card"].(string); ok {
+				lossSourceCard = sc
+			}
 		}
 
-		killerSeat, method, lethalCard := inferKiller(events[:i], victimSeat, reason, nSeats)
+		killerSeat, method, lethalCard := inferKiller(events[:i], victimSeat, reason, lossCategory, lossSourceCard, nSeats)
 
 		if killerSeat < 0 || killerSeat == victimSeat {
 			continue
@@ -102,6 +123,7 @@ func ExtractKillRecords(events []gameengine.Event, nSeats int, commanderNames []
 			KillerSeat:      killerSeat,
 			VictimSeat:      victimSeat,
 			Method:          method,
+			MethodCanonical: seedcontract.CanonicalKillMethod(method),
 			LethalCard:      lethalCard,
 			Turn:            turn,
 			GameID:          gameID,
@@ -141,12 +163,17 @@ func DetectKingmakers(kills []KillRecord, winnerCommander string) []KingmakerRec
 }
 
 // inferKiller walks backwards from the elimination event to find the
-// seat that dealt the lethal blow.
-func inferKiller(events []gameengine.Event, victimSeat int, lossReason string, nSeats int) (killerSeat int, method, lethalCard string) {
+// seat that dealt the lethal blow. lossCategory/lossSourceCard are the
+// structured loss cause from the elimination event (consolidation step
+// 2; empty for pre-LossDetail replays) — when present they replace the
+// freeform-substring sniffing of lossReason; the substring checks below
+// are the LEGACY FALLBACK, kept for old replays. Do not extend them.
+func inferKiller(events []gameengine.Event, victimSeat int, lossReason, lossCategory, lossSourceCard string, nSeats int) (killerSeat int, method, lethalCard string) {
 	killerSeat = -1
 
 	// Commander damage losses encode the killer's commander name.
-	if strings.Contains(lossReason, "21+ commander damage from") {
+	if lossCategory == validation.LossCategoryCommanderDamage ||
+		(lossCategory == "" && strings.Contains(lossReason, "21+ commander damage from")) {
 		method = "commander_damage"
 		for j := len(events) - 1; j >= 0; j-- {
 			ev := &events[j]
@@ -161,7 +188,8 @@ func inferKiller(events []gameengine.Event, victimSeat int, lossReason string, n
 	}
 
 	// Poison counter loss.
-	if strings.Contains(lossReason, "poison") {
+	if lossCategory == validation.LossCategoryPoison ||
+		(lossCategory == "" && strings.Contains(lossReason, "poison")) {
 		method = "poison"
 		for j := len(events) - 1; j >= 0; j-- {
 			ev := &events[j]
@@ -176,7 +204,8 @@ func inferKiller(events []gameengine.Event, victimSeat int, lossReason string, n
 	}
 
 	// Life total 0 or less — find the damage source that crossed 0.
-	if strings.Contains(lossReason, "life total 0") || lossReason == "" {
+	if lossCategory == validation.LossCategoryLife ||
+		(lossCategory == "" && (strings.Contains(lossReason, "life total 0") || lossReason == "")) {
 		runningLife := 0
 		for j := len(events) - 1; j >= 0; j-- {
 			ev := &events[j]
@@ -215,11 +244,13 @@ func inferKiller(events []gameengine.Event, victimSeat int, lossReason string, n
 	}
 
 	// Concession / pact failure / other — attribute to no one specific.
-	if strings.Contains(lossReason, "concession") {
+	if lossCategory == validation.LossCategoryConcession ||
+		(lossCategory == "" && strings.Contains(lossReason, "concession")) {
 		method = "concession"
 		return -1, method, ""
 	}
-	if strings.Contains(lossReason, "drew from empty library") {
+	if lossCategory == validation.LossCategoryEmptyLibrary ||
+		(lossCategory == "" && strings.Contains(lossReason, "drew from empty library")) {
 		method = "decking"
 		// Try to find who milled them.
 		for j := len(events) - 1; j >= 0; j-- {

@@ -21,28 +21,37 @@ const (
 	maxSeedFileSize = 100 * 1024 * 1024 // 100MB rotation threshold
 )
 
-// Kill method enum (1 byte).
+// Kill method enum (1 byte). APPEND-ONLY: values are persisted in
+// binary seed records — never renumber. KillConcession/KillDraw added
+// in consolidation step 2 when ClassifyKill gained those outputs (a
+// concession-closed game previously misread as "mill"); records written
+// before then never contain 7/8.
 const (
-	KillCombat    uint8 = 0
-	KillCommander uint8 = 1
-	KillCombo     uint8 = 2
-	KillMill      uint8 = 3
-	KillPoison    uint8 = 4
-	KillTimeout   uint8 = 5
-	KillUnknown   uint8 = 6
+	KillCombat     uint8 = 0
+	KillCommander  uint8 = 1
+	KillCombo      uint8 = 2
+	KillMill       uint8 = 3
+	KillPoison     uint8 = 4
+	KillTimeout    uint8 = 5
+	KillUnknown    uint8 = 6
+	KillConcession uint8 = 7
+	KillDraw       uint8 = 8
 )
 
 var killMethodToEnum = map[string]uint8{
-	"combat":    KillCombat,
-	"commander": KillCommander,
-	"combo":     KillCombo,
-	"mill":      KillMill,
-	"poison":    KillPoison,
-	"timeout":   KillTimeout,
+	"combat":     KillCombat,
+	"commander":  KillCommander,
+	"combo":      KillCombo,
+	"mill":       KillMill,
+	"poison":     KillPoison,
+	"timeout":    KillTimeout,
+	"concession": KillConcession,
+	"draw":       KillDraw,
 }
 
-var killEnumToMethod = [7]string{
+var killEnumToMethod = [9]string{
 	"combat", "commander", "combo", "mill", "poison", "timeout", "unknown",
+	"concession", "draw",
 }
 
 func killMethodEnum(s string) uint8 {

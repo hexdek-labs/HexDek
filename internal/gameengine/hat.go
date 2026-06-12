@@ -37,6 +37,7 @@ package gameengine
 //   - `hat.PokerHat`  — HOLD/CALL/RAISE adaptive hat with 7-dim threat score.
 
 import (
+	"github.com/hexdek/hexdek/internal/validation"
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
@@ -1017,6 +1018,7 @@ func ConcedeGame(gs *GameState, seatIdx int) {
 	}
 	seat.Lost = true
 	seat.LossReason = "concession"
+	seat.LossDetail = &validation.LossReason{Category: validation.LossCategoryConcession, Rule: "104.3a"}
 	gs.LogEvent(Event{
 		Kind:   "concession",
 		Seat:   seatIdx,

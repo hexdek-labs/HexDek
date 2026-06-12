@@ -6,6 +6,7 @@ import (
 
 	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/gameengine/counters"
+	"github.com/hexdek/hexdek/internal/validation"
 )
 
 // Phase 6 — State-based actions (CR §704).
@@ -226,7 +227,7 @@ func StateBasedActions(gs *GameState) bool {
 			if s == nil || s.Lost {
 				continue
 			}
-			markSeatLost(s, "mandatory loop draw (CR 104.4b via SBA cap)")
+			markSeatLost(s, "mandatory loop draw (CR 104.4b via SBA cap)", &validation.LossReason{Category: validation.LossCategoryLoopDraw, Rule: "104.4b"})
 			gs.LogEvent(Event{
 				Kind:   "seat_lost",
 				Seat:   s.Idx,
@@ -353,7 +354,7 @@ func sba704_5a(gs *GameState) bool {
 				"reason": "life_total_zero_or_less",
 			},
 		})
-		markSeatLost(s, "life total 0 or less (CR 704.5a)")
+		markSeatLost(s, "life total 0 or less (CR 704.5a)", &validation.LossReason{Category: validation.LossCategoryLife, Rule: "704.5a"})
 		changed = true
 	}
 	return changed
@@ -382,7 +383,7 @@ func sba704_5b(gs *GameState) bool {
 			},
 		})
 		if !s.Lost {
-			markSeatLost(s, "drew from empty library (CR 704.5b)")
+			markSeatLost(s, "drew from empty library (CR 704.5b)", &validation.LossReason{Category: validation.LossCategoryEmptyLibrary, Rule: "704.5b"})
 		}
 		s.AttemptedEmptyDraw = false
 		changed = true
@@ -403,7 +404,7 @@ func sba704_5c(gs *GameState) bool {
 			continue
 		}
 		if s.PoisonCounters >= 10 {
-			markSeatLost(s, "ten or more poison counters (CR 704.5c)")
+			markSeatLost(s, "ten or more poison counters (CR 704.5c)", &validation.LossReason{Category: validation.LossCategoryPoison, Rule: "704.5c"})
 			gs.LogEvent(Event{
 				Kind:   "sba_704_5c",
 				Seat:   s.Idx,
@@ -916,10 +917,10 @@ func sba704_5k(gs *GameState) bool {
 // graveyard." (CR §704.5m, rules file line 5475.)
 //
 // Two paths:
-//   1. Gate-based (legacy): Auras with Flags["aura_expects_attach"]==1 that
-//      have nil AttachedTo or whose AttachedTo left the battlefield.
-//   2. Orphan detection: any Aura whose AttachedTo was non-nil but the target
-//      permanent is no longer on the battlefield (attachment broken by removal).
+//  1. Gate-based (legacy): Auras with Flags["aura_expects_attach"]==1 that
+//     have nil AttachedTo or whose AttachedTo left the battlefield.
+//  2. Orphan detection: any Aura whose AttachedTo was non-nil but the target
+//     permanent is no longer on the battlefield (attachment broken by removal).
 //
 // Auras that were never attached (no flag, nil AttachedTo) are still skipped
 // to avoid wiping Auras before the resolver's attach path runs.
@@ -1849,7 +1850,7 @@ func sba704_6c(gs *GameState) bool {
 		for dealer, byName := range s.CommanderDamage {
 			for name, dmg := range byName {
 				if dmg >= 21 {
-					markSeatLost(s, "21+ commander damage from "+name+" (CR 704.6c)")
+					markSeatLost(s, "21+ commander damage from "+name+" (CR 704.6c)", &validation.LossReason{Category: validation.LossCategoryCommanderDamage, Rule: "704.6c", SourceCard: name})
 					gs.LogEvent(Event{
 						Kind:   "sba_704_6c",
 						Seat:   s.Idx,
@@ -2192,12 +2193,17 @@ func ruleToEventSuffix(rule string) string {
 // Used at every `s.Lost = true` site in this file (§704.5a life-loss,
 // §704.5b empty-library draw, §704.5c poison, §704.6c commander damage,
 // and the §104.4b mandatory-loop-draw cap path).
-func markSeatLost(s *Seat, reason string) {
+func markSeatLost(s *Seat, reason string, detail *validation.LossReason) {
 	if s == nil {
 		return
 	}
 	s.Lost = true
 	s.LossReason = reason
+	// Consolidation step 2: dual-write the structured loss cause beside
+	// the freeform string. The string remains the display value; the
+	// classifiers (heimdall / analytics) prefer LossDetail and fall back
+	// to substring-parsing the string only for pre-LossDetail states.
+	s.LossDetail = detail
 	s.ManaPool = 0
 	if s.Mana != nil {
 		s.Mana.Clear()

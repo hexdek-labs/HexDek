@@ -159,7 +159,34 @@ const (
 	LossCategoryCommanderDamage = "twenty_one_commander_damage"  // CR §704.6c / §903.10a
 	LossCategoryEffect          = "you_lose_the_game_effect"     // CR §104.3e
 	LossCategoryConcession      = "concession"                   // CR §104.3a
+	LossCategoryLoopDraw        = "mandatory_loop_draw"          // CR §104.4b (SBA loop cap)
 )
+
+// KillClassification is heimdall.ClassifyKillFinal's structured result —
+// the canonical kill method (seedcontract vocabulary: combat / commander
+// / poison / mill / combo / timeout / draw / crash / concession) plus
+// the final victim's structured loss detail. KillerSeat is -1 when no
+// specific killer is attributable from final game state alone (the
+// analytics event walk remains the per-victim killer-attribution
+// authority).
+type KillClassification struct {
+	// Method is the canonical kill method (seedcontract vocabulary).
+	Method string `json:"method"`
+
+	// VictimSeat is the seat whose elimination ended the game (-1 when
+	// no eliminated opponent exists — timeout/draw shapes).
+	VictimSeat int `json:"victim_seat"`
+
+	// KillerSeat is the seat credited with the kill, -1 when unknown.
+	KillerSeat int `json:"killer_seat"`
+
+	// Category / Rule / SourceCard mirror the victim's structured
+	// LossReason when populated (empty for pre-LossDetail replays and
+	// hand-built fixtures).
+	Category   string `json:"category,omitempty"`
+	Rule       string `json:"rule,omitempty"`
+	SourceCard string `json:"source_card,omitempty"`
+}
 
 // LossReason is the structured loss cause — the canonical replacement
 // for the freeform Seat.LossReason string ("21+ commander damage from

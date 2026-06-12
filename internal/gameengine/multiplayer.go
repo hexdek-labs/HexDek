@@ -876,14 +876,24 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 	SweepOrphanedInstanceIDs(gs)
 
 	// Step 5: emit observation event.
+	elimDetails := map[string]interface{}{
+		"rule":               "800.4a",
+		"permanents_removed": removed,
+		"reason":             seat.LossReason,
+	}
+	// Consolidation step 2: carry the structured loss cause on the
+	// elimination event so post-game consumers (analytics inferKiller)
+	// can classify without substring-parsing the freeform reason.
+	if seat.LossDetail != nil {
+		elimDetails["loss_category"] = seat.LossDetail.Category
+		if seat.LossDetail.SourceCard != "" {
+			elimDetails["loss_source_card"] = seat.LossDetail.SourceCard
+		}
+	}
 	gs.LogEvent(Event{
 		Kind: "seat_eliminated", Seat: seatIdx, Target: -1,
 		Amount: removed,
-		Details: map[string]interface{}{
-			"rule":               "800.4a",
-			"permanents_removed": removed,
-			"reason":             seat.LossReason,
-		},
+		Details: elimDetails,
 	})
 	// Fire per-card triggers for seat elimination (e.g. Davros, Dalek Creator).
 	FireCardTrigger(gs, "seat_eliminated", map[string]interface{}{

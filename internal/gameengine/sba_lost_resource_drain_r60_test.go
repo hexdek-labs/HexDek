@@ -120,8 +120,8 @@ func TestR60_LostDrainsMana_MandatoryLoopDraw_104_4b(t *testing.T) {
 	gs := newFixtureGame(t)
 	fundedSeat(t, gs, 0)
 	fundedSeat(t, gs, 1)
-	markSeatLost(gs.Seats[0], "mandatory loop draw (CR 104.4b via SBA cap)")
-	markSeatLost(gs.Seats[1], "mandatory loop draw (CR 104.4b via SBA cap)")
+	markSeatLost(gs.Seats[0], "mandatory loop draw (CR 104.4b via SBA cap)", nil)
+	markSeatLost(gs.Seats[1], "mandatory loop draw (CR 104.4b via SBA cap)", nil)
 	assertDrained(t, gs, 0, "§104.4b mandatory-loop draw seat 0")
 	assertDrained(t, gs, 1, "§104.4b mandatory-loop draw seat 1")
 }
@@ -137,14 +137,14 @@ func TestR60_MarkSeatLost_NilSafety(t *testing.T) {
 			t.Fatalf("markSeatLost(nil, ...) must not panic; got %v", r)
 		}
 	}()
-	markSeatLost(nil, "should not panic")
+	markSeatLost(nil, "should not panic", nil)
 }
 
 func TestR60_MarkSeatLost_NilTypedPool(t *testing.T) {
 	gs := newFixtureGame(t)
 	gs.Seats[0].ManaPool = 5
 	gs.Seats[0].Mana = nil // explicit: lazy-materialized pool, never touched
-	markSeatLost(gs.Seats[0], "test")
+	markSeatLost(gs.Seats[0], "test", nil)
 	if !gs.Seats[0].Lost {
 		t.Fatal("expected Lost=true")
 	}

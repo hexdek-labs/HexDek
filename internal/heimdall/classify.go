@@ -5,6 +5,7 @@ import (
 
 	"github.com/hexdek/hexdek/internal/gameengine"
 	"github.com/hexdek/hexdek/internal/seedcontract"
+	"github.com/hexdek/hexdek/internal/validation"
 )
 
 // ClassifyKill determines how the winner won the game: the winner won by
@@ -81,10 +82,31 @@ func finalEliminatedOpponent(gs *gameengine.GameState, winner int) *gameengine.S
 }
 
 // classifyLossOfSeat maps ONE seat's loss onto the kill-method enum:
-// LossReason first (the engine sets it with high fidelity), then the
-// game-state heuristics the pre-r62 classifier used, applied to the same
-// single seat.
+// the structured LossDetail first (consolidation step 2 — stamped by
+// every engine loss writer since), then the freeform LossReason string,
+// then the game-state heuristics the pre-r62 classifier used, applied
+// to the same single seat. The string/heuristic tail is the LEGACY
+// FALLBACK for pre-LossDetail replays and hand-built fixtures — do not
+// extend it; extend the category switch instead.
 func classifyLossOfSeat(seat *gameengine.Seat) string {
+	if d := seat.LossDetail; d != nil {
+		switch d.Category {
+		case validation.LossCategoryPoison:
+			return "poison"
+		case validation.LossCategoryCommanderDamage:
+			return "commander"
+		case validation.LossCategoryEmptyLibrary:
+			return "mill"
+		case validation.LossCategoryConcession:
+			return "concession"
+		case validation.LossCategoryLoopDraw:
+			return "draw"
+			// LossCategoryLife and LossCategoryEffect fall through: the
+			// freeform reason may carry a finer signal ("infinite
+			// combo") and the life-zero shape needs the heuristics to
+			// distinguish combat from combo kills.
+		}
+	}
 	reason := strings.ToLower(seat.LossReason)
 	switch {
 	case strings.Contains(reason, "poison"):
@@ -119,12 +141,62 @@ func classifyLossOfSeat(seat *gameengine.Seat) string {
 // ClassifyKillWithMaxTurns is like ClassifyKill but also detects timeout
 // when the game hit the turn limit without a natural winner.
 func ClassifyKillWithMaxTurns(gs *gameengine.GameState, winner, maxTurns int) string {
+	return ClassifyKillFinal(gs, winner, maxTurns).Method
+}
+
+// ClassifyKillFinal is the unified kill classifier (consolidation step
+// 2) — ONE entry point that every consumer keys off. It returns the
+// canonical method (seedcontract vocabulary, same value
+// ClassifyKill/ClassifyKillWithMaxTurns return) plus the structured
+// details: the final victim, the victim's LossDetail fields when
+// stamped, and — for commander-damage kills — the killer seat resolved
+// from the lethal commander's owner. KillerSeat is -1 when final game
+// state alone cannot attribute one (the analytics event walk remains
+// the per-victim authority; see analytics.ExtractKillRecords).
+func ClassifyKillFinal(gs *gameengine.GameState, winner, maxTurns int) validation.KillClassification {
+	out := validation.KillClassification{VictimSeat: -1, KillerSeat: -1}
 	if gs != nil && maxTurns > 0 && gs.Turn >= maxTurns {
 		// Route the turn-cap shape through THE canonical mapper so the
 		// "timeout" spelling has exactly one source of truth.
-		return seedcontract.KillMethodFromEndReason("turn_cap")
+		out.Method = seedcontract.KillMethodFromEndReason("turn_cap")
+		return out
 	}
-	return ClassifyKill(gs, winner)
+	if gs == nil {
+		out.Method = "combat"
+		return out
+	}
+	victim := finalEliminatedOpponent(gs, winner)
+	if victim == nil {
+		out.Method = "combat"
+		return out
+	}
+	out.Method = seedcontract.CanonicalKillMethod(classifyLossOfSeat(victim))
+	out.VictimSeat = victim.Idx
+	if d := victim.LossDetail; d != nil {
+		out.Category = d.Category
+		out.Rule = d.Rule
+		out.SourceCard = d.SourceCard
+		// Commander-damage kills name the lethal commander; its owner
+		// is the killer.
+		if d.Category == validation.LossCategoryCommanderDamage && d.SourceCard != "" {
+			for i, s := range gs.Seats {
+				if s == nil || i == victim.Idx {
+					continue
+				}
+				for _, n := range s.CommanderNames {
+					if n == d.SourceCard {
+						out.KillerSeat = i
+					}
+				}
+			}
+		}
+	}
+	if out.KillerSeat == -1 && winner >= 0 && out.Method == "combat" {
+		// Combat closes are overwhelmingly the winner's; keep -1 for
+		// the ambiguous non-combat shapes instead of guessing.
+		out.KillerSeat = winner
+	}
+	return out
 }
 
 // SnapshotTurnCounters captures the per-seat TurnCounters into a fixed-size

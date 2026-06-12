@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
+	"github.com/hexdek/hexdek/internal/validation"
 )
 
 // ResolveEffect is the main entry point. It dispatches on effect.Kind()
@@ -736,7 +737,7 @@ func distributeDamage(gs *GameState, src *Permanent, targets []Target, total int
 			Source: sourceName(src),
 			Amount: total,
 			Details: map[string]interface{}{
-				"targets_hit": total,
+				"targets_hit":   total,
 				"targets_total": n,
 				"rule":          "601.2d",
 			},
@@ -2056,9 +2057,9 @@ func resolveCreateTokenCopy(gs *GameState, src *Permanent, e *gameast.CreateToke
 	}
 	if copySource == nil {
 		gs.LogEvent(Event{
-			Kind:   "create_token_copy",
-			Seat:   controller,
-			Source: sourceName(src),
+			Kind:    "create_token_copy",
+			Seat:    controller,
+			Source:  sourceName(src),
 			Details: map[string]interface{}{"copy": "no_target"},
 		})
 		return
@@ -2373,12 +2374,12 @@ func resolveCounterMod(gs *GameState, src *Permanent, e *gameast.CounterMod) {
 		})
 		if op == "put" && effectiveCount > 0 {
 			FireCardTrigger(gs, "counter_placed", map[string]interface{}{
-				"target_perm":   t.Permanent,
-				"target_seat":   t.Permanent.Controller,
-				"counter_kind":  e.CounterKind,
-				"amount":        effectiveCount,
-				"source_card":   sourceName(src),
-				"source_seat":   controllerSeat(src),
+				"target_perm":  t.Permanent,
+				"target_seat":  t.Permanent.Controller,
+				"counter_kind": e.CounterKind,
+				"amount":       effectiveCount,
+				"source_card":  sourceName(src),
+				"source_seat":  controllerSeat(src),
 			})
 		}
 	}
@@ -2723,8 +2724,8 @@ func resolveCopySpell(gs *GameState, src *Permanent, e *gameast.CopySpell) {
 	}
 	if target == nil {
 		gs.LogEvent(Event{
-			Kind:   "copy_spell",
-			Source: sourceName(src),
+			Kind:    "copy_spell",
+			Source:  sourceName(src),
 			Details: map[string]interface{}{"copy": "no_target"},
 		})
 		return
@@ -2767,9 +2768,9 @@ func resolveCopySpell(gs *GameState, src *Permanent, e *gameast.CopySpell) {
 	// Per-card-driven copies (Kalamax, Alania, Riku) log copy_spell
 	// themselves but don't reach this dispatch; that's a partial.
 	FireCardTrigger(gs, "spell_copied", map[string]interface{}{
-		"caster_seat":  controller,
-		"copied_card":  copyCard,
-		"source_card":  target.Card,
+		"caster_seat": controller,
+		"copied_card": copyCard,
+		"source_card": target.Card,
 	})
 }
 
@@ -2792,8 +2793,8 @@ func resolveCopyPermanent(gs *GameState, src *Permanent, e *gameast.CopyPermanen
 	}
 	if copySource == nil {
 		gs.LogEvent(Event{
-			Kind:   "copy_permanent",
-			Source: sourceName(src),
+			Kind:    "copy_permanent",
+			Source:  sourceName(src),
 			Details: map[string]interface{}{"copy": "no_target"},
 		})
 		return
@@ -3060,6 +3061,7 @@ func MarkSeatLostByEffect(gs *GameState, seat int, srcSourceName string) bool {
 	// classify cause as LossEffect (CR §104.3e) without LossReason
 	// string parsing.
 	s.LossReason = reason
+	s.LossDetail = &validation.LossReason{Category: validation.LossCategoryEffect, Rule: "104.3e", SourceCard: srcSourceName}
 	s.LostByEffect = true
 	s.Lost = true
 	gs.LogEvent(Event{
