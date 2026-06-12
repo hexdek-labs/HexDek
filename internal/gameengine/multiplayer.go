@@ -407,6 +407,24 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 	}
 	seat.LeftGame = true
 
+	// Stamp the 1-based elimination sequence (r62). HandleSeatElimination
+	// runs exactly once per seat (LeftGame guard above) and CheckEnd
+	// invokes it in elimination order, so "count of seats already
+	// stamped + 1" is the seat's position in the order. Same-CheckEnd
+	// simultaneous eliminations tie-break by seat index (the §800.4a
+	// loop order). Unlike the seat_eliminated event below, this survives
+	// RetainEvents=false — heimdall.ClassifyKill keys the winner's kill
+	// method off the max-LostOrder opponent.
+	if seat.LostOrder == 0 {
+		order := 1
+		for _, other := range gs.Seats {
+			if other != nil && other != seat && other.LostOrder > 0 {
+				order++
+			}
+		}
+		seat.LostOrder = order
+	}
+
 	// CR §106.4 — eliminated players hold no mana.
 	if seat.Mana != nil {
 		seat.Mana.Clear()
