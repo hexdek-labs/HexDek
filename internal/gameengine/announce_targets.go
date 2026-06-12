@@ -80,7 +80,15 @@ func announceTargetFilter(item *StackItem) (gameast.Filter, bool) {
 // `src` is the targeting source for protection checks: the activating
 // permanent for abilities, or a transient Permanent wrapping the spell
 // card for casts (same shape the §608.2b lazy gate synthesizes).
-func AnnounceTargets(gs *GameState, src *Permanent, controller int, f gameast.Filter) []Target {
+//
+// `exclude` (r62.1) removes specific permanents from the legal set before
+// the Hat/policy choose. ActivateAbility passes the activation cost's
+// planned sacrifice victim: a sacrifice-self ability (Gremlin Mine /
+// Crater Elemental class) must never announce the about-to-be-sacrificed
+// permanent as its own target — CR-legal, but the target is guaranteed
+// dead before the ability reaches the stack, so the announcement is a
+// wasted activation flagged by the §608.2c legality validator.
+func AnnounceTargets(gs *GameState, src *Permanent, controller int, f gameast.Filter, exclude ...*Permanent) []Target {
 	if gs == nil || controller < 0 || controller >= len(gs.Seats) {
 		return nil
 	}
@@ -147,12 +155,13 @@ func AnnounceTargets(gs *GameState, src *Permanent, controller int, f gameast.Fi
 	// planeswalkers. Policy fallback mirrors pickPermanentTarget's
 	// any-target branch (first living opponent's face).
 	if isAnyTargetShape(f) {
-		legal := legalAnyTargets(gs, controller, src)
+		legal := dropExcludedTargets(legalAnyTargets(gs, controller, src), exclude)
 		if len(legal) == 0 {
 			return nil
 		}
 		var choice Target
-		if pol := pickPermanentTarget(gs, f, controller, src); len(pol) == 1 {
+		if pol := pickPermanentTarget(gs, f, controller, src); len(pol) == 1 &&
+			(len(exclude) == 0 || targetInLegalSet(pol[0], legal) || pol[0].Kind == TargetKindSeat) {
 			choice = pol[0]
 		} else {
 			choice = legal[0]
@@ -169,7 +178,7 @@ func AnnounceTargets(gs *GameState, src *Permanent, controller int, f gameast.Fi
 	// Permanent filters — the main surface. Enumerate, consult the Hat,
 	// fall back to the engine policy pick, fire the "targeted" trigger
 	// for the final choice (matching the old lazy pick's behavior).
-	legal := legalSinglePermanentTargets(gs, f, controller, src)
+	legal := dropExcludedTargets(legalSinglePermanentTargets(gs, f, controller, src), exclude)
 	if len(legal) == 0 {
 		return nil
 	}
@@ -283,4 +292,30 @@ func fireAnnouncedTargetedTrigger(gs *GameState, srcSeat int, t Target) {
 		"card":   t.Permanent.Card.DisplayName(),
 		"source": srcSeat,
 	})
+}
+
+// dropExcludedTargets filters permanent targets whose Permanent appears in
+// the exclusion list (r62.1 — see AnnounceTargets). Seat targets pass
+// through untouched. No-op (returns the input slice) when the exclusion
+// list is empty.
+func dropExcludedTargets(legal []Target, exclude []*Permanent) []Target {
+	if len(exclude) == 0 || len(legal) == 0 {
+		return legal
+	}
+	out := legal[:0]
+	for _, t := range legal {
+		drop := false
+		if t.Kind == TargetKindPermanent && t.Permanent != nil {
+			for _, ex := range exclude {
+				if ex != nil && t.Permanent == ex {
+					drop = true
+					break
+				}
+			}
+		}
+		if !drop {
+			out = append(out, t)
+		}
+	}
+	return out
 }

@@ -279,6 +279,13 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		return &CastError{Reason: "exhaust_already_used"}
 	}
 
+	// plannedSacrifice carries the activation cost's predicted sacrifice
+	// victim from the announcement-time pick (step 0.7, where it is
+	// excluded from the legal target set) to the payment site (step 2,
+	// which sacrifices exactly this permanent). nil when the ability has
+	// no sacrifice cost or no announce-time pick ran.
+	var plannedSacrifice *Permanent
+
 	// 0.7. Announcement-time target legality. CR §602.2b: targets for an
 	// activated ability are chosen as the ability is activated. §115.2 +
 	// the keyword targeting rules (§702.11 hexproof, §702.18 shroud,
@@ -307,8 +314,28 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		// as before.
 		probe := &StackItem{Source: perm, Effect: ab.Effect}
 		if filter, ok := requiredTargetFilter(probe); ok {
+			// r62.1 — predict the activation cost's sacrifice victim BEFORE
+			// picking targets, and exclude it from the legal set. A
+			// sacrifice-self ability (Gremlin Mine / Crater Elemental /
+			// Ingenuity Engine class) could otherwise announce the
+			// about-to-be-sacrificed permanent as its own target — the
+			// target is then guaranteed dead before the ability reaches the
+			// stack (§608.2c legality finding, 5 hits in the r62 chaos run).
+			// The predicted victim is remembered and reused at cost payment
+			// so the exclusion and the actual sacrifice can never diverge
+			// (FindSacrificeTarget consults the Hat; asking twice could
+			// pick two different victims).
+			if ab.Cost.Sacrifice != nil {
+				plannedSacrifice = FindSacrificeTarget(gs, seatIdx, perm, ab.Cost.Sacrifice)
+			}
 			rejected := false
-			if picked := AnnounceTargets(gs, perm, seatIdx, filter); len(picked) > 0 {
+			var picked []Target
+			if plannedSacrifice != nil {
+				picked = AnnounceTargets(gs, perm, seatIdx, filter, plannedSacrifice)
+			} else {
+				picked = AnnounceTargets(gs, perm, seatIdx, filter)
+			}
+			if len(picked) > 0 {
 				targets = picked
 			} else {
 				// AnnounceTargets declines out-of-scope shapes (fixed-multi
@@ -455,7 +482,15 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		}
 		// Sacrifice cost (CR §602.1b) — "sacrifice [filter]" or sacrifice self.
 		if ab.Cost.Sacrifice != nil {
-			victim := FindSacrificeTarget(gs, seatIdx, perm, ab.Cost.Sacrifice)
+			// r62.1 — reuse the victim predicted at announcement (see step
+			// 0.7) so the announce-time exclusion and the paid cost agree;
+			// fall back to a fresh pick for caller-supplied-target paths
+			// (no prediction ran) or if the predicted victim left the
+			// battlefield in between.
+			victim := plannedSacrifice
+			if victim == nil || !permanentOnBattlefield(gs, victim) {
+				victim = FindSacrificeTarget(gs, seatIdx, perm, ab.Cost.Sacrifice)
+			}
 			if victim == nil {
 				if ab.Cost.Tap {
 					perm.Tapped = false
@@ -571,6 +606,44 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		// (no stack item per CR §605.3a). nil-receiver no-op when off.
 		gs.Legality.FinishActivation(gs, legalityObs, nil)
 		return nil
+	}
+
+	// 3.9 (r62.1) — post-cost target re-validation, mirroring the
+	// resolution-time §608.2b gate. Paying the activation cost can remove
+	// an announced target (a sacrifice cost's death triggers, or the
+	// sacrifice victim itself on caller-supplied-target paths). Per CR
+	// §608.2b an ability whose targets have ALL become illegal is
+	// countered; costs stay paid. Doing the check HERE — before the item
+	// is placed on the stack — keeps an illegal target from ever being
+	// announced on a stack item (the §608.2c legality-validator finding);
+	// partially-illegal lists are trimmed to the legal subset exactly as
+	// the resolution gate would.
+	if len(targets) > 0 {
+		gateProbe := &StackItem{
+			Kind:       "activated",
+			Controller: seatIdx,
+			Source:     perm,
+			Card:       perm.Card,
+			Effect:     eff,
+			Targets:    targets,
+			AbilityIdx: abilityIdx,
+		}
+		allIllegal, legalTargets := CheckTargetLegality(gs, gateProbe)
+		if allIllegal {
+			gs.LogEvent(Event{
+				Kind:   "activation_fizzle",
+				Seat:   seatIdx,
+				Source: perm.Card.DisplayName(),
+				Details: map[string]interface{}{
+					"ability_idx": abilityIdx,
+					"reason":      "all_targets_illegal_after_costs",
+					"rule":        "608.2b",
+				},
+			})
+			gs.Legality.FinishActivation(gs, legalityObs, nil)
+			return nil
+		}
+		targets = legalTargets
 	}
 
 	// 4. Non-mana ability: push onto stack (CR §602.1d).
