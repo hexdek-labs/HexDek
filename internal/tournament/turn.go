@@ -1951,8 +1951,11 @@ func buildActivationOptions(gs *gameengine.GameState, seatIdx int, phase string)
 				}
 			}
 
-			// Life cost check.
-			if act.Cost.PayLife != nil && *act.Cost.PayLife > 0 {
+			// Life cost check. Not applied to planeswalkers: a PayLife
+			// there is a legacy encoding of the loyalty adjustment (the
+			// planeswalker block below gates it against loyalty counters,
+			// not the player's life).
+			if act.Cost.PayLife != nil && *act.Cost.PayLife > 0 && !perm.IsPlaneswalker() {
 				if seat.Life <= *act.Cost.PayLife {
 					continue
 				}
@@ -1987,21 +1990,35 @@ func buildActivationOptions(gs *gameengine.GameState, seatIdx int, phase string)
 				}
 			}
 
-			// Planeswalker loyalty abilities: only one per turn (CR §606.3).
-			// Loyalty abilities have a PayLife cost on planeswalkers that
-			// represents the loyalty adjustment. We track usage via a
-			// per-permanent per-turn flag.
+			// Planeswalker loyalty abilities (CR §606): only one per turn
+			// (§606.3), sorcery speed, and a minus ability needs at least
+			// that many loyalty counters (§606.5). Thor encodes the
+			// loyalty cost as a Cost.Extra string ("+1" / "−3" / "0" —
+			// gameengine.LoyaltyCost); legacy datasets parsed minus costs
+			// into PayLife, kept as a fallback.
 			if perm.IsPlaneswalker() {
 				if perm.Flags != nil && perm.Flags["loyalty_used_this_turn"] > 0 {
 					continue
 				}
-				// Check loyalty counter availability for minus abilities.
-				if act.Cost.PayLife != nil && *act.Cost.PayLife > 0 {
+				// Loyalty abilities are main-phase, empty-stack only —
+				// same gate as TimingRestriction == "sorcery" above.
+				if phase != "main" || len(gs.Stack) > 0 {
+					continue
+				}
+				need := 0
+				if d, ok := gameengine.LoyaltyCost(act); ok {
+					if d < 0 {
+						need = -d
+					}
+				} else if act.Cost.PayLife != nil && *act.Cost.PayLife > 0 {
+					need = *act.Cost.PayLife
+				}
+				if need > 0 {
 					loyalty := 0
 					if perm.Counters != nil {
 						loyalty = perm.Counters["loyalty"]
 					}
-					if loyalty < *act.Cost.PayLife {
+					if loyalty < need {
 						continue
 					}
 				}
