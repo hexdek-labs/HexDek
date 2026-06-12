@@ -1354,6 +1354,30 @@ func resolveExile(gs *GameState, src *Permanent, e *gameast.Exile) {
 		}
 	}
 
+	// "Exile the top card(s) of your library" — Filter.Base
+	// "library_top" (Abbot of Keral Keep / Aerial Caravan impulse
+	// family, 84 corpus shapes). No battlefield permanent matches this
+	// base, so the harmful pick below found nothing and the exile
+	// silently NO-OPED — the impulse-draw mechanic's exile half never
+	// happened, leaving the paired play_exiled_cards grant with nothing
+	// to play (r63 OUTCOME phase-7 finding).
+	if base == "library_top" {
+		seat := controllerSeat(src)
+		n := 1
+		if e.Target.Count != nil {
+			if v, ok := e.Target.Count.IntVal(); ok && v > 0 {
+				n = v
+			}
+		}
+		if seat >= 0 && seat < len(gs.Seats) && gs.Seats[seat] != nil {
+			lib := gs.Seats[seat]
+			for i := 0; i < n && len(lib.Library) > 0; i++ {
+				MoveCard(gs, lib.Library[0], seat, "library", "exile", "exile_library_top")
+			}
+		}
+		return
+	}
+
 	targets := PickTargetHarmful(gs, src, e.Target)
 	maybeFireCrime(gs, src, targets)
 	for _, t := range targets {

@@ -91,13 +91,46 @@ func leafPhase3(spec BoardSpec, eff gameast.Effect, d *Delta) (bool, bool) {
 		switch e.ModKind {
 		case "regenerate_typed", "restriction", "cast_trigger_tail",
 			"trigger_tail_fragment", "trigger_fragment_upkeep",
-			"attach", "gain_energy":
+			"attach", "gain_energy",
+			// r63 phase 7 (probed zero-observable): transforming the
+			// non-DFC scaffold source does nothing (CR §712); roll-table
+			// rows are registrations.
+			"transform_self", "roll_table_row":
 			// r63 phase 5 — zero-delta resolutions: regeneration
 			// shields, restriction markers ("can't block"), delayed/
 			// cast-trigger registrations, equipment attach, and energy
 			// bookkeeping change no snapshot-observable count. A wrong
 			// implementation that draws/mills/destroys instead is
 			// caught by the zero expectation.
+			return true, true
+		case "level_marker":
+			// Class level-up ("{2}{g}: level 2"): the engine sets the
+			// source's "level" counter to N. The fresh scaffold source
+			// has no level counters, so the delta is exactly +N (r63
+			// phase-7 audit: the zero-delta guess was wrong by exactly
+			// this counter — 66 findings, engine correct).
+			if len(e.Args) == 0 {
+				return true, false
+			}
+			n := 0
+			switch v := e.Args[0].(type) {
+			case float64:
+				n = int(v)
+			case int:
+				n = v
+			case string:
+				for _, ch := range v {
+					if ch < '0' || ch > '9' {
+						n = 0
+						break
+					}
+					n = n*10 + int(ch-'0')
+				}
+			}
+			if n <= 0 {
+				return true, false
+			}
+			d.CountersByKind["level"] += n
 			return true, true
 		}
 		return true, false // other ModificationEffects: out of scope

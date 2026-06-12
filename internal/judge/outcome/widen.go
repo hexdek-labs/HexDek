@@ -186,6 +186,12 @@ func expand(spec BoardSpec, eff gameast.Effect, prefixes []*Delta) ([]*Delta, bo
 		}
 		return out, true
 	}
+	if out, handled, ok := expandSetValuedLeaf7(spec, eff, prefixes); handled {
+		if !ok {
+			return nil, false
+		}
+		return out, true
+	}
 
 	// Leaf effects: apply to every prefix in place.
 	for _, d := range prefixes {
@@ -217,6 +223,9 @@ func leaf(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 		return ok
 	}
 	if handled, ok := leafPhase6(spec, eff, d); handled {
+		return ok
+	}
+	if handled, ok := leafPhase7(spec, eff, d); handled {
 		return ok
 	}
 	switch e := eff.(type) {

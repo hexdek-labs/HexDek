@@ -333,7 +333,9 @@ func leafPhase4(spec BoardSpec, eff gameast.Effect, d *Delta) (bool, bool) {
 			return false, false
 		}
 		if !cleanFilter(e.Target) {
-			return true, false
+			// Adjective-filtered counters ("noncreature spell") fall
+			// through to the phase-7 arms.
+			return false, false
 		}
 		d.LiveStack--
 		return true, true
