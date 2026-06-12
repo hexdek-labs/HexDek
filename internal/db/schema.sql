@@ -254,6 +254,13 @@ CREATE TABLE IF NOT EXISTS showmatch_elo (
     delta        REAL NOT NULL DEFAULT 0.0,
     hex_delta    REAL NOT NULL DEFAULT 0.0,
     bracket      INTEGER NOT NULL DEFAULT 0,
+    -- r62: full TrueSkill state. `rating` is the conservative estimate
+    -- (μ−3σ) only; without μ/σ persisted every restart reconstructed
+    -- σ=σ₀(400) for all decks (PR #996 band-aid), erasing the ladder's
+    -- learned certainty. 0/0 = legacy row → loadPersistedState falls
+    -- back to the band-aid reconstruction.
+    ts_mu        REAL NOT NULL DEFAULT 0.0,
+    ts_sigma     REAL NOT NULL DEFAULT 0.0,
     updated_at   INTEGER NOT NULL
 );
 

@@ -15,7 +15,8 @@ import (
 // Showmatch (no AST/oracle load) exercises exactly that path.
 
 func TestMaintenanceMode_GauntletReturns503(t *testing.T) {
-	sm := &Showmatch{maintenance: true}
+	sm := &Showmatch{}
+	sm.maintenance.Store(true)
 	req := httptest.NewRequest("POST", "/api/gauntlet/owner/deck", nil)
 	w := httptest.NewRecorder()
 	sm.handleStartGauntlet(w, req)
@@ -28,7 +29,8 @@ func TestMaintenanceMode_GauntletReturns503(t *testing.T) {
 }
 
 func TestMaintenanceMode_SpectateSpawnReturns503(t *testing.T) {
-	sm := &Showmatch{maintenance: true}
+	sm := &Showmatch{}
+	sm.maintenance.Store(true)
 	req := httptest.NewRequest("POST", "/api/spectate/spawn", strings.NewReader(`{"deck_id":"o/d"}`))
 	w := httptest.NewRecorder()
 	sm.handleSpawnSpectateRoom(w, req)
@@ -41,7 +43,7 @@ func TestMaintenanceMode_SpectateSpawnReturns503(t *testing.T) {
 }
 
 func TestMaintenanceMode_DefaultsOff(t *testing.T) {
-	if (&Showmatch{}).maintenance {
+	if (&Showmatch{}).maintenance.Load() {
 		t.Error("maintenance must default to false (live) when HEXDEK_MAINTENANCE is unset")
 	}
 }
