@@ -329,6 +329,29 @@ var invariantFilter string
 // off — zero behavior change in the engine when unset.
 var legalityEnabled bool
 
+// splitCardList parses a card-name list flag. `;` is the preferred
+// separator since several card names contain commas (e.g. "Anafenza,
+// the Foremost"); comma still works when no `;` is present so older
+// invocations keep parsing. Previously only --seed-cards-all-seats had
+// the `;` form — --seed-cards comma-split "Anafenza, the Foremost"
+// into two unmatchable names.
+func splitCardList(raw string) []string {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	sep := ","
+	if strings.Contains(raw, ";") {
+		sep = ";"
+	}
+	var out []string
+	for _, s := range strings.Split(raw, sep) {
+		if t := strings.TrimSpace(s); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
 func main() {
 	var (
 		gamesFlag      = flag.Int("games", 1000, "number of chaos games to run")
@@ -369,30 +392,8 @@ func main() {
 		invariantFilter = canonical
 	}
 
-	var seedCards []string
-	if strings.TrimSpace(*seedCardsFlag) != "" {
-		for _, s := range strings.Split(*seedCardsFlag, ",") {
-			if t := strings.TrimSpace(s); t != "" {
-				seedCards = append(seedCards, t)
-			}
-		}
-	}
-	var seedCardsAllSeats []string
-	if strings.TrimSpace(*seedCardsAllSeatsFlag) != "" {
-		// `;` is the preferred separator since several card names contain
-		// commas (e.g. "Adrix and Nev, Twincasters"). Comma still works
-		// when no `;` is present so older invocations keep parsing.
-		raw := *seedCardsAllSeatsFlag
-		sep := ","
-		if strings.Contains(raw, ";") {
-			sep = ";"
-		}
-		for _, s := range strings.Split(raw, sep) {
-			if t := strings.TrimSpace(s); t != "" {
-				seedCardsAllSeats = append(seedCardsAllSeats, t)
-			}
-		}
-	}
+	seedCards := splitCardList(*seedCardsFlag)
+	seedCardsAllSeats := splitCardList(*seedCardsAllSeatsFlag)
 
 	workers := *workersFlag
 	if workers <= 0 {
