@@ -111,6 +111,10 @@ type nightmareResult struct {
 	CrashErr   string
 	StackTrace string
 	CardNames  []string // cards on the board when it crashed/violated
+	// MintedCount is len(gs.MintedInstanceIDs) after board build — the
+	// r63 vacuity pin. Zero means checkZoneConservation silently falls
+	// back to the legacy count check and the strict census never runs.
+	MintedCount int
 }
 
 // ---------------------------------------------------------------------------
@@ -1086,6 +1090,15 @@ func runNightmareBoard(boardIdx int,
 				card.Owner = seatIdx
 			}
 
+			// Mint an OG InstanceID so the Phase-4 ZoneConservation
+			// census (and the strict disappearance check behind
+			// --instanceid-strict-census) actually runs on nightmare
+			// boards. Pre-r63 nothing here minted, MintedInstanceIDs
+			// stayed empty, and checkZoneConservation silently fell
+			// back to the legacy count check — 40k "clean" strict-
+			// census boards had never executed the census at all.
+			gameengine.MintOGInstanceID(gs, card)
+
 			perm := &gameengine.Permanent{
 				Card:       card,
 				Controller: seatIdx,
@@ -1105,14 +1118,18 @@ func runNightmareBoard(boardIdx int,
 
 		// Give each seat a minimal library to avoid empty-library SBA triggers.
 		for j := 0; j < 10; j++ {
-			seat.Library = append(seat.Library, &gameengine.Card{
+			lib := &gameengine.Card{
 				Name:  "Plains",
 				Owner: seatIdx,
 				Types: []string{"basic", "land", "plains"},
-			})
+			}
+			gameengine.MintOGInstanceID(gs, lib)
+			seat.Library = append(seat.Library, lib)
 		}
 		seat.Hat = &hat.GreedyHat{}
 	}
+
+	result.MintedCount = len(gs.MintedInstanceIDs)
 
 	// Run SBAs.
 	func() {
