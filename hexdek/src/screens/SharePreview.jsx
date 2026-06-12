@@ -324,7 +324,7 @@ export default function SharePreview() {
           <div style={{ flex: 1, minWidth: 0 }}>
             <div className="deck-hero__meta">
               <Tag solid>{wbs ? `B${wbs}` : 'BRACKET PENDING'}{wbs && wbsLabel ? ' · ' + wbsLabel : ''}</Tag>
-              {pls && pls !== wbs && <Tag solid kind="warn">PLAYS LIKE B{pls}</Tag>}
+              {bracketDiverges && <Tag solid kind="warn">EST. B{measuredBracket}</Tag>}
               <Tag>{archetype}</Tag>
               {colorIdentity.length > 0 && <Tag>{colorIdentity.join('')}</Tag>}
             </div>
@@ -352,7 +352,7 @@ export default function SharePreview() {
         </div>
         <div className="deck-vital-signs__cell">
           <div className="deck-vital-signs__num">
-            {wbs && wbs !== '?' ? `B${wbs}${pls && pls !== wbs ? ` → B${pls}` : ''}` : '—'}
+            {wbs && wbs !== '?' ? `B${wbs}${bracketDiverges ? ` → B${measuredBracket}` : ''}` : '—'}
           </div>
           <div className="deck-vital-signs__lbl">POWER LEVEL</div>
           {wbsLabel ? (

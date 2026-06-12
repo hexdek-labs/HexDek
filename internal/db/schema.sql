@@ -508,6 +508,27 @@ CREATE TABLE IF NOT EXISTS session_stitch (
     PRIMARY KEY (anon_id, owner)
 );
 
+-- frontend_errors is the error sibling of pageviews: one row per
+-- reportable frontend crash (ErrorBoundary catch, uncaught window error,
+-- unhandled promise rejection). anon_id is nullable — iOS private mode
+-- blocks localStorage so storage-crash sessions, the class the r60
+-- blank-tabs work chased, have no anon id by construction. Client-side
+-- filtering/dedupe + a per-IP limiter on the handler bound the write
+-- rate. See internal/hexapi/telemetry_error.go.
+
+CREATE TABLE IF NOT EXISTS frontend_errors (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    anon_id  TEXT,
+    message  TEXT NOT NULL,
+    stack    TEXT,
+    kind     TEXT NOT NULL DEFAULT '',    -- chunk | storage | render | uncaught | rejection
+    source   TEXT NOT NULL DEFAULT '',    -- boundary | window | promise
+    path     TEXT NOT NULL DEFAULT '',
+    ts       INTEGER NOT NULL             -- unix epoch milliseconds (client-supplied)
+);
+
+CREATE INDEX IF NOT EXISTS idx_frontend_errors_ts ON frontend_errors(ts DESC);
+
 -- ===== CARD PERFORMANCE =====
 -- One row per card. Updated when a game ends if any seat had the card
 -- in battlefield/hand/graveyard. games_included counts those games;

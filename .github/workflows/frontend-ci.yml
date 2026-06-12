@@ -1,0 +1,105 @@
+# Frontend CI (r61) — the net that was missing when the `pls`
+# ReferenceError (55386105) and the cardSearchOpen TDZ (fixed in
+# 44550a26) shipped: nothing built, linted, or smoke-tested hexdek/ on
+# PR. Three jobs:
+#
+#   build       — vite production build (catches syntax/import breakage)
+#               + the node --test unit suite (lib helpers, parsers).
+#   lint        — BLOCKING gate on eslint.config.ci.js (crash-class rules
+#                 only; currently no-undef — see the ratchet plan in that
+#                 file) + the full eslint config as a non-blocking
+#                 visibility step (160+ pre-existing errors; gating it
+#                 outright would make CI permanently red on old debt).
+#   smoke       — the existing Playwright e2e smoke suite plus the
+#                 render-crash regression spec, against a Playwright-
+#                 launched vite dev server (playwright.e2e.config.ts).
+#                 HEXDEK_API_URL points at a closed local port so the
+#                 run is hermetic: every screen renders its fetch-failed
+#                 / mock-fallback state, which is exactly the path the
+#                 historical render crashes lived on. Dev-mode (unminified)
+#                 is deliberate — TDZ ReferenceErrors reproduce there but
+#                 are masked by the production minifier's const→var.
+
+name: frontend-ci
+
+on:
+  pull_request:
+    paths:
+      - 'hexdek/**'
+      - '.github/workflows/frontend-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'hexdek/**'
+      - '.github/workflows/frontend-ci.yml'
+
+defaults:
+  run:
+    working-directory: hexdek
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: hexdek/package-lock.json
+      - run: npm ci
+      - name: Production build
+        run: npx vite build
+        env:
+          VITE_API_URL: ''
+      - name: Unit tests
+        run: npm run test:unit
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: hexdek/package-lock.json
+      - run: npm ci
+      - name: Crash-class lint gate (blocking)
+        run: npx eslint --config eslint.config.ci.js src
+      - name: Full lint (visibility only — pre-existing debt, do not gate yet)
+        run: npx eslint src
+        continue-on-error: true
+
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: hexdek/package-lock.json
+      - run: npm ci
+      - name: Install Playwright chromium
+        run: npx playwright install --with-deps chromium
+      - name: Playwright smoke + render-crash regression
+        run: npx playwright test --config=playwright.e2e.config.ts
+        env:
+          # Closed port → every API fetch fails fast → hermetic run on
+          # the fetch-failed/mock render paths. The smoke spec's console
+          # filters already tolerate network noise by design.
+          HEXDEK_API_URL: 'http://127.0.0.1:9'
+      - name: Upload screenshots + report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            hexdek/e2e/screenshots/
+            hexdek/e2e/report/
+            hexdek/e2e/test-results/
+          retention-days: 7

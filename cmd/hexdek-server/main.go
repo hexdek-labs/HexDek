@@ -199,6 +199,12 @@ func main() {
 		// user opening multiple bug reports in a session, tight
 		// enough to throttle a bot blasting the disk.
 		FeedbackLimiter: hexapi.NewRateLimiter(5, 1.0/60.0),
+		// r61: per-IP token bucket on POST /api/telemetry/error. The
+		// frontend dedupes + caps its own error reports, but an old
+		// cached bundle or a hostile client can still blast the
+		// endpoint. 10-burst + 1 per 10s — a real crash burst gets
+		// through, a loop gets clipped.
+		ErrorTelemetryLimiter: hexapi.NewRateLimiter(10, 1.0/10.0),
 		// r60 round 2: per-IP token bucket shared across the deck-write
 		// endpoints (POST /api/decks, POST /api/decks/import, POST
 		// /api/import/moxfield, POST /api/decks/{owner}/{id}/analyze).
