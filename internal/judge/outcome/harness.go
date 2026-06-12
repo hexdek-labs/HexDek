@@ -265,3 +265,24 @@ type ExtractedEffect struct {
 func resolveThroughEngine(gs *gameengine.GameState, src *gameengine.Permanent, eff gameast.Effect) {
 	gameengine.ResolveEffect(gs, src, eff)
 }
+
+// ---------------------------------------------------------------------------
+// Exported observation API (r63 progression dimension) — the PROGRESSION
+// trigger-correctness checker composes on the same state-delta
+// observation: a trigger firing is observable as its effect's delta.
+// ---------------------------------------------------------------------------
+
+// StateSnapshot is an opaque aggregate observation of a game state.
+type StateSnapshot struct{ s snapshot }
+
+// Snap captures the aggregate observable state.
+func Snap(gs *gameengine.GameState) StateSnapshot { return StateSnapshot{snap(gs)} }
+
+// DiffSnapshots computes the actual Delta between two snapshots.
+func DiffSnapshots(before, after StateSnapshot) *Delta { return diff(before.s, after.s) }
+
+// BuildBoardForSpec is the exported board builder (spec-first argument
+// order for external callers).
+func BuildBoardForSpec(spec BoardSpec, srcName string) (*gameengine.GameState, *gameengine.Permanent) {
+	return BuildBoard(spec, srcName)
+}
