@@ -241,7 +241,10 @@ func TestTiamat_ETBPullsUpToFiveDifferentDragons(t *testing.T) {
 
 	tiamat := addPerm(gs, 0, "Tiamat", "creature", "dragon")
 	tiamat.Flags["was_cast"] = 1 // intervening-if: "if you cast it"
-	tiamatETBSearch(gs, tiamat)
+	// Dispatch through fireETB (not a direct handler call) so this test
+	// also pins single-fire composite behavior — the r61 C-1 bug was two
+	// stacked registrations that only dispatch-level tests could see.
+	fireETB(gs, tiamat)
 
 	if len(gs.Seats[0].Hand) != 3 {
 		t.Errorf("Tiamat should have pulled 3 different-named non-Tiamat dragons; hand=%d", len(gs.Seats[0].Hand))
@@ -257,7 +260,7 @@ func TestTiamat_ETBNoTutorWhenNotCast(t *testing.T) {
 
 	// Reanimated / blinked Tiamat — no was_cast flag.
 	tiamat := addPerm(gs, 0, "Tiamat", "creature", "dragon")
-	tiamatETBSearch(gs, tiamat)
+	fireETB(gs, tiamat)
 
 	if len(gs.Seats[0].Hand) != 0 {
 		t.Errorf("Tiamat should not tutor when not cast; hand=%d", len(gs.Seats[0].Hand))
