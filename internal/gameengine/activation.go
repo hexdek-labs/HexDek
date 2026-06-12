@@ -415,6 +415,13 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		}
 	}
 
+	// paidSacrifice remembers the permanent sacrificed to pay this
+	// activation's cost so resolution can hand it to the per_card handler
+	// as ctx["sacrificed_perm"] — Lyzolda-class abilities ("Sacrifice a
+	// creature: ... if the sacrificed creature was red/black ...") read
+	// the victim's characteristics at resolution, and before r63 the
+	// dispatcher dropped that information on the floor.
+	var paidSacrifice *Permanent
 	if ab != nil {
 		// Tap cost.
 		if ab.Cost.Tap {
@@ -498,6 +505,7 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 				return &CastError{Reason: "no_sacrifice_target"}
 			}
 			SacrificePermanent(gs, victim, "activation_cost")
+			paidSacrifice = victim
 		}
 		// Discard cost — discard N cards from hand. Routes through
 		// DiscardCard so CR §702.34a Madness replacement, §702.187
@@ -590,10 +598,14 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 			fmt.Sprintf("act:%d", abilityIdx), "", nil)
 		pushIIDEnabler(gs, manaAB.InstanceID)
 		// Try per_card hook first; fall back to AST effect.
-		InvokeActivatedHook(gs, perm, abilityIdx, map[string]interface{}{
+		manaCtx := map[string]interface{}{
 			"controller": seatIdx,
 			"targets":    targets,
-		})
+		}
+		if paidSacrifice != nil {
+			manaCtx["sacrificed_perm"] = paidSacrifice
+		}
+		InvokeActivatedHook(gs, perm, abilityIdx, manaCtx)
 		if eff != nil {
 			ResolveEffect(gs, perm, eff)
 		}
@@ -671,6 +683,9 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		Targets:    targets,
 		AbilityIdx: abilityIdx,
 	}
+	if paidSacrifice != nil {
+		item.CostMeta = map[string]interface{}{"sacrificed_perm": paidSacrifice}
+	}
 	// Mint an AB AbilityInstance for this stack item. Activated abilities
 	// have no triggering event so EnablerInstanceID stays empty per the
 	// §4.3 schema. TriggerMetadata stays nil; AbilityID encodes the
@@ -714,11 +729,17 @@ func resolveActivatedAbility(gs *GameState, item *StackItem) {
 
 	// Try per_card snowflake hook first — if a handler is registered for
 	// this card, it's authoritative.
-	InvokeActivatedHook(gs, item.Source, item.AbilityIdx, map[string]interface{}{
+	resolveCtx := map[string]interface{}{
 		"controller": item.Controller,
 		"targets":    item.Targets,
 		"from_stack": true,
-	})
+	}
+	if item.CostMeta != nil {
+		if v, ok := item.CostMeta["sacrificed_perm"]; ok && v != nil {
+			resolveCtx["sacrificed_perm"] = v
+		}
+	}
+	InvokeActivatedHook(gs, item.Source, item.AbilityIdx, resolveCtx)
 
 	// If an AST effect is present, resolve it as well.
 	if item.Effect != nil {
