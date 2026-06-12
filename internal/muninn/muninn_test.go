@@ -132,10 +132,10 @@ func TestPersistDeadTriggers(t *testing.T) {
 							KillsAttributed: 0,
 						},
 						{
-							Name:            "Craterhoof Behemoth",
-							TriggeredCount:  1,
-							DamageDealt:     40,
-							KillsAttributed: 0,
+							Name:             "Craterhoof Behemoth",
+							TriggeredCount:   1,
+							DamageDealt:      40,
+							KillsAttributed:  0,
 							ContributedToWin: true,
 						},
 						{
@@ -300,9 +300,9 @@ func TestCapEntries(t *testing.T) {
 
 func TestPersistInvariantViolations_CapsAtMax(t *testing.T) {
 	dir := t.TempDir()
-	batch := make([]InvariantViolation, maxInvariantViolations+500)
+	batch := make([]ArchivedViolation, maxInvariantViolations+500)
 	for i := range batch {
-		batch[i] = InvariantViolation{GameSeed: int64(i), Message: "test"}
+		batch[i] = ArchivedViolation{GameSeed: int64(i), Message: "test"}
 	}
 	if err := PersistInvariantViolations(dir, batch); err != nil {
 		t.Fatal(err)

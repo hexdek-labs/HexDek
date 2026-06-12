@@ -73,25 +73,25 @@ func AllInvariants() []Invariant {
 		{Name: "LifeConsistency", Check: checkLifeConsistency},
 		{Name: "OwnerImmutability", Check: checkOwnerImmutability},
 		{Name: "SBACompleteness", Check: checkSBACompleteness},
-		{Name: "StackIntegrity", Check: checkStackIntegrity},
+		{Name: "StackIntegrity", Dimension: judge.DimensionStateIntegrity, Check: checkStackIntegrity},
 		{Name: "ManaPoolNonNegative", Check: checkManaPoolNonNegative},
 		{Name: "CommanderDamageMonotonic", Check: checkCommanderDamageMonotonic},
 		{Name: "PhasedOutExclusion", Check: checkPhasedOutExclusion},
 		{Name: "IndestructibleRespected", Check: checkIndestructibleRespected},
-		{Name: "LayerIdempotency", Check: checkLayerIdempotency},
+		{Name: "LayerIdempotency", Dimension: judge.DimensionStateIntegrity, Check: checkLayerIdempotency},
 		// --- 10 new invariants (Odin v2) ---
 		{Name: "TriggerCompleteness", Check: checkTriggerCompleteness},
 		{Name: "CounterAccuracy", Check: checkCounterAccuracy},
 		{Name: "CombatLegality", Check: checkCombatLegality},
-		{Name: "TurnStructure", Check: checkTurnStructure},
+		{Name: "TurnStructure", Dimension: judge.DimensionStateIntegrity, Check: checkTurnStructure},
 		{Name: "CardIdentity", Dimension: judge.DimensionConservation, Check: checkCardIdentity},
-		{Name: "ReplacementCompleteness", Check: checkReplacementCompleteness},
+		{Name: "ReplacementCompleteness", Dimension: judge.DimensionStateIntegrity, Check: checkReplacementCompleteness},
 		{Name: "WinCondition", Check: checkWinCondition},
 		{Name: "Timing", Check: checkTiming},
 		{Name: "ResourceConservation", Check: checkResourceConservation},
-		{Name: "AttachmentConsistency", Check: checkAttachmentConsistency},
+		{Name: "AttachmentConsistency", Dimension: judge.DimensionStateIntegrity, Check: checkAttachmentConsistency},
 		{Name: "StackOrderCorrectness", Check: checkStackOrderCorrectness},
-		{Name: "ExileLinkageIntegrity", Check: checkExileLinkageIntegrity},
+		{Name: "ExileLinkageIntegrity", Dimension: judge.DimensionStateIntegrity, Check: checkExileLinkageIntegrity},
 		{Name: "ZoneCastGrantExpiry", Check: checkZoneCastGrantExpiry},
 	}
 }
@@ -421,7 +421,6 @@ func ZoneConservationStrict(gs *GameState) (error, bool) {
 	}
 	return err, true
 }
-
 
 func cardIsTokenForInv(c *Card) bool {
 	if c == nil {

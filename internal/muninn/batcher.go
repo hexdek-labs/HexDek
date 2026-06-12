@@ -1,6 +1,7 @@
 package muninn
 
 import (
+	"github.com/hexdek/hexdek/internal/judge"
 	"sync"
 	"time"
 )
@@ -45,7 +46,7 @@ type Batcher struct {
 	crashes      []pendingCrash
 	deadTriggers map[deadTrigKey]*deadTrigAccum
 	concessions  []ConcessionRecord
-	invariants   []InvariantViolation
+	invariants   []ArchivedViolation
 	regressions  []RegressionFailure
 	pending      int
 	games        int
@@ -197,7 +198,7 @@ func (b *Batcher) AddConcessions(records []ConcessionRecord) {
 }
 
 // AddInvariantViolations buffers Odin invariant violations.
-func (b *Batcher) AddInvariantViolations(violations []InvariantViolation) {
+func (b *Batcher) AddInvariantViolations(violations []ArchivedViolation) {
 	if len(violations) == 0 {
 		return
 	}
@@ -215,21 +216,14 @@ func (b *Batcher) AddInvariantViolations(violations []InvariantViolation) {
 // AddAutoArchive buffers Feynman/Odin invariant violations from one game,
 // tagged with the RNG seed and deck keys so the regression runner can
 // replay it. Mirrors AutoArchiveViolation but goes through the batch.
-func (b *Batcher) AddAutoArchive(rngSeed int64, deckKeys [4]string, violations []string) {
+func (b *Batcher) AddAutoArchive(rngSeed int64, deckKeys [4]string, violations []judge.ValidationViolation) {
 	if len(violations) == 0 {
 		return
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
-	records := make([]InvariantViolation, 0, len(violations))
+	records := make([]ArchivedViolation, 0, len(violations))
 	for _, v := range violations {
-		vtype, msg := parseOracleViolation(v)
-		records = append(records, InvariantViolation{
-			GameSeed:      rngSeed,
-			DeckKeys:      deckKeys,
-			ViolationType: vtype,
-			Message:       msg,
-			Timestamp:     now,
-		})
+		records = append(records, NewArchivedViolation(rngSeed, deckKeys, now, v))
 	}
 	b.AddInvariantViolations(records)
 }
@@ -324,10 +318,10 @@ func (b *Batcher) Flush() error {
 
 // BatcherStats holds lightweight counters for health telemetry.
 type BatcherStats struct {
-	ParserGaps    int
-	Crashes       int
-	DeadTriggers  int
-	Invariants    int
+	ParserGaps   int
+	Crashes      int
+	DeadTriggers int
+	Invariants   int
 }
 
 // Stats returns cumulative counters without reading any files from disk.

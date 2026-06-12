@@ -229,13 +229,13 @@ type SessionStats struct {
 }
 
 type CompletedGame struct {
-	GameID     int            `json:"game_id"`
-	Commanders []string       `json:"commanders"`
-	DeckKeys   []string       `json:"deck_keys"`
-	Winner     int            `json:"winner"`
-	WinnerName string         `json:"winner_name"`
-	Turns      int            `json:"turns"`
-	EndReason  string         `json:"end_reason"`
+	GameID     int      `json:"game_id"`
+	Commanders []string `json:"commanders"`
+	DeckKeys   []string `json:"deck_keys"`
+	Winner     int      `json:"winner"`
+	WinnerName string   `json:"winner_name"`
+	Turns      int      `json:"turns"`
+	EndReason  string   `json:"end_reason"`
 	// WinReason captures HOW the winner won (heimdall.ClassifyKill,
 	// prefixed "win_"). Orthogonal to EndReason (the game-end TYPE).
 	// Empty for draws / unclassified games.
@@ -1252,11 +1252,7 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 		if !oracleResult.Clean() {
 			log.Printf("feynman: grinder game violations: %s",
 				hat.FormatViolations(oracleResult.Violations))
-			msgs := make([]string, 0, len(oracleResult.Violations))
-			for _, v := range oracleResult.Violations {
-				msgs = append(msgs, v.String())
-			}
-			sm.muninnSink.AutoArchive(gauntSeed.RNGSeed, gauntSeed.DeckKeys, msgs)
+			sm.muninnSink.AutoArchive(gauntSeed.RNGSeed, gauntSeed.DeckKeys, oracleResult.Violations)
 		}
 		sm.muninnSink.EndGame()
 
@@ -1867,11 +1863,7 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 	if !bracketOracle.Clean() {
 		log.Printf("feynman: bracket game violations: %s",
 			hat.FormatViolations(bracketOracle.Violations))
-		msgs := make([]string, 0, len(bracketOracle.Violations))
-		for _, v := range bracketOracle.Violations {
-			msgs = append(msgs, v.String())
-		}
-		sm.muninnSink.AutoArchive(bracketSeed.RNGSeed, bracketSeed.DeckKeys, msgs)
+		sm.muninnSink.AutoArchive(bracketSeed.RNGSeed, bracketSeed.DeckKeys, bracketOracle.Violations)
 	}
 	sm.muninnSink.EndGame()
 }
@@ -2203,11 +2195,7 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 	if !showOracle.Clean() {
 		log.Printf("feynman: showmatch game %d violations: %s",
 			gameNum, hat.FormatViolations(showOracle.Violations))
-		msgs := make([]string, 0, len(showOracle.Violations))
-		for _, v := range showOracle.Violations {
-			msgs = append(msgs, v.String())
-		}
-		sm.muninnSink.AutoArchive(showSeed.RNGSeed, showSeed.DeckKeys, msgs)
+		sm.muninnSink.AutoArchive(showSeed.RNGSeed, showSeed.DeckKeys, showOracle.Violations)
 	}
 	sm.muninnSink.EndGame()
 

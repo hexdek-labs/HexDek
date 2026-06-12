@@ -2,6 +2,7 @@ package hexapi
 
 import (
 	"github.com/hexdek/hexdek/internal/heimdall"
+	"github.com/hexdek/hexdek/internal/judge"
 	"github.com/hexdek/hexdek/internal/muninn"
 )
 
@@ -57,7 +58,7 @@ func (a *muninnAdapter) RecordCrash(panicMsg string, stackTrace string, deckKeys
 // AutoArchive buffers Feynman/Odin invariant violations from one game.
 // Replaces direct muninn.AutoArchiveViolation calls so the per-game
 // invariant check doesn't read-modify-write invariant_violations.json.
-func (a *muninnAdapter) AutoArchive(rngSeed int64, deckKeys [4]string, violations []string) {
+func (a *muninnAdapter) AutoArchive(rngSeed int64, deckKeys [4]string, violations []judge.ValidationViolation) {
 	if a.batcher == nil {
 		return
 	}

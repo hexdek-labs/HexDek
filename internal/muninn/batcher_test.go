@@ -1,6 +1,7 @@
 package muninn
 
 import (
+	"github.com/hexdek/hexdek/internal/judge"
 	"os"
 	"path/filepath"
 	"testing"
@@ -237,10 +238,12 @@ func TestBatcher_AddAutoArchive(t *testing.T) {
 	dir := t.TempDir()
 	b := NewBatcher(BatcherConfig{Dir: dir, BatchSize: 1000, FlushInterval: time.Hour})
 
-	b.AddAutoArchive(424242, [4]string{"deckA", "deckB", "deckC", "deckD"}, []string{
-		"[error] permanent_type_consistency (seat 2): creature has noncreature type",
-		"[warn] mana_pool_drain (seat 0): floating mana not emptied",
-		"freeform note without prefix",
+	b.AddAutoArchive(424242, [4]string{"deckA", "deckB", "deckC", "deckD"}, []judge.ValidationViolation{
+		{Name: "permanent_type_consistency", Severity: judge.SeverityCritical, Seat: 2,
+			Message: "creature has noncreature type"},
+		{Name: "mana_pool_drain", Severity: judge.SeverityWarning, Seat: 0,
+			Message: "floating mana not emptied"},
+		{Name: "freeform_note", Message: "freeform note without prefix"},
 	})
 	// Empty input is a no-op (must not panic, must not flush).
 	b.AddAutoArchive(0, [4]string{}, nil)
@@ -262,8 +265,8 @@ func TestBatcher_AddAutoArchive(t *testing.T) {
 	if got[0].ViolationType != "permanent_type_consistency" {
 		t.Errorf("expected parsed ViolationType, got %q", got[0].ViolationType)
 	}
-	if got[2].ViolationType != "" || got[2].Message != "freeform note without prefix" {
-		t.Errorf("freeform string should round-trip with empty type: %+v", got[2])
+	if got[2].ViolationType != "freeform_note" {
+		t.Errorf("canonical Name carries through as ViolationType: %+v", got[2])
 	}
 }
 

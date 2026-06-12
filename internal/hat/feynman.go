@@ -39,12 +39,9 @@ func (r OracleResult) Clean() bool { return len(r.Violations) == 0 }
 func CheckGame(gs *gameengine.GameState) OracleResult {
 	result := OracleResult{GameTurns: gs.Turn}
 	checks := []func(*gameengine.GameState, *OracleResult){
-		checkLifeSBA,
+		judgeStateIntegrity, // §704.5a/c/6c + §104.2a (judge.CheckStateIntegrity)
 		checkToughnessSBA,
-		checkPoisonSBA,
-		checkCommanderDamageSBA,
 		judgeConservation,
-		checkExactlyOneWinner,
 		checkTurnBounds,
 		checkNoNegativeCounters,
 		checkPermanentTypes,
@@ -53,44 +50,60 @@ func CheckGame(gs *gameengine.GameState) OracleResult {
 		check(gs, &result)
 		result.Checked++
 	}
-	// Consolidation step 4: stamp the surface tag and route every
-	// violation through the unified LogViolation sink (the Hex Judge
-	// observation seam). Emitters in this file don't set Surface
-	// individually; this is the single normalization point.
+	// Route the feynman-local residual checks through the unified sink.
+	// Convention (log-at-origin): an empty Surface marks a violation
+	// not yet routed; Judge checks (state-integrity, conservation)
+	// arrive WITH Surface set and were routed at origin — re-logging
+	// them here would double-count.
 	for i := range result.Violations {
 		if result.Violations[i].Surface == "" {
 			result.Violations[i].Surface = judge.SurfaceFeynman
+			result.Violations[i].Dimension = judge.DimensionStateIntegrity
+			judge.LogViolation(result.Violations[i])
 		}
-		judge.LogViolation(result.Violations[i])
 	}
 	return result
 }
 
-// §704.5a — A player with 0 or less life loses the game.
-// Exception: "can't lose the game" effects (Platinum Angel, Lich's Mastery)
-// prevent the loss via FireLoseGameEvent. The SBA fires but the replacement
-// cancels it, so the player legitimately has ≤0 life without being Lost.
-// We detect this by checking SBA704_5a_emitted: if false and life ≤0, the
-// SBA checked but something prevented the loss → downgrade to info.
-func checkLifeSBA(gs *gameengine.GameState, r *OracleResult) {
+// judgeStateIntegrity is the STATE-INTEGRITY dimension's end-of-game
+// hook: builds the neutral GameSnapshot (resolving the engine-specific
+// can't-lose shields) and forwards to judge.CheckStateIntegrity. The
+// four standalone check bodies that used to live here (§704.5a life,
+// §704.5c poison, §704.6c commander damage, §104.2a exactly-one-winner)
+// are DELETED — promoted verbatim into internal/judge/stateintegrity.go.
+func judgeStateIntegrity(gs *gameengine.GameState, r *OracleResult) {
+	snap := judge.GameSnapshot{
+		TotalSeats: len(gs.Seats),
+		Ended:      gs.Flags != nil && gs.Flags["ended"] == 1,
+	}
+	if gs.Flags != nil {
+		_, snap.HasWinner = gs.Flags["winner"]
+	}
 	for i, s := range gs.Seats {
 		if s == nil {
 			continue
 		}
-		if s.Life <= 0 && !s.Lost {
-			severity := "critical"
-			if !s.SBA704_5a_emitted && hasCantLoseEffect(gs, i) {
-				severity = "info"
-			}
-			r.Violations = append(r.Violations, OracleViolation{
-				Name:     "704.5a",
-				Message:  fmt.Sprintf("seat %d has %d life but is not marked lost", i, s.Life),
-				Seat:     i,
-				Severity: severity,
-				Context:  map[string]interface{}{"life": s.Life},
-			})
+		ss := judge.SeatSnapshot{
+			Seat:           i,
+			Life:           s.Life,
+			Lost:           s.Lost,
+			PoisonCounters: s.PoisonCounters,
+			CantLoseShield: hasCantLoseEffect(gs, i),
+			SBALossEmitted: s.SBA704_5a_emitted,
 		}
+		if s.CommanderDamage != nil {
+			ss.CommanderDamage = map[string]int{}
+			for _, cmdrMap := range s.CommanderDamage {
+				for name, dmg := range cmdrMap {
+					if dmg > ss.CommanderDamage[name] {
+						ss.CommanderDamage[name] = dmg
+					}
+				}
+			}
+		}
+		snap.Seats = append(snap.Seats, ss)
 	}
+	r.Violations = append(r.Violations, judge.CheckStateIntegrity(snap)...)
 }
 
 // hasCantLoseEffect checks if any permanent on the battlefield has a
@@ -133,48 +146,6 @@ func checkToughnessSBA(gs *gameengine.GameState, r *OracleResult) {
 	}
 }
 
-// §704.5c — A player with 10+ poison counters loses the game.
-func checkPoisonSBA(gs *gameengine.GameState, r *OracleResult) {
-	for i, s := range gs.Seats {
-		if s == nil {
-			continue
-		}
-		if s.PoisonCounters >= 10 && !s.Lost {
-			r.Violations = append(r.Violations, OracleViolation{
-				Name:     "704.5c",
-				Message:  fmt.Sprintf("seat %d has %d poison but is not lost", i, s.PoisonCounters),
-				Seat:     i,
-				Severity: "critical",
-				Context:  map[string]interface{}{"poison": s.PoisonCounters},
-			})
-		}
-	}
-}
-
-// §704.5v — Commander damage: a player who has been dealt 21+ combat
-// damage by a single commander loses the game.
-func checkCommanderDamageSBA(gs *gameengine.GameState, r *OracleResult) {
-	for i, s := range gs.Seats {
-		if s == nil || s.CommanderDamage == nil {
-			continue
-		}
-		for _, cmdrMap := range s.CommanderDamage {
-			for cmdrName, dmg := range cmdrMap {
-				if dmg >= 21 && !s.Lost {
-					r.Violations = append(r.Violations, OracleViolation{
-						Name: "704.5v",
-						Message: fmt.Sprintf("seat %d has %d commander damage from %s but is not lost",
-							i, dmg, cmdrName),
-						Seat:     i,
-						Severity: "critical",
-						Context:  map[string]interface{}{"commander": cmdrName, "damage": dmg},
-					})
-				}
-			}
-		}
-	}
-}
-
 // judgeConservation is the CONSERVATION-dimension Judge check at the
 // post-game (Feynman) hook point: the InstanceID strict census
 // (gameengine.ZoneConservationStrict — set-equality by identity,
@@ -199,53 +170,6 @@ func judgeConservation(gs *gameengine.GameState, r *OracleResult) {
 			"check": "instanceid_strict_census",
 		},
 	})
-}
-
-// Exactly one winner: at game end, exactly N-1 seats should be lost.
-func checkExactlyOneWinner(gs *gameengine.GameState, r *OracleResult) {
-	lost, alive := 0, 0
-	for _, s := range gs.Seats {
-		if s == nil {
-			continue
-		}
-		if s.Lost {
-			lost++
-		} else {
-			alive++
-		}
-	}
-	// The "exactly N-1 seats Lost" invariant ONLY applies to a CR §104.2a
-	// last-seat-standing win: the game ended (Flags["ended"]==1), a winner was
-	// set (Flags["winner"]), and that win was by ELIMINATION — exactly one seat
-	// still alive. It does NOT hold for the other legitimate terminal states,
-	// which the old unconditional check flagged as ~8,764 false positives across
-	// the fishtank:
-	//   - turn-cap-leader finish: the showmatch loop hits showmatchMaxTurn and
-	//     exits WITHOUT CheckEnd flipping Flags["ended"]; the leader wins on life
-	//     but the other seats are alive, not Lost.
-	//   - §104.2c "you win the game" effects (Thassa's Oracle / Approach of the
-	//     Second Sun / Laboratory Maniac): a winner is set without every opponent
-	//     dying, so alive > 1.
-	//   - §104.3b/§104.4a simultaneous-death draws: no winner flag; all/none Lost.
-	// Real loser-marking bugs (a seat at <=0 life not marked Lost) are caught by
-	// checkLifeSBA, so narrowing this check loses no genuine coverage.
-	ended := gs.Flags != nil && gs.Flags["ended"] == 1
-	_, hasWinner := gs.Flags["winner"]
-	if !ended || !hasWinner || alive != 1 {
-		return
-	}
-	// ended + winner + exactly one seat alive => CR §104.2a. N-1 Lost must hold;
-	// anything else is a genuine loser-marking bug.
-	expected := len(gs.Seats) - 1
-	if lost != expected {
-		r.Violations = append(r.Violations, OracleViolation{
-			Name:     "game_end",
-			Message:  fmt.Sprintf("last-seat-standing win but %d of %d seats lost (expected %d)", lost, len(gs.Seats), expected),
-			Seat:     -1,
-			Severity: "critical",
-			Context:  map[string]interface{}{"lost": lost, "total": len(gs.Seats)},
-		})
-	}
 }
 
 // Sanity: games shouldn't run more than ~200 turns. Flag runaways.

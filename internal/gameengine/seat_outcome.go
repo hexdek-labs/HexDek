@@ -61,11 +61,12 @@ func (v SeatOutcomeViolation) String() string {
 // (consolidation step 4) for the unified LogViolation router.
 func (v SeatOutcomeViolation) Canonical() judge.ValidationViolation {
 	return judge.ValidationViolation{
-		Surface:  judge.SurfaceSeatOutcome,
-		Name:     v.Kind,
-		Severity: judge.SeverityCritical,
-		Message:  v.Detail,
-		Seat:     v.Seat,
+		Surface:   judge.SurfaceSeatOutcome,
+		Dimension: judge.DimensionStateIntegrity,
+		Name:      v.Kind,
+		Severity:  judge.SeverityCritical,
+		Message:   v.Detail,
+		Seat:      v.Seat,
 		Context: map[string]interface{}{
 			"turn": v.Turn,
 			"when": v.When,

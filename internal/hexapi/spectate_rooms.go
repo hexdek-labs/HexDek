@@ -644,11 +644,7 @@ func (room *SpectateRoom) runOneSpectateGame() {
 	if !roomOracle.Clean() {
 		log.Printf("feynman: spectate-room %s game %d violations: %s",
 			room.ID, gameNum, hat.FormatViolations(roomOracle.Violations))
-		msgs := make([]string, 0, len(roomOracle.Violations))
-		for _, v := range roomOracle.Violations {
-			msgs = append(msgs, v.String())
-		}
-		sm.muninnSink.AutoArchive(roomSeed.RNGSeed, roomSeed.DeckKeys, msgs)
+		sm.muninnSink.AutoArchive(roomSeed.RNGSeed, roomSeed.DeckKeys, roomOracle.Violations)
 	}
 	sm.muninnSink.EndGame()
 

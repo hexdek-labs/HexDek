@@ -11,11 +11,11 @@ package muninn
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hexdek/hexdek/internal/judge"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -33,8 +33,8 @@ type ParserGap struct {
 	Snippet     string   `json:"snippet"`
 	Count       int      `json:"count"`
 	FirstSeen   string   `json:"first_seen"`   // RFC3339
-	LastSeen    string   `json:"last_seen"`     // RFC3339
-	GameConfigs []string `json:"game_configs"`  // optional context
+	LastSeen    string   `json:"last_seen"`    // RFC3339
+	GameConfigs []string `json:"game_configs"` // optional context
 }
 
 // CrashLog records a single crash (panic or timeout) from a tournament game.
@@ -69,22 +69,38 @@ type ConcessionRecord struct {
 	Timestamp  string `json:"timestamp"`
 }
 
-// InvariantViolation records a Feynman/Odin-detected invariant violation
-// during a game. The seed + deck keys make the offending game replayable
-// from the regression runner.
+// ArchivedViolation is one persisted invariant-violation row
+// (invariant_violations.json) — game-replay metadata wrapped around a
+// canonical judge violation. The seed + deck keys make the offending
+// game replayable from the regression runner.
 //
-// Consolidation step 4 note: this is a PERSISTED JSON row schema
-// (invariant_violations.json), not a violation vocabulary — the
-// violations it archives were already routed through
-// validation.LogViolation at their origin (RunAllInvariants / Feynman
-// CheckGame). Do not re-log here; do not grow this into a vocabulary.
-type InvariantViolation struct {
+// Judge fold (r63): this REPLACES muninn's former InvariantViolation
+// vocabulary copy. Rows are built from judge.ValidationViolation via
+// NewArchivedViolation — the stringify-then-reparse path
+// (parseOracleViolation) is deleted. JSON field names are unchanged so
+// existing archives merge cleanly. This is a STORAGE ROW, not a
+// violation vocabulary; violations were already routed through
+// judge.LogViolation at origin — do not re-log here.
+type ArchivedViolation struct {
 	GameSeed      int64     `json:"game_seed"`
 	DeckKeys      [4]string `json:"deck_keys"`
 	ViolationType string    `json:"violation_type"`
 	Message       string    `json:"message"`
 	Timestamp     string    `json:"timestamp"`
 	Turn          int       `json:"turn,omitempty"`
+}
+
+// NewArchivedViolation wraps one canonical judge violation with replay
+// metadata. ViolationType carries the canonical Name (the check/rule
+// identifier); Message carries the full canonical rendering.
+func NewArchivedViolation(gameSeed int64, deckKeys [4]string, ts string, v judge.ValidationViolation) ArchivedViolation {
+	return ArchivedViolation{
+		GameSeed:      gameSeed,
+		DeckKeys:      deckKeys,
+		ViolationType: v.Name,
+		Message:       v.String(),
+		Timestamp:     ts,
+	}
 }
 
 // RegressionFailure records a parity test failure.
@@ -216,8 +232,8 @@ func PersistDeadTriggers(dir string, analyses []*analytics.GameAnalysis) error {
 		triggerName string
 		cardName    string
 	}
-	batch := make(map[dtKey]int)        // key -> total fire count
-	batchGames := make(map[dtKey]int)   // key -> number of games seen
+	batch := make(map[dtKey]int)      // key -> total fire count
+	batchGames := make(map[dtKey]int) // key -> number of games seen
 
 	for _, ga := range analyses {
 		if ga == nil {
@@ -328,7 +344,7 @@ func PersistDeadTriggersRaw(dir string, triggers []DeadTrigger) error {
 
 // PersistInvariantViolations appends new Odin-detected invariant
 // violations to the persistent invariant_violations.json file.
-func PersistInvariantViolations(dir string, violations []InvariantViolation) error {
+func PersistInvariantViolations(dir string, violations []ArchivedViolation) error {
 	if len(violations) == 0 {
 		return nil
 	}
@@ -367,7 +383,7 @@ func PersistInvariantViolations(dir string, violations []InvariantViolation) err
 // The "rule" portion is parsed out as ViolationType; the full string is
 // preserved in Message. Strings that don't match the format are stored
 // verbatim with an empty ViolationType.
-func AutoArchiveViolation(dir string, rngSeed int64, deckKeys [4]string, violations []string) error {
+func AutoArchiveViolation(dir string, rngSeed int64, deckKeys [4]string, violations []judge.ValidationViolation) error {
 	if len(violations) == 0 {
 		return nil
 	}
@@ -385,40 +401,11 @@ func AutoArchiveViolation(dir string, rngSeed int64, deckKeys [4]string, violati
 
 	now := time.Now().UTC().Format(time.RFC3339)
 	for _, v := range violations {
-		vtype, msg := parseOracleViolation(v)
-		existing = append(existing, InvariantViolation{
-			GameSeed:      rngSeed,
-			DeckKeys:      deckKeys,
-			ViolationType: vtype,
-			Message:       msg,
-			Timestamp:     now,
-		})
+		existing = append(existing, NewArchivedViolation(rngSeed, deckKeys, now, v))
 	}
 
 	existing = capEntries(existing, maxInvariantViolations)
 	return atomicWriteJSON(filepath.Join(dir, invariantViolationsFile), existing)
-}
-
-// parseOracleViolation extracts the rule identifier from a string formatted
-// by hat.OracleViolation.String() ("[severity] rule (seat N): description").
-// Returns the rule plus the original message. If the string doesn't match
-// the format, returns ("", s).
-func parseOracleViolation(s string) (vtype, msg string) {
-	if !strings.HasPrefix(s, "[") {
-		return "", s
-	}
-	end := strings.Index(s, "] ")
-	if end < 0 {
-		return "", s
-	}
-	rest := s[end+2:]
-	if j := strings.Index(rest, " (seat "); j >= 0 {
-		return rest[:j], s
-	}
-	if j := strings.Index(rest, ": "); j >= 0 {
-		return rest[:j], s
-	}
-	return rest, s
 }
 
 // PersistRegressionFailures appends new parity test failures to the
@@ -504,13 +491,13 @@ func ReadDeadTriggers(dir string) ([]DeadTrigger, error) {
 }
 
 // ReadInvariantViolations reads the persistent invariant_violations.json file.
-func ReadInvariantViolations(dir string) ([]InvariantViolation, error) {
-	var out []InvariantViolation
+func ReadInvariantViolations(dir string) ([]ArchivedViolation, error) {
+	var out []ArchivedViolation
 	if err := readJSON(filepath.Join(dir, invariantViolationsFile), &out); err != nil {
 		return nil, err
 	}
 	if out == nil {
-		out = []InvariantViolation{}
+		out = []ArchivedViolation{}
 	}
 	return out, nil
 }
@@ -612,8 +599,8 @@ func SortedCrashLogs(logs []CrashLog) []CrashLog {
 
 // ConcessionSummary aggregates concession counts by commander.
 type ConcessionSummary struct {
-	Commander string `json:"commander"`
-	Count     int    `json:"count"`
+	Commander string  `json:"commander"`
+	Count     int     `json:"count"`
 	AvgTurn   float64 `json:"avg_turn"`
 	AvgLife   float64 `json:"avg_life"`
 }
@@ -622,9 +609,9 @@ type ConcessionSummary struct {
 // returns them sorted by count descending.
 func SortedConcessions(records []ConcessionRecord) []ConcessionSummary {
 	type accum struct {
-		count    int
-		turnSum  int
-		lifeSum  int
+		count   int
+		turnSum int
+		lifeSum int
 	}
 	byCmd := map[string]*accum{}
 	for _, r := range records {
