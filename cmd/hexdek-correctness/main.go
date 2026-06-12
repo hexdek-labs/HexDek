@@ -38,6 +38,7 @@ import (
 
 	"github.com/hexdek/hexdek/internal/astload"
 	"github.com/hexdek/hexdek/internal/deckparser"
+	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
 func main() {
@@ -93,7 +94,7 @@ func main() {
 		if err := meta.SupplementWithOracleJSON(*oraclePath); err != nil {
 			log.Fatalf("meta oracle supplement %s: %v", *oraclePath, err)
 		}
-		chaosCorpus, err := loadOracleCorpus(*oraclePath)
+		chaosCorpus, err := gameengine.LoadChaosCorpusFromOracleJSON(*oraclePath)
 		if err != nil {
 			log.Fatalf("oracle: %v", err)
 		}

@@ -1,0 +1,6 @@
+{
+  "comment": "Hex Judge known-residual baseline. Regenerate with: go run ./cmd/hexdek-judge --run --update-baseline (same --ast/--oracle/--games/--seed as CI). The gate fails on fingerprints NOT in this set.",
+  "fingerprints": {
+    "progression|Ajani, Nacatl Pariah // Ajani, Nacatl Avenger|etb|fire": 1
+  }
+}
