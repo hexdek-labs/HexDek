@@ -210,7 +210,6 @@ func darkRitualResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 // ---------------------------------------------------------------------------
 
 func registerSmotheringTithe(r *Registry) {
-	r.OnTrigger("Smothering Tithe", "opponent_draws", smotheringTitheTrigger)
 	r.OnTrigger("Smothering Tithe", "card_drawn", smotheringTitheTrigger)
 }
 

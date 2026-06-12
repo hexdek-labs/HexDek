@@ -2485,14 +2485,28 @@ func (gs *GameState) drawOne(seat int) (*Card, bool) {
 	if gs.Flags == nil {
 		gs.Flags = map[string]int{}
 	}
+	// CR §614.6 "except the first one they draw in each of their draw
+	// steps" (Orcish Bowmasters, Notion Thief): the turn runner stamps
+	// gs.Flags["_suppress_first_draw_trigger_seat"] = seat+1 before the
+	// draw-step draw. Consume it HERE — the chokepoint every draw passes
+	// through and where card_drawn fires — and surface it in the trigger
+	// ctx. Pre-r62 the marker was consumed in FireDrawTriggerObservers,
+	// which turn-step draws never reach, so it leaked onto the seat's
+	// NEXT effect draw and suppressed the wrong trigger.
+	isDrawStepDraw := false
+	if v, ok := gs.Flags["_suppress_first_draw_trigger_seat"]; ok && v == seat+1 {
+		isDrawStepDraw = true
+		delete(gs.Flags, "_suppress_first_draw_trigger_seat")
+	}
 	gs.Flags["_card_drawn_depth"]++
 	if gs.Flags["_card_drawn_depth"] <= 8 {
 		FireCardTrigger(gs, "card_drawn", map[string]interface{}{
-			"seat":          seat,
-			"drawer_seat":   seat,
-			"card":          c.DisplayName(),
-			"nth_this_turn": s.Flags["cards_drawn_this_turn"],
-			"source":        "draw",
+			"seat":              seat,
+			"drawer_seat":       seat,
+			"card":              c.DisplayName(),
+			"nth_this_turn":     s.Flags["cards_drawn_this_turn"],
+			"source":            "draw",
+			"is_draw_step_draw": isDrawStepDraw,
 		})
 	}
 	gs.Flags["_card_drawn_depth"]--

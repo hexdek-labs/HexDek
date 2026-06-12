@@ -30,7 +30,6 @@ import (
 func registerNekusar(r *Registry) {
 	r.OnTrigger("Nekusar, the Mindrazer", "draw_step_controller", nekusarDrawStep)
 	r.OnTrigger("Nekusar, the Mindrazer", "card_drawn", nekusarOpponentDraw)
-	r.OnTrigger("Nekusar, the Mindrazer", "opponent_draws", nekusarOpponentDraw)
 }
 
 func nekusarDrawStep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

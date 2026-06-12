@@ -238,7 +238,6 @@ func teferisProtectionResolve(gs *gameengine.GameState, item *gameengine.StackIt
 
 func registerConsecratedSphinx(r *Registry) {
 	r.OnTrigger("Consecrated Sphinx", "card_drawn", consecratedSphinxTrigger)
-	r.OnTrigger("Consecrated Sphinx", "opponent_draws", consecratedSphinxTrigger)
 }
 
 func consecratedSphinxTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -580,7 +579,6 @@ func imperialSealResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 func registerOrcishBowmasters(r *Registry) {
 	r.OnETB("Orcish Bowmasters", orcishBowmastersETB)
 	r.OnTrigger("Orcish Bowmasters", "card_drawn", orcishBowmastersTrigger)
-	r.OnTrigger("Orcish Bowmasters", "opponent_draws", orcishBowmastersTrigger)
 }
 
 func orcishBowmastersETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -624,6 +622,12 @@ func orcishBowmastersTrigger(gs *gameengine.GameState, perm *gameengine.Permanen
 	}
 	// Only triggers when an OPPONENT draws.
 	if drawerSeat == perm.Controller {
+		return
+	}
+	// CR §614.6 — "except the first one they draw in each of their draw
+	// steps". drawOne consumes the turn runner's marker and surfaces it
+	// here (r62; pre-r62 this handler fired on draw-step draws too).
+	if b, _ := ctx["is_draw_step_draw"].(bool); b {
 		return
 	}
 	seat := perm.Controller

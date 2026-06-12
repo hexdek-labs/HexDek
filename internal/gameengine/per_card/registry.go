@@ -17,6 +17,7 @@
 package per_card
 
 import (
+	"reflect"
 	"strings"
 	"sync"
 
@@ -348,6 +349,25 @@ func (r *Registry) EnumerateOnTriggerRegistrations() []struct {
 }
 
 // OnTrigger registers a custom-event trigger handler.
+//
+// r62 — IDEMPOTENT on (card, canonical event, handler identity). The
+// registry had accumulated 53 double-registrations through two
+// mechanisms, each making the handler FIRE TWICE per event (the
+// Wave-1b double-dispatch disease at the registry layer):
+//
+//   - alias collapse: OnTrigger(card, "opponent_draws", fn) +
+//     OnTrigger(card, "card_drawn", fn) both canonicalize to
+//     "card_drawn" (Smothering Tithe minted two Treasures per opponent
+//     draw; Consecrated Sphinx drew 4 instead of 2; Orcish Bowmasters
+//     pinged twice; Nekusar drained twice);
+//   - cross-file duplication: registerDefaults() AND a sibling batch
+//     init both call the same register fn (Howling Mine drew 2 per
+//     upkeep via registry.go:~1743 + batch17_sweep.go's init).
+//
+// Skipping a re-registration of the SAME function for the SAME
+// (card, canonical event) closes both shapes generically — a card with
+// two genuinely distinct abilities registers distinct functions and is
+// unaffected. See /tmp/fable-review/wave1b-doubletax-audit.md.
 func (r *Registry) OnTrigger(cardName, event string, h TriggerHandler) {
 	if h == nil {
 		return
@@ -359,6 +379,12 @@ func (r *Registry) OnTrigger(cardName, event string, h TriggerHandler) {
 		r.onTrigger[k] = map[string][]TriggerHandler{}
 	}
 	canonical := gameengine.NormalizeEventSingle(event)
+	hp := reflect.ValueOf(h).Pointer()
+	for _, existing := range r.onTrigger[k][canonical] {
+		if reflect.ValueOf(existing).Pointer() == hp {
+			return // same handler already registered for this event
+		}
+	}
 	r.onTrigger[k][canonical] = append(r.onTrigger[k][canonical], h)
 }
 

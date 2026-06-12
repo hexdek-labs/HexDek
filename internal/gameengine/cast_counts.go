@@ -218,20 +218,15 @@ func FireCastTriggerObservers(gs *GameState, cast *Card, controller int, fromCop
 			}
 		}
 
+		// r62 Wave-1b double-dispatch audit: Storm-Kiln Artist's inline
+		// arm DELETED — the per_card magecraft handler
+		// (magecraft_consumers_r60.go, fired via FireMagecraftTriggers at
+		// cast AND copy time) is authoritative; both firing minted two
+		// Treasures per spell. Niv-Mizzet, Parun's inline draw arm
+		// DELETED for the same reason (per_card instant_or_sorcery_cast
+		// handler draws; both firing drew two cards per spell). See
+		// /tmp/fable-review/wave1b-doubletax-audit.md for the full audit.
 		switch name {
-		case "Storm-Kiln Artist":
-			if perm.Controller == controller && isInstantOrSorcery {
-				createTreasureToken(gs, perm.Controller)
-				gs.LogEvent(Event{
-					Kind:   "cast_trigger_observer",
-					Seat:   perm.Controller,
-					Source: name,
-					Details: map[string]interface{}{
-						"cast":   castName,
-						"effect": "treasure_token",
-					},
-				})
-			}
 		case "Young Pyromancer":
 			if perm.Controller == controller && isInstantOrSorcery {
 				createSimpleCreatureToken(gs, perm.Controller,
@@ -317,24 +312,6 @@ func FireCastTriggerObservers(gs *GameState, cast *Card, controller int, fromCop
 					},
 				})
 			}
-		case "Niv-Mizzet, Parun":
-			if perm.Controller == controller && isInstantOrSorcery {
-				// Draw a card. Leave the draw-trigger side (damage on draw)
-				// to the existing draw-trigger infrastructure; we only
-				// fire the cast-trigger half here.
-				gs.drawOne(perm.Controller)
-				gs.LogEvent(Event{
-					Kind:   "cast_trigger_observer",
-					Seat:   perm.Controller,
-					Source: name,
-					Details: map[string]interface{}{
-						"cast":   castName,
-						"effect": "draw_card",
-					},
-				})
-			}
-
-
 		}
 	}
 }
@@ -382,18 +359,13 @@ func createTreasureToken(gs *GameState, seatIdx int) {
 	})
 }
 
-// FireDrawTriggerObservers fires "whenever a player draws a card" style
-// reactive triggers for the `drawerSeat`. Mirrors scripts/playloop.py's
-// _fire_draw_trigger_observers. Covers cards that have a dedicated
-// per-card handler (Orcish Bowmasters via per_card.registerOrcishBowmasters)
-// and falls back to inline name-based dispatch for Smothering Tithe
-// until a proper per-card handler lands.
-//
-// CR §614.6 note: "the first draw in each of their draw steps" clause
-// (Orcish Bowmasters, Notion Thief) is governed by the skipFirstDrawStep
-// flag — callers set gs.Flags["_suppress_first_draw_trigger_seat"] =
-// drawerSeat+1 (0 = unset) when emitting a turn-draw-step draw. The
-// marker is consumed + cleared here.
+// FireDrawTriggerObservers fires the "player_would_draw" fan-out for
+// effect draws (resolve.go). Per-card "whenever a player draws" handlers
+// (Smothering Tithe, Orcish Bowmasters, Consecrated Sphinx, Nekusar, …)
+// do NOT live here — they listen on "card_drawn", fired from the drawOne
+// chokepoint in state.go for every draw, where the CR §614.6
+// first-draw-step marker (gs.Flags["_suppress_first_draw_trigger_seat"])
+// is also consumed and surfaced as ctx["is_draw_step_draw"].
 func FireDrawTriggerObservers(gs *GameState, drawerSeat int, count int, fromReplacement bool) {
 	if gs == nil || drawerSeat < 0 || drawerSeat >= len(gs.Seats) {
 		return
@@ -401,111 +373,28 @@ func FireDrawTriggerObservers(gs *GameState, drawerSeat int, count int, fromRepl
 	if count <= 0 {
 		count = 1
 	}
-	// Consume the turn-draw-step marker so only the single first draw
-	// from a draw step suppresses Bowmasters / Notion Thief.
-	skipBowmasters := false
-	if gs.Flags != nil {
-		if v, ok := gs.Flags["_suppress_first_draw_trigger_seat"]; ok && v == drawerSeat+1 {
-			skipBowmasters = true
-			delete(gs.Flags, "_suppress_first_draw_trigger_seat")
-		}
-	}
-
-	// Fire the "player_would_draw" event for per-card handlers like
-	// Chains of Mephistopheles that replace or modify draws.
+	// r62 Wave-1b double-dispatch audit: the per-draw inline switch
+	// (Smothering Tithe tax/Treasure + Orcish Bowmasters archer/ping)
+	// is DELETED. Both cards have per_card handlers on "card_drawn",
+	// which fires from the drawOne chokepoint for EVERY draw — this
+	// fan-out only ran for resolve.go effect draws, so those draws
+	// dispatched BOTH implementations (two Treasures / two pings per
+	// effect draw). The per_card handlers are authoritative. The
+	// first-draw-step suppression marker is now consumed at the
+	// drawOne chokepoint (state.go) where card_drawn fires, instead of
+	// here — pre-r62 it was consumed on a path turn-step draws never
+	// took, so it leaked onto the NEXT effect draw.
+	//
+	// What remains is the "player_would_draw" fan-out for per_card
+	// draw-replacement handlers (Chains of Mephistopheles class) and
+	// Niv-Mizzet's damage-on-draw listener.
 	FireCardTrigger(gs, "player_would_draw", map[string]interface{}{
-		"draw_seat":         drawerSeat,
-		"count":             count,
-		"from_replacement":  fromReplacement,
-		"is_draw_step_draw": skipBowmasters,
+		"draw_seat":        drawerSeat,
+		"count":            count,
+		"from_replacement": fromReplacement,
+		// Effect draws are never turn-draw-step draws.
+		"is_draw_step_draw": false,
 	})
-
-	// Per-draw cycle — apply count times so a two-card draw fires
-	// Bowmasters twice (CR §614.6).
-	for i := 0; i < count; i++ {
-		for _, seat := range gs.Seats {
-			if seat == nil {
-				continue
-			}
-			for _, perm := range seat.Battlefield {
-				if perm == nil || perm.Card == nil {
-					continue
-				}
-				name := perm.Card.DisplayName()
-				switch name {
-				case "Smothering Tithe":
-					if perm.Controller == drawerSeat {
-						continue // opponent-only trigger
-					}
-					opp := gs.Seats[drawerSeat]
-					if opp == nil {
-						continue
-					}
-					if opp.ManaPool >= 2 {
-						opp.ManaPool -= 2
-						SyncManaAfterSpend(opp)
-						gs.Legality.NoteManaSpend(drawerSeat, 2) // aux payment on in-window draw
-						gs.LogEvent(Event{
-							Kind:   "pay_mana",
-							Seat:   drawerSeat,
-							Source: name,
-							Amount: 2,
-							Details: map[string]interface{}{
-								"reason": "tithe",
-							},
-						})
-						gs.LogEvent(Event{
-							Kind:   "draw_trigger_observer",
-							Seat:   perm.Controller,
-							Source: name,
-							Details: map[string]interface{}{
-								"drawer_seat": drawerSeat,
-								"effect":      "tithe_tax_paid",
-							},
-						})
-					} else {
-						createTreasureToken(gs, perm.Controller)
-						gs.LogEvent(Event{
-							Kind:   "draw_trigger_observer",
-							Seat:   perm.Controller,
-							Source: name,
-							Details: map[string]interface{}{
-								"drawer_seat": drawerSeat,
-								"effect":      "tithe_treasure",
-							},
-						})
-					}
-				case "Orcish Bowmasters":
-					if perm.Controller == drawerSeat {
-						continue // opponent-only
-					}
-					if skipBowmasters {
-						continue // first draw of the draw step
-					}
-					// Make 1/1 Zombie Archer token + 1 damage to drawer.
-					createSimpleCreatureToken(gs, perm.Controller,
-						"Zombie Archer Token", 1, 1, []string{"B"})
-					tgt := gs.Seats[drawerSeat]
-					if tgt != nil {
-						DealDamage(gs, drawerSeat, 1, name)
-						// §702.179 — Bowmasters' controller dealt
-						// damage to a player; bump speed (once-per-
-						// turn gated).
-						SpeedDamageReporter(gs, perm.Controller)
-					}
-					gs.LogEvent(Event{
-						Kind:   "draw_trigger_observer",
-						Seat:   perm.Controller,
-						Source: name,
-						Details: map[string]interface{}{
-							"drawer_seat": drawerSeat,
-							"effect":      "bowmasters_ping",
-						},
-					})
-				}
-			}
-		}
-	}
 }
 
 // createSimpleCreatureToken drops a vanilla creature token onto the
