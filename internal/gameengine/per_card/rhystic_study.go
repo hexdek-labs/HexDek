@@ -45,6 +45,7 @@ func rhysticStudyOnCast(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 	// Greedy: pay {1} if we can.
 	if opp.ManaPool >= 1 {
 		opp.ManaPool--
+		gs.Legality.NoteManaSpend(caster, 1) // aux payment, not spell cost
 		gs.LogEvent(gameengine.Event{
 			Kind:   "pay_mana",
 			Seat:   caster,
