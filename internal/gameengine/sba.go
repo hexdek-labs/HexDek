@@ -294,6 +294,9 @@ func StateBasedActions(gs *GameState) bool {
 		}
 	}
 
+	// r63 seat-outcome self-checker: consistency snapshot after the
+	// loss sweeps settle (nil-safe no-op when the checker is off).
+	gs.SeatOutcome.CheckConsistency(gs, "sba")
 	return anyChange
 }
 

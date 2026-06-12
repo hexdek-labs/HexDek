@@ -361,6 +361,9 @@ func (gs *GameState) CheckEnd() bool {
 	// window. Idempotent: if cleanup already ran this turn, this call
 	// is a no-op.
 	SweepOrphanedInstanceIDs(gs)
+	// r63 seat-outcome self-checker: final consistency snapshot at game
+	// end (exactly-one-winner, no zombie outcomes, can't-win gates).
+	gs.SeatOutcome.CheckConsistency(gs, "game_end")
 	return true
 }
 
@@ -406,6 +409,11 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 		return
 	}
 	seat.LeftGame = true
+
+	// r63 seat-outcome self-checker: snapshot every seat's owned-card
+	// census so VerifyEliminationCleanup below can prove no OTHER seat
+	// went cards-light through this §800.4 sweep (nil-safe when off).
+	gs.SeatOutcome.BeginElimination(gs, seatIdx)
 
 	// Stamp the 1-based elimination sequence (r62). HandleSeatElimination
 	// runs exactly once per seat (LeftGame guard above) and CheckEnd
@@ -457,12 +465,24 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 			if p == nil {
 				continue
 			}
-			if p.Controller == seatIdx || p.Owner == seatIdx {
+			// r63 seat-outcome checker finding (games 85/89 seed 42):
+			// several theft-style per_card handlers stamp
+			// Permanent.Owner = controller, corrupting ownership on
+			// OTHER players' cards. Card.Owner is set at deck build and
+			// never changes (CR §108.3) — it is the authority for every
+			// ownership decision in this sweep. With the corrupt
+			// perm.Owner, victim-owned cards were swept AND ceased by
+			// another seat's elimination (1-6 cards per game vanishing).
+			cardOwner := p.Owner
+			if p.Card != nil {
+				cardOwner = p.Card.Owner
+			}
+			if p.Controller == seatIdx || cardOwner == seatIdx {
 				// Phase 4 census: §800.4a says objects owned by the
 				// leaving player cease to exist. Mark this permanent's
 				// InstanceID ceased so checkZoneConservation drops it
 				// from the expected (Minted - Ceased) set.
-				if p.Card != nil && p.Owner == seatIdx {
+				if p.Card != nil && cardOwner == seatIdx {
 					MarkInstanceIDCeased(gs, p.Card.InstanceID)
 				}
 				// Unregister any §614 / §613 hooks tied to this permanent.
@@ -518,8 +538,8 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 				// to exile). Zone-change trigger dispatch is skipped
 				// deliberately: mid-sweep MoveCard races are the same
 				// hazard the LinkedExile comment above documents.
-				if p.Card != nil && p.Owner != seatIdx && !p.IsToken() {
-					ownerSeat := p.Owner
+				if p.Card != nil && cardOwner != seatIdx && !p.IsToken() {
+					ownerSeat := cardOwner
 					if ownerSeat >= 0 && ownerSeat < len(gs.Seats) && gs.Seats[ownerSeat] != nil {
 						gs.Seats[ownerSeat].Exile = append(gs.Seats[ownerSeat].Exile, p.Card)
 						gs.LogEvent(Event{
@@ -536,7 +556,7 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 				}
 				// Count real cards for zone conservation tracking —
 				// ONLY the leaver's own cards actually leave the game.
-				if p.Card != nil && !p.IsToken() && p.Owner == seatIdx {
+				if p.Card != nil && !p.IsToken() && cardOwner == seatIdx {
 					realCardsLeaving++
 				}
 				detached = append(detached, p)
@@ -905,6 +925,11 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 			}
 		}
 	}
+
+	// r63 seat-outcome self-checker: prove the §800.4/§104 cleanup
+	// actually happened — no leaver objects survive, and no OTHER seat
+	// went cards-light (the PR-#1046 stolen-permanent leak shape).
+	gs.SeatOutcome.VerifyEliminationCleanup(gs, seatIdx)
 }
 
 // cardIsTokenForElim checks if a card is a token for elimination purposes.
