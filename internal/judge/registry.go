@@ -1,6 +1,6 @@
 package judge
 
-// registry.go — the Hex Judge's five-dimension registry (phase 3 final).
+// registry.go — the Hex Judge dimension registry (phase 3 final).
 //
 // One entry per correctness dimension: where its checks live, which
 // hook they run at, and how they execute. This is the single
@@ -37,7 +37,7 @@ type DimensionRegistration struct {
 	Mode string
 }
 
-// Dimensions returns the Judge's five-dimension registry. Order is the
+// Dimensions returns the Judge dimension registry. Order is the
 // HEX-JUDGE.md table order.
 func Dimensions() []DimensionRegistration {
 	return []DimensionRegistration{
@@ -75,6 +75,13 @@ func Dimensions() []DimensionRegistration {
 			Home:      "judge/outcome (AST expected-delta interpreter + harness)",
 			Hook:      "engine effect resolution, driven inside controlled scenarios",
 			Mode:      "scenario_driver",
+		},
+		{
+			Dimension: DimensionLiveness,
+			Surfaces:  []string{SurfaceLiveness},
+			Home:      "judge/liveness.go (snapshot checks + driver watchdog helper)",
+			Hook:      "driver per-game wall-clock watchdog + post-game cap-contract/turn/event scan",
+			Mode:      "scenario_driver", // no engine hooks; off everywhere except an invoking driver
 		},
 	}
 }
