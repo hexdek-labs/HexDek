@@ -83,6 +83,9 @@ func (*GreedyHatStub) OrderTriggers(gs *GameState, seatIdx int, triggers []*Stac
 func (*GreedyHatStub) ChooseX(gs *GameState, seatIdx int, card *Card, availableMana int) int {
 	return availableMana
 }
+func (*GreedyHatStub) ChooseKickCount(gs *GameState, seatIdx int, card *Card, kickerCost, maxKicks int) int {
+	return 0 // test stub: don't kick so baseline fixtures are unaffected
+}
 func (*GreedyHatStub) ChooseBottomCards(gs *GameState, seatIdx int, hand []*Card, count int) []*Card {
 	if count > len(hand) {
 		count = len(hand)

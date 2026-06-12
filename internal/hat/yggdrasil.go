@@ -9441,6 +9441,43 @@ func (h *YggdrasilHat) ChooseX(gs *gameengine.GameState, seatIdx int, card *game
 	return availableMana
 }
 
+// -- Interface: ChooseKickCount --
+//
+// Cast-time optional additional cost (CR §702.33). The base spell has
+// already been paid for by the time this hook fires, so kicking can never
+// strand the base cast — the only question is whether the leftover mana is
+// better spent on the kicker now or held for interaction.
+//
+// Multikicker (maxKicks > 1, e.g. Everflowing Chalice / Astral Cornucopia):
+// every kick scales the permanent's payoff, so spend all affordable kicks —
+// leftover mana is otherwise wasted this cast. Control/Stax shave one kick
+// to hold a mana for a cheap response when not maxing out a critical engine.
+//
+// Single kicker (maxKicks == 1): kick once when affordable — almost every
+// printed single-kicker grants a strictly-positive "if kicked" bonus, so
+// taking it is the right baseline; Control/Stax skip it for a non-critical
+// spell to keep interaction mana up.
+func (h *YggdrasilHat) ChooseKickCount(gs *gameengine.GameState, seatIdx int, card *gameengine.Card, kickerCost, maxKicks int) int {
+	if maxKicks <= 0 {
+		return 0
+	}
+	holdBack := false
+	if h.Strategy != nil {
+		arch := h.Strategy.Archetype
+		critical := h.isComboRelevant(card) || h.isValueEngineKey(card)
+		if !critical && (arch == ArchetypeControl || arch == ArchetypeStax) {
+			holdBack = true
+		}
+	}
+	if holdBack {
+		if maxKicks > 1 {
+			return maxKicks - 1 // keep one kick's worth of mana for interaction
+		}
+		return 0 // single kicker on a non-critical spell: hold the mana
+	}
+	return maxKicks
+}
+
 // -- Interface: ChooseBottomCards --
 
 func (h *YggdrasilHat) ChooseBottomCards(gs *gameengine.GameState, seatIdx int, hand []*gameengine.Card, count int) []*gameengine.Card {

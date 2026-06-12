@@ -1176,6 +1176,23 @@ func (*GreedyHat) ChooseX(gs *gameengine.GameState, seatIdx int, card *gameengin
 	return availableMana
 }
 
+// ChooseKickCount — greedy heuristic for cast-time optional cost (§702.33).
+//
+// Multikicker (maxKicks > 1, almost always a mana-rock like Everflowing
+// Chalice / Astral Cornucopia where every kick scales the payoff): kick as
+// many times as affordable — leftover mana is otherwise wasted this cast.
+//
+// Single kicker (maxKicks == 1): kick once when affordable. Most single
+// kickers grant a strictly-positive bonus ("if kicked, [upside]"), so taking
+// it is the right baseline when the mana is already on the table — the base
+// spell was paid for BEFORE this hook, so kicking can never strand the base.
+func (*GreedyHat) ChooseKickCount(gs *gameengine.GameState, seatIdx int, card *gameengine.Card, kickerCost, maxKicks int) int {
+	if maxKicks <= 0 {
+		return 0
+	}
+	return maxKicks
+}
+
 // ChooseBottomCards — §103.5 London mulligan: bottom the highest-CMC cards
 // (same as discard heuristic). Returns exactly `count` cards.
 func (*GreedyHat) ChooseBottomCards(gs *gameengine.GameState, seatIdx int, hand []*gameengine.Card, count int) []*gameengine.Card {

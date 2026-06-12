@@ -342,6 +342,15 @@ func (*OctoHat) ChooseX(gs *gameengine.GameState, seatIdx int, card *gameengine.
 	return availableMana
 }
 
+// ChooseKickCount — spend leftover mana on kicks. §702.33. Same shape as
+// ChooseX: maxing kicks converts otherwise-wasted mana into board value.
+func (*OctoHat) ChooseKickCount(gs *gameengine.GameState, seatIdx int, card *gameengine.Card, kickerCost, maxKicks int) int {
+	if maxKicks <= 0 {
+		return 0
+	}
+	return maxKicks
+}
+
 // ---------------------------------------------------------------------
 // Mulligan bottom cards — bottom the cheapest (keep bombs). §103.5.
 // ---------------------------------------------------------------------

@@ -613,6 +613,10 @@ func (h *MCTSHat) ChooseX(gs *gameengine.GameState, seatIdx int, card *gameengin
 	return h.Inner.ChooseX(gs, seatIdx, card, availableMana)
 }
 
+func (h *MCTSHat) ChooseKickCount(gs *gameengine.GameState, seatIdx int, card *gameengine.Card, kickerCost, maxKicks int) int {
+	return h.Inner.ChooseKickCount(gs, seatIdx, card, kickerCost, maxKicks)
+}
+
 func (h *MCTSHat) ChooseBottomCards(gs *gameengine.GameState, seatIdx int, hand []*gameengine.Card, count int) []*gameengine.Card {
 	return h.Inner.ChooseBottomCards(gs, seatIdx, hand, count)
 }

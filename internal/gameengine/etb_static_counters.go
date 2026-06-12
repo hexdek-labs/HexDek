@@ -42,13 +42,18 @@ func ApplyStaticETBCounters(gs *GameState, perm *Permanent) {
 		if st.Modification.ModKind != "etb_with_counters" {
 			continue
 		}
-		count := 1
-		counterKind := "+1/+1"
-		if len(st.Modification.Args) > 0 {
-			if n, ok := asInt(st.Modification.Args[0]); ok && n > 0 {
-				count = n
-			}
+		// CR §702.33 — "if ~ was kicked, it enters with N counters." The
+		// parser stamps a Condition (e.g. {kicked}) on the Static; honor
+		// it so Grunn enters with 0 counters unkicked and N when kicked.
+		// Unconditional statics (Condition == nil) always apply.
+		if st.Condition != nil && !evalCondition(gs, perm, st.Condition) {
+			continue
 		}
+		count := resolveETBCounterCount(perm, st.Modification.Args)
+		if count <= 0 {
+			continue
+		}
+		counterKind := "+1/+1"
 		if len(st.Modification.Args) > 1 {
 			if k, ok := st.Modification.Args[1].(string); ok && k != "" {
 				counterKind = k
@@ -67,4 +72,36 @@ func ApplyStaticETBCounters(gs *GameState, perm *Permanent) {
 		})
 	}
 	gs.InvalidateCharacteristicsCache()
+}
+
+// resolveETBCounterCount resolves the count argument of an
+// `etb_with_counters` modification against the entering permanent.
+//
+// Args[0] is normally a literal int ("enters with 3 +1/+1 counters").
+// Some cards encode a VARIABLE count where the AST stamps the string
+// "var" (e.g. Everflowing Chalice / Astral Cornucopia:
+// Args = ["var", "charge", "for_each:time it was kicked"]). For those
+// the count comes from how many times the spell was kicked, mirrored
+// onto perm.Flags["multikick_count"] at ETB (0 when unkicked → 0
+// counters, which is rules-correct). Shared by both the Static-ability
+// path (ApplyStaticETBCounters) and the resolving-effect path
+// (resolveModificationEffect case "etb_with_counters").
+func resolveETBCounterCount(perm *Permanent, args []interface{}) int {
+	if len(args) == 0 {
+		return 1
+	}
+	// Variable count ("for each time it was kicked", etc.).
+	if s, ok := args[0].(string); ok {
+		switch s {
+		case "var", "variable", "x", "X":
+			if perm != nil && perm.Flags != nil {
+				return perm.Flags["multikick_count"]
+			}
+			return 0
+		}
+	}
+	if n, ok := asInt(args[0]); ok && n > 0 {
+		return n
+	}
+	return 1
 }

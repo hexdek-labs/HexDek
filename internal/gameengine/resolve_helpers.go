@@ -2294,19 +2294,18 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 	// Apply counters to the source permanent.
 	// -----------------------------------------------------------------
 	case "etb_with_counters":
-		count := 1
+		// CR §702.33 — Args[0] may be the string "var" for a kicker-driven
+		// variable count (Everflowing Chalice "for each time it was
+		// kicked"); resolveETBCounterCount reads perm.Flags["multikick_count"]
+		// in that case (0 when unkicked). Otherwise it's a literal int.
+		count := resolveETBCounterCount(src, e.Args)
 		counterKind := "+1/+1"
-		if len(e.Args) > 0 {
-			if n, ok := asInt(e.Args[0]); ok && n > 0 {
-				count = n
-			}
-		}
 		if len(e.Args) > 1 {
 			if k, ok := e.Args[1].(string); ok && k != "" {
 				counterKind = k
 			}
 		}
-		if src != nil {
+		if src != nil && count > 0 {
 			src.AddCounter(counterKind, count)
 			gs.InvalidateCharacteristicsCache()
 		}
