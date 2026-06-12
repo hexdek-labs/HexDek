@@ -339,6 +339,38 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 
 	// 2. Pay activation cost (MVP: tap cost + mana cost).
 	seat := gs.Seats[seatIdx]
+
+	// Loyalty cost (CR §606.5) — paid first: it is all-or-nothing and
+	// needs no rollback, unlike the tap/mana pair below. A planeswalker
+	// loyalty ability adjusts the walker's loyalty counters and NEVER
+	// the player's life; a minus ability is only legal when the walker
+	// has at least that many counters. isLoyaltyAbility also drives the
+	// §606.3 once-per-turn check and disables the PayLife branch below
+	// (legacy datasets parsed minus costs into PayLife — that number is
+	// a loyalty adjustment, not a life payment).
+	isLoyaltyAbility := false
+	loyaltyDelta := 0
+	if perm.IsPlaneswalker() && ab != nil {
+		if d, ok := LoyaltyCost(ab); ok {
+			isLoyaltyAbility = true
+			loyaltyDelta = d
+		} else if ab.Cost.PayLife != nil && *ab.Cost.PayLife > 0 {
+			isLoyaltyAbility = true
+			loyaltyDelta = -*ab.Cost.PayLife
+		}
+	}
+	if isLoyaltyAbility {
+		// §606.3: a player may activate a loyalty ability of a permanent
+		// only once each turn. The flag is set in step 2.5 below and
+		// cleared at turn end (phases.go).
+		if perm.Flags != nil && perm.Flags["loyalty_used_this_turn"] > 0 {
+			return &CastError{Reason: "loyalty_already_used"}
+		}
+		if err := payLoyaltyCost(gs, seatIdx, perm, loyaltyDelta); err != nil {
+			return err
+		}
+	}
+
 	if ab != nil {
 		// Tap cost.
 		if ab.Cost.Tap {
@@ -391,8 +423,10 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 				})
 			}
 		}
-		// Life cost.
-		if ab.Cost.PayLife != nil && *ab.Cost.PayLife > 0 {
+		// Life cost. Skipped for loyalty abilities: a PayLife on a
+		// planeswalker is a legacy encoding of the loyalty adjustment
+		// (already paid in loyalty counters above), never a life cost.
+		if ab.Cost.PayLife != nil && *ab.Cost.PayLife > 0 && !isLoyaltyAbility {
 			lc := *ab.Cost.PayLife
 			if seat.Life <= lc {
 				if ab.Cost.Tap {
