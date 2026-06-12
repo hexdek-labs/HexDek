@@ -190,5 +190,15 @@ func collectPresentInstanceIDsForSweep(gs *GameState) map[string]struct{} {
 		}
 		addID(item.Card)
 	}
+	// Mid-resolution limbo window (r63, game-76 Biorhythm): a spell popped
+	// off the stack by ResolveStackTop is in no conventional zone until
+	// its final routing. When the resolution itself triggers a seat
+	// elimination or game end, this sweep runs MID-resolution (CheckEnd →
+	// HandleSeatElimination) — the in-flight card must count as present
+	// or it gets ceased as an orphan and its graveyard routing becomes a
+	// permanent fabrication violation. Lockstep with the census walk.
+	for _, c := range gs.ResolvingCards {
+		addID(c)
+	}
 	return present
 }

@@ -158,6 +158,20 @@ type GameState struct {
 	// Used in conjunction with MintedInstanceIDs by checkZoneConservation.
 	CeasedInstanceIDs map[string]struct{}
 
+	// ResolvingCards tracks the *Card of each stack item popped by
+	// ResolveStackTop whose resolution is still executing — the
+	// stack→destination-zone limbo window where the card is absent from
+	// every conventional zone. Both checkZoneConservationByInstanceID and
+	// collectPresentInstanceIDsForSweep count it as zone-presence: a
+	// resolution that itself eliminates a seat or ends the game (mass
+	// life-set, alt-win) reaches SweepOrphanedInstanceIDs MID-resolution
+	// via CheckEnd → HandleSeatElimination, and without this the sweep
+	// ceases the in-flight card's ID as an orphan — the subsequent
+	// graveyard routing then reads as census fabrication forever after
+	// (seed 7777 game 76, Biorhythm, r63). Pushed/popped LIFO by
+	// ResolveStackTop; empty whenever the engine is at rest.
+	ResolvingCards []*Card
+
 	// TokenMintEvents is the Phase 5 audit-trail buffer per
 	// docs/instanceid-system-v2-r60.md §6. Each FireCreateTokenEvent
 	// resolution appends one TokenMintEvent recording the §616
