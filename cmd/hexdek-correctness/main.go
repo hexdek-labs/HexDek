@@ -54,6 +54,7 @@ func main() {
 		deckDir    = flag.String("deck-dir", "data/decks", "Moxfield decklist pool for --tuned-games")
 		jsonPath   = flag.String("json", "correctness-score.json", "machine-readable JSON output path")
 		mdPath     = flag.String("md", "", "markdown summary output path (empty = stdout only)")
+		livenessBudget = flag.Duration("liveness-budget", 60*time.Second, "per-game wall-clock watchdog for the LIVENESS dimension (0 = watchdog off; post-game liveness checks still run)")
 	)
 	flag.Parse()
 
@@ -104,6 +105,7 @@ func main() {
 		var gameDims []DimensionScore
 		gameDims, gp = runGamePass(chaosCorpus, corpus, meta, gameConfig{
 			Games: *games, Seats: *seats, MaxTurns: *maxTurns, Seed: *seed,
+			LivenessBudget: *livenessBudget,
 		})
 		fmt.Fprintf(os.Stderr, "game sweep: %d games (%.1fs)\n", *games, time.Since(t).Seconds())
 		dims = append(dims, gameDims...)
@@ -135,6 +137,7 @@ func main() {
 		t := time.Now()
 		tunedDims, tgp := runTunedGamePass(pool, corpus, gameConfig{
 			Games: *tunedGames, Seats: *seats, MaxTurns: *maxTurns, Seed: *seed,
+			LivenessBudget: *livenessBudget,
 		})
 		fmt.Fprintf(os.Stderr, "tuned sweep: %d games over %d decks (%.1fs)\n", *tunedGames, len(pool), time.Since(t).Seconds())
 		dims = append(dims, tunedDims...)

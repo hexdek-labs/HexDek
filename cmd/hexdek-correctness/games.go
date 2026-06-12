@@ -33,6 +33,7 @@ package main
 //	                 integrity failure by definition).
 
 import (
+	"time"
 	"fmt"
 	"math/rand"
 	"os"
@@ -57,6 +58,10 @@ type gameConfig struct {
 	Seats    int
 	MaxTurns int
 	Seed     int64
+	// LivenessBudget is the per-game wall-clock watchdog for the
+	// LIVENESS dimension. Zero disables the watchdog (the post-game
+	// snapshot checks still run).
+	LivenessBudget time.Duration
 }
 
 // gameTally collects one game's violation stream by dimension.
@@ -98,6 +103,10 @@ type gameOutcome struct {
 	crashes  int
 	turns    int
 	legality legalityTally
+	// LIVENESS snapshot facts, resolved at game end (zero on crash).
+	ended      bool
+	eventCount int
+	capFires   []string
 }
 
 // runGamePass runs the chaos-game sweep and converts the per-game
@@ -112,7 +121,7 @@ func runGamePass(chaosCorpus *gameengine.ChaosCorpus, corpus *astload.Corpus, me
 		GamesAffected:    map[string]int{},
 	}
 	agg := legalityTally{checkedByKind: map[string]int{}, illegalByKind: map[string]int{}}
-	conservationClean, integrityClean := 0, 0
+	conservationClean, integrityClean, livenessClean := 0, 0, 0
 
 	// One sink for the whole sweep; games run sequentially so the
 	// current game's tally is unambiguous.
@@ -141,7 +150,36 @@ func runGamePass(chaosCorpus *gameengine.ChaosCorpus, corpus *astload.Corpus, me
 	for gameIdx := 0; gameIdx < cfg.Games; gameIdx++ {
 		tally := &gameTally{dims: map[string]int{}, names: map[string]int{}}
 		cur = tally
-		out := runOneGame(gameIdx, chaosCorpus, corpus, meta, cfg)
+		// LIVENESS watchdog: run the game under a wall-clock budget. A
+		// game still running at the deadline is flagged and ABANDONED
+		// (its goroutine leaks — accepted in an offline audit run; the
+		// alternative is the whole sweep hanging, the pre-r63 failure
+		// mode) and the sweep continues.
+		var out gameOutcome
+		hung := false
+		start := time.Now()
+		if cfg.LivenessBudget > 0 {
+			resCh := make(chan gameOutcome, 1)
+			go func() { resCh <- runOneGame(gameIdx, chaosCorpus, corpus, meta, cfg) }()
+			select {
+			case out = <-resCh:
+			case <-time.After(cfg.LivenessBudget):
+				hung = true
+				judge.WatchdogViolation(cfg.Seed+int64(gameIdx)*10000+1, gameIdx, cfg.LivenessBudget)
+			}
+		} else {
+			out = runOneGame(gameIdx, chaosCorpus, corpus, meta, cfg)
+		}
+		if !hung {
+			judge.CheckLiveness(judge.LivenessSnapshot{
+				Seed: cfg.Seed + int64(gameIdx)*10000 + 1, GameIdx: gameIdx,
+				Turns: out.turns, MaxTurns: cfg.MaxTurns,
+				Ended:      out.ended,
+				EventCount: out.eventCount, EventBudget: 50000,
+				CapFires: out.capFires,
+				Elapsed:  time.Since(start), Budget: cfg.LivenessBudget,
+			})
+		}
 		cur = nil
 
 		agg.add(out.legality)
@@ -165,6 +203,9 @@ func runGamePass(chaosCorpus *gameengine.ChaosCorpus, corpus *astload.Corpus, me
 		}
 		if !seen[judge.DimensionStateIntegrity] && !out.crashed {
 			integrityClean++
+		}
+		if !seen[judge.DimensionLiveness] && !hung {
+			livenessClean++
 		}
 		if (gameIdx+1)%50 == 0 {
 			fmt.Fprintf(os.Stderr, "  game sweep: %d/%d games done\n", gameIdx+1, cfg.Games)
@@ -203,6 +244,16 @@ func runGamePass(chaosCorpus *gameengine.ChaosCorpus, corpus *astload.Corpus, me
 			Pct:       pct(integrityClean, cfg.Games),
 			Detail: map[string]interface{}{
 				"crashed_games": stats.CrashedGames,
+			},
+		},
+		{
+			Dimension: judge.DimensionLiveness,
+			Unit:      "games",
+			Checked:   cfg.Games,
+			Passed:    livenessClean,
+			Pct:       pct(livenessClean, cfg.Games),
+			Detail: map[string]interface{}{
+				"watchdog_budget": cfg.LivenessBudget.String(),
 			},
 		},
 	}
@@ -363,6 +414,29 @@ func runOneGame(gameIdx int, chaosCorpus *gameengine.ChaosCorpus, corpus *astloa
 	}()
 
 	out.turns = gs.Turn
+	// LIVENESS facts: decided-end flag, event volume, and every loop
+	// guard that fired (game_draw reasons + cap markers), for the
+	// judge.CheckLiveness post-game scan.
+	out.ended = gs.Flags != nil && gs.Flags["ended"] == 1
+	out.eventCount = len(gs.EventLog)
+	capSeen := map[string]bool{}
+	for i := range gs.EventLog {
+		ev := &gs.EventLog[i]
+		switch ev.Kind {
+		case "game_draw":
+			if r, _ := ev.Details["reason"].(string); r == "trigger_loop_cap" || r == "percard_inline_depth_cap" {
+				if !capSeen[r] {
+					capSeen[r] = true
+					out.capFires = append(out.capFires, r)
+				}
+			}
+		case "sba_max_passes":
+			if !capSeen[ev.Kind] {
+				capSeen[ev.Kind] = true
+				out.capFires = append(out.capFires, ev.Kind)
+			}
+		}
+	}
 	return out
 }
 

@@ -20,7 +20,7 @@ import (
 // dimension. Detection-correctness of each check is pinned by its home
 // package's own tests; THIS pin is the routing completeness claim the
 // registry makes.
-func TestJudgeWhole_AllFiveDimensionsReport(t *testing.T) {
+func TestJudgeWhole_AllDimensionsReport(t *testing.T) {
 	seen := map[string]int{}
 	done := judge.RegisterSink(func(v judge.ValidationViolation) {
 		if v.Dimension != "" {
@@ -65,13 +65,19 @@ func TestJudgeWhole_AllFiveDimensionsReport(t *testing.T) {
 		Expected: "draw 1", Actual: "no change", Raw: "when this enters, draw a card",
 	})
 
+	// LIVENESS — a turn-overrun snapshot through CheckLiveness (the
+	// driver watchdog's WatchdogViolation shares the same routing).
+	judge.CheckLiveness(judge.LivenessSnapshot{
+		Seed: 60606, GameIdx: 691, Turns: 61, MaxTurns: 60, Ended: true,
+	})
+
 	for _, reg := range judge.Dimensions() {
 		if seen[reg.Dimension] == 0 {
 			t.Errorf("dimension %q is registered but produced no violation through LogViolation", reg.Dimension)
 		}
 	}
-	if len(judge.Dimensions()) != 5 {
-		t.Fatalf("the Judge registry must hold exactly 5 dimensions, got %d", len(judge.Dimensions()))
+	if len(judge.Dimensions()) != 6 {
+		t.Fatalf("the Judge registry must hold exactly 6 dimensions, got %d", len(judge.Dimensions()))
 	}
 }
 
