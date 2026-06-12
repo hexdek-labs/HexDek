@@ -435,6 +435,14 @@ type GameState struct {
 	// fire sites observe an open batch and just append. See trigger_batch.go.
 	triggerBatchDepth int
 	pendingTriggers   []*StackItem
+
+	// announcedTargets exposes the currently-resolving StackItem's
+	// announcement-time targets (CR §601.2c / §602.2b) to PickTarget so
+	// resolution-time effect handlers honor the targets chosen — and
+	// validated, warded, and §608.2b-checked — at announcement instead of
+	// re-running the engine policy pick. Set/restored by ResolveStackTop
+	// around each resolution frame; transient, never serialized or cloned.
+	announcedTargets []Target
 }
 
 // Day/Night state constants (CR §726).

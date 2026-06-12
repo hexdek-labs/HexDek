@@ -669,6 +669,31 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 	}
 	PushStackItem(gs, item)
 
+	// r62 — CR §601.2c announcement-time target selection. When the caller
+	// passed no targets (the turn runner and most AI paths), pick them NOW
+	// for required single-target spells: enumerate the legal set, consult
+	// the seat's Hat (§608.2a ChooseTarget), stamp the result onto
+	// item.Targets. This is what makes CheckWardOnTargeting /
+	// FireHeroicTriggers below and the populated-path §608.2b resolution
+	// gate operate on real data for AI casts, and what un-inerts the r61
+	// PR-7/PR-8 hat targeting work. Runs AFTER PushStackItem so the Hat's
+	// intent classifier (which inspects the caster's topmost stack item)
+	// sees the spell being cast. Skipped for overloaded casts (§702.96
+	// rewrites "target" to "each" — there are no targets) and when no
+	// legal target exists (Targets stays empty; the r61 PR-3 lazy fizzle
+	// gate applies unchanged).
+	if len(item.Targets) == 0 && item.Effect != nil && altCostMeta["overloaded"] == nil {
+		if f, ok := announceTargetFilter(item); ok {
+			announceSrc := &Permanent{
+				Card:       card,
+				Controller: seatIdx,
+				Owner:      card.Owner,
+				Flags:      map[string]int{},
+			}
+			item.Targets = AnnounceTargets(gs, announceSrc, seatIdx, f)
+		}
+	}
+
 	// CR §702.56 / §702.78 / §702.153 — cast-time ADDITIONAL costs that COPY
 	// the spell (replicate / conspire / casualty). These act on the StackItem
 	// AFTER it is on the stack: the helpers pay the cost (extra mana for
@@ -1555,6 +1580,24 @@ func ResolveStackTop(gs *GameState) {
 			}
 		}
 	}
+
+	// r62 — expose the item's announcement-time targets (now trimmed to the
+	// §608.2b-legal subset by the gate above) to PickTarget for the rest of
+	// this resolution frame, so effect handlers honor the targets chosen —
+	// hat-consulted, validated, and warded — at announcement instead of
+	// re-running the engine policy pick. Save/restore rather than clear:
+	// resolution frames nest (per-card handlers resolve sub-effects), and
+	// an inner frame must never leak the outer frame's targets — or wipe
+	// them — across the boundary. Always assign (nil when empty) so an
+	// item WITHOUT announced targets resolves fully lazily even when an
+	// outer frame had targets.
+	prevAnnounced := gs.announcedTargets
+	if len(item.Targets) > 0 {
+		gs.announcedTargets = item.Targets
+	} else {
+		gs.announcedTargets = nil
+	}
+	defer func() { gs.announcedTargets = prevAnnounced }()
 
 	// First-play instrumentation. Record only for true spell stack items
 	// (item.Card set, no Source permanent) — triggered/activated abilities

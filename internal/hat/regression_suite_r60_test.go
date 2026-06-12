@@ -569,7 +569,7 @@ func TestRegressionSuite_ChooseX(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------
-// SECTION 12: ChooseTarget — 3 cases (first legal)
+// SECTION 12: ChooseTarget — 3 cases (decline-to-policy, r62)
 // ---------------------------------------------------------------------
 
 func TestRegressionSuite_ChooseTarget(t *testing.T) {
@@ -585,10 +585,15 @@ func TestRegressionSuite_ChooseTarget(t *testing.T) {
 	}{
 		{"45_no_legal_returns_none",
 			nil, gameengine.Target{Kind: gameengine.TargetKindNone}},
-		{"46_one_legal_returned",
-			[]gameengine.Target{t1}, t1},
-		{"47_two_legal_returns_first",
-			[]gameengine.Target{t1, t2}, t1},
+		// r62: GreedyHat declines ChooseTarget (zero Target) so the
+		// engine's announcement-time picker falls back to the policy
+		// pick — the engine now consults hats live, and honoring the old
+		// first-legal body would have changed every Greedy-baseline
+		// game's targeting.
+		{"46_one_legal_declines_to_policy",
+			[]gameengine.Target{t1}, gameengine.Target{Kind: gameengine.TargetKindNone}},
+		{"47_two_legal_declines_to_policy",
+			[]gameengine.Target{t1, t2}, gameengine.Target{Kind: gameengine.TargetKindNone}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

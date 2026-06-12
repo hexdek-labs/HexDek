@@ -780,6 +780,11 @@ type Hat interface {
 	// ChooseTarget picks one target from `legal`. The engine passes `filter`
 	// so the hat can apply filter-specific preferences (e.g. prefer a
 	// highest-toughness creature for a buff vs lowest-toughness for a kill).
+	// Called live since r62 by AnnounceTargets at spell/ability announcement
+	// (§601.2c / §602.2b). Returning a zero Target (TargetKindNone) — or any
+	// target outside `legal` — DECLINES the choice and the engine falls back
+	// to its policy pick; the deprecated baseline hats (Greedy/Octo) decline
+	// so their games keep pre-r62 targeting.
 	ChooseTarget(gs *GameState, seatIdx int, filter gameast.Filter, legal []Target) Target
 
 	// ChooseMode returns the selected mode INDEX for a modal effect.
