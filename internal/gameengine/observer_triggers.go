@@ -52,11 +52,28 @@ func fireObserverETBTriggers(gs *GameState, entering *Permanent) {
 					continue
 				}
 
-				if isSelfTrigger(trig) {
+				if isSelfTrigger(trig) && !dualSelfObserverEvents[strings.ToLower(strings.TrimSpace(trig.Trigger.Event))] {
 					continue
 				}
 
-				if !observerETBMatches(trig, observer, entering) {
+				// Nil-actor observer triggers (the parser drops actor phrases):
+				// match by event name + raw-recovered filter; non-nil actors keep
+				// the structured matcher.
+				if trig.Trigger.Actor == nil {
+					// per_card handlers own the nuanced cards (Soul Warden
+					// class): skip the raw-fallback dispatch when one is
+					// registered for an ETB event — same no-double-fire guard
+					// as the attack dispatch (HasTriggerHook).
+					if HasTriggerHook != nil &&
+						(HasTriggerHook(observer.Card.DisplayName(), "permanent_etb") ||
+							HasTriggerHook(observer.Card.DisplayName(), "nonland_permanent_etb") ||
+							HasTriggerHook(observer.Card.DisplayName(), "creature_etb")) {
+						continue
+					}
+					if !observerETBMatchesByRaw(trig, observer, entering) {
+						continue
+					}
+				} else if !observerETBMatches(trig, observer, entering) {
 					continue
 				}
 
@@ -220,6 +237,23 @@ func fireObserverCastTriggers(gs *GameState, casterSeat int, card *Card) {
 						if card != nil && !matchesActorFilter(card, base) {
 							continue
 						}
+					}
+				} else {
+					// per_card handlers own the nuanced cards (Young Pyromancer,
+					// Monastery Mentor): skip the raw-fallback dispatch when one
+					// is registered for a cast event — no-double-fire guard.
+					if HasTriggerHook != nil &&
+						(HasTriggerHook(observer.Card.DisplayName(), "spell_cast") ||
+							HasTriggerHook(observer.Card.DisplayName(), "noncreature_spell_cast") ||
+							HasTriggerHook(observer.Card.DisplayName(), "instant_or_sorcery_cast") ||
+							HasTriggerHook(observer.Card.DisplayName(), "creature_spell_cast") ||
+							HasTriggerHook(observer.Card.DisplayName(), "spell_cast_by_opponent")) {
+						continue
+					}
+					if !observerCastMatchesByRaw(trig, observer, casterSeat, card) {
+						// Nil-actor cast triggers: who/filter recovered from the raw
+						// oracle wording, fail-closed (r63 observer dispatch fix).
+						continue
 					}
 				}
 
