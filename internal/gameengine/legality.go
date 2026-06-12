@@ -407,6 +407,28 @@ func (v *LegalityValidator) popActiveThrough(obs *LegalityObservation) {
 	}
 }
 
+// AbandonObservation discards an in-flight observation WITHOUT running
+// checks — for action sites that opened a window and then determined no
+// action happened at all (e.g. ApplyArtifactMana returning ok=false: the
+// artifact was never tapped, nothing resolved inline, there is nothing
+// to validate). Nil-receiver / nil-obs safe.
+func (v *LegalityValidator) AbandonObservation(obs *LegalityObservation) {
+	if v == nil || obs == nil {
+		return
+	}
+	v.popActiveThrough(obs)
+}
+
+// ActiveObservations returns a snapshot of the in-flight observation
+// frames (diagnostic/test accessor — frame leaks indicate a Begin
+// without a matching Finish/Abandon).
+func (v *LegalityValidator) ActiveObservations() []*LegalityObservation {
+	if v == nil {
+		return nil
+	}
+	return append([]*LegalityObservation(nil), v.active...)
+}
+
 func (v *LegalityValidator) runChecks(gs *GameState, obs *LegalityObservation) {
 	for _, c := range v.Checks {
 		for _, viol := range c.Fn(gs, obs) {
@@ -571,6 +593,16 @@ func checkLegalityCostPaid(_ *GameState, obs *LegalityObservation) []LegalityVio
 	expected := 0
 	switch obs.Kind {
 	case "activate":
+		// AST-less inline mana resolutions (ApplyArtifactMana branches,
+		// land taps — r62 follow-up #1) have no announced cost to
+		// reconstruct: a Signet legitimately pays {1} inside its window
+		// and a Lion's Eye Diamond discards a hand. The §605 behavioral
+		// check still validates the mana_ability claim; cost discipline
+		// for these sites is un-derivable without an AST and is skipped
+		// rather than false-positived.
+		if obs.Ability == nil && obs.NoStackReason == "mana_ability" {
+			return nil
+		}
 		expected = obs.AbilityManaCost
 	case "cast":
 		expected = obs.BaseCostAtAnnounce
@@ -957,12 +989,23 @@ func checkLegalityManaAbility(_ *GameState, obs *LegalityObservation) []Legality
 		case "fizzled_608.2b":
 			// Countered by game rules — legitimately no stack item.
 		case "mana_ability":
-			if !isMana {
+			if obs.Ability == nil {
+				// AST-less inline resolution (ApplyArtifactMana branches,
+				// land taps, per_card sites). No AST to re-derive from —
+				// verify the claim BEHAVIORALLY: a real mana ability
+				// produces mana. The window crediting (NoteManaAdd via
+				// AddMana) gives us actual production for free; an inline
+				// resolution that claimed mana_ability and produced
+				// nothing denied opponents responses for no mana.
+				if obs.ManaAddedDuringWindow <= 0 {
+					add("605.1a", "ability resolved inline claiming mana ability but produced no mana in its window — opponents were denied responses")
+				}
+			} else if !isMana {
 				// The engine resolved this inline claiming it's a mana
-				// ability; independent re-derivation disagrees. Name the
-				// disqualifier for the repro.
+				// ability; independent AST re-derivation disagrees. Name
+				// the disqualifier for the repro.
 				reason := "produces no mana"
-				if obs.Ability != nil && obs.Ability.Effect != nil {
+				if obs.Ability.Effect != nil {
 					if effectProducesMana(obs.Ability.Effect) && effectTargets(obs.Ability.Effect) {
 						reason = "it targets (CR 605.1a)"
 					}
@@ -970,12 +1013,15 @@ func checkLegalityManaAbility(_ *GameState, obs *LegalityObservation) []Legality
 				add("605.1a", "ability resolved inline as a mana ability but is not one ("+reason+") — opponents were denied responses")
 			}
 		default:
-			// Unknown inline completion. Only flag when we positively
-			// know the AST ability is not a mana ability — per_card-only
-			// activations (obs.Ability == nil) are exempt until their
-			// call sites declare a reason.
-			if obs.Ability != nil && !isMana {
-				add("605.3a", "non-mana activated ability completed without a stack item (no fizzle declared) — opponents were denied responses")
+			// Unknown inline completion. r62 follow-up #1: the blanket
+			// per_card exemption (obs.Ability == nil → silent) is GONE —
+			// every engine site that completes an activation without a
+			// stack item must declare why via SetNoStackReason
+			// (mana_ability / fizzled_608.2b). An undeclared inline
+			// completion is exactly the shape that denies opponents
+			// responses without justification.
+			if !isMana {
+				add("605.3a", "activated ability completed without a stack item and without a declared reason — opponents were denied responses")
 			}
 		}
 		return out

@@ -120,7 +120,27 @@ func ArtifactManaPotential(p *Permanent) int {
 //     "stuck-tapped" so untap_step can choose to leave them tapped.
 func ApplyArtifactMana(gs *GameState, seat *Seat, p *Permanent) (int, bool) {
 	wasTapped := p != nil && p.Tapped
+	// Ride-along legality validator (r62 follow-up #1): this is an
+	// inline CR §605 mana-ability resolution that never touches
+	// ActivateAbility — bracket it with an observation declaring the
+	// mana_ability discriminator so the now-unexempted §605 check can
+	// verify the claim behaviorally (the window crediting records the
+	// mana actually produced). ok=false means nothing was tapped or
+	// resolved — abandon the window without running checks. Nil-receiver
+	// no-ops when the validator is off.
+	var legalityObs *LegalityObservation
+	if gs != nil && seat != nil {
+		legalityObs = gs.Legality.BeginActivation(gs, seat.Idx, p, -1, nil)
+	}
 	pips, ok := applyArtifactManaImpl(gs, seat, p)
+	if gs != nil && legalityObs != nil {
+		if ok {
+			legalityObs.SetNoStackReason("mana_ability")
+			gs.Legality.FinishActivation(gs, legalityObs, nil)
+		} else {
+			gs.Legality.AbandonObservation(legalityObs)
+		}
+	}
 	if ok && gs != nil {
 		FireCardTrigger(gs, "artifact_tapped_for_mana", map[string]interface{}{
 			"perm":            p,

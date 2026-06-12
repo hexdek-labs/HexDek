@@ -1063,6 +1063,13 @@ func tapAllManaSources(gs *gameengine.GameState, seat *gameengine.Seat) {
 		if p == nil || !p.IsLand() || p.Tapped {
 			continue
 		}
+		// Ride-along legality validator (r62 follow-up #1): a land tap is
+		// an inline CR §605 mana-ability resolution that never touches
+		// ActivateAbility — declare the mana_ability discriminator so the
+		// now-unexempted §605 check covers it (and verifies the claim
+		// behaviorally via the window's mana crediting). Nil-receiver
+		// no-ops when the validator is off.
+		legalityObs := gs.Legality.BeginActivation(gs, seat.Idx, p, -1, nil)
 		p.Tapped = true
 		color := landSubtypeColor(p.Card)
 		if color != "" {
@@ -1071,6 +1078,10 @@ func tapAllManaSources(gs *gameengine.GameState, seat *gameengine.Seat) {
 			// Utility/colorless lands: use AddMana with "any" so the mana
 			// flows through the typed pool (avoids legacy ManaPool drift).
 			gameengine.AddMana(gs, seat, "any", 1, p.Card.DisplayName())
+		}
+		if legalityObs != nil {
+			legalityObs.SetNoStackReason("mana_ability")
+			gs.Legality.FinishActivation(gs, legalityObs, nil)
 		}
 	}
 	// Pass 2: Tap mana artifacts. Work on a snapshot of the battlefield
