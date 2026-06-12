@@ -84,7 +84,7 @@ func main() {
 	manaVerify := flag.Bool("mana-verify", false, "run mana payment verification")
 	turnStructure := flag.Bool("turn-structure", false, "run turn structure compliance tests")
 	spellResolve := flag.Bool("spell-resolve", false, "run spell resolution pipeline for instants/sorceries")
-	goldilocksTest := flag.Bool("goldilocks", false, "run Goldilocks 'just right' effect verification")
+	goldilocksTest := flag.Bool("goldilocks", false, "run keyword-observability verification (the corpus-wide dead-effect sweep is retired — the Hex Judge OUTCOME dimension owns it; see internal/judge/outcome)")
 	advancedMechanics := flag.Bool("advanced-mechanics", false, "run advanced mechanics edge-case tests (~145 scenarios)")
 	deepRulesTest := flag.Bool("deep-rules", false, "run deep rules tests (100 scenarios, 20 packs, 13 invariants)")
 	claimVerify := flag.Bool("claim-verify", false, "run coverage claim verifier (~60 tests)")
@@ -406,8 +406,10 @@ func main() {
 		{"mana-verify", *manaVerify, runManaVerify},
 		{"turn-structure", *turnStructure, runTurnStructure},
 		// spell-resolve is integrated into per-card tests.
-		// Goldilocks runs as standalone module for granular stats.
-		{"goldilocks", *goldilocksTest, runGoldilocks},
+		// r63 fold: the goldilocks module is keyword-observability only —
+		// the corpus-wide dead-effect sweep retired into the OUTCOME
+		// dimension's Dead sub-class (internal/judge/outcome).
+		{"keyword-observability", *goldilocksTest, runKeywordObservability},
 		{"advanced-mechanics", *advancedMechanics, runAdvancedMechanics},
 		{"deep-rules", *deepRulesTest, runDeepRules},
 		{"claim-verify", *claimVerify, runClaimVerifier},
@@ -465,7 +467,7 @@ func main() {
 				}
 			}
 			modTests = count
-		case "goldilocks":
+		case "keyword-observability":
 			count := 0
 			for _, oc := range oracleCards {
 				if oc.ast != nil {

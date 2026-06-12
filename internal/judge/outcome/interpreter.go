@@ -67,6 +67,14 @@ func NewDelta() *Delta {
 	}
 }
 
+// IsZero reports whether the delta describes no observable change at
+// all — the "dead effect" signal (goldilocks fold, r63): an engine
+// resolution that produced a zero delta where the AST expects a
+// non-zero one is dead code in the resolver.
+func (d *Delta) IsZero() bool {
+	return d.Equal(NewDelta())
+}
+
 // Equal reports whether two deltas describe the same aggregate change.
 func (d *Delta) Equal(o *Delta) bool {
 	eqMap := func(a, b map[int]int) bool {

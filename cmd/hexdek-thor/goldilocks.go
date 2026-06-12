@@ -1,16 +1,29 @@
 package main
 
-// goldilocks.go — "Just Right" effect verification module for Thor.
+// goldilocks.go — effect scaffolding library + keyword observability.
 //
-// For every card in the corpus that has a structured AST effect, Goldilocks:
-//   1. Reads the AST to determine what the card needs (targets, conditions, zones)
-//   2. Sets up a game state that satisfies those needs exactly
-//   3. Resolves the effect
-//   4. Verifies the effect actually fired — not just "didn't crash" but
-//      "actually did its job"
+// HISTORY (r63 Tier-2 fold): this file began as the "Just Right"
+// corpus-wide effect-verification module — scaffold a board per card,
+// resolve the effect, assert SOMETHING changed. That sweep is RETIRED:
+// the Hex Judge OUTCOME dimension (internal/judge/outcome) subsumes it
+// with exact AST-derived expected deltas and flags the zero-actual/
+// non-zero-expected case as its Dead sub-class. At retirement, all 85
+// of the sweep's open dead-effect findings were verified to be its own
+// scaffold gaps, not engine bugs (see
+// /tmp/fable-review/goldilocks-into-outcome-r63.md).
 //
-// A Goldilocks failure means the card had everything it needed but NOTHING
-// changed — the effect was dead code in the resolver.
+// What this file still provides (live consumers):
+//
+//   1. The effect/condition SCAFFOLDING (makeGoldilocksState,
+//      setupForEffect, setupCondition, placeSmart*, …) — shared by the
+//      corpus-audit module, conditional_setup.go, and the per-card
+//      battery's "merged Goldilocks" single-card check in main.go
+//      (kept for --card debugging).
+//   2. KEYWORD OBSERVABILITY (runKeywordObservability + the keyword
+//      scaffolds): combat-scaffold verification that every keyword-only
+//      corpus card's keywords produce an observable change — coverage
+//      the OUTCOME dimension does not replicate (it has no combat
+//      machinery).
 
 import (
 	"fmt"
@@ -3666,6 +3679,9 @@ func applyInvariantSafetyOverrides(gs *gameengine.GameState, cardName string, ef
 // ---------------------------------------------------------------------------
 // Keyword-aware testing — tests cards whose only abilities are keywords.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Keyword-aware testing — tests cards whose only abilities are keywords.
+// ---------------------------------------------------------------------------
 
 // kwArgInt extracts an integer from a keyword's Args at position idx.
 // Args are []interface{} and may be float64 (from JSON) or int.
@@ -4643,30 +4659,47 @@ func testGoldilocksKeyword(oc *oracleCard, kw *gameast.Keyword) (result *failure
 	return nil
 }
 
-// Module entry point.
+// ---------------------------------------------------------------------------
+// Keyword observability runner (the retained half of goldilocks).
+//
+// r63 Tier-2 consolidation: the corpus-wide DEAD-EFFECT sweep that used
+// to live here is RETIRED — the Hex Judge OUTCOME dimension subsumes it
+// with strictly stronger assertions (exact expected deltas instead of
+// "anything changed", zero scaffold false positives; a zero actual
+// against a non-zero expectation is flagged as the Dead sub-class in
+// internal/judge/outcome). At retirement, 85/85 of this sweep's open
+// findings were verified to be its OWN scaffold gaps (no attacker
+// staged for "target attacking creature", no tapped Forest for "untap
+// target Forest"), not engine bugs — see
+// /tmp/fable-review/goldilocks-into-outcome-r63.md.
+//
+// What REMAINS here is the coverage OUTCOME does not replicate:
+//
+//   - KEYWORD OBSERVABILITY (this runner): every corpus card whose AST
+//     is keyword-only gets its keywords exercised through a real combat
+//     scaffold (attack, block, both damage steps) and verified to
+//     produce an observable difference. OUTCOME has no combat
+//     machinery; this is unique Tier-1 coverage (keyword_dead 1,795→0,
+//     May 2026; all green since).
+//   - The effect/condition SCAFFOLDING in this file (makeGoldilocksState,
+//     setupForEffect, setupCondition, placeSmart*, …), which is shared
+//     infrastructure for the corpus-audit module, the per-card battery
+//     (main.go "merged Goldilocks" section), and conditional_setup.go.
 // ---------------------------------------------------------------------------
 
-func runGoldilocks(corpus *astload.Corpus, oracleCards []*oracleCard) []failure {
+func runKeywordObservability(corpus *astload.Corpus, oracleCards []*oracleCard) []failure {
 	var (
-		fails      []failure
-		mu         sync.Mutex
-		tested     int64
-		skipped    int64
-		unverified int64
-		passed     int64
-		panicked   int64
-		deadEff    int64
-		invFail    int64
-		// Keyword-specific counters.
+		fails    []failure
+		mu       sync.Mutex
 		kwTested int64
 		kwPassed int64
 		kwFailed int64
 		kwPanic  int64
+		skipped  int64
 	)
 
 	start := time.Now()
 
-	// Build work channel.
 	work := make(chan *oracleCard, 256)
 	go func() {
 		for _, oc := range oracleCards {
@@ -4686,99 +4719,53 @@ func runGoldilocks(corpus *astload.Corpus, oracleCards []*oracleCard) []failure 
 					atomic.AddInt64(&skipped, 1)
 					continue
 				}
-
-				info := extractFirstEffect(oc.ast)
-				if info == nil {
-					// Card has AST but no extractable effect — check if it
-					// has abilities that SHOULD have effects (not just keywords).
-					hasNonKeyword := false
-					for _, ab := range oc.ast.Abilities {
-						switch ab.(type) {
-						case *gameast.Triggered, *gameast.Activated, *gameast.Static:
-							hasNonKeyword = true
-						}
-						if hasNonKeyword {
-							break
-						}
+				// Gating preserved from the retired sweep: keyword tests
+				// run for cards whose AST carries NO extractable effect
+				// and no non-keyword abilities — pure keyword cards,
+				// where the keyword IS the card's behavior.
+				if extractFirstEffect(oc.ast) != nil {
+					atomic.AddInt64(&skipped, 1)
+					continue
+				}
+				hasNonKeyword := false
+				for _, ab := range oc.ast.Abilities {
+					switch ab.(type) {
+					case *gameast.Triggered, *gameast.Activated, *gameast.Static:
+						hasNonKeyword = true
 					}
 					if hasNonKeyword {
-						// Card has abilities but we can't extract/verify them.
-						atomic.AddInt64(&unverified, 1)
+						break
+					}
+				}
+				if hasNonKeyword {
+					atomic.AddInt64(&skipped, 1)
+					continue
+				}
+				kws := extractKeywords(oc.ast)
+				if len(kws) == 0 {
+					atomic.AddInt64(&skipped, 1)
+					continue
+				}
+				for _, kw := range kws {
+					atomic.AddInt64(&kwTested, 1)
+					f := testGoldilocksKeyword(oc, kw)
+					if f != nil {
 						mu.Lock()
-						fails = append(fails, failure{
-							CardName:    oc.Name,
-							Interaction: "goldilocks_unverified",
-							Message:     "card has abilities but no extractable/verifiable effect",
-						})
+						fails = append(fails, *f)
 						mu.Unlock()
-					} else {
-						// Check for keyword abilities — test them instead
-						// of skipping.
-						kws := extractKeywords(oc.ast)
-						if len(kws) > 0 {
-							for _, kw := range kws {
-								atomic.AddInt64(&kwTested, 1)
-								f := testGoldilocksKeyword(oc, kw)
-								if f != nil {
-									mu.Lock()
-									fails = append(fails, *f)
-									mu.Unlock()
-									if f.Panicked {
-										atomic.AddInt64(&kwPanic, 1)
-									} else {
-										atomic.AddInt64(&kwFailed, 1)
-									}
-								} else {
-									atomic.AddInt64(&kwPassed, 1)
-								}
-							}
+						if f.Panicked {
+							atomic.AddInt64(&kwPanic, 1)
 						} else {
-							atomic.AddInt64(&skipped, 1)
+							atomic.AddInt64(&kwFailed, 1)
 						}
+					} else {
+						atomic.AddInt64(&kwPassed, 1)
 					}
-					continue
 				}
-				if !verifiableEffects[info.kind] {
-					atomic.AddInt64(&unverified, 1)
-					mu.Lock()
-					fails = append(fails, failure{
-						CardName:    oc.Name,
-						Interaction: "goldilocks_unverified",
-						Message:     fmt.Sprintf("effect kind '%s' not in verifiable set", info.kind),
-					})
-					mu.Unlock()
-					continue
-				}
-
-				atomic.AddInt64(&tested, 1)
-				f := testGoldilocksCard(oc)
-				if f != nil {
-					mu.Lock()
-					fails = append(fails, *f)
-					mu.Unlock()
-
-					switch {
-					case f.Panicked:
-						atomic.AddInt64(&panicked, 1)
-					case f.Interaction == "goldilocks_dead_effect":
-						atomic.AddInt64(&deadEff, 1)
-					case f.Interaction == "goldilocks_invariant":
-						atomic.AddInt64(&invFail, 1)
-					}
-				} else {
-					atomic.AddInt64(&passed, 1)
-				}
-
-				t := atomic.LoadInt64(&tested)
-				if t%2000 == 0 {
-					elapsed := time.Since(start)
-					rate := float64(t) / elapsed.Seconds()
-					fmt.Printf("  goldilocks: %d tested (%.0f/s) %d passed %d dead-effect %d panics %d invariant | kw: %d tested %d passed %d failed\n",
-						t, rate, atomic.LoadInt64(&passed),
-						atomic.LoadInt64(&deadEff), atomic.LoadInt64(&panicked),
-						atomic.LoadInt64(&invFail),
-						atomic.LoadInt64(&kwTested), atomic.LoadInt64(&kwPassed),
-						atomic.LoadInt64(&kwFailed))
+				if t := atomic.LoadInt64(&kwTested); t%500 == 0 {
+					fmt.Printf("  keyword-observability: %d tested %d passed %d failed %d panicked\n",
+						t, atomic.LoadInt64(&kwPassed),
+						atomic.LoadInt64(&kwFailed), atomic.LoadInt64(&kwPanic))
 				}
 			}
 		}()
@@ -4787,56 +4774,17 @@ func runGoldilocks(corpus *astload.Corpus, oracleCards []*oracleCard) []failure 
 	wg.Wait()
 
 	elapsed := time.Since(start)
-	finalTested := atomic.LoadInt64(&tested)
-	finalSkipped := atomic.LoadInt64(&skipped)
-	finalPassed := atomic.LoadInt64(&passed)
-	finalDead := atomic.LoadInt64(&deadEff)
-	finalPanicked := atomic.LoadInt64(&panicked)
-	finalInvFail := atomic.LoadInt64(&invFail)
-
-	finalUnverified := atomic.LoadInt64(&unverified)
-
-	finalKwTested := atomic.LoadInt64(&kwTested)
-	finalKwPassed := atomic.LoadInt64(&kwPassed)
-	finalKwFailed := atomic.LoadInt64(&kwFailed)
-	finalKwPanic := atomic.LoadInt64(&kwPanic)
-
-	log.Printf("  goldilocks complete:")
-	log.Printf("    tested:       %d", finalTested)
-	log.Printf("    passed:       %d", finalPassed)
-	log.Printf("    dead-effect:  %d", finalDead)
-	log.Printf("    unverified:   %d (has abilities but can't test them)", finalUnverified)
-	log.Printf("    skipped:      %d (no abilities at all)", finalSkipped)
-	log.Printf("    panicked:     %d", finalPanicked)
-	log.Printf("    invariant:    %d", finalInvFail)
-	log.Printf("  keyword testing:")
-	log.Printf("    kw-tested:    %d", finalKwTested)
-	log.Printf("    kw-passed:    %d", finalKwPassed)
-	log.Printf("    kw-failed:    %d (dead keyword)", finalKwFailed)
-	log.Printf("    kw-panicked:  %d", finalKwPanic)
+	log.Printf("  keyword-observability complete:")
+	log.Printf("    kw-tested:    %d", atomic.LoadInt64(&kwTested))
+	log.Printf("    kw-passed:    %d", atomic.LoadInt64(&kwPassed))
+	log.Printf("    kw-failed:    %d (dead keyword)", atomic.LoadInt64(&kwFailed))
+	log.Printf("    kw-panicked:  %d", atomic.LoadInt64(&kwPanic))
+	log.Printf("    skipped:      %d (effectful cards — OUTCOME's lane)", atomic.LoadInt64(&skipped))
 	log.Printf("    time:         %s", elapsed)
-	if elapsed.Seconds() > 0 {
-		log.Printf("    rate:         %.0f cards/s", float64(finalTested+finalKwTested)/elapsed.Seconds())
-	}
 
-	// Print breakdown by effect kind.
-	kindFails := map[string]int{}
-	kindDeadEffect := map[string]int{}
 	kwDeadBreakdown := map[string]int{}
 	for _, f := range fails {
-		kindFails[f.Interaction]++
-		if f.Interaction == "goldilocks_dead_effect" {
-			// Extract effect type from message.
-			msg := f.Message
-			if idx := strings.Index(msg, "effect="); idx >= 0 {
-				end := strings.Index(msg[idx:], " ")
-				if end > 0 {
-					kindDeadEffect[msg[idx+7:idx+end]]++
-				}
-			}
-		}
 		if f.Interaction == "goldilocks_keyword_dead" {
-			// Extract keyword name from message.
 			msg := f.Message
 			if idx := strings.Index(msg, "keyword="); idx >= 0 {
 				end := strings.Index(msg[idx:], ":")
@@ -4844,12 +4792,6 @@ func runGoldilocks(corpus *astload.Corpus, oracleCards []*oracleCard) []failure 
 					kwDeadBreakdown[msg[idx+8:idx+end]]++
 				}
 			}
-		}
-	}
-	if len(kindDeadEffect) > 0 {
-		log.Printf("    dead-effect breakdown:")
-		for k, v := range kindDeadEffect {
-			log.Printf("      %s: %d", k, v)
 		}
 	}
 	if len(kwDeadBreakdown) > 0 {

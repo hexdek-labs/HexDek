@@ -20,6 +20,10 @@ type Finding struct {
 	Expected string
 	Actual   string
 	Raw      string // raw oracle clause when available
+	// Dead marks the goldilocks sub-class (folded r63): the engine
+	// produced a ZERO delta where every legal expectation is non-zero
+	// — the effect did not fire at all, not merely wrongly.
+	Dead bool
 }
 
 // snapshot captures the aggregate observable state.
@@ -263,9 +267,13 @@ func RunEffect(cardName, raw string, eff gameast.Effect) (*Finding, bool) {
 	actual := diff(before, snap(gs))
 
 	expDesc := ""
+	anyZeroExpected := false
 	for i, exp := range expectedSet {
 		if actual.Equal(exp) {
 			return nil, true
+		}
+		if exp.IsZero() {
+			anyZeroExpected = true
 		}
 		if i > 0 {
 			expDesc += " | "
@@ -278,6 +286,10 @@ func RunEffect(cardName, raw string, eff gameast.Effect) (*Finding, bool) {
 		Expected: expDesc,
 		Actual:   actual.String(),
 		Raw:      raw,
+		// Dead-effect sub-class (goldilocks fold, r63): zero actual
+		// where no legal expectation is zero — the effect never fired
+		// at all, not merely wrongly.
+		Dead: actual.IsZero() && !anyZeroExpected,
 	}
 	EmitFinding(f) // origin tap — Judge router
 	return f, true

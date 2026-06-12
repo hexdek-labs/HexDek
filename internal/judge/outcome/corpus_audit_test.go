@@ -69,8 +69,14 @@ func TestOutcome_CorpusAudit(t *testing.T) {
 		}
 	}
 
-	t.Logf("outcome corpus audit: %d effects in phase-1 scope, %d passed, %d diverged",
-		inScope, passed, len(findings))
+	dead := 0
+	for _, fd := range findings {
+		if fd.Dead {
+			dead++
+		}
+	}
+	t.Logf("outcome corpus audit: %d effects in phase-1 scope, %d passed, %d diverged (%d dead-effect)",
+		inScope, passed, len(findings), dead)
 	t.Logf("etb-with-counters: %d in scope, %d passed, %d diverged", etbcInScope, etbcPassed, len(etbcFindings))
 	for i, fd := range etbcFindings {
 		if i < 10 {
@@ -88,9 +94,13 @@ func TestOutcome_CorpusAudit(t *testing.T) {
 	defer f.Close()
 	w := csv.NewWriter(f)
 	defer w.Flush()
-	_ = w.Write([]string{"card", "kind", "expected", "actual", "raw"})
+	_ = w.Write([]string{"card", "kind", "dead", "expected", "actual", "raw"})
 	for _, fd := range findings {
-		_ = w.Write([]string{fd.CardName, fd.Kind, fd.Expected, fd.Actual, fd.Raw})
+		deadStr := ""
+		if fd.Dead {
+			deadStr = "dead"
+		}
+		_ = w.Write([]string{fd.CardName, fd.Kind, deadStr, fd.Expected, fd.Actual, fd.Raw})
 	}
 	fmt.Printf("OUTCOME-AUDIT inScope=%d passed=%d diverged=%d\n", inScope, passed, len(findings))
 }
