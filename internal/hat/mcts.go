@@ -617,6 +617,10 @@ func (h *MCTSHat) ChooseKickCount(gs *gameengine.GameState, seatIdx int, card *g
 	return h.Inner.ChooseKickCount(gs, seatIdx, card, kickerCost, maxKicks)
 }
 
+func (h *MCTSHat) ChooseOptionalCost(gs *gameengine.GameState, seatIdx int, card *gameengine.Card, kind string, cost, max int) int {
+	return h.Inner.ChooseOptionalCost(gs, seatIdx, card, kind, cost, max)
+}
+
 func (h *MCTSHat) ChooseBottomCards(gs *gameengine.GameState, seatIdx int, hand []*gameengine.Card, count int) []*gameengine.Card {
 	return h.Inner.ChooseBottomCards(gs, seatIdx, hand, count)
 }

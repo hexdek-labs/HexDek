@@ -9478,6 +9478,95 @@ func (h *YggdrasilHat) ChooseKickCount(gs *gameengine.GameState, seatIdx int, ca
 	return maxKicks
 }
 
+// -- Interface: ChooseOptionalCost --
+//
+// PR-5 cast-time cost-mechanic family (CR §601.2b/f). Yggdrasil refines the
+// greedy baseline with archetype + board awareness:
+//
+//   - replicate: spend all affordable copies; Control/Stax shave one to keep
+//     interaction mana up unless the spell is a combo/value-engine key.
+//   - overload: take it whenever ≥2 targets exist on the battlefield (the
+//     "each" fan-out only earns its cost when it hits multiple permanents);
+//     otherwise decline so a one-target overload isn't overpaid.
+//   - buyback: take it when mana-flush (≥2 leftover after the cost) so the
+//     repeatable spell becomes a value engine; otherwise hold the mana.
+//   - surge/spectacle/conspire: take the discount/free copy whenever offered.
+//   - casualty/bargain: SACRIFICE costs — take only when the deck wants the
+//     sacrifice (Aristocrats/Sacrifice/Combo archetypes), else decline so the
+//     hat doesn't trade board presence for a single spell.
+func (h *YggdrasilHat) ChooseOptionalCost(gs *gameengine.GameState, seatIdx int, card *gameengine.Card, kind string, cost, max int) int {
+	if max <= 0 {
+		return 0
+	}
+	critical := false
+	arch := ""
+	if h.Strategy != nil {
+		arch = h.Strategy.Archetype
+		critical = h.isComboRelevant(card) || h.isValueEngineKey(card)
+	}
+	defensive := arch == ArchetypeControl || arch == ArchetypeStax
+
+	switch kind {
+	case "replicate":
+		if defensive && !critical && max > 1 {
+			return max - 1
+		}
+		return max
+	case "overload":
+		// "each" fan-out only pays for itself with ≥2 affected permanents.
+		if h.overloadTargetCount(gs, seatIdx, card) >= 2 {
+			return max
+		}
+		return 0
+	case "buyback":
+		if avail := h.availableMana(gs, seatIdx); avail-cost >= 2 || critical {
+			return max
+		}
+		return 0
+	case "casualty", "bargain":
+		if arch == ArchetypeAristocrats || arch == ArchetypeCombo || critical {
+			return max
+		}
+		return 0
+	default: // surge, spectacle, conspire — discounts / free copies
+		return max
+	}
+}
+
+// overloadTargetCount estimates how many permanents an overloaded spell
+// would hit by counting opponents' nonland permanents — the common targets
+// of overloaded bounce/destroy effects (Cyclonic Rift, Vandalblast). A coarse
+// proxy that is right for the canonical overload cards and conservative for
+// the rest (declining a 0/1-target overload).
+func (h *YggdrasilHat) overloadTargetCount(gs *gameengine.GameState, seatIdx int, card *gameengine.Card) int {
+	if gs == nil {
+		return 0
+	}
+	count := 0
+	for i, seat := range gs.Seats {
+		if seat == nil || i == seatIdx {
+			continue
+		}
+		for _, p := range seat.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			if !p.IsLand() {
+				count++
+			}
+		}
+	}
+	return count
+}
+
+// availableMana reports the seat's current untapped mana pool total.
+func (h *YggdrasilHat) availableMana(gs *gameengine.GameState, seatIdx int) int {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) || gs.Seats[seatIdx] == nil {
+		return 0
+	}
+	return gs.Seats[seatIdx].ManaPool
+}
+
 // -- Interface: ChooseBottomCards --
 
 func (h *YggdrasilHat) ChooseBottomCards(gs *gameengine.GameState, seatIdx int, hand []*gameengine.Card, count int) []*gameengine.Card {

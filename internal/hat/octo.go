@@ -351,6 +351,22 @@ func (*OctoHat) ChooseKickCount(gs *gameengine.GameState, seatIdx int, card *gam
 	return maxKicks
 }
 
+// ChooseOptionalCost — PR-5 cost-mechanic family. Octo mirrors the greedy
+// baseline: take the value-positive mana mechanics (replicate/overload/
+// buyback/surge/spectacle/conspire), decline the sacrifice costs
+// (casualty/bargain) by default.
+func (*OctoHat) ChooseOptionalCost(gs *gameengine.GameState, seatIdx int, card *gameengine.Card, kind string, cost, max int) int {
+	if max <= 0 {
+		return 0
+	}
+	switch kind {
+	case "casualty", "bargain":
+		return 0
+	default:
+		return max
+	}
+}
+
 // ---------------------------------------------------------------------
 // Mulligan bottom cards — bottom the cheapest (keep bombs). §103.5.
 // ---------------------------------------------------------------------
