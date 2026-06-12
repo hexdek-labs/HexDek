@@ -321,6 +321,28 @@ type GauntletResult struct {
 // disabled in that mode so no further games corrupt rating/analytics data.
 const maintenanceMessage = "Gauntlets & live games are paused for maintenance — engine fixes in progress. Back soon. 🔧"
 
+// inMaintenance reads the maintenance flag under the state lock. Game
+// loops poll this between turns (r62, report 06 C3) so a flip mid-game
+// halts the game cleanly without recording a rated result.
+func (sm *Showmatch) inMaintenance() bool {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	return sm.maintenance
+}
+
+// SetMaintenance flips maintenance mode at runtime. Construction still
+// seeds the flag from HEXDEK_MAINTENANCE; this setter exists so tests —
+// and a future admin endpoint — can flip it on a live server and have
+// every running rated loop (fishtank, grinder workers, spectate rooms)
+// stop at its next between-turns check instead of riding out the game
+// and corrupting the rating/analytics data maintenance is meant to
+// protect.
+func (sm *Showmatch) SetMaintenance(on bool) {
+	sm.mu.Lock()
+	sm.maintenance = on
+	sm.mu.Unlock()
+}
+
 type Showmatch struct {
 	mu              sync.RWMutex
 	snap            *GameSnapshot
@@ -667,8 +689,19 @@ func (sm *Showmatch) loadPersistedState() {
 			rating = trueSkillStartRating(r.Bracket).Conservative()
 			resetCount++
 		}
+		// r62 (report 09 C-2): prefer the persisted TrueSkill mu/sigma.
+		// ts_sigma == 0 marks a row written before the columns existed
+		// (or by an older binary) — only those fall back to the legacy
+		// reconstruction. Out-of-band ratings (the band-aid reset above)
+		// also discard the persisted pair: if the scalar was garbage,
+		// the pair that produced it is not trusted either. The PR #996
+		// clamps stay as the backstop in both branches.
 		sigma := tsDefaultSigma
 		mu := clampF(rating+3*sigma, tsMuFloor, tsMuCeil)
+		if r.TSSigma > 0 && rating == r.Rating {
+			mu = clampF(r.TSMu, tsMuFloor, tsMuCeil)
+			sigma = clampF(r.TSSigma, tsSigmaFloor, tsDefaultSigma)
+		}
 		sm.elo[r.DeckKey] = &eloState{
 			rating:    clampF(rating, eloRatingMin, eloRatingMax),
 			hexRating: r.HexRating,
@@ -810,7 +843,7 @@ func (sm *Showmatch) loadAndRun(astPath, oraclePath, decksDir string) {
 	sm.mu.Unlock()
 
 	log.Printf("showmatch: ready — %d decks in pool, starting fishtank + background grinder", len(decks))
-	if sm.maintenance {
+	if sm.inMaintenance() {
 		log.Printf("grinder: NOT starting — maintenance mode (HEXDEK_MAINTENANCE=1)")
 	} else {
 		go sm.runGrinder()
@@ -822,7 +855,21 @@ func (sm *Showmatch) loadAndRun(astPath, oraclePath, decksDir string) {
 
 func (sm *Showmatch) runLoop() {
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	loggedPause := false
 	for {
+		// r62 (report 06 C3): the fishtank previously ran rated games
+		// unconditionally — one rated game every few minutes kept
+		// mutating ELO / history / persistence in maintenance mode.
+		// Pause instead; the last snapshot stays on display.
+		if sm.inMaintenance() {
+			if !loggedPause {
+				loggedPause = true
+				log.Printf("fishtank: paused — maintenance mode")
+			}
+			time.Sleep(2 * time.Second)
+			continue
+		}
+		loggedPause = false
 		sm.runOneGame(rng)
 		sm.mu.RLock()
 		mult := sm.speedMultiplier
@@ -855,6 +902,12 @@ func (sm *Showmatch) runGrinder() {
 		go func(id int) {
 			rng := rand.New(rand.NewSource(time.Now().UnixNano() + int64(id)*31))
 			for {
+				// r62 (report 06 C3): honor a runtime maintenance flip
+				// even though the grinder never STARTS in maintenance.
+				if sm.inMaintenance() {
+					time.Sleep(2 * time.Second)
+					continue
+				}
 				sm.runOneGameFast(rng)
 				totalGames.Add(1)
 			}
@@ -1380,6 +1433,8 @@ func (sm *Showmatch) flushELO() {
 			Delta:     e.delta,
 			HexDelta:  e.hexDelta,
 			Bracket:   e.bracket,
+			TSMu:      e.tsMu,
+			TSSigma:   e.tsSigma,
 		})
 	}
 	if err := db.BatchUpsertELO(context.Background(), sm.sqlDB, records); err != nil {
@@ -1652,6 +1707,12 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 	}
 	const maxHeapPerGame = 2 * 1024 * 1024 * 1024 // 2GB per game
 	for turn := 1; turn <= showmatchMaxTurn; turn++ {
+		// r62 (report 06 C3): abort unrated on a mid-game maintenance flip
+		// (same contract as the fishtank loop — see runOneGame).
+		if sm.inMaintenance() {
+			log.Printf("grinder: game aborted at turn %d — maintenance mode (unrated)", turn)
+			return
+		}
 		gs.Turn = turn
 		preBF := heimdall.SnapshotBattlefieldNames(gs)
 		tournament.TakeTurn(gs)
@@ -1955,6 +2016,15 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 	// (SQLite game schema doesn't persist per-turn detail).
 	var timeline []TurnSnapshot
 	for turn := 1; turn <= showmatchMaxTurn; turn++ {
+		// r62 (report 06 C3): a maintenance flip mid-game halts the game
+		// between turns. Returning here skips the entire end-of-game
+		// block — no updateELO, no gameHistory append, no persist
+		// enqueue, no curse/training feeds — so an in-flight game can
+		// never corrupt the data maintenance is meant to protect.
+		if sm.inMaintenance() {
+			log.Printf("fishtank: game %d aborted at turn %d — maintenance mode (unrated)", gameNum, turn)
+			return
+		}
 		gs.Turn = turn
 
 		preBF := heimdall.SnapshotBattlefieldNames(gs)
@@ -3621,7 +3691,7 @@ func (sm *Showmatch) RegisterShowmatch(mux *http.ServeMux) {
 var gauntletSem = make(chan struct{}, 2)
 
 func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request) {
-	if sm.maintenance {
+	if sm.inMaintenance() {
 		writeError(w, http.StatusServiceUnavailable, maintenanceMessage)
 		return
 	}

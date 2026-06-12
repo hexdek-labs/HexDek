@@ -254,6 +254,10 @@ CREATE TABLE IF NOT EXISTS showmatch_elo (
     delta        REAL NOT NULL DEFAULT 0.0,
     hex_delta    REAL NOT NULL DEFAULT 0.0,
     bracket      INTEGER NOT NULL DEFAULT 0,
+    -- r62: raw TrueSkill skill estimate / uncertainty (report 09 C-2).
+    -- ts_sigma 0 = legacy row; loaders reconstruct from rating instead.
+    ts_mu        REAL NOT NULL DEFAULT 0.0,
+    ts_sigma     REAL NOT NULL DEFAULT 0.0,
     updated_at   INTEGER NOT NULL
 );
 

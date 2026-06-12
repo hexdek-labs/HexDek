@@ -218,6 +218,12 @@ func (room *SpectateRoom) gameLoop() {
 			return
 		default:
 		}
+		// r62 (report 06 C3): rooms alive when maintenance flips on keep
+		// their spectators but stop playing rated games until it lifts.
+		if room.sm.inMaintenance() {
+			time.Sleep(2 * time.Second)
+			continue
+		}
 		room.runOneSpectateGame()
 
 		room.mu.RLock()
@@ -437,6 +443,13 @@ func (room *SpectateRoom) runOneSpectateGame() {
 		case <-room.stopCh:
 			return
 		default:
+		}
+		// r62 (report 06 C3): a maintenance flip mid-game halts the room's
+		// game between turns, unrated — same early-return shape as the
+		// stopCh path above (skips updateELO / gameHistory / persistence).
+		if sm.inMaintenance() {
+			log.Printf("spectate-room %s: game aborted at turn %d — maintenance mode (unrated)", room.ID, turn)
+			return
 		}
 
 		gs.Turn = turn
@@ -755,7 +768,7 @@ func (sm *Showmatch) handleReloadPool(w http.ResponseWriter, r *http.Request) {
 }
 
 func (sm *Showmatch) handleSpawnSpectateRoom(w http.ResponseWriter, r *http.Request) {
-	if sm.maintenance {
+	if sm.inMaintenance() {
 		writeError(w, http.StatusServiceUnavailable, maintenanceMessage)
 		return
 	}
