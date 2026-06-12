@@ -213,13 +213,15 @@ func RunEffect(cardName, raw string, eff gameast.Effect) (*Finding, bool) {
 		}
 		expDesc += exp.String()
 	}
-	return &Finding{
+	f := &Finding{
 		CardName: cardName,
 		Kind:     eff.Kind(),
 		Expected: expDesc,
 		Actual:   actual.String(),
 		Raw:      raw,
-	}, true
+	}
+	EmitFinding(f) // origin tap — Judge router
+	return f, true
 }
 
 // ExtractEffects pulls the resolvable effect trees off a CardAST the

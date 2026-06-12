@@ -57,6 +57,8 @@ const (
 	SurfaceParity      = "parity"       // internal/paritycheck cross-engine diff
 	SurfaceGoldilocks  = "goldilocks"   // cmd/hexdek-thor effect verification
 	SurfaceSeatOutcome = "seat_outcome" // gameengine seat-outcome ride-along checker
+	SurfaceOutcome     = "outcome"      // judge/outcome expected-delta interpreter
+	SurfaceProgression = "progression"  // judge/progression trigger-correctness checker
 )
 
 // ValidationViolation is the canonical violation record. Every

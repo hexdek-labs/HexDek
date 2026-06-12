@@ -106,7 +106,6 @@ func progressionSpec() outcome.BoardSpec {
 	}
 }
 
-
 func vanillaPerm(gs *gameengine.GameState, seat int) *gameengine.Permanent {
 	c := &gameengine.Card{
 		Name: "Vanilla Bystander", Owner: seat,
@@ -268,6 +267,7 @@ func CheckTrigger(cardName string, t *gameast.Triggered) ([]*Finding, bool) {
 		}
 		check("phantom", actual2, false)
 	}
+	emitAll(findings) // origin tap — Judge router
 	return findings, true
 }
 
@@ -297,8 +297,6 @@ func subtractDeath(d *outcome.Delta, seat, pt int) {
 func subtractTap(d *outcome.Delta, n int) {
 	d.Tapped -= n
 }
-
-
 
 func describeSet(set []*outcome.Delta) string {
 	out := ""

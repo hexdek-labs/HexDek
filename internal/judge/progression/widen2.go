@@ -171,6 +171,7 @@ func CheckPhaseTrigger(cardName string, t *gameast.Triggered) ([]*Finding, bool)
 			})
 		}
 	}
+	emitAll(findings) // origin tap — Judge router
 	return findings, true
 }
 
@@ -226,6 +227,7 @@ func CheckLTBTrigger(cardName string, t *gameast.Triggered) ([]*Finding, bool) {
 			Expected: "no change (another permanent left)", Actual: actual2.String(), Raw: t.Raw,
 		})
 	}
+	emitAll(findings) // origin tap — Judge router
 	return findings, true
 }
 
