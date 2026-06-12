@@ -53,6 +53,7 @@ func vrenETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 
 	gs.RegisterReplacement(&gameengine.ReplacementEffect{
 		EventType:      "would_die",
+		RedirectsZone:  true,
 		HandlerID:      "Vren, the Relentless:exile_opp_creature:" + strconv.Itoa(perm.Timestamp),
 		SourcePerm:     perm,
 		ControllerSeat: controller,

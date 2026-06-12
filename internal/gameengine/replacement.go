@@ -214,6 +214,18 @@ type ReplacementEffect struct {
 	// ApplyFn mutates the event in place per CR §614.6. May set
 	// event.Cancelled = true to suppress the action entirely.
 	ApplyFn func(*GameState, *ReplEvent)
+
+	// RedirectsZone declares that this replacement, when applied to a
+	// would_die / would_be_put_into_graveyard event, changes the
+	// destination zone (or cancels the move) — Rest in Peace, Leyline,
+	// Anafenza, Dauthi Voidwalker, Vren, impulse-grant returns. The
+	// legality validator's 614.1a check audits ONLY declared
+	// redirectors: bookkeeping replacements that ride the would_die
+	// chain without altering it (Skullclamp's stamp, Solemn
+	// Simulacrum's dies-draw) must leave this false or every legitimate
+	// graveyard arrival they witness reads as a §614 bypass (r63 sweep
+	// FP cluster, 9 hits across 3 seeds, all skullclamp:stamp).
+	RedirectsZone bool
 }
 
 // -----------------------------------------------------------------------------
@@ -795,12 +807,14 @@ func RegisterRestInPeace(gs *GameState, p *Permanent) {
 	// Fires on both "would_die" and "would_be_put_into_graveyard".
 	gs.RegisterReplacement(&ReplacementEffect{
 		EventType: "would_die", HandlerID: handlerKey("Rest in Peace", "die", p),
+		RedirectsZone: true,
 		SourcePerm: p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
 		Category: CategoryOther, Applies: applies, ApplyFn: apply,
 	})
 	gs.RegisterReplacement(&ReplacementEffect{
 		EventType: "would_be_put_into_graveyard",
 		HandlerID:  handlerKey("Rest in Peace", "gy", p),
+		RedirectsZone: true,
 		SourcePerm: p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
 		Category: CategoryOther, Applies: applies, ApplyFn: apply,
 	})
@@ -841,12 +855,14 @@ func RegisterLeylineOfTheVoid(gs *GameState, p *Permanent) {
 	}
 	gs.RegisterReplacement(&ReplacementEffect{
 		EventType: "would_die", HandlerID: handlerKey("Leyline of the Void", "die", p),
+		RedirectsZone: true,
 		SourcePerm: p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
 		Category: CategoryOther, Applies: applies, ApplyFn: apply,
 	})
 	gs.RegisterReplacement(&ReplacementEffect{
 		EventType: "would_be_put_into_graveyard",
 		HandlerID:  handlerKey("Leyline of the Void", "gy", p),
+		RedirectsZone: true,
 		SourcePerm: p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
 		Category: CategoryOther, Applies: applies, ApplyFn: apply,
 	})
@@ -861,6 +877,7 @@ func RegisterAnafenzaTheForemost(gs *GameState, p *Permanent) {
 	gs.RegisterReplacement(&ReplacementEffect{
 		EventType:      "would_die",
 		HandlerID:      handlerKey("Anafenza, the Foremost", "exile", p),
+		RedirectsZone: true,
 		SourcePerm:     p,
 		ControllerSeat: p.Controller,
 		Timestamp:      p.Timestamp,
@@ -1186,12 +1203,14 @@ func RegisterDauthiVoidwalker(gs *GameState, p *Permanent) {
 	}
 	gs.RegisterReplacement(&ReplacementEffect{
 		EventType: "would_die", HandlerID: handlerKey("Dauthi Voidwalker", "die", p),
+		RedirectsZone: true,
 		SourcePerm: p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
 		Category: CategoryOther, Applies: applies, ApplyFn: apply,
 	})
 	gs.RegisterReplacement(&ReplacementEffect{
 		EventType: "would_be_put_into_graveyard",
 		HandlerID:  handlerKey("Dauthi Voidwalker", "gy", p),
+		RedirectsZone: true,
 		SourcePerm: p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
 		Category: CategoryOther, Applies: applies, ApplyFn: apply,
 	})

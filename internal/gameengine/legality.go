@@ -1138,6 +1138,14 @@ func checkLegalityReplacementGraveyard(gs *GameState, obs *LegalityObservation) 
 		if re == nil || re.Applies == nil {
 			continue
 		}
+		// Only declared zone-redirectors are auditable: a bookkeeping
+		// replacement that rides would_die without altering the event
+		// (Skullclamp's stamp, Solemn's dies-draw) legitimately
+		// witnesses graveyard arrivals — flagging those was the r63
+		// sweep's FP cluster (9 hits, all skullclamp:stamp).
+		if !re.RedirectsZone {
+			continue
+		}
 		if re.SourcePerm == obs.Perm {
 			continue // self-replacement
 		}

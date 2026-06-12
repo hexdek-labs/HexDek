@@ -54,6 +54,7 @@ func progenitusETBSetProtectionAndRegisterReplacement(gs *gameengine.GameState, 
 
 	gs.RegisterReplacement(&gameengine.ReplacementEffect{
 		EventType:      "would_be_put_into_graveyard",
+		RedirectsZone:  true,
 		HandlerID:      "progenitus:would_gy_shuffle:" + perm.Card.DisplayName(),
 		SourcePerm:     perm,
 		ControllerSeat: perm.Controller,

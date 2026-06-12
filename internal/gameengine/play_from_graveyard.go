@@ -221,6 +221,7 @@ func RegisterPlayFromGraveyard(gs *GameState, opts PlayFromGraveyardOptions) int
 	gs.RegisterReplacement(&ReplacementEffect{
 		EventType:      "would_die",
 		HandlerID:      dieHandler,
+		RedirectsZone:  true,
 		SourcePerm:     opts.SourcePerm,
 		ControllerSeat: opts.SeatIdx,
 		Timestamp:      ts,
@@ -231,6 +232,7 @@ func RegisterPlayFromGraveyard(gs *GameState, opts PlayFromGraveyardOptions) int
 	gs.RegisterReplacement(&ReplacementEffect{
 		EventType:      "would_be_put_into_graveyard",
 		HandlerID:      gyHandler,
+		RedirectsZone:  true,
 		SourcePerm:     opts.SourcePerm,
 		ControllerSeat: opts.SeatIdx,
 		Timestamp:      ts,

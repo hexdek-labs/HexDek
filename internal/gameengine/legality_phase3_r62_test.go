@@ -196,6 +196,7 @@ func TestLegalityPhase3_ReplacementGraveyard(t *testing.T) {
 		SourcePerm:     rip,
 		ControllerSeat: 1,
 		Category:       CategoryOther,
+		RedirectsZone:  true,
 		Applies:        func(*GameState, *ReplEvent) bool { return true },
 		ApplyFn:        func(_ *GameState, ev *ReplEvent) { ev.Payload["to_zone"] = "exile" },
 	})
@@ -215,11 +216,12 @@ func TestLegalityPhase3_ReplacementGraveyard(t *testing.T) {
 	v.Violations = nil
 	gs.Replacements = nil
 	gs.RegisterReplacement(&ReplacementEffect{
-		EventType:  "would_die",
-		HandlerID:  "Doomed Bear:self:test",
-		SourcePerm: dead,
-		Applies:    func(*GameState, *ReplEvent) bool { return true },
-		ApplyFn:    func(*GameState, *ReplEvent) {},
+		EventType:     "would_die",
+		HandlerID:     "Doomed Bear:self:test",
+		SourcePerm:    dead,
+		RedirectsZone: true,
+		Applies:       func(*GameState, *ReplEvent) bool { return true },
+		ApplyFn:       func(*GameState, *ReplEvent) {},
 	})
 	FireZoneChangeTriggers(gs, dead, dead.Card, "battlefield", "graveyard")
 	if len(v.Violations) != 0 {
@@ -237,4 +239,35 @@ func TestLegalityPhase3_DefaultOff_NoOp(t *testing.T) {
 	FireZoneChangeTriggers(gs, dead, dead.Card, "battlefield", "graveyard")
 	FirePermanentETBTriggers(gs, dead)
 	// Reaching here without a panic is the pin (gs.Legality is nil).
+}
+
+
+// r63 sweep FP pin: a NON-redirecting would_die replacement (Skullclamp
+// stamp / Solemn dies-draw class — RedirectsZone false) legitimately
+// witnesses graveyard arrivals and must NOT flag 614.1a.
+func TestLegalityPhase3_ReplacementGraveyard_StampClassNotFlagged(t *testing.T) {
+	gs, v := phase3Game(t)
+	dead := &Permanent{
+		Card:       &Card{Name: "Clamped Bear", Owner: 0, Types: []string{"creature"}},
+		Controller: 0,
+		Owner:      0,
+	}
+	clamp := &Permanent{
+		Card:       &Card{Name: "Skullclamp", Owner: 1, Types: []string{"artifact"}},
+		Controller: 1,
+		Owner:      1,
+	}
+	gs.Seats[1].Battlefield = append(gs.Seats[1].Battlefield, clamp)
+	gs.RegisterReplacement(&ReplacementEffect{
+		EventType:  "would_die",
+		HandlerID:  "skullclamp:stamp:test",
+		SourcePerm: clamp,
+		// RedirectsZone deliberately FALSE — bookkeeping stamp.
+		Applies: func(*GameState, *ReplEvent) bool { return true },
+		ApplyFn: func(*GameState, *ReplEvent) {},
+	})
+	FireZoneChangeTriggers(gs, dead, dead.Card, "battlefield", "graveyard")
+	if len(v.Violations) != 0 {
+		t.Fatalf("stamp-class (non-redirecting) replacement flagged as 614.1a bypass: %v", v.Violations)
+	}
 }
