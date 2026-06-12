@@ -122,6 +122,10 @@ type oracleCard struct {
 	TypeLine   string  `json:"type_line"`
 	OracleText string  `json:"oracle_text"`
 	Set        string  `json:"set,omitempty"`
+	// ColorIdentity is the WUBRG color-identity letters from the oracle
+	// corpus (r63 deck editor: /api/cards/search filters results to
+	// cards whose identity fits inside the commander's).
+	ColorIdentity []string `json:"color_identity,omitempty"`
 }
 
 func (h *Handler) LoadCardDB(path string) {
@@ -131,12 +135,13 @@ func (h *Handler) LoadCardDB(path string) {
 		return
 	}
 	var cards []struct {
-		Name       string  `json:"name"`
-		CMC        float64 `json:"cmc"`
-		ManaCost   string  `json:"mana_cost"`
-		TypeLine   string  `json:"type_line"`
-		OracleText string  `json:"oracle_text"`
-		Set        string  `json:"set"`
+		Name          string   `json:"name"`
+		CMC           float64  `json:"cmc"`
+		ManaCost      string   `json:"mana_cost"`
+		TypeLine      string   `json:"type_line"`
+		OracleText    string   `json:"oracle_text"`
+		Set           string   `json:"set"`
+		ColorIdentity []string `json:"color_identity"`
 	}
 	if err := json.Unmarshal(data, &cards); err != nil {
 		log.Printf("carddb: parse error: %v", err)
@@ -145,11 +150,12 @@ func (h *Handler) LoadCardDB(path string) {
 	h.cardDB = make(map[string]oracleCard, len(cards))
 	for _, c := range cards {
 		h.cardDB[strings.ToLower(c.Name)] = oracleCard{
-			CMC:        c.CMC,
-			ManaCost:   c.ManaCost,
-			TypeLine:   c.TypeLine,
-			OracleText: c.OracleText,
-			Set:        c.Set,
+			CMC:           c.CMC,
+			ManaCost:      c.ManaCost,
+			TypeLine:      c.TypeLine,
+			OracleText:    c.OracleText,
+			Set:           c.Set,
+			ColorIdentity: c.ColorIdentity,
 		}
 	}
 	log.Printf("carddb: loaded %d cards", len(h.cardDB))

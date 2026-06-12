@@ -164,7 +164,11 @@ export const api = {
     const qs = params.toString()
     return authedRequest(`/api/tags${qs ? `?${qs}` : ''}`)
   },
-  searchCards: (q, limit = 6) => request(`/api/cards/search?q=${encodeURIComponent(q)}&limit=${limit}`),
+  searchCards: (q, limit = 6, colors = '', scope = '') => request(
+    `/api/cards/search?q=${encodeURIComponent(q)}&limit=${limit}` +
+    (colors ? `&colors=${encodeURIComponent(colors)}` : '') +
+    (scope ? `&scope=${encodeURIComponent(scope)}` : ''),
+  ),
   runAnalysis: (id) => request(`/api/decks/${id}/analyze`, { method: 'POST' }),
   updateDeck: (id, deckList) => authedRequest(`/api/decks/${id}`, {
     method: 'PUT',
