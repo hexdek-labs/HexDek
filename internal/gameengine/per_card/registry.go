@@ -282,6 +282,18 @@ func (r *Registry) OnETB(cardName string, h ETBHandler) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	k := normalizeName(cardName)
+	// r62 #1034 generalization: idempotent on handler identity — the
+	// registerDefaults-vs-batch-init cross-file duplication that made
+	// OnTrigger handlers fire twice had ALSO double-registered 38 ETB
+	// handlers (Anointed Procession, Wayward Servant, Propaganda,
+	// Academy Manufactor, the zombie-lord family, …), firing each
+	// twice per ETB.
+	hp := reflect.ValueOf(h).Pointer()
+	for _, existing := range r.etb[k] {
+		if reflect.ValueOf(existing).Pointer() == hp {
+			return
+		}
+	}
 	r.etb[k] = append(r.etb[k], h)
 }
 
@@ -293,6 +305,12 @@ func (r *Registry) OnCast(cardName string, h CastHandler) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	k := normalizeName(cardName)
+	hp := reflect.ValueOf(h).Pointer()
+	for _, existing := range r.onCast[k] {
+		if reflect.ValueOf(existing).Pointer() == hp {
+			return
+		}
+	}
 	r.onCast[k] = append(r.onCast[k], h)
 }
 
@@ -304,6 +322,12 @@ func (r *Registry) OnResolve(cardName string, h ResolveHandler) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	k := normalizeName(cardName)
+	hp := reflect.ValueOf(h).Pointer()
+	for _, existing := range r.onResolve[k] {
+		if reflect.ValueOf(existing).Pointer() == hp {
+			return
+		}
+	}
 	r.onResolve[k] = append(r.onResolve[k], h)
 }
 
@@ -315,6 +339,12 @@ func (r *Registry) OnActivated(cardName string, h ActivatedHandler) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	k := normalizeName(cardName)
+	hp := reflect.ValueOf(h).Pointer()
+	for _, existing := range r.activated[k] {
+		if reflect.ValueOf(existing).Pointer() == hp {
+			return
+		}
+	}
 	r.activated[k] = append(r.activated[k], h)
 }
 
