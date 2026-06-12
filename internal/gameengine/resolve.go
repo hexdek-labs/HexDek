@@ -667,9 +667,11 @@ func resolveDamage(gs *GameState, src *Permanent, e *gameast.Damage) {
 		return
 	}
 	targets := PickTarget(gs, src, e.Target)
-	// Fallback: if no target found, deal damage to an opponent (the most
-	// common case for unresolved damage filters like "target creature or player").
-	if len(targets) == 0 && src != nil {
+	// A REQUIRED "target X" damage effect with no legal target fizzles at the
+	// §608.2b resolution gate (stack.go ResolveStackTop) before reaching here,
+	// so it never manufactures a target. Untargeted damage shapes that found
+	// no seat fall through to the legacy opponent default (unchanged behavior).
+	if len(targets) == 0 && src != nil && !e.Target.Targeted {
 		opps := gs.Opponents(src.Controller)
 		if len(opps) > 0 {
 			targets = []Target{{Kind: TargetKindSeat, Seat: opps[0]}}
@@ -964,8 +966,12 @@ func resolveDiscard(gs *GameState, src *Permanent, e *gameast.Discard) {
 		count = 1
 	}
 	targets := PickTarget(gs, src, e.Target)
-	// Fallback: if no target found, discard targets an opponent.
-	if len(targets) == 0 && src != nil {
+	// A REQUIRED "target player/opponent discards" with no legal target
+	// fizzles at the §608.2b resolution gate (stack.go ResolveStackTop)
+	// before reaching here, so it never manufactures a target. Untargeted
+	// discard shapes that produced no seat fall through to the legacy
+	// opponent default below (unchanged behavior).
+	if len(targets) == 0 && src != nil && !e.Target.Targeted {
 		opps := gs.Opponents(src.Controller)
 		if len(opps) > 0 {
 			targets = []Target{{Kind: TargetKindSeat, Seat: opps[0]}}
@@ -1069,8 +1075,12 @@ func resolveMill(gs *GameState, src *Permanent, e *gameast.Mill) {
 		count = 1
 	}
 	targets := PickTarget(gs, src, e.Target)
-	// Fallback: if no target found, mill an opponent.
-	if len(targets) == 0 && src != nil {
+	// A REQUIRED "target player/opponent mills" with no legal target fizzles
+	// at the §608.2b resolution gate (stack.go ResolveStackTop) before
+	// reaching here, so it never manufactures a target. Untargeted mill
+	// shapes that produced no seat fall through to the legacy opponent
+	// default below (unchanged behavior).
+	if len(targets) == 0 && src != nil && !e.Target.Targeted {
 		opps := gs.Opponents(src.Controller)
 		if len(opps) > 0 {
 			targets = []Target{{Kind: TargetKindSeat, Seat: opps[0]}}
@@ -1164,8 +1174,13 @@ func resolveLoseLife(gs *GameState, src *Permanent, e *gameast.LoseLife) {
 				}
 			}
 		}
-		if len(targets) == 0 {
-			// Default to opponent — "lose life" effects typically target opponents.
+		// A genuinely-REQUIRED "target opponent/player loses life" with no
+		// legal target fizzles at the §608.2b resolution gate in stack.go
+		// (ResolveStackTop) BEFORE reaching this handler — it never reaches
+		// the manufacture-a-target path below. For UNTARGETED shapes that
+		// still found no seat (e.g. an unparsed "opponent" actor), preserve
+		// the legacy opponent default so non-targeted drains still resolve.
+		if len(targets) == 0 && !e.Target.Targeted {
 			opps := gs.Opponents(src.Controller)
 			if len(opps) > 0 {
 				targets = []Target{{Kind: TargetKindSeat, Seat: opps[0]}}
