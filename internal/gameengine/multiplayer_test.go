@@ -247,8 +247,11 @@ func TestHandleSeatElimination_PreservesOpponentPermanents(t *testing.T) {
 func TestHandleSeatElimination_RemovesStolenOwnedPermanent(t *testing.T) {
 	gs := newMultiplayerGame(t, 4)
 	// Seat 1 owns the card; seat 0 controls it (Gilded Drake trade).
+	// Ownership lives on the CARD (CR §108.3) — r63 elimination sweep
+	// keys on Card.Owner; Permanent.Owner mirrors it.
 	p := addBattlefield(gs, 0, "Stolen Angel", 4, 4, "creature")
 	p.Owner = 1
+	p.Card.Owner = 1
 	// Seat 1 leaves the game. Their owned permanent should leave.
 	gs.Seats[1].Lost = true
 	HandleSeatElimination(gs, 1)
@@ -299,8 +302,10 @@ func TestHandleSeatElimination_DetachesAurasFromDeadTokens(t *testing.T) {
 func TestHandleSeatElimination_DetachesEquipmentFromStolenCreature(t *testing.T) {
 	gs := newMultiplayerGame(t, 4)
 	// Seat 1 owns the creature; seat 0 controls it (Gilded Drake trade).
+	// Ownership on the CARD per CR §108.3 (r63 sweep authority).
 	stolen := addBattlefield(gs, 0, "Stolen Angel", 4, 4, "creature")
 	stolen.Owner = 1
+	stolen.Card.Owner = 1
 	// Seat 2 has equipment attached.
 	sword := addBattlefield(gs, 2, "Sword of Light and Shadow", 0, 0, "artifact", "equipment")
 	sword.AttachedTo = stolen

@@ -344,6 +344,9 @@ var invariantFilter string
 // off — zero behavior change in the engine when unset.
 var legalityEnabled bool
 
+// seatOutcomeEnabled mirrors the -seat-outcome flag.
+var seatOutcomeEnabled bool
+
 // splitCardList parses a card-name list flag. `;` is the preferred
 // separator since several card names contain commas (e.g. "Anafenza,
 // the Foremost"); comma still works when no `;` is present so older
@@ -386,10 +389,12 @@ func main() {
 		listInvFlag    = flag.Bool("list-invariants", false, "print the full set of known invariant names and exit")
 		strictCensus   = flag.Bool("instanceid-strict-census", false, "enable InstanceID Phase 4+ strict ZoneConservation disappearance check (per docs/instanceid-system-v2-r60.md §13). Default off — flips gs.Flags[\"instanceid_strict_census\"]=1 on every game.")
 		violationsDumpPath = flag.String("violations-dump", "", "if set, write every chaos violation message (one per line, tab-separated: game-idx<TAB>turn<TAB>invariant<TAB>message) to this path for offline histogram analysis. Bypasses the report's 30-detail cap.")
+		seatOutcomeFlag    = flag.Bool("seat-outcome", false, "attach the r63 per-seat win/loss self-checker to every chaos game (outcome recomputation + cross-seat consistency + §800.4 leave-game cleanup verification). Default off — zero engine behavior change when unset.")
 		legalityFlag       = flag.Bool("legality", false, "attach the ride-along rules-legality validator to every chaos game (live CR 307.1/608.2c/601.2f auditing of each cast/activation as it happens). Default off — zero engine behavior change when unset.")
 	)
 	flag.Parse()
 	legalityEnabled = *legalityFlag
+	seatOutcomeEnabled = *seatOutcomeFlag
 	if *strictCensus {
 		gameengine.SetStrictCensusDefault(true)
 	}
@@ -862,6 +867,9 @@ func runChaosGame(gameIdx, permutation int,
 	if legalityEnabled {
 		gs.Legality = gameengine.NewLegalityValidator(deckSeed)
 	}
+	if seatOutcomeEnabled {
+		gs.SeatOutcome = gameengine.NewSeatOutcomeChecker()
+	}
 
 	commanderDecks := make([]*gameengine.CommanderDeck, nSeats)
 	for i, cd := range chaosDecks {
@@ -1014,6 +1022,24 @@ func runChaosGame(gameIdx, permutation int,
 				InvariantName: "Legality:" + lv.Rule,
 				Message:       lv.String(),
 				Turn:          lv.Turn,
+				Phase:         gs.Phase,
+				Step:          gs.Step,
+				Commanders:    result.Commanders,
+			})
+		}
+	}
+
+	// Drain seat-outcome self-checker violations, namespaced
+	// "SeatOutcome:<kind>".
+	if gs.SeatOutcome != nil {
+		for _, sv := range gs.SeatOutcome.Violations {
+			result.Violations = append(result.Violations, chaosViolation{
+				GameIdx:       gameIdx,
+				GameSeed:      deckSeed,
+				Permutation:   permutation,
+				InvariantName: "SeatOutcome:" + sv.Kind,
+				Message:       sv.String(),
+				Turn:          sv.Turn,
 				Phase:         gs.Phase,
 				Step:          gs.Step,
 				Commanders:    result.Commanders,
