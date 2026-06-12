@@ -79,12 +79,6 @@ func ValidateSession(ctx context.Context, database *sql.DB, token string) (*Sess
 	return s, nil
 }
 
-// RevokeSession deletes a session token.
-func RevokeSession(ctx context.Context, database *sql.DB, token string) error {
-	_, err := database.ExecContext(ctx, `DELETE FROM session WHERE token = ?`, token)
-	return err
-}
-
 // RevokeAllForDevice deletes every session token issued to the given
 // device. This is the "log out everywhere on this device" primitive —
 // when a user clicks logout in one browser tab they expect all sibling

@@ -679,22 +679,6 @@ func CommanderDamageFrom(seat *Seat, dealerSeat int, commanderName string) int {
 	return 0
 }
 
-// TotalCommanderDamageBy returns the total combat damage targetSeat has
-// received from the commander NAMED commanderName across ALL dealers.
-// In practice only one seat owns each name (CR §903.5b), so this is
-// equivalent to "damage from that commander" — kept as a convenience
-// for code that doesn't track the dealer dimension.
-func TotalCommanderDamageBy(seat *Seat, commanderName string) int {
-	if seat == nil {
-		return 0
-	}
-	total := 0
-	for _, byName := range seat.CommanderDamage {
-		total += byName[commanderName]
-	}
-	return total
-}
-
 // drannithBlocksZoneCast returns true if an opponent controls a
 // Drannith Magistrate that prevents castingSeat from casting spells
 // from non-hand zones. Checks gs.Flags["drannith_active_seat_N"]

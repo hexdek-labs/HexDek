@@ -92,15 +92,6 @@ func MaxSpeedActive(gs *GameState, seatIdx int) bool {
 	return SpeedOf(gs, seatIdx) == MaxSpeedCap
 }
 
-// IsMaxSpeed is a convenience for "this permanent's controller is at
-// max speed." Returns false for nil perms or invalid controllers.
-func IsMaxSpeed(gs *GameState, perm *Permanent) bool {
-	if perm == nil {
-		return false
-	}
-	return MaxSpeedActive(gs, perm.Controller)
-}
-
 // AdvanceSpeed implements the §702.179 advancement rule for one damage
 // event:
 //

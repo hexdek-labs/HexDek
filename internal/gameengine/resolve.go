@@ -658,10 +658,6 @@ func countControlledByType(gs *GameState, seat int, filter string) int {
 	return count
 }
 
-func CountControlledByTypeExported(gs *GameState, seat int, filter string) int {
-	return countControlledByType(gs, seat, filter)
-}
-
 // -----------------------------------------------------------------------------
 // Crime detection (OTJ §702.159)
 // -----------------------------------------------------------------------------

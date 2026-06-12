@@ -45,34 +45,24 @@ CREATE INDEX IF NOT EXISTS idx_card_performance_winrate
     ON card_performance(wins_when_included, games_included);
 `
 
-// EnsureCardPerformanceSchema creates the card_performance table
-// idempotently. Safe to call from server startup before persist runs.
-func EnsureCardPerformanceSchema(ctx context.Context, sqlDB *sql.DB) error {
-	if sqlDB == nil {
-		return errors.New("db: nil database for card_performance schema")
-	}
-	_, err := sqlDB.ExecContext(ctx, cardPerformanceSchema)
-	return err
-}
-
 // CardPerformance is the API view of a single row.
 type CardPerformance struct {
-	CardName            string
-	GamesIncluded       int
-	WinsWhenIncluded    int
-	AvgTurnPlayed       float64
-	AvgBattlefieldTime  float64
+	CardName           string
+	GamesIncluded      int
+	WinsWhenIncluded   int
+	AvgTurnPlayed      float64
+	AvgBattlefieldTime float64
 }
 
 // CardPerformanceDelta is the per-game increment.
 //
-//   Win                 1 if the seat that included this card won, 0 otherwise.
-//   TurnPlayed          turn the card first resolved as a spell (>0). 0 = card
-//                       was in a zone but never cast (drawn but not played).
-//                       Negative = caller doesn't know; the average is left
-//                       untouched.
-//   BattlefieldTurns    turns the card spent on the battlefield. Same
-//                       semantics as TurnPlayed for "no observation".
+//	Win                 1 if the seat that included this card won, 0 otherwise.
+//	TurnPlayed          turn the card first resolved as a spell (>0). 0 = card
+//	                    was in a zone but never cast (drawn but not played).
+//	                    Negative = caller doesn't know; the average is left
+//	                    untouched.
+//	BattlefieldTurns    turns the card spent on the battlefield. Same
+//	                    semantics as TurnPlayed for "no observation".
 type CardPerformanceDelta struct {
 	CardName         string
 	Win              int

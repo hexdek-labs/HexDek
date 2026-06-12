@@ -1,10 +1,7 @@
 package hexapi
 
 import (
-	"encoding/json"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -60,40 +57,4 @@ func (h *Handler) handleMetaTrends(w http.ResponseWriter, r *http.Request) {
 	out := heimdall.ComputeMetaArchetypeTrends(games, refUnix, weeks)
 	w.Header().Set("Cache-Control", "public, max-age=300")
 	writeJSON(w, out)
-}
-
-// metaDeckArchetypeLookup is the same pattern as
-// Handler.deckArchetypeLookup but standalone — kept for tests that
-// inject a lookup directly without spinning a full Handler.
-func metaDeckArchetypeLookup(decksDir string) func(deckKey string) string {
-	cache := make(map[string]string)
-	return func(deckKey string) string {
-		if deckKey == "" {
-			return ""
-		}
-		if v, ok := cache[deckKey]; ok {
-			return v
-		}
-		parts := strings.SplitN(deckKey, "/", 2)
-		if len(parts) != 2 {
-			cache[deckKey] = ""
-			return ""
-		}
-		strategyFile := filepath.Join(decksDir, parts[0], "freya", parts[1]+".strategy.json")
-		data, err := os.ReadFile(strategyFile)
-		if err != nil {
-			cache[deckKey] = ""
-			return ""
-		}
-		var strat struct {
-			Archetype string `json:"archetype"`
-		}
-		if json.Unmarshal(data, &strat) != nil {
-			cache[deckKey] = ""
-			return ""
-		}
-		slug := strings.TrimSpace(strat.Archetype)
-		cache[deckKey] = slug
-		return slug
-	}
 }

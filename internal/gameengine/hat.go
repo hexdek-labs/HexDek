@@ -43,42 +43,6 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
-// ThreatScoreBasic returns a simple threat score for `target` as seen
-// from `source`. Mirrors Python's baseline threat_score (pre-7-dim):
-// lowest-life first (inverse), then board power, then hand size. Used
-// as the default by GreedyHat's attack-target picker.
-//
-// This function lives in gameengine because it's tiny and callers in
-// both gameengine itself (pickAttackDefender) and the hat package
-// can share it without redundant copies.
-func ThreatScoreBasic(gs *GameState, sourceSeat int, target *Seat) float64 {
-	if target == nil || target.Lost {
-		return -1_000_000
-	}
-	score := 0.0
-	// Lower life = more pressurable — inverse of life.
-	if target.Life > 0 {
-		score += 40.0 / float64(target.Life)
-	} else {
-		score += 100
-	}
-	// Board power.
-	for _, p := range target.Battlefield {
-		if p != nil && p.IsCreature() {
-			pw := p.Power()
-			if pw > 0 {
-				score += float64(pw) * 0.5
-			}
-		}
-	}
-	// Hand size — 5+ is scary.
-	h := len(target.Hand)
-	if h >= 5 {
-		score += float64(h-4) * 0.5
-	}
-	return score
-}
-
 // ColoredManaEstimate captures the color-aware mana picture used by
 // hats during priority. Fixed[W..C] are the contributions that can only
 // satisfy that specific color (the current pool, plus mono-color lands).

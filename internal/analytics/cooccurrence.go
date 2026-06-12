@@ -15,9 +15,9 @@ type CoTriggerObservation struct {
 	CardA         string  `json:"card_a"`
 	CardB         string  `json:"card_b"`
 	ImpactScore   float64 `json:"impact_score"`   // life_delta + board_delta + mana_delta + cards_drawn
-	TurnWindow    int     `json:"turn_window"`     // turn when co-trigger occurred
-	EffectPattern string  `json:"effect_pattern"`  // e.g. "A produces mana, B consumes mana"
-	GameID        string  `json:"game_id"`         // game index for tracing
+	TurnWindow    int     `json:"turn_window"`    // turn when co-trigger occurred
+	EffectPattern string  `json:"effect_pattern"` // e.g. "A produces mana, B consumes mana"
+	GameID        string  `json:"game_id"`        // game index for tracing
 }
 
 // turnSnapshot tracks per-seat resource deltas and card events within a
@@ -430,41 +430,6 @@ type CoTriggerNTupleSummary struct {
 	Occurrences int
 	TotalImpact float64
 	AvgImpact   float64
-}
-
-// AggregateCoTriggerNTuples groups observations by sorted-cards key,
-// sums impact, counts occurrences, and returns sorted by total impact desc.
-func AggregateCoTriggerNTuples(observations []CoTriggerNTuple) []CoTriggerNTupleSummary {
-	if len(observations) == 0 {
-		return nil
-	}
-	byKey := make(map[string]*CoTriggerNTupleSummary)
-	for _, obs := range observations {
-		cards := append([]string(nil), obs.Cards...)
-		sort.Strings(cards)
-		key := strings.Join(cards, "\x00")
-		s, ok := byKey[key]
-		if !ok {
-			s = &CoTriggerNTupleSummary{Cards: cards}
-			byKey[key] = s
-		}
-		s.Occurrences++
-		s.TotalImpact += obs.ImpactScore
-	}
-	result := make([]CoTriggerNTupleSummary, 0, len(byKey))
-	for _, s := range byKey {
-		if s.Occurrences > 0 {
-			s.AvgImpact = s.TotalImpact / float64(s.Occurrences)
-		}
-		result = append(result, *s)
-	}
-	sort.SliceStable(result, func(i, j int) bool {
-		if result[i].TotalImpact != result[j].TotalImpact {
-			return result[i].TotalImpact > result[j].TotalImpact
-		}
-		return result[i].Occurrences > result[j].Occurrences
-	})
-	return result
 }
 
 // --- Aggregation for multi-game analysis ---

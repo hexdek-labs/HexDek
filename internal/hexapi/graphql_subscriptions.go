@@ -108,19 +108,6 @@ func (h *GraphQLSubscriptionsHandler) SetLogf(f func(string, ...any)) {
 	}
 }
 
-// RegisterGraphQLSubscriptions mounts the subscriptions WebSocket
-// at /graphql/subscriptions. Kept off the default Handler.Register
-// chain so callers opt in alongside the existing GraphQL POC.
-func (h *GraphQLSubscriptionsHandler) RegisterGraphQLSubscriptions(mux *http.ServeMux) {
-	mux.HandleFunc("GET /graphql/subscriptions", h.serve)
-}
-
-func (h *GraphQLSubscriptionsHandler) activeConnections() int {
-	h.connMu.Lock()
-	defer h.connMu.Unlock()
-	return h.connections
-}
-
 func (h *GraphQLSubscriptionsHandler) reserveSlot() bool {
 	h.connMu.Lock()
 	defer h.connMu.Unlock()
@@ -166,9 +153,9 @@ type gqlwsMessage struct {
 // gqlwsSubscribePayload is the body of a Subscribe message — a full
 // GraphQL request document.
 type gqlwsSubscribePayload struct {
-	Query         string                 `json:"query"`
-	Variables     map[string]any         `json:"variables,omitempty"`
-	OperationName string                 `json:"operationName,omitempty"`
+	Query         string         `json:"query"`
+	Variables     map[string]any `json:"variables,omitempty"`
+	OperationName string         `json:"operationName,omitempty"`
 }
 
 // -------------------------------------------------------------------
@@ -218,9 +205,9 @@ type subscriptionSession struct {
 }
 
 type subscriptionOp struct {
-	id      string
-	cancel  context.CancelFunc
-	donec   chan struct{}
+	id     string
+	cancel context.CancelFunc
+	donec  chan struct{}
 }
 
 func newSubscriptionSession(h *GraphQLSubscriptionsHandler, conn *websocket.Conn) *subscriptionSession {

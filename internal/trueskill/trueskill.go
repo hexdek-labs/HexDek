@@ -363,28 +363,6 @@ func UpdateMultiplayer(cfg Config, ratings []Rating, ranks []int) []Rating {
 	return out
 }
 
-// update2PlayerRaw is the core 2-player update without dynamics factor
-// (caller pre-inflates sigma). Used internally by UpdateMultiplayer.
-func update2PlayerRaw(cfg Config, winner, loser Rating) (Rating, Rating) {
-	sigmaW2 := winner.Sigma * winner.Sigma
-	sigmaL2 := loser.Sigma * loser.Sigma
-
-	c := math.Sqrt(2*cfg.Beta*cfg.Beta + sigmaW2 + sigmaL2)
-	t := (winner.Mu - loser.Mu) / c
-	epsilon := drawMargin(cfg.DrawProbability, cfg.Beta)
-
-	v := vWin(t, epsilon/c)
-	w := wWin(t, epsilon/c)
-
-	wMu := winner.Mu + (sigmaW2/c)*v
-	lMu := loser.Mu - (sigmaL2/c)*v
-
-	wSigma := math.Sqrt(math.Max(sigmaW2*(1-(sigmaW2/(c*c))*w), 1e-6))
-	lSigma := math.Sqrt(math.Max(sigmaL2*(1-(sigmaL2/(c*c))*w), 1e-6))
-
-	return Rating{Mu: wMu, Sigma: wSigma}, Rating{Mu: lMu, Sigma: lSigma}
-}
-
 // InheritRating creates a new rating for a deck version derived from a parent.
 // The mu carries over; sigma is inflated proportional to the card delta.
 func InheritRating(parent Rating, cardDelta int) Rating {

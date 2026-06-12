@@ -60,196 +60,18 @@ import (
 // §702.35 — Madness
 // ===========================================================================
 
-// ActivateMadness attempts to cast a card for its madness cost after it has
-// been discarded into exile. Per CR §702.35a-c, when a card with madness is
-// discarded, the player may exile it instead of putting it into the graveyard.
-// Then they may cast it for its madness cost or put it into the graveyard.
-// Returns true if the card was successfully cast for madness.
-func ActivateMadness(gs *GameState, seatIdx int, card *Card, madnessCost int) bool {
-	if gs == nil || card == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return false
-	}
-	seat := gs.Seats[seatIdx]
-	if seat == nil {
-		return false
-	}
-
-	// Check mana.
-	if seat.ManaPool < madnessCost {
-		return false
-	}
-
-	// Card should be in exile (discarded there via madness replacement).
-	exileIdx := -1
-	for i, c := range seat.Exile {
-		if c == card {
-			exileIdx = i
-			break
-		}
-	}
-	if exileIdx < 0 {
-		return false
-	}
-
-	// Pay madness cost.
-	seat.ManaPool -= madnessCost
-	SyncManaAfterSpend(seat)
-	// A madness cast can fire from inside another action's cost window
-	// (e.g. discarding to Mageta's activation cost) — credit the payment
-	// so the validator doesn't blame the outer action for it (the
-	// seed-555 game-691 "Mageta announced 4 / measured 8" hit was a
-	// madness card discarded to Mageta's own cost and recast for {4}).
-	gs.Legality.NoteManaSpend(seatIdx, madnessCost)
-
-	// Remove from exile and push onto the stack.
-	removeCardFromZone(gs, seatIdx, card, "exile")
-
-	item := &StackItem{
-		Card:       card,
-		Controller: seatIdx,
-		CastZone:   ZoneExile,
-		CostMeta: map[string]interface{}{
-			"madness":      true,
-			"madness_cost": madnessCost,
-		},
-	}
-	PushStackItem(gs, item)
-
-	gs.LogEvent(Event{
-		Kind:   "madness",
-		Seat:   seatIdx,
-		Source: card.DisplayName(),
-		Amount: madnessCost,
-		Details: map[string]interface{}{
-			"rule": "702.35",
-		},
-	})
-	return true
-}
-
 // HasMadness returns true if the card has the madness keyword.
 func HasMadness(card *Card) bool {
 	return cardHasKeywordByName(card, "madness")
-}
-
-// MadnessCost returns the madness cost from keyword args.
-func MadnessCost(card *Card) int {
-	return keywordArgCost(card, "madness")
 }
 
 // ===========================================================================
 // §702.165 — Backup
 // ===========================================================================
 
-// ApplyBackup puts N +1/+1 counters on a target creature. If that creature
-// is different from the source, it also gains all other abilities of the
-// source until end of turn. Per CR §702.165a.
-func ApplyBackup(gs *GameState, perm *Permanent, n int) {
-	if gs == nil || perm == nil || n <= 0 {
-		return
-	}
-	seatIdx := perm.Controller
-	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return
-	}
-
-	// Find a target creature (other than perm itself, preferring strongest).
-	var target *Permanent
-	bestPower := -1
-	for _, p := range gs.Seats[seatIdx].Battlefield {
-		if p == nil || !p.IsCreature() || p == perm {
-			continue
-		}
-		pw := p.Power()
-		if pw > bestPower {
-			bestPower = pw
-			target = p
-		}
-	}
-
-	if target == nil {
-		// No other creature: put counters on self.
-		perm.AddCounter("+1/+1", n)
-		gs.InvalidateCharacteristicsCache()
-		gs.LogEvent(Event{
-			Kind:   "backup",
-			Seat:   seatIdx,
-			Source: perm.Card.DisplayName(),
-			Amount: n,
-			Details: map[string]interface{}{
-				"target": "self",
-				"rule":   "702.165",
-			},
-		})
-		return
-	}
-
-	// Put counters on target.
-	target.AddCounter("+1/+1", n)
-	gs.InvalidateCharacteristicsCache()
-
-	// Grant all keyword abilities from perm to target until EOT.
-	for _, kw := range getKeywordNames(perm) {
-		if kw != "backup" {
-			target.GrantedAbilities = append(target.GrantedAbilities, kw)
-		}
-	}
-
-	gs.LogEvent(Event{
-		Kind:   "backup",
-		Seat:   seatIdx,
-		Source: perm.Card.DisplayName(),
-		Amount: n,
-		Details: map[string]interface{}{
-			"target": target.Card.DisplayName(),
-			"rule":   "702.165",
-		},
-	})
-}
-
 // ===========================================================================
 // §702.154 — Enlist
 // ===========================================================================
-
-// ApplyEnlist taps an untapped non-attacking creature the controller controls
-// and adds its power to the attacker's power until end of turn.
-func ApplyEnlist(gs *GameState, attacker *Permanent, helper *Permanent) {
-	if gs == nil || attacker == nil || helper == nil {
-		return
-	}
-	if attacker.Controller != helper.Controller {
-		return
-	}
-	if helper.Tapped || !helper.IsCreature() {
-		return
-	}
-	// Helper must not be attacking.
-	if helper.Flags != nil && helper.Flags["attacking"] > 0 {
-		return
-	}
-
-	helper.Tapped = true
-	bonus := helper.Power()
-
-	attacker.Modifications = append(attacker.Modifications, Modification{
-		Power:     bonus,
-		Toughness: 0,
-		Duration:  "until_end_of_turn",
-		Timestamp: gs.NextTimestamp(),
-	})
-	gs.InvalidateCharacteristicsCache()
-
-	gs.LogEvent(Event{
-		Kind:   "enlist",
-		Seat:   attacker.Controller,
-		Source: attacker.Card.DisplayName(),
-		Amount: bonus,
-		Details: map[string]interface{}{
-			"helper": helper.Card.DisplayName(),
-			"rule":   "702.154",
-		},
-	})
-}
 
 // ===========================================================================
 // §702.140 — Mutate
@@ -389,205 +211,21 @@ func ApplyMutate(gs *GameState, mutatingPerm *Permanent, targetPerm *Permanent, 
 // §702.150 — For Mirrodin!
 // ===========================================================================
 
-// ApplyForMirrodin creates a 2/2 red Rebel creature token and attaches the
-// equipment to it. Per CR §702.150a.
-func ApplyForMirrodin(gs *GameState, equipment *Permanent) {
-	if gs == nil || equipment == nil {
-		return
-	}
-	seatIdx := equipment.Controller
-	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return
-	}
-
-	// Create 2/2 red Rebel creature token.
-	token := CreateCreatureToken(gs, seatIdx, "Rebel Token",
-		[]string{"creature", "rebel"}, 2, 2)
-	if token == nil {
-		return
-	}
-	if token.Card != nil {
-		token.Card.Colors = []string{"R"}
-	}
-
-	// Attach equipment to the token.
-	equipment.AttachedTo = token
-
-	gs.LogEvent(Event{
-		Kind:   "for_mirrodin",
-		Seat:   seatIdx,
-		Source: equipment.Card.DisplayName(),
-		Details: map[string]interface{}{
-			"token": "2/2 red Rebel",
-			"rule":  "702.150",
-		},
-	})
-}
-
 // ===========================================================================
 // §702.155 — Read Ahead
 // ===========================================================================
-
-// ApplyReadAhead sets a Saga's initial lore counter count to the chosen
-// chapter. Per CR §702.155a, the player chooses a chapter number as the
-// Saga enters, and it starts with that many lore counters.
-func ApplyReadAhead(gs *GameState, perm *Permanent, chapter int) {
-	if gs == nil || perm == nil || chapter <= 0 {
-		return
-	}
-	perm.AddCounter("lore", chapter)
-
-	gs.LogEvent(Event{
-		Kind:   "read_ahead",
-		Seat:   perm.Controller,
-		Source: perm.Card.DisplayName(),
-		Amount: chapter,
-		Details: map[string]interface{}{
-			"starting_chapter": chapter,
-			"rule":             "702.155",
-		},
-	})
-	// Fire lore_counter_added — Read Ahead jumps directly to the chosen
-	// chapter, so fire for the final chapter reached (not each intermediate).
-	FireCardTrigger(gs, "lore_counter_added", map[string]interface{}{
-		"seat":    perm.Controller,
-		"card":    perm.Card.DisplayName(),
-		"chapter": chapter,
-	})
-}
 
 // ===========================================================================
 // §702.156 — Ravenous
 // ===========================================================================
 
-// ApplyRavenous enters the creature with X +1/+1 counters. If X is 5 or
-// more, the controller draws a card. Per CR §702.156a-b.
-func ApplyRavenous(gs *GameState, perm *Permanent, x int) {
-	if gs == nil || perm == nil {
-		return
-	}
-	seatIdx := perm.Controller
-	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return
-	}
-
-	if x > 0 {
-		perm.AddCounter("+1/+1", x)
-		gs.InvalidateCharacteristicsCache()
-	}
-
-	if x >= 5 {
-		gs.drawOne(seatIdx)
-		gs.LogEvent(Event{
-			Kind:   "ravenous_draw",
-			Seat:   seatIdx,
-			Source: perm.Card.DisplayName(),
-			Details: map[string]interface{}{
-				"x":    x,
-				"rule": "702.156",
-			},
-		})
-	}
-
-	gs.LogEvent(Event{
-		Kind:   "ravenous",
-		Seat:   seatIdx,
-		Source: perm.Card.DisplayName(),
-		Amount: x,
-		Details: map[string]interface{}{
-			"counters": x,
-			"rule":     "702.156",
-		},
-	})
-}
-
 // ===========================================================================
 // §702.163 — Compleated
 // ===========================================================================
 
-// IsCompleated returns true if the card/stack item was cast with compleated
-// (2 life paid instead of colored mana for Phyrexian pips).
-func IsCompleated(item *StackItem) bool {
-	if item == nil || item.CostMeta == nil {
-		return false
-	}
-	if v, ok := item.CostMeta["compleated"]; ok {
-		if b, ok2 := v.(bool); ok2 {
-			return b
-		}
-	}
-	return false
-}
-
-// HasCompleated returns true if the card has the compleated keyword.
-func HasCompleated(card *Card) bool {
-	return cardHasKeywordByName(card, "compleated")
-}
-
-// ApplyCompleated marks a planeswalker as having entered with compleated.
-// Per CR §702.163a, a planeswalker cast with compleated enters with fewer
-// loyalty counters (one less for each Phyrexian pip paid with life).
-func ApplyCompleated(gs *GameState, perm *Permanent, pipsPayedWithLife int) {
-	if gs == nil || perm == nil || pipsPayedWithLife <= 0 {
-		return
-	}
-	if perm.Counters == nil {
-		perm.Counters = map[string]int{}
-	}
-	perm.Counters["loyalty"] -= pipsPayedWithLife
-	if perm.Counters["loyalty"] < 0 {
-		perm.Counters["loyalty"] = 0
-	}
-
-	gs.LogEvent(Event{
-		Kind:   "compleated",
-		Seat:   perm.Controller,
-		Source: perm.Card.DisplayName(),
-		Amount: pipsPayedWithLife,
-		Details: map[string]interface{}{
-			"loyalty_reduction": pipsPayedWithLife,
-			"rule":              "702.163",
-		},
-	})
-}
-
 // ===========================================================================
 // §702.73 — Changeling (all creature types)
 // ===========================================================================
-
-// HasChangeling returns true if the permanent has the changeling keyword.
-func HasChangeling(perm *Permanent) bool {
-	if perm == nil {
-		return false
-	}
-	return perm.HasKeyword("changeling")
-}
-
-// HasChangelingCard returns true if the card has the changeling keyword.
-func HasChangelingCard(card *Card) bool {
-	return cardHasKeywordByName(card, "changeling")
-}
-
-// CheckChangelingType returns true if the permanent has a given creature
-// type OR has changeling (which grants all creature types per §702.73a).
-func CheckChangelingType(perm *Permanent, creatureType string) bool {
-	if perm == nil {
-		return false
-	}
-	if HasChangeling(perm) {
-		return true
-	}
-	if perm.Card == nil {
-		return false
-	}
-	lower := strings.ToLower(creatureType)
-	for _, t := range perm.Card.Types {
-		if strings.ToLower(t) == lower {
-			return true
-		}
-	}
-	return false
-}
 
 // ===========================================================================
 // §702.6 — Equip activation
@@ -728,375 +366,33 @@ func ApplyEpic(gs *GameState, seatIdx int, item *StackItem) {
 // §702.60 — Recover
 // ===========================================================================
 
-// CheckRecover checks if a card with recover in the graveyard can be returned
-// to hand when a creature an opponent controls dies. The controller pays the
-// recover cost or exiles the card.
-func CheckRecover(gs *GameState, seatIdx int, card *Card, recoverCost int) bool {
-	if gs == nil || card == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return false
-	}
-	seat := gs.Seats[seatIdx]
-	if seat == nil {
-		return false
-	}
-
-	// Card must be in graveyard.
-	gyIdx := -1
-	for i, c := range seat.Graveyard {
-		if c == card {
-			gyIdx = i
-			break
-		}
-	}
-	if gyIdx < 0 {
-		return false
-	}
-
-	if seat.ManaPool >= recoverCost {
-		// Pay and return to hand.
-		seat.ManaPool -= recoverCost
-		SyncManaAfterSpend(seat)
-		MoveCard(gs, card, seatIdx, "graveyard", "hand", "return-from-graveyard")
-
-		gs.LogEvent(Event{
-			Kind:   "recover",
-			Seat:   seatIdx,
-			Source: card.DisplayName(),
-			Amount: recoverCost,
-			Details: map[string]interface{}{
-				"result": "returned_to_hand",
-				"rule":   "702.60",
-			},
-		})
-		return true
-	}
-
-	// Can't pay: exile the card.
-	MoveCard(gs, card, seatIdx, "graveyard", "exile", "exile-from-graveyard")
-
-	gs.LogEvent(Event{
-		Kind:   "recover_exile",
-		Seat:   seatIdx,
-		Source: card.DisplayName(),
-		Amount: recoverCost,
-		Details: map[string]interface{}{
-			"result": "exiled",
-			"rule":   "702.60",
-		},
-	})
-	return false
-}
-
 // ===========================================================================
 // §702.65 — Aura Swap
 // ===========================================================================
-
-// ActivateAuraSwap swaps an Aura on the battlefield with an Aura card in
-// the controller's hand by paying the aura swap cost.
-func ActivateAuraSwap(gs *GameState, seatIdx int, onBF *Permanent, inHand *Card, swapCost int) bool {
-	if gs == nil || onBF == nil || inHand == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return false
-	}
-	seat := gs.Seats[seatIdx]
-	if seat == nil || seat.ManaPool < swapCost {
-		return false
-	}
-
-	// Pay cost.
-	seat.ManaPool -= swapCost
-	SyncManaAfterSpend(seat)
-
-	// Remove onBF from battlefield, put into hand.
-	removePermanentFromBattlefield(gs, onBF)
-	if onBF.Card != nil {
-		MoveCard(gs, onBF.Card, seatIdx, "battlefield", "hand", "aura-swap")
-	}
-
-	// Remove inHand from hand, put onto battlefield attached to same target.
-	removeCardFromZone(gs, seatIdx, inHand, "hand")
-
-	newPerm := &Permanent{
-		Card:       inHand,
-		Controller: seatIdx,
-		Owner:      seatIdx,
-		Timestamp:  gs.NextTimestamp(),
-		Counters:   map[string]int{},
-		Flags:      map[string]int{},
-		AttachedTo: onBF.AttachedTo,
-	}
-	seat.Battlefield = append(seat.Battlefield, newPerm)
-	RegisterReplacementsForPermanent(gs, newPerm)
-	FirePermanentETBTriggers(gs, newPerm)
-
-	gs.LogEvent(Event{
-		Kind:   "aura_swap",
-		Seat:   seatIdx,
-		Source: inHand.DisplayName(),
-		Details: map[string]interface{}{
-			"swapped_out": onBF.Card.DisplayName(),
-			"cost":        swapCost,
-			"rule":        "702.65",
-		},
-	})
-	return true
-}
 
 // ===========================================================================
 // §702.68 — Frenzy
 // ===========================================================================
 
-// ApplyFrenzy grants +N/+0 to a creature whenever it attacks and isn't
-// blocked. Simplified: checks blocker count post-declare.
-func ApplyFrenzy(gs *GameState, perm *Permanent, n int) {
-	if gs == nil || perm == nil || n <= 0 {
-		return
-	}
-	perm.Modifications = append(perm.Modifications, Modification{
-		Power:     n,
-		Toughness: 0,
-		Duration:  "until_end_of_turn",
-		Timestamp: gs.NextTimestamp(),
-	})
-	gs.InvalidateCharacteristicsCache()
-
-	gs.LogEvent(Event{
-		Kind:   "frenzy",
-		Seat:   perm.Controller,
-		Source: perm.Card.DisplayName(),
-		Amount: n,
-		Details: map[string]interface{}{
-			"rule": "702.68",
-		},
-	})
-}
-
 // ===========================================================================
 // §702.69 — Gravestorm
 // ===========================================================================
-
-// ApplyGravestorm creates copies of a spell equal to the number of permanents
-// put into graveyards this turn. Similar to storm but counts graveyard entries.
-func ApplyGravestorm(gs *GameState, item *StackItem) {
-	if gs == nil || item == nil || item.Card == nil {
-		return
-	}
-
-	// Count permanents put into graveyards this turn from the game flags.
-	graveyardCount := 0
-	if gs.Flags != nil {
-		graveyardCount = gs.Flags["permanents_to_graveyard_this_turn"]
-	}
-
-	if graveyardCount <= 0 {
-		return
-	}
-
-	seatIdx := item.Controller
-	for i := 0; i < graveyardCount; i++ {
-		copyCard := &Card{
-			Name:          item.Card.Name + " (gravestorm " + itoaBatch6(i+1) + ")",
-			Owner:         item.Card.Owner,
-			BasePower:     item.Card.BasePower,
-			BaseToughness: item.Card.BaseToughness,
-			Types:         append([]string(nil), item.Card.Types...),
-			Colors:        append([]string(nil), item.Card.Colors...),
-			CMC:           0,
-		}
-		if item.Card.AST != nil {
-			copyCard.AST = item.Card.AST
-		}
-		MintCopyInstanceID(gs, copyCard, item.Card.InstanceID, currentMintEnablerID(gs))
-		copyItem := &StackItem{
-			Controller: seatIdx,
-			Card:       copyCard,
-			Effect:     item.Effect,
-			IsCopy:     true,
-		}
-		copyItem.ID = nextStackID(gs)
-		gs.Stack = append(gs.Stack, copyItem)
-	}
-
-	gs.LogEvent(Event{
-		Kind:   "gravestorm",
-		Seat:   seatIdx,
-		Source: item.Card.DisplayName(),
-		Amount: graveyardCount,
-		Details: map[string]interface{}{
-			"copies": graveyardCount,
-			"rule":   "702.69",
-		},
-	})
-}
 
 // ===========================================================================
 // §702.71 — Transfigure
 // ===========================================================================
 
-// ActivateTransfigure sacrifices a creature and searches the library for a
-// creature with the same mana value.
-func ActivateTransfigure(gs *GameState, seatIdx int, perm *Permanent, cost int) {
-	if gs == nil || perm == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return
-	}
-	seat := gs.Seats[seatIdx]
-	if seat == nil || seat.ManaPool < cost {
-		return
-	}
-
-	targetCMC := 0
-	if perm.Card != nil {
-		targetCMC = perm.Card.CMC
-	}
-
-	seat.ManaPool -= cost
-	SyncManaAfterSpend(seat)
-	SacrificePermanent(gs, perm, "transfigure")
-
-	// Search library for a creature with the same CMC.
-	foundIdx := -1
-	for i, c := range seat.Library {
-		if c != nil && cardHasType(c, "creature") && c.CMC == targetCMC {
-			foundIdx = i
-			break
-		}
-	}
-
-	foundName := "<none>"
-	if foundIdx >= 0 {
-		found := seat.Library[foundIdx]
-		MoveCard(gs, found, seatIdx, "library", "hand", "tutor-to-hand")
-		if found != nil {
-			foundName = found.DisplayName()
-		}
-	}
-
-	// Shuffle library.
-	if gs.Rng != nil && len(seat.Library) > 1 {
-		gs.Rng.Shuffle(len(seat.Library), func(i, j int) {
-			seat.Library[i], seat.Library[j] = seat.Library[j], seat.Library[i]
-		})
-	}
-
-	gs.LogEvent(Event{
-		Kind:   "transfigure",
-		Seat:   seatIdx,
-		Source: perm.Card.DisplayName(),
-		Details: map[string]interface{}{
-			"target_cmc": targetCMC,
-			"found":      foundName,
-			"rule":       "702.71",
-		},
-	})
-}
-
 // ===========================================================================
 // §702.106 — Hidden Agenda
 // ===========================================================================
-
-// ApplyHiddenAgenda secretly names a card. The named card gets some bonus
-// as long as the conspiracy is face up in the command zone.
-func ApplyHiddenAgenda(gs *GameState, seatIdx int, conspiracyPerm *Permanent, namedCard string) {
-	if gs == nil || conspiracyPerm == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return
-	}
-	if conspiracyPerm.Flags == nil {
-		conspiracyPerm.Flags = map[string]int{}
-	}
-	conspiracyPerm.Flags["hidden_agenda"] = 1
-
-	// Store the named card on the conspiracy's counter map as a workaround.
-	if conspiracyPerm.Counters == nil {
-		conspiracyPerm.Counters = map[string]int{}
-	}
-
-	gs.LogEvent(Event{
-		Kind:   "hidden_agenda",
-		Seat:   seatIdx,
-		Source: conspiracyPerm.Card.DisplayName(),
-		Details: map[string]interface{}{
-			"named_card": namedCard,
-			"rule":       "702.106",
-		},
-	})
-}
 
 // ===========================================================================
 // §702.89 — Umbra Armor
 // ===========================================================================
 
-// CheckUmbraArmor prevents the enchanted creature from being destroyed by
-// destroying the Aura instead. Per CR §702.89a, if enchanted creature would
-// be destroyed, instead remove all damage from it and destroy this Aura.
-// Returns true if umbra armor saved the creature.
-func CheckUmbraArmor(gs *GameState, creature *Permanent) bool {
-	if gs == nil || creature == nil {
-		return false
-	}
-	seatIdx := creature.Controller
-	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return false
-	}
-
-	// Find an Aura attached to this creature with umbra armor.
-	for _, p := range gs.Seats[seatIdx].Battlefield {
-		if p == nil || p.AttachedTo != creature {
-			continue
-		}
-		if p.Card == nil {
-			continue
-		}
-		if !p.HasKeyword("umbra armor") && !cardHasKeywordByName(p.Card, "totem armor") {
-			continue
-		}
-
-		// Remove all damage from creature.
-		creature.MarkedDamage = 0
-
-		// Destroy the Aura instead.
-		SacrificePermanent(gs, p, "umbra_armor")
-
-		gs.LogEvent(Event{
-			Kind:   "umbra_armor",
-			Seat:   seatIdx,
-			Source: p.Card.DisplayName(),
-			Details: map[string]interface{}{
-				"saved":    creature.Card.DisplayName(),
-				"rule":     "702.89",
-			},
-		})
-		return true
-	}
-	return false
-}
-
 // ===========================================================================
 // §702.113b — Ingest
 // ===========================================================================
-
-// ApplyIngest exiles the top card of the defending player's library when this
-// creature deals combat damage to a player. Per CR §702.113b (from BFZ).
-func ApplyIngest(gs *GameState, defenderSeat int) {
-	if gs == nil || defenderSeat < 0 || defenderSeat >= len(gs.Seats) {
-		return
-	}
-	seat := gs.Seats[defenderSeat]
-	if seat == nil || len(seat.Library) == 0 {
-		return
-	}
-
-	top := seat.Library[0]
-	MoveCard(gs, top, defenderSeat, "library", "exile", "exile-from-library")
-
-	gs.LogEvent(Event{
-		Kind:   "ingest",
-		Seat:   defenderSeat,
-		Amount: 1,
-		Details: map[string]interface{}{
-			"exiled": top.DisplayName(),
-			"rule":   "702.113b",
-		},
-	})
-}
 
 // ===========================================================================
 // Newer / Set-Specific Keywords (§702.169+)
@@ -1183,8 +479,8 @@ func HasMaxSpeed(gs *GameState, perm *Permanent) bool {
 //
 // State written per animated permanent:
 //
-//   p.Flags["start_your_engines"]                 = 1
-//   p.Flags["start_your_engines_added_creature"]  = 1 (only if we appended "creature")
+//	p.Flags["start_your_engines"]                 = 1
+//	p.Flags["start_your_engines_added_creature"]  = 1 (only if we appended "creature")
 //
 // EndStepClearStartYourEngines reads both flags and is wired into the
 // cleanup-step pass in phases.go (next to ClearMayhemDiscards /
@@ -1422,23 +718,6 @@ func HarmonizeActivate(gs *GameState, seatIdx int, perm *Permanent, cost int, ca
 	return true
 }
 
-// ApplyHarmonize is retained as a thin logging hook for callers that only
-// want to record that a Harmonize ability was used (e.g. analytics paths
-// that don't drive the search themselves). New callers should prefer
-// HarmonizeActivate, which performs the actual search.
-func ApplyHarmonize(gs *GameState, seatIdx int) {
-	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return
-	}
-	gs.LogEvent(Event{
-		Kind: "harmonize",
-		Seat: seatIdx,
-		Details: map[string]interface{}{
-			"rule": "702.180",
-		},
-	})
-}
-
 // ---------------------------------------------------------------------------
 // §702.181 — Mobilize
 //
@@ -1594,11 +873,6 @@ func FireMobilizeTriggers(gs *GameState, attackerSeat int, attackers []*Permanen
 // ---------------------------------------------------------------------------
 // §702.182 — Tiered (stub)
 // ---------------------------------------------------------------------------
-
-// HasTiered returns true if the card has the tiered keyword.
-func HasTiered(card *Card) bool {
-	return cardHasKeywordByName(card, "tiered")
-}
 
 // §702.183 Job Select implementation moved to keywords_job_select.go
 // §702.184 Station implementation moved to keywords_station.go
@@ -1937,11 +1211,6 @@ func SpellWarpedThisTurn(gs *GameState, seatIdx int) bool {
 // §702.190 — Infinity (stub)
 // ---------------------------------------------------------------------------
 
-// HasInfinity returns true if the card has the infinity keyword.
-func HasInfinity(card *Card) bool {
-	return cardHasKeywordByName(card, "infinity")
-}
-
 // ===========================================================================
 // KEYWORD ACTIONS (§701)
 // ===========================================================================
@@ -1958,70 +1227,9 @@ func HasInfinity(card *Card) bool {
 // §701.11 — Triple
 // ---------------------------------------------------------------------------
 
-// TripleValue triples an attribute value (power, toughness, or counter count).
-// Returns the tripled value. Per CR §701.11, "triple" means multiply by 3.
-func TripleValue(value int) int {
-	return value * 3
-}
-
-// TriplePower triples a creature's power until end of turn.
-func TriplePower(gs *GameState, perm *Permanent) {
-	if gs == nil || perm == nil {
-		return
-	}
-	currentPower := perm.Power()
-	bonus := currentPower * 2 // current + bonus = 3x
-	perm.Modifications = append(perm.Modifications, Modification{
-		Power:     bonus,
-		Toughness: 0,
-		Duration:  "until_end_of_turn",
-		Timestamp: gs.NextTimestamp(),
-	})
-	gs.InvalidateCharacteristicsCache()
-
-	gs.LogEvent(Event{
-		Kind:   "triple_power",
-		Seat:   perm.Controller,
-		Source: perm.Card.DisplayName(),
-		Amount: currentPower * 3,
-		Details: map[string]interface{}{
-			"original": currentPower,
-			"rule":     "701.11",
-		},
-	})
-}
-
 // ---------------------------------------------------------------------------
 // §701.12 — Exchange
 // ---------------------------------------------------------------------------
-
-// ExchangeLifeTotals exchanges life totals between two players.
-func ExchangeLifeTotals(gs *GameState, seat1, seat2 int) {
-	if gs == nil {
-		return
-	}
-	if seat1 < 0 || seat1 >= len(gs.Seats) || seat2 < 0 || seat2 >= len(gs.Seats) {
-		return
-	}
-	s1 := gs.Seats[seat1]
-	s2 := gs.Seats[seat2]
-	if s1 == nil || s2 == nil {
-		return
-	}
-
-	s1.Life, s2.Life = s2.Life, s1.Life
-
-	gs.LogEvent(Event{
-		Kind:   "exchange_life",
-		Seat:   seat1,
-		Target: seat2,
-		Details: map[string]interface{}{
-			"seat1_new_life": s1.Life,
-			"seat2_new_life": s2.Life,
-			"rule":           "701.12",
-		},
-	})
-}
 
 // ExchangeControl exchanges control of two permanents.
 //
@@ -2082,136 +1290,18 @@ func ExchangeControl(gs *GameState, perm1, perm2 *Permanent) {
 // §701.28 — Convert
 // ---------------------------------------------------------------------------
 
-// ConvertPermanent transforms a double-faced permanent by flipping it to its
-// other face. Per CR §701.28, "convert" is the keyword action for non-DFC
-// transforming permanents (e.g. Ixalan transforming lands).
-func ConvertPermanent(gs *GameState, perm *Permanent) {
-	if gs == nil || perm == nil {
-		return
-	}
-	perm.Transformed = !perm.Transformed
-
-	// Swap ASTs if available.
-	if perm.FrontFaceAST != nil && perm.BackFaceAST != nil && perm.Card != nil {
-		if perm.Transformed {
-			perm.Card.AST = perm.BackFaceAST
-			if perm.BackFaceName != "" {
-				perm.Card.Name = perm.BackFaceName
-			}
-		} else {
-			perm.Card.AST = perm.FrontFaceAST
-			if perm.FrontFaceName != "" {
-				perm.Card.Name = perm.FrontFaceName
-			}
-		}
-	}
-
-	source := "<nil>"
-	if perm.Card != nil {
-		source = perm.Card.DisplayName()
-	}
-
-	gs.LogEvent(Event{
-		Kind:   "convert",
-		Seat:   perm.Controller,
-		Source: source,
-		Details: map[string]interface{}{
-			"transformed": perm.Transformed,
-			"rule":        "701.28",
-		},
-	})
-}
-
 // ---------------------------------------------------------------------------
 // §701.38 — Vote
 // ---------------------------------------------------------------------------
-
-// ConductVote runs a voting round among all players. Returns the winning
-// option. Simplified: each player votes for their own best interest.
-// The controller votes for option A, opponents vote for option B.
-func ConductVote(gs *GameState, seatIdx int, optionA, optionB string) string {
-	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return optionA
-	}
-
-	votesA := 1 // Controller always votes for optionA.
-	votesB := 0
-
-	opps := gs.Opponents(seatIdx)
-	votesB = len(opps)
-
-	winner := optionA
-	if votesB > votesA {
-		winner = optionB
-	}
-
-	gs.LogEvent(Event{
-		Kind: "vote",
-		Seat: seatIdx,
-		Details: map[string]interface{}{
-			"option_a":  optionA,
-			"option_b":  optionB,
-			"votes_a":   votesA,
-			"votes_b":   votesB,
-			"winner":    winner,
-			"rule":      "701.38",
-		},
-	})
-
-	return winner
-}
 
 // ---------------------------------------------------------------------------
 // §701.64 — Harness
 // ---------------------------------------------------------------------------
 
-// Harness puts a +1/+1 counter on a creature and gives it an energy counter
-// to the controller.
-func Harness(gs *GameState, perm *Permanent) {
-	if gs == nil || perm == nil {
-		return
-	}
-	seatIdx := perm.Controller
-	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return
-	}
-
-	perm.AddCounter("+1/+1", 1)
-	gs.InvalidateCharacteristicsCache()
-
-	seat := gs.Seats[seatIdx]
-	if seat != nil {
-		if seat.Flags == nil {
-			seat.Flags = map[string]int{}
-		}
-		seat.Flags["energy"] += 1
-	}
-
-	gs.LogEvent(Event{
-		Kind:   "harness",
-		Seat:   seatIdx,
-		Source: perm.Card.DisplayName(),
-		Details: map[string]interface{}{
-			"rule": "701.64",
-		},
-	})
-}
-
 // ---------------------------------------------------------------------------
 // §701.65-68 — Elemental Bending (Airbend, Earthbend, Waterbend, Firebend)
 // These are very new set-specific keyword actions. Stub implementations.
 // ---------------------------------------------------------------------------
-
-// Airbend logs an airbend action.
-func Airbend(gs *GameState, seatIdx int) {
-	if gs == nil {
-		return
-	}
-	gs.LogEvent(Event{
-		Kind: "airbend", Seat: seatIdx,
-		Details: map[string]interface{}{"rule": "701.65"},
-	})
-}
 
 // Earthbend logs an earthbend action.
 func Earthbend(gs *GameState, seatIdx int) {
@@ -2224,53 +1314,9 @@ func Earthbend(gs *GameState, seatIdx int) {
 	})
 }
 
-// Waterbend logs a waterbend action.
-func Waterbend(gs *GameState, seatIdx int) {
-	if gs == nil {
-		return
-	}
-	gs.LogEvent(Event{
-		Kind: "waterbend", Seat: seatIdx,
-		Details: map[string]interface{}{"rule": "701.67"},
-	})
-}
-
-// Firebend logs a firebend action.
-func Firebend(gs *GameState, seatIdx int) {
-	if gs == nil {
-		return
-	}
-	gs.LogEvent(Event{
-		Kind: "firebend", Seat: seatIdx,
-		Details: map[string]interface{}{"rule": "701.68"},
-	})
-}
-
 // ===========================================================================
 // Internal helpers (batch6-local)
 // ===========================================================================
-
-func itoaBatch6(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	neg := n < 0
-	if neg {
-		n = -n
-	}
-	buf := [12]byte{}
-	i := len(buf)
-	for n > 0 {
-		i--
-		buf[i] = byte('0' + n%10)
-		n /= 10
-	}
-	if neg {
-		i--
-		buf[i] = '-'
-	}
-	return string(buf[i:])
-}
 
 // getKeywordNames extracts all keyword names from a permanent's AST.
 func getKeywordNames(perm *Permanent) []string {

@@ -532,61 +532,6 @@ func ActivateScavenge(gs *GameState, seatIdx int, card *Card, target *Permanent,
 // You may cast this card from your graveyard by discarding a land card
 // as an additional cost.
 
-// NewRetracePermission creates a ZoneCastPermission for retrace.
-// The player must discard a land as additional cost.
-func NewRetracePermission(card *Card) *ZoneCastPermission {
-	manaCost := 0
-	if card != nil {
-		manaCost = card.CMC
-	}
-	return &ZoneCastPermission{
-		Zone:     ZoneGraveyard,
-		Keyword:  "retrace",
-		ManaCost: manaCost,
-		AdditionalCosts: []*AdditionalCost{
-			{
-				Kind:  AddCostKindSacrifice, // Reusing sacrifice slot for "discard a land"
-				Label: "retrace_discard_land",
-				CanPayFn: func(gs *GameState, seatIdx int) bool {
-					if seatIdx < 0 || seatIdx >= len(gs.Seats) {
-						return false
-					}
-					for _, c := range gs.Seats[seatIdx].Hand {
-						if c != nil && hasTypeInSlice(c.Types, "land") {
-							return true
-						}
-					}
-					return false
-				},
-				PayFn: func(gs *GameState, seatIdx int) bool {
-					if seatIdx < 0 || seatIdx >= len(gs.Seats) {
-						return false
-					}
-					seat := gs.Seats[seatIdx]
-					for _, c := range seat.Hand {
-						if c != nil && hasTypeInSlice(c.Types, "land") {
-							DiscardCard(gs, c, seatIdx)
-							gs.LogEvent(Event{
-								Kind:   "discard",
-								Seat:   seatIdx,
-								Source: c.DisplayName(),
-								Details: map[string]interface{}{
-									"reason": "retrace",
-									"rule":   "702.81",
-								},
-							})
-							return true
-						}
-					}
-					return false
-				},
-			},
-		},
-		ExileOnResolve:    false,
-		RequireController: -1,
-	}
-}
-
 // CastWithRetrace casts a spell from graveyard by discarding a land.
 // Simplified version for engine testing.
 func CastWithRetrace(gs *GameState, seatIdx int, card *Card, landToDiscard *Card) bool {
@@ -1133,9 +1078,9 @@ func ApplyAmplify(gs *GameState, perm *Permanent, amplifyN int, revealCount int)
 		Source: perm.Card.DisplayName(),
 		Amount: counters,
 		Details: map[string]interface{}{
-			"amplify_n":    amplifyN,
-			"revealed":     revealCount,
-			"rule":         "702.38",
+			"amplify_n": amplifyN,
+			"revealed":  revealCount,
+			"rule":      "702.38",
 		},
 	})
 }
@@ -1236,8 +1181,8 @@ func ApplyLivingWeapon(gs *GameState, equipment *Permanent) *Permanent {
 		Seat:   seatIdx,
 		Source: equipment.Card.DisplayName(),
 		Details: map[string]interface{}{
-			"germ":  "Phyrexian Germ Token",
-			"rule":  "702.92",
+			"germ": "Phyrexian Germ Token",
+			"rule": "702.92",
 		},
 	})
 	return germ
@@ -1662,8 +1607,8 @@ func TakeInitiative(gs *GameState, seatIdx int) {
 	VentureIntoDungeon(gs, seatIdx)
 
 	gs.LogEvent(Event{
-		Kind:   "take_initiative",
-		Seat:   seatIdx,
+		Kind: "take_initiative",
+		Seat: seatIdx,
 		Details: map[string]interface{}{
 			"rule": "722.1",
 		},
@@ -1786,14 +1731,6 @@ func AdvanceClassLevel(gs *GameState, perm *Permanent, levelUpCost int) int {
 		},
 	})
 	return newLevel
-}
-
-// GetClassLevel returns the current level of a Class enchantment (0=just entered, 1-3).
-func GetClassLevel(perm *Permanent) int {
-	if perm == nil || perm.Flags == nil {
-		return 0
-	}
-	return perm.Flags["class_level"]
 }
 
 // ---------------------------------------------------------------------------
@@ -2353,10 +2290,10 @@ func FireAllianceTriggers(gs *GameState, seatIdx int, newCreature *Permanent) {
 // addition to its other types."
 //
 // This is a graveyard-activated ability:
-//   1. Cost: return the enchantment from graveyard to battlefield.
-//   2. Effect: put X blight counters on target nonland permanent.
-//   3. The blighted permanent becomes a Swamp (layer-4 type change),
-//      which means it taps for {B} and loses its original mana abilities.
+//  1. Cost: return the enchantment from graveyard to battlefield.
+//  2. Effect: put X blight counters on target nonland permanent.
+//  3. The blighted permanent becomes a Swamp (layer-4 type change),
+//     which means it taps for {B} and loses its original mana abilities.
 //
 // ActivateBlight performs the blight activation for an enchantment card
 // in the graveyard. Returns true if the activation succeeded.
@@ -2704,7 +2641,7 @@ func FireMonarchEndStep(gs *GameState) {
 		MoveCard(gs, drawn, mSeat, "library", "hand", "monarch-draw")
 		gs.LogEvent(Event{
 			Kind: "monarch_draw", Seat: mSeat,
-			Source: drawn.DisplayName(),
+			Source:  drawn.DisplayName(),
 			Details: map[string]interface{}{"rule": "721.3"},
 		})
 	}
@@ -2724,42 +2661,6 @@ func CheckMonarchCombatSteal(gs *GameState, damagedSeat, attackerSeat int) {
 // ===========================================================================
 // §701.35 — Detain
 // ===========================================================================
-
-// DetainPermanent detains a permanent until its controller's next turn.
-// Detained permanents can't attack, block, or activate abilities.
-func DetainPermanent(gs *GameState, p *Permanent, sourceSeat int) {
-	if gs == nil || p == nil {
-		return
-	}
-	if p.Flags == nil {
-		p.Flags = map[string]int{}
-	}
-	p.Flags["detained"] = 1
-	p.Flags["detained_by_seat"] = sourceSeat
-	p.Flags["detained_until_turn"] = gs.Turn + 1
-	gs.LogEvent(Event{
-		Kind: "detain", Seat: sourceSeat,
-		Source: p.Card.DisplayName(),
-		Details: map[string]interface{}{
-			"target":     p.Card.DisplayName(),
-			"controller": p.Controller,
-			"until_turn": gs.Turn + 1,
-			"rule":       "701.35",
-		},
-	})
-}
-
-// IsDetained returns true if the permanent is currently detained.
-func IsDetained(gs *GameState, p *Permanent) bool {
-	if p == nil || p.Flags == nil || p.Flags["detained"] != 1 {
-		return false
-	}
-	if gs != nil && gs.Turn >= p.Flags["detained_until_turn"] {
-		p.Flags["detained"] = 0
-		return false
-	}
-	return true
-}
 
 // ===========================================================================
 // Party mechanic (Zendikar Rising)
@@ -2796,81 +2697,9 @@ func CountParty(gs *GameState, seatIdx int) int {
 	return len(roles)
 }
 
-// HasFullParty returns true if the seat has all 4 party roles.
-func HasFullParty(gs *GameState, seatIdx int) bool {
-	return CountParty(gs, seatIdx) == 4
-}
-
 // ===========================================================================
 // §702.167 — Craft with
 // ===========================================================================
-
-// ActivateCraft implements the "Craft with [materials]" activated ability.
-// The permanent and the required materials are exiled, then the card
-// returns transformed. Simplified: exile the source + one matching
-// permanent from the battlefield, put the source card back as a
-// transformed permanent.
-func ActivateCraft(gs *GameState, perm *Permanent, materialType string) bool {
-	if gs == nil || perm == nil || perm.Card == nil {
-		return false
-	}
-	seat := perm.Controller
-	if seat < 0 || seat >= len(gs.Seats) {
-		return false
-	}
-	s := gs.Seats[seat]
-	matType := strings.ToLower(materialType)
-
-	// Find a matching material on the battlefield.
-	var material *Permanent
-	for _, p := range s.Battlefield {
-		if p == nil || p == perm || p.Card == nil {
-			continue
-		}
-		tl := strings.ToLower(strings.Join(p.Card.Types, " "))
-		if strings.Contains(tl, matType) {
-			material = p
-			break
-		}
-	}
-	if material == nil {
-		return false
-	}
-
-	materialName := material.Card.DisplayName()
-	cardName := perm.Card.DisplayName()
-
-	// Exile the material.
-	SacrificePermanent(gs, material, "craft_material")
-	// Exile the source (it will return transformed).
-	card := perm.Card
-	removePermanentFromBattlefield(gs, perm)
-
-	// Return transformed — create a new permanent from the same card.
-	transformed := &Permanent{
-		Card:          card,
-		Controller:    seat,
-		Owner:         card.Owner,
-		SummoningSick: true,
-		Timestamp:     gs.NextTimestamp(),
-		Counters:      map[string]int{},
-		Flags:         map[string]int{"transformed": 1},
-	}
-	s.Battlefield = append(s.Battlefield, transformed)
-	RegisterReplacementsForPermanent(gs, transformed)
-	FirePermanentETBTriggers(gs, transformed)
-
-	gs.LogEvent(Event{
-		Kind: "craft", Seat: seat,
-		Source: cardName,
-		Details: map[string]interface{}{
-			"material_type": materialType,
-			"material_used": materialName,
-			"rule":          "702.167",
-		},
-	})
-	return true
-}
 
 // removePermanentFromBattlefield removes a permanent without triggering
 // dies/LTB (used for exile-and-return effects like Craft / Meld / Aura

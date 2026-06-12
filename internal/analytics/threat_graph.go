@@ -134,34 +134,6 @@ func ExtractKillRecords(events []gameengine.Event, nSeats int, commanderNames []
 	return records
 }
 
-// DetectKingmakers identifies games where a non-winning deck eliminated
-// rivals of the eventual winner.
-func DetectKingmakers(kills []KillRecord, winnerCommander string) []KingmakerRecord {
-	if winnerCommander == "" {
-		return nil
-	}
-
-	// Group kills by killer.
-	killsByKiller := map[string]int{}
-	for _, k := range kills {
-		if k.KillerCommander != winnerCommander && k.VictimCommander != winnerCommander {
-			killsByKiller[k.KillerCommander]++
-		}
-	}
-
-	var out []KingmakerRecord
-	for km, count := range killsByKiller {
-		if count > 0 {
-			out = append(out, KingmakerRecord{
-				KingmakerCommander: km,
-				BeneficiaryWinner:  winnerCommander,
-				VictimsKilled:      count,
-			})
-		}
-	}
-	return out
-}
-
 // inferKiller walks backwards from the elimination event to find the
 // seat that dealt the lethal blow. lossCategory/lossSourceCard are the
 // structured loss cause from the elimination event (consolidation step

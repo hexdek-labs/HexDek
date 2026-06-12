@@ -920,7 +920,7 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 	}
 	gs.LogEvent(Event{
 		Kind: "seat_eliminated", Seat: seatIdx, Target: -1,
-		Amount: removed,
+		Amount:  removed,
 		Details: elimDetails,
 	})
 	// Fire per-card triggers for seat elimination (e.g. Davros, Dalek Creator).
@@ -979,14 +979,6 @@ type PartnerInfo struct {
 	PartnerWith      string // "Partner with X" — names the required pair (CR §702.124g)
 	DoctorsCompanion bool   // "Doctor's companion" (pairs with a Doctor)
 	IsDoctor         bool   // type-line includes "Time Lord ... Doctor"
-}
-
-// HasPartner returns true if the card has ANY partner-family keyword
-// that legalises it in a two-commander pair.
-func (p PartnerInfo) HasPartner() bool {
-	return p.Partner || p.FriendsForever || p.ChooseBackground ||
-		p.IsBackground || p.PartnerWith != "" ||
-		p.DoctorsCompanion || p.IsDoctor
 }
 
 // ReadPartnerInfo walks a card's AST + Types slice and extracts which

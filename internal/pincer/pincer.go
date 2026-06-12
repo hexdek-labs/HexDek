@@ -274,13 +274,6 @@ func (t *Tracker) recordEvent(sessionID, eventType, path, payload string) {
 		sessionID, eventType, truncate(path, 512), truncate(payload, 4096), time.Now().Unix())
 }
 
-// RecordEvent records a typed event against the session UUID currently
-// attached to ctx. Safe to call without a session — drops silently.
-// payload should be JSON-serializable (or empty); it's stored verbatim.
-func (t *Tracker) RecordEvent(ctx context.Context, eventType, path, payload string) {
-	t.recordEvent(FromContext(ctx), eventType, path, payload)
-}
-
 // ─────────────────────────── stitch on auth ───────────────────────────
 
 // Stitch links a session UUID (typically the cookie on the request that
@@ -312,18 +305,6 @@ func (t *Tracker) Stitch(ctx context.Context, sessionID, userID string) error {
 		return err
 	}
 	return tx.Commit()
-}
-
-// StitchAll links every UUID in sessionIDs to the user. Use when an
-// authenticated user proves ownership of additional anon sessions (e.g. a
-// 'I have another browser' link in the dashboard).
-func (t *Tracker) StitchAll(ctx context.Context, sessionIDs []string, userID string) error {
-	for _, id := range sessionIDs {
-		if err := t.Stitch(ctx, id, userID); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // ─────────────────────────── analytics queries ────────────────────────

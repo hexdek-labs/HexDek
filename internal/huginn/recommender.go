@@ -54,12 +54,12 @@ type PartnerHit struct {
 
 // ExtendHit is a single card-to-add candidate returned by Extend().
 type ExtendHit struct {
-	Card       string   `json:"card"`
-	Score      float64  `json:"score"`        // sum of tier × avg_impact across all pairings with deck cards
-	Tier       int      `json:"tier"`         // best tier of any shared pattern
-	Pairs      int      `json:"pairs"`        // number of deck cards this would pair with
-	WithCards  []string `json:"with_cards"`   // deck cards this card would pair with (capped at 5 for readability)
-	Patterns   []string `json:"patterns"`     // top patterns this card participates in with deck cards (capped at 3)
+	Card      string   `json:"card"`
+	Score     float64  `json:"score"`      // sum of tier × avg_impact across all pairings with deck cards
+	Tier      int      `json:"tier"`       // best tier of any shared pattern
+	Pairs     int      `json:"pairs"`      // number of deck cards this would pair with
+	WithCards []string `json:"with_cards"` // deck cards this card would pair with (capped at 5 for readability)
+	Patterns  []string `json:"patterns"`   // top patterns this card participates in with deck cards (capped at 3)
 }
 
 // Partners returns every card the corpus has observed pairing with the
@@ -223,18 +223,6 @@ func (d *DeckJSON) normalizedNames() []string {
 	return out
 }
 
-// Extend returns cards NOT in the deck that would extend its interaction
-// density, ranked by sum(tier × avg_impact) across all pairings with
-// deck cards. Each ExtendHit's Pairs field counts the number of distinct
-// deck cards the candidate would pair with.
-func Extend(dir string, deckCards []string, minTier int) ([]ExtendHit, error) {
-	interactions, err := ReadLearnedInteractions(dir)
-	if err != nil {
-		return nil, fmt.Errorf("huginn.Extend: read learned: %w", err)
-	}
-	return extendFromInteractions(interactions, deckCards, minTier), nil
-}
-
 func extendFromInteractions(interactions []LearnedInteraction, deckCards []string, minTier int) []ExtendHit {
 	if len(deckCards) == 0 {
 		return nil
@@ -245,11 +233,11 @@ func extendFromInteractions(interactions []LearnedInteraction, deckCards []strin
 	}
 
 	type agg struct {
-		bestTier   int
-		score      float64
-		pairs      map[string]bool        // distinct deck cards this candidate pairs with
-		patterns   map[string]float64     // pattern → cumulative contribution
-		withCards  []string               // ordered insertion for display (matches first-seen deck card)
+		bestTier  int
+		score     float64
+		pairs     map[string]bool    // distinct deck cards this candidate pairs with
+		patterns  map[string]float64 // pattern → cumulative contribution
+		withCards []string           // ordered insertion for display (matches first-seen deck card)
 	}
 	byCard := map[string]*agg{}
 

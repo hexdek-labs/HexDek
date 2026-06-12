@@ -152,14 +152,6 @@ func ActiveFeedback() *analytics.HeimdallFeedback {
 	return activeFeedback
 }
 
-// ActiveApplyPolicy returns the policy installed alongside the active
-// feedback. Returns PolicyDirect when no feedback is installed.
-func ActiveApplyPolicy() ApplyPolicy {
-	activeMu.RLock()
-	defer activeMu.RUnlock()
-	return activePolicy
-}
-
 // applyFeedbackOverlay applies any installed Heimdall feedback overlay
 // to the base weights for the given archetype. Returns the input
 // unchanged when no feedback is active or no per-archetype deltas

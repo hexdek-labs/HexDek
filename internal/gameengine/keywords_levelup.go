@@ -378,14 +378,6 @@ func GetLevelBracket(perm *Permanent) *LevelBracket {
 	return match
 }
 
-// GetLevelCount returns the number of level counters on a permanent.
-func GetLevelCount(perm *Permanent) int {
-	if perm == nil || perm.Counters == nil {
-		return 0
-	}
-	return perm.Counters["level"]
-}
-
 // ---------------------------------------------------------------------------
 // ActivateLevelUp — the activated ability handler
 // ---------------------------------------------------------------------------
@@ -558,59 +550,9 @@ func ApplyLevelBracketEffects(gs *GameState, perm *Permanent) {
 // RegisterLevelUpContinuousEffects — wire into the layer system
 // ---------------------------------------------------------------------------
 
-// RegisterLevelUpContinuousEffect registers a continuous effect for a leveler
-// creature so the layer system picks up bracket P/T and abilities. Call this
-// at ETB for any creature with the "level up" keyword.
-func RegisterLevelUpContinuousEffect(gs *GameState, perm *Permanent) {
-	if gs == nil || perm == nil || perm.Card == nil {
-		return
-	}
-	if !HasLevelUp(perm.Card) {
-		return
-	}
-
-	cardName := perm.Card.DisplayName()
-
-	// Register a ContinuousEffect that applies level bracket data.
-	// Layer 7, sublayer "b" — P/T setting ("becomes N/N").
-	ce := &ContinuousEffect{
-		Layer:          7,
-		Sublayer:       "b",
-		Timestamp:      perm.Timestamp,
-		SourcePerm:     perm,
-		SourceCardName: cardName,
-		ControllerSeat: perm.Controller,
-		HandlerID:      "level_up:" + cardName,
-		Duration:       "permanent",
-		Predicate: func(_ *GameState, target *Permanent) bool {
-			return target == perm
-		},
-		ApplyFn: func(gs *GameState, target *Permanent, chars *Characteristics) {
-			// Apply bracket P/T as base override.
-			bracket := GetLevelBracket(target)
-			if bracket == nil {
-				return
-			}
-			chars.Power = bracket.Power
-			chars.Toughness = bracket.Toughness
-			// Grant bracket keywords.
-			chars.Keywords = append(chars.Keywords, bracket.Keywords...)
-		},
-	}
-	gs.ContinuousEffects = append(gs.ContinuousEffects, ce)
-}
-
 // ---------------------------------------------------------------------------
 // IsLeveler — type check for leveler cards
 // ---------------------------------------------------------------------------
-
-// IsLeveler returns true if the permanent's card is a leveler (has level up).
-func IsLeveler(perm *Permanent) bool {
-	if perm == nil || perm.Card == nil {
-		return false
-	}
-	return HasLevelUp(perm.Card)
-}
 
 // ---------------------------------------------------------------------------
 // GetEffectiveLevelPT — convenience for getting bracket-adjusted P/T

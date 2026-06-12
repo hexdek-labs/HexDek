@@ -940,14 +940,6 @@ func HasAssist(card *Card) bool {
 	return cardHasKeywordByName(card, "assist")
 }
 
-// AssistReduction returns the assist cost reduction. In our greedy sim,
-// we model this as 0 (no teammate helps). In multiplayer with allies,
-// this could be extended.
-func AssistReduction(gs *GameState, seatIdx int) int {
-	// Simplified: no external help in simulation.
-	return 0
-}
-
 // ---------------------------------------------------------------------------
 // Undaunted — CR §702.125
 // "This spell costs {1} less to cast for each opponent."
@@ -1149,13 +1141,13 @@ func SpliceCost(card *Card) int {
 //
 // CR §702.47:
 //   - §702.47a: Splice is a static ability that functions in any zone
-//                from which you could play the card with splice.
+//     from which you could play the card with splice.
 //   - §702.47b: As you cast an Arcane spell, you may reveal a card with
-//                splice from your hand and pay its splice cost. If you
-//                do, add the spliced card's text in addition to the
-//                spell's text. The spliced card remains in your hand
-//                — it is NOT cast and does NOT enter the graveyard on
-//                resolution.
+//     splice from your hand and pay its splice cost. If you
+//     do, add the spliced card's text in addition to the
+//     spell's text. The spliced card remains in your hand
+//     — it is NOT cast and does NOT enter the graveyard on
+//     resolution.
 //   - §702.47c: You can splice multiple cards onto one spell.
 //
 // Behavior:
@@ -1385,9 +1377,9 @@ func CastAdventure(gs *GameState, seatIdx int, card *Card, adventureCost int) er
 		Seat:   seatIdx,
 		Source: card.DisplayName(),
 		Details: map[string]interface{}{
-			"adventure_cost":  adventureCost,
-			"creature_cost":   manaCostOf(card),
-			"rule":            "715.4",
+			"adventure_cost": adventureCost,
+			"creature_cost":  manaCostOf(card),
+			"rule":           "715.4",
 		},
 	})
 	return nil
@@ -1850,36 +1842,36 @@ func colorCodeToName(code string) string {
 // ============================================================================
 
 const (
-	KeywordIntimidate             = "intimidate"
-	KeywordFear                   = "fear"
-	KeywordShadow                 = "shadow"
-	KeywordSkulk                  = "skulk"
-	KeywordDaunt                  = "daunt"
-	KeywordBanding                = "banding"
-	KeywordRampage                = "rampage"
-	KeywordBattleCry              = "battle cry"
-	KeywordMyriad                 = "myriad"
-	KeywordMelee                  = "melee"
-	KeywordAnnihilator            = "annihilator"
-	KeywordAfflict                = "afflict"
-	KeywordProvoke                = "provoke"
-	KeywordTrampleOverPW          = "trample over planeswalkers"
-	KeywordSpectacle              = "spectacle"
-	KeywordSurge                  = "surge"
-	KeywordImprovise              = "improvise"
-	KeywordAssist                 = "assist"
-	KeywordUndaunted              = "undaunted"
-	KeywordOffering               = "offering"
-	KeywordMiracle                = "miracle"
-	KeywordSplice                 = "splice"
-	KeywordCipher                 = "cipher"
-	KeywordAdventure              = "adventure"
-	KeywordAftermath              = "aftermath"
-	KeywordRetrace                = "retrace"
-	KeywordJumpStart              = "jump-start"
-	KeywordOverload               = "overload"
-	KeywordProtectionFromType     = "protection"
-	KeywordHexproofFromColor      = "hexproof"
+	KeywordIntimidate         = "intimidate"
+	KeywordFear               = "fear"
+	KeywordShadow             = "shadow"
+	KeywordSkulk              = "skulk"
+	KeywordDaunt              = "daunt"
+	KeywordBanding            = "banding"
+	KeywordRampage            = "rampage"
+	KeywordBattleCry          = "battle cry"
+	KeywordMyriad             = "myriad"
+	KeywordMelee              = "melee"
+	KeywordAnnihilator        = "annihilator"
+	KeywordAfflict            = "afflict"
+	KeywordProvoke            = "provoke"
+	KeywordTrampleOverPW      = "trample over planeswalkers"
+	KeywordSpectacle          = "spectacle"
+	KeywordSurge              = "surge"
+	KeywordImprovise          = "improvise"
+	KeywordAssist             = "assist"
+	KeywordUndaunted          = "undaunted"
+	KeywordOffering           = "offering"
+	KeywordMiracle            = "miracle"
+	KeywordSplice             = "splice"
+	KeywordCipher             = "cipher"
+	KeywordAdventure          = "adventure"
+	KeywordAftermath          = "aftermath"
+	KeywordRetrace            = "retrace"
+	KeywordJumpStart          = "jump-start"
+	KeywordOverload           = "overload"
+	KeywordProtectionFromType = "protection"
+	KeywordHexproofFromColor  = "hexproof"
 )
 
 // AllCombatKeywords returns all keyword names implemented in this file.

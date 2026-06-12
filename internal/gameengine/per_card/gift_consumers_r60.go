@@ -127,16 +127,6 @@ func pickAnyFriendlyCreature(gs *gameengine.GameState, seat int) *gameengine.Per
 	return best
 }
 
-// findGiftRecipient pulls the recipient seat index from CostMeta when
-// the gift was promised. Returns -1 when absent / invalid.
-func findGiftRecipient(item *gameengine.StackItem) int {
-	if item == nil || item.CostMeta == nil {
-		return -1
-	}
-	r, _ := item.CostMeta["gift_recipient"].(int)
-	return r
-}
-
 // -----------------------------------------------------------------------------
 // Blooming Blast — {1}{R} Instant, Gift a Treasure
 //
@@ -160,8 +150,8 @@ func bloomingBlastResolve(gs *gameengine.GameState, item *gameengine.StackItem) 
 	target := pickBestOppCreature(gs, item.Controller)
 	if target == nil {
 		emitFail(gs, slug, "Blooming Blast", "no_target", map[string]interface{}{
-			"seat":      item.Controller,
-			"promised":  promised,
+			"seat":     item.Controller,
+			"promised": promised,
 		})
 		return
 	}
@@ -417,6 +407,16 @@ func valleyRallyResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 		"pumped":   pumped,
 		"promised": promised,
 	})
+}
+
+// findGiftRecipient pulls the recipient seat index from CostMeta when
+// the gift was promised. Returns -1 when absent / invalid.
+func findGiftRecipient(item *gameengine.StackItem) int {
+	if item == nil || item.CostMeta == nil {
+		return -1
+	}
+	r, _ := item.CostMeta["gift_recipient"].(int)
+	return r
 }
 
 // findGiftRecipient is preserved for future per_card handlers that
