@@ -55,6 +55,14 @@ type GameState struct {
 	// "unknown" rather than "seeded with 0".
 	Seed int64
 
+	// EventsLogged counts every LogEvent call for the lifetime of the
+	// game, independent of RetainEvents. It is a deterministic
+	// work-volume proxy: the tournament turn runner budgets each turn
+	// by events logged instead of wall-clock time, so a pathological
+	// turn fast-forwards identically on every host (seed-replay
+	// determinism — r62).
+	EventsLogged int64
+
 	// Turn bookkeeping. Turn is 1-indexed; Phase is "beginning"/"main"/
 	// "combat"/"ending"; Step is the step within the phase ("untap",
 	// "upkeep", "draw", "precombat_main", etc.); Active is the seat whose
@@ -706,6 +714,7 @@ func (gs *GameState) NextTimestamp() int {
 // mutate the GameState from ObserveEvent (contract, not enforced) but
 // they may update their OWN internal state.
 func (gs *GameState) LogEvent(ev Event) {
+	gs.EventsLogged++
 	var evPtr *Event
 	if gs.RetainEvents {
 		const maxEventLog = 50000

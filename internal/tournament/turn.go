@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/gameengine"
@@ -12,7 +11,19 @@ import (
 	"github.com/hexdek/hexdek/internal/hat"
 )
 
-const turnTimeBudget = 15 * time.Second
+// turnEventBudget caps the work a single turn may do, measured in
+// events logged (gs.EventsLogged) since the turn started. When the
+// budget is exceeded the remaining phases fast-forward to cleanup.
+//
+// This replaces the pre-r62 wall-clock budget (15s of host time): a
+// time-based cutoff made seeded games nondeterministic — a slow CI box
+// silently changed game outcomes, voiding Loki's `--games N --seed S`
+// repro contract, ELO parity, and replay verification. Events logged
+// is a deterministic work-volume proxy: a normal Commander turn logs
+// tens-to-hundreds of events, a trigger-storm turn a few thousand
+// (maxTriggerFiresPerTurn caps trigger fires at 1000/turn), so 20k
+// only trips on genuinely pathological loops the inner caps missed.
+const turnEventBudget = 20000
 
 // TakeTurn runs a full turn with no phase hook.
 func TakeTurn(gs *gameengine.GameState) { takeTurnImpl(gs, nil) }
@@ -75,12 +86,33 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 		return
 	}
 
-	// Per-turn time budget: if any single turn exceeds the budget,
-	// skip remaining phases. Prevents complex boards from burning
-	// the entire game timeout on one turn.
-	turnStart := time.Now()
+	// Per-turn work budget (deterministic): if any single turn logs
+	// more than turnEventBudget events, skip remaining phases. Prevents
+	// pathological turns (runaway loops the trigger caps missed) from
+	// burning the entire game — and, unlike the old wall-clock budget,
+	// trips identically on every host for the same seed.
+	turnStartEvents := gs.EventsLogged
+	budgetEventEmitted := false
 	turnOverBudget := func() bool {
-		return time.Since(turnStart) > turnTimeBudget
+		used := gs.EventsLogged - turnStartEvents
+		if used <= turnEventBudget {
+			return false
+		}
+		if !budgetEventEmitted {
+			budgetEventEmitted = true
+			gs.LogEvent(gameengine.Event{
+				Kind: "turn_budget_exceeded",
+				Seat: active,
+				Details: map[string]interface{}{
+					"turn":          gs.Turn,
+					"phase":         gs.Phase,
+					"step":          gs.Step,
+					"events_logged": used,
+					"budget":        turnEventBudget,
+				},
+			})
+		}
+		return true
 	}
 
 	gs.LogEvent(gameengine.Event{

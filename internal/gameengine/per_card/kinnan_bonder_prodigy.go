@@ -1,8 +1,6 @@
 package per_card
 
 import (
-	"math/rand"
-
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -97,9 +95,7 @@ func kinnanActivate(gs *gameengine.GameState, src *gameengine.Permanent, ability
 		emitFail(gs, slug, src.Card.DisplayName(), "library_empty", nil)
 		return
 	}
-	// Shuffle determinism: use gs.Rng where needed, but for the reveal we
-	// just look at the top card.
-	_ = rand.New
+	// No randomness needed here — the reveal just looks at the top card.
 	top := s.Library[0]
 	if cardHasType(top, "creature") {
 		// Remove from library before putting on battlefield (not through MoveCard).

@@ -1,8 +1,6 @@
 package per_card
 
 import (
-	"math/rand"
-
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -56,7 +54,7 @@ func vialSmasherTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 	if len(opps) == 0 {
 		return
 	}
-	target := opps[rand.Intn(len(opps))]
+	target := opps[rngIntn(gs, len(opps))]
 	opp := gs.Seats[target]
 	if opp == nil || opp.Lost {
 		return
