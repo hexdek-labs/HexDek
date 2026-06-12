@@ -119,17 +119,38 @@ func main() {
 		// (parse failures alone do NOT trigger non-zero — they're
 		// input noise, not rules-correctness gaps).
 		batchDir = flag.String("batch", "", "batch mode: scan every .json in this directory as a game-state snapshot, run the §704 SBA probe against each, emit a summary report")
-		deckPath    = flag.String("deck", "", "deck text file path for --check-commander / --check-deck-construction / --report-parse")
-		checkOut   = flag.String("check-out", "", "output path for the --check-* JSON report (default: stdout)")
+		deckPath = flag.String("deck", "", "deck text file path for --check-commander / --check-deck-construction / --report-parse")
+		checkOut = flag.String("check-out", "", "output path for the --check-* JSON report (default: stdout)")
 		// Parse coverage report — surfaces the deckparser's structured
 		// per-line resolution status (resolved / fallback-resolved /
 		// unresolved) + roll-up counts + per-failure source-line detail.
 		// Used by deckbuilders to find typos, renamed cards, and meta
 		// gaps. Exit status mirrors the other --check-* probes: 0 on a
 		// 100%-coverage deck, 1 when any line failed to resolve.
+		runGate        = flag.Bool("run", false, "RUN MODE (the standing Judge gate): exercise all five dimensions — the OUTCOME/PROGRESSION corpus audits over --ast plus --games seeded chaos games with strict census + invariant table + ride-along legality — and exit 1 on any violation fingerprint NOT in --baseline. The CI entry point (.github/workflows/judge.yml).")
+		runGames       = flag.Int("games", 300, "seeded chaos games for --run")
+		runSeed        = flag.Int64("seed", 42, "master seed for --run games")
+		baselinePath   = flag.String("baseline", "data/judge/judge-baseline.json", "known-residual baseline JSON for --run")
+		updateBaseline = flag.Bool("update-baseline", false, "with --run: write the observed violation set to --baseline instead of gating")
+		writeCISampleF = flag.Bool("write-ci-sample", false, "regenerate the committed CI sample corpus (data/judge/ci-ast-sample.jsonl + ci-oracle-sample.json) from the full --ast/--oracle")
+		ciSampleAST    = flag.String("ci-sample-ast", "data/judge/ci-ast-sample.jsonl", "output AST sample path for --write-ci-sample")
+		ciSampleOracle = flag.String("ci-sample-oracle", "data/judge/ci-oracle-sample.json", "output oracle sample path for --write-ci-sample")
+		ciSampleCap    = flag.Int("ci-sample-scope-cap", 400, "max scenario-scoped cards in the CI sample")
+
 		reportParse = flag.Bool("report-parse", false, "batch mode: parse --deck and print the structured per-line resolution coverage report (resolved / fallback / unresolved). Exit 1 if any line failed to resolve.")
 	)
 	flag.Parse()
+
+	if *writeCISampleF {
+		if err := writeCISample(*astPath, *oraclePath, *ciSampleAST, *ciSampleOracle, *ciSampleCap); err != nil {
+			log.Fatalf("write-ci-sample: %v", err)
+		}
+		return
+	}
+
+	if *runGate {
+		os.Exit(runJudgeGate(*astPath, *oraclePath, *baselinePath, *runGames, *runSeed, *updateBaseline))
+	}
 
 	if *checkManaCosts {
 		rep, err := runManaCostCheck(*oraclePath, *checkOut)

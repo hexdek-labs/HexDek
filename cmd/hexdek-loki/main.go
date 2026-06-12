@@ -27,7 +27,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -43,7 +42,6 @@ import (
 
 	"github.com/hexdek/hexdek/internal/astload"
 	"github.com/hexdek/hexdek/internal/deckparser"
-	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/gameengine"
 	"github.com/hexdek/hexdek/internal/hat"
 	"github.com/hexdek/hexdek/internal/tournament"
@@ -127,211 +125,12 @@ type nightmareResult struct {
 // Oracle corpus loader
 // ---------------------------------------------------------------------------
 
-// oracleEntry mirrors the Scryfall oracle-cards.json row fields we need.
-type oracleEntry struct {
-	Name          string   `json:"name"`
-	TypeLine      string   `json:"type_line"`
-	SetName       string   `json:"set_name"`
-	ManaCost      string   `json:"mana_cost"`
-	CMC           float64  `json:"cmc"`
-	Colors        []string `json:"colors"`
-	ColorIdentity []string `json:"color_identity"`
-	Power         string   `json:"power"`
-	Toughness     string   `json:"toughness"`
-	OracleText    string   `json:"oracle_text"`
-	Loyalty       string   `json:"loyalty"`
-	Defense       string   `json:"defense"`
-	CardFaces     []struct {
-		Name      string   `json:"name"`
-		TypeLine  string   `json:"type_line"`
-		ManaCost  string   `json:"mana_cost"`
-		Colors    []string `json:"colors"`
-		Power     string   `json:"power"`
-		Toughness string   `json:"toughness"`
-	} `json:"card_faces"`
-}
-
+// loadOracleCorpus delegates to the promoted shared loader (r63 Judge
+// CI gate) — the corpus-quality filters live in
+// gameengine.LoadChaosCorpusFromOracleJSON now, shared with
+// hexdek-judge --run.
 func loadOracleCorpus(path string) (*gameengine.ChaosCorpus, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("open oracle %s: %w", path, err)
-	}
-	defer f.Close()
-
-	var entries []oracleEntry
-	if err := json.NewDecoder(f).Decode(&entries); err != nil {
-		return nil, fmt.Errorf("decode oracle: %w", err)
-	}
-
-	// Un-sets excluded per project directive (7174n1c 2026-04-17).
-	// These sets contain mechanics (widgets, augment, host, contraptions)
-	// the engine doesn't handle, producing false-positive violations.
-	unSets := map[string]bool{
-		"Unstable": true, "Unhinged": true, "Unglued": true,
-		"Unsanctioned": true, "Unfinity": true,
-	}
-
-	cards := make([]*gameengine.ChaosCard, 0, len(entries))
-	for _, e := range entries {
-		if e.Name == "" {
-			continue
-		}
-		if unSets[e.SetName] {
-			continue
-		}
-		typeLine := e.TypeLine
-		if typeLine == "" && len(e.CardFaces) > 0 {
-			typeLine = e.CardFaces[0].TypeLine
-		}
-
-		tlLower := strings.ToLower(typeLine)
-		types := parseTypesSimple(typeLine)
-
-		// Scryfall token entries are not deck cards — they're battlefield
-		// instances minted by resolveCreateToken. Excluding them keeps the
-		// chaos deck generator from seeding them as library/hand cards,
-		// which would let SBA 704.5d sweep them (correctly per CR §704.5d)
-		// but also flag the disappearance against the InstanceID census
-		// for cards that should never have been minted as OG. Filtering
-		// at the corpus level prevents the noise at the source.
-		if strings.Contains(tlLower, "token") {
-			continue
-		}
-
-		// Memorabilia / art-series / minigame inserts carry the literal
-		// type_line "Card" (or "Card // Card") — they are not playable
-		// objects. The fj22 "Knights" insert (empty mana cost, oracle
-		// text "(Theme color: {W})") leaked into chaos decks this way
-		// and got "cast" for announced-0 (r63, seed 42 game 482).
-		// 2,650 such entries exist in the oracle corpus; none belong in
-		// a deck pool.
-		if tlLower == "card" || strings.HasPrefix(tlLower, "card //") {
-			continue
-		}
-
-		isLegendary := strings.Contains(tlLower, "legendary")
-		isCreature := strings.Contains(tlLower, "creature")
-		isLand := strings.Contains(tlLower, "land")
-
-		// Basic land detection.
-		basicNames := map[string]bool{
-			"Plains": true, "Island": true, "Swamp": true,
-			"Mountain": true, "Forest": true, "Wastes": true,
-		}
-		isBasicLand := isLand && (strings.Contains(tlLower, "basic") || basicNames[e.Name])
-
-		// Parse P/T.
-		pw, pwOK := atoiSafe(e.Power)
-		tg, tgOK := atoiSafe(e.Toughness)
-		if pw == 0 && tg == 0 && len(e.CardFaces) > 0 {
-			pw, pwOK = atoiSafe(e.CardFaces[0].Power)
-			tg, tgOK = atoiSafe(e.CardFaces[0].Toughness)
-		}
-		// Planeswalker loyalty as toughness surrogate.
-		if tg == 0 {
-			if loy, ok := atoiSafe(e.Loyalty); ok {
-				tg = loy
-			}
-		}
-		if tg == 0 {
-			if def, ok := atoiSafe(e.Defense); ok {
-				tg = def
-			}
-		}
-
-		// ETB-choice default: cards like Primal Plasma, Primal Clay,
-		// Aquamorph Entity etc. have */* P/T with "As ~ enters, choose"
-		// text. Without ETB resolution they'd be 0/0 and die to SBA
-		// 704.5f. Similarly, 0/0 creatures that "enter with +1/+1
-		// counters" (Marath, Verazol) need a baseline. Apply safe
-		// defaults at corpus-load time so every downstream consumer
-		// (chaos games, nightmare boards) inherits the fix.
-		if isCreature && pw == 0 && tg == 0 {
-			otLower := strings.ToLower(e.OracleText)
-			isPTStar := !pwOK || !tgOK // "*" fails atoiSafe
-			isETBChoice := (strings.Contains(otLower, "as this creature enters") ||
-				strings.Contains(otLower, "as it enters")) &&
-				(strings.Contains(otLower, "choose") ||
-					strings.Contains(otLower, "becomes your choice"))
-			isETBCounters := strings.Contains(otLower, "enters with") &&
-				strings.Contains(otLower, "+1/+1 counter")
-
-			if isPTStar && isETBChoice {
-				// Pick the balanced middle form (most of these offer 3/3).
-				pw = 3
-				tg = 3
-			} else if isETBCounters {
-				// Give a baseline so they survive SBAs.
-				pw = 3
-				tg = 3
-			}
-		}
-
-		card := &gameengine.ChaosCard{
-			Name:          e.Name,
-			TypeLine:      typeLine,
-			Types:         types,
-			ManaCost:      e.ManaCost,
-			CMC:           int(e.CMC + 0.5),
-			Colors:        e.Colors,
-			ColorIdentity: e.ColorIdentity,
-			Power:         pw,
-			Toughness:     tg,
-			IsLegendary:   isLegendary,
-			IsCreature:    isCreature,
-			IsLand:        isLand,
-			IsBasicLand:   isBasicLand,
-		}
-		cards = append(cards, card)
-	}
-
-	return gameengine.NewChaosCorpus(cards), nil
-}
-
-func parseTypesSimple(typeLine string) []string {
-	if typeLine == "" {
-		return nil
-	}
-	normalized := strings.ReplaceAll(typeLine, "\u2014", "-")
-	var out []string
-	for _, f := range strings.Fields(normalized) {
-		f = strings.TrimSpace(f)
-		if f == "" || f == "-" {
-			continue
-		}
-		out = append(out, strings.ToLower(f))
-	}
-	return out
-}
-
-func atoiSafe(s string) (int, bool) {
-	s = strings.TrimSpace(s)
-	if s == "" || s == "*" {
-		return 0, false
-	}
-	n := 0
-	neg := false
-	i := 0
-	if s[0] == '-' {
-		neg = true
-		i = 1
-	} else if s[0] == '+' {
-		i = 1
-	}
-	if i >= len(s) {
-		return 0, false
-	}
-	for ; i < len(s); i++ {
-		c := s[i]
-		if c < '0' || c > '9' {
-			return 0, false
-		}
-		n = n*10 + int(c-'0')
-	}
-	if neg {
-		n = -n
-	}
-	return n, true
+	return gameengine.LoadChaosCorpusFromOracleJSON(path)
 }
 
 // ---------------------------------------------------------------------------
@@ -378,25 +177,25 @@ func splitCardList(raw string) []string {
 
 func main() {
 	var (
-		gamesFlag      = flag.Int("games", 1000, "number of chaos games to run")
-		seedFlag       = flag.Int64("seed", 42, "master RNG seed")
-		permsFlag      = flag.Int("permutations", 1, "shuffles per deck set")
-		seatsFlag      = flag.Int("seats", 4, "seats per game")
-		maxTurnsFlag   = flag.Int("max-turns", 60, "max turns per game")
-		workersFlag    = flag.Int("workers", 0, "worker goroutines (0 = NumCPU)")
-		reportFlag     = flag.String("report", "data/rules/CHAOS_REPORT.md", "markdown report output path")
-		astPath        = flag.String("ast", "data/rules/ast_dataset.jsonl", "AST dataset JSONL path")
-		oraclePath     = flag.String("oracle", "data/rules/oracle-cards.json", "Scryfall oracle-cards.json path")
-		nightmareFlag  = flag.Int("nightmare-boards", 10000, "number of nightmare board tests")
-		seedCardsFlag  = flag.String("seed-cards", "", "comma-separated card names to force into seat 0's deck every chaos game (handler-focused fuzz)")
+		gamesFlag             = flag.Int("games", 1000, "number of chaos games to run")
+		seedFlag              = flag.Int64("seed", 42, "master RNG seed")
+		permsFlag             = flag.Int("permutations", 1, "shuffles per deck set")
+		seatsFlag             = flag.Int("seats", 4, "seats per game")
+		maxTurnsFlag          = flag.Int("max-turns", 60, "max turns per game")
+		workersFlag           = flag.Int("workers", 0, "worker goroutines (0 = NumCPU)")
+		reportFlag            = flag.String("report", "data/rules/CHAOS_REPORT.md", "markdown report output path")
+		astPath               = flag.String("ast", "data/rules/ast_dataset.jsonl", "AST dataset JSONL path")
+		oraclePath            = flag.String("oracle", "data/rules/oracle-cards.json", "Scryfall oracle-cards.json path")
+		nightmareFlag         = flag.Int("nightmare-boards", 10000, "number of nightmare board tests")
+		seedCardsFlag         = flag.String("seed-cards", "", "comma-separated card names to force into seat 0's deck every chaos game (handler-focused fuzz)")
 		seedCardsAllSeatsFlag = flag.String("seed-cards-all-seats", "", "comma-separated card names to distribute round-robin across ALL seats' decks every chaos game (cross-seat interaction fuzz; complements --seed-cards which is seat-0-only)")
-		seedCmdrFlag   = flag.String("seed-cmdr", "", "force seat 0's commander to this name (must be a legendary creature in oracle corpus)")
-		invariantFlag  = flag.String("invariant", "", "filter violations to a single invariant kind (case-insensitive, accepts CamelCase or kebab-case; empty = all). Example: --invariant zone-conservation")
-		listInvFlag    = flag.Bool("list-invariants", false, "print the full set of known invariant names and exit")
-		strictCensus   = flag.Bool("instanceid-strict-census", false, "enable InstanceID Phase 4+ strict ZoneConservation disappearance check (per docs/instanceid-system-v2-r60.md §13). Default off — flips gs.Flags[\"instanceid_strict_census\"]=1 on every game.")
-		violationsDumpPath = flag.String("violations-dump", "", "if set, write every chaos violation message (one per line, tab-separated: game-idx<TAB>turn<TAB>invariant<TAB>message) to this path for offline histogram analysis. Bypasses the report's 30-detail cap.")
-		seatOutcomeFlag    = flag.Bool("seat-outcome", false, "attach the r63 per-seat win/loss self-checker to every chaos game (outcome recomputation + cross-seat consistency + §800.4 leave-game cleanup verification). Default off — zero engine behavior change when unset.")
-		legalityFlag       = flag.Bool("legality", false, "attach the ride-along rules-legality validator to every chaos game (live CR 307.1/608.2c/601.2f auditing of each cast/activation as it happens). Default off — zero engine behavior change when unset.")
+		seedCmdrFlag          = flag.String("seed-cmdr", "", "force seat 0's commander to this name (must be a legendary creature in oracle corpus)")
+		invariantFlag         = flag.String("invariant", "", "filter violations to a single invariant kind (case-insensitive, accepts CamelCase or kebab-case; empty = all). Example: --invariant zone-conservation")
+		listInvFlag           = flag.Bool("list-invariants", false, "print the full set of known invariant names and exit")
+		strictCensus          = flag.Bool("instanceid-strict-census", false, "enable InstanceID Phase 4+ strict ZoneConservation disappearance check (per docs/instanceid-system-v2-r60.md §13). Default off — flips gs.Flags[\"instanceid_strict_census\"]=1 on every game.")
+		violationsDumpPath    = flag.String("violations-dump", "", "if set, write every chaos violation message (one per line, tab-separated: game-idx<TAB>turn<TAB>invariant<TAB>message) to this path for offline histogram analysis. Bypasses the report's 30-detail cap.")
+		seatOutcomeFlag       = flag.Bool("seat-outcome", false, "attach the r63 per-seat win/loss self-checker to every chaos game (outcome recomputation + cross-seat consistency + §800.4 leave-game cleanup verification). Default off — zero engine behavior change when unset.")
+		legalityFlag          = flag.Bool("legality", false, "attach the ride-along rules-legality validator to every chaos game (live CR 307.1/608.2c/601.2f auditing of each cast/activation as it happens). Default off — zero engine behavior change when unset.")
 	)
 	flag.Parse()
 	legalityEnabled = *legalityFlag
@@ -701,31 +500,31 @@ func main() {
 	}
 	if *reportFlag != "" {
 		writeReport(*reportFlag, reportData{
-			TotalGames:           totalGames,
-			Seed:                 *seedFlag,
-			Permutations:         *permsFlag,
-			Seats:                *seatsFlag,
-			MaxTurns:             *maxTurnsFlag,
-			ChaosDuration:        chaosElapsed,
-			ChaosGPS:             chaosGPS,
-			Crashes:              allCrashes,
-			GamesWithCrashes:     gamesWithCrashes,
-			Violations:           allViolations,
-			GamesWithViolations:  gamesWithViolations,
-			CleanGames:           cleanGames,
-			ViolationsByName:     violationsByName,
-			CrashCards:           crashCards,
-			Correlations:         correlations,
-			NightmareBoards:      *nightmareFlag,
-			NightmareDuration:    nightmareElapsed,
-			NightmareBPS:         nightmareBPS,
-			NightmareViolations:  nightmareViolations,
-			NightmareCrashes:     nightmareCrashList,
-			NightmareViolByName:  nightmareViolationsByName,
-			NightmareClean:       nightmareClean,
-			NightmareCrashCards:  nightmareCrashCards,
-			CorpusSize:           len(chaosCorpus.All),
-			LegendaryCreatures:   len(chaosCorpus.LegendaryCreatures),
+			TotalGames:          totalGames,
+			Seed:                *seedFlag,
+			Permutations:        *permsFlag,
+			Seats:               *seatsFlag,
+			MaxTurns:            *maxTurnsFlag,
+			ChaosDuration:       chaosElapsed,
+			ChaosGPS:            chaosGPS,
+			Crashes:             allCrashes,
+			GamesWithCrashes:    gamesWithCrashes,
+			Violations:          allViolations,
+			GamesWithViolations: gamesWithViolations,
+			CleanGames:          cleanGames,
+			ViolationsByName:    violationsByName,
+			CrashCards:          crashCards,
+			Correlations:        correlations,
+			NightmareBoards:     *nightmareFlag,
+			NightmareDuration:   nightmareElapsed,
+			NightmareBPS:        nightmareBPS,
+			NightmareViolations: nightmareViolations,
+			NightmareCrashes:    nightmareCrashList,
+			NightmareViolByName: nightmareViolationsByName,
+			NightmareClean:      nightmareClean,
+			NightmareCrashCards: nightmareCrashCards,
+			CorpusSize:          len(chaosCorpus.All),
+			LegendaryCreatures:  len(chaosCorpus.LegendaryCreatures),
 		})
 		log.Printf("")
 		log.Printf("Report written to %s", *reportFlag)
@@ -856,12 +655,12 @@ func runChaosGame(gameIdx, permutation int,
 	defer func() {
 		if r := recover(); r != nil {
 			crash := chaosCrash{
-				GameIdx:    gameIdx,
-				GameSeed:   deckSeed,
+				GameIdx:     gameIdx,
+				GameSeed:    deckSeed,
 				Permutation: permutation,
-				PanicValue: fmt.Sprintf("%v", r),
-				StackTrace: string(debug.Stack()),
-				Commanders: result.Commanders,
+				PanicValue:  fmt.Sprintf("%v", r),
+				StackTrace:  string(debug.Stack()),
+				Commanders:  result.Commanders,
 			}
 			// Try to determine which card was in flight.
 			crash.CardInFlight = extractCardFromStack(crash.StackTrace)
@@ -1217,79 +1016,11 @@ func runNightmareBoard(boardIdx int,
 // Helpers
 // ---------------------------------------------------------------------------
 
+// buildCardFromName delegates to the promoted shared builder (r63
+// Judge CI gate) — DFC fallback + ETB-choice P/T defaults live in
+// deckparser.BuildCardFromName now, shared with hexdek-judge --run.
 func buildCardFromName(name string, corpus *astload.Corpus, meta *deckparser.MetaDB) *gameengine.Card {
-	// Mirrors deckparser.buildCard logic but is exported for chaos use.
-	var cardAST *gameast.CardAST
-	if corpus != nil {
-		cardAST, _ = corpus.Get(name)
-	}
-	md := meta.Get(name)
-
-	if cardAST == nil && md == nil {
-		// DFC fallback (legality sweep round 3, set-aside #2): the corpus
-		// and meta key some double-faced cards by single-face name while
-		// the chaos deck generator carries the full "Front // Back"
-		// oracle name. Pre-fix the miss fell through to the caller's
-		// bare-bones path — a CMC-0 typeless card the chaos games then
-		// "cast" for announced-0, weakening DFC coverage in every sweep
-		// and polluting the 117.1a non-active sub-shape with typeless
-		// cards riding odd cast paths. Retry per face — front first (the
-		// castable face), then back — before giving up. Recursion is
-		// bounded: face names contain no " // ".
-		if strings.Contains(name, " // ") {
-			for _, face := range strings.Split(name, " // ") {
-				face = strings.TrimSpace(face)
-				if face == "" || face == name {
-					continue
-				}
-				if got := buildCardFromName(face, corpus, meta); got != nil {
-					return got
-				}
-			}
-		}
-		return nil
-	}
-
-	c := &gameengine.Card{
-		AST:   cardAST,
-		Name:  name,
-		Owner: -1,
-	}
-	if md != nil {
-		c.Name = md.Name
-		if len(md.Types) > 0 {
-			c.Types = append([]string(nil), md.Types...)
-		}
-		c.BasePower = md.Power
-		c.BaseToughness = md.Toughness
-		if len(md.Colors) > 0 {
-			c.Colors = append([]string(nil), md.Colors...)
-		}
-		c.CMC = md.CMC
-		c.TypeLine = md.TypeLine
-	}
-
-	// ETB-choice P/T fix: if this is a creature with 0/0 base P/T and
-	// an "As ~ enters, choose" ability (detected via AST oracle text),
-	// set a safe default so SBA 704.5f doesn't immediately kill it.
-	// This covers cards like Primal Plasma, Primal Clay, Aquamorph
-	// Entity, Corrupted Shapeshifter, etc.
-	isCreature := false
-	for _, t := range c.Types {
-		if t == "creature" {
-			isCreature = true
-			break
-		}
-	}
-	if isCreature && c.BasePower == 0 && c.BaseToughness == 0 {
-		ot := gameengine.OracleTextLower(c)
-		if gameengine.HasETBChoicePatternExported(ot) {
-			c.BasePower = 3
-			c.BaseToughness = 3
-		}
-	}
-
-	return c
+	return deckparser.BuildCardFromName(name, corpus, meta)
 }
 
 func checkChaosInvariants(gs *gameengine.GameState, gameIdx int, gameSeed int64,
@@ -1389,7 +1120,6 @@ func matchesInvariantFilter(invariantName, canonical string) bool {
 	}
 	return invariantName == canonical
 }
-
 
 // extractCardFromStack tries to pull a card name from a panic stack trace.
 // Looks for common patterns in the engine like "card=<name>" or DisplayName

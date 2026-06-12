@@ -1,0 +1,65 @@
+name: hex-judge
+
+# The Hex Judge standing gate (r63 Tier-1 completion): every PR is
+# self-judged across all five correctness dimensions.
+#
+#   - OUTCOME + PROGRESSION: the AST-derived corpus audits over the
+#     committed representative sample (data/judge/ci-ast-sample.jsonl).
+#   - CONSERVATION + STATE-INTEGRITY + LEGALITY: 300 seeded chaos games
+#     (seed 42) with the InstanceID strict census, the full invariant
+#     table, and the ride-along legality validator armed.
+#
+# The gate fails ONLY on violation fingerprints not present in the
+# committed known-residual baseline (data/judge/judge-baseline.json) —
+# regressions fail, the existing backlog does not. When a residual is
+# fixed, refresh the baseline in the same PR:
+#
+#   go run ./cmd/hexdek-judge --run \
+#     --ast data/judge/ci-ast-sample.jsonl \
+#     --oracle data/judge/ci-oracle-sample.json \
+#     --games 300 --seed 42 \
+#     --baseline data/judge/judge-baseline.json --update-baseline
+
+on:
+  pull_request:
+    paths:
+      - "**.go"
+      - "go.mod"
+      - "go.sum"
+      - "data/judge/**"
+      - ".github/workflows/judge.yml"
+  push:
+    branches: [main]
+    paths:
+      - "**.go"
+      - "go.mod"
+      - "go.sum"
+      - "data/judge/**"
+
+concurrency:
+  group: judge-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  judge:
+    name: Hex Judge — five-dimension gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Build
+        run: go build ./...
+
+      - name: Judge run (all five dimensions, baseline-gated)
+        run: |
+          go run ./cmd/hexdek-judge --run \
+            --ast data/judge/ci-ast-sample.jsonl \
+            --oracle data/judge/ci-oracle-sample.json \
+            --games 300 --seed 42 \
+            --baseline data/judge/judge-baseline.json
