@@ -129,15 +129,12 @@ HexDek/
 │   ├── hexdek-server/            # HTTP/WebSocket API server
 │   ├── hexdek-thor/              # AST corpus parser
 │   ├── hexdek-freya/             # Deck analyzer (tier system, brackets, coaching)
-│   ├── hexdek-odin/              # Oracle text analyzer
 │   ├── hexdek-heimdall/          # Post-game analytics, GameSummary, archive
 │   ├── hexdek-loki/              # Fuzz tester (chaos games + nightmare boards)
 │   ├── hexdek-judge/             # Rules compliance checker
 │   ├── hexdek-import/            # Moxfield deck importer
 │   ├── hexdek-tournament/        # Full tournament orchestrator
-│   ├── hexdek-valkyrie/          # Deck effectiveness ranker
 │   ├── hexdek-composition-replay/ # CompositionPrior what-if CLI
-│   ├── hexdek-huginn/            # Interaction discovery
 │   ├── hexdek-muninn/            # Crash telemetry
 │   └── hexdek-parity/            # Cross-engine parity checker
 ├── internal/                     # Core engine (Go)
