@@ -1046,11 +1046,87 @@ func PriorityRound(gs *GameState) {
 				})
 				continue
 			}
-			// Policy picked a response. Pay its cost; if broke, skip.
-			cost := manaCostOf(resp.Card)
+			// ---------------------------------------------------------
+			// r62 response-cast legality (validator follow-up #4). This
+			// path bypasses CastSpell entirely, so until r62 it applied
+			// NO cost modifiers (bare manaCostOf — Thalia/Sphere/
+			// medallions ignored), no timing gate on what the policy
+			// returned, no announced-target validation, and none of the
+			// legality-validator hooks. The gates below are the bounded
+			// convergence; the full route-through-CastSpell plan is in
+			// /tmp/fable-review/plan-priorityround-convergence.md.
+			// ---------------------------------------------------------
+			// CR §117.1a / §307.1 — a response is cast mid-stack at
+			// instant speed: sorceries and non-flash permanent spells
+			// are illegal responses no matter what the policy returned.
+			// (Bare test fixtures with neither type pass unchanged.)
+			if resp.Card != nil &&
+				(cardHasType(resp.Card, "sorcery") ||
+					(isPermanentSpell(resp.Card) && !legalityCardIsInstantSpeed(resp.Card))) {
+				gs.LogEvent(Event{
+					Kind: "response_rejected", Seat: seat,
+					Source: resp.Card.DisplayName(),
+					Details: map[string]interface{}{
+						"reason": "sorcery_speed_response",
+						"rule":   "117.1a",
+					},
+				})
+				continue
+			}
+			// CR §601.2c / §608.2b — counter-shaped responses must
+			// legally target the incoming item: the counter's printed
+			// filter has to accept it ("counter target creature spell"
+			// cannot be announced at a noncreature spell — the hat path
+			// only checked counter-capability, not the filter), and the
+			// announced target is stamped onto the item so the legality
+			// validator and the event stream can see it. Resolution
+			// re-derives its target (findGenericCounterTarget), so the
+			// stamp is announcement metadata, not a behavior change.
+			respEffect := resp.Effect
+			if respEffect == nil {
+				respEffect = counterSpellEffect(resp.Card)
+			}
+			if ExtractCounterSpellNode(respEffect) != nil {
+				if top.Countered || !CounterCanTarget(respEffect, top) {
+					gs.LogEvent(Event{
+						Kind: "response_rejected", Seat: seat,
+						Source: resp.Card.DisplayName(),
+						Details: map[string]interface{}{
+							"reason": "counter_filter_mismatch",
+							"rule":   "601.2c",
+						},
+					})
+					continue
+				}
+				if len(resp.Targets) == 0 {
+					resp.Targets = []Target{{Kind: TargetKindStackItem, Stack: top}}
+				}
+			}
+			// CR §608.2b defense-in-depth: any announced targets on the
+			// response must be legal at announcement, same as CastSpell.
+			if len(resp.Targets) > 0 {
+				if err := ValidateTargetsAtAnnouncement(gs, seat, resp.Card, resp.Targets, resp); err != nil {
+					gs.LogEvent(Event{
+						Kind: "response_rejected", Seat: seat,
+						Source: resp.Card.DisplayName(),
+						Details: map[string]interface{}{
+							"reason": "target_illegal",
+							"rule":   "608.2b",
+						},
+					})
+					continue
+				}
+			}
+			// Pay its cost; if broke, skip. CR §601.2f — cost statics
+			// apply to response casts exactly like main-phase casts.
+			cost := CalculateTotalCost(gs, resp.Card, seat)
 			if s.ManaPool < cost {
 				continue
 			}
+			// Ride-along legality validator bracket (nil-receiver no-op
+			// when off). Begin BEFORE payment so PoolBefore and the
+			// announced base cost snapshot the pre-payment state.
+			legalityObs := gs.Legality.BeginCast(gs, seat, resp.Card)
 			// CR §601.2a — the response spell leaves its origin zone (hand)
 			// when it's announced. Hat policies (GreedyHat / Yggdrasil /
 			// Poker) return read-only advice — their ChooseResponse leaves
@@ -1102,6 +1178,7 @@ func PriorityRound(gs *GameState) {
 			fireCastTriggers(gs, seat, resp.Card)
 			FireCastTriggerObservers(gs, resp.Card, seat, false)
 			PushStackItem(gs, resp)
+			gs.Legality.FinishCast(gs, legalityObs, resp)
 			responded = true
 			break // Restart priority at new top.
 		}
