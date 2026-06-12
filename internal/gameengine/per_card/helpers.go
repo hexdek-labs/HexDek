@@ -292,6 +292,29 @@ func createPermanent(gs *gameengine.GameState, seat int, card *gameengine.Card, 
 	if gs == nil || card == nil || seat < 0 || seat >= len(gs.Seats) {
 		return nil
 	}
+	// CR §800.4a chokepoint guard (r63, seed-42 game 283 — Athreos,
+	// Shroud-Veiled returning an eliminated player's coin-countered
+	// Gurmag Angler): a card owned by a player who has LEFT THE GAME
+	// left with them and cannot be materialized on any battlefield.
+	// createPermanent is the per_card-side mover that bypasses
+	// MoveCard's #1041 guard (direct zone sweep + battlefield append) —
+	// the residual gap that fix documented. Owner > 0 matches the
+	// MoveCard/moveToZone fixture convention.
+	if card.Owner > 0 && card.Owner < len(gs.Seats) {
+		if os := gs.Seats[card.Owner]; os != nil && os.LeftGame {
+			gs.LogEvent(gameengine.Event{
+				Kind:   "zone_move_refused",
+				Seat:   seat,
+				Source: card.DisplayName(),
+				Details: map[string]interface{}{
+					"rule":   "800.4a",
+					"reason": "owner_left_game",
+					"via":    "per_card_createPermanent",
+				},
+			})
+			return nil
+		}
+	}
 	// MDFC with a land back face entering via a non-cast path
 	// (reanimate, fetch, sneak attack, etc.) — swap to back face
 	// before the perm wraps it so Permanent.Card.Types reads "land"
