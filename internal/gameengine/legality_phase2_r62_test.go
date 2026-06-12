@@ -277,8 +277,14 @@ func TestLegalityPhase2_SorceryRestrictedAbility_Flagged(t *testing.T) {
 	}
 }
 
-// Default-off pin: with gs.Legality nil, the new combat/activation hooks
-// are nil-receiver no-ops and declaration behavior is unchanged.
+// Default-off pin, UPDATED for the r62 §508.1 engine backstop
+// (sanitizeDeclaredAttackers in combat.go): with gs.Legality nil the
+// phase-2 OBSERVATION hooks remain nil-receiver no-ops (no panic, no
+// violation bookkeeping) — but declaration legality is now ENFORCED by
+// the engine itself, independent of the validator. The cheating hat's
+// tapped attacker is dropped rather than declared; as originally
+// written this test pinned the validator-can-see-but-nothing-stops-it
+// gap that the backstop exists to close.
 func TestLegalityPhase2_DefaultOff_NoOp(t *testing.T) {
 	gs := newFixtureGame(t)
 	gs.Active = 0
@@ -288,7 +294,10 @@ func TestLegalityPhase2_DefaultOff_NoOp(t *testing.T) {
 	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, tapped)
 	gs.Seats[0].Hat = &cheatingAttackHat{force: []*Permanent{tapped}}
 	declared := DeclareAttackers(gs, 0)
-	if len(declared) != 1 {
-		t.Fatalf("default-off declaration behavior changed: declared %d", len(declared))
+	if len(declared) != 0 {
+		t.Fatalf("engine backstop missing: tapped forced attacker was declared (%d)", len(declared))
+	}
+	if permFlag(tapped, flagAttacking) {
+		t.Fatal("tapped forced attacker carries flagAttacking despite the drop")
 	}
 }
