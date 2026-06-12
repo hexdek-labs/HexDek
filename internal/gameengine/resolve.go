@@ -358,8 +358,15 @@ func resolveConditional(gs *GameState, src *Permanent, e *gameast.Conditional) {
 }
 
 // evalCondition evaluates a boolean condition. MVP supports the common
-// kinds the parser emits today; unknown kinds default to true (so the
-// conditional fires — conservative for "if X, do something good" cases).
+// kinds the parser emits today. Unrecognized kinds FAIL CLOSED (return
+// false) and emit a "condition_unrecognized" event: a condition is a
+// gate (intervening-if, as-long-as), and treating an unevaluable gate
+// as satisfied silently grants effects that should not happen — wrong
+// behavior that gameplay audits can't see. A false gate is a visible
+// no-op ("card did nothing") that telemetry can burn down by kind.
+// The "raw" kind (parser recognized a conditional but couldn't
+// decompose the text) deliberately keeps the historical default-true;
+// flipping it is a separate, larger-blast-radius decision.
 func evalCondition(gs *GameState, src *Permanent, c *gameast.Condition) bool {
 	if c == nil {
 		return true
@@ -543,11 +550,25 @@ func evalCondition(gs *GameState, src *Permanent, c *gameast.Condition) bool {
 		return src.Flags["was_cast"] == 0
 
 	case "raw":
-		// Unknown condition — default true (conservative)
+		// Parser-recognized conditional whose text couldn't be
+		// decomposed — retains default-true (see doc comment above).
 		return true
 	}
-	// Default-true: unknown conditions are assumed satisfied.
-	return true
+	// Fail closed: an unrecognized condition kind must not silently
+	// satisfy its gate. Log the kind so the unhandled set is a
+	// measurable burn-down list instead of invisible wrongness.
+	if gs != nil {
+		gs.LogEvent(Event{
+			Kind:   "condition_unrecognized",
+			Seat:   controllerSeat(src),
+			Target: -1,
+			Source: sourceName(src),
+			Details: map[string]interface{}{
+				"condition_kind": c.Kind,
+			},
+		})
+	}
+	return false
 }
 
 // compareInt is the complete set of standard int comparison operators.
