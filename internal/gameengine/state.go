@@ -72,6 +72,11 @@ type GameState struct {
 	// the violation stream.
 	Legality *LegalityValidator
 
+	// SeatOutcome is the per-seat win/loss self-checker (r63 phase 1,
+	// owner design). nil (default) = off, zero overhead — same
+	// ride-along pattern as Legality. Not copied by CloneForRollout.
+	SeatOutcome *SeatOutcomeChecker
+
 	// Turn bookkeeping. Turn is 1-indexed; Phase is "beginning"/"main"/
 	// "combat"/"ending"; Step is the step within the phase ("untap",
 	// "upkeep", "draw", "precombat_main", etc.); Active is the seat whose

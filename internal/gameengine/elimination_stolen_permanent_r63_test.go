@@ -120,3 +120,39 @@ func TestElimination_OwnPermanentStillCeases(t *testing.T) {
 		}
 	}
 }
+
+// r63 seat-outcome checker finding (seed 42 games 85/89): theft-style
+// handlers corrupt Permanent.Owner to the thief's seat while Card.Owner
+// (CR §108.3, immutable) still names the victim. The elimination sweep
+// must trust Card.Owner — a corrupt perm must still revert to its true
+// owner's exile, never cease.
+func TestElimination_CorruptPermOwner_CardOwnerAuthoritative(t *testing.T) {
+	gs := newFixtureGame(t)
+	corrupt := &Permanent{
+		Card: &Card{Name: "Brute Suit", Owner: 0, Types: []string{"artifact"}},
+		// The theft-handler corruption: BOTH perm fields claim the thief.
+		Controller: 1, Owner: 1,
+		Counters: map[string]int{}, Flags: map[string]int{},
+		Timestamp: gs.NextTimestamp(),
+	}
+	MintOGInstanceID(gs, corrupt.Card)
+	gs.Seats[1].Battlefield = append(gs.Seats[1].Battlefield, corrupt)
+
+	HandleSeatElimination(gs, 1)
+
+	if _, ceased := gs.CeasedInstanceIDs[corrupt.Card.InstanceID]; ceased {
+		t.Error("card OWNED (Card.Owner) by a surviving seat must never cease on another's elimination")
+	}
+	found := false
+	for _, c := range gs.Seats[0].Exile {
+		if c == corrupt.Card {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("corrupt-perm card must revert to its Card.Owner's exile (seat 0)")
+	}
+	if got := gs.Seats[1].Flags["cards_left_game"]; got != 0 {
+		t.Errorf("other-owned card must not count as the leaver's departure: want 0, got %d", got)
+	}
+}
