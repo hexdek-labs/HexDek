@@ -833,15 +833,38 @@ func setupForEffect(gs *gameengine.GameState, oc *oracleCard, info *effectInfo) 
 		gs.Flags["x"] = 3
 
 	case "tap", "untap":
-		placeSourceCard(gs, oc)
+		srcPerm := placeSourceCard(gs, oc)
 		placeTargetCreatureOnOpponent(gs)
 		placeDiverseOpponentBoard(gs)
 		fc := placeFriendlyCreature(gs)
 		fillLibrary(gs, 0, 5)
-		// For untap effects, pre-tap the friendly creature so untap has
-		// an observable effect.
-		if info.kind == "untap" && fc != nil {
-			fc.Tapped = true
+		// For untap effects, pre-tap the board so ANY untap pick is
+		// observable: the friendly creature (legacy behavior), every
+		// opponent permanent ("untap target creature" picks freely),
+		// and — the r63 re-baseline fix — the SOURCE itself, because
+		// self-untap abilities (Morphling "{U}: Untap Morphling",
+		// Glimmerbell, 29 more) resolve via resolveUntap's untap-self
+		// fallback and read as dead when the source starts untapped.
+		// The source stays untapped when any of its activated abilities
+		// carries a {T} cost (Maze of Ith-shape: tapping it would make
+		// the activation itself illegal as already_tapped).
+		if info.kind == "untap" {
+			if fc != nil {
+				fc.Tapped = true
+			}
+			for _, s := range gs.Seats {
+				if s == nil || s.Idx == 0 {
+					continue
+				}
+				for _, p := range s.Battlefield {
+					if p != nil {
+						p.Tapped = true
+					}
+				}
+			}
+			if srcPerm != nil && !cardHasTapCostActivated(srcPerm.Card) {
+				srcPerm.Tapped = true
+			}
 		}
 		// Pre-set mana for activated abilities that cost mana
 		// (Aggravated Assault: {3}{R}{R}).
@@ -1672,6 +1695,21 @@ func setupCondition(gs *gameengine.GameState, cond *gameast.Condition) {
 // ---------------------------------------------------------------------------
 // Board-building helpers.
 // ---------------------------------------------------------------------------
+
+// cardHasTapCostActivated reports whether any AST activated ability on
+// the card includes {T} in its cost — used by the untap scaffold to
+// decide whether the source may safely start tapped.
+func cardHasTapCostActivated(card *gameengine.Card) bool {
+	if card == nil || card.AST == nil {
+		return false
+	}
+	for _, ab := range card.AST.Abilities {
+		if act, ok := ab.(*gameast.Activated); ok && act.Cost.Tap {
+			return true
+		}
+	}
+	return false
+}
 
 func placeSourceCard(gs *gameengine.GameState, oc *oracleCard) *gameengine.Permanent {
 	types := oc.Types
