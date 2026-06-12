@@ -2031,26 +2031,19 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		})
 
 	case "draw_per":
+		// r63 OUTCOME phase-3 finding: this arm IGNORED its filter arg —
+		// "draw a card for each TAPPED CREATURE TARGET OPPONENT CONTROLS"
+		// (Theft of Dreams) counted the caster's OWN creatures, and a
+		// zero count still floored to 1. The filter text in Args[0] now
+		// drives the count for recognized shapes; the own-creature
+		// default (with no floor) remains only for empty/unrecognized
+		// args, matching the printed default "for each creature you
+		// control" that dominates the corpus.
 		seat := controllerSeat(src)
 		count := 0
 		if seat >= 0 && seat < len(gs.Seats) {
-			// Try to extract count from args; default to creature count.
-			if len(e.Args) > 0 {
-				if n, ok := asInt(e.Args[0]); ok && n > 0 {
-					count = n
-				}
-			}
-			if count == 0 {
-				// Count creatures on our battlefield.
-				for _, p := range gs.Seats[seat].Battlefield {
-					if p != nil && p.IsCreature() {
-						count++
-					}
-				}
-			}
-			if count < 1 {
-				count = 1
-			}
+			filter := strings.ToLower(strings.TrimSpace(modArgString(e.Args, 0)))
+			count = countPerFilter(gs, seat, filter)
 			for i := 0; i < count; i++ {
 				if _, ok := gs.drawOne(seat); !ok {
 					break
@@ -5075,4 +5068,47 @@ func resolveResidualByText(gs *GameState, src *Permanent, raw string) bool {
 	}
 
 	return false
+}
+
+
+// countPerFilter counts battlefield objects matching a "for each ..."
+// filter string (r63 draw_per/lose_life_per fix). Recognized shapes
+// count exactly; unrecognized shapes fall back to the controller's
+// creature count (the dominant printed default).
+func countPerFilter(gs *GameState, seat int, filter string) int {
+	countSeat := func(idx int, pred func(*Permanent) bool) int {
+		n := 0
+		if idx < 0 || idx >= len(gs.Seats) || gs.Seats[idx] == nil {
+			return 0
+		}
+		for _, p := range gs.Seats[idx].Battlefield {
+			if p != nil && pred(p) {
+				n++
+			}
+		}
+		return n
+	}
+	countOpponents := func(pred func(*Permanent) bool) int {
+		n := 0
+		for _, opp := range gs.Opponents(seat) {
+			n += countSeat(opp, pred)
+		}
+		return n
+	}
+	isCreature := func(p *Permanent) bool { return p.IsCreature() }
+	switch {
+	case strings.Contains(filter, "tapped creature") &&
+		(strings.Contains(filter, "opponent controls") || strings.Contains(filter, "that player controls")):
+		return countOpponents(func(p *Permanent) bool { return p.IsCreature() && p.Tapped })
+	case strings.Contains(filter, "creature") && strings.Contains(filter, "opponent controls"):
+		return countOpponents(isCreature)
+	case strings.Contains(filter, "land you control"):
+		return countSeat(seat, func(p *Permanent) bool { return p.IsLand() })
+	case strings.Contains(filter, "artifact you control"):
+		return countSeat(seat, func(p *Permanent) bool { return p.IsArtifact() })
+	case strings.Contains(filter, "creature you control"), filter == "":
+		return countSeat(seat, isCreature)
+	}
+	// Unrecognized filter: dominant default.
+	return countSeat(seat, isCreature)
 }

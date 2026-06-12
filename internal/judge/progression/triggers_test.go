@@ -150,14 +150,22 @@ func TestProgression_CorpusAudit(t *testing.T) {
 			if !ok {
 				continue
 			}
-			findings, ran := CheckTrigger(name, tr)
+			var findings []*Finding
+			var ran bool
+			var evName string
+			if findings, ran = CheckTrigger(name, tr); ran {
+				evName, _ = InScopeTrigger(tr)
+			} else if findings, ran = CheckPhaseTrigger(name, tr); ran {
+				step, scope, _ := InScopePhaseTrigger(tr)
+				evName = step + "/" + scope
+			} else if findings, ran = CheckLTBTrigger(name, tr); ran {
+				evName = "ltb"
+			}
 			if !ran {
 				continue
 			}
 			inScope++
-			if ev, _ := InScopeTrigger(tr); ev != "" {
-				byEvent[ev]++
-			}
+			byEvent[evName]++
 			if len(findings) == 0 {
 				passed++
 			}
@@ -179,4 +187,85 @@ func TestProgression_CorpusAudit(t *testing.T) {
 		_ = w.Write([]string{fd.CardName, fd.Event, fd.Check, fd.Expected, fd.Actual, fd.Raw})
 	}
 	fmt.Printf("PROGRESSION-AUDIT inScope=%d passed=%d findings=%d\n", inScope, passed, len(all))
+}
+
+// ---- phase 2: §603.4 intervening-if + §603.7 delayed scenarios ----------
+
+// CR §603.4: an intervening "if" is checked when the trigger would fire
+// (false → never fires) AND again on resolution (became false → ability
+// does nothing). The corpus carries ZERO intervening_if nodes (parser
+// gap) — these scenarios pin the ENGINE mechanism with synthetic ASTs.
+func TestProgression_InterveningIf_FalseAtFire(t *testing.T) {
+	tr := gainLifeTrigger("etb", 3)
+	tr.InterveningIf = &gameast.Condition{Kind: "life_threshold", Args: []interface{}{">=", 100.0}}
+
+	spec := progressionSpec()
+	gs, bearer := outcome.BuildBoardForSpec(spec, "unit:ii-false")
+	bearer.Card.AST = wrapSingle(tr)
+	before := outcome.Snap(gs)
+	gameengine.FirePermanentETBTriggers(gs, bearer)
+	actual := outcome.DiffSnapshots(before, outcome.Snap(gs))
+	if !actual.Equal(outcome.NewDelta()) {
+		t.Fatalf("intervening-if FALSE at fire time must suppress the trigger (CR 603.4), got %s", actual)
+	}
+}
+
+func TestProgression_InterveningIf_TrueFires(t *testing.T) {
+	tr := gainLifeTrigger("etb", 3)
+	tr.InterveningIf = &gameast.Condition{Kind: "life_threshold", Args: []interface{}{">=", 1.0}}
+
+	spec := progressionSpec()
+	gs, bearer := outcome.BuildBoardForSpec(spec, "unit:ii-true")
+	bearer.Card.AST = wrapSingle(tr)
+	before := outcome.Snap(gs)
+	gameengine.FirePermanentETBTriggers(gs, bearer)
+	actual := outcome.DiffSnapshots(before, outcome.Snap(gs))
+	if actual.Equal(outcome.NewDelta()) {
+		t.Fatal("intervening-if TRUE must let the trigger fire")
+	}
+}
+
+func TestProgression_InterveningIf_RecheckedAtResolution(t *testing.T) {
+	tr := gainLifeTrigger("etb", 3)
+	tr.InterveningIf = &gameast.Condition{Kind: "life_threshold", Args: []interface{}{">=", 20.0}}
+
+	spec := progressionSpec()
+	gs, bearer := outcome.BuildBoardForSpec(spec, "unit:ii-recheck")
+	bearer.Card.AST = wrapSingle(tr)
+
+	// Open a batch so the trigger QUEUES at fire time (condition true:
+	// life 20 ≥ 20), then make the condition false before resolution.
+	opened := gameengine.BeginTriggerBatch(gs)
+	gameengine.FirePermanentETBTriggers(gs, bearer)
+	gs.Seats[0].Life = 5 // condition now false
+	before := outcome.Snap(gs)
+	gameengine.EndTriggerBatch(gs, opened) // resolution happens here
+	actual := outcome.DiffSnapshots(before, outcome.Snap(gs))
+	if !actual.Equal(outcome.NewDelta()) {
+		t.Fatalf("intervening-if FALSE at resolution must make the ability do nothing (CR 603.4), got %s", actual)
+	}
+}
+
+// CR §603.7: a next-end-step delayed trigger fires exactly once and
+// never again on subsequent end steps.
+func TestProgression_DelayedTrigger_FiresExactlyOnce(t *testing.T) {
+	spec := progressionSpec()
+	gs, _ := outcome.BuildBoardForSpec(spec, "unit:delayed")
+	fired := 0
+	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
+		TriggerAt:      "next_end_step",
+		ControllerSeat: 0,
+		SourceCardName: "unit:delayed",
+		CreatedTurn:    gs.Turn,
+		OneShot:        true,
+		EffectFn:       func(gs *gameengine.GameState) { fired++ },
+	})
+	gameengine.FireDelayedTriggers(gs, "ending", "end")
+	if fired != 1 {
+		t.Fatalf("delayed trigger must fire at the next end step: fired=%d", fired)
+	}
+	gameengine.FireDelayedTriggers(gs, "ending", "end")
+	if fired != 1 {
+		t.Fatalf("one-shot delayed trigger fired again (CR 603.7 once-only): fired=%d", fired)
+	}
 }

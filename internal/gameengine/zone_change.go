@@ -746,7 +746,7 @@ func fireObserverZoneChangeTriggers(gs *GameState, dyingPerm *Permanent, dyingCa
 					continue
 				}
 
-				PushTriggeredAbility(gs, observer, trig.Effect)
+				PushTriggeredAbilityWithIf(gs, observer, trig.Effect, trig.InterveningIf)
 				if gs.CheckEnd() {
 					return
 				}

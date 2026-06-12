@@ -170,7 +170,32 @@ func PushStackItem(gs *GameState, item *StackItem) *StackItem {
 // code fires triggers at well-defined rulebook moments and the engine is
 // single-threaded. A future "pending triggers" queue is a Phase 7 concern.
 func PushTriggeredAbility(gs *GameState, src *Permanent, effect gameast.Effect) *StackItem {
+	return PushTriggeredAbilityWithIf(gs, src, effect, nil)
+}
+
+// PushTriggeredAbilityWithIf is PushTriggeredAbility carrying the
+// trigger's intervening "if" clause (CR §603.4, r63 PROGRESSION
+// dimension): the condition is checked HERE — when the ability would
+// trigger; a false condition means it never triggers at all — and
+// AGAIN at resolution (stamped onto the StackItem; ResolveStackTop
+// re-evaluates and the ability does nothing if it became false).
+// Pre-r63 the engine ignored InterveningIf entirely; the corpus also
+// emits zero intervening_if nodes today (parser gap, reported in
+// /tmp/fable-review/progression-triggers-r63.md), so this lights up as
+// the parser starts carrying the clause.
+func PushTriggeredAbilityWithIf(gs *GameState, src *Permanent, effect gameast.Effect, interveningIf *gameast.Condition) *StackItem {
 	if gs == nil || src == nil || effect == nil {
+		return nil
+	}
+	if interveningIf != nil && !evalCondition(gs, src, interveningIf) {
+		gs.LogEvent(Event{
+			Kind: "trigger_suppressed", Seat: src.Controller, Target: -1,
+			Source: sourceName(src),
+			Details: map[string]interface{}{
+				"reason": "intervening_if_false_at_trigger",
+				"rule":   "603.4",
+			},
+		})
 		return nil
 	}
 	if gs.Flags == nil {
@@ -196,6 +221,9 @@ func PushTriggeredAbility(gs *GameState, src *Permanent, effect gameast.Effect) 
 		Source:     src,
 		Effect:     effect,
 		Kind:       "triggered",
+	}
+	if interveningIf != nil {
+		item.CostMeta = map[string]interface{}{"intervening_if": interveningIf}
 	}
 	if src.Card != nil {
 		// StackItem.Card is usually for spells, not triggers, but we point it
@@ -1587,6 +1615,24 @@ func ResolveStackTop(gs *GameState) {
 	resolveKind := "resolve"
 	if item.Kind == "triggered" || (item.Source != nil && !isSpell) {
 		resolveKind = "trigger_resolve"
+		// CR §603.4 second check: the intervening "if" is re-evaluated
+		// on resolution; if it is no longer true the ability does
+		// nothing (r63 PROGRESSION dimension).
+		if item.CostMeta != nil {
+			if ii, ok := item.CostMeta["intervening_if"].(*gameast.Condition); ok && ii != nil {
+				if !evalCondition(gs, item.Source, ii) {
+					gs.LogEvent(Event{
+						Kind: "trigger_fizzled", Seat: item.Controller, Target: -1,
+						Source: name,
+						Details: map[string]interface{}{
+							"reason": "intervening_if_false_at_resolution",
+							"rule":   "603.4",
+						},
+					})
+					return
+				}
+			}
+		}
 	}
 	GlobalStackTrace.Log(resolveKind, name, item.Controller, len(gs.Stack), "resolving")
 	gs.LogEvent(Event{
@@ -2171,7 +2217,7 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 					continue
 				}
 				for i := 0; i < n; i++ {
-					PushTriggeredAbility(gs, perm, trig.Effect)
+					PushTriggeredAbilityWithIf(gs, perm, trig.Effect, trig.InterveningIf)
 					if gs.CheckEnd() {
 						return
 					}

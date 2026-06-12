@@ -253,7 +253,7 @@ func fireCyclingTriggers(gs *GameState, seatIdx int, cycledCard *Card) {
 					}
 				}
 				if t.Effect != nil {
-					PushTriggeredAbility(gs, p, t.Effect)
+					PushTriggeredAbilityWithIf(gs, p, t.Effect, t.InterveningIf)
 				}
 			}
 		}

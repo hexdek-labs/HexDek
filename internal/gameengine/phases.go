@@ -59,7 +59,8 @@ func FirePhaseTriggers(gs *GameState, phase, step string) {
 	type pending struct {
 		perm   *Permanent
 		effect gameast.Effect
-	}
+		interveningIf *gameast.Condition
+}
 	var toFire []pending
 	for _, seat := range gs.Seats {
 		if seat == nil || seat.Lost {
@@ -79,13 +80,13 @@ func FirePhaseTriggers(gs *GameState, phase, step string) {
 				}
 				// Controller gating — "your upkeep" fires only for active
 				// player; "each upkeep" fires regardless.
-				if !triggerControllerMatches(gs, perm, &trig.Trigger) {
+				if !triggerControllerMatchesRaw(gs, perm, &trig.Trigger, trig.Raw) {
 					continue
 				}
 				// Intervening-if: evaluate the condition now, and again on
 				// resolution (both per §603.4). MVP check: defer condition
 				// until resolution (resolveConditional handles it).
-				toFire = append(toFire, pending{perm: perm, effect: trig.Effect})
+				toFire = append(toFire, pending{perm: perm, effect: trig.Effect, interveningIf: trig.InterveningIf})
 			}
 		}
 	}
@@ -98,7 +99,7 @@ func FirePhaseTriggers(gs *GameState, phase, step string) {
 		return si < sj
 	})
 	for _, p := range toFire {
-		PushTriggeredAbility(gs, p.perm, p.effect)
+		PushTriggeredAbilityWithIf(gs, p.perm, p.effect, p.interveningIf)
 		if gs.CheckEnd() {
 			return
 		}
@@ -207,10 +208,34 @@ func triggerMatchesPhaseStep(t *gameast.Trigger, phase, step string) bool {
 
 // triggerControllerMatches gates "your" vs "each" wording.
 func triggerControllerMatches(gs *GameState, perm *Permanent, t *gameast.Trigger) bool {
+	return triggerControllerMatchesRaw(gs, perm, t, "")
+}
+
+// triggerControllerMatchesRaw is the raw-aware variant. r63 PROGRESSION
+// finding: the parser emits Controller=None for ALL phase triggers —
+// "your upkeep" and "EACH upkeep" alike — and the empty default gated
+// everything to the controller's own turn, silently disabling the
+// each-player scope for every "at the beginning of each upkeep/end
+// step" card (Baleful Force class, 15 corpus shapes flagged by the
+// each_scope_fire check). Until the parser carries the scope, the
+// wording is recovered from the raw oracle clause.
+func triggerControllerMatchesRaw(gs *GameState, perm *Permanent, t *gameast.Trigger, raw string) bool {
 	if gs == nil || perm == nil || t == nil {
 		return true
 	}
 	ctrl := strings.ToLower(strings.TrimSpace(t.Controller))
+	if ctrl == "" && raw != "" {
+		r := strings.ToLower(raw)
+		if strings.Contains(r, "each upkeep") || strings.Contains(r, "each player's upkeep") ||
+			strings.Contains(r, "each end step") || strings.Contains(r, "each player's end step") ||
+			strings.Contains(r, "beginning of each") {
+			return true
+		}
+		if strings.Contains(r, "each opponent's") || strings.Contains(r, "opponent's upkeep") ||
+			strings.Contains(r, "opponent's end step") {
+			return perm.Controller != gs.Active
+		}
+	}
 	switch ctrl {
 	case "", "you":
 		// "At the beginning of your upkeep" — only fires on controller's turn.
