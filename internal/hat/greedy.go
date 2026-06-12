@@ -1193,6 +1193,42 @@ func (*GreedyHat) ChooseKickCount(gs *gameengine.GameState, seatIdx int, card *g
 	return maxKicks
 }
 
+// ChooseOptionalCost — greedy heuristic for the PR-5 cost-mechanic family.
+//
+// The base spell has already been paid for (or, for alternative costs,
+// CastSpell substitutes the alt cost and never strands the base), so the
+// only question is whether the upside is worth the extra resource:
+//
+//   - "replicate"  — spend all affordable copies; every copy is strictly
+//                    more value for leftover mana that would otherwise be
+//                    wasted this cast.
+//   - "overload"   — take it whenever affordable: overloaded removal/effects
+//                    hit "each", which is greedily dominant.
+//   - "buyback"    — take it whenever affordable: getting the spell back is
+//                    pure card advantage for the greedy baseline.
+//   - "surge"/"spectacle" — alternative costs that are (almost always) a
+//                    discount; take them whenever the engine offered the
+//                    choice (CastSpell already verified the precondition).
+//   - "conspire"   — take it: a free copy for tapping two creatures the
+//                    greedy player likely wasn't going to attack with at
+//                    instant speed anyway.
+//   - "casualty"/"bargain" — additional SACRIFICE costs. Greedy is
+//                    conservative here: the engine picks the cheapest victim,
+//                    but sacrificing board presence/a permanent for one
+//                    spell is not unconditionally good, so decline by default
+//                    and leave the aggressive line to the smarter hats.
+func (*GreedyHat) ChooseOptionalCost(gs *gameengine.GameState, seatIdx int, card *gameengine.Card, kind string, cost, max int) int {
+	if max <= 0 {
+		return 0
+	}
+	switch kind {
+	case "casualty", "bargain":
+		return 0 // sacrifice cost — don't pay by default
+	default:
+		return max
+	}
+}
+
 // ChooseBottomCards — §103.5 London mulligan: bottom the highest-CMC cards
 // (same as discard heuristic). Returns exactly `count` cards.
 func (*GreedyHat) ChooseBottomCards(gs *gameengine.GameState, seatIdx int, hand []*gameengine.Card, count int) []*gameengine.Card {

@@ -86,6 +86,9 @@ func (*GreedyHatStub) ChooseX(gs *GameState, seatIdx int, card *Card, availableM
 func (*GreedyHatStub) ChooseKickCount(gs *GameState, seatIdx int, card *Card, kickerCost, maxKicks int) int {
 	return 0 // test stub: don't kick so baseline fixtures are unaffected
 }
+func (*GreedyHatStub) ChooseOptionalCost(gs *GameState, seatIdx int, card *Card, kind string, cost, max int) int {
+	return 0 // test stub: never pay optional costs so baseline fixtures are unaffected
+}
 func (*GreedyHatStub) ChooseBottomCards(gs *GameState, seatIdx int, hand []*Card, count int) []*Card {
 	if count > len(hand) {
 		count = len(hand)

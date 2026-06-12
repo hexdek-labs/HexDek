@@ -846,9 +846,43 @@ type Hat interface {
 	// The Hat must return a value in [0, maxKicks].
 	//
 	// This is the first member of the cast-time optional-cost family; PR-5
-	// will add siblings (additional-cost discards, "you may pay {X}" riders,
-	// etc.) following the same shape.
+	// added siblings via the generic ChooseOptionalCost hook below.
 	ChooseKickCount(gs *GameState, seatIdx int, card *Card, kickerCost, maxKicks int) int
+
+	// ChooseOptionalCost is the generic cast-time optional/additional/
+	// alternative-cost decision hook (CR §601.2b/§601.2f) — the PR-5
+	// extension of the kicker framework to the rest of the cost-mechanic
+	// family. CastSpell calls it once per applicable mechanic on the card
+	// being cast, identified by `kind`:
+	//
+	//   "buyback"   — additional mana cost; pay → spell returns to hand on
+	//                 resolve instead of the graveyard (CR §702.27).
+	//   "overload"  — alternative mana cost; pay → single-target effects
+	//                 fan out to "each" (CR §702.96). `cost` is the overload
+	//                 cost, `max` is 1 if affordable else 0.
+	//   "replicate" — additional mana cost paid N times; each payment copies
+	//                 the spell (CR §702.56). `cost` is the per-copy cost,
+	//                 `max` is the most copies affordable.
+	//   "surge"     — alternative mana cost, legal only when you/a teammate
+	//                 already cast a spell this turn (CR §702.117).
+	//   "spectacle" — alternative mana cost, legal only when an opponent lost
+	//                 life this turn (CR §702.107).
+	//   "conspire"  — additional cost: tap two creatures sharing a color with
+	//                 the spell → copy it (CR §702.78). `cost` is 0 (non-mana),
+	//                 `max` is 1 when two eligible creatures exist.
+	//   "casualty"  — additional cost: sacrifice a creature of power ≥ N →
+	//                 copy the spell (CR §702.153). `cost` is the min power,
+	//                 `max` is 1 when an eligible creature exists.
+	//   "bargain"   — additional cost: sacrifice an artifact/enchantment/token
+	//                 (CR §702.176). `cost` is 0 (non-mana), `max` is 1 when an
+	//                 eligible permanent exists.
+	//
+	// The Hat returns how many times to pay (0 = don't pay). For binary
+	// mechanics the meaningful values are 0 and 1; for replicate it is the
+	// number of copies in [0, max]. The engine clamps the return to [0, max].
+	// Returning 0 always reproduces the unmodified base cast, so test stubs
+	// and baseline hats default to 0 and are unaffected.
+	ChooseOptionalCost(gs *GameState, seatIdx int, card *Card, kind string, cost, max int) int
 
 	// -- London mulligan bottom-card selection ----------------------------
 

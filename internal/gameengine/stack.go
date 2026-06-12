@@ -380,6 +380,57 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 	baseCost := CalculateTotalCost(gs, card, seatIdx)
 	chosenX := 0
 
+	// CR §601.2b — cast-time ALTERNATIVE costs (overload / surge / spectacle).
+	// These REPLACE the printed mana cost, so the decision must happen BEFORE
+	// the base mana is paid. We ask the Hat once per applicable mechanic (the
+	// keyword guards skip the 99% of cards entirely) and, on a "yes", swap
+	// baseCost for the alternative cost and remember which one to stamp on the
+	// StackItem after it is built. Only one alternative cost can apply per
+	// cast; the precedence order here (overload → surge → spectacle) is
+	// arbitrary — no printed card carries two of these keywords.
+	altCostMeta := map[string]interface{}{}
+	if HasOverload(card) {
+		oc := OverloadCost(card)
+		avail := EnsureTypedPool(seat).Total()
+		maxPay := 0
+		if avail >= oc {
+			maxPay = 1
+		}
+		if maxPay > 0 && seat.Hat != nil &&
+			seat.Hat.ChooseOptionalCost(gs, seatIdx, card, "overload", oc, maxPay) > 0 {
+			baseCost = oc
+			altCostMeta["overloaded"] = true
+		}
+	}
+	if len(altCostMeta) == 0 && HasSurge(card) && CanPaySurge(gs, seatIdx) {
+		sc := SurgeCost(card)
+		avail := EnsureTypedPool(seat).Total()
+		maxPay := 0
+		if sc >= 0 && avail >= sc {
+			maxPay = 1
+		}
+		if maxPay > 0 && seat.Hat != nil &&
+			seat.Hat.ChooseOptionalCost(gs, seatIdx, card, "surge", sc, maxPay) > 0 {
+			baseCost = sc
+			altCostMeta["surge_cast"] = true
+			altCostMeta["surge_cost"] = sc
+		}
+	}
+	if len(altCostMeta) == 0 && HasSpectacle(card) && CanPaySpectacle(gs, seatIdx) {
+		spc := SpectacleCost(card)
+		avail := EnsureTypedPool(seat).Total()
+		maxPay := 0
+		if spc >= 0 && avail >= spc {
+			maxPay = 1
+		}
+		if maxPay > 0 && seat.Hat != nil &&
+			seat.Hat.ChooseOptionalCost(gs, seatIdx, card, "spectacle", spc, maxPay) > 0 {
+			baseCost = spc
+			altCostMeta["spectacle_cast"] = true
+			altCostMeta["spectacle_cost"] = spc
+		}
+	}
+
 	// §107.3: if the mana cost contains X, the Hat announces X.
 	if ManaCostContainsX(card) {
 		xPool := EnsureTypedPool(seat)
@@ -475,6 +526,52 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		}
 	}
 
+	// CR §702.27 — Buyback. Additional mana cost paid AFTER base + X + kicker.
+	// Pay it → the spell returns to its owner's hand on resolution instead of
+	// the graveyard (CostMeta["bought_back"], consumed by ResolveStackTop via
+	// ShouldReturnToHandOnResolve). Same shape as kicker: detect the keyword,
+	// compute affordability from leftover mana, ask the Hat, charge, stamp.
+	boughtBack := false
+	buybackCost := 0
+	if HasBuyback(card) &&
+		(cardHasType(card, "instant") || cardHasType(card, "sorcery")) {
+		bc := BuybackCost(card)
+		remaining := EnsureTypedPool(seat).Total()
+		maxPay := 0
+		if remaining >= bc {
+			maxPay = 1
+		}
+		if maxPay > 0 && seat.Hat != nil &&
+			seat.Hat.ChooseOptionalCost(gs, seatIdx, card, "buyback", bc, maxPay) > 0 {
+			seat.ManaPool -= bc
+			SyncManaAfterSpend(seat)
+			boughtBack = true
+			buybackCost = bc
+			gs.LogEvent(Event{
+				Kind:   "pay_mana",
+				Seat:   seatIdx,
+				Amount: bc,
+				Source: card.DisplayName(),
+				Details: map[string]interface{}{
+					"reason":       "buyback",
+					"rule":         "702.27a",
+					"buyback_cost": bc,
+				},
+			})
+			gs.LogEvent(Event{
+				Kind:   "buyback_cast",
+				Seat:   seatIdx,
+				Source: card.DisplayName(),
+				Amount: bc,
+				Details: map[string]interface{}{"rule": "702.27a"},
+			})
+			if gs.Flags == nil {
+				gs.Flags = map[string]int{}
+			}
+			gs.Flags["spell_bought_back_this_turn:"+itoa(seatIdx)] = 1
+		}
+	}
+
 	if cost > 0 {
 		details := map[string]interface{}{
 			"reason": "cast",
@@ -546,7 +643,79 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 	if HasKickerKeyword(card) {
 		StampKickResult(item, kickCount)
 	}
+	// PR-5 cost-mechanic family — stamp the cast-time optional/alternative/
+	// additional-cost decisions chosen above onto the canonical CostMeta keys
+	// the resolution-time consumers read (overload fan-out via
+	// beginOverloadResolution; buyback return-to-hand via
+	// ShouldReturnToHandOnResolve; surge/spectacle per-card OnResolve gates).
+	if len(altCostMeta) > 0 || boughtBack {
+		if item.CostMeta == nil {
+			item.CostMeta = map[string]interface{}{}
+		}
+		for k, v := range altCostMeta {
+			item.CostMeta[k] = v
+		}
+		if boughtBack {
+			item.CostMeta["bought_back"] = true
+			item.CostMeta["buyback_cost"] = buybackCost
+		}
+	}
 	PushStackItem(gs, item)
+
+	// CR §702.56 / §702.78 / §702.153 — cast-time ADDITIONAL costs that COPY
+	// the spell (replicate / conspire / casualty). These act on the StackItem
+	// AFTER it is on the stack: the helpers pay the cost (extra mana for
+	// replicate; tap-two for conspire; sacrifice for casualty) and push the
+	// resulting copies ABOVE the original. The keyword guards skip the 99% of
+	// cards with none of these keywords.
+	if HasReplicate(card) {
+		rc := ReplicateCost(card)
+		remaining := EnsureTypedPool(seat).Total()
+		maxCopies := 0
+		if rc > 0 {
+			maxCopies = remaining / rc
+		}
+		if maxCopies > 0 && seat.Hat != nil {
+			n := seat.Hat.ChooseOptionalCost(gs, seatIdx, card, "replicate", rc, maxCopies)
+			if n > maxCopies {
+				n = maxCopies
+			}
+			if n > 0 {
+				ApplyReplicate(gs, item, n)
+			}
+		}
+	}
+	if HasConspire(card) && len(card.Colors) > 0 {
+		// Conspire needs two untapped creatures sharing a color with the
+		// spell (ApplyConspire enforces this and taps them). max=1 only when
+		// two eligible creatures are present so the Hat isn't asked to pay an
+		// impossible cost.
+		if conspireEligibleCount(gs, seatIdx, card) >= 2 && seat.Hat != nil &&
+			seat.Hat.ChooseOptionalCost(gs, seatIdx, card, "conspire", 0, 1) > 0 {
+			ApplyConspire(gs, seatIdx, item)
+		}
+	}
+	if HasCasualty(card) {
+		minPow := CasualtyMinPower(card)
+		maxPay := 0
+		if CanPayCasualty(gs, seatIdx, minPow) {
+			maxPay = 1
+		}
+		if maxPay > 0 && seat.Hat != nil &&
+			seat.Hat.ChooseOptionalCost(gs, seatIdx, card, "casualty", minPow, maxPay) > 0 {
+			ApplyCasualty(gs, seatIdx, item, minPow)
+		}
+	}
+	if HasBargain(card) {
+		maxPay := 0
+		if CanBargain(gs, seatIdx) {
+			maxPay = 1
+		}
+		if maxPay > 0 && seat.Hat != nil &&
+			seat.Hat.ChooseOptionalCost(gs, seatIdx, card, "bargain", 0, maxPay) > 0 {
+			ApplyBargain(gs, seatIdx, item)
+		}
+	}
 
 	// CR §702.21 — Ward. "When this creature becomes the target of a
 	// spell or ability an opponent controls, counter it unless that

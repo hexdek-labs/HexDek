@@ -882,6 +882,9 @@ func (*testHat) ChooseX(gs *gameengine.GameState, seatIdx int, card *gameengine.
 func (*testHat) ChooseKickCount(gs *gameengine.GameState, seatIdx int, card *gameengine.Card, kickerCost, maxKicks int) int {
 	return 0
 }
+func (*testHat) ChooseOptionalCost(gs *gameengine.GameState, seatIdx int, card *gameengine.Card, kind string, cost, max int) int {
+	return 0
+}
 func (*testHat) ChooseBottomCards(gs *gameengine.GameState, seatIdx int, hand []*gameengine.Card, count int) []*gameengine.Card {
 	return nil
 }
