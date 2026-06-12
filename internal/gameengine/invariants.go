@@ -425,6 +425,16 @@ func checkLifeConsistency(gs *GameState) error {
 		if s == nil {
 			continue
 		}
+		// A WINNER at negative life is legal (CR §104.2a): Platinum
+		// Angel holds the seat at <0, the last opponent dies, the win
+		// fires immediately — and post-game cleanup may then remove the
+		// Angel from the snapshot (events are suppressed once ended=1),
+		// so the protection scan below can no longer see it. r63 seed
+		// 8675309 game 209. The r60 zombie-game pin is unaffected: it
+		// targets seats that are neither Lost nor Won.
+		if s.Won {
+			continue
+		}
 		// Angel's Grace / Platinum Angel can keep a player alive at
 		// negative life. We check for the replacement effect flag.
 		if s.Life < 0 && !s.Lost {
@@ -504,8 +514,13 @@ func checkSBACompleteness(gs *GameState) error {
 		if s == nil {
 			continue
 		}
-		// Check life: living player at ≤0 without protection.
-		if !s.Lost && s.Life <= 0 && !hasCantLoseEffect(gs, s) {
+		// Check life: living player at ≤0 without protection. Winners
+		// are exempt — a §104.2a win at negative life behind Platinum
+		// Angel is legal, and post-game cleanup can remove the Angel
+		// from the snapshot before this check runs (r63 seed 8675309
+		// game 209). The r60 zombie-game pin (ended=1 without resolved
+		// outcomes) is preserved: a zombie seat is neither Lost nor Won.
+		if !s.Won && !s.Lost && s.Life <= 0 && !hasCantLoseEffect(gs, s) {
 			return fmt.Errorf("seat %d has life=%d, Lost=false, no loss-prevention — SBA 704.5a missed",
 				s.Idx, s.Life)
 		}
