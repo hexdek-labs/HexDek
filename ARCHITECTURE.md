@@ -198,15 +198,12 @@ Communication: WebSocket for live spectating + ELO updates, REST for everything 
 | `hexdek-server` | HTTP/WebSocket API, grinder, matchmaking |
 | `hexdek-thor` | Bulk tournament runner |
 | `hexdek-freya` | Deck strategy analyzer |
-| `hexdek-odin` | Invariant fuzz checker |
 | `hexdek-loki` | Chaos/edge-case fuzzer |
 | `hexdek-heimdall` | Analytics tracker |
-| `hexdek-huginn` | Interaction discovery |
 | `hexdek-muninn` | Crash/gap telemetry |
 | `hexdek-judge` | Interactive rules REPL |
 | `hexdek-import` | Bulk deck importer |
 | `hexdek-tournament` | Full tournament orchestrator |
-| `hexdek-valkyrie` | Deploy automation |
 | `hexdek-parity` | Cross-engine parity checker |
 | `gen-handlers` | AST-driven handler code generator |
 

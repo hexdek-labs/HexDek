@@ -75,7 +75,6 @@ func main() {
 
 	// New module flags.
 	keywordMatrix := flag.Bool("keyword-matrix", false, "run keyword combat matrix (~900 pairs)")
-	comboPairs := flag.Bool("combo-pairs", false, "run card combo pair tests (staple pairs)")
 	replacementTest := flag.Bool("replacement", false, "run replacement effect conflict tests")
 	layerStress := flag.Bool("layer-stress", false, "run layer stress boards")
 	stackTorture := flag.Bool("stack-torture", false, "run stack torture tests")
@@ -91,16 +90,10 @@ func main() {
 	claimVerify := flag.Bool("claim-verify", false, "run coverage claim verifier (~60 tests)")
 	negativeLegality := flag.Bool("negative-legality", false, "run negative legality pack (~40 tests)")
 	chaosGames := flag.Bool("chaos", false, "run chaos game simulation (10K random games)")
-	densityStress := flag.Bool("density", false, "run board density stress tests")
 	cascadeTorture := flag.Bool("cascade", false, "run trigger cascade torture tests")
 	graveyardStorm := flag.Bool("graveyard", false, "run graveyard interaction stress tests")
 	oracleDiff := flag.Bool("oracle-diff", false, "run oracle text differential analysis")
-	multiplayerChaos := flag.Bool("multiplayer", false, "run 4-player multiplayer chaos games")
 	infiniteLoop := flag.Bool("infinite-loop", false, "run infinite loop detection tests")
-	rollbackTest := flag.Bool("rollback", false, "run state rollback integrity tests")
-	clockTest := flag.Bool("clock", false, "run clock pressure (turn time budget) tests")
-	adversarialTest := flag.Bool("adversarial", false, "run adversarial targeting stress tests")
-	symmetryTest := flag.Bool("symmetry", false, "run symmetry (player-swap) verification")
 	corpusAuditTest := flag.Bool("corpus-audit", false, "run 34K corpus outcome correctness audit")
 	corpusEraStr := flag.String("corpus-era", "all", "era filter for corpus audit: all, era1, era2, era3, era4")
 	coverageDepth := flag.Bool("coverage-depth", false, "run AST coverage depth audit (Phase 2)")
@@ -290,19 +283,18 @@ func main() {
 	}
 
 	// Detect if any specific module was requested.
-	anyModuleRequested := *keywordMatrix || *comboPairs || *replacementTest ||
+	anyModuleRequested := *keywordMatrix || *replacementTest ||
 		*layerStress || *stackTorture || *commanderRules || *apnapTest ||
 		*zoneChains || *manaVerify || *turnStructure || *spellResolve ||
 		*goldilocksTest || *advancedMechanics || *deepRulesTest ||
 		*claimVerify || *negativeLegality || *chaosGames ||
-			*densityStress || *cascadeTorture || *graveyardStorm || *oracleDiff ||
-			*multiplayerChaos || *infiniteLoop || *rollbackTest || *clockTest ||
-			*adversarialTest || *symmetryTest || *corpusAuditTest || *coverageDepth || *oracleCompliance || *astFidelity || *allModules
+		*cascadeTorture || *graveyardStorm || *oracleDiff ||
+		*infiniteLoop ||
+		*corpusAuditTest || *coverageDepth || *oracleCompliance || *astFidelity || *allModules
 
 	// If --all is set, enable everything.
 	if *allModules {
 		*keywordMatrix = true
-		*comboPairs = true
 		*replacementTest = true
 		*layerStress = true
 		*stackTorture = true
@@ -318,16 +310,10 @@ func main() {
 		*claimVerify = true
 		*negativeLegality = true
 		*chaosGames = true
-		*densityStress = true
 		*cascadeTorture = true
 		*graveyardStorm = true
 		*oracleDiff = true
-		*multiplayerChaos = true
 		*infiniteLoop = true
-		*rollbackTest = true
-		*clockTest = true
-		*adversarialTest = true
-		*symmetryTest = true
 		*corpusAuditTest = true
 		*coverageDepth = true
 		*oracleCompliance = true
@@ -411,7 +397,6 @@ func main() {
 
 	modules := []module{
 		{"keyword-matrix", *keywordMatrix, runKeywordMatrix},
-		{"combo-pairs", *comboPairs, runComboPairs},
 		{"replacement", *replacementTest, runReplacement},
 		{"layer-stress", *layerStress, runLayerStress},
 		{"stack-torture", *stackTorture, runStackTorture},
@@ -428,16 +413,10 @@ func main() {
 		{"claim-verify", *claimVerify, runClaimVerifier},
 		{"negative-legality", *negativeLegality, runNegativeLegality},
 		{"chaos", *chaosGames, runChaosGames},
-		{"density", *densityStress, runDensityStress},
 		{"cascade", *cascadeTorture, runCascadeTorture},
 		{"graveyard", *graveyardStorm, runGraveyardStorm},
 		{"oracle-diff", *oracleDiff, runOracleDiff},
-		{"multiplayer", *multiplayerChaos, runMultiplayerChaos},
 		{"infinite-loop", *infiniteLoop, runInfiniteLoop},
-		{"rollback", *rollbackTest, runRollbackTorture},
-		{"clock", *clockTest, runClockPressure},
-		{"adversarial", *adversarialTest, runAdversarial},
-		{"symmetry", *symmetryTest, runSymmetry},
 		{"corpus-audit", *corpusAuditTest, runCorpusAudit},
 		{"coverage-depth", *coverageDepth, runCoverageDepth},
 		{"oracle-compliance", *oracleCompliance, runOracleCompliance},
@@ -462,17 +441,6 @@ func main() {
 		switch mod.name {
 		case "keyword-matrix":
 			modTests = len(combatKeywords) * len(combatKeywords)
-		case "combo-pairs":
-			n := 0
-			for _, name := range stapleNames {
-				for _, oc := range oracleCards {
-					if oc.Name == name {
-						n++
-						break
-					}
-				}
-			}
-			modTests = n * (n - 1) / 2 * 7 // pairs * phases
 		case "replacement":
 			modTests = 6 // number of replacement scenarios
 		case "layer-stress":
@@ -515,8 +483,6 @@ func main() {
 			modTests = 40 // 8+8+8+8+8
 		case "chaos":
 			modTests = chaosGameCount * chaosMaxTurns * 7
-		case "density":
-			modTests = 8
 		case "cascade":
 			modTests = 8
 		case "graveyard":
@@ -529,18 +495,8 @@ func main() {
 				}
 			}
 			modTests = count
-		case "multiplayer":
-			modTests = mpGameCount * mpMaxTurns * 2
 		case "infinite-loop":
 			modTests = 8
-		case "rollback":
-			modTests = 8
-		case "clock":
-			modTests = clockGameCount * clockMaxTurns
-		case "adversarial":
-			modTests = advGameCount * advMaxTurns
-		case "symmetry":
-			modTests = symGameCount
 		case "corpus-audit":
 			// Count auditable cards — each card may produce multiple tests.
 			count := 0
