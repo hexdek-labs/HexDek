@@ -5,13 +5,15 @@ import (
 	"math"
 	"sort"
 	"strings"
+
+	"github.com/hexdek/hexdek/internal/judge"
 )
 
 type ArchetypeClassification struct {
 	Primary           string
 	PrimaryConfidence float64
 	Secondary         string
-	SecondaryDistance  float64
+	SecondaryDistance float64
 	// SecondaryFit is the [0,1] goodness-of-fit of the runner-up
 	// archetype (1 - SecondaryDistance, clamped). 0 means the secondary
 	// fingerprint matched nothing; 1 means a perfect ratio match. Used
@@ -27,17 +29,17 @@ type ArchetypeClassification struct {
 	// SecondaryFit > BlendSecondaryFitFloor (0.5). The label format is
 	// "{Primary} with {Secondary} splash" so the UI can surface the
 	// blend without restructuring the per-archetype display.
-	IsBlend     bool
-	BlendLabel  string
-	Intent            string
+	IsBlend    bool
+	BlendLabel string
+	Intent     string
 	// Bracket is the rubber-stamp / declared bracket — the value the
 	// deck identifies AS (precons claim B2, user-built decks claim
 	// whatever the owner sets). At the ArchetypeClassification layer
 	// this defaults to the measured value; DeckProfile overrides it for
 	// known-declared sources (e.g. WotC precons under data/decks/wizards/
 	// auto-stamp to B2).
-	Bracket           int
-	BracketLabel      string
+	Bracket      int
+	BracketLabel string
 	// MeasuredBracket is Freya's signal-computed bracket — the canonical
 	// felt-power measurement (surfaced in the UI as "Estimated Bracket").
 	// Derived from density / card-list signals. Diverges from Bracket
@@ -45,9 +47,9 @@ type ArchetypeClassification struct {
 	// thinks play hotter than B2).
 	MeasuredBracket      int
 	MeasuredBracketLabel string
-	GameChangerCount  int
-	GameChangerCards  []string
-	Signals           []string
+	GameChangerCount     int
+	GameChangerCards     []string
+	Signals              []string
 	// BracketRationale documents how the bracket was derived: which
 	// signals contributed (and how many points), what cards backed each
 	// scoring tier, and which ceilings/floors/gates fired to adjust the
@@ -89,11 +91,11 @@ type archetypeFingerprint struct {
 }
 
 type classifyContext struct {
-	roleRatios     map[RoleTag]float64
-	avgCMC         float64
-	comboCount     int
-	tutorDensity   float64
-	fastManaCount  int
+	roleRatios    map[RoleTag]float64
+	avgCMC        float64
+	comboCount    int
+	tutorDensity  float64
+	fastManaCount int
 	// tappedManaCount holds CMC-≤2 mana sources that ETB tapped
 	// (Coldsteel Heart, Diamond cycle, Star Compass, Coalition Relic).
 	// They're real ramp but a turn slower than untapped rocks of the same
@@ -118,7 +120,7 @@ type classifyContext struct {
 	// gate is diluted by a deep draw/ramp package pushing each
 	// individual role ratio down.
 	interactionCount int
-	instantSorcPct float64
+	instantSorcPct   float64
 	// instantSorceryCount is the raw count of instant + sorcery cards
 	// (qty-weighted) in the deck. Paired with spellTriggerPermanentCount
 	// to drive the absolute-count Spellslinger detection arm — a 60%
@@ -139,12 +141,12 @@ type classifyContext struct {
 	// with cast-trigger creatures — this field is the cleaner "do we
 	// have a spell-trigger payoff cluster" signal.
 	spellTriggerPermanentCount int
-	creaturePct    float64
-	topCreatureTypePct float64
-	sacrificeCount int
-	deathTriggers  int
-	graveyardCount int
-	selfMillCount  int
+	creaturePct                float64
+	topCreatureTypePct         float64
+	sacrificeCount             int
+	deathTriggers              int
+	graveyardCount             int
+	selfMillCount              int
 	// discardOutletCount: cards that ENABLE discard as a cost or
 	// trigger — Faithless Looting / Wild Mongrel / Putrid Imp /
 	// Bone Miser / Liliana of the Veil / Burning Inquiry. Distinct
@@ -173,7 +175,7 @@ type classifyContext struct {
 	// scaling), Genesis Wave / Crucible-class graveyard-replay
 	// engines.
 	graveyardSizePayoffCount int
-	equipAuraCount int
+	equipAuraCount           int
 	// equipmentCount and auraCount split equipAuraCount by subtype so
 	// Equipment-Voltron and Aura-Voltron can be distinguished from
 	// generic suit-up Voltron. The sub-archetypes diverge sharply in
@@ -192,9 +194,9 @@ type classifyContext struct {
 	// midrange-with-toolbox shape; 8 equipment + 3 payoffs is the
 	// committed Equipment-Voltron archetype.
 	equipTriggerPayoffCount int
-	spellCopyCount int
-	landfallCount  int
-	counterCount   int // +1/+1 counter / proliferate cards
+	spellCopyCount          int
+	landfallCount           int
+	counterCount            int // +1/+1 counter / proliferate cards
 	// proliferateCount counts cards that specifically PROLIFERATE — a
 	// narrower signal than counterCount (which also includes +1/+1
 	// counter anthems and "number of counters" payoffs). Drives the
@@ -208,9 +210,9 @@ type classifyContext struct {
 	// AND a planeswalker floor — counters-matter decks pack lots of
 	// +1/+1 payoffs but typically run 0-2 planeswalkers.
 	proliferateCount int
-	enchantmentPct float64
-	lifegainCount  int
-	blinkCount     int
+	enchantmentPct   float64
+	lifegainCount    int
+	blinkCount       int
 	// etbValueCreatureCount counts CREATURE cards whose ETB produces
 	// something worth blinking for (HasValueETB && type-line contains
 	// "creature"). The Blink/Flicker archetype fingerprint requires
@@ -219,8 +221,8 @@ type classifyContext struct {
 	// a Blink deck unless it ALSO packs enough Mulldrifter / Reclamation
 	// Sage / Eternal Witness-class ETB payoffs to justify the engine.
 	etbValueCreatureCount int
-	artifactCount  int
-	extraCombatCount int
+	artifactCount         int
+	extraCombatCount      int
 	// extraTurnCount counts cards that grant a literal extra TURN
 	// ("take an extra/another/additional turn after this one") — Time
 	// Walk / Time Warp / Nexus of Fate / Sage of Hours / Beacon of
@@ -233,9 +235,9 @@ type classifyContext struct {
 	// archetype — the WotC framework treats repeatable extra-turn
 	// generation as a B4 marker (chains 3-4 turns in a row, sets up
 	// uncontestable wins).
-	extraTurnCount int
+	extraTurnCount    int
 	planeswalkerCount int
-	millOppCount   int // opponent-targeting mill
+	millOppCount      int // opponent-targeting mill
 	discardForceCount int
 	// R60 new-archetype counters
 	pillowfortCount     int // attack-tax / damage-prevention cards (Propaganda, Sphere of Safety, Solitary Confinement)
@@ -244,11 +246,11 @@ type classifyContext struct {
 	// R60 (post-precon-corpus-audit) — 4 new archetype counters surfaced
 	// by docs/precon-shape-scans/group-{a,b,c}.md where stock precons
 	// fell through to Midrange/Artifacts because no fingerprint matched.
-	groupHugCount    int // "each player draws/gains/searches", Phelddagrif/Kynaios shells, Howling Mine cluster
-	cyclingCount     int // cards with the cycling keyword cost ("cycling {")
+	groupHugCount      int // "each player draws/gains/searches", Phelddagrif/Kynaios shells, Howling Mine cluster
+	cyclingCount       int // cards with the cycling keyword cost ("cycling {")
 	cyclingPayoffCount int // cards that trigger on cycling (Astral Drift, Drake Haven, New Perspectives, Fluctuator)
-	toxicInfectCount int // "infect", "toxic N", "poison counter" — distinct from Counters Matter's +1/+1 axis
-	vehicleCount     int // Vehicle (and Spacecraft) typeline + crew-payoff cards
+	toxicInfectCount   int // "infect", "toxic N", "poison counter" — distinct from Counters Matter's +1/+1 axis
+	vehicleCount       int // Vehicle (and Spacecraft) typeline + crew-payoff cards
 	// R60 Tokens archetype: distinct from generic "Aggro / Go Wide"
 	// because the structural signature is the SPECIFIC pairing of
 	// token-creation density + anthem-stacking density. A Krenko /
@@ -287,8 +289,8 @@ type classifyContext struct {
 	// tribalLordTribe records the most-mentioned tribe across the
 	// detected lords, so the buildSignals output can name it. Empty
 	// when tribalLordCount < 1.
-	tribalLordCount int
-	tribalLordTribe string
+	tribalLordCount  int
+	tribalLordTribe  string
 	bannedCount      int
 	gameChangerCount int
 	gameChangerNames []string
@@ -309,11 +311,11 @@ type classifyContext struct {
 	// lands", "each player sacrifices N lands", "exile all permanents")
 	// and the false-positive surface of pattern-matching is too wide
 	// (single-target Stone Rain / Strip Mine effects would noise-match).
-	mldCount int
-	mldNames []string
-	profiles       []CardProfile
-	qtyProfiles    []CardProfileQty
-	oracle         *oracleDB
+	mldCount    int
+	mldNames    []string
+	profiles    []CardProfile
+	qtyProfiles []CardProfileQty
+	oracle      *oracleDB
 }
 
 // cEDHFreeInteractionList tracks the cEDH-defining "free" interaction
@@ -375,25 +377,25 @@ var cedhFreeInteractionList = map[string]bool{
 //   - Strip Mine / Wasteland / Tectonic Edge (single-target): a B3 deck
 //     can run 4-5 of these without being B4.
 var mldList = map[string]bool{
-	"armageddon":             true,
-	"ravages of war":         true,
-	"catastrophe":            true,
-	"devastation":            true,
-	"wildfire":               true,
-	"burning of xinye":       true,
-	"decree of annihilation": true,
-	"obliterate":             true,
-	"jokulhaups":             true,
-	"apocalypse":             true,
-	"worldfire":              true,
-	"boom // bust":           true,
-	"cataclysm":              true,
-	"cleansing":              true,
-	"impending disaster":     true,
-	"sunder":                 true,
-	"global ruin":            true,
-	"epicenter":              true,
-	"keldon firebombers":     true,
+	"armageddon":              true,
+	"ravages of war":          true,
+	"catastrophe":             true,
+	"devastation":             true,
+	"wildfire":                true,
+	"burning of xinye":        true,
+	"decree of annihilation":  true,
+	"obliterate":              true,
+	"jokulhaups":              true,
+	"apocalypse":              true,
+	"worldfire":               true,
+	"boom // bust":            true,
+	"cataclysm":               true,
+	"cleansing":               true,
+	"impending disaster":      true,
+	"sunder":                  true,
+	"global ruin":             true,
+	"epicenter":               true,
+	"keldon firebombers":      true,
 	"myojin of infinite rage": true,
 	// Entries removed in the power-tier vs bracket reconciliation audit
 	// (2026-05-30): three cards in the original PR #803 list were not
@@ -1241,7 +1243,7 @@ func buildClassifyContext(report *FreyaReport, qtyProfiles []CardProfileQty, ora
 			continue
 		}
 		nameLower := strings.ToLower(qp.Profile.Name)
-		if commanderBannedList[nameLower] {
+		if judge.IsCommanderBanned(nameLower) {
 			ctx.bannedCount += qp.Qty
 			continue
 		}
@@ -1789,9 +1791,9 @@ var tokenCreationPhrases = []string{
 	"creates two ",
 	"creates three ",
 	"creates x ",
-	"create that many ",   // Selvala's Stampede / many "X tokens" cards
-	"create one ",         // older phrasing
-	"put a ",              // "put a [type] token onto the battlefield"
+	"create that many ", // Selvala's Stampede / many "X tokens" cards
+	"create one ",       // older phrasing
+	"put a ",            // "put a [type] token onto the battlefield"
 	"puts a ",
 	"puts onto the battlefield", // mass-token effects use this combined form
 }
@@ -1803,13 +1805,13 @@ var tokenCreationPhrases = []string{
 // creators + 3 doublers IS a tokens deck — the deck's gameplan
 // hinges on the doubled output, not the count of source cards alone.
 var tokenDoublerNames = map[string]bool{
-	"anointed procession":         true,
-	"parallel lives":              true,
-	"doubling season":             true,
-	"mondrak, glory dominus":      true,
-	"primal vigor":                true, // doubles tokens AND counters
-	"adrix and nev, twincasters":  true, // doubles tokens (limited to specific token types but still a structural creator signal)
-	"second harvest":              true, // one-shot but still a creator
+	"anointed procession":        true,
+	"parallel lives":             true,
+	"doubling season":            true,
+	"mondrak, glory dominus":     true,
+	"primal vigor":               true, // doubles tokens AND counters
+	"adrix and nev, twincasters": true, // doubles tokens (limited to specific token types but still a structural creator signal)
+	"second harvest":             true, // one-shot but still a creator
 }
 
 // cardCreatesTokens returns true if the lowercased oracle text or
@@ -1869,57 +1871,57 @@ var anthemPhrases = []string{
 // at full cost from hand on a subsequent turn.
 var reanimationEffectNames = map[string]bool{
 	// Single-target Auras.
-	"animate dead":         true,
-	"dance of the dead":    true,
-	"necromancy":           true,
-	"dread return":         true, // not aura but single-target
-	"reanimate":            true,
-	"exhume":               true,
-	"unburial rites":       true,
+	"animate dead":           true,
+	"dance of the dead":      true,
+	"necromancy":             true,
+	"dread return":           true, // not aura but single-target
+	"reanimate":              true,
+	"exhume":                 true,
+	"unburial rites":         true,
 	"footsteps of the goryo": true,
-	"goryo's vengeance":    true,
-	"shallow grave":        true,
-	"corpse dance":         true,
-	"victimize":            true,
-	"beacon of unrest":     true,
-	"chainer's edict":      true, // not reanim, removing
-	"bring back":           true,
-	"sevinne's reclamation": true,
-	"phantasmagorian":      true,
+	"goryo's vengeance":      true,
+	"shallow grave":          true,
+	"corpse dance":           true,
+	"victimize":              true,
+	"beacon of unrest":       true,
+	"chainer's edict":        true, // not reanim, removing
+	"bring back":             true,
+	"sevinne's reclamation":  true,
+	"phantasmagorian":        true,
 	// Mass reanimation.
-	"living death":          true,
-	"twilight's call":       true,
-	"patriarch's bidding":   true,
+	"living death":            true,
+	"twilight's call":         true,
+	"patriarch's bidding":     true,
 	"rise of the dark realms": true,
-	"balthor the defiled":   true,
-	"living end":            true,
-	"command the dreadhorde": true,
-	"finale of devastation": true,
+	"balthor the defiled":     true,
+	"living end":              true,
+	"command the dreadhorde":  true,
+	"finale of devastation":   true,
 	// Persist creatures (return to battlefield via persist trigger).
-	"woodfall primus":         true,
-	"murderous redcap":        true,
-	"kitchen finks":            true,
-	"puppeteer clique":         true,
-	"twilight shepherd":        true,
+	"woodfall primus":   true,
+	"murderous redcap":  true,
+	"kitchen finks":     true,
+	"puppeteer clique":  true,
+	"twilight shepherd": true,
 	// Reanimator-recursion creatures (return TO BATTLEFIELD).
-	"karmic guide":             true,
-	"sun titan":                true,
-	"reveillark":               true,
-	"angel of glory's rise":    true,
-	"apprentice necromancer":   true,
-	"corpse connoisseur":       true,
-	"doomed necromancer":       true,
-	"hell's caretaker":         true,
-	"lord of extinction":       true, // not reanim
-	"meren of clan nel toth":   true,
-	"karador, ghost chieftain": true,
-	"chainer, nightmare adept": true,
-	"chainer, dementia master": true,
-	"the scarab god":           true,
+	"karmic guide":                true,
+	"sun titan":                   true,
+	"reveillark":                  true,
+	"angel of glory's rise":       true,
+	"apprentice necromancer":      true,
+	"corpse connoisseur":          true,
+	"doomed necromancer":          true,
+	"hell's caretaker":            true,
+	"lord of extinction":          true, // not reanim
+	"meren of clan nel toth":      true,
+	"karador, ghost chieftain":    true,
+	"chainer, nightmare adept":    true,
+	"chainer, dementia master":    true,
+	"the scarab god":              true,
 	"alesha, who smiles at death": true,
-	"sun-stained scrap":        true, // placeholder, not real
-	"recurring nightmare":      true,
-	"oversold cemetery":        true,
+	"sun-stained scrap":           true, // placeholder, not real
+	"recurring nightmare":         true,
+	"oversold cemetery":           true,
 }
 
 // discardOutletPhrases recognises oracle-text shapes for cards that
@@ -1945,28 +1947,28 @@ var discardOutletPhrases = []string{
 
 // curated discard-outlet names (oracle-pattern misses on some printings).
 var discardOutletNames = map[string]bool{
-	"faithless looting":   true,
-	"wild mongrel":        true,
-	"putrid imp":          true,
-	"olivia's wrath":      true,
-	"frantic search":      true,
-	"compulsive research": true,
-	"merfolk looter":      true,
-	"looter il-kor":       true,
-	"key to the city":     true,
-	"bone miser":          true,
-	"tortured existence":  true,
-	"oblivion crown":      true,
+	"faithless looting":      true,
+	"wild mongrel":           true,
+	"putrid imp":             true,
+	"olivia's wrath":         true,
+	"frantic search":         true,
+	"compulsive research":    true,
+	"merfolk looter":         true,
+	"looter il-kor":          true,
+	"key to the city":        true,
+	"bone miser":             true,
+	"tortured existence":     true,
+	"oblivion crown":         true,
 	"squee, dubious monarch": true,
-	"liliana of the veil": true,
-	"liliana vess":        true,
-	"burning inquiry":     true,
-	"wheel of fortune":    true,
-	"windfall":            true,
-	"jace, vryn's prodigy": true,
-	"smuggler's copter":   true,
-	"thrill of possibility": true,
-	"cathartic reunion":   true,
+	"liliana of the veil":    true,
+	"liliana vess":           true,
+	"burning inquiry":        true,
+	"wheel of fortune":       true,
+	"windfall":               true,
+	"jace, vryn's prodigy":   true,
+	"smuggler's copter":      true,
+	"thrill of possibility":  true,
+	"cathartic reunion":      true,
 }
 
 // cardIsReanimationEffect returns true if the card is a reanimation
@@ -3068,4 +3070,3 @@ func confidenceFilteredFinisherCount(report *FreyaReport) int {
 	}
 	return n
 }
-
