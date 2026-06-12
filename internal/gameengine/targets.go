@@ -53,9 +53,16 @@ func PickTarget(gs *GameState, src *Permanent, f gameast.Filter) []Target {
 		return ts
 	}
 
-	// Fan-out quantifiers first.
+	// Fan-out quantifiers first. "all" is the parser's quantifier for
+	// untargeted mass effects ("untap all creatures", "destroy all
+	// artifacts", "creatures you control gain haste") — semantically
+	// identical to "each" on the resolution side. Pre-r63 it fell
+	// through to the single-target policy pick, so every quantifier-all
+	// effect silently acted on ONE permanent (goldilocks N-Z dead-effect
+	// cluster: Village Bell-Ringer, Sky Hussar, Riptide Chronologist,
+	// Relentless Assault, Waves of Aggression, Out of Time).
 	switch f.Quantifier {
-	case "each", "each_player":
+	case "each", "each_player", "all":
 		if isPlayerFilter(f) {
 			return allPlayerTargets(gs, f, srcSeat)
 		}
@@ -249,9 +256,11 @@ func pickPlayerTarget(gs *GameState, f gameast.Filter, srcSeat int) []Target {
 func pickPermanentTarget(gs *GameState, f gameast.Filter, srcSeat int, src *Permanent) []Target {
 	// "any_target" / "any target" is the Lightning-Bolt classic — can be any
 	// creature, player, or planeswalker. MVP picks an opponent seat.
-	// The corpus parser also emits this as {base:"target", quantifier:"any"}.
-	if f.Base == "any_target" || f.Base == "any target" || f.Base == "any" ||
-		(f.Quantifier == "any" && (f.Base == "target" || f.Base == "")) {
+	// Shape detection lives in isAnyTargetShape — pre-r63 the parser's
+	// conjunction-artifact bases ("and"/"unless" with quantifier "any")
+	// fell through to the type matcher, matched nothing, and the spell
+	// resolved with no target.
+	if isAnyTargetShape(f) {
 		opps := gs.Opponents(srcSeat)
 		if len(opps) > 0 {
 			return []Target{{Kind: TargetKindSeat, Seat: opps[0]}}
@@ -411,11 +420,19 @@ func consumeAnnouncedTargets(gs *GameState, srcSeat int, src *Permanent, f gamea
 	return out
 }
 
-// isAnyTargetShape mirrors pickPermanentTarget's "any target" detection
-// (Lightning-Bolt class: any creature, player, or planeswalker).
+// isAnyTargetShape is the single "any target" detection (Lightning-Bolt
+// class: any creature, player, or planeswalker), shared by
+// pickPermanentTarget, consumeAnnouncedTargets, and the §608.2b gate.
+// The corpus parser emits the shape as {base:"any_target"/"any target"/
+// "any"}, as {base:"target"/"", quantifier:"any"}, and — for compound
+// clauses like "deals 4 damage to any target and 2 damage to you"
+// (Psionic Blast) or "to any target unless that player pays {2}"
+// (Rhystic Lightning) — with the conjunction word stranded in Base:
+// {base:"and"/"unless", quantifier:"any"}.
 func isAnyTargetShape(f gameast.Filter) bool {
 	return f.Base == "any_target" || f.Base == "any target" || f.Base == "any" ||
-		(f.Quantifier == "any" && (f.Base == "target" || f.Base == ""))
+		(f.Quantifier == "any" && (f.Base == "target" || f.Base == "" ||
+			f.Base == "and" || f.Base == "unless"))
 }
 
 // pickNPermanentTargets picks up to n distinct battlefield targets (§115.3).
