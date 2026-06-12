@@ -83,38 +83,31 @@ type ReplayData struct {
 }
 
 // Divergence is one reported difference between the Go and Python
-// streams for a single game.
+// streams for a single game. r63 phase-5 fold: the violation half IS
+// the canonical judge.ValidationViolation (Name carries the category —
+// "outcome" / "event_missing_go" / "event_missing_py" / "event_count" /
+// "turn_count" / "python_error" — and Message the detail); only the
+// report-row key (GameIdx) rides alongside. The old Category/Detail
+// duplicate vocabulary, the Canonical() mapping shim, and the
+// never-populated AtSeq/GoEvent/PyEvent fields are deleted — every
+// constructor goes through newDivergence, which stamps the parity
+// surface and severity once.
 type Divergence struct {
-	GameIdx  int    `json:"game_idx"`
-	Category string `json:"category"` // "outcome" / "event_missing_go" / "event_missing_py" / "event_field" / "event_count"
-	Detail   string `json:"detail"`   // free-form description
-	AtSeq    int    `json:"at_seq,omitempty"`
-	GoEvent  *Event `json:"go_event,omitempty"`
-	PyEvent  *Event `json:"py_event,omitempty"`
+	judge.ValidationViolation
+	GameIdx int `json:"game_idx"`
 }
 
-// Canonical maps a divergence onto the canonical violation vocabulary
-// (consolidation step 4). The Divergence struct itself stays: it is the
-// persisted parity-report row schema (paired Go/Py events are
-// load-bearing for diffing); the canonical view is what flows through
-// judge.LogViolation at origin.
-func (d Divergence) Canonical() judge.ValidationViolation {
-	ctx := map[string]interface{}{"game_idx": d.GameIdx}
-	if d.AtSeq != 0 {
-		ctx["at_seq"] = d.AtSeq
-	}
-	if d.GoEvent != nil {
-		ctx["go_event"] = d.GoEvent
-	}
-	if d.PyEvent != nil {
-		ctx["py_event"] = d.PyEvent
-	}
-	return judge.ValidationViolation{
-		Surface:  judge.SurfaceParity,
-		Name:     d.Category,
-		Severity: judge.SeverityCritical,
-		Message:  d.Detail,
-		Context:  ctx,
+// newDivergence builds a parity divergence in the canonical vocabulary.
+func newDivergence(gameIdx int, category, detail string) Divergence {
+	return Divergence{
+		ValidationViolation: judge.ValidationViolation{
+			Surface:  judge.SurfaceParity,
+			Name:     category,
+			Severity: judge.SeverityCritical,
+			Message:  detail,
+			Context:  map[string]interface{}{"game_idx": gameIdx},
+		},
+		GameIdx: gameIdx,
 	}
 }
 
@@ -122,7 +115,7 @@ func (d Divergence) Canonical() judge.ValidationViolation {
 // router (origin tap — aggregation sites must not re-log).
 func logDivergences(divs []Divergence) {
 	for _, d := range divs {
-		judge.LogViolation(d.Canonical())
+		judge.LogViolation(d.ValidationViolation)
 	}
 }
 
@@ -238,11 +231,7 @@ func Run(cfg Config) (*ParityReport, error) {
 
 		pyReplay, err := RunPython(cfg, idx, seed)
 		if err != nil {
-			pyErr := Divergence{
-				GameIdx:  idx,
-				Category: "python_error",
-				Detail:   err.Error(),
-			}
+			pyErr := newDivergence(idx, "python_error", err.Error())
 			logDivergences([]Divergence{pyErr})
 			report.Divergences = append(report.Divergences, pyErr)
 			report.CategoryCounts["python_error"]++
@@ -257,7 +246,7 @@ func Run(cfg Config) (*ParityReport, error) {
 			report.EventStreamMatches++
 		}
 		for _, d := range divs {
-			report.CategoryCounts[d.Category]++
+			report.CategoryCounts[d.Name]++
 		}
 		logDivergences(divs) // origin tap — Diff() freshly created these
 		report.Divergences = append(report.Divergences, divs...)
@@ -618,13 +607,10 @@ func Diff(gameIdx int, goR, pyR *ReplayData) []Divergence {
 		return divs
 	}
 	if !outcomesEqual(&goR.Outcome, &pyR.Outcome) {
-		divs = append(divs, Divergence{
-			GameIdx:  gameIdx,
-			Category: "outcome",
-			Detail: fmt.Sprintf("go_winner=%d go_end=%s py_winner=%d py_end=%s",
+		divs = append(divs, newDivergence(gameIdx, "outcome",
+			fmt.Sprintf("go_winner=%d go_end=%s py_winner=%d py_end=%s",
 				goR.Outcome.Winner, goR.Outcome.EndReason,
-				pyR.Outcome.Winner, pyR.Outcome.EndReason),
-		})
+				pyR.Outcome.Winner, pyR.Outcome.EndReason)))
 	}
 
 	goCounts := eventKindCounts(goR.Events)
@@ -655,22 +641,16 @@ func Diff(gameIdx int, goR, pyR *ReplayData) []Divergence {
 			default:
 				cat = "event_count"
 			}
-			divs = append(divs, Divergence{
-				GameIdx:  gameIdx,
-				Category: cat,
-				Detail:   fmt.Sprintf("kind=%q go=%d py=%d", k, gc, pc),
-			})
+			divs = append(divs, newDivergence(gameIdx, cat,
+				fmt.Sprintf("kind=%q go=%d py=%d", k, gc, pc)))
 		}
 	}
 
 	// Turn-count / duration divergence.
 	if goR.Outcome.Turns != pyR.Outcome.Turns {
-		divs = append(divs, Divergence{
-			GameIdx:  gameIdx,
-			Category: "turn_count",
-			Detail: fmt.Sprintf("go_turns=%d py_turns=%d",
-				goR.Outcome.Turns, pyR.Outcome.Turns),
-		})
+		divs = append(divs, newDivergence(gameIdx, "turn_count",
+			fmt.Sprintf("go_turns=%d py_turns=%d",
+				goR.Outcome.Turns, pyR.Outcome.Turns)))
 	}
 
 	return divs
@@ -733,7 +713,7 @@ func WriteMarkdown(r *ParityReport, path string) error {
 	}
 	for i := 0; i < n; i++ {
 		d := r.Divergences[i]
-		fmt.Fprintf(&sb, "- game=%d cat=%s — %s\n", d.GameIdx, d.Category, d.Detail)
+		fmt.Fprintf(&sb, "- game=%d cat=%s — %s\n", d.GameIdx, d.Name, d.Message)
 	}
 	return os.WriteFile(path, []byte(sb.String()), 0o644)
 }

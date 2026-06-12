@@ -1,6 +1,8 @@
 package paritycheck
 
 import (
+	"github.com/hexdek/hexdek/internal/judge"
+
 	"os"
 	"path/filepath"
 	"testing"
@@ -33,7 +35,7 @@ func TestDiff_OutcomeDivergence(t *testing.T) {
 	divs := Diff(0, go_, py)
 	found := false
 	for _, d := range divs {
-		if d.Category == "outcome" {
+		if d.Name == "outcome" {
 			found = true
 		}
 	}
@@ -60,7 +62,7 @@ func TestDiff_EventCountDivergence(t *testing.T) {
 	divs := Diff(0, go_, py)
 	found := false
 	for _, d := range divs {
-		if d.Category == "event_count" {
+		if d.Name == "event_count" {
 			found = true
 		}
 	}
@@ -94,10 +96,10 @@ func TestWriteMarkdown(t *testing.T) {
 	path := filepath.Join(dir, "report.md")
 	report := &ParityReport{
 		Games: 2, OutcomeMatches: 1, EventStreamMatches: 0,
-		CategoryCounts: map[string]int{"outcome": 1, "event_count": 3},
-		DeckPaths:      []string{"a.txt", "b.txt"},
-		NSeats:         2,
-		BaseSeed:       42,
+		CategoryCounts:  map[string]int{"outcome": 1, "event_count": 3},
+		DeckPaths:       []string{"a.txt", "b.txt"},
+		NSeats:          2,
+		BaseSeed:        42,
 		PythonAvailable: true,
 	}
 	if err := WriteMarkdown(report, path); err != nil {
@@ -139,5 +141,31 @@ func TestParsePythonReplay_OutcomeLine(t *testing.T) {
 	}
 	if replay.Events[0].Kind != "turn_start" {
 		t.Errorf("expected first kind=turn_start, got %q", replay.Events[0].Kind)
+	}
+}
+
+// r63 phase-5 fold pin: Divergence IS the canonical violation — the
+// constructor stamps surface/severity/context once, and logDivergences
+// feeds the embedded value to the Judge router verbatim.
+func TestDivergence_IsCanonicalViolation(t *testing.T) {
+	var got []judge.ValidationViolation
+	unregister := judge.RegisterSink(func(v judge.ValidationViolation) {
+		got = append(got, v)
+	})
+	defer unregister()
+
+	d := newDivergence(7, "outcome", "go_winner=1 py_winner=2")
+	if d.Surface != judge.SurfaceParity || d.Severity != judge.SeverityCritical {
+		t.Fatalf("constructor did not stamp canonical fields: %+v", d.ValidationViolation)
+	}
+	if d.Name != "outcome" || d.Message != "go_winner=1 py_winner=2" {
+		t.Fatalf("category/detail not carried by Name/Message: %+v", d.ValidationViolation)
+	}
+	logDivergences([]Divergence{d})
+	if len(got) != 1 {
+		t.Fatalf("router received %d violations, want 1", len(got))
+	}
+	if got[0].Name != "outcome" || got[0].Context["game_idx"] != 7 {
+		t.Errorf("router payload mismatch: %+v", got[0])
 	}
 }

@@ -75,8 +75,9 @@ const (
 //	                                                   Context: Details + {"seat": Seat}}
 //	loki chaosViolation{InvariantName, Message, …}  → {Surface: SurfaceLoki, Name, Message,
 //	                                                   Context: {"game_idx", "seed", "turn", …}}
-//	paritycheck.Divergence{Category, Detail, …}     → {Surface: SurfaceParity, Name: Category,
-//	                                                   Message: Detail, Context: {"at_seq", …}}
+//	paritycheck.Divergence                          → EMBEDS ValidationViolation directly
+//	                                                   (r63 phase-5 fold: Name=category,
+//	                                                   Message=detail, Context: {"game_idx"})
 type ValidationViolation struct {
 	// Surface identifies the emitting validator (Surface* constants).
 	Surface string `json:"surface"`
