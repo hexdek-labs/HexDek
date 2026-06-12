@@ -565,6 +565,14 @@ func DeclareAttackers(gs *GameState, attackerSeat int) []*Permanent {
 			}
 		}
 
+		// Ride-along legality validator (legality.go): the declaration
+		// is final here and the attack-tap hasn't happened yet, so
+		// Tapped still reflects pre-declaration state. The Hat's
+		// ChooseAttackers return is applied UNVERIFIED above — this is
+		// the only re-derivation of CR 508.1 for what was declared.
+		// nil-receiver no-op when the validator is off.
+		gs.Legality.ObserveAttackDeclaration(gs, attackerSeat, p)
+
 		if !p.HasKeyword("vigilance") {
 			p.Tapped = true
 			// Dispatch tap_event for cards like Magda, Brazen Outlaw
@@ -899,6 +907,11 @@ func DeclareBlockers(gs *GameState, attackers []*Permanent, defenderSeat int) ma
 		if hatMap != nil {
 			for _, a := range attackers {
 				blockers := hatMap[a]
+				// Ride-along legality validator: the Hat's block map is
+				// applied with no engine validation at all — observe each
+				// (attacker, blocker-set) BEFORE flagBlocking is stamped
+				// so multi-block reads as "was already blocking".
+				gs.Legality.ObserveBlockDeclaration(gs, defenderSeat, a, blockers)
 				for _, b := range blockers {
 					setPermFlag(b, flagBlocking, true)
 				}
@@ -997,6 +1010,7 @@ func DeclareBlockers(gs *GameState, attackers []*Permanent, defenderSeat int) ma
 			assigned = append(assigned, second)
 			used[second] = true
 		}
+		gs.Legality.ObserveBlockDeclaration(gs, defenderSeat, atk, assigned)
 		for _, b := range assigned {
 			setPermFlag(b, flagBlocking, true)
 		}

@@ -2271,7 +2271,7 @@ func evasionScore(gs *gameengine.GameState, attacker *gameengine.Permanent, defe
 
 	canBlockCount := 0
 	for _, b := range untapped {
-		if gameengine.CanBlock(attacker, b) {
+		if gameengine.CanBlockGS(gs, attacker, b) {
 			canBlockCount++
 		}
 	}
@@ -2352,7 +2352,7 @@ func canSwingProfitably(gs *gameengine.GameState, attacker *gameengine.Permanent
 		}
 		legalBlockers := make([]*gameengine.Permanent, 0, len(opp.Battlefield))
 		for _, b := range opp.Battlefield {
-			if b != nil && b.IsCreature() && !b.Tapped && gameengine.CanBlock(attacker, b) {
+			if b != nil && b.IsCreature() && !b.Tapped && gameengine.CanBlockGS(gs, attacker, b) {
 				legalBlockers = append(legalBlockers, b)
 			}
 		}

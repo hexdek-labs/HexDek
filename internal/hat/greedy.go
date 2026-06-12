@@ -928,7 +928,7 @@ func (h *GreedyHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, attack
 			if used[b] {
 				continue
 			}
-			if gameengine.CanBlock(atk, b) {
+			if gameengine.CanBlockGS(gs, atk, b) {
 				legal = append(legal, b)
 			}
 		}

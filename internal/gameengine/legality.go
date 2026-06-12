@@ -73,11 +73,25 @@ func (v LegalityViolation) String() string {
 // read this instead of re-deriving "what just happened" from the live
 // state, which by Finish time already reflects the action.
 type LegalityObservation struct {
-	Kind       string // "cast" | "activate"
+	Kind       string // "cast" | "activate" | "attack" | "block"
 	Seat       int
 	Card       *Card
-	Perm       *Permanent // activation source (nil for casts)
+	Perm       *Permanent // activation source / declared attacker / blocker's attacker target
 	AbilityIdx int        // activations only
+
+	// Ability is the announced Activated AST node (activations only) —
+	// phase-2 checks read its TimingRestriction and loyalty cost.
+	Ability *gameast.Activated
+
+	// Combat declarations (phase 2). For Kind "attack", Perm is the
+	// declared attacker. For Kind "block", Attacker is the attacked
+	// creature and Blockers the full set assigned to it in this
+	// declaration; BlockersWereBlocking[i] records whether Blockers[i]
+	// was ALREADY marked blocking (another attacker) before this
+	// assignment — the multi-block detection per CR 509.
+	Attacker             *Permanent
+	Blockers             []*Permanent
+	BlockersWereBlocking []bool
 
 	// Announcement-time snapshot (Begin*).
 	TurnAtAnnounce       int
@@ -127,6 +141,19 @@ func (o *LegalityObservation) ActionLabel() string {
 	if o.Kind == "activate" {
 		return fmt.Sprintf("activate:%s#%d", name, o.AbilityIdx)
 	}
+	if o.Kind == "attack" {
+		if o.Perm != nil && o.Perm.Card != nil {
+			name = o.Perm.Card.DisplayName()
+		}
+		return "attack:" + name
+	}
+	if o.Kind == "block" {
+		atk := "<unknown>"
+		if o.Attacker != nil && o.Attacker.Card != nil {
+			atk = o.Attacker.Card.DisplayName()
+		}
+		return "block:" + atk
+	}
 	return "cast:" + name
 }
 
@@ -158,6 +185,10 @@ func NewLegalityValidator(seed int64) *LegalityValidator {
 	v.Register(LegalityCheck{Name: "timing", Fn: checkLegalityTiming})
 	v.Register(LegalityCheck{Name: "targets", Fn: checkLegalityTargets})
 	v.Register(LegalityCheck{Name: "cost-paid", Fn: checkLegalityCostPaid})
+	// Phase-2 set (r62 follow-up): combat declarations + ability timing.
+	v.Register(LegalityCheck{Name: "attack-decl", Fn: checkLegalityAttackDecl})
+	v.Register(LegalityCheck{Name: "block-decl", Fn: checkLegalityBlockDecl})
+	v.Register(LegalityCheck{Name: "ability-timing", Fn: checkLegalityAbilityTiming})
 	return v
 }
 
@@ -267,6 +298,7 @@ func (v *LegalityValidator) BeginActivation(gs *GameState, seatIdx int, perm *Pe
 	if ab != nil && ab.Cost.Mana != nil {
 		obs.AbilityManaCost = ab.Cost.Mana.CMC()
 	}
+	obs.Ability = ab
 	v.pushActive(obs)
 	return obs
 }
@@ -578,4 +610,234 @@ func legalityStackTopName(gs *GameState) string {
 		name = it.Source.Card.DisplayName() + " (ability)"
 	}
 	return it.Kind + ":" + name
+}
+
+// ---------------------------------------------------------------------------
+// Phase-2 hooks — combat declarations (synchronous: no Begin/Finish span,
+// the declaration is checked at the moment it becomes final)
+// ---------------------------------------------------------------------------
+
+// ObserveAttackDeclaration is called by DeclareAttackers once per
+// finalized attacker, BEFORE the engine taps it for attacking — Tapped
+// still reflects pre-declaration state. nil-receiver no-op when off.
+func (v *LegalityValidator) ObserveAttackDeclaration(gs *GameState, seatIdx int, p *Permanent) {
+	if v == nil || gs == nil || p == nil {
+		return
+	}
+	obs := &LegalityObservation{
+		Kind:                 "attack",
+		Seat:                 seatIdx,
+		Perm:                 p,
+		Card:                 p.Card,
+		TurnAtAnnounce:       gs.Turn,
+		PhaseAtAnnounce:      gs.Phase,
+		ActiveAtAnnounce:     gs.Active,
+		StackDepthAtAnnounce: len(gs.Stack),
+	}
+	v.runChecks(gs, obs)
+}
+
+// ObserveBlockDeclaration is called by DeclareBlockers once per
+// (attacker, assigned-blocker-set) pair, BEFORE flagBlocking is set on
+// the assigned blockers — so a blocker already marked blocking was
+// committed to a DIFFERENT attacker earlier in this declaration.
+// nil-receiver no-op when off.
+func (v *LegalityValidator) ObserveBlockDeclaration(gs *GameState, defenderSeat int, attacker *Permanent, blockers []*Permanent) {
+	if v == nil || gs == nil || attacker == nil || len(blockers) == 0 {
+		return
+	}
+	were := make([]bool, len(blockers))
+	for i, b := range blockers {
+		were[i] = b != nil && b.IsBlocking()
+	}
+	obs := &LegalityObservation{
+		Kind:                 "block",
+		Seat:                 defenderSeat,
+		Attacker:             attacker,
+		Blockers:             blockers,
+		BlockersWereBlocking: were,
+		TurnAtAnnounce:       gs.Turn,
+		PhaseAtAnnounce:      gs.Phase,
+		ActiveAtAnnounce:     gs.Active,
+		StackDepthAtAnnounce: len(gs.Stack),
+	}
+	v.runChecks(gs, obs)
+}
+
+// ---------------------------------------------------------------------------
+// Phase-2 checks
+// ---------------------------------------------------------------------------
+
+// checkLegalityAttackDecl — CR §508.1: a declared attacker must be an
+// untapped creature its controller has controlled continuously since the
+// turn began (or have haste, CR §302.6), must not have defender
+// (§508.1a), and must exist (§702.26 phasing). The engine's own
+// DeclareAttackers builds a legal pool via canAttack but then trusts the
+// Hat's ChooseAttackers return UNVERIFIED — a policy returning a
+// creature outside the legal pool is declared anyway. This check
+// re-derives legality for what was actually declared.
+func checkLegalityAttackDecl(gs *GameState, obs *LegalityObservation) []LegalityViolation {
+	if obs.Kind != "attack" || obs.Perm == nil {
+		return nil
+	}
+	p := obs.Perm
+	var out []LegalityViolation
+	add := func(rule, detail string) {
+		out = append(out, LegalityViolation{
+			Turn: obs.TurnAtAnnounce, Seat: obs.Seat, Action: obs.ActionLabel(),
+			Rule: rule, Detail: detail,
+		})
+	}
+	if !p.IsCreature() {
+		add("508.1a", "declared attacker is not a creature")
+		return out
+	}
+	if p.PhasedOut {
+		add("702.26b", "declared attacker is phased out")
+		return out
+	}
+	if p.Tapped {
+		add("508.1c", "declared attacker is already tapped")
+	}
+	// Haste detection is deliberately permissive (printed/granted OR
+	// layer-granted) so an anthem-haste creature never false-positives.
+	if p.SummoningSick && !(p.HasKeyword("haste") || gs.HasKeywordOf(p, "haste")) {
+		add("302.6", "declared attacker is summoning-sick without haste")
+	}
+	// Defender via the layer-aware query so a strip effect (Humility)
+	// correctly legalizes the attack.
+	if gs.HasKeywordOf(p, "defender") {
+		add("508.1a", "declared attacker has defender")
+	}
+	if p.Flags != nil && p.Flags["detained"] == 1 {
+		add("508.1a", "declared attacker is detained (can't attack)")
+	}
+	return out
+}
+
+// legalityCanMultiBlock reports whether a blocker's text grants
+// block-an-additional / block-any-number — the only sanctioned reasons
+// for one creature to block two attackers (CR §509.1a default is one).
+func legalityCanMultiBlock(b *Permanent) bool {
+	if b == nil {
+		return false
+	}
+	ot := OracleTextLower(b.Card)
+	return strings.Contains(ot, "block an additional") ||
+		strings.Contains(ot, "block any number")
+}
+
+// checkLegalityBlockDecl — CR §509.1: each assigned blocker must be an
+// untapped creature (§509.1a), may block only one attacker unless its
+// text allows more, and must satisfy the attacker's evasion/blocking
+// restrictions (§509.1b — re-derived through canBlockGS: flying,
+// horsemanship, fear/intimidate/shadow/skulk, landwalk, protection,
+// unblockable). Menace (§702.110b) is a set-level requirement: a menace
+// attacker blocked by exactly one creature is an illegal declaration.
+// The engine's hat path (DeclareBlockers → AssignBlockers) applies the
+// returned map with NO validation at all — this check is the only gate
+// behind a policy bug there.
+func checkLegalityBlockDecl(gs *GameState, obs *LegalityObservation) []LegalityViolation {
+	if obs.Kind != "block" || obs.Attacker == nil || len(obs.Blockers) == 0 {
+		return nil
+	}
+	var out []LegalityViolation
+	add := func(rule, detail string) {
+		out = append(out, LegalityViolation{
+			Turn: obs.TurnAtAnnounce, Seat: obs.Seat, Action: obs.ActionLabel(),
+			Rule: rule, Detail: detail,
+		})
+	}
+	live := 0
+	seen := map[*Permanent]bool{}
+	for i, b := range obs.Blockers {
+		if b == nil {
+			continue
+		}
+		live++
+		if seen[b] && !legalityCanMultiBlock(b) {
+			name := "<unknown>"
+			if b.Card != nil {
+				name = b.Card.DisplayName()
+			}
+			add("509.1", fmt.Sprintf("blocker %q committed twice in one assignment", name))
+			continue
+		}
+		seen[b] = true
+		name := "<unknown>"
+		if b.Card != nil {
+			name = b.Card.DisplayName()
+		}
+		if !b.IsCreature() {
+			add("509.1a", fmt.Sprintf("blocker %q is not a creature", name))
+			continue
+		}
+		if b.PhasedOut {
+			add("702.26b", fmt.Sprintf("blocker %q is phased out", name))
+			continue
+		}
+		if b.Tapped {
+			add("509.1a", fmt.Sprintf("blocker %q is tapped", name))
+			continue
+		}
+		if i < len(obs.BlockersWereBlocking) && obs.BlockersWereBlocking[i] && !legalityCanMultiBlock(b) {
+			add("509.1", fmt.Sprintf("blocker %q is already blocking another attacker", name))
+			continue
+		}
+		if !canBlockGS(gs, obs.Attacker, b) {
+			add("509.1b", fmt.Sprintf("blocker %q cannot legally block this attacker (evasion/restriction unsatisfied)", name))
+		}
+	}
+	// §702.110b — menace: can't be blocked except by two or more.
+	if live == 1 && (obs.Attacker.HasKeyword("menace") || gs.HasKeywordOf(obs.Attacker, "menace")) {
+		add("702.110b", "menace attacker blocked by exactly one creature")
+	}
+	return out
+}
+
+// checkLegalityAbilityTiming — CR §606.3 (loyalty abilities) and
+// §602.5d ("activate only as a sorcery"): both restrict activation to
+// the controller's own turn, a main phase, and an empty stack. The
+// engine enforces the loyalty ONCE-PER-TURN limit (§606.3's second
+// half) but has NO sorcery-speed gate on either family — an AI hat can
+// (and does) fire loyalty abilities at instant speed mid-stack.
+func checkLegalityAbilityTiming(_ *GameState, obs *LegalityObservation) []LegalityViolation {
+	if obs.Kind != "activate" || obs.Ability == nil {
+		return nil
+	}
+	rule := ""
+	if strings.EqualFold(strings.TrimSpace(obs.Ability.TimingRestriction), "sorcery") {
+		rule = "602.5d"
+	}
+	if obs.Perm != nil && obs.Perm.IsPlaneswalker() {
+		if _, ok := LoyaltyCost(obs.Ability); ok {
+			rule = "606.3"
+		} else if obs.Ability.Cost.PayLife != nil && *obs.Ability.Cost.PayLife > 0 {
+			// Legacy dataset shape: planeswalker minus costs parsed into
+			// PayLife — ActivateAbility routes these to loyalty, so the
+			// timing restriction applies identically.
+			rule = "606.3"
+		}
+	}
+	if rule == "" {
+		return nil
+	}
+	var out []LegalityViolation
+	add := func(detail string) {
+		out = append(out, LegalityViolation{
+			Turn: obs.TurnAtAnnounce, Seat: obs.Seat, Action: obs.ActionLabel(),
+			Rule: rule, Detail: detail,
+		})
+	}
+	if obs.Seat != obs.ActiveAtAnnounce {
+		add(fmt.Sprintf("sorcery-speed ability activated by non-active seat (active=%d)", obs.ActiveAtAnnounce))
+	}
+	if !legalityMainPhase(obs.PhaseAtAnnounce) {
+		add(fmt.Sprintf("sorcery-speed ability activated outside a main phase (phase=%q)", obs.PhaseAtAnnounce))
+	}
+	if obs.StackDepthAtAnnounce > 0 {
+		add(fmt.Sprintf("sorcery-speed ability activated with %d item(s) on the stack (top=%q)",
+			obs.StackDepthAtAnnounce, obs.StackTopAtAnnounce))
+	}
+	return out
 }

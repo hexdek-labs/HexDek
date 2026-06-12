@@ -222,7 +222,7 @@ func (*OctoHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, attackers 
 			if used[b] {
 				continue
 			}
-			if gameengine.CanBlock(atk, b) {
+			if gameengine.CanBlockGS(gs, atk, b) {
 				legal = append(legal, b)
 			}
 		}

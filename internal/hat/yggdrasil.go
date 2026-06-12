@@ -6781,7 +6781,7 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 		}
 		legal := make([]*gameengine.Permanent, 0, len(pool))
 		for _, b := range pool {
-			if !used[b] && gameengine.CanBlock(atk, b) {
+			if !used[b] && gameengine.CanBlockGS(gs, atk, b) {
 				legal = append(legal, b)
 			}
 		}
