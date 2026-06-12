@@ -502,8 +502,41 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 				// missed by ReleaseSourceLinkedExiles by construction).
 				// Sweeps every seat's exile zone for stale tag matches.
 				ClearLinkedExileTagsForSource(gs, p.Timestamp)
-				// Count real cards for zone conservation tracking.
-				if p.Card != nil && !p.IsToken() {
+				// r63 production zone-disappearance fix (grinder
+				// feynman zone_accounting: seats 5-20 cards LIGHT):
+				// a permanent the leaver merely CONTROLLED but another
+				// player OWNS does not leave the game — the control
+				// effect ends and the object is EXILED (CR §800.4a
+				// second clause / §800.4c). The pre-r63 sweep dropped
+				// it from the battlefield slice without routing it
+				// anywhere: the card object vanished from every zone
+				// (the owner's count read light) AND it was counted
+				// into the LEAVER's realCardsLeaving. Route the card
+				// to its OWNER's exile zone (the doc comment's "MVP
+				// simply exiles it" intent, now actually performed).
+				// Token permanents cease either way (§704.5d — no card
+				// to exile). Zone-change trigger dispatch is skipped
+				// deliberately: mid-sweep MoveCard races are the same
+				// hazard the LinkedExile comment above documents.
+				if p.Card != nil && p.Owner != seatIdx && !p.IsToken() {
+					ownerSeat := p.Owner
+					if ownerSeat >= 0 && ownerSeat < len(gs.Seats) && gs.Seats[ownerSeat] != nil {
+						gs.Seats[ownerSeat].Exile = append(gs.Seats[ownerSeat].Exile, p.Card)
+						gs.LogEvent(Event{
+							Kind: "zone_change", Seat: ownerSeat, Target: -1,
+							Source: p.Card.DisplayName(),
+							Details: map[string]interface{}{
+								"from_zone": "battlefield",
+								"to_zone":   "exile",
+								"rule":      "800.4c",
+								"reason":    "controller_left_game",
+							},
+						})
+					}
+				}
+				// Count real cards for zone conservation tracking —
+				// ONLY the leaver's own cards actually leave the game.
+				if p.Card != nil && !p.IsToken() && p.Owner == seatIdx {
 					realCardsLeaving++
 				}
 				detached = append(detached, p)
