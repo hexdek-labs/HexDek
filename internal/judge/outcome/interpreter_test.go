@@ -150,3 +150,58 @@ func TestOutcome_UpToNRemovalClass_ZeroDivergence(t *testing.T) {
 			finding.Expected, finding.Actual)
 	}
 }
+
+// ---- r63 phase 3: hard-kind unit coverage ---------------------------------
+
+func TestOutcome_Phase3KindsPass(t *testing.T) {
+	cases := []struct {
+		name string
+		eff  gameast.Effect
+	}{
+		{"token copy of creature", &gameast.CreateToken{Count: intRef(1), IsCopyOf: &gameast.Filter{Base: "creature"}}},
+		{"draw per creature you control", &gameast.ModificationEffect{ModKind: "draw_per", Args: []interface{}{"creature you control"}}},
+		{"draw per tapped opp creature (zero)", &gameast.ModificationEffect{ModKind: "draw_per", Args: []interface{}{"tapped creature target opponent controls"}}},
+		{"divided X damage among creatures", &gameast.Damage{Amount: gameast.NumberOrRef{IsStr: true, Str: "x"}, Divided: true, Target: gameast.Filter{Base: "creature", Quantifier: "n", Targeted: true}}},
+	}
+	for _, c := range cases {
+		finding, ran := RunEffect("unit:"+c.name, c.name, c.eff)
+		if !ran {
+			t.Errorf("%s: unexpectedly out of scope", c.name)
+			continue
+		}
+		if finding != nil {
+			t.Errorf("%s diverged:\n  exp %s\n  act %s", c.name, finding.Expected, finding.Actual)
+		}
+	}
+}
+
+func TestOutcome_MultiPickChoiceSubsets(t *testing.T) {
+	chooseTwo := &gameast.Choice{
+		Pick: intRef(2),
+		Options: []gameast.Effect{
+			&gameast.Draw{Count: intRef(1), Target: gameast.Filter{Base: "self"}},
+			&gameast.GainLife{Amount: intRef(3), Target: gameast.Filter{Base: "you"}},
+			&gameast.LoseLife{Amount: intRef(1), Target: gameast.Filter{Base: "each_opponent"}},
+		},
+	}
+	set, ok := ExpectSet(DefaultSpec(), chooseTwo)
+	if !ok || len(set) != 3 { // C(3,2)
+		t.Fatalf("choose-two of three must yield 3 subset expectations, ok=%v n=%d", ok, len(set))
+	}
+	if finding, ran := RunEffect("unit:choose-two", "choose two", chooseTwo); !ran {
+		t.Fatal("choose-two unexpectedly out of scope")
+	} else if finding != nil {
+		t.Errorf("engine's choose-two matched no subset:\n  act %s", finding.Actual)
+	}
+}
+
+func TestOutcome_ETBCountersCheck(t *testing.T) {
+	m := &gameast.Modification{ModKind: "etb_with_counters", Args: []interface{}{2, "+1/+1"}}
+	finding, ran := CheckETBCounters("unit:etbc", m)
+	if !ran {
+		t.Fatal("etb_with_counters unexpectedly out of scope")
+	}
+	if finding != nil {
+		t.Fatalf("enters-with-2-counters diverged: %s", finding)
+	}
+}
