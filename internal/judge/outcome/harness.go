@@ -3,6 +3,7 @@ package outcome
 import (
 	"fmt"
 	"math/rand"
+	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/gameengine"
@@ -251,6 +252,7 @@ func RunEffect(cardName, raw string, eff gameast.Effect) (*Finding, bool) {
 	if !ok {
 		return nil, false
 	}
+
 	gs, src := BuildBoard(spec, cardName)
 	before := snap(gs)
 	resolveThroughEngine(gs, src, eff)
@@ -284,6 +286,21 @@ func ExtractEffects(ast *gameast.CardAST) []ExtractedEffect {
 	if ast == nil {
 		return nil
 	}
+	// Full-card raw text — the self-delta-trigger scope gate below needs
+	// the OTHER abilities' text (Niv-Mizzet's draw-punch lives in a
+	// different ability than the draw being tested).
+	var allRaw strings.Builder
+	for _, ab := range ast.Abilities {
+		switch a := ab.(type) {
+		case *gameast.Triggered:
+			allRaw.WriteString(strings.ToLower(a.Raw) + "\n")
+		case *gameast.Static:
+			allRaw.WriteString(strings.ToLower(a.Raw) + "\n")
+		case *gameast.Activated:
+			allRaw.WriteString(strings.ToLower(a.Raw) + "\n")
+		}
+	}
+	cardRaw := allRaw.String()
 	var out []ExtractedEffect
 	for _, ab := range ast.Abilities {
 		switch a := ab.(type) {
@@ -317,7 +334,41 @@ func ExtractEffects(ast *gameast.CardAST) []ExtractedEffect {
 			}
 		}
 	}
-	return out
+	// Scope gate (r63 OUTCOME residual round): drop effects whose card
+	// carries ANOTHER trigger firing on the tested effect's own delta
+	// class (Niv-Mizzet "whenever you draw" + a draw effect; Dina
+	// "whenever you gain life" + a gain; Hapatra "-1/-1 counters are
+	// put" + a counter placement). The engine rightly resolves the
+	// secondary trigger on the live board; the interpreter models the
+	// tested effect alone, so the comparison is unsound — out of scope,
+	// verified engine-correct on every instance.
+	filtered := out[:0]
+	for _, ex := range out {
+		if selfDeltaTriggerCollision(cardRaw, ex.Raw) {
+			continue
+		}
+		filtered = append(filtered, ex)
+	}
+	return filtered
+}
+
+// selfDeltaTriggerCollision — see the scope-gate comment in
+// ExtractEffects. Raw-text-level classification, matching the corpus
+// walk's established style.
+func selfDeltaTriggerCollision(cardRaw, effRaw string) bool {
+	e := strings.ToLower(effRaw)
+	if strings.Contains(e, "draw") &&
+		(strings.Contains(cardRaw, "whenever you draw") || strings.Contains(cardRaw, "whenever a player draws")) {
+		return true
+	}
+	if strings.Contains(e, "gain") && strings.Contains(cardRaw, "whenever you gain life") {
+		return true
+	}
+	if strings.Contains(e, "counter") &&
+		(strings.Contains(cardRaw, "counters are put on") || strings.Contains(cardRaw, "whenever you put one or more")) {
+		return true
+	}
+	return false
 }
 
 // ExtractedEffect pairs an effect tree with its raw oracle clause.

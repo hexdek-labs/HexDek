@@ -24,20 +24,7 @@ func init() {
 }
 
 func registerReyhanLastOfTheAbzan(r *Registry) {
-	r.OnETB("Reyhan, Last of the Abzan", reyhanETB)
 	r.OnTrigger("Reyhan, Last of the Abzan", "creature_dies", reyhanCreatureDies)
-}
-
-func reyhanETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "reyhan_etb_three_counters"
-	if gs == nil || perm == nil || perm.Card == nil {
-		return
-	}
-	perm.AddCounter("+1/+1", 3)
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":     perm.Controller,
-		"counters": perm.Counters["+1/+1"],
-	})
 }
 
 func reyhanCreatureDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -88,7 +75,7 @@ func reyhanCreatureDies(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 	target.AddCounter("+1/+1", n)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":           perm.Controller,
-		"trigger_cause": dying.Card.DisplayName(),
+		"trigger_cause":  dying.Card.DisplayName(),
 		"counters_moved": n,
 		"target":         target.Card.DisplayName(),
 	})

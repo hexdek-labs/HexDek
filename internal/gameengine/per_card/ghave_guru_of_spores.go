@@ -22,11 +22,10 @@ import (
 // mana — they go on the stack normally.
 //
 // Implementation:
-//   - OnETB: pin counters to 5 (CR §122.2 — replacement effects on the
-//     printed "enters with N counters" clause are layered into the entry,
-//     and Doubling Season / Hardened Scales / Pir would already have
-//     adjusted the count via the engine's counter-replacement pipeline if
-//     wired; we set the printed value directly here).
+//   - enters-with-counters: handled by the GENERIC AST static path
+//     (ApplyStaticETBCounters) — the per_card OnETB duplicate was
+//     DELETED in r63 (OUTCOME finding: both paths ran, Ghave entered
+//     with 10 counters).
 //   - OnActivated(0): {1}, Remove a +1/+1 counter from a creature you
 //     control → mint a 1/1 green Saproling token. Picks ctx["counter_perm"]
 //     if supplied (the hat's preferred donor); otherwise picks any
@@ -37,20 +36,7 @@ import (
 //     ctx["target_perm"] receives the counter (defaults to Ghave to grow
 //     her body and feed activation 0 again).
 func registerGhaveGuruOfSpores(r *Registry) {
-	r.OnETB("Ghave, Guru of Spores", ghaveETB)
 	r.OnActivated("Ghave, Guru of Spores", ghaveActivate)
-}
-
-func ghaveETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	if gs == nil || perm == nil {
-		return
-	}
-	perm.AddCounter("+1/+1", 5)
-	gs.InvalidateCharacteristicsCache()
-	emit(gs, "ghave_guru_of_spores_etb_counters", perm.Card.DisplayName(), map[string]interface{}{
-		"seat":     perm.Controller,
-		"counters": perm.Counters["+1/+1"],
-	})
 }
 
 func ghaveActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
@@ -95,10 +81,10 @@ func ghaveCounterToToken(gs *gameengine.GameState, src *gameengine.Permanent, ct
 	enterBattlefieldWithETB(gs, seat, token, false)
 
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-		"seat":          seat,
-		"donor":         donor.Card.DisplayName(),
+		"seat":           seat,
+		"donor":          donor.Card.DisplayName(),
 		"donor_counters": donor.Counters["+1/+1"],
-		"token":         "Saproling Token",
+		"token":          "Saproling Token",
 	})
 }
 
