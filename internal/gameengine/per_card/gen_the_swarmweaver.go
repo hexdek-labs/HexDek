@@ -28,6 +28,7 @@ import (
 //     refresh ensures combat math sees the boost on every refresh.
 func registerTheSwarmweaver(r *Registry) {
 	r.OnETB("The Swarmweaver", theSwarmweaverETB)
+	r.OwnsETBTrigger("The Swarmweaver")
 	r.OnTrigger("The Swarmweaver", "upkeep_controller", theSwarmweaverRefresh)
 	r.OnTrigger("The Swarmweaver", "end_step", theSwarmweaverRefresh)
 }

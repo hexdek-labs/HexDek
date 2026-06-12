@@ -28,6 +28,7 @@ import (
 //   - Flying handled by AST keyword pipeline.
 func registerMoseoVeinsNewDean(r *Registry) {
 	r.OnETB("Moseo, Vein's New Dean", moseoETB)
+	r.OwnsETBTrigger("Moseo, Vein's New Dean")
 	r.OnTrigger("Moseo, Vein's New Dean", "end_step", moseoEndStep)
 }
 

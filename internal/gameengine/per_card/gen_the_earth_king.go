@@ -25,6 +25,7 @@ import (
 //     per such attacker, tapped, then shuffle.
 func registerTheEarthKing(r *Registry) {
 	r.OnETB("The Earth King", theEarthKingETB)
+	r.OwnsETBTrigger("The Earth King")
 	r.OnTrigger("The Earth King", "combat_attackers_declared", theEarthKingAttack)
 	r.OnTrigger("The Earth King", "attack", theEarthKingAttackTrigger)
 }

@@ -30,6 +30,7 @@ import (
 //     Σ_opp PoisonCounters.
 func registerVishgrazTheDoomhive(r *Registry) {
 	r.OnETB("Vishgraz, the Doomhive", vishgrazTheDoomhiveETB)
+	r.OwnsETBTrigger("Vishgraz, the Doomhive")
 	r.OnTrigger("Vishgraz, the Doomhive", "combat_begin", vishgrazRecomputeBuff)
 	r.OnTrigger("Vishgraz, the Doomhive", "creature_dies", vishgrazRecomputeBuff)
 	r.OnTrigger("Vishgraz, the Doomhive", "permanent_ltb", vishgrazRecomputeBuff)

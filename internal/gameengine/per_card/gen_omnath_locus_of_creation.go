@@ -27,6 +27,7 @@ import (
 //     no effect).
 func registerOmnathLocusOfCreation(r *Registry) {
 	r.OnETB("Omnath, Locus of Creation", omnathLocusOfCreationETB)
+	r.OwnsETBTrigger("Omnath, Locus of Creation")
 	r.OnTrigger("Omnath, Locus of Creation", "permanent_etb", omnathLandfall)
 }
 

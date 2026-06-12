@@ -30,6 +30,7 @@ import (
 //   - "you may" — Hat policy: always accept (free land drop is upside).
 func registerElanorGardner(r *Registry) {
 	r.OnETB("Elanor Gardner", elanorGardnerETB)
+	r.OwnsETBTrigger("Elanor Gardner")
 	r.OnTrigger("Elanor Gardner", "food_sacrificed", elanorGardnerFoodSacced)
 	r.OnTrigger("Elanor Gardner", "end_step", elanorGardnerEndStep)
 }

@@ -38,6 +38,7 @@ import (
 // dominant case. emitPartial flags the broader semantics.
 func registerVren(r *Registry) {
 	r.OnETB("Vren, the Relentless", vrenETB)
+	r.OwnsETBTrigger("Vren, the Relentless")
 	r.OnTrigger("Vren, the Relentless", "end_step", vrenEndStep)
 }
 

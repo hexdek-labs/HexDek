@@ -32,6 +32,13 @@ type Registry struct {
 	onResolve map[string][]ResolveHandler
 	activated map[string][]ActivatedHandler
 	onTrigger map[string]map[string][]TriggerHandler
+	// ownsETBTrigger marks cards whose OnETB handler FULLY IMPLEMENTS
+	// the card's printed self-ETB triggered ability (the engine's
+	// generic AST push is suppressed — Judge r63 double-fire gate).
+	// OnETB registrations WITHOUT this mark are bookkeeping
+	// (replacement/static registration, e.g. the ETB-doubler family)
+	// and the AST trigger keeps firing.
+	ownsETBTrigger map[string]bool
 }
 
 // ETBHandler fires when a permanent with the registered name enters the
@@ -61,11 +68,12 @@ var (
 
 func newRegistry() *Registry {
 	return &Registry{
-		etb:       map[string][]ETBHandler{},
-		onCast:    map[string][]CastHandler{},
-		onResolve: map[string][]ResolveHandler{},
-		activated: map[string][]ActivatedHandler{},
-		onTrigger: map[string]map[string][]TriggerHandler{},
+		etb:            map[string][]ETBHandler{},
+		onCast:         map[string][]CastHandler{},
+		onResolve:      map[string][]ResolveHandler{},
+		activated:      map[string][]ActivatedHandler{},
+		onTrigger:      map[string]map[string][]TriggerHandler{},
+		ownsETBTrigger: map[string]bool{},
 	}
 }
 
@@ -575,9 +583,9 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 			Target: -1,
 			Source: event,
 			Details: map[string]interface{}{
-				"event":   event,
-				"capped":  "trigger_depth",
-				"rule":    "603.3",
+				"event":  event,
+				"capped": "trigger_depth",
+				"rule":   "603.3",
 			},
 		})
 		return
@@ -590,9 +598,9 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 			Target: -1,
 			Source: event,
 			Details: map[string]interface{}{
-				"event":   event,
-				"capped":  "trigger_total",
-				"rule":    "603.3",
+				"event":  event,
+				"capped": "trigger_total",
+				"rule":   "603.3",
 			},
 		})
 		return
@@ -752,6 +760,33 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 	}
 }
 
+// OwnsETBTrigger declares that cardName's OnETB handler fully
+// implements its printed self-ETB triggered ability — the Judge r63
+// double-fire gate suppresses the generic AST push for declared cards.
+func (r *Registry) OwnsETBTrigger(cardName string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.ownsETBTrigger == nil {
+		r.ownsETBTrigger = map[string]bool{}
+	}
+	r.ownsETBTrigger[normalizeName(cardName)] = true
+}
+
+// OwnsETB reports whether cardName declared self-ETB ownership. Uses
+// the same lookupCandidates name resolution as dispatch so DFC full
+// names ("Front // Back") match front-face registrations.
+func OwnsETB(cardName string) bool {
+	reg := Global()
+	reg.mu.RLock()
+	defer reg.mu.RUnlock()
+	for _, k := range lookupCandidates(cardName) {
+		if reg.ownsETBTrigger[k] {
+			return true
+		}
+	}
+	return false
+}
+
 // HasETB reports whether any ETB handler is registered for cardName.
 func HasETB(cardName string) bool {
 	reg := Global()
@@ -832,12 +867,17 @@ func HasTrigger(cardName, event string) bool {
 	reg := Global()
 	reg.mu.RLock()
 	defer reg.mu.RUnlock()
-	byEvent := reg.onTrigger[normalizeName(cardName)]
-	if byEvent == nil {
-		return false
-	}
 	canonical := gameengine.NormalizeEventSingle(event)
-	return len(byEvent[canonical]) > 0
+	// Same lookupCandidates resolution as dispatch (DFC full names
+	// match front-face registrations) — r63: Nicol Bolas, the Ravager
+	// double-fired through the etb gate because the ownership query
+	// missed the "Front // Back" corpus name.
+	for _, k := range lookupCandidates(cardName) {
+		if byEvent := reg.onTrigger[k]; byEvent != nil && len(byEvent[canonical]) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // installEngineHooks wires our dispatch functions into gameengine's
@@ -849,6 +889,7 @@ func installEngineHooks() {
 	gameengine.ActivatedHook = fireActivated
 	gameengine.TriggerHook = fireTrigger
 	gameengine.HasTriggerHook = HasTrigger
+	gameengine.HasETBHook = OwnsETB
 }
 
 // registerDefaults is populated by handlers.go — the card-specific

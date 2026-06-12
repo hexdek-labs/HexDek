@@ -34,21 +34,23 @@ import (
 //     event still resolves once (we dedupe on perm.Flags["ajani_pariah_flipped"]).
 //   - Back-face activated abilities (loyalty cost paid by activation
 //     pipeline; this handler delivers the effects):
-//       * abilityIdx 0 (+2): walk Ajani's controller's battlefield, add
-//         a +1/+1 counter to each Cat. Includes Ajani himself if he
-//         retained the Cat type post-transform; Avenger is a planeswalker
-//         only, so we exclude src.
-//       * abilityIdx 1 (0): mint a 2/1 Cat token. If controller has a
-//         red permanent other than Ajani, deal damage = creature count
-//         to lowest-life opponent (best target by life-loss heuristic).
-//       * abilityIdx 2 (-4): for each opponent, retain one of each card
-//         type (artifact, creature, enchantment, planeswalker) chosen
-//         to maximize value, sacrifice the rest of the nonland permanents.
+//   - abilityIdx 0 (+2): walk Ajani's controller's battlefield, add
+//     a +1/+1 counter to each Cat. Includes Ajani himself if he
+//     retained the Cat type post-transform; Avenger is a planeswalker
+//     only, so we exclude src.
+//   - abilityIdx 1 (0): mint a 2/1 Cat token. If controller has a
+//     red permanent other than Ajani, deal damage = creature count
+//     to lowest-life opponent (best target by life-loss heuristic).
+//   - abilityIdx 2 (-4): for each opponent, retain one of each card
+//     type (artifact, creature, enchantment, planeswalker) chosen
+//     to maximize value, sacrifice the rest of the nonland permanents.
 //
 // DFC dispatch: register all three name forms (full DFC, front, back).
 func registerAjaniNacatlPariah(r *Registry) {
 	r.OnETB("Ajani, Nacatl Pariah // Ajani, Nacatl Avenger", ajaniNacatlPariahETB)
+	r.OwnsETBTrigger("Ajani, Nacatl Pariah // Ajani, Nacatl Avenger")
 	r.OnETB("Ajani, Nacatl Pariah", ajaniNacatlPariahETB)
+	r.OwnsETBTrigger("Ajani, Nacatl Pariah")
 	r.OnTrigger("Ajani, Nacatl Pariah // Ajani, Nacatl Avenger", "creature_dies", ajaniNacatlPariahCatDies)
 	r.OnTrigger("Ajani, Nacatl Pariah", "creature_dies", ajaniNacatlPariahCatDies)
 	r.OnActivated("Ajani, Nacatl Pariah // Ajani, Nacatl Avenger", ajaniNacatlAvengerActivate)
@@ -103,9 +105,9 @@ func ajaniNacatlPariahCatDies(gs *gameengine.GameState, perm *gameengine.Permane
 	}
 	perm.Flags["ajani_pariah_flipped"] = 1
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":      perm.Controller,
-		"dead_cat":  dyingCard.DisplayName(),
-		"to":        "Ajani, Nacatl Avenger",
+		"seat":     perm.Controller,
+		"dead_cat": dyingCard.DisplayName(),
+		"to":       "Ajani, Nacatl Avenger",
 	})
 }
 
@@ -142,8 +144,8 @@ func ajaniAvengerPlusTwo(gs *gameengine.GameState, src *gameengine.Permanent) {
 	}
 	gs.InvalidateCharacteristicsCache()
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-		"seat":           src.Controller,
-		"cats_buffed":    count,
+		"seat":        src.Controller,
+		"cats_buffed": count,
 	})
 }
 
@@ -283,9 +285,9 @@ func ajaniAvengerMinusFour(gs *gameengine.GameState, src *gameengine.Permanent) 
 		}
 	}
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-		"seat":          src.Controller,
-		"total_sacced":  totalSacced,
-		"kept_by_opp":   keptByOpp,
+		"seat":         src.Controller,
+		"total_sacced": totalSacced,
+		"kept_by_opp":  keptByOpp,
 	})
 }
 

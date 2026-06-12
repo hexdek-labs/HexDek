@@ -26,6 +26,7 @@ import (
 //     emitPartial-flagged at registration time.
 func registerGyrudaDoomOfDepthsCustom(r *Registry) {
 	r.OnETB("Gyruda, Doom of Depths", gyrudaETB)
+	r.OwnsETBTrigger("Gyruda, Doom of Depths")
 }
 
 func gyrudaETB(gs *gameengine.GameState, perm *gameengine.Permanent) {

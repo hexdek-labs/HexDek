@@ -31,6 +31,7 @@ func registerPerCardBatchOR60(r *Registry) {
 	r.OnTrigger("Sokka, Lateral Strategist", "creature_attacks", sokkaLateralStrategistOnAttack)
 	r.OnTrigger("Zhang He, Wei General", "creature_attacks", zhangHeWeiGeneralOnAttack)
 	r.OnETB("Loran of the Third Path", loranOfTheThirdPathETB)
+	r.OwnsETBTrigger("Loran of the Third Path")
 	r.OnTrigger("Captain America, Team Leader", "permanent_etb", captainAmericaOnAnotherHeroETB)
 }
 
@@ -179,8 +180,8 @@ func zhangHeWeiGeneralOnAttack(gs *gameengine.GameState, perm *gameengine.Perman
 		bumped++
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":    perm.Controller,
-		"bumped":  bumped,
+		"seat":   perm.Controller,
+		"bumped": bumped,
 	})
 }
 
@@ -281,8 +282,8 @@ func captainAmericaOnAnotherHeroETB(gs *gameengine.GameState, perm *gameengine.P
 	entering.AddCounter("+1/+1", 1)
 	perm.AddCounter("+1/+1", 1)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":     perm.Controller,
-		"trigger":  entering.Card.DisplayName(),
+		"seat":    perm.Controller,
+		"trigger": entering.Card.DisplayName(),
 		"self_p1": perm.Counters["+1/+1"],
 	})
 }

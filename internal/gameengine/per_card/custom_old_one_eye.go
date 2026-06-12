@@ -20,6 +20,7 @@ import (
 // scope here — the gen_*.go partial still documents that gap.
 func registerOldOneEyeCustom(r *Registry) {
 	r.OnETB("Old One Eye", oldOneEyeApplyAnthemOnETB)
+	r.OwnsETBTrigger("Old One Eye")
 	r.OnTrigger("Old One Eye", "permanent_etb", oldOneEyeApplyAnthemOnEvent)
 	r.OnTrigger("Old One Eye", "permanent_ltb", oldOneEyeApplyAnthemOnEvent)
 }
@@ -58,9 +59,9 @@ func oldOneEyeRefreshAnthem(gs *gameengine.GameState, perm *gameengine.Permanent
 	if stamped > 0 {
 		gs.InvalidateCharacteristicsCache()
 		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-			"seat":     perm.Controller,
-			"stamped":  stamped,
-			"keyword":  "trample",
+			"seat":    perm.Controller,
+			"stamped": stamped,
+			"keyword": "trample",
 		})
 	}
 }

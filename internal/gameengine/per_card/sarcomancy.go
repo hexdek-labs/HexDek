@@ -21,6 +21,7 @@ import (
 //     subtype, deal 1 damage to the controller.
 func registerSarcomancy(r *Registry) {
 	r.OnETB("Sarcomancy", sarcomancyETB)
+	r.OwnsETBTrigger("Sarcomancy")
 	r.OnTrigger("Sarcomancy", "upkeep_controller", sarcomancyUpkeep)
 }
 

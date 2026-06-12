@@ -185,6 +185,7 @@ func falcoSparaEra3Activate(gs *gameengine.GameState, src *gameengine.Permanent,
 
 func registerLordXanderEra3(r *Registry) {
 	r.OnETB("Lord Xander, the Collector", lordXanderEra3ETB)
+	r.OwnsETBTrigger("Lord Xander, the Collector")
 	r.OnTrigger("Lord Xander, the Collector", "creature_attacks", lordXanderEra3Attack)
 	r.OnTrigger("Lord Xander, the Collector", "creature_dies", lordXanderEra3Dies)
 }
@@ -292,10 +293,10 @@ func lordXanderEra3Dies(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 		sacced++
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":         perm.Controller,
-		"victim":       target,
-		"nonlands":     len(nonlands),
-		"sacrificed":   sacced,
+		"seat":       perm.Controller,
+		"victim":     target,
+		"nonlands":   len(nonlands),
+		"sacrificed": sacced,
 	})
 }
 
@@ -335,8 +336,8 @@ func hidetsuguEra3ETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		moved++
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":      perm.Controller,
-		"to_top":    moved,
+		"seat":   perm.Controller,
+		"to_top": moved,
 	})
 }
 
@@ -364,10 +365,10 @@ func hidetsuguEra3Dies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 			"free_cast_of_exiled_instant_or_sorcery_not_modeled")
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":      perm.Controller,
-		"victim":    target,
-		"exiled":    top.DisplayName(),
-		"mv":        mv,
+		"seat":   perm.Controller,
+		"victim": target,
+		"exiled": top.DisplayName(),
+		"mv":     mv,
 	})
 }
 
@@ -829,4 +830,3 @@ func felotharEra3Apply(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		p.Flags["felothar_damage_by_toughness"] = 1
 	}
 }
-

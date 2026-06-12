@@ -35,6 +35,7 @@ import (
 //     limitation.
 func registerUrzaChiefArtificer(r *Registry) {
 	r.OnETB("Urza, Chief Artificer", urzaChiefETB)
+	r.OwnsETBTrigger("Urza, Chief Artificer")
 	r.OnTrigger("Urza, Chief Artificer", "permanent_etb", urzaChiefMenaceGrant)
 	r.OnTrigger("Urza, Chief Artificer", "end_step", urzaChiefEndStep)
 }
@@ -142,9 +143,9 @@ func urzaChiefEndStep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 		},
 	})
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":           perm.Controller,
-		"artifacts_pre":  artifacts,
-		"token_pt":       boost,
+		"seat":          perm.Controller,
+		"artifacts_pre": artifacts,
+		"token_pt":      boost,
 	})
 	emitPartial(gs, slug, perm.Card.DisplayName(),
 		"construct_token_anthem_baked_at_creation_not_dynamic_per_artifact")

@@ -33,6 +33,7 @@ import (
 //     satisfied when Neriv is the attacker.
 func registerNerivCracklingVanguard(r *Registry) {
 	r.OnETB("Neriv, Crackling Vanguard", nerivCracklingVanguardETB)
+	r.OwnsETBTrigger("Neriv, Crackling Vanguard")
 	r.OnTrigger("Neriv, Crackling Vanguard", "creature_attacks", nerivAttackImpulse)
 }
 

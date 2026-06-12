@@ -34,13 +34,36 @@ package gameengine
 //     event site. Used by Rhystic Study, Mystic Remora, Aetherflux,
 //     Displacer Kitten, Hullbreaker Horror, Cloudstone Curio.
 var (
-	ETBHook          func(gs *GameState, perm *Permanent)
-	CastHook         func(gs *GameState, item *StackItem)
-	ResolveHook      func(gs *GameState, item *StackItem) int
-	ActivatedHook    func(gs *GameState, src *Permanent, abilityIdx int, ctx map[string]interface{})
-	TriggerHook      func(gs *GameState, event string, ctx map[string]interface{})
-	HasTriggerHook   func(cardName, event string) bool
+	ETBHook        func(gs *GameState, perm *Permanent)
+	CastHook       func(gs *GameState, item *StackItem)
+	ResolveHook    func(gs *GameState, item *StackItem) int
+	ActivatedHook  func(gs *GameState, src *Permanent, abilityIdx int, ctx map[string]interface{})
+	TriggerHook    func(gs *GameState, event string, ctx map[string]interface{})
+	HasTriggerHook func(cardName, event string) bool
+	HasETBHook     func(cardName string) bool
 )
+
+// PerCardOwnsTrigger reports whether a per_card OnTrigger handler is
+// registered for the card under ANY of the given engine events. The
+// Judge r63 double-fire gate: a per_card registration is AUTHORITATIVE
+// for its (card, event) — the generic AST trigger push for the same
+// printed ability must be suppressed or the effect fires twice (#1059
+// established the pattern for attack observers; the PROGRESSION sweep
+// found the same double on the self-etb / phase / die / self-attack
+// dispatch sites). A handler that only PARTIALLY implements the printed
+// ability is a bug in that handler — the PROGRESSION checker flags it
+// as a missed fire.
+func PerCardOwnsTrigger(cardName string, events ...string) bool {
+	if HasTriggerHook == nil {
+		return false
+	}
+	for _, ev := range events {
+		if HasTriggerHook(cardName, ev) {
+			return true
+		}
+	}
+	return false
+}
 
 // FireCardTrigger is the engine-side helper for emitting a custom
 // game-event trigger to whatever per-card handlers are registered for
@@ -51,8 +74,8 @@ var (
 //
 //   - "spell_cast"                    — any spell (any caster)
 //   - "spell_cast_by_opponent"        — opponent of the listener cast
-//                                       (scoping is the HANDLER's job
-//                                        using ctx["caster_seat"])
+//     (scoping is the HANDLER's job
+//     using ctx["caster_seat"])
 //   - "noncreature_spell_cast"        — spell type != creature
 //   - "creature_spell_cast"           — creature spell
 //   - "instant_or_sorcery_cast"       — instant or sorcery

@@ -150,6 +150,22 @@ func expectedFireSet(spec outcome.BoardSpec, eff gameast.Effect) ([]*outcome.Del
 // (card, trigger) pair. Returns findings (nil = pass) and ran=false if
 // the pair is out of scope.
 func CheckTrigger(cardName string, t *gameast.Triggered) ([]*Finding, bool) {
+	if ev, ok := InScopeTrigger(t); ok {
+		switch ev {
+		case "etb":
+			if perCardOwned(cardName, "etb", "permanent_etb") {
+				return nil, false
+			}
+		case "attack":
+			if perCardOwned(cardName, "creature_attacks") {
+				return nil, false
+			}
+		case "die":
+			if perCardOwned(cardName, "creature_dies", "dies") {
+				return nil, false
+			}
+		}
+	}
 	event, ok := InScopeTrigger(t)
 	if !ok {
 		return nil, false

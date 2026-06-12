@@ -98,6 +98,15 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 			if !EventEquals(trig.Trigger.Event, "etb") {
 				continue
 			}
+			// Judge r63 double-fire gate: per_card owns this card's
+			// self-ETB (OnETB handler, or an OnTrigger registration on
+			// the etb-family events) — skip the generic AST push or the
+			// printed ability resolves twice (PROGRESSION findings:
+			// Gyruda, Thraben Inspector, Omnath, 19 more).
+			if name := perm.Card.DisplayName(); (HasETBHook != nil && HasETBHook(name)) ||
+				PerCardOwnsTrigger(name, "permanent_etb", "etb") {
+				continue
+			}
 			// CR §614 — consult the would_fire_etb_trigger replacement
 			// chain so Panharmonicon / Yarok / Cloud / Clara / Katara can
 			// add additional firings. The handler returns the modified

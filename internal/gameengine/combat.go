@@ -512,10 +512,10 @@ func DeclareAttackers(gs *GameState, attackerSeat int) []*Permanent {
 			Kind: "attack_restricted",
 			Seat: attackerSeat,
 			Details: map[string]interface{}{
-				"reason":     "silent_arbiter",
-				"max":        1,
-				"goad_pref":  MustAttackIfAble(gs, pick),
-				"rule":       "509.1d",
+				"reason":    "silent_arbiter",
+				"max":       1,
+				"goad_pref": MustAttackIfAble(gs, pick),
+				"rule":      "509.1d",
 			},
 		})
 	}
@@ -650,8 +650,8 @@ func DeclareAttackers(gs *GameState, attackerSeat int) []*Permanent {
 				Kind: "entered_attacking", Seat: attackerSeat,
 				Source: p.Card.DisplayName(),
 				Details: map[string]interface{}{
-					"rule":               "506.3",
-					"cleared_summoning":  true,
+					"rule":              "506.3",
+					"cleared_summoning": true,
 				},
 			})
 		}
@@ -770,7 +770,16 @@ func fireAttackTriggers(gs *GameState, activeSeat int, declared []*Permanent) {
 	}
 	// (1) Self-attack triggers.
 	for _, atk := range declared {
+		// Judge r63 double-fire gate: per_card owns this card's attack
+		// trigger (Brimaz, Krenko, Geist of Saint Traft…) — the
+		// FireCardTrigger("creature_attacks") below dispatches the
+		// handler; pushing the AST effect too resolves the ability
+		// twice. Mirrors the #1059 gate on the observer classes.
+		perCardOwnsAttack := PerCardOwnsTrigger(atk.Card.DisplayName(), "creature_attacks")
 		for _, ab := range iterAttackTriggers(atk.Card) {
+			if perCardOwnsAttack {
+				break
+			}
 			gs.LogEvent(Event{
 				Kind: "trigger_fires", Seat: atk.Controller,
 				Source: atk.Card.DisplayName(),
@@ -2132,10 +2141,10 @@ func fireCombatDamageTriggers(gs *GameState, src *Permanent, amount int, targetK
 	// per_card handlers (Fynn, Yuriko, etc.) receive the notification.
 	if targetKind == "player" {
 		FireCardTrigger(gs, "combat_damage_player", map[string]interface{}{
-			"source_seat":  src.Controller,
-			"source_card":  src.Card.DisplayName(),
+			"source_seat":   src.Controller,
+			"source_card":   src.Card.DisplayName(),
 			"defender_seat": targetSeat,
-			"amount":       amount,
+			"amount":        amount,
 		})
 	}
 }

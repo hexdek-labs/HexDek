@@ -57,9 +57,9 @@ func DestroyPermanent(gs *GameState, perm *Permanent, source *Permanent) bool {
 			Seat:   perm.Controller,
 			Source: sourceName(source),
 			Details: map[string]interface{}{
-				"target_card":      perm.Card.DisplayName(),
+				"target_card":       perm.Card.DisplayName(),
 				"shields_remaining": perm.Counters["shield"],
-				"rule":             "122.1b",
+				"rule":              "122.1b",
 			},
 		})
 		return false
@@ -676,6 +676,15 @@ func fireSelfZoneChangeTriggers(gs *GameState, perm *Permanent, events []string)
 			continue
 		}
 
+		// Judge r63 double-fire gate: per_card owns this card's dies
+		// trigger (Worldspine Wurm…) — FireCardTrigger("creature_dies")
+		// in the caller dispatches the handler; pushing the AST effect
+		// too resolves the ability twice.
+		if EventEquals(trigEvent, "die") &&
+			PerCardOwnsTrigger(perm.Card.DisplayName(), "creature_dies", "dies") {
+			continue
+		}
+
 		// Push the trigger onto the stack. We create a phantom permanent
 		// since the original is no longer on the battlefield but we need
 		// a source for controller + card reference on the stack item.
@@ -1010,4 +1019,3 @@ func ValidateTargetsAtAnnouncement(gs *GameState, controller int, sourceCard *Ca
 	}
 	return nil
 }
-

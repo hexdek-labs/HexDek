@@ -33,13 +33,13 @@ import (
 //     for game-state purposes (no auras/counters to wash off in our
 //     simplified model). On transform, initialize loyalty to 7.
 //   - OnActivated back face: dispatch by abilityIdx.
-//       * +2: gain 2 loyalty, draw 2.
-//       * −3: spend 3 loyalty, deal 10 to highest-power opponent
-//         creature (or any planeswalker if no creature exists).
-//       * −4: spend 4 loyalty, reanimate the highest-power creature/PW
-//         in any opponent's graveyard onto controller's battlefield.
-//       * −12: spend 12 loyalty, exile all but the bottom card of the
-//         most threatening opponent's library.
+//   - +2: gain 2 loyalty, draw 2.
+//   - −3: spend 3 loyalty, deal 10 to highest-power opponent
+//     creature (or any planeswalker if no creature exists).
+//   - −4: spend 4 loyalty, reanimate the highest-power creature/PW
+//     in any opponent's graveyard onto controller's battlefield.
+//   - −12: spend 12 loyalty, exile all but the bottom card of the
+//     most threatening opponent's library.
 //
 // DFC dispatch: register every face-name variant since perm.Card.Name
 // swaps after TransformPermanent (mirrors esika.go / kefka.go pattern).
@@ -47,6 +47,7 @@ func registerNicolBolas(r *Registry) {
 	full := "Nicol Bolas, the Ravager // Nicol Bolas, the Arisen"
 	r.OnETB(full, nicolBolasETB)
 	r.OnETB("Nicol Bolas, the Ravager", nicolBolasETB)
+	r.OwnsETBTrigger("Nicol Bolas, the Ravager")
 	r.OnActivated(full, nicolBolasActivated)
 	r.OnActivated("Nicol Bolas, the Ravager", nicolBolasActivated)
 	r.OnActivated("Nicol Bolas, the Arisen", nicolBolasActivated)
@@ -189,11 +190,11 @@ func nicolBolasMinusThree(gs *gameengine.GameState, src *gameengine.Permanent) {
 	})
 	gs.InvalidateCharacteristicsCache()
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-		"seat":         src.Controller,
-		"loyalty":      src.Counters["loyalty"],
-		"target":       target.Card.DisplayName(),
-		"target_seat":  target.Controller,
-		"damage":       10,
+		"seat":        src.Controller,
+		"loyalty":     src.Counters["loyalty"],
+		"target":      target.Card.DisplayName(),
+		"target_seat": target.Controller,
+		"damage":      10,
 	})
 }
 
@@ -276,10 +277,10 @@ func nicolBolasMinusFour(gs *gameengine.GameState, src *gameengine.Permanent) {
 		}
 	}
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-		"seat":         owner,
-		"loyalty":      src.Counters["loyalty"],
-		"target":       bestCard.DisplayName(),
-		"from_seat":    bestSeat,
+		"seat":      owner,
+		"loyalty":   src.Counters["loyalty"],
+		"target":    bestCard.DisplayName(),
+		"from_seat": bestSeat,
 	})
 }
 

@@ -8,12 +8,12 @@ import (
 //
 // Oracle text (relevant clauses):
 //
-//   Trample
-//   Other creatures you control have trample.
-//   When Old One Eye enters, create a 5/5 green Tyranid creature token.
-//   Fast Healing — At the beginning of your first main phase, you may
-//                  discard two cards. If you do, return this card from
-//                  your graveyard to your hand.
+//	Trample
+//	Other creatures you control have trample.
+//	When Old One Eye enters, create a 5/5 green Tyranid creature token.
+//	Fast Healing — At the beginning of your first main phase, you may
+//	               discard two cards. If you do, return this card from
+//	               your graveyard to your hand.
 //
 // R37 port:
 //
@@ -31,6 +31,7 @@ import (
 //     and check for Old One Eye in their graveyard).
 func registerOldOneEye(r *Registry) {
 	r.OnETB("Old One Eye", oldOneEyeETB)
+	r.OwnsETBTrigger("Old One Eye")
 }
 
 func oldOneEyeETB(gs *gameengine.GameState, perm *gameengine.Permanent) {

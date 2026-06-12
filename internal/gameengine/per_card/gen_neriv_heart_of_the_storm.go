@@ -24,6 +24,7 @@ import (
 //   - LTB unregisters the closure and sweeps remaining markers.
 func registerNerivHeartOfTheStorm(r *Registry) {
 	r.OnETB("Neriv, Heart of the Storm", nerivETBSetSeatFlag)
+	r.OwnsETBTrigger("Neriv, Heart of the Storm")
 	r.OnTrigger("Neriv, Heart of the Storm", "permanent_etb", nerivStampEnteringCreature)
 	r.OnTrigger("Neriv, Heart of the Storm", "end_step", nerivClearMarkers)
 	r.OnTrigger("Neriv, Heart of the Storm", "permanent_ltb", nerivLTBClearFlags)

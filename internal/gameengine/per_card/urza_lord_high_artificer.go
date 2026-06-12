@@ -44,6 +44,7 @@ import (
 //     does not support player-choice artifact targeting today.
 func registerUrzaLordHighArtificer(r *Registry) {
 	r.OnETB("Urza, Lord High Artificer", urzaETB)
+	r.OwnsETBTrigger("Urza, Lord High Artificer")
 	r.OnActivated("Urza, Lord High Artificer", urzaActivate)
 }
 

@@ -36,6 +36,7 @@ import (
 //   - Mode 2 (gain 5 life): no target.
 func registerBreyaEtheriumShaper(r *Registry) {
 	r.OnETB("Breya, Etherium Shaper", breyaEtheriumShaperETB)
+	r.OwnsETBTrigger("Breya, Etherium Shaper")
 	r.OnActivated("Breya, Etherium Shaper", breyaEtheriumShaperActivate)
 }
 

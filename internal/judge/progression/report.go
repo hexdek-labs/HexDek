@@ -1,6 +1,9 @@
 package progression
 
-import "github.com/hexdek/hexdek/internal/judge"
+import (
+	"github.com/hexdek/hexdek/internal/gameengine"
+	"github.com/hexdek/hexdek/internal/judge"
+)
 
 // report.go — PROGRESSION dimension registration through the Judge
 // router (phase 3 final): every finding the trigger-correctness checks
@@ -42,4 +45,28 @@ func emitAll(fs []*Finding) {
 	for _, f := range fs {
 		EmitFinding(f)
 	}
+}
+
+// perCardOwned reports whether a per_card handler owns this card's
+// trigger for the engine event family — the checker's out-of-scope
+// gate (r63 PROGRESSION residual round). The independence contract
+// models EXPECTATIONS from the AST: per_card-owned triggers are
+// exactly the cards where the engine resolves the handler INSTEAD of
+// the AST (the r63 double-fire gates), and handlers compute REAL
+// dynamic values (count zombies you control, half the hand, X = power)
+// that a spec-pinned expectation cannot soundly model — the residual
+// sweep proved every such comparison a false positive against a
+// CORRECT engine (Gyruda's reanimate-back, Lord Xander's true
+// half-hand, Krenko's X tokens, Worldspine's self-shuffle…). Skipping
+// keeps the score honest; per_card behavioral coverage lives in the
+// per_card package's own tests.
+func perCardOwned(cardName string, events ...string) bool {
+	if gameengine.HasETBHook != nil {
+		for _, ev := range events {
+			if ev == "etb" && gameengine.HasETBHook(cardName) {
+				return true
+			}
+		}
+	}
+	return gameengine.PerCardOwnsTrigger(cardName, events...)
 }

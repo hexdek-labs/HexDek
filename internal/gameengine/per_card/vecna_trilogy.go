@@ -17,6 +17,7 @@ import (
 
 func registerEyeOfVecna(r *Registry) {
 	r.OnETB("Eye of Vecna", eyeOfVecnaETB)
+	r.OwnsETBTrigger("Eye of Vecna")
 	r.OnTrigger("Eye of Vecna", "upkeep_controller", eyeOfVecnaUpkeep)
 }
 
@@ -156,7 +157,7 @@ func bookOfVileEndStep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	gameengine.CreateCreatureToken(gs, seat, "Zombie", []string{"creature", "zombie"}, 2, 2)
 	gs.LogEvent(gameengine.Event{
 		Kind: "book_of_vile_zombie", Seat: seat,
-		Source: "Book of Vile Darkness",
+		Source:  "Book of Vile Darkness",
 		Details: map[string]interface{}{"life_lost": lifeLost},
 	})
 }

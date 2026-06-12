@@ -57,10 +57,10 @@ func FirePhaseTriggers(gs *GameState, phase, step string) {
 	// Collect first so firing doesn't invalidate our iteration when the
 	// trigger mutates the battlefield (e.g. a saga advancing its counter).
 	type pending struct {
-		perm   *Permanent
-		effect gameast.Effect
+		perm          *Permanent
+		effect        gameast.Effect
 		interveningIf *gameast.Condition
-}
+	}
 	var toFire []pending
 	for _, seat := range gs.Seats {
 		if seat == nil || seat.Lost {
@@ -81,6 +81,14 @@ func FirePhaseTriggers(gs *GameState, phase, step string) {
 				// Controller gating — "your upkeep" fires only for active
 				// player; "each upkeep" fires regardless.
 				if !triggerControllerMatchesRaw(gs, perm, &trig.Trigger, trig.Raw) {
+					continue
+				}
+				// Judge r63 double-fire gate: per_card owns this card's
+				// phase trigger (Phyrexian Arena, Oloro, As Foretold…) —
+				// FireCardTrigger below dispatches the handler; pushing
+				// the AST effect too resolves the ability twice.
+				if name := perm.Card.DisplayName(); (step == "upkeep" && PerCardOwnsTrigger(name, "upkeep")) ||
+					((step == "end" || step == "end_step" || step == "end_of_turn") && PerCardOwnsTrigger(name, "end_step")) {
 					continue
 				}
 				// Intervening-if: evaluate the condition now, and again on

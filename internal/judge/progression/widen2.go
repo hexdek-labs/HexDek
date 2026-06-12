@@ -108,6 +108,18 @@ func InScopeLTBTrigger(t *gameast.Triggered) bool {
 // for "each" scope) and CONTROLLER-GATE PHANTOM (opponent's step for
 // "your" scope) scenarios.
 func CheckPhaseTrigger(cardName string, t *gameast.Triggered) ([]*Finding, bool) {
+	if step, _, ok := InScopePhaseTrigger(t); ok {
+		switch step {
+		case "upkeep":
+			if perCardOwned(cardName, "upkeep") {
+				return nil, false
+			}
+		case "end_step":
+			if perCardOwned(cardName, "end_step") {
+				return nil, false
+			}
+		}
+	}
 	step, scope, ok := InScopePhaseTrigger(t)
 	if !ok {
 		return nil, false
@@ -178,6 +190,9 @@ func CheckPhaseTrigger(cardName string, t *gameast.Triggered) ([]*Finding, bool)
 // CheckLTBTrigger runs FIRE (bearer bounced) and PHANTOM (vanilla
 // bounced) scenarios for self-LTB triggers.
 func CheckLTBTrigger(cardName string, t *gameast.Triggered) ([]*Finding, bool) {
+	if InScopeLTBTrigger(t) && perCardOwned(cardName, "permanent_ltb") {
+		return nil, false
+	}
 	if !InScopeLTBTrigger(t) {
 		return nil, false
 	}

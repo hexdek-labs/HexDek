@@ -33,6 +33,7 @@ import (
 //     exile cost is approximated as zero. LTB drops the policy.
 func registerTheMasterOfKeys(r *Registry) {
 	r.OnETB("The Master of Keys", theMasterOfKeysETB)
+	r.OwnsETBTrigger("The Master of Keys")
 	r.OnTrigger("The Master of Keys", "permanent_ltb", theMasterOfKeysLTB)
 }
 

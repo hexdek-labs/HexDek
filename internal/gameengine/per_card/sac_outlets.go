@@ -17,7 +17,8 @@ import (
 // --- Ashnod's Altar ---
 //
 // Oracle text:
-//   Sacrifice a creature: Add {C}{C}.
+//
+//	Sacrifice a creature: Add {C}{C}.
 //
 // Infinite mana engine. Sacrifice a creature to add 2 colorless mana.
 func registerAshnodsAltar(r *Registry) {
@@ -57,7 +58,8 @@ func ashnodsAltarActivated(gs *gameengine.GameState, src *gameengine.Permanent, 
 // --- Phyrexian Altar ---
 //
 // Oracle text:
-//   Sacrifice a creature: Add one mana of any color.
+//
+//	Sacrifice a creature: Add one mana of any color.
 //
 // Sacrifice a creature to add 1 mana of any color.
 func registerPhyrexianAltar(r *Registry) {
@@ -97,7 +99,8 @@ func phyrexianAltarActivated(gs *gameengine.GameState, src *gameengine.Permanent
 // --- Viscera Seer ---
 //
 // Oracle text:
-//   Sacrifice a creature: Scry 1.
+//
+//	Sacrifice a creature: Scry 1.
 //
 // Free sac outlet. 1/1 vampire for B.
 func registerVisceraSeer(r *Registry) {
@@ -135,8 +138,9 @@ func visceraSeerActivated(gs *gameengine.GameState, src *gameengine.Permanent, a
 // --- Carrion Feeder ---
 //
 // Oracle text:
-//   Sacrifice a creature: Put a +1/+1 counter on Carrion Feeder.
-//   Carrion Feeder can't block.
+//
+//	Sacrifice a creature: Put a +1/+1 counter on Carrion Feeder.
+//	Carrion Feeder can't block.
 //
 // Free sac outlet. 1/1 zombie for B.
 func registerCarrionFeeder(r *Registry) {
@@ -175,8 +179,9 @@ func carrionFeederActivated(gs *gameengine.GameState, src *gameengine.Permanent,
 // --- Altar of Dementia ---
 //
 // Oracle text:
-//   Sacrifice a creature: Target player mills cards equal to the
-//   sacrificed creature's power.
+//
+//	Sacrifice a creature: Target player mills cards equal to the
+//	sacrificed creature's power.
 //
 // Combo mill outlet.
 func registerAltarOfDementia(r *Registry) {
@@ -230,8 +235,9 @@ func altarOfDementiaActivated(gs *gameengine.GameState, src *gameengine.Permanen
 // --- Goblin Bombardment ---
 //
 // Oracle text:
-//   Sacrifice a creature: Goblin Bombardment deals 1 damage to any
-//   target.
+//
+//	Sacrifice a creature: Goblin Bombardment deals 1 damage to any
+//	target.
 //
 // Combo damage outlet.
 func registerGoblinBombardment(r *Registry) {
@@ -275,10 +281,11 @@ func goblinBombardmentActivated(gs *gameengine.GameState, src *gameengine.Perman
 // --- Yahenni, Undying Partisan ---
 //
 // Oracle text:
-//   Whenever a creature an opponent controls dies, put a +1/+1 counter
-//   on Yahenni, Undying Partisan.
-//   Sacrifice another creature: Yahenni gains indestructible until end
-//   of turn.
+//
+//	Whenever a creature an opponent controls dies, put a +1/+1 counter
+//	on Yahenni, Undying Partisan.
+//	Sacrifice another creature: Yahenni gains indestructible until end
+//	of turn.
 //
 // Free sac outlet with indestructible payoff.
 func registerYahenni(r *Registry) {
@@ -340,16 +347,18 @@ func yahenniTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 // --- Woe Strider ---
 //
 // Oracle text:
-//   When Woe Strider enters the battlefield, create a 0/1 white
-//   Goat creature token.
-//   Sacrifice another creature: Scry 1.
-//   Escape — {3}{B}{B}, Exile four other cards from your graveyard.
-//   Woe Strider escapes with two +1/+1 counters on it.
+//
+//	When Woe Strider enters the battlefield, create a 0/1 white
+//	Goat creature token.
+//	Sacrifice another creature: Scry 1.
+//	Escape — {3}{B}{B}, Exile four other cards from your graveyard.
+//	Woe Strider escapes with two +1/+1 counters on it.
 //
 // Free sac outlet with scry 1. Has escape (partial — flag only).
 func registerWoeStrider(r *Registry) {
 	r.OnActivated("Woe Strider", woeStriderActivated)
 	r.OnETB("Woe Strider", woeStriderETB)
+	r.OwnsETBTrigger("Woe Strider")
 }
 
 func woeStriderETB(gs *gameengine.GameState, perm *gameengine.Permanent) {

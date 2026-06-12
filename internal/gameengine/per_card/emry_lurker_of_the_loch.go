@@ -32,6 +32,7 @@ import (
 // by the cast pipeline — not per_card business.
 func registerEmryLurkerOfTheLoch(r *Registry) {
 	r.OnETB("Emry, Lurker of the Loch", emryETB)
+	r.OwnsETBTrigger("Emry, Lurker of the Loch")
 	r.OnActivated("Emry, Lurker of the Loch", emryActivate)
 }
 

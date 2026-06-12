@@ -29,6 +29,7 @@ import (
 //   - Flying — AST keyword pipeline.
 func registerGalazethPrismariCustom(r *Registry) {
 	r.OnETB("Galazeth Prismari", galazethPrismariCustomETB)
+	r.OwnsETBTrigger("Galazeth Prismari")
 	r.OnActivated("Galazeth Prismari", galazethPrismariActivate)
 }
 
