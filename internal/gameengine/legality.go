@@ -89,6 +89,19 @@ type LegalityObservation struct {
 	AbilityManaCost      int  // activations: announced mana component
 	ZoneCastGranted      bool // card had a ZoneCastGrants permission ("as though" timing may apply)
 
+	// ResolveFrameDepthAtAnnounce is gs.Flags["_resolve_frame_depth"] at
+	// announcement: >0 means the action was initiated DURING the
+	// resolution of another spell or ability (cascade-class permission
+	// effects, per_card "you may cast" handlers) rather than from open
+	// priority. Diagnostic for separating effect-driven mid-resolution
+	// casts (CR §608.2c) from open-priority sequencing violations.
+	ResolveFrameDepthAtAnnounce int
+	// StackTopAtAnnounce names the item on top of the stack at
+	// announcement (empty when the stack was empty) — attributes the
+	// resident item in mid-stack-cast violations (this is how the r62
+	// 302-hit cluster was pinned to unresolved commander spells).
+	StackTopAtAnnounce string
+
 	// Completion snapshot (Finish*).
 	Item                  *StackItem // nil for inline mana abilities
 	PoolAfter             int
@@ -193,6 +206,8 @@ func (v *LegalityValidator) BeginCast(gs *GameState, seatIdx int, card *Card) *L
 		PoolBefore:           EnsureTypedPool(seat).Total(),
 		BaseCostAtAnnounce:   CalculateTotalCost(gs, card, seatIdx),
 	}
+	obs.ResolveFrameDepthAtAnnounce = legalityResolveFrameDepth(gs)
+	obs.StackTopAtAnnounce = legalityStackTopName(gs)
 	if card != nil && gs.ZoneCastGrants != nil {
 		_, obs.ZoneCastGranted = gs.ZoneCastGrants[card]
 	}
@@ -234,6 +249,8 @@ func (v *LegalityValidator) BeginActivation(gs *GameState, seatIdx int, perm *Pe
 		StackDepthAtAnnounce: len(gs.Stack),
 		PoolBefore:           EnsureTypedPool(seat).Total(),
 	}
+	obs.ResolveFrameDepthAtAnnounce = legalityResolveFrameDepth(gs)
+	obs.StackTopAtAnnounce = legalityStackTopName(gs)
 	if perm != nil {
 		obs.Card = perm.Card
 	}
@@ -393,7 +410,8 @@ func checkLegalityTiming(_ *GameState, obs *LegalityObservation) []LegalityViola
 	if obs.StackDepthAtAnnounce > 0 {
 		out = append(out, LegalityViolation{
 			Turn: obs.TurnAtAnnounce, Seat: obs.Seat, Action: obs.ActionLabel(), Rule: rule,
-			Detail: fmt.Sprintf("sorcery-speed spell cast with %d item(s) on the stack", obs.StackDepthAtAnnounce),
+			Detail: fmt.Sprintf("sorcery-speed spell cast with %d item(s) on the stack (resolve_frame_depth=%d top=%q)",
+				obs.StackDepthAtAnnounce, obs.ResolveFrameDepthAtAnnounce, obs.StackTopAtAnnounce),
 		})
 	}
 	return out
@@ -505,4 +523,32 @@ func checkLegalityCostPaid(_ *GameState, obs *LegalityObservation) []LegalityVio
 		Detail: fmt.Sprintf("%s: announced total %d but pool delta shows %d spent (before=%d after=%d added-in-window=%d)",
 			kind, expected, spent, obs.PoolBefore, obs.PoolAfter, obs.ManaAddedDuringWindow),
 	}}
+}
+
+// legalityResolveFrameDepth reads the §608.2c resolution-frame nesting
+// counter (maintained by ResolveStackTop) at announcement time.
+func legalityResolveFrameDepth(gs *GameState) int {
+	if gs == nil || gs.Flags == nil {
+		return 0
+	}
+	return gs.Flags["_resolve_frame_depth"]
+}
+
+// legalityStackTopName names the top stack item for diagnostics
+// ("<kind>:<card or source name>"). Empty when the stack is empty.
+func legalityStackTopName(gs *GameState) string {
+	if gs == nil || len(gs.Stack) == 0 {
+		return ""
+	}
+	it := gs.Stack[len(gs.Stack)-1]
+	if it == nil {
+		return "<nil-item>"
+	}
+	name := ""
+	if it.Card != nil {
+		name = it.Card.DisplayName()
+	} else if it.Source != nil && it.Source.Card != nil {
+		name = it.Source.Card.DisplayName() + " (ability)"
+	}
+	return it.Kind + ":" + name
 }
