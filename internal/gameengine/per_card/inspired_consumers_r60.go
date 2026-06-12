@@ -272,6 +272,7 @@ func felhideSpiritbinderInspired(gs *gameengine.GameState, perm *gameengine.Perm
 		return
 	}
 	seat.ManaPool -= 2
+	gameengine.SyncManaAfterSpend(seat)
 
 	tokenCard := &gameengine.Card{
 		Name:          target.Card.DisplayName() + " (Spiritbinder token)",

@@ -77,6 +77,7 @@ func urabraskActivate(gs *gameengine.GameState, src *gameengine.Permanent, abili
 		return
 	}
 	seat.ManaPool--
+	gameengine.SyncManaAfterSpend(seat)
 	gameengine.TransformPermanent(gs, src, "urabrask_great_work_transform")
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"seat": src.Controller,

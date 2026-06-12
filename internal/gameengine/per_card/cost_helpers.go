@@ -1,6 +1,7 @@
 package per_card
 
 import (
+	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -44,5 +45,51 @@ func payManaFromPool(seat *gameengine.Seat, amount int) bool {
 		return false
 	}
 	seat.ManaPool -= amount
+	// Keep the typed pool in lockstep with the scalar. Without this every
+	// defensive payment left the typed pool rich by `amount`, and the NEXT
+	// payment's SyncManaAfterSpend flushed the drift — the legality
+	// validator then flagged that innocent action as over-paying (judge
+	// round-5: Mageta the Lion announced 4 / measured 8, where the extra
+	// 4 was Commander Mustard's earlier unsynced defensive payment).
+	gameengine.SyncManaAfterSpend(seat)
 	return true
+}
+
+// payDefensiveManaCost is the dispatcher-aware defensive cost gate.
+// ActivateAbility already pays Cost.Mana whenever the AST Activated node
+// at abilityIdx carries one (activation.go, step 2) — a handler that
+// then ALSO pays via payManaFromPool double-charges the ability (judge
+// round-5 static audit: Mayael {6}+{6}, Commander Mustard {4}+{4},
+// Bristly Bill {5}+{5}, Ezrim {1}+{1}), and at exact budgets the second
+// charge FAILS, silently no-opping an ability the player already paid
+// for. This helper pays only when the dispatcher could not have: when
+// the AST node at abilityIdx is missing or carries no mana cost (the
+// per_card-only activation shape the defensive gate was written for).
+func payDefensiveManaCost(src *gameengine.Permanent, seat *gameengine.Seat, abilityIdx, amount int) bool {
+	if src != nil && src.Card != nil && src.Card.AST != nil &&
+		abilityIdx >= 0 && abilityIdx < len(src.Card.AST.Abilities) {
+		if act, ok := src.Card.AST.Abilities[abilityIdx].(*gameast.Activated); ok &&
+			act.Cost.Mana != nil && act.Cost.Mana.CMC() > 0 {
+			return true // dispatcher charged this cost at activation time
+		}
+	}
+	return payManaFromPool(seat, amount)
+}
+
+// dispatcherHandledActivationCosts reports whether ActivateAbility
+// processed this ability's Cost struct (it does whenever an AST
+// Activated node exists at abilityIdx — paying Cost.Mana AND applying
+// Cost.Tap before dispatching hooks). Handlers with defensive tap
+// gates must skip them in that case: the dispatcher has already tapped
+// the source, so a handler-side "if src.Tapped { abort }" guard makes
+// the ability permanently dead through the live path (judge round-5:
+// Mayael the Anima's look-five never ran via the dispatcher — it
+// aborted as already_tapped on every legitimate activation).
+func dispatcherHandledActivationCosts(src *gameengine.Permanent, abilityIdx int) bool {
+	if src == nil || src.Card == nil || src.Card.AST == nil ||
+		abilityIdx < 0 || abilityIdx >= len(src.Card.AST.Abilities) {
+		return false
+	}
+	_, ok := src.Card.AST.Abilities[abilityIdx].(*gameast.Activated)
+	return ok
 }

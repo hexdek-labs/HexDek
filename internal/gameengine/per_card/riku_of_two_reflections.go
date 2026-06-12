@@ -63,6 +63,7 @@ func rikuTwoReflectionsCreatureCast(gs *gameengine.GameState, perm *gameengine.P
 		return
 	}
 	seat.ManaPool -= rikuTwoReflectionsCost
+	gameengine.SyncManaAfterSpend(seat)
 	gs.Legality.NoteManaSpend(perm.Controller, rikuTwoReflectionsCost) // aux payment, not spell cost
 
 	// InstanceID Phase 5: token-as-copy chokepoint — mints fresh TK ID
@@ -145,6 +146,7 @@ func rikuTwoReflectionsSpellCast(gs *gameengine.GameState, perm *gameengine.Perm
 	}
 
 	seat.ManaPool -= rikuTwoReflectionsCost
+	gameengine.SyncManaAfterSpend(seat)
 	gs.Legality.NoteManaSpend(perm.Controller, rikuTwoReflectionsCost) // aux payment, not spell cost
 
 	// InstanceID Phase F: route through the canonical MintSpellCopy

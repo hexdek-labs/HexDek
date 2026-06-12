@@ -85,7 +85,7 @@ func ezrimSacGrantKeyword(gs *gameengine.GameState, src *gameengine.Permanent, a
 		emitFail(gs, slug, src.Card.DisplayName(), "no_artifact_to_sacrifice", nil)
 		return
 	}
-	if !payManaFromPool(seat, 1) {
+	if !payDefensiveManaCost(src, seat, abilityIdx, 1) {
 		emitFail(gs, slug, src.Card.DisplayName(), "insufficient_mana", map[string]interface{}{
 			"required":  1,
 			"mana_pool": seat.ManaPool,

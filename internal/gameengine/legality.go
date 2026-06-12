@@ -587,7 +587,21 @@ func checkLegalityTargets(gs *GameState, obs *LegalityObservation) []LegalityVio
 // on the StackItem (X, kicker, buyback, alternative costs) — i.e. an
 // INDEPENDENT reconstruction, so a double-deduction (the Chalice
 // multikicker class) or an un-deducted announcement both flag.
-func checkLegalityCostPaid(_ *GameState, obs *LegalityObservation) []LegalityViolation {
+func checkLegalityCostPaid(gs *GameState, obs *LegalityObservation) []LegalityViolation {
+	// A seat that LOST during the window is unmeasurable: markSeatLost
+	// zeroes ManaPool and clears the typed pool on the loss transition
+	// (sba.go), so the delta conflates the real payment with the loss
+	// cleanup. Judge round-5 ground truth (seed 555 game 691): Mageta's
+	// controller paid 4, then died mid-activation to Bloodchief Ascension
+	// triggering off Mageta's own discard cost — the SBA drained the
+	// remaining 4 and the check read "announced 4, spent 8". (That the
+	// activation CONTINUES after its controller dies is a separate
+	// engine question, ranked in the round-5 report.)
+	if gs != nil && obs.Seat >= 0 && obs.Seat < len(gs.Seats) {
+		if s := gs.Seats[obs.Seat]; s != nil && s.Lost {
+			return nil
+		}
+	}
 	spent := obs.PoolBefore + obs.ManaAddedDuringWindow - obs.AuxManaSpentDuringWindow - obs.PoolAfter
 
 	expected := 0

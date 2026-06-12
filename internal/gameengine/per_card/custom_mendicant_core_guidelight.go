@@ -52,6 +52,7 @@ func mendicantMaxSpeedCopy(gs *gameengine.GameState, perm *gameengine.Permanent,
 		return
 	}
 	seat.ManaPool -= 1
+	gameengine.SyncManaAfterSpend(seat)
 
 	// Locate the cast spell on the stack (top item should match by
 	// pointer or by card identity). Mirrors resolveCopySpell's scan.

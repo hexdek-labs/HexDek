@@ -33,20 +33,26 @@ func mayaelLookFive(gs *gameengine.GameState, src *gameengine.Permanent, ability
 		return
 	}
 	// Cost gates: {3}{R}{G}{W} = 6 generic from the engine's pool, plus
-	// {T}. Defensive check for callers that bypass the engine activation
-	// dispatcher.
-	if src.Tapped {
-		emitFail(gs, slug, src.Card.DisplayName(), "already_tapped", nil)
-		return
+	// {T}. Defensive checks for callers that bypass the engine activation
+	// dispatcher ONLY — when ActivateAbility dispatched this (the AST
+	// Activated node exists), it has already tapped the source and paid
+	// the mana; re-gating here both double-paid and, worse, aborted as
+	// "already_tapped" on every legitimate activation, leaving the
+	// ability permanently dead through the live path (judge round-5).
+	if !dispatcherHandledActivationCosts(src, abilityIdx) {
+		if src.Tapped {
+			emitFail(gs, slug, src.Card.DisplayName(), "already_tapped", nil)
+			return
+		}
+		if !payManaFromPool(seat, 6) {
+			emitFail(gs, slug, src.Card.DisplayName(), "insufficient_mana", map[string]interface{}{
+				"required":  6,
+				"mana_pool": seat.ManaPool,
+			})
+			return
+		}
+		src.Tapped = true
 	}
-	if !payManaFromPool(seat, 6) {
-		emitFail(gs, slug, src.Card.DisplayName(), "insufficient_mana", map[string]interface{}{
-			"required":  6,
-			"mana_pool": seat.ManaPool,
-		})
-		return
-	}
-	src.Tapped = true
 	n := 5
 	if n > len(seat.Library) {
 		n = len(seat.Library)

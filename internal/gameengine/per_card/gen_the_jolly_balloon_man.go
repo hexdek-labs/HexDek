@@ -57,7 +57,7 @@ func theJollyBalloonManCopy(gs *gameengine.GameState, src *gameengine.Permanent,
 		return
 	}
 	// Cost gate 3: {1} mana.
-	if !payManaFromPool(seat, 1) {
+	if !payDefensiveManaCost(src, seat, abilityIdx, 1) {
 		emitFail(gs, slug, src.Card.DisplayName(), "insufficient_mana", map[string]interface{}{
 			"required":  1,
 			"mana_pool": seat.ManaPool,

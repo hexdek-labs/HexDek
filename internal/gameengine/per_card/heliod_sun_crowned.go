@@ -178,6 +178,7 @@ func heliodSunCrownedActivate(gs *gameengine.GameState, src *gameengine.Permanen
 		return
 	}
 	seat.ManaPool -= 2
+	gameengine.SyncManaAfterSpend(seat)
 	if target.Flags == nil {
 		target.Flags = map[string]int{}
 	}

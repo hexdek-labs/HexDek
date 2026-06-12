@@ -77,6 +77,7 @@ func ulalekCastTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	}
 
 	seat.ManaPool -= cost
+	gameengine.SyncManaAfterSpend(seat)
 	gs.LogEvent(gameengine.Event{
 		Kind:   "pay_mana",
 		Seat:   perm.Controller,
