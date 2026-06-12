@@ -388,6 +388,10 @@ func runOneGame(gameIdx int, decks []*deckparser.TournamentDeck, hats []HatFacto
 	out.SeedContract = contract
 
 	gs := gameengine.NewGameState(nSeats, rng, nil)
+	// Record the seed on the state (r62): consumers — notably the hat's
+	// deterministic noise-RNG seeding — treat Seed==0 as "unseeded" and
+	// fall back to nondeterministic behavior.
+	gs.Seed = gameSeed
 	if !auditEnabled {
 		gs.RetainEvents = false
 	}

@@ -1,7 +1,6 @@
 package per_card
 
 import (
-	"math/rand"
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
@@ -117,7 +116,7 @@ func nivMizzetRebornETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		}
 		remainder = append(remainder, c)
 	}
-	rand.Shuffle(len(remainder), func(i, j int) {
+	rngShuffle(gs, len(remainder), func(i, j int) {
 		remainder[i], remainder[j] = remainder[j], remainder[i]
 	})
 	s.Library = append(s.Library, remainder...)

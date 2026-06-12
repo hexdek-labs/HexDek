@@ -36,6 +36,15 @@ type YggdrasilHat struct {
 
 	noiseRNG *rand.Rand
 
+	// noiseSeededFor records the gs.Seed value the noiseRNG was last
+	// (re)seeded from. Constructors seed noiseRNG from the global rand
+	// (nondeterministic — fine for unseeded casual games); the first
+	// ObserveEvent of a game whose GameState carries a real Seed reseeds
+	// the stream deterministically from (gs.Seed, seatIdx) so seeded
+	// games replay identically (r62 seed-determinism fix). 0 = not yet
+	// deterministically seeded.
+	noiseSeededFor int64
+
 	// Combo sequencer: evaluates whether a combo win is available.
 	// nil when the deck has no combo lines (from Freya).
 	comboSeq *ComboSequencer
@@ -1324,6 +1333,9 @@ func (h *YggdrasilHat) selectAmongTop(scores []float64) int {
 	if topN == 1 {
 		return 0
 	}
+	if h.noiseRNG == nil {
+		return 0
+	}
 	return h.noiseRNG.Intn(topN)
 }
 
@@ -1361,6 +1373,17 @@ func estimatePWUltimateCost(card *gameengine.Card) int {
 		}
 	}
 	return maxCost
+}
+
+// noiseSeedFor derives a per-seat noise-RNG seed from the game seed.
+// SplitMix64-style avalanche so adjacent (seed, seat) pairs produce
+// decorrelated streams — without it, four seats sharing one game seed
+// would draw identical noise values at correlated decision points.
+func noiseSeedFor(gameSeed int64, seatIdx int) int64 {
+	z := uint64(gameSeed) + uint64(seatIdx+1)*0x9E3779B97F4A7C15
+	z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9
+	z = (z ^ (z >> 27)) * 0x94D049BB133111EB
+	return int64(z ^ (z >> 31))
 }
 
 // applyNoise adds gaussian noise (Box-Muller) scaled by h.Noise to a score.
@@ -10356,6 +10379,21 @@ func (h *YggdrasilHat) ShouldConcede(gs *gameengine.GameState, seatIdx int) bool
 func (h *YggdrasilHat) ObserveEvent(gs *gameengine.GameState, seatIdx int, event *gameengine.Event) {
 	if event == nil {
 		return
+	}
+
+	// Deterministic noise seeding (r62): the constructors seed noiseRNG
+	// from the global rand, which made every targeting/selection decision
+	// nondeterministic and broke seed replay (Loki repro, ELO parity,
+	// anticheat verify). The first event of a seeded game reaches the hat
+	// before any noise consumer runs (setup/draw/mulligan events precede
+	// all decisions that call applyNoise/selectAmongTop), so reseeding
+	// here guarantees the whole noise stream is a pure function of
+	// (gs.Seed, seatIdx). Unseeded games (Seed==0) keep the legacy
+	// global-rand stream. Keying on the seed value (not a bool) also
+	// reseeds correctly if a hat instance is reused across games.
+	if gs != nil && gs.Seed != 0 && h.noiseSeededFor != gs.Seed {
+		h.noiseSeededFor = gs.Seed
+		h.noiseRNG = rand.New(rand.NewSource(noiseSeedFor(gs.Seed, seatIdx)))
 	}
 
 	// Initialize tracking arrays on first event.

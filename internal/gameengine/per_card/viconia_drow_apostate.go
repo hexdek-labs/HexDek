@@ -1,8 +1,6 @@
 package per_card
 
 import (
-	"math/rand"
-
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -57,7 +55,7 @@ func viconiaDrowUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 		})
 		return
 	}
-	pick := creatures[rand.Intn(len(creatures))]
+	pick := creatures[rngIntn(gs, len(creatures))]
 	gameengine.MoveCard(gs, pick, perm.Controller, "graveyard", "hand", slug)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":      perm.Controller,

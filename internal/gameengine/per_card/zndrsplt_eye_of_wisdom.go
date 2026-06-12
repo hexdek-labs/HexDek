@@ -1,8 +1,6 @@
 package per_card
 
 import (
-	"math/rand"
-
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -39,7 +37,7 @@ func zndrspltCombatBegin(gs *gameengine.GameState, perm *gameengine.Permanent, c
 	}
 	wins := 0
 	for i := 0; i < 32; i++ {
-		flip := rand.Intn(2)
+		flip := rngIntn(gs, 2)
 		if flip == 0 {
 			break
 		}
