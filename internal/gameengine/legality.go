@@ -75,11 +75,12 @@ func (v LegalityViolation) String() string {
 // repro), and the canonical view is what flows through LogViolation.
 func (v LegalityViolation) Canonical() judge.ValidationViolation {
 	return judge.ValidationViolation{
-		Surface:  judge.SurfaceLegality,
-		Name:     v.Rule,
-		Severity: judge.SeverityCritical,
-		Message:  v.Action + ": " + v.Detail,
-		Seat:     v.Seat,
+		Surface:   judge.SurfaceLegality,
+		Dimension: judge.DimensionLegality,
+		Name:      v.Rule,
+		Severity:  judge.SeverityCritical,
+		Message:   v.Action + ": " + v.Detail,
+		Seat:      v.Seat,
 		Context: map[string]interface{}{
 			"seed":   v.Seed,
 			"turn":   v.Turn,
