@@ -236,6 +236,23 @@ func (gs *GameState) CheckEnd() bool {
 	if gs == nil {
 		return false
 	}
+	// §704.3 / §104.4a — apply pending player-loss SBAs BEFORE evaluating
+	// game-over, so simultaneous losses resolve as a draw rather than
+	// crowning whoever happened to be SBA'd last. Judge sweep round 2
+	// (seed 99 game 225): an SBA pass marked the last opponent Lost via
+	// §704.5a, the same in-flight trigger cascade then drained the
+	// surviving seat to life=0, and the next CheckEnd caller ran no fresh
+	// SBA pass — declaring a §104.2a "winner" at 0 life where the CR
+	// outcome is a §104.3b/§104.4a draw. Only the leaf player-loss SBAs
+	// run here (5a life, 5b empty-draw, 5c poison) — a full
+	// StateBasedActions call would recurse back into CheckEnd. Skipped
+	// once ended=1 so repeated post-end calls can't retroactively change
+	// a recorded outcome.
+	if gs.Flags == nil || gs.Flags["ended"] != 1 {
+		sba704_5a(gs)
+		sba704_5b(gs)
+		sba704_5c(gs)
+	}
 	// §800.4a — run leave-the-game cleanup for newly-Lost seats. Order
 	// matches Python: eliminate first, THEN evaluate end conditions.
 	for _, s := range gs.Seats {

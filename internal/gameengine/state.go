@@ -2353,6 +2353,18 @@ func LoseLife(gs *GameState, seat, amount int, source string) {
 	if gs == nil || amount <= 0 || seat < 0 || seat >= len(gs.Seats) {
 		return
 	}
+	// Once the game has ended nothing further happens (CR §104.1-2): the
+	// trigger dispatchers stop STARTING handlers on ended=1, but a handler
+	// already mid-resolution when its own effects ended the game keeps
+	// executing its remaining lines. Those trailing LoseLife calls were
+	// draining the WINNER post-end (judge sweep round 2, seed 99 game 225:
+	// an end-step Zurgo Stormrender chain killed the last opponent, the
+	// game ended, and the rest of the chain pulled the winner to life=0 —
+	// tripping SBACompleteness "704.5a missed" on a seat that can no
+	// longer legally lose).
+	if gs.Flags != nil && gs.Flags["ended"] == 1 {
+		return
+	}
 	s := gs.Seats[seat]
 	if s == nil || s.Lost {
 		return
@@ -2381,6 +2393,11 @@ func LoseLife(gs *GameState, seat, amount int, source string) {
 // LifeLost. Use for "deals N damage to target player" effects.
 func DealDamage(gs *GameState, seat, amount int, source string) {
 	if gs == nil || amount <= 0 || seat < 0 || seat >= len(gs.Seats) {
+		return
+	}
+	// Post-game-end guard — same rationale as LoseLife above (§104.1-2):
+	// in-flight resolutions must not mutate life after the game ends.
+	if gs.Flags != nil && gs.Flags["ended"] == 1 {
 		return
 	}
 	s := gs.Seats[seat]

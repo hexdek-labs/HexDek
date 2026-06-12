@@ -533,8 +533,11 @@ func TestGriselbrand_PartialDrawWhenLibraryLow(t *testing.T) {
 	if len(gs.Seats[0].Hand) != 3 {
 		t.Errorf("expected 3 cards drawn, got %d", len(gs.Seats[0].Hand))
 	}
-	if !gs.Seats[0].AttemptedEmptyDraw {
-		t.Errorf("AttemptedEmptyDraw should be true")
+	// r62 CheckEnd pre-sweep (CR §704.3): the handler's own CheckEnd may
+	// already have consumed AttemptedEmptyDraw and applied the §704.5b
+	// loss — either state registers the empty-draw attempt.
+	if !gs.Seats[0].AttemptedEmptyDraw && !gs.Seats[0].Lost {
+		t.Errorf("expected AttemptedEmptyDraw flag or §704.5b loss")
 	}
 }
 
