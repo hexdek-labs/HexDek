@@ -266,6 +266,12 @@ func ScanExpiredDurations(gs *GameState, phase, step string) {
 		}
 	}
 
+	// 1b) Until-end-of-turn control steals revert at cleanup (§514.2 —
+	// r63 shared return-to-owner operation, control_revert.go).
+	if step == "cleanup" || (phase == "ending" && step == "cleanup") {
+		ExpireTempControlGrants(gs)
+	}
+
 	// 2) Permanent.Modifications (until-EOT buffs).
 	if step == "cleanup" || (phase == "ending" && step == "cleanup") {
 		modsRemoved := false

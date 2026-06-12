@@ -51,14 +51,17 @@ func TestElimination_StolenPermanentExiledToOwner_NotVanished(t *testing.T) {
 
 	HandleSeatElimination(gs, 1)
 
+	// r63 owner-immutability work: the shared return-to-owner operation
+	// REVERTS control (owner's battlefield) instead of the #1046
+	// exile-always MVP — §800.4a control effects end first. The
+	// invariant under test is unchanged: the card exists in EXACTLY one
+	// zone, the owner's.
 	zones := 0
+	onOwnerBF := false
 	for _, s := range gs.Seats {
 		for _, c := range s.Exile {
 			if c == stolen.Card {
 				zones++
-				if s.Idx != 0 {
-					t.Errorf("stolen card exiled to seat %d's zone, want owner seat 0", s.Idx)
-				}
 			}
 		}
 		for _, c := range s.Graveyard {
@@ -69,11 +72,14 @@ func TestElimination_StolenPermanentExiledToOwner_NotVanished(t *testing.T) {
 		for _, p := range s.Battlefield {
 			if p != nil && p.Card == stolen.Card {
 				zones++
+				if s.Idx == 0 {
+					onOwnerBF = true
+				}
 			}
 		}
 	}
-	if zones != 1 {
-		t.Fatalf("stolen card present in %d zones, want exactly 1 (owner's exile) — CR §800.4c", zones)
+	if zones != 1 || !onOwnerBF {
+		t.Fatalf("stolen card: zones=%d onOwnerBF=%v — want exactly 1 zone, the owner's battlefield (§800.4a revert)", zones, onOwnerBF)
 	}
 
 	// The owner did not leave: the InstanceID must NOT be ceased.
@@ -144,13 +150,18 @@ func TestElimination_CorruptPermOwner_CardOwnerAuthoritative(t *testing.T) {
 		t.Error("card OWNED (Card.Owner) by a surviving seat must never cease on another's elimination")
 	}
 	found := false
+	for _, p := range gs.Seats[0].Battlefield {
+		if p != nil && p.Card == corrupt.Card {
+			found = true
+		}
+	}
 	for _, c := range gs.Seats[0].Exile {
 		if c == corrupt.Card {
 			found = true
 		}
 	}
 	if !found {
-		t.Error("corrupt-perm card must revert to its Card.Owner's exile (seat 0)")
+		t.Error("corrupt-perm card must return to its Card.Owner (battlefield revert, or exile when unrevertable)")
 	}
 	if got := gs.Seats[1].Flags["cards_left_game"]; got != 0 {
 		t.Errorf("other-owned card must not count as the leaver's departure: want 0, got %d", got)

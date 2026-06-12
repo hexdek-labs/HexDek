@@ -48,6 +48,16 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 	// see a stamped Card regardless of which mint site brought it. The
 	// helper no-ops for non-tokens and for cards already stamped.
 	EnsureTokenInstanceID(gs, perm)
+	// r63 §108.3 normalization: Card.Owner is the ownership authority;
+	// Permanent.Owner is a denormalized mirror that ~54 raw construction
+	// sites historically left at the zero default (every seat-1+ land or
+	// token entering via an effect path read as owner-0). Align it once
+	// at the single chokepoint every permanent passes — any LATER
+	// divergence is a real mutation and trips the OwnerImmutability
+	// invariant.
+	if perm.Owner != perm.Card.Owner {
+		perm.Owner = perm.Card.Owner
+	}
 	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
 
 	// CR §708.4: face-down permanents have no abilities — skip self-triggers.

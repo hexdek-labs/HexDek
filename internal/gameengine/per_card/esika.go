@@ -105,7 +105,9 @@ func esikaBridgeUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 		// enterBattlefieldWithETB → createPermanent sweeps `hit` from
 		// library (RemoveCardFromAllPrivateZones) + fires the full ETB
 		// cascade.
-		hit.Owner = perm.Controller
+		// §108.3 (r63): ownership is write-once — `hit` comes from the
+		// controller's own library, so Card.Owner is already correct;
+		// the old reassignment was the Owner-mutation anti-pattern.
 		ent := enterBattlefieldWithETB(gs, perm.Controller, hit, false)
 		if ent != nil {
 			entered = hit.DisplayName()
