@@ -437,47 +437,40 @@ function CardListDense({ cards, cardRoles, sort, onSort, coachingIndex, onCut })
   )
 }
 
-// WorkshopAddCard — typeahead-style card-add input for the Workshop
-// editor. Debounced search against /api/cards/search, dropdown shows
-// up to 6 matches, Enter or click appends. Lets the user add cards
-// without manually typing the card name into the textarea (with all
-// the typo risk that implies).
-function WorkshopAddCard({ onAdd }) {
+// WorkshopSearchPanel — the deck-editor MVP search (r63, owner
+// direction: "search of cards, filter automatically by commander
+// color"). Debounced search against /api/cards/search with the deck's
+// commander color identity passed as colors= — the backend returns only
+// cards whose color identity fits (CR §903.4). Default scope searches
+// name + type line + ORACLE TEXT (the Scryfall o: equivalent), so
+// "create a Treasure" works. Each row shows name / mana cost / type
+// line with a click-to-add affordance.
+function WorkshopSearchPanel({ colorIdentity, onAdd }) {
   const [q, setQ] = useState('')
   const [results, setResults] = useState([])
-  const [focused, setFocused] = useState(false)
+  const [searching, setSearching] = useState(false)
+  const colors = (colorIdentity || []).join('')
   useEffect(() => {
-    if (!q.trim() || q.trim().length < 2) { setResults([]); return }
+    if (!q.trim() || q.trim().length < 2) { setResults([]); setSearching(false); return }
     let cancelled = false
+    setSearching(true)
     const t = setTimeout(() => {
-      api.searchCards(q.trim(), 6).then(res => {
+      api.searchCards(q.trim(), 20, colors).then(res => {
         if (cancelled) return
         const rows = Array.isArray(res) ? res : (res?.results || res?.cards || [])
-        setResults(rows.slice(0, 6))
-      }).catch(() => { if (!cancelled) setResults([]) })
-    }, 200)
+        setResults(rows.slice(0, 20))
+        setSearching(false)
+      }).catch(() => { if (!cancelled) { setResults([]); setSearching(false) } })
+    }, 220)
     return () => { cancelled = true; clearTimeout(t) }
-  }, [q])
-  const pick = (name) => {
-    onAdd(name)
-    setQ('')
-    setResults([])
-  }
+  }, [q, colors])
   return (
-    <div style={{ position: 'relative', marginBottom: 8 }}>
+    <div style={{ marginBottom: 10 }}>
       <input
         type="text"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setTimeout(() => setFocused(false), 150)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && results[0]) {
-            e.preventDefault()
-            pick(results[0].name || results[0])
-          }
-        }}
-        placeholder="+ ADD CARD — type to search..."
+        placeholder={`SEARCH CARDS — name, type, or rules text${colors ? ` · identity ≤ ${colors}` : ''}...`}
         style={{
           width: '100%', padding: '8px 10px',
           background: 'var(--bg-2, rgba(0,0,0,0.3))',
@@ -486,35 +479,119 @@ function WorkshopAddCard({ onAdd }) {
           letterSpacing: '0.04em',
         }}
         spellCheck={false}
+        data-testid="editor-search"
       />
-      {focused && results.length > 0 && (
+      {q.trim().length >= 2 && (
         <div style={{
-          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 10,
-          background: 'var(--panel)', border: '1px solid var(--rule-2)',
-          borderTop: 'none', maxHeight: 240, overflowY: 'auto',
+          border: '1px solid var(--rule-2)', borderTop: 'none',
+          maxHeight: 280, overflowY: 'auto', background: 'var(--panel)',
         }}>
-          {results.map((r, i) => {
-            const name = r.name || r
-            return (
-              <div
-                key={i}
-                onMouseDown={(e) => { e.preventDefault(); pick(name) }}
-                style={{
-                  padding: '6px 10px', cursor: 'pointer', fontSize: 11,
-                  borderBottom: '1px solid var(--rule)',
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-2, rgba(255,255,255,0.04))'}
-                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-              >
-                {name}
-                {r.type_line && (
-                  <span className="t-xs muted" style={{ marginLeft: 8 }}>— {r.type_line}</span>
-                )}
-              </div>
-            )
-          })}
+          <div className="t-xs muted" style={{ padding: '4px 10px', borderBottom: '1px solid var(--rule)', letterSpacing: '0.08em' }}>
+            {searching ? 'SEARCHING...' : `${results.length} MATCH${results.length === 1 ? '' : 'ES'}`}
+            {colors ? ` · FILTERED TO ${colors} IDENTITY` : ''}
+          </div>
+          {!searching && results.length === 0 && (
+            <div className="t-xs muted" style={{ padding: '8px 10px' }}>
+              NO CARDS IN IDENTITY MATCH "{q.trim().toUpperCase()}"
+            </div>
+          )}
+          {results.map((r, i) => (
+            <div
+              key={`${r.name}-${i}`}
+              onClick={() => onAdd(r.name)}
+              title={`Add ${r.name}`}
+              style={{
+                display: 'flex', alignItems: 'baseline', gap: 8,
+                padding: '6px 10px', cursor: 'pointer', fontSize: 11,
+                borderBottom: '1px solid var(--rule)',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'var(--bg-2, rgba(255,255,255,0.05))'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              data-testid="editor-search-row"
+            >
+              <span style={{ color: 'var(--ok)', fontWeight: 700 }}>+</span>
+              <span style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{r.name}</span>
+              {r.mana_cost && (
+                <span className="t-xs" style={{ color: 'var(--ink-2)', whiteSpace: 'nowrap', fontFamily: 'monospace' }}>{r.mana_cost}</span>
+              )}
+              <span className="t-xs muted" style={{ marginLeft: 'auto', textAlign: 'right' }}>{r.type_line || ''}</span>
+            </div>
+          ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// WorkshopCardList — structured live view of the editText deck list
+// (r63 editor MVP). Parses the textarea content into rows with qty
+// steppers and an X remove; every mutation rewrites the textarea text,
+// which stays the single source of truth (the diff, save, and history
+// machinery all already key off it). Commander lines are pinned at the
+// top and not removable here (swap commanders via the textarea).
+function WorkshopCardList({ editText, onChange }) {
+  const rows = useMemo(() => {
+    const out = []
+    const lines = (editText || '').split('\n')
+    lines.forEach((raw, idx) => {
+      const line = raw.trim()
+      if (!line) return
+      const cmdr = line.match(/^COMMANDER:\s*(.+)$/i)
+      if (cmdr) { out.push({ idx, name: cmdr[1].trim(), qty: 1, commander: true }); return }
+      const m = line.match(/^(\d+)\s+(.+)$/)
+      if (m) out.push({ idx, name: m[2].trim(), qty: parseInt(m[1], 10), commander: false })
+    })
+    return out
+  }, [editText])
+
+  const total = rows.reduce((n, r) => n + r.qty, 0)
+
+  const setQty = (row, nextQty) => {
+    const lines = (editText || '').split('\n')
+    if (nextQty <= 0) {
+      lines.splice(row.idx, 1)
+    } else {
+      lines[row.idx] = `${nextQty} ${row.name}`
+    }
+    onChange(lines.join('\n'))
+  }
+
+  if (rows.length === 0) return null
+  return (
+    <div style={{
+      border: '1px solid var(--rule-2)', marginBottom: 10,
+      maxHeight: 320, overflowY: 'auto',
+    }} data-testid="editor-card-list">
+      <div className="t-xs muted" style={{
+        padding: '4px 10px', borderBottom: '1px solid var(--rule)',
+        letterSpacing: '0.08em', position: 'sticky', top: 0, background: 'var(--panel)',
+      }}>
+        DECK LIST · {total} CARD{total === 1 ? '' : 'S'}
+      </div>
+      {rows.map((r) => (
+        <div key={`${r.idx}-${r.name}`} style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '4px 10px', fontSize: 11, borderBottom: '1px solid var(--rule)',
+        }}>
+          {r.commander ? (
+            <span className="t-xs" style={{ color: 'var(--warn)', letterSpacing: '0.06em', fontWeight: 700 }}>CMDR</span>
+          ) : (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <button type="button" onClick={() => setQty(r, r.qty - 1)} title="Decrease"
+                style={{ background: 'transparent', border: '1px solid var(--rule-2)', color: 'inherit', cursor: 'pointer', width: 18, height: 18, lineHeight: '14px', padding: 0, fontSize: 11 }}>−</button>
+              <span style={{ minWidth: 16, textAlign: 'center', fontWeight: 600 }}>{r.qty}</span>
+              <button type="button" onClick={() => setQty(r, r.qty + 1)} title="Increase"
+                style={{ background: 'transparent', border: '1px solid var(--rule-2)', color: 'inherit', cursor: 'pointer', width: 18, height: 18, lineHeight: '14px', padding: 0, fontSize: 11 }}>+</button>
+            </span>
+          )}
+          <span style={{ flex: 1 }}>{r.name}</span>
+          {!r.commander && (
+            <button type="button" onClick={() => setQty(r, 0)} title={`Remove ${r.name}`}
+              style={{ background: 'transparent', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 12, padding: '0 4px', fontWeight: 700 }}
+              data-testid="editor-remove">×</button>
+          )}
+        </div>
+      ))}
     </div>
   )
 }
@@ -2526,7 +2603,7 @@ export default function DeckArchive() {
             <Panel code="04.X" title="WORKSHOP / / DECK LIST" right={
               <span className="t-xs" style={{ color: 'var(--warn)' }}>IN WORKSHOP</span>
             }>
-              <WorkshopAddCard onAdd={(cardName) => {
+              <WorkshopSearchPanel colorIdentity={colorIdentity} onAdd={(cardName) => {
                 // Append "1 CardName" to the bottom of editText, deduplicating
                 // against existing lines so a card already in the list bumps
                 // to qty+1 instead of getting a second "1 CardName" entry.
@@ -2543,6 +2620,7 @@ export default function DeckArchive() {
                 }
                 setEditText(lines.filter(l => l !== '' || lines.indexOf(l) === lines.length - 1).join('\n'))
               }} />
+              <WorkshopCardList editText={editText} onChange={setEditText} />
               <WorkshopTextarea value={editText} onChange={setEditText} />
               <ContextBox id="deck.edit-save" style={{ marginTop: 10 }}>
                 <strong>SAVE UPDATE</strong> writes a new version of the deck and re-runs Freya analysis.

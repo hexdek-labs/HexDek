@@ -14,13 +14,14 @@ import (
 
 // CardSearchHit is a row in the /api/cards/search payload.
 type CardSearchHit struct {
-	Name     string  `json:"name"`
-	ManaCost string  `json:"mana_cost"`
-	TypeLine string  `json:"type_line"`
-	CMC      float64 `json:"cmc"`
-	Set      string  `json:"set,omitempty"`
-	ImageURI string  `json:"image_uri"`
-	Score    int     `json:"score,omitempty"`
+	Name          string   `json:"name"`
+	ManaCost      string   `json:"mana_cost"`
+	TypeLine      string   `json:"type_line"`
+	CMC           float64  `json:"cmc"`
+	Set           string   `json:"set,omitempty"`
+	ImageURI      string   `json:"image_uri"`
+	ColorIdentity []string `json:"color_identity,omitempty"`
+	Score         int      `json:"score,omitempty"`
 }
 
 // CardDetail is the response for /api/cards/{name}.
@@ -83,8 +84,8 @@ type DeckRef struct {
 }
 
 type SynergyPartner struct {
-	Name  string   `json:"name"`
-	Count int      `json:"count"`
+	Name  string `json:"name"`
+	Count int    `json:"count"`
 	// Decks samples up to ~5 deck names where the partner co-occurs;
 	// keeps the payload small while letting the UI show provenance.
 	Decks []string `json:"decks,omitempty"`
@@ -104,9 +105,17 @@ func cardImageURI(name string) string {
 	return "/api/card-art/" + url.PathEscape(name)
 }
 
-// handleCardSearch implements GET /api/cards/search?q=<query>&limit=<n>.
-// Searches the loaded oracle card corpus by name with prefix/substring
-// fuzzy match, returning the top results sorted by relevance.
+// handleCardSearch implements
+// GET /api/cards/search?q=<query>&limit=<n>&colors=<WUBRG>&scope=<name|text|all>.
+//
+// Searches the loaded oracle card corpus. By default (scope=all) a card
+// matches when its NAME (prefix/substring fuzzy, highest-ranked), TYPE
+// LINE, or ORACLE TEXT contains the query substring — the Scryfall `o:`
+// operator equivalent, so "create a Treasure" finds every treasure
+// producer (owner addendum, r63 deck editor). scope=name restricts to
+// the historical name-only behavior; scope=text searches oracle text
+// only. colors= filters results to cards whose color identity is a
+// subset of the given WUBRG letters (CR §903.4).
 //
 // Defaults: limit=20, max=50. Empty `q` returns an empty list.
 func (h *Handler) handleCardSearch(w http.ResponseWriter, r *http.Request) {
@@ -127,21 +136,60 @@ func (h *Handler) handleCardSearch(w http.ResponseWriter, r *http.Request) {
 		limit = 50
 	}
 
+	// colors=<WUBRG letters> (r63 deck editor): when present, only return
+	// cards whose COLOR IDENTITY is a subset of the given letters — the
+	// CR §903.4 commander deckbuilding rule. Colorless cards (empty
+	// identity) always pass. Unknown letters are ignored; an explicit
+	// colors= with NO valid letters means colorless-only.
+	colorsParam := r.URL.Query().Get("colors")
+	_, colorsSet := parseColorsParam(colorsParam)
+
+	scope := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("scope")))
+	if scope == "" {
+		scope = "all"
+	}
+
 	hits := make([]CardSearchHit, 0, 64)
 	for nameLower, info := range h.cardDB {
-		score := matchScore(nameLower, needle)
+		// Name matches keep the fuzzy relevance score and rank first;
+		// type-line / oracle-text substring matches score below the
+		// weakest name match so name lookups stay on top.
+		score := 0
+		if scope == "all" || scope == "name" {
+			score = matchScore(nameLower, needle)
+		}
+		if score == 0 && (scope == "all" || scope == "text") {
+			if strings.Contains(strings.ToLower(info.OracleText), needle) {
+				score = textMatchScore
+			}
+		}
+		if score == 0 && scope == "all" {
+			if strings.Contains(strings.ToLower(info.TypeLine), needle) {
+				score = typeMatchScore
+			}
+		}
 		if score == 0 {
+			continue
+		}
+		if colorsSet != nil && !colorIdentityFits(info.ColorIdentity, colorsSet) {
+			continue
+		}
+		// Token entries from the bulk corpus ("Token Creature — Dragon")
+		// are battlefield objects, not deck cards — never offer them to
+		// the deck editor.
+		if strings.HasPrefix(strings.ToLower(info.TypeLine), "token") {
 			continue
 		}
 		display := titleCaseCardName(nameLower)
 		hits = append(hits, CardSearchHit{
-			Name:     display,
-			ManaCost: info.ManaCost,
-			TypeLine: info.TypeLine,
-			CMC:      info.CMC,
-			Set:      info.Set,
-			ImageURI: cardImageURI(display),
-			Score:    score,
+			Name:          display,
+			ManaCost:      info.ManaCost,
+			TypeLine:      info.TypeLine,
+			CMC:           info.CMC,
+			Set:           info.Set,
+			ImageURI:      cardImageURI(display),
+			ColorIdentity: info.ColorIdentity,
+			Score:         score,
 		})
 	}
 
@@ -191,11 +239,11 @@ func (h *Handler) handleCardAnalytics(w http.ResponseWriter, r *http.Request) {
 
 	top, bottom := cardstats.Default.TopBottom(limit, minGames)
 	writeJSON(w, map[string]any{
-		"min_games":     minGames,
-		"limit":         limit,
-		"unique_cards":  cardstats.Default.Size(),
-		"top":           top,
-		"bottom":        bottom,
+		"min_games":    minGames,
+		"limit":        limit,
+		"unique_cards": cardstats.Default.Size(),
+		"top":          top,
+		"bottom":       bottom,
 	})
 }
 
@@ -454,3 +502,44 @@ func loadStrategyMeta(decksDir, owner, id string) *strategyMeta {
 	}
 	return &s
 }
+
+// parseColorsParam normalizes a colors= query value ("wug", "WUG") into
+// a WUBRG letter set. Returns (raw letters, nil) when the param is
+// absent — nil set means "no color filtering".
+func parseColorsParam(v string) (string, map[string]bool) {
+	if v == "" {
+		return "", nil
+	}
+	set := map[string]bool{}
+	kept := ""
+	for _, c := range strings.ToUpper(v) {
+		switch c {
+		case 'W', 'U', 'B', 'R', 'G':
+			if !set[string(c)] {
+				set[string(c)] = true
+				kept += string(c)
+			}
+		}
+	}
+	return kept, set
+}
+
+// colorIdentityFits reports whether every letter of a card's color
+// identity is inside the allowed set (CR §903.4 subset rule). An empty
+// identity (colorless) fits any commander.
+func colorIdentityFits(identity []string, allowed map[string]bool) bool {
+	for _, c := range identity {
+		if !allowed[strings.ToUpper(strings.TrimSpace(c))] {
+			return false
+		}
+	}
+	return true
+}
+
+// Sub-name-match relevance tiers for scope=all: any name match (the
+// matchScore floor is higher than these) outranks a type-line match,
+// which outranks an oracle-text match.
+const (
+	typeMatchScore = 2
+	textMatchScore = 1
+)
