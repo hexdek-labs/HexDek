@@ -1316,17 +1316,23 @@ func tryPlayLand(gs *gameengine.GameState, seatIdx int) {
 		},
 	})
 
-	// Fire per-card ETB hooks for the land. This is how shocklands,
-	// Bojuka Bog, and other lands with ETB effects activate when
-	// played from hand (lands don't go through the stack).
-	gameengine.InvokeETBHook(gs, perm)
-
-	// Fire generic "permanent_etb" for observer triggers.
-	gameengine.FireCardTrigger(gs, "permanent_etb", map[string]interface{}{
-		"perm":            perm,
-		"controller_seat": seatIdx,
-		"card":            chosen,
-	})
+	// Route the land through the SAME battlefield-entry pattern every
+	// other entry path uses (stack-cast, reanimate, token-mint, blink,
+	// tutor-to-battlefield — see resolve.go placeTutoredCard): register
+	// the land's replacement effects, then fire the full ETB dispatcher
+	// cascade. Pre-r62 this site hand-rolled a ~15% subset of the
+	// cascade (bare InvokeETBHook + an unbatched permanent_etb), so a
+	// land played from hand never reached
+	// RegisterContinuousEffectsForPermanent / ApplyStaticETBCounters /
+	// self-AST ETB triggers / fireObserverETBTriggers — an Urborg,
+	// Tomb of Yawgmoth (named layer dispatch, layers.go) was silently
+	// inert on the most common land-entry path in every simulated game,
+	// the exact bug class PR #999 closed for the non-cast entry paths.
+	// The dispatcher subsumes both removed calls: it invokes the
+	// per-card ETB hook and fires "permanent_etb" itself, inside a
+	// §603.3b trigger batch.
+	gameengine.RegisterReplacementsForPermanent(gs, perm)
+	gameengine.FirePermanentETBTriggers(gs, perm)
 }
 
 // highUrgencyCommanderInZone returns true if the seat's hat is a
