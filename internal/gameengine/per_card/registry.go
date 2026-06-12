@@ -1238,7 +1238,6 @@ func registerDefaults() {
 
 	// Batch #18 — drain commanders (lifegain→drain + ETB→drain).
 	registerDinaSoulSteeper(Global())
-	registerDinaEssenceBrewer(Global())
 	registerVitoThornOfTheDuskRose(Global())
 	registerVitoFanaticOfAclazotz(Global())
 	registerMaraudingBlightPriest(Global())

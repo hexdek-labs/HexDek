@@ -44,9 +44,9 @@ type Delta struct {
 	MarkedDamage      int         // total marked damage added across all permanents
 	CountersByKind    map[string]int
 	// r63 part-2 widened dimensions:
-	Tapped    int // change in total tapped-permanent count
-	PowerSum  int // change in summed effective power across battlefields
-	ToughSum  int // change in summed effective toughness
+	Tapped   int // change in total tapped-permanent count
+	PowerSum int // change in summed effective power across battlefields
+	ToughSum int // change in summed effective toughness
 }
 
 func NewDelta() *Delta {
@@ -117,15 +117,15 @@ const scaffoldCreaturePT = 4
 // internals. Counts are permanents per category on the OPPONENT seat;
 // the source permanent sits on the controller's battlefield.
 type BoardSpec struct {
-	Controller   int
-	Opponent     int
-	OppCreatures int
-	OppArtifacts int
-	OppEnchants  int
-	OppLands     int
-	OwnCreatures int // bystanders beside the source
+	Controller    int
+	Opponent      int
+	OppCreatures  int
+	OppArtifacts  int
+	OppEnchants   int
+	OppLands      int
+	OwnCreatures  int // bystanders beside the source
 	SrcIsCreature bool
-	LibrarySize  int // per seat
+	LibrarySize   int // per seat
 	// r63 part-2 board additions:
 	OppTappedArtifacts int // tapped artifacts on the opponent (untap candidates)
 	OwnTappedLands     int // tapped lands on the controller (untap candidates)
@@ -263,6 +263,15 @@ func accumulate(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 		// Effective-P/T side effect: creature tokens contribute their
 		// printed body to the board P/T sums.
 		if e.PT != nil {
+			// 0-toughness creature tokens (Urza's constructs): whether
+			// the token survives the §704.5f SBA depends on granted
+			// statics ("gets +1/+1 for each artifact you control") the
+			// interpreter cannot model — out of scope (r63 OUTCOME
+			// residual round; the engine's no-artifact board answer,
+			// token dies, is rules-correct).
+			if e.PT[1] <= 0 {
+				return false
+			}
 			d.PowerSum += e.PT[0] * n
 			d.ToughSum += e.PT[1] * n
 		} else {
@@ -403,7 +412,6 @@ func normBase(b string) string {
 	}
 	return b
 }
-
 
 // removalCount generalizes singleRemovalExpectation to up_to_n picks:
 // the engine removes min(count, opponent candidates) — harmful up-to

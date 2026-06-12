@@ -15,9 +15,12 @@ func registerDinaSoulSteeper(r *Registry) {
 	r.OnTrigger("Dina, Soul Steeper", "life_gained", dinaDrainTrigger)
 }
 
-func registerDinaEssenceBrewer(r *Registry) {
-	r.OnTrigger("Dina, Essence Brewer", "life_gained", dinaDrainTrigger)
-}
+// registerDinaEssenceBrewer was DELETED (r63 OUTCOME finding): it
+// copy-pasted Dina, Soul Steeper's life-gain drain onto Dina, Essence
+// Brewer, whose printed text has no such ability ("whenever you
+// sacrifice a creature, draw a card" + the sac-pump activation) —
+// Essence Brewer was draining every opponent on every life gain in
+// real games. Her real abilities resolve via the AST paths.
 
 func dinaDrainTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
 	if gs == nil || perm == nil {

@@ -14,26 +14,13 @@ import (
 //	Yorvo's power, put another +1/+1 counter on Yorvo.
 //
 // Implementation:
-//   - OnETB: place 4 +1/+1 counters on Yorvo at entry.
+//   - enters-with-counters: generic AST static path (per_card
+//     duplicate deleted r63 — Yorvo was entering with 8).
 //   - "permanent_etb" trigger: filter to other green creature controlled
 //     by Yorvo's controller. Place 1 counter; if entering creature's
 //     power exceeds Yorvo's, add a second counter.
 func registerYorvoLordOfGarenbrig(r *Registry) {
-	r.OnETB("Yorvo, Lord of Garenbrig", yorvoETB)
 	r.OnTrigger("Yorvo, Lord of Garenbrig", "permanent_etb", yorvoOtherGreenETB)
-}
-
-func yorvoETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	const slug = "yorvo_lord_etb_counters"
-	if gs == nil || perm == nil {
-		return
-	}
-	perm.AddCounter("+1/+1", 4)
-	gs.InvalidateCharacteristicsCache()
-	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":     perm.Controller,
-		"counters": 4,
-	})
 }
 
 func yorvoOtherGreenETB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
