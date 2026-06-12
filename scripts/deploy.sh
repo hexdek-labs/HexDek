@@ -67,14 +67,17 @@ deploy_frontend() {
 }
 
 deploy_frontend_dev() {
-    # Staging deploy — same build as prod, but lands in a separate directory
-    # on MISTY served at dev.hexdek.dev. Both prod and dev currently point
-    # at the same backend API on DARKSTAR :8090, so this is a visual-layer
-    # staging environment only.
+    # Staging deploy — built WITH the staging review gate (VITE_STAGING=1:
+    # only the whitelisted reviewers in src/lib/stagingGate.js get past
+    # the gate; everyone else is redirected to prod). Lands in a separate
+    # directory on MISTY served at dev.hexdek.dev. Both prod and dev
+    # point at the same backend API on DARKSTAR :8090, so this is a
+    # visual-layer staging environment only. Prod builds (deploy_frontend)
+    # never set the flag and are byte-for-byte unaffected by the gate.
     local branch
     branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
-    echo "=== Building React frontend (branch: $branch) ==="
-    cd hexdek && npm run build && cd ..
+    echo "=== Building React frontend — STAGING GATE ON (branch: $branch) ==="
+    cd hexdek && VITE_STAGING=1 npm run build && cd ..
 
     echo "=== Deploying to MISTY (~/sites/hexdek-dev/) ==="
     rsync -avz --delete hexdek/dist/ "$MISTY:~/sites/hexdek-dev/"

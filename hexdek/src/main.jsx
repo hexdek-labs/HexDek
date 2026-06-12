@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
+import StagingGate from './components/StagingGate'
 import { LiveProvider } from './hooks/useLiveSocket'
 import { installGlobalErrorListeners } from './lib/errorTelemetry'
 import './index.css'
@@ -36,9 +37,11 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <LiveProvider>
-          <App />
-        </LiveProvider>
+        <StagingGate>
+          <LiveProvider>
+            <App />
+          </LiveProvider>
+        </StagingGate>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
