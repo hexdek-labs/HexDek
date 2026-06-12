@@ -2196,6 +2196,12 @@ func ruleToEventSuffix(rule string) string {
 // Used at every `s.Lost = true` site in this file (§704.5a life-loss,
 // §704.5b empty-library draw, §704.5c poison, §704.6c commander damage,
 // and the §104.4b mandatory-loop-draw cap path).
+//
+// detail is the structured loss cause (consolidation step 2.5): every
+// caller knows Category/Rule/SourceCard at the moment it writes the
+// freeform string, so both are stamped together. The string stays the
+// reader contract until every writer dual-writes; then readers flip to
+// LossDetail and the string becomes display-only.
 func markSeatLost(s *Seat, reason string, detail *validation.LossReason) {
 	if s == nil {
 		return
