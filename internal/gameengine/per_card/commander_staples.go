@@ -439,7 +439,14 @@ func reanimateResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 	bestCMC := -1
 	bestSeat := -1
 	for i, s := range gs.Seats {
-		if s == nil {
+		// CR §800.4a (r62 Phase-H OGVC fix): an eliminated player's cards
+		// left the game with them — the graveyard slice still holds the
+		// pointers for forensic clarity, so skip LeftGame seats or the
+		// spell "reanimates" a card that no longer exists (Pathrazer of
+		// Ulamog, seed 7777 game 2430). MoveCard now also refuses such
+		// moves at the chokepoint; this keeps the SELECTOR from wasting
+		// the spell on a dead card in the first place.
+		if s == nil || s.LeftGame {
 			continue
 		}
 		for _, c := range s.Graveyard {
