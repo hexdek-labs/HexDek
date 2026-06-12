@@ -295,13 +295,17 @@ func FireCastTriggerObservers(gs *GameState, cast *Card, controller int, fromCop
 			}
 		case "Birgi, God of Storytelling":
 			if perm.Controller == controller {
-				gs.Seats[perm.Controller].ManaPool++
-				SyncManaAfterAdd(gs.Seats[perm.Controller], 1)
-				// Ride-along legality validator: this add fires INSIDE the
-				// cast announcement window (FireCastTriggerObservers runs
-				// mid-CastSpell) — credit it so the cost check doesn't read
-				// Birgi's mana as an under-payment. nil-safe no-op when off.
-				gs.Legality.NoteManaAdd(perm.Controller, 1)
+				// Route through the canonical AddMana chokepoint (legality-
+				// validator r62 finding #4): the pre-r62 direct ManaPool++
+				// skipped the add_mana event stream and would skip any
+				// future mana-replacement effects. AddMana also credits the
+				// validator's in-window observation (this add fires INSIDE
+				// the cast announcement window — FireCastTriggerObservers
+				// runs mid-CastSpell), so the old direct NoteManaAdd
+				// stopgap is gone with it. {R} per the printed ability —
+				// the red bucket drains after Any in generic spends, so
+				// spendability is unchanged.
+				AddMana(gs, gs.Seats[perm.Controller], "R", 1, "Birgi, God of Storytelling")
 				gs.LogEvent(Event{
 					Kind:   "cast_trigger_observer",
 					Seat:   perm.Controller,

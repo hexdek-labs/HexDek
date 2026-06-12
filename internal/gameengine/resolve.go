@@ -2416,19 +2416,17 @@ func resolveAddMana(gs *GameState, src *Permanent, e *gameast.AddMana) {
 			return
 		}
 	}
-	gs.Seats[src.Controller].ManaPool += count
-	SyncManaAfterAdd(gs.Seats[src.Controller], count)
-	// Ride-along legality validator: inline mana abilities resolve inside
-	// the activation announcement window — credit the add so the cost
-	// check doesn't read produced mana as a negative spend. nil-safe.
-	gs.Legality.NoteManaAdd(src.Controller, count)
-	gs.LogEvent(Event{
-		Kind:   "add_mana",
-		Seat:   src.Controller,
-		Target: src.Controller,
-		Source: sourceName(src),
-		Amount: count,
-	})
+	// Route through the canonical AddMana chokepoint (legality-validator
+	// r62 finding #4): the pre-r62 direct `ManaPool += count` +
+	// SyncManaAfterAdd pair bypassed the single entry point any future
+	// mana-replacement effect will hook. Bucket-identical change: the old
+	// SyncManaAfterAdd credited the delta as Any-color mana, and so does
+	// AddMana with color "any" (per-symbol AST colors remain the Phase 6
+	// follow-up — this change is routing-only). AddMana logs the add_mana
+	// event (Seat is what hat consumers read) and credits the validator's
+	// in-window observation, replacing both the hand-rolled event and the
+	// direct NoteManaAdd stopgap.
+	AddMana(gs, gs.Seats[src.Controller], "any", count, sourceName(src))
 }
 
 func resolveTutor(gs *GameState, src *Permanent, e *gameast.Tutor) {
