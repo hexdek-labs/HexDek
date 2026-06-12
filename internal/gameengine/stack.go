@@ -331,12 +331,19 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 
 	// CR §307.1: sorcery-speed timing. Sorcery-type cards can only be cast
 	// during the active player's main phase when the stack is empty.
-	// Only enforce when the phase is explicitly set to a combat/non-main
-	// phase or when the stack is non-empty — skip when phase is unset or
-	// "beginning" to preserve backward compatibility with test fixtures.
+	// CRITICAL (r61): the live turn runner sets gs.Phase = "main" (with
+	// gs.Step = "precombat_main"/"postcombat_main") — see turn.go:275,354.
+	// "precombat_main"/"postcombat_main" are STEP values, not PHASE values,
+	// so the original disjunction matched NONE of the real main-phase casts
+	// and silently rejected every sorcery the AI tried to cast in a real game
+	// (every wrath/tutor/ramp sorcery went dead). gs.Phase == "main" is the
+	// canonical main-phase value; "" is kept for fixtures and the step-named
+	// values for any fixture that sets them as the phase. "beginning"
+	// (upkeep/draw) is intentionally NOT a sorcery-speed window.
 	if cardHasType(card, "sorcery") {
-		isMainPhase := gs.Phase == "" || gs.Phase == "beginning" ||
-			gs.Phase == "precombat_main" || gs.Phase == "postcombat_main"
+		isMainPhase := gs.Phase == "" || gs.Phase == "main" ||
+			gs.Phase == "beginning" || gs.Phase == "precombat_main" ||
+			gs.Phase == "postcombat_main"
 		if !isMainPhase || len(gs.Stack) > 0 {
 			return &CastError{Reason: "sorcery_speed_timing"}
 		}
