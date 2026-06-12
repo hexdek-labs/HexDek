@@ -60,6 +60,37 @@ func MoveCard(gs *GameState, card *Card, ownerSeat int, fromZone, toZone, reason
 	if gs == nil || card == nil {
 		return MoveResult{}
 	}
+	// CR §800.4a chokepoint guard (r62, Phase-H OGVC fabrication class):
+	// a card owned by a player who has LEFT THE GAME left the game with
+	// them — it cannot legally move to any zone. The eliminated seat's
+	// zone slices deliberately retain their *Card pointers for forensic
+	// clarity, so any selector that walks gs.Seats[*].Graveyard (etc.)
+	// without a LeftGame check can find these dead cards; this guard
+	// makes every such selector harmless instead of a census-fabrication
+	// bug (root case: per_card reanimateResolve pulling an eliminated
+	// player's creature onto a live battlefield — seed 7777 game 2430,
+	// Pathrazer of Ulamog).
+	// Owner > 0 (not >= 0) matches the moveToZone §400.7 owner-redirect
+	// convention: zero-Owner cards are overwhelmingly test fixtures
+	// (&Card{Name: "X"}) whose placement seat is ground truth. Real-game
+	// cards always carry an explicit owner.
+	if card.Owner > 0 && card.Owner < len(gs.Seats) {
+		if os := gs.Seats[card.Owner]; os != nil && os.LeftGame {
+			gs.LogEvent(Event{
+				Kind:   "zone_move_refused",
+				Seat:   ownerSeat,
+				Source: card.DisplayName(),
+				Details: map[string]interface{}{
+					"rule":      "800.4a",
+					"reason":    "owner_left_game",
+					"from_zone": fromZone,
+					"to_zone":   toZone,
+					"move_reason": reason,
+				},
+			})
+			return MoveResult{}
+		}
+	}
 	removeCardFromZone(gs, ownerSeat, card, fromZone)
 	dest := FireZoneChange(gs, nil, card, ownerSeat, fromZone, toZone)
 	if dest == "" {
