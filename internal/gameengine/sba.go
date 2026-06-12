@@ -606,6 +606,13 @@ func removeCopiesFromZone(gs *GameState, zone *[]*Card) int {
 // (CR §704.5f, rules file line 5463.)
 func sba704_5f(gs *GameState) bool {
 	changed := false
+	// r63 PROGRESSION-dimension finding: simultaneous deaths in one SBA
+	// sweep fired their triggered abilities INLINE in sweep order, so
+	// the ACTIVE player's trigger resolved FIRST — CR §603.3b requires
+	// batching: active player's triggers stack first and resolve LAST.
+	// The batch frame collects every trigger fired during the sweep and
+	// EndTriggerBatch orders them APNAP via OrderTriggersAPNAP.
+	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
 	for _, s := range gs.Seats {
 		if s == nil {
 			continue
@@ -639,6 +646,8 @@ func sba704_5f(gs *GameState) bool {
 // destroyed." (CR §704.5g, rules file line 5465; §702.12b for indestructible.)
 func sba704_5g(gs *GameState) bool {
 	changed := false
+	// §603.3b batch — see sba704_5f (r63 PROGRESSION finding).
+	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
 	for _, s := range gs.Seats {
 		if s == nil {
 			continue
@@ -679,6 +688,8 @@ func sba704_5g(gs *GameState) bool {
 // so it fires once per damage event.
 func sba704_5h(gs *GameState) bool {
 	changed := false
+	// §603.3b batch — see sba704_5f (r63 PROGRESSION finding).
+	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
 	for _, s := range gs.Seats {
 		if s == nil {
 			continue
