@@ -243,17 +243,16 @@ export default function SharePreview() {
     setMeta('meta[name="twitter:card"]', 'content', 'summary_large_image')
   }, [deck, deckName, cmdrCardName, archetype, wbs, deckElo, owner, id, anonymous])
 
-  if (loading) {
-    return (
-      <div style={{ padding: 36, textAlign: 'center' }}>
-        <div className="t-md muted">&gt; LOADING DECK PREVIEW<span className="blink">_</span></div>
-      </div>
-    )
-  }
-
   // Hot-cards ranking — filter+map+sort over commanderCardStats. Memoize
   // so it doesn't re-run on every render (e.g. when the ELO ticker
   // pushes a fresh `elo` array but nothing in this section changed).
+  //
+  // MUST stay above the `if (loading)` early return: a hook after a
+  // conditional return changes the hook count between the loading render
+  // and the loaded render, and React throws "Rendered more hooks than
+  // during the previous render" — unmounting the whole route to the
+  // error boundary the moment data arrives (caught by
+  // e2e/render-crash-regression.spec.ts).
   const ranked = useMemo(() => {
     const baseline = 25
     const deckCardNames = new Set(cards.map(c => c.name))
@@ -271,6 +270,14 @@ export default function SharePreview() {
       .slice(0, 5)
   }, [commanderCardStats, cards])
   const baseline = 25
+
+  if (loading) {
+    return (
+      <div style={{ padding: 36, textAlign: 'center' }}>
+        <div className="t-md muted">&gt; LOADING DECK PREVIEW<span className="blink">_</span></div>
+      </div>
+    )
+  }
 
   return (
     <div
