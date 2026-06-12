@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/hexdek/hexdek/internal/astload"
+	"github.com/hexdek/hexdek/internal/gameast"
 )
 
 func TestOutcome_CorpusAudit(t *testing.T) {
@@ -29,10 +30,29 @@ func TestOutcome_CorpusAudit(t *testing.T) {
 	var findings []*Finding
 	inScope, passed := 0, 0
 	kindsInScope := map[string]int{}
+	etbcInScope, etbcPassed := 0, 0
+	var etbcFindings []*ETBCountersFinding
 	for _, name := range corpus.Names() {
 		ast, _ := corpus.Get(name)
 		if ast == nil {
 			continue
+		}
+		// Phase-3 replacement-class arm: enters-with-counters statics.
+		for _, ab := range ast.Abilities {
+			st, ok := ab.(*gameast.Static)
+			if !ok || st.Modification == nil {
+				continue
+			}
+			fd, ran := CheckETBCounters(name, st.Modification)
+			if !ran {
+				continue
+			}
+			etbcInScope++
+			if fd == nil {
+				etbcPassed++
+			} else {
+				etbcFindings = append(etbcFindings, fd)
+			}
 		}
 		for _, ex := range ExtractEffects(ast) {
 			finding, ran := RunEffect(name, ex.Raw, ex.Effect)
@@ -51,6 +71,14 @@ func TestOutcome_CorpusAudit(t *testing.T) {
 
 	t.Logf("outcome corpus audit: %d effects in phase-1 scope, %d passed, %d diverged",
 		inScope, passed, len(findings))
+	t.Logf("etb-with-counters: %d in scope, %d passed, %d diverged", etbcInScope, etbcPassed, len(etbcFindings))
+	for i, fd := range etbcFindings {
+		if i < 10 {
+			t.Logf("  ETBC: %s", fd)
+		}
+		findings = append(findings, &Finding{CardName: fd.CardName, Kind: "etb_with_counters",
+			Expected: fmt.Sprintf("%d %s", fd.Want, fd.Kind), Actual: fmt.Sprintf("%d", fd.Got)})
+	}
 	t.Logf("in-scope by kind: %v", kindsInScope)
 
 	f, err := os.Create("/tmp/fable-review/outcome-findings-r63.csv")

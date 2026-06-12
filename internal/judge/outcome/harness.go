@@ -247,6 +247,17 @@ func ExtractEffects(ast *gameast.CardAST) []ExtractedEffect {
 			for _, arg := range a.Modification.Args {
 				if eff, ok := arg.(gameast.Effect); ok && eff != nil {
 					out = append(out, ExtractedEffect{Effect: eff, Raw: a.Raw})
+					continue
+				}
+				// Nested Modification args (draw_per / lose_life_per
+				// for-each family) deserialize as *Modification, which
+				// is not an Effect — wrap them the way the engine's
+				// typed_spell_effect resolution does (r63 phase 3).
+				if m, ok := arg.(*gameast.Modification); ok && m != nil {
+					out = append(out, ExtractedEffect{
+						Effect: &gameast.ModificationEffect{ModKind: m.ModKind, Args: m.Args},
+						Raw:    a.Raw,
+					})
 				}
 			}
 		}

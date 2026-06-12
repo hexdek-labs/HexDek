@@ -93,9 +93,17 @@ func expand(spec BoardSpec, eff gameast.Effect, prefixes []*Delta) ([]*Delta, bo
 		return cur, true
 
 	case *gameast.Choice:
+		// Phase 3: multi-pick ("choose two") and escalate-style
+		// ("choose one or more") expand across option subsets.
+		if out, handled, ok := expandChoiceSubsets(spec, e, prefixes); handled {
+			if !ok {
+				return nil, false
+			}
+			return out, true
+		}
 		pick, ok := e.Pick.IntVal()
 		if !ok || pick != 1 || e.OrMore || len(e.Options) == 0 {
-			return nil, false // only plain "choose one" in this pass
+			return nil, false
 		}
 		var out []*Delta
 		for _, opt := range e.Options {
@@ -170,8 +178,11 @@ func cloneAll(ds []*Delta) []*Delta {
 }
 
 // leaf folds a single deterministic effect into d (phase-1 kinds via
-// accumulate, plus the part-2 widened kinds).
+// accumulate, plus the part-2 widened kinds; phase-3 kinds first).
 func leaf(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
+	if handled, ok := leafPhase3(spec, eff, d); handled {
+		return ok
+	}
 	switch e := eff.(type) {
 	case *gameast.Mill:
 		n, ok := amountVal(spec, e.Count)
