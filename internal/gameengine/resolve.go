@@ -1415,7 +1415,17 @@ func resolveBounce(gs *GameState, src *Permanent, e *gameast.Bounce) {
 		}
 	}
 
-	targets := PickTarget(gs, src, e.Target)
+	// Harmful intent (r63 OUTCOME phase-6 fix): bounce removes a
+	// permanent against its controller's interest, same as destroy/
+	// exile. The neutral pick scored own and opponent 0/0 categories
+	// (lands, artifacts, enchantments) as a TIE at 0 and candidate
+	// order picked the caster's OWN land first — "return target land
+	// to its owner's hand" bounced the controller's tapped land (Aven
+	// Fogbringer / Glowing Anemone, the standing phase-4 residuals;
+	// same root cause as the destroy-own-land cluster already fixed
+	// via PickTargetHarmful — finding #2). Filters restricted to "you
+	// control" still resolve within the own side.
+	targets := PickTargetHarmful(gs, src, e.Target)
 	maybeFireCrime(gs, src, targets)
 	for _, t := range targets {
 		if t.Kind != TargetKindPermanent || t.Permanent == nil {

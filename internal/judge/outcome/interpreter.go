@@ -50,6 +50,8 @@ type Delta struct {
 	// r63 part-4 widened dimensions:
 	PoolBySeat map[int]int // mana-pool total change per seat
 	LiveStack  int         // change in count of non-countered stack items
+	// r63 part-6 widened dimension:
+	AbilityGrants int // change in total granted-ability entries across battlefields
 }
 
 func NewDelta() *Delta {
@@ -86,7 +88,7 @@ func (d *Delta) Equal(o *Delta) bool {
 		!eqMap(d.PoolBySeat, o.PoolBySeat) {
 		return false
 	}
-	if d.LiveStack != o.LiveStack {
+	if d.LiveStack != o.LiveStack || d.AbilityGrants != o.AbilityGrants {
 		return false
 	}
 	if d.MarkedDamage != o.MarkedDamage {
@@ -109,10 +111,10 @@ func (d *Delta) Equal(o *Delta) bool {
 }
 
 func (d *Delta) String() string {
-	return fmt.Sprintf("life=%v hand=%v lib=%v gy=%v exile=%v bf=%v dmg=%d counters=%v tapped=%d pow=%d tough=%d pool=%v stack=%d",
+	return fmt.Sprintf("life=%v hand=%v lib=%v gy=%v exile=%v bf=%v dmg=%d counters=%v tapped=%d pow=%d tough=%d pool=%v stack=%d grants=%d",
 		d.LifeBySeat, d.HandBySeat, d.LibraryBySeat, d.GraveyardBySeat,
 		d.ExileBySeat, d.BattlefieldBySeat, d.MarkedDamage, d.CountersByKind,
-		d.Tapped, d.PowerSum, d.ToughSum, d.PoolBySeat, d.LiveStack)
+		d.Tapped, d.PowerSum, d.ToughSum, d.PoolBySeat, d.LiveStack, d.AbilityGrants)
 }
 
 // scaffoldCreaturePT is the printed power=toughness of every creature
@@ -328,6 +330,14 @@ func accumulate(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 
 	case *gameast.CounterMod:
 		if e.Op != "put" && e.Op != "" {
+			return false
+		}
+		if d.BattlefieldBySeat[0]+d.BattlefieldBySeat[1] < 0 {
+			// An earlier clause removed permanents (suspend-style
+			// "exile ~ with three time counters on it"): the counters
+			// may land on an off-battlefield object the snapshot census
+			// cannot see. Out of scope, never guessed (r63 phase-6
+			// audit, Arc Blade class — 10 over-claims).
 			return false
 		}
 		n, ok := amountVal(spec, e.Count)

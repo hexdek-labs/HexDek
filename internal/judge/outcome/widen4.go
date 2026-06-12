@@ -328,7 +328,9 @@ func leafPhase4(spec BoardSpec, eff gameast.Effect, d *Delta) (bool, bool) {
 		}
 		base := normBase(e.Target.Base)
 		if base != "spell" && base != "instant" && base != "instant_or_sorcery" {
-			return true, false // ability-countering (Stifle class): no stack ability staged
+			// Ability-countering (Stifle class) falls through to the
+			// phase-6 fizzle arm.
+			return false, false
 		}
 		if !cleanFilter(e.Target) {
 			return true, false
@@ -579,6 +581,11 @@ func leafMassRemoval(spec BoardSpec, f gameast.Filter, destZone string, d *Delta
 		return false
 	}
 	base := normBase(f.Base)
+	if absentBases[base] {
+		// "destroy all forests" / "exile all walls": the scaffold
+		// provably holds none — the sweep must be a no-op.
+		return true
+	}
 	own, opp, tappedOwn, tappedOpp, creature, ok := scaffoldPermCount(spec, base)
 	if !ok {
 		return false

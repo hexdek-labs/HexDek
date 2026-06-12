@@ -30,6 +30,7 @@ type snapshot struct {
 	tapped, powerSum, toughSum     int
 	pool                           []int // seat.ManaPool totals
 	liveStack                      int   // non-countered stack items
+	abilityGrants                  int   // total GrantedAbilities entries across battlefields
 }
 
 func snap(gs *gameengine.GameState) snapshot {
@@ -59,6 +60,7 @@ func snap(gs *gameengine.GameState) snapshot {
 			if p == nil {
 				continue
 			}
+			s.abilityGrants += len(p.GrantedAbilities)
 			s.markedDamage += p.MarkedDamage
 			if p.Tapped {
 				s.tapped++
@@ -102,6 +104,7 @@ func diff(before, after snapshot) *Delta {
 		}
 	}
 	d.LiveStack = after.liveStack - before.liveStack
+	d.AbilityGrants = after.abilityGrants - before.abilityGrants
 	d.MarkedDamage = after.markedDamage - before.markedDamage
 	d.Tapped = after.tapped - before.tapped
 	d.PowerSum = after.powerSum - before.powerSum
