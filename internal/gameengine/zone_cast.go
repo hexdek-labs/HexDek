@@ -605,6 +605,31 @@ func RegisterZoneCastGrant(gs *GameState, card *Card, perm *ZoneCastPermission) 
 	if gs == nil || card == nil || perm == nil {
 		return
 	}
+	// CR §800.4a chokepoint guard (r63, seed-777 game 703): a card owned
+	// by a player who has left the game left the game with them — it
+	// cannot be granted cast permission. The eliminated seat's zone
+	// slices keep their *Card pointers (with ceased InstanceIDs) for
+	// forensic clarity, so any grant effect that scans cross-seat exiles
+	// without a LeftGame check (Knowledge Pool's free-cast offer) would
+	// otherwise re-enter the dead card into the census via the
+	// ZoneCastGrants sideband walk — a permanent fabrication violation.
+	// Owner > 0 matches the MoveCard / moveToZone guard convention
+	// (zero-Owner cards are test fixtures).
+	if card.Owner > 0 && card.Owner < len(gs.Seats) {
+		if os := gs.Seats[card.Owner]; os != nil && os.LeftGame {
+			gs.LogEvent(Event{
+				Kind:   "zone_cast_grant_refused",
+				Seat:   perm.RequireController,
+				Source: perm.SourceName,
+				Details: map[string]interface{}{
+					"card":   card.DisplayName(),
+					"rule":   "800.4a",
+					"reason": "owner_left_game",
+				},
+			})
+			return
+		}
+	}
 	if gs.ZoneCastGrants == nil {
 		gs.ZoneCastGrants = map[*Card]*ZoneCastPermission{}
 	}
