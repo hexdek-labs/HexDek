@@ -1040,6 +1040,112 @@ func postStackZoneForOffboard(item *StackItem, defaultZone, defaultRule string) 
 	return defaultZone, defaultRule
 }
 
+// isRequiredSingleTargetFilter reports whether f is a genuinely-REQUIRED
+// "target X" filter — i.e. the §608.2b fizzle check applies when no legal
+// target exists for it. CONSERVATIVE by design: returns false for any
+// shape where over-fizzling would be a false positive.
+//
+//   - Must be Targeted == true ("target X", not "a/an X" / "each X").
+//   - Quantifier must be single-or-fixed-multi target: "" / "one" / "n".
+//     Explicitly EXCLUDES "up_to_n" (CR §115.6 may-target-none), "any"
+//     (any number of targets — also may-target-none), "each" / "each_player"
+//     (untargeted fan-out). Those legally resolve with zero targets.
+func isRequiredSingleTargetFilter(f gameast.Filter) bool {
+	if !f.Targeted {
+		return false
+	}
+	switch f.Quantifier {
+	case "", "one", "n":
+		return true
+	}
+	return false
+}
+
+// requiredTargetFilter extracts the single top-level REQUIRED target filter
+// from a stack item's effect, for the resolution-time §608.2b fizzle gate
+// used on the lazy-pick path (item.Targets empty). Returns (filter, true)
+// ONLY when the effect is a recognized single-leaf targeted effect whose
+// top-level Target/Query/A filter is a required single-or-fixed-multi target.
+//
+// CONSERVATIVE: returns (_, false) for every wrapper node (Sequence, Choice,
+// Optional, Conditional) and every effect kind not in the curated leaf set,
+// so the fizzle gate never over-fires on modal spells, optional effects,
+// multi-effect spells, or untargeted/fan-out effects. A false-negative here
+// is safe (the effect resolves as it did before); a false-positive would
+// over-fizzle a real card, so we err toward not fizzling.
+func requiredTargetFilter(item *StackItem) (gameast.Filter, bool) {
+	if item == nil || item.Effect == nil {
+		return gameast.Filter{}, false
+	}
+	// NOTE: the engine's AST carries effects as POINTER types (ResolveEffect
+	// dispatches on *gameast.X), so the type switch matches pointers. A value
+	// effect (built by a non-AST caller) simply falls through to the
+	// no-required-target default — which is the safe, no-fizzle outcome.
+	switch e := item.Effect.(type) {
+	case *gameast.Damage:
+		if isRequiredSingleTargetFilter(e.Target) {
+			return e.Target, true
+		}
+	case *gameast.LoseLife:
+		if isRequiredSingleTargetFilter(e.Target) {
+			return e.Target, true
+		}
+	case *gameast.GainLife:
+		if isRequiredSingleTargetFilter(e.Target) {
+			return e.Target, true
+		}
+	case *gameast.SetLife:
+		if isRequiredSingleTargetFilter(e.Target) {
+			return e.Target, true
+		}
+	case *gameast.Destroy:
+		if isRequiredSingleTargetFilter(e.Target) {
+			return e.Target, true
+		}
+	case *gameast.Exile:
+		if isRequiredSingleTargetFilter(e.Target) {
+			return e.Target, true
+		}
+	case *gameast.Bounce:
+		if isRequiredSingleTargetFilter(e.Target) {
+			return e.Target, true
+		}
+	case *gameast.TapEffect:
+		if isRequiredSingleTargetFilter(e.Target) {
+			return e.Target, true
+		}
+	case *gameast.UntapEffect:
+		if isRequiredSingleTargetFilter(e.Target) {
+			return e.Target, true
+		}
+	case *gameast.CounterMod:
+		if isRequiredSingleTargetFilter(e.Target) {
+			return e.Target, true
+		}
+	case *gameast.GainControl:
+		if isRequiredSingleTargetFilter(e.Target) {
+			return e.Target, true
+		}
+	// NOTE: CounterSpell is intentionally EXCLUDED. Its target is a spell on
+	// the stack (TargetKindStackItem), which PickTarget does not resolve —
+	// PickTarget would return empty for every counterspell and over-fizzle
+	// it. Counterspell legality is handled by the existing counter-resolution
+	// path, not this gate.
+	case *gameast.Discard:
+		if isRequiredSingleTargetFilter(e.Target) {
+			return e.Target, true
+		}
+	case *gameast.Mill:
+		if isRequiredSingleTargetFilter(e.Target) {
+			return e.Target, true
+		}
+	}
+	// Every other effect kind (wrappers, untargeted, query-based search,
+	// buffs/grants that self-target on empty, etc.) is intentionally NOT
+	// fizzled here — see the conservatism note above.
+	return gameast.Filter{}, false
+}
+
 func ResolveStackTop(gs *GameState) {
 	if gs == nil || len(gs.Stack) == 0 {
 		return
@@ -1163,6 +1269,49 @@ func ResolveStackTop(gs *GameState) {
 		}
 		// Update the stack item's targets to only the legal subset.
 		item.Targets = legalTargets
+	} else {
+		// Lazy-pick path: targets were not announced onto item.Targets (the
+		// engine picks them inside effect handlers via PickTarget at
+		// resolution). The §608.2b legal-target check above is gated on
+		// item.Targets being populated, so it never ran for this item. If the
+		// effect has a genuinely-REQUIRED top-level target filter and no legal
+		// target exists for it right now, the spell/ability is countered on
+		// resolution ("fizzles") per CR §608.2b — it must NOT manufacture a
+		// target inside the handler. CONSERVATIVE: requiredTargetFilter only
+		// returns a filter for the curated single-leaf targeted effect set;
+		// everything else falls through and resolves as before.
+		if filter, ok := requiredTargetFilter(item); ok {
+			var fizzleSrc *Permanent
+			if item.Source != nil {
+				fizzleSrc = item.Source
+			} else if item.Card != nil {
+				fizzleSrc = &Permanent{
+					Card:       item.Card,
+					Controller: item.Controller,
+					Owner:      item.Card.Owner,
+					Flags:      map[string]int{},
+				}
+			}
+			if len(PickTarget(gs, fizzleSrc, filter)) == 0 {
+				gs.LogEvent(Event{
+					Kind:   "fizzle",
+					Seat:   item.Controller,
+					Source: name,
+					Details: map[string]interface{}{
+						"rule":   "608.2b",
+						"reason": "no_legal_target",
+					},
+				})
+				// Countered on resolution — spell leaves the stack. Same
+				// flashback/escape exile carveout as the explicit-counter and
+				// all-targets-illegal branches above.
+				if isSpell && item.Card != nil {
+					toZone, _ := postStackZoneForOffboard(item, "graveyard", "608.2b")
+					MoveCard(gs, item.Card, item.Controller, "stack", toZone, "fizzle")
+				}
+				return
+			}
+		}
 	}
 
 	// First-play instrumentation. Record only for true spell stack items

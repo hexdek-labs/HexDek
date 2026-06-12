@@ -294,6 +294,31 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		if err := ValidateTargetsAtAnnouncement(gs, seatIdx, srcCard, targets, nil); err != nil {
 			return err
 		}
+	} else if ab != nil {
+		// Lazy-pick path (driver activates with nil targets; the engine
+		// chooses the target at resolution via PickTarget). CR §601.2c /
+		// §602.2b: an ability that REQUIRES a target can't be activated unless
+		// a legal target exists. Reject BEFORE paying any cost so the
+		// activation is cleanly skipped (the §608.2b resolution-time gate is
+		// defense-in-depth for the already-on-stack case). CONSERVATIVE: only
+		// the curated required-single-target effect set gates here; everything
+		// else activates as before.
+		probe := &StackItem{Source: perm, Effect: ab.Effect}
+		if filter, ok := requiredTargetFilter(probe); ok {
+			if len(PickTarget(gs, perm, filter)) == 0 {
+				gs.LogEvent(Event{
+					Kind:   "activation_rejected",
+					Seat:   seatIdx,
+					Source: perm.Card.DisplayName(),
+					Details: map[string]interface{}{
+						"ability_idx": abilityIdx,
+						"reason":      "no_legal_target",
+						"rule":        "602.2b",
+					},
+				})
+				return &CastError{Reason: "no_legal_target"}
+			}
+		}
 	}
 
 	// 1. Stax check.
