@@ -249,10 +249,13 @@ func (*OctoHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, attackers 
 // ---------------------------------------------------------------------
 
 func (*OctoHat) ChooseTarget(gs *gameengine.GameState, seatIdx int, filter gameast.Filter, legal []gameengine.Target) gameengine.Target {
-	if len(legal) == 0 {
-		return gameengine.Target{Kind: gameengine.TargetKindNone}
-	}
-	return legal[0]
+	// Decline (zero Target) so the engine's announcement-time picker
+	// (AnnounceTargets, r62) falls back to the engine policy pick. Before
+	// r62 the engine never called ChooseTarget, so the old legal[0] body
+	// was dead code — honoring it now would silently change this
+	// deprecated baseline's targeting from policy-best to
+	// first-in-seat-order. Yggdrasil implements the real scorer.
+	return gameengine.Target{Kind: gameengine.TargetKindNone}
 }
 
 // ---------------------------------------------------------------------

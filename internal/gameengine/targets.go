@@ -42,6 +42,17 @@ func PickTarget(gs *GameState, src *Permanent, f gameast.Filter) []Target {
 		return allPermanentTargets(gs, f, srcSeat)
 	}
 
+	// r62 — announcement-time targeting (CR §601.2c / §602.2b). When the
+	// resolving stack item carried targets chosen at announcement (stamped
+	// by CastSpell / ActivateAbility, hat-consulted per §608.2a, and
+	// re-validated by the §608.2b gate), serve any single-target request
+	// they satisfy instead of re-running the engine policy pick. The
+	// "targeted" trigger already fired at announcement, so consumption is
+	// silent — counts stay stable versus the old lazy-pick path.
+	if ts := consumeAnnouncedTargets(gs, srcSeat, src, f); len(ts) > 0 {
+		return ts
+	}
+
 	// Fan-out quantifiers first.
 	switch f.Quantifier {
 	case "each", "each_player":
@@ -248,21 +259,45 @@ func pickPermanentTarget(gs *GameState, f gameast.Filter, srcSeat int, src *Perm
 		return []Target{{Kind: TargetKindSeat, Seat: srcSeat}}
 	}
 
-	// Check if "another"/"other" base — exclude source permanent.
+	legal := legalSinglePermanentTargets(gs, f, srcSeat, src)
+	if len(legal) == 0 {
+		return nil
+	}
+	best := policyPickSinglePermanent(legal, srcSeat)
+	result := []Target{best}
+	if f.Targeted && best.Permanent != nil && best.Permanent.Card != nil {
+		FireCardTrigger(gs, "targeted", map[string]interface{}{
+			"seat":   best.Permanent.Controller,
+			"card":   best.Permanent.Card.DisplayName(),
+			"source": srcSeat,
+		})
+	}
+	return result
+}
+
+// legalSinglePermanentTargets enumerates every battlefield permanent that
+// legally satisfies f for a single-target pick by srcSeat: control + type
+// filter match plus the §702.18 (shroud) / §702.11 (hexproof) / §702.16
+// (protection) targeting check when f.Targeted. Pure legality — no policy
+// scoring, no triggers. Extracted from pickPermanentTarget (r62) so the
+// announcement-time picker can hand the same legal set to hat.ChooseTarget
+// (§608.2a) that the engine policy pick operates on.
+func legalSinglePermanentTargets(gs *GameState, f gameast.Filter, srcSeat int, src *Permanent) []Target {
 	nb := normalizeBase(f.Base)
 	excludeSrc := nb == "another" || nb == "other"
-
-	// Candidate list, filtered by control + type.
-	type candidate struct {
-		p     *Permanent
-		score int
+	var srcCard *Card
+	if src != nil {
+		srcCard = src.Card
 	}
-	candidates := []candidate{}
+	out := []Target{}
 	for i, s := range gs.Seats {
 		if !matchesControl(f, i, srcSeat) {
 			continue
 		}
 		for _, p := range s.Battlefield {
+			if p == nil {
+				continue
+			}
 			if excludeSrc && p == src {
 				continue
 			}
@@ -273,43 +308,114 @@ func pickPermanentTarget(gs *GameState, f gameast.Filter, srcSeat int, src *Perm
 			// from [color]) — targeting check. Only applies when the filter
 			// is "targeted" (i.e. "target creature"). Untargeted effects
 			// ("each creature") bypass shroud/hexproof.
-			if f.Targeted {
-				var srcCard *Card
-				if src != nil {
-					srcCard = src.Card
-				}
-				if !CanBeTargetedByCombat(p, srcSeat, srcCard) {
+			if f.Targeted && !CanBeTargetedByCombat(p, srcSeat, srcCard) {
+				continue
+			}
+			out = append(out, Target{Kind: TargetKindPermanent, Permanent: p, Seat: p.Controller})
+		}
+	}
+	return out
+}
+
+// policyPickSinglePermanent is the engine's MVP single-target policy over a
+// pre-enumerated legal set. Simple threat heuristic: for opponent permanents,
+// prefer higher power (= more threatening); for own permanents, prefer lower
+// toughness (= easier to save / wants a buff). First-best-stable to preserve
+// the pre-r62 pick order.
+func policyPickSinglePermanent(legal []Target, srcSeat int) Target {
+	best := legal[0]
+	bestScore := singlePermanentScore(best, srcSeat)
+	for _, t := range legal[1:] {
+		if sc := singlePermanentScore(t, srcSeat); sc > bestScore {
+			best = t
+			bestScore = sc
+		}
+	}
+	return best
+}
+
+func singlePermanentScore(t Target, srcSeat int) int {
+	p := t.Permanent
+	if p == nil {
+		return -1 << 30
+	}
+	if p.Controller == srcSeat {
+		return -p.Toughness()
+	}
+	return p.Power()
+}
+
+// consumeAnnouncedTargets serves a PickTarget request from the resolving
+// stack item's announcement-time targets (gs.announcedTargets, set by
+// ResolveStackTop). Returns nil when no announced target satisfies the
+// request — the caller falls through to the lazy policy pick exactly as
+// before r62. Consumption requires a targeted single-target filter shape
+// (the only shape the announcement stage stamps) and re-validates each
+// announced target against THIS filter, so sub-effects with different
+// target shapes inside the same spell never mis-consume.
+func consumeAnnouncedTargets(gs *GameState, srcSeat int, src *Permanent, f gameast.Filter) []Target {
+	if gs == nil || len(gs.announcedTargets) == 0 {
+		return nil
+	}
+	if !f.Targeted {
+		return nil
+	}
+	switch f.Quantifier {
+	case "", "one":
+	default:
+		return nil
+	}
+	anyT := isAnyTargetShape(f)
+	playerF := isPlayerFilter(f)
+	var srcCard *Card
+	if src != nil {
+		srcCard = src.Card
+	}
+	out := []Target{}
+	for _, t := range gs.announcedTargets {
+		switch t.Kind {
+		case TargetKindPermanent:
+			if playerF {
+				continue // player-only filter can't take a permanent
+			}
+			p := t.Permanent
+			if p == nil || !permanentOnBattlefield(gs, p) {
+				continue
+			}
+			if !anyT {
+				if !matchesControl(f, p.Controller, srcSeat) || !matchesPermanent(f, p) {
 					continue
 				}
 			}
-			// Simple threat heuristic: for opponent permanents, prefer
-			// higher power (= more threatening). For own permanents,
-			// prefer lower toughness (= easier to save / wants a buff).
-			score := p.Power()
-			if i == srcSeat {
-				score = -p.Toughness()
+			if !CanBeTargetedByCombat(p, srcSeat, srcCard) {
+				continue
 			}
-			candidates = append(candidates, candidate{p, score})
+			out = append(out, t)
+		case TargetKindSeat:
+			if !playerF && !anyT {
+				continue
+			}
+			if t.Seat < 0 || t.Seat >= len(gs.Seats) {
+				continue
+			}
+			s := gs.Seats[t.Seat]
+			if s == nil || s.Lost || s.LeftGame {
+				continue
+			}
+			out = append(out, t)
 		}
 	}
-	if len(candidates) == 0 {
+	if len(out) == 0 {
 		return nil
 	}
-	best := candidates[0]
-	for _, c := range candidates[1:] {
-		if c.score > best.score {
-			best = c
-		}
-	}
-	result := []Target{{Kind: TargetKindPermanent, Permanent: best.p, Seat: best.p.Controller}}
-	if f.Targeted && best.p != nil && best.p.Card != nil {
-		FireCardTrigger(gs, "targeted", map[string]interface{}{
-			"seat":   best.p.Controller,
-			"card":   best.p.Card.DisplayName(),
-			"source": srcSeat,
-		})
-	}
-	return result
+	return out
+}
+
+// isAnyTargetShape mirrors pickPermanentTarget's "any target" detection
+// (Lightning-Bolt class: any creature, player, or planeswalker).
+func isAnyTargetShape(f gameast.Filter) bool {
+	return f.Base == "any_target" || f.Base == "any target" || f.Base == "any" ||
+		(f.Quantifier == "any" && (f.Base == "target" || f.Base == ""))
 }
 
 // pickNPermanentTargets picks up to n distinct battlefield targets (§115.3).

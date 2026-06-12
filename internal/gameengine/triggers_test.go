@@ -59,9 +59,11 @@ func (*GreedyHatStub) ChooseResponse(gs *GameState, seatIdx int, stackTop *Stack
 	return nil
 }
 func (*GreedyHatStub) ChooseTarget(gs *GameState, seatIdx int, filter gameast.Filter, legal []Target) Target {
-	if len(legal) > 0 {
-		return legal[0]
-	}
+	// Decline (zero Target) so AnnounceTargets falls back to the engine
+	// policy pick — keeps every stub-hat test on pre-r62 targeting. The
+	// pre-r62 body returned legal[0], but the engine never called
+	// ChooseTarget then, so this was dead code; returning legal[0] NOW
+	// would override the policy pick at every stub-hat cast site.
 	return Target{}
 }
 func (*GreedyHatStub) ChooseMode(gs *GameState, seatIdx int, modes []gameast.Effect) int { return 0 }

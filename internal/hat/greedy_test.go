@@ -127,8 +127,12 @@ func TestGreedy_ChooseTarget_FirstLegal(t *testing.T) {
 		{Kind: gameengine.TargetKindSeat, Seat: 2},
 	}
 	got := h.ChooseTarget(gs, 0, gameast.TargetPlayer(), legal)
-	if got.Seat != 1 {
-		t.Fatalf("want first legal target (seat 1); got %d", got.Seat)
+	// r62: the engine now consults ChooseTarget live (AnnounceTargets).
+	// GreedyHat declines (zero Target) so the engine policy pick applies —
+	// keeping deprecated-baseline games on pre-r62 targeting. A zero
+	// Target (TargetKindNone) is the documented decline signal.
+	if got.Kind != gameengine.TargetKindNone {
+		t.Fatalf("GreedyHat should decline ChooseTarget (engine policy fallback); got %+v", got)
 	}
 }
 

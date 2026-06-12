@@ -295,17 +295,30 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 			return err
 		}
 	} else if ab != nil {
-		// Lazy-pick path (driver activates with nil targets; the engine
-		// chooses the target at resolution via PickTarget). CR §601.2c /
-		// §602.2b: an ability that REQUIRES a target can't be activated unless
-		// a legal target exists. Reject BEFORE paying any cost so the
-		// activation is cleanly skipped (the §608.2b resolution-time gate is
-		// defense-in-depth for the already-on-stack case). CONSERVATIVE: only
-		// the curated required-single-target effect set gates here; everything
-		// else activates as before.
+		// Announcement-time pick (r62, replacing the r61 PR-3 discard-the-
+		// result probe). CR §601.2c / §602.2b: an ability that REQUIRES a
+		// target can't be activated unless a legal target exists — reject
+		// BEFORE paying any cost, exactly as before. For single-target
+		// shapes we now pick the target for real (consulting the seat's Hat
+		// per §608.2a) and stamp it on the activation so resolution honors
+		// it; fixed-multi shapes ("two target creatures") keep the old
+		// probe + lazy resolution. CONSERVATIVE: only the curated
+		// required-target effect set gates here; everything else activates
+		// as before.
 		probe := &StackItem{Source: perm, Effect: ab.Effect}
 		if filter, ok := requiredTargetFilter(probe); ok {
-			if len(PickTarget(gs, perm, filter)) == 0 {
+			rejected := false
+			if picked := AnnounceTargets(gs, perm, seatIdx, filter); len(picked) > 0 {
+				targets = picked
+			} else {
+				// AnnounceTargets declines out-of-scope shapes (fixed-multi
+				// quantifiers, forced self/equipped references) as well as
+				// genuinely-empty legal sets — fall back to the r61 PR-3
+				// probe to tell those apart, preserving the old
+				// "no legal target → reject before any cost" contract.
+				rejected = len(PickTarget(gs, perm, filter)) == 0
+			}
+			if rejected {
 				gs.LogEvent(Event{
 					Kind:   "activation_rejected",
 					Seat:   seatIdx,
