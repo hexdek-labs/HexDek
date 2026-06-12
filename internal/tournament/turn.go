@@ -1472,6 +1472,21 @@ func tryCastCommander(gs *gameengine.GameState, seatIdx int) {
 			cmdr.CastingBackFace = false
 			continue
 		}
+		// CastCommanderFromCommandZone PUSHES the commander spell and
+		// returns — its documented contract is "the caller drives the
+		// stack resolution via PriorityRound + ResolveStackTop"
+		// (commander.go). Pre-r62 this site only ran SBAs, so the
+		// commander spell squatted unresolved on the stack while the
+		// main-phase loop kept casting: every later cast that turn
+		// announced with an item already on the stack (CR §117.1a/§307.1
+		// sequencing violations — the legality validator's 302-hit
+		// mid-stack cluster, see legality-validator-r62 report), later
+		// spells LIFO-resolved BEFORE the commander, and the commander
+		// only resolved as a bystander of the next cast's drain. Mirror
+		// CastSpell's own tail: open the §117.3c response window, then
+		// drain.
+		gameengine.PriorityRound(gs)
+		gameengine.DrainStack(gs)
 		gameengine.StateBasedActions(gs)
 	}
 }
