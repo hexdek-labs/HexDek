@@ -166,11 +166,22 @@ func checkZoneConservation(gs *GameState) error {
 // the legacy count check picks them up.
 func checkZoneConservationByInstanceID(gs *GameState) error {
 	present := map[string]struct{}{}
+	// presentWhere records a human-readable zone label per ID so the
+	// fabrication error can say WHERE the impossible card was found —
+	// added while bisecting the Phase-H OGVC class (r62), kept because
+	// every future fabrication hunt needs this first.
+	presentWhere := map[string]string{}
+	zoneLabel := ""
 	addID := func(c *Card) {
 		if c == nil || c.InstanceID == "" {
 			return
 		}
 		present[c.InstanceID] = struct{}{}
+		if _, ok := presentWhere[c.InstanceID]; !ok {
+			presentWhere[c.InstanceID] = zoneLabel
+		} else {
+			presentWhere[c.InstanceID] += "+" + zoneLabel
+		}
 	}
 	for _, s := range gs.Seats {
 		if s == nil {
@@ -184,21 +195,27 @@ func checkZoneConservationByInstanceID(gs *GameState) error {
 		if s.LeftGame {
 			continue
 		}
+		zoneLabel = "library"
 		for _, c := range s.Library {
 			addID(c)
 		}
+		zoneLabel = "hand"
 		for _, c := range s.Hand {
 			addID(c)
 		}
+		zoneLabel = "graveyard"
 		for _, c := range s.Graveyard {
 			addID(c)
 		}
+		zoneLabel = "exile"
 		for _, c := range s.Exile {
 			addID(c)
 		}
+		zoneLabel = "command_zone"
 		for _, c := range s.CommandZone {
 			addID(c)
 		}
+		zoneLabel = "battlefield"
 		for _, p := range s.Battlefield {
 			if p == nil {
 				continue
@@ -224,6 +241,7 @@ func checkZoneConservationByInstanceID(gs *GameState) error {
 		// Battlefield). Strict-census mode otherwise sees these cards
 		// as "disappeared" since their IDs are minted but their *Card
 		// is not in a counted zone.
+		zoneLabel = "foretell_exile"
 		for _, c := range s.ForetellExile {
 			addID(c)
 		}
@@ -235,18 +253,23 @@ func checkZoneConservationByInstanceID(gs *GameState) error {
 	// itself is in some zone the seat-walk already covered, but for
 	// transient cast-permission grants the engine may stash the *Card
 	// here pre-resolution. Be thorough: walk the key set.
+	zoneLabel = "zone_cast_grants"
 	for c := range gs.ZoneCastGrants {
 		addID(c)
 	}
+	zoneLabel = "madness_exile"
 	for c := range gs.MadnessExile {
 		addID(c)
 	}
+	zoneLabel = "plot_exile"
 	for c := range gs.PlotExile {
 		addID(c)
 	}
+	zoneLabel = "mayhem_discards"
 	for c := range gs.MayhemDiscards {
 		addID(c)
 	}
+	zoneLabel = "paradigm_exile"
 	for _, cards := range gs.ParadigmExile {
 		for _, c := range cards {
 			addID(c)
@@ -263,6 +286,7 @@ func checkZoneConservationByInstanceID(gs *GameState) error {
 		if item.Source != nil || item.Kind == "triggered" || item.Kind == "activated" {
 			continue
 		}
+		zoneLabel = "stack"
 		addID(item.Card)
 	}
 
@@ -296,11 +320,11 @@ func checkZoneConservationByInstanceID(gs *GameState) error {
 				name = gs.MintedInstanceIDNames[id]
 			}
 			if name != "" {
-				return fmt.Errorf("ZoneConservation: InstanceID %q (%s) present in a zone but not in (Minted - Ceased) — fabrication or stale ceased entry",
-					id, name)
+				return fmt.Errorf("ZoneConservation: InstanceID %q (%s) present in zone %q but not in (Minted - Ceased) — fabrication or stale ceased entry",
+					id, name, presentWhere[id])
 			}
-			return fmt.Errorf("ZoneConservation: InstanceID %q present in a zone but not in (Minted - Ceased) — fabrication or stale ceased entry",
-				id)
+			return fmt.Errorf("ZoneConservation: InstanceID %q present in zone %q but not in (Minted - Ceased) — fabrication or stale ceased entry",
+				id, presentWhere[id])
 		}
 	}
 	// Disappearance: expected \ present must be empty. STRICT mode only.
@@ -425,6 +449,16 @@ func checkLifeConsistency(gs *GameState) error {
 		if s == nil {
 			continue
 		}
+		// A WINNER at negative life is legal (CR §104.2a): Platinum
+		// Angel holds the seat at <0, the last opponent dies, the win
+		// fires immediately — and post-game cleanup may then remove the
+		// Angel from the snapshot (events are suppressed once ended=1),
+		// so the protection scan below can no longer see it. r63 seed
+		// 8675309 game 209. The r60 zombie-game pin is unaffected: it
+		// targets seats that are neither Lost nor Won.
+		if s.Won {
+			continue
+		}
 		// Angel's Grace / Platinum Angel can keep a player alive at
 		// negative life. We check for the replacement effect flag.
 		if s.Life < 0 && !s.Lost {
@@ -504,8 +538,13 @@ func checkSBACompleteness(gs *GameState) error {
 		if s == nil {
 			continue
 		}
-		// Check life: living player at ≤0 without protection.
-		if !s.Lost && s.Life <= 0 && !hasCantLoseEffect(gs, s) {
+		// Check life: living player at ≤0 without protection. Winners
+		// are exempt — a §104.2a win at negative life behind Platinum
+		// Angel is legal, and post-game cleanup can remove the Angel
+		// from the snapshot before this check runs (r63 seed 8675309
+		// game 209). The r60 zombie-game pin (ended=1 without resolved
+		// outcomes) is preserved: a zombie seat is neither Lost nor Won.
+		if !s.Won && !s.Lost && s.Life <= 0 && !hasCantLoseEffect(gs, s) {
 			return fmt.Errorf("seat %d has life=%d, Lost=false, no loss-prevention — SBA 704.5a missed",
 				s.Idx, s.Life)
 		}

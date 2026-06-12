@@ -2189,6 +2189,28 @@ func (gs *GameState) moveToZone(seat int, c *Card, zone string) {
 	if c == nil {
 		return
 	}
+	// CR §800.4a chokepoint guard (r62, Phase-H OGVC fabrication class —
+	// mirror of the MoveCard guard for direct callers): a card owned by
+	// a player who has left the game cannot be moved into any zone. The
+	// eliminated seat's slices keep their pointers for forensic clarity;
+	// without this guard a selector that found one of those dead cards
+	// re-materializes it in a live zone and the InstanceID census flags
+	// fabrication ("present but not in (Minted - Ceased)").
+	if c.Owner > 0 && c.Owner < len(gs.Seats) {
+		if os := gs.Seats[c.Owner]; os != nil && os.LeftGame {
+			gs.LogEvent(Event{
+				Kind:   "zone_move_refused",
+				Seat:   seat,
+				Source: c.DisplayName(),
+				Details: map[string]interface{}{
+					"rule":    "800.4a",
+					"reason":  "owner_left_game",
+					"to_zone": zone,
+				},
+			})
+			return
+		}
+	}
 	// Narrow trigger condition: only redirect when c.Owner is explicitly
 	// set (Owner > 0). Zero-Owner cards bypass the check because Go's
 	// int zero-value collides with "seat 0 owner" — and test fixtures
