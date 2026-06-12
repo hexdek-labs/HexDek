@@ -789,7 +789,14 @@ func fireAttackTriggers(gs *GameState, activeSeat int, declared []*Permanent) {
 			"attacker_card": atk.Card,
 		})
 	}
-	// (2) Ally-attack triggers ("whenever a creature you control attacks").
+	// (2) Non-self attack triggers — ally ("a creature you control
+	// attacks", with or without filters), attached ("equipped/enchanted
+	// creature attacks"), and any-controller ("a creature attacks")
+	// classes, recovered from the trigger Raw because the parser drops
+	// actor phrases. See attack_trigger_dispatch.go (r63 PROGRESSION
+	// dispatch-consistency audit) — replaces the old two-substring
+	// whitelist with classifier-driven dispatch; the two legacy
+	// wordings keep their exact historical behavior.
 	declaredSet := make(map[*Permanent]struct{}, len(declared))
 	for _, a := range declared {
 		declaredSet[a] = struct{}{}
@@ -797,32 +804,7 @@ func fireAttackTriggers(gs *GameState, activeSeat int, declared []*Permanent) {
 	if activeSeat < 0 || activeSeat >= len(gs.Seats) {
 		return
 	}
-	controllerPerms := append([]*Permanent{}, gs.Seats[activeSeat].Battlefield...)
-	for _, perm := range controllerPerms {
-		if _, self := declaredSet[perm]; self {
-			continue
-		}
-		for _, ab := range iterAttackTriggers(perm.Card) {
-			if !strings.Contains(ab.Raw, "a creature you control attacks") &&
-				!strings.Contains(ab.Raw, "another creature attacks") {
-				continue
-			}
-			for _, atk := range declared {
-				gs.LogEvent(Event{
-					Kind: "trigger_fires", Seat: perm.Controller,
-					Source: perm.Card.DisplayName(),
-					Details: map[string]interface{}{
-						"event":           "attack_ally",
-						"trigger_by_card": atk.Card.DisplayName(),
-					},
-				})
-				if ab.Effect != nil {
-					// Phase 5: trigger goes on the stack (CR §603.3a).
-					PushTriggeredAbilityWithIf(gs, perm, ab.Effect, ab.InterveningIf)
-				}
-			}
-		}
-	}
+	fireClassifiedAttackTriggers(gs, activeSeat, declared, declaredSet)
 }
 
 // pickAttackDefender returns the seat index this attacker should attack.
