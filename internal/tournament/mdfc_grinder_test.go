@@ -161,11 +161,11 @@ func TestMDFC_GrinderIntegration_NoFFMDFCPermanentTypeViolations(t *testing.T) {
 
 		result := hat.CheckGame(gs)
 		for _, v := range result.Violations {
-			if v.Rule != "permanent_types" {
+			if v.Name != "permanent_types" {
 				continue
 			}
 			totalPermViolations++
-			cardField, _ := v.Details["card"].(string)
+			cardField, _ := v.Context["card"].(string)
 			front := cardField
 			if i := strings.Index(cardField, " // "); i >= 0 {
 				front = cardField[:i]
@@ -173,7 +173,7 @@ func TestMDFC_GrinderIntegration_NoFFMDFCPermanentTypeViolations(t *testing.T) {
 			if ffNameSet[cardField] || ffNameSet[front] {
 				ffViolations++
 				t.Errorf("game %d: FF MDFC permanent_types violation: card=%q type=%v",
-					game, cardField, v.Details["type"])
+					game, cardField, v.Context["type"])
 			}
 		}
 	}

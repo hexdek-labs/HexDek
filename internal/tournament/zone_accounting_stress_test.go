@@ -107,7 +107,7 @@ func TestFeynman_ZoneAccounting_50Games(t *testing.T) {
 
 		result := hat.CheckGame(gs)
 		for _, v := range result.Violations {
-			if v.Rule == "zone_accounting" {
+			if v.Name == "zone_accounting" {
 				zoneViolations++
 				t.Errorf("game %d: %s", game, v)
 			}

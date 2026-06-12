@@ -37,11 +37,9 @@ import (
 	"math/rand"
 	"os"
 	"runtime/debug"
-	"strings"
 
 	"github.com/hexdek/hexdek/internal/astload"
 	"github.com/hexdek/hexdek/internal/deckparser"
-	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/gameengine"
 	"github.com/hexdek/hexdek/internal/hat"
 	"github.com/hexdek/hexdek/internal/judge"
@@ -246,7 +244,7 @@ func runOneGame(gameIdx int, chaosCorpus *gameengine.ChaosCorpus, corpus *astloa
 
 	commanderDecks := make([]*gameengine.CommanderDeck, cfg.Seats)
 	for i, cd := range chaosDecks {
-		cmdrCard := buildCardFromName(cd.Commander.Name, corpus, meta)
+		cmdrCard := deckparser.BuildCardFromName(cd.Commander.Name, corpus, meta)
 		if cmdrCard == nil {
 			cmdrCard = &gameengine.Card{
 				Name:          cd.Commander.Name,
@@ -266,7 +264,7 @@ func runOneGame(gameIdx int, chaosCorpus *gameengine.ChaosCorpus, corpus *astloa
 
 		lib := make([]*gameengine.Card, 0, len(cd.Cards))
 		for _, name := range cd.Cards {
-			c := buildCardFromName(name, corpus, meta)
+			c := deckparser.BuildCardFromName(name, corpus, meta)
 			if c == nil {
 				c = &gameengine.Card{Name: name, Owner: i}
 				for _, cc := range chaosCorpus.All {
@@ -391,78 +389,10 @@ func attachLegalityCensus(v *gameengine.LegalityValidator, tally *legalityTally)
 	})
 }
 
-// ---------------------------------------------------------------------------
-// Oracle corpus → ChaosCorpus + card building (mirrors cmd/hexdek-loki,
-// which keeps these in package main; the semantics must stay identical
-// so this sweep samples the same card population as the loki baselines).
-// ---------------------------------------------------------------------------
-
 func truncStack(b []byte) string {
 	s := string(b)
 	if len(s) > 1200 {
 		s = s[:1200] + "…"
 	}
 	return s
-}
-
-func buildCardFromName(name string, corpus *astload.Corpus, meta *deckparser.MetaDB) *gameengine.Card {
-	var cardAST *gameast.CardAST
-	if corpus != nil {
-		cardAST, _ = corpus.Get(name)
-	}
-	md := meta.Get(name)
-
-	if cardAST == nil && md == nil {
-		// DFC fallback: retry per face (front first) before giving up.
-		if strings.Contains(name, " // ") {
-			for _, face := range strings.Split(name, " // ") {
-				face = strings.TrimSpace(face)
-				if face == "" || face == name {
-					continue
-				}
-				if got := buildCardFromName(face, corpus, meta); got != nil {
-					return got
-				}
-			}
-		}
-		return nil
-	}
-
-	c := &gameengine.Card{
-		AST:   cardAST,
-		Name:  name,
-		Owner: -1,
-	}
-	if md != nil {
-		c.Name = md.Name
-		if len(md.Types) > 0 {
-			c.Types = append([]string(nil), md.Types...)
-		}
-		c.BasePower = md.Power
-		c.BaseToughness = md.Toughness
-		if len(md.Colors) > 0 {
-			c.Colors = append([]string(nil), md.Colors...)
-		}
-		c.CMC = md.CMC
-		c.TypeLine = md.TypeLine
-	}
-
-	// ETB-choice P/T default so 0/0 "as ~ enters, choose" creatures
-	// survive SBA §704.5f (Primal Plasma class).
-	isCreature := false
-	for _, t := range c.Types {
-		if t == "creature" {
-			isCreature = true
-			break
-		}
-	}
-	if isCreature && c.BasePower == 0 && c.BaseToughness == 0 {
-		ot := gameengine.OracleTextLower(c)
-		if gameengine.HasETBChoicePatternExported(ot) {
-			c.BasePower = 3
-			c.BaseToughness = 3
-		}
-	}
-
-	return c
 }

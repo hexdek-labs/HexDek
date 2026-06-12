@@ -38,6 +38,7 @@ import (
 
 	"github.com/hexdek/hexdek/internal/astload"
 	"github.com/hexdek/hexdek/internal/deckparser"
+	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
 func main() {
@@ -87,7 +88,13 @@ func main() {
 		if err != nil {
 			log.Fatalf("meta %s: %v", *astPath, err)
 		}
-		chaosCorpus, err := loadOracleCorpus(*oraclePath)
+		// P/T + MDFC back-face enrichment from the oracle corpus, same
+		// as loki — without it the MetaDB carries no BackFace* data and
+		// MDFC face-cleanup at battlefield entry is blind.
+		if err := meta.SupplementWithOracleJSON(*oraclePath); err != nil {
+			log.Fatalf("meta oracle supplement %s: %v", *oraclePath, err)
+		}
+		chaosCorpus, err := gameengine.LoadChaosCorpusFromOracleJSON(*oraclePath)
 		if err != nil {
 			log.Fatalf("oracle: %v", err)
 		}
