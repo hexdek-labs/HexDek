@@ -72,6 +72,14 @@ func applyMigrations(db *sql.DB) error {
 		{"showmatch_elo", "measured_bracket", "INTEGER NOT NULL DEFAULT 0"},
 		{"showmatch_elo", "hex_rating", "REAL NOT NULL DEFAULT 0.0"},
 		{"showmatch_elo", "hex_delta", "REAL NOT NULL DEFAULT 0.0"},
+		// r62 (report 09 C-2): persist the raw TrueSkill mu/sigma so a
+		// server restart no longer resets every deck to sigma_0=400 and
+		// re-injects rating noise into the ladder. DEFAULT 0 doubles as
+		// the "row predates this migration" sentinel — loadPersistedState
+		// falls back to the legacy rating-based reconstruction (and the
+		// PR #996 clamp backstop) when ts_sigma is 0.
+		{"showmatch_elo", "ts_mu", "REAL NOT NULL DEFAULT 0.0"},
+		{"showmatch_elo", "ts_sigma", "REAL NOT NULL DEFAULT 0.0"},
 		{"showmatch_game", "rng_seed", "INTEGER NOT NULL DEFAULT 0"},
 		// HOW the winner won (heimdall.ClassifyKill); orthogonal to
 		// end_reason (the game-end TYPE). '' = not classified / draw.
