@@ -132,9 +132,15 @@ func HasReplicate(card *Card) bool {
 	return cardHasKeywordByName(card, "replicate")
 }
 
-// ReplicateCost returns the replicate cost from keyword args.
+// ReplicateCost returns the replicate cost from keyword args. Returns 0
+// when the parser didn't capture a cost — the cast gate already requires
+// a positive cost before offering replicate, so unknown reads as decline.
 func ReplicateCost(card *Card) int {
-	return keywordArgCost(card, "replicate")
+	c, ok := keywordArgCostStrict(card, "replicate")
+	if !ok {
+		return 0
+	}
+	return c
 }
 
 // ApplyReplicate pays the replicate cost `copies` times and puts that
@@ -468,9 +474,16 @@ func HasCasualty(card *Card) bool {
 }
 
 // CasualtyMinPower returns the minimum power required for the sacrificed
-// creature from the keyword args.
+// creature from the keyword args. Returns 0 when the parser didn't
+// capture the printed N — the cast gate treats 0 as "decline casualty"
+// (pre-r61.1 the CMC fallback demanded a power-4 sacrifice for
+// "casualty 1" on a 4-CMC spell: wrong cost, wrong direction).
 func CasualtyMinPower(card *Card) int {
-	return keywordArgCost(card, "casualty")
+	c, ok := keywordArgCostStrict(card, "casualty")
+	if !ok {
+		return 0
+	}
+	return c
 }
 
 // PayCasualty sacrifices a creature with power >= minPower as an additional

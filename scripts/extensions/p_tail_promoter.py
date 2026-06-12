@@ -35,7 +35,7 @@ if str(_SCRIPTS) not in sys.path:
     sys.path.insert(0, str(_SCRIPTS))
 
 from mtg_ast import (  # noqa: E402
-    Modification, Static, Keyword,
+    Condition, Modification, Static, Keyword,
 )
 
 
@@ -648,13 +648,58 @@ def _replacement_spell_broad(m, raw):
     )
 
 
-@_sp(r"^if (?:this creature|~|it) was kicked")
+# "if ~ was kicked, it enters with N <kind> counters on it" — the full
+# Grunn-class shape. Emits the engine's canonical etb_with_counters
+# contract: Condition(kind="kicked", args=(times,)) gating
+# Modification(args=(count:int, counter_kind:str)). The engine's
+# ApplyStaticETBCounters evaluates the condition against
+# perm.Flags["kicked"] (stamped at ETB from CostMeta["multikick_count"]),
+# so Grunn enters 5/5 unkicked and 10/10 (5 + five +1/+1 counters)
+# when kicked.
+_KICKED_ETB_COUNTERS = re.compile(
+    r"^if (?:this creature|this permanent|~|it) was kicked"
+    r"(?P<twice> twice)?,\s*"
+    r"(?:it|~|this creature|this permanent) enters(?: the battlefield)? with "
+    r"(?P<n>a|an|one|two|three|four|five|six|seven|eight|nine|ten|\d+) "
+    r"(?P<kind>[a-z+/0-9\- ]+?) counters? on it"
+    r"(?:\.|$)",
+    re.I,
+)
+
+_NUM_WORDS_KICKED = {
+    "a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+    "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10,
+}
+
+
+@_sp(r"^if (?:this creature|this permanent|~|it) was kicked")
 def _conditional_kicker(m, raw):
+    full = m.string
+    km = _KICKED_ETB_COUNTERS.match(full)
+    if km:
+        times = 2 if km.group("twice") else 1
+        n_raw = km.group("n").lower()
+        count = _NUM_WORDS_KICKED.get(n_raw)
+        if count is None:
+            count = int(n_raw)
+        return Static(
+            condition=Condition(kind="kicked", args=(times,)),
+            modification=Modification(
+                kind="etb_with_counters",
+                args=(count, km.group("kind").strip()),
+            ),
+            raw=raw,
+        )
+    # Non-counter kicked conditionals ("if ~ was kicked, <other effect>").
+    # Pre-r61.1 these emitted a FAKE etb_with_counters with
+    # args=("kicker", <text>), which the engine misread as "enters with
+    # one counter of kind '<text>'" applied UNCONDITIONALLY. Demote to
+    # conditional_static (engine parser_gap no-op) — strictly safer.
     return Static(
-        condition=None,
+        condition=Condition(kind="kicked", args=(1,)),
         modification=Modification(
-            kind="etb_with_counters",
-            args=("kicker", m.group(0)),
+            kind="conditional_static",
+            args=(full,),
         ),
         raw=raw,
     )

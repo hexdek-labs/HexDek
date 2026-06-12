@@ -230,7 +230,7 @@ def _may_copy(m, raw):
 # -- "~ enters with X/N <kind> counter(s) on it [for each ...] [if ...] [,where x is ...]" -
 
 @_stat(r"^(?:~|this (?:creature|artifact|enchantment|permanent|land)) "
-       r"enters with "
+       r"enters (?:the battlefield )?with "
        r"(a|an|one|two|three|four|five|six|seven|eight|nine|ten|x|\d+) "
        r"([a-z+/0-9\- ]+?) counters? on it"
        r"(?:\s*,?\s*where x is ([^.]+?))?"
@@ -266,7 +266,7 @@ def _etb_with_counters(m, raw):
 
 # -- "~ enters with a number of +1/+1 counters on it equal to <expr>" ----------
 
-@_stat(r"^(?:~|this (?:creature|artifact|permanent)) enters with "
+@_stat(r"^(?:~|this (?:creature|artifact|permanent)) enters (?:the battlefield )?with "
        r"a number of ([a-z+/0-9\- ]+?) counters? on it equal to ([^.]+?)(?:\.|$)")
 def _etb_counters_equal(m, raw):
     kind = m.group(1).strip()

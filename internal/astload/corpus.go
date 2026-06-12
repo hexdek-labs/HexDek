@@ -25,6 +25,8 @@ package astload
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -66,6 +68,25 @@ type Corpus struct {
 	// SourceBytes is the total JSONL bytes read. 0 for LoadReader when
 	// the reader doesn't expose a size.
 	SourceBytes int64
+
+	// Manifest is the dataset's freshness stamp, decoded from the
+	// DatasetManifest header line export_ast_dataset.py writes as the
+	// first JSONL row (schema 1, r61.1+). nil for pre-manifest datasets.
+	// Use scripts/check_ast_freshness.py to gate on staleness; consumers
+	// here can surface Manifest.ExportDate in startup logs.
+	Manifest *DatasetManifest
+}
+
+// DatasetManifest mirrors the first-line freshness stamp emitted by
+// scripts/export_ast_dataset.py. parser_source_hash fingerprints
+// parser.py + mtg_ast.py + scripts/extensions/*.py at export time.
+type DatasetManifest struct {
+	Schema           int    `json:"schema"`
+	ExportUnix       int64  `json:"export_unix"`
+	ExportDate       string `json:"export_date"`
+	ParserGitSHA     string `json:"parser_git_sha"`
+	ParserSourceHash string `json:"parser_source_hash"`
+	EntryCount       int    `json:"entry_count"`
 }
 
 // Load reads `path` as JSONL and returns a populated Corpus.
@@ -113,6 +134,23 @@ func LoadReader(r io.Reader) (*Corpus, error) {
 		line := sc.Bytes()
 		if len(line) == 0 {
 			continue
+		}
+		// DatasetManifest header (first line of r61.1+ exports). Decode
+		// onto Corpus.Manifest and skip — it is not a card. Cheap gate:
+		// only attempt the decode when the discriminator substring is
+		// present, so the 30k card lines never pay for it.
+		if c.Manifest == nil && lineNum <= 3 &&
+			bytes.Contains(line, []byte(`"DatasetManifest"`)) {
+			var probe struct {
+				ASTType string `json:"__ast_type__"`
+				DatasetManifest
+			}
+			if err := json.Unmarshal(line, &probe); err == nil &&
+				probe.ASTType == "DatasetManifest" {
+				m := probe.DatasetManifest
+				c.Manifest = &m
+				continue
+			}
 		}
 		card, warnings, err := decodeCardLine(line)
 		if err != nil {

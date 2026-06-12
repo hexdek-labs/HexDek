@@ -20,7 +20,7 @@ pretty_name: MTG Typed AST Dataset
 # MTG Oracle-Text Typed AST Dataset
 
 A finetuning-grade corpus of every printed Magic: The Gathering card
-(post-filtering: 31,963 cards) paired with its **typed abstract syntax tree**
+(post-filtering: 31,247 cards) paired with its **typed abstract syntax tree**
 as produced by the [HexDek](https://github.com/hexdek-labs/HexDek) oracle-text parser.
 
 Each AST is emitted per the MTG Comprehensive Rules §113 ability taxonomy:
@@ -35,7 +35,7 @@ Each AST is emitted per the MTG Comprehensive Rules §113 ability taxonomy:
 `Discard`, `Mill`, `CounterMod`, `Sequence`, `Choice`, `Optional_`,
 `Conditional`, `UnknownEffect`, and more).
 
-Parser syntactic coverage: **100% GREEN** on all 31,963 real cards.
+Parser syntactic coverage: **100% GREEN** on all 31,247 real cards.
 A majority of cards carry at least one `Modification(kind="custom", ...)`
 stub intended for the runtime layer; that information is preserved in this
 dataset so downstream consumers can filter on it. See

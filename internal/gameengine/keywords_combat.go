@@ -47,9 +47,11 @@ package gameengine
 //   - Hexproof from [color]     — CR §702.11d
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
+	"github.com/hexdek/hexdek/internal/mana"
 )
 
 // ============================================================================
@@ -837,9 +839,16 @@ func HasSpectacle(card *Card) bool {
 	return cardHasKeywordByName(card, "spectacle")
 }
 
-// SpectacleCost returns the spectacle cost from keyword args.
+// SpectacleCost returns the spectacle cost from keyword args. Returns 0
+// when the parser didn't capture a cost — the cast gate treats 0 as
+// "decline spectacle", never as free (CR §702.137: the spectacle cost is
+// an alternative cost; an unknown price must not be guessed).
 func SpectacleCost(card *Card) int {
-	return keywordArgCost(card, "spectacle")
+	c, ok := keywordArgCostStrict(card, "spectacle")
+	if !ok {
+		return 0
+	}
+	return c
 }
 
 // CanPaySpectacle checks if spectacle is active — an opponent must have
@@ -867,9 +876,15 @@ func HasSurge(card *Card) bool {
 	return cardHasKeywordByName(card, "surge")
 }
 
-// SurgeCost returns the surge cost from keyword args.
+// SurgeCost returns the surge cost from keyword args. Returns 0 when the
+// parser didn't capture a cost — the cast gate treats 0 as "decline
+// surge" (see SpectacleCost).
 func SurgeCost(card *Card) int {
-	return keywordArgCost(card, "surge")
+	c, ok := keywordArgCostStrict(card, "surge")
+	if !ok {
+		return 0
+	}
+	return c
 }
 
 // CanPaySurge checks if surge is active — the player (or teammate) must
@@ -1528,9 +1543,17 @@ func HasOverload(card *Card) bool {
 	return cardHasKeywordByName(card, "overload")
 }
 
-// OverloadCost returns the overload cost from keyword args.
+// OverloadCost returns the overload cost from keyword args. Returns 0
+// when the parser didn't capture a cost — the cast gate treats 0 as
+// "decline overload". Pre-r61.1 this fell back to card.CMC, which made
+// Cyclonic Rift overload for {2} instead of {6}{U}-equivalent in every
+// real game.
 func OverloadCost(card *Card) int {
-	return keywordArgCost(card, "overload")
+	c, ok := keywordArgCostStrict(card, "overload")
+	if !ok {
+		return 0
+	}
+	return c
 }
 
 // CastWithOverload casts a spell for its overload cost, changing it
@@ -1918,11 +1941,52 @@ func cardHasKeywordByName(card *Card, name string) bool {
 	return astHasKeyword(card.AST, name)
 }
 
-// keywordArgCost extracts the first numeric arg from a keyword.
-// Returns 0 if not found or no args.
-func keywordArgCost(card *Card, keywordName string) int {
+// keywordCostFromArg converts a single keyword arg into a generic-mana
+// cost. The parser emits keyword cost args in three shapes depending on
+// which historical code path matched the oracle text:
+//
+//   - JSON number (int keywords: "casualty 1" → 1; also the float64 the
+//     JSON decoder produces for those)
+//   - bare digit string ("3")
+//   - mana-pip string ("{3}", "{1}{u}") — converted via mana.Parse → CMC
+//
+// ok=false when the arg is none of those (rider text, "and/or" kicker
+// alternatives, empty string).
+func keywordCostFromArg(v interface{}) (int, bool) {
+	switch a := v.(type) {
+	case float64:
+		return int(a), true
+	case int:
+		return a, true
+	case string:
+		s := strings.TrimSpace(a)
+		if s == "" {
+			return 0, false
+		}
+		if n, err := strconv.Atoi(s); err == nil {
+			return n, true
+		}
+		if strings.HasPrefix(s, "{") {
+			if cost, err := mana.Parse(s); err == nil {
+				return cost.CMC(), true
+			}
+		}
+	}
+	return 0, false
+}
+
+// keywordArgCostStrict extracts the keyword's cost from its parsed args.
+// Returns ok=false when the keyword is absent OR present without a
+// machine-readable cost arg. This is the reader the cast-time optional
+// cost family (kicker / multikicker / overload / surge / spectacle /
+// replicate / casualty / buyback) must use: an unknown cost means the
+// mechanic is DECLINED, never priced by guesswork. Pre-r61.1 these
+// readers fell back to card.CMC, which mispriced essentially every real
+// card (Cyclonic Rift overloaded for {2}, Burst Lightning kicked for
+// {1}) because the parser emits costs as mana strings, not numbers.
+func keywordArgCostStrict(card *Card, keywordName string) (int, bool) {
 	if card == nil || card.AST == nil {
-		return 0
+		return 0, false
 	}
 	want := strings.ToLower(keywordName)
 	for _, ab := range card.AST.Abilities {
@@ -1933,14 +1997,28 @@ func keywordArgCost(card *Card, keywordName string) int {
 		if strings.ToLower(strings.TrimSpace(kw.Name)) != want {
 			continue
 		}
-		if len(kw.Args) > 0 {
-			switch v := kw.Args[0].(type) {
-			case float64:
-				return int(v)
-			case int:
-				return v
+		for _, arg := range kw.Args {
+			if c, ok := keywordCostFromArg(arg); ok {
+				return c, true
 			}
 		}
+		return 0, false
+	}
+	return 0, false
+}
+
+// keywordArgCost extracts the first cost-shaped arg from a keyword.
+// Returns 0 if the keyword is absent. When the keyword is present but
+// carries no machine-readable cost arg, falls back to the card's CMC —
+// legacy behavior kept for the non-gating callers (equip, madness,
+// emerge, disguise, cleave, ...). Cast-time optional-cost gates must NOT
+// use this: they go through keywordArgCostStrict so a parser miss reads
+// as "decline", never as a made-up price.
+func keywordArgCost(card *Card, keywordName string) int {
+	if c, ok := keywordArgCostStrict(card, keywordName); ok {
+		return c
+	}
+	if cardHasKeywordByName(card, keywordName) {
 		return card.CMC // Fallback: use card's CMC.
 	}
 	return 0

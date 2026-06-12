@@ -26,7 +26,9 @@ Idempotent. Re-running overwrites the output file.
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import json
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -109,7 +111,7 @@ pretty_name: MTG Typed AST Dataset
 
 A finetuning-grade corpus of every printed Magic: The Gathering card
 (post-filtering: __ROWS__ cards) paired with its **typed abstract syntax tree**
-as produced by the [mtgsquad](https://github.com/) oracle-text parser.
+as produced by the [HexDek](https://github.com/hexdek-labs/HexDek) oracle-text parser.
 
 Each AST is emitted per the MTG Comprehensive Rules §113 ability taxonomy:
 
@@ -127,7 +129,7 @@ Parser syntactic coverage: **100% GREEN** on all __ROWS__ real cards.
 A majority of cards carry at least one `Modification(kind="custom", ...)`
 stub intended for the runtime layer; that information is preserved in this
 dataset so downstream consumers can filter on it. See
-`data/rules/coverage_honest.md` in the mtgsquad repository for live
+`data/rules/coverage_honest.md` in the HexDek repository for live
 structural / mixed / stub / vanilla breakdown.
 
 ## File
@@ -159,7 +161,7 @@ Python class (e.g. `Static`, `Activated`, `Triggered`, `Keyword`, `Damage`,
 `Sequence`, `Choice`, ...) so consumers can discriminate structurally-similar
 nodes without hand-rolled schema inference.
 
-See `scripts/mtg_ast.py` in the mtgsquad repository for the full type
+See `scripts/mtg_ast.py` in the HexDek repository for the full type
 definitions (frozen dataclasses).
 
 ## Example row (verbatim first line of the JSONL)
@@ -196,9 +198,9 @@ Please credit Scryfall when redistributing:
 ## Citation
 
 ```bibtex
-@misc{mtgsquad_ast_dataset,
+@misc{hexdek_ast_dataset,
   title  = {MTG Oracle-Text Typed AST Dataset},
-  author = {mtgsquad contributors},
+  author = {HexDek contributors},
   year   = {2026},
   note   = {Typed AST per MTG Comprehensive Rules §113,
             sourced from Scryfall oracle-cards bulk data.}
@@ -213,6 +215,52 @@ python3 scripts/export_ast_dataset.py
 """
 
 
+def _parser_source_hash() -> str:
+    """SHA-256 over parser.py + every extension module (sorted), so the
+    manifest fingerprints the exact grammar that produced the dataset.
+    Any edit to parser.py or scripts/extensions/* changes this hash."""
+    h = hashlib.sha256()
+    sources = [SCRIPTS_DIR / "parser.py", SCRIPTS_DIR / "mtg_ast.py"]
+    ext_dir = SCRIPTS_DIR / "extensions"
+    if ext_dir.exists():
+        sources += sorted(p for p in ext_dir.glob("*.py")
+                          if not p.name.startswith("_"))
+    for p in sources:
+        h.update(p.name.encode())
+        h.update(p.read_bytes())
+    return h.hexdigest()
+
+
+def _git_sha() -> str:
+    try:
+        return subprocess.run(
+            ["git", "rev-parse", "HEAD"], cwd=str(ROOT),
+            capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+    except Exception:
+        return ""
+
+
+def build_manifest(entry_count: int) -> dict:
+    """First-line freshness stamp (__ast_type__ = DatasetManifest).
+
+    The Go loader (internal/astload) recognizes this line, stores it on
+    Corpus.Manifest, and skips it as a card; pre-manifest loaders skip it
+    silently (no "ast" field -> nil card, no warning). The freshness gate
+    is scripts/check_ast_freshness.py, which compares parser_source_hash
+    against a fresh hash of the live parser tree.
+    """
+    return {
+        "__ast_type__": "DatasetManifest",
+        "schema": 1,
+        "export_unix": int(time.time()),
+        "export_date": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "parser_git_sha": _git_sha(),
+        "parser_source_hash": _parser_source_hash(),
+        "entry_count": entry_count,
+    }
+
+
 def main() -> None:
     t0 = time.time()
     P.load_extensions()
@@ -221,19 +269,26 @@ def main() -> None:
 
     OUT_JSONL.parent.mkdir(parents=True, exist_ok=True)
     first_rows: list[dict] = []
+    lines: list[str] = []
     n = 0
+    for c in real:
+        try:
+            row = card_row(c)
+        except Exception as e:  # defensive; parser is stable but be safe
+            print(f"  skip {c.get('name')!r}: {e}", file=sys.stderr)
+            continue
+        lines.append(json.dumps(row, ensure_ascii=False))
+        if n < 3:
+            first_rows.append(row)
+        n += 1
+
+    manifest = build_manifest(n)
     with OUT_JSONL.open("w", encoding="utf-8") as f:
-        for c in real:
-            try:
-                row = card_row(c)
-            except Exception as e:  # defensive; parser is stable but be safe
-                print(f"  skip {c.get('name')!r}: {e}", file=sys.stderr)
-                continue
-            f.write(json.dumps(row, ensure_ascii=False))
+        f.write(json.dumps(manifest, ensure_ascii=False))
+        f.write("\n")
+        for line in lines:
+            f.write(line)
             f.write("\n")
-            if n < 3:
-                first_rows.append(row)
-            n += 1
 
     size = OUT_JSONL.stat().st_size
     example = json.dumps(first_rows[0], ensure_ascii=False) if first_rows else "{}"
@@ -245,6 +300,8 @@ def main() -> None:
     OUT_README.write_text(rendered, encoding="utf-8")
 
     print(f"wrote {n:,} rows to {OUT_JSONL}")
+    print(f"manifest:  sha={manifest['parser_source_hash'][:16]}… "
+          f"git={manifest['parser_git_sha'][:12]} date={manifest['export_date']}")
     print(f"file size: {size:,} bytes ({size / 1024 / 1024:.1f} MiB)")
     print(f"readme:    {OUT_README}")
     print(f"elapsed:   {time.time() - t0:.1f}s")

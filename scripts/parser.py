@@ -1701,6 +1701,50 @@ KEYWORD_RE = re.compile(
 )
 
 
+def _keyword_cost_args(base: str, name: str) -> tuple:
+    """Extract the cost-shaped args a keyword carries after its base name.
+
+    Returns a tuple matching the conventions the extension scrubbers
+    already use (and the Go engine's keywordArgCost readers consume):
+      - integer counts as int      ("casualty 1"      -> (1,))
+      - X counts as the string "x" ("devour x"        -> ("x",))
+      - mana pips joined as one string
+                                   ("kicker {3}"      -> ("{3}",)
+                                    "reinforce 2 {w}" -> (2, "{w}"))
+    Text-style qualifiers (protection from ..., affinity for ...,
+    partner with ...) carry no cost and return ().
+
+    Riders after a comma and "and/or" alternatives are NOT captured --
+    "kicker {b} and/or {r}" needs a dual-cost representation neither the
+    AST Cost node nor the engine supports yet, so emitting just the first
+    alternative would silently mis-price the second mode. Empty args =
+    "cost unknown", which the engine treats as decline (conservative).
+
+    Historical context: pre-r61.1 this helper didn't exist -- the base
+    KEYWORD_RE path matched single-pip costs ("kicker {3}", "buyback {2}")
+    and then THREW THE COST AWAY, while multi-pip shapes fell through to
+    extension scrubbers that kept it. The cast-time optional-cost family
+    (kicker/multikicker/buyback/overload/surge/spectacle/replicate/
+    casualty) was therefore unpriceable for every single-pip card.
+    """
+    tail = name[len(base):].strip()
+    if not tail:
+        return ()
+    # Cut riders: "and/or" kicker alternatives and comma-separated
+    # clauses ("devour 2, ...") -- keep only the leading cost expression.
+    cut = re.split(r"\s+and/or\s+|,", tail, 1)[0].strip()
+    args: list = []
+    m_int = re.match(r"^(\d+|[xX])\b", cut)
+    if m_int:
+        v = m_int.group(1)
+        args.append(int(v) if v.isdigit() else "x")
+        cut = cut[m_int.end():].strip(" \u2014\u2013-")
+    pips = re.findall(r"\{[^}]+\}", cut)
+    if pips:
+        args.append("".join(pips))
+    return tuple(args)
+
+
 def parse_keyword(text: str) -> Optional[Keyword]:
     """If `text` is a single keyword phrase (with optional args), return a
     Keyword AST node. Else None."""
@@ -1714,7 +1758,12 @@ def parse_keyword(text: str) -> Optional[Keyword]:
     base = re.sub(r"\s+(?:\d+|[Xx]).*$", "", base)
     base = base.rstrip("\u2014\u2013-")
     base = re.sub(r"\s+from\s+.*$", "", base)
-    return Keyword(name=base.strip(), raw=text)
+    base = base.strip()
+    # Capture the cost args the pre-r61.1 path discarded. `m.group(1)`
+    # (the full keyword match) still carries them; textual qualifiers
+    # (protection/affinity/partner/enchant) yield () and are unchanged.
+    args = _keyword_cost_args(base, m.group(1))
+    return Keyword(name=base, args=args, raw=text)
 
 
 def parse_keyword_list(text: str) -> Optional[list[Keyword]]:

@@ -80,21 +80,23 @@ func IsMultikicker(card *Card) bool {
 }
 
 // KickerCost returns the generic mana cost of ONE kick for the card's
-// kicker / multikicker keyword. Reads the numeric arg off the keyword
-// node (via keywordArgCost). Returns 0 if the card has no kicker or the
-// parser couldn't recover a numeric cost — callers treat 0 as "no
-// affordable kicker" so a parser miss can never silently double-charge.
+// kicker / multikicker keyword. Reads the cost arg off the keyword node
+// via keywordArgCostStrict — mana-string args ("{3}", "{1}{b}") and
+// numeric args are both honored. Returns 0 if the card has no kicker or
+// the parser couldn't recover a cost — callers treat 0 as "no affordable
+// kicker" so a parser miss reads as DECLINE, never as a CMC-guessed
+// price (the pre-r61.1 fallback that kicked Burst Lightning for {1}).
 func KickerCost(card *Card) int {
 	if card == nil {
 		return 0
 	}
 	if cardHasKeywordByName(card, "multikicker") {
-		if c := keywordArgCost(card, "multikicker"); c > 0 {
+		if c, ok := keywordArgCostStrict(card, "multikicker"); ok && c > 0 {
 			return c
 		}
 	}
 	if cardHasKeywordByName(card, "kicker") {
-		if c := keywordArgCost(card, "kicker"); c > 0 {
+		if c, ok := keywordArgCostStrict(card, "kicker"); ok && c > 0 {
 			return c
 		}
 	}

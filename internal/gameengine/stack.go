@@ -400,7 +400,10 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		oc := OverloadCost(card)
 		avail := EnsureTypedPool(seat).Total()
 		maxPay := 0
-		if avail >= oc {
+		// oc == 0 means the parser didn't capture the printed overload
+		// cost — decline rather than overload for free (no printed
+		// overload cost is {0}).
+		if oc > 0 && avail >= oc {
 			maxPay = 1
 		}
 		if maxPay > 0 && seat.Hat != nil &&
@@ -413,7 +416,9 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		sc := SurgeCost(card)
 		avail := EnsureTypedPool(seat).Total()
 		maxPay := 0
-		if sc >= 0 && avail >= sc {
+		// sc == 0 means the parser didn't capture the printed surge cost
+		// — decline rather than surge for free.
+		if sc > 0 && avail >= sc {
 			maxPay = 1
 		}
 		if maxPay > 0 && seat.Hat != nil &&
@@ -427,7 +432,9 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		spc := SpectacleCost(card)
 		avail := EnsureTypedPool(seat).Total()
 		maxPay := 0
-		if spc >= 0 && avail >= spc {
+		// spc == 0 means the parser didn't capture the printed spectacle
+		// cost — decline rather than cast for free.
+		if spc > 0 && avail >= spc {
 			maxPay = 1
 		}
 		if maxPay > 0 && seat.Hat != nil &&
@@ -545,7 +552,11 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		bc := BuybackCost(card)
 		remaining := EnsureTypedPool(seat).Total()
 		maxPay := 0
-		if remaining >= bc {
+		// bc == 0 means the parser didn't capture the printed buyback
+		// cost (24 of 29 printed buyback costs are single-pip and were
+		// dropped by the pre-r61.1 parser) — decline rather than grant
+		// Capsize-class buyback for free.
+		if bc > 0 && remaining >= bc {
 			maxPay = 1
 		}
 		if maxPay > 0 && seat.Hat != nil &&
@@ -730,7 +741,9 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 	if HasCasualty(card) {
 		minPow := CasualtyMinPower(card)
 		maxPay := 0
-		if CanPayCasualty(gs, seatIdx, minPow) {
+		// minPow == 0 means the parser didn't capture the printed
+		// casualty N — decline rather than sacrifice for an unknown cost.
+		if minPow > 0 && CanPayCasualty(gs, seatIdx, minPow) {
 			maxPay = 1
 		}
 		if maxPay > 0 && seat.Hat != nil &&

@@ -25,18 +25,20 @@ from parser import parse_card, is_real_card  # noqa: E402
 ROOT = Path(__file__).resolve().parents[1]
 ORACLE = ROOT / "data" / "rules" / "oracle-cards.json"
 
-EXPECTED_GREEN = 31_944
-EXPECTED_REAL = 31_965
+EXPECTED_GREEN = 31_247
+EXPECTED_REAL = 31_247
 
 
 @pytest.mark.slow
 def test_full_corpus_100_percent_green():
-    """All 31,943 real cards must parse GREEN (fully_parsed=True).
+    """All 31,247 real cards must parse GREEN (fully_parsed=True).
 
-    The "real card" count is actually 31,965 — 22 cards remain PARTIAL
-    (see ``data/rules/parser_coverage.md``). We assert the GREEN count is
-    the tracked baseline so any extension-level regression surfaces as a
-    test failure rather than a silent coverage drop.
+    Counts re-baselined r61.1: commit 2a46b6c5 (2026-05-26) excluded
+    set_type=="alchemy" from is_real_card (-716 Arena-only digital cards)
+    and closed the last PARTIAL, but never bumped these constants — the
+    test had been failing on main ever since. We assert the GREEN count
+    is the tracked baseline so any extension-level regression surfaces
+    as a test failure rather than a silent coverage drop.
     """
     with open(ORACLE, encoding="utf-8") as f:
         all_cards = json.load(f)
