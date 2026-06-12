@@ -468,6 +468,18 @@ func DeclareAttackers(gs *GameState, attackerSeat int) []*Permanent {
 		chosen = seat.Hat.ChooseAttackers(gs, attackerSeat, legal)
 	}
 
+	// CR §508.1 engine backstop (r62): the Hat's return was previously
+	// applied UNVERIFIED — a policy bug (or any future code path handing
+	// in a map) could declare a tapped / summoning-sick / defender /
+	// off-pool creature and the engine would execute it; the phase-2
+	// legality validator could SEE it but nothing STOPPED it. Drop any
+	// entry that is nil, a duplicate, or not a member of the legal pool
+	// computed above (membership is exact: every current Hat subsets its
+	// input, so legal declarations are untouched by construction).
+	// Dropped entries are still routed through the ride-along validator
+	// so policy bugs remain visible even though they no longer execute.
+	chosen = sanitizeDeclaredAttackers(gs, attackerSeat, chosen, legal)
+
 	// CR §701.39 — Goad enforcement (must attack if able). Any legal
 	// goaded creature the Hat omitted is force-added. "If able" is
 	// satisfied by being in `legal` (canAttack passed). The Silent
@@ -907,11 +919,23 @@ func DeclareBlockers(gs *GameState, attackers []*Permanent, defenderSeat int) ma
 		if hatMap != nil {
 			for _, a := range attackers {
 				blockers := hatMap[a]
-				// Ride-along legality validator: the Hat's block map is
-				// applied with no engine validation at all — observe each
-				// (attacker, blocker-set) BEFORE flagBlocking is stamped
-				// so multi-block reads as "was already blocking".
+				// Ride-along legality validator: observe the RAW policy
+				// output BEFORE sanitizing and BEFORE flagBlocking is
+				// stamped — policy bugs stay visible in the violation
+				// stream even though the engine no longer executes them.
 				gs.Legality.ObserveBlockDeclaration(gs, defenderSeat, a, blockers)
+				// CR §509.1 engine backstop (r62): the Hat's block map was
+				// previously applied with no engine validation at all —
+				// the #1028 landwalk fix stopped hats from CHOOSING
+				// illegal blocks, but the engine still executed whatever
+				// map it was handed. Drop entries that fail §509.1a
+				// (tapped / non-creature / phased out / not the defender's
+				// battlefield creature), §509.1 one-attacker-per-blocker
+				// (unless its text allows more), or §509.1b evasion via
+				// canBlockGS (flying / menace / landwalk / protection /
+				// fear / shadow / skulk / horsemanship / Sidar Kondo);
+				// then enforce §702.110b menace pairing on the survivors.
+				blockers = sanitizeDeclaredBlockers(gs, defenderSeat, a, blockers)
 				for _, b := range blockers {
 					setPermFlag(b, flagBlocking, true)
 				}
@@ -1157,6 +1181,152 @@ func canBlockGS(gs *GameState, attacker, blocker *Permanent) bool {
 	// a blocker's protection doesn't prevent blocking).
 	// NOTE: only attacker-side protection prevents blocking per CR.
 	return true
+}
+
+// sanitizeDeclaredAttackers is the CR §508.1 engine backstop (r62): it
+// filters a policy-chosen attacker list down to non-nil, non-duplicate
+// members of the legal pool DeclareAttackers computed (canAttack +
+// passesCombatRestriction over the controller's battlefield). Pointer
+// membership is exact and cannot false-drop: every Hat builds its return
+// from the legal slice it is handed, so a drop here means a genuinely
+// out-of-pool declaration (policy bug or a future code path handing in a
+// raw list). Dropped entries are routed through the ride-along legality
+// validator so the attempt stays visible, and logged as
+// attack_declaration_dropped.
+func sanitizeDeclaredAttackers(gs *GameState, attackerSeat int, chosen, legal []*Permanent) []*Permanent {
+	if len(chosen) == 0 {
+		return chosen
+	}
+	inPool := make(map[*Permanent]bool, len(legal))
+	for _, p := range legal {
+		inPool[p] = true
+	}
+	kept := make([]*Permanent, 0, len(chosen))
+	seen := make(map[*Permanent]bool, len(chosen))
+	for _, p := range chosen {
+		if p == nil {
+			continue
+		}
+		if seen[p] {
+			dropDeclaredAttacker(gs, attackerSeat, p, "duplicate attacker entry", "508.1a")
+			continue
+		}
+		seen[p] = true
+		if !inPool[p] {
+			// Validator sees the attempt (re-derives 508.1/302.6/702.26
+			// per checkLegalityAttackDecl) even though it won't execute.
+			gs.Legality.ObserveAttackDeclaration(gs, attackerSeat, p)
+			dropDeclaredAttacker(gs, attackerSeat, p, "not in the legal attacker pool (tapped / summoning-sick / defender / restriction / off-battlefield)", "508.1")
+			continue
+		}
+		kept = append(kept, p)
+	}
+	return kept
+}
+
+func dropDeclaredAttacker(gs *GameState, seatIdx int, p *Permanent, reason, rule string) {
+	name := "<unknown>"
+	if p != nil && p.Card != nil {
+		name = p.Card.DisplayName()
+	}
+	gs.LogEvent(Event{
+		Kind:   "attack_declaration_dropped",
+		Seat:   seatIdx,
+		Source: name,
+		Details: map[string]interface{}{
+			"reason": reason,
+			"rule":   rule,
+		},
+	})
+}
+
+// sanitizeDeclaredBlockers is the CR §509.1 engine backstop (r62): it
+// filters a policy-assigned blocker set for one attacker down to entries
+// that are legally able to block it RIGHT NOW, mirroring the phase-2
+// validator's checkLegalityBlockDecl predicates exactly:
+//
+//   - §509.1a: creature, not phased out, not tapped, and on the
+//     DEFENDER's battlefield (the fallback policy gets this implicitly
+//     from its pool; the Hat branch previously got nothing);
+//   - §509.1: not already blocking and not duplicated within this
+//     assignment, unless its text allows blocking additional creatures
+//     (legalityCanMultiBlock);
+//   - §509.1b: canBlockGS evasion/restriction gate (flying, menace
+//     count handled below, landwalk, protection, fear/intimidate,
+//     shadow, skulk, horsemanship, Sidar Kondo, unblockable);
+//   - §702.110b: if the attacker has menace (printed or layer-granted)
+//     and exactly one blocker survives the filters, the single block is
+//     illegal as a whole and is dropped too.
+//
+// The caller observes the RAW set through the validator before calling
+// this, so dropped entries remain visible as violations.
+func sanitizeDeclaredBlockers(gs *GameState, defenderSeat int, attacker *Permanent, blockers []*Permanent) []*Permanent {
+	if attacker == nil || len(blockers) == 0 {
+		return nil
+	}
+	onBF := map[*Permanent]bool{}
+	if gs != nil && defenderSeat >= 0 && defenderSeat < len(gs.Seats) && gs.Seats[defenderSeat] != nil {
+		for _, p := range gs.Seats[defenderSeat].Battlefield {
+			onBF[p] = true
+		}
+	}
+	kept := make([]*Permanent, 0, len(blockers))
+	seen := make(map[*Permanent]bool, len(blockers))
+	for _, b := range blockers {
+		if b == nil {
+			continue
+		}
+		switch {
+		case seen[b] && !legalityCanMultiBlock(b):
+			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "blocker committed twice in one assignment", "509.1")
+		case !onBF[b]:
+			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "blocker is not a creature on the defender's battlefield", "509.1a")
+		case !b.IsCreature():
+			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "blocker is not a creature", "509.1a")
+		case b.PhasedOut:
+			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "blocker is phased out", "702.26b")
+		case b.Tapped:
+			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "blocker is tapped", "509.1a")
+		case b.IsBlocking() && !legalityCanMultiBlock(b):
+			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "blocker is already blocking another attacker", "509.1")
+		case !canBlockGS(gs, attacker, b):
+			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "evasion/blocking restriction unsatisfied", "509.1b")
+		default:
+			seen[b] = true
+			kept = append(kept, b)
+			continue
+		}
+		seen[b] = true
+	}
+	// §702.110b — menace: can't be blocked except by two or more.
+	if len(kept) == 1 && (attacker.HasKeyword("menace") || (gs != nil && gs.HasKeywordOf(attacker, "menace"))) {
+		dropDeclaredBlocker(gs, defenderSeat, attacker, kept[0], "menace attacker blocked by exactly one creature", "702.110b")
+		kept = kept[:0]
+	}
+	if len(kept) == 0 {
+		return nil
+	}
+	return kept
+}
+
+func dropDeclaredBlocker(gs *GameState, defenderSeat int, attacker, b *Permanent, reason, rule string) {
+	bName, aName := "<unknown>", "<unknown>"
+	if b != nil && b.Card != nil {
+		bName = b.Card.DisplayName()
+	}
+	if attacker != nil && attacker.Card != nil {
+		aName = attacker.Card.DisplayName()
+	}
+	gs.LogEvent(Event{
+		Kind:   "block_declaration_dropped",
+		Seat:   defenderSeat,
+		Source: bName,
+		Details: map[string]interface{}{
+			"attacker": aName,
+			"reason":   reason,
+			"rule":     rule,
+		},
+	})
 }
 
 // scoreBlock assigns a policy score to a candidate blocker-vs-attacker.
