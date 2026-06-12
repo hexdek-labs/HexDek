@@ -28,6 +28,8 @@ type snapshot struct {
 	markedDamage                   int
 	counters                       map[string]int
 	tapped, powerSum, toughSum     int
+	pool                           []int // seat.ManaPool totals
+	liveStack                      int   // non-countered stack items
 }
 
 func snap(gs *gameengine.GameState) snapshot {
@@ -35,13 +37,19 @@ func snap(gs *gameengine.GameState) snapshot {
 	s := snapshot{
 		life: make([]int, n), hand: make([]int, n), lib: make([]int, n),
 		gy: make([]int, n), exile: make([]int, n), bf: make([]int, n),
-		counters: map[string]int{},
+		counters: map[string]int{}, pool: make([]int, n),
+	}
+	for _, it := range gs.Stack {
+		if it != nil && !it.Countered {
+			s.liveStack++
+		}
 	}
 	for i, seat := range gs.Seats {
 		if seat == nil {
 			continue
 		}
 		s.life[i] = seat.Life
+		s.pool[i] = seat.ManaPool
 		s.hand[i] = len(seat.Hand)
 		s.lib[i] = len(seat.Library)
 		s.gy[i] = len(seat.Graveyard)
@@ -88,6 +96,12 @@ func diff(before, after snapshot) *Delta {
 			d.BattlefieldBySeat[i] = v
 		}
 	}
+	for i := range before.pool {
+		if v := after.pool[i] - before.pool[i]; v != 0 {
+			d.PoolBySeat[i] = v
+		}
+	}
+	d.LiveStack = after.liveStack - before.liveStack
 	d.MarkedDamage = after.markedDamage - before.markedDamage
 	d.Tapped = after.tapped - before.tapped
 	d.PowerSum = after.powerSum - before.powerSum
@@ -114,6 +128,7 @@ func DefaultSpec() BoardSpec {
 		OppCreatures: 1, OppArtifacts: 1, OppEnchants: 1, OppLands: 1,
 		OwnCreatures: 1, SrcIsCreature: true, LibrarySize: 10,
 		OppTappedArtifacts: 1, OwnTappedLands: 1, HandSize: 5, XValue: 3,
+		LibraryLands: 4, GraveyardCreatures: 2,
 	}
 }
 
@@ -180,11 +195,44 @@ func BuildBoard(spec BoardSpec, srcName string) (*gameengine.GameState, *gameeng
 				Name: fmt.Sprintf("Hand Filler %d", i), Owner: seat, Types: []string{"creature"},
 			})
 		}
-		for i := 0; i < spec.LibrarySize; i++ {
+		// Library: LibraryLands basic lands inside the LibrarySize total
+		// (tutor candidates), creature fillers for the rest. Count-space
+		// expectations (draw/mill) only read the total.
+		lands := spec.LibraryLands
+		if lands > spec.LibrarySize {
+			lands = spec.LibrarySize
+		}
+		for i := 0; i < spec.LibrarySize-lands; i++ {
 			gs.Seats[seat].Library = append(gs.Seats[seat].Library, &gameengine.Card{
 				Name: fmt.Sprintf("Filler %d", i), Owner: seat, Types: []string{"creature"},
 			})
 		}
+		for i := 0; i < lands; i++ {
+			gs.Seats[seat].Library = append(gs.Seats[seat].Library, &gameengine.Card{
+				Name: fmt.Sprintf("Library Wastes %d", i), Owner: seat,
+				Types: []string{"basic", "land"}, TypeLine: "basic land — wastes",
+			})
+		}
+		// Graveyard: known 4/4 creature cards (reanimation candidates).
+		for i := 0; i < spec.GraveyardCreatures; i++ {
+			gs.Seats[seat].Graveyard = append(gs.Seats[seat].Graveyard, &gameengine.Card{
+				Name: fmt.Sprintf("GY Bear %d", i), Owner: seat,
+				Types: []string{"creature"}, BasePower: scaffoldCreaturePT, BaseToughness: scaffoldCreaturePT,
+			})
+		}
+	}
+	// Stack: opponent-controlled instant spells (counterspell candidates).
+	// Appended directly (no PushStackItem) so no cast/push triggers fire.
+	for i := 0; i < spec.StackSpells; i++ {
+		gs.Stack = append(gs.Stack, &gameengine.StackItem{
+			ID:         1000 + i,
+			Controller: spec.Opponent,
+			Kind:       "spell",
+			Card: &gameengine.Card{
+				Name: fmt.Sprintf("Stack Filler %d", i), Owner: spec.Opponent,
+				Types: []string{"instant"},
+			},
+		})
 	}
 	return gs, src
 }
@@ -195,6 +243,11 @@ func BuildBoard(spec BoardSpec, srcName string) (*gameengine.GameState, *gameeng
 // ran=true means PASS.
 func RunEffect(cardName, raw string, eff gameast.Effect) (*Finding, bool) {
 	spec := DefaultSpec()
+	if treeContainsCounterSpell(eff) {
+		// A live opponent spell on the stack ONLY for counter shapes —
+		// a resident stack item must not perturb every other check.
+		spec.StackSpells = 1
+	}
 	expectedSet, ok := ExpectSet(spec, eff)
 	if !ok {
 		return nil, false

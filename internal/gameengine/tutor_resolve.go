@@ -416,6 +416,17 @@ func cardMatchesTutorFilter(c *Card, f gameast.Filter) bool {
 			cleaned = strings.TrimSuffix(cleaned, " card")
 			// Handle "that_card" / self-reference — matches any card (the
 			// resolver typically means "the card this effect refers to").
+			// Underscore-compound bases: the parser emits BOTH
+			// "basic land_card" AND "basic_land_card" for the same oracle
+			// text. The space form reaches the per-word type check below;
+			// the underscore form used to fall through to a literal
+			// cardHasType(c, "basic_land") that no card satisfies — every
+			// tutor with that emission FAILED TO FIND a basic land in a
+			// library full of them (r63 OUTCOME widening, 70-card
+			// cluster: Beneath the Sands, Armillary Sphere, Blighted
+			// Woodland, …). Normalize underscores to spaces so both
+			// forms take the same per-word path.
+			cleaned = strings.ReplaceAll(cleaned, "_", " ")
 			if cleaned == "that" || cleaned == "that_card" || cleaned == "this" {
 				// Self-reference — matches anything in graveyard.
 			} else if strings.Contains(cleaned, " ") {

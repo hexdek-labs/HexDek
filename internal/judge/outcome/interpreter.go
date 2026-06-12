@@ -47,6 +47,9 @@ type Delta struct {
 	Tapped   int // change in total tapped-permanent count
 	PowerSum int // change in summed effective power across battlefields
 	ToughSum int // change in summed effective toughness
+	// r63 part-4 widened dimensions:
+	PoolBySeat map[int]int // mana-pool total change per seat
+	LiveStack  int         // change in count of non-countered stack items
 }
 
 func NewDelta() *Delta {
@@ -58,6 +61,7 @@ func NewDelta() *Delta {
 		ExileBySeat:       map[int]int{},
 		BattlefieldBySeat: map[int]int{},
 		CountersByKind:    map[string]int{},
+		PoolBySeat:        map[int]int{},
 	}
 }
 
@@ -78,7 +82,11 @@ func (d *Delta) Equal(o *Delta) bool {
 	}
 	if !eqMap(d.LifeBySeat, o.LifeBySeat) || !eqMap(d.HandBySeat, o.HandBySeat) ||
 		!eqMap(d.LibraryBySeat, o.LibraryBySeat) || !eqMap(d.GraveyardBySeat, o.GraveyardBySeat) ||
-		!eqMap(d.ExileBySeat, o.ExileBySeat) || !eqMap(d.BattlefieldBySeat, o.BattlefieldBySeat) {
+		!eqMap(d.ExileBySeat, o.ExileBySeat) || !eqMap(d.BattlefieldBySeat, o.BattlefieldBySeat) ||
+		!eqMap(d.PoolBySeat, o.PoolBySeat) {
+		return false
+	}
+	if d.LiveStack != o.LiveStack {
 		return false
 	}
 	if d.MarkedDamage != o.MarkedDamage {
@@ -101,10 +109,10 @@ func (d *Delta) Equal(o *Delta) bool {
 }
 
 func (d *Delta) String() string {
-	return fmt.Sprintf("life=%v hand=%v lib=%v gy=%v exile=%v bf=%v dmg=%d counters=%v tapped=%d pow=%d tough=%d",
+	return fmt.Sprintf("life=%v hand=%v lib=%v gy=%v exile=%v bf=%v dmg=%d counters=%v tapped=%d pow=%d tough=%d pool=%v stack=%d",
 		d.LifeBySeat, d.HandBySeat, d.LibraryBySeat, d.GraveyardBySeat,
 		d.ExileBySeat, d.BattlefieldBySeat, d.MarkedDamage, d.CountersByKind,
-		d.Tapped, d.PowerSum, d.ToughSum)
+		d.Tapped, d.PowerSum, d.ToughSum, d.PoolBySeat, d.LiveStack)
 }
 
 // scaffoldCreaturePT is the printed power=toughness of every creature
@@ -131,6 +139,10 @@ type BoardSpec struct {
 	OwnTappedLands     int // tapped lands on the controller (untap candidates)
 	HandSize           int // cards in each seat's hand (discard candidates)
 	XValue             int // pinned value for {X} amounts (gs.Flags["x"])
+	// r63 part-4 board additions:
+	LibraryLands       int // basic land cards inside each LibrarySize (tutor candidates)
+	GraveyardCreatures int // 4/4 creature cards in each seat's graveyard (reanimate candidates)
+	StackSpells        int // opponent-controlled instant spells on the stack (counter candidates)
 }
 
 // Expect computes the expected aggregate delta for `eff` resolved by
