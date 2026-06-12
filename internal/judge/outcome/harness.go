@@ -26,6 +26,7 @@ type snapshot struct {
 	life, hand, lib, gy, exile, bf []int
 	markedDamage                   int
 	counters                       map[string]int
+	tapped, powerSum, toughSum     int
 }
 
 func snap(gs *gameengine.GameState) snapshot {
@@ -50,6 +51,11 @@ func snap(gs *gameengine.GameState) snapshot {
 				continue
 			}
 			s.markedDamage += p.MarkedDamage
+			if p.Tapped {
+				s.tapped++
+			}
+			s.powerSum += p.Power()
+			s.toughSum += p.Toughness()
 			for k, v := range p.Counters {
 				s.counters[k] += v
 			}
@@ -82,6 +88,9 @@ func diff(before, after snapshot) *Delta {
 		}
 	}
 	d.MarkedDamage = after.markedDamage - before.markedDamage
+	d.Tapped = after.tapped - before.tapped
+	d.PowerSum = after.powerSum - before.powerSum
+	d.ToughSum = after.toughSum - before.toughSum
 	for k, v := range after.counters {
 		if delta := v - before.counters[k]; delta != 0 {
 			d.CountersByKind[k] += delta
@@ -103,6 +112,7 @@ func DefaultSpec() BoardSpec {
 		Controller: 0, Opponent: 1,
 		OppCreatures: 1, OppArtifacts: 1, OppEnchants: 1, OppLands: 1,
 		OwnCreatures: 1, SrcIsCreature: true, LibrarySize: 10,
+		OppTappedArtifacts: 1, OwnTappedLands: 1, HandSize: 5, XValue: 3,
 	}
 }
 
@@ -144,13 +154,31 @@ func BuildBoard(spec BoardSpec, srcName string) (*gameengine.GameState, *gameeng
 		addPerm(spec.Controller, "Own Bear", 4, 4, "creature")
 	}
 
+	for i := 0; i < spec.OppTappedArtifacts; i++ {
+		p := addPerm(spec.Opponent, "Opp Tapped Relic", 0, 0, "artifact")
+		p.Tapped = true
+	}
+	for i := 0; i < spec.OwnTappedLands; i++ {
+		p := addPerm(spec.Controller, "Own Tapped Wastes", 0, 0, "land", "basic")
+		p.Tapped = true
+	}
+
 	srcTypes := []string{"artifact"}
 	if spec.SrcIsCreature {
 		srcTypes = []string{"creature"}
 	}
 	src := addPerm(spec.Controller, srcName, 4, 4, srcTypes...)
 
+	if spec.XValue > 0 {
+		gs.Flags["x"] = spec.XValue
+		gs.Flags["var"] = spec.XValue
+	}
 	for seat := 0; seat < 2; seat++ {
+		for i := 0; i < spec.HandSize; i++ {
+			gs.Seats[seat].Hand = append(gs.Seats[seat].Hand, &gameengine.Card{
+				Name: fmt.Sprintf("Hand Filler %d", i), Owner: seat, Types: []string{"creature"},
+			})
+		}
 		for i := 0; i < spec.LibrarySize; i++ {
 			gs.Seats[seat].Library = append(gs.Seats[seat].Library, &gameengine.Card{
 				Name: fmt.Sprintf("Filler %d", i), Owner: seat, Types: []string{"creature"},
@@ -166,7 +194,7 @@ func BuildBoard(spec BoardSpec, srcName string) (*gameengine.GameState, *gameeng
 // ran=true means PASS.
 func RunEffect(cardName, raw string, eff gameast.Effect) (*Finding, bool) {
 	spec := DefaultSpec()
-	expected, ok := Expect(spec, eff)
+	expectedSet, ok := ExpectSet(spec, eff)
 	if !ok {
 		return nil, false
 	}
@@ -175,13 +203,20 @@ func RunEffect(cardName, raw string, eff gameast.Effect) (*Finding, bool) {
 	resolveThroughEngine(gs, src, eff)
 	actual := diff(before, snap(gs))
 
-	if actual.Equal(expected) {
-		return nil, true
+	expDesc := ""
+	for i, exp := range expectedSet {
+		if actual.Equal(exp) {
+			return nil, true
+		}
+		if i > 0 {
+			expDesc += " | "
+		}
+		expDesc += exp.String()
 	}
 	return &Finding{
 		CardName: cardName,
 		Kind:     eff.Kind(),
-		Expected: expected.String(),
+		Expected: expDesc,
 		Actual:   actual.String(),
 		Raw:      raw,
 	}, true
