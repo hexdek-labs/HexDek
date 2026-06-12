@@ -1967,6 +1967,35 @@ func ExileLinked(gs *GameState, perm *Permanent, card *Card, ownerSeat int, from
 	if gs == nil || perm == nil || card == nil {
 		return
 	}
+	// Move FIRST, stamp linkage only when the card actually lands in
+	// exile. A §614 replacement can redirect the exile elsewhere — the
+	// canonical case is §903.9b: a commander's owner may put it into the
+	// command zone instead. Pre-fix the linkage was stamped before the
+	// move, so a redirected commander left the source holding an
+	// ExiledByMe entry for a card that was never in exile (seed-42 game
+	// 486: Banisher Priest "exiles" seat 1's commander → command zone;
+	// 24 ExileLinkageIntegrity hits until the Priest left, and the owner
+	// re-cast the commander while the Priest still claimed it). Per
+	// §406.7 the "until ~ leaves" link only forms for the card the
+	// effect actually tracks in exile — a redirected commander escapes
+	// the link permanently.
+	res := MoveCard(gs, card, ownerSeat, fromZone, "exile", perm.Card.DisplayName()+"_exile_linked")
+	if res.FinalZone != "exile" {
+		gs.LogEvent(Event{
+			Kind:   "exile_linked_redirected",
+			Seat:   ownerSeat,
+			Source: perm.Card.DisplayName(),
+			Details: map[string]interface{}{
+				"card":             card.DisplayName(),
+				"from_zone":        fromZone,
+				"final_zone":       res.FinalZone,
+				"source_timestamp": perm.Timestamp,
+				"rule":             "406.7+903.9b",
+				"reason":           "replacement_redirected_exile_no_linkage",
+			},
+		})
+		return
+	}
 	card.ExiledByTimestamp = perm.Timestamp
 	perm.LinkedExile = append(perm.LinkedExile, card)
 	if card.InstanceID != "" {
@@ -1975,7 +2004,6 @@ func ExileLinked(gs *GameState, perm *Permanent, card *Card, ownerSeat int, from
 	if perm.LinkageKind == LinkageNone {
 		perm.LinkageKind = LTBReturn
 	}
-	MoveCard(gs, card, ownerSeat, fromZone, "exile", perm.Card.DisplayName()+"_exile_linked")
 	gs.LogEvent(Event{
 		Kind:   "exile_linked_created",
 		Seat:   ownerSeat,
@@ -2040,6 +2068,68 @@ func ReleaseSourceLinkedExiles(gs *GameState, perm *Permanent) {
 	})
 	perm.LinkedExile = nil
 	perm.ExiledByMe = nil
+}
+
+// UnlinkExiledCard severs a card's §406.7 linked-exile bookkeeping from
+// the card side: when a linked-exiled card leaves exile by some means
+// OTHER than its source's LTB return (canonically the §704.6d/§903.9a
+// SBA moving an exiled commander to the command zone — seed-42 game
+// 486), the source must stop claiming it or ExileLinkageIntegrity
+// reports the card as a broken linkage every census tick. Per §406.8
+// semantics the "until ~ leaves" effect loses track of a card that
+// changes zones — the link is consumed, not restored.
+//
+// Walks every battlefield for the permanent whose Timestamp matches
+// card.ExiledByTimestamp, splices the card out of LinkedExile and its
+// InstanceID out of ExiledByMe, and resets ExiledByTimestamp. No-op
+// when the card carries no linkage stamp.
+func UnlinkExiledCard(gs *GameState, card *Card) {
+	if gs == nil || card == nil || card.ExiledByTimestamp == 0 {
+		return
+	}
+	ts := card.ExiledByTimestamp
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, p := range s.Battlefield {
+			if p == nil || p.Timestamp != ts {
+				continue
+			}
+			kept := p.LinkedExile[:0]
+			for _, lc := range p.LinkedExile {
+				if lc != card {
+					kept = append(kept, lc)
+				}
+			}
+			p.LinkedExile = kept
+			if card.InstanceID != "" {
+				ids := p.ExiledByMe[:0]
+				for _, iid := range p.ExiledByMe {
+					if iid != card.InstanceID {
+						ids = append(ids, iid)
+					}
+				}
+				p.ExiledByMe = ids
+			}
+			srcName := "<unknown>"
+			if p.Card != nil {
+				srcName = p.Card.DisplayName()
+			}
+			gs.LogEvent(Event{
+				Kind:   "exile_linked_unlinked",
+				Seat:   card.Owner,
+				Source: srcName,
+				Details: map[string]interface{}{
+					"card":             card.DisplayName(),
+					"source_timestamp": ts,
+					"rule":             "406.8",
+					"reason":           "card_left_exile_by_other_means",
+				},
+			})
+		}
+	}
+	card.ExiledByTimestamp = 0
 }
 
 // ReturnLinkedExile returns all cards linked to a permanent back to

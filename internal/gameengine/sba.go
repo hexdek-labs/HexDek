@@ -1915,6 +1915,7 @@ func sba704_6d(gs *GameState) bool {
 		for _, c := range s.Graveyard {
 			if c != nil && isCommanderName(s.CommanderNames, c.DisplayName()) {
 				if !inCommandZone(c) {
+					UnlinkExiledCard(gs, c)
 					s.CommandZone = append(s.CommandZone, c)
 					gs.LogEvent(Event{
 						Kind:   "sba_704_6d",
@@ -1939,6 +1940,11 @@ func sba704_6d(gs *GameState) bool {
 		for _, c := range s.Exile {
 			if c != nil && isCommanderName(s.CommanderNames, c.DisplayName()) {
 				if !inCommandZone(c) {
+					// §406.8 (r63, seed-42 game 486): a linked-exiled
+					// commander leaving exile via this SBA must sever its
+					// source's §406.7 claim (Banisher Priest held the
+					// redirected commander in ExiledByMe for 12 turns).
+					UnlinkExiledCard(gs, c)
 					s.CommandZone = append(s.CommandZone, c)
 					gs.LogEvent(Event{
 						Kind:   "sba_704_6d",
