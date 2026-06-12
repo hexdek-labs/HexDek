@@ -296,6 +296,11 @@ func FireCastTriggerObservers(gs *GameState, cast *Card, controller int, fromCop
 			if perm.Controller == controller {
 				gs.Seats[perm.Controller].ManaPool++
 				SyncManaAfterAdd(gs.Seats[perm.Controller], 1)
+				// Ride-along legality validator: this add fires INSIDE the
+				// cast announcement window (FireCastTriggerObservers runs
+				// mid-CastSpell) — credit it so the cost check doesn't read
+				// Birgi's mana as an under-payment. nil-safe no-op when off.
+				gs.Legality.NoteManaAdd(perm.Controller, 1)
 				gs.LogEvent(Event{
 					Kind:   "cast_trigger_observer",
 					Seat:   perm.Controller,

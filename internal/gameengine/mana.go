@@ -259,6 +259,9 @@ func AddMana(gs *GameState, seat *Seat, color string, amount int, source string)
 	p.Add(color, amount)
 	seat.ManaPool = p.Total()
 	if gs != nil {
+		// Ride-along legality validator: credit in-window pool additions
+		// so cast-trigger mana (Birgi) doesn't read as an under-payment.
+		gs.Legality.NoteManaAdd(seat.Idx, amount)
 		gs.LogEvent(Event{
 			Kind:   "add_mana",
 			Seat:   seat.Idx,
@@ -282,6 +285,7 @@ func AddRestrictedMana(gs *GameState, seat *Seat, amount int,
 	p.AddRestricted(amount, color, restriction, source)
 	seat.ManaPool = p.Total()
 	if gs != nil {
+		gs.Legality.NoteManaAdd(seat.Idx, amount)
 		gs.LogEvent(Event{
 			Kind:   "add_mana",
 			Seat:   seat.Idx,

@@ -63,6 +63,14 @@ type GameState struct {
 	// determinism — r62).
 	EventsLogged int64
 
+	// Legality is the ride-along rules-legality validator (legality.go).
+	// nil (the default) = off, zero behavior change — every hook is a
+	// nil-receiver no-op. Opted into by runners that want live CR
+	// legality auditing (loki -legality, tests). Deliberately NOT copied
+	// by CloneForRollout: hypothetical rollout lines must not pollute
+	// the violation stream.
+	Legality *LegalityValidator
+
 	// Turn bookkeeping. Turn is 1-indexed; Phase is "beginning"/"main"/
 	// "combat"/"ending"; Step is the step within the phase ("untap",
 	// "upkeep", "draw", "precombat_main", etc.); Active is the seat whose
