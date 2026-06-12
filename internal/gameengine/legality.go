@@ -591,12 +591,18 @@ func checkLegalityCostPaid(gs *GameState, obs *LegalityObservation) []LegalityVi
 	// A seat that LOST during the window is unmeasurable: markSeatLost
 	// zeroes ManaPool and clears the typed pool on the loss transition
 	// (sba.go), so the delta conflates the real payment with the loss
-	// cleanup. Judge round-5 ground truth (seed 555 game 691): Mageta's
-	// controller paid 4, then died mid-activation to Bloodchief Ascension
-	// triggering off Mageta's own discard cost — the SBA drained the
-	// remaining 4 and the check read "announced 4, spent 8". (That the
-	// activation CONTINUES after its controller dies is a separate
-	// engine question, ranked in the round-5 report.)
+	// cleanup (CR §104.3 / §106.4). Two independently-diagnosed ground
+	// truths, one per direction:
+	//   - over-pay: judge round-5, seed 555 game 691 — Mageta's
+	//     controller paid 4, then died mid-activation to Bloodchief
+	//     Ascension triggering off Mageta's own discard cost; the SBA
+	//     drained the remaining 4 → "announced 4, spent 8". (That the
+	//     activation CONTINUES after its controller dies is a separate
+	//     engine question, ranked in the round-5 report.)
+	//   - cast-side: r63, seed 42 game 482 — "Knights" (memorabilia
+	//     CMC-0 insert) cast with 1 floating; Ruric Thar's punisher
+	//     resolved lethal inside fireCastTriggers, the SBA eliminated
+	//     the caster, the cleared float read "announced 0, spent 1".
 	if gs != nil && obs.Seat >= 0 && obs.Seat < len(gs.Seats) {
 		if s := gs.Seats[obs.Seat]; s != nil && s.Lost {
 			return nil

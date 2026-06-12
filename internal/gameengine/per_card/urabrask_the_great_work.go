@@ -78,6 +78,10 @@ func urabraskActivate(gs *gameengine.GameState, src *gameengine.Permanent, abili
 	}
 	seat.ManaPool--
 	gameengine.SyncManaAfterSpend(seat)
+	// Aux-credit: the DFC has no AST Activated ability, so the {R} the
+	// handler charges is invisible to the activation cost reconstruction
+	// (nothing else charges it — no masking risk).
+	gs.Legality.NoteManaSpend(src.Controller, 1)
 	gameengine.TransformPermanent(gs, src, "urabrask_great_work_transform")
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"seat": src.Controller,
