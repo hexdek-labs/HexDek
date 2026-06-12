@@ -711,12 +711,29 @@ func plarggNassariEra3Upkeep(gs *gameengine.GameState, perm *gameengine.Permanen
 	freeCastable := 0
 	exiledTotal := 0
 	for i, s := range gs.Seats {
-		if s == nil {
+		// CR §800.4a: an eliminated player's retained zone slices are
+		// forensic leftovers, not real zones — and MoveCard's r62
+		// chokepoint guard NO-OPS moves for cards owned by a player who
+		// left, so walking a dead seat's library here spun forever
+		// (judge firehose r63: seed 60606 hung 32+ minutes inside this
+		// loop — the 1-in-N shape is "any opponent eliminated while
+		// Plargg's controller still takes upkeeps").
+		if s == nil || s.Lost || s.LeftGame {
 			continue
 		}
 		for len(s.Library) > 0 {
+			before := len(s.Library)
 			card := s.Library[0]
 			gameengine.MoveCard(gs, card, i, "library", "exile", "plargg_nassari_exile")
+			if len(s.Library) >= before {
+				// MoveCard made no progress (replacement bounced the
+				// card back, or a future no-op guard fired) — abort
+				// rather than loop forever.
+				emitFail(gs, slug, perm.Card.DisplayName(), "exile_no_progress", map[string]interface{}{
+					"seat": i, "library": len(s.Library),
+				})
+				break
+			}
 			exiledTotal++
 			if card != nil && !cardHasType(card, "land") {
 				if i == perm.Controller {
