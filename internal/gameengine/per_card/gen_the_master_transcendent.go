@@ -145,7 +145,11 @@ func theMasterReanimateMutant(gs *gameengine.GameState, src *gameengine.Permanen
 
 	newPerm := enterBattlefieldWithETB(gs, src.Controller, overrideCard, false)
 	if newPerm != nil {
-		newPerm.Owner = src.Controller
+		// §108.3 (r63): the reanimated card may come from an OPPONENT's
+		// graveyard — ownership never changes. Pre-r63 this stamped
+		// Permanent.Owner = controller, the exact corruption behind the
+		// PR-#1047 elimination vanishes.
+		newPerm.Owner = overrideCard.Owner
 	}
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"seat":         src.Controller,

@@ -445,6 +445,17 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 	// placed into any zone.
 	realCardsLeaving := 0
 
+	// Step 0 (r63 §800.4a, shared return-to-owner operation): control
+	// effects of/over the leaving seat END before anything is removed —
+	// every permanent the leaver CONTROLS but does not own (Card.Owner
+	// authority) reverts to its owner's battlefield. Only permanents
+	// that cannot revert (owner also gone) remain for the exile arm of
+	// the sweep below, per §800.4a's "still controlled" clause. This
+	// supersedes the PR-#1046 exile-always MVP with the rules-faithful
+	// revert; #1046's guarantee (no card vanishes) is preserved either
+	// way and pinned by the SeatOutcome checker's census.
+	RevertControlForLeavingSeat(gs, seatIdx)
+
 	// Step 1: Walk EVERY seat's battlefield (the leaving player may
 	// still own cards an opponent now controls — Gilded Drake trade).
 	// Collect removed permanents so we can run detachAll after all

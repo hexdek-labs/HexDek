@@ -110,7 +110,8 @@ func alaundoTheSeerActivate(gs *gameengine.GameState, src *gameengine.Permanent,
 			}
 			// MoveCard handles the exile removal + battlefield placement;
 			// the manual splice was redundant (Wave 2 multi-step migration).
-			ex.Owner = seatIdx
+			// §108.3 (r63): `ex` is the seat's own suspended card —
+			// Card.Owner already correct; mutation removed.
 			gameengine.MoveCard(gs, ex, seatIdx, "exile", "battlefield", "alaundo_release")
 			released = ex.DisplayName()
 			seat.Flags[alaundoSuspendedKey]--

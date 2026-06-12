@@ -95,7 +95,8 @@ func ureniDig(gs *gameengine.GameState, perm *gameengine.Permanent, source strin
 
 	if pickIdx >= 0 {
 		picked := top[pickIdx]
-		picked.Owner = perm.Controller
+		// §108.3 (r63): `picked` is from the controller's own library —
+		// Card.Owner already correct; mutation removed.
 		ent := enterBattlefieldWithETB(gs, perm.Controller, picked, false)
 		if ent != nil {
 			enteredName = picked.DisplayName()

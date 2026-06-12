@@ -72,6 +72,11 @@ type GameState struct {
 	// the violation stream.
 	Legality *LegalityValidator
 
+	// TempControlGrants holds until-end-of-turn control steals awaiting
+	// cleanup-step reversal (r63 §108.3 owner-immutability work; see
+	// control_revert.go).
+	TempControlGrants []TempControlGrant
+
 	// SeatOutcome is the per-seat win/loss self-checker (r63 phase 1,
 	// owner design). nil (default) = off, zero overhead — same
 	// ride-along pattern as Legality. Not copied by CloneForRollout.
@@ -163,6 +168,12 @@ type GameState struct {
 	// cleared even on cease (cessation doesn't invalidate the name —
 	// the post-mortem still needs to know what was minted).
 	MintedInstanceIDNames map[string]string
+
+	// MintedInstanceIDOwners records each minted card's owner at mint
+	// time (r63 §108.3 owner-immutability invariant): ownership is
+	// write-once, so any later Card.Owner divergence is engine
+	// corruption. Tokens record their creator (§110.5a).
+	MintedInstanceIDOwners map[string]int
 
 	// CeasedInstanceIDs marks IDs no longer expected to appear in any
 	// zone census. Populated at:
