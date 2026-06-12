@@ -162,7 +162,7 @@ func TestPhase9_InstanceIDFromDetails_PriorityOrder(t *testing.T) {
 // Details — the formatted line must include the stamp.
 func TestPhase9_LokiLogStamp_RecentEventsIncludesInstanceID(t *testing.T) {
 	gs := gameengine.NewGameState(2, rand.New(rand.NewSource(1)), nil)
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 	gs.LogEvent(gameengine.Event{
 		Kind:   "create_token",
 		Seat:   0,

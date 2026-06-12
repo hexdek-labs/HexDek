@@ -393,7 +393,7 @@ func runOneGame(gameIdx int, decks []*deckparser.TournamentDeck, hats []HatFacto
 	// fall back to nondeterministic behavior.
 	gs.Seed = gameSeed
 	if !auditEnabled {
-		gs.RetainEvents = false
+		gs.EventPolicy = gameengine.EventLogNone
 	}
 
 	// Rotate deck assignment: seat i gets decks[(i+rot) % nSeats].
@@ -548,7 +548,7 @@ func runOneGame(gameIdx int, decks []*deckparser.TournamentDeck, hats []HatFacto
 		}
 	}
 
-	// Count concessions from seat state (works even with RetainEvents=false).
+	// Count concessions from seat state (works even with EventPolicy=EventLogNone).
 	// Also collect concession records for Muninn diagnostics.
 	for i, s := range gs.Seats {
 		if s != nil && s.LossReason == "concession" {
@@ -666,7 +666,7 @@ func runOneGame(gameIdx int, decks []*deckparser.TournamentDeck, hats []HatFacto
 	}
 
 	// Kill record extraction: infer who eliminated whom from the event
-	// log. Requires auditEnabled (RetainEvents=true) for event access.
+	// log. Requires auditEnabled (EventPolicy=EventLogFull) for event access.
 	if auditEnabled && len(gs.EventLog) > 0 {
 		cmdrNames := make([]string, nSeats)
 		for i := 0; i < nSeats; i++ {

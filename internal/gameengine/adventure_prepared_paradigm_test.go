@@ -14,7 +14,7 @@ func TestAdventureCastRegistersZoneCastGrant(t *testing.T) {
 		Seats:          []*Seat{{Idx: 0, Life: 40, Hand: []*Card{card}, ManaPool: 10}},
 		Flags:          map[string]int{},
 		ZoneCastGrants: map[*Card]*ZoneCastPermission{},
-		RetainEvents:   true,
+		EventPolicy:   EventLogFull,
 		EventLog:       make([]Event, 0, 64),
 	}
 
@@ -179,7 +179,7 @@ func TestResolveParadigmCopies_CreatesAndResolves(t *testing.T) {
 		Seats:         []*Seat{{Idx: 0, Life: 40, Exile: []*Card{card}}},
 		Flags:         map[string]int{},
 		ParadigmExile: map[int][]*Card{0: {card}},
-		RetainEvents:  true,
+		EventPolicy:  EventLogFull,
 		EventLog:      make([]Event, 0, 64),
 	}
 
@@ -221,7 +221,7 @@ func TestResolveParadigmCopies_SkipsCardNotInExile(t *testing.T) {
 		Seats:         []*Seat{{Idx: 0, Life: 40, Exile: []*Card{}}},
 		Flags:         map[string]int{},
 		ParadigmExile: map[int][]*Card{0: {card}},
-		RetainEvents:  true,
+		EventPolicy:  EventLogFull,
 		EventLog:      make([]Event, 0, 64),
 	}
 

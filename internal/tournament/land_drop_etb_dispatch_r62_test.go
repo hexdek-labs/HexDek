@@ -151,7 +151,7 @@ func TestLandDrop_Urborg_AppliesToLandsPlayedLater(t *testing.T) {
 // mdfc_play_test.go pin face cleanup and ETB-tapped detection.)
 func TestLandDrop_StillMarksLandDropAndLogs(t *testing.T) {
 	gs := gameengine.NewGameState(2, rand.New(rand.NewSource(1)), nil)
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 	seat := gs.Seats[0]
 	seat.Hat = &hat.GreedyHat{}
 	seat.Hand = append(seat.Hand, plainMountain())

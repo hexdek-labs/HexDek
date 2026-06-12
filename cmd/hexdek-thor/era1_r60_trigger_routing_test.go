@@ -140,7 +140,7 @@ func TestTriggerConditionActions_Era1R60Apply(t *testing.T) {
 		tc := tc
 		t.Run(tc.slug, func(t *testing.T) {
 			gs := newTestGameState(2)
-			gs.RetainEvents = true
+			gs.EventPolicy = gameengine.EventLogFull
 			src := &gameengine.Permanent{
 				Controller: 0,
 				Flags:      map[string]int{},
@@ -161,7 +161,7 @@ func TestTriggerConditionActions_Era1R60Apply(t *testing.T) {
 	// becomes_monstrous + tapped_for_mana also stamp specific flags.
 	t.Run("becomes_monstrous_stamps_flag", func(t *testing.T) {
 		gs := newTestGameState(2)
-		gs.RetainEvents = true
+		gs.EventPolicy = gameengine.EventLogFull
 		src := &gameengine.Permanent{Controller: 0, Flags: map[string]int{}}
 		triggerConditionActions["becomes_monstrous"].apply(gs, src)
 		if src.Flags["monstrous"] != 1 {
@@ -170,7 +170,7 @@ func TestTriggerConditionActions_Era1R60Apply(t *testing.T) {
 	})
 	t.Run("tapped_for_mana_taps_source", func(t *testing.T) {
 		gs := newTestGameState(2)
-		gs.RetainEvents = true
+		gs.EventPolicy = gameengine.EventLogFull
 		src := &gameengine.Permanent{Controller: 0, Flags: map[string]int{}}
 		triggerConditionActions["tapped_for_mana"].apply(gs, src)
 		if !src.Tapped {

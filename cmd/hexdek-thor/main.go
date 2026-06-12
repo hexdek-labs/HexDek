@@ -973,7 +973,7 @@ func makeGameState(oc *oracleCard, ast *gameast.CardAST) *gameengine.GameState {
 		Phase:        "precombat_main",
 		Step:         "",
 		Flags:        map[string]int{},
-		RetainEvents: true,
+		EventPolicy: gameengine.EventLogFull,
 	}
 
 	// 4 seats with basic setup.

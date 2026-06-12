@@ -166,7 +166,7 @@ func ReplayWithObservation(rc *ReplayContext, seed GameSeed, obs *Observer) erro
 	// Build game state — mirrors showmatch.runOneGameFast.
 	gs := gameengine.NewGameState(replaySeats, gameRng, rc.Corpus)
 	gs.Seed = seed.RNGSeed  // r62: hats key deterministic noise off gs.Seed
-	gs.RetainEvents = false // no event log accumulation
+	gs.EventPolicy = gameengine.EventLogNone // no event log accumulation
 
 	cmdDecks := make([]*gameengine.CommanderDeck, replaySeats)
 	for i := 0; i < replaySeats; i++ {

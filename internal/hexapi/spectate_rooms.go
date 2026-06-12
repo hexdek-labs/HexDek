@@ -344,7 +344,7 @@ func (room *SpectateRoom) runOneSpectateGame() {
 
 	gs := gameengine.NewGameState(showmatchSeats, gameRng, corpus)
 	gs.Seed = gameSeed
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 
 	cmdDecks := make([]*gameengine.CommanderDeck, showmatchSeats)
 	for i := 0; i < showmatchSeats; i++ {

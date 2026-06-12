@@ -63,7 +63,7 @@ func newCombatFixture(t *testing.T) *GameState {
 	gs.Seed = 21
 	gs.Phase = "combat"
 	gs.Active = 0
-	gs.RetainEvents = true
+	gs.EventPolicy = EventLogFull
 	return gs
 }
 

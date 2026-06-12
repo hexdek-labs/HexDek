@@ -163,7 +163,7 @@ func newTestState(seats int) *GameState {
 	gs := &GameState{
 		Seats:        make([]*Seat, seats),
 		Flags:        map[string]int{},
-		RetainEvents: true,
+		EventPolicy: EventLogFull,
 	}
 	for i := 0; i < seats; i++ {
 		gs.Seats[i] = &Seat{Idx: i, Life: 40}

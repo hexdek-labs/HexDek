@@ -53,7 +53,7 @@ func TestClassifyTrigger_Era2R60(t *testing.T) {
 
 func TestTriggerConditionActions_Era2R60Apply_WhenYouDo(t *testing.T) {
 	gs := newTestGameState(2)
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 	triggerConditionActions["when_you_do"].apply(gs, nil)
 	if gs.Seats[0].Flags["reflexive_action_done"] != 1 {
 		t.Errorf("reflexive_action_done not stamped")
@@ -65,7 +65,7 @@ func TestTriggerConditionActions_Era2R60Apply_WhenYouDo(t *testing.T) {
 
 func TestTriggerConditionActions_Era2R60Apply_CountersPutOnSelf(t *testing.T) {
 	gs := newTestGameState(2)
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 	src := &gameengine.Permanent{
 		Card:       &gameengine.Card{Name: "Walking Ballista", Owner: 0, Types: []string{"creature"}},
 		Controller: 0, Owner: 0,
@@ -102,7 +102,7 @@ func TestTriggerConditionActions_Era2R60Apply_TribeYouControlETB(t *testing.T) {
 
 func TestTriggerConditionActions_Era2R60Apply_SelfCrewsVehicle(t *testing.T) {
 	gs := newTestGameState(2)
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 	src := &gameengine.Permanent{
 		Card:       &gameengine.Card{Name: "Smuggler's Copter", Owner: 0, Types: []string{"artifact", "vehicle"}},
 		Controller: 0, Owner: 0,
@@ -120,7 +120,7 @@ func TestTriggerConditionActions_Era2R60Apply_SelfCrewsVehicle(t *testing.T) {
 
 func TestTriggerConditionActions_Era2R60Apply_SelfSaddlesMount(t *testing.T) {
 	gs := newTestGameState(2)
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 	src := &gameengine.Permanent{
 		Card:       &gameengine.Card{Name: "Bristly Bill, Spine Sower", Owner: 0, Types: []string{"creature", "mount"}},
 		Controller: 0, Owner: 0,
@@ -138,7 +138,7 @@ func TestTriggerConditionActions_Era2R60Apply_SelfSaddlesMount(t *testing.T) {
 
 func TestTriggerConditionActions_Era2R60Apply_YouGetEnergy(t *testing.T) {
 	gs := newTestGameState(2)
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 	triggerConditionActions["you_get_energy"].apply(gs, nil)
 	if gs.Seats[0].Flags["energy_counters"] < 3 {
 		t.Errorf("energy_counters want >=3, got %d", gs.Seats[0].Flags["energy_counters"])
@@ -150,7 +150,7 @@ func TestTriggerConditionActions_Era2R60Apply_YouGetEnergy(t *testing.T) {
 
 func TestTriggerConditionActions_Era2R60Apply_PlayerWinsCoinFlip(t *testing.T) {
 	gs := newTestGameState(2)
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 	triggerConditionActions["player_wins_coin_flip"].apply(gs, nil)
 	if !hasEvent(gs, "won_coin_flip") {
 		t.Errorf("won_coin_flip event not logged")
@@ -159,7 +159,7 @@ func TestTriggerConditionActions_Era2R60Apply_PlayerWinsCoinFlip(t *testing.T) {
 
 func TestTriggerConditionActions_Era2R60Apply_BecomesCrewed(t *testing.T) {
 	gs := newTestGameState(2)
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 	src := &gameengine.Permanent{
 		Card:       &gameengine.Card{Name: "Heart of Kiran", Owner: 0, Types: []string{"artifact", "vehicle"}},
 		Controller: 0, Owner: 0,
@@ -174,7 +174,7 @@ func TestTriggerConditionActions_Era2R60Apply_BecomesCrewed(t *testing.T) {
 
 func TestTriggerConditionActions_Era2R60Apply_BecomesCrewedFirst(t *testing.T) {
 	gs := newTestGameState(2)
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 	src := &gameengine.Permanent{
 		Card:       &gameengine.Card{Name: "Cultivator of Blades", Owner: 0, Types: []string{"artifact", "vehicle"}},
 		Controller: 0, Owner: 0,
@@ -189,7 +189,7 @@ func TestTriggerConditionActions_Era2R60Apply_BecomesCrewedFirst(t *testing.T) {
 
 func TestTriggerConditionActions_Era2R60Apply_OppDrawCard(t *testing.T) {
 	gs := newTestGameState(2)
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 	triggerConditionActions["opp_draw_card"].apply(gs, nil)
 	if len(gs.Seats[1].Library) < 5 {
 		t.Errorf("seat 1 library want >=5, got %d", len(gs.Seats[1].Library))
@@ -225,7 +225,7 @@ func TestTriggerConditionActions_Era2R60Apply_AllyETBFamily(t *testing.T) {
 
 func TestTriggerConditionActions_Era2R60Apply_AllySubtypeDealDamage(t *testing.T) {
 	gs := newTestGameState(2)
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 	triggerConditionActions["ally_subtype_deal_damage"].apply(gs, nil)
 	if !hasEvent(gs, "damage") {
 		t.Errorf("damage event not logged")
@@ -267,7 +267,7 @@ func TestTriggerConditionActions_Era2R60Apply_OppCreatureEvent(t *testing.T) {
 
 func TestTriggerConditionActions_Era2R60Apply_BecomesTapped(t *testing.T) {
 	gs := newTestGameState(2)
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 	src := &gameengine.Permanent{
 		Card:       &gameengine.Card{Name: "Insolence", Owner: 0, Types: []string{"enchantment"}},
 		Controller: 0, Owner: 0,
@@ -285,7 +285,7 @@ func TestTriggerConditionActions_Era2R60Apply_BecomesTapped(t *testing.T) {
 
 func TestTriggerConditionActions_Era2R60Apply_YouAction(t *testing.T) {
 	gs := newTestGameState(2)
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 	triggerConditionActions["you_action"].apply(gs, nil)
 	if gs.Seats[0].Flags["you_action"] != 1 {
 		t.Errorf("you_action flag not set")
@@ -297,7 +297,7 @@ func TestTriggerConditionActions_Era2R60Apply_YouAction(t *testing.T) {
 
 func TestTriggerConditionActions_Era2R60Apply_YouWhenever(t *testing.T) {
 	gs := newTestGameState(2)
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 	triggerConditionActions["you_whenever"].apply(gs, nil)
 	if gs.Seats[0].Flags["you_whenever_active"] != 1 {
 		t.Errorf("you_whenever_active flag not set")

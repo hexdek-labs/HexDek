@@ -199,7 +199,7 @@ func TestMDFC_GrinderIntegration_NoFFMDFCPermanentTypeViolations(t *testing.T) {
 func setupGameStateForMDFCTest(decks []*deckparser.TournamentDeck, nSeats int, seed int64) *gameengine.GameState {
 	rng := rand.New(rand.NewSource(seed))
 	gs := gameengine.NewGameState(nSeats, rng, nil)
-	gs.RetainEvents = false
+	gs.EventPolicy = gameengine.EventLogNone
 
 	commanderDecks := make([]*gameengine.CommanderDeck, nSeats)
 	for i := 0; i < nSeats; i++ {

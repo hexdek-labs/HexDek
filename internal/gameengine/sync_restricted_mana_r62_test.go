@@ -124,7 +124,7 @@ func TestActivationPartlyPaidWithRestrictedMana_PoolDeltaMatchesAnnounced(t *tes
 	gs := NewGameState(2, nil, nil)
 	gs.Phase = "main"
 	gs.Active = 0
-	gs.RetainEvents = true
+	gs.EventPolicy = EventLogFull
 	gs.Legality = NewLegalityValidator(2932027)
 
 	dmgEff := &gameast.Damage{Amount: gameast.NumberOrRef{IsInt: true, Int: 1}}

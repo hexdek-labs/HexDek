@@ -1982,7 +1982,7 @@ func newTestGameState(seats int) *gameengine.GameState {
 		Active:       0,
 		Phase:        "precombat_main",
 		Flags:        map[string]int{},
-		RetainEvents: true,
+		EventPolicy: gameengine.EventLogFull,
 	}
 	for i := 0; i < seats; i++ {
 		gs.Seats = append(gs.Seats, &gameengine.Seat{

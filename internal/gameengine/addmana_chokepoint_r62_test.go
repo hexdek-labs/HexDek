@@ -37,7 +37,7 @@ func TestBirgiCastTriggerMana_RoutesThroughAddMana(t *testing.T) {
 	gs.Seed = 11
 	gs.Phase = "main"
 	gs.Active = 0
-	gs.RetainEvents = true
+	gs.EventPolicy = EventLogFull
 	gs.Legality = NewLegalityValidator(11)
 	gs.Seats[0].Hat = &GreedyHatStub{}
 
@@ -90,7 +90,7 @@ func TestResolveAddMana_RoutesThroughAddMana(t *testing.T) {
 	gs.Seed = 11
 	gs.Phase = "main"
 	gs.Active = 0
-	gs.RetainEvents = true
+	gs.EventPolicy = EventLogFull
 	gs.Legality = NewLegalityValidator(11)
 	gs.Seats[0].Hat = &GreedyHatStub{}
 

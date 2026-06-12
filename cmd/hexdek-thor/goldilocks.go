@@ -489,7 +489,7 @@ func makeGoldilocksState(oc *oracleCard, info *effectInfo) *gameengine.GameState
 		Phase:        "precombat_main",
 		Step:         "",
 		Flags:        map[string]int{},
-		RetainEvents: true,
+		EventPolicy: gameengine.EventLogFull,
 	}
 
 	// Build 4 seats with generous resources.
@@ -3737,12 +3737,13 @@ func makeKeywordGameState() *gameengine.GameState {
 		Phase:  "precombat_main",
 		Step:   "",
 		Flags:  map[string]int{},
-		// RetainEvents must be true — verifyKeyword's event-log probe is the
+		// Full retention — verifyKeyword's event-log probe is the
 		// fallback signal for keywords whose only observable effect is a
-		// LogEvent call (default branch + escape). Without retention, those
-		// events are dropped to gs.lastEvent and the test misreports them
-		// as keyword_dead.
-		RetainEvents: true,
+		// LogEvent call (default branch + escape). (Step 3 made the
+		// zero-value policy full retention precisely so this class of
+		// silent-drop misreport — the original 1,795 keyword_dead bug —
+		// cannot recur by omission; kept explicit for clarity.)
+		EventPolicy: gameengine.EventLogFull,
 	}
 	for i := 0; i < 4; i++ {
 		seat := &gameengine.Seat{
