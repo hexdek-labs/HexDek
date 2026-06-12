@@ -75,6 +75,11 @@ func payOneMana(gs *gameengine.GameState, seat int) bool {
 		return false
 	}
 	s.ManaPool--
+	gameengine.SyncManaAfterSpend(s) // typed pool must follow (r63 pool hygiene)
+	// Aux-credit: this optional unless-pay is invisible to the cost
+	// check's announced-cost reconstruction (a trigger payment, never a
+	// dispatcher-charged cost — no masking risk).
+	gs.Legality.NoteManaSpend(seat, 1)
 	return true
 }
 

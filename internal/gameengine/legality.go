@@ -587,7 +587,18 @@ func checkLegalityTargets(gs *GameState, obs *LegalityObservation) []LegalityVio
 // on the StackItem (X, kicker, buyback, alternative costs) — i.e. an
 // INDEPENDENT reconstruction, so a double-deduction (the Chalice
 // multikicker class) or an un-deducted announcement both flag.
-func checkLegalityCostPaid(_ *GameState, obs *LegalityObservation) []LegalityViolation {
+func checkLegalityCostPaid(gs *GameState, obs *LegalityObservation) []LegalityViolation {
+	// CR §104.3 / §106.4 — if the announcing seat was ELIMINATED inside
+	// the window (a punisher trigger on the cast killed them: the r63
+	// "Knights" shape — Ruric Thar fires on the noncreature cast, the
+	// 6 damage is lethal, the SBA marks the seat lost mid-window),
+	// markSeatLost clears the pool. The cleared floating mana is not a
+	// payment; the delta is meaningless for a player who left the game.
+	if gs != nil && obs.Seat >= 0 && obs.Seat < len(gs.Seats) {
+		if s := gs.Seats[obs.Seat]; s != nil && s.Lost {
+			return nil
+		}
+	}
 	spent := obs.PoolBefore + obs.ManaAddedDuringWindow - obs.AuxManaSpentDuringWindow - obs.PoolAfter
 
 	expected := 0

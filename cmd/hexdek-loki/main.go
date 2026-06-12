@@ -188,6 +188,17 @@ func loadOracleCorpus(path string) (*gameengine.ChaosCorpus, error) {
 			continue
 		}
 
+		// Memorabilia / art-series / minigame inserts carry the literal
+		// type_line "Card" (or "Card // Card") — they are not playable
+		// objects. The fj22 "Knights" insert (empty mana cost, oracle
+		// text "(Theme color: {W})") leaked into chaos decks this way
+		// and got "cast" for announced-0 (r63, seed 42 game 482).
+		// 2,650 such entries exist in the oracle corpus; none belong in
+		// a deck pool.
+		if tlLower == "card" || strings.HasPrefix(tlLower, "card //") {
+			continue
+		}
+
 		isLegendary := strings.Contains(tlLower, "legendary")
 		isCreature := strings.Contains(tlLower, "creature")
 		isLand := strings.Contains(tlLower, "land")
