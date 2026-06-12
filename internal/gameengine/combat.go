@@ -408,7 +408,7 @@ func fireBeginningOfCombatTriggers(gs *GameState, activeSeat int) {
 				// Phase 5 routing: triggered abilities go ON the stack
 				// (CR §603.3a) instead of resolving inline. Priority opens
 				// after the push — see PushTriggeredAbility.
-				PushTriggeredAbility(gs, p, t.Effect)
+				PushTriggeredAbilityWithIf(gs, p, t.Effect, t.InterveningIf)
 			}
 		}
 	}
@@ -780,7 +780,7 @@ func fireAttackTriggers(gs *GameState, activeSeat int, declared []*Permanent) {
 			})
 			if ab.Effect != nil {
 				// Phase 5: trigger goes on the stack (CR §603.3a).
-				PushTriggeredAbility(gs, atk, ab.Effect)
+				PushTriggeredAbilityWithIf(gs, atk, ab.Effect, ab.InterveningIf)
 			}
 		}
 		FireCardTrigger(gs, "creature_attacks", map[string]interface{}{
@@ -818,7 +818,7 @@ func fireAttackTriggers(gs *GameState, activeSeat int, declared []*Permanent) {
 				})
 				if ab.Effect != nil {
 					// Phase 5: trigger goes on the stack (CR §603.3a).
-					PushTriggeredAbility(gs, perm, ab.Effect)
+					PushTriggeredAbilityWithIf(gs, perm, ab.Effect, ab.InterveningIf)
 				}
 			}
 		}
@@ -2143,7 +2143,7 @@ func fireCombatDamageTriggers(gs *GameState, src *Permanent, amount int, targetK
 			// Phase 5: damage triggers go on the stack (CR §603.3a). SBAs
 			// will fire between damage dealing and the trigger's resolution
 			// per CR §510.2 → §704.3.
-			PushTriggeredAbility(gs, src, t.Effect)
+			PushTriggeredAbilityWithIf(gs, src, t.Effect, t.InterveningIf)
 		}
 	}
 	// Fire per-card trigger hooks for combat damage events so that
@@ -2218,7 +2218,7 @@ func EndOfCombatStep(gs *GameState) {
 				})
 				if t.Effect != nil {
 					// Phase 5: end-of-combat triggers go on the stack.
-					PushTriggeredAbility(gs, p, t.Effect)
+					PushTriggeredAbilityWithIf(gs, p, t.Effect, t.InterveningIf)
 				}
 			}
 		}
