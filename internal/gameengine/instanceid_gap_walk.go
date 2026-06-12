@@ -165,9 +165,6 @@ func EnforceBattlefieldUniqueInstanceID(gs *GameState, card *Card, controllerSea
 		// inflated the legacy count baseline. Decrement so the legacy
 		// drop-detection arm doesn't fire on a corrected count.
 		if gs.Flags != nil {
-			if v, ok := gs.Flags["_zone_conservation_total"]; ok {
-				gs.Flags["_zone_conservation_total"] = v - staleSamePtr
-			}
 		}
 	}
 	if !differentPtrCollide {

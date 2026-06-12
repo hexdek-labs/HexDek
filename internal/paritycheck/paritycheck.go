@@ -44,8 +44,8 @@ import (
 	"github.com/hexdek/hexdek/internal/deckparser"
 	"github.com/hexdek/hexdek/internal/gameengine"
 	"github.com/hexdek/hexdek/internal/hat"
+	"github.com/hexdek/hexdek/internal/judge"
 	"github.com/hexdek/hexdek/internal/tournament"
-	"github.com/hexdek/hexdek/internal/validation"
 )
 
 // Event is the canonical parity event — a subset of the Python / Go
@@ -58,8 +58,8 @@ import (
 // other validation surfaces can reference it without importing this
 // package (a cycle — paritycheck imports gameengine). The alias keeps
 // every existing caller and the JSON wire format byte-identical; field
-// docs live on validation.Event.
-type Event = validation.Event
+// docs live on judge.Event.
+type Event = judge.Event
 
 // Outcome is the final per-game summary. Parity reporters match on these
 // fields FIRST before walking event streams, because a matching outcome
@@ -97,8 +97,8 @@ type Divergence struct {
 // (consolidation step 4). The Divergence struct itself stays: it is the
 // persisted parity-report row schema (paired Go/Py events are
 // load-bearing for diffing); the canonical view is what flows through
-// validation.LogViolation at origin.
-func (d Divergence) Canonical() validation.ValidationViolation {
+// judge.LogViolation at origin.
+func (d Divergence) Canonical() judge.ValidationViolation {
 	ctx := map[string]interface{}{"game_idx": d.GameIdx}
 	if d.AtSeq != 0 {
 		ctx["at_seq"] = d.AtSeq
@@ -109,10 +109,10 @@ func (d Divergence) Canonical() validation.ValidationViolation {
 	if d.PyEvent != nil {
 		ctx["py_event"] = d.PyEvent
 	}
-	return validation.ValidationViolation{
-		Surface:  validation.SurfaceParity,
+	return judge.ValidationViolation{
+		Surface:  judge.SurfaceParity,
 		Name:     d.Category,
-		Severity: validation.SeverityCritical,
+		Severity: judge.SeverityCritical,
 		Message:  d.Detail,
 		Context:  ctx,
 	}
@@ -122,7 +122,7 @@ func (d Divergence) Canonical() validation.ValidationViolation {
 // router (origin tap — aggregation sites must not re-log).
 func logDivergences(divs []Divergence) {
 	for _, d := range divs {
-		validation.LogViolation(d.Canonical())
+		judge.LogViolation(d.Canonical())
 	}
 }
 

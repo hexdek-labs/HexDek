@@ -668,9 +668,6 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 	// need adjustment.
 	if realCardsLeaving > 0 {
 		if gs.Flags != nil {
-			if baseline, ok := gs.Flags["_zone_conservation_total"]; ok {
-				gs.Flags["_zone_conservation_total"] = baseline - realCardsLeaving
-			}
 		}
 		// Per-seat tracking so Feynman zone accounting can adjust expected.
 		if seat.Flags == nil {

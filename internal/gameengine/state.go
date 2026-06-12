@@ -30,7 +30,7 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/gameengine/counters"
 	"github.com/hexdek/hexdek/internal/gameengine/instanceid"
-	"github.com/hexdek/hexdek/internal/validation"
+	"github.com/hexdek/hexdek/internal/judge"
 )
 
 // -----------------------------------------------------------------------------
@@ -523,8 +523,8 @@ const (
 // the same *Card pointers, and downstream consumers (Heimdall's
 // keepable evaluator) don't need to hold the original *Card.
 type SeatMulliganStats struct {
-	MulligansTaken int                  `json:"mulligans_taken"`
-	OpeningHand    []MulliganHandEntry  `json:"opening_hand,omitempty"`
+	MulligansTaken int                 `json:"mulligans_taken"`
+	OpeningHand    []MulliganHandEntry `json:"opening_hand,omitempty"`
 }
 
 // MulliganHandEntry is one card captured into a SeatMulliganStats
@@ -883,33 +883,33 @@ type CastRecord struct {
 // directly. Per_card handlers read them instead of rolling their own flags.
 // Reset once per turn via Reset() in UntapAll.
 type TurnCounters struct {
-	LifeGained       int  // total life gained this turn (from GainLife)
-	LifeLost         int  // total life lost this turn (from LoseLife + combat damage)
-	DamageReceived   int  // total damage received this turn (combat + noncombat)
-	LifePaid         int  // life paid as costs this turn (distinct from LifeLost per CR §118)
-	CardsDrawn       int  // cards drawn this turn
-	SpellsCast       int  // spells cast this turn
-	CreaturesEntered int  // creatures that entered the battlefield this turn
-	ArtifactsEntered    int // artifacts that entered the battlefield this turn
-	EnchantmentsEntered int // enchantments that entered the battlefield this turn
-	TokensCreated    int  // tokens created this turn
-	TreasuresCreated int  // treasure tokens created this turn
-	Sacrificed       int  // permanents sacrificed this turn
-	PermanentsLeft   int  // permanents that left the battlefield this turn (dies + exile + bounce + sac)
-	Discarded        int  // cards discarded this turn
-	CommittedCrimes  int  // crimes committed this turn (CR §701.71 OTJ/MKM)
-	Milled           int  // cards milled this turn
-	LandsPlayed      int  // lands played this turn
-	CreaturesDied    int  // creatures that died (went to GY from battlefield) this turn
-	ExiledCards      int  // cards exiled this turn (from any zone)
-	CastFromExile    int  // spells cast from exile this turn (cascade, impulse draw, etc.)
-	Descended        bool // a permanent card entered graveyard this turn (Ixalan)
+	LifeGained          int  // total life gained this turn (from GainLife)
+	LifeLost            int  // total life lost this turn (from LoseLife + combat damage)
+	DamageReceived      int  // total damage received this turn (combat + noncombat)
+	LifePaid            int  // life paid as costs this turn (distinct from LifeLost per CR §118)
+	CardsDrawn          int  // cards drawn this turn
+	SpellsCast          int  // spells cast this turn
+	CreaturesEntered    int  // creatures that entered the battlefield this turn
+	ArtifactsEntered    int  // artifacts that entered the battlefield this turn
+	EnchantmentsEntered int  // enchantments that entered the battlefield this turn
+	TokensCreated       int  // tokens created this turn
+	TreasuresCreated    int  // treasure tokens created this turn
+	Sacrificed          int  // permanents sacrificed this turn
+	PermanentsLeft      int  // permanents that left the battlefield this turn (dies + exile + bounce + sac)
+	Discarded           int  // cards discarded this turn
+	CommittedCrimes     int  // crimes committed this turn (CR §701.71 OTJ/MKM)
+	Milled              int  // cards milled this turn
+	LandsPlayed         int  // lands played this turn
+	CreaturesDied       int  // creatures that died (went to GY from battlefield) this turn
+	ExiledCards         int  // cards exiled this turn (from any zone)
+	CastFromExile       int  // spells cast from exile this turn (cascade, impulse draw, etc.)
+	Descended           bool // a permanent card entered graveyard this turn (Ixalan)
 	// SpeedAdvancedThisTurn gates §702.178 / §702.179 — speed advances at
 	// most once per turn regardless of how many damage events the player's
 	// sources cause. Read+set by AdvanceSpeed in keywords_speed_counter.go.
 	SpeedAdvancedThisTurn bool
-	Attacked         bool // this seat declared attackers this turn
-	Casts            []CastRecord // ordered log of every spell cast this turn
+	Attacked              bool         // this seat declared attackers this turn
+	Casts                 []CastRecord // ordered log of every spell cast this turn
 
 	// CombatDamageBy is the de-duplicated list of cards controlled by
 	// this seat that dealt combat damage to ANY player (any opponent)
@@ -1109,7 +1109,7 @@ type Seat struct {
 	// writers migrate to stamping both fields in a later step, and
 	// readers switch over once every writer does. nil ⇔ not populated
 	// (which today is always).
-	LossDetail *validation.LossReason
+	LossDetail *judge.LossReason
 
 	// LostOrder is the 1-based elimination sequence: 1 = first player
 	// eliminated, 2 = second, etc. Stamped by HandleSeatElimination
@@ -2429,11 +2429,11 @@ func (gs *GameState) moveToZone(seat int, c *Card, zone string) {
 			Target: seat,
 			Source: c.DisplayName(),
 			Details: map[string]interface{}{
-				"to_zone":      zone,
-				"passed_seat":  seat,
-				"owner_seat":   c.Owner,
-				"rule":         "400.7",
-				"reason":       "owner_scoped_zone_redirect_to_card_owner",
+				"to_zone":     zone,
+				"passed_seat": seat,
+				"owner_seat":  c.Owner,
+				"rule":        "400.7",
+				"reason":      "owner_scoped_zone_redirect_to_card_owner",
 			},
 		})
 		seat = c.Owner
@@ -2775,12 +2775,12 @@ func (gs *GameState) Snapshot() {
 				continue
 			}
 			pm := map[string]interface{}{
-				"name":          p.Card.DisplayName(),
-				"tapped":        p.Tapped,
+				"name":           p.Card.DisplayName(),
+				"tapped":         p.Tapped,
 				"summoning_sick": p.SummoningSick,
-				"power":         p.Card.BasePower,
-				"toughness":     p.Card.BaseToughness,
-				"damage":        p.MarkedDamage,
+				"power":          p.Card.BasePower,
+				"toughness":      p.Card.BaseToughness,
+				"damage":         p.MarkedDamage,
 			}
 			bfPerms = append(bfPerms, pm)
 		}

@@ -190,25 +190,26 @@ func TestFeynman_ZoneAccounting_CopyTolerance(t *testing.T) {
 	}
 }
 
-func TestFeynman_ZoneAccounting_NegativeDiffStillFlags(t *testing.T) {
+// TestFeynman_UnmintedCountImbalance_NoLongerWarns pins the r63 Judge
+// fold: the owner-count heuristic is DELETED (499/500 of its warnings
+// were strict-census-proven false positives), so an unminted fixture
+// with a count imbalance produces NO conservation violation. Real
+// disappearances are pinned by TestFeynman_StrictCensus_
+// RealDisappearanceFlagged via the InstanceID census.
+func TestFeynman_UnmintedCountImbalance_NoLongerWarns(t *testing.T) {
 	gs := newFeynmanGame(t, 4)
 	gs.Seats[1].Lost = true
 	gs.Seats[2].Lost = true
 	gs.Seats[3].Lost = true
 	gs.Turn = 15
 
-	// Remove 5 cards from seat 0's library (simulating missing cards bug).
 	gs.Seats[0].Library = gs.Seats[0].Library[:95]
 
 	result := CheckGame(gs)
-	found := false
 	for _, v := range result.Violations {
-		if v.Name == "zone_accounting" && v.Seat == 0 {
-			found = true
+		if v.Name == "zone_accounting" || v.Name == "zone_conservation" {
+			t.Errorf("unminted count imbalance must not warn post-fold (the FP flood); got %v", v)
 		}
-	}
-	if !found {
-		t.Error("negative diff of -5 should still trigger zone_accounting violation")
 	}
 }
 

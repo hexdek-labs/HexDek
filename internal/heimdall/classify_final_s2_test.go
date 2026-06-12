@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
-	"github.com/hexdek/hexdek/internal/validation"
+	"github.com/hexdek/hexdek/internal/judge"
 )
 
 // Consolidation step 2 — ClassifyKillFinal unification pins.
@@ -24,7 +24,7 @@ func s2Game(t *testing.T) *gameengine.GameState {
 // s2Eliminate marks a loss with BOTH the freeform string and the
 // structured detail (what the engine writers do post-step-2), then runs
 // the real §800.4a pipeline.
-func s2Eliminate(t *testing.T, gs *gameengine.GameState, seatIdx int, reason string, detail *validation.LossReason) {
+func s2Eliminate(t *testing.T, gs *gameengine.GameState, seatIdx int, reason string, detail *judge.LossReason) {
 	t.Helper()
 	gs.Seats[seatIdx].Lost = true
 	gs.Seats[seatIdx].LossReason = reason
@@ -35,21 +35,21 @@ func s2Eliminate(t *testing.T, gs *gameengine.GameState, seatIdx int, reason str
 func TestClassifyKillFinal_StructuredPerKillType(t *testing.T) {
 	cases := []struct {
 		name       string
-		detail     *validation.LossReason
+		detail     *judge.LossReason
 		reason     string
 		wantMethod string
 	}{
-		{"poison", &validation.LossReason{Category: validation.LossCategoryPoison, Rule: "704.5c"}, "ten or more poison counters (CR 704.5c)", "poison"},
-		{"commander", &validation.LossReason{Category: validation.LossCategoryCommanderDamage, Rule: "704.6c", SourceCard: "Edgar Markov"}, "21+ commander damage from Edgar Markov (CR 704.6c)", "commander"},
-		{"mill", &validation.LossReason{Category: validation.LossCategoryEmptyLibrary, Rule: "704.5b"}, "drew from empty library (CR 704.5b)", "mill"},
-		{"life_combat", &validation.LossReason{Category: validation.LossCategoryLife, Rule: "704.5a"}, "life total 0 or less (CR 704.5a)", "combat"},
-		{"concession", &validation.LossReason{Category: validation.LossCategoryConcession, Rule: "104.3a"}, "concession", "concession"},
+		{"poison", &judge.LossReason{Category: judge.LossCategoryPoison, Rule: "704.5c"}, "ten or more poison counters (CR 704.5c)", "poison"},
+		{"commander", &judge.LossReason{Category: judge.LossCategoryCommanderDamage, Rule: "704.6c", SourceCard: "Edgar Markov"}, "21+ commander damage from Edgar Markov (CR 704.6c)", "commander"},
+		{"mill", &judge.LossReason{Category: judge.LossCategoryEmptyLibrary, Rule: "704.5b"}, "drew from empty library (CR 704.5b)", "mill"},
+		{"life_combat", &judge.LossReason{Category: judge.LossCategoryLife, Rule: "704.5a"}, "life total 0 or less (CR 704.5a)", "combat"},
+		{"concession", &judge.LossReason{Category: judge.LossCategoryConcession, Rule: "104.3a"}, "concession", "concession"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			gs := s2Game(t)
 			winner := 3
-			if c.detail.Category == validation.LossCategoryLife {
+			if c.detail.Category == judge.LossCategoryLife {
 				// The life category deliberately falls through to the
 				// game-state heuristics — the victim's life must
 				// actually be ≤0 for the combat read.
@@ -57,7 +57,7 @@ func TestClassifyKillFinal_StructuredPerKillType(t *testing.T) {
 				gs.Seats[2].Life = -2
 			}
 			s2Eliminate(t, gs, 0, "ten or more poison counters (CR 704.5c)",
-				&validation.LossReason{Category: validation.LossCategoryPoison, Rule: "704.5c"}) // decoy early kill
+				&judge.LossReason{Category: judge.LossCategoryPoison, Rule: "704.5c"}) // decoy early kill
 			s2Eliminate(t, gs, 1, c.reason, c.detail)
 			s2Eliminate(t, gs, 2, c.reason, c.detail) // final elimination
 
@@ -89,7 +89,7 @@ func TestClassifyKillFinal_CommanderKillerSeat(t *testing.T) {
 	gs := s2Game(t)
 	gs.Seats[1].CommanderNames = []string{"Edgar Markov"}
 	s2Eliminate(t, gs, 2, "21+ commander damage from Edgar Markov (CR 704.6c)",
-		&validation.LossReason{Category: validation.LossCategoryCommanderDamage, Rule: "704.6c", SourceCard: "Edgar Markov"})
+		&judge.LossReason{Category: judge.LossCategoryCommanderDamage, Rule: "704.6c", SourceCard: "Edgar Markov"})
 
 	fin := ClassifyKillFinal(gs, 1, 0)
 	if fin.Method != "commander" {

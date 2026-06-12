@@ -4,7 +4,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/hexdek/hexdek/internal/validation"
+	"github.com/hexdek/hexdek/internal/judge"
 )
 
 // loss_detail_dualwrite_s25_test.go — consolidation step 2.5.
@@ -40,21 +40,21 @@ func TestLossDetail_SBALife704_5a(t *testing.T) {
 	gs := NewGameState(4, rand.New(rand.NewSource(1)), nil)
 	gs.Seats[1].Life = 0
 	sba704_5a(gs)
-	requireDetail(t, gs.Seats[1], validation.LossCategoryLife, "704.5a", "")
+	requireDetail(t, gs.Seats[1], judge.LossCategoryLife, "704.5a", "")
 }
 
 func TestLossDetail_SBAEmptyDraw704_5b(t *testing.T) {
 	gs := NewGameState(4, rand.New(rand.NewSource(2)), nil)
 	gs.Seats[2].AttemptedEmptyDraw = true
 	sba704_5b(gs)
-	requireDetail(t, gs.Seats[2], validation.LossCategoryEmptyLibrary, "704.5b", "")
+	requireDetail(t, gs.Seats[2], judge.LossCategoryEmptyLibrary, "704.5b", "")
 }
 
 func TestLossDetail_SBAPoison704_5c(t *testing.T) {
 	gs := NewGameState(4, rand.New(rand.NewSource(3)), nil)
 	gs.Seats[3].PoisonCounters = 10
 	sba704_5c(gs)
-	requireDetail(t, gs.Seats[3], validation.LossCategoryPoison, "704.5c", "")
+	requireDetail(t, gs.Seats[3], judge.LossCategoryPoison, "704.5c", "")
 }
 
 func TestLossDetail_SBACommanderDamage704_6c(t *testing.T) {
@@ -64,7 +64,7 @@ func TestLossDetail_SBACommanderDamage704_6c(t *testing.T) {
 		2: {"Edgar Markov": 21},
 	}
 	sba704_6c(gs)
-	requireDetail(t, gs.Seats[1], validation.LossCategoryCommanderDamage, "704.6c", "Edgar Markov")
+	requireDetail(t, gs.Seats[1], judge.LossCategoryCommanderDamage, "704.6c", "Edgar Markov")
 }
 
 func TestLossDetail_MarkSeatLostByEffect104_3e(t *testing.T) {
@@ -72,13 +72,13 @@ func TestLossDetail_MarkSeatLostByEffect104_3e(t *testing.T) {
 	if !MarkSeatLostByEffect(gs, 2, "Demonic Pact") {
 		t.Fatalf("MarkSeatLostByEffect did not apply")
 	}
-	requireDetail(t, gs.Seats[2], validation.LossCategoryEffect, "104.3e", "Demonic Pact")
+	requireDetail(t, gs.Seats[2], judge.LossCategoryEffect, "104.3e", "Demonic Pact")
 }
 
 func TestLossDetail_Concession104_3a(t *testing.T) {
 	gs := NewGameState(4, rand.New(rand.NewSource(6)), nil)
 	ConcedeGame(gs, 0)
-	requireDetail(t, gs.Seats[0], validation.LossCategoryConcession, "104.3a", "")
+	requireDetail(t, gs.Seats[0], judge.LossCategoryConcession, "104.3a", "")
 }
 
 // TestLossDetail_LoopDrawCategoryStored pins the §104.4b loop-cap shape
@@ -88,8 +88,8 @@ func TestLossDetail_Concession104_3a(t *testing.T) {
 func TestLossDetail_LoopDrawCategoryStored(t *testing.T) {
 	gs := NewGameState(4, rand.New(rand.NewSource(7)), nil)
 	markSeatLost(gs.Seats[0], "mandatory loop draw (CR 104.4b via SBA cap)",
-		&validation.LossReason{Category: validation.LossCategoryLoopDraw, Rule: "104.4b"})
-	requireDetail(t, gs.Seats[0], validation.LossCategoryLoopDraw, "104.4b", "")
+		&judge.LossReason{Category: judge.LossCategoryLoopDraw, Rule: "104.4b"})
+	requireDetail(t, gs.Seats[0], judge.LossCategoryLoopDraw, "104.4b", "")
 }
 
 // TestLossDetail_RoundTripsThroughClone — the structured detail must
@@ -102,14 +102,14 @@ func TestLossDetail_RoundTripsThroughClone(t *testing.T) {
 
 	clone := gs.CloneForRollout(rand.New(rand.NewSource(9)))
 	cd := clone.Seats[1].LossDetail
-	if cd == nil || cd.Category != validation.LossCategoryLife {
+	if cd == nil || cd.Category != judge.LossCategoryLife {
 		t.Fatalf("LossDetail did not round-trip through clone: %+v", cd)
 	}
 	if cd == gs.Seats[1].LossDetail {
 		t.Fatalf("clone aliases the original LossDetail pointer")
 	}
 	cd.Category = "corrupted"
-	if gs.Seats[1].LossDetail.Category != validation.LossCategoryLife {
+	if gs.Seats[1].LossDetail.Category != judge.LossCategoryLife {
 		t.Fatalf("mutating the clone's LossDetail corrupted the original")
 	}
 }

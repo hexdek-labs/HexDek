@@ -51,20 +51,25 @@ import (
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
-	"github.com/hexdek/hexdek/internal/validation"
+	"github.com/hexdek/hexdek/internal/judge"
 )
 
-// Invariant is a named correctness check over a GameState.
+// Invariant is a named correctness check over a GameState — one entry
+// in the Hex Judge's check table. Dimension tags which of the five
+// correctness questions the check answers (judge.Dimension* constants);
+// empty defaults to state_integrity, the home dimension of most
+// internal-consistency invariants.
 type Invariant struct {
-	Name  string
-	Check func(gs *GameState) error // nil = pass, error = violation
+	Name      string
+	Dimension string
+	Check     func(gs *GameState) error // nil = pass, error = violation
 }
 
 // AllInvariants returns the canonical list of invariants in evaluation
 // order. Callers should run every invariant after every game action.
 func AllInvariants() []Invariant {
 	return []Invariant{
-		{Name: "ZoneConservation", Check: checkZoneConservation},
+		{Name: "ZoneConservation", Dimension: judge.DimensionConservation, Check: checkZoneConservation},
 		{Name: "LifeConsistency", Check: checkLifeConsistency},
 		{Name: "OwnerImmutability", Check: checkOwnerImmutability},
 		{Name: "SBACompleteness", Check: checkSBACompleteness},
@@ -79,7 +84,7 @@ func AllInvariants() []Invariant {
 		{Name: "CounterAccuracy", Check: checkCounterAccuracy},
 		{Name: "CombatLegality", Check: checkCombatLegality},
 		{Name: "TurnStructure", Check: checkTurnStructure},
-		{Name: "CardIdentity", Check: checkCardIdentity},
+		{Name: "CardIdentity", Dimension: judge.DimensionConservation, Check: checkCardIdentity},
 		{Name: "ReplacementCompleteness", Check: checkReplacementCompleteness},
 		{Name: "WinCondition", Check: checkWinCondition},
 		{Name: "Timing", Check: checkTiming},
@@ -98,15 +103,20 @@ func RunAllInvariants(gs *GameState) []InvariantViolation {
 	var violations []InvariantViolation
 	for _, inv := range invs {
 		if err := inv.Check(gs); err != nil {
+			dim := inv.Dimension
+			if dim == "" {
+				dim = judge.DimensionStateIntegrity
+			}
 			v := InvariantViolation{
-				Surface:  validation.SurfaceInvariants,
-				Name:     inv.Name,
-				Severity: validation.SeverityCritical,
-				Message:  err.Error(),
+				Surface:   judge.SurfaceInvariants,
+				Dimension: dim,
+				Name:      inv.Name,
+				Severity:  judge.SeverityCritical,
+				Message:   err.Error(),
 			}
 			// Consolidation step 4: every violation also flows through
 			// the unified router — the Hex Judge observation seam.
-			validation.LogViolation(v)
+			judge.LogViolation(v)
 			violations = append(violations, v)
 		}
 	}
@@ -117,7 +127,7 @@ func RunAllInvariants(gs *GameState) []InvariantViolation {
 // step 4 collapsed the per-surface struct into validation's one
 // vocabulary; the alias keeps every existing constructor and field
 // read compiling — Name/Message are canonical fields).
-type InvariantViolation = validation.ValidationViolation
+type InvariantViolation = judge.ValidationViolation
 
 // ---------------------------------------------------------------------------
 // ZoneConservation
@@ -162,10 +172,15 @@ func checkZoneConservation(gs *GameState) error {
 	// count then sees a "drop" on the corrected count even though no
 	// real card disappeared. Skip the legacy backstop when InstanceID
 	// census is authoritative.
+	// Judge fold (r63): the legacy count-based fallback for unminted
+	// states is DELETED — the strict-census run proved 499/500 of
+	// count-shape warnings were false positives, and every real game
+	// mints InstanceIDs. Unminted = struct-literal fixture = nothing to
+	// conserve-check.
 	if len(gs.MintedInstanceIDs) > 0 {
 		return checkZoneConservationByInstanceID(gs)
 	}
-	return checkZoneConservationLegacyCount(gs)
+	return nil
 }
 
 // checkZoneConservationByInstanceID is the Phase 4 set-equality census.
@@ -407,71 +422,6 @@ func ZoneConservationStrict(gs *GameState) (error, bool) {
 	return err, true
 }
 
-// checkZoneConservationLegacyCount is the pre-Phase-4 count-based check,
-// preserved as a backstop for empty-InstanceID cards (legacy mode). It
-// runs in addition to (not in place of) the InstanceID census so the
-// engine stays useful during the rollout of mint coverage.
-func checkZoneConservationLegacyCount(gs *GameState) error {
-	total := 0
-	for _, s := range gs.Seats {
-		if s == nil {
-			continue
-		}
-		total += countRealCards(s.Library)
-		total += countRealCards(s.Hand)
-		total += countRealCards(s.Graveyard)
-		total += countRealCards(s.Exile)
-		total += countRealCards(s.CommandZone)
-		for _, p := range s.Battlefield {
-			if p == nil {
-				continue
-			}
-			if p.OriginalCard != nil && !cardIsTokenForInv(p.OriginalCard) {
-				total++
-			} else if p.Card != nil && !p.IsToken() {
-				total++
-			}
-		}
-	}
-	for _, cards := range gs.ParadigmExile {
-		total += countRealCards(cards)
-	}
-	for _, item := range gs.Stack {
-		if item != nil && item.Card != nil && !item.IsCopy && !cardIsTokenForInv(item.Card) {
-			total++
-		}
-	}
-
-	expected, ok := gs.Flags["_zone_conservation_total"]
-	if !ok {
-		if gs.Flags == nil {
-			gs.Flags = map[string]int{}
-		}
-		gs.Flags["_zone_conservation_total"] = total
-		return nil
-	}
-
-	delta := total - expected
-	if delta < 0 {
-		return fmt.Errorf("zone conservation violated: %d real cards disappeared (expected %d, found %d)",
-			-delta, expected, total)
-	}
-	if delta > 10 {
-		return fmt.Errorf("zone conservation suspicious: %d extra real cards appeared (expected %d, found %d) — possible copy bug",
-			delta, expected, total)
-	}
-	return nil
-}
-
-func countRealCards(cards []*Card) int {
-	n := 0
-	for _, c := range cards {
-		if c != nil && !cardIsTokenForInv(c) {
-			n++
-		}
-	}
-	return n
-}
 
 func cardIsTokenForInv(c *Card) bool {
 	if c == nil {

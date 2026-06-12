@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
-	"github.com/hexdek/hexdek/internal/validation"
+	"github.com/hexdek/hexdek/internal/judge"
 )
 
 // Feynman Oracle — provably-correct invariant checker.
@@ -23,7 +23,7 @@ import (
 // field mapping was Rule→Name, Description→Message, Details→Context.
 // String() now renders the canonical "[sev] surface/name [seat N]: msg"
 // shape).
-type OracleViolation = validation.ValidationViolation
+type OracleViolation = judge.ValidationViolation
 
 // OracleResult is the output of a Feynman check on one completed game.
 type OracleResult struct {
@@ -43,7 +43,7 @@ func CheckGame(gs *gameengine.GameState) OracleResult {
 		checkToughnessSBA,
 		checkPoisonSBA,
 		checkCommanderDamageSBA,
-		checkZoneAccounting,
+		judgeConservation,
 		checkExactlyOneWinner,
 		checkTurnBounds,
 		checkNoNegativeCounters,
@@ -59,9 +59,9 @@ func CheckGame(gs *gameengine.GameState) OracleResult {
 	// individually; this is the single normalization point.
 	for i := range result.Violations {
 		if result.Violations[i].Surface == "" {
-			result.Violations[i].Surface = validation.SurfaceFeynman
+			result.Violations[i].Surface = judge.SurfaceFeynman
 		}
-		validation.LogViolation(result.Violations[i])
+		judge.LogViolation(result.Violations[i])
 	}
 	return result
 }
@@ -175,149 +175,30 @@ func checkCommanderDamageSBA(gs *gameengine.GameState, r *OracleResult) {
 	}
 }
 
-// Zone accounting: every card should be in exactly one zone.
-// Total cards per OWNER should equal starting deck size (99 + commanders).
-//
-// Owner-reconciled accounting (r61): cards are counted by their owner
-// (Card.Owner / Permanent.Owner) across EVERY seat's zones, not by the
-// location of the zone they currently sit in. A card owned by seat N but
-// physically on another seat's battlefield (stolen via Control Magic,
-// Gilded Drake, etc.) still counts toward seat N's tally — eliminating the
-// ~1,594 false "card vanishing" warnings where a control-transferred card
-// made its owner read "short" and its thief read "long". Permanent.Owner
-// survives control change (resolve.go keeps Owner), so this is the correct
-// conservation key.
-func checkZoneAccounting(gs *gameengine.GameState, r *OracleResult) {
-	// r63 — the InstanceID strict census is the single production
-	// authority for zone conservation. The owner-count heuristic below
-	// false-warned on nearly every game with a CR §800.4 elimination
-	// (production flood, -5..-20 "cards-light" on games a strict-census
-	// run proved 499/500 CLEAN by identity): counts cannot model the
-	// §800.4 flows (eliminated owners' cards ceasing across every zone,
-	// survivor-owned cards in the leaver's zones, exile-outside-game),
-	// while the census subtracts ceased IDs by construction. The
-	// heuristic remains ONLY as a fallback for states with no minted
-	// InstanceIDs (legacy fixtures/replays).
-	if err, authoritative := gameengine.ZoneConservationStrict(gs); authoritative {
-		if err != nil {
-			r.Violations = append(r.Violations, OracleViolation{
-				Name:     "zone_conservation",
-				Message:  err.Error(),
-				Seat:     -1,
-				Severity: "critical",
-				Context: map[string]interface{}{
-					"check": "instanceid_strict_census",
-				},
-			})
-		}
+// judgeConservation is the CONSERVATION-dimension Judge check at the
+// post-game (Feynman) hook point: the InstanceID strict census
+// (gameengine.ZoneConservationStrict — set-equality by identity,
+// disappearance half enabled). The owner-count heuristic that used to
+// live here is DELETED (r63 Judge fold): a strict-census run proved
+// 499/500 of its warnings were false positives (counts cannot model CR
+// §800.4 departures), and the legacy unminted-state fallback went with
+// it — unminted means struct-literal fixture, nothing to conserve.
+func judgeConservation(gs *gameengine.GameState, r *OracleResult) {
+	err, authoritative := gameengine.ZoneConservationStrict(gs)
+	if !authoritative || err == nil {
 		return
 	}
-	checkZoneAccountingCountHeuristic(gs, r)
-}
-
-// checkZoneAccountingCountHeuristic is the legacy owner-reconciled count
-// check, demoted (r63) to fallback-only for game states without
-// InstanceID minting. Do not extend — the strict census above is the
-// authority; mint-coverage gaps are the thing to fix instead.
-func checkZoneAccountingCountHeuristic(gs *gameengine.GameState, r *OracleResult) {
-	n := len(gs.Seats)
-	if n == 0 {
-		return
-	}
-
-	owned := make([]int, n)
-	tokensBySeat := make([]int, n)
-
-	// bump attributes a card to its owner; out-of-range / zero-value owners
-	// fall back to seat 0 to preserve legacy behavior.
-	bump := func(c *gameengine.Card) {
-		if c == nil {
-			return
-		}
-		o := c.Owner
-		if o < 0 || o >= n {
-			o = 0
-		}
-		owned[o]++
-	}
-
-	for _, s := range gs.Seats {
-		if s == nil {
-			continue
-		}
-		for _, c := range s.Hand {
-			bump(c)
-		}
-		for _, c := range s.Library {
-			bump(c)
-		}
-		for _, c := range s.Graveyard {
-			bump(c)
-		}
-		for _, c := range s.Exile {
-			bump(c)
-		}
-		for _, c := range s.CommandZone {
-			bump(c)
-		}
-		for _, p := range s.Battlefield {
-			if p == nil {
-				continue
-			}
-			if p.IsToken() {
-				o := p.Owner
-				if o < 0 || o >= n {
-					o = 0
-				}
-				tokensBySeat[o]++
-				continue
-			}
-			bump(p.Card)
-		}
-	}
-
-	for i, s := range gs.Seats {
-		if s == nil {
-			continue
-		}
-		total := owned[i]
-
-		// Expected: 99-card deck + 1-2 commanders = 100-101.
-		// Allow some tolerance for edge cases (partner commanders, companion).
-		expected := 100
-		if len(s.CommanderNames) > 1 {
-			expected = 99 + len(s.CommanderNames)
-		}
-
-		// §800.4a: when a player leaves the game, objects they own on the
-		// battlefield/stack cease to exist. These cards are not in any zone.
-		if s.Flags != nil {
-			expected -= s.Flags["cards_left_game"]
-		}
-
-		diff := total - expected
-		// Asymmetric tolerance: negative diffs (missing cards) are real bugs,
-		// but positive diffs are almost always copy/clone effects (Clone, Spark
-		// Double, Sakashima, Phyrexian Metamorph, etc.) creating non-token card
-		// objects that weren't in the original deck. These copies ARE cards (not
-		// tokens) per §706, so they inflate the count. A copy-heavy deck can
-		// easily produce +15 or more extra cards.
-		if diff < -3 || diff > 20 {
-			r.Violations = append(r.Violations, OracleViolation{
-				Name: "zone_accounting",
-				Message: fmt.Sprintf("seat %d owns %d cards (owner-reconciled; expected ~%d, diff=%d) [tokens owned=%d]",
-					i, total, expected, diff, tokensBySeat[i]),
-				Seat:     i,
-				Severity: "warning",
-				Context: map[string]interface{}{
-					"owned_cards":  total,
-					"owned_tokens": tokensBySeat[i],
-					"expected":     expected,
-					"diff":         diff,
-				},
-			})
-		}
-	}
+	r.Violations = append(r.Violations, OracleViolation{
+		Surface:   judge.SurfaceInvariants,
+		Dimension: judge.DimensionConservation,
+		Name:      "zone_conservation",
+		Message:   err.Error(),
+		Seat:      -1,
+		Severity:  judge.SeverityCritical,
+		Context: map[string]interface{}{
+			"check": "instanceid_strict_census",
+		},
+	})
 }
 
 // Exactly one winner: at game end, exactly N-1 seats should be lost.

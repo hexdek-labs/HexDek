@@ -18,6 +18,20 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
+// countRealCards is a test-local census helper (the production
+// count-based conservation check was deleted in the r63 Judge fold;
+// this test still counts real cards directly to pin paradigm-copy
+// zone behavior).
+func countRealCards(cards []*Card) int {
+	n := 0
+	for _, c := range cards {
+		if c != nil && !cardIsTokenForInv(c) {
+			n++
+		}
+	}
+	return n
+}
+
 func TestResolveParadigmCopies_CopyStackItemIsFlaggedAndCeases(t *testing.T) {
 	// Paradigm-tracked sorcery with a real effect (Draw 1) so the copy goes
 	// through ResolveEffect and then through the "non-permanent spell after

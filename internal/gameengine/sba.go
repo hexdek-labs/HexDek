@@ -6,7 +6,7 @@ import (
 
 	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/gameengine/counters"
-	"github.com/hexdek/hexdek/internal/validation"
+	"github.com/hexdek/hexdek/internal/judge"
 )
 
 // Phase 6 — State-based actions (CR §704).
@@ -227,7 +227,7 @@ func StateBasedActions(gs *GameState) bool {
 			if s == nil || s.Lost {
 				continue
 			}
-			markSeatLost(s, "mandatory loop draw (CR 104.4b via SBA cap)", &validation.LossReason{Category: validation.LossCategoryLoopDraw, Rule: "104.4b"})
+			markSeatLost(s, "mandatory loop draw (CR 104.4b via SBA cap)", &judge.LossReason{Category: judge.LossCategoryLoopDraw, Rule: "104.4b"})
 			gs.LogEvent(Event{
 				Kind:   "seat_lost",
 				Seat:   s.Idx,
@@ -357,7 +357,7 @@ func sba704_5a(gs *GameState) bool {
 				"reason": "life_total_zero_or_less",
 			},
 		})
-		markSeatLost(s, "life total 0 or less (CR 704.5a)", &validation.LossReason{Category: validation.LossCategoryLife, Rule: "704.5a"})
+		markSeatLost(s, "life total 0 or less (CR 704.5a)", &judge.LossReason{Category: judge.LossCategoryLife, Rule: "704.5a"})
 		changed = true
 	}
 	return changed
@@ -386,7 +386,7 @@ func sba704_5b(gs *GameState) bool {
 			},
 		})
 		if !s.Lost {
-			markSeatLost(s, "drew from empty library (CR 704.5b)", &validation.LossReason{Category: validation.LossCategoryEmptyLibrary, Rule: "704.5b"})
+			markSeatLost(s, "drew from empty library (CR 704.5b)", &judge.LossReason{Category: judge.LossCategoryEmptyLibrary, Rule: "704.5b"})
 		}
 		s.AttemptedEmptyDraw = false
 		changed = true
@@ -407,7 +407,7 @@ func sba704_5c(gs *GameState) bool {
 			continue
 		}
 		if s.PoisonCounters >= 10 {
-			markSeatLost(s, "ten or more poison counters (CR 704.5c)", &validation.LossReason{Category: validation.LossCategoryPoison, Rule: "704.5c"})
+			markSeatLost(s, "ten or more poison counters (CR 704.5c)", &judge.LossReason{Category: judge.LossCategoryPoison, Rule: "704.5c"})
 			gs.LogEvent(Event{
 				Kind:   "sba_704_5c",
 				Seat:   s.Idx,
@@ -1853,7 +1853,7 @@ func sba704_6c(gs *GameState) bool {
 		for dealer, byName := range s.CommanderDamage {
 			for name, dmg := range byName {
 				if dmg >= 21 {
-					markSeatLost(s, "21+ commander damage from "+name+" (CR 704.6c)", &validation.LossReason{Category: validation.LossCategoryCommanderDamage, Rule: "704.6c", SourceCard: name})
+					markSeatLost(s, "21+ commander damage from "+name+" (CR 704.6c)", &judge.LossReason{Category: judge.LossCategoryCommanderDamage, Rule: "704.6c", SourceCard: name})
 					gs.LogEvent(Event{
 						Kind:   "sba_704_6c",
 						Seat:   s.Idx,
@@ -2208,7 +2208,7 @@ func ruleToEventSuffix(rule string) string {
 // freeform string, so both are stamped together. The string stays the
 // reader contract until every writer dual-writes; then readers flip to
 // LossDetail and the string becomes display-only.
-func markSeatLost(s *Seat, reason string, detail *validation.LossReason) {
+func markSeatLost(s *Seat, reason string, detail *judge.LossReason) {
 	if s == nil {
 		return
 	}

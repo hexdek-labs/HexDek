@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
-	"github.com/hexdek/hexdek/internal/validation"
+	"github.com/hexdek/hexdek/internal/judge"
 )
 
 // ResolveEffect is the main entry point. It dispatches on effect.Kind()
@@ -3069,7 +3069,7 @@ func MarkSeatLostByEffect(gs *GameState, seat int, srcSourceName string) bool {
 	// classify cause as LossEffect (CR §104.3e) without LossReason
 	// string parsing.
 	s.LossReason = reason
-	s.LossDetail = &validation.LossReason{Category: validation.LossCategoryEffect, Rule: "104.3e", SourceCard: srcSourceName}
+	s.LossDetail = &judge.LossReason{Category: judge.LossCategoryEffect, Rule: "104.3e", SourceCard: srcSourceName}
 	s.LostByEffect = true
 	s.Lost = true
 	gs.LogEvent(Event{

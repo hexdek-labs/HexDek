@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
-	"github.com/hexdek/hexdek/internal/validation"
+	"github.com/hexdek/hexdek/internal/judge"
 )
 
 // emit writes the canonical per-card log entry. Mirrors Python's
@@ -87,8 +87,8 @@ func emitWin(gs *gameengine.GameState, winnerSeat int, slug, cardName, reason st
 			// CR §104.2a: a player wins -> each opponent loses. Stamp the
 			// structured cause beside the freeform string (step 2.5
 			// dual-write); the winning card is the source.
-			s.LossDetail = &validation.LossReason{
-				Category:   validation.LossCategoryEffect,
+			s.LossDetail = &judge.LossReason{
+				Category:   judge.LossCategoryEffect,
 				Rule:       "104.2a",
 				SourceCard: cardName,
 			}

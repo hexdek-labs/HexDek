@@ -4,8 +4,8 @@ import (
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
+	"github.com/hexdek/hexdek/internal/judge"
 	"github.com/hexdek/hexdek/internal/seedcontract"
-	"github.com/hexdek/hexdek/internal/validation"
 )
 
 // ClassifyKill determines how the winner won the game: the winner won by
@@ -91,15 +91,15 @@ func finalEliminatedOpponent(gs *gameengine.GameState, winner int) *gameengine.S
 func classifyLossOfSeat(seat *gameengine.Seat) string {
 	if d := seat.LossDetail; d != nil {
 		switch d.Category {
-		case validation.LossCategoryPoison:
+		case judge.LossCategoryPoison:
 			return "poison"
-		case validation.LossCategoryCommanderDamage:
+		case judge.LossCategoryCommanderDamage:
 			return "commander"
-		case validation.LossCategoryEmptyLibrary:
+		case judge.LossCategoryEmptyLibrary:
 			return "mill"
-		case validation.LossCategoryConcession:
+		case judge.LossCategoryConcession:
 			return "concession"
-		case validation.LossCategoryLoopDraw:
+		case judge.LossCategoryLoopDraw:
 			return "draw"
 			// LossCategoryLife and LossCategoryEffect fall through: the
 			// freeform reason may carry a finer signal ("infinite
@@ -153,8 +153,8 @@ func ClassifyKillWithMaxTurns(gs *gameengine.GameState, winner, maxTurns int) st
 // from the lethal commander's owner. KillerSeat is -1 when final game
 // state alone cannot attribute one (the analytics event walk remains
 // the per-victim authority; see analytics.ExtractKillRecords).
-func ClassifyKillFinal(gs *gameengine.GameState, winner, maxTurns int) validation.KillClassification {
-	out := validation.KillClassification{VictimSeat: -1, KillerSeat: -1}
+func ClassifyKillFinal(gs *gameengine.GameState, winner, maxTurns int) judge.KillClassification {
+	out := judge.KillClassification{VictimSeat: -1, KillerSeat: -1}
 	if gs != nil && maxTurns > 0 && gs.Turn >= maxTurns {
 		// Route the turn-cap shape through THE canonical mapper so the
 		// "timeout" spelling has exactly one source of truth.
@@ -178,7 +178,7 @@ func ClassifyKillFinal(gs *gameengine.GameState, winner, maxTurns int) validatio
 		out.SourceCard = d.SourceCard
 		// Commander-damage kills name the lethal commander; its owner
 		// is the killer.
-		if d.Category == validation.LossCategoryCommanderDamage && d.SourceCard != "" {
+		if d.Category == judge.LossCategoryCommanderDamage && d.SourceCard != "" {
 			for i, s := range gs.Seats {
 				if s == nil || i == victim.Idx {
 					continue

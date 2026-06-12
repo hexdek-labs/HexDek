@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
+	"github.com/hexdek/hexdek/internal/judge"
 	"github.com/hexdek/hexdek/internal/seedcontract"
-	"github.com/hexdek/hexdek/internal/validation"
 )
 
 // KillRecord captures a single elimination event: who killed whom,
@@ -172,7 +172,7 @@ func inferKiller(events []gameengine.Event, victimSeat int, lossReason, lossCate
 	killerSeat = -1
 
 	// Commander damage losses encode the killer's commander name.
-	if lossCategory == validation.LossCategoryCommanderDamage ||
+	if lossCategory == judge.LossCategoryCommanderDamage ||
 		(lossCategory == "" && strings.Contains(lossReason, "21+ commander damage from")) {
 		method = "commander_damage"
 		for j := len(events) - 1; j >= 0; j-- {
@@ -188,7 +188,7 @@ func inferKiller(events []gameengine.Event, victimSeat int, lossReason, lossCate
 	}
 
 	// Poison counter loss.
-	if lossCategory == validation.LossCategoryPoison ||
+	if lossCategory == judge.LossCategoryPoison ||
 		(lossCategory == "" && strings.Contains(lossReason, "poison")) {
 		method = "poison"
 		for j := len(events) - 1; j >= 0; j-- {
@@ -204,7 +204,7 @@ func inferKiller(events []gameengine.Event, victimSeat int, lossReason, lossCate
 	}
 
 	// Life total 0 or less — find the damage source that crossed 0.
-	if lossCategory == validation.LossCategoryLife ||
+	if lossCategory == judge.LossCategoryLife ||
 		(lossCategory == "" && (strings.Contains(lossReason, "life total 0") || lossReason == "")) {
 		runningLife := 0
 		for j := len(events) - 1; j >= 0; j-- {
@@ -244,12 +244,12 @@ func inferKiller(events []gameengine.Event, victimSeat int, lossReason, lossCate
 	}
 
 	// Concession / pact failure / other — attribute to no one specific.
-	if lossCategory == validation.LossCategoryConcession ||
+	if lossCategory == judge.LossCategoryConcession ||
 		(lossCategory == "" && strings.Contains(lossReason, "concession")) {
 		method = "concession"
 		return -1, method, ""
 	}
-	if lossCategory == validation.LossCategoryEmptyLibrary ||
+	if lossCategory == judge.LossCategoryEmptyLibrary ||
 		(lossCategory == "" && strings.Contains(lossReason, "drew from empty library")) {
 		method = "decking"
 		// Try to find who milled them.

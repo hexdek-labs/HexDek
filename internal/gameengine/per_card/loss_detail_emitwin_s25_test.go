@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
-	"github.com/hexdek/hexdek/internal/validation"
+	"github.com/hexdek/hexdek/internal/judge"
 )
 
 // loss_detail_emitwin_s25_test.go — consolidation step 2.5: the emitWin
@@ -31,7 +31,7 @@ func TestLossDetail_EmitWinStampsOpponents(t *testing.T) {
 		if s.LossDetail == nil {
 			t.Fatalf("seat %d LossDetail not stamped (LossReason=%q)", i, s.LossReason)
 		}
-		if s.LossDetail.Category != validation.LossCategoryEffect ||
+		if s.LossDetail.Category != judge.LossCategoryEffect ||
 			s.LossDetail.Rule != "104.2a" ||
 			s.LossDetail.SourceCard != "Thassa's Oracle" {
 			t.Fatalf("seat %d LossDetail = %+v, want effect/104.2a/Thassa's Oracle", i, *s.LossDetail)

@@ -3,7 +3,7 @@ package gameengine
 import (
 	"testing"
 
-	"github.com/hexdek/hexdek/internal/validation"
+	"github.com/hexdek/hexdek/internal/judge"
 )
 
 // Consolidation step 2 — every engine loss writer dual-writes the
@@ -13,7 +13,7 @@ import (
 
 func TestMarkSeatLost_DualWritesDetail(t *testing.T) {
 	gs := NewGameState(2, nil, nil)
-	d := &validation.LossReason{Category: validation.LossCategoryPoison, Rule: "704.5c"}
+	d := &judge.LossReason{Category: judge.LossCategoryPoison, Rule: "704.5c"}
 	markSeatLost(gs.Seats[0], "ten or more poison counters (CR 704.5c)", d)
 
 	s := gs.Seats[0]
@@ -34,7 +34,7 @@ func TestSBA_LifeZero_StampsLossDetail(t *testing.T) {
 	if !s.Lost {
 		t.Fatal("seat with negative life must lose (704.5a)")
 	}
-	if s.LossDetail == nil || s.LossDetail.Category != validation.LossCategoryLife || s.LossDetail.Rule != "704.5a" {
+	if s.LossDetail == nil || s.LossDetail.Category != judge.LossCategoryLife || s.LossDetail.Rule != "704.5a" {
 		t.Fatalf("704.5a writer must stamp LossDetail{life,704.5a}; got %+v", s.LossDetail)
 	}
 }
@@ -48,7 +48,7 @@ func TestSBA_Poison_StampsLossDetail(t *testing.T) {
 	if !s.Lost {
 		t.Fatal("seat with 10 poison must lose (704.5c)")
 	}
-	if s.LossDetail == nil || s.LossDetail.Category != validation.LossCategoryPoison || s.LossDetail.Rule != "704.5c" {
+	if s.LossDetail == nil || s.LossDetail.Category != judge.LossCategoryPoison || s.LossDetail.Rule != "704.5c" {
 		t.Fatalf("704.5c writer must stamp LossDetail{poison,704.5c}; got %+v", s.LossDetail)
 	}
 }
@@ -62,7 +62,7 @@ func TestSBA_EmptyLibraryDraw_StampsLossDetail(t *testing.T) {
 	if !s.Lost {
 		t.Fatal("seat that drew from empty library must lose (704.5b)")
 	}
-	if s.LossDetail == nil || s.LossDetail.Category != validation.LossCategoryEmptyLibrary || s.LossDetail.Rule != "704.5b" {
+	if s.LossDetail == nil || s.LossDetail.Category != judge.LossCategoryEmptyLibrary || s.LossDetail.Rule != "704.5b" {
 		t.Fatalf("704.5b writer must stamp LossDetail{empty_library,704.5b}; got %+v", s.LossDetail)
 	}
 }
@@ -75,7 +75,7 @@ func TestConcedeGame_StampsLossDetail(t *testing.T) {
 	if !s.Lost || s.LossReason != "concession" {
 		t.Fatalf("concession freeform path changed: Lost=%v reason=%q", s.Lost, s.LossReason)
 	}
-	if s.LossDetail == nil || s.LossDetail.Category != validation.LossCategoryConcession || s.LossDetail.Rule != "104.3a" {
+	if s.LossDetail == nil || s.LossDetail.Category != judge.LossCategoryConcession || s.LossDetail.Rule != "104.3a" {
 		t.Fatalf("ConcedeGame must stamp LossDetail{concession,104.3a}; got %+v", s.LossDetail)
 	}
 }
@@ -87,8 +87,8 @@ func TestSeatEliminated_EventCarriesLossCategory(t *testing.T) {
 	gs.EventPolicy = EventLogFull
 	gs.Seats[0].Lost = true
 	gs.Seats[0].LossReason = "21+ commander damage from Edgar Markov (CR 704.6c)"
-	gs.Seats[0].LossDetail = &validation.LossReason{
-		Category:   validation.LossCategoryCommanderDamage,
+	gs.Seats[0].LossDetail = &judge.LossReason{
+		Category:   judge.LossCategoryCommanderDamage,
 		Rule:       "704.6c",
 		SourceCard: "Edgar Markov",
 	}
@@ -98,8 +98,8 @@ func TestSeatEliminated_EventCarriesLossCategory(t *testing.T) {
 		if ev.Kind != "seat_eliminated" {
 			continue
 		}
-		if got, _ := ev.Details["loss_category"].(string); got != validation.LossCategoryCommanderDamage {
-			t.Errorf("loss_category = %q, want %q", got, validation.LossCategoryCommanderDamage)
+		if got, _ := ev.Details["loss_category"].(string); got != judge.LossCategoryCommanderDamage {
+			t.Errorf("loss_category = %q, want %q", got, judge.LossCategoryCommanderDamage)
 		}
 		if got, _ := ev.Details["loss_source_card"].(string); got != "Edgar Markov" {
 			t.Errorf("loss_source_card = %q, want Edgar Markov", got)

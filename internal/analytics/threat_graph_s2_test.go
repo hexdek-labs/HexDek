@@ -4,8 +4,8 @@ import (
 	"testing"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
+	"github.com/hexdek/hexdek/internal/judge"
 	"github.com/hexdek/hexdek/internal/seedcontract"
-	"github.com/hexdek/hexdek/internal/validation"
 )
 
 // Consolidation step 2 — analytics consumes the structured loss
@@ -25,7 +25,7 @@ func TestExtractKillRecords_StructuredCategory(t *testing.T) {
 		{Kind: "seat_eliminated", Seat: 1,
 			Details: map[string]interface{}{
 				"reason":           "eliminated (CR 704.6c)", // unparseable by the legacy substrings
-				"loss_category":    validation.LossCategoryCommanderDamage,
+				"loss_category":    judge.LossCategoryCommanderDamage,
 				"loss_source_card": "Alesha, Who Smiles at Death",
 				"turn":             9,
 			}},
@@ -56,7 +56,7 @@ func TestExtractKillRecords_StructuredConcession(t *testing.T) {
 		{Kind: "seat_eliminated", Seat: 1,
 			Details: map[string]interface{}{
 				"reason":        "player left",
-				"loss_category": validation.LossCategoryConcession,
+				"loss_category": judge.LossCategoryConcession,
 			}},
 	}
 	if records := ExtractKillRecords(events, 2, commanders, 0, ""); len(records) != 0 {

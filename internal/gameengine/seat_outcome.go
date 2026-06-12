@@ -2,7 +2,7 @@ package gameengine
 
 import (
 	"fmt"
-	"github.com/hexdek/hexdek/internal/validation"
+	"github.com/hexdek/hexdek/internal/judge"
 	"strings"
 )
 
@@ -59,11 +59,11 @@ func (v SeatOutcomeViolation) String() string {
 
 // Canonical maps the finding onto the canonical vocabulary
 // (consolidation step 4) for the unified LogViolation router.
-func (v SeatOutcomeViolation) Canonical() validation.ValidationViolation {
-	return validation.ValidationViolation{
-		Surface:  validation.SurfaceSeatOutcome,
+func (v SeatOutcomeViolation) Canonical() judge.ValidationViolation {
+	return judge.ValidationViolation{
+		Surface:  judge.SurfaceSeatOutcome,
 		Name:     v.Kind,
-		Severity: validation.SeverityCritical,
+		Severity: judge.SeverityCritical,
 		Message:  v.Detail,
 		Seat:     v.Seat,
 		Context: map[string]interface{}{
@@ -103,7 +103,7 @@ func (c *SeatOutcomeChecker) add(gs *GameState, v SeatOutcomeViolation) {
 		c.Violations = append(c.Violations, v)
 	}
 	// Consolidation step 4: route through the unified sink at origin.
-	validation.LogViolation(v.Canonical())
+	judge.LogViolation(v.Canonical())
 }
 
 // ---------------------------------------------------------------------------

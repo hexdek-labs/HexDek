@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
-	"github.com/hexdek/hexdek/internal/validation"
+	"github.com/hexdek/hexdek/internal/judge"
 )
 
 // r63 — zone_accounting false-positive flood fix.
@@ -157,8 +157,8 @@ func TestFeynman_StrictCensus_HeuristicSuppressedWhenAuthoritative(t *testing.T)
 // Feynman surface reports through the unified router with the feynman
 // surface tag.
 func TestCheckGame_RoutesThroughLogViolation(t *testing.T) {
-	var got []validation.ValidationViolation
-	done := validation.RegisterSink(func(v validation.ValidationViolation) {
+	var got []judge.ValidationViolation
+	done := judge.RegisterSink(func(v judge.ValidationViolation) {
 		got = append(got, v)
 	})
 	defer done()

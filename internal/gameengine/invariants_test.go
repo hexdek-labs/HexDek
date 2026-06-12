@@ -9,91 +9,48 @@ import (
 // ZoneConservation
 // ---------------------------------------------------------------------------
 
-func TestZoneConservation_BaselineRecorded(t *testing.T) {
-	gs := NewGameState(2, rand.New(rand.NewSource(1)), nil)
-	// Add some cards to zones.
-	gs.Seats[0].Library = append(gs.Seats[0].Library, &Card{Name: "Forest"})
-	gs.Seats[0].Hand = append(gs.Seats[0].Hand, &Card{Name: "Island"})
-	gs.Seats[1].Graveyard = append(gs.Seats[1].Graveyard, &Card{Name: "Mountain"})
+// The five count-based ZoneConservation tests that used to live here
+// pinned the legacy count heuristic (baseline flag + delta tolerance),
+// which the r63 Judge CONSERVATION fold DELETED: 499/500 of count-shape
+// warnings were strict-census-proven false positives. The replacements
+// below pin the InstanceID census paths, and the strict-census prod
+// behavior is pinned in hat/feynman_zone_strict_r63_test.go.
 
-	err := checkZoneConservation(gs)
-	if err != nil {
-		t.Fatalf("first call should establish baseline, got error: %v", err)
-	}
-	// Baseline should be recorded.
-	if gs.Flags["_zone_conservation_total"] != 3 {
-		t.Fatalf("expected baseline 3, got %d", gs.Flags["_zone_conservation_total"])
-	}
-}
-
-func TestZoneConservation_Pass(t *testing.T) {
+// TestZoneConservation_UnmintedIsNoop — without minted InstanceIDs
+// (struct-literal fixtures) the conservation check has nothing to say:
+// no baseline flag, no error, regardless of count imbalance.
+func TestZoneConservation_UnmintedIsNoop(t *testing.T) {
 	gs := NewGameState(2, rand.New(rand.NewSource(1)), nil)
 	gs.Seats[0].Library = append(gs.Seats[0].Library, &Card{Name: "Forest"})
 	gs.Seats[0].Hand = append(gs.Seats[0].Hand, &Card{Name: "Island"})
 
-	// First call: establish baseline.
-	checkZoneConservation(gs)
-
-	// Move card from library to hand (legal zone change).
-	card := gs.Seats[0].Library[0]
-	gs.Seats[0].Library = gs.Seats[0].Library[1:]
-	gs.Seats[0].Hand = append(gs.Seats[0].Hand, card)
-
-	err := checkZoneConservation(gs)
-	if err != nil {
-		t.Fatalf("zone change should preserve total, got: %v", err)
+	if err := checkZoneConservation(gs); err != nil {
+		t.Fatalf("unminted state must be a conservation no-op, got: %v", err)
+	}
+	if _, ok := gs.Flags["_zone_conservation_total"]; ok {
+		t.Fatal("legacy count baseline flag must no longer be written")
+	}
+	gs.Seats[0].Library = gs.Seats[0].Library[:0] // count imbalance, no identity
+	if err := checkZoneConservation(gs); err != nil {
+		t.Fatalf("unminted count imbalance must not warn post-fold, got: %v", err)
 	}
 }
 
-func TestZoneConservation_ViolationNegativeDelta(t *testing.T) {
+// TestZoneConservation_CensusDisappearance — a minted card removed from
+// every zone is a real disappearance under the strict census.
+func TestZoneConservation_CensusDisappearance(t *testing.T) {
 	gs := NewGameState(2, rand.New(rand.NewSource(1)), nil)
-	gs.Seats[0].Library = append(gs.Seats[0].Library, &Card{Name: "Forest"})
-	gs.Seats[0].Hand = append(gs.Seats[0].Hand, &Card{Name: "Island"})
+	c := &Card{Name: "Forest", Owner: 0}
+	MintOGInstanceID(gs, c)
+	gs.Seats[0].Library = append(gs.Seats[0].Library, c)
 
-	// First call: establish baseline (total=2).
-	checkZoneConservation(gs)
-
-	// Remove a card without moving it anywhere (bug simulation).
-	gs.Seats[0].Library = gs.Seats[0].Library[:0]
-
-	err := checkZoneConservation(gs)
+	if err, authoritative := ZoneConservationStrict(gs); err != nil || !authoritative {
+		t.Fatalf("intact minted state must pass strict census (err=%v auth=%v)", err, authoritative)
+	}
+	gs.Seats[0].Library = gs.Seats[0].Library[:0] // vanish without ceasing
+	err, _ := ZoneConservationStrict(gs)
 	if err == nil {
-		t.Fatal("should detect missing card (negative delta)")
-	}
-}
-
-func TestZoneConservation_SmallPositiveDelta_OK(t *testing.T) {
-	gs := NewGameState(2, rand.New(rand.NewSource(1)), nil)
-	gs.Seats[0].Library = append(gs.Seats[0].Library, &Card{Name: "Forest"})
-
-	// Establish baseline (total=1).
-	checkZoneConservation(gs)
-
-	// Add a card (simulate copy effect creating a real card).
-	gs.Seats[0].Hand = append(gs.Seats[0].Hand, &Card{Name: "Copy of Forest"})
-
-	err := checkZoneConservation(gs)
-	if err != nil {
-		t.Fatalf("small positive delta from copy effects should be tolerated, got: %v", err)
-	}
-}
-
-func TestZoneConservation_TokensIgnored(t *testing.T) {
-	gs := NewGameState(2, rand.New(rand.NewSource(1)), nil)
-	gs.Seats[0].Library = append(gs.Seats[0].Library, &Card{Name: "Forest"})
-
-	checkZoneConservation(gs) // baseline = 1
-
-	// Create a token — should not affect conservation count.
-	token := &Permanent{
-		Card:       &Card{Name: "Treasure Token", Types: []string{"token", "artifact"}},
-		Controller: 0,
-	}
-	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, token)
-
-	err := checkZoneConservation(gs)
-	if err != nil {
-		t.Fatalf("tokens should be ignored, got: %v", err)
+		t.Fatal("minted-not-ceased card absent from every zone must fail the strict census")
 	}
 }
 

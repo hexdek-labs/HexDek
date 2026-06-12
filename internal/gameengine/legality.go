@@ -50,7 +50,7 @@ import (
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
-	"github.com/hexdek/hexdek/internal/validation"
+	"github.com/hexdek/hexdek/internal/judge"
 )
 
 // LegalityViolation is one observed-illegal action, with enough context
@@ -73,11 +73,11 @@ func (v LegalityViolation) String() string {
 // canonical vocabulary (consolidation step 4). The struct itself stays:
 // it is the observation record (seed/turn/action are load-bearing for
 // repro), and the canonical view is what flows through LogViolation.
-func (v LegalityViolation) Canonical() validation.ValidationViolation {
-	return validation.ValidationViolation{
-		Surface:  validation.SurfaceLegality,
+func (v LegalityViolation) Canonical() judge.ValidationViolation {
+	return judge.ValidationViolation{
+		Surface:  judge.SurfaceLegality,
 		Name:     v.Rule,
-		Severity: validation.SeverityCritical,
+		Severity: judge.SeverityCritical,
 		Message:  v.Action + ": " + v.Detail,
 		Seat:     v.Seat,
 		Context: map[string]interface{}{
@@ -265,7 +265,7 @@ func (v *LegalityValidator) record(gs *GameState, viol LegalityViolation) {
 	// Consolidation step 4: every legality violation also flows through
 	// the unified router at record time (origin) — drains/aggregators
 	// (Loki) must NOT re-log.
-	validation.LogViolation(viol.Canonical())
+	judge.LogViolation(viol.Canonical())
 	if gs != nil {
 		gs.LogEvent(Event{
 			Kind:   "legality_violation",
