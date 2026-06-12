@@ -142,7 +142,7 @@ func pickTargetIntent(gs *GameState, src *Permanent, f gameast.Filter, harmful b
 	}
 
 	// Permanent/creature/card filters on the battlefield.
-	return pickPermanentTarget(gs, f, srcSeat, src)
+	return pickPermanentTargetIntent(gs, f, srcSeat, src, harmful)
 }
 
 // isOverloadExpandable returns true if a Filter should fan out from
@@ -270,6 +270,10 @@ func pickPlayerTarget(gs *GameState, f gameast.Filter, srcSeat int) []Target {
 
 // pickPermanentTarget selects a single battlefield target.
 func pickPermanentTarget(gs *GameState, f gameast.Filter, srcSeat int, src *Permanent) []Target {
+	return pickPermanentTargetIntent(gs, f, srcSeat, src, false)
+}
+
+func pickPermanentTargetIntent(gs *GameState, f gameast.Filter, srcSeat int, src *Permanent, harmful bool) []Target {
 	// "any_target" / "any target" is the Lightning-Bolt classic — can be any
 	// creature, player, or planeswalker. MVP picks an opponent seat.
 	// Shape detection lives in isAnyTargetShape — pre-r63 the parser's
@@ -288,7 +292,7 @@ func pickPermanentTarget(gs *GameState, f gameast.Filter, srcSeat int, src *Perm
 	if len(legal) == 0 {
 		return nil
 	}
-	best := policyPickSinglePermanent(legal, srcSeat)
+	best := policyPickSinglePermanentIntent(legal, srcSeat, harmful)
 	result := []Target{best}
 	if f.Targeted && best.Permanent != nil && best.Permanent.Card != nil {
 		FireCardTrigger(gs, "targeted", map[string]interface{}{
@@ -348,10 +352,14 @@ func legalSinglePermanentTargets(gs *GameState, f gameast.Filter, srcSeat int, s
 // toughness (= easier to save / wants a buff). First-best-stable to preserve
 // the pre-r62 pick order.
 func policyPickSinglePermanent(legal []Target, srcSeat int) Target {
+	return policyPickSinglePermanentIntent(legal, srcSeat, false)
+}
+
+func policyPickSinglePermanentIntent(legal []Target, srcSeat int, harmful bool) Target {
 	best := legal[0]
-	bestScore := singlePermanentScore(best, srcSeat)
+	bestScore := singlePermanentScoreIntent(best, srcSeat, harmful)
 	for _, t := range legal[1:] {
-		if sc := singlePermanentScore(t, srcSeat); sc > bestScore {
+		if sc := singlePermanentScoreIntent(t, srcSeat, harmful); sc > bestScore {
 			best = t
 			bestScore = sc
 		}
@@ -360,11 +368,26 @@ func policyPickSinglePermanent(legal []Target, srcSeat int) Target {
 }
 
 func singlePermanentScore(t Target, srcSeat int) int {
+	return singlePermanentScoreIntent(t, srcSeat, false)
+}
+
+// singlePermanentScoreIntent — r63 OUTCOME-dimension finding #2: with
+// neutral intent, own permanents score -toughness and opponents score
+// power, so 0/0 categories (LANDS, artifacts, enchantments) TIE at 0
+// and candidate order picks the controller's OWN permanent first —
+// "destroy target land" destroyed the caster's own land in 74 corpus
+// shapes (Avalanche Riders, Ark of Blight, Army Ants...). Harmful
+// intent puts every own-seat candidate strictly below every opponent
+// candidate.
+func singlePermanentScoreIntent(t Target, srcSeat int, harmful bool) int {
 	p := t.Permanent
 	if p == nil {
 		return -1 << 30
 	}
 	if p.Controller == srcSeat {
+		if harmful {
+			return -1000 - p.Toughness()
+		}
 		return -p.Toughness()
 	}
 	return p.Power()

@@ -43,6 +43,10 @@ type Delta struct {
 	BattlefieldBySeat map[int]int // permanent COUNT change per seat
 	MarkedDamage      int         // total marked damage added across all permanents
 	CountersByKind    map[string]int
+	// r63 part-2 widened dimensions:
+	Tapped    int // change in total tapped-permanent count
+	PowerSum  int // change in summed effective power across battlefields
+	ToughSum  int // change in summed effective toughness
 }
 
 func NewDelta() *Delta {
@@ -80,6 +84,9 @@ func (d *Delta) Equal(o *Delta) bool {
 	if d.MarkedDamage != o.MarkedDamage {
 		return false
 	}
+	if d.Tapped != o.Tapped || d.PowerSum != o.PowerSum || d.ToughSum != o.ToughSum {
+		return false
+	}
 	for k, v := range d.CountersByKind {
 		if o.CountersByKind[k] != v {
 			return false
@@ -94,10 +101,16 @@ func (d *Delta) Equal(o *Delta) bool {
 }
 
 func (d *Delta) String() string {
-	return fmt.Sprintf("life=%v hand=%v lib=%v gy=%v exile=%v bf=%v dmg=%d counters=%v",
+	return fmt.Sprintf("life=%v hand=%v lib=%v gy=%v exile=%v bf=%v dmg=%d counters=%v tapped=%d pow=%d tough=%d",
 		d.LifeBySeat, d.HandBySeat, d.LibraryBySeat, d.GraveyardBySeat,
-		d.ExileBySeat, d.BattlefieldBySeat, d.MarkedDamage, d.CountersByKind)
+		d.ExileBySeat, d.BattlefieldBySeat, d.MarkedDamage, d.CountersByKind,
+		d.Tapped, d.PowerSum, d.ToughSum)
 }
+
+// scaffoldCreaturePT is the printed power=toughness of every creature
+// the harness places (4/4 keeps phase-1 damage sublethal-observable and
+// makes removal P/T deltas deterministic).
+const scaffoldCreaturePT = 4
 
 // BoardSpec describes the synthetic board the harness builds, so the
 // interpreter can derive candidate existence without consulting engine
@@ -113,6 +126,11 @@ type BoardSpec struct {
 	OwnCreatures int // bystanders beside the source
 	SrcIsCreature bool
 	LibrarySize  int // per seat
+	// r63 part-2 board additions:
+	OppTappedArtifacts int // tapped artifacts on the opponent (untap candidates)
+	OwnTappedLands     int // tapped lands on the controller (untap candidates)
+	HandSize           int // cards in each seat's hand (discard candidates)
+	XValue             int // pinned value for {X} amounts (gs.Flags["x"])
 }
 
 // Expect computes the expected aggregate delta for `eff` resolved by
@@ -138,7 +156,7 @@ func accumulate(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 		return true
 
 	case *gameast.Draw:
-		n, ok := e.Count.IntVal()
+		n, ok := amountVal(spec, e.Count)
 		if !ok || n <= 0 || n > spec.LibrarySize {
 			return false
 		}
@@ -150,7 +168,7 @@ func accumulate(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 		return true
 
 	case *gameast.GainLife:
-		n, ok := e.Amount.IntVal()
+		n, ok := amountVal(spec, e.Amount)
 		if !ok || n <= 0 || !filterIsSelfPlayer(e.Target) {
 			return false
 		}
@@ -158,7 +176,7 @@ func accumulate(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 		return true
 
 	case *gameast.LoseLife:
-		n, ok := e.Amount.IntVal()
+		n, ok := amountVal(spec, e.Amount)
 		if !ok || n <= 0 {
 			return false
 		}
@@ -187,7 +205,7 @@ func accumulate(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 		return false
 
 	case *gameast.Damage:
-		n, ok := e.Amount.IntVal()
+		n, ok := amountVal(spec, e.Amount)
 		if !ok || n <= 0 || e.Divided {
 			return false
 		}
@@ -234,21 +252,39 @@ func accumulate(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 		return false
 
 	case *gameast.CreateToken:
-		n, ok := e.Count.IntVal()
+		n, ok := amountVal(spec, e.Count)
 		if !ok || n <= 0 || e.IsCopyOf != nil {
 			return false
 		}
 		d.BattlefieldBySeat[spec.Controller] += n
+		if e.Tapped {
+			d.Tapped += n
+		}
+		// Effective-P/T side effect: creature tokens contribute their
+		// printed body to the board P/T sums.
+		if e.PT != nil {
+			d.PowerSum += e.PT[0] * n
+			d.ToughSum += e.PT[1] * n
+		} else {
+			for _, t := range e.Types {
+				if t == "creature" {
+					return false // creature token with unknown body
+				}
+			}
+		}
 		return true
 
 	case *gameast.Destroy:
-		exp, ok := singleRemovalExpectation(spec, e.Target)
+		k, tappedHit, ok := removalCount(spec, e.Target)
 		if !ok {
 			return false
 		}
-		if exp {
-			d.BattlefieldBySeat[spec.Opponent]--
-			d.GraveyardBySeat[spec.Opponent]++
+		d.BattlefieldBySeat[spec.Opponent] -= k
+		d.GraveyardBySeat[spec.Opponent] += k
+		d.Tapped -= tappedHit
+		if normBase(e.Target.Base) == "creature" {
+			d.PowerSum -= scaffoldCreaturePT * k
+			d.ToughSum -= scaffoldCreaturePT * k
 		}
 		return true
 
@@ -256,13 +292,16 @@ func accumulate(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 		if e.Until != "" {
 			return false // linked-return shapes: phase 2
 		}
-		exp, ok := singleRemovalExpectation(spec, e.Target)
+		k, tappedHit, ok := removalCount(spec, e.Target)
 		if !ok {
 			return false
 		}
-		if exp {
-			d.BattlefieldBySeat[spec.Opponent]--
-			d.ExileBySeat[spec.Opponent]++
+		d.BattlefieldBySeat[spec.Opponent] -= k
+		d.ExileBySeat[spec.Opponent] += k
+		d.Tapped -= tappedHit
+		if normBase(e.Target.Base) == "creature" {
+			d.PowerSum -= scaffoldCreaturePT * k
+			d.ToughSum -= scaffoldCreaturePT * k
 		}
 		return true
 
@@ -270,7 +309,7 @@ func accumulate(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 		if e.Op != "put" && e.Op != "" {
 			return false
 		}
-		n, ok := e.Count.IntVal()
+		n, ok := amountVal(spec, e.Count)
 		if !ok || n <= 0 {
 			return false
 		}
@@ -278,9 +317,20 @@ func accumulate(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 		if kind == "" {
 			kind = "+1/+1"
 		}
+		ptShift := 0
+		switch kind {
+		case "+1/+1":
+			ptShift = n
+		case "-1/-1":
+			ptShift = -n
+		}
 		switch normBase(e.Target.Base) {
 		case "self", "it", "this", "":
 			d.CountersByKind[kind] += n
+			if spec.SrcIsCreature {
+				d.PowerSum += ptShift
+				d.ToughSum += ptShift
+			}
 			return true
 		case "creature":
 			if e.Target.Quantifier == "each" || e.Target.Quantifier == "all" {
@@ -290,6 +340,8 @@ func accumulate(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 				return false
 			}
 			d.CountersByKind[kind] += n
+			d.PowerSum += ptShift
+			d.ToughSum += ptShift
 			return true
 		}
 		return false
@@ -315,13 +367,16 @@ func singleRemovalExpectation(spec BoardSpec, f gameast.Filter) (removesOne bool
 	case "creature":
 		candidates = spec.OppCreatures
 	case "artifact":
-		candidates = spec.OppArtifacts
+		candidates = spec.OppArtifacts + spec.OppTappedArtifacts
 	case "enchantment":
 		candidates = spec.OppEnchants
 	case "land":
 		candidates = spec.OppLands
 	case "permanent":
-		candidates = spec.OppCreatures + spec.OppArtifacts + spec.OppEnchants + spec.OppLands
+		// The policy may pick a creature (body leaves the P/T sums) or a
+		// noncreature (no P/T change) — set-valued in principle; out of
+		// scope in the single-delta accumulator.
+		return false, false
 	default:
 		return false, false
 	}
@@ -347,4 +402,51 @@ func normBase(b string) string {
 		b = b[1:]
 	}
 	return b
+}
+
+
+// removalCount generalizes singleRemovalExpectation to up_to_n picks:
+// the engine removes min(count, opponent candidates) — harmful up-to
+// never crosses to own permanents post-#1052. tappedHit counts how many
+// removed permanents were tapped (the artifact pool holds one tapped
+// relic that goes when the untapped pool runs out), so the Tapped
+// dimension stays balanced.
+func removalCount(spec BoardSpec, f gameast.Filter) (k int, tappedHit int, ok bool) {
+	removes, sok := singleRemovalExpectation(spec, f)
+	if !sok {
+		return 0, 0, false
+	}
+	if !removes {
+		return 0, 0, true
+	}
+	want := 1
+	if f.Quantifier == "up_to_n" || f.Quantifier == "n" {
+		if f.Count != nil {
+			if v, vok := f.Count.IntVal(); vok && v > 0 {
+				want = v
+			}
+		}
+	}
+	var pool, tappedPool int
+	switch normBase(f.Base) {
+	case "creature":
+		pool = spec.OppCreatures
+	case "artifact":
+		pool = spec.OppArtifacts + spec.OppTappedArtifacts
+		tappedPool = spec.OppTappedArtifacts
+	case "enchantment":
+		pool = spec.OppEnchants
+	case "land":
+		pool = spec.OppLands
+	default:
+		return 0, 0, false
+	}
+	if want > pool {
+		want = pool
+	}
+	untapped := pool - tappedPool
+	if want > untapped {
+		tappedHit = want - untapped
+	}
+	return want, tappedHit, true
 }

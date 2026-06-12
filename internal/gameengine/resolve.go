@@ -1593,6 +1593,11 @@ func exileStackSpell(gs *GameState, src *Permanent, filter gameast.Filter) bool 
 
 func resolveTap(gs *GameState, src *Permanent, e *gameast.TapEffect) {
 	targets := PickTarget(gs, src, e.Target)
+	// r63 OUTCOME-dimension finding #3: the generic pick is blind to
+	// tap-state, so "tap target land" could land on an ALREADY-TAPPED
+	// permanent and no-op (7 corpus shapes: Chandra's Revolution,
+	// Floodbringer, Mana Leech...). Prefer an UNTAPPED candidate.
+	targets = preferTapState(gs, src, e.Target, targets, false)
 	// Fallback: if no target found, tap the source permanent.
 	if len(targets) == 0 && src != nil {
 		targets = []Target{{Kind: TargetKindPermanent, Permanent: src, Seat: src.Controller}}
@@ -1618,12 +1623,30 @@ func resolveTap(gs *GameState, src *Permanent, e *gameast.TapEffect) {
 
 func resolveUntap(gs *GameState, src *Permanent, e *gameast.UntapEffect) {
 	targets := PickTarget(gs, src, e.Target)
+	// r63 OUTCOME-dimension finding #3 (mirror): untap effects landed on
+	// already-UNTAPPED permanents and no-oped (22 corpus shapes: Aphetto
+	// Alchemist, Cat-Owl, Burst of Energy...). Prefer a TAPPED candidate.
+	targets = preferTapState(gs, src, e.Target, targets, true)
 	// Fallback: if no target found, untap the source permanent.
 	if len(targets) == 0 && src != nil {
 		targets = []Target{{Kind: TargetKindPermanent, Permanent: src, Seat: src.Controller}}
 	}
+	srcSeat := -1
+	if src != nil {
+		srcSeat = src.Controller
+	}
 	for _, t := range targets {
 		if t.Kind == TargetKindPermanent && t.Permanent != nil {
+			// Side-correct greedy (r63 OUTCOME finding #3, multi-pick
+			// arm — Tezzeret the Seeker +1): never spend an untap on an
+			// OPPONENT's permanent unless the filter explicitly demands
+			// it (opponent_controls). The multi-target pick ranks by raw
+			// power and happily handed out opponent untaps.
+			mandatoryFanOut := e.Target.Quantifier == "each" || e.Target.Quantifier == "all"
+			if t.Permanent.Controller != srcSeat && !e.Target.OpponentControls &&
+				!mandatoryFanOut && srcSeat >= 0 {
+				continue
+			}
 			// Route through canonical UntapPermanent so the §702.124
 			// Inspired trigger fires on tapped→untapped transition, and
 			// §122.4 stun counters are consumed instead of untapping.
@@ -1634,6 +1657,42 @@ func resolveUntap(gs *GameState, src *Permanent, e *gameast.UntapEffect) {
 			UntapPermanent(gs, t.Permanent, "untap_target_effect")
 		}
 	}
+}
+
+// preferTapState swaps a tap/untap pick for a same-filter candidate in
+// the USEFUL state (untapped for tap effects, tapped for untap effects)
+// when the policy's pick would no-op. Single-target picks only; fan-out
+// and multi-picks pass through untouched.
+func preferTapState(gs *GameState, src *Permanent, f gameast.Filter, targets []Target, wantTapped bool) []Target {
+	if len(targets) != 1 || targets[0].Kind != TargetKindPermanent || targets[0].Permanent == nil {
+		return targets
+	}
+	if targets[0].Permanent.Tapped == wantTapped {
+		return targets // already useful
+	}
+	srcSeat := -1
+	if src != nil {
+		srcSeat = src.Controller
+	}
+	legal := legalSinglePermanentTargets(gs, f, srcSeat, src)
+	// Only side-correct useful candidates: untap YOUR OWN tapped
+	// permanents, tap THEIR untapped ones. Crossing sides (untapping an
+	// opponent's artifact, tapping your own) is never the greedy play —
+	// when no side-correct candidate exists the original pick stands
+	// and the effect no-ops, which is the correct decline for optional
+	// picks and the harmless legal choice for mandatory ones.
+	for i := range legal {
+		p := legal[i].Permanent
+		if p == nil || p.Tapped != wantTapped {
+			continue
+		}
+		ownGood := (wantTapped && p.Controller == srcSeat) || (!wantTapped && p.Controller != srcSeat)
+		if ownGood {
+			t := legal[i]
+			return []Target{t}
+		}
+	}
+	return targets
 }
 
 func resolveGainControl(gs *GameState, src *Permanent, e *gameast.GainControl) {
