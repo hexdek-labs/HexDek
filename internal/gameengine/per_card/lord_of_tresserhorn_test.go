@@ -54,9 +54,14 @@ func TestLordOfTresserhorn_HandlesShortLibraryForOppDraw(t *testing.T) {
 	lord := addPerm(gs, 0, "Lord of Tresserhorn", "creature", "zombie")
 	addPerm(gs, 0, "X", "creature")
 	addPerm(gs, 0, "Y", "creature")
-	// Opp library empty — should not crash.
+	// Opp library empty — should not crash, and the empty-draw attempt
+	// must be registered. Since the r62 CheckEnd pre-sweep (CR §704.3:
+	// player-loss SBAs apply before game-over evaluation), the handler's
+	// own CheckEnd call may already have consumed AttemptedEmptyDraw and
+	// marked the seat Lost per §704.5b — either state satisfies the
+	// test's intent.
 	lordOfTresserhornETB(gs, lord)
-	if !gs.Seats[1].AttemptedEmptyDraw {
-		t.Errorf("expected AttemptedEmptyDraw on opponent")
+	if !gs.Seats[1].AttemptedEmptyDraw && !gs.Seats[1].Lost {
+		t.Errorf("expected AttemptedEmptyDraw flag or §704.5b loss on opponent")
 	}
 }
