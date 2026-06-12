@@ -32,6 +32,20 @@ type ReplayContext struct {
 	Meta    *deckparser.MetaDB
 	DeckDir string // root of deck files (e.g. "data/decks")
 
+	// EngineVersion, when non-empty, is compared against
+	// contract.EngineVersion by VerifyReplay before replaying: a build
+	// mismatch is reported as its own verdict instead of a misleading
+	// outcome-digest mismatch (an honest game replayed on a different
+	// engine build is incomparable, not forged).
+	EngineVersion string
+
+	// HatFactory, when non-nil, supplies the per-seat hat for
+	// replay-verification games. Nil uses the default deterministic
+	// YggdrasilHat (noise 0, contract-seeded tie-break RNG). Replays
+	// only reproduce the sealed game when this matches the hat the
+	// live game ran with — see review 08 C-H4.
+	HatFactory func(seat int) gameengine.Hat
+
 	// deckCache maps deck key ("owner/name") to the parsed TournamentDeck.
 	// Populated lazily on first use.
 	deckCache map[string]*deckparser.TournamentDeck

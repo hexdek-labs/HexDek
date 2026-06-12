@@ -457,13 +457,17 @@ func runOneGame(gameIdx int, decks []*deckparser.TournamentDeck, hats []HatFacto
 		},
 	})
 
-	// Track elimination order.
-	elimSlot := 0
+	// Track elimination order via the shared seat-indexed tracker
+	// (outcome_canon.go) — heimdall's anti-cheat replay runs the SAME
+	// tracker so the sealed digest and the replayed digest agree. The
+	// deck-indexed out.EliminationOrder copy is kept incremental so a
+	// mid-game crash still reports the eliminations seen so far.
+	elim := NewElimTracker()
 	markElim := func() {
-		for i, s := range gs.Seats {
-			if s != nil && s.Lost && out.EliminationOrder[originalIdxForSeat[i]] < 0 {
-				out.EliminationOrder[originalIdxForSeat[i]] = elimSlot
-				elimSlot++
+		elim.Mark(gs)
+		for i := range gs.Seats {
+			if i < len(originalIdxForSeat) && i < seedcontract.MaxSeats && elim.Slots[i] >= 0 {
+				out.EliminationOrder[originalIdxForSeat[i]] = elim.Slots[i]
 			}
 		}
 	}
@@ -524,91 +528,23 @@ func runOneGame(gameIdx int, decks []*deckparser.TournamentDeck, hats []HatFacto
 		out.TotalBoardSize += len(s.Battlefield)
 	}
 
-	// Determine winner.
-	if gs.Flags != nil {
-		if _, ok := gs.Flags["winner"]; ok && gs.Flags["ended"] == 1 {
-			w := gs.Flags["winner"]
-			if w >= 0 && w < nSeats {
-				out.Winner = w
-				out.WinnerCommanderIdx = originalIdxForSeat[w]
-				out.EndReason = "last_seat_standing"
-			}
-		} else if gs.Flags["ended"] == 1 {
-			out.EndReason = "draw"
-		}
+	// Determine winner + adjudicate turn caps via the shared helper
+	// (outcome_canon.go) — same rules the anti-cheat replay applies, so
+	// the sealed outcome digest is reproducible by an honest replay.
+	winner, endReason := AdjudicateGameEnd(gs, nSeats, ended)
+	if winner >= 0 {
+		out.Winner = winner
+		out.WinnerCommanderIdx = originalIdxForSeat[winner]
 	}
-	if !ended {
-		if gs.Flags == nil {
-			gs.Flags = make(map[string]int)
-		}
-		gs.Flags["turn_capped"] = 1
-		gs.Flags["ended"] = 1
-
-		living := []int{}
-		for i, s := range gs.Seats {
-			if s != nil && !s.Lost {
-				living = append(living, i)
-			}
-		}
-		if len(living) == 0 {
-			out.EndReason = "turn_cap_all_dead"
-			gs.LogEvent(gameengine.Event{
-				Kind: "game_end", Seat: -1, Target: -1,
-				Details: map[string]interface{}{
-					"reason": "turn_cap_all_dead",
-					"winner": -1,
-				},
-			})
-		} else {
-			topLife := gs.Seats[living[0]].Life
-			for _, i := range living[1:] {
-				if gs.Seats[i].Life > topLife {
-					topLife = gs.Seats[i].Life
-				}
-			}
-			leaders := []int{}
-			for _, i := range living {
-				if gs.Seats[i].Life == topLife {
-					leaders = append(leaders, i)
-				}
-			}
-			for _, i := range living {
-				if gs.Seats[i].Life < topLife {
-					gs.Seats[i].Lost = true
-					gs.Seats[i].LossReason = "turn_cap"
-				}
-			}
-			// Seat-order tiebreak: lowest seat index among tied leaders wins.
-			winner := leaders[0]
-			if len(leaders) > 1 {
-				for _, i := range leaders[1:] {
-					gs.Seats[i].Lost = true
-					gs.Seats[i].LossReason = "turn_cap_tie"
-				}
-				out.EndReason = "turn_cap_tie"
-			} else {
-				out.EndReason = "turn_cap_leader"
-			}
-			out.Winner = winner
-			out.WinnerCommanderIdx = originalIdxForSeat[winner]
-			gs.Seats[winner].Won = true
-			gs.Flags["winner"] = winner
-			gs.LogEvent(gameengine.Event{
-				Kind: "game_end", Seat: winner, Target: -1,
-				Details: map[string]interface{}{
-					"reason": out.EndReason,
-					"winner": winner,
-					"life":   topLife,
-				},
-			})
-		}
+	if endReason != "" {
+		out.EndReason = endReason
 	}
-	// Fill any still-alive seats into the last elimination slot so the
-	// winner ends up at NSeats-1.
-	for i, s := range gs.Seats {
-		if s != nil && out.EliminationOrder[originalIdxForSeat[i]] < 0 {
-			out.EliminationOrder[originalIdxForSeat[i]] = elimSlot
-			elimSlot++
+	// Fill the remaining elimination slots (winner + any turn-cap
+	// losers marked Lost after the final Mark), in seat order.
+	elim.FillRemaining(gs)
+	for i := range gs.Seats {
+		if i < len(originalIdxForSeat) && i < seedcontract.MaxSeats && elim.Slots[i] >= 0 {
+			out.EliminationOrder[originalIdxForSeat[i]] = elim.Slots[i]
 		}
 	}
 
@@ -793,30 +729,19 @@ func runOneGame(gameIdx int, decks []*deckparser.TournamentDeck, hats []HatFacto
 	// outcome digest's positions match the digest's seat-indexed
 	// inputs.
 	if out.SeedContract != nil {
-		var elim, finalLife [seedcontract.MaxSeats]int
-		for i := range elim {
-			elim[i] = -1
-		}
-		for i := 0; i < seedcontract.MaxSeats && i < nSeats; i++ {
-			orig := (i + out.Rot) % nSeats
-			if orig < len(out.EliminationOrder) {
-				elim[i] = out.EliminationOrder[orig]
-			}
-			if i < len(gs.Seats) && gs.Seats[i] != nil {
-				finalLife[i] = gs.Seats[i].Life
-			}
-		}
-		killMethod := ""
-		if out.Winner >= 0 && out.Winner < len(gs.Seats) && gs.Seats[out.Winner] != nil {
-			killMethod = inferKillMethodFromOutcome(out.EndReason)
-		}
+		// Seal with the seat-indexed canonical fields. KillMethod is
+		// NOT computed here — Seal derives it from (Winner, EndReason)
+		// via seedcontract.CanonicalizeOutcome, the same derivation the
+		// replay verifier applies, so the two sides cannot drift.
+		// elim.Slots is already seat-indexed (the old code round-
+		// tripped through the deck-indexed out.EliminationOrder and
+		// back; the mapping composed to identity).
 		out.SeedContract.Seal(seedcontract.Outcome{
 			Winner:           out.Winner,
 			Turns:            out.Turns,
-			KillMethod:       killMethod,
 			EndReason:        out.EndReason,
-			EliminationOrder: elim,
-			FinalLife:        finalLife,
+			EliminationOrder: elim.Slots,
+			FinalLife:        FinalLifeFromState(gs, nSeats),
 		})
 		if len(contracts.key) > 0 {
 			out.SeedContract.Sign(contracts.key)
@@ -824,26 +749,6 @@ func runOneGame(gameIdx int, decks []*deckparser.TournamentDeck, hats []HatFacto
 	}
 
 	return out
-}
-
-// inferKillMethodFromOutcome maps the runner's EndReason to the same
-// kill-method enum heimdall uses for its 1-byte binary encoding.
-// "last_seat_standing" leaves the method blank — Heimdall's classifier
-// (gameengine.ClassifyKillWithMaxTurns) does the finer-grained
-// "combat / commander / combo / mill" inference from event-log data
-// when audit mode is on; this fallback is just for the contract's
-// outcome digest.
-func inferKillMethodFromOutcome(endReason string) string {
-	switch endReason {
-	case "turn_cap", "turn_cap_leader", "turn_cap_tie", "turn_cap_all_dead":
-		return "timeout"
-	case "draw":
-		return "draw"
-	case "crash":
-		return "crash"
-	default:
-		return endReason
-	}
 }
 
 // runPool executes a tournament where each game samples NSeats random

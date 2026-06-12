@@ -61,6 +61,18 @@ func VerifyReplay(rc *ReplayContext, contract *seedcontract.SeedContract, key []
 		return VerifyResult{Detail: "integrity: " + err.Error()}, nil
 	}
 
+	// Stage 1.5: engine-version gate. A replay on a different engine
+	// build is not evidence of tampering — surface it as its own
+	// detail instead of a confusing digest mismatch. Both sides must
+	// opt in (non-empty) for the check to fire, so existing callers
+	// that never set rc.EngineVersion keep their behavior.
+	if rc.EngineVersion != "" && contract.EngineVersion != "" &&
+		rc.EngineVersion != contract.EngineVersion {
+		return VerifyResult{Detail: fmt.Sprintf(
+			"engine version mismatch: contract sealed on %q, verifier running %q — replay would not be comparable",
+			contract.EngineVersion, rc.EngineVersion)}, nil
+	}
+
 	// Stage 2: deterministic replay. Reuses the existing replay path
 	// but captures the final game state rather than routing
 	// observations to sinks.
@@ -142,6 +154,16 @@ func replayForOutcome(rc *ReplayContext, contract *seedcontract.SeedContract) (o
 	gameengine.SetupCommanderGame(gs, cmdDecks)
 
 	for i := 0; i < nSeats; i++ {
+		if rc.HatFactory != nil {
+			gs.Seats[i].Hat = rc.HatFactory(i)
+			continue
+		}
+		// Default replay hat. Deterministic because gs.Seed is stamped
+		// above (r62 #1020): seeded games reseed the hat's noise RNG
+		// from (gs.Seed, seatIdx) on first observation, so the verify
+		// path is a pure function of the contract inputs — wall-clock
+		// randomness here would make every digest comparison a coin
+		// flip (review 08, C-H1/C-H2).
 		gs.Seats[i].Hat = hat.NewYggdrasilHat(nil, 30)
 	}
 	for i := 0; i < nSeats; i++ {
@@ -151,74 +173,63 @@ func replayForOutcome(rc *ReplayContext, contract *seedcontract.SeedContract) (o
 	gs.Active = gameRng.Intn(nSeats)
 	gs.Turn = 1
 
+	// r62 (review 08, C-H2): the outcome below is built with the SAME
+	// shared bookkeeping the live runner uses — tournament.ElimTracker
+	// for elimination slots, tournament.AdjudicateGameEnd for winner /
+	// EndReason (including the turn-cap leader adjudication and its
+	// Lost/Won mutations), tournament.FinalLifeFromState for life.
+	// The pre-r62 replay hardcoded EliminationOrder to all -1 and used
+	// a reduced EndReason vocabulary, so an HONEST game's replayed
+	// digest never matched its sealed digest.
+	//
+	// Turn-loop parity with runOneGame: same TakeTurn implementation
+	// (TakeTurn == takeTurnImpl(gs, nil)), same SBA call, Mark after
+	// SBA, same round-flag bookkeeping, same next-living-seat rule.
+	// Known residual gap: the cap here is replayMaxTurns (80 ==
+	// tournament.DefaultMaxTurns); games sealed by a runner configured
+	// with a non-default MaxTurnsPerGame can diverge at the cap. The
+	// contract schema does not carry max-turns yet — see
+	// /tmp/fable-review plan note (schema bump territory).
+	elim := tournament.NewElimTracker()
+	elim.Mark(gs)
+
+	startingSeat := gs.Active
+	round := 1
+	if gs.Flags == nil {
+		gs.Flags = make(map[string]int)
+	}
+	gs.Flags["round"] = round
+	ended := false
 	for turn := 1; turn <= replayMaxTurns; turn++ {
 		gs.Turn = turn
+		gs.Flags["round"] = round
 		tournament.TakeTurn(gs)
 		gameengine.StateBasedActions(gs)
+		elim.Mark(gs)
 		if gs.CheckEnd() {
+			ended = true
 			break
 		}
+		prev := gs.Active
 		gs.Active = nextLivingReplay(gs)
+		if gs.Active <= prev || gs.Active == startingSeat {
+			round++
+		}
 	}
 
-	winner := -1
-	if gs.Flags != nil && gs.Flags["ended"] == 1 {
-		if w, ok := gs.Flags["winner"]; ok && w >= 0 && w < nSeats {
-			winner = w
-		}
-	}
-	if winner < 0 {
-		bestLife := -999
-		for i, s := range gs.Seats {
-			if s != nil && !s.Lost && s.Life > bestLife {
-				bestLife = s.Life
-				winner = i
-			}
-		}
-	}
+	out.Turns = gs.Turn
+	winner, endReason := tournament.AdjudicateGameEnd(gs, nSeats, ended)
+	elim.FillRemaining(gs)
 
 	out.Winner = winner
-	out.Turns = gs.Turn
-	out.EndReason = endReasonFromState(gs)
-	out.KillMethod = killMethodFromEndReason(out.EndReason)
-	for i := 0; i < seedcontract.MaxSeats; i++ {
-		out.EliminationOrder[i] = -1
-	}
-	for i := 0; i < nSeats && i < seedcontract.MaxSeats; i++ {
-		if i < len(gs.Seats) && gs.Seats[i] != nil {
-			out.FinalLife[i] = gs.Seats[i].Life
-		}
-	}
+	out.EndReason = endReason
+	out.EliminationOrder = elim.Slots
+	out.FinalLife = tournament.FinalLifeFromState(gs, nSeats)
+	// KillMethod is derived, not chosen: CanonicalizeOutcome applies the
+	// same (Winner, EndReason) → method rule Seal uses, so the struct we
+	// return matches the bytes we digest.
+	out = seedcontract.CanonicalizeOutcome(out)
 	return out, nil
-}
-
-func endReasonFromState(gs *gameengine.GameState) string {
-	if gs == nil || gs.Flags == nil {
-		return ""
-	}
-	if gs.Flags["turn_capped"] == 1 {
-		return "turn_cap"
-	}
-	if gs.Flags["ended"] == 1 {
-		if _, ok := gs.Flags["winner"]; ok {
-			return "last_seat_standing"
-		}
-		return "draw"
-	}
-	return ""
-}
-
-func killMethodFromEndReason(r string) string {
-	switch r {
-	case "turn_cap", "turn_cap_leader", "turn_cap_tie", "turn_cap_all_dead":
-		return "timeout"
-	case "draw":
-		return "draw"
-	case "":
-		return ""
-	default:
-		return r
-	}
 }
 
 // digestOutcomeFromContract is a thin wrapper that produces the

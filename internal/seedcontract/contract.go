@@ -121,9 +121,61 @@ func New(in Inputs) *SeedContract {
 
 // Seal records the game's outcome on the contract and computes the
 // outcome digest. Call once when the game ends, before Sign.
+//
+// The outcome is CANONICALIZED first (see CanonicalizeOutcome): the
+// KillMethod field is derived from (Winner, EndReason) rather than
+// trusted from the caller. r62 anti-cheat fix — the seal side
+// (tournament runner) and the verify side (heimdall replay) previously
+// computed KillMethod through two different hand-synced mappers that
+// disagreed on draws, so honest games failed digest verification.
+// Deriving it inside Seal makes both sides identical by construction:
+// the replay verifier also routes its recomputed outcome through Seal.
 func (c *SeedContract) Seal(out Outcome) {
+	out = CanonicalizeOutcome(out)
 	c.Outcome = out
 	c.OutcomeDigest = digestOutcome(out)
+}
+
+// CanonicalizeOutcome normalizes an Outcome into the single canonical
+// form both the seal path and the replay-verify path digest:
+//
+//   - Winner < 0 (draw / crash / unresolved) → KillMethod "" — a game
+//     with no winner has no kill. This matches what the pre-r62 seal
+//     side always produced, so contracts signed by older builds
+//     re-digest identically (no schema bump needed).
+//   - Winner >= 0 → KillMethod = KillMethodFromEndReason(EndReason).
+//
+// Every other field is passed through untouched — they must come from
+// the game itself (live or replayed), and none of them may be derived
+// from wall-clock time (digests must be reproducible from the RNG seed
+// and decks alone).
+func CanonicalizeOutcome(out Outcome) Outcome {
+	if out.Winner < 0 {
+		out.KillMethod = ""
+	} else {
+		out.KillMethod = KillMethodFromEndReason(out.EndReason)
+	}
+	return out
+}
+
+// KillMethodFromEndReason maps a runner EndReason to the kill-method
+// enum stored on the contract (and used by heimdall's 1-byte binary
+// seed encoding). This is THE single mapper — the tournament seal path
+// and the heimdall replay-verify path both route through it (directly
+// or via Seal's canonicalization). It previously existed as two
+// hand-synced copies (tournament.inferKillMethodFromOutcome and
+// heimdall.killMethodFromEndReason) which had already drifted.
+func KillMethodFromEndReason(endReason string) string {
+	switch endReason {
+	case "turn_cap", "turn_cap_leader", "turn_cap_tie", "turn_cap_all_dead":
+		return "timeout"
+	case "draw":
+		return "draw"
+	case "crash":
+		return "crash"
+	default:
+		return endReason
+	}
 }
 
 // Sign HMAC-SHA256s the (input_digest || outcome_digest) pair with the
