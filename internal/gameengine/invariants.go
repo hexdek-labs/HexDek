@@ -65,6 +65,7 @@ func AllInvariants() []Invariant {
 	return []Invariant{
 		{Name: "ZoneConservation", Check: checkZoneConservation},
 		{Name: "LifeConsistency", Check: checkLifeConsistency},
+		{Name: "OwnerImmutability", Check: checkOwnerImmutability},
 		{Name: "SBACompleteness", Check: checkSBACompleteness},
 		{Name: "StackIntegrity", Check: checkStackIntegrity},
 		{Name: "ManaPoolNonNegative", Check: checkManaPoolNonNegative},
@@ -2288,3 +2289,66 @@ var eventInstanceIDKeys = []string{
 	"ability_instance_id",
 }
 
+
+// ---------------------------------------------------------------------------
+// OwnerImmutability — CR §108.3 (r63 owner design)
+// ---------------------------------------------------------------------------
+
+// checkOwnerImmutability verifies the §108.3 write-once ownership
+// contract: every card's Card.Owner still equals its owner-at-mint
+// (token: creator per §110.5a), and every battlefield Permanent's
+// Owner field agrees with its Card.Owner. Divergence means some code
+// path mutated ownership after creation — the corruption class behind
+// the PR-#1047 elimination vanishes (theft handlers stamping
+// Permanent.Owner = controller).
+func checkOwnerImmutability(gs *GameState) error {
+	if gs == nil || len(gs.MintedInstanceIDOwners) == 0 {
+		return nil
+	}
+	checkCard := func(c *Card, where string) error {
+		if c == nil || c.InstanceID == "" {
+			return nil
+		}
+		mintOwner, ok := gs.MintedInstanceIDOwners[c.InstanceID]
+		if !ok {
+			return nil
+		}
+		if c.Owner != mintOwner {
+			return fmt.Errorf("OwnerImmutability: card %q (InstanceID %s, %s) has Owner=%d but was minted with Owner=%d — §108.3 ownership is write-once",
+				c.DisplayName(), c.InstanceID, where, c.Owner, mintOwner)
+		}
+		return nil
+	}
+	for si, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		zones := []struct {
+			name  string
+			cards []*Card
+		}{
+			{"hand", s.Hand}, {"library", s.Library}, {"graveyard", s.Graveyard},
+			{"exile", s.Exile}, {"command", s.CommandZone},
+		}
+		for _, z := range zones {
+			for _, c := range z.cards {
+				if err := checkCard(c, fmt.Sprintf("%s@seat%d", z.name, si)); err != nil {
+					return err
+				}
+			}
+		}
+		for _, p := range s.Battlefield {
+			if p == nil || p.Card == nil {
+				continue
+			}
+			if err := checkCard(p.Card, fmt.Sprintf("battlefield@seat%d", si)); err != nil {
+				return err
+			}
+			if p.Owner != p.Card.Owner {
+				return fmt.Errorf("OwnerImmutability: permanent %q on seat %d's battlefield has Permanent.Owner=%d diverging from Card.Owner=%d — control changes, ownership does not (§108.3)",
+					p.Card.DisplayName(), si, p.Owner, p.Card.Owner)
+			}
+		}
+	}
+	return nil
+}

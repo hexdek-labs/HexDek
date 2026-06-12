@@ -1681,6 +1681,14 @@ func resolveGainControl(gs *GameState, src *Permanent, e *gameast.GainControl) {
 		p.Controller = newController
 		p.Timestamp = gs.NextTimestamp()
 		gs.Seats[newController].Battlefield = append(gs.Seats[newController].Battlefield, p)
+		// r63 §108.3: ownership NEVER changes on control effects —
+		// Permanent.Owner stays Card.Owner. Until-EOT steals (Act of
+		// Treason class, 76 corpus nodes) register for the cleanup-step
+		// revert; pre-r63 the Duration field was ignored and every temp
+		// steal was permanent.
+		if e.Duration == "until_end_of_turn" {
+			RegisterTempControlGrant(gs, p, oldController)
+		}
 		gs.LogEvent(Event{
 			Kind:   "gain_control",
 			Seat:   newController,

@@ -34,6 +34,22 @@ func RecordMintedInstanceIDName(gs *GameState, id, name string) {
 	gs.MintedInstanceIDNames[id] = name
 }
 
+// RecordMintedInstanceIDOwner records the §108.3 write-once owner of a
+// minted card (token: creator per §110.5a). First write wins. Consumed
+// by the OwnerImmutability invariant.
+func RecordMintedInstanceIDOwner(gs *GameState, id string, owner int) {
+	if gs == nil || id == "" {
+		return
+	}
+	if gs.MintedInstanceIDOwners == nil {
+		gs.MintedInstanceIDOwners = map[string]int{}
+	}
+	if _, ok := gs.MintedInstanceIDOwners[id]; ok {
+		return
+	}
+	gs.MintedInstanceIDOwners[id] = owner
+}
+
 // MarkInstanceIDCeased adds id to gs.CeasedInstanceIDs. Fires from:
 //   - §707.10 spell-copy cease (stack.go)
 //   - §704.5d / §111.8 token cessation on LTB (zone_change.go LTB sites)
@@ -131,6 +147,7 @@ func MintOGInstanceID(gs *GameState, c *Card) {
 	// OG cards have no lineage by §4.1.
 	RecordMintedInstanceID(gs, id)
 	RecordMintedInstanceIDName(gs, id, c.DisplayName())
+	RecordMintedInstanceIDOwner(gs, id, c.Owner)
 }
 
 // CurrentMintEnablerID is the exported alias for per_card callers that
@@ -229,6 +246,7 @@ func MintTokenInstanceID(gs *GameState, c *Card, sourceID, enablerID string) {
 	}
 	RecordMintedInstanceID(gs, id)
 	RecordMintedInstanceIDName(gs, id, c.DisplayName())
+	RecordMintedInstanceIDOwner(gs, id, c.Owner)
 }
 
 // EnsureTokenInstanceID is the defensive auto-stamp catch-all: when a
@@ -302,6 +320,7 @@ func MintCopyInstanceID(gs *GameState, c *Card, sourceID, enablerID string) {
 	}
 	RecordMintedInstanceID(gs, id)
 	RecordMintedInstanceIDName(gs, id, c.DisplayName())
+	RecordMintedInstanceIDOwner(gs, id, c.Owner)
 }
 
 // MintSpellCopy is the canonical per_card chokepoint for "create a copy
