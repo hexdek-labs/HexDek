@@ -50,6 +50,8 @@ func main() {
 		seats      = flag.Int("seats", 4, "seats per game")
 		maxTurns   = flag.Int("max-turns", 60, "max turns per game")
 		skipCorpus = flag.Bool("skip-corpus", false, "skip the AST-corpus sweep (outcome + progression)")
+		tunedGames = flag.Int("tuned-games", 0, "ALSO run the game-level dimensions over real tuned decks with YggdrasilHat pilots (0 = skip)")
+		deckDir    = flag.String("deck-dir", "data/decks", "Moxfield decklist pool for --tuned-games")
 		jsonPath   = flag.String("json", "correctness-score.json", "machine-readable JSON output path")
 		mdPath     = flag.String("md", "", "markdown summary output path (empty = stdout only)")
 	)
@@ -112,6 +114,34 @@ func main() {
 		)
 	} else {
 		notes = append(notes, "game sweep skipped (--games 0): legality, conservation, and state-integrity not scored")
+	}
+
+	// Tuned-deck sweep (r63): the same game-level dimensions over the
+	// REAL deck pool with mixed YggdrasilHat/GreedyHat tables — closes
+	// the "chaos games, not tuned-deck play" caveat. Tuned rows are
+	// "<dimension>_tuned" and participate in the topline mean.
+	if *tunedGames > 0 {
+		meta, err := deckparser.LoadMetaFromJSONL(*astPath)
+		if err != nil {
+			log.Fatalf("meta %s: %v", *astPath, err)
+		}
+		if err := meta.SupplementWithOracleJSON(*oraclePath); err != nil {
+			log.Fatalf("meta oracle supplement %s: %v", *oraclePath, err)
+		}
+		pool := loadTunedDeckPool(*deckDir, corpus, meta)
+		if len(pool) < *seats {
+			log.Fatalf("tuned deck pool too small: %d decks in %s (need >= %d)", len(pool), *deckDir, *seats)
+		}
+		t := time.Now()
+		tunedDims, tgp := runTunedGamePass(pool, corpus, gameConfig{
+			Games: *tunedGames, Seats: *seats, MaxTurns: *maxTurns, Seed: *seed,
+		})
+		fmt.Fprintf(os.Stderr, "tuned sweep: %d games over %d decks (%.1fs)\n", *tunedGames, len(pool), time.Since(t).Seconds())
+		dims = append(dims, tunedDims...)
+		notes = append(notes,
+			fmt.Sprintf("Tuned-deck sweep: %d games over the %d-deck Moxfield pool (%s), mixed tables (YggdrasilHat budget %d on even seats, GreedyHat on odd) with real London mulligans — real-play coverage for the game-level dimensions.", *tunedGames, len(pool), *deckDir, yggBudget),
+			fmt.Sprintf("Tuned sweep crashes: %d (in %d games).", tgp.Crashes, tgp.CrashedGames),
+		)
 	}
 
 	score := assembleScore(
