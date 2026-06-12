@@ -2712,6 +2712,52 @@ func (h *YggdrasilHat) relativePosition(gs *gameengine.GameState, seatIdx int) f
 	return myScore - bestOpp
 }
 
+// cardProducesRealMana returns true when the card genuinely produces mana
+// when it resolves — i.e. its AST carries an activated mana ability whose
+// AddMana output is a concrete, non-conditional amount (a fixed Pool or a
+// positive AnyColorCount). This deliberately excludes the Everflowing-Chalice
+// blind-spot family: counter-scaled / multikicker-scaled "rocks" whose printed
+// output is zero until kicked or whose mana scales with charge counters (an
+// unkicked Chalice taps for nothing). Used to gate the type/text-based
+// "mana-rock" and "produces mana" cast bonuses on actual effect data instead
+// of merely matching a type line or an "add {" substring.
+func cardProducesRealMana(c *gameengine.Card) bool {
+	if c == nil || c.AST == nil {
+		return false
+	}
+	// Counter-scaled / multikicker producers print no guaranteed mana on a
+	// vanilla cast — reject by oracle text before trusting the AST shape.
+	ot := gameengine.OracleTextLower(c)
+	if strings.Contains(ot, "multikicker") ||
+		strings.Contains(ot, "for each charge counter") ||
+		strings.Contains(ot, "for each counter") {
+		return false
+	}
+	for _, ab := range c.AST.Abilities {
+		act, ok := ab.(*gameast.Activated)
+		if !ok || act.Effect == nil {
+			continue
+		}
+		if am, ok := act.Effect.(*gameast.AddMana); ok {
+			if len(am.Pool) > 0 || am.AnyColorCount > 0 {
+				return true
+			}
+			continue
+		}
+		// Sequence-wrapped mana abilities (cost-then-add shapes).
+		if seq, ok := act.Effect.(*gameast.Sequence); ok {
+			for _, sub := range seq.Items {
+				if am, ok := sub.(*gameast.AddMana); ok {
+					if len(am.Pool) > 0 || am.AnyColorCount > 0 {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
 // cardHeuristic scores a castable card for the evaluator path.
 func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *gameengine.Card) float64 {
 	// Early-guard: a downstream block at ~line 2511 re-checks gs != nil
@@ -2748,15 +2794,24 @@ func (h *YggdrasilHat) cardHeuristic(gs *gameengine.GameState, seatIdx int, c *g
 				base -= 0.10 // top-end is dead in hand on turn 2
 			}
 		}
-		// Mana-rock heuristic: low-CMC artifact = rock-shaped.
-		if typeLineContains(c, "artifact") && cmc <= 2 && cat != CatThreat {
+		// Mana-rock heuristic: low-CMC artifact that ACTUALLY taps for mana.
+		// Gated on real effect output (not just the artifact type line) so a
+		// 2-CMC artifact with no mana ability — or an unkicked Everflowing
+		// Chalice that taps for nothing — doesn't earn the ramp bonus.
+		if typeLineContains(c, "artifact") && cmc <= 2 && cat != CatThreat &&
+			cardProducesRealMana(c) {
 			base += 0.15
 		}
-		// Commander-color enabler: any sub-3 spell that produces mana.
+		// Commander-color enabler: any sub-3 spell that produces mana. The
+		// mana-producer branch is gated on actual non-conditional output
+		// (excludes counter-scaled / multikicker producers and cards whose
+		// text merely contains "add {"); the land-fetch ramp branch stands on
+		// its own (a fetch is real ramp regardless of mana-ability shape).
 		if cmc <= 3 {
 			ot := gameengine.OracleTextLower(c)
-			if strings.Contains(ot, "add {") || strings.Contains(ot, "add one mana") ||
-				strings.Contains(ot, "search your library for a") && strings.Contains(ot, "land") {
+			fetchesLand := strings.Contains(ot, "search your library for a") &&
+				strings.Contains(ot, "land")
+			if cardProducesRealMana(c) || fetchesLand {
 				base += 0.10
 			}
 		}
@@ -4293,13 +4348,21 @@ func (h *YggdrasilHat) ChooseMulligan(gs *gameengine.GameState, seatIdx int, han
 	comboCount := 0
 	rampCount := 0
 	cheapSpells := 0
+	// actionCount = nonland cards that advance an actual game plan (a threat,
+	// removal, draw, counter, combo piece, or a value engine / star). Ramp on
+	// its own is NOT a payoff — a hand of all lands + rocks does nothing. Used
+	// by the archetype-agnostic flood ceiling and the final action-density
+	// keep gate so we never keep a hand with no castable action.
+	actionCount := 0
 	for _, c := range hand {
 		if c == nil {
 			continue
 		}
+		isLand := false
 		for _, t := range c.Types {
 			if t == "land" {
 				landCount++
+				isLand = true
 				break
 			}
 		}
@@ -4313,6 +4376,16 @@ func (h *YggdrasilHat) ChooseMulligan(gs *gameengine.GameState, seatIdx int, han
 		cat := h.categorizeWithFreya(c)
 		if cat == CatRamp {
 			rampCount++
+		}
+		if !isLand {
+			switch cat {
+			case CatThreat, CatRemoval, CatDraw, CatCounter, CatCombo:
+				actionCount++
+			default:
+				if h.isValueEngineKey(c) || h.isStarCard(c) {
+					actionCount++
+				}
+			}
 		}
 	}
 
@@ -4503,6 +4576,21 @@ func (h *YggdrasilHat) ChooseMulligan(gs *gameengine.GameState, seatIdx int, han
 		if landCount <= 1 {
 			return true
 		}
+		// Archetype-AGNOSTIC flood ceiling. Previously only Aggro and Tribal
+		// guarded against land floods (landCount > 4); Control / Combo /
+		// Midrange / Ramp / Reanimator fell straight through and kept 6-7
+		// land hands. Apply a conservative flood cap to EVERY archetype:
+		//   - 6+ lands in a 7-card hand is a flood regardless of plan; mull.
+		//   - exactly 5 lands with no early action/payoff (no threat, removal,
+		//     draw, combo piece, value engine, or star) is a do-nothing flood;
+		//     mull. A 5-land hand WITH an action is a fine Commander keep, so
+		//     it's left alone.
+		if landCount >= 6 {
+			return true
+		}
+		if landCount == 5 && actionCount == 0 {
+			return true
+		}
 		if h.Strategy != nil {
 			switch h.Strategy.Archetype {
 			case ArchetypeAggro:
@@ -4607,15 +4695,32 @@ func (h *YggdrasilHat) ChooseMulligan(gs *gameengine.GameState, seatIdx int, han
 				return true
 			}
 		}
+
+		// Action-density final gate (7-card). Any hand that reached this
+		// fall-through with ZERO castable action — no threat, removal, draw,
+		// counter, combo piece, value engine, or star, just lands + ramp +
+		// utility chaff — does nothing for several turns and should be
+		// mulliganed. The per-archetype keeps above already returned for
+		// hands with a real plan, so this only catches the genuinely empty
+		// "lands and rocks" hands the old fall-through silently kept.
+		if actionCount == 0 {
+			return true
+		}
 	}
 
-	// On 6 or fewer: star cards make marginal hands keepable.
+	// On 6 or fewer: star cards make marginal hands keepable. We tolerate
+	// thinner hands after a mulligan (London mull cost), but still refuse a
+	// hand with no castable action at all — a 6-card pile of lands + ramp
+	// does nothing whether it's the first hand or the third.
 	if len(hand) <= 6 {
 		if landCount == 0 {
 			return true
 		}
 		if starCount >= 1 && landCount >= 1 {
 			return false
+		}
+		if actionCount == 0 {
+			return true
 		}
 		return false
 	}
@@ -5447,7 +5552,26 @@ func (h *YggdrasilHat) ChooseActivation(gs *gameengine.GameState, seatIdx int, o
 	}
 
 	if h.effectiveBudget(gs) == 0 {
-		return &options[0]
+		// Budget 0 (complex board) still ranks activations by the cheap
+		// heuristic rather than blindly firing options[0] — which could be
+		// a bad sacrifice, a pointless mana tap, or a life-loss ability.
+		// Pick the highest-scoring option; if even the best scores at or
+		// below the do-nothing baseline, pass instead of activating.
+		bestIdx := -1
+		bestScore := math.Inf(-1)
+		for i := range options {
+			s := h.activationHeuristic(gs, seatIdx, &options[i])
+			if s > bestScore {
+				bestScore = s
+				bestIdx = i
+			}
+		}
+		// 0.15 is the heuristic baseline (no positive signal). Require a
+		// small positive margin over it before firing at zero budget.
+		if bestIdx < 0 || bestScore <= 0.15 {
+			return nil
+		}
+		return &options[bestIdx]
 	}
 	h.spendTurnBudget(gs, 1)
 
@@ -5721,6 +5845,111 @@ func (h *YggdrasilHat) activationHeuristic(gs *gameengine.GameState, seatIdx int
 	return base
 }
 
+// lethalAttackTarget returns the seat index of an opponent who can be killed
+// this turn by attacking with `legal`, modelling the defender's MINIMUM
+// rational blocks rather than the old over-optimistic / over-pessimistic
+// approximations. Returns -1 when no opponent is lethal under optimal blocking.
+//
+// Damage classification per attacker (power × double-strike):
+//   - "hard" evasion (unblockable / shadow / horsemanship) connects no matter
+//     what the defender fields;
+//   - "flying" connects unless the defender has a flying/reach blocker;
+//   - everything else (incl. menace/fear, treated conservatively as
+//     ground-blockable) can be chump-blocked by any untapped creature.
+//
+// The defender is assumed to block optimally to minimize damage that connects:
+// it spends air blockers on the biggest fliers first, then any remaining
+// untapped creatures on the biggest ground attackers. The residual that gets
+// through must already kill for the seat to be a lethal target. This fixes
+// both the old over-optimistic "all evasive power connects" (ignored
+// flying/reach blockers) and the over-pessimistic "subtract every blocker's
+// toughness" (a single chumped blocker doesn't absorb its toughness in power).
+func lethalAttackTarget(gs *gameengine.GameState, seatIdx int, legal []*gameengine.Permanent) int {
+	type atk struct {
+		dmg    int
+		hard   bool // always connects
+		flying bool // connects unless a flier/reacher is available
+	}
+	atks := make([]atk, 0, len(legal))
+	for _, p := range legal {
+		if p == nil {
+			continue
+		}
+		pw := gs.PowerOf(p)
+		if pw <= 0 {
+			continue
+		}
+		mul := 1
+		if p.HasKeyword("double strike") || p.HasKeyword("double_strike") {
+			mul = 2
+		}
+		a := atk{dmg: pw * mul}
+		if p.HasKeyword("unblockable") || p.HasKeyword("shadow") || p.HasKeyword("horsemanship") {
+			a.hard = true
+		} else if p.HasKeyword("flying") {
+			a.flying = true
+		}
+		atks = append(atks, a)
+	}
+	for i, s := range gs.Seats {
+		if i == seatIdx || s == nil || s.Lost || s.LeftGame {
+			continue
+		}
+		groundBlockers := 0 // any untapped creature can block a ground attacker
+		airBlockers := 0    // fliers / reachers can additionally block fliers
+		for _, bp := range s.Battlefield {
+			if bp == nil || !bp.IsCreature() || bp.Tapped {
+				continue
+			}
+			groundBlockers++
+			if bp.HasKeyword("flying") || bp.HasKeyword("reach") {
+				airBlockers++
+			}
+		}
+		hardDmg := 0
+		var flyingDmgs, groundDmgs []int
+		for _, a := range atks {
+			switch {
+			case a.hard:
+				hardDmg += a.dmg
+			case a.flying:
+				flyingDmgs = append(flyingDmgs, a.dmg)
+			default:
+				groundDmgs = append(groundDmgs, a.dmg)
+			}
+		}
+		sort.Sort(sort.Reverse(sort.IntSlice(flyingDmgs)))
+		sort.Sort(sort.Reverse(sort.IntSlice(groundDmgs)))
+		connected := hardDmg
+		air := airBlockers
+		for _, fd := range flyingDmgs {
+			if air > 0 {
+				air-- // this flier is blocked, deals 0 to the player
+				continue
+			}
+			connected += fd
+		}
+		// Air blockers spent on fliers are also ground creatures, so they're
+		// drawn from the shared untapped pool — subtract them from ground.
+		spentOnFliers := airBlockers - air
+		ground := groundBlockers - spentOnFliers
+		if ground < 0 {
+			ground = 0
+		}
+		for _, gd := range groundDmgs {
+			if ground > 0 {
+				ground-- // chump-blocked, deals 0 to the player
+				continue
+			}
+			connected += gd
+		}
+		if connected > 0 && connected >= s.Life {
+			return i
+		}
+	}
+	return -1
+}
+
 // -- Interface: ChooseAttackers --
 
 func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, legal []*gameengine.Permanent) []*gameengine.Permanent {
@@ -5921,50 +6150,10 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 		}
 	}
 
-	// Lethal detection — compute total possible damage and check if any
-	// opponent can be killed this turn. If so, go all-in.
-	totalEvasivePower := 0
-	totalPower := 0
-	for _, p := range legal {
-		if p == nil {
-			continue
-		}
-		pw := gs.PowerOf(p)
-		if pw <= 0 {
-			continue
-		}
-		mul := 1
-		if p.HasKeyword("double strike") || p.HasKeyword("double_strike") {
-			mul = 2
-		}
-		totalPower += pw * mul
-		if p.HasKeyword("unblockable") || p.HasKeyword("shadow") || p.HasKeyword("flying") ||
-			p.HasKeyword("fear") || p.HasKeyword("menace") || p.HasKeyword("horsemanship") {
-			totalEvasivePower += pw * mul
-		}
-	}
-	lethalTarget := -1
-	for i, s := range gs.Seats {
-		if i == seatIdx || s == nil || s.Lost || s.LeftGame {
-			continue
-		}
-		// Evasive power alone can kill (minimal blocks possible).
-		if totalEvasivePower >= s.Life {
-			lethalTarget = i
-			break
-		}
-		// Total power overkills by 2x their blockers' toughness.
-		blockerTough := 0
-		for _, bp := range s.Battlefield {
-			if bp != nil && bp.IsCreature() && !bp.Tapped {
-				blockerTough += gs.ToughnessOf(bp) - bp.MarkedDamage
-			}
-		}
-		if totalPower >= s.Life+blockerTough {
-			lethalTarget = i
-			break
-		}
-	}
+	// Lethal detection — model the defender's ACTUAL blocks rather than the
+	// old over-optimistic "all evasive power connects" / over-pessimistic
+	// "subtract every blocker's toughness" approximations (r61 item #6).
+	lethalTarget := lethalAttackTarget(gs, seatIdx, legal)
 	if lethalTarget >= 0 {
 		h.logf("%s LETHAL DETECTED on seat %d — sending everything",
 			roundTag(gs, seatIdx), lethalTarget)
@@ -7155,11 +7344,21 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 	// the legacy generic-CMC check via Total when ManaCostString is empty
 	// (engine-minted cards / tests without printed costs still work).
 	colored := gameengine.AvailableColoredManaEstimate(gs, seat)
+	// Among all affordable counterspells, pick the CHEAPEST sufficient one
+	// (by CMC, then name for determinism) rather than the first in hand
+	// order — so we don't burn a Cryptic Command when a plain Counterspell
+	// would do the same job and keep the expensive flexible counter for a
+	// situation that actually needs it.
+	var bestCounterCMC int
 	for _, c := range seat.Hand {
 		if c != nil && gameengine.CardHasCounterSpell(c) {
 			if gameengine.CanPayColoredCost(colored, c) {
-				bestCounter = c
-				break
+				cmc := gameengine.ManaCostOf(c)
+				if bestCounter == nil || cmc < bestCounterCMC ||
+					(cmc == bestCounterCMC && c.DisplayName() < bestCounter.DisplayName()) {
+					bestCounter = c
+					bestCounterCMC = cmc
+				}
 			}
 		}
 	}
@@ -7249,7 +7448,7 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 		if strings.Contains(ot, "win the game") {
 			mustCounter = true
 		}
-		if strings.Contains(ot, "destroy all") || strings.Contains(ot, "exile all") && score >= 1 {
+		if (strings.Contains(ot, "destroy all") || strings.Contains(ot, "exile all")) && score >= 1 {
 			mustCounter = true
 		}
 		// R60 signal B — eager counter on routinely game-deciding shapes
@@ -8796,6 +8995,30 @@ func (h *YggdrasilHat) ShouldCastCommander(gs *gameengine.GameState, seatIdx int
 
 	urgency := h.commanderUrgency(commanderName)
 
+	// Voltron / high-tax recommit guard (r61). A Voltron commander — or any
+	// commander already taxed enough to imply it's been killed 2+ times
+	// (tax >= 4 == cast from the command zone at least twice) — should not
+	// blindly re-deploy into open removal with no mana left to protect it.
+	// Without this, the PhaseDeploy / PhaseExecute branches below return
+	// `true` unconditionally and walk the same Voltron commander straight
+	// back into the same removal that just killed it. Gate ONLY when ALL of:
+	//   - it's a Voltron deck OR the commander is already repeatedly-killed
+	//     (tax >= 4), AND
+	//   - it isn't strategically urgent (urgency < 0.8 — a must-have engine
+	//     commander still goes), AND
+	//   - there's real interaction risk at the table, AND
+	//   - we can't both recast AND hold up an answer (avail < tax*2),
+	// so a safe recast (open table, spare mana, or low tax) is unaffected.
+	isVoltron := h.Strategy != nil && h.Strategy.Archetype == ArchetypeVoltron
+	if (isVoltron || tax >= 4) && urgency < 0.8 && tax >= 2 {
+		intRisk := h.tableInteractionRisk(gs, seatIdx)
+		if intRisk > 0.5 && avail < tax*2 {
+			h.logf("CMDR-CAST decision=skip name=%s urgency=%.2f reason=voltron_recommit_risk intRisk=%.2f tax=%d avail=%d",
+				commanderName, urgency, intRisk, tax, avail)
+			return false
+		}
+	}
+
 	maxTax := 6
 	manaBuffer := 1
 	if h.Strategy != nil {
@@ -9537,13 +9760,51 @@ func (h *YggdrasilHat) ChooseDiscard(gs *gameengine.GameState, seatIdx int, hand
 	}
 	hasEnabler := h.hasGraveyardRecursionEnabler(gs, seatIdx)
 	commanderNames := commanderNamesForSeat(gs, seatIdx)
+	// Lands-in-hand vs board-mana balance + current-turn castability. Count
+	// the lands actually in hand and estimate available mana so we can (a)
+	// protect the LAST land when we're still short on board mana, and (b)
+	// prefer pitching a stranded uncastable bomb over a castable action card.
+	landsInHand := 0
+	for _, c := range hand {
+		if c != nil && typeLineContains(c, "land") {
+			landsInHand++
+		}
+	}
+	availMana := 0
+	if seatIdx >= 0 && seatIdx < len(gs.Seats) {
+		availMana = gameengine.AvailableManaEstimate(gs, gs.Seats[seatIdx])
+	}
 	for _, c := range hand {
 		if c == nil {
 			continue
 		}
 		v := h.cardHeuristic(gs, seatIdx, c)
-		if typeLineContains(c, "land") && sources >= 5 {
+		isLandCard := typeLineContains(c, "land")
+		if isLandCard && sources >= 5 {
 			v -= 0.5
+		}
+		// Last-land protection: never pitch our only land in hand while we're
+		// still building board mana (mirrors the sources<3 starvation gate
+		// below). Losing the last land while mana-light strands the whole
+		// hand — protect it dominantly. Aligned to sources<3 so the existing
+		// sources==3 boundary contract is preserved.
+		if isLandCard && landsInHand == 1 && sources < 3 {
+			v += 5.0
+		}
+		// Current-turn castability. A card we can actually cast this turn is
+		// live; a stranded high-CMC bomb we can't cast for several turns is a
+		// better pitch than a castable action. Lands are exempt (they're a
+		// resource, not a "cast").
+		if !isLandCard {
+			cmc := gameengine.ManaCostOf(c)
+			if cmc <= availMana && availMana > 0 {
+				v += 0.4
+			} else if cmc >= availMana+3 {
+				// Uncastable for the foreseeable future — mild pitch nudge,
+				// not dominating, so genuine bombs/engines still survive via
+				// their combo/VE/star bonuses.
+				v -= 0.3
+			}
 		}
 		// Mana-starvation land protection. With fewer than three mana
 		// sources the next land drop matters far more than any card in
