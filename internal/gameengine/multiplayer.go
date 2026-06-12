@@ -646,6 +646,19 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 			MarkInstanceIDCeased(gs, c.InstanceID)
 		}
 	}
+	// §800.4a in-flight resolution (r63, seed-7777 game 1937): a spell
+	// owned by the leaving seat can be MID-RESOLUTION when the
+	// elimination runs — Biorhythm kills its own caster, and the card is
+	// popped off the stack but not yet routed (gs.ResolvingCards limbo
+	// window), so none of the zone walks above see it. Its
+	// post-resolution routing will be refused by the MoveCard LeftGame
+	// guard (PR #1041), leaving the card in no zone forever — cease the
+	// ID here or the census reads it as "disappeared".
+	for _, c := range gs.ResolvingCards {
+		if c != nil && c.Owner == seatIdx {
+			MarkInstanceIDCeased(gs, c.InstanceID)
+		}
+	}
 
 	// Phase E — §400.7c duplicate-pointer reconciliation. When a card
 	// owned by the leaving seat has somehow been duplicated into a

@@ -1540,6 +1540,22 @@ func ResolveStackTop(gs *GameState) {
 	item := gs.Stack[len(gs.Stack)-1]
 	gs.Stack = gs.Stack[:len(gs.Stack)-1]
 
+	// Census limbo-window guard (r63, seed-7777 game-76 Biorhythm): from
+	// this pop until the final zone routing below, item.Card is absent
+	// from every census-walked zone. If THIS resolution eliminates a seat
+	// or ends the game (CheckEnd → HandleSeatElimination →
+	// SweepOrphanedInstanceIDs runs mid-resolution), the orphan sweep
+	// would cease the in-flight card's ID and the eventual graveyard
+	// routing becomes a permanent fabrication violation. Track the card
+	// as present-while-resolving; LIFO so nested resolutions (DrainStack
+	// inside a handler) stay balanced.
+	if item.Card != nil {
+		gs.ResolvingCards = append(gs.ResolvingCards, item.Card)
+		defer func() {
+			gs.ResolvingCards = gs.ResolvingCards[:len(gs.ResolvingCards)-1]
+		}()
+	}
+
 	// InstanceID enabler context: child objects (token mints, copy mints)
 	// created during this resolution stamp the resolving frame's
 	// AbilityInstance ID as their EnablerInstanceID per

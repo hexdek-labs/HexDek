@@ -290,6 +290,14 @@ func checkZoneConservationByInstanceID(gs *GameState) error {
 		addID(item.Card)
 	}
 
+	// Mid-resolution limbo window (r63): cards popped off the stack whose
+	// resolution is still executing count as present. Keep in lockstep
+	// with collectPresentInstanceIDsForSweep.
+	zoneLabel = "resolving"
+	for _, c := range gs.ResolvingCards {
+		addID(c)
+	}
+
 	// Build expected set: Minted - Ceased, restricted to OG/TK/CP
 	// provenance (AB ephemeral). The InstanceID format encodes provenance
 	// at fixed positions 2-3 ("h<seat>OG|TK|CP|AB...") — read directly
