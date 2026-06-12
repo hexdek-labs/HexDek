@@ -212,7 +212,7 @@ func TestClassifyKill_AgreesWithAnalyticsKillRecord(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			gs := classifyGame(t, 3)
-			gs.RetainEvents = true
+			gs.EventPolicy = gameengine.EventLogFull
 			winner := 2
 
 			// Decoy early elimination of a different type.

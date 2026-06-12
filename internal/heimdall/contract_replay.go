@@ -131,7 +131,7 @@ func replayForOutcome(rc *ReplayContext, contract *seedcontract.SeedContract) (o
 
 	gs := gameengine.NewGameState(nSeats, gameRng, rc.Corpus)
 	gs.Seed = contract.RNGSeed // r62: hats key deterministic noise off gs.Seed
-	gs.RetainEvents = false
+	gs.EventPolicy = gameengine.EventLogNone
 
 	cmdDecks := make([]*gameengine.CommanderDeck, nSeats)
 	for i := 0; i < nSeats; i++ {

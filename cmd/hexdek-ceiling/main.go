@@ -586,7 +586,7 @@ func runCeilingGauntlet(
 				gameRng := rand.New(rand.NewSource(gameSeed))
 				gs := gameengine.NewGameState(seatCount, gameRng, corpus)
 				gs.Seed = gameSeed
-				gs.RetainEvents = false
+				gs.EventPolicy = gameengine.EventLogNone
 
 				cmdDecks := make([]*gameengine.CommanderDeck, seatCount)
 				for i := 0; i < seatCount; i++ {

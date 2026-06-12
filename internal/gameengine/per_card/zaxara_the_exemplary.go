@@ -67,7 +67,7 @@ func zaxaraTheExemplarySpellCast(gs *gameengine.GameState, perm *gameengine.Perm
 
 	// CastSpell sets gs.Flags["_cast_chosen_x"] before firing triggers
 	// and deletes it immediately after — always available regardless of
-	// RetainEvents mode.
+	// event-retention mode.
 	x := gs.Flags["_cast_chosen_x"]
 
 	// Create a 0/0 green Hydra creature token (oracle: "create a 0/0 green

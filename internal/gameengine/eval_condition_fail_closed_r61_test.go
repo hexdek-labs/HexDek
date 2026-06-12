@@ -19,7 +19,7 @@ import (
 func ecfc_makeGame(t *testing.T) *GameState {
 	t.Helper()
 	gs := NewGameState(2, rand.New(rand.NewSource(7)), nil)
-	gs.RetainEvents = true
+	gs.EventPolicy = EventLogFull
 	return gs
 }
 

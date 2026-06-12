@@ -264,6 +264,11 @@ func (gs *GameState) CloneForRollout(rng *rand.Rand) *GameState {
 		clone.EventLog = make([]Event, len(gs.EventLog))
 		copy(clone.EventLog, gs.EventLog)
 	}
+	// Rollout clones never retain NEW events (step 3: explicit
+	// EventLogNone — pre-policy this was the implicit zero-value
+	// RetainEvents=false; with the zero value now meaning full
+	// retention, an explicit none keeps rollouts allocation-free).
+	clone.EventPolicy = EventLogNone
 
 	// Flags.
 	if gs.Flags != nil {

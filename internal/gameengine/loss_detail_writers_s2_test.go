@@ -84,7 +84,7 @@ func TestConcedeGame_StampsLossDetail(t *testing.T) {
 // event's structured detail keys — analytics' inferKiller reads them.
 func TestSeatEliminated_EventCarriesLossCategory(t *testing.T) {
 	gs := NewGameState(2, nil, nil)
-	gs.RetainEvents = true
+	gs.EventPolicy = EventLogFull
 	gs.Seats[0].Lost = true
 	gs.Seats[0].LossReason = "21+ commander damage from Edgar Markov (CR 704.6c)"
 	gs.Seats[0].LossDetail = &validation.LossReason{

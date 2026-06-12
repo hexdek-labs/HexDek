@@ -117,7 +117,7 @@ func runSelfPlay(t *testing.T, seed int64, turnCap int) *gameengine.GameState {
 
 	rng := rand.New(rand.NewSource(seed))
 	gs := gameengine.NewGameState(nSeats, rng, nil)
-	gs.RetainEvents = true // we read the event log to assert per-seat activity
+	gs.EventPolicy = gameengine.EventLogFull // we read the event log to assert per-seat activity
 
 	decks := make([]*gameengine.CommanderDeck, nSeats)
 	for i := 0; i < nSeats; i++ {

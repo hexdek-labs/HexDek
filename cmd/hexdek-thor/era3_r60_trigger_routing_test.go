@@ -95,7 +95,7 @@ func TestTriggerConditionActions_Era3R60Apply(t *testing.T) {
 		tc := tc
 		t.Run(tc.slug, func(t *testing.T) {
 			gs := newTestGameState(2)
-			gs.RetainEvents = true
+			gs.EventPolicy = gameengine.EventLogFull
 			src := &gameengine.Permanent{
 				Controller: 0,
 				Flags:      map[string]int{},

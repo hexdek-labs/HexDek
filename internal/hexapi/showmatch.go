@@ -1075,7 +1075,7 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 		gameRng := rand.New(rand.NewSource(gameSeed))
 		gs := gameengine.NewGameState(showmatchSeats, gameRng, sm.corpus)
 		gs.Seed = gameSeed
-		gs.RetainEvents = false
+		gs.EventPolicy = gameengine.EventLogNone
 
 		cmdDecks := make([]*gameengine.CommanderDeck, showmatchSeats)
 		for i := 0; i < showmatchSeats; i++ {
@@ -1646,7 +1646,7 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 	gameRng := rand.New(rand.NewSource(gameSeed))
 	gs := gameengine.NewGameState(showmatchSeats, gameRng, sm.corpus)
 	gs.Seed = gameSeed
-	gs.RetainEvents = false
+	gs.EventPolicy = gameengine.EventLogNone
 
 	cmdDecks := make([]*gameengine.CommanderDeck, showmatchSeats)
 	for i := 0; i < showmatchSeats; i++ {
@@ -1914,7 +1914,7 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 	gameRng := rand.New(rand.NewSource(gameSeed))
 	gs := gameengine.NewGameState(showmatchSeats, gameRng, sm.corpus)
 	gs.Seed = gameSeed
-	gs.RetainEvents = true
+	gs.EventPolicy = gameengine.EventLogFull
 
 	cmdDecks := make([]*gameengine.CommanderDeck, showmatchSeats)
 	for i := 0; i < showmatchSeats; i++ {

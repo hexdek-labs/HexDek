@@ -70,7 +70,7 @@ func TestFeynman_ZoneAccounting_50Games(t *testing.T) {
 	for game := 0; game < numGames; game++ {
 		rng := rand.New(rand.NewSource(int64(game)*97 + 7))
 		gs := gameengine.NewGameState(nSeats, rng, nil)
-		gs.RetainEvents = false
+		gs.EventPolicy = gameengine.EventLogNone
 
 		commanderDecks := make([]*gameengine.CommanderDeck, nSeats)
 		for i := 0; i < nSeats; i++ {

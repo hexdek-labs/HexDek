@@ -421,7 +421,7 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 	// stamped + 1" is the seat's position in the order. Same-CheckEnd
 	// simultaneous eliminations tie-break by seat index (the §800.4a
 	// loop order). Unlike the seat_eliminated event below, this survives
-	// RetainEvents=false — heimdall.ClassifyKill keys the winner's kill
+	// EventPolicy=EventLogNone — heimdall.ClassifyKill keys the winner's kill
 	// method off the max-LostOrder opponent.
 	if seat.LostOrder == 0 {
 		order := 1

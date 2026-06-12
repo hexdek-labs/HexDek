@@ -57,7 +57,7 @@ type GameState struct {
 	Seed int64
 
 	// EventsLogged counts every LogEvent call for the lifetime of the
-	// game, independent of RetainEvents. It is a deterministic
+	// game, independent of EventPolicy. It is a deterministic
 	// work-volume proxy: the tournament turn runner budgets each turn
 	// by events logged instead of wall-clock time, so a pathological
 	// turn fast-forwards identically on every host (seed-replay
@@ -91,21 +91,32 @@ type GameState struct {
 	// existing items (e.g., CounterSpell flipping Countered=true).
 	Stack []*StackItem
 
-	// EventLog is an append-only structured event stream. Every resolver
-	// handler that mutates state emits at least one Event. Tests assert
-	// against this slice; future agents (Phase 10 policy) read it for
-	// credit assignment.
+	// EventLog is the structured event log — the ONE event store
+	// (consolidation step 3). Every resolver handler that mutates state
+	// emits at least one Event via LogEvent; what this slice retains is
+	// governed by EventPolicy. Tests assert against this slice; future
+	// agents (Phase 10 policy) read it for credit assignment. Always in
+	// chronological order under every policy.
 	EventLog []Event
 
-	// RetainEvents controls whether LogEvent appends to EventLog.
-	// When false (tournament non-audit mode), events are broadcast to
-	// Hats but not accumulated, saving ~9GB/game of allocation pressure.
-	RetainEvents bool
+	// EventPolicy selects the EventLog retention policy (consolidation
+	// step 3 — replaces the RetainEvents bool + lastEvent single-slot
+	// dual path whose silent-drop split caused the goldilocks 1,795
+	// keyword_dead failures):
+	//   EventLogFull — retain everything (50k cap); audit / test mode.
+	//   EventLogRing — bounded recent history: at least the most recent
+	//                  EventRingSize events, never more than 2× that
+	//                  (amortized compaction keeps EventLog a plain
+	//                  chronological slice).
+	//   EventLogNone — retain nothing; hats still observe every event.
+	// The ZERO VALUE ("") retains everything: a struct-literal fixture
+	// that forgets to set the policy gets full retention, so the
+	// goldilocks silent-drop class cannot recur by omission.
+	EventPolicy EventLogPolicy
 
-	// lastEvent holds the most recent event for Hat broadcast when
-	// RetainEvents is false. Avoids slice growth while still letting
-	// Hats observe gameplay.
-	lastEvent Event
+	// EventRingSize bounds EventLog under EventLogRing. 0 means the
+	// defaultEventRingSize. Ignored under other policies.
+	EventRingSize int
 
 	// Cards points at the loaded corpus. Resolver handlers reach in via
 	// Cards.Get(name) when they need to spawn token cards or reveal cards.
@@ -714,7 +725,7 @@ func NewGameState(seatCount int, rng *rand.Rand, corpus *astload.Corpus) *GameSt
 		Cards:             corpus,
 		Flags:             flags,
 		EventLog:          make([]Event, 0, 64),
-		RetainEvents:      true,
+		EventPolicy:       EventLogFull,
 		DayNight:          DayNightNeither,
 		IIDMinter:         instanceid.NewMinter(seatCount),
 		MintedInstanceIDs: map[string]struct{}{},
@@ -731,31 +742,75 @@ func (gs *GameState) NextTimestamp() int {
 	return gs.EffectTimestamp
 }
 
-// LogEvent appends a structured event. Keeping this centralized means
-// later phases can add instrumentation (timestamps, invariant checks) in
-// one place.
+// EventLogPolicy selects what LogEvent retains in gs.EventLog
+// (consolidation step 3). The retention decision is the ONLY thing the
+// policy changes: EventsLogged counts and the Hat broadcast happen for
+// every event under every policy.
+type EventLogPolicy string
+
+const (
+	// EventLogFull retains every event up to maxEventLog (50k), then
+	// stops appending (first-50k-kept, matching the historical cap
+	// behavior). The zero value "" behaves identically — full retention
+	// is the safe default a fixture gets by omission.
+	EventLogFull EventLogPolicy = "full"
+	// EventLogRing retains a bounded recent window: at least the most
+	// recent EventRingSize events (defaultEventRingSize when unset) and
+	// never more than twice that, always in chronological order. Use
+	// RecentEvents(n) for an exact-width tail.
+	EventLogRing EventLogPolicy = "ring"
+	// EventLogNone retains nothing — the replacement for the old
+	// RetainEvents=false mode (tournament non-audit runs, rollout
+	// clones), saving ~9GB/game of allocation pressure. Hats still
+	// observe every event.
+	EventLogNone EventLogPolicy = "none"
+)
+
+const (
+	// maxEventLog caps EventLogFull retention.
+	maxEventLog = 50000
+	// defaultEventRingSize is the EventLogRing window when
+	// gs.EventRingSize is 0.
+	defaultEventRingSize = 512
+)
+
+// LogEvent records a structured event per gs.EventPolicy and broadcasts
+// it to every seat's Hat. Keeping this centralized means later phases
+// can add instrumentation (timestamps, invariant checks) in one place.
 //
 // Phase 10: after the event is persisted, broadcast it to every seat's
 // Hat (if any). Hats use this to drive archetype detection, mode
 // transitions, and other adaptive behavior. The broadcast is best-effort
 // — a nil-safe loop that tolerates seats without a Hat. Hats must not
-// mutate the GameState from ObserveEvent (contract, not enforced) but
-// they may update their OWN internal state.
+// mutate the GameState from ObserveEvent (contract, not enforced) and
+// must not retain the *Event past the call (it may point at a stack
+// copy that is not stored anywhere).
 func (gs *GameState) LogEvent(ev Event) {
 	gs.EventsLogged++
-	var evPtr *Event
-	if gs.RetainEvents {
-		const maxEventLog = 50000
+	evPtr := &ev
+	switch gs.EventPolicy {
+	case EventLogNone:
+		// Retain nothing; hats observe the local copy.
+	case EventLogRing:
+		n := gs.EventRingSize
+		if n <= 0 {
+			n = defaultEventRingSize
+		}
+		// Amortized ring: append freely, and once the slice holds 2n
+		// events compact the most recent n to the front. EventLog stays
+		// a plain chronological slice under every policy, so direct
+		// readers (range / index) never see wrapped order.
+		if len(gs.EventLog) >= 2*n {
+			copied := copy(gs.EventLog, gs.EventLog[len(gs.EventLog)-n+1:])
+			gs.EventLog = gs.EventLog[:copied]
+		}
+		gs.EventLog = append(gs.EventLog, ev)
+		evPtr = &gs.EventLog[len(gs.EventLog)-1]
+	default: // EventLogFull and the zero value: full retention.
 		if len(gs.EventLog) < maxEventLog {
 			gs.EventLog = append(gs.EventLog, ev)
 			evPtr = &gs.EventLog[len(gs.EventLog)-1]
-		} else {
-			gs.lastEvent = ev
-			evPtr = &gs.lastEvent
 		}
-	} else {
-		gs.lastEvent = ev
-		evPtr = &gs.lastEvent
 	}
 	if len(gs.Seats) == 0 {
 		return
@@ -766,6 +821,19 @@ func (gs *GameState) LogEvent(ev Event) {
 		}
 		s.Hat.ObserveEvent(gs, i, evPtr)
 	}
+}
+
+// RecentEvents returns the retained tail of the event log, at most n
+// events, newest last. Convenience for consumers that only need recent
+// history and shouldn't care which retention policy is active.
+func (gs *GameState) RecentEvents(n int) []Event {
+	if n <= 0 || len(gs.EventLog) == 0 {
+		return nil
+	}
+	if n > len(gs.EventLog) {
+		n = len(gs.EventLog)
+	}
+	return gs.EventLog[len(gs.EventLog)-n:]
 }
 
 // Opponents returns the indices of every seat that is not `seat` and not
@@ -1036,7 +1104,7 @@ type Seat struct {
 	// eliminated, 2 = second, etc. Stamped by HandleSeatElimination
 	// (which CheckEnd runs exactly once per newly-Lost seat, in
 	// elimination order) — so it is populated regardless of
-	// RetainEvents. 0 = never eliminated (or a fixture that bypassed
+	// EventPolicy. 0 = never eliminated (or a fixture that bypassed
 	// the §800.4a pipeline). heimdall.ClassifyKill keys the winner's
 	// kill method off the opponent with the HIGHEST LostOrder — the
 	// final elimination is how the winner closed the game (r62,
