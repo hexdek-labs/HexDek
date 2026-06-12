@@ -49,13 +49,16 @@ func TestWiden4_TutorShapes(t *testing.T) {
 		Query: gameast.Filter{Base: "basic land_card", Quantifier: "one"},
 		Count: *gameast.NumInt(1), Destination: "hand", Optional: true,
 	})
-	// Subtype-restricted query: may not match the scaffold library.
-	mustSkip(t, "tutor-subtype", &gameast.Tutor{
+	// Subtype-restricted query: provably matches nothing in the
+	// stocked library (Wastes basics, subtype-less fillers) — phase 5
+	// claims the guaranteed fail-to-find (zero delta).
+	mustPass(t, "tutor-subtype-fail-to-find", &gameast.Tutor{
 		Query: gameast.Filter{Base: "basic land_card", CreatureTypes: []string{"forest"}},
 		Count: *gameast.NumInt(1), Destination: "hand",
 	})
-	// More copies than stocked candidates.
-	mustSkip(t, "tutor-overcount", &gameast.Tutor{
+	// More copies than stocked candidates: a mandatory search finds
+	// what it can — phase 5 expects min(count, pool) moved.
+	mustPass(t, "tutor-overcount-partial", &gameast.Tutor{
 		Query: gameast.Filter{Base: "basic land_card"},
 		Count: *gameast.NumInt(99), Destination: "hand",
 	})
@@ -71,8 +74,9 @@ func TestWiden4_BounceShapes(t *testing.T) {
 	mustPass(t, "bounce-self", &gameast.Bounce{
 		Target: gameast.Filter{Base: "self"},
 	})
-	// "permanent" is set-valued (creature pick shifts P/T sums): skip.
-	mustSkip(t, "bounce-permanent", &gameast.Bounce{
+	// "permanent" is set-valued (creature pick shifts P/T sums) —
+	// phase 5 models it as the pick-class disjunction.
+	mustPass(t, "bounce-permanent", &gameast.Bounce{
 		Target: gameast.Filter{Base: "permanent", Quantifier: "one", Targeted: true},
 	})
 }

@@ -2350,6 +2350,21 @@ func resolveCounterMod(gs *GameState, src *Permanent, e *gameast.CounterMod) {
 	if op == "" {
 		op = "put"
 	}
+	if op == "distribute" {
+		// CR §701 "distribute N counters among one or more targets":
+		// the SPLIT is a player choice (§601.2d); greedy concentrates
+		// the full count on the first picked target. Mapping to a
+		// single "put" routes the §614 replacement chain (Hardened
+		// Scales, Doubling Season) identically. Pre-fix this op fell
+		// through the switch entirely — Ajani, Mentor of Heroes' +1,
+		// Armament Corps, Dueling Coach and ~28 more distribute
+		// effects were silent no-ops (r63 OUTCOME phase-5 audit,
+		// 31-card cluster).
+		op = "put"
+		if len(targets) > 1 {
+			targets = targets[:1]
+		}
+	}
 	// Check if this is a player-targeted counter type (poison, rad, energy, experience).
 	// These go on players, not permanents — §122 (poison), Fallout (rad).
 	isPlayerCounter := e.CounterKind == "poison" || e.CounterKind == "rad" ||

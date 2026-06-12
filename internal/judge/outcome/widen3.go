@@ -88,6 +88,18 @@ func leafPhase3(spec BoardSpec, eff gameast.Effect, d *Delta) (bool, bool) {
 			d.LifeBySeat[spec.Controller] -= n
 			return true, true
 		}
+		switch e.ModKind {
+		case "regenerate_typed", "restriction", "cast_trigger_tail",
+			"trigger_tail_fragment", "trigger_fragment_upkeep",
+			"attach", "gain_energy":
+			// r63 phase 5 — zero-delta resolutions: regeneration
+			// shields, restriction markers ("can't block"), delayed/
+			// cast-trigger registrations, equipment attach, and energy
+			// bookkeeping change no snapshot-observable count. A wrong
+			// implementation that draws/mills/destroys instead is
+			// caught by the zero expectation.
+			return true, true
+		}
 		return true, false // other ModificationEffects: out of scope
 
 	case *gameast.CreateToken:

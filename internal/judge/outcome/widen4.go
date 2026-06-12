@@ -46,6 +46,8 @@ package outcome
 //	ADD MANA      per-seat pool delta from the symbol list.
 
 import (
+	"strings"
+
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
@@ -132,7 +134,12 @@ func expandSetValuedLeaf(spec BoardSpec, eff gameast.Effect, prefixes []*Delta) 
 		// "any target": the policy may hit a player (life) or a creature
 		// (marked damage) — both are legal outcomes.
 		base := normBase(e.Target.Base)
-		if base != "any" && base != "any_target" && base != "any target" {
+		anyTarget := base == "any" || base == "any_target" || base == "any target" ||
+			// Alternate parser emission for the same oracle text
+			// ("deals N damage to any target"), r63 phase-5 census:
+			// {base:"target", quantifier:"any"}.
+			(base == "target" && e.Target.Quantifier == "any")
+		if !anyTarget {
 			return nil, false, false
 		}
 		n, ok := amountVal(spec, e.Amount)
@@ -200,8 +207,24 @@ func expandSetValuedLeaf(spec BoardSpec, eff gameast.Effect, prefixes []*Delta) 
 // Query whitelist: plain land-class and any-card searches whose match
 // is guaranteed on the stocked library.
 func leafTutor(spec BoardSpec, e *gameast.Tutor, d *Delta) bool {
-	if !cleanFilter(e.Query) {
+	// Phase-5 widened gates: subtype/positive-color queries provably
+	// match nothing in the stocked library (subtype-less colorless
+	// fillers + Wastes basics) — a legal fail-to-find, zero delta.
+	// Mana-value filters are skipped (CMC-0 fillers match <= shapes).
+	if e.Query.ManaValueOp != "" || len(e.Query.Extra) > 0 {
 		return false
+	}
+	guaranteedMiss := false
+	if len(e.Query.CreatureTypes) > 0 {
+		for _, sub := range e.Query.CreatureTypes {
+			if strings.EqualFold(sub, "wastes") || strings.EqualFold(sub, "basic") {
+				return false // the stocked basics might match: skip
+			}
+		}
+		guaranteedMiss = true
+	}
+	if len(e.Query.ColorFilter) > 0 {
+		guaranteedMiss = true
 	}
 	n := 1
 	if v, ok := e.Count.IntVal(); ok && v > 0 {
@@ -213,11 +236,25 @@ func leafTutor(spec BoardSpec, e *gameast.Tutor, d *Delta) bool {
 		pool = spec.LibraryLands
 	case "card", "card_card":
 		pool = spec.LibrarySize
+	case "creature_card", "creature card", "creature":
+		pool = spec.LibrarySize - spec.LibraryLands
+	case "artifact_card", "artifact", "enchantment_card", "enchantment",
+		"instant_card", "instant", "sorcery_card", "sorcery",
+		"planeswalker_card", "planeswalker", "battle_card", "battle":
+		pool = 0 // nothing of these types is stocked: guaranteed fail-to-find
 	default:
 		return false
 	}
+	if guaranteedMiss {
+		pool = 0
+	}
+	if pool == 0 {
+		return true // legal fail-to-find: zero delta (shuffle only reorders)
+	}
 	if n > pool {
-		return false // partial-match counts: out of scope, never guessed
+		// A mandatory search finds what it can: the engine moves every
+		// match it has (min(count, pool)).
+		n = pool
 	}
 	switch e.Destination {
 	case "hand", "":
@@ -255,7 +292,12 @@ func leafPhase4(spec BoardSpec, eff gameast.Effect, d *Delta) (bool, bool) {
 		return true, leafTutor(spec, e, d)
 
 	case *gameast.Bounce:
-		return true, leafBounce(spec, e, d)
+		if leafBounce(spec, e, d) {
+			return true, true
+		}
+		// Fall through: phase 5 handles own-bounce, zero-candidate
+		// adjectives, and color-filtered shapes.
+		return false, false
 
 	case *gameast.Destroy:
 		if e.Target.Quantifier != "each" && e.Target.Quantifier != "all" {

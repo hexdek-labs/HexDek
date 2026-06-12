@@ -243,9 +243,10 @@ func BuildBoard(spec BoardSpec, srcName string) (*gameengine.GameState, *gameeng
 // ran=true means PASS.
 func RunEffect(cardName, raw string, eff gameast.Effect) (*Finding, bool) {
 	spec := DefaultSpec()
-	if treeContainsCounterSpell(eff) {
-		// A live opponent spell on the stack ONLY for counter shapes —
-		// a resident stack item must not perturb every other check.
+	if treeNeedsStackSpell(eff) {
+		// A live opponent spell on the stack ONLY for counter/copy
+		// shapes — a resident stack item must not perturb every other
+		// check.
 		spec.StackSpells = 1
 	}
 	expectedSet, ok := ExpectSet(spec, eff)

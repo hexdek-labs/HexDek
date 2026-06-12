@@ -165,8 +165,15 @@ func expand(spec BoardSpec, eff gameast.Effect, prefixes []*Delta) ([]*Delta, bo
 	}
 
 	// Set-valued leaves (any-target damage, surveil splits, optional
-	// tutors) branch the prefix set rather than folding into it.
+	// tutors, permanent-bounce) branch the prefix set rather than
+	// folding into it.
 	if out, handled, ok := expandSetValuedLeaf(spec, eff, prefixes); handled {
+		if !ok {
+			return nil, false
+		}
+		return out, true
+	}
+	if out, handled, ok := expandSetValuedLeaf5(spec, eff, prefixes); handled {
 		if !ok {
 			return nil, false
 		}
@@ -197,6 +204,9 @@ func leaf(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 		return ok
 	}
 	if handled, ok := leafPhase4(spec, eff, d); handled {
+		return ok
+	}
+	if handled, ok := leafPhase5(spec, eff, d); handled {
 		return ok
 	}
 	switch e := eff.(type) {
