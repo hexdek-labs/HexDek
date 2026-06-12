@@ -268,9 +268,12 @@ func TestEffectiveBudget_TurnScaledThresholdPreservesLateGameBudget(t *testing.T
 }
 
 func TestEffectiveBudget_FlatThresholdSemanticsPreservedAtEarlyTurns(t *testing.T) {
-	// At turn 5 with 70 permanents (above the unchanged threshold 60),
-	// no high-stakes → still degrades to 0. The early-turn threshold
-	// behavior is unchanged.
+	// At turn 5 with 72 permanents (above the unchanged threshold 60),
+	// no high-stakes → the board DEGRADES. r61 PR-8: degradation is now
+	// graceful (a taper toward a floor) rather than the old hard 0, so the
+	// flat early-turn threshold still bites (budget drops below base) but
+	// the hat keeps doing SOME evaluation. over = 72-60 = 12 →
+	// factor 1-12*0.02 = 0.76 → 100*0.76 = 76.
 	gs := newTierTestGame(t, 4)
 	for _, s := range gs.Seats {
 		s.StartingLife = 40
@@ -290,7 +293,10 @@ func TestEffectiveBudget_FlatThresholdSemanticsPreservedAtEarlyTurns(t *testing.
 
 	h := newTierHat(100)
 	got := h.effectiveBudget(gs)
-	if got != 0 {
-		t.Errorf("turn=5 with 72 permanents should degrade (above baseline 60); got %d", got)
+	if got <= 0 {
+		t.Errorf("turn=5 with 72 permanents should degrade GRACEFULLY (non-zero); got %d", got)
+	}
+	if got >= 100 {
+		t.Errorf("turn=5 with 72 permanents is above threshold 60 → must degrade below base; got %d", got)
 	}
 }

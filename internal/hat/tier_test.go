@@ -51,7 +51,7 @@ func TestClassifyDecisionRolloutBudgetWithoutRunnerDegradesToGungnir(t *testing.
 	}
 }
 
-func TestClassifyDecisionBoardComplexityForcesMjolnir(t *testing.T) {
+func TestClassifyDecisionBoardComplexityDegradesToGungnir(t *testing.T) {
 	gs := newTierTestGame(t, 4)
 	h := newTierHat(rolloutBudgetGe)
 	h.TurnRunner = func(*gameengine.GameState) {}
@@ -67,8 +67,13 @@ func TestClassifyDecisionBoardComplexityForcesMjolnir(t *testing.T) {
 		}
 	}
 
-	if got := h.classifyDecision(gs); got != TierMjolnir {
-		t.Fatalf("complex board: want Mjolnir, got %s", got)
+	// r61 PR-8: a complex non-high-stakes board no longer cliffs to the
+	// pure-heuristic Mjolnir tier. effectiveBudget tapers to a degraded
+	// evaluator budget, so the tier report degrades to Gungnir (evaluator-
+	// guided) — NOT all the way to Mjolnir, and NOT up to rollout
+	// (Ragnarok), since the taper drops the budget below rolloutBudgetGe.
+	if got := h.classifyDecision(gs); got != TierGungnir {
+		t.Fatalf("complex board: want Gungnir (graceful degrade), got %s", got)
 	}
 }
 

@@ -42,8 +42,21 @@ func TestEffectiveBudget_ComplexityDegradesByDefault(t *testing.T) {
 	h := newTierHat(100)
 	fillBoard(t, gs, 5)
 
-	if got := h.effectiveBudget(gs); got != 0 {
-		t.Fatalf("complex board with no high-stakes signal: want 0, got %d", got)
+	// r61 PR-8: graceful degradation replaced the hard `return 0` cliff.
+	// A complex non-high-stakes board now tapers the budget down (never to
+	// 0) so the hat keeps doing SOME evaluation. fillBoard(5) lands ~68
+	// permanents (threshold 60, over ≈ 8) → factor 1-8*0.02 = 0.84 →
+	// 100*0.84 = 84. The exact value is constant-driven; assert it's a
+	// meaningfully-reduced-but-non-zero budget below the base.
+	got := h.effectiveBudget(gs)
+	if got <= 0 {
+		t.Fatalf("complex board must keep SOME evaluation budget (graceful degradation); got %d", got)
+	}
+	if got >= 100 {
+		t.Fatalf("complex board should degrade BELOW the base budget; got %d (base 100)", got)
+	}
+	if got != 84 {
+		t.Fatalf("complex board taper: want 84 (100 * (1 - 8*0.02)), got %d", got)
 	}
 }
 
@@ -97,8 +110,15 @@ func TestEffectiveBudget_LostSeatLowLifeIgnored(t *testing.T) {
 	gs.Seats[3].Life = 20
 	gs.Seats[0].Life = 20
 
-	if got := h.effectiveBudget(gs); got != 0 {
-		t.Fatalf("lost seat at 0 life must not trigger high-stakes; want 0, got %d", got)
+	// A lost seat at 0 life must not trigger the high-stakes bypass, so the
+	// board stays on the (now graceful) complexity-degrade path. r61 PR-8:
+	// the degraded budget is non-zero (tapered), not the old hard 0.
+	got := h.effectiveBudget(gs)
+	if got <= 0 {
+		t.Fatalf("lost seat at 0 life must NOT bypass degrade, but degrade is now graceful (non-zero); got %d", got)
+	}
+	if got >= 100 {
+		t.Fatalf("lost seat at 0 life: complexity should still degrade below base; got %d", got)
 	}
 }
 
