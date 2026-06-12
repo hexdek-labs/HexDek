@@ -364,6 +364,7 @@ type Showmatch struct {
 	heimdall        *heimdall.Observer
 	muninnSink      *muninnAdapter
 	achievements    *achievements.Tracker
+	judge           *judgeWatchdog // sampled Hex Judge over grinder/fishtank games (nil = off)
 
 	curseMu   sync.Mutex
 	cursePool map[string]*hat.CursePool // deck key → genetic population
@@ -642,6 +643,11 @@ func NewShowmatch(astPath, oraclePath, decksDir string, database *sql.DB) *Showm
 	sm.maintenance = os.Getenv("HEXDEK_MAINTENANCE") == "1"
 	if sm.maintenance {
 		log.Printf("MAINTENANCE MODE ON (HEXDEK_MAINTENANCE=1): grinder disabled; gauntlet + spectate return 503")
+	}
+	sm.judge = newJudgeWatchdogFromEnv()
+	if sm.judge != nil {
+		log.Printf("judge-watchdog: ON — sampling %.1f%% of games (game-level dims), %.2f%% (corpus dims), triage log %s",
+			sm.judge.gameRate*100, sm.judge.corpusRate*100, sm.judge.logPath)
 	}
 	go sm.loadAndRun(astPath, oraclePath, decksDir)
 	return sm
@@ -1643,6 +1649,9 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 	gs := gameengine.NewGameState(showmatchSeats, gameRng, sm.corpus)
 	gs.Seed = gameSeed
 	gs.EventPolicy = gameengine.EventLogNone
+	// Hex Judge sampled watchdog (nil-safe no-op when off).
+	jr := sm.judge.beginGame(rng, gameSeed, deckKeys)
+	jr.Attach(gs)
 
 	cmdDecks := make([]*gameengine.CommanderDeck, showmatchSeats)
 	for i := 0; i < showmatchSeats; i++ {
@@ -1713,6 +1722,7 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 		preBF := heimdall.SnapshotBattlefieldNames(gs)
 		tournament.TakeTurn(gs)
 		gameengine.StateBasedActions(gs)
+		jr.AfterTurn(gs)
 		for i := 0; i < showmatchSeats; i++ {
 			bracketCollectors[i].Snapshot(gs, i)
 		}
@@ -1865,6 +1875,7 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 			hat.FormatViolations(bracketOracle.Violations))
 		sm.muninnSink.AutoArchive(bracketSeed.RNGSeed, bracketSeed.DeckKeys, bracketOracle.Violations)
 	}
+	jr.Finish(gs, bracketOracle.Violations, pickedDecks)
 	sm.muninnSink.EndGame()
 }
 
@@ -1907,6 +1918,9 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 	gs := gameengine.NewGameState(showmatchSeats, gameRng, sm.corpus)
 	gs.Seed = gameSeed
 	gs.EventPolicy = gameengine.EventLogFull
+	// Hex Judge sampled watchdog (nil-safe no-op when off).
+	jr := sm.judge.beginGame(rng, gameSeed, deckKeys)
+	jr.Attach(gs)
 
 	cmdDecks := make([]*gameengine.CommanderDeck, showmatchSeats)
 	for i := 0; i < showmatchSeats; i++ {
@@ -2022,6 +2036,7 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 		preBF := heimdall.SnapshotBattlefieldNames(gs)
 		tournament.TakeTurnWithHook(gs, phaseHook)
 		gameengine.StateBasedActions(gs)
+		jr.AfterTurn(gs)
 		if newCards := heimdall.DiffBattlefield(preBF, heimdall.SnapshotBattlefieldNames(gs)); len(newCards) > 0 {
 			showETBs[turn] = newCards
 		}
@@ -2197,6 +2212,7 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 			gameNum, hat.FormatViolations(showOracle.Violations))
 		sm.muninnSink.AutoArchive(showSeed.RNGSeed, showSeed.DeckKeys, showOracle.Violations)
 	}
+	jr.Finish(gs, showOracle.Violations, pickedDecks)
 	sm.muninnSink.EndGame()
 
 	// Ive: compose three-act narrative for spectators.
