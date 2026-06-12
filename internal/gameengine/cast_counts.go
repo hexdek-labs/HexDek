@@ -179,6 +179,7 @@ func FireCastTriggerObservers(gs *GameState, cast *Card, controller int, fromCop
 			if casterSeat != nil && casterSeat.ManaPool >= 1 {
 				casterSeat.ManaPool -= 1
 				SyncManaAfterSpend(casterSeat)
+				gs.Legality.NoteManaSpend(controller, 1) // aux payment, not spell cost
 				// Each opponent loses 1 life, controller gains that much.
 				opps := gs.Opponents(controller)
 				totalDrained := 0
@@ -342,6 +343,7 @@ func FireCastTriggerObservers(gs *GameState, cast *Card, controller int, fromCop
 				if opp != nil && opp.ManaPool >= 1 {
 					opp.ManaPool -= 1
 					SyncManaAfterSpend(opp)
+					gs.Legality.NoteManaSpend(controller, 1) // aux payment, not spell cost
 					gs.LogEvent(Event{
 						Kind:   "pay_mana",
 						Seat:   controller,
@@ -398,6 +400,7 @@ func FireCastTriggerObservers(gs *GameState, cast *Card, controller int, fromCop
 				if opp != nil && opp.ManaPool >= 4 {
 					opp.ManaPool -= 4
 					SyncManaAfterSpend(opp)
+					gs.Legality.NoteManaSpend(controller, 4) // aux payment, not spell cost
 					gs.LogEvent(Event{
 						Kind:   "pay_mana",
 						Seat:   controller,
@@ -476,6 +479,7 @@ func FireCastTriggerObservers(gs *GameState, cast *Card, controller int, fromCop
 					if opp != nil && opp.ManaPool >= xCost && xCost > 0 {
 						opp.ManaPool -= xCost
 						SyncManaAfterSpend(opp)
+						gs.Legality.NoteManaSpend(controller, xCost) // aux payment, not spell cost
 						gs.LogEvent(Event{
 							Kind:   "pay_mana",
 							Seat:   controller,
@@ -632,6 +636,7 @@ func FireDrawTriggerObservers(gs *GameState, drawerSeat int, count int, fromRepl
 					if opp.ManaPool >= 2 {
 						opp.ManaPool -= 2
 						SyncManaAfterSpend(opp)
+						gs.Legality.NoteManaSpend(drawerSeat, 2) // aux payment on in-window draw
 						gs.LogEvent(Event{
 							Kind:   "pay_mana",
 							Seat:   drawerSeat,
