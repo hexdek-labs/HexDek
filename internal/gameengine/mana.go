@@ -800,6 +800,32 @@ func SyncManaAfterSpend(seat *Seat) {
 		seat.Mana.W--
 		deficit--
 	}
+	// Restricted strands drain last, mirroring SpendMana. The scalar
+	// payment gate is where spend restrictions are enforced; once the
+	// scalar has spent, the typed pool must follow or the two diverge —
+	// the stranded units then read as an under-payment to the §601.2f-h
+	// delta check AND get silently refunded by the next AddMana's
+	// `ManaPool = Total()` mirror (r62 Ashnod/Powerstone class).
+	for i := 0; deficit > 0 && i < len(seat.Mana.Restricted); i++ {
+		r := &seat.Mana.Restricted[i]
+		if r.Amount <= 0 {
+			continue
+		}
+		take := deficit
+		if take > r.Amount {
+			take = r.Amount
+		}
+		r.Amount -= take
+		deficit -= take
+	}
+	// Compact zeroed entries so the pool doesn't accumulate husks.
+	live := seat.Mana.Restricted[:0]
+	for _, r := range seat.Mana.Restricted {
+		if r.Amount > 0 {
+			live = append(live, r)
+		}
+	}
+	seat.Mana.Restricted = live
 }
 
 // SyncManaAfterAdd reconciles the typed pool after a direct ManaPool addition
