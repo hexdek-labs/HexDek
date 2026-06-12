@@ -77,7 +77,7 @@ func urabraskActivate(gs *gameengine.GameState, src *gameengine.Permanent, abili
 		return
 	}
 	seat.ManaPool--
-	gameengine.SyncManaAfterSpend(seat) // typed pool must follow (r63 pool hygiene)
+	gameengine.SyncManaAfterSpend(seat)
 	// Aux-credit: the DFC has no AST Activated ability, so the {R} the
 	// handler charges is invisible to the activation cost reconstruction
 	// (nothing else charges it — no masking risk).

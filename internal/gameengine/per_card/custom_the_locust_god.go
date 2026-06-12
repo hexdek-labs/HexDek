@@ -39,6 +39,7 @@ func theLocustGodLootActivate(gs *gameengine.GameState, src *gameengine.Permanen
 		return
 	}
 	seat.ManaPool -= 4
+	gameengine.SyncManaAfterSpend(seat)
 
 	drewName := ""
 	if drawn := drawOne(gs, src.Controller, src.Card.DisplayName()); drawn != nil {

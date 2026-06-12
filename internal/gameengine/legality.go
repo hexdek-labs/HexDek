@@ -588,12 +588,21 @@ func checkLegalityTargets(gs *GameState, obs *LegalityObservation) []LegalityVio
 // INDEPENDENT reconstruction, so a double-deduction (the Chalice
 // multikicker class) or an un-deducted announcement both flag.
 func checkLegalityCostPaid(gs *GameState, obs *LegalityObservation) []LegalityViolation {
-	// CR §104.3 / §106.4 — if the announcing seat was ELIMINATED inside
-	// the window (a punisher trigger on the cast killed them: the r63
-	// "Knights" shape — Ruric Thar fires on the noncreature cast, the
-	// 6 damage is lethal, the SBA marks the seat lost mid-window),
-	// markSeatLost clears the pool. The cleared floating mana is not a
-	// payment; the delta is meaningless for a player who left the game.
+	// A seat that LOST during the window is unmeasurable: markSeatLost
+	// zeroes ManaPool and clears the typed pool on the loss transition
+	// (sba.go), so the delta conflates the real payment with the loss
+	// cleanup (CR §104.3 / §106.4). Two independently-diagnosed ground
+	// truths, one per direction:
+	//   - over-pay: judge round-5, seed 555 game 691 — Mageta's
+	//     controller paid 4, then died mid-activation to Bloodchief
+	//     Ascension triggering off Mageta's own discard cost; the SBA
+	//     drained the remaining 4 → "announced 4, spent 8". (That the
+	//     activation CONTINUES after its controller dies is a separate
+	//     engine question, ranked in the round-5 report.)
+	//   - cast-side: r63, seed 42 game 482 — "Knights" (memorabilia
+	//     CMC-0 insert) cast with 1 floating; Ruric Thar's punisher
+	//     resolved lethal inside fireCastTriggers, the SBA eliminated
+	//     the caster, the cleared float read "announced 0, spent 1".
 	if gs != nil && obs.Seat >= 0 && obs.Seat < len(gs.Seats) {
 		if s := gs.Seats[obs.Seat]; s != nil && s.Lost {
 			return nil

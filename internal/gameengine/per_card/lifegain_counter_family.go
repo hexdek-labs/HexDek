@@ -44,12 +44,11 @@ type lifegainCounterEntry struct {
 }
 
 var lifegainCounterEntries = []lifegainCounterEntry{
-	{
-		// Celestial Unicorn — {2}{W}, 2/2 Unicorn.
-		//   Whenever you gain life, put a +1/+1 counter on this creature.
-		cardName: "Celestial Unicorn",
-		target:   lcTargetSelf,
-	},
+	// Celestial Unicorn intentionally NOT in this table — it has a
+	// dedicated handler (celestial_unicorn.go) and BOTH fired per
+	// life-gain event until r62, granting double +1/+1 counters (a
+	// closure-vs-named-fn pair the registry's handler-identity dedupe
+	// cannot collapse). One implementation per card.
 	{
 		// Exemplar of Light — {3}{W}, 3/3 Angel with flying.
 		//   Whenever you gain life, put a +1/+1 counter on this creature.

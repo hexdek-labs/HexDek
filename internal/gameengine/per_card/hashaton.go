@@ -61,6 +61,7 @@ func hashatonDiscardTrigger(gs *gameengine.GameState, perm *gameengine.Permanent
 		return
 	}
 	seat.ManaPool -= cost
+	gameengine.SyncManaAfterSpend(seat)
 
 	// Build the token: copy of that card, except 4/4 black Zombie.
 	// Phase 5 chokepoint: route through MintTokenAsCopyOf so the token's

@@ -94,6 +94,12 @@ func ActivateMadness(gs *GameState, seatIdx int, card *Card, madnessCost int) bo
 	// Pay madness cost.
 	seat.ManaPool -= madnessCost
 	SyncManaAfterSpend(seat)
+	// A madness cast can fire from inside another action's cost window
+	// (e.g. discarding to Mageta's activation cost) — credit the payment
+	// so the validator doesn't blame the outer action for it (the
+	// seed-555 game-691 "Mageta announced 4 / measured 8" hit was a
+	// madness card discarded to Mageta's own cost and recast for {4}).
+	gs.Legality.NoteManaSpend(seatIdx, madnessCost)
 
 	// Remove from exile and push onto the stack.
 	removeCardFromZone(gs, seatIdx, card, "exile")

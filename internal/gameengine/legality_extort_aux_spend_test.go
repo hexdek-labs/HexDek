@@ -93,3 +93,28 @@ func TestLegality_NoteManaSpend_UnitArithmetic(t *testing.T) {
 		t.Errorf("real +1 over-pay no longer flagged — hook over-suppresses: %v", v)
 	}
 }
+
+// TestLegality_CostCheck_SkipsSeatThatLostInWindow: markSeatLost zeroes
+// the pool, so a seat that died mid-action (Mageta's controller drained
+// by Bloodchief Ascension off Mageta's own discard cost — seed 555 game
+// 691) must not read as an over-pay.
+func TestLegality_CostCheck_SkipsSeatThatLostInWindow(t *testing.T) {
+	gs := newTestGameState(2)
+	gs.Seats[0].Lost = true // died during the window; pool was zeroed
+	obs := &LegalityObservation{
+		Kind: "activate", Seat: 0, TurnAtAnnounce: 48,
+		Card:               &Card{Name: "Mageta the Lion", Types: []string{"creature"}},
+		PoolBefore:         8,
+		PoolAfter:          0, // 4 paid + 4 loss-cleanup
+		AbilityManaCost:    4,
+		Item:               &StackItem{},
+	}
+	if v := checkLegalityCostPaid(gs, obs); len(v) != 0 {
+		t.Errorf("lost seat's pool-clear misread as over-pay: %v", v)
+	}
+	// Living seat with the same numbers must still flag.
+	gs.Seats[0].Lost = false
+	if v := checkLegalityCostPaid(gs, obs); len(v) != 1 {
+		t.Errorf("living-seat over-pay no longer flagged: %v", v)
+	}
+}
