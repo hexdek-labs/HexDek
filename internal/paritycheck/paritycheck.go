@@ -45,51 +45,21 @@ import (
 	"github.com/hexdek/hexdek/internal/gameengine"
 	"github.com/hexdek/hexdek/internal/hat"
 	"github.com/hexdek/hexdek/internal/tournament"
+	"github.com/hexdek/hexdek/internal/validation"
 )
 
 // Event is the canonical parity event — a subset of the Python / Go
 // event fields that MUST match for a game to count as equivalent.
 // Non-load-bearing fields (pointer IDs, timestamps, policy-internal
 // state) are intentionally omitted.
-type Event struct {
-	// Seq is the monotonically-increasing event index within a game.
-	Seq int `json:"seq"`
-
-	// Turn is the turn number (1-indexed).
-	Turn int `json:"turn"`
-
-	// Phase is the CR §500.1 phase bucket (beginning / main / combat /
-	// ending). Normalized to lowercase.
-	Phase string `json:"phase"`
-
-	// Step is the step within the phase (untap / upkeep / draw /
-	// precombat_main / postcombat_main / declare_attackers / etc.).
-	// Normalized to lowercase.
-	Step string `json:"step"`
-
-	// Seat is the seat index this event belongs to (-1 for global).
-	Seat int `json:"seat"`
-
-	// Kind is the event discriminator. Normalized to snake_case,
-	// lowercase. Examples: turn_start, play_land, cast, stack_push,
-	// stack_resolve, enter_battlefield, combat_damage, draw, discard,
-	// die, exile, game_end.
-	Kind string `json:"kind"`
-
-	// Source is the source card name (or empty for seat-level events).
-	Source string `json:"source,omitempty"`
-
-	// Target is the target seat index (-1 for n/a).
-	Target int `json:"target,omitempty"`
-
-	// Amount is the numeric payload (damage dealt, cards drawn, life
-	// gained, etc.). Zero when n/a.
-	Amount int `json:"amount,omitempty"`
-
-	// Rule is the CR citation (e.g. "601.2f", "704.5f"). Optional —
-	// only the Python side fills this consistently.
-	Rule string `json:"rule,omitempty"`
-}
+//
+// Consolidation step 1: the struct definition was promoted VERBATIM to
+// internal/validation (the canonical event schema) so gameengine and the
+// other validation surfaces can reference it without importing this
+// package (a cycle — paritycheck imports gameengine). The alias keeps
+// every existing caller and the JSON wire format byte-identical; field
+// docs live on validation.Event.
+type Event = validation.Event
 
 // Outcome is the final per-game summary. Parity reporters match on these
 // fields FIRST before walking event streams, because a matching outcome

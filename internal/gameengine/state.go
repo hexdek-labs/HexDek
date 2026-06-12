@@ -30,6 +30,7 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/gameengine/counters"
 	"github.com/hexdek/hexdek/internal/gameengine/instanceid"
+	"github.com/hexdek/hexdek/internal/validation"
 )
 
 // -----------------------------------------------------------------------------
@@ -1015,6 +1016,16 @@ type Seat struct {
 	// LossReason is the human-readable reason the player lost. Set by the
 	// SBA that caused the loss; empty when Lost==false.
 	LossReason string
+
+	// LossDetail is the structured loss cause (consolidation step 1) —
+	// the canonical sibling of the freeform LossReason string above.
+	// {Category, Rule, SourceCard} kills the downstream substring
+	// parsing of LossReason that the four kill classifiers each
+	// re-implement. ADDITIVE for now: nothing populates it yet; the SBA
+	// writers migrate to stamping both fields in a later step, and
+	// readers switch over once every writer does. nil ⇔ not populated
+	// (which today is always).
+	LossDetail *validation.LossReason
 
 	// LostOrder is the 1-based elimination sequence: 1 = first player
 	// eliminated, 2 = second, etc. Stamped by HandleSeatElimination

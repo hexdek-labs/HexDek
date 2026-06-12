@@ -135,6 +135,12 @@ func (gs *GameState) CloneForRollout(rng *rand.Rand) *GameState {
 			ControlledBy:        s.ControlledBy,
 			CompanionMoved:      s.CompanionMoved,
 		}
+		// LossDetail is a pointer: copy the value so clone and original
+		// can't alias each other's structured loss cause.
+		if s.LossDetail != nil {
+			ld := *s.LossDetail
+			ns.LossDetail = &ld
+		}
 
 		// Zones.
 		ns.Library = cloneCardSlice(s.Library, cloneCard)
