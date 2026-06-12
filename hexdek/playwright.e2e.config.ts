@@ -51,7 +51,10 @@ export default defineConfig({
     command: `VITE_API_URL=${API_URL} npx vite --port ${DEV_PORT} --strictPort`,
     url: `http://localhost:${DEV_PORT}`,
     reuseExistingServer: !process.env.CI,
-    timeout: 60_000,
+    // 120s: a cold `npx vite` start (no warm node_modules/.vite cache,
+    // CI runner or busy laptop) was observed blowing the previous 60s
+    // budget and failing the whole run before any test executed.
+    timeout: 120_000,
     stdout: 'pipe',
     stderr: 'pipe',
   },
