@@ -27,3 +27,34 @@ export function stagingRouteExempt(pathname) {
   const p = String(pathname || '')
   return p === '/login' || p.startsWith('/auth/')
 }
+
+// --- Staging passphrase bypass (r63) -------------------------------------
+//
+// The email-link login path is flaky for the two reviewers (Firebase's
+// default sender lands in spam — the known William-login issue), so the
+// gate also accepts a shared passphrase baked in at build time via
+// VITE_STAGING_PASSPHRASE (the env read itself happens in the
+// StagingGate component; these helpers stay import.meta-free for
+// `node --test`). NOTE this is a soft gate: a build-time client secret
+// is recoverable from the bundle by anyone determined — fine for a
+// staging curtain, never for real auth.
+
+// localStorage key for the persisted passphrase grant. The STORED VALUE
+// is the passphrase itself, and a grant only counts when it equals the
+// CURRENT build's expected passphrase — so rotating the passphrase at
+// the next deploy silently invalidates every old grant.
+export const STAGING_PASS_STORAGE_KEY = 'hexdek_staging_pass'
+
+// passphraseEnabled reports whether a non-empty expected passphrase was
+// baked into this build.
+export function passphraseEnabled(expected) {
+  return typeof expected === 'string' && expected.trim().length > 0
+}
+
+// passphraseMatches compares reviewer input against the build's
+// expected passphrase. Trimmed, case-sensitive, and never matches when
+// the build carries no passphrase.
+export function passphraseMatches(input, expected) {
+  if (!passphraseEnabled(expected)) return false
+  return String(input ?? '').trim() === expected.trim()
+}
