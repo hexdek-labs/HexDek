@@ -42,6 +42,15 @@ type Handler struct {
 	// startup.
 	FeedbackLimiter *RateLimiter
 
+	// ErrorTelemetryLimiter rate-limits POST /api/telemetry/error per
+	// client IP. The frontend already dedupes + session-caps its error
+	// reports (src/lib/errorTelemetry.js), but a hostile client or a
+	// crash loop in an old cached bundle that predates the client-side
+	// cap can blast the endpoint and fill the frontend_errors table.
+	// Nil = no limiting (backwards-compatible). cmd/hexdek-server sets
+	// a default at startup.
+	ErrorTelemetryLimiter *RateLimiter
+
 	// DeckImportLimiter rate-limits the anonymous deck-write endpoints
 	// per client IP: POST /api/decks, POST /api/decks/import, POST
 	// /api/import/moxfield, and POST /api/decks/{owner}/{id}/analyze.
@@ -263,6 +272,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/analytics/cards", h.handleCardAnalytics)
 	mux.HandleFunc("POST /api/telemetry/pageview", h.handlePageview)
 	mux.HandleFunc("POST /api/telemetry/stitch", h.handleStitch)
+	mux.HandleFunc("POST /api/telemetry/error", h.handleErrorTelemetry)
 	mux.HandleFunc("GET /api/resolve-owner", h.handleResolveOwner)
 	mux.HandleFunc("GET /api/tags", h.handleListTags)
 	mux.HandleFunc("GET /api/players/{id}/trends", h.handlePlayerTrends)

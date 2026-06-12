@@ -1,4 +1,5 @@
 import { Component, Suspense, useState, useEffect } from 'react'
+import { reportError } from '../lib/errorTelemetry'
 
 // LazyBoundary.jsx
 // ---------------------------------------------------------------------
@@ -150,6 +151,18 @@ export class ErrorBoundary extends Component {
     if (typeof console !== 'undefined') {
       console.error('[ErrorBoundary]', error, info?.componentStack)
     }
+    // GA4 exception event + first-party POST. The classification the
+    // fallback UI already computes (chunk / storage / render) rides
+    // along so operators can split chunk-load flake from real crashes.
+    // reportError never throws — a boundary that crashes while
+    // reporting a crash would be strictly worse than silence.
+    reportError({
+      message: `${error?.name || 'Error'}: ${error?.message || String(error)}`,
+      stack: `${error?.stack || ''}\n--- component stack ---${info?.componentStack || ''}`,
+      kind: classifyError(error),
+      source: 'boundary',
+      fatal: true,
+    })
   }
   reset = () => {
     // Bump the wrapper key on reset so React remounts the subtree

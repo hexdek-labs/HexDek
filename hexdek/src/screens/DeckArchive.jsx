@@ -1991,7 +1991,7 @@ export default function DeckArchive() {
           <div style={{ flex: 1, minWidth: 0 }}>
           <div className="deck-hero__meta">
             <Tag solid>{wbs ? `B${wbs}` : 'BRACKET PENDING'}{wbs && wbsLabel ? ' · ' + wbsLabel : ''}</Tag>
-            {pls && pls !== wbs && <Tag solid kind="warn">PLAYS LIKE B{pls}</Tag>}
+            {bracketDiverges && <Tag solid kind="warn">EST. B{measuredBracket}</Tag>}
             <Tag>{archetype}</Tag>
             {colorIdentity.length > 0 && <Tag>{colorIdentity.join('')}</Tag>}
           </div>
@@ -2115,7 +2115,7 @@ export default function DeckArchive() {
           <div className="deck-vital-signs__num">
             {/* Backend can return "?" (string) or null for unknown bracket;
                 both should render as em-dash, not a literal "B?". */}
-            {wbs && wbs !== '?' ? `B${wbs}${pls && pls !== wbs ? ` → B${pls}` : ''}` : '—'}
+            {wbs && wbs !== '?' ? `B${wbs}${bracketDiverges ? ` → B${measuredBracket}` : ''}` : '—'}
           </div>
           <div className="deck-vital-signs__lbl">POWER LEVEL</div>
           {wbsLabel ? (
@@ -2230,8 +2230,8 @@ export default function DeckArchive() {
       <div className="archive-layout">
         <div className="archive-sidebar">
           <Panel code="04.A" title="DECK SPECS" solid>
-            {/* BRACKET / PLAYS LIKE moved to the vital-signs strip above
-                (rendered as "B{wbs} → B{pls}" inside the POWER LEVEL cell).
+            {/* BRACKET / ESTIMATED BRACKET moved to the vital-signs strip above
+                (rendered as "B{wbs} → B{measuredBracket}" inside the POWER LEVEL cell).
                 Kept here only as the archetype/legality/themes detail block. */}
             <KV rows={[
               ['OWNER', <Link to={`/profile/${owner}`} style={{ color: 'var(--ink)', textDecoration: 'none', borderBottom: '1px dotted var(--ink-3)' }}>{owner?.toUpperCase()}</Link>],

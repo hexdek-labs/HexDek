@@ -1,0 +1,120 @@
+# Frontend CI (r61) — the net that was missing when the `pls`
+# ReferenceError (55386105) and the cardSearchOpen TDZ (fixed in
+# 44550a26) shipped: nothing built, linted, or smoke-tested hexdek/ on
+# PR. Three jobs:
+#
+#   build       — vite production build (catches syntax/import breakage)
+#               + the node --test unit suite (lib helpers, parsers).
+#   lint        — BLOCKING gate on eslint.config.ci.js (crash-class rules
+#                 only; currently no-undef — see the ratchet plan in that
+#                 file) + the full eslint config as a non-blocking
+#                 visibility step (160+ pre-existing errors; gating it
+#                 outright would make CI permanently red on old debt).
+#   smoke       — Playwright against a Playwright-launched vite dev
+#                 server (playwright.e2e.config.ts). Two steps:
+#                 (1) BLOCKING: the render-crash regression spec —
+#                 hermetic by construction (nonexistent deck slug), holds
+#                 regardless of backend health, and pins the exact crash
+#                 class that shipped twice (pls ReferenceError, TDZ,
+#                 conditional hooks).
+#                 (2) NON-BLOCKING: the full existing smoke suite against
+#                 the production backend (its design target — Spectator/
+#                 Forge need live data to mount their containers at all;
+#                 verified they cannot pass hermetically). As of r61 the
+#                 full suite has pre-existing failures on main in its own
+#                 design mode (Spectator container timeout, duplicate-key
+#                 console errors from live deck data), so it runs
+#                 continue-on-error for visibility until that debt is
+#                 paid; promote it to blocking then.
+#                 Dev-mode (unminified) is deliberate — TDZ ReferenceErrors
+#                 reproduce there but are masked by the production
+#                 minifier's const→var.
+
+name: frontend-ci
+
+on:
+  pull_request:
+    paths:
+      - 'hexdek/**'
+      - '.github/workflows/frontend-ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'hexdek/**'
+      - '.github/workflows/frontend-ci.yml'
+
+defaults:
+  run:
+    working-directory: hexdek
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: hexdek/package-lock.json
+      - run: npm ci
+      - name: Production build
+        run: npx vite build
+        env:
+          VITE_API_URL: ''
+      - name: Unit tests
+        run: npm run test:unit
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: hexdek/package-lock.json
+      - run: npm ci
+      - name: Crash-class lint gate (blocking)
+        run: npx eslint --config eslint.config.ci.js src
+      - name: Full lint (visibility only — pre-existing debt, do not gate yet)
+        run: npx eslint src
+        continue-on-error: true
+
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: hexdek/package-lock.json
+      - run: npm ci
+      - name: Install Playwright chromium
+        run: npx playwright install --with-deps chromium
+      - name: Render-crash regression (blocking, hermetic)
+        run: npx playwright test --config=playwright.e2e.config.ts render-crash-regression
+        env:
+          # Closed port → fetches fail fast → the spec exercises the
+          # fetch-failed render path where the historical crashes lived.
+          HEXDEK_API_URL: 'http://127.0.0.1:9'
+      - name: Full smoke suite (visibility only — pre-existing failures on main, do not gate yet)
+        # No HEXDEK_API_URL override: the config's default backend
+        # (https://hexdek.dev) is the suite's design target. See the
+        # header comment for the promote-to-blocking condition.
+        run: npx playwright test --config=playwright.e2e.config.ts
+        continue-on-error: true
+      - name: Upload screenshots + report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts
+          path: |
+            hexdek/e2e/screenshots/
+            hexdek/e2e/report/
+            hexdek/e2e/test-results/
+          retention-days: 7

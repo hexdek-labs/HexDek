@@ -2395,6 +2395,50 @@ paths:
         "400": { $ref: '#/components/responses/BadRequest' }
         "500": { $ref: '#/components/responses/InternalError' }
 
+  /api/telemetry/error:
+    post:
+      tags: [telemetry]
+      operationId: telemetryError
+      summary: Record a frontend error report (ErrorBoundary / uncaught / rejection).
+      description: |
+        First-party error sink for the frontend instrumentation
+        (hexdek/src/lib/errorTelemetry.js). anon_id is OPTIONAL — iOS
+        private mode blocks localStorage, so storage-blocked sessions
+        have no anon id by construction; a malformed anon_id is stored
+        as NULL rather than rejecting the report. Per-IP rate limited.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                anon_id:
+                  type: string
+                  format: uuid
+                message:
+                  type: string
+                stack:
+                  type: string
+                kind:
+                  type: string
+                  description: chunk | storage | render | uncaught | rejection
+                source:
+                  type: string
+                  description: boundary | window | promise
+                path:
+                  type: string
+                timestamp:
+                  type: integer
+                  format: int64
+      responses:
+        "204":
+          description: Recorded (no body).
+        "400": { $ref: '#/components/responses/BadRequest' }
+        "429": { $ref: '#/components/responses/TooManyRequests' }
+        "500": { $ref: '#/components/responses/InternalError' }
+
   /api/csrf:
     get:
       tags: [csrf]
