@@ -98,11 +98,11 @@ func TypecyclingType(card *Card) string {
 // only while the card with cycling is in a player's hand."
 //
 // Steps:
-//   1. Verify card is in hand and has cycling keyword
-//   2. Pay cycling cost (mana)
-//   3. Discard the card (move hand → graveyard)
-//   4. Draw a card (plain cycling) OR search library (typecycling)
-//   5. Fire "when you cycle" triggers
+//  1. Verify card is in hand and has cycling keyword
+//  2. Pay cycling cost (mana)
+//  3. Discard the card (move hand → graveyard)
+//  4. Draw a card (plain cycling) OR search library (typecycling)
+//  5. Fire "when you cycle" triggers
 //
 // Returns error if activation is illegal.
 func ActivateCycling(gs *GameState, seatIdx int, card *Card) error {
@@ -739,17 +739,6 @@ func DefenderControlsLandType(gs *GameState, defenderSeat int, landType string) 
 		}
 	}
 	return false
-}
-
-// HasLandwalkEvasion returns true if the attacker has landwalk and the
-// defending player controls the matching land type. When true, the
-// attacker can't be blocked by the defender.
-func HasLandwalkEvasion(gs *GameState, attacker *Permanent, defenderSeat int) bool {
-	lt := LandwalkType(attacker)
-	if lt == "" {
-		return false
-	}
-	return DefenderControlsLandType(gs, defenderSeat, lt)
 }
 
 // ---------------------------------------------------------------------------

@@ -557,21 +557,6 @@ func FireDieEvent(gs *GameState, perm *Permanent) *ReplEvent {
 	return ev
 }
 
-// FireGraveyardEvent builds and dispatches a would_be_put_into_graveyard
-// event. Used for non-creature cards / non-SBA routes (Rest in Peace
-// redirecting Destroy → exile).
-func FireGraveyardEvent(gs *GameState, perm *Permanent, src *Permanent) *ReplEvent {
-	ev := NewReplEvent("would_be_put_into_graveyard")
-	ev.TargetPerm = perm
-	ev.Source = src
-	if perm != nil {
-		ev.TargetSeat = perm.Controller
-	}
-	ev.Payload["to_zone"] = "graveyard"
-	FireEvent(gs, ev)
-	return ev
-}
-
 // FireLoseGameEvent builds and dispatches a would_lose_game event.
 // Platinum Angel cancels this.
 func FireLoseGameEvent(gs *GameState, seat int) bool {
@@ -697,8 +682,8 @@ func RegisterAlhammarretsArchive(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() * 2)
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Alhammarret's Archive",
-				Amount: ev.Count(),
+				Source:  "Alhammarret's Archive",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "614", "effect": "draw_doubler"},
 			})
 		},
@@ -718,8 +703,8 @@ func RegisterAlhammarretsArchive(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() * 2)
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Alhammarret's Archive",
-				Amount: ev.Count(),
+				Source:  "Alhammarret's Archive",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "614", "effect": "life_doubler"},
 			})
 		},
@@ -746,8 +731,8 @@ func RegisterBoonReflection(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() * 2)
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Boon Reflection",
-				Amount: ev.Count(),
+				Source:  "Boon Reflection",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "614", "effect": "life_doubler"},
 			})
 		},
@@ -775,8 +760,8 @@ func RegisterRhoxFaithmender(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() * 2)
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Rhox Faithmender",
-				Amount: ev.Count(),
+				Source:  "Rhox Faithmender",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "614", "effect": "life_doubler"},
 			})
 		},
@@ -808,14 +793,14 @@ func RegisterRestInPeace(gs *GameState, p *Permanent) {
 	gs.RegisterReplacement(&ReplacementEffect{
 		EventType: "would_die", HandlerID: handlerKey("Rest in Peace", "die", p),
 		RedirectsZone: true,
-		SourcePerm: p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
+		SourcePerm:    p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
 		Category: CategoryOther, Applies: applies, ApplyFn: apply,
 	})
 	gs.RegisterReplacement(&ReplacementEffect{
-		EventType: "would_be_put_into_graveyard",
-		HandlerID:  handlerKey("Rest in Peace", "gy", p),
+		EventType:     "would_be_put_into_graveyard",
+		HandlerID:     handlerKey("Rest in Peace", "gy", p),
 		RedirectsZone: true,
-		SourcePerm: p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
+		SourcePerm:    p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
 		Category: CategoryOther, Applies: applies, ApplyFn: apply,
 	})
 }
@@ -849,21 +834,21 @@ func RegisterLeylineOfTheVoid(gs *GameState, p *Permanent) {
 		ev.Payload["to_zone"] = "exile"
 		gs.LogEvent(Event{
 			Kind: "replacement_applied", Seat: p.Controller,
-			Source: "Leyline of the Void",
+			Source:  "Leyline of the Void",
 			Details: map[string]interface{}{"rule": "614", "effect": "opp_gy_to_exile"},
 		})
 	}
 	gs.RegisterReplacement(&ReplacementEffect{
 		EventType: "would_die", HandlerID: handlerKey("Leyline of the Void", "die", p),
 		RedirectsZone: true,
-		SourcePerm: p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
+		SourcePerm:    p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
 		Category: CategoryOther, Applies: applies, ApplyFn: apply,
 	})
 	gs.RegisterReplacement(&ReplacementEffect{
-		EventType: "would_be_put_into_graveyard",
-		HandlerID:  handlerKey("Leyline of the Void", "gy", p),
+		EventType:     "would_be_put_into_graveyard",
+		HandlerID:     handlerKey("Leyline of the Void", "gy", p),
 		RedirectsZone: true,
-		SourcePerm: p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
+		SourcePerm:    p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
 		Category: CategoryOther, Applies: applies, ApplyFn: apply,
 	})
 }
@@ -877,7 +862,7 @@ func RegisterAnafenzaTheForemost(gs *GameState, p *Permanent) {
 	gs.RegisterReplacement(&ReplacementEffect{
 		EventType:      "would_die",
 		HandlerID:      handlerKey("Anafenza, the Foremost", "exile", p),
-		RedirectsZone: true,
+		RedirectsZone:  true,
 		SourcePerm:     p,
 		ControllerSeat: p.Controller,
 		Timestamp:      p.Timestamp,
@@ -902,7 +887,7 @@ func RegisterAnafenzaTheForemost(gs *GameState, p *Permanent) {
 			ev.Payload["to_zone"] = "exile"
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Anafenza, the Foremost",
+				Source:  "Anafenza, the Foremost",
 				Details: map[string]interface{}{"rule": "614", "effect": "opp_creature_to_exile"},
 			})
 		},
@@ -933,8 +918,8 @@ func RegisterDoublingSeason(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() * 2)
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Doubling Season",
-				Amount: ev.Count(),
+				Source:  "Doubling Season",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "614", "effect": "token_doubler"},
 			})
 		},
@@ -958,8 +943,8 @@ func RegisterDoublingSeason(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() * 2)
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Doubling Season",
-				Amount: ev.Count(),
+				Source:  "Doubling Season",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "614", "effect": "counter_doubler"},
 			})
 		},
@@ -993,8 +978,8 @@ func RegisterHardenedScales(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() + 1)
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Hardened Scales",
-				Amount: ev.Count(),
+				Source:  "Hardened Scales",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "614", "effect": "plus_one_counter"},
 			})
 		},
@@ -1026,8 +1011,8 @@ func RegisterPanharmonicon(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() + 1)
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Panharmonicon",
-				Amount: ev.Count(),
+				Source:  "Panharmonicon",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "614", "effect": "etb_trigger_extra"},
 			})
 		},
@@ -1058,8 +1043,8 @@ func RegisterYarok(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() + 1)
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Yarok, the Desecrated",
-				Amount: ev.Count(),
+				Source:  "Yarok, the Desecrated",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "614", "effect": "etb_trigger_extra"},
 			})
 		},
@@ -1087,7 +1072,7 @@ func RegisterPlatinumAngel(gs *GameState, p *Permanent) {
 			ev.Cancelled = true
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Platinum Angel",
+				Source:  "Platinum Angel",
 				Details: map[string]interface{}{"rule": "614", "effect": "cant_lose"},
 			})
 		},
@@ -1107,7 +1092,7 @@ func RegisterPlatinumAngel(gs *GameState, p *Permanent) {
 			ev.Cancelled = true
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Platinum Angel",
+				Source:  "Platinum Angel",
 				Details: map[string]interface{}{"rule": "614", "effect": "opps_cant_win"},
 			})
 		},
@@ -1204,14 +1189,14 @@ func RegisterDauthiVoidwalker(gs *GameState, p *Permanent) {
 	gs.RegisterReplacement(&ReplacementEffect{
 		EventType: "would_die", HandlerID: handlerKey("Dauthi Voidwalker", "die", p),
 		RedirectsZone: true,
-		SourcePerm: p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
+		SourcePerm:    p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
 		Category: CategoryOther, Applies: applies, ApplyFn: apply,
 	})
 	gs.RegisterReplacement(&ReplacementEffect{
-		EventType: "would_be_put_into_graveyard",
-		HandlerID:  handlerKey("Dauthi Voidwalker", "gy", p),
+		EventType:     "would_be_put_into_graveyard",
+		HandlerID:     handlerKey("Dauthi Voidwalker", "gy", p),
 		RedirectsZone: true,
-		SourcePerm: p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
+		SourcePerm:    p, ControllerSeat: p.Controller, Timestamp: p.Timestamp,
 		Category: CategoryOther, Applies: applies, ApplyFn: apply,
 	})
 }
@@ -1303,76 +1288,6 @@ func RegisterNotionThiefReplacement(gs *GameState, p *Permanent) {
 				},
 			})
 		},
-	})
-}
-
-// RegisterDredge registers a dredge replacement effect on draw events.
-// Per CR §702.52, dredge is a replacement effect: "If you would draw a
-// card, instead you may mill N cards, then return this card from your
-// graveyard to your hand." The card and ownerSeat identify the dredge
-// card in the graveyard; dredgeN is the number of cards to mill.
-func RegisterDredge(gs *GameState, card *Card, ownerSeat int, dredgeN int) {
-	if gs == nil || card == nil {
-		return
-	}
-	apply := func(gs *GameState, ev *ReplEvent) {
-		if ownerSeat < 0 || ownerSeat >= len(gs.Seats) {
-			return
-		}
-		seat := gs.Seats[ownerSeat]
-		if seat == nil {
-			return
-		}
-		// Mill N cards
-		milled := 0
-		for i := 0; i < dredgeN && len(seat.Library) > 0; i++ {
-			top := seat.Library[0]
-			MoveCard(gs, top, ownerSeat, "library", "graveyard", "dredge")
-			milled++
-		}
-		// Return dredge card from graveyard to hand
-		MoveCard(gs, card, ownerSeat, "graveyard", "hand", "return-from-graveyard")
-		ev.Cancelled = true // replace the draw
-		gs.LogEvent(Event{
-			Kind:   "dredge",
-			Seat:   ownerSeat,
-			Source: card.DisplayName(),
-			Amount: milled,
-			Details: map[string]interface{}{
-				"rule":   "702.52",
-				"milled": milled,
-			},
-		})
-	}
-	applies := func(gs *GameState, ev *ReplEvent) bool {
-		if ev.TargetSeat != ownerSeat {
-			return false
-		}
-		// Check card is still in graveyard and library has enough cards
-		if ownerSeat < 0 || ownerSeat >= len(gs.Seats) {
-			return false
-		}
-		seat := gs.Seats[ownerSeat]
-		if seat == nil {
-			return false
-		}
-		if len(seat.Library) < dredgeN {
-			return false
-		}
-		for _, c := range seat.Graveyard {
-			if c == card {
-				return true
-			}
-		}
-		return false
-	}
-	gs.RegisterReplacement(&ReplacementEffect{
-		EventType:      "would_draw",
-		HandlerID:      "dredge_" + card.DisplayName(),
-		ControllerSeat: ownerSeat,
-		Category:       CategoryOther,
-		Applies:        applies,
-		ApplyFn:        apply,
 	})
 }
 

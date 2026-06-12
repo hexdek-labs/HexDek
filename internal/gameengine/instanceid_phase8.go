@@ -112,11 +112,11 @@ func RecordMutateMerge(gs *GameState, surviving, dying *Permanent, asTop bool) {
 			Seat:   surviving.Controller,
 			Source: surviving.Card.DisplayName(),
 			Details: map[string]interface{}{
-				"dying_card":  dyingCardName(dying),
-				"as_top":      asTop,
-				"stack_size":  len(surviving.MergedCards),
-				"top_card":    topCardName(surviving),
-				"rule":        "702.139",
+				"dying_card": dyingCardName(dying),
+				"as_top":     asTop,
+				"stack_size": len(surviving.MergedCards),
+				"top_card":   topCardName(surviving),
+				"rule":       "702.139",
 			},
 		})
 	}
@@ -128,17 +128,6 @@ func dyingCardName(p *Permanent) string {
 		return ""
 	}
 	return p.Card.DisplayName()
-}
-
-// RecordMeldMerge stamps a Meld result Permanent with MergeKind=Meld
-// and MergedCards=[id1, id2]. Per §712 the meld result has its own
-// characteristics (a printed combined card), so TopCard is not used.
-// Callers (Meld in keywords_batch5.go and per-card meld handlers) call
-// this once after the meld result is on the battlefield, passing the
-// two component *Card pointers so the unmerge walker can route them
-// on leave-play.
-func RecordMeldMerge(gs *GameState, result *Permanent, id1, id2 string) {
-	RecordMeldMergeWithCards(gs, result, id1, id2, nil, nil)
 }
 
 // RecordMeldMergeWithCards is the *Card-aware variant of RecordMeldMerge
@@ -254,11 +243,11 @@ func UnmergeOnLeavePlay(gs *GameState, perm *Permanent, destZone string) int {
 			Seat:   ownerSeat,
 			Source: perm.Card.DisplayName(),
 			Details: map[string]interface{}{
-				"unmerged_card":   c.DisplayName(),
-				"unmerged_id":     mergedID,
-				"to_zone":         destZone,
-				"merge_kind":      perm.MergeKind.String(),
-				"rule":            unmergeRuleFor(perm.MergeKind),
+				"unmerged_card": c.DisplayName(),
+				"unmerged_id":   mergedID,
+				"to_zone":       destZone,
+				"merge_kind":    perm.MergeKind.String(),
+				"rule":          unmergeRuleFor(perm.MergeKind),
 			},
 		})
 		moved++
@@ -356,13 +345,13 @@ func RegisterDelayedAbility(gs *GameState, ab *AbilityInstance) {
 		Seat:   ab.Controller,
 		Source: ab.SourceInstanceID,
 		Details: map[string]interface{}{
-			"instance_id":  ab.InstanceID,
-			"event_type":   ab.DelayedUntil.EventType,
-			"one_shot":     ab.DelayedUntil.OneShot,
-			"recurring":    ab.DelayedUntil.Recurring != nil,
-			"created_at":   ab.DelayedCreatedAt,
-			"expires_at":   ab.DelayedExpiresAt,
-			"rule":         "603.7c",
+			"instance_id": ab.InstanceID,
+			"event_type":  ab.DelayedUntil.EventType,
+			"one_shot":    ab.DelayedUntil.OneShot,
+			"recurring":   ab.DelayedUntil.Recurring != nil,
+			"created_at":  ab.DelayedCreatedAt,
+			"expires_at":  ab.DelayedExpiresAt,
+			"rule":        "603.7c",
 		},
 	})
 }
@@ -583,9 +572,9 @@ func suspendTickEffect(gs *GameState, ab *AbilityInstance, ev *Event) {
 		Seat:   ab.Controller,
 		Source: c.DisplayName(),
 		Details: map[string]interface{}{
-			"suspend_card_id":   c.InstanceID,
+			"suspend_card_id":    c.InstanceID,
 			"counters_remaining": n,
-			"rule":              "702.61b",
+			"rule":               "702.61b",
 		},
 	})
 	if n == 0 {

@@ -35,14 +35,6 @@ func ComputeHash(commanders []*gameengine.Card, library []*gameengine.Card) Deck
 	return DeckHash(fmt.Sprintf("%x", h))
 }
 
-// ComputeHashFromDeck is a convenience wrapper for TournamentDeck.
-func ComputeHashFromDeck(td *deckparser.TournamentDeck) DeckHash {
-	if td == nil {
-		return ""
-	}
-	return ComputeHash(td.CommanderCards, td.Library)
-}
-
 // CardList returns the canonical sorted card list for a deck (for storage).
 func CardList(commanders []*gameengine.Card, library []*gameengine.Card) []string {
 	var lines []string

@@ -311,18 +311,6 @@ func SaveDAG(dir string, dag *DeckDAG) error {
 	return os.Rename(tmp, path)
 }
 
-// InheritInfo returns a human-readable description of the prior
-// inheritance for a version node.
-func InheritInfo(node *VersionNode) string {
-	if node.ParentHash == "" {
-		return fmt.Sprintf("v%d (root): μ=%.1f σ=%.1f conservative=%.1f",
-			node.Version, node.Rating.Mu, node.Rating.Sigma, node.Rating.Conservative())
-	}
-	return fmt.Sprintf("v%d (parent=%s, Δ=%d cards): μ=%.1f σ=%.1f conservative=%.1f",
-		node.Version, node.ParentHash[:8], node.CardDelta,
-		node.Rating.Mu, node.Rating.Sigma, node.Rating.Conservative())
-}
-
 // SigmaInflation computes the sigma inflation for a given card delta.
 // Exported for testing.
 func SigmaInflation(cardDelta int) float64 {

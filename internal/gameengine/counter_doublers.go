@@ -71,8 +71,8 @@ func RegisterPrimalVigor(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() * 2)
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Primal Vigor",
-				Amount: ev.Count(),
+				Source:  "Primal Vigor",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "122.1g", "effect": "plus1_doubler"},
 			})
 		},
@@ -100,8 +100,8 @@ func RegisterPrimalVigor(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() * 2)
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Primal Vigor",
-				Amount: ev.Count(),
+				Source:  "Primal Vigor",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "614", "effect": "token_doubler"},
 			})
 		},
@@ -149,8 +149,8 @@ func RegisterBranchingEvolution(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() * 2)
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Branching Evolution",
-				Amount: ev.Count(),
+				Source:  "Branching Evolution",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "122.1g", "effect": "plus1_doubler"},
 			})
 		},
@@ -213,8 +213,8 @@ func RegisterVorinclexMonstrousRaider(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() * 2)
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Vorinclex, Monstrous Raider",
-				Amount: ev.Count(),
+				Source:  "Vorinclex, Monstrous Raider",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "122.1g", "effect": "self_doubler"},
 			})
 		},
@@ -248,8 +248,8 @@ func RegisterVorinclexMonstrousRaider(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() / 2) // integer division rounds toward zero
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Vorinclex, Monstrous Raider",
-				Amount: ev.Count(),
+				Source:  "Vorinclex, Monstrous Raider",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "122.1g", "effect": "opp_halve"},
 			})
 		},
@@ -313,8 +313,8 @@ func RegisterOzolithShatteredSpire(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() + 1)
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Ozolith, the Shattered Spire",
-				Amount: ev.Count(),
+				Source:  "Ozolith, the Shattered Spire",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "122.1g", "effect": "etb_plus_one"},
 			})
 		},
@@ -362,8 +362,8 @@ func RegisterConclaveMentor(gs *GameState, p *Permanent) {
 			ev.SetCount(ev.Count() + 1)
 			gs.LogEvent(Event{
 				Kind: "replacement_applied", Seat: p.Controller,
-				Source: "Conclave Mentor",
-				Amount: ev.Count(),
+				Source:  "Conclave Mentor",
+				Amount:  ev.Count(),
 				Details: map[string]interface{}{"rule": "122.1g", "effect": "plus_one_counter"},
 			})
 		},
@@ -398,20 +398,6 @@ func StampDoublingSeasonAudit(p *Permanent) {
 		EventType: "would_put_counter",
 		Category:  CategoryOther,
 		HandlerID: handlerKey("Doubling Season", "counter_dbl", p),
-	})
-}
-
-// StampHardenedScalesAudit installs the Phase 5 audit-surface entry for
-// the pre-Phase-6 Hardened Scales replacement. Idempotent.
-func StampHardenedScalesAudit(p *Permanent) {
-	if p == nil {
-		return
-	}
-	addProvidesReplacements(p, ReplacementSpec{
-		Name:      "Hardened Scales",
-		EventType: "would_put_counter",
-		Category:  CategoryOther,
-		HandlerID: handlerKey("Hardened Scales", "plus1", p),
 	})
 }
 

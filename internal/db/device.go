@@ -47,10 +47,3 @@ func GetDevice(ctx context.Context, db *sql.DB, id string) (*Device, error) {
 	}
 	return d, nil
 }
-
-// TouchDevice updates the last_seen_at timestamp on an existing device.
-func TouchDevice(ctx context.Context, db *sql.DB, id string) error {
-	_, err := db.ExecContext(ctx,
-		`UPDATE device SET last_seen_at = ? WHERE id = ?`, Now(), id)
-	return err
-}

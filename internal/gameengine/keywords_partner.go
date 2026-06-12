@@ -46,13 +46,6 @@ func PartnerWithTarget(card *Card) string {
 	return ReadPartnerInfo(card).PartnerWith
 }
 
-// HasBarePartner reports the keyword without any rider. Useful for
-// callers that need to distinguish bare Partner (free pairing with any
-// other bare Partner) from "Partner with X" (named pairing only).
-func HasBarePartner(card *Card) bool {
-	return ReadPartnerInfo(card).Partner
-}
-
 // IsBackground returns true if the card's type line includes the
 // "Background" subtype (CR §702.124e — Background is an enchantment
 // subtype introduced in CLB). Backgrounds pair with commanders that
@@ -83,16 +76,16 @@ func HasChooseABackground(card *Card) bool {
 // wrapper around ValidatePartnerPair, kept here so card-facing code
 // reads naturally:
 //
-//   if CanBeCommandersTogether(thrasios, vial) { ... }
+//	if CanBeCommandersTogether(thrasios, vial) { ... }
 //
 // Valid configurations (mirrors ValidatePartnerPair, restated for the
 // card-facing audience):
 //
-//   1. Both have bare Partner
-//   2. a's "Partner with X" names b AND b's "Partner with X" names a
-//   3. Both have Friends Forever
-//   4. One has Choose a Background, the other is a Background
-//   5. One is a Doctor, the other has Doctor's Companion
+//  1. Both have bare Partner
+//  2. a's "Partner with X" names b AND b's "Partner with X" names a
+//  3. Both have Friends Forever
+//  4. One has Choose a Background, the other is a Background
+//  5. One is a Doctor, the other has Doctor's Companion
 //
 // Cross-category mixes (Friends Forever + bare Partner, Partner with X
 // vs. unrelated partner card, etc.) are rejected.

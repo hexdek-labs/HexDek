@@ -26,7 +26,7 @@ var _ gameengine.Hat = (*YggdrasilHat)(nil)
 type YggdrasilHat struct {
 	Evaluator  *GameStateEvaluator
 	NeuralEval *NeuralEvaluator // optional neural position evaluator (Level 5)
-	MicroNet   *MicroNet       // optional per-deck micro neural net (Level 6)
+	MicroNet   *MicroNet        // optional per-deck micro neural net (Level 6)
 	Strategy   *StrategyProfile
 	Budget     int     // 0=heuristic, 1-199=evaluator-guided, 200+=rollout
 	Noise      float64 // gaussian σ applied to targeting scores (0=deterministic, 0.2=default)
@@ -53,8 +53,8 @@ type YggdrasilHat struct {
 	planState PlanState
 
 	// UCB1 tracking (turn-scoped keys).
-	actionStats  map[string]*actionStat
-	totalVisits  int
+	actionStats map[string]*actionStat
+	totalVisits int
 
 	// rolloutSeed is bumped per rollout invocation to give each candidate
 	// a distinct RNG stream within a decision. PER-HAT (not a package
@@ -65,9 +65,9 @@ type YggdrasilHat struct {
 	rolloutSeed int64
 
 	// Per-opponent observation for politics.
-	damageDealtTo     []int
+	damageDealtTo      []int
 	damageReceivedFrom []int
-	spellsCastBy      []int
+	spellsCastBy       []int
 	perceivedArchetype []string
 
 	seatCount int
@@ -173,15 +173,15 @@ type YggdrasilHat struct {
 	opponentFiredInteractionThisRound []bool
 
 	// Pre-computed lookup sets for O(1) card relevance checks.
-	comboPieceSet    map[string]bool
-	valueEngineSet   map[string]bool
-	tutorTargetSet   map[string]bool
-	finisherSet      map[string]bool
-	starCardSet      map[string]bool
-	cuttableSet      map[string]bool
-	vulnerableToSet  map[string]bool
-	isTempoComboVal  bool
-	lookupsBuilt     bool
+	comboPieceSet   map[string]bool
+	valueEngineSet  map[string]bool
+	tutorTargetSet  map[string]bool
+	finisherSet     map[string]bool
+	starCardSet     map[string]bool
+	cuttableSet     map[string]bool
+	vulnerableToSet map[string]bool
+	isTempoComboVal bool
+	lookupsBuilt    bool
 
 	// Threat cache — per-turn memoization of assessAllThreats.
 	threatCache     []seatThreat
@@ -400,19 +400,6 @@ func NewYggdrasilHat(strategy *StrategyProfile, budget int) *YggdrasilHat {
 	return NewYggdrasilHatWithNoise(strategy, budget, 0.2)
 }
 
-// BudgetForELO returns an adjusted budget based on ELO confidence.
-// Decks with more games get higher budget (deeper search is worthwhile
-// when strategy data is reliable).
-func BudgetForELO(baseBudget int, gamesPlayed int) int {
-	if gamesPlayed < 20 {
-		return baseBudget
-	}
-	if gamesPlayed < 100 {
-		return baseBudget + baseBudget/4
-	}
-	return baseBudget + baseBudget/2
-}
-
 // BudgetForPower adjusts budget based on Freya's power percentile.
 // High-percentile decks have more complex lines worth searching.
 func BudgetForPower(baseBudget int, powerPercentile int) int {
@@ -428,7 +415,7 @@ func BudgetForPower(baseBudget int, powerPercentile int) int {
 	return baseBudget
 }
 
-func (h *YggdrasilHat) EvalsSpent() int  { return h.turnEvalsSpent }
+func (h *YggdrasilHat) EvalsSpent() int       { return h.turnEvalsSpent }
 func (h *YggdrasilHat) PlanCurrent() GamePlan { return h.planState.Current }
 
 func NewYggdrasilHatWithNoise(strategy *StrategyProfile, budget int, noise float64) *YggdrasilHat {
@@ -1068,17 +1055,17 @@ type seatThreat struct {
 	TurnsToKill     int     // estimated turns until this seat kills us (0 = unknown, 1 = imminent)
 
 	// Alt-wincon threat fields (poison, PW loyalty, mill, commander damage).
-	HasInfect        bool    // controls creatures with infect or toxic
-	PoisonToUs       int     // cumulative poison counters dealt to us
-	PWLoyaltyThreat  float64 // max planeswalker-ultimate proximity [0,1]
-	MillThreat       float64 // threat from library depletion [0,1]
-	CmdrDmgToUs      int     // max commander damage from this seat to us
+	HasInfect       bool    // controls creatures with infect or toxic
+	PoisonToUs      int     // cumulative poison counters dealt to us
+	PWLoyaltyThreat float64 // max planeswalker-ultimate proximity [0,1]
+	MillThreat      float64 // threat from library depletion [0,1]
+	CmdrDmgToUs     int     // max commander damage from this seat to us
 
 	// Shannon entropy hand-tracking fields.
-	HandEntropy      float64 // heuristic [0,1]: 0=fully known, 1=total unknown
-	HeldManaTurns    int     // consecutive turns with 2+ mana untapped
-	Tutored          bool    // did they tutor this game?
-	LikelyHasAnswer  bool    // composite flag: tutored + held mana + interactive colors
+	HandEntropy     float64 // heuristic [0,1]: 0=fully known, 1=total unknown
+	HeldManaTurns   int     // consecutive turns with 2+ mana untapped
+	Tutored         bool    // did they tutor this game?
+	LikelyHasAnswer bool    // composite flag: tutored + held mana + interactive colors
 
 	// Wrath risk: probability [0,1] that this opponent is holding a board wipe.
 	WrathRisk float64
@@ -1094,10 +1081,10 @@ func (h *YggdrasilHat) assessAllThreats(gs *gameengine.GameState, seatIdx int) [
 			continue
 		}
 		st := seatThreat{
-			Seat:       i,
-			BoardPower: boardPower(gs, s),
-			Life:       s.Life,
-			HandSize:   len(s.Hand),
+			Seat:        i,
+			BoardPower:  boardPower(gs, s),
+			Life:        s.Life,
+			HandSize:    len(s.Hand),
 			ManaSources: CountManaRocksAndLands(s),
 		}
 		st.EvalScore = h.Evaluator.Evaluate(gs, i)
@@ -1914,11 +1901,11 @@ func (h *YggdrasilHat) bestTarget(gs *gameengine.GameState, seatIdx int, attacke
 		topScores[i] = candidates[i].score
 	}
 	h.emitDecisionEvent(gs, seatIdx, "attack_target", map[string]interface{}{
-		"chosen_seat":   candidates[pick].seat,
-		"chosen_score":  candidates[pick].score,
-		"top_seats":     topSeats,
-		"top_scores":    topScores,
-		"candidate_n":   len(candidates),
+		"chosen_seat":  candidates[pick].seat,
+		"chosen_score": candidates[pick].score,
+		"top_seats":    topSeats,
+		"top_scores":   topScores,
+		"candidate_n":  len(candidates),
 	})
 	h.logf("ATTACK_TARGET seat=%d -> def=%d score=%.3f (top: %v scores=%v)",
 		seatIdx, candidates[pick].seat, candidates[pick].score, topSeats, topScores)
@@ -2529,12 +2516,12 @@ func (h *YggdrasilHat) recordParentTier(t DecisionTier, turn int) {
 // R60 round 5 — multi-instance priority window audit. Pre-fix the
 // sequence:
 //
-//   1. Trigger A pushed. ChooseResponse → lastParentTier = T_A.
-//   2. Hat declines to counter A.
-//   3. Trigger B pushed (before A resolves). ChooseResponse →
-//      lastParentTier = T_B (overwrites T_A).
-//   4. B resolves, its cascades read T_B. Correct.
-//   5. A resolves, its cascades read T_B. STALE — should be T_A.
+//  1. Trigger A pushed. ChooseResponse → lastParentTier = T_A.
+//  2. Hat declines to counter A.
+//  3. Trigger B pushed (before A resolves). ChooseResponse →
+//     lastParentTier = T_B (overwrites T_A).
+//  4. B resolves, its cascades read T_B. Correct.
+//  5. A resolves, its cascades read T_B. STALE — should be T_A.
 //
 // stackItemTiers gives us a per-item record so step 5's cascade
 // can lookup T_A by stack item ID instead of falling back to the
@@ -3678,6 +3665,7 @@ func cheapInteractionPassAdjust(sp *StrategyProfile) float64 {
 //   - HighDensity cluster (Freya marks MemberCount ≥ 5 as a real
 //     subsystem of the gameplan, not incidental overlap): +0.10
 //   - Regular cluster: +0.05
+//
 // Cumulative cap +0.25 so multi-cluster decks don't stack the boost
 // past the magnitude of star/cuttable adjustments.
 //
@@ -5312,15 +5300,15 @@ func (h *YggdrasilHat) ChooseCastFromHand(gs *gameengine.GameState, seatIdx int,
 	// give the context (was this an expensive Ragnarok decision over a
 	// 12-card pool, or a cheap heuristic over 2?).
 	h.emitDecisionEvent(gs, seatIdx, "cast", map[string]interface{}{
-		"card":         best.card.DisplayName(),
-		"ucb":          best.ucb,
-		"pass_ucb":     passUCB,
-		"margin":       best.ucb - passUCB,
-		"pool_size":    len(pool),
-		"candidates":   len(candidates),
-		"tier":         tierLabel,
-		"pos":          pos,
-		"interaction":  interactionRisk,
+		"card":        best.card.DisplayName(),
+		"ucb":         best.ucb,
+		"pass_ucb":    passUCB,
+		"margin":      best.ucb - passUCB,
+		"pool_size":   len(pool),
+		"candidates":  len(candidates),
+		"tier":        tierLabel,
+		"pos":         pos,
+		"interaction": interactionRisk,
 	})
 	return best.card
 }
@@ -6054,10 +6042,10 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 	// Neutral (0.5) = no change. Max nudge: +/- 0.15 on thresholds.
 	if h.DNA != nil {
 		aggroShift := (h.DNA.Aggression - 0.5) * 0.3 // [-0.15, +0.15]
-		aheadThresh -= aggroShift                     // high aggro → lower threshold to trigger "ahead" attacks
-		behindThresh -= aggroShift                    // high aggro → lower threshold to trigger "behind" selectivity
-		aheadVal -= aggroShift * 0.5                  // high aggro → attack with less advantage needed
-		behindVal -= aggroShift * 0.5                 // high aggro → less cautious when behind
+		aheadThresh -= aggroShift                    // high aggro → lower threshold to trigger "ahead" attacks
+		behindThresh -= aggroShift                   // high aggro → lower threshold to trigger "behind" selectivity
+		aheadVal -= aggroShift * 0.5                 // high aggro → attack with less advantage needed
+		behindVal -= aggroShift * 0.5                // high aggro → less cautious when behind
 	}
 	threshold := 0.0
 	stance := "neutral"
@@ -7260,13 +7248,13 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 		residualLife = seat.Life
 	}
 	h.emitDecisionEvent(gs, seatIdx, "block", map[string]interface{}{
-		"attackers":           len(attackers),
-		"attackers_blocked":   attackersBlocked,
-		"blockers_committed":  blockersCommitted,
-		"residual_incoming":   incoming,
-		"life_before":         seat.Life,
-		"residual_life":       residualLife,
-		"poison_added":        addedPoison,
+		"attackers":             len(attackers),
+		"attackers_blocked":     attackersBlocked,
+		"blockers_committed":    blockersCommitted,
+		"residual_incoming":     incoming,
+		"life_before":           seat.Life,
+		"residual_life":         residualLife,
+		"poison_added":          addedPoison,
 		"existential_commander": existentialCommander,
 	})
 	h.logf("BLOCK seat=%d atkrs=%d/%d blockers=%d incoming_left=%d life=%d->%d",
@@ -7713,11 +7701,11 @@ type stackDepthSignals struct {
 // happening (the cheap fast-path for the depth=1 common case).
 //
 // Two passes over gs.Stack:
-//   1. Examine top.Targets / oracle text for the mustCounter and
-//      scoreBonus triggers — these fire at any depth (depth=2 with
-//      top=counter aimed at our depth=1 spell still must-counters).
-//   2. At depth ≥ highStakesStackDepth, scan items below top to
-//      build the investment-protection and hostile-pile-up signals.
+//  1. Examine top.Targets / oracle text for the mustCounter and
+//     scoreBonus triggers — these fire at any depth (depth=2 with
+//     top=counter aimed at our depth=1 spell still must-counters).
+//  2. At depth ≥ highStakesStackDepth, scan items below top to
+//     build the investment-protection and hostile-pile-up signals.
 func (h *YggdrasilHat) computeStackDepthSignals(gs *gameengine.GameState, seatIdx int, top *gameengine.StackItem) stackDepthSignals {
 	var sig stackDepthSignals
 	if gs == nil || top == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
@@ -8554,12 +8542,12 @@ func (h *YggdrasilHat) ChooseMode(gs *gameengine.GameState, seatIdx int, modes [
 		topScores[i] = scored[i].score
 	}
 	h.emitDecisionEvent(gs, seatIdx, "mode", map[string]interface{}{
-		"chosen_idx":    scored[pick].idx,
-		"chosen_score":  scored[pick].score,
-		"top_indices":   topIdx,
-		"top_scores":    topScores,
-		"mode_count":    len(modes),
-		"position":      pos,
+		"chosen_idx":   scored[pick].idx,
+		"chosen_score": scored[pick].score,
+		"top_indices":  topIdx,
+		"top_scores":   topScores,
+		"mode_count":   len(modes),
+		"position":     pos,
 	})
 	h.logf("MODE seat=%d -> idx=%d score=%.3f (top: %v scores=%v)",
 		seatIdx, scored[pick].idx, scored[pick].score, topIdx, topScores)
@@ -8631,13 +8619,13 @@ func (h *YggdrasilHat) priorChooseModePickIfFollowup(gs *gameengine.GameState, m
 // `prior`. Encodes the canonical multi-mode-spell synergies in
 // commander / cEDH:
 //
-//   counter   → bounce / draw : Cryptic Command's classic line
-//   bounce    → draw / counter : tempo + refill
-//   destroy   → draw / counter : "kill + replace card"
-//   damage    → draw : burn + cantrip
-//   draw      → counter / bounce : reactive mana left up for the
-//                                  drawn answer
-//   gain_life → draw / counter : stabilize and rebuild
+//	counter   → bounce / draw : Cryptic Command's classic line
+//	bounce    → draw / counter : tempo + refill
+//	destroy   → draw / counter : "kill + replace card"
+//	damage    → draw : burn + cantrip
+//	draw      → counter / bounce : reactive mana left up for the
+//	                               drawn answer
+//	gain_life → draw / counter : stabilize and rebuild
 //
 // The bonus is small (0.10) — large enough to break ties between
 // similarly-scored modes, small enough not to override a strongly-
@@ -8975,6 +8963,7 @@ func (h *YggdrasilHat) scoreModeEffect(gs *gameengine.GameState, seatIdx int, ef
 //	0.70 — Strategy has ≥3 ValueEngineKeys — commander is a key enabler
 //	       of a value-engine-dense deck.
 //	0.40 — Default. Generic creature commander, not load-bearing.
+//
 // CommanderUrgency exposes commanderUrgency for callers outside the hat
 // package (e.g. the tournament runner deciding whether to retry the
 // commander cast inside the main-phase cast loop).
@@ -9177,23 +9166,23 @@ func (h *YggdrasilHat) ShouldRedirectCommanderZone(gs *gameengine.GameState, sea
 //
 // Heuristic (deterministic, stable sort):
 //
-//	1. Self-controlled effects first — we benefit most from our own
-//	   replacements landing before the opponent's.
-//	2. Within self-vs-opponent groups, score by event-type benefit:
-//	     - For events targeting US (TargetSeat == seatIdx):
-//	         "would_be_dealt_damage" / "would_lose_life" / "would_die" /
-//	         "would_be_put_into_graveyard" / "would_lose_game" → boost
-//	         (our replacement likely prevents/redirects, fire it first).
-//	     - For events benefiting US (TargetSeat == seatIdx, gain side):
-//	         "would_draw" / "would_gain_life" / "would_put_counter" /
-//	         "would_create_token" → boost (our replacement likely doubles).
-//	     - For events targeting OPPONENTS controlled by US:
-//	         "would_lose_life" / "would_be_dealt_damage" → boost
-//	         (our replacement likely amplifies — Torment of Hailfire path).
-//	   Low-life override: when our life is critical (≤ 1/4 starting), every
-//	   damage/lose-life replacement targeting us pulls to the top.
-//	3. Timestamp ascending (older first) breaks remaining ties — matches
-//	   APNAP fallback in GreedyHat.
+//  1. Self-controlled effects first — we benefit most from our own
+//     replacements landing before the opponent's.
+//  2. Within self-vs-opponent groups, score by event-type benefit:
+//     - For events targeting US (TargetSeat == seatIdx):
+//     "would_be_dealt_damage" / "would_lose_life" / "would_die" /
+//     "would_be_put_into_graveyard" / "would_lose_game" → boost
+//     (our replacement likely prevents/redirects, fire it first).
+//     - For events benefiting US (TargetSeat == seatIdx, gain side):
+//     "would_draw" / "would_gain_life" / "would_put_counter" /
+//     "would_create_token" → boost (our replacement likely doubles).
+//     - For events targeting OPPONENTS controlled by US:
+//     "would_lose_life" / "would_be_dealt_damage" → boost
+//     (our replacement likely amplifies — Torment of Hailfire path).
+//     Low-life override: when our life is critical (≤ 1/4 starting), every
+//     damage/lose-life replacement targeting us pulls to the top.
+//  3. Timestamp ascending (older first) breaks remaining ties — matches
+//     APNAP fallback in GreedyHat.
 //
 // Beneficial replacements applied first means the post-mutation payload
 // fed to subsequent replacements reflects our gains, so a later opponent
@@ -10107,8 +10096,8 @@ func (h *YggdrasilHat) ChooseBottomCards(gs *gameengine.GameState, seatIdx int, 
 	// ChooseDiscard weights so the bottom pile is consistent with the
 	// discard pile.
 	type ranked struct {
-		card  *gameengine.Card
-		value float64
+		card   *gameengine.Card
+		value  float64
 		isLand bool
 	}
 	ranked_ := make([]ranked, 0, len(hand))
@@ -10918,11 +10907,11 @@ func (h *YggdrasilHat) opponentLikelyHasAnswer(oppSeat int) bool {
 //
 //   - 0–1: nothing meaningful seen.
 //   - 2:   Spell Pierce / Mana Leak / Force Spike rep — soft counter
-//          territory.
+//     territory.
 //   - 3:   Negate / Counterspell-class / Render Silent — hard counter.
 //   - 4+:  Cryptic Command / Force of Negation / Mystic Confluence
-//          territory — the opp has consistently held enough to fire
-//          big-mana interaction, suggesting blue control or cEDH combo.
+//     territory — the opp has consistently held enough to fire
+//     big-mana interaction, suggesting blue control or cEDH combo.
 //
 // Returns 0 for an unknown seat or before any upkeep has fired.
 func (h *YggdrasilHat) OpponentMaxHeldMana(oppSeat int) int {
@@ -10930,24 +10919,6 @@ func (h *YggdrasilHat) OpponentMaxHeldMana(oppSeat int) int {
 		return 0
 	}
 	return h.opponentMaxHeldMana[oppSeat]
-}
-
-// handEntropy returns the heuristic [0,1] entropy estimate for an opponent.
-// 0 = we know everything, 1 = total mystery.
-func (h *YggdrasilHat) handEntropy(oppSeat int) float64 {
-	if oppSeat < 0 || oppSeat >= len(h.opponentHandEntropy) {
-		return 1.0
-	}
-	return h.opponentHandEntropy[oppSeat]
-}
-
-// knownCardsInHand returns the set of card names we know are in an
-// opponent's hand (from reveal effects).
-func (h *YggdrasilHat) knownCardsInHand(oppSeat int) map[string]bool {
-	if oppSeat < 0 || oppSeat >= len(h.opponentKnownCards) {
-		return nil
-	}
-	return h.opponentKnownCards[oppSeat]
 }
 
 // ZoneCastGrantSummary describes a single zone-cast permission the hat
@@ -11287,24 +11258,6 @@ func (h *YggdrasilHat) tablePoliticalEnemy(seat int) int {
 		}
 	}
 	return enemy
-}
-
-// cardsSeenFromOpponent returns the count of distinct cards observed from
-// a specific opponent.
-func (h *YggdrasilHat) cardsSeenFromOpponent(oppSeat int) int {
-	if oppSeat < 0 || oppSeat >= len(h.cardsSeen) {
-		return 0
-	}
-	return len(h.cardsSeen[oppSeat])
-}
-
-// opponentPlayedCard returns true if we've seen a specific card name
-// from a given opponent.
-func (h *YggdrasilHat) opponentPlayedCard(oppSeat int, cardName string) bool {
-	if oppSeat < 0 || oppSeat >= len(h.cardsSeen) {
-		return false
-	}
-	return h.cardsSeen[oppSeat][cardName] > 0
 }
 
 // tutorTargetScore evaluates which tutor target is best given the current
@@ -11658,10 +11611,6 @@ func (h *YggdrasilHat) wrathProbability(gs *gameengine.GameState, oppSeat int) f
 
 // -- Rollout simulation (reuses the same pattern as MCTSHat) --
 
-func (h *YggdrasilHat) canRollout() bool {
-	return h.Budget >= rolloutBudgetGe && h.TurnRunner != nil
-}
-
 func (h *YggdrasilHat) simulateRollout(gs *gameengine.GameState, seatIdx int, actionFn func(clone *gameengine.GameState)) float64 {
 	// Per-hat seed counter — see rollout.go for the rationale on dropping
 	// the package-global `rolloutSeedCounter`.
@@ -11781,30 +11730,6 @@ var colorAddNeedles = map[uint8]string{
 	colorBitG: "add {g}",
 }
 
-// landProducesColors keeps the legacy map-returning API for callers
-// outside the hot path. Internal hot-path callers should use
-// landProducesColorsMask directly.
-func landProducesColors(c *gameengine.Card) map[string]bool {
-	mask := landProducesColorsMask(c)
-	out := make(map[string]bool, 5)
-	if mask&colorBitW != 0 {
-		out["W"] = true
-	}
-	if mask&colorBitU != 0 {
-		out["U"] = true
-	}
-	if mask&colorBitB != 0 {
-		out["B"] = true
-	}
-	if mask&colorBitR != 0 {
-		out["R"] = true
-	}
-	if mask&colorBitG != 0 {
-		out["G"] = true
-	}
-	return out
-}
-
 func fieldColorSources(seat *gameengine.Seat, color string) int {
 	bit := colorSymBit(color)
 	if bit == 0 {
@@ -11863,4 +11788,3 @@ func untappedFieldColorSources(seat *gameengine.Seat, color string) int {
 	}
 	return count
 }
-

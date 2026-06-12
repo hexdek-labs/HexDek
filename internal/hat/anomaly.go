@@ -201,18 +201,6 @@ func (d *AnomalyDetector) PopulationMean() (mean float64, n int) {
 	return d.populationMeanLocked("")
 }
 
-// PopulationStdDev returns the sample stddev of eligible decks'
-// lifetime win rates. Zero when fewer than 2 eligible decks.
-func (d *AnomalyDetector) PopulationStdDev() float64 {
-	if d == nil {
-		return 0
-	}
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	mean, _ := d.populationMeanLocked("")
-	return d.populationStdDevLocked(mean, "")
-}
-
 // Stats returns a defensive copy of every tracked deck's stats.
 func (d *AnomalyDetector) Stats() map[string]PerContributorStats {
 	if d == nil {

@@ -103,10 +103,6 @@ func findDeliriumRiderEffect(card *Card) gameast.Effect {
 	return findTaggedRiderEffect(card, "delirium")
 }
 
-func abilityIsTaggedDeliriumRider(a *gameast.Activated) bool {
-	return abilityIsTaggedRider(a, "delirium")
-}
-
 // ApplyDeliriumRider executes the delirium rider for `src`, if any.
 // CR §702.151a. Returns true if the rider fired.
 func ApplyDeliriumRider(gs *GameState, src *Permanent) bool {
@@ -202,10 +198,6 @@ func findCovenRiderEffect(card *Card) gameast.Effect {
 	return findTaggedRiderEffect(card, "coven")
 }
 
-func abilityIsTaggedCovenRider(a *gameast.Activated) bool {
-	return abilityIsTaggedRider(a, "coven")
-}
-
 // ApplyCovenRider executes the coven rider for `src`, if any.
 // CR §702.152a. Returns true if the rider fired.
 func ApplyCovenRider(gs *GameState, src *Permanent) bool {
@@ -293,10 +285,6 @@ func findFerociousRiderEffect(card *Card) gameast.Effect {
 	return findTaggedRiderEffect(card, "ferocious")
 }
 
-func abilityIsTaggedFerociousRider(a *gameast.Activated) bool {
-	return abilityIsTaggedRider(a, "ferocious")
-}
-
 // ApplyFerociousRider executes the ferocious rider for `src`, if any.
 // CR §702.135a. Returns true if the rider fired.
 func ApplyFerociousRider(gs *GameState, src *Permanent) bool {
@@ -369,10 +357,6 @@ func RaidActive(gs *GameState, seatIdx int) bool {
 
 func findRaidRiderEffect(card *Card) gameast.Effect {
 	return findTaggedRiderEffect(card, "raid")
-}
-
-func abilityIsTaggedRaidRider(a *gameast.Activated) bool {
-	return abilityIsTaggedRider(a, "raid")
 }
 
 // ApplyRaidRider executes the raid rider for `src`, if any.
@@ -448,10 +432,6 @@ func RevoltActive(gs *GameState, seatIdx int) bool {
 
 func findRevoltRiderEffect(card *Card) gameast.Effect {
 	return findTaggedRiderEffect(card, "revolt")
-}
-
-func abilityIsTaggedRevoltRider(a *gameast.Activated) bool {
-	return abilityIsTaggedRider(a, "revolt")
 }
 
 // ApplyRevoltRider executes the revolt rider for `src`, if any.

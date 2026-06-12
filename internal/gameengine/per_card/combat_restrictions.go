@@ -41,33 +41,6 @@ func propagandaETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	})
 }
 
-// PropagandaTax returns the per-attacker mana cost to attack a given
-// defending seat. Called from combat.go after DeclareAttackers to filter
-// out attackers the controller can't afford. Returns 0 if no propaganda
-// effect applies.
-func PropagandaTax(gs *gameengine.GameState, defendingSeat int) int {
-	if gs == nil || gs.Flags == nil {
-		return 0
-	}
-	tax := 0
-	key := "propaganda_seat_" + itoa(defendingSeat)
-	if gs.Flags[key] > 0 {
-		// Verify at least one propaganda-type card is still on the battlefield.
-		for _, p := range gs.Seats[defendingSeat].Battlefield {
-			if p == nil || p.Card == nil {
-				continue
-			}
-			name := p.Card.DisplayName()
-			if name == "Propaganda" || name == "Ghostly Prison" ||
-				name == "Windborn Muse" || name == "Baird, Steward of Argive" {
-				tax += 2
-				break
-			}
-		}
-	}
-	return tax
-}
-
 // ---------------------------------------------------------------------------
 // Silent Arbiter
 //
@@ -92,25 +65,6 @@ func silentArbiterETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		"seat":   perm.Controller,
 		"effect": "max_one_attacker_one_blocker",
 	})
-}
-
-// SilentArbiterActive returns true if a Silent Arbiter is on any
-// battlefield. Called from combat.go to limit declared attackers to 1.
-func SilentArbiterActive(gs *gameengine.GameState) bool {
-	if gs == nil || gs.Flags == nil || gs.Flags["silent_arbiter_active"] == 0 {
-		return false
-	}
-	for _, s := range gs.Seats {
-		if s == nil {
-			continue
-		}
-		for _, p := range s.Battlefield {
-			if p != nil && p.Card != nil && p.Card.DisplayName() == "Silent Arbiter" {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func itoa(n int) string {

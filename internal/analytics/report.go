@@ -555,11 +555,6 @@ func (r *AnalyticsReport) writeMissedFinishers(b *strings.Builder) {
 	b.WriteString("\n")
 }
 
-// WriteMissedFinishersTo writes the missed finishers section to an external builder.
-func (r *AnalyticsReport) WriteMissedFinishersTo(b *strings.Builder) {
-	r.writeMissedFinishers(b)
-}
-
 // writeCoTriggers writes a section listing card pairs that co-triggered
 // within the same turn with verified causal resource links.
 func (r *AnalyticsReport) writeCoTriggers(b *strings.Builder) {
@@ -593,11 +588,6 @@ func (r *AnalyticsReport) writeCoTriggers(b *strings.Builder) {
 			i+1, s.CardA, s.CardB, s.Occurrences, s.AvgImpact, s.TopPattern)
 	}
 	b.WriteString("\n")
-}
-
-// WriteCoTriggersTo writes the co-trigger interactions section to an external builder.
-func (r *AnalyticsReport) WriteCoTriggersTo(b *strings.Builder) {
-	r.writeCoTriggers(b)
 }
 
 // writeMatchupDetails writes deep matchup stats.
@@ -1375,4 +1365,3 @@ func maxInt(a, b int) int {
 	}
 	return b
 }
-

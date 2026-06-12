@@ -3,8 +3,8 @@ package per_card
 import (
 	"sync"
 
-	"github.com/hexdek/hexdek/internal/gameengine"
 	"github.com/hexdek/hexdek/internal/gameast"
+	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
 // registerNecroticOoze wires up Necrotic Ooze.
@@ -159,29 +159,4 @@ func necroticOozeActivate(gs *gameengine.GameState, src *gameengine.Permanent, a
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"ability_idx": abilityIdx,
 	})
-}
-
-// GetNecroticOozeGrants exposes the granted-ability list for tests /
-// decision-makers. Returns nil if Ooze isn't in play.
-func GetNecroticOozeGrants(perm *gameengine.Permanent) []*gameast.Activated {
-	if v, ok := necroticOozeGrants.Load(perm); ok {
-		return v.([]*gameast.Activated)
-	}
-	return nil
-}
-
-// NecroticOozeGrantCount returns the number of activated abilities
-// currently granted to the Ooze. Useful for AI decision-making.
-func NecroticOozeGrantCount(perm *gameengine.Permanent) int {
-	if v, ok := necroticOozeGrants.Load(perm); ok {
-		return len(v.([]*gameast.Activated))
-	}
-	return 0
-}
-
-// CleanupNecroticOoze removes the Ooze's grants entry. Called when the
-// Ooze leaves the battlefield. Prevents stale entries from accumulating
-// across long games.
-func CleanupNecroticOoze(perm *gameengine.Permanent) {
-	necroticOozeGrants.Delete(perm)
 }

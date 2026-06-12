@@ -50,16 +50,16 @@ type GameRecord struct {
 }
 
 type GameSeatRecord struct {
-	GameID          int64
-	Seat            int
-	Commander       string
-	DeckKey         string
-	Life            int
-	HandSize        int
-	LibrarySize     int
-	GYSize          int
-	BFSize          int
-	Lost            bool
+	GameID           int64
+	Seat             int
+	Commander        string
+	DeckKey          string
+	Life             int
+	HandSize         int
+	LibrarySize      int
+	GYSize           int
+	BFSize           int
+	Lost             bool
 	BattlefieldCards string // JSON array of card names on battlefield at game end
 }
 
@@ -144,18 +144,6 @@ func InsertGame(ctx context.Context, db *sql.DB, g GameRecord) (int64, error) {
 		return 0, err
 	}
 	return res.LastInsertId()
-}
-
-func InsertGameSeat(ctx context.Context, db *sql.DB, s GameSeatRecord) error {
-	lost := 0
-	if s.Lost {
-		lost = 1
-	}
-	_, err := db.ExecContext(ctx,
-		`INSERT INTO showmatch_game_seat (game_id, seat, commander, life, hand_size, library_size, gy_size, bf_size, lost)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		s.GameID, s.Seat, s.Commander, s.Life, s.HandSize, s.LibrarySize, s.GYSize, s.BFSize, lost)
-	return err
 }
 
 func PersistGameTx(ctx context.Context, sqlDB *sql.DB, g GameRecord, seats []GameSeatRecord) (int64, error) {
@@ -523,9 +511,9 @@ func LoadDeckGameHistory(ctx context.Context, sqlDB *sql.DB, deckKey string, lim
 	out := []DeckGameHistoryRow{}
 	for rows.Next() {
 		var (
-			gid, fin           int64
+			gid, fin            int64
 			turns, winner, seat int
-			endReason          string
+			endReason           string
 		)
 		if err := rows.Scan(&gid, &fin, &turns, &winner, &endReason, &seat); err != nil {
 			return nil, err
@@ -681,7 +669,7 @@ type MetaSeatOutcome struct {
 // finished at or after sinceUnix, with deck_key set. Rows are
 // returned newest-first so the caller can stop early once it crosses
 // the requested window without buffering the full result. The
-// deck_key='' filter drops seats from games that predate the
+// deck_key=” filter drops seats from games that predate the
 // deck_key backfill (BackfillDeckKeys); without a deck_key we can't
 // resolve the seat's archetype, so the row contributes nothing.
 func LoadMetaSeatOutcomes(ctx context.Context, sqlDB *sql.DB, sinceUnix int64) ([]MetaSeatOutcome, error) {

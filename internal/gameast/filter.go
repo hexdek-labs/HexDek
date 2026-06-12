@@ -47,9 +47,6 @@ type Filter struct {
 // TargetAny returns a Filter matching "any target".
 func TargetAny() Filter { return Filter{Base: "any_target", Targeted: true} }
 
-// TargetCreature returns "target creature".
-func TargetCreature() Filter { return Filter{Base: "creature", Targeted: true} }
-
 // TargetPlayer returns "target player".
 func TargetPlayer() Filter { return Filter{Base: "player", Targeted: true} }
 

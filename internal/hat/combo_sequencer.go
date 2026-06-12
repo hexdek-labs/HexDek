@@ -26,10 +26,10 @@ func NewComboSequencer(sp *StrategyProfile) *ComboSequencer {
 			continue
 		}
 		cc := ComboConstraint{
-			Name:         comboName(cp),
-			PiecesNeeded: cp.Pieces,
+			Name:          comboName(cp),
+			PiecesNeeded:  cp.Pieces,
 			ZonesAccepted: buildZonesAccepted(cp),
-			ManaRequired: estimateManaRequired(cp),
+			ManaRequired:  estimateManaRequired(cp),
 			SequenceOrder: buildSequenceOrder(cp),
 		}
 		// Infinite combos often need protection to stick.
@@ -481,26 +481,3 @@ func mdfcBackFaceIsNonCreatureCombo(c *gameengine.Card) bool {
 	}
 	return true
 }
-
-// hasTutorInHand checks if the seat has any tutor card in hand.
-// Uses two detection methods:
-//   1. StrategyProfile CardRoles (if the seat's Hat has one)
-//   2. Oracle text heuristic: "search your library"
-func hasTutorInHand(seat *gameengine.Seat) bool {
-	for _, c := range seat.Hand {
-		if c == nil {
-			continue
-		}
-		// Heuristic: check oracle text for tutor-like effects.
-		ot := gameengine.OracleTextLower(c)
-		if strings.Contains(ot, "search your library") {
-			return true
-		}
-		// Also check AST effect kinds for "tutor" kind.
-		if isTutor(c) {
-			return true
-		}
-	}
-	return false
-}
-

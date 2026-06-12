@@ -21,13 +21,6 @@ func SelfTriggerCounterFires() int64 {
 	return selfTriggerCounterFires.Load()
 }
 
-// ResetSelfTriggerCounterFires zeroes the counter. Useful for
-// gauntlet-scoped measurements that want a clean baseline before
-// running games.
-func ResetSelfTriggerCounterFires() {
-	selfTriggerCounterFires.Store(0)
-}
-
 // self_trigger_response_r60.go — R60 round 15+ ChooseResponse audit fix.
 //
 // Audit: ChooseResponse at yggdrasil.go:6118 short-circuits with
@@ -147,13 +140,13 @@ func estimateDrawTriggerCardCount(top *gameengine.StackItem) int {
 // shouldCounterOwnTrigger reports whether the hat should attempt to
 // counter its own triggered ability rather than let it resolve. Returns
 // true only when:
-//   1. top is a triggered ability (not a spell, not an activated
-//      ability the player intentionally activated this turn)
-//   2. The trigger source is our own permanent
-//   3. The trigger would deal damage to us via a controller-side
-//      punisher in play (draw + Underworld Dreams family)
-//   4. The projected damage would equal or exceed our current life
-//      (we'd lose the game by letting the trigger resolve)
+//  1. top is a triggered ability (not a spell, not an activated
+//     ability the player intentionally activated this turn)
+//  2. The trigger source is our own permanent
+//  3. The trigger would deal damage to us via a controller-side
+//     punisher in play (draw + Underworld Dreams family)
+//  4. The projected damage would equal or exceed our current life
+//     (we'd lose the game by letting the trigger resolve)
 //
 // All four gates must hold — false in any one returns false. This is
 // intentionally narrow: countering your own triggers is a pathological

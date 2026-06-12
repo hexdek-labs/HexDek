@@ -432,45 +432,6 @@ func durationExpiresNow(d string, controllerSeat, activeSeat int, phase, step st
 	return false
 }
 
-// ExpireSourceLeftEffects scans continuous effects with DurationUntilSourceLeaves
-// and removes any whose SourcePerm is no longer on any battlefield. Called
-// after zone transitions (LTB, exile, bounce) as a safety net in addition
-// to UnregisterContinuousEffectsForPermanent.
-func ExpireSourceLeftEffects(gs *GameState) int {
-	if gs == nil || len(gs.ContinuousEffects) == 0 {
-		return 0
-	}
-	// Build a set of all permanents currently on battlefields.
-	onBF := map[*Permanent]bool{}
-	for _, s := range gs.Seats {
-		if s == nil {
-			continue
-		}
-		for _, p := range s.Battlefield {
-			if p != nil {
-				onBF[p] = true
-			}
-		}
-	}
-	kept := gs.ContinuousEffects[:0]
-	removed := 0
-	for _, ce := range gs.ContinuousEffects {
-		if ce == nil {
-			continue
-		}
-		if ce.Duration == DurationUntilSourceLeaves && ce.SourcePerm != nil && !onBF[ce.SourcePerm] {
-			removed++
-			continue
-		}
-		kept = append(kept, ce)
-	}
-	gs.ContinuousEffects = kept
-	if removed > 0 {
-		gs.InvalidateCharacteristicsCache()
-	}
-	return removed
-}
-
 // FireDelayedTriggers walks gs.DelayedTriggers and fires any that match
 // the current (phase, step) boundary. Mirrors Python _fire_delayed_triggers.
 func FireDelayedTriggers(gs *GameState, phase, step string) int {
@@ -980,8 +941,8 @@ func ResolveParadigmCopies(gs *GameState, active int) {
 			// added a "real" Card to the graveyard, inflating the zone-
 			// conservation total by 1 per cast (824 violations in r41
 			// game 181 / Decorum Dissertation / Loki seed 41).
-			IsCopy:     true,
-			Effect:     eff,
+			IsCopy: true,
+			Effect: eff,
 			CostMeta: map[string]interface{}{
 				"paradigm_copy": true,
 			},
