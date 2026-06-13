@@ -2667,6 +2667,16 @@ func DealDamage(gs *GameState, seat, amount int, source string) {
 		}
 		amount = ctx.Amount
 	}
+	// §615 prevention — DealDamage IS damage (it fires the damage + life_lost
+	// triggers), so prevention shields and "prevent all damage" / protection
+	// flags must apply. Pre-r63 this generic path (painlands, "deals N to
+	// you" effects) skipped prevention entirely. No source permanent is
+	// carried here, so color/quality-filtered shields can't match — that
+	// limitation is inherent to the source-name-only signature, not this fix.
+	amount = PreventDamageToPlayer(gs, seat, amount, nil)
+	if amount <= 0 {
+		return
+	}
 	s.Life -= amount
 	s.Turn.LifeLost += amount
 	s.Turn.DamageReceived += amount

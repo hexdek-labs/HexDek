@@ -832,6 +832,26 @@ func applyDamage(gs *GameState, src *Permanent, t Target, amount int) {
 			return
 		}
 		modified := ev.Count()
+		// §614 damage replacement — doublers (Furnace of Rath, Gratuitous
+		// Violence) and +N effects (Torbran) registered in the
+		// DamageReplacements registry must apply to SPELL/ability damage too,
+		// not just combat. Pre-r63 applyDamage consulted only the ReplEvent
+		// redirect chain above, so a Furnace failed to double a burn spell.
+		// Runs BEFORE the §615 prevention shields per §616.
+		if len(gs.DamageReplacements) > 0 {
+			ctx := &DamageContext{
+				Source:     src,
+				SourceName: sourceName(src),
+				TargetSeat: t.Seat,
+				Kind:       DamageNonCombatPlayer,
+				Amount:     modified,
+			}
+			ApplyDamageReplacement(gs, ctx)
+			if ctx.Prevented || ctx.Amount <= 0 {
+				return
+			}
+			modified = ctx.Amount
+		}
 		// §615: apply prevention shields before dealing damage.
 		modified = PreventDamageToPlayer(gs, t.Seat, modified, src)
 		if modified <= 0 {
@@ -898,6 +918,23 @@ func applyDamage(gs *GameState, src *Permanent, t Target, amount int) {
 		modified, cancelled := FireDamageEvent(gs, src, t.Permanent.Controller, t.Permanent, amount)
 		if cancelled || modified <= 0 {
 			return
+		}
+		// §614 damage replacement — doublers / +N (see the player branch).
+		// Applies to spell/ability damage to a creature too. BEFORE §615.
+		if len(gs.DamageReplacements) > 0 {
+			ctx := &DamageContext{
+				Source:     src,
+				SourceName: sourceName(src),
+				TargetSeat: t.Permanent.Controller,
+				TargetPerm: t.Permanent,
+				Kind:       DamageNonCombatCreature,
+				Amount:     modified,
+			}
+			ApplyDamageReplacement(gs, ctx)
+			if ctx.Prevented || ctx.Amount <= 0 {
+				return
+			}
+			modified = ctx.Amount
 		}
 		// §615: apply prevention shields before dealing damage.
 		modified = PreventDamageToPermanent(gs, t.Permanent, modified, src)
