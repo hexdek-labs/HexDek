@@ -2626,6 +2626,9 @@ func RegisterContinuousEffectsForPermanent(gs *GameState, p *Permanent) {
 	// keyword_grant ("[other] creatures you control have <kw>" anthem) —
 	// same Layer="" bypass; see mod_kind_keyword_grant.go.
 	registerKeywordGrantStatics(gs, p)
+	// "this creature has <kw> as long as you control a/an/another <X>" —
+	// conditional self keyword grant; see mod_tail_conditional_keyword.go.
+	registerConditionalKeywordTails(gs, p)
 }
 
 // -----------------------------------------------------------------------------
