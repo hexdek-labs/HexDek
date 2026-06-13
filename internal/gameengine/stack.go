@@ -419,6 +419,22 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 	if !removeFromHand(seat, card) {
 		return &CastError{Reason: "not_in_hand"}
 	}
+	// Cast-transit census presence (r63 CONSERVATION residual class,
+	// seed-5150 game 780): between the hand-removal above and the stack
+	// push below, the card exists only in this frame. A cast trigger
+	// that resolves immediately (the PushPerCardTrigger bridge) can
+	// eliminate a seat from inside that window; HandleSeatElimination's
+	// orphan sweep then reads the in-flight card as minted-but-absent
+	// and ceases the LIVING caster's card — its later graveyard arrival
+	// reads as a stale-ceased fabrication for the rest of the game.
+	// Track it in gs.ResolvingCards (the established mid-flight limbo
+	// registry, counted as zone presence by the census and the sweep)
+	// for the full CastSpell window; the deferred pop also covers the
+	// cost-failure rollback paths, which return the card to hand.
+	gs.ResolvingCards = append(gs.ResolvingCards, card)
+	defer func() {
+		gs.ResolvingCards = gs.ResolvingCards[:len(gs.ResolvingCards)-1]
+	}()
 
 	// Ride-along legality validator (legality.go): snapshot announcement-
 	// time state BEFORE any cost is paid. nil-receiver no-op when off.

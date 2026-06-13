@@ -769,31 +769,29 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 		}
 	}
 
-	// Phase E — §400.7c duplicate-pointer reconciliation. When a card
-	// owned by the leaving seat has somehow been duplicated into a
-	// surviving seat's zone (an upstream zone-leak bug — Phase F class),
-	// the cease above retires the ID while the surviving seat's *Card
-	// reference stays put. The post-elimination invariant pass then
-	// sees the ID present in a non-LeftGame zone but not in expected
-	// (Minted - Ceased) → fabrication false-positive.
-	//
-	// Fix: walk every NON-LeftGame seat's zones; for any *Card whose
-	// InstanceID is now in CeasedInstanceIDs AND was owned by the
-	// leaving seat, purge the duplicate reference. This is a structural
-	// reconciliation, not a §400.7c repair (the underlying duplication
-	// bug remains in whatever code path produced it); the audit event
-	// captures the purged shape so Phase F can hunt the source.
-	if len(gs.CeasedInstanceIDs) > 0 {
+	// Phase E — §800.4a owned-card sweep over SURVIVING seats' zones.
+	// Originally a §400.7c duplicate-pointer reconciliation (purge only
+	// already-ceased duplicates); extended r63 (CONSERVATION residual
+	// class, seed-5150 game 921): §800.4a says ALL objects owned by the
+	// leaving player leave the game — including cards sitting in a
+	// surviving seat's zones (impulse-play exile piles, stolen-hand
+	// cards, duplicate pointers from upstream zone leaks). The
+	// ceased-only purge left a leaver-owned Island in a survivor's exile
+	// untouched, and the ZoneCastGrants sideband cleanup BELOW then
+	// ceased its ID — present-but-ceased in a walked zone, a permanent
+	// stale-ceased fabrication from that turn on. Cease + purge
+	// unconditionally; both operations are idempotent, so ordering
+	// against the other cease passes no longer matters.
+	{
 		purgeCount := 0
 		purgeFromSlice := func(zone []*Card) []*Card {
 			w := 0
 			for r := 0; r < len(zone); r++ {
 				c := zone[r]
 				if c != nil && c.Owner == seatIdx {
-					if _, ceased := gs.CeasedInstanceIDs[c.InstanceID]; ceased {
-						purgeCount++
-						continue
-					}
+					MarkInstanceIDCeased(gs, c.InstanceID)
+					purgeCount++
+					continue
 				}
 				zone[w] = zone[r]
 				w++
@@ -811,10 +809,9 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 			other.CommandZone = purgeFromSlice(other.CommandZone)
 			other.ForetellExile = purgeFromSlice(other.ForetellExile)
 			if other.Companion != nil && other.Companion.Owner == seatIdx {
-				if _, ceased := gs.CeasedInstanceIDs[other.Companion.InstanceID]; ceased {
-					other.Companion = nil
-					purgeCount++
-				}
+				MarkInstanceIDCeased(gs, other.Companion.InstanceID)
+				other.Companion = nil
+				purgeCount++
 			}
 		}
 		if purgeCount > 0 {
@@ -825,7 +822,7 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 				Amount: purgeCount,
 				Details: map[string]interface{}{
 					"rule":   "800.4a_phase_e",
-					"reason": "duplicate_owned_card_pointer_in_surviving_seat_zone",
+					"reason": "owned_card_in_surviving_seat_zone_left_game",
 				},
 			})
 		}
