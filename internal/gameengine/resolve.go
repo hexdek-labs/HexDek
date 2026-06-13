@@ -1419,12 +1419,28 @@ func resolveExile(gs *GameState, src *Permanent, e *gameast.Exile) {
 		return
 	}
 
+	// FLICKER / BLINK detection (r63 mechanic audit): "exile … then return
+	// it to the battlefield" parses to a bare Exile node whose return clause
+	// is lost from the AST. When the source spell's raw carries an immediate
+	// flicker clause, route each target through FlickerPermanent (exile +
+	// immediate return as a NEW object with ETB) instead of a plain exile.
+	// See flicker_r63.go.
+	isFlicker, flickerYourControl := exileFlickerSpec(src)
+
 	targets := PickTargetHarmful(gs, src, e.Target)
 	maybeFireCrime(gs, src, targets)
 	for _, t := range targets {
 		switch t.Kind {
 		case TargetKindPermanent:
 			if t.Permanent == nil {
+				continue
+			}
+			if isFlicker && t.Permanent.Card != nil {
+				controlSeat := t.Permanent.Card.Owner
+				if flickerYourControl {
+					controlSeat = controllerSeat(src)
+				}
+				FlickerPermanent(gs, t.Permanent, controlSeat)
 				continue
 			}
 			// Route through ExilePermanent which runs §614 replacement
