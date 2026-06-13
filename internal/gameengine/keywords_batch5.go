@@ -69,17 +69,32 @@ func Meld(gs *GameState, perm1, perm2 *Permanent) *Permanent {
 	name1 := perm1.Card.DisplayName()
 	name2 := perm2.Card.DisplayName()
 
-	// Remove both permanents from battlefield.
+	// Remove both permanents from battlefield. The component cards now
+	// enter "merged limbo": they are represented by the single melded
+	// permanent and tracked via MergedCardPtrs (RecordMeldMergeWithCards
+	// below), NOT deposited into any real zone — mirroring how Mutate
+	// absorbs its merged-under cards. The census counts limbo cards
+	// through the host permanent's MergedCardPtrs (invariants.go), and
+	// UnmergeOnLeavePlay materializes them into the destination zone when
+	// the melded permanent later leaves play.
+	//
+	// r63 depth-frontier (loki seed 99 / game 3189, max-turns 120): the
+	// prior code called FireZoneChange(...,"battlefield","exile"), whose
+	// moveToZone deposited each component loose in the real EXILE zone.
+	// That left a stale exile entry alongside the limbo tracking, so when
+	// Brisela died and UnmergeOnLeavePlay routed the same *Card to the
+	// graveyard, the card lived in BOTH zones at once — CardIdentity:
+	// "Bruna, the Fading Light appears in both graveyard and exile"
+	// (106 hits across that game's checks). We still fire the
+	// battlefield-leave zone-change triggers (CR §712 exiles the cards as
+	// part of melding, so leaves-the-battlefield observers should see it),
+	// but we no longer perform the zone deposit.
 	removePermanentFromBattlefield(gs, perm1)
 	removePermanentFromBattlefield(gs, perm2)
-
-	// Exile both cards (already removed from battlefield above).
 	if perm1.Card != nil {
-		FireZoneChange(gs, perm1, perm1.Card, seatIdx, "battlefield", "exile")
 		FireZoneChangeTriggers(gs, perm1, perm1.Card, "battlefield", "exile")
 	}
 	if perm2.Card != nil {
-		FireZoneChange(gs, perm2, perm2.Card, seatIdx, "battlefield", "exile")
 		FireZoneChangeTriggers(gs, perm2, perm2.Card, "battlefield", "exile")
 	}
 
