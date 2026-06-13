@@ -34,8 +34,9 @@ func TestIngestNTuples_TierGraduationThroughThreeTiers(t *testing.T) {
 	dir := t.TempDir()
 	cards := []string{"Card A", "Card B", "Card C"}
 
-	// Raw observations are append-only in production, so we keep appending
-	// across tier transitions and ingest the cumulative log each time.
+	// Each ingest DRAINS the raw inbox (r63 loop close), so every batch
+	// below is counted exactly once; tier state and deck identity carry
+	// across batches in the learned DB itself.
 
 	// Tier 1: single observation from DeckOne.
 	a1 := makeNTupleAnalysis(cards, 6.0)

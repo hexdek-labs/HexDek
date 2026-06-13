@@ -60,6 +60,9 @@ type LearnedNTuple struct {
 	LastSeen           string   `json:"last_seen"`
 	Tier               int      `json:"tier"`
 	GamesSinceLastSeen int      `json:"games_since_last_seen"`
+	// SeenDecks persists distinct deck identities across drained-inbox
+	// ingest batches — see LearnedInteraction.SeenDecks.
+	SeenDecks []string `json:"seen_decks,omitempty"`
 
 	seenDecks map[string]bool
 }
@@ -150,7 +153,7 @@ func IngestNTuples(dir string, gamesSinceRun int) (promotions []LearnedNTuple, e
 
 	byKey := make(map[string]*LearnedNTuple, len(existing))
 	for i := range existing {
-		existing[i].seenDecks = make(map[string]bool)
+		existing[i].seenDecks = loadSeenDecks(existing[i].SeenDecks)
 		if existing[i].NormalizedKey == "" {
 			existing[i].NormalizedKey = nTupleKey(existing[i].Cards)
 		}
@@ -197,6 +200,7 @@ func IngestNTuples(dir string, gamesSinceRun int) (promotions []LearnedNTuple, e
 	for _, ln := range byKey {
 		if len(ln.seenDecks) > 0 {
 			ln.UniqueDeckCount = len(ln.seenDecks)
+			ln.SeenDecks = persistSeenDecks(ln.seenDecks)
 		}
 		if ln.ObservationCount > 0 {
 			ln.AvgImpactScore = ln.TotalImpact / float64(ln.ObservationCount)
@@ -231,6 +235,14 @@ func IngestNTuples(dir string, gamesSinceRun int) (promotions []LearnedNTuple, e
 
 	if err := exportTier3NTuplesForFreya(dir, result); err != nil {
 		fmt.Fprintf(os.Stderr, "huginn: export tier3 ntuples for freya: %v\n", err)
+	}
+
+	// Drain the inbox — same once-only fold contract as Ingest. Without
+	// this, every batch run re-counts the entire append-only raw file.
+	if len(raw) > 0 {
+		if err := os.Remove(filepath.Join(dir, rawNTupleFile)); err != nil && !os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "huginn: drain raw ntuples: %v\n", err)
+		}
 	}
 
 	return promotions, nil
