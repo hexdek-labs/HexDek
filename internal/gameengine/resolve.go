@@ -1646,6 +1646,7 @@ func resolveTap(gs *GameState, src *Permanent, e *gameast.TapEffect) {
 					"seat": t.Permanent.Controller,
 					"perm": t.Permanent,
 				})
+				FireTapEventASTTriggers(gs, t.Permanent)
 			}
 		}
 	}

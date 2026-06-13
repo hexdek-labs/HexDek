@@ -72,6 +72,14 @@ func InScopeTrigger(t *gameast.Triggered) (string, bool) {
 			strings.Contains(raw, "you control") {
 			return "", false
 		}
+		// Attached-die wordings ("when enchanted creature dies, return
+		// this card…", Angelic Destiny class) observe the HOST's death,
+		// not the bearer's — the §603.10 look-back item, out of scope
+		// (phase-3b false-positive fix: the bare scenario killed the
+		// AURA and expected its host-death effect).
+		if strings.Contains(raw, "enchanted") || strings.Contains(raw, "equipped") {
+			return "", false
+		}
 		// Bolster's "your creature with the least toughness" restriction
 		// is dropped by the parser (CounterMod with a bare creature
 		// target) — first-audit parser-fidelity finding (Abzan

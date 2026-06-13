@@ -631,6 +631,7 @@ func DeclareAttackers(gs *GameState, attackerSeat int) []*Permanent {
 				"seat": p.Controller,
 				"perm": p,
 			})
+			FireTapEventASTTriggers(gs, p)
 		}
 		declared = append(declared, p)
 	}

@@ -2571,6 +2571,9 @@ func GainLife(gs *GameState, seat, amount int, source string) {
 		"amount": amount,
 		"source": source,
 	})
+	// r63 phase-3b: AST "whenever you gain life" triggers — the alias
+	// mapped them to life_gained but only per_card handlers ever fired.
+	FireLifeGainedASTTriggers(gs, seat)
 	// Fire life_change trigger (positive amount = gain) for symmetry.
 	FireCardTrigger(gs, "life_change", map[string]interface{}{
 		"seat":   seat,
