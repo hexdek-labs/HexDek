@@ -1534,15 +1534,21 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		}
 
 	case "add_mana_effect":
-		seat := controllerSeat(src)
-		if seat >= 0 && seat < len(gs.Seats) {
-			gs.Seats[seat].ManaPool++
+		// Filter lands and other shapes whose colored-mana output is
+		// recoverable from the args text resolve via the structured
+		// handler; symbol-free / variable-quantity text falls back to
+		// the conservative one-generic add below.
+		if !resolveAddManaEffect(gs, src, e) {
+			seat := controllerSeat(src)
+			if seat >= 0 && seat < len(gs.Seats) {
+				gs.Seats[seat].ManaPool++
+			}
+			gs.LogEvent(Event{
+				Kind:   "add_mana",
+				Seat:   seat,
+				Source: sourceName(src),
+			})
 		}
-		gs.LogEvent(Event{
-			Kind:   "add_mana",
-			Seat:   seat,
-			Source: sourceName(src),
-		})
 
 	// add_mana_per — mana scaled by a count basis ("Add {G} for each
 	// creature you control"). Generic handler in modkind_add_mana_per.go.

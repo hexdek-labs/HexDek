@@ -129,6 +129,17 @@ func effectProducesMana(e gameast.Effect) bool {
 	switch v := e.(type) {
 	case *gameast.AddMana:
 		return true
+	case *gameast.ModificationEffect:
+		// Many mana abilities are represented as ModificationEffect
+		// scaffold nodes rather than AddMana — count-scaled mana
+		// ("Add {G} for each creature you control" → add_mana_per),
+		// the catch-all add-mana text fallback (add_mana_effect), and
+		// the plain add_mana modkind. These satisfy CR §605.1a (they
+		// add mana, don't target) and so MUST resolve inline per
+		// §605.3a rather than using the stack — otherwise Gaea's Cradle
+		// / Cabal Coffers / filter lands can't be tapped mid-cost to
+		// pay for a spell and could be illegally responded to.
+		return manaProducingModKinds[v.ModKind]
 	case *gameast.Sequence:
 		for _, sub := range v.Items {
 			if effectProducesMana(sub) {
@@ -137,6 +148,18 @@ func effectProducesMana(e gameast.Effect) bool {
 		}
 	}
 	return false
+}
+
+// manaProducingModKinds is the whitelist of ModificationEffect ModKinds
+// that unambiguously add mana (and only mana). choose_color /
+// choose_color_typed are deliberately excluded — "choose a color" is
+// ambiguous (e.g. Meteor Crater's non-mana color pick), so those abilities
+// keep their stack-using classification rather than risk mis-flagging a
+// non-mana ability as a §605 mana ability.
+var manaProducingModKinds = map[string]bool{
+	"add_mana":        true,
+	"add_mana_per":    true,
+	"add_mana_effect": true,
 }
 
 // effectTargets returns true if the effect (or any nested sub-effect)
