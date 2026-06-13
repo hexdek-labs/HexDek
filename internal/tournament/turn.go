@@ -199,6 +199,9 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 	// this start-of-untap call is the canonical place to fire it).
 	gameengine.DrainAllPools(gs, "ending", "cleanup")
 	clearPlayedLand(gs, active)
+	// Expire one-shot "additional land this turn" grants from a prior turn
+	// before this turn's land plays (continuous grants persist).
+	clearOneShotLandDrops(gs, active)
 	gs.PendingExtraCombats = nil
 	gs.CurrentCombatRestriction = ""
 	// §702.136 Raid — clear the attacked_this_turn flag from previous turn.
@@ -824,8 +827,15 @@ func drawTop(gs *gameengine.GameState, seatIdx int) {
 func runMainPhase(gs *gameengine.GameState, seatIdx int, precombat bool) {
 	seat := gs.Seats[seatIdx]
 
-	if precombat && !playedLandThisTurn(gs, seatIdx) {
-		tryPlayLand(gs, seatIdx)
+	// CR §305.2 — play up to the land-drop allowance (base 1 + extra land
+	// drops). Loop so Exploration/Azusa/Dryad/Gitrog extra drops are
+	// honored; stop as soon as the hat declines or has no land to play.
+	if precombat {
+		for canPlayAnotherLand(gs, seatIdx) {
+			if !tryPlayLand(gs, seatIdx) {
+				break
+			}
+		}
 	}
 
 	// Tap all mana sources (lands + artifacts) for mana.
@@ -1273,7 +1283,10 @@ func hasTargetCreature(gs *gameengine.GameState, seatIdx int) bool {
 
 // tryPlayLand asks the Hat for a land; if it provides one that's in
 // hand, moves it to the battlefield.
-func tryPlayLand(gs *gameengine.GameState, seatIdx int) {
+// tryPlayLand attempts one land drop for the seat. Returns true iff a land
+// was actually played (false when the seat has no land in hand, the hat
+// declines, or removal fails) so the caller's allowance loop can stop.
+func tryPlayLand(gs *gameengine.GameState, seatIdx int) bool {
 	seat := gs.Seats[seatIdx]
 	lands := make([]*gameengine.Card, 0)
 	for _, c := range seat.Hand {
@@ -1282,17 +1295,17 @@ func tryPlayLand(gs *gameengine.GameState, seatIdx int) {
 		}
 	}
 	if len(lands) == 0 {
-		return
+		return false
 	}
 	var chosen *gameengine.Card
 	if seat.Hat != nil {
 		chosen = seat.Hat.ChooseLandToPlay(gs, seatIdx, lands)
 	}
 	if chosen == nil {
-		return
+		return false
 	}
 	if !removeCard(&seat.Hand, chosen) {
-		return
+		return false
 	}
 
 	// MDFC / split-type face cleanup at battlefield entry. Two leak shapes
@@ -1376,6 +1389,7 @@ func tryPlayLand(gs *gameengine.GameState, seatIdx int) {
 	// §603.3b trigger batch.
 	gameengine.RegisterReplacementsForPermanent(gs, perm)
 	gameengine.FirePermanentETBTriggers(gs, perm)
+	return true
 }
 
 // highUrgencyCommanderInZone returns true if the seat's hat is a
@@ -1596,16 +1610,66 @@ func playedLandThisTurn(gs *gameengine.GameState, seatIdx int) bool {
 	return gs.Flags[playedLandKey(seatIdx)] > 0
 }
 
+// landsPlayedThisTurn returns the COUNT of lands the seat has played this
+// turn (the played-land flag is a count, not a boolean, so the extra-land-
+// drop allowance below can be honored — CR §305.2 / §116.2a).
+func landsPlayedThisTurn(gs *gameengine.GameState, seatIdx int) int {
+	if gs.Flags == nil {
+		return 0
+	}
+	return gs.Flags[playedLandKey(seatIdx)]
+}
+
+// landDropAllowance is the number of lands the seat may play this turn:
+// the base 1 (CR §305.2) plus continuous "play an additional land"
+// permissions (extra_land_drops — Dryad of the Ilysian Grove, The Gitrog
+// Monster, Aesi, … stamped by their ETB handlers while they remain on the
+// battlefield) plus one-shot "additional land this turn" grants
+// (extra_land_drops_oneshot — Explore / Summer Bloom-style resolved
+// effects, reset at the seat's turn start so they don't leak across
+// turns). Pre-r63 the extra_land_drops flag was written by ~8 sources but
+// NEVER consumed (the land-play gate used a boolean played-land flag), so
+// Exploration/Azusa/Dryad/Gitrog extra drops were silently ignored on the
+// only land-play path in the engine.
+func landDropAllowance(gs *gameengine.GameState, seatIdx int) int {
+	allow := 1
+	if seatIdx >= 0 && seatIdx < len(gs.Seats) {
+		if s := gs.Seats[seatIdx]; s != nil && s.Flags != nil {
+			allow += s.Flags["extra_land_drops"]
+			allow += s.Flags["extra_land_drops_oneshot"]
+		}
+	}
+	return allow
+}
+
+// canPlayAnotherLand reports whether the seat is still under its land-drop
+// allowance for the turn.
+func canPlayAnotherLand(gs *gameengine.GameState, seatIdx int) bool {
+	return landsPlayedThisTurn(gs, seatIdx) < landDropAllowance(gs, seatIdx)
+}
+
 func setPlayedLand(gs *gameengine.GameState, seatIdx int) {
 	if gs.Flags == nil {
 		gs.Flags = map[string]int{}
 	}
-	gs.Flags[playedLandKey(seatIdx)] = 1
+	// Count, not boolean — the extra-land-drop allowance compares against it.
+	gs.Flags[playedLandKey(seatIdx)]++
 }
 
 func clearPlayedLand(gs *gameengine.GameState, seatIdx int) {
 	if gs.Flags != nil {
 		delete(gs.Flags, playedLandKey(seatIdx))
+	}
+}
+
+// clearOneShotLandDrops expires the per-turn "additional land this turn"
+// bucket at the seat's turn start. Continuous grants (extra_land_drops)
+// persist — they are re-stamped/maintained by the granting permanents.
+func clearOneShotLandDrops(gs *gameengine.GameState, seatIdx int) {
+	if seatIdx >= 0 && seatIdx < len(gs.Seats) {
+		if s := gs.Seats[seatIdx]; s != nil && s.Flags != nil {
+			delete(s.Flags, "extra_land_drops_oneshot")
+		}
 	}
 }
 

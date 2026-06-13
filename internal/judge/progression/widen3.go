@@ -71,6 +71,12 @@ func CheckAny(cardName string, t *gameast.Triggered) ([]*Finding, bool) {
 	if f, ran := checkAnyPhase3d(cardName, t); ran {
 		return f, true
 	}
+	if f, ran := checkAnyPhase3e(cardName, t); ran {
+		return f, true
+	}
+	if f, ran := checkAnyPhase3f(cardName, t); ran {
+		return f, true
+	}
 	return nil, false
 }
 
@@ -219,7 +225,7 @@ func InScopeCastTrigger(t *gameast.Triggered) (castScopeSpec, bool) {
 		return none, false
 	}
 	switch tr.Event {
-	case "cast_any", "cast_spell", "cast_filtered", "any_player_cast", "opp_cast":
+	case "cast_any", "cast_spell", "cast_filtered", "any_player_cast", "opp_cast", "cast_color_spell":
 	default:
 		return none, false
 	}

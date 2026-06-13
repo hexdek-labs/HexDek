@@ -356,6 +356,10 @@ func sacrificePermanentImpl(gs *GameState, perm *Permanent, source *Permanent, r
 		}
 		sacCtx["to_zone"] = destZone
 		FireCardTrigger(gs, "permanent_sacrificed", sacCtx)
+		// AST "whenever you sacrifice a <filter>" payoffs — the per_card
+		// fan-out above reaches only bespoke handlers; the AST walk reaches
+		// every parsed sacrifice trigger (r63 PROGRESSION saturation finding).
+		FireSacrificeASTTriggers(gs, perm.Controller, perm)
 	}
 
 	// Phase 8: dissolve any Mutate / Meld merge — each constituent card
@@ -761,6 +765,29 @@ func fireObserverZoneChangeTriggers(gs *GameState, dyingPerm *Permanent, dyingCa
 
 				trigEvent := strings.ToLower(strings.TrimSpace(trig.Trigger.Event))
 				if !EventMatchesAny(trigEvent, events) {
+					continue
+				}
+
+				// nil-Actor observer-death triggers ("whenever a/another
+				// creature you control dies"): the parser drops the actor
+				// phrase, so isSelfTrigger / observerTriggerMatches (which
+				// require a non-nil Actor) skipped EVERY bare ally-death
+				// payoff — they were silent. Match from the raw wording on a
+				// real §700.4 death (battlefield → graveyard). r63 PROGRESSION
+				// saturation fix; mirrors the observer-ETB raw dispatch.
+				if trig.Trigger.Actor == nil && isObserverDeathEvent(trigEvent) &&
+					fromZone == "battlefield" && toZone == "graveyard" {
+					if !observerDeathMatchesByRaw(trig, observer, dyingPerm) {
+						continue
+					}
+					if HasTriggerHook != nil &&
+						HasTriggerHook(observer.Card.DisplayName(), "creature_dies") {
+						continue
+					}
+					PushTriggeredAbilityWithIf(gs, observer, trig.Effect, trig.InterveningIf)
+					if gs.CheckEnd() {
+						return
+					}
 					continue
 				}
 

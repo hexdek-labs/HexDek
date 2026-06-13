@@ -1063,6 +1063,10 @@ func DiscardCard(gs *GameState, card *Card, seat int) {
 		"exiled":         dest == "exile" || madnessExiled,
 		"madness_exile":  madnessExiled,
 	})
+	// AST "whenever you discard a card" payoffs — the per_card fan-out above
+	// reaches only bespoke handlers; the AST walk reaches every parsed
+	// discard trigger (r63 PROGRESSION saturation finding).
+	FireDiscardASTTriggers(gs, seat)
 }
 
 func DiscardN(gs *GameState, seat, n int, policy string) int {

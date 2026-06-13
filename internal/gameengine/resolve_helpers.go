@@ -1570,9 +1570,12 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		})
 
 	case "extra_land_drop":
-		// CR §305.2 — grant an additional land play this turn. Track via
-		// the seat's "extra_land_drops" flag; the land-play action checks
-		// this flag to allow more than one land per turn.
+		// CR §305.2 — grant an additional land play THIS TURN. One-shot
+		// resolved effect (Explore / Summer Bloom style), so it goes in the
+		// per-turn "extra_land_drops_oneshot" bucket the land-play gate
+		// consumes and the turn loop clears at turn start — distinct from
+		// the persistent "extra_land_drops" bucket the continuous static
+		// granters (Dryad/Gitrog/Aesi) maintain while on the battlefield.
 		seat := controllerSeat(src)
 		n := 1
 		if len(e.Args) > 0 {
@@ -1584,7 +1587,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			if gs.Seats[seat].Flags == nil {
 				gs.Seats[seat].Flags = make(map[string]int)
 			}
-			gs.Seats[seat].Flags["extra_land_drops"] += n
+			gs.Seats[seat].Flags["extra_land_drops_oneshot"] += n
 		}
 		gs.LogEvent(Event{
 			Kind:   "extra_land_drop",
@@ -3148,14 +3151,15 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 	// this turn." Grant the extra land drop permission.
 	// -----------------------------------------------------------------
 	case "may_play_land_from_hand":
-		// "You may play an additional land this turn." Grant the extra
-		// land drop via the seat's flag (same mechanism as extra_land_drop).
+		// "You may play an additional land this turn." One-shot per-turn
+		// grant → the "extra_land_drops_oneshot" bucket (same mechanism as
+		// the "extra_land_drop" case above; cleared at turn start).
 		mplSeat := controllerSeat(src)
 		if mplSeat >= 0 && mplSeat < len(gs.Seats) {
 			if gs.Seats[mplSeat].Flags == nil {
 				gs.Seats[mplSeat].Flags = make(map[string]int)
 			}
-			gs.Seats[mplSeat].Flags["extra_land_drops"]++
+			gs.Seats[mplSeat].Flags["extra_land_drops_oneshot"]++
 		}
 		gs.LogEvent(Event{
 			Kind:   "extra_land_drop",
