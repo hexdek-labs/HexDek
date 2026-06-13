@@ -68,6 +68,7 @@ func PushPerCardTrigger(gs *GameState, perm *Permanent, handler func(*GameState,
 	if gs.Flags["_percard_inline_depth"] > maxPerCardInlineResolveDepth {
 		LogLoopGuardFired(gs, "percard_inline_depth_cap", map[string]interface{}{
 			"depth": gs.Flags["_percard_inline_depth"], "cap": maxPerCardInlineResolveDepth,
+			"card":  cardName,
 		})
 		gs.LogEvent(Event{
 			Kind:   "loop_anomaly",
@@ -95,6 +96,7 @@ func PushPerCardTrigger(gs *GameState, perm *Permanent, handler func(*GameState,
 	if gs.Flags["_trigger_fires_this_turn"] > triggerCapForGame(gs) {
 		LogLoopGuardFired(gs, "trigger_loop_cap", map[string]interface{}{
 			"fires": gs.Flags["_trigger_fires_this_turn"], "site": "per_card_trigger",
+			"card":  cardName,
 		})
 		for i, s := range gs.Seats {
 			if s != nil && !s.Lost && !s.Won {

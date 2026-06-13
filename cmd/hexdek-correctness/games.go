@@ -33,11 +33,11 @@ package main
 //	                 integrity failure by definition).
 
 import (
-	"time"
 	"fmt"
 	"math/rand"
 	"os"
 	"runtime/debug"
+	"time"
 
 	"github.com/hexdek/hexdek/internal/astload"
 	"github.com/hexdek/hexdek/internal/deckparser"
@@ -107,6 +107,11 @@ type gameOutcome struct {
 	ended      bool
 	eventCount int
 	capFires   []string
+	// guardCensus tallies EVERY loop_guard_fired in the game (including
+	// correctly-handled ones) keyed "guard|card" — the liveness firehose
+	// classification input. capFires above stays the deduped guard list
+	// the cap_contract check consumes.
+	guardCensus map[string]int
 }
 
 // runGamePass runs the chaos-game sweep and converts the per-game
@@ -122,6 +127,8 @@ func runGamePass(chaosCorpus *gameengine.ChaosCorpus, corpus *astload.Corpus, me
 	}
 	agg := legalityTally{checkedByKind: map[string]int{}, illegalByKind: map[string]int{}}
 	conservationClean, integrityClean, livenessClean := 0, 0, 0
+	guardCensus := map[string]int{}
+	guardGames := map[string]int{}
 
 	// One sink for the whole sweep; games run sequentially so the
 	// current game's tally is unambiguous.
@@ -207,6 +214,22 @@ func runGamePass(chaosCorpus *gameengine.ChaosCorpus, corpus *astload.Corpus, me
 		if !seen[judge.DimensionLiveness] && !hung {
 			livenessClean++
 		}
+		if os.Getenv("CORRECTNESS_LOOPHEAD") != "" {
+			for k, n := range out.guardCensus {
+				if n > 500 {
+					fmt.Fprintf(os.Stderr, "  LOOPHEAD game=%d seed=%d guard=%q fires=%d turns=%d"+"\n",
+						gameIdx, cfg.Seed+int64(gameIdx)*10000+1, k, n, out.turns)
+				}
+			}
+		}
+		gameGuards := map[string]bool{}
+		for k, n := range out.guardCensus {
+			guardCensus[k] += n
+			gameGuards[k] = true
+		}
+		for k := range gameGuards {
+			guardGames[k]++
+		}
 		if (gameIdx+1)%50 == 0 {
 			fmt.Fprintf(os.Stderr, "  game sweep: %d/%d games done\n", gameIdx+1, cfg.Games)
 		}
@@ -254,6 +277,8 @@ func runGamePass(chaosCorpus *gameengine.ChaosCorpus, corpus *astload.Corpus, me
 			Pct:       pct(livenessClean, cfg.Games),
 			Detail: map[string]interface{}{
 				"watchdog_budget": cfg.LivenessBudget.String(),
+				"guard_census":    guardCensus, // "guard|card" -> total fires
+				"guard_games":     guardGames,  // "guard|card" -> games affected
 			},
 		},
 	}
@@ -420,21 +445,25 @@ func runOneGame(gameIdx int, chaosCorpus *gameengine.ChaosCorpus, corpus *astloa
 	out.ended = gs.Flags != nil && gs.Flags["ended"] == 1
 	out.eventCount = len(gs.EventLog)
 	capSeen := map[string]bool{}
+	out.guardCensus = map[string]int{}
 	for i := range gs.EventLog {
 		ev := &gs.EventLog[i]
-		switch ev.Kind {
-		case "game_draw":
-			if r, _ := ev.Details["reason"].(string); r == "trigger_loop_cap" || r == "percard_inline_depth_cap" {
-				if !capSeen[r] {
-					capSeen[r] = true
-					out.capFires = append(out.capFires, r)
+		if ev.Kind == gameengine.EventLoopGuardFired {
+			guard, _ := ev.Details["guard"].(string)
+			if guard == "" {
+				continue
+			}
+			if !capSeen[guard] {
+				capSeen[guard] = true
+				out.capFires = append(out.capFires, guard)
+			}
+			card, _ := ev.Details["card"].(string)
+			if card == "" {
+				if h, _ := ev.Details["handler"].(string); h != "" {
+					card = h
 				}
 			}
-		case "sba_max_passes":
-			if !capSeen[ev.Kind] {
-				capSeen[ev.Kind] = true
-				out.capFires = append(out.capFires, ev.Kind)
-			}
+			out.guardCensus[guard+"|"+card]++
 		}
 	}
 	return out

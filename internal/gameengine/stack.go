@@ -214,8 +214,13 @@ func PushTriggeredAbilityWithIf(gs *GameState, src *Permanent, effect gameast.Ef
 	}
 	gs.Flags["_trigger_fires_this_turn"]++
 	if gs.Flags["_trigger_fires_this_turn"] > triggerCapForGame(gs) {
+		capCard := ""
+		if src.Card != nil {
+			capCard = src.Card.DisplayName()
+		}
 		LogLoopGuardFired(gs, "trigger_loop_cap", map[string]interface{}{
 			"fires": gs.Flags["_trigger_fires_this_turn"], "site": "ast_trigger",
+			"card": capCard,
 		})
 		for i, s := range gs.Seats {
 			if s != nil && !s.Lost && !s.Won {

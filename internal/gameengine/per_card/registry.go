@@ -593,24 +593,6 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 		})
 		return
 	}
-	gs.Flags["trigger_total"]++
-	if gs.Flags["trigger_total"] > 2000 {
-		gameengine.LogLoopGuardFired(gs, "percard_dispatch_total_cap", map[string]interface{}{
-			"total": gs.Flags["trigger_total"], "event": event,
-		})
-		gs.LogEvent(gameengine.Event{
-			Kind:   "trigger_evaluated",
-			Seat:   -1,
-			Target: -1,
-			Source: event,
-			Details: map[string]interface{}{
-				"event":  event,
-				"capped": "trigger_total",
-				"rule":   "603.3",
-			},
-		})
-		return
-	}
 	canonical := gameengine.NormalizeEventSingle(event)
 
 	// Collect hits grouped by controller seat.
@@ -716,6 +698,34 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 			Details: map[string]interface{}{
 				"event":  event,
 				"capped": "no_handlers",
+				"rule":   "603.3",
+			},
+		})
+		return
+	}
+
+	// Per-turn dispatch budget — counted ONLY for dispatches that found
+	// handlers. The r63 liveness firehose caught a Rebel token storm
+	// burning the whole 2000 budget with ZERO-handler token_created /
+	// permanent_etb dispatches (capped:no_handlers on every line), after
+	// which every REAL per_card trigger in the game (Rhystic, Blood
+	// Artist, ...) was silently swallowed for the rest of the turn —
+	// cross-event starvation. Zero-handler dispatches cannot loop
+	// through handlers, so they cost nothing; the budget exists to stop
+	// HANDLER loops and now counts exactly those.
+	gs.Flags["trigger_total"]++
+	if gs.Flags["trigger_total"] > 2000 {
+		gameengine.LogLoopGuardFired(gs, "percard_dispatch_total_cap", map[string]interface{}{
+			"total": gs.Flags["trigger_total"], "event": event,
+		})
+		gs.LogEvent(gameengine.Event{
+			Kind:   "trigger_evaluated",
+			Seat:   -1,
+			Target: -1,
+			Source: event,
+			Details: map[string]interface{}{
+				"event":  event,
+				"capped": "trigger_total",
 				"rule":   "603.3",
 			},
 		})

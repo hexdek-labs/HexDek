@@ -67,12 +67,21 @@ func TestCheckLiveness_CapContract(t *testing.T) {
 	if len(v) != 0 {
 		t.Errorf("cap fired + game ended is the CORRECT guard behavior, got %v", v)
 	}
-	// A guard fired and the game limped on — contract broken.
+	// A DRAW-CONTRACT guard fired and the game limped on — broken.
 	v = CheckLiveness(LivenessSnapshot{
 		Ended: false, CapFires: []string{"trigger_loop_cap"},
 	})
 	if len(v) != 1 || v[0].Name != "cap_contract" {
-		t.Fatalf("cap fired without game end must flag cap_contract, got %v", v)
+		t.Fatalf("draw-contract cap fired without game end must flag cap_contract, got %v", v)
+	}
+	// A SWALLOW-CONTRACT guard (dispatch cap) firing in a game that
+	// runs to the turn limit is BY-DESIGN — the firehose's first wild
+	// false-positive shape.
+	v = CheckLiveness(LivenessSnapshot{
+		Ended: false, CapFires: []string{"percard_dispatch_total_cap", "move_no_progress"},
+	})
+	if len(v) != 0 {
+		t.Errorf("swallow-contract guards without game end must not flag, got %v", v)
 	}
 }
 

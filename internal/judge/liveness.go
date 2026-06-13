@@ -71,16 +71,31 @@ type LivenessSnapshot struct {
 	EventBudget int
 
 	// CapFires lists every engine loop-guard that fired during the game
-	// (game_draw reasons like "trigger_loop_cap" /
-	// "percard_inline_depth_cap", SBA max-passes markers, per-handler
-	// no-progress breaks). The cap_contract check holds each one to the
-	// "guard ends the game" contract.
+	// (the uniform loop_guard_fired event's guard names). The
+	// cap_contract check holds DRAW-CONTRACT guards to the "guard ends
+	// the game" promise; SWALLOW-CONTRACT guards (dispatch caps,
+	// no-progress breaks, drain caps) deliberately bound damage and let
+	// the game continue, so their firing without a game end is
+	// by-design (the r63 firehose's first wild cap_contract hit was
+	// exactly this false conflation: a dispatch-cap game that ran to
+	// the turn limit).
 	CapFires []string
 
 	// Elapsed wall-clock for the game vs the watchdog budget. Zero
 	// budget disables the wall-clock check.
 	Elapsed time.Duration
 	Budget  time.Duration
+}
+
+// DrawContractGuards names the loop guards whose contract is "abort
+// the game as a draw" — firing without a subsequent game end is a
+// liveness violation. Guards NOT in this set are swallow-contract:
+// they bound the damage (skip the dispatch, break the loop) and
+// deliberately let the game continue.
+var DrawContractGuards = map[string]bool{
+	"trigger_loop_cap":         true,
+	"percard_inline_depth_cap": true,
+	"sba_max_passes":           true, // the SBA cap's 104.4b block draws the game
 }
 
 // CheckLiveness runs every liveness rule against the snapshot and
@@ -121,10 +136,18 @@ func CheckLiveness(snap LivenessSnapshot) []ValidationViolation {
 			"event log hit its %d cap with the game still undecided (seed=%d game=%d) — looping without advancing",
 			snap.EventBudget, snap.Seed, snap.GameIdx))
 	}
-	if len(snap.CapFires) > 0 && !snap.Ended {
-		add("cap_contract", fmt.Sprintf(
-			"loop guard(s) %v fired but the game did not end (seed=%d game=%d) — guards must abort the game as a draw, never limp on",
-			snap.CapFires, snap.Seed, snap.GameIdx))
+	if !snap.Ended {
+		var broken []string
+		for _, g := range snap.CapFires {
+			if DrawContractGuards[g] {
+				broken = append(broken, g)
+			}
+		}
+		if len(broken) > 0 {
+			add("cap_contract", fmt.Sprintf(
+				"draw-contract loop guard(s) %v fired but the game did not end (seed=%d game=%d) — these guards must abort the game as a draw, never limp on",
+				broken, snap.Seed, snap.GameIdx))
+		}
 	}
 	return out
 }
