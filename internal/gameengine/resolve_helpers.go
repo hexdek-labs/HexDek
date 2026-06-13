@@ -4840,6 +4840,14 @@ func resolveResidualByText(gs *GameState, src *Permanent, raw string) bool {
 		return true
 	}
 
+	// Until-EOT keyword grants ("<subject> gains <evergreen kw(s)> until end
+	// of turn") — Heroic Intervention / The Crowd Goes Wild / Dinosaur
+	// Stampede + the keyword-grant arms of modal Charms/Commands. See
+	// mod_tail_grant_keyword_eot_r63.go.
+	if resolveGrantKeywordEOTText(gs, src, raw) {
+		return true
+	}
+
 	if reResPlayThisTurn.MatchString(raw) || reResExilePlay.MatchString(raw) {
 		if seat >= 0 && seat < len(gs.Seats) {
 			exile := gs.Seats[seat].Exile
