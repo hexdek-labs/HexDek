@@ -270,7 +270,13 @@ func (c *SeatOutcomeChecker) CheckConsistency(gs *GameState, when string) {
 	}
 
 	if ended {
-		if winners != 1 {
+		// CR §104.4 — a drawn game legitimately ends with 0 winners
+		// (simultaneous elimination / loop draw) or ≥2 "would-win" seats
+		// that cancel to a draw (§104.3b). Only a DECISIVE game must have
+		// exactly one winner; exempt draws (engine sets game_draw at every
+		// draw site) so the self-checker doesn't false-positive on them.
+		drawn := gs.Flags != nil && gs.Flags["game_draw"] == 1
+		if winners != 1 && !drawn {
 			c.add(gs, SeatOutcomeViolation{
 				Seat: -1, Kind: "winner_count", When: when,
 				Detail: fmt.Sprintf("game ended with %d winners, want exactly 1", winners),

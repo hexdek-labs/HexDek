@@ -176,10 +176,62 @@ func TestSeatOutcome_RealEliminationClean(t *testing.T) {
 func TestSeatOutcome_NilCheckerNoOps(t *testing.T) {
 	gs := newFixtureGame(t) // gs.SeatOutcome nil
 	gs.Seats[0].Life = -10
-	StateBasedActions(gs)            // sba hook must no-op
-	HandleSeatElimination(gs, 1)     // elimination hooks must no-op
+	StateBasedActions(gs)        // sba hook must no-op
+	HandleSeatElimination(gs, 1) // elimination hooks must no-op
 	var c *SeatOutcomeChecker
-	c.CheckConsistency(gs, "sba")    // explicit nil receiver
+	c.CheckConsistency(gs, "sba") // explicit nil receiver
 	c.BeginElimination(gs, 0)
 	c.VerifyEliminationCleanup(gs, 0)
+}
+
+// TestSeatOutcome_DrawExemptsWinnerCount pins the r63 long-tail fix: a
+// game that ends in a DRAW (CR §104.4 — simultaneous elimination, or a
+// mandatory-loop draw) legitimately has 0 winners, and the SeatOutcome
+// self-checker must NOT flag winner_count for it. A DECISIVE game that
+// ends with no winner (not a draw) must still be flagged.
+func TestSeatOutcome_DrawExemptsWinnerCount(t *testing.T) {
+	// (1) Drawn game: ended + 0 winners + game_draw set → no winner_count.
+	gs := outcomeFixture(t)
+	if gs.Flags == nil {
+		gs.Flags = map[string]int{}
+	}
+	for _, s := range gs.Seats {
+		s.Lost = true // simultaneous elimination
+	}
+	gs.Flags["ended"] = 1
+	gs.Flags["game_draw"] = 1
+	gs.SeatOutcome.CheckConsistency(gs, "game_end")
+	if n := outcomeKinds(gs)["winner_count"]; n != 0 {
+		t.Errorf("drawn game (0 winners, game_draw set) wrongly flagged winner_count %d time(s)", n)
+	}
+
+	// (2) Decisive game with NO winner and NOT a draw → still flagged (a
+	// real "game ended but nobody won" bug must not be masked).
+	gs2 := outcomeFixture(t)
+	if gs2.Flags == nil {
+		gs2.Flags = map[string]int{}
+	}
+	for _, s := range gs2.Seats {
+		s.Lost = true
+	}
+	gs2.Flags["ended"] = 1
+	// no game_draw flag
+	gs2.SeatOutcome.CheckConsistency(gs2, "game_end")
+	if n := outcomeKinds(gs2)["winner_count"]; n != 1 {
+		t.Errorf("ended-with-no-winner non-draw: want 1 winner_count flag, got %d", n)
+	}
+
+	// (3) Decisive game with exactly one winner → no winner_count.
+	gs3 := outcomeFixture(t)
+	if gs3.Flags == nil {
+		gs3.Flags = map[string]int{}
+	}
+	gs3.Seats[0].Won = true
+	gs3.Seats[1].Lost = true
+	gs3.Flags["ended"] = 1
+	gs3.Flags["winner"] = 0
+	gs3.SeatOutcome.CheckConsistency(gs3, "game_end")
+	if n := outcomeKinds(gs3)["winner_count"]; n != 0 {
+		t.Errorf("decisive 1-winner game wrongly flagged winner_count %d time(s)", n)
+	}
 }

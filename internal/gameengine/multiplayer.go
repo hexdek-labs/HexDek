@@ -338,6 +338,14 @@ func (gs *GameState) CheckEnd() bool {
 			},
 		})
 	} else {
+		// CR §104.4 — the game ended with no single winner (simultaneous
+		// elimination §104.4a, or simultaneous "you win" effects cancelling
+		// to a draw §104.3b). Mark game_draw so downstream consumers (the
+		// SeatOutcome self-checker's winner_count rule) recognize a
+		// legitimate 0/≥2-winner draw rather than flagging it — mirrors the
+		// loop-draw sites (sba.go §104.4b, stack.go / trigger_stack_bridge
+		// depth caps) that already set this flag.
+		gs.Flags["game_draw"] = 1
 		details := map[string]interface{}{
 			"rule":   endRule,
 			"winner": -1,
