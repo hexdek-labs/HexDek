@@ -41,7 +41,22 @@ var (
 	TriggerHook    func(gs *GameState, event string, ctx map[string]interface{})
 	HasTriggerHook func(cardName, event string) bool
 	HasETBHook     func(cardName string) bool
+	// HasActivatedHook reports whether a per_card OnActivated handler is
+	// registered for the card. The inline mana-ability path consults it so
+	// the generic AST rider pass (e.g. the pain-land self_damage downside)
+	// does not double-apply on cards whose per_card handler already deals
+	// the rider itself (Ancient Tomb deals its own 2 damage).
+	HasActivatedHook func(cardName string) bool
 )
+
+// PerCardOwnsActivated reports whether a per_card OnActivated handler is
+// registered for the card. Safe to call when HasActivatedHook is nil.
+func PerCardOwnsActivated(cardName string) bool {
+	if HasActivatedHook == nil {
+		return false
+	}
+	return HasActivatedHook(cardName)
+}
 
 // PerCardOwnsTrigger reports whether a per_card OnTrigger handler is
 // registered for the card under ANY of the given engine events. The

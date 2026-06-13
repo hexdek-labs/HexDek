@@ -90,6 +90,45 @@ func TestLeftGameGuard_MoveToZoneRefusesDeadOwnersCard(t *testing.T) {
 	}
 }
 
+// TestLeftGameGuard_Seat0OwnerRefused pins the r63 seed-1337 game 2293
+// hole: the §800.4a chokepoint guards keyed on `Owner > 0`, silently
+// exempting every card owned by SEAT 0. When seat 0 is the eliminated
+// player, a reanimator (The Cruelty of Gix → Flayer of Loyalties) could
+// pull its ceased graveyard cards onto a live battlefield — present-but-
+// ceased fabrication. Both chokepoints must refuse seat-0-owned cards.
+func TestLeftGameGuard_Seat0OwnerRefused(t *testing.T) {
+	gs := NewGameState(4, rand.New(rand.NewSource(2293)), nil)
+	dead := mkOwnedGraveyardCard(gs, 0, "Flayer of Loyalties")
+
+	gs.Seats[0].Lost = true
+	gs.Seats[0].LossReason = "21+ commander damage (CR 704.6c)"
+	HandleSeatElimination(gs, 0)
+
+	// MoveCard chokepoint.
+	res := MoveCard(gs, dead, 0, "graveyard", "battlefield", "reanimate")
+	if res.FinalZone != "" || res.Permanent != nil {
+		t.Fatalf("MoveCard materialized seat-0 leaver's card (final zone %q) — §800.4a seat-0 hole", res.FinalZone)
+	}
+	for i, s := range gs.Seats {
+		for _, p := range s.Battlefield {
+			if p != nil && p.Card == dead {
+				t.Fatalf("seat-0 leaver's card on seat %d battlefield via MoveCard", i)
+			}
+		}
+	}
+
+	// moveToZone chokepoint (direct callers bypass MoveCard).
+	handBefore := len(gs.Seats[1].Hand)
+	gs.moveToZone(1, dead, "hand")
+	if len(gs.Seats[1].Hand) != handBefore {
+		t.Fatalf("moveToZone placed seat-0 leaver's card into a live hand — §800.4a seat-0 hole")
+	}
+
+	if err := checkZoneConservationByInstanceID(gs); err != nil {
+		t.Fatalf("census violation after refused seat-0 moves: %v", err)
+	}
+}
+
 // TestLeftGameGuard_LivingOwnersCardStillMoves is the control: the guard
 // must not block normal zone movement for living owners.
 func TestLeftGameGuard_LivingOwnersCardStillMoves(t *testing.T) {

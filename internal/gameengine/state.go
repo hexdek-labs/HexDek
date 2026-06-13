@@ -2421,7 +2421,15 @@ func (gs *GameState) moveToZone(seat int, c *Card, zone string) {
 	// without this guard a selector that found one of those dead cards
 	// re-materializes it in a live zone and the InstanceID census flags
 	// fabrication ("present but not in (Minted - Ceased)").
-	if c.Owner > 0 && c.Owner < len(gs.Seats) {
+	// Owner >= 0 (r63 seed-1337 game 2293 fix): the LeftGame guard MUST
+	// cover seat 0. The old `Owner > 0` cutoff exempted every seat-0-owned
+	// card from §800.4a, so when seat 0 was eliminated a reanimator could
+	// re-materialize its ceased cards (The Cruelty of Gix → Flayer of
+	// Loyalties). The owner-redirect check below keeps `> 0` (a separate
+	// §400.7 concern with the zero-value-fixture caveat); only the
+	// LeftGame refusal needs seat-0 coverage, and the LeftGame condition
+	// itself is the discriminator against incidental zero-value fixtures.
+	if c.Owner >= 0 && c.Owner < len(gs.Seats) {
 		if os := gs.Seats[c.Owner]; os != nil && os.LeftGame {
 			gs.LogEvent(Event{
 				Kind:   "zone_move_refused",

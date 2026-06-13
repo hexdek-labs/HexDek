@@ -70,11 +70,16 @@ func MoveCard(gs *GameState, card *Card, ownerSeat int, fromZone, toZone, reason
 	// bug (root case: per_card reanimateResolve pulling an eliminated
 	// player's creature onto a live battlefield — seed 7777 game 2430,
 	// Pathrazer of Ulamog).
-	// Owner > 0 (not >= 0) matches the moveToZone §400.7 owner-redirect
-	// convention: zero-Owner cards are overwhelmingly test fixtures
-	// (&Card{Name: "X"}) whose placement seat is ground truth. Real-game
-	// cards always carry an explicit owner.
-	if card.Owner > 0 && card.Owner < len(gs.Seats) {
+	// Owner >= 0 (r63 seed-1337 game 2293 fix): the LeftGame guard MUST
+	// cover seat 0 too. The earlier `Owner > 0` cutoff — meant to skip
+	// zero-value test fixtures — silently exempted every card owned by
+	// SEAT 0 from §800.4a, so when seat 0 was the eliminated player a
+	// reanimator (The Cruelty of Gix) could pull its ceased graveyard
+	// cards (Flayer of Loyalties) onto a live battlefield, present-but-
+	// ceased. The LeftGame condition is the real discriminator: a
+	// zero-value fixture only trips it if seat 0 has actually left the
+	// game, which is exactly the case we must refuse.
+	if card.Owner >= 0 && card.Owner < len(gs.Seats) {
 		if os := gs.Seats[card.Owner]; os != nil && os.LeftGame {
 			gs.LogEvent(Event{
 				Kind:   "zone_move_refused",

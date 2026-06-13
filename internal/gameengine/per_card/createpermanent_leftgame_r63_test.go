@@ -66,6 +66,78 @@ func TestCreatePermanent_RefusesDeadOwnersCard(t *testing.T) {
 	}
 }
 
+// TestCreatePermanent_RefusesDeadSeat0OwnersCard pins the r63 seed-1337
+// game 2293 hole: the chokepoint keyed on `Owner > 0`, so a card owned
+// by SEAT 0 (Owner==0, Go's int zero value) bypassed the §800.4a guard
+// entirely. When seat 0 was the eliminated player, The Cruelty of Gix
+// chapter III reanimated its ceased Flayer of Loyalties (owner 0) onto a
+// live battlefield — present-but-ceased fabrication, flagged every tick
+// from turn 69 on. Same scenario as game 283 but owner==0.
+func TestCreatePermanent_RefusesDeadSeat0OwnersCard(t *testing.T) {
+	gs := gameengine.NewGameState(4, rand.New(rand.NewSource(2293)), nil)
+	dead := mintedCreatureInGraveyard(t, gs, 0, "Flayer of Loyalties")
+
+	gs.Seats[0].Lost = true
+	gs.Seats[0].LossReason = "21+ commander damage (CR 704.6c)"
+	gameengine.HandleSeatElimination(gs, 0)
+
+	if got := createPermanent(gs, 1, dead, false); got != nil {
+		t.Fatalf("createPermanent materialized SEAT-0 leaver's card on seat 1 (the Owner>0 hole)")
+	}
+	for i, s := range gs.Seats {
+		for _, p := range s.Battlefield {
+			if p != nil && p.Card == dead {
+				t.Fatalf("dead seat-0 player's card on seat %d battlefield", i)
+			}
+		}
+	}
+	for _, v := range gameengine.RunAllInvariants(gs) {
+		if v.Name == "ZoneConservation" {
+			t.Fatalf("ZoneConservation after refused seat-0 createPermanent: %s", v.Message)
+		}
+	}
+}
+
+// TestCrueltyOfGixCh3_SkipsDeadSeat0Graveyard is the headline pin: the
+// game-2293 root path. The Cruelty of Gix chapter III selector walked
+// every seat's graveyard with no LeftGame check and reanimated the
+// highest-CMC creature; with eliminated seat 0's Flayer of Loyalties
+// (a 10/10) the highest in the game, it pulled the ceased card onto the
+// controller's battlefield. The selector must skip departed graveyards.
+func TestCrueltyOfGixCh3_SkipsDeadSeat0Graveyard(t *testing.T) {
+	gs := gameengine.NewGameState(4, rand.New(rand.NewSource(2293)), nil)
+
+	// Eliminated seat 0's graveyard holds the biggest creature.
+	flayer := mintedCreatureInGraveyard(t, gs, 0, "Flayer of Loyalties")
+	flayer.Types = []string{"creature", "cmc:7"}
+	gs.Seats[0].Lost = true
+	gs.Seats[0].LossReason = "21+ commander damage (CR 704.6c)"
+	gameengine.HandleSeatElimination(gs, 0)
+
+	// The Cruelty of Gix on seat 1.
+	gixCard := &gameengine.Card{Name: "The Cruelty of Gix", Owner: 1,
+		Types: []string{"enchantment", "saga"}}
+	gameengine.MintOGInstanceID(gs, gixCard)
+	gix := &gameengine.Permanent{Card: gixCard, Controller: 1, Owner: 1,
+		Timestamp: gs.NextTimestamp(), Counters: map[string]int{}, Flags: map[string]int{}}
+	gs.Seats[1].Battlefield = append(gs.Seats[1].Battlefield, gix)
+
+	sagaTheCrueltyOfGix(gs, gix, 3)
+
+	for i, s := range gs.Seats {
+		for _, p := range s.Battlefield {
+			if p != nil && p.Card == flayer {
+				t.Fatalf("Cruelty of Gix reanimated eliminated seat 0's Flayer onto seat %d", i)
+			}
+		}
+	}
+	for _, v := range gameengine.RunAllInvariants(gs) {
+		if v.Name == "ZoneConservation" {
+			t.Fatalf("ZoneConservation after Cruelty ch3 skip: %s", v.Message)
+		}
+	}
+}
+
 func TestCreatePermanent_LivingOwnerStillWorks(t *testing.T) {
 	gs := gameengine.NewGameState(4, rand.New(rand.NewSource(284)), nil)
 	alive := mintedCreatureInGraveyard(t, gs, 1, "Gravecrawler")

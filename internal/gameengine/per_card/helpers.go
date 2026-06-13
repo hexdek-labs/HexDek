@@ -298,9 +298,13 @@ func createPermanent(gs *gameengine.GameState, seat int, card *gameengine.Card, 
 	// left with them and cannot be materialized on any battlefield.
 	// createPermanent is the per_card-side mover that bypasses
 	// MoveCard's #1041 guard (direct zone sweep + battlefield append) —
-	// the residual gap that fix documented. Owner > 0 matches the
-	// MoveCard/moveToZone fixture convention.
-	if card.Owner > 0 && card.Owner < len(gs.Seats) {
+	// the residual gap that fix documented. Owner >= 0 (r63 seed-1337
+	// game 2293 fix): the LeftGame guard must cover seat 0 — the old
+	// `Owner > 0` cutoff let The Cruelty of Gix chapter III reanimate
+	// eliminated seat 0's ceased Flayer of Loyalties onto a live
+	// battlefield (present-but-ceased fabrication). The LeftGame
+	// condition is the discriminator against zero-value test fixtures.
+	if card.Owner >= 0 && card.Owner < len(gs.Seats) {
 		if os := gs.Seats[card.Owner]; os != nil && os.LeftGame {
 			gs.LogEvent(gameengine.Event{
 				Kind:   "zone_move_refused",

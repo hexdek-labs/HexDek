@@ -906,6 +906,7 @@ func installEngineHooks() {
 	gameengine.TriggerHook = fireTrigger
 	gameengine.HasTriggerHook = HasTrigger
 	gameengine.HasETBHook = OwnsETB
+	gameengine.HasActivatedHook = HasActivated
 }
 
 // registerDefaults is populated by handlers.go — the card-specific
