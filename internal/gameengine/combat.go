@@ -95,6 +95,26 @@ func (p *Permanent) HasKeyword(name string) bool {
 	return false
 }
 
+// keywordActive is the layer-aware keyword query for combat: a permanent
+// has the keyword if its raw sources declare it (p.HasKeyword — AST,
+// GrantedAbilities, Flags["kw:"], keyword counters) OR a §613 layer-6
+// continuous effect grants it (gs.HasKeywordOf — anthem-style "creatures
+// you control have flying", per-card grants, etc.). This UNION is the
+// r63 keyword-grant consumer fix: combat read only p.HasKeyword before,
+// so every layer-6 keyword grant was inert in combat (the hex-dev-5
+// blocker). The union is strictly additive — it can only ADD a keyword a
+// grant confers, never remove one — so existing evasion behavior is
+// preserved. gs == nil (legacy/test paths) falls back to p.HasKeyword.
+func keywordActive(gs *GameState, p *Permanent, kw string) bool {
+	if p == nil {
+		return false
+	}
+	if p.HasKeyword(kw) {
+		return true
+	}
+	return gs != nil && gs.HasKeywordOf(p, kw)
+}
+
 // permFlag gets/sets a single-bit combat flag on a Permanent. We route
 // through Flags rather than extending the struct (state.go is read-only
 // for Phase 4).
@@ -1002,7 +1022,7 @@ func DeclareBlockers(gs *GameState, attackers []*Permanent, defenderSeat int) ma
 	// try to find a single legal blocker that trades favorably. Menace
 	// requires 2 blockers; chump unless we commit 2+.
 	for _, atk := range attackers {
-		if atk.HasKeyword("unblockable") {
+		if keywordActive(gs, atk, "unblockable") {
 			continue
 		}
 		// Gather candidates.
@@ -1020,8 +1040,8 @@ func DeclareBlockers(gs *GameState, attackers []*Permanent, defenderSeat int) ma
 			continue
 		}
 
-		// Menace: need 2 blockers; else skip.
-		menace := atk.HasKeyword("menace")
+		// Menace: need 2 blockers; else skip. Layer-aware (r63).
+		menace := keywordActive(gs, atk, "menace")
 		if menace && len(cands) < 2 {
 			continue
 		}
@@ -1162,9 +1182,11 @@ func canBlockGS(gs *GameState, attacker, blocker *Permanent) bool {
 	if blocker.PhasedOut || attacker.PhasedOut {
 		return false
 	}
-	// Flying: blocked only by flying or reach.
-	if attacker.HasKeyword("flying") {
-		if !(blocker.HasKeyword("flying") || blocker.HasKeyword("reach")) {
+	// Flying: blocked only by flying or reach. Layer-aware (keywordActive)
+	// so a granted-flying attacker ("creatures you control have flying")
+	// is blockable only by granted/printed flying or reach (r63).
+	if keywordActive(gs, attacker, "flying") {
+		if !(keywordActive(gs, blocker, "flying") || keywordActive(gs, blocker, "reach")) {
 			return false
 		}
 	}
@@ -1186,7 +1208,7 @@ func canBlockGS(gs *GameState, attacker, blocker *Permanent) bool {
 		}
 	}
 	// Unblockable-style effects.
-	if attacker.HasKeyword("unblockable") {
+	if keywordActive(gs, attacker, "unblockable") {
 		return false
 	}
 	// §702.14 — Landwalk: if attacker has landwalk and the blocker's
@@ -1329,7 +1351,7 @@ func sanitizeDeclaredBlockers(gs *GameState, defenderSeat int, attacker *Permane
 		seen[b] = true
 	}
 	// §702.110b — menace: can't be blocked except by two or more.
-	if len(kept) == 1 && (attacker.HasKeyword("menace") || (gs != nil && gs.HasKeywordOf(attacker, "menace"))) {
+	if len(kept) == 1 && keywordActive(gs, attacker, "menace") {
 		dropDeclaredBlocker(gs, defenderSeat, attacker, kept[0], "menace attacker blocked by exactly one creature", "702.110b")
 		kept = kept[:0]
 	}
