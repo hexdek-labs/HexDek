@@ -338,6 +338,14 @@ func (gs *GameState) CheckEnd() bool {
 			},
 		})
 	} else {
+		// CR §104.4 — the game ended with no single winner (simultaneous
+		// elimination §104.4a, or simultaneous "you win" effects cancelling
+		// to a draw §104.3b). Set game_draw here for consistency with every
+		// other draw site (sba.go §104.4b, stack.go / trigger_stack_bridge
+		// depth caps already set it) — this was the only draw path that
+		// left the flag unset, so any consumer reading "did the game end in
+		// a draw?" got the wrong answer on the simultaneous-elimination path.
+		gs.Flags["game_draw"] = 1
 		details := map[string]interface{}{
 			"rule":   endRule,
 			"winner": -1,

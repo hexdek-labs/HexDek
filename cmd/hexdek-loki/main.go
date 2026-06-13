@@ -27,6 +27,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -195,8 +196,10 @@ func main() {
 		listInvFlag           = flag.Bool("list-invariants", false, "print the full set of known invariant names and exit")
 		strictCensus          = flag.Bool("instanceid-strict-census", false, "enable InstanceID Phase 4+ strict ZoneConservation disappearance check (per docs/instanceid-system-v2-r60.md §13). Default off — flips gs.Flags[\"instanceid_strict_census\"]=1 on every game.")
 		violationsDumpPath    = flag.String("violations-dump", "", "if set, write every chaos violation message (one per line, tab-separated: game-idx<TAB>turn<TAB>invariant<TAB>message) to this path for offline histogram analysis. Bypasses the report's 30-detail cap.")
+		judgeJSONLPath        = flag.String("judge-jsonl", "", "if set, write every chaos + nightmare violation as a grinder-violations.jsonl row (the Hex Judge triage-stream contract: dimension/surface/rule/seed/turn/detail) so `hexdek-muninn --judge-triage --judge-log <path>` can cluster the long-tail by dimension + fingerprint.")
 		seatOutcomeFlag       = flag.Bool("seat-outcome", false, "attach the r63 per-seat win/loss self-checker to every chaos game (outcome recomputation + cross-seat consistency + §800.4 leave-game cleanup verification). Default off — zero engine behavior change when unset.")
 		legalityFlag          = flag.Bool("legality", false, "attach the ride-along rules-legality validator to every chaos game (live CR 307.1/608.2c/601.2f auditing of each cast/activation as it happens). Default off — zero engine behavior change when unset.")
+		gameTimeoutFlag       = flag.Duration("game-timeout", 0, "per-game wall-clock watchdog (e.g. 20s). 0 = off. A game still running at the deadline is ABANDONED (its goroutine leaks — accepted in an offline fuzz run) and recorded as a Liveness:game_timeout violation. Lets DEEP sweeps (--max-turns 60-100) complete past board-explosion / mandatory-loop games that would otherwise stall the whole run.")
 	)
 	flag.Parse()
 	legalityEnabled = *legalityFlag
@@ -299,14 +302,15 @@ func main() {
 	gameResults := make(chan chaosGameResult, workers*4)
 	var completed int64
 
+	gameTimeout := *gameTimeoutFlag
 	var wg sync.WaitGroup
 	for w := 0; w < workers; w++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
-				result := runChaosGame(
-					job.gameIdx, job.permutation,
+				result := runChaosGameWatched(
+					job.gameIdx, job.permutation, gameTimeout,
 					chaosCorpus, corpus, meta,
 					*seatsFlag, *seedFlag, *maxTurnsFlag,
 					seedCards, *seedCmdrFlag, seedCardsAllSeats,
@@ -508,6 +512,9 @@ func main() {
 	// =====================================================================
 	// Write Report
 	// =====================================================================
+	if *judgeJSONLPath != "" {
+		writeJudgeJSONL(*judgeJSONLPath, allViolations, nightmareViolations)
+	}
 	if *violationsDumpPath != "" {
 		writeViolationsDump(*violationsDumpPath, allViolations)
 	}
@@ -553,6 +560,49 @@ func main() {
 // ---------------------------------------------------------------------------
 // Chaos game runner
 // ---------------------------------------------------------------------------
+
+// runChaosGameWatched runs one chaos game under an optional wall-clock
+// watchdog. When timeout == 0 it's a direct passthrough. Otherwise the game
+// runs in its own goroutine; if it doesn't finish within `timeout`, it is
+// ABANDONED (the goroutine leaks — accepted in an offline fuzz run, mirrors
+// cmd/hexdek-correctness's liveness watchdog) and reported as a
+// Liveness:game_timeout violation. This lets a DEEP sweep (--max-turns
+// 60-100) reach late-game states across thousands of games without a single
+// board-explosion / mandatory-loop game stalling the whole run (the #1
+// blocker flagged in the r63 longtail-sweep report).
+func runChaosGameWatched(gameIdx, permutation int, timeout time.Duration,
+	chaosCorpus *gameengine.ChaosCorpus,
+	corpus *astload.Corpus,
+	meta *deckparser.MetaDB,
+	nSeats int, masterSeed int64, maxTurns int,
+	seedCards []string, seedCmdr string, seedCardsAllSeats []string,
+) chaosGameResult {
+	if timeout <= 0 {
+		return runChaosGame(gameIdx, permutation, chaosCorpus, corpus, meta,
+			nSeats, masterSeed, maxTurns, seedCards, seedCmdr, seedCardsAllSeats)
+	}
+	resCh := make(chan chaosGameResult, 1)
+	go func() {
+		resCh <- runChaosGame(gameIdx, permutation, chaosCorpus, corpus, meta,
+			nSeats, masterSeed, maxTurns, seedCards, seedCmdr, seedCardsAllSeats)
+	}()
+	select {
+	case r := <-resCh:
+		return r
+	case <-time.After(timeout):
+		deckSeed := masterSeed + int64(gameIdx)*10000 + 1
+		return chaosGameResult{
+			GameIdx: gameIdx,
+			Violations: []chaosViolation{{
+				GameIdx:       gameIdx,
+				GameSeed:      deckSeed,
+				Permutation:   permutation,
+				InvariantName: "Liveness:game_timeout",
+				Message:       fmt.Sprintf("game exceeded %s wall-clock budget and was abandoned (likely board explosion or mandatory loop); max-turns=%d", timeout, maxTurns),
+			}},
+		}
+	}
+}
 
 func runChaosGame(gameIdx, permutation int,
 	chaosCorpus *gameengine.ChaosCorpus,
@@ -1325,6 +1375,75 @@ type reportData struct {
 // tab-separated as game-idx<TAB>turn<TAB>invariant<TAB>message. Phase E
 // diagnostic — bypasses the report's per-kind dedup so card-name
 // histograms see the full population, not just 30 representatives.
+// judgeJSONLRow mirrors muninn.JudgeLogRecord / hexapi.judgeViolationRecord
+// (the grinder-violations.jsonl wire contract) so `hexdek-muninn
+// --judge-triage` can cluster a loki sweep's violations by dimension +
+// fingerprint exactly as it does the live grinder stream. JSON field
+// names are the contract — keep them in sync with that struct.
+type judgeJSONLRow struct {
+	GameSeed  int64    `json:"game_seed"`
+	DeckKeys  []string `json:"deck_keys,omitempty"`
+	Dimension string   `json:"dimension"`
+	Surface   string   `json:"surface,omitempty"`
+	Rule      string   `json:"rule"`
+	Severity  string   `json:"severity,omitempty"`
+	Turn      int      `json:"turn,omitempty"`
+	Detail    string   `json:"detail"`
+}
+
+// deriveJudgeDimension maps a chaosViolation's namespaced invariant name
+// back to its canonical Judge dimension + surface + bare rule, matching
+// the engine's own tagging (AllInvariants Dimension fields,
+// Legality/SeatOutcome Canonical()). The aggregation path flattens these
+// at origin, so this is the inverse used only for the offline triage row.
+func deriveJudgeDimension(name string) (dim, surface, rule string) {
+	switch {
+	case strings.HasPrefix(name, "Legality:"):
+		return judge.DimensionLegality, judge.SurfaceLegality, strings.TrimPrefix(name, "Legality:")
+	case strings.HasPrefix(name, "SeatOutcome:"):
+		// SeatOutcomeViolation.Canonical() tags state_integrity.
+		return judge.DimensionStateIntegrity, judge.SurfaceSeatOutcome, strings.TrimPrefix(name, "SeatOutcome:")
+	case strings.HasPrefix(name, "Liveness:"):
+		return judge.DimensionLiveness, judge.SurfaceLiveness, strings.TrimPrefix(name, "Liveness:")
+	case name == "ZoneConservation" || name == "CardIdentity":
+		return judge.DimensionConservation, judge.SurfaceInvariants, name
+	default:
+		return judge.DimensionStateIntegrity, judge.SurfaceInvariants, name
+	}
+}
+
+// writeJudgeJSONL serializes every chaos + nightmare violation as a
+// grinder-violations.jsonl stream for `hexdek-muninn --judge-triage`. The
+// seed/turn are the real repro coordinates from the aggregation path, so
+// each cluster's representative row is replayable.
+func writeJudgeJSONL(path string, chaos, nightmare []chaosViolation) {
+	f, err := os.Create(path)
+	if err != nil {
+		log.Printf("judge-jsonl: %v", err)
+		return
+	}
+	defer f.Close()
+	enc := json.NewEncoder(f)
+	emit := func(vs []chaosViolation) {
+		for i := range vs {
+			v := &vs[i]
+			dim, surface, rule := deriveJudgeDimension(v.InvariantName)
+			_ = enc.Encode(judgeJSONLRow{
+				GameSeed:  v.GameSeed,
+				DeckKeys:  v.Commanders,
+				Dimension: dim,
+				Surface:   surface,
+				Rule:      rule,
+				Severity:  judge.SeverityCritical,
+				Turn:      v.Turn,
+				Detail:    v.Message,
+			})
+		}
+	}
+	emit(chaos)
+	emit(nightmare)
+}
+
 func writeViolationsDump(path string, vs []chaosViolation) {
 	f, err := os.Create(path)
 	if err != nil {

@@ -67,6 +67,59 @@ func TestUnbannedOverride_GatesBannedListEntry(t *testing.T) {
 	}
 }
 
+// staleUnbanSet is the full r63 stale-legality-audit wave: cards still on
+// the hardcoded commanderBannedList whose actual Commander status is now
+// LEGAL (verified against the official WotC announcements + the
+// 2026-04-30 oracle snapshot, which marks every one of them legal).
+// 2025-04-22 wave: Sway/Braids/Coalition Victory/Panoptic Mirror.
+// 2026-02-09 wave: Biorhythm + Lutri (Lutri legal for inclusion; still
+// banned only as a Companion, which the banlist does not model).
+// Worldfire was unbanned pre-Panel. See
+// /tmp/fable-review/stale-legality-audit-r63.md.
+var staleUnbanSet = []string{
+	"Gifts Ungiven",
+	"Sway of the Stars",
+	"Braids, Cabal Minion",
+	"Coalition Victory",
+	"Panoptic Mirror",
+	"Biorhythm",
+	"Lutri, the Spellchaser",
+	"Worldfire",
+}
+
+// Every card in the stale-unban wave must read LEGAL through the canonical
+// override AND through IsCommanderBanned even though it remains on the
+// hardcoded commanderBannedList (the override gates the list).
+func TestUnbannedOverride_StaleUnbanWaveReadsLegal(t *testing.T) {
+	for _, name := range staleUnbanSet {
+		if !IsUnbannedOverride("commander", name) {
+			t.Errorf("%q missing from the canonical unbanned override", name)
+		}
+		if IsCommanderBanned(name) {
+			t.Errorf("IsCommanderBanned(%q) = true; stale-unban override should gate the banlist", name)
+		}
+	}
+}
+
+// Defensive: the override must win even when the card is explicitly
+// present on commanderBannedList (it still is for these — only Gifts was
+// pulled in #997), so this pins the gate for the whole wave.
+func TestUnbannedOverride_StaleUnbanGatesHardcodedBanlist(t *testing.T) {
+	// Each wave card except Gifts is still in commanderBannedList; confirm
+	// the override neutralizes those live entries.
+	for _, key := range []string{
+		"sway of the stars", "braids, cabal minion", "coalition victory",
+		"panoptic mirror", "biorhythm", "lutri, the spellchaser", "worldfire",
+	} {
+		if !commanderBannedList[key] {
+			continue // tolerate a future list cleanup that removes the entry
+		}
+		if !unbannedOverrides["commander"][key] {
+			t.Errorf("banlist still bans %q but no override neutralizes it", key)
+		}
+	}
+}
+
 func TestIsUnbannedOverride_Normalization(t *testing.T) {
 	cases := []struct {
 		format, name string
