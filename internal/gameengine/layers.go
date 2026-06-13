@@ -2346,11 +2346,21 @@ func registerASTStaticEffects(gs *GameState, p *Permanent) {
 	}
 	for _, ab := range p.Card.AST.Abilities {
 		st, ok := ab.(*gameast.Static)
-		if !ok || st.Modification == nil || st.Modification.Layer == "" {
+		if !ok || st.Modification == nil {
+			continue
+		}
+		// The parser leaves `layer` empty for some static buff kinds we
+		// handle explicitly (self_buff …); let those through the gate.
+		if st.Modification.Layer == "" && !staticKindAllowedLayerless(st.Modification.ModKind) {
 			continue
 		}
 		mod := st.Modification
 		switch mod.ModKind {
+
+		// self_buff — "this creature gets +X/+Y" (static, CR §613 7c).
+		// See mod_kind_static_buffs.go.
+		case "self_buff":
+			registerSelfBuffStatic(gs, p, mod.Args)
 
 		case "other_yours_anthem":
 			pow, tough := extractPT(mod.Args, 1, 1)
