@@ -22,6 +22,15 @@ type ReplayOutcome struct {
 	Winner int
 	Turns  int
 	Detail string // free-form replay diagnostic
+
+	// Inconclusive is the fail-closed hat-parity signal (r63 C-H4). When
+	// true the worker MUST NOT sanction or mark the game verified: the
+	// verifier could not establish that the replay used the same hat the
+	// live game ran with, so a (winner, turns) divergence is ambiguous
+	// between an honest game replayed with the wrong hat and a spoofed
+	// one. Zero value (false) keeps the actionable pass/fail path, so a
+	// stub verifier that reproduces the hat needs no change.
+	Inconclusive bool
 }
 
 // Verifier is the abstraction the worker uses to run a deterministic
@@ -72,6 +81,29 @@ func (v *HeimdallVerifier) Verify(ctx context.Context, row db.VerificationQueueR
 	}
 	if row.NSeats <= 0 || row.NSeats > seedcontract.MaxSeats {
 		return ReplayOutcome{}, fmt.Errorf("invalid n_seats: %d", row.NSeats)
+	}
+
+	// Fail-closed hat-identity gate (r63 C-H4). The default replay hat
+	// (heimdall's Yggdrasil(nil,30)) matches NEITHER live path: tournament
+	// games run GreedyHat, and showmatch games run Yggdrasil + the deck's
+	// evolving Curse-pool DNA + Freya strategy + budget 50 + dimStats —
+	// none of which is recorded where this verifier can read it. Replaying
+	// such a game with the wrong hat produces a different (winner, turns)
+	// and would FALSE-POSITIVE cauterize an honest contributor. So we only
+	// render a sanctionable verdict when the caller has supplied
+	// rc.HatFactory, i.e. explicitly asserted "this replay uses the same
+	// hat the live game ran with." Without it the game is UNVERIFIABLE,
+	// not failed. (Reproducing the showmatch Curse hat — recording its
+	// state into the contract + deterministic pool replay — is the larger
+	// follow-up tracked in plan-anticheat-ch4-hat-identity.md; it is also
+	// gated on C-H1 engine seed determinism.)
+	if v.rc.HatFactory == nil {
+		return ReplayOutcome{
+			Inconclusive: true,
+			Winner:       -1,
+			Detail: "hat identity not reproduced: rc.HatFactory unset, so the replay " +
+				"cannot prove parity with the live game's hat — not sanctionable (C-H4)",
+		}, nil
 	}
 	in := seedcontract.Inputs{
 		RNGSeed:       row.RNGSeed,
@@ -190,6 +222,16 @@ func (w *VerificationWorker) ProcessOne(ctx context.Context) (bool, error) {
 		// transient infrastructure error.
 		_ = db.FinishVerification(ctx, w.db, row.QueueID, "error", -1, 0, verifyErr.Error())
 		return true, fmt.Errorf("verify queue=%d: %w", row.QueueID, verifyErr)
+	}
+
+	// Fail-closed hat-parity verdict (r63 C-H4): the verifier could not
+	// establish that the replay used the live game's hat. Finish
+	// non-sanctioning — never cauterize, never mark verified — so an
+	// honest game whose hat we cannot reproduce is quarantined for review
+	// rather than treated as a forgery.
+	if out.Inconclusive {
+		_ = db.FinishVerification(ctx, w.db, row.QueueID, "inconclusive", -1, 0, out.Detail)
+		return true, nil
 	}
 
 	match := out.Winner == row.ClaimedWinner && out.Turns == row.ClaimedTurns
