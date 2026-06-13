@@ -9,7 +9,7 @@
 //
 //	hexdek-muninn [--gaps] [--crashes] [--triggers] [--all] [--top N] [--dir path]
 //	hexdek-muninn --reconcile-fixed [--reconcile-cause "PR #35"] [--reconcile-from path]
-//	hexdek-muninn --judge-triage [--judge-log path] [--dir path]
+//	hexdek-muninn --judge-triage [--judge-log path] [--dir path] [--since when]
 //
 // Flags:
 //
@@ -28,7 +28,11 @@
 //	                    classify by dimension, dedupe by stable fingerprint,
 //	                    and write judge-triage.md + judge-triage.json to --dir.
 //	--judge-log path    Judge violation JSONL to triage
-//	                    (default data/judge/grinder-violations.jsonl)
+//	                    (default data/judge/grinder-violations.jsonl).
+//	                    Rotated siblings (<path>.1, .2, …) fold in.
+//	--since when        Only triage violations stamped at/after this
+//	                    time (RFC3339 or YYYY-MM-DD). Scrape only-new
+//	                    issues across days of a rolling bucket.
 package main
 
 import (
@@ -37,6 +41,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/hexdek/hexdek/internal/muninn"
 )
@@ -70,11 +75,12 @@ func main() {
 		// triage artifact for human review.
 		judgeTriage = flag.Bool("judge-triage", false, "triage the Judge violation stream into judge-triage.md/.json under --dir")
 		judgeLog    = flag.String("judge-log", "data/judge/grinder-violations.jsonl", "judge violation JSONL to triage")
+		judgeSince  = flag.String("since", "", "only triage violations stamped at/after this time (RFC3339 or YYYY-MM-DD); scrape only-new issues across days")
 	)
 	flag.Parse()
 
 	if *judgeTriage {
-		if err := runJudgeTriage(*judgeLog, *dir); err != nil {
+		if err := runJudgeTriage(*judgeLog, *dir, *judgeSince); err != nil {
 			fmt.Fprintf(os.Stderr, "judge-triage: %v\n", err)
 			os.Exit(1)
 		}
@@ -311,13 +317,25 @@ func shortDate(rfc3339 string) string {
 	return rfc3339
 }
 
-func runJudgeTriage(logPath, dir string) error {
-	t, err := muninn.TriageJudgeLog(logPath, dir)
+func runJudgeTriage(logPath, dir, since string) error {
+	t, err := muninn.TriageJudgeLogWithOptions(muninn.TriageOptions{
+		LogPath:        logPath,
+		MuninnDir:      dir,
+		Since:          since,
+		GeneratedAt:    time.Now().UTC().Format(time.RFC3339),
+		IncludeRotated: true,
+	})
 	if err != nil {
 		return err
 	}
 	fmt.Println("=== MUNINN JUDGE TRIAGE ===")
 	fmt.Printf("source:   %s\n", logPath)
+	if len(t.Sources) > 1 {
+		fmt.Printf("rotated:  %d sibling file(s) folded\n", len(t.Sources)-1)
+	}
+	if t.Since != "" {
+		fmt.Printf("since:    %s (%d older record(s) excluded)\n", t.Since, t.SinceFiltered)
+	}
 	fmt.Printf("records:  %d (archive folded: %d, malformed skipped: %d)\n",
 		t.TotalRecords, t.ArchiveFolded, t.Malformed)
 	if t.TotalRecords == 0 {

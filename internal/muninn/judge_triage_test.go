@@ -230,6 +230,151 @@ func TestJudgeTriage_ArtifactEmission(t *testing.T) {
 	}
 }
 
+// --since drops rows stamped strictly before the cutoff (scrape
+// only-new across days) and records how many were excluded; a row with
+// no timestamp is always kept rather than silently dropped.
+func TestJudgeTriage_SinceFilter(t *testing.T) {
+	log := writeTriageLog(t,
+		`{"ts":"2026-06-10T01:00:00Z","game_seed":1,"dimension":"conservation","rule":"ZoneConservation","detail":"old hit"}`,
+		`{"ts":"2026-06-12T09:00:00Z","game_seed":2,"dimension":"conservation","rule":"ZoneConservation","detail":"new hit"}`,
+		`{"ts":"2026-06-13T00:00:00Z","game_seed":3,"dimension":"legality","rule":"704.5f","detail":"newer hit"}`,
+		`{"game_seed":4,"dimension":"outcome","rule":"etb_with_counters","card":"Z","detail":"no timestamp"}`,
+	)
+	tr, err := TriageJudgeLogWithOptions(TriageOptions{LogPath: log, Since: "2026-06-12T00:00:00Z"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Kept: the two post-cutoff rows + the timestampless row. Excluded: 1.
+	if tr.TotalRecords != 3 {
+		t.Fatalf("TotalRecords = %d, want 3 (old row filtered, no-ts row kept)", tr.TotalRecords)
+	}
+	if tr.SinceFiltered != 1 {
+		t.Fatalf("SinceFiltered = %d, want 1", tr.SinceFiltered)
+	}
+	if tr.Since != "2026-06-12T00:00:00Z" {
+		t.Fatalf("Since echo = %q", tr.Since)
+	}
+	for _, c := range tr.Clusters {
+		if strings.Contains(c.SampleDetail, "old hit") {
+			t.Fatalf("old hit survived the since-cutoff: %+v", c)
+		}
+	}
+}
+
+// --since accepts a bare YYYY-MM-DD date (00:00:00 UTC) for daily-scrape
+// ergonomics; a garbage cutoff is a hard error, not a silent pass.
+func TestJudgeTriage_SinceDateOnlyAndBad(t *testing.T) {
+	log := writeTriageLog(t,
+		`{"ts":"2026-06-12T23:59:59Z","dimension":"legality","rule":"r","detail":"a"}`,
+		`{"ts":"2026-06-13T00:00:01Z","dimension":"legality","rule":"r","detail":"b"}`,
+	)
+	tr, err := TriageJudgeLogWithOptions(TriageOptions{LogPath: log, Since: "2026-06-13"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.TotalRecords != 1 || tr.SinceFiltered != 1 {
+		t.Fatalf("date-only since: records/filtered = %d/%d, want 1/1", tr.TotalRecords, tr.SinceFiltered)
+	}
+	if _, err := TriageJudgeLogWithOptions(TriageOptions{LogPath: log, Since: "yesterday"}); err == nil {
+		t.Fatal("bad --since value parsed without error")
+	}
+}
+
+// A logrotate-style rotated bucket (<base>.2 older, <base>.1, then the
+// live primary) is read end-to-end and folds into one cluster space.
+func TestJudgeTriage_RotatedSiblings(t *testing.T) {
+	dir := t.TempDir()
+	base := filepath.Join(dir, "grinder-violations.jsonl")
+	write := func(path, line string) {
+		if err := os.WriteFile(path, []byte(line+"\n"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// Same bug across three rotation generations → one cluster, count 3.
+	write(base+".2", `{"ts":"2026-06-10T00:00:00Z","game_seed":1,"dimension":"conservation","rule":"ZoneConservation","detail":"seat 3 low"}`)
+	write(base+".1", `{"ts":"2026-06-11T00:00:00Z","game_seed":2,"dimension":"conservation","rule":"ZoneConservation","detail":"seat 1 low"}`)
+	write(base, `{"ts":"2026-06-12T00:00:00Z","game_seed":3,"dimension":"conservation","rule":"ZoneConservation","detail":"seat 2 low"}`)
+	// A compressed sibling must be skipped, not half-read as garbage.
+	write(base+".3.gz", "\x1f\x8b not really gzip but must be ignored")
+
+	tr, err := TriageJudgeLogWithOptions(TriageOptions{LogPath: base, IncludeRotated: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.TotalRecords != 3 {
+		t.Fatalf("TotalRecords = %d, want 3 (all rotation generations)", tr.TotalRecords)
+	}
+	if len(tr.Clusters) != 1 || tr.Clusters[0].Count != 3 {
+		t.Fatalf("clusters = %d (top count %d), want 1×3", len(tr.Clusters), tr.Clusters[0].Count)
+	}
+	if tr.Clusters[0].FirstSeen != "2026-06-10T00:00:00Z" || tr.Clusters[0].LastSeen != "2026-06-12T00:00:00Z" {
+		t.Fatalf("first/last across rotation = %s / %s", tr.Clusters[0].FirstSeen, tr.Clusters[0].LastSeen)
+	}
+	if len(tr.Sources) != 3 {
+		t.Fatalf("Sources = %v, want 3 (the 2 rotated + primary, no .gz)", tr.Sources)
+	}
+	// IncludeRotated: false reads only the primary.
+	only, err := TriageJudgeLogWithOptions(TriageOptions{LogPath: base})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if only.TotalRecords != 1 {
+		t.Fatalf("primary-only TotalRecords = %d, want 1", only.TotalRecords)
+	}
+}
+
+// GeneratedAt + Since stamp the digest header so an archived daily
+// scrape is self-dating.
+func TestJudgeTriage_DigestStamped(t *testing.T) {
+	dir := t.TempDir()
+	log := writeTriageLog(t,
+		`{"ts":"2026-06-13T00:00:00Z","game_seed":1,"dimension":"legality","rule":"704.5f","detail":"illegal cast"}`,
+	)
+	tr, err := TriageJudgeLogWithOptions(TriageOptions{
+		LogPath:     log,
+		Since:       "2026-06-12",
+		GeneratedAt: "2026-06-13T12:00:00Z",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mdPath, _, err := WriteJudgeTriage(dir, tr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	md, err := os.ReadFile(mdPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"Generated: 2026-06-13T12:00:00Z",
+		"Window: since 2026-06-12T00:00:00Z",
+	} {
+		if !strings.Contains(string(md), want) {
+			t.Fatalf("digest missing %q:\n%s", want, md)
+		}
+	}
+}
+
+// The back-compat wrapper folds rotated siblings by default.
+func TestJudgeTriage_WrapperFoldsRotated(t *testing.T) {
+	dir := t.TempDir()
+	base := filepath.Join(dir, "grinder-violations.jsonl")
+	if err := os.WriteFile(base+".1", []byte(`{"ts":"2026-06-10T00:00:00Z","dimension":"legality","rule":"r","detail":"rotated"}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(base, []byte(`{"ts":"2026-06-11T00:00:00Z","dimension":"legality","rule":"r","detail":"live"}`+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	tr, err := TriageJudgeLog(base, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tr.TotalRecords != 2 {
+		t.Fatalf("wrapper TotalRecords = %d, want 2 (rotated folded by default)", tr.TotalRecords)
+	}
+}
+
 // The wire-format contract: a record produced with the watchdog's exact
 // JSON field names must parse field-for-field, and Violation() renders
 // it back as the canonical vocabulary type.
