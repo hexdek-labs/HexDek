@@ -2237,6 +2237,20 @@ func markSeatLost(s *Seat, reason string, detail *judge.LossReason) {
 	}
 }
 
+// markSeatLostLoopDraw marks a seat lost as part of a §104.4b mandatory-
+// loop draw. The engine's loop guards (SBA 40-pass cap, trigger-fire cap,
+// per-card inline-depth cap) all collapse an unbreakable loop into a draw
+// by marking every still-in seat Lost. The SBA-cap path (StateBasedActions)
+// already routed through markSeatLost with a LossCategoryLoopDraw detail;
+// this helper lets the trigger/per-card loop-cap sites in stack.go and
+// trigger_stack_bridge.go do the same WITHOUT importing the judge package,
+// so a loop-cap draw classifies as "draw" (via LossDetail) rather than
+// falling through to the mill/combat heuristic in
+// heimdall.classifyLossOfSeat. (r63 win_reason consistency.)
+func markSeatLostLoopDraw(s *Seat) {
+	markSeatLost(s, "mandatory loop draw (CR 104.4b)", &judge.LossReason{Category: judge.LossCategoryLoopDraw, Rule: "104.4b"})
+}
+
 // isCommanderName returns true if name matches any entry in the seat's
 // CommanderNames list.
 func isCommanderName(names []string, name string) bool {
