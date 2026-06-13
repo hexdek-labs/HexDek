@@ -558,6 +558,25 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 			"controller_seat": perm.Controller,
 			"to_zone":         toZone,
 		})
+		// §406.7 / ExileLinkageIntegrity (r63 STATE_INTEGRITY frontier,
+		// seed-1337 Heliod orphan): a source that stamped a recast /
+		// permanent-exile tag onto cards in exile — Transcendent Dragon's
+		// counter-and-exile, Smirking Spelljacker, River Song's Diary,
+		// Knowledge Pool, all of which write card.ExiledByTimestamp
+		// directly and never form an LTBReturn link — leaves those tags
+		// DANGLING when it leaves the battlefield via a normal LTB path.
+		// The card is correctly, permanently exiled (nothing returns),
+		// but the orphaned-linked-exile backstop reads the stale
+		// timestamp as a missed LTB return and fires every tick from
+		// then on. The §800.4a elimination path already calls
+		// ClearLinkedExileTagsForSource (zone_cast.go); mirror it on the
+		// normal LTB exit. LTBReturn sources (Banisher Priest family,
+		// Hostage Taker) own their return semantics via
+		// ReturnLinkedExile — skip them so a GENUINELY-missed return
+		// still trips the invariant rather than being silently swept.
+		if perm.LinkageKind != LTBReturn {
+			ClearLinkedExileTagsForSource(gs, perm.Timestamp)
+		}
 	}
 
 	// 4. Fire "card_exiled" when a permanent is exiled from the battlefield.

@@ -48,7 +48,26 @@ import (
 // nil-safe; no-op on empty InstanceID (legacy mode), empty Minter
 // (struct-literal tests), or a card whose ID is unique.
 func EnforceBattlefieldUniqueInstanceID(gs *GameState, card *Card, controllerSeat int) bool {
-	if gs == nil || card == nil || card.InstanceID == "" {
+	if gs == nil || card == nil {
+		return false
+	}
+	// §406.7 / ExileLinkageIntegrity (r63 STATE_INTEGRITY frontier,
+	// seed-11991338 game 1199): a card landing on the battlefield is no
+	// longer in exile, so any ExiledByTimestamp it still carries is a
+	// stale exile linkage and must clear. The carrier is a Knowledge-
+	// Pool "exile instead of cast" PARTIAL: it exiles the cast spell
+	// (stamping ExiledByTimestamp) but the spell then resolves onto the
+	// battlefield anyway; the gap-walk below purges the duplicate exile
+	// slice reference, but without this the tag rides along on the
+	// battlefield-resident permanent and trips the orphaned-linked-exile
+	// backstop when the permanent later dies into exile (its source long
+	// gone). This is THE battlefield-append chokepoint (resolvePermanent
+	// SpellETB, per_card createPermanent, token-as-copy, …), so clearing
+	// here covers every entry path. A genuine "exile until ~ leaves"
+	// linkage (Banisher Priest) is re-formed by ExileLinked after any
+	// later re-exile, so legitimate returns are unaffected.
+	card.ExiledByTimestamp = 0
+	if card.InstanceID == "" {
 		return false
 	}
 	if gs.IIDMinter == nil {
