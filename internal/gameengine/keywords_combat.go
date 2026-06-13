@@ -1062,6 +1062,11 @@ func AppendCombatCostModifiers(gs *GameState, card *Card, seatIdx int, mods []Co
 // window is currently open. Read back at cast time by CanCastMiracle.
 const miracleWindowKey = "miracle_window_turn"
 
+// miracleWindowCostKey stores the EFFECTIVE miracle cost (native printed
+// cost OR granted cost) captured when the window was opened, so the cast
+// pays the right amount whether miracle was native or granted (e.g. {0}).
+const miracleWindowCostKey = "miracle_window_cost"
+
 // HasMiracle returns true if the card has the miracle keyword.
 func HasMiracle(card *Card) bool {
 	return cardHasKeywordByName(card, "miracle")
@@ -1073,28 +1078,40 @@ func MiracleCost(card *Card) int {
 }
 
 // MaybeOpenMiracleWindow is called from the drawOne chokepoint when a card
-// is the FIRST card a seat has drawn this turn. If the card has miracle it
-// is revealed (§702.94a) and the §702.94b triggered ability is granted by
-// stamping the current game turn on the card; the cast-for-miracle-cost
-// permission then lasts until end of turn / until the card leaves hand
-// (enforced by CanCastMiracle). Auto-reveal models the "may reveal" choice
-// as yes — revealing only grants an option and never carries a downside.
+// is the FIRST card a seat has drawn this turn. If miracle applies — either
+// natively (printed keyword) OR via a registered MiracleGrant ("cards in
+// your hand have miracle {N}") — the card is revealed (§702.94a) and the
+// §702.94b triggered ability is granted by stamping the current game turn
+// (and the effective cost) on the card; the cast-for-miracle-cost permission
+// then lasts until end of turn / until the card leaves hand (enforced by
+// CanCastMiracle). Auto-reveal models the "may reveal" choice as yes.
+//
+// THE GATE: because this is reached ONLY on the first draw of the turn, a
+// grant covering the whole hand still opens at most ONE window per turn — the
+// rest of the hand was never "drawn this turn" and stays uncastable-via-
+// miracle. No free hand-dump. The grant only changes the COST of that one
+// legitimate window.
 func MaybeOpenMiracleWindow(gs *GameState, seatIdx int, card *Card) {
-	if gs == nil || card == nil || !HasMiracle(card) {
+	if gs == nil || card == nil {
 		return
 	}
 	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return
+	}
+	cost, ok := effectiveMiracleCost(gs, seatIdx, card)
+	if !ok {
 		return
 	}
 	if card.Meta == nil {
 		card.Meta = map[string]any{}
 	}
 	card.Meta[miracleWindowKey] = gs.Turn
+	card.Meta[miracleWindowCostKey] = cost
 	gs.LogEvent(Event{
 		Kind:   "miracle_revealed",
 		Seat:   seatIdx,
 		Source: card.DisplayName(),
-		Amount: MiracleCost(card),
+		Amount: cost,
 		Details: map[string]interface{}{
 			"rule": "702.94a/b",
 			"turn": gs.Turn,
@@ -1118,15 +1135,29 @@ func MiracleWindowOpen(gs *GameState, card *Card) bool {
 	return ok && w == gs.Turn
 }
 
+// miracleWindowCost returns the effective miracle cost recorded when the
+// card's window was opened (native printed cost or granted cost). Falls
+// back to the printed MiracleCost if the cost wasn't stamped (older paths).
+func miracleWindowCost(card *Card) int {
+	if card != nil && card.Meta != nil {
+		if c, ok := card.Meta[miracleWindowCostKey].(int); ok {
+			return c
+		}
+	}
+	return MiracleCost(card)
+}
+
 // CanCastMiracle reports whether seatIdx may cast card for its miracle cost
-// right now: the card has miracle, its miracle window is open this turn
-// (it was the first card this seat drew this turn and was revealed), and it
-// is still in that seat's hand (§702.94c — "before it leaves your hand").
-// The first-draw determination itself happens once, at draw time, in
-// MaybeOpenMiracleWindow — so a card drawn second, or put into hand by a
-// non-draw effect, never has an open window.
+// right now: its miracle window is open this turn (it was the first card
+// this seat drew this turn and was revealed) and it is still in that seat's
+// hand (§702.94c — "before it leaves your hand"). The open window is the
+// authority — it is set ONLY by MaybeOpenMiracleWindow, ONLY on the first
+// draw of the turn, and ONLY when miracle applies (native or granted). So a
+// card drawn second, put into hand by a non-draw effect, or merely covered
+// by an all-hand grant without being the first draw, has no window and is
+// not castable via miracle.
 func CanCastMiracle(gs *GameState, seatIdx int, card *Card) bool {
-	if gs == nil || card == nil || !HasMiracle(card) {
+	if gs == nil || card == nil {
 		return false
 	}
 	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
@@ -1158,7 +1189,7 @@ func CastWithMiracle(gs *GameState, seatIdx int, card *Card, targets []Target) e
 	if !CanCastMiracle(gs, seatIdx, card) {
 		return &CastError{Reason: "miracle conditions not met"}
 	}
-	cost := MiracleCost(card)
+	cost := miracleWindowCost(card)
 	altCost := &AlternativeCost{
 		Kind:  "miracle",
 		Label: fmt.Sprintf("miracle {%d}", cost),
@@ -1191,6 +1222,7 @@ func CastWithMiracle(gs *GameState, seatIdx int, card *Card, targets []Target) e
 	// Close the window so the same draw can't be miracled twice.
 	if card.Meta != nil {
 		delete(card.Meta, miracleWindowKey)
+		delete(card.Meta, miracleWindowCostKey)
 	}
 	gs.LogEvent(Event{
 		Kind:   "miracle",

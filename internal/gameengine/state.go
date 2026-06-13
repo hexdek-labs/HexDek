@@ -268,6 +268,15 @@ type GameState struct {
 	// zone_cast_policy.go for the policy shape and semantics.
 	ZoneCastPolicies []*ZoneCastPolicy
 
+	// MiracleGrants is the granted-miracle registry (CR §702.94). A
+	// permanent reading "Cards in your hand have miracle {N}" registers a
+	// grant here via RegisterMiracleGrant; it is CONSULTED ONLY at draw
+	// time (MaybeOpenMiracleWindow, the first draw of the turn), so granting
+	// miracle to the whole hand still obeys §702.94a — only the single card
+	// that is the FIRST card drawn this turn opens a castable window. See
+	// miracle_grant.go.
+	MiracleGrants []*MiracleGrant
+
 	// DamageReplacements is the §614 damage-replacement registry
 	// (R54). Populated by ETB hooks that call
 	// RegisterDamageReplacement (Torbran +2, Sokrates dialogue,
