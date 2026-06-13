@@ -2620,6 +2620,9 @@ func RegisterContinuousEffectsForPermanent(gs *GameState, p *Permanent) {
 	// registerASTStaticEffects' Layer!="" gate — handled in a dedicated
 	// scan. See scaffold_attachment_buff_r63.go.
 	registerAttachmentBuffs(gs, p)
+	// aura_grant (keyword-only auras) — same Layer="" bypass; see
+	// mod_kind_aura_grant.go.
+	registerAuraGrants(gs, p)
 }
 
 // -----------------------------------------------------------------------------
