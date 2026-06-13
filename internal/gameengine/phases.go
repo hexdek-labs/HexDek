@@ -369,6 +369,11 @@ func ScanExpiredDurations(gs *GameState, phase, step string) {
 					})
 				}
 				p.MarkedDamage = 0
+				// §701.15a — unused regeneration shields wear off at end of
+				// turn ("the next time … would be destroyed THIS TURN").
+				if p.Flags != nil && p.Flags["regeneration_shield"] != 0 {
+					delete(p.Flags, "regeneration_shield")
+				}
 				// §702.171 — saddled wears off at end of turn.
 				if p.Flags != nil && p.Flags["saddled"] != 0 {
 					delete(p.Flags, "saddled")

@@ -2048,6 +2048,14 @@ func destroyPermSBA(gs *GameState, p *Permanent, reason, rule string) {
 	if p == nil {
 		return
 	}
+	// §701.15a: regeneration replaces destruction by lethal / deathtouch
+	// damage (§704.5g/h) — NOT the toughness≤0 / loyalty / legend / world
+	// SBAs (those put the permanent into the graveyard, not "destroy").
+	if reason == "lethal_damage" || reason == "deathtouch_damage" {
+		if TryRegenerate(gs, p) {
+			return
+		}
+	}
 	// §614 "would die" replacement — Anafenza/Rest in Peace/Leyline
 	// redirect to exile; hypothetical "survive" effects may Cancel.
 	repl := FireDieEvent(gs, p)
