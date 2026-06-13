@@ -172,6 +172,21 @@ func fireETBOnCopy(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
+	// CR §706.2 + §614.1c — a permanent that ENTERS as a copy of a card
+	// carrying an "enters with N counters" self-replacement (Scourge of
+	// Skola Vale, District Mascot, Hangarback Walker, …) enters WITH those
+	// counters: the as-enters self-replacement is a copiable value applied
+	// as the copy comes into existence. Every "enters as a copy" path that
+	// reaches here became the copy AFTER the stock cast-path
+	// ApplyStaticETBCounters (stack.go) already ran on the ORIGINAL clone
+	// body (a vanilla Clone / Phantasmal Image / Sakashima body → no
+	// counters), or was a hand-appended token that never ran it at all — so
+	// the COPIED card's as-enters counters were never placed. Apply them
+	// now, before the copy's own ETB triggers fire (matching stack.go's
+	// "before the ETB fan-out" ordering so observers + doublers see the
+	// final counter state). Idempotent for copy bodies with no
+	// etb_with_counters static (adds nothing).
+	gameengine.ApplyStaticETBCounters(gs, perm)
 	name := perm.Card.DisplayName()
 	// Skip self-referential copies.
 	if name == "Phantasmal Image" {
