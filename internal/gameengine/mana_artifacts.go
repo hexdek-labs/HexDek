@@ -156,6 +156,7 @@ func ApplyArtifactMana(gs *GameState, seat *Seat, p *Permanent) (int, bool) {
 				"seat": seat.Idx,
 				"perm": p,
 			})
+			FireTapEventASTTriggers(gs, p)
 		}
 	}
 	return pips, ok

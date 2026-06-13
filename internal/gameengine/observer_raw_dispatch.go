@@ -193,6 +193,18 @@ func castSpecFromRaw(raw string) (castRawSpec, bool) {
 		filter = "artifact"
 	case strings.HasPrefix(rest, "an enchantment spell,"):
 		filter = "enchantment"
+	case strings.HasPrefix(rest, "a multicolored spell,"):
+		filter = "multicolored"
+	case strings.HasPrefix(rest, "a white spell,"):
+		filter = "color:W"
+	case strings.HasPrefix(rest, "a blue spell,"):
+		filter = "color:U"
+	case strings.HasPrefix(rest, "a black spell,"):
+		filter = "color:B"
+	case strings.HasPrefix(rest, "a red spell,"):
+		filter = "color:R"
+	case strings.HasPrefix(rest, "a green spell,"):
+		filter = "color:G"
 	default:
 		return none, false
 	}
@@ -227,6 +239,19 @@ func observerCastMatchesByRaw(trig *gameast.Triggered, observer *Permanent, cast
 		return cardHasType(card, "artifact")
 	case "enchantment":
 		return cardHasType(card, "enchantment")
+	case "multicolored":
+		return card != nil && len(card.Colors) >= 2
+	}
+	if letter, ok2 := strings.CutPrefix(spec.filter, "color:"); ok2 {
+		if card == nil {
+			return false
+		}
+		for _, c := range card.Colors {
+			if strings.EqualFold(c, letter) {
+				return true
+			}
+		}
+		return false
 	}
 	return true // "any"
 }

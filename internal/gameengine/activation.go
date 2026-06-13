@@ -84,9 +84,9 @@ func itoa(n int) string {
 // IsManaAbility returns true if the activated ability at `abilityIdx` on
 // `perm` is a mana ability per CR §605.1a:
 //
-//   (1) it doesn't target,
-//   (2) it could add mana to a player's mana pool, and
-//   (3) it's not a loyalty ability.
+//	(1) it doesn't target,
+//	(2) it could add mana to a player's mana pool, and
+//	(3) it's not a loyalty ability.
 //
 // MVP detection: if the ability's Effect (or any sub-effect in a Sequence)
 // is an AddMana, it's a mana ability unless the ability targets or is a
@@ -234,11 +234,11 @@ func StaxCheck(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int) Acti
 // Mana abilities resolve inline per CR §605.
 //
 // Steps:
-//   1. Stax check — abort if suppressed.
-//   2. Pay activation cost (tap + mana for MVP).
-//   3. If mana ability: resolve inline via InvokeActivatedHook / ResolveEffect.
-//   4. If non-mana: push StackItem onto stack, run priority round, then
-//      resolve when all players pass.
+//  1. Stax check — abort if suppressed.
+//  2. Pay activation cost (tap + mana for MVP).
+//  3. If mana ability: resolve inline via InvokeActivatedHook / ResolveEffect.
+//  4. If non-mana: push StackItem onto stack, run priority round, then
+//     resolve when all players pass.
 //
 // Returns an error if the activation is illegal.
 func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int, targets []Target) error {
@@ -448,6 +448,7 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 				"seat": seatIdx,
 				"perm": perm,
 			})
+			FireTapEventASTTriggers(gs, perm)
 		}
 		// Mana cost.
 		if ab.Cost.Mana != nil {

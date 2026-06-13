@@ -1461,6 +1461,18 @@ func isRequiredSingleTargetFilter(f gameast.Filter) bool {
 	if !f.Targeted {
 		return false
 	}
+	// Zone-selector bases are NOT targets even when the parser stamps
+	// Targeted=true: "exile the top card of your library" (Abbot of
+	// Keral Keep impulse family, 84 corpus shapes) targets nothing per
+	// CR — the resolver special-cases these bases internally, and the
+	// §608.2b gate fizzling on them silenced every impulse-exile
+	// trigger before its library_top arm could run (r63 PROGRESSION
+	// phase-3b finding: ~20 divergences across etb/attack/die/upkeep/
+	// combat-damage families, all this one root cause).
+	switch normalizeBase(f.Base) {
+	case "library_top", "library_bottom", "top_of_library", "bottom_of_library":
+		return false
+	}
 	switch f.Quantifier {
 	case "", "one", "n":
 		return true

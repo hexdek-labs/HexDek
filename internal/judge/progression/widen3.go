@@ -62,6 +62,9 @@ func CheckAny(cardName string, t *gameast.Triggered) ([]*Finding, bool) {
 	if f, ran := CheckAllyETBTrigger(cardName, t); ran {
 		return f, true
 	}
+	if f, ran := checkAnyPhase3b(cardName, t); ran {
+		return f, true
+	}
 	return nil, false
 }
 
@@ -237,6 +240,18 @@ func InScopeCastTrigger(t *gameast.Triggered) (castScopeSpec, bool) {
 		filter = "artifact"
 	case strings.HasPrefix(rest, "an enchantment spell,"):
 		filter = "enchantment"
+	case strings.HasPrefix(rest, "a multicolored spell,"):
+		filter = "multicolored"
+	case strings.HasPrefix(rest, "a white spell,"):
+		filter = "color:W"
+	case strings.HasPrefix(rest, "a blue spell,"):
+		filter = "color:U"
+	case strings.HasPrefix(rest, "a black spell,"):
+		filter = "color:B"
+	case strings.HasPrefix(rest, "a red spell,"):
+		filter = "color:R"
+	case strings.HasPrefix(rest, "a green spell,"):
+		filter = "color:G"
 	default:
 		return none, false
 	}
@@ -269,8 +284,13 @@ func castVanilla(gs *gameengine.GameState, seat int, kind string) *outcome.Delta
 	case "enchantment":
 		card.Types = []string{"enchantment"}
 		move.BattlefieldBySeat[seat] = 1
-	default: // instant
+	default: // instant (optionally colored: kind "color:R" / "multicolored")
 		card.Types = []string{"instant"}
+		if kind == "multicolored" {
+			card.Colors = []string{"U", "R"}
+		} else if letter, ok := strings.CutPrefix(kind, "color:"); ok {
+			card.Colors = []string{letter}
+		}
 		move.GraveyardBySeat[seat] = 1
 	}
 	gs.Seats[seat].Hand = append(gs.Seats[seat].Hand, card)
@@ -294,6 +314,11 @@ func matchesCastFilter(filter, kind string) bool {
 		return kind == "artifact"
 	case "enchantment":
 		return kind == "enchantment"
+	case "multicolored":
+		return kind == "multicolored"
+	}
+	if strings.HasPrefix(filter, "color:") {
+		return kind == filter // colored vanilla kinds carry the filter tag
 	}
 	return false
 }
@@ -329,19 +354,24 @@ func CheckCastTrigger(cardName string, t *gameast.Triggered) ([]*Finding, bool) 
 
 	// Pick a FIRE kind matching the filter and a PHANTOM kind missing it.
 	fireKind := "instant"
-	if spec0.Filter == "creature" {
+	switch {
+	case spec0.Filter == "creature":
 		fireKind = "creature"
-	} else if spec0.Filter == "artifact" {
+	case spec0.Filter == "artifact":
 		fireKind = "artifact"
-	} else if spec0.Filter == "enchantment" {
+	case spec0.Filter == "enchantment":
 		fireKind = "enchantment"
+	case spec0.Filter == "multicolored" || strings.HasPrefix(spec0.Filter, "color:"):
+		fireKind = spec0.Filter // colored instant
 	}
 	missKind := ""
-	switch spec0.Filter {
-	case "noncreature", "iss":
+	switch {
+	case spec0.Filter == "noncreature" || spec0.Filter == "iss":
 		missKind = "creature"
-	case "creature", "artifact", "enchantment":
+	case spec0.Filter == "creature" || spec0.Filter == "artifact" || spec0.Filter == "enchantment":
 		missKind = "instant"
+	case spec0.Filter == "multicolored" || strings.HasPrefix(spec0.Filter, "color:"):
+		missKind = "instant" // colorless instant misses any color filter
 	}
 
 	// FIRE by the right caster.
