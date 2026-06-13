@@ -7174,8 +7174,10 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 			}
 		}
 
-		// Menace: need a second blocker.
-		if len(chosen) > 0 && atk.HasKeyword("menace") {
+		// Menace: need a second blocker. Layer-aware (gs.HasKeywordOf) so
+		// granted menace matches the engine's block sanitizer — see the
+		// greedy.go note (deep loki r63b §702.110b granted-menace cluster).
+		if len(chosen) > 0 && (atk.HasKeyword("menace") || gs.HasKeywordOf(atk, "menace")) {
 			extras := make([]*gameengine.Permanent, 0, len(legal))
 			for _, b := range legal {
 				if b != chosen[0] {

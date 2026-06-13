@@ -967,8 +967,14 @@ func (h *GreedyHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, attack
 			}
 			chosen = []*gameengine.Permanent{smallest}
 		}
-		// Menace: need a second blocker, else bail.
-		if len(chosen) > 0 && (atk.HasKeyword("menace")) {
+		// Menace: need a second blocker, else bail. Layer-aware — a
+		// LAYER-GRANTED menace (anthem / continuous keyword grant) is
+		// invisible to HasKeyword but real to the engine's block
+		// sanitizer (keywordActive). Without gs.HasKeywordOf the Hat
+		// declared a single illegal blocker that the engine then dropped
+		// (§702.110b), leaving the menace creature unblocked. (Deep loki
+		// sweep r63b: 54 §702.110b hits, all granted-menace attackers.)
+		if len(chosen) > 0 && (atk.HasKeyword("menace") || gs.HasKeywordOf(atk, "menace")) {
 			extras := make([]*gameengine.Permanent, 0, len(legal))
 			for _, b := range legal {
 				if b != chosen[0] {
