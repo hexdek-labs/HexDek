@@ -4820,6 +4820,14 @@ var (
 func resolveResidualByText(gs *GameState, src *Permanent, raw string) bool {
 	seat := controllerSeat(src)
 
+	// Generic modal-spell handler (modal_handler_r63.go): "choose one/two/
+	// one or both/one or more —" + bulleted modes, and entwine. Detected
+	// first so a modal body isn't mis-matched by a single-verb pattern
+	// below. Returns true (handled) when the modal structure is recognized.
+	if ResolveModalText(gs, src, raw) {
+		return true
+	}
+
 	if reResPlayThisTurn.MatchString(raw) || reResExilePlay.MatchString(raw) {
 		if seat >= 0 && seat < len(gs.Seats) {
 			exile := gs.Seats[seat].Exile
