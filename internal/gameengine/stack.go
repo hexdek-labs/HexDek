@@ -1607,6 +1607,37 @@ func requiredTargetFilter(item *StackItem) (gameast.Filter, bool) {
 	return gameast.Filter{}, false
 }
 
+// cardPresentOffStack reports whether `card` already occupies a real
+// zone (any seat's hand / library / graveyard / exile / command zone /
+// foretell-exile / battlefield). The §608.2g graveyard routing uses it
+// to avoid double-zoning a spell whose own resolution already relocated
+// its card off the stack (Green Sun's Zenith self-shuffle, self-exiling
+// or self-bouncing sorceries) — see the guard at the §608.2g branch in
+// ResolveStackTop.
+func cardPresentOffStack(gs *GameState, card *Card) bool {
+	if gs == nil || card == nil {
+		return false
+	}
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, z := range [][]*Card{s.Hand, s.Library, s.Graveyard, s.Exile, s.CommandZone, s.ForetellExile} {
+			for _, c := range z {
+				if c == card {
+					return true
+				}
+			}
+		}
+		for _, p := range s.Battlefield {
+			if p != nil && p.Card == card {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func ResolveStackTop(gs *GameState) {
 	if gs == nil || len(gs.Stack) == 0 {
 		return
@@ -2025,16 +2056,41 @@ func ResolveStackTop(gs *GameState) {
 			// the backstop to silently re-route — structurally
 			// wrong and a sibling of the Etali §400.7c cluster
 			// closed in PR #685.
-			MoveCard(gs, item.Card, item.Card.Owner, "stack", "graveyard", "resolve")
-			gs.LogEvent(Event{
-				Kind:   "resolve",
-				Seat:   item.Controller,
-				Source: name,
-				Details: map[string]interface{}{
-					"to":   "graveyard",
-					"rule": "608.2g",
-				},
-			})
+			//
+			// r63 §608.2g guard (eliminated-seat-frontier hunt,
+			// CardIdentity double-zone class): if the spell's OWN
+			// resolution already moved its card to another zone — Green
+			// Sun's Zenith "Shuffle ~ into its owner's library", a
+			// self-exiling sorcery, a self-bounce — then the card has
+			// left the stack and §608.2g does NOT also drop it into the
+			// graveyard (the rule routes it to the graveyard only "as the
+			// final part of its resolution" while it is still the spell on
+			// the stack). Without this guard the card double-zones
+			// (library + graveyard): seed-77 game 939 GSZ produced 254
+			// CardIdentity hits from this exact path.
+			if cardPresentOffStack(gs, item.Card) {
+				gs.LogEvent(Event{
+					Kind:   "resolve",
+					Seat:   item.Controller,
+					Source: name,
+					Details: map[string]interface{}{
+						"to":     "already_relocated",
+						"rule":   "608.2g",
+						"reason": "spell_effect_moved_card_off_stack",
+					},
+				})
+			} else {
+				MoveCard(gs, item.Card, item.Card.Owner, "stack", "graveyard", "resolve")
+				gs.LogEvent(Event{
+					Kind:   "resolve",
+					Seat:   item.Controller,
+					Source: name,
+					Details: map[string]interface{}{
+						"to":   "graveyard",
+						"rule": "608.2g",
+					},
+				})
+			}
 		}
 	}
 }
