@@ -348,3 +348,65 @@ func FireSacrificeASTTriggers(gs *GameState, sacSeat int, victim *Permanent) {
 		}
 	}
 }
+
+// FireDiscardASTTriggers fires "whenever you discard a card," AST triggers
+// after `discarderSeat` discarded a card. Same alias-to-nowhere shape as the
+// draw family: DiscardCard fired card_discarded only through the per_card
+// registry, so parsed discard payoffs (27 corpus shapes) were silent unless
+// a card had a bespoke handler. Controller-gated; per_card HasTriggerHook
+// guard prevents double-fire.
+func FireDiscardASTTriggers(gs *GameState, discarderSeat int) {
+	if gs == nil || discarderSeat < 0 || discarderSeat >= len(gs.Seats) {
+		return
+	}
+	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		perms := append([]*Permanent{}, s.Battlefield...)
+		for _, p := range perms {
+			if p == nil || p.Card == nil || p.Card.AST == nil {
+				continue
+			}
+			for _, ab := range p.Card.AST.Abilities {
+				trig, ok := ab.(*gameast.Triggered)
+				if !ok || trig.Effect == nil {
+					continue
+				}
+				if !EventEquals(trig.Trigger.Event, "discard") {
+					continue
+				}
+				raw := strings.ToLower(trig.Raw)
+				if strings.Contains(raw, "that much") {
+					continue
+				}
+				switch {
+				case strings.Contains(raw, "whenever you discard a card,"):
+					if p.Controller != discarderSeat {
+						continue
+					}
+				case strings.Contains(raw, "whenever an opponent discards a card,"):
+					if p.Controller == discarderSeat {
+						continue
+					}
+				case strings.Contains(raw, "whenever a player discards a card,"):
+					// any discarder
+				default:
+					continue
+				}
+				if HasTriggerHook != nil && HasTriggerHook(p.Card.DisplayName(), "card_discarded") {
+					continue
+				}
+				gs.LogEvent(Event{
+					Kind: "trigger_fires", Seat: p.Controller,
+					Source: p.Card.DisplayName(),
+					Details: map[string]interface{}{
+						"event": "card_discarded", "rule": "603.2",
+					},
+				})
+				PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
+			}
+		}
+	}
+}

@@ -225,7 +225,7 @@ func InScopeCastTrigger(t *gameast.Triggered) (castScopeSpec, bool) {
 		return none, false
 	}
 	switch tr.Event {
-	case "cast_any", "cast_spell", "cast_filtered", "any_player_cast", "opp_cast":
+	case "cast_any", "cast_spell", "cast_filtered", "any_player_cast", "opp_cast", "cast_color_spell":
 	default:
 		return none, false
 	}
