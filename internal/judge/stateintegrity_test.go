@@ -64,6 +64,64 @@ func TestStateIntegrity_CantLoseShieldDowngradesToInfo(t *testing.T) {
 	}
 }
 
+// Regression: seed 13230778 game 1323 — seat 3 WON as the last seat
+// standing at -11 life under a live "can't lose the game" shield
+// (Platinum Angel class). The §704.5a SBA's shield branch sets
+// SBALossEmitted while declining to mark Lost, so a shielded seat is
+// (CantLoseShield=true, SBALossEmitted=true). That combination must stay
+// INFO — the old `!SBALossEmitted && CantLoseShield` gate wrongly
+// re-escalated it to a critical state-integrity violation.
+func TestStateIntegrity_ShieldedWinnerWithSBAEmittedStaysInfo(t *testing.T) {
+	_, done := siCollect(t)
+	defer done()
+
+	vs := CheckStateIntegrity(GameSnapshot{
+		TotalSeats: 4, Ended: true, HasWinner: true,
+		Seats: []SeatSnapshot{
+			{Seat: 0, Life: -4, Lost: true},
+			{Seat: 1, Life: -1, Lost: true},
+			{Seat: 2, Life: 0, Lost: true},
+			// The shielded winner at <=0 life, SBA already processed it.
+			{Seat: 3, Life: -11, Lost: false, CantLoseShield: true, SBALossEmitted: true},
+		},
+	})
+	for _, v := range vs {
+		if v.Name == "704.5a" && v.Seat == 3 && v.Severity != SeverityInfo {
+			t.Fatalf("shielded winner at <=0 life (SBALossEmitted=true) must be info, got %s", v.Severity)
+		}
+		if v.Severity == SeverityCritical {
+			t.Fatalf("unexpected critical violation for a clean shielded-winner end: %+v", v)
+		}
+	}
+}
+
+// A seat at <=0 life with NO shield is still a real bug even if the SBA
+// flag is set — the loss-marking genuinely failed.
+func TestStateIntegrity_UnshieldedLifeZeroStaysCritical(t *testing.T) {
+	_, done := siCollect(t)
+	defer done()
+
+	vs := CheckStateIntegrity(GameSnapshot{
+		TotalSeats: 2,
+		Seats: []SeatSnapshot{
+			{Seat: 0, Life: -3, Lost: false, CantLoseShield: false, SBALossEmitted: true},
+			{Seat: 1, Life: 40, Lost: false},
+		},
+	})
+	found := false
+	for _, v := range vs {
+		if v.Name == "704.5a" && v.Seat == 0 {
+			found = true
+			if v.Severity != SeverityCritical {
+				t.Fatalf("unshielded life<=0 must stay critical, got %s", v.Severity)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("expected a 704.5a violation for the unshielded -3-life seat")
+	}
+}
+
 func TestStateIntegrity_ExactlyOneWinnerGating(t *testing.T) {
 	_, done := siCollect(t)
 	defer done()

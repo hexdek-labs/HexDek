@@ -96,13 +96,19 @@ func CheckStateIntegrity(g GameSnapshot) []ValidationViolation {
 		}
 
 		// §704.5a — life 0 or less means the seat should be Lost.
-		// Exception: "can't lose the game" effects (Platinum Angel,
-		// Lich's Mastery) cancel the loss via the would_lose_game
-		// replacement; when the SBA never recorded the drop AND a
-		// shield is registered, downgrade to info.
+		// Exception: a live "can't lose the game" effect (Platinum Angel,
+		// Lich's Mastery, Gideon emblem) cancels the loss via the
+		// would_lose_game replacement, so a seat at <=0 life staying alive
+		// — including WINNING as the last seat standing — is rules-correct.
+		// The presence of the shield is the authoritative signal: the
+		// §704.5a SBA's shield branch ALSO sets SBALossEmitted (it records
+		// that it processed the <=0 condition, via loss_prevented), so the
+		// prior `!SBALossEmitted` qualifier wrongly re-escalated the
+		// shielded case to critical (seed 13230778 game 1323: seat 3 won
+		// at -11 life under a live shield, SBALossEmitted=true).
 		if s.Life <= 0 && !s.Lost {
 			severity := SeverityCritical
-			if !s.SBALossEmitted && s.CantLoseShield {
+			if s.CantLoseShield {
 				severity = SeverityInfo
 			}
 			emit(ValidationViolation{
