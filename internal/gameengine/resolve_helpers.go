@@ -4828,6 +4828,13 @@ func resolveResidualByText(gs *GameState, src *Permanent, raw string) bool {
 		return true
 	}
 
+	// Count-scaled direct damage ("~ deals damage to <target> equal to
+	// <count>") — the biggest structured parsed_tail effect cluster. See
+	// mod_tail_deal_damage_count.go.
+	if resolveDealDamageEqualCount(gs, src, raw) {
+		return true
+	}
+
 	if reResPlayThisTurn.MatchString(raw) || reResExilePlay.MatchString(raw) {
 		if seat >= 0 && seat < len(gs.Seats) {
 			exile := gs.Seats[seat].Exile
