@@ -223,7 +223,23 @@ func IsCommanderBanned(name string) bool {
 // per-format entries once the underlying legality data is re-fetched.
 var unbannedOverrides = map[string]map[string]bool{
 	"commander": {
+		// Unbanned 2024-09 (Game Changer). #996/#997/92daf2b0.
 		"gifts ungiven": true,
+		// Unbanned 2025-04-22 (all five moved to Game Changers).
+		"sway of the stars":    true,
+		"braids, cabal minion": true,
+		"coalition victory":    true,
+		"panoptic mirror":      true,
+		// Unbanned 2026-02-09 (both Game Changers). NOTE: Lutri is
+		// unbanned for deck inclusion / as a commander but REMAINS
+		// banned as a Companion — a restriction the deck-construction
+		// banlist does not model, so it reads legal here (correct for
+		// "may this card be in the deck").
+		"biorhythm":              true,
+		"lutri, the spellchaser": true,
+		// Worldfire was unbanned ahead of the Format Panel era and is
+		// confirmed legal in the 2026-04-30 oracle snapshot.
+		"worldfire": true,
 	},
 }
 
