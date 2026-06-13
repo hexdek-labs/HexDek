@@ -736,6 +736,47 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 		}
 	}
 
+	// Step 2c: purge DELAYED triggered abilities controlled by this seat.
+	// CR §800.4a: "any ability controlled by that player on the stack ...
+	// ceases to exist" — and a §603.7 delayed triggered ability waiting to
+	// fire is an ability controlled by the leaving player. The pending +
+	// stack purges above only reach abilities already triggered; a delayed
+	// trigger ("at the beginning of the next end step / your next upkeep /
+	// end of combat ...") sits in gs.DelayedTriggers until its boundary and
+	// is NEVER touched by the leave-game sweep. Left in place, it fires for
+	// a departed player at the next matching boundary — adding mana to the
+	// dead seat (ResourceConservation: "seat is Lost but has ManaPool>0",
+	// the same shape as the Myr Moonvessel pending-trigger leak and the
+	// Braid of Fire mana leak), creating tokens, or drawing cards on their
+	// behalf. The on_event variant fires straight out of LogEvent for any
+	// game event after elimination. Cease them here, mirroring the stack /
+	// pending purges. (r63 eliminated-seat deep sweep.)
+	if len(gs.DelayedTriggers) > 0 {
+		purged := 0
+		kept := gs.DelayedTriggers[:0]
+		for _, dt := range gs.DelayedTriggers {
+			if dt == nil {
+				continue
+			}
+			if dt.ControllerSeat == seatIdx {
+				purged++
+				continue
+			}
+			kept = append(kept, dt)
+		}
+		gs.DelayedTriggers = kept
+		if purged > 0 {
+			gs.LogEvent(Event{
+				Kind: "delayed_triggers_purged_on_leave", Seat: seatIdx, Target: -1,
+				Amount: purged,
+				Details: map[string]interface{}{
+					"rule":   "800.4a",
+					"reason": "delayed_abilities_cease_to_exist",
+				},
+			})
+		}
+	}
+
 	// Adjust zone conservation baseline for cards leaving the game.
 	// Also count cards remaining in the eliminated seat's private zones
 	// (hand, library, graveyard, exile, command zone) that are now "out

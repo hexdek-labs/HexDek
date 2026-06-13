@@ -539,6 +539,15 @@ func FireDelayedTriggers(gs *GameState, phase, step string) int {
 		if dt == nil || dt.Consumed {
 			continue
 		}
+		// CR §800.4a: a delayed trigger controlled by a departed player
+		// ceases — never fire it at a phase/step boundary. HandleSeatElimination
+		// purges these, but guard here too (mirrors the SeatHasLeftGame
+		// chokepoints elsewhere) so an off-turn boundary can't resurrect a
+		// dead seat's "next end step / next upkeep" effect.
+		if SeatHasLeftGame(gs, dt.ControllerSeat) {
+			dt.Consumed = true
+			continue
+		}
 		if delayedTriggerMatches(dt, gs, phase, step) {
 			toFire = append(toFire, dt)
 		}

@@ -618,6 +618,15 @@ func FireEventDelayedTriggers(gs *GameState, ev *Event) int {
 		if dt.TriggerAt != "on_event" {
 			continue
 		}
+		// CR §800.4a: a delayed trigger controlled by a player who has left
+		// the game ceases to exist — it must not fire (HandleSeatElimination
+		// purges these, but guard here too for triggers whose controller
+		// leaves via a path that doesn't run the sweep, mirroring the
+		// SeatHasLeftGame chokepoints on mana/trigger formation).
+		if SeatHasLeftGame(gs, dt.ControllerSeat) {
+			dt.Consumed = true
+			continue
+		}
 		if dt.ConditionFn == nil {
 			continue
 		}
