@@ -3844,6 +3844,14 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			},
 		})
 
+	// attach — Equipment/Aura that attaches itself to a creature on ETB
+	// ("When this Equipment enters, attach it to target creature you
+	// control"). Filter-aware controller-side + subtype handling lives in
+	// modkind_attach.go (the attach_self_to case below mis-routes
+	// "you control" filters to an opponent's creature).
+	case "attach":
+		resolveAttachOnEnter(gs, src, e)
+
 	case "attach_self_to", "attach_to_target", "reattach_aura", "attach_aura_to_creature":
 		// Pick a target creature and attach src to it. For auras/equipment
 		// the AttachedTo pointer tracks the host permanent.
