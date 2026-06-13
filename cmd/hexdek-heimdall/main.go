@@ -844,9 +844,7 @@ func runInvariantsWithPause(gs *gameengine.GameState, context string) {
 	}
 
 	for _, v := range violations {
-		fmt.Printf("\n%s%s!!! INVARIANT VIOLATION: %s%s\n", colorBold, colorRed, v.Name, colorReset)
-		fmt.Printf("  Context: %s\n", context)
-		fmt.Printf("  Message: %s\n", v.Message)
+		fmt.Print(formatViolation(context, v))
 	}
 
 	if pauseOnAnomaly {
@@ -869,6 +867,23 @@ func runInvariantsWithPause(gs *gameengine.GameState, context string) {
 			}
 		}
 	}
+}
+
+// formatViolation renders one canonical Judge violation for the
+// spectator stream. This is a DISPLAY ADAPTER only (r63 round-2
+// step-4): the violation is the canonical judge.ValidationViolation
+// (InvariantViolation is a type alias) and was already logged at
+// origin through judge.LogViolation inside RunAllInvariants — never
+// re-log here. The body line is the vocabulary's own String()
+// rendering ([severity] surface/Name [seat]: message) so the
+// spectator shows exactly what every other Judge consumer sees.
+func formatViolation(context string, v gameengine.InvariantViolation) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "\n%s%s!!! INVARIANT VIOLATION: %s%s (%s)\n",
+		colorBold, colorRed, v.Name, colorReset, v.Dimension)
+	fmt.Fprintf(&b, "  Context: %s\n", context)
+	fmt.Fprintf(&b, "  %s\n", v.String())
+	return b.String()
 }
 
 func printGameResult(gs *gameengine.GameState) {
