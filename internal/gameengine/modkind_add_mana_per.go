@@ -43,8 +43,9 @@ import (
 // matched=false for follow-up.
 
 var (
-	reAddManaPerSymbol  = regexp.MustCompile(`\{([WUBRGCwubrgc])\}`)
-	reAddManaPerCounter = regexp.MustCompile(`^(?:([+0-9a-z/]+) )?counters? on (?:this|~|it)\b`)
+	reAddManaPerSymbol    = regexp.MustCompile(`\{([WUBRGCwubrgc])\}`)
+	reAddManaPerCounter   = regexp.MustCompile(`^(?:([+0-9a-z/]+) )?counters? on (?:this|~|it)\b`)
+	reAddManaPerGraveyard = regexp.MustCompile(`^([a-z]+) cards? in your graveyard$`)
 )
 
 // resolveAddManaPer handles one add_mana_per ModificationEffect. It is
@@ -108,6 +109,41 @@ func addManaPerCount(gs *GameState, src *Permanent, seat int, basis string) (int
 	// "<type> on the battlefield" — permanents of the type game-wide.
 	if t := strings.TrimSuffix(basis, " on the battlefield"); t != basis {
 		return countPermanentsOfTypeGlobal(gs, t), true
+	}
+
+	// "card(s) in your hand" — caster's hand size.
+	if basis == "card in your hand" || basis == "cards in your hand" {
+		return len(gs.Seats[seat].Hand), true
+	}
+
+	// "card(s) in target opponent's hand" — AI targets the opponent
+	// holding the most cards (maximizes the ramp).
+	if basis == "card in target opponent's hand" || basis == "cards in target opponent's hand" {
+		best := 0
+		for i := range gs.Seats {
+			if i == seat || gs.Seats[i] == nil {
+				continue
+			}
+			if n := len(gs.Seats[i].Hand); n > best {
+				best = n
+			}
+		}
+		return best, true
+	}
+
+	// "<single-type> card(s) in your graveyard" — count matching cards in
+	// the caster's graveyard. Single type word only (a multi-word filter
+	// like "black creature" falls through to the deferred no-op rather
+	// than over-counting on type alone).
+	if m := reAddManaPerGraveyard.FindStringSubmatch(basis); m != nil {
+		ctype := m[1]
+		n := 0
+		for _, c := range gs.Seats[seat].Graveyard {
+			if c != nil && cardHasType(c, ctype) {
+				n++
+			}
+		}
+		return n, true
 	}
 
 	return 0, false

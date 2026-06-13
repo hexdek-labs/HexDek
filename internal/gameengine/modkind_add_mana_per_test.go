@@ -113,6 +113,47 @@ func TestAddManaPer_UnmatchedBasis_AddsNothing(t *testing.T) {
 	}
 }
 
+func TestAddManaPer_CardsInHand_InnerFire(t *testing.T) {
+	gs := newTestGameState(2)
+	src := ampPerm(gs, 0, "Inner Fire", "instant")
+	for i := 0; i < 5; i++ {
+		gs.Seats[0].Hand = append(gs.Seats[0].Hand, &Card{Name: "H", Owner: 0})
+	}
+	runAddManaPer(gs, src, "{R}", "card in your hand")
+	if gs.Seats[0].ManaPool != 5 {
+		t.Fatalf("Inner Fire should add mana = hand size (5), got %d", gs.Seats[0].ManaPool)
+	}
+}
+
+func TestAddManaPer_OpponentHand_JeskasWill(t *testing.T) {
+	gs := newTestGameState(3)
+	src := ampPerm(gs, 0, "Jeska's Will", "sorcery")
+	for i := 0; i < 2; i++ {
+		gs.Seats[1].Hand = append(gs.Seats[1].Hand, &Card{Name: "H", Owner: 1})
+	}
+	for i := 0; i < 6; i++ {
+		gs.Seats[2].Hand = append(gs.Seats[2].Hand, &Card{Name: "H", Owner: 2})
+	}
+	runAddManaPer(gs, src, "{R}", "card in target opponent's hand")
+	if gs.Seats[0].ManaPool != 6 {
+		t.Fatalf("Jeska's Will should target the opponent with the most cards (6), got %d", gs.Seats[0].ManaPool)
+	}
+}
+
+func TestAddManaPer_CreatureCardsInGraveyard_SongsOfTheDamned(t *testing.T) {
+	gs := newTestGameState(2)
+	src := ampPerm(gs, 0, "Songs of the Damned", "instant")
+	gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard,
+		&Card{Name: "Zombie", Owner: 0, Types: []string{"creature"}},
+		&Card{Name: "Skeleton", Owner: 0, Types: []string{"creature"}},
+		&Card{Name: "Dark Ritual", Owner: 0, Types: []string{"instant"}}, // not a creature
+	)
+	runAddManaPer(gs, src, "{B}", "creature card in your graveyard")
+	if gs.Seats[0].ManaPool != 2 {
+		t.Fatalf("Songs of the Damned should count 2 creature cards in graveyard, got %d", gs.Seats[0].ManaPool)
+	}
+}
+
 func TestAddManaPer_ComplexPredicateDegradesToZero(t *testing.T) {
 	gs := newTestGameState(2)
 	src := ampPerm(gs, 0, "Leafkin Avenger", "creature")
