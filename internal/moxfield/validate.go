@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/hexdek/hexdek/internal/judge"
 	"github.com/hexdek/hexdek/internal/oracle"
 )
 
@@ -36,16 +37,11 @@ type FormatReport struct {
 	SkippedUnknown []string
 }
 
-// unbannedOverrides lists cards whose cached Scryfall legality may still read
-// "banned" but which have since been unbanned in that format. Keyed by format
-// slug → lowercased card name. Temporary band-aid (r60, 2026-06-10) pending a
-// full oracle legality-cache refresh — Gifts Ungiven was unbanned in Commander
-// in 2024 but our cache still flags it. Delete this once legality is re-fetched.
-var unbannedOverrides = map[string]map[string]bool{
-	"commander": {
-		"gifts ungiven": true,
-	},
-}
+// Stale-ban overrides (Gifts Ungiven etc.) are consulted via the single
+// canonical judge.IsUnbannedOverride helper so the import path and the
+// deck-analysis/display path share ONE correction source. Originally a
+// local map here (#996); lifted to internal/judge (r63) so a recently-
+// unbanned card reads LEGAL everywhere from one edit.
 
 // IsClean returns true when zero violations were found. Unknown-skip
 // entries don't count as clean — they're a different signal.
@@ -98,11 +94,12 @@ func ValidateFormat(format string, cards []*oracle.Card) *FormatReport {
 			r.SkippedUnknown = append(r.SkippedUnknown, c.Name)
 			continue
 		}
-		// Stale-legality override (r60): some cached Scryfall entries predate
-		// recent Commander unbans (e.g. Gifts Ungiven) and still read "banned".
-		// Treat known-unbanned cards as legal until the oracle legality cache
-		// is refreshed. Temporary — delete after the refresh.
-		if unbannedOverrides[f][strings.ToLower(strings.TrimSpace(c.Name))] {
+		// Stale-legality override: some cached Scryfall entries predate
+		// recent Commander unbans (e.g. Gifts Ungiven) and still read
+		// "banned". The shared canonical override (judge.IsUnbannedOverride)
+		// reads known-unbanned cards as legal until the legality cache is
+		// refreshed. Temporary — delete the override entries after refresh.
+		if judge.IsUnbannedOverride(f, c.Name) {
 			continue
 		}
 		switch status {
