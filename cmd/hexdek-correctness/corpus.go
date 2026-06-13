@@ -209,6 +209,10 @@ func safeCheckAnyTrigger(name string, tr *gameast.Triggered) (findings []*progre
 				evName = "combat_begin/" + scope
 			} else if _, ok := progression.InScopeAllyETBTrigger(tr); ok {
 				evName = "ally_etb"
+			} else if progression.InScopeBecomesBlockedTrigger(tr) {
+				evName = "becomes_blocked"
+			} else if progression.InScopeOrdinalFirstMainTrigger(tr) {
+				evName = "ordinal_first_main"
 			} else {
 				evName = "widened"
 			}
