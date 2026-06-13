@@ -2349,6 +2349,19 @@ func registerASTStaticEffects(gs *GameState, p *Permanent) {
 		if !ok || st.Modification == nil {
 			continue
 		}
+		// r63 keyword-grant sweep: inert empty-ModKind static keyword
+		// grants ("creatures you control have flying", "all creatures
+		// have haste") carry no ModKind/Layer — the keyword lives only in
+		// the raw text, so the ModKind switch below has no matching case
+		// and they registered NOTHING. Detect the unconditional grant
+		// shape and register layer-6 keyword grants. Non-grant
+		// empty-ModKind statics fall through unchanged (the switch already
+		// had no "" case, so this continue is behavior-preserving). See
+		// scaffold_keyword_grant_r63.go.
+		if st.Modification.ModKind == "" {
+			maybeRegisterKeywordGrantStatic(gs, p, st.Raw)
+			continue
+		}
 		// The parser leaves `layer` empty for some static buff kinds we
 		// handle explicitly (self_buff …); let those through the gate.
 		if st.Modification.Layer == "" && !staticKindAllowedLayerless(st.Modification.ModKind) {
