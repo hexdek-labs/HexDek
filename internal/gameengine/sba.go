@@ -749,7 +749,10 @@ func sba704_5i(gs *GameState) bool {
 			if p.PhasedOut {
 				continue
 			}
-			if !p.IsPlaneswalker() {
+			// §613.3 layer-aware — a permanent that is a planeswalker by
+			// a continuous type-add (or has lost the type) is bucketed by
+			// its current type, matching the engine's other §704.5 SBAs.
+			if !gs.HasTypeOf(p, "planeswalker") {
 				continue
 			}
 			if p.Counters == nil {
@@ -946,7 +949,8 @@ func sba704_5m(gs *GameState) bool {
 			continue
 		}
 		for _, p := range snapshotBattlefield(s) {
-			if !p.IsAura() {
+			// §613.3 layer-aware aura check (see sba704_5n).
+			if !gs.HasTypeOf(p, "aura") {
 				continue
 			}
 			if p.PhasedOut {
@@ -963,7 +967,7 @@ func sba704_5m(gs *GameState) bool {
 			// "Enchant <type>" clause still matches the target's current
 			// types. Detached type-changing effects (target lost the
 			// relevant subtype) make the aura illegal per CR §303.4f.
-			if !auraTargetMatchesEnchantClause(p, p.AttachedTo) {
+			if !auraTargetMatchesEnchantClause(gs, p, p.AttachedTo) {
 				destroyPermSBA(gs, p, "aura_enchant_clause_violated", "704.5m")
 				changed = true
 			}
@@ -991,7 +995,7 @@ func sba704_5m(gs *GameState) bool {
 // changes are a frequent CR §303.4f trigger (Mind Control / Threaten /
 // Sower of Temptation stealing the enchanted creature) and the SBA
 // gap was silently keeping illegal-controller auras attached.
-func auraTargetMatchesEnchantClause(aura, target *Permanent) bool {
+func auraTargetMatchesEnchantClause(gs *GameState, aura, target *Permanent) bool {
 	if aura == nil || aura.Card == nil || target == nil || target.Card == nil {
 		return true
 	}
@@ -1000,12 +1004,20 @@ func auraTargetMatchesEnchantClause(aura, target *Permanent) bool {
 		return true
 	}
 	if kind != "player" && kind != "permanent" {
-		// Type-restriction check.
+		// Type-restriction check — §613.3 layer-aware. "Enchant creature"
+		// must read the target's CURRENT type: an aura stays legal on a
+		// permanent animated into the enchanted type, and falls off (per
+		// §303.4f) when a continuous effect strips it. gs == nil falls
+		// back to the printed type so the helper stays usable bare.
 		typeOK := false
-		for _, t := range target.Card.Types {
-			if strings.EqualFold(t, kind) {
-				typeOK = true
-				break
+		if gs != nil {
+			typeOK = gs.HasTypeOf(target, kind)
+		} else {
+			for _, t := range target.Card.Types {
+				if strings.EqualFold(t, kind) {
+					typeOK = true
+					break
+				}
 			}
 		}
 		if !typeOK {
@@ -1108,7 +1120,13 @@ func sba704_5n(gs *GameState) bool {
 			if p.PhasedOut {
 				continue // §702.26
 			}
-			if !(p.IsEquipment() || p.IsFortification()) {
+			// §613.3 layer-aware: read CURRENT (layer-applied) types, not
+			// printed ones. An artifact animated into a creature (Ensoul
+			// Artifact / March of the Machines) IS a legal host; a
+			// creature whose type is stripped (Song of the Dryads) is NOT.
+			// The printed-type reads got both wrong (the proven engine-
+			// side gap, r63) — mirrors the r60 sba704_5f swap.
+			if !(gs.HasTypeOf(p, "equipment") || gs.HasTypeOf(p, "fortification")) {
 				continue
 			}
 			if p.AttachedTo == nil {
@@ -1118,10 +1136,10 @@ func sba704_5n(gs *GameState) bool {
 			reason := ""
 			if !permanentOnBattlefield(gs, tgt) {
 				reason = "equipment_target_gone"
-			} else if p.IsEquipment() && !tgt.IsCreature() {
+			} else if gs.HasTypeOf(p, "equipment") && !gs.IsCreatureOf(tgt) {
 				// §301.5 — Equipment attaches to creatures.
 				reason = "equipment_non_creature"
-			} else if p.IsFortification() && !tgt.IsLand() {
+			} else if gs.HasTypeOf(p, "fortification") && !gs.HasTypeOf(tgt, "land") {
 				// §301.5a — Fortification attaches to lands.
 				reason = "fortification_non_land"
 			}
@@ -1170,7 +1188,11 @@ func sba704_5p(gs *GameState) bool {
 				continue
 			}
 			// Auras, Equipment, and Fortifications legitimately attach.
-			if p.IsAura() || p.IsEquipment() || p.IsFortification() {
+			// §613.3 layer-aware — a permanent whose attacher type was
+			// granted/stripped by a continuous effect is bucketed by its
+			// CURRENT type (so an enchantment animated off its Aura-ness
+			// while attached unattaches; a layer-granted Aura stays).
+			if gs.HasTypeOf(p, "aura") || gs.HasTypeOf(p, "equipment") || gs.HasTypeOf(p, "fortification") {
 				continue
 			}
 			p.AttachedTo = nil
