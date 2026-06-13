@@ -74,6 +74,9 @@ func CheckAny(cardName string, t *gameast.Triggered) ([]*Finding, bool) {
 	if f, ran := checkAnyPhase3e(cardName, t); ran {
 		return f, true
 	}
+	if f, ran := checkAnyPhase3f(cardName, t); ran {
+		return f, true
+	}
 	return nil, false
 }
 

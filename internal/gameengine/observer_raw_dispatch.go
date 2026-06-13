@@ -40,6 +40,116 @@ var observerOnlyEvents = map[string]bool{
 	"cast_color_spell":       true,
 	"another_typed_dies":     true,
 	"tribe_you_control_dies": true,
+	"creature_dies":          true,
+	"another_creature_dies":  true,
+	"another_creature_dies_any": true,
+}
+
+// observerDeathEvents are the die-family observer events whose nil-Actor
+// "whenever a/another creature you control dies" wording the parser drops —
+// matched from the raw oracle text (r63 PROGRESSION saturation fix).
+var observerDeathEvents = map[string]bool{
+	"creature_dies":             true,
+	"another_creature_dies":     true,
+	"another_creature_dies_any": true,
+	"tribe_you_control_dies":    true,
+	"another_typed_dies":        true,
+}
+
+func isObserverDeathEvent(event string) bool {
+	return observerDeathEvents[strings.ToLower(strings.TrimSpace(event))]
+}
+
+// deathRawSpec is the recovered "a creature dies" observer filter.
+type deathRawSpec struct {
+	anyController bool   // "a creature dies" — no controller gate (Blood Artist)
+	excludesSelf  bool   // "another ..."
+	nontoken      bool   // "a nontoken creature you control dies"
+	subtype       string // single-token subtype ("angel") or ""
+}
+
+// deathSpecFromRaw recovers the observer-death filter from the oracle
+// wording. ok=false ⇒ unrecognized (conditional/compound actors the parser
+// drops) ⇒ caller must NOT fire.
+func deathSpecFromRaw(raw string) (deathRawSpec, bool) {
+	r := strings.ToLower(raw)
+	none := deathRawSpec{}
+	// Conditional / compound actors the parser silently drops — fail closed
+	// rather than over-fire (Blood Artist-adjacent "with a +1/+1 counter",
+	// "power or toughness 1 or less", "dealt damage by ~", "or planeswalker").
+	if strings.Contains(r, " with ") || strings.Contains(r, "power or toughness") ||
+		strings.Contains(r, "dealt damage") || strings.Contains(r, "or planeswalker") ||
+		strings.Contains(r, "named ") || strings.Contains(r, " token ") {
+		return none, false
+	}
+	if i := strings.Index(r, "whenever another "); i >= 0 {
+		rest := r[i+len("whenever another "):]
+		if strings.HasPrefix(rest, "creature you control dies") {
+			return deathRawSpec{excludesSelf: true}, true
+		}
+		if strings.HasPrefix(rest, "nontoken creature you control dies") {
+			return deathRawSpec{excludesSelf: true, nontoken: true}, true
+		}
+		if j := strings.Index(rest, " you control dies"); j > 0 {
+			word := rest[:j]
+			if !strings.Contains(word, " ") {
+				return deathRawSpec{excludesSelf: true, subtype: word}, true
+			}
+		}
+		return none, false
+	}
+	for _, lead := range []string{"whenever a ", "whenever an "} {
+		if i := strings.Index(r, lead); i >= 0 {
+			rest := r[i+len(lead):]
+			if strings.HasPrefix(rest, "creature dies") {
+				return deathRawSpec{anyController: true}, true
+			}
+			if strings.HasPrefix(rest, "nontoken creature you control dies") {
+				return deathRawSpec{nontoken: true}, true
+			}
+			if j := strings.Index(rest, " you control dies"); j > 0 {
+				word := rest[:j]
+				if word == "creature" {
+					return deathRawSpec{}, true
+				}
+				if !strings.Contains(word, " ") {
+					return deathRawSpec{subtype: word}, true
+				}
+			}
+			return none, false
+		}
+	}
+	return none, false
+}
+
+// observerDeathMatchesByRaw matches a nil-Actor observer-death trigger
+// against the dying permanent, recovering the filter from the raw wording.
+func observerDeathMatchesByRaw(trig *gameast.Triggered, observer, dying *Permanent) bool {
+	spec, ok := deathSpecFromRaw(trig.Raw)
+	if !ok || dying == nil {
+		return false
+	}
+	if !dying.IsCreature() && (dying.Card == nil || !cardHasType(dying.Card, "creature")) {
+		if spec.subtype == "" {
+			return false
+		}
+	}
+	if !spec.anyController && dying.Controller != observer.Controller {
+		return false
+	}
+	if spec.excludesSelf && dying == observer {
+		return false
+	}
+	if spec.nontoken && dying.IsToken() {
+		return false
+	}
+	if spec.subtype != "" {
+		if dying.Card == nil ||
+			(!cardHasSubtype(dying.Card, spec.subtype) && !dying.hasType(spec.subtype)) {
+			return false
+		}
+	}
+	return true
 }
 
 // dualSelfObserverEvents fire BOTH when the bearer itself acts and when
