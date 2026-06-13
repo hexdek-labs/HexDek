@@ -213,6 +213,12 @@ func cloneAll(ds []*Delta) []*Delta {
 // leaf folds a single deterministic effect into d (phase-1 kinds via
 // accumulate, plus the part-2 widened kinds; phase-3 kinds first).
 func leaf(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
+	// Phase 8 first: it models a band of structured ModKinds that
+	// leafPhase3's ModificationEffect catch-all would otherwise claim as
+	// out of scope. handled=false falls through to leafPhase3.
+	if handled, ok := leafPhase8(spec, eff, d); handled {
+		return ok
+	}
 	if handled, ok := leafPhase3(spec, eff, d); handled {
 		return ok
 	}
