@@ -294,6 +294,16 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		}
 
 	// -----------------------------------------------------------------
+	// Generic anthem — "creatures [you control | opponents | all] get
+	// +X/+Y [until end of turn]" as a SPELL/triggered one-shot. Static
+	// anthem abilities on permanents are handled by registerASTStaticEffects
+	// (layers.go); this path covers the resolved-effect form. See
+	// mod_kind_anthem.go.
+	// -----------------------------------------------------------------
+	case "anthem":
+		applyAnthemSpellEffect(gs, src, e.Args)
+
+	// -----------------------------------------------------------------
 	// Double target power EOT. MVP: apply a buff equal to the
 	// creature's current power.
 	// -----------------------------------------------------------------
@@ -915,16 +925,18 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 	// -----------------------------------------------------------------
 	case "regenerate":
 		if src != nil {
-			if src.Flags == nil {
-				src.Flags = map[string]int{}
-			}
-			src.Flags["regeneration_shield"] = 1
+			GrantRegenerationShield(gs, src)
 		}
-		gs.LogEvent(Event{
-			Kind:   "regenerate",
-			Seat:   controllerSeat(src),
-			Source: sourceName(src),
-		})
+
+	// regenerate_typed — "{cost}: Regenerate <filter>" (CR §701.15).
+	// 172/200 corpus uses are base="self" ("Regenerate this creature");
+	// the rest are "regenerate target creature" / "regenerate each …".
+	// Grant a regeneration shield (consumed by DestroyPermanent / the SBA
+	// lethal-damage path) to each subject.
+	case "regenerate_typed":
+		for _, sub := range regenerateTypedSubjects(gs, src, e) {
+			GrantRegenerationShield(gs, sub)
+		}
 
 	case "proliferate":
 		// CR §701.23 — "Choose any number of permanents and/or players
@@ -1388,6 +1400,32 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 	case "become_monarch":
 		BecomeMonarch(gs, controllerSeat(src))
 
+	// -----------------------------------------------------------------
+	// become_monarch_typed (r63 scaffold-kind coverage, hex-dev-3) — the
+	// typed-template variant of become_monarch emitted for "you become
+	// the monarch" ETB/cast clauses (Custodi Lich, Palace Jailer, the
+	// Court enchantments, …). Same effect as become_monarch: the source's
+	// controller becomes the monarch (CR §720). 37 cards were inert.
+	case "become_monarch_typed":
+		BecomeMonarch(gs, controllerSeat(src))
+
+	// -----------------------------------------------------------------
+	// self_damage (r63 scaffold-kind coverage, hex-dev-3) — "this <source>
+	// deals N damage to you" riders, dominantly the painlands (Shivan
+	// Reef, Ancient Tomb, Grand Coliseum, …). Args[0] is the amount. The
+	// damage is dealt to the source's controller ("you"). 30 cards were
+	// inert (the painland downside was being skipped).
+	case "self_damage":
+		amt := 1
+		if len(e.Args) > 0 {
+			if n, ok := asInt(e.Args[0]); ok {
+				amt = n
+			}
+		}
+		if amt > 0 {
+			DealDamage(gs, controllerSeat(src), amt, sourceName(src))
+		}
+
 	case "connives":
 		n := 1
 		if len(e.Args) > 0 {
@@ -1499,6 +1537,11 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			Seat:   seat,
 			Source: sourceName(src),
 		})
+
+	// add_mana_per — mana scaled by a count basis ("Add {G} for each
+	// creature you control"). Generic handler in modkind_add_mana_per.go.
+	case "add_mana_per":
+		resolveAddManaPer(gs, src, e)
 
 	case "impulse_play":
 		// R60: the parser over-applies the impulse_play modkind to ~18
@@ -4601,6 +4644,13 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 	// truly unrecognized effect text.
 	// -----------------------------------------------------------------
 	default:
+		// Generic coverage for parser "_typed" scaffold variants whose
+		// base ModKind is already implemented (modkind_typed_aliases.go):
+		// re-dispatch to the base case. Only genuinely unhandled kinds
+		// fall through to the parser_gap logging below.
+		if resolveTypedAliasModKind(gs, src, e) {
+			return
+		}
 		gs.LogEvent(Event{
 			Kind:   "modification_effect",
 			Seat:   controllerSeat(src),
@@ -4805,12 +4855,8 @@ func resolveResidualByText(gs *GameState, src *Permanent, raw string) bool {
 
 	if reResRegenerate.MatchString(raw) {
 		if src != nil {
-			if src.Flags == nil {
-				src.Flags = map[string]int{}
-			}
-			src.Flags["regeneration_shield"] = 1
+			GrantRegenerationShield(gs, src)
 		}
-		gs.LogEvent(Event{Kind: "regenerate", Seat: seat, Source: sourceName(src)})
 		return true
 	}
 

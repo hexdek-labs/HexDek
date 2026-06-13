@@ -2346,11 +2346,21 @@ func registerASTStaticEffects(gs *GameState, p *Permanent) {
 	}
 	for _, ab := range p.Card.AST.Abilities {
 		st, ok := ab.(*gameast.Static)
-		if !ok || st.Modification == nil || st.Modification.Layer == "" {
+		if !ok || st.Modification == nil {
+			continue
+		}
+		// The parser leaves `layer` empty for some static buff kinds we
+		// handle explicitly (self_buff …); let those through the gate.
+		if st.Modification.Layer == "" && !staticKindAllowedLayerless(st.Modification.ModKind) {
 			continue
 		}
 		mod := st.Modification
 		switch mod.ModKind {
+
+		// self_buff — "this creature gets +X/+Y" (static, CR §613 7c).
+		// See mod_kind_static_buffs.go.
+		case "self_buff":
+			registerSelfBuffStatic(gs, p, mod.Args)
 
 		case "other_yours_anthem":
 			pow, tough := extractPT(mod.Args, 1, 1)
@@ -2448,6 +2458,12 @@ func registerASTStaticEffects(gs *GameState, p *Permanent) {
 					})
 				}
 			}
+
+		case "anthem":
+			// Generic static anthem — "creatures [you control | opponents |
+			// all | other] get +X/+Y". The spell/triggered one-shot form is
+			// handled in resolveModificationEffect. See mod_kind_anthem.go.
+			registerGenericAnthemStatic(gs, p, mod.Args)
 
 		case "enchanted_creature_pt":
 			pow, tough := extractPT(mod.Args, 0, 0)
@@ -2575,6 +2591,11 @@ func RegisterContinuousEffectsForPermanent(gs *GameState, p *Permanent) {
 	}
 	// Generic AST-driven registration for anthems and keyword grants.
 	registerASTStaticEffects(gs, p)
+	// r63 scaffold-kind coverage: attachment-buff kinds (aura_buff /
+	// aura_buff_grant / equip_buff_grant) carry Layer="" so they bypass
+	// registerASTStaticEffects' Layer!="" gate — handled in a dedicated
+	// scan. See scaffold_attachment_buff_r63.go.
+	registerAttachmentBuffs(gs, p)
 }
 
 // -----------------------------------------------------------------------------

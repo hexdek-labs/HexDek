@@ -75,6 +75,14 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 	// rather than the stack-cast path in resolvePermanentSpellETB.
 	if !faceDown {
 		ApplyStaticETBCounters(gs, perm)
+		// CR §614.1d — generic "enters tapped unless <condition>" static
+		// (checklands / fastlands / slowlands / life- and opponent-count
+		// lands). Inert before this; the land entered untapped for free.
+		ApplyEntersTappedUnless(gs, perm)
+		// CR §614.1d — generic unconditional "enters tapped" static
+		// (Guildgates, Temples, bouncelands, tapped mana rocks). Also inert
+		// before this.
+		ApplySelfEntersTapped(gs, perm)
 	}
 
 	// CR §613 — register the entering permanent's continuous effects: named
