@@ -1390,6 +1390,32 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 	case "become_monarch":
 		BecomeMonarch(gs, controllerSeat(src))
 
+	// -----------------------------------------------------------------
+	// become_monarch_typed (r63 scaffold-kind coverage, hex-dev-3) — the
+	// typed-template variant of become_monarch emitted for "you become
+	// the monarch" ETB/cast clauses (Custodi Lich, Palace Jailer, the
+	// Court enchantments, …). Same effect as become_monarch: the source's
+	// controller becomes the monarch (CR §720). 37 cards were inert.
+	case "become_monarch_typed":
+		BecomeMonarch(gs, controllerSeat(src))
+
+	// -----------------------------------------------------------------
+	// self_damage (r63 scaffold-kind coverage, hex-dev-3) — "this <source>
+	// deals N damage to you" riders, dominantly the painlands (Shivan
+	// Reef, Ancient Tomb, Grand Coliseum, …). Args[0] is the amount. The
+	// damage is dealt to the source's controller ("you"). 30 cards were
+	// inert (the painland downside was being skipped).
+	case "self_damage":
+		amt := 1
+		if len(e.Args) > 0 {
+			if n, ok := asInt(e.Args[0]); ok {
+				amt = n
+			}
+		}
+		if amt > 0 {
+			DealDamage(gs, controllerSeat(src), amt, sourceName(src))
+		}
+
 	case "connives":
 		n := 1
 		if len(e.Args) > 0 {
