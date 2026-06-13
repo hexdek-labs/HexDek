@@ -2575,6 +2575,11 @@ func RegisterContinuousEffectsForPermanent(gs *GameState, p *Permanent) {
 	}
 	// Generic AST-driven registration for anthems and keyword grants.
 	registerASTStaticEffects(gs, p)
+	// r63 scaffold-kind coverage: attachment-buff kinds (aura_buff /
+	// aura_buff_grant / equip_buff_grant) carry Layer="" so they bypass
+	// registerASTStaticEffects' Layer!="" gate — handled in a dedicated
+	// scan. See scaffold_attachment_buff_r63.go.
+	registerAttachmentBuffs(gs, p)
 }
 
 // -----------------------------------------------------------------------------
