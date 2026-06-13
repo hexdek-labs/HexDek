@@ -2293,6 +2293,10 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	// fan-out so observer triggers (Mentor of the Meek, Hardened Scales,
 	// etc.) see the entering perm in its final counter state.
 	ApplyStaticETBCounters(gs, perm)
+	// CR §614.1d — generic "enters tapped unless <condition>" static
+	// (checklands / fastlands / slowlands / life- and opponent-count lands).
+	// Inert before this; the land entered untapped for free.
+	ApplyEntersTappedUnless(gs, perm)
 
 	// Register §613 continuous effects (layers 1-7).
 	RegisterContinuousEffectsForPermanent(gs, perm)

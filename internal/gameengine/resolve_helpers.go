@@ -915,16 +915,18 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 	// -----------------------------------------------------------------
 	case "regenerate":
 		if src != nil {
-			if src.Flags == nil {
-				src.Flags = map[string]int{}
-			}
-			src.Flags["regeneration_shield"] = 1
+			GrantRegenerationShield(gs, src)
 		}
-		gs.LogEvent(Event{
-			Kind:   "regenerate",
-			Seat:   controllerSeat(src),
-			Source: sourceName(src),
-		})
+
+	// regenerate_typed — "{cost}: Regenerate <filter>" (CR §701.15).
+	// 172/200 corpus uses are base="self" ("Regenerate this creature");
+	// the rest are "regenerate target creature" / "regenerate each …".
+	// Grant a regeneration shield (consumed by DestroyPermanent / the SBA
+	// lethal-damage path) to each subject.
+	case "regenerate_typed":
+		for _, sub := range regenerateTypedSubjects(gs, src, e) {
+			GrantRegenerationShield(gs, sub)
+		}
 
 	case "proliferate":
 		// CR §701.23 — "Choose any number of permanents and/or players
@@ -4805,12 +4807,8 @@ func resolveResidualByText(gs *GameState, src *Permanent, raw string) bool {
 
 	if reResRegenerate.MatchString(raw) {
 		if src != nil {
-			if src.Flags == nil {
-				src.Flags = map[string]int{}
-			}
-			src.Flags["regeneration_shield"] = 1
+			GrantRegenerationShield(gs, src)
 		}
-		gs.LogEvent(Event{Kind: "regenerate", Seat: seat, Source: sourceName(src)})
 		return true
 	}
 

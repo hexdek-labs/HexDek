@@ -80,6 +80,12 @@ func DestroyPermanent(gs *GameState, perm *Permanent, source *Permanent) bool {
 		return false
 	}
 
+	// §701.15a: a regeneration shield replaces the destruction — tap,
+	// remove from combat, and clear marked damage instead of destroying.
+	if TryRegenerate(gs, perm) {
+		return false
+	}
+
 	// §614 "would die" replacement chain — same path as SBA.
 	repl := FireDieEvent(gs, perm)
 	if repl.Cancelled {
