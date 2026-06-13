@@ -55,6 +55,28 @@ func PushPerCardTrigger(gs *GameState, perm *Permanent, handler func(*GameState,
 	if perm.Card != nil {
 		cardName = perm.Card.DisplayName()
 	}
+	// CR §800.4a: an ability controlled by a player who has left the game
+	// ceases to exist — it never goes on the stack. A trigger that fires
+	// AFTER its controller's elimination sweep (e.g. seat 2's Braid of Fire
+	// "your upkeep" trigger firing once seat 2 already died to Glacial
+	// Chasm's cumulative upkeep in the same upkeep batch) would otherwise
+	// push + resolve and leak its effect to the departed seat. The
+	// HandleSeatElimination stack-purge (step 2) only catches items already
+	// on the stack at sweep time, so triggers that fire post-sweep slip
+	// past it; this gate stops them at formation. r63 depth-frontier seed 7
+	// / game 3548 (ResourceConservation: "seat is Lost but has ManaPool=3").
+	if SeatHasLeftGame(gs, perm.Controller) {
+		gs.LogEvent(Event{
+			Kind:   "trigger_ceased",
+			Seat:   perm.Controller,
+			Source: cardName,
+			Details: map[string]interface{}{
+				"reason": "controller_left_game",
+				"rule":   "800.4a",
+			},
+		})
+		return
+	}
 
 	// Recursion-depth guard: count nested PushPerCardTrigger frames.
 	// All SBA↔trigger re-entrancy funnels through the inline resolve at

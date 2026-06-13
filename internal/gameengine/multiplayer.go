@@ -375,6 +375,29 @@ func (gs *GameState) CheckEnd() bool {
 	return true
 }
 
+// SeatHasLeftGame reports whether the seat at seatIdx has already had its
+// §800.4a leave-the-game cleanup run (or is otherwise gone/out of range).
+// CR §800.4a: once a player leaves the game, every object they control —
+// including abilities that would otherwise trigger or sit on the stack —
+// ceases to exist. Trigger-formation sites consult this so an ability
+// controlled by a departed seat is never put on the stack, and the mana
+// chokepoint consults it so a departed seat never gains mana (§106.4).
+//
+// r63 depth-frontier (seed 7 / game 3548, max-turns 120): seat 2 died to
+// Glacial Chasm's cumulative upkeep MID-upkeep, then its own Braid of Fire
+// "your upkeep" trigger still fired, pushed, and resolved — adding {R}{R}{R}
+// to the eliminated seat's pool (ResourceConservation: "seat is Lost but
+// has ManaPool=3"). HandleSeatElimination's stack purge (step 2) can't
+// catch a trigger that fires AFTER the elimination sweep; this gate stops
+// it at formation instead.
+func SeatHasLeftGame(gs *GameState, seatIdx int) bool {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return false
+	}
+	s := gs.Seats[seatIdx]
+	return s == nil || s.LeftGame
+}
+
 // -----------------------------------------------------------------------------
 // HandleSeatElimination — CR §800.4a cleanup
 // -----------------------------------------------------------------------------

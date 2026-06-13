@@ -212,6 +212,26 @@ func PushTriggeredAbilityWithIf(gs *GameState, src *Permanent, effect gameast.Ef
 	if gs.Flags["ended"] == 1 {
 		return nil
 	}
+	// CR §800.4a: an ability controlled by a player who has left the game
+	// ceases to exist — it never goes on the stack. Mirrors the per-card
+	// path guard in PushPerCardTrigger; covers AST-driven triggers fired
+	// AFTER their controller's elimination sweep (r63 depth-frontier).
+	if SeatHasLeftGame(gs, src.Controller) {
+		name := ""
+		if src.Card != nil {
+			name = src.Card.DisplayName()
+		}
+		gs.LogEvent(Event{
+			Kind:   "trigger_ceased",
+			Seat:   src.Controller,
+			Source: name,
+			Details: map[string]interface{}{
+				"reason": "controller_left_game",
+				"rule":   "800.4a",
+			},
+		})
+		return nil
+	}
 	gs.Flags["_trigger_fires_this_turn"]++
 	if gs.Flags["_trigger_fires_this_turn"] > triggerCapForGame(gs) {
 		capCard := ""

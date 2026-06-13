@@ -255,6 +255,14 @@ func AddMana(gs *GameState, seat *Seat, color string, amount int, source string)
 	if seat == nil || amount <= 0 {
 		return
 	}
+	// CR §106.4 / §800.4a — a player who has left the game holds no mana.
+	// Defense-in-depth behind the trigger-formation §800.4a gates: even if
+	// some other post-elimination effect path reaches this chokepoint, an
+	// eliminated seat's pool must never refill (r63 depth-frontier seed 7 /
+	// game 3548: Braid of Fire adding {R}{R}{R} to a Lost seat).
+	if seat.LeftGame {
+		return
+	}
 	p := EnsureTypedPool(seat)
 	p.Add(color, amount)
 	seat.ManaPool = p.Total()
@@ -279,6 +287,11 @@ func AddMana(gs *GameState, seat *Seat, color string, amount int, source string)
 func AddRestrictedMana(gs *GameState, seat *Seat, amount int,
 	color, restriction, source string) {
 	if seat == nil || amount <= 0 {
+		return
+	}
+	// CR §106.4 / §800.4a — a player who has left the game holds no mana
+	// (mirror of the AddMana gate).
+	if seat.LeftGame {
 		return
 	}
 	p := EnsureTypedPool(seat)
