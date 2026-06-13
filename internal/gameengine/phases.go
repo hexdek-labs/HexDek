@@ -852,6 +852,29 @@ func UntapAll(gs *GameState, seatIdx int) {
 			continue
 		}
 
+		// r63 scaffold-kind: aura_no_untap — "enchanted permanent doesn't
+		// untap during its controller's untap step" (Waterknot, Shackles,
+		// Capture Sphere, …). Dynamic check, no stale flag. See
+		// scaffold_aura_no_untap_r63.go.
+		if auraHoldsDownUntap(gs, p) {
+			if p.Tapped {
+				cardName := "<unknown>"
+				if p.Card != nil {
+					cardName = p.Card.DisplayName()
+				}
+				gs.LogEvent(Event{
+					Kind:   "untap_skipped",
+					Seat:   seatIdx,
+					Source: cardName,
+					Details: map[string]interface{}{
+						"reason": "aura_no_untap",
+						"rule":   "502.2",
+					},
+				})
+			}
+			continue
+		}
+
 		if p.Tapped {
 			// §122.4: stun counters — if a permanent with a stun counter
 			// would untap, remove one stun counter instead.
