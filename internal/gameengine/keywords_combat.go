@@ -47,6 +47,7 @@ package gameengine
 //   - Hexproof from [color]     — CR §702.11d
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -1040,22 +1041,90 @@ func AppendCombatCostModifiers(gs *GameState, card *Card, seatIdx int, mods []Co
 
 // ---------------------------------------------------------------------------
 // Miracle — CR §702.94
-// "You may cast this card for its miracle cost when you draw it if
-// it's the first card you've drawn this turn."
+// "You may cast this card for its miracle cost as you draw it, but only if
+// it's the FIRST card you've drawn this turn." (§702.94a) Revealing it on
+// draw creates a triggered ability (§702.94b) letting you cast it for the
+// miracle cost rather than its mana cost, at any time before it leaves your
+// hand that turn (§702.94c — an exception to sorcery-speed timing).
+//
+// Lifecycle:
+//   - drawOne (state.go) increments a per-seat "miracle_draws_this_turn"
+//     counter that UntapAll resets to 0 for EVERY seat at each turn start,
+//     so == 1 means "first card this seat drew this (game) turn" — correct
+//     even on an opponent's turn (instant-speed first draw).
+//   - On that first draw, MaybeOpenMiracleWindow reveals a miracle card and
+//     stamps gs.Turn on it (the window).
+//   - CanCastMiracle gates the cast on the open window + hand membership.
+//   - CastWithMiracle routes through the canonical alternative-cost path.
 // ---------------------------------------------------------------------------
+
+// miracleWindowKey stamps the game-turn number on a card whose miracle
+// window is currently open. Read back at cast time by CanCastMiracle.
+const miracleWindowKey = "miracle_window_turn"
 
 // HasMiracle returns true if the card has the miracle keyword.
 func HasMiracle(card *Card) bool {
 	return cardHasKeywordByName(card, "miracle")
 }
 
-// MiracleCost returns the miracle cost from keyword args.
+// MiracleCost returns the miracle cost (generic-mana MVP) from keyword args.
 func MiracleCost(card *Card) int {
 	return keywordArgCost(card, "miracle")
 }
 
-// CanCastMiracle checks if this is the first card drawn this turn and
-// the card has miracle. Called at draw time.
+// MaybeOpenMiracleWindow is called from the drawOne chokepoint when a card
+// is the FIRST card a seat has drawn this turn. If the card has miracle it
+// is revealed (§702.94a) and the §702.94b triggered ability is granted by
+// stamping the current game turn on the card; the cast-for-miracle-cost
+// permission then lasts until end of turn / until the card leaves hand
+// (enforced by CanCastMiracle). Auto-reveal models the "may reveal" choice
+// as yes — revealing only grants an option and never carries a downside.
+func MaybeOpenMiracleWindow(gs *GameState, seatIdx int, card *Card) {
+	if gs == nil || card == nil || !HasMiracle(card) {
+		return
+	}
+	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return
+	}
+	if card.Meta == nil {
+		card.Meta = map[string]any{}
+	}
+	card.Meta[miracleWindowKey] = gs.Turn
+	gs.LogEvent(Event{
+		Kind:   "miracle_revealed",
+		Seat:   seatIdx,
+		Source: card.DisplayName(),
+		Amount: MiracleCost(card),
+		Details: map[string]interface{}{
+			"rule": "702.94a/b",
+			"turn": gs.Turn,
+		},
+	})
+	// §702.94b triggered ability — surface to observers / the AI.
+	FireCardTrigger(gs, "miracle_revealed", map[string]interface{}{
+		"seat":   seatIdx,
+		"card":   card.DisplayName(),
+		"source": "draw",
+	})
+}
+
+// MiracleWindowOpen reports whether card currently has an open miracle
+// window for the current game turn. Does NOT check hand membership.
+func MiracleWindowOpen(gs *GameState, card *Card) bool {
+	if gs == nil || card == nil || card.Meta == nil {
+		return false
+	}
+	w, ok := card.Meta[miracleWindowKey].(int)
+	return ok && w == gs.Turn
+}
+
+// CanCastMiracle reports whether seatIdx may cast card for its miracle cost
+// right now: the card has miracle, its miracle window is open this turn
+// (it was the first card this seat drew this turn and was revealed), and it
+// is still in that seat's hand (§702.94c — "before it leaves your hand").
+// The first-draw determination itself happens once, at draw time, in
+// MaybeOpenMiracleWindow — so a card drawn second, or put into hand by a
+// non-draw effect, never has an open window.
 func CanCastMiracle(gs *GameState, seatIdx int, card *Card) bool {
 	if gs == nil || card == nil || !HasMiracle(card) {
 		return false
@@ -1063,13 +1132,26 @@ func CanCastMiracle(gs *GameState, seatIdx int, card *Card) bool {
 	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
 		return false
 	}
-	seat := gs.Seats[seatIdx]
-	return seat.Turn.CardsDrawn <= 1
+	if !MiracleWindowOpen(gs, card) {
+		return false
+	}
+	for _, c := range gs.Seats[seatIdx].Hand {
+		if c == card {
+			return true
+		}
+	}
+	return false
 }
 
-// CastWithMiracle casts a spell for its miracle cost. The card must
-// be the first drawn this turn.
-func CastWithMiracle(gs *GameState, seatIdx int, card *Card) error {
+// CastWithMiracle casts card for its miracle cost via the canonical
+// alternative-cost cast path (CR §601 / §702.94b). The miracle cost
+// REPLACES the mana cost. Routing through CastSpellWithCosts gives the full
+// cast pipeline (cast triggers, RecordCast, instance IDs) while honoring
+// miracle's §702.94c timing exception — CastSpellWithCosts does not enforce
+// the sorcery-speed main-phase gate, so a miracle sorcery (Terminus,
+// Temporal Mastery, Bonfire of the Damned) may be cast during the draw step
+// or on an opponent's turn.
+func CastWithMiracle(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 	if gs == nil || card == nil {
 		return &CastError{Reason: "nil game or card"}
 	}
@@ -1077,35 +1159,39 @@ func CastWithMiracle(gs *GameState, seatIdx int, card *Card) error {
 		return &CastError{Reason: "miracle conditions not met"}
 	}
 	cost := MiracleCost(card)
-	seat := gs.Seats[seatIdx]
-
-	// Find card in hand.
-	handIdx := -1
-	for i, c := range seat.Hand {
-		if c == card {
-			handIdx = i
-			break
-		}
+	altCost := &AlternativeCost{
+		Kind:  "miracle",
+		Label: fmt.Sprintf("miracle {%d}", cost),
+		CanPayFn: func(gs *GameState, s int) bool {
+			return s >= 0 && s < len(gs.Seats) && gs.Seats[s].ManaPool >= cost
+		},
+		PayFn: func(gs *GameState, s int) bool {
+			seat := gs.Seats[s]
+			if seat.ManaPool < cost {
+				return false
+			}
+			seat.ManaPool -= cost
+			SyncManaAfterSpend(seat)
+			gs.LogEvent(Event{
+				Kind:   "pay_mana",
+				Seat:   s,
+				Amount: cost,
+				Source: card.DisplayName(),
+				Details: map[string]interface{}{
+					"reason": "miracle",
+					"rule":   "702.94b",
+				},
+			})
+			return true
+		},
 	}
-	if handIdx < 0 {
-		return &CastError{Reason: "card not in hand"}
+	if _, err := CastSpellWithCosts(gs, seatIdx, card, targets, altCost, nil, true); err != nil {
+		return err
 	}
-
-	// Pay miracle cost.
-	if seat.ManaPool < cost {
-		return &CastError{Reason: "insufficient_mana"}
+	// Close the window so the same draw can't be miracled twice.
+	if card.Meta != nil {
+		delete(card.Meta, miracleWindowKey)
 	}
-	seat.ManaPool -= cost
-	SyncManaAfterSpend(seat)
-
-	// Remove from hand and put on stack.
-	seat.Hand = append(seat.Hand[:handIdx], seat.Hand[handIdx+1:]...)
-	gs.Stack = append(gs.Stack, &StackItem{
-		Controller: seatIdx,
-		Card:       card,
-		Kind:       "spell",
-	})
-
 	gs.LogEvent(Event{
 		Kind:   "miracle",
 		Seat:   seatIdx,
