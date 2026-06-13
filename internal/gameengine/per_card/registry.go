@@ -575,6 +575,9 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 	gs.Flags["trigger_depth"]++
 	defer func() { gs.Flags["trigger_depth"]-- }()
 	if gs.Flags["trigger_depth"] > 8 {
+		gameengine.LogLoopGuardFired(gs, "percard_dispatch_depth_cap", map[string]interface{}{
+			"depth": gs.Flags["trigger_depth"], "event": event,
+		})
 		// Emit a marker so TriggerCompleteness sees a follow-up event even
 		// when the runaway-loop guard silently swallows the dispatch.
 		gs.LogEvent(gameengine.Event{
@@ -592,6 +595,9 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 	}
 	gs.Flags["trigger_total"]++
 	if gs.Flags["trigger_total"] > 2000 {
+		gameengine.LogLoopGuardFired(gs, "percard_dispatch_total_cap", map[string]interface{}{
+			"total": gs.Flags["trigger_total"], "event": event,
+		})
 		gs.LogEvent(gameengine.Event{
 			Kind:   "trigger_evaluated",
 			Seat:   -1,

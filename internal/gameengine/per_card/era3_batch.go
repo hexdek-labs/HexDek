@@ -726,6 +726,9 @@ func plarggNassariEra3Upkeep(gs *gameengine.GameState, perm *gameengine.Permanen
 			card := s.Library[0]
 			gameengine.MoveCard(gs, card, i, "library", "exile", "plargg_nassari_exile")
 			if len(s.Library) >= before {
+				gameengine.LogLoopGuardFired(gs, "move_no_progress", map[string]interface{}{
+					"handler": "plargg_nassari", "seat": i,
+				})
 				// MoveCard made no progress (replacement bounced the
 				// card back, or a future no-op guard fired) — abort
 				// rather than loop forever.

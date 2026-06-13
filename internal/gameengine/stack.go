@@ -108,6 +108,14 @@ func DrainStack(gs *GameState) {
 			PriorityRound(gs)
 		}
 	}
+	// The iteration cap previously exited SILENTLY with items still on
+	// the stack — invisible to liveness auditing. Emit the uniform
+	// guard event so cap_contract scanning sees it.
+	if len(gs.Stack) > 0 {
+		LogLoopGuardFired(gs, "drain_iteration_cap", map[string]interface{}{
+			"stack_remaining": len(gs.Stack), "cap": maxStackDrainIterations,
+		})
+	}
 	StateBasedActions(gs)
 }
 
@@ -206,6 +214,9 @@ func PushTriggeredAbilityWithIf(gs *GameState, src *Permanent, effect gameast.Ef
 	}
 	gs.Flags["_trigger_fires_this_turn"]++
 	if gs.Flags["_trigger_fires_this_turn"] > triggerCapForGame(gs) {
+		LogLoopGuardFired(gs, "trigger_loop_cap", map[string]interface{}{
+			"fires": gs.Flags["_trigger_fires_this_turn"], "site": "ast_trigger",
+		})
 		for i, s := range gs.Seats {
 			if s != nil && !s.Lost && !s.Won {
 				s.Lost = true
@@ -323,11 +334,11 @@ func (e *CastError) Error() string { return "cast failed: " + e.Reason }
 
 // CastSpell executes the CR §601.2 casting sequence for a single spell:
 //
-//   1. §601.2a  — announce the spell (remove from hand, create stack item).
-//   2. §601.2b  — choose modes / targets (caller-supplied targets[]).
-//   3. §601.2f  — pay costs (mana only for MVP).
-//   4. Priority opens (CR §117.3c).
-//   5. On all-pass, top of stack resolves (CR §117.4).
+//  1. §601.2a  — announce the spell (remove from hand, create stack item).
+//  2. §601.2b  — choose modes / targets (caller-supplied targets[]).
+//  3. §601.2f  — pay costs (mana only for MVP).
+//  4. Priority opens (CR §117.3c).
+//  5. On all-pass, top of stack resolves (CR §117.4).
 //
 // Returns a CastError on any of:
 //   - card not in caster's hand
@@ -609,10 +620,10 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 				},
 			})
 			gs.LogEvent(Event{
-				Kind:   "buyback_cast",
-				Seat:   seatIdx,
-				Source: card.DisplayName(),
-				Amount: bc,
+				Kind:    "buyback_cast",
+				Seat:    seatIdx,
+				Source:  card.DisplayName(),
+				Amount:  bc,
 				Details: map[string]interface{}{"rule": "702.27a"},
 			})
 			if gs.Flags == nil {
@@ -631,10 +642,10 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 			details["chosen_x"] = chosenX
 		}
 		gs.LogEvent(Event{
-			Kind:   "pay_mana",
-			Seat:   seatIdx,
-			Amount: cost,
-			Source: card.DisplayName(),
+			Kind:    "pay_mana",
+			Seat:    seatIdx,
+			Amount:  cost,
+			Source:  card.DisplayName(),
 			Details: details,
 		})
 	}
@@ -1297,9 +1308,9 @@ func GetResponse(gs *GameState, defenderSeat int, incoming *StackItem) *StackIte
 // cards in hand.
 //
 // The AST stores instant/sorcery spell bodies in two layouts:
-//   1. Activated ability with empty cost (legacy / test cards)
-//   2. Static ability with Modification.ModKind == "spell_effect" and
-//      Modification.Args[0] being the CounterSpell effect (real corpus)
+//  1. Activated ability with empty cost (legacy / test cards)
+//  2. Static ability with Modification.ModKind == "spell_effect" and
+//     Modification.Args[0] being the CounterSpell effect (real corpus)
 //
 // This function scans both.
 func counterSpellEffect(c *Card) gameast.Effect {
@@ -1978,18 +1989,18 @@ func ResolveStackTop(gs *GameState) {
 // spell. Mirrors the Python `_resolve_stack_top` permanent branch +
 // `_etb_initialize`:
 //
-//   1. Allocate a new Permanent with summoning_sick = !has_keyword("haste")
-//      (creatures only; non-creatures ignore summoning sickness per §302.1).
-//   2. Assign §613.7 timestamp via NextTimestamp().
-//   3. Initialize planeswalker loyalty counters (§306.5b) / battle defense
-//      counters (§310.3) if the metadata hints carry a starting value
-//      (BasePower / BaseToughness is the nearest runtime approximation —
-//      the engine doesn't carry explicit starting_loyalty today).
-//   4. Append to controller's battlefield.
-//   5. Register §613 continuous effects from Static abilities.
-//   6. Register §614 replacement effects.
-//   7. Fire ETB triggered abilities through the stack.
-//   8. Emit an enter_battlefield event.
+//  1. Allocate a new Permanent with summoning_sick = !has_keyword("haste")
+//     (creatures only; non-creatures ignore summoning sickness per §302.1).
+//  2. Assign §613.7 timestamp via NextTimestamp().
+//  3. Initialize planeswalker loyalty counters (§306.5b) / battle defense
+//     counters (§310.3) if the metadata hints carry a starting value
+//     (BasePower / BaseToughness is the nearest runtime approximation —
+//     the engine doesn't carry explicit starting_loyalty today).
+//  4. Append to controller's battlefield.
+//  5. Register §613 continuous effects from Static abilities.
+//  6. Register §614 replacement effects.
+//  7. Fire ETB triggered abilities through the stack.
+//  8. Emit an enter_battlefield event.
 func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	if gs == nil || item == nil || item.Card == nil {
 		return nil
@@ -2598,8 +2609,8 @@ func FireCastTriggers(gs *GameState, casterSeat int, card *Card) {
 // ward cost or the spell is countered.
 //
 // Ward cost is extracted from:
-//   1. Permanent.Flags["ward_cost"] — generic mana cost (int)
-//   2. Keyword "ward" with no cost defaults to ward {1}
+//  1. Permanent.Flags["ward_cost"] — generic mana cost (int)
+//  2. Keyword "ward" with no cost defaults to ward {1}
 //
 // Per CR §702.21c: "If a player doesn't pay the ward cost for a
 // spell they control, the spell is countered."
