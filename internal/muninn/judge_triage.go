@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -104,6 +105,7 @@ type JudgeTriage struct {
 	SinceFiltered int             `json:"since_filtered,omitempty"`
 	TotalRecords  int             `json:"total_records"`
 	ArchiveFolded int             `json:"archive_records_folded,omitempty"`
+	ServerLogParsed int           `json:"server_log_feynman_parsed,omitempty"`
 	Malformed     int             `json:"malformed_lines_skipped,omitempty"`
 	ByDimension   map[string]int  `json:"by_dimension"`
 	Clusters      []TriageCluster `json:"clusters"`
@@ -130,6 +132,19 @@ type TriageOptions struct {
 	// IncludeRotated, when true, also scrapes logrotate-style siblings
 	// (<logPath>.1, .2, …) so a rotated bucket is read end-to-end.
 	IncludeRotated bool
+	// ServerLogPaths are DARKSTAR server.log captures scraped for the
+	// grinder's bracket-game feynman-check lines
+	// (`feynman/RULE [seat N]: MESSAGE`). Parsed into the same canonical
+	// vocabulary and merged into one digest with the jsonl bucket. This
+	// is the path that carries the live issues when the jsonl bucket is
+	// empty (the engine is clean on the sampled Judge dimensions but the
+	// post-game Feynman oracle still flags SBA misses in the log).
+	ServerLogPaths []string
+	// ServerLogStamp is the fallback timestamp (RFC3339 or YYYY-MM-DD)
+	// for feynman lines that carry no per-line timestamp — typically the
+	// capture/scrape time. Lines WITH a leading Go-log timestamp
+	// (`2006/01/02 15:04:05`) use that instead.
+	ServerLogStamp string
 }
 
 // dimensionOrder is the canonical 6-dimension presentation order.
@@ -153,6 +168,87 @@ func classifyDimension(dim string) string {
 		return judge.DimensionStateIntegrity
 	}
 	return dim
+}
+
+// dimensionForRule maps a CR citation / rule name to a Judge dimension —
+// "dimension from the rule §". The default is state_integrity, which is
+// exactly what the engine's Feynman oracle assigns to every surface-less
+// post-game violation (hat/feynman.go), so a server.log-parsed record
+// classifies IDENTICALLY to the same violation arriving through the
+// jsonl bucket — the two sources dedupe into one cluster, not two.
+func dimensionForRule(rule string) string {
+	switch {
+	case strings.Contains(rule, "conservation"):
+		return judge.DimensionConservation
+	case strings.HasPrefix(rule, "704"): // §704.5/§704.6 SBA-compliance
+		return judge.DimensionStateIntegrity
+	case strings.HasPrefix(rule, "104"): // §104 ending the game
+		return judge.DimensionOutcome
+	case strings.HasPrefix(rule, "601"), strings.HasPrefix(rule, "602"),
+		strings.HasPrefix(rule, "508"), strings.HasPrefix(rule, "509"):
+		return judge.DimensionLegality
+	}
+	return judge.DimensionStateIntegrity
+}
+
+// feynmanReportLineRE matches one bracket-game Feynman-oracle line as it
+// appears in DARKSTAR's server.log. The grinder logs the whole report
+// under a single "feynman: bracket game violations:" header; each
+// violation prints via ValidationViolation.String() as
+//
+//	[severity] surface/rule [seat N]: message
+//
+// where surface is feynman (SBA-compliance: 704.5f, counter_negative,
+// permanent_types, turn_bound) or invariants (zone_conservation). The
+// regex tolerates any prefix — the Go-log timestamp, the [severity]
+// tag, indentation — and an optional leading timestamp is captured so a
+// dated line keeps its own stamp. Groups: 1=timestamp? 2=surface
+// 3=rule 4=seat? 5=message.
+var feynmanReportLineRE = regexp.MustCompile(
+	`^(?:(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})\s+)?.*?\b(feynman|invariants)/(\S+?)(?:\s+\[seat\s+(-?\d+)\])?:\s+(.*)$`)
+
+// quotedNameRE pulls the first "double-quoted" token out of a message —
+// the card the violation names, used as the dedupe object.
+var quotedNameRE = regexp.MustCompile(`"([^"]+)"`)
+
+// parseFeynmanLine parses one server.log line into a JudgeLogRecord. The
+// bool is false when the line is not a Feynman-report violation (the
+// overwhelming common case — most server.log lines are unrelated and
+// are silently ignored, NOT counted as malformed). The card name parsed
+// from the message becomes the dedupe object (rule+card), matching the
+// jsonl path's fingerprint.
+func parseFeynmanLine(line string) (JudgeLogRecord, bool) {
+	line = strings.TrimRight(line, "\r\n")
+	m := feynmanReportLineRE.FindStringSubmatch(line)
+	if m == nil {
+		return JudgeLogRecord{}, false
+	}
+	ts := ""
+	if m[1] != "" {
+		// Server-local Go-log stamp; treat as wall time, render RFC3339.
+		if parsed, err := time.Parse("2006/01/02 15:04:05", m[1]); err == nil {
+			ts = parsed.UTC().Format(time.RFC3339)
+		}
+	}
+	surface, rule, msg := m[2], m[3], strings.TrimSpace(m[5])
+	seat := 0
+	if m[4] != "" {
+		seat, _ = strconv.Atoi(m[4])
+	}
+	card := ""
+	if q := quotedNameRE.FindStringSubmatch(msg); q != nil {
+		card = q[1]
+	}
+	return JudgeLogRecord{
+		TS:        ts,
+		Dimension: dimensionForRule(rule),
+		Surface:   surface,
+		Rule:      rule,
+		Severity:  judge.SeverityCritical, // Feynman-oracle violations are post-game failures
+		Seat:      seat,
+		Card:      card,
+		Detail:    msg,
+	}, true
 }
 
 // triageFingerprint is the stable dedupe key: dimension + rule + the
@@ -405,6 +501,61 @@ func TriageJudgeLogWithOptions(opts TriageOptions) (*JudgeTriage, error) {
 		return nil, err
 	}
 
+	// Scrape DARKSTAR server.log captures for bracket-game feynman-check
+	// lines and merge them into the same clusters. Non-matching lines are
+	// silently ignored (a server.log is mostly unrelated output) — only a
+	// parsed Feynman violation contributes. Lines with no per-line
+	// timestamp inherit the capture stamp so they still sort.
+	if len(opts.ServerLogPaths) > 0 {
+		stamp := ""
+		if opts.ServerLogStamp != "" {
+			st, err := parseSince(opts.ServerLogStamp)
+			if err != nil {
+				return nil, fmt.Errorf("muninn: server-log stamp: %w", err)
+			}
+			stamp = st.Format(time.RFC3339)
+		} else if opts.GeneratedAt != "" {
+			stamp = opts.GeneratedAt
+		}
+		scanServerLog := func(path string) error {
+			f, err := os.Open(path)
+			if err != nil {
+				if os.IsNotExist(err) {
+					return nil
+				}
+				return fmt.Errorf("muninn: open %s: %w", path, err)
+			}
+			t.Sources = append(t.Sources, path)
+			scan := bufio.NewScanner(f)
+			scan.Buffer(make([]byte, 0, 256*1024), 1024*1024)
+			for scan.Scan() {
+				rec, ok := parseFeynmanLine(scan.Text())
+				if !ok {
+					continue
+				}
+				if rec.TS == "" {
+					rec.TS = stamp
+				}
+				if !keep(rec.TS) {
+					continue
+				}
+				add(rec)
+				t.ServerLogParsed++
+			}
+			scanErr := scan.Err()
+			f.Close()
+			if scanErr != nil {
+				return fmt.Errorf("muninn: scan %s: %w", path, scanErr)
+			}
+			return nil
+		}
+		for _, p := range opts.ServerLogPaths {
+			if err := scanServerLog(p); err != nil {
+				return nil, err
+			}
+		}
+	}
+
 	// Fold the tournament runner's archived violations — same canonical
 	// vocabulary, older bookkeeping path — into the same clusters.
 	if opts.MuninnDir != "" {
@@ -508,7 +659,10 @@ func renderTriageMarkdown(t *JudgeTriage) string {
 	}
 	fmt.Fprintf(&b, "Source: `%s` — %d records", t.Source, t.TotalRecords)
 	if len(t.Sources) > 1 {
-		fmt.Fprintf(&b, " (across %d rotated file(s))", len(t.Sources))
+		fmt.Fprintf(&b, " (across %d source file(s))", len(t.Sources))
+	}
+	if t.ServerLogParsed > 0 {
+		fmt.Fprintf(&b, " (incl. %d feynman line(s) from server.log)", t.ServerLogParsed)
 	}
 	if t.ArchiveFolded > 0 {
 		fmt.Fprintf(&b, " (incl. %d folded from invariant_violations.json)", t.ArchiveFolded)
