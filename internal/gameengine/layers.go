@@ -1237,6 +1237,69 @@ func RegisterDynamicSetToughness(gs *GameState, target *Permanent,
 	return gs.RegisterContinuousEffect(ce)
 }
 
+// RegisterPoolDrivenSelfBoostPT registers a layer-7c continuous effect
+// giving `target` +N/+N where N is computed live from game state via
+// `compute` (e.g. Omnath, Locus of Mana: "+1/+1 for each unspent green
+// mana you have"). The boost is ADDITIVE (sublayer 7c) and self-only, so
+// it stacks correctly on top of the printed base P/T, +1/+1 counters,
+// and anthem effects — matching CR §613.4c.
+//
+// Because the value is read from MUTABLE mana-pool state, the
+// characteristics cache must be refreshed whenever the pool changes.
+// Registering one of these bumps gs.PoolDrivenPTEffects; the mana
+// mutators (AddMana, DrainAllPools) consult that counter to gate an
+// otherwise-skipped InvalidateCharacteristicsCache, so the common
+// pool-CDA-free game pays nothing. The matching decrement is
+// UnregisterPoolDrivenSelfBoostPT, called from the source's LTB hook.
+//
+// SourcePerm = target so the effect is also auto-reclaimed by
+// UnregisterContinuousEffectsForPermanent on the canonical
+// battlefield-exit paths.
+func RegisterPoolDrivenSelfBoostPT(gs *GameState, target *Permanent,
+	compute func(*GameState, *Permanent) int, sourceCardName, disc string) *ContinuousEffect {
+	if gs == nil || target == nil || compute == nil {
+		return nil
+	}
+	ts := gs.NextTimestamp()
+	ce := &ContinuousEffect{
+		Layer:          LayerPT,
+		Sublayer:       "c",
+		Timestamp:      ts,
+		SourcePerm:     target,
+		SourceCardName: sourceCardName,
+		ControllerSeat: target.Controller,
+		HandlerID:      "poolpt:" + disc + ":" + sourceCardName + ":" + itoaLayers(target.Timestamp) + ":" + itoaLayers(ts),
+		ApplyFn: func(g *GameState, p *Permanent, chars *Characteristics) {
+			if p != target {
+				return
+			}
+			n := compute(g, p)
+			chars.Power += n
+			chars.Toughness += n
+		},
+	}
+	gs.PoolDrivenPTEffects++
+	gs.InvalidateCharacteristicsCache()
+	return gs.RegisterContinuousEffect(ce)
+}
+
+// UnregisterPoolDrivenSelfBoostPT removes the pool-driven layer-7c P/T
+// effect for target and decrements the gate counter so it stays
+// balanced with the ETB-time increment. Call from the source card's
+// permanent_ltb hook. Idempotent: the continuous effect itself is also
+// reclaimed by the canonical exit paths, and the counter is clamped at
+// zero so a double-call can't drive it negative.
+func UnregisterPoolDrivenSelfBoostPT(gs *GameState, target *Permanent) {
+	if gs == nil || target == nil {
+		return
+	}
+	gs.UnregisterContinuousEffectsForPermanent(target)
+	if gs.PoolDrivenPTEffects > 0 {
+		gs.PoolDrivenPTEffects--
+	}
+	gs.InvalidateCharacteristicsCache()
+}
+
 // RegisterOpalescence wires the post-2017 oracle Opalescence:
 //   - Layer 4: each OTHER non-Aura enchantment is a creature in
 //     addition to its other types (self-exclusion via "other").

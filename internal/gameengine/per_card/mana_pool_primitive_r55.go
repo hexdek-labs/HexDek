@@ -50,12 +50,18 @@ func omnathLocusOfManaETB(gs *gameengine.GameState, perm *gameengine.Permanent) 
 		return
 	}
 	gameengine.RegisterManaPoolExemption(gs, perm, perm.Controller, []string{"G"})
+	// "Omnath gets +1/+1 for each unspent green mana you have." Layer-7c
+	// additive self-boost reading the controller's live green pool; the
+	// engine refreshes the characteristics cache on every pool change
+	// (gated on gs.PoolDrivenPTEffects) so the P/T tracks the pool.
+	gameengine.RegisterPoolDrivenSelfBoostPT(gs, perm,
+		func(g *gameengine.GameState, p *gameengine.Permanent) int {
+			return gameengine.UnspentGreenMana(g, p.Controller)
+		}, perm.Card.DisplayName(), "omnath_locus_of_mana")
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":         perm.Controller,
 		"exempt_color": "G",
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"power_scaling_per_unspent_green_mana_needs_phase7_layer7c_engine_hook")
 }
 
 func omnathLocusOfManaLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -67,6 +73,7 @@ func omnathLocusOfManaLTB(gs *gameengine.GameState, perm *gameengine.Permanent, 
 		return
 	}
 	gameengine.UnregisterManaPoolExemptionForPerm(gs, perm)
+	gameengine.UnregisterPoolDrivenSelfBoostPT(gs, perm)
 }
 
 // ---------------------------------------------------------------------

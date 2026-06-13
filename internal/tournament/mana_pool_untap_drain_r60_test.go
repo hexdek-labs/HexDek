@@ -138,6 +138,17 @@ func TestUntapDrain_OmnathRetainsGreenOnly(t *testing.T) {
 		Card: &gameengine.Card{
 			Name: "Omnath, Locus of Mana", TypeLine: "Legendary Creature",
 			Types: []string{"creature", "legendary", "elemental"}, Owner: 0,
+			// Omnath's printed base is 1/1. The fixture MUST stamp it: a
+			// 0/0 Omnath dies to SBA §704.5f during TakeTurn, its
+			// permanent_ltb unregisters the green exemption, and the
+			// end-step §106.4 drain then wipes the now-unexempt green — a
+			// fixture artifact, NOT a drain bug (DrainAllPools honors the
+			// partial-color exemption correctly; verified by the direct
+			// drain in TestUntapDrain_UpwellingRetainsAll's sibling path).
+			// With the real 1/1 base Omnath survives and the partial-color
+			// exemption is exercised as intended. Live P/T-tracks-green is
+			// pinned in per_card/mana_pool_pt_tracking_r63_test.go.
+			BasePower: 1, BaseToughness: 1,
 		},
 		Controller: 0, Owner: 0,
 		Counters: map[string]int{}, Flags: map[string]int{},

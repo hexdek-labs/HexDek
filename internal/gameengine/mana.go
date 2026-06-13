@@ -267,6 +267,12 @@ func AddMana(gs *GameState, seat *Seat, color string, amount int, source string)
 	p.Add(color, amount)
 	seat.ManaPool = p.Total()
 	if gs != nil {
+		// A pool-reading P/T effect (Omnath, Locus of Mana) must see the
+		// new total — refresh the characteristics cache. Gated so the
+		// common Omnath-free game pays nothing for this O(1) check.
+		if gs.PoolDrivenPTEffects > 0 {
+			gs.InvalidateCharacteristicsCache()
+		}
 		// Ride-along legality validator: credit in-window pool additions
 		// so cast-trigger mana (Birgi) doesn't read as an under-payment.
 		gs.Legality.NoteManaAdd(seat.Idx, amount)
@@ -658,6 +664,122 @@ func DrainAllPools(gs *GameState, prevPhase, prevStep string) {
 			})
 		}
 	}
+	// A pool-reading P/T effect (Omnath, Locus of Mana) must see the new
+	// totals after the §106.4 drain — its +N/+N drops as retained green
+	// is later spent, and non-retained colors leaving here change it too.
+	// Gated so the common pool-CDA-free game pays nothing.
+	if gs.PoolDrivenPTEffects > 0 {
+		gs.InvalidateCharacteristicsCache()
+	}
+}
+
+// UnspentGreenMana returns the amount of green mana currently in seat
+// seatIdx's pool, counting both plain green and any green-colored
+// restricted mana (CR §106.1b — restricted mana retains its color).
+// Used by pool-reading P/T effects such as Omnath, Locus of Mana
+// ("+1/+1 for each unspent green mana you have").
+func UnspentGreenMana(gs *GameState, seatIdx int) int {
+	return unspentColoredMana(gs, seatIdx, "G")
+}
+
+// UnspentRedMana returns the amount of red mana in seat seatIdx's pool
+// (plain + red restricted). Used by Leyline Tyrant's sacrifice ability
+// ("deals damage equal to the amount of red mana you have").
+func UnspentRedMana(gs *GameState, seatIdx int) int {
+	return unspentColoredMana(gs, seatIdx, "R")
+}
+
+func unspentColoredMana(gs *GameState, seatIdx int, color string) int {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return 0
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil || seat.Mana == nil {
+		return 0
+	}
+	n := 0
+	switch strings.ToUpper(color) {
+	case "W":
+		n = seat.Mana.W
+	case "U":
+		n = seat.Mana.U
+	case "B":
+		n = seat.Mana.B
+	case "R":
+		n = seat.Mana.R
+	case "G":
+		n = seat.Mana.G
+	case "C":
+		n = seat.Mana.C
+	}
+	for _, r := range seat.Mana.Restricted {
+		if strings.EqualFold(r.Color, color) {
+			n += r.Amount
+		}
+	}
+	return n
+}
+
+// ConsumeColoredMana removes up to `amount` mana of `color` from seat
+// seatIdx's pool (plain bucket first, then color-matched restricted
+// strands) and returns the amount actually removed. Used by effects that
+// pay a variable amount of a specific color as part of their resolution
+// (Leyline Tyrant: "pay any amount of {R}"). Keeps the legacy ManaPool
+// scalar and the characteristics cache (gated) in sync.
+func ConsumeColoredMana(gs *GameState, seatIdx int, color string, amount int) int {
+	if gs == nil || amount <= 0 || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return 0
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil || seat.Mana == nil {
+		return 0
+	}
+	p := seat.Mana
+	remaining := amount
+	var bucket *int
+	switch strings.ToUpper(color) {
+	case "W":
+		bucket = &p.W
+	case "U":
+		bucket = &p.U
+	case "B":
+		bucket = &p.B
+	case "R":
+		bucket = &p.R
+	case "G":
+		bucket = &p.G
+	case "C":
+		bucket = &p.C
+	}
+	taken := 0
+	if bucket != nil && *bucket > 0 {
+		t := remaining
+		if t > *bucket {
+			t = *bucket
+		}
+		*bucket -= t
+		remaining -= t
+		taken += t
+	}
+	for i := range p.Restricted {
+		if remaining <= 0 {
+			break
+		}
+		if strings.EqualFold(p.Restricted[i].Color, color) && p.Restricted[i].Amount > 0 {
+			t := remaining
+			if t > p.Restricted[i].Amount {
+				t = p.Restricted[i].Amount
+			}
+			p.Restricted[i].Amount -= t
+			remaining -= t
+			taken += t
+		}
+	}
+	seat.ManaPool = p.Total()
+	if gs.PoolDrivenPTEffects > 0 {
+		gs.InvalidateCharacteristicsCache()
+	}
+	return taken
 }
 
 // AddManaFromPermanent is the CR §605 "tap for mana" entry point — use

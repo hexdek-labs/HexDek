@@ -1231,6 +1231,9 @@ func registerDefaults() {
 	registerAshlingFlameDancerManaExemption(Global())
 	registerMagusOfTheCoffers(Global())
 	registerCavernOfSouls(Global())
+	// r63 mana-pool audit — Leyline Tyrant red-retention exemption +
+	// self-dies "pay any amount of {R}, deal that much" payoff.
+	registerLeylineTyrant(Global())
 	// R58 — counter-accumulator-threshold primitive + 4 ports.
 	registerHelixPinnacle(Global())
 	registerDarksteelReactor(Global())

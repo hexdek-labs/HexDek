@@ -411,6 +411,15 @@ type GameState struct {
 	// PoolExemptColors at DrainAllPools time (CR §106.4).
 	ManaPoolExemptions []*ManaPoolExemption
 
+	// PoolDrivenPTEffects counts the live layer-7c continuous effects
+	// whose P/T value is read from the mana pool (Omnath, Locus of Mana:
+	// "+1/+1 for each unspent green mana"). When > 0, the mana mutators
+	// (AddMana / DrainAllPools) refresh the characteristics cache so the
+	// P/T tracks the pool. Gated so the common pool-CDA-free game pays
+	// nothing. Incremented by RegisterPoolDrivenSelfBoostPT, decremented
+	// by UnregisterPoolDrivenSelfBoostPT (CR §613.2 live-value reads).
+	PoolDrivenPTEffects int
+
 	// GraveyardFlashbackGrants is the registry of source-driven
 	// "cards in your graveyard have flashback" continuous effects
 	// (e.g. Iroh, Grand Lotus; Lier, Disciple of the Drowned). Unlike
