@@ -46,7 +46,55 @@ var (
 	reAddManaPerSymbol    = regexp.MustCompile(`\{([WUBRGCwubrgc])\}`)
 	reAddManaPerCounter   = regexp.MustCompile(`^(?:([+0-9a-z/]+) )?counters? on (?:this|~|it)\b`)
 	reAddManaPerGraveyard = regexp.MustCompile(`^([a-z]+) cards? in your graveyard$`)
+
+	// reAddManaPerResidual matches the count-scaled mana payload that the
+	// parser sometimes smuggles into an `untyped_effect` ModKind's args[0]
+	// instead of emitting a clean `add_mana_per` node — the shape is
+	// "add_{<color>}_per:<count basis>" (Elvish Archdruid: "Add {G} for
+	// each Elf you control" → "add_{g}_per:elf you control"). Captures the
+	// color symbol and the basis text so resolveAddManaPerResidual can
+	// reuse the same count logic as the structured add_mana_per handler.
+	reAddManaPerResidual = regexp.MustCompile(`(?i)^add_\{([wubrgc])\}_per:(.+)$`)
 )
+
+// resolveAddManaPerResidual handles the "add_{<color>}_per:<basis>" residual
+// string (see reAddManaPerResidual). It computes the count from the basis and
+// adds that many mana of the named color, reusing addManaPerCount so the basis
+// vocabulary stays in lockstep with the structured add_mana_per handler.
+// Returns true when the residual matched (handled), false otherwise so the
+// caller can fall through to other residual patterns.
+func resolveAddManaPerResidual(gs *GameState, src *Permanent, raw string) bool {
+	if gs == nil || src == nil {
+		return false
+	}
+	m := reAddManaPerResidual.FindStringSubmatch(raw)
+	if m == nil {
+		return false
+	}
+	seat := controllerSeat(src)
+	if seat < 0 || seat >= len(gs.Seats) {
+		return false
+	}
+	color := strings.ToUpper(m[1])
+	basis := strings.ToLower(strings.TrimSpace(m[2]))
+	count, matched := addManaPerCount(gs, src, seat, basis)
+	if matched && count > 0 {
+		AddMana(gs, gs.Seats[seat], color, count, sourceName(src))
+	}
+	gs.LogEvent(Event{
+		Kind:   "add_mana_per",
+		Seat:   seat,
+		Source: sourceName(src),
+		Amount: count,
+		Details: map[string]interface{}{
+			"color":    color,
+			"basis":    basis,
+			"matched":  matched,
+			"residual": true,
+		},
+	})
+	return true
+}
 
 // resolveAddManaPer handles one add_mana_per ModificationEffect. It is
 // invoked from resolveModificationEffect's `add_mana_per` case.

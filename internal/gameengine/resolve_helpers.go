@@ -1904,7 +1904,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			Details: map[string]interface{}{
 				"raw":      modArgString(e.Args, 0),
 				"resolved": scResolved,
-				"lore":     func() int {
+				"lore": func() int {
 					if src != nil && src.Counters != nil {
 						return src.Counters["lore"]
 					}
@@ -4773,46 +4773,45 @@ var (
 	// like "scry 2", "surveil 3", "mill 5", "amass 2".
 	reKeywordActionCount = regexp.MustCompile(`(?i)\b(\d+)\s*$`)
 
-	reResPlayThisTurn   = regexp.MustCompile(`(?i)^you may (?:play|cast) (?:that card|it|those cards|them|this card) (?:this turn|until end of turn|for as long as it remains exiled)`)
+	reResPlayThisTurn = regexp.MustCompile(`(?i)^you may (?:play|cast) (?:that card|it|those cards|them|this card) (?:this turn|until end of turn|for as long as it remains exiled)`)
 	// reResPlayAsLongAsExiled detects the "while still in exile" variant of
 	// reResPlayThisTurn — these grants don't have a turn clock, so the EOT
 	// expiry shouldn't be attached (grant is consumed by RemoveZoneCastGrant
 	// when the card leaves exile, e.g. on cast resolution).
 	reResPlayAsLongAsExiled = regexp.MustCompile(`(?i)^you may (?:play|cast) (?:that card|it|those cards|them|this card) for as long as it remains exiled`)
-	reResExilePlay      = regexp.MustCompile(`(?i)^play exiled cards? until end of turn`)
-	reResExtraLand      = regexp.MustCompile(`(?i)^(?:you may play an )?extra land`)
-	reResGoad           = regexp.MustCompile(`(?i)^goad (?:it|that creature|target creature|each creature|pronoun)`)
-	reResRegenerate     = regexp.MustCompile(`(?i)^regenerate (?:target |that |this )?creature`)
-	reResAddManaColor   = regexp.MustCompile(`(?i)^(?:add(?:_two_of)?|that player adds) (?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)?(?: mana of)? any (?:one )?(?:color|type)`)
-	reResGainControl    = regexp.MustCompile(`(?i)^gain control of `)
-	reResReturnCreature = regexp.MustCompile(`(?i)^return (?:a |up to (?:one|two|three|four|five|six|seven|eight|nine|ten|\d+) (?:target )?)?(?:creatures?|permanents?)(?: (?:cards?|you control))? to (?:its|their) owner'?s? hands?`)
-	reResDrawXLoseX     = regexp.MustCompile(`(?i)^draw (\d+|x),? (?:then )?lose (\d+|x) life`)
-	reResReturnBF       = regexp.MustCompile(`(?i)^return (?:that card|it|this creature|that creature) (?:to the battlefield|from your graveyard to the battlefield) under (?:your|its owner'?s?) control`)
-	reResFight          = regexp.MustCompile(`(?i)^target creature you control fights target creature`)
-	reResSkipTurn       = regexp.MustCompile(`(?i)^skip (?:your )?next turn`)
-	reResChangeTgt      = regexp.MustCompile(`(?i)^(?:change target|you may choose new targets?)`)
-	reResExileSelf      = regexp.MustCompile(`(?i)^exile ~(?:,? then return (?:it|~) to the battlefield| with (?:three|two|\d+) time counters? on it)`)
-	reResPutCreatureBF  = regexp.MustCompile(`(?i)^you may put a (?:creature|land) card from among them onto the battlefield`)
-	reResTreasure       = regexp.MustCompile(`(?i)^you create (?:a|(\d+)) treasure tokens?`)
-	reResBolster        = regexp.MustCompile(`(?i)^bolster (\d+)`)
-	reResTapTarget      = regexp.MustCompile(`(?i)^tap (?:(\d+|x) target |target |enchanted |that )`)
-	reResUntapTarget    = regexp.MustCompile(`(?i)^untap (?:another target|target|this|that|enchanted)`)
-	reResCantBlock      = regexp.MustCompile(`(?i)^(?:up to \w+ target |target |it |that creature )?(?:creatures? )?can'?t block`)
-	reResMustAttack     = regexp.MustCompile(`(?i)^target (?:creature|permanent) (?:attacks?|blocks?) (?:this turn )?if able`)
-	reResEndTurn        = regexp.MustCompile(`(?i)^end the turn`)
-	reResDiscardDraw    = regexp.MustCompile(`(?i)^discard (?:up to (?:one|two|three|four|five|\d+) cards?|all the cards in your hand|(\d+|two|three|four|five|six|seven) cards?)[.,]? (?:then )?draw`)
-	reResDetain         = regexp.MustCompile(`(?i)^detain target`)
-	reResPhaseOut       = regexp.MustCompile(`(?i)^target (?:creature|permanent) phases? out`)
-	reResExperience     = regexp.MustCompile(`(?i)^you get an experience counter`)
-	reResOppLoseHalf    = regexp.MustCompile(`(?i)^that player loses half (?:their|his or her) life`)
-	reResDamageToSelf   = regexp.MustCompile(`(?i)^target creature deals damage (?:to itself|equal to its power)`)
-	reResOppDiscard     = regexp.MustCompile(`(?i)^target opponent (?:discards|exiles) (?:a card|(\d+) cards?) (?:from|at random)`)
-	reResReturnFromGY   = regexp.MustCompile(`(?i)^(?:return|put) (?:target |that |a )?card (?:from (?:your|a|target player'?s?) graveyard|in your graveyard) (?:on (?:the )?(?:top|bottom) of|to|into) (?:your|its owner'?s?|their) (?:library|hand)`)
-	reResOppCreatureNeg = regexp.MustCompile(`(?i)^creatures your opponents control get -(\d+)/-(\d+)`)
-	reResLoseLifeForX   = regexp.MustCompile(`(?i)^you lose (\d+) life for each`)
-	reResDrawSeven      = regexp.MustCompile(`(?i)^draw seven cards`)
+	reResExilePlay          = regexp.MustCompile(`(?i)^play exiled cards? until end of turn`)
+	reResExtraLand          = regexp.MustCompile(`(?i)^(?:you may play an )?extra land`)
+	reResGoad               = regexp.MustCompile(`(?i)^goad (?:it|that creature|target creature|each creature|pronoun)`)
+	reResRegenerate         = regexp.MustCompile(`(?i)^regenerate (?:target |that |this )?creature`)
+	reResAddManaColor       = regexp.MustCompile(`(?i)^(?:add(?:_two_of)?|that player adds) (?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)?(?: mana of)? any (?:one )?(?:color|type)`)
+	reResGainControl        = regexp.MustCompile(`(?i)^gain control of `)
+	reResReturnCreature     = regexp.MustCompile(`(?i)^return (?:a |up to (?:one|two|three|four|five|six|seven|eight|nine|ten|\d+) (?:target )?)?(?:creatures?|permanents?)(?: (?:cards?|you control))? to (?:its|their) owner'?s? hands?`)
+	reResDrawXLoseX         = regexp.MustCompile(`(?i)^draw (\d+|x),? (?:then )?lose (\d+|x) life`)
+	reResReturnBF           = regexp.MustCompile(`(?i)^return (?:that card|it|this creature|that creature) (?:to the battlefield|from your graveyard to the battlefield) under (?:your|its owner'?s?) control`)
+	reResFight              = regexp.MustCompile(`(?i)^target creature you control fights target creature`)
+	reResSkipTurn           = regexp.MustCompile(`(?i)^skip (?:your )?next turn`)
+	reResChangeTgt          = regexp.MustCompile(`(?i)^(?:change target|you may choose new targets?)`)
+	reResExileSelf          = regexp.MustCompile(`(?i)^exile ~(?:,? then return (?:it|~) to the battlefield| with (?:three|two|\d+) time counters? on it)`)
+	reResPutCreatureBF      = regexp.MustCompile(`(?i)^you may put a (?:creature|land) card from among them onto the battlefield`)
+	reResTreasure           = regexp.MustCompile(`(?i)^you create (?:a|(\d+)) treasure tokens?`)
+	reResBolster            = regexp.MustCompile(`(?i)^bolster (\d+)`)
+	reResTapTarget          = regexp.MustCompile(`(?i)^tap (?:(\d+|x) target |target |enchanted |that )`)
+	reResUntapTarget        = regexp.MustCompile(`(?i)^untap (?:another target|target|this|that|enchanted)`)
+	reResCantBlock          = regexp.MustCompile(`(?i)^(?:up to \w+ target |target |it |that creature )?(?:creatures? )?can'?t block`)
+	reResMustAttack         = regexp.MustCompile(`(?i)^target (?:creature|permanent) (?:attacks?|blocks?) (?:this turn )?if able`)
+	reResEndTurn            = regexp.MustCompile(`(?i)^end the turn`)
+	reResDiscardDraw        = regexp.MustCompile(`(?i)^discard (?:up to (?:one|two|three|four|five|\d+) cards?|all the cards in your hand|(\d+|two|three|four|five|six|seven) cards?)[.,]? (?:then )?draw`)
+	reResDetain             = regexp.MustCompile(`(?i)^detain target`)
+	reResPhaseOut           = regexp.MustCompile(`(?i)^target (?:creature|permanent) phases? out`)
+	reResExperience         = regexp.MustCompile(`(?i)^you get an experience counter`)
+	reResOppLoseHalf        = regexp.MustCompile(`(?i)^that player loses half (?:their|his or her) life`)
+	reResDamageToSelf       = regexp.MustCompile(`(?i)^target creature deals damage (?:to itself|equal to its power)`)
+	reResOppDiscard         = regexp.MustCompile(`(?i)^target opponent (?:discards|exiles) (?:a card|(\d+) cards?) (?:from|at random)`)
+	reResReturnFromGY       = regexp.MustCompile(`(?i)^(?:return|put) (?:target |that |a )?card (?:from (?:your|a|target player'?s?) graveyard|in your graveyard) (?:on (?:the )?(?:top|bottom) of|to|into) (?:your|its owner'?s?|their) (?:library|hand)`)
+	reResOppCreatureNeg     = regexp.MustCompile(`(?i)^creatures your opponents control get -(\d+)/-(\d+)`)
+	reResLoseLifeForX       = regexp.MustCompile(`(?i)^you lose (\d+) life for each`)
+	reResDrawSeven          = regexp.MustCompile(`(?i)^draw seven cards`)
 )
-
 
 func resolveResidualByText(gs *GameState, src *Permanent, raw string) bool {
 	seat := controllerSeat(src)
@@ -4822,6 +4821,15 @@ func resolveResidualByText(gs *GameState, src *Permanent, raw string) bool {
 	// first so a modal body isn't mis-matched by a single-verb pattern
 	// below. Returns true (handled) when the modal structure is recognized.
 	if ResolveModalText(gs, src, raw) {
+		return true
+	}
+
+	// Count-scaled mana smuggled into an untyped_effect residual:
+	// "add_{<color>}_per:<basis>" (Elvish Archdruid). Handled first so the
+	// mana actually reaches the pool — and, paired with the IsManaAbility
+	// recognition of the same shape, so the ability resolves inline per
+	// CR §605.3a rather than fizzling to the untyped_effect telemetry log.
+	if resolveAddManaPerResidual(gs, src, raw) {
 		return true
 	}
 
@@ -5158,7 +5166,6 @@ func resolveResidualByText(gs *GameState, src *Permanent, raw string) bool {
 
 	return false
 }
-
 
 // countPerFilter counts battlefield objects matching a "for each ..."
 // filter string (r63 draw_per/lose_life_per fix). Recognized shapes

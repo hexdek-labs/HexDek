@@ -139,7 +139,21 @@ func effectProducesMana(e gameast.Effect) bool {
 		// §605.3a rather than using the stack — otherwise Gaea's Cradle
 		// / Cabal Coffers / filter lands can't be tapped mid-cost to
 		// pay for a spell and could be illegally responded to.
-		return manaProducingModKinds[v.ModKind]
+		if manaProducingModKinds[v.ModKind] {
+			return true
+		}
+		// A handful of count-scaled creature mana abilities mis-parse to
+		// the catch-all `untyped_effect` ModKind with the count-scaled
+		// payload smuggled into args[0] as "add_{<color>}_per:<basis>"
+		// (Elvish Archdruid: "{T}: Add {G} for each Elf you control").
+		// That is unambiguously a §605.1a mana ability — recognize the
+		// exact emitted shape so it resolves inline (and produces mana,
+		// via the matching resolveResidualByText arm) instead of being
+		// pushed onto the stack as a non-mana activated ability.
+		if v.ModKind == "untyped_effect" && reAddManaPerResidual.MatchString(modArgString(v.Args, 0)) {
+			return true
+		}
+		return false
 	case *gameast.Sequence:
 		for _, sub := range v.Items {
 			if effectProducesMana(sub) {
@@ -567,6 +581,39 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 					},
 				})
 			}
+		}
+		// Discard-your-hand cost (CR §602.1b). The parser emits this as a
+		// free-text "discard your hand" entry in Cost.Extra rather than a
+		// numeric Cost.Discard, so the structured Discard block above never
+		// saw it — every "discard your hand, …: …" ability was being
+		// activated for free. This bites the mana abilities Lion's Eye
+		// Diamond and Diamond Lion ("discard your hand, Sacrifice this:
+		// Add three mana of any one color") — they're §605.1a mana
+		// abilities that resolve inline (AddMana), but until now did so
+		// without paying the hand. Discarding the whole hand is always
+		// affordable (zero cards is a legal "discard your hand"), so no
+		// affordability gate / tap-rollback is needed. Routes through
+		// DiscardCard so Madness/Mayhem/Tergrid/card_discarded triggers and
+		// Turn.Discarded all observe it, exactly like the numeric path.
+		for _, extra := range ab.Cost.Extra {
+			if !strings.EqualFold(strings.TrimSpace(extra), "discard your hand") {
+				continue
+			}
+			for n := len(seat.Hand); n > 0 && len(seat.Hand) > 0; n-- {
+				card := seat.Hand[len(seat.Hand)-1]
+				DiscardCard(gs, card, seatIdx)
+				gs.LogEvent(Event{
+					Kind:   "discard",
+					Seat:   seatIdx,
+					Source: perm.Card.DisplayName(),
+					Details: map[string]interface{}{
+						"card":   card.DisplayName(),
+						"reason": "activation_cost",
+						"rule":   "602.1b",
+					},
+				})
+			}
+			break
 		}
 		// Exile-self cost (Channel and similar).
 		if ab.Cost.ExileSelf {
