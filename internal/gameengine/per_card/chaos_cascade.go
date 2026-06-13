@@ -67,6 +67,7 @@ func possibilityStormTrigger(gs *gameengine.GameState, perm *gameengine.Permanen
 		top := seat.Library[0]
 		gameengine.MoveCard(gs, top, casterSeat, "library", "exile", "possibility-storm-reveal")
 		if len(seat.Library) >= before {
+			gameengine.LogLoopGuardFired(gs, "move_no_progress", map[string]interface{}{"handler": "possibility_storm"})
 			break // no progress (replacement bounce / §800.4a no-op) — never spin
 		}
 		exiled = append(exiled, top)
@@ -193,6 +194,7 @@ func chaosWandActivated(gs *gameengine.GameState, src *gameengine.Permanent, abi
 		top := oppSeat.Library[0]
 		gameengine.MoveCard(gs, top, targetSeat, "library", "exile", "chaos-wand-reveal")
 		if len(oppSeat.Library) >= before {
+			gameengine.LogLoopGuardFired(gs, "move_no_progress", map[string]interface{}{"handler": "chaos_wand"})
 			break // no progress (replacement bounce / §800.4a no-op) — never spin
 		}
 		exiled = append(exiled, top)

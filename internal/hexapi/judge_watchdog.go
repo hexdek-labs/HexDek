@@ -72,6 +72,8 @@ type judgeWatchdog struct {
 	gameRate   float64 // P(game gets game-level dimensions)
 	corpusRate float64 // P(game ALSO gets corpus dimensions); <= gameRate
 	logPath    string
+	// livenessBudget arms a per-sampled-game hang timer (0 = off).
+	livenessBudget time.Duration
 
 	logMu   sync.Mutex
 	logFile *os.File
@@ -102,7 +104,18 @@ func newJudgeWatchdogFromEnv() *judgeWatchdog {
 	if path == "" {
 		path = defaultJudgeLogPath
 	}
-	return &judgeWatchdog{gameRate: rate, corpusRate: corpus, logPath: path}
+	// LIVENESS hang self-report: a sampled game still running after
+	// this budget emits a liveness/wall_clock record (the offline
+	// firehose's WatchdogViolation shape, live). Default 10m — far
+	// above any legitimate grinder game, cheap (one timer per SAMPLED
+	// game only). HEXDEK_JUDGE_LIVENESS_BUDGET=0 disables.
+	budget := 10 * time.Minute
+	if bs := os.Getenv("HEXDEK_JUDGE_LIVENESS_BUDGET"); bs != "" {
+		if d, err := time.ParseDuration(bs); err == nil {
+			budget = d
+		}
+	}
+	return &judgeWatchdog{gameRate: rate, corpusRate: corpus, logPath: path, livenessBudget: budget}
 }
 
 // parseJudgeRate parses a sample-rate env value, clamped to [0,1];
@@ -188,6 +201,11 @@ type judgeGameRun struct {
 	legality *gameengine.LegalityValidator
 	corpus   bool
 	flagged  int
+	// LIVENESS: game start for the elapsed measure; the armed hang
+	// timer (nil when the budget is 0); finished guards double-fire
+	// between the timer goroutine and Finish.
+	startedAt     time.Time
+	livenessTimer *time.Timer
 	// seen dedupes repeated invariant reports within the game — a
 	// persistent violation (e.g. a broken census) would otherwise
 	// re-log every turn.
@@ -207,18 +225,44 @@ func (w *judgeWatchdog) beginGame(rng *rand.Rand, seed int64, deckKeys []string)
 		return nil
 	}
 	id := w.sampledGames.Add(1)
-	return &judgeGameRun{
-		w:        w,
-		id:       id,
-		seed:     seed,
-		deckKeys: deckKeys,
-		legality: gameengine.NewLegalityValidator(seed),
+	jr := &judgeGameRun{
+		w:         w,
+		id:        id,
+		seed:      seed,
+		deckKeys:  deckKeys,
+		startedAt: time.Now(),
+		legality:  gameengine.NewLegalityValidator(seed),
 		// Corpus games are a subset of sampled games: the same roll
 		// that passed gameRate also decides corpus membership, so
 		// P(corpus) == corpusRate overall.
 		corpus: roll < w.corpusRate,
 		seen:   make(map[string]bool),
 	}
+	if w.livenessBudget > 0 {
+		// Hang self-report: if Finish hasn't disarmed this within the
+		// budget, the game is presumed stuck — emit the live form of
+		// the firehose's liveness/wall_clock and write the triage
+		// record with the repro seed. The timer goroutine costs nothing
+		// until it fires; write() is mutex-guarded so the concurrent
+		// emit is safe.
+		budget := w.livenessBudget
+		jr.livenessTimer = time.AfterFunc(budget, func() {
+			v := judge.WatchdogViolation(jr.seed, int(jr.id), budget)
+			w.flaggedGames.Add(1)
+			w.write(judgeViolationRecord{
+				GameSeed:  jr.seed,
+				SampledID: jr.id,
+				DeckKeys:  jr.deckKeys,
+				Dimension: judge.DimensionLiveness,
+				Surface:   judge.SurfaceLiveness,
+				Rule:      v.Name,
+				Severity:  v.Severity,
+				Detail:    v.Message,
+			})
+			log.Printf("judge-watchdog: LIVENESS — sampled game seed=%d STILL RUNNING at %s budget (decks=%v)", jr.seed, budget, jr.deckKeys)
+		})
+	}
+	return jr
 }
 
 // Attach installs the ride-along legality validator on the game state.
@@ -271,10 +315,54 @@ func (jr *judgeGameRun) Finish(gs *gameengine.GameState, feynman []judge.Validat
 		return
 	}
 	defer func() { _ = recover() }()
+	if jr.livenessTimer != nil {
+		jr.livenessTimer.Stop()
+	}
 
 	finalTurn := 0
 	if gs != nil {
 		finalTurn = gs.Turn
+	}
+
+	// LIVENESS — post-game snapshot: cap-contract audit over the
+	// uniform loop_guard_fired events plus event-flood / elapsed checks
+	// (judge/liveness.go). MaxTurns is 0 here (the grinder's turn cap
+	// already ends games cleanly; turn_overrun is a driver-side rule).
+	if gs != nil {
+		var capFires []string
+		capSeen := map[string]bool{}
+		for i := range gs.EventLog {
+			ev := &gs.EventLog[i]
+			if ev.Kind != gameengine.EventLoopGuardFired {
+				continue
+			}
+			if g, _ := ev.Details["guard"].(string); g != "" && !capSeen[g] {
+				capSeen[g] = true
+				capFires = append(capFires, g)
+			}
+		}
+		ended := gs.Flags != nil && gs.Flags["ended"] == 1
+		for _, v := range judge.CheckLiveness(judge.LivenessSnapshot{
+			Seed: jr.seed, GameIdx: int(jr.id),
+			Turns: finalTurn, MaxTurns: 0,
+			Ended:      ended,
+			EventCount: len(gs.EventLog), EventBudget: 50000,
+			CapFires: capFires,
+			Elapsed:  time.Since(jr.startedAt), Budget: jr.w.livenessBudget,
+		}) {
+			jr.flagged++
+			jr.w.write(judgeViolationRecord{
+				GameSeed:  jr.seed,
+				SampledID: jr.id,
+				DeckKeys:  jr.deckKeys,
+				Dimension: judge.DimensionLiveness,
+				Surface:   judge.SurfaceLiveness,
+				Rule:      v.Name,
+				Severity:  v.Severity,
+				Turn:      finalTurn,
+				Detail:    v.Message,
+			})
+		}
 	}
 
 	// LEGALITY — drain the ride-along validator.

@@ -178,6 +178,7 @@ func StateBasedActions(gs *GameState) bool {
 	}
 
 	if passes >= maxPasses {
+		LogLoopGuardFired(gs, "sba_max_passes", map[string]interface{}{"passes": passes})
 		gs.LogEvent(Event{
 			Kind:   "sba_cap_hit",
 			Seat:   -1,

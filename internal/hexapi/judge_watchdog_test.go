@@ -388,3 +388,118 @@ func TestJudgeWatchdog_GrinderThroughput(t *testing.T) {
 			rate, eff, 127/(1+eff/100))
 	}
 }
+
+// ---------------------------------------------------------------------------
+// LIVENESS wiring (r63 follow-up: production hang self-report)
+// ---------------------------------------------------------------------------
+
+// readTriageLogIfAny is readTriageLog tolerant of a not-yet-created
+// file (the lazy-open writer creates it on first record; no records =
+// no file, which several liveness tests treat as success).
+func readTriageLogIfAny(t *testing.T, path string) []judgeViolationRecord {
+	t.Helper()
+	if _, err := os.Stat(path); err != nil {
+		return nil
+	}
+	return readTriageLog(t, path)
+}
+
+
+// TestJudgeWatchdog_LivenessHangTimerFires pins the live wall_clock
+// self-report: a sampled game that never reaches Finish writes a
+// liveness record with the repro seed once the budget elapses.
+func TestJudgeWatchdog_LivenessHangTimerFires(t *testing.T) {
+	logPath := filepath.Join(t.TempDir(), "violations.jsonl")
+	w := &judgeWatchdog{gameRate: 1.0, logPath: logPath, livenessBudget: 50 * time.Millisecond}
+	rng := rand.New(rand.NewSource(1))
+	jr := w.beginGame(rng, 60606, []string{"deckA"})
+	if jr == nil || jr.livenessTimer == nil {
+		t.Fatal("sampled game with a liveness budget must arm the hang timer")
+	}
+	// Simulate the hang: never call Finish.
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		recs := readTriageLogIfAny(t, logPath)
+		if len(recs) > 0 {
+			r := recs[0]
+			if r.Dimension != judge.DimensionLiveness || r.Rule != "wall_clock" {
+				t.Fatalf("hang record = %+v, want liveness/wall_clock", r)
+			}
+			if r.GameSeed != 60606 {
+				t.Errorf("seed = %d, want 60606", r.GameSeed)
+			}
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatal("hang timer never wrote the liveness record")
+}
+
+// TestJudgeWatchdog_LivenessFinishDisarmsTimer: a game that finishes
+// inside the budget must NOT self-report.
+func TestJudgeWatchdog_LivenessFinishDisarmsTimer(t *testing.T) {
+	logPath := filepath.Join(t.TempDir(), "violations.jsonl")
+	w := &judgeWatchdog{gameRate: 1.0, logPath: logPath, livenessBudget: 80 * time.Millisecond}
+	rng := rand.New(rand.NewSource(1))
+	jr := w.beginGame(rng, 777, nil)
+
+	gs := gameengine.NewGameState(2, rand.New(rand.NewSource(2)), nil)
+	gs.Flags["ended"] = 1
+	jr.Finish(gs, nil, nil)
+
+	time.Sleep(200 * time.Millisecond) // past the budget
+	for _, r := range readTriageLogIfAny(t, logPath) {
+		if r.Dimension == judge.DimensionLiveness && r.Rule == "wall_clock" {
+			t.Fatalf("finished game self-reported a hang: %+v", r)
+		}
+	}
+}
+
+// TestJudgeWatchdog_LivenessCapContractViaUniformEvent: a game whose
+// event log carries a loop_guard_fired but no decided end must write a
+// liveness/cap_contract record — scanning the UNIFORM event kind, not
+// per-guard vocabulary.
+func TestJudgeWatchdog_LivenessCapContractViaUniformEvent(t *testing.T) {
+	logPath := filepath.Join(t.TempDir(), "violations.jsonl")
+	w := &judgeWatchdog{gameRate: 1.0, logPath: logPath}
+	rng := rand.New(rand.NewSource(1))
+	jr := w.beginGame(rng, 314159, nil)
+
+	gs := gameengine.NewGameState(2, rand.New(rand.NewSource(2)), nil)
+	gameengine.LogLoopGuardFired(gs, "drain_iteration_cap", map[string]interface{}{"stack_remaining": 3})
+	// Game did NOT end: the guard's abort-as-draw contract is broken.
+
+	jr.Finish(gs, nil, nil)
+	found := false
+	for _, r := range readTriageLog(t, logPath) {
+		if r.Dimension == judge.DimensionLiveness && r.Rule == "cap_contract" {
+			found = true
+			if r.GameSeed != 314159 {
+				t.Errorf("seed = %d, want 314159", r.GameSeed)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("cap_contract record not written for guard-fired-without-end")
+	}
+}
+
+// TestLoopGuardFired_UniformEventShape pins the engine helper: every
+// guard emission carries Kind=loop_guard_fired + the guard name in
+// both Source and Details.
+func TestLoopGuardFired_UniformEventShape(t *testing.T) {
+	gs := gameengine.NewGameState(2, rand.New(rand.NewSource(3)), nil)
+	gameengine.LogLoopGuardFired(gs, "sba_max_passes", map[string]interface{}{"passes": 40})
+	var ev *gameengine.Event
+	for i := range gs.EventLog {
+		if gs.EventLog[i].Kind == gameengine.EventLoopGuardFired {
+			ev = &gs.EventLog[i]
+		}
+	}
+	if ev == nil {
+		t.Fatal("no loop_guard_fired event")
+	}
+	if ev.Source != "sba_max_passes" || ev.Details["guard"] != "sba_max_passes" || ev.Details["passes"] != 40 {
+		t.Errorf("malformed uniform event: %+v", ev)
+	}
+}
