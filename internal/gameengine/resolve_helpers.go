@@ -973,14 +973,17 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 				}
 			}
 			if bestToken != nil && bestToken.Card != nil {
-				// Create a copy of the token.
-				tokenCard := &Card{
-					Name:          bestToken.Card.Name,
-					Owner:         seat,
-					BasePower:     bestToken.Card.BasePower,
-					BaseToughness: bestToken.Card.BaseToughness,
-					Types:         append([]string{}, bestToken.Card.Types...),
-					Colors:        append([]string{}, bestToken.Card.Colors...),
+				// Create a copy of the token. InstanceID gap-walk: route
+				// through MintTokenAsCopyOf so the populated token gets a
+				// fresh TK-provenance ID (source recorded as
+				// SourceInstanceID) and a faithful full-characteristic
+				// copy. The prior bare &Card{} left the InstanceID unminted
+				// (a battlefield permanent invisible to the mint census) and
+				// silently dropped abilities/keywords/subtypes.
+				tokenCard := MintTokenAsCopyOf(gs, bestToken.Card, seat, currentMintEnablerID(gs))
+				if tokenCard == nil {
+					tokenCard = bestToken.Card.DeepCopy()
+					tokenCard.Owner = seat
 				}
 				newPerm := &Permanent{
 					Card:          tokenCard,
@@ -3227,15 +3230,17 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		// for permanent copies, create a token copy of the source.
 		cpSeat := controllerSeat(src)
 		if src != nil && src.Card != nil && cpSeat >= 0 && cpSeat < len(gs.Seats) {
-			// Create a token copy of the source permanent.
-			tokenCard := &Card{
-				Name:          src.Card.Name,
-				Owner:         cpSeat,
-				BasePower:     src.Card.BasePower,
-				BaseToughness: src.Card.BaseToughness,
-				Types:         append([]string{}, src.Card.Types...),
-				Colors:        append([]string{}, src.Card.Colors...),
-				CMC:           src.Card.CMC,
+			// Create a token copy of the source permanent. InstanceID
+			// gap-walk: route through MintTokenAsCopyOf (mirrors
+			// resolveCopyPermanent's §707.10f path) so the token gets a
+			// fresh TK-provenance ID and a faithful full-characteristic
+			// copy. The prior bare &Card{} left the InstanceID unminted and
+			// copied only Name/P/T/Types/Colors/CMC — dropping abilities,
+			// keywords and subtypes from the copy.
+			tokenCard := MintTokenAsCopyOf(gs, src.Card, cpSeat, currentMintEnablerID(gs))
+			if tokenCard == nil {
+				tokenCard = src.Card.DeepCopy()
+				tokenCard.Owner = cpSeat
 			}
 			copyPerm := &Permanent{
 				Card:          tokenCard,
