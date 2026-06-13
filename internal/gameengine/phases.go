@@ -815,6 +815,11 @@ func UntapAll(gs *GameState, seatIdx int) {
 		return
 	}
 
+	// CR §502.2 — generic `aura_no_untap` tap-lock auras (Waterknot,
+	// Claustrophobia, …): the enchanted permanent doesn't untap. Computed
+	// once from current attachment state.
+	noUntapAuraTargets := collectNoUntapAuraTargets(gs)
+
 	for _, p := range seat.Battlefield {
 		if p == nil || p.PhasedOut {
 			continue
@@ -828,7 +833,7 @@ func UntapAll(gs *GameState, seatIdx int) {
 		}
 
 		// "Doesn't untap during your untap step" — skip this permanent.
-		if p.DoesNotUntap {
+		if p.DoesNotUntap || noUntapAuraTargets[p] {
 			if p.Tapped {
 				cardName := "<unknown>"
 				if p.Card != nil {
