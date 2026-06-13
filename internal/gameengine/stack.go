@@ -1942,7 +1942,50 @@ func ResolveStackTop(gs *GameState) {
 	}
 
 	if isSpell && item.Card != nil {
-		if isPermanent {
+		// r63 §608.3a guard (eliminated-seat-frontier hunt, CardIdentity
+		// double-zone class — symmetric to the §608.2g guard below): if a
+		// triggered ability that resolved ABOVE this spell already moved
+		// its card off the stack into another zone — Possibility Storm /
+		// Knowledge Pool "that player exiles it" — then the spell has LEFT
+		// the stack and does not resolve onto the battlefield. Without this,
+		// the original permanent spell still entered the battlefield while
+		// its card also sat in the exile pile (exile + battlefield
+		// double-zone: seed-7 Mysidian Elder / Intrepid Hero / Outrage
+		// Shaman, seed-13 Cryptothrall). A non-copy real card on the stack
+		// is in NO zone during normal resolution (removed from hand at
+		// cast), so a present-elsewhere card was relocated by an external
+		// effect. Copies (§707.10f) are excluded — their Card pointer can
+		// legitimately match the battlefield permanent they copy.
+		//
+		// SCOPED TO HAND-CASTS: a spell cast from exile / graveyard /
+		// library (impulse, foretell, plot, flashback, cast-from-exile
+		// grants) legitimately still has its card sitting in that source
+		// zone at resolution (the cast does not pre-clear it), so it must
+		// NOT be treated as relocated — that would wrongly fizzle it. A
+		// hand-cast spell, by contrast, was removed from the hand at cast
+		// (§601.2a) and occupies NO zone during normal resolution, so
+		// finding its card elsewhere unambiguously means an external effect
+		// (Possibility Storm et al.) moved it off the stack.
+		castFromHand := item.CastZone == "" || item.CastZone == ZoneHand
+		alreadyRelocated := !item.IsCopy && castFromHand && cardPresentOffStack(gs, item.Card)
+		if alreadyRelocated {
+			// The card already left the stack (an effect above it, or its
+			// own resolution, relocated it) — it does not also resolve to
+			// the battlefield (§608.3a) or the graveyard (§608.2g). The
+			// card is already in its correct zone; routing it again is the
+			// double-zone bug. This single branch subsumes both the
+			// permanent and the non-permanent self-relocation cases.
+			gs.LogEvent(Event{
+				Kind:   "resolve",
+				Seat:   item.Controller,
+				Source: name,
+				Details: map[string]interface{}{
+					"to":     "already_relocated",
+					"rule":   "608.3a",
+					"reason": "card_left_stack_before_post_resolution_routing",
+				},
+			})
+		} else if isPermanent {
 			// CR §608.3a: the permanent spell becomes a permanent under
 			// its controller's control on the battlefield. Mirrors Python
 			// _resolve_stack_top's is_permanent_spell branch. If this was
@@ -2057,40 +2100,20 @@ func ResolveStackTop(gs *GameState) {
 			// wrong and a sibling of the Etali §400.7c cluster
 			// closed in PR #685.
 			//
-			// r63 §608.2g guard (eliminated-seat-frontier hunt,
-			// CardIdentity double-zone class): if the spell's OWN
-			// resolution already moved its card to another zone — Green
-			// Sun's Zenith "Shuffle ~ into its owner's library", a
-			// self-exiling sorcery, a self-bounce — then the card has
-			// left the stack and §608.2g does NOT also drop it into the
-			// graveyard (the rule routes it to the graveyard only "as the
-			// final part of its resolution" while it is still the spell on
-			// the stack). Without this guard the card double-zones
-			// (library + graveyard): seed-77 game 939 GSZ produced 254
-			// CardIdentity hits from this exact path.
-			if cardPresentOffStack(gs, item.Card) {
-				gs.LogEvent(Event{
-					Kind:   "resolve",
-					Seat:   item.Controller,
-					Source: name,
-					Details: map[string]interface{}{
-						"to":     "already_relocated",
-						"rule":   "608.2g",
-						"reason": "spell_effect_moved_card_off_stack",
-					},
-				})
-			} else {
-				MoveCard(gs, item.Card, item.Card.Owner, "stack", "graveyard", "resolve")
-				gs.LogEvent(Event{
-					Kind:   "resolve",
-					Seat:   item.Controller,
-					Source: name,
-					Details: map[string]interface{}{
-						"to":   "graveyard",
-						"rule": "608.2g",
-					},
-				})
-			}
+			// (The self-relocation guard — Green Sun's Zenith self-shuffle,
+			// self-exile/self-bounce sorceries — is the `alreadyRelocated`
+			// branch at the top of this block; by here the card is still on
+			// the stack, so §608.2g routes it to the graveyard normally.)
+			MoveCard(gs, item.Card, item.Card.Owner, "stack", "graveyard", "resolve")
+			gs.LogEvent(Event{
+				Kind:   "resolve",
+				Seat:   item.Controller,
+				Source: name,
+				Details: map[string]interface{}{
+					"to":   "graveyard",
+					"rule": "608.2g",
+				},
+			})
 		}
 	}
 }

@@ -70,6 +70,37 @@ func TestResolve608_2g_SelfRelocatedSpell_NotAlsoGraveyarded(t *testing.T) {
 	}
 }
 
+func TestResolve608_3a_RelocatedPermanentSpell_NotAlsoBattlefielded(t *testing.T) {
+	// §608.3a: a permanent spell whose card was moved off the stack by a
+	// triggered ability resolving ABOVE it (Possibility Storm / Knowledge
+	// Pool "that player exiles it") has left the stack and does NOT also
+	// enter the battlefield. Modeled by pre-placing the creature card in
+	// exile (where Possibility Storm put it) while its spell StackItem
+	// resolves. Seed-13 Cryptothrall / seed-7 Mysidian Elder shape.
+	gs := NewGameState(2, nil, nil)
+	gs.EventPolicy = EventLogFull
+
+	creat := &Card{Name: "Exiled Mid-Cast Creature", Owner: 0,
+		Types: []string{"creature"}, BasePower: 2, BaseToughness: 2}
+	gs.Seats[0].Exile = append(gs.Seats[0].Exile, creat)
+	gs.Stack = append(gs.Stack, &StackItem{
+		ID: 1, Controller: 0, Card: creat, Kind: "spell",
+	})
+
+	ResolveStackTop(gs)
+
+	_, gy, exile, bf := countCardInZones(gs, creat)
+	if exile != 1 {
+		t.Errorf("relocated permanent spell should remain in exile exactly once, got exile=%d", exile)
+	}
+	if bf != 0 {
+		t.Errorf("§608.3a must NOT also put a relocated permanent spell onto the battlefield, got bf=%d (double-zone bug)", bf)
+	}
+	if gy != 0 {
+		t.Errorf("relocated permanent spell must not go to graveyard either, got gy=%d", gy)
+	}
+}
+
 func TestResolve608_2g_VanillaSorcery_StillGraveyarded(t *testing.T) {
 	// Control: an ordinary sorcery NOT relocated by its own effect still
 	// goes to the graveyard per §608.2g.
