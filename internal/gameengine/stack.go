@@ -2387,7 +2387,24 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 		// for Thassa's Oracle which reads the library AFTER any ETB scrys/
 		// tutors resolve. The hook itself isn't a trigger but its effects may
 		// FireCardTrigger, which appends into this same batch.
+		//
+		// CR §706.9 "enters as a copy": clone handlers (Phantasmal Image,
+		// Clone, Phyrexian Metamorph, …) apply the copy HERE via
+		// BecomeCopyOfCard, which is AFTER ApplyStaticETBCounters /
+		// ApplyEntersTappedUnless ran (against the pre-copy identity). Those
+		// §614.1d self-replacements ("enters with N counters", "enters
+		// tapped") belong to the COPIED card, so re-evaluate them once the
+		// hook has established the copy. Gated on CopiedTargetInstanceID
+		// changing during the hook, so only a real enters-as-a-copy triggers
+		// the re-apply (and a clone's own printed card has no such static, so
+		// the earlier pass added nothing — no double-count).
+		preCopySnap := perm.CopiableSnapshot
 		InvokeETBHook(gs, perm)
+		if perm.CopiableSnapshot != nil && perm.CopiableSnapshot != preCopySnap {
+			ApplyStaticETBCounters(gs, perm)
+			ApplyEntersTappedUnless(gs, perm)
+			ApplySelfEntersTapped(gs, perm)
+		}
 
 		// §702.131 Ascend.
 		CheckAscend(gs, perm.Controller)
