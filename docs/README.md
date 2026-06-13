@@ -12,6 +12,9 @@ artifacts named by round (`-r60`, `-r63`). The curated reference set:
 - **[LEGACY-EOL.md](LEGACY-EOL.md)** — every retired tool and feature:
   what it was, when and why it went, what replaced it. Check here
   before resurrecting or re-deleting anything.
+- **[FEATURES.md](FEATURES.md)** — a readable, feature-by-feature tour
+  of what HexDek actually does today (engine, Judge, AI, Freya, tooling,
+  platform), each grounded in the package that implements it.
 - **[THESIS-SNAPSHOT.md](THESIS-SNAPSHOT.md)** — what HexDek is and
   where the project stands: the perfect-accuracy thesis, the Judge, the
   learning loops, current scores.
