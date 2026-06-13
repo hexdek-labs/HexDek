@@ -108,6 +108,20 @@ func LoadChaosCorpusFromOracleJSON(path string) (*ChaosCorpus, error) {
 			continue
 		}
 
+		// Non-deck card types — Planes (Planechase, CR §901), Schemes /
+		// Phenomena (Archenemy), Vanguards, Conspiracies, Dungeons, and
+		// Emblems begin in special zones and are NEVER cast from a
+		// constructed deck. They leaked into chaos decks as castable NonLand
+		// cards: e.g. the Plane "Oteclán" (Plane — Ixalan, no mana cost) got
+		// "cast" by a non-active seat at a sorcery-speed window, tripping
+		// LEGALITY §117.1a in the r63 deep-sweep (seed 25450043, game 2545,
+		// turn 47). Same nonsense-input class as the token / "Card"-insert
+		// filters above — exclude at the source. Checked against the parsed
+		// type tokens so "plane" can't match "planeswalker".
+		if hasNonDeckType(types) {
+			continue
+		}
+
 		isLegendary := strings.Contains(tlLower, "legendary")
 		isCreature := strings.Contains(tlLower, "creature")
 		isLand := strings.Contains(tlLower, "land")
@@ -185,6 +199,25 @@ func LoadChaosCorpusFromOracleJSON(path string) (*ChaosCorpus, error) {
 	}
 
 	return NewChaosCorpus(cards), nil
+}
+
+// nonDeckTypes are card types that never appear in a constructed deck's
+// library (they begin in Planar / scheme / command / sideboard-equivalent
+// zones). A fuzz deck containing one generates illegal inputs.
+var nonDeckTypes = map[string]bool{
+	"plane": true, "phenomenon": true, "scheme": true,
+	"vanguard": true, "conspiracy": true, "dungeon": true, "emblem": true,
+}
+
+// hasNonDeckType reports whether any parsed type token is a non-deck card
+// type. Exact-token match so "plane" does not match "planeswalker".
+func hasNonDeckType(types []string) bool {
+	for _, t := range types {
+		if nonDeckTypes[t] {
+			return true
+		}
+	}
+	return false
 }
 
 func parseTypesSimple(typeLine string) []string {

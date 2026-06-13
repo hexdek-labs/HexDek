@@ -199,6 +199,7 @@ func main() {
 		judgeJSONLPath        = flag.String("judge-jsonl", "", "if set, write every chaos + nightmare violation as a grinder-violations.jsonl row (the Hex Judge triage-stream contract: dimension/surface/rule/seed/turn/detail) so `hexdek-muninn --judge-triage --judge-log <path>` can cluster the long-tail by dimension + fingerprint.")
 		seatOutcomeFlag       = flag.Bool("seat-outcome", false, "attach the r63 per-seat win/loss self-checker to every chaos game (outcome recomputation + cross-seat consistency + §800.4 leave-game cleanup verification). Default off — zero engine behavior change when unset.")
 		legalityFlag          = flag.Bool("legality", false, "attach the ride-along rules-legality validator to every chaos game (live CR 307.1/608.2c/601.2f auditing of each cast/activation as it happens). Default off — zero engine behavior change when unset.")
+		gameTimeoutFlag       = flag.Duration("game-timeout", 0, "per-game wall-clock watchdog (e.g. 20s). 0 = off. A game still running at the deadline is ABANDONED (its goroutine leaks — accepted in an offline fuzz run) and recorded as a Liveness:game_timeout violation. Lets DEEP sweeps (--max-turns 60-100) complete past board-explosion / mandatory-loop games that would otherwise stall the whole run.")
 	)
 	flag.Parse()
 	legalityEnabled = *legalityFlag
@@ -301,14 +302,15 @@ func main() {
 	gameResults := make(chan chaosGameResult, workers*4)
 	var completed int64
 
+	gameTimeout := *gameTimeoutFlag
 	var wg sync.WaitGroup
 	for w := 0; w < workers; w++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
-				result := runChaosGame(
-					job.gameIdx, job.permutation,
+				result := runChaosGameWatched(
+					job.gameIdx, job.permutation, gameTimeout,
 					chaosCorpus, corpus, meta,
 					*seatsFlag, *seedFlag, *maxTurnsFlag,
 					seedCards, *seedCmdrFlag, seedCardsAllSeats,
@@ -558,6 +560,49 @@ func main() {
 // ---------------------------------------------------------------------------
 // Chaos game runner
 // ---------------------------------------------------------------------------
+
+// runChaosGameWatched runs one chaos game under an optional wall-clock
+// watchdog. When timeout == 0 it's a direct passthrough. Otherwise the game
+// runs in its own goroutine; if it doesn't finish within `timeout`, it is
+// ABANDONED (the goroutine leaks — accepted in an offline fuzz run, mirrors
+// cmd/hexdek-correctness's liveness watchdog) and reported as a
+// Liveness:game_timeout violation. This lets a DEEP sweep (--max-turns
+// 60-100) reach late-game states across thousands of games without a single
+// board-explosion / mandatory-loop game stalling the whole run (the #1
+// blocker flagged in the r63 longtail-sweep report).
+func runChaosGameWatched(gameIdx, permutation int, timeout time.Duration,
+	chaosCorpus *gameengine.ChaosCorpus,
+	corpus *astload.Corpus,
+	meta *deckparser.MetaDB,
+	nSeats int, masterSeed int64, maxTurns int,
+	seedCards []string, seedCmdr string, seedCardsAllSeats []string,
+) chaosGameResult {
+	if timeout <= 0 {
+		return runChaosGame(gameIdx, permutation, chaosCorpus, corpus, meta,
+			nSeats, masterSeed, maxTurns, seedCards, seedCmdr, seedCardsAllSeats)
+	}
+	resCh := make(chan chaosGameResult, 1)
+	go func() {
+		resCh <- runChaosGame(gameIdx, permutation, chaosCorpus, corpus, meta,
+			nSeats, masterSeed, maxTurns, seedCards, seedCmdr, seedCardsAllSeats)
+	}()
+	select {
+	case r := <-resCh:
+		return r
+	case <-time.After(timeout):
+		deckSeed := masterSeed + int64(gameIdx)*10000 + 1
+		return chaosGameResult{
+			GameIdx: gameIdx,
+			Violations: []chaosViolation{{
+				GameIdx:       gameIdx,
+				GameSeed:      deckSeed,
+				Permutation:   permutation,
+				InvariantName: "Liveness:game_timeout",
+				Message:       fmt.Sprintf("game exceeded %s wall-clock budget and was abandoned (likely board explosion or mandatory loop); max-turns=%d", timeout, maxTurns),
+			}},
+		}
+	}
+}
 
 func runChaosGame(gameIdx, permutation int,
 	chaosCorpus *gameengine.ChaosCorpus,
@@ -1358,6 +1403,8 @@ func deriveJudgeDimension(name string) (dim, surface, rule string) {
 	case strings.HasPrefix(name, "SeatOutcome:"):
 		// SeatOutcomeViolation.Canonical() tags state_integrity.
 		return judge.DimensionStateIntegrity, judge.SurfaceSeatOutcome, strings.TrimPrefix(name, "SeatOutcome:")
+	case strings.HasPrefix(name, "Liveness:"):
+		return judge.DimensionLiveness, judge.SurfaceLiveness, strings.TrimPrefix(name, "Liveness:")
 	case name == "ZoneConservation" || name == "CardIdentity":
 		return judge.DimensionConservation, judge.SurfaceInvariants, name
 	default:
