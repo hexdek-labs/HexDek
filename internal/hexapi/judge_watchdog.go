@@ -139,6 +139,8 @@ func parseJudgeRate(s string, fallback float64) float64 {
 
 // judgeViolationRecord is one triage-log line. Seed + deck keys make
 // the hit reproducible: replay the same seed with the same decks.
+// WIRE CONTRACT: muninn.JudgeLogRecord (the Judge triage clerk's
+// reader) mirrors these JSON field names — change them in both places.
 type judgeViolationRecord struct {
 	TS        string   `json:"ts"`
 	GameSeed  int64    `json:"game_seed"`
