@@ -85,6 +85,13 @@ func registerEtbDrainTargetOpponentFamily(r *Registry) {
 		r.OnETB(e.cardName, func(gs *gameengine.GameState, perm *gameengine.Permanent) {
 			runEtbDrainTargetOpponent(gs, perm, e)
 		})
+		// This handler FULLY implements the printed self-ETB drain — declare
+		// ownership so the engine's generic AST push is suppressed (Judge r63
+		// double-fire gate). Without it the AST "loses N / gain N" trigger
+		// ALSO resolves, draining 2N in real games (PROGRESSION r63:
+		// Bloodborn Scoundrels, Skymarch Bloodletter, Vampire Sovereign,
+		// Highway Robber, Dakmor Ghoul).
+		r.OwnsETBTrigger(e.cardName)
 	}
 }
 

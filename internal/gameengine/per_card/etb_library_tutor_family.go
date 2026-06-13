@@ -128,6 +128,11 @@ func registerEtbLibraryTutorFamily(r *Registry) {
 		r.OnETB(e.cardName, func(gs *gameengine.GameState, perm *gameengine.Permanent) {
 			runEtbLibraryTutor(gs, perm, e)
 		})
+		// FULLY implements the printed self-ETB tutor — declare ownership so
+		// the engine's generic AST push is suppressed (Judge r63 double-fire
+		// gate). Without it the AST "search your library …" trigger ALSO
+		// resolves, tutoring twice in real games.
+		r.OwnsETBTrigger(e.cardName)
 	}
 }
 

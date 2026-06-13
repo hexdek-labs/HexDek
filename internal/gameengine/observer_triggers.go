@@ -312,22 +312,68 @@ func fireBlockTriggers(gs *GameState, attackers []*Permanent, blockerMap map[*Pe
 
 	// (2) "Becomes blocked" triggers on attackers.
 	for atk, blockers := range blockerMap {
-		if len(blockers) == 0 || atk == nil || atk.Card == nil || atk.Card.AST == nil {
+		if len(blockers) == 0 {
 			continue
 		}
-		for _, ab := range atk.Card.AST.Abilities {
-			trig, ok := ab.(*gameast.Triggered)
-			if !ok || trig.Effect == nil {
-				continue
-			}
-			ev := strings.ToLower(strings.TrimSpace(trig.Trigger.Event))
-			if !EventEquals(ev, "blocked") && ev != "becomes_blocked" && ev != "becomes_blocked_by" {
-				continue
-			}
+		for _, trig := range attackerBecomesBlockedTriggers(atk) {
 			PushTriggeredAbilityWithIf(gs, atk, trig.Effect, trig.InterveningIf)
 			if gs.CheckEnd() {
 				return
 			}
+		}
+	}
+}
+
+// isBecomesBlockedEvent reports whether an AST trigger event name is one
+// of the "whenever ~ becomes blocked" spellings.
+func isBecomesBlockedEvent(ev string) bool {
+	ev = strings.ToLower(strings.TrimSpace(ev))
+	return EventEquals(ev, "blocked") || ev == "becomes_blocked" || ev == "becomes_blocked_by"
+}
+
+// attackerBecomesBlockedTriggers returns the "becomes blocked" triggered
+// abilities printed on an attacker (self-wordings — the attacker IS the
+// bearer). Single-sourced so the combat flow (fireBlockTriggers) and the
+// PROGRESSION checker driver (FireBecomesBlockedTriggers) share the exact
+// same match predicate.
+func attackerBecomesBlockedTriggers(atk *Permanent) []*gameast.Triggered {
+	if atk == nil || atk.Card == nil || atk.Card.AST == nil {
+		return nil
+	}
+	var out []*gameast.Triggered
+	for _, ab := range atk.Card.AST.Abilities {
+		trig, ok := ab.(*gameast.Triggered)
+		if !ok || trig.Effect == nil {
+			continue
+		}
+		if !isBecomesBlockedEvent(trig.Trigger.Event) {
+			continue
+		}
+		out = append(out, trig)
+	}
+	return out
+}
+
+// FireBecomesBlockedTriggers drives the "whenever ~ becomes blocked"
+// dispatch for a single attacker as a self-contained, batch-wrapped
+// stimulus (CR §509.4 — these fire as blockers are declared). The combat
+// flow fires the same triggers inline in fireBlockTriggers under the
+// declare-blockers priority batch; this entry point opens its own batch so
+// the effect resolves immediately, for the PROGRESSION trigger-correctness
+// harness and for any caller needing the isolated dispatch.
+func FireBecomesBlockedTriggers(gs *GameState, atk *Permanent) {
+	if gs == nil || atk == nil {
+		return
+	}
+	trigs := attackerBecomesBlockedTriggers(atk)
+	if len(trigs) == 0 {
+		return
+	}
+	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
+	for _, trig := range trigs {
+		PushTriggeredAbilityWithIf(gs, atk, trig.Effect, trig.InterveningIf)
+		if gs.CheckEnd() {
+			return
 		}
 	}
 }

@@ -38,6 +38,11 @@ import (
 func registerKroxa(r *Registry) {
 	r.OnETB("Kroxa, Titan of Death's Hunger", kroxaETB)
 	r.OnTrigger("Kroxa, Titan of Death's Hunger", "upkeep_controller", kroxaUpkeep)
+	// kroxaETB fully implements the printed self-ETB (sacrifice-unless-escaped
+	// + each-opp-discard) — declare ownership so the engine's generic AST push
+	// for the "sacrifice it unless it escaped" clause is suppressed (Judge r63
+	// double-fire gate; PROGRESSION r63 false positive).
+	r.OwnsETBTrigger("Kroxa, Titan of Death's Hunger")
 }
 
 func kroxaETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
