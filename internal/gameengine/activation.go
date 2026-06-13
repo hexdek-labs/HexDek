@@ -160,6 +160,27 @@ func effectProducesMana(e gameast.Effect) bool {
 				return true
 			}
 		}
+	case *gameast.Choice:
+		// Modal mana abilities — "{T}: Add {W} or {U}" (pain lands, dual
+		// lands, talismans, refuges, check lands, the bounce-land cycle,
+		// …) — parse to a Choice whose options are each an AddMana. Per CR
+		// §605.1a such an ability could put mana into a player's pool and
+		// (since every mode is a pure AddMana) doesn't target, so it IS a
+		// mana ability and MUST resolve inline per §605.3a — not be pushed
+		// onto the stack where it could be illegally responded to and
+		// couldn't be tapped mid-cost to pay for a spell. Require EVERY
+		// option to produce mana so a modal ability with a non-mana mode
+		// keeps its conservative stack-using classification (mirrors the
+		// choose_color stance above). ~405 cards were mis-routed pre-fix.
+		if len(v.Options) == 0 {
+			return false
+		}
+		for _, opt := range v.Options {
+			if !effectProducesMana(opt) {
+				return false
+			}
+		}
+		return true
 	}
 	return false
 }
@@ -196,6 +217,118 @@ func effectTargets(e gameast.Effect) bool {
 	case *gameast.Sequence:
 		for _, sub := range v.Items {
 			if effectTargets(sub) {
+				return true
+			}
+		}
+	case *gameast.Choice:
+		// Recurse into modal options: a modal ability with a targeted mode
+		// is NOT a mana ability (CR §605.1a) even if another mode adds
+		// mana. (Defensive — effectProducesMana currently only flags a
+		// Choice whose modes are all AddMana, which never target — but
+		// keep the two checks consistent if that ever loosens.)
+		for _, opt := range v.Options {
+			if effectTargets(opt) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// applyManaAbilityRiders applies a rider that the parser emitted as a
+// standalone Static sibling of an activated mana ability rather than
+// folding it into the ability's own effect. The dominant case is the
+// pain-land self_damage downside ("This land deals N damage to you"),
+// which parses to a trailing Static{self_damage} disconnected from the
+// "{T}: Add {W} or {U}" ability it modifies (Adarkar Wastes, Shivan Reef,
+// Brushland, Tarnished Citadel, Grand Coliseum, Karplusan Forest, …).
+// Because a Static ability is never resolved on its own, that downside was
+// silently skipped — 25 pain lands tapped for mana with no life cost.
+//
+// The rider belongs to the PAINFUL tap — the colored/any-color mana
+// ability. A coexisting free "{T}: Add {C}" tap deals no damage, so a
+// pure-colorless-only AddMana ability is exempt UNLESS it is the card's
+// only mana ability.
+//
+// Skipped when a per_card OnActivated handler owns the card: those
+// handlers (Ancient Tomb) deal the rider damage themselves, so applying
+// it here too would double it.
+func applyManaAbilityRiders(gs *GameState, perm *Permanent, abilityIdx int) {
+	if gs == nil || perm == nil || perm.Card == nil || perm.Card.AST == nil {
+		return
+	}
+	if PerCardOwnsActivated(perm.Card.DisplayName()) {
+		return
+	}
+	abilities := perm.Card.AST.Abilities
+	if abilityIdx < 0 || abilityIdx >= len(abilities) {
+		return
+	}
+	act, ok := abilities[abilityIdx].(*gameast.Activated)
+	if !ok || act.Effect == nil {
+		return
+	}
+
+	selfDmg := 0
+	manaAbilityCount := 0
+	for _, ab := range abilities {
+		switch v := ab.(type) {
+		case *gameast.Activated:
+			if effectProducesMana(v.Effect) && !effectTargets(v.Effect) {
+				manaAbilityCount++
+			}
+		case *gameast.Static:
+			if v.Modification != nil && v.Modification.ModKind == "self_damage" {
+				selfDmg = manaRiderAmount(v.Modification.Args)
+			}
+		}
+	}
+	if selfDmg <= 0 {
+		return
+	}
+	// Only the painful tap deals damage: a colored/any-color ability, or
+	// the card's sole mana ability (no free {C} alternative exists).
+	if !manaEffectIsColoredOrAny(act.Effect) && manaAbilityCount > 1 {
+		return
+	}
+	DealDamage(gs, perm.Controller, selfDmg, sourceName(perm))
+}
+
+// manaRiderAmount reads the damage amount from a self_damage Static's args
+// (args[0]); defaults to 1 — the pain-land norm — when unspecified.
+func manaRiderAmount(args []interface{}) int {
+	if len(args) > 0 {
+		if n, ok := asInt(args[0]); ok && n > 0 {
+			return n
+		}
+	}
+	return 1
+}
+
+// manaEffectIsColoredOrAny reports whether a mana effect produces colored
+// or any-color mana (i.e. it is NOT a pure colorless-{C}-only producer).
+func manaEffectIsColoredOrAny(e gameast.Effect) bool {
+	switch v := e.(type) {
+	case *gameast.AddMana:
+		if v.AnyColorCount > 0 {
+			return true
+		}
+		for _, sym := range v.Pool {
+			for _, c := range sym.Color {
+				if c != "C" {
+					return true
+				}
+			}
+		}
+	case *gameast.Choice:
+		for _, opt := range v.Options {
+			if manaEffectIsColoredOrAny(opt) {
+				return true
+			}
+		}
+	case *gameast.Sequence:
+		for _, sub := range v.Items {
+			if manaEffectIsColoredOrAny(sub) {
 				return true
 			}
 		}
@@ -680,6 +813,11 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		if eff != nil {
 			ResolveEffect(gs, perm, eff)
 		}
+		// Apply any rider the parser split off into a standalone Static
+		// sibling (pain-land self_damage downside, …) — see CR §605.1a:
+		// the rider is part of the same mana ability and resolves inline
+		// with it.
+		applyManaAbilityRiders(gs, perm, abilityIdx)
 		popIIDEnabler(gs)
 		// Exhaust: mark used after inline resolution (mana-ability path).
 		if IsExhaustAbility(perm, abilityIdx) {
