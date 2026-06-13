@@ -75,7 +75,7 @@ func FirePhaseTriggers(gs *GameState, phase, step string) {
 				if !ok || trig.Effect == nil {
 					continue
 				}
-				if !triggerMatchesPhaseStep(&trig.Trigger, phase, step) {
+				if !triggerMatchesPhaseStepRaw(&trig.Trigger, phase, step, trig.Raw) {
 					continue
 				}
 				// Controller gating — "your upkeep" fires only for active
@@ -210,6 +210,42 @@ func triggerMatchesPhaseStep(t *gameast.Trigger, phase, step string) bool {
 		if tp == "untap" || ev == "untap" {
 			return true
 		}
+	}
+	return false
+}
+
+// triggerMatchesPhaseStepRaw is the raw-aware variant (mirrors
+// triggerControllerMatchesRaw). The parser emits Event
+// "beginning_of_ordinal_step" with an EMPTY Phase field for
+// "at the beginning of your first/second main phase," triggers — the
+// ordinal survives only in the raw clause. The base matcher therefore
+// dropped EVERY main-phase trigger (Coalition Relic, Altar of Shadows,
+// Abstract Paintmage, Four Knocks, …): their "first main phase" mana / draw
+// / counter abilities were silently inert in real games (PROGRESSION r63c
+// finding — driven through the chaos runner's
+// FirePhaseTriggers(gs,"precombat_main","main") chokepoint). Recover the
+// ordinal from the raw and gate it to the matching main-phase boundary.
+func triggerMatchesPhaseStepRaw(t *gameast.Trigger, phase, step, raw string) bool {
+	if t == nil {
+		return false
+	}
+	if triggerMatchesPhaseStep(t, phase, step) {
+		return true
+	}
+	ev := strings.ToLower(strings.TrimSpace(t.Event))
+	if ev != "beginning_of_ordinal_step" {
+		return false
+	}
+	r := strings.ToLower(raw)
+	ph := strings.ToLower(strings.TrimSpace(phase))
+	st := strings.ToLower(strings.TrimSpace(step))
+	// First main phase (CR §505) — fires at the precombat main boundary.
+	if strings.Contains(r, "first main phase") {
+		return ph == "precombat_main" || (st == "main" && ph != "postcombat_main")
+	}
+	// Second main phase — fires at the postcombat main boundary.
+	if strings.Contains(r, "second main phase") {
+		return ph == "postcombat_main"
 	}
 	return false
 }

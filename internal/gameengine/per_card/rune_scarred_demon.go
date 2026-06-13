@@ -25,6 +25,11 @@ import (
 //   - Shuffles the library after the search.
 func registerRuneScarredDemon(r *Registry) {
 	r.OnETB("Rune-Scarred Demon", runeScarredDemonETB)
+	// FULLY implements the printed self-ETB tutor — declare ownership so the
+	// engine's generic AST push is suppressed (Judge r63 double-fire gate).
+	// Without it the AST "search your library for a card …" trigger ALSO
+	// resolves, tutoring two cards (PROGRESSION r63).
+	r.OwnsETBTrigger("Rune-Scarred Demon")
 }
 
 func runeScarredDemonETB(gs *gameengine.GameState, perm *gameengine.Permanent) {

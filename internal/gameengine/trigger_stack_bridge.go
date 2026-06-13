@@ -83,11 +83,12 @@ func PushPerCardTrigger(gs *GameState, perm *Permanent, handler func(*GameState,
 		})
 		for i, s := range gs.Seats {
 			if s != nil && !s.Lost && !s.Won {
-				s.Lost = true
+				markSeatLostLoopDraw(s)
 				gs.LogEvent(Event{Kind: "game_draw", Seat: i, Details: map[string]interface{}{"reason": "percard_inline_depth_cap"}})
 			}
 		}
 		gs.Stack = gs.Stack[:0]
+		gs.Flags["game_draw"] = 1
 		gs.Flags["ended"] = 1
 		return
 	}
@@ -100,11 +101,12 @@ func PushPerCardTrigger(gs *GameState, perm *Permanent, handler func(*GameState,
 		})
 		for i, s := range gs.Seats {
 			if s != nil && !s.Lost && !s.Won {
-				s.Lost = true
+				markSeatLostLoopDraw(s)
 				gs.LogEvent(Event{Kind: "game_draw", Seat: i, Details: map[string]interface{}{"reason": "trigger_loop_cap"}})
 			}
 		}
 		gs.Stack = gs.Stack[:0]
+		gs.Flags["game_draw"] = 1
 		gs.Flags["ended"] = 1
 		return
 	}

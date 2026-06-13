@@ -3193,6 +3193,23 @@ func clampedTS(r trueskill.Rating) (mu, sigma, rating float64) {
 }
 
 func (sm *Showmatch) updateELO(deckKeys, commanders []string, decks []*deckparser.TournamentDeck, winner int, turns int) []heimdall.CompositionPriorEffect {
+	// Rating-integrity chokepoint (r63): NEVER move ratings during
+	// maintenance. The grinder / fishtank / spectate loops already abort a
+	// game at their between-turns maintenance check, so they normally never
+	// reach here in maintenance — but a flip in the window between the final
+	// turn's check and this call (or any future caller that forgets the loop
+	// guard) must not corrupt or persist real player ratings. Gating the one
+	// rating-mutation function is the can't-miss guarantee: no games++, no
+	// μ/σ movement, no HexELO change, nothing to flush.
+	//
+	// Read sm.maintenance DIRECTLY, not via sm.inMaintenance(): every
+	// updateELO caller already holds sm.mu.Lock() (grinder/bracket/show in
+	// showmatch.go, plus spectate_rooms.go), and inMaintenance() takes
+	// sm.mu.RLock() — re-acquiring a non-reentrant sync.RWMutex would
+	// deadlock. Under the held write lock this field read is race-free.
+	if sm.maintenance {
+		return nil
+	}
 	const baseK = 32.0
 	n := len(deckKeys)
 	if n < 2 {

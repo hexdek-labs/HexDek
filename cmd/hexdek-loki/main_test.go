@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hexdek/hexdek/internal/gameengine"
+	"github.com/hexdek/hexdek/internal/judge"
 )
 
 // known is the canonical name set pulled from the engine. We pin against
@@ -200,6 +201,107 @@ func TestCheckChaosInvariants_FilterRespected(t *testing.T) {
 			t.Errorf("filter=%q leaked non-target invariant %q", probeName, v.InvariantName)
 		}
 	}
+}
+
+// TestShadowSink_MirrorsChaosCounts pins the SHADOW seam (driver-
+// conversion plan step 1): with the Judge sink registered, the sink's
+// per-name tally must match the chaosViolation path's per-name tally
+// after running checkChaosInvariants — both unfiltered and under an
+// --invariant filter. This is the unit-scale version of the soak's
+// zero-mismatch contract. Because both tallies are driven by the SAME
+// RunAllInvariants call (sink fires inside it; the old path reads its
+// return), they must be identical per name.
+func TestShadowSink_MirrorsChaosCounts(t *testing.T) {
+	// Register the shadow sink exactly as main() does, and reset the
+	// process-wide tallies so this test is self-contained.
+	unregister := judge.RegisterSink(shadowSink)
+	defer unregister()
+	shadowSinkCounts = newShadowCounts()
+	shadowChaosCounts = newShadowCounts()
+	t.Cleanup(func() {
+		shadowSinkCounts = newShadowCounts()
+		shadowChaosCounts = newShadowCounts()
+		invariantFilter = ""
+	})
+
+	gs := gameengine.NewGameState(2, nil, nil)
+	gs.Turn = 5
+
+	// Plant a duplicate Card pointer across two graveyards (same shape as
+	// TestCheckChaosInvariants_FilterRespected) so at least one invariant
+	// fires through the router.
+	dup := &gameengine.Card{Name: "Test Duplicate", Owner: 0}
+	gs.Seats[0].Graveyard = append(gs.Seats[0].Graveyard, dup)
+	gs.Seats[1].Graveyard = append(gs.Seats[1].Graveyard, dup)
+
+	raw := gameengine.RunAllInvariants(gs)
+	if len(raw) == 0 {
+		t.Skip("synthetic state did not produce a violation; engine semantics may have shifted")
+	}
+	probeName := raw[0].Name
+	// The probe call above fed the sink (it is already registered) without
+	// going through the chaos path; reset so the tallies start even. In
+	// real loki every RunAllInvariants flows through checkChaos/Nightmare.
+	shadowSinkCounts = newShadowCounts()
+	shadowChaosCounts = newShadowCounts()
+
+	assertMirrored := func(label string) {
+		t.Helper()
+		sink, sinkTotal := shadowSinkCounts.snapshot()
+		chaos, chaosTotal := shadowChaosCounts.snapshot()
+		if sinkTotal != chaosTotal {
+			t.Fatalf("%s: sink total=%d != chaos total=%d (sink=%v chaos=%v)", label, sinkTotal, chaosTotal, sink, chaos)
+		}
+		for n, c := range chaos {
+			if sink[n] != c {
+				t.Fatalf("%s: name %q sink=%d != chaos=%d", label, n, sink[n], c)
+			}
+		}
+		for n, s := range sink {
+			if chaos[n] != s {
+				t.Fatalf("%s: name %q sink=%d != chaos=%d (sink-only)", label, n, s, chaos[n])
+			}
+		}
+	}
+
+	// Unfiltered: every invariant row recorded by the chaos path must be
+	// mirrored in the sink tally.
+	invariantFilter = ""
+	resAll := &chaosGameResult{}
+	checkChaosInvariants(gs, 0, 0, 0, nil, resAll)
+	if len(resAll.Violations) == 0 {
+		t.Fatal("unfiltered: expected at least one chaosViolation invariant row")
+	}
+	assertMirrored("unfiltered")
+
+	// Filtered to a DIFFERENT invariant: the probe is dropped on BOTH
+	// sides, so the tallies stay mirrored (and gain no probe rows).
+	shadowSinkCounts = newShadowCounts()
+	shadowChaosCounts = newShadowCounts()
+	invariantFilter = otherInvariantName(probeName)
+	resFiltered := &chaosGameResult{}
+	checkChaosInvariants(gs, 0, 0, 0, nil, resFiltered)
+	if _, ok := mustSnapshot(shadowChaosCounts)[probeName]; ok {
+		t.Fatalf("filtered=%q: probe %q should have been dropped from chaos tally", invariantFilter, probeName)
+	}
+	assertMirrored("filtered-out")
+
+	// Filtered to the probe itself: the probe survives on both sides and
+	// the tallies match.
+	shadowSinkCounts = newShadowCounts()
+	shadowChaosCounts = newShadowCounts()
+	invariantFilter = probeName
+	resProbe := &chaosGameResult{}
+	checkChaosInvariants(gs, 0, 0, 0, nil, resProbe)
+	if mustSnapshot(shadowChaosCounts)[probeName] == 0 {
+		t.Fatalf("filtered=%q: probe should survive its own filter", invariantFilter)
+	}
+	assertMirrored("filtered-in")
+}
+
+func mustSnapshot(c *shadowCounts) map[string]int {
+	m, _ := c.snapshot()
+	return m
 }
 
 // otherInvariantName returns any known invariant name distinct from `name`.

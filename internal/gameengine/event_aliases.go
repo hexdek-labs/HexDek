@@ -156,6 +156,15 @@ var eventAliasTable = map[string][]string{
 	"another_typed_enters":          {"etb"},
 	"tribe_you_control_etb":  {"etb"},
 	"ally_etb":               {"etb"},
+	// "whenever ~ or another creature you control enters" — a DUAL self+ally
+	// observer event (see dualSelfObserverEvents). Pre-r63 it was absent from
+	// this table, so EventEquals(event,"etb") was false and BOTH the self
+	// cascade (etb_dispatch.go) and the observer walk (observer_triggers.go)
+	// skipped it — the trigger was fully inert (PROGRESSION r63: Ambuscade
+	// Shaman, Ardoz, Fallaji Vanguard, Bogwater Lumaret, Kor Celebrant,
+	// Pious Evangel, Kapsho Kitefins). The self-fire is gated back in by
+	// dualSelfObserverEvents; the ally-fire matches via observerETBMatchesByRaw.
+	"etb_or_another":          {"etb"},
 	"another_creature_enters": {"etb"},
 	"another_typed_etb":      {"etb"},
 	"ally_typed_etb":         {"etb"},
