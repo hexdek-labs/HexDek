@@ -1653,10 +1653,12 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 
 	case "animate":
 		// CR §706 — turn a non-creature permanent into a creature with P/T.
-		// "becomes a N/N creature" — typically from Gideon, Nissa, or
-		// artifact-animate effects. Args: (power, toughness, [creature_type]).
-		// Apply as a modification on the source permanent and add the
-		// "creature" type if not already present.
+		// "becomes a N/N creature" — the "Restless" manland cycle and
+		// Gideon/Nissa/artifact-animate effects. Args: (power, toughness,
+		// [creature_type]). Routed through applyAnimateUntilEOT so the
+		// added type is reverted at the §514.2 cleanup (previously the
+		// "creature" type was added permanently — an animated land stayed
+		// a creature forever after the first activation).
 		animPow, animTough := 0, 0
 		animType := ""
 		if len(e.Args) >= 2 {
@@ -1672,29 +1674,11 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 				animType = ct
 			}
 		}
-		if src != nil {
-			src.Modifications = append(src.Modifications, Modification{
-				Power:     animPow - src.Card.BasePower,
-				Toughness: animTough - src.Card.BaseToughness,
-				Duration:  "until_end_of_turn",
-				Timestamp: gs.NextTimestamp(),
-			})
-			gs.InvalidateCharacteristicsCache()
-			// Add creature type if not already present.
-			hasCreatureType := false
-			for _, tp := range src.Card.Types {
-				if tp == "creature" {
-					hasCreatureType = true
-					break
-				}
-			}
-			if !hasCreatureType {
-				src.Card.Types = append(src.Card.Types, "creature")
-				if animType != "" {
-					src.Card.Types = append(src.Card.Types, strings.ToLower(animType))
-				}
-			}
+		types := []string{"creature"}
+		if animType != "" {
+			types = append(types, strings.ToLower(animType))
 		}
+		applyAnimateUntilEOT(gs, src, animPow, animTough, types)
 		gs.LogEvent(Event{
 			Kind:   "animate",
 			Seat:   controllerSeat(src),
@@ -1705,6 +1689,13 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 				"creature_type": animType,
 			},
 		})
+
+	case "animate_subject":
+		// CR §706 — manland animation carried as key/value arg pairs
+		// (Mutavault, Mishra's Factory, Inkmoth/Blinkmoth Nexus, Treetop
+		// Village, Faerie Conclave, …). Had no case → these lands were
+		// inert; activating did nothing.
+		resolveAnimateSubject(gs, src, e)
 
 	case "restriction":
 		// CR §802 — restrictions on actions: "can't attack", "can't block",

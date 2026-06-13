@@ -73,6 +73,7 @@ func (gs *GameState) CloneForRollout(rng *rand.Rand) *GameState {
 		}
 		cp.Modifications = append([]Modification(nil), p.Modifications...)
 		cp.GrantedAbilities = append([]string(nil), p.GrantedAbilities...)
+		cp.AnimatedAddedTypes = append([]string(nil), p.AnimatedAddedTypes...)
 		permMap[p] = cp
 		return cp
 	}
