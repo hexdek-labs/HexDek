@@ -2470,6 +2470,12 @@ func registerASTStaticEffects(gs *GameState, p *Permanent) {
 			// handled in resolveModificationEffect. See mod_kind_anthem.go.
 			registerGenericAnthemStatic(gs, p, mod.Args)
 
+		case "token_anthem":
+			// "Creature tokens [you control | all] get +X/+Y" static. Scope
+			// is sign-based (positive = yours, negative = all token-hate).
+			// See mod_kind_token_anthem.go.
+			registerTokenAnthemStatic(gs, p, mod.Args)
+
 		case "enchanted_creature_pt":
 			pow, tough := extractPT(mod.Args, 0, 0)
 			src := p
