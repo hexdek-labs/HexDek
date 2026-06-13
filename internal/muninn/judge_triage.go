@@ -27,8 +27,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hexdek/hexdek/internal/judge"
 )
@@ -87,12 +90,61 @@ type TriageCluster struct {
 
 // JudgeTriage is the full triage result.
 type JudgeTriage struct {
-	Source        string          `json:"source"`
+	Source string `json:"source"`
+	// Sources lists every file actually scanned — the primary stream
+	// plus any logrotate-style siblings folded in (oldest → newest).
+	Sources []string `json:"sources,omitempty"`
+	// GeneratedAt stamps when this digest was produced (RFC3339 UTC).
+	// It makes a rolling-bucket digest self-dating: a scrape archived
+	// each day carries its own as-of time.
+	GeneratedAt string `json:"generated_at,omitempty"`
+	// Since echoes the --since cutoff applied to this run (RFC3339 UTC,
+	// empty = whole stream). SinceFiltered counts rows older than it
+	// that were skipped, so a daily "only-new" scrape is auditable.
+	Since         string          `json:"since,omitempty"`
+	SinceFiltered int             `json:"since_filtered,omitempty"`
 	TotalRecords  int             `json:"total_records"`
 	ArchiveFolded int             `json:"archive_records_folded,omitempty"`
+	ServerLogParsed int           `json:"server_log_feynman_parsed,omitempty"`
 	Malformed     int             `json:"malformed_lines_skipped,omitempty"`
 	ByDimension   map[string]int  `json:"by_dimension"`
 	Clusters      []TriageCluster `json:"clusters"`
+}
+
+// TriageOptions configures a triage run. The zero value triages the
+// whole primary stream with no since-cutoff — TriageJudgeLog is the
+// thin back-compat wrapper for exactly that, plus rotated-sibling
+// folding (the safe default for a rolling bucket).
+type TriageOptions struct {
+	// LogPath is the Judge watchdog's live JSONL stream.
+	LogPath string
+	// MuninnDir, when non-empty, folds muninn's own
+	// invariant_violations.json archive into the same clusters.
+	MuninnDir string
+	// Since, when non-empty, drops every record stamped strictly before
+	// it — scrape only-new issues across days. Accepts RFC3339 or a bare
+	// YYYY-MM-DD date (interpreted as 00:00:00 UTC). Records with no/
+	// unparseable timestamp are always kept (never silently dropped).
+	Since string
+	// GeneratedAt stamps the digest header; empty leaves it blank. The
+	// CLI passes time.Now().UTC() so the unit logic stays deterministic.
+	GeneratedAt string
+	// IncludeRotated, when true, also scrapes logrotate-style siblings
+	// (<logPath>.1, .2, …) so a rotated bucket is read end-to-end.
+	IncludeRotated bool
+	// ServerLogPaths are DARKSTAR server.log captures scraped for the
+	// grinder's bracket-game feynman-check lines
+	// (`feynman/RULE [seat N]: MESSAGE`). Parsed into the same canonical
+	// vocabulary and merged into one digest with the jsonl bucket. This
+	// is the path that carries the live issues when the jsonl bucket is
+	// empty (the engine is clean on the sampled Judge dimensions but the
+	// post-game Feynman oracle still flags SBA misses in the log).
+	ServerLogPaths []string
+	// ServerLogStamp is the fallback timestamp (RFC3339 or YYYY-MM-DD)
+	// for feynman lines that carry no per-line timestamp — typically the
+	// capture/scrape time. Lines WITH a leading Go-log timestamp
+	// (`2006/01/02 15:04:05`) use that instead.
+	ServerLogStamp string
 }
 
 // dimensionOrder is the canonical 6-dimension presentation order.
@@ -116,6 +168,87 @@ func classifyDimension(dim string) string {
 		return judge.DimensionStateIntegrity
 	}
 	return dim
+}
+
+// dimensionForRule maps a CR citation / rule name to a Judge dimension —
+// "dimension from the rule §". The default is state_integrity, which is
+// exactly what the engine's Feynman oracle assigns to every surface-less
+// post-game violation (hat/feynman.go), so a server.log-parsed record
+// classifies IDENTICALLY to the same violation arriving through the
+// jsonl bucket — the two sources dedupe into one cluster, not two.
+func dimensionForRule(rule string) string {
+	switch {
+	case strings.Contains(rule, "conservation"):
+		return judge.DimensionConservation
+	case strings.HasPrefix(rule, "704"): // §704.5/§704.6 SBA-compliance
+		return judge.DimensionStateIntegrity
+	case strings.HasPrefix(rule, "104"): // §104 ending the game
+		return judge.DimensionOutcome
+	case strings.HasPrefix(rule, "601"), strings.HasPrefix(rule, "602"),
+		strings.HasPrefix(rule, "508"), strings.HasPrefix(rule, "509"):
+		return judge.DimensionLegality
+	}
+	return judge.DimensionStateIntegrity
+}
+
+// feynmanReportLineRE matches one bracket-game Feynman-oracle line as it
+// appears in DARKSTAR's server.log. The grinder logs the whole report
+// under a single "feynman: bracket game violations:" header; each
+// violation prints via ValidationViolation.String() as
+//
+//	[severity] surface/rule [seat N]: message
+//
+// where surface is feynman (SBA-compliance: 704.5f, counter_negative,
+// permanent_types, turn_bound) or invariants (zone_conservation). The
+// regex tolerates any prefix — the Go-log timestamp, the [severity]
+// tag, indentation — and an optional leading timestamp is captured so a
+// dated line keeps its own stamp. Groups: 1=timestamp? 2=surface
+// 3=rule 4=seat? 5=message.
+var feynmanReportLineRE = regexp.MustCompile(
+	`^(?:(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2})\s+)?.*?\b(feynman|invariants)/(\S+?)(?:\s+\[seat\s+(-?\d+)\])?:\s+(.*)$`)
+
+// quotedNameRE pulls the first "double-quoted" token out of a message —
+// the card the violation names, used as the dedupe object.
+var quotedNameRE = regexp.MustCompile(`"([^"]+)"`)
+
+// parseFeynmanLine parses one server.log line into a JudgeLogRecord. The
+// bool is false when the line is not a Feynman-report violation (the
+// overwhelming common case — most server.log lines are unrelated and
+// are silently ignored, NOT counted as malformed). The card name parsed
+// from the message becomes the dedupe object (rule+card), matching the
+// jsonl path's fingerprint.
+func parseFeynmanLine(line string) (JudgeLogRecord, bool) {
+	line = strings.TrimRight(line, "\r\n")
+	m := feynmanReportLineRE.FindStringSubmatch(line)
+	if m == nil {
+		return JudgeLogRecord{}, false
+	}
+	ts := ""
+	if m[1] != "" {
+		// Server-local Go-log stamp; treat as wall time, render RFC3339.
+		if parsed, err := time.Parse("2006/01/02 15:04:05", m[1]); err == nil {
+			ts = parsed.UTC().Format(time.RFC3339)
+		}
+	}
+	surface, rule, msg := m[2], m[3], strings.TrimSpace(m[5])
+	seat := 0
+	if m[4] != "" {
+		seat, _ = strconv.Atoi(m[4])
+	}
+	card := ""
+	if q := quotedNameRE.FindStringSubmatch(msg); q != nil {
+		card = q[1]
+	}
+	return JudgeLogRecord{
+		TS:        ts,
+		Dimension: dimensionForRule(rule),
+		Surface:   surface,
+		Rule:      rule,
+		Severity:  judge.SeverityCritical, // Feynman-oracle violations are post-game failures
+		Seat:      seat,
+		Card:      card,
+		Detail:    msg,
+	}, true
 }
 
 // triageFingerprint is the stable dedupe key: dimension + rule + the
@@ -175,16 +308,108 @@ func severityRank(s string) int {
 	return 0
 }
 
+// parseSince parses a --since cutoff: full RFC3339, or a bare
+// YYYY-MM-DD date taken as 00:00:00 UTC for daily-scrape ergonomics.
+func parseSince(s string) (time.Time, error) {
+	if t, err := time.Parse(time.RFC3339, s); err == nil {
+		return t.UTC(), nil
+	}
+	if t, err := time.Parse("2006-01-02", s); err == nil {
+		return t.UTC(), nil
+	}
+	return time.Time{}, fmt.Errorf("muninn: --since %q: want RFC3339 or YYYY-MM-DD", s)
+}
+
+// rotatedSiblings returns logrotate-style companions of logPath
+// (<base>.1, <base>.2, …, plain numeric suffixes only — compressed
+// .gz siblings are skipped, not silently half-read), ordered oldest →
+// newest. The primary file is NOT included. Discovery failure (e.g. an
+// unreadable directory) yields nil — rotation support is best-effort
+// and never blocks scraping the primary stream.
+func rotatedSiblings(logPath string) []string {
+	matches, err := filepath.Glob(logPath + ".*")
+	if err != nil {
+		return nil
+	}
+	type sib struct {
+		path string
+		n    int
+	}
+	var sibs []sib
+	for _, m := range matches {
+		suffix := strings.TrimPrefix(m, logPath+".")
+		n, err := strconv.Atoi(suffix)
+		if err != nil || n <= 0 {
+			continue // .gz, dates, or anything non-numeric — leave it
+		}
+		sibs = append(sibs, sib{m, n})
+	}
+	// Higher index = older (logrotate convention); read oldest first.
+	sort.Slice(sibs, func(i, j int) bool { return sibs[i].n > sibs[j].n })
+	out := make([]string, 0, len(sibs))
+	for _, s := range sibs {
+		out = append(out, s.path)
+	}
+	return out
+}
+
 // TriageJudgeLog reads the Judge's grinder violation stream at logPath
 // and, when muninnDir is non-empty, folds muninn's own
 // invariant_violations.json archive into the same clusters. A missing
 // or empty stream is not an error — the result simply has
 // TotalRecords 0 (the artifact writers no-op on that).
+//
+// This is the back-compat wrapper over TriageJudgeLogWithOptions: it
+// triages the whole stream (no since-cutoff) and folds any rotated
+// siblings, the safe default for a few-days rolling bucket.
 func TriageJudgeLog(logPath, muninnDir string) (*JudgeTriage, error) {
+	return TriageJudgeLogWithOptions(TriageOptions{
+		LogPath:        logPath,
+		MuninnDir:      muninnDir,
+		IncludeRotated: true,
+	})
+}
+
+// TriageJudgeLogWithOptions is the full triage entry point: it tolerates
+// a growing/rotating bucket, applies an optional --since cutoff, dedupes
+// by stable fingerprint, groups by dimension, and stamps the digest.
+func TriageJudgeLogWithOptions(opts TriageOptions) (*JudgeTriage, error) {
 	t := &JudgeTriage{
-		Source:      logPath,
+		Source:      opts.LogPath,
+		GeneratedAt: opts.GeneratedAt,
 		ByDimension: map[string]int{},
 	}
+
+	var sinceT time.Time
+	hasSince := opts.Since != ""
+	if hasSince {
+		st, err := parseSince(opts.Since)
+		if err != nil {
+			return nil, err
+		}
+		sinceT = st
+		t.Since = st.Format(time.RFC3339)
+	}
+
+	// keep applies the --since cutoff. A record with no parseable
+	// timestamp is always kept (we can't prove it is old, and silently
+	// dropping it would hide live bugs); only a record we can place
+	// strictly before the cutoff is filtered.
+	keep := func(ts string) bool {
+		if !hasSince {
+			return true
+		}
+		parsed, err := time.Parse(time.RFC3339, ts)
+		if err != nil {
+			return true
+		}
+		if parsed.UTC().Before(sinceT) {
+			t.SinceFiltered++
+			return false
+		}
+		return true
+	}
+
 	clusters := map[string]*TriageCluster{}
 
 	add := func(rec JudgeLogRecord) {
@@ -224,7 +449,20 @@ func TriageJudgeLog(logPath, muninnDir string) (*JudgeTriage, error) {
 		}
 	}
 
-	if f, err := os.Open(logPath); err == nil {
+	// scanFile streams one JSONL bucket file through add(), honoring the
+	// since-cutoff and counting malformed/partial lines instead of
+	// failing on them. A growing file is read as the snapshot present at
+	// open time; a trailing partial line (writer mid-append) parses as
+	// malformed and is skipped, never fatal.
+	scanFile := func(path string) error {
+		f, err := os.Open(path)
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return fmt.Errorf("muninn: open %s: %w", path, err)
+		}
+		t.Sources = append(t.Sources, path)
 		scan := bufio.NewScanner(f)
 		scan.Buffer(make([]byte, 0, 256*1024), 1024*1024)
 		for scan.Scan() {
@@ -237,25 +475,98 @@ func TriageJudgeLog(logPath, muninnDir string) (*JudgeTriage, error) {
 				t.Malformed++
 				continue
 			}
+			if !keep(rec.TS) {
+				continue
+			}
 			add(rec)
 		}
 		scanErr := scan.Err()
 		f.Close()
 		if scanErr != nil {
-			return nil, fmt.Errorf("muninn: scan %s: %w", logPath, scanErr)
+			return fmt.Errorf("muninn: scan %s: %w", path, scanErr)
 		}
-	} else if !os.IsNotExist(err) {
-		return nil, fmt.Errorf("muninn: open %s: %w", logPath, err)
+		return nil
+	}
+
+	// Rotated siblings first (oldest → newest), then the live primary —
+	// so the whole rolling bucket is read end-to-end even mid-rotation.
+	if opts.IncludeRotated {
+		for _, sib := range rotatedSiblings(opts.LogPath) {
+			if err := scanFile(sib); err != nil {
+				return nil, err
+			}
+		}
+	}
+	if err := scanFile(opts.LogPath); err != nil {
+		return nil, err
+	}
+
+	// Scrape DARKSTAR server.log captures for bracket-game feynman-check
+	// lines and merge them into the same clusters. Non-matching lines are
+	// silently ignored (a server.log is mostly unrelated output) — only a
+	// parsed Feynman violation contributes. Lines with no per-line
+	// timestamp inherit the capture stamp so they still sort.
+	if len(opts.ServerLogPaths) > 0 {
+		stamp := ""
+		if opts.ServerLogStamp != "" {
+			st, err := parseSince(opts.ServerLogStamp)
+			if err != nil {
+				return nil, fmt.Errorf("muninn: server-log stamp: %w", err)
+			}
+			stamp = st.Format(time.RFC3339)
+		} else if opts.GeneratedAt != "" {
+			stamp = opts.GeneratedAt
+		}
+		scanServerLog := func(path string) error {
+			f, err := os.Open(path)
+			if err != nil {
+				if os.IsNotExist(err) {
+					return nil
+				}
+				return fmt.Errorf("muninn: open %s: %w", path, err)
+			}
+			t.Sources = append(t.Sources, path)
+			scan := bufio.NewScanner(f)
+			scan.Buffer(make([]byte, 0, 256*1024), 1024*1024)
+			for scan.Scan() {
+				rec, ok := parseFeynmanLine(scan.Text())
+				if !ok {
+					continue
+				}
+				if rec.TS == "" {
+					rec.TS = stamp
+				}
+				if !keep(rec.TS) {
+					continue
+				}
+				add(rec)
+				t.ServerLogParsed++
+			}
+			scanErr := scan.Err()
+			f.Close()
+			if scanErr != nil {
+				return fmt.Errorf("muninn: scan %s: %w", path, scanErr)
+			}
+			return nil
+		}
+		for _, p := range opts.ServerLogPaths {
+			if err := scanServerLog(p); err != nil {
+				return nil, err
+			}
+		}
 	}
 
 	// Fold the tournament runner's archived violations — same canonical
 	// vocabulary, older bookkeeping path — into the same clusters.
-	if muninnDir != "" {
-		archived, err := ReadInvariantViolations(muninnDir)
+	if opts.MuninnDir != "" {
+		archived, err := ReadInvariantViolations(opts.MuninnDir)
 		if err != nil {
 			return nil, err
 		}
 		for _, av := range archived {
+			if !keep(av.Timestamp) {
+				continue
+			}
 			var keys []string
 			for _, k := range av.DeckKeys {
 				if k != "" {
@@ -336,7 +647,23 @@ func WriteJudgeTriage(dir string, t *JudgeTriage) (mdPath, jsonPath string, err 
 func renderTriageMarkdown(t *JudgeTriage) string {
 	var b strings.Builder
 	b.WriteString("# Hex Judge Triage — Muninn clerk\n\n")
+	if t.GeneratedAt != "" {
+		fmt.Fprintf(&b, "Generated: %s\n", t.GeneratedAt)
+	}
+	if t.Since != "" {
+		fmt.Fprintf(&b, "Window: since %s", t.Since)
+		if t.SinceFiltered > 0 {
+			fmt.Fprintf(&b, " (%d older record(s) excluded)", t.SinceFiltered)
+		}
+		b.WriteString("\n")
+	}
 	fmt.Fprintf(&b, "Source: `%s` — %d records", t.Source, t.TotalRecords)
+	if len(t.Sources) > 1 {
+		fmt.Fprintf(&b, " (across %d source file(s))", len(t.Sources))
+	}
+	if t.ServerLogParsed > 0 {
+		fmt.Fprintf(&b, " (incl. %d feynman line(s) from server.log)", t.ServerLogParsed)
+	}
 	if t.ArchiveFolded > 0 {
 		fmt.Fprintf(&b, " (incl. %d folded from invariant_violations.json)", t.ArchiveFolded)
 	}

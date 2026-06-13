@@ -9,7 +9,8 @@
 //
 //	hexdek-muninn [--gaps] [--crashes] [--triggers] [--all] [--top N] [--dir path]
 //	hexdek-muninn --reconcile-fixed [--reconcile-cause "PR #35"] [--reconcile-from path]
-//	hexdek-muninn --judge-triage [--judge-log path] [--dir path]
+//	hexdek-muninn --judge-triage [--judge-log path] [--dir path] [--since when]
+//	              [--server-log path[,path…]] [--server-log-stamp when]
 //
 // Flags:
 //
@@ -28,7 +29,18 @@
 //	                    classify by dimension, dedupe by stable fingerprint,
 //	                    and write judge-triage.md + judge-triage.json to --dir.
 //	--judge-log path    Judge violation JSONL to triage
-//	                    (default data/judge/grinder-violations.jsonl)
+//	                    (default data/judge/grinder-violations.jsonl).
+//	                    Rotated siblings (<path>.1, .2, …) fold in.
+//	--since when        Only triage violations stamped at/after this
+//	                    time (RFC3339 or YYYY-MM-DD). Scrape only-new
+//	                    issues across days of a rolling bucket.
+//	--server-log path   Comma-separated server.log capture(s) to ALSO
+//	                    scrape for bracket-game feynman-check lines
+//	                    (`feynman/RULE [seat N]: MESSAGE`), merged into
+//	                    the same digest. This is where the live issues
+//	                    land when the jsonl bucket is clean.
+//	--server-log-stamp  Fallback timestamp for server.log feynman lines
+//	                    that carry no per-line stamp (default = run time).
 package main
 
 import (
@@ -37,6 +49,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/hexdek/hexdek/internal/muninn"
 )
@@ -68,13 +81,16 @@ func main() {
 		// Judge triage clerk (r63): consume the Judge watchdog's live
 		// violation stream + muninn's own archive, emit the organized
 		// triage artifact for human review.
-		judgeTriage = flag.Bool("judge-triage", false, "triage the Judge violation stream into judge-triage.md/.json under --dir")
-		judgeLog    = flag.String("judge-log", "data/judge/grinder-violations.jsonl", "judge violation JSONL to triage")
+		judgeTriage    = flag.Bool("judge-triage", false, "triage the Judge violation stream into judge-triage.md/.json under --dir")
+		judgeLog       = flag.String("judge-log", "data/judge/grinder-violations.jsonl", "judge violation JSONL to triage")
+		judgeSince     = flag.String("since", "", "only triage violations stamped at/after this time (RFC3339 or YYYY-MM-DD); scrape only-new issues across days")
+		judgeServerLog = flag.String("server-log", "", "comma-separated server.log capture(s) to also scrape for `feynman/RULE [seat N]: MESSAGE` bracket-game lines")
+		judgeSrvStamp  = flag.String("server-log-stamp", "", "fallback timestamp (RFC3339 or YYYY-MM-DD) for server.log feynman lines with no per-line stamp; default = run time")
 	)
 	flag.Parse()
 
 	if *judgeTriage {
-		if err := runJudgeTriage(*judgeLog, *dir); err != nil {
+		if err := runJudgeTriage(*judgeLog, *dir, *judgeSince, *judgeServerLog, *judgeSrvStamp); err != nil {
 			fmt.Fprintf(os.Stderr, "judge-triage: %v\n", err)
 			os.Exit(1)
 		}
@@ -311,13 +327,36 @@ func shortDate(rfc3339 string) string {
 	return rfc3339
 }
 
-func runJudgeTriage(logPath, dir string) error {
-	t, err := muninn.TriageJudgeLog(logPath, dir)
+func runJudgeTriage(logPath, dir, since, serverLog, srvStamp string) error {
+	var serverLogs []string
+	for _, p := range strings.Split(serverLog, ",") {
+		if p = strings.TrimSpace(p); p != "" {
+			serverLogs = append(serverLogs, p)
+		}
+	}
+	t, err := muninn.TriageJudgeLogWithOptions(muninn.TriageOptions{
+		LogPath:        logPath,
+		MuninnDir:      dir,
+		Since:          since,
+		GeneratedAt:    time.Now().UTC().Format(time.RFC3339),
+		IncludeRotated: true,
+		ServerLogPaths: serverLogs,
+		ServerLogStamp: srvStamp,
+	})
 	if err != nil {
 		return err
 	}
 	fmt.Println("=== MUNINN JUDGE TRIAGE ===")
 	fmt.Printf("source:   %s\n", logPath)
+	if len(serverLogs) > 0 {
+		fmt.Printf("server.log: %s (%d feynman line(s) parsed)\n", strings.Join(serverLogs, ", "), t.ServerLogParsed)
+	}
+	if len(t.Sources) > 1 {
+		fmt.Printf("sources:  %d file(s) scanned\n", len(t.Sources))
+	}
+	if t.Since != "" {
+		fmt.Printf("since:    %s (%d older record(s) excluded)\n", t.Since, t.SinceFiltered)
+	}
 	fmt.Printf("records:  %d (archive folded: %d, malformed skipped: %d)\n",
 		t.TotalRecords, t.ArchiveFolded, t.Malformed)
 	if t.TotalRecords == 0 {
