@@ -2700,6 +2700,18 @@ func (gs *GameState) drawOne(seat int) (*Card, bool) {
 	}
 	s.Flags["cards_drawn_this_turn"]++
 
+	// CR §702.94a/b — Miracle. The dedicated miracle counter is reset to 0
+	// for every seat at each turn start (UntapAll), so == 1 here means this
+	// is the FIRST card this seat has drawn during the current turn — the
+	// only draw that can open a miracle window (extra draws and non-draw
+	// hand entry never reach this == 1 branch). MaybeOpenMiracleWindow
+	// reveals a miracle card drawn first and grants the cast-for-miracle-cost
+	// triggered ability.
+	s.Flags["miracle_draws_this_turn"]++
+	if s.Flags["miracle_draws_this_turn"] == 1 {
+		MaybeOpenMiracleWindow(gs, seat, c)
+	}
+
 	// Fire "card_drawn" trigger for per-card handlers (Sheoldred,
 	// Consecrated Sphinx, Smothering Tithe, Nekusar, Queza, Orcish
 	// Bowmasters, The Watcher in the Water, The Council of Four,

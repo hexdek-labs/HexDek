@@ -772,7 +772,13 @@ func TestMiracle_CastForMiracleCost(t *testing.T) {
 	}
 	gs.Seats[0].Hand = append(gs.Seats[0].Hand, card)
 
-	err := CastWithMiracle(gs, 0, card)
+	// Open the miracle window as the draw chokepoint would on a first draw.
+	if gs.Turn == 0 {
+		gs.Turn = 1
+	}
+	MaybeOpenMiracleWindow(gs, 0, card)
+
+	err := CastWithMiracle(gs, 0, card, nil)
 	if err != nil {
 		t.Fatalf("miracle cast should succeed: %v", err)
 	}
@@ -780,9 +786,12 @@ func TestMiracle_CastForMiracleCost(t *testing.T) {
 	if gs.Seats[0].ManaPool != 4 {
 		t.Errorf("should have paid 1 mana for miracle, mana pool=%d", gs.Seats[0].ManaPool)
 	}
-	// Card should be on stack.
-	if len(gs.Stack) != 1 {
-		t.Error("spell should be on the stack")
+	// CastWithMiracle routes through CastSpellWithCosts (cast+resolve), so the
+	// sorcery resolves and leaves the hand rather than sitting on the stack.
+	for _, c := range gs.Seats[0].Hand {
+		if c == card {
+			t.Error("miracle card should have left the hand on cast")
+		}
 	}
 }
 
