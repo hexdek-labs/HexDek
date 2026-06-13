@@ -1595,6 +1595,14 @@ type Permanent struct {
 	// GrantedAbilities: ability names granted "until end of turn".
 	GrantedAbilities []string
 
+	// AnimatedAddedTypes records the card-type tokens added by an
+	// "becomes a creature until end of turn" animation (manlands like
+	// Mutavault, the Restless cycle). The until-EOT P/T lives in
+	// Modifications; these types are stripped at the §514.2 cleanup so a
+	// land doesn't stay a creature after the turn ends. Empty when the
+	// permanent is not currently animated.
+	AnimatedAddedTypes []string
+
 	// MarkedDamage: damage on the creature this turn (wiped at end of turn).
 	MarkedDamage int
 

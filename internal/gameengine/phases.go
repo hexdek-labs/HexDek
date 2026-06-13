@@ -393,6 +393,26 @@ func ScanExpiredDurations(gs *GameState, phase, step string) {
 					}
 					p.Modifications = mods
 				}
+				// §514.2 — a manland animated "until end of turn" (Mutavault,
+				// the Restless cycle, …) stops being a creature. Strip the
+				// card types the animation added; the P/T modification was
+				// already removed above.
+				if len(p.AnimatedAddedTypes) > 0 && p.Card != nil {
+					added := make(map[string]bool, len(p.AnimatedAddedTypes))
+					for _, t := range p.AnimatedAddedTypes {
+						added[t] = true
+					}
+					kept := p.Card.Types[:0]
+					for _, t := range p.Card.Types {
+						if added[t] {
+							continue
+						}
+						kept = append(kept, t)
+					}
+					p.Card.Types = kept
+					p.AnimatedAddedTypes = nil
+					modsRemoved = true
+				}
 				// §514.2: "until end of turn" granted abilities are removed.
 				if len(p.GrantedAbilities) > 0 {
 					// MVP: we don't track per-grant durations on the slice
