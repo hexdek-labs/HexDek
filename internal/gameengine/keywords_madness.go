@@ -44,6 +44,8 @@ package gameengine
 //     routed.
 
 import (
+	"sort"
+
 	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/mana"
 )
@@ -363,6 +365,21 @@ func ResolveMadnessWindow(gs *GameState, seatIdx int) int {
 		}
 		todo = append(todo, pending{card: c, win: w})
 	}
+	// Determinism (r63 seed-determinism audit): todo is built by ranging
+	// the MadnessExile map, so its order is Go's randomized map-iteration
+	// order. When a seat has >1 madness window open at once, the
+	// madness_decline events below would be logged in a different order on
+	// every run — diverging the event log that parity replays and the
+	// repro baselines compare. Sort by the per-instance InstanceID (stable
+	// and unique within a game; DisplayName as a legacy fallback for
+	// unminted cards) to pin the resolution order.
+	sort.SliceStable(todo, func(i, j int) bool {
+		a, b := todo[i].card, todo[j].card
+		if a.InstanceID != b.InstanceID {
+			return a.InstanceID < b.InstanceID
+		}
+		return a.DisplayName() < b.DisplayName()
+	})
 	for _, p := range todo {
 		seat := gs.Seats[p.win.Seat]
 		if seat == nil {

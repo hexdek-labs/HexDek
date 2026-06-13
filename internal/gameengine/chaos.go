@@ -16,6 +16,7 @@ package gameengine
 
 import (
 	"math/rand"
+	"sort"
 )
 
 // ChaosCard holds the minimal card metadata needed for random deck
@@ -144,6 +145,14 @@ func GenerateChaosDeck(cc *ChaosCorpus, rng *rand.Rand) *ChaosDeck {
 				colors = append(colors, c)
 			}
 		}
+		// Determinism (r63 seed-determinism audit): ciSet is a map, so the
+		// range above yields colors in Go's randomized map-iteration order.
+		// The round-robin basic-land assignment below indexes `colors`, so
+		// an unsorted order makes the SAME seed produce a different deck
+		// (basic lands shuffled into different positions) on every run —
+		// breaking loki --seed reproduction, the issue-log repro lines, and
+		// the correctness seed=42 sweeps. Sort to pin the order.
+		sort.Strings(colors)
 		if len(colors) > 0 {
 			for i := 0; i < basicCount; i++ {
 				color := colors[i%len(colors)]
