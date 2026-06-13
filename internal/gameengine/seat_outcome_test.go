@@ -99,6 +99,49 @@ func TestSeatOutcome_GameEndWinnerCount(t *testing.T) {
 	}
 }
 
+// CR §104.4a: a game in which every remaining player loses
+// simultaneously is a legal DRAW (zero winners). Game 395 / seed
+// 3950043 of the correctness sweep: the last two living seats both
+// died to one Howling Banshee "each player loses 3 life" ETB, so the
+// engine recorded a simultaneous_elimination_draw (winner=-1, no seat
+// Won). The winner_count check must NOT flag this — every seat is Lost,
+// so there is no unresolved seat that "should have won".
+func TestSeatOutcome_SimultaneousEliminationDrawIsLegal(t *testing.T) {
+	gs := outcomeFixture(t)
+	gs.Flags["ended"] = 1
+	// Both remaining seats died to the same effect (life <= 0).
+	gs.Seats[0].Lost = true
+	gs.Seats[0].Life = 0
+	gs.Seats[0].LossReason = "life total 0 or less (CR 704.5a)"
+	gs.Seats[1].Lost = true
+	gs.Seats[1].Life = -1
+	gs.Seats[1].LossReason = "life total 0 or less (CR 704.5a)"
+
+	gs.SeatOutcome.CheckConsistency(gs, "game_end")
+
+	if n := len(gs.SeatOutcome.Violations); n != 0 {
+		t.Fatalf("an all-players-lost draw (CR 104.4a) must produce no violations, got %d: %v",
+			n, gs.SeatOutcome.Violations)
+	}
+}
+
+// A zero-winner end with a seat STILL ALIVE is not a legal draw — it is
+// a premature end or a winner that was never marked. winner_count must
+// still flag it (distinct from the clean all-lost draw above).
+func TestSeatOutcome_ZeroWinnersWithSurvivorFlagged(t *testing.T) {
+	gs := outcomeFixture(t)
+	gs.Flags["ended"] = 1
+	gs.Seats[0].Lost = true
+	gs.Seats[0].LossReason = "life total 0 or less (CR 704.5a)"
+	gs.Seats[0].Life = -2
+	// Seat 1 alive, not marked Won — should have won, or the end is
+	// premature.
+	gs.SeatOutcome.CheckConsistency(gs, "game_end")
+	if outcomeKinds(gs)["winner_count"] == 0 {
+		t.Error("ended game with 0 winners but a surviving seat must flag winner_count")
+	}
+}
+
 func TestSeatOutcome_CleanGameNoViolations(t *testing.T) {
 	gs := outcomeFixture(t)
 	gs.Seats[0].Won = true

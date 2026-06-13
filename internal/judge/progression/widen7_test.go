@@ -73,3 +73,21 @@ func TestSacrifice_GatesBoardScalingAndCascade(t *testing.T) {
 		}
 	}
 }
+
+func TestDiscard_InScopeYouDiscard(t *testing.T) {
+	tr := &gameast.Triggered{Trigger: gameast.Trigger{Event: "discard_filtered"}, Effect: dcGain(),
+		Raw: "whenever you discard a card, you gain 1 life"}
+	if !InScopeDiscardTrigger(tr) {
+		t.Fatal("'whenever you discard a card' must be in scope")
+	}
+	// Type-filtered / wrong-event forms out of scope.
+	for _, c := range []struct{ ev, raw string }{
+		{"discard_filtered", "whenever you discard a creature card, you gain 1 life"},
+		{"etb", "when this enters, you gain 1 life"},
+	} {
+		tr := &gameast.Triggered{Trigger: gameast.Trigger{Event: c.ev}, Effect: dcGain(), Raw: c.raw}
+		if InScopeDiscardTrigger(tr) {
+			t.Fatalf("must be out of scope: %q", c.raw)
+		}
+	}
+}

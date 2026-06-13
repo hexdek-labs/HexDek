@@ -190,9 +190,54 @@ var commanderBannedList = map[string]bool{
 
 // IsCommanderBanned reports whether a (canonical, lowercased-by-callee)
 // card name is on the Commander banned list. Exported so drivers (loki
-// pool hygiene, forge) can consult the ONE list.
+// pool hygiene, forge) can consult the ONE list. A card carried by the
+// stale-ban override (IsUnbannedOverride) reads NOT banned even if it is
+// still on commanderBannedList.
 func IsCommanderBanned(name string) bool {
-	return commanderBannedList[legalityFoldQuotes(strings.ToLower(strings.TrimSpace(name)))]
+	n := legalityFoldQuotes(strings.ToLower(strings.TrimSpace(name)))
+	if unbannedOverrides["commander"][n] {
+		return false
+	}
+	return commanderBannedList[n]
+}
+
+// ---------------------------------------------------------------------------
+// Stale-ban overrides — THE single canonical correction layer.
+// ---------------------------------------------------------------------------
+
+// unbannedOverrides lists cards whose cached Scryfall legality (or a stale
+// hardcoded banlist entry) may still read "banned" but which have since
+// been unbanned in that format. Keyed by format slug → lowercased,
+// quote-folded card name. This is the ONE source consulted by every
+// banned-determination site — judge deck-legality (checkDeckBanned /
+// IsCommanderBanned), the moxfield import validator, and the
+// commander-check CLI — so correcting a stale ban is a single edit that
+// reads LEGAL everywhere.
+//
+// Temporary band-aid pending a full oracle legality-cache refresh (the
+// canonical long-term fix — regenerate oracle-cards.json + the card_oracle
+// legalities cache from current Scryfall data). Gifts Ungiven was unbanned
+// in Commander (Sept 2024); #996 added an import-path override and #997
+// pulled it from both hardcoded lists, but the override is the durable
+// mechanism for the broader stale-ban wave (#997 noted ~10 more). Delete
+// per-format entries once the underlying legality data is re-fetched.
+var unbannedOverrides = map[string]map[string]bool{
+	"commander": {
+		"gifts ungiven": true,
+	},
+}
+
+// IsUnbannedOverride reports whether (format, name) is a known stale-ban
+// override — the card reads legal in that format despite any cached
+// "banned" Scryfall status or stale hardcoded banlist entry. Name is
+// normalized (trim, lowercase, curly-quote/dash fold) to match banlist
+// canonicalization; format is lowercased.
+func IsUnbannedOverride(format, name string) bool {
+	m := unbannedOverrides[strings.ToLower(strings.TrimSpace(format))]
+	if m == nil {
+		return false
+	}
+	return m[legalityFoldQuotes(strings.ToLower(strings.TrimSpace(name)))]
 }
 
 var singletonExemptBasics = map[string]bool{
@@ -427,6 +472,11 @@ func checkDeckBanned(cards []DeckCard) BannedCheck {
 		}
 		checkName = legalityFoldQuotes(strings.ToLower(strings.TrimSpace(checkName)))
 
+		// A stale-ban override reads the card legal even if it is still
+		// on commanderBannedList (defensive: future re-adds / drift).
+		if unbannedOverrides["commander"][checkName] {
+			continue
+		}
 		if commanderBannedList[checkName] && !seen[checkName] {
 			seen[checkName] = true
 			bc.Valid = false

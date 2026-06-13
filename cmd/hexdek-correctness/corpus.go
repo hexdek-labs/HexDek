@@ -221,6 +221,8 @@ func safeCheckAnyTrigger(name string, tr *gameast.Triggered) (findings []*progre
 				evName = "sacrifice_filtered"
 			} else if _, ok := progression.InScopeAllyDiesTrigger(tr); ok {
 				evName = "ally_dies"
+			} else if progression.InScopeDiscardTrigger(tr) {
+				evName = "discard_filtered"
 			} else {
 				evName = "widened"
 			}

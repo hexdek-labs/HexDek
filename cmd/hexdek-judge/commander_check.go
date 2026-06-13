@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/hexdek/hexdek/internal/judge"
 )
 
 // CR §903 Commander format legality probe.
@@ -365,6 +367,12 @@ func classifyFormatLegal(e *oracleCmdrEntry) (bool, string) {
 	if e == nil {
 		return false, "unknown"
 	}
+	// Shared stale-ban override: a recently-unbanned commander whose
+	// cached Scryfall legality still reads "banned" reads legal here too
+	// (consistent with the import + deck-analysis paths).
+	if judge.IsUnbannedOverride("commander", e.Name) {
+		return true, "legal"
+	}
 	if e.Legalities == nil {
 		return true, "unknown"
 	}
@@ -426,7 +434,7 @@ func validateDeckColorIdentity(deck []deckCard, allowed map[string]bool, allowed
 func validateBannedCards(commanderNames []string, deck []deckCard) BannedCardsCheck {
 	out := BannedCardsCheck{Valid: true, Violations: []BannedViolation{}}
 	for _, name := range commanderNames {
-		if commanderBannedList[normCmdrName(name)] {
+		if commanderBannedList[normCmdrName(name)] && !judge.IsUnbannedOverride("commander", name) {
 			out.Valid = false
 			out.Violations = append(out.Violations, BannedViolation{
 				CardName: name,
@@ -435,7 +443,7 @@ func validateBannedCards(commanderNames []string, deck []deckCard) BannedCardsCh
 		}
 	}
 	for _, c := range deck {
-		if commanderBannedList[normCmdrName(c.Name)] {
+		if commanderBannedList[normCmdrName(c.Name)] && !judge.IsUnbannedOverride("commander", c.Name) {
 			out.Valid = false
 			out.Violations = append(out.Violations, BannedViolation{
 				CardName: c.Name,

@@ -270,16 +270,35 @@ func (c *SeatOutcomeChecker) CheckConsistency(gs *GameState, when string) {
 	}
 
 	if ended {
-		// CR §104.4 — a drawn game legitimately ends with 0 winners
-		// (simultaneous elimination / loop draw) or ≥2 "would-win" seats
-		// that cancel to a draw (§104.3b). Only a DECISIVE game must have
-		// exactly one winner; exempt draws (engine sets game_draw at every
-		// draw site) so the self-checker doesn't false-positive on them.
-		drawn := gs.Flags != nil && gs.Flags["game_draw"] == 1
-		if winners != 1 && !drawn {
+		// CR §104.4a — a game in which every remaining player loses
+		// simultaneously is a legal DRAW (zero winners), not an
+		// inconsistency. (Game 395 / seed 3950043: the last two living
+		// seats both died to one Howling Banshee "each player loses 3
+		// life" ETB.) A decided game has exactly one winner. Only the
+		// genuinely inconsistent end shapes are violations:
+		//   - 2+ seats Won without the engine collapsing to a §104.3b
+		//     draw (the engine resolves multi-win to winner=-1, so a
+		//     surviving 2+ here means the draw collapse was skipped);
+		//   - 0 winners while a seat is still alive — a premature end or
+		//     a seat that should have won was never marked (distinct
+		//     from a clean all-players-lost draw, and also surfaced
+		//     per-seat by unresolved_at_end below).
+		aliveUndecided := 0
+		for _, s := range gs.Seats {
+			if s != nil && !s.Lost {
+				aliveUndecided++
+			}
+		}
+		switch {
+		case winners >= 2:
 			c.add(gs, SeatOutcomeViolation{
 				Seat: -1, Kind: "winner_count", When: when,
-				Detail: fmt.Sprintf("game ended with %d winners, want exactly 1", winners),
+				Detail: fmt.Sprintf("game ended with %d winners, want exactly 1 (or a recorded draw)", winners),
+			})
+		case winners == 0 && aliveUndecided > 0:
+			c.add(gs, SeatOutcomeViolation{
+				Seat: -1, Kind: "winner_count", When: when,
+				Detail: fmt.Sprintf("game ended with 0 winners but %d seat(s) still alive — want a winner or an all-players-lost draw (CR 104.4a)", aliveUndecided),
 			})
 		}
 		for i, s := range gs.Seats {

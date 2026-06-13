@@ -26,7 +26,80 @@ func checkAnyPhase3e(cardName string, t *gameast.Triggered) ([]*Finding, bool) {
 	if f, ran := CheckSacrificeTrigger(cardName, t); ran {
 		return f, true
 	}
+	if f, ran := CheckDiscardTrigger(cardName, t); ran {
+		return f, true
+	}
 	return nil, false
+}
+
+// ---------------------------------------------------------------------------
+// discard_filtered — "whenever you discard a card,"
+// ---------------------------------------------------------------------------
+
+// InScopeDiscardTrigger keeps the controller-scoped "whenever you discard a
+// card," wording. Type-filtered discards ("a creature card") and "that much"
+// riders fail closed.
+func InScopeDiscardTrigger(t *gameast.Triggered) bool {
+	if t == nil || t.Effect == nil || t.InterveningIf != nil {
+		return false
+	}
+	tr := t.Trigger
+	if tr.Actor != nil || tr.TargetFilter != nil || tr.Condition != nil ||
+		tr.Phase != "" || tr.Controller != "" {
+		return false
+	}
+	if tr.Event != "discard_filtered" {
+		return false
+	}
+	raw := strings.ToLower(t.Raw)
+	if !cleanRider(raw) || strings.Contains(raw, "that much") {
+		return false
+	}
+	return strings.Contains(raw, "whenever you discard a card,")
+}
+
+// CheckDiscardTrigger: FIRE — the controller discards (drives
+// FireDiscardASTTriggers); the payoff must produce its effect's delta once.
+// CONTROLLER-GATE PHANTOM — an opponent discards; the controller's trigger
+// must stay silent.
+func CheckDiscardTrigger(cardName string, t *gameast.Triggered) ([]*Finding, bool) {
+	if !InScopeDiscardTrigger(t) {
+		return nil, false
+	}
+	if perCardOwned(cardName, "card_discarded", "discard_filtered") {
+		return nil, false
+	}
+	spec := progressionSpec()
+	expectedSet, ok := expectedFireSet(spec, t.Effect)
+	if !ok {
+		return nil, false
+	}
+
+	var findings []*Finding
+	run := func(discarderSeat int) *outcome.Delta {
+		gs, bearer := outcome.BuildBoardForSpec(spec, cardName)
+		bearer.Card.AST = wrapSingle(t)
+		before := outcome.Snap(gs)
+		gameengine.FireDiscardASTTriggers(gs, discarderSeat)
+		return outcome.DiffSnapshots(before, outcome.Snap(gs))
+	}
+
+	actual := run(0)
+	if !matchSet(expectedSet, actual) {
+		findings = append(findings, &Finding{
+			CardName: cardName, Event: "discard_filtered", Check: "fire",
+			Expected: describeSet(expectedSet), Actual: actual.String(), Raw: t.Raw,
+		})
+	}
+	actualOpp := run(1)
+	if !actualOpp.Equal(outcome.NewDelta()) {
+		findings = append(findings, &Finding{
+			CardName: cardName, Event: "discard_filtered", Check: "controller_gate_phantom",
+			Expected: "no change (opponent discarded)", Actual: actualOpp.String(), Raw: t.Raw,
+		})
+	}
+	emitAll(findings)
+	return findings, true
 }
 
 // ---------------------------------------------------------------------------
