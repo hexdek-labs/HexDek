@@ -760,6 +760,22 @@ func UntapAll(gs *GameState, seatIdx int) {
 	// effects. DescendedThisTurn is written by MoveCard in zone_move.go.
 	seat.Turn.Reset()
 	seat.DescendedThisTurn = false
+	// CR §702.94a — "the first card you've drawn this turn." Miracle's
+	// first-draw window is game-turn-scoped for EVERY player, not just the
+	// active one: a player who draws their first card of the current turn
+	// at instant speed during an opponent's turn still qualifies. The
+	// per-seat TurnCounters.Reset above only resets the active seat, so the
+	// dedicated miracle draw counter is zeroed for ALL seats here at the
+	// canonical turn-start hook (untap step, §502.1).
+	for _, sx := range gs.Seats {
+		if sx == nil {
+			continue
+		}
+		if sx.Flags == nil {
+			sx.Flags = map[string]int{}
+		}
+		sx.Flags["miracle_draws_this_turn"] = 0
+	}
 	// CR §701.4 — close the "beheld this turn" window. Behold registry
 	// is game-turn-scoped, not per-seat-scoped, so the active seat's
 	// untap step is the canonical reset point.
