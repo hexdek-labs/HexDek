@@ -1426,6 +1426,12 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			DealDamage(gs, controllerSeat(src), amt, sourceName(src))
 		}
 
+	// temp_control (r63 scaffold-kind, hex-dev-3) — the Threaten /
+	// Act of Treason template ("gain control of target creature until end
+	// of turn, untap it, it gains haste"). Logic in temp_control_mod_r63.go.
+	case "temp_control":
+		resolveTempControlMod(gs, src)
+
 	case "connives":
 		n := 1
 		if len(e.Args) > 0 {
