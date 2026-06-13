@@ -4603,6 +4603,13 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 	// truly unrecognized effect text.
 	// -----------------------------------------------------------------
 	default:
+		// Generic coverage for parser "_typed" scaffold variants whose
+		// base ModKind is already implemented (modkind_typed_aliases.go):
+		// re-dispatch to the base case. Only genuinely unhandled kinds
+		// fall through to the parser_gap logging below.
+		if resolveTypedAliasModKind(gs, src, e) {
+			return
+		}
 		gs.LogEvent(Event{
 			Kind:   "modification_effect",
 			Seat:   controllerSeat(src),
