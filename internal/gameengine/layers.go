@@ -2449,6 +2449,12 @@ func registerASTStaticEffects(gs *GameState, p *Permanent) {
 				}
 			}
 
+		case "anthem":
+			// Generic static anthem — "creatures [you control | opponents |
+			// all | other] get +X/+Y". The spell/triggered one-shot form is
+			// handled in resolveModificationEffect. See mod_kind_anthem.go.
+			registerGenericAnthemStatic(gs, p, mod.Args)
+
 		case "enchanted_creature_pt":
 			pow, tough := extractPT(mod.Args, 0, 0)
 			src := p

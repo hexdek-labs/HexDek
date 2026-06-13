@@ -294,6 +294,16 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		}
 
 	// -----------------------------------------------------------------
+	// Generic anthem — "creatures [you control | opponents | all] get
+	// +X/+Y [until end of turn]" as a SPELL/triggered one-shot. Static
+	// anthem abilities on permanents are handled by registerASTStaticEffects
+	// (layers.go); this path covers the resolved-effect form. See
+	// mod_kind_anthem.go.
+	// -----------------------------------------------------------------
+	case "anthem":
+		applyAnthemSpellEffect(gs, src, e.Args)
+
+	// -----------------------------------------------------------------
 	// Double target power EOT. MVP: apply a buff equal to the
 	// creature's current power.
 	// -----------------------------------------------------------------
