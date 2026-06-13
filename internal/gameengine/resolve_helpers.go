@@ -1538,6 +1538,11 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			Source: sourceName(src),
 		})
 
+	// add_mana_per — mana scaled by a count basis ("Add {G} for each
+	// creature you control"). Generic handler in modkind_add_mana_per.go.
+	case "add_mana_per":
+		resolveAddManaPer(gs, src, e)
+
 	case "impulse_play":
 		// R60: the parser over-applies the impulse_play modkind to ~18
 		// cards whose printed text actually means "cast from your hand"
