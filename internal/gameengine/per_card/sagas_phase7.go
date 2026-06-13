@@ -773,7 +773,10 @@ func sagaTheCrueltyOfGix(gs *gameengine.GameState, perm *gameengine.Permanent, c
 		var pick *gameengine.Card
 		bestCMC := -1
 		for _, s := range gs.Seats {
-			if s == nil {
+			if s == nil || s.LeftGame {
+				// CR §800.4a: cards owned by a departed player left the
+				// game with them — they are not legal reanimation targets
+				// (their graveyard pointers persist only for forensics).
 				continue
 			}
 			for _, c := range s.Graveyard {

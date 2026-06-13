@@ -613,9 +613,10 @@ func RegisterZoneCastGrant(gs *GameState, card *Card, perm *ZoneCastPermission) 
 	// without a LeftGame check (Knowledge Pool's free-cast offer) would
 	// otherwise re-enter the dead card into the census via the
 	// ZoneCastGrants sideband walk — a permanent fabrication violation.
-	// Owner > 0 matches the MoveCard / moveToZone guard convention
-	// (zero-Owner cards are test fixtures).
-	if card.Owner > 0 && card.Owner < len(gs.Seats) {
+	// Owner >= 0 (r63 seed-1337 game 2293 fix): the LeftGame guard must
+	// cover seat 0 too — `Owner > 0` exempted every seat-0-owned card
+	// from §800.4a. The LeftGame condition is the real discriminator.
+	if card.Owner >= 0 && card.Owner < len(gs.Seats) {
 		if os := gs.Seats[card.Owner]; os != nil && os.LeftGame {
 			gs.LogEvent(Event{
 				Kind:   "zone_cast_grant_refused",
