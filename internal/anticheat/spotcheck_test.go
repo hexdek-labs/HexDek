@@ -243,6 +243,34 @@ func TestNewServiceRejectsBadConfig(t *testing.T) {
 	}
 }
 
+// TestNewServiceForwardsMaxTurns pins the r63 anticheat residual C-H2 #1
+// wiring: a configured MaxTurns lands on rc.MaxTurns (so the verifier
+// caps replays identically to the live games), while the zero value
+// leaves rc.MaxTurns untouched (the replay default).
+func TestNewServiceForwardsMaxTurns(t *testing.T) {
+	db := newSpotCheckTestDB(t)
+	base := Config{ContractKey: []byte("0123456789abcdef")}
+
+	rc := &heimdall.ReplayContext{}
+	cfg := base
+	cfg.MaxTurns = 33
+	if _, err := NewService(db, rc, cfg); err != nil {
+		t.Fatal(err)
+	}
+	if rc.MaxTurns != 33 {
+		t.Fatalf("cfg.MaxTurns not forwarded onto rc: got %d want 33", rc.MaxTurns)
+	}
+
+	// Zero MaxTurns must not clobber a cap a caller set on rc directly.
+	rc2 := &heimdall.ReplayContext{MaxTurns: 50}
+	if _, err := NewService(db, rc2, base); err != nil {
+		t.Fatal(err)
+	}
+	if rc2.MaxTurns != 50 {
+		t.Fatalf("zero cfg.MaxTurns clobbered a caller-set rc.MaxTurns: got %d want 50", rc2.MaxTurns)
+	}
+}
+
 // TestServiceStartStopIdempotent confirms double-Start is a no-op
 // and Stop before Start doesn't panic.
 func TestServiceStartStopIdempotent(t *testing.T) {

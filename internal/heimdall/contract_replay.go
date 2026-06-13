@@ -49,36 +49,14 @@ type VerifyResult struct {
 //     (Phase 1 uses the simplified YggdrasilHat — same as
 //     ReplayWithObservation)
 func VerifyReplay(rc *ReplayContext, contract *seedcontract.SeedContract, key []byte) (VerifyResult, error) {
-	if rc == nil {
-		return VerifyResult{}, errors.New("verify: nil ReplayContext")
-	}
-	if contract == nil {
-		return VerifyResult{}, errors.New("verify: nil contract")
-	}
-
-	// Stage 1: signature + digest integrity.
-	if err := contract.CheckIntegrity(key); err != nil {
-		return VerifyResult{Detail: "integrity: " + err.Error()}, nil
-	}
-
-	// Stage 1.5: engine-version gate. A replay on a different engine
-	// build is not evidence of tampering — surface it as its own
-	// detail instead of a confusing digest mismatch. Both sides must
-	// opt in (non-empty) for the check to fire, so existing callers
-	// that never set rc.EngineVersion keep their behavior.
-	if rc.EngineVersion != "" && contract.EngineVersion != "" &&
-		rc.EngineVersion != contract.EngineVersion {
-		return VerifyResult{Detail: fmt.Sprintf(
-			"engine version mismatch: contract sealed on %q, verifier running %q — replay would not be comparable",
-			contract.EngineVersion, rc.EngineVersion)}, nil
-	}
-
-	// Stage 2: deterministic replay. Reuses the existing replay path
-	// but captures the final game state rather than routing
-	// observations to sinks.
-	out, err := replayForOutcome(rc, contract)
+	gateFail, out, ran, err := runReplayGated(rc, contract, key)
 	if err != nil {
-		return VerifyResult{Detail: "replay: " + err.Error()}, err
+		return gateFail, err
+	}
+	if !ran {
+		// Integrity or engine-version gate failed; gateFail carries the
+		// detail and OK==false, and no replay was attempted.
+		return gateFail, nil
 	}
 
 	rederivedDigest := digestOutcomeFromContract(out)
@@ -94,6 +72,82 @@ func VerifyReplay(rc *ReplayContext, contract *seedcontract.SeedContract, key []
 	res.OK = true
 	res.Detail = "ok"
 	return res, nil
+}
+
+// ReplayClaim runs the deterministic replay for the worker's claim-check
+// path and returns the replayed outcome — WITHOUT comparing outcome
+// digests. The worker reconstructs the contract from a verification-queue
+// row carrying only a PARTIAL outcome (EndReason "claimed", zero
+// elimination order and final life), so its outcome digest can never
+// equal a real replay's. The pre-r63 worker still called VerifyReplay,
+// whose digest comparison therefore ALWAYS failed; the worker ignored
+// that verdict and used field equality on (winner, turns) instead, but
+// the meaningless "outcome digest mismatch" detail leaked onto every
+// PASSED row's audit record. ReplayClaim drops the structurally
+// meaningless comparison and reports an honest detail; the integrity and
+// engine-version gates still run, and the caller decides the verdict from
+// ReplayedOutcome. (r63 anticheat residual C-H2 #4.)
+func ReplayClaim(rc *ReplayContext, contract *seedcontract.SeedContract, key []byte) (VerifyResult, error) {
+	gateFail, out, ran, err := runReplayGated(rc, contract, key)
+	if err != nil {
+		return gateFail, err
+	}
+	if !ran {
+		return gateFail, nil
+	}
+	return VerifyResult{
+		OK:              true,
+		Detail:          "ok (claim replay; outcome-digest comparison not applicable)",
+		ReplayedOutcome: out,
+		ReplayedDigest:  digestOutcomeFromContract(out),
+	}, nil
+}
+
+// runReplayGated runs the two pre-replay gates (signature/digest
+// integrity, then the engine-version gate) and, if both pass, the
+// deterministic replay. It is the shared core of VerifyReplay (which adds
+// the outcome-digest comparison) and ReplayClaim (which does not).
+//
+// Return contract:
+//   - nil rc / nil contract → (zero, zero, false, err): replay can't run.
+//   - a gate fails → (gateFail with Detail set and OK==false, zero, false,
+//     nil): no replay attempted, so callers must not read ReplayedOutcome.
+//   - replay errors → (gateFail{Detail:"replay: ..."}, zero, false, err).
+//   - success → (zero VerifyResult, replayed outcome, true, nil).
+func runReplayGated(rc *ReplayContext, contract *seedcontract.SeedContract, key []byte) (VerifyResult, seedcontract.Outcome, bool, error) {
+	var zero seedcontract.Outcome
+	if rc == nil {
+		return VerifyResult{}, zero, false, errors.New("verify: nil ReplayContext")
+	}
+	if contract == nil {
+		return VerifyResult{}, zero, false, errors.New("verify: nil contract")
+	}
+
+	// Stage 1: signature + digest integrity.
+	if err := contract.CheckIntegrity(key); err != nil {
+		return VerifyResult{Detail: "integrity: " + err.Error()}, zero, false, nil
+	}
+
+	// Stage 1.5: engine-version gate. A replay on a different engine
+	// build is not evidence of tampering — surface it as its own
+	// detail instead of a confusing digest mismatch. Both sides must
+	// opt in (non-empty) for the check to fire, so existing callers
+	// that never set rc.EngineVersion keep their behavior.
+	if rc.EngineVersion != "" && contract.EngineVersion != "" &&
+		rc.EngineVersion != contract.EngineVersion {
+		return VerifyResult{Detail: fmt.Sprintf(
+			"engine version mismatch: contract sealed on %q, verifier running %q — replay would not be comparable",
+			contract.EngineVersion, rc.EngineVersion)}, zero, false, nil
+	}
+
+	// Stage 2: deterministic replay. Reuses the existing replay path
+	// but captures the final game state rather than routing
+	// observations to sinks.
+	out, err := replayForOutcome(rc, contract)
+	if err != nil {
+		return VerifyResult{Detail: "replay: " + err.Error()}, zero, false, err
+	}
+	return VerifyResult{}, out, true, nil
 }
 
 // replayForOutcome runs a deterministic replay from the contract's
@@ -185,11 +239,20 @@ func replayForOutcome(rc *ReplayContext, contract *seedcontract.SeedContract) (o
 	// Turn-loop parity with runOneGame: same TakeTurn implementation
 	// (TakeTurn == takeTurnImpl(gs, nil)), same SBA call, Mark after
 	// SBA, same round-flag bookkeeping, same next-living-seat rule.
-	// Known residual gap: the cap here is replayMaxTurns (80 ==
-	// tournament.DefaultMaxTurns); games sealed by a runner configured
-	// with a non-default MaxTurnsPerGame can diverge at the cap. The
-	// contract schema does not carry max-turns yet — see
-	// /tmp/fable-review plan note (schema bump territory).
+	// The cap is rc.MaxTurns (falling back to replayMaxTurns == 80 ==
+	// tournament.DefaultMaxTurns when unset). r63 anticheat residual
+	// C-H2 #1: a game sealed by a runner configured with a non-default
+	// MaxTurnsPerGame used to diverge at the cap here — the replay
+	// always capped at 80 — so an honest long game's replayed digest
+	// stopped matching its sealed one (and in the worker path that
+	// false-positive cauterizes an honest contributor). The caller now
+	// supplies the live cap via rc.MaxTurns; binding the cap into the
+	// signed contract for malicious-runner detection remains schema-bump
+	// territory (see the parked plan).
+	maxTurns := replayMaxTurns
+	if rc.MaxTurns > 0 {
+		maxTurns = rc.MaxTurns
+	}
 	elim := tournament.NewElimTracker()
 	elim.Mark(gs)
 
@@ -200,7 +263,7 @@ func replayForOutcome(rc *ReplayContext, contract *seedcontract.SeedContract) (o
 	}
 	gs.Flags["round"] = round
 	ended := false
-	for turn := 1; turn <= replayMaxTurns; turn++ {
+	for turn := 1; turn <= maxTurns; turn++ {
 		gs.Turn = turn
 		gs.Flags["round"] = round
 		tournament.TakeTurn(gs)

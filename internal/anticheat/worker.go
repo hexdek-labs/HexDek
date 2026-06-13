@@ -92,7 +92,15 @@ func (v *HeimdallVerifier) Verify(ctx context.Context, row db.VerificationQueueR
 		contract.Sign(v.contractKey)
 	}
 
-	res, err := heimdall.VerifyReplay(v.rc, contract, v.contractKey)
+	// ReplayClaim, not VerifyReplay: the contract above carries only a
+	// partial "claimed" outcome (no elimination order / final life), so
+	// its outcome digest can never equal a real replay's. VerifyReplay's
+	// digest comparison therefore always failed and stamped a misleading
+	// "outcome digest mismatch" detail onto even PASSED rows; the worker's
+	// real verdict is field equality on (winner, turns) below. ReplayClaim
+	// runs the same integrity + engine-version gates and replay, minus the
+	// meaningless comparison (r63 anticheat residual C-H2 #4).
+	res, err := heimdall.ReplayClaim(v.rc, contract, v.contractKey)
 	if err != nil {
 		return ReplayOutcome{}, err
 	}
