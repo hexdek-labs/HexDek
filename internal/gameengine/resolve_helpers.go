@@ -1344,6 +1344,13 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			}
 		}
 
+	// temp_control — Threaten / Act of Treason: gain control of target
+	// creature until end of turn, untap it, give it haste. Generic
+	// handler in modkind_temp_control.go (uses the existing
+	// RegisterTempControlGrant EOT-revert machinery).
+	case "temp_control":
+		resolveTempControl(gs, src, e)
+
 	case "no_untap":
 		// "Those creatures don't untap during their controller's next
 		// untap step." Sets DoesNotUntap on targeted/affected creatures.
