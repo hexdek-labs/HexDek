@@ -44,6 +44,7 @@ import (
 	"github.com/hexdek/hexdek/internal/deckparser"
 	"github.com/hexdek/hexdek/internal/gameengine"
 	"github.com/hexdek/hexdek/internal/hat"
+	"github.com/hexdek/hexdek/internal/judge"
 	"github.com/hexdek/hexdek/internal/tournament"
 )
 
@@ -224,6 +225,13 @@ func main() {
 	if workers <= 0 {
 		workers = runtime.NumCPU()
 	}
+
+	// SHADOW (driver-conversion plan step 1): register the Judge-sink
+	// mirror. One process-wide sink, attributed per game via judgeMu (see
+	// the shadow infrastructure block). Pure observation — no behavior
+	// change. Registered before any game runs; unregistered at exit.
+	unregisterShadow := judge.RegisterSink(shadowSink)
+	defer unregisterShadow()
 
 	log.Printf("hexdek-loki starting")
 	log.Printf("  games:           %d", *gamesFlag)
@@ -468,6 +476,11 @@ func main() {
 	log.Printf("  crashes:         %d", len(nightmareCrashList))
 	log.Printf("  violations:      %d", len(nightmareViolations))
 	log.Printf("  clean boards:    %d", nightmareClean)
+
+	// =====================================================================
+	// SHADOW (driver-conversion plan step 1) summary
+	// =====================================================================
+	shadowReport()
 
 	// =====================================================================
 	// Statistical Analysis: Cards most correlated with violations
@@ -1023,6 +1036,100 @@ func buildCardFromName(name string, corpus *astload.Corpus, meta *deckparser.Met
 	return deckparser.BuildCardFromName(name, corpus, meta)
 }
 
+// ---------------------------------------------------------------------------
+// SHADOW (driver-conversion plan step 1): a Judge-sink mirror of the
+// chaosViolation path, running ALONGSIDE it with ZERO behavior change.
+//
+// Every invariant violation already flows through judge.LogViolation at
+// origin inside RunAllInvariants (consolidation step 4). This shadow
+// registers ONE process-wide sink that tallies that canonical
+// ValidationViolation stream by invariant name, and the chaosViolation
+// path tallies its own recorded invariant rows by name in parallel. At
+// the end of the run the two tallies must be IDENTICAL per name — proving
+// the sink stream reproduces exactly the counts the report renderer reads
+// today, which is the precondition for FLIP/DELETE (migrate the renderer
+// onto the sink, delete chaosViolation). chaosViolation stays the SOLE
+// source of truth here: the report renderer, --invariant filter, and
+// --violations-dump all still read the old path.
+//
+// Why per-NAME global counts, not per-game attribution:
+//
+// loki generates games in parallel and the single global Judge sink fans
+// out to ONE callback. Attributing each sink emission to its originating
+// GAME would require either serializing every RunAllInvariants scan under
+// a global lock (BenchmarkInvariants_* measures this at ~3x on the
+// invariant fraction — it would blow the plan's ±5% throughput gate) or
+// stamping game identity into the engine's origin emission (out of the
+// additive SHADOW scope). The cadence-duplicate trap the equality check
+// guards (plan §"cadence semantics") is about the tracked RAW COUNTS per
+// invariant — "1,255 → 1,113" trend lines — which are global per-name
+// aggregates. Counting per name reproduces exactly that quantity, and
+// because BOTH tallies are driven by the SAME RunAllInvariants calls
+// (the sink fires inside; the old path reads the same call's return), a
+// per-name match is exact, not "modulo": a persistent violation
+// re-reported on every cadence pass is counted identically on both sides.
+//
+// The lock is held ONLY to increment a per-name counter when a violation
+// actually fires (rare) — never around the scan — so this is the literal
+// realization of the plan's option 2 ("violations are rare so contention
+// is nil") and adds no measurable throughput cost (clean games never call
+// LogViolation at all, so the sink is never even invoked).
+// ---------------------------------------------------------------------------
+
+// shadowCounts tallies invariant violations by canonical name. Guarded by
+// a mutex held only for the per-name increment, which happens once per
+// emitted violation (rare). SHADOW only — nothing here feeds the report.
+type shadowCounts struct {
+	mu     sync.Mutex
+	byName map[string]int
+	total  int
+}
+
+func newShadowCounts() *shadowCounts { return &shadowCounts{byName: map[string]int{}} }
+
+func (c *shadowCounts) inc(name string) {
+	c.mu.Lock()
+	c.byName[name]++
+	c.total++
+	c.mu.Unlock()
+}
+
+func (c *shadowCounts) snapshot() (map[string]int, int) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	out := make(map[string]int, len(c.byName))
+	for k, v := range c.byName {
+		out[k] = v
+	}
+	return out, c.total
+}
+
+var (
+	// shadowSinkCounts tallies the invariant stream as seen through the
+	// Judge router (the FLIP-target source). shadowChaosCounts tallies the
+	// invariant rows the chaosViolation path actually records (today's
+	// source of truth). They must match per name.
+	shadowSinkCounts  = newShadowCounts()
+	shadowChaosCounts = newShadowCounts()
+)
+
+// shadowSink is registered once in main. It counts invariant-surface
+// violations passing the active --invariant filter, mirroring the
+// chaosViolation path's own filter so the two tallies are comparable.
+// Non-invariant surfaces (ride-along legality / seat-outcome, only present
+// under --legality / --seat-outcome) are ignored: those are drained into
+// the report by the old path post-game, not via the invariant cadence,
+// and their sink migration is a FLIP-step concern.
+func shadowSink(v judge.ValidationViolation) {
+	if v.Surface != judge.SurfaceInvariants {
+		return
+	}
+	if !matchesInvariantFilter(v.Name, invariantFilter) {
+		return
+	}
+	shadowSinkCounts.inc(v.Name)
+}
+
 func checkChaosInvariants(gs *gameengine.GameState, gameIdx int, gameSeed int64,
 	permutation int, commanders []string, result *chaosGameResult) {
 	violations := gameengine.RunAllInvariants(gs)
@@ -1030,6 +1137,9 @@ func checkChaosInvariants(gs *gameengine.GameState, gameIdx int, gameSeed int64,
 		if !matchesInvariantFilter(v.Name, invariantFilter) {
 			continue
 		}
+		// SHADOW: tally the chaosViolation invariant row by name so the
+		// end-of-run check can compare against the Judge-sink tally.
+		shadowChaosCounts.inc(v.Name)
 		viol := chaosViolation{
 			GameIdx:       gameIdx,
 			GameSeed:      gameSeed,
@@ -1055,6 +1165,7 @@ func checkNightmareInvariants(gs *gameengine.GameState, boardIdx int, seed int64
 		if !matchesInvariantFilter(v.Name, invariantFilter) {
 			continue
 		}
+		shadowChaosCounts.inc(v.Name)
 		viol := chaosViolation{
 			GameIdx:       boardIdx,
 			GameSeed:      seed,
@@ -1069,6 +1180,45 @@ func checkNightmareInvariants(gs *gameengine.GameState, boardIdx int, seed int64
 		}
 		result.Violations = append(result.Violations, viol)
 	}
+}
+
+// shadowReport compares the two tallies and prints the SHADOW verdict.
+// Returns the number of per-name mismatches (0 == sink reproduces the
+// chaosViolation counts exactly → FLIP precondition satisfied).
+func shadowReport() int {
+	sink, sinkTotal := shadowSinkCounts.snapshot()
+	chaos, chaosTotal := shadowChaosCounts.snapshot()
+
+	names := map[string]struct{}{}
+	for n := range sink {
+		names[n] = struct{}{}
+	}
+	for n := range chaos {
+		names[n] = struct{}{}
+	}
+	ordered := make([]string, 0, len(names))
+	for n := range names {
+		ordered = append(ordered, n)
+	}
+	sort.Strings(ordered)
+
+	mismatches := 0
+	log.Printf("")
+	log.Printf("=== SHADOW (Judge-sink mirror) ===")
+	log.Printf("  sink invariant rows:  %d", sinkTotal)
+	log.Printf("  chaos invariant rows: %d", chaosTotal)
+	for _, n := range ordered {
+		if sink[n] != chaos[n] {
+			mismatches++
+			log.Printf("  ⚠ MISMATCH %-26s sink=%d chaos=%d", n, sink[n], chaos[n])
+		}
+	}
+	if mismatches == 0 {
+		log.Printf("  ✓ sink stream reproduces chaosViolation invariant counts exactly (per name)")
+	} else {
+		log.Printf("  ⚠ SHADOW DIVERGENCE — %d invariant name(s) differ; FLIP/DELETE are UNSAFE", mismatches)
+	}
+	return mismatches
 }
 
 // invariantNames returns the canonical (camelCase) names from a slice of
