@@ -30,6 +30,11 @@ import (
 func registerUro(r *Registry) {
 	r.OnETB("Uro, Titan of Nature's Wrath", uroETB)
 	r.OnTrigger("Uro, Titan of Nature's Wrath", "creature_attacks", uroAttack)
+	// uroETB fully implements the printed self-ETB (gain-3 / draw / land,
+	// then sacrifice-unless-escaped) — declare ownership so the engine's
+	// generic AST push for the "sacrifice it unless it escaped" clause is
+	// suppressed (Judge r63 double-fire gate; PROGRESSION r63 false positive).
+	r.OwnsETBTrigger("Uro, Titan of Nature's Wrath")
 }
 
 func uroETB(gs *gameengine.GameState, perm *gameengine.Permanent) {

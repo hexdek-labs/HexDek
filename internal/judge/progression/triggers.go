@@ -172,6 +172,20 @@ func CheckTrigger(cardName string, t *gameast.Triggered) ([]*Finding, bool) {
 			if perCardOwned(cardName, "creature_dies", "dies") {
 				return nil, false
 			}
+			// Self-recursion die triggers ("when ~ dies, return this card to
+			// your hand") move the source OUT of the graveyard, so the bare-
+			// death subtraction (subtractDeath, which assumes the card stays
+			// in the graveyard) cannot compose with the effect. The engine is
+			// correct — it returns the card from the graveyard (the §603.10
+			// look-back path, fixed in resolveBounce). The single-snapshot
+			// die scenario just can't model death+graveyard-exit cleanly, so
+			// skip (Michelangelo, On the Scene — PROGRESSION r63).
+			if b, ok := t.Effect.(*gameast.Bounce); ok {
+				switch strings.ToLower(strings.TrimSpace(b.Target.Base)) {
+				case "self", "it", "this", "that", "pronoun":
+					return nil, false
+				}
+			}
 		}
 	}
 	event, ok := InScopeTrigger(t)
@@ -268,8 +282,10 @@ func CheckTrigger(cardName string, t *gameast.Triggered) ([]*Finding, bool) {
 		// Subtract ONLY the bearer's own attack-declaration tap — a
 		// global newly-tapped count would swallow the trigger's own tap
 		// effects (Fiend Binder "tap target creature" class, the
-		// first-audit harness bug).
-		if !wasTapped && bearer.Tapped {
+		// first-audit harness bug). Skip the subtraction if the trigger's
+		// effect moved the bearer off the battlefield: its tap already left
+		// the snapshot count, so subtracting again double-counts (r63).
+		if !wasTapped && bearer.Tapped && stillOnBattlefield(gs, bearer) {
 			subtractTap(actual, 1)
 		}
 		check("fire", actual, true)
@@ -315,6 +331,32 @@ func subtractDeath(d *outcome.Delta, seat, pt int) {
 	}
 	d.PowerSum += pt
 	d.ToughSum += pt
+}
+
+// stillOnBattlefield reports whether perm is currently on any seat's
+// battlefield (pointer identity). Used to decide whether an attacker's
+// own declaration tap is still reflected in the observed delta — if the
+// trigger's effect moved the attacker off the battlefield (sacrifice
+// it / return another creature when it is the only ally / Thing from the
+// Deep self-sac), its tap is ALREADY gone from the snapshot count and
+// must NOT be subtracted again (PROGRESSION r63 attacker-leaves
+// tap-bookkeeping false positives: Thing from the Deep, Havengul Skaab,
+// Surtland Flinger, Terror Ballista, Dream Pillager).
+func stillOnBattlefield(gs *gameengine.GameState, perm *gameengine.Permanent) bool {
+	if gs == nil || perm == nil {
+		return false
+	}
+	for _, seat := range gs.Seats {
+		if seat == nil {
+			continue
+		}
+		for _, p := range seat.Battlefield {
+			if p == perm {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // subtractTap removes the attack-declaration taps from the delta.

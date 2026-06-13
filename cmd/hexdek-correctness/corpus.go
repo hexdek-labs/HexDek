@@ -22,6 +22,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/hexdek/hexdek/internal/astload"
 	"github.com/hexdek/hexdek/internal/gameast"
@@ -131,6 +132,12 @@ func runProgressionPass(corpus *astload.Corpus) DimensionScore {
 				passed++
 			default:
 				failedByEvent[evName]++
+				if os.Getenv("CORRECTNESS_DEBUG_VIOLATIONS") != "" {
+					for _, f := range findings {
+						fmt.Fprintf(os.Stderr, "PROG_DIV card=%q event=%s check=%s expected=%q actual=%q raw=%q\n",
+							f.CardName, f.Event, f.Check, f.Expected, f.Actual, f.Raw)
+					}
+				}
 			}
 		}
 	}

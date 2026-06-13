@@ -33,4 +33,8 @@ func init() {
 	r := Global()
 	registerShuffleSelfFromGraveFamily(r)
 	registerEtbLibraryTutorFamily(r)
+	// r63: the tutor family declares OwnsETBTrigger (double-fire gate). A
+	// bare init() registration is stripped by Reset() (the Sai-fix gap),
+	// so re-register on Reset to keep ownership — and the handlers — alive.
+	AddResetHook(registerEtbLibraryTutorFamily)
 }

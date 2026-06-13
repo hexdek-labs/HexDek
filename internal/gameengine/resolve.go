@@ -1439,6 +1439,22 @@ func resolveBounce(gs *GameState, src *Permanent, e *gameast.Bounce) {
 		}
 	}
 
+	// CR §603.10 look-back self-recursion: a dies / leaves-the-battlefield
+	// trigger that returns THIS card ("when ~ dies, return this card to your
+	// hand") resolves AFTER the source has already left the battlefield, so
+	// the card sits in the graveyard (or exile) — not on the battlefield —
+	// when the bounce resolves. PickTargetHarmful only scans battlefields and
+	// finds nothing, silently dropping the return (Michelangelo, On the Scene;
+	// PROGRESSION r63 — same anti-pattern as the Dread / God-Eternal Oketra
+	// self-shuffle fixes). Move the card from its real zone. The live
+	// self-bounce (source still on the battlefield) falls through to the
+	// normal PickTargetHarmful path below.
+	if base == "self" && src != nil && src.Card != nil && !permanentOnBattlefield(gs, src) {
+		if bounceSelfAfterLeave(gs, src, e) {
+			return
+		}
+	}
+
 	// Harmful intent (r63 OUTCOME phase-6 fix): bounce removes a
 	// permanent against its controller's interest, same as destroy/
 	// exile. The neutral pick scored own and opponent 0/0 categories
@@ -1466,6 +1482,77 @@ func resolveBounce(gs *GameState, src *Permanent, e *gameast.Bounce) {
 		// (§903.9b) and fires LTB triggers.
 		BouncePermanent(gs, t.Permanent, src, dest)
 	}
+}
+
+// simplifyDistributeCreatureFilter recovers a plain creature target
+// filter from the verbose bases the parser emits for "distribute N
+// counters among …" effects ("one, two, or three target creatures",
+// "up to three target creatures", "any number of target creatures you
+// control", "target creatures"). Returns ok=false for non-creature bases
+// (e.g. "any number of target elves", vehicles) so they keep their
+// existing behavior rather than being mis-broadened. Distribute collapses
+// to a single greedy target, so a single-target creature filter suffices.
+func simplifyDistributeCreatureFilter(f gameast.Filter) (gameast.Filter, bool) {
+	noun := strings.ToLower(strings.TrimSpace(f.Base))
+	if i := strings.LastIndex(noun, "target "); i >= 0 {
+		noun = strings.TrimSpace(noun[i+len("target "):])
+	}
+	// Only handle the plain creature family — bail on typed/compound nouns
+	// ("vehicles and/or creatures", "creatures, then you gain life …").
+	isCreature := noun == "creature" || noun == "creatures" ||
+		noun == "creatures you control" || noun == "creature you control"
+	if !isCreature {
+		return gameast.Filter{}, false
+	}
+	nf := gameast.Filter{Base: "creature", Targeted: true}
+	if strings.Contains(noun, "you control") || f.YouControl {
+		nf.YouControl = true
+	}
+	return nf, true
+}
+
+// bounceSelfAfterLeave moves the source's own Card from the graveyard or
+// exile to the bounce destination — the resolution path for a self-return
+// dies/LTB trigger whose source has already left the battlefield (see the
+// CR §603.10 note in resolveBounce). Returns false if the card is not in a
+// non-battlefield zone (already moved by an earlier effect).
+func bounceSelfAfterLeave(gs *GameState, src *Permanent, e *gameast.Bounce) bool {
+	if gs == nil || src == nil || src.Card == nil {
+		return false
+	}
+	dest := "hand"
+	toZone := "hand"
+	switch e.To {
+	case "top_of_library":
+		dest, toZone = "library_top", "library"
+	case "bottom_of_library":
+		dest, toZone = "library_bottom", "library"
+	}
+	owner := src.Owner
+	if owner < 0 || owner >= len(gs.Seats) {
+		owner = src.Controller
+	}
+	for seatIdx := range gs.Seats {
+		seat := gs.Seats[seatIdx]
+		for _, z := range []string{"graveyard", "exile"} {
+			if removeFromZone(seat, src.Card, z) {
+				gs.moveToZone(owner, src.Card, dest)
+				FireZoneChangeTriggers(gs, src, src.Card, z, toZone)
+				gs.LogEvent(Event{
+					Kind:   "bounce",
+					Seat:   owner,
+					Source: sourceName(src),
+					Details: map[string]interface{}{
+						"self_after_leave": true,
+						"from_zone":        z,
+						"to":               dest,
+					},
+				})
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // isGraveyardBounceFilter returns true if the filter base refers to a card
@@ -2375,19 +2462,37 @@ func resolveCounterMod(gs *GameState, src *Permanent, e *gameast.CounterMod) {
 	if count <= 0 {
 		count = 1
 	}
-	targets := PickTarget(gs, src, e.Target)
-	// Fallback: if no target found, apply to source permanent (self-targeting
-	// counter effects like "put a +1/+1 counter on this creature").
-	if len(targets) == 0 && src != nil {
-		targets = []Target{{Kind: TargetKindPermanent, Permanent: src, Seat: src.Controller}}
-	}
 	op := e.Op
 	if op == "" {
 		op = "put"
 	}
+	targetFilter := e.Target
 	if op == "distribute" {
 		// CR §701 "distribute N counters among one or more targets":
-		// the SPLIT is a player choice (§601.2d); greedy concentrates
+		// the verbose target bases the parser emits for these
+		// ("one, two, or three target creatures", "up to three target
+		// creatures", "any number of target creatures you control", …)
+		// are not understood by PickTarget — it returns nothing and the
+		// self-fallback below would then apply the counters to the
+		// SOURCE. For a dies-distribute (Shambling Swarm) the source has
+		// already left the battlefield, so that fallback is a silent
+		// no-op (PROGRESSION r63). Recover a plain creature filter from
+		// the verbose base so a real on-battlefield creature is picked.
+		if nf, ok := simplifyDistributeCreatureFilter(e.Target); ok {
+			targetFilter = nf
+		}
+	}
+	targets := PickTarget(gs, src, targetFilter)
+	// Fallback: if no target found, apply to source permanent (self-targeting
+	// counter effects like "put a +1/+1 counter on this creature"). Skip the
+	// fallback when the source is no longer on the battlefield — a
+	// leaves-play distribute must not silently sink its counters into a dead
+	// source.
+	if len(targets) == 0 && src != nil && permanentOnBattlefield(gs, src) {
+		targets = []Target{{Kind: TargetKindPermanent, Permanent: src, Seat: src.Controller}}
+	}
+	if op == "distribute" {
+		// The SPLIT is a player choice (§601.2d); greedy concentrates
 		// the full count on the first picked target. Mapping to a
 		// single "put" routes the §614 replacement chain (Hardened
 		// Scales, Doubling Season) identically. Pre-fix this op fell

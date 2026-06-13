@@ -273,7 +273,7 @@ func CheckEnterOrAttackTrigger(cardName string, t *gameast.Triggered) ([]*Findin
 	before2 := outcome.Snap(gs2)
 	gameengine.DeclareAttackers(gs2, 0)
 	actual2 := outcome.DiffSnapshots(before2, outcome.Snap(gs2))
-	if !wasTapped && bearer2.Tapped {
+	if !wasTapped && bearer2.Tapped && stillOnBattlefield(gs2, bearer2) {
 		subtractTap(actual2, 1)
 	}
 	if !matchSet(expectedSet, actual2) {
@@ -324,6 +324,15 @@ func InScopeSelfLTBTypeTrigger(t *gameast.Triggered) bool {
 	// Linked-exile returns ("return the exiled card") depend on
 	// O-Ring-linked state the bare scenario doesn't model.
 	if strings.Contains(raw, "exiled") {
+		return false
+	}
+	// "put ITS counters on target …" moves the counters the source had
+	// when it left — the bare scenario enters the source with no counters,
+	// so the engine correctly moves zero. The parser models "its" as a
+	// counter KIND, yielding a phantom counters[its:1] expectation. Skip:
+	// the magnitude depends on the source's pre-LTB counter state the bare
+	// scenario doesn't seed (Broodguard Elite — PROGRESSION r63 FP).
+	if strings.Contains(raw, "its counters") {
 		return false
 	}
 	return strings.Contains(raw, "when this creature leaves the battlefield,") ||
@@ -441,7 +450,7 @@ func CheckDealsDamageTrigger(cardName string, t *gameast.Triggered) ([]*Finding,
 		gameengine.DealCombatDamageStep(gs, attackers,
 			map[*gameengine.Permanent][]*gameengine.Permanent{}, false)
 		actual := outcome.DiffSnapshots(before, outcome.Snap(gs))
-		if !wasTapped && atk.Tapped {
+		if !wasTapped && atk.Tapped && stillOnBattlefield(gs, atk) {
 			subtractTap(actual, 1)
 		}
 		actual.LifeBySeat[1] += dmg

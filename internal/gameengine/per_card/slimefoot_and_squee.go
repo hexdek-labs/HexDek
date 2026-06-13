@@ -24,6 +24,13 @@ import "github.com/hexdek/hexdek/internal/gameengine"
 func registerSlimefootAndSquee(r *Registry) {
 	r.OnETB("Slimefoot and Squee", slimefootAndSqueeETB)
 	r.OnTrigger("Slimefoot and Squee", "creature_dies", slimefootAndSqueeCreatureDies)
+	// slimefootAndSqueeETB fully implements the ETB half of "whenever ~
+	// enters or attacks, create a Saproling" — declare ownership so the
+	// engine's generic AST push for the ETB half is suppressed (Judge r63
+	// double-fire gate). Without it the AST trigger ALSO mints a token on
+	// ETB, creating two Saprolings (PROGRESSION r63). The attack half is
+	// left to the AST push (no per_card attack handler), so it stays single.
+	r.OwnsETBTrigger("Slimefoot and Squee")
 }
 
 func slimefootAndSqueeETB(gs *gameengine.GameState, perm *gameengine.Permanent) {

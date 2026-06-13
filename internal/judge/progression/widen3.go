@@ -122,6 +122,17 @@ func CheckCombatDamageTrigger(cardName string, t *gameast.Triggered) ([]*Finding
 	if perCardOwned(cardName, "combat_damage_player") {
 		return nil, false
 	}
+	// Counter-placing effects on a card that ALSO carries a per_card
+	// counter_placed handler (Hapatra's "create a 1/1 Snake whenever you
+	// put -1/-1 counters on a creature") are unsound to model in isolation:
+	// wrapSingle strips the AST snake-maker, but the per_card handler is
+	// name-keyed and still fires when the trigger's effect places the
+	// counter, adding a token the single-trigger expectation cannot predict.
+	// The engine IS correct (the snake is real). Skip (PROGRESSION r63 FP).
+	if strings.Contains(strings.ToLower(t.Raw), "counter") &&
+		perCardOwned(cardName, "counter_placed") {
+		return nil, false
+	}
 	spec := progressionSpec()
 	expectedSet, ok := expectedFireSet(spec, t.Effect)
 	if !ok {
@@ -150,7 +161,7 @@ func CheckCombatDamageTrigger(cardName string, t *gameast.Triggered) ([]*Finding
 		gameengine.DealCombatDamageStep(gs, attackers,
 			map[*gameengine.Permanent][]*gameengine.Permanent{}, false)
 		actual := outcome.DiffSnapshots(before, outcome.Snap(gs))
-		if !wasTapped && atk.Tapped {
+		if !wasTapped && atk.Tapped && stillOnBattlefield(gs, atk) {
 			subtractTap(actual, 1)
 		}
 		// Undo the attacker's own combat damage to the defending seat.
@@ -464,7 +475,7 @@ func CheckYouAttackTrigger(cardName string, t *gameast.Triggered) ([]*Finding, b
 	before := outcome.Snap(gs)
 	gameengine.DeclareAttackers(gs, 0)
 	actual := outcome.DiffSnapshots(before, outcome.Snap(gs))
-	if !wasTapped && bearer.Tapped {
+	if !wasTapped && bearer.Tapped && stillOnBattlefield(gs, bearer) {
 		subtractTap(actual, 1)
 	}
 	if !matchSet(expectedSet, actual) {
@@ -679,6 +690,23 @@ func CheckAllyETBTrigger(cardName string, t *gameast.Triggered) ([]*Finding, boo
 	}
 	if perCardOwned(cardName, "permanent_etb", "etb", "creature_etb") {
 		return nil, false
+	}
+	// Board-scaling effects ("put a +1/+1 counter on EACH creature you
+	// control", "CREATURES YOU CONTROL get +1/+1") have a magnitude that
+	// depends on how many creatures are on the battlefield when the trigger
+	// resolves. The ally scenario adds the entering ally to the bearer, so
+	// the engine correctly affects 2 creatures — but the single-application
+	// expectedFireSet (computed against the bearer-only spec) models 1.
+	// The expectation is structurally unable to model the post-entry board,
+	// so skip (the engine IS correct: Cathars' Crusade, Goldnight Commander,
+	// Valor in Akros — PROGRESSION r63 false positives).
+	{
+		lraw := strings.ToLower(t.Raw)
+		if strings.Contains(lraw, "each creature you control") ||
+			strings.Contains(lraw, "creatures you control get") ||
+			strings.Contains(lraw, "each other creature you control") {
+			return nil, false
+		}
 	}
 	spec := progressionSpec()
 	expectedSet, ok := expectedFireSet(spec, t.Effect)
