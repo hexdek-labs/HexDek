@@ -761,7 +761,9 @@ func checkPhasedOutExclusion(gs *GameState) error {
 			}
 			// A phased-out permanent should never have MarkedDamage applied
 			// by SBAs. If it does, something is counting it.
-			if p.IsCreature() && p.MarkedDamage > 0 {
+			// Layer-aware creature predicate (gs.IsCreatureOf, not the base
+			// p.IsCreature) — matches the engine's SBA view per CR 613.
+			if gs.IsCreatureOf(p) && p.MarkedDamage > 0 {
 				name := "<unknown>"
 				if p.Card != nil {
 					name = p.Card.DisplayName()
@@ -1134,7 +1136,11 @@ func checkCombatLegality(gs *GameState) error {
 			if p == nil || p.PhasedOut {
 				continue
 			}
-			if !p.IsCreature() {
+			// Layer-aware creature predicate (CR 613): catches animated
+			// permanents (Ensoul Artifact / March of the Machines / animated
+			// lands) that are creatures by layer but not by printed type,
+			// and correctly skips permanents whose creature type was stripped.
+			if !gs.IsCreatureOf(p) {
 				continue
 			}
 			name := "<unknown>"
@@ -1172,13 +1178,26 @@ func checkCombatLegality(gs *GameState) error {
 			}
 			// Creatures with defender can't attack — UNLESS placed onto
 			// the battlefield attacking by a §508.1g effect.
+			// NOTE: this stays on the raw p.HasKeyword. Unlike types, the
+			// keyword authority is split: Flags["kw:defender"] and keyword
+			// counters are real positive sources that BaseCharacteristics
+			// does NOT fold into chars.Keywords, so gs.HasKeywordOf would
+			// MISS them (false-negative). The Humility-strip phantom (a
+			// defender stripped by a layer-6 effect that p.HasKeyword still
+			// reports) is real but requires unifying the keyword sources
+			// into the layer base first — see the r63 report recommendation.
 			if attacking && p.HasKeyword("defender") && !enteredAttacking {
 				return fmt.Errorf("CombatLegality: %q (seat %d) is attacking but has defender",
 					name, s.Idx)
 			}
 			// Summoning-sick creatures without haste can't attack —
-			// same §508.1g carve-out.
-			if attacking && p.SummoningSick && !p.HasKeyword("haste") && !enteredAttacking {
+			// same §508.1g carve-out. Haste is recognized via the UNION of
+			// p.HasKeyword (AST + granted + Flags["kw:haste"] + counters) and
+			// gs.HasKeywordOf (adds pure layer-6 grants — e.g. Toph cards
+			// grant haste via RegisterGrantKeyword with no Flags), so a
+			// legitimately-hasty attacker is never phantom-flagged.
+			hasHaste := p.HasKeyword("haste") || gs.HasKeywordOf(p, "haste")
+			if attacking && p.SummoningSick && !hasHaste && !enteredAttacking {
 				return fmt.Errorf("CombatLegality: %q (seat %d) is attacking with summoning sickness and no haste",
 					name, s.Idx)
 			}
@@ -1886,8 +1905,13 @@ func checkAttachmentConsistency(gs *GameState) error {
 					name, s.Idx, targetName)
 			}
 
-			// Equipment must be attached to a creature.
-			if p.IsEquipment() && !p.AttachedTo.IsCreature() {
+			// Equipment must be attached to a creature. Layer-aware on both
+			// sides (CR 613): an equipment attached to an ANIMATED creature
+			// (Ensoul Artifact / March of the Machines / animated land —
+			// creature by layer, not by printed type) must not be phantom-
+			// flagged, and an equipment still attached to a permanent whose
+			// creature type was STRIPPED is correctly caught (§704.5q).
+			if gs.HasTypeOf(p, "equipment") && !gs.IsCreatureOf(p.AttachedTo) {
 				return fmt.Errorf("AttachmentConsistency: equipment %q (seat %d) is attached to non-creature %q",
 					name, s.Idx, targetName)
 			}
