@@ -49,6 +49,13 @@ import (
 // spinning for minutes on degenerate trigger avalanches.
 const maxStackDrainIterations = 500
 
+// maxTriggerDrainIterations caps the outer batch-pull loop in
+// drainPendingTriggers (trigger_batch.go) the same way maxStackDrainIterations
+// caps DrainStack. A legitimate turn drains only a handful of trigger batches;
+// an unbounded ETB/token cascade that evades the per-turn trigger_loop_cap can
+// otherwise re-fill the pending queue forever (r63 game-216 liveness stall).
+const maxTriggerDrainIterations = 500
+
 // maxDrainRecursion caps how deep DrainStack can recurse into itself
 // (via ResolveStackTop → trigger handler → CastSpell → DrainStack).
 const maxDrainRecursion = 10
@@ -242,15 +249,7 @@ func PushTriggeredAbilityWithIf(gs *GameState, src *Permanent, effect gameast.Ef
 			"fires": gs.Flags["_trigger_fires_this_turn"], "site": "ast_trigger",
 			"card": capCard,
 		})
-		for i, s := range gs.Seats {
-			if s != nil && !s.Lost && !s.Won {
-				markSeatLostLoopDraw(s)
-				gs.LogEvent(Event{Kind: "game_draw", Seat: i, Details: map[string]interface{}{"reason": "trigger_loop_cap"}})
-			}
-		}
-		gs.Stack = gs.Stack[:0]
-		gs.Flags["game_draw"] = 1
-		gs.Flags["ended"] = 1
+		EndGameAsLoopDraw(gs, "trigger_loop_cap")
 		return nil
 	}
 	item := &StackItem{

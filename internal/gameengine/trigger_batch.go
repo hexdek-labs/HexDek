@@ -69,7 +69,7 @@ func BeginTriggerBatch(gs *GameState) (opened bool) {
 //
 // Pair with BeginTriggerBatch via defer:
 //
-//   defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
+//	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
 func EndTriggerBatch(gs *GameState, opened bool) {
 	if gs == nil {
 		return
@@ -135,6 +135,21 @@ func drainPendingTriggers(gs *GameState) {
 
 	// Drain loop. New triggers may accumulate during resolution; we keep
 	// pulling batches off pendingTriggers until it stays empty.
+	//
+	// LIVENESS guard (r63, game-216 stall): an unbounded cascade can spin
+	// here forever — each resolution re-fills pendingTriggers and/or pushes
+	// more onto the stack (e.g. a trigger resolves a permanent whose ETB
+	// processing — resolvePermanentSpellETB → ApplyRiot, token/copy creation,
+	// further ETB triggers — produces the next resolution). That work is NOT a
+	// counted "trigger fire", so the per-turn trigger_loop_cap (stack.go) never
+	// trips, and the live grinder abandoned such a game at the 10-minute
+	// wall-clock budget. The spin can be in EITHER loop: the outer batch-pull
+	// OR the inner stack-drain within a single batch. So cap TOTAL resolutions
+	// across both loops (one counter, incremented per ResolveStackTop) the same
+	// way DrainStack caps maxStackDrainIterations — a finite bound far above any
+	// legitimate turn. On trip, emit the uniform loop-guard event, drop the
+	// runaway stack + pending queue, and return so the turn (and game) ends.
+	resolves := 0
 	for len(gs.pendingTriggers) > 0 {
 		batch := gs.pendingTriggers
 		gs.pendingTriggers = nil
@@ -147,6 +162,23 @@ func drainPendingTriggers(gs *GameState) {
 
 		for len(gs.Stack) > stackBefore {
 			if gs.Flags["ended"] == 1 {
+				return
+			}
+			resolves++
+			if resolves > maxTriggerDrainIterations {
+				LogLoopGuardFired(gs, "trigger_drain_cap", map[string]interface{}{
+					"resolves": resolves - 1,
+					"cap":      maxTriggerDrainIterations,
+					"stack":    len(gs.Stack),
+					"pending":  len(gs.pendingTriggers),
+				})
+				// CR §104.4b — the cascade re-fills the stack/queue every
+				// resolution and won't terminate (an unbroken spell-copy loop:
+				// game-216 was Veyran, Voice of Duality doubling magecraft/copy
+				// triggers so each copy spawned more). End the game as a draw,
+				// mirroring the per-turn trigger_loop_cap.
+				gs.pendingTriggers = nil
+				EndGameAsLoopDraw(gs, "trigger_drain_cap")
 				return
 			}
 			PriorityRound(gs)
