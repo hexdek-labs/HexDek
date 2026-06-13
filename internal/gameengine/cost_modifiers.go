@@ -1049,6 +1049,14 @@ func ScanCostModifiersWithContext(gs *GameState, card *Card, seatIdx int, ctx Ca
 					Amount: 3,
 					Source: name,
 				})
+			default:
+				// r63 scaffold-kind coverage: generic AST-driven
+				// `colored_cost_reduce` ("<filter> spells you cast cost
+				// {N} less"). Only reached for permanents WITHOUT a
+				// dedicated case above, so the named reducers (medallions,
+				// Goblin Electromancer, …) are never double-counted. See
+				// scaffold_colored_cost_reduce_r63.go.
+				mods = appendColoredCostReduce(mods, card, perm, seatIdx)
 			}
 
 			// Check for generic flags that per-card handlers may have set.
