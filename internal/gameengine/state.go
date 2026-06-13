@@ -2732,6 +2732,10 @@ func (gs *GameState) drawOne(seat int) (*Card, bool) {
 			"source":            "draw",
 			"is_draw_step_draw": isDrawStepDraw,
 		})
+		// AST "whenever you draw a card" payoffs (the per_card registry above
+		// covers only bespoke handlers; the AST walk reaches every parsed
+		// draw trigger — r63 PROGRESSION saturation finding).
+		FireDrawCardASTTriggers(gs, seat)
 	}
 	gs.Flags["_card_drawn_depth"]--
 

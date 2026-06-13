@@ -356,6 +356,10 @@ func sacrificePermanentImpl(gs *GameState, perm *Permanent, source *Permanent, r
 		}
 		sacCtx["to_zone"] = destZone
 		FireCardTrigger(gs, "permanent_sacrificed", sacCtx)
+		// AST "whenever you sacrifice a <filter>" payoffs — the per_card
+		// fan-out above reaches only bespoke handlers; the AST walk reaches
+		// every parsed sacrifice trigger (r63 PROGRESSION saturation finding).
+		FireSacrificeASTTriggers(gs, perm.Controller, perm)
 	}
 
 	// Phase 8: dissolve any Mutate / Meld merge — each constituent card
