@@ -83,6 +83,11 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 		// (Guildgates, Temples, bouncelands, tapped mana rocks). Also inert
 		// before this.
 		ApplySelfEntersTapped(gs, perm)
+		// CR §614.1c — generic Vanishing/Fading keyword ETB counters
+		// ("enters with N time/fade counters on it"). Thor parses these as
+		// bare keywords and no path read them, so they entered with zero
+		// counters. Gated to never double the structured / per-card paths.
+		ApplyVanishingFadingETBCounters(gs, perm)
 	}
 
 	// CR §613 — register the entering permanent's continuous effects: named

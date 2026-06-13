@@ -2328,6 +2328,10 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	// CR §614.1d — generic unconditional "enters tapped" static (Guildgates,
 	// Temples, bouncelands, tapped mana rocks). Also inert before this.
 	ApplySelfEntersTapped(gs, perm)
+	// CR §614.1c — generic Vanishing/Fading keyword ETB counters ("enters with
+	// N time/fade counters on it"). Thor parses these as bare keywords and no
+	// path read them. Gated to never double the structured / per-card paths.
+	ApplyVanishingFadingETBCounters(gs, perm)
 
 	// Register §613 continuous effects (layers 1-7).
 	RegisterContinuousEffectsForPermanent(gs, perm)
@@ -2403,6 +2407,7 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 			ApplyStaticETBCounters(gs, perm)
 			ApplyEntersTappedUnless(gs, perm)
 			ApplySelfEntersTapped(gs, perm)
+			ApplyVanishingFadingETBCounters(gs, perm)
 		}
 
 		// §702.131 Ascend.
