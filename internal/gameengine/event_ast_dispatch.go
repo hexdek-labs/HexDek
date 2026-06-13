@@ -151,3 +151,50 @@ func FireTapEventASTTriggers(gs *GameState, tapped *Permanent) {
 		}
 	}
 }
+
+// FireTurnedFaceUpTriggers fires "when this creature is turned face up,"
+// AST triggers on the permanent that just transitioned face-down → face-up
+// (CR §702.36e — morph; also megamorph / disguise / cloak / manifest /
+// "turn ~ face up" effects, which all route through TurnFaceUp). Before
+// r63d the engine flipped the face and logged the "turn_face_up" event but
+// NEVER consulted these AST triggers — the same alias-to-nowhere shape as
+// the gain_life / becomes_tapped families (the alias maps turned_face_up →
+// "face_up", but no walk reached the AST), so all 109 corpus "is turned
+// face up" triggers were silent. Driven from the single TurnFaceUp
+// chokepoint so every face-up path is covered. per_card-owned cards are
+// skipped via HasTriggerHook so nothing double-fires.
+func FireTurnedFaceUpTriggers(gs *GameState, p *Permanent) {
+	if gs == nil || p == nil || p.Card == nil || p.Card.AST == nil {
+		return
+	}
+	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
+	for _, ab := range p.Card.AST.Abilities {
+		trig, ok := ab.(*gameast.Triggered)
+		if !ok || trig.Effect == nil {
+			continue
+		}
+		if !EventEquals(trig.Trigger.Event, "face_up") {
+			continue
+		}
+		raw := strings.ToLower(trig.Raw)
+		// Self wordings only — "this creature/permanent is turned face up".
+		// Observer forms ("whenever a permanent is turned face up") carry an
+		// actor the parser drops; they stay out until carried.
+		if !strings.Contains(raw, "this creature is turned face up") &&
+			!strings.Contains(raw, "this permanent is turned face up") &&
+			!strings.Contains(raw, "~ is turned face up") {
+			continue
+		}
+		if HasTriggerHook != nil && HasTriggerHook(p.Card.DisplayName(), "face_up") {
+			continue
+		}
+		gs.LogEvent(Event{
+			Kind: "trigger_fires", Seat: p.Controller,
+			Source: p.Card.DisplayName(),
+			Details: map[string]interface{}{
+				"event": "turned_face_up", "rule": "603.2",
+			},
+		})
+		PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
+	}
+}

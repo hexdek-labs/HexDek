@@ -213,6 +213,8 @@ func safeCheckAnyTrigger(name string, tr *gameast.Triggered) (findings []*progre
 				evName = "becomes_blocked"
 			} else if progression.InScopeOrdinalFirstMainTrigger(tr) {
 				evName = "ordinal_first_main"
+			} else if progression.InScopeTurnedFaceUpTrigger(tr) {
+				evName = "turned_face_up"
 			} else {
 				evName = "widened"
 			}
