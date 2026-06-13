@@ -2623,6 +2623,9 @@ func RegisterContinuousEffectsForPermanent(gs *GameState, p *Permanent) {
 	// aura_grant (keyword-only auras) — same Layer="" bypass; see
 	// mod_kind_aura_grant.go.
 	registerAuraGrants(gs, p)
+	// keyword_grant ("[other] creatures you control have <kw>" anthem) —
+	// same Layer="" bypass; see mod_kind_keyword_grant.go.
+	registerKeywordGrantStatics(gs, p)
 }
 
 // -----------------------------------------------------------------------------
