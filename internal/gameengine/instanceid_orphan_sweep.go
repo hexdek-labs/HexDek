@@ -62,6 +62,64 @@ func SweepOrphanedInstanceIDs(gs *GameState) int {
 		return 0
 	}
 	present := collectPresentInstanceIDsForSweep(gs)
+
+	// r63 conservation firespot (live-grinder zone_conservation cluster:
+	// Circuit Mender / Mesa Enchantress / Dire Tactics / Migration Path,
+	// each "present in zone … but not in (Minted − Ceased) — stale ceased
+	// entry"). RESURRECTION pass — the inverse of the orphan cease below.
+	//
+	// Cessation is ONE-WAY (no delete from CeasedInstanceIDs anywhere), but
+	// this sweep ceases any OG card transiently ABSENT from every census
+	// zone — and such windows exist beyond the one ResolvingCards covers
+	// (the stack→destination limbo). A multi-step operation (shuffle,
+	// library search, zone-cast-grant creation, a per_card handler) that an
+	// SBA pass interrupts runs this sweep while the card is momentarily in
+	// no walked zone; the ID is ceased; when the card REAPPEARS in a real
+	// zone its now-permanently-ceased ID trips the fabrication census
+	// forever after. The leak surfaces across diverse zones precisely
+	// because the over-cease is path-agnostic.
+	//
+	// Repair generally rather than enumerating every transient window: an
+	// OG card that is demonstrably PRESENT in a census-walked zone, whose
+	// owner is still in the game, MUST NOT be ceased — CR §110, it exists,
+	// and the only legitimate OG cessation is §800.4a owner-left (excluded
+	// by the owner gate) or a §720.4 game restart (clears all zones). So a
+	// present + ceased + owner-in-game OG id is a contradiction that can
+	// only arise from an over-cease; un-cease it. This is provably safe for
+	// the conservation invariant (a present card belongs in Minted−Ceased)
+	// and cannot mask the §800.4a removal-completeness concern — cards
+	// whose owner has left are intentionally left ceased.
+	for id := range present {
+		if _, ceased := gs.CeasedInstanceIDs[id]; !ceased {
+			continue
+		}
+		if len(id) < 4 || id[2:4] != "OG" {
+			continue // only real OG cards; TK/CP/AB keep their lifecycles
+		}
+		if owner, ok := gs.MintedInstanceIDOwners[id]; ok &&
+			owner >= 0 && owner < len(gs.Seats) &&
+			gs.Seats[owner] != nil && gs.Seats[owner].LeftGame {
+			continue // owner left the game — §800.4a domain, do not mask
+		}
+		delete(gs.CeasedInstanceIDs, id)
+		name := ""
+		if gs.MintedInstanceIDNames != nil {
+			name = gs.MintedInstanceIDNames[id]
+		}
+		gs.LogEvent(Event{
+			Kind:   "iid_orphan_resurrect",
+			Seat:   -1,
+			Target: -1,
+			Source: name,
+			Details: map[string]interface{}{
+				"instance_id": id,
+				"card_name":   name,
+				"rule":        "110_present_card_not_ceased",
+				"reason":      "ceased_OG_card_present_in_zone_owner_in_game",
+			},
+		})
+	}
+
 	swept := 0
 	for id := range gs.MintedInstanceIDs {
 		if _, ceased := gs.CeasedInstanceIDs[id]; ceased {
