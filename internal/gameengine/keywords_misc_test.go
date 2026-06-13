@@ -451,7 +451,18 @@ func TestJumpStart_CastsAndExiles(t *testing.T) {
 		t.Fatal("jump-start should succeed")
 	}
 
-	// Spell should be in exile (not graveyard).
+	// CR §702.131a — the spell goes on the STACK so its effect resolves;
+	// it is flagged to exile (not graveyard) as it leaves the stack. (The
+	// pre-r63 path moved it straight to exile without ever resolving.)
+	if len(gs.Stack) != 1 || gs.Stack[0].Card != spell {
+		t.Fatalf("jump-start spell must be on the stack to resolve; stack len=%d", len(gs.Stack))
+	}
+	if !ShouldExileOnResolve(gs.Stack[0]) {
+		t.Error("jump-start spell must be flagged exile_on_resolve")
+	}
+	ResolveStackTop(gs)
+
+	// After resolution the spell should be in exile (not graveyard).
 	spellInExile := false
 	for _, c := range gs.Seats[0].Exile {
 		if c == spell {
@@ -459,7 +470,7 @@ func TestJumpStart_CastsAndExiles(t *testing.T) {
 		}
 	}
 	if !spellInExile {
-		t.Error("jump-start spell should be exiled")
+		t.Error("jump-start spell should be exiled after resolution")
 	}
 
 	// Discard should be in graveyard.
