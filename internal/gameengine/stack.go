@@ -49,6 +49,13 @@ import (
 // spinning for minutes on degenerate trigger avalanches.
 const maxStackDrainIterations = 500
 
+// maxTriggerDrainIterations caps the outer batch-pull loop in
+// drainPendingTriggers (trigger_batch.go) the same way maxStackDrainIterations
+// caps DrainStack. A legitimate turn drains only a handful of trigger batches;
+// an unbounded ETB/token cascade that evades the per-turn trigger_loop_cap can
+// otherwise re-fill the pending queue forever (r63 game-216 liveness stall).
+const maxTriggerDrainIterations = 500
+
 // maxDrainRecursion caps how deep DrainStack can recurse into itself
 // (via ResolveStackTop → trigger handler → CastSpell → DrainStack).
 const maxDrainRecursion = 10
@@ -242,15 +249,7 @@ func PushTriggeredAbilityWithIf(gs *GameState, src *Permanent, effect gameast.Ef
 			"fires": gs.Flags["_trigger_fires_this_turn"], "site": "ast_trigger",
 			"card": capCard,
 		})
-		for i, s := range gs.Seats {
-			if s != nil && !s.Lost && !s.Won {
-				markSeatLostLoopDraw(s)
-				gs.LogEvent(Event{Kind: "game_draw", Seat: i, Details: map[string]interface{}{"reason": "trigger_loop_cap"}})
-			}
-		}
-		gs.Stack = gs.Stack[:0]
-		gs.Flags["game_draw"] = 1
-		gs.Flags["ended"] = 1
+		EndGameAsLoopDraw(gs, "trigger_loop_cap")
 		return nil
 	}
 	item := &StackItem{
@@ -873,10 +872,16 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		ApplyStormCopies(gs, item, seatIdx)
 	}
 
-	// CR §702.84 — cascade trigger. Exile from library until nonland
-	// with lesser CMC, may cast for free, put rest on bottom.
-	if HasCascadeKeyword(card) {
-		ApplyCascade(gs, seatIdx, manaCostOf(card), card.DisplayName())
+	// CR §702.85 — cascade trigger. Exile from library until nonland
+	// with lesser MV, may cast for free, put rest on bottom. §702.85b:
+	// each cascade instance is a separate trigger, so "Cascade, cascade"
+	// (Maelstrom Wanderer ×2, Apex Devastator ×4) cascades once per
+	// instance — loop CascadeCount times.
+	if cc := CascadeCount(card); cc > 0 {
+		cascadeMV := manaCostOf(card)
+		for i := 0; i < cc; i++ {
+			ApplyCascade(gs, seatIdx, cascadeMV, card.DisplayName())
+		}
 	}
 
 	// CR §701.51 — discover trigger. Like cascade but card goes to hand.
@@ -2381,7 +2386,24 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 		// for Thassa's Oracle which reads the library AFTER any ETB scrys/
 		// tutors resolve. The hook itself isn't a trigger but its effects may
 		// FireCardTrigger, which appends into this same batch.
+		//
+		// CR §706.9 "enters as a copy": clone handlers (Phantasmal Image,
+		// Clone, Phyrexian Metamorph, …) apply the copy HERE via
+		// BecomeCopyOfCard, which is AFTER ApplyStaticETBCounters /
+		// ApplyEntersTappedUnless ran (against the pre-copy identity). Those
+		// §614.1d self-replacements ("enters with N counters", "enters
+		// tapped") belong to the COPIED card, so re-evaluate them once the
+		// hook has established the copy. Gated on CopiedTargetInstanceID
+		// changing during the hook, so only a real enters-as-a-copy triggers
+		// the re-apply (and a clone's own printed card has no such static, so
+		// the earlier pass added nothing — no double-count).
+		preCopySnap := perm.CopiableSnapshot
 		InvokeETBHook(gs, perm)
+		if perm.CopiableSnapshot != nil && perm.CopiableSnapshot != preCopySnap {
+			ApplyStaticETBCounters(gs, perm)
+			ApplyEntersTappedUnless(gs, perm)
+			ApplySelfEntersTapped(gs, perm)
+		}
 
 		// §702.131 Ascend.
 		CheckAscend(gs, perm.Controller)

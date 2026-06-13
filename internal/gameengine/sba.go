@@ -2281,6 +2281,31 @@ func markSeatLostLoopDraw(s *Seat) {
 	markSeatLost(s, "mandatory loop draw (CR 104.4b)", &judge.LossReason{Category: judge.LossCategoryLoopDraw, Rule: "104.4b"})
 }
 
+// EndGameAsLoopDraw ends the game in a draw because a loop guard detected an
+// unbreakable mandatory loop (CR §104.4b — "if the game somehow enters a loop
+// with no way to stop, it's a draw"). Every still-live seat is marked lost
+// with a game_draw event, the stack is cleared, and the game_draw/ended flags
+// are set. Shared by every loop-guard that detects a non-terminating cascade
+// (the per-turn trigger-fire cap and the trigger-drain cap) so they end the
+// game identically. `reason` tags the cause for downstream analytics.
+func EndGameAsLoopDraw(gs *GameState, reason string) {
+	if gs == nil {
+		return
+	}
+	for i, s := range gs.Seats {
+		if s != nil && !s.Lost && !s.Won {
+			markSeatLostLoopDraw(s)
+			gs.LogEvent(Event{Kind: "game_draw", Seat: i, Details: map[string]interface{}{"reason": reason}})
+		}
+	}
+	if gs.Flags == nil {
+		gs.Flags = map[string]int{}
+	}
+	gs.Stack = gs.Stack[:0]
+	gs.Flags["game_draw"] = 1
+	gs.Flags["ended"] = 1
+}
+
 // isCommanderName returns true if name matches any entry in the seat's
 // CommanderNames list.
 func isCommanderName(names []string, name string) bool {

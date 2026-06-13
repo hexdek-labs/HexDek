@@ -2223,7 +2223,7 @@ func isOpenForAttacker(gs *gameengine.GameState, attacker *gameengine.Permanent,
 		}
 		return true
 	}
-	if attacker.HasKeyword("menace") && len(untapped) <= 1 {
+	if (attacker.HasKeyword("menace") || gs.HasKeywordOf(attacker, "menace")) && len(untapped) <= 1 {
 		return true
 	}
 	ap := gs.PowerOf(attacker)
