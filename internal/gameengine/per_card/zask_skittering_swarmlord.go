@@ -108,6 +108,14 @@ func zaskInsectDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 	if ownerSeat < 0 || ownerSeat >= len(gs.Seats) {
 		ownerSeat = gySeat
 	}
+	// §800.4a (r63 CONSERVATION residual class, Gisa sibling sweep): the
+	// death that fired this trigger can also eliminate the card's owner
+	// in the same batch — the card has left the game (ID ceased, dead
+	// zones census-skipped); re-routing the pointer into a walked zone
+	// resurrects a ceased card.
+	if gs.Seats[ownerSeat] == nil || gs.Seats[ownerSeat].LeftGame {
+		return
+	}
 
 	// Remove from current graveyard and append to owner's library tail.
 	src := gs.Seats[gySeat]

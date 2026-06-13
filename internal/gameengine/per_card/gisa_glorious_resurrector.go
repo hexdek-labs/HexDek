@@ -62,6 +62,19 @@ func gisaResurrectorDies(gs *gameengine.GameState, perm *gameengine.Permanent, c
 	if ownerSeat < 0 || ownerSeat >= len(gs.Seats) {
 		ownerSeat = controllerSeat
 	}
+	// §800.4a (r63 CONSERVATION residual class, seed-7 game 1546): the
+	// death that fired this trigger can ALSO eliminate the dying card's
+	// owner (combat-damage SBA → CheckEnd runs inside the same trigger
+	// batch). By resolve time the card has left the game — its ID is
+	// ceased and the dead seat's graveyard is census-skipped. Lifting it
+	// into our exile resurrects a ceased pointer into a walked zone
+	// (present-but-ceased fabrication, permanent from that turn on).
+	// The object no longer exists; "exile it instead" has nothing to
+	// apply to.
+	if ownerSeat >= 0 && ownerSeat < len(gs.Seats) && gs.Seats[ownerSeat] != nil &&
+		gs.Seats[ownerSeat].LeftGame {
+		return
+	}
 	stillInGraveyard := false
 	if ownerSeat >= 0 && ownerSeat < len(gs.Seats) && gs.Seats[ownerSeat] != nil {
 		gy := gs.Seats[ownerSeat].Graveyard
@@ -131,6 +144,15 @@ func gisaResurrectorUpkeep(gs *gameengine.GameState, perm *gameengine.Permanent,
 	returned := 0
 	for _, c := range pile {
 		if c == nil {
+			continue
+		}
+		// §800.4a (r63): the pile holds raw pointers outside any zone
+		// walk — if the card's owner was eliminated since capture, the
+		// elimination's Phase E sweep already ceased + purged the zone
+		// copy; reanimating the side-pile pointer would materialize a
+		// ceased card.
+		if c.Owner >= 0 && c.Owner < len(gs.Seats) && gs.Seats[c.Owner] != nil &&
+			gs.Seats[c.Owner].LeftGame {
 			continue
 		}
 		// Remove from our exile zone if still there.

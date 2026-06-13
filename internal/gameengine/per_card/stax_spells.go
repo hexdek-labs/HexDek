@@ -316,6 +316,15 @@ func graveBetrayalTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, 
 		return
 	}
 	card := dyingPerm.Card
+	// §800.4a (r63 CONSERVATION residual class, Gisa sibling sweep): the
+	// death that fired this trigger can also eliminate the card's owner
+	// in the same batch — the card has left the game (ID ceased, dead
+	// zones census-skipped); reanimating the pointer resurrects a ceased
+	// card into a walked zone.
+	if card.Owner >= 0 && card.Owner < len(gs.Seats) &&
+		(gs.Seats[card.Owner] == nil || gs.Seats[card.Owner].LeftGame) {
+		return
+	}
 	oppSeat := controllerSeat
 	if oppSeat < 0 || oppSeat >= len(gs.Seats) {
 		return
