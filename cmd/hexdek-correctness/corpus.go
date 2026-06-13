@@ -215,6 +215,10 @@ func safeCheckAnyTrigger(name string, tr *gameast.Triggered) (findings []*progre
 				evName = "ordinal_first_main"
 			} else if progression.InScopeTurnedFaceUpTrigger(tr) {
 				evName = "turned_face_up"
+			} else if progression.InScopeDrawCardTrigger(tr) {
+				evName = "draw_card"
+			} else if _, ok := progression.InScopeSacrificeTrigger(tr); ok {
+				evName = "sacrifice_filtered"
 			} else {
 				evName = "widened"
 			}

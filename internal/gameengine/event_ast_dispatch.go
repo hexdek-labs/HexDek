@@ -198,3 +198,153 @@ func FireTurnedFaceUpTriggers(gs *GameState, p *Permanent) {
 		PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
 	}
 }
+
+// FireDrawCardASTTriggers fires "whenever you draw a card," AST triggers
+// after `drawerSeat` drew a card. Same alias-to-nowhere shape as the
+// gain_life / becomes_tapped / turned_face_up families: the alias maps
+// draw_card → "card_drawn", but the drawOne chokepoint only ever called
+// FireCardTrigger (the per_card registry) — no walk consulted the AST, so
+// every "whenever you draw a card" AST payoff (35 corpus shapes) was silent
+// unless the card had a bespoke per_card handler. Fires once per draw EVENT.
+// per_card-owned cards are skipped via HasTriggerHook so nothing double-fires.
+func FireDrawCardASTTriggers(gs *GameState, drawerSeat int) {
+	if gs == nil || drawerSeat < 0 || drawerSeat >= len(gs.Seats) {
+		return
+	}
+	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		perms := append([]*Permanent{}, s.Battlefield...)
+		for _, p := range perms {
+			if p == nil || p.Card == nil || p.Card.AST == nil {
+				continue
+			}
+			for _, ab := range p.Card.AST.Abilities {
+				trig, ok := ab.(*gameast.Triggered)
+				if !ok || trig.Effect == nil {
+					continue
+				}
+				if !EventEquals(trig.Trigger.Event, "card_drawn") {
+					continue
+				}
+				raw := strings.ToLower(trig.Raw)
+				// CR §614.6 "except the first ... in each draw step" rider is
+				// dropped by the parser (Orcish Bowmasters class) — fail closed.
+				// "your second/third card each turn" is the distinct you_whenever
+				// event, not this one; threshold / "that much" riders also out.
+				if strings.Contains(raw, "except") || strings.Contains(raw, "that much") {
+					continue
+				}
+				switch {
+				case strings.Contains(raw, "whenever you draw a card,"):
+					if p.Controller != drawerSeat {
+						continue
+					}
+				case strings.Contains(raw, "whenever an opponent draws a card,"):
+					if p.Controller == drawerSeat {
+						continue
+					}
+				case strings.Contains(raw, "whenever a player draws a card,"):
+					// any drawer — no gate
+				default:
+					continue
+				}
+				if HasTriggerHook != nil && HasTriggerHook(p.Card.DisplayName(), "card_drawn") {
+					continue
+				}
+				gs.LogEvent(Event{
+					Kind: "trigger_fires", Seat: p.Controller,
+					Source: p.Card.DisplayName(),
+					Details: map[string]interface{}{
+						"event": "card_drawn", "rule": "603.2",
+					},
+				})
+				PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
+			}
+		}
+	}
+}
+
+// sacrificeFilterMatches reports whether a sacrificed victim satisfies the
+// "whenever you sacrifice a <filter>" wording, returning (matched, ok) where
+// ok=false means the wording is not a recognized bare self-sacrifice form.
+func sacrificeFilterMatches(raw string, victim *Permanent, bearer *Permanent) (bool, bool) {
+	// "another" excludes the bearer itself as the victim.
+	another := strings.Contains(raw, "sacrifice another")
+	if another && victim == bearer {
+		return false, true
+	}
+	switch {
+	case strings.Contains(raw, "sacrifice a creature,"), strings.Contains(raw, "sacrifice another creature,"):
+		return victim.IsCreature(), true
+	case strings.Contains(raw, "sacrifice an artifact,"), strings.Contains(raw, "sacrifice another artifact,"):
+		return cardHasType(victim.Card, "artifact"), true
+	case strings.Contains(raw, "sacrifice an enchantment,"), strings.Contains(raw, "sacrifice another enchantment,"):
+		return cardHasType(victim.Card, "enchantment"), true
+	case strings.Contains(raw, "sacrifice a land,"), strings.Contains(raw, "sacrifice another land,"):
+		return cardHasType(victim.Card, "land"), true
+	case strings.Contains(raw, "sacrifice a permanent,"), strings.Contains(raw, "sacrifice another permanent,"):
+		return true, true
+	}
+	return false, false
+}
+
+// FireSacrificeASTTriggers fires "whenever you sacrifice a <filter>," AST
+// triggers after `sacSeat` sacrificed `victim`. Same alias-to-nowhere shape
+// as the draw/gain_life families: sacrificePermanentImpl fired only the
+// per_card registry (artifact_sacrificed / creature_sacrificed /
+// permanent_sacrificed), so the parsed "whenever you sacrifice a X" AST
+// payoffs (70 corpus shapes) were silent unless a card had a bespoke
+// handler. Controller-gated ("you sacrifice" = the victim's controller);
+// per_card-owned cards are skipped via HasTriggerHook.
+func FireSacrificeASTTriggers(gs *GameState, sacSeat int, victim *Permanent) {
+	if gs == nil || victim == nil || victim.Card == nil {
+		return
+	}
+	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		perms := append([]*Permanent{}, s.Battlefield...)
+		for _, p := range perms {
+			if p == nil || p.Card == nil || p.Card.AST == nil {
+				continue
+			}
+			// "you sacrifice" — the bearer's controller must be the sacrificer.
+			if p.Controller != sacSeat {
+				continue
+			}
+			for _, ab := range p.Card.AST.Abilities {
+				trig, ok := ab.(*gameast.Triggered)
+				if !ok || trig.Effect == nil {
+					continue
+				}
+				if !EventEquals(trig.Trigger.Event, "sacrifice") {
+					continue
+				}
+				raw := strings.ToLower(trig.Raw)
+				if !strings.Contains(raw, "whenever you sacrifice") {
+					continue
+				}
+				matched, recognized := sacrificeFilterMatches(raw, victim, p)
+				if !recognized || !matched {
+					continue
+				}
+				if HasTriggerHook != nil && HasTriggerHook(p.Card.DisplayName(), "sacrifice") {
+					continue
+				}
+				gs.LogEvent(Event{
+					Kind: "trigger_fires", Seat: p.Controller,
+					Source: p.Card.DisplayName(),
+					Details: map[string]interface{}{
+						"event": "sacrifice", "rule": "603.2",
+					},
+				})
+				PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
+			}
+		}
+	}
+}
