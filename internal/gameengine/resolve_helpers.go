@@ -4835,6 +4835,11 @@ func resolveResidualByText(gs *GameState, src *Permanent, raw string) bool {
 		return true
 	}
 
+	// parsed_tail:each_player_mill — "each {player|opponent} mills N cards".
+	if EachPlayerMillFromTail(gs, src, raw) {
+		return true
+	}
+
 	if reResPlayThisTurn.MatchString(raw) || reResExilePlay.MatchString(raw) {
 		if seat >= 0 && seat < len(gs.Seats) {
 			exile := gs.Seats[seat].Exile
