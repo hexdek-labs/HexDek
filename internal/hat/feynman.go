@@ -128,7 +128,15 @@ func checkToughnessSBA(gs *gameengine.GameState, r *OracleResult) {
 			continue
 		}
 		for _, p := range s.Battlefield {
-			if p == nil || !p.IsCreature() {
+			// Layer-aware creature predicate — MUST match sba704_5f's
+			// gs.IsCreatureOf, not the base printed-type p.IsCreature.
+			// A continuous effect that strips the creature type (Song of
+			// the Dryads → Forest land, Imprisoned in the Moon, etc.)
+			// leaves a printed-creature reading toughness 0 (a land has
+			// no P/T); §704.5f does not apply and the SBA correctly skips
+			// it. Reading the printed type here produced a post-game FP
+			// (the live-fishtank r63 finding). See feynman_704_5f_typestrip_r63_test.
+			if p == nil || !gs.IsCreatureOf(p) {
 				continue
 			}
 			t := gs.ToughnessOf(p)
