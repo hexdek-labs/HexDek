@@ -822,10 +822,29 @@ func drawTop(gs *gameengine.GameState, seatIdx int) {
 	gameengine.FireDrawTriggerObservers(gs, seatIdx, 1, false)
 }
 
+// seatCanAct reports whether a seat is still a live participant that may
+// take game actions. A seat eliminated mid-turn (CR §800.4a/§800.4h) is
+// marked Lost (SBA) and LeftGame (HandleSeatElimination, which also
+// advances gs.Active past it), but the turn runner captured the active
+// seat once at takeTurnImpl entry and keeps its hand pointers intact for
+// census forensics — so without this guard the action loops below keep
+// casting / activating from a DEAD seat's untouched hand while gs.Active
+// already points elsewhere. That is the exact shape behind the live
+// fishtank legality hits (seed 1781373913569584800 game 114: seat 1 cast
+// Mox Amber during seat 2's turn = §117.1a, and tapped it with its board
+// already wiped for 0 mana = §605.1a). CR §800.4h: the turn continues to
+// cleanup, but the departed player performs no further actions.
+func seatCanAct(seat *gameengine.Seat) bool {
+	return seat != nil && !seat.Lost && !seat.LeftGame
+}
+
 // runMainPhase plays a land (pre-combat only) + adds mana + casts via
 // the Hat.
 func runMainPhase(gs *gameengine.GameState, seatIdx int, precombat bool) {
 	seat := gs.Seats[seatIdx]
+	if !seatCanAct(seat) {
+		return
+	}
 
 	// CR §305.2 — play up to the land-drop allowance (base 1 + extra land
 	// drops). Loop so Exploration/Azusa/Dryad/Gitrog extra drops are
@@ -855,6 +874,9 @@ func runMainPhase(gs *gameengine.GameState, seatIdx int, precombat bool) {
 	// Ring (wrong timing) shouldn't prevent casting a creature.
 	var lastFailed *gameengine.Card
 	for attempt := 0; attempt < 20; attempt++ {
+		if !seatCanAct(seat) {
+			return
+		}
 		castable := buildCastableList(gs, seatIdx)
 		if len(castable) == 0 {
 			break
@@ -880,6 +902,12 @@ func runMainPhase(gs *gameengine.GameState, seatIdx int, precombat bool) {
 		lastFailed = nil // reset on success
 		gameengine.StateBasedActions(gs)
 		if gs.CheckEnd() {
+			return
+		}
+		// The cast (or its SBA cascade) may have eliminated this seat
+		// itself — CR §800.4h. Stop before tapping its now-wiped board or
+		// retrying its commander; gs.Active has already advanced past it.
+		if !seatCanAct(seat) {
 			return
 		}
 		// Re-tap any new mana sources that ETB'd from the spell.
@@ -933,6 +961,9 @@ func runMainPhase(gs *gameengine.GameState, seatIdx int, precombat bool) {
 	}
 	permActCount := map[*gameengine.Permanent]int{}
 	for actCount := 0; actCount < maxMainPhaseActivations; actCount++ {
+		if !seatCanAct(seat) {
+			return
+		}
 		options := buildActivationOptions(gs, seatIdx, "main")
 		// Filter out permanents that hit their per-turn cap.
 		filtered := options[:0]
@@ -955,6 +986,9 @@ func runMainPhase(gs *gameengine.GameState, seatIdx int, precombat bool) {
 		permActCount[chosen.Permanent]++
 		gameengine.StateBasedActions(gs)
 		if gs.CheckEnd() {
+			return
+		}
+		if !seatCanAct(seat) {
 			return
 		}
 		// Re-tap new mana sources that may have appeared from ability resolution.
@@ -1683,7 +1717,7 @@ func runInstantPriority(gs *gameengine.GameState, seatIdx int) {
 		return
 	}
 	seat := gs.Seats[seatIdx]
-	if seat == nil || seat.Lost || seat.Hat == nil {
+	if !seatCanAct(seat) || seat.Hat == nil {
 		return
 	}
 
@@ -1702,7 +1736,7 @@ func runInstantPriority(gs *gameengine.GameState, seatIdx int) {
 
 	const maxUpkeepActions = 3
 	for i := 0; i < maxUpkeepActions; i++ {
-		if gs.CheckEnd() || seat.Lost {
+		if gs.CheckEnd() || !seatCanAct(seat) {
 			return
 		}
 
