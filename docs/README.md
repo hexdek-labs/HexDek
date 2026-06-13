@@ -12,12 +12,18 @@ artifacts named by round (`-r60`, `-r63`). The curated reference set:
 - **[LEGACY-EOL.md](LEGACY-EOL.md)** — every retired tool and feature:
   what it was, when and why it went, what replaced it. Check here
   before resurrecting or re-deleting anything.
-- **THESIS-SNAPSHOT** *(incoming — Hex is writing it)* — what HexDek is
-  and where the project stands: the perfect-accuracy thesis, the Judge,
-  the learning loops, current scores.
-- **Deck lifecycle** *(incoming)* — the flowchart of a deck's journey:
-  import → Freya analysis → strategy profile → hat play → Heimdall
-  analytics → Huginn/Muninn learning → back into analysis.
+- **[FEATURES.md](FEATURES.md)** — a readable, feature-by-feature tour
+  of what HexDek actually does today (engine, Judge, AI, Freya, tooling,
+  platform), each grounded in the package that implements it.
+- **[THESIS-SNAPSHOT.md](THESIS-SNAPSHOT.md)** — what HexDek is and
+  where the project stands: the perfect-accuracy thesis, the Judge, the
+  learning loops, current scores.
+- **[deck-lifecycle.md](deck-lifecycle.md)** — the flowchart of a
+  deck's journey: import → Freya analysis → strategy profile → hat play
+  → Heimdall analytics → Huginn/Muninn learning → back into analysis.
+- **[BUG-LEDGER.md](BUG-LEDGER.md)** — the known-bug ledger: fixed
+  (root cause + fix), worked-around (mitigated, root cause still open),
+  was-a-bug-then-became-intended, and the current open set.
 
 ## Architecture
 

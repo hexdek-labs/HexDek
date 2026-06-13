@@ -39,6 +39,20 @@ type ReplayContext struct {
 	// live game ran with — see review 08 C-H4.
 	HatFactory func(seat int) gameengine.Hat
 
+	// MaxTurns is the per-game turn cap the replay loop uses. Zero falls
+	// back to replayMaxTurns (80 == tournament.DefaultMaxTurns). The cap
+	// must EXACTLY match the one the LIVE game was sealed under: a replay
+	// capped higher or lower than the live game diverges at the cap and
+	// an HONEST game's replayed digest stops matching its sealed digest —
+	// a false-positive that, in the worker path, cauterizes an honest
+	// contributor. Callers that run games with a non-default
+	// MaxTurnsPerGame (heimdall/showmatch/tournament configs) MUST set
+	// this to the same value. (r63 anticheat residual C-H2 #1; closing
+	// the honest-game-rejection gap without a contract schema bump —
+	// binding the cap INTO the signed contract for malicious-runner
+	// detection remains schema-bump territory, see the parked plan.)
+	MaxTurns int
+
 	// deckCache maps deck key ("owner/name") to the parsed TournamentDeck.
 	// Populated lazily on first use.
 	deckCache map[string]*deckparser.TournamentDeck

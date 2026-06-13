@@ -59,8 +59,18 @@ type Config struct {
 
 	// EngineVersion is stamped onto synthesised SeedContracts when
 	// the worker rebuilds them from queue rows. Empty is acceptable;
-	// digest comparison is the load-bearing check.
+	// the worker's load-bearing check is field equality on (winner,
+	// turns) from the deterministic replay — see worker.go ReplayClaim.
 	EngineVersion string
+
+	// MaxTurns is the per-game turn cap the LIVE games being verified
+	// were run under. It is forwarded to rc.MaxTurns (see ReplayContext)
+	// so the replay caps identically; a mismatch makes an honest long
+	// game's replay diverge and false-positive cauterize the contributor.
+	// Zero leaves rc.MaxTurns untouched (the replay default, 80). Set
+	// this to the exact MaxTurnsPerGame the showmatch/tournament path
+	// uses if that is not the default. (r63 anticheat residual C-H2 #1.)
+	MaxTurns int
 
 	// ContractKey is the HMAC key the verifier uses for the
 	// internally-synthesised SeedContracts. Internal-only — the
@@ -145,6 +155,14 @@ func NewService(db *sql.DB, rc *heimdall.ReplayContext, cfg Config) (*Service, e
 		return nil, errors.New("anticheat: ContractKey must be >=16 bytes")
 	}
 	cfg = cfg.withDefaults()
+
+	// Forward the live turn cap onto the replay context so the verifier
+	// caps replays identically to the games it checks (r63 anticheat
+	// residual C-H2 #1). Guarded so the zero value preserves the replay
+	// default (80) and never clobbers a cap a caller set on rc directly.
+	if cfg.MaxTurns > 0 {
+		rc.MaxTurns = cfg.MaxTurns
+	}
 
 	cauter := NewCauterizeService(db)
 	verifier := NewHeimdallVerifier(rc, cfg.ContractKey, cfg.EngineVersion)

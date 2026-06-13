@@ -20,7 +20,7 @@ type VerificationQueueRow struct {
 	GameID          int64
 	DeckKey         string
 	EnqueuedAt      int64
-	Status          string // pending|running|passed|failed|error
+	Status          string // pending|running|passed|failed|error|inconclusive
 	StartedAt       sql.NullInt64
 	FinishedAt      sql.NullInt64
 	Detail          string
@@ -109,10 +109,17 @@ func ClaimNextVerification(ctx context.Context, db *sql.DB) (*VerificationQueueR
 	return r, nil
 }
 
-// FinishVerification writes the terminal status (passed|failed|error)
-// + replayed outcome + detail back to the row.
+// FinishVerification writes the terminal status (passed|failed|error|
+// inconclusive) + replayed outcome + detail back to the row.
+//
+// "inconclusive" is the NON-SANCTIONING terminal verdict (r63 C-H4): the
+// verifier could not reproduce the live game's hat, so a replay
+// divergence is ambiguous between an honest game replayed with the wrong
+// hat and a spoofed game. Acting on it would risk banning an honest
+// contributor, so such rows finish "inconclusive" and the worker neither
+// cauterizes nor marks the game verified.
 func FinishVerification(ctx context.Context, db *sql.DB, queueID int64, status string, replayedWinner, replayedTurns int, detail string) error {
-	if status != "passed" && status != "failed" && status != "error" {
+	if status != "passed" && status != "failed" && status != "error" && status != "inconclusive" {
 		return fmt.Errorf("invalid terminal status %q", status)
 	}
 	_, err := db.ExecContext(ctx,
@@ -162,11 +169,12 @@ func ListVerifications(ctx context.Context, db *sql.DB, status string, limit int
 // VerificationStats counts rows by status. Convenient for /admin
 // dashboards.
 type VerificationStats struct {
-	Pending int
-	Running int
-	Passed  int
-	Failed  int
-	Error   int
+	Pending      int
+	Running      int
+	Passed       int
+	Failed       int
+	Error        int
+	Inconclusive int
 }
 
 func GetVerificationStats(ctx context.Context, db *sql.DB) (VerificationStats, error) {
@@ -194,6 +202,8 @@ func GetVerificationStats(ctx context.Context, db *sql.DB) (VerificationStats, e
 			s.Failed = n
 		case "error":
 			s.Error = n
+		case "inconclusive":
+			s.Inconclusive = n
 		}
 	}
 	return s, rows.Err()
