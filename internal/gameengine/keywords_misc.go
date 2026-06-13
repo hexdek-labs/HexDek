@@ -632,8 +632,24 @@ func CastWithJumpStart(gs *GameState, seatIdx int, card *Card, cardToDiscard *Ca
 	SyncManaAfterSpend(seat)
 	DiscardCard(gs, cardToDiscard, seatIdx)
 
-	// After resolution, exile instead of graveyard.
-	MoveCard(gs, card, seatIdx, "stack", "exile", "replace-to-exile")
+	// CR §702.131a — push the spell onto the stack so its EFFECT actually
+	// resolves (the old path moved it straight to exile, so a jump-started
+	// Chemister's Insight discarded a card and exiled itself without ever
+	// drawing). The exile_on_resolve flag hands off to stack.go's
+	// ShouldExileOnResolve branch, which routes the card to exile instead of
+	// the graveyard as it leaves the stack.
+	item := &StackItem{
+		Card:       card,
+		Controller: seatIdx,
+		CastZone:   ZoneGraveyard,
+		Effect:     collectSpellEffect(card),
+		CostMeta: map[string]interface{}{
+			"exile_on_resolve":  true,
+			"zone_cast_keyword": "jump-start",
+			"jump_start":        true,
+		},
+	}
+	PushStackItem(gs, item)
 
 	gs.LogEvent(Event{
 		Kind:   "jump_start",
@@ -642,7 +658,7 @@ func CastWithJumpStart(gs *GameState, seatIdx int, card *Card, cardToDiscard *Ca
 		Details: map[string]interface{}{
 			"discarded": cardToDiscard.DisplayName(),
 			"cost":      manaCost,
-			"rule":      "702.133",
+			"rule":      "702.131a",
 		},
 	})
 	return true
