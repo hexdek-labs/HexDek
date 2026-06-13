@@ -873,10 +873,16 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		ApplyStormCopies(gs, item, seatIdx)
 	}
 
-	// CR §702.84 — cascade trigger. Exile from library until nonland
-	// with lesser CMC, may cast for free, put rest on bottom.
-	if HasCascadeKeyword(card) {
-		ApplyCascade(gs, seatIdx, manaCostOf(card), card.DisplayName())
+	// CR §702.85 — cascade trigger. Exile from library until nonland
+	// with lesser MV, may cast for free, put rest on bottom. §702.85b:
+	// each cascade instance is a separate trigger, so "Cascade, cascade"
+	// (Maelstrom Wanderer ×2, Apex Devastator ×4) cascades once per
+	// instance — loop CascadeCount times.
+	if cc := CascadeCount(card); cc > 0 {
+		cascadeMV := manaCostOf(card)
+		for i := 0; i < cc; i++ {
+			ApplyCascade(gs, seatIdx, cascadeMV, card.DisplayName())
+		}
 	}
 
 	// CR §701.51 — discover trigger. Like cascade but card goes to hand.

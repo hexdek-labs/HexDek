@@ -16,7 +16,6 @@ package gameengine
 // random order.
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
@@ -24,25 +23,29 @@ import (
 
 // HasCascadeKeyword returns true if the card carries Cascade (CR §702.84).
 func HasCascadeKeyword(card *Card) bool {
-	if card == nil {
-		return false
+	return CascadeCount(card) > 0
+}
+
+// CascadeCount returns the number of Cascade instances on a card. CR
+// §702.85b: cascade is a separate triggered ability per instance, so a
+// card printed "Cascade, cascade" (Maelstrom Wanderer = 2, Apex Devastator
+// = 4) triggers cascade that many times. The cast path loops this many
+// times; counting only the bool would cascade exactly once for those cards.
+func CascadeCount(card *Card) int {
+	if card == nil || card.AST == nil {
+		return 0
 	}
-	if card.AST == nil {
-		return false
-	}
+	n := 0
 	for _, ab := range card.AST.Abilities {
 		kw, ok := ab.(*gameast.Keyword)
-		if !ok {
-			continue
-		}
-		if kw.Name == "" {
+		if !ok || kw.Name == "" {
 			continue
 		}
 		if equalFoldSimple(kw.Name, "cascade") {
-			return true
+			n++
 		}
 	}
-	return false
+	return n
 }
 
 // ApplyCascade resolves the Cascade trigger for a spell cast by `controller`.
@@ -146,9 +149,37 @@ func ApplyCascade(gs *GameState, controller int, spellCMC int, spellName string)
 				Card:       found,
 				Effect:     eff,
 				IsCopy:     false,
+				CastZone:   "exile", // cascade casts the card from exile (CR §702.85a)
 			}
-			cascadeItem.Card.Name = fmt.Sprintf("%s (cascade)", found.DisplayName())
+			// NOTE: do NOT mutate found.Name here. The cascaded card is a
+			// real card object; appending "(cascade)" permanently corrupts
+			// its name, which then leaks onto the battlefield permanent /
+			// graveyard card and breaks name-based matching (legend rule,
+			// "creatures named X", tutors) and display. The cascade_hit /
+			// stack_push events already attribute the cast.
 			PushStackItem(gs, cascadeItem)
+
+			// CR §702.85a — the cascaded card is CAST. A cast spell must do
+			// the full cast-time bookkeeping: count toward storm / cast
+			// count, fire "whenever you cast a spell" triggers (magecraft,
+			// prowess, Rhystic Study, …), and trigger its OWN cast keywords
+			// (storm copies, a chained cascade, discover). The previous
+			// raw-PushStackItem path skipped all of this. Mirror CastSpell's
+			// cast-trigger block, BEFORE the priority window so the triggers
+			// land on the stack above the cascaded spell (CR §603.3).
+			IncrementCastCount(gs, controller)
+			RecordCast(gs, controller, found, 0)
+			fireCastTriggers(gs, controller, found)
+			if HasStormKeyword(found) {
+				ApplyStormCopies(gs, cascadeItem, controller)
+			}
+			if HasCascadeKeyword(found) {
+				ApplyCascade(gs, controller, manaCostOf(found), found.DisplayName())
+			}
+			if cardHasKeyword(found, "discover") {
+				PerformDiscover(gs, controller, manaCostOf(found))
+			}
+			InvokeCastHook(gs, cascadeItem)
 
 			// CR §117.3 / §117.4 — once a spell is on the stack, opponents
 			// receive priority before it resolves. Without this window the
