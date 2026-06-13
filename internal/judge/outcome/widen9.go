@@ -115,32 +115,51 @@ func leafPhase9(spec BoardSpec, eff gameast.Effect, d *Delta) (bool, bool) {
 	return false, false
 }
 
-// expandSetValuedLeaf9 intercepts the policy-targeted single-player
-// SetLife as a two-seat disjunction. Returns (deltas, handled, ok).
+// isTargetedSinglePlayer reports whether a filter is a policy-picked
+// "target player" — the seat the engine targets is its policy, so the
+// expectation is a two-seat disjunction (a wrong amount matches neither).
+func isTargetedSinglePlayer(f gameast.Filter) bool {
+	each := f.Quantifier == "each" || f.Quantifier == "all"
+	return normBase(f.Base) == "player" && !each && f.Targeted
+}
+
+// expandSetValuedLeaf9 intercepts policy-targeted single-player SetLife
+// and GainLife as two-seat disjunctions. Returns (deltas, handled, ok).
 func expandSetValuedLeaf9(spec BoardSpec, eff gameast.Effect, prefixes []*Delta) ([]*Delta, bool, bool) {
-	e, ok := eff.(*gameast.SetLife)
-	if !ok {
+	// Per-seat life delta for a "target player" effect of a given kind.
+	var perSeat func(seat int, base *Delta)
+	switch e := eff.(type) {
+	case *gameast.SetLife:
+		if !isTargetedSinglePlayer(e.Target) {
+			return nil, false, false
+		}
+		n, ok := e.Amount.IntVal()
+		if !ok {
+			return nil, true, false
+		}
+		delta := n - scaffoldStartingLife
+		perSeat = func(seat int, b *Delta) {
+			if delta != 0 {
+				b.LifeBySeat[seat] += delta
+			}
+		}
+	case *gameast.GainLife:
+		if !isTargetedSinglePlayer(e.Target) {
+			return nil, false, false
+		}
+		n, ok := amountVal(spec, e.Amount)
+		if !ok || n <= 0 {
+			return nil, true, false
+		}
+		perSeat = func(seat int, b *Delta) { b.LifeBySeat[seat] += n }
+	default:
 		return nil, false, false
 	}
-	base := normBase(e.Target.Base)
-	each := e.Target.Quantifier == "each" || e.Target.Quantifier == "all"
-	// Only the single policy-targeted "target player" needs the
-	// disjunction; the deterministic bases fall through to leafPhase9.
-	if !(base == "player" && !each && e.Target.Targeted) {
-		return nil, false, false
-	}
-	n, ok := e.Amount.IntVal()
-	if !ok {
-		return nil, true, false
-	}
-	delta := n - scaffoldStartingLife
 	var out []*Delta
 	for _, pre := range prefixes {
 		for _, seat := range []int{spec.Controller, spec.Opponent} {
 			b := pre.clone()
-			if delta != 0 {
-				b.LifeBySeat[seat] += delta
-			}
+			perSeat(seat, b)
 			out = append(out, b)
 		}
 	}

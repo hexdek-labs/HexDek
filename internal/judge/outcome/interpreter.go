@@ -190,11 +190,21 @@ func accumulate(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 		return true
 
 	case *gameast.GainLife:
+		// r63c: GainLife now mirrors LoseLife's player-target vocabulary
+		// (was self-only) — each-opponent / each-player / "opponent each"
+		// shapes are deterministic. Policy-targeted "target player gains"
+		// is handled as a disjunction in expandSetValuedLeaf9.
 		n, ok := amountVal(spec, e.Amount)
-		if !ok || n <= 0 || !filterIsSelfPlayer(e.Target) {
+		if !ok || n <= 0 {
 			return false
 		}
-		d.LifeBySeat[spec.Controller] += n
+		seats, ok := lifePlayerTargets(spec, e.Target)
+		if !ok {
+			return false
+		}
+		for _, s := range seats {
+			d.LifeBySeat[s] += n
+		}
 		return true
 
 	case *gameast.LoseLife:
@@ -202,29 +212,19 @@ func accumulate(spec BoardSpec, eff gameast.Effect, d *Delta) bool {
 		if !ok || n <= 0 {
 			return false
 		}
-		switch normBase(e.Target.Base) {
-		case "self", "you", "", "controller":
-			d.LifeBySeat[spec.Controller] -= n
-			return true
-		case "each_opponent", "each opponent":
-			d.LifeBySeat[spec.Opponent] -= n
-			return true
-		case "player", "each_player":
-			// "each player loses N" includes the CONTROLLER (first
-			// corpus audit: 24 over-claims where the interpreter
-			// expected opponent-only — Blood-Toll Harpy class).
-			if e.Target.Quantifier == "each" || e.Target.Quantifier == "all" {
-				d.LifeBySeat[spec.Controller] -= n
-				d.LifeBySeat[spec.Opponent] -= n
-				return true
-			}
+		seats, ok := lifePlayerTargets(spec, e.Target)
+		if !ok {
 			// Contextual single-player references ("that player",
-			// "defending player", policy-picked "target player") are
-			// unresolvable standalone — out of phase-1 scope (the
-			// engine context-defaults them; Liliana's Caress class).
+			// "defending player") and policy-picked "target player" are
+			// unresolvable standalone here — the targeted single-player
+			// shape is handled in leafPhase4; contextual refs stay out of
+			// scope (the engine context-defaults them; Liliana's Caress).
 			return false
 		}
-		return false
+		for _, s := range seats {
+			d.LifeBySeat[s] -= n
+		}
+		return true
 
 	case *gameast.Damage:
 		n, ok := amountVal(spec, e.Amount)
@@ -426,6 +426,35 @@ func singleRemovalExpectation(spec BoardSpec, f gameast.Filter) (removesOne bool
 		return false, false
 	}
 	return candidates > 0, true
+}
+
+// lifePlayerTargets resolves a player-target filter for a life-change
+// effect (gain/lose) to the seats it deterministically touches on the
+// 2-seat board. ok=false means it is NOT a deterministic player-target
+// shape — a contextual single-player ("that player") or a policy-picked
+// "target player" — handled elsewhere or out of scope, never guessed.
+// "each_player" is plural by base, so it covers both seats regardless of
+// quantifier; singular "player"/"opponent" only fan out under an
+// explicit each/all quantifier.
+func lifePlayerTargets(spec BoardSpec, f gameast.Filter) ([]int, bool) {
+	each := f.Quantifier == "each" || f.Quantifier == "all"
+	switch normBase(f.Base) {
+	case "self", "you", "", "controller":
+		return []int{spec.Controller}, true
+	case "each_opponent", "each opponent":
+		return []int{spec.Opponent}, true
+	case "opponent":
+		if each {
+			return []int{spec.Opponent}, true
+		}
+	case "each_player", "each player":
+		return []int{spec.Controller, spec.Opponent}, true
+	case "player":
+		if each {
+			return []int{spec.Controller, spec.Opponent}, true
+		}
+	}
+	return nil, false
 }
 
 func filterIsSelfPlayer(f gameast.Filter) bool {
