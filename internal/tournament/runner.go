@@ -1390,6 +1390,7 @@ func persistPostTournament(result *TournamentResult) {
 		if err := huginn.PersistRawNTuples(huginnDir, result.Analyses, result.CommanderNames); err != nil {
 			fmt.Fprintf(os.Stderr, "huginn: persist raw ntuples: %v\n", err)
 		}
+		graduateHuginn(huginnDir, len(result.Analyses))
 	}
 
 	// Persist rivalry matchup data (accumulates across runs).
@@ -1404,6 +1405,35 @@ func persistPostTournament(result *TournamentResult) {
 		if err := analytics.PersistThreatGraph(analyticsDir, result.KillRecords); err != nil {
 			fmt.Fprintf(os.Stderr, "threat_graph: persist kills: %v\n", err)
 		}
+	}
+}
+
+// graduateHuginn closes the Huginn learning loop (r63 round-2 step-2):
+// fold the just-persisted raw observations into the learned-interaction
+// tiers and refresh the tier-3 exports Freya reads on analyze. Runs
+// once per tournament BATCH (this hook), never per game — Ingest drains
+// its raw inbox, so each observation is counted exactly once. Pruning
+// ages out stale tier 1/2 entries on the same cadence. Errors are
+// logged and never fail the run, matching the rest of this hook.
+func graduateHuginn(huginnDir string, batchGames int) {
+	if proms, err := huginn.Ingest(huginnDir, batchGames); err != nil {
+		fmt.Fprintf(os.Stderr, "huginn: ingest: %v\n", err)
+	} else if len(proms) > 0 {
+		for _, p := range proms {
+			fmt.Printf("huginn: pattern %q newly CONFIRMED (tier 3, %d obs, avg impact %.1f)\n",
+				p.Pattern, p.ObservationCount, p.AvgImpactScore)
+		}
+	}
+	if proms, err := huginn.IngestNTuples(huginnDir, batchGames); err != nil {
+		fmt.Fprintf(os.Stderr, "huginn: ingest ntuples: %v\n", err)
+	} else if len(proms) > 0 {
+		fmt.Printf("huginn: %d n-tuple combo(s) newly CONFIRMED (tier 3)\n", len(proms))
+	}
+	if _, err := huginn.Prune(huginnDir); err != nil {
+		fmt.Fprintf(os.Stderr, "huginn: prune: %v\n", err)
+	}
+	if _, err := huginn.PruneNTuples(huginnDir); err != nil {
+		fmt.Fprintf(os.Stderr, "huginn: prune ntuples: %v\n", err)
 	}
 }
 

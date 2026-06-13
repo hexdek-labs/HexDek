@@ -178,8 +178,43 @@ type LearnedInteraction struct {
 	LastSeen           string   `json:"last_seen"`
 	Tier               int      `json:"tier"`
 	GamesSinceLastSeen int      `json:"games_since_last_seen"`
+	// SeenDecks persists distinct deck identities across drained-inbox
+	// ingest batches (capped) — UniqueDeckCount is derived from it. The
+	// pre-drain design recomputed deck counts by re-reading the whole
+	// append-only raw file, which also re-counted every observation.
+	SeenDecks []string `json:"seen_decks,omitempty"`
 
 	seenDecks map[string]bool
+}
+
+// maxSeenDecksPersisted caps the per-pattern deck-identity set. The
+// only deck-count threshold is tier2MinDecks (2), so a tight cap loses
+// nothing that matters.
+const maxSeenDecksPersisted = 32
+
+// loadSeenDecks rebuilds the working set from the persisted list.
+func loadSeenDecks(persisted []string) map[string]bool {
+	m := make(map[string]bool, len(persisted))
+	for _, d := range persisted {
+		m[d] = true
+	}
+	return m
+}
+
+// persistSeenDecks serializes the working set, sorted, capped.
+func persistSeenDecks(m map[string]bool) []string {
+	if len(m) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(m))
+	for d := range m {
+		out = append(out, d)
+	}
+	sort.Strings(out)
+	if len(out) > maxSeenDecksPersisted {
+		out = out[:maxSeenDecksPersisted]
+	}
+	return out
 }
 
 // PersistRawObservations appends co-trigger observations from a tournament
@@ -256,6 +291,254 @@ func ReadLearnedInteractions(dir string) ([]LearnedInteraction, error) {
 		out = []LearnedInteraction{}
 	}
 	return out, nil
+}
+
+// NormalizePattern extracts the resource flow pattern from an effect
+// pattern string. Strips card names and keeps only the resource type
+// and direction: "produces X, consumes X" → "produces X → consumes X".
+func NormalizePattern(effectPattern string) string {
+	parts := strings.SplitN(effectPattern, ", ", 2)
+	if len(parts) != 2 {
+		return effectPattern
+	}
+	produces := extractVerb(parts[0])
+	consumes := extractVerb(parts[1])
+	if produces == "" || consumes == "" {
+		return effectPattern
+	}
+	return produces + " → " + consumes
+}
+
+func extractVerb(s string) string {
+	// "CardName produces mana" → "produces mana"
+	if idx := strings.Index(s, " produces "); idx >= 0 {
+		return s[idx+1:]
+	}
+	if idx := strings.Index(s, " consumes "); idx >= 0 {
+		return s[idx+1:]
+	}
+	return ""
+}
+
+// Ingest processes raw observations and updates the learned interactions
+// database, then DRAINS the raw inbox: each observation is folded into
+// learned_interactions.json exactly once, so the per-batch post-
+// tournament hook can call this unconditionally without double-counting
+// history on every run. Returns newly promoted tier 3 entries.
+//
+// (Restored in r63 round-2 step-2: the original Ingest was unreachable
+// — never wired into any post-game hook — and was removed by the
+// dead-code sweep #1054. This restoration adds the inbox drain, which
+// the original lacked; without it every Ingest re-counted the entire
+// append-only raw file.)
+func Ingest(dir string, gamesSinceRun int) (promotions []LearnedInteraction, err error) {
+	raw, err := ReadRawObservations(dir)
+	if err != nil {
+		return nil, fmt.Errorf("huginn: read raw: %w", err)
+	}
+
+	existing, err := ReadLearnedInteractions(dir)
+	if err != nil {
+		return nil, fmt.Errorf("huginn: read learned: %w", err)
+	}
+
+	// Index existing by pattern; rehydrate the cross-batch deck sets.
+	byPattern := make(map[string]*LearnedInteraction, len(existing))
+	for i := range existing {
+		existing[i].seenDecks = loadSeenDecks(existing[i].SeenDecks)
+		byPattern[existing[i].Pattern] = &existing[i]
+	}
+
+	// Track prior tiers (for promotion detection).
+	wasTier := make(map[string]int)
+	for _, li := range existing {
+		wasTier[li.Pattern] = li.Tier
+	}
+
+	now := time.Now().UTC().Format(time.RFC3339)
+
+	// Process raw observations.
+	for _, obs := range raw {
+		pattern := NormalizePattern(obs.EffectPattern)
+		if pattern == "" {
+			continue
+		}
+
+		li, ok := byPattern[pattern]
+		if !ok {
+			li = &LearnedInteraction{
+				Pattern:   pattern,
+				FirstSeen: now,
+				Tier:      TierObserved,
+				seenDecks: make(map[string]bool),
+			}
+			byPattern[pattern] = li
+		}
+
+		li.ObservationCount++
+		li.TotalImpact += obs.ImpactScore
+		li.LastSeen = now
+		li.GamesSinceLastSeen = 0
+
+		// Track unique decks.
+		for _, d := range obs.DeckNames {
+			li.seenDecks[d] = true
+		}
+
+		// Add example cards (dedup, cap at 10).
+		a, b := obs.CardA, obs.CardB
+		if a > b {
+			a, b = b, a
+		}
+		example := a + " + " + b
+		found := false
+		for _, ex := range li.ExampleCards {
+			if ex == example {
+				found = true
+				break
+			}
+		}
+		if !found && len(li.ExampleCards) < 10 {
+			li.ExampleCards = append(li.ExampleCards, example)
+		}
+	}
+
+	// Finalize deck counts and averages, run tier promotion.
+	result := make([]LearnedInteraction, 0, len(byPattern))
+	for _, li := range byPattern {
+		if len(li.seenDecks) > 0 {
+			li.UniqueDeckCount = len(li.seenDecks)
+			li.SeenDecks = persistSeenDecks(li.seenDecks)
+		}
+		if li.ObservationCount > 0 {
+			li.AvgImpactScore = li.TotalImpact / float64(li.ObservationCount)
+		}
+
+		// Tier promotion (never demote).
+		oldTier := wasTier[li.Pattern]
+		if li.Tier < TierConfirmed && li.ObservationCount >= tier3MinObs && li.AvgImpactScore >= tier3MinImpact {
+			li.Tier = TierConfirmed
+		} else if li.Tier < TierRecurring && li.ObservationCount >= tier2MinObs && li.UniqueDeckCount >= tier2MinDecks {
+			li.Tier = TierRecurring
+		}
+
+		// Detect new promotions to tier 3.
+		if li.Tier == TierConfirmed && oldTier < TierConfirmed {
+			promotions = append(promotions, *li)
+		}
+
+		// Age tracking for pruning.
+		li.GamesSinceLastSeen += gamesSinceRun
+		li.seenDecks = nil // don't serialize
+		result = append(result, *li)
+	}
+
+	// Sort by tier desc, then impact desc.
+	sort.SliceStable(result, func(i, j int) bool {
+		if result[i].Tier != result[j].Tier {
+			return result[i].Tier > result[j].Tier
+		}
+		return result[i].TotalImpact > result[j].TotalImpact
+	})
+
+	if err := atomicWriteJSON(filepath.Join(dir, learnedFile), result); err != nil {
+		return nil, fmt.Errorf("huginn: write learned: %w", err)
+	}
+
+	// Export all tier 3 patterns to tier3_for_freya.json so Freya can
+	// incorporate confirmed emergent interactions into combo detection.
+	if err := exportTier3ForFreya(dir, result); err != nil {
+		// Non-fatal: log but don't fail ingestion.
+		fmt.Fprintf(os.Stderr, "huginn: export tier3 for freya: %v\n", err)
+	}
+
+	// Drain the inbox — these observations are folded into the learned
+	// DB now. Best-effort: a failed remove only risks re-counting.
+	if len(raw) > 0 {
+		if err := os.Remove(filepath.Join(dir, rawObsFile)); err != nil && !os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "huginn: drain raw observations: %v\n", err)
+		}
+	}
+
+	return promotions, nil
+}
+
+// Prune removes stale tier 1 and tier 2 interactions, and enforces the
+// combined cap. Returns the number of entries removed.
+func Prune(dir string) (int, error) {
+	interactions, err := ReadLearnedInteractions(dir)
+	if err != nil {
+		return 0, err
+	}
+
+	before := len(interactions)
+	var kept []LearnedInteraction
+
+	for _, li := range interactions {
+		switch li.Tier {
+		case TierConfirmed:
+			kept = append(kept, li)
+		case TierRecurring:
+			if li.GamesSinceLastSeen < tier2PruneGames {
+				kept = append(kept, li)
+			}
+		case TierObserved:
+			if li.GamesSinceLastSeen < tier1PruneGames {
+				kept = append(kept, li)
+			}
+		}
+	}
+
+	// Enforce cap on tier 1+2 combined.
+	var tier3, tier12 []LearnedInteraction
+	for _, li := range kept {
+		if li.Tier == TierConfirmed {
+			tier3 = append(tier3, li)
+		} else {
+			tier12 = append(tier12, li)
+		}
+	}
+
+	if len(tier12) > maxTier1And2 {
+		sort.SliceStable(tier12, func(i, j int) bool {
+			return tier12[i].TotalImpact > tier12[j].TotalImpact
+		})
+		tier12 = tier12[:maxTier1And2]
+	}
+
+	result := append(tier3, tier12...)
+	sort.SliceStable(result, func(i, j int) bool {
+		if result[i].Tier != result[j].Tier {
+			return result[i].Tier > result[j].Tier
+		}
+		return result[i].TotalImpact > result[j].TotalImpact
+	})
+
+	if err := atomicWriteJSON(filepath.Join(dir, learnedFile), result); err != nil {
+		return 0, err
+	}
+
+	return before - len(result), nil
+}
+
+// Stats returns tier counts.
+func Stats(dir string) (tier1, tier2, tier3, total int, err error) {
+	interactions, err := ReadLearnedInteractions(dir)
+	if err != nil {
+		return 0, 0, 0, 0, err
+	}
+	for _, li := range interactions {
+		switch li.Tier {
+		case TierObserved:
+			tier1++
+		case TierRecurring:
+			tier2++
+		case TierConfirmed:
+			tier3++
+		}
+	}
+	total = len(interactions)
+	return
 }
 
 // exportTier3ForFreya writes all tier 3 (confirmed) interactions to
