@@ -515,7 +515,15 @@ func DeclareAttackers(gs *GameState, attackerSeat int) []*Permanent {
 	livingOpps := gs.LivingOpponents(attackerSeat)
 	var legal []*Permanent
 	for _, p := range seat.Battlefield {
-		if canAttack(p) && passesCombatRestriction(gs, p) {
+		// canAttack covers printed/Flags defender; the layer-granted case
+		// (scaffold_keyword_grant "defender") is invisible to HasKeyword
+		// but real to the engine's layer system and to the §508.1a
+		// legality validator. Without this gate a creature with
+		// layer-granted defender entered the legal pool, the §508.1
+		// sanitizer kept it (it IS in-pool), and it ATTACKED illegally —
+		// a real state bug (deep loki r63c: 52 §508.1a hits, every one a
+		// granted-defender attacker). Mirror the validator's gs.HasKeywordOf.
+		if canAttack(p) && passesCombatRestriction(gs, p) && !gs.HasKeywordOf(p, "defender") {
 			legal = append(legal, p)
 		}
 	}
