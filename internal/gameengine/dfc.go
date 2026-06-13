@@ -224,6 +224,12 @@ func TurnFaceUp(gs *GameState, p *Permanent, reason string) bool {
 			"rule":   "702.36e",
 		},
 	})
+	// CR §603.2 — "when this creature is turned face up" triggers fire on
+	// the face-down → face-up transition. The chokepoint covers every
+	// face-up path (morph/megamorph, disguise, cloak, manifest, "turn ~
+	// face up" effects). Before r63d these AST triggers were never
+	// dispatched (see FireTurnedFaceUpTriggers).
+	FireTurnedFaceUpTriggers(gs, p)
 	return true
 }
 
