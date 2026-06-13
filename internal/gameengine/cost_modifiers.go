@@ -129,6 +129,12 @@ func CalculateTotalCostWithContext(gs *GameState, card *Card, seatIdx int, ctx C
 		}
 	}
 
+	// Generic "this spell costs {N} less [if/for each ...]" SELF cost
+	// reduction (this_spell_colored_cost_reduce scaffold kind). Scans the
+	// card's own AST; conservative under-reduce (only confidently-evaluable
+	// conditions emit a reduction).
+	mods = append(mods, selfSpellCostReductionMods(gs, card, seatIdx)...)
+
 	return ApplyCostModifiers(baseCost, mods)
 }
 
