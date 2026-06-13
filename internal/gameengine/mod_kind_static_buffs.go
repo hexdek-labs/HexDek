@@ -20,7 +20,7 @@ package gameengine
 // static path from accidental processing.
 func staticKindAllowedLayerless(kind string) bool {
 	switch kind {
-	case "self_buff":
+	case "self_buff", "self_calculated_pt":
 		return true
 	default:
 		return false

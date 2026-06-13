@@ -2362,6 +2362,11 @@ func registerASTStaticEffects(gs *GameState, p *Permanent) {
 		case "self_buff":
 			registerSelfBuffStatic(gs, p, mod.Args)
 
+		// self_calculated_pt — CDA "this creature's P/T = <count>"
+		// (Tarmogoyf-likes). See mod_kind_self_calc_pt.go.
+		case "self_calculated_pt":
+			registerSelfCalcPTStatic(gs, p, mod.Args)
+
 		case "other_yours_anthem":
 			pow, tough := extractPT(mod.Args, 1, 1)
 			src := p
