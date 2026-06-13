@@ -158,6 +158,52 @@ func TestSeatOutcome_CleanGameNoViolations(t *testing.T) {
 	}
 }
 
+// r63 eliminated-seat deep sweep — the lost_seat_active stack-item check
+// must gate on LeftGame (§800.4a cleanup done), not Lost (loss SBA just
+// marked). The ride-along fires at the SBA checkpoint, before CheckEnd ->
+// HandleSeatElimination purges the stack, so a seat freshly marked Lost in
+// the same pass is legitimately Lost && !LeftGame with an un-purged spell
+// for a brief window. Seed-99 game-935 turn-48: Countryside Crusher,
+// LeftGame=false — purged moments later. Only a survivor AFTER LeftGame is
+// a genuine post-cleanup leak.
+func TestSeatOutcome_LostButNotLeftGameStackItemNotFlagged(t *testing.T) {
+	gs := outcomeFixture(t)
+	gs.Seats[1].Lost = true
+	gs.Seats[1].Life = -3
+	gs.Seats[1].LossReason = "life total 0 or less (CR 704.5a)"
+	// §800.4a cleanup pending: LeftGame still false, stack item survives.
+	gs.Stack = append(gs.Stack, &StackItem{
+		ID: 1, Controller: 1,
+		Card: &Card{Name: "Countryside Crusher", Owner: 1},
+	})
+
+	gs.SeatOutcome.CheckConsistency(gs, "sba")
+
+	if outcomeKinds(gs)["lost_seat_active"] != 0 {
+		t.Fatalf("Lost && !LeftGame seat with an un-purged stack item is a pre-cleanup transient, must not flag lost_seat_active: %v",
+			gs.SeatOutcome.Violations)
+	}
+}
+
+func TestSeatOutcome_LeftGameStackItemFlagged(t *testing.T) {
+	// The genuine leak: §800.4a cleanup ran (LeftGame=true) yet a stack
+	// item controlled by the departed seat survived — must still flag.
+	gs := outcomeFixture(t)
+	gs.Seats[1].Lost = true
+	gs.Seats[1].LeftGame = true
+	gs.Seats[1].LossReason = "life total 0 or less (CR 704.5a)"
+	gs.Stack = append(gs.Stack, &StackItem{
+		ID: 1, Controller: 1,
+		Card: &Card{Name: "Leaked Spell", Owner: 1},
+	})
+
+	gs.SeatOutcome.CheckConsistency(gs, "sba")
+
+	if outcomeKinds(gs)["lost_seat_active"] == 0 {
+		t.Fatalf("departed (LeftGame) seat still controlling a stack item is a real §800.4a leak, must flag lost_seat_active")
+	}
+}
+
 // --- Part 3: leave-game cleanup verification --------------------------------
 
 // The would-have-caught-#1046 proof: simulate the pre-fix elimination

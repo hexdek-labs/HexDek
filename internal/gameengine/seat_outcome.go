@@ -251,8 +251,20 @@ func (c *SeatOutcomeChecker) CheckConsistency(gs *GameState, when string) {
 				})
 			}
 		}
-		// A Lost seat must not control live stack objects.
-		if s.Lost {
+		// A DEPARTED seat must not control live stack objects. Gate on
+		// LeftGame, not Lost: §800.4a stack cessation is explicitly "not a
+		// state-based action" (CR §800.4a) and runs in CheckEnd ->
+		// HandleSeatElimination, AFTER the loss SBA marks the seat Lost.
+		// This checker rides along at the SBA checkpoint (sba.go), so a
+		// seat freshly marked Lost in the same pass is legitimately still
+		// Lost && !LeftGame with its spell/ability un-purged for the brief
+		// window until the elimination sweep. Keying on Lost flagged that
+		// transient as a violation (r63 seed-99 game-935 turn-48:
+		// Countryside Crusher, LeftGame=false — purged moments later in
+		// CheckEnd). LeftGame is exactly when §800.4a guarantees the stack
+		// purge has happened, so a survivor here is a genuine post-cleanup
+		// leak rather than a pre-cleanup transient.
+		if s.LeftGame {
 			for _, item := range gs.Stack {
 				if item != nil && item.Controller == i {
 					name := "?"
