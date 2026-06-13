@@ -2297,6 +2297,9 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	// (checklands / fastlands / slowlands / life- and opponent-count lands).
 	// Inert before this; the land entered untapped for free.
 	ApplyEntersTappedUnless(gs, perm)
+	// CR §614.1d — generic unconditional "enters tapped" static (Guildgates,
+	// Temples, bouncelands, tapped mana rocks). Also inert before this.
+	ApplySelfEntersTapped(gs, perm)
 
 	// Register §613 continuous effects (layers 1-7).
 	RegisterContinuousEffectsForPermanent(gs, perm)

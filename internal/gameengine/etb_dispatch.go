@@ -79,6 +79,10 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 		// (checklands / fastlands / slowlands / life- and opponent-count
 		// lands). Inert before this; the land entered untapped for free.
 		ApplyEntersTappedUnless(gs, perm)
+		// CR §614.1d — generic unconditional "enters tapped" static
+		// (Guildgates, Temples, bouncelands, tapped mana rocks). Also inert
+		// before this.
+		ApplySelfEntersTapped(gs, perm)
 	}
 
 	// CR §613 — register the entering permanent's continuous effects: named
