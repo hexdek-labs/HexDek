@@ -9,6 +9,7 @@
 //
 //	hexdek-muninn [--gaps] [--crashes] [--triggers] [--all] [--top N] [--dir path]
 //	hexdek-muninn --reconcile-fixed [--reconcile-cause "PR #35"] [--reconcile-from path]
+//	hexdek-muninn --judge-triage [--judge-log path] [--dir path]
 //
 // Flags:
 //
@@ -23,6 +24,11 @@
 //	--reconcile-cause   Cause string written into the archive (default "era unification 2026-05-09")
 //	--reconcile-from    File of card names (one per line) to use instead of
 //	                    the embedded EraPassFixedCards list.
+//	--judge-triage      Triage the Hex Judge's live violation stream:
+//	                    classify by dimension, dedupe by stable fingerprint,
+//	                    and write judge-triage.md + judge-triage.json to --dir.
+//	--judge-log path    Judge violation JSONL to triage
+//	                    (default data/judge/grinder-violations.jsonl)
 package main
 
 import (
@@ -59,8 +65,21 @@ func main() {
 		auditThresholdModerate = flag.Int("audit-threshold-moderate", 100, "hit-count floor for the 'moderate' severity tier")
 		auditThresholdWatch    = flag.Int("audit-threshold-watch", 10, "hit-count floor for the 'watch' severity tier (below = 'trivial')")
 		auditFailOnCritical    = flag.Bool("audit-fail-on-critical", false, "exit non-zero if any critical-tier candidates surface (for CI use)")
+		// Judge triage clerk (r63): consume the Judge watchdog's live
+		// violation stream + muninn's own archive, emit the organized
+		// triage artifact for human review.
+		judgeTriage = flag.Bool("judge-triage", false, "triage the Judge violation stream into judge-triage.md/.json under --dir")
+		judgeLog    = flag.String("judge-log", "data/judge/grinder-violations.jsonl", "judge violation JSONL to triage")
 	)
 	flag.Parse()
+
+	if *judgeTriage {
+		if err := runJudgeTriage(*judgeLog, *dir); err != nil {
+			fmt.Fprintf(os.Stderr, "judge-triage: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	if *silentInertAudit {
 		opts := SilentInertAuditOpts{
@@ -290,6 +309,33 @@ func shortDate(rfc3339 string) string {
 		return rfc3339[:10]
 	}
 	return rfc3339
+}
+
+func runJudgeTriage(logPath, dir string) error {
+	t, err := muninn.TriageJudgeLog(logPath, dir)
+	if err != nil {
+		return err
+	}
+	fmt.Println("=== MUNINN JUDGE TRIAGE ===")
+	fmt.Printf("source:   %s\n", logPath)
+	fmt.Printf("records:  %d (archive folded: %d, malformed skipped: %d)\n",
+		t.TotalRecords, t.ArchiveFolded, t.Malformed)
+	if t.TotalRecords == 0 {
+		fmt.Println("\nNothing to triage — no artifacts written.")
+		return nil
+	}
+	fmt.Printf("clusters: %d\n", len(t.Clusters))
+	for _, dim := range []string{"legality", "conservation", "state_integrity", "progression", "outcome", "liveness"} {
+		if n := t.ByDimension[dim]; n > 0 {
+			fmt.Printf("  %-16s %d\n", dim, n)
+		}
+	}
+	mdPath, jsonPath, err := muninn.WriteJudgeTriage(dir, t)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("\nwrote %s\nwrote %s\n", mdPath, jsonPath)
+	return nil
 }
 
 func runReconcile(dir, fromFile, cause string) error {

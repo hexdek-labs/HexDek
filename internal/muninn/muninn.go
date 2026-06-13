@@ -88,6 +88,10 @@ type ArchivedViolation struct {
 	Message       string    `json:"message"`
 	Timestamp     string    `json:"timestamp"`
 	Turn          int       `json:"turn,omitempty"`
+	// Dimension is the canonical Judge dimension (r63 triage clerk).
+	// Empty on rows archived before the field existed — the triage
+	// reader defaults those to state_integrity.
+	Dimension string `json:"dimension,omitempty"`
 }
 
 // NewArchivedViolation wraps one canonical judge violation with replay
@@ -100,6 +104,7 @@ func NewArchivedViolation(gameSeed int64, deckKeys [4]string, ts string, v judge
 		ViolationType: v.Name,
 		Message:       v.String(),
 		Timestamp:     ts,
+		Dimension:     v.Dimension,
 	}
 }
 
