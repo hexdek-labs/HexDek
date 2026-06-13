@@ -1314,32 +1314,48 @@ func checkCardIdentity(gs *GameState) error {
 	type cardLoc struct {
 		zone string
 		seat int
+		card *Card
+		ts   int  // permanent Timestamp (battlefield only; 0 elsewhere)
 	}
 	// Primary: InstanceID-keyed dup detection.
 	seenID := map[string]cardLoc{}
 	// Fallback: *Card pointer-keyed for legacy empty-ID cards.
 	seen := map[*Card]cardLoc{}
 
-	checkCard := func(c *Card, zone string, seat int) error {
+	// dupForensics narrows the producer of a duplicate without a repro
+	// (fishtank-radar r63 land-self-dup cluster — Plains g40 / Swamp g291):
+	//   same_card=true  → ONE *Card wrapped by two permanents (a copy/
+	//                     re-entry handler that reused the original *Card
+	//                     and direct-appended, bypassing the gap-walk).
+	//   same_card=false → two distinct *Card structs share an InstanceID
+	//                     (a mint-duplication / DeepCopy-without-remint).
+	// The later Timestamp is the duplicate that was added second, so the
+	// turn's event log around `ts=<higher>` localizes the producing effect.
+	dupForensics := func(c *Card, prev cardLoc, ts int) string {
+		return fmt.Sprintf(" [prov=%v same_card=%t ts=%d/%d]",
+			c.Provenance, prev.card == c, prev.ts, ts)
+	}
+
+	checkCard := func(c *Card, zone string, seat int, ts int) error {
 		if c == nil {
 			return nil
 		}
 		if c.InstanceID != "" {
 			if prev, dup := seenID[c.InstanceID]; dup {
 				name := c.DisplayName()
-				return fmt.Errorf("CardIdentity: card %q (InstanceID %s) appears in both seat %d %s and seat %d %s",
-					name, c.InstanceID, prev.seat, prev.zone, seat, zone)
+				return fmt.Errorf("CardIdentity: card %q (InstanceID %s) appears in both seat %d %s and seat %d %s%s",
+					name, c.InstanceID, prev.seat, prev.zone, seat, zone, dupForensics(c, prev, ts))
 			}
-			seenID[c.InstanceID] = cardLoc{zone: zone, seat: seat}
+			seenID[c.InstanceID] = cardLoc{zone: zone, seat: seat, card: c, ts: ts}
 			return nil
 		}
 		// Empty InstanceID — fall back to pointer-equality.
 		if prev, dup := seen[c]; dup {
 			name := c.DisplayName()
-			return fmt.Errorf("CardIdentity: card %q (ptr %p) appears in both seat %d %s and seat %d %s",
-				name, c, prev.seat, prev.zone, seat, zone)
+			return fmt.Errorf("CardIdentity: card %q (ptr %p) appears in both seat %d %s and seat %d %s%s",
+				name, c, prev.seat, prev.zone, seat, zone, dupForensics(c, prev, ts))
 		}
-		seen[c] = cardLoc{zone: zone, seat: seat}
+		seen[c] = cardLoc{zone: zone, seat: seat, card: c, ts: ts}
 		return nil
 	}
 
@@ -1348,27 +1364,27 @@ func checkCardIdentity(gs *GameState) error {
 			continue
 		}
 		for _, c := range s.Library {
-			if err := checkCard(c, "library", s.Idx); err != nil {
+			if err := checkCard(c, "library", s.Idx, 0); err != nil {
 				return err
 			}
 		}
 		for _, c := range s.Hand {
-			if err := checkCard(c, "hand", s.Idx); err != nil {
+			if err := checkCard(c, "hand", s.Idx, 0); err != nil {
 				return err
 			}
 		}
 		for _, c := range s.Graveyard {
-			if err := checkCard(c, "graveyard", s.Idx); err != nil {
+			if err := checkCard(c, "graveyard", s.Idx, 0); err != nil {
 				return err
 			}
 		}
 		for _, c := range s.Exile {
-			if err := checkCard(c, "exile", s.Idx); err != nil {
+			if err := checkCard(c, "exile", s.Idx, 0); err != nil {
 				return err
 			}
 		}
 		for _, c := range s.CommandZone {
-			if err := checkCard(c, "command_zone", s.Idx); err != nil {
+			if err := checkCard(c, "command_zone", s.Idx, 0); err != nil {
 				return err
 			}
 		}
@@ -1376,7 +1392,7 @@ func checkCardIdentity(gs *GameState) error {
 			if p == nil {
 				continue
 			}
-			if err := checkCard(p.Card, "battlefield", s.Idx); err != nil {
+			if err := checkCard(p.Card, "battlefield", s.Idx, p.Timestamp); err != nil {
 				return err
 			}
 		}
@@ -1410,7 +1426,7 @@ func checkCardIdentity(gs *GameState) error {
 		if item.Source != nil || item.Kind == "triggered" || item.Kind == "activated" {
 			continue
 		}
-		if err := checkCard(item.Card, "stack", item.Controller); err != nil {
+		if err := checkCard(item.Card, "stack", item.Controller, 0); err != nil {
 			return err
 		}
 	}
