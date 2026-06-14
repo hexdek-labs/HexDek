@@ -2448,6 +2448,17 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	// kick count. Mirrors the ChosenX → gs.Flags pattern. No-op for copies
 	// (no CostMeta) and unkicked cards (flags left unset).
 	MirrorKickFlagsToPermanent(item, perm)
+	// CR §107.3 — mirror the spell's CHOSEN X onto the entering permanent so
+	// "enters with X <counter> counters" statics read the real X. Chalice of
+	// the Void ({X}{X}, X charge counters), Walking Ballista / Hangarback /
+	// every X-Hydra ({X}…, X +1/+1 counters), Astral Cornucopia all depend on
+	// this; they have X cost but NO kicker, so the old "x"→multikick_count
+	// reader gave them ZERO counters. No-op for copies (ChosenX 0, matching
+	// CR §706.10b: a copy's X is 0 unless explicitly copied).
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	perm.Flags["chosen_x"] = item.ChosenX
 	// §306.5b planeswalker loyalty counter initialization. We don't carry
 	// starting_loyalty on Card today — fall back to CMC-ish heuristic so
 	// planeswalkers at least start with a positive counter.

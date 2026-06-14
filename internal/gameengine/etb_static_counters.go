@@ -1,6 +1,29 @@
 package gameengine
 
-import "github.com/hexdek/hexdek/internal/gameast"
+import (
+	"strings"
+
+	"github.com/hexdek/hexdek/internal/gameast"
+)
+
+// hasDerivedCountClause reports whether an etb_with_counters arg list carries a
+// derived-count clause (where_x: / for_each: / equal_to:) — meaning the "x"
+// count is computed from board state (Voracious Wurm, Prime Speaker Zegana,
+// Bioessence Hydra), NOT the spell's cast X.
+func hasDerivedCountClause(args []interface{}) bool {
+	for _, a := range args {
+		s, ok := a.(string)
+		if !ok {
+			continue
+		}
+		s = strings.ToLower(s)
+		if strings.HasPrefix(s, "where_x:") || strings.HasPrefix(s, "for_each:") ||
+			strings.HasPrefix(s, "equal_to:") {
+			return true
+		}
+	}
+	return false
+}
 
 // ApplyStaticETBCounters walks the entering permanent's AST for Static
 // abilities whose Modification.ModKind == "etb_with_counters" and applies
@@ -90,10 +113,35 @@ func resolveETBCounterCount(perm *Permanent, args []interface{}) int {
 	if len(args) == 0 {
 		return 1
 	}
-	// Variable count ("for each time it was kicked", etc.).
+	// Variable count.
 	if s, ok := args[0].(string); ok {
 		switch s {
-		case "var", "variable", "x", "X":
+		case "x", "X":
+			// "enters with X <counter> counters" where X is the spell's CHOSEN
+			// X ({X}/{X}{X} cost): Chalice of the Void (charge), Walking
+			// Ballista / Hangarback / every X-Hydra (+1/+1), Astral Cornucopia
+			// (charge). These have NO kicker, so the old "x"→multikick_count
+			// read returned 0 — they all entered with ZERO counters (the
+			// reported Chalice bug, 81 cards corpus-wide). Read the chosen X,
+			// mirrored onto perm.Flags["chosen_x"] at ETB.
+			//
+			// EXCEPTION: a derived-X clause (where_x: / for_each: / equal_to:)
+			// means "x" is computed from board state, not the cast X — leave
+			// those on the legacy path (handled elsewhere / stubbed) so this
+			// fix doesn't mis-read them.
+			if hasDerivedCountClause(args) {
+				if perm != nil && perm.Flags != nil {
+					return perm.Flags["multikick_count"]
+				}
+				return 0
+			}
+			if perm != nil && perm.Flags != nil {
+				return perm.Flags["chosen_x"]
+			}
+			return 0
+		case "var", "variable":
+			// "for each time it was kicked" (Everflowing Chalice, Skitter of
+			// Lizards, …) → multikicker count.
 			if perm != nil && perm.Flags != nil {
 				return perm.Flags["multikick_count"]
 			}
