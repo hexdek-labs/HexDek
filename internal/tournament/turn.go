@@ -165,6 +165,10 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 		gameengine.ScanExpiredDurations(gs, gs.Phase, gs.Step)
 		gs.InvalidateCharacteristicsCache()
 		gameengine.StateBasedActions(gs)
+		// CR §702.34a — close any madness windows opened by the cleanup
+		// discard so declined cards reach the graveyard (see the end-of-turn
+		// backstop below; this fast-forward path also discards).
+		gameengine.ResolveMadnessWindow(gs, -1)
 		gs.Snapshot()
 	}
 
@@ -565,6 +569,18 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 			return
 		}
 	}
+
+	// CR §702.34a — close any madness cast windows still open at end of turn.
+	// OnDiscardMadness exiles a discarded madness card and opens a "you may
+	// cast it for its madness cost" window, but nothing previously CLOSED the
+	// window, so a card the controller didn't cast strayed in exile forever
+	// instead of being put into the graveyard ("If that player doesn't, they
+	// put it into their graveyard"). ResolveMadnessWindow routes every still-
+	// exiled madness card to its owner's graveyard (and cleans up entries for
+	// cards already cast from the window). -1 closes ALL seats' windows so a
+	// card discarded to an effect on an opponent's turn is handled too.
+	gameengine.ResolveMadnessWindow(gs, -1)
+
 	if hook != nil { hook(gs) }
 
 	// Release Mindslaver control at end of turn. CR §712.6: "The effect
