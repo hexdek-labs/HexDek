@@ -24,6 +24,19 @@ func edEAttackTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 	if gs == nil || perm == nil {
 		return
 	}
+	// "Whenever you attack" fires once per declare-attackers step, but the
+	// engine fires "attack_declared" once per declared attacker. Without a
+	// gate the per-attacker re-fire ratchets a quest counter up to once per
+	// attacker (the count<=current guard only blocks after each add). Gate to
+	// the first hit per turn so at most one quest counter lands per combat
+	// (Caesar/Raffine once-per-turn dedup pattern).
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	if perm.Flags["ed_e_attack_fired"] >= gs.Turn {
+		return
+	}
+	perm.Flags["ed_e_attack_fired"] = gs.Turn
 	seat := gs.Seats[perm.Controller]
 	if seat == nil {
 		return

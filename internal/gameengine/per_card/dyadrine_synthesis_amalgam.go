@@ -52,6 +52,17 @@ func dyadrineAttack(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 	if attackerSeat != perm.Controller {
 		return
 	}
+	// "Whenever you attack" fires once per declare-attackers step, but the
+	// engine fires "declare_attackers" once per declared attacker. Gate to
+	// the first hit per turn so the counter-removal/token resolves once per
+	// combat, not once per attacker (Caesar/Raffine once-per-turn dedup).
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	if perm.Flags["dyadrine_attack_fired"] >= gs.Turn {
+		return
+	}
+	perm.Flags["dyadrine_attack_fired"] = gs.Turn
 	seat := gs.Seats[perm.Controller]
 	if seat == nil {
 		return

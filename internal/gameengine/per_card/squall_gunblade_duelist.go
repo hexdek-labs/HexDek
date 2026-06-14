@@ -1,6 +1,8 @@
 package per_card
 
 import (
+	"strconv"
+
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -58,6 +60,20 @@ func squallGunbladeAttackers(gs *gameengine.GameState, perm *gameengine.Permanen
 	if defender == nil || defender.Lost {
 		return
 	}
+	// "Whenever one or more creatures attack one of your opponents" fires
+	// once per declare-attackers step per attacked opponent, but the engine
+	// fires "declare_attackers" once per declared attacker. Gate to the first
+	// hit per (turn, defending player) so Squall pings each attacked opponent
+	// once per combat, not once per attacker (Caesar once-per-turn dedup,
+	// keyed by defender to preserve the per-opponent semantics).
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	dedupe := "squall_fired_d" + strconv.Itoa(defenderSeat)
+	if perm.Flags[dedupe] >= gs.Turn {
+		return
+	}
+	perm.Flags[dedupe] = gs.Turn
 	chosen := 0
 	if perm.Flags != nil {
 		chosen = perm.Flags["squall_chosen_number"]

@@ -31,6 +31,17 @@ func temmetOnAttack(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 	if gs == nil || perm == nil {
 		return
 	}
+	// "Whenever you attack" fires once per declare-attackers step, but the
+	// engine fires "attack_declared" once per declared attacker. Gate to the
+	// first hit per turn so the loot resolves once per combat, not once per
+	// attacker (Caesar/Raffine once-per-turn dedup pattern).
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	if perm.Flags["temmet_attack_fired"] >= gs.Turn {
+		return
+	}
+	perm.Flags["temmet_attack_fired"] = gs.Turn
 	seat := gs.Seats[perm.Controller]
 	if seat == nil {
 		return
