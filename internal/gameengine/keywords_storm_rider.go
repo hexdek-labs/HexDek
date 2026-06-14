@@ -89,26 +89,25 @@ func HasStorm(card *Card) bool {
 	return false
 }
 
-// StormCount returns the number of OTHER spells `seatIdx` has cast
-// this turn — i.e. the number of copies a storm spell cast by
-// `seatIdx` right now would produce. CR §702.40a "for each other
-// spell cast before it this turn."
+// StormCount returns the number of copies a storm spell cast right now would
+// produce: the number of OTHER spells cast this turn, BY ANY PLAYER, before it
+// (CR §702.40a "for each other spell cast before it this turn"). It reads the
+// GLOBAL gs.SpellsCastThisTurn (incremented at cast time for every player) and
+// subtracts 1 for the storm spell itself, which the cast pipeline counts before
+// storm fires.
 //
-// Reads seat.Turn.SpellsCast (the per-seat counter) and subtracts 1
-// when the count is at least 1 — the storm spell itself is already
-// counted by the cast pipeline before storm fires, so "other spells"
-// excludes self.
+// This MUST be the global count, not a per-seat count: storm counts spells by
+// all players, so the old `seat.Turn.SpellsCast - 1` undercounted in
+// multiplayer (it ignored opponents' spells) and disagreed with the live
+// ApplyStormCopies path. seatIdx is retained for API stability and validity
+// checks; the storm count is identical for whichever seat is casting.
 //
 // Returns 0 for nil gs / invalid seat / no prior spells.
 func StormCount(gs *GameState, seatIdx int) int {
-	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) || gs.Seats[seatIdx] == nil {
 		return 0
 	}
-	seat := gs.Seats[seatIdx]
-	if seat == nil {
-		return 0
-	}
-	n := seat.Turn.SpellsCast - 1
+	n := gs.SpellsCastThisTurn - 1
 	if n < 0 {
 		return 0
 	}

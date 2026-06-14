@@ -157,48 +157,45 @@ func TestStormCount_ZeroAtTurnStart(t *testing.T) {
 
 func TestStormCount_DerivedFromSpellsCastMinusSelf(t *testing.T) {
 	gs := newStormGame(t)
-	// Simulate 4 spells already cast this turn (including the storm
-	// spell itself once it's about to push). StormCount returns
-	// "other spells" = 4 - 1 = 3.
-	gs.Seats[0].Turn.SpellsCast = 4
+	// 4 spells cast this turn (the GLOBAL count, including the storm spell
+	// once it's pushed). StormCount returns "other spells" = 4 - 1 = 3.
+	gs.SpellsCastThisTurn = 4
 	if got := StormCount(gs, 0); got != 3 {
-		t.Errorf("StormCount at SpellsCast=4: want 3, got %d", got)
+		t.Errorf("StormCount at SpellsCastThisTurn=4: want 3, got %d", got)
 	}
 }
 
 func TestStormCount_NeverNegative(t *testing.T) {
 	gs := newStormGame(t)
-	// Defensive: even if some caller accidentally clears the counter
-	// to 0, StormCount stays at 0 (not -1).
-	gs.Seats[0].Turn.SpellsCast = 0
+	gs.SpellsCastThisTurn = 0
 	if got := StormCount(gs, 0); got != 0 {
-		t.Errorf("StormCount(SpellsCast=0): want 0, got %d", got)
+		t.Errorf("StormCount(SpellsCastThisTurn=0): want 0, got %d", got)
 	}
 }
 
-func TestStormCount_PerSeatIsolation(t *testing.T) {
+// CR §702.40a — storm counts spells cast by ALL players. A storm spell cast by
+// EITHER seat sees the same prior-spell count (it is NOT per-seat).
+func TestStormCount_CountsAllPlayers(t *testing.T) {
 	gs := newStormGame(t)
-	gs.Seats[0].Turn.SpellsCast = 5
-	gs.Seats[1].Turn.SpellsCast = 1
-	if got := StormCount(gs, 0); got != 4 {
-		t.Errorf("seat 0: want 4, got %d", got)
+	// 5 spells by seat 0 + 1 by seat 1 = 6 global; the storm spell is one of
+	// them, so "other spells" = 5 for whichever seat casts it.
+	gs.SpellsCastThisTurn = 6
+	if got := StormCount(gs, 0); got != 5 {
+		t.Errorf("seat 0 storm count must include opponents' spells: want 5, got %d", got)
 	}
-	if got := StormCount(gs, 1); got != 0 {
-		t.Errorf("seat 1: want 0, got %d", got)
+	if got := StormCount(gs, 1); got != 5 {
+		t.Errorf("storm count is all-players, identical for any caster: want 5, got %d", got)
 	}
 }
 
 func TestStormCount_ResetsAtTurnEnd(t *testing.T) {
-	// Simulate the turn-cleanup path: seat.Turn.Reset() (or equivalent
-	// re-init) should zero SpellsCast, and StormCount must reflect that.
 	gs := newStormGame(t)
-	gs.Seats[0].Turn.SpellsCast = 7
+	gs.SpellsCastThisTurn = 7
 	if got := StormCount(gs, 0); got != 6 {
 		t.Fatalf("setup: want 6 prior spells, got %d", got)
 	}
-	// Reset turn counters (mirror what the engine does on the
-	// controller's untap step).
-	gs.Seats[0].Turn = TurnCounters{}
+	// Mirror UntapAll's per-turn cleanup (turn.go zeroes the global counter).
+	gs.SpellsCastThisTurn = 0
 	if got := StormCount(gs, 0); got != 0 {
 		t.Errorf("StormCount after turn reset: want 0, got %d", got)
 	}
@@ -377,17 +374,17 @@ func TestApplyStormCopies_ThreePriorSpells_FourTotal(t *testing.T) {
 
 func TestApplyStormCopy_AfterTurnResetProducesZeroCopies(t *testing.T) {
 	gs := newStormGame(t)
-	gs.Seats[0].Turn.SpellsCast = 5 // 4 priors + storm self
+	gs.SpellsCastThisTurn = 5 // 4 priors + storm self
 	if StormCount(gs, 0) != 4 {
 		t.Fatalf("setup: want 4 priors, got %d", StormCount(gs, 0))
 	}
 	// Reset (mirrors UntapAll's per-turn cleanup).
-	gs.Seats[0].Turn = TurnCounters{}
+	gs.SpellsCastThisTurn = 0
 	if StormCount(gs, 0) != 0 {
 		t.Fatalf("StormCount should be 0 after turn reset")
 	}
 	// Cast a storm spell post-reset — it's the first this turn.
-	gs.Seats[0].Turn.SpellsCast = 1
+	gs.SpellsCastThisTurn = 1
 	original := stormStackItem(stormSpellCard("Grapeshot"), 0)
 	gs.Stack = append(gs.Stack, original)
 	count := StormCount(gs, 0)
