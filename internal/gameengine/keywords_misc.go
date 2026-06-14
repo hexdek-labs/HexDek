@@ -1753,37 +1753,54 @@ func AdvanceClassLevel(gs *GameState, perm *Permanent, levelUpCost int) int {
 // Sagas (simplified)
 // ---------------------------------------------------------------------------
 
-// AdvanceSagaChapter adds a lore counter and fires the chapter ability.
-// Returns the new chapter number.
+// AddLoreCounters places n lore counters on a Saga and fires a chapter
+// trigger for EACH chapter number the lore total newly reaches, in ascending
+// order. CR §714.2b: a chapter ability triggers when the number of lore
+// counters becomes greater than or equal to that chapter's number — so an add
+// that crosses several chapters at once (proliferate stacking, a lore doubler,
+// an "add two lore counters" effect, or read-ahead entry) fires each crossed
+// chapter once, in order, not just the final one.
+//
+// Lore is written to perm.Counters (the authoritative store P/T and SBA
+// §704.5s read). "perm" is threaded into the event so self-referential chapter
+// handlers (dispatchSagaPhase7 et al.) gate on identity rather than firing for
+// every controlled Saga.
+func AddLoreCounters(gs *GameState, perm *Permanent, n int) {
+	if gs == nil || perm == nil || perm.Card == nil || n <= 0 {
+		return
+	}
+	prev := perm.Counters["lore"]
+	perm.AddCounter("lore", n)
+	next := perm.Counters["lore"]
+	for chapter := prev + 1; chapter <= next; chapter++ {
+		gs.LogEvent(Event{
+			Kind:   "saga_chapter",
+			Seat:   perm.Controller,
+			Source: perm.Card.DisplayName(),
+			Amount: chapter,
+			Details: map[string]interface{}{
+				"rule": "714.2",
+			},
+		})
+		FireCardTrigger(gs, "lore_counter_added", map[string]interface{}{
+			"seat":    perm.Controller,
+			"card":    perm.Card.DisplayName(),
+			"chapter": chapter,
+			"perm":    perm,
+		})
+	}
+}
+
+// AdvanceSagaChapter adds one lore counter and fires the newly-reached chapter
+// ability. Returns the new chapter number. Thin wrapper over AddLoreCounters
+// (the +1 case fires exactly one chapter).
 func AdvanceSagaChapter(gs *GameState, perm *Permanent) int {
 	if gs == nil || perm == nil {
 		return 0
 	}
-	perm.AddCounter("lore", 1)
-	chapter := perm.Counters["lore"]
-
-	gs.LogEvent(Event{
-		Kind:   "saga_chapter",
-		Seat:   perm.Controller,
-		Source: perm.Card.DisplayName(),
-		Amount: chapter,
-		Details: map[string]interface{}{
-			"rule": "714.2",
-		},
-	})
-	// Fire lore_counter_added for Urza's Saga, Sheoldred // The True Scriptures, etc.
-	// "perm" carries the advancing saga so self-referential chapter handlers
-	// (dispatchSagaPhase7 et al.) can gate on identity — the all-battlefield
-	// trigger walk otherwise drives every controlled saga's chapter effect.
-	FireCardTrigger(gs, "lore_counter_added", map[string]interface{}{
-		"seat":    perm.Controller,
-		"card":    perm.Card.DisplayName(),
-		"chapter": chapter,
-		"perm":    perm,
-	})
-
+	AddLoreCounters(gs, perm, 1)
 	// If final chapter (typically 3), the saga will be sacrificed by SBA §704.5s.
-	return chapter
+	return perm.Counters["lore"]
 }
 
 // GetSagaChapter returns the current chapter of a Saga.

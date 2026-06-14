@@ -120,7 +120,16 @@ func Proliferate(gs *GameState, controller int, targets []ProliferateTarget) (in
 		// the authoritative store, so the doubled count is applied there.
 		placed := proliferatePlacementCount(gs, perm, permKinds[i])
 		if placed > 0 {
-			perm.AddCounter(permKinds[i], placed)
+			if permKinds[i] == "lore" && perm.IsSaga() {
+				// CR §714.2b / §701.34: proliferating a Saga's lore counter is
+				// a lore-counter placement, so it must fire the newly-reached
+				// chapter ability — route through AddLoreCounters (which does
+				// the AddCounter + the per-chapter trigger) rather than a bare
+				// AddCounter that would silently bump lore past a chapter.
+				AddLoreCounters(gs, perm, placed)
+			} else {
+				perm.AddCounter(permKinds[i], placed)
+			}
 		}
 	}
 	// Reconcile view stacks: drop the transient baseline entries while
