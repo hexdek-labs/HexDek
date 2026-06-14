@@ -155,6 +155,132 @@ func exileFlickerSpec(src *Permanent) (bool, bool) {
 	return false, false
 }
 
+// exileDelayedFlickerSpec inspects the source's AST for a DELAYED-return
+// flicker — "exile … return … to the battlefield at the beginning of the next
+// end step" (Flickerwisp, Otherworldly Journey, Long Road Home). Returns
+// (isDelayed, underYourControl, returnsWithPlusOne). Before r63 these parsed to
+// a bare Exile node and the permanent was exiled FOREVER (the return clause was
+// dropped). resolveExile now exiles the target and registers a delayed trigger
+// to return it as a NEW object at the next end step.
+func exileDelayedFlickerSpec(src *Permanent) (bool, bool, bool) {
+	if src == nil || src.Card == nil || src.Card.AST == nil {
+		return false, false, false
+	}
+	for _, ab := range src.Card.AST.Abilities {
+		raw := abilityRaw(ab)
+		if raw == "" {
+			continue
+		}
+		low := strings.ToLower(raw)
+		if !strings.Contains(low, "to the battlefield") {
+			continue
+		}
+		if !strings.Contains(low, "return") {
+			continue
+		}
+		if !strings.Contains(low, "next end step") {
+			continue
+		}
+		yourControl := strings.Contains(low, "under your control")
+		plusOne := strings.Contains(low, "+1/+1 counter")
+		return true, yourControl, plusOne
+	}
+	return false, false, false
+}
+
+// RegisterDelayedFlickerReturn schedules a flickered card (already in its
+// owner's exile) to return to the battlefield as a new object at the next end
+// step (CR §603.7 delayed trigger). controlSeat is where it returns; addPlusOne
+// stamps a single +1/+1 counter (Otherworldly Journey / Long Road Home).
+func RegisterDelayedFlickerReturn(gs *GameState, card *Card, controlSeat int, addPlusOne bool, srcName string) {
+	if gs == nil || card == nil {
+		return
+	}
+	gs.RegisterDelayedTrigger(&DelayedTrigger{
+		TriggerAt:       "next_end_step",
+		ControllerSeat:  controlSeat,
+		SourceCardName:  srcName,
+		SourceTimestamp: gs.NextTimestamp(),
+		OneShot:         true,
+		EffectFn: func(gs *GameState) {
+			returnDelayedFlicker(gs, card, controlSeat, addPlusOne, srcName)
+		},
+	})
+}
+
+// returnDelayedFlicker is the delayed-trigger body: pull the card out of exile
+// and re-enter it as a brand-new object. If the card is no longer in exile (it
+// moved, or a token ceased), nothing returns — the linkage is to the exiled
+// card, and a card that left exile by other means is not returned (CR §603.7).
+func returnDelayedFlicker(gs *GameState, card *Card, controlSeat int, addPlusOne bool, srcName string) {
+	if gs == nil || card == nil {
+		return
+	}
+	// The card returns from its OWNER's exile (CR §406 exile is owner-scoped).
+	if card.Owner < 0 || card.Owner >= len(gs.Seats) || gs.Seats[card.Owner] == nil {
+		return
+	}
+	ownerExile := gs.Seats[card.Owner].Exile
+	idx := -1
+	for i, c := range ownerExile {
+		if c == card {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return // no longer in exile — do not return (§603.7).
+	}
+	if controlSeat < 0 || controlSeat >= len(gs.Seats) || gs.Seats[controlSeat] == nil {
+		controlSeat = card.Owner
+	}
+	// §800.4a — owner left the game: the card left with them.
+	if gs.Seats[card.Owner].LeftGame {
+		return
+	}
+	EnsureBattlefieldFrontFace(card)
+	if !CardCanEnterBattlefield(card) {
+		return
+	}
+	// Remove from exile.
+	gs.Seats[card.Owner].Exile = append(ownerExile[:idx], ownerExile[idx+1:]...)
+	EnforceBattlefieldUniqueInstanceID(gs, card, controlSeat)
+	sick := false
+	if cardHasTypeName(card, "creature") {
+		sick = !CardHasKeyword(card, "haste")
+	}
+	newPerm := &Permanent{
+		Card:          card,
+		Controller:    controlSeat,
+		Owner:         card.Owner,
+		SummoningSick: sick,
+		Timestamp:     gs.NextTimestamp(),
+		Counters:      map[string]int{},
+		Flags:         map[string]int{},
+	}
+	// §122.1 — the +1/+1 counter is part of the returning event; stamp it
+	// BEFORE the ETB cascade so ETB-counter observers (Hardened Scales,
+	// Doubling Season) see the entering permanent in its final state.
+	if addPlusOne {
+		newPerm.Counters["+1/+1"] = 1
+	}
+	gs.Seats[controlSeat].Battlefield = append(gs.Seats[controlSeat].Battlefield, newPerm)
+	RegisterReplacementsForPermanent(gs, newPerm)
+	gs.LogEvent(Event{
+		Kind:   "flicker_return",
+		Seat:   controlSeat,
+		Target: card.Owner,
+		Source: srcName,
+		Details: map[string]interface{}{
+			"returned_card":          card.DisplayName(),
+			"returned_as_new_object": true,
+			"with_plus_one":          addPlusOne,
+			"rule":                   "603.7",
+		},
+	})
+	FirePermanentETBTriggers(gs, newPerm)
+}
+
 // abilityRaw extracts the .Raw clause text from any AST ability node.
 func abilityRaw(ab gameast.Ability) string {
 	switch a := ab.(type) {

@@ -46,11 +46,13 @@ func emielActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityI
 		return
 	}
 
-	owner := target.Owner
-	if target.Card != nil && target.Card.Owner >= 0 && target.Card.Owner < len(gs.Seats) {
-		owner = target.Card.Owner
-	}
 	card := target.Card
+	isToken := target.IsToken()
+	// CR — "return it to the battlefield under YOUR control": the new object is
+	// controlled by Emiel's controller, not routed back to the card's owner
+	// (which handed a blinked stolen creature back to its opponent). Owner
+	// stays card.Owner via createPermanent.
+	controlSeat := seat
 	if !removePermanent(gs, target) {
 		emitFail(gs, slug, src.Card.DisplayName(), "not_on_battlefield", nil)
 		return
@@ -59,12 +61,22 @@ func emielActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityI
 	gs.UnregisterContinuousEffectsForPermanent(target)
 	gameengine.FireZoneChangeTriggers(gs, target, card, "battlefield", "exile")
 	gameengine.DetachAll(gs, target)
+	// CR §111.7 / §704.5d — a blinked token ceases to exist and does NOT return.
+	if isToken {
+		gs.LogEvent(gameengine.Event{
+			Kind:   "flicker_token_ceased",
+			Seat:   seat,
+			Source: card.DisplayName(),
+			Details: map[string]interface{}{"rule": "111.7", "via": "emiel_the_blessed"},
+		})
+		return
+	}
 
-	newPerm := createPermanent(gs, owner, card, false)
+	newPerm := createPermanent(gs, controlSeat, card, false)
 	gs.LogEvent(gameengine.Event{
 		Kind:   "flicker",
 		Seat:   src.Controller,
-		Target: owner,
+		Target: controlSeat,
 		Source: src.Card.DisplayName(),
 		Details: map[string]interface{}{
 			"target_card": card.DisplayName(),
@@ -73,25 +85,14 @@ func emielActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityI
 	})
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
 		"flickered_card": card.DisplayName(),
-		"owner":          owner,
+		"owner":          card.Owner,
 	})
 	if newPerm != nil {
 		newPerm.Flags["emiel_returned"] = 1
 		gameengine.RegisterReplacementsForPermanent(gs, newPerm)
-		gameengine.InvokeETBHook(gs, newPerm)
-		gameengine.FireObserverETBTriggers(gs, newPerm)
-		gameengine.FireCardTrigger(gs, "permanent_etb", map[string]interface{}{
-			"perm":            newPerm,
-			"controller_seat": newPerm.Controller,
-			"card":            newPerm.Card,
-		})
-		if !newPerm.IsLand() {
-			gameengine.FireCardTrigger(gs, "nonland_permanent_etb", map[string]interface{}{
-				"perm":            newPerm,
-				"controller_seat": newPerm.Controller,
-				"card":            newPerm.Card,
-			})
-		}
+		// Full canonical ETB cascade (AST ETB triggers, continuous effects,
+		// ETB counters, §614 doublers) — the old subset missed them.
+		gameengine.FirePermanentETBTriggers(gs, newPerm)
 
 		// {G}{W} rider: spawn a 3/3 Beast token if the controller has
 		// at least 2 mana. ManaPool is colorless-int in this engine,

@@ -141,6 +141,7 @@ func deadeyeNavigatorActivate(gs *gameengine.GameState, src *gameengine.Permanen
 		owner = target.Card.Owner
 	}
 	card := target.Card
+	isToken := target.IsToken()
 	if !removePermanent(gs, target) {
 		emitFail(gs, slug, src.Card.DisplayName(), "not_on_battlefield", nil)
 		return
@@ -151,6 +152,19 @@ func deadeyeNavigatorActivate(gs *gameengine.GameState, src *gameengine.Permanen
 	// Fire LTB triggers for the departing permanent.
 	gameengine.FireZoneChangeTriggers(gs, target, card, "battlefield", "exile")
 	gameengine.DetachAll(gs, target)
+	// CR §111.7 / §704.5d — a TOKEN that leaves the battlefield ceases to
+	// exist as an SBA and cannot return. Blinking a soulbond-paired token
+	// must make it vanish, not re-materialize it (removePermanent already
+	// marked its InstanceID ceased).
+	if isToken {
+		gs.LogEvent(gameengine.Event{
+			Kind:   "flicker_token_ceased",
+			Seat:   src.Controller,
+			Source: card.DisplayName(),
+			Details: map[string]interface{}{"rule": "111.7", "via": "deadeye_navigator"},
+		})
+		return
+	}
 	newPerm := createPermanent(gs, owner, card, false)
 	gs.LogEvent(gameengine.Event{
 		Kind:   "flicker",
@@ -166,22 +180,15 @@ func deadeyeNavigatorActivate(gs *gameengine.GameState, src *gameengine.Permanen
 		"flickered_card": card.DisplayName(),
 		"owner":          owner,
 	})
-	// Fire full ETB cascade on the re-entered permanent.
+	// Fire the FULL canonical ETB cascade on the re-entered permanent. The
+	// old hand-rolled subset (InvokeETBHook + observers + permanent_etb) MISSED
+	// the entering permanent's own AST ETB triggers, continuous-effect
+	// registration (a blinked Doran/anthem silently lost its static), ETB
+	// counters, and the §614 ETB-doubler chain (Panharmonicon). FirePermanent
+	// ETBTriggers is the single canonical path and fires each exactly once
+	// (createPermanent does not fire ETB).
 	if newPerm != nil {
 		gameengine.RegisterReplacementsForPermanent(gs, newPerm)
-		gameengine.InvokeETBHook(gs, newPerm)
-		gameengine.FireObserverETBTriggers(gs, newPerm)
-		gameengine.FireCardTrigger(gs, "permanent_etb", map[string]interface{}{
-			"perm":            newPerm,
-			"controller_seat": newPerm.Controller,
-			"card":            newPerm.Card,
-		})
-		if !newPerm.IsLand() {
-			gameengine.FireCardTrigger(gs, "nonland_permanent_etb", map[string]interface{}{
-				"perm":            newPerm,
-				"controller_seat": newPerm.Controller,
-				"card":            newPerm.Card,
-			})
-		}
+		gameengine.FirePermanentETBTriggers(gs, newPerm)
 	}
 }

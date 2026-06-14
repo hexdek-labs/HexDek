@@ -76,6 +76,7 @@ func bragoBlinkOnCombatDamage(gs *gameengine.GameState, perm *gameengine.Permane
 		if card.Owner >= 0 && card.Owner < len(gs.Seats) {
 			owner = card.Owner
 		}
+		isToken := target.IsToken()
 		if !removePermanent(gs, target) {
 			continue
 		}
@@ -83,6 +84,17 @@ func bragoBlinkOnCombatDamage(gs *gameengine.GameState, perm *gameengine.Permane
 		gs.UnregisterContinuousEffectsForPermanent(target)
 		gameengine.FireZoneChangeTriggers(gs, target, card, "battlefield", "exile")
 		gameengine.DetachAll(gs, target)
+		// CR §111.7 / §704.5d — a blinked token ceases to exist; it does NOT
+		// return. (removePermanent already marked its InstanceID ceased.)
+		if isToken {
+			gs.LogEvent(gameengine.Event{
+				Kind:   "flicker_token_ceased",
+				Seat:   perm.Controller,
+				Source: card.DisplayName(),
+				Details: map[string]interface{}{"rule": "111.7", "via": "brago_combat_blink"},
+			})
+			continue
+		}
 
 		newPerm := createPermanent(gs, owner, card, false)
 		if newPerm == nil {
@@ -100,20 +112,9 @@ func bragoBlinkOnCombatDamage(gs *gameengine.GameState, perm *gameengine.Permane
 			},
 		})
 		gameengine.RegisterReplacementsForPermanent(gs, newPerm)
-		gameengine.InvokeETBHook(gs, newPerm)
-		gameengine.FireObserverETBTriggers(gs, newPerm)
-		gameengine.FireCardTrigger(gs, "permanent_etb", map[string]interface{}{
-			"perm":            newPerm,
-			"controller_seat": newPerm.Controller,
-			"card":            newPerm.Card,
-		})
-		if !newPerm.IsLand() {
-			gameengine.FireCardTrigger(gs, "nonland_permanent_etb", map[string]interface{}{
-				"perm":            newPerm,
-				"controller_seat": newPerm.Controller,
-				"card":            newPerm.Card,
-			})
-		}
+		// Full canonical ETB cascade (AST ETB triggers, continuous effects,
+		// ETB counters, §614 doublers) — the old subset missed them.
+		gameengine.FirePermanentETBTriggers(gs, newPerm)
 	}
 
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

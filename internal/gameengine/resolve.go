@@ -1426,6 +1426,10 @@ func resolveExile(gs *GameState, src *Permanent, e *gameast.Exile) {
 	// immediate return as a NEW object with ETB) instead of a plain exile.
 	// See flicker_r63.go.
 	isFlicker, flickerYourControl := exileFlickerSpec(src)
+	// DELAYED flicker (Flickerwisp / Otherworldly Journey / Long Road Home):
+	// exile now, return as a new object at the next end step. Before r63 these
+	// dropped the return clause and exiled the permanent forever.
+	isDelayedFlicker, delayedYourControl, delayedPlusOne := exileDelayedFlickerSpec(src)
 
 	targets := PickTargetHarmful(gs, src, e.Target)
 	maybeFireCrime(gs, src, targets)
@@ -1441,6 +1445,26 @@ func resolveExile(gs *GameState, src *Permanent, e *gameast.Exile) {
 					controlSeat = controllerSeat(src)
 				}
 				FlickerPermanent(gs, t.Permanent, controlSeat)
+				continue
+			}
+			if isDelayedFlicker && t.Permanent.Card != nil {
+				card := t.Permanent.Card
+				wasToken := t.Permanent.IsToken()
+				controlSeat := card.Owner
+				if delayedYourControl {
+					controlSeat = controllerSeat(src)
+				}
+				srcName := ""
+				if src.Card != nil {
+					srcName = src.Card.DisplayName()
+				}
+				// Exile the target (canonical path — §614 replacements, LTB
+				// triggers, token cessation). A token ceases here and will not
+				// be found in exile at end step, so it correctly never returns.
+				ExilePermanent(gs, t.Permanent, src)
+				if !wasToken {
+					RegisterDelayedFlickerReturn(gs, card, controlSeat, delayedPlusOne, srcName)
+				}
 				continue
 			}
 			// Route through ExilePermanent which runs §614 replacement

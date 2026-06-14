@@ -67,11 +67,13 @@ func displacerKittenOnCast(gs *gameengine.GameState, perm *gameengine.Permanent,
 	// immediately re-placed on the battlefield via createPermanent below.
 	// Proper zone-change helpers (ExilePermanent + re-enter) would
 	// double-count the zone write.
-	owner := seat
 	card := target.Card
-	if card != nil && card.Owner >= 0 && card.Owner < len(gs.Seats) {
-		owner = card.Owner
-	}
+	isToken := target.IsToken()
+	// CR — "return it to the battlefield under YOUR control": the new object
+	// is controlled by the Kitten's controller, NOT routed back to its owner.
+	// (Returning to owner handed a blinked stolen permanent back to its
+	// opponent.) Owner stays card.Owner via createPermanent.
+	controlSeat := seat
 	removePermanent(gs, target)
 	// Clean up replacement/continuous effects for the leaving permanent.
 	gs.UnregisterReplacementsForPermanent(target)
@@ -84,11 +86,21 @@ func displacerKittenOnCast(gs *gameengine.GameState, perm *gameengine.Permanent,
 	// trip checkAttachmentConsistency in the window before SBA §704.5m/n
 	// cleans them up (Loki r41/r57 cluster).
 	gameengine.DetachAll(gs, target)
-	newPerm := createPermanent(gs, owner, card, false)
+	// CR §111.7 / §704.5d — a blinked token ceases to exist and does NOT return.
+	if isToken {
+		gs.LogEvent(gameengine.Event{
+			Kind:   "flicker_token_ceased",
+			Seat:   seat,
+			Source: card.DisplayName(),
+			Details: map[string]interface{}{"rule": "111.7", "via": "displacer_kitten"},
+		})
+		return
+	}
+	newPerm := createPermanent(gs, controlSeat, card, false)
 	gs.LogEvent(gameengine.Event{
 		Kind:   "flicker",
 		Seat:   seat,
-		Target: owner,
+		Target: controlSeat,
 		Source: perm.Card.DisplayName(),
 		Details: map[string]interface{}{
 			"target_card": card.DisplayName(),
@@ -99,22 +111,10 @@ func displacerKittenOnCast(gs *gameengine.GameState, perm *gameengine.Permanent,
 		"flickered_card": card.DisplayName(),
 	})
 
-	// Fire full ETB cascade on the re-entered permanent.
+	// Fire the FULL canonical ETB cascade (AST ETB triggers, continuous-effect
+	// registration, ETB counters, §614 doublers) — the old subset missed them.
 	if newPerm != nil {
 		gameengine.RegisterReplacementsForPermanent(gs, newPerm)
-		gameengine.InvokeETBHook(gs, newPerm)
-		gameengine.FireObserverETBTriggers(gs, newPerm)
-		gameengine.FireCardTrigger(gs, "permanent_etb", map[string]interface{}{
-			"perm":            newPerm,
-			"controller_seat": newPerm.Controller,
-			"card":            newPerm.Card,
-		})
-		if !newPerm.IsLand() {
-			gameengine.FireCardTrigger(gs, "nonland_permanent_etb", map[string]interface{}{
-				"perm":            newPerm,
-				"controller_seat": newPerm.Controller,
-				"card":            newPerm.Card,
-			})
-		}
+		gameengine.FirePermanentETBTriggers(gs, newPerm)
 	}
 }
