@@ -40,6 +40,8 @@ package gameengine
 //     consumes it (single-use).
 
 import (
+	"strings"
+
 	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/mana"
 )
@@ -117,6 +119,20 @@ func EscapeExileCount(card *Card) int {
 				return int(v)
 			case int:
 				return v
+			}
+		}
+		// The parser drops the "exile N other cards" tail into the raw text
+		// (real escape cards — Uro, Kroxa — carry ONLY the mana cost in Args),
+		// so escape's defining additional cost read as 0 and NO cards were
+		// exiled. Recover the count from the raw text. Anchor on the word
+		// "exile" so a generic mana pip in the cost (e.g. {2}{R}) isn't
+		// mistaken for the exile count.
+		if kw.Raw != "" {
+			low := strings.ToLower(kw.Raw)
+			if idx := strings.Index(low, "exile"); idx >= 0 {
+				if n, ok := firstNumber(low[idx+len("exile"):]); ok {
+					return n
+				}
 			}
 		}
 		return 0
