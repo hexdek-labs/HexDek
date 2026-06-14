@@ -1150,8 +1150,13 @@ func resolveMill(gs *GameState, src *Permanent, e *gameast.Mill) {
 		if !ok {
 			continue
 		}
+		// CR §614 mill doublers (Bruvac the Grandiloquent): if a doubler in
+		// play applies to this seat, the mill amount is replaced — a mill of N
+		// becomes a mill of 2N (so we do 2N single-card mills). Applied
+		// per-target since Bruvac only doubles its controller's OPPONENTS.
+		n := count * millDoubleFactor(gs, seat)
 		milled := 0
-		for i := 0; i < count; i++ {
+		for i := 0; i < n; i++ {
 			if _, ok := gs.millOne(seat); ok {
 				milled++
 			}
