@@ -650,6 +650,16 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 			"to_zone":    toZone,
 		})
 	}
+
+	// CR §712.4 / §711.4: a transforming DFC has only its FRONT-face
+	// characteristics in every zone other than the battlefield. A flipped
+	// (back-face-up) permanent leaving the battlefield must revert to its
+	// front face in the destination zone. Done LAST so the self / observer
+	// / per-card LTB triggers above still saw the back-face last-known
+	// information (CR §603.10). No-op for non-transformed permanents.
+	if perm != nil && fromZone == "battlefield" && toZone != "battlefield" {
+		RevertTransformedDFCToFrontFace(gs, perm)
+	}
 }
 
 // zoneChangeToTriggerEvents maps a (fromZone, toZone) pair to the set of

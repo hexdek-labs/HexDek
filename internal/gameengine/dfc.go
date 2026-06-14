@@ -349,6 +349,57 @@ func EvaluateDayNightAtTurnStart(gs *GameState) {
 	}
 }
 
+// RevertTransformedDFCToFrontFace restores a transforming DFC permanent's
+// Card to its FRONT face when the permanent leaves the battlefield (CR
+// §712.4 / §711.4): in every zone other than the battlefield, a
+// double-faced card has only the characteristics of its front face. A
+// back-face-up permanent (a transformed werewolf, a flipped Delver, a
+// Chandra planeswalker back) that dies, is exiled, bounced, or milled
+// must carry its FRONT-face name and abilities in the destination zone —
+// otherwise graveyard-recursion name matching, recast-from-graveyard, the
+// CardIdentity invariant, and MV-in-graveyard reads all see the wrong
+// (back) face.
+//
+// Called from FireZoneChangeTriggers AFTER the self / observer / per-card
+// LTB triggers fire, so those triggers still observe the back-face
+// last-known information per CR §603.10. Reverting earlier would make a
+// back-face "when this dies" trigger (or a back-face-typed dies observer)
+// read the wrong face.
+//
+// No-op unless the permanent is a flipped transforming DFC (Transformed
+// is true and both face ASTs are populated). MDFCs cast as their back
+// face do not set Transformed and are handled by the SwapToBackFace
+// family. The card's CMC is intentionally NOT touched: a transforming
+// DFC's mana value equals its front face's mana value in every zone
+// (CR §711.8b), and TransformPermanent never mutated CMC, so it is
+// already correct.
+func RevertTransformedDFCToFrontFace(gs *GameState, p *Permanent) {
+	if gs == nil || p == nil || p.Card == nil {
+		return
+	}
+	if !p.Transformed || p.FrontFaceAST == nil || p.BackFaceAST == nil {
+		return
+	}
+	fromName := p.Card.DisplayName()
+	p.Card.AST = p.FrontFaceAST
+	if p.FrontFaceName != "" {
+		p.Card.Name = p.FrontFaceName
+	}
+	p.Transformed = false
+	p.Card.ActiveFace = 0
+	gs.InvalidateCharacteristicsCache()
+	gs.LogEvent(Event{
+		Kind:   "dfc_revert_front_on_leave",
+		Seat:   p.Owner,
+		Source: fromName,
+		Details: map[string]interface{}{
+			"rule":      "712.4",
+			"to_face":   p.FrontFaceName,
+			"from_face": fromName,
+		},
+	})
+}
+
 // InitDFCFaces seeds a Permanent's FrontFaceAST / BackFaceAST / face
 // names. Call this at ETB for any Permanent whose Card is a DFC.
 // The convention: the Card that enters the battlefield already has
