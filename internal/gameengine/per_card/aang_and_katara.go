@@ -71,8 +71,17 @@ func aangAndKataraAttackTokens(gs *gameengine.GameState, perm *gameengine.Perman
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	attackerSeat, _ := ctx["seat"].(int)
-	if attackerSeat != perm.Controller {
+	// CR §603.2 — "Whenever Aang and Katara ... attack" triggers ONLY when
+	// Aang and Katara itself attacks, not on every creature you control
+	// attacking. The "creature_attacks" event is dispatched once per declared
+	// attacker, so without this self-gate the handler fired N times per combat
+	// (one per attacker), each minting X tokens, and because the freshly-minted
+	// tokens enter as new declared attackers and tapped permanents bump X, the
+	// cascade was unbounded — a real non-terminating game (game 0, seed 7,
+	// turn 33 of the Feynman 50-game zone-accounting test hung here). Mirrors
+	// the canonical self-gate every sibling attack-trigger handler uses
+	// (anikthea, alesha, anafenza, …).
+	if atk, _ := ctx["attacker_perm"].(*gameengine.Permanent); atk != perm {
 		return
 	}
 	n := aangAndKataraCount(gs, perm.Controller)
