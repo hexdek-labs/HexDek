@@ -2143,6 +2143,15 @@ func destroyPermSBA(gs *GameState, p *Permanent, reason, rule string) {
 	} else {
 		FireZoneChangeTriggers(gs, p, p.Card, "battlefield", destZone)
 	}
+	// CR §702.140d (Mutate) / §712.3 (Meld): the merge dissolves when the
+	// permanent leaves the battlefield — every non-top constituent card
+	// routes individually to the destination zone. FireZoneChange above
+	// only moves the surviving (top) card; without this, an SBA death
+	// (lethal combat damage, 0-toughness, the most common death path)
+	// strands the under-cards in "merged limbo" and they vanish from the
+	// census (a ZoneConservation leak). DestroyPermanent / ExilePermanent
+	// already do this on their exit paths; the SBA path missed it.
+	UnmergeOnLeavePlay(gs, p, destZone)
 	// Detach anything that was attached to p so §704.5n/§704.5p don't
 	// mis-fire next pass.
 	detachAll(gs, p)
@@ -2195,6 +2204,10 @@ func sacrificePermSBA(gs *GameState, p *Permanent, reason, rule string, extra ma
 	} else {
 		FireZoneChangeTriggers(gs, p, p.Card, "battlefield", destZone)
 	}
+	// §702.140d / §712.3 — dissolve any mutate/meld merge on the way out
+	// (mirror destroyPermSBA + DestroyPermanent). A merged permanent
+	// sacrificed by a Saga SBA must still route its under-cards.
+	UnmergeOnLeavePlay(gs, p, destZone)
 	detachAll(gs, p)
 	ExpireSourceGrants(gs, p.Timestamp)
 	gs.ExpireSourceBoundPolicies(p)

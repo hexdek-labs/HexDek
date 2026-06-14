@@ -621,6 +621,40 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 		if byEvent != nil {
 			handlers = append([]TriggerHandler(nil), byEvent[canonical]...)
 		}
+		// CR §702.140 (Mutate) / §702.139 (Meld): a merged permanent has
+		// ALL the abilities of every card in the pile, not just the top
+		// card's. The dispatcher above matches handlers by the SURVIVING
+		// (top) card's name only, so a non-top constituent's triggered
+		// abilities never fire — most visibly a mutate card's "Whenever
+		// this creature mutates, …" rider when that card slid UNDER the
+		// target (onTop=false): the survivor bears the target's name, so
+		// the rider's per_card handler is unreachable. Union in the
+		// handlers registered under each non-top constituent's name. The
+		// handler still receives the surviving `perm` (the single merged
+		// object), so the mutatedGuard ctx["mutated_perm"]==perm gate and
+		// every other perm-shared property (counters, P/T, controller)
+		// resolve against the one real permanent. Scoped to merged
+		// permanents → zero cost on the non-merged common path.
+		if perm.MergeKind != gameengine.MergeNone && len(perm.MergedCardPtrs) > 0 {
+			topName := perm.Card.DisplayName()
+			seenConstituent := map[string]bool{normalizeName(topName): true}
+			for _, mc := range perm.MergedCardPtrs {
+				if mc == nil {
+					continue
+				}
+				cn := normalizeName(mc.DisplayName())
+				if seenConstituent[cn] {
+					continue
+				}
+				seenConstituent[cn] = true
+				for _, k := range lookupCandidates(mc.DisplayName()) {
+					if m := reg.onTrigger[k]; m != nil {
+						handlers = append(handlers, m[canonical]...)
+						break
+					}
+				}
+			}
+		}
 		reg.mu.RUnlock()
 		if len(handlers) > 0 {
 			hitsBySeat[seatIdx] = append(hitsBySeat[seatIdx], hit{perm: perm, hs: handlers})
