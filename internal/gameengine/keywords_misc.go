@@ -2104,8 +2104,17 @@ func CountDevotion(gs *GameState, seatIdx int, color string) int {
 			total += DevotionPipsFromManaCost(p.Card.ManaCostString, wantColor)
 			continue
 		}
-		// Legacy fallback: count 1 per color-matching permanent (used by
-		// fixtures / tokens that don't carry a printed mana cost).
+		// A token has no mana cost (CR §700.5 counts mana symbols in mana
+		// COSTS), so a colored token contributes 0 to devotion even though
+		// it carries a color — skip the Colors fallback for tokens. Without
+		// this a black Zombie token would wrongly inflate devotion to black
+		// (e.g. pumping Gray Merchant's drain in a Jarad tokens deck).
+		if p.IsToken() {
+			continue
+		}
+		// Legacy fallback: count 1 per color-matching permanent. Used only
+		// by hand-built test fixtures that set Colors but no ManaCostString;
+		// real non-token cards always carry a printed mana cost.
 		for _, c := range p.Card.Colors {
 			if strings.ToUpper(c) == wantColor {
 				total++

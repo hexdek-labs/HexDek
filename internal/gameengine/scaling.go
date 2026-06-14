@@ -1,6 +1,10 @@
 package gameengine
 
-import "github.com/hexdek/hexdek/internal/gameast"
+import (
+	"strings"
+
+	"github.com/hexdek/hexdek/internal/gameast"
+)
 
 // evalNumber returns the integer value of a NumberOrRef against the
 // current game state. Covers:
@@ -156,46 +160,38 @@ func evalScaling(gs *GameState, src *Permanent, sa *gameast.ScalingAmount) (int,
 		if seat < 0 || seat >= len(gs.Seats) {
 			return 0, true
 		}
-		// If a specific color is requested (e.g. "devotion to black"),
-		// it's in sa.Args[0].
-		var wantColor string
-		if len(sa.Args) > 0 {
-			wantColor, _ = sa.Args[0].(string)
-		}
-		wantColorCode := ""
+		// CR §700.5 — devotion is the number of colored mana SYMBOLS in the
+		// mana costs of permanents you control, NOT the mana value of colored
+		// permanents. Delegate to the canonical CountDevotion (pip parser,
+		// hybrid-aware) instead of the old CMC approximation, which wildly
+		// over-counted: a {3}{B}{B} Gray Merchant gave 5 black devotion
+		// instead of 2, so every "X = your devotion to <color>" effect
+		// (Gray Merchant's drain, Master of Waves, …) scaled far too high.
+		// Args carry the requested color name(s): "devotion to black" →
+		// ["black"]; the two-color gods' "green and blue" → ["green","blue"].
 		colorNameMap := map[string]string{
 			"black": "B", "blue": "U", "white": "W", "red": "R", "green": "G",
 			"B": "B", "U": "U", "W": "W", "R": "R", "G": "G",
 		}
-		if wantColor != "" {
-			wantColorCode = colorNameMap[wantColor]
-		}
-		devCount := 0
-		for _, p := range gs.Seats[seat].Battlefield {
-			if p == nil || p.Card == nil {
+		var colors []string
+		for _, a := range sa.Args {
+			cs, ok := a.(string)
+			if !ok || cs == "" {
 				continue
 			}
-			if wantColorCode == "" {
-				// Total devotion — approximate by counting CMC of colored permanents.
-				if len(p.Card.Colors) > 0 {
-					cmc := p.Card.CMC
-					if cmc <= 0 {
-						cmc = 1
-					}
-					devCount += cmc
-				}
-			} else {
-				for _, c := range p.Card.Colors {
-					if c == wantColorCode || c == wantColor {
-						cmc := p.Card.CMC
-						if cmc <= 0 {
-							cmc = 1
-						}
-						devCount += cmc
-						break
-					}
-				}
+			if code, ok := colorNameMap[strings.ToLower(cs)]; ok {
+				colors = append(colors, code)
+			} else if code, ok := colorNameMap[cs]; ok {
+				colors = append(colors, code)
 			}
+		}
+		// "Total devotion" (no color named) sums across all five colors.
+		if len(colors) == 0 {
+			colors = DevotionColors
+		}
+		devCount := 0
+		for _, c := range colors {
+			devCount += CountDevotion(gs, seat, c)
 		}
 		if devCount == 0 {
 			if v, ok := gs.Flags["devotion"]; ok && v > 0 {

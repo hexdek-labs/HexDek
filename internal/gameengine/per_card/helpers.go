@@ -148,13 +148,28 @@ func countDevotion(seat *gameengine.Seat, colors ...string) int {
 	return total
 }
 
-// countPipsOnCard counts matching mana pips on a single card's cost.
-// Reads from Card.Types ("pip:U", "pip:W" etc.) first since we don't
-// have a CardAST.ManaCost field yet (Phase 14).
+// countPipsOnCard counts matching mana pips on a single card's cost
+// toward any of wantColors (CR §700.5).
+//
+// Real cards carry a printed mana cost in Card.ManaCostString, so we count
+// its colored pips via the canonical gameengine.DevotionPipsFromManaCost
+// (hybrid-aware). Earlier this function read ONLY "pip:U"-style Type markers
+// — present on hand-built test fixtures but never on corpus cards — so every
+// real-game devotion consumer routed through here (Thassa's Oracle, Xenagos,
+// Namor) silently counted 0. The "pip:" path is retained as a fixture
+// fallback for cards with no ManaCostString.
 func countPipsOnCard(card *gameengine.Card, wantColors map[string]bool) int {
 	if card == nil {
 		return 0
 	}
+	if card.ManaCostString != "" {
+		n := 0
+		for color := range wantColors {
+			n += gameengine.DevotionPipsFromManaCost(card.ManaCostString, color)
+		}
+		return n
+	}
+	// Fixture fallback: "pip:U" / "pip:B" Type markers on hand-built cards.
 	n := 0
 	for _, t := range card.Types {
 		if !strings.HasPrefix(t, "pip:") {
@@ -165,8 +180,6 @@ func countPipsOnCard(card *gameengine.Card, wantColors map[string]bool) int {
 			n++
 		}
 	}
-	// Future: if card.AST carried an explicit ManaCost we'd loop
-	// symbols here. Not implemented in the Phase 3 AST.
 	return n
 }
 
