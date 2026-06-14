@@ -169,12 +169,35 @@ func TestStackItemScore_SpellPathUnchanged(t *testing.T) {
 // ChooseResponse — must-counter on high-value triggers
 // -----------------------------------------------------------------------------
 
-// hatWithCounter wires a midrange YggdrasilHat onto seat 0 with a
-// Counterspell + enough mana to cast it.
+// abilityCounterInHand builds a Stifle/Disallow-shape counter — "counter
+// target ability" — whose filter LEGALLY targets triggered/activated
+// abilities (CR §701.5h via matchesCounterFilter's "abilities" base). These
+// trigger-counter tests must hold this, not a "counter target spell"
+// (counterInHand), because a spell-only counter cannot legally target an
+// ability — the r63 CounterCanTarget gate in ChooseResponse correctly refuses
+// to offer it, and at runtime PriorityRound already rejected it
+// (counter_filter_mismatch), so the r60 trigger-counter feature was inert in
+// real games until paired with a legal counter.
+func abilityCounterInHand() *gameengine.Card {
+	return newTestCardMinimal("Disallow", []string{"instant"}, 3,
+		&gameast.CardAST{
+			Name: "Disallow",
+			Abilities: []gameast.Ability{
+				&gameast.Activated{
+					Effect: &gameast.CounterSpell{
+						Target: gameast.Filter{Base: "abilities", Targeted: true},
+					},
+				},
+			},
+		})
+}
+
+// hatWithCounter wires a midrange YggdrasilHat onto seat 0 with an
+// ability-capable counter + enough mana to cast it.
 func hatWithCounter(t *testing.T) *gameengine.GameState {
 	t.Helper()
 	gs := newTestGame(t, 2)
-	gs.Seats[0].Hand = []*gameengine.Card{counterInHand()}
+	gs.Seats[0].Hand = []*gameengine.Card{abilityCounterInHand()}
 	gs.Seats[0].ManaPool = 6
 	h := NewYggdrasilHatWithNoise(&StrategyProfile{Archetype: ArchetypeMidrange}, 0, 0)
 	gs.Seats[0].Hat = h

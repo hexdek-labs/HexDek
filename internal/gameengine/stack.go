@@ -36,6 +36,7 @@ package gameengine
 //     coupling flagged in the combat agent's handoff note.
 
 import (
+	"os"
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
@@ -1039,6 +1040,49 @@ func collectSpellEffect(card *Card) gameast.Effect {
 			}
 		}
 	}
+	// r63 — the real corpus parser emits an instant/sorcery spell body as a
+	// Static whose Modification.ModKind is "typed_spell_effect" (or the older
+	// "spell_effect") with the typed Effect (Damage / Destroy / CounterSpell /
+	// Draw / …) in Args[0]. Without extracting it here, item.Effect is nil and
+	// the spell resolves doing NOTHING — the "inert spell" class the per_card
+	// counterspell/removal shards have been wiring one card at a time. This
+	// generic extraction un-inerts the whole family at the resolution seam.
+	if eff := typedSpellBodyEffect(card); eff != nil {
+		return eff
+	}
+	return nil
+}
+
+// typedSpellBodyEffect pulls the typed Effect out of an instant/sorcery whose
+// spell body the parser stored as a Static "typed_spell_effect" /
+// "spell_effect" Modification (Args[0] is the Effect). Returns nil for any
+// other shape.
+func typedSpellBodyEffect(card *Card) gameast.Effect {
+	if card == nil || card.AST == nil {
+		return nil
+	}
+	if !typedSpellBodyEnabled {
+		// Ablation seam (HEXDEK_NO_TYPED_SPELL=1): pre-fix behavior where the
+		// typed_spell_effect family stays inert. Used only to A/B the
+		// invariant impact of un-inerting the family.
+		return nil
+	}
+	for _, ab := range card.AST.Abilities {
+		s, ok := ab.(*gameast.Static)
+		if !ok || s.Modification == nil {
+			continue
+		}
+		if s.Modification.ModKind != "typed_spell_effect" &&
+			s.Modification.ModKind != "spell_effect" {
+			continue
+		}
+		if len(s.Modification.Args) == 0 {
+			continue
+		}
+		if eff, ok := s.Modification.Args[0].(gameast.Effect); ok && eff != nil {
+			return eff
+		}
+	}
 	return nil
 }
 
@@ -1090,6 +1134,17 @@ func apnapOrder(gs *GameState) []int {
 // lands — the silent root cause behind "hats don't interact with each other"
 // (r63 HAT-RESPONSE-BEHAVIOR audit). Tapping happens lazily, only when a
 // response has actually been chosen, so a seat that passes never taps out.
+// typedSpellBodyEnabled gates the r63 generic typed_spell_effect spell-body
+// extraction (collectSpellEffect). Default true (the fix). Disabled via
+// HEXDEK_NO_TYPED_SPELL=1 for ablation measurement only.
+var typedSpellBodyEnabled = os.Getenv("HEXDEK_NO_TYPED_SPELL") == ""
+
+// ResponseManaFundingEnabled gates the r63 lazy response-mana tap. Default
+// true (the fix). Flipped to false ONLY by ablation harnesses that want to
+// measure pre-r63 behavior (defenders pay solely from an already-floated
+// pool, which on an opponent's turn is empty) in the same binary.
+var ResponseManaFundingEnabled = true
+
 func fundResponseMana(gs *GameState, s *Seat, needed int) bool {
 	if s == nil {
 		return false
@@ -1097,6 +1152,11 @@ func fundResponseMana(gs *GameState, s *Seat, needed int) bool {
 	EnsureTypedPool(s)
 	if s.ManaPool >= needed {
 		return true
+	}
+	if !ResponseManaFundingEnabled {
+		// Ablation: pre-r63 path — no instant-speed tapping, so a defender
+		// with an empty pool simply can't respond.
+		return false
 	}
 	// Pass 1: lands (each adds exactly 1, so no overshoot).
 	for _, p := range s.Battlefield {
@@ -1133,6 +1193,30 @@ func fundResponseMana(gs *GameState, s *Seat, needed int) bool {
 	}
 	return s.ManaPool >= needed
 }
+
+// ResponseTelemetry is a diagnostic tally of the response-priority path,
+// used by the r63 HAT-RESPONSE A/B harness to separate "no opportunity"
+// from "hat declined". Off the hot path's critical concern (a handful of
+// int increments). Reset/read by measurement code only.
+type ResponseTelemetryT struct {
+	Polls        int // (window, non-active seat) priority polls
+	CounterAvail int // seat held an affordable counterspell at the poll
+	RemovalAvail int // seat held an affordable instant-speed targeted removal
+	Chosen       int // GetResponse returned a response
+	FundFail     int // response chosen but mana couldn't be funded
+	RejSorcery   int // rejected: sorcery-speed / permanent-spell response
+	RejCounterTL int // rejected: counter can't target the incoming item
+	RejTargetIll int // rejected: announced target illegal
+	Cast         int // response actually cast (reached the cast log)
+}
+
+var ResponseTelemetry ResponseTelemetryT
+
+// responseTelemetryOn gates the diagnostic hand scan in PriorityRound.
+var responseTelemetryOn = false
+
+// SetResponseTelemetry toggles the diagnostic tally (measurement harness only).
+func SetResponseTelemetry(on bool) { responseTelemetryOn = on }
 
 func PriorityRound(gs *GameState) {
 	if gs == nil {
@@ -1181,6 +1265,21 @@ func PriorityRound(gs *GameState) {
 				})
 				continue
 			}
+			// Diagnostic opportunity tally (r63 A/B). Cheap hand scan only
+			// when telemetry is being collected by a measurement harness.
+			if responseTelemetryOn {
+				ResponseTelemetry.Polls++
+				avail := AvailableManaEstimate(gs, s)
+				for _, c := range s.Hand {
+					if c == nil {
+						continue
+					}
+					if CardHasCounterSpell(c) && ManaCostOf(c) <= avail && CounterCanTarget(counterSpellEffect(c), top) {
+						ResponseTelemetry.CounterAvail++
+						break
+					}
+				}
+			}
 			resp := GetResponse(gs, seat, top)
 			if resp == nil {
 				gs.LogEvent(Event{
@@ -1188,6 +1287,9 @@ func PriorityRound(gs *GameState) {
 					Details: map[string]interface{}{"rule": "117.3d"},
 				})
 				continue
+			}
+			if responseTelemetryOn {
+				ResponseTelemetry.Chosen++
 			}
 			// ---------------------------------------------------------
 			// r62 response-cast legality (validator follow-up #4). This
@@ -1214,6 +1316,9 @@ func PriorityRound(gs *GameState) {
 						"rule":   "117.1a",
 					},
 				})
+				if responseTelemetryOn {
+					ResponseTelemetry.RejSorcery++
+				}
 				continue
 			}
 			// CR §601.2c / §608.2b — counter-shaped responses must
@@ -1239,6 +1344,9 @@ func PriorityRound(gs *GameState) {
 							"rule":   "601.2c",
 						},
 					})
+					if responseTelemetryOn {
+						ResponseTelemetry.RejCounterTL++
+					}
 					continue
 				}
 				if len(resp.Targets) == 0 {
@@ -1257,6 +1365,9 @@ func PriorityRound(gs *GameState) {
 							"rule":   "608.2b",
 						},
 					})
+					if responseTelemetryOn {
+						ResponseTelemetry.RejTargetIll++
+					}
 					continue
 				}
 			}
@@ -1268,6 +1379,9 @@ func PriorityRound(gs *GameState) {
 			// only the active player has floated mana). Skip only if even
 			// tapping out can't cover the cost.
 			if !fundResponseMana(gs, s, cost) {
+				if responseTelemetryOn {
+					ResponseTelemetry.FundFail++
+				}
 				continue
 			}
 			// Ride-along legality validator bracket (nil-receiver no-op
@@ -1305,16 +1419,28 @@ func PriorityRound(gs *GameState) {
 					},
 				})
 			}
+			// top.Card is nil when the incoming item is a triggered/activated
+			// ability (reactive removal commonly responds to those) — read the
+			// name defensively to avoid a nil-deref panic.
+			inRespName := "<ability>"
+			if top.Card != nil {
+				inRespName = top.Card.DisplayName()
+			} else if top.Source != nil && top.Source.Card != nil {
+				inRespName = top.Source.Card.DisplayName()
+			}
 			gs.LogEvent(Event{
 				Kind:   "cast",
 				Seat:   seat,
 				Source: resp.Card.DisplayName(),
 				Amount: cost,
 				Details: map[string]interface{}{
-					"in_response_to": top.Card.DisplayName(),
+					"in_response_to": inRespName,
 					"rule":           "117.7",
 				},
 			})
+			if responseTelemetryOn {
+				ResponseTelemetry.Cast++
+			}
 			// CR §700.4 / §702.40 — response casts (counterspells) are
 			// casts per §601 and MUST increment the cast counters + fire
 			// reactive observers. Without this, Rhystic Study / Mystic
@@ -1462,10 +1588,16 @@ func counterSpellEffect(c *Card) gameast.Effect {
 				return a.Effect
 			}
 		}
-		// Layout 2: Static with Modification.kind == "spell_effect"
-		// whose first arg is a CounterSpell effect (real AST corpus).
+		// Layout 2: Static with Modification.kind == "spell_effect" OR the
+		// real-corpus "typed_spell_effect" whose first arg is a CounterSpell
+		// effect. The "typed_spell_effect" variant is what the production
+		// parser emits for Counterspell / Negate / Mana Leak / Dovin's Veto /
+		// every real counter — without it CardHasCounterSpell returned false
+		// for the entire counter family, so hats never saw a counter to cast.
 		if s, ok := ab.(*gameast.Static); ok && s.Modification != nil &&
-			s.Modification.ModKind == "spell_effect" && len(s.Modification.Args) > 0 {
+			(s.Modification.ModKind == "spell_effect" ||
+				s.Modification.ModKind == "typed_spell_effect") &&
+			len(s.Modification.Args) > 0 {
 			if eff, ok := s.Modification.Args[0].(gameast.Effect); ok {
 				if isCounterSpellEffect(eff) {
 					return eff

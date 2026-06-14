@@ -7364,15 +7364,30 @@ func (h *YggdrasilHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top
 	// situation that actually needs it.
 	var bestCounterCMC int
 	for _, c := range seat.Hand {
-		if c != nil && gameengine.CardHasCounterSpell(c) {
-			if gameengine.CanPayColoredCost(colored, c) {
-				cmc := gameengine.ManaCostOf(c)
-				if bestCounter == nil || cmc < bestCounterCMC ||
-					(cmc == bestCounterCMC && c.DisplayName() < bestCounter.DisplayName()) {
-					bestCounter = c
-					bestCounterCMC = cmc
-				}
-			}
+		if c == nil || !gameengine.CardHasCounterSpell(c) {
+			continue
+		}
+		// CR §601.2c — only offer a counter that can LEGALLY target the
+		// incoming item: a "counter target spell" can't be announced at a
+		// triggered/activated ability (top.Card == nil) or at a spell its
+		// printed filter excludes ("counter target creature spell" vs an
+		// instant). Without this gate the hat returned a counter the engine
+		// then rejected (counter_filter_mismatch) — and because bestCounter
+		// was non-nil, it ALSO skipped the reactive-removal fallback below,
+		// so it interacted with NOTHING. This was the dominant reason hats
+		// "passed" on opponents' turns despite holding answers (r63 audit:
+		// 106 of 125 chosen responses died here).
+		if !gameengine.CounterCanTarget(gameengine.CounterSpellEffectOf(c), top) {
+			continue
+		}
+		if !gameengine.CanPayColoredCost(colored, c) {
+			continue
+		}
+		cmc := gameengine.ManaCostOf(c)
+		if bestCounter == nil || cmc < bestCounterCMC ||
+			(cmc == bestCounterCMC && c.DisplayName() < bestCounter.DisplayName()) {
+			bestCounter = c
+			bestCounterCMC = cmc
 		}
 	}
 	if bestCounter == nil {
