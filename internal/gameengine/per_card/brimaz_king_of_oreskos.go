@@ -46,22 +46,30 @@ func brimazAttack(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 	if atk != perm {
 		return
 	}
-	token := gameengine.CreateCreatureToken(gs, perm.Controller, "Cat Soldier Token",
-		[]string{"creature", "cat", "soldier", "pip:W", "vigilance"}, 1, 1)
-	if token == nil {
-		return
+	// §614 token doublers (Doubling Season, Parallel Lives, …) double this
+	// creation event — route through CreateDoubledTokens so EACH resulting
+	// cat (originals + doubled copies) gets the attacking setup below.
+	defenderSeat, hasDef := ctx["defender_seat"].(int)
+	tokens := gameengine.CreateDoubledTokens(gs, perm.Controller, 1, perm, func() *gameengine.Permanent {
+		return gameengine.CreateCreatureToken(gs, perm.Controller, "Cat Soldier Token",
+			[]string{"creature", "cat", "soldier", "pip:W", "vigilance"}, 1, 1)
+	})
+	for _, token := range tokens {
+		// CR §508.1g / §509.1 — the token enters tapped and attacking the same
+		// defender Brimaz is attacking. MarkEnteredAttacking stamps both
+		// flagAttacking and the §508.1g carve-out tag.
+		gameengine.MarkEnteredAttacking(token)
+		token.SummoningSick = false
+		if hasDef {
+			token.Flags["attacking_defender_seat"] = defenderSeat + 1
+		}
 	}
-	// CR §508.1g / §509.1 — the token enters tapped and attacking
-	// the same defender Brimaz is attacking. MarkEnteredAttacking
-	// stamps both flagAttacking and the §508.1g carve-out tag.
-	gameengine.MarkEnteredAttacking(token)
-	token.SummoningSick = false
-	// Mirror Brimaz's defender if surfaceable from ctx.
-	if defenderSeat, ok := ctx["defender_seat"].(int); ok {
-		token.Flags["attacking_defender_seat"] = defenderSeat + 1
+	if len(tokens) == 0 {
+		return
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":  perm.Controller,
 		"token": "Cat Soldier",
+		"count": len(tokens),
 	})
 }

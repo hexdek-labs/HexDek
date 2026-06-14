@@ -2456,7 +2456,11 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 		if n <= 0 {
 			n = 3
 		}
-		perm.Counters["loyalty"] = n
+		// CR §306.5g / §122.1g — a planeswalker enters with loyalty counters
+		// PUT on it; Doubling Season doubles that count (and Vorinclex halves
+		// an opponent's). Route the starting count through the would_put_counter
+		// chain instead of assigning it raw, which skipped every doubler.
+		perm.Counters["loyalty"] = EnterCounterCountWithDoublers(gs, perm, "loyalty", n)
 	}
 	// §310.3 battle defense counter initialization.
 	if cardHasType(card, "battle") {
@@ -2464,7 +2468,9 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 		if n <= 0 {
 			n = 1
 		}
-		perm.Counters["defense"] = n
+		// CR §310 — defense counters entering on a battle are likewise PUT,
+		// so the §122.1g doubler chain applies.
+		perm.Counters["defense"] = EnterCounterCountWithDoublers(gs, perm, "defense", n)
 	}
 
 	// InstanceID gap-walk: backstop for paradigm copies / cascade copies

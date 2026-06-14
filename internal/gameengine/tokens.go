@@ -131,6 +131,35 @@ func createSimpleArtifactToken(gs *GameState, seatIdx int,
 	})
 }
 
+// CreateDoubledTokens fires the §614 would_create_token replacement chain for
+// `count` tokens that `src` creates under `seat`'s control (Doubling Season,
+// Parallel Lives, Anointed Procession, Primal Vigor, …), then invokes mkOne the
+// resulting POST-DOUBLING number of times. It returns every created permanent
+// so the caller can apply per-token setup (enters attacking / tapped / with
+// keywords) to ALL of them — including the doubled copies.
+//
+// mkOne must mint exactly ONE token (e.g. via CreateCreatureToken) and must NOT
+// itself fire the chain. This is the doubling-aware entry point per-card
+// token-makers should use instead of calling CreateCreatureToken directly in a
+// raw loop — the raw path bypasses every token doubler (the systemic coverage
+// gap the r63 doubler audit surfaced).
+func CreateDoubledTokens(gs *GameState, seat, count int, src *Permanent, mkOne func() *Permanent) []*Permanent {
+	if gs == nil || count <= 0 || mkOne == nil {
+		return nil
+	}
+	n, cancelled := FireCreateTokenEvent(gs, seat, count, src)
+	if cancelled || n <= 0 {
+		return nil
+	}
+	out := make([]*Permanent, 0, n)
+	for i := 0; i < n; i++ {
+		if p := mkOne(); p != nil {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
 // CreateCreatureToken drops a creature token with the given name, types,
 // and base P/T onto the battlefield.
 func CreateCreatureToken(gs *GameState, seatIdx int, name string, types []string, power, toughness int) *Permanent {
