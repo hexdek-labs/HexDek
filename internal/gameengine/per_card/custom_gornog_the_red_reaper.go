@@ -52,6 +52,10 @@ func gornogETBSetBlockRestriction(gs *gameengine.GameState, perm *gameengine.Per
 		seat.Flags = map[string]int{}
 	}
 	seat.Flags["gornog_cowards_cant_block_warriors"] = 1
+	// Wire the previously-inert breadcrumb to the shared combat.go enforcement
+	// (canBlockGS) so Gornog's "Cowards can't block Warriors" static actually
+	// functions — the same path Kargan Intimidator uses.
+	gameengine.MarkCowardsCantBlockWarriors(gs, perm)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat": perm.Controller,
 	})

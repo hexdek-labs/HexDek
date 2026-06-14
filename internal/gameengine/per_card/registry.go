@@ -941,6 +941,7 @@ func registerDefaults() {
 	registerBolassCitadel(Global())
 	registerAluren(Global())
 	registerKarnTheGreatCreator(Global())
+	registerKarganIntimidator(Global())
 	registerManaCrypt(Global())
 	registerDocksideExtortionist(Global())
 	registerUrzaLordHighArtificer(Global())

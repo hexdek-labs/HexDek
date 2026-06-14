@@ -1319,6 +1319,17 @@ func canBlockGS(gs *GameState, attacker, blocker *Permanent) bool {
 			return false
 		}
 	}
+	// "Cowards can't block Warriors" (Kargan Intimidator / Gornog the Red
+	// Reaper) — a static block restriction. Seat-flag fast-path gate + an
+	// on-battlefield re-verify of the granting permanent, mirroring the Sidar
+	// Kondo wiring above. Uses layer-effective types so an until-EOT
+	// "becomes a Coward" (RegisterAddTypes) is honored too.
+	if gs != nil && gs.Flags != nil && gs.Flags["cowards_cant_block_warriors"] == 1 {
+		if gs.HasTypeOf(attacker, "warrior") && gs.HasTypeOf(blocker, "coward") &&
+			cowardBlockRestrictionActive(gs) {
+			return false
+		}
+	}
 	// Unblockable-style effects.
 	if keywordActive(gs, attacker, "unblockable") {
 		return false
@@ -2538,6 +2549,44 @@ func sidarKondoOnBattlefield(gs *GameState) bool {
 		}
 		for _, p := range s.Battlefield {
 			if p != nil && p.Card != nil && p.Card.DisplayName() == "Sidar Kondo of Jamuraa" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// MarkCowardsCantBlockWarriors stamps the shared "Cowards can't block
+// Warriors" static markers for `perm` (Kargan Intimidator / Gornog the Red
+// Reaper): a seat-flag fast-path gate plus the per-permanent grant flag that
+// cowardBlockRestrictionActive scans for. Mirrors the Sidar Kondo flag wiring.
+func MarkCowardsCantBlockWarriors(gs *GameState, perm *Permanent) {
+	if gs == nil || perm == nil {
+		return
+	}
+	if gs.Flags == nil {
+		gs.Flags = map[string]int{}
+	}
+	gs.Flags["cowards_cant_block_warriors"] = 1
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	perm.Flags["grants_cowards_cant_block_warriors"] = 1
+}
+
+// cowardBlockRestrictionActive re-verifies that a permanent granting the
+// "Cowards can't block Warriors" static is still on a battlefield (the
+// gs.Flags gate can outlive its source). Mirrors sidarKondoOnBattlefield.
+func cowardBlockRestrictionActive(gs *GameState) bool {
+	if gs == nil {
+		return false
+	}
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, p := range s.Battlefield {
+			if p != nil && p.Flags != nil && p.Flags["grants_cowards_cant_block_warriors"] == 1 {
 				return true
 			}
 		}
