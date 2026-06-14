@@ -191,26 +191,65 @@ func ActivateCycling(gs *GameState, seatIdx int, card *Card) error {
 }
 
 // searchLibraryForType finds the first card in library matching a given
-// type (for typecycling) and moves it to hand. Returns the found card
-// or nil.
+// type (for typecycling), reveals it, moves it to hand, and shuffles the
+// library. Returns the found card or nil.
+//
+// CR §702.29c: a typecycling ability is "search your library for a [type]
+// card, reveal it, put it into your hand, then shuffle." The shuffle is
+// mandatory and happens whether or not a matching card was found — per
+// CR §701.19e searching a library shuffles it regardless of the result.
+// Before this, the search moved the card to hand but never shuffled,
+// leaking the post-search library order (the player would know the exact
+// top cards after a Plainscycling/Swampcycling fetch — a real sequencing
+// advantage).
 func searchLibraryForType(gs *GameState, seatIdx int, cardType string) *Card {
 	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
 		return nil
 	}
 	seat := gs.Seats[seatIdx]
 	want := strings.ToLower(cardType)
+	var found *Card
 	for _, c := range seat.Library {
 		if c == nil {
 			continue
 		}
 		for _, t := range c.Types {
 			if strings.ToLower(t) == want {
-				MoveCard(gs, c, seatIdx, "library", "hand", "tutor-to-hand")
-				return c
+				found = c
+				break
 			}
 		}
+		if found != nil {
+			break
+		}
 	}
-	return nil
+	if found != nil {
+		// §702.29c — reveal the found card, then put it into hand.
+		gs.LogEvent(Event{
+			Kind:   "reveal",
+			Seat:   seatIdx,
+			Source: found.DisplayName(),
+			Details: map[string]interface{}{
+				"reason": "typecycling",
+				"type":   cardType,
+				"rule":   "702.29c",
+			},
+		})
+		MoveCard(gs, found, seatIdx, "library", "hand", "typecycling-to-hand")
+	}
+	// §702.29c / §701.19e — shuffle the library whether or not a matching
+	// card was found (searching a library shuffles it).
+	shuffleLibrary(gs, seatIdx)
+	gs.LogEvent(Event{
+		Kind:   "library_shuffled",
+		Seat:   seatIdx,
+		Target: seatIdx,
+		Details: map[string]interface{}{
+			"reason": "typecycling",
+			"rule":   "702.29c",
+		},
+	})
+	return found
 }
 
 // fireCyclingTriggers fires "whenever you cycle a card" or "when you
