@@ -1216,7 +1216,22 @@ func saveStrategyJSON(path string, report *FreyaReport) {
 		sj.MaxRecursionDepth = MaxValueChainRecursionDepth(report.ValueChains)
 	}
 
-	// Tutor targets: all win line pieces (ordered by win line priority).
+	// Tutor targets: what the deck wants to GO GET, in priority order. The
+	// hat's ChooseTarget tutor path only scores cards that appear in this
+	// list (everything else falls through to generic CMC/removal scoring),
+	// so a card missing here is effectively un-tutorable. Order encodes the
+	// "let the deck shape the wincon" principle:
+	//   1. win-line / combo pieces — assemble the win               (highest)
+	//   2. value-engine keys      — the SYNERGY ENGINE the deck is built on
+	//   3. finishers              — close the game   (appended below, once
+	//                                                 FinisherCards is built)
+	// Pre-r63 this list was win-line pieces ONLY, so a deck's signature
+	// synergy engine (a value-engine key that isn't itself a combo piece —
+	// e.g. a landfall-Treasure creature) was never a tutor candidate, and
+	// the hat grabbed whatever generic-good card (Eternal Witness) the
+	// oracle-text heuristics rated highest instead of the engine the deck
+	// is actually built around. Surfacing VE keys + finishers here fixes
+	// that at the source for every tutor consumer.
 	seenTargets := map[string]bool{}
 	for _, wl := range sj.WinLines {
 		for _, p := range wl.Pieces {
@@ -1224,6 +1239,15 @@ func saveStrategyJSON(path string, report *FreyaReport) {
 				seenTargets[p] = true
 				sj.TutorTargets = append(sj.TutorTargets, p)
 			}
+		}
+	}
+	// 2. Value-engine keys — the deck's synergy engine. Ranked after combo
+	//    pieces (assembling a win beats powering one) but ABOVE generic card
+	//    quality.
+	for _, k := range sj.ValueEngineKeys {
+		if !seenTargets[k] {
+			seenTargets[k] = true
+			sj.TutorTargets = append(sj.TutorTargets, k)
 		}
 	}
 
@@ -1252,6 +1276,17 @@ func saveStrategyJSON(path string, report *FreyaReport) {
 					sj.FinisherCards = append(sj.FinisherCards, card)
 				}
 			}
+		}
+	}
+
+	// 3. Finishers complete the TutorTargets priority list (after win-line
+	//    pieces and value-engine keys). A deck under no combo/engine pressure
+	//    should still be able to tutor up the card that actually closes the
+	//    game rather than a generic value spell.
+	for _, f := range sj.FinisherCards {
+		if !seenTargets[f] {
+			seenTargets[f] = true
+			sj.TutorTargets = append(sj.TutorTargets, f)
 		}
 	}
 

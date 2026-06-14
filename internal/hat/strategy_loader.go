@@ -597,6 +597,17 @@ func buildStrategyProfile(fj *freyaJSON) *StrategyProfile {
 		}
 	}
 
+	// Surface value-engine keys as tutor targets, ranked after combo pieces
+	// but above generic card quality (mirrors the strategy.json path). The
+	// hat's ChooseTarget tutor path only scores cards in TutorTargets, so a
+	// deck's signature synergy engine (a VE key that isn't itself a combo
+	// piece) was previously un-tutorable and lost to generic-value cards.
+	// VE keys here are already deduped against the combo-piece tutor targets
+	// via the shared `seen` set, so they're guaranteed distinct.
+	for _, k := range sp.ValueEngineKeys {
+		sp.TutorTargets = append(sp.TutorTargets, k)
+	}
+
 	// Fallback-path GraveyardValue boost: when Freya didn't ship
 	// eval_weights (legacy _freya.json), the strategy.json builder
 	// would have folded recursion depth into Weights already. Apply
