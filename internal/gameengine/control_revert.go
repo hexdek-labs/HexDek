@@ -20,6 +20,13 @@ type TempControlGrant struct {
 	// effects the CR-precise target is "whatever other effects say" —
 	// MVP approximation documented in the r63 report.
 	PrevController int
+	// SourceTimestamp links a "while the control SOURCE remains on the
+	// battlefield" steal (Control Magic, Mind Control, Sower of Temptation)
+	// to its source permanent. 0 = an until-end-of-turn steal (Threaten
+	// class), reverted at the §514.2 cleanup step. Non-zero = reverted when
+	// the source leaves the battlefield (CR §613.1b: a control effect ends
+	// when its source leaves), via RevertControlForLeavingSource.
+	SourceTimestamp int
 }
 
 // RevertControlToOwner is THE shared return-to-owner operation: move
@@ -50,6 +57,10 @@ func RevertControlToOwner(gs *GameState, p *Permanent, reason string) bool {
 	p.Owner = owner // re-align any corrupted Permanent.Owner while here
 	p.Timestamp = gs.NextTimestamp()
 	gs.Seats[owner].Battlefield = append(gs.Seats[owner].Battlefield, p)
+	// §613 layer-2 → layer-7 dependency: control change feeds anthems /
+	// "creatures you control" statics, so the characteristics cache must be
+	// recomputed on the new controller relationship.
+	gs.InvalidateCharacteristicsCache()
 	gs.LogEvent(Event{
 		Kind:   "control_reverted",
 		Seat:   owner,
@@ -74,19 +85,59 @@ func RegisterTempControlGrant(gs *GameState, p *Permanent, prevController int) {
 	})
 }
 
-// ExpireTempControlGrants reverts every registered until-EOT steal.
-// Called from the cleanup step (§514.2) via ScanExpiredDurations and
-// from game-end cleanup. Grants whose permanent left the battlefield
-// are dropped silently (nothing to revert).
+// ExpireTempControlGrants reverts every registered UNTIL-END-OF-TURN steal
+// (SourceTimestamp == 0). Called from the cleanup step (§514.2) via
+// ScanExpiredDurations and from game-end cleanup. While-source-on-battlefield
+// grants (SourceTimestamp != 0) are KEPT — they end only when their source
+// leaves (RevertControlForLeavingSource), not at end of turn. Grants whose
+// permanent left the battlefield are dropped silently (nothing to revert).
 func ExpireTempControlGrants(gs *GameState) {
 	if gs == nil || len(gs.TempControlGrants) == 0 {
 		return
 	}
 	grants := gs.TempControlGrants
-	gs.TempControlGrants = nil
+	kept := grants[:0]
 	for _, g := range grants {
+		if g.SourceTimestamp != 0 {
+			kept = append(kept, g) // while-source-on-bf — survives EOT
+			continue
+		}
 		RevertControlToOwner(gs, g.Perm, "until_end_of_turn_expired")
 	}
+	gs.TempControlGrants = kept
+}
+
+// RegisterSourceControlGrant records a "while the control source remains on
+// the battlefield" steal (Control Magic / Mind Control / Sower of Temptation)
+// so RevertControlForLeavingSource returns the creature to its owner when the
+// source leaves play (CR §613.1b).
+func RegisterSourceControlGrant(gs *GameState, p *Permanent, prevController, sourceTimestamp int) {
+	if gs == nil || p == nil || sourceTimestamp == 0 {
+		return
+	}
+	gs.TempControlGrants = append(gs.TempControlGrants, TempControlGrant{
+		Perm: p, PrevController: prevController, SourceTimestamp: sourceTimestamp,
+	})
+}
+
+// RevertControlForLeavingSource reverts every while-source-on-battlefield
+// control grant whose SourceTimestamp matches the leaving source permanent —
+// the §613.1b "control effect ends when its source leaves" arm. Called from
+// the same battlefield-exit chokepoints as ExpireSourceGrants.
+func RevertControlForLeavingSource(gs *GameState, sourceTimestamp int) {
+	if gs == nil || sourceTimestamp == 0 || len(gs.TempControlGrants) == 0 {
+		return
+	}
+	grants := gs.TempControlGrants
+	kept := grants[:0]
+	for _, g := range grants {
+		if g.SourceTimestamp == sourceTimestamp {
+			RevertControlToOwner(gs, g.Perm, "control_source_left_battlefield")
+			continue
+		}
+		kept = append(kept, g)
+	}
+	gs.TempControlGrants = kept
 }
 
 // RevertControlForLeavingSeat is the §800.4a arm of the shared

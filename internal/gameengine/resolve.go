@@ -1945,13 +1945,29 @@ func resolveGainControl(gs *GameState, src *Permanent, e *gameast.GainControl) {
 		p.Controller = newController
 		p.Timestamp = gs.NextTimestamp()
 		gs.Seats[newController].Battlefield = append(gs.Seats[newController].Battlefield, p)
+		// §613 layer-2 → layer-7: recompute anthems / "you control" statics
+		// on the new controller relationship (the stolen creature loses the
+		// old controller's anthem and gains the new controller's).
+		gs.InvalidateCharacteristicsCache()
 		// r63 §108.3: ownership NEVER changes on control effects —
-		// Permanent.Owner stays Card.Owner. Until-EOT steals (Act of
-		// Treason class, 76 corpus nodes) register for the cleanup-step
-		// revert; pre-r63 the Duration field was ignored and every temp
-		// steal was permanent.
+		// Permanent.Owner stays Card.Owner.
 		if e.Duration == "until_end_of_turn" {
+			// Until-EOT steal (Act of Treason class): revert at the §514.2
+			// cleanup step. Per the printed "untap it; it gains haste",
+			// untap the creature and clear summoning sickness so it can
+			// attack THIS turn (functional haste — no persistent kw:haste
+			// flag, which would wrongly stick to the owner's creature after
+			// the EOT revert). Mirrors resolveTempControlMod.
+			p.Tapped = false
+			p.SummoningSick = false
 			RegisterTempControlGrant(gs, p, oldController)
+		} else if src != nil && permanentOnBattlefield(gs, src) {
+			// While-source-on-battlefield steal (Control Magic / Mind Control
+			// / Sower of Temptation): the source is a permanent in play, so
+			// the steal ends when that source leaves (CR §613.1b). One-shot
+			// sorcery steals (src off-battlefield / nil) get no source grant
+			// and stay with the new controller as printed.
+			RegisterSourceControlGrant(gs, p, oldController, src.Timestamp)
 		}
 		gs.LogEvent(Event{
 			Kind:   "gain_control",

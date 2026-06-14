@@ -764,11 +764,18 @@ func SweepLeakedZoneCastGrants(gs *GameState) {
 	}
 }
 
-// ExpireSourceGrants removes all grants whose SourceTimestamp matches
-// the given permanent's Timestamp. Called when a permanent with
-// "while_source_on_bf" grants leaves the battlefield.
+// ExpireSourceGrants removes all source-keyed grants whose SourceTimestamp
+// matches the given permanent's Timestamp. Called when a permanent leaves the
+// battlefield. Covers ZoneCastGrants (impulse / cast-from-exile) AND
+// while-source-on-battlefield CONTROL grants (Control Magic / Mind Control /
+// Sower of Temptation — CR §613.1b: a control effect ends when its source
+// leaves play, returning the creature to its owner).
 func ExpireSourceGrants(gs *GameState, sourceTimestamp int) {
-	if gs == nil || len(gs.ZoneCastGrants) == 0 || sourceTimestamp == 0 {
+	if gs == nil || sourceTimestamp == 0 {
+		return
+	}
+	RevertControlForLeavingSource(gs, sourceTimestamp)
+	if len(gs.ZoneCastGrants) == 0 {
 		return
 	}
 	for card, p := range gs.ZoneCastGrants {
