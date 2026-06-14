@@ -35,11 +35,14 @@ func anowonTheRuinThiefETB(gs *gameengine.GameState, perm *gameengine.Permanent)
 	if gs == nil || perm == nil {
 		return
 	}
-	// Apply +1/+1 to other Rogues currently on the battlefield.
-	applyTribalBuff(gs, perm, "rogue", 1, 1, "Anowon, the Ruin Thief")
-	// Flag that post-ETB Rogue entries are not continuously buffed.
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"lord_buff_applies_only_at_etb_not_continuously_to_later_rogues")
+	// "Other Rogues you control get +1/+1." Registered as a §613 layer-7c
+	// continuous effect so post-ETB Rogues are buffed dynamically and the
+	// buff tears down when Anowon leaves.
+	registerTribalLordStatic(gs, perm, "anowon_ruin_thief",
+		otherTribePredicate(perm, "rogue"), 1, 1)
+	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
+		"seat": perm.Controller, "layers": "7c +1/+1 other rogues",
+	})
 }
 
 func anowonTheRuinThiefCombatDamage(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {

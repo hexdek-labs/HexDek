@@ -665,39 +665,13 @@ func chiefOfTheFoundryETB(gs *gameengine.GameState, perm *gameengine.Permanent) 
 	if gs == nil || perm == nil {
 		return
 	}
-	seat := gs.Seats[perm.Controller]
-	if seat == nil {
-		return
-	}
-	buffed := 0
-	for _, p := range seat.Battlefield {
-		if p == nil || p == perm || p.Card == nil || !p.IsCreature() {
-			continue
-		}
-		isArtifact := false
-		for _, t := range p.Card.Types {
-			if strings.EqualFold(t, "artifact") {
-				isArtifact = true
-				break
-			}
-		}
-		if !isArtifact {
-			continue
-		}
-		p.Modifications = append(p.Modifications, gameengine.Modification{
-			Power:     1,
-			Toughness: 1,
-			Duration:  "while_source_on_battlefield",
-			Timestamp: gs.NextTimestamp(),
-		})
-		buffed++
-	}
-	if buffed > 0 {
-		gs.InvalidateCharacteristicsCache()
-	}
+	// "Other artifact creatures you control get +1/+1." Registered as a §613
+	// layer-7c continuous effect so artifact creatures entering after Chief
+	// are buffed dynamically and the buff tears down when Chief leaves.
+	registerTribalLordStatic(gs, perm, "chief_of_the_foundry",
+		otherTribePredicate(perm, "artifact"), 1, 1)
 	emit(gs, "chief_of_the_foundry_buff", "Chief of the Foundry", map[string]interface{}{
-		"seat":   perm.Controller,
-		"buffed": buffed,
+		"seat": perm.Controller,
 	})
 }
 

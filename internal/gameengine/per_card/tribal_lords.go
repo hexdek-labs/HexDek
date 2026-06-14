@@ -91,7 +91,25 @@ func deathBaronETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
-	applyTribalBuff(gs, perm, "zombie", 1, 1, "Death Baron")
+	// "Skeletons you control and other Zombies you control get +1/+1 and
+	// have deathtouch." The skeleton clause has no "other"; the zombie
+	// clause does (Death Baron is a Zombie, so it excludes itself there —
+	// and it isn't a Skeleton, so the union excludes it overall).
+	lord := perm
+	pred := func(t *gameengine.Permanent) bool {
+		if t == nil || t.Card == nil || t.Controller != lord.Controller || !t.IsCreature() {
+			return false
+		}
+		if creatureHasSubtype(t, "skeleton") {
+			return true
+		}
+		return creatureHasSubtype(t, "zombie") && t != lord
+	}
+	registerTribalLordStatic(gs, lord, "death_baron", pred, 1, 1, "deathtouch")
+	emit(gs, "death_baron_buff", "Death Baron", map[string]interface{}{
+		"seat":   lord.Controller,
+		"layers": "7c +1/+1, 6 deathtouch (skeletons + other zombies)",
+	})
 }
 
 // ---------------------------------------------------------------------------
@@ -108,7 +126,12 @@ func lordOfTheAccursedETB(gs *gameengine.GameState, perm *gameengine.Permanent) 
 	if gs == nil || perm == nil {
 		return
 	}
-	applyTribalBuff(gs, perm, "zombie", 1, 1, "Lord of the Accursed")
+	// "Other Zombies you control get +1/+1."
+	registerTribalLordStatic(gs, perm, "lord_of_the_accursed",
+		otherTribePredicate(perm, "zombie"), 1, 1)
+	emit(gs, "lord_of_the_accursed_buff", "Lord of the Accursed", map[string]interface{}{
+		"seat": perm.Controller, "layers": "7c +1/+1 other zombies",
+	})
 }
 
 // ---------------------------------------------------------------------------
@@ -126,7 +149,17 @@ func undeadWarchiefETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
-	applyTribalBuff(gs, perm, "zombie", 2, 1, "Undead Warchief")
+	// "Zombie creatures you control get +2/+1." No "other" — Undead Warchief
+	// is itself a Zombie, so it INCLUDES itself (property e).
+	lord := perm
+	pred := func(t *gameengine.Permanent) bool {
+		return t != nil && t.Card != nil && t.Controller == lord.Controller &&
+			t.IsCreature() && creatureHasSubtype(t, "zombie")
+	}
+	registerTribalLordStatic(gs, lord, "undead_warchief", pred, 2, 1)
+	emit(gs, "undead_warchief_buff", "Undead Warchief", map[string]interface{}{
+		"seat": lord.Controller, "layers": "7c +2/+1 zombies (incl self)",
+	})
 }
 
 // ---------------------------------------------------------------------------
@@ -143,7 +176,13 @@ func diregrafCaptainETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
-	applyTribalBuff(gs, perm, "zombie", 1, 1, "Diregraf Captain")
+	// "Other Zombie creatures you control get +1/+1." (Diregraf Captain's own
+	// printed Deathtouch keyword is handled by the base characteristics.)
+	registerTribalLordStatic(gs, perm, "diregraf_captain",
+		otherTribePredicate(perm, "zombie"), 1, 1)
+	emit(gs, "diregraf_captain_buff", "Diregraf Captain", map[string]interface{}{
+		"seat": perm.Controller, "layers": "7c +1/+1 other zombies",
+	})
 }
 
 // ---------------------------------------------------------------------------
@@ -512,48 +551,106 @@ func isZombieCard(c *gameengine.Card) bool {
 	return strings.Contains(tl, "zombie")
 }
 
-func applyTribalBuff(gs *gameengine.GameState, lord *gameengine.Permanent, creatureType string, power, toughness int, source string) {
-	if gs == nil || lord == nil {
-		return
+// creatureHasSubtype reports whether p currently has creature subtype `sub`,
+// reading both the structured Card.Types (tokens / synthetic / resolver-
+// lowercased real cards) and the printed TypeLine so it works across every
+// card representation the engine produces. Matches the printed-type basis the
+// rest of the engine's tribe anthems use (permanentHasSubtype in layers.go).
+func creatureHasSubtype(p *gameengine.Permanent, sub string) bool {
+	if p == nil || p.Card == nil {
+		return false
 	}
-	seat := gs.Seats[lord.Controller]
-	if seat == nil {
-		return
-	}
-	lower := strings.ToLower(creatureType)
-	buffed := 0
-	for _, p := range seat.Battlefield {
-		if p == nil || p == lord || p.Card == nil || !p.IsCreature() {
-			continue
+	lower := strings.ToLower(sub)
+	for _, t := range p.Card.Types {
+		if strings.ToLower(t) == lower {
+			return true
 		}
-		isType := false
-		for _, t := range p.Card.Types {
-			if strings.ToLower(t) == lower {
-				isType = true
-				break
+	}
+	return strings.Contains(strings.ToLower(p.Card.TypeLine), lower)
+}
+
+// otherTribePredicate builds the "other <tribe> creatures you control"
+// membership test for a lord: same controller, a creature of `sub`, excluding
+// the lord itself.
+func otherTribePredicate(lord *gameengine.Permanent, sub string) func(*gameengine.Permanent) bool {
+	return func(t *gameengine.Permanent) bool {
+		return t != nil && t != lord && t.Card != nil &&
+			t.Controller == lord.Controller && t.IsCreature() &&
+			creatureHasSubtype(t, sub)
+	}
+}
+
+// registerTribalLordStatic wires a typed lord's continuous static as proper
+// CR §613 layer effects: a layer-7c additive +pow/+tough anthem and optional
+// layer-6 keyword grants, both gated by `pred`. SourcePerm = lord, so the whole
+// effect auto-tears-down on the lord's LTB via
+// UnregisterContinuousEffectsForPermanent.
+//
+// This replaces the old applyTribalBuff one-shot Modifications snapshot, which
+// only buffed creatures already present at the lord's ETB, never granted
+// keywords (Death Baron's deathtouch), leaked after the lord left (no
+// "while_source_on_battlefield" expiry exists), and could not be told apart
+// from a +1/+1 counter for blink/counter-doubler purposes. A continuous effect
+// re-evaluates `pred` on every layer pass, so membership tracks creatures
+// entering/leaving/changing control dynamically (CR §613.6), survives the
+// buffed creature blinking (the new permanent is re-matched), and is immune to
+// +1/+1 counter doublers (it touches no counters).
+func registerTribalLordStatic(gs *gameengine.GameState, lord *gameengine.Permanent,
+	disc string, pred func(*gameengine.Permanent) bool, pow, tough int, keywords ...string) {
+	if gs == nil || lord == nil || lord.Card == nil {
+		return
+	}
+	idBase := disc + ":" + itoa(lord.Timestamp)
+	wrap := func(_ *gameengine.GameState, t *gameengine.Permanent) bool { return pred(t) }
+	isCreatureChars := func(chars *gameengine.Characteristics) bool {
+		for _, t := range chars.Types {
+			if strings.EqualFold(t, "creature") {
+				return true
 			}
 		}
-		if !isType {
-			continue
-		}
-		p.Modifications = append(p.Modifications, gameengine.Modification{
-			Power:     power,
-			Toughness: toughness,
-			Duration:  "while_source_on_battlefield",
-			Timestamp: gs.NextTimestamp(),
-		})
-		buffed++
+		return false
 	}
-	if buffed > 0 {
-		gs.InvalidateCharacteristicsCache()
-	}
-	emit(gs, strings.ReplaceAll(strings.ToLower(source), " ", "_")+"_buff", source, map[string]interface{}{
-		"seat":    lord.Controller,
-		"type":    creatureType,
-		"buffed":  buffed,
-		"power":   power,
-		"toughness": toughness,
+	gs.RegisterContinuousEffect(&gameengine.ContinuousEffect{
+		Layer:          gameengine.LayerPT,
+		Sublayer:       "c",
+		SourcePerm:     lord,
+		SourceCardName: lord.Card.DisplayName(),
+		ControllerSeat: lord.Controller,
+		HandlerID:      "lordpt:" + idBase,
+		Duration:       gameengine.DurationPermanent,
+		Predicate:      wrap,
+		ApplyFn: func(_ *gameengine.GameState, _ *gameengine.Permanent, chars *gameengine.Characteristics) {
+			if !isCreatureChars(chars) {
+				return
+			}
+			chars.Power += pow
+			chars.Toughness += tough
+		},
 	})
+	for _, kw := range keywords {
+		k := kw
+		gs.RegisterContinuousEffect(&gameengine.ContinuousEffect{
+			Layer:          gameengine.LayerAbility,
+			SourcePerm:     lord,
+			SourceCardName: lord.Card.DisplayName(),
+			ControllerSeat: lord.Controller,
+			HandlerID:      "lordkw:" + k + ":" + idBase,
+			Duration:       gameengine.DurationPermanent,
+			Predicate:      wrap,
+			ApplyFn: func(_ *gameengine.GameState, _ *gameengine.Permanent, chars *gameengine.Characteristics) {
+				if !isCreatureChars(chars) {
+					return
+				}
+				for _, e := range chars.Keywords {
+					if strings.EqualFold(e, k) {
+						return
+					}
+				}
+				chars.Keywords = append(chars.Keywords, k)
+			},
+		})
+	}
+	gs.InvalidateCharacteristicsCache()
 }
 
 // ---------------------------------------------------------------------------

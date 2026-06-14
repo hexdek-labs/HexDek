@@ -26,15 +26,10 @@ import (
 //     emit a partial breadcrumb.
 func registerMorophonTheBoundless(r *Registry) {
 	r.OnETB("Morophon, the Boundless", morophonETBChooseTribe)
-	r.OnTrigger("Morophon, the Boundless", "permanent_etb", morophonRefreshAnthem)
 }
 
 func morophonETBChooseTribe(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	morophonChooseAndApply(gs, perm)
-}
-
-func morophonRefreshAnthem(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
-	morophonApplyAnthem(gs, perm)
 }
 
 func morophonChooseAndApply(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -60,7 +55,11 @@ func morophonChooseAndApply(gs *gameengine.GameState, perm *gameengine.Permanent
 	seat.Flags["morophon_cost_reduction_active"] = 1
 	// Stash tribe on the perm via type-line marker for cross-handler reads.
 	perm.Card.Types = append(perm.Card.Types, "morophon_tribe:"+tribe)
-	morophonApplyAnthem(gs, perm)
+	// "Other creatures you control of the chosen type get +1/+1." Registered
+	// as a §613 layer-7c continuous effect (dynamic membership + auto-cleanup
+	// on Morophon's LTB) rather than the old one-shot Modifications snapshot.
+	registerTribalLordStatic(gs, perm, "morophon",
+		otherTribePredicate(perm, tribe), 1, 1)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":  perm.Controller,
 		"tribe": tribe,
@@ -69,52 +68,6 @@ func morophonChooseAndApply(gs *gameengine.GameState, perm *gameengine.Permanent
 	// (ScanCostModifiers reads the "morophon_tribe:" marker stamped on
 	// perm.Card.Types above and applies a 5-generic CostModReduction
 	// to spells of the chosen type the controller casts).
-}
-
-func morophonApplyAnthem(gs *gameengine.GameState, perm *gameengine.Permanent) {
-	if gs == nil || perm == nil || perm.Card == nil {
-		return
-	}
-	tribe := ""
-	for _, t := range perm.Card.Types {
-		if strings.HasPrefix(t, "morophon_tribe:") {
-			tribe = strings.TrimPrefix(t, "morophon_tribe:")
-			break
-		}
-	}
-	if tribe == "" {
-		return
-	}
-	seat := gs.Seats[perm.Controller]
-	if seat == nil {
-		return
-	}
-	buffed := 0
-	for _, p := range seat.Battlefield {
-		if p == nil || p == perm || p.Card == nil || !p.IsCreature() {
-			continue
-		}
-		if !cardHasSubtype(p.Card, tribe) {
-			continue
-		}
-		if p.Flags == nil {
-			p.Flags = map[string]int{}
-		}
-		if p.Flags["morophon_anthem_applied"] == 1 {
-			continue
-		}
-		p.Flags["morophon_anthem_applied"] = 1
-		p.Modifications = append(p.Modifications, gameengine.Modification{
-			Power:     1,
-			Toughness: 1,
-			Duration:  "while_source_on_battlefield",
-			Timestamp: gs.NextTimestamp(),
-		})
-		buffed++
-	}
-	if buffed > 0 {
-		gs.InvalidateCharacteristicsCache()
-	}
 }
 
 // pickFavoriteCreatureType returns the most-common creature subtype

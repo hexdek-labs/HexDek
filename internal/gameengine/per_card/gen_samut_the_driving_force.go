@@ -28,7 +28,6 @@ func registerSamutTheDrivingForce(r *Registry) {
 	r.OnETB("Samut, the Driving Force", samutETBInitSpeed)
 	r.OnTrigger("Samut, the Driving Force", "life_lost", samutOnOpponentLoseLife)
 	r.OnTrigger("Samut, the Driving Force", "upkeep_controller", samutClearTurnGate)
-	r.OnTrigger("Samut, the Driving Force", "permanent_etb", samutRefreshAnthem)
 	// R51 batch I: LTB clears the per-turn speed-bump gate so a Samut
 	// that left mid-turn doesn't leave the gate stuck for the rest of
 	// the turn. The "speed" counter itself is intentionally preserved
@@ -67,7 +66,7 @@ func samutETBInitSpeed(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if seat.Flags["speed"] < 1 {
 		seat.Flags["speed"] = 1
 	}
-	samutApplyAnthem(gs, perm, seat)
+	samutRegisterAnthemLayer(gs, perm)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":  perm.Controller,
 		"speed": seat.Flags["speed"],
@@ -102,7 +101,9 @@ func samutOnOpponentLoseLife(gs *gameengine.GameState, perm *gameengine.Permanen
 	}
 	seat.Flags["speed"]++
 	seat.Flags["speed_bumped_this_turn"] = 1
-	samutApplyAnthem(gs, perm, seat)
+	// The +X/+0 anthem is a layer-7c effect that reads speed live; refresh
+	// the characteristics cache so the new speed is observed.
+	gs.InvalidateCharacteristicsCache()
 }
 
 func samutClearTurnGate(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
@@ -120,42 +121,40 @@ func samutClearTurnGate(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 	delete(seat.Flags, "speed_bumped_this_turn")
 }
 
-func samutRefreshAnthem(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
-	seat := gs.Seats[perm.Controller]
-	if seat == nil {
+// samutRegisterAnthemLayer wires "Other creatures you control get +X/+0,
+// where X is your speed" as a §613 layer-7c POWER-ONLY continuous effect whose
+// amount is read live from seat.Flags["speed"] on every layer pass. This
+// replaces the old one-shot Modifications snapshot (which leaked after Samut
+// left, didn't track creatures entering later, and re-stamped deltas by hand).
+// SourcePerm = Samut so it auto-cleans on LTB; the speed counter itself is a
+// player property and is intentionally left untouched here.
+func samutRegisterAnthemLayer(gs *gameengine.GameState, perm *gameengine.Permanent) {
+	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
-	samutApplyAnthem(gs, perm, seat)
-}
-
-func samutApplyAnthem(gs *gameengine.GameState, perm *gameengine.Permanent, seat *gameengine.Seat) {
-	x := seat.Flags["speed"]
-	if x <= 0 {
-		return
-	}
-	for _, p := range seat.Battlefield {
-		if p == nil || p == perm || p.Card == nil || !p.IsCreature() {
-			continue
-		}
-		// Idempotent stamp via a marker flag — we use the speed value as
-		// the marker so when speed changes we re-stamp.
-		if p.Flags == nil {
-			p.Flags = map[string]int{}
-		}
-		stamped := p.Flags["samut_anthem_speed"]
-		if stamped == x {
-			continue
-		}
-		// Add (x - stamped) power-only delta. If the stamp went down
-		// (rare), apply a negative delta.
-		delta := x - stamped
-		p.Modifications = append(p.Modifications, gameengine.Modification{
-			Power:     delta,
-			Toughness: 0,
-			Duration:  "while_source_on_battlefield",
-			Timestamp: gs.NextTimestamp(),
-		})
-		p.Flags["samut_anthem_speed"] = x
-	}
+	lord := perm
+	gs.RegisterContinuousEffect(&gameengine.ContinuousEffect{
+		Layer:          gameengine.LayerPT,
+		Sublayer:       "c",
+		SourcePerm:     lord,
+		SourceCardName: lord.Card.DisplayName(),
+		ControllerSeat: lord.Controller,
+		HandlerID:      "samut_speed_anthem:" + itoa(lord.Timestamp),
+		Duration:       gameengine.DurationPermanent,
+		Predicate: func(_ *gameengine.GameState, t *gameengine.Permanent) bool {
+			return t != nil && t != lord && t.Card != nil &&
+				t.Controller == lord.Controller && t.IsCreature()
+		},
+		ApplyFn: func(g *gameengine.GameState, _ *gameengine.Permanent, chars *gameengine.Characteristics) {
+			seat := g.Seats[lord.Controller]
+			if seat == nil {
+				return
+			}
+			x := seat.Flags["speed"]
+			if x > 0 {
+				chars.Power += x
+			}
+		},
+	})
 	gs.InvalidateCharacteristicsCache()
 }
