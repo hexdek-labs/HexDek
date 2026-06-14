@@ -381,6 +381,14 @@ func CastFromZone(
 	if zone == "exile" && seatIdx >= 0 && seatIdx < len(gs.Seats) && gs.Seats[seatIdx] != nil {
 		gs.Seats[seatIdx].Turn.CastFromExile++
 	}
+	// The card has left its source zone and the cast has committed (all
+	// rollback-return paths above are passed), so a per-card ZoneCastGrant for
+	// it is spent — drop it. Without this the grant lingers in gs.ZoneCastGrants
+	// after the card is gone (a stale, no-longer-castable permission that the
+	// ZoneCastGrantExpiry invariant and the orphan sweep would otherwise have to
+	// reap later). No-op when the card had no registered grant (flashback /
+	// escape / Bolas paths that build a local permission).
+	RemoveZoneCastGrant(gs, card)
 	// Stamp the source permanent once costs are paid and the cast has
 	// committed. We mark BEFORE stack resolution so cast-triggered re-
 	// entry (e.g. a cast trigger that grants another cast) can't sneak a
@@ -724,6 +732,33 @@ func ExpireZoneCastGrants(gs *GameState) {
 	for card, p := range gs.ZoneCastGrants {
 		if shouldExpireGrant(gs, p) {
 			emitGrantExpired(gs, card, p, "duration_elapsed")
+			delete(gs.ZoneCastGrants, card)
+		}
+	}
+}
+
+// SweepLeakedZoneCastGrants is the BACKSTOP for the ZoneCastGrantExpiry leak
+// (CLAUDE.md Loki r41 open issue). EOT cleanup's ExpireZoneCastGrants only runs
+// at the §514.2 cleanup step; an impulse-play / cast-from-exile grant that was
+// registered AFTER that step ran (an end-step / cleanup-window trigger), or on
+// a turn whose cleanup was skipped (mandatory-loop draw, mid-combat game end,
+// SBA-cap), survives into a later turn and trips ZoneCastGrantExpiry — the
+// grant outlives its declared "this turn" / "until your next turn" expiry.
+//
+// This sweep reaps every grant that is ALREADY PAST its declared expiry, using
+// the SAME predicate the invariant uses (grantIsLeaked), so it can never
+// prematurely reap a still-valid grant: a same-turn until_end_of_turn grant or
+// an until_end_of_next_turn grant inside its window is left untouched. It runs
+// at every ScanExpiredDurations call (notably the §502 untap step — the first
+// step of each turn, before any cast decision or invariant observation), so a
+// grant that should have died last turn is gone before anything can use it.
+func SweepLeakedZoneCastGrants(gs *GameState) {
+	if gs == nil || len(gs.ZoneCastGrants) == 0 {
+		return
+	}
+	for card, p := range gs.ZoneCastGrants {
+		if grantIsLeaked(gs, p) {
+			emitGrantExpired(gs, card, p, "leaked_grant_swept")
 			delete(gs.ZoneCastGrants, card)
 		}
 	}

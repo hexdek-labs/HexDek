@@ -315,6 +315,15 @@ func ScanExpiredDurations(gs *GameState, phase, step string) {
 	phase = strings.ToLower(strings.TrimSpace(phase))
 	step = strings.ToLower(strings.TrimSpace(step))
 
+	// 0) ZoneCastGrantExpiry backstop: reap any zone-cast grant already past
+	// its declared expiry. ExpireZoneCastGrants (below, cleanup step only)
+	// misses grants registered after that step or on a turn whose cleanup was
+	// skipped; this sweep — run at every scan, including the §502 untap step
+	// that opens each turn — guarantees such a grant is gone before any cast
+	// decision or invariant check observes it. Uses grantIsLeaked semantics so
+	// in-window grants are never reaped early.
+	SweepLeakedZoneCastGrants(gs)
+
 	// 1) Continuous effects — gs.ContinuousEffects.
 	if len(gs.ContinuousEffects) > 0 {
 		kept := gs.ContinuousEffects[:0]
