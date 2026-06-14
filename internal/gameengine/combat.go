@@ -2185,6 +2185,17 @@ func applyCombatDamageToCreature(gs *GameState, src *Permanent, amount int, targ
 // fireCombatDamageTriggers fires "whenever ~ deals combat damage"
 // triggers ONCE per damage instance (CR §510.2). Double-strikers fire
 // twice automatically because DealCombatDamageStep runs twice for them.
+// astAbilities returns a card's AST abilities, or nil when the card has no
+// AST (tokens, hand-built test cards). Ranging over the nil result is a
+// safe no-op, which lets combat-damage dispatch skip the AST loop without
+// short-circuiting the per_card hooks that must fire for AST-less sources.
+func astAbilities(c *Card) []gameast.Ability {
+	if c == nil || c.AST == nil {
+		return nil
+	}
+	return c.AST.Abilities
+}
+
 func fireCombatDamageTriggers(gs *GameState, src *Permanent, amount int, targetKind string, targetSeat int, targetPerm *Permanent) {
 	if amount <= 0 || src == nil {
 		return
@@ -2200,10 +2211,17 @@ func fireCombatDamageTriggers(gs *GameState, src *Permanent, amount int, targetK
 		}
 		targetPerm.Flags["basilisk_marked_destroy"] = 1
 	}
-	if src.Card == nil || src.Card.AST == nil {
+	if src.Card == nil {
 		return
 	}
-	for _, ab := range src.Card.AST.Abilities {
+	// AST-bearing sources dispatch their own "deals combat damage"
+	// Triggered abilities here. NOTE: this loop is gated on AST != nil,
+	// but the per_card combat_damage_player hook below must fire
+	// regardless — a token or any AST-less attacker (e.g. a Ninja token)
+	// still has to trigger Yuriko / Nashi / Gonti-style watchers. Before
+	// r63 the whole function early-returned on a nil AST, silently
+	// swallowing every per_card combat-damage trigger for token sources.
+	for _, ab := range astAbilities(src.Card) {
 		t, ok := ab.(*gameast.Triggered)
 		if !ok {
 			continue
@@ -2255,6 +2273,17 @@ func fireCombatDamageTriggers(gs *GameState, src *Permanent, amount int, targetK
 			"source_card":   src.Card.DisplayName(),
 			"defender_seat": targetSeat,
 			"amount":        amount,
+			// source_perm / damage_seat are the richer contract a family of
+			// self-gated per_card handlers (Nashi, Nine-Fingers Keene,
+			// Atemsis, Calix, Captain Howler, Rex, Bello, Zeriam, Goro-Goro)
+			// read to recognise "whenever ~ deals combat damage to a player".
+			// Without them every one of those handlers early-returned on a
+			// nil source_perm and was inert in real games (the per_card unit
+			// tests passed only because they synthesised the ctx by hand).
+			// damage_seat == the seat dealing the damage == src.Controller,
+			// matching how those handlers compare it to perm.Controller.
+			"source_perm": src,
+			"damage_seat": src.Controller,
 		})
 	}
 }
