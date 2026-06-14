@@ -153,6 +153,36 @@ func (cs *ComboSequencer) Evaluate(gs *gameengine.GameState, seatIdx int) ComboA
 	return result
 }
 
+// NearMissPieces returns the set of card names that are the sole missing
+// piece of some combo line — i.e. lines where every other piece is already
+// in an acceptable zone. Unlike Evaluate, it does NOT gate on a tutor being
+// in hand: it is meant to be called while a tutor is already resolving (the
+// tutor has left the hand for the stack), so the hat can search up exactly
+// the card that completes the line. Returns nil when no line is one piece
+// short.
+func (cs *ComboSequencer) NearMissPieces(gs *gameengine.GameState, seatIdx int) map[string]bool {
+	if cs == nil || gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return nil
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return nil
+	}
+	zoneIndex := buildZoneIndex(seat)
+	availMana := gameengine.AvailableManaEstimate(gs, seat)
+	var out map[string]bool
+	for i := range cs.Lines {
+		ev := evaluateLine(&cs.Lines[i], zoneIndex, seat, availMana)
+		if ev.missing == 1 && ev.missingPiece != "" {
+			if out == nil {
+				out = make(map[string]bool)
+			}
+			out[ev.missingPiece] = true
+		}
+	}
+	return out
+}
+
 // comboEval is the internal evaluation result for a single combo line.
 type comboEval struct {
 	line         *ComboConstraint

@@ -943,6 +943,41 @@ type SacrificeChooser interface {
 	ChooseSacrifice(gs *GameState, seatIdx int, source *Permanent, reason string, candidates []*Permanent) *Permanent
 }
 
+// TutorTargetChooser is an optional interface Hats may implement to control
+// which card(s) a library search ("search your library for ...") finds when
+// more candidates match than the tutor takes. CR §401.1 / §701.19: the
+// searcher freely chooses among matching cards.
+//
+// The engine's generic tutor resolver (ResolveTutorGeneric) gathers the full
+// set of matching library cards and, when there are more matches than the
+// tutor's count, routes the selection here. Hats that don't implement this
+// interface fall back to the deterministic highest-CMC baseline
+// (pickBestTutorMatches) — so a naive Hat still gets a reasonable pick.
+//
+// This is the seam through which strategy intelligence (Freya win-lines,
+// combo proximity, finishers, card roles, mana needs) reaches an otherwise
+// engine-internal decision: YggdrasilHat ranks candidates by whether they
+// complete a near-assembled combo, sit high on the deck's tutor-priority
+// list, finish the game in the execute phase, answer a board threat, or fix
+// a missing land, before falling back to CMC.
+//
+// Contract:
+//   - candidates are the matching library cards (already filtered by the
+//     tutor's query); the implementation MUST return cards drawn ONLY from
+//     this slice.
+//   - The returned slice should contain exactly `count` distinct cards in
+//     priority order. Returning a malformed selection (wrong length, or a
+//     card not in candidates) makes the engine fall back to the CMC
+//     baseline, so an implementation may safely return nil to defer.
+//   - query is the tutor's filter and destination is where found cards go
+//     ("hand", "battlefield", "graveyard", "top_of_library", ...), letting
+//     the chooser bias by context (e.g. a battlefield-drop land tutor when
+//     mana-screwed).
+//   - MUST NOT mutate gs.
+type TutorTargetChooser interface {
+	ChooseTutorTargets(gs *GameState, seatIdx int, candidates []*Card, count int, query gameast.Filter, destination string) []*Card
+}
+
 // WardPayer is an optional Hat interface that controls whether the caster
 // pays the ward cost (CR §702.21) when their spell or ability targets a
 // permanent with ward. The default if a Hat does not implement this is

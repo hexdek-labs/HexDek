@@ -85,6 +85,13 @@ func ResolveTutorGeneric(gs *GameState, casterSeat int, tutor *gameast.Tutor) in
 	agentController := oppositionAgentControlsSeat(gs, casterSeat)
 
 	// --- 3. Scan library for matching cards ---
+	// Collect ALL matching cards (not just the first `count`). Stopping at
+	// the first match would let library order decide the pick, which is
+	// effectively random and ignores the searcher's strategy. Gathering the
+	// full candidate set lets selectTutorMatches consult the Hat's
+	// TutorTargetChooser (combo piece, finisher, board answer, missing land)
+	// and only falls back to the highest-CMC baseline when no Hat opinion
+	// is available. CR §701.19/§401.1 — the searcher freely chooses.
 	lib := gs.Seats[casterSeat].Library
 	matches := []match{}
 	for i, c := range lib {
@@ -93,9 +100,6 @@ func ResolveTutorGeneric(gs *GameState, casterSeat int, tutor *gameast.Tutor) in
 		}
 		if cardMatchesTutorFilter(c, tutor.Query) {
 			matches = append(matches, match{idx: i, card: c})
-			if !isAll && len(matches) >= count {
-				break
-			}
 		}
 	}
 
@@ -130,14 +134,7 @@ func ResolveTutorGeneric(gs *GameState, casterSeat int, tutor *gameast.Tutor) in
 	// CONTROLLER conducts the search (CR 701.19, "you control your
 	// opponents while they're searching their libraries").
 	if len(matches) > count {
-		if agentController >= 0 {
-			// Opposition Agent's controller picks — they choose the card
-			// that best serves THEIR interests, not the searcher's.
-			// For GreedyHat: pick the highest-CMC card (steal the best one).
-			matches = pickBestTutorMatches(matches, count, tutor.Query.Base)
-		} else {
-			matches = pickBestTutorMatches(matches, count, tutor.Query.Base)
-		}
+		matches = selectTutorMatches(gs, casterSeat, matches, count, tutor, agentController)
 	}
 
 	// --- 4. Remove found cards from library ---
@@ -572,12 +569,75 @@ func cardMatchesTutorFilter(c *Card, f gameast.Filter) bool {
 	return true
 }
 
+// selectTutorMatches narrows a full match set down to `count` cards. When
+// the searcher's Hat implements TutorTargetChooser (YggdrasilHat does, via
+// Freya win-lines / combo proximity / roles) the Hat picks; otherwise the
+// highest-CMC baseline applies.
+//
+// Opposition Agent (agentController >= 0): the agent's controller conducts
+// the search to serve THEIR interests against the searcher's library, which
+// the strategy-aware chooser is not modeled for, so that path keeps the
+// deterministic highest-CMC "steal the best card" baseline.
+func selectTutorMatches(gs *GameState, casterSeat int, matches []match, count int, tutor *gameast.Tutor, agentController int) []match {
+	if len(matches) <= count {
+		return matches
+	}
+	if agentController < 0 && gs != nil && casterSeat >= 0 && casterSeat < len(gs.Seats) &&
+		gs.Seats[casterSeat] != nil && gs.Seats[casterSeat].Hat != nil {
+		if tc, ok := gs.Seats[casterSeat].Hat.(TutorTargetChooser); ok {
+			cands := make([]*Card, len(matches))
+			for i, m := range matches {
+				cands[i] = m.card
+			}
+			chosen := tc.ChooseTutorTargets(gs, casterSeat, cands, count, tutor.Query, tutor.Destination)
+			if picked := mapCardsToMatches(chosen, matches, count); len(picked) == count {
+				return picked
+			}
+			// Invalid/partial selection — fall through to the CMC baseline.
+		}
+	}
+	return pickBestTutorMatches(matches, count, tutor.Query.Base)
+}
+
+// mapCardsToMatches resolves the Hat's chosen *Card list back to the
+// corresponding match entries (preserving the Hat's order), discarding any
+// card not in the original candidate set and de-duplicating by pointer. The
+// result is capped to `count`. Returns fewer than `count` if the Hat's
+// selection was malformed, signaling the caller to fall back.
+func mapCardsToMatches(chosen []*Card, matches []match, count int) []match {
+	if len(chosen) == 0 {
+		return nil
+	}
+	byCard := make(map[*Card]match, len(matches))
+	for _, m := range matches {
+		byCard[m.card] = m
+	}
+	out := make([]match, 0, count)
+	seen := make(map[*Card]bool, count)
+	for _, c := range chosen {
+		if c == nil || seen[c] {
+			continue
+		}
+		if m, ok := byCard[c]; ok {
+			out = append(out, m)
+			seen[c] = true
+			if len(out) >= count {
+				break
+			}
+		}
+	}
+	return out
+}
+
 // pickBestTutorMatches selects the best N cards from a larger match set.
-// Hat heuristic (GreedyHat baseline):
+// Strategy-unaware baseline used when no Hat opinion is available (GreedyHat,
+// Opposition Agent steal, or a Hat that returns an invalid selection):
 //   - For creature tutors: pick highest CMC (biggest threat)
 //   - For land tutors: pick first match (any land is fine)
 //   - For unrestricted: pick highest CMC (Demonic Tutor wants the best card)
-//   - For combo pieces: future Phase 10 policy will score by wincon proximity
+//
+// Strategy-aware selection (combo piece, finisher, board answer, missing
+// land) is layered on top by YggdrasilHat.ChooseTutorTargets.
 func pickBestTutorMatches(matches []match, count int, baseType string) []match {
 	if len(matches) <= count {
 		return matches
