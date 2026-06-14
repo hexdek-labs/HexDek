@@ -2171,6 +2171,10 @@ func applyCombatDamageToPlayer(gs *GameState, src *Permanent, amount, seatIdx in
 	// controller becomes the monarch.
 	CheckMonarchCombatSteal(gs, seatIdx, src.Controller)
 
+	// CR §722 — If a creature deals combat damage to the player with the
+	// initiative, its controller takes the initiative (and ventures).
+	CheckInitiativeCombatSteal(gs, seatIdx, src.Controller)
+
 	// §702.179 — Speed advances by 1 (once per turn per dealer) when a
 	// player's source deals combat damage to a player. Routed through
 	// SpeedDamageReporter so every damage call site uses the same

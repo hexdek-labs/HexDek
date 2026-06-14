@@ -234,6 +234,19 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 	gameengine.FireCardTrigger(gs, "upkeep_controller", map[string]interface{}{
 		"active_seat": active,
 	})
+	// CR §722 — at the beginning of the upkeep of the player who has the
+	// INITIATIVE, that player ventures into the Undercity. Previously the
+	// recurring upkeep venture was unwired (only the on-take venture in
+	// TakeInitiative fired), so the initiative-holder never progressed the
+	// dungeon on subsequent turns.
+	if gameengine.HasInitiative(gs, active) {
+		gameengine.VentureIntoDungeon(gs, active)
+		gameengine.StateBasedActions(gs)
+		drainStack(gs)
+		if gs.CheckEnd() || seat.Lost {
+			return
+		}
+	}
 	// §503 opponent upkeep: cards like Slicer, Hired Muscle trigger on
 	// each opponent's upkeep (i.e. the upkeep of any non-active player).
 	for _, opp := range gs.Opponents(active) {
@@ -465,7 +478,9 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 	gameengine.FireCardTrigger(gs, "end_step", map[string]interface{}{
 		"active_seat": active,
 	})
-	// §721.3 — Monarch draws a card at end step.
+	// CR §720.5 — the monarch draws at the beginning of THE MONARCH'S end step.
+	// FireMonarchEndStep self-gates on gs.Active (== active here), so it draws
+	// only on the monarch's own turn, not at every player's end step.
 	gameengine.FireMonarchEndStep(gs)
 	// Drain mana pools (§500.4 / §513 catch-all). Use DrainAllPools
 	// instead of raw zeroing so pool_drain events are emitted.

@@ -1631,6 +1631,26 @@ func TakeInitiative(gs *GameState, seatIdx int) {
 	})
 }
 
+// CheckInitiativeCombatSteal transfers the initiative to the attacker's
+// controller when a creature deals combat damage to the player who has the
+// initiative (CR §722 / Undercity). Mirrors CheckMonarchCombatSteal — this was
+// the missing initiative analogue: the monarch's combat-steal was wired into
+// combat damage but the initiative's was not, so the initiative could never be
+// stolen by attacking its holder. Taking the initiative also ventures into the
+// Undercity (TakeInitiative handles the prior-holder removal + venture).
+func CheckInitiativeCombatSteal(gs *GameState, damagedSeat, attackerSeat int) {
+	if gs == nil {
+		return
+	}
+	if attackerSeat == damagedSeat {
+		return
+	}
+	if !HasInitiative(gs, damagedSeat) {
+		return
+	}
+	TakeInitiative(gs, attackerSeat)
+}
+
 // HasInitiative returns true if the given seat has the initiative.
 func HasInitiative(gs *GameState, seatIdx int) bool {
 	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
@@ -2669,13 +2689,21 @@ func IsMonarch(gs *GameState, seatIdx int) bool {
 	return gs.Flags["monarch_seat"] == seatIdx
 }
 
-// FireMonarchEndStep draws a card for the monarch at end step.
+// FireMonarchEndStep draws a card for the monarch at the beginning of THE
+// MONARCH'S end step. CR §720.5 scopes the draw to the monarch's OWN end step,
+// so it self-gates on gs.Active (the active player owns the current end step) —
+// without this the monarch drew at every player's end step (4× per cycle in a
+// 4-player game) instead of once per their own turn.
 func FireMonarchEndStep(gs *GameState) {
 	if gs == nil || gs.Flags == nil || gs.Flags["has_monarch"] != 1 {
 		return
 	}
 	mSeat := gs.Flags["monarch_seat"]
 	if mSeat < 0 || mSeat >= len(gs.Seats) {
+		return
+	}
+	// Only on the monarch's own end step.
+	if mSeat != gs.Active {
 		return
 	}
 	s := gs.Seats[mSeat]
