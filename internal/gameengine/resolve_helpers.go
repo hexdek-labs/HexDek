@@ -1530,10 +1530,17 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		})
 
 	case "draw_discard_effect":
+		// CR loot: "draw a card, then discard a card." The discard comes
+		// from HAND — NOT a mill of the library top. The old gs.millOne
+		// here removed the library's top card instead of discarding from
+		// hand, which is the wrong zone and the wrong card-economy (hand
+		// grew by 1 net instead of staying flat). Affects the 25 corpus
+		// cards carrying this modkind (Steamcore Scholar, Insidious Fungus,
+		// Chakra Meditation, …).
 		seat := controllerSeat(src)
 		if seat >= 0 && seat < len(gs.Seats) {
 			gs.drawOne(seat)
-			gs.millOne(seat)
+			discardN(gs, seat, 1, "")
 		}
 
 	case "add_mana_effect":
@@ -2904,14 +2911,18 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			ResolveEffect(gs, src, &gameast.ModificationEffect{ModKind: "proliferate"})
 			kaResolved = true
 		case strings.HasPrefix(kaRaw, "connive"):
-			// CR §701.47: draw a card, then discard a card. If you discarded
-			// a nonland card, put a +1/+1 counter on the conniving creature.
-			gs.drawOne(kaSeat)
-			gs.millOne(kaSeat) // simplified discard
-			if src != nil && src.IsCreature() {
-				src.AddCounter("+1/+1", 1)
-				gs.InvalidateCharacteristicsCache()
+			// CR §701.50: connive N — draw N, then discard N. Put a +1/+1
+			// counter on this permanent for EACH NONLAND discarded. Delegate
+			// to the canonical Connive resolver (keywords_batch.go) — the old
+			// inline body milled the library (wrong zone), ignored N (always 1),
+			// and added the +1/+1 UNCONDITIONALLY rather than only on a nonland
+			// discard. Mirrors how the proliferate keyword_action arm routes to
+			// its canonical resolver.
+			n := kaCount
+			if n < 1 {
+				n = 1
 			}
+			Connive(gs, src, n)
 			kaResolved = true
 		case strings.HasPrefix(kaRaw, "venture"):
 			// Dungeon mechanic — log only, dungeon state not modeled.
@@ -5071,11 +5082,22 @@ func resolveResidualByText(gs *GameState, src *Permanent, raw string) bool {
 
 	if reResDiscardDraw.MatchString(raw) {
 		if seat >= 0 && seat < len(gs.Seats) {
-			handSize := len(gs.Seats[seat].Hand)
-			for i := 0; i < handSize; i++ {
-				gs.millOne(seat)
+			// CR rummage: "discard ... then draw ...". The discard comes from
+			// HAND — the old gs.millOne milled the library top instead, the
+			// wrong zone entirely. Discard N from hand, then draw that many.
+			// N = the captured count when the text names one ("discard two
+			// cards, then draw …"), else the whole hand ("discard the cards
+			// in your hand, then draw that many"). Capped at hand size.
+			n := len(gs.Seats[seat].Hand)
+			if m := reResDiscardDraw.FindStringSubmatch(raw); len(m) > 1 && m[1] != "" {
+				if cnt, ok := wordToInt(m[1]); ok && cnt >= 0 && cnt < n {
+					n = cnt
+				} else if cnt, err := strconv.Atoi(m[1]); err == nil && cnt >= 0 && cnt < n {
+					n = cnt
+				}
 			}
-			for i := 0; i < handSize; i++ {
+			discarded := discardN(gs, seat, n, "")
+			for i := 0; i < discarded; i++ {
 				gs.drawOne(seat)
 			}
 		}

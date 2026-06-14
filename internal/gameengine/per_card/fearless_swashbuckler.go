@@ -243,7 +243,11 @@ func fearlessSwashbucklerDiscardTwo(gs *gameengine.GameState, seatIdx int, slug 
 	}
 	names := []string{}
 	for _, c := range picks {
-		gameengine.MoveCard(gs, c, seatIdx, "hand", "graveyard", slug)
+		// Route through the DiscardCard chokepoint (NOT a raw hand→graveyard
+		// MoveCard) so the discard fires §702.34 Madness, card_discarded
+		// observer triggers, and discard-count stats — a loot's "discard" is a
+		// real discard, not a silent zone move.
+		gameengine.DiscardCard(gs, c, seatIdx)
 		names = append(names, c.DisplayName())
 	}
 	return names
