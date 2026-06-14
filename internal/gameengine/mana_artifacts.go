@@ -361,6 +361,38 @@ func SacrificePermanent(gs *GameState, p *Permanent, reason string) {
 	sacrificePermanentImpl(gs, p, nil, reason)
 }
 
+// ChooseForcedSacrifice picks which permanent `seat` sacrifices to a forced
+// effect/edict (CR §701.17 — "each player sacrifices …" is NOT targeted; the
+// AFFECTED player chooses one of their OWN permanents). Routes the choice
+// through the seat's own SacrificeChooser hat so each player makes their own
+// decision; falls back to the lowest-power candidate when the seat has no
+// such hat or it declines (preserving the historical deterministic policy for
+// GreedyHat-driven games). Returns nil when there are no candidates — a player
+// with no eligible permanent sacrifices nothing (property c).
+func ChooseForcedSacrifice(gs *GameState, seat int, candidates []*Permanent, reason string) *Permanent {
+	if len(candidates) == 0 {
+		return nil
+	}
+	if seat >= 0 && seat < len(gs.Seats) && gs.Seats[seat] != nil && gs.Seats[seat].Hat != nil {
+		if chooser, ok := gs.Seats[seat].Hat.(SacrificeChooser); ok {
+			if pick := chooser.ChooseSacrifice(gs, seat, nil, reason, candidates); pick != nil {
+				for _, c := range candidates {
+					if c == pick {
+						return pick
+					}
+				}
+			}
+		}
+	}
+	best := candidates[0]
+	for _, c := range candidates[1:] {
+		if c != nil && (best == nil || c.Power() < best.Power()) {
+			best = c
+		}
+	}
+	return best
+}
+
 // --- Local string helpers (no external dep needed) ------------------------
 
 func containsLower(haystack, needle string) bool {

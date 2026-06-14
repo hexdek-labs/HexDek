@@ -2013,17 +2013,33 @@ func resolveSacrifice(gs *GameState, src *Permanent, e *gameast.Sacrifice) {
 			actorSeats = append(actorSeats, gs.Opponents(src.Controller)...)
 		}
 	}
-	for _, seat := range actorSeats {
-		// Pick the weakest matching creature (lowest power).
-		var victim *Permanent
-		for _, p := range gs.Seats[seat].Battlefield {
-			if !matchesPermanent(e.Query, p) {
-				continue
-			}
-			if victim == nil || p.Power() < victim.Power() {
-				victim = p
+	// CR §608.2 — when more than one player sacrifices to the same effect,
+	// they do so in APNAP order. Reorder actorSeats accordingly (a no-op for
+	// single-seat shapes like "sacrifice a land").
+	if len(actorSeats) > 1 {
+		want := make(map[int]bool, len(actorSeats))
+		for _, s := range actorSeats {
+			want[s] = true
+		}
+		ordered := actorSeats[:0:0]
+		for _, s := range APNAPOrder(gs) {
+			if want[s] {
+				ordered = append(ordered, s)
 			}
 		}
+		actorSeats = ordered
+	}
+	for _, seat := range actorSeats {
+		// CR §701.17 — "each player sacrifices" is NOT targeted; the AFFECTED
+		// player chooses one of their OWN matching permanents (routed through
+		// that seat's hat). Build the candidate pool, then delegate the choice.
+		var candidates []*Permanent
+		for _, p := range gs.Seats[seat].Battlefield {
+			if matchesPermanent(e.Query, p) {
+				candidates = append(candidates, p)
+			}
+		}
+		victim := ChooseForcedSacrifice(gs, seat, candidates, "effect")
 		if victim == nil {
 			continue
 		}

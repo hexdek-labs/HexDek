@@ -46,15 +46,33 @@ func pickWeakestLand(gs *gameengine.GameState, seatIdx int) *gameengine.Permanen
 	return anyLand
 }
 
-// eachPlayerSacrificeCreature forces every player to sacrifice their
-// weakest creature. Returns total sacrificed.
+// creatureCandidates returns every creature a seat controls (the legal
+// edict-sacrifice pool — tokens included, hexproof/shroud irrelevant since
+// nothing is targeted).
+func creatureCandidates(gs *gameengine.GameState, seatIdx int) []*gameengine.Permanent {
+	if seatIdx < 0 || seatIdx >= len(gs.Seats) || gs.Seats[seatIdx] == nil {
+		return nil
+	}
+	var out []*gameengine.Permanent
+	for _, p := range gs.Seats[seatIdx].Battlefield {
+		if p != nil && p.IsCreature() {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// eachPlayerSacrificeCreature forces every player to sacrifice a creature.
+// CR §608.2: "each player sacrifices …" is NOT targeted and each AFFECTED
+// player chooses one of their OWN creatures, in APNAP order. Returns total
+// sacrificed.
 func eachPlayerSacrificeCreature(gs *gameengine.GameState) int {
 	count := 0
-	for i := range gs.Seats {
+	for _, i := range gameengine.APNAPOrder(gs) {
 		if gs.Seats[i] == nil || gs.Seats[i].Lost {
 			continue
 		}
-		victim := pickWeakestCreature(gs, i)
+		victim := gameengine.ChooseForcedSacrifice(gs, i, creatureCandidates(gs, i), "effect")
 		if victim != nil {
 			gameengine.SacrificePermanent(gs, victim, "forced_sacrifice")
 			count++
@@ -63,11 +81,15 @@ func eachPlayerSacrificeCreature(gs *gameengine.GameState) int {
 	return count
 }
 
-// eachOpponentSacrificeCreature forces each opponent to sacrifice.
+// eachOpponentSacrificeCreature forces each opponent to sacrifice a creature
+// of their own choosing, in APNAP order.
 func eachOpponentSacrificeCreature(gs *gameengine.GameState, controllerSeat int) int {
 	count := 0
-	for _, opp := range gs.Opponents(controllerSeat) {
-		victim := pickWeakestCreature(gs, opp)
+	for _, i := range gameengine.APNAPOrder(gs) {
+		if i == controllerSeat || gs.Seats[i] == nil || gs.Seats[i].Lost {
+			continue
+		}
+		victim := gameengine.ChooseForcedSacrifice(gs, i, creatureCandidates(gs, i), "effect")
 		if victim != nil {
 			gameengine.SacrificePermanent(gs, victim, "forced_sacrifice")
 			count++
@@ -129,11 +151,22 @@ func plaguecrafterETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	if gs == nil || perm == nil {
 		return
 	}
-	for i := range gs.Seats {
+	// "Each player sacrifices a creature OR PLANESWALKER, or discards a card."
+	// APNAP order; the affected player chooses among their own creatures AND
+	// planeswalkers (the old handler ignored planeswalkers entirely and could
+	// only sacrifice a creature). Falls back to discard only when the player
+	// has neither.
+	for _, i := range gameengine.APNAPOrder(gs) {
 		if gs.Seats[i] == nil || gs.Seats[i].Lost {
 			continue
 		}
-		victim := pickWeakestCreature(gs, i)
+		var candidates []*gameengine.Permanent
+		for _, p := range gs.Seats[i].Battlefield {
+			if p != nil && (p.IsCreature() || p.IsPlaneswalker()) {
+				candidates = append(candidates, p)
+			}
+		}
+		victim := gameengine.ChooseForcedSacrifice(gs, i, candidates, "effect")
 		if victim != nil {
 			gameengine.SacrificePermanent(gs, victim, "plaguecrafter")
 		} else {
