@@ -2184,6 +2184,19 @@ func fireCombatDamageTriggers(gs *GameState, src *Permanent, amount int, targetK
 			!EventEquals(t.Trigger.Event, "deals_damage") {
 			continue
 		}
+		// Judge r63 double-fire gate: when per_card owns this card's
+		// combat-damage-to-player trigger, the FireCardTrigger
+		// ("combat_damage_player") call below dispatches the handler —
+		// pushing the AST effect here too would resolve the ability
+		// twice (e.g. Rev, Tithe Extractor / Gonti, Canny Acquisitor
+		// minting two Treasures / two impulse-exiles for a single batch).
+		// Scoped to targetKind=="player" because the per_card event only
+		// fires for player damage; combat-damage-to-creature AST triggers
+		// on the same card still dispatch here. Mirrors the
+		// creature_attacks gate above and the #1059 observer-class gates.
+		if targetKind == "player" && PerCardOwnsTrigger(src.Card.DisplayName(), "combat_damage_player") {
+			continue
+		}
 		ctxTargetName := ""
 		if targetPerm != nil {
 			ctxTargetName = targetPerm.Card.DisplayName()
