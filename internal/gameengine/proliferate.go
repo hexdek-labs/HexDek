@@ -110,9 +110,18 @@ func Proliferate(gs *GameState, controller int, targets []ProliferateTarget) (in
 		if i >= applied || perm == nil {
 			continue
 		}
-		// Doubling pipeline result (Phase 4 identity; Phase 6 real walk).
-		placed := counters.ApplyDoublingPipeline(perm.AsCounterTarget(), permKinds[i], 1)
-		perm.AddCounter(permKinds[i], placed)
+		// §122.1g counter-doublers (Doubling Season, Hardened Scales,
+		// Branching Evolution, Vorinclex, Conclave Mentor, …) amplify a
+		// PROLIFERATED counter just like any other placement. The counters-
+		// package primitive's ApplyDoublingPipeline is engine-agnostic and
+		// can't see gs.Replacements, so it returns the base count unchanged;
+		// the real §616 "would_put_counter" replacement walk must run here at
+		// the engine level. perm.Counters (the legacy map P/T + SBAs read) is
+		// the authoritative store, so the doubled count is applied there.
+		placed := proliferatePlacementCount(gs, perm, permKinds[i])
+		if placed > 0 {
+			perm.AddCounter(permKinds[i], placed)
+		}
 	}
 	// Reconcile view stacks: drop the transient baseline entries while
 	// preserving the proliferate-driven deltas on CounterStacks.
@@ -141,6 +150,38 @@ func Proliferate(gs *GameState, controller int, targets []ProliferateTarget) (in
 		"amount": applied,
 	})
 	return applied, err
+}
+
+// proliferatePlacementCount returns how many counters of `kind` a single
+// proliferate choice actually places on `perm` after §122.1g doublers. For a
+// non-doubling type (poison/rad/loyalty-on-an-opponent-under-Vorinclex, etc.,
+// per the registry DoublingApplies flag) it is exactly 1. For a doubling type
+// it fires the §616 would_put_counter replacement chain — non-ETB, since
+// proliferate is not an enters-the-battlefield event — and returns the
+// post-replacement count (0 if a replacement cancels the placement). Mirrors
+// EnterCounterCountWithDoublers but with etb=false and no placement (the
+// caller writes the result into perm.Counters).
+func proliferatePlacementCount(gs *GameState, perm *Permanent, kind string) int {
+	canonical := counters.CanonicalName(kind)
+	def := counters.Lookup(canonical)
+	if def == nil || !def.DoublingApplies {
+		return 1
+	}
+	ev := NewReplEvent("would_put_counter")
+	ev.TargetPerm = perm
+	ev.TargetSeat = perm.Controller
+	ev.Payload["counter_type"] = canonical
+	ev.Payload["etb"] = false
+	ev.SetCount(1)
+	FireEvent(gs, ev)
+	if ev.Cancelled {
+		return 0
+	}
+	n := ev.Count()
+	if n < 0 {
+		n = 0
+	}
+	return n
 }
 
 // seedPermCounterView projects the permanent's legacy Counters map into
@@ -221,11 +262,19 @@ func BuildGreedyProliferateTargets(gs *GameState, controller int) []ProliferateT
 				continue
 			}
 			isOurs := p.Controller == controller
+			// CR §701.34a: choosing a permanent to proliferate gives it one
+			// more counter of EACH kind already there — the chooser cannot
+			// cherry-pick which kinds. So the only legal way to avoid pumping
+			// an OPPONENT's +1/+1 is to NOT choose that permanent at all. The
+			// old "skip the +1/+1 entry but keep the others" emitted an illegal
+			// partial proliferate (e.g. adding a -1/-1 to an opponent's
+			// creature while omitting its +1/+1). Skip the whole permanent
+			// instead when it carries a +1/+1 we don't want to grow.
+			if !isOurs && p.Counters["+1/+1"] > 0 {
+				continue
+			}
 			for kind, count := range p.Counters {
 				if count <= 0 {
-					continue
-				}
-				if !isOurs && kind == "+1/+1" {
 					continue
 				}
 				out = append(out, ProliferateTarget{Permanent: p, CounterType: kind})
