@@ -270,6 +270,12 @@ func eleshNornEtchingsSagaChapter(gs *gameengine.GameState, perm *gameengine.Per
 	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
 		return
 	}
+	// r63 self-gate: lore_counter_added walks the whole battlefield; gate on
+	// the advancing saga so a second transformed DFC saga doesn't run this
+	// chapter effect (nil-tolerant for pre-r63 callers).
+	if p, _ := ctx["perm"].(*gameengine.Permanent); p != nil && p != perm {
+		return
+	}
 	if !perm.Transformed {
 		return
 	}

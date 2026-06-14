@@ -101,6 +101,17 @@ func tombstoneStairwellEndStep(gs *gameengine.GameState, perm *gameengine.Perman
 }
 
 func tombstoneStairwellLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+	// r63 self-gate: destroy the linked Tombspawn tokens only on Tombstone
+	// Stairwell's OWN leave. Without this the all-battlefield permanent_ltb
+	// walk fires this on every foreign LTB, prematurely wiping the Stairwell's
+	// own Zombie army while it is still in play. The shared helper is also
+	// used by the legitimate end_step path, so the gate lives here.
+	if perm == nil {
+		return
+	}
+	if p, _ := ctx["perm"].(*gameengine.Permanent); p != perm {
+		return
+	}
 	tombstoneStairwellDestroyLinked(gs, perm, "tombstone_stairwell_ltb_destroy")
 }
 

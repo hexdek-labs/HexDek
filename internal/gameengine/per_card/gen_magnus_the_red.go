@@ -51,8 +51,16 @@ func magnusTheRedCombatDamage(gs *gameengine.GameState, perm *gameengine.Permane
 	// depth — mirror Storm, Force of Nature's pattern).
 	srcPerm, _ := ctx["source_perm"].(*gameengine.Permanent)
 	if srcPerm == nil {
+		// r63 self-gate fix: the combat_damage_player fire site threads only
+		// source_seat + source_card (name), never a source_perm pointer, so
+		// the old seat-only fallback minted a Spawn whenever ANY creature the
+		// Magnus-controller controls connected. Require the source CARD NAME
+		// to match this Magnus (mirrors Port Razer / Glissa / Sidar).
 		ss, ok := ctx["source_seat"].(int)
 		if !ok || ss != perm.Controller {
+			return
+		}
+		if name, _ := ctx["source_card"].(string); name != perm.Card.DisplayName() {
 			return
 		}
 	} else if srcPerm != perm {

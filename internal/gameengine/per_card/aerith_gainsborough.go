@@ -44,6 +44,13 @@ func aerithDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[st
 	if gs == nil || perm == nil {
 		return
 	}
+	// r63 self-gate: "When Aerith dies" — without it, a living Aerith
+	// re-distributes its counter count onto every legendary on EVERY
+	// creature death (creature_dies walks the whole battlefield). The
+	// isLeavingPermEvent fallback delivers ctx["perm"]==perm on self-death.
+	if p, _ := ctx["perm"].(*gameengine.Permanent); p != perm {
+		return
+	}
 	x := 0
 	if perm.Counters != nil {
 		x = perm.Counters["+1/+1"]

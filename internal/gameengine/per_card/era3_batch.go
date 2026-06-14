@@ -346,6 +346,13 @@ func hidetsuguEra3Dies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	if gs == nil || perm == nil || ctx == nil || perm.Card == nil {
 		return
 	}
+	// r63 self-gate: "When Hidetsugu and Kairi dies" — without it, a living
+	// Hidetsugu self-mills its top card and drains an opponent on EVERY
+	// creature death (creature_dies walks the whole battlefield). The
+	// isLeavingPermEvent fallback delivers ctx["perm"]==perm on self-death.
+	if p, _ := ctx["perm"].(*gameengine.Permanent); p != perm {
+		return
+	}
 	seat := gs.Seats[perm.Controller]
 	if seat == nil || len(seat.Library) == 0 {
 		return

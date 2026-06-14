@@ -178,6 +178,15 @@ func ltbReturnLinkedExile(gs *gameengine.GameState, perm *gameengine.Permanent, 
 	if gs == nil || perm == nil {
 		return
 	}
+	// r63 self-gate: permanent_ltb is dispatched once per LEAVING permanent
+	// and fireTrigger walks every battlefield permanent, so a still-in-play
+	// Banisher Priest (etc.) holding a linked exile would otherwise return
+	// its prisoner whenever ANY foreign permanent leaves. Only react to the
+	// bearer's OWN leave — the isLeavingPermEvent fallback (registry.go)
+	// guarantees ctx["perm"]==perm reaches this handler on self-LTB.
+	if p, _ := ctx["perm"].(*gameengine.Permanent); p != perm {
+		return
+	}
 	if len(perm.LinkedExile) == 0 {
 		return
 	}

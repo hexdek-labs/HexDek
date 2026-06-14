@@ -242,6 +242,11 @@ func hostageTakerLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx m
 	if gs == nil || perm == nil {
 		return
 	}
+	// r63 self-gate: only return the prisoner on Hostage Taker's OWN leave,
+	// not on every foreign permanent_ltb the all-battlefield walk delivers.
+	if p, _ := ctx["perm"].(*gameengine.Permanent); p != perm {
+		return
+	}
 	if len(perm.LinkedExile) == 0 {
 		return
 	}
@@ -364,6 +369,12 @@ func registerKnowledgePool(r *Registry) {
 // keeps the invariant's Prong A clean if future plumbing adds it).
 func knowledgePoolOnLTB(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
 	if gs == nil || perm == nil {
+		return
+	}
+	// r63 self-gate: clear Knowledge Pool's exile tags only when KNOWLEDGE
+	// POOL itself leaves, not on every foreign permanent_ltb (which would
+	// orphan the linkage of cards it still legitimately holds in exile).
+	if p, _ := ctx["perm"].(*gameengine.Permanent); p != perm {
 		return
 	}
 	cleared := 0

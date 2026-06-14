@@ -154,7 +154,11 @@ func TestHostageTaker_LTB_ReturnsTargetToOwnersBattlefield(t *testing.T) {
 	bopCard := &gameengine.Card{Name: "Birds of Paradise", Owner: 1, Types: []string{"creature"}}
 	gameengine.ExileLinked(gs, ht, bopCard, 1, "battlefield")
 
-	hostageTakerLTB(gs, ht, nil)
+	// r63 self-gate: hostageTakerLTB now only returns the prisoner on Hostage
+	// Taker's OWN leave, identified via ctx["perm"]. The engine always threads
+	// it (zone_change fire site + isLeavingPermEvent fallback); pass it here to
+	// exercise the legitimate self-LTB path (was an implicit nil-ctx call).
+	hostageTakerLTB(gs, ht, map[string]interface{}{"perm": ht})
 
 	// BoP no longer in seat 1's exile.
 	if len(gs.Seats[1].Exile) != 0 {

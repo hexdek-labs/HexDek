@@ -75,6 +75,14 @@ func gruffTripletsDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
+	// r63 self-gate: "When THIS creature dies" — the creature_dies event is
+	// dispatched once per dying creature and fireTrigger walks every
+	// battlefield permanent, so without this gate a living Gruff Triplets
+	// buffs its siblings on EVERY creature death. The isLeavingPermEvent
+	// fallback delivers ctx["perm"]==perm on the bearer's own death.
+	if p, _ := ctx["perm"].(*gameengine.Permanent); p != perm {
+		return
+	}
 	power := perm.Card.BasePower
 	if perm.Counters != nil {
 		power += perm.Counters["+1/+1"]

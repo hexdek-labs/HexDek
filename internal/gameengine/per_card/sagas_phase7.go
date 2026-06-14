@@ -64,6 +64,14 @@ func dispatchSagaPhase7(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 	if gs == nil || perm == nil || perm.Card == nil || ctx == nil {
 		return
 	}
+	// r63 self-gate: lore_counter_added is dispatched across the whole
+	// battlefield, so without this every controlled phase-7 saga would run
+	// its OWN chapter effect at the advancing saga's chapter number. Gate on
+	// the advancing perm threaded by the fire site (nil-tolerant: pre-r63
+	// callers that omit "perm" keep the legacy broad behavior).
+	if p, _ := ctx["perm"].(*gameengine.Permanent); p != nil && p != perm {
+		return
+	}
 	chapter, _ := ctx["chapter"].(int)
 	if chapter <= 0 {
 		return

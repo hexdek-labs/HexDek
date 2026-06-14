@@ -1772,10 +1772,14 @@ func AdvanceSagaChapter(gs *GameState, perm *Permanent) int {
 		},
 	})
 	// Fire lore_counter_added for Urza's Saga, Sheoldred // The True Scriptures, etc.
+	// "perm" carries the advancing saga so self-referential chapter handlers
+	// (dispatchSagaPhase7 et al.) can gate on identity — the all-battlefield
+	// trigger walk otherwise drives every controlled saga's chapter effect.
 	FireCardTrigger(gs, "lore_counter_added", map[string]interface{}{
 		"seat":    perm.Controller,
 		"card":    perm.Card.DisplayName(),
 		"chapter": chapter,
+		"perm":    perm,
 	})
 
 	// If final chapter (typically 3), the saga will be sacrificed by SBA §704.5s.
