@@ -52,6 +52,15 @@ func StateBasedActions(gs *GameState) bool {
 		passes++
 		changed := false
 
+		// Theros God creature-toggle (CR 711.2): re-evaluate each god's
+		// devotion-gated creature-ness BEFORE the death/zone SBAs so a god
+		// that just stopped being a creature (devotion dropped) isn't treated
+		// as one this pass, and one that just became a creature is. Runs first
+		// because it mutates Card.Types, which the §704.5f-i checks read.
+		if RefreshDevotionCreatureToggles(gs) {
+			changed = true
+		}
+
 		// Player-loss SBAs (§704.5a–§704.5c).
 		if sba704_5a(gs) {
 			changed = true
