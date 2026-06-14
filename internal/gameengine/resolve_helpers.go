@@ -3757,31 +3757,30 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		})
 
 	case "stat_modification", "switch_pt_self", "switch_pt_target", "switch_pt":
+		// CR §613.4c layer 7e — "switch power and toughness" is a CONTINUOUS
+		// effect applied in sublayer 7e (LAST, after counters/anthems/pumps),
+		// NOT an immediate swap of the printed base P/T. The old code mutated
+		// Card.BasePower/BaseToughness directly, which (1) was permanent —
+		// ignoring the "until end of turn" duration so the swap never reverted,
+		// and (2) swapped the BASE, so a later +X/+Y pump or counter landed on
+		// the swapped base and was NOT re-switched (a 3/2 + Inside Out + a
+		// +1/+0 anthem must read 2/4, not 3/3). Route through a 7e continuous
+		// switch (until end of turn).
 		switch e.ModKind {
 		case "switch_pt_self":
-			// Swap the source creature's base power and toughness (CR §613.4 layer 7e).
 			if src != nil && src.Card != nil {
-				src.Card.BasePower, src.Card.BaseToughness = src.Card.BaseToughness, src.Card.BasePower
+				registerPTSwitchUEOT(gs, src)
 			}
-		case "switch_pt_target":
-			// Swap target creature's base power and toughness.
+		case "switch_pt_target", "switch_pt":
 			targets := pickTargetFromModArgs(gs, src, e.Args)
 			for _, t := range targets {
 				if t.Kind == TargetKindPermanent && t.Permanent != nil && t.Permanent.Card != nil {
-					t.Permanent.Card.BasePower, t.Permanent.Card.BaseToughness = t.Permanent.Card.BaseToughness, t.Permanent.Card.BasePower
+					registerPTSwitchUEOT(gs, t.Permanent)
 				}
 			}
-		case "switch_pt":
-			// Generic switch P/T — apply to source if no target hint in args.
-			targets := pickTargetFromModArgs(gs, src, e.Args)
-			if len(targets) > 0 {
-				for _, t := range targets {
-					if t.Kind == TargetKindPermanent && t.Permanent != nil && t.Permanent.Card != nil {
-						t.Permanent.Card.BasePower, t.Permanent.Card.BaseToughness = t.Permanent.Card.BaseToughness, t.Permanent.Card.BasePower
-					}
-				}
-			} else if src != nil && src.Card != nil {
-				src.Card.BasePower, src.Card.BaseToughness = src.Card.BaseToughness, src.Card.BasePower
+			// Generic switch_pt with no target hint → switch the source.
+			if len(targets) == 0 && e.ModKind == "switch_pt" && src != nil && src.Card != nil {
+				registerPTSwitchUEOT(gs, src)
 			}
 		}
 		// stat_modification is a log-only stub — full stat mods flow through

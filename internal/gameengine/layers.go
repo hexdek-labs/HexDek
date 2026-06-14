@@ -2278,6 +2278,22 @@ func RegisterSplinterTwin(gs *GameState, p *Permanent) {
 //
 // `predicate` selects which permanents are affected. For targeted spells
 // (About Face), the caller passes a single-target predicate.
+// registerPTSwitchUEOT registers an until-end-of-turn layer-7e power/toughness
+// switch on a single permanent (Inside Out / Twisted Image / Fluxcharger's
+// instant-cast switch). The switch applies AFTER all other P/T-changing
+// effects per §613.4c and reverts at end of turn — the rules-correct shape for
+// "switch ~'s power and toughness until end of turn", replacing the old
+// direct base-P/T mutation.
+func registerPTSwitchUEOT(gs *GameState, target *Permanent) {
+	if gs == nil || target == nil {
+		return
+	}
+	t := target
+	RegisterPTSwitch(gs, target, DurationEndOfTurn, func(_ *GameState, p *Permanent) bool {
+		return p == t
+	})
+}
+
 func RegisterPTSwitch(gs *GameState, source *Permanent, duration string, predicate func(*GameState, *Permanent) bool) {
 	if gs == nil || source == nil {
 		return
@@ -2297,8 +2313,14 @@ func RegisterPTSwitch(gs *GameState, source *Permanent, duration string, predica
 		chars.Power, chars.Toughness = chars.Toughness, chars.Power
 	}
 	gs.RegisterContinuousEffect(&ContinuousEffect{
-		Layer:          LayerPT,
-		Sublayer:       "d",
+		Layer: LayerPT,
+		// CR §613.4c: the power/toughness SWITCH is sublayer 7e — it applies
+		// LAST, after CDAs (7a), base-set (7b), counters (7c) and other P/T
+		// modifications (7d). Registering at "d" (the slot the engine uses for
+		// nothing else today) happened to land after counters/mods only by the
+		// fixed application order; "e" is the rules-correct slot and guards
+		// against any future 7d modification being mis-ordered with the switch.
+		Sublayer:       "e",
 		Timestamp:      ts,
 		SourcePerm:     source,
 		SourceCardName: source.Card.DisplayName(),
