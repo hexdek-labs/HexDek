@@ -999,6 +999,20 @@ func CleanupHandSize(gs *GameState, seatIdx, maxSize int) {
 	if maxSize <= 0 {
 		maxSize = 7
 	}
+	// Honor per-seat maximum-hand-size modifiers set by static abilities.
+	// Callers pass the CR §402.2 default of 7; the flags below are stamped
+	// at ETB by the relevant per_card handlers but were previously never
+	// consulted here, leaving these effects inert. Resolution order:
+	//   1. "no maximum hand size" (unlimited) wins — Kruphix, God of
+	//      Horizons; Reliquary Tower; Thought Vessel; The Second Doctor.
+	//   2. An explicit numeric override (Cecily = 11; Winter, Misanthropic
+	//      Guide's per-opponent cap) replaces the default 7.
+	if seatHasNoMaxHandSize(gs, seat) {
+		return
+	}
+	if ov, ok := seatMaxHandSizeOverride(seat); ok {
+		maxSize = ov
+	}
 	if len(seat.Hand) <= maxSize {
 		return
 	}
@@ -1030,6 +1044,41 @@ func CleanupHandSize(gs *GameState, seatIdx, maxSize int) {
 			},
 		})
 	}
+}
+
+// seatHasNoMaxHandSize reports whether seat currently has a "no maximum
+// hand size" static effect — set on ETB by Kruphix (gs.Flags), Reliquary
+// Tower / Thought Vessel (gs.Flags), or The Second Doctor (seat.Flags).
+// Both flag conventions are checked so any registering card is honored.
+func seatHasNoMaxHandSize(gs *GameState, seat *Seat) bool {
+	if seat == nil {
+		return false
+	}
+	if seat.Flags != nil && seat.Flags["no_max_hand_size"] > 0 {
+		return true
+	}
+	if gs != nil && gs.Flags != nil &&
+		gs.Flags["no_max_hand_size_seat_"+itoa(seat.Idx)] > 0 {
+		return true
+	}
+	return false
+}
+
+// seatMaxHandSizeOverride returns an explicit numeric maximum-hand-size
+// override for seat (Cecily, Haunted Mage = 11; Winter, Misanthropic
+// Guide's per-opponent cap), or (0,false) if none is set. The "no
+// maximum hand size" case is handled separately by seatHasNoMaxHandSize.
+func seatMaxHandSizeOverride(seat *Seat) (int, bool) {
+	if seat == nil || seat.Flags == nil {
+		return 0, false
+	}
+	if v, ok := seat.Flags["max_hand_size"]; ok {
+		return v, true
+	}
+	if v, ok := seat.Flags["max_hand_size_override"]; ok {
+		return v, true
+	}
+	return 0, false
 }
 
 // ---------------------------------------------------------------------------

@@ -1235,6 +1235,10 @@ func registerDefaults() {
 	// r63 mana-pool audit — Leyline Tyrant red-retention exemption +
 	// self-dies "pay any amount of {R}, deal that much" payoff.
 	registerLeylineTyrant(Global())
+	// r63 mana-pool audit follow-up — "if you would lose unspent mana,
+	// that mana becomes colorless instead" converter (Horizon Stone;
+	// Kruphix's fourth line uses the same engine primitive).
+	registerHorizonStone(Global())
 	// R58 — counter-accumulator-threshold primitive + 4 ports.
 	registerHelixPinnacle(Global())
 	registerDarksteelReactor(Global())

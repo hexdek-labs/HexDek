@@ -105,6 +105,59 @@ func (p *ColoredManaPool) ClearExcept(exempt map[string]bool) {
 	}
 }
 
+// ConvertDrainToColorless implements the "if you would lose unspent
+// mana, that mana becomes colorless instead" replacement (Kruphix, God
+// of Horizons; Horizon Stone). This is DISTINCT from ClearExcept's
+// exemption model: an exemption RETAINS mana in its original color, but
+// this replacement RECOLORS every would-be-lost mana to {C} and keeps
+// it in the pool. So a floated {R}{G}{U} survives a step/phase boundary
+// as three colorless ({C}{C}{C}), not as R/G/U.
+//
+// `exempt` is honored first: a color in `exempt` (e.g. a co-present
+// Omnath green retention) is left untouched in its own bucket; only the
+// non-exempt mana converts to colorless. Returns the amount converted.
+func (p *ColoredManaPool) ConvertDrainToColorless(exempt map[string]bool) int {
+	if p == nil {
+		return 0
+	}
+	if exempt["any"] {
+		return 0 // Upwelling: nothing would be lost, nothing to convert.
+	}
+	moved := 0
+	if !exempt["W"] {
+		moved += p.W
+		p.W = 0
+	}
+	if !exempt["U"] {
+		moved += p.U
+		p.U = 0
+	}
+	if !exempt["B"] {
+		moved += p.B
+		p.B = 0
+	}
+	if !exempt["R"] {
+		moved += p.R
+		p.R = 0
+	}
+	if !exempt["G"] {
+		moved += p.G
+		p.G = 0
+	}
+	// Any-color and restricted mana would also be lost → becomes {C}.
+	moved += p.Any
+	p.Any = 0
+	for _, r := range p.Restricted {
+		moved += r.Amount
+	}
+	p.Restricted = nil
+	// Existing colorless mana is itself "unspent mana that would be lost"
+	// and "becomes colorless" — i.e. it simply stays. We never zero p.C,
+	// so it persists; the converted total is added on top.
+	p.C += moved
+	return moved
+}
+
 // Add credits `amount` mana of `color` into the appropriate bucket.
 // color: "W"/"U"/"B"/"R"/"G"/"C"/"any".
 func (p *ColoredManaPool) Add(color string, amount int) {
@@ -583,6 +636,63 @@ func PoolExemptColors(gs *GameState, seat *Seat) map[string]bool {
 	return exempt
 }
 
+// ManaPoolColorlessConverter — "if you would lose unspent mana, that
+// mana becomes colorless instead" (Kruphix, God of Horizons; Horizon
+// Stone). DISTINCT from ManaPoolExemption: an exemption RETAINS mana in
+// its original color; a converter RECOLORS would-be-lost mana to {C}
+// and keeps it. Registered by per_card ETB, torn down at LTB.
+//
+// Seat: the seat whose pool converts (controller-scoped for both cards).
+type ManaPoolColorlessConverter struct {
+	Source *Permanent
+	Seat   int
+}
+
+// RegisterManaColorlessConverter registers a "becomes colorless instead
+// of being lost" converter tied to perm for the given seat. Persists
+// until the matching UnregisterManaColorlessConverterForPerm (LTB hook).
+func RegisterManaColorlessConverter(gs *GameState, perm *Permanent, seat int) {
+	if gs == nil || perm == nil {
+		return
+	}
+	gs.ManaPoolColorlessConverters = append(gs.ManaPoolColorlessConverters,
+		&ManaPoolColorlessConverter{Source: perm, Seat: seat})
+}
+
+// UnregisterManaColorlessConverterForPerm drops every converter whose
+// Source is perm. Call from the permanent_ltb hook.
+func UnregisterManaColorlessConverterForPerm(gs *GameState, perm *Permanent) {
+	if gs == nil || perm == nil || len(gs.ManaPoolColorlessConverters) == 0 {
+		return
+	}
+	out := gs.ManaPoolColorlessConverters[:0]
+	for _, c := range gs.ManaPoolColorlessConverters {
+		if c == nil || c.Source == perm {
+			continue
+		}
+		out = append(out, c)
+	}
+	gs.ManaPoolColorlessConverters = out
+}
+
+// PoolConvertsToColorless reports whether seat has an active "unspent
+// mana becomes colorless instead of being lost" effect (Kruphix /
+// Horizon Stone). Read by DrainAllPools at boundary time.
+func PoolConvertsToColorless(gs *GameState, seat *Seat) bool {
+	if gs == nil || seat == nil {
+		return false
+	}
+	for _, c := range gs.ManaPoolColorlessConverters {
+		if c == nil || c.Source == nil {
+			continue
+		}
+		if c.Seat < 0 || c.Seat == seat.Idx {
+			return true
+		}
+	}
+	return false
+}
+
 // AddManaPerCount adds `color` mana to seat's pool equal to the count
 // of permanents the seat controls that match `predicate`. Returns the
 // count added (zero when no match). The single batched AddMana call
@@ -634,6 +744,29 @@ func DrainAllPools(gs *GameState, prevPhase, prevStep string) {
 		exempt := PoolExemptColors(gs, seat)
 		if exempt["any"] {
 			continue // Upwelling: skip drain.
+		}
+		// Kruphix / Horizon Stone: "if you would lose unspent mana, that
+		// mana becomes colorless instead." The non-exempt mana that would
+		// drain here is recolored to {C} and retained rather than emptied.
+		// The pool total is unchanged (nothing is lost), so the pool_drain
+		// event below stays silent; we emit a distinct conversion event.
+		if p != nil && PoolConvertsToColorless(gs, seat) {
+			converted := p.ConvertDrainToColorless(exempt)
+			seat.ManaPool = p.Total()
+			if converted > 0 {
+				gs.LogEvent(Event{
+					Kind:   "pool_converted_colorless",
+					Seat:   seat.Idx,
+					Amount: converted,
+					Details: map[string]interface{}{
+						"remaining":  seat.ManaPool,
+						"from_phase": prevPhase,
+						"from_step":  prevStep,
+						"rule":       "616 (becomes colorless instead of lost)",
+					},
+				})
+			}
+			continue
 		}
 		if p != nil {
 			p.ClearExcept(exempt)

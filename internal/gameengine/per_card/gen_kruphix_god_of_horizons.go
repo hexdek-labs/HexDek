@@ -47,8 +47,8 @@ func kruphixLTBClearFlags(gs *gameengine.GameState, perm *gameengine.Permanent, 
 	if seat != nil && seat.Flags != nil {
 		delete(seat.Flags, "kruphix_unspent_mana_to_colorless")
 	}
-	// R57: drop the R55 mana-pool exemption registered at ETB.
-	gameengine.UnregisterManaPoolExemptionForPerm(gs, perm)
+	// R63: drop the colorless-conversion effect registered at ETB.
+	gameengine.UnregisterManaColorlessConverterForPerm(gs, perm)
 }
 
 func kruphixETBSetSeatFlags(gs *gameengine.GameState, perm *gameengine.Permanent) {
@@ -72,19 +72,17 @@ func kruphixETBSetSeatFlags(gs *gameengine.GameState, perm *gameengine.Permanent
 		perm.Flags = map[string]int{}
 	}
 	perm.Flags["kw:indestructible"] = 1
-	// R57: register the mana-pool exemption shipped in R55. Kruphix's
-	// printed text is "becomes colorless instead [of being lost]" — the
-	// exemption keeps all five colors from emptying. The "becomes
-	// colorless" recolor isn't modeled (the engine's exemption primitive
-	// doesn't transform color), but the strategic effect (mana held
-	// across phase boundaries) is preserved, which is what the deck
-	// archetype cares about.
-	gameengine.RegisterManaPoolExemption(gs, perm, perm.Controller,
-		[]string{"W", "U", "B", "R", "G", "C"})
+	// R63: register the "becomes colorless instead of being lost"
+	// converter (replaces the R55/R57 all-color exemption stand-in).
+	// Unlike an exemption — which retained each color in its own bucket —
+	// the converter recolors all would-be-lost unspent mana to {C} at the
+	// §106.4 boundary and keeps it. So a floated {R}{G}{U} reads as three
+	// colorless after a step/phase end, matching Kruphix's printed text.
+	gameengine.RegisterManaColorlessConverter(gs, perm, perm.Controller)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":           perm.Controller,
 		"unspent_to_col": 1,
-		"exemption":      "WUBRGC",
+		"convert":        "colorless",
 	})
 }
 
@@ -92,12 +90,11 @@ func kruphixEndStepConvertMana(gs *gameengine.GameState, perm *gameengine.Perman
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	// Kruphix's mana conversion is "if you would lose" so it fires at the
-	// per-phase mana empty step. As an approximation we run at end_step.
-	// The engine clears mana pool to 0 at phase end; we don't need to
-	// "convert" since there's no color-tracking pool — this hook is here
-	// for parity with the partial breadcrumb. Future engine support will
-	// replace it with a proper ManaEmpty hook.
+	// R63: the "becomes colorless instead of lost" conversion is now done
+	// by the engine at EVERY step/phase boundary inside DrainAllPools (via
+	// the ManaPoolColorlessConverter registered at ETB), not just at end
+	// step — matching CR §500.4. This end_step hook is retained as a
+	// harmless no-op for trigger-dispatch parity.
 	_ = perm
 	_ = ctx
 }

@@ -411,6 +411,16 @@ type GameState struct {
 	// PoolExemptColors at DrainAllPools time (CR §106.4).
 	ManaPoolExemptions []*ManaPoolExemption
 
+	// ManaPoolColorlessConverters registers permanents whose controller's
+	// would-be-lost unspent mana becomes colorless instead of emptying at
+	// phase/step boundaries (Kruphix, God of Horizons; Horizon Stone). A
+	// converter RECOLORS the drained mana to {C} and keeps it — distinct
+	// from ManaPoolExemptions, which retain mana in its original color.
+	// Populated by per_card OnETB via RegisterManaColorlessConverter,
+	// cleared by UnregisterManaColorlessConverterForPerm at LTB, read by
+	// PoolConvertsToColorless at DrainAllPools time (CR §106.4 / §616).
+	ManaPoolColorlessConverters []*ManaPoolColorlessConverter
+
 	// PoolDrivenPTEffects counts the live layer-7c continuous effects
 	// whose P/T value is read from the mana pool (Omnath, Locus of Mana:
 	// "+1/+1 for each unspent green mana"). When > 0, the mana mutators

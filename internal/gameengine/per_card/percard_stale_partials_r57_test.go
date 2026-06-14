@@ -15,7 +15,7 @@ import (
 // wirings.
 //
 //   1. Ozai, the Phoenix King      → RegisterManaPoolExemption (R)
-//   2. Kruphix, God of Horizons    → RegisterManaPoolExemption (WUBRGC)
+//   2. Kruphix, God of Horizons    → RegisterManaColorlessConverter (R63)
 //   3. Zaffai and the Tempests     → existing ZoneCastPolicy retained;
 //                                    stale partial dropped
 //   4. Aminatou, Veil Piercer      → RegisterZoneCastPolicy
@@ -47,20 +47,24 @@ func TestOzai_ETBRegistersManaPoolExemption(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// 2. Kruphix — mana pool exemption WUBRGC
+// 2. Kruphix — "unspent mana becomes colorless instead of lost"
+//    converter. R63 replaced the R55/R57 all-color exemption stand-in
+//    with the engine ManaPoolColorlessConverter primitive, so the ETB
+//    now registers a converter (not an exemption). See
+//    persist_mana_colorless_r63_test.go for the drain-behavior pins.
 // ---------------------------------------------------------------------------
 
-func TestKruphix_ETBRegistersManaPoolExemption(t *testing.T) {
+func TestKruphix_ETBRegistersColorlessConverter(t *testing.T) {
 	gs := newGame(t, 2)
-	pre := len(gs.ManaPoolExemptions)
+	pre := len(gs.ManaPoolColorlessConverters)
 	kruphix := addPerm(gs, 0, "Kruphix, God of Horizons", "creature", "legendary", "god")
 	kruphixETBSetSeatFlags(gs, kruphix)
-	if got := len(gs.ManaPoolExemptions) - pre; got != 1 {
-		t.Errorf("Kruphix ETB should register 1 mana-pool exemption; delta=%d", got)
+	if got := len(gs.ManaPoolColorlessConverters) - pre; got != 1 {
+		t.Errorf("Kruphix ETB should register 1 colorless converter; delta=%d", got)
 	}
 	kruphixLTBClearFlags(gs, kruphix, map[string]interface{}{"perm": kruphix})
-	if len(gs.ManaPoolExemptions) != pre {
-		t.Errorf("Kruphix LTB should drop exemption; pre=%d after=%d", pre, len(gs.ManaPoolExemptions))
+	if len(gs.ManaPoolColorlessConverters) != pre {
+		t.Errorf("Kruphix LTB should drop converter; pre=%d after=%d", pre, len(gs.ManaPoolColorlessConverters))
 	}
 }
 
