@@ -2658,6 +2658,23 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 // battlefield and sets AttachedTo. Uses the card's TypeLine to infer the
 // enchant target ("Enchantment — Aura" with oracle "Enchant land/creature/...").
 // Falls back to: own land → own creature → any own permanent (excluding self).
+// auraBaseName returns a card's name with any " (…)" rename suffix stripped
+// (e.g. "Amphibian Downpour (storm copy 2)" → "Amphibian Downpour"), preferring
+// the AST name when present (shared by all storm copies of the same spell).
+func auraBaseName(c *Card) string {
+	if c == nil {
+		return ""
+	}
+	if c.AST != nil && c.AST.Name != "" {
+		return c.AST.Name
+	}
+	n := c.DisplayName()
+	if idx := strings.Index(n, " ("); idx > 0 {
+		return n[:idx]
+	}
+	return n
+}
+
 func attachAuraOnETB(gs *GameState, perm *Permanent) {
 	if perm == nil || perm.Card == nil {
 		return
@@ -2679,34 +2696,66 @@ func attachAuraOnETB(gs *GameState, perm *Permanent) {
 		wantCreature = true
 	}
 
-	// Search own battlefield for a valid target.
-	for _, p := range seat.Battlefield {
+	legal := func(p *Permanent) bool {
 		if p == perm || p == nil {
-			continue
+			return false
 		}
-		if wantLand && p.IsLand() {
-			perm.AttachedTo = p
-			return
+		if wantLand {
+			return p.IsLand()
 		}
-		if wantCreature && p.IsCreature() {
-			perm.AttachedTo = p
-			return
+		if wantArtifact {
+			return p.IsArtifact()
 		}
-		if wantArtifact && p.IsArtifact() {
-			perm.AttachedTo = p
-			return
+		// Default / "enchant creature".
+		return p.IsCreature()
+	}
+	// Already enchanted by a same-(base-)name aura (e.g. another Amphibian
+	// Downpour storm copy — copies carry a "(storm copy N)" suffix, so compare
+	// the BASE name)? Spreading the copies across distinct targets is both
+	// better play and what makes "N storm Frogs on N creatures" work.
+	myName := auraBaseName(perm.Card)
+	enchantedBySameName := func(p *Permanent) bool {
+		for _, s := range gs.Seats {
+			if s == nil {
+				continue
+			}
+			for _, a := range s.Battlefield {
+				if a != nil && a != perm && a.AttachedTo == p && a.Card != nil &&
+					auraBaseName(a.Card) == myName {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	// CR §303.4f — attach to a LEGAL object. An aura can enchant any matching
+	// permanent (own or opponent's) unless restricted. Two passes, own first:
+	// (1) a legal target not already taken by a same-name aura, (2) any legal.
+	for _, fresh := range []bool{true, false} {
+		for _, p := range seat.Battlefield {
+			if legal(p) && (!fresh || !enchantedBySameName(p)) {
+				perm.AttachedTo = p
+				return
+			}
+		}
+		for i, s := range gs.Seats {
+			if s == nil || i == perm.Controller {
+				continue
+			}
+			for _, p := range s.Battlefield {
+				if legal(p) && (!fresh || !enchantedBySameName(p)) {
+					perm.AttachedTo = p
+					return
+				}
+			}
 		}
 	}
-
-	// Fallback: attach to any own permanent (excluding self) to prevent
-	// immediate SBA destruction. This is a lossy heuristic but better than
-	// the aura self-destructing.
-	for _, p := range seat.Battlefield {
-		if p != perm && p != nil {
-			perm.AttachedTo = p
-			return
-		}
-	}
+	// CR §704.5m / §614.13c — NO legal object to enchant. We do NOT
+	// force-attach to an illegal permanent (the old behavior attached an
+	// "enchant creature" aura to a land just to dodge SBA). Leaving AttachedTo
+	// nil lets §704.5m put the aura into its owner's graveyard; a TOKEN Aura
+	// then ceases to exist (§111.7) — exactly the "no legal target → it never
+	// stays on the battlefield" outcome.
 }
 
 // CardHasKeyword returns true if the card's AST contains a Keyword ability

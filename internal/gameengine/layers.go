@@ -2714,6 +2714,12 @@ func RegisterContinuousEffectsForPermanent(gs *GameState, p *Permanent) {
 	// aura_grant (keyword-only auras) — same Layer="" bypass; see
 	// mod_kind_aura_grant.go.
 	registerAuraGrants(gs, p)
+	// aura_loses ("enchanted creature loses all abilities and is a <color>
+	// <subtype> creature with base P/T X/Y" — Frogify / Amphibian Downpour /
+	// Witness Protection family) — same Layer="" bypass; see
+	// mod_kind_aura_loses.go. The §613 layer stack reverts automatically when
+	// the aura (incl. a Storm-minted token Aura) leaves the battlefield.
+	registerAuraLoses(gs, p)
 	// keyword_grant ("[other] creatures you control have <kw>" anthem) —
 	// same Layer="" bypass; see mod_kind_keyword_grant.go.
 	registerKeywordGrantStatics(gs, p)
