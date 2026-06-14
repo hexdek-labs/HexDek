@@ -66,10 +66,25 @@ func adelineAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	activeSeat, _ := ctx["active_seat"].(int)
-	if activeSeat != perm.Controller {
+	// "Whenever YOU attack" — a single player-level attack-declaration event
+	// that fires EXACTLY ONCE per combat regardless of how many creatures
+	// attack. The engine dispatches creature_attacks ONCE PER DECLARED ATTACKER
+	// with attacker_seat in ctx (NOT active_seat — that key is never populated
+	// for attacks, so the old read returned 0: Adeline was inert for every
+	// non-seat-0 controller AND minted one full batch per attacker for seat 0).
+	// Read canonical attacker_seat + gate to the first hit per turn
+	// (Caesar/Raffine once-per-turn dedup). r63 you-attack cardinality audit.
+	attackerSeat, _ := ctx["attacker_seat"].(int)
+	if attackerSeat != perm.Controller {
 		return
 	}
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	if perm.Flags["adeline_attack_fired"] >= gs.Turn {
+		return
+	}
+	perm.Flags["adeline_attack_fired"] = gs.Turn
 	tokens := 0
 	for i, opp := range gs.Seats {
 		if opp == nil || opp.Lost || i == perm.Controller {

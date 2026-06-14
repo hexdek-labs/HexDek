@@ -49,6 +49,19 @@ func animPakalAttackers(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 	if nonGnomeAttackers == 0 {
 		return
 	}
+	// "Whenever you attack with one or more non-Gnome creatures" is a single
+	// player-level event — fires EXACTLY ONCE per combat, not once per declared
+	// attacker. Without this gate the per-attacker creature_attacks dispatch
+	// ratcheted Anim Pakal's +1/+1 counter up by N and minted 1+2+…+N Gnome
+	// tokens on an N-attacker combat. Gate to the first hit per turn
+	// (Caesar/Raffine once-per-turn dedup). r63 you-attack cardinality audit.
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	if perm.Flags["anim_pakal_attack_fired"] >= gs.Turn {
+		return
+	}
+	perm.Flags["anim_pakal_attack_fired"] = gs.Turn
 	perm.AddCounter("+1/+1", 1)
 	x := perm.Counters["+1/+1"]
 	spawned := 0

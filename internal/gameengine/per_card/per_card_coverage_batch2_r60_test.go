@@ -425,8 +425,11 @@ func TestPerCardCoverageBatch2_Adeline_MintsTokenPerOpponentOnAttack(t *testing.
 	adeline.Card.BaseToughness = 3
 	beforeOwn := len(gs.Seats[0].Battlefield)
 
+	// r63: the engine dispatches the attack event with attacker_seat (NOT
+	// active_seat — never populated for attacks). Adeline now keys on the
+	// canonical attacker_seat. Seat-0 creature attacking → Adeline's combat.
 	gameengine.FireCardTrigger(gs, "declare_attackers", map[string]interface{}{
-		"active_seat": 0,
+		"attacker_seat": 0,
 	})
 
 	// 3 opponents → 3 tokens minted to seat 0.
@@ -452,8 +455,11 @@ func TestPerCardCoverageBatch2_Adeline_DoesNotMintOnOpponentAttack(t *testing.T)
 	adel.Card.BaseToughness = 3
 	beforeOwn := len(gs.Seats[0].Battlefield)
 
+	// r63: an OPPONENT's creature attacking → attacker_seat 1, not Adeline's
+	// controller (0). Adeline must not mint. (The old test used active_seat,
+	// a key the attack event never populates, so it tested nothing real.)
 	gameengine.FireCardTrigger(gs, "declare_attackers", map[string]interface{}{
-		"active_seat": 1, // not Adeline's controller
+		"attacker_seat": 1,
 	})
 
 	if len(gs.Seats[0].Battlefield) != beforeOwn {

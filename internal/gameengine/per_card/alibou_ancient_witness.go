@@ -30,8 +30,22 @@ func alibouAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	activeSeat, _ := ctx["active_seat"].(int)
-	if activeSeat != perm.Controller {
+	// "Whenever one or more artifact creatures you control attack" — a single
+	// player-level attack-declaration event, fires EXACTLY ONCE per combat
+	// regardless of how many artifact creatures attack. The engine dispatches
+	// creature_attacks ONCE PER DECLARED ATTACKER with attacker_seat in ctx
+	// (active_seat is never populated for attacks, so the old read returned 0:
+	// inert for non-seat-0 controllers, and N×(damage+scry) for seat 0). Read
+	// canonical attacker_seat + gate to the first hit per turn (Caesar/Raffine
+	// once-per-turn dedup). r63 you-attack cardinality audit.
+	attackerSeat, _ := ctx["attacker_seat"].(int)
+	if attackerSeat != perm.Controller {
+		return
+	}
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	if perm.Flags["alibou_attack_fired"] >= gs.Turn {
 		return
 	}
 	seat := gs.Seats[perm.Controller]
@@ -58,6 +72,9 @@ func alibouAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 	if !attackingArtifactCreature || tappedArtifacts == 0 {
 		return
 	}
+	// Trigger condition met — claim the once-per-turn slot only now, so a
+	// combat with no attacking artifact creature doesn't consume it.
+	perm.Flags["alibou_attack_fired"] = gs.Turn
 	// Target highest-life opponent.
 	target := -1
 	bestLife := -1

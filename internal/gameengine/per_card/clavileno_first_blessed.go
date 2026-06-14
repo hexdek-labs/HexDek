@@ -39,6 +39,20 @@ func clavilenoOnAttack(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	if seat == nil {
 		return
 	}
+	// "Whenever you attack, target attacking Vampire becomes a Demon" is a
+	// single player-level event — fires EXACTLY ONCE per combat (one Vampire),
+	// not once per declared attacker. Without this gate the per-attacker
+	// creature_attacks dispatch promoted a DIFFERENT eligible Vampire to Demon
+	// for each attacker (the demon-type exclusion just made each re-fire pick
+	// the next one), so an N-attacker combat blessed up to N Vampires. Gate to
+	// the first hit per turn (Caesar/Raffine once-per-turn dedup). r63
+	// you-attack cardinality audit.
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	if perm.Flags["clavileno_attack_fired"] >= gs.Turn {
+		return
+	}
 	// Find the highest-power attacking Vampire that isn't already a Demon.
 	var pick *gameengine.Permanent
 	bestPow := -1
@@ -64,6 +78,9 @@ func clavilenoOnAttack(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 		emitFail(gs, slug, perm.Card.DisplayName(), "no_eligible_vampire", nil)
 		return
 	}
+	// Trigger fires — claim the once-per-turn slot only now that a Vampire was
+	// actually found, so a combat with no eligible Vampire doesn't consume it.
+	perm.Flags["clavileno_attack_fired"] = gs.Turn
 	pick.Card.Types = append(pick.Card.Types, "demon")
 	if pick.Flags == nil {
 		pick.Flags = map[string]int{}
