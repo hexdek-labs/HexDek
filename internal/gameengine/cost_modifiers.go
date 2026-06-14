@@ -1249,6 +1249,30 @@ func ScanCostModifiersWithContext(gs *GameState, card *Card, seatIdx int, ctx Ca
 		}
 	}
 
+	// §702.66 — Delve: "Each card you exile from your graveyard while
+	// casting this spell pays for {1}." Modeled, like convoke/improvise,
+	// as a pure count-based cost reduction equal to the caster's graveyard
+	// size — CalculateTotalCost is a side-effect-free query called
+	// repeatedly (legality snapshot, hat planning, the actual cast), so it
+	// must NOT exile here; the physical exile is the systemic
+	// resource-commitment gap shared with convoke (no tap) / improvise
+	// (no tap) and is tracked separately. Delve pays GENERIC mana only and
+	// CANNOT pay colored/colorless pips (NOT ColorCapable), so it floors at
+	// coloredPipFloor in applyCostModifiersFloored — exactly the §601.2f-h
+	// behavior the colored-floor audit pins. Before this, delve was
+	// entirely unwired (HasDelve/DelveMaxReduction existed but nothing
+	// called them), so Treasure Cruise / Dig Through Time / Murderous Cut /
+	// Tombstalker / Become Immense all paid full price.
+	if HasDelve(card) {
+		if delveMax := DelveMaxReduction(gs, seatIdx); delveMax > 0 {
+			mods = append(mods, CostModifier{
+				Kind:   CostModReduction,
+				Amount: delveMax,
+				Source: "delve",
+			})
+		}
+	}
+
 	// Tazri, Beacon of Unity — "This spell costs {1} less to cast for
 	// each creature in your party." Party = up to 4 unique roles among
 	// creatures you control (Cleric, Rogue, Warrior, Wizard). Checked on
