@@ -1077,6 +1077,63 @@ func apnapOrder(gs *GameState) []int {
 // is responsible for resolving the top of the stack per CR §117.4.
 //
 // Depth-capped at 8; realistic counter-wars rarely exceed 4-5.
+// fundResponseMana ensures seat `s` has at least `needed` mana floating in its
+// pool, tapping its own untapped mana sources (lands first for granularity,
+// then mana artifacts) to make up any shortfall. Returns true if the seat can
+// pay after tapping.
+//
+// This is the instant-speed analogue of the tournament driver's
+// tapAllManaSources, which only ever runs for the ACTIVE player during their
+// own main phase. Without this, a defender's ManaPool is 0 throughout every
+// opponent's turn (§500.4 drains it at untap), so PriorityRound could never
+// fund a counterspell / instant response even with a board full of untapped
+// lands — the silent root cause behind "hats don't interact with each other"
+// (r63 HAT-RESPONSE-BEHAVIOR audit). Tapping happens lazily, only when a
+// response has actually been chosen, so a seat that passes never taps out.
+func fundResponseMana(gs *GameState, s *Seat, needed int) bool {
+	if s == nil {
+		return false
+	}
+	EnsureTypedPool(s)
+	if s.ManaPool >= needed {
+		return true
+	}
+	// Pass 1: lands (each adds exactly 1, so no overshoot).
+	for _, p := range s.Battlefield {
+		if s.ManaPool >= needed {
+			break
+		}
+		if p == nil || p.Tapped || !p.IsLand() {
+			continue
+		}
+		p.Tapped = true
+		name := "land"
+		if p.Card != nil {
+			name = p.Card.DisplayName()
+		}
+		AddMana(gs, s, "any", 1, name)
+	}
+	// Pass 2: mana artifacts (Sol Ring, Signets, …). Snapshot the slice so
+	// sacrifice-as-cost rocks that remove themselves don't corrupt iteration.
+	if s.ManaPool < needed {
+		snapshot := make([]*Permanent, len(s.Battlefield))
+		copy(snapshot, s.Battlefield)
+		for _, p := range snapshot {
+			if s.ManaPool >= needed {
+				break
+			}
+			if p == nil || p.Tapped {
+				continue
+			}
+			if !IsArtifactOnly(p) || ArtifactHasDestructiveCost(p) {
+				continue
+			}
+			ApplyArtifactMana(gs, s, p)
+		}
+	}
+	return s.ManaPool >= needed
+}
+
 func PriorityRound(gs *GameState) {
 	if gs == nil {
 		return
@@ -1206,7 +1263,11 @@ func PriorityRound(gs *GameState) {
 			// Pay its cost; if broke, skip. CR §601.2f — cost statics
 			// apply to response casts exactly like main-phase casts.
 			cost := CalculateTotalCost(gs, resp.Card, seat)
-			if s.ManaPool < cost {
+			// Tap the responder's own mana sources to fund the response if
+			// the pool is short (the usual case on an opponent's turn, where
+			// only the active player has floated mana). Skip only if even
+			// tapping out can't cover the cost.
+			if !fundResponseMana(gs, s, cost) {
 				continue
 			}
 			// Ride-along legality validator bracket (nil-receiver no-op
@@ -1326,8 +1387,12 @@ func GetResponse(gs *GameState, defenderSeat int, incoming *StackItem) *StackIte
 		if ceff == nil {
 			continue
 		}
+		// Affordability is gated on POTENTIAL mana (untapped lands + rocks),
+		// not the floating pool — a defender on an opponent's turn has an
+		// empty pool but can tap to respond. PriorityRound funds the actual
+		// payment via fundResponseMana once this card is chosen.
 		cost := manaCostOf(c)
-		if cost > s.ManaPool {
+		if cost > AvailableManaEstimate(gs, s) {
 			continue
 		}
 		// Check that the counterspell's filter matches the incoming spell.
