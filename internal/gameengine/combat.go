@@ -1346,8 +1346,9 @@ func canBlockGS(gs *GameState, attacker, blocker *Permanent) bool {
 	}
 	// Protection on attacker from blocker's color — CR §702.16b:
 	// "can't be blocked by" creatures of a color/quality the
-	// attacker has protection from.
-	if attackerHasProtectionFrom(attacker, blocker) {
+	// attacker has protection from. Layer-aware (ColorsOf) so a blocker
+	// whose color was changed reads correctly.
+	if attackerHasProtectionFromGS(gs, attacker, blocker) {
 		return false
 	}
 	// Protection on blocker from attacker — the blocker also can't
@@ -1564,6 +1565,17 @@ func incomingIsLethal(src, dst *Permanent) bool {
 // Sentinel "*" in protectionColors means "protection from everything"
 // (Teferi's Protection, Progenitus) and short-circuits true.
 func attackerHasProtectionFrom(protected, source *Permanent) bool {
+	return attackerHasProtectionFromGS(nil, protected, source)
+}
+
+// attackerHasProtectionFromGS is the layer-aware variant: when gs is non-nil
+// it reads the SOURCE's effective (CR §613 layer-5) colors via ColorsOf, so a
+// creature whose color was changed by a color-changing effect (Painter's
+// Servant naming the color, "becomes black", etc.) is correctly matched
+// against "protection from <color>". The gs-less wrapper falls back to the
+// source's printed colors for the legacy CanBlock(nil, …) / hat-heuristic
+// paths that have no game state.
+func attackerHasProtectionFromGS(gs *GameState, protected, source *Permanent) bool {
 	if protected == nil || source == nil {
 		return false
 	}
@@ -1572,7 +1584,16 @@ func attackerHasProtectionFrom(protected, source *Permanent) bool {
 		return true
 	}
 	if len(prot) > 0 {
-		for c := range cardColors(source.Card) {
+		var srcColors map[string]struct{}
+		if gs != nil {
+			srcColors = map[string]struct{}{}
+			for _, c := range gs.ColorsOf(source) {
+				srcColors[strings.ToUpper(c)] = struct{}{}
+			}
+		} else {
+			srcColors = cardColors(source.Card)
+		}
+		for c := range srcColors {
 			if _, hit := prot[c]; hit {
 				return true
 			}
@@ -2173,7 +2194,7 @@ func applyCombatDamageToCreature(gs *GameState, src *Permanent, amount int, targ
 	if amount <= 0 || target == nil {
 		return
 	}
-	if attackerHasProtectionFrom(target, src) {
+	if attackerHasProtectionFromGS(gs, target, src) {
 		gs.LogEvent(Event{
 			Kind: "damage_prevented", Seat: src.Controller,
 			Target: target.Controller, Source: src.Card.DisplayName(),

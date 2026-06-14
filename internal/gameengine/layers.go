@@ -330,6 +330,19 @@ func BaseCharacteristics(p *Permanent) *Characteristics {
 	// Partition supertypes from types.
 	c.Types, c.Supertypes = partitionTypes(c.Types)
 
+	// §613.1e baseline: the card's printed (copiable) colors. Seed these so
+	// layer-5 color-change effects compose on top of the real base rather than
+	// an empty set — without this, ColorsOf returned nothing for an unmodified
+	// permanent and every color-matters query reading the layered color was
+	// blind. Mirrors cardColors (incl. its type-line color-word fallback) in a
+	// stable WUBRG(C) order so the layered query agrees with the printed helper.
+	if printed := cardColors(p.Card); len(printed) > 0 {
+		for _, letter := range []string{"W", "U", "B", "R", "G", "C"} {
+			if _, ok := printed[letter]; ok {
+				c.Colors = append(c.Colors, letter)
+			}
+		}
+	}
 	// Colors / abilities / keywords from AST when available.
 	if p.Card.AST != nil {
 		for _, ab := range p.Card.AST.Abilities {
