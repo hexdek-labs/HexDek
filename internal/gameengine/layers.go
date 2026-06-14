@@ -2485,27 +2485,29 @@ func registerASTStaticEffects(gs *GameState, p *Permanent) {
 		case "other_tribe_anthem":
 			pow, tough, tribe := extractPTTribe(mod.Args)
 			src := p
-			registerAnthemPT(gs, p, pow, tough, "ast-tribe-"+tribe, func(_ *GameState, t *Permanent) bool {
-				return t != src && t.Controller == src.Controller && permanentHasSubtype(t, tribe)
+			// §613.8: subtype gate reads in-progress chars (printed OR layer-4
+			// type-changer) inside the ApplyFn; predicate keeps controller/other.
+			registerTribeAnthemPT(gs, p, pow, tough, "ast-tribe-"+tribe, tribe, false, func(_ *GameState, t *Permanent) bool {
+				return t != src && t.Controller == src.Controller
 			})
 
 		case "tri_tribe_anthem":
 			pow, tough, tribe := extractPTTribe(mod.Args)
 			src := p
-			registerAnthemPT(gs, p, pow, tough, "ast-tri-tribe-"+tribe, func(_ *GameState, t *Permanent) bool {
-				return t.Controller == src.Controller && permanentHasSubtype(t, tribe)
+			registerTribeAnthemPT(gs, p, pow, tough, "ast-tri-tribe-"+tribe, tribe, false, func(_ *GameState, t *Permanent) bool {
+				return t.Controller == src.Controller
 			})
 
 		case "tribe_global_pt":
 			pow, tough, tribe := extractPTTribe(mod.Args)
-			registerAnthemPT(gs, p, pow, tough, "ast-tribe-global-"+tribe, func(_ *GameState, t *Permanent) bool {
-				return permanentHasSubtype(t, tribe)
+			registerTribeAnthemPT(gs, p, pow, tough, "ast-tribe-global-"+tribe, tribe, false, func(_ *GameState, _ *Permanent) bool {
+				return true
 			})
 
 		case "non_type_global_pt":
 			pow, tough, excludeType := extractPTTribe(mod.Args)
-			registerAnthemPT(gs, p, pow, tough, "ast-non-type-global", func(_ *GameState, t *Permanent) bool {
-				return !permanentHasSubtype(t, excludeType)
+			registerTribeAnthemPT(gs, p, pow, tough, "ast-non-type-global", excludeType, true, func(_ *GameState, _ *Permanent) bool {
+				return true
 			})
 
 		case "opp_creatures_base_pt":
@@ -2534,8 +2536,10 @@ func registerASTStaticEffects(gs *GameState, p *Permanent) {
 					tribe, _ = mod.Args[1].(string)
 				}
 				if tribe != "" {
-					registerKeywordGrant(gs, p, kw, "ast-tribe-kw-"+kw, func(_ *GameState, t *Permanent) bool {
-						return t.Controller == src.Controller && permanentHasSubtype(t, tribe)
+					// §613.8: subtype gate via in-progress chars (printed OR
+					// layer-4 type-changer), controller gate in the predicate.
+					registerTribeKeywordGrant(gs, p, kw, "ast-tribe-kw-"+kw, tribe, func(_ *GameState, t *Permanent) bool {
+						return t.Controller == src.Controller
 					})
 				} else {
 					registerKeywordGrant(gs, p, kw, "ast-yours-kw-"+kw, func(_ *GameState, t *Permanent) bool {
