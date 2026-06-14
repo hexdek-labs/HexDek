@@ -54,6 +54,12 @@ type CostModifier struct {
 	Kind   CostModifierKind
 	Amount int
 	Source string // card name for logging
+	// ColorCapable marks a CostModReduction that can pay for COLORED pips,
+	// not just generic mana — e.g. Convoke ("{1} or one mana of that
+	// creature's color"). Such reductions are exempt from the §601.2f-h
+	// colored-pip floor; plain generic reducers (medallions, affinity,
+	// "costs {N} less") leave it false and are floored at the colored count.
+	ColorCapable bool
 }
 
 // CastContext carries optional metadata about a cast that
@@ -135,13 +141,51 @@ func CalculateTotalCostWithContext(gs *GameState, card *Card, seatIdx int, ctx C
 	// conditions emit a reduction).
 	mods = append(mods, selfSpellCostReductionMods(gs, card, seatIdx)...)
 
-	return ApplyCostModifiers(baseCost, mods)
+	// CR §601.2f-h — generic cost reductions can't reduce the cost below its
+	// colored/colorless pip requirement. Floor the reduction step at the
+	// non-generic pip count derived from the printed mana cost.
+	return applyCostModifiersFloored(baseCost, mods, coloredPipFloor(card, baseCost))
+}
+
+// coloredPipFloor returns the portion of baseCost that GENERIC cost reductions
+// can never remove — the sum of colored, colorless ({C}), and hybrid pips per
+// CR §601.2f-h. Derived from the printed ManaCostString as CMC minus the pure
+// generic ({N}) pips. Returns 0 when the cost string is absent (engine tokens,
+// cost:N-only test cards) or when casting a back face (the string is the front
+// face's), preserving the legacy floor-at-zero behavior there.
+func coloredPipFloor(card *Card, baseCost int) int {
+	if card == nil || card.ManaCostString == "" {
+		return 0
+	}
+	if card.CastingBackFace && card.BackFaceCMC > 0 {
+		return 0
+	}
+	req := ParseCostRequirements(card.ManaCostString)
+	floor := baseCost - req.Generic
+	if floor < 0 {
+		floor = 0
+	}
+	return floor
 }
 
 // ApplyCostModifiers applies a list of cost modifiers to a base cost
 // per CR §601.2f ordering: increases first, then reductions (floor 0),
-// then minimums.
+// then minimums. The floor-0 variant; callers that know the spell's
+// colored-pip requirement should use the CalculateTotalCost* chokepoint,
+// which floors generic reductions at coloredPipFloor instead.
 func ApplyCostModifiers(baseCost int, mods []CostModifier) int {
+	return applyCostModifiersFloored(baseCost, mods, 0)
+}
+
+// applyCostModifiersFloored is ApplyCostModifiers with an explicit reduction
+// floor: increases first, then reductions clamped at `floor` (the colored/
+// colorless pip requirement generic reductions can't touch, CR §601.2f-h),
+// then minimums (Trinisphere). A minimum may still raise the cost above the
+// floor.
+func applyCostModifiersFloored(baseCost int, mods []CostModifier, floor int) int {
+	if floor < 0 {
+		floor = 0
+	}
 	cost := baseCost
 
 	// Step 1: Apply all increases.
@@ -151,9 +195,22 @@ func ApplyCostModifiers(baseCost int, mods []CostModifier) int {
 		}
 	}
 
-	// Step 2: Apply all reductions (floor 0).
+	// Step 2a: Apply generic-only reductions, floored at the non-generic pip
+	// count (CR §601.2f-h: generic reductions can't touch colored/colorless
+	// pips).
 	for _, m := range mods {
-		if m.Kind == CostModReduction {
+		if m.Kind == CostModReduction && !m.ColorCapable {
+			cost -= m.Amount
+			if cost < floor {
+				cost = floor
+			}
+		}
+	}
+
+	// Step 2b: Apply color-capable reductions (Convoke), which CAN pay colored
+	// pips and so floor at 0.
+	for _, m := range mods {
+		if m.Kind == CostModReduction && m.ColorCapable {
 			cost -= m.Amount
 			if cost < 0 {
 				cost = 0
@@ -1184,9 +1241,10 @@ func ScanCostModifiersWithContext(gs *GameState, card *Card, seatIdx int, ctx Ca
 		convokeCount := ConvokeCostReduction(gs, seatIdx)
 		if convokeCount > 0 {
 			mods = append(mods, CostModifier{
-				Kind:   CostModReduction,
-				Amount: convokeCount,
-				Source: "convoke",
+				Kind:         CostModReduction,
+				Amount:       convokeCount,
+				Source:       "convoke",
+				ColorCapable: true, // tapped creatures can pay colored pips
 			})
 		}
 	}
