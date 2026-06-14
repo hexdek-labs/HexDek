@@ -2605,14 +2605,37 @@ func (gs *GameState) moveToZone(seat int, c *Card, zone string) {
 
 // GainLife adds life to a seat and fires the life_gained trigger so that
 // Sanguine Bond, Aetherflux Reservoir, etc. see every life gain event.
-func GainLife(gs *GameState, seat, amount int, source string) {
+// GainLife applies a life gain to `seat`, routing it through the CR §614
+// would_gain_life replacement chain FIRST so EVERY lifegain source — combat
+// lifelink, ETB drains, modal/triggered effects, the AST resolveGainLife path —
+// is covered by lifegain doublers (Boon Reflection, Rhox Faithmender,
+// Alhammarret's Archive — which multiply when stacked), additive deltas (Angel
+// of Vitality), can't-gain-life, and opponent-gain→loss (Tainted Remedy). The
+// post-replacement amount is what the life_gained trigger observers (Well of
+// Lost Dreams, Archangel of Thune, Dawn of Hope) see — i.e. doublers apply
+// BEFORE the payoff trigger reads the amount. Returns the life actually gained
+// (0 if cancelled or non-positive).
+//
+// Pre-r63 the would_gain_life chain was consulted ONLY in resolveGainLife, so
+// the 120+ bare GainLife() callers silently bypassed all §614 life
+// replacements.
+func GainLife(gs *GameState, seat, amount int, source string) int {
 	if gs == nil || amount <= 0 || seat < 0 || seat >= len(gs.Seats) {
-		return
+		return 0
 	}
 	s := gs.Seats[seat]
 	if s == nil || s.Lost {
-		return
+		return 0
 	}
+	// §614 replacement chain (doublers / deltas / can't-gain / gain→loss).
+	// No would_gain_life ApplyFn re-enters GainLife (the gain→loss handler
+	// calls LoseLife), so this cannot recurse.
+	modified, cancelled := FireGainLifeEvent(gs, seat, amount, nil)
+	if cancelled || modified <= 0 {
+		return 0
+	}
+	amount = modified
+
 	s.Life += amount
 	s.Turn.LifeGained += amount
 	if s.Flags == nil {
@@ -2633,6 +2656,7 @@ func GainLife(gs *GameState, seat, amount int, source string) {
 		"amount": amount,
 		"source": source,
 	})
+	return amount
 }
 
 // LoseLife subtracts life, increments Turn.LifeLost, fires life_lost

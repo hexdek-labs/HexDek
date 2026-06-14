@@ -1183,19 +1183,20 @@ func resolveGainLife(gs *GameState, src *Permanent, e *gameast.GainLife) {
 		if !ok {
 			continue
 		}
-		// §614: would_gain_life replacement chain — doublers (Alhammarret's
-		// Archive, Boon Reflection, Rhox Faithmender) multiply here.
-		modified, cancelled := FireGainLifeEvent(gs, seat, amount, src)
-		if cancelled || modified <= 0 {
+		// §614 would_gain_life replacement chain (doublers / deltas /
+		// can't-gain / opponent-gain→loss) is applied INSIDE GainLife now,
+		// so every lifegain source is covered uniformly. GainLife returns
+		// the post-replacement amount actually gained (0 if cancelled).
+		gained := GainLife(gs, seat, amount, sourceName(src))
+		if gained <= 0 {
 			continue
 		}
-		GainLife(gs, seat, modified, sourceName(src))
 		gs.LogEvent(Event{
 			Kind:   "gain_life",
 			Seat:   controllerSeat(src),
 			Target: seat,
 			Source: sourceName(src),
-			Amount: modified,
+			Amount: gained,
 		})
 	}
 }
