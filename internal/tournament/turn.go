@@ -2,8 +2,10 @@ package tournament
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/gameengine"
@@ -251,8 +253,9 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 	// §503.1 priority window: after upkeep triggers resolve, the active
 	// player may activate instant-speed abilities and cast instants.
 	// This is where Braid of Fire mana gets spent, Necropotence draws
-	// happen, and flash creatures enter.
-	runInstantPriority(gs, active)
+	// happen, and flash creatures enter. APNAP: opponents also receive a
+	// window here to hold up instant-speed interaction (CR §405.3).
+	runInstantPriorityAPNAP(gs, active)
 	if gs.CheckEnd() || seat.Lost {
 		return
 	}
@@ -288,8 +291,9 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 	// §504.1 priority window: players get priority after the draw and
 	// after draw-step triggers resolve. Instant-speed actions before
 	// moving to main phase (e.g., Brainstorm in response to draw trigger,
-	// flash creatures, Teferi's Protection before main).
-	runInstantPriority(gs, active)
+	// flash creatures, Teferi's Protection before main). APNAP — opponents
+	// receive a window too (CR §405.3).
+	runInstantPriorityAPNAP(gs, active)
 	if gs.CheckEnd() || seat.Lost {
 		return
 	}
@@ -436,7 +440,7 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 		if gs.CheckEnd() || seat.Lost {
 			return
 		}
-		runInstantPriority(gs, active)
+		runInstantPriorityAPNAP(gs, active)
 		if gs.CheckEnd() || seat.Lost {
 			return
 		}
@@ -475,7 +479,9 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 	// §513.1 priority window: after end-step triggers resolve, players
 	// get priority. Flash creatures, instant-speed removal, Restoration
 	// Angel, Teferi's Protection, "at end of turn" plays all happen here.
-	runInstantPriority(gs, active)
+	// APNAP — this is the highest-value non-active window: end-of-turn
+	// removal and "hold up removal, cast on their end step" (CR §405.3).
+	runInstantPriorityAPNAP(gs, active)
 	if gs.CheckEnd() {
 		return
 	}
@@ -1707,18 +1713,96 @@ func clearOneShotLandDrops(gs *gameengine.GameState, seatIdx int) {
 	}
 }
 
-// runInstantPriority gives the active player a chance to activate instant-
-// speed abilities and cast instants/flash spells during any step where
-// players receive priority (upkeep, draw, end step, etc.). Uses the
-// current gs.Phase/gs.Step to determine timing legality — sorcery-speed
-// abilities are automatically excluded by buildActivationOptions.
-func runInstantPriority(gs *gameengine.GameState, seatIdx int) {
-	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+// nonActiveInstantWindowsDisabled is an A/B toggle (default false = fix ON).
+// When true, runInstantPriorityAPNAP only opens a window for the active
+// player — the pre-r63 behavior. Used by the empirical harness to measure
+// the interaction delta the fix produces. Production never sets it. It can
+// also be forced on via HEXDEK_DISABLE_NONACTIVE_WINDOWS=1 for A/B timing.
+var nonActiveInstantWindowsDisabled = os.Getenv("HEXDEK_DISABLE_NONACTIVE_WINDOWS") == "1"
+
+// metricNonActiveInstantActs counts how many times a NON-ACTIVE seat actually
+// cast a spell or activated an ability during an APNAP instant-speed window
+// (i.e. on an opponent's turn). metricNonActiveWindowsOffered counts how many
+// such windows were offered to a seat that had an affordable instant-speed
+// play. Both are process-global atomics read by the empirical A/B test. They
+// are pure instrumentation — nothing in the game logic reads them.
+var (
+	metricNonActiveInstantActs    int64
+	metricNonActiveWindowsOffered int64
+)
+
+// runInstantPriorityAPNAP opens an instant-speed priority window in APNAP
+// order (CR §405.3 / §117.1): the active player first, then each non-active
+// player in turn order. It loops until a full pass in which no seat takes an
+// action (CR §117.4), bounded by maxPriorityRounds.
+//
+// Before r63 the turn driver only ever called runInstantPriority(gs, active)
+// at the upkeep/draw/end-step windows, so NON-active players never received a
+// window when the stack was empty — they could only ever REACT to an object an
+// opponent put on the stack (via gameengine.PriorityRound). That made the AI
+// unable to cast end-of-turn removal, hold up instant-speed interaction on an
+// opponent's turn, or flash in a blocker proactively — the structural half of
+// "the hats are not fully interacting on the stack." This wrapper closes that
+// gap at every driver-controlled empty-stack window.
+//
+// The per-seat hasAffordableInstantPlay gate inside runInstantPriority keeps
+// the added windows cheap: a seat with no affordable instant-speed play
+// returns immediately without tapping anything.
+func runInstantPriorityAPNAP(gs *gameengine.GameState, active int) {
+	if gs == nil || active < 0 || active >= len(gs.Seats) {
 		return
+	}
+	// Active player always gets the window (pre-r63 behavior, preserved).
+	runInstantPriority(gs, active)
+	if nonActiveInstantWindowsDisabled || gs.CheckEnd() {
+		return
+	}
+	// APNAP: offer to each non-active player, looping until a full pass with
+	// no action (someone acting can change a later seat's decision, so we
+	// re-poll all of them — bounded to avoid pathological ping-pong).
+	const maxPriorityRounds = 4
+	for round := 0; round < maxPriorityRounds; round++ {
+		anyActed := false
+		for _, opp := range gs.Opponents(active) {
+			if gs.CheckEnd() {
+				return
+			}
+			seat := gs.Seats[opp]
+			if !seatCanAct(seat) || seat.Hat == nil {
+				continue
+			}
+			if !hasAffordableInstantPlay(gs, opp) {
+				continue
+			}
+			atomic.AddInt64(&metricNonActiveWindowsOffered, 1)
+			if runInstantPriority(gs, opp) {
+				atomic.AddInt64(&metricNonActiveInstantActs, 1)
+				anyActed = true
+			}
+		}
+		// The active player may now want to respond to whatever the opponents
+		// just did (CR §117.3c — they regain priority). Re-offer once per round.
+		if anyActed {
+			runInstantPriority(gs, active)
+		} else {
+			break
+		}
+	}
+}
+
+// runInstantPriority gives a player a chance to activate instant-speed
+// abilities and cast instants/flash spells during any step where players
+// receive priority (upkeep, draw, end step, etc.). Uses the current
+// gs.Phase/gs.Step to determine timing legality — sorcery-speed abilities are
+// automatically excluded by buildActivationOptions. Returns true iff the seat
+// took at least one action (so APNAP polling knows whether to re-poll).
+func runInstantPriority(gs *gameengine.GameState, seatIdx int) bool {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return false
 	}
 	seat := gs.Seats[seatIdx]
 	if !seatCanAct(seat) || seat.Hat == nil {
-		return
+		return false
 	}
 
 	// Lazy mana-tap: only tap the whole mana base if the hat plausibly has
@@ -1729,15 +1813,16 @@ func runInstantPriority(gs *gameengine.GameState, seatIdx int) {
 	// A false "yes" merely taps as before (status quo); we lean toward true
 	// when uncertain, so we never skip a window the hat actually wanted.
 	if !hasAffordableInstantPlay(gs, seatIdx) {
-		return
+		return false
 	}
 
 	tapAllManaSources(gs, seat)
 
+	actedAny := false
 	const maxUpkeepActions = 3
 	for i := 0; i < maxUpkeepActions; i++ {
 		if gs.CheckEnd() || !seatCanAct(seat) {
-			return
+			return actedAny
 		}
 
 		acted := false
@@ -1778,7 +1863,9 @@ func runInstantPriority(gs *gameengine.GameState, seatIdx int) {
 		if !acted {
 			break
 		}
+		actedAny = true
 	}
+	return actedAny
 }
 
 // hasAffordableInstantPlay reports whether the seat plausibly has an
