@@ -27,6 +27,13 @@ func nellySuspect(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
+	// CR §603.2 self-gate: "Whenever Nelly Borca attacks" fires only when Nelly
+	// itself attacks. creature_attacks is dispatched once per declared attacker,
+	// so without this the suspect + goad-all ran once per attacker. See the Aang
+	// and Katara fix (5254f9cf).
+	if atk, _ := ctx["attacker_perm"].(*gameengine.Permanent); atk != perm {
+		return
+	}
 	var best *gameengine.Permanent
 	for _, opp := range gs.Opponents(perm.Controller) {
 		s := gs.Seats[opp]

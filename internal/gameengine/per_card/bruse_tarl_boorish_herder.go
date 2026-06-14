@@ -24,8 +24,12 @@ func bruseTarlAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 	if ctx == nil {
 		return
 	}
-	attackerSeat, _ := ctx["seat"].(int)
-	if attackerSeat != perm.Controller {
+	// CR §603.2 self-gate: "Whenever ~ attacks" fires only when this creature
+	// itself is the attacker. The creature_attacks event is dispatched once per
+	// declared attacker, so the old seat check (ctx["seat"] is never populated by
+	// the attack fire → it only matched seat 0) let the effect multiply per
+	// attacker. Mirrors the canonical gate and the Aang and Katara fix (5254f9cf).
+	if atk, _ := ctx["attacker_perm"].(*gameengine.Permanent); atk != perm {
 		return
 	}
 	bruseTarlGrant(gs, perm, "attack")

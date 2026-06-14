@@ -90,7 +90,13 @@ func omoAttack(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[str
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
-	if attackerSeat, _ := ctx["seat"].(int); attackerSeat != perm.Controller {
+	// CR §603.2 self-gate: "Whenever Omo enters or attacks" — on the attack
+	// branch, fire only when Omo itself is the attacker. creature_attacks is
+	// dispatched once per declared attacker, so the old seat check (ctx["seat"]
+	// is never populated → matched only seat 0) stamped counters once per
+	// attacker. See the Aang and Katara fix (5254f9cf). ETB dispatch passes no
+	// attacker_perm, so this branch is reached only via the attack fire.
+	if atk, _ := ctx["attacker_perm"].(*gameengine.Permanent); atk != perm {
 		return
 	}
 	omoStampCounters(gs, perm, "omo_attack_everything", "attack")

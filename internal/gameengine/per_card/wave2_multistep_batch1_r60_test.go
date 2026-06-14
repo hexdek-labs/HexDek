@@ -190,7 +190,9 @@ func TestWave2MS_Ayesha_PlaysArtifactsRotatesRest(t *testing.T) {
 	spell := &gameengine.Card{Name: "Just a Spell", Owner: 0, Types: []string{"sorcery"}, CMC: 2}
 	gs.Seats[0].Library = append(gs.Seats[0].Library, cheapArt, otherArt, bigArt, spell)
 
-	ayeshaAttacks(gs, ayesha, map[string]interface{}{"seat": 0})
+	// Engine fires creature_attacks with attacker_perm (not "seat"); Ayesha
+	// herself is the attacker. (r63 self-gate: "seat":0 was the pre-fix ctx.)
+	ayeshaAttacks(gs, ayesha, map[string]interface{}{"attacker_perm": ayesha, "attacker_seat": 0})
 
 	// Power=5: cheapArt (CMC 1) and otherArt (CMC 1) both cast. bigArt (CMC 9)
 	// over power cap. spell isn't an artifact.

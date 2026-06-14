@@ -24,6 +24,14 @@ func burakosAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
+	// CR §603.2 self-gate: "Whenever Burakos, Party Leader attacks" fires only
+	// when Burakos itself attacks. creature_attacks is dispatched once per
+	// declared attacker, so without this Burakos drained life + minted Treasure
+	// for EVERY creature the controller attacked with. See the Aang and Katara
+	// fix (5254f9cf). (The attacker_seat check below is now subsumed.)
+	if atk, _ := ctx["attacker_perm"].(*gameengine.Permanent); atk != perm {
+		return
+	}
 	// Engine fires creature_attacks with attacker_perm + attacker_seat;
 	// defender is stored on the attacker via setAttackerDefender. Legacy
 	// "seat" / "defender_seat" reads kept as fallbacks for callers that

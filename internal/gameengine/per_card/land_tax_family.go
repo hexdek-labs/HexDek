@@ -123,6 +123,14 @@ func registerLandTaxFamily(r *Registry) {
 			})
 		case landFetchTriggerAttack:
 			r.OnTrigger(cfg.cardName, "attacks", func(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[string]interface{}) {
+				// CR §603.2 self-gate: "Whenever ~ attacks" (Aerial Surveyor)
+				// fires only when this permanent itself attacks. creature_attacks
+				// is dispatched once per declared attacker, so without this the
+				// land fetch ran once per attacker. See the Aang and Katara fix
+				// (5254f9cf).
+				if atk, _ := ctx["attacker_perm"].(*gameengine.Permanent); atk != perm {
+					return
+				}
 				runLandFetchFamily(gs, perm, cfg, ctx)
 			})
 		}

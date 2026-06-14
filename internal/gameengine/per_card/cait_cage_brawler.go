@@ -27,6 +27,14 @@ func caitAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[s
 	if gs == nil || perm == nil || ctx == nil {
 		return
 	}
+	// CR §603.2 self-gate: "Whenever Cait, Cage Brawler attacks" fires only when
+	// Cait itself attacks. creature_attacks is dispatched once per declared
+	// attacker, so without this the symmetric loot + counter check ran once per
+	// attacker instead of once. See the Aang and Katara fix (5254f9cf). (The
+	// attacker_seat check below is now subsumed.)
+	if atk, _ := ctx["attacker_perm"].(*gameengine.Permanent); atk != perm {
+		return
+	}
 	// Engine fires creature_attacks with attacker_perm + attacker_seat;
 	// defender is stored on the attacker via setAttackerDefender. Legacy
 	// "seat" / "defender_seat" reads kept as fallbacks for callers that
