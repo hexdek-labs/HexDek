@@ -811,10 +811,81 @@ func canAttackGS(gs *GameState, p *Permanent) bool {
 	if p.Flags != nil && p.Flags["detained"] == 1 {
 		return false
 	}
+	// Kulrath Knight (§508 static): an opponent's counter-bearing creature
+	// can't be declared as an attacker.
+	if lockedByOpponentCounterStatic(gs, p) {
+		return false
+	}
 	if p.Power() <= 0 {
 		return false
 	}
 	return true
+}
+
+// isCounterCombatLockSource reports whether a permanent's printed static is
+// "Creatures your opponents control with counters on them can't attack or
+// block" (Kulrath Knight, CR §509/§508 continuous combat restriction). Kept as
+// a small named set so siblings with the identical wording can be added here.
+func isCounterCombatLockSource(name string) bool {
+	switch name {
+	case "Kulrath Knight":
+		return true
+	}
+	return false
+}
+
+// hasAnyCounter reports whether the permanent currently carries at least one
+// counter of ANY kind — +1/+1, -1/-1 (Wither/Infect), stun, shield, finality,
+// a keyword counter, charge, etc. Checks both the legacy Counters map and the
+// Counter-DB CounterStacks store.
+func hasAnyCounter(p *Permanent) bool {
+	if p == nil {
+		return false
+	}
+	for _, n := range p.Counters {
+		if n > 0 {
+			return true
+		}
+	}
+	for _, st := range p.CounterStacks {
+		if st.Count > 0 {
+			return true
+		}
+	}
+	return false
+}
+
+// lockedByOpponentCounterStatic reports whether creature p may neither attack
+// nor block because it carries a counter and an OPPONENT of its controller has
+// a Kulrath-Knight-style "creatures your opponents control with counters on
+// them can't attack or block" static on the battlefield. Re-evaluated on every
+// legality check, so it turns off the instant the last counter is removed or
+// the source leaves play (CR §613 continuous effect).
+func lockedByOpponentCounterStatic(gs *GameState, p *Permanent) bool {
+	if gs == nil || p == nil || !p.IsCreature() {
+		return false
+	}
+	if !hasAnyCounter(p) {
+		return false
+	}
+	for _, opp := range gs.Opponents(p.Controller) {
+		if opp < 0 || opp >= len(gs.Seats) {
+			continue
+		}
+		s := gs.Seats[opp]
+		if s == nil {
+			continue
+		}
+		for _, src := range s.Battlefield {
+			if src == nil || src.Card == nil || src.PhasedOut {
+				continue
+			}
+			if isCounterCombatLockSource(src.Card.DisplayName()) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // passesCombatRestriction checks gs.CurrentCombatRestriction (set by the
@@ -1216,6 +1287,11 @@ func canBlockGS(gs *GameState, attacker, blocker *Permanent) bool {
 	}
 	// §702.26: phased-out permanents don't exist.
 	if blocker.PhasedOut || attacker.PhasedOut {
+		return false
+	}
+	// Kulrath Knight (§509 static): an opponent's counter-bearing creature
+	// can't be declared as a blocker.
+	if lockedByOpponentCounterStatic(gs, blocker) {
 		return false
 	}
 	// Flying: blocked only by flying or reach. Layer-aware (keywordActive)

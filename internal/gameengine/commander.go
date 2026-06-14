@@ -305,6 +305,22 @@ func FireZoneChange(gs *GameState, perm *Permanent, card *Card, ownerSeat int, f
 		if redirected := gyEv.String("to_zone"); redirected != "" && redirected != "graveyard" {
 			dest = redirected
 		}
+		// CR §122.1h — finality counter: "If a permanent with a finality
+		// counter on it would be put into a graveyard from the battlefield,
+		// exile it instead." Applies after Rest-in-Peace-style redirects (both
+		// land on exile, so no conflict). The counter is NOT consumed — this is
+		// a destination replacement, so the counter leaves with the card.
+		if dest == "graveyard" && fromZone == "battlefield" && perm != nil &&
+			perm.Counters != nil && perm.Counters["finality"] > 0 {
+			dest = "exile"
+			gs.LogEvent(Event{
+				Kind:   "finality_counter_exile",
+				Seat:   ownerSeat,
+				Target: -1,
+				Source: card.DisplayName(),
+				Details: map[string]interface{}{"rule": "122.1h"},
+			})
+		}
 	}
 	// Apply the destination.
 	if dest == "command_zone" {
