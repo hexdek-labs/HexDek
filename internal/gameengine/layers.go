@@ -1153,7 +1153,7 @@ func RegisterDynamicSetPT(gs *GameState, target *Permanent,
 	ts := gs.NextTimestamp()
 	ce := &ContinuousEffect{
 		Layer:          LayerPT,
-		Sublayer:       "b",
+		Sublayer:       "a", // CR §613.4a — characteristic-defining P/T is layer 7a
 		Timestamp:      ts,
 		SourcePerm:     target,
 		SourceCardName: sourceCardName,
@@ -1191,7 +1191,7 @@ func RegisterDynamicSetPower(gs *GameState, target *Permanent,
 	ts := gs.NextTimestamp()
 	ce := &ContinuousEffect{
 		Layer:          LayerPT,
-		Sublayer:       "b",
+		Sublayer:       "a", // CR §613.4a — characteristic-defining P/T is layer 7a
 		Timestamp:      ts,
 		SourcePerm:     target,
 		SourceCardName: sourceCardName,
@@ -1222,7 +1222,7 @@ func RegisterDynamicSetToughness(gs *GameState, target *Permanent,
 	ts := gs.NextTimestamp()
 	ce := &ContinuousEffect{
 		Layer:          LayerPT,
-		Sublayer:       "b",
+		Sublayer:       "a", // CR §613.4a — characteristic-defining P/T is layer 7a
 		Timestamp:      ts,
 		SourcePerm:     target,
 		SourceCardName: sourceCardName,

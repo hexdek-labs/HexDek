@@ -344,6 +344,19 @@ func FireZoneChange(gs *GameState, perm *Permanent, card *Card, ownerSeat int, f
 		controllerSeat = perm.Controller
 	}
 	gs.moveToZone(ownerSeat, card, dest)
+	// §613 cache: graveyard/battlefield/exile-counting CDAs (Mortivore,
+	// Tarmogoyf, Lhurgoyf, Lord of Extinction, Nighthowler) and battlefield-
+	// count anthems depend on these zones' contents. FireZoneChange is the
+	// canonical battlefield-EXIT path (SBA death, combat death, sacrifice,
+	// LTB) — and unlike MoveCard (zone_move.go) it did NOT bump the
+	// characteristics-cache epoch, so a creature dying into a graveyard left
+	// every graveyard-counting CDA reading its STALE pre-death P/T. That is
+	// the Mortivore self-destroy class: a creature dies mid-SBA, Mortivore
+	// should grow, but its cached toughness lags and a later §704.5f/§704.5g
+	// check can read it too low. Mirror MoveCard's invalidation here.
+	if zoneAffectsCharacteristics(fromZone) || zoneAffectsCharacteristics(dest) {
+		gs.InvalidateCharacteristicsCache()
+	}
 	gs.LogEvent(Event{
 		Kind: "zone_change", Seat: ownerSeat, Target: -1,
 		Source: card.DisplayName(),
@@ -354,6 +367,19 @@ func FireZoneChange(gs *GameState, perm *Permanent, card *Card, ownerSeat int, f
 		},
 	})
 	return dest
+}
+
+// zoneAffectsCharacteristics reports whether a card entering/leaving `zone`
+// can change some permanent's layer-computed characteristics (graveyard- and
+// battlefield-count CDAs / anthems, exile-count effects). Used to gate the
+// §613 cache bump on the FireZoneChange path.
+func zoneAffectsCharacteristics(zone string) bool {
+	switch zone {
+	case "battlefield", "graveyard", "exile":
+		return true
+	default:
+		return false
+	}
 }
 
 // -----------------------------------------------------------------------------
