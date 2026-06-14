@@ -173,8 +173,18 @@ func ApplyCascade(gs *GameState, controller int, spellCMC int, spellName string)
 			if HasStormKeyword(found) {
 				ApplyStormCopies(gs, cascadeItem, controller)
 			}
-			if HasCascadeKeyword(found) {
-				ApplyCascade(gs, controller, manaCostOf(found), found.DisplayName())
+			// CR §702.85b — cascade is a separate triggered ability PER
+			// instance. When a cascade spell cascades INTO a multi-cascade
+			// card (e.g. Maelstrom Wanderer ×2, Apex Devastator ×4), the
+			// cast of that card fires cascade once per instance, exactly as
+			// the CastSpell entry path does. The old single ApplyCascade call
+			// here chained only ONE instance, so a cascaded-into Maelstrom
+			// Wanderer cascaded once instead of twice.
+			if cc := CascadeCount(found); cc > 0 {
+				foundMV := manaCostOf(found)
+				for i := 0; i < cc; i++ {
+					ApplyCascade(gs, controller, foundMV, found.DisplayName())
+				}
 			}
 			if cardHasKeyword(found, "discover") {
 				PerformDiscover(gs, controller, manaCostOf(found))
