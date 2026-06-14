@@ -325,6 +325,7 @@ func (v *LegalityValidator) FinishCast(gs *GameState, obs *LegalityObservation, 
 	if obs.Seat >= 0 && obs.Seat < len(gs.Seats) {
 		obs.PoolAfter = EnsureTypedPool(gs.Seats[obs.Seat]).Total()
 	}
+	v.creditNestedSpendToParents(obs)
 	v.runChecks(gs, obs)
 }
 
@@ -371,6 +372,7 @@ func (v *LegalityValidator) FinishActivation(gs *GameState, obs *LegalityObserva
 	if obs.Seat >= 0 && obs.Seat < len(gs.Seats) {
 		obs.PoolAfter = EnsureTypedPool(gs.Seats[obs.Seat]).Total()
 	}
+	v.creditNestedSpendToParents(obs)
 	v.runChecks(gs, obs)
 }
 
@@ -403,6 +405,41 @@ func (v *LegalityValidator) NoteManaSpend(seatIdx, amount int) {
 	for _, obs := range v.active {
 		if obs != nil && obs.Seat == seatIdx {
 			obs.AuxManaSpentDuringWindow += amount
+		}
+	}
+}
+
+// creditNestedSpendToParents folds a just-completed observation's net pool
+// consumption into the aux-spend total of every still-active observation for
+// the same seat — i.e. its PARENT windows. Called from FinishCast /
+// FinishActivation AFTER popActiveThrough(obs) has removed obs from v.active,
+// so the inner observation never credits itself.
+//
+// Why this is needed: the engine lets a cast/activation's triggered abilities
+// resolve INSIDE the announcing window (the PushPerCardTrigger bridge — see
+// CastSpell's gs.ResolvingCards note). A trigger that grants priority can let
+// the same seat cast a SECOND spell (e.g. an Urtet cast-trigger lands on the
+// stack and the caster responds with a counterspell) before the outer spell's
+// FinishCast snapshots PoolAfter. That nested cast's own cost left the pool, so
+// the outer window's `PoolBefore - PoolAfter` delta over-counts by exactly the
+// nested spell's cost and the §601.2f-h cost-paid check false-positives as an
+// "over-paid (double-deduction)". NoteManaAdd / NoteManaSpend already mirror a
+// child's added / aux mana onto the parents; this is the missing third leg —
+// the child's own base cost. Crediting the child's measured net spend
+// (PoolBefore + added - aux - PoolAfter) makes the parent delta neutral to
+// everything the child did to the pool, and composes recursively for
+// nested-within-nested casts.
+func (v *LegalityValidator) creditNestedSpendToParents(obs *LegalityObservation) {
+	if v == nil || obs == nil {
+		return
+	}
+	net := obs.PoolBefore + obs.ManaAddedDuringWindow - obs.AuxManaSpentDuringWindow - obs.PoolAfter
+	if net <= 0 {
+		return // child netted zero or gained mana — added mirror already covers parents
+	}
+	for _, parent := range v.active {
+		if parent != nil && parent.Seat == obs.Seat {
+			parent.AuxManaSpentDuringWindow += net
 		}
 	}
 }
