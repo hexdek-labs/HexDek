@@ -2149,30 +2149,22 @@ func resolveFight(gs *GameState, src *Permanent, e *gameast.Fight) {
 	if a == nil || b == nil {
 		return
 	}
+	// CR §701.12c: both fighters deal damage SIMULTANEOUSLY equal to their
+	// power. Capture both powers BEFORE dealing any damage so A killing or
+	// shrinking B doesn't change the damage B deals back (and vice versa).
 	aPow := a.Power()
 	bPow := b.Power()
 
-	// A always deals damage to B.
-	if aPow > 0 {
-		b.MarkedDamage += aPow
-		// §702.2 — deathtouch: any damage from a deathtouch source is lethal.
-		if a.HasKeyword("deathtouch") {
-			if b.Flags == nil {
-				b.Flags = map[string]int{}
-			}
-			b.Flags["deathtouch_damaged"] = 1
-		}
-	}
+	// A always deals damage to B. The damage is dealt BY A (CR §701.12c, NOT
+	// combat damage) so it routes through the canonical noncombat-damage path
+	// (replacement §614, prevention §615, MarkedDamage, deals-damage triggers)
+	// and applies A's deathtouch / lifelink. The old code raw-incremented
+	// MarkedDamage, silently skipping lifelink and every deals-damage trigger.
+	dealFightDamage(gs, a, b, aPow)
 
 	// B deals damage to A only for mutual fights (CR §701.12), not bites.
-	if !e.OneSided && bPow > 0 {
-		a.MarkedDamage += bPow
-		if b.HasKeyword("deathtouch") {
-			if a.Flags == nil {
-				a.Flags = map[string]int{}
-			}
-			a.Flags["deathtouch_damaged"] = 1
-		}
+	if !e.OneSided {
+		dealFightDamage(gs, b, a, bPow)
 	}
 
 	kind := "fight"
@@ -2190,6 +2182,28 @@ func resolveFight(gs *GameState, src *Permanent, e *gameast.Fight) {
 			"mutual": !e.OneSided,
 		},
 	})
+}
+
+// dealFightDamage applies one direction of a fight/bite: `source` deals `pow`
+// noncombat damage to `target`. Routes through applyDamage (replacement,
+// prevention, MarkedDamage, deals-damage triggers) and applies the source's
+// deathtouch (§702.2 — any nonzero damage is lethal, flagged for §704.5h SBA)
+// and lifelink (§702.15 — controller gains that much life). 0-power deals
+// nothing (CR-legal no-op).
+func dealFightDamage(gs *GameState, source, target *Permanent, pow int) {
+	if gs == nil || source == nil || target == nil || pow <= 0 {
+		return
+	}
+	applyDamage(gs, source, Target{Kind: TargetKindPermanent, Permanent: target}, pow)
+	if source.HasKeyword("deathtouch") {
+		if target.Flags == nil {
+			target.Flags = map[string]int{}
+		}
+		target.Flags["deathtouch_damaged"] = 1
+	}
+	if source.HasKeyword("lifelink") {
+		GainLife(gs, source.Controller, pow, source.Card.DisplayName())
+	}
 }
 
 // -----------------------------------------------------------------------------
