@@ -114,12 +114,26 @@ func saheeliCombatCopy(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	if !gameengine.PayEnergy(gs, perm.Controller, 3) {
 		return
 	}
-	tokenCard := &gameengine.Card{
-		Name:          pick.Card.DisplayName() + " (Saheeli token)",
-		Owner:         perm.Controller,
-		Types:         append([]string{"token", "artifact", "creature"}, pick.Card.Types...),
-		BasePower:     5,
-		BaseToughness: 5,
+	// CR §707 token-copy: "a token that's a copy of [target], except it's a
+	// 5/5 artifact ... and it has haste." Route through MintTokenAsCopyOf so
+	// the token carries the source's FULL copiable values — including its
+	// ABILITIES (AST) — then apply the P/T + type overrides. The old
+	// hand-built Card dropped the AST entirely (a copy with no rules text) and
+	// never fired the copied creature's ETB triggers.
+	tokenCard := gameengine.MintTokenAsCopyOf(gs, pick.Card, perm.Controller, "")
+	if tokenCard == nil {
+		tokenCard = &gameengine.Card{
+			Name:  pick.Card.DisplayName() + " (Saheeli token)",
+			Owner: perm.Controller,
+			Types: append([]string{"token", "artifact", "creature"}, pick.Card.Types...),
+		}
+	}
+	tokenCard.BasePower = 5
+	tokenCard.BaseToughness = 5
+	for _, t := range []string{"creature", "artifact", "token"} {
+		if !hasType(tokenCard.Types, t) {
+			tokenCard.Types = append([]string{t}, tokenCard.Types...)
+		}
 	}
 	tokenPerm := &gameengine.Permanent{
 		Card:       tokenCard,
@@ -130,6 +144,8 @@ func saheeliCombatCopy(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 		Flags:      map[string]int{"kw:haste": 1},
 	}
 	seat.Battlefield = append(seat.Battlefield, tokenPerm)
+	gameengine.RegisterReplacementsForPermanent(gs, tokenPerm)
+	gameengine.FirePermanentETBTriggers(gs, tokenPerm)
 	gs.RegisterDelayedTrigger(&gameengine.DelayedTrigger{
 		TriggerAt:      "next_end_step",
 		ControllerSeat: perm.Controller,

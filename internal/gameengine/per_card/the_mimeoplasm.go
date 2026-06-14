@@ -78,19 +78,28 @@ func theMimeoplasmETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	moveCardBetweenZones(gs, copyOf.seat, copyOf.card, "graveyard", "exile", "the_mimeoplasm_exile")
 	moveCardBetweenZones(gs, powerOf.seat, powerOf.card, "graveyard", "exile", "the_mimeoplasm_exile")
 
-	// Mutate Mimeoplasm into a copy. Copy core fields but keep Owner.
+	// CR §707 "enters as a copy of one of those cards": copy the FULL
+	// copiable values of the chosen exiled card — including its ABILITIES
+	// (AST) — via BecomeCopyOfCard, NOT a hand-built P/T+types+colors shell
+	// that dropped all rules text. BecomeCopyOfCard preserves Mimeoplasm's
+	// OWN InstanceID and stamps the copy lineage.
 	originalName := perm.Card.DisplayName()
-	perm.Card = &gameengine.Card{
-		Name:          copyOf.card.DisplayName(),
-		Owner:         perm.Card.Owner,
-		BasePower:     copyOf.card.BasePower,
-		BaseToughness: copyOf.card.BaseToughness,
-		Types:         append([]string(nil), copyOf.card.Types...),
-		Colors:        append([]string(nil), copyOf.card.Colors...),
-		TypeLine:      copyOf.card.TypeLine,
+	if cp := gameengine.BecomeCopyOfCard(gs, perm, copyOf.card); cp != nil {
+		perm.Card = cp
+	} else {
+		perm.Card = &gameengine.Card{
+			Name:          copyOf.card.DisplayName(),
+			Owner:         perm.Card.Owner,
+			BasePower:     copyOf.card.BasePower,
+			BaseToughness: copyOf.card.BaseToughness,
+			Types:         append([]string(nil), copyOf.card.Types...),
+			Colors:        append([]string(nil), copyOf.card.Colors...),
+			TypeLine:      copyOf.card.TypeLine,
+		}
 	}
 
-	// Add power-of +1/+1 counters.
+	// Add power-of +1/+1 counters — these are the copy's OWN counters (not
+	// copiable values), applied after the identity flip.
 	addedCounters := powerOf.card.BasePower
 	if addedCounters < 0 {
 		addedCounters = 0
@@ -103,6 +112,4 @@ func theMimeoplasmETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		"power_of": powerOf.card.DisplayName(),
 		"counters": addedCounters,
 	})
-	emitPartial(gs, slug, originalName,
-		"enters_as_copy_of_only_copies_pt_types_colors_no_abilities_partial")
 }

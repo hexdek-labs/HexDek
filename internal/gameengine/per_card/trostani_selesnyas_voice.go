@@ -105,16 +105,25 @@ func trostaniVoicePopulate(gs *gameengine.GameState, src *gameengine.Permanent, 
 		return
 	}
 
-	copyTypes := append([]string{}, best.Card.Types...)
-	copyColors := append([]string{}, best.Card.Colors...)
-	token := &gameengine.Card{
-		Name:          best.Card.Name,
-		Owner:         seat,
-		Types:         copyTypes,
-		Colors:        copyColors,
-		BasePower:     best.Card.BasePower,
-		BaseToughness: best.Card.BaseToughness,
-		TypeLine:      best.Card.TypeLine,
+	// CR §707 populate: "create a token that's a copy of a creature token
+	// you control." Route through MintTokenAsCopyOf so the copy carries the
+	// source token's FULL copiable values — crucially its ABILITIES (AST) —
+	// not just P/T+types+colors. The old hand-built Card dropped the AST, so
+	// the populated copy had none of the source's rules text and its ETB
+	// triggers were blank. MintTokenAsCopyOf DeepCopies the source card
+	// (abilities included) and mints a fresh InstanceID; enterBattlefieldWithETB
+	// then fires the copied creature's ETB triggers.
+	token := gameengine.MintTokenAsCopyOf(gs, best.Card, seat, "")
+	if token == nil {
+		token = &gameengine.Card{
+			Name:          best.Card.Name,
+			Owner:         seat,
+			Types:         append([]string{}, best.Card.Types...),
+			Colors:        append([]string{}, best.Card.Colors...),
+			BasePower:     best.Card.BasePower,
+			BaseToughness: best.Card.BaseToughness,
+			TypeLine:      best.Card.TypeLine,
+		}
 	}
 	enterBattlefieldWithETB(gs, seat, token, false)
 	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
