@@ -359,6 +359,19 @@ func StaxCheck(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int) Acti
 
 	isMana := IsManaAbility(perm, abilityIdx)
 
+	// CR §613.1f — a permanent that has lost all abilities (Humility,
+	// Lignify, Darksteel Mutation, Frogify, …) has no activated abilities
+	// to activate, including MANA abilities. The activation path otherwise
+	// reads raw Card.AST, which is unaware of the layer strip; this gate
+	// enforces the removal. Scoped to the permanent's own printed AST
+	// abilities — a strip nils every one of them, while abilities granted
+	// by a later effect arrive through a different (non-AST-index) path.
+	if perm.Card != nil && perm.Card.AST != nil &&
+		abilityIdx >= 0 && abilityIdx < len(perm.Card.AST.Abilities) &&
+		gs.HasLostAllAbilities(perm) {
+		return ActivationSuppression{Suppressed: true, Reason: "abilities_removed"}
+	}
+
 	// CR §702.61a: split-second on the stack prevents activating
 	// non-mana abilities.
 	if !isMana && SplitSecondActive(gs) {

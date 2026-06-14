@@ -89,6 +89,12 @@ type Characteristics struct {
 	// CMC is the mana value; kept separate from ManaCost so handlers
 	// (Opalescence) can read it without calling into gameast.
 	CMC int
+	// LostAllAbilities is set by a layer-6 "loses all abilities" effect
+	// (Humility, Lignify, Darksteel Mutation, Frogify, …). It is the
+	// authoritative signal that the permanent's printed abilities are
+	// gone — activation / trigger code must consult it instead of reading
+	// raw Card.AST, which is unaware of the strip (CR §613.1f / §613.2).
+	LostAllAbilities bool
 }
 
 // cachedCharacteristics wraps a Characteristics value with the epoch
@@ -855,6 +861,18 @@ func (gs *GameState) AbilitiesOf(p *Permanent) []gameast.Ability {
 	return GetEffectiveCharacteristics(gs, p).Abilities
 }
 
+// HasLostAllAbilities reports whether a layer-6 "loses all abilities"
+// effect (Humility, Lignify, Darksteel Mutation, …) is currently stripping
+// the permanent. Activation / trigger code consults this instead of reading
+// raw Card.AST so a stripped creature can no longer activate or fire its
+// printed abilities (CR §613.1f).
+func (gs *GameState) HasLostAllAbilities(p *Permanent) bool {
+	if gs == nil || p == nil {
+		return false
+	}
+	return GetEffectiveCharacteristics(gs, p).LostAllAbilities
+}
+
 // HasKeywordOf — layer-aware keyword query (respects Humility strip).
 func (gs *GameState) HasKeywordOf(p *Permanent, kw string) bool {
 	if gs == nil || p == nil {
@@ -996,6 +1014,7 @@ func RegisterHumility(gs *GameState, p *Permanent) {
 		}
 		chars.Abilities = nil
 		chars.Keywords = nil
+		chars.LostAllAbilities = true
 	}
 	setBase11 := func(_ *GameState, _ *Permanent, chars *Characteristics) {
 		if !charsHaveType(chars.Types,"creature") {
@@ -2059,6 +2078,7 @@ func RegisterLignify(gs *GameState, p *Permanent) {
 	stripAbilities := func(_ *GameState, _ *Permanent, chars *Characteristics) {
 		chars.Abilities = nil
 		chars.Keywords = nil
+		chars.LostAllAbilities = true
 	}
 	setPT04 := func(_ *GameState, _ *Permanent, chars *Characteristics) {
 		chars.Power = 0
