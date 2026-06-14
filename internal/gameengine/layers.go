@@ -426,6 +426,10 @@ func GetEffectiveCharacteristics(gs *GameState, perm *Permanent) *Characteristic
 	applyLayer(gs, perm, chars, LayerType, "")
 	applyLayer(gs, perm, chars, LayerColor, "")
 	applyLayer(gs, perm, chars, LayerAbility, "")
+	// Incarnation graveyard statics (Anger/Brawn/Filth/Wonder/Valor) grant a
+	// keyword from the GRAVEYARD zone — a source the SourcePerm-keyed §613
+	// registry can't hold — so they apply as a direct layer-6 pass here.
+	applyIncarnationGraveyardGrants(gs, perm, chars)
 	applyLayer(gs, perm, chars, LayerPT, "a")
 	applyLayer(gs, perm, chars, LayerPT, "b")
 	applyLayer(gs, perm, chars, LayerPT, "c")

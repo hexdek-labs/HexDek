@@ -523,7 +523,7 @@ func DeclareAttackers(gs *GameState, attackerSeat int) []*Permanent {
 		// sanitizer kept it (it IS in-pool), and it ATTACKED illegally —
 		// a real state bug (deep loki r63c: 52 §508.1a hits, every one a
 		// granted-defender attacker). Mirror the validator's gs.HasKeywordOf.
-		if canAttack(p) && passesCombatRestriction(gs, p) && !gs.HasKeywordOf(p, "defender") {
+		if canAttackGS(gs, p) && passesCombatRestriction(gs, p) && !gs.HasKeywordOf(p, "defender") {
 			legal = append(legal, p)
 		}
 	}
@@ -775,6 +775,34 @@ func canAttack(p *Permanent) bool {
 		return false
 	}
 	if p.SummoningSick && !p.HasKeyword("haste") {
+		return false
+	}
+	if p.HasKeyword("defender") {
+		return false
+	}
+	if p.Flags != nil && p.Flags["detained"] == 1 {
+		return false
+	}
+	if p.Power() <= 0 {
+		return false
+	}
+	return true
+}
+
+// canAttackGS is canAttack with §613 layer awareness: a summoning-sick
+// creature whose haste is LAYER-GRANTED (an anthem, or an incarnation
+// graveyard static like Anger) — invisible to the raw p.HasKeyword path —
+// may still attack. Mirrors CanBlockGS (landwalk) and the §302.6 validator
+// gate in legality.go, which already union p.HasKeyword with gs.HasKeywordOf.
+// canAttack (raw) is kept for the nil-gs / legacy callers.
+func canAttackGS(gs *GameState, p *Permanent) bool {
+	if p == nil || !p.IsCreature() {
+		return false
+	}
+	if p.Tapped || p.PhasedOut {
+		return false
+	}
+	if p.SummoningSick && !keywordActive(gs, p, "haste") {
 		return false
 	}
 	if p.HasKeyword("defender") {

@@ -195,6 +195,16 @@ func MoveCard(gs *GameState, card *Card, ownerSeat int, fromZone, toZone, reason
 			}
 		}
 	}
+	// Characteristics that depend on graveyard or battlefield contents —
+	// Tarmogoyf's CDA, battlefield-count anthems, and the incarnation
+	// graveyard statics (Anger/Brawn/Filth/Wonder/Valor, whose grant turns on
+	// the moment a matching land or the incarnation itself enters/leaves) —
+	// must be recomputed after a move touching those zones. The §613 cache is
+	// epoch-keyed, so a bump simply forces a lazy recompute on next read.
+	if fromZone == "graveyard" || dest == "graveyard" ||
+		fromZone == "battlefield" || dest == "battlefield" {
+		gs.InvalidateCharacteristicsCache()
+	}
 	return MoveResult{FinalZone: dest, Permanent: perm}
 }
 
