@@ -435,6 +435,17 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		return &CastError{Reason: "nil permanent"}
 	}
 
+	// Predefined NON-mana artifact tokens (Clue/Food/Blood/Map) carry no AST,
+	// so the AST dispatch below can't run their built-in sacrifice ability.
+	// Route them to the canonical token-ability primitive. (Mana tokens —
+	// Treasure/Gold/Powerstone — go through ApplyArtifactMana instead.)
+	if predefinedTokenSacSubtype(perm) != "" {
+		if ActivatePredefinedTokenAbility(gs, seatIdx, perm) {
+			return nil
+		}
+		return &CastError{Reason: "cannot_activate_token_ability"}
+	}
+
 	// Validate ability index.
 	var ab *gameast.Activated
 	if perm.Card.AST != nil && abilityIdx >= 0 && abilityIdx < len(perm.Card.AST.Abilities) {

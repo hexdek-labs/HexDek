@@ -232,6 +232,142 @@ func CreateCreatureToken(gs *GameState, seatIdx int, name string, types []string
 	return perm
 }
 
+// predefinedTokenSacSubtype returns the sacrifice-ability subtype of a
+// predefined NON-mana artifact token (clue/food/blood/map) that carries no
+// AST, or "" if `perm` isn't one. The mana tokens (treasure/gold/powerstone)
+// are handled by ApplyArtifactMana and are intentionally excluded here.
+func predefinedTokenSacSubtype(perm *Permanent) string {
+	if perm == nil || perm.Card == nil {
+		return ""
+	}
+	// Only synthesize the built-in ability for predefined tokens, which carry
+	// no AST. A real card with one of these subtypes uses its own AST and is
+	// dispatched normally by ActivateAbility.
+	if perm.Card.AST != nil {
+		return ""
+	}
+	if !perm.IsToken() {
+		return ""
+	}
+	for _, t := range perm.Card.Types {
+		switch t {
+		case "clue", "food", "blood", "map":
+			return t
+		}
+	}
+	return ""
+}
+
+// ActivatePredefinedTokenAbility executes the built-in sacrifice ability of a
+// predefined NON-mana artifact token (CR §111.10 / §701.x):
+//
+//	Clue  — {2}, Sacrifice: draw a card.
+//	Food  — {2}, {T}, Sacrifice: you gain 3 life.
+//	Blood — {1}, {T}, Discard a card, Sacrifice: draw a card.
+//	Map   — {1}, {T}, Sacrifice: target creature you control explores.
+//
+// These tokens carry no AST, so ActivateAbility can't dispatch them; this is
+// the canonical execution primitive (routed to from ActivateAbility and
+// callable directly by per-card "sacrifice a Clue/Food/…" effects). All costs
+// are checked before any is paid (CR §601.2f). Returns true on success.
+//
+// MVP: the effect resolves inline (these are non-mana abilities that would
+// normally use the stack; the predefined-token model is simplified). The
+// sacrifice + tap + discard + mana are paid as the activation cost.
+func ActivatePredefinedTokenAbility(gs *GameState, seatIdx int, perm *Permanent) bool {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return false
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil || perm == nil || perm.Controller != seatIdx || perm.PhasedOut {
+		return false
+	}
+	sub := predefinedTokenSacSubtype(perm)
+	if sub == "" {
+		return false
+	}
+
+	// Cost parameters per token.
+	var manaCost int
+	var needsTap, needsDiscard, needsExplore bool
+	switch sub {
+	case "clue":
+		manaCost = 2
+	case "food":
+		manaCost, needsTap = 2, true
+	case "blood":
+		manaCost, needsTap, needsDiscard = 1, true, true
+	case "map":
+		manaCost, needsTap, needsExplore = 1, true, true
+	}
+
+	// Check ALL costs before paying any (CR §601.2f).
+	if needsTap && perm.Tapped {
+		return false
+	}
+	if !EnsureTypedPool(seat).CanPayGeneric(manaCost, "activated") {
+		return false
+	}
+	var discardChoice *Card
+	if needsDiscard {
+		if len(seat.Hand) == 0 {
+			return false // can't pay the discard cost
+		}
+		if seat.Hat != nil {
+			if picks := seat.Hat.ChooseDiscard(gs, seatIdx, seat.Hand, 1); len(picks) > 0 {
+				discardChoice = picks[0]
+			}
+		}
+		if discardChoice == nil {
+			discardChoice = seat.Hand[0]
+		}
+	}
+	var exploreTarget *Permanent
+	if needsExplore {
+		for _, p := range seat.Battlefield {
+			if p != nil && p != perm && p.IsCreature() && !p.PhasedOut {
+				exploreTarget = p
+				break
+			}
+		}
+		if exploreTarget == nil {
+			return false // "target creature you control" requires a legal target
+		}
+	}
+
+	// Pay costs.
+	if manaCost > 0 {
+		if !PayGenericCost(gs, seat, manaCost, "activated", "token_ability", perm.Card.DisplayName()) {
+			return false
+		}
+	}
+	if needsTap {
+		perm.Tapped = true
+	}
+	if needsDiscard && discardChoice != nil {
+		DiscardCard(gs, discardChoice, seatIdx)
+	}
+	SacrificePermanent(gs, perm, sub+"_ability")
+
+	gs.LogEvent(Event{
+		Kind:   "token_ability",
+		Seat:   seatIdx,
+		Source: perm.Card.DisplayName(),
+		Details: map[string]interface{}{"subtype": sub, "rule": "111.10"},
+	})
+
+	// Resolve the effect.
+	switch sub {
+	case "clue", "blood":
+		DrawN(gs, seatIdx, 1, perm)
+	case "food":
+		GainLife(gs, seatIdx, 3, perm.Card.DisplayName())
+	case "map":
+		PerformExplore(gs, exploreTarget)
+	}
+	return true
+}
+
 // capitalize returns its argument with the first byte in upper case,
 // used for building human-readable type-line strings.
 func capitalize(s string) string {
