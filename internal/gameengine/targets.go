@@ -711,6 +711,15 @@ func matchesPermanent(f gameast.Filter, p *Permanent) bool {
 				return false
 			}
 		}
+		// CR §707.2 — a face-down permanent has mana value 0 (the real
+		// card's CMC isn't visible while face down). Apply a mana-value
+		// constraint against 0 rather than skipping it: "mana value 2 or
+		// less" matches a face-down creature, "mana value 1 or greater" does
+		// not. The pre-r63 block returned true unconditionally, matching any
+		// mana-value filter regardless of the face-down's true MV of 0.
+		if f.ManaValueOp != "" && f.ManaValue != nil {
+			return compareIntTarget(0, f.ManaValueOp, *f.ManaValue)
+		}
 		// Face-down creature matches generic creature filters. Skip
 		// all remaining type/color/subtype checks — face-down has none.
 		return true
