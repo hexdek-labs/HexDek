@@ -514,21 +514,34 @@ func FireBushidoTriggers(gs *GameState, attackers []*Permanent, blockerMap map[*
 	if gs == nil {
 		return
 	}
-	// Attackers that became blocked.
+	// CR §702.45a — "Whenever this creature blocks OR becomes blocked, it gets
+	// +N/+N." Becoming blocked is a single event regardless of the number of
+	// blockers, and a creature that blocks multiple attackers "blocks" once —
+	// so bushido fires at most ONCE per creature per combat. Dedupe so a
+	// multi-blocker (or a re-encountered attacker) isn't buffed once per
+	// attacker it's paired with.
+	fired := map[*Permanent]bool{}
 	for atk, blockers := range blockerMap {
 		if len(blockers) == 0 {
 			continue
 		}
-		n := GetBushidoN(atk)
-		if n > 0 {
-			ApplyBushido(gs, atk, n)
+		// Attacker became blocked — one event regardless of blocker count.
+		if !fired[atk] {
+			if n := GetBushidoN(atk); n > 0 {
+				ApplyBushido(gs, atk, n)
+			}
+			fired[atk] = true
 		}
-		// Blockers that are blocking.
+		// Blockers that are blocking — each fires once even if it blocks
+		// several attackers.
 		for _, blk := range blockers {
-			bn := GetBushidoN(blk)
-			if bn > 0 {
+			if fired[blk] {
+				continue
+			}
+			if bn := GetBushidoN(blk); bn > 0 {
 				ApplyBushido(gs, blk, bn)
 			}
+			fired[blk] = true
 		}
 	}
 }
