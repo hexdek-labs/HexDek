@@ -60,12 +60,10 @@ func aradeshOnCreatureAttacks(gs *gameengine.GameState, perm *gameengine.Permane
 		attacker.Flags = map[string]int{}
 	}
 	attacker.Flags["kw:double_strike"] = 1
-	power := 0
-	if attacker.Card != nil {
-		power = attacker.Card.BasePower
-	}
-	power += attacker.Flags["temp_power"]
-	power += attacker.Counters["+1/+1"]
+	// Use the canonical current power (counters + until-EOT modifications +
+	// layer effects), not a hand-rolled BasePower+temp_power+counter sum that
+	// missed the enlist +power/+0 modification (and any other power source).
+	power := attacker.Power()
 	drew := false
 	if power >= 4 {
 		drew = drawOne(gs, perm.Controller, "Aradesh, the Founder") != nil

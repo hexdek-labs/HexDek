@@ -101,7 +101,9 @@ func TestAradesh_AttackerWithEnlistGetsDoubleStrikeAndDraws(t *testing.T) {
 	att := addPerm(gs, 0, "Big Soldier", "creature")
 	att.Card.BasePower = 3
 	att.Flags["enlisted_this_combat"] = 1
-	att.Flags["temp_power"] = 2 // total 5 → draws
+	att.AddCounter("+1/+1", 2) // canonical power source → Power()=5 ≥ 4, draws
+	// (was Flags["temp_power"]=2, a source Permanent.Power() never read — the
+	// payoff now uses attacker.Power(), so model the boost the real way.)
 
 	gameengine.FireCardTrigger(gs, "creature_attacks", map[string]interface{}{
 		"attacker_perm": att,

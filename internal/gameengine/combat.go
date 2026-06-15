@@ -2515,6 +2515,10 @@ func EndOfCombatStep(gs *GameState) {
 			setPermFlag(p, flagBlocking, false)
 			setPermFlag(p, flagAttackedThisCombat, false)
 			setPermFlag(p, flagEnteredAttacking, false)
+			// CR §702.154 — "enlisted a creature this combat" is a per-combat
+			// fact; clear it here so a later combat / extra-combat doesn't read
+			// a stale enlist (Aradesh's payoff gates on it).
+			setPermFlag(p, "enlisted_this_combat", false)
 		}
 	}
 
