@@ -844,7 +844,19 @@ func sba704_5j(gs *GameState) bool {
 			if masterActive && p.IsToken() && gs.IsCreatureOf(p) {
 				continue
 			}
-			name := p.Card.DisplayName()
+			// CR §704.5j keys on the permanent's NAME — its effective name,
+			// not its printed one. Read the layer-aware name (§706.2 copy
+			// effects set Characteristics.Name) so it stays consistent with
+			// the layer-aware HasSupertypeOf legendary check above. A
+			// TEMPORARY copy of a legend (Cytoshape / Mirrorweave —
+			// CopyPermanentLayered with a non-permanent duration leaves
+			// p.Card untouched) is legendary with the copied name in the
+			// layer system but kept its OLD printed name, so the prior
+			// DisplayName grouping mis-bucketed it and the rule never fired.
+			name := GetEffectiveCharacteristics(gs, p).Name
+			if name == "" {
+				name = p.Card.DisplayName()
+			}
 			groups[name] = append(groups[name], p)
 		}
 		for name, perms := range groups {
