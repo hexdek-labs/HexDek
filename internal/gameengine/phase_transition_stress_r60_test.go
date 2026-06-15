@@ -289,12 +289,38 @@ func TestPhaseTransitionStress_ExtraTurnsPendingCounterStacks(t *testing.T) {
 // effects (Threaten, Act of Treason scope) early.
 func TestPhaseTransitionStress_DurationUntilEndOfYourNextTurnSurvivesIntervening(t *testing.T) {
 	// Seat 0 is active; registering a "until end of your next turn"
-	// effect on seat 0's turn should NOT expire at this turn's
+	// effect on seat 0's turn (turn 5) should NOT expire at this turn's
 	// end step because the source's NEXT turn hasn't happened yet.
 	expired := durationExpiresNow(DurationUntilEndOfYourNextTurn,
-		0 /* controllerSeat */, 0 /* activeSeat */, "ending", "end_step")
+		0 /* controllerSeat */, 0 /* activeSeat */, "ending", "end_step",
+		5 /* currentTurn */, 5 /* createdTurn */)
 	if expired {
 		t.Errorf("until_end_of_your_next_turn on seat 0's turn: should NOT expire at seat 0's first end step (it expires at the end of the NEXT seat-0 turn)")
+	}
+
+	// r63 cleanup-step regression: the effect must ALSO survive THIS
+	// turn's CLEANUP step (the §514.2 boundary). Before the CreatedTurn
+	// guard, durationExpiresNow matched step=="cleanup" && controller==
+	// active and reaped the effect a full turn early — at the end of the
+	// turn it was created on, not the controller's NEXT turn (property e).
+	if durationExpiresNow(DurationUntilEndOfYourNextTurn,
+		0, 0, "ending", "cleanup", 5 /* currentTurn */, 5 /* createdTurn */) {
+		t.Errorf("until_end_of_your_next_turn created on turn 5: must NOT expire at turn 5's cleanup — that is the SAME turn, not the controller's next turn")
+	}
+	// On the controller's NEXT own turn (turn 9 in a 4-player game), the
+	// cleanup boundary DOES expire it.
+	if !durationExpiresNow(DurationUntilEndOfYourNextTurn,
+		0, 0, "ending", "cleanup", 9 /* currentTurn */, 5 /* createdTurn */) {
+		t.Errorf("until_end_of_your_next_turn created on turn 5: MUST expire at the controller's next own-turn cleanup (turn 9), got false")
+	}
+	// Same shape for "until your next end step".
+	if durationExpiresNow(DurationUntilYourNextEndStep,
+		0, 0, "ending", "end_step", 5, 5) {
+		t.Errorf("until_your_next_end_step created on turn 5: must NOT expire at turn 5's own end step")
+	}
+	if !durationExpiresNow(DurationUntilYourNextEndStep,
+		0, 0, "ending", "end_step", 9, 5) {
+		t.Errorf("until_your_next_end_step created on turn 5: MUST expire at the controller's next own end step (turn 9), got false")
 	}
 }
 
@@ -308,12 +334,12 @@ func TestPhaseTransitionStress_DurationUntilEndOfYourNextTurnSurvivesIntervening
 func TestPhaseTransitionStress_UntilEndOfTurnExpiresAtCleanupNotEndStep(t *testing.T) {
 	// Both at active seat 0 — duration is "until end of turn".
 	expiresAtEnd := durationExpiresNow("until_end_of_turn",
-		0, 0, "ending", "end_step")
+		0, 0, "ending", "end_step", 5, 5)
 	if expiresAtEnd {
 		t.Errorf("until_end_of_turn at end_step: should NOT expire yet — expiry is at cleanup per §514.2")
 	}
 	expiresAtCleanup := durationExpiresNow("until_end_of_turn",
-		0, 0, "ending", "cleanup")
+		0, 0, "ending", "cleanup", 5, 5)
 	if !expiresAtCleanup {
 		t.Errorf("until_end_of_turn at cleanup: should expire per §514.2, got false")
 	}
@@ -397,14 +423,14 @@ func TestPhaseTransitionStress_CleanupIsIdempotent(t *testing.T) {
 func TestPhaseTransitionStress_DurationUntilNextEndStepExpiresAtNextEndStep(t *testing.T) {
 	// At end_step, the duration should signal expiry regardless of
 	// controllerSeat / activeSeat alignment.
-	if !durationExpiresNow(DurationUntilNextEndStep, 1, 0, "ending", "end_step") {
+	if !durationExpiresNow(DurationUntilNextEndStep, 1, 0, "ending", "end_step", 5, 4) {
 		t.Errorf("DurationUntilNextEndStep at end_step (cross-seat): should expire, got false")
 	}
-	if !durationExpiresNow(DurationUntilNextEndStep, 0, 0, "ending", "end_step") {
+	if !durationExpiresNow(DurationUntilNextEndStep, 0, 0, "ending", "end_step", 5, 4) {
 		t.Errorf("DurationUntilNextEndStep at end_step (same-seat): should expire, got false")
 	}
 	// At cleanup, should not yet expire — already done at end_step.
-	if durationExpiresNow(DurationUntilNextEndStep, 0, 0, "ending", "cleanup") {
+	if durationExpiresNow(DurationUntilNextEndStep, 0, 0, "ending", "cleanup", 5, 4) {
 		t.Errorf("DurationUntilNextEndStep at cleanup: should already have expired at end_step")
 	}
 }

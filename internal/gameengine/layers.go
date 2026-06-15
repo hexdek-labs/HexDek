@@ -125,6 +125,18 @@ type ContinuousEffect struct {
 	// Timestamp is the §613.7 tiebreaker.
 	Timestamp int
 
+	// CreatedTurn is gs.Turn at registration time. Used by
+	// scan_expired_durations to distinguish "this turn's cleanup/end
+	// step" from "the controller's NEXT turn's" for the
+	// until_end_of_your_next_turn / until_your_next_end_step /
+	// until_your_next_turn durations: an effect registered on the
+	// controller's own turn must survive THIS turn's matching boundary
+	// and expire only at a strictly-later own-turn boundary (CR §514.2 /
+	// property e). Left zero for effects registered outside the canonical
+	// RegisterContinuousEffect path, in which case the guard is a no-op
+	// and the pre-r63 same-turn behavior is preserved.
+	CreatedTurn int
+
 	// SourcePerm is the permanent that generated this effect. On LTB
 	// UnregisterContinuousEffectsForPermanent nukes every entry keyed
 	// to it. nil when the effect came from a resolved spell/ability
@@ -221,6 +233,9 @@ func (gs *GameState) RegisterContinuousEffect(ce *ContinuousEffect) *ContinuousE
 	}
 	if ce.Timestamp == 0 {
 		ce.Timestamp = gs.NextTimestamp()
+	}
+	if ce.CreatedTurn == 0 {
+		ce.CreatedTurn = gs.Turn
 	}
 	if ce.HandlerID != "" {
 		for _, existing := range gs.ContinuousEffects {

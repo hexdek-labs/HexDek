@@ -332,7 +332,7 @@ func ScanExpiredDurations(gs *GameState, phase, step string) {
 			if ce == nil {
 				continue
 			}
-			if durationExpiresNow(ce.Duration, ce.ControllerSeat, gs.Active, phase, step) {
+			if durationExpiresNow(ce.Duration, ce.ControllerSeat, gs.Active, phase, step, gs.Turn, ce.CreatedTurn) {
 				expired++
 				continue
 			}
@@ -498,20 +498,33 @@ func ScanExpiredDurations(gs *GameState, phase, step string) {
 
 // durationExpiresNow returns true if a continuous effect whose `duration`
 // tag is currently `d` expires at the (phase, step) boundary.
-func durationExpiresNow(d string, controllerSeat, activeSeat int, phase, step string) bool {
+//
+// currentTurn is gs.Turn; createdTurn is the effect's CreatedTurn stamp.
+// The "your next X" durations (until_your_next_turn /
+// until_end_of_your_next_turn / until_your_next_end_step) must survive the
+// matching boundary of the turn on which the effect was CREATED and expire
+// only at a strictly-later own-turn boundary — otherwise an effect made on
+// the controller's own turn dies a full turn early at that same turn's
+// cleanup / end step (CR §514.2, property e). The `currentTurn > createdTurn`
+// guard enforces this. When createdTurn is 0 (effect registered outside the
+// canonical path) the guard is a no-op, preserving prior behavior.
+func durationExpiresNow(d string, controllerSeat, activeSeat int, phase, step string, currentTurn, createdTurn int) bool {
+	// laterOwnTurn is true once we have advanced past the turn the effect
+	// was created on. createdTurn == 0 (unstamped) makes this always true.
+	laterOwnTurn := createdTurn == 0 || currentTurn > createdTurn
 	switch d {
 	case "", DurationPermanent:
 		return false
 	case DurationEndOfTurn, "until_end_of_turn":
 		return step == "cleanup"
 	case DurationUntilYourNextTurn:
-		return step == "untap" && controllerSeat == activeSeat
+		return step == "untap" && controllerSeat == activeSeat && laterOwnTurn
 	case DurationUntilEndOfYourNextTurn:
-		return step == "cleanup" && controllerSeat == activeSeat
+		return step == "cleanup" && controllerSeat == activeSeat && laterOwnTurn
 	case DurationUntilNextEndStep:
 		return step == "end" || step == "end_step"
 	case DurationUntilYourNextEndStep:
-		return (step == "end" || step == "end_step") && controllerSeat == activeSeat
+		return (step == "end" || step == "end_step") && controllerSeat == activeSeat && laterOwnTurn
 	case DurationUntilNextUpkeep:
 		return step == "upkeep"
 	case DurationUntilSourceLeaves:
