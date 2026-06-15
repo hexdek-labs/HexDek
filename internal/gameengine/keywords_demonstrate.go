@@ -239,6 +239,11 @@ func pushDemonstrateCopy(gs *GameState, spell *StackItem, seat int, role string)
 			"rule":       "702.144a",
 		},
 	})
+	// CR §702.137a / "whenever you copy a spell" — each demonstrate copy fires
+	// the canonical copy-trigger fan-out for ITS controller (`seat`): the
+	// controller copy fires the controller's magecraft, the opponent copy
+	// fires the chosen opponent's (that player "copies it too").
+	FireSpellCopyTriggers(gs, seat, copyCard, spell.Card)
 	return copyItem
 }
 

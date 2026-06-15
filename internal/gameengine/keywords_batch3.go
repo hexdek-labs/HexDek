@@ -104,6 +104,7 @@ func ApplyReplicate(gs *GameState, item *StackItem, copies int) int {
 	// Per CR §707.10, a copy of a spell has the same characteristics
 	// (name, mana cost, types, colors, P/T, text) as the spell being
 	// copied — only the controller and (optionally) targets can differ.
+	madeCopies := make([]*Card, 0, copies)
 	for i := 0; i < copies; i++ {
 		copyCard := &Card{
 			Name:          item.Card.Name,
@@ -126,6 +127,7 @@ func ApplyReplicate(gs *GameState, item *StackItem, copies int) int {
 		}
 		copyItem.ID = nextStackID(gs)
 		gs.Stack = append(gs.Stack, copyItem)
+		madeCopies = append(madeCopies, copyCard)
 
 		gs.LogEvent(Event{
 			Kind:   "replicate_copy",
@@ -138,6 +140,13 @@ func ApplyReplicate(gs *GameState, item *StackItem, copies int) int {
 				"rule":       "702.56+706.10",
 			},
 		})
+	}
+	// CR §702.137a / "whenever you copy a spell" — each replicate copy fires
+	// the canonical copy-trigger fan-out (magecraft + spell_copied). Fired
+	// after the push loop so the copies stay contiguous on the stack (mirrors
+	// ApplyStormCopy) and the resulting triggers land above them.
+	for _, cc := range madeCopies {
+		FireSpellCopyTriggers(gs, seatIdx, cc, item.Card)
 	}
 	return copies
 }

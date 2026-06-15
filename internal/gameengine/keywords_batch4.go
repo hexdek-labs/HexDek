@@ -306,6 +306,9 @@ func ApplyConspire(gs *GameState, seatIdx int, item *StackItem) bool {
 			"rule":     "702.78",
 		},
 	})
+	// CR §702.137a / "whenever you copy a spell" — the conspire copy fires
+	// the canonical copy-trigger fan-out (magecraft + spell_copied).
+	FireSpellCopyTriggers(gs, seatIdx, copyCard, item.Card)
 	return true
 }
 

@@ -225,6 +225,7 @@ func ApplyTiered(gs *GameState, item *StackItem, modes []int, tiers int) int {
 		},
 	})
 
+	tieredCopies := make([]*Card, 0, tiers)
 	for i := 0; i < tiers; i++ {
 		copyCard := &Card{
 			Name:          item.Card.Name,
@@ -254,6 +255,7 @@ func ApplyTiered(gs *GameState, item *StackItem, modes []int, tiers int) int {
 			},
 		}
 		PushStackItem(gs, copyItem)
+		tieredCopies = append(tieredCopies, copyCard)
 
 		gs.LogEvent(Event{
 			Kind:   "tiered_copy",
@@ -266,6 +268,11 @@ func ApplyTiered(gs *GameState, item *StackItem, modes []int, tiers int) int {
 				"rule":       "702.182+706.10",
 			},
 		})
+	}
+	// CR §702.137a / "whenever you copy a spell" — each tiered copy fires the
+	// canonical copy-trigger fan-out, after the push loop (contiguity).
+	for _, cc := range tieredCopies {
+		FireSpellCopyTriggers(gs, seatIdx, cc, item.Card)
 	}
 	return tiers
 }

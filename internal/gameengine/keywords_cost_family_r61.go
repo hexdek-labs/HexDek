@@ -99,22 +99,11 @@ func ApplyCasualty(gs *GameState, seatIdx int, item *StackItem, minPower int) bo
 			"rule":     "702.153b",
 		},
 	})
-	// CR §702.137a — magecraft triggers on "cast OR COPY an instant or
-	// sorcery spell." The casualty copy IS a copy event, so it must fire the
-	// magecraft fan-out exactly as the canonical copy paths (resolveCopySpell,
-	// ApplyStormCopies) do. FireMagecraftTriggers filters by spell type, so a
-	// creature/permanent casualty spell (Bortuk) is a no-op here. Without this
-	// the casualty copy left Archmage Emeritus / Storm-Kiln Artist inert — the
-	// same bypass class as the (still-open, sibling) conspire/replicate copies.
-	FireMagecraftTriggers(gs, seatIdx, copyCard, true)
-	// "Whenever you copy a spell" payoffs (The Twelfth Doctor et al.) key on
-	// the spell_copied trigger that resolveCopySpell fires; the casualty copy
-	// is a copy too, so fire it here as well.
-	FireCardTrigger(gs, "spell_copied", map[string]interface{}{
-		"caster_seat": seatIdx,
-		"copied_card": copyCard,
-		"source_card": item.Card,
-	})
+	// CR §702.137a — magecraft + the generic "spell_copied" trigger fire on
+	// the casualty copy via the canonical FireSpellCopyTriggers chokepoint
+	// (FireMagecraftTriggers self-filters to instant/sorcery, so a permanent
+	// casualty spell like Bortuk is a correct no-op).
+	FireSpellCopyTriggers(gs, seatIdx, copyCard, item.Card)
 	return true
 }
 

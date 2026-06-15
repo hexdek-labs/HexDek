@@ -349,6 +349,10 @@ func ApplyEpic(gs *GameState, seatIdx int, item *StackItem) {
 					"rule": "702.50",
 				},
 			})
+			// CR §702.137a / "whenever you copy a spell" — each upkeep epic
+			// copy fires the canonical copy-trigger fan-out (magecraft +
+			// spell_copied). Epic spells are sorceries, so magecraft applies.
+			FireSpellCopyTriggers(gs, seatIdx, copyCard, epicCard)
 		},
 	})
 

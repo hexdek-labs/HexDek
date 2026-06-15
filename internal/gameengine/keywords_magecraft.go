@@ -170,3 +170,33 @@ func FireMagecraftTriggers(gs *GameState, casterSeat int, spell *Card, isCopy bo
 		})
 	}
 }
+
+// FireSpellCopyTriggers is the canonical "a spell was copied" trigger fan-out.
+// EVERY code path that creates a copy of a spell on the stack must call this
+// exactly once per copy, immediately after pushing the copy, with the player
+// who created the copy as `controllerSeat` (the "you" in both triggers — for a
+// demonstrate opponent-copy that is the opponent). It fires:
+//
+//   - magecraft (CR §702.137a — "whenever you cast OR COPY an instant or
+//     sorcery spell"). FireMagecraftTriggers self-filters to instant/sorcery,
+//     so a copy of a permanent spell (which resolves to a token) correctly
+//     fires no magecraft here.
+//   - the generic "spell_copied" trigger ("whenever you copy a spell" — The
+//     Twelfth Doctor et al.), which fires for a copy of ANY spell.
+//
+// resolveCopySpell (Fork/Twincast/Reverberate) was the only path firing both;
+// storm fired only magecraft; conspire / replicate / demonstrate / epic /
+// tiered and the per_card copy-target-spell cards (Kalamax, Alania, Ivy, Krark,
+// Aziza, Fire-Lord Azula, Mendicant Core) fired neither. Routing all of them
+// through this one helper closes the r63 copy-trigger bypass class.
+func FireSpellCopyTriggers(gs *GameState, controllerSeat int, copyCard, sourceCard *Card) {
+	if gs == nil || copyCard == nil {
+		return
+	}
+	FireMagecraftTriggers(gs, controllerSeat, copyCard, true)
+	FireCardTrigger(gs, "spell_copied", map[string]interface{}{
+		"caster_seat": controllerSeat,
+		"copied_card": copyCard,
+		"source_card": sourceCard,
+	})
+}

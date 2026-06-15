@@ -121,6 +121,9 @@ func kalamaxFirstInstantCopy(gs *gameengine.GameState, perm *gameengine.Permanen
 			copyItem.Targets = append([]gameengine.Target(nil), stackItem.Targets...)
 		}
 		gameengine.PushStackItem(gs, copyItem)
+		// CR §702.137a / "whenever you copy a spell" — Kalamax's copy fires
+		// the canonical copy-trigger fan-out (magecraft + spell_copied).
+		gameengine.FireSpellCopyTriggers(gs, perm.Controller, copyCard, stackItem.Card)
 		gs.LogEvent(gameengine.Event{
 			Kind:   "copy_spell",
 			Seat:   perm.Controller,

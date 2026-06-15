@@ -106,6 +106,9 @@ func azizaSpellCopy(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 		CostMeta:   map[string]interface{}{},
 	}
 	gameengine.PushStackItem(gs, copyItem)
+	// CR §702.137a / "whenever you copy a spell" — Aziza's copy fires the
+	// canonical copy-trigger fan-out (magecraft + spell_copied).
+	gameengine.FireSpellCopyTriggers(gs, casterSeat, copyCard, castCard)
 
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":       casterSeat,

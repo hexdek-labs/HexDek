@@ -191,17 +191,18 @@ func ApplyStormCopy(gs *GameState, original *StackItem, count int) int {
 		})
 	}
 	// CR §702.137b — magecraft triggers "whenever you cast OR COPY an
-	// instant or sorcery spell." Storm makes copies (§707.10), which the
-	// dedicated resolveCopySpell magecraft hook never sees, so a magecraft
-	// permanent (Archmage Emeritus, Storm-Kiln Artist, Symmetry Sage, …)
-	// silently missed every storm copy — it triggered only on the single
-	// original cast. Fire once per copy now. FireMagecraftTriggers filters
-	// to instant/sorcery internally, so a storm copy of a non-i/s spell
-	// (e.g. an artifact with storm) correctly triggers nothing. Done after
-	// the push loop so the copies stay contiguous on the stack and the
-	// magecraft triggers land above them.
+	// instant or sorcery spell," and the generic "spell_copied" trigger
+	// ("whenever you copy a spell") fires too. Storm makes copies (§707.10),
+	// which the dedicated resolveCopySpell hook never sees, so a magecraft
+	// permanent (Archmage Emeritus, Storm-Kiln Artist, Symmetry Sage, …) and
+	// "you copy a spell" payoffs (The Twelfth Doctor) silently missed every
+	// storm copy. Route through the canonical FireSpellCopyTriggers chokepoint
+	// once per copy (FireMagecraftTriggers self-filters to instant/sorcery, so
+	// a storm copy of a non-i/s spell correctly triggers no magecraft). Done
+	// after the push loop so the copies stay contiguous on the stack and the
+	// resulting triggers land above them.
 	for _, cc := range copies {
-		FireMagecraftTriggers(gs, controller, cc, true)
+		FireSpellCopyTriggers(gs, controller, cc, original.Card)
 	}
 	return count
 }
