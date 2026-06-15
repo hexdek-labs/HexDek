@@ -51,9 +51,8 @@ func childOfAlaraDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 		return
 	}
 
-	// "They can't be regenerated" — regeneration is not modeled; flag gap.
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"no_regeneration_clause_not_enforced")
+	// "They can't be regenerated" (CR §701.15g) — enforced via
+	// DestroyPermanentNoRegen below (regeneration is now modeled).
 
 	// Snapshot all nonland permanents across all seats before destroying.
 	// We snapshot first so that mid-loop removal doesn't affect iteration.
@@ -75,7 +74,7 @@ func childOfAlaraDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 
 	destroyed := 0
 	for _, p := range toDestroy {
-		if gameengine.DestroyPermanent(gs, p, nil) {
+		if gameengine.DestroyPermanentNoRegen(gs, p, nil) {
 			destroyed++
 		}
 	}

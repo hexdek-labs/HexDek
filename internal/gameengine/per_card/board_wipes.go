@@ -26,7 +26,7 @@ func wrathOfGodResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 	if gs == nil || item == nil {
 		return
 	}
-	destroyed := destroyAllCreatures(gs)
+	destroyed := destroyAllCreaturesNoRegen(gs)
 	emit(gs, slug, "Wrath of God", map[string]interface{}{
 		"seat":      item.Controller,
 		"destroyed": destroyed,
@@ -48,7 +48,7 @@ func damnationResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 	if gs == nil || item == nil {
 		return
 	}
-	destroyed := destroyAllCreatures(gs)
+	destroyed := destroyAllCreaturesNoRegen(gs)
 	emit(gs, slug, "Damnation", map[string]interface{}{
 		"seat":      item.Controller,
 		"destroyed": destroyed,
@@ -338,6 +338,33 @@ func destroyAllCreatures(gs *gameengine.GameState) int {
 	destroyed := 0
 	for _, p := range creatures {
 		if gameengine.DestroyPermanent(gs, p, nil) {
+			destroyed++
+		}
+	}
+	return destroyed
+}
+
+// destroyAllCreaturesNoRegen is the "They can't be regenerated" variant
+// (CR §701.15g) used by Wrath of God / Damnation. A regeneration shield does
+// NOT save a creature from these; indestructible still does.
+func destroyAllCreaturesNoRegen(gs *gameengine.GameState) int {
+	if gs == nil {
+		return 0
+	}
+	var creatures []*gameengine.Permanent
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for _, p := range s.Battlefield {
+			if p != nil && p.IsCreature() {
+				creatures = append(creatures, p)
+			}
+		}
+	}
+	destroyed := 0
+	for _, p := range creatures {
+		if gameengine.DestroyPermanentNoRegen(gs, p, nil) {
 			destroyed++
 		}
 	}

@@ -40,7 +40,25 @@ import (
 // the destination. Commander redirect (§903.9a/b) is applied via FireZoneChange.
 //
 // Returns true if the permanent was actually removed from the battlefield.
+// DestroyPermanent destroys `perm` via the normal "destroy" event, honoring
+// indestructible, shield counters, regeneration (§701.15a), and §614 die
+// replacements. Returns true if the permanent was actually put into a
+// graveyard (false when prevented/regenerated/redirected).
 func DestroyPermanent(gs *GameState, perm *Permanent, source *Permanent) bool {
+	return destroyPermanentImpl(gs, perm, source, true)
+}
+
+// DestroyPermanentNoRegen is the "can't be regenerated" variant (CR §701.15g:
+// "If an effect states that a permanent can't be regenerated, … regeneration
+// shields … do nothing"). Wrath of God / Damnation / Child of Alara and any
+// destruction whose text says "they can't be regenerated" route here so a
+// regeneration shield does NOT save the permanent. Indestructible and shield
+// counters still apply (those are not regeneration).
+func DestroyPermanentNoRegen(gs *GameState, perm *Permanent, source *Permanent) bool {
+	return destroyPermanentImpl(gs, perm, source, false)
+}
+
+func destroyPermanentImpl(gs *GameState, perm *Permanent, source *Permanent, allowRegen bool) bool {
 	if gs == nil || perm == nil {
 		return false
 	}
@@ -82,7 +100,9 @@ func DestroyPermanent(gs *GameState, perm *Permanent, source *Permanent) bool {
 
 	// §701.15a: a regeneration shield replaces the destruction — tap,
 	// remove from combat, and clear marked damage instead of destroying.
-	if TryRegenerate(gs, perm) {
+	// Skipped for "can't be regenerated" destruction (§701.15g, Wrath of
+	// God / Damnation), which routes through DestroyPermanentNoRegen.
+	if allowRegen && TryRegenerate(gs, perm) {
 		return false
 	}
 
