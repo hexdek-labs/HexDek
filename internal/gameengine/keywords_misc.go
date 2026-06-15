@@ -1720,8 +1720,32 @@ func TheRingTemptsYou(gs *GameState, seatIdx int) {
 		seat.Flags["ring_level"] = 4
 	}
 
-	// Designate a ring-bearer if none exists (first creature on battlefield).
-	if seat.Flags["ring_bearer_set"] == 0 {
+	// CR §701.52a — each time the Ring tempts you, you choose a creature you
+	// control to become the Ring-bearer (you may keep the same one). Derive
+	// "do I have a Ring-bearer right now" from the battlefield rather than a
+	// sticky seat flag: a creature you control flagged ring_bearer. Keep it if
+	// it's still there; otherwise (first tempt, OR the previous bearer left —
+	// §702, designation cleared until you choose again) choose a new one. Only
+	// one bearer at a time, so clear any stray flags before designating.
+	//
+	// The pre-r63 sticky `ring_bearer_set` gate never re-designated after the
+	// bearer left, so a seat whose Ring-bearer died could never get a new one
+	// — every Ring-bearer-conditional ability went permanently dormant.
+	hasLiveBearer := false
+	for _, p := range seat.Battlefield {
+		if p != nil && p.Flags != nil && p.Flags["ring_bearer"] == 1 && p.IsCreature() {
+			hasLiveBearer = true
+			break
+		}
+	}
+	if !hasLiveBearer {
+		// Clear stale designations (the prior bearer left), then choose one.
+		for _, p := range seat.Battlefield {
+			if p != nil && p.Flags != nil {
+				delete(p.Flags, "ring_bearer")
+			}
+		}
+		seat.Flags["ring_bearer_set"] = 0
 		for _, p := range seat.Battlefield {
 			if p != nil && p.IsCreature() {
 				if p.Flags == nil {

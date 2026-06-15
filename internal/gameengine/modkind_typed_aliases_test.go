@@ -76,9 +76,14 @@ func TestTypedAlias_RingTempts(t *testing.T) {
 	gs := newTestGameState(2)
 	src := aliasTestPerm(gs, 0, "creature")
 	resolveModKind(gs, src, "ring_tempts_typed")
-	if gs.Seats[0].Flags["ring_temptation"] != 1 {
-		t.Fatalf("ring_tempts_typed should raise ring temptation to 1, got %d",
-			gs.Seats[0].Flags["ring_temptation"])
+	// r63: the resolve path now routes through the canonical TheRingTemptsYou,
+	// which advances the cumulative ring LEVEL (read via GetRingLevel) and
+	// designates a Ring-bearer — not the old dead `ring_temptation` counter.
+	if got := GetRingLevel(gs, 0); got != 1 {
+		t.Fatalf("ring_tempts_typed should raise the ring level to 1, got %d", got)
+	}
+	if src.Flags["ring_bearer"] != 1 {
+		t.Fatal("ring_tempts_typed should designate the controller's creature as Ring-bearer")
 	}
 }
 

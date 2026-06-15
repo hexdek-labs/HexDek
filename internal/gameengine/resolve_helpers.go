@@ -1081,23 +1081,16 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		})
 
 	case "ring_tempts":
-		// CR §701.52 — "The Ring tempts you." Increment the player's ring
-		// temptation level. Each level unlocks an additional ring ability
-		// for the designated ring-bearer. Levels 0-3 correspond to the four
-		// abilities on The One Ring.
+		// CR §701.52 — "The Ring tempts you." Route through the canonical
+		// TheRingTemptsYou primitive: it advances the cumulative ring level
+		// (read by Frodo/Smeagol/Sauron via GetRingLevel), (re-)designates a
+		// Ring-bearer, and fires the ring_tempt trigger. The prior body only
+		// bumped a dead `ring_temptation` counter (no readers), so an
+		// AST-routed "the Ring tempts you" did nothing observable.
 		seat := controllerSeat(src)
 		if seat >= 0 && seat < len(gs.Seats) {
-			s := gs.Seats[seat]
-			if s.Flags == nil {
-				s.Flags = map[string]int{}
-			}
-			s.Flags["ring_temptation"]++
+			TheRingTemptsYou(gs, seat) // logs "ring_tempts" + fires ring_tempt
 		}
-		gs.LogEvent(Event{
-			Kind:   "ring_tempts",
-			Seat:   controllerSeat(src),
-			Source: sourceName(src),
-		})
 
 	case "venture_dungeon":
 		// CR §701.46 — "venture into the dungeon." Track dungeon progress
