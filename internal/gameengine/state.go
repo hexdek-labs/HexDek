@@ -361,6 +361,18 @@ type GameState struct {
 	// legal attacker pool. Cleared at end_of_combat for that phase.
 	CurrentCombatRestriction string
 
+	// ExtraTurns is a LIFO stack of seat indices owed an extra turn (CR
+	// §720.1/§720.2 — "the most recently created is taken first"). Producers
+	// (Time Warp, Time Stretch, Temporal Manipulation/AST, Eon Frolicker,
+	// Lighthouse Chronologist) push the target seat via GrantExtraTurn; the
+	// turn-advance loop pops the tail via ConsumeExtraTurn after each turn
+	// completes, before rotating to the next living seat. The legacy
+	// gs.Flags["extra_turns_pending"] counter is kept as a derived mirror
+	// (== len(ExtraTurns)) so existing reads/tests stay valid; len(slice)
+	// is the source of truth. Mirrors the PendingExtraCombats counter→slice
+	// migration above.
+	ExtraTurns []int
+
 	// SpellsCastThisTurn is the GLOBAL cast counter read by Storm (CR
 	// §702.40) — the number of spells cast this turn across ALL seats.
 	// Incremented by CastSpell (and commander-zone casts) after the spell

@@ -55,18 +55,11 @@ func timeWarpResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 	if gs.Flags == nil {
 		gs.Flags = map[string]int{}
 	}
-	gs.Flags["extra_turns_pending"]++
-	// Some phase implementations also track per-seat extra-turn ownership.
-	// Mirror that on the targeted seat's flags for handlers that gate on
-	// "did I just get an extra turn from someone else" (Brago Eternal,
-	// Notion Thief, etc.) — the seat-level marker is consumed lazily by
-	// the phase loop and is no-op when absent.
-	if gs.Seats[targetSeat] != nil {
-		if gs.Seats[targetSeat].Flags == nil {
-			gs.Seats[targetSeat].Flags = map[string]int{}
-		}
-		gs.Seats[targetSeat].Flags["extra_turn_queued"]++
-	}
+	// Push the target seat onto the LIFO extra-turn stack (CR §720). This
+	// keeps gs.Flags["extra_turns_pending"] and the per-seat
+	// "extra_turn_queued" marker (read by Brago/Notion-Thief-style handlers)
+	// in sync; the turn-advance loop pops the stack via AdvanceActiveSeat.
+	gameengine.GrantExtraTurn(gs, targetSeat)
 
 	gs.LogEvent(gameengine.Event{
 		Kind:   "extra_turn",

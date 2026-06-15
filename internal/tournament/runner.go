@@ -508,9 +508,15 @@ func runOneGame(gameIdx int, decks []*deckparser.TournamentDeck, hats []HatFacto
 			break
 		}
 		prev := gs.Active
-		gs.Active = nextLivingSeat(gs)
-		// Round increments when we wrap past the starting seat.
-		if gs.Active <= prev || gs.Active == startingSeat {
+		// CR §720 extra turns + skip-your-next-turn: AdvanceActiveSeat pops
+		// the LIFO extra-turn stack (same player takes another turn) or
+		// rotates to the next living seat, skipping any seat owing a skipped
+		// turn. The driver keeps owning gs.Turn (incremented next iteration,
+		// so an extra turn gets the next monotonic turn number) and round.
+		sameSeatExtra := gameengine.AdvanceActiveSeat(gs)
+		// Round increments when we wrap past the starting seat — but NOT for
+		// an extra turn, which is the same player taking another turn.
+		if !sameSeatExtra && (gs.Active <= prev || gs.Active == startingSeat) {
 			round++
 		}
 	}

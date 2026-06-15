@@ -4986,6 +4986,13 @@ func resolveResidualByText(gs *GameState, src *Permanent, raw string) bool {
 	}
 
 	if reResSkipTurn.MatchString(raw) {
+		// "Skip your next turn" (CR — Final Fortune / Last Chance / Glorious
+		// End style self-skip). Flag the source's controller so the
+		// turn-advance loop omits their next turn via ConsumeSkipTurn. Target-
+		// player variants ("target player skips their next turn") would route
+		// through a dedicated handler with target info; this generic residual
+		// path covers the dominant self-skip wording.
+		GrantSkipNextTurn(gs, seat)
 		gs.LogEvent(Event{Kind: "skip_turn", Seat: seat, Source: sourceName(src)})
 		return true
 	}

@@ -254,6 +254,7 @@ func (gs *GameState) CloneForRollout(rng *rand.Rand) *GameState {
 		// an independent slice header so the clone's queue can evolve
 		// separately.
 		PendingExtraCombats:        append([]PendingExtraCombat(nil), gs.PendingExtraCombats...),
+		ExtraTurns:                 append([]int(nil), gs.ExtraTurns...),
 		CurrentCombatRestriction:   gs.CurrentCombatRestriction,
 		SpellsCastThisTurn:         gs.SpellsCastThisTurn,
 		SpellsCastByActiveLastTurn: gs.SpellsCastByActiveLastTurn,

@@ -1151,7 +1151,9 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 			if gs.CheckEnd() {
 				break
 			}
-			gs.Active = nextLiving(gs)
+			// CR §720 extra turns (LIFO) + skip-your-next-turn via the shared
+			// sequencing helper; gs.Turn is re-stamped next iteration.
+			gameengine.AdvanceActiveSeat(gs)
 		}
 
 		winner := -1
@@ -1744,7 +1746,9 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 				break
 			}
 		}
-		gs.Active = nextLiving(gs)
+		// CR §720 extra turns (LIFO) + skip-your-next-turn via the shared
+		// sequencing helper; gs.Turn is re-stamped next iteration.
+		gameengine.AdvanceActiveSeat(gs)
 	}
 
 	winner := -1
@@ -2078,7 +2082,9 @@ func (sm *Showmatch) runOneGame(rng *rand.Rand) {
 			break
 		}
 
-		gs.Active = nextLiving(gs)
+		// CR §720 extra turns (LIFO) + skip-your-next-turn via the shared
+		// sequencing helper; gs.Turn is re-stamped next iteration.
+		gameengine.AdvanceActiveSeat(gs)
 	}
 
 	// Determine winner.

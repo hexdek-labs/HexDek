@@ -317,16 +317,11 @@ func RecordGoGame(nSeats int, decks []*deckparser.TournamentDeck, seed int64, ga
 		if ending := gs.Seats[gs.Active]; ending != nil {
 			gs.SpellsCastByActiveLastTurn = ending.SpellsCastThisTurn
 		}
-		// Advance to next living seat.
-		n := len(gs.Seats)
-		for k := 1; k <= n; k++ {
-			cand := (gs.Active + k) % n
-			s := gs.Seats[cand]
-			if s != nil && !s.Lost {
-				gs.Active = cand
-				break
-			}
-		}
+		// Advance to next living seat — CR §720 extra turns (LIFO) +
+		// skip-your-next-turn, via the shared sequencing helper. gs.Turn is
+		// re-stamped at the top of the next iteration, so an extra turn gets
+		// the next monotonic turn number.
+		gameengine.AdvanceActiveSeat(gs)
 	}
 
 	// Build replay.

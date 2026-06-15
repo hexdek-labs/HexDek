@@ -177,7 +177,7 @@ func lighthouseChronologistExtraTurn(gs *gameengine.GameState, perm *gameengine.
 	if gs.Flags == nil {
 		gs.Flags = map[string]int{}
 	}
-	gs.Flags["extra_turns_pending"]++
+	gameengine.GrantExtraTurn(gs, perm.Controller)
 	gs.LogEvent(gameengine.Event{
 		Kind:   "extra_turn",
 		Seat:   perm.Controller,

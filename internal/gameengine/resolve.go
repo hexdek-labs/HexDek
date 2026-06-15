@@ -3208,10 +3208,11 @@ func resolveCopyPermanent(gs *GameState, src *Permanent, e *gameast.CopyPermanen
 }
 
 func resolveExtraTurn(gs *GameState, src *Permanent, e *gameast.ExtraTurn) {
-	gs.Flags["extra_turns_pending"]++
+	seat := controllerSeat(src)
+	GrantExtraTurn(gs, seat)
 	gs.LogEvent(Event{
 		Kind:   "extra_turn",
-		Seat:   controllerSeat(src),
+		Seat:   seat,
 		Source: sourceName(src),
 	})
 }

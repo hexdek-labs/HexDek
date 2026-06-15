@@ -66,11 +66,13 @@ func eonFrolickerETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		return
 	}
 
-	// Bump the extra-turn queue + record the intended target seat.
+	// Push the target seat onto the LIFO extra-turn stack (CR §720) + record
+	// the intended target seat. GrantExtraTurn keeps the legacy counter and
+	// the per-seat marker in sync; AdvanceActiveSeat pops the stack.
 	if gs.Flags == nil {
 		gs.Flags = map[string]int{}
 	}
-	gs.Flags["extra_turns_pending"]++
+	gameengine.GrantExtraTurn(gs, target)
 	gs.Flags["extra_turn_target_seat"] = target + 1 // +1 so seat 0 is distinguishable from "unset"
 
 	// Stamp protection-from-target on the controller's seat.

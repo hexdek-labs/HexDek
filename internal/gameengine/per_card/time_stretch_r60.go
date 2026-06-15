@@ -58,16 +58,10 @@ func timeStretchResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 	if gs.Flags == nil {
 		gs.Flags = map[string]int{}
 	}
-	gs.Flags["extra_turns_pending"] += 2
-
-	if gs.Seats[targetSeat] != nil {
-		if gs.Seats[targetSeat].Flags == nil {
-			gs.Seats[targetSeat].Flags = map[string]int{}
-		}
-		gs.Seats[targetSeat].Flags["extra_turn_queued"] += 2
-	}
-
+	// Two extra turns onto the LIFO stack (CR §720) — keeps the legacy
+	// counter + per-seat marker in sync. AdvanceActiveSeat pops them.
 	for i := 0; i < 2; i++ {
+		gameengine.GrantExtraTurn(gs, targetSeat)
 		gs.LogEvent(gameengine.Event{
 			Kind:   "extra_turn",
 			Seat:   targetSeat,
