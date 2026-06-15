@@ -35,9 +35,87 @@ import (
 	"github.com/hexdek/hexdek/internal/judge/outcome"
 )
 
+// dropsScalingBasis reports whether a trigger's printed text carries a
+// scaling reference ("create X tokens, where X is the number of …",
+// "draw a card for each …") that the parser FLATTENS to a bare count="x"
+// NumberOrRef, dropping the basis. For those effects the OUTCOME
+// interpreter's count resolver (amountVal, widen.go) pins "x" to the
+// fixed spec.XValue, but that value bears no relation to the real
+// board-derived count — so every comparison is MISCALIBRATED (firespot
+// PROGRESSION etb-fire r63: the checker expected X=3 tokens; the engine
+// made 1). The expectation is unmodelable from the lossy AST, exactly like
+// a structured ScalingAmount (which amountVal already skips), so the pair
+// is out of scope. (The engine ALSO under-produces these — it makes 1
+// regardless of the real count, a parser-fidelity bug tracked in the
+// firespot report — but the checker cannot model the right number either
+// way, so it must not emit a number it can't trust.)
+func dropsScalingBasis(t *gameast.Triggered) bool {
+	if t == nil || t.Effect == nil {
+		return false
+	}
+	// Printed-X signature: the text uses a bare "x" as the count/amount of a
+	// produced quantity ("create x …", "draw x …", "deal(s) x damage",
+	// "x +1/+1 counters", "mill x …") or an explicit scaling clause. The
+	// parser flattens these to a count="x" NumberOrRef with no basis, which
+	// neither the interpreter nor the engine can resolve (firespot
+	// PROGRESSION etb-fire r63). Cheap pre-filter that also catches fan-out
+	// shapes (damage to EACH creature) the structural test below can't model.
+	raw := strings.ToLower(t.Raw)
+	for _, sig := range []string{
+		"where x is", "where ~ is", "for each",
+		"create x ", "draw x ", "deal x ", "deals x ", "mill x ",
+		"x +1/+1", "x 1/1", "x 2/2", "x damage", "x cards", "x tokens",
+	} {
+		if strings.Contains(raw, sig) {
+			return true
+		}
+	}
+	// Detect X-dependence structurally: recompute the expected set with two
+	// different pinned X values. If the set SHIFTS, the effect's outcome
+	// scales with {X}. A triggered ability has no {X} cast context, so the
+	// engine cannot honor a pinned X (it produces the count-1 default) —
+	// every comparison is therefore miscalibrated and the pair is out of
+	// scope. Both ExpectSet calls being out of scope (okA/okB false) means
+	// the effect is X-independent here; let the normal check path run.
+	specA := progressionSpec()
+	specA.XValue = 3
+	specB := progressionSpec()
+	specB.XValue = 7
+	setA, okA := outcome.ExpectSet(specA, t.Effect)
+	setB, okB := outcome.ExpectSet(specB, t.Effect)
+	if !okA || !okB {
+		return false
+	}
+	return !sameDeltaSet(setA, setB)
+}
+
+// sameDeltaSet reports whether two expected-delta sets are equal as sets
+// (same size, every element of a present in b).
+func sameDeltaSet(a, b []*outcome.Delta) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for _, da := range a {
+		found := false
+		for _, db := range b {
+			if da.Equal(db) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
+}
+
 // CheckAny chains every PROGRESSION check family (phases 1-3) for one
 // (card, trigger) pair. The single entry point drivers should use.
 func CheckAny(cardName string, t *gameast.Triggered) ([]*Finding, bool) {
+	if dropsScalingBasis(t) {
+		return nil, false
+	}
 	if f, ran := CheckTrigger(cardName, t); ran {
 		return f, true
 	}
