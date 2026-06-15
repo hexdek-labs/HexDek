@@ -975,44 +975,68 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 				}
 			}
 			if bestToken != nil && bestToken.Card != nil {
-				// Create a copy of the token. InstanceID gap-walk: route
-				// through MintTokenAsCopyOf so the populated token gets a
-				// fresh TK-provenance ID (source recorded as
-				// SourceInstanceID) and a faithful full-characteristic
-				// copy. The prior bare &Card{} left the InstanceID unminted
-				// (a battlefield permanent invisible to the mint census) and
-				// silently dropped abilities/keywords/subtypes.
-				tokenCard := MintTokenAsCopyOf(gs, bestToken.Card, seat, currentMintEnablerID(gs))
-				if tokenCard == nil {
-					tokenCard = bestToken.Card.DeepCopy()
-					tokenCard.Owner = seat
-				}
-				newPerm := &Permanent{
-					Card:          tokenCard,
-					Controller:    seat,
-					Owner:         seat,
-					Tapped:        false,
-					SummoningSick: true,
-					Timestamp:     gs.NextTimestamp(),
-					Counters:      map[string]int{},
-					Flags:         map[string]int{},
-				}
-				gs.Seats[seat].Battlefield = append(gs.Seats[seat].Battlefield, newPerm)
-				RegisterReplacementsForPermanent(gs, newPerm)
-				FirePermanentETBTriggers(gs, newPerm)
-				populated = true
-				gs.LogEvent(Event{
-					Kind:   "create_token",
-					Seat:   seat,
-					Source: sourceName(src),
-					Details: map[string]interface{}{
-						"token":     bestToken.Card.Name,
-						"power":     bestToken.Card.BasePower,
-						"toughness": bestToken.Card.BaseToughness,
-						"reason":    "populate",
-						"rule":      "701.30",
-					},
+				// Create a copy of the chosen creature token. Route through
+				// CreateDoubledTokens so the §616 would_create_token chain
+				// fires — Doubling Season / Parallel Lives / Anointed
+				// Procession double the populated copy (the prior path built
+				// one permanent inline, bypassing every token doubler). Each
+				// copy is minted via MintTokenAsCopyOf (fresh TK-provenance ID;
+				// faithful full-characteristic copy of the token's copiable
+				// values — counters / auras / modifications are NOT copied).
+				created := CreateDoubledTokens(gs, seat, 1, src, func() *Permanent {
+					tokenCard := MintTokenAsCopyOf(gs, bestToken.Card, seat, currentMintEnablerID(gs))
+					if tokenCard == nil {
+						tokenCard = bestToken.Card.DeepCopy()
+						tokenCard.Owner = seat
+					}
+					newPerm := &Permanent{
+						Card:          tokenCard,
+						Controller:    seat,
+						Owner:         seat,
+						Tapped:        false,
+						SummoningSick: true,
+						Timestamp:     gs.NextTimestamp(),
+						Counters:      map[string]int{},
+						Flags:         map[string]int{},
+					}
+					gs.Seats[seat].Battlefield = append(gs.Seats[seat].Battlefield, newPerm)
+					RegisterReplacementsForPermanent(gs, newPerm)
+					FirePermanentETBTriggers(gs, newPerm)
+					return newPerm
 				})
+				gs.PendingTokenMintChain = nil // consumed; don't leak to the next mint
+				if len(created) > 0 {
+					populated = true
+					gs.LogEvent(Event{
+						Kind:   "create_token",
+						Seat:   seat,
+						Source: sourceName(src),
+						Amount: len(created),
+						Details: map[string]interface{}{
+							"token":     bestToken.Card.Name,
+							"power":     bestToken.Card.BasePower,
+							"toughness": bestToken.Card.BaseToughness,
+							"count":     len(created),
+							"reason":    "populate",
+							"rule":      "701.30",
+						},
+					})
+					// token_created trigger ("whenever you create a token" /
+					// token-matters), re-entrancy guarded like CreateCreatureToken.
+					if gs.Flags == nil || gs.Flags["in_token_trigger"] == 0 {
+						if gs.Flags == nil {
+							gs.Flags = map[string]int{}
+						}
+						gs.Flags["in_token_trigger"] = 1
+						FireCardTrigger(gs, "token_created", map[string]interface{}{
+							"controller_seat": seat,
+							"count":           len(created),
+							"types":           bestToken.Card.Types,
+							"source":          sourceName(src),
+						})
+						gs.Flags["in_token_trigger"] = 0
+					}
+				}
 			}
 		}
 		gs.LogEvent(Event{
