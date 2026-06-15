@@ -429,12 +429,16 @@ func ActivateLevelUp(gs *GameState, seatIdx int, perm *Permanent) error {
 	seat.ManaPool -= cost
 	SyncManaAfterSpend(seat)
 
-	// Add a level counter.
-	perm.AddCounter("level", 1)
+	// Add a level counter through the canonical doubler-aware chokepoint
+	// (CR §122/§616): general counter doublers (Doubling Season, Vorinclex)
+	// double level counters too. Raw AddCounter bypassed the would_put_counter
+	// chain — the r63 counter-pipeline-sweep meta-pattern.
+	PutCountersTriggered(gs, perm, "level", 1, perm)
 	newLevel := perm.Counters["level"]
 
-	// Invalidate characteristics cache — P/T and abilities may change.
-	gs.InvalidateCharacteristicsCache()
+	// CR §711.2 — recompute the level-band base P/T + granted abilities for the
+	// new level counter total (immediate on crossing a band threshold).
+	ApplyLevelBracketEffects(gs, perm)
 
 	gs.LogEvent(Event{
 		Kind:   "level_up",
@@ -498,19 +502,12 @@ func ApplyLevelBracketEffects(gs *GameState, perm *Permanent) {
 	}
 
 	bracket := GetLevelBracket(perm)
-	if bracket == nil {
-		// Below first bracket — use printed base P/T (no modification needed).
-		return
-	}
 
-	// Layer 7b: Set base P/T to bracket values.
-	// We implement this as a Modification that overrides rather than adds.
-	// The modification sets P/T to (bracket - base), so base + mod = bracket.
-	deltaP := bracket.Power - perm.Card.BasePower
-	deltaT := bracket.Toughness - perm.Card.BaseToughness
-
-	// Check if we already have a level_bracket modification to avoid stacking.
-	// Remove any existing level bracket modifications.
+	// Always strip the previous level-band P/T modification and granted
+	// abilities FIRST — recomputed below for the current band. Doing this
+	// before the nil-bracket early return means dropping below the first band
+	// (counter removal) correctly reverts to the printed level-0 box rather
+	// than leaving a stale band mod behind.
 	filtered := perm.Modifications[:0]
 	for _, m := range perm.Modifications {
 		if m.Duration != "level_bracket" {
@@ -519,15 +516,6 @@ func ApplyLevelBracketEffects(gs *GameState, perm *Permanent) {
 	}
 	perm.Modifications = filtered
 
-	perm.Modifications = append(perm.Modifications, Modification{
-		Power:     deltaP,
-		Toughness: deltaT,
-		Duration:  "level_bracket",
-		Timestamp: perm.Timestamp,
-	})
-
-	// Layer 6: Grant bracket abilities.
-	// Remove previous level-bracket-granted abilities.
 	kept := perm.GrantedAbilities[:0]
 	for _, g := range perm.GrantedAbilities {
 		if !strings.HasPrefix(g, "level_bracket:") {
@@ -536,11 +524,35 @@ func ApplyLevelBracketEffects(gs *GameState, perm *Permanent) {
 	}
 	perm.GrantedAbilities = kept
 
-	// Add bracket keywords as granted abilities.
+	if bracket == nil {
+		// Below the first band — printed base P/T (level 0) stands (§711.5).
+		gs.InvalidateCharacteristicsCache()
+		return
+	}
+
+	// Layer 7b: Set base P/T to bracket values (CR §711.2 — "it has base power
+	// and toughness [P/T]"). Implemented as a delta Modification (bracket -
+	// base) so base + mod = bracket; Permanent.Power() reads Modifications, so
+	// this is the path combat / SBA actually see (ComputeCharacteristics sums
+	// the same Modifications, so the layer view agrees).
+	deltaP := bracket.Power - perm.Card.BasePower
+	deltaT := bracket.Toughness - perm.Card.BaseToughness
+	perm.Modifications = append(perm.Modifications, Modification{
+		Power:     deltaP,
+		Toughness: deltaT,
+		Duration:  "level_bracket",
+		Timestamp: perm.Timestamp,
+	})
+
+	// Layer 6: grant the band's keyword abilities (active only while in band).
+	// Stored ONLY under the "level_bracket:" prefix (HasKeyword recognizes it),
+	// so the cleanup above removes them cleanly on a band change without ever
+	// touching a same-named keyword the creature has from another source.
 	for _, kw := range bracket.Keywords {
+		if kw == "" {
+			continue
+		}
 		perm.GrantedAbilities = append(perm.GrantedAbilities, "level_bracket:"+kw)
-		// Also add the plain keyword name so HasKeyword checks work.
-		perm.GrantedAbilities = append(perm.GrantedAbilities, kw)
 	}
 
 	gs.InvalidateCharacteristicsCache()

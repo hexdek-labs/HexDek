@@ -64,9 +64,13 @@ func (p *Permanent) HasKeyword(name string) bool {
 			}
 		}
 	}
-	// 2) Granted abilities (until-EOT grants, equipment, etc.).
+	// 2) Granted abilities (until-EOT grants, equipment, level-up bands, etc.).
 	for _, g := range p.GrantedAbilities {
-		if strings.ToLower(strings.TrimSpace(g)) == want {
+		gl := strings.ToLower(strings.TrimSpace(g))
+		// Level-up band abilities are stored under a "level_bracket:" prefix
+		// (CR §711.2) so they strip cleanly on a band change; recognize them.
+		gl = strings.TrimPrefix(gl, "level_bracket:")
+		if gl == want {
 			return true
 		}
 	}

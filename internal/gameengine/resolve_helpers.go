@@ -2560,6 +2560,9 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			if src.Counters["level"] < lmLevel {
 				src.Counters["level"] = lmLevel
 			}
+			// CR §711.2 — recompute the level-band base P/T + abilities so the
+			// marker's level actually changes the creature's characteristics.
+			ApplyLevelBracketEffects(gs, src)
 			gs.InvalidateCharacteristicsCache()
 		}
 		gs.LogEvent(Event{
