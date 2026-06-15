@@ -131,62 +131,31 @@ func MirrorKickFlagsToPermanent(item *StackItem, perm *Permanent) {
 	perm.Flags["multikick_count"] = count
 }
 
-// CR §702.79 — Persist
+// CR §702.92 — Persist. "When this permanent dies, if it had no -1/-1 counters
+// on it, return it to the battlefield under its owner's control with a -1/-1
+// counter on it." The counter check is last-known-information immediately
+// before death (CR §603.10). Called inline from the dies chokepoint
+// (FireZoneChangeTriggers).
 func CheckPersist(gs *GameState, perm *Permanent) {
-	if gs == nil || perm == nil {
+	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
 	if !perm.HasKeyword("persist") {
 		return
 	}
+	// LKI: a creature that died WITH a -1/-1 counter does not return (the
+	// classic persist-combo terminator).
 	if perm.Counters != nil && perm.Counters["-1/-1"] > 0 {
 		return
 	}
-	seatIdx := perm.Owner
-	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return
-	}
-	seat := gs.Seats[seatIdx]
-
-	token := &Card{
-		Name:          perm.Card.Name,
-		Owner:         seatIdx,
-		BasePower:     perm.Card.BasePower,
-		BaseToughness: perm.Card.BaseToughness,
-		Types:         perm.Card.Types,
-		Colors:        perm.Card.Colors,
-		CMC:           perm.Card.CMC,
-	}
-	returned := &Permanent{
-		Card:       token,
-		Controller: seatIdx,
-		Owner:      seatIdx,
-		Timestamp:  gs.NextTimestamp(),
-		Counters:   map[string]int{"-1/-1": 1},
-		Flags:      map[string]int{},
-	}
-	if perm.Card.AST != nil {
-		token.AST = perm.Card.AST
-	}
-	seat.Battlefield = append(seat.Battlefield, returned)
-	RegisterReplacementsForPermanent(gs, returned)
-	FirePermanentETBTriggers(gs, returned)
-	gs.InvalidateCharacteristicsCache()
-
-	gs.LogEvent(Event{
-		Kind:   "persist",
-		Seat:   seatIdx,
-		Source: perm.Card.DisplayName(),
-		Details: map[string]interface{}{
-			"rule": "702.79",
-		},
-	})
-	_ = returned
+	reanimateOnDeath(gs, perm, "-1/-1", "persist", "702.92")
 }
 
-// CR §702.93 — Undying
+// CR §702.93 — Undying. "When this permanent dies, if it had no +1/+1 counters
+// on it, return it to the battlefield under its owner's control with a +1/+1
+// counter on it." LKI counter check, called inline from the dies chokepoint.
 func CheckUndying(gs *GameState, perm *Permanent) {
-	if gs == nil || perm == nil {
+	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
 	if !perm.HasKeyword("undying") {
@@ -195,46 +164,75 @@ func CheckUndying(gs *GameState, perm *Permanent) {
 	if perm.Counters != nil && perm.Counters["+1/+1"] > 0 {
 		return
 	}
+	reanimateOnDeath(gs, perm, "+1/+1", "undying", "702.93")
+}
+
+// reanimateOnDeath is the shared persist/undying return. The dying card has
+// already landed in its owner's graveyard (FireZoneChangeTriggers fires after
+// the §614 move), so this moves that SAME card back to the battlefield as a
+// NEW object under its owner's control — summoning-sick (§702.92a/§702.93a),
+// entering with one `counterKind` counter applied through the §122.1g
+// would_put_counter chain so +1/+1 and -1/-1 doublers (Doubling Season,
+// Hardened Scales, Branching Evolution, Vorinclex) apply.
+//
+// Returns nil and does nothing when the card is NOT in the graveyard: a token
+// that ceased to exist, a §614 exile/library/hand redirect, or — crucially —
+// already returned by the sibling keyword. That last case makes the second of
+// undying+persist a no-op, since the object can only be returned once
+// (CR §702.93b / §702.92b).
+func reanimateOnDeath(gs *GameState, perm *Permanent, counterKind, eventKind, rule string) *Permanent {
 	seatIdx := perm.Owner
-	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return
+	if seatIdx < 0 || seatIdx >= len(gs.Seats) || gs.Seats[seatIdx] == nil {
+		return nil
 	}
 	seat := gs.Seats[seatIdx]
 
-	token := &Card{
-		Name:          perm.Card.Name,
-		Owner:         seatIdx,
-		BasePower:     perm.Card.BasePower,
-		BaseToughness: perm.Card.BaseToughness,
-		Types:         perm.Card.Types,
-		Colors:        perm.Card.Colors,
-		CMC:           perm.Card.CMC,
+	// Locate the same physical card the death put into the owner's graveyard —
+	// undying/persist return THAT card (a new game object), not a fabricated
+	// copy. The graveyard membership is also the single-return guard.
+	idx := -1
+	for i, c := range seat.Graveyard {
+		if c == perm.Card {
+			idx = i
+			break
+		}
 	}
+	if idx < 0 {
+		return nil
+	}
+	card := seat.Graveyard[idx]
+	seat.Graveyard = append(seat.Graveyard[:idx], seat.Graveyard[idx+1:]...)
+
 	returned := &Permanent{
-		Card:       token,
-		Controller: seatIdx,
-		Owner:      seatIdx,
-		Timestamp:  gs.NextTimestamp(),
-		Counters:   map[string]int{"+1/+1": 1},
-		Flags:      map[string]int{},
-	}
-	if perm.Card.AST != nil {
-		token.AST = perm.Card.AST
+		Card:          card,
+		Controller:    seatIdx,
+		Owner:         seatIdx,
+		SummoningSick: true,
+		Timestamp:     gs.NextTimestamp(),
+		Counters:      map[string]int{},
+		Flags:         map[string]int{},
 	}
 	seat.Battlefield = append(seat.Battlefield, returned)
 	RegisterReplacementsForPermanent(gs, returned)
+	// Enters with one counter, doubler-aware (§122.1g would_put_counter chain).
+	// This is an "enters with" counter, not an effect "putting" one, so the
+	// counter_placed payoff trigger is intentionally not fired.
+	if n, cancelled := FirePutCounterEvent(gs, returned, counterKind, 1, nil); !cancelled && n > 0 {
+		returned.Counters[counterKind] = n
+	}
 	FirePermanentETBTriggers(gs, returned)
 	gs.InvalidateCharacteristicsCache()
 
 	gs.LogEvent(Event{
-		Kind:   "undying",
+		Kind:   eventKind,
 		Seat:   seatIdx,
-		Source: perm.Card.DisplayName(),
+		Source: card.DisplayName(),
 		Details: map[string]interface{}{
-			"rule": "702.93",
+			"counter": counterKind,
+			"rule":    rule,
 		},
 	})
-	_ = returned
+	return returned
 }
 
 // CR §702.24 — Cumulative Upkeep

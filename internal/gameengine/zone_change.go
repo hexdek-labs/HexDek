@@ -536,6 +536,12 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 			})
 			// CR §702.46 — Soulshift: return a Spirit from graveyard to hand.
 			CheckSoulshift(gs, perm)
+			// CR §702.92 / §702.93 — Persist / Undying return-on-death. Each
+			// runs its own LKI counter check; undying is checked first, so a
+			// creature with BOTH returns exactly once (the sibling then finds
+			// the card already gone from the graveyard and no-ops).
+			CheckUndying(gs, perm)
+			CheckPersist(gs, perm)
 		}
 	} else if fromZone == "battlefield" && toZone != "graveyard" {
 		// A creature left the battlefield but a §614 replacement redirected
