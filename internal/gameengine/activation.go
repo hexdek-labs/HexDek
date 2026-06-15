@@ -617,6 +617,39 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 	// dispatcher dropped that information on the floor.
 	var paidSacrifice *Permanent
 	if ab != nil {
+		// Remove-counter cost (CR §602.1b) — "Remove N <kind> counters from
+		// this permanent: …". Enforced FIRST so an unaffordable activation
+		// rejects before any other cost is paid (nothing to roll back). The
+		// cost lives either in the structured Cost.RemoveCountersN/Knd fields
+		// or, for the ~346 cards the parser leaves unstructured, as a raw
+		// Cost.Extra string ("remove three spore counters from this creature")
+		// — RemoveCounterCostSpec reads both. Until now neither form was paid,
+		// so any such ability whose only cost was the counter removal (Elvish
+		// Farmer's "remove three spore counters: create a Saproling", spore /
+		// fungus engines, charge-counter sinks, …) was FREE and unboundedly
+		// activatable → board-explosion non-termination (firespot r63).
+		//
+		// Skipped when a per_card handler owns this card's activated ability —
+		// that handler is authoritative for the cost and already removes the
+		// counters itself, so generic enforcement would double-remove. Mirrors
+		// the mana-ability rider de-dup (PerCardOwnsActivated).
+		if n, kind, ok := RemoveCounterCostSpec(ab.Cost); ok && !PerCardOwnsActivated(perm.Card.DisplayName()) {
+			if perm.Counters == nil || perm.Counters[kind] < n {
+				return &CastError{Reason: "insufficient_counters"}
+			}
+			perm.Counters[kind] -= n
+			gs.LogEvent(Event{
+				Kind:   "remove_counter",
+				Seat:   seatIdx,
+				Amount: n,
+				Source: perm.Card.DisplayName(),
+				Details: map[string]interface{}{
+					"counter_kind": kind,
+					"reason":       "activation_cost",
+					"rule":         "602.1b",
+				},
+			})
+		}
 		// Tap cost.
 		if ab.Cost.Tap {
 			if perm.Tapped {

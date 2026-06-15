@@ -2255,6 +2255,19 @@ func buildActivationOptions(gs *gameengine.GameState, seatIdx int, phase string)
 				}
 			}
 
+			// Remove-counter cost check (CR §602.1b) — only OFFER a "remove N
+			// <kind> counters from this: …" ability when the permanent has at
+			// least N of that counter. Mirrors the payment-side enforcement in
+			// ActivateAbility (and its per_card-owner skip) so the Hat never
+			// picks an ability that would reject for insufficient counters and
+			// prematurely break the activation loop.
+			if n, kind, ok := gameengine.RemoveCounterCostSpec(act.Cost); ok &&
+				!gameengine.PerCardOwnsActivated(perm.Card.DisplayName()) {
+				if perm.Counters == nil || perm.Counters[kind] < n {
+					continue
+				}
+			}
+
 			// Channel-style abilities have costs in Extra that include
 			// "discard this card" — these are hand-activated, not battlefield.
 			// Skip them since the engine doesn't model hand activations.
