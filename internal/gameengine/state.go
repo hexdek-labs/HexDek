@@ -1912,7 +1912,19 @@ func (p *Permanent) IsCreature() bool {
 	if p != nil && p.Flags != nil && p.Flags["not_creature_while_impending"] == 1 {
 		return false
 	}
+	// CR §702.103a — while a bestow permanent is attached as an Aura it is
+	// an enchantment — Aura and is NOT a creature (so it can't attack/block
+	// and "destroy target creature" can't hit it). The flag is cleared on
+	// falloff (BestowFalloff), reverting it to its printed creature type.
+	if p != nil && p.Flags != nil && p.Flags["bestowed"] == 1 {
+		return false
+	}
 	return p.hasType("creature")
+}
+
+// permIsBestowed reports whether p is currently attached as a bestow Aura.
+func permIsBestowed(p *Permanent) bool {
+	return p != nil && p.Flags != nil && p.Flags["bestowed"] == 1
 }
 
 // hasType is the shared type-line predicate used by the 704.5 type checks.
@@ -1946,14 +1958,16 @@ func (p *Permanent) IsLand() bool { return p.hasType("land") }
 // IsArtifact — §205.3g (artifact type).
 func (p *Permanent) IsArtifact() bool { return p.hasType("artifact") }
 
-// IsEnchantment — §205.3g (enchantment type).
-func (p *Permanent) IsEnchantment() bool { return p.hasType("enchantment") }
+// IsEnchantment — §205.3g (enchantment type). A bestowed permanent is an
+// enchantment — Aura (CR §702.103a) regardless of its printed types.
+func (p *Permanent) IsEnchantment() bool { return permIsBestowed(p) || p.hasType("enchantment") }
 
 // IsBattle — §205.3g / §310 (battle type). See §704.5v.
 func (p *Permanent) IsBattle() bool { return p.hasType("battle") }
 
-// IsAura — §205.3h / §303 (Aura is an enchantment subtype).
-func (p *Permanent) IsAura() bool { return p.hasType("aura") }
+// IsAura — §205.3h / §303 (Aura is an enchantment subtype). A bestowed
+// permanent is an Aura while attached (CR §702.103a).
+func (p *Permanent) IsAura() bool { return permIsBestowed(p) || p.hasType("aura") }
 
 // IsEquipment — §301.5 (Equipment artifact subtype). See §704.5n.
 func (p *Permanent) IsEquipment() bool { return p.hasType("equipment") }

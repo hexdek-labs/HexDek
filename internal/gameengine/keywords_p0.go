@@ -955,11 +955,15 @@ func BestowFalloff(gs *GameState, perm *Permanent) {
 		return
 	}
 
-	// Clear the bestowed flag — the continuous effect checks this flag,
-	// so it stops applying aura/enchantment types automatically.
-	// No need to mutate Card.Types directly (CR §702.103e).
+	// Clear the bestowed flag — the layer-4 type effect AND the
+	// IsCreature/IsAura/IsEnchantment flag overrides both key off it, so
+	// clearing the flag reverts the permanent to its printed creature
+	// identity. No need to mutate Card.Types directly (CR §702.103e).
 	perm.AttachedTo = nil
 	perm.Flags["bestowed"] = 0
+	// Re-evaluate layer-4 types now so the §704.5m Aura SBA (HasTypeOf-
+	// based) sees the permanent as a creature, not a now-unattached Aura.
+	gs.InvalidateCharacteristicsCache()
 
 	gs.LogEvent(Event{
 		Kind:   "bestow_falloff",

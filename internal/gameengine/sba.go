@@ -129,6 +129,19 @@ func StateBasedActions(gs *GameState) bool {
 			changed = true
 		}
 
+		// CR §702.103e — bestow falloff. A bestow permanent whose enchanted
+		// creature has left the battlefield stops being an Aura and becomes
+		// a creature (it stays on the battlefield, unattached). This MUST
+		// run before the §704.5m Aura SBA: otherwise the bestow permanent —
+		// which still reads as an Aura via the layer-4 type effect with a
+		// now-illegal (gone) attachment — would be put into the graveyard
+		// by §704.5m instead of surviving as a creature. Before r63 this was
+		// never wired into the SBA loop, so every bestow aura died with its
+		// host.
+		if CheckBestowFalloffs(gs) {
+			changed = true
+		}
+
 		// Attachment SBAs (§704.5m–§704.5p).
 		if sba704_5m(gs) {
 			changed = true
