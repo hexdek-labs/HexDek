@@ -468,6 +468,12 @@ func ScanExpiredDurations(gs *GameState, phase, step string) {
 		ClearMayhemDiscards(gs)
 		ClearVisitFlags(gs)
 		EndStepClearStartYourEngines(gs)
+		// CR §702.122a — a crewed Vehicle is "an artifact creature until end
+		// of turn"; revert it at cleanup. UncrewVehiclesAtEOT was never wired
+		// into the cleanup step, so a crewed Vehicle stayed a creature forever
+		// (the granted creature type was appended directly to Card.Types and
+		// only this sweep removes it).
+		UncrewVehiclesAtEOT(gs)
 
 		// Reset the per-card trigger runaway-detection counter. This is a
 		// per-turn budget, not a lifetime cap; without the reset a long

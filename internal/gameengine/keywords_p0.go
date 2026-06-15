@@ -423,6 +423,18 @@ func CrewVehicle(gs *GameState, seatIdx int, vehicle *Permanent, crewCreatures [
 		},
 	})
 
+	// CR §603 — "whenever you crew" / "whenever this Vehicle becomes crewed"
+	// triggers (the self_crews_vehicle → crew alias family) fire here. The
+	// crew action only logged an event before; the trigger event was never
+	// dispatched, so crew-matters abilities were inert.
+	FireCardTrigger(gs, "crew", map[string]interface{}{
+		"seat":        seatIdx,
+		"vehicle":     vehicle,
+		"card":        vehicle.Card,
+		"total_power": totalPower,
+		"crew_cost":   crewN,
+	})
+
 	return nil
 }
 
