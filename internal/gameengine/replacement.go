@@ -442,17 +442,47 @@ func pickReplacement(gs *GameState, ev *ReplEvent) *ReplacementEffect {
 		return a.Timestamp < b.Timestamp
 	})
 
-	// §616.1: affected player chooses order among same-category effects.
-	// Delegate to Hat if available; otherwise use the deterministic sort.
-	affectedSeat := ev.TargetSeat
-	if affectedSeat >= 0 && affectedSeat < len(gs.Seats) && gs.Seats[affectedSeat] != nil && gs.Seats[affectedSeat].Hat != nil {
-		reordered := gs.Seats[affectedSeat].Hat.OrderReplacements(gs, affectedSeat, applicable)
-		if len(reordered) > 0 {
-			return reordered[0]
+	// CR §616.1a–e: the category ordering (self-replacement first, then
+	// control / copy / back-face / other) is MANDATORY — the affected player
+	// does NOT get to elect a later-category effect before an earlier one.
+	// So the §616.1 affected-player choice is restricted to the effects of
+	// the LOWEST present category. `applicable` is already category-sorted,
+	// so the lowest-category effects sit at the front; slice them off.
+	//
+	// Before r63 the full cross-category list was handed to the Hat and
+	// reordered[0] taken blindly, so a Hat (GreedyHat/Yggdrasil all sort by
+	// self/timestamp/value, ignoring Category) could apply a CategoryOther
+	// effect before a mandatory CategoryControlETB / CategorySelfReplacement
+	// one — a §616 violation whenever mixed-category replacements hit one
+	// event. The comment already claimed "among same-category effects"; the
+	// code didn't enforce it.
+	lowest := replCategoryOrder(applicable[0].Category)
+	sameCat := make([]*ReplacementEffect, 0, len(applicable))
+	for _, re := range applicable {
+		if replCategoryOrder(re.Category) == lowest {
+			sameCat = append(sameCat, re)
 		}
 	}
 
-	return applicable[0]
+	// §616.1: affected player chooses order among the same-category effects.
+	// Delegate to Hat if available; otherwise use the deterministic sort.
+	affectedSeat := ev.TargetSeat
+	if affectedSeat >= 0 && affectedSeat < len(gs.Seats) && gs.Seats[affectedSeat] != nil && gs.Seats[affectedSeat].Hat != nil {
+		reordered := gs.Seats[affectedSeat].Hat.OrderReplacements(gs, affectedSeat, sameCat)
+		// Honor the Hat's pick only if it's one of the same-category
+		// candidates — a Hat must not reorder across the mandatory §616
+		// category boundary (defense-in-depth against a Hat that returns
+		// the full list or an out-of-set effect).
+		if len(reordered) > 0 {
+			for _, c := range sameCat {
+				if reordered[0] == c {
+					return reordered[0]
+				}
+			}
+		}
+	}
+
+	return sameCat[0]
 }
 
 // -----------------------------------------------------------------------------
