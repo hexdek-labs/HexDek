@@ -766,11 +766,29 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 		return
 	}
 
-	// Push triggers in APNAP order (CR §101.4).
-	// Active player's triggers go on stack FIRST (resolve LAST due to LIFO).
+	// CR §603.3b: simultaneous triggers are placed on the stack in APNAP
+	// order (active player's FIRST), so under LIFO the active player's
+	// triggers resolve LAST and the last non-active player's resolve FIRST.
+	//
+	// PushPerCardTrigger does NOT batch-then-drain: it pushes AND resolves
+	// each trigger INLINE as it is iterated (callers fire mid-SBA / mid-
+	// zone-change and rely on seeing effects before control returns). With
+	// inline resolution the *iteration order IS the resolution order*, so
+	// iterating APNAP (active first) here would resolve the active player's
+	// triggers FIRST — backwards from §603.3b. To reproduce the LIFO
+	// outcome we iterate in resolution order = REVERSE APNAP (last non-
+	// active player first, active player last). Mana-ability triggers
+	// (usesStack=false) don't use the stack and keep APNAP order.
 	apnap := gameengine.APNAPOrder(gs)
 	usesStack := !isManaAbilityEvent(event)
-	for _, seatIdx := range apnap {
+	order := apnap
+	if usesStack && len(apnap) > 1 {
+		order = make([]int, len(apnap))
+		for i := range apnap {
+			order[len(apnap)-1-i] = apnap[i]
+		}
+	}
+	for _, seatIdx := range order {
 		hits, ok := hitsBySeat[seatIdx]
 		if !ok {
 			continue
