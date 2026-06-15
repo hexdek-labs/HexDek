@@ -100,8 +100,17 @@ func grevenAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 		})
 		return
 	}
-	power := int(pick.Card.BasePower)
-	tough := int(pick.Card.BaseToughness)
+	// CR §603.10 / §608.2g — "draw cards equal to that creature's power
+	// and you lose life equal to its toughness" reads the sacrificed
+	// creature's LAST-KNOWN P/T: its effective power/toughness including
+	// +1/+1 counters, anthems, and other continuous effects, NOT its
+	// printed base. Read via the layer-aware PowerOf/ToughnessOf while the
+	// creature is still on the battlefield (i.e. immediately before it's
+	// sacrificed below). Reading Card.BasePower/BaseToughness ignored every
+	// boost — a +1/+1-countered or anthem-buffed sacrifice drew/lost the
+	// base amount.
+	power := gs.PowerOf(pick)
+	tough := gs.ToughnessOf(pick)
 	if power < 0 {
 		power = 0
 	}
