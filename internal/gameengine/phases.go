@@ -929,6 +929,30 @@ func UntapAll(gs *GameState, seatIdx int) {
 			continue
 		}
 
+		// CR §702.112b — an exerted creature doesn't untap during its
+		// controller's NEXT untap step. One-shot: consume the flag here so the
+		// creature untaps normally on the following untap step (distinct from
+		// the permanent skip_untap above, which never clears).
+		if p.Flags != nil && p.Flags["exert_skip_next_untap"] > 0 {
+			delete(p.Flags, "exert_skip_next_untap")
+			if p.Tapped {
+				cardName := "<unknown>"
+				if p.Card != nil {
+					cardName = p.Card.DisplayName()
+				}
+				gs.LogEvent(Event{
+					Kind:   "untap_skipped",
+					Seat:   seatIdx,
+					Source: cardName,
+					Details: map[string]interface{}{
+						"reason": "exert",
+						"rule":   "702.112b",
+					},
+				})
+			}
+			continue
+		}
+
 		// r63 scaffold-kind: aura_no_untap — "enchanted permanent doesn't
 		// untap during its controller's untap step" (Waterknot, Shackles,
 		// Capture Sphere, …). Dynamic check, no stale flag. See
