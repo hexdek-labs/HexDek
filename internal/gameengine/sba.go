@@ -1517,7 +1517,17 @@ func sba704_5t(gs *GameState) bool {
 				seat.Flags["dungeon_completed"] = 1
 			}
 		}
-		if seat.Flags["dungeon_completed"] > 0 {
+		// §704.5t — when a dungeon is completed, the dungeon CARD leaves the
+		// command zone. But "dungeon_completed" is ALSO the persistent
+		// "this player has completed a dungeon" marker that Ravenloft
+		// Adventurer / Acererak etc. read, and VentureIntoDungeon increments
+		// it per completion — so it must NOT be deleted here. Log each new
+		// completion exactly once (watermark), and clear only the CURRENT
+		// dungeon's position flags (the card leaving the command zone).
+		// Pre-r63 this deleted dungeon_completed, so completing a dungeon
+		// didn't durably register and "if you've completed a dungeon" gates
+		// silently read false on the next SBA pass.
+		if seat.Flags["dungeon_completed"] > seat.Flags["dungeon_completed_logged"] {
 			gs.LogEvent(Event{
 				Kind: "dungeon_completed",
 				Seat: seat.Idx,
@@ -1526,7 +1536,7 @@ func sba704_5t(gs *GameState) bool {
 					"dungeon_level": seat.Flags["dungeon_level"],
 				},
 			})
-			delete(seat.Flags, "dungeon_completed")
+			seat.Flags["dungeon_completed_logged"] = seat.Flags["dungeon_completed"]
 			delete(seat.Flags, "dungeon_level")
 			delete(seat.Flags, "dungeon_name")
 			changed = true
