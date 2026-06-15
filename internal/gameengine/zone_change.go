@@ -1027,6 +1027,27 @@ func isTargetStillLegal(gs *GameState, item *StackItem, t Target) bool {
 			if src != nil && !CanBeTargetedByCombat(t.Permanent, item.Controller, src) {
 				return false
 			}
+			// CR §608.2b — re-validate against the spell/ability's target
+			// FILTER, not just shroud/hexproof/protection. A target that has
+			// become an illegal TYPE ("target creature" on a permanent that's
+			// no longer a creature — animated land that stopped being a
+			// creature), lost a required state ("target tapped creature" that
+			// untapped, "target attacking creature" that stopped attacking), or
+			// changed controller ("target creature you don't control" that you
+			// now control) is illegal at resolution. The filter is taken from
+			// the curated single-target effect set (requiredTargetFilter); the
+			// announcement-time target was picked through the same
+			// matchesPermanent / matchesControl gates, so an UNCHANGED target
+			// still passes and only a genuinely-changed one fizzles. Non-curated
+			// effects (ok==false) keep the prior behavior (no filter re-check).
+			if filter, ok := requiredTargetFilter(item); ok {
+				if !matchesPermanent(filter, t.Permanent) {
+					return false
+				}
+				if !matchesControl(filter, t.Permanent.Controller, item.Controller) {
+					return false
+				}
+			}
 		}
 		return true
 	case TargetKindStackItem:
