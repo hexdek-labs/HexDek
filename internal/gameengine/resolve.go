@@ -1942,6 +1942,10 @@ func resolveGainControl(gs *GameState, src *Permanent, e *gameast.GainControl) {
 		}
 		// Remove from old controller's battlefield, add to new.
 		gs.removePermanent(p)
+		// CR §702.97e — a control change breaks any soulbond pairing. Break it
+		// before the Controller/Timestamp flip, while p still carries the old
+		// timestamp the pairing link is keyed on.
+		UnpairOnLeave(gs, p)
 		p.Controller = newController
 		p.Timestamp = gs.NextTimestamp()
 		gs.Seats[newController].Battlefield = append(gs.Seats[newController].Battlefield, p)

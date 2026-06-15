@@ -501,6 +501,14 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 		})
 	}
 
+	// CR §702.97e — a soulbond pairing ends when either creature leaves the
+	// battlefield. Break it here (the LTB chokepoint every battlefield exit —
+	// death, exile, bounce, flicker — funnels through), while `perm` still
+	// carries its flags, so the surviving partner becomes unpaired again.
+	if perm != nil && fromZone == "battlefield" && toZone != "battlefield" {
+		UnpairOnLeave(gs, perm)
+	}
+
 	// Determine which trigger events match this zone change.
 	events := zoneChangeToTriggerEvents(fromZone, toZone)
 	if len(events) == 0 {

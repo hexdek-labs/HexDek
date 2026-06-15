@@ -89,6 +89,55 @@ func PairSoulbond(gs *GameState, perm *Permanent, partner *Permanent) bool {
 	return true
 }
 
+// UnpairOnLeave breaks a soulbond pairing when `perm` leaves the battlefield
+// or changes controller (CR §702.97e — "this effect lasts as long as both
+// creatures remain on the battlefield under their controller's control").
+//
+// The pairing is mutual: perm.Flags["paired_timestamp"] holds the partner's
+// (unique, monotonic) Timestamp and vice-versa. This finds that partner on any
+// battlefield and clears its flag, then clears perm's own — so the surviving
+// partner becomes unpaired and eligible for a new pairing, and any
+// bonus/eligibility gated on IsPaired stops. Idempotent: a no-op when `perm`
+// isn't paired. Must be called while `perm` still carries its flags (i.e.
+// before/at the LTB / control-change moment).
+func UnpairOnLeave(gs *GameState, perm *Permanent) {
+	if gs == nil || perm == nil || perm.Flags == nil {
+		return
+	}
+	partnerStamp, ok := perm.Flags["paired_timestamp"]
+	if !ok || partnerStamp <= 0 {
+		return
+	}
+	for _, seat := range gs.Seats {
+		if seat == nil {
+			continue
+		}
+		for _, p := range seat.Battlefield {
+			if p == nil || p == perm || p.Flags == nil {
+				continue
+			}
+			// Unique timestamp identifies the partner; the mutual-link check is
+			// belt-and-suspenders against a coincidental stamp collision.
+			if p.Timestamp == partnerStamp && p.Flags["paired_timestamp"] == perm.Timestamp {
+				delete(p.Flags, "paired_timestamp")
+				name := ""
+				if p.Card != nil {
+					name = p.Card.DisplayName()
+				}
+				gs.LogEvent(Event{
+					Kind:   "soulbond_break",
+					Seat:   p.Controller,
+					Source: name,
+					Details: map[string]interface{}{
+						"rule": "702.97e",
+					},
+				})
+			}
+		}
+	}
+	delete(perm.Flags, "paired_timestamp")
+}
+
 // ===========================================================================
 // Haunt — CR §702.55
 // ===========================================================================
