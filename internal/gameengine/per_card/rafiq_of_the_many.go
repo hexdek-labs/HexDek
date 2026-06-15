@@ -35,13 +35,22 @@ func rafiqAttacksAlone(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	if seat == nil {
 		return
 	}
+	// CR §508.4a — a creature "attacks alone" iff it is the only creature
+	// DECLARED as an attacker. Creatures put onto the battlefield attacking
+	// (§506.3: tokens, ninjutsu, Kaalia) were never declared and must NOT
+	// count, so a lone declared attacker still attacks alone alongside them.
+	// WasDeclaredAttacker() reads the declared-this-combat flag (set only at
+	// declare-attackers) — the same authoritative count engine exalted uses
+	// (combat.go `len(declared)==1`). Counting IsAttacking() here instead
+	// diverged from exalted and wrongly suppressed Rafiq when a token
+	// entered attacking next to a lone declared attacker.
 	var lone *gameengine.Permanent
 	count := 0
 	for _, p := range seat.Battlefield {
 		if p == nil || p.Card == nil || !p.IsCreature() {
 			continue
 		}
-		if p.IsAttacking() {
+		if p.WasDeclaredAttacker() {
 			count++
 			lone = p
 		}

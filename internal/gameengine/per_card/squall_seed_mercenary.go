@@ -37,13 +37,17 @@ func squallSeedAttackAlone(gs *gameengine.GameState, perm *gameengine.Permanent,
 	if seat == nil {
 		return
 	}
+	// CR §508.4a — "attacks alone" counts only DECLARED attackers; §506.3
+	// entered-attacking creatures (tokens, ninjutsu) don't count. Use
+	// WasDeclaredAttacker() so this agrees with exalted (combat.go
+	// `len(declared)==1`) rather than diverging via IsAttacking().
 	var lone *gameengine.Permanent
 	count := 0
 	for _, p := range seat.Battlefield {
 		if p == nil || p.Card == nil || !p.IsCreature() {
 			continue
 		}
-		if p.IsAttacking() {
+		if p.WasDeclaredAttacker() {
 			count++
 			lone = p
 		}

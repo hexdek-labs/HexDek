@@ -11,6 +11,21 @@ func setAttacking(p *gameengine.Permanent) {
 		p.Flags = map[string]int{}
 	}
 	p.Flags["attacking"] = 1
+	// "Attacks alone" abilities (Rafiq/Squall/Grunn) count DECLARED
+	// attackers (CR §508.4a), so a test attacker must carry the
+	// declared-this-combat flag too — this is what DeclareAttackers sets
+	// for genuinely declared attackers (combat.go).
+	p.Flags["declared_attacker_this_combat"] = 1
+}
+
+// setEnteredAttacking marks a permanent as attacking WITHOUT declaring it
+// (the §506.3 "enters the battlefield attacking" shape: tokens, ninjutsu,
+// Kaalia). Such creatures must NOT count toward "attacks alone".
+func setEnteredAttacking(p *gameengine.Permanent) {
+	if p.Flags == nil {
+		p.Flags = map[string]int{}
+	}
+	p.Flags["attacking"] = 1
 }
 
 func TestRafiq_LoneAttackerGainsDoubleStrike(t *testing.T) {

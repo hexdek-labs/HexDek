@@ -31,12 +31,17 @@ func grunnAttacksAlone(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 	if s == nil {
 		return
 	}
-	if !perm.IsAttacking() {
+	// CR §508.4a — "Grunn attacks alone" requires Grunn to be the ONLY
+	// DECLARED attacker. A Grunn put onto the battlefield attacking (§506.3)
+	// was never declared, so it doesn't "attack alone"; and a token entering
+	// attacking next to a lone declared Grunn doesn't break alone-ness. Use
+	// WasDeclaredAttacker() to agree with exalted's declared count.
+	if !perm.WasDeclaredAttacker() {
 		return
 	}
 	attackerCount := 0
 	for _, p := range s.Battlefield {
-		if p != nil && p.IsAttacking() {
+		if p != nil && p.WasDeclaredAttacker() {
 			attackerCount++
 		}
 	}
