@@ -387,16 +387,16 @@ func payWardByLife(gs *GameState, caster *Seat, source *Permanent, cost WardCost
 			"required":    n,
 		}
 	}
-	caster.Life -= n
-	gs.LogEvent(Event{
-		Kind:   "life_lost",
-		Seat:   caster.Idx,
-		Source: "ward_alt_pay_life",
-		Amount: n,
-		Details: map[string]interface{}{
-			"reason": "ward_alt_pay_life",
-		},
-	})
+	// CR §118.4 / §119.3 — paying life IS losing life. Route through the
+	// canonical LoseLife so "whenever you lose life" triggers fire (the
+	// caster's own payoffs, an opponent's Vito / Exquisite Blood), the
+	// per-turn life-loss bookkeeping is set (lost_life_this_turn /
+	// Turn.LifeLost), and the §104.1-2 post-game-end guard applies. This
+	// was the lone raw `caster.Life -= n` ward site — the sibling variants
+	// already use canonical helpers (SacrificePermanent / DiscardCard /
+	// AddCounter), so a ward-pay-life payment silently fired no life-loss
+	// triggers (and bypassed the post-end guard flagged in the judge sweep).
+	LoseLife(gs, caster.Idx, n, "ward_alt_pay_life")
 	return true, map[string]interface{}{
 		"paid_life":      n,
 		"caster_life_after": caster.Life,
