@@ -1,5 +1,10 @@
 package gameengine
 
+import (
+	"strconv"
+	"strings"
+)
+
 // keywords_goad.go — Goad (CR §701.39, Conspiracy: Take the Crown 2016).
 //
 // CR §701.39a: To goad a creature means to apply the following effect
@@ -114,11 +119,21 @@ func GoadCreature(gs *GameState, sourceSeat int, perm *Permanent) {
 		perm.Flags = map[string]int{}
 	}
 	expiry := gs.Turn + seatsBefore(gs, sourceSeat)
+	// CR §701.39b — a creature can be goaded by more than one player, each
+	// goad with its own "until your next turn" expiry. Store one key per
+	// goader (goad_from_<seat> = that goader's expiry) so the must-attack and
+	// "attack a player other than ANY goader" restrictions stack correctly and
+	// each goad wears off independently.
+	perm.Flags["goad_from_"+itoa(sourceSeat)] = expiry
+	// Legacy single-goader fields: most-recent goader + the MAX expiry across
+	// all active goads (so IsGoaded stays true while any goad is live). Kept
+	// for readers that predate the multi-goader set.
 	perm.Flags["goaded_by_seat"] = sourceSeat
-	perm.Flags["goaded_until_turn"] = expiry
-	// Legacy boolean kept in lockstep with the new turn-windowed
-	// version so existing readers (resolve_helpers.go case "goad",
-	// the_rani per-card handler) keep working without migration.
+	if cur, ok := perm.Flags["goaded_until_turn"]; !ok || expiry > cur {
+		perm.Flags["goaded_until_turn"] = expiry
+	}
+	// Legacy boolean kept in lockstep with the turn-windowed version so
+	// existing readers keep working without migration.
 	perm.Flags["goaded"] = 1
 
 	cardName := ""
@@ -218,26 +233,52 @@ func MustAttackIfAble(gs *GameState, perm *Permanent) bool {
 	return perm.Controller == gs.Active
 }
 
+// activeGoaders returns every seat that currently has an active goad on
+// `perm` (its per-goader expiry is still in the future). Multi-goader set
+// per CR §701.39b. Order is not significant (the caller treats it as a set).
+func activeGoaders(perm *Permanent, currentTurn int) []int {
+	if perm == nil || perm.Flags == nil {
+		return nil
+	}
+	var out []int
+	for k, expiry := range perm.Flags {
+		if !strings.HasPrefix(k, "goad_from_") {
+			continue
+		}
+		if expiry <= currentTurn {
+			continue
+		}
+		if seat, err := strconv.Atoi(strings.TrimPrefix(k, "goad_from_")); err == nil {
+			out = append(out, seat)
+		}
+	}
+	return out
+}
+
 // CannotAttackGoader reports whether `perm` is forbidden from
 // attacking `defenderSeat` due to goad's "attacks a player other
-// than you if able" clause. True iff perm is currently goaded and
-// the goader is defenderSeat. Used by the attack-target picker to
-// filter the defender pool.
+// than [any goader] if able" clause (CR §701.39b). True iff perm is
+// currently goaded by defenderSeat. Used by the attack-target picker
+// to filter the defender pool.
 //
 // "If able" applies here too: when EVERY other defender is dead or
-// otherwise unreachable, the rule allows attacking the goader. The
+// otherwise unreachable, the rule allows attacking a goader. The
 // caller is responsible for the "if able" escape hatch; this
-// predicate only answers the structural "is this defender the
-// goader?" question.
+// predicate only answers the structural "is this defender a goader?"
+// question.
 func CannotAttackGoader(gs *GameState, perm *Permanent, defenderSeat int) bool {
 	if gs == nil || perm == nil {
 		return false
 	}
-	goader, ok := GoadedBySeat(perm, gs.Turn)
-	if !ok {
-		return false
+	for _, g := range activeGoaders(perm, gs.Turn) {
+		if g == defenderSeat {
+			return true
+		}
 	}
-	return goader == defenderSeat
+	// Fall back to the legacy single-goader field for goads stamped by older
+	// paths that never wrote a goad_from_<seat> key.
+	goader, ok := GoadedBySeat(perm, gs.Turn)
+	return ok && goader == defenderSeat
 }
 
 // ---------------------------------------------------------------------------
@@ -262,6 +303,13 @@ func ExpireGoadAtCleanup(gs *GameState, perm *Permanent) bool {
 	}
 	if gs.Turn < expiry {
 		return false
+	}
+	// goaded_until_turn is the MAX expiry across all goaders, so reaching it
+	// means every goad has worn off — clear the full set.
+	for k := range perm.Flags {
+		if strings.HasPrefix(k, "goad_from_") {
+			delete(perm.Flags, k)
+		}
 	}
 	delete(perm.Flags, "goaded_by_seat")
 	delete(perm.Flags, "goaded_until_turn")

@@ -141,10 +141,12 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		targets := pickTargetFromModArgs(gs, src, e.Args)
 		for _, t := range targets {
 			if t.Kind == TargetKindPermanent && t.Permanent != nil {
-				if t.Permanent.Flags == nil {
-					t.Permanent.Flags = map[string]int{}
-				}
-				t.Permanent.Flags["goaded"] = 1
+				// CR §701.39 — route through GoadCreature so the goad carries
+				// the goader's seat (the "attack a player other than you"
+				// restriction) AND the "until your next turn" expiry. A bare
+				// Flags["goaded"]=1 left the goad permanent and goader-less,
+				// breaking both clauses.
+				GoadCreature(gs, controllerSeat(src), t.Permanent)
 				gs.LogEvent(Event{
 					Kind:   "goad",
 					Seat:   controllerSeat(src),
@@ -4264,10 +4266,9 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		targets := pickTargetFromModArgs(gs, src, e.Args)
 		for _, t := range targets {
 			if t.Kind == TargetKindPermanent && t.Permanent != nil {
-				if t.Permanent.Flags == nil {
-					t.Permanent.Flags = map[string]int{}
-				}
-				t.Permanent.Flags["goaded"] = 1
+				// CR §701.39 — route through GoadCreature for the goader-seat
+				// restriction + "until your next turn" expiry (see case "goad").
+				GoadCreature(gs, controllerSeat(src), t.Permanent)
 			}
 		}
 		gs.LogEvent(Event{

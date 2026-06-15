@@ -2696,17 +2696,35 @@ func filterGoaderFromDefenders(gs *GameState, perm *Permanent, livingOpps []int)
 	if !IsGoaded(perm, gs.Turn) {
 		return livingOpps
 	}
-	goader, ok := GoadedBySeat(perm, gs.Turn)
-	if !ok {
+	// CR §701.39b — the goaded creature must attack a player other than ANY
+	// player who goaded it, if able. Filter out every active goader; fall back
+	// to the legacy single goader if no per-goader set was stamped.
+	goaders := activeGoaders(perm, gs.Turn)
+	if len(goaders) == 0 {
+		if g, ok := GoadedBySeat(perm, gs.Turn); ok {
+			goaders = []int{g}
+		}
+	}
+	if len(goaders) == 0 {
 		return livingOpps
+	}
+	isGoader := func(seat int) bool {
+		for _, g := range goaders {
+			if g == seat {
+				return true
+			}
+		}
+		return false
 	}
 	filtered := make([]int, 0, len(livingOpps))
 	for _, opp := range livingOpps {
-		if opp == goader {
+		if isGoader(opp) {
 			continue
 		}
 		filtered = append(filtered, opp)
 	}
+	// "If able" escape: if filtering out all goaders leaves no legal defender,
+	// the creature may attack a goader after all.
 	if len(filtered) == 0 {
 		return livingOpps
 	}
