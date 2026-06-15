@@ -588,7 +588,12 @@ func GetAnnihilatorN(p *Permanent) int {
 }
 
 // ApplyAnnihilator forces the defending player to sacrifice N permanents.
-// Simplified: sacrifices the N smallest creatures/permanents.
+// CR §702.86 / §701.17: the sacrifice is the DEFENDING player's choice among
+// THEIR OWN permanents (any type), so each pick routes through that seat's own
+// SacrificeChooser hat (ChooseForcedSacrifice) — not an attacker-side policy.
+// (The old code imposed a hardcoded "smallest creature, non-creatures first"
+// pick, which both ignored the defender's choice and dumped their lands first.)
+// If the defender has fewer than N permanents, they sacrifice all they have.
 func ApplyAnnihilator(gs *GameState, attacker *Permanent, defenderSeat int) {
 	if gs == nil || attacker == nil {
 		return
@@ -602,27 +607,26 @@ func ApplyAnnihilator(gs *GameState, attacker *Permanent, defenderSeat int) {
 		return
 	}
 
-	// Sacrifice N permanents — policy: sacrifice smallest power first
-	// to minimize loss.
 	sacrificed := 0
-	for sacrificed < n && len(seat.Battlefield) > 0 {
-		// Find smallest permanent (by toughness for creatures, else first non-creature).
-		bestIdx := 0
-		bestScore := 1 << 30
-		for i, p := range seat.Battlefield {
-			if p == nil {
-				continue
-			}
-			score := 0
-			if p.IsCreature() {
-				score = p.Power() + p.Toughness()
-			}
-			if score < bestScore {
-				bestScore = score
-				bestIdx = i
+	for sacrificed < n {
+		// Rebuild the candidate pool each iteration (the prior sacrifice
+		// removed its victim from the battlefield). All permanents are
+		// eligible — annihilator is not creature-restricted.
+		var candidates []*Permanent
+		for _, p := range seat.Battlefield {
+			if p != nil {
+				candidates = append(candidates, p)
 			}
 		}
-		victim := seat.Battlefield[bestIdx]
+		if len(candidates) == 0 {
+			break // fewer than N permanents — all sacrificed
+		}
+		victim := ChooseForcedSacrifice(gs, defenderSeat, candidates, "annihilator")
+		if victim == nil {
+			break
+		}
+		// Canonical sacrifice: §614 replacements, dies/LTB triggers, tokens
+		// cease, commander redirect.
 		SacrificePermanent(gs, victim, "annihilator")
 		sacrificed++
 	}
