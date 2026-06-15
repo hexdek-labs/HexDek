@@ -1924,13 +1924,22 @@ func CanBeTargetedByCombat(perm *Permanent, seatIdx int, sourceCard *Card) bool 
 	// §702.16 — Protection from [quality]. "A permanent or player with
 	// protection can't be targeted by spells with the stated quality and
 	// can't be targeted by abilities from sources with the stated quality."
-	// Check protection_from_<color> flags against the source card's colors.
-	if perm.Flags != nil && sourceCard != nil &&
-		(perm.Flags["kw:protection"] > 0 || perm.HasKeyword("protection")) {
-		for _, colorCode := range sourceCard.Colors {
-			colorName := colorCodeToName(colorCode)
-			if colorName != "" && perm.Flags["protection_from_"+colorName] > 0 {
-				return false
+	// Use the canonical protectionColors set so targeting agrees with the
+	// combat/damage axes regardless of which flag vocabulary the granting
+	// card used (prot:<LETTER> like Akroma / Animar / Progenitus' prot:*,
+	// the AST "protection from <color>" raw text, or protection_from_<colorname>
+	// like Mother of Runes). Before r63 this read only protection_from_*,
+	// so a creature with prot:R (Akroma) was wrongly targetable by red.
+	if sourceCard != nil {
+		prot := protectionColors(perm)
+		if _, everything := prot["*"]; everything {
+			return false
+		}
+		if len(prot) > 0 {
+			for c := range cardColors(sourceCard) {
+				if _, hit := prot[strings.ToUpper(c)]; hit {
+					return false
+				}
 			}
 		}
 	}

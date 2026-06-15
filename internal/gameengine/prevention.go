@@ -166,6 +166,33 @@ func PreventDamageToPermanent(gs *GameState, target *Permanent, amount int, src 
 		return amount
 	}
 
+	// CR §702.16d — Protection (the "D" in DEBT): all damage from a source
+	// of a quality the permanent has protection from is prevented. This is
+	// the canonical chokepoint for every damage path. Combat already filters
+	// in applyCombatDamageToCreature before calling here, but non-combat,
+	// NON-TARGETED damage — Pyroclasm / Earthquake / a red source's "deal N
+	// damage to each creature" — reaches here directly and was NOT honoring
+	// protection (a protection-from-red creature took Pyroclasm damage).
+	// attackerHasProtectionFromGS reads the SOURCE's effective (§613 layer-5)
+	// colors via ColorsOf, so a creature turned red is correctly matched.
+	// Placed before the §122.1b shield-counter replacement so a protected
+	// creature doesn't waste a shield on damage that's prevented anyway
+	// (§616.1 — the affected permanent's controller orders the effects).
+	if src != nil && attackerHasProtectionFromGS(gs, target, src) {
+		gs.LogEvent(Event{
+			Kind:   "damage_prevented",
+			Seat:   target.Controller,
+			Source: permanentName(src),
+			Amount: amount,
+			Details: map[string]interface{}{
+				"target_card": target.Card.DisplayName(),
+				"reason":      "protection",
+				"rule":        "702.16d",
+			},
+		})
+		return 0
+	}
+
 	// §122.1b: Shield counter — "If this permanent would be dealt damage,
 	// remove a shield counter from it instead."
 	if target.Counters != nil && target.Counters["shield"] > 0 {

@@ -1636,8 +1636,29 @@ func protectionColors(p *Permanent) map[string]struct{} {
 	}
 	if p.Flags != nil {
 		for k := range p.Flags {
+			if p.Flags[k] <= 0 {
+				continue
+			}
+			// Combat representation: prot:<LETTER> (Akroma, Animar,
+			// Progenitus' prot:*).
 			if strings.HasPrefix(k, "prot:") {
 				out[strings.TrimPrefix(k, "prot:")] = struct{}{}
+				continue
+			}
+			// Targeting representation: protection_from_<colorname>
+			// (Mother of Runes, Akroma's Will). Before r63 these two flag
+			// vocabularies were read by DIFFERENT code paths (combat read
+			// prot:*, targeting read protection_from_*), so a card that set
+			// only one was protected on only some of the DEBT axes — Akroma
+			// (prot:R/B) was targetable by red/black, Mother-of-Runes grants
+			// (protection_from_red) didn't stop combat damage. Fold both
+			// into the canonical color set so every axis agrees.
+			if rest, ok := strings.CutPrefix(k, "protection_from_"); ok {
+				if rest == "everything" {
+					out["*"] = struct{}{}
+				} else if letter := colorWords[rest]; letter != "" {
+					out[letter] = struct{}{}
+				}
 			}
 		}
 	}
