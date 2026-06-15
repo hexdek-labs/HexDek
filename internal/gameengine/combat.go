@@ -1806,19 +1806,24 @@ func DealCombatDamageStep(gs *GameState, attackers []*Permanent, blockerMap map[
 				}
 			}
 			remaining := dmg
-			for _, b := range ordered {
+			hasTrample := atk.HasKeyword("trample")
+			for i, b := range ordered {
 				if remaining <= 0 {
 					break
 				}
-				need := lethalAmountGS(gs, atk, b)
-				give := remaining
-				if give > need {
-					give = need
+				give := lethalAmountGS(gs, atk, b)
+				if give > remaining {
+					give = remaining
+				}
+				// CR §510.1c — non-trample excess must be assigned to the
+				// blockers, not dropped; the last blocker in order absorbs it.
+				if !hasTrample && i == len(ordered)-1 {
+					give = remaining
 				}
 				applyCombatDamageToCreature(gs, atk, give, b)
 				remaining -= give
 			}
-			if remaining > 0 && atk.HasKeyword("trample") {
+			if remaining > 0 && hasTrample {
 				if battle, ok := LookupBattleByTimestamp(gs, battleTS); ok {
 					ApplyCombatDamageToBattle(gs, atk, remaining, battle)
 				}
@@ -1874,19 +1879,27 @@ func DealCombatDamageStep(gs *GameState, attackers []*Permanent, blockerMap map[
 		}
 
 		remaining := dmg
-		for _, b := range ordered {
+		hasTrample := atk.HasKeyword("trample")
+		for i, b := range ordered {
 			if remaining <= 0 {
 				break
 			}
-			need := lethalAmountGS(gs, atk, b)
-			give := remaining
-			if give > need {
-				give = need
+			give := lethalAmountGS(gs, atk, b)
+			if give > remaining {
+				give = remaining
+			}
+			// CR §510.1c — a non-trample attacker must assign ALL its combat
+			// damage to the blockers. After lethal is assigned to each earlier
+			// blocker in order, the LAST blocker absorbs the excess (overkill);
+			// without this the surplus was silently dropped, under-counting
+			// lifelink, infect, and "damage dealt" amounts.
+			if !hasTrample && i == len(ordered)-1 {
+				give = remaining
 			}
 			applyCombatDamageToCreature(gs, atk, give, b)
 			remaining -= give
 		}
-		if remaining > 0 && atk.HasKeyword("trample") {
+		if remaining > 0 && hasTrample {
 			applyCombatDamageToPlayer(gs, atk, remaining, defenderSeat)
 		}
 	}

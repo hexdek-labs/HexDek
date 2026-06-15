@@ -947,11 +947,12 @@ func TestWither_CombatDamageToCreature(t *testing.T) {
 	DealCombatDamageStep(gs, []*Permanent{atk}, blockerMap, false)
 
 	// Combat damage assignment: attacker has 3 power, blocker has 2 toughness.
-	// §510.1c: lethal amount = toughness - marked_damage = 2 - 0 = 2.
-	// Attacker assigns 2 (lethal) to blocker; remaining 1 is unassigned
-	// (no trample). Blocker should have 2 -1/-1 counters from wither.
-	if blk.Counters["-1/-1"] != 2 {
-		t.Fatalf("blocker should have 2 -1/-1 counters from wither (lethal amount), got %d", blk.Counters["-1/-1"])
+	// §510.1c: a non-trample attacker assigns ALL its combat damage to the
+	// blocker(s) — lethal (2) is the MINIMUM before moving to a next blocker,
+	// not a cap. With a single blocker and no trample, all 3 are assigned, so
+	// the blocker takes 3 -1/-1 counters from wither (overkill).
+	if blk.Counters["-1/-1"] != 3 {
+		t.Fatalf("blocker should have 3 -1/-1 counters from wither (all damage assigned), got %d", blk.Counters["-1/-1"])
 	}
 	// Wither damage should NOT add to MarkedDamage.
 	if blk.MarkedDamage != 0 {
