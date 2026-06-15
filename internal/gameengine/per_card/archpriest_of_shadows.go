@@ -64,8 +64,14 @@ func archpriestOfShadowsETB(gs *gameengine.GameState, perm *gameengine.Permanent
 	if target == nil {
 		target = perm
 	}
-	target.AddCounter("+1/+1", 1)
-	gs.InvalidateCharacteristicsCache()
+	// Backup's +1/+1 counter is a §122/§616 counter placement, so it must
+	// route through the canonical doubler-aware chokepoint: +1/+1 doublers
+	// (Doubling Season, Primal Vigor, Hardened Scales, Branching Evolution)
+	// apply and the counter_placed trigger fires (Abzan Falconer / Conclave
+	// Mentor payoffs). Raw AddCounter bypassed both — the r63 counter-pipeline
+	// sweep's canonical-helper-bypass meta-pattern, here on a per_card site.
+	// src = the backup creature. PutCountersTriggered invalidates the cache.
+	gameengine.PutCountersTriggered(gs, target, "+1/+1", 1, perm)
 
 	grantedDeathtouch := false
 	if target != perm {
