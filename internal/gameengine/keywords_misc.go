@@ -2361,8 +2361,13 @@ func FireEvolveTriggers(gs *GameState, seatIdx int, newCreature *Permanent) {
 		evolvePow := p.Power()
 		evolveTough := p.Toughness()
 		if newPow > evolvePow || newTough > evolveTough {
-			p.AddCounter("+1/+1", 1)
-			gs.InvalidateCharacteristicsCache()
+			// Exactly ONE +1/+1 counter per qualifying ETB (not one per stat),
+			// routed through the canonical doubler-aware chokepoint: +1/+1
+			// doublers (Doubling Season, Hardened Scales, Branching Evolution)
+			// apply and counter_placed fires (Conclave Mentor / Abzan Falconer).
+			// Raw AddCounter bypassed both — the r63 counter-pipeline-sweep
+			// meta-pattern. PutCountersTriggered invalidates the cache.
+			PutCountersTriggered(gs, p, "+1/+1", 1, p)
 			gs.LogEvent(Event{
 				Kind:   "evolve_trigger",
 				Seat:   seatIdx,

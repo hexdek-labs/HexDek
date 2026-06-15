@@ -106,6 +106,13 @@ func fireObserverETBTriggers(gs *GameState, entering *Permanent) {
 			}
 		}
 	}
+
+	// CR §702.100 — Evolve is a keyword-driven observer-ETB trigger (not parsed
+	// into a generic AST Triggered node), so it isn't reached by the AST scan
+	// above. Fire it here, the single chokepoint every ETB (cast + non-cast)
+	// funnels through. Scoped to the entering creature's controller — evolve
+	// only watches creatures entering under ITS controller's control.
+	FireEvolveTriggers(gs, entering.Controller, entering)
 }
 
 // observerETBMatches checks if the entering permanent matches an observer
