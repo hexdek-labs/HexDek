@@ -847,7 +847,9 @@ func CastWithBestow(gs *GameState, seatIdx int, card *Card, target *Permanent) e
 	}
 
 	seat := gs.Seats[seatIdx]
-	cost := BestowCost(card)
+	// CR §118.9 / §601.2f — cost modifiers apply to the bestow alternative
+	// cost too (cast from hand as an Aura).
+	cost := EffectiveAlternativeCost(gs, card, seatIdx, BestowCost(card), CastContext{})
 
 	// Find card in hand.
 	handIdx := -1

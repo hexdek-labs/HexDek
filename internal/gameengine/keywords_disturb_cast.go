@@ -181,6 +181,9 @@ func CastWithDisturb(gs *GameState, seatIdx int, card *Card, disturbCost int) (*
 	if disturbCost < 0 {
 		return nil, &CastError{Reason: "invalid_disturb_cost"}
 	}
+	// CR §118.9 / §601.2f — cost modifiers apply to the disturb alternative
+	// cost too (disturb casts the back face from the graveyard).
+	disturbCost = EffectiveAlternativeCost(gs, card, seatIdx, disturbCost, CastContext{FromGraveyard: true})
 	if seat.ManaPool < disturbCost {
 		return nil, &CastError{Reason: "insufficient_mana"}
 	}

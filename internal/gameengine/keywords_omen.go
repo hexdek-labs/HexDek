@@ -143,6 +143,9 @@ func CastOmen(gs *GameState, seatIdx int, card *Card, omenCost int) (*CostPaymen
 	if seat == nil {
 		return nil, &CastError{Reason: "nil seat"}
 	}
+	// CR §118.9 / §601.2f — cost modifiers apply to the omen alternative cost
+	// too (the omen is cast from hand). Zero-value context.
+	omenCost = EffectiveAlternativeCost(gs, card, seatIdx, omenCost, CastContext{})
 	if seat.ManaPool < omenCost {
 		return nil, &CastError{Reason: "insufficient_mana"}
 	}

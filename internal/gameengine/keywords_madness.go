@@ -273,6 +273,9 @@ func CastWithMadness(gs *GameState, seatIdx int, card *Card, madnessCost int) (*
 		})
 		return nil, &CastError{Reason: "drannith_magistrate"}
 	}
+	// CR §118.9 / §601.2f — cost modifiers apply to the madness alternative
+	// cost too (madness casts from exile). FromExile context.
+	madnessCost = EffectiveAlternativeCost(gs, card, seatIdx, madnessCost, CastContext{FromExile: true})
 	if seat.ManaPool < madnessCost {
 		return nil, &CastError{Reason: "insufficient_mana"}
 	}

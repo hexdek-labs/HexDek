@@ -150,6 +150,9 @@ func CastWithMutate(gs *GameState, seatIdx int, card *Card, mutateCost int, targ
 	if seat == nil {
 		return nil, &CastError{Reason: "nil seat"}
 	}
+	// CR §118.9 / §601.2f — cost modifiers apply to the mutate alternative
+	// cost too (cast from hand).
+	mutateCost = EffectiveAlternativeCost(gs, card, seatIdx, mutateCost, CastContext{})
 	if seat.ManaPool < mutateCost {
 		return nil, &CastError{Reason: "insufficient_mana"}
 	}

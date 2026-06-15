@@ -101,6 +101,9 @@ func CastWithAftermath(gs *GameState, seatIdx int, card *Card, manaCost int) (*C
 	if manaCost < 0 {
 		return nil, &CastError{Reason: "invalid_aftermath_cost"}
 	}
+	// CR §118.9 / §601.2f — cost modifiers apply to the aftermath alternative
+	// cost too (the aftermath half is cast from the graveyard).
+	manaCost = EffectiveAlternativeCost(gs, card, seatIdx, manaCost, CastContext{FromGraveyard: true})
 	if seat.ManaPool < manaCost {
 		return nil, &CastError{Reason: "insufficient_mana"}
 	}

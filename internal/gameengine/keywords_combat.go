@@ -1467,7 +1467,9 @@ func CastAdventure(gs *GameState, seatIdx int, card *Card, adventureCost int) er
 		return &CastError{Reason: "card not in hand"}
 	}
 
-	// Pay adventure cost.
+	// Pay adventure cost. CR §118.9 / §601.2f — cost modifiers apply to the
+	// adventure alternative cost too (cast from hand).
+	adventureCost = EffectiveAlternativeCost(gs, card, seatIdx, adventureCost, CastContext{})
 	if seat.ManaPool < adventureCost {
 		return &CastError{Reason: "insufficient_mana"}
 	}

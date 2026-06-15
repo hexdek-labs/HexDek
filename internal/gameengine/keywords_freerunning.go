@@ -160,6 +160,9 @@ func CastWithFreerunning(gs *GameState, seatIdx int, card *Card, freerunningCost
 	if freerunningCost < 0 {
 		return nil, &CastError{Reason: "invalid_freerunning_cost"}
 	}
+	// CR §118.9 / §601.2f — cost modifiers apply to the freerunning
+	// alternative cost too (cast from hand).
+	freerunningCost = EffectiveAlternativeCost(gs, card, seatIdx, freerunningCost, CastContext{})
 	if seat.ManaPool < freerunningCost {
 		return nil, &CastError{Reason: "insufficient_mana"}
 	}

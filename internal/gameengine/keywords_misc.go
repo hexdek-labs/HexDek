@@ -539,7 +539,10 @@ func CastWithRetrace(gs *GameState, seatIdx int, card *Card, landToDiscard *Card
 		return false
 	}
 	seat := gs.Seats[seatIdx]
-	manaCost := card.CMC
+	// CR §118.9 / §601.2f — retrace casts the spell from the graveyard for its
+	// mana cost (discarding a land is the additional cost). Cost modifiers
+	// apply to that mana cost.
+	manaCost := EffectiveAlternativeCost(gs, card, seatIdx, card.CMC, CastContext{FromGraveyard: true})
 
 	// Must afford mana.
 	if seat.ManaPool < manaCost {
@@ -603,7 +606,10 @@ func CastWithJumpStart(gs *GameState, seatIdx int, card *Card, cardToDiscard *Ca
 		return false
 	}
 	seat := gs.Seats[seatIdx]
-	manaCost := card.CMC
+	// CR §118.9 / §601.2f — jump-start casts the spell from the graveyard for
+	// its mana cost (discarding a card is the additional cost). Cost modifiers
+	// apply to that mana cost.
+	manaCost := EffectiveAlternativeCost(gs, card, seatIdx, card.CMC, CastContext{FromGraveyard: true})
 
 	if seat.ManaPool < manaCost {
 		return false

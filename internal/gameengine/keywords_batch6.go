@@ -951,6 +951,9 @@ func CastWarp(gs *GameState, seatIdx int, card *Card, warpCost int) (*CostPaymen
 	if seat == nil {
 		return nil, &CastError{Reason: "nil seat"}
 	}
+	// CR §118.9 / §601.2f — cost modifiers apply to the warp alternative cost
+	// too (warp casts from hand). Zero-value context.
+	warpCost = EffectiveAlternativeCost(gs, card, seatIdx, warpCost, CastContext{})
 	if seat.ManaPool < warpCost {
 		return nil, &CastError{Reason: "insufficient_mana"}
 	}

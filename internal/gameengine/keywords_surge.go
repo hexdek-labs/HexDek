@@ -92,6 +92,9 @@ func CastWithSurge(gs *GameState, seatIdx int, card *Card, surgeCost int) (*Cost
 	if seat == nil {
 		return nil, &CastError{Reason: "nil seat"}
 	}
+	// CR §118.9 / §601.2f — cost modifiers apply to the surge alternative
+	// cost too (cast from hand).
+	surgeCost = EffectiveAlternativeCost(gs, card, seatIdx, surgeCost, CastContext{})
 	if seat.ManaPool < surgeCost {
 		return nil, &CastError{Reason: "insufficient_mana"}
 	}

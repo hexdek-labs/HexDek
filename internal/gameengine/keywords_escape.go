@@ -247,6 +247,10 @@ func CastWithEscape(
 			return nil, &CastError{Reason: "exile_target_not_in_graveyard"}
 		}
 	}
+	// CR §118.9 / §601.2f — cost modifiers apply to the escape alternative
+	// cost too (the exile-N-cards part is the additional cost, paid separately
+	// below). FromGraveyard so zone-gated reducers compose.
+	escapeManaCost = EffectiveAlternativeCost(gs, card, seatIdx, escapeManaCost, CastContext{FromGraveyard: true})
 	if seat.ManaPool < escapeManaCost {
 		return nil, &CastError{Reason: "insufficient_mana"}
 	}

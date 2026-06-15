@@ -75,6 +75,9 @@ func CastWithSpectacle(gs *GameState, seatIdx int, card *Card, spectacleCost int
 	if seat == nil {
 		return nil, &CastError{Reason: "nil seat"}
 	}
+	// CR §118.9 / §601.2f — cost modifiers apply to the spectacle alternative
+	// cost too (cast from hand).
+	spectacleCost = EffectiveAlternativeCost(gs, card, seatIdx, spectacleCost, CastContext{})
 	if seat.ManaPool < spectacleCost {
 		return nil, &CastError{Reason: "insufficient_mana"}
 	}

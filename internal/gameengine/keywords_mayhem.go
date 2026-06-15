@@ -144,6 +144,9 @@ func CastMayhem(gs *GameState, seatIdx int, card *Card, mayhemCost int) (*CostPa
 	if seat == nil {
 		return nil, &CastError{Reason: "nil seat"}
 	}
+	// CR §118.9 / §601.2f — cost modifiers apply to the mayhem alternative
+	// cost too (mayhem casts from the graveyard).
+	mayhemCost = EffectiveAlternativeCost(gs, card, seatIdx, mayhemCost, CastContext{FromGraveyard: true})
 	if seat.ManaPool < mayhemCost {
 		return nil, &CastError{Reason: "insufficient_mana"}
 	}

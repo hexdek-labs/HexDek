@@ -313,6 +313,16 @@ func CastFromZone(
 	if manaCost < 0 {
 		manaCost = manaCostOf(card)
 	}
+	// CR §118.9 / §601.2f — cost modifiers (Thalia tax, medallions, and
+	// zone-gated reducers like Patrician Geist) apply to the zone-cast
+	// alternative cost too (foretell / suspend / impulse-from-exile / cast-
+	// from-graveyard grants). Context derives from the source zone so
+	// zone-specific reducers compose. Life-cost casts (Bolas's Citadel) pay
+	// life, not mana, so this is a no-op for that branch.
+	manaCost = EffectiveAlternativeCost(gs, card, seatIdx, manaCost, CastContext{
+		FromGraveyard: zone == ZoneGraveyard,
+		FromExile:     zone == ZoneExile,
+	})
 	if perm.LifeCostInsteadOfMana > 0 {
 		if seat.Life <= perm.LifeCostInsteadOfMana {
 			// Put card back.

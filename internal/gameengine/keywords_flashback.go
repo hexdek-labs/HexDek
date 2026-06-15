@@ -183,6 +183,11 @@ func CastFlashback(gs *GameState, seatIdx int, card *Card, flashbackCost int) (*
 	if hasGrant && grant.RequireController >= 0 && grant.RequireController != seatIdx {
 		return nil, &CastError{Reason: "wrong_controller_for_grant"}
 	}
+	// CR §118.9 / §601.2f — cost modifiers apply to the flashback alternative
+	// cost too: a Thalia / Sphere tax raises it, a medallion / Electromancer
+	// or graveyard-cast reducer (Patrician Geist) lowers it. FromGraveyard
+	// context so zone-gated reducers compose.
+	flashbackCost = EffectiveAlternativeCost(gs, card, seatIdx, flashbackCost, CastContext{FromGraveyard: true})
 	if seat.ManaPool < flashbackCost {
 		return nil, &CastError{Reason: "insufficient_mana"}
 	}

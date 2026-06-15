@@ -168,6 +168,9 @@ func CastWithProwl(gs *GameState, seatIdx int, card *Card, prowlCost int) (*Cost
 	if seat == nil {
 		return nil, &CastError{Reason: "nil seat"}
 	}
+	// CR §118.9 / §601.2f — cost modifiers apply to the prowl alternative
+	// cost too (cast from hand).
+	prowlCost = EffectiveAlternativeCost(gs, card, seatIdx, prowlCost, CastContext{})
 	if seat.ManaPool < prowlCost {
 		return nil, &CastError{Reason: "insufficient_mana"}
 	}

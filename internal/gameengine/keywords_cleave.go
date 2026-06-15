@@ -161,6 +161,9 @@ func CastWithCleave(gs *GameState, seatIdx int, card *Card, cleaveCost int) (*Co
 	if seat == nil {
 		return nil, &CastError{Reason: "nil seat"}
 	}
+	// CR §118.9 / §601.2f — cost modifiers apply to the cleave alternative
+	// cost too (cast from hand).
+	cleaveCost = EffectiveAlternativeCost(gs, card, seatIdx, cleaveCost, CastContext{})
 	if seat.ManaPool < cleaveCost {
 		return nil, &CastError{Reason: "insufficient_mana"}
 	}
