@@ -646,32 +646,12 @@ func orcishBowmastersTrigger(gs *gameengine.GameState, perm *gameengine.Permanen
 	_ = gs.CheckEnd()
 }
 
-// amassOrcs implements "amass Orcs 1": if you control an Army creature,
-// put a +1/+1 counter on it; otherwise create a 0/0 Orc Army token and
-// put a +1/+1 counter on it (making it 1/1).
+// amassOrcs implements "amass Orcs 1" via the canonical CR §701.43 primitive:
+// a black 0/0 Orc Army token if none, growth of the same Army otherwise, with
+// the +1/+1 counter routed through the doubler chain. The prior inline body
+// created a colorless token and bypassed +1/+1 doublers.
 func amassOrcs(gs *gameengine.GameState, seat int) {
-	if gs == nil || seat < 0 || seat >= len(gs.Seats) {
-		return
-	}
-	s := gs.Seats[seat]
-	// Look for an existing Army creature.
-	for _, p := range s.Battlefield {
-		if p == nil || p.Card == nil {
-			continue
-		}
-		for _, t := range p.Card.Types {
-			if strings.ToLower(t) == "army" {
-				p.AddCounter("+1/+1", 1)
-				return
-			}
-		}
-	}
-	// No army — create a 0/0 Orc Army token + 1 counter.
-	token := gameengine.CreateCreatureToken(gs, seat, "Orc Army Token",
-		[]string{"creature", "orc", "army"}, 0, 0)
-	if token != nil {
-		token.AddCounter("+1/+1", 1)
-	}
+	gameengine.Amass(gs, seat, 1, "orc")
 }
 
 // ---------------------------------------------------------------------------

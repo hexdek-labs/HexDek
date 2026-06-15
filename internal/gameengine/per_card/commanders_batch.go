@@ -315,41 +315,10 @@ func nazgulTrigger(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 		return
 	}
 	seat := perm.Controller
-	s := gs.Seats[seat]
-	// Amass 1: find existing Army token, or create a 0/0 Wraith Army.
-	var army *gameengine.Permanent
-	for _, p := range s.Battlefield {
-		if p == nil || p.Card == nil {
-			continue
-		}
-		for _, t := range p.Card.Types {
-			if strings.EqualFold(t, "army") {
-				army = p
-				break
-			}
-		}
-		if army != nil {
-			break
-		}
-	}
-	if army != nil {
-		army.AddCounter("+1/+1", 1)
-	} else {
-		token := &gameengine.Card{
-			Name:          "0/0 Wraith Army Token",
-			Owner:         seat,
-			BasePower:     0,
-			BaseToughness: 0,
-			Types:         []string{"token", "creature", "wraith", "army"},
-		}
-		army = enterBattlefieldWithETB(gs, seat, token, false)
-		if army != nil {
-			if army.Counters == nil {
-				army.Counters = map[string]int{}
-			}
-			army.Counters["+1/+1"] = 1
-		}
-	}
+	// Amass Wraiths 1 via the canonical CR §701.43 primitive (black 0/0
+	// Wraith Army token if none, same-Army growth, +1/+1 doubler chain).
+	// The prior inline body created a colorless token and bypassed doublers.
+	gameengine.Amass(gs, seat, 1, "wraith")
 	gs.LogEvent(gameengine.Event{
 		Kind:   "amass",
 		Seat:   seat,

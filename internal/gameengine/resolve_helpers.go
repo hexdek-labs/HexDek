@@ -1042,36 +1042,10 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 				amassType = strings.ToLower(t)
 			}
 		}
-		seat := controllerSeat(src)
-		if seat >= 0 && seat < len(gs.Seats) {
-			// Look for an existing Army creature we control.
-			var army *Permanent
-			for _, p := range gs.Seats[seat].Battlefield {
-				if p == nil || p.Card == nil {
-					continue
-				}
-				for _, tp := range p.Card.Types {
-					if strings.EqualFold(tp, "army") {
-						army = p
-						break
-					}
-				}
-				if army != nil {
-					break
-				}
-			}
-			if army == nil {
-				// Create a 0/0 Army token.
-				army = CreateCreatureToken(gs, seat,
-					capitalize(amassType)+" Army",
-					[]string{"creature", amassType, "army"},
-					0, 0)
-			}
-			if army != nil {
-				army.AddCounter("+1/+1", amassN)
-				gs.InvalidateCharacteristicsCache()
-			}
-		}
+		// CR §701.43 — canonical Amass primitive: black 0/0 [subtype] Army
+		// token if none, grow the same Army, counters through the +1/+1
+		// doubler chain.
+		Amass(gs, controllerSeat(src), amassN, amassType)
 		gs.LogEvent(Event{
 			Kind:   "amass",
 			Seat:   controllerSeat(src),
@@ -1079,7 +1053,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			Amount: amassN,
 			Details: map[string]interface{}{
 				"creature_type": amassType,
-				"rule":          "701.44",
+				"rule":          "701.43",
 			},
 		})
 
@@ -2976,41 +2950,11 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			// CR §701.44: create an Army token or put +1/+1 counters on
 			// one you already control. MVP: create a 0/0 token and add
 			// N +1/+1 counters.
-			if kaSeat >= 0 && kaSeat < len(gs.Seats) {
-				// Look for existing Army token.
-				var army *Permanent
-				for _, p := range gs.Seats[kaSeat].Battlefield {
-					if p != nil && p.Flags != nil && p.Flags["army_token"] == 1 {
-						army = p
-						break
-					}
-				}
-				if army != nil {
-					army.AddCounter("+1/+1", kaCount)
-				} else {
-					// Create new Army token.
-					armyPerm := &Permanent{
-						Card: &Card{
-							Name:          "Zombie Army",
-							Owner:         kaSeat,
-							BasePower:     0,
-							BaseToughness: 0,
-							Types:         []string{"token", "creature"},
-							TypeLine:      "Creature Token — Zombie Army",
-						},
-						Controller:    kaSeat,
-						Owner:         kaSeat,
-						Timestamp:     gs.NextTimestamp(),
-						Counters:      map[string]int{"+1/+1": kaCount},
-						Flags:         map[string]int{"token": 1, "army_token": 1},
-						SummoningSick: true,
-					}
-					gs.Seats[kaSeat].Battlefield = append(gs.Seats[kaSeat].Battlefield, armyPerm)
-					RegisterReplacementsForPermanent(gs, armyPerm)
-					FirePermanentETBTriggers(gs, armyPerm)
-				}
-				gs.InvalidateCharacteristicsCache()
-			}
+			// CR §701.43 — route through the canonical Amass primitive
+			// (black 0/0 Zombie Army token if none, same-Army growth, doubler
+			// chain). The prior inline path created a colorless token whose
+			// Card.Types lacked "army"/the subtype and bypassed +1/+1 doublers.
+			Amass(gs, kaSeat, kaCount, "zombie")
 			kaResolved = true
 		default:
 			// Fall back to text-based residual dispatch.
