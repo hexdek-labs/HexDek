@@ -173,6 +173,8 @@ func ApplyStormCopy(gs *GameState, original *StackItem, count int) int {
 			Targets:    append([]Target(nil), original.Targets...),
 			IsCopy:     true,
 			CastZone:   original.CastZone,
+			// CR §707.10b — storm copies of an X spell copy the chosen X.
+			ChosenX: original.ChosenX,
 		}
 		copyItem.ID = nextStackID(gs)
 		gs.Stack = append(gs.Stack, copyItem)

@@ -3094,6 +3094,11 @@ func resolveCopySpell(gs *GameState, src *Permanent, e *gameast.CopySpell) {
 		Effect:     target.Effect,
 		IsCopy:     true,
 		Kind:       target.Kind,
+		// CR §707.10b — a copy of a spell with X in its cost copies the
+		// CHOSEN X; the controller does NOT pick a new X. Without this the
+		// copy resolved with X=0 (Fork / Twincast / Reverberate on a Fireball
+		// dealt 0 damage).
+		ChosenX: target.ChosenX,
 	}
 	// §707.10c: the copy's controller may choose new targets.
 	if e.MayChooseNewTargets && len(target.Targets) > 0 {

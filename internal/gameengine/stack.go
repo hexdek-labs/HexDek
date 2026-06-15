@@ -2109,6 +2109,30 @@ func ResolveStackTop(gs *GameState) {
 	endOverload := beginOverloadResolution(gs, item)
 	defer endOverload()
 
+	// CR §107.3 / §608.2h — the X chosen as the spell/ability was put on the
+	// stack is LOCKED and used as the effect amount. Generic AST handlers
+	// read the value from gs.Flags["x"] (scaling.go evalNumber). Without
+	// this, every X-spell that resolves through the stock AST dispatch
+	// instead of a bespoke per_card handler — Fireball (deal X), Stroke of
+	// Genius (draw X), Hangarback Walker / Hydra-style X tokens, Blue Sun's
+	// Zenith — resolved with X=0. Stamp the stack item's locked ChosenX for
+	// the duration of this resolution; save/restore so a nested resolution
+	// (a trigger that resolves above an X spell) can't leak X into it. Also
+	// set BEFORE the per_card snowflake hook so handlers that read
+	// gs.Flags["x"] (rather than item.ChosenX) see the right value too.
+	if gs.Flags == nil {
+		gs.Flags = map[string]int{}
+	}
+	prevX, hadX := gs.Flags["x"]
+	gs.Flags["x"] = item.ChosenX
+	defer func() {
+		if hadX {
+			gs.Flags["x"] = prevX
+		} else {
+			delete(gs.Flags, "x")
+		}
+	}()
+
 	// Per-card resolve-time snowflake dispatch. Fired BEFORE stock Effect
 	// dispatch; when a handler is registered (fired > 0), we SKIP the
 	// stock dispatch — the handler is the authoritative spell body.
