@@ -42,8 +42,17 @@ func Scry(gs *GameState, seatIdx int, count int) {
 		top, bottom = seat.Hat.ChooseScry(gs, seatIdx, looked)
 	}
 
-	// Validate: if hat didn't return valid splits, default to all on top.
-	if len(top)+len(bottom) != n {
+	// Validate: top+bottom must be a proper PARTITION of `looked` — every
+	// looked card appears EXACTLY ONCE across top+bottom, with no extras and
+	// no duplicates. A count-only check (len(top)+len(bottom)==n) is NOT
+	// sufficient: a Hat that returns the same card in BOTH top and bottom (or
+	// drops one card and duplicates another) passes the count yet makes the
+	// rebuild below append that card into the library TWICE — the r63
+	// within-zone CardIdentity dup (a Hat top-empty fallback put cards[0] on
+	// top but removed a DIFFERENT card from bottom, leaving cards[0] in both).
+	// Fall back to "all on top" on any malformed split so Scry can never
+	// corrupt the library regardless of Hat behavior.
+	if !scryValidPartition(looked, top, bottom) {
 		top = looked
 		bottom = nil
 	}
@@ -103,8 +112,12 @@ func Surveil(gs *GameState, seatIdx int, count int) {
 		graveyard, top = seat.Hat.ChooseSurveil(gs, seatIdx, looked)
 	}
 
-	// Validate: if hat didn't return valid splits, default to all on top.
-	if len(graveyard)+len(top) != n {
+	// Validate: graveyard+top must be a proper PARTITION of `looked` (same
+	// guard as Scry — a count-only check lets a Hat overlap/duplicate a card
+	// across both halves, which would leave it in the library via `top` AND
+	// route it to the graveyard via MoveCard below, a cross-zone CardIdentity
+	// dup). Fall back to "all on top" on any malformed split.
+	if !scryValidPartition(looked, graveyard, top) {
 		top = looked
 		graveyard = nil
 	}
@@ -137,4 +150,32 @@ func Surveil(gs *GameState, seatIdx int, count int) {
 			"rule":         "701.46",
 		},
 	})
+}
+
+// scryValidPartition reports whether top+bottom is a proper partition of
+// looked: each *Card in looked appears exactly once across top+bottom, and
+// neither top nor bottom contains a card absent from looked. Pointer-identity
+// based (the scry split moves the same *Card pointers). Guards Scry against a
+// Hat returning a duplicated / overlapping split that would double-insert a
+// card into the library (CR §701.18 — scry reorders, never duplicates).
+func scryValidPartition(looked, top, bottom []*Card) bool {
+	if len(top)+len(bottom) != len(looked) {
+		return false
+	}
+	want := make(map[*Card]int, len(looked))
+	for _, c := range looked {
+		want[c]++
+	}
+	for _, c := range top {
+		want[c]--
+	}
+	for _, c := range bottom {
+		want[c]--
+	}
+	for _, n := range want {
+		if n != 0 {
+			return false
+		}
+	}
+	return true
 }

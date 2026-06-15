@@ -37,20 +37,27 @@ func containsCard(cards []*gameengine.Card, target *gameengine.Card) bool {
 // -----------------------------------------------------------------------------
 
 func TestChooseSurveil_Control_SendsVanillaCreatureToGraveyard(t *testing.T) {
-	sp := &StrategyProfile{Archetype: ArchetypeControl}
+	// Pair the bear with a real KEEPER (star card) so a card actually stays on
+	// top — otherwise BOTH cards surveil to the graveyard, top is empty, and
+	// the §701.46 "keep at least one on top" fallback correctly yanks cards[0]
+	// (the bear) back. (The pre-r63 fallback masked this by leaving the bear in
+	// BOTH top and graveyard — the within-zone CardIdentity dup; with that
+	// fixed, the test needs a genuine keeper to exercise the bottom path.)
+	sp := &StrategyProfile{Archetype: ArchetypeControl, StarCards: []string{"Sol Ring"}}
 	h := NewYggdrasilHatWithNoise(sp, 0, 0)
 	gs := newTestGame(t, 2)
 
 	bear := newTestCardMinimal("Grizzly Bears", []string{"creature"}, 2, nil)
-	// Add a second card so the top-empty fallback doesn't yank the
-	// bear back to the top.
-	sorcery := newTestCardMinimal("Lava Coil", []string{"sorcery"}, 2, nil)
+	keeper := newTestCardMinimal("Sol Ring", []string{"artifact"}, 1, nil)
 
-	gy, top := h.ChooseSurveil(gs, 0, []*gameengine.Card{bear, sorcery})
+	gy, top := h.ChooseSurveil(gs, 0, []*gameengine.Card{bear, keeper})
 
 	if !containsCard(gy, bear) {
 		t.Fatalf("control should send vanilla creatures to graveyard; bear in top=%v gy=%v",
 			top, gy)
+	}
+	if containsCard(top, bear) {
+		t.Fatalf("the bear must not be in BOTH top and graveyard (within-zone dup); top=%v gy=%v", top, gy)
 	}
 }
 

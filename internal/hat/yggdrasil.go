@@ -10271,8 +10271,19 @@ func (h *YggdrasilHat) ChooseScry(gs *gameengine.GameState, seatIdx int, cards [
 		}
 	}
 	if len(top) == 0 && len(cards) > 0 {
+		// Force the first looked card onto top. Remove THAT SAME card from
+		// bottom — not an arbitrary last element. The old `bottom[:len-1]`
+		// dropped the last bottom card while cards[0] (a different card, since
+		// it's the first-looked) stayed in bottom too, so cards[0] ended up in
+		// BOTH top and bottom and Scry double-inserted it into the library
+		// (r63 within-zone CardIdentity dup).
 		top = append(top, cards[0])
-		bottom = bottom[:len(bottom)-1]
+		for i, b := range bottom {
+			if b == cards[0] {
+				bottom = append(bottom[:i], bottom[i+1:]...)
+				break
+			}
+		}
 	}
 	return top, bottom
 }
@@ -10350,8 +10361,18 @@ func (h *YggdrasilHat) ChooseSurveil(gs *gameengine.GameState, seatIdx int, card
 		}
 	}
 	if len(top) == 0 && len(cards) > 0 {
+		// Force the first looked card onto top; remove THAT card from the
+		// graveyard pile — not an arbitrary last element (the old
+		// graveyard[:len-1] left cards[0] in BOTH top and graveyard, which
+		// would keep it in the library via `top` AND route it to the graveyard,
+		// a cross-zone CardIdentity dup — same class as the ChooseScry fix).
 		top = append(top, cards[0])
-		graveyard = graveyard[:len(graveyard)-1]
+		for i, g := range graveyard {
+			if g == cards[0] {
+				graveyard = append(graveyard[:i], graveyard[i+1:]...)
+				break
+			}
+		}
 	}
 	return graveyard, top
 }
