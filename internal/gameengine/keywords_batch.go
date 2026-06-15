@@ -326,44 +326,62 @@ func SuspendCard(gs *GameState, seatIdx int, card *Card, timeCounters int) {
 	})
 }
 
-// CR §702.135 — Afterlife
+// HasAfterlife reports whether the card has the afterlife keyword (CR §702.135).
+func HasAfterlife(card *Card) bool {
+	return cardHasKeywordByName(card, "afterlife")
+}
+
+// AfterlifeN returns the printed N of a card's "Afterlife N" keyword (the number
+// of Spirit tokens made on death). Returns 0 when the keyword is absent; a
+// present-but-unparsed N defaults to 1.
+func AfterlifeN(card *Card) int {
+	if !HasAfterlife(card) {
+		return 0
+	}
+	// Strict arg read (no CMC fallback — afterlife N is a small printed count).
+	if n, ok := keywordArgCostStrict(card, "afterlife"); ok && n > 0 {
+		return n
+	}
+	return 1
+}
+
+// CR §702.135 — Afterlife. "When this permanent dies, create N 1/1 white and
+// black Spirit creature tokens with flying."
 func TriggerAfterlife(gs *GameState, perm *Permanent, n int) {
 	if gs == nil || perm == nil || n <= 0 {
 		return
 	}
 	seatIdx := perm.Owner
-	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
+	if seatIdx < 0 || seatIdx >= len(gs.Seats) || gs.Seats[seatIdx] == nil {
 		return
 	}
-	seat := gs.Seats[seatIdx]
 
-	for i := 0; i < n; i++ {
-		token := &Card{
-			Name:          "Spirit Token",
-			Owner:         seatIdx,
-			BasePower:     1,
-			BaseToughness: 1,
-			Types:         []string{"token", "creature", "spirit"},
-			Colors:        []string{"W", "B"},
+	// CR §111.10 / §616 — afterlife tokens go through the would_create_token
+	// doubler chain (Doubling Season, Anointed Procession, Parallel Lives), and
+	// each token fires token_created. CreateCreatureToken is the canonical
+	// creator (token_created + ETB + Turn counters + replacement registration);
+	// CreateDoubledTokens applies the doublers to the COUNT. The prior raw loop
+	// bypassed both — the r63 counter/token-pipeline-sweep meta-pattern.
+	created := CreateDoubledTokens(gs, seatIdx, n, perm, func() *Permanent {
+		t := CreateCreatureToken(gs, seatIdx, "Spirit", []string{"creature", "spirit", "pip:W", "pip:B"}, 1, 1)
+		if t == nil {
+			return nil
 		}
-		spiritPerm := &Permanent{
-			Card:       token,
-			Controller: seatIdx,
-			Owner:      seatIdx,
-			Timestamp:  gs.NextTimestamp(),
-			Counters:   map[string]int{},
-			Flags:      map[string]int{"kw:flying": 1},
+		if t.Flags == nil {
+			t.Flags = map[string]int{}
 		}
-		seat.Battlefield = append(seat.Battlefield, spiritPerm)
-		RegisterReplacementsForPermanent(gs, spiritPerm)
-		FirePermanentETBTriggers(gs, spiritPerm)
-	}
+		t.Flags["kw:flying"] = 1 // CR §702.135 — Spirit tokens have flying
+		if t.Card != nil {
+			t.Card.Colors = []string{"W", "B"} // white AND black
+		}
+		return t
+	})
 
 	gs.LogEvent(Event{
 		Kind:   "afterlife",
 		Seat:   seatIdx,
 		Source: perm.Card.DisplayName(),
-		Amount: n,
+		Amount: len(created),
 		Details: map[string]interface{}{
 			"rule": "702.135",
 		},

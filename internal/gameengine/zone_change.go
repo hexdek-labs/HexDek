@@ -550,6 +550,13 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 			// the card already gone from the graveyard and no-ops).
 			CheckUndying(gs, perm)
 			CheckPersist(gs, perm)
+			// CR §702.135 — Afterlife: on death (battlefield→graveyard
+			// specifically), create N 1/1 W/B Spirit flyers. Uses the dying
+			// card's printed N (LKI). Benign token creation, mirrors the
+			// undying/persist dies-chokepoint wiring.
+			if n := AfterlifeN(perm.Card); n > 0 {
+				TriggerAfterlife(gs, perm, n)
+			}
 		}
 	} else if fromZone == "battlefield" && toZone != "graveyard" {
 		// A creature left the battlefield but a §614 replacement redirected
