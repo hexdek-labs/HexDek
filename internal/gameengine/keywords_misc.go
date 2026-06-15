@@ -776,8 +776,7 @@ func ApplyFabricate(gs *GameState, perm *Permanent, n int, chooseCounters bool) 
 		return
 	}
 	if chooseCounters {
-		perm.AddCounter("+1/+1", n)
-		gs.InvalidateCharacteristicsCache() // +1/+1 counters change P/T
+		PutCountersTriggered(gs, perm, "+1/+1", n, perm)
 		gs.LogEvent(Event{
 			Kind:   "fabricate_counters",
 			Seat:   perm.Controller,
@@ -788,14 +787,30 @@ func ApplyFabricate(gs *GameState, perm *Permanent, n int, chooseCounters bool) 
 			},
 		})
 	} else {
-		for i := 0; i < n; i++ {
-			CreateServoToken(gs, perm.Controller)
+		// CR §111.10 — Servo tokens go through the §616 would_create_token
+		// doubler chain (Doubling Season / Parallel Lives / Anointed
+		// Procession). The prior raw loop bypassed every token doubler.
+		created := CreateDoubledTokens(gs, perm.Controller, n, perm, func() *Permanent {
+			return CreateServoToken(gs, perm.Controller)
+		})
+		if len(created) > 0 && (gs.Flags == nil || gs.Flags["in_token_trigger"] == 0) {
+			if gs.Flags == nil {
+				gs.Flags = map[string]int{}
+			}
+			gs.Flags["in_token_trigger"] = 1
+			FireCardTrigger(gs, "token_created", map[string]interface{}{
+				"controller_seat": perm.Controller,
+				"count":           len(created),
+				"types":           []string{"token", "artifact", "creature", "servo"},
+				"source":          perm.Card.DisplayName(),
+			})
+			gs.Flags["in_token_trigger"] = 0
 		}
 		gs.LogEvent(Event{
 			Kind:   "fabricate_tokens",
 			Seat:   perm.Controller,
 			Source: perm.Card.DisplayName(),
-			Amount: n,
+			Amount: len(created),
 			Details: map[string]interface{}{
 				"rule": "702.123",
 			},
@@ -803,10 +818,13 @@ func ApplyFabricate(gs *GameState, perm *Permanent, n int, chooseCounters bool) 
 	}
 }
 
-// CreateServoToken creates a 1/1 colorless Servo artifact creature token.
-func CreateServoToken(gs *GameState, seatIdx int) {
+// CreateServoToken creates a 1/1 colorless Servo artifact creature token and
+// returns the new permanent (nil on invalid seat). Mints exactly one token and
+// does NOT fire the doubler chain — callers creating several use
+// CreateDoubledTokens.
+func CreateServoToken(gs *GameState, seatIdx int) *Permanent {
 	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
-		return
+		return nil
 	}
 	seat := gs.Seats[seatIdx]
 	token := &Card{
@@ -836,6 +854,7 @@ func CreateServoToken(gs *GameState, seatIdx int) {
 			"rule":    "111.10",
 		},
 	})
+	return perm
 }
 
 // ---------------------------------------------------------------------------
@@ -872,8 +891,7 @@ func ActivateReinforce(gs *GameState, seatIdx int, card *Card, target *Permanent
 	SyncManaAfterSpend(seat)
 	DiscardCard(gs, card, seatIdx)
 
-	target.AddCounter("+1/+1", n)
-	gs.InvalidateCharacteristicsCache() // +1/+1 counters change P/T
+	PutCountersTriggered(gs, target, "+1/+1", n, nil)
 
 	gs.LogEvent(Event{
 		Kind:   "reinforce",
@@ -920,8 +938,7 @@ func ApplyBolster(gs *GameState, seatIdx int, n int) *Permanent {
 		return nil
 	}
 
-	lowest.AddCounter("+1/+1", n)
-	gs.InvalidateCharacteristicsCache() // +1/+1 counters change P/T
+	PutCountersTriggered(gs, lowest, "+1/+1", n, nil)
 
 	gs.LogEvent(Event{
 		Kind:   "bolster",
@@ -957,7 +974,7 @@ func ApplySupport(gs *GameState, seatIdx int, n int) int {
 		if p == nil || !p.IsCreature() {
 			continue
 		}
-		p.AddCounter("+1/+1", 1)
+		PutCountersTriggered(gs, p, "+1/+1", 1, nil)
 		count++
 	}
 
@@ -988,8 +1005,7 @@ func ApplyModularETB(gs *GameState, perm *Permanent, n int) {
 	if gs == nil || perm == nil || n <= 0 {
 		return
 	}
-	perm.AddCounter("+1/+1", n)
-	gs.InvalidateCharacteristicsCache() // +1/+1 counters change P/T
+	PutCountersTriggered(gs, perm, "+1/+1", n, perm)
 	gs.LogEvent(Event{
 		Kind:   "modular_etb",
 		Seat:   perm.Controller,
@@ -1014,8 +1030,7 @@ func ApplyModularDeath(gs *GameState, dying *Permanent, target *Permanent) {
 	if counters <= 0 {
 		return
 	}
-	target.AddCounter("+1/+1", counters)
-	gs.InvalidateCharacteristicsCache() // +1/+1 counters change P/T
+	PutCountersTriggered(gs, target, "+1/+1", counters, dying)
 	gs.LogEvent(Event{
 		Kind:   "modular_death",
 		Seat:   dying.Controller,
@@ -1040,8 +1055,7 @@ func ApplyGraftETB(gs *GameState, perm *Permanent, n int) {
 	if gs == nil || perm == nil || n <= 0 {
 		return
 	}
-	perm.AddCounter("+1/+1", n)
-	gs.InvalidateCharacteristicsCache() // +1/+1 counters change P/T
+	PutCountersTriggered(gs, perm, "+1/+1", n, perm)
 	gs.LogEvent(Event{
 		Kind:   "graft_etb",
 		Seat:   perm.Controller,

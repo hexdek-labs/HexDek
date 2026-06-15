@@ -1464,7 +1464,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		if seat >= 0 && seat < len(gs.Seats) && len(gs.Seats[seat].Battlefield) > 0 {
 			last := gs.Seats[seat].Battlefield[len(gs.Seats[seat].Battlefield)-1]
 			if last != nil && last.IsToken() {
-				last.AddCounter("+1/+1", n)
+				PutCountersTriggered(gs, last, "+1/+1", n, src)
 			}
 		}
 		gs.LogEvent(Event{
@@ -2351,7 +2351,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			}
 		}
 		if src != nil && count > 0 {
-			src.AddCounter(counterKind, count)
+			PutCountersTriggered(gs, src, counterKind, count, src)
 			gs.InvalidateCharacteristicsCache()
 		}
 		gs.LogEvent(Event{
@@ -3472,7 +3472,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 				if p == nil || !p.IsCreature() || p == src {
 					continue
 				}
-				p.AddCounter("+1/+1", 1)
+				PutCountersTriggered(gs, p, "+1/+1", 1, src)
 				distributed++
 			}
 			if distributed > 0 {

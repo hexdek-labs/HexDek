@@ -82,7 +82,7 @@ func ApplyStaticETBCounters(gs *GameState, perm *Permanent) {
 				counterKind = k
 			}
 		}
-		perm.AddCounter(counterKind, count)
+		PutCountersTriggered(gs, perm, counterKind, count, perm)
 		gs.LogEvent(Event{
 			Kind:   "etb_with_counters",
 			Seat:   perm.Controller,
