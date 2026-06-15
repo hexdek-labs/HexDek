@@ -482,13 +482,18 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 	// arbitrary — no printed card carries two of these keywords.
 	altCostMeta := map[string]interface{}{}
 	if HasOverload(card) {
-		oc := OverloadCost(card)
+		rawOC := OverloadCost(card)
+		// CR §118.9 / §601.2f — cost modifiers (Thalia tax, medallions, …)
+		// apply to the alternative cost too. Effective cost drives both the
+		// affordability check and the payment; rawOC drives the parser-missing
+		// guard below.
+		oc := EffectiveAlternativeCost(gs, card, seatIdx, rawOC, CastContext{})
 		avail := EnsureTypedPool(seat).Total()
 		maxPay := 0
-		// oc == 0 means the parser didn't capture the printed overload
+		// rawOC == 0 means the parser didn't capture the printed overload
 		// cost — decline rather than overload for free (no printed
 		// overload cost is {0}).
-		if oc > 0 && avail >= oc {
+		if rawOC > 0 && avail >= oc {
 			maxPay = 1
 		}
 		if maxPay > 0 && seat.Hat != nil &&
@@ -498,12 +503,13 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		}
 	}
 	if len(altCostMeta) == 0 && HasSurge(card) && CanPaySurge(gs, seatIdx) {
-		sc := SurgeCost(card)
+		rawSC := SurgeCost(card)
+		sc := EffectiveAlternativeCost(gs, card, seatIdx, rawSC, CastContext{})
 		avail := EnsureTypedPool(seat).Total()
 		maxPay := 0
-		// sc == 0 means the parser didn't capture the printed surge cost
+		// rawSC == 0 means the parser didn't capture the printed surge cost
 		// — decline rather than surge for free.
-		if sc > 0 && avail >= sc {
+		if rawSC > 0 && avail >= sc {
 			maxPay = 1
 		}
 		if maxPay > 0 && seat.Hat != nil &&
@@ -514,12 +520,13 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		}
 	}
 	if len(altCostMeta) == 0 && HasSpectacle(card) && CanPaySpectacle(gs, seatIdx) {
-		spc := SpectacleCost(card)
+		rawSpc := SpectacleCost(card)
+		spc := EffectiveAlternativeCost(gs, card, seatIdx, rawSpc, CastContext{})
 		avail := EnsureTypedPool(seat).Total()
 		maxPay := 0
-		// spc == 0 means the parser didn't capture the printed spectacle
+		// rawSpc == 0 means the parser didn't capture the printed spectacle
 		// cost — decline rather than cast for free.
-		if spc > 0 && avail >= spc {
+		if rawSpc > 0 && avail >= spc {
 			maxPay = 1
 		}
 		if maxPay > 0 && seat.Hat != nil &&

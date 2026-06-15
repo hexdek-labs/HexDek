@@ -147,6 +147,34 @@ func CalculateTotalCostWithContext(gs *GameState, card *Card, seatIdx int, ctx C
 	return applyCostModifiersFloored(baseCost, mods, coloredPipFloor(card, baseCost))
 }
 
+// EffectiveAlternativeCost applies the §601.2f cost-modifier pipeline to a
+// pre-computed ALTERNATIVE cost (overload / surge / spectacle / flashback /
+// miracle, …). CR §118.9 / §601.2f: cost increases and reductions modify the
+// total a player actually pays, whether that total derives from the printed
+// mana cost or from an alternative cost — so Thalia / Sphere of Resistance /
+// Esper Sentinel still tax an overloaded spell, and medallions / Goblin
+// Electromancer still reduce it. Before r63 the canonical cast path simply
+// replaced the modifier-adjusted base cost with the raw alternative cost,
+// silently dropping every cost modifier on alternative-cost casts.
+//
+// Generic reductions are floored at 0 rather than at the alternative cost's
+// colored-pip count: alternative costs are carried as bare ints, so no
+// ManaCostString pip breakdown is available — the same floor-0 approximation
+// coloredPipFloor already uses for token / back-face costs. Cost increases
+// have no floor and are always exact.
+//
+// rawAlt <= 0 is returned unchanged: a {0} / parser-missing alternative cost
+// is not taxed up from nothing here (call sites guard "0 == parser-missing"
+// separately), and nothing needs reducing.
+func EffectiveAlternativeCost(gs *GameState, card *Card, seatIdx, rawAlt int, ctx CastContext) int {
+	if gs == nil || card == nil || rawAlt <= 0 {
+		return rawAlt
+	}
+	mods := ScanCostModifiersWithContext(gs, card, seatIdx, ctx)
+	mods = append(mods, selfSpellCostReductionMods(gs, card, seatIdx)...)
+	return applyCostModifiersFloored(rawAlt, mods, 0)
+}
+
 // coloredPipFloor returns the portion of baseCost that GENERIC cost reductions
 // can never remove — the sum of colored, colorless ({C}), and hybrid pips per
 // CR §601.2f-h. Derived from the printed ManaCostString as CMC minus the pure
