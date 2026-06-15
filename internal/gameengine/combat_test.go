@@ -298,9 +298,18 @@ func TestCombat_DeathtouchTinyKillsGiant(t *testing.T) {
 
 	DealCombatDamageStep(gs, attackers, blockerMap, false)
 
-	if blk.MarkedDamage < blk.Toughness() {
-		t.Errorf("deathtouch should be lethal to giant: marked=%d tough=%d",
-			blk.MarkedDamage, blk.Toughness())
+	// CR §702.2b — deathtouch marks the ACTUAL damage dealt (1), not lethal;
+	// the kill comes from the §704.5h SBA via the deathtouch flag, not from
+	// marked damage reaching toughness.
+	if blk.MarkedDamage != 1 {
+		t.Errorf("deathtouch marks actual damage (1), not toughness; got marked=%d", blk.MarkedDamage)
+	}
+	if blk.Flags["deathtouch_damaged"] != 1 {
+		t.Errorf("deathtouch_damaged flag must be set for the §704.5h SBA")
+	}
+	StateBasedActions(gs)
+	if alive(gs, blk) {
+		t.Errorf("deathtouch should kill the 5/5 giant via SBA (flag), despite only 1 marked")
 	}
 }
 

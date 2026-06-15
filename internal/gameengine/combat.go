@@ -2290,11 +2290,15 @@ func applyCombatDamageToCreature(gs *GameState, src *Permanent, amount int, targ
 	}
 	target.MarkedDamage += amount
 	if src.HasKeyword("deathtouch") && amount > 0 {
-		// Any nonzero damage from a deathtouch source is lethal (§702.2b).
-		if target.MarkedDamage < gs.ToughnessOf(target) {
-			target.MarkedDamage = gs.ToughnessOf(target)
-		}
-		// Flag for §704.5h SBA — deathtouch sub-lethal damage kill.
+		// CR §702.2b — any nonzero damage from a deathtouch source is lethal;
+		// the §704.5h SBA (sba704_5h) destroys the creature via this flag,
+		// so the kill does NOT depend on marked damage reaching toughness.
+		// We therefore do NOT bump MarkedDamage to toughness: the creature
+		// was dealt only `amount` damage, and over-marking corrupts a
+		// creature that SURVIVES the deathtouch (indestructible — §704.5h
+		// skips it). Such a creature would then carry lethal marked damage
+		// and be wrongly destroyed by §704.5g the moment it loses
+		// indestructibility this turn. Keep MarkedDamage at the real value.
 		if target.Flags == nil {
 			target.Flags = map[string]int{}
 		}
