@@ -435,17 +435,22 @@ func ApplyMyriad(gs *GameState, attacker *Permanent, attackerSeat int) {
 		if oppSeat == defSeat {
 			continue // Already attacking this opponent with the original.
 		}
-		// Create a token copy — must include "token" in Types for IsToken().
-		tokenTypes := append([]string{"token"}, attacker.Card.Types...)
+		// CR §702.116a / §707.2 — the myriad token is a COPY of the
+		// attacker, so it uses the attacker's copiable values (name, card
+		// types, subtypes, colors, P/T, rules text/abilities, mana cost).
+		// Route through the canonical token-as-copy chokepoint
+		// MintTokenAsCopyOf (DeepCopy of every copiable value + a fresh
+		// TK-provenance InstanceID with the source recorded) rather than the
+		// old hand-rolled partial copy, which dropped subtypes, keywords, and
+		// all rules text — so a myriad copy of e.g. a flying Dragon was a
+		// colorless typeless vanilla with the printed P/T. This mirrors
+		// resolveCopyPermanent's §707.10f create-token-copy path.
+		card := MintTokenAsCopyOf(gs, attacker.Card, attackerSeat, currentMintEnablerID(gs))
+		if card == nil {
+			continue
+		}
 		token := &Permanent{
-			Card: &Card{
-				Name:          attacker.Card.DisplayName() + " (myriad copy)",
-				Owner:         attackerSeat,
-				BasePower:     attacker.Card.BasePower,
-				BaseToughness: attacker.Card.BaseToughness,
-				Types:         tokenTypes,
-				Colors:        append([]string{}, attacker.Card.Colors...),
-			},
+			Card:          card,
 			Controller:    attackerSeat,
 			Owner:         attackerSeat,
 			Timestamp:     gs.NextTimestamp(),
