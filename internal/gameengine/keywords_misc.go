@@ -1305,6 +1305,10 @@ func PerformExplore(gs *GameState, perm *Permanent) (bool, *Card) {
 	seat := gs.Seats[seatIdx]
 
 	if len(seat.Library) == 0 {
+		// CR §701.40 — the creature still explores even with an empty
+		// library (there's just no card to reveal); "whenever a creature you
+		// control explores" triggers still fire.
+		fireExploreTrigger(gs, perm, seatIdx, false, nil)
 		return false, nil
 	}
 
@@ -1341,7 +1345,33 @@ func PerformExplore(gs *GameState, perm *Permanent) (bool, *Card) {
 			},
 		})
 	}
+	// CR §701.40 — fire the "explore" trigger event ONCE per explore (after
+	// the reveal/counter resolves) so "whenever a creature you control
+	// explores" abilities (Wildgrowth Walker, Tatyova-style, the ally_explore
+	// alias family) react. Without this the explore-matters trigger family was
+	// inert despite the event-alias plumbing.
+	fireExploreTrigger(gs, perm, seatIdx, isLand, revealed)
 	return isLand, revealed
+}
+
+// fireExploreTrigger dispatches the per-explore "explore" trigger event for
+// the creature `perm` (controlled by seatIdx) that just explored. `revealed`
+// is the revealed card (nil on an empty library).
+func fireExploreTrigger(gs *GameState, perm *Permanent, seatIdx int, wasLand bool, revealed *Card) {
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	ctx := map[string]interface{}{
+		"seat":            seatIdx,
+		"controller_seat": seatIdx,
+		"perm":            perm,
+		"card":            perm.Card,
+		"was_land":        wasLand,
+	}
+	if revealed != nil {
+		ctx["revealed_card"] = revealed.DisplayName()
+	}
+	FireCardTrigger(gs, "explore", ctx)
 }
 
 // ---------------------------------------------------------------------------
