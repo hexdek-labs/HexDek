@@ -2719,7 +2719,12 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 						n = v
 					}
 				}
-				src.AddCounter("+1/+1", n)
+				// CR §701.31 — the N +1/+1 counters go through the §616
+				// would_put_counter chain so doublers (Doubling Season,
+				// Hardened Scales, Vorinclex) apply. Raw AddCounter bypassed them.
+				if mv, cancelled := FirePutCounterEvent(gs, src, "+1/+1", n, src); !cancelled && mv > 0 {
+					src.AddCounter("+1/+1", mv)
+				}
 				src.Flags["monstrous"] = 1
 				gs.InvalidateCharacteristicsCache()
 				gs.LogEvent(Event{
@@ -2730,6 +2735,16 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 					Details: map[string]interface{}{
 						"rule": "701.31",
 					},
+				})
+				// CR §701.31c — "When this creature becomes monstrous" triggers
+				// fire once on the status flip (becomes_monstrous → monstrous
+				// alias). The status change is independent of the counters, so
+				// fire regardless of any counter replacement.
+				FireCardTrigger(gs, "monstrous", map[string]interface{}{
+					"seat": controllerSeat(src),
+					"perm": src,
+					"card": src.Card,
+					"n":    n,
 				})
 			}
 		}
@@ -2993,6 +3008,8 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 	// -----------------------------------------------------------------
 	case "adapt":
 		if src != nil && src.IsCreature() {
+			// CR §701.43 — adapt only if the creature has NO +1/+1 counters
+			// (other counter kinds don't block it).
 			if src.Counters == nil || src.Counters["+1/+1"] == 0 {
 				n := 1
 				if len(e.Args) > 0 {
@@ -3000,7 +3017,11 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 						n = v
 					}
 				}
-				src.AddCounter("+1/+1", n)
+				// §616 would_put_counter chain so +1/+1 doublers apply
+				// (raw AddCounter bypassed them).
+				if mv, cancelled := FirePutCounterEvent(gs, src, "+1/+1", n, src); !cancelled && mv > 0 {
+					src.AddCounter("+1/+1", mv)
+				}
 				gs.InvalidateCharacteristicsCache()
 				gs.LogEvent(Event{
 					Kind:   "adapt",
