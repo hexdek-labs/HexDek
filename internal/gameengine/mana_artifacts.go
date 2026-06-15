@@ -296,12 +296,96 @@ func applyArtifactManaImpl(gs *GameState, seat *Seat, p *Permanent) (int, bool) 
 		AddMana(gs, seat, "any", 2, name)
 		return 2, true
 	}
+	// Mox Amber — CONDITIONAL fast mana (CR §605.1a "could add mana"): it
+	// produces one mana only among the colors of legendary creatures and
+	// planeswalkers you control. With none, it can add NOTHING — it must not
+	// fabricate a generic mana (firespot §605.1a: a conditional Mox producing
+	// mana from nothing). Returning (0,false) leaves it untapped and abandons
+	// the §605 mana-ability window so no phantom production is recorded.
+	if name == "Mox Amber" {
+		color := moxAmberAvailableColor(gs, seat.Idx)
+		if color == "" {
+			return 0, false
+		}
+		p.Tapped = true
+		AddMana(gs, seat, color, 1, name)
+		return 1, true
+	}
+	// Chrome Mox — CONDITIONAL on an imprinted card (Imprint). With no
+	// imprinted card it produces NO mana (same anti-phantom rule as Mox Amber).
+	if name == "Chrome Mox" {
+		color := chromeMoxImprintedColor(p)
+		if color == "" {
+			return 0, false
+		}
+		p.Tapped = true
+		AddMana(gs, seat, color, 1, name)
+		return 1, true
+	}
 	if isTalisman(name) || isMox(name) {
 		p.Tapped = true
 		AddMana(gs, seat, "any", 1, name)
 		return 1, true
 	}
 	return 0, false
+}
+
+// moxAmberAvailableColor returns one mana color found among the legendary
+// creatures and planeswalkers `seat` controls (W/U/B/R/G order for
+// determinism), or "" when the controller has no such permanent — in which
+// case Mox Amber produces no mana (CR §605.1a). Mirrors the Mox Amber per_card
+// handler's color search so the two paths agree.
+func moxAmberAvailableColor(gs *GameState, seatIdx int) string {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) || gs.Seats[seatIdx] == nil {
+		return ""
+	}
+	avail := map[string]bool{}
+	for _, p := range gs.Seats[seatIdx].Battlefield {
+		if p == nil || p.Card == nil || !p.IsLegendary() {
+			continue
+		}
+		if !p.IsCreature() && !p.IsPlaneswalker() {
+			continue
+		}
+		for _, c := range p.Card.Colors {
+			avail[upperColor(c)] = true
+		}
+		for _, t := range p.Card.Types {
+			if len(t) > 4 && t[:4] == "pip:" {
+				avail[upperColor(t[4:])] = true
+			}
+		}
+	}
+	for _, c := range []string{"W", "U", "B", "R", "G"} {
+		if avail[c] {
+			return c
+		}
+	}
+	return ""
+}
+
+// chromeMoxImprintedColor returns one color of Chrome Mox's imprinted card
+// (stored as Flags["imprint_color_X"] by the imprint ETB handler), or "" when
+// nothing is imprinted — in which case Chrome Mox produces no mana.
+func chromeMoxImprintedColor(p *Permanent) string {
+	if p == nil || p.Flags == nil || p.Flags["imprinted"] == 0 {
+		return ""
+	}
+	for _, c := range []string{"W", "U", "B", "R", "G"} {
+		if p.Flags["imprint_color_"+c] > 0 {
+			return c
+		}
+	}
+	return ""
+}
+
+// upperColor uppercases a single-letter color code without importing strings
+// (this file deliberately avoids that dependency).
+func upperColor(c string) string {
+	if len(c) == 1 && c[0] >= 'a' && c[0] <= 'z' {
+		return string(c[0] - 32)
+	}
+	return c
 }
 
 // isSignet recognizes the ten Ravnica-guild signets (Azorius, Dimir,

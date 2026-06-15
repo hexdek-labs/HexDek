@@ -414,6 +414,34 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		}
 	}
 
+	// CR §117.1a — a permanent spell that isn't an instant and doesn't have
+	// flash follows SORCERY-SPEED timing: it may be cast only by the ACTIVE
+	// player, during a main phase, with an empty stack. The literal-sorcery
+	// gate above misses these, so a non-active seat could cast a Mox / any
+	// artifact, creature, enchantment, or planeswalker at instant speed
+	// (firespot §117.1a — the legality watchdog's "illegal casts" class; the
+	// AI's own off-turn paths exclude permanents, but CastSpell is the trust
+	// boundary that fuzz / fixtures / future callers route through).
+	//
+	// Scoped to PRIORITY-time casts (_resolve_frame_depth == 0). An effect
+	// that says "you may cast …" during the resolution of a spell or ability
+	// (Coram-style free casts, cascade routes through its own exile-cast path)
+	// grants its own timing permission per CR §601.3e / §608.2g — those run at
+	// _resolve_frame_depth > 0 and must NOT be gated. "As though it had flash"
+	// zone-cast grants (impulse play, etc.) carry their own permission and are
+	// exempt, mirroring the legality validator's checkLegalityTiming.
+	if isPermanentSpell(card) && !legalityCardIsInstantSpeed(card) &&
+		!cardHasType(card, "sorcery") && (gs.Flags == nil || gs.Flags["_resolve_frame_depth"] == 0) {
+		if _, zoneGranted := gs.ZoneCastGrants[card]; !zoneGranted {
+			isMainPhase := gs.Phase == "" || gs.Phase == "main" ||
+				gs.Phase == "beginning" || gs.Phase == "precombat_main" ||
+				gs.Phase == "postcombat_main"
+			if seatIdx != gs.Active || !isMainPhase || len(gs.Stack) > 0 {
+				return &CastError{Reason: "sorcery_speed_timing"}
+			}
+		}
+	}
+
 	// CR §307.1 / §601.3a: a Teferi-style static that restricts the seat to
 	// sorcery speed while an opponent controls it, combined with a non-empty
 	// stack, forbids the cast. Active player casting sorceries on an empty

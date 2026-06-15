@@ -109,22 +109,22 @@ func TestLegality_Timing_NonActiveSorcery_Flagged(t *testing.T) {
 	}
 }
 
-// A non-flash CREATURE cast during combat. CastSpell timing-gates only
-// literal sorceries, so this goes through — the validator must flag the
-// §117.1a sorcery-timing violation for permanent spells.
-func TestLegality_Timing_CreatureAtInstantSpeed_Flagged(t *testing.T) {
+// A non-flash CREATURE cast during combat. As of the r63 firespot-mox fix,
+// CastSpell ENFORCES §117.1a sorcery-speed timing for every non-flash
+// permanent spell (not just literal sorceries) — so the engine now REJECTS
+// this cast at the trust boundary rather than allowing it and relying on the
+// validator to flag it after the fact.
+func TestLegality_Timing_CreatureAtInstantSpeed_Rejected(t *testing.T) {
 	gs := legalityFixture(t)
-	gs.Phase = "combat"
+	gs.Phase = "combat" // not a main phase
 	gs.Seats[0].Hat = &GreedyHatStub{}
 	gs.Seats[0].ManaPool = 3
 	card := &Card{Name: "Combat Bear", Owner: 0, Types: []string{"creature", "cost:3"}}
 	gs.Seats[0].Hand = []*Card{card}
 
-	if err := CastSpell(gs, 0, card, nil); err != nil {
-		t.Fatalf("engine rejected the cast (gate changed?): %v — update this test's premise", err)
-	}
-	if len(violationsByRule(gs.Legality, "117.1a")) == 0 {
-		t.Fatalf("non-flash creature cast in combat not flagged; violations=%v", gs.Legality.Violations)
+	err := CastSpell(gs, 0, card, nil)
+	if ce, ok := err.(*CastError); !ok || ce.Reason != "sorcery_speed_timing" {
+		t.Fatalf("§117.1a: a non-flash creature cast outside a main phase must be rejected, got %v", err)
 	}
 }
 
