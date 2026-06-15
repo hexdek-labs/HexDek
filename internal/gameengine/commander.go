@@ -634,6 +634,15 @@ func IsCommanderCard(gs *GameState, seatIdx int, card *Card) bool {
 	if !gs.CommanderFormat {
 		return false
 	}
+	// CR §903.3a — a commander is a specific designated CARD. A token (even a
+	// copy of the commander, e.g. via Helm of the Host / Cackling Counterpart /
+	// Mimic Vat) is NOT a commander: it shares the name but isn't the card, so
+	// its combat damage must NOT count toward the §903.10a 21-damage clock, and
+	// the §903.9b zone replacement must not apply to it. Matching on name alone
+	// would mis-credit every name-sharing token.
+	if cardHasType(card, "token") {
+		return false
+	}
 	name := card.DisplayName()
 	for _, n := range gs.Seats[seatIdx].CommanderNames {
 		if n == name {
