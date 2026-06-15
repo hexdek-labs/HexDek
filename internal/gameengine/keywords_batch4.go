@@ -319,6 +319,23 @@ func ApplyConspire(gs *GameState, seatIdx int, item *StackItem) bool {
 // As this creature ETBs, you may sacrifice any number of creatures. This
 // creature enters with N * (sacrificed count) +1/+1 counters.
 
+// putDevourCounters places the devour +1/+1 counters on the entering creature.
+// CR §702.82c / §122.1g — these counters "enter with" the creature, so the
+// would_put_counter doubler chain applies (Doubling Season, Hardened Scales,
+// Branching Evolution, Conclave Mentor). Raw AddCounter bypassed it — the r63
+// counter-pipeline-sweep meta-pattern. As an enters-with counter (not a "put"),
+// the counter_placed payoff trigger is intentionally NOT fired, so this routes
+// through FirePutCounterEvent (replacement chain only) rather than
+// PutCountersTriggered. Devouring zero creatures → 0 counters (a legal no-op).
+func putDevourCounters(gs *GameState, perm *Permanent, counters int) {
+	if counters > 0 {
+		if modified, cancelled := FirePutCounterEvent(gs, perm, "+1/+1", counters, perm); !cancelled && modified > 0 {
+			perm.AddCounter("+1/+1", modified)
+		}
+	}
+	gs.InvalidateCharacteristicsCache()
+}
+
 // ApplyDevour sacrifices creatures and places +1/+1 counters on perm.
 // n is the devour multiplier (Devour 1, Devour 2, etc.). Per CR §702.82,
 // "you MAY sacrifice any number of creatures." The AI heuristic sacrifices
@@ -375,8 +392,7 @@ func ApplyDevour(gs *GameState, perm *Permanent, n int) {
 	}
 
 	counters := len(victims) * n
-	perm.AddCounter("+1/+1", counters)
-	gs.InvalidateCharacteristicsCache()
+	putDevourCounters(gs, perm, counters)
 
 	gs.LogEvent(Event{
 		Kind:   "devour",
@@ -459,8 +475,7 @@ func ApplyDevourTyped(gs *GameState, perm *Permanent, n int, materialType string
 	}
 
 	counters := len(victims) * n
-	perm.AddCounter("+1/+1", counters)
-	gs.InvalidateCharacteristicsCache()
+	putDevourCounters(gs, perm, counters)
 
 	gs.LogEvent(Event{
 		Kind: "devour", Seat: seatIdx, Source: perm.Card.DisplayName(),
