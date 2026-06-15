@@ -664,6 +664,14 @@ func normalizeBase(base string) string {
 // Destroy, Exile, Bounce, Tap, Untap, GainControl, Sacrifice, and other
 // battlefield operations.
 func matchesPermanent(f gameast.Filter, p *Permanent) bool {
+	// CR §702.26a — a phased-out permanent is treated as though it does not
+	// exist. It can't be targeted, isn't affected by spells/abilities, and
+	// isn't counted by "for each" / "each" effects. matchesPermanent is the
+	// central filter for target enumeration, mass/untargeted effects, and
+	// scaling counts, so excluding here covers all of those at once.
+	if p != nil && p.PhasedOut {
+		return false
+	}
 	if p == nil || p.Card == nil {
 		// Tokens/placeholders: accept if the filter isn't asking for a
 		// specific subtype.

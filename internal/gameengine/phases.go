@@ -70,6 +70,11 @@ func FirePhaseTriggers(gs *GameState, phase, step string) {
 			if perm == nil || perm.Card == nil || perm.Card.AST == nil {
 				continue
 			}
+			// CR §702.26a — a phased-out permanent's triggered abilities can't
+			// trigger while it's phased out.
+			if perm.PhasedOut {
+				continue
+			}
 			for _, ab := range perm.Card.AST.Abilities {
 				trig, ok := ab.(*gameast.Triggered)
 				if !ok || trig.Effect == nil {
@@ -153,8 +158,9 @@ func FirePhaseTriggers(gs *GameState, phase, step string) {
 				}
 				// Defensive: skip if the permanent has already left the
 				// battlefield (a sibling cumulative-upkeep sacrifice
-				// earlier in this pass might have cascaded via SBAs).
-				if !permanentOnBattlefield(gs, p) {
+				// earlier in this pass might have cascaded via SBAs) or is
+				// phased out (CR §702.26a — its triggers can't trigger).
+				if !permanentOnBattlefield(gs, p) || p.PhasedOut {
 					continue
 				}
 				ApplyCumulativeUpkeep(gs, p)

@@ -1019,6 +1019,14 @@ func isTargetStillLegal(gs *GameState, item *StackItem, t Target) bool {
 		if t.Permanent == nil {
 			return false
 		}
+		// CR §702.26a — a permanent that phased out after being targeted is
+		// treated as though it doesn't exist: it's an illegal target at
+		// resolution, so the spell/ability fizzles (handled by the all-illegal
+		// check upstream). permanentOnBattlefield alone doesn't catch this —
+		// the phased-out permanent is still in the battlefield slice.
+		if t.Permanent.PhasedOut {
+			return false
+		}
 		if !permanentOnBattlefield(gs, t.Permanent) {
 			return false
 		}
