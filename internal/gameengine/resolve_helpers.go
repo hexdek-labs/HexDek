@@ -4297,12 +4297,29 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 		})
 
 	case "block_additional_creature":
-		// Mark the source as able to block one additional creature (CR §702.XXb).
+		// CR §509.1a — grant the source the ability to block additional
+		// attackers this combat. The flag stores N (the number of EXTRA
+		// attackers); multiBlockCap adds it on top of the base cap of 1.
+		// Read N from the effect args (digit or number word), defaulting
+		// to one for the bare "can block an additional creature" form.
 		if src != nil {
 			if src.Flags == nil {
 				src.Flags = map[string]int{}
 			}
-			src.Flags["blocks_additional"] = 1
+			n := 1
+			for _, a := range e.Args {
+				if s, ok := a.(string); ok {
+					if v, ok := blockNumberWord(s); ok && v > 0 {
+						n = v
+						break
+					}
+					if v, ok := firstNumber(s); ok && v > 0 {
+						n = v
+						break
+					}
+				}
+			}
+			src.Flags["blocks_additional"] = n
 		}
 		gs.LogEvent(Event{
 			Kind:   "block_additional",

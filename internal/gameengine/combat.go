@@ -143,12 +143,42 @@ func setPermFlag(p *Permanent, key string, v bool) {
 	}
 }
 
+// blockCommitCountOf reports how many attackers a blocker is already
+// committed to this combat (CR §509.1a) — the numeric companion to
+// IsBlocking. Zero when nil / not yet blocking.
+func blockCommitCountOf(p *Permanent) int {
+	if p == nil || p.Flags == nil {
+		return 0
+	}
+	return p.Flags[flagBlockCommitCount]
+}
+
+// commitBlock marks a creature as blocking and bumps its per-combat
+// attacker-commit count by one (used when the engine actually applies a
+// sanitized block assignment).
+func commitBlock(p *Permanent) {
+	if p == nil {
+		return
+	}
+	setPermFlag(p, flagBlocking, true)
+	if p.Flags == nil {
+		p.Flags = map[string]int{}
+	}
+	p.Flags[flagBlockCommitCount]++
+}
+
 // Canonical combat-state flag keys.
 const (
 	flagAttacking          = "attacking"
 	flagDeclaredAttacker   = "declared_attacker_this_combat"
 	flagBlocking           = "blocking"
 	flagAttackedThisCombat = "attacked_this_combat"
+	// flagBlockCommitCount counts how many attackers a blocker has been
+	// committed to THIS combat (CR §509.1a). flagBlocking is the boolean
+	// "is it blocking at all"; this is the numeric companion that lets the
+	// engine enforce the per-blocker block cap for "can block an
+	// additional N creatures" / "any number". Cleared at end of combat.
+	flagBlockCommitCount = "block_commit_count"
 	// flagDefenderSeat stores (seat + 1) of the defending player that
 	// this attacker is attacking. +1 offset so flag absence (zero) is
 	// distinguishable from "seat 0". CR §506.1 — each attacker chooses
@@ -1098,7 +1128,7 @@ func DeclareBlockers(gs *GameState, attackers []*Permanent, defenderSeat int) ma
 				// then enforce §702.110b menace pairing on the survivors.
 				blockers = sanitizeDeclaredBlockers(gs, defenderSeat, a, blockers)
 				for _, b := range blockers {
-					setPermFlag(b, flagBlocking, true)
+					commitBlock(b)
 				}
 				out[a] = blockers
 			}
@@ -1197,7 +1227,7 @@ func DeclareBlockers(gs *GameState, attackers []*Permanent, defenderSeat int) ma
 		}
 		gs.Legality.ObserveBlockDeclaration(gs, defenderSeat, atk, assigned)
 		for _, b := range assigned {
-			setPermFlag(b, flagBlocking, true)
+			commitBlock(b)
 		}
 		out[atk] = assigned
 	}
@@ -1457,7 +1487,10 @@ func sanitizeDeclaredBlockers(gs *GameState, defenderSeat int, attacker *Permane
 			continue
 		}
 		switch {
-		case seen[b] && !legalityCanMultiBlock(b):
+		case seen[b]:
+			// CR §509.1 — same blocker+attacker pair twice is always
+			// illegal, even for a creature that may block multiple
+			// attackers (it still can't block ONE attacker twice).
 			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "blocker committed twice in one assignment", "509.1")
 		case !onBF[b]:
 			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "blocker is not a creature on the defender's battlefield", "509.1a")
@@ -1467,8 +1500,11 @@ func sanitizeDeclaredBlockers(gs *GameState, defenderSeat int, attacker *Permane
 			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "blocker is phased out", "702.26b")
 		case b.Tapped:
 			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "blocker is tapped", "509.1a")
-		case b.IsBlocking() && !legalityCanMultiBlock(b):
-			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "blocker is already blocking another attacker", "509.1")
+		case blockCommitCountOf(b) >= multiBlockCap(b):
+			// CR §509.1a — committed to its maximum number of attackers
+			// already (1 by default; 1+N for "block an additional N"; the
+			// unlimited sentinel for "block any number").
+			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "blocker is already blocking the maximum number of attackers", "509.1")
 		case !canBlockGS(gs, attacker, b):
 			dropDeclaredBlocker(gs, defenderSeat, attacker, b, "evasion/blocking restriction unsatisfied", "509.1b")
 		default:
@@ -2517,6 +2553,9 @@ func EndOfCombatStep(gs *GameState) {
 			setPermFlag(p, flagAttacking, false)
 			setPermFlag(p, flagDeclaredAttacker, false)
 			setPermFlag(p, flagBlocking, false)
+			if p.Flags != nil {
+				delete(p.Flags, flagBlockCommitCount)
+			}
 			setPermFlag(p, flagAttackedThisCombat, false)
 			setPermFlag(p, flagEnteredAttacking, false)
 			// CR §702.154 — "enlisted a creature this combat" is a per-combat

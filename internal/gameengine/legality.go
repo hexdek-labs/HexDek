@@ -125,6 +125,13 @@ type LegalityObservation struct {
 	Attacker             *Permanent
 	Blockers             []*Permanent
 	BlockersWereBlocking []bool
+	// BlockersPriorBlockCount[i] records how many attackers Blockers[i]
+	// was ALREADY committed to before this assignment (snapshot at
+	// observe time). The numeric companion to BlockersWereBlocking — it
+	// lets the validator enforce the per-blocker block CAP (CR §509.1a:
+	// one, unless "can block an additional N creatures" raises it to 1+N
+	// or "can block any number of creatures" makes it unbounded).
+	BlockersPriorBlockCount []int
 
 	// Announcement-time snapshot (Begin*).
 	TurnAtAnnounce       int
@@ -793,19 +800,22 @@ func (v *LegalityValidator) ObserveBlockDeclaration(gs *GameState, defenderSeat 
 		return
 	}
 	were := make([]bool, len(blockers))
+	priorCount := make([]int, len(blockers))
 	for i, b := range blockers {
 		were[i] = b != nil && b.IsBlocking()
+		priorCount[i] = blockCommitCountOf(b)
 	}
 	obs := &LegalityObservation{
-		Kind:                 "block",
-		Seat:                 defenderSeat,
-		Attacker:             attacker,
-		Blockers:             blockers,
-		BlockersWereBlocking: were,
-		TurnAtAnnounce:       gs.Turn,
-		PhaseAtAnnounce:      gs.Phase,
-		ActiveAtAnnounce:     gs.Active,
-		StackDepthAtAnnounce: len(gs.Stack),
+		Kind:                    "block",
+		Seat:                    defenderSeat,
+		Attacker:                attacker,
+		Blockers:                blockers,
+		BlockersWereBlocking:    were,
+		BlockersPriorBlockCount: priorCount,
+		TurnAtAnnounce:          gs.Turn,
+		PhaseAtAnnounce:         gs.Phase,
+		ActiveAtAnnounce:        gs.Active,
+		StackDepthAtAnnounce:    len(gs.Stack),
 	}
 	v.runChecks(gs, obs)
 }
@@ -861,16 +871,126 @@ func checkLegalityAttackDecl(gs *GameState, obs *LegalityObservation) []Legality
 	return out
 }
 
-// legalityCanMultiBlock reports whether a blocker's text grants
-// block-an-additional / block-any-number — the only sanctioned reasons
-// for one creature to block two attackers (CR §509.1a default is one).
-func legalityCanMultiBlock(b *Permanent) bool {
+// unlimitedBlockCap is the sentinel cap for "can block any number of
+// creatures" — large enough that it is never the binding constraint in a
+// real game, while staying well clear of integer overflow when compared.
+const unlimitedBlockCap = 1 << 30
+
+// multiBlockCap returns the maximum number of attackers a blocker may be
+// committed to this combat (CR §509.1a). The default is ONE. Two effects
+// raise it:
+//
+//   - "can block an additional N creatures" → 1 + N (N read from the
+//     card's text — a digit or a number word, including hyphenated
+//     compounds like "ninety-nine", so Hundred-Handed One reads 100, not
+//     a hardcoded 2);
+//   - "can block any number of creatures" → unbounded.
+//
+// An effect-granted "blocks_additional" flag (set by the
+// block_additional_creature modification) adds its stored N on top, so a
+// runtime grant stacks with any printed capability.
+//
+// NOTE: the printed-text match is condition-blind (e.g. Hundred-Handed
+// One's "as long as it's monstrous" is not evaluated) — this mirrors the
+// pre-existing substring approach and is the same simplification used
+// throughout combat legality; gating on the conditional is a separate
+// content task.
+func multiBlockCap(b *Permanent) int {
 	if b == nil {
-		return false
+		return 1
 	}
+	cap := 1
 	ot := OracleTextLower(b.Card)
-	return strings.Contains(ot, "block an additional") ||
-		strings.Contains(ot, "block any number")
+	switch {
+	case strings.Contains(ot, "block any number"):
+		return unlimitedBlockCap
+	case strings.Contains(ot, "block an additional"):
+		if n := parseAdditionalBlockCount(ot); n > 0 {
+			cap = 1 + n
+		}
+	}
+	// Effect-granted additional-block (block_additional_creature). The
+	// flag stores N (the number of EXTRA attackers granted); default 1.
+	if b.Flags != nil {
+		if n := b.Flags["blocks_additional"]; n > 0 {
+			cap += n
+		}
+	}
+	return cap
+}
+
+// legalityCanMultiBlock reports whether a blocker may block more than one
+// attacker at all — a boolean view over multiBlockCap, retained for the
+// menace-pairing and same-pair call sites.
+func legalityCanMultiBlock(b *Permanent) bool {
+	return multiBlockCap(b) > 1
+}
+
+// parseAdditionalBlockCount extracts the N in "can block an additional N
+// creatures". Returns 1 for the bare "an additional creature" form (no
+// explicit count), 0 if the phrase is absent.
+func parseAdditionalBlockCount(ot string) int {
+	const marker = "block an additional"
+	i := strings.Index(ot, marker)
+	if i < 0 {
+		return 0
+	}
+	rest := ot[i+len(marker):]
+	if j := strings.Index(rest, "creature"); j >= 0 {
+		rest = rest[:j]
+	}
+	rest = strings.TrimSpace(rest)
+	if rest == "" {
+		// "block an additional creature" — exactly one extra.
+		return 1
+	}
+	if n, ok := blockNumberWord(rest); ok {
+		return n
+	}
+	for _, tok := range strings.Fields(rest) {
+		if v, ok := atoiSafe(strings.Trim(tok, ".,")); ok {
+			return v
+		}
+	}
+	// A number we cannot parse still clearly grants AT LEAST one extra.
+	return 1
+}
+
+var blockNumberOnes = map[string]int{
+	"a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+	"six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11,
+	"twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16,
+	"seventeen": 17, "eighteen": 18, "nineteen": 19,
+}
+
+var blockNumberTens = map[string]int{
+	"twenty": 20, "thirty": 30, "forty": 40, "fifty": 50,
+	"sixty": 60, "seventy": 70, "eighty": 80, "ninety": 90,
+}
+
+// blockNumberWord parses an English number word up to 99, including
+// hyphenated or space-separated tens-ones compounds ("ninety-nine" → 99).
+func blockNumberWord(s string) (int, bool) {
+	s = strings.ToLower(strings.TrimSpace(s))
+	s = strings.ReplaceAll(s, "-", " ")
+	total, matched := 0, false
+	for _, p := range strings.Fields(s) {
+		if v, ok := blockNumberTens[p]; ok {
+			total += v
+			matched = true
+			continue
+		}
+		if v, ok := blockNumberOnes[p]; ok {
+			total += v
+			matched = true
+			continue
+		}
+		break // stop at the first non-number token
+	}
+	if !matched {
+		return 0, false
+	}
+	return total, true
 }
 
 // checkLegalityBlockDecl — CR §509.1: each assigned blocker must be an
@@ -901,7 +1021,10 @@ func checkLegalityBlockDecl(gs *GameState, obs *LegalityObservation) []LegalityV
 			continue
 		}
 		live++
-		if seen[b] && !legalityCanMultiBlock(b) {
+		// CR §509.1 — the SAME blocker+attacker pair committed twice is
+		// always illegal, even for a creature that may block multiple
+		// attackers (you still can't block one attacker twice).
+		if seen[b] {
 			name := "<unknown>"
 			if b.Card != nil {
 				name = b.Card.DisplayName()
@@ -926,8 +1049,18 @@ func checkLegalityBlockDecl(gs *GameState, obs *LegalityObservation) []LegalityV
 			add("509.1a", fmt.Sprintf("blocker %q is tapped", name))
 			continue
 		}
-		if i < len(obs.BlockersWereBlocking) && obs.BlockersWereBlocking[i] && !legalityCanMultiBlock(b) {
-			add("509.1", fmt.Sprintf("blocker %q is already blocking another attacker", name))
+		// CR §509.1a — a blocker may be committed to at most multiBlockCap
+		// attackers this combat. The prior-commit COUNT (not a bare bool)
+		// is the binding test: a creature that may block an additional N
+		// is illegal only once it would exceed 1+N total commitments.
+		prior := 0
+		if i < len(obs.BlockersPriorBlockCount) {
+			prior = obs.BlockersPriorBlockCount[i]
+		} else if i < len(obs.BlockersWereBlocking) && obs.BlockersWereBlocking[i] {
+			prior = 1
+		}
+		if prior >= multiBlockCap(b) {
+			add("509.1", fmt.Sprintf("blocker %q is already blocking the maximum number of attackers", name))
 			continue
 		}
 		if !canBlockGS(gs, obs.Attacker, b) {
