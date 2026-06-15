@@ -843,6 +843,20 @@ func UntapAll(gs *GameState, seatIdx int) {
 			sx.Flags = map[string]int{}
 		}
 		sx.Flags["miracle_draws_this_turn"] = 0
+		// CR §702.74 (Prowl) / §702.169 (Freerunning) — both gate on "dealt
+		// combat damage to a player THIS TURN", tracked in TurnCounters
+		// .CombatDamageBy and this seat flag. Both are populated only for the
+		// seat whose creatures attacked (always the active player), but
+		// Turn.Reset above clears ONLY the active seat — so a seat that
+		// attacked on its own turn kept a stale "dealt damage this turn"
+		// record through every intervening opponent's turn, wrongly leaving an
+		// instant-speed prowl/freerunning cast available on those turns (and
+		// the freerunning flag, a seat.Flag rather than a TurnCounter, was
+		// never reset at all). Both are game-turn-scoped facts → clear them for
+		// ALL seats at every turn start, same all-seats scope as the miracle
+		// window above. (Re-clearing the active seat is a harmless no-op.)
+		sx.Turn.CombatDamageBy = sx.Turn.CombatDamageBy[:0]
+		delete(sx.Flags, "creature_dealt_combat_damage_to_player")
 	}
 	// CR §701.4 — close the "beheld this turn" window. Behold registry
 	// is game-turn-scoped, not per-seat-scoped, so the active seat's
