@@ -238,6 +238,20 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 	gameengine.FireCardTrigger(gs, "upkeep_controller", map[string]interface{}{
 		"active_seat": active,
 	})
+	// CR §702.62f/§702.63b/§702.32b — at the beginning of the active player's
+	// upkeep, count down the time-counter family: suspend (remove a time
+	// counter from each suspended card, casting it for free at zero) and
+	// vanishing/fading (remove a counter from each such permanent, sacrificing
+	// when the last is gone). Mirrors how TickSagaChapters is wired at
+	// precombat main. Suspend can put a free spell on the stack, so drain +
+	// SBA after; the StateBasedActions/drainStack below also covers it.
+	gameengine.TickSuspendCounters(gs, active)
+	gameengine.TickTimeFadeCounters(gs, active)
+	gameengine.StateBasedActions(gs)
+	drainStack(gs)
+	if gs.CheckEnd() || seat.Lost {
+		return
+	}
 	// CR §722 — at the beginning of the upkeep of the player who has the
 	// INITIATIVE, that player ventures into the Undercity. Previously the
 	// recurring upkeep venture was unwired (only the on-take venture in

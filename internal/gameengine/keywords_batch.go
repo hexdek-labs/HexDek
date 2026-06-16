@@ -315,6 +315,18 @@ func SuspendCard(gs *GameState, seatIdx int, card *Card, timeCounters int) {
 	key := "suspend_counters:" + card.DisplayName() + ":" + itoaBatch(seatIdx)
 	gs.Flags[key] = timeCounters
 
+	// Store the countdown on the card object as well (robust to two
+	// same-named suspended cards, which collide on the gs.Flags key above).
+	// TickSuspendCounters (suspend_time_counters.go) reads this Meta store at
+	// each controller upkeep to drive the §702.62f decrement and §702.62g
+	// free-cast.
+	if card.Meta == nil {
+		card.Meta = map[string]any{}
+	}
+	card.Meta["suspended"] = true
+	card.Meta["suspend_counters"] = timeCounters
+	card.Meta["suspend_controller"] = seatIdx
+
 	gs.LogEvent(Event{
 		Kind:   "suspend",
 		Seat:   seatIdx,
