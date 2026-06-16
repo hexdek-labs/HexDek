@@ -30,6 +30,13 @@ var observerOnlyEvents = map[string]bool{
 	"another_typed_enters":   true,
 	"tribe_you_control_etb":  true,
 	"another_typed_etb":      true,
+	// Typed-ETB observers ("whenever an artifact/enchantment you control
+	// enters, ...") arrive Actor==nil; without registration here
+	// isSelfTrigger misclassifies them as self-triggers and the observer
+	// walk skips them, leaving them inert despite observerETBMatchesByRaw
+	// matching their Raw correctly (r63 typed-ETB observer fix).
+	"artifact_you_control_enters":    true,
+	"enchantment_you_control_enters": true,
 	"ally_etb":               true,
 	"creature_etb_any":       true,
 	"cast_filtered":          true,
