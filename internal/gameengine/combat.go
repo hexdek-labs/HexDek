@@ -1067,17 +1067,32 @@ func countCreatures(gs *GameState, seatIdx int) int {
 	return n
 }
 
-// iterAttackTriggers returns Triggered abilities whose trigger.event == "attack".
+// iterAttackTriggers returns Triggered abilities whose trigger.event ==
+// "attack". This is the SHARED enumeration used by both attack-trigger scan
+// sites (the self-attack path in fireAttackTriggers and the ally/observer
+// path in fireClassifiedAttackTriggers), so the ability-word unwrap lives
+// here once — every site stays consistent.
+//
+// r63 dead-dispatch sweep (attack class): ability-word attack triggers
+// (Ferocious, Formidable, Threshold, Metalcraft, Delirium, Coven, Parley —
+// "Whenever this creature attacks, if [condition], …") parse to a
+// Static{ability_word → Triggered} wrapper the top-level *Triggered scan
+// skips, so they were inert. Unwrap them here; the ability-word condition
+// rides inside the effect (a Conditional node) and is evaluated at
+// resolution. Battalion is excluded (abilityWordWithDedicatedDispatch) — it
+// has its own cardinality-gated dispatcher, FireBattalionTriggers.
 func iterAttackTriggers(c *Card) []*gameast.Triggered {
 	if c == nil || c.AST == nil {
 		return nil
 	}
 	out := []*gameast.Triggered{}
 	for _, ab := range c.AST.Abilities {
-		if t, ok := ab.(*gameast.Triggered); ok {
-			if EventEquals(t.Trigger.Event, "attack") {
-				out = append(out, t)
-			}
+		t, ok := ab.(*gameast.Triggered)
+		if !ok {
+			t = unwrapAbilityWordTriggered(ab)
+		}
+		if t != nil && EventEquals(t.Trigger.Event, "attack") {
+			out = append(out, t)
 		}
 	}
 	return out

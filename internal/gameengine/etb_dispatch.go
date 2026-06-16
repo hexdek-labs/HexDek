@@ -16,6 +16,12 @@ var abilityWordWithDedicatedDispatch = map[string]bool{
 	"eerie":         true,
 	"magecraft":     true,
 	"heroic":        true,
+	// battalion owns FireBattalionTriggers (combat.go), which enforces the
+	// "this and at least two other creatures attack" cardinality the AST
+	// doesn't encode — keep it out of the generic unwrap so the shared
+	// iterAttackTriggers path can't fire it without that >=3 gate (its
+	// self_and variant aliases to "attack").
+	"battalion": true,
 }
 
 // unwrapAbilityWordTriggered returns the inner *Triggered of a

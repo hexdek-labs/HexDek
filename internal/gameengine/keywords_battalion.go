@@ -42,7 +42,8 @@ import (
 // ---------------------------------------------------------------------------
 
 // HasBattalion returns true if the card has the battalion keyword in
-// its AST.
+// its AST — either a bare Keyword node or (the shape real cards parse to)
+// a Static{ability_word "battalion" → Triggered} wrapper.
 func HasBattalion(card *Card) bool {
 	if card == nil || card.AST == nil {
 		return false
@@ -52,7 +53,37 @@ func HasBattalion(card *Card) bool {
 			return true
 		}
 	}
-	return false
+	return battalionTriggerFromCard(card) != nil
+}
+
+// battalionTriggerFromCard extracts the inner *Triggered from a
+// Static{ability_word "battalion" → Triggered} wrapper (the shape Thor emits
+// for "Battalion — Whenever this creature and at least two other creatures
+// attack, …"). Returns nil when the card has no such wrapper. The inner
+// Triggered carries the payoff effect; the "at least two other creatures"
+// cardinality is NOT in the AST — FireBattalionTriggers enforces it (the
+// source attacking + 3+ attackers total) before resolving.
+func battalionTriggerFromCard(card *Card) *gameast.Triggered {
+	if card == nil || card.AST == nil {
+		return nil
+	}
+	for _, ab := range card.AST.Abilities {
+		st, ok := ab.(*gameast.Static)
+		if !ok || st.Modification == nil || st.Modification.ModKind != "ability_word" {
+			continue
+		}
+		args := st.Modification.Args
+		if len(args) < 3 {
+			continue
+		}
+		if w, _ := args[0].(string); w != "battalion" {
+			continue
+		}
+		if t, ok := args[2].(*gameast.Triggered); ok {
+			return t
+		}
+	}
+	return nil
 }
 
 // PermanentHasBattalion is the Permanent-level convenience for the
@@ -144,5 +175,19 @@ func FireBattalionTriggers(gs *GameState, attackerSeat int, attackers []*Permane
 			"attackers":  group,
 			"count":      len(group),
 		})
+		// r63 dead-dispatch sweep (attack class): resolve the wrapped
+		// battalion effect. Pre-r63 this hook only fired the per_card event
+		// above and never resolved the inner Triggered, so every battalion
+		// card WITHOUT a bespoke per_card handler (the bulk — Boros Elite,
+		// Wojek Halberdiers, Tajic, …) did nothing when 3+ attacked. Skip
+		// when a per_card handler owns "battalion_triggered" (no double-fire).
+		if trig := battalionTriggerFromCard(p.Card); trig != nil && trig.Effect != nil {
+			if HasTriggerHook == nil || !HasTriggerHook(p.Card.DisplayName(), "battalion_triggered") {
+				PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
+				if gs.CheckEnd() {
+					return
+				}
+			}
+		}
 	}
 }
