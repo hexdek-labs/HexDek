@@ -231,6 +231,16 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 	// werewolf-class card.
 	OnDayboundOrNightboundETB(gs, perm)
 
+	// CR §702.110b — Exploit keyword ETB ("you may sacrifice a creature").
+	// Inert before this: the keyword parsed to a bare gameast.Keyword no
+	// path read, so neither the sacrifice nor the "exploits a creature"
+	// payoff trigger ever happened. Fast-path returns immediately when the
+	// entering permanent isn't an exploit creature. Face-down permanents
+	// have no abilities (CR §708.2), so skip until they turn face up.
+	if !faceDown {
+		PerformExploitETB(gs, perm)
+	}
+
 	// CR §205.3m Outlaw type-group ETB fan-out. Fires
 	// FireCardTrigger("outlaw_etb", ctx) to every battlefield permanent
 	// whose oracle text watches for outlaw ETBs, when `perm` itself
