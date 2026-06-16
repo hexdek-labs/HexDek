@@ -20,6 +20,38 @@ func FireObserverETBTriggers(gs *GameState, entering *Permanent) {
 	fireObserverETBTriggers(gs, entering)
 }
 
+// observerTriggeredFromAbility yields the effective observer-ETB Triggered
+// for an AST ability, transparently unwrapping the landfall ability-word
+// shape. Thor parses "Landfall — Whenever a land you control enters, …" as a
+// Static{Modification.ModKind=="ability_word", Args=["landfall","triggered",
+// *Triggered]} wrapper rather than a top-level *Triggered, so the observer
+// scan (which type-asserts *Triggered) never reached it. Returns
+// (trigger, isLandfall): isLandfall routes the caller to the land-scoped
+// match. Scoped to the "landfall" ability word specifically — other ability
+// words (constellation, magecraft, …) own dedicated dispatchers and must not
+// be double-fired here.
+func observerTriggeredFromAbility(ab gameast.Ability) (*gameast.Triggered, bool) {
+	if t, ok := ab.(*gameast.Triggered); ok {
+		return t, false
+	}
+	st, ok := ab.(*gameast.Static)
+	if !ok || st.Modification == nil || st.Modification.ModKind != "ability_word" {
+		return nil, false
+	}
+	args := st.Modification.Args
+	if len(args) < 3 {
+		return nil, false
+	}
+	word, _ := args[0].(string)
+	if word != "landfall" {
+		return nil, false
+	}
+	if t, ok := args[2].(*gameast.Triggered); ok {
+		return t, true
+	}
+	return nil, false
+}
+
 func fireObserverETBTriggers(gs *GameState, entering *Permanent) {
 	if gs == nil || entering == nil || entering.Card == nil {
 		return
@@ -43,38 +75,65 @@ func fireObserverETBTriggers(gs *GameState, entering *Permanent) {
 			}
 
 			for _, ab := range observer.Card.AST.Abilities {
-				trig, ok := ab.(*gameast.Triggered)
-				if !ok || trig.Effect == nil {
+				trig, landfall := observerTriggeredFromAbility(ab)
+				if trig == nil || trig.Effect == nil {
 					continue
 				}
 
-				if !EventEquals(trig.Trigger.Event, "etb") {
-					continue
-				}
-
-				if isSelfTrigger(trig) && !dualSelfObserverEvents[strings.ToLower(strings.TrimSpace(trig.Trigger.Event))] {
-					continue
-				}
-
-				// Nil-actor observer triggers (the parser drops actor phrases):
-				// match by event name + raw-recovered filter; non-nil actors keep
-				// the structured matcher.
-				if trig.Trigger.Actor == nil {
-					// per_card handlers own the nuanced cards (Soul Warden
-					// class): skip the raw-fallback dispatch when one is
-					// registered for an ETB event — same no-double-fire guard
-					// as the attack dispatch (HasTriggerHook).
+				if landfall {
+					// CR landfall — "Whenever a land you control enters". Thor
+					// parses this ability word as a Static[ability_word →
+					// Triggered] wrapper, so the top-level *Triggered scan
+					// never saw it and EVERY generic-AST landfall payoff
+					// (Lotus Cobra, Scute Swarm, Tireless Provisioner, …) was
+					// inert. The landfall ability word is by definition
+					// you-control, so fire once per LAND entering under the
+					// observer's control. Skip the observer's own ETB (a
+					// landfall payoff watches OTHER lands; a land's own ETB is
+					// the entering-self path's job) and skip when a per_card
+					// handler already owns this card's land ETB (no double-fire,
+					// same guard as the nil-actor branch below — Tireless
+					// Tracker et al.).
+					if observer == entering {
+						continue
+					}
 					if HasTriggerHook != nil &&
 						(HasTriggerHook(observer.Card.DisplayName(), "permanent_etb") ||
-							HasTriggerHook(observer.Card.DisplayName(), "nonland_permanent_etb") ||
-							HasTriggerHook(observer.Card.DisplayName(), "creature_etb")) {
+							HasTriggerHook(observer.Card.DisplayName(), "nonland_permanent_etb")) {
 						continue
 					}
-					if !observerETBMatchesByRaw(trig, observer, entering) {
+					if !(entering.IsLand() && entering.Controller == observer.Controller) {
 						continue
 					}
-				} else if !observerETBMatches(trig, observer, entering) {
-					continue
+				} else {
+					if !EventEquals(trig.Trigger.Event, "etb") {
+						continue
+					}
+
+					if isSelfTrigger(trig) && !dualSelfObserverEvents[strings.ToLower(strings.TrimSpace(trig.Trigger.Event))] {
+						continue
+					}
+
+					// Nil-actor observer triggers (the parser drops actor phrases):
+					// match by event name + raw-recovered filter; non-nil actors keep
+					// the structured matcher.
+					if trig.Trigger.Actor == nil {
+						// per_card handlers own the nuanced cards (Soul Warden
+						// class): skip the raw-fallback dispatch when one is
+						// registered for an ETB event — same no-double-fire guard
+						// as the attack dispatch (HasTriggerHook).
+						if HasTriggerHook != nil &&
+							(HasTriggerHook(observer.Card.DisplayName(), "permanent_etb") ||
+								HasTriggerHook(observer.Card.DisplayName(), "nonland_permanent_etb") ||
+								HasTriggerHook(observer.Card.DisplayName(), "creature_etb")) {
+							continue
+						}
+						if !observerETBMatchesByRaw(trig, observer, entering) {
+							continue
+						}
+					} else if !observerETBMatches(trig, observer, entering) {
+						continue
+					}
 				}
 
 				gs.LogEvent(Event{
