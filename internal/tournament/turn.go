@@ -172,7 +172,16 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 		gs.Snapshot()
 	}
 
-	// CR §730.2a — day/night transition BEFORE untap.
+	// CR §726.3a/§726.4 — day/night transition BEFORE untap. Feed the
+	// PREVIOUS turn's spell count into the field EvaluateDayNightAtTurnStart
+	// reads. gs.SpellsCastThisTurn still holds last turn's global cast count
+	// here (it isn't zeroed until the untap step below). Before this the
+	// field was populated only by the paritycheck harness, so the production
+	// turn loop always read 0 → day always flipped to night on turn 2
+	// (last == 0) and night never reverted (last never ≥ 2): daybound
+	// werewolves stuck on their nightbound back face forever. Mirrors
+	// paritycheck.go's `SpellsCastByActiveLastTurn = ending.SpellsCastThisTurn`.
+	gs.SpellsCastByActiveLastTurn = gs.SpellsCastThisTurn
 	gameengine.EvaluateDayNightAtTurnStart(gs)
 
 	// =========================================================
