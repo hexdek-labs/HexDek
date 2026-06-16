@@ -62,6 +62,14 @@ func hashatonDiscardTrigger(gs *gameengine.GameState, perm *gameengine.Permanent
 	}
 	seat.ManaPool -= cost
 	gameengine.SyncManaAfterSpend(seat)
+	// CR §702 optional trigger cost — credit it to any in-flight legality
+	// window for this seat (extort/ward/Esper-Sentinel aux-spend class,
+	// legality.go NoteManaSpend). Hashaton's card_discarded trigger resolves
+	// INSIDE the discard window of whatever caused the discard (e.g. Tireless
+	// Tribe's "Discard a card" activation cost); without this credit the
+	// {2}{U} drain reads as that action over-paying its §601.2f announced
+	// total — the live grinder "activate Tireless Tribe#0 over-paid" firespot.
+	gs.Legality.NoteManaSpend(perm.Controller, cost)
 
 	// Build the token: copy of that card, except 4/4 black Zombie.
 	// Phase 5 chokepoint: route through MintTokenAsCopyOf so the token's
