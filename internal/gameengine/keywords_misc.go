@@ -2323,26 +2323,94 @@ func FireLandfallTriggers(gs *GameState, seatIdx int, land *Permanent) {
 // Constellation — triggers when an enchantment ETBs under your control
 // ---------------------------------------------------------------------------
 
+// constellationTriggerFromCard extracts the inner Triggered ability from a
+// "Constellation — …" parse. Thor emits the ability word as a
+// Static{Modification.ModKind=="ability_word", Args=["constellation",
+// "triggered", *Triggered]} wrapper, so the effect lives one level down and
+// neither the top-level *Triggered scans nor permHasTriggerEvent reach it.
+// Returns nil for cards without the wrapper (e.g. a bare "constellation"
+// keyword tag with no nested effect).
+func constellationTriggerFromCard(card *Card) *gameast.Triggered {
+	if card == nil || card.AST == nil {
+		return nil
+	}
+	for _, ab := range card.AST.Abilities {
+		st, ok := ab.(*gameast.Static)
+		if !ok || st.Modification == nil || st.Modification.ModKind != "ability_word" {
+			continue
+		}
+		args := st.Modification.Args
+		if len(args) < 3 {
+			continue
+		}
+		if w, _ := args[0].(string); w != "constellation" {
+			continue
+		}
+		if t, ok := args[2].(*gameast.Triggered); ok {
+			return t
+		}
+	}
+	return nil
+}
+
 // FireConstellationTriggers fires constellation triggers when an
-// enchantment enters the battlefield under seatIdx's control.
+// enchantment enters the battlefield under seatIdx's control (CR §702.131 —
+// "whenever this or another enchantment you control enters"). Called once
+// per enchantment ETB from OnConstellationETB, AFTER the entering enchantment
+// is already on the battlefield, so the controller's own newly-entered
+// constellation source self-triggers (property b).
+//
+// Before r63 this only LOGGED a constellation_trigger event and never
+// resolved the effect — and it didn't even detect the Static[ability_word]
+// wrapper most real cards parse to (Eidolon of Blossoms, Doomwake Giant,
+// Underworld Coinsmith, …), so generic-AST constellation was fully inert.
+// Now it also RESOLVES the wrapped trigger's effect.
 func FireConstellationTriggers(gs *GameState, seatIdx int, enchantment *Permanent) {
-	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) || gs.Seats[seatIdx] == nil {
 		return
 	}
-	for _, p := range gs.Seats[seatIdx].Battlefield {
+	// Snapshot — resolving effects (token mints, draws) may mutate the
+	// battlefield slice mid-iteration.
+	perms := make([]*Permanent, len(gs.Seats[seatIdx].Battlefield))
+	copy(perms, gs.Seats[seatIdx].Battlefield)
+	for _, p := range perms {
 		if p == nil || p.Card == nil {
 			continue
 		}
-		if p.HasKeyword("constellation") || permHasTriggerEvent(p, "constellation") {
-			gs.LogEvent(Event{
-				Kind:   "constellation_trigger",
-				Seat:   seatIdx,
-				Source: p.Card.DisplayName(),
-				Details: map[string]interface{}{
-					"enchantment": enchantmentName(enchantment),
-					"rule":        "CNST",
-				},
-			})
+		trig := constellationTriggerFromCard(p.Card)
+		if trig == nil && !p.HasKeyword("constellation") && !permHasTriggerEvent(p, "constellation") {
+			continue
+		}
+		// Diagnostic event (retained — pre-r63 behavior, exercised by tests).
+		gs.LogEvent(Event{
+			Kind:   "constellation_trigger",
+			Seat:   seatIdx,
+			Source: p.Card.DisplayName(),
+			Details: map[string]interface{}{
+				"enchantment": enchantmentName(enchantment),
+				"rule":        "702.131",
+			},
+		})
+		// Resolve the actual effect (r63 fix). Skip if there's no wrapped
+		// effect to push (bare-keyword fixtures), or a per_card handler
+		// already owns this card's enchantment-ETB (Calix registers an
+		// OnTrigger("permanent_etb") that does its own constellation —
+		// guarding here prevents a double-fire).
+		if trig == nil || trig.Effect == nil {
+			continue
+		}
+		if HasTriggerHook != nil && HasTriggerHook(p.Card.DisplayName(), "permanent_etb") {
+			continue
+		}
+		n, cancelled := FireETBTriggerEvent(gs, p)
+		if cancelled {
+			continue
+		}
+		for i := 0; i < n; i++ {
+			PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
+			if gs.CheckEnd() {
+				return
+			}
 		}
 	}
 }
