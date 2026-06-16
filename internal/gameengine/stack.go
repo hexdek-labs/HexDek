@@ -3086,6 +3086,37 @@ func fireCastTriggersFromZone(gs *GameState, casterSeat int, card *Card, fromZon
 	// Observer cast triggers — scan all permanents for AST-driven "whenever
 	// a player/opponent casts a spell" triggers (cast_filtered, cast_any, etc.)
 	fireObserverCastTriggers(gs, casterSeat, card)
+
+	// r63 dead-dispatch sweep (cast class): the cast spell's OWN ability-word
+	// cast trigger — "Morbid/Undergrowth — When you cast this spell, …". The
+	// top-level *Triggered scans never see the Static{ability_word →
+	// Triggered} wrapper, and the spell being cast isn't a battlefield
+	// permanent so the observer scan above can't reach it either, so these
+	// were inert. Dispatch the inner Triggered here with a transient source
+	// (the caster controls it — the trigger's controller for effect
+	// attribution; the spell isn't yet a permanent). unwrapAbilityWordTriggered
+	// excludes heroic/magecraft (own dedicated cast hooks — no double-fire),
+	// and the per_card guard skips any card a bespoke spell_cast handler owns.
+	if card.AST != nil && (HasTriggerHook == nil || !PerCardOwnsTrigger(card.DisplayName(), "spell_cast")) {
+		for _, ab := range card.AST.Abilities {
+			t := unwrapAbilityWordTriggered(ab)
+			if t == nil || t.Effect == nil {
+				continue
+			}
+			if !EventEquals(t.Trigger.Event, "cast") {
+				continue
+			}
+			src := &Permanent{
+				Card:       card,
+				Controller: casterSeat,
+				Owner:      card.Owner,
+				Timestamp:  gs.NextTimestamp(),
+				Counters:   map[string]int{},
+				Flags:      map[string]int{},
+			}
+			PushTriggeredAbilityWithIf(gs, src, t.Effect, t.InterveningIf)
+		}
+	}
 }
 
 // FireCastTriggers is the exported wrapper around fireCastTriggers. It
