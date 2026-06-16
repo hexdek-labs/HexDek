@@ -30,14 +30,34 @@ func evalWhereXClause(gs *GameState, src *Permanent) (int, bool) {
 			continue
 		}
 		low := strings.ToLower(raw)
-		if !strings.Contains(low, "where x is") && !strings.Contains(low, "where x =") {
+		// Scope to the BASIS clause (the text after "where X is"). The full
+		// ability Raw also carries the effect's TARGET phrase — e.g. Voja's
+		// "put X +1/+1 counters on each creature you control, where X is the
+		// number of elves you control" — and matching against the whole string
+		// let the generic "creatures you control" case grab the target clause
+		// (counting all 5 creatures) instead of the real basis (3 elves). Only
+		// the post-marker substring is the count source.
+		basis, ok := extractWhereXBasis(low)
+		if !ok {
 			continue
 		}
-		if n, ok := whereXCount(gs, src, low); ok {
+		if n, ok := whereXCount(gs, src, basis); ok {
 			return n, true
 		}
 	}
 	return 0, false
+}
+
+// extractWhereXBasis returns the count-basis substring that follows the
+// "where X is" / "where X =" marker in an already-lowercased ability Raw.
+// Returns ("", false) when no marker is present.
+func extractWhereXBasis(low string) (string, bool) {
+	for _, marker := range []string{"where x is", "where x ="} {
+		if i := strings.Index(low, marker); i >= 0 {
+			return strings.TrimSpace(low[i+len(marker):]), true
+		}
+	}
+	return "", false
 }
 
 // (abilityRaw lives in flicker_r63.go — extracts .Raw from Static/Triggered/
@@ -84,7 +104,104 @@ func whereXCount(gs *GameState, src *Permanent, low string) (int, bool) {
 	case strings.Contains(low, "creatures you control"), strings.Contains(low, "creature you control"):
 		return mult * countCreaturesControlled(gs, seat), true
 	}
+
+	// Subtype-specific creature count: "the number of <subtype> you control"
+	// (Voja — elves you control; zombies / vampires / goblins / wizards /
+	// allies / … long tail). Resolved by deterministic pluralization of each
+	// controlled creature's own subtypes (elf→elves, ally→allies, zombie→
+	// zombies), which sidesteps the singular-from-plural ambiguity. Only takes
+	// effect when at least one matching creature exists, so a NON-creature
+	// basis (lands / artifacts / enchantments you control) counts zero here and
+	// falls through to the unchanged gs.Flags["x"] behavior — no regression.
+	if noun, ok := subtypeYouControlNoun(low); ok {
+		if n := countCreaturesBySubtypeNoun(gs, seat, noun); n > 0 {
+			return mult * n, true
+		}
+	}
 	return 0, false
+}
+
+// subtypeYouControlNoun extracts the type noun from a "(the) number of <noun>
+// you control" basis clause (already lowercased). Returns the last word before
+// "you control" — the type noun ("elves", "zombies") — or ("", false) when the
+// clause shape isn't a "number of … you control" count, or the noun is a
+// generic non-subtype word the dedicated cases / permanent-count paths own.
+func subtypeYouControlNoun(low string) (string, bool) {
+	i := strings.Index(low, "number of ")
+	if i < 0 {
+		return "", false
+	}
+	rest := low[i+len("number of "):]
+	j := strings.Index(rest, " you control")
+	if j < 0 {
+		return "", false
+	}
+	fields := strings.Fields(rest[:j])
+	if len(fields) == 0 {
+		return "", false
+	}
+	noun := fields[len(fields)-1]
+	switch noun {
+	// Generic creature phrasings are owned by the case above; permanent /
+	// land / characteristic counts are a different (unhandled) basis — leave
+	// them to the unchanged path rather than miscount them as creatures.
+	case "creature", "creatures", "permanent", "permanents", "land", "lands",
+		"artifact", "artifacts", "enchantment", "enchantments",
+		"planeswalker", "planeswalkers", "token", "tokens", "card", "cards",
+		"types", "colors", "swamps", "mountains", "islands", "forests", "plains":
+		return "", false
+	}
+	return noun, true
+}
+
+// countCreaturesBySubtypeNoun counts creatures a seat controls whose own
+// subtypes pluralize to (or already equal) the given plural type noun.
+func countCreaturesBySubtypeNoun(gs *GameState, seat int, noun string) int {
+	if gs == nil || seat < 0 || seat >= len(gs.Seats) || gs.Seats[seat] == nil {
+		return 0
+	}
+	n := 0
+	for _, p := range gs.Seats[seat].Battlefield {
+		if p == nil || !p.IsCreature() || p.Card == nil {
+			continue
+		}
+		for sub := range creatureSubtypesOf(p.Card) {
+			if sub == noun || pluralizeCreatureType(sub) == noun {
+				n++
+				break
+			}
+		}
+	}
+	return n
+}
+
+// pluralizeCreatureType applies standard English pluralization to a creature
+// subtype singular (elf→elves, ally→allies, zombie→zombies). Deterministic
+// from the singular, so matching a controlled creature's subtype against a
+// printed plural noun avoids the ambiguity of singularizing the noun
+// (zombies→zombie vs allies→ally).
+func pluralizeCreatureType(s string) string {
+	if s == "" {
+		return s
+	}
+	if strings.HasSuffix(s, "fe") {
+		return s[:len(s)-2] + "ves" // knife→knives
+	}
+	if strings.HasSuffix(s, "f") {
+		return s[:len(s)-1] + "ves" // elf→elves, wolf→wolves, dwarf→dwarves
+	}
+	if strings.HasSuffix(s, "y") && len(s) >= 2 && !isVowel(s[len(s)-2]) {
+		return s[:len(s)-1] + "ies" // ally→allies
+	}
+	return s + "s"
+}
+
+func isVowel(b byte) bool {
+	switch b {
+	case 'a', 'e', 'i', 'o', 'u':
+		return true
+	}
+	return false
 }
 
 // countCardsInGraveyardByType counts cards of the given type in a seat's

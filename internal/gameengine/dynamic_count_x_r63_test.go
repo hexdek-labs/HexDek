@@ -139,6 +139,75 @@ func TestDynamicX_DefendersOfHumanity_CastX(t *testing.T) {
 	}
 }
 
+// Voja, Jaws of the Conclave — attack trigger: put X +1/+1 on each creature you
+// control, X = the number of ELVES you control (a subtype count). Two prior
+// defects: (1) the basis was matched against the WHOLE ability Raw, so the
+// generic "creatures you control" case grabbed the effect's TARGET clause
+// ("on each creature you control") and counted ALL creatures (5) instead of the
+// elves (3); (2) subtype counts weren't recognized at all. Voja itself is a
+// Wolf, so it must NOT be counted among the elves.
+func TestDynamicX_VojaSubtypeCount(t *testing.T) {
+	gs := newTestGameState(2)
+	dxCreature(gs, 0, "Elf A", "elf")
+	dxCreature(gs, 0, "Elf B", "elf")
+	dxCreature(gs, 0, "Elf C", "elf")
+	ally := dxCreature(gs, 0, "Bear") // non-elf creature you control
+	eff := &gameast.CounterMod{Op: "put", Count: *gameast.NumStr("x"), CounterKind: "+1/+1",
+		Target: gameast.Filter{Base: "creature", Quantifier: "each", YouControl: true}}
+	src := &Permanent{
+		Card: &Card{Name: "Voja, Jaws of the Conclave", Types: []string{"creature", "wolf"},
+			AST: &gameast.CardAST{Abilities: []gameast.Ability{&gameast.Triggered{
+				Effect: eff,
+				// Note the target clause "each creature you control" precedes the
+				// basis clause "where x is the number of elves you control".
+				Raw: "whenever voja attacks, put x +1/+1 counters on each creature you control, where x is the number of elves you control",
+			}}}},
+		Controller: 0, Owner: 0, Counters: map[string]int{}, Flags: map[string]int{}, Timestamp: gs.NextTimestamp(),
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+
+	ResolveEffect(gs, src, eff)
+	// X = 3 elves (NOT 5 total creatures). Voja (Wolf) is not an elf.
+	if ally.Counters["+1/+1"] != 3 {
+		t.Fatalf("Voja should put X=elves=3 +1/+1 on each creature, got %d (5 ⇒ the old target-clause miscount)", ally.Counters["+1/+1"])
+	}
+}
+
+// pluralizeCreatureType must map singular subtypes to their printed plural so a
+// controlled creature's subtype matches the basis noun without singularizing
+// the (ambiguous) plural. Pins the f→ves / y→ies / +s branches.
+func TestDynamicX_PluralizeCreatureType(t *testing.T) {
+	cases := map[string]string{
+		"elf": "elves", "wolf": "wolves", "dwarf": "dwarves",
+		"ally": "allies", "zombie": "zombies", "goblin": "goblins",
+		"wizard": "wizards", "vampire": "vampires", "human": "humans",
+	}
+	for sing, want := range cases {
+		if got := pluralizeCreatureType(sing); got != want {
+			t.Errorf("pluralizeCreatureType(%q) = %q, want %q", sing, got, want)
+		}
+	}
+}
+
+// Guard: a NON-creature "where X is the number of <type> you control" basis
+// (lands / artifacts) must NOT be miscounted as a creature subtype — the noun
+// is rejected so the effect falls through to the unchanged path (no regression).
+func TestDynamicX_NonCreatureBasis_NotMiscountedAsSubtype(t *testing.T) {
+	for _, basis := range []string{
+		"the number of lands you control",
+		"the number of artifacts you control",
+		"the number of enchantments you control",
+	} {
+		if noun, ok := subtypeYouControlNoun(basis); ok {
+			t.Errorf("subtypeYouControlNoun(%q) treated %q as a creature subtype; must reject non-creature bases", basis, noun)
+		}
+	}
+	// And a real subtype basis IS recognized.
+	if noun, ok := subtypeYouControlNoun("the number of elves you control"); !ok || noun != "elves" {
+		t.Fatalf("subtypeYouControlNoun(elves) = (%q,%v), want (elves,true)", noun, ok)
+	}
+}
+
 // Guard: a genuine cast-{X} spell (no where-clause) still reads the cast X and
 // is unaffected by the where-clause fallback.
 func TestDynamicX_CastXSpellUnaffected(t *testing.T) {
