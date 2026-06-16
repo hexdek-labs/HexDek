@@ -123,6 +123,24 @@ func hasCantLoseEffect(gs *gameengine.GameState, seat int) bool {
 // §704.5f — A creature with toughness 0 or less is put into its
 // owner's graveyard. (Check no living creatures with ≤0 toughness.)
 func checkToughnessSBA(gs *gameengine.GameState, r *OracleResult) {
+	// Once the game has ended (§104.2 / §104.3a), StateBasedActions
+	// returns early without running any §704.5 checks (see sba.go:43). A
+	// creature whose toughness reached ≤ 0 in the same window the game
+	// resolved — e.g. an "until end of turn" −X/−X falling off, an anthem
+	// source leaving, or a counter-fueled 0/0 (Fertilid) losing its last
+	// counter as the final blow landed — legitimately remains on the
+	// battlefield in the ended snapshot: the final SBA pass that would have
+	// binned it never runs. This is the SAME post-ended carve-out the
+	// in-game twin gameengine.checkSBACompleteness already documents and
+	// applies; the post-game Feynman oracle samples exactly that ended
+	// snapshot, so it must skip the toughness SBA too or it flags states
+	// the engine is correct to leave alone (the recurring live-grinder
+	// surface=feynman 704.5f false positive). When the game did NOT end
+	// (e.g. a max-turns cap with ended unset) the check still runs, so a
+	// genuine in-game §704.5f miss stays visible.
+	if gs.Flags != nil && gs.Flags["ended"] == 1 {
+		return
+	}
 	for i, s := range gs.Seats {
 		if s == nil || s.Lost {
 			continue
