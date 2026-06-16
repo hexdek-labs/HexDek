@@ -528,6 +528,14 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 			seat.Hat.ChooseOptionalCost(gs, seatIdx, card, "overload", oc, maxPay) > 0 {
 			baseCost = oc
 			altCostMeta["overloaded"] = true
+			// Stamp the EFFECTIVE (modifier-adjusted) overload cost actually
+			// paid, mirroring surge_cost / spectacle_cost. The §601.2f-h
+			// legality check otherwise re-derives the expected from the RAW
+			// OverloadCost and flags a false under-payment whenever a cost
+			// modifier (Artist's Talent, medallions, Goblin Electromancer, …)
+			// reduced — or Thalia/Sphere increased — the overload cost (the
+			// engine correctly pays `oc`, not the raw cost).
+			altCostMeta["overload_cost"] = oc
 		}
 	}
 	if len(altCostMeta) == 0 && HasSurge(card) && CanPaySurge(gs, seatIdx) {

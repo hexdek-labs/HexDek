@@ -700,7 +700,16 @@ func checkLegalityCostPaid(gs *GameState, obs *LegalityObservation) []LegalityVi
 			// Alternative costs REPLACE the base (CR §601.2b / §118.9).
 			if cm != nil {
 				if b, _ := cm["overloaded"].(bool); b && obs.Card != nil {
+					// Prefer the EFFECTIVE (modifier-adjusted) overload cost the
+					// engine actually paid — stamped on the item, mirroring
+					// surge_cost / spectacle_cost. Fall back to the raw printed
+					// OverloadCost only for legacy items without the stamp. Using
+					// the raw cost flagged a false §601.2f-h under/over-payment
+					// whenever a cost modifier changed the overload cost.
 					expected = OverloadCost(obs.Card)
+					if c, ok := cm["overload_cost"].(int); ok {
+						expected = c
+					}
 				}
 				if c, ok := cm["surge_cost"].(int); ok {
 					expected = c
