@@ -1,6 +1,7 @@
 package gameengine
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
@@ -325,6 +326,27 @@ func (gs *GameState) CheckEnd() bool {
 	if winnerIdx >= 0 {
 		gs.Flags["winner"] = winnerIdx
 		gs.Seats[winnerIdx].Won = true
+		// CR §104.2c — "If a player wins the game, all of that player's
+		// opponents lose the game." A §104.2a last-seat-standing win already
+		// has every opponent marked Lost (the SBAs that emptied the table are
+		// what left one seat standing). But a §104.2c "you win the game"
+		// effect (Approach of the Second Sun, Thassa's Oracle, Maze's End,
+		// Coalition Victory, Felidar Sovereign, …) ends the game with the
+		// winner Won and the opponents left NEITHER Won NOR Lost — an
+		// INCOMPLETE final standing. That zombie state is what the
+		// seat-outcome "unresolved_at_end" check and the §104.2a feynman
+		// check fire on, and — more importantly — it is garbage-in for the
+		// rating update, which needs a complete 1st-to-Nth placement. Mark
+		// every still-living opponent Lost now so EVERY game-end mode yields
+		// a complete standing. Safe: ended=1 is already set and the
+		// end-rule/winner are fixed above, so this cannot change the outcome;
+		// it only completes the loser marking the §104.2c win implies.
+		for i, s := range gs.Seats {
+			if s == nil || i == winnerIdx || s.Lost {
+				continue
+			}
+			markSeatLost(s, "opponent won the game (CR 104.2c)", nil)
+		}
 		reason := "last_seat_standing"
 		if endRule == "104.2c" {
 			reason = "you_win_the_game_effect"
@@ -373,6 +395,73 @@ func (gs *GameState) CheckEnd() bool {
 	// end (exactly-one-winner, no zombie outcomes, can't-win gates).
 	gs.SeatOutcome.CheckConsistency(gs, "game_end")
 	return true
+}
+
+// FinalPlacements returns a complete 1-based standing for every seat — the
+// canonical "who finished where" for a game-end state, valid for EVERY
+// end mode (§104.2a last-seat-standing, §104.2c win-by-effect, draws).
+//
+// The winner (gs.Flags["winner"], if any) is 1st. The remaining seats are
+// ranked by SURVIVAL: a seat eliminated earlier finishes worse. Elimination
+// order is read from Seat.LostOrder (1 = first out, higher = later);
+// LostOrder 0 means the seat was never eliminated mid-game (it survived to
+// a §104.2c decisive end — CheckEnd marks those Lost without an order), so
+// it outranks every eliminated seat, tie-broken by life total then seat
+// index for determinism. nil seats receive placement 0.
+//
+// This is the standing the rating update should consume (full 1st→Nth),
+// instead of the winner+binary-losers signal that discards half the result.
+func (gs *GameState) FinalPlacements() []int {
+	if gs == nil {
+		return nil
+	}
+	out := make([]int, len(gs.Seats))
+	winner := -1
+	if gs.Flags != nil {
+		if w, ok := gs.Flags["winner"]; ok && w >= 0 && w < len(gs.Seats) {
+			winner = w
+		}
+	}
+	type loser struct{ idx, order, life int }
+	losers := make([]loser, 0, len(gs.Seats))
+	for i, s := range gs.Seats {
+		if s == nil {
+			out[i] = 0
+			continue
+		}
+		if i == winner {
+			out[i] = 1
+			continue
+		}
+		losers = append(losers, loser{idx: i, order: s.LostOrder, life: s.Life})
+	}
+	// survivalKey: higher = better placement. Never-eliminated (order 0)
+	// survived longest, so treat it as the maximum.
+	survivalKey := func(l loser) int {
+		if l.order == 0 {
+			return 1 << 30
+		}
+		return l.order
+	}
+	sort.SliceStable(losers, func(a, b int) bool {
+		ka, kb := survivalKey(losers[a]), survivalKey(losers[b])
+		if ka != kb {
+			return ka > kb // later elimination / survived = better (lower placement number)
+		}
+		if losers[a].life != losers[b].life {
+			return losers[a].life > losers[b].life
+		}
+		return losers[a].idx < losers[b].idx
+	})
+	place := 1
+	if winner >= 0 {
+		place = 2 // winner already took 1st
+	}
+	for _, l := range losers {
+		out[l.idx] = place
+		place++
+	}
+	return out
 }
 
 // SeatHasLeftGame reports whether the seat at seatIdx has already had its
