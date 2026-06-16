@@ -8,6 +8,7 @@ import CardRolesGrid from '../components/CardRolesGrid'
 import CardLink from '../components/CardLink'
 import CurseDisplay from '../components/CurseDisplay'
 import MatchupsPanel from '../components/MatchupsPanel'
+import DeckRadarPanel from '../components/DeckRadarPanel'
 import TagInput from '../components/TagInput'
 import ManaCost from '../components/ManaCost'
 import { AchievementsPanel, BadgeShowcase } from '../components/AchievementsPanel'
@@ -2703,6 +2704,14 @@ export default function DeckArchive() {
               </div>
             )}
           </Panel>
+
+          {/* Deck-profile radar — STAGING ONLY (gated on VITE_STAGING so it
+              never ships to prod). Reuses the CursePanel spider chart fed
+              with Freya-sourced deck axes; shows 7174n1c's three B3 decks as
+              comparable reference fingerprints. */}
+          {import.meta.env.VITE_STAGING && (
+            <DeckRadarPanel analysis={analysis} deckName={deck?.custom_name || deck?.commander} />
+          )}
 
           {/* Credits posture — shown above the run button so the user
               sees free-tier remaining + balance before clicking. Only
