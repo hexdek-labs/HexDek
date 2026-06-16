@@ -1,5 +1,7 @@
 package gameengine
 
+import "github.com/hexdek/hexdek/internal/gameast"
+
 // keywords_inspired.go — Inspired (CR §702.124, Born of the Gods 2014).
 //
 // CR §702.124a: Inspired is a triggered ability. "Inspired — Ability"
@@ -43,11 +45,38 @@ package gameengine
 // HasInspired
 // ---------------------------------------------------------------------------
 
-// HasInspired reports whether the card has the inspired keyword in
-// its AST. Defense-in-depth nil check so the helper is safe to call
-// on stub cards (tokens, command-zone phantoms).
+// HasInspired reports whether the card has the inspired keyword in its AST —
+// either a bare Keyword node or (the shape real cards parse to) a
+// Static{ability_word "inspired" → Triggered} wrapper. Defense-in-depth nil
+// check so the helper is safe to call on stub cards.
 func HasInspired(card *Card) bool {
-	return cardHasKeywordByName(card, "inspired")
+	return cardHasKeywordByName(card, "inspired") || inspiredTriggerFromCard(card) != nil
+}
+
+// inspiredTriggerFromCard extracts the inner *Triggered from a
+// Static{ability_word "inspired" → Triggered} wrapper (the shape Thor emits
+// for "Inspired — …" = "Whenever this creature becomes untapped, …"), or nil.
+func inspiredTriggerFromCard(card *Card) *gameast.Triggered {
+	if card == nil || card.AST == nil {
+		return nil
+	}
+	for _, ab := range card.AST.Abilities {
+		st, ok := ab.(*gameast.Static)
+		if !ok || st.Modification == nil || st.Modification.ModKind != "ability_word" {
+			continue
+		}
+		args := st.Modification.Args
+		if len(args) < 3 {
+			continue
+		}
+		if w, _ := args[0].(string); w != "inspired" {
+			continue
+		}
+		if t, ok := args[2].(*gameast.Triggered); ok {
+			return t
+		}
+	}
+	return nil
 }
 
 // HasInspiredPerm reports whether the permanent has inspired, either
@@ -105,10 +134,24 @@ func FireInspiredTriggers(gs *GameState, perm *Permanent) {
 			"rule": "702.124",
 		},
 	})
+	// Per_card handlers (Pain Seer, Oreskos Sun Guide, …) own the "inspired"
+	// event and implement the printed payoff themselves.
 	FireCardTrigger(gs, "inspired", map[string]interface{}{
 		"source":          perm,
 		"controller_seat": perm.Controller,
 	})
+	// r63 dead-dispatch sweep (untap class): resolve the wrapped inspired
+	// effect for cards WITHOUT a per_card handler. The whole inspired family
+	// was inert pre-r63 — HasInspired missed the ability_word wrapper, so this
+	// hook no-op'd before even reaching the per_card dispatch. With detection
+	// fixed, per_card-handled cards fire via FireCardTrigger above; the rest
+	// resolve their inner Triggered here. The HasTriggerHook guard prevents
+	// firing BOTH for the same card (the double-fire the sweep cautioned on).
+	if HasTriggerHook == nil || !HasTriggerHook(cardName, "inspired") {
+		if trig := inspiredTriggerFromCard(perm.Card); trig != nil && trig.Effect != nil {
+			PushTriggeredAbilityWithIf(gs, perm, trig.Effect, trig.InterveningIf)
+		}
+	}
 }
 
 // ---------------------------------------------------------------------------
