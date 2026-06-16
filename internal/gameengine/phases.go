@@ -77,7 +77,17 @@ func FirePhaseTriggers(gs *GameState, phase, step string) {
 			}
 			for _, ab := range perm.Card.AST.Abilities {
 				trig, ok := ab.(*gameast.Triggered)
-				if !ok || trig.Effect == nil {
+				if !ok {
+					// r63 dead-dispatch sweep: ability-word phase triggers
+					// (Raid/Morbid/Delirium/Coven/Lieutenant/Survival "at the
+					// beginning of [step], if [condition], …") parse to a
+					// Static{ability_word → Triggered} wrapper the top-level
+					// scan skips. Unwrap; the phase/step match below keeps
+					// only the ones whose step is current. Condition rides in
+					// the effect/InterveningIf, evaluated at resolution.
+					trig = unwrapAbilityWordTriggered(ab)
+				}
+				if trig == nil || trig.Effect == nil {
 					continue
 				}
 				if !triggerMatchesPhaseStepRaw(&trig.Trigger, phase, step, trig.Raw) {

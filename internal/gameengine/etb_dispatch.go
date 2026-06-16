@@ -6,6 +6,46 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
+// abilityWordWithDedicatedDispatch lists the ability words that already have a
+// dedicated engine dispatcher (so the generic unwrap below must NOT also fire
+// them — that would double-fire). landfall + constellation were wired earlier
+// this r63 run; eerie/magecraft/heroic have their own ETB/cast hooks.
+var abilityWordWithDedicatedDispatch = map[string]bool{
+	"landfall":      true,
+	"constellation": true,
+	"eerie":         true,
+	"magecraft":     true,
+	"heroic":        true,
+}
+
+// unwrapAbilityWordTriggered returns the inner *Triggered of a
+// Static{Modification.ModKind=="ability_word", Args=[word, "triggered",
+// *Triggered]} wrapper, or nil when the ability is not such a wrapper or the
+// word owns a dedicated dispatcher. The parser emits this shape for every
+// ability-word trigger (Raid, Revolt, Morbid, Imprint, Undergrowth, Addendum,
+// Delirium, Metalcraft, Threshold, Domain, Battalion, Inspired, …); the inner
+// Triggered is invisible to the top-level *Triggered scans, so the abilities
+// were inert. Callers gate by the inner Trigger.Event to dispatch it on the
+// correct path (the self-ETB loop keeps only "etb").
+func unwrapAbilityWordTriggered(ab gameast.Ability) *gameast.Triggered {
+	st, ok := ab.(*gameast.Static)
+	if !ok || st.Modification == nil || st.Modification.ModKind != "ability_word" {
+		return nil
+	}
+	args := st.Modification.Args
+	if len(args) < 3 {
+		return nil
+	}
+	word, _ := args[0].(string)
+	if abilityWordWithDedicatedDispatch[word] {
+		return nil
+	}
+	if t, ok := args[2].(*gameast.Triggered); ok {
+		return t
+	}
+	return nil
+}
+
 // FirePermanentETBTriggers fires the complete ETB trigger cascade for a
 // permanent that has already been added to the battlefield. Handles:
 //
@@ -109,7 +149,22 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 	if !faceDown && perm.Card.AST != nil {
 		for _, ab := range perm.Card.AST.Abilities {
 			trig, ok := ab.(*gameast.Triggered)
-			if !ok || trig.Effect == nil {
+			if !ok {
+				// r63 dead-dispatch sweep: ability-word self-ETB triggers
+				// (Raid, Revolt, Morbid, Imprint, Undergrowth, Addendum, …)
+				// parse to a Static{ability_word → Triggered} wrapper, which
+				// the top-level *Triggered scan skips — so the bearer's own
+				// "When this enters, [ability word condition], …" did nothing.
+				// Unwrap them here; the "etb" gate below keeps non-ETB
+				// ability-word triggers (attack/untap/phase) out of the
+				// self-ETB path, and AbilityWordWithDedicatedDispatch excludes
+				// landfall/constellation/eerie/magecraft/heroic (own handlers,
+				// no double-fire). The ability-word condition rides inside the
+				// effect (a Conditional node) or the InterveningIf and is
+				// evaluated at resolution.
+				trig = unwrapAbilityWordTriggered(ab)
+			}
+			if trig == nil || trig.Effect == nil {
 				continue
 			}
 			if !EventEquals(trig.Trigger.Event, "etb") {
