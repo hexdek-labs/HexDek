@@ -1933,7 +1933,84 @@ func AddLoreCounters(gs *GameState, perm *Permanent, n int) {
 			"chapter": chapter,
 			"perm":    perm,
 		})
+		dispatchGenericSagaChapter(gs, perm, chapter)
 	}
+}
+
+// dispatchGenericSagaChapter resolves a Saga's chapter ability straight from
+// its AST when no per_card handler owns the card (CR §714.2c). Before this,
+// the lore-tick path only reached the ~25 phase-7 + 6 DFC per_card saga
+// handlers; the other ~187 corpus Sagas fired lore_counter_added into the void
+// — their chapter abilities were INERT (dead-dispatch / unwired primitive,
+// r63 saga audit). It reuses the SAME canonical resolution the
+// resolveModificationEffect "saga_chapter" case uses (parsed Effect →
+// ResolveEffect, parser raw-text fallback → resolveResidualByText), minus that
+// case's lore-counter add (AddLoreCounters already placed the counter — calling
+// the modification case would double it). per_card-owned Sagas (History of
+// Benalia, Sheoldred, Elesh Norn, …) are skipped so they never double-fire.
+func dispatchGenericSagaChapter(gs *GameState, perm *Permanent, chapter int) {
+	if gs == nil || perm == nil || perm.Card == nil || perm.Card.AST == nil || chapter <= 0 {
+		return
+	}
+	if !perm.IsSaga() {
+		return
+	}
+	// A dedicated per_card OnTrigger("…","lore_counter_added",…) owns this
+	// card's chapter dispatch — let it run, don't double-resolve.
+	if PerCardOwnsTrigger(perm.Card.DisplayName(), "lore_counter_added") {
+		return
+	}
+	for _, ab := range perm.Card.AST.Abilities {
+		st, ok := ab.(*gameast.Static)
+		if !ok || st.Modification == nil || st.Modification.ModKind != "saga_chapter" {
+			continue
+		}
+		args := st.Modification.Args
+		if len(args) < 1 || !sagaChapterArgMatches(args[0], chapter) {
+			continue
+		}
+		resolvedAny := false
+		for _, arg := range args[1:] {
+			switch a := arg.(type) {
+			case gameast.Effect:
+				ResolveEffect(gs, perm, a)
+				resolvedAny = true
+			case string:
+				if a != "" && resolveResidualByText(gs, perm, a) {
+					resolvedAny = true
+				}
+			}
+		}
+		gs.LogEvent(Event{
+			Kind:   "saga_chapter_generic",
+			Seat:   perm.Controller,
+			Source: perm.Card.DisplayName(),
+			Amount: chapter,
+			Details: map[string]interface{}{
+				"rule":     "714.2c",
+				"resolved": resolvedAny,
+			},
+		})
+	}
+}
+
+// sagaChapterArgMatches reports whether a saga_chapter Static's chapter arg
+// (a roman string "II" or a list ["I","II"]) includes the given chapter.
+func sagaChapterArgMatches(arg interface{}, chapter int) bool {
+	switch v := arg.(type) {
+	case string:
+		n, ok := romanToInt[v]
+		return ok && n == chapter
+	case []interface{}:
+		for _, item := range v {
+			if s, ok := item.(string); ok {
+				if n, ok := romanToInt[s]; ok && n == chapter {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // AdvanceSagaChapter adds one lore counter and fires the newly-reached chapter

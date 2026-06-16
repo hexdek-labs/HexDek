@@ -334,4 +334,8 @@ func initSagaLoreCounters(gs *GameState, perm *Permanent) {
 		"chapter": perm.Counters["lore"],
 		"perm":    perm,
 	})
+	// Resolve the chapter-I ability from the AST for Sagas without a per_card
+	// handler (r63 saga audit — the ~187 unlisted corpus Sagas were inert on
+	// the lore-tick path). per_card-owned Sagas are skipped inside the helper.
+	dispatchGenericSagaChapter(gs, perm, perm.Counters["lore"])
 }
