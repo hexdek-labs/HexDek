@@ -2252,6 +2252,66 @@ func ReturnLinkedExile(gs *GameState, perm *Permanent, toZone string) {
 	// is a valid "drained" state.
 }
 
+// ReturnLinkedExilesOnSourceLeave returns a source's "exile until ~ leaves"
+// prisoners (CR §406.7) to their OWNERS' battlefield when the normal LTB
+// return trigger cannot run because the source's controller is
+// simultaneously leaving the game (CR §800.4a). The §800.4a "controlled
+// ability ceases" rule correctly suppresses abilities that would affect the
+// departed player, but an "exile until ~ leaves the battlefield" return
+// gives a card back to ITS OWNER — usually a SURVIVING player — and that
+// card must not be orphaned in exile forever (the Banisher Priest /
+// Oblivion Ring multiplayer ruling). The "until ~ leaves" duration has
+// ended (the source already left the battlefield), so each prisoner returns.
+//
+// A prisoner whose OWNER has also left the game is NOT routed to a departed
+// battlefield (that would re-orphan it / leak onto a dead seat): its tag is
+// cleared and it is left for the owner's own §800.4a sweep, which ceases it.
+// Returns the number of cards actually moved back. Drains the source's
+// LinkedExile / ExiledByMe bookkeeping either way.
+func ReturnLinkedExilesOnSourceLeave(gs *GameState, perm *Permanent) int {
+	if gs == nil || perm == nil || len(perm.LinkedExile) == 0 {
+		return 0
+	}
+	srcName := "<unknown>"
+	if perm.Card != nil {
+		srcName = perm.Card.DisplayName()
+	}
+	returned := 0
+	names := make([]string, 0, len(perm.LinkedExile))
+	for _, card := range perm.LinkedExile {
+		if card == nil {
+			continue
+		}
+		card.ExiledByTimestamp = 0
+		ownerAlive := card.Owner >= 0 && card.Owner < len(gs.Seats) &&
+			gs.Seats[card.Owner] != nil && !gs.Seats[card.Owner].LeftGame
+		if !ownerAlive {
+			continue
+		}
+		MoveCard(gs, card, card.Owner, "exile", "battlefield", srcName+"_ltb_return_controller_left")
+		returned++
+		names = append(names, card.DisplayName())
+	}
+	perm.LinkedExile = nil
+	perm.ExiledByMe = nil
+	if returned > 0 {
+		gs.LogEvent(Event{
+			Kind:   "exile_linked_returned",
+			Seat:   perm.Controller,
+			Source: srcName,
+			Amount: returned,
+			Details: map[string]interface{}{
+				"to_zone":          "battlefield",
+				"cards":            names,
+				"source_timestamp": perm.Timestamp,
+				"rule":             "800.4a+406.7",
+				"reason":           "controller_left_game",
+			},
+		})
+	}
+	return returned
+}
+
 // -----------------------------------------------------------------------------
 // StackItem (a spell or ability waiting to resolve)
 // -----------------------------------------------------------------------------

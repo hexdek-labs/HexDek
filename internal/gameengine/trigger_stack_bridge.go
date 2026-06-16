@@ -66,6 +66,20 @@ func PushPerCardTrigger(gs *GameState, perm *Permanent, handler func(*GameState,
 	// past it; this gate stops them at formation. r63 depth-frontier seed 7
 	// / game 3548 (ResourceConservation: "seat is Lost but has ManaPool=3").
 	if SeatHasLeftGame(gs, perm.Controller) {
+		// CR §406.7 / §800.4a carve-out: an "exile until ~ leaves the
+		// battlefield" RETURN (Banisher Priest / Oblivion Ring family) is
+		// not an ability that affects the departed seat — it gives a card
+		// back to its OWNER (typically a surviving player). The source has
+		// already left the battlefield (this is its LTB dispatch), so the
+		// duration has ended and the prisoner must return rather than be
+		// orphaned in exile forever. The blanket "controlled ability
+		// ceases" gate would otherwise strand it (Loki r63 game 630:
+		// Banisher Priest died in the same SBA cycle that eliminated its
+		// controller, leaving A-Meria's Outrider in exile permanently).
+		// Perform the return directly; the trigger itself still ceases.
+		if perm.LinkageKind == LTBReturn && len(perm.LinkedExile) > 0 {
+			ReturnLinkedExilesOnSourceLeave(gs, perm)
+		}
 		gs.LogEvent(Event{
 			Kind:   "trigger_ceased",
 			Seat:   perm.Controller,
@@ -90,7 +104,7 @@ func PushPerCardTrigger(gs *GameState, perm *Permanent, handler func(*GameState,
 	if gs.Flags["_percard_inline_depth"] > maxPerCardInlineResolveDepth {
 		LogLoopGuardFired(gs, "percard_inline_depth_cap", map[string]interface{}{
 			"depth": gs.Flags["_percard_inline_depth"], "cap": maxPerCardInlineResolveDepth,
-			"card":  cardName,
+			"card": cardName,
 		})
 		gs.LogEvent(Event{
 			Kind:   "loop_anomaly",
@@ -119,7 +133,7 @@ func PushPerCardTrigger(gs *GameState, perm *Permanent, handler func(*GameState,
 	if gs.Flags["_trigger_fires_this_turn"] > triggerCapForGame(gs) {
 		LogLoopGuardFired(gs, "trigger_loop_cap", map[string]interface{}{
 			"fires": gs.Flags["_trigger_fires_this_turn"], "site": "per_card_trigger",
-			"card":  cardName,
+			"card": cardName,
 		})
 		for i, s := range gs.Seats {
 			if s != nil && !s.Lost && !s.Won {

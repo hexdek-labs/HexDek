@@ -628,6 +628,21 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 		if perm.LinkageKind != LTBReturn {
 			ClearLinkedExileTagsForSource(gs, perm.Timestamp)
 		}
+		// §406.7 LTB-return safety net (r63 firespot, Loki game 630). The
+		// permanent_ltb trigger above is the normal return path for the
+		// Banisher Priest / Oblivion Ring family. But that per-card trigger
+		// can fail to run its return when the source's controller is leaving
+		// the game in the SAME SBA cycle: the trigger is pushed to the stack
+		// as a controller-owned item, then §800.4a purges it (or the
+		// self-dispatch identity check misses) before it resolves — orphaning
+		// the prisoner (owned by a SURVIVING player) in exile forever. Since
+		// PushPerCardTrigger resolves inline, by this point a successful
+		// return has already drained LinkedExile; a STILL-populated
+		// LTBReturn slice means the return was lost. Perform it directly so
+		// the card goes back to its owner instead of being stranded.
+		if perm.LinkageKind == LTBReturn && len(perm.LinkedExile) > 0 {
+			ReturnLinkedExilesOnSourceLeave(gs, perm)
+		}
 	}
 
 	// 4. Fire "card_exiled" when a permanent is exiled from the battlefield.

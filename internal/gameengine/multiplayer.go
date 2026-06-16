@@ -431,6 +431,24 @@ func SeatHasLeftGame(gs *GameState, seatIdx int) bool {
 // and §800.4e ("combat damage to a left player isn't assigned") are
 // enforced at the decision sites (combat target pick + ResolveEffect
 // controller checks), not here.
+// releaseLinkedExileOnStackItemPurge inspects a stack / pending-trigger item
+// that is about to be purged because its controller left the game (CR
+// §800.4a). If the item is a permanent's "exile until ~ leaves the
+// battlefield" RETURN trigger (the source perm carries an LTBReturn linkage
+// with cards still linked), its prisoners are returned to their owners'
+// battlefield (CR §406.7) before the ability ceases — otherwise the exiled
+// cards (owned by surviving players) would be orphaned in exile forever.
+// No-op for any item that isn't carrying such a linkage.
+func releaseLinkedExileOnStackItemPurge(gs *GameState, item *StackItem) {
+	if gs == nil || item == nil || item.Source == nil {
+		return
+	}
+	src := item.Source
+	if src.LinkageKind == LTBReturn && len(src.LinkedExile) > 0 {
+		ReturnLinkedExilesOnSourceLeave(gs, src)
+	}
+}
+
 func HandleSeatElimination(gs *GameState, seatIdx int) {
 	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
 		return
@@ -671,6 +689,17 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 				continue
 			}
 			if item.Controller == seatIdx {
+				// CR §406.7 / §800.4a: a ceasing "exile until ~ leaves the
+				// battlefield" RETURN trigger must still hand its prisoner
+				// back to that card's OWNER (a surviving player) rather than
+				// orphaning it in exile forever. The source already left the
+				// battlefield (this trigger IS its LTB return); it died in
+				// the same SBA cycle that eliminated its controller, so the
+				// return trigger sat on the stack and would otherwise be
+				// silently purged here (Loki r63 game 630: Banisher Priest /
+				// A-Meria's Outrider). Perform the return before dropping the
+				// ceasing ability.
+				releaseLinkedExileOnStackItemPurge(gs, item)
 				// Count real cards on the stack that are leaving.
 				if item.Card != nil && !cardIsTokenForElim(item.Card) {
 					realCardsLeaving++
@@ -718,6 +747,10 @@ func HandleSeatElimination(gs *GameState, seatIdx int) {
 				continue
 			}
 			if item.Controller == seatIdx {
+				// Same §406.7 carve-out as the stack purge above: a ceasing
+				// linked-exile RETURN trigger still returns its prisoner to
+				// the owner before the ability ceases.
+				releaseLinkedExileOnStackItemPurge(gs, item)
 				purged++
 				continue
 			}
