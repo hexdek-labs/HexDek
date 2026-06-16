@@ -32,6 +32,7 @@ package gameengine
 //     without re-plumbing.
 
 import (
+	"sort"
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
@@ -1295,8 +1296,21 @@ func DeclareBlockersMulti(gs *GameState, attackers []*Permanent) map[*Permanent]
 		}
 		buckets[def] = append(buckets[def], atk)
 	}
-	for defSeat, atks := range buckets {
-		partial := DeclareBlockers(gs, atks, defSeat)
+	// Determinism (r63 seed-determinism audit): `buckets` is a map keyed by
+	// defender seat, so ranging it directly processes defending seats in Go's
+	// randomized map-iteration order. Each DeclareBlockers call mutates blocker
+	// state (commitBlock / flagBlocking), emits its own block-declaration
+	// events, and consults the Hat — so an unsorted order makes the SAME seed
+	// produce a different event/turn trace on every run (the hat_decision_block
+	// seat order diverged in the audit harness). Walk the defender seats in
+	// ascending order to pin it.
+	defSeats := make([]int, 0, len(buckets))
+	for defSeat := range buckets {
+		defSeats = append(defSeats, defSeat)
+	}
+	sort.Ints(defSeats)
+	for _, defSeat := range defSeats {
+		partial := DeclareBlockers(gs, buckets[defSeat], defSeat)
 		for k, v := range partial {
 			out[k] = v
 		}

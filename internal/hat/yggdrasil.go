@@ -424,7 +424,18 @@ func NewYggdrasilHatWithNoise(strategy *StrategyProfile, budget int, noise float
 		Strategy:      strategy,
 		Budget:        budget,
 		Noise:         noise,
-		noiseRNG:      rand.New(rand.NewSource(rand.Int63())),
+		// Determinism (r63 seed-determinism audit): seed noiseRNG from a FIXED
+		// value, NOT the global rand. selectAmongTop / applyNoise consume this
+		// stream to pick among similarly-scored attack targets, so a global-
+		// rand seed made the SAME game produce a different attack-target /
+		// selection trace on every run for any game that never triggers the
+		// deterministic re-seed below — i.e. any game created via
+		// NewGameState(seats, rng, …) without setting gs.Seed (the loki and
+		// self-play paths leave gs.Seed==0). Seeded games (gs.Seed!=0) overwrite
+		// this with noiseSeedFor(gs.Seed, seatIdx) on their first observed
+		// event, so this constant only governs the gs.Seed==0 fallback — which
+		// is now reproducible instead of wall-clock-random.
+		noiseRNG:      rand.New(rand.NewSource(noiseSeedFor(0, 0))),
 		actionStats:   make(map[string]*actionStat),
 		availablePool: make(map[string]bool, 32),
 		comboSeq:      NewComboSequencer(strategy),

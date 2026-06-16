@@ -75,6 +75,16 @@ func morophonChooseAndApply(gs *gameengine.GameState, perm *gameengine.Permanent
 // creature subtype tally exists.
 func pickFavoriteCreatureType(seat *gameengine.Seat) string {
 	counts := map[string]int{}
+	// Determinism (r63 seed-determinism audit): `counts` is a map, so the
+	// best-type selection below tie-broke on Go's randomized map-iteration
+	// order — Morophon's chosen type (and thus its anthem / cost reduction)
+	// flipped between equally-common tribes on different runs of the same
+	// game (the documented TestLord_Morophon flake). Record each type's
+	// FIRST-appearance order across the battlefield+hand scan and break count
+	// ties by it (earliest-seen wins) — a strict total order on
+	// (count desc, firstSeen asc) that is independent of iteration order.
+	firstSeen := map[string]int{}
+	order := 0
 	bump := func(c *gameengine.Card) {
 		if c == nil {
 			return
@@ -97,6 +107,10 @@ func pickFavoriteCreatureType(seat *gameengine.Seat) string {
 			if strings.Contains(t, ":") {
 				continue
 			}
+			if _, ok := counts[t]; !ok {
+				firstSeen[t] = order
+				order++
+			}
 			counts[t]++
 		}
 	}
@@ -110,10 +124,12 @@ func pickFavoriteCreatureType(seat *gameengine.Seat) string {
 	}
 	best := ""
 	bestN := 0
+	bestOrder := 1 << 30
 	for t, n := range counts {
-		if n > bestN {
+		if n > bestN || (n == bestN && firstSeen[t] < bestOrder) {
 			best = t
 			bestN = n
+			bestOrder = firstSeen[t]
 		}
 	}
 	return best
