@@ -974,10 +974,19 @@ func (h *GreedyHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, attack
 		// declared a single illegal blocker that the engine then dropped
 		// (§702.110b), leaving the menace creature unblocked. (Deep loki
 		// sweep r63b: 54 §702.110b hits, all granted-menace attackers.)
-		if len(chosen) > 0 && (atk.HasKeyword("menace") || gs.HasKeywordOf(atk, "menace")) {
+		// §702.110b needs 2+ distinct blockers; exclude EVERY creature
+		// already in chosen so a second blocker is never a duplicate of one
+		// we committed (§509.1). GreedyHat's chosen is single here today, so
+		// this matches the old `b != chosen[0]` exactly — it's a guard
+		// against a future multi-blocker edit reintroducing a double-commit.
+		if len(chosen) > 0 && len(chosen) < 2 && (atk.HasKeyword("menace") || gs.HasKeywordOf(atk, "menace")) {
+			inChosen := make(map[*gameengine.Permanent]bool, len(chosen))
+			for _, b := range chosen {
+				inChosen[b] = true
+			}
 			extras := make([]*gameengine.Permanent, 0, len(legal))
 			for _, b := range legal {
-				if b != chosen[0] {
+				if !inChosen[b] {
 					extras = append(extras, b)
 				}
 			}
