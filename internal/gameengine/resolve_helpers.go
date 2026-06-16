@@ -2555,6 +2555,7 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			if src.Counters == nil {
 				src.Counters = map[string]int{}
 			}
+			prevLevel := src.Counters["level"]
 			// Set level counter to this marker's value if it's higher
 			// than current level (progressive level-up).
 			if src.Counters["level"] < lmLevel {
@@ -2564,6 +2565,28 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			// marker's level actually changes the creature's characteristics.
 			ApplyLevelBracketEffects(gs, src)
 			gs.InvalidateCharacteristicsCache()
+			// CR §716.2c — a Class enchantment that just gained a level fires
+			// its "When this Class becomes level N" triggers. The level lives
+			// under Counters["level"] on this production path; mirror it onto
+			// the canonical Flags["class_level"] field (ClassLevel reads that)
+			// so both surfaces agree, then dispatch the becomes-level triggers
+			// (generic AST nodes + the per_card consumers). Without this a
+			// Class leveled up but every level payoff stayed inert.
+			if IsClass(src) && src.Counters["level"] > prevLevel {
+				if src.Flags == nil {
+					src.Flags = map[string]int{}
+				}
+				src.Flags["class_level"] = src.Counters["level"]
+				// §716.1 — a Class enters at level 1, so a fresh class on this
+				// path has Counters["level"]==0; floor the previous level at 1
+				// so a 1→2 activation fires only "becomes level 2", never a
+				// spurious "becomes level 1".
+				effPrev := prevLevel
+				if effPrev < 1 {
+					effPrev = 1
+				}
+				FireClassLevelTriggers(gs, src, effPrev, src.Counters["level"])
+			}
 		}
 		gs.LogEvent(Event{
 			Kind:   "level_marker",
