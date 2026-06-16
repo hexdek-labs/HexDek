@@ -7188,10 +7188,21 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 		// Menace: need a second blocker. Layer-aware (gs.HasKeywordOf) so
 		// granted menace matches the engine's block sanitizer — see the
 		// greedy.go note (deep loki r63b §702.110b granted-menace cluster).
-		if len(chosen) > 0 && (atk.HasKeyword("menace") || gs.HasKeywordOf(atk, "menace")) {
+		//
+		// CR §702.110b is satisfied by ANY 2+ distinct blockers, so the
+		// gang-block branch above may already meet it (chosen has ≥2). Only
+		// reach for a second blocker when chosen still has exactly one, and
+		// pick the extra from creatures NOT already in chosen — excluding
+		// only chosen[0] could re-append a gang member, committing it twice
+		// against this attacker (§509.1, the live-grinder double-commit).
+		if len(chosen) == 1 && (atk.HasKeyword("menace") || gs.HasKeywordOf(atk, "menace")) {
+			inChosen := make(map[*gameengine.Permanent]bool, len(chosen))
+			for _, b := range chosen {
+				inChosen[b] = true
+			}
 			extras := make([]*gameengine.Permanent, 0, len(legal))
 			for _, b := range legal {
-				if b != chosen[0] {
+				if !inChosen[b] {
 					extras = append(extras, b)
 				}
 			}
