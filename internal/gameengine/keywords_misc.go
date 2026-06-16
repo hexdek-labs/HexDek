@@ -188,6 +188,57 @@ func ActivateDredge(gs *GameState, seatIdx int, card *Card) bool {
 	return true
 }
 
+// DredgeChooser is an optional Hat capability (CR §702.52 — dredge is a
+// "you may" draw-replacement). Given the dredge-eligible cards in the
+// player's graveyard (the engine has already verified library size >= each
+// card's N), the hat returns the card to dredge, or nil to draw normally.
+// A hat that doesn't implement this never dredges (it just draws).
+type DredgeChooser interface {
+	ChooseDredge(gs *GameState, seatIdx int, candidates []*Card) *Card
+}
+
+// MaybeDredgeReplaceDraw offers the dredge draw-replacement at a would-draw
+// event for seatIdx (CR §702.52 / §614: "if you would draw a card, instead
+// you may mill N and return this card from your graveyard to your hand").
+// Returns true if the draw was REPLACED by a dredge — the caller must then
+// NOT draw and NOT increment the draw count (the draw did not happen).
+//
+// This is the single chokepoint every draw entry point (the turn draw step,
+// DrawN, and the AST Draw effect) consults before drawing, so dredge fires
+// on ANY would-draw regardless of source. Before r63 the ActivateDredge
+// primitive existed but had zero callers — dredge was entirely inert.
+func MaybeDredgeReplaceDraw(gs *GameState, seatIdx int) bool {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) || gs.Seats[seatIdx] == nil {
+		return false
+	}
+	seat := gs.Seats[seatIdx]
+	// Eligible: a card in the graveyard with dredge N where the library has
+	// at least N cards (CR §702.52b — can't dredge with too few cards).
+	var candidates []*Card
+	seen := map[*Card]bool{}
+	for _, c := range seat.Graveyard {
+		if c == nil || seen[c] {
+			continue
+		}
+		if n, ok := GetDredgeN(c); ok && n > 0 && len(seat.Library) >= n {
+			candidates = append(candidates, c)
+			seen[c] = true
+		}
+	}
+	if len(candidates) == 0 {
+		return false
+	}
+	chooser, ok := seat.Hat.(DredgeChooser)
+	if !ok {
+		return false
+	}
+	choice := chooser.ChooseDredge(gs, seatIdx, candidates)
+	if choice == nil {
+		return false
+	}
+	return ActivateDredge(gs, seatIdx, choice)
+}
+
 // ---------------------------------------------------------------------------
 // Embalm — CR §702.128
 // ---------------------------------------------------------------------------

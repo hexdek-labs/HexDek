@@ -826,6 +826,12 @@ func drawN(gs *gameengine.GameState, seatIdx int, n int) {
 
 // drawTop pulls one card from the top of seat's library into its hand.
 func drawTop(gs *gameengine.GameState, seatIdx int) {
+	// CR §702.52 — dredge replaces a would-draw. Offered first: if the
+	// player dredges, no draw happens (so Narset / draw-count are moot for
+	// this event). Returns true only when a dredge was actually performed.
+	if gameengine.MaybeDredgeReplaceDraw(gs, seatIdx) {
+		return
+	}
 	// Narset: opponents can't draw more than one card each turn.
 	if gameengine.NarsetBlocksDraw(gs, seatIdx) {
 		return

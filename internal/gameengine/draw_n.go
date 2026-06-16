@@ -49,6 +49,11 @@ func DrawN(gs *GameState, seat, n int, src *Permanent) int {
 
 	drawn := 0
 	for i := 0; i < n; i++ {
+		// CR §702.52 — dredge replaces this would-draw if the player chooses.
+		// A replaced draw is NOT a draw: skip drawOne + IncrementDrawCount.
+		if MaybeDredgeReplaceDraw(gs, seat) {
+			continue
+		}
 		// §614.11: replacement effects fire PER draw-card event.
 		if NarsetBlocksDraw(gs, seat) {
 			break

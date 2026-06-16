@@ -986,6 +986,11 @@ func resolveDraw(gs *GameState, src *Permanent, e *gameast.Draw) {
 		// alt-win (Laboratory Maniac) cancels the draw and sets Won.
 		drawn := 0
 		for i := 0; i < count; i++ {
+			// CR §702.52 — dredge replaces this would-draw if chosen. A
+			// replaced draw is NOT a draw: skip drawOne + IncrementDrawCount.
+			if MaybeDredgeReplaceDraw(gs, seat) {
+				continue
+			}
 			if NarsetBlocksDraw(gs, seat) {
 				break
 			}

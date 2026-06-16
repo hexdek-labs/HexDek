@@ -10290,6 +10290,44 @@ func (h *YggdrasilHat) ChooseScry(gs *gameengine.GameState, seatIdx int, cards [
 
 // -- Interface: ChooseSurveil --
 
+// ChooseDredge implements the engine's DredgeChooser (CR §702.52 dredge
+// draw-replacement). Conservative + safe: dredge only a graveyard-recursion-
+// valuable card (the graveyard fill + getting THIS specific card back is
+// worth forgoing a fresh random draw), and only when the library keeps a
+// comfortable buffer after milling so dredging never mills us toward a
+// §704.5b deck-out loss. Among eligible cards, prefer the LARGEST N (most
+// graveyard fuel). Returns nil to draw normally. Heuristic is intentionally
+// cautious and tunable; the engine mechanism is correct regardless.
+func (h *YggdrasilHat) ChooseDredge(gs *gameengine.GameState, seatIdx int, candidates []*gameengine.Card) *gameengine.Card {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) || gs.Seats[seatIdx] == nil {
+		return nil
+	}
+	const deckOutBuffer = 8 // keep at least this many cards after milling
+	lib := len(gs.Seats[seatIdx].Library)
+	var best *gameengine.Card
+	bestN := -1
+	for _, c := range candidates {
+		if c == nil {
+			continue
+		}
+		n, ok := gameengine.GetDredgeN(c)
+		if !ok || n <= 0 {
+			continue
+		}
+		if lib-n < deckOutBuffer {
+			continue // milling N risks decking us — draw normally instead
+		}
+		if !h.hasGraveyardRecursionValue(c) {
+			continue // only forgo a fresh draw for a card we actively want back
+		}
+		if n > bestN {
+			bestN = n
+			best = c
+		}
+	}
+	return best
+}
+
 func (h *YggdrasilHat) ChooseSurveil(gs *gameengine.GameState, seatIdx int, cards []*gameengine.Card) (graveyard []*gameengine.Card, top []*gameengine.Card) {
 	if len(cards) == 0 {
 		return nil, nil
