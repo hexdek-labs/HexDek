@@ -288,3 +288,59 @@ func TestGodEternalTuck_R56_CommandZoneOnOwnerNotController(t *testing.T) {
 		t.Errorf("expected Bontu at seat 1 library index 2; got %q", gs.Seats[1].Library[2].DisplayName())
 	}
 }
+
+// R63: the BATTLEFIELD-source variant. The dies/exile trigger is queued,
+// but before it resolves the object is reanimated/blinked back onto the
+// battlefield as a NEW object (Loki r63 game 2005 / seed 20055152: Athreos,
+// Shroud-Veiled returns Oketra). By resolve time the *Card is found in no
+// swept zone (it is alive on the battlefield under a different Permanent),
+// yet the old handler still inserted it into the library — leaving the same
+// *Card in both library and battlefield. Per CR §603.6e the tuck must do
+// nothing: "it" no longer refers to the new object.
+func TestGodEternalTuck_R63_ReturnedToBattlefieldDoesNotDuplicate(t *testing.T) {
+	gs := newOketraGame(t)
+	oketra := &Card{Name: "God-Eternal Oketra", Owner: 0, Types: []string{"creature", "legendary"}}
+	// The new object that returned to the battlefield.
+	live := &Permanent{
+		Card:       oketra,
+		Controller: 0,
+		Owner:      0,
+		Timestamp:  gs.NextTimestamp(),
+		Counters:   map[string]int{},
+		Flags:      map[string]int{},
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, live)
+	oketraSeedLibrary(gs, 0, "Top1", "Top2", "Top3", "Top4")
+	// The queued tuck trigger still references the stale pre-return Permanent
+	// (same *Card, not on the battlefield).
+	stale := &Permanent{
+		Card:       oketra,
+		Controller: 0,
+		Owner:      0,
+		Timestamp:  gs.NextTimestamp(),
+		Counters:   map[string]int{},
+		Flags:      map[string]int{},
+	}
+
+	resolveModificationEffect(gs, stale, godEternalTuckMod())
+
+	// The card must NOT be inserted into the library.
+	if len(gs.Seats[0].Library) != 4 {
+		t.Fatalf("expected library size unchanged (4), got %d", len(gs.Seats[0].Library))
+	}
+	for i, c := range gs.Seats[0].Library {
+		if c == oketra {
+			t.Errorf("CardIdentity leak: Oketra wrongly inserted into library at index %d", i)
+		}
+	}
+	// And exactly one Oketra remains on the battlefield (the live object).
+	count := 0
+	for _, p := range gs.Seats[0].Battlefield {
+		if p.Card == oketra {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("expected exactly 1 Oketra on battlefield, got %d", count)
+	}
+}

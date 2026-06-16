@@ -4360,21 +4360,44 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 					seat := gs.Seats[seatIdx]
 					if removeFromZone(seat, card, "graveyard") {
 						fromZone = "graveyard"
+						removed = true
 						break
 					}
 					if removeFromZone(seat, card, "exile") {
 						fromZone = "exile"
+						removed = true
 						break
 					}
 					if removeFromZone(seat, card, "hand") {
 						fromZone = "hand"
+						removed = true
 						break
 					}
 					if removeFromZone(seat, card, "command_zone") {
 						fromZone = "command_zone"
+						removed = true
 						break
 					}
 				}
+			}
+			// Only tuck if we actually located the card in a zone the
+			// leaves-the-battlefield trigger legitimately left it
+			// (battlefield/graveyard/exile/hand/command_zone). If it is
+			// found nowhere, the object has since changed zones again —
+			// e.g. reanimated/blinked back to the battlefield as a NEW
+			// object (Loki r63 game 2005: Athreos returns Oketra before
+			// its queued tuck resolves). Per CR §603.6e "it" no longer
+			// refers to that new object, so the tuck does nothing.
+			// Inserting unconditionally duplicated the *Card into the
+			// library while the live battlefield object remained — the
+			// "library + battlefield" CardIdentity leak.
+			if !removed {
+				gs.LogEvent(Event{
+					Kind:   "tuck_third_from_top_noop",
+					Seat:   controllerSeat(src),
+					Source: sourceName(src),
+				})
+				break
 			}
 			if owner >= 0 && owner < len(gs.Seats) {
 				lib := gs.Seats[owner].Library
