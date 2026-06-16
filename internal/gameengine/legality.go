@@ -1295,7 +1295,20 @@ func checkLegalityReplacementETB(gs *GameState, obs *LegalityObservation) []Lega
 		if p.Counters != nil {
 			got = p.Counters[kind]
 		}
-		if got < want {
+		// CR §616 / §122.1g — an active `would_put_counter` replacement can
+		// legitimately change how many counters the permanent enters with, so
+		// the raw printed count is no longer the expected final tally. The
+		// canonical case (loki seed 41076465 / game 4107): an opponent's
+		// Vorinclex, Monstrous Raider halves a Clockwork Beetle's 2 → 1 and a
+		// Clockwork Avian's 4 → 2 as they enter — rules-correct, but the
+		// strict `got < want` test false-flagged it. Doubling Season /
+		// Hardened Scales / Branching Evolution INCREASE the count (got >=
+		// want), so they never tripped this; only halve/cancel-class
+		// replacements do. Skip the comparison when such a replacement applies
+		// to this ETB placement. The District-Mascot bug this check targets
+		// (counter never applied → got == 0) still fires in the overwhelmingly
+		// common case where no counter-modifying replacement is in play.
+		if got < want && !etbCounterReplacementApplies(gs, p, kind, want) {
 			out = append(out, LegalityViolation{
 				Turn: obs.TurnAtAnnounce, Seat: obs.Seat, Action: "etb:" + p.Card.DisplayName(),
 				Rule:   "614.1c",
@@ -1304,6 +1317,35 @@ func checkLegalityReplacementETB(gs *GameState, obs *LegalityObservation) []Lega
 		}
 	}
 	return out
+}
+
+// etbCounterReplacementApplies reports whether any active `would_put_counter`
+// replacement effect (Vorinclex, Monstrous Raider's halve/double arms,
+// Doubling Season, Hardened Scales, Branching Evolution, …) would apply to a
+// placement of `count` `kind` counters on `perm` as it enters. It probes the
+// replacements' Applies predicates with a synthetic event matching the shape
+// FirePutCounterEvent builds — Applies is side-effect-free (it only reads
+// state), so this is a safe read-only check; the replacements' ApplyFn (which
+// logs / mutates) is never invoked. Used by checkLegalityReplacementETB to
+// avoid false-flagging a count the engine legitimately modified at §616.
+func etbCounterReplacementApplies(gs *GameState, perm *Permanent, kind string, count int) bool {
+	if gs == nil || perm == nil || len(gs.Replacements) == 0 {
+		return false
+	}
+	probe := NewReplEvent("would_put_counter")
+	probe.TargetPerm = perm
+	probe.Source = perm // self-replacement: the entering permanent puts its own counters
+	probe.Payload["counter_type"] = kind
+	probe.SetCount(count)
+	for _, r := range gs.Replacements {
+		if r == nil || r.EventType != "would_put_counter" || r.Applies == nil {
+			continue
+		}
+		if r.Applies(gs, probe) {
+			return true
+		}
+	}
+	return false
 }
 
 // checkLegalityReplacementGraveyard — CR §614.1a: a card arriving in a
