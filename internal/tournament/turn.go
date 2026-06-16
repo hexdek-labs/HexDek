@@ -1005,6 +1005,21 @@ func runMainPhase(gs *gameengine.GameState, seatIdx int, precombat bool) {
 		tryCastCommander(gs, seatIdx)
 	}
 
+	// --- Suspend special action (CR §702.62b) ---
+	// "A player may suspend a card ... any time they could cast that card."
+	// For the suspend-bearing corpus that means a main phase with an empty
+	// stack. Run AFTER the cast loop so a card the Hat preferred to hard-cast
+	// is already gone; the leftovers (notably the suspend-ONLY cards like
+	// Lotus Bloom / Ancestral Vision that have no mana cost and so were never
+	// in the castable list) are exiled with their N time counters here. This
+	// is the generic entry point that makes all suspend cards reachable — the
+	// upkeep tick + free-cast (TickSuspendCounters / CastSuspendedCard) then
+	// take over. Special action: pays the suspend cost directly, not through
+	// the normal cast/stack path.
+	if seatCanAct(seat) && len(gs.Stack) == 0 {
+		runSuspendPass(gs, seatIdx)
+	}
+
 	// --- Activated ability loop (FIX 1) ---
 	// After casting, offer activated abilities to the Hat. Capped to
 	// prevent infinite loops. Mana abilities are excluded (they resolve
@@ -1217,6 +1232,58 @@ func tapAllManaSources(gs *gameengine.GameState, seat *gameengine.Seat) {
 // at current mana AND has legal targets (if the spell requires them).
 // Filters to non-land cards only. Uses CalculateTotalCost to account for
 // battlefield cost modifiers (Thalia, Trinisphere, etc.).
+// runSuspendPass takes the §702.62b suspend special action for each suspend
+// card in hand the seat can afford. Suspending exiles the card with N time
+// counters (via the SuspendCard primitive) instead of casting it; the suspend
+// cost is paid directly here (it is NOT the card's mana cost and does not go
+// through the normal cast/stack pipeline). Bounded by the hand size since
+// SuspendCard mutates the hand.
+//
+// Policy: suspend any affordable suspend card remaining in hand after the cast
+// loop. This is strictly additive — these cards previously sat dead in hand
+// (suspend-only cards like Lotus Bloom can't be hard-cast at all). The upkeep
+// countdown + free-cast then resolve them on schedule.
+func runSuspendPass(gs *gameengine.GameState, seatIdx int) {
+	seat := gs.Seats[seatIdx]
+	if seat == nil {
+		return
+	}
+	for guard := 0; guard < len(seat.Hand)+1; guard++ {
+		if !seatCanAct(seat) {
+			return
+		}
+		gameengine.EnsureTypedPool(seat)
+		available := seat.Mana.Total()
+
+		var pick *gameengine.Card
+		var pickN, pickCost int
+		for _, c := range seat.Hand {
+			if c == nil || !gameengine.HasSuspend(c) {
+				continue
+			}
+			n, cost, ok := gameengine.SuspendParams(c)
+			if !ok {
+				continue
+			}
+			if cost > available {
+				continue
+			}
+			pick, pickN, pickCost = c, n, cost
+			break
+		}
+		if pick == nil {
+			return
+		}
+		// Pay the suspend cost as a special-action cost (generic debit;
+		// colored pips approximated as generic, consistent with the engine's
+		// other optional-cost gates). A failed payment aborts the action.
+		if !gameengine.PayGenericCost(gs, seat, pickCost, "suspend", "suspend", pick.DisplayName()) {
+			return
+		}
+		gameengine.SuspendCard(gs, seatIdx, pick, pickN)
+	}
+}
+
 func buildCastableList(gs *gameengine.GameState, seatIdx int) []*gameengine.Card {
 	seat := gs.Seats[seatIdx]
 	if len(seat.Hand) == 0 {
