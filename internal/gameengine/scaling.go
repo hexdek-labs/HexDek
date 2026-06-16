@@ -30,6 +30,27 @@ func evalNumber(gs *GameState, src *Permanent, n *gameast.NumberOrRef) (int, boo
 		// X-cost: resolver pre-loads into gs.Flags["x"]. Multiple spells
 		// with X on the stack simultaneously is Phase 5 territory.
 		if s == "x" {
+			// 1) Active cast X / preset (ResolveStackTop binds item.ChosenX
+			//    here for the resolving spell; goldilocks presets 3).
+			if v := gs.Flags["x"]; v != 0 {
+				return v, true
+			}
+			// 2) Permanent-ETB cast X: an {X}-cost permanent stamps its paid
+			//    X on perm.Flags["chosen_x"] (stack.go), but its ETB trigger
+			//    effect resolves in a later frame where gs.Flags["x"] is 0
+			//    (Defenders of Humanity: "create X tokens" → 1 instead of X).
+			if src != nil && src.Flags != nil {
+				if cx := src.Flags["chosen_x"]; cx > 0 {
+					return cx, true
+				}
+			}
+			// 3) "where X is <count>" clause (no {X} cost): X is defined by a
+			//    board/party/graveyard/died-this-turn count carried only on
+			//    the source ability's Raw text — recover it live (Thundering
+			//    Sparkmage, Priest of the Crossing, Siegfried).
+			if n, ok := evalWhereXClause(gs, src); ok {
+				return n, true
+			}
 			return gs.Flags["x"], true
 		}
 		// "var" is the parser's "I don't understand this scaling" escape

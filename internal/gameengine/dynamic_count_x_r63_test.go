@@ -1,0 +1,155 @@
+package gameengine
+
+import (
+	"testing"
+
+	"github.com/hexdek/hexdek/internal/gameast"
+)
+
+// Live-grinder r63: dynamic-count X effects ("deals/puts/creates X …, where X
+// is the number of …") under-resolved to 0/1 because the bare "x" amount read
+// gs.Flags["x"] (the cast {X}, which is 0 for these cards) and the parser left
+// the "where X is <count>" clause only on the source ability's Raw. These
+// regressions pin all four reported cards. They build the permanent with its
+// real AST (Triggered/effect + Raw clause) — the same shape the loader
+// produces — and resolve with NO cast X preset (the real-game condition).
+
+func dxCreature(gs *GameState, seat int, name string, types ...string) *Permanent {
+	tl := append([]string{"creature"}, types...)
+	p := &Permanent{
+		Card:       &Card{Name: name, Types: tl, BasePower: 1, BaseToughness: 1},
+		Controller: seat, Owner: seat,
+		Counters: map[string]int{}, Flags: map[string]int{}, Timestamp: gs.NextTimestamp(),
+	}
+	gs.Seats[seat].Battlefield = append(gs.Seats[seat].Battlefield, p)
+	return p
+}
+
+// Thundering Sparkmage — ETB deals X damage, X = creatures in your party.
+func TestDynamicX_ThunderingSparkmage(t *testing.T) {
+	gs := newTestGameState(2)
+	// A 3-role party (cleric, rogue, warrior); source is a plain creature so it
+	// doesn't add a 4th role.
+	dxCreature(gs, 0, "Cl", "cleric")
+	dxCreature(gs, 0, "Ro", "rogue")
+	dxCreature(gs, 0, "Wa", "warrior")
+	victim := dxCreature(gs, 1, "Victim")
+	victim.Card.BaseToughness = 10
+	eff := &gameast.Damage{Amount: *gameast.NumStr("x"), Target: gameast.Filter{Base: "creature", Targeted: true}}
+	src := &Permanent{
+		Card: &Card{Name: "Thundering Sparkmage", Types: []string{"creature", "human"},
+			AST: &gameast.CardAST{Abilities: []gameast.Ability{&gameast.Triggered{
+				Effect: eff,
+				Raw:    "when this creature enters, it deals x damage to target creature, where x is the number of creatures in your party",
+			}}}},
+		Controller: 0, Owner: 0, Flags: map[string]int{},
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+
+	if got := CountParty(gs, 0); got != 3 {
+		t.Fatalf("setup: party = %d, want 3", got)
+	}
+	ResolveEffect(gs, src, eff)
+	if victim.MarkedDamage != 3 {
+		t.Fatalf("Sparkmage should deal X=party=3 damage, marked %d", victim.MarkedDamage)
+	}
+}
+
+// Priest of the Crossing — end step: put X +1/+1 on each creature you control,
+// X = creatures that died under your control this turn.
+func TestDynamicX_PriestOfTheCrossing(t *testing.T) {
+	gs := newTestGameState(2)
+	gs.Seats[0].Turn.CreaturesDied = 3
+	a := dxCreature(gs, 0, "AllyA")
+	b := dxCreature(gs, 0, "AllyB")
+	eff := &gameast.CounterMod{Op: "put", Count: *gameast.NumStr("x"), CounterKind: "+1/+1",
+		Target: gameast.Filter{Base: "creature", Quantifier: "each", YouControl: true}}
+	src := &Permanent{
+		Card: &Card{Name: "Priest of the Crossing", Types: []string{"creature"},
+			AST: &gameast.CardAST{Abilities: []gameast.Ability{&gameast.Triggered{
+				Effect: eff,
+				Raw:    "at the beginning of each end step, put x +1/+1 counters on each creature you control, where x is the number of creatures that died under your control this turn",
+			}}}},
+		Controller: 0, Owner: 0, Counters: map[string]int{}, Flags: map[string]int{}, Timestamp: gs.NextTimestamp(),
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+
+	ResolveEffect(gs, src, eff)
+	if a.Counters["+1/+1"] != 3 || b.Counters["+1/+1"] != 3 {
+		t.Fatalf("Priest should put X=died=3 +1/+1 on each ally, got A=%d B=%d", a.Counters["+1/+1"], b.Counters["+1/+1"])
+	}
+}
+
+// Siegfried, Famed Swordsman — ETB: mill 3, then put X +1/+1 on self,
+// X = twice the number of creature cards in your graveyard (counted AFTER the
+// mill, so the where-clause must resolve live).
+func TestDynamicX_SiegfriedFamedSwordsman(t *testing.T) {
+	gs := newTestGameState(2)
+	// Library: 2 creatures + 1 noncreature on top → mill 3 puts 2 creatures in GY.
+	gs.Seats[0].Library = append(gs.Seats[0].Library,
+		&Card{Name: "Bear", Types: []string{"creature"}, Owner: 0},
+		&Card{Name: "Wolf", Types: []string{"creature"}, Owner: 0},
+		&Card{Name: "Bolt", Types: []string{"instant"}, Owner: 0},
+		&Card{Name: "Filler", Types: []string{"land"}, Owner: 0},
+	)
+	seq := &gameast.Sequence{Items: []gameast.Effect{
+		&gameast.Mill{Count: *gameast.NumInt(3), Target: gameast.Filter{Base: "self"}},
+		&gameast.CounterMod{Op: "put", Count: *gameast.NumStr("x"), CounterKind: "+1/+1", Target: gameast.Filter{Base: "self"}},
+	}}
+	src := &Permanent{
+		Card: &Card{Name: "Siegfried, Famed Swordsman", Types: []string{"creature"},
+			AST: &gameast.CardAST{Abilities: []gameast.Ability{&gameast.Triggered{
+				Effect: seq,
+				Raw:    "when siegfried enters, mill three cards. then put x +1/+1 counters on siegfried, where x is twice the number of creature cards in your graveyard",
+			}}}},
+		Controller: 0, Owner: 0, Counters: map[string]int{}, Flags: map[string]int{}, Timestamp: gs.NextTimestamp(),
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+
+	ResolveEffect(gs, src, seq)
+	// 2 creature cards milled → X = 2 × 2 = 4.
+	if got := src.Counters["+1/+1"]; got != 4 {
+		t.Fatalf("Siegfried: want X=2×(2 GY creatures)=4 +1/+1 counters, got %d", got)
+	}
+}
+
+// Defenders of Humanity — {X}{2}{W} enchantment whose ETB creates X 2/2
+// tokens, where X is the cast X. The permanent stamps perm.Flags["chosen_x"];
+// the ETB-trigger effect must read it (it resolves in a later frame where
+// gs.Flags["x"] is 0).
+func TestDynamicX_DefendersOfHumanity_CastX(t *testing.T) {
+	gs := newTestGameState(2)
+	eff := &gameast.CreateToken{Count: *gameast.NumStr("x"), PT: &[2]int{2, 2},
+		Types: []string{"creature", "astartes", "warrior"}, Color: []string{"W"}, Keywords: []string{"vigilance"}}
+	src := &Permanent{
+		Card: &Card{Name: "Defenders of Humanity", Types: []string{"enchantment"},
+			AST: &gameast.CardAST{Abilities: []gameast.Ability{&gameast.Triggered{
+				Effect: eff,
+				Raw:    "when this enchantment enters, create x 2/2 white astartes warrior creature tokens with vigilance",
+			}}}},
+		Controller: 0, Owner: 0, Flags: map[string]int{"chosen_x": 3}, Counters: map[string]int{}, Timestamp: gs.NextTimestamp(),
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+
+	before := len(gs.Seats[0].Battlefield)
+	ResolveEffect(gs, src, eff)
+	created := len(gs.Seats[0].Battlefield) - before
+	if created != 3 {
+		t.Fatalf("Defenders cast for X=3 should create 3 tokens, created %d", created)
+	}
+}
+
+// Guard: a genuine cast-{X} spell (no where-clause) still reads the cast X and
+// is unaffected by the where-clause fallback.
+func TestDynamicX_CastXSpellUnaffected(t *testing.T) {
+	gs := newTestGameState(2)
+	gs.Flags["x"] = 5
+	victim := dxCreature(gs, 1, "Target")
+	victim.Card.BaseToughness = 20
+	eff := &gameast.Damage{Amount: *gameast.NumStr("x"), Target: gameast.Filter{Base: "creature", Targeted: true}}
+	src := &Permanent{Card: &Card{Name: "Fireball", Types: []string{"instant"}}, Controller: 0, Owner: 0, Flags: map[string]int{}}
+	ResolveEffect(gs, src, eff)
+	if victim.MarkedDamage != 5 {
+		t.Fatalf("cast X=5 spell should deal 5, got %d", victim.MarkedDamage)
+	}
+}
