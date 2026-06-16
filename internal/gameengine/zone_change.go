@@ -756,7 +756,21 @@ func fireSelfZoneChangeTriggers(gs *GameState, perm *Permanent, events []string)
 
 	for _, ab := range perm.Card.AST.Abilities {
 		trig, ok := ab.(*gameast.Triggered)
-		if !ok || trig.Effect == nil {
+		if !ok {
+			// Death-class ability-word triggers (Hellbent "when this creature
+			// dies, if you have no cards in hand, …" — Slaughterhouse Bouncer):
+			// the inner *Triggered is hidden inside a Static{ability_word}
+			// wrapper that this top-level *Triggered scan skips, so the ability
+			// was inert (dead-dispatch sweep r63 #5). Unwrap it so it fires on
+			// the bearer's own death — gated below by the event match,
+			// isSelfTrigger, and the per_card double-fire guard exactly like a
+			// plain self-death trigger. The ability-word CONDITION ("no cards
+			// in hand") rides inside the effect as a Conditional node and is
+			// evaluated at resolution, so unwrapping fires it correctly-gated;
+			// the §603.10 last-known-information push below is unchanged.
+			trig = unwrapAbilityWordTriggered(ab)
+		}
+		if trig == nil || trig.Effect == nil {
 			continue
 		}
 

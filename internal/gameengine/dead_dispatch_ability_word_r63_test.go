@@ -116,3 +116,22 @@ func TestDeadDispatch_UnwrapExcludesDedicatedAndNonWrappers(t *testing.T) {
 		t.Fatal("non-ability-word Static must return nil")
 	}
 }
+
+// Death-class ability-word triggers now fire on the bearer's OWN death,
+// exactly once (dead-dispatch sweep r63 #5 — Slaughterhouse Bouncer / Hellbent
+// "when this creature dies, if you have no cards in hand, …"). The inner
+// *Triggered{event:"die"} lives in a Static{ability_word} wrapper that the
+// self-dies scan (fireSelfZoneChangeTriggers, zone_change.go) now unwraps. The
+// single GainLife +1 proves it fires exactly once — no double-dispatch.
+func TestDeadDispatch_DeathAbilityWord(t *testing.T) {
+	for _, word := range []string{"hellbent", "morbid", "delirium"} {
+		gs := dwGame(t)
+		p := abilityWordPerm(gs, 0, "Death Probe "+word, word, "die", "")
+		life := gs.Seats[0].Life
+		DestroyPermanent(gs, p, nil) // the bearer dies → fires its self-death trigger
+		dwDrain(gs)
+		if got := gs.Seats[0].Life - life; got != 1 {
+			t.Fatalf("death ability word %q did not fire EXACTLY once on the bearer's death (lifeΔ=%d, want 1) — still inert or double-fired", word, got)
+		}
+	}
+}
