@@ -2429,6 +2429,19 @@ func fireCombatDamageTriggers(gs *GameState, src *Permanent, amount int, targetK
 	for _, ab := range astAbilities(src.Card) {
 		t, ok := ab.(*gameast.Triggered)
 		if !ok {
+			// r63 dead-dispatch sweep (combat-damage class): ability-word
+			// combat-damage triggers (Domain/Hellbent/Metalcraft/Threshold/
+			// Council's-Dilemma — "Whenever this creature deals combat damage
+			// to a player, …") parse to a Static{ability_word → Triggered}
+			// wrapper the top-level *Triggered scan skips, so they were inert.
+			// Unwrap; the inner event combat_damage_player aliases to
+			// deals_combat_damage, so the gate below admits it. Condition
+			// (domain count, hellbent empty-hand, …) rides in the effect and
+			// is evaluated at resolution. Excludes ability words with a
+			// dedicated dispatcher (battalion/constellation/…).
+			t = unwrapAbilityWordTriggered(ab)
+		}
+		if t == nil {
 			continue
 		}
 		if !EventEquals(t.Trigger.Event, "deals_combat_damage") &&
