@@ -435,42 +435,53 @@ func ApplyMyriad(gs *GameState, attacker *Permanent, attackerSeat int) {
 		if oppSeat == defSeat {
 			continue // Already attacking this opponent with the original.
 		}
-		// CR §702.116a / §707.2 — the myriad token is a COPY of the
-		// attacker, so it uses the attacker's copiable values (name, card
-		// types, subtypes, colors, P/T, rules text/abilities, mana cost).
-		// Route through the canonical token-as-copy chokepoint
-		// MintTokenAsCopyOf (DeepCopy of every copiable value + a fresh
-		// TK-provenance InstanceID with the source recorded) rather than the
-		// old hand-rolled partial copy, which dropped subtypes, keywords, and
-		// all rules text — so a myriad copy of e.g. a flying Dragon was a
-		// colorless typeless vanilla with the printed P/T. This mirrors
-		// resolveCopyPermanent's §707.10f create-token-copy path.
-		card := MintTokenAsCopyOf(gs, attacker.Card, attackerSeat, currentMintEnablerID(gs))
-		if card == nil {
-			continue
-		}
-		token := &Permanent{
-			Card:          card,
-			Controller:    attackerSeat,
-			Owner:         attackerSeat,
-			Timestamp:     gs.NextTimestamp(),
-			Counters:      map[string]int{},
-			Flags:         map[string]int{"myriad_token": 1},
-			Tapped:        true,
-			SummoningSick: false,
-		}
-		// CR §508.1g — myriad creates token copies onto the
-		// battlefield attacking. MarkEnteredAttacking stamps both
-		// flagAttacking and the carve-out tag so checkCombatLegality
-		// honors §508.1g if a myriad copy happens to carry the
-		// defender keyword (rare — myriad copies inherit oracle
-		// abilities; if the source had defender, the copy would too).
-		MarkEnteredAttacking(token)
-		setAttackerDefender(token, oppSeat)
-		gs.Seats[attackerSeat].Battlefield = append(gs.Seats[attackerSeat].Battlefield, token)
-		RegisterReplacementsForPermanent(gs, token)
-		FirePermanentETBTriggers(gs, token)
-		myriadTokens = append(myriadTokens, token)
+		opp := oppSeat // capture for the per-token closure
+		// CR §702.116b creates a token "for each opponent" — each such
+		// creation is its own token-creation event, so route it through the
+		// canonical CreateDoubledTokens chokepoint (would_create_token
+		// replacement chain). This makes token-count doublers (Doubling
+		// Season / Parallel Lives / Anointed Procession) double the myriad
+		// copies per opponent, matching the printed rulings; the prior
+		// direct-append bypassed the doubler entirely. With no doubler in
+		// play FireCreateTokenEvent returns the unmodified count (1), so the
+		// one-copy-per-opponent behavior is unchanged.
+		made := CreateDoubledTokens(gs, attackerSeat, 1, attacker, func() *Permanent {
+			// CR §702.116a / §707.2 — the myriad token is a COPY of the
+			// attacker, so it uses the attacker's copiable values (name, card
+			// types, subtypes, colors, P/T, rules text/abilities, mana cost).
+			// Route through the canonical token-as-copy chokepoint
+			// MintTokenAsCopyOf (DeepCopy of every copiable value + a fresh
+			// TK-provenance InstanceID with the source recorded) rather than
+			// a hand-rolled partial copy — and crucially a FRESH *Card per
+			// token, never aliasing the source *Card across seats.
+			card := MintTokenAsCopyOf(gs, attacker.Card, attackerSeat, currentMintEnablerID(gs))
+			if card == nil {
+				return nil
+			}
+			token := &Permanent{
+				Card:          card,
+				Controller:    attackerSeat,
+				Owner:         attackerSeat,
+				Timestamp:     gs.NextTimestamp(),
+				Counters:      map[string]int{},
+				Flags:         map[string]int{"myriad_token": 1},
+				Tapped:        true,
+				SummoningSick: false,
+			}
+			// CR §508.1g — myriad creates token copies onto the
+			// battlefield attacking. MarkEnteredAttacking stamps both
+			// flagAttacking and the carve-out tag so checkCombatLegality
+			// honors §508.1g if a myriad copy happens to carry the
+			// defender keyword (rare — myriad copies inherit oracle
+			// abilities; if the source had defender, the copy would too).
+			MarkEnteredAttacking(token)
+			setAttackerDefender(token, opp)
+			gs.Seats[attackerSeat].Battlefield = append(gs.Seats[attackerSeat].Battlefield, token)
+			RegisterReplacementsForPermanent(gs, token)
+			FirePermanentETBTriggers(gs, token)
+			return token
+		})
+		myriadTokens = append(myriadTokens, made...)
 	}
 
 	if len(myriadTokens) > 0 {
@@ -483,6 +494,25 @@ func ApplyMyriad(gs *GameState, attacker *Permanent, attackerSeat int) {
 				"rule": "702.116",
 			},
 		})
+
+		// Fire token_created so token-matters payoffs (Chatterfang, Cathars'
+		// Crusade-style "whenever a token is created" effects) see the myriad
+		// copies — the direct-append path never notified them. Re-entrancy
+		// guarded (a token_created handler that itself makes tokens must not
+		// recurse), mirroring resolveCreateTokenCopy.
+		if gs.Flags == nil || gs.Flags["in_token_trigger"] == 0 {
+			if gs.Flags == nil {
+				gs.Flags = map[string]int{}
+			}
+			gs.Flags["in_token_trigger"] = 1
+			FireCardTrigger(gs, "token_created", map[string]interface{}{
+				"controller_seat": attackerSeat,
+				"count":           len(myriadTokens),
+				"types":           attacker.Card.Types,
+				"source":          attacker.Card.DisplayName(),
+			})
+			gs.Flags["in_token_trigger"] = 0
+		}
 
 		// Register delayed trigger to exile at end of combat.
 		tokens := myriadTokens // capture for closure
