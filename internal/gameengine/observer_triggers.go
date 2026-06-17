@@ -172,6 +172,17 @@ func fireObserverETBTriggers(gs *GameState, entering *Permanent) {
 	// funnels through. Scoped to the entering creature's controller — evolve
 	// only watches creatures entering under ITS controller's control.
 	FireEvolveTriggers(gs, entering.Controller, entering)
+
+	// CR §702.97e/f — Soulbond is likewise a keyword-driven observer-ETB hook
+	// (the pairing isn't a parsed AST Triggered node). Fire it at the same
+	// chokepoint, scoped to the entering creature's controller — soulbond only
+	// pairs creatures under one player's control. This runs AFTER the per-card
+	// OnETB hook (InvokeETBHook precedes fireObserverETBTriggers in the ETB
+	// dispatcher), so Deadeye Navigator — which self-pairs via PairSoulbond in
+	// its own handler — is already IsPaired here and the (e) half no-ops; the
+	// both-unpaired gate inside PairSoulbond makes any double-pair attempt a
+	// no-op regardless.
+	FireSoulbondTriggers(gs, entering.Controller, entering)
 }
 
 // observerETBMatches checks if the entering permanent matches an observer

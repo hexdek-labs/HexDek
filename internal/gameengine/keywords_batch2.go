@@ -138,6 +138,89 @@ func UnpairOnLeave(gs *GameState, perm *Permanent) {
 	delete(perm.Flags, "paired_timestamp")
 }
 
+// HasSoulbond reports whether a permanent has the Soulbond keyword. Mirrors
+// the evolve detection (`HasKeyword("evolve") || permHasTriggerEvent(...)`):
+// soulbond is a parsed keyword on a creature, so the canonical
+// `HasKeyword("soulbond")` is the source of truth (covers AST keywords, granted
+// abilities, and the `kw:soulbond` runtime flag tests/tokens use). Face-down
+// permanents have no abilities (CR §708.2) and never have soulbond.
+func HasSoulbond(p *Permanent) bool {
+	if p == nil || p.Card == nil {
+		return false
+	}
+	if p.Flags != nil && p.Flags["face_down"] != 0 {
+		return false
+	}
+	return p.HasKeyword("soulbond")
+}
+
+// FireSoulbondTriggers is the generic soulbond ETB-observer hook (CR §702.97e/f),
+// mirroring FireEvolveTriggers. Called once per creature entering the
+// battlefield, at the single ETB observer chokepoint
+// (fireObserverETBTriggers → here). It implements BOTH halves of the soulbond
+// pairing rule for `newCreature` and the creatures its controller already
+// controls:
+//
+//	(e) If newCreature itself HAS soulbond and is unpaired, try to pair it
+//	    with the first eligible unpaired creature its controller controls.
+//	(f) For each unpaired soulbond creature the same controller already
+//	    controls, try to pair newCreature with it.
+//
+// All pairing routes through the canonical PairSoulbond, which enforces the
+// same-controller / both-creature / both-unpaired gates and is idempotent
+// (a second attempt on an already-paired creature no-ops). This is what makes
+// the hook safe to run AFTER Deadeye Navigator's per-card OnETB self-pair
+// (which already calls PairSoulbond): if Deadeye paired itself on the way in,
+// it now reports IsPaired, so (e) no-ops here.
+//
+// "You may" is modeled as auto-pair-the-first-eligible (AI-policy
+// simplification, consistent with Deadeye's per-card handler; no Hat choice).
+// Battlefield order is the stable iteration order — no Go map iteration — so
+// the choice is deterministic.
+func FireSoulbondTriggers(gs *GameState, seatIdx int, newCreature *Permanent) {
+	if gs == nil || newCreature == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return
+	}
+	if !newCreature.IsCreature() {
+		return
+	}
+	bf := gs.Seats[seatIdx].Battlefield
+
+	// (e) The entering creature itself has soulbond: pair it with the first
+	// eligible unpaired creature its controller controls. Skipped cleanly if
+	// it's already paired (e.g. Deadeye's per-card OnETB ran first).
+	if HasSoulbond(newCreature) && !IsPaired(newCreature) {
+		for _, p := range bf {
+			if p == nil || p == newCreature || !p.IsCreature() || IsPaired(p) {
+				continue
+			}
+			// PairSoulbond re-validates every gate; let it decide.
+			if PairSoulbond(gs, newCreature, p) {
+				break
+			}
+		}
+	}
+
+	// (f) For each unpaired soulbond creature the controller already controls,
+	// pair the newly-entered creature with it. (The entering creature is the
+	// "another creature" that an already-out soulbond creature pairs with.)
+	// Stops once newCreature is paired — a creature pairs with only one other.
+	for _, p := range bf {
+		if p == nil || p == newCreature || !p.IsCreature() {
+			continue
+		}
+		if IsPaired(newCreature) {
+			break
+		}
+		if !HasSoulbond(p) || IsPaired(p) {
+			continue
+		}
+		if PairSoulbond(gs, p, newCreature) {
+			break
+		}
+	}
+}
+
 // ===========================================================================
 // Haunt — CR §702.55
 // ===========================================================================
