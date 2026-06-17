@@ -82,7 +82,18 @@ func ApplyStaticETBCounters(gs *GameState, perm *Permanent) {
 				counterKind = k
 			}
 		}
-		PutCountersTriggered(gs, perm, counterKind, count, perm)
+		placed := PutCountersTriggered(gs, perm, counterKind, count, perm)
+		// Record what the self-replacement actually placed (post-§616) so the
+		// §614.1c legality check can tell "the counter was applied then removed"
+		// (e.g. §704.5q +1/+1 / -1/-1 annihilation) from "the counter was never
+		// applied" (the District Mascot wiring bug it targets). Keyed per kind;
+		// accumulates across re-applications (enters-as-a-copy re-runs this).
+		if placed > 0 {
+			if perm.Flags == nil {
+				perm.Flags = map[string]int{}
+			}
+			perm.Flags["_etb_placed:"+counterKind] += placed
+		}
 		gs.LogEvent(Event{
 			Kind:   "etb_with_counters",
 			Seat:   perm.Controller,

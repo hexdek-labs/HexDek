@@ -1308,7 +1308,22 @@ func checkLegalityReplacementETB(gs *GameState, obs *LegalityObservation) []Lega
 		// to this ETB placement. The District-Mascot bug this check targets
 		// (counter never applied → got == 0) still fires in the overwhelmingly
 		// common case where no counter-modifying replacement is in play.
-		if got < want && !etbCounterReplacementApplies(gs, p, kind, want) {
+		// CR §614.1d / §122.1g — the check verifies the self-replacement was
+		// APPLIED (the counters were placed as the permanent entered), NOT that
+		// they still PERSIST. Once placed, a counter can be legitimately removed
+		// by a SEPARATE event before this observation closes — most commonly the
+		// §704.5q +1/+1 / -1/-1 annihilation SBA (which per_card ETB handlers run
+		// inline mid-cascade), but also -1/-1 self-removal abilities, wither/
+		// infect, etc. ApplyStaticETBCounters records what it actually placed on
+		// perm.Flags["_etb_placed:<kind>"]; if that meets the printed count the
+		// replacement DID apply and a later shortfall is not a §614.1c miss. (The
+		// §616 doubler/halver case where placement itself is modified to < want is
+		// still covered by etbCounterReplacementApplies, #1075.)
+		placed := 0
+		if p.Flags != nil {
+			placed = p.Flags["_etb_placed:"+kind]
+		}
+		if got < want && placed < want && !etbCounterReplacementApplies(gs, p, kind, want) {
 			out = append(out, LegalityViolation{
 				Turn: obs.TurnAtAnnounce, Seat: obs.Seat, Action: "etb:" + p.Card.DisplayName(),
 				Rule:   "614.1c",
