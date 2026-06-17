@@ -1196,8 +1196,29 @@ func checkCombatLegality(gs *GameState) error {
 			// gs.HasKeywordOf (adds pure layer-6 grants — e.g. Toph cards
 			// grant haste via RegisterGrantKeyword with no Flags), so a
 			// legitimately-hasty attacker is never phantom-flagged.
+			//
+			// declaredThisCombat carve-out (r63): CR §508.1a is a ONE-TIME
+			// declaration-time gate, not a continuous requirement. A creature
+			// that legally passed the declare-attackers gate (canAttackGS +
+			// the §508.1 sanitizer set flagDeclaredAttacker) stays a legal
+			// attacker for the rest of the combat even if it later loses
+			// haste. Live grinder firespot: Brudiclad's "creature tokens you
+			// control have haste" static is implemented as a flag-stamp that
+			// brudicladOwnLTB strips when Brudiclad leaves the battlefield. A
+			// Phyrexian Myr token that legally attacked with that granted
+			// haste keeps SummoningSick=true; once Brudiclad leaves combat
+			// (e.g. dies to combat damage) the haste is stripped, leaving the
+			// attacking + sick + no-haste combo for a post-declaration census
+			// to phantom-flag ("Phyrexian Myr Token is attacking with
+			// summoning sickness and no haste"). flagDeclaredAttacker is set
+			// at declaration and cleared by EndOfCombatStep alongside
+			// flagAttacking, so this carve-out is bounded to the combat in
+			// which the creature was legally declared. (The undeclared,
+			// non-entered case — a true illegal-attacker bug — is still
+			// flagged.)
+			declaredThisCombat := permFlag(p, flagDeclaredAttacker)
 			hasHaste := p.HasKeyword("haste") || gs.HasKeywordOf(p, "haste")
-			if attacking && p.SummoningSick && !hasHaste && !enteredAttacking {
+			if attacking && p.SummoningSick && !hasHaste && !enteredAttacking && !declaredThisCombat {
 				return fmt.Errorf("CombatLegality: %q (seat %d) is attacking with summoning sickness and no haste",
 					name, s.Idx)
 			}
