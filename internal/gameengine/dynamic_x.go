@@ -84,6 +84,14 @@ func whereXCount(gs *GameState, src *Permanent, low string) (int, bool) {
 	case strings.Contains(low, "creatures in your party"), strings.Contains(low, "creature in your party"):
 		return mult * CountParty(gs, seat), true
 
+	// Basalt Ravager — "the greatest number of creatures you control that have
+	// a creature type in common" (the largest single-shared-creature-type
+	// group). Checked BEFORE the generic "creatures you control" case, which
+	// would otherwise match this clause's "creatures you control" substring and
+	// return the TOTAL creature count instead of the largest shared-type group.
+	case strings.Contains(low, "creature type in common"):
+		return mult * greatestSharedCreatureTypeCount(gs, seat), true
+
 	// Priest of the Crossing — "creatures that died under your control this
 	// turn" (and the plain "creatures died this turn" phrasing).
 	case strings.Contains(low, "died under your control this turn"),
@@ -105,20 +113,44 @@ func whereXCount(gs *GameState, src *Permanent, low string) (int, bool) {
 		return mult * countCreaturesControlled(gs, seat), true
 	}
 
-	// Subtype-specific creature count: "the number of <subtype> you control"
-	// (Voja — elves you control; zombies / vampires / goblins / wizards /
-	// allies / … long tail). Resolved by deterministic pluralization of each
-	// controlled creature's own subtypes (elf→elves, ally→allies, zombie→
-	// zombies), which sidesteps the singular-from-plural ambiguity. Only takes
-	// effect when at least one matching creature exists, so a NON-creature
-	// basis (lands / artifacts / enchantments you control) counts zero here and
-	// falls through to the unchanged gs.Flags["x"] behavior — no regression.
+	// Subtype-specific PERMANENT count: "the number of <subtype> you control"
+	// (Voja — elves you control; zombies / vampires / goblins / … creature
+	// subtypes; AND non-creature permanent subtypes — Southern Air Temple's
+	// "shrines you control" [enchantment subtype], vehicles / equipment / auras
+	// / sagas). Resolved by deterministic pluralization of each controlled
+	// permanent's own subtypes (elf→elves, shrine→shrines, ally→allies), which
+	// sidesteps the singular-from-plural ambiguity. Only takes effect when at
+	// least one matching permanent exists, so an unrecognized basis counts zero
+	// here and falls through to the unchanged gs.Flags["x"] behavior.
 	if noun, ok := subtypeYouControlNoun(low); ok {
-		if n := countCreaturesBySubtypeNoun(gs, seat, noun); n > 0 {
+		if n := countPermanentsBySubtypeNoun(gs, seat, noun); n > 0 {
 			return mult * n, true
 		}
 	}
 	return 0, false
+}
+
+// greatestSharedCreatureTypeCount returns the largest number of creatures a
+// seat controls that share a single creature type (CR — "creatures you control
+// that have a creature type in common"). Basalt Ravager's X-basis.
+func greatestSharedCreatureTypeCount(gs *GameState, seat int) int {
+	if gs == nil || seat < 0 || seat >= len(gs.Seats) || gs.Seats[seat] == nil {
+		return 0
+	}
+	counts := map[string]int{}
+	best := 0
+	for _, p := range gs.Seats[seat].Battlefield {
+		if p == nil || !p.IsCreature() || p.Card == nil {
+			continue
+		}
+		for sub := range creatureSubtypesOf(p.Card) {
+			counts[sub]++
+			if counts[sub] > best {
+				best = counts[sub]
+			}
+		}
+	}
+	return best
 }
 
 // subtypeYouControlNoun extracts the type noun from a "(the) number of <noun>
@@ -154,15 +186,19 @@ func subtypeYouControlNoun(low string) (string, bool) {
 	return noun, true
 }
 
-// countCreaturesBySubtypeNoun counts creatures a seat controls whose own
-// subtypes pluralize to (or already equal) the given plural type noun.
-func countCreaturesBySubtypeNoun(gs *GameState, seat int, noun string) int {
+// countPermanentsBySubtypeNoun counts permanents a seat controls whose own
+// subtypes pluralize to (or already equal) the given plural type noun. Covers
+// creature subtypes (elves / zombies / goblins) AND non-creature permanent
+// subtypes (shrines / vehicles / equipment / auras / sagas); creatureSubtypesOf
+// returns the subtype set for any permanent (it strips card-type supertypes, so
+// an enchantment "Shrine" yields {"shrine"}).
+func countPermanentsBySubtypeNoun(gs *GameState, seat int, noun string) int {
 	if gs == nil || seat < 0 || seat >= len(gs.Seats) || gs.Seats[seat] == nil {
 		return 0
 	}
 	n := 0
 	for _, p := range gs.Seats[seat].Battlefield {
-		if p == nil || !p.IsCreature() || p.Card == nil {
+		if p == nil || p.Card == nil {
 			continue
 		}
 		for sub := range creatureSubtypesOf(p.Card) {

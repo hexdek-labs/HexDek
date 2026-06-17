@@ -290,3 +290,88 @@ func TestDynamicX_FarmerCottonTokensCastX(t *testing.T) {
 		t.Fatalf("Farmer Cotton cast for X=3 should create 3 halflings, got %d", got)
 	}
 }
+
+// --- non-creature permanent subtype + greatest-shared-type X bases (r63
+// goldilocks-dynamic-x cluster) ---
+//
+// Real engine gaps found while triaging the live-grinder dynamic-X cluster (the
+// OUTCOME harness masked them by pinning gs.Flags["x"]=3, but in real play
+// gs.Flags["x"]==0 and the basis must be read from the board). Cast-X token
+// creators (March of the Canonized / Triceraton / Wildfire) and party-count
+// damage (Thundering Sparkmage) were already correct; these two were not.
+
+func gdxPermOf(gs *GameState, seat int, name string, types ...string) *Permanent {
+	p := &Permanent{Card: &Card{Name: name, Types: types}, Controller: seat, Owner: seat,
+		Counters: map[string]int{}, Flags: map[string]int{}, Timestamp: gs.NextTimestamp()}
+	gs.Seats[seat].Battlefield = append(gs.Seats[seat].Battlefield, p)
+	return p
+}
+
+// Southern Air Temple — put X +1/+1 on each creature, X = number of SHRINES you
+// control (Shrine is an ENCHANTMENT subtype). Pre-fix the subtype counter only
+// looked at creatures, so X resolved to 0 → 1 counter; now it counts all
+// permanents with the subtype (3 Shrines → 3).
+func TestDynamicX_SouthernAirTemple_ShrineSubtype(t *testing.T) {
+	gs := newTestGameState(2)
+	gdxPermOf(gs, 0, "Sanctum of Stone Fangs", "enchantment", "shrine")
+	gdxPermOf(gs, 0, "Honden of Life's Web", "enchantment", "shrine")
+	ally := dxCreature(gs, 0, "Ally")
+	eff := &gameast.CounterMod{Op: "put", Count: *gameast.NumStr("x"), CounterKind: "+1/+1",
+		Target: gameast.Filter{Base: "creature", Quantifier: "each", YouControl: true}}
+	src := &Permanent{Card: &Card{Name: "Southern Air Temple", Types: []string{"enchantment", "shrine"},
+		AST: &gameast.CardAST{Abilities: []gameast.Ability{&gameast.Triggered{Effect: eff,
+			Raw: "when ~ enters, put x +1/+1 counters on each creature you control, where x is the number of shrines you control"}}}},
+		Controller: 0, Owner: 0, Counters: map[string]int{}, Flags: map[string]int{}, Timestamp: gs.NextTimestamp()}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+	ResolveEffect(gs, src, eff)
+	// 3 Shrines on the battlefield (the two Hondens + the Temple itself).
+	if got := ally.Counters["+1/+1"]; got != 3 {
+		t.Fatalf("Southern Air Temple should put X=shrines-you-control=3, got %d", got)
+	}
+}
+
+// Basalt Ravager — deal X damage, X = the GREATEST number of creatures you
+// control sharing a creature type. Pre-fix the generic "creatures you control"
+// case matched the basis clause and returned the TOTAL creature count (5); now
+// it returns the largest shared-type group (3 Goblins).
+func TestDynamicX_BasaltRavager_GreatestSharedType(t *testing.T) {
+	gs := newTestGameState(2)
+	dxCreature(gs, 0, "Goblin A", "goblin")
+	dxCreature(gs, 0, "Goblin B", "goblin")
+	dxCreature(gs, 0, "Goblin C", "goblin")
+	dxCreature(gs, 0, "Lone Wizard", "wizard")
+	victim := dxCreature(gs, 1, "Victim")
+	victim.Card.BaseToughness = 20
+	eff := &gameast.Damage{Amount: *gameast.NumStr("x"), Target: gameast.Filter{Base: "creature", Targeted: true}}
+	src := &Permanent{Card: &Card{Name: "Basalt Ravager", Types: []string{"creature", "elemental"},
+		AST: &gameast.CardAST{Abilities: []gameast.Ability{&gameast.Triggered{Effect: eff,
+			Raw: "when this creature enters, it deals x damage to any target, where x is the greatest number of creatures you control that have a creature type in common"}}}},
+		Controller: 0, Owner: 0, Flags: map[string]int{}, Timestamp: gs.NextTimestamp()}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+	ResolveEffect(gs, src, eff)
+	// 3 Goblins share "goblin"; total creatures you control = 5 (3 goblins,
+	// wizard, Ravager). X must be 3, not 5.
+	if victim.MarkedDamage != 3 {
+		t.Fatalf("Basalt Ravager should deal X=greatest-shared-type=3, got %d", victim.MarkedDamage)
+	}
+}
+
+// Guard: an ordinary "<creature-subtype> you control" basis (Voja's elves)
+// still resolves correctly after generalizing the counter to all permanents.
+func TestDynamicX_CreatureSubtypeStillCounts(t *testing.T) {
+	gs := newTestGameState(2)
+	dxCreature(gs, 0, "Elf A", "elf")
+	dxCreature(gs, 0, "Elf B", "elf")
+	ally := dxCreature(gs, 0, "Bear")
+	eff := &gameast.CounterMod{Op: "put", Count: *gameast.NumStr("x"), CounterKind: "+1/+1",
+		Target: gameast.Filter{Base: "creature", Quantifier: "each", YouControl: true}}
+	src := &Permanent{Card: &Card{Name: "Elf Lord", Types: []string{"creature", "wolf"},
+		AST: &gameast.CardAST{Abilities: []gameast.Ability{&gameast.Triggered{Effect: eff,
+			Raw: "whenever ~ attacks, put x +1/+1 counters on each creature you control, where x is the number of elves you control"}}}},
+		Controller: 0, Owner: 0, Counters: map[string]int{}, Flags: map[string]int{}, Timestamp: gs.NextTimestamp()}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+	ResolveEffect(gs, src, eff)
+	if got := ally.Counters["+1/+1"]; got != 2 {
+		t.Fatalf("elves-you-control should still resolve to 2 (Elf Lord is a Wolf), got %d", got)
+	}
+}
