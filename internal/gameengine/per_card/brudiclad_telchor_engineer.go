@@ -242,7 +242,14 @@ func brudicladCombatBegin(gs *gameengine.GameState, perm *gameengine.Permanent, 
 		if newCard == nil {
 			continue
 		}
-		newCard.Owner = seat
+		// CR §108.3 / §110.5a — a copy effect changes characteristics, not
+		// ownership; a token's owner is fixed at creation and never moves.
+		// Pin Card.Owner to the permanent's Owner (BecomeCopyOfCard already
+		// preserves perm.Card.Owner) so a token this seat CONTROLS but does
+		// not OWN (e.g. one stolen via Mob Rule) keeps its real owner. The
+		// prior `= seat` clobbered it to the controller, diverging from
+		// Permanent.Owner and tripping the OwnerImmutability invariant.
+		newCard.Owner = p.Owner
 		// Ensure "token" tag is present — BecomeCopyOfCard preserves
 		// Types slice which already has it from chosen, but be explicit.
 		if !hasType(newCard.Types, "token") {
