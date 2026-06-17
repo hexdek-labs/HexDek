@@ -170,6 +170,13 @@ func CreateCreatureToken(gs *GameState, seatIdx int, name string, types []string
 	if seat == nil {
 		return nil
 	}
+	// CR §800.4a: a departed seat cannot create or control new tokens. This
+	// path bypasses FireCreateTokenEvent, so it needs its own gate — otherwise
+	// a token minted onto a LeftGame seat's battlefield (which the census skips)
+	// orphans its InstanceID (r63 eliminated-seat token leak).
+	if SeatHasLeftGame(gs, seatIdx) {
+		return nil
+	}
 	allTypes := append([]string{"token"}, types...)
 	token := &Card{
 		Name:          name,

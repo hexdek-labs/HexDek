@@ -549,6 +549,18 @@ func FirePutCounterEvent(gs *GameState, target *Permanent, counterType string, c
 // FireCreateTokenEvent builds and dispatches a would_create_token event.
 // Returns the modified count (Doubling Season doubles to 2x).
 func FireCreateTokenEvent(gs *GameState, seat, count int, src *Permanent) (int, bool) {
+	// CR §800.4a: a player who has left the game is no longer in the game,
+	// so an effect that would create a token under their control does
+	// nothing. Cancel at this formation chokepoint (covers resolveCreateToken,
+	// resolveCreateTokenCopy, CreateDoubledTokens) rather than minting a token
+	// onto a departed seat's battlefield — that battlefield is skipped by the
+	// ZoneConservation census, so the minted-but-unceased ID would orphan
+	// (r63 eliminated-seat token leak; mirrors the SeatHasLeftGame mana/trigger
+	// gates). HandleSeatElimination's cleanup can't catch a token created by a
+	// trigger that resolves AFTER the elimination sweep; stop it at creation.
+	if SeatHasLeftGame(gs, seat) {
+		return 0, true
+	}
 	ev := NewReplEvent("would_create_token")
 	ev.TargetSeat = seat
 	ev.Source = src
