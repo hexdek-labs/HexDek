@@ -137,7 +137,23 @@ func theReaperDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map
 	}
 	mover := gameengine.MoveCard(gs, dyingCard, dyingCard.Owner, "graveyard", "battlefield", "the_reaper_steal")
 	if mover.Permanent != nil {
-		mover.Permanent.Controller = perm.Controller
+		np := mover.Permanent
+		// MoveCard reanimates onto the OWNER's battlefield slice. Stealing
+		// is a control change, so re-home the *Permanent to the thief's
+		// slice — don't just flip Controller, which would leave the object
+		// in the owner's slice with Controller=thief (a slice/Controller
+		// mismatch that breaks slice-iterated "creatures you control" and,
+		// once a later control op runs, aliases the *Permanent onto two
+		// battlefields → CardIdentity dup; r63 Scarab God / Reaper King).
+		if perm.Controller != np.Controller && perm.Controller >= 0 && perm.Controller < len(gs.Seats) && gs.Seats[perm.Controller] != nil {
+			removePermanent(gs, np) // np is on the owner's slice here
+			np.Controller = perm.Controller
+			np.Timestamp = gs.NextTimestamp()
+			gs.Seats[perm.Controller].Battlefield = append(gs.Seats[perm.Controller].Battlefield, np)
+			gs.InvalidateCharacteristicsCache()
+		} else {
+			np.Controller = perm.Controller
+		}
 	}
 	ownSeat.Flags["reaper_stole_turn"] = gs.Turn + 1 // +1 to avoid 0-collision on turn 0
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

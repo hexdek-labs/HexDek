@@ -271,20 +271,38 @@ func removePermanent(gs *gameengine.GameState, p *gameengine.Permanent) bool {
 	if gs == nil || p == nil {
 		return false
 	}
-	if p.Controller < 0 || p.Controller >= len(gs.Seats) {
-		return false
+	ceaseIfToken := func() {
+		if p.Card != nil && p.IsToken() && p.Card.InstanceID != "" {
+			gameengine.MarkInstanceIDCeased(gs, p.Card.InstanceID)
+			p.Card.InstanceID = ""
+		}
 	}
-	seat := gs.Seats[p.Controller]
-	for i, q := range seat.Battlefield {
-		if q == p {
-			seat.Battlefield = append(seat.Battlefield[:i], seat.Battlefield[i+1:]...)
-			if p.Card != nil && p.IsToken() {
-				if p.Card.InstanceID != "" {
-					gameengine.MarkInstanceIDCeased(gs, p.Card.InstanceID)
-					p.Card.InstanceID = ""
-				}
+	// Fast path: the controller's slice (the common case).
+	if p.Controller >= 0 && p.Controller < len(gs.Seats) && gs.Seats[p.Controller] != nil {
+		seat := gs.Seats[p.Controller]
+		for i, q := range seat.Battlefield {
+			if q == p {
+				seat.Battlefield = append(seat.Battlefield[:i], seat.Battlefield[i+1:]...)
+				ceaseIfToken()
+				return true
 			}
-			return true
+		}
+	}
+	// Fallback (r63 CardIdentity fix): remove the permanent from whatever
+	// battlefield slice it physically sits in, even when its Controller
+	// field disagrees (a transient slice/Controller mismatch). Mirrors
+	// gameengine.removePermanent — without it, a follow-up append aliases
+	// the *Permanent onto two battlefields.
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for i, q := range s.Battlefield {
+			if q == p {
+				s.Battlefield = append(s.Battlefield[:i], s.Battlefield[i+1:]...)
+				ceaseIfToken()
+				return true
+			}
 		}
 	}
 	return false

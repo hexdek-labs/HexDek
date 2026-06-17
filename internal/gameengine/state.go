@@ -2468,18 +2468,48 @@ func (t Target) SeatTarget() (int, bool) {
 // re-mints those *Cards as TK before they hit the battlefield, so by
 // the time this site sees them their ID is TK, not the original OG.
 func (gs *GameState) removePermanent(p *Permanent) bool {
-	if p == nil || p.Controller < 0 || p.Controller >= len(gs.Seats) {
+	if p == nil {
 		return false
 	}
-	bf := gs.Seats[p.Controller].Battlefield
-	for i, q := range bf {
-		if q == p {
-			gs.Seats[p.Controller].Battlefield = append(bf[:i], bf[i+1:]...)
-			if p.Card != nil && p.IsToken() && p.Card.InstanceID != "" {
-				MarkInstanceIDCeased(gs, p.Card.InstanceID)
-				p.Card.InstanceID = ""
+	ceaseIfToken := func() {
+		if p.Card != nil && p.IsToken() && p.Card.InstanceID != "" {
+			MarkInstanceIDCeased(gs, p.Card.InstanceID)
+			p.Card.InstanceID = ""
+		}
+	}
+	// Fast path: the permanent is almost always in its controller's slice.
+	if p.Controller >= 0 && p.Controller < len(gs.Seats) && gs.Seats[p.Controller] != nil {
+		bf := gs.Seats[p.Controller].Battlefield
+		for i, q := range bf {
+			if q == p {
+				gs.Seats[p.Controller].Battlefield = append(bf[:i], bf[i+1:]...)
+				ceaseIfToken()
+				return true
 			}
-			return true
+		}
+	}
+	// Fallback (r63 CardIdentity fix): a permanent whose Controller field
+	// disagrees with the battlefield slice it physically sits in — a
+	// transient slice/Controller mismatch left by a handler that flipped
+	// Controller without relocating the *Permanent (e.g. a reanimate-and-
+	// steal that drops the card on its OWNER's slice then sets Controller
+	// to the thief). Without this fallback, removePermanent would no-op,
+	// the caller would append the same *Permanent to a second slice, and
+	// the object would be on two battlefields at once (CardIdentity
+	// same_card=true, "appears in both seat X and seat Y" — Scarab God /
+	// The Reaper King, loki seed 99 game 222). removePermanent must remove
+	// the permanent from wherever it actually is, not only from where its
+	// Controller claims it should be.
+	for _, s := range gs.Seats {
+		if s == nil {
+			continue
+		}
+		for i, q := range s.Battlefield {
+			if q == p {
+				s.Battlefield = append(s.Battlefield[:i], s.Battlefield[i+1:]...)
+				ceaseIfToken()
+				return true
+			}
 		}
 	}
 	return false
