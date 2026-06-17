@@ -57,6 +57,14 @@ func inallaEminenceCopy(gs *gameengine.GameState, perm *gameengine.Permanent, ct
 	}
 	seat.ManaPool -= 1
 	gameengine.SyncManaAfterSpend(seat)
+	// CR §603 optional eminence-trigger cost — credit it to any in-flight
+	// legality window for this seat (Hashaton/extort aux-spend class,
+	// legality.go NoteManaSpend). This trigger fires INSIDE the window of
+	// whatever made a Wizard enter — including a Wizard with persist that
+	// sacrificed itself as an activation cost and re-entered mid-cost (Glen
+	// Elendra Archmage's {U},Sac counter ability); without this credit the {1}
+	// reads as that activation over-paying its announced total.
+	gs.Legality.NoteManaSpend(perm.Controller, 1)
 	tokenCard := &gameengine.Card{
 		Name:          entered.Card.DisplayName() + " (Inalla token)",
 		Owner:         perm.Controller,

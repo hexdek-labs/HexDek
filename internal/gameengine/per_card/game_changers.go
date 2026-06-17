@@ -761,6 +761,15 @@ func jeskasWillResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 		manaAdded = bestHandSize
 		s.ManaPool += manaAdded
 		gameengine.SyncManaAfterAdd(s, manaAdded)
+		// Credit the in-window mana ADD to any in-flight legality window for
+		// this seat (the mirror of NoteManaSpend; gameengine.AddMana does this
+		// automatically, but this raw-pool add bypasses it). Jeska's Will can
+		// resolve INSIDE another action's announcement window for the same
+		// seat (e.g. a cast that drains the cascade chain inline — The First
+		// Sliver casting Sliver Hivelord); without this credit the added mana
+		// reads as that action being cast for FREE / discounted (§601.2f-h
+		// "under-paid": announced 5, pool delta showed -3 spent).
+		gs.Legality.NoteManaAdd(seat, manaAdded)
 		gs.LogEvent(gameengine.Event{
 			Kind:   "add_mana",
 			Seat:   seat,
