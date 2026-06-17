@@ -72,31 +72,24 @@ func deadeyeNavigatorETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 			continue
 		}
 		// Already paired with someone else?
-		if p.Flags != nil && p.Flags["paired_timestamp"] > 0 {
+		if gameengine.IsPaired(p) {
 			continue
 		}
-		// Pair!
-		if p.Flags == nil {
-			p.Flags = map[string]int{}
+		// Pair via the canonical primitive (CR §702.97) rather than
+		// re-implementing the mutual-timestamp wiring inline. PairSoulbond
+		// enforces the same-controller / both-creature / both-unpaired gates
+		// and emits the canonical "soulbond_pair" event, and — critically —
+		// keeps the pairing readable by gameengine.IsPaired so the LTB /
+		// control-change UnpairOnLeave hooks correctly break Deadeye's pair
+		// when either creature leaves. (Was an inline paired_timestamp set
+		// that duplicated the primitive's bookkeeping.)
+		if !gameengine.PairSoulbond(gs, perm, p) {
+			continue
 		}
-		perm.Flags["paired_timestamp"] = p.Timestamp
-		p.Flags["paired_timestamp"] = perm.Timestamp
-		gs.LogEvent(gameengine.Event{
-			Kind:   "soulbond_pair",
-			Seat:   seat,
-			Target: seat,
-			Source: perm.Card.DisplayName(),
-			Details: map[string]interface{}{
-				"paired_card":     p.Card.DisplayName(),
-				"rule":            "702.93",
-				"partner_stamp":   p.Timestamp,
-				"deadeye_stamp":   perm.Timestamp,
-			},
-		})
 		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-			"seat":         seat,
-			"paired_with":  p.Card.DisplayName(),
-			"auto_paired":  true,
+			"seat":        seat,
+			"paired_with": p.Card.DisplayName(),
+			"auto_paired": true,
 		})
 		return
 	}
