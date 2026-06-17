@@ -222,3 +222,71 @@ func TestDynamicX_CastXSpellUnaffected(t *testing.T) {
 		t.Fatalf("cast X=5 spell should deal 5, got %d", victim.MarkedDamage)
 	}
 }
+
+// --- create-X-TOKENS count basis (r63 token-count firespot follow-up) ---
+//
+// resolveCreateToken evaluates its count through evalNumber, so the same
+// where-X / cast-X resolution that fixed counter counts also drives token
+// counts. These pin the create-X-tokens path with an ESTABLISHED board, which
+// the live OUTCOME/PROGRESSION checkers cannot model from the lossy AST (they
+// pin X to a fixed value / mark the pair out of scope) — the engine must still
+// resolve the real basis.
+
+func dxCountSubtype(gs *GameState, seat int, sub string) int {
+	n := 0
+	for _, p := range gs.Seats[seat].Battlefield {
+		if p == nil || p.Card == nil {
+			continue
+		}
+		for _, ty := range p.Card.Types {
+			if ty == sub {
+				n++
+				break
+			}
+		}
+	}
+	return n
+}
+
+// Chancellor of the Forge — ETB create X 1/1 goblins, X = creatures you control
+// (where-X basis). With 2 allies + Chancellor on the board, X = 3.
+func TestDynamicX_ChancellorTokensWhereX(t *testing.T) {
+	gs := newTestGameState(2)
+	dxCreature(gs, 0, "Ally1")
+	dxCreature(gs, 0, "Ally2")
+	eff := &gameast.CreateToken{Count: *gameast.NumStr("x"), PT: &[2]int{1, 1}, Color: []string{"R"},
+		Types: []string{"phyrexian", "goblin"}, Keywords: []string{"haste"}}
+	src := &Permanent{
+		Card: &Card{Name: "Chancellor of the Forge", Types: []string{"creature"},
+			AST: &gameast.CardAST{Abilities: []gameast.Ability{&gameast.Triggered{Effect: eff,
+				Raw: "when this creature enters, create x 1/1 red phyrexian goblin creature tokens with haste, where x is the number of creatures you control"}}}},
+		Controller: 0, Owner: 0, Flags: map[string]int{}, Counters: map[string]int{}, Timestamp: gs.NextTimestamp(),
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+	before := dxCountSubtype(gs, 0, "goblin")
+	ResolveEffect(gs, src, eff)
+	if got := dxCountSubtype(gs, 0, "goblin") - before; got != 3 {
+		t.Fatalf("Chancellor should create X=creatures-you-control=3 goblins, got %d", got)
+	}
+}
+
+// Farmer Cotton — {X}{G}{W} ETB create X 1/1 halflings, X = cast {X}. The
+// permanent stamps perm.Flags["chosen_x"]; the create-X-tokens path must read
+// it (resolves in a later frame where gs.Flags["x"] is 0).
+func TestDynamicX_FarmerCottonTokensCastX(t *testing.T) {
+	gs := newTestGameState(2)
+	eff := &gameast.CreateToken{Count: *gameast.NumStr("x"), PT: &[2]int{1, 1}, Color: []string{"W"},
+		Types: []string{"halfling"}}
+	src := &Permanent{
+		Card: &Card{Name: "Farmer Cotton", Types: []string{"creature"},
+			AST: &gameast.CardAST{Abilities: []gameast.Ability{&gameast.Triggered{Effect: eff,
+				Raw: "when this creature enters, create x 1/1 white halfling creature tokens and x food tokens"}}}},
+		Controller: 0, Owner: 0, Flags: map[string]int{"chosen_x": 3}, Counters: map[string]int{}, Timestamp: gs.NextTimestamp(),
+	}
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, src)
+	before := dxCountSubtype(gs, 0, "halfling")
+	ResolveEffect(gs, src, eff)
+	if got := dxCountSubtype(gs, 0, "halfling") - before; got != 3 {
+		t.Fatalf("Farmer Cotton cast for X=3 should create 3 halflings, got %d", got)
+	}
+}

@@ -2650,6 +2650,20 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 				if !EventEquals(trig.Trigger.Event, "etb") {
 					continue
 				}
+				// Judge r63 double-fire gate (cast path): per_card owns this
+				// card's self-ETB (an OnETB handler, or an OnTrigger on the
+				// etb-family events) — skip the generic AST push or the printed
+				// ability resolves TWICE (the per_card hook below + this push).
+				// The non-cast path (etb_dispatch.go::FirePermanentETBTriggers)
+				// already had this gate; the cast path — the common case for a
+				// normally-cast permanent — was missing it, so e.g. Ezrim,
+				// Agency Chief investigated twice from BOTH paths → 4 Clues
+				// instead of 2 (live grinder OUTCOME over-count). Same class as
+				// the 22 cards listed in the etb_dispatch.go gate.
+				if name := card.DisplayName(); (HasETBHook != nil && HasETBHook(name)) ||
+					PerCardOwnsTrigger(name, "permanent_etb", "etb") {
+					continue
+				}
 				// CR §614 — consult would_fire_etb_trigger so Panharmonicon
 				// and friends can add additional firings. See parallel fix
 				// in etb_dispatch.go::FirePermanentETBTriggers.

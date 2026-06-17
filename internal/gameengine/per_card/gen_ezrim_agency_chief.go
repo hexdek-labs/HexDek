@@ -22,6 +22,13 @@ import (
 //     a delayed cleanup at end of turn to enforce the duration.
 func registerEzrimAgencyChief(r *Registry) {
 	r.OnETB("Ezrim, Agency Chief", ezrimETB)
+	// ezrimETB FULLY implements the "When Ezrim enters, investigate twice"
+	// trigger (two Clue tokens). Declare ownership so the engine's ETB
+	// dispatch skips the generic AST investigate-twice push — otherwise BOTH
+	// fire and Ezrim makes 4 Clues instead of 2 (live grinder OUTCOME
+	// over-count). Mirrors every other OnETB handler that reimplements a
+	// parsed ETB trigger.
+	r.OwnsETBTrigger("Ezrim, Agency Chief")
 	r.OnActivated("Ezrim, Agency Chief", ezrimSacGrantKeyword)
 }
 
