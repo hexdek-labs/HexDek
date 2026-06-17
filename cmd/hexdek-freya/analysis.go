@@ -103,6 +103,17 @@ type CardProfile struct {
 	IsStormFinisher  bool // storm + damage/drain/mill (Grapeshot, Brain Freeze, Tendrils of Agony)
 	IsCmdDamageThreat bool // legendary creature with high power + evasion (2-3 swing commander kill)
 
+	// RepeatableEngine reports whether the card can generate its combo
+	// resources MORE THAN ONCE on its own cadence — a permanent with an
+	// activated ability or a recurring ("whenever" / upkeep) trigger. It is
+	// false for one-shot effects: any instant/sorcery (cast once → graveyard)
+	// and any permanent whose only combo-relevant output is a single
+	// enters-the-battlefield trigger. The reciprocal-loop pair detector
+	// requires BOTH halves to be repeatable — a one-shot sac-outlet spell
+	// paired with a one-time ETB token maker shares resource types but never
+	// forms an actual closed, repeatable loop. See computeRepeatableEngine.
+	RepeatableEngine bool
+
 	SelfExilesOnDeath  bool   // card exiles itself from graveyard on death (breaks graveyard recursion)
 	RecursionDest      string // where recursion sends cards: "hand", "battlefield", "top", ""
 	RecursionCostsMana bool   // battlefield recursion requires paying a mana cost (not free)
@@ -1371,7 +1382,83 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	// Zone flow classification for value chain detection.
 	p.ZoneFlows = classifyZoneFlows(ot, tl, &p)
 
+	// Repeatability — can this card produce its combo resources more than
+	// once on its own cadence? Computed last so all engine flags are set.
+	p.RepeatableEngine = computeRepeatableEngine(p, otClean, tl)
+
 	return p
+}
+
+// computeRepeatableEngine decides whether a card is a repeatable resource
+// engine (true) or a one-shot effect (false), for the reciprocal-loop pair
+// detector. A repeatable engine is a PERMANENT that can be used again and
+// again: it has an activated ability, a recurring "whenever" trigger, a
+// beginning-of-step (e.g. upkeep) trigger, or one of the engine flags that
+// already imply a repeatable loop piece (token copier, blinker, untap-all,
+// counter/life loop halves, planeswalker). One-shot effects are excluded:
+//
+//   - Any instant or sorcery: it resolves once and goes to the graveyard.
+//     Flashback/escape grant at most one extra cast — finite, not a loop.
+//   - A permanent whose only combo-relevant text is a single "when ~ enters"
+//     trigger (an ETB) with no activated ability and no recurring trigger.
+//
+// otClean is the reminder-stripped oracle text so a keyword's parenthesized
+// gloss (e.g. landcycling's "{1}{G}, Discard this card: Search ...") is not
+// mistaken for a battlefield activated ability.
+func computeRepeatableEngine(p CardProfile, otClean, tl string) bool {
+	if strings.Contains(tl, "instant") || strings.Contains(tl, "sorcery") {
+		return false
+	}
+	if hasActivatedAbility(otClean) {
+		return true
+	}
+	if strings.Contains(otClean, "whenever") || strings.Contains(otClean, "at the beginning of") {
+		return true
+	}
+	// Engine flags that already denote a repeatable loop piece even when the
+	// activated/recurring-trigger heuristics miss the exact wording.
+	if p.MakesInfiniteTokens || p.IsBlinker || p.UntapsAll ||
+		p.CounterToDamage || p.DamageToCounter ||
+		p.LifegainToDrain || p.LifelossToPump ||
+		strings.Contains(tl, "planeswalker") {
+		return true
+	}
+	return false
+}
+
+// hasActivatedAbility reports whether reminder-stripped oracle text contains
+// an activated ability of the form "<cost>: <effect>". It distinguishes a
+// repeatable engine (a permanent you can activate repeatedly) from a one-shot
+// ETB or spell. The cost segment (text left of the first colon on a line)
+// must look like an activation cost — it carries a mana/tap symbol "{...}" or
+// opens with a cost verb — and must NOT be a triggered-ability condition
+// ("when ..."/"at the beginning ...") whose effect merely happens to contain
+// a colon. This keeps ETB colons ("When ~ enters: ...") and saga/level/loyalty
+// markers from reading as activated abilities.
+func hasActivatedAbility(otClean string) bool {
+	for _, line := range strings.Split(otClean, "\n") {
+		colon := strings.Index(line, ":")
+		if colon <= 0 {
+			continue
+		}
+		costSeg := strings.TrimSpace(strings.ToLower(line[:colon]))
+		if costSeg == "" {
+			continue
+		}
+		// Triggered ability with an embedded colon, not an activated one.
+		if strings.Contains(costSeg, "when") || strings.Contains(costSeg, "at the beginning") {
+			continue
+		}
+		if strings.Contains(costSeg, "{") {
+			return true
+		}
+		for _, verb := range []string{"sacrifice", "discard", "pay ", "tap ", "exile", "remove", "return"} {
+			if strings.HasPrefix(costSeg, verb) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // ---------------------------------------------------------------------------
@@ -2155,6 +2242,27 @@ func checkPairCombo(a, b CardProfile) *ComboResult {
 					Resources: fmt.Sprintf("%v <-> %v",
 						resourceNames(aProducesForB), resourceNames(bProducesForA)),
 					Description: fmt.Sprintf("%s and %s share resources but triggers don't chain",
+						a.Name, b.Name),
+				}
+			}
+
+			// Repeatable-loop gate: a reciprocal resource loop is only a real
+			// combo when BOTH halves can produce their resource repeatedly.
+			// A one-shot instant/sorcery (e.g. a sacrifice-outlet draw spell)
+			// paired with a one-time ETB token maker shares resource types —
+			// the spell consumes a token, the creature makes one, the spell
+			// draws a card — but nothing recurs: each card fires once and the
+			// "loop" never closes. Downgrade these to synergy so they don't
+			// surface as a categorical combo (false positives like
+			// Eviscerator's Insight + Orchard Strider). Genuine reciprocal
+			// combos pair two repeatable engines and are unaffected.
+			if !a.RepeatableEngine || !b.RepeatableEngine {
+				return &ComboResult{
+					Cards:    []string{a.Name, b.Name},
+					LoopType: "synergy",
+					Resources: fmt.Sprintf("%v <-> %v",
+						resourceNames(aProducesForB), resourceNames(bProducesForA)),
+					Description: fmt.Sprintf("%s and %s share resources but at least one is a one-shot effect — no repeatable loop",
 						a.Name, b.Name),
 				}
 			}
