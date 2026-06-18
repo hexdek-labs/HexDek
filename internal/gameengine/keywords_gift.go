@@ -113,6 +113,136 @@ func GiftType(card *Card) string {
 }
 
 // ---------------------------------------------------------------------------
+// DetectGift — real-card (parsed-AST) gift detection + cast-path wiring
+// ---------------------------------------------------------------------------
+//
+// Printed BLB/OTJ gift cards do NOT parse the "Gift a <thing>" preamble to
+// a Keyword node — the parser emits a Static ability whose Raw is "gift a
+// <thing>" (the body lands in a parsed_effect_residual scaffold). So the
+// keyword-based HasGift / GiftType above match only synthetic unit
+// fixtures, never a real card. DetectGift bridges both representations so
+// the canonical cast pipeline (CastSpell) can offer the §702.192a promise.
+
+// canonicalGiftTokens is the set of artifact-token gift types ResolveGift
+// can mint directly. Non-token gifts (a card draw, a tapped creature
+// token, an extra turn) map to "" — their delivery is the per_card
+// handler's concern (or an open gap), but the gift_promised flag still
+// gates the spell's bonus either way.
+var canonicalGiftTokens = map[string]bool{
+	"treasure": true, "clue": true, "food": true, "blood": true,
+	"map": true, "gold": true, "powerstone": true, "junk": true,
+}
+
+// DetectGift reports whether a spell carries the gift mechanic (CR
+// §702.192) and the canonical gift-token type promised ("" for a
+// non-token gift). It recognizes BOTH the synthetic Keyword form
+// (HasGift/GiftType, used by fixtures) and the real parsed form (a Static
+// ability whose Raw is a "gift a <thing>" / "gift an <thing>" preamble).
+func DetectGift(card *Card) (bool, string) {
+	if card == nil {
+		return false, ""
+	}
+	if HasGift(card) {
+		return true, GiftType(card)
+	}
+	if card.AST == nil {
+		return false, ""
+	}
+	for _, ab := range card.AST.Abilities {
+		st, ok := ab.(*gameast.Static)
+		if !ok {
+			continue
+		}
+		if t, ok := parseGiftRaw(st.Raw); ok {
+			return true, t
+		}
+	}
+	return false, ""
+}
+
+// parseGiftRaw extracts the gift-token type from a "gift a <thing>" /
+// "gift an <thing>" preamble. ok=false when raw isn't a gift preamble.
+// The returned type is a canonical artifact-token name, or "" for a
+// non-token gift (still a valid gift — ok=true).
+func parseGiftRaw(raw string) (string, bool) {
+	s := strings.ToLower(strings.TrimSpace(raw))
+	var rest string
+	switch {
+	case strings.HasPrefix(s, "gift a "):
+		rest = strings.TrimSpace(s[len("gift a "):])
+	case strings.HasPrefix(s, "gift an "):
+		rest = strings.TrimSpace(s[len("gift an "):])
+	default:
+		return "", false
+	}
+	word := rest
+	if i := strings.IndexByte(rest, ' '); i >= 0 {
+		word = rest[:i]
+	}
+	if canonicalGiftTokens[word] {
+		return word, true
+	}
+	return "", true
+}
+
+// chooseGiftRecipient picks the opponent who receives the gift (CR
+// §702.192b — must be an opponent, never the caster). Baseline policy:
+// the first living opponent in seat order (the lone opponent at a
+// 2-player table). Returns -1 when the caster has no living opponent
+// (CR §800.4 — then no gift can be promised).
+func chooseGiftRecipient(gs *GameState, caster int) int {
+	if gs == nil {
+		return -1
+	}
+	for _, opp := range gs.Opponents(caster) {
+		if opp < 0 || opp >= len(gs.Seats) {
+			continue
+		}
+		if s := gs.Seats[opp]; s != nil && !s.Lost {
+			return opp
+		}
+	}
+	return -1
+}
+
+// StampGiftPromise records the §702.192a cast-time promise on an
+// already-pushed StackItem: sets CostMeta gift_promised/recipient/type,
+// logs gift_promised, and fires the gift_promised trigger. Mirrors
+// CastWithGift's stamping but operates on an existing item (the canonical
+// CastSpell pipeline builds + pushes the item itself, then layers
+// optional cast-time choices onto it).
+func StampGiftPromise(gs *GameState, item *StackItem, caster, recipient int, giftType string) {
+	if gs == nil || item == nil {
+		return
+	}
+	if item.CostMeta == nil {
+		item.CostMeta = map[string]interface{}{}
+	}
+	item.CostMeta["gift_promised"] = true
+	item.CostMeta["gift_recipient"] = recipient
+	item.CostMeta["gift_type"] = giftType
+
+	name := giftStackItemName(item)
+	gs.LogEvent(Event{
+		Kind:   "gift_promised",
+		Seat:   caster,
+		Target: recipient,
+		Source: name,
+		Details: map[string]interface{}{
+			"gift_type": giftType,
+			"rule":      "702.192a",
+		},
+	})
+	FireCardTrigger(gs, "gift_promised", map[string]interface{}{
+		"card":            item.Card,
+		"card_name":       name,
+		"controller_seat": caster,
+		"recipient_seat":  recipient,
+		"gift_type":       giftType,
+	})
+}
+
+// ---------------------------------------------------------------------------
 // CastWithGift
 // ---------------------------------------------------------------------------
 

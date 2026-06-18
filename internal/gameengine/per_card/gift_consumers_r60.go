@@ -63,13 +63,25 @@ func registerGiftConsumersR60(r *Registry) {
 	r.OnResolve("Valley Rally", valleyRallyResolve)
 }
 
-// giftPromised returns (true, true) when CostMeta has gift_promised=true,
-// else (false, true). The second return tells the caller whether the
-// CostMeta lookup itself succeeded — when false, the StackItem is
-// malformed and the handler should abstain.
+// giftPromised returns (promised, proceed). proceed is false ONLY for a
+// nil item — a real game never hands a resolve handler a nil StackItem.
+//
+// A gift card cast WITHOUT promising a gift (the common case: the cast
+// path stamps gift_promised only when the player opts in; a copied spell
+// per CR §707.10 never promises) carries no gift metadata — that's the
+// NO-GIFT mode, and the handler must still run the spell's BASE effect
+// (2 damage, the destroy, the pump). Earlier this returned (false,false)
+// for absent CostMeta, so the handler abstained and the base effect was
+// LOST — every gift card resolved to nothing whenever it wasn't gifted
+// (i.e. always, since the live cast path never stamped the promise).
+// Now an absent flag → (false, true): not promised, proceed in no-gift
+// mode.
 func giftPromised(item *gameengine.StackItem) (bool, bool) {
-	if item == nil || item.CostMeta == nil {
+	if item == nil {
 		return false, false
+	}
+	if item.CostMeta == nil {
+		return false, true // no gift metadata → not promised, run base effect
 	}
 	v, ok := item.CostMeta["gift_promised"].(bool)
 	if !ok {

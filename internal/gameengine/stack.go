@@ -940,6 +940,25 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 			ApplyBargain(gs, seatIdx, item)
 		}
 	}
+	// CR §702.192 — Gift. An OPTIONAL promise made as you cast a spell with
+	// gift: you MAY promise a chosen opponent a gift. If you promise, the
+	// chosen opponent receives the gift on resolution AND the spell's
+	// gift-gated bonus applies; if you don't, the lesser / no-bonus mode
+	// applies. The promise + recipient + gift type are stamped onto the
+	// StackItem's CostMeta here at cast time (mirroring bargain/conspire);
+	// token delivery (ResolveGift) and the gated bonus run in the per_card
+	// resolve handler (gift_consumers). Printed gift cards parse the "Gift a
+	// <x>" preamble to a scaffold node rather than a Keyword, so DetectGift
+	// reads the real AST form — keyword-based HasGift misses every printed
+	// gift card. Before this wiring, nothing in the live cast path stamped
+	// gift_promised, so every gift card resolved permanently in no-gift mode.
+	if hasGift, giftType := DetectGift(card); hasGift {
+		if recipient := chooseGiftRecipient(gs, seatIdx); recipient >= 0 &&
+			seat.Hat != nil &&
+			seat.Hat.ChooseOptionalCost(gs, seatIdx, card, "gift", 0, 1) > 0 {
+			StampGiftPromise(gs, item, seatIdx, recipient, giftType)
+		}
+	}
 	// CR §702.157 — Squad. A REPEATABLE optional additional mana cost: pay
 	// "{cost}" any number of times. The count is paid here (extra mana,
 	// affordability-capped like replicate) and stamped onto CostMeta; the ETB
