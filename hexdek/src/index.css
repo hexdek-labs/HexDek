@@ -3057,6 +3057,59 @@ body {
 .hot-cards-grid--sm { grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 6px; }
 .hot-cards-grid--sm .hot-cards-chip { font-size: 8px; padding: 0 3px; }
 
+/* TAB 2 (Freya) — responsive 2-to-3 column grid (Phase 2). Single
+   panels flow into the columns; .freya-pair / .freya-full force their
+   own full-width row (side-by-side pair, or full-bleed). */
+.freya-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: min-content;
+  gap: 14px;
+  padding: 14px 12px;
+  align-items: start;
+}
+@media (min-width: 1240px) {
+  .freya-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  .freya-grid { grid-template-columns: 1fr; }
+}
+.freya-grid > * { min-width: 0; }
+.freya-full { grid-column: 1 / -1; min-width: 0; }
+.freya-pair {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  align-items: start;
+}
+.freya-pair > * { min-width: 0; }
+
+/* STAR CARDS — full card images, bigger section header, click-to-expand */
+.freya-starcards .panel-hd { font-size: 13px; letter-spacing: 0.08em; }
+.star-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(124px, 1fr));
+  gap: 12px;
+}
+.star-card-img {
+  width: 100%;
+  display: block;
+  border-radius: 8px;
+  border: 1px solid var(--rule-2);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.4);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+  cursor: pointer;
+}
+.star-card-img:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.6);
+}
+
+@media (max-width: 760px) {
+  .freya-pair { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 1100px) {
   /* Drop the right search rail under the decklist before going single-col */
   .deck-landing--edit { grid-template-columns: 300px minmax(0, 1fr); }

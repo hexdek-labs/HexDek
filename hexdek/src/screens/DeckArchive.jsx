@@ -2493,68 +2493,119 @@ export default function DeckArchive() {
           </div>
         )}
 
-        {/* ═══ TAB 2 — FREYA ANALYSIS ═══ */}
+        {/* ═══ TAB 2 — FREYA ANALYSIS (responsive 2-to-3 column grid) ═══ */}
         {landingTab === 'freya' && (
-          <div className="archive-main deck-tab-body" data-testid="staging-freya">
-            <DeckBudgetPanel deckId={`${owner}/${id}`} />
-            <Panel code="04.C" title="FREYA / / ENGINE ANALYSIS" right={<Tag solid>{wbs ? `Bracket B${wbs}${bracketDiverges ? ` → B${measuredBracket}` : ''}` : 'Bracket pending'}</Tag>}>
-              {!analysis ? (
-                <div style={{ padding: '20px 0', textAlign: 'center' }}>
-                  <div className="t-md muted" style={{ lineHeight: 1.8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                    {analyzing ? <>&gt; FREYA ENGINE ANALYZING DECK<span className="blink">_</span></> : <>&gt; NO FREYA ANALYSIS ON FILE</>}
+          <div className="archive-main freya-grid" data-testid="staging-freya">
+            {/* Row: engine analysis + deck budget */}
+            <div className="freya-pair">
+              <Panel code="04.C" title="FREYA / / ENGINE ANALYSIS" right={<Tag solid>{wbs ? `Bracket B${wbs}${bracketDiverges ? ` → B${measuredBracket}` : ''}` : 'Bracket pending'}</Tag>}>
+                {!analysis ? (
+                  <div style={{ padding: '20px 0', textAlign: 'center' }}>
+                    <div className="t-md muted" style={{ lineHeight: 1.8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      {analyzing ? <>&gt; FREYA ENGINE ANALYZING DECK<span className="blink">_</span></> : <>&gt; NO FREYA ANALYSIS ON FILE</>}
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="analysis-grid">
-                  <div>
-                    <div className="t-xs muted">ARCHETYPE</div>
-                    <div className="t-2xl" style={{ fontWeight: 700, marginTop: 2 }}>{archetype}</div>
+                ) : (
+                  <div className="analysis-grid">
+                    <div>
+                      <div className="t-xs muted">ARCHETYPE</div>
+                      <div className="t-2xl" style={{ fontWeight: 700, marginTop: 2 }}>{archetype}</div>
+                    </div>
+                    <div className="analysis-weights">
+                      <div className="t-xs muted">STRATEGY FOCUS</div>
+                      {Object.entries(evalWeights).slice(0, 6).map(([k, v], i) => (
+                        <div key={i} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 36px', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                          <span className="t-xs" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.replace(/_/g, ' ').toUpperCase()}</span>
+                          <Bar value={v * 100} />
+                          <span className="t-xs muted text-right">{Math.round(v * 100) / 100}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                  <div className="analysis-weights">
-                    <div className="t-xs muted">STRATEGY FOCUS</div>
-                    {Object.entries(evalWeights).slice(0, 6).map(([k, v], i) => (
-                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 36px', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                        <span className="t-xs" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.replace(/_/g, ' ').toUpperCase()}</span>
-                        <Bar value={v * 100} />
-                        <span className="t-xs muted text-right">{Math.round(v * 100) / 100}</span>
-                      </div>
+                )}
+              </Panel>
+              <DeckBudgetPanel deckId={`${owner}/${id}`} />
+            </div>
+
+            {/* Row: WIN LINES + WIN CONDITIONS side by side */}
+            {(winLines.length > 0 || finisherCards.length > 0) && (
+              <div className="freya-pair">
+                {winLines.length > 0 ? (() => {
+                  const WINLINE_CAP = 8
+                  const visible = winLinesExpanded ? winLines : winLines.slice(0, WINLINE_CAP)
+                  const hidden = winLines.length - WINLINE_CAP
+                  return (
+                    <Panel code="04.D" title={`WIN LINES / / ${winLines.length} DETECTED`}>
+                      {visible.map((wl, i) => {
+                        const kindMap = { finisher: 'bad', combat: 'warn', commander_damage: 'ok', combo: 'bad', synergy: null }
+                        const symbols = ['α', 'β', 'γ', 'δ', 'ε', 'ζ']
+                        return (
+                          <div key={i} className="winline-row" style={{ padding: '10px 0', borderBottom: i < visible.length - 1 ? '1px dashed var(--rule-2)' : 'none' }}>
+                            <div style={{ fontSize: 24, fontWeight: 700, color: kindMap[wl.type] === 'bad' ? 'var(--danger)' : kindMap[wl.type] === 'warn' ? 'var(--warn)' : kindMap[wl.type] === 'ok' ? 'var(--ok)' : 'var(--ink)' }}>{symbols[i] || '·'}</div>
+                            <Tag kind={kindMap[wl.type]} solid>{wl.type?.toUpperCase()}</Tag>
+                            <div>
+                              <div className="t-md" style={{ fontWeight: 700 }}>{wl.pieces?.join(' + ')}</div>
+                              {wl.tutor_paths && <div className="t-xs muted" style={{ marginTop: 2 }}>TUTORS: {wl.tutor_paths.map(t => t.tutor).join(', ')}</div>}
+                            </div>
+                          </div>
+                        )
+                      })}
+                      {!winLinesExpanded && hidden > 0 && (
+                        <button type="button" onClick={() => setWinLinesExpanded(true)} style={{ width: '100%', padding: '10px 0', marginTop: 6, background: 'none', border: '1px dashed var(--rule-2)', color: 'var(--ink-2)', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}>SHOW {hidden} MORE WIN LINE{hidden === 1 ? '' : 'S'} ↓</button>
+                      )}
+                      {winLinesExpanded && winLines.length > WINLINE_CAP && (
+                        <button type="button" onClick={() => setWinLinesExpanded(false)} style={{ width: '100%', padding: '10px 0', marginTop: 6, background: 'none', border: '1px dashed var(--rule-2)', color: 'var(--ink-2)', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}>COLLAPSE ↑</button>
+                      )}
+                    </Panel>
+                  )
+                })() : <div />}
+                {finisherCards.length > 0 ? (
+                  <Panel code="04.K" title={`WIN CONDITIONS / / ${finisherCards.length}`}>
+                    <div className="grid col-5 gap-2">{finisherCards.slice(0, 10).map((name, i) => <CardThumb key={i} name={name} />)}</div>
+                  </Panel>
+                ) : <div />}
+              </div>
+            )}
+
+            {/* Win-condition detection rationale — full width under the pair */}
+            <div className="freya-full"><WinConditionRationale winLines={winLines} /></div>
+
+            {/* STAR CARDS — own row, full card images, click-to-expand */}
+            {starCards.length > 0 && (
+              <div className="freya-full freya-starcards">
+                <Panel code="04.S" title={`STAR CARDS / / ${starCards.length}`} right={<Tag solid kind="ok">★ TOP {Math.min(10, starCards.length)}</Tag>}>
+                  <div className="t-xs muted" style={{ marginBottom: 10 }}>Freya's highest-impact cards in this list — click any card to expand it.</div>
+                  <div className="star-cards-grid">
+                    {starCards.slice(0, 10).map((name, i) => (
+                      <CardLink key={i} name={name} underline={false} style={{ display: 'block' }}>
+                        <img
+                          src={cardImageUrl(name)}
+                          alt={name}
+                          className="star-card-img"
+                          loading="lazy"
+                          onError={(e) => { e.target.style.visibility = 'hidden' }}
+                        />
+                      </CardLink>
                     ))}
                   </div>
-                </div>
-              )}
-            </Panel>
-
-            {winLines.length > 0 && (() => {
-              const WINLINE_CAP = 8
-              const visible = winLinesExpanded ? winLines : winLines.slice(0, WINLINE_CAP)
-              const hidden = winLines.length - WINLINE_CAP
-              return (
-                <Panel code="04.D" title={`WIN LINES / / ${winLines.length} DETECTED`}>
-                  {visible.map((wl, i) => {
-                    const kindMap = { finisher: 'bad', combat: 'warn', commander_damage: 'ok', combo: 'bad', synergy: null }
-                    const symbols = ['α', 'β', 'γ', 'δ', 'ε', 'ζ']
-                    return (
-                      <div key={i} className="winline-row" style={{ padding: '10px 0', borderBottom: i < visible.length - 1 ? '1px dashed var(--rule-2)' : 'none' }}>
-                        <div style={{ fontSize: 24, fontWeight: 700, color: kindMap[wl.type] === 'bad' ? 'var(--danger)' : kindMap[wl.type] === 'warn' ? 'var(--warn)' : kindMap[wl.type] === 'ok' ? 'var(--ok)' : 'var(--ink)' }}>{symbols[i] || '·'}</div>
-                        <Tag kind={kindMap[wl.type]} solid>{wl.type?.toUpperCase()}</Tag>
-                        <div>
-                          <div className="t-md" style={{ fontWeight: 700 }}>{wl.pieces?.join(' + ')}</div>
-                          {wl.tutor_paths && <div className="t-xs muted" style={{ marginTop: 2 }}>TUTORS: {wl.tutor_paths.map(t => t.tutor).join(', ')}</div>}
-                        </div>
-                      </div>
-                    )
-                  })}
-                  {!winLinesExpanded && hidden > 0 && (
-                    <button type="button" onClick={() => setWinLinesExpanded(true)} style={{ width: '100%', padding: '10px 0', marginTop: 6, background: 'none', border: '1px dashed var(--rule-2)', color: 'var(--ink-2)', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}>SHOW {hidden} MORE WIN LINE{hidden === 1 ? '' : 'S'} ↓</button>
-                  )}
-                  {winLinesExpanded && winLines.length > WINLINE_CAP && (
-                    <button type="button" onClick={() => setWinLinesExpanded(false)} style={{ width: '100%', padding: '10px 0', marginTop: 6, background: 'none', border: '1px dashed var(--rule-2)', color: 'var(--ink-2)', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}>COLLAPSE ↑</button>
-                  )}
                 </Panel>
-              )
-            })()}
-            <WinConditionRationale winLines={winLines} />
+              </div>
+            )}
 
+            {/* VALUE ENGINE (recursion depth) + CUT RATIONALE — prominent pair */}
+            <div className="freya-pair">
+              <div>
+                {valueKeys.length > 0 && (
+                  <CollapsiblePanel code="04.E" title={`VALUE ENGINE / / ${valueKeys.length} KEY CARDS`} defaultOpen>
+                    <div className="grid col-5 gap-2">{valueKeys.slice(0, 10).map((name, i) => <CardThumb key={i} name={name} />)}</div>
+                  </CollapsiblePanel>
+                )}
+                <ValueEngineRationale chains={valueChains} />
+              </div>
+              <ConsiderCuttingRationale cuts={cuttableCards} onCut={isOwner ? handleCutCardFromWorkshop : undefined} />
+            </div>
+
+            {/* Dense tail — fills the remaining 2-to-3 columns */}
             {legality && !legality.valid && (
               <Panel code="04.L" title="LEGALITY VIOLATIONS" right={<Tag kind="bad" solid>ILLEGAL</Tag>}>
                 {legality.errors?.map((e, i) => <div key={i} className="t-xs" style={{ color: 'var(--danger)', padding: '2px 0' }}>&gt; {e}</div>)}
@@ -2569,48 +2620,6 @@ export default function DeckArchive() {
                 {comboNotes.map((w, i) => <div key={`n${i}`} className="t-xs" style={{ color: 'var(--ink-2)', padding: '2px 0' }}>&gt; COMBO: {w}</div>)}
               </Panel>
             )}
-
-            {metaMatchups.length > 0 && (
-              <CollapsiblePanel code="04.MM" title={`META POSITIONING / / ${archetype}`}>
-                {metaMatchups.map((m, i) => {
-                  const ratingSymbol = m.rating === 'favored' ? '▲' : m.rating === 'unfavored' ? '▼' : '—'
-                  return (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < metaMatchups.length - 1 ? '1px dotted var(--rule)' : 'none' }}>
-                      <div>
-                        <span className="t-xs" style={{ fontWeight: 700 }}>vs {m.archetype?.toUpperCase()}</span>
-                        {m.reason && <div className="t-xs muted" style={{ marginTop: 1 }}>{m.reason}</div>}
-                      </div>
-                      <Tag solid kind={m.rating === 'favored' ? 'ok' : m.rating === 'unfavored' ? 'bad' : null}>{ratingSymbol} {m.rating?.toUpperCase()}</Tag>
-                    </div>
-                  )
-                })}
-              </CollapsiblePanel>
-            )}
-
-            {vulnerableTo.length > 0 && (
-              <CollapsiblePanel code="04.V" title="VULNERABLE TO">
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{vulnerableTo.map((v, i) => <Tag key={i} kind="warn" solid>{v.toUpperCase()}</Tag>)}</div>
-              </CollapsiblePanel>
-            )}
-
-            {starCards.length > 0 && (
-              <CollapsiblePanel code="04.S" title={`STAR CARDS / / ${starCards.length}`}>
-                <div className="grid col-5 gap-2">{starCards.slice(0, 10).map((name, i) => <CardThumb key={i} name={name} score="★" />)}</div>
-              </CollapsiblePanel>
-            )}
-
-            {finisherCards.length > 0 && (
-              <CollapsiblePanel code="04.K" title={`WIN CONDITIONS / / ${finisherCards.length}`}>
-                <div className="grid col-5 gap-2">{finisherCards.slice(0, 10).map((name, i) => <CardThumb key={i} name={name} />)}</div>
-              </CollapsiblePanel>
-            )}
-
-            {valueKeys.length > 0 && (
-              <CollapsiblePanel code="04.E" title={`VALUE ENGINE / / ${valueKeys.length} KEY CARDS`}>
-                <div className="grid col-5 gap-2">{valueKeys.slice(0, 10).map((name, i) => <CardThumb key={i} name={name} />)}</div>
-              </CollapsiblePanel>
-            )}
-            <ValueEngineRationale chains={valueChains} />
 
             {gameChangerCards.length > 0 && (
               <CollapsiblePanel code="04.GC" title={`GAME CHANGERS / / ${gameChangerCards.length}`} right={<Tag kind="bad" solid>B4+</Tag>}>
@@ -2634,8 +2643,6 @@ export default function DeckArchive() {
                 ))}
               </CollapsiblePanel>
             )}
-
-            <ConsiderCuttingRationale cuts={cuttableCards} onCut={isOwner ? handleCutCardFromWorkshop : undefined} />
 
             {analysis?.tutor_targets && (
               <CollapsiblePanel code="04.F" title="TUTOR TARGETS">
@@ -2741,6 +2748,31 @@ export default function DeckArchive() {
 
             {/* Head-to-head matchups (best/worst per commander) */}
             <MatchupsPanel owner={owner} id={id} />
+
+            {/* META POSITIONING + VULNERABLE TO — moved here from Tab 2
+                (matchup data, not Freya strategy-derivation). */}
+            {metaMatchups.length > 0 && (
+              <CollapsiblePanel code="04.MM" title={`META POSITIONING / / ${archetype}`} defaultOpen>
+                {metaMatchups.map((m, i) => {
+                  const ratingSymbol = m.rating === 'favored' ? '▲' : m.rating === 'unfavored' ? '▼' : '—'
+                  return (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < metaMatchups.length - 1 ? '1px dotted var(--rule)' : 'none' }}>
+                      <div>
+                        <span className="t-xs" style={{ fontWeight: 700 }}>vs {m.archetype?.toUpperCase()}</span>
+                        {m.reason && <div className="t-xs muted" style={{ marginTop: 1 }}>{m.reason}</div>}
+                      </div>
+                      <Tag solid kind={m.rating === 'favored' ? 'ok' : m.rating === 'unfavored' ? 'bad' : null}>{ratingSymbol} {m.rating?.toUpperCase()}</Tag>
+                    </div>
+                  )
+                })}
+              </CollapsiblePanel>
+            )}
+
+            {vulnerableTo.length > 0 && (
+              <CollapsiblePanel code="04.V" title="VULNERABLE TO">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{vulnerableTo.map((v, i) => <Tag key={i} kind="warn" solid>{v.toUpperCase()}</Tag>)}</div>
+              </CollapsiblePanel>
+            )}
 
             {matchupMatrix && matchupMatrix.length > 0 && (
               <Panel code="04.MX" title={`MATCHUP MATRIX / / ${matchupMatrix.length} OPPONENTS`}>
