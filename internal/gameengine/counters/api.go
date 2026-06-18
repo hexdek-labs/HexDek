@@ -204,15 +204,40 @@ func HasKeywordCounter(target Target, keyword string) bool {
 	if target == nil || keyword == "" {
 		return false
 	}
-	def := Lookup(keyword)
+	for _, s := range target.CounterStacks() {
+		if s.Count > 0 && GrantsKeyword(s.Type, keyword) {
+			return true
+		}
+	}
+	return false
+}
+
+// GrantsKeyword reports whether a counter of type counterType grants the
+// named keyword per CR §122.1c. True both when the counter's canonical
+// name IS the keyword (a flying counter grants flying, a haste counter
+// grants haste) and when a KeywordGrant counter confers a keyword whose
+// name DIFFERS from the counter's own — a phyresis counter grants infect
+// (§702.91), the one registered case where the two names diverge. The
+// pre-r63 name-only lookup silently dropped that divergent grant.
+//
+// Alias-aware on the keyword side: a query for a legacy alias (e.g.
+// "strike" → "double strike") still resolves through the registry.
+func GrantsKeyword(counterType, keyword string) bool {
+	if counterType == "" || keyword == "" {
+		return false
+	}
+	def := Lookup(counterType)
 	if def == nil || def.Category != KeywordGrant {
 		return false
 	}
-	canonical := def.Name
-	for _, s := range target.CounterStacks() {
-		if s.Type == canonical && s.Count > 0 {
-			return true
-		}
+	// Direct: the counter's canonical name is the requested keyword
+	// (resolving any alias on the queried keyword to its canonical name).
+	if kwDef := Lookup(keyword); kwDef != nil && kwDef.Name == def.Name {
+		return true
+	}
+	// Divergent grant: the counter confers a differently-named keyword.
+	if def.GrantedAbility != nil && def.GrantedAbility.Keyword == keyword {
+		return true
 	}
 	return false
 }

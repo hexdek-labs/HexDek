@@ -1044,8 +1044,11 @@ func ApplyDevoid(card *Card) {
 // damage (unlike infect which REPLACES damage with poison).
 
 // HasToxic returns true and the toxic N value if the permanent has the
-// toxic keyword. Checks AST keywords (Keyword{Name: "toxic", Args: [N]}),
-// runtime flags ("kw:toxic"), and GrantedAbilities.
+// toxic keyword. Checks AST keywords (Keyword{Name: "toxic", Args: [N]})
+// and runtime flags ("kw:toxic", value = N). Toxic is an argument-bearing
+// keyword (toxic N), so it is never placed onto the valueless
+// GrantedAbilities string slice — the until-EOT grant whitelist in
+// mod_tail_grant_keyword_eot_r63.go deliberately excludes it.
 func HasToxic(p *Permanent) (bool, int) {
 	if p == nil {
 		return false, 0

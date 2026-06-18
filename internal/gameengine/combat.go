@@ -36,6 +36,7 @@ import (
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/gameast"
+	"github.com/hexdek/hexdek/internal/gameengine/counters"
 )
 
 // -----------------------------------------------------------------------------
@@ -92,6 +93,19 @@ func (p *Permanent) HasKeyword(name string) bool {
 	if p.Counters != nil {
 		if p.Counters[want] > 0 {
 			return true
+		}
+		// §122.1c divergent grant: a keyword counter whose TYPE NAME
+		// differs from the keyword it confers — a phyresis counter grants
+		// infect (§702.91). The direct name check above only matches
+		// counters stored under the keyword's own name; resolve each
+		// present counter type through the registry and match its granted
+		// keyword. The legacy Counters map is the store the generic AST
+		// "put a <kind> counter" path (AddCounter) writes to, so this is
+		// the surface that actually carries a phyresis counter at runtime.
+		for kind, n := range p.Counters {
+			if n > 0 && kind != want && counters.GrantsKeyword(kind, want) {
+				return true
+			}
 		}
 	}
 	if p.HasKeywordCounter(want) {
