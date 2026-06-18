@@ -981,6 +981,17 @@ func fireAttackTriggers(gs *GameState, activeSeat int, declared []*Permanent) {
 			if perCardOwnsAttack {
 				break
 			}
+			// CR §702.171c — an "attacks while saddled" Mount trigger fires
+			// only if the Mount is currently saddled. The "while saddled"
+			// gate is encoded in the trigger's event name
+			// (attack_while_saddled, aliased to "attack" so iterAttackTriggers
+			// returns it); enforce it here so the bonus doesn't fire on an
+			// UNSADDLED attack. Generic-AST Mounts (no per_card handler) were
+			// firing the saddled bonus unconditionally (the per_card consumers
+			// already gate on PermIsSaddled).
+			if strings.Contains(strings.ToLower(ab.Trigger.Event), "saddled") && !PermIsSaddled(atk) {
+				continue
+			}
 			gs.LogEvent(Event{
 				Kind: "trigger_fires", Seat: atk.Controller,
 				Source: atk.Card.DisplayName(),
