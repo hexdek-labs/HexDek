@@ -27,6 +27,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/hexdek/hexdek/internal/astload"
 	"github.com/hexdek/hexdek/internal/huginn"
 )
 
@@ -234,6 +235,16 @@ func main() {
 	}
 	log.Printf("  mechanic DB built in %s", time.Since(t1))
 	mechDB.LogStats()
+
+	// Best-effort Thor AST corpus for COMBO-axis math detection (r63 Phase 1).
+	// The dataset is large + gitignored; absence is non-fatal — combo-math
+	// gracefully degrades to oracle-only when the corpus isn't present.
+	if astCorpus, astErr := astload.Load("data/rules/ast_dataset.jsonl"); astErr != nil {
+		log.Printf("  AST corpus unavailable (combo-math runs oracle-only): %v", astErr)
+	} else {
+		SetMathASTSource(astCorpus)
+		log.Printf("  AST corpus loaded: %d cards", astCorpus.Count())
+	}
 
 	// --mode metrics implies --no-cache so the consistency probe sees
 	// fresh computation on both runs (the whole point of the probe is to
@@ -584,6 +595,10 @@ func analyzeDeckFile(path string, oracle *oracleDB, mechDB *MechanicDB) (*FreyaR
 	mechSynergies := FindMechanicSynergies(profiles, cardQtys, mechDB)
 	report.Synergies = append(report.Synergies, mechSynergies...)
 	report.Synergies = deduplicateCombos(report.Synergies)
+
+	// r63 Phase 1: re-run the COMBO-axis classifier now that mechanic
+	// synergies have been appended (CategorizeReportCombos is idempotent).
+	CategorizeReportCombos(report)
 
 	// Override mana curve and land count with quantity-aware data.
 	if len(qtyProfiles) > 0 {

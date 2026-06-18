@@ -1431,6 +1431,11 @@ type jsonReport struct {
 	Synergies          []jsonCombo `json:"synergies"`
 	LandCycleSynergies []jsonCombo             `json:"land_cycle_synergies,omitempty"`
 	GraveyardLoops     []jsonCombo             `json:"graveyard_loops,omitempty"`
+	// r63 three-axis view (additive; legacy buckets above retained). COMBO is
+	// populated in Phase 1; value_engines/synergy_packages arrive in P2/P3.
+	Combos          []jsonCombo `json:"combos,omitempty"`
+	ValueEngines    []jsonCombo `json:"value_engines,omitempty"`
+	SynergyPackages []jsonCombo `json:"synergy_packages,omitempty"`
 	ComboInteraction   *jsonComboInteraction   `json:"combo_interaction,omitempty"`
 	ComboNotes    []string      `json:"combo_notes,omitempty"`
 	ManaCurve     jsonManaCurve `json:"mana_curve"`
@@ -1467,6 +1472,7 @@ type jsonCombo struct {
 	Description      string              `json:"description"`
 	Confirmed        bool                `json:"confirmed,omitempty"`
 	NonDeterministic bool                `json:"non_deterministic,omitempty"`
+	Categories       []string            `json:"categories,omitempty"`
 	Annotation       *jsonLoopAnnotation `json:"annotation,omitempty"`
 }
 
@@ -1924,6 +1930,9 @@ func printJSON(w io.Writer, r *FreyaReport) {
 		Synergies:          comboSlice(r.Synergies),
 		LandCycleSynergies: comboSlice(r.LandCycleSynergies),
 		GraveyardLoops:     comboSlice(r.GraveyardLoops),
+		Combos:             comboSlice(r.Combos),
+		ValueEngines:       comboSlice(r.ValueEngines),
+		SynergyPackages:    comboSlice(r.SynergyPackages),
 		ComboInteraction:   comboInteractionToJSON(r.ComboInteraction),
 		ComboNotes:    r.ComboNotes,
 		ManaCurve: jsonManaCurve{
@@ -2300,6 +2309,7 @@ func comboSlice(combos []ComboResult) []jsonCombo {
 			Description:      c.Description,
 			Confirmed:        c.Confirmed,
 			NonDeterministic: c.NonDeterministic,
+			Categories:       c.Categories,
 		}
 		if c.Annotation != nil {
 			jc.Annotation = &jsonLoopAnnotation{

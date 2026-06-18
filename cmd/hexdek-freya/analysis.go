@@ -1420,6 +1420,11 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	// once on its own cadence? Computed last so all engine flags are set.
 	p.RepeatableEngine = computeRepeatableEngine(p, otClean, tl)
 
+	// Oracle-sourced compounding-math operations (doublers, for-each scalers,
+	// cost-reduction-to-free). Cross-referenced with the Thor AST at
+	// classification time to build the full MathSignature. Phase 1.
+	p.MathOps = detectOracleMathOps(otClean, &p)
+
 	return p
 }
 
@@ -1874,6 +1879,11 @@ func AnalyzeDeck(profiles []CardProfile, deckName, deckPath, commander string) *
 	// the report assembly so it sees the post-reclassification (Land
 	// Cycle / Graveyard Loop) combo buckets. Nil when < 2 combos.
 	report.ComboInteraction = BuildComboInteractionMatrix(report)
+
+	// r63 Phase 1: populate the COMBO axis (intrinsic compounding math +
+	// self-contained loops). Idempotent — re-run after main.go appends
+	// mechanic synergies. VALUE / SYNERGY axes land in Phase 2/3.
+	CategorizeReportCombos(report)
 
 	return report
 }
