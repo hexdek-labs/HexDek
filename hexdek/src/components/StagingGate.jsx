@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import {
   stagingAllows, stagingRouteExempt,
-  passphraseEnabled, passphraseMatches, STAGING_PASS_STORAGE_KEY,
+  passphraseEnabled, passphraseMatches, previewParamMatches, STAGING_PASS_STORAGE_KEY,
 } from '../lib/stagingGate'
 
 // StagingGate — the staging-review whitelist (r63, owner direction:
@@ -50,10 +50,30 @@ function hasStoredPassGrant() {
   }
 }
 
+// A correct ?preview=<passphrase> in the current URL grants access
+// directly — read synchronously at mount so a shared link never flashes
+// the lost page before the effect below persists the grant.
+function hasPreviewParamGrant() {
+  try {
+    return previewParamMatches(window.location.search, EXPECTED_PASS)
+  } catch {
+    return false
+  }
+}
+
 function StagingGateInner({ children }) {
   const { user, loading } = useAuth()
   const location = useLocation()
-  const [passGranted, setPassGranted] = useState(hasStoredPassGrant)
+  const [passGranted, setPassGranted] = useState(() => hasStoredPassGrant() || hasPreviewParamGrant())
+
+  // A correct ?preview=<passphrase> link persists the grant so it
+  // survives reloads and in-app navigation that drop the query string.
+  useEffect(() => {
+    if (previewParamMatches(location.search, EXPECTED_PASS)) {
+      try { localStorage.setItem(STAGING_PASS_STORAGE_KEY, EXPECTED_PASS) } catch { /* private mode: grant lasts this load only */ }
+      setPassGranted(true)
+    }
+  }, [location.search])
 
   if (stagingRouteExempt(location.pathname)) {
     return children

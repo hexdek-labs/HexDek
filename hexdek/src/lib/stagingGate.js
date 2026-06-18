@@ -58,3 +58,27 @@ export function passphraseMatches(input, expected) {
   if (!passphraseEnabled(expected)) return false
   return String(input ?? '').trim() === expected.trim()
 }
+
+// --- Shareable ?preview=<passphrase> link bypass (r63) -------------------
+//
+// Reviewers can also bypass the gate with a link that carries the
+// passphrase in the query string (e.g. dev.hexdek.dev/?preview=ribbit)
+// — no need to land on the lost page and type into the form. A correct
+// param persists the grant to localStorage (see StagingGate) so it
+// survives reloads and in-app navigation that drop the query string.
+export const STAGING_PREVIEW_PARAM = 'preview'
+
+// previewParamMatches reads the `preview` query param out of a location
+// search string (e.g. window.location.search) and reports whether it
+// equals the build's expected passphrase. Never matches a build with no
+// passphrase, and tolerates a missing/malformed search string.
+export function previewParamMatches(search, expected) {
+  if (!passphraseEnabled(expected)) return false
+  let raw
+  try {
+    raw = new URLSearchParams(String(search || '')).get(STAGING_PREVIEW_PARAM)
+  } catch {
+    return false
+  }
+  return passphraseMatches(raw, expected)
+}
