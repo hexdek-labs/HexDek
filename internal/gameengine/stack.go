@@ -572,6 +572,25 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 			altCostMeta["spectacle_cost"] = spc
 		}
 	}
+	// CR §702.152 — blitz. An alternative cost to cast a creature spell:
+	// the creature gains haste + "When this dies, draw a card" and is
+	// sacrificed at the next end step (ApplyBlitz wires all three on
+	// resolution). Same alt-cost shape as overload/surge/spectacle above:
+	// modifier pipeline applies (Thalia tax / medallions), a parser miss
+	// (rawBC == 0) declines rather than casting free, and the Hat opts in.
+	if len(altCostMeta) == 0 && HasBlitz(card) && cardHasType(card, "creature") {
+		rawBC, haveBC := BlitzCost(card)
+		if haveBC && rawBC > 0 {
+			bc := EffectiveAlternativeCost(gs, card, seatIdx, rawBC, CastContext{})
+			avail := EnsureTypedPool(seat).Total()
+			if avail >= bc && seat.Hat != nil &&
+				seat.Hat.ChooseOptionalCost(gs, seatIdx, card, "blitz", bc, 1) > 0 {
+				baseCost = bc
+				altCostMeta["blitz_cast"] = true
+				altCostMeta["blitz_cost"] = bc
+			}
+		}
+	}
 
 	// §107.3: if the mana cost contains X, the Hat announces X.
 	if ManaCostContainsX(card) {
@@ -2294,6 +2313,20 @@ func ResolveStackTop(gs *GameState) {
 						// replacement effects, dies/LTB triggers, and
 						// commander redirect.
 						SacrificePermanent(gs, etbPerm, "evoke")
+					}
+				}
+			}
+
+			// CR §702.152 — blitz: a creature cast for its blitz cost gains
+			// haste, "When this creature dies, draw a card", and is
+			// sacrificed at the beginning of the next end step. ApplyBlitz
+			// wires the haste grant + the EOT-sacrifice delayed trigger +
+			// the death-draw observer (which also fires off that very
+			// sacrifice). Mirrors the warp/evoke CostMeta hooks above.
+			if etbPerm != nil && item.CostMeta != nil {
+				if v, ok := item.CostMeta["blitz_cast"]; ok {
+					if b, ok := v.(bool); ok && b {
+						ApplyBlitz(gs, etbPerm)
 					}
 				}
 			}

@@ -1240,8 +1240,13 @@ func (*GreedyHat) ChooseOptionalCost(gs *gameengine.GameState, seatIdx int, card
 		return 0
 	}
 	switch kind {
-	case "casualty", "bargain":
-		return 0 // sacrifice cost — don't pay by default
+	case "casualty", "bargain", "blitz":
+		// Sacrifice-flavored costs (the permanent or a creature is lost):
+		// don't pay by default. Blitz trades the creature away at end of
+		// turn for haste + a card — a tradeoff, not a strict discount, so
+		// the greedy baseline declines (the alt-cost option is wired and
+		// available; a value-aware Hat can opt in).
+		return 0
 	default:
 		return max
 	}

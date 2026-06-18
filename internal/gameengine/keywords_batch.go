@@ -411,6 +411,21 @@ func ApplyDecayed(perm *Permanent) {
 	perm.Flags["decayed"] = 1
 }
 
+// HasBlitz reports whether the card prints the blitz keyword (an
+// alternative cost to cast a creature spell). CR §702.152.
+func HasBlitz(card *Card) bool {
+	return cardHasKeywordByName(card, "blitz")
+}
+
+// BlitzCost returns the printed blitz alternative cost (as a CMC) and
+// whether it was captured. Returns ok=false when the parser didn't
+// record a machine-readable cost — the cast gate then DECLINES blitz
+// rather than casting for an unknown/free cost (mirrors the
+// overload/surge/spectacle strict-cost discipline).
+func BlitzCost(card *Card) (int, bool) {
+	return keywordArgCostStrict(card, "blitz")
+}
+
 // CR §702.152 — Blitz
 func ApplyBlitz(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil {
@@ -424,6 +439,15 @@ func ApplyBlitz(gs *GameState, perm *Permanent) {
 
 	seatIdx := perm.Controller
 
+	// CR §702.152c — "Sacrifice this creature at the beginning of the next
+	// end step." A delayed trigger at end_of_turn (pumped by the turn
+	// driver's FireDelayedTriggers, like myriad/suspend). The "When this
+	// creature dies, draw a card" half (§702.152b) is NOT registered here:
+	// it fires from the canonical death chokepoint via CheckBlitzDeathDraw
+	// (keyed on the blitz flag), so it triggers off ANY death — combat,
+	// removal, or this EOT sacrifice — exactly once. The previous on_event
+	// delayed trigger was never pumped in live play (FireEventDelayedTriggers
+	// has no production caller), so the draw never fired.
 	blitzPerm := perm
 	gs.RegisterDelayedTrigger(&DelayedTrigger{
 		TriggerAt:      "end_of_turn",
@@ -437,36 +461,39 @@ func ApplyBlitz(gs *GameState, perm *Permanent) {
 		},
 	})
 
-	gs.RegisterDelayedTrigger(&DelayedTrigger{
-		TriggerAt:      "on_event",
-		ControllerSeat: seatIdx,
-		SourceCardName: perm.Card.DisplayName() + " (blitz dies)",
-		OneShot:        true,
-		ConditionFn: func(gs *GameState, ev *Event) bool {
-			if ev == nil {
-				return false
-			}
-			return ev.Kind == "dies" && ev.Source == blitzPerm.Card.DisplayName()
-		},
-		EffectFn: func(gs *GameState) {
-			if seatIdx >= 0 && seatIdx < len(gs.Seats) {
-				gs.drawOne(seatIdx)
-				gs.LogEvent(Event{
-					Kind:   "blitz_draw",
-					Seat:   seatIdx,
-					Source: blitzPerm.Card.DisplayName(),
-					Details: map[string]interface{}{
-						"rule": "702.152",
-					},
-				})
-			}
-		},
-	})
-
 	gs.LogEvent(Event{
 		Kind:   "blitz",
 		Seat:   seatIdx,
 		Source: perm.Card.DisplayName(),
+		Details: map[string]interface{}{
+			"rule": "702.152",
+		},
+	})
+}
+
+// CheckBlitzDeathDraw fires the blitz "When this creature dies, draw a
+// card" trigger (CR §702.152b) from the canonical death chokepoint
+// (zone_change.go battlefield→graveyard), keyed on the blitz flag
+// ApplyBlitz stamped. Called alongside CheckUndying / CheckPersist /
+// TriggerAfterlife so it fires on ANY death — combat, removal, or the
+// §702.152c end-step sacrifice — exactly once (the permanent dies once).
+func CheckBlitzDeathDraw(gs *GameState, perm *Permanent) {
+	if gs == nil || perm == nil || perm.Flags == nil || perm.Flags["blitz"] == 0 {
+		return
+	}
+	seatIdx := perm.Controller
+	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return
+	}
+	gs.drawOne(seatIdx)
+	name := "<unknown>"
+	if perm.Card != nil {
+		name = perm.Card.DisplayName()
+	}
+	gs.LogEvent(Event{
+		Kind:   "blitz_draw",
+		Seat:   seatIdx,
+		Source: name,
 		Details: map[string]interface{}{
 			"rule": "702.152",
 		},

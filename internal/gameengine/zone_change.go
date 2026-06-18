@@ -557,6 +557,11 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 			if n := AfterlifeN(perm.Card); n > 0 {
 				TriggerAfterlife(gs, perm, n)
 			}
+			// CR §702.152b — blitz "When this creature dies, draw a card."
+			// Keyed on the blitz flag (ApplyBlitz), fires from this canonical
+			// dies-chokepoint so it triggers on any death (combat / removal /
+			// the §702.152c end-step sacrifice) exactly once.
+			CheckBlitzDeathDraw(gs, perm)
 		}
 	} else if fromZone == "battlefield" && toZone != "graveyard" {
 		// A creature left the battlefield but a §614 replacement redirected
