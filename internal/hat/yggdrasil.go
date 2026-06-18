@@ -10080,6 +10080,24 @@ func (h *YggdrasilHat) ChooseOptionalCost(gs *gameengine.GameState, seatIdx int,
 			return max
 		}
 		return 0
+	case "prototype":
+		// CR §718 — prototype trades a smaller body for a cheaper cost. Prefer
+		// the full printed version when affordable (bigger is better); take the
+		// prototype only when mana-constrained (can't afford full, can afford
+		// the prototype cost). card.CMC stays the printed cost (Proto is a
+		// non-destructive override), so it is the full-cost reference here.
+		full := 0
+		if card != nil {
+			full = card.CMC
+		}
+		avail := h.availableMana(gs, seatIdx)
+		if avail >= full {
+			return 0
+		}
+		if avail >= cost {
+			return max
+		}
+		return 0
 	default: // surge, spectacle, conspire — discounts / free copies
 		return max
 	}

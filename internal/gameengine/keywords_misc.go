@@ -2405,8 +2405,10 @@ func CountDevotion(gs *GameState, seatIdx int, color string) int {
 		if p == nil || p.Card == nil {
 			continue
 		}
-		if p.Card.ManaCostString != "" {
-			total += DevotionPipsFromManaCost(p.Card.ManaCostString, wantColor)
+		// EffectiveManaCostString prefers the prototype mana cost (CR §718.3b)
+		// so a prototyped permanent contributes its reduced colored pips.
+		if mcs := p.Card.EffectiveManaCostString(); mcs != "" {
+			total += DevotionPipsFromManaCost(mcs, wantColor)
 			continue
 		}
 		// A token has no mana cost (CR §700.5 counts mana symbols in mana

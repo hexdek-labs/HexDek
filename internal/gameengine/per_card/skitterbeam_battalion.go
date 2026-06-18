@@ -18,8 +18,11 @@ import (
 //
 // Implementation (Muninn #101-120 wave):
 //   - Trample/haste handled by AST keyword pipeline.
-//   - Prototype is a cast-time alternative cost & p/t override — engine
-//     prototype support is incomplete; emitPartial.
+//   - Prototype is now wired as a cast-time alternative cost + non-destructive
+//     copiable override (keywords_prototype.go, CR §702.160/§718). When this
+//     was cast prototyped, MintTokenAsCopyOf below copies the prototype stats
+//     (CR §718.3d) so the two tokens are 2/2 red prototype copies; cast
+//     normally, they are the full printed 7/5 version.
 //   - OnETB gate on perm.Flags["was_cast"]. Two token copies enter under
 //     the controller. Each copy carries the "token" type so the ETB-gated
 //     clause won't recursively fire (tokens enter without being cast).
@@ -61,9 +64,8 @@ func skitterbeamBattalionETB(gs *gameengine.GameState, perm *gameengine.Permanen
 	}
 
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":   seat,
-		"tokens": tokens,
+		"seat":      seat,
+		"tokens":    tokens,
+		"prototype": perm.Card.IsPrototyped(),
 	})
-	emitPartial(gs, slug, perm.Card.DisplayName(),
-		"prototype_alt_cost_and_size_override_not_fully_modelled")
 }

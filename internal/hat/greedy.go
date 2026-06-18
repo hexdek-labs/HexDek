@@ -1247,6 +1247,24 @@ func (*GreedyHat) ChooseOptionalCost(gs *gameengine.GameState, seatIdx int, card
 		// the greedy baseline declines (the alt-cost option is wired and
 		// available; a value-aware Hat can opt in).
 		return 0
+	case "prototype":
+		// CR §718 — cheaper cost, smaller body. Cast the full printed version
+		// when affordable; take the prototype only when mana-constrained.
+		full := 0
+		if card != nil {
+			full = card.CMC
+		}
+		avail := 0
+		if seatIdx >= 0 && seatIdx < len(gs.Seats) && gs.Seats[seatIdx] != nil {
+			avail = gs.Seats[seatIdx].ManaPool
+		}
+		if avail >= full {
+			return 0
+		}
+		if avail >= cost {
+			return max
+		}
+		return 0
 	default:
 		return max
 	}

@@ -336,10 +336,13 @@ func BaseCharacteristics(p *Permanent) *Characteristics {
 	if c.Name == "" && p.Card.AST != nil {
 		c.Name = p.Card.AST.Name
 	}
-	c.BasePower = p.Card.BasePower
-	c.BaseToughness = p.Card.BaseToughness
-	c.Power = p.Card.BasePower
-	c.Toughness = p.Card.BaseToughness
+	// CR §718.3b — a prototyped object's P/T is the prototype P/T as a
+	// copiable value (layer-1 base), composing under counters / anthems /
+	// set-P/T effects. EffectiveBasePower/Toughness prefer Card.Proto when set.
+	c.BasePower = p.Card.EffectiveBasePower()
+	c.BaseToughness = p.Card.EffectiveBaseToughness()
+	c.Power = c.BasePower
+	c.Toughness = c.BaseToughness
 	// Types from Card.Types (resolver lowercases these at ETB).
 	c.Types = append([]string(nil), p.Card.Types...)
 	// Partition supertypes from types.

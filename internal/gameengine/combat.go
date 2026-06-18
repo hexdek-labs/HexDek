@@ -1793,6 +1793,19 @@ func cardColors(c *Card) map[string]struct{} {
 	if c == nil {
 		return out
 	}
+	// CR §718.3b — a prototyped object IS the prototype color(s) (derived from
+	// the prototype mana cost), in all zones. Use those exactly: a colorless
+	// prototype cost makes the object colorless, so skip the type-line color
+	// fallback below (which would otherwise re-infer a printed color).
+	if c.Proto != nil {
+		for _, clr := range c.Proto.Colors {
+			u := strings.ToUpper(clr)
+			if len(u) == 1 {
+				out[u] = struct{}{}
+			}
+		}
+		return out
+	}
 	// Primary source: Card.Colors (populated by corpus loader).
 	for _, clr := range c.Colors {
 		u := strings.ToUpper(clr)

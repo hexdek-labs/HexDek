@@ -592,6 +592,30 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		}
 	}
 
+	// CR §702.160 / §718 — Prototype. A prototype card may be cast for its
+	// smaller prototype mana cost; if it is, the spell + the permanent it
+	// becomes take the prototype mana cost, color, and P/T as copiable values
+	// (Card.Proto, set here, travels with the object through all zones). Cast
+	// normally → Card.Proto cleared → full printed version. Same alt-cost shape
+	// as overload/blitz: only one alternative cost applies, the modifier
+	// pipeline applies, a parser miss declines, and the Hat opts in.
+	if HasPrototype(card) {
+		// Always clear any stale prototype state so a normal cast (or a decline
+		// below) yields the full printed version.
+		ClearPrototype(card)
+		if profile, ok := PrototypeProfile(card); ok && len(altCostMeta) == 0 {
+			pc := EffectiveAlternativeCost(gs, card, seatIdx, profile.CMC, CastContext{})
+			avail := EnsureTypedPool(seat).Total()
+			if avail >= pc && seat.Hat != nil &&
+				seat.Hat.ChooseOptionalCost(gs, seatIdx, card, "prototype", pc, 1) > 0 {
+				baseCost = pc
+				card.Proto = profile
+				altCostMeta["prototyped"] = true
+				altCostMeta["prototype_cmc"] = profile.CMC
+			}
+		}
+	}
+
 	// §107.3: if the mana cost contains X, the Hat announces X.
 	if ManaCostContainsX(card) {
 		xPool := EnsureTypedPool(seat)

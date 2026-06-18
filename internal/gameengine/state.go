@@ -1521,6 +1521,68 @@ type Card struct {
 	// front). Transform-style cards flip this; cast-as-back stamps Back
 	// at cast time.
 	ActiveFace instanceid.FaceIndex
+
+	// Proto holds the prototype alternative characteristics (CR §702.160 /
+	// §718) when this card was cast for its prototype cost. nil = normal
+	// printed version. Non-destructive: the printed BasePower/BaseToughness/
+	// CMC/Colors fields above are left intact, and the prototype values
+	// travel with the Card across all zones (see keywords_prototype.go).
+	Proto *PrototypeState
+}
+
+// IsPrototyped reports whether this card was cast for its prototype cost
+// (CR §718) and so carries the alternative copiable characteristics.
+func (c *Card) IsPrototyped() bool { return c != nil && c.Proto != nil }
+
+// EffectiveBasePower returns the prototype power when prototyped, else the
+// printed BasePower (CR §718.3b).
+func (c *Card) EffectiveBasePower() int {
+	if c == nil {
+		return 0
+	}
+	if c.Proto != nil {
+		return c.Proto.Power
+	}
+	return c.BasePower
+}
+
+// EffectiveBaseToughness returns the prototype toughness when prototyped, else
+// the printed BaseToughness (CR §718.3b).
+func (c *Card) EffectiveBaseToughness() int {
+	if c == nil {
+		return 0
+	}
+	if c.Proto != nil {
+		return c.Proto.Toughness
+	}
+	return c.BaseToughness
+}
+
+// EffectiveColors returns the prototype colors when prototyped, else the
+// printed Colors (CR §718.3b). A colorless prototype cost yields an empty
+// slice (the object is colorless).
+func (c *Card) EffectiveColors() []string {
+	if c == nil {
+		return nil
+	}
+	if c.Proto != nil {
+		return c.Proto.Colors
+	}
+	return c.Colors
+}
+
+// EffectiveManaCostString returns the prototype mana-cost string when
+// prototyped, else the printed ManaCostString. Devotion and pip-level
+// readers consult this so prototyped permanents contribute their reduced
+// colored pips (CR §718.3b).
+func (c *Card) EffectiveManaCostString() string {
+	if c == nil {
+		return ""
+	}
+	if c.Proto != nil {
+		return c.Proto.ManaCostString
+	}
+	return c.ManaCostString
 }
 
 func (c *Card) DeepCopy() *Card {
@@ -1532,6 +1594,10 @@ func (c *Card) DeepCopy() *Card {
 	cp.Colors = append([]string(nil), c.Colors...)
 	cp.BackFaceTypes = append([]string(nil), c.BackFaceTypes...)
 	cp.EnablerHistory = append([]string(nil), c.EnablerHistory...)
+	// CR §718.3c/d — prototype is a copiable value; a copy of a prototyped
+	// object copies the prototype stats. Deep-copy so the copy never shares
+	// the Colors slice with its source.
+	cp.Proto = c.Proto.clone()
 	if c.Meta != nil {
 		cp.Meta = make(map[string]any, len(c.Meta))
 		for k, v := range c.Meta {
@@ -1566,6 +1632,11 @@ func (c *Card) IsMDFC() bool {
 func (c *Card) EffectiveCMC() int {
 	if c != nil && c.CastingBackFace && c.BackFaceCMC > 0 {
 		return c.BackFaceCMC
+	}
+	// CR §718.3a — a prototyped object's mana value is the prototype cost's MV,
+	// in all zones (mana-value-matters payoffs see the reduced value).
+	if c != nil && c.Proto != nil {
+		return c.Proto.CMC
 	}
 	if c != nil {
 		return c.CMC
@@ -1876,7 +1947,7 @@ func (p *Permanent) Power() int {
 	}
 	base := 0
 	if p.Card != nil {
-		base = p.Card.BasePower
+		base = p.Card.EffectiveBasePower()
 	}
 	// +1/+1 counters add, -1/-1 counters subtract.
 	if p.Counters != nil {
@@ -1903,7 +1974,7 @@ func (p *Permanent) Toughness() int {
 	}
 	base := 0
 	if p.Card != nil {
-		base = p.Card.BaseToughness
+		base = p.Card.EffectiveBaseToughness()
 	}
 	if p.Counters != nil {
 		base += p.Counters["+1/+1"]
