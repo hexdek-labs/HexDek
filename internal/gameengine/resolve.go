@@ -449,6 +449,20 @@ func evalCondition(gs *GameState, src *Permanent, c *gameast.Condition) bool {
 		}
 		return HellbentActive(gs, src.Controller)
 
+	case "coven":
+		// CR §702.152a — controller has three or more creatures with
+		// different powers. Routes through the live CovenActive predicate
+		// (current Permanent.Power(), deduped by power value) so the gate
+		// re-evaluates dynamically as the board changes (a creature
+		// entering/leaving, a +1/+1 counter, an anthem flips it) rather
+		// than reading a stale snapshot. Without this case, a coven
+		// intervening-if / conditional / static gate fell through to the
+		// fail-closed default and the ability NEVER fired even at coven.
+		if src == nil {
+			return false
+		}
+		return CovenActive(gs, src.Controller)
+
 	case "descended_this_turn":
 		if src == nil {
 			return false
