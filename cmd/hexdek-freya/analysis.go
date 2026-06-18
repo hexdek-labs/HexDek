@@ -121,6 +121,14 @@ type CardProfile struct {
 	HasRandomSelection bool   // selects targets "at random"
 
 	ZoneFlows []ZoneFlow // zone transitions this card enables (for value chain detection)
+
+	// MathOps holds the oracle-sourced compounding-math operations detected
+	// on this card (doublers, "for each" scalers, cost-reduction-to-free,
+	// mana multipliers). Populated by detectOracleMathOps in ClassifyCard
+	// (Phase 1). Cross-referenced with the Thor AST at classification time to
+	// build the full MathSignature. Empty for cards with no intrinsic math.
+	// See combo_category.go / combo_math.go.
+	MathOps []MathOp
 }
 
 // ---------------------------------------------------------------------------
@@ -135,6 +143,12 @@ type ComboResult struct {
 	Description      string
 	Confirmed        bool // true if matched from KnownCombos database
 	NonDeterministic bool // loop depends on random selection
+
+	// Categories holds the r63 three-axis tags (CategoryCombo / CategoryValue
+	// / CategorySynergy). Populated only on entries in FreyaReport.Combos /
+	// ValueEngines / SynergyPackages by the phase-1..3 classifier; the legacy
+	// LoopType buckets leave it nil. See combo_category.go.
+	Categories []string
 
 	// Annotation, when non-nil, carries structured loop metadata for
 	// surfaceable display: primary output category, reliability
@@ -159,6 +173,26 @@ type FreyaReport struct {
 	Determined    []ComboResult
 	Finishers     []ComboResult
 	Synergies     []ComboResult
+
+	// Combos / ValueEngines / SynergyPackages are the r63 three-axis view of
+	// the deck's interactions, layered additively over the legacy LoopType
+	// buckets above (which remain the source of truth for bracket scoring and
+	// existing JSON consumers):
+	//
+	//	Combos          — intrinsic compounding-math assemblies and
+	//	                  self-contained loops (deck-independent). Phase 1.
+	//	ValueEngines    — card / mana / board advantage, no payoff assembly
+	//	                  (asymmetric one-sided sac / wipes land here). Phase 2.
+	//	SynergyPackages — enabler / amplifier / commander-theme pieces and
+	//	                  symmetric table-wide effects (commander-relative).
+	//	                  Phase 3.
+	//
+	// VALUE and SYNERGY are co-taggable; COMBO is its own axis. New consumers
+	// should read these three; the legacy buckets are retained unchanged. See
+	// combo_category.go.
+	Combos          []ComboResult
+	ValueEngines    []ComboResult
+	SynergyPackages []ComboResult
 
 	// LandCycleSynergies holds pairs (or N-tuples) of dual-cycle lands
 	// that the heuristic loop detector would have classified as
