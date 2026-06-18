@@ -84,16 +84,12 @@ func zinniaValleysVoiceOffspring(gs *gameengine.GameState, perm *gameengine.Perm
 		return
 	}
 	src := enteringPerm.Card
-	token := &gameengine.Card{
-		Name:          src.DisplayName() + " (1/1 Offspring)",
-		Owner:         perm.Controller,
-		BasePower:     1,
-		BaseToughness: 1,
-		Types:         append([]string{"token"}, src.Types...),
-		Colors:        append([]string{}, src.Colors...),
-		TypeLine:      "Token Copy of " + src.TypeLine,
-	}
-	enterBattlefieldWithETB(gs, perm.Controller, token, false)
+	// Route through the canonical offspring primitive: a faithful 1/1 token
+	// copy minted via the create-a-copy path (token doublers apply,
+	// token_created fires, fresh *Card per token — no aliasing). Replaces the
+	// old hand-rolled name/types/colors-only token, which dropped the copied
+	// abilities and bypassed both doublers and the token_created trigger.
+	gameengine.CreateOffspringToken(gs, enteringPerm)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":     perm.Controller,
 		"original": src.DisplayName(),

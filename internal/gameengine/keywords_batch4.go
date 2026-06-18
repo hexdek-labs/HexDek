@@ -97,7 +97,118 @@ func ActivateSaddle(gs *GameState, mount *Permanent, saddlePower int) bool {
 // ---------------------------------------------------------------------------
 //
 // Pay an extra cost when casting. When the creature ETBs, if offspring was
-// paid, create a 1/1 token copy (same name, types, colors).
+// paid, "create a token that's a copy of it, except it's 1/1" (CR §702.175a).
+// The token copies every copiable characteristic (name, mana cost, color,
+// types, subtypes, supertypes, abilities — via MintTokenAsCopyOf's DeepCopy)
+// and then a copy-modification sets base power/toughness to 1/1.
+
+// CreateOffspringToken mints the §702.175a token copy of parent. It mirrors
+// resolveCreateTokenCopy (the canonical create-a-copy path) so token doublers
+// apply (FireCreateTokenEvent), the token_created trigger fires, the mint is
+// recorded for lineage audits, and each token is a freshly-minted *Card with
+// its own InstanceID (no pointer aliasing — the CardIdentity discipline). The
+// only divergence from a plain copy is the 1/1 base P/T override.
+//
+// Callers gate the "offspring cost was paid" condition; this helper assumes it
+// was paid and unconditionally mints. Token copies are skipped by callers so a
+// minted offspring token never recursively spawns another.
+func CreateOffspringToken(gs *GameState, parent *Permanent) {
+	if gs == nil || parent == nil || parent.Card == nil {
+		return
+	}
+	controller := parent.Controller
+	if controller < 0 || controller >= len(gs.Seats) || gs.Seats[controller] == nil {
+		return
+	}
+
+	// Token doublers (Doubling Season / Parallel Lives) act on the 1-copy
+	// base count, exactly as for any other create-a-copy effect.
+	baseCount := 1
+	count := 1
+	if modified, cancelled := FireCreateTokenEvent(gs, controller, count, parent); cancelled {
+		count = 0
+	} else if modified > 0 {
+		count = modified
+	}
+
+	enablerID := currentMintEnablerID(gs)
+	mintEvent := TokenMintEvent{
+		SourceInstanceID: enablerID,
+		SourceName:       sourceName(parent),
+		TargetSeat:       controller,
+		BaseCount:        baseCount,
+		FinalCount:       count,
+		AtGameTick:       gs.EffectTimestamp,
+		EffectsApplied:   gs.PendingTokenMintChain,
+		BaseCharacteristics: CopiableCharacteristics{
+			Name:             parent.Card.DisplayName(),
+			Types:            append([]string(nil), parent.Card.Types...),
+			Colors:           append([]string(nil), parent.Card.Colors...),
+			SourceInstanceID: parent.Card.InstanceID,
+		},
+	}
+	gs.PendingTokenMintChain = nil
+
+	for i := 0; i < count; i++ {
+		// MintTokenAsCopyOf DeepCopys the source card, clears the inherited
+		// InstanceID, and mints a fresh TK ID — so the token is a faithful
+		// copy with no *Card aliasing back to the parent.
+		card := MintTokenAsCopyOf(gs, parent.Card, controller, enablerID)
+		if card == nil {
+			continue
+		}
+		// CR §702.175a "except it's 1/1": the copy-modification sets base P/T.
+		card.BasePower = 1
+		card.BaseToughness = 1
+		if card.InstanceID != "" {
+			mintEvent.MintedTokenIDs = append(mintEvent.MintedTokenIDs, card.InstanceID)
+		}
+		p := &Permanent{
+			Card:                   card,
+			Controller:             controller,
+			SummoningSick:          true,
+			Timestamp:              gs.NextTimestamp(),
+			Counters:               map[string]int{},
+			Flags:                  map[string]int{},
+			CopiedTargetInstanceID: mintEvent.BaseCharacteristics.SourceInstanceID,
+		}
+		gs.Seats[controller].Battlefield = append(gs.Seats[controller].Battlefield, p)
+		RegisterReplacementsForPermanent(gs, p)
+		// The token's own ETB triggers fire (it's a real entering permanent).
+		FirePermanentETBTriggers(gs, p)
+	}
+
+	if count > 0 || len(mintEvent.MintedTokenIDs) > 0 {
+		RecordTokenMintEvent(gs, mintEvent)
+	}
+
+	// token_created for token-matters payoffs (same re-entrancy guard the
+	// canonical copy path uses).
+	if count > 0 && (gs.Flags == nil || gs.Flags["in_token_trigger"] == 0) {
+		if gs.Flags == nil {
+			gs.Flags = map[string]int{}
+		}
+		gs.Flags["in_token_trigger"] = 1
+		FireCardTrigger(gs, "token_created", map[string]interface{}{
+			"controller_seat": controller,
+			"count":           count,
+			"types":           parent.Card.Types,
+			"source":          sourceName(parent),
+		})
+		gs.Flags["in_token_trigger"] = 0
+	}
+
+	gs.LogEvent(Event{
+		Kind:   "offspring",
+		Seat:   controller,
+		Source: parent.Card.DisplayName(),
+		Amount: count,
+		Details: map[string]interface{}{
+			"token_p_t": "1/1",
+			"rule":      "702.175",
+		},
+	})
+}
 
 // ---------------------------------------------------------------------------
 // Impending N — CR §702.176
