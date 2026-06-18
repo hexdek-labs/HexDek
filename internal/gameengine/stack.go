@@ -915,6 +915,40 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 			ApplyBargain(gs, seatIdx, item)
 		}
 	}
+	// CR §702.157 — Squad. A REPEATABLE optional additional mana cost: pay
+	// "{cost}" any number of times. The count is paid here (extra mana,
+	// affordability-capped like replicate) and stamped onto CostMeta; the ETB
+	// mirror + token-copy creation (CreateSquadCopies) happen at resolution.
+	// Creature-spell only. Zero copies when declined (squad 0 times).
+	if HasSquad(card) {
+		if sc, ok := SquadCost(card); ok && sc > 0 {
+			remaining := EnsureTypedPool(seat).Total()
+			maxPay := remaining / sc
+			if maxPay > 0 && seat.Hat != nil {
+				n := seat.Hat.ChooseOptionalCost(gs, seatIdx, card, "squad", sc, maxPay)
+				if n > maxPay {
+					n = maxPay
+				}
+				if n > 0 {
+					seat.ManaPool -= n * sc
+					SyncManaAfterSpend(seat)
+					StampSquadResult(item, n)
+					gs.LogEvent(Event{
+						Kind:   "pay_mana",
+						Seat:   seatIdx,
+						Amount: n * sc,
+						Source: card.DisplayName(),
+						Details: map[string]interface{}{
+							"reason":      "squad",
+							"rule":        "702.157",
+							"squad_count": n,
+							"squad_cost":  sc,
+						},
+					})
+				}
+			}
+		}
+	}
 
 	// CR §702.21 — Ward. "When this creature becomes the target of a
 	// spell or ability an opponent controls, counter it unless that
@@ -2548,6 +2582,11 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	// kick count. Mirrors the ChosenX → gs.Flags pattern. No-op for copies
 	// (no CostMeta) and unkicked cards (flags left unset).
 	MirrorKickFlagsToPermanent(item, perm)
+	// CR §702.157 — mirror the cast-time squad-payment count onto the
+	// entering permanent's Flags so CreateSquadCopies (run after the ETB
+	// cascade) knows how many token copies to mint. No-op for copies / when
+	// squad was declined.
+	MirrorSquadToPermanent(item, perm)
 	// CR §107.3 — mirror the spell's CHOSEN X onto the entering permanent so
 	// "enters with X <counter> counters" statics read the real X. Chalice of
 	// the Void ({X}{X}, X charge counters), Walking Ballista / Hangarback /
@@ -2764,6 +2803,17 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	// settled — self-replacement counters are final. Mirrors the hook at
 	// the end of FirePermanentETBTriggers. nil-receiver no-op when off.
 	gs.Legality.ObserveETB(gs, perm)
+
+	// CR §702.157c — "When this creature enters, create a token that's a copy
+	// of it for each time the squad cost was paid." Run AFTER the entering
+	// creature's own ETB cascade has settled so the copies are minted from
+	// its final copiable values; the copies then run their own ETB cascade
+	// inside CreateSquadCopies. No-op when squad wasn't paid (flag unset).
+	if perm.Flags != nil {
+		if n := perm.Flags["squad_count"]; n > 0 {
+			CreateSquadCopies(gs, perm, n)
+		}
+	}
 
 	return perm
 }

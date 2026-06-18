@@ -283,4 +283,136 @@ func CanPayCasualty(gs *GameState, seatIdx int, minPower int) bool {
 // "As an additional cost to cast this spell, you may pay {cost} any number
 // of times. When this creature enters the battlefield, create a token
 // that's a copy of it for each time the squad cost was paid."
+//
+// Squad is a REPEATABLE optional additional mana cost (CR §702.157b), wired
+// into CastSpell's optional-cost stage exactly like replicate/multikicker:
+// the count chosen at cast (0+) is stamped onto the StackItem's CostMeta and
+// mirrored onto the entering permanent's Flags, then read at ETB to mint N
+// token copies (CR §702.157c). The copies route through the canonical
+// CreateDoubledTokens + MintTokenAsCopyOf chokepoint (same as myriad) so
+// token-doublers double them, each copy is a FRESH *Card (no aliasing), and
+// each copy's own ETB triggers fire — and FireCreateTokenEvent/token_created
+// notify token-matters payoffs.
 // ---------------------------------------------------------------------------
+
+// HasSquad returns true if the card has the squad keyword.
+func HasSquad(card *Card) bool {
+	return cardHasKeywordByName(card, "squad")
+}
+
+// SquadCost returns the per-payment squad cost (the "{cost}" in "Squad
+// {cost}") from the keyword args. Returns 0 / ok=false when the parser
+// didn't capture a machine-readable cost — the cast gate then DECLINES
+// squad rather than pricing it by guesswork (mirrors casualty/replicate).
+func SquadCost(card *Card) (int, bool) {
+	return keywordArgCostStrict(card, "squad")
+}
+
+// StampSquadResult records the chosen squad-payment count onto the
+// StackItem's CostMeta so the ETB mirror (MirrorSquadToPermanent) can read
+// it. count is the number of times the squad cost was paid (0 when declined).
+func StampSquadResult(item *StackItem, count int) {
+	if item == nil {
+		return
+	}
+	if item.CostMeta == nil {
+		item.CostMeta = map[string]interface{}{}
+	}
+	item.CostMeta["squad_count"] = count
+}
+
+// MirrorSquadToPermanent copies the squad-payment count from the resolving
+// StackItem's CostMeta onto the entering permanent's Flags so the ETB
+// token-copy creation (CreateSquadCopies) reads it. No-op for copies (no
+// CostMeta) and spells where squad was declined / absent.
+func MirrorSquadToPermanent(item *StackItem, perm *Permanent) {
+	if item == nil || perm == nil || item.CostMeta == nil {
+		return
+	}
+	v, ok := item.CostMeta["squad_count"]
+	if !ok {
+		return
+	}
+	n, ok2 := asInt(v)
+	if !ok2 || n <= 0 {
+		return
+	}
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	perm.Flags["squad_count"] = n
+}
+
+// CreateSquadCopies mints `count` token copies of the entering permanent
+// `perm` (CR §702.157c). Each copy is a faithful copy of `perm`'s copiable
+// values (printed name, types, P/T, abilities — not counters/auras),
+// routed through the canonical CreateDoubledTokens (token-doubler chain) +
+// MintTokenAsCopyOf (fresh *Card, no aliasing) chokepoint, and each copy's
+// own ETB triggers fire. Unlike myriad, squad copies enter NORMALLY (not
+// attacking, no end-of-combat exile). Fires token_created for token-matters
+// payoffs. count<=0 → no-op (paying squad 0 times makes zero copies).
+func CreateSquadCopies(gs *GameState, perm *Permanent, count int) {
+	if gs == nil || perm == nil || perm.Card == nil || count <= 0 {
+		return
+	}
+	seat := perm.Controller
+	if seat < 0 || seat >= len(gs.Seats) {
+		return
+	}
+	// One token-creation event per squad payment (CR §702.157c creates a
+	// token "for each time the squad cost was paid"); route each through the
+	// canonical doubler chokepoint so Doubling Season / Parallel Lives /
+	// Anointed Procession double the squad copies per payment.
+	var made []*Permanent
+	for i := 0; i < count; i++ {
+		batch := CreateDoubledTokens(gs, seat, 1, perm, func() *Permanent {
+			card := MintTokenAsCopyOf(gs, perm.Card, seat, currentMintEnablerID(gs))
+			if card == nil {
+				return nil
+			}
+			token := &Permanent{
+				Card:          card,
+				Controller:    seat,
+				Owner:         seat,
+				Timestamp:     gs.NextTimestamp(),
+				Counters:      map[string]int{},
+				Flags:         map[string]int{"squad_token": 1},
+				SummoningSick: true,
+			}
+			gs.Seats[seat].Battlefield = append(gs.Seats[seat].Battlefield, token)
+			RegisterReplacementsForPermanent(gs, token)
+			RegisterContinuousEffectsForPermanent(gs, token)
+			FirePermanentETBTriggers(gs, token)
+			return token
+		})
+		made = append(made, batch...)
+	}
+	if len(made) == 0 {
+		return
+	}
+	gs.LogEvent(Event{
+		Kind:   "squad",
+		Seat:   seat,
+		Source: perm.Card.DisplayName(),
+		Amount: len(made),
+		Details: map[string]interface{}{
+			"squad_count": count,
+			"rule":        "702.157",
+		},
+	})
+	// token_created for token-matters payoffs (re-entrancy guarded, mirroring
+	// myriad / resolveCreateTokenCopy).
+	if gs.Flags == nil {
+		gs.Flags = map[string]int{}
+	}
+	if gs.Flags["in_token_trigger"] == 0 {
+		gs.Flags["in_token_trigger"] = 1
+		FireCardTrigger(gs, "token_created", map[string]interface{}{
+			"controller_seat": seat,
+			"count":           len(made),
+			"types":           perm.Card.Types,
+			"source":          perm.Card.DisplayName(),
+		})
+		gs.Flags["in_token_trigger"] = 0
+	}
+}
