@@ -1295,6 +1295,20 @@ func ActivateReconfigure(gs *GameState, perm *Permanent, target *Permanent, reco
 	}
 	seat := gs.Seats[seatIdx]
 
+	// Determine the action up front so an illegal attach target is rejected
+	// BEFORE any cost is paid. Attached → unattach (§702.151b second mode);
+	// unattached → attach to target (first mode).
+	if perm.AttachedTo == nil {
+		// CR §702.151c — reconfigure can only attach to a creature you
+		// control, and an Equipment can't equip itself (a reconfigure
+		// permanent is both a creature and an equipment, so the self-check
+		// matters). Guarding here also keeps AttachmentConsistency intact:
+		// an equipment must be attached to a creature.
+		if target == nil || target == perm || !target.IsCreature() || target.Controller != seatIdx {
+			return false
+		}
+	}
+
 	if seat.ManaPool < reconfigureCost {
 		return false
 	}

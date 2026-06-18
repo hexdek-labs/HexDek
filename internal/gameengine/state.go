@@ -1931,6 +1931,15 @@ func (p *Permanent) IsCreature() bool {
 	if p != nil && p.Flags != nil && p.Flags["bestowed"] == 1 {
 		return false
 	}
+	// CR §702.151e — while a reconfigure permanent is attached to a creature
+	// it's just an Equipment and stops being a creature: it can't attack or
+	// block, isn't a legal "target creature", and isn't seen by creature SBAs.
+	// ActivateReconfigure sets the flag on attach and clears it on detach,
+	// reverting it to its printed artifact-creature type. Mirrors the bestow
+	// (§702.103a) and impending toggles above.
+	if p != nil && p.Flags != nil && p.Flags["reconfigured"] == 1 {
+		return false
+	}
 	return p.hasType("creature")
 }
 
