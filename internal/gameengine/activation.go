@@ -650,6 +650,17 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 				},
 			})
 		}
+		// Forage cost (CR §701.61) — "{cost}, Forage: ...". Verify up front
+		// that the seat can forage so an unaffordable activation rejects
+		// before any other cost is paid (nothing to roll back); the actual
+		// forage payment happens after the other costs succeed (below) so a
+		// later cost failure doesn't waste it. Skipped when a per_card
+		// handler owns the activation — that handler is authoritative for
+		// the cost (mirrors the remove-counter de-dup).
+		foragesCost := costHasForage(ab.Cost) && !PerCardOwnsActivated(perm.Card.DisplayName())
+		if foragesCost && !CanForage(gs, seatIdx) {
+			return &CastError{Reason: "cannot_forage"}
+		}
 		// Tap cost.
 		if ab.Cost.Tap {
 			if perm.Tapped {
@@ -804,6 +815,13 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 				})
 			}
 			break
+		}
+		// Forage cost payment (CR §701.61). Affordability was verified up
+		// front (foragesCost gate above); pay it last so a failure of an
+		// earlier structured cost (insufficient mana/life) rejects the
+		// activation before any graveyard card is exiled / Food sacrificed.
+		if foragesCost {
+			Forage(gs, seatIdx, perm.Card.DisplayName())
 		}
 		// Exile-self cost (Channel and similar).
 		if ab.Cost.ExileSelf {

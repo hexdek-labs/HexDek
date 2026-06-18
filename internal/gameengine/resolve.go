@@ -349,12 +349,58 @@ func resolveChoice(gs *GameState, src *Permanent, e *gameast.Choice) {
 }
 
 func resolveConditional(gs *GameState, src *Permanent, e *gameast.Conditional) {
+	// CR §701.61 — "you may forage. If you do, X" parses to a Conditional
+	// gated on paid_optional_cost(forage). evalCondition can't pay a cost
+	// (it is side-effect-free and shared with legality / intervening-if
+	// checks), so the optional payment + branch live here in the
+	// resolution path. resolvePaidOptionalCost returns handled=false for
+	// any other optional-cost kind, leaving the historical fail-closed
+	// behavior untouched.
+	if e.Condition != nil && e.Condition.Kind == "paid_optional_cost" {
+		if handled, took := resolvePaidOptionalCost(gs, src, e.Condition); handled {
+			if took {
+				if e.Body != nil {
+					ResolveEffect(gs, src, e.Body)
+				}
+			} else if e.ElseBody != nil {
+				ResolveEffect(gs, src, e.ElseBody)
+			}
+			return
+		}
+	}
 	if evalCondition(gs, src, e.Condition) {
 		if e.Body != nil {
 			ResolveEffect(gs, src, e.Body)
 		}
 	} else if e.ElseBody != nil {
 		ResolveEffect(gs, src, e.ElseBody)
+	}
+}
+
+// resolvePaidOptionalCost attempts to pay an optional cost named by a
+// paid_optional_cost condition (CR §601.2b "may"). It returns
+// handled=true only for cost kinds it knows how to pay; took reports
+// whether the optional cost was actually paid (gating the "if you do"
+// body). For an unrecognized cost it returns handled=false so the caller
+// falls back to the default condition evaluation.
+//
+// Currently wires "forage" (CR §701.61). The cost is optional and its
+// gated effect is always upside, so the simulation forages whenever it is
+// able — refining this into a Hat-driven "should I forage?" decision is a
+// follow-up.
+func resolvePaidOptionalCost(gs *GameState, src *Permanent, c *gameast.Condition) (handled, took bool) {
+	if c == nil || len(c.Args) == 0 {
+		return false, false
+	}
+	name, _ := c.Args[0].(string)
+	switch strings.ToLower(strings.TrimSpace(name)) {
+	case "forage":
+		if src == nil {
+			return true, false
+		}
+		return true, Forage(gs, src.Controller, sourceName(src))
+	default:
+		return false, false
 	}
 }
 
