@@ -2954,3 +2954,68 @@ body {
   color: var(--ok);
 }
 @keyframes magic-blink { 0%, 100% { opacity: 1 } 50% { opacity: 0 } }
+
+/* ══════════════════════════════════════════════════════════════════
+   STAGING REBUILD — decluttered 3-tab deck page (Phase 1).
+   Scoped to .deck-archive-page--staging so prod is untouched.
+   ══════════════════════════════════════════════════════════════════ */
+.deck-archive-page--staging .deck-hero__body { align-items: flex-end; }
+
+/* Action row moved onto the banner */
+.deck-landing-actions {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+/* Full-width tab bar under the banner */
+.deck-tabs--staging {
+  margin: 0;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--rule-2);
+}
+
+/* Landing: left specs/stats sidebar + center curve/decklist main */
+.deck-landing {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 14px;
+  padding: 14px 12px;
+  align-items: start;
+}
+.deck-landing__sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 12px;
+}
+.deck-landing__main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* Flat list decklist with hover affordance */
+.landing-card-row { transition: background 90ms ease; cursor: default; }
+.landing-card-row:hover { background: var(--bg-2, rgba(255, 255, 255, 0.05)); }
+
+/* FREYA / EMPIRICAL tab bodies — single column stack */
+.deck-tab-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px 12px;
+}
+
+/* Hot-card tiles render smaller on the FREYA tab */
+.hot-cards-grid--sm { grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 6px; }
+.hot-cards-grid--sm .hot-cards-chip { font-size: 8px; padding: 0 3px; }
+
+@media (max-width: 900px) {
+  .deck-landing { grid-template-columns: 1fr; }
+  .deck-landing__sidebar { position: static; }
+}

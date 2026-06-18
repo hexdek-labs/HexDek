@@ -265,6 +265,91 @@ const CardThumb = ({ name, cmc, score, compact }) => {
   )
 }
 
+// LandingCardList — the decluttered landing decklist (staging rebuild,
+// r60, owner direction: "decklist front-and-center, default to LIST
+// view, on hover show the FULL card image + oracle text"). A flat,
+// scannable list grouped by card type. The hover preview floats the
+// full card face (which carries the oracle text) beside the cursor, so
+// a reader can read any card without leaving the page. Click still
+// routes through CardLink's popup / card page.
+function LandingCardList({ cards, commanderName }) {
+  const [hover, setHover] = useState(null) // { name, x, y }
+
+  const groups = useMemo(() => {
+    const order = ['commander', 'creature', 'planeswalker', 'instant', 'sorcery', 'artifact', 'enchantment', 'land', 'other']
+    const labels = {
+      commander: 'COMMANDER', creature: 'CREATURES', planeswalker: 'PLANESWALKERS',
+      instant: 'INSTANTS', sorcery: 'SORCERIES', artifact: 'ARTIFACTS',
+      enchantment: 'ENCHANTMENTS', land: 'LANDS', other: 'OTHER',
+    }
+    const byKey = {}
+    for (const c of cards || []) {
+      const isCmdr = /^COMMANDER:/i.test(c.name || '') || (commanderName && c.name === commanderName)
+      const key = isCmdr ? 'commander' : cardTypeBucket(c)
+      ;(byKey[key] = byKey[key] || []).push(c)
+    }
+    return order.filter(k => byKey[k]?.length).map(k => ({
+      key: k,
+      label: labels[k] || k.toUpperCase(),
+      rows: byKey[k].slice().sort((a, b) => (cardCMCForSort(a) - cardCMCForSort(b)) || String(a.name).localeCompare(String(b.name))),
+      count: byKey[k].reduce((n, c) => n + (c.quantity || 1), 0),
+    }))
+  }, [cards, commanderName])
+
+  if (!groups.length) {
+    return <div className="t-xs muted" style={{ padding: '20px 0', textAlign: 'center' }}>&gt; NO CARDS TO LIST</div>
+  }
+
+  // Preview geometry — flip to the left of the cursor near the right
+  // edge; clamp vertically so a full card stays on-screen.
+  const previewW = 230
+  const vw = typeof window !== 'undefined' ? window.innerWidth : 1280
+  const vh = typeof window !== 'undefined' ? window.innerHeight : 800
+  const px = hover ? (hover.x + previewW + 30 > vw ? hover.x - previewW - 18 : hover.x + 18) : 0
+  const py = hover ? Math.min(Math.max(12, hover.y - 160), vh - 336) : 0
+
+  return (
+    <div data-testid="landing-card-list">
+      {groups.map(g => (
+        <div key={g.key} style={{ marginBottom: 12 }}>
+          <div className="t-xs muted" style={{ letterSpacing: '0.08em', padding: '4px 2px', borderBottom: '1px solid var(--rule-2)', display: 'flex', justifyContent: 'space-between' }}>
+            <span>{g.label}</span><span style={{ fontVariantNumeric: 'tabular-nums' }}>{g.count}</span>
+          </div>
+          {g.rows.map((c, i) => {
+            const linkName = (c.name || '').replace(/^COMMANDER:\s*/i, '').trim()
+            return (
+              <div
+                key={`${c.name}-${i}`}
+                className="landing-card-row"
+                data-testid="landing-card-row"
+                onMouseMove={(e) => setHover({ name: linkName, x: e.clientX, y: e.clientY })}
+                onMouseLeave={() => setHover(h => (h && h.name === linkName ? null : h))}
+                style={{ display: 'grid', gridTemplateColumns: '26px 1fr auto', gap: 8, alignItems: 'center', padding: '4px 4px', borderBottom: i < g.rows.length - 1 ? '1px dotted var(--rule)' : 'none', fontSize: 12 }}
+              >
+                <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: (c.quantity || 1) > 1 ? 'var(--ink)' : 'var(--ink-2)', fontWeight: (c.quantity || 1) > 1 ? 700 : 400 }}>{c.quantity || 1}</span>
+                <CardLink name={linkName} style={{ borderBottom: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{linkName}</CardLink>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 4, minHeight: 14 }}>
+                  {c.mana_cost ? <ManaCost cost={c.mana_cost} size={12} gap={1} /> : null}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      ))}
+      {hover && (
+        <div style={{ position: 'fixed', left: px, top: py, zIndex: 1200, pointerEvents: 'none', width: previewW }}>
+          <img
+            src={cardImageUrl(hover.name)}
+            alt={hover.name}
+            style={{ width: '100%', borderRadius: 10, boxShadow: '0 10px 30px rgba(0,0,0,0.6)', border: '1px solid var(--rule-2)', display: 'block' }}
+            onError={(e) => { e.target.style.display = 'none' }}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
 // CardListDense — sortable spreadsheet alternative to CardRolesGrid.
 // Same source-of-truth (Freya-tagged card list); trades large tile
 // images for a flat scannable table when the user wants to compare
@@ -1304,6 +1389,12 @@ export default function DeckArchive() {
   // four lines down into the rest of the state block triggers a TDZ
   // ReferenceError on first render and lazy-loads cache the broken module.
   const [activeTab, setActiveTab] = useState('analysis')
+  // STAGING REBUILD (r60, 7174n1c-directed): a decluttered 3-tab deck
+  // page lives behind VITE_STAGING. Prod builds (no VITE_STAGING) take
+  // the legacy single-page render below untouched; staging builds get
+  // the LANDING / FREYA ANALYSIS / EMPIRICAL split via the early return.
+  const isStaging = !!(import.meta.env && import.meta.env.VITE_STAGING)
+  const [landingTab, setLandingTab] = useState('landing')
   const [cardSearch, setCardSearch] = useState('')
   const [cardSearchOpen, setCardSearchOpen] = useState(false)
   const cardSearchInputRef = useRef(null)
@@ -1985,6 +2076,645 @@ export default function DeckArchive() {
           <div className="t-md muted">&gt; LOADING DECK DATA<span className="blink">_</span></div>
         </div>
       </>
+    )
+  }
+
+  // ══════════════════════════════════════════════════════════════════
+  // STAGING REBUILD — decluttered 3-tab deck page (Phase 1: landing +
+  // skeleton). Active ONLY in VITE_STAGING builds; prod falls through to
+  // the legacy render below. See the `isStaging` definition above.
+  // ══════════════════════════════════════════════════════════════════
+  if (isStaging) {
+    const specsRows = [
+      ['OWNER', <Link to={`/profile/${owner}`} style={{ color: 'var(--ink)', textDecoration: 'none', borderBottom: '1px dotted var(--ink-3)' }}>{owner?.toUpperCase()}</Link>],
+      ...(ownerFriendCount != null ? [['FRIENDS', String(ownerFriendCount)]] : []),
+      ['CARDS', `${cardCount}`],
+      ['GAME CHANGERS', gameChangers != null ? `${gameChangers}` : '—', 'game_changers'],
+      ['ARCHETYPE', archetype, 'archetype'],
+      ...(legality ? [['LEGALITY', <span style={{ color: legality.valid ? 'var(--ok)' : 'var(--danger)', fontWeight: 700 }}>{legality.valid ? 'LEGAL' : 'ILLEGAL'}</span>, 'legality']] : []),
+      ...(manaBaseGrade ? [['MANA BASE', manaBaseGrade, 'mana_base_grade']] : []),
+      ...(powerPercentile != null ? [['POWER', `TOP ${powerPercentile}%`, 'power_percentile']] : []),
+      ...(commanderSynergy != null ? [['COMMANDER SYNERGY', `${Math.round(commanderSynergy * 100)}%`, 'cmdr_synergy']] : []),
+      ...(keepableHandPct != null ? [['KEEPABLE HANDS', `${Math.round(keepableHandPct)}%`, 'keepable_hands']] : []),
+      ...(interactionAvgCmc != null ? [['INTERACTION CMC', `AVG ${Math.round(interactionAvgCmc * 10) / 10}`, 'interaction_avg_cmc']] : []),
+      ...(cheapInteraction != null ? [['CHEAP REMOVAL', `${cheapInteraction} AT ≤2 CMC`, 'cheap_interaction']] : []),
+    ]
+    const bracketRows = [
+      ['BRACKET', wbs ? `B${wbs}${wbsLabel ? ` · ${wbsLabel.toUpperCase()}` : ''}` : 'PENDING'],
+      ...(bracketDiverges ? [['ESTIMATED', `B${measuredBracket}`]] : []),
+      ['ARCHETYPE', archetype],
+      ['RECENT WIN RATE', glance.recent ? `${glance.recent.pct}%` : (glance.allTime ? `${glance.allTime.pct}%` : '—')],
+    ]
+    // Action buttons (Workshop / Export / Forge / Clone / Sign-in / Delete)
+    // moved onto the banner per owner direction.
+    const stagingActions = (
+      <div className="deck-landing-actions" data-testid="landing-actions">
+        {owner && id && (
+          <Btn arrow="↗" onClick={() => {
+            if (editing) return
+            const lines = cards.map(c => {
+              const cmdr = deck?.commander_card
+              if (cmdr && c.name === cmdr) return `COMMANDER: ${c.name}`
+              return c.quantity > 1 ? `${c.quantity} ${c.name}` : `1 ${c.name}`
+            })
+            setEditText(lines.join('\n'))
+            setEditing(true)
+            api.getDeckVersions(`${owner}/${id}`).then(setVersions).catch(() => {})
+          }}>WORKSHOP</Btn>
+        )}
+        <Btn ghost arrow="↗" onClick={() => { if (cards.length) setExportOpen(true) }}>EXPORT</Btn>
+        {owner && id && <Btn ghost arrow="↗" onClick={() => navigate(`/forge?deck=${owner}/${id}`)}>OPEN IN FORGE</Btn>}
+        {owner && id && !isOwner && user && (
+          <Btn solid arrow="⎘" disabled={cloning} onClick={() => {
+            if (cloning) return
+            setCloning(true)
+            trackEvent('clone_deck', { deck: `${owner}/${id}` })
+            api.cloneDeck(`${owner}/${id}`).then(res => {
+              toast.success('DECK CLONED — RUNNING FREYA')
+              navigate(`/decks/${res.owner}/${res.id}`)
+            }).catch(err => {
+              if (err?.status === 401) toast.error('SIGN IN TO CLONE')
+              else toast.error('CLONE FAILED')
+              setCloning(false)
+            })
+          }}>{cloning ? 'CLONING…' : 'CLONE DECK'}</Btn>
+        )}
+        {owner && id && !isOwner && !user && <Btn ghost arrow="↗" onClick={() => navigate('/login')}>SIGN IN TO CLONE</Btn>}
+        {owner && id && (
+          !confirmDelete ? (
+            <Btn ghost onClick={() => setConfirmDelete(true)} style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }}>DELETE</Btn>
+          ) : (
+            <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+              <Btn solid onClick={() => { api.deleteDeck(`${owner}/${id}`).then(() => navigate('/decks')).catch(() => setConfirmDelete(false)) }} style={{ background: 'var(--danger)', borderColor: 'var(--danger)' }}>CONFIRM DELETE</Btn>
+              <Btn ghost onClick={() => setConfirmDelete(false)}>CANCEL</Btn>
+            </span>
+          )
+        )}
+        {analyzing && <Tag solid kind="info">ANALYZING...</Tag>}
+      </div>
+    )
+
+    return (
+      <div className="deck-archive-page deck-archive-page--staging" style={{ '--page-wash': pageTheme.wash, '--accent': pageTheme.accent }}>
+        {cmdrImageUrl && <img className="art-ambience" src={cmdrImageUrl} alt="" aria-hidden="true" />}
+
+        <Tape
+          left={`DECK ARCHIVE / / ${owner?.toUpperCase()} / / ${deckName}`}
+          mid={`${pageTheme.label} · STAGING PREVIEW`}
+          right="LANDING ↗ FREYA ↗ EMPIRICAL ↗"
+        />
+
+        {/* Decluttered banner — art, name, commander, tags + the action row */}
+        <div
+          className={`deck-hero ${cmdrImageUrl ? '' : 'hatch'}`}
+          data-art-contrast={cmdrContrast || undefined}
+          style={cmdrImageUrl ? { backgroundImage: `url(${cmdrImageUrl})`, ...(cmdrContrast ? { '--art-contrast': cmdrContrast } : null) } : undefined}
+        >
+          <div className="deck-hero__scrim" />
+          <div className="deck-hero__corner deck-hero__corner--tl">04.HERO / / {pageTheme.label}</div>
+          <div className="deck-hero__corner deck-hero__corner--tr">{owner?.toUpperCase()} / / {id}</div>
+          <div className="deck-hero__actions">
+            {owner && id && <button type="button" className="deck-hero__share" onClick={handleShare} title="Copy shareable link"><span>SHARE</span><span className="arr">↗</span></button>}
+            {owner && id && <button type="button" className="deck-hero__share" onClick={() => setComparePickerOpen(true)} title="Compare against another deck"><span>COMPARE</span><span className="arr">⇄</span></button>}
+            {canFriend && <button type="button" className={`deck-hero__friend ${isFriend ? 'is-on' : ''}`} onClick={toggleFriend} disabled={friendBusy} title={isFriend ? `Unfriend ${owner.toUpperCase()}` : `Add ${owner.toUpperCase()} as a friend`}><span>{isFriend ? '✓ FRIEND' : '+ ADD FRIEND'}</span></button>}
+          </div>
+          <div className="deck-hero__body">
+            {cmdrFullUrl && (
+              <div className="deck-hero__card">
+                <img src={cmdrFullUrl} alt={cmdrCardName} className="deck-hero__card-img" onError={(e) => { e.target.style.display = 'none' }} />
+              </div>
+            )}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="deck-hero__meta">
+                <Tag solid>{wbs ? `B${wbs}` : 'BRACKET PENDING'}{wbs && wbsLabel ? ' · ' + wbsLabel : ''}</Tag>
+                {bracketDiverges && <Tag solid kind="warn">EST. B{measuredBracket}</Tag>}
+                <Tag>{archetype}</Tag>
+                {colorIdentity.length > 0 && <Tag>{colorIdentity.join('')}</Tag>}
+              </div>
+              <div className="deck-hero__title-row">
+                {editingName ? (
+                  <input
+                    autoFocus
+                    className="deck-hero__title-input"
+                    value={nameDraft}
+                    maxLength={120}
+                    disabled={savingName}
+                    onChange={e => setNameDraft(e.target.value)}
+                    onBlur={commitNameEdit}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') { e.preventDefault(); commitNameEdit() }
+                      else if (e.key === 'Escape') { e.preventDefault(); cancelNameEdit() }
+                    }}
+                  />
+                ) : (
+                  <>
+                    <h1 className="deck-hero__title">{deckName}</h1>
+                    {isOwner && <button type="button" className="deck-hero__rename" onClick={startNameEdit} title="Rename deck" aria-label="Rename deck">✎</button>}
+                  </>
+                )}
+              </div>
+              {cmdrCardName && cmdrCardName.toUpperCase() !== deckName && <div className="deck-hero__sub">{cmdrCardName}</div>}
+              {deck?.forked_from && (
+                <div className="deck-hero__sub" style={{ fontSize: 11, opacity: 0.8, marginTop: 4, letterSpacing: '0.04em' }}>
+                  FORKED FROM{' '}
+                  <Link to={`/decks/${deck.forked_from}`} style={{ color: 'inherit', borderBottom: '1px dotted currentColor', textDecoration: 'none' }}>{deck.forked_from}</Link>
+                </div>
+              )}
+              {Array.isArray(deck?.system_tags) && deck.system_tags.length > 0 && (
+                <ArchetypeChipRow deck={deck} isOwner={isOwner} onFeedbackChange={setDeck} />
+              )}
+              {isOwner ? (
+                <div style={{ marginTop: 8, maxWidth: 520 }}>
+                  <TagInput value={Array.isArray(deck?.tags) ? deck.tags : []} onChange={handleTagsChange} owner={owner} placeholder={savingTags ? 'SAVING…' : 'ADD TAG — e.g. cedh, budget, brew'} />
+                </div>
+              ) : (Array.isArray(deck?.tags) && deck.tags.length > 0 && (
+                <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>{deck.tags.map(t => <Tag key={t}>{t.toUpperCase()}</Tag>)}</div>
+              ))}
+              {stagingActions}
+            </div>
+          </div>
+        </div>
+
+        {/* 3-tab bar */}
+        <div className="deck-tabs deck-tabs--staging">
+          <button type="button" className={`deck-tab ${landingTab === 'landing' ? 'active' : ''}`} onClick={() => setLandingTab('landing')} data-testid="tab-landing">LANDING</button>
+          <button type="button" className={`deck-tab ${landingTab === 'freya' ? 'active' : ''}`} onClick={() => setLandingTab('freya')} data-testid="tab-freya">FREYA ANALYSIS</button>
+          <button type="button" className={`deck-tab ${landingTab === 'empirical' ? 'active' : ''}`} onClick={() => setLandingTab('empirical')} data-testid="tab-empirical">EMPIRICAL</button>
+        </div>
+
+        {/* Workshop editor — visible on any tab while editing */}
+        {editing && (
+          <div ref={editPanelRef} style={{ padding: '0 12px' }}>
+            <Panel code="04.X" title="WORKSHOP / / DECK LIST" right={<span className="t-xs" style={{ color: 'var(--warn)' }}>IN WORKSHOP</span>}>
+              <WorkshopSearchPanel colorIdentity={colorIdentity} onAdd={(cardName) => {
+                const lines = editText.split('\n')
+                const existingIdx = lines.findIndex(l => { const m = l.match(/^(\d+)\s+(.+)$/); return m && m[2].trim() === cardName })
+                if (existingIdx >= 0) {
+                  const m = lines[existingIdx].match(/^(\d+)\s+(.+)$/)
+                  if (m) lines[existingIdx] = `${parseInt(m[1], 10) + 1} ${m[2]}`
+                } else { lines.push(`1 ${cardName}`) }
+                setEditText(lines.filter(l => l !== '' || lines.indexOf(l) === lines.length - 1).join('\n'))
+              }} />
+              <WorkshopCardList editText={editText} onChange={setEditText} />
+              <WorkshopTextarea value={editText} onChange={setEditText} />
+              <WorkshopDiff baseline={originalEditText} current={editText} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Btn solid onClick={() => {
+                  if (!editText.trim() || saving) return
+                  setSaving(true)
+                  api.updateDeck(`${owner}/${id}`, editText).then(() => {
+                    setEditing(false); setSaving(false); setAnalyzing(true)
+                    api.getDeck(`${owner}/${id}`).then(setDeck)
+                    api.getDeckVersions(`${owner}/${id}`).then(setVersions).catch(() => {})
+                  }).catch(() => setSaving(false))
+                }}>{saving ? 'SAVING...' : 'SAVE UPDATE'}</Btn>
+                {editText !== originalEditText && <Btn ghost onClick={() => setEditText(originalEditText)}>REVERT</Btn>}
+                <Btn ghost onClick={() => { setEditing(false); setSaving(false) }}>CANCEL</Btn>
+              </div>
+            </Panel>
+          </div>
+        )}
+
+        {/* ═══ TAB 1 — LANDING ═══ */}
+        {landingTab === 'landing' && (
+          <div className="deck-landing" data-testid="staging-landing">
+            <div className="deck-landing__sidebar">
+              <Panel code="04.A" title="DECK SPECS" solid>
+                <KV rows={specsRows} />
+                {commanderThemes.length > 0 && (
+                  <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>{commanderThemes.map((t, i) => <Tag key={i}>{t.toUpperCase()}</Tag>)}</div>
+                )}
+                <div className="hr" style={{ margin: '10px 0' }} />
+                <div className="t-xs muted" style={{ marginBottom: 6, letterSpacing: '0.08em' }}>BRACKET</div>
+                <KV rows={bracketRows} />
+                {glance.winConditions.length > 0 && (
+                  <>
+                    <div className="t-xs muted" style={{ margin: '8px 0 4px', letterSpacing: '0.08em' }}>WIN CONDITIONS</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                      {glance.winConditions.map((name, i) => <CardLink key={i} name={name}><Tag>{name.toUpperCase()}</Tag></CardLink>)}
+                    </div>
+                  </>
+                )}
+                {deckElo && deckElo.games > 0 && (
+                  <>
+                    <div className="hr" style={{ margin: '10px 0' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <GlossaryTerm term="confidence" compact><span className="t-xs muted">CONFIDENCE</span></GlossaryTerm>
+                      <ConfidenceDots games={deckElo.games} showLabel size="lg" />
+                    </div>
+                  </>
+                )}
+                {isOwner && owner && id && (
+                  <>
+                    <div className="hr" style={{ margin: '10px 0' }} />
+                    <DeckRating userSlug={userOwnerSlug} deckKey={`${owner}/${id}`} />
+                  </>
+                )}
+              </Panel>
+
+              {/* Deck Stats folded in — card-types breakdown + color pips */}
+              <DeckStatsSummary cards={cards} />
+
+              {/* The single, deduped Similar Decks panel */}
+              <Panel code="04.SIM" title={`SIMILAR DECKS / / ${similarDecks == null ? '…' : similarDecks.length}`} right={similarDecks && similarDecks.length > 0 ? <Tag solid>{similarDecks.length}</Tag> : null}>
+                {similarDecks == null ? (
+                  <div className="t-xs muted" style={{ padding: '10px 0', textAlign: 'center' }}>&gt; SCANNING DECK INDEX<span className="blink">_</span></div>
+                ) : similarDecks.length === 0 ? (
+                  <div className="t-xs muted" style={{ padding: '10px 0', textAlign: 'center' }}>&gt; NO SIMILAR DECKS FOUND.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    {similarDecks.map((d, i) => {
+                      const cmdrArt = d.commander_card ? cardArtUrl(d.commander_card) : null
+                      const showName = (d.commander || d.name || d.id || '').toUpperCase()
+                      const tags = []
+                      if (d.same_commander) tags.push('CMDR')
+                      if (d.same_archetype) tags.push('ARCHE')
+                      if (d.same_bracket) tags.push(`B${d.bracket}`)
+                      return (
+                        <Link key={`${d.owner}/${d.id}`} to={`/decks/${d.owner}/${d.id}`} title={`${showName} · ${d.shared_cards} shared`}
+                          style={{ display: 'grid', gridTemplateColumns: '52px 1fr', gap: 8, padding: 4, border: '1px solid var(--rule-2)', textDecoration: 'none', color: 'var(--ink)', background: i === 0 ? 'color-mix(in srgb, var(--accent) 10%, transparent)' : 'transparent' }}>
+                          <div className={cmdrArt ? '' : 'hatch'} style={{ width: 52, height: 40, overflow: 'hidden', backgroundImage: cmdrArt ? `url(${cmdrArt})` : undefined, backgroundSize: 'cover', backgroundPosition: 'center 30%', filter: 'saturate(0.6) contrast(1.05)' }} />
+                          <div style={{ minWidth: 0 }}>
+                            <div className="t-xs" style={{ fontWeight: 700, letterSpacing: '0.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{showName}</div>
+                            <div className="t-xs muted-2" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{(d.owner || '').toUpperCase()}</div>
+                            <div className="t-xs" style={{ marginTop: 2, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                              <span style={{ color: 'var(--ok)', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{d.shared_cards} SHARED</span>
+                              {tags.map(t => <span key={t} style={{ fontSize: 8, letterSpacing: '0.08em', padding: '0 4px', border: '1px solid color-mix(in srgb, var(--accent) 50%, var(--rule-2))', color: 'var(--ink-2)' }}>{t}</span>)}
+                            </div>
+                          </div>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </Panel>
+            </div>
+
+            <div className="deck-landing__main">
+              {/* Mana curve — between banner and decklist */}
+              {curveData && (
+                <Panel code="04.M" title="MANA CURVE">
+                  <ManaCurveChart
+                    distribution={curveData.distribution}
+                    avgCmc={curveData.avg_cmc}
+                    curveShape={curveData.curve_shape}
+                    warnings={curveData.warnings}
+                    landCount={curveData.land_count}
+                    nonlandCount={curveData.nonland_count}
+                    colorByCmc={computeColorByCmc(cards)}
+                  />
+                </Panel>
+              )}
+
+              {/* Decklist front-and-center, list view, hover = full card */}
+              <Panel code="04.B" title={`DECK LIST / / ${cards.length} ENTRIES`}>
+                <LandingCardList cards={cards} commanderName={deck?.commander_card} />
+              </Panel>
+            </div>
+          </div>
+        )}
+
+        {/* ═══ TAB 2 — FREYA ANALYSIS ═══ */}
+        {landingTab === 'freya' && (
+          <div className="archive-main deck-tab-body" data-testid="staging-freya">
+            <DeckBudgetPanel deckId={`${owner}/${id}`} />
+            <Panel code="04.C" title="FREYA / / ENGINE ANALYSIS" right={<Tag solid>{wbs ? `Bracket B${wbs}${bracketDiverges ? ` → B${measuredBracket}` : ''}` : 'Bracket pending'}</Tag>}>
+              {!analysis ? (
+                <div style={{ padding: '20px 0', textAlign: 'center' }}>
+                  <div className="t-md muted" style={{ lineHeight: 1.8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {analyzing ? <>&gt; FREYA ENGINE ANALYZING DECK<span className="blink">_</span></> : <>&gt; NO FREYA ANALYSIS ON FILE</>}
+                  </div>
+                </div>
+              ) : (
+                <div className="analysis-grid">
+                  <div>
+                    <div className="t-xs muted">ARCHETYPE</div>
+                    <div className="t-2xl" style={{ fontWeight: 700, marginTop: 2 }}>{archetype}</div>
+                  </div>
+                  <div className="analysis-weights">
+                    <div className="t-xs muted">STRATEGY FOCUS</div>
+                    {Object.entries(evalWeights).slice(0, 6).map(([k, v], i) => (
+                      <div key={i} style={{ display: 'grid', gridTemplateColumns: '100px 1fr 36px', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                        <span className="t-xs" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{k.replace(/_/g, ' ').toUpperCase()}</span>
+                        <Bar value={v * 100} />
+                        <span className="t-xs muted text-right">{Math.round(v * 100) / 100}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </Panel>
+
+            {winLines.length > 0 && (() => {
+              const WINLINE_CAP = 8
+              const visible = winLinesExpanded ? winLines : winLines.slice(0, WINLINE_CAP)
+              const hidden = winLines.length - WINLINE_CAP
+              return (
+                <Panel code="04.D" title={`WIN LINES / / ${winLines.length} DETECTED`}>
+                  {visible.map((wl, i) => {
+                    const kindMap = { finisher: 'bad', combat: 'warn', commander_damage: 'ok', combo: 'bad', synergy: null }
+                    const symbols = ['α', 'β', 'γ', 'δ', 'ε', 'ζ']
+                    return (
+                      <div key={i} className="winline-row" style={{ padding: '10px 0', borderBottom: i < visible.length - 1 ? '1px dashed var(--rule-2)' : 'none' }}>
+                        <div style={{ fontSize: 24, fontWeight: 700, color: kindMap[wl.type] === 'bad' ? 'var(--danger)' : kindMap[wl.type] === 'warn' ? 'var(--warn)' : kindMap[wl.type] === 'ok' ? 'var(--ok)' : 'var(--ink)' }}>{symbols[i] || '·'}</div>
+                        <Tag kind={kindMap[wl.type]} solid>{wl.type?.toUpperCase()}</Tag>
+                        <div>
+                          <div className="t-md" style={{ fontWeight: 700 }}>{wl.pieces?.join(' + ')}</div>
+                          {wl.tutor_paths && <div className="t-xs muted" style={{ marginTop: 2 }}>TUTORS: {wl.tutor_paths.map(t => t.tutor).join(', ')}</div>}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {!winLinesExpanded && hidden > 0 && (
+                    <button type="button" onClick={() => setWinLinesExpanded(true)} style={{ width: '100%', padding: '10px 0', marginTop: 6, background: 'none', border: '1px dashed var(--rule-2)', color: 'var(--ink-2)', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}>SHOW {hidden} MORE WIN LINE{hidden === 1 ? '' : 'S'} ↓</button>
+                  )}
+                  {winLinesExpanded && winLines.length > WINLINE_CAP && (
+                    <button type="button" onClick={() => setWinLinesExpanded(false)} style={{ width: '100%', padding: '10px 0', marginTop: 6, background: 'none', border: '1px dashed var(--rule-2)', color: 'var(--ink-2)', fontFamily: 'inherit', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}>COLLAPSE ↑</button>
+                  )}
+                </Panel>
+              )
+            })()}
+            <WinConditionRationale winLines={winLines} />
+
+            {legality && !legality.valid && (
+              <Panel code="04.L" title="LEGALITY VIOLATIONS" right={<Tag kind="bad" solid>ILLEGAL</Tag>}>
+                {legality.errors?.map((e, i) => <div key={i} className="t-xs" style={{ color: 'var(--danger)', padding: '2px 0' }}>&gt; {e}</div>)}
+                {legality.warnings?.map((w, i) => <div key={i} className="t-xs" style={{ color: 'var(--warn)', padding: '2px 0' }}>&gt; {w}</div>)}
+              </Panel>
+            )}
+
+            {(curveWarnings.length > 0 || colorMismatch.length > 0 || comboNotes.length > 0) && (
+              <Panel code="04.W" title="WARNINGS" right={<Tag kind="warn" solid>{curveWarnings.length + colorMismatch.length + comboNotes.length}</Tag>}>
+                {curveWarnings.map((w, i) => <div key={`c${i}`} className="t-xs" style={{ color: 'var(--warn)', padding: '2px 0' }}>&gt; CURVE: {w}</div>)}
+                {colorMismatch.map((w, i) => <div key={`m${i}`} className="t-xs" style={{ color: 'var(--warn)', padding: '2px 0' }}>&gt; COLOR: {w}</div>)}
+                {comboNotes.map((w, i) => <div key={`n${i}`} className="t-xs" style={{ color: 'var(--ink-2)', padding: '2px 0' }}>&gt; COMBO: {w}</div>)}
+              </Panel>
+            )}
+
+            {metaMatchups.length > 0 && (
+              <CollapsiblePanel code="04.MM" title={`META POSITIONING / / ${archetype}`}>
+                {metaMatchups.map((m, i) => {
+                  const ratingSymbol = m.rating === 'favored' ? '▲' : m.rating === 'unfavored' ? '▼' : '—'
+                  return (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: i < metaMatchups.length - 1 ? '1px dotted var(--rule)' : 'none' }}>
+                      <div>
+                        <span className="t-xs" style={{ fontWeight: 700 }}>vs {m.archetype?.toUpperCase()}</span>
+                        {m.reason && <div className="t-xs muted" style={{ marginTop: 1 }}>{m.reason}</div>}
+                      </div>
+                      <Tag solid kind={m.rating === 'favored' ? 'ok' : m.rating === 'unfavored' ? 'bad' : null}>{ratingSymbol} {m.rating?.toUpperCase()}</Tag>
+                    </div>
+                  )
+                })}
+              </CollapsiblePanel>
+            )}
+
+            {vulnerableTo.length > 0 && (
+              <CollapsiblePanel code="04.V" title="VULNERABLE TO">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>{vulnerableTo.map((v, i) => <Tag key={i} kind="warn" solid>{v.toUpperCase()}</Tag>)}</div>
+              </CollapsiblePanel>
+            )}
+
+            {starCards.length > 0 && (
+              <CollapsiblePanel code="04.S" title={`STAR CARDS / / ${starCards.length}`}>
+                <div className="grid col-5 gap-2">{starCards.slice(0, 10).map((name, i) => <CardThumb key={i} name={name} score="★" />)}</div>
+              </CollapsiblePanel>
+            )}
+
+            {finisherCards.length > 0 && (
+              <CollapsiblePanel code="04.K" title={`WIN CONDITIONS / / ${finisherCards.length}`}>
+                <div className="grid col-5 gap-2">{finisherCards.slice(0, 10).map((name, i) => <CardThumb key={i} name={name} />)}</div>
+              </CollapsiblePanel>
+            )}
+
+            {valueKeys.length > 0 && (
+              <CollapsiblePanel code="04.E" title={`VALUE ENGINE / / ${valueKeys.length} KEY CARDS`}>
+                <div className="grid col-5 gap-2">{valueKeys.slice(0, 10).map((name, i) => <CardThumb key={i} name={name} />)}</div>
+              </CollapsiblePanel>
+            )}
+            <ValueEngineRationale chains={valueChains} />
+
+            {gameChangerCards.length > 0 && (
+              <CollapsiblePanel code="04.GC" title={`GAME CHANGERS / / ${gameChangerCards.length}`} right={<Tag kind="bad" solid>B4+</Tag>}>
+                <div className="grid col-5 gap-2">{gameChangerCards.map((name, i) => <CardThumb key={i} name={name} />)}</div>
+              </CollapsiblePanel>
+            )}
+
+            {emergentSynergies.length > 0 && (
+              <CollapsiblePanel code="04.H" title={`CARD PACKAGES / / ${emergentSynergies.length} DISCOVERED`}>
+                {emergentSynergies.slice(0, 12).map((syn, i) => (
+                  <div key={i} style={{ padding: '6px 0', borderBottom: i < emergentSynergies.length - 1 ? '1px dashed var(--rule-2)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div className="t-md" style={{ fontWeight: 700 }}>{syn.cards?.join(' + ')}</div>
+                      {syn.effect_pattern && <div className="t-xs muted" style={{ marginTop: 2 }}>{syn.effect_pattern}</div>}
+                    </div>
+                    <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                      <Tag solid kind={syn.tier >= 3 ? 'ok' : null}>T{syn.tier}</Tag>
+                      {syn.observation_count > 0 && <span className="t-xs muted" style={{ marginLeft: 6 }}>{syn.observation_count}× seen</span>}
+                    </div>
+                  </div>
+                ))}
+              </CollapsiblePanel>
+            )}
+
+            <ConsiderCuttingRationale cuts={cuttableCards} onCut={isOwner ? handleCutCardFromWorkshop : undefined} />
+
+            {analysis?.tutor_targets && (
+              <CollapsiblePanel code="04.F" title="TUTOR TARGETS">
+                <KV rows={analysis.tutor_targets.map((t, i) => [`TARGET.${i + 1}`, t])} />
+              </CollapsiblePanel>
+            )}
+
+            {/* Hot cards — tiles rendered smaller on this tab */}
+            {(() => {
+              const perDeckRows = deckCardStats?.cards
+              const usingPerDeck = Array.isArray(perDeckRows) && perDeckRows.length > 0
+              let baseline = 25
+              let ranked = []
+              if (usingPerDeck) {
+                baseline = (typeof deckCardStats.baseline_win_rate === 'number' ? deckCardStats.baseline_win_rate : 0.25) * 100
+                ranked = perDeckRows.map(s => {
+                  const games = s.games || 0, wins = s.wins || 0
+                  const wr = (typeof s.win_rate === 'number' ? s.win_rate : (games > 0 ? wins / games : 0)) * 100
+                  const delta = (typeof s.win_rate_delta === 'number' ? s.win_rate_delta * 100 : wr - baseline)
+                  return { name: s.card_name, games, wins, wr, lift: delta * Math.sqrt(games) }
+                }).filter(r => r.lift > 0).sort((a, b) => b.lift - a.lift).slice(0, 5)
+              } else if (commanderCardStats && commanderCardStats.length > 0) {
+                const deckCardNames = new Set(cards.map(c => c.name))
+                ranked = commanderCardStats.filter(s => deckCardNames.has(s.card_name || s.name || s.CardName)).filter(s => (s.games_included || s.games || s.Games || 0) >= 20).map(s => {
+                  const games = s.games_included || s.games || s.Games || 0, wins = s.wins_when_included || s.wins || s.Wins || 0
+                  const wr = games > 0 ? wins / games * 100 : 0
+                  return { name: s.card_name || s.name || s.CardName, games, wins, wr, lift: (wr - baseline) * Math.sqrt(games) }
+                }).filter(r => r.lift > 0).sort((a, b) => b.lift - a.lift).slice(0, 5)
+              }
+              if (ranked.length === 0) return null
+              return (
+                <Panel code="04.HC" title={`HOT CARDS / / TOP ${ranked.length} BY WR CONTRIBUTION`}>
+                  <div className="hot-cards-grid hot-cards-grid--sm">
+                    {ranked.map((r, i) => (
+                      <div key={i} className="hot-cards-tile">
+                        <CardThumb name={r.name} compact />
+                        <span className="hot-cards-chip hot-cards-chip--wr">{r.wr.toFixed(0)}%</span>
+                        <span className="hot-cards-chip hot-cards-chip--games">{r.games}g · +{(r.wr - baseline).toFixed(0)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </Panel>
+              )
+            })()}
+          </div>
+        )}
+
+        {/* ═══ TAB 3 — EMPIRICAL ═══ */}
+        {landingTab === 'empirical' && (
+          <div className="archive-main deck-tab-body" data-testid="staging-empirical">
+            {owner && id && user && <CreditsPanel compact refreshKey={creditsRefreshKey} />}
+            {owner && id && (
+              <div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  <Btn solid arrow="▶" onClick={() => {
+                    if (gauntlet?.status === 'running') return
+                    trackEvent('start_gauntlet', { deck: `${owner}/${id}`, games: 500 })
+                    api.startGauntlet(`${owner}/${id}`, 500).then((res) => {
+                      if (res?.credits_charged) { toast.info(`PAID RUN — ${res.credits_charged} CR DEDUCTED`); setCreditsRefreshKey(k => k + 1) }
+                      const poll = () => { api.getGauntlet(`${owner}/${id}`).then(r => { setGauntlet(r); if (r.status === 'running') setTimeout(poll, 3000) }) }
+                      setTimeout(poll, 2000)
+                      setGauntlet({ status: 'running', games: 0, target: 500, win_rate: 0 })
+                    }).catch(err => {
+                      if (err?.status === 402) { toast.error('OUT OF FREE GAUNTLETS / INSUFFICIENT CREDITS'); setCreditsRefreshKey(k => k + 1) }
+                      else if (err?.status === 401) toast.error('SIGN IN TO RUN A GAUNTLET')
+                      else toast.error('GAUNTLET FAILED TO START')
+                    })
+                  }}>{gauntlet?.status === 'running' ? 'GAUNTLET RUNNING...' : 'RUN GAUNTLET (500)'}</Btn>
+                  <Btn solid arrow="▶" onClick={() => {
+                    if (spawningRoom) return
+                    setSpawningRoom(true)
+                    trackEvent('spawn_spectate_room', { deck: `${owner}/${id}` })
+                    api.spawnSpectateRoom(`${owner}/${id}`).then(r => { setSpawningRoom(false); if (r.room_id) navigate(`/spectate/${r.room_id}`) }).catch(() => setSpawningRoom(false))
+                  }}>{spawningRoom ? 'SPAWNING...' : 'SPECTATE LIVE'}</Btn>
+                  <Btn ghost arrow="▶">TEST VERSION</Btn>
+                </div>
+              </div>
+            )}
+
+            {gauntlet && gauntlet.status !== 'none' && (
+              <Panel code="04.G" title="GAUNTLET REPORT" right={gauntlet.status === 'running' ? <Tag kind="warn">{`${gauntlet.games}/${gauntlet.target}`}</Tag> : <Tag solid kind={gauntlet.status === 'complete' ? 'ok' : 'bad'}>{gauntlet.status?.toUpperCase()}</Tag>}>
+                {gauntlet.status === 'running' ? (
+                  <div style={{ padding: '16px 0', textAlign: 'center' }}>
+                    <div className="t-md muted" style={{ lineHeight: 1.8, textTransform: 'uppercase', letterSpacing: '0.04em' }}>&gt; GAUNTLET IN PROGRESS<span className="blink">_</span><br />&gt; {gauntlet.games?.toLocaleString()} / {gauntlet.target?.toLocaleString()} GAMES ({gauntlet.win_rate || 0}% WIN RATE)</div>
+                    <Bar value={gauntlet.games / gauntlet.target * 100} />
+                  </div>
+                ) : gauntlet.status === 'complete' ? (
+                  <div>
+                    <div className="gauntlet-stat-grid">
+                      <div><div className="t-xs muted">WIN RATE</div><div className="t-2xl gauntlet-stat-num" style={{ fontWeight: 700, color: gauntlet.win_rate >= 25 ? 'var(--ok)' : 'var(--danger)' }}>{gauntlet.win_rate}%</div></div>
+                      <div><div className="t-xs muted">RECORD</div><div className="t-2xl gauntlet-stat-num" style={{ fontWeight: 700 }}><span style={{ color: 'var(--ok)' }}>{gauntlet.wins}W</span> — <span style={{ color: 'var(--danger)' }}>{gauntlet.losses}L</span></div></div>
+                      <div><div className="t-xs muted">ELO DELTA</div><div className="t-2xl gauntlet-stat-num" style={{ fontWeight: 700, color: gauntlet.elo_delta >= 0 ? 'var(--ok)' : 'var(--danger)' }}>{gauntlet.elo_delta >= 0 ? '+' : ''}{Math.round(gauntlet.elo_delta)}</div></div>
+                    </div>
+                    <KV rows={[['GAMES', `${gauntlet.games?.toLocaleString()}`], ['AVG TURNS', `${gauntlet.avg_turns}`]]} />
+                    {gauntlet.top_beaten?.length > 0 && (<><div className="hr" style={{ margin: '8px 0' }} /><div className="t-xs muted" style={{ marginBottom: 4 }}>MOST BEATEN</div>{gauntlet.top_beaten.map((b, i) => <div key={i} className="t-xs" style={{ color: 'var(--ok)', padding: '1px 0' }}>&gt; {b}</div>)}</>)}
+                    {gauntlet.top_lost_to?.length > 0 && (<><div className="hr" style={{ margin: '8px 0' }} /><div className="t-xs muted" style={{ marginBottom: 4 }}>MOST LOST TO</div>{gauntlet.top_lost_to.map((b, i) => <div key={i} className="t-xs" style={{ color: 'var(--danger)', padding: '1px 0' }}>&gt; {b}</div>)}</>)}
+                  </div>
+                ) : gauntlet.status === 'error' ? (
+                  <div className="t-xs" style={{ color: 'var(--danger)', padding: '10px 0' }}>&gt; GAUNTLET ERROR — deck may not be loaded in the engine pool.</div>
+                ) : null}
+              </Panel>
+            )}
+
+            {/* Head-to-head matchups (best/worst per commander) */}
+            <MatchupsPanel owner={owner} id={id} />
+
+            {matchupMatrix && matchupMatrix.length > 0 && (
+              <Panel code="04.MX" title={`MATCHUP MATRIX / / ${matchupMatrix.length} OPPONENTS`}>
+                <div className="matchup-matrix">
+                  {matchupMatrix.slice(0, 30).map((m, i) => {
+                    const games = (m.wins || 0) + (m.losses || 0)
+                    if (games === 0) return null
+                    const wr = (m.wins || 0) / games * 100
+                    const color = wr >= 35 ? 'var(--ok)' : wr >= 20 ? 'var(--ink-2)' : 'var(--danger)'
+                    return (
+                      <div key={i} className="matchup-matrix__row">
+                        <span className="matchup-matrix__name" title={m.opponent_commander || m.opponent || '?'}>{m.opponent_commander || m.opponent || '?'}</span>
+                        <span className="matchup-matrix__stats">
+                          <span className="t-xs muted">{games}g</span>
+                          <span style={{ color, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{wr.toFixed(0)}%</span>
+                          <span style={{ fontVariantNumeric: 'tabular-nums' }}><span style={{ color: 'var(--ok)' }}>{m.wins || 0}W</span><span className="muted">—</span><span style={{ color: 'var(--danger)' }}>{m.losses || 0}L</span></span>
+                        </span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </Panel>
+            )}
+
+            {commanderCardStats && commanderCardStats.length > 0 && (
+              <Panel code="04.CS" title={`CARD STATS / / ${deck?.commander_card || 'COMMANDER'} ECOSYSTEM`}>
+                {(() => {
+                  const deckCardNames = new Set(cards.map(c => c.name))
+                  const rows = commanderCardStats.filter(s => deckCardNames.has(s.card_name || s.name || s.CardName)).filter(s => (s.games_included || s.games || s.Games || 0) >= 20).map(s => {
+                    const games = s.games_included || s.games || s.Games || 0, wins = s.wins_when_included || s.wins || s.Wins || 0
+                    return { name: s.card_name || s.name || s.CardName, games, wins, wr: games > 0 ? wins / games * 100 : 0 }
+                  }).sort((a, b) => b.wr - a.wr)
+                  if (rows.length === 0) return <div className="t-xs muted" style={{ padding: '10px 0' }}>&gt; Not enough card-level data yet for this commander.</div>
+                  const top = rows.slice(0, 8)
+                  return (
+                    <>
+                      <div className="t-xs muted" style={{ marginBottom: 4, marginTop: 4 }}>TOP PERFORMERS</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px 60px', gap: '2px 8px', fontSize: 10 }}>
+                        {top.map((r, i) => (
+                          <div key={i} style={{ display: 'contents' }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+                            <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--ok)', fontWeight: 700 }}>{r.wr.toFixed(1)}%</span>
+                            <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--ink-3)' }}>{r.games}g</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )
+                })()}
+              </Panel>
+            )}
+
+            {recentGames && recentGames.length > 0 && (() => {
+              const myKey = `${owner}/${id}`
+              const summary = summarizeRecentGames(recentGames, myKey)
+              return (
+                <Panel code="04.RG" title={`RECENT GAMES / / ${recentGames.length}`} right={summary.total > 0 ? <span className="t-xs muted"><span style={{ color: 'var(--ok)' }}>{summary.wins}W</span>{' · '}<span style={{ color: 'var(--danger)' }}>{summary.losses}L</span></span> : null}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }} data-testid="recent-games-table">
+                    <thead><tr style={{ borderBottom: '1px solid var(--rule-2)', textAlign: 'left' }}><th style={{ padding: '4px 6px', width: 50 }}>RESULT</th><th style={{ padding: '4px 6px' }}>GAME</th><th style={{ padding: '4px 6px' }}>OPPONENTS</th><th style={{ padding: '4px 6px', width: 38 }}>T</th><th style={{ padding: '4px 6px', width: 80 }}>WHEN</th></tr></thead>
+                    <tbody>
+                      {recentGames.map((r) => {
+                        const outcome = outcomeForDeck(r, myKey)
+                        const opps = opponentCommanders(r, myKey)
+                        const resultColor = outcome === 'win' ? 'var(--ok)' : outcome === 'loss' ? 'var(--danger)' : outcome === 'draw' ? 'var(--ink-2)' : 'var(--ink-3)'
+                        const resultLabel = outcome === 'win' ? 'WIN' : outcome === 'loss' ? 'LOSS' : outcome === 'draw' ? 'DRAW' : '—'
+                        return (
+                          <tr key={r.game_id} onClick={() => navigate(`/games/${r.game_id}/summary`)} style={{ borderBottom: '1px solid var(--rule-3)', cursor: 'pointer' }} title="Open game summary">
+                            <td style={{ padding: '4px 6px', fontWeight: 700, color: resultColor, letterSpacing: '0.06em' }}>{resultLabel}</td>
+                            <td style={{ padding: '4px 6px' }}><strong>#{r.game_id}</strong></td>
+                            <td style={{ padding: '4px 6px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 0 }}><span className="muted">vs </span>{opps.join(' · ') || '—'}</td>
+                            <td style={{ padding: '4px 6px' }}>{r.turns || '—'}</td>
+                            <td style={{ padding: '4px 6px' }}><span className="muted">{formatRelativeFinished(r.finished_at)}</span></td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </Panel>
+              )
+            })()}
+
+            {curse && (
+              <div className="archive-curse-section">
+                <CurseDisplay curse={curse} isOwner={isOwner} deckId={deckKey} onConstraintsChange={(constraints) => setCurse(c => ({ ...(c || {}), constraints }))} />
+              </div>
+            )}
+          </div>
+        )}
+
+        {cardSearchOpen && <CardSearchModal value={cardSearch} onChange={setCardSearch} totalCards={cards.length} matchCount={filteredCards.length} inputRef={cardSearchInputRef} onClose={() => setCardSearchOpen(false)} />}
+        {exportOpen && <DeckExportModal deck={deck} deckId={id} onClose={() => setExportOpen(false)} />}
+        {comparePickerOpen && <DeckPicker excludeKey={`${owner}/${id}`} onClose={() => setComparePickerOpen(false)} onPick={(d) => { setComparePickerOpen(false); navigate(`/compare/${owner}/${id}/${d.owner}/${d.id}`) }} />}
+      </div>
     )
   }
 
