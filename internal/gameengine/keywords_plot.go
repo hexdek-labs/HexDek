@@ -276,8 +276,11 @@ func IsPlotCastEligible(gs *GameState, seatIdx int, card *Card) bool {
 //
 // On success the card is removed from exile, pushed onto the stack
 // with CostMeta{"plot_cast": true, "zone_cast_keyword": "plot"} and
-// CastZone=ZoneExile; the PlotMeta entry is cleared and the
-// ZoneCastPermission is removed (plot is single-use).
+// CastZone=ZoneExile; the cast-side bookkeeping + "whenever you cast a
+// spell" trigger dispatch run through the same helpers as CastFromZone
+// (so magecraft / prowess / storm / second-spell payoffs see the plot
+// cast); the PlotMeta entry is cleared and the ZoneCastPermission is
+// removed (plot is single-use). Resolution is left to the caller.
 func CastPlot(gs *GameState, seatIdx int, card *Card) (*CostPaymentResult, error) {
 	if gs == nil {
 		return nil, &CastError{Reason: "nil game"}
@@ -340,9 +343,29 @@ func CastPlot(gs *GameState, seatIdx int, card *Card) (*CostPaymentResult, error
 	}
 	PushStackItem(gs, item)
 
-	// Consume the plot eligibility — single-use.
+	// Consume the plot eligibility — single-use. Done BEFORE cast-trigger
+	// dispatch so a "whenever you cast a spell" trigger that itself grants a
+	// cast can't re-enter and reuse this same grant (mirrors CastFromZone's
+	// "mark consumed before resolution" ordering).
 	delete(gs.PlotExile, card)
 	RemoveZoneCastGrant(gs, card)
+
+	// CR §601.2i / §702.172b — the plotted card is now CAST. The prior path
+	// hand-rolled the stack push and skipped every cast-side side effect that
+	// the canonical CastFromZone pipeline performs, so a plot cast fired no
+	// "whenever you cast a spell" triggers and didn't count toward magecraft /
+	// prowess / storm / second-spell payoffs. Route the cast-side bookkeeping
+	// + trigger dispatch through the same helpers CastFromZone uses. The plot
+	// cast pays {0}, so there is no cost-modifier pass (CR §702.172b casts
+	// "without paying its mana cost"). Resolution is intentionally left to the
+	// caller — the spell sits on the stack — preserving the historical CastPlot
+	// contract (CastFromZone resolves inline; CastPlot does not).
+	IncrementCastCount(gs, seatIdx)
+	RecordCast(gs, seatIdx, card, 0)
+	seat.Turn.CastFromExile++
+	fireCastTriggersFromZone(gs, seatIdx, card, ZoneExile)
+	FireCastTriggerObservers(gs, card, seatIdx, false)
+	InvokeCastHook(gs, item)
 
 	if gs.Flags == nil {
 		gs.Flags = map[string]int{}
