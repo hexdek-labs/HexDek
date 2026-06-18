@@ -400,6 +400,15 @@ func CategorizeReportCombos(report *FreyaReport) {
 	// Phase 2: VALUE axis (deck-independent advantage baseline). Runs after
 	// the COMBO axis so combo entries can be excluded from value.
 	populateValueEngines(report, comboKeys, profByName)
+
+	// Phase 3: SYNERGY axis (commander-relative) + the Layer-B context re-tag
+	// (co-tag VALUE entries that advance the plan with +SYNERGY). Runs last so
+	// it sees the final COMBO + VALUE buckets.
+	valueKeys := make(map[string]bool, len(report.ValueEngines))
+	for _, v := range report.ValueEngines {
+		valueKeys[comboCardKey(v.Cards)] = true
+	}
+	populateSynergyPackages(report, comboKeys, valueKeys, profByName)
 }
 
 // comboCardKey is the order-independent dedup key for a combo's card set.
