@@ -2978,12 +2978,17 @@ body {
 }
 
 /* Landing: left specs/stats sidebar + center curve/decklist main */
+/* LEFT specs/curve sidebar + CENTER decklist (~half) + RIGHT search rail.
+   Viewers (no edit rights) collapse to a 2-column specs + decklist. */
 .deck-landing {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 300px minmax(0, 1fr);
   gap: 14px;
   padding: 14px 12px;
   align-items: start;
+}
+.deck-landing--edit {
+  grid-template-columns: 300px minmax(0, 1fr) minmax(0, 1fr);
 }
 .deck-landing__sidebar {
   display: flex;
@@ -2998,10 +3003,47 @@ body {
   gap: 14px;
   min-width: 0;
 }
+.deck-landing__edit {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 12px;
+  min-width: 0;
+}
+
+/* Staged-edit save bar above the decklist */
+.deck-landing-savebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 7px 9px;
+  margin-bottom: 10px;
+  border: 1px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
 
 /* Flat list decklist with hover affordance */
 .landing-card-row { transition: background 90ms ease; cursor: default; }
 .landing-card-row:hover { background: var(--bg-2, rgba(255, 255, 255, 0.05)); }
+
+/* Hover-reveal per-row remove control (owner editing) */
+.landing-card-remove {
+  opacity: 0;
+  background: transparent;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+  text-align: center;
+  transition: opacity 90ms ease;
+}
+.landing-card-row:hover .landing-card-remove { opacity: 0.75; }
+.landing-card-remove:hover { opacity: 1; }
 
 /* FREYA / EMPIRICAL tab bodies — single column stack */
 .deck-tab-body {
@@ -3015,7 +3057,14 @@ body {
 .hot-cards-grid--sm { grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 6px; }
 .hot-cards-grid--sm .hot-cards-chip { font-size: 8px; padding: 0 3px; }
 
+@media (max-width: 1100px) {
+  /* Drop the right search rail under the decklist before going single-col */
+  .deck-landing--edit { grid-template-columns: 300px minmax(0, 1fr); }
+  .deck-landing--edit .deck-landing__edit { grid-column: 1 / -1; position: static; }
+}
 @media (max-width: 900px) {
-  .deck-landing { grid-template-columns: 1fr; }
-  .deck-landing__sidebar { position: static; }
+  .deck-landing,
+  .deck-landing--edit { grid-template-columns: 1fr; }
+  .deck-landing__sidebar,
+  .deck-landing__edit { position: static; }
 }

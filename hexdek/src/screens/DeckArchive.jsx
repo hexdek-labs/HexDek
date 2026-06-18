@@ -272,8 +272,11 @@ const CardThumb = ({ name, cmc, score, compact }) => {
 // full card face (which carries the oracle text) beside the cursor, so
 // a reader can read any card without leaving the page. Click still
 // routes through CardLink's popup / card page.
-function LandingCardList({ cards, commanderName }) {
+function LandingCardList({ cards, commanderName, onRemove }) {
   const [hover, setHover] = useState(null) // { name, x, y }
+  // Grid gains a 4th column for the hover-reveal remove control only
+  // when an onRemove handler is supplied (owner, editing).
+  const rowCols = onRemove ? '26px 1fr auto 22px' : '26px 1fr auto'
 
   const groups = useMemo(() => {
     const order = ['commander', 'creature', 'planeswalker', 'instant', 'sorcery', 'artifact', 'enchantment', 'land', 'other']
@@ -317,6 +320,7 @@ function LandingCardList({ cards, commanderName }) {
           </div>
           {g.rows.map((c, i) => {
             const linkName = (c.name || '').replace(/^COMMANDER:\s*/i, '').trim()
+            const removable = onRemove && g.key !== 'commander'
             return (
               <div
                 key={`${c.name}-${i}`}
@@ -324,13 +328,25 @@ function LandingCardList({ cards, commanderName }) {
                 data-testid="landing-card-row"
                 onMouseMove={(e) => setHover({ name: linkName, x: e.clientX, y: e.clientY })}
                 onMouseLeave={() => setHover(h => (h && h.name === linkName ? null : h))}
-                style={{ display: 'grid', gridTemplateColumns: '26px 1fr auto', gap: 8, alignItems: 'center', padding: '4px 4px', borderBottom: i < g.rows.length - 1 ? '1px dotted var(--rule)' : 'none', fontSize: 12 }}
+                style={{ display: 'grid', gridTemplateColumns: rowCols, gap: 8, alignItems: 'center', padding: '4px 4px', borderBottom: i < g.rows.length - 1 ? '1px dotted var(--rule)' : 'none', fontSize: 12 }}
               >
                 <span style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: (c.quantity || 1) > 1 ? 'var(--ink)' : 'var(--ink-2)', fontWeight: (c.quantity || 1) > 1 ? 700 : 400 }}>{c.quantity || 1}</span>
                 <CardLink name={linkName} style={{ borderBottom: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{linkName}</CardLink>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 4, minHeight: 14 }}>
                   {c.mana_cost ? <ManaCost cost={c.mana_cost} size={12} gap={1} /> : null}
                 </span>
+                {onRemove && (
+                  removable ? (
+                    <button
+                      type="button"
+                      className="landing-card-remove"
+                      title={`Remove ${linkName}`}
+                      data-testid="landing-card-remove"
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(c) }}
+                    >×</button>
+                  ) : <span />
+                )}
               </div>
             )
           })}
@@ -583,7 +599,7 @@ function WorkshopSearchPanel({ colorIdentity, onAdd }) {
           {results.map((r, i) => (
             <div
               key={`${r.name}-${i}`}
-              onClick={() => onAdd(r.name)}
+              onClick={() => onAdd(r.name, r)}
               title={`Add ${r.name}`}
               style={{
                 display: 'flex', alignItems: 'baseline', gap: 8,
@@ -1395,6 +1411,13 @@ export default function DeckArchive() {
   // the LANDING / FREYA ANALYSIS / EMPIRICAL split via the early return.
   const isStaging = !!(import.meta.env && import.meta.env.VITE_STAGING)
   const [landingTab, setLandingTab] = useState('landing')
+  // Landing-page inline editor (staging v2): a staged working copy of
+  // the card list. null = no pending edits (render the analyzed deck);
+  // otherwise an array of card objects mutated by the right-rail
+  // search-add + per-row remove. SAVE DECK serializes it through the
+  // same api.updateDeck path the Workshop uses (re-runs Freya).
+  const [deckEdits, setDeckEdits] = useState(null)
+  const [savingDeck, setSavingDeck] = useState(false)
   const [cardSearch, setCardSearch] = useState('')
   const [cardSearchOpen, setCardSearchOpen] = useState(false)
   const cardSearchInputRef = useRef(null)
@@ -2085,6 +2108,61 @@ export default function DeckArchive() {
   // the legacy render below. See the `isStaging` definition above.
   // ══════════════════════════════════════════════════════════════════
   if (isStaging) {
+    // Landing inline-edit working set. workingCards is the staged copy
+    // when deckEdits is non-null, else the analyzed deck. add/remove
+    // mutate the staged copy; SAVE serializes through api.updateDeck.
+    const workingCards = deckEdits || cards
+    const cloneBase = () => (deckEdits || cards).map(c => ({ ...c }))
+    const addCardToDeck = (result) => {
+      const name = typeof result === 'string' ? result : result?.name
+      if (!name) return
+      setDeckEdits(() => {
+        const base = cloneBase()
+        const idx = base.findIndex(c => (c.name || '').replace(/^COMMANDER:\s*/i, '').trim() === name)
+        if (idx >= 0) { base[idx] = { ...base[idx], quantity: (base[idx].quantity || 1) + 1 }; return base }
+        return [...base, { name, quantity: 1, mana_cost: result?.mana_cost, type_line: result?.type_line, cmc: result?.cmc }]
+      })
+    }
+    const removeCardFromDeck = (card) => {
+      if (deck?.commander_card && card.name === deck.commander_card) return
+      setDeckEdits(() => {
+        const base = cloneBase()
+        const idx = base.findIndex(c => c.name === card.name)
+        if (idx < 0) return base
+        const q = (base[idx].quantity || 1) - 1
+        if (q <= 0) base.splice(idx, 1)
+        else base[idx] = { ...base[idx], quantity: q }
+        return base
+      })
+    }
+    const editSummary = (() => {
+      if (!deckEdits) return null
+      const tally = (list) => { const m = new Map(); for (const c of list) m.set(c.name, (m.get(c.name) || 0) + (c.quantity || 1)); return m }
+      const baseM = tally(cards), curM = tally(deckEdits)
+      let added = 0, removed = 0
+      for (const n of new Set([...baseM.keys(), ...curM.keys()])) {
+        const d = (curM.get(n) || 0) - (baseM.get(n) || 0)
+        if (d > 0) added += d; else removed += -d
+      }
+      return { added, removed, dirty: added > 0 || removed > 0 }
+    })()
+    const saveDeckEdits = () => {
+      if (!deckEdits || savingDeck) return
+      const text = deckEdits.map(c => {
+        const cmdr = deck?.commander_card
+        if (cmdr && c.name === cmdr) return `COMMANDER: ${c.name}`
+        return `${c.quantity > 1 ? c.quantity : 1} ${c.name}`
+      }).join('\n')
+      setSavingDeck(true)
+      api.updateDeck(`${owner}/${id}`, text).then(() => {
+        setSavingDeck(false); setAnalyzing(true); setDeckEdits(null)
+        api.getDeck(`${owner}/${id}`).then(setDeck)
+        api.getDeckVersions(`${owner}/${id}`).then(setVersions).catch(() => {})
+        toast.success('DECK SAVED — RUNNING FREYA')
+      }).catch(() => { setSavingDeck(false); toast.error('SAVE FAILED') })
+    }
+    const canEditDeck = !!(isOwner && owner && id)
+
     const specsRows = [
       ['OWNER', <Link to={`/profile/${owner}`} style={{ color: 'var(--ink)', textDecoration: 'none', borderBottom: '1px dotted var(--ink-3)' }}>{owner?.toUpperCase()}</Link>],
       ...(ownerFriendCount != null ? [['FRIENDS', String(ownerFriendCount)]] : []),
@@ -2277,7 +2355,7 @@ export default function DeckArchive() {
 
         {/* ═══ TAB 1 — LANDING ═══ */}
         {landingTab === 'landing' && (
-          <div className="deck-landing" data-testid="staging-landing">
+          <div className={`deck-landing ${canEditDeck ? 'deck-landing--edit' : ''}`} data-testid="staging-landing">
             <div className="deck-landing__sidebar">
               <Panel code="04.A" title="DECK SPECS" solid>
                 <KV rows={specsRows} />
@@ -2312,8 +2390,30 @@ export default function DeckArchive() {
                 )}
               </Panel>
 
-              {/* Deck Stats folded in — card-types breakdown + color pips */}
-              <DeckStatsSummary cards={cards} />
+              {/* Condensed mana curve + color pie, folded into the left
+                  column alongside the deck specs (v2 review). */}
+              {(curveData || colorData) && (
+                <Panel code="04.M" title="CURVE / COLORS">
+                  {curveData && (
+                    <ManaCurveChart
+                      distribution={curveData.distribution}
+                      avgCmc={curveData.avg_cmc}
+                      curveShape={curveData.curve_shape}
+                      warnings={curveData.warnings}
+                      landCount={curveData.land_count}
+                      nonlandCount={curveData.nonland_count}
+                      colorByCmc={computeColorByCmc(cards)}
+                    />
+                  )}
+                  {colorData && (
+                    <>
+                      <div className="hr" style={{ margin: '10px 0' }} />
+                      <div className="t-xs muted" style={{ marginBottom: 8, letterSpacing: '0.08em' }}>COLOR BREAKDOWN</div>
+                      <ColorPie demand={colorData} />
+                    </>
+                  )}
+                </Panel>
+              )}
 
               {/* The single, deduped Similar Decks panel */}
               <Panel code="04.SIM" title={`SIMILAR DECKS / / ${similarDecks == null ? '…' : similarDecks.length}`} right={similarDecks && similarDecks.length > 0 ? <Tag solid>{similarDecks.length}</Tag> : null}>
@@ -2350,27 +2450,46 @@ export default function DeckArchive() {
               </Panel>
             </div>
 
+            {/* CENTER — decklist constrained to ~half width */}
             <div className="deck-landing__main">
-              {/* Mana curve — between banner and decklist */}
-              {curveData && (
-                <Panel code="04.M" title="MANA CURVE">
-                  <ManaCurveChart
-                    distribution={curveData.distribution}
-                    avgCmc={curveData.avg_cmc}
-                    curveShape={curveData.curve_shape}
-                    warnings={curveData.warnings}
-                    landCount={curveData.land_count}
-                    nonlandCount={curveData.nonland_count}
-                    colorByCmc={computeColorByCmc(cards)}
-                  />
-                </Panel>
-              )}
-
-              {/* Decklist front-and-center, list view, hover = full card */}
-              <Panel code="04.B" title={`DECK LIST / / ${cards.length} ENTRIES`}>
-                <LandingCardList cards={cards} commanderName={deck?.commander_card} />
+              <Panel
+                code="04.B"
+                title={`DECK LIST / / ${workingCards.length} ENTRIES`}
+                right={editSummary?.dirty ? <Tag solid kind="warn">+{editSummary.added} / −{editSummary.removed}</Tag> : null}
+              >
+                {editSummary?.dirty && (
+                  <div className="deck-landing-savebar" data-testid="landing-savebar">
+                    <span className="t-xs" style={{ letterSpacing: '0.06em' }}>
+                      <span style={{ color: 'var(--ok)' }}>+{editSummary.added}</span>
+                      {' / '}
+                      <span style={{ color: 'var(--danger)' }}>−{editSummary.removed}</span>
+                      {' '}UNSAVED
+                    </span>
+                    <span style={{ display: 'flex', gap: 6 }}>
+                      <Btn solid onClick={saveDeckEdits} disabled={savingDeck}>{savingDeck ? 'SAVING…' : 'SAVE DECK'}</Btn>
+                      <Btn ghost onClick={() => setDeckEdits(null)} disabled={savingDeck}>DISCARD</Btn>
+                    </span>
+                  </div>
+                )}
+                <LandingCardList
+                  cards={workingCards}
+                  commanderName={deck?.commander_card}
+                  onRemove={canEditDeck ? removeCardFromDeck : undefined}
+                />
               </Panel>
             </div>
+
+            {/* RIGHT — Workshop-style card search to add cards inline */}
+            {canEditDeck && (
+              <div className="deck-landing__edit" data-testid="landing-edit-rail">
+                <Panel code="04.+" title="ADD CARDS" right={<span className="t-xs muted">CLICK TO ADD</span>}>
+                  <ContextBox id="deck.landing.edit" compact>
+                    Search by name and click a result to add it to the deck. Hover any decklist row and click <strong>×</strong> to remove. Edits are staged — <strong>SAVE DECK</strong> commits and re-runs Freya analysis.
+                  </ContextBox>
+                  <WorkshopSearchPanel colorIdentity={colorIdentity} onAdd={(name, row) => addCardToDeck(row || { name })} />
+                </Panel>
+              </div>
+            )}
           </div>
         )}
 
