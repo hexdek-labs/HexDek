@@ -152,3 +152,38 @@ func ApplyBargain(gs *GameState, seatIdx int, item *StackItem) bool {
 	})
 	return true
 }
+
+// MirrorBargainToPermanent copies the cast-time bargain decision from the
+// resolving StackItem's CostMeta onto the entering permanent's Flags, so the
+// per-card "when this enters, if it was bargained" ETB riders
+// (per_card/bargain_consumers_r60.go: Troublemaker Ouphe, High Fae Negotiator,
+// Tenacious Tomeseeker) read the bargained state off THE PERMANENT THAT ENTERED
+// rather than a per-seat cast-time counter. CR §702.176c — whether bargain was
+// paid is recorded on the spell and travels with the permanent it becomes.
+//
+// Mirrors MirrorKickFlagsToPermanent / MirrorSquadToPermanent exactly: gated to
+// a no-op for copies (no CostMeta) and non-bargained casts (flag left unset).
+// Sets perm.Flags["bargained"] = 1 only when CostMeta["bargained"] == true.
+//
+// This per-permanent linkage fixes the stale-flag class the old OnCast→per-seat
+// counter bridge was vulnerable to: a bargained permanent spell countered
+// before it entered left a dangling credit that a later non-bargained cast of
+// the same creature would wrongly consume, and two simultaneous casts could
+// cross-attribute the bonus. The Permanent.Flags carry exactly the decision
+// made for that one resolution.
+func MirrorBargainToPermanent(item *StackItem, perm *Permanent) {
+	if item == nil || perm == nil || item.CostMeta == nil {
+		return
+	}
+	bargained := false
+	if v, ok := item.CostMeta["bargained"]; ok {
+		bargained, _ = v.(bool)
+	}
+	if !bargained {
+		return
+	}
+	if perm.Flags == nil {
+		perm.Flags = map[string]int{}
+	}
+	perm.Flags["bargained"] = 1
+}

@@ -136,10 +136,11 @@ func TestTroublemakerOuphe_BargainedETBExilesOppEnchantment(t *testing.T) {
 	gs := newGame(t, 2)
 	oppEnch := addPerm(gs, 1, "Wedding Announcement", "enchantment")
 
-	// Simulate the cast→ETB chain.
+	// The engine mirrors CostMeta["bargained"] onto perm.Flags at ETB; the
+	// rider reads it off the entering permanent.
 	ouphe := addPerm(gs, 0, "Troublemaker Ouphe", "creature")
 	ouphe.Card.BasePower, ouphe.Card.BaseToughness = 2, 2
-	gameengine.InvokeCastHook(gs, bargainedItem(0, ouphe.Card, true))
+	ouphe.Flags["bargained"] = 1
 	gameengine.InvokeETBHook(gs, ouphe)
 
 	for _, p := range gs.Seats[1].Battlefield {
@@ -154,9 +155,9 @@ func TestTroublemakerOuphe_NonBargainedETBNoOps(t *testing.T) {
 	oppEnch := addPerm(gs, 1, "Wedding Announcement", "enchantment")
 	pre := len(gs.Seats[1].Battlefield)
 
+	// No perm.Flags["bargained"] → non-bargained ETB no-ops.
 	ouphe := addPerm(gs, 0, "Troublemaker Ouphe", "creature")
 	ouphe.Card.BasePower, ouphe.Card.BaseToughness = 2, 2
-	gameengine.InvokeCastHook(gs, bargainedItem(0, ouphe.Card, false))
 	gameengine.InvokeETBHook(gs, ouphe)
 
 	if len(gs.Seats[1].Battlefield) != pre {
@@ -176,30 +177,32 @@ func TestTroublemakerOuphe_NonBargainedETBNoOps(t *testing.T) {
 	}
 }
 
-func TestTroublemakerOuphe_BargainCounterConsumedOncePerETB(t *testing.T) {
+// Per-permanent gating: each entering permanent carries its own bargained
+// decision, so a bargained Ouphe runs the rider and a separately-entering
+// non-bargained Ouphe does NOT — no cross-attribution, no stale-credit leak
+// (the failure mode of the old per-seat cast counter).
+func TestTroublemakerOuphe_PerPermanentBargainedGate(t *testing.T) {
 	gs := newGame(t, 2)
-	// Two opp enchantments — exiling only one verifies the counter
-	// drains to 0 after the first ETB and a SECOND ETB no-ops.
 	addPerm(gs, 1, "Wedding Announcement", "enchantment")
 	addPerm(gs, 1, "Banishing Light", "enchantment")
 	prePerms := len(gs.Seats[1].Battlefield)
 
 	ouphe1 := addPerm(gs, 0, "Troublemaker Ouphe", "creature")
 	ouphe1.Card.BasePower, ouphe1.Card.BaseToughness = 2, 2
-	gameengine.InvokeCastHook(gs, bargainedItem(0, ouphe1.Card, true))
+	ouphe1.Flags["bargained"] = 1
 	gameengine.InvokeETBHook(gs, ouphe1)
 
 	if len(gs.Seats[1].Battlefield) != prePerms-1 {
-		t.Errorf("first bargained ETB should exile one opp enchantment; post=%d", len(gs.Seats[1].Battlefield))
+		t.Errorf("bargained ETB should exile one opp enchantment; post=%d", len(gs.Seats[1].Battlefield))
 	}
 
-	// Second Ouphe ETBs WITHOUT a paired bargained cast — must no-op.
+	// Second Ouphe enters NON-bargained — must no-op (no leaked credit).
 	ouphe2 := addPerm(gs, 0, "Troublemaker Ouphe", "creature")
 	ouphe2.Card.BasePower, ouphe2.Card.BaseToughness = 2, 2
 	gameengine.InvokeETBHook(gs, ouphe2)
 
 	if len(gs.Seats[1].Battlefield) != prePerms-1 {
-		t.Errorf("second ETB without paired bargained cast must no-op; post=%d", len(gs.Seats[1].Battlefield))
+		t.Errorf("non-bargained second Ouphe must no-op; post=%d", len(gs.Seats[1].Battlefield))
 	}
 }
 
@@ -214,8 +217,7 @@ func TestHighFaeNegotiator_BargainedDrains3PerOpp(t *testing.T) {
 	}
 	fae := addPerm(gs, 0, "High Fae Negotiator", "creature")
 	fae.Card.BasePower, fae.Card.BaseToughness = 3, 3
-
-	gameengine.InvokeCastHook(gs, bargainedItem(0, fae.Card, true))
+	fae.Flags["bargained"] = 1
 	gameengine.InvokeETBHook(gs, fae)
 
 	if gs.Seats[0].Life != 23 {
@@ -235,7 +237,6 @@ func TestHighFaeNegotiator_NonBargainedDoesNothing(t *testing.T) {
 
 	fae := addPerm(gs, 0, "High Fae Negotiator", "creature")
 	fae.Card.BasePower, fae.Card.BaseToughness = 3, 3
-	gameengine.InvokeCastHook(gs, bargainedItem(0, fae.Card, false))
 	gameengine.InvokeETBHook(gs, fae)
 
 	if gs.Seats[0].Life != 20 || gs.Seats[1].Life != 20 {
@@ -261,7 +262,7 @@ func TestTenaciousTomeseeker_BargainedReturnsBestInstantSorcery(t *testing.T) {
 
 	seeker := addPerm(gs, 0, "Tenacious Tomeseeker", "creature")
 	seeker.Card.BasePower, seeker.Card.BaseToughness = 2, 4
-	gameengine.InvokeCastHook(gs, bargainedItem(0, seeker.Card, true))
+	seeker.Flags["bargained"] = 1
 	gameengine.InvokeETBHook(gs, seeker)
 
 	// Highest-CMC i/s (Decree at 8) returns to hand.
@@ -296,7 +297,6 @@ func TestTenaciousTomeseeker_NonBargainedNoOps(t *testing.T) {
 
 	seeker := addPerm(gs, 0, "Tenacious Tomeseeker", "creature")
 	seeker.Card.BasePower, seeker.Card.BaseToughness = 2, 4
-	gameengine.InvokeCastHook(gs, bargainedItem(0, seeker.Card, false))
 	gameengine.InvokeETBHook(gs, seeker)
 
 	if len(gs.Seats[0].Hand) != 0 {
@@ -304,47 +304,6 @@ func TestTenaciousTomeseeker_NonBargainedNoOps(t *testing.T) {
 	}
 	if len(gs.Seats[0].Graveyard) != 1 {
 		t.Errorf("instant should stay in graveyard; gy=%d", len(gs.Seats[0].Graveyard))
-	}
-}
-
-// -----------------------------------------------------------------------------
-// Bridge primitive — flag-counter sanity
-// -----------------------------------------------------------------------------
-
-func TestBargainBridge_CounterStacksAndDrains(t *testing.T) {
-	gs := newGame(t, 2)
-	bridge := bargainCastBridge("test_card")
-
-	// Two bargained casts.
-	bridge(gs, bargainedItem(0, addCard(gs, 0, "Test Card", "creature"), true))
-	bridge(gs, bargainedItem(0, addCard(gs, 0, "Test Card", "creature"), true))
-	if gs.Seats[0].Flags["bargained_pending:test_card"] != 2 {
-		t.Errorf("expected counter 2, got %d", gs.Seats[0].Flags["bargained_pending:test_card"])
-	}
-
-	// Consume twice → 0 (deleted).
-	if !consumeBargainFlag(gs, 0, "test_card") {
-		t.Errorf("expected first consume to succeed")
-	}
-	if !consumeBargainFlag(gs, 0, "test_card") {
-		t.Errorf("expected second consume to succeed")
-	}
-	if consumeBargainFlag(gs, 0, "test_card") {
-		t.Errorf("third consume should fail")
-	}
-	if _, exists := gs.Seats[0].Flags["bargained_pending:test_card"]; exists {
-		t.Errorf("flag should be deleted after counter hits 0")
-	}
-}
-
-func TestBargainBridge_NonBargainedCastNoOps(t *testing.T) {
-	gs := newGame(t, 2)
-	bridge := bargainCastBridge("test_card")
-	bridge(gs, bargainedItem(0, addCard(gs, 0, "Test Card", "creature"), false))
-
-	if gs.Seats[0].Flags["bargained_pending:test_card"] != 0 {
-		t.Errorf("non-bargained cast must not increment counter; got %d",
-			gs.Seats[0].Flags["bargained_pending:test_card"])
 	}
 }
 

@@ -25,11 +25,15 @@ import (
 //       the enhanced effect. No cast-time bridge needed because the
 //       StackItem is still available at resolution.
 //
-//   (B) Permanent spells with ETB riders — register OnCast to stash a
-//       per-seat "this card was bargained" counter at cast time, then
-//       OnETB reads + decrements the counter to gate the bargained
-//       branch of the ETB. The cast→ETB bridge is necessary because
-//       OnETB receives only the Permanent (no CostMeta access).
+//   (B) Permanent spells with ETB riders — register OnETB and read
+//       perm.Flags["bargained"], which the engine mirrors from the
+//       resolving spell's CostMeta at ETB via MirrorBargainToPermanent
+//       (CR §702.176c — the bargained state travels with the permanent,
+//       mirroring kicker/squad). Reading it off THE PERMANENT that
+//       entered is leak-free: a bargained spell countered before it
+//       enters never stamps a flag, and two simultaneous casts each carry
+//       their own decision — neither edge the old per-seat cast counter
+//       handled.
 
 func init() {
 	registerBargainConsumersR60(Global())
@@ -44,64 +48,22 @@ func registerBargainConsumersR60(r *Registry) {
 	r.OnResolve("Torch the Tower", torchTheTowerResolve)
 	r.OnResolve("Candy Grapple", candyGrappleResolve)
 	r.OnResolve("Archon's Glory", archonsGloryResolve)
-	// (B) Cast→ETB bridge + ETB rider.
-	r.OnCast("Troublemaker Ouphe", bargainCastBridge("troublemaker_ouphe"))
+	// (B) ETB riders — gated on the engine-mirrored perm.Flags["bargained"].
 	r.OnETB("Troublemaker Ouphe", troublemakerOupheETB)
-	r.OnCast("High Fae Negotiator", bargainCastBridge("high_fae_negotiator"))
 	r.OnETB("High Fae Negotiator", highFaeNegotiatorETB)
-	r.OnCast("Tenacious Tomeseeker", bargainCastBridge("tenacious_tomeseeker"))
 	r.OnETB("Tenacious Tomeseeker", tenaciousTomeseekerETB)
 }
 
 // -----------------------------------------------------------------------------
-// Cast→ETB bridge
+// Bargained-permanent gate
 // -----------------------------------------------------------------------------
 
-// bargainCastBridge returns a CastHandler that, when the cast is
-// bargained, increments a per-seat flag keyed by `slug`. The matching
-// OnETB handler reads + decrements that flag to decide whether to run
-// the bargain branch of its ETB rider.
-//
-// The counter (not bool) handles the multi-cast-same-turn edge: if you
-// cast Troublemaker Ouphe twice in one turn and bargain both, the
-// counter goes 2→1→0 as each Ouphe resolves and ETBs.
-func bargainCastBridge(slug string) CastHandler {
-	flag := "bargained_pending:" + slug
-	return func(gs *gameengine.GameState, item *gameengine.StackItem) {
-		if gs == nil || item == nil || item.CostMeta == nil {
-			return
-		}
-		if v, _ := item.CostMeta["bargained"].(bool); !v {
-			return
-		}
-		seat := item.Controller
-		if seat < 0 || seat >= len(gs.Seats) || gs.Seats[seat] == nil {
-			return
-		}
-		if gs.Seats[seat].Flags == nil {
-			gs.Seats[seat].Flags = map[string]int{}
-		}
-		gs.Seats[seat].Flags[flag]++
-	}
-}
-
-// consumeBargainFlag pops one bargain credit from the seat's flag
-// counter. Returns true if a credit was found (caller should run the
-// bargained branch).
-func consumeBargainFlag(gs *gameengine.GameState, seat int, slug string) bool {
-	flag := "bargained_pending:" + slug
-	if gs == nil || seat < 0 || seat >= len(gs.Seats) || gs.Seats[seat] == nil {
-		return false
-	}
-	s := gs.Seats[seat]
-	if s.Flags == nil || s.Flags[flag] <= 0 {
-		return false
-	}
-	s.Flags[flag]--
-	if s.Flags[flag] == 0 {
-		delete(s.Flags, flag)
-	}
-	return true
+// permWasBargained reports whether the permanent entered via a bargained
+// cast. The engine mirrors the resolving spell's CostMeta["bargained"] onto
+// perm.Flags["bargained"] at ETB (MirrorBargainToPermanent, CR §702.176c),
+// so the ETB rider reads the decision made for exactly this permanent.
+func permWasBargained(perm *gameengine.Permanent) bool {
+	return perm != nil && perm.Flags != nil && perm.Flags["bargained"] > 0
 }
 
 // -----------------------------------------------------------------------------
@@ -311,7 +273,7 @@ func troublemakerOupheETB(gs *gameengine.GameState, perm *gameengine.Permanent) 
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
-	if !consumeBargainFlag(gs, perm.Controller, "troublemaker_ouphe") {
+	if !permWasBargained(perm) {
 		// Non-bargained cast → ETB rider does nothing.
 		return
 	}
@@ -338,7 +300,7 @@ func highFaeNegotiatorETB(gs *gameengine.GameState, perm *gameengine.Permanent) 
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
-	if !consumeBargainFlag(gs, perm.Controller, "high_fae_negotiator") {
+	if !permWasBargained(perm) {
 		return
 	}
 	hit := 0
@@ -366,7 +328,7 @@ func tenaciousTomeseekerETB(gs *gameengine.GameState, perm *gameengine.Permanent
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
-	if !consumeBargainFlag(gs, perm.Controller, "tenacious_tomeseeker") {
+	if !permWasBargained(perm) {
 		return
 	}
 	seat := gs.Seats[perm.Controller]

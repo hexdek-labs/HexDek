@@ -2587,6 +2587,11 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	// cascade) knows how many token copies to mint. No-op for copies / when
 	// squad was declined.
 	MirrorSquadToPermanent(item, perm)
+	// CR §702.176c — mirror the cast-time bargain decision onto the entering
+	// permanent's Flags so "when this enters, if it was bargained" ETB riders
+	// read the bargained state off the permanent (not a leaky per-seat cast
+	// counter). No-op for copies / non-bargained casts.
+	MirrorBargainToPermanent(item, perm)
 	// CR §107.3 — mirror the spell's CHOSEN X onto the entering permanent so
 	// "enters with X <counter> counters" statics read the real X. Chalice of
 	// the Void ({X}{X}, X charge counters), Walking Ballista / Hangarback /
