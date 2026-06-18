@@ -1550,12 +1550,56 @@ func PerformDiscover(gs *GameState, seatIdx int, n int) *Card {
 		// if CMC ≥ 3 (good value), otherwise put into hand for flexibility.
 		castForFree := found.CMC >= 3
 		if castForFree {
+			// CR §701.51: the discovered card is CAST (without paying its mana
+			// cost). A cast spell must run the full cast-time pipeline, not a
+			// bare stack push: set its spell Effect so instants/sorceries
+			// actually resolve, count toward storm / cast count, fire "whenever
+			// you cast a spell" triggers (magecraft, prowess, Rhystic Study,
+			// …), trigger the discovered card's OWN cast keywords (storm, a
+			// chained cascade, a chained discover), open a priority window so it
+			// can be countered, then resolve it. Mirrors cascade.go's corrected
+			// free-cast block — the previous raw gs.Stack append skipped ALL of
+			// this, so a discovered instant/sorcery resolved as a no-op (no
+			// Effect), cast-triggers never fired, and discover off a discover
+			// never chained.
 			item := &StackItem{
 				Card:       found,
 				Controller: seatIdx,
-				CostMeta:   map[string]interface{}{"free_cast": true},
+				Effect:     collectSpellEffect(found),
+				CastZone:   ZoneExile,
+				CostMeta: map[string]interface{}{
+					"discover_cast": true,
+					"alt_cost":      "discover",
+					"discover_n":    n,
+					"free_cast":     true,
+				},
 			}
-			gs.Stack = append(gs.Stack, item)
+			PushStackItem(gs, item)
+			IncrementCastCount(gs, seatIdx)
+			RecordCast(gs, seatIdx, found, 0)
+			fireCastTriggers(gs, seatIdx, found)
+			if HasStormKeyword(found) {
+				ApplyStormCopies(gs, item, seatIdx)
+			}
+			// CR §702.85b — a chained cascade fires once per cascade instance.
+			if cc := CascadeCount(found); cc > 0 {
+				foundMV := manaCostOf(found)
+				for i := 0; i < cc; i++ {
+					ApplyCascade(gs, seatIdx, foundMV, found.DisplayName())
+				}
+			}
+			// CR §701.51 — a chained discover resolves independently. Prefer the
+			// discovered card's own discover N from its keyword; fall back to
+			// its mana value when the parser didn't capture an explicit N
+			// (mirrors the cascade entry path's manaCostOf fallback).
+			if cardHasKeyword(found, "discover") {
+				chainN := DiscoverCount(found)
+				if chainN <= 0 {
+					chainN = manaCostOf(found)
+				}
+				PerformDiscover(gs, seatIdx, chainN)
+			}
+			InvokeCastHook(gs, item)
 			gs.LogEvent(Event{
 				Kind:   "discover_cast",
 				Seat:   seatIdx,
@@ -1567,6 +1611,14 @@ func PerformDiscover(gs *GameState, seatIdx int, n int) *Card {
 					"rule":         "701.51",
 				},
 			})
+			// CR §117.3 / §117.4 — opponents receive priority before the
+			// discovered spell resolves. Guarded resolve: if a response landed
+			// on top, leave the stack for the outer DrainStack.
+			PriorityRound(gs)
+			if len(gs.Stack) > 0 && gs.Stack[len(gs.Stack)-1] == item {
+				ResolveStackTop(gs)
+				StateBasedActions(gs)
+			}
 		} else {
 			MoveCard(gs, found, seatIdx, "library", "hand", "tutor-to-hand")
 			gs.LogEvent(Event{
