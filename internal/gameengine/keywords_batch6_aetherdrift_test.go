@@ -135,7 +135,7 @@ func TestMobilizeCount_DefaultsToOneWhenMissing(t *testing.T) {
 	}
 }
 
-func TestApplyMobilize_CreatesNMercenaryTokens(t *testing.T) {
+func TestApplyMobilize_CreatesNWarriorTokens(t *testing.T) {
 	gs := newAetherGame4P(t)
 	atk := mobilizeAttacker(gs, 0, 1, 2)
 
@@ -179,21 +179,35 @@ func TestApplyMobilize_TokensTappedAndAttackingSameDefender(t *testing.T) {
 		if p.Card.BasePower != 1 || p.Card.BaseToughness != 1 {
 			t.Errorf("token P/T want 1/1, got %d/%d", p.Card.BasePower, p.Card.BaseToughness)
 		}
-		isMercenary := false
+		isWarrior := false
 		isToken := false
+		isRed := false
 		for _, ty := range p.Card.Types {
-			if ty == "mercenary" {
-				isMercenary = true
+			if ty == "warrior" {
+				isWarrior = true
 			}
 			if ty == "token" {
 				isToken = true
 			}
 		}
-		if !isMercenary {
-			t.Error("token should have 'mercenary' subtype")
+		for _, c := range p.Card.Colors {
+			if c == "R" {
+				isRed = true
+			}
+		}
+		if !isWarrior {
+			t.Error("token should have 'warrior' subtype (CR §702.181a)")
 		}
 		if !isToken {
 			t.Error("token should be flagged as a 'token' type for IsToken()")
+		}
+		if !isRed {
+			t.Error("token should be red (CR §702.181a)")
+		}
+		// CR §508.1g — mobilize tokens enter attacking, not via
+		// declare-attackers, so they carry the entered-attacking carve-out.
+		if p.Flags[flagEnteredAttacking] != 1 {
+			t.Error("mobilize token should be marked entered-attacking (§508.1g carve-out)")
 		}
 	}
 	if !found {
@@ -201,7 +215,7 @@ func TestApplyMobilize_TokensTappedAndAttackingSameDefender(t *testing.T) {
 	}
 }
 
-func TestApplyMobilize_TokensExileAtEndOfTurn(t *testing.T) {
+func TestApplyMobilize_TokensSacrificedAtEndOfTurn(t *testing.T) {
 	gs := newAetherGame4P(t)
 	atk := mobilizeAttacker(gs, 0, 1, 2)
 
@@ -231,24 +245,24 @@ func TestApplyMobilize_TokensExileAtEndOfTurn(t *testing.T) {
 		}
 	}
 	if post != 0 {
-		t.Fatalf("mobilize tokens should have been exiled at end of turn, %d remain", post)
+		t.Fatalf("mobilize tokens should have been sacrificed at end of turn, %d remain", post)
 	}
 
-	// Per CR §704.5d a token that has left the battlefield ceases to exist
-	// as a state-based action, so we don't expect the Card structs to be
-	// findable in the exile slice. Instead, verify the exile events fired
-	// for the mercenary tokens.
-	exileEvents := 0
+	// CR §702.181a — the tokens are SACRIFICED (not exiled), so a "sacrifice"
+	// event fires for each (routing them to the graveyard, where dies/LTB
+	// payoffs observe them). Per CR §704.5d the token Card structs then cease
+	// to exist as an SBA, so we assert on the events, not the graveyard slice.
+	sacEvents := 0
 	for _, ev := range gs.EventLog {
-		if ev.Kind != "exile" {
+		if ev.Kind != "sacrifice" {
 			continue
 		}
-		if name, _ := ev.Details["target_card"].(string); name == "Mercenary Token" {
-			exileEvents++
+		if name, _ := ev.Details["target_card"].(string); name == "Warrior Token" {
+			sacEvents++
 		}
 	}
-	if exileEvents != 2 {
-		t.Fatalf("expected 2 'exile' events for Mercenary Token, got %d", exileEvents)
+	if sacEvents != 2 {
+		t.Fatalf("expected 2 'sacrifice' events for Warrior Token, got %d", sacEvents)
 	}
 }
 

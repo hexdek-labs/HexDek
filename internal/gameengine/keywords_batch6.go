@@ -723,12 +723,11 @@ func HarmonizeActivate(gs *GameState, seatIdx int, perm *Permanent, cost int, ca
 }
 
 // ---------------------------------------------------------------------------
-// §702.181 — Mobilize
+// §702.181 — Mobilize (Tarkir: Dragonstorm)
 //
-// "Mobilize N" (Aetherdrift):
-//   "Whenever this creature attacks, create N 1/1 red Mercenary creature
-//    tokens that are tapped and attacking. Exile them at the beginning of
-//    the next end step."
+// CR §702.181a: "Mobilize N" means "Whenever this creature attacks, create
+// N 1/1 red Warrior creature tokens. Those tokens enter tapped and
+// attacking. Sacrifice them at the beginning of the next end step."
 //
 // Modeling:
 //   - HasMobilize(card)          reports the keyword.
@@ -736,14 +735,26 @@ func HarmonizeActivate(gs *GameState, seatIdx int, perm *Permanent, cost int, ca
 //                                back to 1 (the §702.181a default) if the
 //                                argument is missing or not numeric.
 //   - ApplyMobilize              runs the attack trigger: mints N tapped-
-//                                attacking Mercenary tokens that attack the
-//                                same defender as the source, and registers
-//                                a one-shot end-of-turn delayed trigger to
-//                                exile them. Mirrors the Myriad pattern in
-//                                keywords_combat.go.
+//                                attacking 1/1 red Warrior tokens that
+//                                attack the same defender as the source via
+//                                the canonical CreateDoubledTokens chokepoint
+//                                (so token-count doublers apply and
+//                                token_created fires), and registers a
+//                                one-shot end-of-turn delayed trigger to
+//                                SACRIFICE them (CR §702.181a — not exile, so
+//                                "whenever a token leaves / dies" payoffs and
+//                                graveyard recursion see them). Mirrors the
+//                                Myriad pattern in keywords_combat.go.
 //   - FireMobilizeTriggers       checks every declared attacker and fires
-//                                ApplyMobilize for each one with the
-//                                keyword. Wired into CheckAttackKeywordsCombat.
+//                                ApplyMobilize for each one with the keyword,
+//                                EXCEPT cards whose creature_attacks trigger
+//                                is owned by a per_card handler (Zurgo
+//                                Stormrender, Zurgo, Thunder's Decree) — those
+//                                implement mobilize themselves, so the generic
+//                                path would double the tokens. Mirrors the
+//                                PerCardOwnsTrigger gate in combat.go's
+//                                fireAttackTriggers. Wired into
+//                                CheckAttackKeywordsCombat.
 // ---------------------------------------------------------------------------
 
 // HasMobilize reports whether the card carries the mobilize keyword.
@@ -763,9 +774,17 @@ func MobilizeCount(card *Card) int {
 }
 
 // ApplyMobilize fires the Mobilize attack trigger for `attacker`. Creates N
-// 1/1 red Mercenary creature tokens that are tapped and attacking the same
-// defender as `attacker`, and registers a one-shot end-of-turn delayed
-// trigger to exile them (per the §702.181b reminder text).
+// 1/1 red Warrior creature tokens that are tapped and attacking the same
+// defender as `attacker` (CR §702.181a), and registers a one-shot end-of-turn
+// delayed trigger to SACRIFICE them.
+//
+// Tokens are minted through the canonical CreateDoubledTokens chokepoint so
+// token-count doublers (Doubling Season / Parallel Lives / Anointed
+// Procession) double the Warrior tokens and the token_created trigger fires
+// for token-matters payoffs — the prior hand-rolled append bypassed both.
+// MarkEnteredAttacking stamps the §508.1g "entered attacking" carve-out so
+// checkCombatLegality honors them and they are NOT re-run through
+// declare-attackers triggers.
 //
 // If the attacker has no recorded defender (e.g. tests calling this in
 // isolation) the tokens are created but no AttackerDefender is set; they
@@ -794,53 +813,52 @@ func ApplyMobilize(gs *GameState, attacker *Permanent, attackerSeat int) {
 		return
 	}
 
-	tokens := make([]*Permanent, 0, n)
-	for i := 0; i < n; i++ {
-		token := &Permanent{
-			Card: &Card{
-				Name:          "Mercenary Token",
-				Owner:         attackerSeat,
-				BasePower:     1,
-				BaseToughness: 1,
-				Types:         []string{"token", "creature", "mercenary"},
-				Colors:        []string{"R"},
-			},
-			Controller:    attackerSeat,
-			Owner:         attackerSeat,
-			Timestamp:     gs.NextTimestamp(),
-			Counters:      map[string]int{},
-			Flags:         map[string]int{flagAttacking: 1, "mobilize_token": 1},
-			Tapped:        true,
-			SummoningSick: false,
+	// CR §702.181a — "create N 1/1 red Warrior creature tokens" is a single
+	// token-creation event minting N tokens, so route the whole batch through
+	// the §614 would_create_token replacement chain (doublers see N→2N) and
+	// apply the tapped/attacking/Warrior setup to every resulting token,
+	// including doubled copies. Mirrors ApplyMyriad.
+	tokens := CreateDoubledTokens(gs, attackerSeat, n, attacker, func() *Permanent {
+		token := CreateCreatureToken(gs, attackerSeat, "Warrior Token",
+			[]string{"creature", "warrior"}, 1, 1)
+		if token == nil {
+			return nil
 		}
+		if token.Card != nil {
+			token.Card.Colors = []string{"R"}
+			token.Card.TypeLine = "Token Creature — Warrior"
+		}
+		token.Tapped = true
+		token.SummoningSick = false
+		MarkEnteredAttacking(token)
 		if hasDef {
 			setAttackerDefender(token, defSeat)
 		}
-		seat.Battlefield = append(seat.Battlefield, token)
-		RegisterReplacementsForPermanent(gs, token)
-		FirePermanentETBTriggers(gs, token)
-		seat.Turn.TokensCreated++
-		seat.Turn.CreaturesEntered++
-		tokens = append(tokens, token)
-	}
+		if token.Flags == nil {
+			token.Flags = map[string]int{}
+		}
+		token.Flags["mobilize_token"] = 1
+		return token
+	})
 
 	gs.LogEvent(Event{
 		Kind:   "mobilize",
 		Seat:   attackerSeat,
 		Source: sourceName,
-		Amount: n,
+		Amount: len(tokens),
 		Details: map[string]interface{}{
 			"defender": defSeat,
-			"tokens":   n,
+			"tokens":   len(tokens),
 			"rule":     "702.181",
 		},
 	})
 
-	// Exile at the beginning of the next end step. Mirrors Myriad's
-	// delayed-trigger pattern but uses end_of_turn rather than
-	// end_of_combat so tokens persist through the damage step (and can
-	// chump-block if a defender retaliates, though Mercenary tokens are
-	// usually printed with "this creature can't block").
+	// Sacrifice at the beginning of the next end step (CR §702.181a). Uses
+	// end_of_turn rather than end_of_combat so the tokens persist through the
+	// damage step. SacrificePermanent (not exile) fires permanent_ltb /
+	// dies triggers and routes the tokens to the graveyard, so "whenever a
+	// token you control leaves the battlefield" payoffs (Zurgo Stormrender's
+	// sibling ability, aristocrats engines) and death triggers see them.
 	capturedTokens := tokens
 	gs.RegisterDelayedTrigger(&DelayedTrigger{
 		TriggerAt:      "end_of_turn",
@@ -850,7 +868,7 @@ func ApplyMobilize(gs *GameState, attacker *Permanent, attackerSeat int) {
 		EffectFn: func(gs *GameState) {
 			for _, tok := range capturedTokens {
 				if alive(gs, tok) {
-					ExilePermanent(gs, tok, nil)
+					SacrificePermanent(gs, tok, "mobilize_end_step")
 				}
 			}
 		},
@@ -868,9 +886,18 @@ func FireMobilizeTriggers(gs *GameState, attackerSeat int, attackers []*Permanen
 		if atk == nil || atk.Card == nil {
 			continue
 		}
-		if HasMobilize(atk.Card) {
-			ApplyMobilize(gs, atk, attackerSeat)
+		if !HasMobilize(atk.Card) {
+			continue
 		}
+		// Double-fire gate: a per_card handler that owns this card's
+		// creature_attacks trigger (Zurgo Stormrender, Zurgo, Thunder's
+		// Decree) mints the mobilize Warrior tokens itself. Firing the
+		// generic path too would double the count. Mirrors the
+		// PerCardOwnsTrigger gate in combat.go's fireAttackTriggers.
+		if PerCardOwnsTrigger(atk.Card.DisplayName(), "creature_attacks") {
+			continue
+		}
+		ApplyMobilize(gs, atk, attackerSeat)
 	}
 }
 
