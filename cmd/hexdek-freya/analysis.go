@@ -129,6 +129,14 @@ type CardProfile struct {
 	// build the full MathSignature. Empty for cards with no intrinsic math.
 	// See combo_category.go / combo_math.go.
 	MathOps []MathOp
+
+	// Symmetric is true when the card's primary effect hits every player
+	// equally ("each player sacrifices", "all players draw", group hug) rather
+	// than being one-sided in your favor. Used by the VALUE axis (Phase 2):
+	// asymmetric advantage is VALUE, symmetric table-wide effects are not
+	// (they route to SYNERGY in Phase 3). A one-sided board wipe is NOT
+	// symmetric (you cast it ahead) and stays VALUE. See combo_value.go.
+	Symmetric bool
 }
 
 // ---------------------------------------------------------------------------
@@ -1424,6 +1432,10 @@ func ClassifyCard(name, oracleText, typeLine, manaCost string, cmc int, power st
 	// cost-reduction-to-free). Cross-referenced with the Thor AST at
 	// classification time to build the full MathSignature. Phase 1.
 	p.MathOps = detectOracleMathOps(otClean, &p)
+
+	// Effect symmetry — table-wide ("each player") vs one-sided. VALUE axis
+	// (Phase 2) excludes symmetric effects. See combo_value.go.
+	p.Symmetric = detectSymmetricEffect(otClean)
 
 	return p
 }

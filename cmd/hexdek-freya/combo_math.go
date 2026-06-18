@@ -323,13 +323,13 @@ func CategorizeReportCombos(report *FreyaReport) {
 		}
 	}
 
-	seen := map[string]bool{}
+	comboKeys := map[string]bool{}
 	add := func(c ComboResult) {
 		key := comboCardKey(c.Cards)
-		if seen[key] {
+		if comboKeys[key] {
 			return
 		}
-		seen[key] = true
+		comboKeys[key] = true
 		c.Categories = []string{CategoryCombo}
 		report.Combos = append(report.Combos, c)
 	}
@@ -396,6 +396,10 @@ func CategorizeReportCombos(report *FreyaReport) {
 			break
 		}
 	}
+
+	// Phase 2: VALUE axis (deck-independent advantage baseline). Runs after
+	// the COMBO axis so combo entries can be excluded from value.
+	populateValueEngines(report, comboKeys, profByName)
 }
 
 // comboCardKey is the order-independent dedup key for a combo's card set.
