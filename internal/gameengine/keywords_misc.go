@@ -2405,9 +2405,15 @@ func CountDevotion(gs *GameState, seatIdx int, color string) int {
 		if p == nil || p.Card == nil {
 			continue
 		}
-		// EffectiveManaCostString prefers the prototype mana cost (CR §718.3b)
-		// so a prototyped permanent contributes its reduced colored pips.
-		if mcs := p.Card.EffectiveManaCostString(); mcs != "" {
+		// CR §718.3b — a prototyped permanent contributes its reduced colored
+		// pips while on the battlefield (CountDevotion iterates the battlefield,
+		// so the overlay is in force here; a *Permanent is battlefield by
+		// definition). Off-battlefield zones use the printed cost (CR §718.4).
+		mcs := p.Card.ManaCostString
+		if p.Card.Proto != nil {
+			mcs = p.Card.Proto.ManaCostString
+		}
+		if mcs != "" {
 			total += DevotionPipsFromManaCost(mcs, wantColor)
 			continue
 		}

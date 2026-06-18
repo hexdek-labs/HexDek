@@ -17,24 +17,38 @@ import (
 // alternative values are COPIABLE values (CR §718.2a) — a copy of a prototyped
 // object copies the prototype stats (CR §718.3c/d).
 //
-// MODEL (7174n1c product decision — "reverse kicker", copiable, ALL zones):
-// the prototype override is stored on the Card as a non-destructive
+// MODEL (pure overlay / mask — NOT a base mutation; CR §718.4):
+// the prototype values are stored on the Card as a non-destructive
 // PrototypeState (Card.Proto) that leaves the printed BasePower/BaseToughness/
-// CMC/Colors fields untouched. Because the same *Card travels across zones,
-// the reduced color + mana value are visible in EVERY zone — devotion,
-// color-matters, and mana-value-matters payoffs all see the prototype values
-// even off the battlefield. A normal cast clears Card.Proto, so the full
-// printed version is restored.
+// CMC/Colors fields completely untouched. The card is BASE everywhere; the
+// prototype P/T/color/MV is a "smaller-creature mask" that applies ONLY while
+// the object is a permanent on the battlefield or a spell on the stack (for
+// casting legality + color) — CR §718.4. In every other zone (hand, library,
+// graveyard, exile) the card shows its full printed characteristics.
 //
-// NOTE on the rules nuance: CR 718.4 restricts the prototype characteristics
-// to the stack + battlefield (other zones show printed). HexDek deliberately
-// applies them in ALL zones per the product decision above; this is an
-// intentional divergence from 718.4 in the other-zone case, not an oversight.
+// This is enforced by WHO reads the overlay, not by a zone field on the Card:
+//   - Battlefield/stack readers hold a *Permanent or *StackItem (which exist
+//     ONLY in those zones) and apply the overlay — Permanent.Power/Toughness/
+//     ManaValue, BaseCharacteristics (layer-1 base P/T + color), CountDevotion
+//     (iterates the battlefield), and the cast path (legality).
+//   - Zone-agnostic *Card accessors (EffectiveCMC, cardColors, BasePower, …)
+//     return the PRINTED base. A card in hand/graveyard/exile therefore reverts
+//     to full base BY CONSTRUCTION — the base was never written and these
+//     accessors never substitute Proto.
+// So a bounced / dead / exiled prototyped permanent shows full printed
+// stats+color+MV there, while reanimation/blink simply re-enters the
+// battlefield as a permanent again. A normal cast clears Card.Proto.
+//
+// The prototype color + MV are derived from the prototype COST string
+// ("{3}{R}{R}" → red, MV 5), not a lone int. Values are copiable (CR §718.2a/
+// 718.3c/d): DeepCopy clones Proto, so a copy made while on the battlefield is
+// itself a prototyped permanent.
 //
 // The dangerous in-place mutator described in the implementation plan
 // (mechanic-prototype-r63.md §2) — which clobbered the shared Card's printed
-// P/T/CMC and dropped color entirely — is deliberately NOT used. ApplyPrototype
-// below is the safe non-destructive replacement.
+// P/T/CMC and dropped color entirely (leaking across zones, corrupting recasts,
+// violating CR 718.4) — is deliberately NOT used. ApplyPrototype below is the
+// safe non-destructive replacement.
 
 // PrototypeState holds a prototype card's alternative (copiable) mana cost,
 // mana value, color, and P/T. nil on Card.Proto means "not cast prototyped"

@@ -1525,65 +1525,24 @@ type Card struct {
 	// Proto holds the prototype alternative characteristics (CR §702.160 /
 	// §718) when this card was cast for its prototype cost. nil = normal
 	// printed version. Non-destructive: the printed BasePower/BaseToughness/
-	// CMC/Colors fields above are left intact, and the prototype values
-	// travel with the Card across all zones (see keywords_prototype.go).
+	// CMC/Colors fields above are left intact. These values are copiable and
+	// persist on the Card object, but the overlay only APPLIES while the object
+	// is a permanent on the battlefield or a spell on the stack (CR §718.4) —
+	// it is applied by battlefield/stack readers, not by *Card accessors. See
+	// keywords_prototype.go.
 	Proto *PrototypeState
 }
 
-// IsPrototyped reports whether this card was cast for its prototype cost
-// (CR §718) and so carries the alternative copiable characteristics.
+// IsPrototyped reports whether this card CARRIES prototype values (it was cast
+// for its prototype cost). NOTE: this does NOT mean the prototype overlay is
+// active — per CR §718.4 the overlay applies ONLY while the object is a spell
+// on the stack or a permanent on the battlefield. In every other zone the card
+// has its normal printed characteristics. The overlay is therefore applied by
+// the BATTLEFIELD/STACK readers (which hold a *Permanent or *StackItem and so
+// know the zone), NOT by zone-agnostic *Card accessors. Bare-card reads in
+// hand/library/graveyard/exile see the printed base BY CONSTRUCTION (the base
+// fields are never clobbered and these accessors never substitute Proto).
 func (c *Card) IsPrototyped() bool { return c != nil && c.Proto != nil }
-
-// EffectiveBasePower returns the prototype power when prototyped, else the
-// printed BasePower (CR §718.3b).
-func (c *Card) EffectiveBasePower() int {
-	if c == nil {
-		return 0
-	}
-	if c.Proto != nil {
-		return c.Proto.Power
-	}
-	return c.BasePower
-}
-
-// EffectiveBaseToughness returns the prototype toughness when prototyped, else
-// the printed BaseToughness (CR §718.3b).
-func (c *Card) EffectiveBaseToughness() int {
-	if c == nil {
-		return 0
-	}
-	if c.Proto != nil {
-		return c.Proto.Toughness
-	}
-	return c.BaseToughness
-}
-
-// EffectiveColors returns the prototype colors when prototyped, else the
-// printed Colors (CR §718.3b). A colorless prototype cost yields an empty
-// slice (the object is colorless).
-func (c *Card) EffectiveColors() []string {
-	if c == nil {
-		return nil
-	}
-	if c.Proto != nil {
-		return c.Proto.Colors
-	}
-	return c.Colors
-}
-
-// EffectiveManaCostString returns the prototype mana-cost string when
-// prototyped, else the printed ManaCostString. Devotion and pip-level
-// readers consult this so prototyped permanents contribute their reduced
-// colored pips (CR §718.3b).
-func (c *Card) EffectiveManaCostString() string {
-	if c == nil {
-		return ""
-	}
-	if c.Proto != nil {
-		return c.Proto.ManaCostString
-	}
-	return c.ManaCostString
-}
 
 func (c *Card) DeepCopy() *Card {
 	if c == nil {
@@ -1633,15 +1592,21 @@ func (c *Card) EffectiveCMC() int {
 	if c != nil && c.CastingBackFace && c.BackFaceCMC > 0 {
 		return c.BackFaceCMC
 	}
-	// CR §718.3a — a prototyped object's mana value is the prototype cost's MV,
-	// in all zones (mana-value-matters payoffs see the reduced value).
-	if c != nil && c.Proto != nil {
-		return c.Proto.CMC
-	}
 	if c != nil {
 		return c.CMC
 	}
 	return 0
+}
+
+// ProtoManaValue returns the prototype mana value (CR §718.3a). Callers that
+// hold a battlefield/stack context (a *Permanent or a *StackItem) use this to
+// apply the prototype overlay; bare-card callers in other zones must use
+// EffectiveCMC (printed) per CR §718.4.
+func (c *Card) ProtoManaValue() int {
+	if c != nil && c.Proto != nil {
+		return c.Proto.CMC
+	}
+	return c.EffectiveCMC()
 }
 
 // -----------------------------------------------------------------------------
@@ -1947,7 +1912,14 @@ func (p *Permanent) Power() int {
 	}
 	base := 0
 	if p.Card != nil {
-		base = p.Card.EffectiveBasePower()
+		// CR §718.3b — a permanent that was cast prototyped wears the prototype
+		// P/T overlay while on the battlefield (a *Permanent is battlefield by
+		// definition). The printed base is never touched, so the card reverts to
+		// full base in every other zone by construction (CR §718.4).
+		base = p.Card.BasePower
+		if p.Card.Proto != nil {
+			base = p.Card.Proto.Power
+		}
 	}
 	// +1/+1 counters add, -1/-1 counters subtract.
 	if p.Counters != nil {
@@ -1974,7 +1946,11 @@ func (p *Permanent) Toughness() int {
 	}
 	base := 0
 	if p.Card != nil {
-		base = p.Card.EffectiveBaseToughness()
+		// CR §718.3b — prototype toughness overlay while on the battlefield.
+		base = p.Card.BaseToughness
+		if p.Card.Proto != nil {
+			base = p.Card.Proto.Toughness
+		}
 	}
 	if p.Counters != nil {
 		base += p.Counters["+1/+1"]
@@ -1984,6 +1960,18 @@ func (p *Permanent) Toughness() int {
 		base += m.Toughness
 	}
 	return base
+}
+
+// ManaValue returns the permanent's mana value, applying the prototype overlay
+// (CR §718.3a/b) — a *Permanent is on the battlefield, where the prototype MV
+// is in force. mana-value-matters payoffs that read a battlefield permanent
+// should use this; off-battlefield reads use Card.EffectiveCMC (printed) per
+// CR §718.4.
+func (p *Permanent) ManaValue() int {
+	if p == nil || p.Card == nil {
+		return 0
+	}
+	return p.Card.ProtoManaValue()
 }
 
 // IsCreature returns true if this permanent has the "creature" type.

@@ -595,9 +595,10 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 	// CR §702.160 / §718 — Prototype. A prototype card may be cast for its
 	// smaller prototype mana cost; if it is, the spell + the permanent it
 	// becomes take the prototype mana cost, color, and P/T as copiable values
-	// (Card.Proto, set here, travels with the object through all zones). Cast
-	// normally → Card.Proto cleared → full printed version. Same alt-cost shape
-	// as overload/blitz: only one alternative cost applies, the modifier
+	// (Card.Proto, set here). The overlay applies only while on the stack /
+	// battlefield (CR §718.4); off-battlefield zones show the printed base.
+	// Cast normally → Card.Proto cleared → full printed version. Same alt-cost
+	// shape as overload/blitz: only one alternative cost applies, the modifier
 	// pipeline applies, a parser miss declines, and the Hat opts in.
 	if HasPrototype(card) {
 		// Always clear any stale prototype state so a normal cast (or a decline

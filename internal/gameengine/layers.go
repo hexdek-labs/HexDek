@@ -336,11 +336,17 @@ func BaseCharacteristics(p *Permanent) *Characteristics {
 	if c.Name == "" && p.Card.AST != nil {
 		c.Name = p.Card.AST.Name
 	}
-	// CR §718.3b — a prototyped object's P/T is the prototype P/T as a
+	// CR §718.3b — a prototyped permanent wears the prototype P/T as a
 	// copiable value (layer-1 base), composing under counters / anthems /
-	// set-P/T effects. EffectiveBasePower/Toughness prefer Card.Proto when set.
-	c.BasePower = p.Card.EffectiveBasePower()
-	c.BaseToughness = p.Card.EffectiveBaseToughness()
+	// set-P/T effects. A *Permanent is on the battlefield, where the overlay is
+	// in force (CR §718.4); the printed base is never touched, so the card
+	// reverts to full base in every other zone by construction.
+	c.BasePower = p.Card.BasePower
+	c.BaseToughness = p.Card.BaseToughness
+	if p.Card.Proto != nil {
+		c.BasePower = p.Card.Proto.Power
+		c.BaseToughness = p.Card.Proto.Toughness
+	}
 	c.Power = c.BasePower
 	c.Toughness = c.BaseToughness
 	// Types from Card.Types (resolver lowercases these at ETB).
@@ -354,7 +360,13 @@ func BaseCharacteristics(p *Permanent) *Characteristics {
 	// permanent and every color-matters query reading the layered color was
 	// blind. Mirrors cardColors (incl. its type-line color-word fallback) in a
 	// stable WUBRG(C) order so the layered query agrees with the printed helper.
-	if printed := cardColors(p.Card); len(printed) > 0 {
+	//
+	// CR §718.3b — a prototyped permanent's color is the prototype color
+	// (derived from the prototype cost), in force on the battlefield. Use it
+	// here (exactly, possibly colorless) instead of the printed color.
+	if p.Card.Proto != nil {
+		c.Colors = append([]string(nil), p.Card.Proto.Colors...)
+	} else if printed := cardColors(p.Card); len(printed) > 0 {
 		for _, letter := range []string{"W", "U", "B", "R", "G", "C"} {
 			if _, ok := printed[letter]; ok {
 				c.Colors = append(c.Colors, letter)
