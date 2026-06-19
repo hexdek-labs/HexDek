@@ -2746,6 +2746,11 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	// N time/fade counters on it"). Thor parses these as bare keywords and no
 	// path read them. Gated to never double the structured / per-card paths.
 	ApplyVanishingFadingETBCounters(gs, perm)
+	// CR §702.58 — Graft. Self enters with N +1/+1 counters (doubler-routed)
+	// AND every OTHER graft creature may move a counter onto this entering
+	// creature. Both halves were inert (ApplyGraft* had no caller). This is the
+	// cast path; FirePermanentETBTriggers covers the non-cast entries.
+	ApplyGraft(gs, perm)
 
 	// Register §613 continuous effects (layers 1-7).
 	RegisterContinuousEffectsForPermanent(gs, perm)

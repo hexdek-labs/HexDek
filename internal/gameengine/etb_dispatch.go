@@ -134,6 +134,10 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 		// bare keywords and no path read them, so they entered with zero
 		// counters. Gated to never double the structured / per-card paths.
 		ApplyVanishingFadingETBCounters(gs, perm)
+		// CR §702.58 — Graft. Self enters with N +1/+1 counters (doubler-
+		// routed) AND every OTHER graft creature may move a counter onto this
+		// entering creature. Both halves were inert (ApplyGraft* had no caller).
+		ApplyGraft(gs, perm)
 	}
 
 	// CR §613 — register the entering permanent's continuous effects: named

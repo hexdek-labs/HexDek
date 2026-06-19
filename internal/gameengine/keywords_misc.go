@@ -1142,6 +1142,62 @@ func ApplyGraftTransfer(gs *GameState, source *Permanent, target *Permanent) boo
 	return true
 }
 
+// ApplyGraft wires both halves of graft (CR §702.58) when `perm` enters the
+// battlefield. ApplyGraftETB / ApplyGraftTransfer existed but had no caller —
+// graft was fully inert. Called from BOTH ETB-counter paths (the cast path
+// resolvePermanentSpellETB and the non-cast FirePermanentETBTriggers), beside
+// the other enters-with-counters helpers.
+//
+//  1. Self: if `perm` has graft N, it enters with N +1/+1 counters, routed
+//     through the §616 doubler chain (ApplyGraftETB → PutCountersTriggered).
+//  2. Others: `perm` entering is "another creature" for every OTHER graft
+//     creature on the battlefield (CR §702.58c) — each such creature's
+//     controller may move one +1/+1 counter from it onto `perm`. Auto-play
+//     moves a counter only onto a creature the graft controller controls (you
+//     don't feed an opponent's creature), and only while the graft creature
+//     still has a +1/+1 counter. The move is raw (a counter MOVE, not a put —
+//     it does not re-trigger the doubler chain).
+//
+// Both halves run synchronously at ETB, mirroring the engine's other
+// enters-with-counters hooks; the CR models §702.58c as a triggered ability, a
+// simplification shared with the rest of the ETB-counter family.
+func ApplyGraft(gs *GameState, perm *Permanent) {
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	// (1) Self — enters with N +1/+1 counters.
+	if n, ok := keywordArgCostStrict(perm.Card, "graft"); ok && n > 0 {
+		ApplyGraftETB(gs, perm, n)
+	}
+	// (2) Others — only a creature can receive the moved counter.
+	if !perm.IsCreature() {
+		return
+	}
+	for _, seat := range gs.Seats {
+		if seat == nil {
+			continue
+		}
+		for _, g := range seat.Battlefield {
+			if g == nil || g == perm || g.Card == nil || g.PhasedOut {
+				continue
+			}
+			if g.Counters == nil || g.Counters["+1/+1"] <= 0 {
+				continue
+			}
+			if _, ok := keywordArgCostStrict(g.Card, "graft"); !ok {
+				continue
+			}
+			// CR §702.58c — the graft creature's controller may move a counter
+			// onto the entering creature. Auto-play: do so only when the entering
+			// creature is one the graft controller controls.
+			if perm.Controller != g.Controller {
+				continue
+			}
+			ApplyGraftTransfer(gs, g, perm)
+		}
+	}
+}
+
 // ---------------------------------------------------------------------------
 // Amplify N — CR §702.38
 // ---------------------------------------------------------------------------
