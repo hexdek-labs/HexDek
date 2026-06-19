@@ -773,6 +773,15 @@ func DeclareAttackers(gs *GameState, attackerSeat int) []*Permanent {
 		}
 	}
 
+	// CR §702.154a — Enlist. "As this creature attacks, you may tap a
+	// nonattacking creature you control without summoning sickness; add its
+	// power to this creature until end of turn." Run BEFORE the attack triggers
+	// so the +power and the enlisted_this_combat flag are live when the
+	// "whenever this attacks" payoffs (Aradesh) fire, and AFTER every attacker
+	// is stamped attacking so the enlistee can't be one of them. Primitive was
+	// complete but had no live caller — enlist was inert.
+	ApplyEnlistForAttackers(gs, attackerSeat, declared)
+
 	// Step 3: fire attack triggers — only for creatures actually declared.
 	// §508.1 / §603.3a. Handles both "this attacks" (self actor) and
 	// "whenever a creature you control attacks" (ally actor).

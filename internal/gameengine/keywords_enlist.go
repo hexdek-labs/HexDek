@@ -118,3 +118,42 @@ func ApplyEnlist(gs *GameState, seatIdx int, attacker, enlistee *Permanent) bool
 	})
 	return true
 }
+
+// ApplyEnlistForAttackers is the live DeclareAttackers wiring the primitive's
+// doc-comment flagged as a separate step (CR §702.154a). For every DECLARED
+// attacker with enlist it auto-taps the highest-power legal enlistee (a
+// different untapped, non-summoning-sick, nonattacking creature the same player
+// controls) and adds that power to the attacker until end of turn. Run AFTER
+// every attacker is stamped attacking so CanEnlist's "nonattacking" filter
+// excludes the whole attacking set; sequential processing prevents two enlist
+// attackers from tapping the same enlistee (the first tap makes it ineligible).
+//
+// The "may" is auto-taken whenever a legal enlistee exists; the when / which-
+// enlistee strategy (tapping a creature that could have blocked is a real
+// tradeoff) is a Hat refinement, like crew/saddle auto-invoke.
+func ApplyEnlistForAttackers(gs *GameState, attackerSeat int, declared []*Permanent) {
+	if gs == nil || attackerSeat < 0 || attackerSeat >= len(gs.Seats) {
+		return
+	}
+	seat := gs.Seats[attackerSeat]
+	if seat == nil {
+		return
+	}
+	for _, atk := range declared {
+		if atk == nil || atk.Card == nil || !HasEnlist(atk.Card) {
+			continue
+		}
+		var best *Permanent
+		for _, p := range seat.Battlefield {
+			if !CanEnlist(gs, attackerSeat, atk, p) {
+				continue
+			}
+			if best == nil || p.Power() > best.Power() {
+				best = p
+			}
+		}
+		if best != nil {
+			ApplyEnlist(gs, attackerSeat, atk, best)
+		}
+	}
+}
