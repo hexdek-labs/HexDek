@@ -315,20 +315,47 @@ func BaseCharacteristics(p *Permanent) *Characteristics {
 	if p.Card == nil {
 		return c
 	}
-	// Face-down CDA override (§707.2 / §613.2b).
+	// Face-down CDA override (§707.2 / §613.2b). The template — keyed by
+	// what turned the permanent face down (morph / disguise / cloak /
+	// manifest / cyber), defaulting to morph — supplies the §707.2 BASE
+	// characteristics ONLY. Empty/unknown FaceDownTemplate falls back to
+	// the morph template, so legacy face-down permanents are unaffected.
 	if p.Card.FaceDown {
+		tmpl := FaceDownTemplateFor(p.FaceDownTemplate)
 		c.Name = ""
-		c.Power = 2
-		c.Toughness = 2
-		c.BasePower = 2
-		c.BaseToughness = 2
-		c.Types = []string{"creature"}
-		c.Subtypes = nil
+		c.Power = tmpl.Power
+		c.Toughness = tmpl.Toughness
+		c.BasePower = tmpl.Power
+		c.BaseToughness = tmpl.Toughness
+		c.Types = append([]string(nil), tmpl.Types...)
+		c.Subtypes = append([]string(nil), tmpl.Subtypes...)
 		c.Supertypes = nil
-		c.Colors = nil // colorless
+		c.Colors = append([]string(nil), tmpl.Colors...) // usually colorless
+		// §707.2 — the card's own printed abilities/keywords are gone while
+		// face down (they're not copiable values of the face-down object).
 		c.Abilities = nil
 		c.Keywords = nil
+		// The template's intrinsic ward (disguise / cloak, CR §702.166a /
+		// §702.171a) is a characteristic of the face-down object itself.
+		if tmpl.Ward > 0 {
+			c.Keywords = append(c.Keywords, "ward")
+		}
+		// §707.2 — a face-down permanent has mana value 0.
+		c.CMC = 0
 		c.FaceDown = true
+		// GRANT-RETENTION FIX (r63): the template is the BASE layer only.
+		// Abilities GRANTED to a face-down creature must survive — anthems
+		// and "creatures you control have X" apply downstream as continuous
+		// effects in GetEffectiveCharacteristics (on top of this base), but
+		// RUNTIME grants recorded directly on p.GrantedAbilities (kept
+		// keywords, externally granted ward, etc.) were previously WIPED by
+		// the unconditional nil + early return. Fold them in here, exactly
+		// as the face-up path does (see below), so they are not lost.
+		for _, g := range p.GrantedAbilities {
+			if !containsFold(c.Keywords, g) {
+				c.Keywords = append(c.Keywords, g)
+			}
+		}
 		return c
 	}
 
