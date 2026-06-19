@@ -4443,7 +4443,34 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 			Source: sourceName(src),
 		})
 
-	case "orphaned_period", "endures", "repeat_process", "unspecialize",
+	case "endures":
+		// CR §701.63 — "[source] endures N": the controller chooses N +1/+1
+		// counters on the source OR one N/N white Spirit token. Both branches
+		// route through the canonical doubler chokepoints (see endure.go). The
+		// fixed-N forms (args[0] is a number) are wired; the variable "endures
+		// X" forms (Warden of the Grove / Krumar Initiate) carry a non-numeric
+		// arg and fall through as a no-op until X-value resolution lands.
+		n := 0
+		if len(e.Args) > 0 {
+			if v, ok := asInt(e.Args[0]); ok {
+				n = v
+			}
+		}
+		if n > 0 {
+			Endure(gs, src, n)
+		} else {
+			gs.LogEvent(Event{
+				Kind:   "misc_effect",
+				Seat:   controllerSeat(src),
+				Source: sourceName(src),
+				Details: map[string]interface{}{
+					"sub_kind": e.ModKind,
+					"args":     e.Args,
+				},
+			})
+		}
+
+	case "orphaned_period", "repeat_process", "unspecialize",
 		"blight", "intensify", "forage", "prevent_effect",
 		"discard_unless_attacked", "owner_chooses_top_or_bottom":
 		gs.LogEvent(Event{
