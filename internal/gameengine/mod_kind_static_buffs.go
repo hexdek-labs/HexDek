@@ -20,7 +20,11 @@ package gameengine
 // static path from accidental processing.
 func staticKindAllowedLayerless(kind string) bool {
 	switch kind {
-	case "self_buff", "self_calculated_pt":
+	case "self_buff", "self_calculated_pt",
+		// commander_anthem (Background "commander creatures you own …",
+		// CR §702.124e) — the parser leaves its layer tag empty, so the
+		// §613 gate skipped it entirely and the grant was fully inert.
+		"commander_anthem":
 		return true
 	default:
 		return false

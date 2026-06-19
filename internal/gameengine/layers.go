@@ -2611,11 +2611,17 @@ func registerASTStaticEffects(gs *GameState, p *Permanent) {
 			})
 
 		case "commander_anthem":
-			pow, tough := extractPT(mod.Args, 1, 1)
-			src := p
-			registerAnthemPT(gs, p, pow, tough, "ast-cmdr-anthem", func(_ *GameState, t *Permanent) bool {
-				return t.Controller == src.Controller
-			})
+			// CR §702.124e — a Background grants its clause to "commander
+			// creatures you own", NOT every creature the controller controls,
+			// and the arg is the RAW TEXT of the grant (not parsed P/T). The
+			// old handler buffed the whole board a flat +1/+1. Parse the clause
+			// and scope it to the owner's commander creatures. See
+			// commander_background.go.
+			if len(mod.Args) >= 1 {
+				if txt, ok := mod.Args[0].(string); ok && txt != "" {
+					applyCommanderAnthemFromText(gs, p, txt)
+				}
+			}
 
 		case "tribe_anthem_have", "tribe_yours_anthem_have":
 			if len(mod.Args) >= 1 {
