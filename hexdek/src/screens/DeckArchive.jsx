@@ -1405,11 +1405,15 @@ export default function DeckArchive() {
   // four lines down into the rest of the state block triggers a TDZ
   // ReferenceError on first render and lazy-loads cache the broken module.
   const [activeTab, setActiveTab] = useState('analysis')
-  // STAGING REBUILD (r60, 7174n1c-directed): a decluttered 3-tab deck
-  // page lives behind VITE_STAGING. Prod builds (no VITE_STAGING) take
-  // the legacy single-page render below untouched; staging builds get
-  // the LANDING / FREYA ANALYSIS / EMPIRICAL split via the early return.
-  const isStaging = !!(import.meta.env && import.meta.env.VITE_STAGING)
+  // DECK PAGE REBUILD (r60, 7174n1c-directed): a decluttered 3-tab deck
+  // page (LANDING / FREYA ANALYSIS / EMPIRICAL). PROMOTED TO PROD DEFAULT
+  // 2026-06-19 on 7174n1c's "push to prod, it looks good" go — this is now
+  // the live deck page for everyone, not just staging. The legacy
+  // single-page render below is kept as dead fallback for one cycle in
+  // case a quick revert is needed. NOTE: this is independent of the
+  // VITE_STAGING preview-whitelist gate (StagingGate.jsx), which stays
+  // env-gated and self-disables in prod builds.
+  const isStaging = true
   const [landingTab, setLandingTab] = useState('landing')
   // Landing-page inline editor (staging v2): a staged working copy of
   // the card list. null = no pending edits (render the analyzed deck);
