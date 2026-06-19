@@ -156,6 +156,16 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 		RegisterContinuousEffectsForPermanent(gs, perm)
 	}
 
+	// CR §702.91 — Living weapon. When this Equipment enters, create a 0/0
+	// black Phyrexian Germ token and attach this Equipment to it. ApplyLivingWeapon
+	// had no caller — it was inert. Run AFTER the equipment's continuous effects
+	// register so the equip buff is live the moment the Germ is attached (a
+	// +N/+N equipment lifts the Germ off the 0/0 SBA). Non-cast entry path
+	// (reanimate / blink / token-mint); the cast path covers itself.
+	if !faceDown && HasLivingWeapon(perm.Card) {
+		ApplyLivingWeapon(gs, perm)
+	}
+
 	if !faceDown && perm.Card.AST != nil {
 		for _, ab := range perm.Card.AST.Abilities {
 			trig, ok := ab.(*gameast.Triggered)

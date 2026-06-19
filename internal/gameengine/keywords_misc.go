@@ -1286,38 +1286,42 @@ func ApplySunburst(gs *GameState, perm *Permanent, colorsSpent int) {
 // ApplyLivingWeapon creates a 0/0 Phyrexian Germ token and attaches the
 // equipment to it.
 func ApplyLivingWeapon(gs *GameState, equipment *Permanent) *Permanent {
-	if gs == nil || equipment == nil {
+	if gs == nil || equipment == nil || equipment.Card == nil {
 		return nil
 	}
 	seatIdx := equipment.Controller
 	if seatIdx < 0 || seatIdx >= len(gs.Seats) {
 		return nil
 	}
-	seat := gs.Seats[seatIdx]
 
-	// Create 0/0 black Phyrexian Germ creature token.
-	token := &Card{
-		Name:          "Phyrexian Germ Token",
-		Owner:         seatIdx,
-		BasePower:     0,
-		BaseToughness: 0,
-		Types:         []string{"token", "creature", "phyrexian", "germ"},
-		Colors:        []string{"B"},
+	// CR §702.91b — create a 0/0 black Phyrexian Germ creature token through
+	// the canonical token path (CreateDoubledTokens → token doublers fire;
+	// CreateCreatureToken → token_created + ETB + InstanceID mint), not a raw
+	// &Permanent loop. The "token" type prefix is added by CreateCreatureToken.
+	var germ *Permanent
+	CreateDoubledTokens(gs, seatIdx, 1, equipment, func() *Permanent {
+		t := CreateCreatureToken(gs, seatIdx, "Phyrexian Germ Token",
+			[]string{"creature", "phyrexian", "germ"}, 0, 0)
+		if t != nil && t.Card != nil {
+			t.Card.Colors = []string{"B"}
+			if germ == nil {
+				germ = t
+			}
+		}
+		return t
+	})
+	if germ == nil {
+		return nil
 	}
-	germ := &Permanent{
-		Card:       token,
-		Controller: seatIdx,
-		Owner:      seatIdx,
-		Timestamp:  gs.NextTimestamp(),
-		Counters:   map[string]int{},
-		Flags:      map[string]int{},
-	}
-	seat.Battlefield = append(seat.Battlefield, germ)
-	RegisterReplacementsForPermanent(gs, germ)
-	FirePermanentETBTriggers(gs, germ)
 
-	// Attach equipment to germ.
+	// CR §702.91b — then attach this Equipment to the Germ (no equip cost is
+	// paid). The equip's +X/+Y and ability grants are AttachedTo-scoped layer
+	// effects, so with the equipment's continuous effects already registered
+	// at its own ETB, setting AttachedTo makes the Germ a real creature; a
+	// +N/+N equipment immediately lifts the 0/0 off the §704.5f SBA. When the
+	// Equipment later leaves or unattaches, the Germ reverts to 0/0 and dies.
 	equipment.AttachedTo = germ
+	gs.InvalidateCharacteristicsCache()
 
 	gs.LogEvent(Event{
 		Kind:   "living_weapon",
@@ -1325,10 +1329,30 @@ func ApplyLivingWeapon(gs *GameState, equipment *Permanent) *Permanent {
 		Source: equipment.Card.DisplayName(),
 		Details: map[string]interface{}{
 			"germ": "Phyrexian Germ Token",
-			"rule": "702.92",
+			"rule": "702.91b",
 		},
 	})
 	return germ
+}
+
+// HasLivingWeapon reports whether the card carries the living weapon keyword
+// (CR §702.91). Normalizes spaces/underscores so it matches the parser token
+// regardless of "living weapon" / "living_weapon" spelling.
+func HasLivingWeapon(card *Card) bool {
+	if card == nil || card.AST == nil {
+		return false
+	}
+	for _, ab := range card.AST.Abilities {
+		kw, ok := ab.(*gameast.Keyword)
+		if !ok {
+			continue
+		}
+		norm := strings.ReplaceAll(strings.ReplaceAll(strings.ToLower(kw.Name), " ", ""), "_", "")
+		if norm == "livingweapon" {
+			return true
+		}
+	}
+	return false
 }
 
 // ---------------------------------------------------------------------------
