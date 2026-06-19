@@ -410,3 +410,67 @@ func FireDiscardASTTriggers(gs *GameState, discarderSeat int) {
 		}
 	}
 }
+
+// FireCommitCrimeASTTriggers fires "whenever you commit a crime" AST
+// triggers for the seat that just committed a crime (CR §701.71). Same
+// per_card-only gap the dispatch-widening closed for life-gain / tap /
+// draw / sacrifice / discard: FireCommitsCrimeTriggers reaches the
+// per_card registry alone (FireCardTrigger "crime"), so the ~18 corpus
+// "whenever you commit a crime" AST triggers (Hardbristle Bandit, Marauding
+// Sphinx, Vadmir, Bandit's Haul, Rattleback Apothecary, …) were silent
+// unless a card had a bespoke handler — the crime DETECTION fired and bumped
+// the per-turn counter, but the triggered EFFECT never resolved.
+//
+// Fires once per crime EVENT (CR §701.71b — one crime per qualifying
+// spell/ability regardless of how many opponent objects it targets; the
+// caller already deduped). per_card-owned commit_crime handlers (Gisa) are
+// skipped via HasTriggerHook so nothing double-fires.
+func FireCommitCrimeASTTriggers(gs *GameState, seat int) {
+	if gs == nil || seat < 0 || seat >= len(gs.Seats) {
+		return
+	}
+	defer EndTriggerBatch(gs, BeginTriggerBatch(gs))
+	// "you commit a crime" — only the crime-committing player's own
+	// permanents have the trigger.
+	s := gs.Seats[seat]
+	if s == nil {
+		return
+	}
+	perms := append([]*Permanent{}, s.Battlefield...)
+	for _, p := range perms {
+		if p == nil || p.Card == nil || p.Card.AST == nil {
+			continue
+		}
+		for _, ab := range p.Card.AST.Abilities {
+			trig, ok := ab.(*gameast.Triggered)
+			if !ok || trig.Effect == nil {
+				continue
+			}
+			if !EventEquals(trig.Trigger.Event, "commit_crime") {
+				continue
+			}
+			raw := strings.ToLower(trig.Raw)
+			if !strings.Contains(raw, "commit a crime") {
+				// Fail closed on unrecognized wording (e.g. opponent-crime
+				// variants carry their own event/handler).
+				continue
+			}
+			// "during your turn" rider (Overzealous Muscle): only fires on
+			// the controller's own turn.
+			if strings.Contains(raw, "during your turn") && gs.Active != p.Controller {
+				continue
+			}
+			if HasTriggerHook != nil && HasTriggerHook(p.Card.DisplayName(), "commit_crime") {
+				continue
+			}
+			gs.LogEvent(Event{
+				Kind: "trigger_fires", Seat: p.Controller,
+				Source: p.Card.DisplayName(),
+				Details: map[string]interface{}{
+					"event": "commit_crime", "rule": "701.71b",
+				},
+			})
+			PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)
+		}
+	}
+}

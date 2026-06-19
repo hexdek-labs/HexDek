@@ -183,6 +183,13 @@ func FireCommitsCrimeTriggers(gs *GameState, seatIdx int, source, target string)
 		"crime_count": count,
 	})
 
+	// Generic AST dispatch for "whenever you commit a crime" triggers that
+	// have no bespoke per_card handler (Hardbristle Bandit, Marauding Sphinx,
+	// Vadmir, …). FireCardTrigger above reaches the per_card registry only;
+	// without this walk the AST trigger's effect never resolved. The
+	// dispatcher self-skips per_card-owned cards, so no double-fire.
+	FireCommitCrimeASTTriggers(gs, seatIdx)
+
 	if count == 1 {
 		FireCardTrigger(gs, "first_crime", map[string]interface{}{
 			"seat":   seatIdx,
