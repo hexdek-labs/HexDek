@@ -189,10 +189,37 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 	// persistent Flags channel (kw:menace + suspected) rather than
 	// the until-EOT GrantedAbilities slice — §701.62 the designation
 	// persists across turns until investigated.
+	//
+	// The arg names WHICH creature is suspected (the old handler always
+	// suspected src, so "suspect enchanted creature" no-op'd on the Aura
+	// and suspect_it fell through to the parser-gap default):
+	//   - "enchanted_creature" → the Aura's attached creature (src.AttachedTo)
+	//   - "pronoun" / empty (suspect_it) → the source itself (self-suspect)
 	// -----------------------------------------------------------------
-	case "suspect":
+	case "suspect", "suspect_it":
 		if src != nil {
-			SuspectCreature(gs, src)
+			target := src
+			if modArgString(e.Args, 0) == "enchanted_creature" {
+				target = src.AttachedTo // nil-safe: SuspectCreature no-ops on nil
+			}
+			SuspectCreature(gs, target)
+		}
+
+	// -----------------------------------------------------------------
+	// suspect_typed — "suspect target creature" (Nelly Borca, …). The
+	// suspected creature is a TARGET, not the source; the old _typed alias
+	// re-dispatched to "suspect" and wrongly suspected the source. Auto-
+	// pick an opponent's creature (the aggressive line every suspect-target
+	// card wants: strip a blocker + set up goad). No-op if none.
+	// -----------------------------------------------------------------
+	case "suspect_typed":
+		if src != nil {
+			for _, t := range pickCreatureTargets(gs, src, true) {
+				if t.Kind == TargetKindPermanent && t.Permanent != nil {
+					SuspectCreature(gs, t.Permanent)
+					break
+				}
+			}
 		}
 
 	// -----------------------------------------------------------------

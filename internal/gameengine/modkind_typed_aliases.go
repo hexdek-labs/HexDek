@@ -45,7 +45,9 @@ var typedAliasBase = map[string]string{
 	"learn_typed":           "learn",
 	"cloak_typed":           "cloak",
 	"roll_die_typed":        "roll_die",
-	"suspect_typed":         "suspect",
+	// suspect_typed is handled by its own resolveModificationEffect case
+	// (it suspects a TARGET creature, not the source — re-dispatching to
+	// "suspect" wrongly suspected the source).
 }
 
 // resolveTypedAliasModKind handles a parser `_typed` scaffold variant by
