@@ -23,13 +23,13 @@ import (
 //   - "creature_attacks": when Edgar attacks, every Vampire on his
 //     controller's battlefield gains a +1/+1 counter.
 //
-// Architectural note: the registry's TriggerHook walks battlefield only,
-// so this handler fires only while Edgar is on the battlefield. Eminence
-// from the command zone (Edgar dead, awaiting recast) is not dispatched
-// through the standard path. In simulation Edgar is almost always on the
-// battlefield by virtue of recasting, so this is acceptable.
+// Eminence (CR §702.107) — the "whenever you cast another Vampire spell"
+// trigger functions from the COMMAND ZONE as well as the battlefield, so it
+// registers via OnEminenceTrigger; fireTrigger's command-zone scan dispatches
+// it while Edgar awaits recast. The "whenever Edgar attacks" trigger is NOT
+// eminence — it stays on plain OnTrigger (battlefield only).
 func registerEdgarMarkov(r *Registry) {
-	r.OnTrigger("Edgar Markov", "spell_cast", edgarMarkovEminence)
+	r.OnEminenceTrigger("Edgar Markov", "spell_cast", edgarMarkovEminence)
 	r.OnTrigger("Edgar Markov", "creature_attacks", edgarMarkovAttack)
 }
 

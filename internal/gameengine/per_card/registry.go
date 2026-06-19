@@ -32,6 +32,15 @@ type Registry struct {
 	onResolve map[string][]ResolveHandler
 	activated map[string][]ActivatedHandler
 	onTrigger map[string]map[string][]TriggerHandler
+	// onEminenceTrigger holds the subset of triggered abilities that
+	// function while the card is in the COMMAND ZONE (CR §702.107 —
+	// Eminence). Handlers registered via OnEminenceTrigger land in BOTH
+	// onTrigger (so they still fire on the battlefield via the normal
+	// scan) AND here (so fireTrigger's command-zone scan dispatches them
+	// when the card is a commander sitting in the command zone). Plain
+	// OnTrigger handlers are NOT in this map, so non-eminence abilities of
+	// the same card never fire from the command zone (CR §400.10b).
+	onEminenceTrigger map[string]map[string][]TriggerHandler
 	// ownsETBTrigger marks cards whose OnETB handler FULLY IMPLEMENTS
 	// the card's printed self-ETB triggered ability (the engine's
 	// generic AST push is suppressed — Judge r63 double-fire gate).
@@ -72,8 +81,9 @@ func newRegistry() *Registry {
 		onCast:         map[string][]CastHandler{},
 		onResolve:      map[string][]ResolveHandler{},
 		activated:      map[string][]ActivatedHandler{},
-		onTrigger:      map[string]map[string][]TriggerHandler{},
-		ownsETBTrigger: map[string]bool{},
+		onTrigger:         map[string]map[string][]TriggerHandler{},
+		onEminenceTrigger: map[string]map[string][]TriggerHandler{},
+		ownsETBTrigger:    map[string]bool{},
 	}
 }
 
@@ -426,6 +436,36 @@ func (r *Registry) OnTrigger(cardName, event string, h TriggerHandler) {
 	r.onTrigger[k][canonical] = append(r.onTrigger[k][canonical], h)
 }
 
+// OnEminenceTrigger registers a triggered ability that functions while the
+// card is in the COMMAND ZONE in addition to the battlefield (CR §702.107 —
+// Eminence; e.g. Edgar Markov's "whenever you cast another Vampire spell …").
+// The handler is registered in BOTH onTrigger (so the normal battlefield scan
+// fires it once Edgar is on the battlefield) AND onEminenceTrigger (so
+// fireTrigger's command-zone scan fires it while Edgar sits in the command
+// zone). A card is in exactly one of those zones at a time, so it fires at
+// most once per event. Non-eminence triggers of the same card stay on plain
+// OnTrigger and never fire from the command zone.
+func (r *Registry) OnEminenceTrigger(cardName, event string, h TriggerHandler) {
+	if h == nil {
+		return
+	}
+	r.OnTrigger(cardName, event, h) // battlefield path (also dedups)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	k := normalizeName(cardName)
+	if r.onEminenceTrigger[k] == nil {
+		r.onEminenceTrigger[k] = map[string][]TriggerHandler{}
+	}
+	canonical := gameengine.NormalizeEventSingle(event)
+	hp := reflect.ValueOf(h).Pointer()
+	for _, existing := range r.onEminenceTrigger[k][canonical] {
+		if reflect.ValueOf(existing).Pointer() == hp {
+			return
+		}
+	}
+	r.onEminenceTrigger[k][canonical] = append(r.onEminenceTrigger[k][canonical], h)
+}
+
 // -----------------------------------------------------------------------------
 // Dispatch helpers (called by the hook installers below)
 // -----------------------------------------------------------------------------
@@ -666,6 +706,38 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 		}
 		for _, perm := range seat.Battlefield {
 			collect(seat.Idx, perm)
+		}
+	}
+	// CR §702.107 — Eminence. Triggered abilities registered via
+	// OnEminenceTrigger also function while the card is in the COMMAND ZONE.
+	// The battlefield scan above misses command-zone cards (they have no
+	// Permanent), so scan each seat's CommandZone for eminence handlers of
+	// this event and dispatch them against a synthetic source Permanent
+	// (Controller = the command zone's owner seat). Only eminence-registered
+	// handlers are consulted here, so non-eminence abilities of the same card
+	// stay battlefield-only (CR §400.10b).
+	for _, seat := range gs.Seats {
+		if seat == nil {
+			continue
+		}
+		for _, card := range seat.CommandZone {
+			if card == nil {
+				continue
+			}
+			reg.mu.RLock()
+			var handlers []TriggerHandler
+			for _, k := range lookupCandidates(card.DisplayName()) {
+				if m := reg.onEminenceTrigger[k]; m != nil {
+					handlers = append([]TriggerHandler(nil), m[canonical]...)
+					break
+				}
+			}
+			reg.mu.RUnlock()
+			if len(handlers) == 0 {
+				continue
+			}
+			src := &gameengine.Permanent{Card: card, Controller: seat.Idx, Owner: seat.Idx}
+			hitsBySeat[seat.Idx] = append(hitsBySeat[seat.Idx], hit{perm: src, hs: handlers})
 		}
 	}
 	// LTB-shape events fire AFTER the leaving perm has been removed from
