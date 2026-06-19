@@ -1013,6 +1013,18 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		ApplyStormCopies(gs, item, seatIdx)
 	}
 
+	// CR §702.144 — demonstrate. "When you cast this spell, you may copy it;
+	// if you do, choose an opponent who also copies it." The implementation
+	// (keywords_demonstrate.go) existed but had no caller — demonstrate was
+	// fully inert (no copies). Mirror storm/cascade's cast-time simplification:
+	// mint the two copies (controller + chosen opponent) directly above the
+	// original. Conservative auto-play: opt in (the controller gets a free
+	// copy) and let ApplyDemonstrate pick the first living opponent. The
+	// when-to-opt-in / which-opponent strategy is a Hat refinement.
+	if HasDemonstrate(card) {
+		ApplyDemonstrate(gs, item, seatIdx, func() bool { return true }, nil)
+	}
+
 	// CR §702.85 — cascade trigger. Exile from library until nonland
 	// with lesser MV, may cast for free, put rest on bottom. §702.85b:
 	// each cascade instance is a separate trigger, so "Cascade, cascade"
