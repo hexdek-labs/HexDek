@@ -2751,6 +2751,11 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	// creature. Both halves were inert (ApplyGraft* had no caller). This is the
 	// cast path; FirePermanentETBTriggers covers the non-cast entries.
 	ApplyGraft(gs, perm)
+	// CR §702.38 — Amplify. Enter with amplifyN +1/+1 counters for each hand
+	// card sharing a creature type (doubler-routed). Cast path; the non-cast
+	// FirePermanentETBTriggers covers the other entries. ApplyAmplify had no
+	// caller — amplify was inert.
+	ApplyAmplifyETB(gs, perm)
 
 	// Register §613 continuous effects (layers 1-7).
 	RegisterContinuousEffectsForPermanent(gs, perm)

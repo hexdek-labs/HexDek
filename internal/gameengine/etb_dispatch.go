@@ -138,6 +138,10 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 		// routed) AND every OTHER graft creature may move a counter onto this
 		// entering creature. Both halves were inert (ApplyGraft* had no caller).
 		ApplyGraft(gs, perm)
+		// CR §702.38 — Amplify. Enter with amplifyN +1/+1 counters for each
+		// hand card sharing a creature type (doubler-routed). ApplyAmplify had
+		// no caller — amplify was inert.
+		ApplyAmplifyETB(gs, perm)
 	}
 
 	// CR §613 — register the entering permanent's continuous effects: named

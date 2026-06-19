@@ -1207,14 +1207,16 @@ func ApplyGraft(gs *GameState, perm *Permanent) {
 // counters.
 
 // ApplyAmplify puts amplifyN * revealCount +1/+1 counters on perm.
-// revealCount is the number of creature cards revealed from hand.
+// revealCount is the number of cards revealed from hand sharing a creature
+// type. The counters route through the §616 doubler chain (PutCountersTriggered:
+// Doubling Season / Hardened Scales etc. apply + counter_placed fires), not raw
+// AddCounter.
 func ApplyAmplify(gs *GameState, perm *Permanent, amplifyN int, revealCount int) {
 	if gs == nil || perm == nil || amplifyN <= 0 || revealCount <= 0 {
 		return
 	}
 	counters := amplifyN * revealCount
-	perm.AddCounter("+1/+1", counters)
-	gs.InvalidateCharacteristicsCache() // +1/+1 counters change P/T
+	PutCountersTriggered(gs, perm, "+1/+1", counters, perm)
 	gs.LogEvent(Event{
 		Kind:   "amplify",
 		Seat:   perm.Controller,
@@ -1226,6 +1228,46 @@ func ApplyAmplify(gs *GameState, perm *Permanent, amplifyN int, revealCount int)
 			"rule":      "702.38",
 		},
 	})
+}
+
+// ApplyAmplifyETB performs amplify (CR §702.38b) as `perm` enters: reveal hand
+// cards that share a creature type with perm; perm enters with amplifyN +1/+1
+// counters for EACH revealed card. ApplyAmplify had no caller — amplify was
+// inert (no reveal, no counters). Auto-play reveals ALL eligible cards (free
+// counters, no downside); revealing zero is legal and places no counters.
+func ApplyAmplifyETB(gs *GameState, perm *Permanent) {
+	if gs == nil || perm == nil || perm.Card == nil {
+		return
+	}
+	n, ok := keywordArgCostStrict(perm.Card, "amplify")
+	if !ok || n <= 0 {
+		return
+	}
+	seatIdx := perm.Controller
+	if seatIdx < 0 || seatIdx >= len(gs.Seats) || gs.Seats[seatIdx] == nil {
+		return
+	}
+	// CR §702.38b — only cards sharing one of perm's creature types count.
+	mine := creatureSubtypesOf(perm.Card)
+	if len(mine) == 0 {
+		return
+	}
+	revealCount := 0
+	for _, c := range gs.Seats[seatIdx].Hand {
+		if c == nil {
+			continue
+		}
+		for sub := range creatureSubtypesOf(c) {
+			if _, shared := mine[sub]; shared {
+				revealCount++
+				break
+			}
+		}
+	}
+	if revealCount <= 0 {
+		return // revealing zero is legal → zero counters
+	}
+	ApplyAmplify(gs, perm, n, revealCount)
 }
 
 // CountCreaturesInHand counts the number of creature cards in a seat's hand.
