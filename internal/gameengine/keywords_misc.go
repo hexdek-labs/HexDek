@@ -1644,7 +1644,12 @@ func PerformDiscover(gs *GameState, seatIdx int, n int) *Card {
 // Put a card from some zone onto the battlefield face down as a 2/2
 // creature. It can be turned face up for its mana cost.
 
-// PerformCloak puts a card face-down as a 2/2 creature.
+// CloakFaceDownWardCost is the ward cost a cloaked permanent has while
+// face down (CR §702.171a — "a 2/2 creature with ward {2}"). This is the
+// defining difference between cloak and manifest, which grants no ward.
+const CloakFaceDownWardCost = 2
+
+// PerformCloak puts a card face-down as a 2/2 creature with ward {2}.
 func PerformCloak(gs *GameState, seatIdx int, card *Card) *Permanent {
 	if gs == nil || card == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
 		return nil
@@ -1661,12 +1666,18 @@ func PerformCloak(gs *GameState, seatIdx int, card *Card) *Permanent {
 			Types:         []string{"creature"},
 			FaceDown:      true,
 		},
-		Controller: seatIdx,
-		Owner:      seatIdx,
-		Timestamp:  gs.NextTimestamp(),
-		Counters:   map[string]int{},
+		Controller:    seatIdx,
+		Owner:         seatIdx,
+		SummoningSick: true,
+		Timestamp:     gs.NextTimestamp(),
+		Counters:      map[string]int{},
 		Flags: map[string]int{
 			"cloaked": 1,
+			// CR §702.171a — a cloaked permanent is face down WITH ward {2}
+			// (the key cloak-vs-manifest difference). Mirror the disguise
+			// face-down ward flags so CheckWardOnTargeting enforces it.
+			"kw:ward":   1,
+			"ward_cost": CloakFaceDownWardCost,
 		},
 	}
 	// Store original card reference for face-up.
