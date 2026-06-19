@@ -213,9 +213,15 @@ func TestApplyManifestDread_ManifestedIs2_2FaceDown(t *testing.T) {
 	if !perm.Card.FaceDown {
 		t.Fatal("manifested permanent must be face-down")
 	}
-	if perm.Card.BasePower != 2 || perm.Card.BaseToughness != 2 {
-		t.Fatalf("manifested permanent must be 2/2; got %d/%d",
-			perm.Card.BasePower, perm.Card.BaseToughness)
+	// Real-card overlay model: the real card is the permanent of record;
+	// the 2/2 shape is the §707.2 effective characteristics from the
+	// "manifest" template.
+	if perm.Card != a {
+		t.Fatal("chosen real card should be the permanent of record (perm.Card)")
+	}
+	if perm.Power() != 2 || perm.Toughness() != 2 {
+		t.Fatalf("manifested permanent must be effective 2/2; got %d/%d",
+			perm.Power(), perm.Toughness())
 	}
 	if perm.Flags == nil || perm.Flags["manifested"] != 1 {
 		t.Fatal("perm should carry manifested=1 flag")
@@ -227,8 +233,10 @@ func TestApplyManifestDread_ManifestedIs2_2FaceDown(t *testing.T) {
 	if perm.Flags["manifest_is_creature"] != 1 {
 		t.Fatal("manifest_is_creature should be set when underlying card is a creature")
 	}
-	if perm.BackFaceAST != nil && a.AST == nil {
-		t.Fatal("BackFaceAST should be nil when underlying card has no AST")
+	// Real-card model: the chosen card's identity lives on perm.Card, not
+	// on a BackFaceAST stash.
+	if perm.BackFaceAST != nil {
+		t.Fatal("manifest-dread no longer stashes the real card on BackFaceAST")
 	}
 }
 

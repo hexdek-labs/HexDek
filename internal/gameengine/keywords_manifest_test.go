@@ -95,21 +95,21 @@ func TestApplyManifestTop_CreatesFaceDown2x2(t *testing.T) {
 	if !IsManifested(perm) {
 		t.Fatal("perm.Flags[manifested] should be 1")
 	}
-	if perm.Card.BasePower != 2 || perm.Card.BaseToughness != 2 {
-		t.Fatalf("face-down stats = %d/%d, want 2/2",
-			perm.Card.BasePower, perm.Card.BaseToughness)
+	// Real-card overlay model: the real card IS the permanent of record,
+	// but its effective characteristics are the §707.2 2/2 vanilla shape.
+	if perm.Card != underlying {
+		t.Fatal("real card should be the permanent of record (perm.Card)")
 	}
-	if perm.Card.Name != "Face-Down Creature" {
-		t.Fatalf("wrapper name = %q, want \"Face-Down Creature\" (hides underlying identity)",
-			perm.Card.Name)
+	if perm.OriginalCard != nil {
+		t.Fatal("no synthetic wrapper / OriginalCard orphan in the real-card model")
 	}
-	// Underlying card identity is stashed but NOT visible through perm.Card.
-	if perm.OriginalCard != underlying {
-		t.Fatal("underlying card should be stashed on perm.OriginalCard")
+	if perm.Power() != 2 || perm.Toughness() != 2 {
+		t.Fatalf("effective face-down stats = %d/%d, want 2/2",
+			perm.Power(), perm.Toughness())
 	}
-	if perm.OriginalCard.Name != "Shivan Dragon" {
-		t.Fatalf("underlying name = %q, want \"Shivan Dragon\"",
-			perm.OriginalCard.Name)
+	// The underlying identity is hidden in the layered characteristics.
+	if chars := GetEffectiveCharacteristics(gs, perm); chars.Name != "" {
+		t.Fatalf("face-down should have no visible name, got %q", chars.Name)
 	}
 	// Library shrank.
 	if len(gs.Seats[0].Library) != 0 {
@@ -133,12 +133,12 @@ func TestApplyManifestTop_BatchManifestThreeCards(t *testing.T) {
 	if len(gs.Seats[0].Library) != 2 {
 		t.Fatalf("expected 2 library cards left, got %d", len(gs.Seats[0].Library))
 	}
-	// Order: top of library (A) is the first manifested. Underlying
-	// identity preserved.
+	// Order: top of library (A) is the first manifested. The real card is
+	// the permanent of record (perm.Card).
 	names := []string{
-		gs.Seats[0].Battlefield[0].OriginalCard.Name,
-		gs.Seats[0].Battlefield[1].OriginalCard.Name,
-		gs.Seats[0].Battlefield[2].OriginalCard.Name,
+		gs.Seats[0].Battlefield[0].Card.Name,
+		gs.Seats[0].Battlefield[1].Card.Name,
+		gs.Seats[0].Battlefield[2].Card.Name,
 	}
 	if names[0] != "A" || names[1] != "B" || names[2] != "C" {
 		t.Fatalf("manifest order wrong: got %v, want [A B C]", names)
@@ -222,8 +222,8 @@ func TestManifestedFaceUp_RevealsUnderlyingCard(t *testing.T) {
 	ApplyManifestTop(gs, 0, 1)
 	perm := gs.Seats[0].Battlefield[0]
 
-	if perm.Card.Name != "Face-Down Creature" {
-		t.Fatal("setup: should still be face-down")
+	if !perm.Card.FaceDown || perm.Card != underlying {
+		t.Fatal("setup: real card should be the permanent of record, face down")
 	}
 
 	if err := ManifestedFaceUp(gs, perm, 7); err != nil {
@@ -298,7 +298,7 @@ func TestManifestedFaceUp_RejectsNonCreatureUnderlying(t *testing.T) {
 	if err := ManifestedFaceUp(gs, perm, 4); err == nil {
 		t.Fatal("manifested non-creature must not be flipped face up via the manifest right")
 	}
-	if perm.Card.Name != "Face-Down Creature" {
+	if !perm.Card.FaceDown {
 		t.Fatal("rejected flip must leave the perm face-down")
 	}
 }

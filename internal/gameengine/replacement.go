@@ -1155,6 +1155,16 @@ func RegisterReplacementsForPermanent(gs *GameState, p *Permanent) {
 	if p == nil || p.Card == nil {
 		return
 	}
+	// CR §708.4 — a face-down permanent has no abilities, including
+	// replacement effects. Under the real-card overlay model the real card
+	// is perm.Card (and DisplayName returns its true name), so without this
+	// guard a manifested / disguised / cyber'd card that happens to be a
+	// registered replacement source (e.g. Anafenza, the Foremost) would
+	// wrongly register its replacement while hidden. The flip path
+	// re-registers once it turns face up.
+	if IsFaceDown(p) {
+		return
+	}
 	switch p.Card.DisplayName() {
 	case "Laboratory Maniac":
 		RegisterLaboratoryManiac(gs, p)

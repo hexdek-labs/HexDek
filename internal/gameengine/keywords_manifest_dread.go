@@ -152,47 +152,36 @@ func ApplyManifestDread(gs *GameState, seatIdx int, choiceCallback func(top2 [2]
 	return makeManifestDreadPermanent(gs, seatIdx, chosen)
 }
 
-// makeManifestDreadPermanent builds the face-down 2/2 creature that
-// represents a manifested card per §701.40b. Pulls the chosen card's
-// AST into BackFaceAST so the engine can flip face-up later when the
-// owner pays the original mana cost (CR §701.40e). Sets flags so per_
-// card / SBA code can distinguish manifest-dread origin from plain
-// manifest.
+// makeManifestDreadPermanent puts the chosen card onto the battlefield
+// face down per §701.40b/§701.62, in the real-card overlay model: the
+// chosen REAL card is the permanent of record (so it can move zones, be
+// owned, and fire dies-triggers) and its §707.2 2/2-vanilla shape comes
+// from the "manifest" FaceDownTemplate. This replaces the old synthetic
+// "Manifested Creature" wrapper, which left the chosen real card orphaned
+// entirely (it was pulled from the library but only its AST was kept on
+// BackFaceAST — a zone-conservation leak on leave). Sets flags so per_card
+// / SBA code can distinguish manifest-dread origin from plain manifest.
 func makeManifestDreadPermanent(gs *GameState, seatIdx int, chosen *Card) *Permanent {
-	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) || chosen == nil {
 		return nil
 	}
-	if chosen != nil {
-		chosen.FaceDown = true
-	}
 	perm := &Permanent{
-		Card: &Card{
-			Name:          "Manifested Creature",
-			Owner:         seatIdx,
-			Types:         []string{"creature"},
-			BasePower:     2,
-			BaseToughness: 2,
-			FaceDown:      true,
-		},
+		Card:          chosen,
 		Controller:    seatIdx,
-		Owner:         seatIdx,
+		Owner:         chosen.Owner,
 		SummoningSick: true,
 		Timestamp:     gs.NextTimestamp(),
 		Counters:      map[string]int{},
 	}
 	// Stamp the manifest overlay (FaceDownTemplate="manifest") via the
-	// unified primitive, preserving the manifest-dread markers.
+	// unified primitive, preserving the manifest-dread markers + "face_down"
+	// so the ETB / replacement face-down gates treat the real card's
+	// abilities as absent (§708.4).
 	makeFaceDown(gs, perm, "manifest", faceDownOpts{
-		Markers: []string{"manifested", "manifest_dread"},
+		Markers: []string{"manifested", "manifest_dread", "face_down", "manifest_real_card_exists"},
 	})
-	if chosen != nil {
-		perm.Flags["manifest_real_card_exists"] = 1
-		if cardHasType(chosen, "creature") {
-			perm.Flags["manifest_is_creature"] = 1
-		}
-		if chosen.AST != nil {
-			perm.BackFaceAST = chosen.AST
-		}
+	if cardHasType(chosen, "creature") {
+		perm.Flags["manifest_is_creature"] = 1
 	}
 
 	seat := gs.Seats[seatIdx]

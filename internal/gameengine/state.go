@@ -2023,6 +2023,21 @@ func (p *Permanent) hasType(t string) bool {
 	if p == nil || p.Card == nil {
 		return false
 	}
+	// CR §707.2 — a face-down permanent's types are exactly the face-down
+	// template's (creature, plus artifact for the cyber template); the
+	// hidden card's printed types/supertypes are masked. This mirrors the
+	// BaseCharacteristics face-down override so type queries agree with the
+	// layered characteristics. Critical for the real-card overlay model: a
+	// manifested non-creature is still a 2/2 creature and NOT a land/legend,
+	// whereas reading the real card's printed Card.Types would leak through.
+	if p.Card.FaceDown {
+		for _, x := range FaceDownTemplateFor(p.FaceDownTemplate).Types {
+			if x == t {
+				return true
+			}
+		}
+		return false
+	}
 	for _, x := range p.Card.Types {
 		if x == t {
 			return true

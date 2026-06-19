@@ -9,13 +9,13 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
-// manifestTopOfLibrary implements one CR §701.34 manifest: pops the
-// top card of seatIdx's library, sets it face-down, wraps it in a 2/2
-// face-down Creature permanent with FrontFaceAST / FrontFaceName
-// preserved for later turn-up, appends to battlefield, and fires the
-// standard ETB cascade. Returns true if a card was manifested. Shared
-// by the "manifest" and "manifest_dread" resolveModificationEffect
-// arms — the only difference between them is iteration count.
+// manifestTopOfLibrary implements one CR §701.34 manifest: pops the top
+// card of seatIdx's library and puts it onto the battlefield face down as
+// the permanent of record (real-card overlay model — the 2/2 vanilla
+// shape comes from the "manifest" FaceDownTemplate), then fires the
+// standard ETB cascade. Returns true if a card was manifested. Shared by
+// the "manifest" and "manifest_dread" resolveModificationEffect arms —
+// the only difference between them is iteration count.
 func manifestTopOfLibrary(gs *GameState, seatIdx int) bool {
 	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
 		return false
@@ -26,25 +26,19 @@ func manifestTopOfLibrary(gs *GameState, seatIdx int) bool {
 	}
 	card := s.Library[0]
 	s.Library = s.Library[1:]
-	card.FaceDown = true
+	// Real-card overlay model (CR §701.34a): the real card stays the
+	// permanent of record; the 2/2-vanilla face-down characteristics come
+	// from the "manifest" FaceDownTemplate via the layers system. No
+	// synthetic wrapper, no OriginalCard orphan on leave.
 	perm := &Permanent{
-		Card: &Card{
-			Name:          "Face-Down Creature",
-			Owner:         seatIdx,
-			BasePower:     2,
-			BaseToughness: 2,
-			Types:         []string{"creature"},
-			FaceDown:      true,
-		},
+		Card:          card,
 		Controller:    seatIdx,
-		Owner:         seatIdx,
+		Owner:         card.Owner,
 		Timestamp:     gs.NextTimestamp(),
 		Counters:      map[string]int{},
-		Flags:         map[string]int{"manifested": 1},
 		SummoningSick: true,
 	}
-	perm.FrontFaceAST = card.AST
-	perm.FrontFaceName = card.DisplayName()
+	makeFaceDown(gs, perm, "manifest", faceDownOpts{Markers: []string{"manifested", "face_down"}})
 	s.Battlefield = append(s.Battlefield, perm)
 	RegisterReplacementsForPermanent(gs, perm)
 	FirePermanentETBTriggers(gs, perm)

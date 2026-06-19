@@ -29,10 +29,9 @@ package gameengine
 //
 //   - ManifestedFaceUp(gs, perm, cost) error
 //       Flips a manifested permanent face up. CR §701.34b — pays the
-//       given mana cost, swaps perm.Card back to the underlying card
-//       (which we stashed on perm.OriginalCard at manifest time), and
-//       calls TurnFaceUp so the layer system re-tags the permanent's
-//       characteristics. Rejects non-manifested perms.
+//       given mana cost and clears the face-down overlay on the real card
+//       (perm.Card in the overlay model) so the layer system reads its
+//       printed characteristics. Rejects non-manifested perms.
 //
 //   - IsManifested(perm) bool
 //       Reads perm.Flags["manifested"]. Backs "while manifested" gates.
@@ -89,27 +88,24 @@ func IsManifested(perm *Permanent) bool {
 // ---------------------------------------------------------------------------
 
 // ApplyManifestTop manifests the top `n` cards of `seatIdx`'s library
-// per CR §701.34a/c. Each manifested card produces one 2/2 face-down
-// creature token on the battlefield with the underlying library card
-// stashed on perm.OriginalCard so ManifestedFaceUp can restore it
-// later.
+// per CR §701.34a/c, in the real-card overlay model: each manifested
+// card itself becomes the face-down permanent (the permanent of record),
+// so it can move zones, be owned, and fire dies-triggers correctly. Its
+// §707.2 2/2-vanilla shape comes from the "manifest" FaceDownTemplate via
+// the layers system — there is no synthetic wrapper and no OriginalCard
+// orphan.
 //
 // Returns the actual number manifested. Less than `n` when the
 // library runs dry; 0 when the library is empty up front, `n` is
 // non-positive, or arguments are invalid.
 //
 // On success per card:
-//   - The top library card is removed.
-//   - A face-down 2/2 creature token is created with:
-//       perm.Card           = wrapper {Name="Face-Down Creature",
-//                              BasePower=2, BaseToughness=2,
-//                              Types=["creature"], FaceDown=true}
-//       perm.OriginalCard   = the underlying library card (for flip)
-//       perm.FrontFaceAST   = card.AST (legacy code reads this)
-//       perm.FrontFaceName  = card.DisplayName()
-//       perm.Flags          = {"manifested": 1}
-//       perm.SummoningSick  = true
-//   - ETB triggers fire, replacements register.
+//   - The top library card is removed from the library.
+//   - It becomes a face-down permanent: perm.Card = the real card with
+//     Card.FaceDown=true, FaceDownTemplate="manifest", Flags
+//     {"manifested":1,"face_down":1}, SummoningSick=true.
+//   - ETB triggers fire (the §708.4 face-down gate suppresses the hidden
+//     card's own self-triggers/statics); replacements skip while hidden.
 //   - A "manifest" event is emitted (one per card, plus a final
 //     summary event with Amount=count for tooling that batches).
 func ApplyManifestTop(gs *GameState, seatIdx, n int) int {
@@ -130,38 +126,27 @@ func ApplyManifestTop(gs *GameState, seatIdx, n int) int {
 		if underlying == nil {
 			continue
 		}
-		// CR §701.34a — the card itself becomes face down. The
-		// permanent wraps a synthetic face-down Card so the
-		// characteristics-cache and layer system see the 2/2 vanilla
-		// shape; the underlying card is stashed on OriginalCard for
-		// the flip-face-up path.
-		underlying.FaceDown = true
-		wrapper := &Card{
-			Name:          "Face-Down Creature",
-			Owner:         seatIdx,
-			BasePower:     2,
-			BaseToughness: 2,
-			Types:         []string{"creature"},
-			FaceDown:      true,
-		}
+		// CR §701.34a — the card itself becomes face down (real-card
+		// overlay model): the REAL card stays the permanent of record, so
+		// it can move zones, be owned, and fire dies-triggers correctly.
+		// The §707.2 2/2-vanilla characteristics come from the "manifest"
+		// FaceDownTemplate via the layers system — perm.Card's printed P/T
+		// is ignored while face down. No synthetic wrapper, no OriginalCard
+		// orphan (the bug the wrapper model caused: on leave the throwaway
+		// wrapper went to the graveyard while the real card was lost).
 		perm := &Permanent{
-			Card:          wrapper,
-			OriginalCard:  underlying,
+			Card:          underlying,
 			Controller:    seatIdx,
-			Owner:         seatIdx,
+			Owner:         underlying.Owner,
 			Timestamp:     gs.NextTimestamp(),
 			Counters:      map[string]int{},
 			SummoningSick: true,
 		}
-		// Stamp the manifest face-down overlay (FaceDownTemplate="manifest",
-		// no ward) via the unified primitive, preserving the "manifested"
-		// marker the flip path reads.
-		makeFaceDown(gs, perm, "manifest", faceDownOpts{Markers: []string{"manifested"}})
-		// Stash the underlying AST/name on the FrontFace fields so the
-		// existing manifest_dread case path and tools that probe
-		// FrontFaceAST still see the underlying identity.
-		perm.FrontFaceAST = underlying.AST
-		perm.FrontFaceName = underlying.DisplayName()
+		// Stamp the manifest overlay: Card.FaceDown, FaceDownTemplate=
+		// "manifest", the "manifested" marker, and "face_down" so the ETB /
+		// replacement face-down gates treat the real card's abilities as
+		// absent (§708.4).
+		makeFaceDown(gs, perm, "manifest", faceDownOpts{Markers: []string{"manifested", "face_down"}})
 
 		seat.Battlefield = append(seat.Battlefield, perm)
 		RegisterReplacementsForPermanent(gs, perm)
@@ -206,18 +191,18 @@ func ApplyManifestTop(gs *GameState, seatIdx, n int) int {
 //
 // Validation (atomic — no mutation on failure):
 //   - perm must be non-nil and IsManifested
-//   - perm.OriginalCard must be non-nil (set by ApplyManifestTop)
-//   - the underlying card must be a creature card (§701.34b — only
-//     creature cards can be turned face up via the manifest right)
+//   - the real card (perm.Card, in the overlay model) must be a creature
+//     card (§701.34b — only creature cards can be turned face up via the
+//     manifest right)
 //   - perm.Controller's ManaPool must cover `cost`
 //
 // On success:
 //   - Mana paid (logged as pay_mana with reason="manifest_flip_cost")
-//   - perm.Card is swapped to perm.OriginalCard (restores name, types,
-//     P/T, AST, mana cost, etc.)
-//   - perm.Flags["manifested"] is cleared
-//   - TurnFaceUp is called to drive the §613 cache invalidation +
-//     turn_face_up event
+//   - the face-down overlay is cleared (Card.FaceDown=false,
+//     FaceDownTemplate="", manifest markers removed) so the real card
+//     reveals its printed characteristics
+//   - the real card's replacement effects are re-registered (§708.4)
+//   - the §613 cache is invalidated
 //   - A "manifest_flip" event is emitted with the revealed card name
 //
 // Returns nil on success, *CastError on failure.
@@ -231,7 +216,10 @@ func ManifestedFaceUp(gs *GameState, perm *Permanent, cost int) error {
 	if !IsManifested(perm) {
 		return &CastError{Reason: "not_manifested"}
 	}
-	underlying := perm.OriginalCard
+	// Real-card overlay model: the real card is already perm.Card (face
+	// down). No OriginalCard swap is needed — turning face up is just
+	// clearing the overlay.
+	underlying := perm.Card
 	if underlying == nil {
 		return &CastError{Reason: "no_underlying_card"}
 	}
@@ -272,22 +260,26 @@ func ManifestedFaceUp(gs *GameState, perm *Permanent, cost int) error {
 		})
 	}
 
-	// Swap the perm.Card to the underlying — restores name, types,
-	// power/toughness, AST, mana cost. The underlying card had
-	// FaceDown=true set when it was manifested; clear that now so the
-	// runtime characteristics read correctly.
+	// Clear the face-down overlay — the real card (already perm.Card)
+	// reveals its printed name, types, P/T, AST, and mana cost. Drop the
+	// FaceDownTemplate and the manifest markers so the layers system stops
+	// applying the §707.2 override and the face-down ETB/replacement gates
+	// release.
 	underlying.FaceDown = false
-	perm.Card = underlying
-	perm.OriginalCard = nil
+	perm.FaceDownTemplate = ""
 	delete(perm.Flags, "manifested")
+	delete(perm.Flags, "manifest_dread")
+	delete(perm.Flags, "manifest_real_card_exists")
+	delete(perm.Flags, "manifest_is_creature")
+	delete(perm.Flags, "face_down")
 
-	// Drive the §613 cache invalidation + turn_face_up event via the
-	// existing TurnFaceUp primitive. It expects perm.Card.FaceDown to
-	// be set; we cleared it above, but the helper still works because
-	// it checks before clearing — for safety we set then clear via the
-	// existing TurnFaceUp by re-setting FaceDown momentarily.
-	// Simpler: just drive the cache + event manually so we don't
-	// fight TurnFaceUp's "already face up" guard.
+	// The real card's static abilities (replacement effects) become active
+	// now that it's face up — they were skipped at ETB by the §708.4
+	// face-down guard. Turning face up is not an ETB, so we re-register
+	// replacements without re-firing ETB triggers.
+	RegisterReplacementsForPermanent(gs, perm)
+
+	// §613 cache invalidation + new timestamp on the face change.
 	perm.Timestamp = gs.NextTimestamp()
 	gs.InvalidateCharacteristicsCache()
 
