@@ -155,3 +155,40 @@ func makeFaceDown(gs *GameState, perm *Permanent, templateKey string, opts faceD
 		}
 	}
 }
+
+// TurnPermanentFaceDown turns an EXISTING battlefield permanent face down
+// under the given template — the entry point no mint path covered before
+// (Cyber Conversion / Ixidron). CR §707.2.
+//
+// Unlike the cast / manifest paths, the permanent is ALREADY on the
+// battlefield, so this is a pure overlay flip: the REAL card stays
+// perm.Card (the permanent of record), keeping its counters, attachments,
+// marked damage, ownership, and dies-trigger identity. Only the face-down
+// overlay (Card.FaceDown + FaceDownTemplate + flags) is stamped and the
+// §613 cache is invalidated. No ETB fires (the permanent never left), and
+// no new timestamp-based summoning sickness is introduced.
+//
+// Returns false if perm is nil/cardless or already face down.
+func TurnPermanentFaceDown(gs *GameState, perm *Permanent, templateKey string) bool {
+	if gs == nil || perm == nil || perm.Card == nil {
+		return false
+	}
+	if perm.Card.FaceDown {
+		return false // already face down
+	}
+	makeFaceDown(gs, perm, templateKey, faceDownOpts{Markers: []string{"face_down"}})
+	// §712.8-equivalent — a new timestamp on the face change so layer
+	// ordering reflects the moment it turned face down.
+	perm.Timestamp = gs.NextTimestamp()
+	gs.InvalidateCharacteristicsCache()
+	gs.LogEvent(Event{
+		Kind:   "turn_face_down",
+		Seat:   perm.Controller,
+		Source: perm.Card.DisplayName(),
+		Details: map[string]interface{}{
+			"template": FaceDownTemplateFor(templateKey).Key,
+			"rule":     "707.2",
+		},
+	})
+	return true
+}
