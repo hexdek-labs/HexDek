@@ -189,7 +189,6 @@ func CastDisguiseFaceDown(gs *GameState, seatIdx int, card *Card) (*Permanent, e
 // "put a disguise card face down onto the battlefield" without going
 // through cast).
 func materializeDisguiseFaceDown(gs *GameState, seatIdx int, card *Card) *Permanent {
-	card.FaceDown = true
 	perm := &Permanent{
 		Card:          card,
 		Controller:    seatIdx,
@@ -197,19 +196,14 @@ func materializeDisguiseFaceDown(gs *GameState, seatIdx int, card *Card) *Perman
 		SummoningSick: true,
 		Timestamp:     gs.NextTimestamp(),
 		Counters:      map[string]int{},
-		Flags: map[string]int{
-			// Backward-compat with PayMorphCost / IsFaceDown / Kadena.
-			"face_down":      1,
-			"morph_creature": 1, // disguise face-downs share the morph runtime shape
-			// Disguise-specific marker so TurnFaceUpDisguise can validate
-			// it's looking at a disguise (not plain morph) and clean up
-			// its ward flags on flip.
-			"disguise_face_down": 1,
-			// Ward {2} granted by §702.166a while face-down.
-			"kw:ward":   1,
-			"ward_cost": DisguiseFaceDownWardCost,
-		},
 	}
+	// Stamp the disguise face-down overlay through the unified primitive:
+	// Card.FaceDown, FaceDownTemplate="disguise", ward {2} (from the
+	// template), plus the family markers HasKeyword / PayMorphCost / Kadena
+	// / TurnFaceUpDisguise read.
+	makeFaceDown(gs, perm, "disguise", faceDownOpts{
+		Markers: []string{"face_down", "morph_creature", "disguise_face_down"},
+	})
 	gs.Seats[seatIdx].Battlefield = append(gs.Seats[seatIdx].Battlefield, perm)
 	RegisterReplacementsForPermanent(gs, perm)
 	FirePermanentETBTriggers(gs, perm)

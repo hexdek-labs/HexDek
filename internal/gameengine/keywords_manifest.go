@@ -151,9 +151,12 @@ func ApplyManifestTop(gs *GameState, seatIdx, n int) int {
 			Owner:         seatIdx,
 			Timestamp:     gs.NextTimestamp(),
 			Counters:      map[string]int{},
-			Flags:         map[string]int{"manifested": 1},
 			SummoningSick: true,
 		}
+		// Stamp the manifest face-down overlay (FaceDownTemplate="manifest",
+		// no ward) via the unified primitive, preserving the "manifested"
+		// marker the flip path reads.
+		makeFaceDown(gs, perm, "manifest", faceDownOpts{Markers: []string{"manifested"}})
 		// Stash the underlying AST/name on the FrontFace fields so the
 		// existing manifest_dread case path and tools that probe
 		// FrontFaceAST still see the underlying identity.

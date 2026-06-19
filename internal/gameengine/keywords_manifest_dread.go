@@ -179,11 +179,12 @@ func makeManifestDreadPermanent(gs *GameState, seatIdx int, chosen *Card) *Perma
 		SummoningSick: true,
 		Timestamp:     gs.NextTimestamp(),
 		Counters:      map[string]int{},
-		Flags: map[string]int{
-			"manifested":     1,
-			"manifest_dread": 1,
-		},
 	}
+	// Stamp the manifest overlay (FaceDownTemplate="manifest") via the
+	// unified primitive, preserving the manifest-dread markers.
+	makeFaceDown(gs, perm, "manifest", faceDownOpts{
+		Markers: []string{"manifested", "manifest_dread"},
+	})
 	if chosen != nil {
 		perm.Flags["manifest_real_card_exists"] = 1
 		if cardHasType(chosen, "creature") {

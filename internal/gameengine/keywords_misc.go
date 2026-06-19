@@ -1793,15 +1793,11 @@ func PerformCloak(gs *GameState, seatIdx int, card *Card) *Permanent {
 		SummoningSick: true,
 		Timestamp:     gs.NextTimestamp(),
 		Counters:      map[string]int{},
-		Flags: map[string]int{
-			"cloaked": 1,
-			// CR §702.171a — a cloaked permanent is face down WITH ward {2}
-			// (the key cloak-vs-manifest difference). Mirror the disguise
-			// face-down ward flags so CheckWardOnTargeting enforces it.
-			"kw:ward":   1,
-			"ward_cost": CloakFaceDownWardCost,
-		},
 	}
+	// Stamp the cloak face-down overlay through the unified primitive:
+	// FaceDownTemplate="cloak" + ward {2} (CR §702.171a — the key cloak-vs-
+	// manifest difference) from the template, plus the "cloaked" marker.
+	makeFaceDown(gs, perm, "cloak", faceDownOpts{Markers: []string{"cloaked"}})
 	// Store original card reference for face-up.
 	perm.FrontFaceAST = card.AST
 	perm.FrontFaceName = card.DisplayName()

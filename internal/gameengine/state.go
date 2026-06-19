@@ -1691,6 +1691,15 @@ type Permanent struct {
 	// Zone conservation uses this to account for the orphaned pointer.
 	OriginalCard *Card
 
+	// FaceDownTemplate names the face-down characteristics overlay this
+	// permanent wears while Card.FaceDown is set (CR §707.2 / §613.2b):
+	// "morph" / "disguise" / "cloak" / "manifest" / "cyber". Empty string
+	// (the zero value) means the default morph template (2/2 colorless
+	// nameless no-abilities creature) — so legacy face-down permanents that
+	// predate the registry still compute the right base. Read by
+	// BaseCharacteristics in layers.go; stamped by makeFaceDown.
+	FaceDownTemplate string
+
 	// SaddlersThisTurn — for Mounts (CR §702.171). Records the permanents
 	// that contributed power to saddling this mount this turn. Populated by
 	// ActivateSaddle, cleared at end-of-turn cleanup. Used by triggers like
