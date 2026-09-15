@@ -8,6 +8,64 @@ HexDek is an open-source MTG (Magic: The Gathering) Commander game engine, AI pl
 - **Language:** Go (engine, AI, tools), React/TypeScript (frontend)
 - **Module:** `github.com/hexdek/hexdek`
 
+## Verification Discipline — READ BEFORE CITING ANYTHING
+
+> **Rule: research every assumption before confirming it.** Never state a rule
+> number, file:line, commit SHA, count, or API behaviour you have not checked
+> in the current session. "I believe" and "should be" are not verification.
+> If you cannot check it, say you could not check it.
+
+This is not a style preference. On 2026-09-15 an audit of every Comprehensive
+Rules citation in the tree found **306 citations naming 83 rule numbers that
+exist in no edition of the CR**, plus 122 more that name a real rule which is
+not the rule the code is about. None of it was caught for years because
+nothing downstream of a comment ever fails.
+
+**The specific failure modes, all observed in this repo:**
+
+1. **Inventing a subrule letter to address one sentence.** The CR keeps a
+   keyword's whole definition in one block — suspend is three separate
+   abilities inside §702.62a. Code wanting to cite one sentence of it wrote
+   §702.62f and §702.62g. 66 citations did this. If you want to cite a
+   sentence, cite the subrule that contains it and quote the sentence.
+
+2. **Copying a neighbouring file and not changing the rule number.**
+   `keywords_cascade.go` cited §702.84 (Unearth); cascade is §702.85.
+   Aftermath cited Embalm's number, madness cited flashback's. This is why
+   the errors cluster off-by-one — you copy the file next to the one you want.
+
+3. **Searching by NAME instead of by SHAPE.** "Storied" matched the card
+   *Grub, Storied Matriarch*; "warp" matched `registerTimeWarp`; "sneak"
+   matched `registerSneakAttack`. Classify a keyword by the engine's naming
+   convention (`Has*`/`Apply*`/`Cast*`/`Check*`) or a `case "<kw>"` dispatch,
+   never by bare substring. Before declaring a mechanic absent or novel,
+   search for its shape — heal was called "novel" when it is §701.69 and
+   `DamageReplacements` already existed.
+
+4. **Completing a pattern instead of reading the rule.** `keywords_stubs_tail.go`
+   defines a fourth Space Sculptor sector, `SectorDelta`. CR §702.158b lists
+   three: alpha, beta, gamma. Alpha/beta/gamma/delta *looks* right. This is the
+   same impulse that writes a plausible rule number, and here it reached the
+   game state, not just a comment.
+
+5. **A correct citation proves nothing about the code.** Awaken (§702.113) and
+   Boast (§702.142) carry accurate CR numbers and have no implementation at
+   all — no `case`, no function. Comments and behaviour are not connected in
+   either direction unless something enforces it.
+
+**What enforces it now:** `internal/crcite` + `.github/workflows/cr-citations.yml`.
+Three gates — dangling rule numbers (hard fail, no baseline), topic mismatches
+(shrinking baseline, `mismatch_baseline.txt`), and a text lock over every cited
+rule (`text_lock.txt`). Run them with `go test ./internal/crcite/ -count=1`.
+
+**Adopting a new CR edition is a migration, not a refresh.** The August 2026 CR
+breaks **zero** of our citations and silently changes the meaning of **29**. It
+inserts §704.5w and renumbers nothing, so every letter from `w` on now means
+what the previous letter meant. The text lock exists to make that impossible to
+land silently, and CI triggers on `data/rules/MagicCompRules-*.txt` so the
+edition bump and the citation sweep cannot be separated. **Sweep first, adopt
+second.**
+
 ## Architecture
 
 ```
