@@ -57,7 +57,8 @@ func TestEminence_FiresFromBattlefieldOnce(t *testing.T) {
 }
 
 // (3) The NON-eminence "whenever Edgar attacks" trigger must NOT fire from the
-// command zone (CR §400.10b — only the eminence ability functions there).
+// command zone. Only specific abilities like eminence (ability words that say they
+// function from the command zone) work from the command zone per CR §903.8.
 func TestEminence_NonEminenceTriggerStaysOffCommandZone(t *testing.T) {
 	gs := newGame(t, 2)
 	edgar := addCard(gs, 0, "Edgar Markov", "creature", "legendary", "vampire")

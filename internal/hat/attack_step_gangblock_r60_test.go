@@ -99,7 +99,7 @@ func TestGangBlockKillsAttacker_RequiresTwoActiveBlockers(t *testing.T) {
 }
 
 // TestGangBlockKillsAttacker_FirstStrikeReducesGangPower — FS attacker
-// kills one blocker in §510.5 before the gang swings back. Subtract
+// kills one blocker in §510.4 (first strike step) before the gang swings back. Subtract
 // attacker.Power from the gang's sum-power. With a 5/5 FS attacker
 // vs 3x 2/3 blockers: gang power 6, FS shaves 5 → 1, less than at=5
 // → not deadly. (Single-blocker: 2 < 5 → no single kills.)

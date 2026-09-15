@@ -6,7 +6,8 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
-// casualty_copy_identity_r63_test.go — r63 mechanic-probe (CR §702.153c).
+// casualty_copy_identity_r63_test.go — r63 mechanic-probe. Casualty copy trigger
+// per CR §702.153a.
 // Pins property (3): the casualty copy is a REAL copy created through the
 // canonical MintSpellCopy chokepoint — a DISTINCT *Card with its own
 // InstanceID, never a pointer alias of the source card. This is the same

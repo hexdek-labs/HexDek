@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Gift tests — CR §702.192
+// Gift tests — CR §702.174
 // ---------------------------------------------------------------------------
 
 func newGiftGame(t *testing.T) *GameState {
@@ -311,7 +311,7 @@ func TestCastWithGift_SelfRecipientRejected(t *testing.T) {
 	card := giftSpellCard("Spell", 0, "Treasure")
 	err := CastWithGift(gs, 0, card, 0) // self
 	if err == nil {
-		t.Fatal("§702.192b: gift recipient must be an opponent (not self)")
+		t.Fatal("§702.174b: gift recipient must be an opponent (not self)")
 	}
 	if len(gs.Stack) != 0 {
 		t.Fatal("rejected gift cast must not push a stack item")

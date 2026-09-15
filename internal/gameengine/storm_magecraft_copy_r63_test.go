@@ -6,7 +6,7 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
-// CR §702.137b: magecraft triggers "whenever you cast OR COPY an instant
+// Magecraft is an ability word (CR §207.2c), not a keyword ability: magecraft triggers "whenever you cast OR COPY an instant
 // or sorcery spell." Storm makes copies (§707.10). Regression for the r63
 // prowess/magecraft probe: ApplyStormCopy pushed the copies but never
 // fired magecraft, so a magecraft permanent triggered only on the single

@@ -51,18 +51,18 @@ import (
 // HasStorm reports whether `card` triggers a storm-style copy fanout.
 // Detection paths (descending order, first match wins):
 //
-//   1. HasStormKeyword(card)       — the existing name-list + AST
-//                                    Keyword detector. Authoritative
-//                                    for printed Storm cards (storm.go
-//                                    catalog).
-//   2. Oracle text contains the literal "storm —" / "storm -"
-//      reminder prefix (em-dash + ASCII hyphen for older corpus
-//      dumps).
-//   3. Oracle text contains "storm count" — Tendrils-of-Agony-style
-//      payload phrasing.
-//   4. Oracle text contains "copy it for each other spell cast" —
-//      the §702.40a effect phrasing in cards whose AST omits the
-//      keyword tag.
+//  1. HasStormKeyword(card)       — the existing name-list + AST
+//     Keyword detector. Authoritative
+//     for printed Storm cards (storm.go
+//     catalog).
+//  2. Oracle text contains the literal "storm —" / "storm -"
+//     reminder prefix (em-dash + ASCII hyphen for older corpus
+//     dumps).
+//  3. Oracle text contains "storm count" — Tendrils-of-Agony-style
+//     payload phrasing.
+//  4. Oracle text contains "copy it for each other spell cast" —
+//     the §702.40a effect phrasing in cards whose AST omits the
+//     keyword tag.
 //
 // Returns false for nil cards.
 func HasStorm(card *Card) bool {
@@ -190,7 +190,7 @@ func ApplyStormCopy(gs *GameState, original *StackItem, count int) int {
 			},
 		})
 	}
-	// CR §702.137b — magecraft triggers "whenever you cast OR COPY an
+	// Magecraft triggers "whenever you cast OR COPY an
 	// instant or sorcery spell," and the generic "spell_copied" trigger
 	// ("whenever you copy a spell") fires too. Storm makes copies (§707.10),
 	// which the dedicated resolveCopySpell hook never sees, so a magecraft

@@ -6,7 +6,7 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
-// gift_cast_r63_test.go — r63 mechanic-probe (CR §702.192, Gift / WOE-OTJ).
+// gift_cast_r63_test.go — r63 mechanic-probe (CR §702.174, Gift / WOE-OTJ).
 //
 // The resolution layer (ResolveGift + the 6 per_card gift_consumers) was
 // fully built and tested, but NOTHING in the live cast path stamped
@@ -91,7 +91,7 @@ func TestGift_CastDeclinedStampsNothing(t *testing.T) {
 	}
 }
 
-// (4) The recipient must be a LIVING opponent (CR §702.192b / §800.4):
+// (4) The recipient must be a LIVING opponent (CR §702.174a):
 // an eliminated seat is skipped.
 func TestGift_RecipientSkipsEliminatedOpponent(t *testing.T) {
 	gs := newKWCombatGame4P(t)

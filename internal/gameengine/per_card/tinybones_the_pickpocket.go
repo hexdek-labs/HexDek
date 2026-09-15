@@ -75,7 +75,7 @@ func tinybonesPickpocketDamage(gs *gameengine.GameState, perm *gameengine.Perman
 	// with any-color mana eligibility for fixing. The policy is
 	// scoped to one card via a closure predicate matching the picked
 	// pointer; duration is until_end_of_turn (the cast offer expires
-	// at EOT per CR §117.5b). Once cast (or the turn ends), the
+	// at EOT per timing rules). Once cast (or the turn ends), the
 	// policy is dropped by the captured perm's permanent_ltb hook or
 	// by its own delayed trigger below.
 	pickedCard := best

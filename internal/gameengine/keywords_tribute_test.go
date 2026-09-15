@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Tribute tests — CR §702.121
+// Tribute tests — CR §702.104
 // ---------------------------------------------------------------------------
 
 func newTributeGame4P(t *testing.T) *GameState {
@@ -101,8 +101,8 @@ func TestApplyTribute_AcceptedAddsCounters(t *testing.T) {
 
 	accepted := ApplyTribute(
 		gs, p, 0,
-		func() int { return 1 },              // controller picks seat 1
-		func(opp int) bool { return true },   // opponent accepts
+		func() int { return 1 },            // controller picks seat 1
+		func(opp int) bool { return true }, // opponent accepts
 	)
 	if !accepted {
 		t.Fatal("ApplyTribute should return true on acceptance")
@@ -144,7 +144,7 @@ func TestApplyTribute_RefusedAddsNoCounters(t *testing.T) {
 		t.Fatal("WasTributeAccepted should be false after refusal")
 	}
 	if !WasTributeRefused(p) {
-		t.Fatal("WasTributeRefused should be true after refusal — this is the gate for the §702.121b punishment effect")
+		t.Fatal("WasTributeRefused should be true after refusal — this is the gate for the §702.104b punishment effect")
 	}
 	if !TributeResolved(p) {
 		t.Fatal("TributeResolved should still be true after refusal")
@@ -340,7 +340,7 @@ func TestApplyTribute_NoLivingOpponentsRecordsRefused(t *testing.T) {
 		t.Fatal("decide callback must not run when no opponents are eligible")
 	}
 	if !WasTributeRefused(p) {
-		t.Fatal("WasTributeRefused should be true when no opponent could decide (gates the §702.121b punishment)")
+		t.Fatal("WasTributeRefused should be true when no opponent could decide (gates the §702.104b punishment)")
 	}
 	if p.Counters["+1/+1"] != 0 {
 		t.Fatal("no counters added when no eligible opponents")

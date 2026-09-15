@@ -389,7 +389,7 @@ func ActivateEternalize(gs *GameState, seatIdx int, card *Card, eternalizeCost i
 }
 
 // ---------------------------------------------------------------------------
-// Encore — CR §702.142
+// Encore — CR §702.141
 // ---------------------------------------------------------------------------
 //
 // Exile from graveyard: for each opponent, create a token copy that attacks
@@ -472,7 +472,7 @@ func ActivateEncore(gs *GameState, seatIdx int, card *Card, encoreCost int) []*P
 		Details: map[string]interface{}{
 			"cost":      encoreCost,
 			"opponents": len(opponents),
-			"rule":      "702.142",
+			"rule":      "702.141",
 		},
 	})
 	return tokens
@@ -1151,7 +1151,7 @@ func ApplyGraftTransfer(gs *GameState, source *Permanent, target *Permanent) boo
 //  1. Self: if `perm` has graft N, it enters with N +1/+1 counters, routed
 //     through the §616 doubler chain (ApplyGraftETB → PutCountersTriggered).
 //  2. Others: `perm` entering is "another creature" for every OTHER graft
-//     creature on the battlefield (CR §702.58c) — each such creature's
+//     creature on the battlefield (per CR §702.58a) — each such creature's
 //     controller may move one +1/+1 counter from it onto `perm`. Auto-play
 //     moves a counter only onto a creature the graft controller controls (you
 //     don't feed an opponent's creature), and only while the graft creature
@@ -1159,8 +1159,8 @@ func ApplyGraftTransfer(gs *GameState, source *Permanent, target *Permanent) boo
 //     it does not re-trigger the doubler chain).
 //
 // Both halves run synchronously at ETB, mirroring the engine's other
-// enters-with-counters hooks; the CR models §702.58c as a triggered ability, a
-// simplification shared with the rest of the ETB-counter family.
+// enters-with-counters hooks; the CR models the counter-move as part of the
+// triggered ability (CR §702.58a), a simplification shared with the rest of the ETB-counter family.
 func ApplyGraft(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
@@ -1187,8 +1187,8 @@ func ApplyGraft(gs *GameState, perm *Permanent) {
 			if _, ok := keywordArgCostStrict(g.Card, "graft"); !ok {
 				continue
 			}
-			// CR §702.58c — the graft creature's controller may move a counter
-			// onto the entering creature. Auto-play: do so only when the entering
+			// Graft triggered ability — the graft creature's controller may move a counter
+			// onto the entering creature (CR §702.58a). Auto-play: do so only when the entering
 			// creature is one the graft controller controls.
 			if perm.Controller != g.Controller {
 				continue
@@ -1421,8 +1421,8 @@ func ActivateReconfigure(gs *GameState, perm *Permanent, target *Permanent, reco
 	// BEFORE any cost is paid. Attached → unattach (§702.151b second mode);
 	// unattached → attach to target (first mode).
 	if perm.AttachedTo == nil {
-		// CR §702.151c — reconfigure can only attach to a creature you
-		// control, and an Equipment can't equip itself (a reconfigure
+		// Reconfigure constraint — can only attach to a creature you
+		// control, and an Equipment can't equip itself (per CR §702.151a; a reconfigure
 		// permanent is both a creature and an equipment, so the self-check
 		// matters). Guarding here also keeps AttachmentConsistency intact:
 		// an equipment must be attached to a creature.
@@ -2516,9 +2516,8 @@ func CountConverge(gs *GameState, seatIdx int) int {
 // tokens (which never populate ManaCostString) still produce a
 // reasonable count.
 //
-// Hybrid pips: per §700.5b a hybrid symbol counts toward the
-// permanent's controller's devotion for BOTH halves' colors. E.g.,
-// {B/R} on a permanent contributes +1 to devotion to black AND +1 to
+// Hybrid pips: per CR §700.5a devotion counts hybrid symbols toward BOTH
+// colors. E.g., {B/R} on a permanent contributes +1 to devotion to black AND +1 to
 // devotion to red. Twobrid {2/B} and Phyrexian {B/P} count as +1
 // to the relevant color. Pure generic / X / snow / colorless never
 // contribute.

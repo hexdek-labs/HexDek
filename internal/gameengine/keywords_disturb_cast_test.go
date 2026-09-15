@@ -190,7 +190,7 @@ func TestCastWithDisturb_StampsCostMeta(t *testing.T) {
 		t.Fatal("IsDisturbCast should be true for a disturb-cast stack item")
 	}
 	// Disturb does NOT use exile_on_resolve — back face is a
-	// permanent that goes to the battlefield. The §702.146c "exile
+	// permanent that goes to the battlefield. The §702.146b "exile
 	// instead of graveyard" replacement fires later when the
 	// disturbed permanent would die.
 	if ShouldExileOnResolve(item) {
@@ -200,7 +200,7 @@ func TestCastWithDisturb_StampsCostMeta(t *testing.T) {
 
 // ---------------------------------------------------------------------------
 // (e) On resolve: back face transforms onto battlefield with dies→exile
-//     replacement registered (per actual §702.146b + §702.146c rule).
+//     replacement registered (per actual §702.146b).
 // ---------------------------------------------------------------------------
 //
 // Note: the round-35 task spec asked for "on resolve goes to exile" —
@@ -242,7 +242,7 @@ func TestCastWithDisturb_ResolveEntersBattlefieldTransformed(t *testing.T) {
 	if resolvedPerm.Flags["disturbed"] != 1 {
 		t.Fatal("disturb-cast permanent should carry the disturbed flag")
 	}
-	// Dies→exile replacement registered (CR §702.146c).
+	// Dies→exile replacement registered (CR §702.146b).
 	foundReplacement := false
 	for _, r := range gs.Replacements {
 		if r != nil && r.SourcePerm == resolvedPerm &&
@@ -252,7 +252,7 @@ func TestCastWithDisturb_ResolveEntersBattlefieldTransformed(t *testing.T) {
 		}
 	}
 	if !foundReplacement {
-		t.Fatal("disturb-cast permanent should have a §702.146c dies→exile replacement registered")
+		t.Fatal("disturb-cast permanent should have a §702.146b dies→exile replacement registered")
 	}
 }
 

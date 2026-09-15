@@ -723,8 +723,8 @@ func countControlledByType(gs *GameState, seat int, filter string) int {
 // -----------------------------------------------------------------------------
 
 // maybeFireCrime checks if any of the given targets belong to an opponent
-// of the source's controller. If so, it commits a §701.71a crime once per
-// resolution (§701.71b — at most one crime fires regardless of how many
+// of the source's controller. If so, it commits a crime once per
+// resolution (at most one crime fires regardless of how many
 // targets qualify). Delegates to FireCrimeIfTargetingOpponent in
 // keywords_crime.go, which centralizes the per-turn counter bookkeeping,
 // the "first crime each turn" gate, and the structured trigger fan-out.
@@ -2007,7 +2007,7 @@ func resolveGainControl(gs *GameState, src *Permanent, e *gameast.GainControl) {
 		}
 		// Remove from old controller's battlefield, add to new.
 		gs.removePermanent(p)
-		// CR §702.97e — a control change breaks any soulbond pairing. Break it
+		// CR §702.95e — a control change breaks any soulbond pairing. Break it
 		// before the Controller/Timestamp flip, while p still carries the old
 		// timestamp the pairing link is keyed on.
 		UnpairOnLeave(gs, p)
@@ -2532,7 +2532,7 @@ func resolveCreateTokenCopy(gs *GameState, src *Permanent, e *gameast.CreateToke
 		Amount: count,
 		Details: map[string]interface{}{
 			"copy_of": copySource.Card.DisplayName(),
-			"rule":    "706.10a",
+			"rule":    "707",
 		},
 	})
 }
@@ -3118,7 +3118,7 @@ func resolveCounterSpell(gs *GameState, src *Permanent, e *gameast.CounterSpell)
 	casterSeat := controllerSeat(src)
 
 	// Countering a spell always targets an opponent's spell — commit a
-	// crime (§701.71a). FireCommitsCrimeTriggers bumps the per-turn
+	// crime. FireCommitsCrimeTriggers bumps the per-turn
 	// counter and runs the "first crime each turn" gate alongside the
 	// regular "crime" trigger fan-out.
 	FireCommitsCrimeTriggers(gs, casterSeat, sourceName(src), "countered_spell")
@@ -3261,7 +3261,7 @@ func resolveCopyPermanent(gs *GameState, src *Permanent, e *gameast.CopyPermanen
 			Source: sourceName(src),
 			Details: map[string]interface{}{
 				"copy_of": copySource.Card.DisplayName(),
-				"rule":    "706.10a",
+				"rule":    "707",
 			},
 		})
 		return

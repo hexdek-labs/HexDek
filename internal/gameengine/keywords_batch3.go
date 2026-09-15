@@ -284,11 +284,11 @@ func CanPayCasualty(gs *GameState, seatIdx int, minPower int) bool {
 // of times. When this creature enters the battlefield, create a token
 // that's a copy of it for each time the squad cost was paid."
 //
-// Squad is a REPEATABLE optional additional mana cost (CR §702.157b), wired
+// Squad is a REPEATABLE optional additional mana cost (CR §702.157a), wired
 // into CastSpell's optional-cost stage exactly like replicate/multikicker:
 // the count chosen at cast (0+) is stamped onto the StackItem's CostMeta and
 // mirrored onto the entering permanent's Flags, then read at ETB to mint N
-// token copies (CR §702.157c). The copies route through the canonical
+// token copies (CR §702.157a). The copies route through the canonical
 // CreateDoubledTokens + MintTokenAsCopyOf chokepoint (same as myriad) so
 // token-doublers double them, each copy is a FRESH *Card (no aliasing), and
 // each copy's own ETB triggers fire — and FireCreateTokenEvent/token_created
@@ -344,7 +344,7 @@ func MirrorSquadToPermanent(item *StackItem, perm *Permanent) {
 }
 
 // CreateSquadCopies mints `count` token copies of the entering permanent
-// `perm` (CR §702.157c). Each copy is a faithful copy of `perm`'s copiable
+// `perm` (CR §702.157a). Each copy is a faithful copy of `perm`'s copiable
 // values (printed name, types, P/T, abilities — not counters/auras),
 // routed through the canonical CreateDoubledTokens (token-doubler chain) +
 // MintTokenAsCopyOf (fresh *Card, no aliasing) chokepoint, and each copy's
@@ -359,7 +359,7 @@ func CreateSquadCopies(gs *GameState, perm *Permanent, count int) {
 	if seat < 0 || seat >= len(gs.Seats) {
 		return
 	}
-	// One token-creation event per squad payment (CR §702.157c creates a
+	// One token-creation event per squad payment (CR §702.157a creates a
 	// token "for each time the squad cost was paid"); route each through the
 	// canonical doubler chokepoint so Doubling Season / Parallel Lives /
 	// Anointed Procession double the squad copies per payment.

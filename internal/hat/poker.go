@@ -1460,11 +1460,16 @@ func (h *PokerHat) ChooseAttackTarget(gs *gameengine.GameState, seatIdx int, att
 
 // AssignBlockers — mode-sensitive blocking.
 // RAISE: don't block unless incoming damage is lethal. Preserve creatures
-//   for our own attack next turn.
+//
+//	for our own attack next turn.
+//
 // HOLD: block conservatively, prioritize favorable trades where our
-//   creature survives.
+//
+//	creature survives.
+//
 // CALL: use GreedyHat's blocking which looks for favorable trades and
-//   chump blocks when necessary.
+//
+//	chump blocks when necessary.
 func (h *PokerHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, attackers []*gameengine.Permanent) map[*gameengine.Permanent][]*gameengine.Permanent {
 	if h.Mode == ModeRaise {
 		incoming := 0
@@ -1497,7 +1502,8 @@ func (h *PokerHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, attacke
 // In HOLD mode: counter anything dangerous (low threshold = 3).
 // In CALL mode: counter significant threats (threshold = 4).
 // In RAISE mode: only counter game-winning threats (threshold = 6) --
-//   save mana for our own combo/threats.
+//
+//	save mana for our own combo/threats.
 func (h *PokerHat) ChooseResponse(gs *gameengine.GameState, seatIdx int, top *gameengine.StackItem) *gameengine.StackItem {
 	if top == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
 		return nil
@@ -1920,7 +1926,7 @@ func boardPower(gs *gameengine.GameState, seat *gameengine.Seat) int {
 // nontoken creature with the same printed power. (1) Wipe-vulnerable
 // with no card-advantage backing — a Wrath that costs the nontoken
 // player one card costs the token player N cards (one per token); the
-// recovery curves diverge sharply. (2) CR §110.5g — tokens cease to
+// recovery curves diverge sharply. (2) tokens cease per rule 110.5 — tokens cease to
 // exist on ANY zone change away from the battlefield, so bounce / exile
 // / sacrifice / death all permanently delete them (a nontoken creature
 // returns to the graveyard recoverable, to the hand replayable, etc.).
@@ -2037,7 +2043,7 @@ func evasionMultiplier(p *gameengine.Permanent, pw int) float64 {
 // block, they swing, they crew, they sac, they trigger anthems. The
 // discount captures the THREE structural disadvantages versus a
 // nontoken creature with the same printed P/T — wipe blowout amplifies
-// per-body, zone-change deletion (CR §110.5g) erases ALL recovery
+// per-body, zone-change deletion (tokens cease per rule 110.5) erases ALL recovery
 // options, and recursion lines (reanimate / Sun Titan / Karador /
 // flicker) cannot retrieve them (CR §111.1 — tokens aren't cards).
 // The 0.3 penalty is roughly "they're worth ~70% as much as 'real'
@@ -2413,7 +2419,7 @@ func canSwingProfitably(gs *gameengine.GameState, attacker *gameengine.Permanent
 // Conservative on the FS/DS attacker case — FS damage may pre-kill one
 // blocker before regular-step damage from the gang, so the heuristic
 // subtracts the attacker's power once from the gang's sum-power
-// (approximating the smallest blocker dying in §510.5 before swinging
+// (approximating combat damage assignment per rule 510.1 before swinging
 // back). This keeps canSwingProfitably on the permissive side for
 // FS/DS attackers, which are usually the right play.
 //
@@ -2686,17 +2692,17 @@ func isComboTutorOracle(ot string) bool {
 		return false
 	}
 	patterns := [...]string{
-		"for a card",            // Demonic Tutor, Diabolic Intent, Imperial Seal, Vampiric Tutor
-		"for an instant",        // Mystical Tutor, Merchant Scroll
-		"for a sorcery",         // Mystical Tutor (alt clause)
-		"for a creature card",   // Worldly Tutor, Eladamri's Call, Chord of Calling
-		"for an enchantment",    // Idyllic Tutor, Enchantress's Presence-fetchers
-		"for an artifact",       // Fabricate, Whir of Invention
-		"for an artifact card",  // Enlightened Tutor partial
-		"for an artifact or",    // Enlightened Tutor "for an artifact or enchantment card"
-		"for an aura",           // Heliod's Pilgrim
-		"for a planeswalker",    // Call the Gatewatch
-		"for any card",          // alternate phrasing
+		"for a card",           // Demonic Tutor, Diabolic Intent, Imperial Seal, Vampiric Tutor
+		"for an instant",       // Mystical Tutor, Merchant Scroll
+		"for a sorcery",        // Mystical Tutor (alt clause)
+		"for a creature card",  // Worldly Tutor, Eladamri's Call, Chord of Calling
+		"for an enchantment",   // Idyllic Tutor, Enchantress's Presence-fetchers
+		"for an artifact",      // Fabricate, Whir of Invention
+		"for an artifact card", // Enlightened Tutor partial
+		"for an artifact or",   // Enlightened Tutor "for an artifact or enchantment card"
+		"for an aura",          // Heliod's Pilgrim
+		"for a planeswalker",   // Call the Gatewatch
+		"for any card",         // alternate phrasing
 	}
 	for _, p := range patterns {
 		if strings.Contains(ot, p) {

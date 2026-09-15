@@ -371,7 +371,7 @@ func TestActivateChannel_FiresCardDiscardedTrigger(t *testing.T) {
 		t.Fatalf("ActivateChannel failed: %v", err)
 	}
 	if !sawDiscard {
-		t.Fatal("§702.74b: channel discard must fire the canonical card_discarded trigger so Madness/Mayhem/Tergrid observers see it")
+		t.Fatal("channel discard must fire the canonical card_discarded trigger so Madness/Mayhem/Tergrid observers see it (channel is an ability word, CR §207.2c)")
 	}
 	if discardedCard != boseiju {
 		t.Fatal("discard ctx[card] should point at the channeled card")

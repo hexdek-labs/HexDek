@@ -190,9 +190,9 @@ func TransformPermanent(gs *GameState, p *Permanent, reason string) bool {
 }
 
 // TurnFaceUp turns a face-down permanent (morph, manifest, Ixidron'd)
-// face-up. Per CR §702.36e, a face-down permanent can be turned face-up
-// at any time its controller could pay the morph cost (as a special
-// action that doesn't use the stack). On turning face-up:
+// face-up. Per CR §702.37e, a face-down permanent with morph can be
+// turned face-up at any time its controller could pay the morph cost (as
+// a special action that doesn't use the stack). On turning face-up:
 //   - Card.FaceDown is cleared.
 //   - The permanent's full characteristics are restored (name, types,
 //     abilities, P/T). The layer system handles this via the face-down
@@ -221,7 +221,7 @@ func TurnFaceUp(gs *GameState, p *Permanent, reason string) bool {
 		Source: p.Card.DisplayName(),
 		Details: map[string]interface{}{
 			"reason": reason,
-			"rule":   "702.36e",
+			"rule":   "702.37e",
 		},
 	})
 	// CR §603.2 — "when this creature is turned face up" triggers fire on
@@ -371,7 +371,7 @@ func EvaluateDayNightAtTurnStart(gs *GameState) {
 // face do not set Transformed and are handled by the SwapToBackFace
 // family. The card's CMC is intentionally NOT touched: a transforming
 // DFC's mana value equals its front face's mana value in every zone
-// (CR §711.8b), and TransformPermanent never mutated CMC, so it is
+// (CR §712.8e), and TransformPermanent never mutated CMC, so it is
 // already correct.
 func RevertTransformedDFCToFrontFace(gs *GameState, p *Permanent) {
 	if gs == nil || p == nil || p.Card == nil {
@@ -589,7 +589,7 @@ func EnsureMDFCBackFaceForBattlefield(c *Card) bool {
 // MDFC swap doesn't handle:
 //
 //   - layout=adventure   (e.g., "Virtue of Knowledge // Vantress Visions",
-//                          "Adventurous Eater // Have a Bite")
+//     "Adventurous Eater // Have a Bite")
 //   - layout=split       ("Fire // Ice", "Wear // Tear")
 //   - layout=aftermath   ("Driven // Despair")
 //   - any other layout the deckparser populates with a combined

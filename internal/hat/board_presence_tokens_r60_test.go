@@ -10,7 +10,7 @@ import (
 // token discount wired into effectiveBoardPower. Pre-r60 a board of 10
 // 1/1 tokens contributed the same raw power as a single 10/10 nontoken
 // (10 in both cases) despite three structural disadvantages: wipe
-// blowout amplifies per-body, CR §110.5g deletes tokens on any zone
+// blowout amplifies per-body, CR §111.7 deletes tokens on any zone
 // change, and CR §111.1 excludes them from card-targeting recursion.
 // See poker.go::tokenDiscount.
 

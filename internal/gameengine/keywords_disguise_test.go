@@ -369,7 +369,7 @@ func TestDisguiseFaceDown_WardTwoCountersWhenCannotPay(t *testing.T) {
 
 	// Opponent (seat 1) tries to target the face-down disguise with a spell
 	// they only have {1} for — can't pay the ward {2}, so per
-	// §702.21c the spell is countered.
+	// §702.21a (Ward) the spell is countered.
 	gs.Seats[1].ManaPool = 1
 	attackerSpell := &Card{Name: "Doom Blade", Owner: 1, Types: []string{"instant"}}
 	item := &StackItem{
@@ -446,7 +446,7 @@ func TestDisguiseFaceDown_WardTwoPaidWhenCasterCanAfford(t *testing.T) {
 }
 
 func TestDisguiseFaceUp_WardNoLongerApplies(t *testing.T) {
-	// After the disguise creature flips face-up, the §702.166a-granted
+	// After the disguise creature flips face-up, the §702.168a-granted
 	// ward {2} must be gone. The printed AST in disguiseHandCard has no
 	// ward, so HasKeyword("ward") must read false post-flip.
 	gs := newDisguiseGame(t)

@@ -7,9 +7,9 @@ package gameengine
 //              with flashback is in a player's graveyard. "Flashback [cost]"
 //              means "You may cast this card from your graveyard by paying
 //              [cost] rather than paying its mana cost."
-// CR §702.34b: Casting a spell using its flashback ability follows the rules
+// CR §702.34a: Casting a spell using its flashback ability follows the rules
 //              for paying alternative costs in §601.2b and §601.2f-h.
-// CR §702.34c: If a spell with flashback would be put into a graveyard from
+// CR §702.34a: If a spell with flashback would be put into a graveyard from
 //              the stack, exile it instead.
 //
 // Implementation mirrors the warp pattern in keywords_batch6.go: thin
@@ -126,7 +126,7 @@ func equalFoldTrimmed(a, b string) bool {
 // On success the card is removed from the graveyard, mana is paid, and a
 // StackItem is pushed with CostMeta["exile_on_resolve"]=true so the
 // existing ResolveStackTop hook (stack.go) routes the card to exile after
-// resolution per CR §702.34c. The seat-level flag
+// resolution per CR §702.34a. The seat-level flag
 // "spell_flashbacked_this_turn:<seat>" is set for cards that key off
 // "if a card with flashback was cast this turn" (Past in Flames-adjacent
 // triggers).

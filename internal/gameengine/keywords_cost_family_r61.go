@@ -158,7 +158,7 @@ func ApplyBargain(gs *GameState, seatIdx int, item *StackItem) bool {
 // per-card "when this enters, if it was bargained" ETB riders
 // (per_card/bargain_consumers_r60.go: Troublemaker Ouphe, High Fae Negotiator,
 // Tenacious Tomeseeker) read the bargained state off THE PERMANENT THAT ENTERED
-// rather than a per-seat cast-time counter. CR §702.176c — whether bargain was
+// rather than a per-seat cast-time counter. CR §702.166c — whether bargain was
 // paid is recorded on the spell and travels with the permanent it becomes.
 //
 // Mirrors MirrorKickFlagsToPermanent / MirrorSquadToPermanent exactly: gated to

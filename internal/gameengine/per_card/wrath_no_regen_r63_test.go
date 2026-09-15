@@ -6,8 +6,8 @@ import (
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
-// CR §701.15g — Wrath of God ("Destroy all creatures. They can't be
-// regenerated.") must not be stopped by a regeneration shield. Regression
+// Wrath of God ("Destroy all creatures. They can't be regenerated.")
+// must not be stopped by a regeneration shield. Regression
 // for the r63 regenerate probe: board wipes routed through DestroyPermanent
 // (which honors regen), so a creature with a regen shield survived Wrath —
 // the "can't be regenerated" clause was a documented no-op.

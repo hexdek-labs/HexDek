@@ -151,7 +151,7 @@ func phyrexianMetamorphETB(gs *gameengine.GameState, perm *gameengine.Permanent)
 // any enchantment on the battlefield."
 //
 // For Auras this is fiddly — a copy of an Aura must enter attached, and
-// the controller chooses what to attach it to (CR §706.10). We stamp
+// the controller chooses what to attach it to (CR §303.4, Aura attachment rules). We stamp
 // the copied Aura with a partial signal; the engine's Aura-attach path
 // can pick up the rider later.
 // ---------------------------------------------------------------------
@@ -237,11 +237,11 @@ func spittingImageResolve(gs *gameengine.GameState, item *gameengine.StackItem) 
 		Card:                   card,
 		Controller:             controller,
 		CopiedTargetInstanceID: src.Card.InstanceID,
-		Owner:         controller,
-		SummoningSick: true,
-		Timestamp:     gs.NextTimestamp(),
-		Counters:      map[string]int{},
-		Flags:         map[string]int{},
+		Owner:                  controller,
+		SummoningSick:          true,
+		Timestamp:              gs.NextTimestamp(),
+		Counters:               map[string]int{},
+		Flags:                  map[string]int{},
 	}
 	if seat := gs.Seats[controller]; seat != nil {
 		seat.Battlefield = append(seat.Battlefield, token)

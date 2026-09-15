@@ -14,7 +14,7 @@ package gameengine
 //   - Daunt            — (ability word, not keyworded)
 //
 // COMBAT MODIFIERS:
-//   - Banding          — CR §702.21  (core mechanic, simplified)
+//   - Banding          — CR §702.22  (core mechanic, simplified)
 //   - Rampage N        — CR §702.23
 //   - Battle Cry       — CR §702.91
 //   - Myriad           — CR §702.116
@@ -37,7 +37,7 @@ package gameengine
 //   - Splice           — CR §702.47
 //   - Cipher           — CR §702.99
 //   - Adventure        — CR §702.133
-//   - Aftermath        — CR §702.128
+//   - Aftermath        — CR §702.127
 //   - Retrace          — CR §702.81
 //   - Jump-start       — CR §702.133a
 //   - Overload         — CR §702.96
@@ -205,7 +205,7 @@ func CanBlockCombatKeywords(gs *GameState, attacker, blocker *Permanent) bool {
 // ============================================================================
 
 // ---------------------------------------------------------------------------
-// Banding — CR §702.21  (simplified)
+// Banding — CR §702.22  (simplified)
 //
 // Full banding is one of the most complex mechanics in MTG. Core behavior:
 // - Attacking: Any number of creatures with banding + up to one without
@@ -1082,9 +1082,9 @@ func AppendCombatCostModifiers(gs *GameState, card *Card, seatIdx int, mods []Co
 // Miracle — CR §702.94
 // "You may cast this card for its miracle cost as you draw it, but only if
 // it's the FIRST card you've drawn this turn." (§702.94a) Revealing it on
-// draw creates a triggered ability (§702.94b) letting you cast it for the
+// draw creates a triggered ability (§702.94a) letting you cast it for the
 // miracle cost rather than its mana cost, at any time before it leaves your
-// hand that turn (§702.94c — an exception to sorcery-speed timing).
+// hand that turn (a timing exception to sorcery-speed, per §702.94a).
 //
 // Lifecycle:
 //   - drawOne (state.go) increments a per-seat "miracle_draws_this_turn"
@@ -1189,7 +1189,7 @@ func miracleWindowCost(card *Card) int {
 // CanCastMiracle reports whether seatIdx may cast card for its miracle cost
 // right now: its miracle window is open this turn (it was the first card
 // this seat drew this turn and was revealed) and it is still in that seat's
-// hand (§702.94c — "before it leaves your hand"). The open window is the
+// hand (a constraint per the miracle ability text). The open window is the
 // authority — it is set ONLY by MaybeOpenMiracleWindow, ONLY on the first
 // draw of the turn, and ONLY when miracle applies (native or granted). So a
 // card drawn second, put into hand by a non-draw effect, or merely covered
@@ -1217,7 +1217,7 @@ func CanCastMiracle(gs *GameState, seatIdx int, card *Card) bool {
 // alternative-cost cast path (CR §601 / §702.94b). The miracle cost
 // REPLACES the mana cost. Routing through CastSpellWithCosts gives the full
 // cast pipeline (cast triggers, RecordCast, instance IDs) while honoring
-// miracle's §702.94c timing exception — CastSpellWithCosts does not enforce
+// miracle's timing exception (per §702.94a) — CastSpellWithCosts does not enforce
 // the sorcery-speed main-phase gate, so a miracle sorcery (Terminus,
 // Temporal Mastery, Bonfire of the Damned) may be cast during the draw step
 // or on an opponent's turn.
@@ -1557,7 +1557,7 @@ func NewAdventureCreatureCastPermission(creatureCost int) *ZoneCastPermission {
 }
 
 // ---------------------------------------------------------------------------
-// Aftermath — CR §702.128
+// Aftermath — CR §702.127
 // "Cast this half only from your graveyard. Then exile it."
 // ---------------------------------------------------------------------------
 

@@ -31,8 +31,8 @@ const (
 	// ProvOG marks a deck-load / printed-card mint. SourceInstanceID and
 	// EnablerInstanceID stay empty.
 	ProvOG
-	// ProvTK marks a token (created by §111.1 token-mint or §706.10b
-	// spell-copy that becomes a permanent). EnablerInstanceID required.
+	// ProvTK marks a token (created by §111.1 token-mint or §707.10f
+	// spell-copy that becomes a token permanent). EnablerInstanceID required.
 	ProvTK
 	// ProvCP marks a spell/permanent copy that remains a Card object
 	// (storm copies, Fork). SourceInstanceID + EnablerInstanceID required.
@@ -81,8 +81,8 @@ func (v Visibility) String() string {
 }
 
 // FaceIndex selects which face of a DFC / MDFC is currently active.
-// Default Front matches CR §712.6c (non-battlefield DFCs default to
-// front).
+// Default Front: non-battlefield double-faced cards default to their
+// front face (CR §712.2).
 type FaceIndex int
 
 const (

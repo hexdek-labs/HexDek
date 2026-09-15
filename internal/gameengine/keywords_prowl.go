@@ -1,15 +1,14 @@
 package gameengine
 
-// keywords_prowl.go — Prowl (CR §702.74, Lorwyn / Morningtide 2008).
+// keywords_prowl.go — Prowl (CR §702.76, Lorwyn / Morningtide 2008).
 //
-// CR §702.74a: Prowl is a keyword that represents an alternative cost.
-//               "Prowl [cost]" means "You may cast this spell by paying
-//               [cost] rather than paying its mana cost if you dealt
-//               combat damage to a player this turn with a creature
-//               that shares a creature type with this spell."
-// CR §702.74b: Casting a spell using its prowl ability follows the
-//               rules for paying alternative costs in §601.2b and
-//               §601.2f-h.
+// CR §702.76a: Prowl is a static ability that functions on the stack.
+//              "Prowl [cost]" means "You may pay [cost] rather than pay
+//              this spell's mana cost if a player was dealt combat damage
+//              this turn by a source that, at the time it dealt that damage,
+//              was under your control and had any of this spell's creature
+//              types." Casting a spell using its prowl ability follows the
+//              rules for paying alternative costs in §601.2b and §601.2f-h.
 //
 // Engine model
 // ------------

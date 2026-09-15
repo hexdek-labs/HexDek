@@ -6,7 +6,7 @@ package gameengine
 //               ability of the form "Whenever you cast or copy an
 //               instant or sorcery spell, ..." that functions while
 //               the permanent with magecraft is on the battlefield.
-// CR §702.137b: Magecraft triggers fire when the controller of the
+// CR (ability word, no rule): Magecraft triggers fire when the controller of the
 //               permanent with magecraft EITHER casts an instant or
 //               sorcery spell, OR creates a copy of an instant or
 //               sorcery spell on the stack. The "copy" branch is the
@@ -115,11 +115,12 @@ func permanentHasMagecraft(p *Permanent) bool {
 //     payoffs (Archmage Emeritus draw, Symmetry Sage pump, etc.)
 //
 // ctx keys forwarded to per_card handlers:
-//   "source":     *Permanent  — the magecraft-bearing permanent
-//   "controller": int          — casterSeat (matches source.Controller)
-//   "spell":      *Card        — the cast/copied spell
-//   "spell_name": string       — display name for logging
-//   "is_copy":    bool         — true if this fan-out is from a copy
+//
+//	"source":     *Permanent  — the magecraft-bearing permanent
+//	"controller": int          — casterSeat (matches source.Controller)
+//	"spell":      *Card        — the cast/copied spell
+//	"spell_name": string       — display name for logging
+//	"is_copy":    bool         — true if this fan-out is from a copy
 func FireMagecraftTriggers(gs *GameState, casterSeat int, spell *Card, isCopy bool) {
 	if gs == nil || spell == nil {
 		return

@@ -8,7 +8,9 @@ import (
 
 // -----------------------------------------------------------------------------
 // gift_consumers_r60 — 6 OnResolve handlers wired in
-// gift_consumers_r60.go covering OTJ Gift spells (CR §702.192).
+// gift_consumers_r60.go covering Gift spells. CR §702.174a: "Gift is a
+// keyword that represents two abilities... 'As an additional cost to cast
+// this spell, you may choose an opponent.'" It is a keyword, not an ability word.
 // -----------------------------------------------------------------------------
 
 // giftItem builds a StackItem with the gift_promised flag. Recipient

@@ -202,7 +202,7 @@ func TestCastBuyback_NotInstantOrSorcery(t *testing.T) {
 	}
 	gs.Seats[0].Hand = append(gs.Seats[0].Hand, card)
 	if _, err := CastBuyback(gs, 0, card, 2, 3); err == nil {
-		t.Fatal("CastBuyback should refuse non-instant/sorcery (§702.27c)")
+		t.Fatal("CastBuyback should refuse non-instant/sorcery (§702.27a)")
 	}
 }
 
@@ -303,13 +303,13 @@ func TestBuyback_CastResolveReturnsToHand_EndToEnd(t *testing.T) {
 	}
 
 	// 2. Resolve — ShouldReturnToHandOnResolve branch in ResolveStackTop
-	//    should route the card to its owner's hand per §702.27b.
+	//    should route the card to its owner's hand per §702.27a.
 	ResolveStackTop(gs)
 
 	// 3. Card must be in hand, NOT in graveyard.
 	for _, c := range gs.Seats[0].Graveyard {
 		if c == card {
-			t.Fatal("bought-back spell must not land in graveyard (§702.27b)")
+			t.Fatal("bought-back spell must not land in graveyard (§702.27a)")
 		}
 	}
 	foundInHand := false

@@ -4,7 +4,7 @@ import "testing"
 
 // r63 DOUBLING replacement audit.
 
-// (b) Doubling Season doubles a planeswalker's STARTING loyalty (§306.5g) — the
+// (b) Doubling Season doubles a planeswalker's STARTING loyalty (§306.5b) — the
 // old direct assignment skipped the doubler chain entirely.
 func TestDoubler_LoyaltyDoublesUnderDoublingSeason(t *testing.T) {
 	gs := newFixtureGame(t)

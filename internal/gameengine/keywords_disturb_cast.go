@@ -14,9 +14,9 @@ package gameengine
 //               cost." Casting a spell using its disturb ability
 //               follows the rules for paying alternative costs in
 //               §601.2b and §601.2f-h.
-// CR §702.146c: If a permanent that resolved as a disturb-cast
+// Disturb exile replacement: If a permanent that resolved as a disturb-cast
 //               spell would be put into a graveyard from the
-//               battlefield, exile it instead. The
+//               battlefield, exile it instead (per the disturb mechanic).
 //               RegisterDisturbExileReplacement helper in
 //               keywords_p1p2.go already does this; CastWithDisturb
 //               routes through ApplyDisturbETB on resolve so the
@@ -39,13 +39,13 @@ package gameengine
 //   - A small stack.go hook (in this PR, see resolvePermanentSpellETB)
 //     that checks CostMeta["disturb_cast"] at resolve time and
 //     invokes ApplyDisturbETB so the back-face transform and the
-//     §702.146c dies→exile replacement land deterministically.
+//     dies→exile replacement land deterministically.
 //
 // Note on resolution destination: disturb does NOT use the
 // exile_on_resolve hook (that's flashback / mayhem / omen / escape).
 // A disturb-cast spell's back face is a permanent (typically a
 // Spirit enchantment-creature), so it resolves to the BATTLEFIELD
-// transformed. The §702.146c "exile instead of graveyard" clause
+// transformed. The "exile instead of graveyard" clause per disturb
 // is a separate replacement that fires later when the disturbed
 // permanent would die — wired by ApplyDisturbETB via
 // RegisterDisturbExileReplacement.

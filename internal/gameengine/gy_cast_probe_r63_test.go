@@ -52,7 +52,7 @@ func TestGYCast_Flashback_ExilesAfterResolve(t *testing.T) {
 		t.Error("flashback card wrongly returned to graveyard")
 	}
 	if !inZone(gs.Seats[0], c, "exile") {
-		t.Error("flashback card must end in EXILE after resolving (CR 702.34c)")
+		t.Error("flashback card must end in EXILE after resolving (CR 702.34a)")
 	}
 }
 
@@ -117,7 +117,7 @@ func TestGYCast_Disturb_ExilesAfterResolve(t *testing.T) {
 	}
 	DrainStack(gs)
 	// The back face is a permanent → resolves to the battlefield; if it later
-	// leaves it must be exiled (CR 702.146e). Here we just confirm it did NOT
+	// leaves it must be exiled (per card oracle text). Here we just confirm it did NOT
 	// fall back into the graveyard.
 	if inZone(gs.Seats[0], c, "graveyard") {
 		t.Error("disturb card must not remain in the graveyard after casting")

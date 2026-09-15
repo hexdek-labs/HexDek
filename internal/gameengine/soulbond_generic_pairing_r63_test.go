@@ -6,7 +6,7 @@ import (
 )
 
 // soulbond_generic_pairing_r63_test.go — pins the GENERIC soulbond pairing
-// substrate (CR §702.97e/f). The prior pass wired Deadeye Navigator's per-card
+// substrate (CR §702.95e/f). The prior pass wired Deadeye Navigator's per-card
 // ETB through the canonical PairSoulbond, but the generic keyword was unwired:
 // no non-Deadeye soulbond creature paired. FireSoulbondTriggers (the ETB
 // observer hook, mirroring evolve) now pairs any soulbond creature on its own
@@ -47,7 +47,7 @@ func sbPlaceSoulbond(gs *GameState, seat int, name string) *Permanent {
 	return p
 }
 
-// (§702.97e) A soulbond creature pairs on its OWN ETB when an eligible unpaired
+// (§702.95e) A soulbond creature pairs on its OWN ETB when an eligible unpaired
 // creature is already in play.
 func TestSoulbond_Generic_PairsOnOwnETB(t *testing.T) {
 	gs := newGenericSoulbondGame(t)
@@ -66,7 +66,7 @@ func TestSoulbond_Generic_PairsOnOwnETB(t *testing.T) {
 	}
 }
 
-// (§702.97f) A soulbond creature already in play pairs when a LATER ordinary
+// (§702.95a) A soulbond creature already in play pairs when a LATER ordinary
 // creature enters.
 func TestSoulbond_Generic_PairsWhenLaterCreatureEnters(t *testing.T) {
 	gs := newGenericSoulbondGame(t)
@@ -87,7 +87,7 @@ func TestSoulbond_Generic_PairsWhenLaterCreatureEnters(t *testing.T) {
 	}
 }
 
-// (§702.97e) The pair breaks (IsPaired false on the survivor) when a partner
+// (§702.95e) The pair breaks (IsPaired false on the survivor) when a partner
 // leaves the battlefield. Driven end-to-end through SacrificePermanent.
 func TestSoulbond_Generic_PairBreaksWhenPartnerLeaves(t *testing.T) {
 	gs := newGenericSoulbondGame(t)

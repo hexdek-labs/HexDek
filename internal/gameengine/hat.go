@@ -13,7 +13,7 @@ package gameengine
 // Rationale — Comprehensive Rules pointer map
 // ----------------------------------------------------------------------
 //   §103.4   Mulligan decision                       → ChooseMulligan
-//   §116.1b  Choosing which spell / land to play     → ChooseLandToPlay /
+//   Choosing which spell / land to play              → ChooseLandToPlay /
 //                                                      ChooseCastFromHand
 //   §117.3   Priority / passing                      → ChooseResponse
 //   §506.1   Each attacker chooses its defender      → ChooseAttackers /
@@ -984,13 +984,13 @@ type TutorTargetChooser interface {
 // "pay if affordable, else fail-and-counter" — the historical engine
 // behavior.
 //
-// CR §702.21c is a "may" — the caster is allowed to decline payment even
+// Ward is a "may" — the player is allowed to decline payment even
 // when they could afford it, which the engine should respect (e.g. to save
 // mana for a counterspell, or to deliberately fizzle into a recursion line).
 //
 // Implementations MUST NOT mutate gs.
 //
-// Alternative-payment ward (CR §702.21d — Ward—Sacrifice / Ward—Discard /
+// Alternative-payment ward (Ward—Sacrifice / Ward—Discard /
 // Ward—Blight N) was added in R60 via the ward_alt_kind + ward_alt_filter
 // Permanent.Flags. The engine handles those payments inline in
 // ward_alt_payment.go's tryPayAltWardCost with a "pay if affordable"

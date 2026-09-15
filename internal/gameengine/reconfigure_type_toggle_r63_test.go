@@ -6,7 +6,7 @@ import (
 
 // reconfigure_type_toggle_r63_test.go — r63 mechanic-probe (CR §702.151).
 // While a reconfigure permanent is ATTACHED it stops being a creature
-// (§702.151e) — it's just Equipment; UNATTACHED it is a creature again.
+// (§702.151b) — it's just Equipment; UNATTACHED it is a creature again.
 // The prior code set a `reconfigured` flag but nothing consulted it, so an
 // attached reconfigure equipment still counted as a creature (could attack/
 // block / be targeted). Fix wires the flag into IsCreature() (mirroring the
@@ -36,12 +36,12 @@ func TestReconfigure_TypeToggleAttachedNotCreature(t *testing.T) {
 		t.Fatal("(1) unattached reconfigure creature should be able to attack (eligibility baseline)")
 	}
 
-	// (2)+(3) Attach → stops being a creature (§702.151e), still Equipment.
+	// (2)+(3) Attach → stops being a creature (§702.151b), still Equipment.
 	if !ActivateReconfigure(gs, perm, target, 2) {
 		t.Fatal("reconfigure attach should succeed on a legal creature target")
 	}
 	if perm.IsCreature() {
-		t.Error("(3) attached reconfigure permanent must NOT be a creature (§702.151e)")
+		t.Error("(3) attached reconfigure permanent must NOT be a creature (§702.151b)")
 	}
 	if !perm.IsEquipment() {
 		t.Error("(3) attached reconfigure permanent must still be an Equipment")
@@ -90,7 +90,7 @@ func TestReconfigure_IllegalAttachTargetRejected(t *testing.T) {
 
 	// Non-creature target → rejected.
 	if ActivateReconfigure(gs, perm, nonCreature, 2) {
-		t.Error("reconfigure must not attach to a non-creature (§702.151c)")
+		t.Error("reconfigure must not attach to a non-creature (§702.151a)")
 	}
 	// Self target → rejected (§702.6b — can't equip itself).
 	if ActivateReconfigure(gs, perm, perm, 2) {

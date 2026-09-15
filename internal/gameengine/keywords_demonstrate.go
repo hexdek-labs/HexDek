@@ -5,16 +5,14 @@ package gameengine
 // CR §702.144a: Demonstrate is a triggered ability. "Demonstrate" means
 //               "When you cast this spell, you may copy it. If you do,
 //               choose an opponent to also copy it."
-// CR §702.144b: A copy made via demonstrate is created on the stack
-//               above the original spell. Per CR §707.10, the copy is
-//               not "cast" — it's created directly on the stack. A
-//               copy of a permanent spell becomes a token when it
-//               resolves; a copy of an instant or sorcery resolves and
-//               then ceases to exist.
-// CR §707.10c: The controller of each copy may choose new targets for
-//               that copy. This implementation keeps the simple
-//               default (same targets as the original) per the task
-//               brief.
+//
+// Copy mechanics (CR §707.10): A copy made via demonstrate is created on the stack
+//               above the original spell. The copy is not "cast" — it's created
+//               directly on the stack. A copy of a permanent spell becomes a token
+//               when it resolves; a copy of an instant or sorcery resolves and
+//               then ceases to exist. The controller of each copy may choose new
+//               targets for that copy. This implementation keeps the simple
+//               default (same targets as the original) per the task brief.
 //
 // API shape:
 //

@@ -5,8 +5,8 @@ import (
 	"testing"
 )
 
-// r63 regenerate probe — CR §701.15 regeneration as a replacement shield.
-// Focus: "can't be regenerated" (§701.15g, Wrath of God / Damnation) must
+// r63 regenerate probe — CR §701.19 regeneration as a replacement shield.
+// Focus: "can't be regenerated" (per card ability text, Wrath of God / Damnation) must
 // bypass the shield, and the zero-toughness SBA (§704.5f, "put into
 // graveyard", NOT a destroy) must NOT be replaced by regeneration — while
 // lethal-damage (§704.5g) MUST be.

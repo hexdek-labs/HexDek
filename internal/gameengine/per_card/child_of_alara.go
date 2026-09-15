@@ -51,7 +51,7 @@ func childOfAlaraDies(gs *gameengine.GameState, perm *gameengine.Permanent, ctx 
 		return
 	}
 
-	// "They can't be regenerated" (CR §701.15g) — enforced via
+	// "They can't be regenerated" (CR §701.19) — enforced via
 	// DestroyPermanentNoRegen below (regeneration is now modeled).
 
 	// Snapshot all nonland permanents across all seats before destroying.

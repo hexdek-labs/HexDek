@@ -12,7 +12,7 @@ package gameengine
 //                may turn it face up at any time by paying its mana
 //                cost. Turning it face up reveals its full
 //                characteristics.
-// CR §701.34c: "Manifest the top N cards of your library" is the
+// CR §701.40e: "Manifest the top N cards of your library" is the
 //                bulk variant — each top card is manifested in order.
 //
 // Engine surface (canonical):
@@ -23,12 +23,12 @@ package gameengine
 //   - ApplyManifestTop(gs, seatIdx, n) int
 //       Manifests the top N cards of `seatIdx`'s library. Returns the
 //       actual number manifested (may be less than n if the library
-//       runs dry — CR §701.34c is silent about insufficient cards,
+//       runs dry — CR §701.40 is silent about insufficient cards,
 //       but the engine treats it as a "manifest as many as possible"
 //       no-op for the rest).
 //
 //   - ManifestedFaceUp(gs, perm, cost) error
-//       Flips a manifested permanent face up. CR §701.34b — pays the
+//       Flips a manifested permanent face up. CR §701.40b — pays the
 //       given mana cost and clears the face-down overlay on the real card
 //       (perm.Card in the overlay model) so the layer system reads its
 //       printed characteristics. Rejects non-manifested perms.
@@ -56,8 +56,8 @@ func HasManifest(card *Card) bool {
 	}
 	patterns := []string{
 		"manifest the top",
-		"manifest dread",         // manifest_dread variant
-		"manifest a creature",    // some rare phrasings target a card
+		"manifest dread",      // manifest_dread variant
+		"manifest a creature", // some rare phrasings target a card
 	}
 	for _, p := range patterns {
 		if strings.Contains(text, p) {
@@ -174,7 +174,7 @@ func ApplyManifestTop(gs *GameState, seatIdx, n int) int {
 			Details: map[string]interface{}{
 				"requested": n,
 				"completed": manifested,
-				"rule":      "701.34c",
+				"rule":      "701.40",
 			},
 		})
 	}

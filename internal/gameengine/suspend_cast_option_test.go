@@ -112,6 +112,6 @@ func TestSuspend_GenericHandCardExilesTicksAndFreeCasts(t *testing.T) {
 		t.Fatalf("suspended creature must resolve onto the battlefield exactly once, got %d", count)
 	}
 	if found.Flags["kw:haste"] != 1 {
-		t.Fatalf("a free-cast suspended creature must gain haste (§702.62g)")
+		t.Fatalf("a free-cast suspended creature must gain haste ((CR §702.62d grants haste))")
 	}
 }

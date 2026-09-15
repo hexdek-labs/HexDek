@@ -335,7 +335,7 @@ type GameState struct {
 	// walker is FireDelayedAbilityPool — called from event-emission
 	// sites and phase boundaries — which matches each entry's
 	// DelayedCondition against the current event and moves matching
-	// abilities pool→stack. Source-independence per §112.7a: an
+	// abilities pool→stack. Source-independence: an
 	// AbilityInstance in this pool keeps firing even after its source
 	// permanent leaves play.
 	DelayedAbilityInstances []*AbilityInstance
@@ -946,7 +946,7 @@ type TurnCounters struct {
 	Sacrificed          int  // permanents sacrificed this turn
 	PermanentsLeft      int  // permanents that left the battlefield this turn (dies + exile + bounce + sac)
 	Discarded           int  // cards discarded this turn
-	CommittedCrimes     int  // crimes committed this turn (CR §701.71 OTJ/MKM)
+	CommittedCrimes     int  // crimes committed this turn (CR §700.13)
 	Milled              int  // cards milled this turn
 	LandsPlayed         int  // lands played this turn
 	CreaturesDied       int  // creatures that died (went to GY from battlefield) this turn
@@ -1517,7 +1517,7 @@ type Card struct {
 	EnablerHistory []string
 
 	// ActiveFace selects which face of a DFC / MDFC is currently active.
-	// Default Front matches CR §712.6c (non-battlefield DFCs default to
+	// Default Front matches CR §712.14 (non-battlefield DFCs default to
 	// front). Transform-style cards flip this; cast-as-back stamps Back
 	// at cast time.
 	ActiveFace instanceid.FaceIndex
@@ -1999,7 +1999,7 @@ func (p *Permanent) IsCreature() bool {
 	if p != nil && p.Flags != nil && p.Flags["bestowed"] == 1 {
 		return false
 	}
-	// CR §702.151e — while a reconfigure permanent is attached to a creature
+	// CR §702.151b — while a reconfigure permanent is attached to a creature
 	// it's just an Equipment and stops being a creature: it can't attack or
 	// block, isn't a legal "target creature", and isn't seen by creature SBAs.
 	// ActivateReconfigure sets the flag on attach and clears it on detach,
@@ -2713,7 +2713,7 @@ func (gs *GameState) moveToZone(seat int, c *Card, zone string) {
 	// that didn't sweep) or a DeepCopy-without-remint sibling sharing
 	// this candidate's InstanceID. The helper purges same-pointer
 	// occurrences (CR §400.7c — one zone at a time) and re-mints
-	// different-pointer collisions (CR §706.10 — distinct minted IDs).
+	// different-pointer collisions (per engine InstanceID minting).
 	EnforceBattlefieldUniqueInstanceID(gs, c, seat)
 	s := gs.Seats[seat]
 	inSlice := func(slice []*Card) bool {

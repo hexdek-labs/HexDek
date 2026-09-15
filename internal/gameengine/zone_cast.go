@@ -4,7 +4,7 @@ package gameengine
 //
 // Comp-rules citations:
 //
-//   §702.33    Flashback — "You may cast this card from your graveyard
+//   §702.34 — Flashback — "You may cast — "You may cast this card from your graveyard
 //              for its flashback cost. Then exile it." If a spell with
 //              flashback would be put into the graveyard or any other
 //              zone from the stack, exile it instead.
@@ -14,7 +14,7 @@ package gameengine
 //              graveyard from the stack, exile it instead (same as
 //              flashback).
 //   §702.34    Madness — (future, not in this pass)
-//   §112.6k    Static: "you may cast this card from exile"
+//   rule 601.2    Static: "you may cast this card from exile"
 //              (Misthollow Griffin, Squee the Immortal, Torrent
 //              Elemental).
 //   §601.3e    Playing from top of library (Bolas's Citadel, Future
@@ -126,7 +126,7 @@ type ZoneCastPermission struct {
 	// granted this permission (Phase 3, docs/instanceid-system-v2-r60.md
 	// §4.2 + §7). For CastGrant-shape effects (Etali's attack trigger,
 	// Mind's Desire, Bolas's Citadel's static), the grant's lifetime is
-	// bound to the AbilityInstance per CR §112.7a — the ability lives
+	// bound to the AbilityInstance per CR rule 113.1c — the ability lives
 	// independently of the source Permanent on the stack. When the
 	// AbilityInstance resolves and the cast window closes, callers
 	// invoke ExpireGrantsForAbilityInstance to reclaim the grants.
@@ -552,8 +552,8 @@ func NewFlashbackPermission(flashbackCost int) *ZoneCastPermission {
 // graveyard cards to exile.
 func NewEscapePermission(escapeCost int, exileCount int) *ZoneCastPermission {
 	return &ZoneCastPermission{
-		Zone:    ZoneGraveyard,
-		Keyword: "escape",
+		Zone:     ZoneGraveyard,
+		Keyword:  "escape",
 		ManaCost: escapeCost,
 		AdditionalCosts: []*AdditionalCost{
 			{
@@ -711,8 +711,8 @@ func GetZoneCastGrant(gs *GameState, card *Card) *ZoneCastPermission {
 // + exile 3 other cards from graveyard).
 func NewBreachEscapePermission(cardManaCost int) *ZoneCastPermission {
 	return &ZoneCastPermission{
-		Zone:    ZoneGraveyard,
-		Keyword: "escape",
+		Zone:     ZoneGraveyard,
+		Keyword:  "escape",
 		ManaCost: cardManaCost,
 		AdditionalCosts: []*AdditionalCost{
 			{
@@ -840,7 +840,7 @@ func ClearLinkedExileTagsForSource(gs *GameState, sourceTimestamp int) {
 // ExpireGrantsForAbilityInstance reclaims any ZoneCastGrants whose
 // AbilityInstanceID matches the given ID. Per design v2 §4.2 + §7,
 // CastGrant-shape effects bind grant lifetime to the AbilityInstance
-// (CR §112.7a — ability is independent of source on the stack), not to
+// (CR rule 113.1c — ability is independent of source on the stack), not to
 // the source Permanent's battlefield-lifetime. Callers invoke this
 // when the AbilityInstance resolves (or is countered) and the cast
 // window closes. The exiled cards remain in exile; only the cast
@@ -943,19 +943,19 @@ func findPermanentByTimestamp(gs *GameState, ts int) *Permanent {
 //
 // Parameters:
 //
-//   controllerSeat   — RequireController; only this seat may cast.
-//   sourceName       — Card name granting the permission (for logs).
-//   sourceTimestamp  — Permanent.Timestamp of the granting permanent;
-//                      used for once-per-turn gating + lifecycle.
-//   manaCost         — -1 to use the card's own mana cost, or a fixed
-//                      override (e.g. an alternative flat cost).
-//   exileOnResolve   — true for Kess/Maestros ("If a spell cast this
-//                      way would be put into your graveyard, exile it
-//                      instead"); false for plain reanimate-style
-//                      privileges.
-//   additionalCosts  — extra costs like "sacrifice a creature"
-//                      (Maestros), or "exile three other cards"
-//                      (Kotis). May be nil for Kess/Karador.
+//	controllerSeat   — RequireController; only this seat may cast.
+//	sourceName       — Card name granting the permission (for logs).
+//	sourceTimestamp  — Permanent.Timestamp of the granting permanent;
+//	                   used for once-per-turn gating + lifecycle.
+//	manaCost         — -1 to use the card's own mana cost, or a fixed
+//	                   override (e.g. an alternative flat cost).
+//	exileOnResolve   — true for Kess/Maestros ("If a spell cast this
+//	                   way would be put into your graveyard, exile it
+//	                   instead"); false for plain reanimate-style
+//	                   privileges.
+//	additionalCosts  — extra costs like "sacrifice a creature"
+//	                   (Maestros), or "exile three other cards"
+//	                   (Kotis). May be nil for Kess/Karador.
 func NewOncePerTurnGraveyardCastPermission(
 	controllerSeat int,
 	sourceName string,

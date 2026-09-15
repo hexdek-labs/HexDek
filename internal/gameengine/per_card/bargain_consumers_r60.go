@@ -28,12 +28,11 @@ import (
 //   (B) Permanent spells with ETB riders — register OnETB and read
 //       perm.Flags["bargained"], which the engine mirrors from the
 //       resolving spell's CostMeta at ETB via MirrorBargainToPermanent
-//       (CR §702.176c — the bargained state travels with the permanent,
-//       mirroring kicker/squad). Reading it off THE PERMANENT that
-//       entered is leak-free: a bargained spell countered before it
-//       enters never stamps a flag, and two simultaneous casts each carry
-//       their own decision — neither edge the old per-seat cast counter
-//       handled.
+//       (the bargained state travels with the permanent, mirroring kicker/squad).
+//       Reading it off THE PERMANENT that entered is leak-free: a bargained spell
+//       countered before it enters never stamps a flag, and two simultaneous
+//       casts each carry their own decision — neither edge the old per-seat cast
+//       counter handled.
 
 func init() {
 	registerBargainConsumersR60(Global())
@@ -60,8 +59,8 @@ func registerBargainConsumersR60(r *Registry) {
 
 // permWasBargained reports whether the permanent entered via a bargained
 // cast. The engine mirrors the resolving spell's CostMeta["bargained"] onto
-// perm.Flags["bargained"] at ETB (MirrorBargainToPermanent, CR §702.176c),
-// so the ETB rider reads the decision made for exactly this permanent.
+// perm.Flags["bargained"] at ETB (MirrorBargainToPermanent), so the ETB
+// rider reads the decision made for exactly this permanent.
 func permWasBargained(perm *gameengine.Permanent) bool {
 	return perm != nil && perm.Flags != nil && perm.Flags["bargained"] > 0
 }

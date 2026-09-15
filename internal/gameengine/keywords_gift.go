@@ -1,19 +1,19 @@
 package gameengine
 
-// keywords_gift.go — Gift (CR §702.192, Bloomburrow 2024) as a real
+// keywords_gift.go — Gift (CR §702.174, Bloomburrow 2024) as a real
 // optional-promise cast-time choice with resolution-time token creation
 // in the recipient's zone.
 //
-// CR §702.192a: "Gift a [token type]" is an optional additional choice
+// CR §702.174a: "Gift a [token type]" is an optional additional choice
 //                you make as you cast a spell with gift. As you cast
 //                the spell, you may promise that gift to a chosen
 //                opponent. If you do, the spell's effect text changes
 //                — typically you get a bonus AND the chosen opponent
 //                receives the gift token on resolution.
-// CR §702.192b: The chosen opponent must be an OPPONENT — you cannot
+// CR §702.174b: The chosen opponent must be an OPPONENT — you cannot
 //                gift yourself. Cards print "an opponent of your
 //                choice"; the cast-time choice records who.
-// CR §702.192c: The gift is created on resolution, NOT on cast. It
+// CR §702.174c: The gift is created on resolution, NOT on cast. It
 //                goes to the chosen opponent's battlefield. Whether
 //                the gift was promised is recorded on the stack item
 //                so per-card resolution handlers can read it AND
@@ -34,7 +34,7 @@ package gameengine
 //       creature token) parse beyond this engine MVP.
 //
 //   - CastWithGift(gs, seat, card, recipient) error
-//       Records the §702.192a cast-time promise. Atomic validation:
+//       Records the §702.174a cast-time promise. Atomic validation:
 //       card has gift, recipient is a valid opponent (not the caster,
 //       not a Lost seat). On success: pushes a StackItem with
 //       CostMeta["gift_recipient"]=recipient and
@@ -42,7 +42,7 @@ package gameengine
 //       event.
 //
 //   - ResolveGift(gs, item) bool
-//       The §702.192c resolution-time payoff. Called by per-card
+//       The §702.174c resolution-time payoff. Called by per-card
 //       resolve handlers after the spell's base effect resolves.
 //       Reads CostMeta["gift_recipient"] + CostMeta["gift_type"];
 //       creates the appropriate token in the recipient's battlefield;
@@ -121,7 +121,7 @@ func GiftType(card *Card) string {
 // <thing>" (the body lands in a parsed_effect_residual scaffold). So the
 // keyword-based HasGift / GiftType above match only synthetic unit
 // fixtures, never a real card. DetectGift bridges both representations so
-// the canonical cast pipeline (CastSpell) can offer the §702.192a promise.
+// the canonical cast pipeline (CastSpell) can offer the §702.174a promise.
 
 // canonicalGiftTokens is the set of artifact-token gift types ResolveGift
 // can mint directly. Non-token gifts (a card draw, a tapped creature
@@ -134,7 +134,7 @@ var canonicalGiftTokens = map[string]bool{
 }
 
 // DetectGift reports whether a spell carries the gift mechanic (CR
-// §702.192) and the canonical gift-token type promised ("" for a
+// §702.174) and the canonical gift-token type promised ("" for a
 // non-token gift). It recognizes BOTH the synthetic Keyword form
 // (HasGift/GiftType, used by fixtures) and the real parsed form (a Static
 // ability whose Raw is a "gift a <thing>" / "gift an <thing>" preamble).
@@ -186,7 +186,7 @@ func parseGiftRaw(raw string) (string, bool) {
 }
 
 // chooseGiftRecipient picks the opponent who receives the gift (CR
-// §702.192b — must be an opponent, never the caster). Baseline policy:
+// §702.174b — must be an opponent, never the caster). Baseline policy:
 // the first living opponent in seat order (the lone opponent at a
 // 2-player table). Returns -1 when the caster has no living opponent
 // (CR §800.4 — then no gift can be promised).
@@ -205,7 +205,7 @@ func chooseGiftRecipient(gs *GameState, caster int) int {
 	return -1
 }
 
-// StampGiftPromise records the §702.192a cast-time promise on an
+// StampGiftPromise records the §702.174a cast-time promise on an
 // already-pushed StackItem: sets CostMeta gift_promised/recipient/type,
 // logs gift_promised, and fires the gift_promised trigger. Mirrors
 // CastWithGift's stamping but operates on an existing item (the canonical
@@ -230,7 +230,7 @@ func StampGiftPromise(gs *GameState, item *StackItem, caster, recipient int, gif
 		Source: name,
 		Details: map[string]interface{}{
 			"gift_type": giftType,
-			"rule":      "702.192a",
+			"rule":      "702.174a",
 		},
 	})
 	FireCardTrigger(gs, "gift_promised", map[string]interface{}{
@@ -246,27 +246,27 @@ func StampGiftPromise(gs *GameState, item *StackItem, caster, recipient int, gif
 // CastWithGift
 // ---------------------------------------------------------------------------
 
-// CastWithGift records the §702.192a cast-time promise. The caller is
+// CastWithGift records the §702.174a cast-time promise. The caller is
 // responsible for the surrounding cast pipeline (mana payment, regular
 // targeting); this helper only handles the gift side of the cast and
 // produces a StackItem flagged with the gift metadata.
 //
 // Validation (atomic — no mutation on failure):
 //   - card non-nil and carries the gift keyword
-//   - recipient in range and != caster (§702.192b — opponent only)
+//   - recipient in range and != caster (§702.174b — opponent only)
 //   - recipient seat not Lost (CR §800.4 — can't gift an eliminated
 //     player)
 //
 // On success:
 //   - Pushes a StackItem with:
-//       Card:       card
-//       Controller: seatIdx
-//       CastZone:   "hand"
-//       Effect:     collectSpellEffect(card)
-//       CostMeta:
-//         "gift_promised"   = true
-//         "gift_recipient"  = recipient seat index
-//         "gift_type"       = GiftType(card) (lowercased)
+//     Card:       card
+//     Controller: seatIdx
+//     CastZone:   "hand"
+//     Effect:     collectSpellEffect(card)
+//     CostMeta:
+//     "gift_promised"   = true
+//     "gift_recipient"  = recipient seat index
+//     "gift_type"       = GiftType(card) (lowercased)
 //   - Emits a "gift_promised" log event with caster, recipient, type
 //   - Fires FireCardTrigger("gift_promised", ctx)
 //
@@ -288,7 +288,7 @@ func CastWithGift(gs *GameState, seatIdx int, card *Card, recipient int) error {
 	if !HasGift(card) {
 		return &CastError{Reason: "no_gift_keyword"}
 	}
-	// §702.192b — recipient must be an opponent of the caster.
+	// §702.174b — recipient must be an opponent of the caster.
 	if recipient == seatIdx {
 		return &CastError{Reason: "gift_self_forbidden"}
 	}
@@ -326,7 +326,7 @@ func CastWithGift(gs *GameState, seatIdx int, card *Card, recipient int) error {
 		Source: name,
 		Details: map[string]interface{}{
 			"gift_type": giftType,
-			"rule":      "702.192a",
+			"rule":      "702.174a",
 		},
 	})
 	FireCardTrigger(gs, "gift_promised", map[string]interface{}{
@@ -343,7 +343,7 @@ func CastWithGift(gs *GameState, seatIdx int, card *Card, recipient int) error {
 // ResolveGift
 // ---------------------------------------------------------------------------
 
-// ResolveGift drives the §702.192c resolution-time payoff. Called by
+// ResolveGift drives the §702.174c resolution-time payoff. Called by
 // per-card resolve handlers after the spell's base effect runs. Reads
 // the gift metadata from item.CostMeta:
 //
@@ -383,7 +383,7 @@ func ResolveGift(gs *GameState, item *StackItem) bool {
 			Source: giftStackItemName(item),
 			Target: recipient,
 			Details: map[string]interface{}{
-				"rule": "702.192c",
+				"rule": "702.174c",
 			},
 		})
 		return false
@@ -427,7 +427,7 @@ func ResolveGift(gs *GameState, item *StackItem) bool {
 			Source: giftStackItemName(item),
 			Details: map[string]interface{}{
 				"gift_type": giftType,
-				"rule":      "702.192c",
+				"rule":      "702.174c",
 			},
 		})
 		FireCardTrigger(gs, "gift_delivered", map[string]interface{}{

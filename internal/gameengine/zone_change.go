@@ -48,7 +48,7 @@ func DestroyPermanent(gs *GameState, perm *Permanent, source *Permanent) bool {
 	return destroyPermanentImpl(gs, perm, source, true)
 }
 
-// DestroyPermanentNoRegen is the "can't be regenerated" variant (CR §701.15g:
+// DestroyPermanentNoRegen is the "can't be regenerated" variant (CR regeneration restriction:
 // "If an effect states that a permanent can't be regenerated, … regeneration
 // shields … do nothing"). Wrath of God / Damnation / Child of Alara and any
 // destruction whose text says "they can't be regenerated" route here so a
@@ -100,7 +100,7 @@ func destroyPermanentImpl(gs *GameState, perm *Permanent, source *Permanent, all
 
 	// §701.15a: a regeneration shield replaces the destruction — tap,
 	// remove from combat, and clear marked damage instead of destroying.
-	// Skipped for "can't be regenerated" destruction (§701.15g, Wrath of
+	// Skipped for "can't be regenerated" destruction (regeneration restriction, Wrath of
 	// God / Damnation), which routes through DestroyPermanentNoRegen.
 	if allowRegen && TryRegenerate(gs, perm) {
 		return false
@@ -501,7 +501,7 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 		})
 	}
 
-	// CR §702.97e — a soulbond pairing ends when either creature leaves the
+	// CR §702.95e — a soulbond pairing ends when either creature leaves the
 	// battlefield. Break it here (the LTB chokepoint every battlefield exit —
 	// death, exile, bounce, flicker — funnels through), while `perm` still
 	// carries its flags, so the surviving partner becomes unpaired again.
@@ -560,7 +560,7 @@ func FireZoneChangeTriggers(gs *GameState, perm *Permanent, card *Card, fromZone
 			// CR §702.152b — blitz "When this creature dies, draw a card."
 			// Keyed on the blitz flag (ApplyBlitz), fires from this canonical
 			// dies-chokepoint so it triggers on any death (combat / removal /
-			// the §702.152c end-step sacrifice) exactly once.
+			// the §702.152 end-step sacrifice) exactly once.
 			CheckBlitzDeathDraw(gs, perm)
 		}
 	} else if fromZone == "battlefield" && toZone != "graveyard" {

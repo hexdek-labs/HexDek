@@ -1866,10 +1866,10 @@ func DealCombatDamageStep(gs *GameState, attackers []*Permanent, blockerMap map[
 		if dmg <= 0 {
 			continue
 		}
-		// §310.5b — Battle defender path: if this attacker was
+		// Battle defender path (CR §310.5-310.6): if this attacker was
 		// declared against a battle, route damage to the battle's
-		// defense counters via ApplyCombatDamageToBattle. We honor
-		// blockers (if any) by falling back to the standard
+		// defense counters via ApplyCombatDamageToBattle (see §310.6).
+		// We honor blockers (if any) by falling back to the standard
 		// player-target path; in real games blockers can still
 		// intercept attackers pointed at a battle. The blocker
 		// branch below handles that case.
@@ -2028,10 +2028,10 @@ func DealCombatDamageStep(gs *GameState, attackers []*Permanent, blockerMap map[
 		}
 	}
 
-	// §702.21k/l — Banding damage redistribution. With banded blockers,
+	// Banding damage redistribution (CR §702.22j/k): With banded blockers,
 	// the *defending* player chooses how each attacker's damage divides
-	// among the band; with banded attackers, the *attacking* player
-	// chooses how blocker damage divides among the band. MVP grouping:
+	// among the band (§702.22j); with banded attackers, the *attacking* player
+	// chooses how blocker damage divides among the band (§702.22k). MVP grouping:
 	// same controller + same combat role (same defender for attackers,
 	// same blocked attacker for blockers) + 2+ with the banding keyword.
 	// Wither / infect paths route damage to -1/-1 counters instead of
@@ -2099,7 +2099,7 @@ func applyBandingRedistribution(gs *GameState, attackers []*Permanent, blockerMa
 }
 
 // bandHasBanding returns true if any creature in the group has banding.
-// Requires 2+ members to qualify as a band per §702.21j.
+// Band formation requires at least one creature with banding per §702.22c.
 func bandHasBanding(group []*Permanent) bool {
 	if len(group) < 2 {
 		return false
@@ -2322,7 +2322,7 @@ func applyCombatDamageToPlayer(gs *GameState, src *Permanent, amount, seatIdx in
 	// canonical entry point + once-per-turn gate.
 	SpeedDamageReporter(gs, src.Controller)
 
-	// §702.111 — Renown: if this creature has renown N, isn't already
+	// §702.112 — Renown: if this creature has renown N, isn't already
 	// renowned, and just dealt combat damage to a player, put N
 	// +1/+1 counters on it and mark it renowned. No-op for sources
 	// without the keyword (single keyword lookup) so the per-damage
@@ -2836,7 +2836,7 @@ func filterGoaderFromDefenders(gs *GameState, perm *Permanent, livingOpps []int)
 	if !IsGoaded(perm, gs.Turn) {
 		return livingOpps
 	}
-	// CR §701.39b — the goaded creature must attack a player other than ANY
+	// CR §701.15b — the goaded creature must attack a player other than ANY
 	// player who goaded it, if able. Filter out every active goader; fall back
 	// to the legacy single goader if no per-goader set was stamped.
 	goaders := activeGoaders(perm, gs.Turn)

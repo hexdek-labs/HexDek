@@ -1,18 +1,18 @@
 package gameengine
 
 // suspend_time_counters.go — the upkeep countdowns for the time-counter
-// keyword family, plus the §702.62g free-cast that fires when a suspended
+// keyword family, plus the §702.62a free-cast that fires when a suspended
 // card's last time counter is removed.
 //
 // CR coverage:
-//   - §702.62f  Suspend — "At the beginning of your upkeep, if this card is
+//   - §702.62a  Suspend — "At the beginning of your upkeep, if this card is
 //                suspended, remove a time counter from it."
-//   - §702.62g  Suspend — "When the last time counter is removed ... cast it
+//   - §702.62a  Suspend — "When the last time counter is removed ... cast it
 //                without paying its mana cost if able ... it gains haste until
 //                you lose control of it."
 //   - §702.63b/c Vanishing — remove a time counter each upkeep; when the LAST
 //                time counter is removed, sacrifice the permanent.
-//   - §702.32b   Fading — remove a fade counter each upkeep; if you can't,
+//   - §702.32a   Fading — remove a fade counter each upkeep; if you can't,
 //                sacrifice the permanent.
 //
 // Before this file: SuspendCard exiled the card and stamped a counter that was
@@ -33,7 +33,7 @@ package gameengine
 // Vanishing (time counters): if the permanent has a time counter, remove one;
 // if that removal emptied the last time counter, sacrifice it (§702.63c).
 // Fading (fade counters): remove a fade counter; if there is none to remove,
-// sacrifice it (§702.32b). The one-turn-of-life difference between the two
+// sacrifice it (§702.32a). The one-turn-of-life difference between the two
 // keywords is faithful to the rules (a vanishing-N permanent is sacrificed on
 // its Nth upkeep; a fading-N permanent on its (N+1)th).
 func TickTimeFadeCounters(gs *GameState, activeSeat int) int {
@@ -77,7 +77,7 @@ func TickTimeFadeCounters(gs *GameState, activeSeat int) int {
 				continue
 			}
 		}
-		// Fading — fade counters (§702.32b). "Remove a fade counter; if you
+		// Fading — fade counters (§702.32a). "Remove a fade counter; if you
 		// can't, sacrifice it." Distinct from vanishing: the sacrifice fires
 		// on the upkeep where there is NO counter to remove.
 		if hasFadingKeyword(p.Card) {
@@ -90,11 +90,11 @@ func TickTimeFadeCounters(gs *GameState, activeSeat int) int {
 					Amount: p.Counters["fade"],
 					Details: map[string]interface{}{
 						"keyword": "fading",
-						"rule":    "702.32b",
+						"rule":    "702.32a",
 					},
 				})
 			} else {
-				sacrificePermSBA(gs, p, "fading", "702.32b", map[string]interface{}{
+				sacrificePermSBA(gs, p, "fading", "702.32a", map[string]interface{}{
 					"keyword": "fading",
 				})
 				sacrificed++
@@ -113,10 +113,10 @@ func hasFadingKeyword(card *Card) bool {
 	return cardHasKeywordByName(card, "fading")
 }
 
-// TickSuspendCounters runs the §702.62f upkeep decrement for every suspended
+// TickSuspendCounters runs the §702.62a upkeep decrement for every suspended
 // card the seat controls (the cards sit in the seat's exile zone carrying the
 // card.Meta["suspended"] marker, stamped by SuspendCard). When a card's last
-// time counter is removed it is cast for free per §702.62g via
+// time counter is removed it is cast for free per §702.62a via
 // CastSuspendedCard. Returns the number of cards cast this pass.
 //
 // The counter lives on the Card object (card.Meta), not a name-keyed
@@ -154,11 +154,11 @@ func TickSuspendCounters(gs *GameState, activeSeat int) int {
 			Amount: n,
 			Details: map[string]interface{}{
 				"counters_remaining": n,
-				"rule":               "702.62f",
+				"rule":               "702.62a",
 			},
 		})
 		if n == 0 {
-			// §702.62g — the last time counter was removed; cast for free.
+			// §702.62a — the last time counter was removed; cast for free.
 			c.Meta["suspended"] = false
 			if CastSuspendedCard(gs, activeSeat, c) {
 				cast++
@@ -169,7 +169,7 @@ func TickSuspendCounters(gs *GameState, activeSeat int) int {
 }
 
 // CastSuspendedCard casts a suspended card from the seat's exile zone without
-// paying its mana cost (CR §702.62g) and, if it resolves onto the battlefield
+// paying its mana cost (CR §702.62a) and, if it resolves onto the battlefield
 // as a creature, grants it haste "until you lose control of it" by stamping
 // Flags["kw:haste"] on the resulting permanent (auto-cleared when it leaves).
 // Returns true when the card was found in exile and pushed onto the stack.
@@ -207,7 +207,7 @@ func CastSuspendedCard(gs *GameState, seatIdx int, card *Card) bool {
 		Seat:   seatIdx,
 		Source: card.DisplayName(),
 		Details: map[string]interface{}{
-			"rule": "702.62g",
+			"rule": "702.62a",
 		},
 	})
 
@@ -219,7 +219,7 @@ func CastSuspendedCard(gs *GameState, seatIdx int, card *Card) bool {
 		Card:       card,
 		Effect:     eff,
 		IsCopy:     false,
-		CastZone:   "exile", // §702.62g casts the card from exile
+		CastZone:   "exile", // §702.62a casts the card from exile
 	}
 	PushStackItem(gs, item)
 
@@ -252,7 +252,7 @@ func CastSuspendedCard(gs *GameState, seatIdx int, card *Card) bool {
 	// Drain any triggers/responses left above it.
 	DrainStack(gs)
 
-	// §702.62g — if it resolved onto the battlefield as a creature, it gains
+	// §702.62a — if it resolved onto the battlefield as a creature, it gains
 	// haste until its controller loses control of it. The flag lives on the
 	// permanent, so it is automatically gone when the permanent leaves.
 	grantSuspendHaste(gs, card)
@@ -260,7 +260,7 @@ func CastSuspendedCard(gs *GameState, seatIdx int, card *Card) bool {
 }
 
 // grantSuspendHaste stamps Flags["kw:haste"] on the battlefield permanent that
-// is this suspended card, if it resolved into play as a creature (§702.62g).
+// is this suspended card, if it resolved into play as a creature (§702.62a).
 func grantSuspendHaste(gs *GameState, card *Card) {
 	for _, s := range gs.Seats {
 		if s == nil {
@@ -280,7 +280,7 @@ func grantSuspendHaste(gs *GameState, card *Card) {
 					Seat:   p.Controller,
 					Source: p.Card.DisplayName(),
 					Details: map[string]interface{}{
-						"rule": "702.62g",
+						"rule": "702.62a",
 					},
 				})
 			}

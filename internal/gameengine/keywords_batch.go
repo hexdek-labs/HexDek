@@ -179,7 +179,7 @@ func CheckUndying(gs *GameState, perm *Permanent) {
 // that ceased to exist, a §614 exile/library/hand redirect, or — crucially —
 // already returned by the sibling keyword. That last case makes the second of
 // undying+persist a no-op, since the object can only be returned once
-// (CR §702.93b / §702.92b).
+// (CR §702.93a for Undying / §702.92a for Living Weapon).
 func reanimateOnDeath(gs *GameState, perm *Permanent, counterKind, eventKind, rule string) *Permanent {
 	seatIdx := perm.Owner
 	if seatIdx < 0 || seatIdx >= len(gs.Seats) || gs.Seats[seatIdx] == nil {
@@ -318,8 +318,8 @@ func SuspendCard(gs *GameState, seatIdx int, card *Card, timeCounters int) {
 	// Store the countdown on the card object as well (robust to two
 	// same-named suspended cards, which collide on the gs.Flags key above).
 	// TickSuspendCounters (suspend_time_counters.go) reads this Meta store at
-	// each controller upkeep to drive the §702.62f decrement and §702.62g
-	// free-cast.
+	// each controller upkeep to drive the suspend time counter decrement and
+	// free-cast (CR §702.62a–d).
 	if card.Meta == nil {
 		card.Meta = map[string]any{}
 	}
@@ -439,10 +439,10 @@ func ApplyBlitz(gs *GameState, perm *Permanent) {
 
 	seatIdx := perm.Controller
 
-	// CR §702.152c — "Sacrifice this creature at the beginning of the next
+	// CR §702.152a — "Sacrifice this creature at the beginning of the next
 	// end step." A delayed trigger at end_of_turn (pumped by the turn
 	// driver's FireDelayedTriggers, like myriad/suspend). The "When this
-	// creature dies, draw a card" half (§702.152b) is NOT registered here:
+	// creature dies, draw a card" half (§702.152a) is NOT registered here:
 	// it fires from the canonical death chokepoint via CheckBlitzDeathDraw
 	// (keyed on the blitz flag), so it triggers off ANY death — combat,
 	// removal, or this EOT sacrifice — exactly once. The previous on_event
@@ -476,7 +476,7 @@ func ApplyBlitz(gs *GameState, perm *Permanent) {
 // (zone_change.go battlefield→graveyard), keyed on the blitz flag
 // ApplyBlitz stamped. Called alongside CheckUndying / CheckPersist /
 // TriggerAfterlife so it fires on ANY death — combat, removal, or the
-// §702.152c end-step sacrifice — exactly once (the permanent dies once).
+// §702.152b end-step sacrifice — exactly once (the permanent dies once).
 func CheckBlitzDeathDraw(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil || perm.Flags == nil || perm.Flags["blitz"] == 0 {
 		return

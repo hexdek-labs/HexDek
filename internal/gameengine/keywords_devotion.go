@@ -23,7 +23,7 @@ import (
 //                                hybrid {B/R} (counts BOTH colors),
 //                                twobrid {2/B} (+1 color), and
 //                                Phyrexian {B/P} (+1 color) per
-//                                §700.5b. Generic / X / snow /
+//                                §700.5a. Generic / X / snow /
 //                                colorless contribute 0.
 //   - DevotionToWhite/Blue/      per-color convenience wrappers
 //     Black/Red/Green            around CountDevotion. The full
@@ -170,12 +170,12 @@ func DevotionToGreen(gs *GameState, seatIdx int) int {
 // "devotion to <color>" for the given color. Two detection paths
 // mirror the other rider keywords:
 //
-//   1. cardHasKeywordByName(card, "devotion") — if a corpus dump
-//      tags the card with the devotion keyword, treat any color
-//      query as a positive match (the per-color filter happens at
-//      resolution-time via the payload, not at the keyword level).
-//   2. Oracle text matches "devotion to <colorWord>" where colorWord
-//      is the spelled-out color name (white/blue/black/red/green).
+//  1. cardHasKeywordByName(card, "devotion") — if a corpus dump
+//     tags the card with the devotion keyword, treat any color
+//     query as a positive match (the per-color filter happens at
+//     resolution-time via the payload, not at the keyword level).
+//  2. Oracle text matches "devotion to <colorWord>" where colorWord
+//     is the spelled-out color name (white/blue/black/red/green).
 //
 // Case-insensitive. Returns false for nil cards, empty oracle text,
 // or unrecognized color codes.

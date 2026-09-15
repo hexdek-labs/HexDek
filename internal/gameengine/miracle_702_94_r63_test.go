@@ -208,7 +208,7 @@ func TestMiracle_WindowExpiresNextTurn(t *testing.T) {
 	gs.Turn = 2
 	UntapAll(gs, 0)
 	if CanCastMiracle(gs, 0, card) {
-		t.Error("miracle window must expire at end of the turn it was drawn (§702.94c)")
+		t.Error("miracle window must expire at end of the turn it was drawn (CR §702.94)")
 	}
 }
 

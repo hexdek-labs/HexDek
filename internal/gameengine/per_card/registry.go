@@ -39,7 +39,8 @@ type Registry struct {
 	// scan) AND here (so fireTrigger's command-zone scan dispatches them
 	// when the card is a commander sitting in the command zone). Plain
 	// OnTrigger handlers are NOT in this map, so non-eminence abilities of
-	// the same card never fire from the command zone (CR §400.10b).
+	// the same card never fire from the command zone (triggered abilities on
+	// objects in the command zone require explicit "command zone" text).
 	onEminenceTrigger map[string]map[string][]TriggerHandler
 	// ownsETBTrigger marks cards whose OnETB handler FULLY IMPLEMENTS
 	// the card's printed self-ETB triggered ability (the engine's
@@ -77,10 +78,10 @@ var (
 
 func newRegistry() *Registry {
 	return &Registry{
-		etb:            map[string][]ETBHandler{},
-		onCast:         map[string][]CastHandler{},
-		onResolve:      map[string][]ResolveHandler{},
-		activated:      map[string][]ActivatedHandler{},
+		etb:               map[string][]ETBHandler{},
+		onCast:            map[string][]CastHandler{},
+		onResolve:         map[string][]ResolveHandler{},
+		activated:         map[string][]ActivatedHandler{},
 		onTrigger:         map[string]map[string][]TriggerHandler{},
 		onEminenceTrigger: map[string]map[string][]TriggerHandler{},
 		ownsETBTrigger:    map[string]bool{},
@@ -715,7 +716,8 @@ func fireTrigger(gs *gameengine.GameState, event string, ctx map[string]interfac
 	// this event and dispatch them against a synthetic source Permanent
 	// (Controller = the command zone's owner seat). Only eminence-registered
 	// handlers are consulted here, so non-eminence abilities of the same card
-	// stay battlefield-only (CR §400.10b).
+	// stay battlefield-only (triggered abilities on objects in the command zone
+	// require explicit "command zone" text).
 	for _, seat := range gs.Seats {
 		if seat == nil {
 			continue

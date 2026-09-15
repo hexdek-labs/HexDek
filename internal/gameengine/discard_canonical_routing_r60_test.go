@@ -13,7 +13,7 @@ import (
 // should route through this to ensure Liliana's Caress, Waste Not,
 // Tergrid, etc. see every discard."* That helper owns:
 //
-//   - CR §702.34a Madness replacement (OnDiscardMadness exiles
+//   - CR §702.35 Madness replacement (OnDiscardMadness exiles
 //     instead of graveyarding when the card has madness)
 //   - CR §702.187 Mayhem turn-tracking (MayhemDiscards map)
 //   - Necropotence skip-draw rerouting (graveyard → exile when active)

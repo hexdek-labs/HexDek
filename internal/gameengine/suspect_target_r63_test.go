@@ -81,7 +81,7 @@ func TestSuspect_TypedTargetsOpponent(t *testing.T) {
 	}
 }
 
-// (5) Behavioral integration: a suspected creature can't block (CR §701.62c).
+// (5) Behavioral integration: a suspected creature can't block (CR §701.60c).
 func TestSuspect_CantBlock(t *testing.T) {
 	gs := newCombatGame(t)
 	attacker := addBattlefield(gs, 0, "Attacker", 3, 3, "creature")

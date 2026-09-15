@@ -7,7 +7,7 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
-// commit_crime_ast_r63_test.go — Commit a crime (CR §701.71) generic AST
+// commit_crime_ast_r63_test.go — Commit a crime (CR §700.13) generic AST
 // trigger dispatch. Crime DETECTION + the per-turn counter were already
 // wired, but "whenever you commit a crime" AST triggers with no bespoke
 // per_card handler (the ~18-card dominant group) never resolved their
@@ -84,8 +84,9 @@ func TestCommitCrime_NoCrimeOnSelfTarget(t *testing.T) {
 	}
 }
 
-// (3) IsCrimeTarget classifies all four §701.71a opponent-object kinds, and
-// rejects self-controlled objects.
+// (3) IsCrimeTarget classifies all four opponent-object kinds per §700.13 (commit a crime):
+// at least one opponent; at least one permanent/spell/ability an opponent controls;
+// and/or at least one card in an opponent's graveyard. Rejects self-controlled objects.
 func TestCommitCrime_IsCrimeTargetClassification(t *testing.T) {
 	gs := crimeGame(t)
 	oppPerm := addBattlefield(gs, 1, "Opp Perm", 1, 1, "creature")
@@ -111,8 +112,8 @@ func TestCommitCrime_IsCrimeTargetClassification(t *testing.T) {
 	}
 }
 
-// (4) CR §701.71b — one crime per spell even if it targets several opponent
-// objects: the trigger fires ONCE (3 life, not 6) and the counter is 1.
+// (4) One crime per spell even if it targets several opponent objects (CR §700.13):
+// the trigger fires ONCE (3 life, not 6) and the counter is 1.
 func TestCommitCrime_OncePerResolution(t *testing.T) {
 	gs := crimeGame(t)
 	addBattlefieldWithAST(gs, 0, "Crime Watcher", 2, 2, crimeWatcherAST(), "creature")

@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Renown tests — CR §702.111
+// Renown tests — CR §702.112
 // ---------------------------------------------------------------------------
 
 func newRenownCreature(name string, owner, power, toughness, renownN int) *Card {
@@ -185,7 +185,7 @@ func TestRenown_AlreadyRenownedIsNoOp(t *testing.T) {
 	}
 
 	// Subsequent combat-damage hits must not re-trigger renown (it
-	// applies at most once per game per source per §702.111a's "if it
+	// applies at most once per game per source per §702.112a's "if it
 	// isn't renowned" intervening if).
 	fired := ApplyRenownOnCombatDamage(gs, perm, 1)
 	if fired {
@@ -235,7 +235,7 @@ func TestRenown_NoTriggerOnDamageToCreature(t *testing.T) {
 	applyCombatDamageToCreature(gs, attacker, 2, defender)
 
 	if IsRenowned(attacker) {
-		t.Fatal("attacker must NOT be renowned after dealing combat damage to a creature (§702.111a)")
+		t.Fatal("attacker must NOT be renowned after dealing combat damage to a creature (§702.112a)")
 	}
 	if got := plus1Counters(attacker); got != 0 {
 		t.Fatalf("attacker should have 0 +1/+1 counters, got %d", got)

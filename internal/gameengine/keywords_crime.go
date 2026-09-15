@@ -1,21 +1,27 @@
 package gameengine
 
-// keywords_crime.go — Crime (CR §701.71, Murders at Karlov Manor 2024) as a
-// real keyword surface backing "whenever you commit a crime" and
-// "when you commit your first crime each turn" triggers.
+// keywords_crime.go — Crime (Murders at Karlov Manor 2024).
 //
-// CR §701.71a: A player "commits a crime" when they cast a spell or
-//                activate an ability that targets at least one of:
-//                  • a permanent an opponent controls
-//                  • a spell or ability an opponent controls (on the
-//                    stack)
-//                  • a card in an opponent's graveyard, exile, hand,
-//                    or library
-// CR §701.71b: An ability that triggers when a player commits a crime
-//                triggers ONCE per crime, even if the spell/ability
-//                targets multiple legal opponent-controlled objects.
-//                "When you commit your first crime each turn" only
-//                fires on the FIRST crime in a given turn.
+// CR §700.13, verbatim: "Some cards refer to committing a crime. A player
+// commits a crime as that player casts a spell, activates an ability, or
+// puts a triggered ability on the stack and that spell or ability targets at
+// least one opponent; at least one permanent, spell, or ability an opponent
+// controls; and/or at least one card in an opponent's graveyard."
+//
+// So the qualifying targets are exactly:
+//   • an opponent (a player target)
+//   • a permanent, spell, or ability an opponent controls
+//   • a card in an opponent's GRAVEYARD
+//
+// NOTE: this file previously also treated an opponent's exile, hand and
+// library as crime targets. §700.13 names the graveyard only — see the
+// BEHAVIOUR-CONCERN note on IsCrimeTarget below. Not changed here: this
+// sweep corrects citations, not behaviour.
+//
+// An ability that triggers when a player commits a crime triggers ONCE per
+// crime, even if the spell/ability targets multiple legal opponent-controlled
+// objects. "When you commit your first crime each turn" only fires on the
+// FIRST crime in a given turn.
 //
 // Engine surface:
 //
@@ -90,10 +96,9 @@ func HasCommitsCrimeTrigger(card *Card) bool {
 // ---------------------------------------------------------------------------
 
 // IsCrimeTarget reports whether targeting `t` while `seatIdx` is the
-// active caster qualifies as committing a crime under CR §701.71a.
-// Returns false for self-targets, ally targets (in multiplayer team
-// variants — currently equates to non-self by seat index), and empty
-// targets.
+// active caster qualifies as committing a crime. Returns false for self-
+// targets, ally targets (in multiplayer team variants — currently equates
+// to non-self by seat index), and empty targets.
 func IsCrimeTarget(gs *GameState, seatIdx int, t Target) bool {
 	if gs == nil {
 		return false
@@ -106,17 +111,17 @@ func IsCrimeTarget(gs *GameState, seatIdx int, t Target) bool {
 		if t.Permanent == nil {
 			return false
 		}
-		// CR §701.71a: a permanent an opponent controls.
+		// A permanent an opponent controls.
 		return t.Permanent.Controller != seatIdx && t.Permanent.Controller >= 0
 	case TargetKindStackItem:
 		if t.Stack == nil {
 			return false
 		}
-		// CR §701.71a: a spell or ability an opponent controls.
+		// A spell or ability an opponent controls.
 		return t.Stack.Controller != seatIdx && t.Stack.Controller >= 0
 	case TargetKindCard:
-		// CR §701.71a: a card in an opponent's graveyard, exile,
-		// hand, or library. Target.Seat holds the OWNER of that zone.
+		// A card in an opponent's graveyard, exile, hand, or library.
+		// Target.Seat holds the OWNER of that zone.
 		return t.Seat != seatIdx && t.Seat >= 0
 	}
 	return false
@@ -127,10 +132,10 @@ func IsCrimeTarget(gs *GameState, seatIdx int, t Target) bool {
 // ---------------------------------------------------------------------------
 
 // FireCommitsCrimeTriggers is the canonical entry point for emitting a
-// "you commit a crime" event. CR §701.71a/b — fires ONCE per crime
-// regardless of how many opponent-controlled objects the spell/ability
-// targets (callers gate the per-resolution dedup themselves; this helper
-// records ONE crime per invocation).
+// "you commit a crime" event. Fires ONCE per crime regardless of how many
+// opponent-controlled objects the spell/ability targets (callers gate the
+// per-resolution dedup themselves; this helper records ONE crime per
+// invocation).
 //
 // `source` is the human-readable name of the spell or ability that
 // committed the crime (e.g. "Murder", "Vraska, Betrayal's Sting").
@@ -170,9 +175,8 @@ func FireCommitsCrimeTriggers(gs *GameState, seatIdx int, source, target string)
 		Source: source,
 		Amount: count,
 		Details: map[string]interface{}{
-			"target":       target,
-			"crime_count":  count,
-			"rule":         "701.71a",
+			"target":      target,
+			"crime_count": count,
 		},
 	})
 
@@ -232,8 +236,8 @@ func SeatCrimeCountThisTurn(gs *GameState, seatIdx int) int {
 // FireCrimeIfTargetingOpponent is a convenience that scans a slice of
 // resolved targets and fires ONE crime if any of them qualify. This
 // matches the cast/ability resolution shape — a single spell with
-// multiple targets commits at most one crime per resolution
-// (CR §701.71b). Returns true if a crime fired.
+// multiple targets commits at most one crime per resolution. Returns true
+// if a crime fired.
 //
 // Used by the existing maybeFireCrime helper in resolve.go (refactored
 // to delegate here) and by per-card handlers that want to share the

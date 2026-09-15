@@ -286,13 +286,13 @@ func TestFlashback_CastResolveExile_EndToEnd(t *testing.T) {
 	}
 
 	// 2. Resolve — stack.go's ShouldExileOnResolve branch routes to exile
-	//    per CR §702.34c.
+	//    per CR §702.34a (flashback cards exile instead of graveyard).
 	ResolveStackTop(gs)
 
 	// 3. Card should be in exile, not graveyard.
 	for _, c := range gs.Seats[0].Graveyard {
 		if c == card {
-			t.Fatal("flashback card should be in exile after resolution, not graveyard (§702.34c)")
+			t.Fatal("flashback card should be in exile after resolution, not graveyard (§702.34a)")
 		}
 	}
 	foundInExile := false

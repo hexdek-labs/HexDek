@@ -71,7 +71,7 @@ func TestInfectPlusToxic_ComposeNoDoubleCount(t *testing.T) {
 }
 
 // TestMultipleToxicSources_StackPoison pins that two separate toxic
-// attackers each contribute their N poison to the same player (CR §702.180c
+// attackers each contribute their N poison to the same player (CR §702.164c
 // fires per source on combat damage). 7174n1c probe item (1): "stacks with
 // multiple toxic sources."
 func TestMultipleToxicSources_StackPoison(t *testing.T) {

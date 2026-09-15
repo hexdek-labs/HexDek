@@ -15,13 +15,12 @@ package gameengine
 //     change on the source naturally moves which seat benefits).
 //   - On Source LTB, RemoveSeatWardCostsForSource drops the entry.
 //
-// Stacking semantics (CR §702.21e — each ward instance is a separate
-// triggered ability): when a target permanent has BOTH a printed ward
-// AND inherits one from a seat-scope effect, each fires as a separate
-// payment. Mana costs sum naturally because each is a separate spend;
-// alt-payment wards each demand their own payment. CheckWardOnTargeting
-// orchestrates the sequence — if any one ward can't be paid, the spell
-// is countered.
+// Stacking semantics (CR §702.21a — ward is a triggered ability): when
+// a target permanent has BOTH a printed ward AND inherits one from a
+// seat-scope effect, each fires as a separate payment. Mana costs sum
+// naturally because each is a separate spend; alt-payment wards each
+// demand their own payment. CheckWardOnTargeting orchestrates the sequence
+// — if any one ward can't be paid, the spell is countered.
 
 // SeatWardEntry — one anthem-style continuous ward effect.
 type SeatWardEntry struct {
@@ -82,7 +81,7 @@ func RemoveSeatWardCostsForSource(gs *GameState, source *Permanent) int {
 // SeatWardCostsFor returns the list of WardCost entries that apply to
 // targetPerm via seat-scope continuous effects. Each entry is yielded
 // individually so CheckWardOnTargeting can fire them as separate ward
-// triggers per CR §702.21e.
+// triggers per CR §702.21a (ward is a triggered ability).
 //
 // Filter logic:
 //   - Source's CURRENT controller must equal target's controller

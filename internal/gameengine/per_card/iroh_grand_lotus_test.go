@@ -90,7 +90,7 @@ func TestIroh_GrantsFlashbackToNonLessonInstantSorcery_DuringOwnTurn(t *testing.
 		t.Fatalf("expected stack item from flashback cast, got %d", len(gs.Stack))
 	}
 	if !gameengine.ShouldExileOnResolve(gs.Stack[0]) {
-		t.Errorf("flashback cast should be flagged exile_on_resolve (§702.34c)")
+		t.Errorf("flashback cast should be flagged exile_on_resolve (§702.34)")
 	}
 }
 

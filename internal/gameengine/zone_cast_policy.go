@@ -16,17 +16,15 @@ package gameengine
 // "can seat S cast card C from zone Z?" without the engine having
 // to pre-register every matching card pointer.
 //
-// CR citations covered:
+// Mechanics covered:
 //
-//   §112.6k    Static "you may cast this card from [zone]" — but
-//              the filter-driven variant ("any player may cast
-//              creature spells with mana value 3 or less...").
-//   §117.9a    Casting from opponent's zones (Tinybones, Sen
-//              Triplets, Gonti Lord of Luxury) — caster scope of
-//              "opponents" lets the controller cast from an opp's
-//              hand / graveyard.
-//   §903.10b   Wishboard / outside-the-game (Karn the Great
-//              Creator, Glittering Wish) — zone = "outside_the_game".
+//   - Static zone-cast abilities: the filter-driven variant
+//     ("any player may cast creature spells with mana value 3 or less...")
+//   - Casting from opponent's zones (Tinybones, Sen Triplets, Gonti Lord
+//     of Luxury) — caster scope of "opponents" lets the controller cast
+//     from an opponent's hand / graveyard
+//   - Wishboard / outside-the-game (Karn the Great Creator, Glittering Wish)
+//     — zone = "outside_the_game"
 
 // ZoneCastPolicy is a filter-driven zone-cast permission. Unlike
 // ZoneCastPermission (which is registered per *Card pointer in
@@ -194,12 +192,12 @@ func (gs *GameState) UnregisterZoneCastPoliciesForPermanent(p *Permanent) {
 //
 // Durations handled:
 //   - "until_end_of_turn"      — expires when gs.Turn > GrantTurn-1
-//                                (i.e. at the cleanup of the granting
-//                                turn; the cleanup step runs while
-//                                gs.Turn still equals GrantTurn, so
-//                                we drop entries whose GrantTurn
-//                                matches the current turn during
-//                                cleanup).
+//     (i.e. at the cleanup of the granting
+//     turn; the cleanup step runs while
+//     gs.Turn still equals GrantTurn, so
+//     we drop entries whose GrantTurn
+//     matches the current turn during
+//     cleanup).
 //   - "until_end_of_next_turn" — expires when gs.Turn > GrantTurn.
 //
 // "while_source_on_bf" entries are cleaned up by

@@ -47,7 +47,7 @@ func deadeyeNavigatorETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 		perm.Flags = map[string]int{}
 	}
 	perm.Flags["deadeye_soulbond_available"] = 1
-	// Auto-pair policy (CR §702.93c — "when this creature enters or
+	// Auto-pair policy (CR §702.95a — "when this creature enters or
 	// another creature enters while this one is on the battlefield,
 	// you may pair them as long as both are unpaired").
 	//
@@ -151,9 +151,9 @@ func deadeyeNavigatorActivate(gs *gameengine.GameState, src *gameengine.Permanen
 	// marked its InstanceID ceased).
 	if isToken {
 		gs.LogEvent(gameengine.Event{
-			Kind:   "flicker_token_ceased",
-			Seat:   src.Controller,
-			Source: card.DisplayName(),
+			Kind:    "flicker_token_ceased",
+			Seat:    src.Controller,
+			Source:  card.DisplayName(),
 			Details: map[string]interface{}{"rule": "111.7", "via": "deadeye_navigator"},
 		})
 		return

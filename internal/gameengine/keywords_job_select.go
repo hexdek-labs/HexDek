@@ -1,21 +1,17 @@
 package gameengine
 
-// keywords_job_select.go — Job Select (CR §702.183) Aetherdrift mechanic
-// stub.
+// keywords_job_select.go — Job Select (Aetherdrift) mechanic stub.
 //
-// CR §702.183a: Job Select is a static ability of a spell that
-//               functions on the stack. "Job select — [list]" means
-//               "As you cast this spell, choose one of the listed
-//               jobs. The chosen job is recorded on the permanent (or
-//               on the spell while it's on the stack) and modifies
-//               the resolving spell's effect, and/or grants the
-//               resulting permanent a job-specific characteristic
-//               (typically a creature-type or ability rider) until
-//               that permanent leaves the battlefield."
-// CR §702.183b: Once a job has been selected, it can't be changed
-//               while the spell is on the stack or the permanent is on
-//               the battlefield except by an effect that explicitly
-//               re-selects.
+// Job Select is a static ability of a spell that functions on the stack.
+// "Job select — [list]" means "As you cast this spell, choose one of the
+// listed jobs. The chosen job is recorded on the permanent (or on the spell
+// while it's on the stack) and modifies the resolving spell's effect, and/or
+// grants the resulting permanent a job-specific characteristic (typically a
+// creature-type or ability rider) until that permanent leaves the battlefield."
+//
+// Once a job has been selected, it can't be changed while the spell is on
+// the stack or the permanent is on the battlefield except by an effect that
+// explicitly re-selects.
 //
 // This file is a STUB: it provides the helpers callers need
 // (HasJobSelect, JobSelectOptions, JobSelectChoice, SetJobSelectChoice,
@@ -108,7 +104,7 @@ func normalizeJob(s string) string {
 // permanent ("" if none has been chosen, or if the permanent does not
 // have job select). Reads from p.Flags via the dedicated key
 // "job_select_choice:<normalizedJobName>" set to 1 — only one such key
-// is ever present at a time per CR §702.183b.
+// is ever present at a time (job uniqueness constraint).
 func JobSelectChoice(p *Permanent) string {
 	if p == nil || p.Flags == nil {
 		return ""
@@ -127,7 +123,7 @@ func JobSelectChoice(p *Permanent) string {
 
 // SetJobSelectChoice records `job` as the chosen job on the permanent.
 // Existing job_select_choice flags are cleared first so only one job
-// is ever active per CR §702.183b. The job name is normalized
+// is ever active (job uniqueness constraint). The job name is normalized
 // (lowercased, trimmed) before storage so it can be matched against
 // JobSelectOptions output. Passing "" clears the choice entirely (for
 // effects that explicitly re-select).

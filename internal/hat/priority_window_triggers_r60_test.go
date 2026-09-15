@@ -171,12 +171,13 @@ func TestStackItemScore_SpellPathUnchanged(t *testing.T) {
 
 // abilityCounterInHand builds a Stifle/Disallow-shape counter — "counter
 // target ability" — whose filter LEGALLY targets triggered/activated
-// abilities (CR §701.5h via matchesCounterFilter's "abilities" base). These
-// trigger-counter tests must hold this, not a "counter target spell"
-// (counterInHand), because a spell-only counter cannot legally target an
-// ability — the r63 CounterCanTarget gate in ChooseResponse correctly refuses
-// to offer it, and at runtime PriorityRound already rejected it
-// (counter_filter_mismatch), so the r60 trigger-counter feature was inert in
+// abilities (CR §113.9: abilities on the stack can be countered by effects
+// that specifically counter abilities). These trigger-counter tests must hold
+// this, not a "counter target spell" (counterInHand), because a spell-only
+// counter cannot legally target an ability — the r63 CounterCanTarget gate in
+// ChooseResponse correctly refuses to offer it, and at runtime PriorityRound
+// already rejected it (counter_filter_mismatch), so the r60 trigger-counter
+// feature was inert in
 // real games until paired with a legal counter.
 func abilityCounterInHand() *gameengine.Card {
 	return newTestCardMinimal("Disallow", []string{"instant"}, 3,

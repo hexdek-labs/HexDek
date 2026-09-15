@@ -40,7 +40,7 @@ func registerOneShotFlashbackGrants(r *Registry) {
 
 // pastInFlamesResolve registers an EOT mass-flashback grant for the
 // controller's graveyard. Past in Flames itself is exiled-on-resolve
-// when cast via its own flashback (CR §702.34c is handled by the
+// when cast via its own flashback (CR §702.34a is handled by the
 // CastFlashback stack item); when hard-cast it goes to graveyard
 // normally and is then eligible for its own grant in any subsequent
 // turn (but not this turn — at the moment the grant is registered,
@@ -106,9 +106,9 @@ func willOfTheJeskaiResolve(gs *gameengine.GameState, item *gameengine.StackItem
 	}
 
 	emit(gs, slug, "Will of the Jeskai", map[string]interface{}{
-		"seat":           seat,
-		"both_modes":     hasCommander,
-		"graveyard_len":  len(gs.Seats[seat].Graveyard),
+		"seat":          seat,
+		"both_modes":    hasCommander,
+		"graveyard_len": len(gs.Seats[seat].Graveyard),
 	})
 }
 

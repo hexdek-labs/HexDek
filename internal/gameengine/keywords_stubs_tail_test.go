@@ -36,7 +36,7 @@ func newKeywordInstant(name string, owner, cmc int, kw string, arg any) *Card {
 }
 
 // ---------------------------------------------------------------------------
-// §702.182 — Tiered
+// §702.183 — Tiered
 // ---------------------------------------------------------------------------
 
 func TestTieredCost_ManaStringAndNumeric(t *testing.T) {
@@ -230,7 +230,7 @@ func TestApplyInfinity_InsufficientManaAtomicFail(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// §702.173 — Space Sculptor
+// §702.158 — Space Sculptor
 // ---------------------------------------------------------------------------
 
 func makeSculptorPerm(seat int, name string) *Permanent {

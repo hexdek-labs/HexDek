@@ -215,7 +215,7 @@ func leafPhase5(spec BoardSpec, eff gameast.Effect, d *Delta) (bool, bool) {
 
 	case *gameast.UntapEffect:
 		// Self-untap: the scaffold source is already untapped, so the
-		// resolution is a no-op (CR §701.21b untapping an untapped
+		// resolution is a no-op (CR §701.21a untapping an untapped
 		// permanent does nothing).
 		base := normBase(e.Target.Base)
 		if base == "self" || base == "it" || base == "this" {

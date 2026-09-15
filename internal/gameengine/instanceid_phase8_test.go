@@ -202,23 +202,23 @@ func TestPhase8_MeldBrunaGiselaCreatesBriselaWithTwoIDs(t *testing.T) {
 func TestPhase8_MeldCrossTypeLandInputHandled(t *testing.T) {
 	gs := newPhase8GameState(t)
 	mountain := &Card{
-		Name:  "Argoth, Sanctum of Nature",
-		Owner: 0,
-		Types: []string{"land"},
+		Name:   "Argoth, Sanctum of Nature",
+		Owner:  0,
+		Types:  []string{"land"},
 		Colors: nil,
 		CMC:    0,
 		AST:    &gameast.CardAST{Name: "Argoth"},
 	}
 	MintOGInstanceID(gs, mountain)
 	other := &Card{
-		Name:  "Titania, Voice of Gaea",
-		Owner: 0,
-		Types: []string{"creature"},
-		Colors: []string{"G"},
-		CMC:    4,
-		BasePower:    3,
+		Name:          "Titania, Voice of Gaea",
+		Owner:         0,
+		Types:         []string{"creature"},
+		Colors:        []string{"G"},
+		CMC:           4,
+		BasePower:     3,
 		BaseToughness: 4,
-		AST: &gameast.CardAST{Name: "Titania"},
+		AST:           &gameast.CardAST{Name: "Titania"},
 	}
 	MintOGInstanceID(gs, other)
 	pLand := putOnBattlefield(gs, mountain)
@@ -288,7 +288,7 @@ func TestPhase8_DelayedAbilityPactStyleFiresOnUpkeep(t *testing.T) {
 	}
 }
 
-// TestPhase8_DelayedAbilitySourceDeathIndependence pins §112.7a: a pool
+// TestPhase8_DelayedAbilitySourceDeathIndependence pins §113.7a: a pool
 // entry's effect still fires after its source permanent is destroyed.
 func TestPhase8_DelayedAbilitySourceDeathIndependence(t *testing.T) {
 	gs := newPhase8GameState(t)

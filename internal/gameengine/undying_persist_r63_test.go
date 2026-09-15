@@ -176,7 +176,7 @@ func TestPersist_SecondDeathWithCounterDoesNotReturn(t *testing.T) {
 }
 
 // (g) A creature with BOTH undying and persist returns exactly ONCE (the object
-// can only be returned once, CR §702.93b).
+// can only be returned once, CR §702.93a).
 func TestUndyingAndPersist_ReturnsExactlyOnce(t *testing.T) {
 	gs := newUPGame(t)
 	both := upCreature(gs, 0, "Twice-Risen", 3, "undying", "persist")

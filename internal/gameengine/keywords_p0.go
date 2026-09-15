@@ -197,7 +197,7 @@ func ActivateCycling(gs *GameState, seatIdx int, card *Card) error {
 // CR §702.29c: a typecycling ability is "search your library for a [type]
 // card, reveal it, put it into your hand, then shuffle." The shuffle is
 // mandatory and happens whether or not a matching card was found — per
-// CR §701.19e searching a library shuffles it regardless of the result.
+// CR §701.24b searching a library shuffles it regardless of the result.
 // Before this, the search moved the card to hand but never shuffled,
 // leaking the post-search library order (the player would know the exact
 // top cards after a Plainscycling/Swampcycling fetch — a real sequencing
@@ -237,7 +237,7 @@ func searchLibraryForType(gs *GameState, seatIdx int, cardType string) *Card {
 		})
 		MoveCard(gs, found, seatIdx, "library", "hand", "typecycling-to-hand")
 	}
-	// §702.29c / §701.19e — shuffle the library whether or not a matching
+	// §702.29e / §701.24b — shuffle the library whether or not a matching
 	// card was found (searching a library shuffles it).
 	shuffleLibrary(gs, seatIdx)
 	gs.LogEvent(Event{

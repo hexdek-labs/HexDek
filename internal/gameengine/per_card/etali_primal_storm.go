@@ -50,15 +50,15 @@ import (
 //     matches" — but RequireController is a SEAT FIELD on the grant,
 //     not a zone-location requirement, so the routing was unneeded).
 //     That cross-seat routing caused:
-//       (a) ZoneConservation false-positives: seat 0's per-seat card
-//           census counted the foreign cards as "extra real cards
-//           appeared" because the cards belonged to seats 1/2/3 but
-//           were physically in seat 0's exile.
-//       (b) CardIdentity false-positives: when seat 0 later refilled
-//           library / drew / shuffled, the engine could surface the
-//           same *Card pointer in two zones (owner's graveyard AND
-//           Etali-controller's exile) because the EOT grant cleanup
-//           only reclaimed the grant, not the *Card residue.
+//     (a) ZoneConservation false-positives: seat 0's per-seat card
+//     census counted the foreign cards as "extra real cards
+//     appeared" because the cards belonged to seats 1/2/3 but
+//     were physically in seat 0's exile.
+//     (b) CardIdentity false-positives: when seat 0 later refilled
+//     library / drew / shuffled, the engine could surface the
+//     same *Card pointer in two zones (owner's graveyard AND
+//     Etali-controller's exile) because the EOT grant cleanup
+//     only reclaimed the grant, not the *Card residue.
 //     Surfaced as the 828-violation cluster in the Loki r60 25K
 //     sweep PR #682 (docs/loki-r60-25k-report.md).
 //
@@ -89,7 +89,7 @@ func etaliPrimalStormAttack(gs *gameengine.GameState, perm *gameengine.Permanent
 
 	// Phase 3 (docs/instanceid-system-v2-r60.md §4.2 + §7): mint an
 	// AbilityInstance for this attack trigger and stamp its InstanceID
-	// on every cast-grant registered below. Per CR §112.7a the ability
+	// on every cast-grant registered below. Per the ability the ability
 	// is independent of its source on the stack — the grant lifetime
 	// binds to the AbilityInstance, not to Etali's battlefield-lifetime.
 	// Etali leaving play after the trigger resolves does NOT reclaim
@@ -137,7 +137,7 @@ func etaliPrimalStormAttack(gs *gameengine.GameState, perm *gameengine.Permanent
 			Details: map[string]interface{}{
 				"card":         top.DisplayName(),
 				"from_library": seatIdx,
-				"to_exile":     seatIdx, // PR #683: owner's exile, not Etali-controller's
+				"to_exile":     seatIdx,         // PR #683: owner's exile, not Etali-controller's
 				"cast_grant":   perm.Controller, // RequireController for any free-cast
 			},
 		})
@@ -166,10 +166,10 @@ func etaliPrimalStormAttack(gs *gameengine.GameState, perm *gameengine.Permanent
 	// pipeline will resolve any chosen casts during this trigger's
 	// resolution window.
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":              perm.Controller,
-		"exiled_count":      len(exiled),
-		"nonland_grants":    nonLandGrants,
-		"exiled":            exiled,
-		"ability_instance":  abilityInstID,
+		"seat":             perm.Controller,
+		"exiled_count":     len(exiled),
+		"nonland_grants":   nonLandGrants,
+		"exiled":           exiled,
+		"ability_instance": abilityInstID,
 	})
 }

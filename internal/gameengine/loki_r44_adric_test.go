@@ -39,7 +39,9 @@ import (
 // with a printed activated counter ability (Adric, Mathematical Genius)
 // must not be selectable as an instant-speed counter response. Same
 // reasoning as collectSpellEffect rejecting permanent spells: the
-// counter clause functions only on the battlefield (CR §112.6 / §603.5).
+// activated counter clause functions only on the battlefield, not as a
+// spell on the stack. Only instants and sorceries can be cast as instant-speed
+// responses (CR §112.1 / §117, "Timing and Priority").
 func TestCounterSpellEffect_PermanentSpellNeverCounterCandidate(t *testing.T) {
 	adric := &Card{
 		Name:  "Adric, Mathematical Genius",

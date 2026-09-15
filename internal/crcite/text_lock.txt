@@ -52,6 +52,8 @@
 111.7	0d7c419811c0	A token that’s in a zone other than the battlefield ceases to exist. This is a state-based action; see rule 704. (Note that if a token changes zones, applicable triggered abilities will trigger before the token ceases to exist.)
 111.8	2db71637e2a2	A token that has left the battlefield can’t move to another zone or come back onto the battlefield. If such a token would change zones, it remains in its current zone instead. It ceases to exist the next time state-based actions are checked; see rule 704.
 112.1	cfa351ae40a7	A spell is a card on the stack. As the first step of being cast (see rule 601, “Casting Spells”), the card becomes a spell and is moved to the top of the stack from the zone it was in, which is usually its owner’s hand. (See rule 405, “Stack.”) A spell remains on the stack as a spell until it resolves (see rule 608, “Resolving Spells and Abilities”), is countered (see rule 701.6), or otherwise leaves the stack. For more information, see section 6, “Spells, Abilities, and Effects.”
+113.7a	6eafae30a8ed	The source of an ability is the object that generated it. The source of an activated ability on the stack is the object whose ability was activated. The source of a triggered ability (other than a delayed triggered ability) on the stack, or one that has triggered and is waiting to be put on the stack, is the object whose ability triggered. To determine the source of a delayed triggered ability, see rules 603.7d–f.
+113.9	46874043e754	Activated and triggered abilities on the stack aren’t spells, and therefore can’t be countered by anything that counters only spells. Activated and triggered abilities on the stack can be countered by effects that specifically counter abilities. Static abilities don’t use the stack and thus can’t be countered at all.
 115.2	f2b40d410e31	Only permanents are legal targets for spells and abilities, unless a spell or ability (a) specifies that it can target an object in another zone or a player, or (b) targets an object that can’t exist on the battlefield, such as a spell or ability. See also rule 115.4.
 115.3	5e85b0a5d904	The same target can’t be chosen multiple times for any one instance of the word “target” on a spell or ability. If the spell or ability uses the word “target” in multiple places, the same object or player can be chosen once for each instance of the word “target” (as long as it fits the targeting criteria). This rule applies both when choosing targets for a spell or ability and when changing targets or choosing new targets for a spell or ability (see rule 115.7).
 115.4	a513f17204b1	Some spells and abilities that refer to damage require “any target,” “another target,” “two targets,” or similar rather than “target [something].” These targets may be creatures, players, planeswalkers, or battles. Other game objects, such as noncreature artifacts or spells, can’t be chosen.
@@ -99,6 +101,7 @@
 205.4b	473c54838694	Supertypes
 205.4f	5c53f4f65dc4	Supertypes
 207.2	549703270fb0	The text box may also contain italicized text that has no game function.
+207.2c	0c501e8b2aaf	The text box may also contain italicized text that has no game function.
 300.1	a229d515a9df	The card types are artifact, battle, conspiracy, creature, dungeon, enchantment, instant, kindred, land, phenomenon, plane, planeswalker, scheme, sorcery, and vanguard.
 301.4	caecb564d53e	Artifacts have no characteristics specific to their card type. Most artifacts have no colored mana symbols in their mana costs, and are therefore colorless. However, there is no correlation between being colorless and being an artifact: artifacts may be colored, and colorless objects may be card types other than artifact.
 301.5	b6e153f3444d	Some artifacts have the subtype “Equipment.” An Equipment can be attached to a creature. It can’t legally be attached to anything that isn’t a creature.
@@ -125,6 +128,7 @@
 310.10	d5b65fbd3c01	If a battle that isn’t being attacked has no player designated as its protector, or its protector is a player who can’t be its protector based on its battle type, its controller chooses an appropriate player to be its protector. If no player can be chosen this way, the battle is put into its owner’s graveyard. This is a state-based action (see rule 704).
 310.3	e520db04196a	Battle subtypes are always a single word and are listed after a long dash: “Battle — Siege.” Battle subtypes are also called battle types. See rule 205.3q for the complete list of battle types.
 310.5	e6ca50bcab03	Battles can be attacked. (See rule 508, “Declare Attackers Step.”)
+310.6	dabbe2d10245	Damage dealt to a battle results in that many defense counters being removed from it.
 310.7	2aa8bbed970f	If a battle’s defense is 0 and it isn’t the source of an ability which has triggered but not yet left the stack, it’s put into its owner’s graveyard. (This is a state-based action. See rule 704.)
 400.2	23a4963187fe	Public zones are zones in which all players can see the cards’ faces, except for those cards that some rule or effect specifically allow to be face down. Graveyard, battlefield, stack, exile, ante, and command are public zones. Hidden zones are zones in which not all players can be expected to see the cards’ faces. Library and hand are hidden zones, even if all the cards in one such zone happen to be revealed.
 400.3	16c56515612d	If an object would go to any library, graveyard, or hand other than its owner’s, it goes to its owner’s corresponding zone.
@@ -285,6 +289,7 @@
 616.1f	fc1c5aa9123c	If two or more replacement and/or prevention effects are attempting to modify the way an event affects an object or player, the affected object’s controller (or its owner if it has no controller) or the affected player chooses one to apply, following the steps listed below. If two or more players have to make these choices at the same time, choices are made in APNAP order (see rule 101.4).
 616.2	d06a57146702	A replacement or prevention effect can become applicable to an event as the result of another replacement or prevention effect that modifies the event.
 700.10	97c6e51aa140	Some cards refer to a permanent “that was activated this turn.” This means that the permanent was the source of an ability that was activated this turn, regardless of whether that permanent still has that activated ability or the player who activated it is still in the game.
+700.13	920e60df30fa	Some cards refer to committing a crime. A player commits a crime as that player casts a spell, activates an ability, or puts a triggered ability on the stack and that spell or ability targets at least one opponent; at least one permanent, spell, or ability an opponent controls; and/or at least one card in an opponent’s graveyard.
 700.4	053de2097679	The term dies means “is put into a graveyard from the battlefield.”
 700.5	33acfa323d8a	A player’s devotion to [color] is equal to the number of mana symbols of that color among the mana costs of permanents that player controls. A player’s devotion to [color 1] and [color 2] is equal to the number of mana symbols among the mana costs of permanents that player controls that are [color 1], [color 2], or both colors.
 700.5a	ac9f308b0e16	A player’s devotion to [color] is equal to the number of mana symbols of that color among the mana costs of permanents that player controls. A player’s devotion to [color 1] and [color 2] is equal to the number of mana symbols among the mana costs of permanents that player controls that are [color 1], [color 2], or both colors.
@@ -294,6 +299,8 @@
 701.12c	972a60b50d81	Exchange
 701.15	40acc58ad730	Goad
 701.15a	8cb1a41f73c3	Goad
+701.15b	530ba22937fb	Goad
+701.15c	33327633f060	Goad
 701.17	61d25dd6e8d6	Mill
 701.17a	5ebf61fa3fb7	Mill
 701.17b	4a50226ec91b	Mill
@@ -306,7 +313,9 @@
 701.20a	54005920ff25	Reveal
 701.20b	33d53526b4d1	Reveal
 701.21	af5e4fb12129	Sacrifice
+701.21a	9c1c1c256c5f	Sacrifice
 701.23	765efa6dd313	Search
+701.24b	6d9375a9097c	Shuffle
 701.27	a44971fe7c2e	Transform
 701.28	dac7f007a5e1	Convert
 701.29	3ff94556be33	Fateseal
@@ -322,10 +331,10 @@
 701.36	2a0d86bfb63c	Populate
 701.38	22b7903081c7	Vote
 701.39	c0d074f91e62	Bolster
-701.39a	a1a47e054273	Bolster
 701.4	adfa11858f2d	Behold
 701.40	60abb8dc54cb	Manifest
 701.40b	1a459baae19e	Manifest
+701.40e	62c8abc88148	Manifest
 701.41	d2237179fbc7	Support
 701.42	e34e9c69d0b3	Meld
 701.43	277efcba4190	Exert
@@ -344,9 +353,14 @@
 701.52a	002470db9259	Roll to Visit Your Attractions
 701.55	1a83e6b41586	Face a Villainous Choice
 701.56	ea58c6a7eab4	Time Travel
+701.57	8cac857cb453	Discover
+701.57a	a9cc0edb930c	Discover
 701.58	8c7710b00838	Cloak
 701.59	401d49517f31	Collect Evidence
 701.5a	e12d8d9147e9	Cast
+701.60	a77af0f2f073	Suspect
+701.60a	c5ce5d5be519	Suspect
+701.60c	06bedd65ca01	Suspect
 701.61	fbec7dc13c26	Forage
 701.62	785965c4f035	Manifest Dread
 701.62a	27e019f38baa	Manifest Dread
@@ -368,6 +382,8 @@
 702.103	ec56a28c166f	Bestow
 702.103a	cac62d64719f	Bestow
 702.103e	bc63d851c213	Bestow
+702.104	107aff7fc14b	Tribute
+702.104b	ef707d18f2b5	Tribute
 702.105	5dc9a331b67c	Dethrone
 702.106	959914eeca25	Hidden Agenda
 702.107	0d19b34b800a	Outlast
@@ -376,9 +392,6 @@
 702.11	3c8ed45954d4	Hexproof
 702.110	deda3f8aaf0b	Exploit
 702.110b	f8a3bd932a32	Exploit
-702.111	a06aaed4fe90	Menace
-702.111a	a2a90d3c11d3	Menace
-702.111b	c137b2a5cac4	Menace
 702.112	8ab96a4d8e65	Renown
 702.112a	9ee7a1973088	Renown
 702.112b	c5f6396ad14a	Renown
@@ -444,6 +457,7 @@
 702.140b	ade2d9bea754	Mutate
 702.140d	7f07bf89a370	Mutate
 702.140e	f74724daabe4	Mutate
+702.141	c01ebaf02d41	Encore
 702.142	c4e43f2d01dc	Boast
 702.143	e6443172a863	Foretell
 702.143a	3306a271d88e	Foretell
@@ -476,7 +490,7 @@
 702.155	47a86aae4e3c	Read Ahead
 702.156	ddba6dedcabe	Ravenous
 702.157	e05b7d73fc2d	Squad
-702.157b	8361bef9bfbf	Squad
+702.157a	89d733072be8	Squad
 702.158	32e2f1022f31	Space Sculptor
 702.158a	3b9cd89edfe6	Space Sculptor
 702.158b	440ad0b704f2	Space Sculptor
@@ -486,12 +500,15 @@
 702.161	785f9dbcb5c6	Living Metal
 702.162	b236477f2a6b	More Than Meets the Eye
 702.163	79d84bdbaa6e	For Mirrodin!
+702.164c	a997df914f5f	Toxic
 702.165	aff775de1a71	Backup
 702.166	ac93bc56e229	Bargain
 702.166a	7a28bd544993	Bargain
 702.166b	0a44327a06a1	Bargain
+702.166c	349c6542711b	Bargain
 702.167	04bf579f9322	Craft
 702.168	b0fa47d1a4ae	Disguise
+702.168a	5313f133b6b3	Disguise
 702.169	6f82e0278a91	Solved
 702.169a	341e5a1a2cf8	Solved
 702.169b	fe48e5878866	Solved
@@ -507,6 +524,10 @@
 702.172a	7dfcaf3dd451	Spree
 702.172b	3302e56e0813	Spree
 702.173	06957cb6ec15	Freerunning
+702.174	9e00e5c4cad2	Gift
+702.174a	74a1e0431594	Gift
+702.174b	60b2d1129cf5	Gift
+702.174c	7b32214e5a27	Gift
 702.175	3184c307a200	Offspring
 702.175a	cde0eb789243	Offspring
 702.176	254f50fe03ea	Impending
@@ -540,10 +561,16 @@
 702.190a	04e7436a8962	Sneak
 702.190b	bf1749aa186c	Sneak
 702.19c	7da91f060a2a	Trample
+702.1a	d7789c4324da	Most abilities describe exactly what they do in the card’s rules text. Some, though, are very common or would require too much space to define on the card. In these cases, the object lists only the name of the ability as a “keyword”; sometimes reminder text summarizes the game rule.
 702.2	b4ff2437336b	Deathtouch
 702.20	bf6cce9e7abf	Vigilance
 702.21	7894530984e3	Ward
+702.21a	90a69da95098	Ward
 702.21b	0cc0147576b2	Ward
+702.22	3e2262a7421c	Banding
+702.22c	aa6ca80074ad	Banding
+702.22j	0e4b0e3ea413	Banding
+702.22k	202d1d0bc8b0	Banding
 702.23	3437957a5b48	Rampage
 702.23a	d4eb58aae313	Rampage
 702.24	668d2ac047e4	Cumulative Upkeep
@@ -560,6 +587,7 @@
 702.29a	9fcffeae8954	Cycling
 702.29b	c9a1f7142173	Cycling
 702.29c	1d7ae9442823	Cycling
+702.29e	d023ce0cfe47	Cycling
 702.2b	a0a66f6d81c2	Deathtouch
 702.2c	6c18497127ff	Deathtouch
 702.30	6d154007310a	Echo
@@ -575,6 +603,7 @@
 702.35	bab923afa9bd	Madness
 702.36	64dd13a7aaca	Fear
 702.37	e8e3c42f0dbd	Morph
+702.37a	d2e0bbffa38e	Morph
 702.37e	3145a051b949	Morph
 702.38	9ca23635f783	Amplify
 702.38b	341a22af1e79	Amplify
@@ -616,6 +645,8 @@
 702.56b	041b2aad7024	Replicate
 702.57	966c583fa4ed	Forecast
 702.58	fa33e03c8559	Graft
+702.58a	e145f2c31020	Graft
+702.59	ff7305958521	Recover
 702.6	26dbd1f5686f	Equip
 702.60	f972e0489de4	Ripple
 702.61	a7bb94583ec2	Split Second
@@ -623,8 +654,11 @@
 702.61b	3edf2f3c321c	Split Second
 702.61c	8769fe9c425d	Split Second
 702.62	46bd8d5a8273	Suspend
+702.62a	ec3de4272530	Suspend
 702.62b	9505b4a2965d	Suspend
+702.62d	c234a86edf5a	Suspend
 702.63	e266964fed71	Vanishing
+702.63a	df4b5516ee20	Vanishing
 702.63b	a69981fb66d4	Vanishing
 702.63c	76dfd84427aa	Vanishing
 702.64	876a48ffa779	Absorb
@@ -646,6 +680,7 @@
 702.74a	483f39e9dff7	Evoke
 702.75	17799c02d5e8	Hideaway
 702.76	c898d2f955c8	Prowl
+702.76a	47e472237000	Prowl
 702.77	fdba34fd68ac	Reinforce
 702.78	0298bd68729d	Conspire
 702.78a	7b8d6d668575	Conspire
@@ -679,6 +714,8 @@
 702.94a	a60572195b3a	Miracle
 702.94b	fc6c525a66ed	Miracle
 702.95	f5d555575d21	Soulbond
+702.95a	fd4c84f50c5d	Soulbond
+702.95e	648ec91ec8ac	Soulbond
 702.96	662b93931ff2	Overload
 702.97	960570eaf4cd	Scavenge
 702.97a	16e658b21e28	Scavenge
@@ -718,6 +755,7 @@
 704.7	97a0744bf714	If multiple state-based actions would have the same result at the same time, a single replacement effect will replace all of them.
 706.2	2299219053f7	After the roll, the number indicated on the top face of the die before any modifiers is the natural result. The instruction may include modifiers to the roll which add to or subtract from the natural result. Modifiers may also come from other sources. After considering all applicable modifiers, the final number is the result of the die roll.
 706.3	b3bcbc36feb5	Some abilities that instruct a player to roll one or more dice include a results table.
+707.1	ea93f6b05961	Some objects become or turn another object into a “copy” of a spell, permanent, or card. Some effects create a token that’s a copy of another object. (Certain older cards were printed with the phrase “search for a copy.” This section doesn’t cover those cards, which have received new text in the Oracle card reference.)
 707.10	960c6d6e54af	To copy a spell, activated ability, or triggered ability means to put a copy of it onto the stack; a copy of a spell isn’t cast and a copy of an activated ability isn’t activated. A copy of a spell or ability copies both the characteristics of the spell or ability and all decisions made for it, including modes, targets, the value of X, and additional or alternative costs. (See rule 601, “Casting Spells.”) Choices that are normally made on resolution are not copied. If an effect of the copy refers to objects used to pay its costs, it uses the objects used to pay the costs of the original spell or ability. A copy of a spell is owned by the player under whose control it was put on the stack. A copy of a spell or ability is controlled by the player under whose control it was put on the stack. A copy of a spell is itself a spell, even though it has no spell card associated with it. A copy of an ability is itself an ability.
 707.10a	1190a6d1add5	To copy a spell, activated ability, or triggered ability means to put a copy of it onto the stack; a copy of a spell isn’t cast and a copy of an activated ability isn’t activated. A copy of a spell or ability copies both the characteristics of the spell or ability and all decisions made for it, including modes, targets, the value of X, and additional or alternative costs. (See rule 601, “Casting Spells.”) Choices that are normally made on resolution are not copied. If an effect of the copy refers to objects used to pay its costs, it uses the objects used to pay the costs of the original spell or ability. A copy of a spell is owned by the player under whose control it was put on the stack. A copy of a spell or ability is controlled by the player under whose control it was put on the stack. A copy of a spell is itself a spell, even though it has no spell card associated with it. A copy of an ability is itself an ability.
 707.10b	ee973789e988	To copy a spell, activated ability, or triggered ability means to put a copy of it onto the stack; a copy of a spell isn’t cast and a copy of an activated ability isn’t activated. A copy of a spell or ability copies both the characteristics of the spell or ability and all decisions made for it, including modes, targets, the value of X, and additional or alternative costs. (See rule 601, “Casting Spells.”) Choices that are normally made on resolution are not copied. If an effect of the copy refers to objects used to pay its costs, it uses the objects used to pay the costs of the original spell or ability. A copy of a spell is owned by the player under whose control it was put on the stack. A copy of a spell or ability is controlled by the player under whose control it was put on the stack. A copy of a spell is itself a spell, even though it has no spell card associated with it. A copy of an ability is itself an ability.
@@ -726,6 +764,7 @@
 707.10g	9a1fa761de9c	To copy a spell, activated ability, or triggered ability means to put a copy of it onto the stack; a copy of a spell isn’t cast and a copy of an activated ability isn’t activated. A copy of a spell or ability copies both the characteristics of the spell or ability and all decisions made for it, including modes, targets, the value of X, and additional or alternative costs. (See rule 601, “Casting Spells.”) Choices that are normally made on resolution are not copied. If an effect of the copy refers to objects used to pay its costs, it uses the objects used to pay the costs of the original spell or ability. A copy of a spell is owned by the player under whose control it was put on the stack. A copy of a spell or ability is controlled by the player under whose control it was put on the stack. A copy of a spell is itself a spell, even though it has no spell card associated with it. A copy of an ability is itself an ability.
 707.2	a26bb1cc05ff	When copying an object, the copy acquires the copiable values of the original object’s characteristics and, for an object on the stack, choices made when casting or activating it (mode, targets, the value of X, whether it was kicked, how it will affect multiple targets, and so on). The copiable values are the values derived from the text printed on the object (that text being name, mana cost, color indicator, card type, subtype, supertype, rules text, power, toughness, and/or loyalty), as modified by other copy effects, by its face-down status, and by “as . . . enters” and “as . . . is turned face up” abilities that set power and toughness (and may also set additional characteristics). Other effects (including type-changing and text-changing effects), status, counters, and stickers are not copied.
 707.4	9e979ec4d72b	Some effects cause a permanent that’s copying a permanent to copy a different object while remaining on the battlefield. The change doesn’t cause enters-the-battlefield or leaves-the-battlefield abilities to trigger. This also doesn’t change any noncopy effects presently affecting the permanent.
+707.5	33bde85332f6	An object that enters the battlefield “as a copy” or “that’s a copy” of another object becomes a copy as it enters the battlefield. It doesn’t enter the battlefield, and then become a copy of that permanent. If the text that’s being copied includes any abilities that replace the enters-the-battlefield event (such as “enters with” or “as [this] enters” abilities), those abilities will take effect. Also, any enters-the-battlefield triggered abilities of the copy will have a chance to trigger.
 708.2	262400e3b4b5	Face-down spells and face-down permanents have no characteristics other than those listed by the ability or rules that allowed the spell or permanent to be face down. Any listed characteristics are the copiable values of that object’s characteristics. (See rule 613, “Interaction of Continuous Effects,” and rule 707, “Copying Objects.”)
 708.4	f6063059564e	Objects that are cast face down are turned face down before they are put onto the stack, so effects that care about the characteristics of a spell will see only the face-down spell’s characteristics. Any effects or prohibitions that would apply to casting an object with these characteristics (and not the face-up object’s characteristics) are applied to casting this object. The permanent the spell becomes will be a face-down permanent.
 711.2	df65f45b8553	A level symbol is a keyword ability that represents a static ability. The level symbol includes either a range of numbers, indicated here as “N1-N2,” or a single number followed by a plus sign, indicated here as “N3+.” Any abilities printed within the same text box striation as a level symbol are part of its static ability. The same is true of the power/toughness box printed within that striation, indicated here as “[P/T].”
@@ -737,6 +776,7 @@
 712.10	901f469fc277	If a spell or ability instructs a player to transform or convert a permanent, and the face that permanent would transform or convert into is an instant or sorcery card face, or is a double-faced token that was created with an instant or sorcery face, nothing happens.
 712.11	e968648390a7	A double-faced spell is cast with its front face up by default. See rule 601, “Casting Spells.”
 712.13	7d277c92c4b6	By default, a resolving double-faced spell that becomes a permanent is put onto the battlefield with the same face up that was face up on the stack.
+712.14	070f4d1aef87	A double-faced card put onto the battlefield from a zone other than the stack enters the battlefield with its front face up by default.
 712.2	67a59e8bb20d	Nonmodal double-faced cards have a Magic card face on each side and include abilities on one or both of their faces that allow the card to either “transform” or “convert” (turn over to its other face) and/or allow the card to be cast or enter the battlefield “transformed” or “converted” (with its back face up).
 712.3	e0fcbb5f8ad8	Modal double-faced cards have a Magic card face on each side. These faces are usually independent from one another, but they may have an ability that allows them to “transform” or “convert” on either face.
 712.4	0bde3fa5ad91	Meld cards have a Magic card face on one side and half of an oversized card face on the other.
@@ -745,6 +785,8 @@
 712.5c	16b92bf13dfc	There are seven specific meld pairs.
 712.6	2ccbd6576d22	Players who are allowed to look at a double-faced card may look at both sides of that card.
 712.8	545833e97468	Each face of a double-faced card that isn’t a meld card has its own set of characteristics. The front face of each meld card and the combined face formed by a meld pair each has its own set of characteristics.
+712.8a	408d69654738	Each face of a double-faced card that isn’t a meld card has its own set of characteristics. The front face of each meld card and the combined face formed by a meld pair each has its own set of characteristics.
+712.8e	d4c22e411852	Each face of a double-faced card that isn’t a meld card has its own set of characteristics. The front face of each meld card and the combined face formed by a meld pair each has its own set of characteristics.
 714.2	55036c84e6a0	A chapter symbol is a keyword ability that represents a triggered ability referred to as a chapter ability.
 714.2b	d4f810a9cd67	A chapter symbol is a keyword ability that represents a triggered ability referred to as a chapter ability.
 714.2c	fb446a389634	A chapter symbol is a keyword ability that represents a triggered ability referred to as a chapter ability.
@@ -774,7 +816,9 @@
 726.2	36495f1a659e	All Magic cards involved in the game that was restarted when it ended, including phased-out permanents and nontraditional Magic cards, are involved in the new game, even if those cards were not originally involved in the restarted game. Ownership of cards in the new game doesn’t change, regardless of their location when the new game begins.
 726.3	8e17d27458e4	Because each player draws seven cards when the new game begins, any player with fewer than seven cards in their library will lose the game when state-based actions are checked during the upkeep step of the first turn, regardless of any mulligans that player takes. (See rule 704, “State-Based Actions.”)
 726.4	234ed428d051	The effect that restarts the game finishes resolving just before the first turn’s untap step. If the spell or ability that generated that effect has additional instructions, those instructions are followed at this time. No player has priority, and any triggered abilities that trigger as a result will go on the stack the next time a player receives priority, usually during the first turn’s upkeep step.
+730.2	b646ded8a08c	As the second part of the untap step, the game checks the previous turn to see if the game’s day/night designation should change. See rule 502, “Untap Step.”
 730.2a	9678ed4b521b	As the second part of the untap step, the game checks the previous turn to see if the game’s day/night designation should change. See rule 502, “Untap Step.”
+730.2b	25626f294d71	As the second part of the untap step, the game checks the previous turn to see if the game’s day/night designation should change. See rule 502, “Untap Step.”
 800.4	3199318f66d3	Unlike two-player games, multiplayer games can continue after one or more players have left the game.
 800.4a	1712e6bfd5ca	Unlike two-player games, multiplayer games can continue after one or more players have left the game.
 800.4b	b4900bc40f5e	Unlike two-player games, multiplayer games can continue after one or more players have left the game.

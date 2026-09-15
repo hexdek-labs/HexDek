@@ -407,9 +407,11 @@ func StampDoublingSeasonAudit(p *Permanent) {
 // post-doubling count. It does NOT place the counters — the caller writes the
 // returned count into the permanent's loyalty/defense slot, which lives in the
 // legacy perm.Counters map (the loyalty-cost machinery reads/writes it there).
-// This is the §306.5g / §310 entry that lets Doubling Season double a
-// planeswalker's starting loyalty (and Vorinclex halve an opponent's), which
-// the old direct `perm.Counters["loyalty"] = n` assignment silently skipped.
+// This implements the §306.5b replacement effect (planeswalker enters with
+// loyalty counters) through the §616 / §122.1g would_put_counter chain, so
+// Doubling Season can double a planeswalker's starting loyalty (and Vorinclex
+// halve an opponent's), which the old direct `perm.Counters["loyalty"] = n`
+// assignment silently skipped.
 func EnterCounterCountWithDoublers(gs *GameState, perm *Permanent, counterType string, base int) int {
 	if gs == nil || perm == nil || base <= 0 {
 		return base

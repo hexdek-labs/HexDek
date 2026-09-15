@@ -1,26 +1,26 @@
 package gameengine
 
-// keywords_bargain.go — Bargain (CR §702.176, Wilds of Eldraine /
+// keywords_bargain.go — Bargain (CR §702.166, Wilds of Eldraine /
 // Lost Caverns of Ixalan 2023) as a real explicit-target additional
 // cost wrapping the cast pipeline.
 //
-// CR §702.176a: Bargain is an optional additional cost on a spell.
+// CR §702.166a: Bargain is an optional additional cost on a spell.
 //                As you cast a spell with bargain, you may sacrifice
 //                an artifact, enchantment, or token. If you do, the
 //                spell may have a bonus effect (per-card "if you
 //                bargained" rider).
-// CR §702.176b: The sacrifice is part of casting the spell. It happens
+// CR §702.166b: The sacrifice is part of casting the spell. It happens
 //                BEFORE the spell resolves; cards that count graveyards
 //                / dies-triggers see the sacrificed permanent's
 //                arrival at the graveyard before the bargain spell's
 //                effect runs.
-// CR §702.176c: Whether bargain was paid is recorded on the stack
+// CR §702.166c: Whether bargain was paid is recorded on the stack
 //                item so resolution-time effects can branch on it.
 //
 // Engine surface (canonical):
 //
 //   - HasBargain(card) bool
-//       AST keyword detector. CR §702.176a — the parser emits
+//       AST keyword detector. CR §702.166a — the parser emits
 //       "Bargain —" as a Keyword ability named "bargain".
 //
 //   - CanBargain(gs, seat) bool
@@ -28,7 +28,7 @@ package gameengine
 //       or token they could sacrifice as the bargain cost.
 //
 //   - EligibleBargainTargets(gs, seat) []*Permanent
-//       All permanents the seat controls that satisfy §702.176a's
+//       All permanents the seat controls that satisfy §702.166a's
 //       "artifact, enchantment, or token" filter. The Hat picks one
 //       (e.g. via findBargainCandidate's cheapest-first policy) and
 //       passes it to CastWithBargain.
@@ -37,7 +37,7 @@ package gameengine
 //       Atomic validation + sacrifice + stack-item push. Validates
 //       the card has bargain, the sacTarget is non-nil + controlled
 //       by `seat` + an artifact/enchantment/token. On success:
-//         1. Sacrifices the target via SacrificePermanent (CR §702.176b
+//         1. Sacrifices the target via SacrificePermanent (CR §702.166b
 //            — sacrifice fires the canonical dies/LTB triggers).
 //         2. Pushes a StackItem flagged CostMeta["bargained"]=true and
 //            CostMeta["bargain_target"]=<card name> so resolution-time
@@ -62,7 +62,7 @@ package gameengine
 // ---------------------------------------------------------------------------
 
 // HasBargain returns true if the card has the bargain keyword.
-// CR §702.176a — the parser emits "Bargain —" preambles as a Keyword
+// CR §702.166a — the parser emits "Bargain —" preambles as a Keyword
 // ability with name "bargain".
 func HasBargain(card *Card) bool {
 	return cardHasKeywordByName(card, "bargain")
@@ -73,7 +73,7 @@ func HasBargain(card *Card) bool {
 // ---------------------------------------------------------------------------
 
 // CanBargain reports whether `seat` controls at least one permanent
-// they could sacrifice to satisfy a bargain cost (CR §702.176a:
+// they could sacrifice to satisfy a bargain cost (CR §702.166a:
 // artifact, enchantment, or token). False when no eligible permanent
 // is on the battlefield — used by cast-policy code to decide whether
 // the optional cost is even available.
@@ -115,7 +115,7 @@ func EligibleBargainTargets(gs *GameState, seatIdx int) []*Permanent {
 	return out
 }
 
-// isBargainEligible centralizes the §702.176a "artifact, enchantment,
+// isBargainEligible centralizes the §702.166a "artifact, enchantment,
 // or token controlled by you" filter. Used by all the bargain helpers
 // so the rules stay in one place.
 func isBargainEligible(p *Permanent, seatIdx int) bool {
@@ -132,8 +132,8 @@ func isBargainEligible(p *Permanent, seatIdx int) bool {
 // CastWithBargain
 // ---------------------------------------------------------------------------
 
-// CastWithBargain runs the §702.176a bargain-cost activation for a
-// spell `card` being cast by `seatIdx`. CR §702.176b — the sacrifice
+// CastWithBargain runs the §702.166a bargain-cost activation for a
+// spell `card` being cast by `seatIdx`. CR §702.166b — the sacrifice
 // is part of paying the cost, fires the canonical dies/LTB triggers,
 // and the resulting stack item is flagged CostMeta["bargained"] = true
 // so resolution-time per-card handlers can branch.
@@ -142,7 +142,7 @@ func isBargainEligible(p *Permanent, seatIdx int) bool {
 //
 //   - card non-nil and carries the bargain keyword
 //   - sacTarget non-nil
-//   - sacTarget controlled by `seatIdx` (§702.176a "you may sacrifice")
+//   - sacTarget controlled by `seatIdx` (§702.166a "you may sacrifice")
 //   - sacTarget is an artifact, enchantment, or token
 //
 // On success:
@@ -192,7 +192,7 @@ func CastWithBargain(gs *GameState, seatIdx int, card *Card, sacTarget *Permanen
 		sacName = sacTarget.Card.DisplayName()
 	}
 
-	// 1. Sacrifice (CR §702.176b — part of the cost, runs before the
+	// 1. Sacrifice (CR §702.166b — part of the cost, runs before the
 	// spell resolves so dies/LTB triggers + graveyard-counting observers
 	// see the cost-payment artifact's exit first).
 	SacrificePermanent(gs, sacTarget, "bargain_cost")
@@ -218,7 +218,7 @@ func CastWithBargain(gs *GameState, seatIdx int, card *Card, sacTarget *Permanen
 		Source: name,
 		Details: map[string]interface{}{
 			"sacrificed": sacName,
-			"rule":       "702.176a",
+			"rule":       "702.166a",
 		},
 	})
 	FireCardTrigger(gs, "bargain_paid", map[string]interface{}{

@@ -112,7 +112,7 @@ func ApplyUnearth(gs *GameState, seatIdx int, card *Card, unearthCost int) *Perm
 		},
 	})
 
-	// §702.84b: At the beginning of the next end step, exile it.
+	// §702.84a: At the beginning of the next end step, exile it.
 	gs.RegisterDelayedTrigger(&DelayedTrigger{
 		TriggerAt:      "end_of_turn",
 		ControllerSeat: seatIdx,
@@ -127,14 +127,14 @@ func ApplyUnearth(gs *GameState, seatIdx int, card *Card, unearthCost int) *Perm
 					Seat:   seatIdx,
 					Source: card.DisplayName(),
 					Details: map[string]interface{}{
-						"rule": "702.84b",
+						"rule": "702.84a",
 					},
 				})
 			}
 		},
 	})
 
-	// §702.84c: If it would leave the battlefield, exile it instead.
+	// §702.84a: If it would leave the battlefield, exile it instead.
 	// Register a replacement effect for any zone change from battlefield.
 	RegisterUnearthExileReplacement(gs, perm)
 
@@ -143,7 +143,7 @@ func ApplyUnearth(gs *GameState, seatIdx int, card *Card, unearthCost int) *Perm
 
 // RegisterUnearthExileReplacement registers a replacement effect so that
 // if the unearthed permanent would leave the battlefield for any reason,
-// it is exiled instead. CR §702.84c.
+// it is exiled instead. CR §702.84a.
 func RegisterUnearthExileReplacement(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil {
 		return
@@ -170,7 +170,7 @@ func RegisterUnearthExileReplacement(gs *GameState, perm *Permanent) {
 				Seat:   perm.Controller,
 				Source: perm.Card.DisplayName(),
 				Details: map[string]interface{}{
-					"rule": "702.84c",
+					"rule": "702.84a",
 				},
 			})
 		},
@@ -408,14 +408,14 @@ func ApplyDisturbETB(gs *GameState, perm *Permanent) {
 		},
 	})
 
-	// §702.146c: If it would be put into a graveyard from anywhere,
-	// exile it instead.
+	// Some disturb permanents replace graveyard with exile
+	// (card-specific, not a keyword rule).
 	RegisterDisturbExileReplacement(gs, perm)
 }
 
 // RegisterDisturbExileReplacement registers a replacement effect: if the
 // disturbed permanent would be put into a graveyard from the battlefield,
-// exile it instead. CR §702.146c.
+// exile it instead (card-specific mechanic, not a keyword rule).
 func RegisterDisturbExileReplacement(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil {
 		return
@@ -442,7 +442,7 @@ func RegisterDisturbExileReplacement(gs *GameState, perm *Permanent) {
 				Seat:   perm.Controller,
 				Source: perm.Card.DisplayName(),
 				Details: map[string]interface{}{
-					"rule": "702.146c",
+					"rule": "disturb_exile_replacement",
 				},
 			})
 		},
@@ -572,7 +572,7 @@ func ApplyFlanking(gs *GameState, blocker *Permanent) {
 		Seat:   blocker.Controller,
 		Source: blocker.Card.DisplayName(),
 		Details: map[string]interface{}{
-			"rule": "702.25a",
+			"rule":   "702.25a",
 			"debuff": "-1/-1",
 		},
 	})

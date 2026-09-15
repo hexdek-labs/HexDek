@@ -1,5 +1,10 @@
 package gameengine
 
+// Crime tests. CR §700.13: a player commits a crime as they cast a spell,
+// activate an ability, or put a triggered ability on the stack that targets
+// at least one opponent; a permanent, spell, or ability an opponent controls;
+// and/or a card in an opponent's graveyard.
+
 import (
 	"math/rand"
 	"testing"
@@ -8,7 +13,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Crime tests — CR §701.71
+// Crime tests
 // ---------------------------------------------------------------------------
 
 func newCrimeGame(t *testing.T) *GameState {
@@ -90,7 +95,7 @@ func TestFireCrime_TargetingOpponentPermanentCommitsCrime(t *testing.T) {
 
 	target := Target{Kind: TargetKindPermanent, Permanent: enemy}
 	if !IsCrimeTarget(gs, 0, target) {
-		t.Fatal("§701.71a: targeting an opponent's permanent must be a crime")
+		t.Fatal("§700.13: targeting an opponent's permanent must be a crime")
 	}
 
 	count := FireCommitsCrimeTriggers(gs, 0, "Murder", enemy.Card.DisplayName())
@@ -109,7 +114,7 @@ func TestFireCrime_TargetingOpponentSeatCommitsCrime(t *testing.T) {
 	gs := newCrimeGame(t)
 	target := Target{Kind: TargetKindSeat, Seat: 1}
 	if !IsCrimeTarget(gs, 0, target) {
-		t.Fatal("§701.71a: targeting an opponent (player) must be a crime")
+		t.Fatal("§700.13: targeting an opponent (player) must be a crime")
 	}
 }
 
@@ -121,7 +126,7 @@ func TestFireCrime_TargetingOpponentSpellOnStackCommitsCrime(t *testing.T) {
 	}
 	target := Target{Kind: TargetKindStackItem, Stack: opponentSpell}
 	if !IsCrimeTarget(gs, 0, target) {
-		t.Fatal("§701.71a: targeting an opponent-controlled spell on the stack must be a crime")
+		t.Fatal("§700.13: targeting an opponent-controlled spell on the stack must be a crime")
 	}
 }
 
@@ -135,7 +140,7 @@ func TestFireCrime_TargetingOwnPermanentNotCrime(t *testing.T) {
 
 	target := Target{Kind: TargetKindPermanent, Permanent: own}
 	if IsCrimeTarget(gs, 0, target) {
-		t.Fatal("§701.71a: targeting your own permanent is NOT a crime")
+		t.Fatal("§700.13: targeting your own permanent is NOT a crime")
 	}
 
 	// Bulk path: should fire zero crimes.
@@ -152,7 +157,7 @@ func TestFireCrime_TargetingOwnSeatNotCrime(t *testing.T) {
 	gs := newCrimeGame(t)
 	target := Target{Kind: TargetKindSeat, Seat: 0}
 	if IsCrimeTarget(gs, 0, target) {
-		t.Fatal("targeting yourself is NOT a crime")
+		t.Fatal("§700.13: targeting yourself is NOT a crime")
 	}
 }
 
@@ -161,7 +166,7 @@ func TestFireCrime_OwnSpellOnStackNotCrime(t *testing.T) {
 	mySpell := &StackItem{Card: &Card{Name: "My Spell"}, Controller: 0}
 	target := Target{Kind: TargetKindStackItem, Stack: mySpell}
 	if IsCrimeTarget(gs, 0, target) {
-		t.Fatal("targeting your own spell on the stack is NOT a crime")
+		t.Fatal("§700.13: targeting your own spell on the stack is NOT a crime")
 	}
 }
 
@@ -181,7 +186,7 @@ func TestFireCrime_TargetingCardInOpponentGraveyardCommitsCrime(t *testing.T) {
 		Seat: 1, // owner of the zone
 	}
 	if !IsCrimeTarget(gs, 0, target) {
-		t.Fatal("§701.71a: targeting a card in an opponent's graveyard must be a crime")
+		t.Fatal("§700.13: targeting a card in an opponent's graveyard must be a crime")
 	}
 
 	fired := FireCrimeIfTargetingOpponent(gs, 0, "Surgical Extraction", []Target{target})
@@ -200,7 +205,7 @@ func TestFireCrime_CardInOwnGraveyardNotCrime(t *testing.T) {
 
 	target := Target{Kind: TargetKindCard, Card: own, Seat: 0}
 	if IsCrimeTarget(gs, 0, target) {
-		t.Fatal("targeting your own graveyard is NOT a crime")
+		t.Fatal("§700.13: targeting your own graveyard is NOT a crime")
 	}
 }
 
@@ -309,7 +314,7 @@ func TestFireCrime_MultiTargetSpellFiresOnceCrime(t *testing.T) {
 	if !fired {
 		t.Fatal("bulk targeting should fire a crime when ANY target is opp-controlled")
 	}
-	// CR §701.71b: at most one crime per resolution regardless of target count.
+	// At most one crime per resolution regardless of target count.
 	if SeatCrimeCountThisTurn(gs, 0) != 1 {
 		t.Fatalf("multi-target spell must commit one crime; got %d", SeatCrimeCountThisTurn(gs, 0))
 	}

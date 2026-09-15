@@ -8,13 +8,13 @@ import (
 //
 // Oracle text:
 //
-//   First strike, reach
-//   Whenever Lara Croft attacks, exile up to one target legendary
-//   artifact card or legendary land card from a graveyard and put a
-//   discovery counter on it. You may play a card from exile with a
-//   discovery counter on it this turn.
-//   Raid — At end of combat on your turn, if you attacked this turn,
-//          create a Treasure token.
+//	First strike, reach
+//	Whenever Lara Croft attacks, exile up to one target legendary
+//	artifact card or legendary land card from a graveyard and put a
+//	discovery counter on it. You may play a card from exile with a
+//	discovery counter on it this turn.
+//	Raid — At end of combat on your turn, if you attacked this turn,
+//	       create a Treasure token.
 //
 // R37 port; R58 zone-cast-policy port:
 //
@@ -74,7 +74,7 @@ func laraCroftStaticETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	})
 }
 
-// laraCroftAttackTrigger fires when Lara Croft attacks (CR §702.0). The
+// laraCroftAttackTrigger fires when Lara Croft attacks (attack-triggered ability). The
 // engine fires "creature_attacks" with ctx["attacker_perm"]; we filter
 // to Lara herself. Scans every graveyard for a legendary artifact or
 // legendary land card, picks the highest-CMC, exiles it, stamps a
@@ -118,9 +118,9 @@ func laraCroftAttackTrigger(gs *gameengine.GameState, perm *gameengine.Permanent
 	}
 	if bestCard == nil {
 		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-			"seat":    perm.Controller,
-			"exiled":  false,
-			"reason":  "no_legendary_artifact_or_land_in_any_graveyard",
+			"seat":   perm.Controller,
+			"exiled": false,
+			"reason": "no_legendary_artifact_or_land_in_any_graveyard",
 		})
 		return
 	}

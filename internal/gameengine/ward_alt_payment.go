@@ -1,6 +1,6 @@
 package gameengine
 
-// Alternative-payment ward (CR §702.21d) — added in R60 to close
+// Alternative-payment ward (CR §702.21) — added in R60 to close
 // docs/half-finished-features-r48.md #4. Refactored 2026-05-27 from
 // three discrete kind-constants into a single WardCost primitive with
 // a Type discriminant so the dispatch table is data-driven and new
@@ -178,7 +178,7 @@ func tryPayAltWardCost(gs *GameState, item *StackItem, perm *Permanent) {
 
 	if paid {
 		base := map[string]interface{}{
-			"rule":        "702.21d",
+			"rule":        "702.21a",
 			"ward_target": perm.Card.DisplayName(),
 			"spell":       itemName(item),
 			"kind":        int(cost.Type),
@@ -197,7 +197,7 @@ func tryPayAltWardCost(gs *GameState, item *StackItem, perm *Permanent) {
 
 	item.Countered = true
 	base := map[string]interface{}{
-		"rule":        "702.21c",
+		"rule":        "702.21a",
 		"ward_target": perm.Card.DisplayName(),
 		"spell":       itemName(item),
 		"caster_seat": item.Controller,

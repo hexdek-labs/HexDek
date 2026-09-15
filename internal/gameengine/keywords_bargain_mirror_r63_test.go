@@ -9,7 +9,7 @@ import (
 // stale-flag fix. The "when this enters, if it was bargained" ETB riders
 // (per_card/bargain_consumers_r60.go) previously read a per-seat cast-time
 // counter that leaked across a bargained spell countered before it entered,
-// and could cross-attribute between simultaneous casts. CR §702.176c — the
+// and could cross-attribute between simultaneous casts. CR §702.166a — the
 // bargained decision now travels with the permanent via
 // MirrorBargainToPermanent (mirroring kicker/squad), so each entering
 // permanent carries exactly its own decision.

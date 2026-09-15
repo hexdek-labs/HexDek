@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Job Select tests — CR §702.183 (Aetherdrift)
+// Job Select tests — CR §702.182 (Aetherdrift)
 // ---------------------------------------------------------------------------
 
 func newJobSelectGame(t *testing.T) *GameState {

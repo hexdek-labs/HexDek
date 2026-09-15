@@ -108,7 +108,7 @@ func markPermanentCeaseIfToken(gs *GameState, perm *Permanent) {
 // or the same Card was processed twice via a deck-load retry path), the
 // helper no-ops to avoid double-consuming a seq counter.
 //
-// Front-face encoding per CR §712.6c: DFC / MDFC cards encode their
+// Front-face encoding per CR §712.8a: DFC / MDFC cards encode their
 // FRONT face color + printed CMC. Card.Colors and Card.CMC already
 // reflect the front face (the corpus loader sets them that way), so no
 // special-casing is needed at this layer.

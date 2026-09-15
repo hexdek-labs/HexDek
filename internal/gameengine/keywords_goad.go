@@ -5,18 +5,15 @@ import (
 	"strings"
 )
 
-// keywords_goad.go — Goad (CR §701.39, Conspiracy: Take the Crown 2016).
+// keywords_goad.go — Goad (CR §701.15, Conspiracy: Take the Crown 2016).
 //
-// CR §701.39a: To goad a creature means to apply the following effect
-//               to it: "Until your next turn, this creature attacks
-//               each combat if able and attacks a player other than
-//               you if able."
-// CR §701.39b: If a creature is goaded by more than one player, on
-//               each combat its controller chooses one of the goading
-//               players. It must attack a player other than that
-//               player if able. (We model the most-recent-goader case
-//               via goaded_by_seat; a future commit can extend to a
-//               goader set.)
+// CR §701.15a: Certain spells and abilities can goad a creature.
+//               Until the next turn of the controller of that spell or
+//               ability, that creature is goaded.
+// CR §701.15c: A creature can be goaded by multiple players. Doing so
+//               creates additional combat requirements. (We model the
+//               most-recent-goader case via goaded_by_seat; a future
+//               commit can extend to a goader set.)
 //
 // Engine model
 // ------------
@@ -68,10 +65,10 @@ import (
 //
 // Examples (4-seat game, gs.Active = 1):
 //
-//   seatsBefore(2) = 1   // seat 2 next turn after this one
-//   seatsBefore(3) = 2
-//   seatsBefore(0) = 3
-//   seatsBefore(1) = 4   // current active — full lap until next turn
+//	seatsBefore(2) = 1   // seat 2 next turn after this one
+//	seatsBefore(3) = 2
+//	seatsBefore(0) = 3
+//	seatsBefore(1) = 4   // current active — full lap until next turn
 //
 // Returns 0 on degenerate inputs (nil game, no seats, out-of-range
 // sourceSeat) so callers don't trip on edge cases.
@@ -94,16 +91,16 @@ func seatsBefore(gs *GameState, sourceSeat int) int {
 // GoadCreature — stamp the turn-windowed flag pair
 // ---------------------------------------------------------------------------
 
-// GoadCreature applies the §701.39 goad effect to `perm` for
+// GoadCreature applies the §701.15 goad effect to `perm` for
 // `sourceSeat`. Stamps:
 //
-//   perm.Flags["goaded_by_seat"]    = sourceSeat
-//   perm.Flags["goaded_until_turn"] = gs.Turn + seatsBefore(sourceSeat)
+//	perm.Flags["goaded_by_seat"]    = sourceSeat
+//	perm.Flags["goaded_until_turn"] = gs.Turn + seatsBefore(sourceSeat)
 //
 // Re-goading the same permanent (same or different sourceSeat)
 // REPLACES both flags — the most recent goad's controller is the
 // one CannotAttackGoader keys on. A future commit can extend to a
-// multi-goader set for §701.39b's "each combat its controller
+// multi-goader set for §701.15b's "each combat its controller
 // chooses one of the goading players" wording.
 //
 // No-op for nil game, nil perm, out-of-range sourceSeat, or a perm
@@ -119,7 +116,7 @@ func GoadCreature(gs *GameState, sourceSeat int, perm *Permanent) {
 		perm.Flags = map[string]int{}
 	}
 	expiry := gs.Turn + seatsBefore(gs, sourceSeat)
-	// CR §701.39b — a creature can be goaded by more than one player, each
+	// CR §701.15b — a creature can be goaded by more than one player, each
 	// goad with its own "until your next turn" expiry. Store one key per
 	// goader (goad_from_<seat> = that goader's expiry) so the must-attack and
 	// "attack a player other than ANY goader" restrictions stack correctly and
@@ -145,7 +142,7 @@ func GoadCreature(gs *GameState, sourceSeat int, perm *Permanent) {
 		Seat:   sourceSeat,
 		Source: cardName,
 		Details: map[string]interface{}{
-			"rule":              "701.39a",
+			"rule":              "701.15a",
 			"goaded_seat":       perm.Controller,
 			"goaded_until_turn": expiry,
 		},
@@ -235,7 +232,7 @@ func MustAttackIfAble(gs *GameState, perm *Permanent) bool {
 
 // activeGoaders returns every seat that currently has an active goad on
 // `perm` (its per-goader expiry is still in the future). Multi-goader set
-// per CR §701.39b. Order is not significant (the caller treats it as a set).
+// per CR §701.15b. Order is not significant (the caller treats it as a set).
 func activeGoaders(perm *Permanent, currentTurn int) []int {
 	if perm == nil || perm.Flags == nil {
 		return nil
@@ -257,7 +254,7 @@ func activeGoaders(perm *Permanent, currentTurn int) []int {
 
 // CannotAttackGoader reports whether `perm` is forbidden from
 // attacking `defenderSeat` due to goad's "attacks a player other
-// than [any goader] if able" clause (CR §701.39b). True iff perm is
+// than [any goader] if able" clause (CR §701.15b). True iff perm is
 // currently goaded by defenderSeat. Used by the attack-target picker
 // to filter the defender pool.
 //
@@ -324,7 +321,7 @@ func ExpireGoadAtCleanup(gs *GameState, perm *Permanent) bool {
 		Seat:   perm.Controller,
 		Source: cardName,
 		Details: map[string]interface{}{
-			"rule": "701.39a",
+			"rule": "701.15a",
 		},
 	})
 	return true

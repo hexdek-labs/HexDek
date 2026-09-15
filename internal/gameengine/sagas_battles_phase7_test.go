@@ -238,7 +238,7 @@ func TestPhase7_Battle_ReachesZeroDefenseFlipsAndDefeats(t *testing.T) {
 // (CR §310 / §704.5v: the defeat trigger fires once when defense
 // reaches 0, regardless of overkill amount). The remaining 8
 // damage is absorbed, not redirected, because the engine treats
-// damage to battles as defense-counter removal (CR §310.5b) rather
+// damage to battles as defense-counter removal (CR §310.6) rather
 // than life-loss-equivalent damage.
 func TestPhase7_Battle_OverkillStopsAtZero(t *testing.T) {
 	gs := newMiscGame(t)

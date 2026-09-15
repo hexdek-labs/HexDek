@@ -2,7 +2,7 @@ package gameengine
 
 import "strings"
 
-// keywords_discover.go — CR §701.51 Discover N (Lost Caverns of Ixalan,
+// keywords_discover.go — CR §701.57 Discover N (Lost Caverns of Ixalan,
 // 2023).
 //
 // "Discover N — Exile cards from the top of your library until you
@@ -116,27 +116,27 @@ func ApplyDiscover(gs *GameState, seatIdx, n int) *Card {
 // disposition to the hit card. CR §701.51.
 //
 // Procedure:
-//   1. Log discover_trigger.
-//   2. Exile cards from the top of the library one at a time. Lands
-//      keep going; the first nonland with CMC <= n is the hit. The
-//      loop also stops if the library empties (CR §701.51d).
-//   3. If a hit was found:
-//        - choice == DiscoverChoiceCastFree: register the
-//          ZoneCastPermission, build a StackItem with
-//          Effect=collectSpellEffect(card),
-//          CostMeta["discover_cast"]=true, ["alt_cost"]="discover",
-//          ["discover_n"]=n, CastZone=ZoneExile, push it, then
-//          resolve it inline. The cast-cost is {0}; ManaPool is
-//          untouched. Once the item is pushed we drop the grant so
-//          subsequent cast checks don't accidentally consume it.
-//        - choice == DiscoverChoiceToHand: MoveCard from exile to
-//          hand via the standard zone-move path.
-//      Hit cards never get put back on the bottom of the library by
-//      the discover machinery — once cast or sent to hand they're
-//      out of the discover pile.
-//   4. The misses (every exiled card EXCEPT the hit) are shuffled
-//      and routed back to the bottom of the library via MoveCard so
-//      §614 replacement chains and exile-leave triggers fire.
+//  1. Log discover_trigger.
+//  2. Exile cards from the top of the library one at a time. Lands
+//     keep going; the first nonland with CMC <= n is the hit. The
+//     loop also stops if the library empties (CR §701.57a).
+//  3. If a hit was found:
+//     - choice == DiscoverChoiceCastFree: register the
+//     ZoneCastPermission, build a StackItem with
+//     Effect=collectSpellEffect(card),
+//     CostMeta["discover_cast"]=true, ["alt_cost"]="discover",
+//     ["discover_n"]=n, CastZone=ZoneExile, push it, then
+//     resolve it inline. The cast-cost is {0}; ManaPool is
+//     untouched. Once the item is pushed we drop the grant so
+//     subsequent cast checks don't accidentally consume it.
+//     - choice == DiscoverChoiceToHand: MoveCard from exile to
+//     hand via the standard zone-move path.
+//     Hit cards never get put back on the bottom of the library by
+//     the discover machinery — once cast or sent to hand they're
+//     out of the discover pile.
+//  4. The misses (every exiled card EXCEPT the hit) are shuffled
+//     and routed back to the bottom of the library via MoveCard so
+//     §614 replacement chains and exile-leave triggers fire.
 //
 // Returns the hit card, or nil on whiff. The caller can inspect the
 // event log for the actual disposition (discover_cast / discover_to_hand

@@ -1,19 +1,14 @@
 package gameengine
 
-// keywords_suspect.go — Suspect (CR §701.62, Murders at Karlov Manor 2024)
+// keywords_suspect.go — Suspect (CR §701.60, Murders at Karlov Manor 2024)
 // as a real designation toggle with menace grant + can't-block restriction
 // that survive end-of-turn cleanup.
 //
-// CR §701.62a: "Suspect [creature]" — that creature gains the suspected
-//                designation. A suspected creature has menace and can't
-//                block. The designation persists until the creature is
-//                investigated (or another effect explicitly removes it).
-// CR §701.62b: Investigating a suspected creature removes the suspected
-//                designation. Cards print "investigate this creature" as
-//                the targeted clear.
-// CR §701.62c: If a suspected creature would block, the block declaration
-//                is illegal. Suspected creatures cannot be chosen as
-//                blockers (CR §509.1b filter).
+// CR §701.60a-c: "Suspect [creature]" — that creature becomes suspected,
+//                gains menace and can't block. The designation persists until
+//                the creature leaves the battlefield or another effect removes
+//                it. Suspected creatures cannot be chosen as blockers
+//                (CR §509.1b filter).
 //
 // Engine surface:
 //

@@ -14,7 +14,7 @@ import (
 //      creatures (without the creatures needing a printed ward keyword).
 //   2. Per-permanent ward stacks with the seat-aggregate — when the
 //      target has BOTH a printed ward and inherits one from a seat-
-//      scope effect, both fire as separate payments (CR §702.21e).
+//      scope effect, both fire as separate payments (ward per CR §702.21a).
 //   3. Seat ward leaves with the source — when the source LTBs, the
 //      anthem effect ends. Also: control change on the source moves
 //      the beneficiary seat (the OLD controller's creatures stop

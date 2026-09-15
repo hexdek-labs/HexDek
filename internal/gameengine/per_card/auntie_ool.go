@@ -44,7 +44,7 @@ func auntieOolETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 	// Replaces the prior "ward_blight_2_alt_payment_unimplemented"
 	// emitPartial. The engine puts 2 -1/-1 counters on the targeting
 	// opponent's lowest-toughness creature; if they have no creatures
-	// the targeting spell is countered per CR §702.21c.
+	// the targeting spell is countered per CR §702.21a (Ward).
 	// r60 — migrated 2026-05-27 to unified WardCost primitive. Amount=2
 	// is the Blight value (counters placed); payWardByBlight routes
 	// accordingly.
@@ -85,9 +85,9 @@ func auntieOolCounterPlaced(gs *gameengine.GameState, perm *gameengine.Permanent
 	if targetSeat == perm.Controller {
 		drawOne(gs, perm.Controller, perm.Card.DisplayName())
 		emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-			"seat":          perm.Controller,
-			"target_card":   target.Card.DisplayName(),
-			"effect":        "draw",
+			"seat":        perm.Controller,
+			"target_card": target.Card.DisplayName(),
+			"effect":      "draw",
 		})
 		return
 	}
@@ -100,10 +100,10 @@ func auntieOolCounterPlaced(gs *gameengine.GameState, perm *gameengine.Permanent
 	}
 	gameengine.LoseLife(gs, targetSeat, 1, perm.Card.DisplayName())
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
-		"seat":         perm.Controller,
-		"target_card":  target.Card.DisplayName(),
-		"target_seat":  targetSeat,
-		"effect":       "drain",
+		"seat":        perm.Controller,
+		"target_card": target.Card.DisplayName(),
+		"target_seat": targetSeat,
+		"effect":      "drain",
 	})
 	_ = gs.CheckEnd()
 }

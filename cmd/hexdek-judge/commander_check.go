@@ -26,7 +26,7 @@ import (
 //   - §903.5b — Some non-creature cards designate themselves as commanders
 //               with "can be your commander" or analogous text (planeswalkers
 //               like Daretti / Saheeli / Teferi; Backgrounds via §903.5e;
-//               Doctor Who companion-pairing via §903.5g).
+//               Doctor Who companion-pairing via partner mechanic).
 //   - §903.6  — The commander itself must be Commander-format-legal
 //               (Scryfall's `legalities.commander == "legal"`).
 //   - §903.4  — Every card in the deck must have a color identity that
@@ -54,14 +54,14 @@ import (
 
 // CommanderReport is the top-level JSON shape emitted by --check-commander.
 type CommanderReport struct {
-	Rule                   string                 `json:"rule"`
-	DeckPath               string                 `json:"deck_path"`
-	Commanders             []string               `json:"commanders"`
-	CommanderColorIdentity []string               `json:"commander_color_identity"`
-	DeckCardCount          int                    `json:"deck_card_count"`
-	Checks                 CommanderChecks        `json:"checks"`
-	Valid                  bool                   `json:"valid"`
-	Warnings               []string               `json:"warnings,omitempty"`
+	Rule                   string          `json:"rule"`
+	DeckPath               string          `json:"deck_path"`
+	Commanders             []string        `json:"commanders"`
+	CommanderColorIdentity []string        `json:"commander_color_identity"`
+	DeckCardCount          int             `json:"deck_card_count"`
+	Checks                 CommanderChecks `json:"checks"`
+	Valid                  bool            `json:"valid"`
+	Warnings               []string        `json:"warnings,omitempty"`
 }
 
 // CommanderChecks groups the five sub-rule verdicts.
@@ -74,8 +74,8 @@ type CommanderChecks struct {
 
 // CommanderLegalityCheck reports per-commander §903.5a / §903.5b status.
 type CommanderLegalityCheck struct {
-	Valid     bool                       `json:"valid"`
-	PerCmdr   []CommanderLegalityVerdict `json:"per_commander"`
+	Valid   bool                       `json:"valid"`
+	PerCmdr []CommanderLegalityVerdict `json:"per_commander"`
 }
 
 // CommanderLegalityVerdict is one commander's verdict.
@@ -88,8 +88,8 @@ type CommanderLegalityVerdict struct {
 
 // FormatLegalityCheck reports §903.6 Commander-format legality.
 type FormatLegalityCheck struct {
-	Valid      bool                     `json:"valid"`
-	PerCmdr    []FormatLegalityVerdict  `json:"per_commander"`
+	Valid   bool                    `json:"valid"`
+	PerCmdr []FormatLegalityVerdict `json:"per_commander"`
 }
 
 // FormatLegalityVerdict captures Scryfall's `legalities.commander` for one commander.
@@ -101,24 +101,24 @@ type FormatLegalityVerdict struct {
 
 // ColorIdentityCheck reports §903.4 color identity verdicts for the 99.
 type ColorIdentityCheck struct {
-	Valid          bool                 `json:"valid"`
-	Allowed        []string             `json:"allowed_colors"`
-	Violations     []ColorIDViolation   `json:"violations"`
+	Valid      bool               `json:"valid"`
+	Allowed    []string           `json:"allowed_colors"`
+	Violations []ColorIDViolation `json:"violations"`
 }
 
 // ColorIDViolation captures one card whose CI is not a subset of the
 // commander union.
 type ColorIDViolation struct {
-	CardName       string   `json:"card_name"`
-	CardCIdentity  []string `json:"card_color_identity"`
-	AllowedColors  []string `json:"allowed_colors"`
-	OutOfIdentity  []string `json:"out_of_identity"`
+	CardName      string   `json:"card_name"`
+	CardCIdentity []string `json:"card_color_identity"`
+	AllowedColors []string `json:"allowed_colors"`
+	OutOfIdentity []string `json:"out_of_identity"`
 }
 
 // BannedCardsCheck reports cards on the Commander banned list.
 type BannedCardsCheck struct {
-	Valid      bool               `json:"valid"`
-	Violations []BannedViolation  `json:"violations"`
+	Valid      bool              `json:"valid"`
+	Violations []BannedViolation `json:"violations"`
 }
 
 // BannedViolation captures one banned card found in the deck.
@@ -192,20 +192,20 @@ var commanderBannedList = map[string]bool{
 // (type line + oracle text + back-face for MDFCs), the color identity
 // (§903.4), and the commander-format-legality check (§903.6).
 type oracleCmdrEntry struct {
-	Name           string                 `json:"name"`
-	TypeLine       string                 `json:"type_line"`
-	OracleText     string                 `json:"oracle_text"`
-	ColorIdentity  []string               `json:"color_identity"`
-	Legalities     map[string]string      `json:"legalities"`
-	Layout         string                 `json:"layout"`
-	CardFaces      []oracleCmdrFace       `json:"card_faces"`
-	BorderColor    string                 `json:"border_color"`
+	Name          string            `json:"name"`
+	TypeLine      string            `json:"type_line"`
+	OracleText    string            `json:"oracle_text"`
+	ColorIdentity []string          `json:"color_identity"`
+	Legalities    map[string]string `json:"legalities"`
+	Layout        string            `json:"layout"`
+	CardFaces     []oracleCmdrFace  `json:"card_faces"`
+	BorderColor   string            `json:"border_color"`
 }
 
 type oracleCmdrFace struct {
-	Name       string   `json:"name"`
-	TypeLine   string   `json:"type_line"`
-	OracleText string   `json:"oracle_text"`
+	Name       string `json:"name"`
+	TypeLine   string `json:"type_line"`
+	OracleText string `json:"oracle_text"`
 }
 
 // oracleCmdrDB is the in-memory name→entry lookup. Names are stored

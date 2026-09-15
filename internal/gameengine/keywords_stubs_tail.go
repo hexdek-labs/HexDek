@@ -30,7 +30,7 @@ import (
 )
 
 // ===========================================================================
-// §702.182 — Tiered
+// §702.183 — Tiered
 // ===========================================================================
 //
 // "Tiered [cost]" appears on modal instants and sorceries. As the spell is
@@ -465,7 +465,7 @@ func ApplyInfinity(gs *GameState, item *StackItem, stacks int) int {
 }
 
 // ===========================================================================
-// §702.173 — Space Sculptor
+// §702.158 — Space Sculptor
 // ===========================================================================
 //
 // Space Sculptor partitions the battlefield into four sectors — alpha,

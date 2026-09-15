@@ -184,10 +184,10 @@ func init() {
 		Notes:            "CR §122; broad multi-source tracker (Aetherflux Reservoir, Coalition Relic, Coretapper)",
 	})
 
-	// CR §306 loyalty counters. Doubling Season's planeswalker-ETB doubling
-	// is §306.5g — handled via the replacement-effect path (Phase 6), so the
-	// generic DoublingApplies flag stays true to ride that pipeline rather
-	// than requiring a parallel code path.
+	// CR §306 loyalty counters. Planeswalker loyalty enters via replacement
+	// effect (Phase 6, per §306.5b), so the generic DoublingApplies flag
+	// stays true to ride that pipeline rather than requiring a parallel
+	// code path.
 	registerDefinition(&CounterTypeDef{
 		Name:             "loyalty",
 		Category:         LoyaltyCounter,
@@ -196,7 +196,7 @@ func init() {
 		DoublingApplies:  true,
 		Proliferate:      true,
 		StackingBehavior: NoPair,
-		Notes:            "CR §306; Doubling Season interaction routes through §306.5g + §122.1g replacement pipeline",
+		Notes:            "CR §306; enters via replacement effect per §306.5b",
 	})
 
 	// CR §714 saga lore counters. Auto-placed during precombat main per

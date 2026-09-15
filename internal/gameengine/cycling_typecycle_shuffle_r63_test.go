@@ -11,7 +11,7 @@ import (
 // Regression for the r63 cycling probe: searchLibraryForType moved the
 // card to hand but never shuffled (nor revealed), leaking the post-search
 // library order. The shuffle is mandatory and fires whether or not a
-// matching card was found (CR §701.19e — searching a library shuffles it).
+// matching card was found (search effects per CR §701.23–701.24 include a shuffle).
 
 func cyc_swampcyclingCard(gs *GameState, seat int) *Card {
 	c := addP0HandCard(gs, seat, "Twisted Abomination", 2, "creature")
@@ -62,7 +62,7 @@ func TestCycling_TypecyclingShufflesAndReveals(t *testing.T) {
 	}
 }
 
-// CR §701.19e: searching a library shuffles it even on a whiff (no
+// Searching a library includes a shuffle per CR §701.23–701.24, even on a whiff (no
 // matching card). The discard + shuffle still happen; no draw, no fetch.
 func TestCycling_TypecyclingShufflesOnWhiff(t *testing.T) {
 	gs := newP0Game(t)
@@ -83,7 +83,7 @@ func TestCycling_TypecyclingShufflesOnWhiff(t *testing.T) {
 		t.Errorf("whiff should not remove a card; lib %d -> %d", preLib, len(gs.Seats[0].Library))
 	}
 	if p0CountEvents(gs, "library_shuffled") != 1 {
-		t.Errorf("typecycling must shuffle even on a whiff (CR §701.19e); got %d",
+		t.Errorf("typecycling must shuffle even on a whiff (search effect per CR §701.23–701.24); got %d",
 			p0CountEvents(gs, "library_shuffled"))
 	}
 	if p0CountEvents(gs, "draw") != 0 {

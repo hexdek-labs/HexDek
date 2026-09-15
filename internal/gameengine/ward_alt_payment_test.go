@@ -100,7 +100,7 @@ func TestWardAlt_SacrificeLegendary_Pays(t *testing.T) {
 
 // TestWardAlt_SacrificeLegendary_CountersWhenNoLegendary — opponent
 // has no legendary on the battlefield; ward can't be paid; spell is
-// countered per CR §702.21c.
+// countered per CR §702.21 (Ward).
 func TestWardAlt_SacrificeLegendary_CountersWhenNoLegendary(t *testing.T) {
 	gs := newWardAltGame(t)
 	sauron := wardedPerm(gs, "Sauron, the Dark Lord",

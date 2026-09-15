@@ -316,7 +316,7 @@ func LookupBattleByTimestamp(gs *GameState, ts int) (*Permanent, bool) {
 // ---------------------------------------------------------------------------
 
 // ApplyCombatDamageToBattle applies `amount` combat damage to a
-// battle by removing that many defense counters (CR §310.5b). If
+// battle by removing that many defense counters (CR §310.5). If
 // the post-damage count reaches zero, FireBattleZeroDefense is
 // invoked via RemoveDefenseCounters.
 //
@@ -346,7 +346,7 @@ func ApplyCombatDamageToBattle(gs *GameState, src *Permanent, amount int, battle
 		Amount: amount,
 		Details: map[string]interface{}{
 			"battle": battleName,
-			"rule":   "310.5b",
+			"rule":   "310.5",
 		},
 	})
 	RemoveDefenseCounters(gs, battle, amount)

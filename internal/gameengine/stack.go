@@ -940,7 +940,7 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 			ApplyBargain(gs, seatIdx, item)
 		}
 	}
-	// CR §702.192 — Gift. An OPTIONAL promise made as you cast a spell with
+	// CR §702.174 — Gift. An OPTIONAL promise made as you cast a spell with
 	// gift: you MAY promise a chosen opponent a gift. If you promise, the
 	// chosen opponent receives the gift on resolution AND the spell's
 	// gift-gated bonus applies; if you don't, the lesser / no-bonus mode
@@ -1169,7 +1169,7 @@ func collectSpellEffect(card *Card) gameast.Effect {
 	// CR §112.1 — permanent spells (creature/artifact/enchantment/
 	// planeswalker/battle) have no spell-resolution effect. The card simply
 	// becomes a permanent (CR §608.3); printed activated/triggered abilities
-	// only function on the battlefield (CR §112.6, §603.5). Returning a
+	// only function on the battlefield (CR §603.5). Returning a
 	// non-nil Effect here causes the first Activated ability to fire at cast
 	// time, which is wrong — Cerulean Sphinx's "{U}: Its owner shuffles it
 	// into their library" was running before ETB, putting the card into
@@ -1707,7 +1707,7 @@ func counterSpellEffect(c *Card) gameast.Effect {
 	if c == nil || c.AST == nil {
 		return nil
 	}
-	// CR §112.6 / §603.5: a permanent spell (creature, artifact,
+	// CR §603.5: a permanent spell (creature, artifact,
 	// enchantment, planeswalker, battle) becomes a permanent on
 	// resolution — it does NOT cast as a counterspell, even if one of
 	// its printed activated abilities counters spells (Adric,
@@ -1829,7 +1829,7 @@ func isCounterSpellEffect(e gameast.Effect) bool {
 // "exile this card instead of putting it anywhere else any time it
 // would leave the stack" carveout (same for escape per §702.143b).
 //
-// Buyback is intentionally NOT honored here: CR §702.27b applies only
+// Buyback is intentionally NOT honored here: CR §702.27a applies only
 // "as it resolves" — a countered or fizzled buyback spell goes to the
 // graveyard as normal.
 //
@@ -2431,7 +2431,7 @@ func ResolveStackTop(gs *GameState) {
 				Source: name,
 				Details: map[string]interface{}{
 					"to":   "ceases_to_exist",
-					"rule": "706.10",
+					"rule": "707.10a",
 				},
 			})
 			// Phase 4 census drop: §707.10 spell-copy InstanceID exits
@@ -2461,9 +2461,9 @@ func ResolveStackTop(gs *GameState) {
 				},
 			})
 		} else if ShouldReturnToHandOnResolve(item) {
-			// CR §702.27b: if the buyback cost was paid, the spell
+			// CR §702.27a: if the buyback cost was paid, the spell
 			// returns to its OWNER's hand instead of the graveyard.
-			// Pass item.Card.Owner explicitly — the §702.27b wording
+			// Pass item.Card.Owner explicitly — the §702.27a wording
 			// is explicit ("its owner's hand") and structurally
 			// correct without relying on the moveToZone backstop.
 			MoveCard(gs, item.Card, item.Card.Owner, "stack", "hand", "buyback")
@@ -2474,7 +2474,7 @@ func ResolveStackTop(gs *GameState) {
 				Details: map[string]interface{}{
 					"to":     "hand",
 					"reason": "buyback",
-					"rule":   "702.27b",
+					"rule":   "702.27a",
 				},
 			})
 		} else {
@@ -2595,7 +2595,7 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 		card.Types = append(card.Types, "token")
 	}
 
-	// Summoning sickness: only creatures care (§302.1 / §212.3f). A creature
+	// Summoning sickness: only creatures care (§302.6). A creature
 	// with haste ignores it.
 	isCreature := cardHasType(card, "creature")
 	sick := false
@@ -2643,7 +2643,7 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	// cascade) knows how many token copies to mint. No-op for copies / when
 	// squad was declined.
 	MirrorSquadToPermanent(item, perm)
-	// CR §702.176c — mirror the cast-time bargain decision onto the entering
+	// CR §702.166 — mirror the cast-time bargain decision onto the entering
 	// permanent's Flags so "when this enters, if it was bargained" ETB riders
 	// read the bargained state off the permanent (not a leaky per-seat cast
 	// counter). No-op for copies / non-bargained casts.
@@ -2654,7 +2654,7 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	// every X-Hydra ({X}…, X +1/+1 counters), Astral Cornucopia all depend on
 	// this; they have X cost but NO kicker, so the old "x"→multikick_count
 	// reader gave them ZERO counters. No-op for copies (ChosenX 0, matching
-	// CR §706.10b: a copy's X is 0 unless explicitly copied).
+	// Per CR §707.2 a copy acquires the value of X from the original; otherwise X defaults to 0).
 	if perm.Flags == nil {
 		perm.Flags = map[string]int{}
 	}
@@ -2667,7 +2667,7 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 		if n <= 0 {
 			n = 3
 		}
-		// CR §306.5g / §122.1g — a planeswalker enters with loyalty counters
+		// CR §306.5b — a planeswalker enters with loyalty counters
 		// PUT on it; Doubling Season doubles that count (and Vorinclex halves
 		// an opponent's). Route the starting count through the would_put_counter
 		// chain instead of assigning it raw, which skipped every doubler.
@@ -2692,8 +2692,8 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	seat.Battlefield = append(seat.Battlefield, perm)
 
 	// §702.146b — Disturb cast: a card cast for its disturb cost enters
-	// transformed (back face up) with the §702.146c dies→exile
-	// replacement registered. The transform happens BEFORE aura
+	// transformed (back face up). The replacement effect registration
+	// happens BEFORE aura
 	// attachment + RegisterContinuousEffectsForPermanent so the back
 	// face's printed type / abilities are what the layers see. If
 	// the casting helper forwarded a back-face AST hint (via
@@ -2838,7 +2838,7 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 		// tutors resolve. The hook itself isn't a trigger but its effects may
 		// FireCardTrigger, which appends into this same batch.
 		//
-		// CR §706.9 "enters as a copy": clone handlers (Phantasmal Image,
+		// CR §707.5 "enters as a copy": clone handlers (Phantasmal Image,
 		// Clone, Phyrexian Metamorph, …) apply the copy HERE via
 		// BecomeCopyOfCard, which is AFTER ApplyStaticETBCounters /
 		// ApplyEntersTappedUnless ran (against the pre-copy identity). Those
@@ -2884,7 +2884,7 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 	// the end of FirePermanentETBTriggers. nil-receiver no-op when off.
 	gs.Legality.ObserveETB(gs, perm)
 
-	// CR §702.157c — "When this creature enters, create a token that's a copy
+	// CR §702.157a — "When this creature enters, create a token that's a copy
 	// of it for each time the squad cost was paid." Run AFTER the entering
 	// creature's own ETB cascade has settled so the copies are minted from
 	// its final copiable values; the copies then run their own ETB cascade
@@ -3317,8 +3317,8 @@ func FireCastTriggers(gs *GameState, casterSeat int, card *Card) {
 //  1. Permanent.Flags["ward_cost"] — generic mana cost (int)
 //  2. Keyword "ward" with no cost defaults to ward {1}
 //
-// Per CR §702.21c: "If a player doesn't pay the ward cost for a
-// spell they control, the spell is countered."
+// Per CR §702.21a: Ward counters the spell or ability unless the player
+// pays the ward cost.
 func CheckWardOnTargeting(gs *GameState, item *StackItem) {
 	if gs == nil || item == nil {
 		return
@@ -3342,7 +3342,7 @@ func CheckWardOnTargeting(gs *GameState, item *StackItem) {
 			}
 		}
 
-		// r60 — seat-scope wards. Per CR §702.21e each ward instance is
+		// r60 — seat-scope wards. Per CR §702.21a-b each ward instance is
 		// a separate triggered ability, so anthem-granted wards fire
 		// IN ADDITION to any printed ward on the target. Each entry is
 		// dispatched as its own payment; if any one can't be paid, the
@@ -3361,7 +3361,7 @@ func CheckWardOnTargeting(gs *GameState, item *StackItem) {
 // monolithic CheckWardOnTargeting so seat-scope wards can reuse the
 // same alt-payment vs mana-cost branching via paySeatScopeWard.
 func payPermanentWard(gs *GameState, item *StackItem, perm *Permanent) {
-	// Alternative-payment ward (CR §702.21d) — Sauron, Saruman,
+	// Alternative-payment ward (CR §702.21) — Sauron, Saruman,
 	// Auntie Ool, Charging War Boar etc. routed through the unified
 	// WardCost dispatch.
 	if perm.Flags != nil && perm.Flags["ward_alt_kind"] != 0 {
@@ -3446,7 +3446,7 @@ func payManaWard(gs *GameState, item *StackItem, perm *Permanent, wardCost int) 
 		Source: perm.Card.DisplayName(),
 		Amount: wardCost,
 		Details: map[string]interface{}{
-			"rule":        "702.21c",
+			"rule":        "702.21a",
 			"ward_target": perm.Card.DisplayName(),
 			"spell":       itemName(item),
 			"caster_seat": item.Controller,

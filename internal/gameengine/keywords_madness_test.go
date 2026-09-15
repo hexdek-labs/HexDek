@@ -8,7 +8,7 @@ import (
 )
 
 // ---------------------------------------------------------------------------
-// Madness tests — CR §702.34
+// Madness tests — CR §702.35
 // ---------------------------------------------------------------------------
 
 func newMadnessCard(name string, owner, cmc int, madnessArg string) *Card {

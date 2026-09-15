@@ -6,8 +6,8 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
-// graveyard_recursion_audit_r63_test.go — CR §702.34 (flashback) / §702.148
-// (escape) / §702.52 (dredge) / §702.131 (jump-start) graveyard-recursion
+// graveyard_recursion_audit_r63_test.go — CR §702.34 (flashback) / §702.138
+// (escape) / §702.133 (jump-start) graveyard-recursion
 // audit. Full-pipeline verification (cast → resolve → final zone), with
 // special focus on GRANTED flashback (Iroh-style), which the Issue Log
 // flagged as inert — this suite proves it works end-to-end.
@@ -50,7 +50,7 @@ func inGrave(seat *Seat, card *Card) bool {
 // ---------------------------------------------------------------------------
 // GRANTED flashback (Iroh / Lier shape) — the Issue-Log-flagged case.
 // A graveyard-wide grant makes a non-flashback instant castable from the
-// graveyard, and on resolution the card is EXILED (§702.34c), not returned
+// graveyard, and on resolution the card is EXILED (§702.34a), not returned
 // to the graveyard.
 // ---------------------------------------------------------------------------
 
@@ -89,10 +89,10 @@ func TestGYAudit_GrantedFlashback_CastResolvesToExile(t *testing.T) {
 	ResolveStackTop(gs)
 
 	if inGrave(gs.Seats[0], spell) {
-		t.Error("granted-flashback spell must NOT return to graveyard (§702.34c)")
+		t.Error("granted-flashback spell must NOT return to graveyard (§702.34a)")
 	}
 	if !inExile(gs.Seats[0], spell) {
-		t.Error("granted-flashback spell must be EXILED after resolution (§702.34c)")
+		t.Error("granted-flashback spell must be EXILED after resolution (§702.34a)")
 	}
 }
 

@@ -131,7 +131,7 @@ func TestAnnounce_WardFiresOnLivePath(t *testing.T) {
 		t.Fatalf("ward did not protect: Warded Wurm was destroyed (ward never fired on the live path)")
 	}
 	if countEvents(gs, "ward_counter") == 0 {
-		t.Fatalf("expected a ward_counter event (unpayable ward counters the spell per §702.21c)")
+		t.Fatalf("expected a ward_counter event (unpayable ward counters the spell; ward trigger from CR §702.21a)")
 	}
 }
 

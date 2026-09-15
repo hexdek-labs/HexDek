@@ -8,8 +8,8 @@ package gameengine
 //               instead of) the battlefield. It's the rules-side
 //               opt-in that lets commander-only abilities function
 //               without the commander being cast.
-// CR §702.107b: Most abilities of cards in the command zone do NOT
-//               function (CR §400.10b). Eminence is the named
+// CR (ability word, no rule): Most abilities of cards in the command zone do NOT
+//               function (CR (ability word, no rule)). Eminence is the named
 //               exception — its presence on a card means "this
 //               specific ability is allowed to function from the
 //               command zone."

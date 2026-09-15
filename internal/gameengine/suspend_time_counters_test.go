@@ -8,7 +8,7 @@ import (
 
 // suspend_time_counters_test.go — regressions for the §702.62 (suspend),
 // §702.63 (vanishing) and §702.32 (fading) upkeep countdowns and the
-// §702.62g free-cast. Before suspend_time_counters.go these counters were
+// suspend free-cast ability. Before suspend_time_counters.go these counters were
 // placed but never read; ~107 cards were inert past entry.
 
 // --- Vanishing / Fading (TickTimeFadeCounters) ----------------------------
@@ -69,7 +69,7 @@ func TestVanishing_CountdownSacrificesWhenLastRemoved(t *testing.T) {
 }
 
 // Fading N: a fade counter is removed each upkeep; if there is none to
-// remove, the permanent is sacrificed (§702.32b). So fading-2 survives 2
+// remove, the permanent is sacrificed (§702.32a). So fading-2 survives 2
 // removal ticks and is sacrificed on the 3rd ("can't remove").
 func TestFading_CountdownSacrificesWhenCannotRemove(t *testing.T) {
 	gs := newTestGame(t, 2)
@@ -111,7 +111,7 @@ func TestTimeFade_OnlyActiveSeatTicks(t *testing.T) {
 // --- Suspend (TickSuspendCounters + CastSuspendedCard) --------------------
 
 // A suspended creature counts down each upkeep and is cast for free with
-// haste when the last time counter is removed (§702.62f/g). The card must
+// haste when the last time counter is removed (§702.62a). The card must
 // move exile -> battlefield exactly once (no ZoneConservation leak).
 func TestSuspend_TicksThenCastsCreatureWithHaste(t *testing.T) {
 	gs := newTestGame(t, 2)
@@ -159,7 +159,7 @@ func TestSuspend_TicksThenCastsCreatureWithHaste(t *testing.T) {
 		t.Fatalf("suspended creature must resolve onto the battlefield exactly once, got %d", count)
 	}
 	if found.Flags["kw:haste"] != 1 {
-		t.Fatalf("a suspended creature cast for free must gain haste (§702.62g)")
+		t.Fatalf("a suspended creature cast for free must gain haste (§702.62a)")
 	}
 }
 

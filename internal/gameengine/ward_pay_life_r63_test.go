@@ -2,7 +2,7 @@ package gameengine
 
 import "testing"
 
-// CR §702.21d / §118.4 — Ward—Pay N life (Charging War Boar, Sheltered by
+// CR §702.1a / §118.4 — Ward—Pay N life (Charging War Boar, Sheltered by
 // Ghosts). Regression for the r63 ward probe: payWardByLife decremented
 // caster.Life directly, bypassing LoseLife — so the payment fired no
 // "whenever you lose life" triggers, set none of the per-turn life-loss
@@ -58,7 +58,7 @@ func TestWardPayLife_FiresLifeChangeTrigger(t *testing.T) {
 }
 
 // When the caster can't afford the life cost, the spell is countered (the
-// AI declines / can't pay) — CR §702.21c.
+// AI declines / can't pay) — CR §702.1a.
 func TestWardPayLife_CountersWhenInsufficientLife(t *testing.T) {
 	gs := newWardAltGame(t)
 	boar := wardedPerm(gs, "Charging War Boar", int(WardCostLife), 3, "creature")

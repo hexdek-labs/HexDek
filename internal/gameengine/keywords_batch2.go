@@ -90,7 +90,7 @@ func PairSoulbond(gs *GameState, perm *Permanent, partner *Permanent) bool {
 }
 
 // UnpairOnLeave breaks a soulbond pairing when `perm` leaves the battlefield
-// or changes controller (CR §702.97e — "this effect lasts as long as both
+// or changes controller (CR §702.95e — "this effect lasts as long as both
 // creatures remain on the battlefield under their controller's control").
 //
 // The pairing is mutual: perm.Flags["paired_timestamp"] holds the partner's
@@ -129,7 +129,7 @@ func UnpairOnLeave(gs *GameState, perm *Permanent) {
 					Seat:   p.Controller,
 					Source: name,
 					Details: map[string]interface{}{
-						"rule": "702.97e",
+						"rule": "702.95e",
 					},
 				})
 			}
@@ -154,7 +154,7 @@ func HasSoulbond(p *Permanent) bool {
 	return p.HasKeyword("soulbond")
 }
 
-// FireSoulbondTriggers is the generic soulbond ETB-observer hook (CR §702.97e/f),
+// FireSoulbondTriggers is the generic soulbond ETB-observer hook (CR §702.95e/f),
 // mirroring FireEvolveTriggers. Called once per creature entering the
 // battlefield, at the single ETB observer chokepoint
 // (fireObserverETBTriggers → here). It implements BOTH halves of the soulbond

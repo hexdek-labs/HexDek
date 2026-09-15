@@ -51,21 +51,21 @@ func TurnRunnerForRollout() func(gs *gameengine.GameState) {
 //
 // Mirrors scripts/playloop.py :: take_turn exactly:
 //
-//   beginning_phase:
-//     untap_step(active_seat)   — §502: untap permanents, reset per-turn
-//                                 flags, ScanExpiredDurations for
-//                                 "until your next turn" effects.
-//     upkeep_step               — §503: FirePhaseTriggers("upkeep") +
-//                                 FireDelayedTriggers (upkeep).
-//     draw_step                 — §504: active draws one (turn 1 skip).
-//   main_phase_1                — §505: play land + cast loop.
-//   combat_phase                — §506-§511 (already ported).
-//   extra_combats               — while PendingExtraCombats > 0: another
-//                                 combat phase (Aggravated Assault etc.).
-//   main_phase_2                — §505: cast loop only.
-//   end_step                    — §513: FirePhaseTriggers("end_step") +
-//                                 FireDelayedTriggers (end_of_turn).
-//   cleanup_step                — §514: ScanExpiredDurations + CleanupHandSize.
+//	beginning_phase:
+//	  untap_step(active_seat)   — §502: untap permanents, reset per-turn
+//	                              flags, ScanExpiredDurations for
+//	                              "until your next turn" effects.
+//	  upkeep_step               — §503: FirePhaseTriggers("upkeep") +
+//	                              FireDelayedTriggers (upkeep).
+//	  draw_step                 — §504: active draws one (turn 1 skip).
+//	main_phase_1                — §505: play land + cast loop.
+//	combat_phase                — §506-§511 (already ported).
+//	extra_combats               — while PendingExtraCombats > 0: another
+//	                              combat phase (Aggravated Assault etc.).
+//	main_phase_2                — §505: cast loop only.
+//	end_step                    — §513: FirePhaseTriggers("end_step") +
+//	                              FireDelayedTriggers (end_of_turn).
+//	cleanup_step                — §514: ScanExpiredDurations + CleanupHandSize.
 //
 // Per-seat "played_land_this_turn" state lives on gs.Flags keyed by
 // seat index so concurrent games stay isolated.
@@ -172,7 +172,7 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 		gs.Snapshot()
 	}
 
-	// CR §726.3a/§726.4 — day/night transition BEFORE untap. Feed the
+	// CR §730.2a/§730.2b — day/night transition BEFORE untap. Feed the
 	// PREVIOUS turn's spell count into the field EvaluateDayNightAtTurnStart
 	// reads. gs.SpellsCastThisTurn still holds last turn's global cast count
 	// here (it isn't zeroed until the untap step below). Before this the
@@ -189,159 +189,165 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 	// =========================================================
 
 	{
-	// §502 Untap step.
-	gs.Phase, gs.Step = "beginning", "untap"
-	gameengine.ScanExpiredDurations(gs, gs.Phase, gs.Step)
-	gs.InvalidateCharacteristicsCache()
-	gameengine.FireDelayedTriggers(gs, gs.Phase, gs.Step)
-	gameengine.UntapAll(gs, active)
-	// §502 trigger: cards like Rasputin Dreamweaver and Seedborn Muse
-	// listen for the untap_step event to snapshot or react to untap state.
-	gameengine.FireCardTrigger(gs, "untap_step", map[string]interface{}{
-		"active_seat": active,
-	})
-	// Per-turn bookkeeping: drain mana pool, reset lands-played.
-	//
-	// Mana drains via the canonical DrainAllPools so the CR §106.4a
-	// exemption set (Upwelling "any" / Omnath-style color retention /
-	// Cabal Coffers-style etc.) is honored. The previous direct
-	// `seat.ManaPool = 0 ; seat.Mana.Clear()` zeroed unconditionally,
-	// wiping mana that Upwelling explicitly says should persist across
-	// the cleanup → untap boundary. The drain is logically the §106.4
-	// firing on the PRIOR turn's cleanup step ending (cleanup is the
-	// last step of the ending phase; per CR §514 it runs to completion
-	// without a priority window, so no DrainAllPools call lives there —
-	// this start-of-untap call is the canonical place to fire it).
-	gameengine.DrainAllPools(gs, "ending", "cleanup")
-	clearPlayedLand(gs, active)
-	// Expire one-shot "additional land this turn" grants from a prior turn
-	// before this turn's land plays (continuous grants persist).
-	clearOneShotLandDrops(gs, active)
-	gs.PendingExtraCombats = nil
-	gs.CurrentCombatRestriction = ""
-	// §702.136 Raid — clear the attacked_this_turn flag from previous turn.
-	if seat.Flags != nil {
-		delete(seat.Flags, "attacked_this_turn")
-	}
-	// Snapshot life for end-step "life lost this turn" checks (Book of Vile Darkness).
-	if seat.Flags == nil {
-		seat.Flags = map[string]int{}
-	}
-	seat.Flags["life_at_turn_start"] = seat.Life
-	// CR §700.4 / §702.40 storm cast-count reset. Global counter wipes
-	// at every untap. Active seat's per-seat counter snapshots into
-	// SpellsCastLastTurn then zeros. Non-active seats keep accumulating
-	// (an instant they cast during an opponent's turn still counts
-	// toward their next Storm window until their own next untap).
-	gs.SpellsCastThisTurn = 0
-	seat.SpellsCastLastTurn = seat.SpellsCastThisTurn
-	seat.SpellsCastThisTurn = 0
-	if hook != nil { hook(gs) }
+		// §502 Untap step.
+		gs.Phase, gs.Step = "beginning", "untap"
+		gameengine.ScanExpiredDurations(gs, gs.Phase, gs.Step)
+		gs.InvalidateCharacteristicsCache()
+		gameengine.FireDelayedTriggers(gs, gs.Phase, gs.Step)
+		gameengine.UntapAll(gs, active)
+		// §502 trigger: cards like Rasputin Dreamweaver and Seedborn Muse
+		// listen for the untap_step event to snapshot or react to untap state.
+		gameengine.FireCardTrigger(gs, "untap_step", map[string]interface{}{
+			"active_seat": active,
+		})
+		// Per-turn bookkeeping: drain mana pool, reset lands-played.
+		//
+		// Mana drains via the canonical DrainAllPools so the CR §106.4a
+		// exemption set (Upwelling "any" / Omnath-style color retention /
+		// Cabal Coffers-style etc.) is honored. The previous direct
+		// `seat.ManaPool = 0 ; seat.Mana.Clear()` zeroed unconditionally,
+		// wiping mana that Upwelling explicitly says should persist across
+		// the cleanup → untap boundary. The drain is logically the §106.4
+		// firing on the PRIOR turn's cleanup step ending (cleanup is the
+		// last step of the ending phase; per CR §514 it runs to completion
+		// without a priority window, so no DrainAllPools call lives there —
+		// this start-of-untap call is the canonical place to fire it).
+		gameengine.DrainAllPools(gs, "ending", "cleanup")
+		clearPlayedLand(gs, active)
+		// Expire one-shot "additional land this turn" grants from a prior turn
+		// before this turn's land plays (continuous grants persist).
+		clearOneShotLandDrops(gs, active)
+		gs.PendingExtraCombats = nil
+		gs.CurrentCombatRestriction = ""
+		// §702.136 Raid — clear the attacked_this_turn flag from previous turn.
+		if seat.Flags != nil {
+			delete(seat.Flags, "attacked_this_turn")
+		}
+		// Snapshot life for end-step "life lost this turn" checks (Book of Vile Darkness).
+		if seat.Flags == nil {
+			seat.Flags = map[string]int{}
+		}
+		seat.Flags["life_at_turn_start"] = seat.Life
+		// CR §700.4 / §702.40 storm cast-count reset. Global counter wipes
+		// at every untap. Active seat's per-seat counter snapshots into
+		// SpellsCastLastTurn then zeros. Non-active seats keep accumulating
+		// (an instant they cast during an opponent's turn still counts
+		// toward their next Storm window until their own next untap).
+		gs.SpellsCastThisTurn = 0
+		seat.SpellsCastLastTurn = seat.SpellsCastThisTurn
+		seat.SpellsCastThisTurn = 0
+		if hook != nil {
+			hook(gs)
+		}
 
-	// §503 Upkeep.
-	gs.Phase, gs.Step = "beginning", "upkeep"
-	gameengine.ScanExpiredDurations(gs, gs.Phase, gs.Step)
-	gs.InvalidateCharacteristicsCache()
-	gameengine.FireDelayedTriggers(gs, gs.Phase, gs.Step)
-	gameengine.FirePhaseTriggers(gs, gs.Phase, gs.Step)
-	gameengine.FireCardTrigger(gs, "upkeep_controller", map[string]interface{}{
-		"active_seat": active,
-	})
-	// CR §702.62f/§702.63b/§702.32b — at the beginning of the active player's
-	// upkeep, count down the time-counter family: suspend (remove a time
-	// counter from each suspended card, casting it for free at zero) and
-	// vanishing/fading (remove a counter from each such permanent, sacrificing
-	// when the last is gone). Mirrors how TickSagaChapters is wired at
-	// precombat main. Suspend can put a free spell on the stack, so drain +
-	// SBA after; the StateBasedActions/drainStack below also covers it.
-	gameengine.TickSuspendCounters(gs, active)
-	gameengine.TickTimeFadeCounters(gs, active)
-	gameengine.StateBasedActions(gs)
-	drainStack(gs)
-	if gs.CheckEnd() || seat.Lost {
-		return
-	}
-	// CR §722 — at the beginning of the upkeep of the player who has the
-	// INITIATIVE, that player ventures into the Undercity. Previously the
-	// recurring upkeep venture was unwired (only the on-take venture in
-	// TakeInitiative fired), so the initiative-holder never progressed the
-	// dungeon on subsequent turns.
-	if gameengine.HasInitiative(gs, active) {
-		gameengine.VentureIntoDungeon(gs, active)
+		// §503 Upkeep.
+		gs.Phase, gs.Step = "beginning", "upkeep"
+		gameengine.ScanExpiredDurations(gs, gs.Phase, gs.Step)
+		gs.InvalidateCharacteristicsCache()
+		gameengine.FireDelayedTriggers(gs, gs.Phase, gs.Step)
+		gameengine.FirePhaseTriggers(gs, gs.Phase, gs.Step)
+		gameengine.FireCardTrigger(gs, "upkeep_controller", map[string]interface{}{
+			"active_seat": active,
+		})
+		// CR §702.62a/§702.63a/§702.32a — at the beginning of the active player's
+		// upkeep, count down the time-counter family: suspend (remove a time
+		// counter from each suspended card, casting it for free at zero) and
+		// vanishing/fading (remove a counter from each such permanent, sacrificing
+		// when the last is gone). Mirrors how TickSagaChapters is wired at
+		// precombat main. Suspend can put a free spell on the stack, so drain +
+		// SBA after; the StateBasedActions/drainStack below also covers it.
+		gameengine.TickSuspendCounters(gs, active)
+		gameengine.TickTimeFadeCounters(gs, active)
 		gameengine.StateBasedActions(gs)
 		drainStack(gs)
 		if gs.CheckEnd() || seat.Lost {
 			return
 		}
-	}
-	// §503 opponent upkeep: cards like Slicer, Hired Muscle trigger on
-	// each opponent's upkeep (i.e. the upkeep of any non-active player).
-	for _, opp := range gs.Opponents(active) {
-		gameengine.FireCardTrigger(gs, "upkeep_opponent", map[string]interface{}{
-			"seat": opp,
-		})
-	}
-	gameengine.StateBasedActions(gs)
-	// Drain the stack: resolve any triggered abilities pushed during
-	// upkeep (e.g., Mystic Remora, Smothering Tithe, Rhystic Study).
-	// Per CR §503.1, players get priority during the upkeep step before
-	// moving to the draw step.
-	drainStack(gs)
-	if gs.CheckEnd() || seat.Lost {
-		return
-	}
-	// §503.1 priority window: after upkeep triggers resolve, the active
-	// player may activate instant-speed abilities and cast instants.
-	// This is where Braid of Fire mana gets spent, Necropotence draws
-	// happen, and flash creatures enter. APNAP: opponents also receive a
-	// window here to hold up instant-speed interaction (CR §405.3).
-	runInstantPriorityAPNAP(gs, active)
-	if gs.CheckEnd() || seat.Lost {
-		return
-	}
-	if turnEndingNow() {
-		fastForwardCleanup()
-		return
-	}
-	if hook != nil { hook(gs) }
-
-	// §504 Draw — first active player does not draw on turn 1.
-	gs.Phase, gs.Step = "beginning", "draw"
-	if gs.Turn > 1 || active != firstActive(gs) {
-		if gameengine.NecropotenceSkipsDraw(gs, active) {
-			gs.LogEvent(gameengine.Event{
-				Kind: "skip_draw", Seat: active,
-				Source: "Necropotence",
-				Details: map[string]interface{}{"rule": "504.1"},
-			})
-		} else {
-			drawTop(gs, active)
+		// CR §722 — at the beginning of the upkeep of the player who has the
+		// INITIATIVE, that player ventures into the Undercity. Previously the
+		// recurring upkeep venture was unwired (only the on-take venture in
+		// TakeInitiative fired), so the initiative-holder never progressed the
+		// dungeon on subsequent turns.
+		if gameengine.HasInitiative(gs, active) {
+			gameengine.VentureIntoDungeon(gs, active)
+			gameengine.StateBasedActions(gs)
+			drainStack(gs)
+			if gs.CheckEnd() || seat.Lost {
+				return
+			}
 		}
-	}
-	gameengine.FirePhaseTriggers(gs, gs.Phase, gs.Step)
-	gameengine.FireCardTrigger(gs, "draw_step_controller", map[string]interface{}{
-		"active_seat": active,
-	})
-	gameengine.StateBasedActions(gs)
-	// Drain triggers from draw step (e.g., Orcish Bowmasters).
-	drainStack(gs)
-	if gs.CheckEnd() || seat.Lost {
-		return
-	}
-	// §504.1 priority window: players get priority after the draw and
-	// after draw-step triggers resolve. Instant-speed actions before
-	// moving to main phase (e.g., Brainstorm in response to draw trigger,
-	// flash creatures, Teferi's Protection before main). APNAP — opponents
-	// receive a window too (CR §405.3).
-	runInstantPriorityAPNAP(gs, active)
-	if gs.CheckEnd() || seat.Lost {
-		return
-	}
-	if turnEndingNow() {
-		fastForwardCleanup()
-		return
-	}
-	if hook != nil { hook(gs) }
+		// §503 opponent upkeep: cards like Slicer, Hired Muscle trigger on
+		// each opponent's upkeep (i.e. the upkeep of any non-active player).
+		for _, opp := range gs.Opponents(active) {
+			gameengine.FireCardTrigger(gs, "upkeep_opponent", map[string]interface{}{
+				"seat": opp,
+			})
+		}
+		gameengine.StateBasedActions(gs)
+		// Drain the stack: resolve any triggered abilities pushed during
+		// upkeep (e.g., Mystic Remora, Smothering Tithe, Rhystic Study).
+		// Per CR §503.1, players get priority during the upkeep step before
+		// moving to the draw step.
+		drainStack(gs)
+		if gs.CheckEnd() || seat.Lost {
+			return
+		}
+		// §503.1 priority window: after upkeep triggers resolve, the active
+		// player may activate instant-speed abilities and cast instants.
+		// This is where Braid of Fire mana gets spent, Necropotence draws
+		// happen, and flash creatures enter. APNAP: opponents also receive a
+		// window here to hold up instant-speed interaction (CR §405.3).
+		runInstantPriorityAPNAP(gs, active)
+		if gs.CheckEnd() || seat.Lost {
+			return
+		}
+		if turnEndingNow() {
+			fastForwardCleanup()
+			return
+		}
+		if hook != nil {
+			hook(gs)
+		}
+
+		// §504 Draw — first active player does not draw on turn 1.
+		gs.Phase, gs.Step = "beginning", "draw"
+		if gs.Turn > 1 || active != firstActive(gs) {
+			if gameengine.NecropotenceSkipsDraw(gs, active) {
+				gs.LogEvent(gameengine.Event{
+					Kind: "skip_draw", Seat: active,
+					Source:  "Necropotence",
+					Details: map[string]interface{}{"rule": "504.1"},
+				})
+			} else {
+				drawTop(gs, active)
+			}
+		}
+		gameengine.FirePhaseTriggers(gs, gs.Phase, gs.Step)
+		gameengine.FireCardTrigger(gs, "draw_step_controller", map[string]interface{}{
+			"active_seat": active,
+		})
+		gameengine.StateBasedActions(gs)
+		// Drain triggers from draw step (e.g., Orcish Bowmasters).
+		drainStack(gs)
+		if gs.CheckEnd() || seat.Lost {
+			return
+		}
+		// §504.1 priority window: players get priority after the draw and
+		// after draw-step triggers resolve. Instant-speed actions before
+		// moving to main phase (e.g., Brainstorm in response to draw trigger,
+		// flash creatures, Teferi's Protection before main). APNAP — opponents
+		// receive a window too (CR §405.3).
+		runInstantPriorityAPNAP(gs, active)
+		if gs.CheckEnd() || seat.Lost {
+			return
+		}
+		if turnEndingNow() {
+			fastForwardCleanup()
+			return
+		}
+		if hook != nil {
+			hook(gs)
+		}
 	}
 
 	// =========================================================
@@ -377,7 +383,9 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 		fastForwardCleanup()
 		return
 	}
-	if hook != nil { hook(gs) }
+	if hook != nil {
+		hook(gs)
+	}
 
 	// =========================================================
 	// COMBAT PHASE (§506-§511)
@@ -421,7 +429,9 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 			}
 		}
 	}
-	if hook != nil { hook(gs) }
+	if hook != nil {
+		hook(gs)
+	}
 
 	// =========================================================
 	// MAIN PHASE 2 (§505)
@@ -448,7 +458,9 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 		fastForwardCleanup()
 		return
 	}
-	if hook != nil { hook(gs) }
+	if hook != nil {
+		hook(gs)
+	}
 
 	// Sphinx / Shadow of the Second Sun: extra beginning phase after
 	// postcombat main. Untap, upkeep, draw — no extra main phase.
@@ -531,7 +543,9 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 		fastForwardCleanup()
 		return
 	}
-	if hook != nil { hook(gs) }
+	if hook != nil {
+		hook(gs)
+	}
 
 	// §514 Cleanup step with §514.3a looping.
 	// CR §514.3a: "If any state-based actions are performed as a result
@@ -604,7 +618,9 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 	// card discarded to an effect on an opponent's turn is handled too.
 	gameengine.ResolveMadnessWindow(gs, -1)
 
-	if hook != nil { hook(gs) }
+	if hook != nil {
+		hook(gs)
+	}
 
 	// Release Mindslaver control at end of turn. CR §712.6: "The effect
 	// of controlling another player's turn expires at the end of that
@@ -2480,4 +2496,3 @@ func hasChannelCost(act *gameast.Activated) bool {
 	}
 	return false
 }
-

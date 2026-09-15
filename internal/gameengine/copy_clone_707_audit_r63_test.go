@@ -100,7 +100,7 @@ func TestCopy707_CloneOfEntersWithCounters_GetsOwnNotSource(t *testing.T) {
 	src.AddCounter("+1/+1", 3)
 	gs.InvalidateCharacteristicsCache()
 
-	// Clone enters as a copy. Model the §706.9 "enters as a copy"
+	// Clone enters as a copy. Model the §707.5 "enters as a copy"
 	// replacement: apply the copy, THEN run the entering permanent's ETB
 	// self-replacement (ApplyStaticETBCounters) on the now-copied identity.
 	clone := addBattlefieldWithAST(gs, 0, "Clone", 0, 0, &gameast.CardAST{Name: "Clone"}, "creature")

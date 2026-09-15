@@ -1,12 +1,12 @@
 package gameengine
 
-// keywords_renown.go — Renown (CR §702.111, Magic Origins 2015).
+// keywords_renown.go — Renown (CR §702.112, Magic Origins 2015).
 //
-// CR §702.111a: Renown is a triggered ability. "Renown N" means
+// CR §702.112a: Renown is a triggered ability. "Renown N" means
 //               "Whenever this creature deals combat damage to a
 //               player, if it isn't renowned, put N +1/+1 counters
 //               on it and it becomes renowned."
-// CR §702.111b: "Renowned" is a state designation that, once granted
+// CR §702.112b: "Renowned" is a state designation that, once granted
 //               to a creature, persists for as long as that creature
 //               remains on the battlefield. A creature that leaves
 //               and re-enters loses the designation.
@@ -31,7 +31,7 @@ package gameengine
 // receive the event, and logs a renown event for observability.
 //
 // Side-effects on damage-to-creature paths are intentionally NOT
-// triggered here — CR §702.111a's printed wording restricts the
+// triggered here — CR §702.112a's printed wording restricts the
 // event to "deals combat damage to a player." The damage-to-creature
 // path in combat.go does not call ApplyRenownOnCombatDamage; only
 // the player path does.
@@ -103,7 +103,7 @@ func IsRenowned(perm *Permanent) bool {
 // Renown. It is the no-op-when-not-applicable guard that lives at
 // the head of every renown-relevant code path; combat.go calls it
 // unconditionally for every creature that deals combat damage to a
-// player. CR §702.111a.
+// player. CR §702.112a.
 //
 // Returns true iff a renown trigger actually fired (the source was
 // previously not renowned and is renowned now). False on every other
@@ -144,7 +144,7 @@ func ApplyRenownOnCombatDamage(gs *GameState, perm *Permanent, defenderSeat int)
 		Source: cardName,
 		Amount: n,
 		Details: map[string]interface{}{
-			"rule":          "702.111",
+			"rule":          "702.112",
 			"defender_seat": defenderSeat,
 			"counters":      n,
 		},

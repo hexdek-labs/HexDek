@@ -5,10 +5,9 @@ package gameengine
 // CR §702.117a: Surge is a keyword that represents an alternative cost.
 //               "Surge [cost]" means "You may cast this spell by paying
 //               [cost] rather than paying its mana cost if you or a
-//               teammate has cast another spell this turn."
-// CR §702.117b: Casting a spell using its surge ability follows the
-//               rules for paying alternative costs in §601.2b and
-//               §601.2f-h.
+//               teammate has cast another spell this turn." Casting a spell
+//               using its surge ability follows the rules for paying
+//               alternative costs in §601.2b and §601.2f-h.
 //
 // The eligibility predicate, keyword reader, and cost reader already
 // live in keywords_combat.go (HasSurge / SurgeCost / CanPaySurge); this

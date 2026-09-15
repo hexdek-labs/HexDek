@@ -6,7 +6,7 @@ import (
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
-// gift_no_costmeta_r63_test.go — r63 mechanic-probe (CR §702.192, Gift).
+// gift_no_costmeta_r63_test.go — r63 mechanic-probe (Gift, CR §702.174).
 //
 // A gift spell cast WITHOUT promising a gift carries no gift metadata
 // (nil CostMeta is the normal not-promised case, and the only case that

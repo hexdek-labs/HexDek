@@ -19,11 +19,10 @@ package gameengine
 //                 instant/sorcery in the activator's graveyard. Lets the
 //                 handler do something useful even without targeting.
 //
-// CR §702.34a (flashback) and §702.34c (exile on resolve) — both are
-// honored by the underlying GrantFlashbackUntilEOT, which registers a
-// ZoneCastPermission with ExileOnResolve=true and Duration="until_end_of_
-// turn". ExpireZoneCastGrants (phases.go EndOfTurnCleanup) removes the
-// permission at end of turn.
+// CR §702.34a (flashback) — the exile-on-resolve behavior is part of the
+// same rule. GrantFlashbackUntilEOT registers a ZoneCastPermission with
+// ExileOnResolve=true and Duration="until_end_of_turn". ExpireZoneCastGrants
+// (phases.go EndOfTurnCleanup) removes the permission at end of turn.
 
 // ActivatedFlashbackGrantOptions configures a call to
 // ActivatedFlashbackGrant. The zero value (all defaults) means: pick one
@@ -173,4 +172,3 @@ func ternaryStr(cond bool, a, b string) string {
 	}
 	return b
 }
-

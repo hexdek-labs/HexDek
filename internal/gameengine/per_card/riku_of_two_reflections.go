@@ -93,7 +93,7 @@ func rikuTwoReflectionsCreatureCast(gs *gameengine.GameState, perm *gameengine.P
 		Details: map[string]interface{}{
 			"slug":    slug,
 			"copy_of": card.DisplayName(),
-			"rule":    "706.10a",
+			"rule":    "707.1",
 		},
 	})
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

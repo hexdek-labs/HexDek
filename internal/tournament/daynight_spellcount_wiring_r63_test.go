@@ -8,7 +8,7 @@ import (
 	"github.com/hexdek/hexdek/internal/hat"
 )
 
-// Day/night audit r63 (CR §726.3a/§726.4). The turn loop drives the day/night
+// Day/night audit r63 (CR §730.2/§726.4). The turn loop drives the day/night
 // transition off gs.SpellsCastByActiveLastTurn, but that field was populated
 // only by the paritycheck harness — never by the production TakeTurn loop —
 // so it always read 0: day flipped to night on turn 2 and night NEVER reverted
@@ -44,7 +44,7 @@ func tnSetup(t *testing.T) *gameengine.GameState {
 	return gs
 }
 
-// THE BUG: night + 2 spells last turn must become DAY (§726.4b). Pre-fix the
+// THE BUG: night + 2 spells last turn must become DAY (§730.2b). Pre-fix the
 // field read 0, so it stayed night and the werewolf stayed on its wolf face.
 func TestDayNight_Wiring_NightTwoSpellsBecomesDay(t *testing.T) {
 	gs := tnSetup(t)
@@ -58,7 +58,7 @@ func TestDayNight_Wiring_NightTwoSpellsBecomesDay(t *testing.T) {
 	TakeTurn(gs)
 
 	if gs.DayNight != gameengine.DayNightDay {
-		t.Fatalf("§726.4b: night + 2 spells last turn must become DAY, got %q "+
+		t.Fatalf("§730.2b: night + 2 spells last turn must become DAY, got %q "+
 			"(SpellsCastByActiveLastTurn not fed from the turn loop?)", gs.DayNight)
 	}
 	if !gameengine.PermHasDaybound(w) {
@@ -66,7 +66,7 @@ func TestDayNight_Wiring_NightTwoSpellsBecomesDay(t *testing.T) {
 	}
 }
 
-// Symmetry: day + 0 spells last turn becomes night (§726.4a). This held even
+// Symmetry: day + 0 spells last turn becomes night (§730.2a). This held even
 // pre-fix (the field defaulted to 0), but pin it so the fix doesn't regress it.
 func TestDayNight_Wiring_DayZeroSpellsBecomesNight(t *testing.T) {
 	gs := tnSetup(t)
@@ -77,7 +77,7 @@ func TestDayNight_Wiring_DayZeroSpellsBecomesNight(t *testing.T) {
 	TakeTurn(gs)
 
 	if gs.DayNight != gameengine.DayNightNight {
-		t.Fatalf("§726.4a: day + 0 spells last turn must become NIGHT, got %q", gs.DayNight)
+		t.Fatalf("§730.2a: day + 0 spells last turn must become NIGHT, got %q", gs.DayNight)
 	}
 	if !gameengine.PermHasNightbound(w) {
 		t.Fatal("werewolf must transform to its nightbound face when it becomes night")

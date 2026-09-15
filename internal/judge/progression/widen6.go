@@ -9,7 +9,7 @@ package progression
 //	turned_face_up  "when this creature is turned face up," (109 corpus) —
 //	                morph / megamorph / disguise / cloak / manifest. Stimulus:
 //	                the bearer transitions face-down → face-up through the
-//	                engine's TurnFaceUp chokepoint (CR §702.36e).
+//	                engine's TurnFaceUp chokepoint (CR §702.37a — Morph).
 
 import (
 	"strings"

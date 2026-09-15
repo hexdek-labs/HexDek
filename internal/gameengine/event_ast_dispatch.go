@@ -154,7 +154,7 @@ func FireTapEventASTTriggers(gs *GameState, tapped *Permanent) {
 
 // FireTurnedFaceUpTriggers fires "when this creature is turned face up,"
 // AST triggers on the permanent that just transitioned face-down → face-up
-// (CR §702.36e — morph; also megamorph / disguise / cloak / manifest /
+// (CR §702.37a — morph; also megamorph / disguise / cloak / manifest /
 // "turn ~ face up" effects, which all route through TurnFaceUp). Before
 // r63d the engine flipped the face and logged the "turn_face_up" event but
 // NEVER consulted these AST triggers — the same alias-to-nowhere shape as
@@ -412,7 +412,7 @@ func FireDiscardASTTriggers(gs *GameState, discarderSeat int) {
 }
 
 // FireCommitCrimeASTTriggers fires "whenever you commit a crime" AST
-// triggers for the seat that just committed a crime (CR §701.71). Same
+// triggers for the seat that just committed a crime (CR §700.13). Same
 // per_card-only gap the dispatch-widening closed for life-gain / tap /
 // draw / sacrifice / discard: FireCommitsCrimeTriggers reaches the
 // per_card registry alone (FireCardTrigger "crime"), so the ~18 corpus
@@ -421,7 +421,7 @@ func FireDiscardASTTriggers(gs *GameState, discarderSeat int) {
 // unless a card had a bespoke handler — the crime DETECTION fired and bumped
 // the per-turn counter, but the triggered EFFECT never resolved.
 //
-// Fires once per crime EVENT (CR §701.71b — one crime per qualifying
+// Fires once per crime EVENT (crime definition per CR §700.13 — one crime per qualifying
 // spell/ability regardless of how many opponent objects it targets; the
 // caller already deduped). per_card-owned commit_crime handlers (Gisa) are
 // skipped via HasTriggerHook so nothing double-fires.
@@ -467,7 +467,7 @@ func FireCommitCrimeASTTriggers(gs *GameState, seat int) {
 				Kind: "trigger_fires", Seat: p.Controller,
 				Source: p.Card.DisplayName(),
 				Details: map[string]interface{}{
-					"event": "commit_crime", "rule": "701.71b",
+					"event": "commit_crime", "rule": "700.13",
 				},
 			})
 			PushTriggeredAbilityWithIf(gs, p, trig.Effect, trig.InterveningIf)

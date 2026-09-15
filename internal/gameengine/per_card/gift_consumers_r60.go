@@ -5,7 +5,7 @@ import (
 )
 
 // gift_consumers_r60.go — per_card OnResolve handlers for the OTJ
-// Gift keyword family (CR §702.192).
+// Gift keyword family (CR §702.174).
 //
 // Per the Versailles Phase 1B audit (PR #477 §3) `gift_promised` /
 // `gift_delivered` are engine-emitted events with no per_card

@@ -38,7 +38,7 @@ func TestGoad_GenericResolvePath_StampsGoaderAndExpiry(t *testing.T) {
 	}
 }
 
-// TestGoad_MultiGoader_FiltersAllGoaders pins CR §701.39b: a creature goaded
+// TestGoad_MultiGoader_FiltersAllGoaders pins CR §701.15c-d: a creature goaded
 // by multiple players must attack a player other than ANY of them if able.
 func TestGoad_MultiGoader_FiltersAllGoaders(t *testing.T) {
 	gs := newGoadGame(t, 4)

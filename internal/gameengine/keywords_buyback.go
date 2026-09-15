@@ -2,12 +2,12 @@ package gameengine
 
 // keywords_buyback.go — Buyback (CR §702.27) as a real alt-cost mechanic.
 //
-// CR §702.27a: Buyback appears on some instants and sorceries. "Buyback
-//              [cost]" means "You may pay an additional [cost] as you cast
-//              this spell."
-// CR §702.27b: If the buyback cost was paid, as that spell resolves, put
-//              the card into its owner's hand instead of into that
-//              player's graveyard as it resolves.
+// CR §702.27a: Buyback appears on some instants and sorceries. It represents
+//              two static abilities that function while the spell is on the
+//              stack. "Buyback [cost]" means "You may pay an additional [cost]
+//              as you cast this spell" and "If the buyback cost was paid, put
+//              this spell into its owner's hand instead of into that player's
+//              graveyard as it resolves."
 //
 // Implementation:
 //
@@ -22,7 +22,7 @@ package gameengine
 //   - ShouldReturnToHandOnResolve is the predicate consumed by
 //     ResolveStackTop in stack.go — when true, the resolving non-permanent
 //     spell is routed to its owner's hand instead of the graveyard per
-//     §702.27b.
+//     §702.27a.
 //
 // Scope notes:
 //
@@ -30,7 +30,7 @@ package gameengine
 //     models it as an integer mana amount (matches Warp/Kicker). Buyback
 //     riders that ask for non-mana payment (none exist on printed cards;
 //     this is a guard against future custom corpora) are not modeled.
-//   - §702.27c restricts buyback to instants/sorceries; CastBuyback
+//   - §702.27a restricts buyback to instants/sorceries; CastBuyback
 //     enforces that as defense-in-depth in case a corpus mistype tags a
 //     permanent with the keyword.
 
@@ -104,7 +104,7 @@ func IsBoughtBack(item *StackItem) bool {
 
 // ShouldReturnToHandOnResolve returns true when the resolving non-permanent
 // spell should be routed to its owner's hand instead of the graveyard.
-// CR §702.27b. Consumed by ResolveStackTop in stack.go.
+// CR §702.27a. Consumed by ResolveStackTop in stack.go.
 func ShouldReturnToHandOnResolve(item *StackItem) bool {
 	return IsBoughtBack(item)
 }
@@ -123,7 +123,7 @@ func ShouldReturnToHandOnResolve(item *StackItem) bool {
 // Preconditions:
 //   - card is in seat's hand
 //   - card has the buyback keyword
-//   - card type is instant or sorcery (CR §702.27c — buyback only appears
+//   - card type is instant or sorcery (CR §702.27a — buyback only appears
 //     on instants/sorceries)
 //   - seat can afford normalCost + buybackCost
 //   - normal timing/legality applies (sorcery-speed for sorceries, etc.) —

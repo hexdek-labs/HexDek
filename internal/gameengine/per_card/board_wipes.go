@@ -14,7 +14,8 @@ import (
 // --- Wrath of God ---
 //
 // Oracle text:
-//   Destroy all creatures. They can't be regenerated.
+//
+//	Destroy all creatures. They can't be regenerated.
 //
 // 2WW sorcery. The canonical board wipe.
 func registerWrathOfGod(r *Registry) {
@@ -36,7 +37,8 @@ func wrathOfGodResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 // --- Damnation ---
 //
 // Oracle text:
-//   Destroy all creatures. They can't be regenerated.
+//
+//	Destroy all creatures. They can't be regenerated.
 //
 // 2BB sorcery. Black Wrath of God.
 func registerDamnation(r *Registry) {
@@ -58,8 +60,9 @@ func damnationResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 // --- Toxic Deluge ---
 //
 // Oracle text:
-//   As an additional cost to cast this spell, pay X life.
-//   All creatures get -X/-X until end of turn.
+//
+//	As an additional cost to cast this spell, pay X life.
+//	All creatures get -X/-X until end of turn.
 //
 // 2B sorcery. Bypasses indestructible via -X/-X (toughness reduction
 // makes SBAs kill creatures with 0 or less toughness). X is chosen by
@@ -126,7 +129,7 @@ func toxicDelugeResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 
 	emit(gs, slug, "Toxic Deluge", map[string]interface{}{
 		"seat":     seat,
-		"x":       x,
+		"x":        x,
 		"modified": modified,
 	})
 }
@@ -134,9 +137,10 @@ func toxicDelugeResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 // --- Blasphemous Act ---
 //
 // Oracle text:
-//   This spell costs {1} less to cast for each creature on the
-//   battlefield.
-//   Blasphemous Act deals 13 damage to each creature.
+//
+//	This spell costs {1} less to cast for each creature on the
+//	battlefield.
+//	Blasphemous Act deals 13 damage to each creature.
 //
 // 8R sorcery. Often costs {R} in creature-heavy games.
 func registerBlasphemousAct(r *Registry) {
@@ -188,9 +192,10 @@ func blasphemousActResolve(gs *gameengine.GameState, item *gameengine.StackItem)
 // --- Vanquish the Horde ---
 //
 // Oracle text:
-//   This spell costs {2} less to cast for each creature on the
-//   battlefield.
-//   Destroy all creatures.
+//
+//	This spell costs {2} less to cast for each creature on the
+//	battlefield.
+//	Destroy all creatures.
 //
 // 6WW sorcery.
 func registerVanquishTheHorde(r *Registry) {
@@ -212,11 +217,12 @@ func vanquishTheHordeResolve(gs *gameengine.GameState, item *gameengine.StackIte
 // --- Farewell ---
 //
 // Oracle text:
-//   Choose one or more —
-//   • Exile all artifacts.
-//   • Exile all creatures.
-//   • Exile all enchantments.
-//   • Exile all graveyards.
+//
+//	Choose one or more —
+//	• Exile all artifacts.
+//	• Exile all creatures.
+//	• Exile all enchantments.
+//	• Exile all graveyards.
 //
 // 4WW sorcery. Modal exile-based wipe. Bypasses indestructible.
 // MVP: choose all four modes (most common line in Commander).
@@ -272,8 +278,8 @@ func farewellResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 	}
 
 	emit(gs, slug, "Farewell", map[string]interface{}{
-		"seat":           item.Controller,
-		"exiled_perms":   exiledPerms,
+		"seat":            item.Controller,
+		"exiled_perms":    exiledPerms,
 		"exiled_gy_cards": exiledGY,
 	})
 }
@@ -281,11 +287,12 @@ func farewellResolve(gs *gameengine.GameState, item *gameengine.StackItem) {
 // --- Austere Command ---
 //
 // Oracle text:
-//   Choose two —
-//   • Destroy all artifacts.
-//   • Destroy all enchantments.
-//   • Destroy all creatures with mana value 3 or less.
-//   • Destroy all creatures with mana value 4 or greater.
+//
+//	Choose two —
+//	• Destroy all artifacts.
+//	• Destroy all enchantments.
+//	• Destroy all creatures with mana value 3 or less.
+//	• Destroy all creatures with mana value 4 or greater.
 //
 // 4WW sorcery. Modal destroy.
 // MVP: choose "destroy all creatures with MV 3 or less" + "destroy all
@@ -345,8 +352,8 @@ func destroyAllCreatures(gs *gameengine.GameState) int {
 }
 
 // destroyAllCreaturesNoRegen is the "They can't be regenerated" variant
-// (CR §701.15g) used by Wrath of God / Damnation. A regeneration shield does
-// NOT save a creature from these; indestructible still does.
+// used by Wrath of God / Damnation (a destruction that prevents regeneration shields per CR §701.19).
+// A regeneration shield does NOT save a creature from these; indestructible still does.
 func destroyAllCreaturesNoRegen(gs *gameengine.GameState) int {
 	if gs == nil {
 		return 0

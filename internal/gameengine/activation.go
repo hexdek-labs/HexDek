@@ -985,7 +985,7 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 	// CR §702.21 — Ward triggers on abilities too, not just spells.
 	CheckWardOnTargeting(gs, item)
 
-	// Priority round — opponents may respond (CR §602.2d).
+	// Priority round — opponents may respond (CR §117.1).
 	PriorityRound(gs)
 
 	// CR §117.4 + §608.2 + §727: resolve stack with loop shortcut detection.

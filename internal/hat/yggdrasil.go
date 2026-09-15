@@ -420,10 +420,10 @@ func (h *YggdrasilHat) PlanCurrent() GamePlan { return h.planState.Current }
 
 func NewYggdrasilHatWithNoise(strategy *StrategyProfile, budget int, noise float64) *YggdrasilHat {
 	h := &YggdrasilHat{
-		Evaluator:     NewEvaluator(strategy),
-		Strategy:      strategy,
-		Budget:        budget,
-		Noise:         noise,
+		Evaluator: NewEvaluator(strategy),
+		Strategy:  strategy,
+		Budget:    budget,
+		Noise:     noise,
 		// Determinism (r63 seed-determinism audit): seed noiseRNG from a FIXED
 		// value, NOT the global rand. selectAmongTop / applyNoise consume this
 		// stream to pick among similarly-scored attack targets, so a global-
@@ -6270,7 +6270,7 @@ func (h *YggdrasilHat) ChooseAttackers(gs *gameengine.GameState, seatIdx int, le
 		if p.HasKeyword("double strike") || p.HasKeyword("double_strike") {
 			val += 0.2
 		} else if p.HasKeyword("first strike") || p.HasKeyword("first_strike") {
-			// First-strikers kill blockers in the §510.5 step before
+			// First-strikers kill blockers in the §510.4 step before
 			// taking return damage, so they're noticeably safer to send
 			// into a contested board than vanilla creatures of the same
 			// P/T. Less impact than double strike (no extra damage), but
@@ -6933,7 +6933,7 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 		// blocker for nothing). Combo / value-engine pieces were
 		// already filtered out of the pool above when willDie==false.
 		//
-		// First/double strike caveat (CR §510.5): a non-FS blocker
+		// First/double strike caveat (CR §510.4): a non-FS blocker
 		// thrown into an FS/DS attacker dies in the first-strike step
 		// before delivering damage — the trade is just a creature
 		// loss. Require the blocker to either kill the attacker or
@@ -7001,7 +7001,7 @@ func (h *YggdrasilHat) AssignBlockers(gs *gameengine.GameState, seatIdx int, att
 		if len(chosen) == 0 && (willDieIfUnblocked || mustBlock) {
 			// Deathtouch trade-up: prefer a deathtouch blocker that can
 			// take down the attacker (any damage is lethal) over a chump.
-			// CR §510.5 — if the attacker has first/double strike and our
+			// CR §510.4 — if the attacker has first/double strike and our
 			// DT blocker LACKS first/double strike, the blocker dies in
 			// the FS step before it can deliver the deathtouch hit. So
 			// against an FS attacker, only an FS/DS deathtouch blocker

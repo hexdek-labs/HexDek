@@ -29,8 +29,8 @@ package gameengine
 //   - Start Your Engines!  — CR §702.179
 //   - Harmonize            — CR §702.180
 //   - Mobilize             — CR §702.181
-//   - Freerunning          — CR §702.169
-//   - Gift                 — CR §702.192
+//   - Freerunning          — CR §702.173
+//   - Gift                 — CR §702.174
 //   - Space Sculptor       — §702.173
 //   - Visit                — §702.177
 //   - Max Speed            — §702.178
@@ -208,7 +208,7 @@ func ApplyMutate(gs *GameState, mutatingPerm *Permanent, targetPerm *Permanent, 
 // went away in round 23 cleanup.
 
 // ===========================================================================
-// §702.150 — For Mirrodin!
+// §702.163 — For Mirrodin!
 // ===========================================================================
 
 // ===========================================================================
@@ -220,7 +220,7 @@ func ApplyMutate(gs *GameState, mutatingPerm *Permanent, targetPerm *Permanent, 
 // ===========================================================================
 
 // ===========================================================================
-// §702.163 — Compleated
+// §702.150 — Compleated
 // ===========================================================================
 
 // ===========================================================================
@@ -367,7 +367,7 @@ func ApplyEpic(gs *GameState, seatIdx int, item *StackItem) {
 }
 
 // ===========================================================================
-// §702.60 — Recover
+// §702.59 — Recover
 // ===========================================================================
 
 // ===========================================================================
@@ -395,7 +395,7 @@ func ApplyEpic(gs *GameState, seatIdx int, item *StackItem) {
 // ===========================================================================
 
 // ===========================================================================
-// §702.113b — Ingest
+// §702.115 — Ingest
 // ===========================================================================
 
 // ===========================================================================
@@ -403,7 +403,7 @@ func ApplyEpic(gs *GameState, seatIdx int, item *StackItem) {
 // ===========================================================================
 
 // ---------------------------------------------------------------------------
-// §702.169 — Freerunning
+// §702.173 — Freerunning
 // ---------------------------------------------------------------------------
 
 // CanCastForFreerunning returns true if a creature you control dealt combat
@@ -420,7 +420,7 @@ func CanCastForFreerunning(gs *GameState, seatIdx int) bool {
 }
 
 // ---------------------------------------------------------------------------
-// §702.192 — Gift
+// §702.174 — Gift
 // ---------------------------------------------------------------------------
 // HasGift / GiftType / CastWithGift / ResolveGift live in
 // keywords_gift.go where the cast-time promise + resolution-time
@@ -902,7 +902,7 @@ func FireMobilizeTriggers(gs *GameState, attackerSeat int, attackers []*Permanen
 }
 
 // ---------------------------------------------------------------------------
-// §702.182 — Tiered (stub)
+// §702.183 — Tiered (stub)
 // ---------------------------------------------------------------------------
 
 // §702.183 Job Select implementation moved to keywords_job_select.go
@@ -1228,7 +1228,7 @@ func SpellWarpedThisTurn(gs *GameState, seatIdx int) bool {
 }
 
 // ---------------------------------------------------------------------------
-// §702.186 — Solved
+// §702.169 — Solved
 // ---------------------------------------------------------------------------
 // IsSolved / MarkSolved / ClearSolved / HasSolveAbility live in
 // keywords_solved.go where the designation is implemented as a real

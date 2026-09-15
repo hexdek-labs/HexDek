@@ -413,8 +413,8 @@ func scanZoneForInstanceID(zone []*Card, id string) *Card {
 // attached via the AbilityInstance's TriggerMetadata "effect_fn" entry)
 // or simply emit a delayed_ability_fires event for observers.
 //
-// Source-independence per §112.7a: the pool entry keeps firing even
-// after its source permanent leaves play.
+// Delayed triggered ability persistence (CR §603.7): the pool entry
+// keeps firing even after its source permanent leaves play.
 func RegisterDelayedAbility(gs *GameState, ab *AbilityInstance) {
 	if gs == nil || ab == nil || ab.DelayedUntil == nil {
 		return
@@ -577,7 +577,7 @@ func CleanupExpiredDelayedAbilities(gs *GameState) int {
 //   - A RECURRING delayed ability fires at every controller upkeep,
 //     removes one time counter, and stays in the pool until counters=0.
 //   - A ONE-SHOT delayed ability fires when counters reach zero, casts
-//     the suspended card for free per §702.61e.
+//     the suspended card for free per §702.62a.
 //
 // The two AbilityInstances share a SourceInstanceID (the suspended
 // Card's own InstanceID) so observers can correlate the pair.
@@ -692,7 +692,7 @@ func suspendCastEffect(gs *GameState, ab *AbilityInstance, ev *Event) {
 		Source: c.DisplayName(),
 		Details: map[string]interface{}{
 			"suspend_card_id": c.InstanceID,
-			"rule":            "702.61e",
+			"rule":            "702.62a",
 		},
 	})
 }

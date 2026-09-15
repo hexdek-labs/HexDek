@@ -39,11 +39,11 @@ import (
 //   - Monocolored hybrid (generic-or-colored):
 //       {2/W}, {2/U}, {2/B}, {2/R}, {2/G}    (CR §107.4e)
 //   - Phyrexian: {W/P}, {U/P}, {B/P}, {R/P},
-//       {G/P}                                (CR §107.4i)
+//       {G/P}                                (CR §107.4f)
 //   - Hybrid Phyrexian: {W/U/P}, {U/B/P},
 //       {B/R/P}, {R/G/P}, {G/W/P},
 //       {W/B/P}, {B/G/P}, {G/U/P},
-//       {U/R/P}, {R/W/P}                    (CR §107.4i — appears on
+//       {U/R/P}, {R/W/P}                    (CR §107.4f — appears on
 //                                            Phyrexia: All Will Be One
 //                                            phyrexian cycle)
 //
@@ -63,13 +63,13 @@ import (
 
 // ManaCostReport is the top-level JSON shape emitted by --check-mana-costs.
 type ManaCostReport struct {
-	OraclePath  string                `json:"oracle_path"`
-	TotalCards  int                   `json:"total_cards"`
-	Scanned     int                   `json:"scanned"`         // cards with non-empty mana_cost
-	Vanilla     int                   `json:"vanilla"`         // cards skipped (empty mana_cost — lands, MDFC back faces, etc.)
-	Violations  []ManaCostViolation   `json:"violations"`
-	ViolationsByKind map[string]int   `json:"violations_by_kind"`
-	Valid       bool                  `json:"valid"`
+	OraclePath       string              `json:"oracle_path"`
+	TotalCards       int                 `json:"total_cards"`
+	Scanned          int                 `json:"scanned"` // cards with non-empty mana_cost
+	Vanilla          int                 `json:"vanilla"` // cards skipped (empty mana_cost — lands, MDFC back faces, etc.)
+	Violations       []ManaCostViolation `json:"violations"`
+	ViolationsByKind map[string]int      `json:"violations_by_kind"`
+	Valid            bool                `json:"valid"`
 }
 
 // ManaCostViolation captures one card whose printed mana cost contains a
@@ -87,13 +87,13 @@ type ManaCostViolation struct {
 // oracle-cards.json. Streaming-decode keeps memory bounded on the
 // 163MB corpus.
 type oracleManaEntry struct {
-	Name       string                 `json:"name"`
-	SetCode    string                 `json:"set"`
-	Layout     string                 `json:"layout"`
-	ManaCost   string                 `json:"mana_cost"`
-	BorderColor string                `json:"border_color"`
-	SetType    string                 `json:"set_type"`
-	CardFaces  []oracleManaCardFace   `json:"card_faces"`
+	Name        string               `json:"name"`
+	SetCode     string               `json:"set"`
+	Layout      string               `json:"layout"`
+	ManaCost    string               `json:"mana_cost"`
+	BorderColor string               `json:"border_color"`
+	SetType     string               `json:"set_type"`
+	CardFaces   []oracleManaCardFace `json:"card_faces"`
 }
 
 type oracleManaCardFace struct {
@@ -167,7 +167,7 @@ var validManaSymbols = map[string]bool{
 	"C/W": true, "C/U": true, "C/B": true, "C/R": true, "C/G": true,
 	"W/C": true, "U/C": true, "B/C": true, "R/C": true, "G/C": true,
 
-	// Colorless Phyrexian (CR §107.4i extension — Kozilek, Compleated
+	// Colorless Phyrexian (no explicit CR rule — Kozilek, Compleated
 	// costs {8}{C/P}{C/P} in MB2 / MH3).
 	"C/P": true,
 

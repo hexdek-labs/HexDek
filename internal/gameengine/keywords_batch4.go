@@ -244,7 +244,7 @@ func CreateOffspringToken(gs *GameState, parent *Permanent) {
 // fire extort triggers outside the normal cast path.
 
 // ---------------------------------------------------------------------------
-// Tribute N — CR §702.121
+// Tribute N — CR §702.104
 // ---------------------------------------------------------------------------
 // HasTribute / TributeAmount / ApplyTribute / WasTributeAccepted /
 // WasTributeRefused / TributeResolved / TributeOpponent live in

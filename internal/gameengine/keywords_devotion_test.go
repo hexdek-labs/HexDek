@@ -70,7 +70,7 @@ func TestDevotionPipsFromManaCost_SingleAndDouble(t *testing.T) {
 }
 
 func TestDevotionPipsFromManaCost_HybridCountsBoth(t *testing.T) {
-	// CR §700.5b: hybrid pip counts as devotion to BOTH halves' colors.
+	// CR §700.5: hybrid pip counts as devotion to BOTH halves' colors.
 	cost := "{B/R}{B/R}{1}"
 	if got := DevotionPipsFromManaCost(cost, "B"); got != 2 {
 		t.Errorf("hybrid {B/R}{B/R} devotion to B: want 2, got %d", got)
@@ -92,7 +92,7 @@ func TestDevotionPipsFromManaCost_HybridCountsBoth(t *testing.T) {
 }
 
 func TestDevotionPipsFromManaCost_TwobridAndPhyrexian(t *testing.T) {
-	// {2/B}: twobrid — counts +1 toward B per §700.5b.
+	// {2/B}: twobrid — counts +1 toward B per §700.5.
 	if got := DevotionPipsFromManaCost("{2/B}{2/B}", "B"); got != 2 {
 		t.Errorf("twobrid {2/B}{2/B} devotion to B: want 2, got %d", got)
 	}

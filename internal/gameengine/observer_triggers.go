@@ -173,7 +173,7 @@ func fireObserverETBTriggers(gs *GameState, entering *Permanent) {
 	// only watches creatures entering under ITS controller's control.
 	FireEvolveTriggers(gs, entering.Controller, entering)
 
-	// CR §702.97e/f — Soulbond is likewise a keyword-driven observer-ETB hook
+	// CR §702.95a — Soulbond is likewise a keyword-driven observer-ETB hook
 	// (the pairing isn't a parsed AST Triggered node). Fire it at the same
 	// chokepoint, scoped to the entering creature's controller — soulbond only
 	// pairs creatures under one player's control. This runs AFTER the per-card

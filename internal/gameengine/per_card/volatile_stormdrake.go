@@ -19,7 +19,7 @@ import (
 //
 // Implementation:
 //   - Flying via AST keyword pipeline. "Hexproof from activated and
-//     triggered abilities" is a narrow CR §702.11k variant the engine
+//     triggered abilities" is a narrow hexproof keyword variant the engine
 //     does not yet model — emitPartial.
 //   - OnETB: pick best opponent creature to steal — highest power, then
 //     CMC; only consider opponents who control at least one creature

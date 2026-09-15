@@ -52,7 +52,7 @@ func RevertControlToOwner(gs *GameState, p *Permanent, reason string) bool {
 	if !gs.removePermanent(p) {
 		return false // left the battlefield since the grant
 	}
-	// CR §702.97e — a control change breaks any soulbond pairing. Do it before
+	// CR §702.95e — a control change breaks any soulbond pairing. Do it before
 	// the Controller/Timestamp flip below, while p still carries its old
 	// timestamp + flags (the pairing link is keyed on the old timestamp).
 	UnpairOnLeave(gs, p)
