@@ -59,6 +59,10 @@ type Citation struct {
 	File string
 	Line int
 	Rule string
+	// Text is the source line the citation was found on. The claimed subject
+	// often sits right next to the number ("// Boast — CR §702.142"), which
+	// is the only signal available in catch-all files whose NAME says nothing.
+	Text string
 }
 
 // LoadCorpus parses a Comprehensive Rules text file.
@@ -126,8 +130,9 @@ func Scan(root string) ([]Citation, error) {
 		sc := bufio.NewScanner(f)
 		sc.Buffer(make([]byte, 0, 1<<20), 1<<20)
 		for n := 1; sc.Scan(); n++ {
-			for _, m := range citationRE.FindAllStringSubmatch(sc.Text(), -1) {
-				out = append(out, Citation{File: path, Line: n, Rule: m[1]})
+			line := sc.Text()
+			for _, m := range citationRE.FindAllStringSubmatch(line, -1) {
+				out = append(out, Citation{File: path, Line: n, Rule: m[1], Text: line})
 			}
 		}
 		return sc.Err()

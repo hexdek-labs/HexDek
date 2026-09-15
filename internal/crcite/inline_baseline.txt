@@ -1,0 +1,30 @@
+# Index-entry comments filing a keyword under another keyword's rule number.
+# Every entry is wrong: the line names the keyword, and the CR gives exactly
+# one number for it. This file only ever SHRINKS — fix a line, delete it.
+internal/gameengine/discard_canonical_routing_r60_test.go:16|702.34a|madness	# says "madness", cites §702.34a (Flashback), correct is §702.35
+internal/gameengine/keywords_bargain_test.go:11|702.176|bargain	# says "bargain", cites §702.176 (Impending), correct is §702.166
+internal/gameengine/keywords_batch4.go:247|702.121|tribute	# says "tribute", cites §702.121 (Melee), correct is §702.104
+internal/gameengine/keywords_batch5.go:195|702.115|escalate	# says "escalate", cites §702.115 (Ingest), correct is §702.120
+internal/gameengine/keywords_batch6.go:211|702.150|for mirrodin!	# says "for mirrodin!", cites §702.150 (Compleated), correct is §702.163
+internal/gameengine/keywords_batch6.go:223|702.163|compleated	# says "compleated", cites §702.163 (For Mirrodin!), correct is §702.150
+internal/gameengine/keywords_batch6.go:370|702.60|recover	# says "recover", cites §702.60 (Ripple), correct is §702.59
+internal/gameengine/keywords_batch6.go:398|702.113b|ingest	# says "ingest", cites §702.113b (Awaken), correct is §702.115
+internal/gameengine/keywords_batch6.go:406|702.169|freerunning	# says "freerunning", cites §702.169 (Solved), correct is §702.173
+internal/gameengine/keywords_batch6.go:905|702.182|tiered	# says "tiered", cites §702.182 (Job Select), correct is §702.183
+internal/gameengine/keywords_batch6.go:1231|702.186|solved	# says "solved", cites §702.186 (∞ (Infinity)), correct is §702.169
+internal/gameengine/keywords_combat.go:17|702.21|banding	# says "banding", cites §702.21 (Ward), correct is §702.22
+internal/gameengine/keywords_combat.go:40|702.128|aftermath	# says "aftermath", cites §702.128 (Embalm), correct is §702.127
+internal/gameengine/keywords_escape_test.go:11|702.148|escape	# says "escape", cites §702.148 (Cleave), correct is §702.138
+internal/gameengine/keywords_job_select_test.go:11|702.183|job select	# says "job select", cites §702.183 (Tiered), correct is §702.182
+internal/gameengine/keywords_madness_test.go:11|702.34|madness	# says "madness", cites §702.34 (Flashback), correct is §702.35
+internal/gameengine/keywords_misc.go:392|702.142|encore	# says "encore", cites §702.142 (Boast), correct is §702.141
+internal/gameengine/keywords_renown_test.go:11|702.111|renown	# says "renown", cites §702.111 (Menace), correct is §702.112
+internal/gameengine/keywords_ripple_test.go:11|702.92|ripple	# says "ripple", cites §702.92 (Living Weapon), correct is §702.60
+internal/gameengine/keywords_solved_test.go:11|702.186|solved	# says "solved", cites §702.186 (∞ (Infinity)), correct is §702.169
+internal/gameengine/keywords_stubs_tail.go:33|702.182|tiered	# says "tiered", cites §702.182 (Job Select), correct is §702.183
+internal/gameengine/keywords_stubs_tail.go:468|702.173|space sculptor	# says "space sculptor", cites §702.173 (Freerunning), correct is §702.158
+internal/gameengine/keywords_stubs_tail_test.go:39|702.182|tiered	# says "tiered", cites §702.182 (Job Select), correct is §702.183
+internal/gameengine/keywords_stubs_tail_test.go:233|702.173|space sculptor	# says "space sculptor", cites §702.173 (Freerunning), correct is §702.158
+internal/gameengine/keywords_tribute_test.go:11|702.121|tribute	# says "tribute", cites §702.121 (Melee), correct is §702.104
+internal/gameengine/zone_cast.go:7|702.33|flashback	# says "flashback", cites §702.33 (Kicker), correct is §702.34
+internal/gameengine/zone_cast.go:16|702.34|madness	# says "madness", cites §702.34 (Flashback), correct is §702.35
