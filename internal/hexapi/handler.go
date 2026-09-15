@@ -1163,8 +1163,12 @@ func (h *Handler) handleGetAnalysis(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Add freshness fields (current_freya_version / stale) so the deck
+	// page can tell the user their analysis was produced by an older
+	// engine. Pass-through on any decode failure — see
+	// annotateAnalysisFreshness.
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(data)
+	w.Write(annotateAnalysisFreshness(data))
 }
 
 func (h *Handler) handleRunAnalysis(w http.ResponseWriter, r *http.Request) {
@@ -1189,13 +1193,35 @@ func (h *Handler) handleRunAnalysis(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	go h.runFreya(deckPath)
+	go h.runFreyaFresh(deckPath)
 	writeJSON(w, map[string]any{"status": "analyzing", "deck": owner + "/" + id})
 }
 
 var freyaMu sync.Mutex
 
 func (h *Handler) runFreya(deckPath string) {
+	h.runFreyaWithOptions(deckPath, false)
+}
+
+// runFreyaFresh re-analyzes a deck with the Freya report cache
+// BYPASSED.
+//
+// Freya keys its on-disk cache on (deck contents + Freya version).
+// Neither changes when a user asks for a refresh of an unchanged
+// deck, so a plain re-run is a ~5ms cache read that rewrites the
+// identical analysis. A "Refresh" control backed by that is worse
+// than no control at all: it reports success and changes nothing,
+// which teaches the user that refreshing doesn't help rather than
+// that the analysis is current.
+//
+// Refresh therefore means recompute. The cost is the real analysis
+// time (~1-3s) on a path that is already rate-limited per-IP and
+// per-owner, and already serialized behind freyaMu.
+func (h *Handler) runFreyaFresh(deckPath string) {
+	h.runFreyaWithOptions(deckPath, true)
+}
+
+func (h *Handler) runFreyaWithOptions(deckPath string, noCache bool) {
 	freyaMu.Lock()
 	defer freyaMu.Unlock()
 
@@ -1205,8 +1231,12 @@ func (h *Handler) runFreya(deckPath string) {
 		return
 	}
 
-	log.Printf("freya: analyzing %s", deckPath)
-	cmd := exec.Command(freyaBin, "--deck", deckPath, "--format", "json")
+	args := []string{"--deck", deckPath, "--format", "json"}
+	if noCache {
+		args = append(args, "--no-cache")
+	}
+	log.Printf("freya: analyzing %s (no-cache=%v)", deckPath, noCache)
+	cmd := exec.Command(freyaBin, args...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Printf("freya: error analyzing %s: %v\n%s", deckPath, err, string(out))

@@ -13,14 +13,27 @@ import (
 // regression-pinned in tests without spawning the binary.
 
 // VersionString returns the canonical multi-line version banner. The
-// FreyaVersion constant doubles as the cache-invalidation token (see
-// cache.go), so the two stay in sync by construction — a single bump
-// invalidates both stored caches and the runtime version stamp.
+// FreyaVersion() token doubles as the cache-invalidation token (see
+// cache.go), so the two stay in sync by construction.
+//
+// The cache line reports the ACTIVE regime, not just the token. Which
+// invalidation scheme is in force decides whether a code change
+// reaches users at all, and a binary built somewhere that carries no
+// VCS stamp (a linked git worktree, for instance) silently reverts to
+// the hand-maintained-constant discipline. Printing it means nobody
+// has to deduce that from behaviour — which, in the failure case, is
+// indistinguishable from everything working.
+//
+// The first line stays "hexdek-freya <version>": the server parses the
+// last field of it to learn the running version (see hexapi's
+// probeFreyaVersion), so its shape is load-bearing.
 func VersionString() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "hexdek-freya %s\n", FreyaVersion)
+	fmt.Fprintf(&b, "hexdek-freya %s\n", FreyaVersion())
 	fmt.Fprintf(&b, "  cache schema: v%s (see %s/<key>-v%s.json)\n",
-		FreyaVersion, DefaultCacheDir, FreyaVersion)
+		FreyaVersion(), DefaultCacheDir, FreyaVersion())
+	fmt.Fprintf(&b, "  cache mode:   %s\n", VersionMode())
+	fmt.Fprintf(&b, "  cache in use: %v\n", BuildCacheUsable())
 	fmt.Fprintf(&b, "  go runtime:   %s\n", runtime.Version())
 	return b.String()
 }
@@ -36,7 +49,7 @@ func VersionString() string {
 // from the Go structs directly if they need stricter contracts.
 func JSONSchemaDoc() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Freya JSON Output Schema (v%s)\n", FreyaVersion)
+	fmt.Fprintf(&b, "Freya JSON Output Schema (v%s)\n", FreyaVersion())
 	fmt.Fprintln(&b, "================================")
 	fmt.Fprintln(&b, "")
 	fmt.Fprintln(&b, "TOP LEVEL: FreyaReport")
@@ -81,7 +94,7 @@ func JSONSchemaDoc() string {
 	fmt.Fprintln(&b, "  Consistency          *ConsistencyResult  — Freya-vs-Freya bit-equal probe")
 	fmt.Fprintln(&b, "")
 	fmt.Fprintln(&b, "CACHE ENTRY ENVELOPE (data/freya-cache/<key>-v<version>.json)")
-	fmt.Fprintln(&b, "  freya_version  string       — must match FreyaVersion at load time")
+	fmt.Fprintln(&b, "  freya_version  string       — must match FreyaVersion() at load time")
 	fmt.Fprintln(&b, "  deck_hash      string       — sha256 of normalized card list (matches filename)")
 	fmt.Fprintln(&b, "  report         *FreyaReport — the cached report payload")
 	return b.String()

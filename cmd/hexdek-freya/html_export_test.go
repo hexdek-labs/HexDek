@@ -96,7 +96,7 @@ func TestManaSymbolHTML(t *testing.T) {
 }
 
 // TestPrintHTML_Structure pins the top-level HTML5 envelope: doctype,
-// inline <style>, <main>, footer with FreyaVersion. The envelope is
+// inline <style>, <main>, footer with FreyaVersion(). The envelope is
 // what makes the output a valid standalone document; if any of these
 // regress the file becomes invalid HTML.
 func TestPrintHTML_Structure(t *testing.T) {
@@ -119,7 +119,7 @@ func TestPrintHTML_Structure(t *testing.T) {
 		"</main>",
 		"</html>",
 		// Footer pin:
-		"hexdek-freya v" + FreyaVersion,
+		"hexdek-freya v" + FreyaVersion(),
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("HTML envelope missing %q", want)

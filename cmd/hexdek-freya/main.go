@@ -22,6 +22,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -131,7 +132,7 @@ func main() {
 	flag.StringVar(&tournamentPath, "tournament", "",
 		"path to a TournamentResult JSON (produced by cmd/hexdek-tournament/). Loads the tournament and emits a Freya summary report: performance tiers, archetype meta breakdown, surprise upsets, OMW%% leaders (Swiss), win-condition analysis. --format json emits the structured TournamentSummary; default text format renders the side-by-side report. Mutually exclusive with --deck / --all-decks.")
 	flag.BoolVar(&noCache, "no-cache", false,
-		"bypass the content-addressed Freya report cache at "+DefaultCacheDir+". Cache hits short-circuit analysis to a JSON decode (~5ms vs ~1-3s); cache key is SHA256 over (commander + sorted Nx normalized card list), invalidated by FreyaVersion bumps. --mode metrics implies --no-cache so the consistency probe always sees fresh output.")
+		"bypass the content-addressed Freya report cache at "+DefaultCacheDir+". Cache hits short-circuit analysis to a JSON decode (~5ms vs ~1-3s); cache key is SHA256 over (commander + sorted Nx normalized card list), invalidated by FreyaVersion() bumps. --mode metrics implies --no-cache so the consistency probe always sees fresh output.")
 	flag.BoolVar(&showVersion, "version", false,
 		"print the freya version banner (cache schema + go runtime) and exit.")
 	flag.BoolVar(&showSchema, "json-schema", false,
@@ -241,6 +242,14 @@ func main() {
 	// gracefully degrades to oracle-only when the corpus isn't present.
 	if astCorpus, astErr := astload.Load("data/rules/ast_dataset.jsonl"); astErr != nil {
 		log.Printf("  AST corpus unavailable (combo-math runs oracle-only): %v", astErr)
+	} else if astCorpus.Count() == 0 {
+		// An empty corpus is worse than no corpus: it satisfies
+		// astSourceLoaded(), so the unsupported-card check would report
+		// EVERY card in every deck as engine-unsupported. That is a
+		// statement about a truncated data file dressed up as a
+		// statement about the user's deck, so refuse to install it.
+		log.Printf("  AST corpus loaded 0 cards — treating as unavailable " +
+			"(installing it would mark every card unsupported)")
 	} else {
 		SetMathASTSource(astCorpus)
 		log.Printf("  AST corpus loaded: %d cards", astCorpus.Count())
@@ -466,12 +475,57 @@ func analyzeDeckFile(path string, oracle *oracleDB, mechDB *MechanicDB) (*FreyaR
 	deckName := filepath.Base(path)
 	deckName = strings.TrimSuffix(deckName, filepath.Ext(deckName))
 
+	// unresolvedQty accumulates deck-list names that matched no oracle
+	// record, keyed by lowercased name so the two passes below can't
+	// double-count the same card under different capitalisation. The
+	// value is the copy count; the unique pass contributes 1 for a
+	// name the quantity pass never saw.
+	unresolvedQty := map[string]int{}
+	unresolvedName := map[string]string{} // lowercase key → first-seen display name
+
+	// unsupportedQty mirrors unresolvedQty for the OTHER gap: cards the
+	// oracle knows but Thor never parsed. Only meaningful when an AST
+	// corpus is actually loaded — see astSourceLoaded.
+	astLoaded := astSourceLoaded()
+	unsupportedQty := map[string]int{}
+	unsupportedName := map[string]string{}
+
+	noteUnsupported := func(name string, qty int) {
+		key := strings.ToLower(strings.TrimSpace(name))
+		if key == "" {
+			return
+		}
+		if _, seen := unsupportedName[key]; !seen {
+			unsupportedName[key] = strings.TrimSpace(name)
+		}
+		if qty > unsupportedQty[key] {
+			unsupportedQty[key] = qty
+		}
+	}
+
+	noteUnresolved := func(name string, qty int) {
+		key := strings.ToLower(strings.TrimSpace(name))
+		if key == "" {
+			return
+		}
+		if _, seen := unresolvedName[key]; !seen {
+			unresolvedName[key] = strings.TrimSpace(name)
+		}
+		if qty > unresolvedQty[key] {
+			unresolvedQty[key] = qty
+		}
+	}
+
 	// Classify each unique card for synergy detection.
 	var profiles []CardProfile
 	resolved := 0
 	for _, cardName := range cards {
 		entry := oracle.lookup(cardName)
 		if entry == nil {
+			// Silently dropping this used to be the whole story: the
+			// card vanished from every analytic below and nothing
+			// downstream could tell. Record it so the report can say so.
+			noteUnresolved(cardName, 1)
 			continue
 		}
 		resolved++
@@ -517,6 +571,7 @@ func analyzeDeckFile(path string, oracle *oracleDB, mechDB *MechanicDB) (*FreyaR
 		entry := oracle.lookup(name)
 		if entry == nil {
 			log.Printf("    [qty-pass] UNRESOLVED: %q (qty=%d)", name, qty)
+			noteUnresolved(name, qty)
 			qtyProfiles = append(qtyProfiles, CardProfileQty{
 				Profile: CardProfile{Name: name},
 				Qty:     qty,
@@ -537,6 +592,15 @@ func analyzeDeckFile(path string, oracle *oracleDB, mechDB *MechanicDB) (*FreyaR
 		if !p.IsLand && strings.Contains(strings.ToLower(entry.TypeLine), "land") {
 			p.IsLand = true
 		}
+		// The card resolved against the oracle corpus, so everything
+		// below analyses it correctly. Whether the ENGINE can execute
+		// it is a separate question with a separate data store — see
+		// FreyaReport.UnsupportedCards. Basic lands never carry an AST
+		// entry and don't need one, so they're excluded via the
+		// shortcut above (this branch is only reached for nonbasics).
+		if astLoaded && !p.IsLand && !astHasCard(entry.Name) {
+			noteUnsupported(entry.Name, qty)
+		}
 		qtyProfiles = append(qtyProfiles, CardProfileQty{Profile: p, Qty: qty})
 	}
 
@@ -545,6 +609,55 @@ func analyzeDeckFile(path string, oracle *oracleDB, mechDB *MechanicDB) (*FreyaR
 
 	// Run analysis — pass both unique profiles (synergy) and qty profiles (curve).
 	report := AnalyzeDeck(profiles, deckName, path, commander)
+
+	// Carry the unresolved-card record onto the report. Sorted by
+	// display name so repeated runs produce byte-identical output
+	// (map iteration order would otherwise churn the cache and the
+	// strategy.json diff).
+	if len(unresolvedName) > 0 {
+		keys := make([]string, 0, len(unresolvedName))
+		for k := range unresolvedName {
+			keys = append(keys, k)
+		}
+		sort.Slice(keys, func(i, j int) bool {
+			return unresolvedName[keys[i]] < unresolvedName[keys[j]]
+		})
+		for _, k := range keys {
+			qty := unresolvedQty[k]
+			if qty < 1 {
+				qty = 1
+			}
+			report.UnresolvedCards = append(report.UnresolvedCards, UnresolvedCard{
+				Name: unresolvedName[k],
+				Qty:  qty,
+			})
+		}
+		log.Printf("  %s: %d unresolved card name(s) recorded on the report",
+			filepath.Base(path), len(report.UnresolvedCards))
+	}
+
+	if len(unsupportedName) > 0 {
+		keys := make([]string, 0, len(unsupportedName))
+		for k := range unsupportedName {
+			keys = append(keys, k)
+		}
+		sort.Slice(keys, func(i, j int) bool {
+			return unsupportedName[keys[i]] < unsupportedName[keys[j]]
+		})
+		for _, k := range keys {
+			qty := unsupportedQty[k]
+			if qty < 1 {
+				qty = 1
+			}
+			report.UnsupportedCards = append(report.UnsupportedCards, UnresolvedCard{
+				Name: unsupportedName[k],
+				Qty:  qty,
+			})
+		}
+		log.Printf("  %s: %d card(s) known to the oracle but absent from the AST corpus "+
+			"(analysed here, inert in the engine)",
+			filepath.Base(path), len(report.UnsupportedCards))
+	}
 
 	// Filter combo potential notes by commander color identity.
 	if commander != "" {
@@ -1017,6 +1130,33 @@ func saveProfileJSON(path string, report *FreyaReport) {
 // strategyJSON is the compact machine-consumable format read by
 // hat.LoadStrategyFromFreya. Contains only what the evaluator needs.
 type strategyJSON struct {
+	// Provenance. Until 2026-09-15 this artifact carried neither a
+	// timestamp nor a version, which meant nothing that read it —
+	// the deck page, the hat, a human inspecting the file — could
+	// tell whether it reflected current Freya logic or a classifier
+	// that had since been corrected. "This analysis may be out of
+	// date" was not a message anyone could render, because the data
+	// to compute it did not exist.
+	//
+	// FreyaVersion is the version that PRODUCED this file (build-
+	// derived; see version.go). GeneratedAt is the write time in
+	// RFC3339 UTC. Consumers compare FreyaVersion against the running
+	// binary's to decide staleness.
+	FreyaVersion string `json:"freya_version,omitempty"`
+	GeneratedAt  string `json:"generated_at,omitempty"`
+
+	// UnresolvedCards lists deck-list entries no oracle record
+	// matched. Every field below this one was computed as if these
+	// cards were absent from the deck, so a non-empty list is a
+	// caveat on the whole document, not a minor footnote.
+	UnresolvedCards []UnresolvedCard `json:"unresolved_cards,omitempty"`
+
+	// UnsupportedCards is the other half of the same honesty problem:
+	// cards the analysis below DID cover, but which the game engine
+	// cannot execute because Thor has no parsed AST for them. The
+	// write-up is accurate; the simulated games are not.
+	UnsupportedCards []UnresolvedCard `json:"unsupported_cards,omitempty"`
+
 	Archetype        string            `json:"archetype"`
 	Bracket          int               `json:"bracket"`
 	BracketLabel     string            `json:"bracket_label"`
@@ -1152,6 +1292,19 @@ type strategyWinLine struct {
 
 func saveStrategyJSON(path string, report *FreyaReport) {
 	sj := strategyJSON{}
+
+	// Stamp provenance at WRITE time, not analysis time. On a cache
+	// hit the conclusions come off disk, but the cache key includes
+	// FreyaVersion() — so a hit is always same-version by construction,
+	// and "this file was written by this version" stays true either
+	// way. GeneratedAt is therefore "when this artifact was produced",
+	// which is what a staleness banner needs.
+	sj.FreyaVersion = FreyaVersion()
+	sj.GeneratedAt = time.Now().UTC().Format(time.RFC3339)
+	if report != nil {
+		sj.UnresolvedCards = report.UnresolvedCards
+		sj.UnsupportedCards = report.UnsupportedCards
+	}
 
 	if report.Profile != nil {
 		sj.Archetype = strings.ToLower(report.Profile.PrimaryArchetype)

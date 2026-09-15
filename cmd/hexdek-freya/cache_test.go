@@ -129,7 +129,7 @@ func TestCacheMiss_NoFile(t *testing.T) {
 }
 
 // TestCacheStale_VersionMismatch pins the version-invalidation branch.
-// We hand-craft a cache file with a stale FreyaVersion (using the
+// We hand-craft a cache file with a stale FreyaVersion() (using the
 // current key's filename pattern so the file IS found by path) and
 // verify TryLoadFromCache rejects it.
 func TestCacheStale_VersionMismatch(t *testing.T) {
@@ -137,7 +137,7 @@ func TestCacheStale_VersionMismatch(t *testing.T) {
 	key := "stalekey0000000000000000000000000000000000000000000000000000000000"
 	path := CacheFilePath(dir, key)
 
-	// Hand-write a cache entry with a stale FreyaVersion.
+	// Hand-write a cache entry with a stale FreyaVersion().
 	stale := cacheEntry{
 		FreyaVersion: "r0-ancient",
 		DeckHash:     key,
@@ -175,7 +175,7 @@ func TestCacheStale_CorruptFile(t *testing.T) {
 }
 
 // TestCacheStale_NilReportInside catches the case where the file is
-// valid JSON, the FreyaVersion matches, but the embedded Report field
+// valid JSON, the FreyaVersion() matches, but the embedded Report field
 // is nil. We treat that as a miss rather than returning a nil pointer
 // the caller might dereference.
 func TestCacheStale_NilReportInside(t *testing.T) {
@@ -183,7 +183,7 @@ func TestCacheStale_NilReportInside(t *testing.T) {
 	key := "nilreportkey0000000000000000000000000000000000000000000000000000"
 	path := CacheFilePath(dir, key)
 	entry := cacheEntry{
-		FreyaVersion: FreyaVersion,
+		FreyaVersion: FreyaVersion(),
 		DeckHash:     key,
 		Report:       nil,
 	}
@@ -204,12 +204,12 @@ func TestCacheStale_NilReportInside(t *testing.T) {
 }
 
 // TestCachePath_VersionSuffix pins the filename pattern. Bumping
-// FreyaVersion should make all current-version filenames stale; the
+// FreyaVersion() should make all current-version filenames stale; the
 // path layout is what makes that automatic (different version =
 // different file).
 func TestCachePath_VersionSuffix(t *testing.T) {
 	path := CacheFilePath("/tmp/cache", "abc123")
-	want := filepath.Join("/tmp/cache", "abc123-v"+FreyaVersion+".json")
+	want := filepath.Join("/tmp/cache", "abc123-v"+FreyaVersion()+".json")
 	if path != want {
 		t.Errorf("CacheFilePath = %q, want %q", path, want)
 	}
@@ -237,15 +237,15 @@ func TestSaveToCache_CreatesDir(t *testing.T) {
 }
 
 // TestCacheVersionConstant_NonEmpty is a sanity test: an empty
-// FreyaVersion string would make EVERY cache file look unversioned
+// FreyaVersion() string would make EVERY cache file look unversioned
 // (filename pattern degenerates to "key-v.json") and would silently
 // disable invalidation. Pin that the constant is set to something.
 func TestCacheVersionConstant_NonEmpty(t *testing.T) {
-	if strings.TrimSpace(FreyaVersion) == "" {
-		t.Error("FreyaVersion must be non-empty for cache invalidation to work")
+	if strings.TrimSpace(FreyaVersion()) == "" {
+		t.Error("FreyaVersion() must be non-empty for cache invalidation to work")
 	}
-	if !strings.HasPrefix(FreyaVersion, "r") {
-		t.Errorf("FreyaVersion = %q, expected r-prefixed token (e.g. r60.1) by convention", FreyaVersion)
+	if !strings.HasPrefix(FreyaVersion(), "r") {
+		t.Errorf("FreyaVersion() = %q, expected r-prefixed token (e.g. r60.1) by convention", FreyaVersion())
 	}
 }
 

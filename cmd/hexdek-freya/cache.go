@@ -26,17 +26,16 @@ import (
 // printing decoration, or casing. Quantities matter — a deck with 30
 // Plains and one with 35 Plains are different cache entries.
 //
-// Cache invalidation: the FreyaVersion constant is baked into both the
-// filename suffix and the cache entry body. Bumping FreyaVersion makes
+// Cache invalidation: the FreyaVersion() token is baked into both the
+// filename suffix and the cache entry body, so a version change makes
 // every existing cache file stale (the new filename pattern won't hit
 // any old file, and the embedded version check is a defense-in-depth
 // in case anyone manually copies a file across versions).
-
-// FreyaVersion is the cache-invalidation token. Bump this string when
-// a Freya change alters the FreyaReport schema OR any classifier
-// output that would surface as drift in the consistency probe
-// (`--mode metrics`).
-const FreyaVersion = "r60.1"
+//
+// That token is DERIVED FROM THE BUILD, not hand-maintained — see
+// version.go for why, and for the FREYA_CACHE_PIN escape hatch. A
+// binary built from a modified working tree reports
+// BuildCacheUsable() == false and bypasses the cache entirely.
 
 // DefaultCacheDir is where Freya looks for cached reports. Gitignored
 // in .gitignore so cache pollution doesn't end up in PRs.
@@ -76,7 +75,7 @@ func normalizeForCacheKey(s string) string {
 // would live. The FreyaVersion suffix means version-stale entries
 // don't collide with current-version entries on lookup.
 func CacheFilePath(cacheDir, key string) string {
-	return filepath.Join(cacheDir, key+"-v"+FreyaVersion+".json")
+	return filepath.Join(cacheDir, key+"-v"+FreyaVersion()+".json")
 }
 
 // cacheEntry is the on-disk format. The DeckHash and FreyaVersion
@@ -110,7 +109,7 @@ func TryLoadFromCache(cacheDir, key string) (*FreyaReport, bool) {
 	if err := json.Unmarshal(data, &entry); err != nil {
 		return nil, false
 	}
-	if entry.FreyaVersion != FreyaVersion {
+	if entry.FreyaVersion != FreyaVersion() {
 		return nil, false
 	}
 	if entry.Report == nil {
@@ -128,7 +127,7 @@ func SaveToCache(cacheDir, key string, report *FreyaReport) error {
 		return fmt.Errorf("create cache dir: %w", err)
 	}
 	entry := cacheEntry{
-		FreyaVersion: FreyaVersion,
+		FreyaVersion: FreyaVersion(),
 		DeckHash:     key,
 		Report:       report,
 	}
@@ -156,7 +155,12 @@ func SaveToCache(cacheDir, key string, report *FreyaReport) error {
 // — parsing is ~ms while analysis is ~seconds).
 func analyzeDeckFileCached(path string, oracle *oracleDB, mechDB *MechanicDB,
 	cacheDir string, useCache bool) (*FreyaReport, error) {
-	if !useCache {
+	// Two independent gates. useCache is per-RUN (the --no-cache flag,
+	// and the refresh path in hexapi). BuildCacheUsable is per-BINARY:
+	// false when this binary was built from a modified working tree,
+	// where the revision stamp can't distinguish one edit from the
+	// next and a hit would serve the previous edit's conclusions.
+	if !useCache || !BuildCacheUsable() {
 		return analyzeDeckFile(path, oracle, mechDB)
 	}
 

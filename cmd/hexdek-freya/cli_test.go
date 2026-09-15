@@ -17,7 +17,7 @@ func TestVersionString(t *testing.T) {
 	s := VersionString()
 	for _, want := range []string{
 		"hexdek-freya",
-		FreyaVersion,
+		FreyaVersion(),
 		"cache schema:",
 		DefaultCacheDir,
 		"go runtime:",
@@ -41,7 +41,7 @@ func TestJSONSchemaDoc(t *testing.T) {
 	s := JSONSchemaDoc()
 	for _, want := range []string{
 		"Freya JSON Output Schema",
-		FreyaVersion,
+		FreyaVersion(),
 		"TOP LEVEL: FreyaReport",
 		"COMBO ENTRY: ComboResult",
 		"METRICS MODE: FreyaMetrics",
@@ -174,17 +174,17 @@ func TestProgressLine_AlignsAcrossRange(t *testing.T) {
 
 // TestVersionString_StaysInSyncWithCachePath defends the cache /
 // version coupling: VersionString claims a cache-schema location and
-// version, and CacheFilePath uses the same FreyaVersion to construct
-// real paths. If someone bumps FreyaVersion in cache.go but forgets
+// version, and CacheFilePath uses the same FreyaVersion() to construct
+// real paths. If someone bumps FreyaVersion() in cache.go but forgets
 // to re-render VersionString, this test fails because the embedded
 // version no longer matches what the cache helper produces.
 func TestVersionString_StaysInSyncWithCachePath(t *testing.T) {
 	v := VersionString()
 	path := CacheFilePath("/dummy", "abc")
-	if !strings.Contains(v, FreyaVersion) {
-		t.Fatalf("VersionString doesn't mention FreyaVersion (%q)\n%s", FreyaVersion, v)
+	if !strings.Contains(v, FreyaVersion()) {
+		t.Fatalf("VersionString doesn't mention FreyaVersion() (%q)\n%s", FreyaVersion(), v)
 	}
-	if !strings.Contains(path, "v"+FreyaVersion+".json") {
-		t.Errorf("CacheFilePath drift: %q lacks v%s.json", path, FreyaVersion)
+	if !strings.Contains(path, "v"+FreyaVersion()+".json") {
+		t.Errorf("CacheFilePath drift: %q lacks v%s.json", path, FreyaVersion())
 	}
 }

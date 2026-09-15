@@ -301,6 +301,53 @@ type FreyaReport struct {
 
 	// Value chain detection
 	ValueChains []ValueChain
+
+	// UnresolvedCards holds deck-list entries that matched no oracle
+	// record, so every downstream analytic — archetype, combos, curve,
+	// roles, bracket — was computed as if those cards were not in the
+	// deck.
+	//
+	// Before this field existed the miss was a bare `continue` in the
+	// classification loop plus a log line nobody reads, which made the
+	// report silently wrong in the one way a reader cannot detect:
+	// the analysis looks complete and confident, and the user has no
+	// way to know a card was skipped. A recent-set card missing from
+	// the corpus is the common cause, and telling the user "we don't
+	// know this card" is both true and actionable, where an analysis
+	// quietly computed over 97 of 100 cards is neither.
+	//
+	// Sorted by name for stable output; carried into strategy.json as
+	// `unresolved_cards` and rendered on the deck page.
+	UnresolvedCards []UnresolvedCard
+
+	// UnsupportedCards holds cards the oracle corpus DOES know — so
+	// they are analysed normally above — but for which Thor has no
+	// parsed AST entry. HexDek keeps two separate card stores, and a
+	// card can be in one and not the other: the oracle corpus is what
+	// Freya reasons about, the AST dataset is what the game engine
+	// actually executes. A card present in the first and absent from
+	// the second gets a full, confident write-up here and then does
+	// nothing whatsoever in a simulated game.
+	//
+	// That divergence is not hypothetical — it is why a user was told
+	// their deck analysis covered a card that the engine was quietly
+	// treating as a blank. Distinct from UnresolvedCards and reported
+	// separately, because the consequence is different: unresolved
+	// means "this analysis ignored the card", unsupported means "this
+	// analysis is fine, the GAME ignores the card".
+	//
+	// Populated only when an AST corpus is actually loaded. With no
+	// corpus every card would look unsupported, which is a statement
+	// about the missing data file rather than about the deck.
+	UnsupportedCards []UnresolvedCard
+}
+
+// UnresolvedCard is one deck-list entry the oracle corpus did not
+// recognise. Qty is the number of copies in the list, so a report can
+// say "3 copies of X" rather than implying a singleton.
+type UnresolvedCard struct {
+	Name string `json:"name"`
+	Qty  int    `json:"qty"`
 }
 
 // ---------------------------------------------------------------------------

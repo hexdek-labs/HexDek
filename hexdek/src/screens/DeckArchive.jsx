@@ -23,6 +23,7 @@ import DeckExportModal from '../components/DeckExportModal'
 import ContextBox from '../components/ContextBox'
 import EloSparkline from '../components/EloSparkline'
 import ArchetypeChipRow from '../components/ArchetypeChipRow'
+import AnalysisFreshnessBanner from '../components/AnalysisFreshnessBanner'
 import CoachingMarker from '../components/CoachingMarker'
 import { buildCoachingIndex, coachingForCard } from '../lib/freyaCoaching'
 import DeckRating from '../components/DeckRating'
@@ -3558,6 +3559,14 @@ export default function DeckArchive() {
               panel so the "your deck costs $X" headline is the
               first thing visible. */}
           <DeckBudgetPanel deckId={`${owner}/${id}`} />
+          {/* Freshness caveats for everything below: analysis produced
+              by an older Freya build, and cards Freya couldn't resolve
+              against the card database (silently excluded until now). */}
+          <AnalysisFreshnessBanner
+            analysis={analysis}
+            deckId={`${owner}/${id}`}
+            onRefreshed={setAnalysis}
+          />
           <Panel code="04.C" title="FREYA / / ENGINE ANALYSIS" right={<Tag solid title={bracketDiverges ? 'We think it plays more like decks in this bracket.' : undefined}>{wbs ? `Bracket B${wbs}${bracketDiverges ? ` → Estimated Bracket B${measuredBracket}` : ''}` : 'Bracket pending'}</Tag>}>
             {!analysis ? (
               <div style={{ padding: '20px 0', textAlign: 'center' }}>

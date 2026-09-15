@@ -5,6 +5,7 @@ import { api, cardArtUrl } from '../services/api'
 import { useDecks } from '../hooks/useData'
 import { trackEvent } from '../hooks/useAnalytics'
 import ContextBox from '../components/ContextBox'
+import AnalysisFreshnessBanner from '../components/AnalysisFreshnessBanner'
 
 export default function Forge() {
   const { data: decks, loading: decksLoading } = useDecks()
@@ -221,6 +222,14 @@ export default function Forge() {
                 </div>
               </div>
             </Panel>
+
+            {/* Stale-analysis / unresolved-card caveats for the Freya
+                sections below. Renders nothing for a fresh analysis. */}
+            <AnalysisFreshnessBanner
+              analysis={analysis}
+              deckId={`${selectedDeck.owner}/${selectedDeck.id}`}
+              onRefreshed={setAnalysis}
+            />
 
             {/* Analysis section — from Freya */}
             {analysis ? (

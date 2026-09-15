@@ -418,3 +418,35 @@ func comboCardKey(names []string) string {
 	sort.Strings(sorted)
 	return strings.Join(sorted, "|")
 }
+
+// astSourceLoaded reports whether a Thor AST corpus is installed.
+//
+// This exists so callers can distinguish "this card has no AST entry"
+// from "there is no AST corpus to check against." Those look identical
+// at the lookup site and mean opposite things: the first is a real gap
+// in engine support worth telling a user about, the second is a
+// missing data file that would make EVERY card look unsupported.
+//
+// Reporting the second as the first is the absence-of-evidence failure
+// — the same shape as an unmatched role tag being read as "cut this
+// card" — so every consumer must gate on this before drawing a
+// conclusion from a miss.
+func astSourceLoaded() bool {
+	astMu.Lock()
+	defer astMu.Unlock()
+	return astCorpus != nil
+}
+
+// astHasCard reports whether the installed AST corpus carries a parsed
+// entry for this card name. Returns false when no corpus is installed;
+// callers MUST check astSourceLoaded() first — see above.
+func astHasCard(name string) bool {
+	astMu.Lock()
+	src := astCorpus
+	astMu.Unlock()
+	if src == nil {
+		return false
+	}
+	_, ok := src.Get(name)
+	return ok
+}
