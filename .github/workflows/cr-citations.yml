@@ -1,0 +1,59 @@
+name: cr-citations
+
+# The engine cites the Comprehensive Rules in ~7,400 places. Until this gate
+# existed, nothing checked that any of those rule numbers were real — and 306
+# of them were not, naming 83 rule numbers absent from every CR edition.
+#
+# Two gates, deliberately different in kind (internal/crcite):
+#
+#   TestCRCitations_NoDanglingRules is hard and permanent. A citation to a
+#   rule number that does not exist cannot have drifted; it was written to
+#   look correct. No baseline, no grandfathering.
+#
+#   TestCRCitations_TopicMismatchRatchet rides a shrinking baseline
+#   (internal/crcite/mismatch_baseline.txt), because a rule number can exist
+#   and still be the wrong rule, and SOME of those are legitimate
+#   cross-references. New mismatches fail; the baseline only shrinks.
+#
+# This runs on any .go change AND on any change to the CR text itself. That
+# second trigger is the point: adopting a new CR edition renumbers rules, so
+# the edition swap and the citation sweep have to land together or the tree
+# silently starts pointing at the wrong rules.
+
+on:
+  pull_request:
+    paths:
+      - "**.go"
+      - "go.mod"
+      - "data/rules/MagicCompRules-*.txt"
+      - "internal/crcite/**"
+      - ".github/workflows/cr-citations.yml"
+  push:
+    branches: [main]
+    paths:
+      - "**.go"
+      - "go.mod"
+      - "data/rules/MagicCompRules-*.txt"
+      - "internal/crcite/**"
+
+concurrency:
+  group: cr-citations-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  citations:
+    name: CR citation validity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # No oracle or AST data needed: this reads the committed CR text and
+      # the Go sources, nothing else. Runs in seconds.
+      - name: Validate every CR citation in the tree
+        run: go test ./internal/crcite/ -count=1 -v
