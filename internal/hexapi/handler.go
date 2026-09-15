@@ -22,6 +22,7 @@ import (
 	"github.com/hexdek/hexdek/internal/analytics"
 	"github.com/hexdek/hexdek/internal/archidekt"
 	"github.com/hexdek/hexdek/internal/db"
+	"github.com/hexdek/hexdek/internal/deckparser"
 	"github.com/hexdek/hexdek/internal/versioning"
 )
 
@@ -1538,7 +1539,7 @@ func (h *Handler) handleImportDeck(w http.ResponseWriter, r *http.Request) {
 	// Auto-trigger Freya analysis on import.
 	go h.runFreya(deckPath)
 
-	writeJSON(w, map[string]any{
+	resp := map[string]any{
 		"id":             finalID,
 		"owner":          owner,
 		"name":           name,
@@ -1546,7 +1547,70 @@ func (h *Handler) handleImportDeck(w http.ResponseWriter, r *http.Request) {
 		"card_count":     len(cards),
 		"file_path":      filepath.Join(owner, filepath.Base(deckPath)),
 		"tags":           h.loadTags(r.Context(), owner, finalID),
-	})
+	}
+	for k, v := range unresolvedImportFields(h.Showmatch, deckPath) {
+		resp[k] = v
+	}
+	writeJSON(w, resp)
+}
+
+// unresolvedImportFields reports the cards the deck parser could not
+// resolve, so an import that silently lost cards stops being silent.
+//
+// The parser has always known this: ParseDeckFile drops an unresolvable
+// line from Library and records the name in TournamentDeck.Unresolved,
+// with a per-line reason and Levenshtein "did you mean" candidates in
+// ParseReport.UnresolvedDetails. Nothing in this package ever read any
+// of it, so a user could paste 100 cards, have 3 silently dropped, run a
+// gauntlet on the remaining 97, and be given a win rate with no
+// indication the deck was not the deck they submitted.
+//
+// It resolves through Showmatch's own corpus+meta on purpose. Those are
+// the inputs buildDeckPool uses, so this reports the cards the ENGINE
+// will actually drop rather than a second opinion from a different
+// store — the tree already has several card databases that disagree.
+//
+// Returns an empty map when the pool has not loaded, when parsing fails,
+// or when everything resolved. Absence of the field means "no problem
+// found or could not check", never "check performed and deck is short".
+func unresolvedImportFields(sm *Showmatch, deckPath string) map[string]any {
+	corpus, meta := sm.ParserInputs()
+	// meta is the resolver that decides; corpus is an additional lookup
+	// buildCard tries first and tolerates being nil. Gating on meta alone
+	// keeps the check alive in any state where the parser could actually
+	// resolve, and still returns nothing when it could not.
+	if meta == nil {
+		return nil
+	}
+	td, err := deckparser.ParseDeckFile(deckPath, corpus, meta)
+	if err != nil || td == nil || len(td.Unresolved) == 0 {
+		return nil
+	}
+
+	details := make([]map[string]any, 0, len(td.ParseReport.UnresolvedDetails))
+	for _, u := range td.ParseReport.UnresolvedDetails {
+		row := map[string]any{"name": u.Name, "line": u.LineNumber}
+		if u.Reason != "" {
+			row["reason"] = u.Reason
+		}
+		if len(u.Suggestions) > 0 {
+			names := make([]string, 0, len(u.Suggestions))
+			for _, s := range u.Suggestions {
+				names = append(names, s.Name)
+			}
+			row["did_you_mean"] = names
+		}
+		details = append(details, row)
+	}
+
+	out := map[string]any{
+		"unresolved":       td.Unresolved,
+		"unresolved_count": len(td.Unresolved),
+	}
+	if len(details) > 0 {
+		out["unresolved_detail"] = details
+	}
+	return out
 }
 
 var moxfieldClient = &http.Client{

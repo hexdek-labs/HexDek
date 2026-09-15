@@ -538,6 +538,26 @@ func (sm *Showmatch) SetCreditStore(c *credits.Store) {
 // read.
 func (sm *Showmatch) DeckParserMeta() *deckparser.MetaDB { return sm.meta }
 
+// ParserInputs returns the corpus and meta the deck pool resolves names
+// against, read under the lock that reloadDeckPool writes them with.
+//
+// This is deliberately the SAME pair buildDeckPool hands to
+// deckparser.ParseDeckFile. Anything reporting "this card did not
+// resolve" has to resolve against exactly what the pool resolved
+// against, or it reports a different answer than the one the engine
+// acted on — which is the failure mode this accessor exists to avoid.
+//
+// Returns (nil, nil) when the pool has not loaded yet; callers must
+// treat that as "cannot determine", never as "nothing resolved".
+func (sm *Showmatch) ParserInputs() (*astload.Corpus, *deckparser.MetaDB) {
+	if sm == nil {
+		return nil, nil
+	}
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	return sm.corpus, sm.meta
+}
+
 type spectatorConn struct {
 	conn *websocket.Conn
 	mu   sync.Mutex
