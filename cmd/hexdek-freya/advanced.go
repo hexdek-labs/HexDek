@@ -1277,23 +1277,23 @@ func finalizeClusters(dp *DeckProfile) {
 // blocklist — the substring scan still runs and adds cards
 // independently.
 var landValuePayoffNames = map[string]bool{
-	"tatyova, benthic druid":          true,
-	"aesi, tyrant of gyre strait":     true,
-	"omnath, locus of creation":       true,
-	"omnath, locus of rage":           true,
-	"lord windgrace":                  true,
-	"field of the dead":               true,
-	"splendid reclamation":            true,
-	"scapeshift":                      true,
-	"the gitrog monster":              true,
-	"the gitrog, ravenous ride":       true,
-	"lotus cobra":                     true,
-	"avenger of zendikar":             true,
-	"world shaper":                    true,
-	"titania, protector of argoth":    true,
-	"titania, voice of gaea":          true,
-	"emeria, the sky ruin":            true,
-	"valakut, the molten pinnacle":    true,
+	"tatyova, benthic druid":       true,
+	"aesi, tyrant of gyre strait":  true,
+	"omnath, locus of creation":    true,
+	"omnath, locus of rage":        true,
+	"lord windgrace":               true,
+	"field of the dead":            true,
+	"splendid reclamation":         true,
+	"scapeshift":                   true,
+	"the gitrog monster":           true,
+	"the gitrog, ravenous ride":    true,
+	"lotus cobra":                  true,
+	"avenger of zendikar":          true,
+	"world shaper":                 true,
+	"titania, protector of argoth": true,
+	"titania, voice of gaea":       true,
+	"emeria, the sky ruin":         true,
+	"valakut, the molten pinnacle": true,
 }
 
 // landValueAmplifierNames are the curated replay/extra-drop engines
@@ -1301,21 +1301,21 @@ var landValuePayoffNames = map[string]bool{
 // still runs in parallel — these catch the cards whose oracle text
 // doesn't have the obvious "play lands from your graveyard" anchor.
 var landValueAmplifierNames = map[string]bool{
-	"crucible of worlds":                  true,
-	"ramunap excavator":                   true,
-	"the gitrog monster":                  true,
-	"the gitrog, ravenous ride":           true,
-	"oracle of mul daya":                  true,
-	"azusa, lost but seeking":             true,
-	"dryad of the ilysian grove":          true,
-	"exploration":                         true,
-	"burgeoning":                          true,
-	"wayward swordtooth":                  true,
-	"lord windgrace":                      true,
-	"world shaper":                        true,
-	"life from the loam":                  true,
-	"splendid reclamation":                true,
-	"scapeshift":                          true,
+	"crucible of worlds":         true,
+	"ramunap excavator":          true,
+	"the gitrog monster":         true,
+	"the gitrog, ravenous ride":  true,
+	"oracle of mul daya":         true,
+	"azusa, lost but seeking":    true,
+	"dryad of the ilysian grove": true,
+	"exploration":                true,
+	"burgeoning":                 true,
+	"wayward swordtooth":         true,
+	"lord windgrace":             true,
+	"world shaper":               true,
+	"life from the loam":         true,
+	"splendid reclamation":       true,
+	"scapeshift":                 true,
 }
 
 // computeLandValueCluster surfaces the lands-matter package as a
@@ -1559,18 +1559,18 @@ func metaMatchupStrengthOrDefault(e matchupEntry) string {
 // signal an additive, auditable layer.
 var metaMatchupStrengthOverrides = map[[2]string]string{
 	// --- "strong" — mechanical hard-locks ---
-	{"stax", "Combo"}:        "strong", // Drannith Magistrate / Rule of Law / Cursed Totem
-	{"stax", "Storm"}:        "strong", // Rule of Law / Eidolon of Rhetoric / Damping Sphere
-	{"stax", "Reanimator"}:   "strong", // Drannith Magistrate denies the reanimation cast
-	{"stax", "Aristocrats"}:  "strong", // Cursed Totem disables creature sac outlets
-	{"stax", "Enchantress"}:  "strong", // taxes prevent enchantment engine setup
-	{"reanimator", "Graveyard Hate"}: "strong", // Rest in Peace / Leyline of the Void
-	{"aristocrats", "Graveyard Hate"}: "strong", // RIP / Leyline exile the recursion
+	{"stax", "Combo"}:                   "strong", // Drannith Magistrate / Rule of Law / Cursed Totem
+	{"stax", "Storm"}:                   "strong", // Rule of Law / Eidolon of Rhetoric / Damping Sphere
+	{"stax", "Reanimator"}:              "strong", // Drannith Magistrate denies the reanimation cast
+	{"stax", "Aristocrats"}:             "strong", // Cursed Totem disables creature sac outlets
+	{"stax", "Enchantress"}:             "strong", // taxes prevent enchantment engine setup
+	{"reanimator", "Graveyard Hate"}:    "strong", // Rest in Peace / Leyline of the Void
+	{"aristocrats", "Graveyard Hate"}:   "strong", // RIP / Leyline exile the recursion
 	{"enchantress", "Enchantment Hate"}: "strong", // Aura Shards mass removal
-	{"voltron", "Stax"}:       "strong", // commander-tax + Cursed Totem prevents recasting
-	{"voltron", "Control"}:    "strong", // single threat folds to every removal spell
-	{"storm", "Stax"}:         "strong", // Rule of Law locks the cast chain — game over
-	{"storm", "Control"}:      "strong", // one Counterspell breaks the whole turn
+	{"voltron", "Stax"}:                 "strong", // commander-tax + Cursed Totem prevents recasting
+	{"voltron", "Control"}:              "strong", // single threat folds to every removal spell
+	{"storm", "Stax"}:                   "strong", // Rule of Law locks the cast chain — game over
+	{"storm", "Control"}:                "strong", // one Counterspell breaks the whole turn
 
 	// --- Reciprocal entries — the other half of each hard-lock pair ---
 	// The reciprocity invariant says A favored-strong vs B should pair
@@ -1578,19 +1578,19 @@ var metaMatchupStrengthOverrides = map[[2]string]string{
 	// is lopsided). Annotating both sides keeps deck-recommendation
 	// surfaces consistent regardless of which deck's profile is being
 	// viewed.
-	{"combo", "Stax"}:         "strong",
-	{"reanimator", "Stax"}:    "strong",
-	{"aristocrats", "Stax"}:   "strong",
-	{"enchantress", "Stax"}:   "strong",
-	{"control", "Voltron"}:    "strong",
-	{"control", "Storm"}:      "strong",
+	{"combo", "Stax"}:       "strong",
+	{"reanimator", "Stax"}:  "strong",
+	{"aristocrats", "Stax"}: "strong",
+	{"enchantress", "Stax"}: "strong",
+	{"control", "Voltron"}:  "strong",
+	{"control", "Storm"}:    "strong",
 
 	// --- "slight" — draw/curve-dependent leans ---
 	// (The matching entries are RATED favored/unfavored but the reason
 	// text explicitly hedges. Tagging them as "slight" so callers can
 	// down-weight these in deck recommendations.)
-	{"aggro", "Voltron"}:      "slight", // wide board provides chumps; works only if you go wide
-	{"midrange", "Aggro"}:     "slight", // The matching entry rated neutral; no override needed but
+	{"aggro", "Voltron"}:  "slight", // wide board provides chumps; works only if you go wide
+	{"midrange", "Aggro"}: "slight", // The matching entry rated neutral; no override needed but
 	// listed here as a placeholder for future tuning.
 }
 
@@ -1959,7 +1959,7 @@ func computeMetaPositioningWithReport(dp *DeckProfile, report *FreyaReport) {
 // 13 positional arguments and so adding new signals is a one-field
 // change in two places instead of three.
 type powerExplanationInputs struct {
-	tier             string   // "S" / "A" / "B" / "C" / "D"
+	tier             string // "S" / "A" / "B" / "C" / "D"
 	cmc              int
 	roles            []RoleTag
 	primaryArchetype string   // e.g. "Combo"; "" when deck didn't match a fingerprint
@@ -2344,11 +2344,30 @@ func computeCardPower(dp *DeckProfile, report *FreyaReport) {
 		if isRedundantTutor {
 			syn -= 8
 		}
-		// Penalty: CMC 5+ with only RoleUtility tag is a dead slot.
-		isDeadSlot := p.CMC >= 5 && len(roles) == 1 && roles[0] == RoleUtility
-		if isDeadSlot {
-			syn -= 10
-		}
+		// NOT a penalty: CMC 5+ with only RoleUtility.
+		//
+		// RoleUtility is not a classification, it is the FALLBACK the role
+		// tagger appends when no other role matched (roles.go: `if
+		// len(roles) == 0 && !profile.IsLand`). So "only Utility" means
+		// "we could not classify this card", not "this card does nothing".
+		//
+		// Penalising it turns an absence of evidence into evidence of
+		// absence, and the cards it hits hardest are the ones whose value
+		// is functional rather than lexical. Measured on a real user deck:
+		// Perplexing Test (a one-sided board wipe in a token deck),
+		// Doubling Season (doubles both of that commander's stated themes)
+		// and Unwinding Clock (untap engine for Ghirapur Aether Grid) were
+		// all tagged Utility-only and all three recommended for the cut.
+		//
+		// A card we failed to understand is not a card the player should
+		// delete. Left unscored deliberately; if it is genuinely filler,
+		// the archetype-fit and CMC-efficiency terms still say so.
+		//
+		// isDeadSlot stays wired through to buildPowerExplanation so a
+		// future detector with real evidence can set it, but nothing
+		// derives it today: "untagged" was the only signal we had and it
+		// was the wrong one.
+		isDeadSlot := false
 		syn = clamp(syn, 0, 40)
 
 		power := clamp(archFit+cmcEff+syn, 0, 100)
@@ -2500,25 +2519,11 @@ func computeCardQualityTiers(dp *DeckProfile, report *FreyaReport, oracle *oracl
 			}
 		}
 
-		// High CMC with only utility role is likely cuttable
-		if p.CMC >= 5 && len(s.roles) == 1 && s.roles[0] == RoleUtility {
-			s.score -= 2.0
-			s.reason = "high CMC with no clear role"
-			s.detected = fmt.Sprintf("CMC %d, single role: utility", p.CMC)
-			s.whyCut = "Pays full price but contributes neither pressure nor synergy. Top-end slots should accelerate the gameplan."
-			s.effect = "Frees a top-end slot for a payoff threat, draw engine, or finisher tied to the deck's value chain."
-		}
-
-		// Cards with only Utility role and high CMC
-		if p.CMC >= 4 && len(s.roles) == 1 && s.roles[0] == RoleUtility {
-			s.score -= 1.0
-			if s.reason == "" {
-				s.reason = "filler — no synergy role at CMC " + fmt.Sprint(p.CMC)
-				s.detected = fmt.Sprintf("CMC %d, single role: utility", p.CMC)
-				s.whyCut = "Mid-range slot consumed by a card with no synergy tag — likely a generic value piece duplicated by stronger options in the same colors."
-				s.effect = "Opens a CMC " + fmt.Sprint(p.CMC) + " slot for a synergy-tagged replacement."
-			}
-		}
+		// Utility-only is UNCLASSIFIED, not worthless — see the RoleUtility
+		// note above. No cut recommendation is emitted from it alone, at any
+		// CMC. Recommending a destructive action to a user on the strength of
+		// our own failure to parse the card is the one outcome worse than
+		// saying nothing.
 
 		// CMC >= 4 with ZERO role tags AND not part of a detected win
 		// line / value chain = priority cuttable. The pre-r60 detector
@@ -3170,16 +3175,16 @@ func computeCurveArchetypeFit(dp *DeckProfile, report *FreyaReport) {
 // buildPersonalityBlurb produces the 4-6 sentence narrative paragraph.
 // Structure:
 //
-//	1. Opening — speed + archetype + commander framing (always emits)
-//	2. Approach — what the deck does in play (existing describeApproach)
-//	3. Engine — names 2-3 specific star/power-tier cards anchoring the plan
-//	4. Closer — names finisher pieces from primary win line (existing
-//	            describeCloser already does the naming for combo/finisher/
-//	            commander_damage/alt_wincon types)
-//	5. Texture — pet picks if present, else mana base / protection /
-//	             bracket-flavored signature line
-//	6. (Optional) Final tag — bracket-aware closing thought, only when
-//	            distinct from sentences 1-5 to keep us inside the 6-cap
+//  1. Opening — speed + archetype + commander framing (always emits)
+//  2. Approach — what the deck does in play (existing describeApproach)
+//  3. Engine — names 2-3 specific star/power-tier cards anchoring the plan
+//  4. Closer — names finisher pieces from primary win line (existing
+//     describeCloser already does the naming for combo/finisher/
+//     commander_damage/alt_wincon types)
+//  5. Texture — pet picks if present, else mana base / protection /
+//     bracket-flavored signature line
+//  6. (Optional) Final tag — bracket-aware closing thought, only when
+//     distinct from sentences 1-5 to keep us inside the 6-cap
 //
 // Every sentence has a fallback so the function always emits at least
 // 4 sentences on a minimally-populated DeckProfile.
