@@ -5,9 +5,9 @@ package gameengine
 //
 // Implemented here:
 //
-//   §702.173  Space Sculptor  — partitioned battlefield + sector zone-control
-//   §702.182  Tiered          — modal cast with X-cost replication
-//   §702.190  Infinity        — kicker-style alt-cost paid any number of times
+//   §702.158  Space Sculptor  — partitioned battlefield + sector zone-control
+//   §702.183  Tiered          — modal cast with X-cost replication
+//   §702.186  Infinity        — kicker-style alt-cost paid any number of times
 //
 // All three follow the conventions already in use elsewhere in this package:
 //
@@ -488,24 +488,24 @@ func ApplyInfinity(gs *GameState, item *StackItem, stacks int) int {
 // Why side maps and not a typed field on Permanent: keeping the data on
 // the existing Flags maps means clone/copy paths (clone.go) and zone
 // transitions (resolve_helpers.go's MoveCard) naturally drop the
-// assignment when a permanent leaves the battlefield, matching §702.173
+// assignment when a permanent leaves the battlefield, matching §702.158b
 // — sector membership is a battlefield-only state.
 
 const (
 	SectorAlpha = "alpha"
 	SectorBeta  = "beta"
 	SectorGamma = "gamma"
-	SectorDelta = "delta"
 )
 
 // SpaceSculptorSectors returns the canonical sector ordering. Useful for
 // iteration in UI / analytics layers.
 func SpaceSculptorSectors() []string {
-	return []string{SectorAlpha, SectorBeta, SectorGamma, SectorDelta}
+	return []string{SectorAlpha, SectorBeta, SectorGamma}
 }
 
-// validSculptorSector reports whether `sector` is one of the four canon
-// sector names (case-insensitive). Returns the canonical lowercase form
+// validSculptorSector reports whether `sector` is one of the three canon
+// sector names (case-insensitive). CR §702.158b: "The sector designations
+// are alpha sector, beta sector, and gamma sector." There is no fourth. Returns the canonical lowercase form
 // + true on success, "" + false on miss.
 func validSculptorSector(sector string) (string, bool) {
 	switch strings.ToLower(strings.TrimSpace(sector)) {
@@ -515,8 +515,6 @@ func validSculptorSector(sector string) (string, bool) {
 		return SectorBeta, true
 	case SectorGamma:
 		return SectorGamma, true
-	case SectorDelta:
-		return SectorDelta, true
 	}
 	return "", false
 }
@@ -678,7 +676,7 @@ func SectorController(gs *GameState, sector string) int {
 // top of normal control without changing perm.Controller. Resolvers
 // asking "may seat X activate this ability" can consult both:
 //
-//   perm.Controller == seatIdx || ControlsPermanentViaSculptor(gs, seatIdx, perm)
+//	perm.Controller == seatIdx || ControlsPermanentViaSculptor(gs, seatIdx, perm)
 //
 // is the canonical predicate when sculptor zone-control should grant
 // activation rights. (Whether a particular ability honors sculptor

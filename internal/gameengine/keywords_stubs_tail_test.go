@@ -301,11 +301,11 @@ func TestControlsPermanentViaSculptor(t *testing.T) {
 	p := makeSculptorPerm(0, "Astro Cat")
 	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, p)
 
-	AssignSector(gs, p, "delta")
-	ClaimSector(gs, 1, "delta")
+	AssignSector(gs, p, "gamma")
+	ClaimSector(gs, 1, "gamma")
 
 	if !ControlsPermanentViaSculptor(gs, 1, p) {
-		t.Fatal("seat 1 should have sculptor zone-control over perm in delta")
+		t.Fatal("seat 1 should have sculptor zone-control over perm in gamma")
 	}
 	if ControlsPermanentViaSculptor(gs, 0, p) {
 		t.Fatal("seat 0 should NOT have sculptor zone-control (perm.Controller==0 but sector controlled by 1)")
@@ -342,7 +342,10 @@ func TestPermanentsInSector_AcrossSeats(t *testing.T) {
 
 func TestSpaceSculptorSectors_StableOrder(t *testing.T) {
 	got := SpaceSculptorSectors()
-	want := []string{"alpha", "beta", "gamma", "delta"}
+	// CR §702.158b: "The sector designations are alpha sector, beta sector,
+	// and gamma sector." Three. This test previously asserted a fourth,
+	// "delta", codifying a sector that exists in no edition of the rules.
+	want := []string{"alpha", "beta", "gamma"}
 	if len(got) != len(want) {
 		t.Fatalf("sector list len = %d, want %d", len(got), len(want))
 	}
@@ -350,5 +353,34 @@ func TestSpaceSculptorSectors_StableOrder(t *testing.T) {
 		if got[i] != s {
 			t.Fatalf("sector[%d] = %q, want %q", i, got[i], s)
 		}
+	}
+}
+
+// TestSpaceSculptorSectors_NoFourthSector pins the sector vocabulary to the
+// Comprehensive Rules. CR §702.158b, verbatim:
+//
+//	"A sector designation is a designation a permanent can have. The sector
+//	 designations are alpha sector, beta sector, and gamma sector."
+//
+// The engine previously defined a fourth, SectorDelta = "delta", and its own
+// test asserted it. Nothing in the rules has ever had a delta sector; it was
+// pattern-completion (alpha, beta, gamma... delta) rather than a reading of
+// the rule. Space sculptor has no production callers today, so the invented
+// sector was inert — but it would have produced an illegal board state the
+// moment the subsystem was wired to a card.
+func TestSpaceSculptorSectors_NoFourthSector(t *testing.T) {
+	for _, bad := range []string{"delta", "epsilon", "omega"} {
+		if canon, ok := validSculptorSector(bad); ok {
+			t.Errorf("validSculptorSector(%q) accepted it as %q; CR §702.158b lists only alpha, beta and gamma", bad, canon)
+		}
+	}
+	if got := len(SpaceSculptorSectors()); got != 3 {
+		t.Errorf("SpaceSculptorSectors() has %d sectors, want 3 per CR §702.158b", got)
+	}
+	gs := newStubsTailGame(t)
+	p := makeSculptorPerm(0, "Astro Cat")
+	gs.Seats[0].Battlefield = append(gs.Seats[0].Battlefield, p)
+	if AssignSector(gs, p, "delta") {
+		t.Error("AssignSector accepted a delta sector; no such designation exists in the CR")
 	}
 }

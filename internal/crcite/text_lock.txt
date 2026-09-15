@@ -479,6 +479,7 @@
 702.157b	8361bef9bfbf	Squad
 702.158	32e2f1022f31	Space Sculptor
 702.158a	3b9cd89edfe6	Space Sculptor
+702.158b	440ad0b704f2	Space Sculptor
 702.159	26d72e235d86	Visit
 702.16	6b6aa9e7c9aa	Protection
 702.160	67e5bd0f5198	Prototype
