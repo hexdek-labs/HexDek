@@ -50,8 +50,23 @@ func TestComputeCardQualityTiers_SolidTierWindow(t *testing.T) {
 	//   "Solid Two"   CMC 3, 2 roles                  → 2.0                          → solid
 	//   "Solid One"   CMC 3, 1 role                   → 1.0                          → solid
 	//   "Filler"      CMC 3, 0 roles                  → 0.0                          → (neither: score==0 and not "score<=0 strict")
-	//   "Cut Heavy"   CMC 5, [Utility] only           → 1.0 - 2.0 - 1.0 = -2.0       → cuttable
-	//   "Cut Medium"  CMC 4, [Utility] only           → 1.0 - 1.0       = 0.0        → cuttable boundary (excluded since score>0 required is "score > 0 continue", so score==0 IS cuttable-eligible)
+	//   "Cut Heavy"   CMC 5, [Utility] only           → 1.0                          → NOT cuttable (see below)
+	//   "Cut Medium"  CMC 4, [Utility] only           → 1.0                          → NOT cuttable (see below)
+	//
+	// Cut Heavy and Cut Medium used to score -2.0 and 0.0 and land in the
+	// cuttable bucket, via two "high CMC with only a Utility role"
+	// penalties. Those penalties were removed in 2026-09: RoleUtility is
+	// the role tagger's FALLBACK for "no role matched", so the condition
+	// meant "we could not classify this card" and was being reported to
+	// users as "cut this card". Measured across 8 sample decks, every cut
+	// recommendation traced to that signal and the checkable ones were
+	// wrong.
+	//
+	// Their fixtures are kept, and now assert the OPPOSITE — that a
+	// high-CMC Utility-only card is NOT recommended for the cut. The
+	// cuttable representative for the tier-window check is "Filler"
+	// (0 roles, score 0.0), which is cuttable on evidence we actually
+	// have rather than on the absence of a tag.
 	//   "Solid Edge" CMC 3, 1 role                    → 1.0                          → solid
 	profiles := []CardProfile{
 		{Name: "Star Card", CMC: 2},
@@ -100,8 +115,21 @@ func TestComputeCardQualityTiers_SolidTierWindow(t *testing.T) {
 	if !hasName(dp.FlexSlots, "Solid Edge") {
 		t.Errorf("Solid Edge (single RoleRemoval at CMC 3) should be in FlexSlots: solid=%v flex=%v", dp.SolidCards, dp.FlexSlots)
 	}
-	if !hasName(dp.CuttableCards, "Cut Heavy") {
-		t.Errorf("Cut Heavy missing from CuttableCards: %v", dp.CuttableCards)
+	// The cuttable bucket must still have a representative — the point of
+	// this test is that every tier window is reachable.
+	if !hasName(dp.CuttableCards, "Filler") {
+		t.Errorf("Filler (0 roles, score 0.0) missing from CuttableCards: %v", dp.CuttableCards)
+	}
+	// ...and a high-CMC card whose ONLY tag is the tagger's no-match
+	// fallback must NOT be recommended for the cut. A failure here means
+	// the Utility-only penalties have been reintroduced.
+	for _, name := range []string{"Cut Heavy", "Cut Medium"} {
+		if hasName(dp.CuttableCards, name) {
+			t.Errorf("%q was recommended for the cut on a Utility-only tag: %v\n"+
+				"  RoleUtility is the tagger's fallback for 'no role matched', so this "+
+				"reports 'we could not classify this card' as 'cut this card'",
+				name, dp.CuttableCards)
+		}
 	}
 
 	// Cross-bucket exclusion: a card must never appear in two tiers at once.

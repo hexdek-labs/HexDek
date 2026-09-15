@@ -213,23 +213,40 @@ func TestComputeCardPower_SynergyContribution(t *testing.T) {
 	}
 }
 
-// TestComputeCardPower_DeadSlotPenalty verifies the CMC 5+ Utility-only
-// penalty: a high-CMC card with no synergy and only a Utility tag
-// loses 10 points from its synergy component (clamped to 0).
-func TestComputeCardPower_DeadSlotPenalty(t *testing.T) {
-	profiles := []CardProfile{{Name: "Dead Slot", CMC: 6}}
+// TestComputeCardPower_UtilityOnlyIsNotPenalised is the inverted form of
+// what used to be TestComputeCardPower_DeadSlotPenalty.
+//
+// That test pinned a -10 synergy penalty for "CMC 5+ with only a Utility
+// tag". The penalty was removed in 2026-09 because RoleUtility is not a
+// classification — it is the FALLBACK the role tagger appends when
+// nothing else matched (roles.go: `if len(roles) == 0 && !profile.IsLand`).
+// So the condition the penalty fired on was "we could not classify this
+// card", and it was being read as "this card does nothing".
+//
+// Measured before removing it: 7 of 8 sample decks got cut advice and
+// every recommendation traced to this signal, including a one-sided board
+// wipe in a token deck and Doubling Season in a deck built on doubling.
+//
+// The test is kept rather than deleted, inverted to pin the corrected
+// behaviour, so that re-adding the penalty fails loudly instead of
+// quietly restoring the bug.
+func TestComputeCardPower_UtilityOnlyIsNotPenalised(t *testing.T) {
+	profiles := []CardProfile{{Name: "Unclassified Card", CMC: 6}}
 	assignments := []CardRoleAssignment{
-		{Name: "Dead Slot", Roles: []RoleTag{RoleUtility}},
+		{Name: "Unclassified Card", Roles: []RoleTag{RoleUtility}},
 	}
 	dp := &DeckProfile{PrimaryArchetype: "Combo"}
 	computeCardPower(dp, makePowerTestReport(profiles, assignments))
 
 	pl := dp.CardPowerLevels[0]
-	// Per-role floor would normally give 1 role × 2 = 2; the -10 penalty
-	// drives synergy negative, clamped to 0.
-	if pl.SynergyContribution != 0 {
-		t.Errorf("CMC 6 utility-only dead slot: want synergy 0 (penalty clamped), got %d",
-			pl.SynergyContribution)
+	// The per-role floor is 1 role × 2 = 2. With no penalty applied that
+	// is the whole synergy contribution. A 0 here means the penalty is
+	// back: it would have driven the score negative and clamped.
+	if pl.SynergyContribution != 2 {
+		t.Errorf("CMC 6 Utility-only card: want synergy 2 (per-role floor, no penalty), got %d\n"+
+			"  0 means the Utility-only penalty has been reintroduced — Utility is the "+
+			"tagger's no-match fallback, so penalising it turns 'we could not classify "+
+			"this card' into 'cut this card'", pl.SynergyContribution)
 	}
 }
 

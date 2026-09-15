@@ -23,6 +23,22 @@
 # marks every deck stale at once — would put the entire corpus behind
 # that one lock the moment traffic arrived.
 #
+# COST MODEL (measured 2026-09-15, not estimated)
+#
+#   one deck, fresh process   18.7s
+#   four decks, one process   20.6s
+#
+# Almost all of that is loading the 212 MB oracle corpus, once per
+# process. Per-deck analysis is roughly half a second. So the naive
+# "loop over decks, invoke Freya each time" shape costs ~18s per deck
+# and would take about NINE HOURS on the current 1,707-deck corpus,
+# while Freya's own --all-decks mode loads the corpus once and does the
+# same work in about fifteen minutes.
+#
+# This script therefore batches through --all-decks by owner directory
+# and only falls back to per-deck invocation for --limit runs, where
+# the point is a quick canary rather than throughput.
+#
 # USAGE
 #
 #   scripts/freya-refresh-stale.sh [--decks DIR] [--dry-run] [--all]
@@ -54,7 +70,7 @@ while [[ $# -gt 0 ]]; do
     --all)     FORCE_ALL=1; shift ;;
     --limit)   LIMIT="$2"; shift 2 ;;
     --jobs)    JOBS="$2"; shift 2 ;;
-    -h|--help) sed -n '2,45p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,56p' "$0"; exit 0 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -151,6 +167,18 @@ FAILED=0
 FAILED_LIST=()
 START="$(date +%s)"
 
+# Owner directories containing at least one stale deck. --all-decks
+# operates on a directory, and re-running a deck that was already
+# current is nearly free (it hits the report cache), so batching by
+# owner trades a little redundant work for a ~40x saving on process
+# startup.
+stale_owner_dirs() {
+  local d
+  for d in "${STALE[@]}"; do
+    dirname "$d"
+  done | sort -u
+}
+
 analyze_one() {
   # --no-cache is essential here. Without it a deck whose CONTENTS are
   # unchanged hits the report cache and this script rewrites the same
@@ -159,7 +187,76 @@ analyze_one() {
   "$FREYA" --deck "$1" --format json --no-cache >/dev/null 2>&1
 }
 
-if [[ "$JOBS" -gt 1 ]]; then
+# Batch mode is the default and the fast path. --limit runs stay
+# per-deck: they exist to sanity-check a handful of decks quickly, and
+# batching a directory to re-analyze 2 decks would defeat that.
+if [[ "$LIMIT" -eq 0 && "$JOBS" -eq 1 ]]; then
+  mapfile -t OWNER_DIRS < <(stale_owner_dirs)
+  echo "batching ${#STALE[@]} stale deck(s) across ${#OWNER_DIRS[@]} owner director(ies)"
+  echo "(corpus loads once per directory rather than once per deck)"
+  echo
+  di=0
+  for dir in "${OWNER_DIRS[@]}"; do
+    di=$((di + 1))
+    printf '[%d/%d] %s ... ' "$di" "${#OWNER_DIRS[@]}" "$dir"
+    # --no-cache even in batch mode. If Freya's CODE changed but its
+    # version token did not — which is exactly what happens when the
+    # binary was built somewhere the Go toolchain stamps no VCS
+    # revision — a cached run would rewrite the same stale conclusions
+    # and this script would report success. The corpus load dominates
+    # the runtime either way (~18s fixed vs ~0.5s per deck), so
+    # recomputing costs almost nothing and removes the one way this
+    # tool could lie.
+    if "$FREYA" --all-decks "$dir" --format json --no-cache >/dev/null 2>&1; then
+      echo "done"
+    else
+      echo "FREYA EXITED NONZERO"
+    fi
+  done
+  echo
+  # Outcome is derived per deck from what landed on disk, never from
+  # Freya's exit code — a run can exit 0 having written nothing useful,
+  # and the stamp is what consumers actually read.
+  #
+  # This check is not a formality. On the first full run it caught 23
+  # decks the batch had silently skipped, because Freya's --all-decks
+  # walker (listDeckFiles, cmd/hexdek-freya/main.go:1684) hard-skips the
+  # `benched` and `test` directories and only globs *.txt — so .json
+  # decks are invisible to it. Exit code was 0 throughout. Without
+  # verifying the artifact this script would have reported a clean sweep
+  # over a corpus with 23 stale analyses still in it.
+  MISSED=()
+  for deck in "${STALE[@]}"; do
+    if [[ "$(storedVersion "$deck")" == "$CURRENT_VERSION" ]]; then
+      OK=$((OK + 1))
+    else
+      MISSED+=("$deck")
+    fi
+  done
+
+  # Second pass: anything the batch walker didn't reach gets a direct
+  # per-deck invocation, which has no such filter. Slow per deck (~18s
+  # of corpus load each) but the set is small by construction — it is
+  # only the decks --all-decks structurally cannot see.
+  if [[ "${#MISSED[@]}" -gt 0 ]]; then
+    echo "batch walker skipped ${#MISSED[@]} deck(s) — retrying those individually"
+    mi=0
+    for deck in "${MISSED[@]}"; do
+      mi=$((mi + 1))
+      printf '  [%d/%d] %s ... ' "$mi" "${#MISSED[@]}" "$(basename "$deck")"
+      analyze_one "$deck"
+      if [[ "$(storedVersion "$deck")" == "$CURRENT_VERSION" ]]; then
+        echo "ok"
+        OK=$((OK + 1))
+      else
+        echo "STILL NOT STAMPED"
+        FAILED=$((FAILED + 1))
+        FAILED_LIST+=("$deck")
+      fi
+    done
+    echo
+  fi
+elif [[ "$JOBS" -gt 1 ]]; then
   export -f analyze_one
   export FREYA
   printf '%s\0' "${STALE[@]}" \
