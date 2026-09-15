@@ -48,6 +48,10 @@ type Corpus struct {
 	exists map[string]bool
 	// headings maps a rule number to its title where it has one.
 	headings map[string]string
+	// text maps a rule number to its full body line. Used by the text lock
+	// to notice a rule whose NUMBER survives an edition bump while its
+	// MEANING changes underneath the citations that point at it.
+	text map[string]string
 }
 
 // Citation is one CR reference found in the source tree.
@@ -65,7 +69,7 @@ func LoadCorpus(path string) (*Corpus, error) {
 	}
 	defer f.Close()
 
-	c := &Corpus{exists: map[string]bool{}, headings: map[string]string{}}
+	c := &Corpus{exists: map[string]bool{}, headings: map[string]string{}, text: map[string]string{}}
 	sc := bufio.NewScanner(f)
 	sc.Buffer(make([]byte, 0, 1<<20), 1<<20)
 	for sc.Scan() {
@@ -75,6 +79,7 @@ func LoadCorpus(path string) (*Corpus, error) {
 		}
 		if m := ruleExistsRE.FindStringSubmatch(line); m != nil {
 			c.exists[m[1]] = true
+			c.text[m[1]] = line
 		}
 		if m := ruleHeadingRE.FindStringSubmatch(line); m != nil {
 			c.headings[m[1]] = strings.TrimSpace(m[2])
