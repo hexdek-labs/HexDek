@@ -1174,6 +1174,58 @@ paths:
   ## Gauntlet & Tournament SSE
   ## ---------------------------------------------------------------
 
+  /api/showmatch/reload-pool:
+    post:
+      tags: [admin]
+      operationId: reloadDeckPool
+      summary: Rebuild the in-memory engine deck pool from disk.
+      description: >
+        Re-scans the decks directory and atomically swaps the engine deck pool —
+        the in-memory set the gauntlet, showmatch and matchmaking draw from.
+
+
+        HISTORY. The pool was originally built only at process start, so a deck
+        imported after boot was invisible to the gauntlet until this endpoint was
+        called or the server restarted. In September 2026 that state ran for
+        roughly 50 hours before a user report surfaced it, because nothing
+        logged, counted or alerted on the resulting refusals. Gauntlet lookups
+        now read through to disk on a pool miss (see internal/hexapi/
+        deckpool_readthrough.go), which means this endpoint is **no longer
+        required for correctness** — it remains as an operator tool for bulk
+        refresh after out-of-band changes to the decks directory.
+
+
+        NOTE ON ACCESS. Tagged `admin` because it rebuilds shared engine state,
+        but it is currently guarded only by CSRF (`requireCSRFLate`) and not by
+        an admin token. Documenting the gap rather than silently leaving it
+        undocumented; tightening it is a separate decision.
+      responses:
+        '200':
+          description: Pool rebuilt.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, decks]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  decks:
+                    type: integer
+                    description: >
+                      Number of decks in the rebuilt pool. Lower than the total
+                      deck count by however many failed the pool gates (parse
+                      failure, no commander, fewer than 80 cards, banned
+                      commander).
+        '503':
+          description: >
+            Reload failed — card corpus/meta not loaded yet, decks directory not
+            configured, or the rebuilt pool had fewer decks than a table needs.
+          content:
+            application/json:
+              schema: { type: object }
+
   /api/gauntlet/{owner}/{id}:
     parameters:
       - $ref: '#/components/parameters/OwnerParam'
