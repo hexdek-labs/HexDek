@@ -1007,9 +1007,9 @@ func (sm *Showmatch) findDeckInPool(owner, id string) *deckparser.TournamentDeck
 
 func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 	deckKey := owner + "/" + id
-	targetDeck := sm.findDeckInPool(owner, id)
+	targetDeck, missReason := sm.lookupDeckForPlay(owner, id)
 	if targetDeck == nil {
-		log.Printf("gauntlet: deck %s not in engine pool — filtered at startup or missing", deckKey)
+		log.Printf("gauntlet: deck %s unplayable after read-through: %s", deckKey, missReason)
 		errResult := &GauntletResult{
 			DeckKey: deckKey, Status: "error", Commander: id,
 		}
@@ -3782,9 +3782,17 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 	// register an error result and return — leaving paying users with
 	// no refund (charging is atomic via credits.Spend, but the launch
 	// it pays for never executed). Cheap RLock-protected map walk.
-	if sm.findDeckInPool(owner, id) == nil {
+	// Read-through on a pool miss: parse the deck from disk and splice
+	// it in. Before this existed, a deck imported after server boot was
+	// invisible here forever, and the message below told the user to
+	// re-import — which produces another deck that also lands outside
+	// the pool. See deckpool_readthrough.go.
+	if d, reason := sm.lookupDeckForPlay(owner, id); d == nil {
+		log.Printf("gauntlet: deck %s unplayable: %s", deckKey, reason)
 		writeError(w, http.StatusNotFound,
-			"deck not in engine pool — re-import or check the deck id")
+			"this deck can't be loaded into the engine right now — "+
+				"it's a problem on our side, not with your deck list. "+
+				"Re-importing won't help; please report it.")
 		return
 	}
 

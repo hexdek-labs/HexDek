@@ -2516,6 +2516,30 @@ paths:
                   db_reachable:
                     type: boolean
                     description: True iff a sub-500ms ping on the SQLite connection succeeded.
+                  dependencies:
+                    type: object
+                    additionalProperties: { type: string, enum: [ok, fail] }
+                    description: Per-dependency liveness (scylla, freya, hat).
+                  deck_pool:
+                    type: object
+                    description: >
+                      Engine deck-pool lookup outcomes since boot. `rejected` non-zero
+                      means real users were refused a gauntlet. Added after the pool
+                      spent ~50 hours silently excluding every deck imported after
+                      server start, with no counter anywhere to reveal it.
+                    properties:
+                      misses:
+                        type: integer
+                        format: int64
+                        description: Lookups not satisfied from the in-memory pool.
+                      recovered:
+                        type: integer
+                        format: int64
+                        description: Misses resolved by parsing the deck file from disk.
+                      rejected:
+                        type: integer
+                        format: int64
+                        description: Misses that could not be recovered — a user was refused.
 
   /api/feedback:
     post:

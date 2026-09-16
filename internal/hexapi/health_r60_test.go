@@ -63,7 +63,14 @@ func TestHealth_JSONFieldNames(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &raw); err != nil {
 		t.Fatalf("body not valid JSON: %v", err)
 	}
-	wantKeys := []string{"status", "uptime_sec", "version", "db_reachable", "dependencies"}
+	// deck_pool added 2026-09-15. This test is a deliberate contract gate
+	// — the "extra field" check below exists to make adding a field a
+	// conscious act rather than a drift. It is being added consciously:
+	// the engine deck pool spent ~50 hours silently refusing every deck
+	// imported after boot, and nothing could answer "is this happening?"
+	// because no counter was exposed anywhere. deck_pool.rejected being
+	// non-zero is that answer.
+	wantKeys := []string{"status", "uptime_sec", "version", "db_reachable", "dependencies", "deck_pool"}
 	for _, k := range wantKeys {
 		if _, ok := raw[k]; !ok {
 			t.Errorf("missing key %q (have %v)", k, mapKeys(raw))

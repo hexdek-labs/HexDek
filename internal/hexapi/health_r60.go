@@ -51,6 +51,27 @@ type healthResponse struct {
 	Version      string            `json:"version"`
 	DBReachable  bool              `json:"db_reachable"`
 	Dependencies map[string]string `json:"dependencies"`
+
+	// DeckPool reports engine-deck-pool lookup outcomes since boot.
+	//
+	// It exists because the pool spent ~50 hours in 2026-09 silently
+	// refusing every deck imported after startup, and nothing anywhere
+	// could answer "is this happening?" — the only discovery path was
+	// a user complaining. `rejected` being non-zero means real users
+	// were told no. See deckpool_readthrough.go.
+	DeckPool deckPoolHealth `json:"deck_pool"`
+}
+
+// deckPoolHealth is the /api/health view of pool lookup outcomes.
+//
+// Read it as: misses that were Recovered are the read-through doing
+// its job (benign, though a persistently climbing number suggests the
+// bulk loader is missing a directory). Rejected is the one that
+// matters — each is a user who asked to play a deck and was refused.
+type deckPoolHealth struct {
+	Misses    int64 `json:"misses"`
+	Recovered int64 `json:"recovered"`
+	Rejected  int64 `json:"rejected"`
 }
 
 // Dependency status values. Exported so monitors importing the
@@ -82,6 +103,8 @@ func (h *Handler) handleHealth(w http.ResponseWriter, r *http.Request) {
 			"hat":    healthBool(h.hatReady()),
 		},
 	}
+	misses, recovered, rejected := PoolMissCounts()
+	resp.DeckPool = deckPoolHealth{Misses: misses, Recovered: recovered, Rejected: rejected}
 	w.Header().Set("Cache-Control", "no-store")
 	writeJSON(w, resp)
 }
