@@ -313,6 +313,24 @@ type GauntletResult struct {
 	// gauntlet_run_game junction table. 0 when the gauntlet started
 	// without a SQL backing store (tests / dev runs).
 	RunID int64 `json:"run_id,omitempty"`
+
+	// LastProgressAt is refreshed by RunGauntlet every time a game in
+	// the run completes. handleStartGauntlet uses it as a liveness
+	// heartbeat: a record still marked "running" whose LastProgressAt
+	// is older than gauntletStaleAfter is treated as a DEAD run (a game
+	// panicked or hung and nothing flipped status off "running"), so a
+	// fresh start is allowed to supersede it instead of returning the
+	// zombie record forever. Seeded to StartedAt at creation so a run
+	// that has not yet finished its first game is never mistaken for
+	// stale.
+	LastProgressAt time.Time `json:"last_progress_at,omitempty"`
+
+	// StopRequested is set by handleStopGauntlet. RunGauntlet checks it
+	// at the top of each game iteration and breaks out of the loop when
+	// set, finalizing the run with Status "stopped". Not serialized —
+	// it is an internal control flag, and Status already conveys the
+	// stopped state to clients.
+	StopRequested bool `json:"-"`
 }
 
 // maintenanceMessage is returned (HTTP 503) by the gauntlet + spectate
@@ -1022,11 +1040,12 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 	}
 
 	result := &GauntletResult{
-		DeckKey:   deckKey,
-		Commander: targetDeck.CommanderName,
-		Status:    "running",
-		Target:    numGames,
-		StartedAt: time.Now(),
+		DeckKey:        deckKey,
+		Commander:      targetDeck.CommanderName,
+		Status:         "running",
+		Target:         numGames,
+		StartedAt:      time.Now(),
+		LastProgressAt: time.Now(),
 	}
 
 	sm.mu.RLock()
@@ -1064,6 +1083,19 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 	for g := 0; g < numGames; g++ {
+		// Stop check: handleStopGauntlet sets StopRequested. We break
+		// between games (never mid-game — the current game runs to
+		// completion; abandoning an in-flight game would leave partial
+		// ELO/analytics writes), so a stopped deck becomes runnable at
+		// the next iteration boundary. Read under the lock that guards
+		// the shared *result.
+		sm.gauntletMu.RLock()
+		stopReq := result.StopRequested
+		sm.gauntletMu.RUnlock()
+		if stopReq {
+			break
+		}
+
 		sm.mu.RLock()
 		poolSize := len(sm.deckPool)
 		sm.mu.RUnlock()
@@ -1307,9 +1339,15 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 		result.Games = g + 1
 		result.WinRate = math.Round(float64(result.Wins)/float64(result.Games)*1000) / 10
 
-		sm.gauntletMu.RLock()
+		// Refresh the liveness heartbeat now that a game has actually
+		// completed. handleStartGauntlet reads LastProgressAt to tell an
+		// actively-progressing run (return existing) from a dead one
+		// (supersede). Written under Lock (not RLock) since we mutate
+		// the shared *result here.
+		sm.gauntletMu.Lock()
+		result.LastProgressAt = time.Now()
 		snap := *result
-		sm.gauntletMu.RUnlock()
+		sm.gauntletMu.Unlock()
 		sm.broadcastGauntlet(deckKey, snap)
 
 		// Fan a per-game delta to /api/tournament/{id}/stream
@@ -1343,7 +1381,17 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 	result.ELODelta = result.ELOEnd - result.ELOStart
 	result.AvgTurns = math.Round(float64(totalTurns)/float64(max(result.Games, 1))*10) / 10
 	result.WinRate = math.Round(float64(result.Wins)/float64(max(result.Games, 1))*1000) / 10
-	result.Status = "complete"
+	// If a stop was requested (loop broke early), finalize as "stopped"
+	// rather than "complete" so the outcome isn't misreported as a full
+	// run. Either terminal status unblocks a fresh start on the deck.
+	sm.gauntletMu.RLock()
+	stopped := result.StopRequested
+	sm.gauntletMu.RUnlock()
+	if stopped {
+		result.Status = "stopped"
+	} else {
+		result.Status = "complete"
+	}
 	result.FinishedAt = time.Now()
 
 	type ranked struct {
@@ -3715,6 +3763,7 @@ func (sm *Showmatch) RegisterShowmatch(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/live/speed", sm.requireCSRFLate(sm.handleSetSpeed))
 	mux.HandleFunc("GET /ws/live", sm.handleSpectatorWS)
 	mux.HandleFunc("POST /api/gauntlet/{owner}/{id}", sm.requireCSRFLate(sm.handleStartGauntlet))
+	mux.HandleFunc("POST /api/gauntlet/{owner}/{id}/stop", sm.requireCSRFLate(sm.handleStopGauntlet))
 	mux.HandleFunc("GET /api/gauntlet/{owner}/{id}", sm.handleGetGauntlet)
 	mux.HandleFunc("GET /api/tournaments/{owner}/{id}/events", sm.handleTournamentEvents)
 	mux.HandleFunc("GET /api/decks/{owner}/{id}/curse", sm.handleDeckCurse)
@@ -3736,6 +3785,45 @@ func (sm *Showmatch) RegisterShowmatch(mux *http.ServeMux) {
 }
 
 var gauntletSem = make(chan struct{}, 2)
+
+// gauntletStaleAfter is the no-progress window after which a gauntlet
+// record still marked "running" is treated as dead. Gauntlet games run
+// many per minute, so 90 seconds of zero progress (no game completed,
+// LastProgressAt un-refreshed) means the run's goroutine has panicked
+// or hung with nothing to flip its status — the record would otherwise
+// block every future start on that deck permanently.
+const gauntletStaleAfter = 90 * time.Second
+
+// gauntletBlocksNewStart reports whether an existing gauntlet record
+// should cause a new start on the same deck to return the existing
+// record instead of launching. It returns true ONLY for a run that is
+// "running" AND has made progress within gauntletStaleAfter — a genuine
+// active run, which we don't let the user spam concurrent copies of. A
+// stale "running" record (progress stalled past the threshold — a dead
+// run) or any terminal status (complete/stopped/error) returns false so
+// a fresh start supersedes it. Pulled out as a pure function so the
+// supersede/keep decision is unit-testable without the full deck-pool +
+// credits + goroutine harness that a real start requires.
+func gauntletBlocksNewStart(existing *GauntletResult, now time.Time) bool {
+	if existing == nil || existing.Status != "running" {
+		return false
+	}
+	ref := existing.LastProgressAt
+	if ref.IsZero() {
+		// Pre-heartbeat record (no game completed yet): fall back to the
+		// start time so a just-launched run is still protected.
+		ref = existing.StartedAt
+	}
+	if ref.IsZero() {
+		// No timestamp at all to measure staleness against. We have no
+		// evidence the run is dead, so keep it — never supersede a run
+		// we can't prove has actually stalled. A real RunGauntlet record
+		// always stamps StartedAt (and refreshes LastProgressAt), so
+		// this only guards degenerate/hand-built records.
+		return true
+	}
+	return now.Sub(ref) <= gauntletStaleAfter
+}
 
 func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request) {
 	if sm.inMaintenance() {
@@ -3764,11 +3852,22 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 	}
 	deckKey := owner + "/" + id
 
+	// Return an actively-progressing run instead of starting a second
+	// one — but supersede a dead run (a "running" record whose progress
+	// heartbeat has gone stale because its goroutine panicked or hung).
+	// Without the staleness check a single crashed game blocked the deck
+	// from ever running again. Snapshot under the lock so we don't hand
+	// writeJSON a pointer the runner goroutine is concurrently mutating.
 	sm.gauntletMu.RLock()
 	existing := sm.gauntlets[deckKey]
+	blocks := gauntletBlocksNewStart(existing, time.Now())
+	var existingSnap GauntletResult
+	if blocks {
+		existingSnap = *existing
+	}
 	sm.gauntletMu.RUnlock()
-	if existing != nil && existing.Status == "running" {
-		writeJSON(w, existing)
+	if blocks {
+		writeJSON(w, existingSnap)
 		return
 	}
 
@@ -3883,6 +3982,47 @@ func (sm *Showmatch) handleStartGauntlet(w http.ResponseWriter, r *http.Request)
 		resp["credits_charged"] = chargedAmount
 	}
 	writeJSON(w, resp)
+}
+
+// handleStopGauntlet marks a running gauntlet stopped so the deck is
+// immediately runnable again. This is the manual escape hatch that
+// complements the automatic staleness supersede in handleStartGauntlet:
+// a user can abort a run they no longer want without waiting out the
+// 90s dead-run window.
+//
+// The runner goroutine polls StopRequested at each game boundary and
+// breaks out, finalizing as "stopped". In-flight games are NOT
+// cancelled — the currently-executing game runs to completion (avoiding
+// partial ELO/analytics writes); only the NEXT game is skipped. Setting
+// Status="stopped" here means the deck unblocks immediately regardless,
+// since gauntletBlocksNewStart only guards "running" records.
+func (sm *Showmatch) handleStopGauntlet(w http.ResponseWriter, r *http.Request) {
+	owner := r.PathValue("owner")
+	id := r.PathValue("id")
+	if !validatePathComponent(owner) || !validatePathComponent(id) {
+		writeError(w, http.StatusBadRequest, "invalid owner or id")
+		return
+	}
+	deckKey := owner + "/" + id
+
+	sm.gauntletMu.Lock()
+	existing := sm.gauntlets[deckKey]
+	if existing == nil || existing.Status != "running" {
+		sm.gauntletMu.Unlock()
+		writeJSON(w, map[string]any{"status": "not_running", "deck_key": deckKey})
+		return
+	}
+	existing.StopRequested = true
+	existing.Status = "stopped"
+	existing.FinishedAt = time.Now()
+	snap := *existing
+	sm.gauntletMu.Unlock()
+
+	// Fan the terminal state to any live SSE subscribers so a spectating
+	// client sees the stop immediately rather than at the next poll.
+	sm.broadcastGauntlet(deckKey, snap)
+
+	writeJSON(w, map[string]any{"status": "stopped", "deck_key": deckKey})
 }
 
 func (sm *Showmatch) handleGetGauntlet(w http.ResponseWriter, r *http.Request) {
