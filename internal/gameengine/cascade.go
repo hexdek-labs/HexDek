@@ -1,8 +1,8 @@
 package gameengine
 
-// Cascade keyword (CR §702.84).
+// Cascade keyword (CR §702.85).
 //
-//   702.84a "Cascade is a triggered ability. 'Cascade' means 'When you
+//   702.85a "Cascade is a triggered ability. 'Cascade' means 'When you
 //           cast this spell, exile cards from the top of your library
 //           until you exile a nonland card whose mana value is less than
 //           this spell's mana value. You may cast that card without paying
@@ -21,7 +21,7 @@ import (
 	"github.com/hexdek/hexdek/internal/gameast"
 )
 
-// HasCascadeKeyword returns true if the card carries Cascade (CR §702.84).
+// HasCascadeKeyword returns true if the card carries Cascade (CR §702.85).
 func HasCascadeKeyword(card *Card) bool {
 	return CascadeCount(card) > 0
 }
@@ -51,7 +51,7 @@ func CascadeCount(card *Card) int {
 // ApplyCascade resolves the Cascade trigger for a spell cast by `controller`.
 // Returns true if a card was found and cast for free.
 //
-// Procedure (CR §702.84a):
+// Procedure (CR §702.85a):
 //  1. Exile cards from the top of the library one at a time.
 //  2. Stop when a nonland card with CMC < spellCMC is found.
 //  3. The controller may cast that card without paying its mana cost.
@@ -72,7 +72,7 @@ func ApplyCascade(gs *GameState, controller int, spellCMC int, spellName string)
 		Source: spellName,
 		Amount: spellCMC,
 		Details: map[string]interface{}{
-			"rule": "702.84a",
+			"rule": "702.85a",
 		},
 	})
 
@@ -121,7 +121,7 @@ func ApplyCascade(gs *GameState, controller int, spellCMC int, spellName string)
 				"spell_cmc":  spellCMC,
 				"found_cmc":  manaCostOf(found),
 				"cards_exiled": len(exiled),
-				"rule":       "702.84a",
+				"rule":       "702.85a",
 			},
 		})
 
@@ -219,13 +219,13 @@ func ApplyCascade(gs *GameState, controller int, spellCMC int, spellName string)
 			Details: map[string]interface{}{
 				"spell_cmc":  spellCMC,
 				"cards_exiled": len(exiled),
-				"rule":       "702.84a",
+				"rule":       "702.85a",
 			},
 		})
 	}
 
 	// Put remaining exiled cards on bottom of library in random order.
-	// Per CR §702.84a these cards were exiled during the cascade; route
+	// Per CR §702.85a these cards were exiled during the cascade; route
 	// each through MoveCard so §614 replacements and exile-leave triggers
 	// fire as they return to the library.
 	if len(exiled) > 0 && gs.Rng != nil {

@@ -54,13 +54,18 @@ func TestAvacyn_DoesNotRegrantToSelf(t *testing.T) {
 // Maelstrom Wanderer — second cascade + haste anthem
 // ---------------------------------------------------------------------
 
-func TestMaelstromWanderer_ETBFiresSecondCascadeAndGrantsHaste(t *testing.T) {
+func TestMaelstromWanderer_ETBDoesNotCascade_GrantsHaste(t *testing.T) {
 	gs := newGame(t, 2)
-	// Empty library — cascade whiffs, but the haste anthem grant
-	// should still fire. (A non-empty library would resolve a
-	// cascade-cast spell back through the engine, which has
-	// downstream effects we don't want this focused test to depend
-	// on.)
+	// A library that WOULD yield a cascade hit (low-cost nonland on
+	// top) — so if the ETB hook cascaded, a cascade event would appear.
+	// It must not: Maelstrom prints "Cascade, cascade" (two keyword
+	// instances) and the engine's cast-path CascadeCount loop fires
+	// ApplyCascade once per instance (twice). This ETB hook must NOT
+	// fire a third — that was the triple-cascade bug (CR §702.85c: two
+	// instances, exactly two triggers). The hook's only job is the
+	// haste anthem.
+	addLibrary(gs, 0, "Llanowar Elves", "Forest", "Forest")
+
 	mw := addPerm(gs, 0, "Maelstrom Wanderer", "creature", "elemental")
 	mw.Card.CMC = 8
 
@@ -69,10 +74,18 @@ func TestMaelstromWanderer_ETBFiresSecondCascadeAndGrantsHaste(t *testing.T) {
 
 	maelstromWandererETB(gs, mw)
 
-	// Cascade event should be in the log (whiff is fine — we just
-	// want to verify the second cascade fired).
-	if hasEvent(gs, "cascade_trigger")+hasEvent(gs, "cascade_hit")+hasEvent(gs, "cascade_whiff") == 0 {
-		t.Fatalf("Maelstrom Wanderer ETB should fire a cascade event")
+	// The handler must have run (breadcrumb) — otherwise the zero-cascade
+	// assertion below would be a false pass.
+	if hasEvent(gs, "per_card_handler") < 1 {
+		t.Fatal("ETB handler breadcrumb missing — handler did not run")
+	}
+
+	// The core regression: the ETB hook fires NO cascade. Before the fix
+	// this was 1 (the redundant third cascade). The two real cascades
+	// belong to the cast-path loop, which this focused test doesn't call.
+	if got := hasEvent(gs, "cascade_trigger") + hasEvent(gs, "cascade_hit") + hasEvent(gs, "cascade_whiff"); got != 0 {
+		t.Fatalf("Maelstrom ETB fired %d cascade event(s), want 0 — the "+
+			"triple-cascade bug is back", got)
 	}
 
 	// Haste grant — bear should have kw:haste flag and not be sick.

@@ -17,13 +17,12 @@ import (
 //	Creatures you control have haste.
 //
 // Implementation:
-//   - The engine's stack.go fires ApplyCascade automatically on cast
-//     for any card with HasCascadeKeyword == true, but the helper only
-//     runs once per cast even when the card has the cascade keyword
-//     listed twice. We fire a SECOND ApplyCascade in the ETB hook to
-//     cover the second printed cascade. Mechanically equivalent: each
-//     cascade picks a free spell of CMC < 8 (Maelstrom's CMC), so the
-//     order doesn't matter.
+//   - Both cascade triggers fire from the engine's cast-path loop in
+//     stack.go: CascadeCount() counts the two "cascade" keyword nodes
+//     and ApplyCascade runs once per instance (CR §702.85c). This ETB
+//     hook therefore does NOT fire cascade itself — doing so was a
+//     triple-cascade bug once the CascadeCount loop landed (r63). It
+//     only grants the haste anthem.
 //   - The "creatures you control have haste" anthem is wired as a
 //     layer-6 ContinuousEffect granting kw:haste to every creature
 //     under Maelstrom's controller while she's on the battlefield.
@@ -39,16 +38,8 @@ func maelstromWandererETB(gs *gameengine.GameState, perm *gameengine.Permanent) 
 	source := perm
 	seat := perm.Controller
 
-	// Second cascade — the first fired automatically at cast time via
-	// the engine's HasCascadeKeyword hook in stack.go.
-	cmc := perm.Card.CMC
-	if cmc <= 0 {
-		// Maelstrom Wanderer's printed CMC is 8.
-		cmc = 8
-	}
-	gameengine.ApplyCascade(gs, seat, cmc, perm.Card.DisplayName()+" (2nd cascade)")
-
-	// Haste anthem.
+	// Haste anthem. (Both cascades fire from the cast-path CascadeCount
+	// loop in stack.go — CR §702.85c — not from here.)
 	const grant = "haste"
 	pred := func(_ *gameengine.GameState, t *gameengine.Permanent) bool {
 		if t == nil || t.Card == nil {
@@ -103,6 +94,6 @@ func maelstromWandererETB(gs *gameengine.GameState, perm *gameengine.Permanent) 
 
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":          seat,
-		"second_cascade": true,
+		"haste_anthem": true,
 	})
 }
