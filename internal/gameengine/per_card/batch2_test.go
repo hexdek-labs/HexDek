@@ -207,39 +207,18 @@ func TestDeadeyeNavigator_FlickersTarget(t *testing.T) {
 // Bolas's Citadel
 // -----------------------------------------------------------------------------
 
-func TestBolassCitadel_PlayTopPaysLifeEqualsCMC(t *testing.T) {
-	gs := newGame(t, 2)
-	gs.Seats[0].Life = 30
-	// Put a CMC-4 card on top of library.
-	c := &gameengine.Card{Name: "Tendrils", Owner: 0, Types: []string{"sorcery", "cmc:4"}}
-	gs.Seats[0].Library = []*gameengine.Card{c}
-	citadel := addPerm(gs, 0, "Bolas's Citadel", "artifact")
-	gameengine.InvokeETBHook(gs, citadel)
-
-	gameengine.InvokeActivatedHook(gs, citadel, 0, nil)
-
-	// Life should be 30 - 4 = 26.
-	if gs.Seats[0].Life != 26 {
-		t.Errorf("expected life 26 after paying CMC 4, got %d", gs.Seats[0].Life)
-	}
-	if len(gs.Seats[0].Hand) != 1 {
-		t.Errorf("expected card in hand after play_top, got %d", len(gs.Seats[0].Hand))
-	}
-}
-
-func TestBolassCitadel_SacrificeActivatesDamage(t *testing.T) {
-	gs := newGame(t, 2)
-	gs.Seats[1].Life = 20
-	citadel := addPerm(gs, 0, "Bolas's Citadel", "artifact")
-	gameengine.InvokeETBHook(gs, citadel)
-
-	gameengine.InvokeActivatedHook(gs, citadel, 1, nil)
-
-	// Seat 1 should lose 10 life.
-	if gs.Seats[1].Life != 10 {
-		t.Errorf("expected seat 1 life 10, got %d", gs.Seats[1].Life)
-	}
-}
+// The two former Bolas's Citadel tests here codified the r64 bug and were
+// removed:
+//   - TestBolassCitadel_PlayTopPaysLifeEqualsCMC asserted a fabricated
+//     "play top of library for life" activated mode (idx 0) that was never
+//     enumerated in real play and moved the card to hand AND charged life
+//     (double-charge; real cast-from-top pays life only on the cast). That
+//     mode was deleted; the genuine cast-from-top-paying-life path is the
+//     ETB zone-cast grant (CastFromZone), not an activated ability.
+//   - TestBolassCitadel_SacrificeActivatesDamage invoked the drain at the
+//     old compacted index (1); the engine passes the RAW AST index (3).
+// The drain is now covered correctly (real AST layout, real index, fires
+// while tapped) in bolass_citadel_drain_r64_test.go.
 
 // -----------------------------------------------------------------------------
 // Mana Crypt

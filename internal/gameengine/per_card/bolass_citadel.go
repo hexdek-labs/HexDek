@@ -1,6 +1,7 @@
 package per_card
 
 import (
+	"github.com/hexdek/hexdek/internal/gameast"
 	"github.com/hexdek/hexdek/internal/gameengine"
 )
 
@@ -80,64 +81,50 @@ func bolassCitadelETB(gs *gameengine.GameState, perm *gameengine.Permanent) {
 }
 
 func bolassCitadelActivate(gs *gameengine.GameState, src *gameengine.Permanent, abilityIdx int, ctx map[string]interface{}) {
-	if gs == nil || src == nil {
+	if gs == nil || src == nil || src.Card == nil || src.Card.AST == nil {
 		return
 	}
 	seat := src.Controller
 	if seat < 0 || seat >= len(gs.Seats) {
 		return
 	}
-	s := gs.Seats[seat]
-	switch abilityIdx {
-	case 0:
-		// "Play top of library for life" mode. (No tap cost.) Move top card of
-		// library into hand and pay life = its CMC. This is the
-		// fallback path when the zone-cast primitive isn't exercised
-		// directly by the Hat. Downstream zone-cast integration
-		// (CastFromZone) handles the real cast-from-top pipeline.
-		const slug = "bolass_citadel_play_top"
-		if len(s.Library) == 0 {
-			emitFail(gs, slug, src.Card.DisplayName(), "library_empty", nil)
-			return
-		}
-		c := s.Library[0]
-		cmc := cardCMC(c)
-		gameengine.MoveCard(gs, c, seat, "library", "hand", "effect")
-		gameengine.LoseLife(gs, seat, cmc, src.Card.DisplayName())
-		emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-			"seat":        seat,
-			"card_played": c.DisplayName(),
-			"life_paid":   cmc,
-			"life_after":  s.Life,
-		})
 
-		// Re-register zone-cast grant for the new top card so the
-		// Hat can continue the Citadel chain.
-		if len(s.Library) > 0 {
-			nextTop := s.Library[0]
-			nextCMC := cardCMC(nextTop)
-			perm := gameengine.NewLibraryCastPermission(nextCMC)
-			perm.RequireController = seat
-			perm.SourceName = "Bolas's Citadel"
-			gameengine.RegisterZoneCastGrant(gs, nextTop, perm)
-		}
-		_ = gs.CheckEnd()
-	case 1:
-		// {T}, Sacrifice-10 → each opponent loses 10 life.
-		const slug = "bolass_citadel_sac_ten"
-		if src.Tapped {
-			return
-		}
-		src.Tapped = true
-		// We don't enforce the sac cost here (caller pays). Effect only.
-		for _, opp := range gs.Opponents(seat) {
-			gameengine.LoseLife(gs, opp, 10, src.Card.DisplayName())
-		}
-		emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
-			"seat":           seat,
-			"opponents_hit":  len(gs.Opponents(seat)),
-			"damage_per_opp": 10,
-		})
-		_ = gs.CheckEnd()
+	// Bolas's Citadel has ONE activated ability:
+	//   "{T}, Sacrifice ten nonland permanents: Each opponent loses 10 life."
+	// The engine passes the RAW AST.Abilities index — the drain sits at
+	// index 3 (after three static abilities). Identify it by the AST node
+	// at abilityIdx rather than a hardcoded number: the earlier 0/1
+	// hardcodes never matched the real index, so the drain silently never
+	// fired (r64 bug). Keying off the node is also robust to re-ordering.
+	if abilityIdx < 0 || abilityIdx >= len(src.Card.AST.Abilities) {
+		return
 	}
+	act, ok := src.Card.AST.Abilities[abilityIdx].(*gameast.Activated)
+	if !ok {
+		return
+	}
+	if _, ok := act.Effect.(*gameast.LoseLife); !ok {
+		// Not the drain ability — nothing else on this card is
+		// handler-owned. (The "play top of library for life" static is
+		// handled by the ETB zone-cast grant, not an activated ability.)
+		return
+	}
+
+	// {T} and the ten-permanent sacrifice are this ability's COST, paid by
+	// the engine's activation cost path (CR §602.1b) before the ability
+	// resolves. The handler owns only the EFFECT — it must not re-tap or
+	// re-sacrifice. (The old code did `if src.Tapped { return }`, which
+	// actually aborted the drain: this is a non-mana ability, so the
+	// source is already tapped by the paid cost by the time this resolves.)
+	const slug = "bolass_citadel_sac_ten"
+	opps := gs.Opponents(seat)
+	for _, opp := range opps {
+		gameengine.LoseLife(gs, opp, 10, src.Card.DisplayName())
+	}
+	emit(gs, slug, src.Card.DisplayName(), map[string]interface{}{
+		"seat":          seat,
+		"opponents_hit": len(opps),
+		"life_lost_per": 10,
+	})
+	_ = gs.CheckEnd()
 }
