@@ -894,6 +894,22 @@ var deckLineRE = regexp.MustCompile(`^\s*(\d+)\s*[xX]?\s+(.+?)\s*$`)
 var commanderLineRE = regexp.MustCompile(`(?i)^\s*COMMANDER\s*:\s*(.+?)\s*$`)
 var partnerLineRE = regexp.MustCompile(`(?i)^\s*PARTNER\s*:\s*(.+?)\s*$`)
 
+// cmdrHeaderCommentRE matches a `//Commander` / `// COMMANDER` / `// CMDR`
+// section-header comment used by some export formats (Moxfield native
+// plaintext, etc.) where the commander appears on the FOLLOWING card
+// line rather than as a `COMMANDER:` directive. Mirrors the identical
+// regex in internal/deckparser (deckparser.go) so the two parsers agree.
+var cmdrHeaderCommentRE = regexp.MustCompile(`(?i)^\s*//\s*(?:COMMANDER|CMDR)\s*$`)
+
+// stripSetCodeSuffix removes a trailing "(SET) 123" printing suffix from
+// a decklist entry, using the same rule applied to every card line.
+func stripSetCodeSuffix(s string) string {
+	if idx := strings.Index(s, "("); idx > 0 {
+		return strings.TrimSpace(s[:idx])
+	}
+	return s
+}
+
 // parseDeckList reads a Moxfield-format decklist and returns card names +
 // the commander name. Basic lands are skipped since they add noise to
 // the combo/synergy analysis.
@@ -913,28 +929,40 @@ func parseDeckList(path string) (cards []string, commander string, err error) {
 		"wastes":              true,
 	}
 
+	// pendingCommanderHeader is set when the previous line was a
+	// `//Commander` section header; the next card line is the commander.
+	pendingCommanderHeader := false
+
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		raw := strings.TrimSpace(sc.Text())
+
+		// `//Commander` / `// CMDR` section-header comment — flag the
+		// NEXT card line as commander. Must run before the generic `//`
+		// comment drop below or the directive would be swallowed.
+		if cmdrHeaderCommentRE.MatchString(raw) {
+			pendingCommanderHeader = true
+			continue
+		}
+
 		if raw == "" || strings.HasPrefix(raw, "#") || strings.HasPrefix(raw, "//") {
 			continue
 		}
 
-		// COMMANDER: <name>
+		// COMMANDER: <name> — strip any trailing "(SET) 123" printing
+		// suffix the same way normal card lines are stripped.
 		if m := commanderLineRE.FindStringSubmatch(raw); m != nil {
-			commander = strings.TrimSpace(m[1])
+			commander = stripSetCodeSuffix(strings.TrimSpace(m[1]))
 			continue
 		}
 		// PARTNER: <name> (treat as part of the deck too)
 		if m := partnerLineRE.FindStringSubmatch(raw); m != nil {
-			cards = append(cards, strings.TrimSpace(m[1]))
+			cards = append(cards, stripSetCodeSuffix(strings.TrimSpace(m[1])))
 			continue
 		}
 
 		// Strip "(SET) 123" suffix.
-		if idx := strings.Index(raw, "("); idx > 0 {
-			raw = strings.TrimSpace(raw[:idx])
-		}
+		raw = stripSetCodeSuffix(raw)
 
 		m := deckLineRE.FindStringSubmatch(raw)
 		if m == nil {
@@ -947,6 +975,13 @@ func parseDeckList(path string) (cards []string, commander string, err error) {
 		name := strings.TrimSpace(m[2])
 		if name == "" {
 			continue
+		}
+
+		// A `//Commander` header consumes the next card line as the
+		// commander (set code already stripped above).
+		if pendingCommanderHeader {
+			commander = name
+			pendingCommanderHeader = false
 		}
 
 		// Skip basic lands.
@@ -994,18 +1029,25 @@ func parseDeckListWithQuantities(path string) (map[string]int, error) {
 	defer f.Close()
 
 	result := map[string]int{}
+	// pendingCommanderHeader mirrors parseDeckList: a `//Commander`
+	// header means the next card line is the commander, which (like the
+	// COMMANDER: directive) is excluded from the quantity map so the two
+	// export forms agree on mana curve / land counts.
+	pendingCommanderHeader := false
 	sc := bufio.NewScanner(f)
 	for sc.Scan() {
 		raw := strings.TrimSpace(sc.Text())
+		if cmdrHeaderCommentRE.MatchString(raw) {
+			pendingCommanderHeader = true
+			continue
+		}
 		if raw == "" || strings.HasPrefix(raw, "#") || strings.HasPrefix(raw, "//") {
 			continue
 		}
 		if commanderLineRE.MatchString(raw) || partnerLineRE.MatchString(raw) {
 			continue
 		}
-		if idx := strings.Index(raw, "("); idx > 0 {
-			raw = strings.TrimSpace(raw[:idx])
-		}
+		raw = stripSetCodeSuffix(raw)
 		m := deckLineRE.FindStringSubmatch(raw)
 		if m == nil {
 			continue
@@ -1016,6 +1058,12 @@ func parseDeckListWithQuantities(path string) (map[string]int, error) {
 		}
 		name := strings.TrimSpace(m[2])
 		if name == "" {
+			continue
+		}
+		if pendingCommanderHeader {
+			// Commander line consumed by the `//Commander` header;
+			// exclude from the quantity map, matching the directive form.
+			pendingCommanderHeader = false
 			continue
 		}
 		result[name] += qty
