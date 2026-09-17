@@ -6,7 +6,7 @@ package gameengine
 // addBattlefield, countEvents, lastEventOfKind) and combat_test.go
 // (addCreature, addCardWithAbility). All fixtures are synthetic.
 //
-// CR references throughout cite data/rules/MagicCompRules-20260227.txt.
+// CR references throughout cite data/rules/MagicCompRules-20260819.txt.
 
 import (
 	"testing"

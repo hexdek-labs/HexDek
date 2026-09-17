@@ -2,8 +2,6 @@
 # A ratchet: this file only ever SHRINKS. Fix a citation, delete its line.
 # Regenerate (only when consciously accepting new entries):
 #   CRCITE_UPDATE_BASELINE=1 go test ./internal/crcite/ -run Ratchet -count=1
-internal/gameengine/cascade.go|702.84	# cites Unearth, file is cascade (702.85)
-internal/gameengine/cascade.go|702.84a	# cites Unearth, file is cascade (702.85)
 internal/gameengine/casualty_behavior_r63_test.go|702.137a	# cites Spectacle, file is casualty (702.153)
 internal/gameengine/counter_keyword_grants_test.go|702.11	# cites Hexproof, file is counter (701.6)
 internal/gameengine/counter_keyword_grants_test.go|702.15	# cites Lifelink, file is counter (701.6)

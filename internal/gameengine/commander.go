@@ -16,7 +16,7 @@ import (
 //   - cast_commander_from_command_zone → CastCommanderFromCommandZone
 //   - _make_commander_zone_change  → registerCommanderZoneReplacement
 //
-// Comp-rules citations (data/rules/MagicCompRules-20260227.txt):
+// Comp-rules citations (data/rules/MagicCompRules-20260819.txt):
 //
 //   §903.3    A deck's commander is a legendary creature / Vehicle /
 //             Spacecraft card designated as commander. The designation

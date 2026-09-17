@@ -16,7 +16,7 @@ package gameengine
 // caller that runs turns (tournament runner, interactive dev CLI, parity
 // harness) needs them.
 //
-// Comp-rules citations throughout refer to data/rules/MagicCompRules-20260227.txt.
+// Comp-rules citations throughout refer to data/rules/MagicCompRules-20260819.txt.
 
 import (
 	"sort"

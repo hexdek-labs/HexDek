@@ -20,7 +20,7 @@ package gameengine
 //   - SplitSecondActive(gs)                  — CR §702.61a detection
 //   - OppRestrictsDefenderToSorcerySpeed     — CR §307.1 / §601.3a check
 //
-// Comp-rules citations throughout refer to data/rules/MagicCompRules-20260227.txt.
+// Comp-rules citations throughout refer to data/rules/MagicCompRules-20260819.txt.
 //
 // Implementation notes:
 //   - Stack is LIFO; gs.Stack[len-1] is the TOP. §608.2 pops the top.

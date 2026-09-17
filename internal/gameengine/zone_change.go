@@ -4,7 +4,7 @@ package gameengine
 // sacrifice/bounce helpers that respect indestructible, replacement effects,
 // and commander redirect.
 //
-// Comp-rules citations (data/rules/MagicCompRules-20260227.txt):
+// Comp-rules citations (data/rules/MagicCompRules-20260819.txt):
 //
 //   §700.4    "Dies" = battlefield → graveyard (CR §700.4).
 //   §603.6    A trigger fires whenever the specified event occurs.

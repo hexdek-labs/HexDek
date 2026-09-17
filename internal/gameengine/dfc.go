@@ -24,7 +24,7 @@ package gameengine
 //   - SetDayNight is idempotent — if the new state equals the current
 //     state, nothing happens and no event is logged.
 //
-// Comp-rules citations (data/rules/MagicCompRules-20260227.txt):
+// Comp-rules citations (data/rules/MagicCompRules-20260819.txt):
 //
 //   §712.1   A double-faced card has two faces, a front and a back;
 //            only one face is up at a time.

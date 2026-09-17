@@ -30,7 +30,7 @@ func repoRoot(t *testing.T) string {
 // Bumping this file is a deliberate act: a new edition can renumber whole
 // sections (the Aug-2026 edition inserted §722 "Preparation Cards", shifting
 // everything after it), so the citation sweep must land with it.
-const crPath = "data/rules/MagicCompRules-20260227.txt"
+const crPath = "data/rules/MagicCompRules-20260819.txt"
 
 func loadTree(t *testing.T) (*Corpus, []Citation, string) {
 	t.Helper()

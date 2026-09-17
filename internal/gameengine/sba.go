@@ -11,7 +11,7 @@ import (
 
 // Phase 6 — State-based actions (CR §704).
 //
-// Per the 2026-02-27 comp-rules file (`data/rules/MagicCompRules-20260227.txt`)
+// Per the 2026-02-27 comp-rules file (`data/rules/MagicCompRules-20260819.txt`)
 // §704.3: "Whenever a player would get priority (see rule 117, 'Timing and
 // Priority'), the game first performs all applicable state-based actions as
 // a single event (see rule 704.3), then repeats this process until no state-
