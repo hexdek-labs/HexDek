@@ -115,6 +115,13 @@ func applyMigrations(db *sql.DB) error {
 		// picks face[0] when the top-level power/toughness is empty
 		// (the DFC convention Scryfall uses).
 		{"card_oracle", "card_faces", "TEXT NOT NULL DEFAULT ''"},
+		// Scryfall color identity: JSON array of the WUBRG letters that
+		// make up the card's Commander color identity (mana cost + color
+		// indicators + rules-text mana symbols, per CR §903.4). Empty on
+		// rows cached before this migration — the /api/oracle/card
+		// endpoint treats empty as "no data" and a fresh Scryfall fetch
+		// fills it in. Colorless cards legitimately have an empty array.
+		{"card_oracle", "color_identity", "TEXT NOT NULL DEFAULT ''"},
 	}
 	// Migrate showmatch_elo from commander-keyed to deck_key-keyed.
 	// Both Execs were previously unchecked — a DROP failure (e.g., FK

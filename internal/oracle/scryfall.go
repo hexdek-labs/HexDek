@@ -80,6 +80,16 @@ type Card struct {
 	SetCode        string `json:"set_code"`
 	CachedAt       int64  `json:"cached_at"`
 
+	// ColorIdentity is the WUBRG letters making up the card's Commander
+	// color identity (mana cost + color indicators + rules-text mana
+	// symbols, per CR §903.4) — e.g. ["G","R","U"] for a Temur card,
+	// empty for a colorless card. Populated from Scryfall's
+	// color_identity field. May be nil/empty on cache hits written
+	// before the color_identity migration; callers that need it should
+	// treat nil/empty as "unknown" (and colorless cards as a legitimate
+	// empty) rather than deriving from mana cost alone.
+	ColorIdentity []string `json:"color_identity"`
+
 	// Legalities maps format slug (commander, brawl, modern, legacy,
 	// vintage, pauper, pioneer, standard, etc.) to Scryfall's status
 	// for that format: "legal", "not_legal", "banned", or "restricted".
@@ -576,6 +586,7 @@ func fetchScryfallCollection(ctx context.Context, names []string) (map[string]*C
 			ImageURIArt:    imgArt,
 			SetCode:        sr.Set,
 			CachedAt:       db.Now(),
+			ColorIdentity:  sr.ColorIdentity,
 			Legalities:     sr.Legalities,
 			Prices:         filterEmptyPrices(sr.Prices),
 			Power:          sr.Power,
@@ -604,6 +615,7 @@ type scryfallNamedResp struct {
 		ArtCrop string `json:"art_crop"`
 	} `json:"image_uris"`
 	CardFaces []scryfallFaceResp `json:"card_faces"`
+	ColorIdentity []string `json:"color_identity"`
 	Legalities map[string]string `json:"legalities"`
 	// Scryfall serializes per-currency prices as a string-keyed object;
 	// entries may be JSON null (omitted from this map after decode) or
@@ -713,6 +725,7 @@ func fetchScryfall(ctx context.Context, name string) (*Card, error) {
 		ImageURIArt:    imgArt,
 		SetCode:        sr.Set,
 		CachedAt:       db.Now(),
+		ColorIdentity:  sr.ColorIdentity,
 		Legalities:     sr.Legalities,
 		Prices:         filterEmptyPrices(sr.Prices),
 		Power:          sr.Power,
@@ -742,15 +755,15 @@ func filterEmptyPrices(in map[string]string) map[string]string {
 
 func getCached(ctx context.Context, database *sql.DB, key string) (*Card, error) {
 	c := &Card{}
-	var legalitiesJSON, pricesJSON, cardFacesJSON string
+	var legalitiesJSON, pricesJSON, cardFacesJSON, colorIdentityJSON string
 	err := database.QueryRowContext(ctx,
 		`SELECT display_name, scryfall_id, mana_cost, cmc, type_line, oracle_text,
 		        image_uri_normal, image_uri_art, set_code, cached_at, legalities, prices,
-		        power, toughness, card_faces
+		        power, toughness, card_faces, color_identity
 		 FROM card_oracle WHERE name = ?`, key,
 	).Scan(&c.Name, &c.ScryfallID, &c.ManaCost, &c.CMC, &c.TypeLine, &c.OracleText,
 		&c.ImageURINormal, &c.ImageURIArt, &c.SetCode, &c.CachedAt, &legalitiesJSON, &pricesJSON,
-		&c.Power, &c.Toughness, &cardFacesJSON)
+		&c.Power, &c.Toughness, &cardFacesJSON, &colorIdentityJSON)
 	if err != nil {
 		return c, err
 	}
@@ -758,6 +771,16 @@ func getCached(ctx context.Context, database *sql.DB, key string) (*Card, error)
 		var faces []CardFace
 		if jerr := json.Unmarshal([]byte(cardFacesJSON), &faces); jerr == nil {
 			c.CardFaces = faces
+		}
+	}
+	// Empty string is the pre-migration default (treated as "no color
+	// identity data"); malformed JSON degrades to nil rather than
+	// dropping the cache hit. A colorless card stores "[]" and decodes
+	// to a non-nil empty slice.
+	if colorIdentityJSON != "" {
+		var ci []string
+		if jerr := json.Unmarshal([]byte(colorIdentityJSON), &ci); jerr == nil {
+			c.ColorIdentity = ci
 		}
 	}
 	// Empty string is the pre-migration default; treat it as "no
@@ -801,14 +824,20 @@ func saveToCache(ctx context.Context, database *sql.DB, key string, c *Card) err
 			cardFacesJSON = string(b)
 		}
 	}
+	colorIdentityJSON := ""
+	if len(c.ColorIdentity) > 0 {
+		if b, jerr := json.Marshal(c.ColorIdentity); jerr == nil {
+			colorIdentityJSON = string(b)
+		}
+	}
 	_, err := database.ExecContext(ctx,
 		`INSERT OR REPLACE INTO card_oracle
 		 (name, display_name, scryfall_id, mana_cost, cmc, type_line, oracle_text,
 		  image_uri_normal, image_uri_art, set_code, cached_at, legalities, prices,
-		  power, toughness, card_faces)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		  power, toughness, card_faces, color_identity)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		key, c.Name, c.ScryfallID, c.ManaCost, c.CMC, c.TypeLine, c.OracleText,
 		c.ImageURINormal, c.ImageURIArt, c.SetCode, c.CachedAt, legalitiesJSON, pricesJSON,
-		c.Power, c.Toughness, cardFacesJSON)
+		c.Power, c.Toughness, cardFacesJSON, colorIdentityJSON)
 	return err
 }
