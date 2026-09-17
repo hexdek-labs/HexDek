@@ -955,8 +955,11 @@ func resolveModificationEffect(gs *GameState, src *Permanent, e *gameast.Modific
 	// 172/200 corpus uses are base="self" ("Regenerate this creature");
 	// the rest are "regenerate target creature" / "regenerate each …".
 	// Grant a regeneration shield (consumed by DestroyPermanent / the SBA
-	// lethal-damage path) to each subject.
-	case "regenerate_typed":
+	// lethal-damage path) to each subject. `regenerate_target_typed` is the
+	// same effect with an explicit target filter (the lone "regenerate
+	// target creature" instant/sorcery in the corpus); route it identically
+	// — regenerateTypedSubjects already resolves the target-shaped filter.
+	case "regenerate_typed", "regenerate_target_typed":
 		for _, sub := range regenerateTypedSubjects(gs, src, e) {
 			GrantRegenerationShield(gs, sub)
 		}
