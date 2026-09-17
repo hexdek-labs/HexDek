@@ -175,6 +175,18 @@ func analyzeDeckFileCached(path string, oracle *oracleDB, mechDB *MechanicDB,
 
 	key := DeckCacheKey(commander, cardQtys)
 	if cached, hit := TryLoadFromCache(cacheDir, key); hit {
+		// Legality is a function of the LITERAL deck text, but the cache
+		// key normalizes text away (CleanCardName strips the "(SET) N"
+		// suffix). So a cached report can carry a stale/wrong legality
+		// verdict for a deck that is now legal — classically, a deck
+		// first imported with a malformed commander line failed legality
+		// ("commander not found"), that report was cached, and the
+		// corrected deck hashes to the SAME key and is served the
+		// poisoned "illegal" verdict with no way to clear it. Recompute
+		// legality against the CURRENT deck text on every read and
+		// overwrite the cached field; the expensive analysis stays
+		// cached, only the cheap always-fresh legality is recomputed.
+		cached.Legality = RecomputeLegality(commander, cardQtys, oracle, cached.TotalCards)
 		return cached, nil
 	}
 
