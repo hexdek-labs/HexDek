@@ -20,6 +20,7 @@ import { useAuth } from '../context/AuthContext'
 import { trackEvent } from '../hooks/useAnalytics'
 import { DeckPicker } from './DeckCompare'
 import DeckExportModal from '../components/DeckExportModal'
+import CommanderPickerModal, { commanderNeedsResolution } from '../components/CommanderPickerModal'
 import ContextBox from '../components/ContextBox'
 import EloSparkline from '../components/EloSparkline'
 import ArchetypeChipRow from '../components/ArchetypeChipRow'
@@ -1488,6 +1489,14 @@ export default function DeckArchive() {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [comparePickerOpen, setComparePickerOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false)
+  // Commander-resolution gate. When a freshly-imported/loaded deck has an
+  // unset/unresolved commander, we prompt the owner to pin it (via the
+  // filterable combobox) BEFORE Freya runs — no more decks hanging in limbo.
+  // `pinningCommander` covers the PUT-persist + re-analyze roundtrip;
+  // `commanderPickerDismissed` remembers a "NOT NOW" so we don't re-nag on
+  // every render (reset when the deck route changes).
+  const [pinningCommander, setPinningCommander] = useState(false)
+  const [commanderPickerDismissed, setCommanderPickerDismissed] = useState(false)
   const [versions, setVersions] = useState([])
   const [gauntlet, setGauntlet] = useState(null)
   const [curse, setCurse] = useState(null)
@@ -1683,6 +1692,50 @@ export default function DeckArchive() {
     else toast.error('COPY FAILED — ' + url, 5000)
   }
 
+  // Pin the user's chosen commander, then let Freya analyze. PATCH accepts
+  // only name/tags, so the commander is persisted by rewriting the decklist's
+  // COMMANDER: line and PUTting it — the same endpoint the Workshop uses.
+  // PUT also auto-triggers Freya server-side (freya_started + runFreya), so
+  // the directive's "persist THEN analyze" order is satisfied by this one
+  // call; the existing SSE listener below (freya_started/freya_complete)
+  // refreshes the analysis panel. No separate runAnalysis call — that would
+  // double-fire Freya on the same deck.
+  const handleSetCommander = async (chosenName) => {
+    if (!owner || !id || pinningCommander || !chosenName) return
+    setPinningCommander(true)
+    const norm = (s) => String(s || '').replace(/^COMMANDER:\s*/i, '').trim()
+    const chosenLower = norm(chosenName).toLowerCase()
+    try {
+      // Rebuild the list from the in-memory cards, faithful set codes and
+      // all, marking the chosen card as COMMANDER:. If the pick somehow
+      // isn't a card row (defensive), prepend a fresh COMMANDER: line.
+      let matched = false
+      const lines = (deck?.cards || []).map((c) => {
+        const name = norm(c.name)
+        if (name.toLowerCase() === chosenLower) {
+          matched = true
+          return `COMMANDER: ${name}`
+        }
+        const qty = c.quantity > 1 ? c.quantity : 1
+        return `${qty} ${name}`
+      })
+      if (!matched) lines.unshift(`COMMANDER: ${norm(chosenName)}`)
+      await api.updateDeck(`${owner}/${id}`, lines.join('\n'))
+      trackEvent('pin_commander', { deck: `${owner}/${id}` })
+      // Refetch so commander_card resolves and the gate (which keys off the
+      // deck payload) closes on its own. Mark analyzing so the UI shows the
+      // Freya run kicked off by the PUT.
+      setAnalyzing(true)
+      const fresh = await api.getDeck(`${owner}/${id}`)
+      setDeck(fresh)
+      toast.success(`COMMANDER SET · ${norm(chosenName).toUpperCase()}`)
+    } catch {
+      toast.error('COULD NOT SET COMMANDER — TRY AGAIN')
+    } finally {
+      setPinningCommander(false)
+    }
+  }
+
   const eloByDeckId = {}
   for (const e of elo) {
     if (e.deck_id) eloByDeckId[e.deck_id] = e
@@ -1857,6 +1910,10 @@ export default function DeckArchive() {
     es.onerror = () => {}
     return () => es.close()
   }, [owner, id])
+
+  // Reset the "NOT NOW" dismissal when navigating to a different deck so the
+  // commander gate re-evaluates fresh for each deck the user opens.
+  useEffect(() => { setCommanderPickerDismissed(false) }, [owner, id])
 
   // Fallback when commander/custom_name isn't loaded yet — strip
   // bracket marker, owner slug, and trailing moxfield hash so we don't
@@ -4666,6 +4723,19 @@ export default function DeckArchive() {
             setComparePickerOpen(false)
             navigate(`/compare/${owner}/${id}/${d.owner}/${d.id}`)
           }}
+        />
+      )}
+      {/* Commander-resolution gate. Shows only for the deck owner (only they
+          can persist the choice), only when the commander is genuinely
+          unset/unresolved, and only until dismissed. A deck whose commander
+          already resolves never sees this — the predicate returns false. */}
+      {!loading && isOwner && !commanderPickerDismissed && commanderNeedsResolution(deck) && (
+        <CommanderPickerModal
+          deck={deck}
+          deckId={id}
+          saving={pinningCommander}
+          onCancel={() => setCommanderPickerDismissed(true)}
+          onConfirm={handleSetCommander}
         />
       )}
     </div>
