@@ -357,32 +357,27 @@ func initSagaLoreCounters(gs *GameState, perm *Permanent) {
 		perm.Counters = map[string]int{}
 	}
 	perm.Counters["saga_final_chapter"] = maxChapter
-	// CR §714.3a / §614.1c — canonical counter placement (doubler chain +
-	// counter_placed), replacing the pre-Aug raw AddCounter. Downstream
-	// chapter dispatch reads perm.Counters["lore"], so a doubled placement
-	// advances the chapter correctly.
-	PutCountersTriggered(gs, perm, "lore", 1, perm)
+
+	// CR §714.3a / §614.1c (Aug 7 2026) — the first lore counter is an
+	// intrinsic "enters with a lore counter" replacement effect. Apply the
+	// §616 would_put_counter doubler chain to it (Doubling Season doubles the
+	// starting counter — judges/wizards confirmed a Saga then enters at
+	// chapter 2), then place via AddLoreCounters, which fires EACH
+	// newly-reached chapter in ascending stack order (lore_counter_added +
+	// the generic chapter dispatch per chapter). So a doubled entry fires
+	// chapters I AND II in order, not just the last.
+	modified, cancelled := FirePutCounterEvent(gs, perm, "lore", 1, perm)
 	gs.LogEvent(Event{
 		Kind:   "saga_etb",
 		Seat:   perm.Controller,
 		Source: perm.Card.DisplayName(),
 		Details: map[string]interface{}{
 			"final_chapter": maxChapter,
-			"lore":          perm.Counters["lore"],
+			"lore":          modified,
 		},
 	})
-	// Fire lore_counter_added for Urza's Saga, Sheoldred // The True Scriptures, etc.
-	// "perm" carries the advancing saga so self-referential chapter handlers
-	// (dispatchSagaPhase7 et al.) can gate on identity — the all-battlefield
-	// trigger walk otherwise drives every controlled saga's chapter effect.
-	FireCardTrigger(gs, "lore_counter_added", map[string]interface{}{
-		"seat":    perm.Controller,
-		"card":    perm.Card.DisplayName(),
-		"chapter": perm.Counters["lore"],
-		"perm":    perm,
-	})
-	// Resolve the chapter-I ability from the AST for Sagas without a per_card
-	// handler (r63 saga audit — the ~187 unlisted corpus Sagas were inert on
-	// the lore-tick path). per_card-owned Sagas are skipped inside the helper.
-	dispatchGenericSagaChapter(gs, perm, perm.Counters["lore"])
+	if cancelled || modified <= 0 {
+		return
+	}
+	AddLoreCounters(gs, perm, modified)
 }
