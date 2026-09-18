@@ -2166,6 +2166,15 @@ def parse_activated(text: str) -> Optional[Activated]:
     """Try to match an activated ability: <cost>: <effect>."""
     if ":" not in text:
         return None
+    # CR §702.193 Power-up — "Power-up — [cost]: [effect]" is an activated
+    # ability with a rider. Strip the marker prefix (otherwise it corrupts the
+    # cost parse) and tag the ability so the engine can apply the
+    # entered-this-turn cost reduction + "activate only once".
+    power_up = False
+    _pu = re.match(r"^\s*power[- ]?up\s*[\u2014\u2013-]\s*", text, re.I)
+    if _pu:
+        power_up = True
+        text = text[_pu.end():]
     cost_part, _, effect_part = text.partition(":")
     cost_part = cost_part.strip()
     effect_part = effect_part.strip().rstrip(".")
@@ -2179,7 +2188,9 @@ def parse_activated(text: str) -> Optional[Activated]:
         effect = UnknownEffect(raw_text=effect_part)
     # Detect timing restrictions
     timing = None
-    if "activate only as a sorcery" in text.lower():
+    if power_up:
+        timing = "power_up"
+    elif "activate only as a sorcery" in text.lower():
         timing = "sorcery"
     elif "activate only once each turn" in text.lower():
         timing = "once_per_turn"

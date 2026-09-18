@@ -1720,6 +1720,13 @@ type Permanent struct {
 	// CrewVehicle, cleared at end-of-turn cleanup (mirrors SaddlersThisTurn).
 	CrewersThisTurn []*Permanent
 
+	// EnteredThisTurn — true from this permanent's ETB until end-of-turn
+	// cleanup. Powers CR §702.193 Power-up's "if this permanent entered this
+	// turn" cost reduction (and any other entered-this-turn effect). More
+	// precise than SummoningSick (which persists until the controller's next
+	// untap) and applies to non-creatures too.
+	EnteredThisTurn bool
+
 	// DFC / transform state (CR §712). Transformed is false while the
 	// FRONT face is active (default at ETB per §712.2), true once
 	// Transform has flipped the permanent to the BACK face. Every

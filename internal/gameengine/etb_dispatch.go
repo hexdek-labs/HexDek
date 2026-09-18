@@ -89,6 +89,9 @@ func unwrapAbilityWordTriggered(ab gameast.Ability) *gameast.Triggered {
 // will become a nested no-op frame for the rare paths that route
 // through both.
 func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
+	if perm != nil {
+		perm.EnteredThisTurn = true // CR §702.193 Power-up / entered-this-turn effects
+	}
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}

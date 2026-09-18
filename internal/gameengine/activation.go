@@ -518,7 +518,7 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 	// 0.5. Exhaust check — "activate each exhaust ability only once."
 	// Exhaust abilities have TimingRestriction == "exhaust" in the AST.
 	// Once used, perm.Flags["exhaust_used_<idx>"] is set permanently.
-	if IsExhaustAbility(perm, abilityIdx) && IsExhausted(perm, abilityIdx) {
+	if (IsExhaustAbility(perm, abilityIdx) || IsPowerUpAbility(perm, abilityIdx)) && IsExhausted(perm, abilityIdx) {
 		gs.LogEvent(Event{
 			Kind:   "exhaust_already_used",
 			Seat:   seatIdx,
@@ -749,6 +749,15 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		// Mana cost.
 		if ab.Cost.Mana != nil {
 			cost := ab.Cost.Mana.CMC()
+			// CR §702.193 Power-up — if this permanent entered the battlefield
+			// this turn, reduce the ability's cost by the permanent's mana
+			// value (floor 0).
+			if IsPowerUpAbility(perm, abilityIdx) && perm.EnteredThisTurn {
+				cost -= manaCostOf(perm.Card)
+				if cost < 0 {
+					cost = 0
+				}
+			}
 			if seat.ManaPool < cost {
 				// Untap if we tapped for cost but can't pay mana.
 				if ab.Cost.Tap {
@@ -953,7 +962,7 @@ func ActivateAbility(gs *GameState, seatIdx int, perm *Permanent, abilityIdx int
 		applyManaAbilityRiders(gs, perm, abilityIdx)
 		popIIDEnabler(gs)
 		// Exhaust: mark used after inline resolution (mana-ability path).
-		if IsExhaustAbility(perm, abilityIdx) {
+		if IsExhaustAbility(perm, abilityIdx) || IsPowerUpAbility(perm, abilityIdx) {
 			MarkExhausted(perm, abilityIdx)
 		}
 		// Ride-along legality validator: inline mana ability complete
@@ -1104,7 +1113,7 @@ func resolveActivatedAbility(gs *GameState, item *StackItem) {
 	// Exhaust — mark the ability as permanently used if it's an exhaust
 	// ability. This must happen AFTER resolution so the effect fires, but
 	// the flag prevents all future activations.
-	if item.Source != nil && IsExhaustAbility(item.Source, item.AbilityIdx) {
+	if item.Source != nil && (IsExhaustAbility(item.Source, item.AbilityIdx) || IsPowerUpAbility(item.Source, item.AbilityIdx)) {
 		MarkExhausted(item.Source, item.AbilityIdx)
 	}
 

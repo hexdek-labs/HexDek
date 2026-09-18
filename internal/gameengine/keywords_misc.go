@@ -3037,6 +3037,25 @@ func IsExhaustAbility(perm *Permanent, abilityIdx int) bool {
 	return strings.ToLower(ab.TimingRestriction) == "exhaust"
 }
 
+// IsPowerUpAbility reports whether the activated ability at abilityIdx is a
+// Power-up ability (CR §702.193). The parser tags these with
+// TimingRestriction == "power_up". Power-up reuses the Exhaust "activate only
+// once" marker plus an entered-this-turn cost reduction.
+func IsPowerUpAbility(perm *Permanent, abilityIdx int) bool {
+	if perm == nil || perm.Card == nil || perm.Card.AST == nil {
+		return false
+	}
+	abilities := perm.Card.AST.Abilities
+	if abilityIdx < 0 || abilityIdx >= len(abilities) {
+		return false
+	}
+	ab, ok := abilities[abilityIdx].(*gameast.Activated)
+	if !ok {
+		return false
+	}
+	return strings.ToLower(ab.TimingRestriction) == "power_up"
+}
+
 // ===========================================================================
 // INTERNAL HELPERS
 // ===========================================================================
