@@ -1688,6 +1688,12 @@ def _ascend(m):
     return Modification(kind="ascend_typed", args=())
 
 
+# "storied" (3) — CR §702.195 (Aug 7 2026 edition); mirrors ascend_typed
+@_eff(r"^storied(?:\.|$)")
+def _storied(m):
+    return Modification(kind="storied_typed", args=())
+
+
 # "convoke" (3)
 @_eff(r"^convoke(?:\.|$)")
 def _convoke(m):

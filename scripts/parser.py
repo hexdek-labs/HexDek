@@ -1663,7 +1663,7 @@ KEYWORD_RE = re.compile(
     r"living weapon|umbra armor|totem armor|"
     r"corrupted|delirium|metalcraft|raid|revolt|"
     r"draft this card face up|"
-    r"ascend|aftermath|doctor's companion|"
+    r"ascend|storied|aftermath|doctor's companion|"
     r"melee|menace|skulk|wither|protection|"
     r"transmute \{[^}]+\}|transfigure \{[^}]+\}|"
     r"enchant player|enchant artifact|enchant land|enchant permanent|"
