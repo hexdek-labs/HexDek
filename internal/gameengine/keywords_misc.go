@@ -3395,3 +3395,64 @@ func HasCitysBlessing(gs *GameState, seatIdx int) bool {
 	}
 	return seat.Flags["citys_blessing"] > 0
 }
+
+// ---------------------------------------------------------------------------
+// Storied / Enduring Story — CR §702.195 (Aug 7 2026 edition)
+// ---------------------------------------------------------------------------
+
+// CheckStoried checks whether a player controls three or more permanents that
+// are artifacts, Sagas, and/or legendary and should get the "enduring story"
+// designation. Once set it is permanent for the rest of the game
+// (CR §702.195a). Modeled directly on CheckAscend — the same
+// threshold→designation shape, with a filtered count of 3 rather than 10 of
+// anything. Called at the same sites as CheckAscend (after ETB / a permanent
+// entering).
+func CheckStoried(gs *GameState, seatIdx int) {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil || seat.Lost {
+		return
+	}
+	if seat.Flags != nil && seat.Flags["enduring_story"] > 0 {
+		return
+	}
+	count := 0
+	for _, perm := range seat.Battlefield {
+		if perm == nil {
+			continue
+		}
+		if perm.hasType("artifact") || perm.hasType("saga") || perm.IsLegendary() {
+			count++
+		}
+	}
+	if count >= 3 {
+		if seat.Flags == nil {
+			seat.Flags = map[string]int{}
+		}
+		seat.Flags["enduring_story"] = 1
+		gs.LogEvent(Event{
+			Kind:   "enduring_story",
+			Seat:   seatIdx,
+			Amount: count,
+			Details: map[string]interface{}{
+				"rule":       "702.195",
+				"qualifying": count,
+			},
+		})
+	}
+}
+
+// HasEnduringStory returns true if the player has the enduring story
+// designation (CR §702.195b).
+func HasEnduringStory(gs *GameState, seatIdx int) bool {
+	if gs == nil || seatIdx < 0 || seatIdx >= len(gs.Seats) {
+		return false
+	}
+	seat := gs.Seats[seatIdx]
+	if seat == nil || seat.Flags == nil {
+		return false
+	}
+	return seat.Flags["enduring_story"] > 0
+}

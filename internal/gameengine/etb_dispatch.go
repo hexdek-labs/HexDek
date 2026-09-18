@@ -267,6 +267,7 @@ func FirePermanentETBTriggers(gs *GameState, perm *Permanent) {
 	FireOutlawETBTriggers(gs, perm)
 
 	CheckAscend(gs, perm.Controller)
+	CheckStoried(gs, perm.Controller)
 
 	if !perm.IsLand() {
 		FireCardTrigger(gs, "nonland_permanent_etb", map[string]interface{}{

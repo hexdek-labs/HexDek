@@ -2859,6 +2859,7 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 
 		// §702.131 Ascend.
 		CheckAscend(gs, perm.Controller)
+	CheckStoried(gs, perm.Controller)
 
 		if !cardHasType(card, "land") {
 			FireCardTrigger(gs, "nonland_permanent_etb", map[string]interface{}{
