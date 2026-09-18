@@ -1395,6 +1395,12 @@ def _toxic(m):
     return Modification(kind="toxic_typed", args=(int(m.group(1)),))
 
 
+# "teamwork N" (CR §702.194, Aug 7 2026) — mirrors toxic N
+@_eff(r"^teamwork (\d+)(?:\.|$)")
+def _teamwork(m):
+    return Modification(kind="teamwork_typed", args=(int(m.group(1)),))
+
+
 # "corrupted -- [effect]" (ability word body) (3)
 @_eff(r"^corrupted\s*[-—]\s*(.+?)(?:\.|$)")
 def _corrupted(m):

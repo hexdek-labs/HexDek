@@ -1669,7 +1669,7 @@ KEYWORD_RE = re.compile(
     r"enchant player|enchant artifact|enchant land|enchant permanent|"
     r"more than meets the eye \{[^}]+\}|"
     r"intercept \{[^}]+\}|exhaust|tiered|"
-    r"toxic \d+|bushido \d+|exploit|soulbond|bargain|evolve|"
+    r"toxic \d+|bushido \d+|teamwork \d+|exploit|soulbond|bargain|evolve|"
     r"cumulative upkeep[^,.]*|"
     r"sunburst|graft \d+|fading \d+|vanishing \d+|"
     r"absorb \d+|amplify \d+|annihilator \d+|"
