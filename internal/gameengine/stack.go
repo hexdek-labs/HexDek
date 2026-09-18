@@ -652,6 +652,7 @@ func CastSpell(gs *GameState, seatIdx int, card *Card, targets []Target) error {
 		return &CastError{Reason: "insufficient_mana"}
 	}
 	seat.ManaPool -= cost
+	gs.LastCastManaSpent = cost // §702.191 Increment reads this in the cast-trigger observer
 	SyncManaAfterSpend(seat)
 
 	// CR §702.33 — cast-time optional additional cost (kicker / multikicker).

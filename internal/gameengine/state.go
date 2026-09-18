@@ -217,6 +217,13 @@ type GameState struct {
 	// finishes folding it in.
 	PendingTokenMintChain []ReplacementRef
 
+	// LastCastManaSpent — transient: the mana paid for the spell currently
+	// being cast, stashed by the main cast path so the Increment keyword
+	// (CR §702.191) can read "the amount of mana spent" in
+	// FireCastTriggerObservers. Reset to 0 there after each non-copy cast so
+	// cast paths that don't set it fall back to the card's mana value.
+	LastCastManaSpent int
+
 	// SubsystemHooks is the InstanceID Phase 6 dormant-hook registry
 	// per docs/instanceid-system-v2-r60.md §4.4 / §9. Populated by
 	// RegisterSubsystemHooks at game-start with ten entries, one per

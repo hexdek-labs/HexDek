@@ -83,6 +83,18 @@ func FireCastTriggerObservers(gs *GameState, cast *Card, controller int, fromCop
 	if gs == nil || cast == nil || fromCopy {
 		return
 	}
+
+	// CR §702.191 — Increment. Creatures the caster controls whose power or
+	// toughness is below the mana spent on this cast each get a +1/+1 counter.
+	// Mana spent is stashed on gs by the main cast path (option-b); fall back
+	// to the cast card's mana value for cast paths that don't set it. Reset
+	// after so a later non-setting path doesn't read a stale value.
+	incManaSpent := gs.LastCastManaSpent
+	if incManaSpent <= 0 {
+		incManaSpent = manaCostOf(cast)
+	}
+	ApplyIncrementTriggers(gs, controller, incManaSpent)
+	gs.LastCastManaSpent = 0
 	// Derive the filters every observer reads off the cast spell. Both
 	// Types and TypeLine on Card are authoritative (Types is the canonical
 	// slice; TypeLine is a cache for tokens/copies that want a human-

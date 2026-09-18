@@ -109,3 +109,29 @@ func TapCreaturesForTotalPower(gs *GameState, seatIdx int, need int, chosen []*P
 	}
 	return true
 }
+
+
+// ApplyIncrementTriggers handles the Increment keyword (CR §702.191a): "Whenever
+// you cast a spell, if this permanent is a creature and the amount of mana spent
+// to cast that spell is greater than this creature's power or this creature's
+// toughness, put a +1/+1 counter on this creature." Called once per non-copy
+// cast for the casting seat. Counters go through PutCountersTriggered so the
+// §616 doubler chain + counter_placed apply.
+func ApplyIncrementTriggers(gs *GameState, controller, manaSpent int) {
+	if gs == nil || controller < 0 || controller >= len(gs.Seats) {
+		return
+	}
+	seat := gs.Seats[controller]
+	if seat == nil {
+		return
+	}
+	perms := append([]*Permanent(nil), seat.Battlefield...)
+	for _, p := range perms {
+		if p == nil || !p.IsCreature() || !p.HasKeyword("increment") {
+			continue
+		}
+		if manaSpent > p.Power() || manaSpent > p.Toughness() {
+			PutCountersTriggered(gs, p, "+1/+1", 1, p)
+		}
+	}
+}
