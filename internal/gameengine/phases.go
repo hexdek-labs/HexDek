@@ -406,6 +406,9 @@ func ScanExpiredDurations(gs *GameState, phase, step string) {
 				if len(p.SaddlersThisTurn) > 0 {
 					p.SaddlersThisTurn = nil
 				}
+				if len(p.CrewersThisTurn) > 0 {
+					p.CrewersThisTurn = nil
+				}
 				if len(p.Modifications) > 0 {
 					mods := p.Modifications[:0]
 					for _, m := range p.Modifications {

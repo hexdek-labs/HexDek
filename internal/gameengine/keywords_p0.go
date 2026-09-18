@@ -391,6 +391,11 @@ func CrewVehicle(gs *GameState, seatIdx int, vehicle *Permanent, crewCreatures [
 		c.Tapped = true
 	}
 
+	// CR §702.122c (Aug 7 2026) — the Vehicle is "crewed by" each creature
+	// tapped to pay its crew cost. Record them so "crewed by" payoffs can
+	// read the relationship (mirrors Mounts' SaddlersThisTurn).
+	vehicle.CrewersThisTurn = append(vehicle.CrewersThisTurn, crewCreatures...)
+
 	// Vehicle becomes an artifact creature until end of turn.
 	if !vehicle.IsCreature() {
 		vehicle.GrantedAbilities = append(vehicle.GrantedAbilities, "creature_type_granted")
@@ -436,6 +441,16 @@ func CrewVehicle(gs *GameState, seatIdx int, vehicle *Permanent, crewCreatures [
 	})
 
 	return nil
+}
+
+// CrewedByThisTurn returns the creatures tapped to crew this Vehicle this
+// turn (CR §702.122c, Aug 7 2026 edition). Empty if it wasn't crewed this
+// turn. Mirrors the Mounts SaddlersThisTurn accessor pattern.
+func CrewedByThisTurn(vehicle *Permanent) []*Permanent {
+	if vehicle == nil {
+		return nil
+	}
+	return vehicle.CrewersThisTurn
 }
 
 // UncrewVehiclesAtEOT removes the creature type from vehicles whose

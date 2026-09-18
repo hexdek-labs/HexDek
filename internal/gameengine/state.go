@@ -1707,6 +1707,12 @@ type Permanent struct {
 	// mount this turn.
 	SaddlersThisTurn []*Permanent
 
+	// CrewersThisTurn — for Vehicles (CR §702.122c, Aug 7 2026 edition).
+	// Records the creatures tapped to pay this Vehicle's crew cost this turn;
+	// a creature here is one the Vehicle is "crewed by". Populated by
+	// CrewVehicle, cleared at end-of-turn cleanup (mirrors SaddlersThisTurn).
+	CrewersThisTurn []*Permanent
+
 	// DFC / transform state (CR §712). Transformed is false while the
 	// FRONT face is active (default at ETB per §712.2), true once
 	// Transform has flipped the permanent to the BACK face. Every

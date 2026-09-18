@@ -117,7 +117,65 @@ func IsManaAbility(perm *Permanent, abilityIdx int) bool {
 	if effectTargets(ab.Effect) {
 		return false
 	}
+	// CR §605.1a (Aug 7 2026 edition) — an activated ability is NOT a mana
+	// ability if its cost or effect moves any card to or from a library.
+	// Millikin ("{T}, Mill a card: Add {C}") therefore now uses the stack
+	// and can be responded to.
+	if abilityMovesLibraryCard(ab) {
+		return false
+	}
 	return true
+}
+
+// abilityMovesLibraryCard reports whether an activated ability's COST or
+// EFFECT moves a card to or from a library, per CR §605.1a (Aug 7 2026).
+// Scry is deliberately excluded: it reorders the top of a library but moves
+// no card out of or into one, so it does not disqualify a mana ability.
+func abilityMovesLibraryCard(ab *gameast.Activated) bool {
+	if ab == nil {
+		return false
+	}
+	// Cost side: additional costs Thor can't structure land in Cost.Extra as
+	// raw text — Millikin's "mill a card" is the canonical case.
+	for _, ex := range ab.Cost.Extra {
+		if costTextMovesLibraryCard(ex) {
+			return true
+		}
+	}
+	return effectMovesLibraryCard(ab.Effect)
+}
+
+func costTextMovesLibraryCard(s string) bool {
+	s = strings.ToLower(s)
+	return strings.Contains(s, "mill") ||
+		strings.Contains(s, "from your library") ||
+		strings.Contains(s, "from a library") ||
+		strings.Contains(s, "into your library") ||
+		strings.Contains(s, "on top of your library") ||
+		strings.Contains(s, "on the bottom of your library")
+}
+
+// effectMovesLibraryCard walks the effect tree (mirroring effectProducesMana)
+// for effects that move a card to or from a library: draw, mill, surveil, and
+// library tutors all qualify. Scry is intentionally omitted.
+func effectMovesLibraryCard(e gameast.Effect) bool {
+	switch v := e.(type) {
+	case *gameast.Draw, *gameast.Mill, *gameast.Surveil, *gameast.Tutor:
+		return true
+	case *gameast.Sequence:
+		for _, sub := range v.Items {
+			if effectMovesLibraryCard(sub) {
+				return true
+			}
+		}
+	case *gameast.Choice:
+		for _, opt := range v.Options {
+			if effectMovesLibraryCard(opt) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // effectProducesMana returns true if the effect (or any nested sub-effect)

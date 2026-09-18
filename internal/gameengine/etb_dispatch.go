@@ -303,8 +303,22 @@ var romanToInt = map[string]int{
 }
 
 // initSagaLoreCounters scans the saga's AST for chapter abilities and sets
-// saga_final_chapter to the highest chapter number found. Then adds 1 lore
-// counter per CR §714.3a (saga gets first lore counter on ETB).
+// saga_final_chapter to the highest chapter number found. Then places the
+// first lore counter.
+//
+// CR §714.3a (Aug 7 2026 edition) reframes this: a Saga without read ahead
+// has the intrinsic ability "This Saga enters with a lore counter on it,"
+// which creates a REPLACEMENT effect (§614.1c) — no longer a controller
+// turn-based action. So the initial lore counter is routed through the
+// canonical PutCountersTriggered chokepoint (fires counter_placed + applies
+// the §616 would_put_counter doubler chain), not a raw AddCounter.
+//
+// NOTE (rules fork, for review): routing through the doubler chain means an
+// active kind-agnostic counter doubler (Doubling Season) now doubles the
+// STARTING lore counter, so a Saga would enter at chapter 2 under it. That is
+// the literal consequence of the new replacement-effect framing; if the
+// intended ruling carves lore out of doubling, skip the doubler for
+// kind=="lore" here.
 func initSagaLoreCounters(gs *GameState, perm *Permanent) {
 	if perm.Card.AST == nil {
 		return
@@ -342,7 +356,11 @@ func initSagaLoreCounters(gs *GameState, perm *Permanent) {
 		perm.Counters = map[string]int{}
 	}
 	perm.Counters["saga_final_chapter"] = maxChapter
-	perm.AddCounter("lore", 1)
+	// CR §714.3a / §614.1c — canonical counter placement (doubler chain +
+	// counter_placed), replacing the pre-Aug raw AddCounter. Downstream
+	// chapter dispatch reads perm.Counters["lore"], so a doubled placement
+	// advances the chapter correctly.
+	PutCountersTriggered(gs, perm, "lore", 1, perm)
 	gs.LogEvent(Event{
 		Kind:   "saga_etb",
 		Seat:   perm.Controller,
