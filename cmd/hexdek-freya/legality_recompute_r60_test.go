@@ -41,62 +41,50 @@ func newTestOracle(entries ...*oracleEntry) *oracleDB {
 // (2) the suffix form recomputes to an INVALID verdict (the poison is
 // real), and (3) the clean form recomputes to a VALID verdict — i.e.
 // recomputing legality on read breaks the poisoned entry.
-func TestRecomputeLegality_ClearsPoisonedSetCodeCommander(t *testing.T) {
+func TestRecomputeLegality_SetCodeAndQuantityCommandersResolve(t *testing.T) {
 	oracle := newTestOracle(&oracleEntry{
 		Name:          "Gimbal, Gremlin Prodigy",
 		TypeLine:      "Legendary Creature — Goblin Artificer",
 		OracleText:    "Whenever you roll one or more dice, put that many +1/+1 counters on Gimbal.",
 		ColorIdentity: []string{"R"},
 	})
-
-	// 99 Mountains + 1 commander = 100. Mountains are unresolved here
-	// (not in the mini-oracle) but singleton-exempt as basics and
-	// skipped by the color-identity check, so the ONLY thing that swings
-	// overall legality is whether the commander resolves.
 	cardQtys := map[string]int{"Mountain": 99}
 	const totalCards = 100
+	const clean = "Gimbal, Gremlin Prodigy"
 
-	const malformed = "Gimbal, Gremlin Prodigy (MOC) 3"
-	const corrected = "Gimbal, Gremlin Prodigy"
-
-	// (1) Both commander forms MUST land on the same cache entry — this
-	// is precisely why the stale verdict can't be escaped by re-import.
-	keyBad := DeckCacheKey(malformed, cardQtys)
-	keyGood := DeckCacheKey(corrected, cardQtys)
-	if keyBad != keyGood {
-		t.Fatalf("precondition failed: set-code suffix must normalize to the same cache key\n  malformed=%s\n  corrected=%s", keyBad, keyGood)
-	}
-
-	// (2) The poisoned verdict is genuinely reproducible: the suffix form
-	// fails commander resolution and the whole report is invalid.
-	poisoned := RecomputeLegality(malformed, cardQtys, oracle, totalCards)
-	if poisoned.Valid {
-		t.Fatalf("precondition failed: malformed commander should be INVALID, got Valid=true")
-	}
-	if poisoned.CommanderOK.Valid {
-		t.Fatalf("precondition failed: malformed commander should fail the commander check")
-	}
-	if !strings.Contains(strings.ToLower(poisoned.CommanderOK.Message), "not found") {
-		t.Fatalf("expected 'not found' commander message, got %q", poisoned.CommanderOK.Message)
+	// r64 lookup-normalization fix: a commander that kept a leading deck
+	// quantity or a "(SET) N" printing suffix from a plain-text paste / import
+	// now RESOLVES instead of producing a false ILLEGAL ("not found in oracle
+	// database"). All of these forms are the same card.
+	for _, form := range []string{
+		clean,                                 // clean
+		"Gimbal, Gremlin Prodigy (MOC) 3",     // set-code suffix
+		"1 Gimbal, Gremlin Prodigy",           // leading quantity
+		"1 Gimbal, Gremlin Prodigy (MOC) 3",   // both
+	} {
+		r := RecomputeLegality(form, cardQtys, oracle, totalCards)
+		if !r.CommanderOK.Valid {
+			t.Errorf("commander %q should resolve, got message %q", form, r.CommanderOK.Message)
+		}
+		if !r.Valid {
+			t.Errorf("deck with commander %q should be legal overall, got Errors=%v", form, r.Errors)
+		}
 	}
 
-	// (3) Recomputing against the CORRECTED text — same cache key — yields
-	// a fresh VALID verdict. This is the fix: legality reflects the deck
-	// as it is now, not as it was when first cached.
-	fresh := RecomputeLegality(corrected, cardQtys, oracle, totalCards)
-	if !fresh.CommanderOK.Valid {
-		t.Fatalf("corrected commander should resolve as a legal commander, got message %q", fresh.CommanderOK.Message)
-	}
-	if !fresh.Valid {
-		t.Fatalf("corrected deck should be legal overall, got Errors=%v", fresh.Errors)
+	// The cache-key collision that made the original poison inescapable still
+	// holds — all forms fold to the same key (so a corrected re-import lands on
+	// the same entry). The r64 fix means that entry is no longer poisoned.
+	if DeckCacheKey("Gimbal, Gremlin Prodigy (MOC) 3", cardQtys) != DeckCacheKey(clean, cardQtys) {
+		t.Fatal("set-code suffix must normalize to the same cache key as the clean name")
 	}
 }
 
 // TestRecomputeLegality_ServingPathOverwritesCachedVerdict mirrors the
-// analyzeDeckFileCached cache-hit path: a cached FreyaReport carrying a
-// stale INVALID legality has that field overwritten by a fresh recompute
-// against the current (corrected) deck text before being served. The
-// expensive analysis on the cached report is left untouched.
+// analyzeDeckFileCached cache-hit path: a cached FreyaReport carrying a stale
+// INVALID legality has that field overwritten by a fresh recompute against the
+// current deck text before being served, leaving the expensive analysis intact.
+// Uses a genuinely-unresolvable commander for the invalid state (the r64 fix
+// now tolerates set-code / quantity artifacts, so those no longer poison).
 func TestRecomputeLegality_ServingPathOverwritesCachedVerdict(t *testing.T) {
 	oracle := newTestOracle(&oracleEntry{
 		Name:          "Gimbal, Gremlin Prodigy",
@@ -105,31 +93,28 @@ func TestRecomputeLegality_ServingPathOverwritesCachedVerdict(t *testing.T) {
 	})
 	cardQtys := map[string]int{"Mountain": 99}
 
-	// A cached report from the FIRST (malformed) import: the analysis is
-	// present, but Legality is the poisoned invalid verdict.
+	// Cached report whose legality is genuinely INVALID — a commander that does
+	// not resolve even after normalization (a real miss, not a set-code/quantity
+	// artifact).
 	cached := &FreyaReport{
 		DeckName:   "gimbal",
-		Commander:  "Gimbal, Gremlin Prodigy (MOC) 3",
+		Commander:  "Notacard, Phantom Commander",
 		TotalCards: 100,
-		Legality:   RecomputeLegality("Gimbal, Gremlin Prodigy (MOC) 3", cardQtys, oracle, 100),
+		Legality:   RecomputeLegality("Notacard, Phantom Commander", cardQtys, oracle, 100),
 	}
 	if cached.Legality.Valid {
-		t.Fatalf("precondition: cached legality should be the poisoned invalid verdict")
+		t.Fatalf("precondition: a truly-unresolvable commander should be INVALID")
 	}
 
-	// Serving path (mirrors cache.go analyzeDeckFileCached): recompute
-	// legality against the CURRENT deck text and overwrite the cached
-	// field. In production the current commander/qtys come from the fresh
-	// parse pass; here we pass the corrected form directly.
+	// Serving path: recompute against the CURRENT (correct) deck text and
+	// overwrite the cached field.
 	cached.Legality = RecomputeLegality("Gimbal, Gremlin Prodigy", cardQtys, oracle, cached.TotalCards)
-
 	if !cached.Legality.Valid {
 		t.Fatalf("served report should carry the fresh VALID legality, got Errors=%v", cached.Legality.Errors)
 	}
 	if !cached.Legality.CommanderOK.Valid {
 		t.Fatalf("served report commander check should be valid after recompute")
 	}
-	// The rest of the (expensive) cached analysis is untouched.
 	if cached.DeckName != "gimbal" {
 		t.Fatalf("recompute must not disturb the cached analysis fields")
 	}
