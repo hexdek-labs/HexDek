@@ -540,6 +540,26 @@ function CardListDense({ cards, cardRoles, sort, onSort, coachingIndex, onCut })
   )
 }
 
+// Commander <-> editText helpers for the Workshop commander field. Read the
+// current commander off the COMMANDER: line; write it back IN PLACE (so the
+// line doesn't jump to the top while the user types), prepending only when
+// there's no COMMANDER: line yet. The Workshop's SAVE UPDATE persists it.
+function commanderFromEditText(text) {
+  const line = (text || '').split('\n').find(l => /^\s*commander\s*:/i.test(l))
+  return line ? line.replace(/^\s*commander\s*:/i, '').trim() : ''
+}
+function withCommanderLine(text, name) {
+  const trimmed = (name || '').trim()
+  const lines = (text || '').split('\n')
+  const idx = lines.findIndex(l => /^\s*commander\s*:/i.test(l))
+  if (idx >= 0) {
+    if (trimmed) lines[idx] = `COMMANDER: ${trimmed}`
+    else lines.splice(idx, 1)
+    return lines.join('\n')
+  }
+  return trimmed ? `COMMANDER: ${trimmed}\n${text}` : (text || '')
+}
+
 // WorkshopSearchPanel — the deck-editor MVP search (r63, owner
 // direction: "search of cards, filter automatically by commander
 // color"). Debounced search against /api/cards/search with the deck's
@@ -2394,6 +2414,18 @@ export default function DeckArchive() {
         {editing && (
           <div ref={editPanelRef} style={{ padding: '0 12px' }}>
             <Panel code="04.X" title="WORKSHOP / / DECK LIST" right={<span className="t-xs" style={{ color: 'var(--warn)' }}>IN WORKSHOP</span>}>
+              <div style={{ marginBottom: 10 }}>
+                <label className="t-xs muted" style={{ display: 'block', marginBottom: 4, letterSpacing: '0.08em' }}>COMMANDER</label>
+                <input
+                  type="text"
+                  data-testid="workshop-commander"
+                  value={commanderFromEditText(editText)}
+                  onChange={e => setEditText(withCommanderLine(editText, e.target.value))}
+                  placeholder="Set this deck's commander — type the exact card name"
+                  spellCheck={false}
+                  style={{ width: '100%', padding: '6px 10px', background: 'transparent', border: '1px solid var(--rule-2)', color: 'var(--ink)', font: 'inherit', fontSize: 11, letterSpacing: '0.04em' }}
+                />
+              </div>
               <WorkshopSearchPanel colorIdentity={colorIdentity} onAdd={(cardName) => {
                 const lines = editText.split('\n')
                 const existingIdx = lines.findIndex(l => { const m = l.match(/^(\d+)\s+(.+)$/); return m && m[2].trim() === cardName })
