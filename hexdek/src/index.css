@@ -2665,6 +2665,12 @@ body {
   .export-modal__btn { flex: 1 1 100%; }
 }
 
+/* Commander picker: on phones, drop the type line so the card NAME gets
+   full width (avoids "Atra…" over-truncation). */
+@media (max-width: 480px) {
+  .cmdr-pick-type { display: none; }
+}
+
 /* ── ContextBox (action-button TLDR) ──
    Renders above (or beside) action CTAs to give a 1–2 sentence preview of
    what the button does. The component itself owns most of its styling

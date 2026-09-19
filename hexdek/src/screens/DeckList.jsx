@@ -467,6 +467,10 @@ function QuickPasteImport({ onImported, navigate, defaultOwner }) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [name, setName] = useState('')
+  // Manual commander override — the inline quick-paste has no dropdown
+  // (per 7174n1c), but a plain text box lets the user set the commander
+  // explicitly when auto-detect misses. Empty = fall back to detection.
+  const [commander, setCommander] = useState('')
   const [importing, setImporting] = useState(false)
   const [error, setError] = useState(null)
 
@@ -483,17 +487,24 @@ function QuickPasteImport({ onImported, navigate, defaultOwner }) {
     setImporting(true)
     try {
       const ownerToUse = defaultOwner?.trim() || 'imported'
-      const finalName = effectiveName || detectedCommander
+      // A manual commander override wins: strip any existing COMMANDER:
+      // line and prepend the user's pick so the server stores it verbatim
+      // (backend normalizes a leaked qty / set-code). Empty box = keep the
+      // raw text and let auto-detection (inferCommander) find it.
+      const manualCmdr = commander.trim()
+      const payloadText = manualCmdr
+        ? `COMMANDER: ${manualCmdr}\n${text.split('\n').filter(l => !/^\s*commander\s*:/i.test(l)).join('\n')}`
+        : text
+      const finalName = effectiveName || manualCmdr || detectedCommander
       // Server expects either an embedded "COMMANDER: X" line or a
-      // commander designated via the parsed isCommander flag — keep
-      // the raw text so the full import flow's commander detection
-      // (which mirrors lib/deckParser.inferCommander) finds it.
-      const result = await api.importDeck(finalName, ownerToUse, text, [])
+      // commander designated via the parsed isCommander flag.
+      const result = await api.importDeck(finalName, ownerToUse, payloadText, [])
       onImported?.()
       const owner = result?.owner || ownerToUse
       const id = result?.id
       setText('')
       setName('')
+      setCommander('')
       setOpen(false)
       setImporting(false)
       if (id) navigate(`/decks/${encodeURIComponent(owner)}/${encodeURIComponent(id)}`)
@@ -593,6 +604,24 @@ function QuickPasteImport({ onImported, navigate, defaultOwner }) {
           </span>
         )}
       </div>
+      <input
+        type="text"
+        data-testid="quick-paste-commander"
+        value={commander}
+        onChange={e => setCommander(e.target.value)}
+        aria-label="Commander"
+        placeholder={detectedCommander ? `Commander: ${detectedCommander} — type to override` : 'Commander (optional — type the exact card name)'}
+        style={{
+          width: '100%',
+          padding: '6px 10px',
+          background: 'transparent',
+          border: '1px solid var(--rule-2)',
+          color: 'var(--ink)',
+          font: 'inherit',
+          fontSize: 11,
+          letterSpacing: '0.04em',
+        }}
+      />
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <input
           type="text"

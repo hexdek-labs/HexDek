@@ -157,7 +157,7 @@ export default function CommanderPickerModal({ deck, deckId, candidates, saving 
           >ESC</button>
         </div>
 
-        <div style={{ padding: '14px' }}>
+        <div style={{ padding: '14px', flex: '1 1 auto', minHeight: 0, overflowY: 'auto' }}>
           <div className="t-xs muted" style={{ lineHeight: 1.5, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             {manual ? (
               <>&gt; CHOOSE THIS DECK'S COMMANDER FROM ITS LEGENDARY CREATURES. SAVING RE-RUNS FREYA.</>
@@ -194,7 +194,7 @@ export default function CommanderPickerModal({ deck, deckId, candidates, saving 
                 marginTop: 6,
                 border: '1px solid var(--rule-2)',
                 background: 'var(--bg-2, rgba(0,0,0,0.2))',
-                maxHeight: 260,
+                maxHeight: 'min(260px, 40vh)',
                 overflowY: 'auto',
               }}
             >
@@ -237,7 +237,7 @@ export default function CommanderPickerModal({ deck, deckId, candidates, saving 
                       {opt.label}
                     </span>
                     {opt.type_line && (
-                      <span style={{ fontSize: 9, opacity: 0.7, whiteSpace: 'nowrap' }}>{opt.type_line}</span>
+                      <span className="cmdr-pick-type" style={{ fontSize: 9, opacity: 0.7, whiteSpace: 'nowrap' }}>{opt.type_line}</span>
                     )}
                   </div>
                 )
