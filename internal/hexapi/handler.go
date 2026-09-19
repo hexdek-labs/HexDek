@@ -413,6 +413,10 @@ func enrichDeckSummary(decksDir string, ds *DeckSummary) {
 	if err != nil {
 		return
 	}
+	// Reconcile stale bans so the deck-list ILLEGAL badge matches the current
+	// banlist (same fix the /analysis serve applies). Pass-through if nothing
+	// to change.
+	data = reconcileStaleBans(data)
 	var strat struct {
 		Bracket          int    `json:"bracket"`
 		BracketLabel     string `json:"bracket_label"`
@@ -1169,7 +1173,10 @@ func (h *Handler) handleGetAnalysis(w http.ResponseWriter, r *http.Request) {
 	// engine. Pass-through on any decode failure — see
 	// annotateAnalysisFreshness.
 	w.Header().Set("Content-Type", "application/json")
-	w.Write(annotateAnalysisFreshness(data))
+	// Recompute stale bans against the CURRENT banlist before serving so a
+	// deck analyzed before an unban (e.g. Gifts Ungiven) stops reading
+	// ILLEGAL without needing a re-analysis. Only ever removes a stale ban.
+	w.Write(annotateAnalysisFreshness(reconcileStaleBans(data)))
 }
 
 func (h *Handler) handleRunAnalysis(w http.ResponseWriter, r *http.Request) {
