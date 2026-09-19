@@ -21,6 +21,7 @@ import { trackEvent } from '../hooks/useAnalytics'
 import { DeckPicker } from './DeckCompare'
 import DeckExportModal from '../components/DeckExportModal'
 import CommanderPickerModal, { commanderNeedsResolution } from '../components/CommanderPickerModal'
+import { parseDeckLines } from '../lib/deckParser'
 import ContextBox from '../components/ContextBox'
 import EloSparkline from '../components/EloSparkline'
 import ArchetypeChipRow from '../components/ArchetypeChipRow'
@@ -548,16 +549,36 @@ function commanderFromEditText(text) {
   const line = (text || '').split('\n').find(l => /^\s*commander\s*:/i.test(l))
   return line ? line.replace(/^\s*commander\s*:/i, '').trim() : ''
 }
-function withCommanderLine(text, name) {
+function commanderMatchKey(s) {
+  return String(s || '')
+    .replace(/^\s*commander\s*:/i, '')
+    .replace(/^\s*\d+x?\s+/, '')
+    .replace(/\s*\([^)]*\)\s*[\dA-Za-z-]*$/, '')
+    .trim().toLowerCase().replace(/\s+/g, ' ')
+}
+// smartSetCommanderInEditText — CONFIRM-based (picker), never per-keystroke.
+// Reverts any existing COMMANDER: line back to a normal card row (the old
+// commander stays in the deck, never orphaned), then marks the card row that
+// matches `name` as the commander (de-duping so the commander is never listed
+// twice). Falls back to prepending only if the pick isn't already a card row
+// (shouldn't happen when picking from the deck). Empty name clears it.
+function smartSetCommanderInEditText(text, name) {
   const trimmed = (name || '').trim()
-  const lines = (text || '').split('\n')
-  const idx = lines.findIndex(l => /^\s*commander\s*:/i.test(l))
-  if (idx >= 0) {
-    if (trimmed) lines[idx] = `COMMANDER: ${trimmed}`
-    else lines.splice(idx, 1)
-    return lines.join('\n')
-  }
-  return trimmed ? `COMMANDER: ${trimmed}\n${text}` : (text || '')
+  const reverted = (text || '').split('\n').map(l => {
+    const m = l.match(/^\s*commander\s*:\s*(.+?)\s*$/i)
+    return m ? `1 ${m[1].trim()}` : l
+  })
+  if (!trimmed) return reverted.join('\n')
+  const target = commanderMatchKey(trimmed)
+  let marked = false
+  const out = reverted.map(l => {
+    if (marked) return l
+    const cm = l.match(/^\s*\d+x?\s+(.+?)\s*$/)
+    if (cm && commanderMatchKey(cm[1]) === target) { marked = true; return `COMMANDER: ${cm[1].trim()}` }
+    return l
+  })
+  if (!marked) out.unshift(`COMMANDER: ${trimmed}`)
+  return out.join('\n')
 }
 
 // WorkshopSearchPanel — the deck-editor MVP search (r63, owner
@@ -1761,6 +1782,20 @@ export default function DeckArchive() {
     }
   }
 
+  // Router for the commander picker's confirm. In the Workshop (editing) the
+  // pick is folded into the in-progress editText and saved via SAVE UPDATE —
+  // marking the chosen deck card as commander (de-duped), so the commander is
+  // always a real card already in the list (7174n1c's failsafe). Outside the
+  // Workshop it persists immediately via handleSetCommander (PUT + re-analyze).
+  const handleCommanderConfirm = (chosenName) => {
+    if (editing) {
+      setEditText(prev => smartSetCommanderInEditText(prev, chosenName))
+      setCommanderPickerOpen(false)
+      return
+    }
+    handleSetCommander(chosenName)
+  }
+
   const eloByDeckId = {}
   for (const e of elo) {
     if (e.deck_id) eloByDeckId[e.deck_id] = e
@@ -2416,15 +2451,16 @@ export default function DeckArchive() {
             <Panel code="04.X" title="WORKSHOP / / DECK LIST" right={<span className="t-xs" style={{ color: 'var(--warn)' }}>IN WORKSHOP</span>}>
               <div style={{ marginBottom: 10 }}>
                 <label className="t-xs muted" style={{ display: 'block', marginBottom: 4, letterSpacing: '0.08em' }}>COMMANDER</label>
-                <input
-                  type="text"
-                  data-testid="workshop-commander"
-                  value={commanderFromEditText(editText)}
-                  onChange={e => setEditText(withCommanderLine(editText, e.target.value))}
-                  placeholder="Set this deck's commander — type the exact card name"
-                  spellCheck={false}
-                  style={{ width: '100%', padding: '6px 10px', background: 'transparent', border: '1px solid var(--rule-2)', color: 'var(--ink)', font: 'inherit', fontSize: 11, letterSpacing: '0.04em' }}
-                />
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div
+                    data-testid="workshop-commander"
+                    style={{ flex: 1, minWidth: 160, padding: '6px 10px', border: '1px solid var(--rule-2)', fontSize: 11, letterSpacing: '0.04em', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  >
+                    {commanderFromEditText(editText) || <span className="muted">— NONE SET —</span>}
+                  </div>
+                  <Btn ghost arrow="↗" onClick={() => setCommanderPickerOpen(true)}>SET COMMANDER</Btn>
+                </div>
+                <div className="t-xs muted" style={{ marginTop: 4, opacity: 0.65 }}>&gt; PICK FROM THE CARDS IN THIS DECK — THE COMMANDER MUST BE ONE OF THEM.</div>
               </div>
               <WorkshopSearchPanel colorIdentity={colorIdentity} onAdd={(cardName) => {
                 const lines = editText.split('\n')
@@ -4771,12 +4807,14 @@ export default function DeckArchive() {
           already resolves never sees this — the predicate returns false. */}
       {!loading && isOwner && (commanderPickerOpen || (!commanderPickerDismissed && commanderNeedsResolution(deck))) && (
         <CommanderPickerModal
-          deck={deck}
+          deck={editing
+            ? { commander_card: commanderFromEditText(editText), cards: parseDeckLines(editText).map(c => ({ name: c.name, type_line: '', quantity: c.quantity })) }
+            : deck}
           deckId={id}
           mode={commanderPickerOpen ? 'manual' : 'gate'}
           saving={pinningCommander}
           onCancel={() => { if (commanderPickerOpen) setCommanderPickerOpen(false); else setCommanderPickerDismissed(true) }}
-          onConfirm={handleSetCommander}
+          onConfirm={handleCommanderConfirm}
         />
       )}
     </div>
