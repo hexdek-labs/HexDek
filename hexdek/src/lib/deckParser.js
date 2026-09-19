@@ -31,7 +31,14 @@ export function inferCommander(text) {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i].trim()
     if (/^commander\s*:/i.test(line)) {
-      return line.replace(/^commander\s*:/i, '').trim()
+      // Strip the leading "commander:" then run the remainder through the
+      // single-line card parser so a leaked quantity / set-code / foil
+      // marker ("1 King of the Oathbreakers", "Atraxa (CMR) 28 *F*") is
+      // removed — otherwise the qty flows into the stored commander and
+      // every oracle lookup misses (false ILLEGAL).
+      const rest = line.replace(/^commander\s*:/i, '').trim()
+      const parsed = parseCardLine(rest)
+      return parsed ? parsed.name : rest
     }
     if (/^commander\s*(\(\d+\))?\s*$/i.test(line)) {
       // Header line — find the next card row.

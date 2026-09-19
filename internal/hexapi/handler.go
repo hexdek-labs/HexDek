@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -809,7 +810,7 @@ func (h *Handler) handleCloneDeck(w http.ResponseWriter, r *http.Request) {
 	for _, line := range strings.Split(string(deckBytes), "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "COMMANDER:") {
-			cmdrCard = strings.TrimSpace(strings.TrimPrefix(line, "COMMANDER:"))
+			cmdrCard = normalizeCommanderName(strings.TrimPrefix(line, "COMMANDER:"))
 			break
 		}
 	}
@@ -985,7 +986,7 @@ func (h *Handler) handleForkDeck(w http.ResponseWriter, r *http.Request) {
 	for _, line := range strings.Split(string(deckBytes), "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "COMMANDER:") {
-			cmdrCard = strings.TrimSpace(strings.TrimPrefix(line, "COMMANDER:"))
+			cmdrCard = normalizeCommanderName(strings.TrimPrefix(line, "COMMANDER:"))
 			break
 		}
 	}
@@ -1453,6 +1454,27 @@ func (h *Handler) handleProfile(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, profile)
 }
 
+// leadingDeckQtyRE matches a leading deck quantity like "1 ", "12 ", or
+// "3x ". Bounded to 1-3 digits so a card that legitimately begins with a
+// number (e.g. "1996 World Champion") is left intact.
+var leadingDeckQtyRE = regexp.MustCompile(`^\s*\d{1,3}x?\s+`)
+
+// normalizeCommanderName strips a leading deck quantity ("1 ", "3x ") and a
+// trailing set/collector annotation ("(CMR) 300", foil markers) from a
+// commander name pulled off a plain-text COMMANDER: line, preserving the
+// card's original casing for display. Plain-text pastes routinely leave the
+// quantity on the commander line (e.g. "COMMANDER: 1 King of the
+// Oathbreakers"); without this the qty leaks into the stored commander and
+// every oracle lookup misses (false ILLEGAL). Mirrors the freya lookup-side
+// normalizer so a paste can never error on this alone.
+func normalizeCommanderName(name string) string {
+	s := leadingDeckQtyRE.ReplaceAllString(strings.TrimSpace(name), "")
+	if c := deckparser.CleanCardName(s); c != "" {
+		return c
+	}
+	return strings.TrimSpace(s)
+}
+
 type ImportRequest struct {
 	Name     string   `json:"name"`
 	Owner    string   `json:"owner"`
@@ -1531,7 +1553,7 @@ func (h *Handler) handleImportDeck(w http.ResponseWriter, r *http.Request) {
 	for _, line := range strings.Split(req.DeckList, "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "COMMANDER:") {
-			cmdrCard = strings.TrimSpace(strings.TrimPrefix(line, "COMMANDER:"))
+			cmdrCard = normalizeCommanderName(strings.TrimPrefix(line, "COMMANDER:"))
 			break
 		}
 	}
@@ -1888,7 +1910,7 @@ func (h *Handler) handleArchidektImport(w http.ResponseWriter, r *http.Request) 
 			continue
 		}
 		if strings.HasPrefix(line, "COMMANDER:") {
-			name := strings.TrimSpace(strings.TrimPrefix(line, "COMMANDER:"))
+			name := normalizeCommanderName(strings.TrimPrefix(line, "COMMANDER:"))
 			if cmdrName == "" {
 				cmdrName = name
 			}
@@ -2315,14 +2337,14 @@ func extractCommander(path string) string {
 		}
 		var d deckJSON
 		if json.Unmarshal(data, &d) == nil && d.Commander != "" {
-			return d.Commander
+			return normalizeCommanderName(d.Commander)
 		}
 		return ""
 	}
 	for _, line := range strings.Split(content, "\n") {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "COMMANDER:") {
-			return strings.TrimSpace(strings.TrimPrefix(line, "COMMANDER:"))
+			return normalizeCommanderName(strings.TrimPrefix(line, "COMMANDER:"))
 		}
 	}
 	return ""

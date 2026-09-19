@@ -546,8 +546,20 @@ function ImportModalInner({ onClose, onImported, navigate, user }) {
                   className="import-modal__input"
                   value={commander}
                   onChange={e => setCommander(e.target.value)}
-                  placeholder="AUTO-DETECTED FROM LIST"
+                  placeholder="TYPE THE COMMANDER — e.g. KING OF THE OATHBREAKERS"
                 />
+                <div
+                  style={{
+                    fontSize: '0.7rem',
+                    marginTop: '0.25rem',
+                    opacity: 0.65,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {detectedCommander
+                    ? <>&gt; AUTO-DETECTED: <strong>{detectedCommander}</strong> — EDIT ABOVE TO OVERRIDE</>
+                    : <>&gt; NO COMMANDER DETECTED — ENTER IT HERE (NAME ONLY, NO QUANTITY)</>}
+                </div>
               </div>
               <div className="import-modal__field" style={{ gridColumn: '1 / -1' }}>
                 <label className="import-modal__label">TAGS</label>
