@@ -1,8 +1,10 @@
 package main
 
 import (
+	"regexp"
 	"strings"
 
+	"github.com/hexdek/hexdek/internal/deckparser"
 	"github.com/hexdek/hexdek/internal/judge"
 )
 
@@ -93,6 +95,17 @@ func deckCardFromOracle(name string, qty int, oracle *oracleDB) judge.DeckCard {
 	}
 	entry := oracle.lookup(name)
 	if entry == nil {
+		// Defense-in-depth: a plain-text paste / import can leave a leading
+		// deck quantity ("1 King of the Oathbreakers", "3x Sol Ring") or a
+		// "(SET) N" printing suffix on the name — which makes a valid card read
+		// as ILLEGAL ("not found in oracle database"). Retry with those
+		// stripped. Try the RAW name first (above) so legitimate names that
+		// begin with digits, e.g. "1996 World Champion", still resolve as-is.
+		if norm := normalizeCardLookupName(name); norm != "" && norm != name {
+			entry = oracle.lookup(norm)
+		}
+	}
+	if entry == nil {
 		return dc
 	}
 	dc.Resolved = true
@@ -109,4 +122,19 @@ func deckCardFromOracle(name string, qty int, oracle *oracleDB) judge.DeckCard {
 		}
 	}
 	return dc
+}
+
+
+// leadingDeckQtyRE matches a leading deck quantity like "1 ", "12 ", or "3x "
+// (Moxfield's "Nx" form). Capped at 3 digits so 4-digit-prefixed card names
+// (e.g. "1996 World Champion") are never mistaken for a quantity.
+var leadingDeckQtyRE = regexp.MustCompile(`^\s*\d{1,3}x?\s+`)
+
+// normalizeCardLookupName strips a leading deck quantity and a trailing
+// "(SET) N" printing suffix from a card line, for a fallback oracle lookup when
+// the raw name failed to resolve.
+func normalizeCardLookupName(name string) string {
+	s := leadingDeckQtyRE.ReplaceAllString(strings.TrimSpace(name), "")
+	s = deckparser.CleanCardName(s) // strips a trailing "(SET) N"
+	return strings.TrimSpace(s)
 }
