@@ -41,7 +41,8 @@ function isLegendaryCreature(card) {
   return t.includes('legendary') && t.includes('creature')
 }
 
-export default function CommanderPickerModal({ deck, deckId, candidates, saving = false, onCancel, onConfirm }) {
+export default function CommanderPickerModal({ deck, deckId, candidates, saving = false, mode = 'gate', onCancel, onConfirm }) {
+  const manual = mode === 'manual'
   const panelRef = useModalKeyboard({ onClose: onCancel, trapFocus: false })
   const inputRef = useRef(null)
   const listRef = useRef(null)
@@ -145,7 +146,7 @@ export default function CommanderPickerModal({ deck, deckId, candidates, saving 
         style={{ width: 'min(560px, 94vw)' }}
       >
         <div className="export-modal__hd">
-          <span>SELECT COMMANDER / / {(deckId || '?').toUpperCase()}</span>
+          <span>{manual ? 'SET COMMANDER' : 'SELECT COMMANDER'} / / {(deckId || '?').toUpperCase()}</span>
           <button
             type="button"
             className="export-modal__close"
@@ -158,8 +159,12 @@ export default function CommanderPickerModal({ deck, deckId, candidates, saving 
 
         <div style={{ padding: '14px' }}>
           <div className="t-xs muted" style={{ lineHeight: 1.5, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            &gt; THIS DECK'S COMMANDER COULDN'T BE RESOLVED. PIN IT BELOW AND FREYA WILL
-            ANALYZE THE DECK — NO MORE LIMBO.
+            {manual ? (
+              <>&gt; CHOOSE THIS DECK'S COMMANDER FROM ITS LEGENDARY CREATURES. SAVING RE-RUNS FREYA.</>
+            ) : (
+              <>&gt; THIS DECK'S COMMANDER COULDN'T BE RESOLVED. PIN IT BELOW AND FREYA WILL
+              ANALYZE THE DECK — NO MORE LIMBO.</>
+            )}
             <br />&gt; PICK A DETECTED LEGENDARY CREATURE, OR TYPE TO SEARCH ALL {total} CARDS.
           </div>
 
@@ -248,7 +253,7 @@ export default function CommanderPickerModal({ deck, deckId, candidates, saving 
             onClick={confirm}
             disabled={!resolved || saving}
           >
-            {saving ? 'PINNING + ANALYZING…' : 'SET COMMANDER + ANALYZE'}
+            {saving ? (manual ? 'SETTING + ANALYZING…' : 'PINNING + ANALYZING…') : 'SET COMMANDER + ANALYZE'}
             <span className="arr">↗</span>
           </button>
           <button
@@ -257,7 +262,7 @@ export default function CommanderPickerModal({ deck, deckId, candidates, saving 
             onClick={onCancel}
             disabled={saving}
           >
-            NOT NOW
+            {manual ? 'CLOSE' : 'NOT NOW'}
           </button>
         </div>
       </div>

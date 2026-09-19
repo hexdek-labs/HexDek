@@ -1497,6 +1497,10 @@ export default function DeckArchive() {
   // every render (reset when the deck route changes).
   const [pinningCommander, setPinningCommander] = useState(false)
   const [commanderPickerDismissed, setCommanderPickerDismissed] = useState(false)
+  // Owner-invoked commander picker (deck editor "SET COMMANDER" control) —
+  // distinct from the auto-gate above; lets the owner (re)designate the
+  // commander from the deck's legal legendaries at any time.
+  const [commanderPickerOpen, setCommanderPickerOpen] = useState(false)
   const [versions, setVersions] = useState([])
   const [gauntlet, setGauntlet] = useState(null)
   const [curse, setCurse] = useState(null)
@@ -1728,6 +1732,7 @@ export default function DeckArchive() {
       setAnalyzing(true)
       const fresh = await api.getDeck(`${owner}/${id}`)
       setDeck(fresh)
+      setCommanderPickerOpen(false)
       toast.success(`COMMANDER SET · ${norm(chosenName).toUpperCase()}`)
     } catch {
       toast.error('COULD NOT SET COMMANDER — TRY AGAIN')
@@ -2261,6 +2266,9 @@ export default function DeckArchive() {
             setEditing(true)
             api.getDeckVersions(`${owner}/${id}`).then(setVersions).catch(() => {})
           }}>WORKSHOP</Btn>
+        )}
+        {owner && id && isOwner && !editing && (
+          <Btn ghost arrow="↗" onClick={() => setCommanderPickerOpen(true)}>SET COMMANDER</Btn>
         )}
         <Btn ghost arrow="↗" onClick={() => { if (cards.length) setExportOpen(true) }}>EXPORT</Btn>
         {owner && id && <Btn ghost arrow="↗" onClick={() => navigate(`/forge?deck=${owner}/${id}`)}>OPEN IN FORGE</Btn>}
@@ -4729,12 +4737,13 @@ export default function DeckArchive() {
           can persist the choice), only when the commander is genuinely
           unset/unresolved, and only until dismissed. A deck whose commander
           already resolves never sees this — the predicate returns false. */}
-      {!loading && isOwner && !commanderPickerDismissed && commanderNeedsResolution(deck) && (
+      {!loading && isOwner && (commanderPickerOpen || (!commanderPickerDismissed && commanderNeedsResolution(deck))) && (
         <CommanderPickerModal
           deck={deck}
           deckId={id}
+          mode={commanderPickerOpen ? 'manual' : 'gate'}
           saving={pinningCommander}
-          onCancel={() => setCommanderPickerDismissed(true)}
+          onCancel={() => { if (commanderPickerOpen) setCommanderPickerOpen(false); else setCommanderPickerDismissed(true) }}
           onConfirm={handleSetCommander}
         />
       )}
