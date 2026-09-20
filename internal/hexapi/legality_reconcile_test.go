@@ -79,3 +79,42 @@ func TestReconcileStaleBans_PassThrough(t *testing.T) {
 		}
 	}
 }
+
+// TestReconcileStaleCardCount pins the stale-undercount heal (7174n1c: a deck
+// analyzed before its list was completed froze "found 99, expected 100").
+func TestReconcileStaleCardCount(t *testing.T) {
+	base := `{"legality":{"valid":false,"card_count":{"valid":false,"expected":100,"actual":99,"message":"expected 100 cards, found 99"},"color_identity":{"valid":true},"singleton":{"valid":true},"banned_cards":{"valid":true},"commander":{"valid":true},"errors":["expected 100 cards, found 99"]}}`
+
+	// live deck is now 100 -> heal to valid
+	out := reconcileStaleCardCount([]byte(base), 100)
+	var d map[string]any
+	json.Unmarshal(out, &d)
+	leg := d["legality"].(map[string]any)
+	if leg["valid"] != true {
+		t.Errorf("expected overall valid=true after count heal, got %v", leg["valid"])
+	}
+	cc := leg["card_count"].(map[string]any)
+	if cc["valid"] != true || cc["actual"].(float64) != 100 {
+		t.Errorf("expected card_count healed to 100/valid, got %v", cc)
+	}
+	if errs, ok := leg["errors"].([]any); ok && len(errs) != 0 {
+		t.Errorf("expected stale count error pruned, got %v", errs)
+	}
+
+	// live deck still 99 -> do NOT heal (genuinely short stays flagged)
+	out2 := reconcileStaleCardCount([]byte(base), 99)
+	if string(out2) != base {
+		t.Errorf("a genuinely-99 deck must stay flagged (no heal)")
+	}
+
+	// never flip a passing count, and never manufacture a fail:
+	// actualTotal 0 (unreadable) -> pass-through
+	if string(reconcileStaleCardCount([]byte(base), 0)) != base {
+		t.Errorf("unreadable total must pass through unchanged")
+	}
+	// a deck the checker passed must be untouched even if live total differs
+	passing := `{"legality":{"valid":true,"card_count":{"valid":true,"expected":100,"actual":100}}}`
+	if string(reconcileStaleCardCount([]byte(passing), 42)) != passing {
+		t.Errorf("a passing count must never be flipped to invalid")
+	}
+}

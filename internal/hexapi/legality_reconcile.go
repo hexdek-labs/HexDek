@@ -2,6 +2,8 @@ package hexapi
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
 	"strings"
 
 	"github.com/hexdek/hexdek/internal/judge"
@@ -129,6 +131,105 @@ func pruneStringsMentioning(arr any, names []string) []any {
 	}
 	if len(out) == 0 {
 		return nil
+	}
+	return out
+}
+
+// numAsInt reads a JSON number (float64 after unmarshal) or an int as an int.
+func numAsInt(v any) (int, bool) {
+	switch n := v.(type) {
+	case float64:
+		return int(n), true
+	case int:
+		return n, true
+	}
+	return 0, false
+}
+
+// deckTotalCards counts the deck's total cards the way Freya does — the sum of
+// every card-line quantity plus the designated commander/partner (parseDeckList
+// appends those). Returns 0 (a no-op sentinel for the reconcile) when the deck
+// file can't be read/counted.
+func deckTotalCards(decksDir, owner, id string) int {
+	path := findDeckFile(decksDir, owner, id)
+	if path == "" {
+		return 0
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0
+	}
+	var cards []map[string]any
+	if strings.HasSuffix(strings.ToLower(path), ".json") {
+		cards = parseDeckJSON(data)
+	} else {
+		cards = parseDeckList(string(data))
+	}
+	total := 0
+	for _, c := range cards {
+		if q, ok := numAsInt(c["quantity"]); ok && q > 0 {
+			total += q
+		}
+	}
+	return total
+}
+
+// reconcileStaleCardCount heals a STALE card-count verdict on serve, mirroring
+// reconcileStaleBans. A deck analyzed before its list was completed (e.g. the
+// commander added later) can carry a frozen "found 99, expected 100" even
+// though the live deck is now 100. This patches the served analysis when — and
+// only when — the CURRENT deck total (actualTotal) equals the expected count
+// and the stored verdict was a strict UNDERcount.
+//
+// Heal-toward-valid ONLY: it never flips a passing count to failing, so a
+// disagreement between this counter and Freya's can at worst fail to heal — it
+// can never manufacture a false ILLEGAL. Pass-through on any decode failure,
+// missing sub-check, or when there's nothing stale to fix.
+func reconcileStaleCardCount(raw []byte, actualTotal int) []byte {
+	if actualTotal <= 0 {
+		return raw
+	}
+	var doc map[string]any
+	if err := json.Unmarshal(raw, &doc); err != nil || doc == nil {
+		return raw
+	}
+	leg, ok := doc["legality"].(map[string]any)
+	if !ok {
+		return raw
+	}
+	cc, ok := leg["card_count"].(map[string]any)
+	if !ok {
+		return raw
+	}
+	if v, _ := cc["valid"].(bool); v {
+		return raw // already valid — nothing to heal
+	}
+	expected, ok := numAsInt(cc["expected"])
+	if !ok || expected <= 0 || actualTotal != expected {
+		return raw // live total doesn't reach expected — leave it flagged
+	}
+	storedActual, ok := numAsInt(cc["actual"])
+	if !ok || storedActual >= expected {
+		return raw // wasn't a strict undercount
+	}
+
+	cc["actual"] = actualTotal
+	cc["valid"] = true
+	cc["message"] = fmt.Sprintf("%d cards", actualTotal)
+	leg["card_count"] = cc
+	leg["valid"] = legalitySubCheckValid(leg, "card_count") &&
+		legalitySubCheckValid(leg, "color_identity") &&
+		legalitySubCheckValid(leg, "singleton") &&
+		legalitySubCheckValid(leg, "banned_cards") &&
+		legalitySubCheckValid(leg, "commander")
+	// Drop the stale "…found <storedActual>" count error.
+	if pruned := pruneStringsMentioning(leg["errors"], []string{fmt.Sprintf("found %d", storedActual)}); pruned != nil || leg["errors"] != nil {
+		leg["errors"] = pruned
+	}
+	doc["legality"] = leg
+	out, err := json.Marshal(doc)
+	if err != nil {
+		return raw
 	}
 	return out
 }

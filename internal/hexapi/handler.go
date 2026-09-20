@@ -417,6 +417,7 @@ func enrichDeckSummary(decksDir string, ds *DeckSummary) {
 	// banlist (same fix the /analysis serve applies). Pass-through if nothing
 	// to change.
 	data = reconcileStaleBans(data)
+	data = reconcileStaleCardCount(data, deckTotalCards(decksDir, ds.Owner, ds.ID))
 	var strat struct {
 		Bracket          int    `json:"bracket"`
 		BracketLabel     string `json:"bracket_label"`
@@ -1176,7 +1177,8 @@ func (h *Handler) handleGetAnalysis(w http.ResponseWriter, r *http.Request) {
 	// Recompute stale bans against the CURRENT banlist before serving so a
 	// deck analyzed before an unban (e.g. Gifts Ungiven) stops reading
 	// ILLEGAL without needing a re-analysis. Only ever removes a stale ban.
-	w.Write(annotateAnalysisFreshness(reconcileStaleBans(data)))
+	patched := reconcileStaleCardCount(reconcileStaleBans(data), deckTotalCards(h.DecksDir, owner, id))
+	w.Write(annotateAnalysisFreshness(patched))
 }
 
 func (h *Handler) handleRunAnalysis(w http.ResponseWriter, r *http.Request) {
