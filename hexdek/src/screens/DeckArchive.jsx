@@ -581,6 +581,67 @@ function smartSetCommanderInEditText(text, name) {
   return out.join('\n')
 }
 
+// WorkshopCommanderPicker — inline type-to-filter commander control for the
+// deck editor. Replaces the "SET COMMANDER -> modal" (which couldn't open on
+// mobile — the modal render was owner-gated while the workshop wasn't). This
+// is a plain input + a filtered dropdown of the cards ALREADY in the deck, so:
+// no popup to fail, the typo guard holds (you can only pick a listed card),
+// and mobile handles a native input fine. Selecting writes the COMMANDER: line
+// into editText via smartSetCommanderInEditText; SAVE UPDATE persists + re-runs
+// Freya.
+function WorkshopCommanderPicker({ editText, onChange }) {
+  const [query, setQuery] = useState('')
+  const current = commanderFromEditText(editText)
+  const cardNames = useMemo(() => {
+    const seen = new Set()
+    const out = []
+    for (const c of parseDeckLines(editText)) {
+      const n = (c.name || '').trim()
+      if (!n) continue
+      const k = n.toLowerCase()
+      if (seen.has(k)) continue
+      seen.add(k)
+      out.push(n)
+    }
+    return out
+  }, [editText])
+  const q = query.trim().toLowerCase()
+  const matches = q ? cardNames.filter(n => n.toLowerCase().includes(q)).slice(0, 8) : []
+  const pick = (name) => { onChange(smartSetCommanderInEditText(editText, name)); setQuery('') }
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <label className="t-xs muted" style={{ display: 'block', marginBottom: 4, letterSpacing: '0.08em' }}>COMMANDER</label>
+      <div className="t-xs" style={{ marginBottom: 6 }}>
+        {current ? <>CURRENT: <strong>{current}</strong></> : <span className="muted">— NONE SET —</span>}
+      </div>
+      <input
+        type="text"
+        data-testid="workshop-commander"
+        value={query}
+        onChange={e => setQuery(e.target.value)}
+        placeholder="Type a card in this deck to set as commander"
+        spellCheck={false}
+        style={{ width: '100%', padding: '6px 10px', background: 'transparent', border: '1px solid var(--rule-2)', color: 'var(--ink)', font: 'inherit', fontSize: 11, letterSpacing: '0.04em' }}
+      />
+      {matches.length > 0 && (
+        <div style={{ marginTop: 4, border: '1px solid var(--rule-2)', background: 'var(--bg-2, rgba(0,0,0,0.3))', maxHeight: 220, overflowY: 'auto' }}>
+          {matches.map(n => (
+            <div
+              key={n}
+              onClick={() => pick(n)}
+              style={{ padding: '8px 10px', cursor: 'pointer', fontSize: 11, letterSpacing: '0.03em', borderBottom: '1px solid var(--rule)' }}
+            >{n}</div>
+          ))}
+        </div>
+      )}
+      {q && matches.length === 0 && (
+        <div className="t-xs muted" style={{ padding: '6px 2px' }}>NO CARD IN THIS DECK MATCHES "{query.trim().toUpperCase()}"</div>
+      )}
+      <div className="t-xs muted" style={{ marginTop: 4, opacity: 0.65 }}>&gt; PICK FROM THE CARDS IN THIS DECK — THE COMMANDER MUST BE ONE OF THEM. SAVE UPDATE TO APPLY.</div>
+    </div>
+  )
+}
+
 // WorkshopSearchPanel — the deck-editor MVP search (r63, owner
 // direction: "search of cards, filter automatically by commander
 // color"). Debounced search against /api/cards/search with the deck's
@@ -2449,19 +2510,7 @@ export default function DeckArchive() {
         {editing && (
           <div ref={editPanelRef} style={{ padding: '0 12px' }}>
             <Panel code="04.X" title="WORKSHOP / / DECK LIST" right={<span className="t-xs" style={{ color: 'var(--warn)' }}>IN WORKSHOP</span>}>
-              <div style={{ marginBottom: 10 }}>
-                <label className="t-xs muted" style={{ display: 'block', marginBottom: 4, letterSpacing: '0.08em' }}>COMMANDER</label>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div
-                    data-testid="workshop-commander"
-                    style={{ flex: 1, minWidth: 160, padding: '6px 10px', border: '1px solid var(--rule-2)', fontSize: 11, letterSpacing: '0.04em', color: 'var(--ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                  >
-                    {commanderFromEditText(editText) || <span className="muted">— NONE SET —</span>}
-                  </div>
-                  <Btn ghost arrow="↗" onClick={() => setCommanderPickerOpen(true)}>SET COMMANDER</Btn>
-                </div>
-                <div className="t-xs muted" style={{ marginTop: 4, opacity: 0.65 }}>&gt; PICK FROM THE CARDS IN THIS DECK — THE COMMANDER MUST BE ONE OF THEM.</div>
-              </div>
+              <WorkshopCommanderPicker editText={editText} onChange={setEditText} />
               <WorkshopSearchPanel colorIdentity={colorIdentity} onAdd={(cardName) => {
                 const lines = editText.split('\n')
                 const existingIdx = lines.findIndex(l => { const m = l.match(/^(\d+)\s+(.+)$/); return m && m[2].trim() === cardName })
