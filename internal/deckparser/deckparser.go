@@ -750,7 +750,27 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			}
 			continue
 		}
+		// A comment-STYLE section marker is a section header, not a
+		// comment. Moxfield and Archidekt emit `//maybeboard`,
+		// `// Sideboard`, `//Considering` and `// COMMANDER`, and the
+		// blanket comment-skip below used to eat all of them — so the
+		// cards underneath stayed in whatever section was already open
+		// (usually main deck). A 100-card list with a 38-card
+		// `//maybeboard` block counted 138 and was reported ILLEGAL.
+		// internal/moxfield/textlist.go has always handled this; this
+		// brings deckparser into line. Strip the comment prefix and, if
+		// what remains is a bare section label, fall through to the
+		// section-header handling below instead of dropping the line.
+		// Prose comments ("// Deck built for casual play") do not match
+		// sectionHeaderRE, which anchors on the label alone.
+		commentIsSectionHeader := false
 		if strings.HasPrefix(raw, "#") || strings.HasPrefix(raw, "//") {
+			if bare := strings.TrimSpace(strings.TrimLeft(raw, "/# \t")); bare != "" && sectionHeaderRE.MatchString(bare) {
+				raw = bare
+				commentIsSectionHeader = true
+			}
+		}
+		if !commentIsSectionHeader && (strings.HasPrefix(raw, "#") || strings.HasPrefix(raw, "//")) {
 			// Leading `#` comments (before any card content) become
 			// SourceHints — detectFormat scans them for "precon" markers
 			// and UIs can surface them as provenance. Mid-deck comments
@@ -873,7 +893,18 @@ func ParseDeckReader(r io.Reader, corpus *astload.Corpus, meta *MetaDB) (*Tourna
 			// only the count is tracked. Other drop sub-sections
 			// (Maybeboard, Companion, Tokens, etc.) feed
 			// otherDropCardLines for the report's DroppedLines roll-up.
-			if dm := deckLineRE.FindStringSubmatch(raw); dm != nil {
+			//
+			// Peel an `SB:` prefix first. MWS / MTGTop8 exports write
+			// BOTH a `// Sideboard` marker and `SB:`-prefixed lines
+			// under it; now that the marker is honoured as a section
+			// header, those lines arrive here, and the bare
+			// `<qty> <name>` match would skip every one of them and
+			// report SideboardCount 0.
+			counted := raw
+			if loc := sbPrefixRE.FindStringIndex(counted); loc != nil {
+				counted = strings.TrimSpace(counted[loc[1]:])
+			}
+			if dm := deckLineRE.FindStringSubmatch(counted); dm != nil {
 				if q, err := strconv.Atoi(dm[1]); err == nil && q > 0 {
 					switch dropSubtype {
 					case "sideboard":
@@ -1995,14 +2026,31 @@ var (
 	bracketTagRE     = regexp.MustCompile(`\s*\[[^\]]+\](?:\s+\S+)?\s*$`)
 	leadBracketTagRE = regexp.MustCompile(`^\[[^\]]+\]\s*`)
 	hashTagRE        = regexp.MustCompile(`\s+#\S+(?:\s+#\S+)*\s*$`)
+	// Trailing `(SET) 123` printing tail — set code in parens followed by
+	// a collector number, optionally with a promo/variant suffix
+	// (`15a`, `232★`). The quantity-line path strips this crudely by
+	// truncating at the first `(`, but the COMMANDER:/PARTNER: directive
+	// path never reached that code, so a Moxfield-style
+	// `COMMANDER: Maarika, Brutal Gladiator (SLX) 15` resolved to no
+	// commander at all and the deck became unplayable in the engine.
+	//
+	// Deliberately requires the collector number rather than matching a
+	// bare `(SET)`: card names that legitimately end in parentheses
+	// exist (`Hazmat Suit (Used)`), and eating those would be a worse
+	// bug than the one being fixed. A bare `(SET)` with no number is
+	// left alone.
+	setCollectorTailRE = regexp.MustCompile(`\s*\([A-Za-z0-9]{2,6}\)\s+[0-9]+[A-Za-z\x{2605}\x{2020}\x{2021}]*\s*$`)
 )
 
 // cleanCardName trims a card name of Moxfield-style decoration that real
 // exports include after the card name: foil markers like `*F*` / `*E*`,
-// bracket category tags like `[Burn]`, and hash tags like `#wincon #combo`.
-// The "(SET) 123" set/collector tail is already stripped by the caller
-// before this runs; this handles the suffixes that survive when no set
-// parens are emitted (Archidekt, TappedOut, custom exports).
+// bracket category tags like `[Burn]`, hash tags like `#wincon #combo`,
+// and a trailing `(SET) 123` set/collector tail.
+//
+// The set/collector strip used to live only in the quantity-line caller,
+// which was documented here as "already stripped by the caller". That was
+// true for `1 Sol Ring (LEA) 270` and false for every other entry point —
+// notably the COMMANDER:/PARTNER: directives, which call this directly.
 func cleanCardName(name string) string {
 	s := strings.TrimSpace(name)
 	// Repeat-strip because a card may carry several trailing decorations
@@ -2015,6 +2063,7 @@ func cleanCardName(name string) string {
 		s = foilMarkerRE.ReplaceAllString(s, "")
 		s = bracketTagRE.ReplaceAllString(s, "")
 		s = hashTagRE.ReplaceAllString(s, "")
+		s = setCollectorTailRE.ReplaceAllString(s, "")
 		s = emojiTrimRE.ReplaceAllString(s, "")
 		s = strings.TrimSpace(s)
 		if s == before {
