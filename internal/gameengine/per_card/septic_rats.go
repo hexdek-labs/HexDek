@@ -19,9 +19,12 @@ import (
 //   - Infect is engine-side via the keyword pipeline; no handler needed.
 //   - Attack trigger: OnTrigger("creature_attacks"), gate on
 //     attacker_perm == perm. Look up defender_seat in ctx and check
-//     PoisonCounters > 0. If so, bump perm.Flags["temp_power"] and
-//     perm.Flags["temp_toughness"] (the +1/+1-until-EOT convention used
-//     across per_card; see adeliz_the_cinder_wind.go).
+//     PoisonCounters > 0. If so, pump +1/+1 until end of turn through
+//     pumpUntilEOT (pt_pump.go). NOTE: this used to write only
+//     Flags["temp_power"] / ["temp_toughness"], described here as "the
+//     +1/+1-until-EOT convention used across per_card". There was no
+//     such convention — nothing in the engine reads those flags, so the
+//     pump did nothing.
 //   - If defender_seat is missing (planeswalker attack target, etc.),
 //     fall back to "any opponent is poisoned" — the trigger reads
 //     "defending player is poisoned" but ctx may not route the seat for
@@ -73,12 +76,7 @@ func septicRatsAttacks(gs *gameengine.GameState, perm *gameengine.Permanent, ctx
 		return
 	}
 
-	if perm.Flags == nil {
-		perm.Flags = map[string]int{}
-	}
-	perm.Flags["temp_power"]++
-	perm.Flags["temp_toughness"]++
-	gs.InvalidateCharacteristicsCache()
+	pumpUntilEOT(gs, perm, 1, 1)
 
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":      perm.Controller,

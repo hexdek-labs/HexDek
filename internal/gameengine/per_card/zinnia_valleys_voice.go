@@ -50,10 +50,8 @@ func zinniaValleysVoiceETB(gs *gameengine.GameState, perm *gameengine.Permanent)
 			count++
 		}
 	}
-	if perm.Flags == nil {
-		perm.Flags = map[string]int{}
-	}
-	perm.Flags["temp_power"] += count
+	// Static +X/+0 restated on each refresh, not accumulated.
+	setStaticPT(gs, perm, count, 0)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":         perm.Controller,
 		"power_1_count": count,

@@ -64,11 +64,7 @@ func adrianaMelee(gs *gameengine.GameState, perm *gameengine.Permanent, ctx map[
 		if def, ok := gameengine.AttackerDefender(p); !ok || def == perm.Controller {
 			continue
 		}
-		if p.Flags == nil {
-			p.Flags = map[string]int{}
-		}
-		p.Flags["temp_power"] += bonus
-		p.Flags["temp_toughness"] += bonus
+		pumpUntilEOT(gs, p, bonus, bonus)
 		pumped++
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

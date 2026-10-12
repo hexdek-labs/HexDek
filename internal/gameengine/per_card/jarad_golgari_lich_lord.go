@@ -50,11 +50,9 @@ func jaradGolgariLichLordETB(gs *gameengine.GameState, perm *gameengine.Permanen
 			count++
 		}
 	}
-	if perm.Flags == nil {
-		perm.Flags = map[string]int{}
-	}
-	perm.Flags["temp_power"] += count
-	perm.Flags["temp_toughness"] += count
+	// Static buff: each refresh RESTATES the total rather than adding to
+	// it, so a second ETB (flicker) must not stack a second copy.
+	setStaticPT(gs, perm, count, count)
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":             perm.Controller,
 		"creatures_in_yard": count,

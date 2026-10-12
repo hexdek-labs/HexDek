@@ -17,7 +17,10 @@ import (
 // Implementation:
 //   - instant_or_sorcery_cast trigger gated on caster_seat == controller:
 //     pump every Wizard the controller controls (+1/+1 until end of
-//     turn) via temp_power / temp_toughness flags.
+//     turn) through pumpUntilEOT (pt_pump.go), which records the pump as
+//     a Permanent.Modification. The older temp_power / temp_toughness
+//     flag write is kept as a diagnostic stamp but is not what makes the
+//     pump real — nothing in the engine reads it.
 func registerAdelizTheCinderWind(r *Registry) {
 	r.OnTrigger("Adeliz, the Cinder Wind", "instant_or_sorcery_cast", adelizCastPump)
 }
@@ -43,11 +46,7 @@ func adelizCastPump(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 		if !cardHasType(p.Card, "wizard") {
 			continue
 		}
-		if p.Flags == nil {
-			p.Flags = map[string]int{}
-		}
-		p.Flags["temp_power"]++
-		p.Flags["temp_toughness"]++
+		pumpUntilEOT(gs, p, 1, 1)
 		pumped++
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

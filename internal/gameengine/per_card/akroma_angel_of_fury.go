@@ -27,10 +27,7 @@ func akromaAngelOfFuryActivate(gs *gameengine.GameState, src *gameengine.Permane
 	if gs == nil || src == nil {
 		return
 	}
-	if src.Flags == nil {
-		src.Flags = map[string]int{}
-	}
-	src.Flags["temp_power"]++
+	pumpUntilEOT(gs, src, 1, 0)
 	emit(gs, "akroma_angel_of_fury_pump", src.Card.DisplayName(), map[string]interface{}{
 		"seat":      src.Controller,
 		"new_power": src.Power(),

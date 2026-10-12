@@ -42,7 +42,7 @@ func phyrexianDreadnoughtETB(gs *gameengine.GameState, perm *gameengine.Permanen
 		if p == nil || p == perm || p.Card == nil || !p.IsCreature() {
 			continue
 		}
-		pw := p.Card.BasePower + p.Flags["temp_power"] + p.Counters["+1/+1"]
+		pw := gs.PowerOf(p)
 		if pw > 0 {
 			totalPower += pw
 		}

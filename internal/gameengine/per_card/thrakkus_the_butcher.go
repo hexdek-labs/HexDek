@@ -44,17 +44,14 @@ func thrakkusAttack(gs *gameengine.GameState, perm *gameengine.Permanent, ctx ma
 		if !cardHasType(p.Card, "dragon") {
 			continue
 		}
-		if p.Flags == nil {
-			p.Flags = map[string]int{}
-		}
-		base := p.Card.BasePower
-		if p.Flags["temp_power"] != 0 {
-			base += p.Flags["temp_power"]
-		}
+		// "Double its power" — doubling adds the Dragon's CURRENT power,
+		// which means counters, until-EOT modifications and anthem-style
+		// layer effects, not the printed BasePower plus a flag stamp.
+		base := gs.PowerOf(p)
 		if base < 0 {
 			base = 0
 		}
-		p.Flags["temp_power"] += base
+		pumpUntilEOT(gs, p, base, 0)
 		doubled++
 	}
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{

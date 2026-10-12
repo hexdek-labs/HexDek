@@ -94,10 +94,11 @@ func theArchimandriteLifeGained(gs *gameengine.GameState, perm *gameengine.Perma
 		if !theArchimandriteIsAdvArtMonk(p.Card) {
 			continue
 		}
+		pumpUntilEOT(gs, p, amount, 0)
 		if p.Flags == nil {
 			p.Flags = map[string]int{}
 		}
-		p.Flags["temp_power"] += amount
+		grantUntilEOT(p, "vigilance")
 		p.Flags["temp_vigilance"] = 1
 		pumped++
 	}

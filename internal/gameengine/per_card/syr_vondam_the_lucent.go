@@ -16,11 +16,15 @@ import (
 //
 // Implementation:
 //   - Deathtouch / lifelink: AST keyword pipeline.
-//   - ETB and creature_attacks (gated to Syr Vondam itself): grant a
-//     temporary +1/+0 and "deathtouch" UEOT marker to other creatures
-//     the controller controls. The engine tracks UEOT via Permanent.Flags
-//     ("temp_power", "temp_deathtouch") which the layers/combat pipeline
-//     consumes; the cleanup-step sweep clears them.
+//   - ETB and creature_attacks (gated to Syr Vondam itself): grant
+//     +1/+0 and deathtouch UEOT to other creatures the controller
+//     controls, via Permanent.Modifications and GrantedAbilities — the
+//     two surfaces the layer system, HasKeyword and the §514.2 cleanup
+//     sweep actually read. (This comment previously claimed the
+//     Flags["temp_power"] / ["temp_deathtouch"] stamps were what the
+//     pipeline consumed. They are not read anywhere; the pump and the
+//     deathtouch grant were both inert. The stamps are kept as
+//     diagnostics only.)
 func registerSyrVondamTheLucent(r *Registry) {
 	r.OnETB("Syr Vondam, the Lucent", syrVondamPump)
 	r.OnTrigger("Syr Vondam, the Lucent", "creature_attacks", syrVondamAttackPump)
@@ -57,10 +61,11 @@ func syrVondamApply(gs *gameengine.GameState, src *gameengine.Permanent, slug st
 		if !p.IsCreature() {
 			continue
 		}
+		pumpUntilEOT(gs, p, 1, 0)
 		if p.Flags == nil {
 			p.Flags = map[string]int{}
 		}
-		p.Flags["temp_power"]++
+		grantUntilEOT(p, "deathtouch")
 		p.Flags["temp_deathtouch"] = 1
 		pumped++
 	}

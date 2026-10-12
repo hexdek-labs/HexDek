@@ -73,11 +73,10 @@ func theRaniCreateMark(gs *gameengine.GameState, perm *gameengine.Permanent, slu
 	if aura != nil {
 		aura.AttachedTo = target
 	}
+	pumpUntilEOT(gs, target, 2, 2)
 	if target.Flags == nil {
 		target.Flags = map[string]int{}
 	}
-	target.Flags["temp_power"] += 2
-	target.Flags["temp_toughness"] += 2
 	target.Flags["goaded"] = 1
 	emit(gs, slug, perm.Card.DisplayName(), map[string]interface{}{
 		"seat":   perm.Controller,
