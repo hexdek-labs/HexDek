@@ -164,6 +164,9 @@ func drainPendingTriggers(gs *GameState) {
 			if gs.Flags["ended"] == 1 {
 				return
 			}
+			if CheckGameDeadline(gs, "trigger_drain") {
+				return
+			}
 			resolves++
 			if resolves > maxTriggerDrainIterations {
 				LogLoopGuardFired(gs, "trigger_drain_cap", map[string]interface{}{

@@ -96,6 +96,19 @@ func takeTurnImpl(gs *gameengine.GameState, hook func(*gameengine.GameState)) {
 	turnStartEvents := gs.EventsLogged
 	budgetEventEmitted := false
 	turnOverBudget := func() bool {
+		// Wall-clock backstop, checked at the same phase boundaries.
+		// The event budget below is deterministic and stays primary —
+		// but it can only catch a runaway that LOGS. A spin that emits
+		// no events never moves EventsLogged, so it is invisible here.
+		// That is the 2026-10-08 production shape: one game held a core
+		// for sixteen days with the grinder's turn counter frozen and
+		// not one loop guard fired. The deadline is opt-in and unarmed
+		// by default, so deterministic callers (tests, parity, the
+		// correctness harness) behave exactly as before; only a caller
+		// that arms one — the live grinder — can trip it.
+		if gameengine.CheckGameDeadline(gs, "turn_phase_boundary") {
+			return true
+		}
 		used := gs.EventsLogged - turnStartEvents
 		if used <= turnEventBudget {
 			return false

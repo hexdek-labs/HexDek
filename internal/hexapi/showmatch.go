@@ -41,6 +41,14 @@ import (
 const (
 	showmatchSeats   = 4
 	showmatchMaxTurn = 80
+	// perGameWallClock is the backstop for a game that stops making
+	// progress inside a single turn. The 80-turn ceiling and the
+	// per-10-turn heap abort both live INSIDE the turn loop, so a
+	// TakeTurn that never returns is never re-checked by either. On
+	// 2026-10-08 that cost sixteen days of a pegged core on one game.
+	// Generous on purpose: a normal game is seconds, so this only ever
+	// fires on a genuine runaway.
+	perGameWallClock = 10 * time.Minute
 	maxLogEntries    = 80
 )
 
@@ -1134,6 +1142,10 @@ func (sm *Showmatch) RunGauntlet(owner, id string, numGames int) {
 		gs := gameengine.NewGameState(showmatchSeats, gameRng, sm.corpus)
 		gs.Seed = gameSeed
 		gs.EventPolicy = gameengine.EventLogNone
+		// Arm the wall-clock backstop (gameengine/game_deadline.go). Opt-in:
+		// only callers that arm it can trip it, so tests and the determinstic
+		// harnesses are unaffected.
+		gameengine.SetGameDeadline(gs, time.Now().Add(perGameWallClock))
 
 		cmdDecks := make([]*gameengine.CommanderDeck, showmatchSeats)
 		for i := 0; i < showmatchSeats; i++ {
@@ -1719,6 +1731,10 @@ func (sm *Showmatch) runOneGameFast(rng *rand.Rand) {
 	gs := gameengine.NewGameState(showmatchSeats, gameRng, sm.corpus)
 	gs.Seed = gameSeed
 	gs.EventPolicy = gameengine.EventLogNone
+	// Arm the wall-clock backstop (gameengine/game_deadline.go). Opt-in:
+	// only callers that arm it can trip it, so tests and the determinstic
+	// harnesses are unaffected.
+	gameengine.SetGameDeadline(gs, time.Now().Add(perGameWallClock))
 	// Hex Judge sampled watchdog (nil-safe no-op when off).
 	jr := sm.judge.beginGame(rng, gameSeed, deckKeys)
 	jr.Attach(gs)

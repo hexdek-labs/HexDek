@@ -101,6 +101,12 @@ func DrainStack(gs *GameState) {
 
 	var ld *loopDetector
 	for drainIter := 0; len(gs.Stack) > 0 && drainIter < maxStackDrainIterations; drainIter++ {
+		// Wall-clock backstop (game_deadline.go). The iteration cap above
+		// bounds THIS loop; the deadline bounds the game even when the
+		// spin is in something below us that nobody capped.
+		if CheckGameDeadline(gs, "stack_drain") {
+			return
+		}
 		if drainIter >= loopMinReps*2 {
 			if ld == nil {
 				ld = newLoopDetector()
@@ -2860,7 +2866,7 @@ func resolvePermanentSpellETB(gs *GameState, item *StackItem) *Permanent {
 
 		// §702.131 Ascend.
 		CheckAscend(gs, perm.Controller)
-	CheckStoried(gs, perm.Controller)
+		CheckStoried(gs, perm.Controller)
 
 		if !cardHasType(card, "land") {
 			FireCardTrigger(gs, "nonland_permanent_etb", map[string]interface{}{
