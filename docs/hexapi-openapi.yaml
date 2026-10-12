@@ -2153,30 +2153,6 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/EmptyOk' }
 
-  /api/meta/evolution:
-    get:
-      tags: [meta]
-      operationId: getMetaEvolution
-      summary: Time-series of archetype mix across the engine's game history.
-      responses:
-        "200":
-          description: Meta evolution body.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/EmptyOk' }
-
-  /api/meta/archetype-vs-archetype:
-    get:
-      tags: [meta]
-      operationId: getArchetypeMatrix
-      summary: Archetype-vs-archetype matchup matrix across recorded games.
-      responses:
-        "200":
-          description: Archetype matrix body.
-          content:
-            application/json:
-              schema: { $ref: '#/components/schemas/EmptyOk' }
-
   /api/leaderboard:
     get:
       tags: [leaderboard]
