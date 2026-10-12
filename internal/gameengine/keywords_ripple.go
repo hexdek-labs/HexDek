@@ -111,9 +111,9 @@ func IsRippleCast(item *StackItem) bool {
 //   - "ripple_reveal" event logged with the revealed-card names
 //   - "ripple_hit" event logged per name match (before each free cast)
 //   - each free cast pushes a StackItem with CostMeta:
-//       ripple_cast       = true
-//       ripple_source     = sourceCard (the *Card that triggered)
-//       ripple_n          = n (the revealed count for that trigger)
+//     ripple_cast       = true
+//     ripple_source     = sourceCard (the *Card that triggered)
+//     ripple_n          = n (the revealed count for that trigger)
 //   - matched cards are removed from the library; non-matched cards are
 //     appended to the library bottom in their reveal order
 //   - the free-cast StackItem is resolved immediately to commit the
@@ -171,7 +171,7 @@ func ApplyRipple(gs *GameState, casterSeat int, sourceCard *Card, n int) int {
 		Source: sourceCard.DisplayName(),
 		Amount: len(revealed),
 		Details: map[string]interface{}{
-			"revealed":      revealedNames,
+			"revealed":       revealedNames,
 			"revealed_count": len(revealed),
 		},
 	})
@@ -255,6 +255,24 @@ func castOneRippleFree(gs *GameState, casterSeat int, sourceCard, card *Card, n 
 	// downstream name-match chains and any name-keyed analytics. The
 	// CostMeta stamp above is the authoritative marker.)
 	PushStackItem(gs, item)
+
+	// Cast-side bookkeeping + trigger dispatch. A ripple cast IS a cast
+	// (CR §702.19a — "you may cast any cards revealed this way"), but
+	// this path builds its StackItem directly and so bypassed every
+	// cast-side helper: no storm/magecraft count, no "whenever you cast
+	// a spell" family, no cast observers, no cast hook. Identical class
+	// to the plot bypass fixed earlier (keywords_plot.go) — same helpers,
+	// same reason — and to the cascade/commander/costs paths that all
+	// route through fireCastTriggers*. The cast is from the library, so
+	// the zone-aware variant is threaded with ZoneLibrary.
+	//
+	// The free cast pays {0} (CR §702.19a casts "without paying its mana
+	// cost"), so RecordCast books 0 like the plot path does.
+	IncrementCastCount(gs, casterSeat)
+	RecordCast(gs, casterSeat, card, 0)
+	fireCastTriggersFromZone(gs, casterSeat, card, ZoneLibrary)
+	FireCastTriggerObservers(gs, card, casterSeat, false)
+	InvokeCastHook(gs, item)
 
 	// CR §117.3 / §117.4 — opponents receive priority once a spell is
 	// on the stack, BEFORE it resolves. PriorityRound polls APNAP so
