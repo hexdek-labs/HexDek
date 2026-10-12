@@ -862,7 +862,23 @@ func distributeDamage(gs *GameState, src *Permanent, targets []Target, total int
 	})
 }
 
-func applyDamage(gs *GameState, src *Permanent, t Target, amount int) {
+// applyDamage applies damage after replacement and prevention, and
+// returns the amount ACTUALLY dealt — 0 when the damage was prevented,
+// replaced to nothing, or cancelled.
+//
+// The return value exists because callers that key a rider off damage
+// (lifelink, deathtouch) must use what landed, not what was intended.
+// Combat already does this: it computes `amount` post-prevention itself
+// and gates `deathtouch_damaged` on `amount > 0` (combat.go). The fight
+// path had no way to know, so it keyed both riders off the attacker's
+// POWER and over-gained life whenever fight damage was prevented, while
+// still marking a target deathtouched that was never actually damaged.
+//
+// The named return means every existing early return (cancelled,
+// prevented, zero-after-replacement) yields 0 without further edits, and
+// adding a result is source-compatible with the ten existing callers that
+// invoke this as a statement.
+func applyDamage(gs *GameState, src *Permanent, t Target, amount int) (dealt int) {
 	switch t.Kind {
 	case TargetKindSeat:
 		if t.Seat < 0 || t.Seat >= len(gs.Seats) {
@@ -918,6 +934,7 @@ func applyDamage(gs *GameState, src *Permanent, t Target, amount int) {
 			return
 		}
 		gs.Seats[t.Seat].Life -= modified
+		dealt = modified
 		// Track turn counters for noncombat damage / life loss.
 		gs.Seats[t.Seat].Turn.LifeLost += modified
 		gs.Seats[t.Seat].Turn.DamageReceived += modified
@@ -1002,6 +1019,7 @@ func applyDamage(gs *GameState, src *Permanent, t Target, amount int) {
 			return
 		}
 		t.Permanent.MarkedDamage += modified
+		dealt = modified
 		gs.LogEvent(Event{
 			Kind:   "damage",
 			Seat:   controllerSeat(src),
@@ -1020,6 +1038,7 @@ func applyDamage(gs *GameState, src *Permanent, t Target, amount int) {
 			"target": t.Permanent.Card.DisplayName(),
 		})
 	}
+	return dealt
 }
 
 func resolveDraw(gs *GameState, src *Permanent, e *gameast.Draw) {
@@ -2263,7 +2282,16 @@ func dealFightDamage(gs *GameState, source, target *Permanent, pow int) {
 	if gs == nil || source == nil || target == nil || pow <= 0 {
 		return
 	}
-	applyDamage(gs, source, Target{Kind: TargetKindPermanent, Permanent: target}, pow)
+	// Key both riders off what was ACTUALLY dealt, matching combat
+	// (combat.go gates deathtouch on `amount > 0` and lifelinks the real
+	// amount). Keying off `pow` over-gains life when fight damage is
+	// prevented or replaced, under-gains under a damage doubler such as
+	// Furnace of Rath, and marks a target deathtouched that took no
+	// damage at all — a false kill once it has other marked damage.
+	dealt := applyDamage(gs, source, Target{Kind: TargetKindPermanent, Permanent: target}, pow)
+	if dealt <= 0 {
+		return
+	}
 	if source.HasKeyword("deathtouch") {
 		if target.Flags == nil {
 			target.Flags = map[string]int{}
@@ -2271,7 +2299,7 @@ func dealFightDamage(gs *GameState, source, target *Permanent, pow int) {
 		target.Flags["deathtouch_damaged"] = 1
 	}
 	if source.HasKeyword("lifelink") {
-		GainLife(gs, source.Controller, pow, source.Card.DisplayName())
+		GainLife(gs, source.Controller, dealt, source.Card.DisplayName())
 	}
 }
 
