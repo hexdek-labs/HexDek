@@ -933,14 +933,39 @@ func (sm *Showmatch) runLoop() {
 	}
 }
 
-func (sm *Showmatch) runGrinder() {
-	workers := runtime.NumCPU() / 2
+// grinderWorkerCount sizes the grinder pool.
+//
+// r76 — this used runtime.NumCPU() alone, which reports the MACHINE's
+// logical CPUs and ignores GOMAXPROCS. On .206 the wrapper deliberately
+// sets GOMAXPROCS=2 to keep the box usable, while NumCPU()=8 produced 4
+// CPU-bound workers: a 2x oversubscription of the procs the operator
+// allowed, on top of the fishtank, the HTTP handlers, the anomaly pass
+// and the logger.
+//
+// Oversubscribing does not win throughput — the procs are the bottleneck
+// either way — but it doubles the number of games in flight (so the live
+// heap the collector must mark) and it starves every other goroutine in
+// bursts. The observed symptom was 30-second windows where the whole
+// process went silent in the log, not just the grinder.
+//
+// Keeping the original "half the machine" intent, but never exceeding
+// the procs we are actually allowed to run on.
+func grinderWorkerCount(numCPU, maxProcs int) int {
+	workers := numCPU / 2
+	if maxProcs > 0 && workers > maxProcs {
+		workers = maxProcs
+	}
 	if workers > 12 {
 		workers = 12
 	}
 	if workers < 2 {
 		workers = 2
 	}
+	return workers
+}
+
+func (sm *Showmatch) runGrinder() {
+	workers := grinderWorkerCount(runtime.NumCPU(), runtime.GOMAXPROCS(0))
 
 	debug.SetGCPercent(50)
 	debug.SetMemoryLimit(8 * 1024 * 1024 * 1024) // 8 GB hard cap
@@ -949,7 +974,8 @@ func (sm *Showmatch) runGrinder() {
 	var totalTurns atomic.Int64
 	t0 := time.Now()
 
-	log.Printf("grinder: starting %d parallel workers (GOGC=50, memlimit=8GB)", workers)
+	log.Printf("grinder: starting %d parallel workers (NumCPU=%d GOMAXPROCS=%d, GOGC=50, memlimit=8GB)",
+		workers, runtime.NumCPU(), runtime.GOMAXPROCS(0))
 
 	for w := 0; w < workers; w++ {
 		go func(id int) {
