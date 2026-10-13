@@ -1186,6 +1186,17 @@ type Seat struct {
 	// loss-prevention chain re-fires on every priority pass per CR §704.3.
 	SBA704_5a_emitted bool
 
+	// LifeAtGameEnd records this seat's life total at the instant
+	// CheckEnd flipped Flags["ended"]=1, and LifeAtGameEndSet says
+	// whether it was recorded at all. r68: the Judge's §704.5a check
+	// reports winners sitting at <=0 life, and the ONE fact that
+	// decides whether that is a mis-scored game or harmless residue is
+	// whether the life crossed zero BEFORE or AFTER the outcome was
+	// decided. Nothing recorded it, so the question was being answered
+	// by inference. Now it is measured.
+	LifeAtGameEnd    int
+	LifeAtGameEndSet bool
+
 	// CommanderDamageNextSeq is the next EventLog index that §704.6c has
 	// not yet scanned. Prevents double-counting across SBA passes.
 	CommanderDamageNextSeq int

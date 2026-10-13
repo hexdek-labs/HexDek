@@ -1,6 +1,9 @@
 package judge
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+)
 
 // stateintegrity.go — the STATE-INTEGRITY dimension's end-of-game
 // checks (Hex Judge phase 3 fold; pattern per 44e84b1e / legality.go).
@@ -56,6 +59,13 @@ type SeatSnapshot struct {
 	// SBALossEmitted is true when the engine's §704.5a SBA recorded a
 	// loss-or-prevention for this seat's current life drop.
 	SBALossEmitted bool
+	// LifeAtEnd is the seat's life at the instant the engine decided
+	// the outcome, and LifeAtEndKnown whether it was captured. r68:
+	// this is the field that separates "the engine crowned a winner
+	// who was ALREADY dead" (a real §104.4a draw miss) from "the
+	// winner's life drained after the game was over" (residue).
+	LifeAtEnd      int
+	LifeAtEndKnown bool
 }
 
 // GameSnapshot is the Judge's neutral end-of-game state-integrity input.
@@ -167,9 +177,11 @@ func CheckStateIntegrity(g GameSnapshot) []ValidationViolation {
 				// which was the whole point of the change.
 				Message: fmt.Sprintf(
 					"seat %d has %d life but is not marked lost "+
-						"(ended=%t winner=%t turn_capped=%t alive=%d sole_survivor=%t shield=%t sba_emitted=%t)",
+						"(ended=%t winner=%t turn_capped=%t alive=%d sole_survivor=%t "+
+						"shield=%t sba_emitted=%t life_at_end=%s)",
 					s.Seat, s.Life, g.Ended, g.HasWinner, g.TurnCapped, totalAlive,
-					totalAlive == 1, s.CantLoseShield, s.SBALossEmitted),
+					totalAlive == 1, s.CantLoseShield, s.SBALossEmitted,
+					lifeAtEndLabel(s)),
 				Seat:     s.Seat,
 				Severity: severity,
 				Context: map[string]interface{}{
@@ -180,6 +192,7 @@ func CheckStateIntegrity(g GameSnapshot) []ValidationViolation {
 					"alive_seats":      totalAlive,
 					"cant_lose_shield": s.CantLoseShield,
 					"sba_loss_emitted": s.SBALossEmitted,
+					"life_at_end":      lifeAtEndLabel(s),
 					"sole_survivor":    totalAlive == 1,
 				},
 			})
@@ -234,4 +247,15 @@ func CheckStateIntegrity(g GameSnapshot) []ValidationViolation {
 	}
 
 	return out
+}
+
+// lifeAtEndLabel renders the decision-point life for the §704.5a
+// message. "unknown" is kept distinct from any number: a seat whose
+// life was never captured must not be read as a seat that was at 0,
+// which is the difference between "no data" and "already dead".
+func lifeAtEndLabel(s SeatSnapshot) string {
+	if !s.LifeAtEndKnown {
+		return "unknown"
+	}
+	return strconv.Itoa(s.LifeAtEnd)
 }

@@ -172,3 +172,63 @@ func TestStateIntegrityR67c_TurnCappedIsReportedInTheLogLine(t *testing.T) {
 		t.Errorf("turn-cap origin missing from the rendered line: %s", line)
 	}
 }
+
+// r68 — "unknown" must stay distinct from a number, and especially
+// from 0. A seat whose decision-point life was never captured is not
+// the same as a seat that was AT zero when the outcome was decided,
+// and conflating them would answer the exact question this field
+// exists to settle.
+func TestStateIntegrityR68_UnknownLifeAtEndIsNotZero(t *testing.T) {
+	unset := GameSnapshot{TotalSeats: 2, Ended: true, HasWinner: true, Seats: []SeatSnapshot{
+		{Seat: 0, Life: -3, Lost: false}, // LifeAtEndKnown false
+		{Seat: 1, Life: 0, Lost: true},
+	}}
+	atZero := GameSnapshot{TotalSeats: 2, Ended: true, HasWinner: true, Seats: []SeatSnapshot{
+		{Seat: 0, Life: -3, Lost: false, LifeAtEnd: 0, LifeAtEndKnown: true},
+		{Seat: 1, Life: 0, Lost: true},
+	}}
+
+	lineOf := func(g GameSnapshot) string {
+		for _, v := range CheckStateIntegrity(g) {
+			if v.Name == "704.5a" {
+				return v.String()
+			}
+		}
+		return ""
+	}
+	u, z := lineOf(unset), lineOf(atZero)
+	if !strings.Contains(u, "life_at_end=unknown") {
+		t.Errorf("uncaptured life must render as unknown, got: %s", u)
+	}
+	if !strings.Contains(z, "life_at_end=0") {
+		t.Errorf("a captured 0 must render as 0, got: %s", z)
+	}
+	if u == z {
+		t.Error("unknown and 0 rendered identically — the distinction this field exists for is lost")
+	}
+}
+
+// A seat that was comfortably alive at the decision point and only went
+// negative afterwards is the RESIDUE shape; one that was already at or
+// below 0 when the outcome was decided is the alarming shape. Both must
+// be readable straight off the line.
+func TestStateIntegrityR68_ResidueAndAlreadyDeadAreDistinguishable(t *testing.T) {
+	mk := func(lifeAtEnd int) string {
+		g := GameSnapshot{TotalSeats: 2, Ended: true, HasWinner: true, Seats: []SeatSnapshot{
+			{Seat: 0, Life: -44, Lost: false, LifeAtEnd: lifeAtEnd, LifeAtEndKnown: true},
+			{Seat: 1, Life: 0, Lost: true},
+		}}
+		for _, v := range CheckStateIntegrity(g) {
+			if v.Name == "704.5a" {
+				return v.String()
+			}
+		}
+		return ""
+	}
+	if !strings.Contains(mk(17), "life_at_end=17") {
+		t.Error("residue shape must report the healthy decision-point life")
+	}
+	if !strings.Contains(mk(-44), "life_at_end=-44") {
+		t.Error("already-dead shape must report the negative decision-point life")
+	}
+}

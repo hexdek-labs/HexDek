@@ -91,6 +91,8 @@ func judgeStateIntegrity(gs *gameengine.GameState, r *OracleResult) {
 			PoisonCounters: s.PoisonCounters,
 			CantLoseShield: hasCantLoseEffect(gs, i),
 			SBALossEmitted: s.SBA704_5a_emitted,
+			LifeAtEnd:      s.LifeAtGameEnd,
+			LifeAtEndKnown: s.LifeAtGameEndSet,
 		}
 		if s.CommanderDamage != nil {
 			ss.CommanderDamage = map[string]int{}

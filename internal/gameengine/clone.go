@@ -113,28 +113,30 @@ func (gs *GameState) CloneForRollout(rng *rand.Rand) *GameState {
 			castCounts[k] = v
 		}
 		ns := &Seat{
-			Idx:                 s.Idx,
-			Life:                s.Life,
-			Lost:                s.Lost,
-			Won:                 s.Won,
-			PoisonCounters:      s.PoisonCounters,
-			StartingLife:        s.StartingLife,
-			LeftGame:            s.LeftGame,
-			ManaPool:            s.ManaPool,
-			CommanderNames:      append([]string(nil), s.CommanderNames...),
-			CommanderCastCounts: castCounts,
-			CommanderTax:        castCounts, // same underlying map
-			LossReason:          s.LossReason,
-			SBA704_5a_emitted:   s.SBA704_5a_emitted,
+			Idx:                    s.Idx,
+			Life:                   s.Life,
+			Lost:                   s.Lost,
+			Won:                    s.Won,
+			PoisonCounters:         s.PoisonCounters,
+			StartingLife:           s.StartingLife,
+			LeftGame:               s.LeftGame,
+			ManaPool:               s.ManaPool,
+			CommanderNames:         append([]string(nil), s.CommanderNames...),
+			CommanderCastCounts:    castCounts,
+			CommanderTax:           castCounts, // same underlying map
+			LossReason:             s.LossReason,
+			SBA704_5a_emitted:      s.SBA704_5a_emitted,
+			LifeAtGameEnd:          s.LifeAtGameEnd,
+			LifeAtGameEndSet:       s.LifeAtGameEndSet,
 			CommanderDamageNextSeq: s.CommanderDamageNextSeq,
-			AttemptedEmptyDraw:  s.AttemptedEmptyDraw,
-			LostByEffect:        s.LostByEffect,
-			SpellsCastThisTurn:  s.SpellsCastThisTurn,
-			SpellsCastLastTurn:  s.SpellsCastLastTurn,
-			DescendedThisTurn:   s.DescendedThisTurn,
-			SkipUntapStep:       s.SkipUntapStep,
-			ControlledBy:        s.ControlledBy,
-			CompanionMoved:      s.CompanionMoved,
+			AttemptedEmptyDraw:     s.AttemptedEmptyDraw,
+			LostByEffect:           s.LostByEffect,
+			SpellsCastThisTurn:     s.SpellsCastThisTurn,
+			SpellsCastLastTurn:     s.SpellsCastLastTurn,
+			DescendedThisTurn:      s.DescendedThisTurn,
+			SkipUntapStep:          s.SkipUntapStep,
+			ControlledBy:           s.ControlledBy,
+			CompanionMoved:         s.CompanionMoved,
 		}
 		// LossDetail is a pointer: copy the value so clone and original
 		// can't alias each other's structured loss cause.
@@ -200,16 +202,16 @@ func (gs *GameState) CloneForRollout(rng *rand.Rand) *GameState {
 			continue
 		}
 		nsi := &StackItem{
-			ID:         si.ID,
-			Controller: si.Controller,
-			Card:       cloneCard(si.Card),
-			Source:      permMap[si.Source],
-			Effect:     si.Effect, // interface value, not mutated
-			Countered:  si.Countered,
-			Kind:       si.Kind,
-			AbilityIdx: si.AbilityIdx,
-			IsCopy:     si.IsCopy,
-			CastZone:   si.CastZone,
+			ID:           si.ID,
+			Controller:   si.Controller,
+			Card:         cloneCard(si.Card),
+			Source:       permMap[si.Source],
+			Effect:       si.Effect, // interface value, not mutated
+			Countered:    si.Countered,
+			Kind:         si.Kind,
+			AbilityIdx:   si.AbilityIdx,
+			IsCopy:       si.IsCopy,
+			CastZone:     si.CastZone,
 			ChosenX:      si.ChosenX,
 			CleaveActive: si.CleaveActive,
 		}
@@ -236,17 +238,17 @@ func (gs *GameState) CloneForRollout(rng *rand.Rand) *GameState {
 
 	// Phase 6: assemble the clone.
 	clone := &GameState{
-		Seats:                      seats,
-		Rng:                        rng,
-		Turn:                       gs.Turn,
-		Phase:                      gs.Phase,
-		Step:                       gs.Step,
-		Active:                     gs.Active,
-		Stack:                      stack,
-		Cards:                      gs.Cards, // read-only corpus, shared
-		EffectTimestamp:             gs.EffectTimestamp,
-		CommanderFormat:             gs.CommanderFormat,
-		PainterColor:               gs.PainterColor,
+		Seats:           seats,
+		Rng:             rng,
+		Turn:            gs.Turn,
+		Phase:           gs.Phase,
+		Step:            gs.Step,
+		Active:          gs.Active,
+		Stack:           stack,
+		Cards:           gs.Cards, // read-only corpus, shared
+		EffectTimestamp: gs.EffectTimestamp,
+		CommanderFormat: gs.CommanderFormat,
+		PainterColor:    gs.PainterColor,
 		// PendingExtraCombats is a slice of value-type structs (no
 		// pointer fields except OnBegin, which is shared by design —
 		// cloning the function pointer is fine since the function is

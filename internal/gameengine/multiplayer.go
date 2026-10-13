@@ -292,6 +292,17 @@ func (gs *GameState) CheckEnd() bool {
 		return true
 	}
 	gs.Flags["ended"] = 1
+	// r68 — freeze every seat's life AT THE DECISION POINT, before any
+	// post-end trigger drain can move it. StateBasedActions returns
+	// early once this flag is set, so from here on a seat's life can
+	// fall below 0 with nothing to mark it Lost; without this snapshot
+	// there is no way to tell that harmless residue apart from a real
+	// §104.4a draw the engine scored as a win.
+	for _, s := range gs.Seats {
+		if s != nil {
+			s.LifeAtGameEnd, s.LifeAtGameEndSet = s.Life, true
+		}
+	}
 	// Reconcile mana pools — combat-phase game ends skip the normal
 	// end-of-turn drain, leaving typed/legacy pools potentially out of sync.
 	for _, s := range gs.Seats {
