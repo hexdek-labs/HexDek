@@ -68,7 +68,7 @@ func HasMagecraft(card *Card) bool {
 // effects (e.g. Galazeth Prismari-style enchant-yourself riders in
 // custom corpora), so we honor the same machinery the rest of the
 // engine uses for keyword detection on permanents.
-func permanentHasMagecraft(p *Permanent) bool {
+func permanentHasMagecraft(gs *GameState, p *Permanent) bool {
 	if p == nil {
 		return false
 	}
@@ -86,7 +86,7 @@ func permanentHasMagecraft(p *Permanent) bool {
 	// Legacy path: pre-existing handlers may register magecraft via the
 	// trigger-event registry rather than via the keyword AST. Honor that
 	// so the new fan-out doesn't silently double-count or skip those.
-	if permHasTriggerEvent(p, "magecraft") {
+	if permHasTriggerEvent(gs, p, "magecraft") {
 		return true
 	}
 	return false
@@ -149,7 +149,7 @@ func FireMagecraftTriggers(gs *GameState, casterSeat int, spell *Card, isCopy bo
 			// permanent — skip mismatches.
 			continue
 		}
-		if !permanentHasMagecraft(p) {
+		if !permanentHasMagecraft(gs, p) {
 			continue
 		}
 		gs.LogEvent(Event{

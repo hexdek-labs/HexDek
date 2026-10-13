@@ -2584,7 +2584,7 @@ func FireLandfallTriggers(gs *GameState, seatIdx int, land *Permanent) {
 		if p == nil || p.Card == nil {
 			continue
 		}
-		if p.HasKeyword("landfall") || permHasTriggerEvent(p, "landfall") {
+		if keywordActive(gs, p, "landfall") || permHasTriggerEvent(gs, p, "landfall") {
 			gs.LogEvent(Event{
 				Kind:   "landfall_trigger",
 				Seat:   seatIdx,
@@ -2657,7 +2657,8 @@ func FireConstellationTriggers(gs *GameState, seatIdx int, enchantment *Permanen
 			continue
 		}
 		trig := constellationTriggerFromCard(p.Card)
-		if trig == nil && !p.HasKeyword("constellation") && !permHasTriggerEvent(p, "constellation") {
+		if trig == nil && !keywordActive(gs, p, "constellation") &&
+			!permHasTriggerEvent(gs, p, "constellation") {
 			continue
 		}
 		// Diagnostic event (retained — pre-r63 behavior, exercised by tests).
@@ -2704,7 +2705,7 @@ func FireHeroicTrigger(gs *GameState, perm *Permanent) {
 	if gs == nil || perm == nil || perm.Card == nil {
 		return
 	}
-	if !perm.HasKeyword("heroic") && !permHasTriggerEvent(perm, "heroic") {
+	if !keywordActive(gs, perm, "heroic") && !permHasTriggerEvent(gs, perm, "heroic") {
 		return
 	}
 	gs.LogEvent(Event{
@@ -2751,7 +2752,7 @@ func FireEvolveTriggers(gs *GameState, seatIdx int, newCreature *Permanent) {
 		if !p.IsCreature() {
 			continue
 		}
-		if !p.HasKeyword("evolve") && !permHasTriggerEvent(p, "evolve") {
+		if !keywordActive(gs, p, "evolve") && !permHasTriggerEvent(gs, p, "evolve") {
 			continue
 		}
 		// Check if the entering creature has greater power OR greater
@@ -2799,7 +2800,7 @@ func FireAllianceTriggers(gs *GameState, seatIdx int, newCreature *Permanent) {
 		if p == nil || p.Card == nil || p == newCreature {
 			continue
 		}
-		if p.HasKeyword("alliance") || permHasTriggerEvent(p, "alliance") {
+		if keywordActive(gs, p, "alliance") || permHasTriggerEvent(gs, p, "alliance") {
 			gs.LogEvent(Event{
 				Kind:   "alliance_trigger",
 				Seat:   seatIdx,
@@ -3089,7 +3090,7 @@ func FireDethroneTriggers(gs *GameState, attackerSeat int, attackers []*Permanen
 		}
 	}
 	for _, atk := range attackers {
-		if atk == nil || !atk.HasKeyword("dethrone") {
+		if atk == nil || !keywordActive(gs, atk, "dethrone") {
 			continue
 		}
 		defSeat := -1
@@ -3122,7 +3123,7 @@ func FireDethroneTriggers(gs *GameState, attackerSeat int, attackers []*Permanen
 // either a +1/+1 counter or haste. The AI always picks +1/+1 for
 // creatures with power ≥ 3, haste otherwise.
 func ApplyRiot(gs *GameState, perm *Permanent) {
-	if gs == nil || perm == nil || !perm.HasKeyword("riot") {
+	if gs == nil || perm == nil || !keywordActive(gs, perm, "riot") {
 		return
 	}
 	chooseHaste := perm.Power() < 3
@@ -3305,8 +3306,22 @@ func removePermanentFromBattlefield(gs *GameState, p *Permanent) {
 
 // permHasTriggerEvent checks if a permanent's AST has a triggered ability
 // matching the given event name.
-func permHasTriggerEvent(p *Permanent, event string) bool {
+// r79 — this reads the PRINTED card's AST, which is outside the layer
+// system entirely. HasLostAllAbilities' own doc comment already states
+// the contract this was breaking: "Activation / trigger code consults
+// this instead of reading raw Card.AST so a stripped creature can no
+// longer activate or fire its printed abilities (CR §613.1f)."
+//
+// Without the guard a Humility-style layer-6 strip could not suppress
+// landfall, constellation, heroic, evolve, alliance or magecraft on any
+// real card — and real cards carry these as AST triggers, not as flags,
+// so the AST arm is the one that matters. Migrating only the keyword arm
+// would have left the bug in place behind a green test.
+func permHasTriggerEvent(gs *GameState, p *Permanent, event string) bool {
 	if p == nil || p.Card == nil || p.Card.AST == nil {
+		return false
+	}
+	if gs.HasLostAllAbilities(p) {
 		return false
 	}
 	for _, ab := range p.Card.AST.Abilities {
