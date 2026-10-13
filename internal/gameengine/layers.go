@@ -220,6 +220,17 @@ func (gs *GameState) InvalidateCharacteristicsCache() {
 		return
 	}
 	gs.charCacheEpoch++
+	// r73 — DROP the now-stale entries instead of leaving them in the map.
+	// The epoch bump alone makes every entry unreadable, but the map still
+	// holds a *Permanent key for each one, which keeps that Permanent (and
+	// its Card, Modifications and counters) reachable for the whole life of
+	// the GameState. A token that entered and died on turn 3 was still live
+	// at turn 60. Nothing is lost by clearing: the entries being dropped are
+	// exactly the ones that just became unreadable. It also keeps the map
+	// small, so lookups stay cheap on a wide board.
+	if len(gs.charCache) > 0 {
+		clear(gs.charCache)
+	}
 }
 
 // -----------------------------------------------------------------------------
