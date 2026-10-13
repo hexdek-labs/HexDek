@@ -964,6 +964,12 @@ func grinderWorkerCount(numCPU, maxProcs int) int {
 	return workers
 }
 
+// slowGameThreshold is the wall-clock duration above which a single
+// grinder game is logged by name. A healthy game on .206 finishes well
+// under a second; 10s is far enough above the noise that the log stays
+// readable while still catching every real offender.
+const slowGameThreshold = 10 * time.Second
+
 func (sm *Showmatch) runGrinder() {
 	workers := grinderWorkerCount(runtime.NumCPU(), runtime.GOMAXPROCS(0))
 
@@ -1730,6 +1736,29 @@ func (sm *Showmatch) getOrCreateCursePool(deckKey string, rng *rand.Rand) *hat.C
 // causes behind the same falling games-per-minute.
 func (sm *Showmatch) runOneGameFast(rng *rand.Rand) (turnsPlayed int) {
 	var deckKeys []string // declared here so crash recovery can access it
+
+	// r78 — name the slow games.
+	//
+	// Grinder throughput is not a steady rate: it sits near its ceiling
+	// and then drops into 30-second windows where almost nothing
+	// completes (one measured window did 2 games with 9 GC cycles, at
+	// turns/game 67 against a 55 baseline). With the pool sized to
+	// GOMAXPROCS, a single heavy game occupies half the capacity, so a
+	// handful of pathological games explain the whole pattern.
+	//
+	// Aggregate metrics cannot identify them — by construction a game
+	// that has not finished contributes nothing to turns/game. This logs
+	// the individual offenders with the decks that produced them, so the
+	// next question ("which card or interaction makes a game heavy?")
+	// has data behind it instead of a guess.
+	gameStart := time.Now()
+	defer func() {
+		d := time.Since(gameStart)
+		if d >= slowGameThreshold {
+			log.Printf("grinder: SLOW GAME %.1fs turns=%d decks=%v",
+				d.Seconds(), turnsPlayed, deckKeys)
+		}
+	}()
 	defer func() {
 		if r := recover(); r != nil {
 			buf := make([]byte, 4096)
